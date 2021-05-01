@@ -1,0 +1,35 @@
+name: Continuous Integration
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run linters
+        uses: golangci/golangci-lint-action@v2.5.2
+        with:
+          version: v1.28
+
+  unit:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ['1.16', '1.15']
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go }}
+      - uses: actions/cache@v2.1.5
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Run unit tests
+        run: go test -race ./...
