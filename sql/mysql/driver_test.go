@@ -75,6 +75,7 @@ func TestDriver_Table(t *testing.T) {
 +--------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
 `))
 				m.noIndexes()
+				m.noFKs()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -114,6 +115,7 @@ func TestDriver_Table(t *testing.T) {
 +-------------+---------------+-------------+------------+----------------+-------+--------------------+----------------+
 `))
 				m.noIndexes()
+				m.noFKs()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -140,6 +142,7 @@ func TestDriver_Table(t *testing.T) {
 +-------------+--------------+-------------+------------+----------------+-------+--------------------+----------------+
 `))
 				m.noIndexes()
+				m.noFKs()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -170,6 +173,7 @@ func TestDriver_Table(t *testing.T) {
 +-------------+---------------+-------------+------------+----------------+-------+--------------------+----------------+
 `))
 				m.noIndexes()
+				m.noFKs()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -204,6 +208,7 @@ func TestDriver_Table(t *testing.T) {
 +-------------+---------------+-------------+------------+----------------+-------+--------------------+----------------+
 `))
 				m.noIndexes()
+				m.noFKs()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -234,6 +239,7 @@ func TestDriver_Table(t *testing.T) {
 +-------------+---------------+-------------+------------+----------------+-------+--------------------+-------------------+
 `))
 				m.noIndexes()
+				m.noFKs()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -264,6 +270,7 @@ func TestDriver_Table(t *testing.T) {
 +-------------+-------------+-------------+------------+-------------------+-----------------------------+--------------------+----------------+
 `))
 				m.noIndexes()
+				m.noFKs()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -293,6 +300,7 @@ func TestDriver_Table(t *testing.T) {
 +-------------+-------------+-------------+------------+----------------+-------+--------------------+----------------+
 `))
 				m.noIndexes()
+				m.noFKs()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -325,6 +333,7 @@ func TestDriver_Table(t *testing.T) {
 +-------------+--------------------+-------------+------------+----------------+-------+--------------------+----------------+
 `))
 				m.noIndexes()
+				m.noFKs()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -373,6 +382,7 @@ func TestDriver_Table(t *testing.T) {
 | unique_index | oid         |          0 |
 +--------------+-------------+------------+
 `))
+				m.noFKs()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -393,6 +403,54 @@ func TestDriver_Table(t *testing.T) {
 				indexes[2].Columns = []*schema.Column{columns[3], columns[2]} // uid, oid
 				require.EqualValues(columns, t.Columns)
 				require.EqualValues(indexes, t.Indexes)
+			},
+		},
+		{
+			name: "fks",
+			before: func(m mock) {
+				m.version("8.0.0")
+				m.tableExists("users", true)
+				m.ExpectQuery(escape(columnsQuery)).
+					WithArgs("users").
+					WillReturnRows(rows(`
++-------------+--------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+| COLUMN_NAME | COLUMN_TYPE  | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
++-------------+--------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+| id          | int          | NO          | PRI        | NULL           | auto_increment | NULL               | NULL               |
+| oid         | int          | NO          | MUL        | NULL           |                | NULL               | NULL               |
+| uid         | int          | NO          | MUL        | NULL           |                | NULL               | NULL               |
++-------------+--------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+`))
+				m.noIndexes()
+				m.ExpectQuery(escape(fksQuery)).
+					WithArgs("users").
+					WillReturnRows(rows(`
++------------------+------------+-------------+-----------------------+------------------------+-------------+-------------+
+| CONSTRAINT_NAME  | TABLE_NAME | COLUMN_NAME | REFERENCED_TABLE_NAME | REFERENCED_COLUMN_NAME | UPDATE_RULE | DELETE_RULE |
++------------------+------------+-------------+-----------------------+------------------------+-------------+-------------+
+| multi_column     | users      | id          | t1                    | gid                    | NO ACTION   | CASCADE     |
+| multi_column     | users      | oid         | t1                    | xid                    | NO ACTION   | CASCADE     |
+| self_reference   | users      | uid         | users                 | id                     | NO ACTION   | CASCADE     |
++------------------+------------+-------------+-----------------------+------------------------+-------------+-------------+
+`))
+			},
+			expect: func(require *require.Assertions, t *schema.Table, err error) {
+				require.NoError(err)
+				require.Equal("users", t.Name)
+				fks := []*schema.ForeignKey{
+					{Symbol: "multi_column", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: &schema.Table{Name: "t1"}, RefColumns: []*schema.Column{{Name: "gid"}, {Name: "xid"}}},
+					{Symbol: "self_reference", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: t},
+				}
+				columns := []*schema.Column{
+					{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}, ForeignKeys: fks[0:1]},
+					{Name: "oid", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, ForeignKeys: fks[0:1]},
+					{Name: "uid", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, ForeignKeys: fks[1:2]},
+				}
+				fks[0].Columns = columns[:2]
+				fks[1].Columns = columns[2:]
+				fks[1].RefColumns = columns[:1]
+				require.EqualValues(columns, t.Columns)
+				require.EqualValues(fks, t.ForeignKeys)
 			},
 		},
 	}
@@ -421,6 +479,11 @@ func (m mock) version(version string) {
 func (m mock) noIndexes() {
 	m.ExpectQuery(escape(indexesQuery)).
 		WillReturnRows(sqlmock.NewRows([]string{"index_name", "column_name", "non_unique"}))
+}
+
+func (m mock) noFKs() {
+	m.ExpectQuery(escape(fksQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"CONSTRAINT_NAME", "TABLE_NAME", "COLUMN_NAME", "REFERENCED_TABLE_NAME", "REFERENCED_COLUMN_NAME", "UPDATE_RULE", "DELETE_RULE"}))
 }
 
 func (m mock) tableExists(table string, exists bool) {

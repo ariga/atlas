@@ -41,6 +41,7 @@ type (
 	// A ForeignKey represents an index definition.
 	ForeignKey struct {
 		Symbol     string
+		Table      *Table
 		Columns    []*Column
 		RefTable   *Table
 		RefColumns []*Column
