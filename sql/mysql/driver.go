@@ -172,7 +172,7 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 		c.Type.Type = &schema.JSONType{
 			T: t,
 		}
-	case "point", "multipoint", "linestring", "multilinestring", "polygon", "multipolygon", "geometry", "geometrycollection":
+	case "point", "multipoint", "linestring", "multilinestring", "polygon", "multipolygon", "geometry", "geomcollection", "geometrycollection":
 		c.Type.Type = &schema.SpatialType{
 			T: t,
 		}
