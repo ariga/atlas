@@ -17,8 +17,8 @@ type Driver struct {
 	version string
 }
 
-// NewDriver returns a new MySQL driver.
-func NewDriver(db schema.ExecQuerier) (*Driver, error) {
+// Open opens a new MySQL driver.
+func Open(db schema.ExecQuerier) (*Driver, error) {
 	var version [2]string
 	if err := db.QueryRow("SHOW VARIABLES LIKE 'version'").Scan(&version[0], &version[1]); err != nil {
 		return nil, fmt.Errorf("mysql: scanning version: %w", err)
@@ -58,58 +58,54 @@ func (d *Driver) tableExists(ctx context.Context, name string, opts *schema.Insp
 	return n > 0, nil
 }
 
+// columns queries and appends the columns of the given table.
 func (d *Driver) columns(ctx context.Context, t *schema.Table, opts *schema.InspectOptions) error {
 	query, args := columnsQuery, []interface{}{t.Name}
 	if opts != nil && opts.Schema != "" {
 		query, args = columnsSchemaQuery, []interface{}{opts.Schema, t.Name}
 	}
-	rows, err := d.QueryContext(ctx, query, args)
+	rows, err := d.QueryContext(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("mysql: querying %q columns: %w", t.Name, err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		c := &schema.Column{}
-		if err := d.scanColumn(c, rows); err != nil {
+		if err := d.addColumn(t, rows); err != nil {
 			return fmt.Errorf("mysql: %w", err)
 		}
-		// TODO(a8m): set primary-key (including composite) and add columns to table.
 	}
 	return rows.Err()
 }
 
-func (d *Driver) scanColumn(c *schema.Column, rows *sql.Rows) error {
-	var vs [7]sql.NullString // type, nullable, key, default, extra, charset, collation.
-	if err := rows.Scan(&c.Name, &vs[0], &vs[1], &vs[2], &vs[3], &vs[4], &vs[5], &vs[6]); err != nil {
+// addColumn scans the current row and adds a new column from it to the table.
+func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
+	var name, typ, nullable, key, defaults, extra, charset, collation sql.NullString
+	if err := rows.Scan(&name, &typ, &nullable, &key, &defaults, &extra, &charset, &collation); err != nil {
 		return err
 	}
-	cType := &schema.ColumnType{
-		Raw:  vs[0].String,
-		Null: vs[1].String == "YES",
+	c := &schema.Column{
+		Name: name.String,
+		Type: &schema.ColumnType{
+			Raw:  typ.String,
+			Null: nullable.String == "YES",
+		},
 	}
-	if vs[3].Valid {
-		cType.Default = &schema.RawExpr{
-			X: vs[3].String,
-		}
-	}
-	parts, size, unsigned, err := parseColumn(cType.Raw)
+	parts, size, unsigned, err := parseColumn(c.Type.Raw)
 	if err != nil {
 		return err
 	}
 	switch t := parts[0]; t {
-	case "tinyint":
+	case "tinyint", "smallint", "mediumint", "int", "bigint":
 		if size == 1 {
-			cType.Type = &schema.BoolType{
+			c.Type.Type = &schema.BoolType{
 				T: t,
 			}
 			break
 		}
-		fallthrough
-	case "smallint", "mediumint", "int", "bigint":
-		cType.Type = &schema.IntegerType{
-			T:      t,
-			Size:   int(size),
-			Signed: !unsigned,
+		c.Type.Type = &schema.IntegerType{
+			T:        t,
+			Size:     int(size),
+			Unsigned: unsigned,
 		}
 	case "numeric", "decimal":
 		dt := &schema.DecimalType{
@@ -129,7 +125,7 @@ func (d *Driver) scanColumn(c *schema.Column, rows *sql.Rows) error {
 			}
 			dt.Scale = int(s)
 		}
-		cType.Type = dt
+		c.Type.Type = dt
 	case "float", "double":
 		ft := &schema.FloatType{
 			T: t,
@@ -141,23 +137,58 @@ func (d *Driver) scanColumn(c *schema.Column, rows *sql.Rows) error {
 			}
 			ft.Precision = int(p)
 		}
-		cType.Type = ft
+		c.Type.Type = ft
 	case "binary", "varbinary":
-		cType.Type = &schema.BinaryType{
+		c.Type.Type = &schema.BinaryType{
 			T:    t,
 			Size: int(size),
 		}
 	case "tinyblob", "mediumblob", "blob", "longblob":
-		cType.Type = &schema.BinaryType{
+		c.Type.Type = &schema.BinaryType{
 			T: t,
 		}
-	// TODO(a8m): strings, time, JSON and spatial types in next PRs.
+	case "char", "varchar":
+		c.Type.Type = &schema.StringType{
+			T:    t,
+			Size: int(size),
+		}
+	case "tinytext", "mediumtext", "text", "longtext":
+		c.Type.Type = &schema.StringType{
+			T: t,
+		}
+	case "enum":
+		values := make([]string, len(parts)-1)
+		for i, e := range parts[1:] {
+			values[i] = strings.Trim(e, "'")
+		}
+		c.Type.Type = &schema.EnumType{
+			Values: values,
+		}
+	case "date", "datetime", "time", "timestamp", "year":
+		c.Type.Type = &schema.TimeType{
+			T: t,
+		}
+	case "json":
+		c.Type.Type = &schema.JSONType{
+			T: t,
+		}
+	case "point", "multipoint", "linestring", "multilinestring", "polygon", "multipolygon", "geometry", "geometrycollection":
+		c.Type.Type = &schema.SpatialType{
+			T: t,
+		}
 	default:
-		cType.Type = &schema.UnsupportedType{
+		c.Type.Type = &schema.UnsupportedType{
 			T: t,
 		}
 	}
-	c.Type = cType
+	defaultAttr(c, defaults.String)
+	if err := extraAttr(c, extra.String); err != nil {
+		return err
+	}
+	t.Columns = append(t.Columns, c)
+	if key.String == "PRI" {
+		t.PrimaryKey = append(t.PrimaryKey, c)
+	}
 	return nil
 }
 
@@ -185,6 +216,31 @@ func parseColumn(typ string) (parts []string, size int64, unsigned bool, err err
 	return parts, size, unsigned, nil
 }
 
+// extraAttr parses the EXTRA column from the INFORMATION_SCHEMA.COLUMNS table
+// and appends its parsed representation to the column.
+func extraAttr(c *schema.Column, extra string) error {
+	switch extra := strings.ToLower(extra); extra {
+	case "", "null": // ignore.
+	case "auto_increment":
+		c.Attrs = append(c.Attrs, &AutoIncrement{A: extra})
+	case "on update current_timestamp":
+		c.Attrs = append(c.Attrs, &OnUpdate{A: extra})
+	default:
+		return fmt.Errorf("unknown attribute %q", extra)
+	}
+	return nil
+}
+
+// defaultAttr parses the COLUMN_DEFAULT column from the INFORMATION_SCHEMA.COLUMNS table
+// and appends its parsed representation to the column-type.
+func defaultAttr(c *schema.Column, defaults string) {
+	if defaults != "" && strings.ToLower(defaults) != "null" {
+		c.Type.Default = &schema.RawExpr{
+			X: defaults,
+		}
+	}
+}
+
 const (
 	// Queries to check table existence in the database.
 	existsSchemaQuery = "SELECT COUNT(*) FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
@@ -196,3 +252,17 @@ const (
 )
 
 var _ schema.Inspector = (*Driver)(nil)
+
+type (
+	// AutoIncrement attribute for columns with "AUTO_INCREMENT" as a default.
+	AutoIncrement struct {
+		schema.Attr
+		A string
+	}
+
+	// OnUpdate attribute for columns with "ON UPDATE CURRENT_TIMESTAMP" as a default.
+	OnUpdate struct {
+		schema.Attr
+		A string
+	}
+)

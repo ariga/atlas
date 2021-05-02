@@ -103,9 +103,9 @@ type (
 
 	// IntegerType represents an int type.
 	IntegerType struct {
-		T      string
-		Size   int
-		Signed bool
+		T        string
+		Size     int
+		Unsigned bool
 	}
 
 	// DecimalType represents a fixed-point type that stores exact numeric values.
@@ -119,6 +119,21 @@ type (
 	FloatType struct {
 		T         string
 		Precision int
+	}
+
+	// TimeType represents a date/time type.
+	TimeType struct {
+		T string
+	}
+
+	// JSONType represents a JSON type.
+	JSONType struct {
+		T string
+	}
+
+	// SpatialType represents a spatial/geometric type.
+	SpatialType struct {
+		T string
 	}
 
 	// UnsupportedType represents a type that is not supported by the drivers.
@@ -158,9 +173,12 @@ func (*RawExpr) expr() {}
 // types.
 func (*BoolType) typ()        {}
 func (*EnumType) typ()        {}
+func (*TimeType) typ()        {}
+func (*JSONType) typ()        {}
 func (*FloatType) typ()       {}
 func (*StringType) typ()      {}
 func (*BinaryType) typ()      {}
+func (*SpatialType) typ()     {}
 func (*IntegerType) typ()     {}
 func (*DecimalType) typ()     {}
 func (*UnsupportedType) typ() {}
