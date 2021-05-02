@@ -1,4 +1,4 @@
-package mysql_test
+package mysql
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 	"testing"
 	"unicode"
 
-	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -54,7 +53,7 @@ func TestDriver_Table(t *testing.T) {
 			before: func(m mock) {
 				m.version("8.0.0")
 				m.tableExists("users", true)
-				m.ExpectQuery(escape("SELECT `column_name`, `column_type`, `is_nullable`, `column_key`, `column_default`, `extra`, `character_set_name`, `collation_name` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?")).
+				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("users").
 					WillReturnRows(rows(`
 +--------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
@@ -75,6 +74,7 @@ func TestDriver_Table(t *testing.T) {
 | v8_big_unsigned    | bigint unsigned      | NO          |            | NULL           |                | NULL               | NULL           |
 +--------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
 `))
+				m.noIndexes()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -82,7 +82,7 @@ func TestDriver_Table(t *testing.T) {
 				require.Len(t.PrimaryKey, 1)
 				require.True(t.PrimaryKey[0] == t.Columns[0])
 				require.EqualValues([]*schema.Column{
-					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint", Size: 20}}, Attrs: []schema.Attr{&mysql.AutoIncrement{A: "auto_increment"}}},
+					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint", Size: 20}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
 					{Name: "v57_tiny", Type: &schema.ColumnType{Raw: "tinyint(1)", Type: &schema.BoolType{T: "tinyint"}}},
 					{Name: "v57_tiny_unsigned", Type: &schema.ColumnType{Raw: "tinyint(4) unsigned", Type: &schema.IntegerType{T: "tinyint", Size: 4, Unsigned: true}}},
 					{Name: "v57_small", Type: &schema.ColumnType{Raw: "smallint(6)", Type: &schema.IntegerType{T: "smallint", Size: 6}}},
@@ -103,7 +103,7 @@ func TestDriver_Table(t *testing.T) {
 			before: func(m mock) {
 				m.version("8.0.0")
 				m.tableExists("users", true)
-				m.ExpectQuery(escape("SELECT `column_name`, `column_type`, `is_nullable`, `column_key`, `column_default`, `extra`, `character_set_name`, `collation_name` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?")).
+				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("users").
 					WillReturnRows(rows(`
 +-------------+---------------+-------------+------------+----------------+-------+--------------------+----------------+
@@ -113,6 +113,7 @@ func TestDriver_Table(t *testing.T) {
 | d2          | decimal(10,0) | NO          |            | 10             |       | NULL               | NULL           |
 +-------------+---------------+-------------+------------+----------------+-------+--------------------+----------------+
 `))
+				m.noIndexes()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -128,11 +129,8 @@ func TestDriver_Table(t *testing.T) {
 			before: func(m mock) {
 				m.version("8.0.0")
 				m.tableExists("users", true)
-				m.ExpectQuery(escape("SELECT `column_name`, `column_type`, `is_nullable`, `column_key`, `column_default`, `extra`, `character_set_name`, `collation_name` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?")).
+				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("users").
-					WillReturnRows(sqlmock.NewRows([]string{"column_name", "column_type", "is_nullable", "column_key", "column_default", "extra", "character_set_name", "collation_name"}).
-						AddRow("float", "float", "NO", "NULL", "", "", "", "").
-						AddRow("double", "double", "NO", "NULL", "", "", "", "")).
 					WillReturnRows(rows(`
 +-------------+---------------+-------------+------------+----------------+-------+--------------------+----------------+
 | column_name | column_type  | is_nullable | column_key | column_default | extra | character_set_name | collation_name |
@@ -141,6 +139,7 @@ func TestDriver_Table(t *testing.T) {
 | double      | double       | NO          |            |                |       | NULL               | NULL           |
 +-------------+--------------+-------------+------------+----------------+-------+--------------------+----------------+
 `))
+				m.noIndexes()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -156,7 +155,7 @@ func TestDriver_Table(t *testing.T) {
 			before: func(m mock) {
 				m.version("8.0.0")
 				m.tableExists("users", true)
-				m.ExpectQuery(escape("SELECT `column_name`, `column_type`, `is_nullable`, `column_key`, `column_default`, `extra`, `character_set_name`, `collation_name` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?")).
+				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("users").
 					WillReturnRows(rows(`
 +-------------+---------------+-------------+------------+----------------+-------+--------------------+----------------+
@@ -170,6 +169,7 @@ func TestDriver_Table(t *testing.T) {
 | c6          | longblob      | NO          |            | NULL           |       | NULL               | NULL           |
 +-------------+---------------+-------------+------------+----------------+-------+--------------------+----------------+
 `))
+				m.noIndexes()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -189,7 +189,7 @@ func TestDriver_Table(t *testing.T) {
 			before: func(m mock) {
 				m.version("8.0.0")
 				m.tableExists("users", true)
-				m.ExpectQuery(escape("SELECT `column_name`, `column_type`, `is_nullable`, `column_key`, `column_default`, `extra`, `character_set_name`, `collation_name` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?")).
+				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("users").
 					WillReturnRows(rows(`
 +-------------+---------------+-------------+------------+----------------+-------+--------------------+----------------+
@@ -203,6 +203,7 @@ func TestDriver_Table(t *testing.T) {
 | c6          | longtext      | NO          |            | NULL           |       | NULL               | NULL           |
 +-------------+---------------+-------------+------------+----------------+-------+--------------------+----------------+
 `))
+				m.noIndexes()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -222,7 +223,7 @@ func TestDriver_Table(t *testing.T) {
 			before: func(m mock) {
 				m.version("8.0.0")
 				m.tableExists("users", true)
-				m.ExpectQuery(escape("SELECT `column_name`, `column_type`, `is_nullable`, `column_key`, `column_default`, `extra`, `character_set_name`, `collation_name` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?")).
+				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("users").
 					WillReturnRows(rows(`
 +-------------+---------------+-------------+------------+----------------+-------+--------------------+-------------------+
@@ -232,6 +233,7 @@ func TestDriver_Table(t *testing.T) {
 | c2          | enum('c','d') | NO          |            | d              |       | latin1             | latin1_swedish_ci |
 +-------------+---------------+-------------+------------+----------------+-------+--------------------+-------------------+
 `))
+				m.noIndexes()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -247,7 +249,7 @@ func TestDriver_Table(t *testing.T) {
 			before: func(m mock) {
 				m.version("8.0.0")
 				m.tableExists("users", true)
-				m.ExpectQuery(escape("SELECT `column_name`, `column_type`, `is_nullable`, `column_key`, `column_default`, `extra`, `character_set_name`, `collation_name` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?")).
+				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("users").
 					WillReturnRows(rows(`
 +-------------+-------------+-------------+------------+-------------------+-----------------------------+--------------------+----------------+
@@ -261,6 +263,7 @@ func TestDriver_Table(t *testing.T) {
 | c6          | year        | NO          |            | NULL              |                             | NULL               | NULL           |
 +-------------+-------------+-------------+------------+-------------------+-----------------------------+--------------------+----------------+
 `))
+				m.noIndexes()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -269,7 +272,7 @@ func TestDriver_Table(t *testing.T) {
 					{Name: "c1", Type: &schema.ColumnType{Raw: "date", Type: &schema.TimeType{T: "date"}}},
 					{Name: "c2", Type: &schema.ColumnType{Raw: "datetime", Type: &schema.TimeType{T: "datetime"}}},
 					{Name: "c3", Type: &schema.ColumnType{Raw: "time", Type: &schema.TimeType{T: "time"}}},
-					{Name: "c4", Type: &schema.ColumnType{Raw: "timestamp", Type: &schema.TimeType{T: "timestamp"}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP"}}, Attrs: []schema.Attr{&mysql.OnUpdate{A: "on update current_timestamp"}}},
+					{Name: "c4", Type: &schema.ColumnType{Raw: "timestamp", Type: &schema.TimeType{T: "timestamp"}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP"}}, Attrs: []schema.Attr{&OnUpdate{A: "on update current_timestamp"}}},
 					{Name: "c5", Type: &schema.ColumnType{Raw: "year(4)", Type: &schema.TimeType{T: "year"}}},
 					{Name: "c6", Type: &schema.ColumnType{Raw: "year", Type: &schema.TimeType{T: "year"}}},
 				}, t.Columns)
@@ -280,7 +283,7 @@ func TestDriver_Table(t *testing.T) {
 			before: func(m mock) {
 				m.version("8.0.0")
 				m.tableExists("users", true)
-				m.ExpectQuery(escape("SELECT `column_name`, `column_type`, `is_nullable`, `column_key`, `column_default`, `extra`, `character_set_name`, `collation_name` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?")).
+				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("users").
 					WillReturnRows(rows(`
 +-------------+-------------+-------------+------------+----------------+-------+--------------------+----------------+
@@ -289,6 +292,7 @@ func TestDriver_Table(t *testing.T) {
 | c1          | json        | NO          |            | NULL           |       | NULL               | NULL           |
 +-------------+-------------+-------------+------------+----------------+-------+--------------------+----------------+
 `))
+				m.noIndexes()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -303,7 +307,7 @@ func TestDriver_Table(t *testing.T) {
 			before: func(m mock) {
 				m.version("8.0.0")
 				m.tableExists("users", true)
-				m.ExpectQuery(escape("SELECT `column_name`, `column_type`, `is_nullable`, `column_key`, `column_default`, `extra`, `character_set_name`, `collation_name` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?")).
+				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("users").
 					WillReturnRows(rows(`
 +-------------+--------------------+-------------+------------+----------------+-------+--------------------+----------------+
@@ -320,6 +324,7 @@ func TestDriver_Table(t *testing.T) {
 | c9          | geomcollection     | NO          |            | NULL           |       | NULL               | NULL           |
 +-------------+--------------------+-------------+------------+----------------+-------+--------------------+----------------+
 `))
+				m.noIndexes()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -337,13 +342,66 @@ func TestDriver_Table(t *testing.T) {
 				}, t.Columns)
 			},
 		},
+		{
+			name: "indexes",
+			before: func(m mock) {
+				m.version("8.0.0")
+				m.tableExists("users", true)
+				m.ExpectQuery(escape(columnsQuery)).
+					WithArgs("users").
+					WillReturnRows(rows(`
++-------------+--------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+| COLUMN_NAME | COLUMN_TYPE  | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
++-------------+--------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+| id          | int          | NO          | PRI        | NULL           | auto_increment | NULL               | NULL               |
+| nickname    | varchar(255) | NO          | UNI        | NULL           |                | utf8mb4            | utf8mb4_0900_ai_ci |
+| oid         | int          | NO          | MUL        | NULL           |                | NULL               | NULL               |
+| uid         | int          | NO          | MUL        | NULL           |                | NULL               | NULL               |
++-------------+--------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+`))
+				m.ExpectQuery(escape(indexesQuery)).
+					WithArgs("users").
+					WillReturnRows(rows(`
++--------------+-------------+------------+
+| INDEX_NAME   | COLUMN_NAME | NON_UNIQUE |
++--------------+-------------+------------+
+| nickname     | nickname    |          0 |
+| non_unique   | oid         |          1 |
+| non_unique   | uid         |          1 |
+| PRIMARY      | id          |          0 |
+| unique_index | uid         |          0 |
+| unique_index | oid         |          0 |
++--------------+-------------+------------+
+`))
+			},
+			expect: func(require *require.Assertions, t *schema.Table, err error) {
+				require.NoError(err)
+				require.Equal("users", t.Name)
+				indexes := []*schema.Index{
+					{Name: "nickname", Unique: true, Table: t}, // Implicitly created by the UNIQUE clause.
+					{Name: "non_unique", Table: t},
+					{Name: "unique_index", Unique: true, Table: t},
+				}
+				columns := []*schema.Column{
+					{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
+					{Name: "nickname", Type: &schema.ColumnType{Raw: "varchar(255)", Type: &schema.StringType{T: "varchar", Size: 255}}, Indexes: indexes[0:1]},
+					{Name: "oid", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Indexes: indexes[1:]},
+					{Name: "uid", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Indexes: indexes[1:]},
+				}
+				indexes[0].Columns = columns[1:2]                             // nickname
+				indexes[1].Columns = columns[2:]                              // oid, uid
+				indexes[2].Columns = []*schema.Column{columns[3], columns[2]} // uid, oid
+				require.EqualValues(columns, t.Columns)
+				require.EqualValues(indexes, t.Indexes)
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			db, m, err := sqlmock.New()
 			require.NoError(t, err)
 			tt.before(mock{m})
-			drv, err := mysql.Open(db)
+			drv, err := Open(db)
 			require.NoError(t, err)
 			table, err := drv.Table(context.Background(), "users", tt.opts)
 			tt.expect(require.New(t), table, err)
@@ -360,12 +418,17 @@ func (m mock) version(version string) {
 		WillReturnRows(sqlmock.NewRows([]string{"Variable_name", "Value"}).AddRow("version", version))
 }
 
+func (m mock) noIndexes() {
+	m.ExpectQuery(escape(indexesQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"index_name", "column_name", "non_unique"}))
+}
+
 func (m mock) tableExists(table string, exists bool) {
 	count := 0
 	if exists {
 		count = 1
 	}
-	m.ExpectQuery(escape("SELECT COUNT(*) FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?")).
+	m.ExpectQuery(escape(existsQuery)).
 		WithArgs(table).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(count))
 }
@@ -375,7 +438,7 @@ func (m mock) tableExistsInSchema(schema, table string, exists bool) {
 	if exists {
 		count = 1
 	}
-	m.ExpectQuery(escape("SELECT COUNT(*) FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?")).
+	m.ExpectQuery(escape(existsSchemaQuery)).
 		WithArgs(schema, table).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(count))
 }
