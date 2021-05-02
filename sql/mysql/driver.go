@@ -41,6 +41,9 @@ func (d *Driver) Table(ctx context.Context, name string, opts *schema.InspectOpt
 	if err := d.columns(ctx, t, opts); err != nil {
 		return nil, err
 	}
+	if err := d.indexes(ctx, t, opts); err != nil {
+		return nil, err
+	}
 	return t, nil
 }
 
@@ -192,6 +195,57 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 	return nil
 }
 
+// indexes queries and appends the indexes of the given table.
+func (d *Driver) indexes(ctx context.Context, t *schema.Table, opts *schema.InspectOptions) error {
+	query, args := indexesQuery, []interface{}{t.Name}
+	if opts != nil && opts.Schema != "" {
+		query, args = indexesSchemaQuery, []interface{}{opts.Schema, t.Name}
+	}
+	rows, err := d.QueryContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("mysql: querying %q indexes: %w", t.Name, err)
+	}
+	defer rows.Close()
+	if err := d.addIndexes(t, rows); err != nil {
+		return err
+	}
+	return rows.Err()
+}
+
+// addIndexes scans the rows and adds the indexes to the table.
+func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
+	names := make(map[string]*schema.Index)
+	for rows.Next() {
+		var (
+			name    string
+			column  string
+			nonuniq bool
+		)
+		if err := rows.Scan(&name, &column, &nonuniq); err != nil {
+			return fmt.Errorf("mysql: scanning index: %w", err)
+		}
+		// Ignore primary keys.
+		if name == "PRIMARY" {
+			continue
+		}
+		idx, ok := names[name]
+		if !ok {
+			idx = &schema.Index{Name: name, Unique: !nonuniq, Table: t}
+			names[name] = idx
+			t.Indexes = append(t.Indexes, idx)
+		}
+		c, ok := t.Column(column)
+		if !ok {
+			return fmt.Errorf("mysql: column %q was not found for index %q", column, idx.Name)
+		}
+		// Rows are ordered by SEQ_IN_INDEX that specifies the
+		// position of the column in the index definition.
+		idx.Columns = append(idx.Columns, c)
+		c.Indexes = append(c.Indexes, idx)
+	}
+	return nil
+}
+
 // parseColumn returns column parts, size and signed-info from a MySQL type.
 func parseColumn(typ string) (parts []string, size int64, unsigned bool, err error) {
 	switch parts = strings.FieldsFunc(typ, func(r rune) bool {
@@ -246,9 +300,13 @@ const (
 	existsSchemaQuery = "SELECT COUNT(*) FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
 	existsQuery       = "SELECT COUNT(*) FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?"
 
-	// Queries to check table existence in the database.
+	// Queries to list table columns.
 	columnsSchemaQuery = "SELECT `column_name`, `column_type`, `is_nullable`, `column_key`, `column_default`, `extra`, `character_set_name`, `collation_name` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
 	columnsQuery       = "SELECT `column_name`, `column_type`, `is_nullable`, `column_key`, `column_default`, `extra`, `character_set_name`, `collation_name` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?"
+
+	// Queries to list table indexes.
+	indexesSchemaQuery = "SELECT `index_name`, `column_name`, `non_unique` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
+	indexesQuery       = "SELECT `index_name`, `column_name`, `non_unique` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
 )
 
 var _ schema.Inspector = (*Driver)(nil)

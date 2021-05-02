@@ -49,6 +49,16 @@ type (
 	}
 )
 
+// Column returns the first column that matched the given name.
+func (t *Table) Column(name string) (*Column, bool) {
+	for _, c := range t.Columns {
+		if c.Name == name {
+			return c, true
+		}
+	}
+	return nil, false
+}
+
 // ReferenceOption for constraint actions.
 type ReferenceOption string
 
