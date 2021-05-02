@@ -44,6 +44,9 @@ func (d *Driver) Table(ctx context.Context, name string, opts *schema.InspectOpt
 	if err := d.indexes(ctx, t, opts); err != nil {
 		return nil, err
 	}
+	if err := d.fks(ctx, t, opts); err != nil {
+		return nil, err
+	}
 	return t, nil
 }
 
@@ -246,6 +249,69 @@ func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
 	return nil
 }
 
+// fks queries and appends the foreign keys of the given table.
+func (d *Driver) fks(ctx context.Context, t *schema.Table, opts *schema.InspectOptions) error {
+	query, args := fksQuery, []interface{}{t.Name}
+	if opts != nil && opts.Schema != "" {
+		query, args = fksSchemaQuery, []interface{}{opts.Schema, t.Name}
+	}
+	rows, err := d.QueryContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("mysql: querying %q indexes: %w", t.Name, err)
+	}
+	defer rows.Close()
+	if err := d.addFKs(t, rows); err != nil {
+		return fmt.Errorf("mysql: %w", err)
+	}
+	return rows.Err()
+}
+
+// addFK scans the rows and adds the foreign-key to the table.
+// Reference elements are added as stubs and should be linked
+// manually by the caller.
+func (d *Driver) addFKs(t *schema.Table, rows *sql.Rows) error {
+	names := make(map[string]*schema.ForeignKey)
+	for rows.Next() {
+		var name, table, column, refTable, refColumn, updateRule, deleteRule string
+		if err := rows.Scan(&name, &table, &column, &refTable, &refColumn, &updateRule, &deleteRule); err != nil {
+			return err
+		}
+		fk, ok := names[name]
+		if !ok {
+			fk = &schema.ForeignKey{
+				Symbol:   name,
+				Table:    t,
+				RefTable: t,
+				OnDelete: schema.ReferenceOption(deleteRule),
+				OnUpdate: schema.ReferenceOption(updateRule),
+			}
+			if refTable != t.Name {
+				fk.RefTable = &schema.Table{Name: refTable}
+			}
+			names[name] = fk
+			t.ForeignKeys = append(t.ForeignKeys, fk)
+		}
+		c, ok := t.Column(column)
+		if !ok {
+			return fmt.Errorf("column %q was not found for fk %q", column, fk.Symbol)
+		}
+		// Rows are ordered by ORDINAL_POSITION that specifies
+		// the position of the column in the FK definition.
+		fk.Columns = append(fk.Columns, c)
+		c.ForeignKeys = append(c.ForeignKeys, fk)
+
+		// Link or stub the referenced column.
+		if refTable != t.Name {
+			fk.RefColumns = append(fk.RefColumns, &schema.Column{Name: refColumn})
+		} else if c, ok := t.Column(refColumn); ok {
+			fk.RefColumns = append(fk.RefColumns, c)
+		} else {
+			return fmt.Errorf("referenced column %q was not found for fk %q", refColumn, fk.Symbol)
+		}
+	}
+	return nil
+}
+
 // parseColumn returns column parts, size and signed-info from a MySQL type.
 func parseColumn(typ string) (parts []string, size int64, unsigned bool, err error) {
 	switch parts = strings.FieldsFunc(typ, func(r rune) bool {
@@ -307,6 +373,56 @@ const (
 	// Queries to list table indexes.
 	indexesSchemaQuery = "SELECT `index_name`, `column_name`, `non_unique` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
 	indexesQuery       = "SELECT `index_name`, `column_name`, `non_unique` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
+
+	// Queries to list table foreign keys.
+	fksSchemaQuery = `
+SELECT
+  t1.CONSTRAINT_NAME,
+  t1.TABLE_NAME,
+  t1.COLUMN_NAME,
+  t1.REFERENCED_TABLE_NAME,
+  t1.REFERENCED_COLUMN_NAME,
+  t3.UPDATE_RULE,
+  t3.DELETE_RULE
+FROM
+  INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS t1
+  JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS t2
+  JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS t3
+  ON t1.CONSTRAINT_NAME = t2.CONSTRAINT_NAME
+  AND t1.CONSTRAINT_NAME = t3.CONSTRAINT_NAME
+  AND t1.TABLE_SCHEMA = t2.TABLE_SCHEMA
+  AND t1.TABLE_SCHEMA = t3.CONSTRAINT_SCHEMA
+WHERE
+  t2.CONSTRAINT_TYPE = 'FOREIGN KEY'
+  AND t1.TABLE_SCHEMA = ?
+  AND t1.TABLE_NAME = ?
+ORDER BY
+  t1.CONSTRAINT_NAME,
+  t1.ORDINAL_POSITION`
+	fksQuery = `
+SELECT
+  t1.CONSTRAINT_NAME,
+  t1.TABLE_NAME,
+  t1.COLUMN_NAME,
+  t1.REFERENCED_TABLE_NAME,
+  t1.REFERENCED_COLUMN_NAME,
+  t3.UPDATE_RULE,
+  t3.DELETE_RULE
+FROM
+  INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS t1
+  JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS t2
+  JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS t3
+  ON t1.CONSTRAINT_NAME = t2.CONSTRAINT_NAME
+  AND t1.CONSTRAINT_NAME = t3.CONSTRAINT_NAME
+  AND t1.TABLE_SCHEMA = t2.TABLE_SCHEMA
+  AND t1.TABLE_SCHEMA = t3.CONSTRAINT_SCHEMA
+WHERE
+  t2.CONSTRAINT_TYPE = 'FOREIGN KEY'
+  AND t1.TABLE_SCHEMA = (SELECT DATABASE())
+  AND t1.TABLE_NAME = ?
+ORDER BY
+  t1.CONSTRAINT_NAME,
+  t1.ORDINAL_POSITION`
 )
 
 var _ schema.Inspector = (*Driver)(nil)
