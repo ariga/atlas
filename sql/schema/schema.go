@@ -4,6 +4,7 @@ type (
 	// A Table represents a table definition.
 	Table struct {
 		Name        string
+		Schema      string
 		Columns     []*Column
 		Indexes     []*Index
 		PrimaryKey  []*Column
