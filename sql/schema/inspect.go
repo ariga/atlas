@@ -32,21 +32,46 @@ type ExecQuerier interface {
 }
 
 type (
-	// InspectOptions describes options for Inspector.
-	InspectOptions struct {
+	// InspectTableOptions describes options for TableInspector.
+	InspectTableOptions struct {
 		// Schema defines an optional schema to inspect.
 		Schema string
 	}
 
-	// Inspector is the interface implemented by the different database drivers for
-	// inspecting their schema.
-	Inspector interface {
+	// TableInspector is the interface implemented by the different database
+	// drivers for inspecting their schema tables.
+	TableInspector interface {
 		// Table returns the table description by its name. A NotExistError
 		// error is returned if the table does not exists in the database.
-		Table(ctx context.Context, name string, opts *InspectOptions) (*Table, error)
+		Table(ctx context.Context, name string, opts *InspectTableOptions) (*Table, error)
 
 		// Tables returns a list of table descriptions of all tables that exist
 		// in the given schema.
-		Tables(ctx context.Context, options *InspectOptions) ([]*Table, error)
+		Tables(ctx context.Context, options *InspectTableOptions) ([]*Table, error)
+	}
+
+	// A Realm describes a domain of schema resources that are logically connected and
+	// can be accessed and queried in the same connection (e.g. a physical database instance).
+	Realm struct {
+		Schemas []*Schema
+		Attrs   []Attr
+	}
+
+	// A Schema describes a database schema (i.e. named database).
+	Schema struct {
+		Name   string
+		Tables []*Table
+	}
+
+	// InspectTableOptions describes options for RealmInspector.
+	InspectRealmOption struct {
+		// Schemas to inspect. At least 1 schema is required.
+		Schemas []string
+	}
+
+	// RealmInspector is the interface implemented by the different database
+	// drivers for inspecting multiple schemas (realm).
+	RealmInspector interface {
+		Realm(ctx context.Context, opts *InspectRealmOption) (*Realm, error)
 	}
 )

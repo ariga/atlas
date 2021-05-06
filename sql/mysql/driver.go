@@ -26,86 +26,86 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 	return &Driver{ExecQuerier: db, version: version[1]}, nil
 }
 
+// Realm returns schema descriptions of all resources in the given realm.
+func (d *Driver) Realm(ctx context.Context, opts *schema.InspectRealmOption) (*schema.Realm, error) {
+	if opts == nil || len(opts.Schemas) == 0 {
+		return nil, fmt.Errorf("mysql: at least 1 schema is required")
+	}
+	realm := &schema.Realm{}
+	for _, s := range opts.Schemas {
+		tables, err := d.Tables(ctx, &schema.InspectTableOptions{
+			Schema: s,
+		})
+		if err != nil {
+			return nil, err
+		}
+		realm.Schemas = append(realm.Schemas, &schema.Schema{Name: s, Tables: tables})
+	}
+	linkSchemaTables(realm.Schemas)
+	return realm, nil
+}
+
 // Tables returns schema descriptions of all tables in the given schema.
-func (d *Driver) Tables(ctx context.Context, opts *schema.InspectOptions) ([]*schema.Table, error) {
+func (d *Driver) Tables(ctx context.Context, opts *schema.InspectTableOptions) ([]*schema.Table, error) {
 	names, err := d.tableNames(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	byName := make(map[string]*schema.Table)
 	tables := make([]*schema.Table, 0, len(names))
 	for _, name := range names {
 		t, err := d.Table(ctx, name, opts)
 		if err != nil {
 			return nil, err
 		}
-		byName[name] = t
 		tables = append(tables, t)
 	}
-	// Link foreign-key stub tables/columns to actual elements.
-	for _, t := range tables {
-		for _, fk := range t.ForeignKeys {
-			ref, ok := byName[fk.RefTable.Name]
-			if !ok {
-				continue
-			}
-			fk.RefTable = ref
-			for i, c := range fk.RefColumns {
-				rc, ok := ref.Column(c.Name)
-				if ok {
-					fk.RefColumns[i] = rc
-				}
-			}
-		}
+	if len(tables) > 0 {
+		// Link all tables reside on the same schema.
+		linkSchemaTables([]*schema.Schema{{Name: tables[0].Schema, Tables: tables}})
 	}
 	return tables, nil
 }
 
 // Table returns the schema description of the given table.
-func (d *Driver) Table(ctx context.Context, name string, opts *schema.InspectOptions) (*schema.Table, error) {
-	exists, err := d.tableExists(ctx, name, opts)
+func (d *Driver) Table(ctx context.Context, name string, opts *schema.InspectTableOptions) (*schema.Table, error) {
+	t, err := d.table(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	if !exists {
-		return nil, &schema.NotExistError{
-			Err: fmt.Errorf("mysql: table %q was not found", name),
-		}
-	}
-	t := &schema.Table{Name: name}
-	if err := d.columns(ctx, t, opts); err != nil {
+	if err := d.columns(ctx, t); err != nil {
 		return nil, err
 	}
-	if err := d.indexes(ctx, t, opts); err != nil {
+	if err := d.indexes(ctx, t); err != nil {
 		return nil, err
 	}
-	if err := d.fks(ctx, t, opts); err != nil {
+	if err := d.fks(ctx, t); err != nil {
 		return nil, err
 	}
 	return t, nil
 }
 
-// tableExists checks if the given table exists in the database.
-func (d *Driver) tableExists(ctx context.Context, name string, opts *schema.InspectOptions) (bool, error) {
-	query, args := existsQuery, []interface{}{name}
+// table returns the table from the database, or a NotExistError if the table was not found.
+func (d *Driver) table(ctx context.Context, name string, opts *schema.InspectTableOptions) (*schema.Table, error) {
+	query, args := tableQuery, []interface{}{name}
 	if opts != nil && opts.Schema != "" {
-		query, args = existsSchemaQuery, []interface{}{opts.Schema, name}
+		query, args = tableSchemaQuery, []interface{}{opts.Schema, name}
 	}
 	row := d.QueryRowContext(ctx, query, args...)
-	var n int
-	if err := row.Scan(&n); err != nil {
-		return false, err
+	var s string
+	if err := row.Scan(&s); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, &schema.NotExistError{
+				Err: fmt.Errorf("mysql: table %q was not found", name),
+			}
+		}
+		return nil, err
 	}
-	return n > 0, nil
+	return &schema.Table{Name: name, Schema: s}, nil
 }
 
 // columns queries and appends the columns of the given table.
-func (d *Driver) columns(ctx context.Context, t *schema.Table, opts *schema.InspectOptions) error {
-	query, args := columnsQuery, []interface{}{t.Name}
-	if opts != nil && opts.Schema != "" {
-		query, args = columnsSchemaQuery, []interface{}{opts.Schema, t.Name}
-	}
-	rows, err := d.QueryContext(ctx, query, args...)
+func (d *Driver) columns(ctx context.Context, t *schema.Table) error {
+	rows, err := d.QueryContext(ctx, columnsQuery, t.Schema, t.Name)
 	if err != nil {
 		return fmt.Errorf("mysql: querying %q columns: %w", t.Name, err)
 	}
@@ -234,12 +234,8 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 }
 
 // indexes queries and appends the indexes of the given table.
-func (d *Driver) indexes(ctx context.Context, t *schema.Table, opts *schema.InspectOptions) error {
-	query, args := indexesQuery, []interface{}{t.Name}
-	if opts != nil && opts.Schema != "" {
-		query, args = indexesSchemaQuery, []interface{}{opts.Schema, t.Name}
-	}
-	rows, err := d.QueryContext(ctx, query, args...)
+func (d *Driver) indexes(ctx context.Context, t *schema.Table) error {
+	rows, err := d.QueryContext(ctx, indexesQuery, t.Schema, t.Name)
 	if err != nil {
 		return fmt.Errorf("mysql: querying %q indexes: %w", t.Name, err)
 	}
@@ -285,12 +281,8 @@ func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
 }
 
 // fks queries and appends the foreign keys of the given table.
-func (d *Driver) fks(ctx context.Context, t *schema.Table, opts *schema.InspectOptions) error {
-	query, args := fksQuery, []interface{}{t.Name}
-	if opts != nil && opts.Schema != "" {
-		query, args = fksSchemaQuery, []interface{}{opts.Schema, t.Name}
-	}
-	rows, err := d.QueryContext(ctx, query, args...)
+func (d *Driver) fks(ctx context.Context, t *schema.Table) error {
+	rows, err := d.QueryContext(ctx, fksQuery, t.Schema, t.Name)
 	if err != nil {
 		return fmt.Errorf("mysql: querying %q indexes: %w", t.Name, err)
 	}
@@ -307,8 +299,8 @@ func (d *Driver) fks(ctx context.Context, t *schema.Table, opts *schema.InspectO
 func (d *Driver) addFKs(t *schema.Table, rows *sql.Rows) error {
 	names := make(map[string]*schema.ForeignKey)
 	for rows.Next() {
-		var name, table, column, refTable, refColumn, updateRule, deleteRule string
-		if err := rows.Scan(&name, &table, &column, &refTable, &refColumn, &updateRule, &deleteRule); err != nil {
+		var name, table, column, tSchema, refTable, refColumn, refSchema, updateRule, deleteRule string
+		if err := rows.Scan(&name, &table, &column, &tSchema, &refTable, &refColumn, &refSchema, &updateRule, &deleteRule); err != nil {
 			return err
 		}
 		fk, ok := names[name]
@@ -320,8 +312,8 @@ func (d *Driver) addFKs(t *schema.Table, rows *sql.Rows) error {
 				OnDelete: schema.ReferenceOption(deleteRule),
 				OnUpdate: schema.ReferenceOption(updateRule),
 			}
-			if refTable != t.Name {
-				fk.RefTable = &schema.Table{Name: refTable}
+			if refTable != t.Name || tSchema != refSchema {
+				fk.RefTable = &schema.Table{Name: refTable, Schema: refSchema}
 			}
 			names[name] = fk
 			t.ForeignKeys = append(t.ForeignKeys, fk)
@@ -335,8 +327,8 @@ func (d *Driver) addFKs(t *schema.Table, rows *sql.Rows) error {
 		fk.Columns = append(fk.Columns, c)
 		c.ForeignKeys = append(c.ForeignKeys, fk)
 
-		// Link or stub the referenced column.
-		if refTable != t.Name {
+		// Stub referenced columns or link if it's a self-reference.
+		if fk.Table != fk.RefTable {
 			fk.RefColumns = append(fk.RefColumns, &schema.Column{Name: refColumn})
 		} else if c, ok := t.Column(refColumn); ok {
 			fk.RefColumns = append(fk.RefColumns, c)
@@ -348,7 +340,7 @@ func (d *Driver) addFKs(t *schema.Table, rows *sql.Rows) error {
 }
 
 // tableNames returns a list of all tables exist in the schema.
-func (d *Driver) tableNames(ctx context.Context, opts *schema.InspectOptions) ([]string, error) {
+func (d *Driver) tableNames(ctx context.Context, opts *schema.InspectTableOptions) ([]string, error) {
 	query, args := tablesQuery, []interface{}(nil)
 	if opts != nil && opts.Schema != "" {
 		query, args = tablesSchemaQuery, []interface{}{opts.Schema}
@@ -400,7 +392,7 @@ func extraAttr(c *schema.Column, extra string) error {
 	case "", "null": // ignore.
 	case "auto_increment":
 		c.Attrs = append(c.Attrs, &AutoIncrement{A: extra})
-	case "on update current_timestamp":
+	case "on update current_timestamp", "default_generated":
 		c.Attrs = append(c.Attrs, &OnUpdate{A: extra})
 	default:
 		return fmt.Errorf("unknown attribute %q", extra)
@@ -418,31 +410,63 @@ func defaultAttr(c *schema.Column, defaults string) {
 	}
 }
 
+// linkSchemaTables links foreign-key stub tables/columns to actual elements.
+func linkSchemaTables(schemas []*schema.Schema) {
+	byName := make(map[string]map[string]*schema.Table)
+	for _, s := range schemas {
+		byName[s.Name] = make(map[string]*schema.Table)
+		for _, t := range s.Tables {
+			byName[s.Name][t.Name] = t
+		}
+	}
+	for _, s := range schemas {
+		for _, t := range s.Tables {
+			for _, fk := range t.ForeignKeys {
+				rs, ok := byName[fk.RefTable.Schema]
+				if !ok {
+					continue
+				}
+				ref, ok := rs[fk.RefTable.Name]
+				if !ok {
+					continue
+				}
+				fk.RefTable = ref
+				for i, c := range fk.RefColumns {
+					rc, ok := ref.Column(c.Name)
+					if ok {
+						fk.RefColumns[i] = rc
+					}
+				}
+			}
+		}
+	}
+}
+
 const (
 	// Queries to list schema tables.
 	tablesSchemaQuery = "SELECT `TABLE_NAME` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = ?"
 	tablesQuery       = "SELECT `TABLE_NAME` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = (SELECT DATABASE())"
 
-	// Queries to check table existence in the database.
-	existsSchemaQuery = "SELECT COUNT(*) FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
-	existsQuery       = "SELECT COUNT(*) FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?"
+	// Queries to fetch table schema.
+	tableQuery       = "SELECT `TABLE_SCHEMA` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
+	tableSchemaQuery = "SELECT `TABLE_SCHEMA` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?"
 
-	// Queries to list table columns.
-	columnsSchemaQuery = "SELECT `column_name`, `column_type`, `is_nullable`, `column_key`, `column_default`, `extra`, `character_set_name`, `collation_name` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
-	columnsQuery       = "SELECT `column_name`, `column_type`, `is_nullable`, `column_key`, `column_default`, `extra`, `character_set_name`, `collation_name` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?"
+	// Query to list table columns.
+	columnsQuery = "SELECT `column_name`, `column_type`, `is_nullable`, `column_key`, `column_default`, `extra`, `character_set_name`, `collation_name` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
 
-	// Queries to list table indexes.
-	indexesSchemaQuery = "SELECT `index_name`, `column_name`, `non_unique` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
-	indexesQuery       = "SELECT `index_name`, `column_name`, `non_unique` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
+	// Query to list table indexes.
+	indexesQuery = "SELECT `index_name`, `column_name`, `non_unique` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
 
-	// Queries to list table foreign keys.
-	fksSchemaQuery = `
+	// Query to list table foreign keys.
+	fksQuery = `
 SELECT
   t1.CONSTRAINT_NAME,
   t1.TABLE_NAME,
   t1.COLUMN_NAME,
+  t1.TABLE_SCHEMA,
   t1.REFERENCED_TABLE_NAME,
   t1.REFERENCED_COLUMN_NAME,
+  t1.REFERENCED_TABLE_SCHEMA,
   t3.UPDATE_RULE,
   t3.DELETE_RULE
 FROM
@@ -460,33 +484,9 @@ WHERE
 ORDER BY
   t1.CONSTRAINT_NAME,
   t1.ORDINAL_POSITION`
-	fksQuery = `
-SELECT
-  t1.CONSTRAINT_NAME,
-  t1.TABLE_NAME,
-  t1.COLUMN_NAME,
-  t1.REFERENCED_TABLE_NAME,
-  t1.REFERENCED_COLUMN_NAME,
-  t3.UPDATE_RULE,
-  t3.DELETE_RULE
-FROM
-  INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS t1
-  JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS t2
-  JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS t3
-  ON t1.CONSTRAINT_NAME = t2.CONSTRAINT_NAME
-  AND t1.CONSTRAINT_NAME = t3.CONSTRAINT_NAME
-  AND t1.TABLE_SCHEMA = t2.TABLE_SCHEMA
-  AND t1.TABLE_SCHEMA = t3.CONSTRAINT_SCHEMA
-WHERE
-  t2.CONSTRAINT_TYPE = 'FOREIGN KEY'
-  AND t1.TABLE_SCHEMA = (SELECT DATABASE())
-  AND t1.TABLE_NAME = ?
-ORDER BY
-  t1.CONSTRAINT_NAME,
-  t1.ORDINAL_POSITION`
 )
 
-var _ schema.Inspector = (*Driver)(nil)
+var _ schema.TableInspector = (*Driver)(nil)
 
 type (
 	// AutoIncrement attribute for columns with "AUTO_INCREMENT" as a default.

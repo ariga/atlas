@@ -17,7 +17,7 @@ import (
 func TestDriver_Table(t *testing.T) {
 	tests := []struct {
 		name   string
-		opts   *schema.InspectOptions
+		opts   *schema.InspectTableOptions
 		before func(mock)
 		expect func(*require.Assertions, *schema.Table, error)
 	}{
@@ -25,7 +25,7 @@ func TestDriver_Table(t *testing.T) {
 			name: "table does not exist",
 			before: func(m mock) {
 				m.version("5.7.23")
-				m.tableExists("users", false)
+				m.tableExists("public", "users", false)
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.Nil(t)
@@ -35,7 +35,7 @@ func TestDriver_Table(t *testing.T) {
 		},
 		{
 			name: "table does not exist in schema",
-			opts: &schema.InspectOptions{
+			opts: &schema.InspectTableOptions{
 				Schema: "public",
 			},
 			before: func(m mock) {
@@ -52,9 +52,9 @@ func TestDriver_Table(t *testing.T) {
 			name: "int types",
 			before: func(m mock) {
 				m.version("8.0.0")
-				m.tableExists("users", true)
+				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
-					WithArgs("users").
+					WithArgs("public", "users").
 					WillReturnRows(rows(`
 +--------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
 | column_name        | column_type          | is_nullable | column_key | column_default | extra          | character_set_name | collation_name |
@@ -103,9 +103,9 @@ func TestDriver_Table(t *testing.T) {
 			name: "decimal types",
 			before: func(m mock) {
 				m.version("8.0.0")
-				m.tableExists("users", true)
+				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
-					WithArgs("users").
+					WithArgs("public", "users").
 					WillReturnRows(rows(`
 +-------------+---------------+-------------+------------+----------------+-------+--------------------+----------------+
 | column_name | column_type   | is_nullable | column_key | column_default | extra | character_set_name | collation_name |
@@ -130,9 +130,9 @@ func TestDriver_Table(t *testing.T) {
 			name: "float types",
 			before: func(m mock) {
 				m.version("8.0.0")
-				m.tableExists("users", true)
+				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
-					WithArgs("users").
+					WithArgs("public", "users").
 					WillReturnRows(rows(`
 +-------------+---------------+-------------+------------+----------------+-------+--------------------+----------------+
 | column_name | column_type  | is_nullable | column_key | column_default | extra | character_set_name | collation_name |
@@ -157,9 +157,9 @@ func TestDriver_Table(t *testing.T) {
 			name: "binary types",
 			before: func(m mock) {
 				m.version("8.0.0")
-				m.tableExists("users", true)
+				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
-					WithArgs("users").
+					WithArgs("public", "users").
 					WillReturnRows(rows(`
 +-------------+---------------+-------------+------------+----------------+-------+--------------------+----------------+
 | column_name | column_type   | is_nullable | column_key | column_default | extra | character_set_name | collation_name |
@@ -192,9 +192,9 @@ func TestDriver_Table(t *testing.T) {
 			name: "string types",
 			before: func(m mock) {
 				m.version("8.0.0")
-				m.tableExists("users", true)
+				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
-					WithArgs("users").
+					WithArgs("public", "users").
 					WillReturnRows(rows(`
 +-------------+---------------+-------------+------------+----------------+-------+--------------------+----------------+
 | column_name | column_type   | is_nullable | column_key | column_default | extra | character_set_name | collation_name |
@@ -227,9 +227,9 @@ func TestDriver_Table(t *testing.T) {
 			name: "enum type",
 			before: func(m mock) {
 				m.version("8.0.0")
-				m.tableExists("users", true)
+				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
-					WithArgs("users").
+					WithArgs("public", "users").
 					WillReturnRows(rows(`
 +-------------+---------------+-------------+------------+----------------+-------+--------------------+-------------------+
 | column_name | column_type   | is_nullable | column_key | column_default | extra | character_set_name | collation_name    |
@@ -254,9 +254,9 @@ func TestDriver_Table(t *testing.T) {
 			name: "time type",
 			before: func(m mock) {
 				m.version("8.0.0")
-				m.tableExists("users", true)
+				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
-					WithArgs("users").
+					WithArgs("public", "users").
 					WillReturnRows(rows(`
 +-------------+-------------+-------------+------------+-------------------+-----------------------------+--------------------+----------------+
 | column_name | column_type | is_nullable | column_key | column_default    | extra                       | character_set_name | collation_name |
@@ -289,9 +289,9 @@ func TestDriver_Table(t *testing.T) {
 			name: "json type",
 			before: func(m mock) {
 				m.version("8.0.0")
-				m.tableExists("users", true)
+				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
-					WithArgs("users").
+					WithArgs("public", "users").
 					WillReturnRows(rows(`
 +-------------+-------------+-------------+------------+----------------+-------+--------------------+----------------+
 | COLUMN_NAME | COLUMN_TYPE | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA | CHARACTER_SET_NAME | COLLATION_NAME |
@@ -314,9 +314,9 @@ func TestDriver_Table(t *testing.T) {
 			name: "spatial type",
 			before: func(m mock) {
 				m.version("8.0.0")
-				m.tableExists("users", true)
+				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
-					WithArgs("users").
+					WithArgs("public", "users").
 					WillReturnRows(rows(`
 +-------------+--------------------+-------------+------------+----------------+-------+--------------------+----------------+
 | column_name | column_type        | is_nullable | column_key | column_default | extra | character_set_name | collation_name |
@@ -355,9 +355,9 @@ func TestDriver_Table(t *testing.T) {
 			name: "indexes",
 			before: func(m mock) {
 				m.version("8.0.0")
-				m.tableExists("users", true)
+				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
-					WithArgs("users").
+					WithArgs("public", "users").
 					WillReturnRows(rows(`
 +-------------+--------------+-------------+------------+----------------+----------------+--------------------+--------------------+
 | COLUMN_NAME | COLUMN_TYPE  | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
@@ -369,7 +369,7 @@ func TestDriver_Table(t *testing.T) {
 +-------------+--------------+-------------+------------+----------------+----------------+--------------------+--------------------+
 `))
 				m.ExpectQuery(escape(indexesQuery)).
-					WithArgs("users").
+					WithArgs("public", "users").
 					WillReturnRows(rows(`
 +--------------+-------------+------------+
 | INDEX_NAME   | COLUMN_NAME | NON_UNIQUE |
@@ -409,9 +409,9 @@ func TestDriver_Table(t *testing.T) {
 			name: "fks",
 			before: func(m mock) {
 				m.version("8.0.0")
-				m.tableExists("users", true)
+				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
-					WithArgs("users").
+					WithArgs("public", "users").
 					WillReturnRows(rows(`
 +-------------+--------------+-------------+------------+----------------+----------------+--------------------+--------------------+
 | COLUMN_NAME | COLUMN_TYPE  | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
@@ -423,22 +423,23 @@ func TestDriver_Table(t *testing.T) {
 `))
 				m.noIndexes()
 				m.ExpectQuery(escape(fksQuery)).
-					WithArgs("users").
+					WithArgs("public", "users").
 					WillReturnRows(rows(`
-+------------------+------------+-------------+-----------------------+------------------------+-------------+-------------+
-| CONSTRAINT_NAME  | TABLE_NAME | COLUMN_NAME | REFERENCED_TABLE_NAME | REFERENCED_COLUMN_NAME | UPDATE_RULE | DELETE_RULE |
-+------------------+------------+-------------+-----------------------+------------------------+-------------+-------------+
-| multi_column     | users      | id          | t1                    | gid                    | NO ACTION   | CASCADE     |
-| multi_column     | users      | oid         | t1                    | xid                    | NO ACTION   | CASCADE     |
-| self_reference   | users      | uid         | users                 | id                     | NO ACTION   | CASCADE     |
-+------------------+------------+-------------+-----------------------+------------------------+-------------+-------------+
++------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
+| CONSTRAINT_NAME  | TABLE_NAME | COLUMN_NAME | TABLE_SCHEMA | REFERENCED_TABLE_NAME | REFERENCED_COLUMN_NAME | REFERENCED_SCHEMA_NAME | UPDATE_RULE | DELETE_RULE |
++------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
+| multi_column     | users      | id          | public       | t1                    | gid                    | public                 | NO ACTION   | CASCADE     |
+| multi_column     | users      | oid         | public       | t1                    | xid                    | public                 | NO ACTION   | CASCADE     |
+| self_reference   | users      | uid         | public       | users                 | id                     | public                 | NO ACTION   | CASCADE     |
++------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+ ------------+-------------+
 `))
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
 				require.Equal("users", t.Name)
+				require.Equal("public", t.Schema)
 				fks := []*schema.ForeignKey{
-					{Symbol: "multi_column", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: &schema.Table{Name: "t1"}, RefColumns: []*schema.Column{{Name: "gid"}, {Name: "xid"}}},
+					{Symbol: "multi_column", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: &schema.Table{Name: "t1", Schema: "public"}, RefColumns: []*schema.Column{{Name: "gid"}, {Name: "xid"}}},
 					{Symbol: "self_reference", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: t},
 				}
 				columns := []*schema.Column{
@@ -470,7 +471,7 @@ func TestDriver_Table(t *testing.T) {
 func TestDriver_Tables(t *testing.T) {
 	tests := []struct {
 		name   string
-		opts   *schema.InspectOptions
+		opts   *schema.InspectTableOptions
 		before func(mock)
 		expect func(*require.Assertions, []*schema.Table, error)
 	}{
@@ -491,7 +492,7 @@ func TestDriver_Tables(t *testing.T) {
 				m.version("5.7.23")
 				m.tablesInSchema("public")
 			},
-			opts: &schema.InspectOptions{
+			opts: &schema.InspectTableOptions{
 				Schema: "public",
 			},
 			expect: func(require *require.Assertions, ts []*schema.Table, err error) {
@@ -504,9 +505,9 @@ func TestDriver_Tables(t *testing.T) {
 			before: func(m mock) {
 				m.version("v0.8.0")
 				m.tables("users", "pets")
-				m.tableExists("users", true)
+				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
-					WithArgs("users").
+					WithArgs("public", "users").
 					WillReturnRows(rows(`
 +-------------+--------------+-------------+------------+----------------+----------------+--------------------+--------------------+
 | COLUMN_NAME | COLUMN_TYPE  | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
@@ -517,18 +518,18 @@ func TestDriver_Tables(t *testing.T) {
 `))
 				m.noIndexes()
 				m.ExpectQuery(escape(fksQuery)).
-					WithArgs("users").
+					WithArgs("public", "users").
 					WillReturnRows(rows(`
-+------------------+------------+-------------+-----------------------+------------------------+-------------+-------------+
-| CONSTRAINT_NAME  | TABLE_NAME | COLUMN_NAME | REFERENCED_TABLE_NAME | REFERENCED_COLUMN_NAME | UPDATE_RULE | DELETE_RULE |
-+------------------+------------+-------------+-----------------------+------------------------+-------------+-------------+
-| spouse_id        | users      | spouse_id   | users                 | id                     | NO ACTION   | CASCADE     |
-+------------------+------------+-------------+-----------------------+------------------------+-------------+-------------+
++------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
+| CONSTRAINT_NAME  | TABLE_NAME | COLUMN_NAME | TABLE_SCHEMA | REFERENCED_TABLE_NAME | REFERENCED_COLUMN_NAME | REFERENCED_SCHEMA_NAME | UPDATE_RULE | DELETE_RULE |
++------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
+| spouse_id        | users      | spouse_id   | public       | users                 | id                     | public                 | NO ACTION   | CASCADE     |
++------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
 `))
 
-				m.tableExists("pets", true)
+				m.tableExists("public", "pets", true)
 				m.ExpectQuery(escape(columnsQuery)).
-					WithArgs("pets").
+					WithArgs("public", "pets").
 					WillReturnRows(rows(`
 +-------------+--------------+-------------+------------+----------------+----------------+--------------------+--------------------+
 | COLUMN_NAME | COLUMN_TYPE  | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
@@ -539,13 +540,13 @@ func TestDriver_Tables(t *testing.T) {
 `))
 				m.noIndexes()
 				m.ExpectQuery(escape(fksQuery)).
-					WithArgs("pets").
+					WithArgs("public", "pets").
 					WillReturnRows(rows(`
-+------------------+------------+-------------+-----------------------+------------------------+-------------+-------------+
-| CONSTRAINT_NAME  | TABLE_NAME | COLUMN_NAME | REFERENCED_TABLE_NAME | REFERENCED_COLUMN_NAME | UPDATE_RULE | DELETE_RULE |
-+------------------+------------+-------------+-----------------------+------------------------+-------------+-------------+
-| owner_id         | pets       | owner_id    | users                 | id                     | NO ACTION   | CASCADE     |
-+------------------+------------+-------------+-----------------------+------------------------+-------------+-------------+
++------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
+| CONSTRAINT_NAME  | TABLE_NAME | COLUMN_NAME | TABLE_SCHEMA | REFERENCED_TABLE_NAME | REFERENCED_COLUMN_NAME | REFERENCED_SCHEMA_NAME | UPDATE_RULE | DELETE_RULE |
++------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
+| owner_id         | pets       | owner_id    | public       | users                 | id                     | public                 | NO ACTION   | CASCADE     |
++------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
 `))
 			},
 			expect: func(require *require.Assertions, ts []*schema.Table, err error) {
@@ -609,7 +610,7 @@ func (m mock) noIndexes() {
 
 func (m mock) noFKs() {
 	m.ExpectQuery(escape(fksQuery)).
-		WillReturnRows(sqlmock.NewRows([]string{"CONSTRAINT_NAME", "TABLE_NAME", "COLUMN_NAME", "REFERENCED_TABLE_NAME", "REFERENCED_COLUMN_NAME", "UPDATE_RULE", "DELETE_RULE"}))
+		WillReturnRows(sqlmock.NewRows([]string{"CONSTRAINT_NAME", "TABLE_NAME", "COLUMN_NAME", "REFERENCED_TABLE_NAME", "REFERENCED_COLUMN_NAME", "REFERENCED_TABLE_SCHEMA", "UPDATE_RULE", "DELETE_RULE"}))
 }
 
 func (m mock) tables(names ...string) {
@@ -631,24 +632,24 @@ func (m mock) tablesInSchema(schema string, names ...string) {
 		WillReturnRows(rows)
 }
 
-func (m mock) tableExists(table string, exists bool) {
-	count := 0
+func (m mock) tableExists(schema, table string, exists bool) {
+	rows := sqlmock.NewRows([]string{"table_schema"})
 	if exists {
-		count = 1
+		rows.AddRow(schema)
 	}
-	m.ExpectQuery(escape(existsQuery)).
+	m.ExpectQuery(escape(tableQuery)).
 		WithArgs(table).
-		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(count))
+		WillReturnRows(rows)
 }
 
 func (m mock) tableExistsInSchema(schema, table string, exists bool) {
-	count := 0
+	rows := sqlmock.NewRows([]string{"table_schema"})
 	if exists {
-		count = 1
+		rows.AddRow(schema)
 	}
-	m.ExpectQuery(escape(existsSchemaQuery)).
+	m.ExpectQuery(escape(tableSchemaQuery)).
 		WithArgs(schema, table).
-		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(count))
+		WillReturnRows(rows)
 }
 
 func escape(query string) string {
