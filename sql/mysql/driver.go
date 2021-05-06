@@ -26,6 +26,41 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 	return &Driver{ExecQuerier: db, version: version[1]}, nil
 }
 
+// Tables returns schema descriptions of all tables in the given schema.
+func (d *Driver) Tables(ctx context.Context, opts *schema.InspectOptions) ([]*schema.Table, error) {
+	names, err := d.tableNames(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	byName := make(map[string]*schema.Table)
+	tables := make([]*schema.Table, 0, len(names))
+	for _, name := range names {
+		t, err := d.Table(ctx, name, opts)
+		if err != nil {
+			return nil, err
+		}
+		byName[name] = t
+		tables = append(tables, t)
+	}
+	// Link foreign-key stub tables/columns to actual elements.
+	for _, t := range tables {
+		for _, fk := range t.ForeignKeys {
+			ref, ok := byName[fk.RefTable.Name]
+			if !ok {
+				continue
+			}
+			fk.RefTable = ref
+			for i, c := range fk.RefColumns {
+				rc, ok := ref.Column(c.Name)
+				if ok {
+					fk.RefColumns[i] = rc
+				}
+			}
+		}
+	}
+	return tables, nil
+}
+
 // Table returns the schema description of the given table.
 func (d *Driver) Table(ctx context.Context, name string, opts *schema.InspectOptions) (*schema.Table, error) {
 	exists, err := d.tableExists(ctx, name, opts)
@@ -312,6 +347,28 @@ func (d *Driver) addFKs(t *schema.Table, rows *sql.Rows) error {
 	return nil
 }
 
+// tableNames returns a list of all tables exist in the schema.
+func (d *Driver) tableNames(ctx context.Context, opts *schema.InspectOptions) ([]string, error) {
+	query, args := tablesQuery, []interface{}(nil)
+	if opts != nil && opts.Schema != "" {
+		query, args = tablesSchemaQuery, []interface{}{opts.Schema}
+	}
+	rows, err := d.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("mysql: querying schema tables: %w", err)
+	}
+	defer rows.Close()
+	var names []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, fmt.Errorf("mysql: scanning table name: %w", err)
+		}
+		names = append(names, name)
+	}
+	return names, nil
+}
+
 // parseColumn returns column parts, size and signed-info from a MySQL type.
 func parseColumn(typ string) (parts []string, size int64, unsigned bool, err error) {
 	switch parts = strings.FieldsFunc(typ, func(r rune) bool {
@@ -362,6 +419,10 @@ func defaultAttr(c *schema.Column, defaults string) {
 }
 
 const (
+	// Queries to list schema tables.
+	tablesSchemaQuery = "SELECT `TABLE_NAME` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = ?"
+	tablesQuery       = "SELECT `TABLE_NAME` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = (SELECT DATABASE())"
+
 	// Queries to check table existence in the database.
 	existsSchemaQuery = "SELECT COUNT(*) FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
 	existsQuery       = "SELECT COUNT(*) FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?"

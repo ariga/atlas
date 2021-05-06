@@ -41,8 +41,12 @@ type (
 	// Inspector is the interface implemented by the different database drivers for
 	// inspecting their schema.
 	Inspector interface {
-		// Table returns the table description by its name. A NotExistError error
-		// is returned if the table does not exists in the database.
+		// Table returns the table description by its name. A NotExistError
+		// error is returned if the table does not exists in the database.
 		Table(ctx context.Context, name string, opts *InspectOptions) (*Table, error)
+
+		// Tables returns a list of table descriptions of all tables that exist
+		// in the given schema.
+		Tables(ctx context.Context, options *InspectOptions) ([]*Table, error)
 	}
 )

@@ -467,6 +467,132 @@ func TestDriver_Table(t *testing.T) {
 	}
 }
 
+func TestDriver_Tables(t *testing.T) {
+	tests := []struct {
+		name   string
+		opts   *schema.InspectOptions
+		before func(mock)
+		expect func(*require.Assertions, []*schema.Table, error)
+	}{
+		{
+			name: "no tables",
+			before: func(m mock) {
+				m.version("5.7.23")
+				m.tables()
+			},
+			expect: func(require *require.Assertions, ts []*schema.Table, err error) {
+				require.NoError(err)
+				require.Empty(ts)
+			},
+		},
+		{
+			name: "no tables in schema",
+			before: func(m mock) {
+				m.version("5.7.23")
+				m.tablesInSchema("public")
+			},
+			opts: &schema.InspectOptions{
+				Schema: "public",
+			},
+			expect: func(require *require.Assertions, ts []*schema.Table, err error) {
+				require.NoError(err)
+				require.Empty(ts)
+			},
+		},
+		{
+			name: "multi table",
+			before: func(m mock) {
+				m.version("v0.8.0")
+				m.tables("users", "pets")
+				m.tableExists("users", true)
+				m.ExpectQuery(escape(columnsQuery)).
+					WithArgs("users").
+					WillReturnRows(rows(`
++-------------+--------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+| COLUMN_NAME | COLUMN_TYPE  | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
++-------------+--------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+| id          | int          | NO          | PRI        | NULL           | auto_increment | NULL               | NULL               |
+| spouse_id   | int          | YES         | NULL       | NULL           |                | NULL               | NULL               |
++-------------+--------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+`))
+				m.noIndexes()
+				m.ExpectQuery(escape(fksQuery)).
+					WithArgs("users").
+					WillReturnRows(rows(`
++------------------+------------+-------------+-----------------------+------------------------+-------------+-------------+
+| CONSTRAINT_NAME  | TABLE_NAME | COLUMN_NAME | REFERENCED_TABLE_NAME | REFERENCED_COLUMN_NAME | UPDATE_RULE | DELETE_RULE |
++------------------+------------+-------------+-----------------------+------------------------+-------------+-------------+
+| spouse_id        | users      | spouse_id   | users                 | id                     | NO ACTION   | CASCADE     |
++------------------+------------+-------------+-----------------------+------------------------+-------------+-------------+
+`))
+
+				m.tableExists("pets", true)
+				m.ExpectQuery(escape(columnsQuery)).
+					WithArgs("pets").
+					WillReturnRows(rows(`
++-------------+--------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+| COLUMN_NAME | COLUMN_TYPE  | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
++-------------+--------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+| id          | int          | NO          | PRI        | NULL           | auto_increment | NULL               | NULL               |
+| owner_id    | int          | YES         | NULL       | NULL           |                | NULL               | NULL               |
++-------------+--------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+`))
+				m.noIndexes()
+				m.ExpectQuery(escape(fksQuery)).
+					WithArgs("pets").
+					WillReturnRows(rows(`
++------------------+------------+-------------+-----------------------+------------------------+-------------+-------------+
+| CONSTRAINT_NAME  | TABLE_NAME | COLUMN_NAME | REFERENCED_TABLE_NAME | REFERENCED_COLUMN_NAME | UPDATE_RULE | DELETE_RULE |
++------------------+------------+-------------+-----------------------+------------------------+-------------+-------------+
+| owner_id         | pets       | owner_id    | users                 | id                     | NO ACTION   | CASCADE     |
++------------------+------------+-------------+-----------------------+------------------------+-------------+-------------+
+`))
+			},
+			expect: func(require *require.Assertions, ts []*schema.Table, err error) {
+				require.NoError(err)
+				require.Len(ts, 2)
+				users, pets := ts[0], ts[1]
+
+				require.Equal("users", users.Name)
+				userFKs := []*schema.ForeignKey{
+					{Symbol: "spouse_id", Table: users, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: users},
+				}
+				userColumns := []*schema.Column{
+					{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
+					{Name: "spouse_id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}, Null: true}, ForeignKeys: userFKs},
+				}
+				userFKs[0].Columns = userColumns[1:]
+				userFKs[0].RefColumns = userColumns[:1]
+				require.EqualValues(userColumns, users.Columns)
+				require.EqualValues(userFKs, users.ForeignKeys)
+
+				require.Equal("pets", pets.Name)
+				petsFKs := []*schema.ForeignKey{
+					{Symbol: "owner_id", Table: pets, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: users, RefColumns: userColumns[:1]},
+				}
+				petsColumns := []*schema.Column{
+					{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
+					{Name: "owner_id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}, Null: true}, ForeignKeys: petsFKs},
+				}
+				petsFKs[0].Columns = petsColumns[1:]
+				require.EqualValues(petsColumns, pets.Columns)
+				require.EqualValues(petsFKs, pets.ForeignKeys)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, m, err := sqlmock.New()
+			require.NoError(t, err)
+			tt.before(mock{m})
+			drv, err := Open(db)
+			require.NoError(t, err)
+			tables, err := drv.Tables(context.Background(), tt.opts)
+			tt.expect(require.New(t), tables, err)
+		})
+	}
+}
+
 type mock struct {
 	sqlmock.Sqlmock
 }
@@ -484,6 +610,25 @@ func (m mock) noIndexes() {
 func (m mock) noFKs() {
 	m.ExpectQuery(escape(fksQuery)).
 		WillReturnRows(sqlmock.NewRows([]string{"CONSTRAINT_NAME", "TABLE_NAME", "COLUMN_NAME", "REFERENCED_TABLE_NAME", "REFERENCED_COLUMN_NAME", "UPDATE_RULE", "DELETE_RULE"}))
+}
+
+func (m mock) tables(names ...string) {
+	rows := sqlmock.NewRows([]string{"table_name"})
+	for i := range names {
+		rows.AddRow(names[i])
+	}
+	m.ExpectQuery(escape(tablesQuery)).
+		WillReturnRows(rows)
+}
+
+func (m mock) tablesInSchema(schema string, names ...string) {
+	rows := sqlmock.NewRows([]string{"table_name"})
+	for i := range names {
+		rows.AddRow(names[i])
+	}
+	m.ExpectQuery(escape(tablesSchemaQuery)).
+		WithArgs(schema).
+		WillReturnRows(rows)
 }
 
 func (m mock) tableExists(table string, exists bool) {
