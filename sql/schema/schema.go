@@ -69,6 +69,26 @@ func (t *Table) Column(name string) (*Column, bool) {
 	return nil, false
 }
 
+// Index returns the first index that matched the given name.
+func (t *Table) Index(name string) (*Index, bool) {
+	for _, i := range t.Indexes {
+		if i.Name == name {
+			return i, true
+		}
+	}
+	return nil, false
+}
+
+// ForeignKey returns the first foreign-key that matched the given symbol (constraint name).
+func (t *Table) ForeignKey(symbol string) (*ForeignKey, bool) {
+	for _, f := range t.ForeignKeys {
+		if f.Symbol == symbol {
+			return f, true
+		}
+	}
+	return nil, false
+}
+
 // ReferenceOption for constraint actions.
 type ReferenceOption string
 

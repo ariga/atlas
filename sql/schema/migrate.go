@@ -18,10 +18,6 @@ type (
 		change()
 	}
 
-	// Changeset describes a collection of schema change that are
-	// applied (and can be reverted) as a group.
-	Changeset []Change
-
 	// AddTable describes a table creation change.
 	AddTable struct {
 		T     *Table
@@ -34,77 +30,108 @@ type (
 		Attrs []Attr
 	}
 
-	// ModifyTable holds a set of schema changes that modify a table
-	// or elements that associate with it.
-	ModifyTable struct {
-		Columns     []Change
-		Indexes     []Change
-		ForeignKeys []Change
-	}
-
 	// AddColumn describes a column creation change.
 	AddColumn struct {
-		C     *Column
-		Attrs []Attr
+		C *Column
 	}
 
 	// DropColumn describes a column removal change.
 	DropColumn struct {
-		C     *Column
-		Attrs []Attr
+		C *Column
 	}
 
 	// DropColumn describes a change that modifies a column.
 	ModifyColumn struct {
 		From, To *Column
-		Attrs    []Attr
-		Reason   string
+		Change   ChangeKind
 	}
 
 	// AddIndex describes an index creation change.
 	AddIndex struct {
-		I     *Index
-		Attrs []Attr
+		I *Index
 	}
 
 	// DropIndex describes an index removal change.
 	DropIndex struct {
-		I     *Index
-		Attrs []Attr
+		I *Index
 	}
 
 	// ModifyIndex describes an index modification.
 	ModifyIndex struct {
-		I      *Index
-		Attrs  []Attr
-		Reason string
+		From, To *Index
+		Change   ChangeKind
 	}
 
 	// AddForeignKey describes a foreign-key creation change.
 	AddForeignKey struct {
-		F     *ForeignKey
-		Attrs []Attr
+		F *ForeignKey
 	}
 
 	// DropForeignKey describes a foreign-key removal change.
 	DropForeignKey struct {
-		F     *ForeignKey
-		Attrs []Attr
+		F *ForeignKey
 	}
 
 	// ModifyForeignKey describes a change that modifies a foreign-key.
 	ModifyForeignKey struct {
 		From, To *ForeignKey
-		Attrs    []Attr
-		Reason   string
+		Change   ChangeKind
+	}
+
+	// AddAttr describes an attribute addition.
+	AddAttr struct {
+		A Attr
+	}
+
+	// DropAttr describes an attribute removal.
+	DropAttr struct {
+		A Attr
+	}
+
+	// ModifyAttr describes a change that modifies an element attribute.
+	ModifyAttr struct {
+		From, To Attr
 	}
 )
 
+// A ChangeKind describes a change kind that can be combined
+// using a set of flags. The zero kind is no change.
+type ChangeKind uint
+
+const (
+	// Basic changes.
+	NoChange ChangeKind = 0
+
+	// Table and common changes.
+	ChangeCharset ChangeKind = 1 << iota
+	ChangeCollation
+	ChangeComment
+
+	// Column specific changes.
+	ChangeNull
+	ChangeType
+	ChangeDefault
+
+	// Index specific changes.
+	ChangeUnique
+	ChangeParts
+
+	// Foreign key specific changes.
+	ChangeColumn
+	ChangeRefTable
+	ChangeRefColumn
+	ChangeUpdateAction
+	ChangeDeleteAction
+)
+
 type (
-	// DiffReport defines a report for schema diffing.
-	DiffReport struct {
-		Changes    Changeset
-		Compatible bool
+	// Differ is the interface implemented by the different
+	// migration drivers for comparing and diffing schemas.
+	Differ interface {
+		// SchemaDiff returns a diff report for migrating a schema
+		// from state "from" to state "to". An error is returned
+		// if such step is not possible.
+		SchemaDiff(from, to *Schema) ([]Change, error)
 	}
 
 	// TableDiffer is the interface implemented by the different
@@ -113,16 +140,14 @@ type (
 		// TableDiff returns a diff report for migrating a table
 		// from state "from" to state "to". An error is returned
 		// if such step is not possible.
-		TableDiff(from, to *Table) (*DiffReport, error)
-
-		// TablesDiff returns a diff report for migrating a table
-		// from state "from" to state "to". An error is returned
-		// if such step is not possible.
-		TablesDiff(from, to []*Table) (*DiffReport, error)
+		TableDiff(from, to *Table) ([]Change, error)
 	}
 )
 
 // changes.
+func (*AddAttr) change()          {}
+func (*DropAttr) change()         {}
+func (*ModifyAttr) change()       {}
 func (*AddTable) change()         {}
 func (*DropTable) change()        {}
 func (*AddIndex) change()         {}
