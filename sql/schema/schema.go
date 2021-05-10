@@ -176,6 +176,21 @@ type (
 	Attr interface {
 		attr()
 	}
+
+	// A column comment.
+	Comment struct {
+		Text string
+	}
+
+	// Charset describes a column or a table character set setting.
+	Charset struct {
+		V string
+	}
+
+	// Collation describes a column or a table collation setting.
+	Collation struct {
+		V string
+	}
 )
 
 // expressions.
@@ -194,3 +209,8 @@ func (*SpatialType) typ()     {}
 func (*IntegerType) typ()     {}
 func (*DecimalType) typ()     {}
 func (*UnsupportedType) typ() {}
+
+// attributes.
+func (*Comment) attr()   {}
+func (*Charset) attr()   {}
+func (*Collation) attr() {}
