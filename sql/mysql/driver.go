@@ -120,8 +120,8 @@ func (d *Driver) columns(ctx context.Context, t *schema.Table) error {
 
 // addColumn scans the current row and adds a new column from it to the table.
 func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
-	var name, typ, nullable, key, defaults, extra, charset, collation sql.NullString
-	if err := rows.Scan(&name, &typ, &nullable, &key, &defaults, &extra, &charset, &collation); err != nil {
+	var name, typ, comment, nullable, key, defaults, extra, charset, collation sql.NullString
+	if err := rows.Scan(&name, &typ, &comment, &nullable, &key, &defaults, &extra, &charset, &collation); err != nil {
 		return err
 	}
 	c := &schema.Column{
@@ -222,9 +222,28 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 			T: t,
 		}
 	}
-	defaultAttr(c, defaults.String)
 	if err := extraAttr(c, extra.String); err != nil {
 		return err
+	}
+	if validString(defaults) {
+		c.Type.Default = &schema.RawExpr{
+			X: defaults.String,
+		}
+	}
+	if validString(comment) {
+		c.Attrs = append(c.Attrs, &schema.Comment{
+			Text: comment.String,
+		})
+	}
+	if validString(charset) {
+		c.Attrs = append(c.Attrs, &schema.Charset{
+			V: charset.String,
+		})
+	}
+	if validString(collation) {
+		c.Attrs = append(c.Attrs, &schema.Collation{
+			V: collation.String,
+		})
 	}
 	t.Columns = append(t.Columns, c)
 	if key.String == "PRI" {
@@ -400,16 +419,6 @@ func extraAttr(c *schema.Column, extra string) error {
 	return nil
 }
 
-// defaultAttr parses the COLUMN_DEFAULT column from the INFORMATION_SCHEMA.COLUMNS table
-// and appends its parsed representation to the column-type.
-func defaultAttr(c *schema.Column, defaults string) {
-	if defaults != "" && strings.ToLower(defaults) != "null" {
-		c.Type.Default = &schema.RawExpr{
-			X: defaults,
-		}
-	}
-}
-
 // linkSchemaTables links foreign-key stub tables/columns to actual elements.
 func linkSchemaTables(schemas []*schema.Schema) {
 	byName := make(map[string]map[string]*schema.Table)
@@ -442,6 +451,11 @@ func linkSchemaTables(schemas []*schema.Schema) {
 	}
 }
 
+// validString reports if the given string is valid and not nullable.
+func validString(s sql.NullString) bool {
+	return s.Valid && s.String != "" && strings.ToLower(s.String) != "null"
+}
+
 const (
 	// Queries to list schema tables.
 	tablesSchemaQuery = "SELECT `TABLE_NAME` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = ?"
@@ -452,7 +466,7 @@ const (
 	tableSchemaQuery = "SELECT `TABLE_SCHEMA` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?"
 
 	// Query to list table columns.
-	columnsQuery = "SELECT `column_name`, `column_type`, `is_nullable`, `column_key`, `column_default`, `extra`, `character_set_name`, `collation_name` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
+	columnsQuery = "SELECT `column_name`, `column_type`, `column_comment`, `is_nullable`, `column_key`, `column_default`, `extra`, `character_set_name`, `collation_name` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
 
 	// Query to list table indexes.
 	indexesQuery = "SELECT `index_name`, `column_name`, `non_unique` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
