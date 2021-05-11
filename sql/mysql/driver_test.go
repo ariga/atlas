@@ -49,6 +49,42 @@ func TestDriver_Table(t *testing.T) {
 			},
 		},
 		{
+			name: "table collation",
+			before: func(m mock) {
+				m.version("8.0.1")
+				m.ExpectQuery(escape(tableQuery)).
+					WithArgs("users").
+					WillReturnRows(rows(`
++--------------+--------------------+
+| TABLE_SCHEMA | TABLE_COLLATION    |
++--------------+--------------------+
+| test         | utf8mb4_bin        |
++--------------+--------------------+
+`))
+				m.ExpectQuery(escape(columnsQuery)).
+					WithArgs("test", "users").
+					WillReturnRows(rows(`
++--------------------+----------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
+| column_name        | column_type          | column_comment       | is_nullable | column_key | column_default | extra          | character_set_name | collation_name |
++--------------------+----------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
+| id                 | bigint(20)           |                      | NO          | PRI        | NULL           | auto_increment | NULL               | NULL           |
++--------------------+----------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
+`))
+				m.noIndexes()
+				m.noFKs()
+			},
+			expect: func(require *require.Assertions, t *schema.Table, err error) {
+				require.NoError(err)
+				require.Equal("users", t.Name)
+				require.Equal([]schema.Attr{&schema.Collation{V: "utf8mb4_bin"}}, t.Attrs)
+				require.Len(t.PrimaryKey, 1)
+				require.True(t.PrimaryKey[0] == t.Columns[0])
+				require.EqualValues([]*schema.Column{
+					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint", Size: 20}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
+				}, t.Columns)
+			},
+		},
+		{
 			name: "int types",
 			before: func(m mock) {
 				m.version("8.0.0")
@@ -633,9 +669,9 @@ func (m mock) tablesInSchema(schema string, names ...string) {
 }
 
 func (m mock) tableExists(schema, table string, exists bool) {
-	rows := sqlmock.NewRows([]string{"table_schema"})
+	rows := sqlmock.NewRows([]string{"table_schema", "table_collation"})
 	if exists {
-		rows.AddRow(schema)
+		rows.AddRow(schema, nil)
 	}
 	m.ExpectQuery(escape(tableQuery)).
 		WithArgs(table).
@@ -643,9 +679,9 @@ func (m mock) tableExists(schema, table string, exists bool) {
 }
 
 func (m mock) tableExistsInSchema(schema, table string, exists bool) {
-	rows := sqlmock.NewRows([]string{"table_schema"})
+	rows := sqlmock.NewRows([]string{"table_schema", "table_collation"})
 	if exists {
-		rows.AddRow(schema)
+		rows.AddRow(schema, nil)
 	}
 	m.ExpectQuery(escape(tableSchemaQuery)).
 		WithArgs(schema, table).

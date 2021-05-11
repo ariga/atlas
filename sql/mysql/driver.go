@@ -91,8 +91,8 @@ func (d *Driver) table(ctx context.Context, name string, opts *schema.InspectTab
 		query, args = tableSchemaQuery, []interface{}{opts.Schema, name}
 	}
 	row := d.QueryRowContext(ctx, query, args...)
-	var s string
-	if err := row.Scan(&s); err != nil {
+	var tSchema, collation sql.NullString
+	if err := row.Scan(&tSchema, &collation); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, &schema.NotExistError{
 				Err: fmt.Errorf("mysql: table %q was not found", name),
@@ -100,7 +100,13 @@ func (d *Driver) table(ctx context.Context, name string, opts *schema.InspectTab
 		}
 		return nil, err
 	}
-	return &schema.Table{Name: name, Schema: s}, nil
+	t := &schema.Table{Name: name, Schema: tSchema.String}
+	if validString(collation) {
+		t.Attrs = append(t.Attrs, &schema.Collation{
+			V: collation.String,
+		})
+	}
+	return t, nil
 }
 
 // columns queries and appends the columns of the given table.
@@ -462,8 +468,8 @@ const (
 	tablesQuery       = "SELECT `TABLE_NAME` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = (SELECT DATABASE())"
 
 	// Queries to fetch table schema.
-	tableQuery       = "SELECT `TABLE_SCHEMA` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
-	tableSchemaQuery = "SELECT `TABLE_SCHEMA` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?"
+	tableQuery       = "SELECT `TABLE_SCHEMA`, `TABLE_COLLATION` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
+	tableSchemaQuery = "SELECT `TABLE_SCHEMA`, `TABLE_COLLATION` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?"
 
 	// Query to list table columns.
 	columnsQuery = "SELECT `column_name`, `column_type`, `column_comment`, `is_nullable`, `column_key`, `column_default`, `extra`, `character_set_name`, `collation_name` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
