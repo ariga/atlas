@@ -407,16 +407,17 @@ func TestDriver_Table(t *testing.T) {
 				m.ExpectQuery(escape(indexesQuery)).
 					WithArgs("public", "users").
 					WillReturnRows(rows(`
-+--------------+-------------+------------+
-| INDEX_NAME   | COLUMN_NAME | NON_UNIQUE |
-+--------------+-------------+------------+
-| nickname     | nickname    |          0 |
-| non_unique   | oid         |          1 |
-| non_unique   | uid         |          1 |
-| PRIMARY      | id          |          0 |
-| unique_index | uid         |          0 |
-| unique_index | oid         |          0 |
-+--------------+-------------+------------+
++--------------+-------------+------------+--------------+------------+------------------+
+| INDEX_NAME   | COLUMN_NAME | NON_UNIQUE | SEQ_IN_INDEX | SUB_PART   | EXPRESSION       |
++--------------+-------------+------------+--------------+------------+------------------+
+| nickname     | nickname    |          0 |            1 |        255 |      NULL        |
+| lower_nick   | NULL        |          1 |            1 |       NULL | lower(nickname)  |
+| non_unique   | oid         |          1 |            1 |       NULL |      NULL        |
+| non_unique   | uid         |          1 |            2 |       NULL |      NULL        |
+| PRIMARY      | id          |          0 |            1 |       NULL |      NULL        |
+| unique_index | uid         |          0 |            1 |       NULL |      NULL        |
+| unique_index | oid         |          0 |            2 |       NULL |      NULL        |
++--------------+-------------+------------+--------------+------------+------------------+
 `))
 				m.noFKs()
 			},
@@ -425,18 +426,34 @@ func TestDriver_Table(t *testing.T) {
 				require.Equal("users", t.Name)
 				indexes := []*schema.Index{
 					{Name: "nickname", Unique: true, Table: t}, // Implicitly created by the UNIQUE clause.
+					{Name: "lower_nick", Table: t},
 					{Name: "non_unique", Table: t},
 					{Name: "unique_index", Unique: true, Table: t},
 				}
 				columns := []*schema.Column{
 					{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
 					{Name: "nickname", Type: &schema.ColumnType{Raw: "varchar(255)", Type: &schema.StringType{T: "varchar", Size: 255}}, Indexes: indexes[0:1], Attrs: []schema.Attr{&schema.Charset{V: "utf8mb4"}, &schema.Collation{V: "utf8mb4_0900_ai_ci"}}},
-					{Name: "oid", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Indexes: indexes[1:]},
-					{Name: "uid", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Indexes: indexes[1:]},
+					{Name: "oid", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Indexes: indexes[2:]},
+					{Name: "uid", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Indexes: indexes[2:]},
 				}
-				indexes[0].Columns = columns[1:2]                             // nickname
-				indexes[1].Columns = columns[2:]                              // oid, uid
-				indexes[2].Columns = []*schema.Column{columns[3], columns[2]} // uid, oid
+				// nickname
+				indexes[0].Parts = []*schema.IndexPart{
+					{SeqNo: 1, C: columns[1], Attrs: []schema.Attr{&SubPart{Len: 255}}},
+				}
+				// lower(nickname)
+				indexes[1].Parts = []*schema.IndexPart{
+					{SeqNo: 1, X: &schema.RawExpr{X: "lower(nickname)"}},
+				}
+				// oid, uid
+				indexes[2].Parts = []*schema.IndexPart{
+					{SeqNo: 1, C: columns[2]},
+					{SeqNo: 2, C: columns[3]},
+				}
+				// uid, oid
+				indexes[3].Parts = []*schema.IndexPart{
+					{SeqNo: 1, C: columns[3]},
+					{SeqNo: 2, C: columns[2]},
+				}
 				require.EqualValues(columns, t.Columns)
 				require.EqualValues(indexes, t.Indexes)
 			},
