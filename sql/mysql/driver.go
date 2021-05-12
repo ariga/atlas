@@ -276,11 +276,12 @@ func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
 	names := make(map[string]*schema.Index)
 	for rows.Next() {
 		var (
-			name    string
-			column  string
-			nonuniq bool
+			nonuniq               bool
+			seqno                 int
+			name                  string
+			column, subPart, expr sql.NullString
 		)
-		if err := rows.Scan(&name, &column, &nonuniq); err != nil {
+		if err := rows.Scan(&name, &column, &nonuniq, &seqno, &subPart, &expr); err != nil {
 			return fmt.Errorf("mysql: scanning index: %w", err)
 		}
 		// Ignore primary keys.
@@ -293,14 +294,33 @@ func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
 			names[name] = idx
 			t.Indexes = append(t.Indexes, idx)
 		}
-		c, ok := t.Column(column)
-		if !ok {
-			return fmt.Errorf("mysql: column %q was not found for index %q", column, idx.Name)
-		}
 		// Rows are ordered by SEQ_IN_INDEX that specifies the
 		// position of the column in the index definition.
-		idx.Columns = append(idx.Columns, c)
-		c.Indexes = append(c.Indexes, idx)
+		part := &schema.IndexPart{SeqNo: seqno}
+		switch {
+		case validString(expr):
+			part.X = &schema.RawExpr{
+				X: expr.String,
+			}
+		case validString(column):
+			part.C, ok = t.Column(column.String)
+			if !ok {
+				return fmt.Errorf("mysql: column %q was not found for index %q", column.String, idx.Name)
+			}
+			if validString(subPart) {
+				n, err := strconv.Atoi(subPart.String)
+				if err != nil {
+					return fmt.Errorf("mysql: parse index prefix size %q: %w", subPart.String, err)
+				}
+				part.Attrs = append(part.Attrs, &SubPart{
+					Len: n,
+				})
+			}
+			part.C.Indexes = append(part.C.Indexes, idx)
+		default:
+			return fmt.Errorf("mysql: invalid part for index %q", idx.Name)
+		}
+		idx.Parts = append(idx.Parts, part)
 	}
 	return nil
 }
@@ -475,7 +495,7 @@ const (
 	columnsQuery = "SELECT `column_name`, `column_type`, `column_comment`, `is_nullable`, `column_key`, `column_default`, `extra`, `character_set_name`, `collation_name` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
 
 	// Query to list table indexes.
-	indexesQuery = "SELECT `index_name`, `column_name`, `non_unique` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
+	indexesQuery = "SELECT `index_name`, `column_name`, `non_unique`, `seq_in_index`, `sub_part`, `expression` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
 
 	// Query to list table foreign keys.
 	fksQuery = `
@@ -519,5 +539,11 @@ type (
 	OnUpdate struct {
 		schema.Attr
 		A string
+	}
+
+	// SubPart attribute defines an option index prefix length for columns.
+	SubPart struct {
+		schema.Attr
+		Len int
 	}
 )

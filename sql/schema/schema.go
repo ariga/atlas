@@ -31,12 +31,20 @@ type (
 
 	// An Index represents an index definition.
 	Index struct {
-		Name    string
-		Unique  bool
-		Attrs   []Attr
-		Table   *Table
-		Columns []*Column
-		Options []Expr
+		Name   string
+		Unique bool
+		Table  *Table
+		Attrs  []Attr
+		Parts  []*IndexPart
+	}
+
+	// An IndexPart represents an index part that
+	// can be either an expression or a column.
+	IndexPart struct {
+		SeqNo int
+		Attrs []Attr
+		X     Expr
+		C     *Column
 	}
 
 	// A ForeignKey represents an index definition.
