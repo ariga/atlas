@@ -507,6 +507,45 @@ func TestDriver_Table(t *testing.T) {
 				require.EqualValues(fks, t.ForeignKeys)
 			},
 		},
+		{
+			name: "checks",
+			before: func(m mock) {
+				m.version("8.0.16")
+				m.tableExists("public", "users", true)
+				m.ExpectQuery(escape(columnsQuery)).
+					WithArgs("public", "users").
+					WillReturnRows(rows(`
++-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+| COLUMN_NAME | COLUMN_TYPE  | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
++-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+| id          | int          |                | NO          | PRI        | NULL           | auto_increment | NULL               | NULL               |
+| c1          | int          |                | NO          | MUL        | NULL           |                | NULL               | NULL               |
++-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+`))
+				m.noIndexes()
+				m.noFKs()
+				m.ExpectQuery(escape(checksQuery)).
+					WithArgs("public", "users").
+					WillReturnRows(rows(`
++-------------------+----------+-----------------------------------------------------------------+
+| CONSTRAINT_NAME   | ENFORCED | CHECK_CLAUSE                                                    |
++-------------------+----------+-----------------------------------------------------------------+
+| users_chk_1       | YES      | (` + "`c6`" + ` <>_latin1\'foo\\\'s\')                          |
++-------------------+----------+-----------------------------------------------------------------+
+`))
+			},
+			expect: func(require *require.Assertions, t *schema.Table, err error) {
+				require.NoError(err)
+				require.Equal("users", t.Name)
+				require.Equal("public", t.Schema)
+				columns := []*schema.Column{
+					{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
+					{Name: "c1", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
+				}
+				require.EqualValues(columns, t.Columns)
+				require.EqualValues([]schema.Attr{&Check{Name: "users_chk_1", Clause: "(`c6` <>_latin1\\'foo\\'s\\')", Enforced: true}}, t.Attrs)
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

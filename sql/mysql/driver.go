@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/mod/semver"
+
 	"ariga.io/atlas/sql/schema"
 )
 
@@ -81,6 +83,11 @@ func (d *Driver) Table(ctx context.Context, name string, opts *schema.InspectTab
 	if err := d.fks(ctx, t); err != nil {
 		return nil, err
 	}
+	if semver.Compare("v"+d.version, "v8.0.16") != -1 {
+		if err := d.checks(ctx, t); err != nil {
+			return nil, err
+		}
+	}
 	return t, nil
 }
 
@@ -142,7 +149,12 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 		return err
 	}
 	switch t := parts[0]; t {
-	case "tinyint", "smallint", "mediumint", "int", "bigint":
+	case tBit:
+		c.Type.Type = &BitType{
+			T:    t,
+			Size: int(size),
+		}
+	case tTinyInt, tSmallInt, tMediumInt, tInt, tBigInt:
 		if size == 1 {
 			c.Type.Type = &schema.BoolType{
 				T: t,
@@ -154,7 +166,7 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 			Size:     int(size),
 			Unsigned: unsigned,
 		}
-	case "numeric", "decimal":
+	case tNumeric, tDecimal:
 		dt := &schema.DecimalType{
 			T: t,
 		}
@@ -173,7 +185,7 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 			dt.Scale = int(s)
 		}
 		c.Type.Type = dt
-	case "float", "double":
+	case tFloat, tDouble, tReal:
 		ft := &schema.FloatType{
 			T: t,
 		}
@@ -185,41 +197,47 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 			ft.Precision = int(p)
 		}
 		c.Type.Type = ft
-	case "binary", "varbinary":
+	case tBinary, tVarBinary:
 		c.Type.Type = &schema.BinaryType{
 			T:    t,
 			Size: int(size),
 		}
-	case "tinyblob", "mediumblob", "blob", "longblob":
+	case tTinyBlob, tMediumBlob, tBlob, tLongBlob:
 		c.Type.Type = &schema.BinaryType{
 			T: t,
 		}
-	case "char", "varchar":
+	case tChar, tVarchar:
 		c.Type.Type = &schema.StringType{
 			T:    t,
 			Size: int(size),
 		}
-	case "tinytext", "mediumtext", "text", "longtext":
+	case tTinyText, tMediumText, tText, tLongText:
 		c.Type.Type = &schema.StringType{
 			T: t,
 		}
-	case "enum":
+	case tEnum, tSet:
 		values := make([]string, len(parts)-1)
 		for i, e := range parts[1:] {
 			values[i] = strings.Trim(e, "'")
 		}
-		c.Type.Type = &schema.EnumType{
-			Values: values,
+		if t == tEnum {
+			c.Type.Type = &schema.EnumType{
+				Values: values,
+			}
+		} else {
+			c.Type.Type = &SetType{
+				Values: values,
+			}
 		}
-	case "date", "datetime", "time", "timestamp", "year":
+	case tDate, tDateTime, tTime, tTimestamp, tYear:
 		c.Type.Type = &schema.TimeType{
 			T: t,
 		}
-	case "json":
+	case tJSON:
 		c.Type.Type = &schema.JSONType{
 			T: t,
 		}
-	case "point", "multipoint", "linestring", "multilinestring", "polygon", "multipolygon", "geometry", "geomcollection", "geometrycollection":
+	case tPoint, tMultiPoint, tLineString, tMultiLineString, tPolygon, tMultiPolygon, tGeometry, tGeoCollection, tGeometryCollection:
 		c.Type.Type = &schema.SpatialType{
 			T: t,
 		}
@@ -329,7 +347,7 @@ func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
 func (d *Driver) fks(ctx context.Context, t *schema.Table) error {
 	rows, err := d.QueryContext(ctx, fksQuery, t.Schema, t.Name)
 	if err != nil {
-		return fmt.Errorf("mysql: querying %q indexes: %w", t.Name, err)
+		return fmt.Errorf("mysql: querying %q foreign keys: %w", t.Name, err)
 	}
 	defer rows.Close()
 	if err := d.addFKs(t, rows); err != nil {
@@ -384,6 +402,28 @@ func (d *Driver) addFKs(t *schema.Table, rows *sql.Rows) error {
 	return nil
 }
 
+// checks queries and appends the check constraints of the given table.
+func (d *Driver) checks(ctx context.Context, t *schema.Table) error {
+	rows, err := d.QueryContext(ctx, checksQuery, t.Schema, t.Name)
+	if err != nil {
+		return fmt.Errorf("mysql: querying %q check constraints: %w", t.Name, err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var name, enforced, clause string
+		if err := rows.Scan(&name, &enforced, &clause); err != nil {
+			return fmt.Errorf("mysql: %w", err)
+		}
+		t.Attrs = append(t.Attrs, &Check{
+			Name:     name,
+			Clause:   unescape(clause),
+			Enforced: clause != "NO",
+		})
+
+	}
+	return rows.Err()
+}
+
 // tableNames returns a list of all tables exist in the schema.
 func (d *Driver) tableNames(ctx context.Context, opts *schema.InspectTableOptions) ([]string, error) {
 	query, args := tablesQuery, []interface{}(nil)
@@ -411,7 +451,7 @@ func parseColumn(typ string) (parts []string, size int64, unsigned bool, err err
 	switch parts = strings.FieldsFunc(typ, func(r rune) bool {
 		return r == '(' || r == ')' || r == ' ' || r == ','
 	}); parts[0] {
-	case "tinyint", "smallint", "mediumint", "int", "bigint":
+	case tTinyInt, tSmallInt, tMediumInt, tInt, tBigInt:
 		switch {
 		case len(parts) == 2 && parts[1] == "unsigned": // int unsigned
 			unsigned = true
@@ -421,11 +461,11 @@ func parseColumn(typ string) (parts []string, size int64, unsigned bool, err err
 		case len(parts) == 2: // int(10)
 			size, err = strconv.ParseInt(parts[1], 10, 0)
 		}
-	case "varbinary", "varchar", "char", "binary":
+	case tBinary, tVarBinary, tChar, tVarchar:
 		size, err = strconv.ParseInt(parts[1], 10, 64)
 	}
 	if err != nil {
-		return parts, size, unsigned, fmt.Errorf("converting %s size to int: %w", parts[0], err)
+		return nil, 0, false, fmt.Errorf("parse %q to int: %w", parts[1], err)
 	}
 	return parts, size, unsigned, nil
 }
@@ -492,10 +532,28 @@ const (
 	tableSchemaQuery = "SELECT `TABLE_SCHEMA`, `TABLE_COLLATION` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?"
 
 	// Query to list table columns.
-	columnsQuery = "SELECT `column_name`, `column_type`, `column_comment`, `is_nullable`, `column_key`, `column_default`, `extra`, `character_set_name`, `collation_name` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
+	columnsQuery = "SELECT `COLUMN_NAME`, `COLUMN_TYPE`, `COLUMN_COMMENT`, `IS_NULLABLE`, `COLUMN_KEY`, `COLUMN_DEFAULT`, `EXTRA`, `CHARACTER_SET_NAME`, `COLLATION_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
 
 	// Query to list table indexes.
-	indexesQuery = "SELECT `index_name`, `column_name`, `non_unique`, `seq_in_index`, `sub_part`, `expression` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
+	indexesQuery = "SELECT `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `SUB_PART`, `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
+
+	// Query to list table check constraints.
+	checksQuery = `
+SELECT
+  t1.CONSTRAINT_NAME,
+  t1.ENFORCED,
+  t2.CHECK_CLAUSE
+FROM
+  INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS t1
+  JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS AS t2
+  ON t1.CONSTRAINT_NAME = t2.CONSTRAINT_NAME
+WHERE
+  t1.CONSTRAINT_TYPE = 'CHECK'
+  AND t1.TABLE_SCHEMA = ?
+  AND t1.TABLE_NAME = ?
+ORDER BY
+  t1.CONSTRAINT_NAME
+`
 
 	// Query to list table foreign keys.
 	fksQuery = `
@@ -546,4 +604,92 @@ type (
 		schema.Attr
 		Len int
 	}
+
+	// Check attributes defines a CHECK constraint.
+	Check struct {
+		schema.Attr
+		Name     string
+		Clause   string
+		Enforced bool
+	}
+
+	// BitType represents a bit type.
+	BitType struct {
+		schema.Type
+		T    string
+		Size int
+	}
+
+	// SetType represents a set type.
+	SetType struct {
+		schema.Type
+		Values []string
+	}
+)
+
+// MySQL standard unescape field function from its codebase:
+// https://github.com/mysql/mysql-server/blob/8.0/sql/dd/impl/utils.cc
+func unescape(s string) string {
+	var b strings.Builder
+	for i, c := range s {
+		if c != '\\' || i+1 < len(s) && s[i+1] != '\\' && s[i+1] != '=' && s[i+1] != ';' {
+			b.WriteRune(c)
+		}
+	}
+	return b.String()
+}
+
+// MySQL standard column types as defined in its codebase. Name and order
+// is organized differently than MySQL.
+//
+// https://github.com/mysql/mysql-server/blob/8.0/include/field_types.h
+// https://github.com/mysql/mysql-server/blob/8.0/sql/dd/types/column.h
+// https://github.com/mysql/mysql-server/blob/8.0/sql/sql_show.cc
+// https://github.com/mysql/mysql-server/blob/8.0/sql/gis/geometries.cc
+const (
+	tBit       = "bit"       // MYSQL_TYPE_BIT
+	tInt       = "int"       // MYSQL_TYPE_LONG
+	tTinyInt   = "tinyint"   // MYSQL_TYPE_TINY
+	tSmallInt  = "smallint"  // MYSQL_TYPE_SHORT
+	tMediumInt = "mediumint" // MYSQL_TYPE_INT24
+	tBigInt    = "bigint"    // MYSQL_TYPE_LONGLONG
+
+	tDecimal = "decimal" // MYSQL_TYPE_DECIMAL
+	tNumeric = "numeric" // MYSQL_TYPE_DECIMAL (numeric_type rule in sql_yacc.yy)
+	tFloat   = "float"   // MYSQL_TYPE_FLOAT
+	tDouble  = "double"  // MYSQL_TYPE_DOUBLE
+	tReal    = "real"    // MYSQL_TYPE_FLOAT or MYSQL_TYPE_DOUBLE (real_type in sql_yacc.yy)
+
+	tTimestamp = "timestamp" // MYSQL_TYPE_TIMESTAMP
+	tDate      = "date"      // MYSQL_TYPE_DATE
+	tTime      = "time"      // MYSQL_TYPE_TIME
+	tDateTime  = "datetime"  // MYSQL_TYPE_DATETIME
+	tYear      = "year"      // MYSQL_TYPE_YEAR
+
+	tVarchar    = "varchar"    // MYSQL_TYPE_VAR_STRING, MYSQL_TYPE_VARCHAR
+	tChar       = "char"       // MYSQL_TYPE_STRING
+	tVarBinary  = "varbinary"  // MYSQL_TYPE_VAR_STRING + NULL CHARACTER_SET.
+	tBinary     = "binary"     // MYSQL_TYPE_STRING + NULL CHARACTER_SET.
+	tBlob       = "blob"       // MYSQL_TYPE_BLOB
+	tTinyBlob   = "tinyblob"   // MYSQL_TYPE_TINYBLOB
+	tMediumBlob = "mediumblob" // MYSQL_TYPE_MEDIUM_BLOB
+	tLongBlob   = "longblob"   // MYSQL_TYPE_LONG_BLOB
+	tText       = "text"       // MYSQL_TYPE_BLOB + CHARACTER_SET utf8mb4
+	tTinyText   = "tinytext"   // MYSQL_TYPE_TINYBLOB + CHARACTER_SET utf8mb4
+	tMediumText = "mediumtext" // MYSQL_TYPE_MEDIUM_BLOB + CHARACTER_SET utf8mb4
+	tLongText   = "longtext"   // MYSQL_TYPE_LONG_BLOB with + CHARACTER_SET utf8mb4
+
+	tEnum = "enum" // MYSQL_TYPE_ENUM
+	tSet  = "set"  // MYSQL_TYPE_SET
+	tJSON = "json" // MYSQL_TYPE_JSON
+
+	tGeometry           = "geometry"           // MYSQL_TYPE_GEOMETRY
+	tPoint              = "point"              // Geometry_type::kPoint
+	tMultiPoint         = "multipoint"         // Geometry_type::kMultipoint
+	tLineString         = "linestring"         // Geometry_type::kLinestring
+	tMultiLineString    = "multilinestring"    // Geometry_type::kMultilinestring
+	tPolygon            = "polygon"            // Geometry_type::kPolygon
+	tMultiPolygon       = "multipolygon"       // Geometry_type::kMultipolygon
+	tGeoCollection      = "geomcollection"     // Geometry_type::kGeometrycollection
+	tGeometryCollection = "geometrycollection" // Geometry_type::kGeometrycollection
 )
