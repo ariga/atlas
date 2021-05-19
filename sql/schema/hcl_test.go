@@ -8,7 +8,7 @@ import (
 )
 
 func TestBasicSchemaUnmarshal(t *testing.T) {
-	filename := "testdata/basic.schema"
+	filename := "testdata/basic_schema.hcl"
 	bytes, err := ioutil.ReadFile(filename)
 	require.NoError(t, err)
 	um := &Unmarshaler{}
