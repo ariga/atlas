@@ -686,6 +686,69 @@ func TestDriver_Tables(t *testing.T) {
 	}
 }
 
+func TestDriver_Realm(t *testing.T) {
+	db, m, err := sqlmock.New()
+	require.NoError(t, err)
+	mk := mock{m}
+	mk.version("8.0.19")
+	mk.ExpectQuery(escape(schemasQuery + " WHERE `SCHEMA_NAME` NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')")).
+		WillReturnRows(rows(`
++-------------+----------------------------+------------------------+
+| SCHEMA_NAME | DEFAULT_CHARACTER_SET_NAME | DEFAULT_COLLATION_NAME |
++-------------+----------------------------+------------------------+
+| test        | utf8mb4                    | utf8mb4_unicode_ci     |
++-------------+----------------------------+------------------------+
+`))
+	mk.tablesInSchema("test")
+	drv, err := Open(db)
+	require.NoError(t, err)
+	realm, err := drv.Realm(context.Background(), &schema.InspectRealmOption{})
+	require.NoError(t, err)
+	require.EqualValues(t, []*schema.Schema{
+		{
+			Name: "test",
+			Attrs: []schema.Attr{
+				&schema.Charset{V: "utf8mb4"},
+				&schema.Collation{V: "utf8mb4_unicode_ci"},
+			},
+			Tables: []*schema.Table{},
+		},
+	}, realm.Schemas)
+
+	mk.ExpectQuery(escape(schemasQuery+" WHERE `SCHEMA_NAME` IN (?, ?)")).
+		WithArgs("test", "public").
+		WillReturnRows(rows(`
++-------------+----------------------------+------------------------+
+| SCHEMA_NAME | DEFAULT_CHARACTER_SET_NAME | DEFAULT_COLLATION_NAME |
++-------------+----------------------------+------------------------+
+| test        | utf8mb4                    | utf8mb4_unicode_ci     |
+| public      | utf8                       | utf8_general_ci        |
++-------------+----------------------------+------------------------+
+`))
+	mk.tablesInSchema("test")
+	mk.tablesInSchema("public")
+	realm, err = drv.Realm(context.Background(), &schema.InspectRealmOption{Schemas: []string{"test", "public"}})
+	require.NoError(t, err)
+	require.EqualValues(t, []*schema.Schema{
+		{
+			Name: "test",
+			Attrs: []schema.Attr{
+				&schema.Charset{V: "utf8mb4"},
+				&schema.Collation{V: "utf8mb4_unicode_ci"},
+			},
+			Tables: []*schema.Table{},
+		},
+		{
+			Name: "public",
+			Attrs: []schema.Attr{
+				&schema.Charset{V: "utf8"},
+				&schema.Collation{V: "utf8_general_ci"},
+			},
+			Tables: []*schema.Table{},
+		},
+	}, realm.Schemas)
+}
+
 type mock struct {
 	sqlmock.Sqlmock
 }
