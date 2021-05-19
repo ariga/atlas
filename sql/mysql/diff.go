@@ -165,7 +165,7 @@ func (d *Diff) columnChange(from, to *schema.Column) (schema.ChangeKind, error) 
 	if reflect.TypeOf(t1) != reflect.TypeOf(t2) || from.Type.Raw != to.Type.Raw {
 		change |= schema.ChangeType
 	}
-	d1, d2 := from.Type.Default, to.Type.Default
+	d1, d2 := from.Default, to.Default
 	if (d1 != nil) != (d2 != nil) || (d1 != nil && d1.(*schema.RawExpr).X != d2.(*schema.RawExpr).X) {
 		change |= schema.ChangeDefault
 	}

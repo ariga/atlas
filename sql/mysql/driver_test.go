@@ -157,8 +157,8 @@ func TestDriver_Table(t *testing.T) {
 				require.NoError(err)
 				require.Equal("users", t.Name)
 				require.EqualValues([]*schema.Column{
-					{Name: "d1", Type: &schema.ColumnType{Raw: "decimal(10,2)", Type: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2}, Default: &schema.RawExpr{X: "10.20"}}},
-					{Name: "d2", Type: &schema.ColumnType{Raw: "decimal(10,0)", Type: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 0}, Default: &schema.RawExpr{X: "10"}}},
+					{Name: "d1", Type: &schema.ColumnType{Raw: "decimal(10,2)", Type: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2}}, Default: &schema.RawExpr{X: "10.20"}},
+					{Name: "d2", Type: &schema.ColumnType{Raw: "decimal(10,0)", Type: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 0}}, Default: &schema.RawExpr{X: "10"}},
 				}, t.Columns)
 			},
 		},
@@ -250,7 +250,7 @@ func TestDriver_Table(t *testing.T) {
 				require.NoError(err)
 				require.Equal("users", t.Name)
 				require.EqualValues([]*schema.Column{
-					{Name: "c1", Type: &schema.ColumnType{Raw: "char(20)", Type: &schema.StringType{T: "char", Size: 20}, Default: &schema.RawExpr{X: "char"}}},
+					{Name: "c1", Type: &schema.ColumnType{Raw: "char(20)", Type: &schema.StringType{T: "char", Size: 20}}, Default: &schema.RawExpr{X: "char"}},
 					{Name: "c2", Type: &schema.ColumnType{Raw: "varchar(30)", Type: &schema.StringType{T: "varchar", Size: 30}}},
 					{Name: "c3", Type: &schema.ColumnType{Raw: "tinytext", Type: &schema.StringType{T: "tinytext"}}},
 					{Name: "c4", Type: &schema.ColumnType{Raw: "mediumtext", Type: &schema.StringType{T: "mediumtext"}}},
@@ -282,7 +282,7 @@ func TestDriver_Table(t *testing.T) {
 				require.Equal("users", t.Name)
 				require.EqualValues([]*schema.Column{
 					{Name: "c1", Type: &schema.ColumnType{Raw: "enum('a','b')", Type: &schema.EnumType{Values: []string{"a", "b"}}}, Attrs: []schema.Attr{&schema.Charset{V: "latin1"}, &schema.Collation{V: "latin1_swedish_ci"}}},
-					{Name: "c2", Type: &schema.ColumnType{Raw: "enum('c','d')", Type: &schema.EnumType{Values: []string{"c", "d"}}, Default: &schema.RawExpr{X: "d"}}, Attrs: []schema.Attr{&schema.Charset{V: "latin1"}, &schema.Collation{V: "latin1_swedish_ci"}}},
+					{Name: "c2", Type: &schema.ColumnType{Raw: "enum('c','d')", Type: &schema.EnumType{Values: []string{"c", "d"}}}, Default: &schema.RawExpr{X: "d"}, Attrs: []schema.Attr{&schema.Charset{V: "latin1"}, &schema.Collation{V: "latin1_swedish_ci"}}},
 				}, t.Columns)
 			},
 		},
@@ -315,7 +315,7 @@ func TestDriver_Table(t *testing.T) {
 					{Name: "c1", Type: &schema.ColumnType{Raw: "date", Type: &schema.TimeType{T: "date"}}},
 					{Name: "c2", Type: &schema.ColumnType{Raw: "datetime", Type: &schema.TimeType{T: "datetime"}}},
 					{Name: "c3", Type: &schema.ColumnType{Raw: "time", Type: &schema.TimeType{T: "time"}}},
-					{Name: "c4", Type: &schema.ColumnType{Raw: "timestamp", Type: &schema.TimeType{T: "timestamp"}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP"}}, Attrs: []schema.Attr{&OnUpdate{A: "on update current_timestamp"}}},
+					{Name: "c4", Type: &schema.ColumnType{Raw: "timestamp", Type: &schema.TimeType{T: "timestamp"}}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP"}, Attrs: []schema.Attr{&OnUpdate{A: "on update current_timestamp"}}},
 					{Name: "c5", Type: &schema.ColumnType{Raw: "year(4)", Type: &schema.TimeType{T: "year"}}},
 					{Name: "c6", Type: &schema.ColumnType{Raw: "year", Type: &schema.TimeType{T: "year"}}},
 				}, t.Columns)
