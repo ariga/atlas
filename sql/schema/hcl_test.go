@@ -1,7 +1,7 @@
 package schema
 
 import (
-	"os"
+	"io/ioutil"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -9,7 +9,7 @@ import (
 
 func TestBasicSchemaUnmarshal(t *testing.T) {
 	filename := "testdata/basic.schema"
-	bytes, err := os.ReadFile(filename)
+	bytes, err := ioutil.ReadFile(filename)
 	require.NoError(t, err)
 	um := &Unmarshaler{}
 	tables, err := um.UnmarshalHCL(bytes, filename)
