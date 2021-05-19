@@ -1,6 +1,13 @@
 package schema
 
 type (
+	// A Schema describes a database schema (i.e. named database).
+	Schema struct {
+		Name   string
+		Tables []*Table
+		Attrs  []Attr // Attributes and options.
+	}
+
 	// A Table represents a table definition.
 	Table struct {
 		Name        string

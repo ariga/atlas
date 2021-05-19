@@ -30,21 +30,21 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 
 // Realm returns schema descriptions of all resources in the given realm.
 func (d *Driver) Realm(ctx context.Context, opts *schema.InspectRealmOption) (*schema.Realm, error) {
-	if opts == nil || len(opts.Schemas) == 0 {
-		return nil, fmt.Errorf("mysql: at least 1 schema is required")
+	schemas, err := d.schemas(ctx, opts)
+	if err != nil {
+		return nil, err
 	}
-	realm := &schema.Realm{}
-	for _, s := range opts.Schemas {
+	for _, s := range schemas {
 		tables, err := d.Tables(ctx, &schema.InspectTableOptions{
-			Schema: s,
+			Schema: s.Name,
 		})
 		if err != nil {
 			return nil, err
 		}
-		realm.Schemas = append(realm.Schemas, &schema.Schema{Name: s, Tables: tables})
+		s.Tables = tables
 	}
-	linkSchemaTables(realm.Schemas)
-	return realm, nil
+	linkSchemaTables(schemas)
+	return &schema.Realm{Schemas: schemas}, nil
 }
 
 // Tables returns schema descriptions of all tables in the given schema.
@@ -89,6 +89,46 @@ func (d *Driver) Table(ctx context.Context, name string, opts *schema.InspectTab
 		}
 	}
 	return t, nil
+}
+
+// schemas returns the list of the schemas in the database.
+func (d *Driver) schemas(ctx context.Context, opts *schema.InspectRealmOption) ([]*schema.Schema, error) {
+	var (
+		args  []interface{}
+		query = schemasQuery
+	)
+	if opts != nil && len(opts.Schemas) > 0 {
+		query += " WHERE `SCHEMA_NAME` IN (" + strings.Repeat("?, ", len(opts.Schemas)-1) + "?)"
+		for _, s := range opts.Schemas {
+			args = append(args, s)
+		}
+	} else {
+		query += " WHERE `SCHEMA_NAME` NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')"
+	}
+	rows, err := d.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("mysql: querying schemas: %w", err)
+	}
+	defer rows.Close()
+	var schemas []*schema.Schema
+	for rows.Next() {
+		var name, charset, collation string
+		if err := rows.Scan(&name, &charset, &collation); err != nil {
+			return nil, err
+		}
+		schemas = append(schemas, &schema.Schema{
+			Name: name,
+			Attrs: []schema.Attr{
+				&schema.Charset{
+					V: charset,
+				},
+				&schema.Collation{
+					V: collation,
+				},
+			},
+		})
+	}
+	return schemas, nil
 }
 
 // table returns the table from the database, or a NotExistError if the table was not found.
@@ -523,6 +563,9 @@ func validString(s sql.NullString) bool {
 }
 
 const (
+	// Query to list database schemas.
+	schemasQuery = "SELECT `SCHEMA_NAME`, `DEFAULT_CHARACTER_SET_NAME`, `DEFAULT_COLLATION_NAME` from `INFORMATION_SCHEMA`.`SCHEMATA`"
+
 	// Queries to list schema tables.
 	tablesSchemaQuery = "SELECT `TABLE_NAME` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = ?"
 	tablesQuery       = "SELECT `TABLE_NAME` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = (SELECT DATABASE())"

@@ -57,12 +57,6 @@ type (
 		Attrs   []Attr
 	}
 
-	// A Schema describes a database schema (i.e. named database).
-	Schema struct {
-		Name   string
-		Tables []*Table
-	}
-
 	// InspectTableOptions describes options for RealmInspector.
 	InspectRealmOption struct {
 		// Schemas to inspect. At least 1 schema is required.
