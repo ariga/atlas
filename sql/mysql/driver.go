@@ -250,7 +250,7 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 		return err
 	}
 	if validString(defaults) {
-		c.Type.Default = &schema.RawExpr{
+		c.Default = &schema.RawExpr{
 			X: defaults.String,
 		}
 	}

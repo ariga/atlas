@@ -16,6 +16,7 @@ type (
 	Column struct {
 		Name        string
 		Type        *ColumnType
+		Default     Expr
 		Attrs       []Attr
 		Indexes     []*Index
 		ForeignKeys []*ForeignKey
@@ -23,10 +24,9 @@ type (
 
 	// ColumnType represents a column type that is implemented by the dialect.
 	ColumnType struct {
-		Type    Type
-		Raw     string
-		Null    bool
-		Default Expr
+		Type Type
+		Raw  string
+		Null bool
 	}
 
 	// An Index represents an index definition.
