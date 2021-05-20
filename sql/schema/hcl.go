@@ -2,6 +2,7 @@ package schema
 
 import (
 	"fmt"
+
 	"sort"
 
 	"github.com/hashicorp/hcl/v2"
@@ -10,8 +11,53 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+type ColumnTypeUnmarshaler func(*hcl.EvalContext, *columnHCL) (*ColumnType, error)
+
 // Unmarshaler is used to read textual representations of schemas into schema.Schema elements.
 type Unmarshaler struct {
+	registry map[string]ColumnTypeUnmarshaler
+}
+
+func NewUnmarshaler() *Unmarshaler {
+	reg := map[string]ColumnTypeUnmarshaler{
+		"integer": func(ctx *hcl.EvalContext, col *columnHCL) (*ColumnType, error) {
+			var v struct {
+				Size     int  `hcl:"size,optional"`
+				Unsigned bool `hcl:"unsigned,optional"`
+			}
+			if col.AttributesHCL != nil {
+				if diag := gohcl.DecodeBody(col.AttributesHCL.HCL, ctx, &v); diag.HasErrors() {
+					return nil, diag
+				}
+			}
+			return &ColumnType{
+				Type: &IntegerType{
+					T:        col.TypeName,
+					Size:     v.Size,
+					Unsigned: v.Unsigned,
+				},
+				Null: false,
+			}, nil
+		},
+		"string": func(ctx *hcl.EvalContext, col *columnHCL) (*ColumnType, error) {
+			var v struct {
+				Size int `hcl:"size,optional"`
+			}
+			if col.AttributesHCL != nil {
+				if diag := gohcl.DecodeBody(col.AttributesHCL.HCL, ctx, &v); diag.HasErrors() {
+					return nil, diag
+				}
+			}
+			return &ColumnType{
+				Type: &StringType{
+					T:    col.TypeName,
+					Size: v.Size,
+				},
+				Null: col.Null,
+			}, nil
+		},
+	}
+	return &Unmarshaler{registry: reg}
 }
 
 // UnmarshalHCL converts HCL .schema documents into a slice of Table elements.
@@ -44,7 +90,7 @@ func (u *Unmarshaler) UnmarshalHCL(body []byte, filename string) ([]*Schema, err
 			return nil, fmt.Errorf("schema: unknown schema %q for table %q", table.Schema, table.Name)
 		}
 		for _, colHCL := range tableHCL.Columns {
-			column, err := u.toColumn(colHCL)
+			column, err := u.toColumn(ctx, colHCL)
 			if err != nil {
 				return nil, err
 			}
@@ -87,10 +133,19 @@ func (u *Unmarshaler) evalContext(f *hcl.File) (*hcl.EvalContext, error) {
 	}, nil
 }
 
-func (u *Unmarshaler) toColumn(c *columnHCL) (*Column, error) {
-	// TODO: handle column types and attributes
+func (u *Unmarshaler) toColumn(ctx *hcl.EvalContext, c *columnHCL) (*Column, error) {
+	unmarshaler, ok := u.registry[c.TypeName]
+	if !ok {
+		return nil, fmt.Errorf("schema: no column type unmarshaler for type %q", c.TypeName)
+	}
+	columnType, err := unmarshaler(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	columnType.Null = c.Null
 	return &Column{
 		Name: c.Name,
+		Type: columnType,
 	}, nil
 }
 
@@ -112,6 +167,7 @@ type tableHCL struct {
 type columnHCL struct {
 	Name          string `hcl:",label"`
 	TypeName      string `hcl:"type"`
+	Null          bool   `hcl:"null,optional"`
 	AttributesHCL *struct {
 		HCL hcl.Body `hcl:",remain"`
 	} `hcl:"attributes,block"`
