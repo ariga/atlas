@@ -66,7 +66,7 @@ func (u *Unmarshaler) UnmarshalHCL(body []byte, filename string) ([]*Schema, err
 // variables that can be used in the actual file evaluation
 func (u *Unmarshaler) evalContext(f *hcl.File) (*hcl.EvalContext, error) {
 	fi := &struct {
-		Schemas []*struct {
+		Schemas []struct {
 			Name string `hcl:",label"`
 		} `hcl:"schema,block"`
 		Remain hcl.Body `hcl:",remain"`
@@ -82,7 +82,7 @@ func (u *Unmarshaler) evalContext(f *hcl.File) (*hcl.EvalContext, error) {
 	}
 	return &hcl.EvalContext{
 		Variables: map[string]cty.Value{
-			"schemas": cty.MapVal(schemas),
+			"schema": cty.MapVal(schemas),
 		},
 	}, nil
 }
