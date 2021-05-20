@@ -65,13 +65,13 @@ func (u *Unmarshaler) UnmarshalHCL(body []byte, filename string) ([]*Schema, err
 // evalContext does an initial pass through the hcl.File f and returns a context with populated
 // variables that can be used in the actual file evaluation
 func (u *Unmarshaler) evalContext(f *hcl.File) (*hcl.EvalContext, error) {
-	fi := &struct {
+	var fi struct {
 		Schemas []struct {
 			Name string `hcl:",label"`
 		} `hcl:"schema,block"`
 		Remain hcl.Body `hcl:",remain"`
-	}{}
-	if diag := gohcl.DecodeBody(f.Body, &hcl.EvalContext{}, fi); diag.HasErrors() {
+	}
+	if diag := gohcl.DecodeBody(f.Body, &hcl.EvalContext{}, &fi); diag.HasErrors() {
 		return nil, diag
 	}
 	schemas := make(map[string]cty.Value)
