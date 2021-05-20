@@ -12,8 +12,10 @@ func TestBasicSchemaUnmarshal(t *testing.T) {
 	bytes, err := ioutil.ReadFile(filename)
 	require.NoError(t, err)
 	um := &Unmarshaler{}
-	tables, err := um.UnmarshalHCL(bytes, filename)
+	schemas, err := um.UnmarshalHCL(bytes, filename)
 	require.NoError(t, err)
+	require.EqualValues(t, schemas[0].Name, "todo")
+	tables := schemas[0].Tables
 	require.EqualValues(t, tables[0].Name, "users")
 	require.EqualValues(t, tables[0].Columns[0].Name, "id")
 	require.EqualValues(t, tables[0].Columns[1].Name, "name")

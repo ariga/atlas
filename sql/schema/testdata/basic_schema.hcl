@@ -1,18 +1,23 @@
+schema "todo" {
+
+}
 
 table "users" {
-    column "id" {
-        type = "integer"
-    }
-    column "name" {
-        type = "string"
-    }
+  schema = schemas.todo.name
+  column "id" {
+    type = "integer"
+  }
+  column "name" {
+    type = "string"
+  }
 }
 
 table "roles" {
-    column "id" {
-        type = "integer"
-    }
-    column "name" {
-        type = "string"
-    }
+  schema = schemas.todo.name
+  column "id" {
+    type = "integer"
+  }
+  column "name" {
+    type = "string"
+  }
 }
