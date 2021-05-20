@@ -16,16 +16,19 @@ import (
 // and apply migrations changes on them.
 type Driver struct {
 	schema.ExecQuerier
+	// System variables that are set on `Open`.
 	version string
+	collate string
+	charset string
 }
 
 // Open opens a new MySQL driver.
 func Open(db schema.ExecQuerier) (*Driver, error) {
-	var version [2]string
-	if err := db.QueryRow("SHOW VARIABLES LIKE 'version'").Scan(&version[0], &version[1]); err != nil {
-		return nil, fmt.Errorf("mysql: scanning version: %w", err)
+	drv := &Driver{ExecQuerier: db}
+	if err := db.QueryRow(variablesQuery).Scan(&drv.version, &drv.collate, &drv.charset); err != nil {
+		return nil, fmt.Errorf("mysql: scanning system variables: %w", err)
 	}
-	return &Driver{ExecQuerier: db, version: version[1]}, nil
+	return drv, nil
 }
 
 // Realm returns schema descriptions of all resources in the given realm.
@@ -44,7 +47,10 @@ func (d *Driver) Realm(ctx context.Context, opts *schema.InspectRealmOption) (*s
 		s.Tables = tables
 	}
 	linkSchemaTables(schemas)
-	return &schema.Realm{Schemas: schemas}, nil
+	return &schema.Realm{
+		Schemas: schemas,
+		Attrs:   []schema.Attr{&schema.Charset{V: d.charset}, &schema.Collation{V: d.collate}},
+	}, nil
 }
 
 // Tables returns schema descriptions of all tables in the given schema.
@@ -563,6 +569,9 @@ func validString(s sql.NullString) bool {
 }
 
 const (
+	// Query to list system variables.
+	variablesQuery = "SELECT @@version, @@collation_server, @@character_set_server"
+
 	// Query to list database schemas.
 	schemasQuery = "SELECT `SCHEMA_NAME`, `DEFAULT_CHARACTER_SET_NAME`, `DEFAULT_COLLATION_NAME` from `INFORMATION_SCHEMA`.`SCHEMATA`"
 

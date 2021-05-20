@@ -704,16 +704,27 @@ func TestDriver_Realm(t *testing.T) {
 	require.NoError(t, err)
 	realm, err := drv.Realm(context.Background(), &schema.InspectRealmOption{})
 	require.NoError(t, err)
-	require.EqualValues(t, []*schema.Schema{
-		{
-			Name: "test",
-			Attrs: []schema.Attr{
-				&schema.Charset{V: "utf8mb4"},
-				&schema.Collation{V: "utf8mb4_unicode_ci"},
+	require.EqualValues(t, &schema.Realm{
+		Schemas: []*schema.Schema{
+			{
+				Name: "test",
+				Attrs: []schema.Attr{
+					&schema.Charset{V: "utf8mb4"},
+					&schema.Collation{V: "utf8mb4_unicode_ci"},
+				},
+				Tables: []*schema.Table{},
 			},
-			Tables: []*schema.Table{},
 		},
-	}, realm.Schemas)
+		// Server default configuration.
+		Attrs: []schema.Attr{
+			&schema.Charset{
+				V: "utf8",
+			},
+			&schema.Collation{
+				V: "utf8_general_ci",
+			},
+		},
+	}, realm)
 
 	mk.ExpectQuery(escape(schemasQuery+" WHERE `SCHEMA_NAME` IN (?, ?)")).
 		WithArgs("test", "public").
@@ -754,8 +765,14 @@ type mock struct {
 }
 
 func (m mock) version(version string) {
-	m.ExpectQuery(escape("SHOW VARIABLES LIKE 'version'")).
-		WillReturnRows(sqlmock.NewRows([]string{"Variable_name", "Value"}).AddRow("version", version))
+	m.ExpectQuery(escape(variablesQuery)).
+		WillReturnRows(rows(`
++-----------------+--------------------+------------------------+
+| @@version       | @@collation_server | @@character_set_server |
++-----------------+--------------------+------------------------+
+| ` + version + ` | utf8_general_ci    | utf8                   |
++-----------------+--------------------+------------------------+
+`))
 }
 
 func (m mock) noIndexes() {
