@@ -13,6 +13,40 @@ type Diff struct {
 	Version string
 }
 
+// SchemaDiff implements the schema.Differ interface and returns a list of
+// changes that need to be applied in order to move from one state to the other.
+func (d *Diff) SchemaDiff(from, to *schema.Schema) ([]schema.Change, error) {
+	var changes []schema.Change
+	if change := d.collationChange(from.Attrs, to.Attrs); change != noChange {
+		changes = append(changes, change)
+	}
+	// Drop or modify tables.
+	for _, t1 := range from.Tables {
+		t2, ok := to.Table(t1.Name)
+		if !ok {
+			changes = append(changes, &schema.DropTable{T: t1})
+			continue
+		}
+		change, err := d.TableDiff(t1, t2)
+		if err != nil {
+			return nil, err
+		}
+		if len(change) > 0 {
+			changes = append(changes, &schema.ModifyTable{
+				T:       t1,
+				Changes: change,
+			})
+		}
+	}
+	// Add tables.
+	for _, t1 := range to.Tables {
+		if _, ok := from.Table(t1.Name); !ok {
+			changes = append(changes, &schema.AddTable{T: t1})
+		}
+	}
+	return changes, nil
+}
+
 // TableDiff implements the schema.TableDiffer interface and returns a list of
 // changes that need to be applied in order to move from one state to the other.
 func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
@@ -31,21 +65,8 @@ func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
 	}
 
 	// Collation change.
-	switch c1, c2 := collate(from.Attrs), collate(to.Attrs); {
-	case c1 == nil && c2 == nil:
-	case c2 == nil:
-		changes = append(changes, &schema.DropAttr{
-			A: c1,
-		})
-	case c1 == nil:
-		changes = append(changes, &schema.AddAttr{
-			A: c2,
-		})
-	case c1.V != c2.V:
-		changes = append(changes, &schema.ModifyAttr{
-			From: c1,
-			To:   c2,
-		})
+	if change := d.collationChange(from.Attrs, to.Attrs); change != noChange {
+		changes = append(changes, change)
 	}
 
 	// Drop or modify checks.
@@ -183,6 +204,27 @@ func (d *Diff) indexChange(from, to *schema.Index) schema.ChangeKind {
 	return change
 }
 
+// collationChange returns the schema change (if any) for migrating the collation.
+func (d *Diff) collationChange(from, to []schema.Attr) schema.Change {
+	switch c1, c2 := collate(from), collate(to); {
+	case c1 == nil && c2 == nil:
+	case c2 == nil:
+		return &schema.DropAttr{
+			A: c1,
+		}
+	case c1 == nil:
+		return &schema.AddAttr{
+			A: c2,
+		}
+	case c1.V != c2.V:
+		return &schema.ModifyAttr{
+			From: c1,
+			To:   c2,
+		}
+	}
+	return noChange
+}
+
 // fkChange returns the schema changes (if any) for migrating one index to the other.
 func (d *Diff) fkChange(from, to *schema.ForeignKey) schema.ChangeKind {
 	var change schema.ChangeKind
@@ -251,6 +293,9 @@ func partsChange(from, to []*schema.IndexPart) schema.ChangeKind {
 	}
 	return schema.NoChange
 }
+
+// noChange describes a zero change.
+var noChange struct{ schema.Change }
 
 func pk(t *schema.Table) []*schema.Column {
 	pk := make([]*schema.Column, len(t.PrimaryKey))

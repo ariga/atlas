@@ -22,6 +22,16 @@ func TestDiff_TableDiff(t *testing.T) {
 			to:   &schema.Table{Name: "users"},
 		},
 		{
+			name: "change primary key",
+			from: func() *schema.Table {
+				t := &schema.Table{Name: "users", Columns: []*schema.Column{{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}}}}
+				t.PrimaryKey = t.Columns
+				return t
+			}(),
+			to:      &schema.Table{Name: "users"},
+			wantErr: true,
+		},
+		{
 			name: "add collation",
 			from: &schema.Table{Name: "users"},
 			to:   &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Collation{V: "latin1"}}},
@@ -208,4 +218,41 @@ func TestDiff_TableDiff(t *testing.T) {
 			require.EqualValues(t, tt.wantChanges, changes)
 		})
 	}
+}
+
+func TestDiff_SchemaDiff(t *testing.T) {
+	var (
+		d    Diff
+		from = &schema.Schema{
+			Tables: []*schema.Table{
+				{Name: "users"},
+				{Name: "pets"},
+			},
+			Attrs: []schema.Attr{
+				&schema.Collation{V: "latin1"},
+			},
+		}
+		to = &schema.Schema{
+			Tables: []*schema.Table{
+				{
+					Name: "users",
+					Columns: []*schema.Column{
+						{Name: "t2_id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
+					},
+				},
+				{Name: "groups"},
+			},
+			Attrs: []schema.Attr{
+				&schema.Collation{V: "utf8"},
+			},
+		}
+	)
+	changes, err := d.SchemaDiff(from, to)
+	require.NoError(t, err)
+	require.EqualValues(t, []schema.Change{
+		&schema.ModifyAttr{From: from.Attrs[0], To: to.Attrs[0]},
+		&schema.ModifyTable{T: from.Tables[0], Changes: []schema.Change{&schema.AddColumn{C: to.Tables[0].Columns[0]}}},
+		&schema.DropTable{T: from.Tables[1]},
+		&schema.AddTable{T: to.Tables[1]},
+	}, changes)
 }

@@ -66,6 +66,16 @@ type (
 	}
 )
 
+// Table returns the first table that matched the given name.
+func (s *Schema) Table(name string) (*Table, bool) {
+	for _, t := range s.Tables {
+		if t.Name == name {
+			return t, true
+		}
+	}
+	return nil, false
+}
+
 // Column returns the first column that matched the given name.
 func (t *Table) Column(name string) (*Column, bool) {
 	for _, c := range t.Columns {
