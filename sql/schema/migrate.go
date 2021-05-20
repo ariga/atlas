@@ -30,6 +30,12 @@ type (
 		Extra []Expr // Extra clauses.
 	}
 
+	// ModifyTable describes a table modification change.
+	ModifyTable struct {
+		T       *Table
+		Changes []Change
+	}
+
 	// AddColumn describes a column creation change.
 	AddColumn struct {
 		C *Column
@@ -150,6 +156,7 @@ func (*DropAttr) change()         {}
 func (*ModifyAttr) change()       {}
 func (*AddTable) change()         {}
 func (*DropTable) change()        {}
+func (*ModifyTable) change()      {}
 func (*AddIndex) change()         {}
 func (*DropIndex) change()        {}
 func (*ModifyIndex) change()      {}
