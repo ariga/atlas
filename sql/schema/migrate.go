@@ -21,13 +21,13 @@ type (
 	// AddTable describes a table creation change.
 	AddTable struct {
 		T     *Table
-		Attrs []Attr
+		Extra []Expr // Extra clauses and options.
 	}
 
 	// DropTable describes a table removal change.
 	DropTable struct {
 		T     *Table
-		Attrs []Attr
+		Extra []Expr // Extra clauses.
 	}
 
 	// AddColumn describes a column creation change.
