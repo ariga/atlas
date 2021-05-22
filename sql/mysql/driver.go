@@ -492,6 +492,81 @@ func (d *Driver) tableNames(ctx context.Context, opts *schema.InspectTableOption
 	return names, nil
 }
 
+// Exec executes the changes on the database. An error is returned
+// if one of the operations fail, or a change is not supported.
+func (d *Driver) Exec(ctx context.Context, changes []schema.Change) (err error) {
+	for _, c := range changes {
+		switch c := c.(type) {
+		case *schema.AddTable:
+			err = d.addTable(ctx, c)
+		case *schema.DropTable:
+			err = d.dropTable(ctx, c)
+		default:
+			err = fmt.Errorf("mysql: unsupported change %T", c)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return
+}
+
+func (d *Driver) addTable(ctx context.Context, add *schema.AddTable) error {
+	var b strings.Builder
+	b.WriteString("CREATE TABLE ")
+	ident(&b, add.T.Name)
+	b.WriteString("(")
+	for i, c := range add.T.Columns {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		ident(&b, c.Name)
+		b.WriteByte(' ')
+		b.WriteString(c.Type.Raw)
+		b.WriteByte(' ')
+		if !c.Type.Null {
+			b.WriteString("NOT ")
+		}
+		b.WriteString("NULL")
+	}
+	if len(add.T.PrimaryKey) > 0 {
+		b.WriteString(", PRIMARY KEY(")
+		for i, c := range add.T.PrimaryKey {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			ident(&b, c.Name)
+		}
+		b.WriteByte(')')
+	}
+	b.WriteString(")")
+	if _, err := d.ExecContext(ctx, b.String()); err != nil {
+		return fmt.Errorf("mysql: create table: %w", err)
+	}
+	return nil
+}
+
+func (d *Driver) dropTable(ctx context.Context, drop *schema.DropTable) error {
+	var b strings.Builder
+	b.WriteString("DROP TABLE ")
+	if drop.T.Schema != "" {
+		ident(&b, drop.T.Schema)
+		b.WriteByte('.')
+	}
+	ident(&b, drop.T.Name)
+	if _, err := d.ExecContext(ctx, b.String()); err != nil {
+		return fmt.Errorf("mysql: drop table: %w", err)
+	}
+	return nil
+}
+
+// ident writes the given identifier in MySQL format.
+func ident(b *strings.Builder, ident string) {
+	b.WriteByte('`')
+	b.WriteString(ident)
+	b.WriteByte('`')
+}
+
 // parseColumn returns column parts, size and signed-info from a MySQL type.
 func parseColumn(typ string) (parts []string, size int64, unsigned bool, err error) {
 	switch parts = strings.FieldsFunc(typ, func(r rune) bool {
