@@ -86,3 +86,30 @@ func TestDefault(t *testing.T) {
 		},
 	})
 }
+
+func TestAttributes(t *testing.T) {
+	filename := "testdata/attributes.hcl"
+	bytes, err := ioutil.ReadFile(filename)
+	require.NoError(t, err)
+	schemas, err := UnmarshalHCL(bytes, filename)
+	require.NoError(t, err)
+	require.EqualValues(t, schemas[0].Tables[0], &Table{
+		Name:   "tasks",
+		Schema: "todo",
+		Columns: []*Column{
+			{
+				Name: "text",
+				Type: &ColumnType{
+					Type: &StringType{
+						T: "string",
+					},
+				},
+				Attrs: []Attr{
+					&Comment{Text: "comment"},
+					&Charset{V: "charset"},
+					&Collation{V: "collation"},
+				},
+			},
+		},
+	})
+}

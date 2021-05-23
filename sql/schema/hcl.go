@@ -18,6 +18,9 @@ type HCLConverter interface {
 
 	// ConvertDefault returns the default value Expr for the column.
 	ConvertDefault(*hcl.EvalContext, *ColumnHCL) (Expr, error)
+
+	// ConvertAttrs returns a slice of Attr elements describing the column.
+	ConvertAttrs(ctx *hcl.EvalContext, column *ColumnHCL) ([]Attr, error)
 }
 
 type DefaultHCLConverter struct {
@@ -41,6 +44,31 @@ func (c *DefaultHCLConverter) ConvertDefault(ctx *hcl.EvalContext, column *Colum
 	return nil, nil
 }
 
+func (c *DefaultHCLConverter) ConvertAttrs(ctx *hcl.EvalContext, column *ColumnHCL) ([]Attr, error) {
+	var v struct {
+		Comment   *string  `hcl:"comment,optional"`
+		Charset   *string  `hcl:"charset,optional"`
+		Collation *string  `hcl:"collation,optional"`
+		Remain    hcl.Body `hcl:",remain"`
+	}
+	var out []Attr
+	if column.Remain != nil {
+		if diag := gohcl.DecodeBody(column.Remain, ctx, &v); diag.HasErrors() {
+			return nil, diag
+		}
+	}
+	if v.Comment != nil {
+		out = append(out, &Comment{Text: *v.Comment})
+	}
+	if v.Charset != nil {
+		out = append(out, &Charset{V: *v.Charset})
+	}
+	if v.Collation != nil {
+		out = append(out, &Collation{V: *v.Collation})
+	}
+	return out, nil
+}
+
 func (c *DefaultHCLConverter) convertType(ctx *hcl.EvalContext, column *ColumnHCL) (Type, error) {
 	switch column.TypeName {
 	case "integer":
@@ -60,7 +88,8 @@ func (c *DefaultHCLConverter) convertType(ctx *hcl.EvalContext, column *ColumnHC
 
 func (*DefaultHCLConverter) convertString(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
 	var v struct {
-		Size int `hcl:"size,optional"`
+		Size   int      `hcl:"size,optional"`
+		Remain hcl.Body `hcl:",remain"`
 	}
 	if col.Remain != nil {
 		if diag := gohcl.DecodeBody(col.Remain, ctx, &v); diag.HasErrors() {
@@ -75,7 +104,8 @@ func (*DefaultHCLConverter) convertString(ctx *hcl.EvalContext, col *ColumnHCL) 
 
 func (*DefaultHCLConverter) convertBinary(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
 	var v struct {
-		Size int `hcl:"size,optional"`
+		Size   int      `hcl:"size,optional"`
+		Remain hcl.Body `hcl:",remain"`
 	}
 	if col.Remain != nil {
 		if diag := gohcl.DecodeBody(col.Remain, ctx, &v); diag.HasErrors() {
@@ -90,8 +120,9 @@ func (*DefaultHCLConverter) convertBinary(ctx *hcl.EvalContext, col *ColumnHCL) 
 
 func (*DefaultHCLConverter) convertInteger(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
 	var v struct {
-		Size     int  `hcl:"size,optional"`
-		Unsigned bool `hcl:"unsigned,optional"`
+		Size     int      `hcl:"size,optional"`
+		Unsigned bool     `hcl:"unsigned,optional"`
+		Remain   hcl.Body `hcl:",remain"`
 	}
 	if col.Remain != nil {
 		if diag := gohcl.DecodeBody(col.Remain, ctx, &v); diag.HasErrors() {
@@ -108,6 +139,7 @@ func (*DefaultHCLConverter) convertInteger(ctx *hcl.EvalContext, col *ColumnHCL)
 func (*DefaultHCLConverter) convertEnum(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
 	var v struct {
 		Values []string `hcl:"values"`
+		Remain hcl.Body `hcl:",remain"`
 	}
 	if col.Remain != nil {
 		if diag := gohcl.DecodeBody(col.Remain, ctx, &v); diag.HasErrors() {
@@ -211,11 +243,16 @@ func toColumn(ctx *hcl.EvalContext, column *ColumnHCL, converter HCLConverter) (
 	if err != nil {
 		return nil, err
 	}
+	attrs, err := converter.ConvertAttrs(ctx, column)
+	if err != nil {
+		return nil, err
+	}
 	columnType.Null = column.Null
 	return &Column{
 		Name:    column.Name,
 		Type:    columnType,
 		Default: def,
+		Attrs:   attrs,
 	}, nil
 }
 
