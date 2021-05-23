@@ -55,4 +55,7 @@ table "todos" {
       size = 128
     }
   }
+  column "visible" {
+    type = "boolean"
+  }
 }

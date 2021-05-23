@@ -39,6 +39,8 @@ func (c *DefaultHCLConverter) convertType(ctx *hcl.EvalContext, column *ColumnHC
 		return c.convertEnum(ctx, column)
 	case "binary":
 		return c.convertBinary(ctx, column)
+	case "boolean":
+		return c.convertBool(ctx, column)
 	default:
 		return nil, fmt.Errorf("schema: unsupported column type %q", column.TypeName)
 	}
@@ -102,6 +104,12 @@ func (*DefaultHCLConverter) convertEnum(ctx *hcl.EvalContext, col *ColumnHCL) (T
 	}
 	return &EnumType{
 		Values: v.Values,
+	}, nil
+}
+
+func (*DefaultHCLConverter) convertBool(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
+	return &BoolType{
+		T: col.TypeName,
 	}, nil
 }
 

@@ -51,4 +51,7 @@ func TestBasicSchemaUnmarshal(t *testing.T) {
 		T:    "binary",
 		Size: 128,
 	}, tables[2].Columns[3].Type.Type)
+	require.EqualValues(t, &BoolType{
+		T: "boolean",
+	}, tables[2].Columns[4].Type.Type)
 }
