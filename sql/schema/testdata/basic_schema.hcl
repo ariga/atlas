@@ -7,17 +7,13 @@ table "users" {
   column "id" {
     type = "integer"
     null = false
-    attributes {
-      size = 1
-      unsigned = true
-    }
+    size = 1
+    unsigned = true
   }
   column "name" {
     type = "string"
     null = true
-    attributes {
-      size = 255
-    }
+    size = 255
   }
 }
 
@@ -41,19 +37,15 @@ table "todos" {
   }
   column "status" {
     type = "enum"
-    attributes {
-      values = [
-        "pending",
-        "in_progress",
-        "done",
-      ]
-    }
+    values = [
+      "pending",
+      "in_progress",
+      "done",
+    ]
   }
   column "signature" {
     type = "binary"
-    attributes {
-      size = 128
-    }
+    size = 128
   }
   column "visible" {
     type = "boolean"
