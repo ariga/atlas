@@ -30,3 +30,23 @@ table "roles" {
     type = "string"
   }
 }
+
+table "todos" {
+  schema = schema.todo.name
+  column "id" {
+    type = "integer"
+  }
+  column "content" {
+    type = "string"
+  }
+  column "status" {
+    type = "enum"
+    attributes {
+      values = [
+        "pending",
+        "in_progress",
+        "done",
+      ]
+    }
+  }
+}

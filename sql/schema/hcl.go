@@ -19,17 +19,30 @@ type DefaultHCLConverter struct {
 }
 
 func (c *DefaultHCLConverter) ConvertType(ctx *hcl.EvalContext, column *ColumnHCL) (*ColumnType, error) {
+	typ, err := c.convertType(ctx, column)
+	if err != nil {
+		return nil, err
+	}
+	return &ColumnType{
+		Type: typ,
+		Null: column.Null,
+	}, nil
+}
+
+func (c *DefaultHCLConverter) convertType(ctx *hcl.EvalContext, column *ColumnHCL) (Type, error) {
 	switch column.TypeName {
 	case "integer":
 		return c.convertInteger(ctx, column)
 	case "string":
 		return c.convertString(ctx, column)
+	case "enum":
+		return c.convertEnum(ctx, column)
 	default:
 		return nil, fmt.Errorf("schema: unsupported column type %q", column.TypeName)
 	}
 }
 
-func (*DefaultHCLConverter) convertString(ctx *hcl.EvalContext, col *ColumnHCL) (*ColumnType, error) {
+func (*DefaultHCLConverter) convertString(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
 	var v struct {
 		Size int `hcl:"size,optional"`
 	}
@@ -38,16 +51,28 @@ func (*DefaultHCLConverter) convertString(ctx *hcl.EvalContext, col *ColumnHCL) 
 			return nil, diag
 		}
 	}
-	return &ColumnType{
-		Type: &StringType{
-			T:    col.TypeName,
-			Size: v.Size,
-		},
-		Null: col.Null,
+	return &StringType{
+		T:    col.TypeName,
+		Size: v.Size,
 	}, nil
 }
 
-func (*DefaultHCLConverter) convertInteger(ctx *hcl.EvalContext, col *ColumnHCL) (*ColumnType, error) {
+func (*DefaultHCLConverter) convertBinary(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
+	var v struct {
+		Size int `hcl:"size,optional"`
+	}
+	if col.Attributes != nil {
+		if diag := gohcl.DecodeBody(col.Attributes.HCL, ctx, &v); diag.HasErrors() {
+			return nil, diag
+		}
+	}
+	return &BinaryType{
+		T:    col.TypeName,
+		Size: v.Size,
+	}, nil
+}
+
+func (*DefaultHCLConverter) convertInteger(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
 	var v struct {
 		Size     int  `hcl:"size,optional"`
 		Unsigned bool `hcl:"unsigned,optional"`
@@ -57,13 +82,24 @@ func (*DefaultHCLConverter) convertInteger(ctx *hcl.EvalContext, col *ColumnHCL)
 			return nil, diag
 		}
 	}
-	return &ColumnType{
-		Type: &IntegerType{
-			T:        col.TypeName,
-			Size:     v.Size,
-			Unsigned: v.Unsigned,
-		},
-		Null: false,
+	return &IntegerType{
+		T:        col.TypeName,
+		Size:     v.Size,
+		Unsigned: v.Unsigned,
+	}, nil
+}
+
+func (*DefaultHCLConverter) convertEnum(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
+	var v struct {
+		Values []string `hcl:"values"`
+	}
+	if col.Attributes != nil {
+		if diag := gohcl.DecodeBody(col.Attributes.HCL, ctx, &v); diag.HasErrors() {
+			return nil, diag
+		}
+	}
+	return &EnumType{
+		Values: v.Values,
 	}, nil
 }
 
