@@ -2,6 +2,7 @@ package schema
 
 import (
 	"fmt"
+
 	"sort"
 
 	"github.com/hashicorp/hcl/v2"
@@ -10,18 +11,70 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-// Unmarshaler is used to read textual representations of schemas into schema.Schema elements.
-type Unmarshaler struct {
+type HCLConverter interface {
+	ConvertType(*hcl.EvalContext, *ColumnHCL) (*ColumnType, error)
+}
+
+type DefaultHCLConverter struct {
+}
+
+func (c *DefaultHCLConverter) ConvertType(ctx *hcl.EvalContext, column *ColumnHCL) (*ColumnType, error) {
+	switch column.TypeName {
+	case "integer":
+		return c.convertInteger(ctx, column)
+	case "string":
+		return c.convertString(ctx, column)
+	default:
+		return nil, fmt.Errorf("schema: unsupported column type %q", column.TypeName)
+	}
+}
+
+func (*DefaultHCLConverter) convertString(ctx *hcl.EvalContext, col *ColumnHCL) (*ColumnType, error) {
+	var v struct {
+		Size int `hcl:"size,optional"`
+	}
+	if col.Attributes != nil {
+		if diag := gohcl.DecodeBody(col.Attributes.HCL, ctx, &v); diag.HasErrors() {
+			return nil, diag
+		}
+	}
+	return &ColumnType{
+		Type: &StringType{
+			T:    col.TypeName,
+			Size: v.Size,
+		},
+		Null: col.Null,
+	}, nil
+}
+
+func (*DefaultHCLConverter) convertInteger(ctx *hcl.EvalContext, col *ColumnHCL) (*ColumnType, error) {
+	var v struct {
+		Size     int  `hcl:"size,optional"`
+		Unsigned bool `hcl:"unsigned,optional"`
+	}
+	if col.Attributes != nil {
+		if diag := gohcl.DecodeBody(col.Attributes.HCL, ctx, &v); diag.HasErrors() {
+			return nil, diag
+		}
+	}
+	return &ColumnType{
+		Type: &IntegerType{
+			T:        col.TypeName,
+			Size:     v.Size,
+			Unsigned: v.Unsigned,
+		},
+		Null: false,
+	}, nil
 }
 
 // UnmarshalHCL converts HCL .schema documents into a slice of Table elements.
-func (u *Unmarshaler) UnmarshalHCL(body []byte, filename string) ([]*Schema, error) {
+func UnmarshalHCL(body []byte, filename string) ([]*Schema, error) {
 	parser := hclparse.NewParser()
 	srcHCL, diag := parser.ParseHCL(body, filename)
 	if diag.HasErrors() {
 		return nil, diag
 	}
-	ctx, err := u.evalContext(srcHCL)
+	ctx, err := evalContext(srcHCL)
 	if err != nil {
 		return nil, err
 	}
@@ -43,8 +96,9 @@ func (u *Unmarshaler) UnmarshalHCL(body []byte, filename string) ([]*Schema, err
 		if _, ok := schemas[table.Schema]; !ok {
 			return nil, fmt.Errorf("schema: unknown schema %q for table %q", table.Schema, table.Name)
 		}
+		conv := &DefaultHCLConverter{}
 		for _, colHCL := range tableHCL.Columns {
-			column, err := u.toColumn(colHCL)
+			column, err := toColumn(ctx, colHCL, conv)
 			if err != nil {
 				return nil, err
 			}
@@ -64,7 +118,7 @@ func (u *Unmarshaler) UnmarshalHCL(body []byte, filename string) ([]*Schema, err
 
 // evalContext does an initial pass through the hcl.File f and returns a context with populated
 // variables that can be used in the actual file evaluation
-func (u *Unmarshaler) evalContext(f *hcl.File) (*hcl.EvalContext, error) {
+func evalContext(f *hcl.File) (*hcl.EvalContext, error) {
 	var fi struct {
 		Schemas []struct {
 			Name string `hcl:",label"`
@@ -87,10 +141,15 @@ func (u *Unmarshaler) evalContext(f *hcl.File) (*hcl.EvalContext, error) {
 	}, nil
 }
 
-func (u *Unmarshaler) toColumn(c *columnHCL) (*Column, error) {
-	// TODO: handle column types and attributes
+func toColumn(ctx *hcl.EvalContext, c *ColumnHCL, converter HCLConverter) (*Column, error) {
+	columnType, err := converter.ConvertType(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	columnType.Null = c.Null
 	return &Column{
 		Name: c.Name,
+		Type: columnType,
 	}, nil
 }
 
@@ -106,13 +165,14 @@ type schemaHCL struct {
 type tableHCL struct {
 	Name    string       `hcl:",label"`
 	Schema  string       `hcl:"schema"`
-	Columns []*columnHCL `hcl:"column,block"`
+	Columns []*ColumnHCL `hcl:"column,block"`
 }
 
-type columnHCL struct {
-	Name          string `hcl:",label"`
-	TypeName      string `hcl:"type"`
-	AttributesHCL *struct {
+type ColumnHCL struct {
+	Name       string `hcl:",label"`
+	TypeName   string `hcl:"type"`
+	Null       bool   `hcl:"null,optional"`
+	Attributes *struct {
 		HCL hcl.Body `hcl:",remain"`
 	} `hcl:"attributes,block"`
 }
