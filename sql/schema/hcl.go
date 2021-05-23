@@ -33,8 +33,8 @@ func (*DefaultHCLConverter) convertString(ctx *hcl.EvalContext, col *ColumnHCL) 
 	var v struct {
 		Size int `hcl:"size,optional"`
 	}
-	if col.AttributesHCL != nil {
-		if diag := gohcl.DecodeBody(col.AttributesHCL.HCL, ctx, &v); diag.HasErrors() {
+	if col.Attributes != nil {
+		if diag := gohcl.DecodeBody(col.Attributes.HCL, ctx, &v); diag.HasErrors() {
 			return nil, diag
 		}
 	}
@@ -52,8 +52,8 @@ func (*DefaultHCLConverter) convertInteger(ctx *hcl.EvalContext, col *ColumnHCL)
 		Size     int  `hcl:"size,optional"`
 		Unsigned bool `hcl:"unsigned,optional"`
 	}
-	if col.AttributesHCL != nil {
-		if diag := gohcl.DecodeBody(col.AttributesHCL.HCL, ctx, &v); diag.HasErrors() {
+	if col.Attributes != nil {
+		if diag := gohcl.DecodeBody(col.Attributes.HCL, ctx, &v); diag.HasErrors() {
 			return nil, diag
 		}
 	}
@@ -169,10 +169,10 @@ type tableHCL struct {
 }
 
 type ColumnHCL struct {
-	Name          string `hcl:",label"`
-	TypeName      string `hcl:"type"`
-	Null          bool   `hcl:"null,optional"`
-	AttributesHCL *struct {
+	Name       string `hcl:",label"`
+	TypeName   string `hcl:"type"`
+	Null       bool   `hcl:"null,optional"`
+	Attributes *struct {
 		HCL hcl.Body `hcl:",remain"`
 	} `hcl:"attributes,block"`
 }
