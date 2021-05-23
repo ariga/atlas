@@ -11,8 +11,13 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+// HCLConverter converts column definitions an HCL file to schema components.
 type HCLConverter interface {
+	// ConvertType returns the ColumnType of the column.
 	ConvertType(*hcl.EvalContext, *ColumnHCL) (*ColumnType, error)
+
+	// ConvertDefault returns the default value Expr for the column.
+	ConvertDefault(*hcl.EvalContext, *ColumnHCL) (Expr, error)
 }
 
 type DefaultHCLConverter struct {
@@ -27,6 +32,13 @@ func (c *DefaultHCLConverter) ConvertType(ctx *hcl.EvalContext, column *ColumnHC
 		Type: typ,
 		Null: column.Null,
 	}, nil
+}
+
+func (c *DefaultHCLConverter) ConvertDefault(ctx *hcl.EvalContext, column *ColumnHCL) (Expr, error) {
+	if column.Default != nil {
+		return &RawExpr{X: *column.Default}, nil
+	}
+	return nil, nil
 }
 
 func (c *DefaultHCLConverter) convertType(ctx *hcl.EvalContext, column *ColumnHCL) (Type, error) {
@@ -195,10 +207,15 @@ func toColumn(ctx *hcl.EvalContext, column *ColumnHCL, converter HCLConverter) (
 	if err != nil {
 		return nil, err
 	}
+	def, err := converter.ConvertDefault(ctx, column)
+	if err != nil {
+		return nil, err
+	}
 	columnType.Null = column.Null
 	return &Column{
-		Name: column.Name,
-		Type: columnType,
+		Name:    column.Name,
+		Type:    columnType,
+		Default: def,
 	}, nil
 }
 
@@ -221,5 +238,6 @@ type ColumnHCL struct {
 	Name     string   `hcl:",label"`
 	TypeName string   `hcl:"type"`
 	Null     bool     `hcl:"null,optional"`
+	Default  *string  `hcl:"default,optional"`
 	Remain   hcl.Body `hcl:",remain"`
 }
