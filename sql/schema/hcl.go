@@ -67,24 +67,14 @@ func (*DefaultHCLConverter) convertInteger(ctx *hcl.EvalContext, col *ColumnHCL)
 	}, nil
 }
 
-// Unmarshaler is used to read textual representations of schemas into schema.Schema elements.
-type Unmarshaler struct {
-	converter HCLConverter
-}
-
-func NewUnmarshaler() *Unmarshaler {
-
-	return &Unmarshaler{converter: &DefaultHCLConverter{}}
-}
-
 // UnmarshalHCL converts HCL .schema documents into a slice of Table elements.
-func (u *Unmarshaler) UnmarshalHCL(body []byte, filename string) ([]*Schema, error) {
+func UnmarshalHCL(body []byte, filename string) ([]*Schema, error) {
 	parser := hclparse.NewParser()
 	srcHCL, diag := parser.ParseHCL(body, filename)
 	if diag.HasErrors() {
 		return nil, diag
 	}
-	ctx, err := u.evalContext(srcHCL)
+	ctx, err := evalContext(srcHCL)
 	if err != nil {
 		return nil, err
 	}
@@ -106,8 +96,9 @@ func (u *Unmarshaler) UnmarshalHCL(body []byte, filename string) ([]*Schema, err
 		if _, ok := schemas[table.Schema]; !ok {
 			return nil, fmt.Errorf("schema: unknown schema %q for table %q", table.Schema, table.Name)
 		}
+		conv := &DefaultHCLConverter{}
 		for _, colHCL := range tableHCL.Columns {
-			column, err := u.toColumn(ctx, colHCL)
+			column, err := toColumn(ctx, colHCL, conv)
 			if err != nil {
 				return nil, err
 			}
@@ -127,7 +118,7 @@ func (u *Unmarshaler) UnmarshalHCL(body []byte, filename string) ([]*Schema, err
 
 // evalContext does an initial pass through the hcl.File f and returns a context with populated
 // variables that can be used in the actual file evaluation
-func (u *Unmarshaler) evalContext(f *hcl.File) (*hcl.EvalContext, error) {
+func evalContext(f *hcl.File) (*hcl.EvalContext, error) {
 	var fi struct {
 		Schemas []struct {
 			Name string `hcl:",label"`
@@ -150,8 +141,8 @@ func (u *Unmarshaler) evalContext(f *hcl.File) (*hcl.EvalContext, error) {
 	}, nil
 }
 
-func (u *Unmarshaler) toColumn(ctx *hcl.EvalContext, c *ColumnHCL) (*Column, error) {
-	columnType, err := u.converter.ConvertType(ctx, c)
+func toColumn(ctx *hcl.EvalContext, c *ColumnHCL, converter HCLConverter) (*Column, error) {
+	columnType, err := converter.ConvertType(ctx, c)
 	if err != nil {
 		return nil, err
 	}
