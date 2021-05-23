@@ -54,4 +54,22 @@ func TestBasicSchemaUnmarshal(t *testing.T) {
 	require.EqualValues(t, &BoolType{
 		T: "boolean",
 	}, tables[2].Columns[4].Type.Type)
+	require.EqualValues(t, &DecimalType{
+		T:         "decimal",
+		Precision: 2,
+		Scale:     5,
+	}, tables[2].Columns[5].Type.Type)
+	require.EqualValues(t, &FloatType{
+		T:         "float",
+		Precision: 2,
+	}, tables[2].Columns[6].Type.Type)
+	require.EqualValues(t, &TimeType{
+		T: "time",
+	}, tables[2].Columns[7].Type.Type)
+	require.EqualValues(t, &TimeType{
+		T: "json",
+	}, tables[2].Columns[8].Type.Type)
+	require.EqualValues(t, &TimeType{
+		T: "spatial",
+	}, tables[2].Columns[9].Type.Type)
 }

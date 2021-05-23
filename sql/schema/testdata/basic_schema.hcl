@@ -50,4 +50,22 @@ table "todos" {
   column "visible" {
     type = "boolean"
   }
+  column "decimal_col" {
+    type = "decimal"
+    precision = 2
+    scale = 5
+  }
+  column "float_col" {
+    type = "float"
+    precision = 2
+  }
+  column "created" {
+    type = "time"
+  }
+  column "json_col" {
+    type = "json"
+  }
+  column "spatial_col" {
+    type = "spatial"
+  }
 }

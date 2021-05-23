@@ -41,6 +41,16 @@ func (c *DefaultHCLConverter) convertType(ctx *hcl.EvalContext, column *ColumnHC
 		return c.convertBinary(ctx, column)
 	case "boolean":
 		return c.convertBool(ctx, column)
+	case "decimal":
+		return c.convertDecimal(ctx, column)
+	case "float":
+		return c.convertFloat(ctx, column)
+	case "time":
+		return c.convertTime(ctx, column)
+	case "json":
+		return c.convertJSON(ctx, column)
+	case "spatial":
+		return c.convertSpatial(ctx, column)
 	default:
 		return nil, fmt.Errorf("schema: unsupported column type %q", column.TypeName)
 	}
@@ -93,6 +103,38 @@ func (*DefaultHCLConverter) convertInteger(ctx *hcl.EvalContext, col *ColumnHCL)
 	}, nil
 }
 
+func (*DefaultHCLConverter) convertDecimal(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
+	var v struct {
+		Precision int `hcl:"precision"`
+		Scale     int `hcl:"scale"`
+	}
+	if col.Remain != nil {
+		if diag := gohcl.DecodeBody(col.Remain, ctx, &v); diag.HasErrors() {
+			return nil, diag
+		}
+	}
+	return &DecimalType{
+		T:         col.TypeName,
+		Precision: v.Precision,
+		Scale:     v.Scale,
+	}, nil
+}
+
+func (*DefaultHCLConverter) convertFloat(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
+	var v struct {
+		Precision int `hcl:"precision"`
+	}
+	if col.Remain != nil {
+		if diag := gohcl.DecodeBody(col.Remain, ctx, &v); diag.HasErrors() {
+			return nil, diag
+		}
+	}
+	return &FloatType{
+		T:         col.TypeName,
+		Precision: v.Precision,
+	}, nil
+}
+
 func (*DefaultHCLConverter) convertEnum(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
 	var v struct {
 		Values []string `hcl:"values"`
@@ -109,6 +151,24 @@ func (*DefaultHCLConverter) convertEnum(ctx *hcl.EvalContext, col *ColumnHCL) (T
 
 func (*DefaultHCLConverter) convertBool(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
 	return &BoolType{
+		T: col.TypeName,
+	}, nil
+}
+
+func (*DefaultHCLConverter) convertTime(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
+	return &TimeType{
+		T: col.TypeName,
+	}, nil
+}
+
+func (*DefaultHCLConverter) convertJSON(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
+	return &JSONType{
+		T: col.TypeName,
+	}, nil
+}
+
+func (*DefaultHCLConverter) convertSpatial(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
+	return &SpatialType{
 		T: col.TypeName,
 	}, nil
 }
