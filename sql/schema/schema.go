@@ -172,7 +172,7 @@ type (
 		Scale     int
 	}
 
-	// DecimalType represents a floating-point type that stores approximate numeric values.
+	// FloatType represents a floating-point type that stores approximate numeric values.
 	FloatType struct {
 		T         string
 		Precision int
