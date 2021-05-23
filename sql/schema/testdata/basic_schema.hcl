@@ -49,4 +49,10 @@ table "todos" {
       ]
     }
   }
+  column "signature" {
+    type = "binary"
+    attributes {
+      size = 128
+    }
+  }
 }

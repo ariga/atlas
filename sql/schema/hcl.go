@@ -37,6 +37,8 @@ func (c *DefaultHCLConverter) convertType(ctx *hcl.EvalContext, column *ColumnHC
 		return c.convertString(ctx, column)
 	case "enum":
 		return c.convertEnum(ctx, column)
+	case "binary":
+		return c.convertBinary(ctx, column)
 	default:
 		return nil, fmt.Errorf("schema: unsupported column type %q", column.TypeName)
 	}

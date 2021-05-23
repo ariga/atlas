@@ -47,4 +47,8 @@ func TestBasicSchemaUnmarshal(t *testing.T) {
 	require.EqualValues(t, &EnumType{
 		Values: []string{"pending", "in_progress", "done"},
 	}, tables[2].Columns[2].Type.Type)
+	require.EqualValues(t, &BinaryType{
+		T:    "binary",
+		Size: 128,
+	}, tables[2].Columns[3].Type.Type)
 }
