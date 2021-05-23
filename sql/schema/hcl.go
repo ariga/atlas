@@ -11,53 +11,70 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-type ColumnTypeUnmarshaler func(*hcl.EvalContext, *columnHCL) (*ColumnType, error)
+type HCLConverter interface {
+	ConvertType(*hcl.EvalContext, *ColumnHCL) (*ColumnType, error)
+}
+
+type DefaultHCLConverter struct {
+}
+
+func (c *DefaultHCLConverter) ConvertType(ctx *hcl.EvalContext, column *ColumnHCL) (*ColumnType, error) {
+	switch column.TypeName {
+	case "integer":
+		return c.convertInteger(ctx, column)
+	case "string":
+		return c.convertString(ctx, column)
+	default:
+		return nil, fmt.Errorf("schema: unsupported column type %q", column.TypeName)
+	}
+}
+
+func (*DefaultHCLConverter) convertString(ctx *hcl.EvalContext, col *ColumnHCL) (*ColumnType, error) {
+	var v struct {
+		Size int `hcl:"size,optional"`
+	}
+	if col.AttributesHCL != nil {
+		if diag := gohcl.DecodeBody(col.AttributesHCL.HCL, ctx, &v); diag.HasErrors() {
+			return nil, diag
+		}
+	}
+	return &ColumnType{
+		Type: &StringType{
+			T:    col.TypeName,
+			Size: v.Size,
+		},
+		Null: col.Null,
+	}, nil
+}
+
+func (*DefaultHCLConverter) convertInteger(ctx *hcl.EvalContext, col *ColumnHCL) (*ColumnType, error) {
+	var v struct {
+		Size     int  `hcl:"size,optional"`
+		Unsigned bool `hcl:"unsigned,optional"`
+	}
+	if col.AttributesHCL != nil {
+		if diag := gohcl.DecodeBody(col.AttributesHCL.HCL, ctx, &v); diag.HasErrors() {
+			return nil, diag
+		}
+	}
+	return &ColumnType{
+		Type: &IntegerType{
+			T:        col.TypeName,
+			Size:     v.Size,
+			Unsigned: v.Unsigned,
+		},
+		Null: false,
+	}, nil
+}
 
 // Unmarshaler is used to read textual representations of schemas into schema.Schema elements.
 type Unmarshaler struct {
-	registry map[string]ColumnTypeUnmarshaler
+	converter HCLConverter
 }
 
 func NewUnmarshaler() *Unmarshaler {
-	reg := map[string]ColumnTypeUnmarshaler{
-		"integer": func(ctx *hcl.EvalContext, col *columnHCL) (*ColumnType, error) {
-			var v struct {
-				Size     int  `hcl:"size,optional"`
-				Unsigned bool `hcl:"unsigned,optional"`
-			}
-			if col.AttributesHCL != nil {
-				if diag := gohcl.DecodeBody(col.AttributesHCL.HCL, ctx, &v); diag.HasErrors() {
-					return nil, diag
-				}
-			}
-			return &ColumnType{
-				Type: &IntegerType{
-					T:        col.TypeName,
-					Size:     v.Size,
-					Unsigned: v.Unsigned,
-				},
-				Null: false,
-			}, nil
-		},
-		"string": func(ctx *hcl.EvalContext, col *columnHCL) (*ColumnType, error) {
-			var v struct {
-				Size int `hcl:"size,optional"`
-			}
-			if col.AttributesHCL != nil {
-				if diag := gohcl.DecodeBody(col.AttributesHCL.HCL, ctx, &v); diag.HasErrors() {
-					return nil, diag
-				}
-			}
-			return &ColumnType{
-				Type: &StringType{
-					T:    col.TypeName,
-					Size: v.Size,
-				},
-				Null: col.Null,
-			}, nil
-		},
-	}
-	return &Unmarshaler{registry: reg}
+
+	return &Unmarshaler{converter: &DefaultHCLConverter{}}
 }
 
 // UnmarshalHCL converts HCL .schema documents into a slice of Table elements.
@@ -133,12 +150,8 @@ func (u *Unmarshaler) evalContext(f *hcl.File) (*hcl.EvalContext, error) {
 	}, nil
 }
 
-func (u *Unmarshaler) toColumn(ctx *hcl.EvalContext, c *columnHCL) (*Column, error) {
-	unmarshaler, ok := u.registry[c.TypeName]
-	if !ok {
-		return nil, fmt.Errorf("schema: no column type unmarshaler for type %q", c.TypeName)
-	}
-	columnType, err := unmarshaler(ctx, c)
+func (u *Unmarshaler) toColumn(ctx *hcl.EvalContext, c *ColumnHCL) (*Column, error) {
+	columnType, err := u.converter.ConvertType(ctx, c)
 	if err != nil {
 		return nil, err
 	}
@@ -161,10 +174,10 @@ type schemaHCL struct {
 type tableHCL struct {
 	Name    string       `hcl:",label"`
 	Schema  string       `hcl:"schema"`
-	Columns []*columnHCL `hcl:"column,block"`
+	Columns []*ColumnHCL `hcl:"column,block"`
 }
 
-type columnHCL struct {
+type ColumnHCL struct {
 	Name          string `hcl:",label"`
 	TypeName      string `hcl:"type"`
 	Null          bool   `hcl:"null,optional"`
