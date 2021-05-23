@@ -50,8 +50,8 @@ func (*DefaultHCLConverter) convertString(ctx *hcl.EvalContext, col *ColumnHCL) 
 	var v struct {
 		Size int `hcl:"size,optional"`
 	}
-	if col.Attributes != nil {
-		if diag := gohcl.DecodeBody(col.Attributes.HCL, ctx, &v); diag.HasErrors() {
+	if col.Remain != nil {
+		if diag := gohcl.DecodeBody(col.Remain, ctx, &v); diag.HasErrors() {
 			return nil, diag
 		}
 	}
@@ -65,8 +65,8 @@ func (*DefaultHCLConverter) convertBinary(ctx *hcl.EvalContext, col *ColumnHCL) 
 	var v struct {
 		Size int `hcl:"size,optional"`
 	}
-	if col.Attributes != nil {
-		if diag := gohcl.DecodeBody(col.Attributes.HCL, ctx, &v); diag.HasErrors() {
+	if col.Remain != nil {
+		if diag := gohcl.DecodeBody(col.Remain, ctx, &v); diag.HasErrors() {
 			return nil, diag
 		}
 	}
@@ -81,8 +81,8 @@ func (*DefaultHCLConverter) convertInteger(ctx *hcl.EvalContext, col *ColumnHCL)
 		Size     int  `hcl:"size,optional"`
 		Unsigned bool `hcl:"unsigned,optional"`
 	}
-	if col.Attributes != nil {
-		if diag := gohcl.DecodeBody(col.Attributes.HCL, ctx, &v); diag.HasErrors() {
+	if col.Remain != nil {
+		if diag := gohcl.DecodeBody(col.Remain, ctx, &v); diag.HasErrors() {
 			return nil, diag
 		}
 	}
@@ -97,8 +97,8 @@ func (*DefaultHCLConverter) convertEnum(ctx *hcl.EvalContext, col *ColumnHCL) (T
 	var v struct {
 		Values []string `hcl:"values"`
 	}
-	if col.Attributes != nil {
-		if diag := gohcl.DecodeBody(col.Attributes.HCL, ctx, &v); diag.HasErrors() {
+	if col.Remain != nil {
+		if diag := gohcl.DecodeBody(col.Remain, ctx, &v); diag.HasErrors() {
 			return nil, diag
 		}
 	}
@@ -119,6 +119,9 @@ func UnmarshalHCL(body []byte, filename string) ([]*Schema, error) {
 	srcHCL, diag := parser.ParseHCL(body, filename)
 	if diag.HasErrors() {
 		return nil, diag
+	}
+	if srcHCL == nil {
+		return nil, fmt.Errorf("schema: file %q contents is nil", filename)
 	}
 	ctx, err := evalContext(srcHCL)
 	if err != nil {
@@ -187,14 +190,14 @@ func evalContext(f *hcl.File) (*hcl.EvalContext, error) {
 	}, nil
 }
 
-func toColumn(ctx *hcl.EvalContext, c *ColumnHCL, converter HCLConverter) (*Column, error) {
-	columnType, err := converter.ConvertType(ctx, c)
+func toColumn(ctx *hcl.EvalContext, column *ColumnHCL, converter HCLConverter) (*Column, error) {
+	columnType, err := converter.ConvertType(ctx, column)
 	if err != nil {
 		return nil, err
 	}
-	columnType.Null = c.Null
+	columnType.Null = column.Null
 	return &Column{
-		Name: c.Name,
+		Name: column.Name,
 		Type: columnType,
 	}, nil
 }
@@ -215,10 +218,8 @@ type tableHCL struct {
 }
 
 type ColumnHCL struct {
-	Name       string `hcl:",label"`
-	TypeName   string `hcl:"type"`
-	Null       bool   `hcl:"null,optional"`
-	Attributes *struct {
-		HCL hcl.Body `hcl:",remain"`
-	} `hcl:"attributes,block"`
+	Name     string   `hcl:",label"`
+	TypeName string   `hcl:"type"`
+	Null     bool     `hcl:"null,optional"`
+	Remain   hcl.Body `hcl:",remain"`
 }
