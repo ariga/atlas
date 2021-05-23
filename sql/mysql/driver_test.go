@@ -51,7 +51,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "table collation",
 			before: func(m mock) {
-				m.version("8.0.1")
+				m.version("8.0.13")
 				m.ExpectQuery(escape(tableQuery)).
 					WithArgs("users").
 					WillReturnRows(rows(`
@@ -87,7 +87,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "int types",
 			before: func(m mock) {
-				m.version("8.0.0")
+				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -138,7 +138,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "decimal types",
 			before: func(m mock) {
-				m.version("8.0.0")
+				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -165,7 +165,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "float types",
 			before: func(m mock) {
-				m.version("8.0.0")
+				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -192,7 +192,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "binary types",
 			before: func(m mock) {
-				m.version("8.0.0")
+				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -227,7 +227,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "string types",
 			before: func(m mock) {
-				m.version("8.0.0")
+				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -262,7 +262,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "enum type",
 			before: func(m mock) {
-				m.version("8.0.0")
+				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -289,7 +289,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "time type",
 			before: func(m mock) {
-				m.version("8.0.0")
+				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -324,7 +324,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "json type",
 			before: func(m mock) {
-				m.version("8.0.0")
+				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -349,7 +349,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "spatial type",
 			before: func(m mock) {
-				m.version("8.0.0")
+				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -390,7 +390,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "indexes",
 			before: func(m mock) {
-				m.version("8.0.0")
+				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -404,7 +404,7 @@ func TestDriver_Table(t *testing.T) {
 | uid         | int          |                | NO          | MUL        | NULL           |                | NULL               | NULL               |
 +-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
 `))
-				m.ExpectQuery(escape(indexesQuery)).
+				m.ExpectQuery(escape(indexesExprQuery)).
 					WithArgs("public", "users").
 					WillReturnRows(rows(`
 +--------------+-------------+------------+--------------+------------+------------------+
@@ -461,7 +461,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "fks",
 			before: func(m mock) {
-				m.version("8.0.0")
+				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -595,7 +595,7 @@ func TestDriver_Tables(t *testing.T) {
 		{
 			name: "multi table",
 			before: func(m mock) {
-				m.version("v0.8.0")
+				m.version("8.0.13")
 				m.tables("users", "pets")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
@@ -690,7 +690,7 @@ func TestDriver_Realm(t *testing.T) {
 	db, m, err := sqlmock.New()
 	require.NoError(t, err)
 	mk := mock{m}
-	mk.version("8.0.19")
+	mk.version("8.0.13")
 	mk.ExpectQuery(escape(schemasQuery + " WHERE `SCHEMA_NAME` NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')")).
 		WillReturnRows(rows(`
 +-------------+----------------------------+------------------------+
@@ -764,7 +764,7 @@ func TestDriver_Exec(t *testing.T) {
 	db, m, err := sqlmock.New()
 	require.NoError(t, err)
 	mk := mock{m}
-	mk.version("8.0.19")
+	mk.version("8.0.13")
 	mk.ExpectExec(escape("DROP TABLE `users`")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mk.ExpectExec(escape("DROP TABLE `public`.`pets`")).
@@ -810,8 +810,8 @@ func (m mock) version(version string) {
 }
 
 func (m mock) noIndexes() {
-	m.ExpectQuery(escape(indexesQuery)).
-		WillReturnRows(sqlmock.NewRows([]string{"index_name", "column_name", "non_unique"}))
+	m.ExpectQuery(escape(indexesExprQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"index_name", "column_name", "non_unique", "key_part", "expression"}))
 }
 
 func (m mock) noFKs() {

@@ -89,7 +89,7 @@ func (d *Driver) Table(ctx context.Context, name string, opts *schema.InspectTab
 	if err := d.fks(ctx, t); err != nil {
 		return nil, err
 	}
-	if semver.Compare("v"+d.version, "v8.0.16") != -1 {
+	if d.supportsCheck() {
 		if err := d.checks(ctx, t); err != nil {
 			return nil, err
 		}
@@ -324,7 +324,11 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 
 // indexes queries and appends the indexes of the given table.
 func (d *Driver) indexes(ctx context.Context, t *schema.Table) error {
-	rows, err := d.QueryContext(ctx, indexesQuery, t.Schema, t.Name)
+	query := indexesQuery
+	if d.supportsIndexExpr() {
+		query = indexesExprQuery
+	}
+	rows, err := d.QueryContext(ctx, query, t.Schema, t.Name)
 	if err != nil {
 		return fmt.Errorf("mysql: querying %q indexes: %w", t.Name, err)
 	}
@@ -560,6 +564,12 @@ func (d *Driver) dropTable(ctx context.Context, drop *schema.DropTable) error {
 	return nil
 }
 
+// supportsCheck reports if connected MySQL database supports the CHECK clause.
+func (d *Driver) supportsCheck() bool { return semver.Compare("v"+d.version, "v8.0.16") != -1 }
+
+// supportsIndexExpr reports if connected MySQL database supports index expressions (functional key part).
+func (d *Driver) supportsIndexExpr() bool { return semver.Compare("v"+d.version, "v8.0.13") != -1 }
+
 // ident writes the given identifier in MySQL format.
 func ident(b *strings.Builder, ident string) {
 	b.WriteByte('`')
@@ -655,14 +665,15 @@ const (
 	tablesQuery       = "SELECT `TABLE_NAME` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = (SELECT DATABASE())"
 
 	// Queries to fetch table schema.
-	tableQuery       = "SELECT `TABLE_SCHEMA`, `TABLE_COLLATION` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
-	tableSchemaQuery = "SELECT `TABLE_SCHEMA`, `TABLE_COLLATION` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?"
+	tableQuery       = "SELECT `TABLE_SCHEMA`, `TABLE_COLLATION` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?"
+	tableSchemaQuery = "SELECT `TABLE_SCHEMA`, `TABLE_COLLATION` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
 
 	// Query to list table columns.
 	columnsQuery = "SELECT `COLUMN_NAME`, `COLUMN_TYPE`, `COLUMN_COMMENT`, `IS_NULLABLE`, `COLUMN_KEY`, `COLUMN_DEFAULT`, `EXTRA`, `CHARACTER_SET_NAME`, `COLLATION_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
 
 	// Query to list table indexes.
-	indexesQuery = "SELECT `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `SUB_PART`, `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
+	indexesQuery     = "SELECT `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `SUB_PART`, NULL AS `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
+	indexesExprQuery = "SELECT `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `SUB_PART`, `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
 
 	// Query to list table check constraints.
 	checksQuery = `
