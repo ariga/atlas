@@ -70,3 +70,34 @@ func TestBasicSchemaUnmarshal(t *testing.T) {
 		T: "json",
 	}, tables[2].Columns[8].Type.Type)
 }
+
+func TestDefault(t *testing.T) {
+	filename := "testdata/defaults.hcl"
+	bytes, err := ioutil.ReadFile(filename)
+	require.NoError(t, err)
+	schemas, err := UnmarshalHCL(bytes, filename)
+	require.NoError(t, err)
+	require.EqualValues(t, schemas[0].Tables[0], &Table{
+		Name:   "tasks",
+		Schema: "todo",
+		Columns: []*Column{
+			{
+				Name: "uuid",
+				Type: &ColumnType{
+					Type: &StringType{
+						T: "string",
+					},
+				},
+				Default: &RawExpr{X: "uuid()"},
+			},
+			{
+				Name: "text",
+				Type: &ColumnType{
+					Type: &StringType{
+						T: "string",
+					},
+				},
+			},
+		},
+	})
+}

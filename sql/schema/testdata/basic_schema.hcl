@@ -65,4 +65,4 @@ table "todos" {
   column "json_col" {
     type = "json"
   }
-  }
+}
