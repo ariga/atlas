@@ -1,9 +1,17 @@
 package schema
 
 type (
+	// A Realm or a database describes a domain of schema resources that are logically connected
+	// and can be accessed and queried in the same connection (e.g. a physical database instance).
+	Realm struct {
+		Schemas []*Schema
+		Attrs   []Attr
+	}
+
 	// A Schema describes a database schema (i.e. named database).
 	Schema struct {
 		Name   string
+		Realm  *Realm
 		Tables []*Table
 		Attrs  []Attr // Attributes and options.
 	}
@@ -11,7 +19,7 @@ type (
 	// A Table represents a table definition.
 	Table struct {
 		Name        string
-		Schema      string
+		Schema      *Schema
 		Columns     []*Column
 		Indexes     []*Index
 		PrimaryKey  []*Column

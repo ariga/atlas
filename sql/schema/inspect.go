@@ -50,13 +50,6 @@ type (
 		Tables(ctx context.Context, options *InspectTableOptions) ([]*Table, error)
 	}
 
-	// A Realm describes a domain of schema resources that are logically connected and
-	// can be accessed and queried in the same connection (e.g. a physical database instance).
-	Realm struct {
-		Schemas []*Schema
-		Attrs   []Attr
-	}
-
 	// InspectTableOptions describes options for RealmInspector.
 	InspectRealmOption struct {
 		// Schemas to inspect. At least 1 schema is required.

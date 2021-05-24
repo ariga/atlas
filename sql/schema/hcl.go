@@ -235,11 +235,13 @@ func UnmarshalHCL(body []byte, filename string) ([]*Schema, error) {
 	}
 	for _, tableHCL := range f.Tables {
 		table := &Table{
-			Name:   tableHCL.Name,
-			Schema: tableHCL.Schema,
+			Name: tableHCL.Name,
+			Schema: &Schema{
+				Name: tableHCL.Schema,
+			},
 		}
-		if _, ok := schemas[table.Schema]; !ok {
-			return nil, fmt.Errorf("schema: unknown schema %q for table %q", table.Schema, table.Name)
+		if _, ok := schemas[table.Schema.Name]; !ok {
+			return nil, fmt.Errorf("schema: unknown schema %q for table %q", table.Schema.Name, table.Name)
 		}
 		conv := &DefaultHCLConverter{}
 		for _, colHCL := range tableHCL.Columns {
@@ -249,7 +251,7 @@ func UnmarshalHCL(body []byte, filename string) ([]*Schema, error) {
 			}
 			table.Columns = append(table.Columns, column)
 		}
-		schemas[table.Schema].Tables = append(schemas[table.Schema].Tables, table)
+		schemas[table.Schema.Name].Tables = append(schemas[table.Schema.Name].Tables, table)
 	}
 	out := make([]*Schema, 0, len(schemas))
 	for _, s := range schemas {
