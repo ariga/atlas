@@ -17,9 +17,15 @@ type Diff struct {
 // changes that need to be applied in order to move from one state to the other.
 func (d *Diff) SchemaDiff(from, to *schema.Schema) ([]schema.Change, error) {
 	var changes []schema.Change
+	// Charset change.
+	if change := d.charsetChange(from.Attrs, to.Attrs); change != noChange {
+		changes = append(changes, change)
+	}
+	// Collation change.
 	if change := d.collationChange(from.Attrs, to.Attrs); change != noChange {
 		changes = append(changes, change)
 	}
+
 	// Drop or modify tables.
 	for _, t1 := range from.Tables {
 		t2, ok := to.Table(t1.Name)
@@ -64,6 +70,10 @@ func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
 		}
 	}
 
+	// Charset change.
+	if change := d.charsetChange(from.Attrs, to.Attrs); change != noChange {
+		changes = append(changes, change)
+	}
 	// Collation change.
 	if change := d.collationChange(from.Attrs, to.Attrs); change != noChange {
 		changes = append(changes, change)
@@ -207,6 +217,27 @@ func (d *Diff) indexChange(from, to *schema.Index) schema.ChangeKind {
 // collationChange returns the schema change (if any) for migrating the collation.
 func (d *Diff) collationChange(from, to []schema.Attr) schema.Change {
 	switch c1, c2 := collate(from), collate(to); {
+	case c1 == nil && c2 == nil:
+	case c2 == nil:
+		return &schema.DropAttr{
+			A: c1,
+		}
+	case c1 == nil:
+		return &schema.AddAttr{
+			A: c2,
+		}
+	case c1.V != c2.V:
+		return &schema.ModifyAttr{
+			From: c1,
+			To:   c2,
+		}
+	}
+	return noChange
+}
+
+// charsetChange returns the schema change (if any) for migrating the charset.
+func (d *Diff) charsetChange(from, to []schema.Attr) schema.Change {
+	switch c1, c2 := charset(from), charset(to); {
 	case c1 == nil && c2 == nil:
 	case c2 == nil:
 		return &schema.DropAttr{

@@ -138,13 +138,20 @@ func (d *Driver) schemas(ctx context.Context, opts *schema.InspectRealmOption) (
 
 // table returns the table from the database, or a NotExistError if the table was not found.
 func (d *Driver) table(ctx context.Context, name string, opts *schema.InspectTableOptions) (*schema.Table, error) {
-	query, args := tableQuery, []interface{}{name}
+	var (
+		args  = []interface{}{name}
+		query = tableQuery
+	)
 	if opts != nil && opts.Schema != "" {
-		query, args = tableSchemaQuery, []interface{}{opts.Schema, name}
+		query = tableSchemaQuery
+		args = append(args, opts.Schema)
 	}
 	row := d.QueryRowContext(ctx, query, args...)
-	var tSchema, collation sql.NullString
-	if err := row.Scan(&tSchema, &collation); err != nil {
+	var (
+		autoinc                              sql.NullInt64
+		tSchema, charset, collation, comment sql.NullString
+	)
+	if err := row.Scan(&tSchema, &charset, &collation, &autoinc, &comment); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, &schema.NotExistError{
 				Err: fmt.Errorf("mysql: table %q was not found", name),
@@ -153,9 +160,24 @@ func (d *Driver) table(ctx context.Context, name string, opts *schema.InspectTab
 		return nil, err
 	}
 	t := &schema.Table{Name: name, Schema: &schema.Schema{Name: tSchema.String}}
+	if validString(charset) {
+		t.Attrs = append(t.Attrs, &schema.Charset{
+			V: charset.String,
+		})
+	}
 	if validString(collation) {
 		t.Attrs = append(t.Attrs, &schema.Collation{
 			V: collation.String,
+		})
+	}
+	if validString(comment) {
+		t.Attrs = append(t.Attrs, &schema.Comment{
+			Text: comment.String,
+		})
+	}
+	if autoinc.Valid {
+		t.Attrs = append(t.Attrs, &AutoIncrement{
+			V: autoinc.Int64,
 		})
 	}
 	return t, nil
@@ -664,10 +686,6 @@ const (
 	tablesSchemaQuery = "SELECT `TABLE_NAME` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = ?"
 	tablesQuery       = "SELECT `TABLE_NAME` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = (SELECT DATABASE())"
 
-	// Queries to fetch table schema.
-	tableQuery       = "SELECT `TABLE_SCHEMA`, `TABLE_COLLATION` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?"
-	tableSchemaQuery = "SELECT `TABLE_SCHEMA`, `TABLE_COLLATION` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
-
 	// Query to list table columns.
 	columnsQuery = "SELECT `COLUMN_NAME`, `COLUMN_TYPE`, `COLUMN_COMMENT`, `IS_NULLABLE`, `COLUMN_KEY`, `COLUMN_DEFAULT`, `EXTRA`, `CHARACTER_SET_NAME`, `COLLATION_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
 
@@ -675,51 +693,83 @@ const (
 	indexesQuery     = "SELECT `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `SUB_PART`, NULL AS `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
 	indexesExprQuery = "SELECT `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `SUB_PART`, `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
 
+	// Query to list table information.
+	tableQuery = `
+SELECT
+	t1.TABLE_SCHEMA,
+	t2.CHARACTER_SET_NAME,
+	t1.TABLE_COLLATION,
+	t1.AUTO_INCREMENT,
+	t1.TABLE_COMMENT
+FROM
+	INFORMATION_SCHEMA.TABLES AS t1
+	JOIN INFORMATION_SCHEMA.COLLATIONS AS t2
+	ON t1.TABLE_COLLATION = t2.COLLATION_NAME
+WHERE
+	TABLE_NAME = ?
+	AND TABLE_SCHEMA = (SELECT DATABASE())
+`
+	tableSchemaQuery = `
+SELECT
+	t1.TABLE_SCHEMA,
+	t2.CHARACTER_SET_NAME,
+	t1.TABLE_COLLATION,
+	t1.AUTO_INCREMENT,
+	t1.TABLE_COMMENT
+FROM
+	INFORMATION_SCHEMA.TABLES AS t1
+	JOIN INFORMATION_SCHEMA.COLLATIONS AS t2
+	ON t1.TABLE_COLLATION = t2.COLLATION_NAME
+WHERE
+	TABLE_NAME = ?
+	AND TABLE_SCHEMA = ?
+`
+
 	// Query to list table check constraints.
 	checksQuery = `
 SELECT
-  t1.CONSTRAINT_NAME,
-  t1.ENFORCED,
-  t2.CHECK_CLAUSE
+	t1.CONSTRAINT_NAME,
+	t1.ENFORCED,
+	t2.CHECK_CLAUSE
 FROM
-  INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS t1
-  JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS AS t2
-  ON t1.CONSTRAINT_NAME = t2.CONSTRAINT_NAME
+	INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS t1
+	JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS AS t2
+	ON t1.CONSTRAINT_NAME = t2.CONSTRAINT_NAME
 WHERE
-  t1.CONSTRAINT_TYPE = 'CHECK'
-  AND t1.TABLE_SCHEMA = ?
-  AND t1.TABLE_NAME = ?
+	t1.CONSTRAINT_TYPE = 'CHECK'
+	AND t1.TABLE_SCHEMA = ?
+	AND t1.TABLE_NAME = ?
 ORDER BY
-  t1.CONSTRAINT_NAME
+	t1.CONSTRAINT_NAME
 `
 
 	// Query to list table foreign keys.
 	fksQuery = `
 SELECT
-  t1.CONSTRAINT_NAME,
-  t1.TABLE_NAME,
-  t1.COLUMN_NAME,
-  t1.TABLE_SCHEMA,
-  t1.REFERENCED_TABLE_NAME,
-  t1.REFERENCED_COLUMN_NAME,
-  t1.REFERENCED_TABLE_SCHEMA,
-  t3.UPDATE_RULE,
-  t3.DELETE_RULE
+	t1.CONSTRAINT_NAME,
+	t1.TABLE_NAME,
+	t1.COLUMN_NAME,
+	t1.TABLE_SCHEMA,
+	t1.REFERENCED_TABLE_NAME,
+	t1.REFERENCED_COLUMN_NAME,
+	t1.REFERENCED_TABLE_SCHEMA,
+	t3.UPDATE_RULE,
+	t3.DELETE_RULE
 FROM
-  INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS t1
-  JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS t2
-  JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS t3
-  ON t1.CONSTRAINT_NAME = t2.CONSTRAINT_NAME
-  AND t1.CONSTRAINT_NAME = t3.CONSTRAINT_NAME
-  AND t1.TABLE_SCHEMA = t2.TABLE_SCHEMA
-  AND t1.TABLE_SCHEMA = t3.CONSTRAINT_SCHEMA
+	INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS t1
+	JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS t2
+	JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS t3
+	ON t1.CONSTRAINT_NAME = t2.CONSTRAINT_NAME
+	AND t1.CONSTRAINT_NAME = t3.CONSTRAINT_NAME
+	AND t1.TABLE_SCHEMA = t2.TABLE_SCHEMA
+	AND t1.TABLE_SCHEMA = t3.CONSTRAINT_SCHEMA
 WHERE
-  t2.CONSTRAINT_TYPE = 'FOREIGN KEY'
-  AND t1.TABLE_SCHEMA = ?
-  AND t1.TABLE_NAME = ?
+	t2.CONSTRAINT_TYPE = 'FOREIGN KEY'
+	AND t1.TABLE_SCHEMA = ?
+	AND t1.TABLE_NAME = ?
 ORDER BY
-  t1.CONSTRAINT_NAME,
-  t1.ORDINAL_POSITION`
+	t1.CONSTRAINT_NAME,
+	t1.ORDINAL_POSITION`
 )
 
 var _ schema.TableInspector = (*Driver)(nil)
@@ -729,6 +779,7 @@ type (
 	AutoIncrement struct {
 		schema.Attr
 		A string
+		V int64
 	}
 
 	// OnUpdate attribute for columns with "ON UPDATE CURRENT_TIMESTAMP" as a default.
