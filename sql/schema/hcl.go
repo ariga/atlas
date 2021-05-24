@@ -249,7 +249,21 @@ func UnmarshalHCL(body []byte, filename string) ([]*Schema, error) {
 			}
 			table.Columns = append(table.Columns, column)
 		}
+		for _, pk := range tableHCL.PrimaryKey {
+			cn := pk.GetAttr("name").AsString()
+			pkc, ok := table.Column(cn)
+			if !ok {
+				return nil, fmt.Errorf("schema: cannot set column %q as primary key for table %q", cn, table.Name)
+			}
+			table.PrimaryKey = append(table.PrimaryKey, pkc)
+		}
 		schemas[table.Schema].Tables = append(schemas[table.Schema].Tables, table)
+	}
+
+	for _, tableHCL := range f.Tables {
+		if err := linkForeignKeys(schemas, tableHCL); err != nil {
+			return nil, fmt.Errorf("schema: failed linking foreign keys for table %q: %w", tableHCL.Name, err)
+		}
 	}
 	out := make([]*Schema, 0, len(schemas))
 	for _, s := range schemas {
@@ -261,6 +275,64 @@ func UnmarshalHCL(body []byte, filename string) ([]*Schema, error) {
 	return out, nil
 }
 
+func linkForeignKeys(schemas map[string]*Schema, tableHCL *tableHCL) error {
+	sch := schemas[tableHCL.Schema]
+	var table *Table
+	for _, t := range sch.Tables {
+		if t.Name == tableHCL.Name {
+			table = t
+			break
+		}
+	}
+	if table == nil {
+		return fmt.Errorf("schema: did not find table %q in schemas", tableHCL.Name)
+	}
+	for _, fk := range tableHCL.ForeignKey {
+		var cols []*Column
+		for _, col := range fk.Columns {
+			cn := col.GetAttr("name").AsString()
+			fkc, ok := table.Column(cn)
+			if !ok {
+				return fmt.Errorf("schema: unknown column %q for table %q", cn, table.Name)
+			}
+			cols = append(cols, fkc)
+		}
+		var refTable *Table
+		var refColumns []*Column
+		for _, refCol := range fk.RefColumns {
+			refTableName := refCol.GetAttr("table").AsString()
+			if refTable == nil {
+				lkp, ok := sch.Table(refTableName)
+				if !ok {
+					return fmt.Errorf("schema: unknown table %q", refTableName)
+				}
+				refTable = lkp
+			}
+			if refTable.Name != refTableName {
+				return fmt.Errorf(
+					"schema: cannot apply foreign key %q, all referenced columns must belong to the same table",
+					fk.Symbol)
+			}
+			refColName := refCol.GetAttr("name").AsString()
+			lkp, ok := refTable.Column(refColName)
+			if !ok {
+				return fmt.Errorf("schema: unknown column %q in table %q", refColName, refTableName)
+			}
+			refColumns = append(refColumns, lkp)
+		}
+		table.ForeignKeys = append(table.ForeignKeys, &ForeignKey{
+			Symbol:     fk.Symbol,
+			Table:      table,
+			Columns:    cols,
+			RefTable:   refTable,
+			RefColumns: refColumns,
+			OnUpdate:   ReferenceOption(fk.OnUpdate),
+			OnDelete:   ReferenceOption(fk.OnDelete),
+		})
+	}
+	return nil
+}
+
 // evalContext does an initial pass through the hcl.File f and returns a context with populated
 // variables that can be used in the actual file evaluation
 func evalContext(f *hcl.File) (*hcl.EvalContext, error) {
@@ -268,6 +340,14 @@ func evalContext(f *hcl.File) (*hcl.EvalContext, error) {
 		Schemas []struct {
 			Name string `hcl:",label"`
 		} `hcl:"schema,block"`
+		Tables []struct {
+			Name    string `hcl:",label"`
+			Columns []struct {
+				Name   string   `hcl:",label"`
+				Remain hcl.Body `hcl:",remain"`
+			} `hcl:"column,block"`
+			Remain hcl.Body `hcl:",remain"`
+		} `hcl:"table,block"`
 		Remain hcl.Body `hcl:",remain"`
 	}
 	if diag := gohcl.DecodeBody(f.Body, &hcl.EvalContext{}, &fi); diag.HasErrors() {
@@ -279,9 +359,30 @@ func evalContext(f *hcl.File) (*hcl.EvalContext, error) {
 			"name": cty.StringVal(sch.Name),
 		})
 	}
+	tables := make(map[string]cty.Value)
+	for _, tab := range fi.Tables {
+		cols := make(map[string]cty.Value)
+		for _, col := range tab.Columns {
+			cols[col.Name] = cty.ObjectVal(map[string]cty.Value{
+				"name":  cty.StringVal(col.Name),
+				"table": cty.StringVal(tab.Name),
+			})
+		}
+		tables[tab.Name] = cty.ObjectVal(map[string]cty.Value{
+			"column": cty.MapVal(cols),
+		})
+	}
 	return &hcl.EvalContext{
 		Variables: map[string]cty.Value{
 			"schema": cty.MapVal(schemas),
+			"table":  cty.MapVal(tables),
+			"reference_option": cty.MapVal(map[string]cty.Value{
+				"NO_ACTION":   cty.StringVal(string(NoAction)),
+				"RESTRICT":    cty.StringVal(string(Restrict)),
+				"CASCADE":     cty.StringVal(string(Cascade)),
+				"SET_NULL":    cty.StringVal(string(SetNull)),
+				"SET_DEFAULT": cty.StringVal(string(SetDefault)),
+			}),
 		},
 	}, nil
 }
@@ -317,10 +418,21 @@ type schemaHCL struct {
 	Name string `hcl:",label"`
 }
 
+type foreignKeyHCL struct {
+	Symbol     string      `hcl:",label"`
+	Columns    []cty.Value `hcl:"columns"`
+	RefColumns []cty.Value `hcl:"references"`
+	OnUpdate   string      `hcl:"on_update,optional"`
+	OnDelete   string      `hcl:"on_delete,optional"`
+	Remain     hcl.Body    `hcl:",remain"`
+}
+
 type tableHCL struct {
-	Name    string       `hcl:",label"`
-	Schema  string       `hcl:"schema"`
-	Columns []*ColumnHCL `hcl:"column,block"`
+	Name       string           `hcl:",label"`
+	Schema     string           `hcl:"schema"`
+	Columns    []*ColumnHCL     `hcl:"column,block"`
+	PrimaryKey []cty.Value      `hcl:"primary_key,optional"`
+	ForeignKey []*foreignKeyHCL `hcl:"foreign_key,block"`
 }
 
 type ColumnHCL struct {
