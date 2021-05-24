@@ -78,8 +78,10 @@ func TestDefault(t *testing.T) {
 	schemas, err := UnmarshalHCL(bytes, filename)
 	require.NoError(t, err)
 	require.EqualValues(t, schemas[0].Tables[0], &Table{
-		Name:   "tasks",
-		Schema: "todo",
+		Name: "tasks",
+		Schema: &Schema{
+			Name: "todo",
+		},
 		Columns: []*Column{
 			{
 				Name: "uuid",
@@ -109,8 +111,10 @@ func TestAttributes(t *testing.T) {
 	schemas, err := UnmarshalHCL(bytes, filename)
 	require.NoError(t, err)
 	require.EqualValues(t, schemas[0].Tables[0], &Table{
-		Name:   "tasks",
-		Schema: "todo",
+		Name: "tasks",
+		Schema: &Schema{
+			Name: "todo",
+		},
 		Columns: []*Column{
 			{
 				Name: "text",

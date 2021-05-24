@@ -51,15 +51,15 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "table collation",
 			before: func(m mock) {
-				m.version("8.0.1")
+				m.version("8.0.13")
 				m.ExpectQuery(escape(tableQuery)).
 					WithArgs("users").
 					WillReturnRows(rows(`
-+--------------+--------------------+
-| TABLE_SCHEMA | TABLE_COLLATION    |
-+--------------+--------------------+
-| test         | utf8mb4_bin        |
-+--------------+--------------------+
++--------------+--------------------+--------------------+----------------+---------------+
+| TABLE_SCHEMA | CHARACTER_SET_NAME | TABLE_COLLATION    | AUTO_INCREMENT | TABLE_COMMENT |
++--------------+--------------------+--------------------+----------------+---------------+
+| test         | utf8mb4            | utf8mb4_0900_ai_ci | nil            | Comment       |
++--------------+--------------------+--------------------+----------------+---------------+
 `))
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("test", "users").
@@ -76,7 +76,11 @@ func TestDriver_Table(t *testing.T) {
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
 				require.Equal("users", t.Name)
-				require.Equal([]schema.Attr{&schema.Collation{V: "utf8mb4_bin"}}, t.Attrs)
+				require.EqualValues([]schema.Attr{
+					&schema.Charset{V: "utf8mb4"},
+					&schema.Collation{V: "utf8mb4_0900_ai_ci"},
+					&schema.Comment{Text: "Comment"},
+				}, t.Attrs)
 				require.Len(t.PrimaryKey, 1)
 				require.True(t.PrimaryKey[0] == t.Columns[0])
 				require.EqualValues([]*schema.Column{
@@ -87,7 +91,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "int types",
 			before: func(m mock) {
-				m.version("8.0.0")
+				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -138,7 +142,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "decimal types",
 			before: func(m mock) {
-				m.version("8.0.0")
+				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -165,7 +169,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "float types",
 			before: func(m mock) {
-				m.version("8.0.0")
+				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -192,7 +196,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "binary types",
 			before: func(m mock) {
-				m.version("8.0.0")
+				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -227,7 +231,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "string types",
 			before: func(m mock) {
-				m.version("8.0.0")
+				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -262,7 +266,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "enum type",
 			before: func(m mock) {
-				m.version("8.0.0")
+				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -289,7 +293,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "time type",
 			before: func(m mock) {
-				m.version("8.0.0")
+				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -324,7 +328,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "json type",
 			before: func(m mock) {
-				m.version("8.0.0")
+				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -349,7 +353,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "spatial type",
 			before: func(m mock) {
-				m.version("8.0.0")
+				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -390,7 +394,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "indexes",
 			before: func(m mock) {
-				m.version("8.0.0")
+				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -404,7 +408,7 @@ func TestDriver_Table(t *testing.T) {
 | uid         | int          |                | NO          | MUL        | NULL           |                | NULL               | NULL               |
 +-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
 `))
-				m.ExpectQuery(escape(indexesQuery)).
+				m.ExpectQuery(escape(indexesExprQuery)).
 					WithArgs("public", "users").
 					WillReturnRows(rows(`
 +--------------+-------------+------------+--------------+------------+------------------+
@@ -461,7 +465,7 @@ func TestDriver_Table(t *testing.T) {
 		{
 			name: "fks",
 			before: func(m mock) {
-				m.version("8.0.0")
+				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -490,9 +494,9 @@ func TestDriver_Table(t *testing.T) {
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
 				require.Equal("users", t.Name)
-				require.Equal("public", t.Schema)
+				require.Equal("public", t.Schema.Name)
 				fks := []*schema.ForeignKey{
-					{Symbol: "multi_column", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: &schema.Table{Name: "t1", Schema: "public"}, RefColumns: []*schema.Column{{Name: "gid"}, {Name: "xid"}}},
+					{Symbol: "multi_column", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}}, RefColumns: []*schema.Column{{Name: "gid"}, {Name: "xid"}}},
 					{Symbol: "self_reference", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: t},
 				}
 				columns := []*schema.Column{
@@ -537,7 +541,7 @@ func TestDriver_Table(t *testing.T) {
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
 				require.Equal("users", t.Name)
-				require.Equal("public", t.Schema)
+				require.Equal("public", t.Schema.Name)
 				columns := []*schema.Column{
 					{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
 					{Name: "c1", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
@@ -595,7 +599,7 @@ func TestDriver_Tables(t *testing.T) {
 		{
 			name: "multi table",
 			before: func(m mock) {
-				m.version("v0.8.0")
+				m.version("8.0.13")
 				m.tables("users", "pets")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(escape(columnsQuery)).
@@ -690,7 +694,7 @@ func TestDriver_Realm(t *testing.T) {
 	db, m, err := sqlmock.New()
 	require.NoError(t, err)
 	mk := mock{m}
-	mk.version("8.0.19")
+	mk.version("8.0.13")
 	mk.ExpectQuery(escape(schemasQuery + " WHERE `SCHEMA_NAME` NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')")).
 		WillReturnRows(rows(`
 +-------------+----------------------------+------------------------+
@@ -704,27 +708,31 @@ func TestDriver_Realm(t *testing.T) {
 	require.NoError(t, err)
 	realm, err := drv.Realm(context.Background(), &schema.InspectRealmOption{})
 	require.NoError(t, err)
-	require.EqualValues(t, &schema.Realm{
-		Schemas: []*schema.Schema{
-			{
-				Name: "test",
-				Attrs: []schema.Attr{
-					&schema.Charset{V: "utf8mb4"},
-					&schema.Collation{V: "utf8mb4_unicode_ci"},
+	require.EqualValues(t, func() *schema.Realm {
+		r := &schema.Realm{
+			Schemas: []*schema.Schema{
+				{
+					Name: "test",
+					Attrs: []schema.Attr{
+						&schema.Charset{V: "utf8mb4"},
+						&schema.Collation{V: "utf8mb4_unicode_ci"},
+					},
+					Tables: []*schema.Table{},
 				},
-				Tables: []*schema.Table{},
 			},
-		},
-		// Server default configuration.
-		Attrs: []schema.Attr{
-			&schema.Charset{
-				V: "utf8",
+			// Server default configuration.
+			Attrs: []schema.Attr{
+				&schema.Charset{
+					V: "utf8",
+				},
+				&schema.Collation{
+					V: "utf8_general_ci",
+				},
 			},
-			&schema.Collation{
-				V: "utf8_general_ci",
-			},
-		},
-	}, realm)
+		}
+		r.Schemas[0].Realm = r
+		return r
+	}(), realm)
 
 	mk.ExpectQuery(escape(schemasQuery+" WHERE `SCHEMA_NAME` IN (?, ?)")).
 		WithArgs("test", "public").
@@ -740,31 +748,47 @@ func TestDriver_Realm(t *testing.T) {
 	mk.tablesInSchema("public")
 	realm, err = drv.Realm(context.Background(), &schema.InspectRealmOption{Schemas: []string{"test", "public"}})
 	require.NoError(t, err)
-	require.EqualValues(t, []*schema.Schema{
-		{
-			Name: "test",
-			Attrs: []schema.Attr{
-				&schema.Charset{V: "utf8mb4"},
-				&schema.Collation{V: "utf8mb4_unicode_ci"},
+	require.EqualValues(t, func() *schema.Realm {
+		r := &schema.Realm{
+			Schemas: []*schema.Schema{
+				{
+					Name: "test",
+					Attrs: []schema.Attr{
+						&schema.Charset{V: "utf8mb4"},
+						&schema.Collation{V: "utf8mb4_unicode_ci"},
+					},
+					Tables: []*schema.Table{},
+				},
+				{
+					Name: "public",
+					Attrs: []schema.Attr{
+						&schema.Charset{V: "utf8"},
+						&schema.Collation{V: "utf8_general_ci"},
+					},
+					Tables: []*schema.Table{},
+				},
 			},
-			Tables: []*schema.Table{},
-		},
-		{
-			Name: "public",
+			// Server default configuration.
 			Attrs: []schema.Attr{
-				&schema.Charset{V: "utf8"},
-				&schema.Collation{V: "utf8_general_ci"},
+				&schema.Charset{
+					V: "utf8",
+				},
+				&schema.Collation{
+					V: "utf8_general_ci",
+				},
 			},
-			Tables: []*schema.Table{},
-		},
-	}, realm.Schemas)
+		}
+		r.Schemas[0].Realm = r
+		r.Schemas[1].Realm = r
+		return r
+	}(), realm)
 }
 
 func TestDriver_Exec(t *testing.T) {
 	db, m, err := sqlmock.New()
 	require.NoError(t, err)
 	mk := mock{m}
-	mk.version("8.0.19")
+	mk.version("8.0.13")
 	mk.ExpectExec(escape("DROP TABLE `users`")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mk.ExpectExec(escape("DROP TABLE `public`.`pets`")).
@@ -775,7 +799,7 @@ func TestDriver_Exec(t *testing.T) {
 	require.NoError(t, err)
 	err = drv.Exec(context.Background(), []schema.Change{
 		&schema.DropTable{T: &schema.Table{Name: "users"}},
-		&schema.DropTable{T: &schema.Table{Name: "pets", Schema: "public"}},
+		&schema.DropTable{T: &schema.Table{Name: "pets", Schema: &schema.Schema{Name: "public"}}},
 		&schema.AddTable{
 			T: func() *schema.Table {
 				t := &schema.Table{
@@ -810,8 +834,8 @@ func (m mock) version(version string) {
 }
 
 func (m mock) noIndexes() {
-	m.ExpectQuery(escape(indexesQuery)).
-		WillReturnRows(sqlmock.NewRows([]string{"index_name", "column_name", "non_unique"}))
+	m.ExpectQuery(escape(indexesExprQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"index_name", "column_name", "non_unique", "key_part", "expression"}))
 }
 
 func (m mock) noFKs() {
@@ -839,9 +863,9 @@ func (m mock) tablesInSchema(schema string, names ...string) {
 }
 
 func (m mock) tableExists(schema, table string, exists bool) {
-	rows := sqlmock.NewRows([]string{"table_schema", "table_collation"})
+	rows := sqlmock.NewRows([]string{"table_schema", "table_collation", "character_set", "auto_increment", "table_comment"})
 	if exists {
-		rows.AddRow(schema, nil)
+		rows.AddRow(schema, nil, nil, nil, nil)
 	}
 	m.ExpectQuery(escape(tableQuery)).
 		WithArgs(table).
@@ -849,12 +873,12 @@ func (m mock) tableExists(schema, table string, exists bool) {
 }
 
 func (m mock) tableExistsInSchema(schema, table string, exists bool) {
-	rows := sqlmock.NewRows([]string{"table_schema", "table_collation"})
+	rows := sqlmock.NewRows([]string{"table_schema", "table_collation", "character_set", "auto_increment", "table_comment"})
 	if exists {
-		rows.AddRow(schema, nil)
+		rows.AddRow(schema, nil, nil, nil, nil)
 	}
 	m.ExpectQuery(escape(tableSchemaQuery)).
-		WithArgs(schema, table).
+		WithArgs(table, schema).
 		WillReturnRows(rows)
 }
 

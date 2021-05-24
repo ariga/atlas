@@ -37,6 +37,7 @@ func (d *Driver) Realm(ctx context.Context, opts *schema.InspectRealmOption) (*s
 	if err != nil {
 		return nil, err
 	}
+	realm := &schema.Realm{Schemas: schemas, Attrs: []schema.Attr{&schema.Charset{V: d.charset}, &schema.Collation{V: d.collate}}}
 	for _, s := range schemas {
 		tables, err := d.Tables(ctx, &schema.InspectTableOptions{
 			Schema: s.Name,
@@ -44,13 +45,11 @@ func (d *Driver) Realm(ctx context.Context, opts *schema.InspectRealmOption) (*s
 		if err != nil {
 			return nil, err
 		}
+		s.Realm = realm
 		s.Tables = tables
 	}
 	linkSchemaTables(schemas)
-	return &schema.Realm{
-		Schemas: schemas,
-		Attrs:   []schema.Attr{&schema.Charset{V: d.charset}, &schema.Collation{V: d.collate}},
-	}, nil
+	return realm, nil
 }
 
 // Tables returns schema descriptions of all tables in the given schema.
@@ -69,7 +68,7 @@ func (d *Driver) Tables(ctx context.Context, opts *schema.InspectTableOptions) (
 	}
 	if len(tables) > 0 {
 		// Link all tables reside on the same schema.
-		linkSchemaTables([]*schema.Schema{{Name: tables[0].Schema, Tables: tables}})
+		linkSchemaTables([]*schema.Schema{{Name: tables[0].Schema.Name, Tables: tables}})
 	}
 	return tables, nil
 }
@@ -89,7 +88,7 @@ func (d *Driver) Table(ctx context.Context, name string, opts *schema.InspectTab
 	if err := d.fks(ctx, t); err != nil {
 		return nil, err
 	}
-	if semver.Compare("v"+d.version, "v8.0.16") != -1 {
+	if d.supportsCheck() {
 		if err := d.checks(ctx, t); err != nil {
 			return nil, err
 		}
@@ -139,13 +138,20 @@ func (d *Driver) schemas(ctx context.Context, opts *schema.InspectRealmOption) (
 
 // table returns the table from the database, or a NotExistError if the table was not found.
 func (d *Driver) table(ctx context.Context, name string, opts *schema.InspectTableOptions) (*schema.Table, error) {
-	query, args := tableQuery, []interface{}{name}
+	var (
+		args  = []interface{}{name}
+		query = tableQuery
+	)
 	if opts != nil && opts.Schema != "" {
-		query, args = tableSchemaQuery, []interface{}{opts.Schema, name}
+		query = tableSchemaQuery
+		args = append(args, opts.Schema)
 	}
 	row := d.QueryRowContext(ctx, query, args...)
-	var tSchema, collation sql.NullString
-	if err := row.Scan(&tSchema, &collation); err != nil {
+	var (
+		autoinc                              sql.NullInt64
+		tSchema, charset, collation, comment sql.NullString
+	)
+	if err := row.Scan(&tSchema, &charset, &collation, &autoinc, &comment); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, &schema.NotExistError{
 				Err: fmt.Errorf("mysql: table %q was not found", name),
@@ -153,10 +159,25 @@ func (d *Driver) table(ctx context.Context, name string, opts *schema.InspectTab
 		}
 		return nil, err
 	}
-	t := &schema.Table{Name: name, Schema: tSchema.String}
+	t := &schema.Table{Name: name, Schema: &schema.Schema{Name: tSchema.String}}
+	if validString(charset) {
+		t.Attrs = append(t.Attrs, &schema.Charset{
+			V: charset.String,
+		})
+	}
 	if validString(collation) {
 		t.Attrs = append(t.Attrs, &schema.Collation{
 			V: collation.String,
+		})
+	}
+	if validString(comment) {
+		t.Attrs = append(t.Attrs, &schema.Comment{
+			Text: comment.String,
+		})
+	}
+	if autoinc.Valid {
+		t.Attrs = append(t.Attrs, &AutoIncrement{
+			V: autoinc.Int64,
 		})
 	}
 	return t, nil
@@ -164,7 +185,7 @@ func (d *Driver) table(ctx context.Context, name string, opts *schema.InspectTab
 
 // columns queries and appends the columns of the given table.
 func (d *Driver) columns(ctx context.Context, t *schema.Table) error {
-	rows, err := d.QueryContext(ctx, columnsQuery, t.Schema, t.Name)
+	rows, err := d.QueryContext(ctx, columnsQuery, t.Schema.Name, t.Name)
 	if err != nil {
 		return fmt.Errorf("mysql: querying %q columns: %w", t.Name, err)
 	}
@@ -324,7 +345,11 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 
 // indexes queries and appends the indexes of the given table.
 func (d *Driver) indexes(ctx context.Context, t *schema.Table) error {
-	rows, err := d.QueryContext(ctx, indexesQuery, t.Schema, t.Name)
+	query := indexesQuery
+	if d.supportsIndexExpr() {
+		query = indexesExprQuery
+	}
+	rows, err := d.QueryContext(ctx, query, t.Schema.Name, t.Name)
 	if err != nil {
 		return fmt.Errorf("mysql: querying %q indexes: %w", t.Name, err)
 	}
@@ -391,7 +416,7 @@ func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
 
 // fks queries and appends the foreign keys of the given table.
 func (d *Driver) fks(ctx context.Context, t *schema.Table) error {
-	rows, err := d.QueryContext(ctx, fksQuery, t.Schema, t.Name)
+	rows, err := d.QueryContext(ctx, fksQuery, t.Schema.Name, t.Name)
 	if err != nil {
 		return fmt.Errorf("mysql: querying %q foreign keys: %w", t.Name, err)
 	}
@@ -422,7 +447,7 @@ func (d *Driver) addFKs(t *schema.Table, rows *sql.Rows) error {
 				OnUpdate: schema.ReferenceOption(updateRule),
 			}
 			if refTable != t.Name || tSchema != refSchema {
-				fk.RefTable = &schema.Table{Name: refTable, Schema: refSchema}
+				fk.RefTable = &schema.Table{Name: refTable, Schema: &schema.Schema{Name: refSchema}}
 			}
 			names[name] = fk
 			t.ForeignKeys = append(t.ForeignKeys, fk)
@@ -450,7 +475,7 @@ func (d *Driver) addFKs(t *schema.Table, rows *sql.Rows) error {
 
 // checks queries and appends the check constraints of the given table.
 func (d *Driver) checks(ctx context.Context, t *schema.Table) error {
-	rows, err := d.QueryContext(ctx, checksQuery, t.Schema, t.Name)
+	rows, err := d.QueryContext(ctx, checksQuery, t.Schema.Name, t.Name)
 	if err != nil {
 		return fmt.Errorf("mysql: querying %q check constraints: %w", t.Name, err)
 	}
@@ -549,8 +574,8 @@ func (d *Driver) addTable(ctx context.Context, add *schema.AddTable) error {
 func (d *Driver) dropTable(ctx context.Context, drop *schema.DropTable) error {
 	var b strings.Builder
 	b.WriteString("DROP TABLE ")
-	if drop.T.Schema != "" {
-		ident(&b, drop.T.Schema)
+	if drop.T.Schema != nil {
+		ident(&b, drop.T.Schema.Name)
 		b.WriteByte('.')
 	}
 	ident(&b, drop.T.Name)
@@ -559,6 +584,12 @@ func (d *Driver) dropTable(ctx context.Context, drop *schema.DropTable) error {
 	}
 	return nil
 }
+
+// supportsCheck reports if connected MySQL database supports the CHECK clause.
+func (d *Driver) supportsCheck() bool { return semver.Compare("v"+d.version, "v8.0.16") != -1 }
+
+// supportsIndexExpr reports if connected MySQL database supports index expressions (functional key part).
+func (d *Driver) supportsIndexExpr() bool { return semver.Compare("v"+d.version, "v8.0.13") != -1 }
 
 // ident writes the given identifier in MySQL format.
 func ident(b *strings.Builder, ident string) {
@@ -612,13 +643,14 @@ func linkSchemaTables(schemas []*schema.Schema) {
 	for _, s := range schemas {
 		byName[s.Name] = make(map[string]*schema.Table)
 		for _, t := range s.Tables {
+			t.Schema = s
 			byName[s.Name][t.Name] = t
 		}
 	}
 	for _, s := range schemas {
 		for _, t := range s.Tables {
 			for _, fk := range t.ForeignKeys {
-				rs, ok := byName[fk.RefTable.Schema]
+				rs, ok := byName[fk.RefTable.Schema.Name]
 				if !ok {
 					continue
 				}
@@ -654,61 +686,90 @@ const (
 	tablesSchemaQuery = "SELECT `TABLE_NAME` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = ?"
 	tablesQuery       = "SELECT `TABLE_NAME` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = (SELECT DATABASE())"
 
-	// Queries to fetch table schema.
-	tableQuery       = "SELECT `TABLE_SCHEMA`, `TABLE_COLLATION` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
-	tableSchemaQuery = "SELECT `TABLE_SCHEMA`, `TABLE_COLLATION` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = (SELECT DATABASE()) AND `TABLE_NAME` = ?"
-
 	// Query to list table columns.
 	columnsQuery = "SELECT `COLUMN_NAME`, `COLUMN_TYPE`, `COLUMN_COMMENT`, `IS_NULLABLE`, `COLUMN_KEY`, `COLUMN_DEFAULT`, `EXTRA`, `CHARACTER_SET_NAME`, `COLLATION_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
 
 	// Query to list table indexes.
-	indexesQuery = "SELECT `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `SUB_PART`, `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
+	indexesQuery     = "SELECT `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `SUB_PART`, NULL AS `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
+	indexesExprQuery = "SELECT `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `SUB_PART`, `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
+
+	// Query to list table information.
+	tableQuery = `
+SELECT
+	t1.TABLE_SCHEMA,
+	t2.CHARACTER_SET_NAME,
+	t1.TABLE_COLLATION,
+	t1.AUTO_INCREMENT,
+	t1.TABLE_COMMENT
+FROM
+	INFORMATION_SCHEMA.TABLES AS t1
+	JOIN INFORMATION_SCHEMA.COLLATIONS AS t2
+	ON t1.TABLE_COLLATION = t2.COLLATION_NAME
+WHERE
+	TABLE_NAME = ?
+	AND TABLE_SCHEMA = (SELECT DATABASE())
+`
+	tableSchemaQuery = `
+SELECT
+	t1.TABLE_SCHEMA,
+	t2.CHARACTER_SET_NAME,
+	t1.TABLE_COLLATION,
+	t1.AUTO_INCREMENT,
+	t1.TABLE_COMMENT
+FROM
+	INFORMATION_SCHEMA.TABLES AS t1
+	JOIN INFORMATION_SCHEMA.COLLATIONS AS t2
+	ON t1.TABLE_COLLATION = t2.COLLATION_NAME
+WHERE
+	TABLE_NAME = ?
+	AND TABLE_SCHEMA = ?
+`
 
 	// Query to list table check constraints.
 	checksQuery = `
 SELECT
-  t1.CONSTRAINT_NAME,
-  t1.ENFORCED,
-  t2.CHECK_CLAUSE
+	t1.CONSTRAINT_NAME,
+	t1.ENFORCED,
+	t2.CHECK_CLAUSE
 FROM
-  INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS t1
-  JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS AS t2
-  ON t1.CONSTRAINT_NAME = t2.CONSTRAINT_NAME
+	INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS t1
+	JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS AS t2
+	ON t1.CONSTRAINT_NAME = t2.CONSTRAINT_NAME
 WHERE
-  t1.CONSTRAINT_TYPE = 'CHECK'
-  AND t1.TABLE_SCHEMA = ?
-  AND t1.TABLE_NAME = ?
+	t1.CONSTRAINT_TYPE = 'CHECK'
+	AND t1.TABLE_SCHEMA = ?
+	AND t1.TABLE_NAME = ?
 ORDER BY
-  t1.CONSTRAINT_NAME
+	t1.CONSTRAINT_NAME
 `
 
 	// Query to list table foreign keys.
 	fksQuery = `
 SELECT
-  t1.CONSTRAINT_NAME,
-  t1.TABLE_NAME,
-  t1.COLUMN_NAME,
-  t1.TABLE_SCHEMA,
-  t1.REFERENCED_TABLE_NAME,
-  t1.REFERENCED_COLUMN_NAME,
-  t1.REFERENCED_TABLE_SCHEMA,
-  t3.UPDATE_RULE,
-  t3.DELETE_RULE
+	t1.CONSTRAINT_NAME,
+	t1.TABLE_NAME,
+	t1.COLUMN_NAME,
+	t1.TABLE_SCHEMA,
+	t1.REFERENCED_TABLE_NAME,
+	t1.REFERENCED_COLUMN_NAME,
+	t1.REFERENCED_TABLE_SCHEMA,
+	t3.UPDATE_RULE,
+	t3.DELETE_RULE
 FROM
-  INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS t1
-  JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS t2
-  JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS t3
-  ON t1.CONSTRAINT_NAME = t2.CONSTRAINT_NAME
-  AND t1.CONSTRAINT_NAME = t3.CONSTRAINT_NAME
-  AND t1.TABLE_SCHEMA = t2.TABLE_SCHEMA
-  AND t1.TABLE_SCHEMA = t3.CONSTRAINT_SCHEMA
+	INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS t1
+	JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS t2
+	JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS t3
+	ON t1.CONSTRAINT_NAME = t2.CONSTRAINT_NAME
+	AND t1.CONSTRAINT_NAME = t3.CONSTRAINT_NAME
+	AND t1.TABLE_SCHEMA = t2.TABLE_SCHEMA
+	AND t1.TABLE_SCHEMA = t3.CONSTRAINT_SCHEMA
 WHERE
-  t2.CONSTRAINT_TYPE = 'FOREIGN KEY'
-  AND t1.TABLE_SCHEMA = ?
-  AND t1.TABLE_NAME = ?
+	t2.CONSTRAINT_TYPE = 'FOREIGN KEY'
+	AND t1.TABLE_SCHEMA = ?
+	AND t1.TABLE_NAME = ?
 ORDER BY
-  t1.CONSTRAINT_NAME,
-  t1.ORDINAL_POSITION`
+	t1.CONSTRAINT_NAME,
+	t1.ORDINAL_POSITION`
 )
 
 var _ schema.TableInspector = (*Driver)(nil)
@@ -718,6 +779,7 @@ type (
 	AutoIncrement struct {
 		schema.Attr
 		A string
+		V int64
 	}
 
 	// OnUpdate attribute for columns with "ON UPDATE CURRENT_TIMESTAMP" as a default.
