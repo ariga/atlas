@@ -177,12 +177,6 @@ func (*DefaultHCLConverter) convertJSON(ctx *hcl.EvalContext, col *ColumnHCL) (T
 	}, nil
 }
 
-func (*DefaultHCLConverter) convertSpatial(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
-	return &SpatialType{
-		T: col.TypeName,
-	}, nil
-}
-
 // UnmarshalHCL converts HCL .schema documents into a slice of Table elements.
 func UnmarshalHCL(body []byte, filename string) ([]*Schema, error) {
 	parser := hclparse.NewParser()
