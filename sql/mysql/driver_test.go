@@ -490,9 +490,9 @@ func TestDriver_Table(t *testing.T) {
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
 				require.Equal("users", t.Name)
-				require.Equal("public", t.Schema)
+				require.Equal("public", t.Schema.Name)
 				fks := []*schema.ForeignKey{
-					{Symbol: "multi_column", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: &schema.Table{Name: "t1", Schema: "public"}, RefColumns: []*schema.Column{{Name: "gid"}, {Name: "xid"}}},
+					{Symbol: "multi_column", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}}, RefColumns: []*schema.Column{{Name: "gid"}, {Name: "xid"}}},
 					{Symbol: "self_reference", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: t},
 				}
 				columns := []*schema.Column{
@@ -537,7 +537,7 @@ func TestDriver_Table(t *testing.T) {
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
 				require.Equal("users", t.Name)
-				require.Equal("public", t.Schema)
+				require.Equal("public", t.Schema.Name)
 				columns := []*schema.Column{
 					{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
 					{Name: "c1", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
@@ -704,27 +704,31 @@ func TestDriver_Realm(t *testing.T) {
 	require.NoError(t, err)
 	realm, err := drv.Realm(context.Background(), &schema.InspectRealmOption{})
 	require.NoError(t, err)
-	require.EqualValues(t, &schema.Realm{
-		Schemas: []*schema.Schema{
-			{
-				Name: "test",
-				Attrs: []schema.Attr{
-					&schema.Charset{V: "utf8mb4"},
-					&schema.Collation{V: "utf8mb4_unicode_ci"},
+	require.EqualValues(t, func() *schema.Realm {
+		r := &schema.Realm{
+			Schemas: []*schema.Schema{
+				{
+					Name: "test",
+					Attrs: []schema.Attr{
+						&schema.Charset{V: "utf8mb4"},
+						&schema.Collation{V: "utf8mb4_unicode_ci"},
+					},
+					Tables: []*schema.Table{},
 				},
-				Tables: []*schema.Table{},
 			},
-		},
-		// Server default configuration.
-		Attrs: []schema.Attr{
-			&schema.Charset{
-				V: "utf8",
+			// Server default configuration.
+			Attrs: []schema.Attr{
+				&schema.Charset{
+					V: "utf8",
+				},
+				&schema.Collation{
+					V: "utf8_general_ci",
+				},
 			},
-			&schema.Collation{
-				V: "utf8_general_ci",
-			},
-		},
-	}, realm)
+		}
+		r.Schemas[0].Realm = r
+		return r
+	}(), realm)
 
 	mk.ExpectQuery(escape(schemasQuery+" WHERE `SCHEMA_NAME` IN (?, ?)")).
 		WithArgs("test", "public").
@@ -740,24 +744,40 @@ func TestDriver_Realm(t *testing.T) {
 	mk.tablesInSchema("public")
 	realm, err = drv.Realm(context.Background(), &schema.InspectRealmOption{Schemas: []string{"test", "public"}})
 	require.NoError(t, err)
-	require.EqualValues(t, []*schema.Schema{
-		{
-			Name: "test",
-			Attrs: []schema.Attr{
-				&schema.Charset{V: "utf8mb4"},
-				&schema.Collation{V: "utf8mb4_unicode_ci"},
+	require.EqualValues(t, func() *schema.Realm {
+		r := &schema.Realm{
+			Schemas: []*schema.Schema{
+				{
+					Name: "test",
+					Attrs: []schema.Attr{
+						&schema.Charset{V: "utf8mb4"},
+						&schema.Collation{V: "utf8mb4_unicode_ci"},
+					},
+					Tables: []*schema.Table{},
+				},
+				{
+					Name: "public",
+					Attrs: []schema.Attr{
+						&schema.Charset{V: "utf8"},
+						&schema.Collation{V: "utf8_general_ci"},
+					},
+					Tables: []*schema.Table{},
+				},
 			},
-			Tables: []*schema.Table{},
-		},
-		{
-			Name: "public",
+			// Server default configuration.
 			Attrs: []schema.Attr{
-				&schema.Charset{V: "utf8"},
-				&schema.Collation{V: "utf8_general_ci"},
+				&schema.Charset{
+					V: "utf8",
+				},
+				&schema.Collation{
+					V: "utf8_general_ci",
+				},
 			},
-			Tables: []*schema.Table{},
-		},
-	}, realm.Schemas)
+		}
+		r.Schemas[0].Realm = r
+		r.Schemas[1].Realm = r
+		return r
+	}(), realm)
 }
 
 func TestDriver_Exec(t *testing.T) {
@@ -775,7 +795,7 @@ func TestDriver_Exec(t *testing.T) {
 	require.NoError(t, err)
 	err = drv.Exec(context.Background(), []schema.Change{
 		&schema.DropTable{T: &schema.Table{Name: "users"}},
-		&schema.DropTable{T: &schema.Table{Name: "pets", Schema: "public"}},
+		&schema.DropTable{T: &schema.Table{Name: "pets", Schema: &schema.Schema{Name: "public"}}},
 		&schema.AddTable{
 			T: func() *schema.Table {
 				t := &schema.Table{

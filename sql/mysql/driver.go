@@ -37,6 +37,7 @@ func (d *Driver) Realm(ctx context.Context, opts *schema.InspectRealmOption) (*s
 	if err != nil {
 		return nil, err
 	}
+	realm := &schema.Realm{Schemas: schemas, Attrs: []schema.Attr{&schema.Charset{V: d.charset}, &schema.Collation{V: d.collate}}}
 	for _, s := range schemas {
 		tables, err := d.Tables(ctx, &schema.InspectTableOptions{
 			Schema: s.Name,
@@ -44,13 +45,11 @@ func (d *Driver) Realm(ctx context.Context, opts *schema.InspectRealmOption) (*s
 		if err != nil {
 			return nil, err
 		}
+		s.Realm = realm
 		s.Tables = tables
 	}
 	linkSchemaTables(schemas)
-	return &schema.Realm{
-		Schemas: schemas,
-		Attrs:   []schema.Attr{&schema.Charset{V: d.charset}, &schema.Collation{V: d.collate}},
-	}, nil
+	return realm, nil
 }
 
 // Tables returns schema descriptions of all tables in the given schema.
@@ -69,7 +68,7 @@ func (d *Driver) Tables(ctx context.Context, opts *schema.InspectTableOptions) (
 	}
 	if len(tables) > 0 {
 		// Link all tables reside on the same schema.
-		linkSchemaTables([]*schema.Schema{{Name: tables[0].Schema, Tables: tables}})
+		linkSchemaTables([]*schema.Schema{{Name: tables[0].Schema.Name, Tables: tables}})
 	}
 	return tables, nil
 }
@@ -153,7 +152,7 @@ func (d *Driver) table(ctx context.Context, name string, opts *schema.InspectTab
 		}
 		return nil, err
 	}
-	t := &schema.Table{Name: name, Schema: tSchema.String}
+	t := &schema.Table{Name: name, Schema: &schema.Schema{Name: tSchema.String}}
 	if validString(collation) {
 		t.Attrs = append(t.Attrs, &schema.Collation{
 			V: collation.String,
@@ -164,7 +163,7 @@ func (d *Driver) table(ctx context.Context, name string, opts *schema.InspectTab
 
 // columns queries and appends the columns of the given table.
 func (d *Driver) columns(ctx context.Context, t *schema.Table) error {
-	rows, err := d.QueryContext(ctx, columnsQuery, t.Schema, t.Name)
+	rows, err := d.QueryContext(ctx, columnsQuery, t.Schema.Name, t.Name)
 	if err != nil {
 		return fmt.Errorf("mysql: querying %q columns: %w", t.Name, err)
 	}
@@ -328,7 +327,7 @@ func (d *Driver) indexes(ctx context.Context, t *schema.Table) error {
 	if d.supportsIndexExpr() {
 		query = indexesExprQuery
 	}
-	rows, err := d.QueryContext(ctx, query, t.Schema, t.Name)
+	rows, err := d.QueryContext(ctx, query, t.Schema.Name, t.Name)
 	if err != nil {
 		return fmt.Errorf("mysql: querying %q indexes: %w", t.Name, err)
 	}
@@ -395,7 +394,7 @@ func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
 
 // fks queries and appends the foreign keys of the given table.
 func (d *Driver) fks(ctx context.Context, t *schema.Table) error {
-	rows, err := d.QueryContext(ctx, fksQuery, t.Schema, t.Name)
+	rows, err := d.QueryContext(ctx, fksQuery, t.Schema.Name, t.Name)
 	if err != nil {
 		return fmt.Errorf("mysql: querying %q foreign keys: %w", t.Name, err)
 	}
@@ -426,7 +425,7 @@ func (d *Driver) addFKs(t *schema.Table, rows *sql.Rows) error {
 				OnUpdate: schema.ReferenceOption(updateRule),
 			}
 			if refTable != t.Name || tSchema != refSchema {
-				fk.RefTable = &schema.Table{Name: refTable, Schema: refSchema}
+				fk.RefTable = &schema.Table{Name: refTable, Schema: &schema.Schema{Name: refSchema}}
 			}
 			names[name] = fk
 			t.ForeignKeys = append(t.ForeignKeys, fk)
@@ -454,7 +453,7 @@ func (d *Driver) addFKs(t *schema.Table, rows *sql.Rows) error {
 
 // checks queries and appends the check constraints of the given table.
 func (d *Driver) checks(ctx context.Context, t *schema.Table) error {
-	rows, err := d.QueryContext(ctx, checksQuery, t.Schema, t.Name)
+	rows, err := d.QueryContext(ctx, checksQuery, t.Schema.Name, t.Name)
 	if err != nil {
 		return fmt.Errorf("mysql: querying %q check constraints: %w", t.Name, err)
 	}
@@ -553,8 +552,8 @@ func (d *Driver) addTable(ctx context.Context, add *schema.AddTable) error {
 func (d *Driver) dropTable(ctx context.Context, drop *schema.DropTable) error {
 	var b strings.Builder
 	b.WriteString("DROP TABLE ")
-	if drop.T.Schema != "" {
-		ident(&b, drop.T.Schema)
+	if drop.T.Schema != nil {
+		ident(&b, drop.T.Schema.Name)
 		b.WriteByte('.')
 	}
 	ident(&b, drop.T.Name)
@@ -622,13 +621,14 @@ func linkSchemaTables(schemas []*schema.Schema) {
 	for _, s := range schemas {
 		byName[s.Name] = make(map[string]*schema.Table)
 		for _, t := range s.Tables {
+			t.Schema = s
 			byName[s.Name][t.Name] = t
 		}
 	}
 	for _, s := range schemas {
 		for _, t := range s.Tables {
 			for _, fk := range t.ForeignKeys {
-				rs, ok := byName[fk.RefTable.Schema]
+				rs, ok := byName[fk.RefTable.Schema.Name]
 				if !ok {
 					continue
 				}
