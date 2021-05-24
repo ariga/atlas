@@ -20,7 +20,7 @@ type HCLConverter interface {
 	ConvertDefault(*hcl.EvalContext, *ColumnHCL) (Expr, error)
 
 	// ConvertAttrs returns a slice of Attr elements describing the column.
-	ConvertAttrs(ctx *hcl.EvalContext, column *ColumnHCL) ([]Attr, error)
+	ConvertAttrs(*hcl.EvalContext, *ColumnHCL) ([]Attr, error)
 }
 
 type DefaultHCLConverter struct {
