@@ -63,6 +63,37 @@ func TestDiff_TableDiff(t *testing.T) {
 			},
 		},
 		{
+			name: "add charset",
+			from: &schema.Table{Name: "users"},
+			to:   &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Charset{V: "hebrew"}}},
+			wantChanges: []schema.Change{
+				&schema.AddAttr{
+					A: &schema.Charset{V: "hebrew"},
+				},
+			},
+		},
+		{
+			name: "drop charset",
+			from: &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Charset{V: "hebrew"}}},
+			to:   &schema.Table{Name: "users"},
+			wantChanges: []schema.Change{
+				&schema.DropAttr{
+					A: &schema.Charset{V: "hebrew"},
+				},
+			},
+		},
+		{
+			name: "modify charset",
+			from: &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Charset{V: "hebrew"}}},
+			to:   &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Charset{V: "binary"}}},
+			wantChanges: []schema.Change{
+				&schema.ModifyAttr{
+					From: &schema.Charset{V: "hebrew"},
+					To:   &schema.Charset{V: "binary"},
+				},
+			},
+		},
+		{
 			name: "add check",
 			from: &schema.Table{Name: "t1"},
 			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"}}},
