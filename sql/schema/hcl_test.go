@@ -69,7 +69,4 @@ func TestBasicSchemaUnmarshal(t *testing.T) {
 	require.EqualValues(t, &TimeType{
 		T: "json",
 	}, tables[2].Columns[8].Type.Type)
-	require.EqualValues(t, &TimeType{
-		T: "spatial",
-	}, tables[2].Columns[9].Type.Type)
 }

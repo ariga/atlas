@@ -49,8 +49,6 @@ func (c *DefaultHCLConverter) convertType(ctx *hcl.EvalContext, column *ColumnHC
 		return c.convertTime(ctx, column)
 	case "json":
 		return c.convertJSON(ctx, column)
-	case "spatial":
-		return c.convertSpatial(ctx, column)
 	default:
 		return nil, fmt.Errorf("schema: unsupported column type %q", column.TypeName)
 	}

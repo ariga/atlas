@@ -65,7 +65,4 @@ table "todos" {
   column "json_col" {
     type = "json"
   }
-  column "spatial_col" {
-    type = "spatial"
   }
-}
