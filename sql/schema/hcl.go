@@ -415,11 +415,11 @@ func evalContext(f *hcl.File) (*hcl.EvalContext, error) {
 			"schema": cty.MapVal(schemas),
 			"table":  cty.MapVal(tables),
 			"reference_option": cty.MapVal(map[string]cty.Value{
-				"NO_ACTION":   cty.StringVal(string(NoAction)),
-				"RESTRICT":    cty.StringVal(string(Restrict)),
-				"CASCADE":     cty.StringVal(string(Cascade)),
-				"SET_NULL":    cty.StringVal(string(SetNull)),
-				"SET_DEFAULT": cty.StringVal(string(SetDefault)),
+				"no_action":   cty.StringVal(string(NoAction)),
+				"restrict":    cty.StringVal(string(Restrict)),
+				"cascade":     cty.StringVal(string(Cascade)),
+				"set_null":    cty.StringVal(string(SetNull)),
+				"set_default": cty.StringVal(string(SetDefault)),
 			}),
 		},
 	}, nil

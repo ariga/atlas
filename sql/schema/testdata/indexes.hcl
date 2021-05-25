@@ -60,6 +60,6 @@ table "resources" {
     references = [
       table.tasks.column.id,
     ]
-    on_delete = reference_option.CASCADE
+    on_delete = reference_option.cascade
   }
 }
