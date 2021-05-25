@@ -251,17 +251,16 @@ func UnmarshalHCL(body []byte, filename string) ([]*Schema, error) {
 			}
 			table.Columns = append(table.Columns, column)
 		}
-		schemas[table.Schema.Name].Tables = append(schemas[table.Schema.Name].Tables, table)
-		for _, pk := range tableHCL.PrimaryKey {
-			cn := pk.GetAttr("name").AsString()
-			pkc, ok := table.Column(cn)
-			if !ok {
-				return nil, fmt.Errorf("schema: cannot set column %q as primary key for table %q", cn, table.Name)
+		if tableHCL.PrimaryKey != nil {
+			if err := applyPrimaryKeys(tableHCL, table); err != nil {
+				return nil, err
 			}
-			table.PrimaryKey = append(table.PrimaryKey, pkc)
 		}
+		if err := applyIndexes(tableHCL, table); err != nil {
+			return nil, err
+		}
+		schemas[table.Schema.Name].Tables = append(schemas[table.Schema.Name].Tables, table)
 	}
-
 	for _, tableHCL := range f.Tables {
 		if err := linkForeignKeys(schemas, tableHCL); err != nil {
 			return nil, fmt.Errorf("schema: failed linking foreign keys for table %q: %w", tableHCL.Name, err)
@@ -277,6 +276,43 @@ func UnmarshalHCL(body []byte, filename string) ([]*Schema, error) {
 	return out, nil
 }
 
+func applyIndexes(tableHCL *tableHCL, table *Table) error {
+	for _, idx := range tableHCL.Indexes {
+		parts := make([]*IndexPart, 0, len(idx.Columns))
+		for seqno, c := range idx.Columns {
+			cn := c.GetAttr("name").AsString()
+			col, ok := table.Column(cn)
+			if !ok {
+				return fmt.Errorf("schema: unknown column %q in table %q", cn, table.Name)
+			}
+			parts = append(parts, &IndexPart{
+				SeqNo: seqno,
+				C:     col,
+			})
+		}
+		table.Indexes = append(table.Indexes, &Index{
+			Name:   idx.Name,
+			Unique: idx.Unique,
+			Table:  table,
+			Attrs:  nil,
+			Parts:  parts,
+		})
+	}
+	return nil
+}
+
+func applyPrimaryKeys(tableHCL *tableHCL, table *Table) error {
+	for _, pk := range tableHCL.PrimaryKey.Columns {
+		cn := pk.GetAttr("name").AsString()
+		pkc, ok := table.Column(cn)
+		if !ok {
+			return fmt.Errorf("schema: cannot set column %q as primary key for table %q", cn, table.Name)
+		}
+		table.PrimaryKey = append(table.PrimaryKey, pkc)
+	}
+	return nil
+}
+
 func linkForeignKeys(schemas map[string]*Schema, tableHCL *tableHCL) error {
 	sch := schemas[tableHCL.Schema]
 	var table *Table
@@ -289,7 +325,7 @@ func linkForeignKeys(schemas map[string]*Schema, tableHCL *tableHCL) error {
 	if table == nil {
 		return fmt.Errorf("schema: did not find table %q in schemas", tableHCL.Name)
 	}
-	for _, fk := range tableHCL.ForeignKey {
+	for _, fk := range tableHCL.ForeignKeys {
 		var cols []*Column
 		for _, col := range fk.Columns {
 			cn := col.GetAttr("name").AsString()
@@ -429,12 +465,23 @@ type foreignKeyHCL struct {
 	Remain     hcl.Body    `hcl:",remain"`
 }
 
+type primaryKeyHCL struct {
+	Columns []cty.Value `hcl:"columns"`
+}
+
+type indexHCL struct {
+	Name    string      `hcl:",label"`
+	Columns []cty.Value `hcl:"columns"`
+	Unique  bool        `hcl:"unique"`
+}
+
 type tableHCL struct {
-	Name       string           `hcl:",label"`
-	Schema     string           `hcl:"schema"`
-	Columns    []*ColumnHCL     `hcl:"column,block"`
-	PrimaryKey []cty.Value      `hcl:"primary_key,optional"`
-	ForeignKey []*foreignKeyHCL `hcl:"foreign_key,block"`
+	Name        string           `hcl:",label"`
+	Schema      string           `hcl:"schema"`
+	Columns     []*ColumnHCL     `hcl:"column,block"`
+	PrimaryKey  *primaryKeyHCL   `hcl:"primary_key,block"`
+	ForeignKeys []*foreignKeyHCL `hcl:"foreign_key,block"`
+	Indexes     []*indexHCL      `hcl:"index,block"`
 }
 
 type ColumnHCL struct {

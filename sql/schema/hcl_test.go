@@ -163,3 +163,26 @@ func TestForeignKey(t *testing.T) {
 		OnDelete:   Cascade,
 	}, resources.ForeignKeys[0])
 }
+
+func TestIndex(t *testing.T) {
+	filename := "testdata/indexes.hcl"
+	bytes, err := ioutil.ReadFile(filename)
+	require.NoError(t, err)
+	schemas, err := UnmarshalHCL(bytes, filename)
+	require.NoError(t, err)
+	tasks := schemas[0].Tables[0]
+	textCol, ok := tasks.Column("text")
+	require.True(t, ok)
+	require.EqualValues(t, &Index{
+		Name:   "idx_text",
+		Unique: true,
+		Table:  tasks,
+		Attrs:  nil,
+		Parts: []*IndexPart{
+			{
+				SeqNo: 0,
+				C:     textCol,
+			},
+		},
+	}, tasks.Indexes[0])
+}

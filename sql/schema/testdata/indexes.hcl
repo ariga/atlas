@@ -10,9 +10,17 @@ table "tasks" {
   column "text" {
     type = "string"
   }
-  primary_key = [
-    table.tasks.column.id,
-  ]
+  primary_key {
+    columns = [
+      table.tasks.column.id,
+    ]
+  }
+  index "idx_text" {
+    columns = [
+      table.tasks.column.text
+    ]
+    unique = true
+  }
 }
 
 table "group_vals" {
@@ -26,10 +34,12 @@ table "group_vals" {
   column "value" {
     type = "string"
   }
-  primary_key = [
-    table.group_vals.column.id,
-    table.group_vals.column.group_id,
-  ]
+  primary_key {
+    columns = [
+      table.group_vals.column.id,
+      table.group_vals.column.group_id,
+    ]
+  }
 }
 
 table "resources" {
