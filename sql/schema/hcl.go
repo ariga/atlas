@@ -252,11 +252,11 @@ func UnmarshalHCL(body []byte, filename string) ([]*Schema, error) {
 			table.Columns = append(table.Columns, column)
 		}
 		if tableHCL.PrimaryKey != nil {
-			if err := applyPrimaryKeys(tableHCL, table); err != nil {
+			if err := addPrimaryKeys(tableHCL, table); err != nil {
 				return nil, err
 			}
 		}
-		if err := applyIndexes(tableHCL, table); err != nil {
+		if err := addIndexes(tableHCL, table); err != nil {
 			return nil, err
 		}
 		schemas[table.Schema.Name].Tables = append(schemas[table.Schema.Name].Tables, table)
@@ -276,7 +276,7 @@ func UnmarshalHCL(body []byte, filename string) ([]*Schema, error) {
 	return out, nil
 }
 
-func applyIndexes(tableHCL *tableHCL, table *Table) error {
+func addIndexes(tableHCL *tableHCL, table *Table) error {
 	for _, idx := range tableHCL.Indexes {
 		parts := make([]*IndexPart, 0, len(idx.Columns))
 		for seqno, c := range idx.Columns {
@@ -294,14 +294,13 @@ func applyIndexes(tableHCL *tableHCL, table *Table) error {
 			Name:   idx.Name,
 			Unique: idx.Unique,
 			Table:  table,
-			Attrs:  nil,
 			Parts:  parts,
 		})
 	}
 	return nil
 }
 
-func applyPrimaryKeys(tableHCL *tableHCL, table *Table) error {
+func addPrimaryKeys(tableHCL *tableHCL, table *Table) error {
 	for _, pk := range tableHCL.PrimaryKey.Columns {
 		cn := pk.GetAttr("name").AsString()
 		pkc, ok := table.Column(cn)
@@ -314,19 +313,16 @@ func applyPrimaryKeys(tableHCL *tableHCL, table *Table) error {
 }
 
 func linkForeignKeys(schemas map[string]*Schema, tableHCL *tableHCL) error {
-	sch := schemas[tableHCL.Schema]
-	var table *Table
-	for _, t := range sch.Tables {
-		if t.Name == tableHCL.Name {
-			table = t
-			break
-		}
+	sch, ok := schemas[tableHCL.Schema]
+	if !ok {
+		return fmt.Errorf("schema: unknown schema %q", tableHCL.Schema)
 	}
-	if table == nil {
+	table, ok := sch.Table(tableHCL.Name)
+	if !ok {
 		return fmt.Errorf("schema: did not find table %q in schemas", tableHCL.Name)
 	}
 	for _, fk := range tableHCL.ForeignKeys {
-		var cols []*Column
+		cols := make([]*Column, 0, len(fk.Columns))
 		for _, col := range fk.Columns {
 			cn := col.GetAttr("name").AsString()
 			fkc, ok := table.Column(cn)
@@ -335,8 +331,10 @@ func linkForeignKeys(schemas map[string]*Schema, tableHCL *tableHCL) error {
 			}
 			cols = append(cols, fkc)
 		}
-		var refTable *Table
-		var refColumns []*Column
+		var (
+			refTable   *Table
+			refColumns []*Column
+		)
 		for _, refCol := range fk.RefColumns {
 			refTableName := refCol.GetAttr("table").AsString()
 			if refTable == nil {
