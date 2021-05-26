@@ -21,7 +21,6 @@ func TestBasicSchemaUnmarshal(t *testing.T) {
 		Null: false,
 		Type: &IntegerType{
 			T:        "integer",
-			Size:     1,
 			Unsigned: true,
 		},
 	}, tables[0].Columns[0].Type)
@@ -29,8 +28,7 @@ func TestBasicSchemaUnmarshal(t *testing.T) {
 	require.EqualValues(t, &ColumnType{
 		Null: false,
 		Type: &IntegerType{
-			T:    "integer",
-			Size: 0,
+			T: "integer",
 		},
 	}, tables[1].Columns[0].Type)
 	require.EqualValues(t, tables[1].Name, "roles")

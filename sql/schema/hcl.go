@@ -128,7 +128,6 @@ func (*DefaultHCLConverter) convertBinary(ctx *hcl.EvalContext, col *ColumnHCL) 
 
 func (*DefaultHCLConverter) convertInteger(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
 	var v struct {
-		Size     int      `hcl:"size,optional"`
 		Unsigned bool     `hcl:"unsigned,optional"`
 		Remain   hcl.Body `hcl:",remain"`
 	}
@@ -139,7 +138,6 @@ func (*DefaultHCLConverter) convertInteger(ctx *hcl.EvalContext, col *ColumnHCL)
 	}
 	return &IntegerType{
 		T:        col.TypeName,
-		Size:     v.Size,
 		Unsigned: v.Unsigned,
 	}, nil
 }

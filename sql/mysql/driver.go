@@ -218,8 +218,7 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 	switch t := parts[0]; t {
 	case tBit:
 		c.Type.Type = &BitType{
-			T:    t,
-			Size: int(size),
+			T: t,
 		}
 	case tTinyInt, tSmallInt, tMediumInt, tInt, tBigInt:
 		if size == 1 {
@@ -228,11 +227,23 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 			}
 			break
 		}
-		c.Type.Type = &schema.IntegerType{
+		// For integer types, the size represents the display width and does not
+		// constrain the range of values that can be stored in the column.
+		ft := &schema.IntegerType{
 			T:        t,
-			Size:     int(size),
 			Unsigned: unsigned,
 		}
+		if attr := parts[len(parts)-1]; attr == "zerofill" && size != 0 {
+			ft.Attrs = []schema.Attr{
+				&DisplayWidth{
+					N: int(size),
+				},
+				&ZeroFill{
+					A: attr,
+				},
+			}
+		}
+		c.Type.Type = ft
 	case tNumeric, tDecimal:
 		dt := &schema.DecimalType{
 			T: t,
@@ -604,14 +615,11 @@ func parseColumn(typ string) (parts []string, size int64, unsigned bool, err err
 		return r == '(' || r == ')' || r == ' ' || r == ','
 	}); parts[0] {
 	case tTinyInt, tSmallInt, tMediumInt, tInt, tBigInt:
-		switch {
-		case len(parts) == 2 && parts[1] == "unsigned": // int unsigned
+		if attr := parts[len(parts)-1]; attr == "unsigned" || attr == "zerofill" {
 			unsigned = true
-		case len(parts) == 3: // int(10) unsigned
-			unsigned = true
-			fallthrough
-		case len(parts) == 2: // int(10)
-			size, err = strconv.ParseInt(parts[1], 10, 0)
+		}
+		if len(parts) > 2 || len(parts) == 2 && !unsigned {
+			size, err = strconv.ParseInt(parts[1], 10, 64)
 		}
 	case tBinary, tVarBinary, tChar, tVarchar:
 		size, err = strconv.ParseInt(parts[1], 10, 64)
@@ -802,11 +810,23 @@ type (
 		Enforced bool
 	}
 
+	// The DisplayWidth represents a display width of an integer type.
+	DisplayWidth struct {
+		schema.Attr
+		N int
+	}
+
+	// The ZeroFill represents the ZEROFILL attribute which is
+	// deprecated for MySQL version >= 8.0.17.
+	ZeroFill struct {
+		schema.Attr
+		A string
+	}
+
 	// BitType represents a bit type.
 	BitType struct {
 		schema.Type
-		T    string
-		Size int
+		T string
 	}
 
 	// SetType represents a set type.

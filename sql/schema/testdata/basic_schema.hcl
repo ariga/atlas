@@ -7,7 +7,6 @@ table "users" {
   column "id" {
     type = "integer"
     null = false
-    size = 1
     unsigned = true
   }
   column "name" {

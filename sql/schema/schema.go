@@ -169,8 +169,8 @@ type (
 	// IntegerType represents an int type.
 	IntegerType struct {
 		T        string
-		Size     int
 		Unsigned bool
+		Attrs    []Attr
 	}
 
 	// DecimalType represents a fixed-point type that stores exact numeric values.
