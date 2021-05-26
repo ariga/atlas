@@ -3,7 +3,7 @@ schema "todo" {
 }
 
 table "tasks" {
-  schema = schema.todo.name
+  schema = schema.todo
   column "uuid" {
     type = "string"
     default = "uuid()"

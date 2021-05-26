@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/gocty"
 )
 
 // HCLConverter converts column definitions an HCL file to schema components.
@@ -237,7 +238,7 @@ func UnmarshalHCL(body []byte, filename string) ([]*Schema, error) {
 		table := &Table{
 			Name: tableHCL.Name,
 			Schema: &Schema{
-				Name: tableHCL.Schema,
+				Name: tableHCL.Schema.Name,
 			},
 		}
 		if _, ok := schemas[table.Schema.Name]; !ok {
@@ -280,7 +281,7 @@ func addIndexes(tableHCL *tableHCL, table *Table) error {
 	for _, idx := range tableHCL.Indexes {
 		parts := make([]*IndexPart, 0, len(idx.Columns))
 		for seqno, c := range idx.Columns {
-			cn := c.GetAttr("name").AsString()
+			cn := c.Name
 			col, ok := table.Column(cn)
 			if !ok {
 				return fmt.Errorf("schema: unknown column %q in table %q", cn, table.Name)
@@ -302,7 +303,7 @@ func addIndexes(tableHCL *tableHCL, table *Table) error {
 
 func addPrimaryKeys(tableHCL *tableHCL, table *Table) error {
 	for _, pk := range tableHCL.PrimaryKey.Columns {
-		cn := pk.GetAttr("name").AsString()
+		cn := pk.Name
 		pkc, ok := table.Column(cn)
 		if !ok {
 			return fmt.Errorf("schema: cannot set column %q as primary key for table %q", cn, table.Name)
@@ -313,7 +314,7 @@ func addPrimaryKeys(tableHCL *tableHCL, table *Table) error {
 }
 
 func linkForeignKeys(schemas map[string]*Schema, tableHCL *tableHCL) error {
-	sch, ok := schemas[tableHCL.Schema]
+	sch, ok := schemas[tableHCL.Schema.Name]
 	if !ok {
 		return fmt.Errorf("schema: unknown schema %q", tableHCL.Schema)
 	}
@@ -324,7 +325,7 @@ func linkForeignKeys(schemas map[string]*Schema, tableHCL *tableHCL) error {
 	for _, fk := range tableHCL.ForeignKeys {
 		cols := make([]*Column, 0, len(fk.Columns))
 		for _, col := range fk.Columns {
-			cn := col.GetAttr("name").AsString()
+			cn := col.Name
 			fkc, ok := table.Column(cn)
 			if !ok {
 				return fmt.Errorf("schema: unknown column %q for table %q", cn, table.Name)
@@ -336,7 +337,7 @@ func linkForeignKeys(schemas map[string]*Schema, tableHCL *tableHCL) error {
 			refColumns []*Column
 		)
 		for _, refCol := range fk.RefColumns {
-			refTableName := refCol.GetAttr("table").AsString()
+			refTableName := refCol.Table
 			if refTable == nil {
 				tbl, ok := sch.Table(refTableName)
 				if !ok {
@@ -349,7 +350,7 @@ func linkForeignKeys(schemas map[string]*Schema, tableHCL *tableHCL) error {
 					"schema: cannot apply foreign key %q, all referenced columns must belong to the same table",
 					fk.Symbol)
 			}
-			refColName := refCol.GetAttr("name").AsString()
+			refColName := refCol.Name
 			col, ok := refTable.Column(refColName)
 			if !ok {
 				return fmt.Errorf("schema: unknown column %q in table %q", refColName, refTableName)
@@ -391,18 +392,21 @@ func evalContext(f *hcl.File) (*hcl.EvalContext, error) {
 	}
 	schemas := make(map[string]cty.Value)
 	for _, sch := range fi.Schemas {
-		schemas[sch.Name] = cty.ObjectVal(map[string]cty.Value{
-			"name": cty.StringVal(sch.Name),
-		})
+		ref, err := toSchemaRef(sch.Name)
+		if err != nil {
+			return nil, fmt.Errorf("schema: failed creating ref to schema %q", sch.Name)
+		}
+		schemas[sch.Name] = ref
 	}
 	tables := make(map[string]cty.Value)
 	for _, tab := range fi.Tables {
 		cols := make(map[string]cty.Value)
 		for _, col := range tab.Columns {
-			cols[col.Name] = cty.ObjectVal(map[string]cty.Value{
-				"name":  cty.StringVal(col.Name),
-				"table": cty.StringVal(tab.Name),
-			})
+			ref, err := toColumnRef(tab.Name, col.Name)
+			if err != nil {
+				return nil, fmt.Errorf("schema: failed ref for column %q in table %q", col.Name, tab.Name)
+			}
+			cols[col.Name] = ref
 		}
 		tables[tab.Name] = cty.ObjectVal(map[string]cty.Value{
 			"column": cty.MapVal(cols),
@@ -421,6 +425,35 @@ func evalContext(f *hcl.File) (*hcl.EvalContext, error) {
 			}),
 		},
 	}, nil
+}
+
+type schemaRef struct {
+	Name string `cty:"name"`
+}
+
+func toSchemaRef(name string) (cty.Value, error) {
+	typ := cty.Object(map[string]cty.Type{
+		"name": cty.String,
+	})
+	s := &schemaRef{Name: name}
+	return gocty.ToCtyValue(s, typ)
+}
+
+type columnRef struct {
+	Name  string `cty:"name"`
+	Table string `cty:"table"`
+}
+
+func toColumnRef(table, column string) (cty.Value, error) {
+	typ := cty.Object(map[string]cty.Type{
+		"name":  cty.String,
+		"table": cty.String,
+	})
+	c := columnRef{
+		Name:  column,
+		Table: table,
+	}
+	return gocty.ToCtyValue(c, typ)
 }
 
 func toColumn(ctx *hcl.EvalContext, column *ColumnHCL, converter HCLConverter) (*Column, error) {
@@ -456,26 +489,26 @@ type schemaHCL struct {
 
 type foreignKeyHCL struct {
 	Symbol     string      `hcl:",label"`
-	Columns    []cty.Value `hcl:"columns"`
-	RefColumns []cty.Value `hcl:"references"`
+	Columns    []columnRef `hcl:"columns"`
+	RefColumns []columnRef `hcl:"references"`
 	OnUpdate   string      `hcl:"on_update,optional"`
 	OnDelete   string      `hcl:"on_delete,optional"`
 	Remain     hcl.Body    `hcl:",remain"`
 }
 
 type primaryKeyHCL struct {
-	Columns []cty.Value `hcl:"columns"`
+	Columns []columnRef `hcl:"columns"`
 }
 
 type indexHCL struct {
 	Name    string      `hcl:",label"`
-	Columns []cty.Value `hcl:"columns"`
+	Columns []columnRef `hcl:"columns"`
 	Unique  bool        `hcl:"unique"`
 }
 
 type tableHCL struct {
 	Name        string           `hcl:",label"`
-	Schema      string           `hcl:"schema"`
+	Schema      schemaRef        `hcl:"schema"`
 	Columns     []*ColumnHCL     `hcl:"column,block"`
 	PrimaryKey  *primaryKeyHCL   `hcl:"primary_key,block"`
 	ForeignKeys []*foreignKeyHCL `hcl:"foreign_key,block"`

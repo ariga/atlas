@@ -3,7 +3,7 @@ schema "todo" {
 }
 
 table "tasks" {
-  schema = schema.todo.name
+  schema = schema.todo
   column "id" {
     type = "integer"
   }
@@ -24,7 +24,7 @@ table "tasks" {
 }
 
 table "group_vals" {
-  schema = schema.todo.name
+  schema = schema.todo
   column "id" {
     type = "integer"
   }
@@ -43,7 +43,7 @@ table "group_vals" {
 }
 
 table "resources" {
-  schema = schema.todo.name
+  schema = schema.todo
   column "id" {
     type = "integer"
   }
