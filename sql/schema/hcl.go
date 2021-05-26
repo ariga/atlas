@@ -251,7 +251,20 @@ func UnmarshalHCL(body []byte, filename string) ([]*Schema, error) {
 			}
 			table.Columns = append(table.Columns, column)
 		}
+		if tableHCL.PrimaryKey != nil {
+			if err := addPrimaryKeys(tableHCL, table); err != nil {
+				return nil, err
+			}
+		}
+		if err := addIndexes(tableHCL, table); err != nil {
+			return nil, err
+		}
 		schemas[table.Schema.Name].Tables = append(schemas[table.Schema.Name].Tables, table)
+	}
+	for _, tableHCL := range f.Tables {
+		if err := linkForeignKeys(schemas, tableHCL); err != nil {
+			return nil, fmt.Errorf("schema: failed linking foreign keys for table %q: %w", tableHCL.Name, err)
+		}
 	}
 	out := make([]*Schema, 0, len(schemas))
 	for _, s := range schemas {
@@ -263,6 +276,99 @@ func UnmarshalHCL(body []byte, filename string) ([]*Schema, error) {
 	return out, nil
 }
 
+func addIndexes(tableHCL *tableHCL, table *Table) error {
+	for _, idx := range tableHCL.Indexes {
+		parts := make([]*IndexPart, 0, len(idx.Columns))
+		for seqno, c := range idx.Columns {
+			cn := c.GetAttr("name").AsString()
+			col, ok := table.Column(cn)
+			if !ok {
+				return fmt.Errorf("schema: unknown column %q in table %q", cn, table.Name)
+			}
+			parts = append(parts, &IndexPart{
+				SeqNo: seqno,
+				C:     col,
+			})
+		}
+		table.Indexes = append(table.Indexes, &Index{
+			Name:   idx.Name,
+			Unique: idx.Unique,
+			Table:  table,
+			Parts:  parts,
+		})
+	}
+	return nil
+}
+
+func addPrimaryKeys(tableHCL *tableHCL, table *Table) error {
+	for _, pk := range tableHCL.PrimaryKey.Columns {
+		cn := pk.GetAttr("name").AsString()
+		pkc, ok := table.Column(cn)
+		if !ok {
+			return fmt.Errorf("schema: cannot set column %q as primary key for table %q", cn, table.Name)
+		}
+		table.PrimaryKey = append(table.PrimaryKey, pkc)
+	}
+	return nil
+}
+
+func linkForeignKeys(schemas map[string]*Schema, tableHCL *tableHCL) error {
+	sch, ok := schemas[tableHCL.Schema]
+	if !ok {
+		return fmt.Errorf("schema: unknown schema %q", tableHCL.Schema)
+	}
+	table, ok := sch.Table(tableHCL.Name)
+	if !ok {
+		return fmt.Errorf("schema: did not find table %q in schemas", tableHCL.Name)
+	}
+	for _, fk := range tableHCL.ForeignKeys {
+		cols := make([]*Column, 0, len(fk.Columns))
+		for _, col := range fk.Columns {
+			cn := col.GetAttr("name").AsString()
+			fkc, ok := table.Column(cn)
+			if !ok {
+				return fmt.Errorf("schema: unknown column %q for table %q", cn, table.Name)
+			}
+			cols = append(cols, fkc)
+		}
+		var (
+			refTable   *Table
+			refColumns []*Column
+		)
+		for _, refCol := range fk.RefColumns {
+			refTableName := refCol.GetAttr("table").AsString()
+			if refTable == nil {
+				tbl, ok := sch.Table(refTableName)
+				if !ok {
+					return fmt.Errorf("schema: unknown table %q", refTableName)
+				}
+				refTable = tbl
+			}
+			if refTable.Name != refTableName {
+				return fmt.Errorf(
+					"schema: cannot apply foreign key %q, all referenced columns must belong to the same table",
+					fk.Symbol)
+			}
+			refColName := refCol.GetAttr("name").AsString()
+			col, ok := refTable.Column(refColName)
+			if !ok {
+				return fmt.Errorf("schema: unknown column %q in table %q", refColName, refTableName)
+			}
+			refColumns = append(refColumns, col)
+		}
+		table.ForeignKeys = append(table.ForeignKeys, &ForeignKey{
+			Symbol:     fk.Symbol,
+			Table:      table,
+			Columns:    cols,
+			RefTable:   refTable,
+			RefColumns: refColumns,
+			OnUpdate:   ReferenceOption(fk.OnUpdate),
+			OnDelete:   ReferenceOption(fk.OnDelete),
+		})
+	}
+	return nil
+}
+
 // evalContext does an initial pass through the hcl.File f and returns a context with populated
 // variables that can be used in the actual file evaluation
 func evalContext(f *hcl.File) (*hcl.EvalContext, error) {
@@ -270,6 +376,14 @@ func evalContext(f *hcl.File) (*hcl.EvalContext, error) {
 		Schemas []struct {
 			Name string `hcl:",label"`
 		} `hcl:"schema,block"`
+		Tables []struct {
+			Name    string `hcl:",label"`
+			Columns []struct {
+				Name   string   `hcl:",label"`
+				Remain hcl.Body `hcl:",remain"`
+			} `hcl:"column,block"`
+			Remain hcl.Body `hcl:",remain"`
+		} `hcl:"table,block"`
 		Remain hcl.Body `hcl:",remain"`
 	}
 	if diag := gohcl.DecodeBody(f.Body, &hcl.EvalContext{}, &fi); diag.HasErrors() {
@@ -281,9 +395,30 @@ func evalContext(f *hcl.File) (*hcl.EvalContext, error) {
 			"name": cty.StringVal(sch.Name),
 		})
 	}
+	tables := make(map[string]cty.Value)
+	for _, tab := range fi.Tables {
+		cols := make(map[string]cty.Value)
+		for _, col := range tab.Columns {
+			cols[col.Name] = cty.ObjectVal(map[string]cty.Value{
+				"name":  cty.StringVal(col.Name),
+				"table": cty.StringVal(tab.Name),
+			})
+		}
+		tables[tab.Name] = cty.ObjectVal(map[string]cty.Value{
+			"column": cty.MapVal(cols),
+		})
+	}
 	return &hcl.EvalContext{
 		Variables: map[string]cty.Value{
 			"schema": cty.MapVal(schemas),
+			"table":  cty.MapVal(tables),
+			"reference_option": cty.MapVal(map[string]cty.Value{
+				"no_action":   cty.StringVal(string(NoAction)),
+				"restrict":    cty.StringVal(string(Restrict)),
+				"cascade":     cty.StringVal(string(Cascade)),
+				"set_null":    cty.StringVal(string(SetNull)),
+				"set_default": cty.StringVal(string(SetDefault)),
+			}),
 		},
 	}, nil
 }
@@ -319,10 +454,32 @@ type schemaHCL struct {
 	Name string `hcl:",label"`
 }
 
+type foreignKeyHCL struct {
+	Symbol     string      `hcl:",label"`
+	Columns    []cty.Value `hcl:"columns"`
+	RefColumns []cty.Value `hcl:"references"`
+	OnUpdate   string      `hcl:"on_update,optional"`
+	OnDelete   string      `hcl:"on_delete,optional"`
+	Remain     hcl.Body    `hcl:",remain"`
+}
+
+type primaryKeyHCL struct {
+	Columns []cty.Value `hcl:"columns"`
+}
+
+type indexHCL struct {
+	Name    string      `hcl:",label"`
+	Columns []cty.Value `hcl:"columns"`
+	Unique  bool        `hcl:"unique"`
+}
+
 type tableHCL struct {
-	Name    string       `hcl:",label"`
-	Schema  string       `hcl:"schema"`
-	Columns []*ColumnHCL `hcl:"column,block"`
+	Name        string           `hcl:",label"`
+	Schema      string           `hcl:"schema"`
+	Columns     []*ColumnHCL     `hcl:"column,block"`
+	PrimaryKey  *primaryKeyHCL   `hcl:"primary_key,block"`
+	ForeignKeys []*foreignKeyHCL `hcl:"foreign_key,block"`
+	Indexes     []*indexHCL      `hcl:"index,block"`
 }
 
 type ColumnHCL struct {

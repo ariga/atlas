@@ -132,3 +132,57 @@ func TestAttributes(t *testing.T) {
 		},
 	})
 }
+
+func TestPrimaryKey(t *testing.T) {
+	filename := "testdata/indexes.hcl"
+	bytes, err := ioutil.ReadFile(filename)
+	require.NoError(t, err)
+	schemas, err := UnmarshalHCL(bytes, filename)
+	require.NoError(t, err)
+	tbl1 := schemas[0].Tables[0]
+	tbl2 := schemas[0].Tables[1]
+	require.EqualValues(t, tbl1.Columns[0], tbl1.PrimaryKey[0])
+	require.EqualValues(t, tbl2.Columns[0], tbl2.PrimaryKey[0])
+	require.EqualValues(t, tbl2.Columns[1], tbl2.PrimaryKey[1])
+}
+
+func TestForeignKey(t *testing.T) {
+	filename := "testdata/indexes.hcl"
+	bytes, err := ioutil.ReadFile(filename)
+	require.NoError(t, err)
+	schemas, err := UnmarshalHCL(bytes, filename)
+	require.NoError(t, err)
+	tasks := schemas[0].Tables[0]
+	resources := schemas[0].Tables[2]
+	require.EqualValues(t, &ForeignKey{
+		Symbol:     "resource_task",
+		Table:      resources,
+		Columns:    []*Column{resources.Columns[1]},
+		RefTable:   tasks,
+		RefColumns: []*Column{tasks.Columns[0]},
+		OnDelete:   Cascade,
+	}, resources.ForeignKeys[0])
+}
+
+func TestIndex(t *testing.T) {
+	filename := "testdata/indexes.hcl"
+	bytes, err := ioutil.ReadFile(filename)
+	require.NoError(t, err)
+	schemas, err := UnmarshalHCL(bytes, filename)
+	require.NoError(t, err)
+	tasks := schemas[0].Tables[0]
+	textCol, ok := tasks.Column("text")
+	require.True(t, ok)
+	require.EqualValues(t, &Index{
+		Name:   "idx_text",
+		Unique: true,
+		Table:  tasks,
+		Attrs:  nil,
+		Parts: []*IndexPart{
+			{
+				SeqNo: 0,
+				C:     textCol,
+			},
+		},
+	}, tasks.Indexes[0])
+}
