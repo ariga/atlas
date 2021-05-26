@@ -18,13 +18,13 @@ func TestDiff_TableDiff(t *testing.T) {
 	tests := []testcase{
 		{
 			name: "no changes",
-			from: &schema.Table{Name: "users"},
+			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}},
 			to:   &schema.Table{Name: "users"},
 		},
 		{
 			name: "change primary key",
 			from: func() *schema.Table {
-				t := &schema.Table{Name: "users", Columns: []*schema.Column{{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}}}}
+				t := &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Columns: []*schema.Column{{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}}}}
 				t.PrimaryKey = t.Columns
 				return t
 			}(),
@@ -33,7 +33,7 @@ func TestDiff_TableDiff(t *testing.T) {
 		},
 		{
 			name: "add collation",
-			from: &schema.Table{Name: "users"},
+			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}},
 			to:   &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Collation{V: "latin1"}}},
 			wantChanges: []schema.Change{
 				&schema.AddAttr{
@@ -43,7 +43,7 @@ func TestDiff_TableDiff(t *testing.T) {
 		},
 		{
 			name: "drop collation",
-			from: &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Collation{V: "latin1"}}},
+			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Collation{V: "latin1"}}},
 			to:   &schema.Table{Name: "users"},
 			wantChanges: []schema.Change{
 				&schema.DropAttr{
@@ -53,7 +53,7 @@ func TestDiff_TableDiff(t *testing.T) {
 		},
 		{
 			name: "modify collation",
-			from: &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Collation{V: "utf8"}}},
+			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Collation{V: "utf8"}}},
 			to:   &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Collation{V: "latin1"}}},
 			wantChanges: []schema.Change{
 				&schema.ModifyAttr{
@@ -64,7 +64,7 @@ func TestDiff_TableDiff(t *testing.T) {
 		},
 		{
 			name: "add charset",
-			from: &schema.Table{Name: "users"},
+			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}},
 			to:   &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Charset{V: "hebrew"}}},
 			wantChanges: []schema.Change{
 				&schema.AddAttr{
@@ -74,7 +74,7 @@ func TestDiff_TableDiff(t *testing.T) {
 		},
 		{
 			name: "drop charset",
-			from: &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Charset{V: "hebrew"}}},
+			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Charset{V: "hebrew"}}},
 			to:   &schema.Table{Name: "users"},
 			wantChanges: []schema.Change{
 				&schema.DropAttr{
@@ -84,7 +84,7 @@ func TestDiff_TableDiff(t *testing.T) {
 		},
 		{
 			name: "modify charset",
-			from: &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Charset{V: "hebrew"}}},
+			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Charset{V: "hebrew"}}},
 			to:   &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Charset{V: "binary"}}},
 			wantChanges: []schema.Change{
 				&schema.ModifyAttr{
@@ -95,7 +95,7 @@ func TestDiff_TableDiff(t *testing.T) {
 		},
 		{
 			name: "add check",
-			from: &schema.Table{Name: "t1"},
+			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}},
 			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"}}},
 			wantChanges: []schema.Change{
 				&schema.AddAttr{
@@ -105,7 +105,7 @@ func TestDiff_TableDiff(t *testing.T) {
 		},
 		{
 			name: "drop check",
-			from: &schema.Table{Name: "t1", Attrs: []schema.Attr{&Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"}}},
+			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"}}},
 			to:   &schema.Table{Name: "t1"},
 			wantChanges: []schema.Change{
 				&schema.DropAttr{
@@ -115,7 +115,7 @@ func TestDiff_TableDiff(t *testing.T) {
 		},
 		{
 			name: "modify check",
-			from: &schema.Table{Name: "t1", Attrs: []schema.Attr{&Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"}}},
+			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"}}},
 			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')", Enforced: true}}},
 			wantChanges: []schema.Change{
 				&schema.ModifyAttr{
@@ -128,6 +128,9 @@ func TestDiff_TableDiff(t *testing.T) {
 			var (
 				from = &schema.Table{
 					Name: "t1",
+					Schema: &schema.Schema{
+						Name: "public",
+					},
 					Columns: []*schema.Column{
 						{Name: "c1", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}},
 						{Name: "c2", Type: &schema.ColumnType{Raw: "tinyint", Type: &schema.IntegerType{T: "tinyint"}}},
@@ -165,6 +168,9 @@ func TestDiff_TableDiff(t *testing.T) {
 			var (
 				from = &schema.Table{
 					Name: "t1",
+					Schema: &schema.Schema{
+						Name: "public",
+					},
 					Columns: []*schema.Column{
 						{Name: "c1", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}},
 						{Name: "c2", Type: &schema.ColumnType{Raw: "tinyint", Type: &schema.IntegerType{T: "tinyint"}}},
@@ -173,6 +179,9 @@ func TestDiff_TableDiff(t *testing.T) {
 				}
 				to = &schema.Table{
 					Name: "t1",
+					Schema: &schema.Schema{
+						Name: "public",
+					},
 					Columns: []*schema.Column{
 						{Name: "c1", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}},
 						{Name: "c2", Type: &schema.ColumnType{Raw: "tinyint", Type: &schema.IntegerType{T: "tinyint"}}},
@@ -203,6 +212,9 @@ func TestDiff_TableDiff(t *testing.T) {
 			var (
 				ref = &schema.Table{
 					Name: "t2",
+					Schema: &schema.Schema{
+						Name: "public",
+					},
 					Columns: []*schema.Column{
 						{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
 						{Name: "ref_id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
@@ -210,12 +222,18 @@ func TestDiff_TableDiff(t *testing.T) {
 				}
 				from = &schema.Table{
 					Name: "t1",
+					Schema: &schema.Schema{
+						Name: "public",
+					},
 					Columns: []*schema.Column{
 						{Name: "t2_id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
 					},
 				}
 				to = &schema.Table{
 					Name: "t1",
+					Schema: &schema.Schema{
+						Name: "public",
+					},
 					Columns: []*schema.Column{
 						{Name: "t2_id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
 					},
@@ -228,7 +246,7 @@ func TestDiff_TableDiff(t *testing.T) {
 				{Table: to, Columns: to.Columns, RefTable: ref, RefColumns: ref.Columns[1:]},
 			}
 			return testcase{
-				name: "indexes",
+				name: "foreign-keys",
 				from: from,
 				to:   to,
 				wantChanges: []schema.Change{
@@ -255,6 +273,11 @@ func TestDiff_SchemaDiff(t *testing.T) {
 	var (
 		d    Diff
 		from = &schema.Schema{
+			Realm: &schema.Realm{
+				Attrs: []schema.Attr{
+					&schema.Collation{V: "latin1"},
+				},
+			},
 			Tables: []*schema.Table{
 				{Name: "users"},
 				{Name: "pets"},
@@ -278,6 +301,8 @@ func TestDiff_SchemaDiff(t *testing.T) {
 			},
 		}
 	)
+	from.Tables[0].Schema = from
+	from.Tables[1].Schema = from
 	changes, err := d.SchemaDiff(from, to)
 	require.NoError(t, err)
 	require.EqualValues(t, []schema.Change{
