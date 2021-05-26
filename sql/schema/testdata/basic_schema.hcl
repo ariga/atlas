@@ -3,7 +3,7 @@ schema "todo" {
 }
 
 table "users" {
-  schema = schema.todo.name
+  schema = schema.todo
   column "id" {
     type = "integer"
     null = false
@@ -18,7 +18,7 @@ table "users" {
 }
 
 table "roles" {
-  schema = schema.todo.name
+  schema = schema.todo
   column "id" {
     type = "integer"
   }
@@ -28,7 +28,7 @@ table "roles" {
 }
 
 table "todos" {
-  schema = schema.todo.name
+  schema = schema.todo
   column "id" {
     type = "integer"
   }

@@ -3,7 +3,7 @@ schema "todo" {
 }
 
 table "tasks" {
-  schema = schema.todo.name
+  schema = schema.todo
   column "text" {
     type = "string"
     comment = "comment"
