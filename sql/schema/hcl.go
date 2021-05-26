@@ -338,11 +338,11 @@ func linkForeignKeys(schemas map[string]*Schema, tableHCL *tableHCL) error {
 		for _, refCol := range fk.RefColumns {
 			refTableName := refCol.GetAttr("table").AsString()
 			if refTable == nil {
-				lkp, ok := sch.Table(refTableName)
+				tbl, ok := sch.Table(refTableName)
 				if !ok {
 					return fmt.Errorf("schema: unknown table %q", refTableName)
 				}
-				refTable = lkp
+				refTable = tbl
 			}
 			if refTable.Name != refTableName {
 				return fmt.Errorf(
@@ -350,11 +350,11 @@ func linkForeignKeys(schemas map[string]*Schema, tableHCL *tableHCL) error {
 					fk.Symbol)
 			}
 			refColName := refCol.GetAttr("name").AsString()
-			lkp, ok := refTable.Column(refColName)
+			col, ok := refTable.Column(refColName)
 			if !ok {
 				return fmt.Errorf("schema: unknown column %q in table %q", refColName, refTableName)
 			}
-			refColumns = append(refColumns, lkp)
+			refColumns = append(refColumns, col)
 		}
 		table.ForeignKeys = append(table.ForeignKeys, &ForeignKey{
 			Symbol:     fk.Symbol,
