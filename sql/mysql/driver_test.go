@@ -84,7 +84,7 @@ func TestDriver_Table(t *testing.T) {
 				require.Len(t.PrimaryKey, 1)
 				require.True(t.PrimaryKey[0] == t.Columns[0])
 				require.EqualValues([]*schema.Column{
-					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint", Size: 20}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
+					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
 				}, t.Columns)
 			},
 		},
@@ -96,23 +96,24 @@ func TestDriver_Table(t *testing.T) {
 				m.ExpectQuery(escape(columnsQuery)).
 					WithArgs("public", "users").
 					WillReturnRows(rows(`
-+--------------------+----------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
-| column_name        | column_type          | column_comment       | is_nullable | column_key | column_default | extra          | character_set_name | collation_name |
-+--------------------+----------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
-| id                 | bigint(20)           |                      | NO          | PRI        | NULL           | auto_increment | NULL               | NULL           |
-| v57_tiny           | tinyint(1)           |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| v57_tiny_unsigned  | tinyint(4) unsigned  |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| v57_small          | smallint(6)          |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| v57_small_unsigned | smallint(6) unsigned |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| v57_int            | bigint(11)           |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| v57_int_unsigned   | bigint(11) unsigned  |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| v8_tiny            | tinyint              |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| v8_tiny_unsigned   | tinyint unsigned     |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| v8_small           | smallint             |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| v8_small_unsigned  | smallint unsigned    |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| v8_big             | bigint               |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| v8_big_unsigned    | bigint unsigned      | comment              | NO          |            | NULL           |                | NULL               | NULL           |
-+--------------------+----------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
++--------------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
+| column_name        | column_type                  | column_comment       | is_nullable | column_key | column_default | extra          | character_set_name | collation_name |
++--------------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
+| id                 | bigint(20)                   |                      | NO          | PRI        | NULL           | auto_increment | NULL               | NULL           |
+| v57_tiny           | tinyint(1)                   |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| v57_tiny_unsigned  | tinyint(4) unsigned          |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| v57_small          | smallint(6)                  |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| v57_small_unsigned | smallint(6) unsigned         |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| v57_int            | bigint(11)                   |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| v57_int_unsigned   | bigint(11) unsigned          |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| v8_tiny            | tinyint                      |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| v8_tiny_unsigned   | tinyint unsigned             |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| v8_small           | smallint                     |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| v8_small_unsigned  | smallint unsigned            |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| v8_big             | bigint                       |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| v8_big_unsigned    | bigint unsigned              | comment              | NO          |            | NULL           |                | NULL               | NULL           |
+| v8_big_zerofill    | bigint(20) unsigned zerofill | comment              | NO          |            | NULL           |                | NULL               | NULL           |
++--------------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
 `))
 				m.noIndexes()
 				m.noFKs()
@@ -123,19 +124,20 @@ func TestDriver_Table(t *testing.T) {
 				require.Len(t.PrimaryKey, 1)
 				require.True(t.PrimaryKey[0] == t.Columns[0])
 				require.EqualValues([]*schema.Column{
-					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint", Size: 20}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
+					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
 					{Name: "v57_tiny", Type: &schema.ColumnType{Raw: "tinyint(1)", Type: &schema.BoolType{T: "tinyint"}}},
-					{Name: "v57_tiny_unsigned", Type: &schema.ColumnType{Raw: "tinyint(4) unsigned", Type: &schema.IntegerType{T: "tinyint", Size: 4, Unsigned: true}}},
-					{Name: "v57_small", Type: &schema.ColumnType{Raw: "smallint(6)", Type: &schema.IntegerType{T: "smallint", Size: 6}}},
-					{Name: "v57_small_unsigned", Type: &schema.ColumnType{Raw: "smallint(6) unsigned", Type: &schema.IntegerType{T: "smallint", Size: 6, Unsigned: true}}},
-					{Name: "v57_int", Type: &schema.ColumnType{Raw: "bigint(11)", Type: &schema.IntegerType{T: "bigint", Size: 11}}},
-					{Name: "v57_int_unsigned", Type: &schema.ColumnType{Raw: "bigint(11) unsigned", Type: &schema.IntegerType{T: "bigint", Size: 11, Unsigned: true}}},
+					{Name: "v57_tiny_unsigned", Type: &schema.ColumnType{Raw: "tinyint(4) unsigned", Type: &schema.IntegerType{T: "tinyint", Unsigned: true}}},
+					{Name: "v57_small", Type: &schema.ColumnType{Raw: "smallint(6)", Type: &schema.IntegerType{T: "smallint"}}},
+					{Name: "v57_small_unsigned", Type: &schema.ColumnType{Raw: "smallint(6) unsigned", Type: &schema.IntegerType{T: "smallint", Unsigned: true}}},
+					{Name: "v57_int", Type: &schema.ColumnType{Raw: "bigint(11)", Type: &schema.IntegerType{T: "bigint"}}},
+					{Name: "v57_int_unsigned", Type: &schema.ColumnType{Raw: "bigint(11) unsigned", Type: &schema.IntegerType{T: "bigint", Unsigned: true}}},
 					{Name: "v8_tiny", Type: &schema.ColumnType{Raw: "tinyint", Type: &schema.IntegerType{T: "tinyint"}}},
 					{Name: "v8_tiny_unsigned", Type: &schema.ColumnType{Raw: "tinyint unsigned", Type: &schema.IntegerType{T: "tinyint", Unsigned: true}}},
 					{Name: "v8_small", Type: &schema.ColumnType{Raw: "smallint", Type: &schema.IntegerType{T: "smallint"}}},
 					{Name: "v8_small_unsigned", Type: &schema.ColumnType{Raw: "smallint unsigned", Type: &schema.IntegerType{T: "smallint", Unsigned: true}}},
 					{Name: "v8_big", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
 					{Name: "v8_big_unsigned", Type: &schema.ColumnType{Raw: "bigint unsigned", Type: &schema.IntegerType{T: "bigint", Unsigned: true}}, Attrs: []schema.Attr{&schema.Comment{Text: "comment"}}},
+					{Name: "v8_big_zerofill", Type: &schema.ColumnType{Raw: "bigint(20) unsigned zerofill", Type: &schema.IntegerType{T: "bigint", Unsigned: true, Attrs: []schema.Attr{&DisplayWidth{N: 20}, &ZeroFill{A: "zerofill"}}}}, Attrs: []schema.Attr{&schema.Comment{Text: "comment"}}},
 				}, t.Columns)
 			},
 		},
