@@ -18,11 +18,11 @@ type Diff struct {
 func (d *Diff) SchemaDiff(from, to *schema.Schema) ([]schema.Change, error) {
 	var changes []schema.Change
 	// Charset change.
-	if change := d.charsetChange(from.Attrs, to.Attrs); change != noChange {
+	if change := d.charsetChange(from.Attrs, from.Realm.Attrs, to.Attrs); change != noChange {
 		changes = append(changes, change)
 	}
 	// Collation change.
-	if change := d.collationChange(from.Attrs, to.Attrs); change != noChange {
+	if change := d.collationChange(from.Attrs, from.Realm.Attrs, to.Attrs); change != noChange {
 		changes = append(changes, change)
 	}
 
@@ -71,11 +71,11 @@ func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
 	}
 
 	// Charset change.
-	if change := d.charsetChange(from.Attrs, to.Attrs); change != noChange {
+	if change := d.charsetChange(from.Attrs, from.Schema.Attrs, to.Attrs); change != noChange {
 		changes = append(changes, change)
 	}
 	// Collation change.
-	if change := d.collationChange(from.Attrs, to.Attrs); change != noChange {
+	if change := d.collationChange(from.Attrs, from.Schema.Attrs, to.Attrs); change != noChange {
 		changes = append(changes, change)
 	}
 
@@ -214,43 +214,45 @@ func (d *Diff) indexChange(from, to *schema.Index) schema.ChangeKind {
 	return change
 }
 
-// collationChange returns the schema change (if any) for migrating the collation.
-func (d *Diff) collationChange(from, to []schema.Attr) schema.Change {
-	switch c1, c2 := collate(from), collate(to); {
-	case c1 == nil && c2 == nil:
-	case c2 == nil:
-		return &schema.DropAttr{
-			A: c1,
-		}
-	case c1 == nil:
+// collationChange returns the schema change for migrating the collation if
+// it was changed and its not the default attribute inherited from its parent.
+func (d *Diff) collationChange(from, top, to []schema.Attr) schema.Change {
+	switch fromA, topA, toA := collate(from), collate(top), collate(to); {
+	case fromA == nil && toA == nil:
+	case fromA == nil:
 		return &schema.AddAttr{
-			A: c2,
+			A: toA,
 		}
-	case c1.V != c2.V:
+	case toA == nil && (topA == nil || fromA.V != topA.V):
+		return &schema.DropAttr{
+			A: fromA,
+		}
+	case fromA.V != toA.V:
 		return &schema.ModifyAttr{
-			From: c1,
-			To:   c2,
+			From: fromA,
+			To:   toA,
 		}
 	}
 	return noChange
 }
 
-// charsetChange returns the schema change (if any) for migrating the charset.
-func (d *Diff) charsetChange(from, to []schema.Attr) schema.Change {
-	switch c1, c2 := charset(from), charset(to); {
-	case c1 == nil && c2 == nil:
-	case c2 == nil:
-		return &schema.DropAttr{
-			A: c1,
-		}
-	case c1 == nil:
+// charsetChange returns the schema change for migrating the collation if
+// it was changed and its not the default attribute inherited from its parent.
+func (d *Diff) charsetChange(from, top, to []schema.Attr) schema.Change {
+	switch fromA, topA, toA := charset(from), charset(top), charset(to); {
+	case fromA == nil && toA == nil:
+	case fromA == nil:
 		return &schema.AddAttr{
-			A: c2,
+			A: toA,
 		}
-	case c1.V != c2.V:
+	case toA == nil && (topA == nil || fromA.V != topA.V):
+		return &schema.DropAttr{
+			A: fromA,
+		}
+	case fromA.V != toA.V:
 		return &schema.ModifyAttr{
-			From: c1,
-			To:   c2,
+			From: fromA,
+			To:   toA,
 		}
 	}
 	return noChange
@@ -260,7 +262,7 @@ func (d *Diff) charsetChange(from, to []schema.Attr) schema.Change {
 func (d *Diff) fkChange(from, to *schema.ForeignKey) schema.ChangeKind {
 	var change schema.ChangeKind
 	switch {
-	case from.Table.Name != to.Table.Name || from.Table.Schema != to.Table.Schema:
+	case from.Table.Name != to.Table.Name || from.Table.Schema.Name != to.Table.Schema.Name:
 		change |= schema.ChangeRefTable | schema.ChangeRefColumn
 	case len(from.RefColumns) != len(to.RefColumns):
 		change |= schema.ChangeRefColumn
