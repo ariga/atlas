@@ -2,7 +2,6 @@ package schema
 
 import (
 	"fmt"
-
 	"sort"
 
 	"github.com/hashicorp/hcl/v2"
