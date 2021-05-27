@@ -1,8 +1,8 @@
 package schema
 
 import (
-	"bytes"
 	"io/ioutil"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -187,23 +187,21 @@ func TestIndex(t *testing.T) {
 }
 
 func TestRewriteHCL(t *testing.T) {
-	for _, tt := range []struct {
-		filename string
-	}{
-		{filename: "testdata/basic_schema.hcl"},
-		{filename: "testdata/indexes.hcl"},
-		{filename: "testdata/defaults.hcl"},
-		{filename: "testdata/attributes.hcl"},
-	} {
-		t.Run(tt.filename, func(t *testing.T) {
-			fb, err := ioutil.ReadFile(tt.filename)
+	dir, err := ioutil.ReadDir("testdata/")
+	require.NoError(t, err)
+	for _, tt := range dir {
+		if tt.IsDir() {
+			continue
+		}
+		filename := filepath.Join("testdata", tt.Name())
+		t.Run(filename, func(t *testing.T) {
+			fb, err := ioutil.ReadFile(filename)
 			require.NoError(t, err)
-			fromFile, err := UnmarshalHCL(fb, tt.filename)
+			fromFile, err := UnmarshalHCL(fb, filename)
 			require.NoError(t, err)
-			var buf bytes.Buffer
-			err = WriteHCL(fromFile[0], &buf)
+			out, err := MarshalHCL(fromFile[0])
 			require.NoError(t, err)
-			generated, err := UnmarshalHCL(buf.Bytes(), tt.filename)
+			generated, err := UnmarshalHCL(out, filename)
 			require.NoError(t, err)
 			require.EqualValues(t, fromFile, generated)
 		})

@@ -1,16 +1,16 @@
 package schema
 
 import (
+	"bytes"
 	"fmt"
-	"io"
 
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/zclconf/go-cty/cty"
 )
 
-// WriteHCL writes an HCL representation of the Schema
-func WriteHCL(schema *Schema, w io.Writer) error {
+// MarshalHCL returns a byte slice containing an HCL representation of the Schema
+func MarshalHCL(schema *Schema) ([]byte, error) {
 	f := hclwrite.NewEmptyFile()
 	body := f.Body()
 	body.AppendNewBlock("schema", []string{schema.Name})
@@ -21,70 +21,81 @@ func WriteHCL(schema *Schema, w io.Writer) error {
 			cbody := tbody.AppendNewBlock("column", []string{col.Name}).Body()
 			block, err := hclColumn(col)
 			if err != nil {
-				return err
+				return nil, err
 			}
-			block.addToBody(cbody)
+			if err := block.addToBody(cbody); err != nil {
+				return nil, err
+			}
 		}
 		if len(tbl.PrimaryKey) > 0 {
 			pkbody := tbody.AppendNewBlock("primary_key", nil).Body()
 			block, err := hclPrimaryKey(tbl)
 			if err != nil {
-				return err
+				return nil, err
 			}
-			block.addToBody(pkbody)
+			if err := block.addToBody(pkbody); err != nil {
+				return nil, err
+			}
 		}
 		for _, fk := range tbl.ForeignKeys {
 			fkbody := tbody.AppendNewBlock("foreign_key", []string{fk.Symbol}).Body()
 			block, err := hclForeignKey(fk)
 			if err != nil {
-				return err
+				return nil, err
 			}
-			block.addToBody(fkbody)
+			if err := block.addToBody(fkbody); err != nil {
+				return nil, err
+			}
 		}
 		for _, idx := range tbl.Indexes {
 			ibody := tbody.AppendNewBlock("index", []string{idx.Name}).Body()
 			block, err := hclIndex(idx)
 			if err != nil {
-				return err
+				return nil, err
 			}
-			block.addToBody(ibody)
+			if err := block.addToBody(ibody); err != nil {
+				return nil, err
+			}
 		}
 	}
-	_, err := f.WriteTo(w)
-	return err
+	var buf bytes.Buffer
+	_, err := f.WriteTo(&buf)
+	return buf.Bytes(), err
 }
 
 func fmtColRef(table, col string) string {
 	return fmt.Sprintf("table.%s.column.%s", table, col)
 }
 
+type blockElement struct {
+	name  string
+	value interface{}
+}
 type hclBlock struct {
-	attrs  map[string]cty.Value
-	raw    map[string]hclwrite.Tokens
-	blocks []*hclwrite.Block
+	elements []blockElement
 }
 
-func newHCLBlock() *hclBlock {
-	return &hclBlock{
-		attrs: make(map[string]cty.Value),
-		raw:   make(map[string]hclwrite.Tokens),
+func (b *hclBlock) addToBody(body *hclwrite.Body) error {
+	for _, elem := range b.elements {
+		switch v := elem.value.(type) {
+		case cty.Value:
+			body.SetAttributeValue(elem.name, v)
+		case *hclwrite.Block:
+			body.AppendBlock(v)
+		case hclwrite.Tokens:
+			body.SetAttributeRaw(elem.name, v)
+		default:
+			return fmt.Errorf("schema: unknown element type %T", v)
+		}
 	}
-}
-
-func (b *hclBlock) addToBody(body *hclwrite.Body) {
-	for name, raw := range b.raw {
-		body.SetAttributeRaw(name, raw)
-	}
-	for name, attr := range b.attrs {
-		body.SetAttributeValue(name, attr)
-	}
-	for _, block := range b.blocks {
-		body.AppendBlock(block)
-	}
+	return nil
 }
 
 func (b *hclBlock) setAttr(name string, val cty.Value) {
-	b.attrs[name] = val
+	b.elements = append(b.elements, blockElement{
+		name:  name,
+		value: val,
+	})
 }
 
 func (b *hclBlock) setStrAttr(name, val string) {
@@ -126,15 +137,21 @@ func (b *hclBlock) setRawList(attr string, items []string) {
 		Type:  hclsyntax.TokenCBrack,
 		Bytes: []byte("]"),
 	})
-	b.raw[attr] = t
+	b.elements = append(b.elements, blockElement{
+		name:  attr,
+		value: t,
+	})
 }
 
 func (b *hclBlock) setRawAttr(name, token string) {
-	b.raw[name] = hclRawTokens(token)
+	b.elements = append(b.elements, blockElement{
+		name:  name,
+		value: hclRawTokens(token),
+	})
 }
 
 func hclForeignKey(fk *ForeignKey) (*hclBlock, error) {
-	def := newHCLBlock()
+	def := &hclBlock{}
 	var cols []string
 	for _, col := range fk.Columns {
 		cols = append(cols, fmtColRef(fk.Table.Name, col.Name))
@@ -180,7 +197,7 @@ func refOptExpr(opt ReferenceOption) (string, error) {
 }
 
 func hclIndex(i *Index) (*hclBlock, error) {
-	idx := newHCLBlock()
+	idx := &hclBlock{}
 	if i.Unique {
 		idx.setBoolAttr("unique", true)
 	}
@@ -193,7 +210,7 @@ func hclIndex(i *Index) (*hclBlock, error) {
 }
 
 func hclPrimaryKey(table *Table) (*hclBlock, error) {
-	pk := newHCLBlock()
+	pk := &hclBlock{}
 	var cols []string
 	for _, col := range table.PrimaryKey {
 		cols = append(cols, fmtColRef(table.Name, col.Name))
@@ -203,17 +220,16 @@ func hclPrimaryKey(table *Table) (*hclBlock, error) {
 }
 
 func hclColumn(c *Column) (*hclBlock, error) {
-	col := newHCLBlock()
+	col := &hclBlock{}
 	if c.Type.Null {
 		col.setBoolAttr("null", true)
 	}
 	if c.Default != nil {
-		switch exp := c.Default.(type) {
-		case *RawExpr:
-			col.setStrAttr("default", exp.X)
-		default:
+		exp, ok := c.Default.(*RawExpr)
+		if !ok {
 			return nil, fmt.Errorf("schema: default expression of type %T unsupported", exp)
 		}
+		col.setStrAttr("default", exp.X)
 	}
 	for _, attr := range c.Attrs {
 		switch a := attr.(type) {
