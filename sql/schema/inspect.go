@@ -32,6 +32,20 @@ type ExecQuerier interface {
 }
 
 type (
+	// InspectOptions describes options for Inspector.
+	InspectOptions struct {
+		// Tables to inspect. Empty means all tables in the schema.
+		Tables []string
+	}
+
+	// Inspector is the interface implemented by the different database
+	// drivers for inspecting multiple tables.
+	Inspector interface {
+		// InspectSchema returns the schema description by its name. A NotExistError
+		// error is returned if the schema does not exists in the database.
+		InspectSchema(ctx context.Context, name string, opts *InspectOptions) (*Schema, error)
+	}
+
 	// InspectTableOptions describes options for TableInspector.
 	InspectTableOptions struct {
 		// Schema defines an optional schema to inspect.
@@ -41,24 +55,20 @@ type (
 	// TableInspector is the interface implemented by the different database
 	// drivers for inspecting their schema tables.
 	TableInspector interface {
-		// Table returns the table description by its name. A NotExistError
+		// InspectTable returns the table description by its name. A NotExistError
 		// error is returned if the table does not exists in the database.
-		Table(ctx context.Context, name string, opts *InspectTableOptions) (*Table, error)
-
-		// Tables returns a list of table descriptions of all tables that exist
-		// in the given schema.
-		Tables(ctx context.Context, options *InspectTableOptions) ([]*Table, error)
+		InspectTable(ctx context.Context, name string, opts *InspectTableOptions) (*Table, error)
 	}
 
 	// InspectTableOptions describes options for RealmInspector.
 	InspectRealmOption struct {
-		// Schemas to inspect. At least 1 schema is required.
+		// Schemas to inspect. Empty means all tables in the schema.
 		Schemas []string
 	}
 
 	// RealmInspector is the interface implemented by the different database
 	// drivers for inspecting multiple schemas (realm).
 	RealmInspector interface {
-		Realm(ctx context.Context, opts *InspectRealmOption) (*Realm, error)
+		InspectRealm(ctx context.Context, opts *InspectRealmOption) (*Realm, error)
 	}
 )
