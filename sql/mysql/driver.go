@@ -31,53 +31,74 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 	return drv, nil
 }
 
-// Realm returns schema descriptions of all resources in the given realm.
-func (d *Driver) Realm(ctx context.Context, opts *schema.InspectRealmOption) (*schema.Realm, error) {
+// InspectRealm returns schema descriptions of all resources in the given realm.
+func (d *Driver) InspectRealm(ctx context.Context, opts *schema.InspectRealmOption) (*schema.Realm, error) {
 	schemas, err := d.schemas(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
 	realm := &schema.Realm{Schemas: schemas, Attrs: []schema.Attr{&schema.Charset{V: d.charset}, &schema.Collation{V: d.collate}}}
 	for _, s := range schemas {
-		tables, err := d.Tables(ctx, &schema.InspectTableOptions{
-			Schema: s.Name,
-		})
+		names, err := d.tableNames(ctx, s.Name, nil)
 		if err != nil {
 			return nil, err
 		}
+		for _, name := range names {
+			t, err := d.inspectTable(ctx, name, &schema.InspectTableOptions{Schema: s.Name}, s)
+			if err != nil {
+				return nil, err
+			}
+			s.Tables = append(s.Tables, t)
+		}
 		s.Realm = realm
-		s.Tables = tables
 	}
 	linkSchemaTables(schemas)
 	return realm, nil
 }
 
-// Tables returns schema descriptions of all tables in the given schema.
-func (d *Driver) Tables(ctx context.Context, opts *schema.InspectTableOptions) ([]*schema.Table, error) {
-	names, err := d.tableNames(ctx, opts)
+// InspectSchema returns schema descriptions of all tables in the given schema.
+func (d *Driver) InspectSchema(ctx context.Context, name string, opts *schema.InspectOptions) (*schema.Schema, error) {
+	schemas, err := d.schemas(ctx, &schema.InspectRealmOption{
+		Schemas: []string{name},
+	})
 	if err != nil {
 		return nil, err
 	}
-	tables := make([]*schema.Table, 0, len(names))
+	if len(schemas) == 0 {
+		return nil, &schema.NotExistError{
+			Err: fmt.Errorf("mysql: schema %q was not found", name),
+		}
+	}
+	names, err := d.tableNames(ctx, name, opts)
+	if err != nil {
+		return nil, err
+	}
+	s := schemas[0]
 	for _, name := range names {
-		t, err := d.Table(ctx, name, opts)
+		t, err := d.inspectTable(ctx, name, &schema.InspectTableOptions{Schema: s.Name}, s)
 		if err != nil {
 			return nil, err
 		}
-		tables = append(tables, t)
+		s.Tables = append(s.Tables, t)
 	}
-	if len(tables) > 0 {
-		// Link all tables reside on the same schema.
-		linkSchemaTables([]*schema.Schema{{Name: tables[0].Schema.Name, Tables: tables}})
-	}
-	return tables, nil
+	linkSchemaTables(schemas)
+	s.Realm = &schema.Realm{Schemas: schemas, Attrs: []schema.Attr{&schema.Charset{V: d.charset}, &schema.Collation{V: d.collate}}}
+	return s, nil
 }
 
-// Table returns the schema description of the given table.
-func (d *Driver) Table(ctx context.Context, name string, opts *schema.InspectTableOptions) (*schema.Table, error) {
+// InspectTable returns the schema description of the given table.
+func (d *Driver) InspectTable(ctx context.Context, name string, opts *schema.InspectTableOptions) (*schema.Table, error) {
+	return d.inspectTable(ctx, name, opts, nil)
+}
+
+func (d *Driver) inspectTable(ctx context.Context, name string, opts *schema.InspectTableOptions, top *schema.Schema) (*schema.Table, error) {
 	t, err := d.table(ctx, name, opts)
 	if err != nil {
 		return nil, err
+	}
+	if top != nil {
+		// Link the table to its top element if provided.
+		t.Schema = top
 	}
 	if err := d.columns(ctx, t); err != nil {
 		return nil, err
@@ -507,10 +528,13 @@ func (d *Driver) checks(ctx context.Context, t *schema.Table) error {
 }
 
 // tableNames returns a list of all tables exist in the schema.
-func (d *Driver) tableNames(ctx context.Context, opts *schema.InspectTableOptions) ([]string, error) {
-	query, args := tablesQuery, []interface{}(nil)
-	if opts != nil && opts.Schema != "" {
-		query, args = tablesSchemaQuery, []interface{}{opts.Schema}
+func (d *Driver) tableNames(ctx context.Context, schema string, opts *schema.InspectOptions) ([]string, error) {
+	query, args := tablesQuery, []interface{}{schema}
+	if opts != nil && len(opts.Tables) > 0 {
+		query += " AND `TABLE_NAME` IN (" + strings.Repeat("?, ", len(opts.Tables)-1) + "?)"
+		for _, s := range opts.Tables {
+			args = append(args, s)
+		}
 	}
 	rows, err := d.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -690,9 +714,8 @@ const (
 	// Query to list database schemas.
 	schemasQuery = "SELECT `SCHEMA_NAME`, `DEFAULT_CHARACTER_SET_NAME`, `DEFAULT_COLLATION_NAME` from `INFORMATION_SCHEMA`.`SCHEMATA`"
 
-	// Queries to list schema tables.
-	tablesSchemaQuery = "SELECT `TABLE_NAME` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = ?"
-	tablesQuery       = "SELECT `TABLE_NAME` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = (SELECT DATABASE())"
+	// Query to list schema tables.
+	tablesQuery = "SELECT `TABLE_NAME` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_SCHEMA` = ?"
 
 	// Query to list table columns.
 	columnsQuery = "SELECT `COLUMN_NAME`, `COLUMN_TYPE`, `COLUMN_COMMENT`, `IS_NULLABLE`, `COLUMN_KEY`, `COLUMN_DEFAULT`, `EXTRA`, `CHARACTER_SET_NAME`, `COLLATION_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
