@@ -2,6 +2,7 @@ package schema
 
 import (
 	"io/ioutil"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -183,4 +184,27 @@ func TestIndex(t *testing.T) {
 			},
 		},
 	}, tasks.Indexes[0])
+}
+
+func TestRewriteHCL(t *testing.T) {
+	dir, err := ioutil.ReadDir("testdata/")
+	require.NoError(t, err)
+	for _, tt := range dir {
+		if tt.IsDir() {
+			continue
+		}
+		filename := filepath.Join("testdata", tt.Name())
+		t.Run(filename, func(t *testing.T) {
+			fb, err := ioutil.ReadFile(filename)
+			require.NoError(t, err)
+			fromFile, err := UnmarshalHCL(fb, filename)
+			require.NoError(t, err)
+			out, err := MarshalHCL(fromFile[0])
+			require.NoError(t, err)
+			generated, err := UnmarshalHCL(out, filename)
+			require.NoError(t, err)
+			require.EqualValues(t, fromFile, generated)
+		})
+	}
+
 }
