@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMySQLInspect(t *testing.T) {
+func TestMySQL(t *testing.T) {
 	for version, port := range map[string]int{"57": 3307, "8": 3308} {
 		t.Run(version, func(t *testing.T) {
 			db, err := sql.Open("mysql", fmt.Sprintf("root:pass@tcp(localhost:%d)/test?parseTime=True", port))
@@ -24,26 +25,29 @@ func TestMySQLInspect(t *testing.T) {
 
 			ctx := context.Background()
 			t.Log("inspecting empty realm")
-			realm, err := drv.Realm(ctx, &schema.InspectRealmOption{
+			realm, err := drv.InspectRealm(ctx, &schema.InspectRealmOption{
 				Schemas: []string{"test"},
 			})
 			require.NoError(t, err)
-			require.EqualValues(t, &schema.Realm{
-				Schemas: []*schema.Schema{
-					{
-						Name:   "test",
-						Attrs:  defaultAttrs(version),
-						Tables: []*schema.Table{},
+			require.EqualValues(t, func() *schema.Realm {
+				r := &schema.Realm{
+					Schemas: []*schema.Schema{
+						{
+							Name:  "test",
+							Attrs: defaultAttrs(version),
+						},
 					},
-				},
-				Attrs: defaultAttrs(version),
-			}, realm)
+					Attrs: defaultAttrs(version),
+				}
+				r.Schemas[0].Realm = r
+				return r
+			}(), realm)
 			t.Log("adding table")
 			postsT := &schema.Table{
 				Name: "posts",
 				Columns: []*schema.Column{
-					{Name: "id", Type: &schema.ColumnType{Raw: "bigint"}},
-					{Name: "author_id", Type: &schema.ColumnType{Raw: "bigint", Null: true}},
+					{Name: "id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
+					{Name: "author_id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true}},
 				},
 			}
 			postsT.PrimaryKey = postsT.Columns[:1]
@@ -54,6 +58,15 @@ func TestMySQLInspect(t *testing.T) {
 			defer drv.Exec(ctx, []schema.Change{
 				&schema.DropTable{T: postsT},
 			})
+
+			t.Log("comparing tables")
+			realm, err = drv.InspectRealm(ctx, &schema.InspectRealmOption{
+				Schemas: []string{"test"},
+			})
+			require.NoError(t, err)
+			changes, err := (&mysql.Diff{}).TableDiff(realm.Schemas[0].Tables[0], postsT)
+			require.NoError(t, err)
+			require.Empty(t, changes)
 		})
 	}
 }
@@ -77,4 +90,17 @@ func defaultAttrs(version string) []schema.Attr {
 			V: collation,
 		},
 	}
+}
+
+// printChanges for debug purpose. Do not remove.
+func printChanges(c []schema.Change) {
+	fmt.Printf("%T{\n", c)
+	for i := range c {
+		b, err := json.MarshalIndent(c[i], "\t", "\t")
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("\t%T%s\n", c[i], string(b))
+	}
+	fmt.Println("}")
 }
