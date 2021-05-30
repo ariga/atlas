@@ -19,7 +19,7 @@ func TestMigrate_Exec(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mk.ExpectExec(escape("DROP TABLE `public`.`pets`")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mk.ExpectExec(escape("CREATE TABLE `pets`(`a` int NOT NULL, `b` bigint NOT NULL, `c` bigint NULL, PRIMARY KEY(`a`, `b`))")).
+	mk.ExpectExec(escape("CREATE TABLE `pets` ( `a` int NOT NULL, `b` bigint NOT NULL, `c` bigint NULL, PRIMARY KEY (`a`, `b`) )")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	drv, err := Open(db)
 	require.NoError(t, err)
