@@ -5,15 +5,13 @@ import (
 	"reflect"
 	"sort"
 
-	"golang.org/x/mod/semver"
-
 	"ariga.io/atlas/sql/schema"
+
+	"golang.org/x/mod/semver"
 )
 
 // A Diff provides diff capabilities for schema elements.
-type Diff struct {
-	Version string
-}
+type Diff struct{ *Driver }
 
 // SchemaDiff implements the schema.Differ interface and returns a list of
 // changes that need to be applied in order to move from one state to the other.
@@ -233,9 +231,9 @@ func (d *Diff) typeChanged(from, to *schema.Column) (bool, error) {
 		changed = fromT.T != toT.T || fromT.Precision != toT.Precision
 	case *schema.IntegerType:
 		toT := toT.(*schema.IntegerType)
-		// MySQL v8.0.19 drop the display width information
-		// from the information schema.
-		if semver.Compare("v"+d.Version, "v8.0.19") == -1 {
+		// MySQL v8.0.19 dropped the display width
+		// information from the information schema.
+		if semver.Compare("v"+d.version, "v8.0.19") == -1 {
 			ft, _, _, err := parseColumn(fromT.T)
 			if err != nil {
 				return false, err
