@@ -51,11 +51,12 @@ func TestMySQL(t *testing.T) {
 				},
 			}
 			postsT.PrimaryKey = postsT.Columns[:1]
-			err = drv.Exec(ctx, []schema.Change{
+			migrate := mysql.Migrate{Driver: drv}
+			err = migrate.Exec(ctx, []schema.Change{
 				&schema.AddTable{T: postsT},
 			})
 			require.NoError(t, err)
-			defer drv.Exec(ctx, []schema.Change{
+			defer migrate.Exec(ctx, []schema.Change{
 				&schema.DropTable{T: postsT},
 			})
 
@@ -64,7 +65,8 @@ func TestMySQL(t *testing.T) {
 				Schemas: []string{"test"},
 			})
 			require.NoError(t, err)
-			changes, err := (&mysql.Diff{}).TableDiff(realm.Schemas[0].Tables[0], postsT)
+			diff := mysql.Diff{Driver: drv}
+			changes, err := diff.TableDiff(realm.Schemas[0].Tables[0], postsT)
 			require.NoError(t, err)
 			require.Empty(t, changes)
 		})

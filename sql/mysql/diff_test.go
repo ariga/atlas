@@ -260,7 +260,7 @@ func TestDiff_TableDiff(t *testing.T) {
 		}(),
 	}
 	for _, tt := range tests {
-		var d Diff
+		d := Diff{Driver: &Driver{version: "8.0.19"}}
 		t.Run(tt.name, func(t *testing.T) {
 			changes, err := d.TableDiff(tt.from, tt.to)
 			require.Equal(t, tt.wantErr, err != nil)
