@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"text/template"
 
 	"ariga.io/atlas/sql/schema"
 )
@@ -32,33 +33,9 @@ func (m *Migrate) Exec(ctx context.Context, changes []schema.Change) (err error)
 
 func (m *Migrate) addTable(ctx context.Context, add *schema.AddTable) error {
 	var b strings.Builder
-	b.WriteString("CREATE TABLE ")
-	ident(&b, add.T.Name)
-	b.WriteString("(")
-	for i, c := range add.T.Columns {
-		if i > 0 {
-			b.WriteString(", ")
-		}
-		ident(&b, c.Name)
-		b.WriteByte(' ')
-		b.WriteString(c.Type.Raw)
-		b.WriteByte(' ')
-		if !c.Type.Null {
-			b.WriteString("NOT ")
-		}
-		b.WriteString("NULL")
+	if err := createTmpl.Execute(&b, add.T); err != nil {
+		return err
 	}
-	if len(add.T.PrimaryKey) > 0 {
-		b.WriteString(", PRIMARY KEY(")
-		for i, c := range add.T.PrimaryKey {
-			if i > 0 {
-				b.WriteString(", ")
-			}
-			ident(&b, c.Name)
-		}
-		b.WriteByte(')')
-	}
-	b.WriteString(")")
 	if _, err := m.ExecContext(ctx, b.String()); err != nil {
 		return fmt.Errorf("mysql: create table: %w", err)
 	}
@@ -85,3 +62,20 @@ func ident(b *strings.Builder, ident string) {
 	b.WriteString(ident)
 	b.WriteByte('`')
 }
+
+var createTmpl = template.Must(template.New("create_table").
+	Funcs(template.FuncMap{
+		"add":   func(a, b int) int { return a + b },
+		"ident": func(s string) string { return "`" + s + "`" },
+	}).
+	Parse(`
+CREATE TABLE {{ ident $.Name }} (
+	{{- $nc := len $.Columns }}
+	{{- range $i, $c := $.Columns }}
+		{{- $comma := or (ne $i (add $nc -1)) (len $.PrimaryKey) }}
+		{{ ident $c.Name }} {{ $c.Type.Raw }} {{ if not $c.Type.Null }}NOT {{ end }} NULL{{ if $comma }},{{ end }}
+	{{- end }}
+	{{- with $.PrimaryKey }}
+		PRIMARY KEY ({{ range $i, $c := . }}{{ if $i }}, {{ end }}{{ ident $c.Name }}{{ end }})
+	{{- end }}
+)`))
