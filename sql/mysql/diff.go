@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"sort"
 
+	"golang.org/x/mod/semver"
+
 	"ariga.io/atlas/sql/schema"
 )
 
@@ -189,11 +191,11 @@ func (d *Diff) columnChange(from, to *schema.Column) (schema.ChangeKind, error) 
 	if (s1 != nil) != (s2 != nil) || (s1 != nil && s1.V != s2.V) {
 		change |= schema.ChangeCharset
 	}
-	t1, t2 := from.Type.Type, to.Type.Type
-	if t1 == nil || t2 == nil {
-		return 0, fmt.Errorf("missing type infromation for column %q", from.Name)
+	typeChanged, err := d.typeChanged(from, to)
+	if err != nil {
+		return schema.NoChange, err
 	}
-	if reflect.TypeOf(t1) != reflect.TypeOf(t2) || from.Type.Raw != to.Type.Raw {
+	if typeChanged {
 		change |= schema.ChangeType
 	}
 	d1, d2 := from.Default, to.Default
@@ -201,6 +203,74 @@ func (d *Diff) columnChange(from, to *schema.Column) (schema.ChangeKind, error) 
 		change |= schema.ChangeDefault
 	}
 	return change, nil
+}
+
+func (d *Diff) typeChanged(from, to *schema.Column) (bool, error) {
+	fromT, toT := from.Type.Type, to.Type.Type
+	if fromT == nil || toT == nil {
+		return false, fmt.Errorf("missing type infromation for column %q", from.Name)
+	}
+	if reflect.TypeOf(fromT) != reflect.TypeOf(toT) {
+		// TODO: Add type conversion rating (need check, can fail, etc).
+		return true, nil
+	}
+	var changed bool
+	switch fromT := fromT.(type) {
+	case *schema.BinaryType:
+		toT := toT.(*schema.BinaryType)
+		changed = fromT.T != toT.T || fromT.Size != toT.Size
+	case *schema.BoolType:
+		toT := toT.(*schema.BinaryType)
+		changed = fromT.T != toT.T
+	case *schema.DecimalType:
+		toT := toT.(*schema.DecimalType)
+		changed = fromT.T != toT.T || fromT.Scale != toT.Scale || fromT.Precision != toT.Precision
+	case *schema.EnumType:
+		toT := toT.(*schema.EnumType)
+		changed = !valuesEqual(fromT.Values, toT.Values)
+	case *schema.FloatType:
+		toT := toT.(*schema.FloatType)
+		changed = fromT.T != toT.T || fromT.Precision != toT.Precision
+	case *schema.IntegerType:
+		toT := toT.(*schema.IntegerType)
+		// MySQL v8.0.19 drop the display width information
+		// from the information schema.
+		if semver.Compare("v"+d.Version, "v8.0.19") == -1 {
+			ft, _, _, err := parseColumn(fromT.T)
+			if err != nil {
+				return false, err
+			}
+			tt, _, _, err := parseColumn(toT.T)
+			if err != nil {
+				return false, err
+			}
+			fromT.T, toT.T = ft[0], tt[0]
+		}
+		fromW, toW := displayWidth(fromT.Attrs), displayWidth(toT.Attrs)
+		changed = fromT.T != toT.T || fromT.Unsigned != toT.Unsigned ||
+			(fromW != nil) != (toW != nil) || (fromW != nil && fromW.N != toW.N)
+	case *schema.JSONType:
+		toT := toT.(*schema.JSONType)
+		changed = fromT.T != toT.T
+	case *schema.StringType:
+		toT := toT.(*schema.StringType)
+		changed = fromT.T != toT.T || fromT.Size != toT.Size
+	case *schema.SpatialType:
+		toT := toT.(*schema.SpatialType)
+		changed = fromT.T != toT.T
+	case *schema.TimeType:
+		toT := toT.(*schema.SpatialType)
+		changed = fromT.T != toT.T
+	case *BitType:
+		toT := toT.(*BitType)
+		changed = fromT.T != toT.T
+	case *SetType:
+		toT := toT.(*SetType)
+		changed = !valuesEqual(fromT.Values, toT.Values)
+	default:
+		return false, fmt.Errorf("unsupported type %T", fromT)
+	}
+	return changed, nil
 }
 
 // indexChange returns the schema changes (if any) for migrating one index to the other.
@@ -223,9 +293,11 @@ func (d *Diff) collationChange(from, top, to []schema.Attr) schema.Change {
 		return &schema.AddAttr{
 			A: toA,
 		}
-	case toA == nil && (topA == nil || fromA.V != topA.V):
-		return &schema.DropAttr{
-			A: fromA,
+	case toA == nil:
+		if topA == nil || fromA.V != topA.V {
+			return &schema.DropAttr{
+				A: fromA,
+			}
 		}
 	case fromA.V != toA.V:
 		return &schema.ModifyAttr{
@@ -245,9 +317,11 @@ func (d *Diff) charsetChange(from, top, to []schema.Attr) schema.Change {
 		return &schema.AddAttr{
 			A: toA,
 		}
-	case toA == nil && (topA == nil || fromA.V != topA.V):
-		return &schema.DropAttr{
-			A: fromA,
+	case toA == nil:
+		if topA == nil || fromA.V != topA.V {
+			return &schema.DropAttr{
+				A: fromA,
+			}
 		}
 	case fromA.V != toA.V:
 		return &schema.ModifyAttr{
@@ -389,4 +463,38 @@ func subpart(attr []schema.Attr) *SubPart {
 		}
 	}
 	return nil
+}
+
+func displayWidth(attr []schema.Attr) *DisplayWidth {
+	var (
+		z *ZeroFill
+		d *DisplayWidth
+	)
+	for i := range attr {
+		switch at := attr[i].(type) {
+		case *ZeroFill:
+			z = at
+		case *DisplayWidth:
+			d = at
+		}
+	}
+	// Accept the display width only if
+	// the zerofill attribute is defined.
+	if z == nil || d == nil {
+		return nil
+	}
+	return d
+}
+
+func valuesEqual(v1, v2 []string) bool {
+top:
+	for i := range v1 {
+		for j := range v2 {
+			if v1[i] == v2[j] {
+				continue top
+			}
+		}
+		return false
+	}
+	return true
 }
