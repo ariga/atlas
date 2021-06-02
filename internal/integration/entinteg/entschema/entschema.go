@@ -10,25 +10,118 @@ import (
 )
 
 func Convert(graph *gen.Graph) (*schema.Schema, error) {
-	s := &schema.Schema{Name: "ent"}
+	sch := &schema.Schema{}
+	if err := addTables(sch, graph); err != nil {
+		return nil, err
+	}
+	if err := addForeignKeys(sch, graph); err != nil {
+		return nil, err
+	}
+	return sch, nil
+}
+
+func addTables(sch *schema.Schema, graph *gen.Graph) error {
 	for _, etbl := range graph.Tables() {
 		tbl := &schema.Table{
-			Schema: s,
+			Schema: sch,
 			Name:   etbl.Name,
 		}
-		cols := make(map[string]*schema.Column)
+		pk := &schema.Index{}
 		for _, ec := range etbl.Columns {
 			col, err := convertColumn(ec)
 			if err != nil {
-				return nil, err
+				return err
 			}
-			cols[ec.Name] = col
 			tbl.Columns = append(tbl.Columns, col)
+			if ec.PrimaryKey() {
+				pk.Parts = append(pk.Parts, &schema.IndexPart{C: col, SeqNo: len(pk.Parts)})
+			}
+			if ec.Unique {
+				tbl.Indexes = append(tbl.Indexes, &schema.Index{
+					Name:   fmt.Sprintf("%s_%s_uniq", tbl.Name, ec.Name),
+					Unique: true,
+					Table:  tbl,
+					Attrs:  nil,
+					Parts: []*schema.IndexPart{
+						{C: col, SeqNo: 0},
+					},
+				})
+			}
 		}
-
-		s.Tables = append(s.Tables, tbl)
+		tbl.PrimaryKey = pk
+		if err := addTableIndexes(tbl, etbl); err != nil {
+			return err
+		}
+		sch.Tables = append(sch.Tables, tbl)
 	}
-	return s, nil
+	return nil
+}
+
+func addTableIndexes(tbl *schema.Table, etbl *sqlschema.Table) error {
+	for _, eidx := range etbl.Indexes {
+		parts := make([]*schema.IndexPart, 0, len(eidx.Columns))
+		for _, c := range eidx.Columns {
+			col, ok := tbl.Column(c.Name)
+			if !ok {
+				return fmt.Errorf("entschema: could not find column %q in table %q", c.Name, tbl.Name)
+			}
+			parts = append(parts, &schema.IndexPart{
+				SeqNo: len(parts),
+				C:     col,
+			})
+		}
+		tbl.Indexes = append(tbl.Indexes, &schema.Index{
+			Name:   eidx.Name,
+			Unique: eidx.Unique,
+			Table:  tbl,
+			Parts:  parts,
+		})
+	}
+	return nil
+}
+
+func addForeignKeys(sch *schema.Schema, graph *gen.Graph) error {
+	for _, etbl := range graph.Tables() {
+		if len(etbl.ForeignKeys) > 0 {
+			tbl, ok := sch.Table(etbl.Name)
+			if !ok {
+				return fmt.Errorf("entschema: could not find table %q", etbl.Name)
+			}
+			for _, efk := range etbl.ForeignKeys {
+				refTable, ok := sch.Table(efk.RefTable.Name)
+				if !ok {
+					return fmt.Errorf("entschema: could not find ref table %q", refTable.Name)
+				}
+				cols := make([]*schema.Column, 0, len(efk.Columns))
+				refCols := make([]*schema.Column, 0, len(efk.RefColumns))
+				for _, c := range efk.Columns {
+					col, ok := tbl.Column(c.Name)
+					if !ok {
+						return fmt.Errorf("entschema: could not find column %q in table %q", c.Name, etbl.Name)
+					}
+					cols = append(cols, col)
+				}
+				for _, c := range efk.RefColumns {
+					col, ok := refTable.Column(c.Name)
+					if !ok {
+						return fmt.Errorf("entschema: could not find column %q in ref table %q", c.Name, etbl.Name)
+					}
+					refCols = append(refCols, col)
+				}
+				fk := &schema.ForeignKey{
+					Symbol:     efk.Symbol,
+					Table:      tbl,
+					Columns:    cols,
+					RefTable:   refTable,
+					RefColumns: refCols,
+					OnUpdate:   schema.ReferenceOption(efk.OnUpdate),
+					OnDelete:   schema.ReferenceOption(efk.OnDelete),
+				}
+				tbl.ForeignKeys = append(tbl.ForeignKeys, fk)
+			}
+		}
+	}
+	return nil
 }
 
 func convertColumn(col *sqlschema.Column) (*schema.Column, error) {
@@ -57,7 +150,7 @@ func convertColumn(col *sqlschema.Column) (*schema.Column, error) {
 		ct.Type = &schema.EnumType{Values: col.Enums}
 	case field.TypeFloat32, field.TypeFloat64:
 		ct.Type = &schema.FloatType{
-			T:         "float",
+			T: "float",
 		}
 	case field.TypeUUID:
 		ct.Type = &schema.BinaryType{
@@ -78,10 +171,6 @@ func convertColumn(col *sqlschema.Column) (*schema.Column, error) {
 	out := &schema.Column{
 		Name: col.Name,
 		Type: ct,
-		//Default:     nil,
-		//Attrs:       nil,
-		//Indexes:     nil,
-		//ForeignKeys: nil,
 	}
 	return out, nil
 }

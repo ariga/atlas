@@ -2,18 +2,64 @@
 
 package user
 
+import (
+	"fmt"
+)
+
 const (
 	// Label holds the string label denoting the user type in the database.
 	Label = "user"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
+	// FieldName holds the string denoting the name field in the database.
+	FieldName = "name"
+	// FieldOptional holds the string denoting the optional field in the database.
+	FieldOptional = "optional"
+	// FieldInt holds the string denoting the int field in the database.
+	FieldInt = "int"
+	// FieldUint holds the string denoting the uint field in the database.
+	FieldUint = "uint"
+	// FieldTime holds the string denoting the time field in the database.
+	FieldTime = "time"
+	// FieldBool holds the string denoting the bool field in the database.
+	FieldBool = "bool"
+	// FieldEnum holds the string denoting the enum field in the database.
+	FieldEnum = "enum"
+	// FieldEnum2 holds the string denoting the enum_2 field in the database.
+	FieldEnum2 = "enum_2"
+	// FieldUUID holds the string denoting the uuid field in the database.
+	FieldUUID = "uuid"
+	// FieldBytes holds the string denoting the bytes field in the database.
+	FieldBytes = "bytes"
+	// FieldGroupID holds the string denoting the group_id field in the database.
+	FieldGroupID = "group_id"
+	// EdgeGroup holds the string denoting the group edge name in mutations.
+	EdgeGroup = "group"
 	// Table holds the table name of the user in the database.
 	Table = "users"
+	// GroupTable is the table the holds the group relation/edge.
+	GroupTable = "users"
+	// GroupInverseTable is the table name for the Group entity.
+	// It exists in this package in order to avoid circular dependency with the "group" package.
+	GroupInverseTable = "groups"
+	// GroupColumn is the table column denoting the group relation/edge.
+	GroupColumn = "group_id"
 )
 
 // Columns holds all SQL columns for user fields.
 var Columns = []string{
 	FieldID,
+	FieldName,
+	FieldOptional,
+	FieldInt,
+	FieldUint,
+	FieldTime,
+	FieldBool,
+	FieldEnum,
+	FieldEnum2,
+	FieldUUID,
+	FieldBytes,
+	FieldGroupID,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -24,4 +70,52 @@ func ValidColumn(column string) bool {
 		}
 	}
 	return false
+}
+
+// Enum defines the type for the "enum" enum field.
+type Enum string
+
+// Enum values.
+const (
+	Enum1 Enum = "1"
+	Enum2 Enum = "2"
+	Enum3 Enum = "3"
+)
+
+func (e Enum) String() string {
+	return string(e)
+}
+
+// EnumValidator is a validator for the "enum" field enum values. It is called by the builders before save.
+func EnumValidator(e Enum) error {
+	switch e {
+	case Enum1, Enum2, Enum3:
+		return nil
+	default:
+		return fmt.Errorf("user: invalid enum value for enum field: %q", e)
+	}
+}
+
+// Enum2 defines the type for the "enum_2" enum field.
+type Enum2 string
+
+// Enum2 values.
+const (
+	Enum2A Enum2 = "1"
+	Enum2B Enum2 = "2"
+	Enum2C Enum2 = "3"
+)
+
+func (enum_ Enum2) String() string {
+	return string(enum_)
+}
+
+// Enum2Validator is a validator for the "enum_2" field enum values. It is called by the builders before save.
+func Enum2Validator(enum_ Enum2) error {
+	switch enum_ {
+	case Enum2A, Enum2B, Enum2C:
+		return nil
+	default:
+		return fmt.Errorf("user: invalid enum value for enum_2 field: %q", enum_)
+	}
 }

@@ -4,11 +4,15 @@ package ent
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
+	"ariga.io/atlas/integration/entinteg/ent/group"
 	"ariga.io/atlas/integration/entinteg/ent/user"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 )
 
 // UserCreate is the builder for creating a User entity.
@@ -16,6 +20,93 @@ type UserCreate struct {
 	config
 	mutation *UserMutation
 	hooks    []Hook
+}
+
+// SetName sets the "name" field.
+func (uc *UserCreate) SetName(s string) *UserCreate {
+	uc.mutation.SetName(s)
+	return uc
+}
+
+// SetOptional sets the "optional" field.
+func (uc *UserCreate) SetOptional(s string) *UserCreate {
+	uc.mutation.SetOptional(s)
+	return uc
+}
+
+// SetNillableOptional sets the "optional" field if the given value is not nil.
+func (uc *UserCreate) SetNillableOptional(s *string) *UserCreate {
+	if s != nil {
+		uc.SetOptional(*s)
+	}
+	return uc
+}
+
+// SetInt sets the "int" field.
+func (uc *UserCreate) SetInt(i int) *UserCreate {
+	uc.mutation.SetInt(i)
+	return uc
+}
+
+// SetUint sets the "uint" field.
+func (uc *UserCreate) SetUint(u uint) *UserCreate {
+	uc.mutation.SetUint(u)
+	return uc
+}
+
+// SetTime sets the "time" field.
+func (uc *UserCreate) SetTime(t time.Time) *UserCreate {
+	uc.mutation.SetTime(t)
+	return uc
+}
+
+// SetBool sets the "bool" field.
+func (uc *UserCreate) SetBool(b bool) *UserCreate {
+	uc.mutation.SetBool(b)
+	return uc
+}
+
+// SetEnum sets the "enum" field.
+func (uc *UserCreate) SetEnum(u user.Enum) *UserCreate {
+	uc.mutation.SetEnum(u)
+	return uc
+}
+
+// SetEnum2 sets the "enum_2" field.
+func (uc *UserCreate) SetEnum2(u user.Enum2) *UserCreate {
+	uc.mutation.SetEnum2(u)
+	return uc
+}
+
+// SetUUID sets the "uuid" field.
+func (uc *UserCreate) SetUUID(u uuid.UUID) *UserCreate {
+	uc.mutation.SetUUID(u)
+	return uc
+}
+
+// SetBytes sets the "bytes" field.
+func (uc *UserCreate) SetBytes(b []byte) *UserCreate {
+	uc.mutation.SetBytes(b)
+	return uc
+}
+
+// SetGroupID sets the "group_id" field.
+func (uc *UserCreate) SetGroupID(i int) *UserCreate {
+	uc.mutation.SetGroupID(i)
+	return uc
+}
+
+// SetNillableGroupID sets the "group_id" field if the given value is not nil.
+func (uc *UserCreate) SetNillableGroupID(i *int) *UserCreate {
+	if i != nil {
+		uc.SetGroupID(*i)
+	}
+	return uc
+}
+
+// SetGroup sets the "group" edge to the Group entity.
+func (uc *UserCreate) SetGroup(g *Group) *UserCreate {
+	return uc.SetGroupID(g.ID)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -69,6 +160,43 @@ func (uc *UserCreate) SaveX(ctx context.Context) *User {
 
 // check runs all checks and user-defined validators on the builder.
 func (uc *UserCreate) check() error {
+	if _, ok := uc.mutation.Name(); !ok {
+		return &ValidationError{Name: "name", err: errors.New("ent: missing required field \"name\"")}
+	}
+	if _, ok := uc.mutation.Int(); !ok {
+		return &ValidationError{Name: "int", err: errors.New("ent: missing required field \"int\"")}
+	}
+	if _, ok := uc.mutation.Uint(); !ok {
+		return &ValidationError{Name: "uint", err: errors.New("ent: missing required field \"uint\"")}
+	}
+	if _, ok := uc.mutation.Time(); !ok {
+		return &ValidationError{Name: "time", err: errors.New("ent: missing required field \"time\"")}
+	}
+	if _, ok := uc.mutation.Bool(); !ok {
+		return &ValidationError{Name: "bool", err: errors.New("ent: missing required field \"bool\"")}
+	}
+	if _, ok := uc.mutation.Enum(); !ok {
+		return &ValidationError{Name: "enum", err: errors.New("ent: missing required field \"enum\"")}
+	}
+	if v, ok := uc.mutation.Enum(); ok {
+		if err := user.EnumValidator(v); err != nil {
+			return &ValidationError{Name: "enum", err: fmt.Errorf("ent: validator failed for field \"enum\": %w", err)}
+		}
+	}
+	if _, ok := uc.mutation.Enum2(); !ok {
+		return &ValidationError{Name: "enum_2", err: errors.New("ent: missing required field \"enum_2\"")}
+	}
+	if v, ok := uc.mutation.Enum2(); ok {
+		if err := user.Enum2Validator(v); err != nil {
+			return &ValidationError{Name: "enum_2", err: fmt.Errorf("ent: validator failed for field \"enum_2\": %w", err)}
+		}
+	}
+	if _, ok := uc.mutation.UUID(); !ok {
+		return &ValidationError{Name: "uuid", err: errors.New("ent: missing required field \"uuid\"")}
+	}
+	if _, ok := uc.mutation.Bytes(); !ok {
+		return &ValidationError{Name: "bytes", err: errors.New("ent: missing required field \"bytes\"")}
+	}
 	return nil
 }
 
@@ -96,6 +224,106 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			},
 		}
 	)
+	if value, ok := uc.mutation.Name(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: user.FieldName,
+		})
+		_node.Name = value
+	}
+	if value, ok := uc.mutation.Optional(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: user.FieldOptional,
+		})
+		_node.Optional = value
+	}
+	if value, ok := uc.mutation.Int(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt,
+			Value:  value,
+			Column: user.FieldInt,
+		})
+		_node.Int = value
+	}
+	if value, ok := uc.mutation.Uint(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeUint,
+			Value:  value,
+			Column: user.FieldUint,
+		})
+		_node.Uint = value
+	}
+	if value, ok := uc.mutation.Time(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Value:  value,
+			Column: user.FieldTime,
+		})
+		_node.Time = value
+	}
+	if value, ok := uc.mutation.Bool(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeBool,
+			Value:  value,
+			Column: user.FieldBool,
+		})
+		_node.Bool = value
+	}
+	if value, ok := uc.mutation.Enum(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeEnum,
+			Value:  value,
+			Column: user.FieldEnum,
+		})
+		_node.Enum = value
+	}
+	if value, ok := uc.mutation.Enum2(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeEnum,
+			Value:  value,
+			Column: user.FieldEnum2,
+		})
+		_node.Enum2 = value
+	}
+	if value, ok := uc.mutation.UUID(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeUUID,
+			Value:  value,
+			Column: user.FieldUUID,
+		})
+		_node.UUID = value
+	}
+	if value, ok := uc.mutation.Bytes(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeBytes,
+			Value:  value,
+			Column: user.FieldBytes,
+		})
+		_node.Bytes = value
+	}
+	if nodes := uc.mutation.GroupIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   user.GroupTable,
+			Columns: []string{user.GroupColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: group.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.GroupID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
 	return _node, _spec
 }
 

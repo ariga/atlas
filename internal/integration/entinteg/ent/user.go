@@ -5,16 +5,67 @@ package ent
 import (
 	"fmt"
 	"strings"
+	"time"
 
+	"ariga.io/atlas/integration/entinteg/ent/group"
 	"ariga.io/atlas/integration/entinteg/ent/user"
 	"entgo.io/ent/dialect/sql"
+	"github.com/google/uuid"
 )
 
 // User is the model entity for the User schema.
 type User struct {
-	config
+	config `json:"-"`
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
+	// Name holds the value of the "name" field.
+	Name string `json:"name,omitempty"`
+	// Optional holds the value of the "optional" field.
+	Optional string `json:"optional,omitempty"`
+	// Int holds the value of the "int" field.
+	Int int `json:"int,omitempty"`
+	// Uint holds the value of the "uint" field.
+	Uint uint `json:"uint,omitempty"`
+	// Time holds the value of the "time" field.
+	Time time.Time `json:"time,omitempty"`
+	// Bool holds the value of the "bool" field.
+	Bool bool `json:"bool,omitempty"`
+	// Enum holds the value of the "enum" field.
+	Enum user.Enum `json:"enum,omitempty"`
+	// Enum2 holds the value of the "enum_2" field.
+	Enum2 user.Enum2 `json:"enum_2,omitempty"`
+	// UUID holds the value of the "uuid" field.
+	UUID uuid.UUID `json:"uuid,omitempty"`
+	// Bytes holds the value of the "bytes" field.
+	Bytes []byte `json:"bytes,omitempty"`
+	// GroupID holds the value of the "group_id" field.
+	GroupID int `json:"group_id,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the UserQuery when eager-loading is set.
+	Edges UserEdges `json:"edges"`
+}
+
+// UserEdges holds the relations/edges for other nodes in the graph.
+type UserEdges struct {
+	// Group holds the value of the group edge.
+	Group *Group `json:"group,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// GroupOrErr returns the Group value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e UserEdges) GroupOrErr() (*Group, error) {
+	if e.loadedTypes[0] {
+		if e.Group == nil {
+			// The edge group was loaded in eager-loading,
+			// but was not found.
+			return nil, &NotFoundError{label: group.Label}
+		}
+		return e.Group, nil
+	}
+	return nil, &NotLoadedError{edge: "group"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -22,8 +73,18 @@ func (*User) scanValues(columns []string) ([]interface{}, error) {
 	values := make([]interface{}, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case user.FieldID:
+		case user.FieldBytes:
+			values[i] = new([]byte)
+		case user.FieldBool:
+			values[i] = new(sql.NullBool)
+		case user.FieldID, user.FieldInt, user.FieldUint, user.FieldGroupID:
 			values[i] = new(sql.NullInt64)
+		case user.FieldName, user.FieldOptional, user.FieldEnum, user.FieldEnum2:
+			values[i] = new(sql.NullString)
+		case user.FieldTime:
+			values[i] = new(sql.NullTime)
+		case user.FieldUUID:
+			values[i] = new(uuid.UUID)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type User", columns[i])
 		}
@@ -45,9 +106,80 @@ func (u *User) assignValues(columns []string, values []interface{}) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			u.ID = int(value.Int64)
+		case user.FieldName:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field name", values[i])
+			} else if value.Valid {
+				u.Name = value.String
+			}
+		case user.FieldOptional:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field optional", values[i])
+			} else if value.Valid {
+				u.Optional = value.String
+			}
+		case user.FieldInt:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field int", values[i])
+			} else if value.Valid {
+				u.Int = int(value.Int64)
+			}
+		case user.FieldUint:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field uint", values[i])
+			} else if value.Valid {
+				u.Uint = uint(value.Int64)
+			}
+		case user.FieldTime:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field time", values[i])
+			} else if value.Valid {
+				u.Time = value.Time
+			}
+		case user.FieldBool:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field bool", values[i])
+			} else if value.Valid {
+				u.Bool = value.Bool
+			}
+		case user.FieldEnum:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field enum", values[i])
+			} else if value.Valid {
+				u.Enum = user.Enum(value.String)
+			}
+		case user.FieldEnum2:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field enum_2", values[i])
+			} else if value.Valid {
+				u.Enum2 = user.Enum2(value.String)
+			}
+		case user.FieldUUID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field uuid", values[i])
+			} else if value != nil {
+				u.UUID = *value
+			}
+		case user.FieldBytes:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field bytes", values[i])
+			} else if value != nil {
+				u.Bytes = *value
+			}
+		case user.FieldGroupID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field group_id", values[i])
+			} else if value.Valid {
+				u.GroupID = int(value.Int64)
+			}
 		}
 	}
 	return nil
+}
+
+// QueryGroup queries the "group" edge of the User entity.
+func (u *User) QueryGroup() *GroupQuery {
+	return (&UserClient{config: u.config}).QueryGroup(u)
 }
 
 // Update returns a builder for updating this User.
@@ -73,6 +205,28 @@ func (u *User) String() string {
 	var builder strings.Builder
 	builder.WriteString("User(")
 	builder.WriteString(fmt.Sprintf("id=%v", u.ID))
+	builder.WriteString(", name=")
+	builder.WriteString(u.Name)
+	builder.WriteString(", optional=")
+	builder.WriteString(u.Optional)
+	builder.WriteString(", int=")
+	builder.WriteString(fmt.Sprintf("%v", u.Int))
+	builder.WriteString(", uint=")
+	builder.WriteString(fmt.Sprintf("%v", u.Uint))
+	builder.WriteString(", time=")
+	builder.WriteString(u.Time.Format(time.ANSIC))
+	builder.WriteString(", bool=")
+	builder.WriteString(fmt.Sprintf("%v", u.Bool))
+	builder.WriteString(", enum=")
+	builder.WriteString(fmt.Sprintf("%v", u.Enum))
+	builder.WriteString(", enum_2=")
+	builder.WriteString(fmt.Sprintf("%v", u.Enum2))
+	builder.WriteString(", uuid=")
+	builder.WriteString(fmt.Sprintf("%v", u.UUID))
+	builder.WriteString(", bytes=")
+	builder.WriteString(fmt.Sprintf("%v", u.Bytes))
+	builder.WriteString(", group_id=")
+	builder.WriteString(fmt.Sprintf("%v", u.GroupID))
 	builder.WriteByte(')')
 	return builder.String()
 }

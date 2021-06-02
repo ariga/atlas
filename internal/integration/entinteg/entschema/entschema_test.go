@@ -14,9 +14,11 @@ func TestConvert(t *testing.T) {
 	require.NoError(t, err)
 	sch, err := Convert(graph)
 	require.NoError(t, err)
-	tbl, ok := sch.Table("users")
+	users, ok := sch.Table("users")
 	require.True(t, ok, "expected users table to exist")
-	require.EqualValues(t, "users", tbl.Name)
+	require.EqualValues(t, "users", users.Name)
+
+	// column types
 	for _, tt := range []struct {
 		fld      string
 		expected *schema.ColumnType
@@ -96,14 +98,71 @@ func TestConvert(t *testing.T) {
 				},
 			},
 		},
+		{
+			fld: "group_id",
+			expected: &schema.ColumnType{
+				Type: &schema.IntegerType{
+					T: "integer",
+				},
+				Null: true,
+			},
+		},
 	} {
-		t.Run(tt.fld, func(t *testing.T) {
-			column, ok := tbl.Column(tt.fld)
-			require.True(t, ok, "expected column to exist")
-			require.EqualValues(t, tt.expected, column.Type)
-			//out, err := convertColumn(tt.fld)
-			//require.NoError(t, err)
-			//require.EqualValues(t, tt.expected, out)
-		})
+		column, ok := users.Column(tt.fld)
+		require.True(t, ok, "expected column to exist")
+		require.EqualValues(t, tt.expected, column.Type)
 	}
+
+	// primary key
+	id, ok := users.Column("id")
+	require.True(t, ok, "expected col id to exist")
+	require.EqualValues(t, &schema.Index{
+		Parts: []*schema.IndexPart{
+			{C: id, SeqNo: 0},
+		},
+	}, users.PrimaryKey)
+
+	// foreign key
+	gid, ok := users.Column("group_id")
+	require.True(t, ok, "expected column group_id")
+	fk, ok := users.ForeignKey("users_groups_group")
+	groups, ok := sch.Table("groups")
+	require.True(t, ok, "expected table groups")
+	refcol, ok := groups.Column("id")
+	require.True(t, ok, "expected column id")
+	require.EqualValues(t, &schema.ForeignKey{
+		Symbol:     "users_groups_group",
+		Table:      users,
+		Columns:    []*schema.Column{gid},
+		RefTable:   groups,
+		RefColumns: []*schema.Column{refcol},
+		OnUpdate:   "",
+		OnDelete:   schema.SetNull,
+	}, fk)
+
+	// unique indexes
+	uuidc, ok := users.Column("uuid")
+	require.True(t, ok, "expected column uuid")
+	uniqIdx, ok := users.Index("users_uuid_uniq")
+	require.True(t, ok, "expected index users_uuid_uniq")
+	require.EqualValues(t, &schema.Index{
+		Name:   "users_uuid_uniq",
+		Unique: true,
+		Table:  users,
+		Parts:  []*schema.IndexPart{{C: uuidc, SeqNo: 0}},
+	}, uniqIdx)
+
+	// indexes
+	timec, ok := users.Column("time")
+	require.True(t, ok, "expected column time")
+	timeIdx, ok := users.Index("user_time")
+	require.True(t, ok, "expected time index")
+	require.EqualValues(t, &schema.Index{
+		Name:   "user_time",
+		Unique: false,
+		Table:  users,
+		Parts: []*schema.IndexPart{
+			{C: timec, SeqNo: 0},
+		},
+	}, timeIdx)
 }

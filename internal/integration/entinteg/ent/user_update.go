@@ -5,12 +5,15 @@ package ent
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"ariga.io/atlas/integration/entinteg/ent/group"
 	"ariga.io/atlas/integration/entinteg/ent/predicate"
 	"ariga.io/atlas/integration/entinteg/ent/user"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 )
 
 // UserUpdate is the builder for updating User entities.
@@ -26,9 +29,129 @@ func (uu *UserUpdate) Where(ps ...predicate.User) *UserUpdate {
 	return uu
 }
 
+// SetName sets the "name" field.
+func (uu *UserUpdate) SetName(s string) *UserUpdate {
+	uu.mutation.SetName(s)
+	return uu
+}
+
+// SetOptional sets the "optional" field.
+func (uu *UserUpdate) SetOptional(s string) *UserUpdate {
+	uu.mutation.SetOptional(s)
+	return uu
+}
+
+// SetNillableOptional sets the "optional" field if the given value is not nil.
+func (uu *UserUpdate) SetNillableOptional(s *string) *UserUpdate {
+	if s != nil {
+		uu.SetOptional(*s)
+	}
+	return uu
+}
+
+// ClearOptional clears the value of the "optional" field.
+func (uu *UserUpdate) ClearOptional() *UserUpdate {
+	uu.mutation.ClearOptional()
+	return uu
+}
+
+// SetInt sets the "int" field.
+func (uu *UserUpdate) SetInt(i int) *UserUpdate {
+	uu.mutation.ResetInt()
+	uu.mutation.SetInt(i)
+	return uu
+}
+
+// AddInt adds i to the "int" field.
+func (uu *UserUpdate) AddInt(i int) *UserUpdate {
+	uu.mutation.AddInt(i)
+	return uu
+}
+
+// SetUint sets the "uint" field.
+func (uu *UserUpdate) SetUint(u uint) *UserUpdate {
+	uu.mutation.ResetUint()
+	uu.mutation.SetUint(u)
+	return uu
+}
+
+// AddUint adds u to the "uint" field.
+func (uu *UserUpdate) AddUint(u uint) *UserUpdate {
+	uu.mutation.AddUint(u)
+	return uu
+}
+
+// SetTime sets the "time" field.
+func (uu *UserUpdate) SetTime(t time.Time) *UserUpdate {
+	uu.mutation.SetTime(t)
+	return uu
+}
+
+// SetBool sets the "bool" field.
+func (uu *UserUpdate) SetBool(b bool) *UserUpdate {
+	uu.mutation.SetBool(b)
+	return uu
+}
+
+// SetEnum sets the "enum" field.
+func (uu *UserUpdate) SetEnum(u user.Enum) *UserUpdate {
+	uu.mutation.SetEnum(u)
+	return uu
+}
+
+// SetEnum2 sets the "enum_2" field.
+func (uu *UserUpdate) SetEnum2(u user.Enum2) *UserUpdate {
+	uu.mutation.SetEnum2(u)
+	return uu
+}
+
+// SetUUID sets the "uuid" field.
+func (uu *UserUpdate) SetUUID(u uuid.UUID) *UserUpdate {
+	uu.mutation.SetUUID(u)
+	return uu
+}
+
+// SetBytes sets the "bytes" field.
+func (uu *UserUpdate) SetBytes(b []byte) *UserUpdate {
+	uu.mutation.SetBytes(b)
+	return uu
+}
+
+// SetGroupID sets the "group_id" field.
+func (uu *UserUpdate) SetGroupID(i int) *UserUpdate {
+	uu.mutation.ResetGroupID()
+	uu.mutation.SetGroupID(i)
+	return uu
+}
+
+// SetNillableGroupID sets the "group_id" field if the given value is not nil.
+func (uu *UserUpdate) SetNillableGroupID(i *int) *UserUpdate {
+	if i != nil {
+		uu.SetGroupID(*i)
+	}
+	return uu
+}
+
+// ClearGroupID clears the value of the "group_id" field.
+func (uu *UserUpdate) ClearGroupID() *UserUpdate {
+	uu.mutation.ClearGroupID()
+	return uu
+}
+
+// SetGroup sets the "group" edge to the Group entity.
+func (uu *UserUpdate) SetGroup(g *Group) *UserUpdate {
+	return uu.SetGroupID(g.ID)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (uu *UserUpdate) Mutation() *UserMutation {
 	return uu.mutation
+}
+
+// ClearGroup clears the "group" edge to the Group entity.
+func (uu *UserUpdate) ClearGroup() *UserUpdate {
+	uu.mutation.ClearGroup()
+	return uu
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -38,12 +161,18 @@ func (uu *UserUpdate) Save(ctx context.Context) (int, error) {
 		affected int
 	)
 	if len(uu.hooks) == 0 {
+		if err = uu.check(); err != nil {
+			return 0, err
+		}
 		affected, err = uu.sqlSave(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 			mutation, ok := m.(*UserMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
+			}
+			if err = uu.check(); err != nil {
+				return 0, err
 			}
 			uu.mutation = mutation
 			affected, err = uu.sqlSave(ctx)
@@ -82,6 +211,21 @@ func (uu *UserUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (uu *UserUpdate) check() error {
+	if v, ok := uu.mutation.Enum(); ok {
+		if err := user.EnumValidator(v); err != nil {
+			return &ValidationError{Name: "enum", err: fmt.Errorf("ent: validator failed for field \"enum\": %w", err)}
+		}
+	}
+	if v, ok := uu.mutation.Enum2(); ok {
+		if err := user.Enum2Validator(v); err != nil {
+			return &ValidationError{Name: "enum_2", err: fmt.Errorf("ent: validator failed for field \"enum_2\": %w", err)}
+		}
+	}
+	return nil
+}
+
 func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	_spec := &sqlgraph.UpdateSpec{
 		Node: &sqlgraph.NodeSpec{
@@ -99,6 +243,131 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := uu.mutation.Name(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: user.FieldName,
+		})
+	}
+	if value, ok := uu.mutation.Optional(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: user.FieldOptional,
+		})
+	}
+	if uu.mutation.OptionalCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Column: user.FieldOptional,
+		})
+	}
+	if value, ok := uu.mutation.Int(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt,
+			Value:  value,
+			Column: user.FieldInt,
+		})
+	}
+	if value, ok := uu.mutation.AddedInt(); ok {
+		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt,
+			Value:  value,
+			Column: user.FieldInt,
+		})
+	}
+	if value, ok := uu.mutation.Uint(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeUint,
+			Value:  value,
+			Column: user.FieldUint,
+		})
+	}
+	if value, ok := uu.mutation.AddedUint(); ok {
+		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
+			Type:   field.TypeUint,
+			Value:  value,
+			Column: user.FieldUint,
+		})
+	}
+	if value, ok := uu.mutation.Time(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Value:  value,
+			Column: user.FieldTime,
+		})
+	}
+	if value, ok := uu.mutation.Bool(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeBool,
+			Value:  value,
+			Column: user.FieldBool,
+		})
+	}
+	if value, ok := uu.mutation.Enum(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeEnum,
+			Value:  value,
+			Column: user.FieldEnum,
+		})
+	}
+	if value, ok := uu.mutation.Enum2(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeEnum,
+			Value:  value,
+			Column: user.FieldEnum2,
+		})
+	}
+	if value, ok := uu.mutation.UUID(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeUUID,
+			Value:  value,
+			Column: user.FieldUUID,
+		})
+	}
+	if value, ok := uu.mutation.Bytes(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeBytes,
+			Value:  value,
+			Column: user.FieldBytes,
+		})
+	}
+	if uu.mutation.GroupCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   user.GroupTable,
+			Columns: []string{user.GroupColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: group.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.GroupIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   user.GroupTable,
+			Columns: []string{user.GroupColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: group.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, uu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -119,9 +388,129 @@ type UserUpdateOne struct {
 	mutation *UserMutation
 }
 
+// SetName sets the "name" field.
+func (uuo *UserUpdateOne) SetName(s string) *UserUpdateOne {
+	uuo.mutation.SetName(s)
+	return uuo
+}
+
+// SetOptional sets the "optional" field.
+func (uuo *UserUpdateOne) SetOptional(s string) *UserUpdateOne {
+	uuo.mutation.SetOptional(s)
+	return uuo
+}
+
+// SetNillableOptional sets the "optional" field if the given value is not nil.
+func (uuo *UserUpdateOne) SetNillableOptional(s *string) *UserUpdateOne {
+	if s != nil {
+		uuo.SetOptional(*s)
+	}
+	return uuo
+}
+
+// ClearOptional clears the value of the "optional" field.
+func (uuo *UserUpdateOne) ClearOptional() *UserUpdateOne {
+	uuo.mutation.ClearOptional()
+	return uuo
+}
+
+// SetInt sets the "int" field.
+func (uuo *UserUpdateOne) SetInt(i int) *UserUpdateOne {
+	uuo.mutation.ResetInt()
+	uuo.mutation.SetInt(i)
+	return uuo
+}
+
+// AddInt adds i to the "int" field.
+func (uuo *UserUpdateOne) AddInt(i int) *UserUpdateOne {
+	uuo.mutation.AddInt(i)
+	return uuo
+}
+
+// SetUint sets the "uint" field.
+func (uuo *UserUpdateOne) SetUint(u uint) *UserUpdateOne {
+	uuo.mutation.ResetUint()
+	uuo.mutation.SetUint(u)
+	return uuo
+}
+
+// AddUint adds u to the "uint" field.
+func (uuo *UserUpdateOne) AddUint(u uint) *UserUpdateOne {
+	uuo.mutation.AddUint(u)
+	return uuo
+}
+
+// SetTime sets the "time" field.
+func (uuo *UserUpdateOne) SetTime(t time.Time) *UserUpdateOne {
+	uuo.mutation.SetTime(t)
+	return uuo
+}
+
+// SetBool sets the "bool" field.
+func (uuo *UserUpdateOne) SetBool(b bool) *UserUpdateOne {
+	uuo.mutation.SetBool(b)
+	return uuo
+}
+
+// SetEnum sets the "enum" field.
+func (uuo *UserUpdateOne) SetEnum(u user.Enum) *UserUpdateOne {
+	uuo.mutation.SetEnum(u)
+	return uuo
+}
+
+// SetEnum2 sets the "enum_2" field.
+func (uuo *UserUpdateOne) SetEnum2(u user.Enum2) *UserUpdateOne {
+	uuo.mutation.SetEnum2(u)
+	return uuo
+}
+
+// SetUUID sets the "uuid" field.
+func (uuo *UserUpdateOne) SetUUID(u uuid.UUID) *UserUpdateOne {
+	uuo.mutation.SetUUID(u)
+	return uuo
+}
+
+// SetBytes sets the "bytes" field.
+func (uuo *UserUpdateOne) SetBytes(b []byte) *UserUpdateOne {
+	uuo.mutation.SetBytes(b)
+	return uuo
+}
+
+// SetGroupID sets the "group_id" field.
+func (uuo *UserUpdateOne) SetGroupID(i int) *UserUpdateOne {
+	uuo.mutation.ResetGroupID()
+	uuo.mutation.SetGroupID(i)
+	return uuo
+}
+
+// SetNillableGroupID sets the "group_id" field if the given value is not nil.
+func (uuo *UserUpdateOne) SetNillableGroupID(i *int) *UserUpdateOne {
+	if i != nil {
+		uuo.SetGroupID(*i)
+	}
+	return uuo
+}
+
+// ClearGroupID clears the value of the "group_id" field.
+func (uuo *UserUpdateOne) ClearGroupID() *UserUpdateOne {
+	uuo.mutation.ClearGroupID()
+	return uuo
+}
+
+// SetGroup sets the "group" edge to the Group entity.
+func (uuo *UserUpdateOne) SetGroup(g *Group) *UserUpdateOne {
+	return uuo.SetGroupID(g.ID)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (uuo *UserUpdateOne) Mutation() *UserMutation {
 	return uuo.mutation
+}
+
+// ClearGroup clears the "group" edge to the Group entity.
+func (uuo *UserUpdateOne) ClearGroup() *UserUpdateOne {
+	uuo.mutation.ClearGroup()
+	return uuo
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
@@ -138,12 +527,18 @@ func (uuo *UserUpdateOne) Save(ctx context.Context) (*User, error) {
 		node *User
 	)
 	if len(uuo.hooks) == 0 {
+		if err = uuo.check(); err != nil {
+			return nil, err
+		}
 		node, err = uuo.sqlSave(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 			mutation, ok := m.(*UserMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
+			}
+			if err = uuo.check(); err != nil {
+				return nil, err
 			}
 			uuo.mutation = mutation
 			node, err = uuo.sqlSave(ctx)
@@ -182,6 +577,21 @@ func (uuo *UserUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (uuo *UserUpdateOne) check() error {
+	if v, ok := uuo.mutation.Enum(); ok {
+		if err := user.EnumValidator(v); err != nil {
+			return &ValidationError{Name: "enum", err: fmt.Errorf("ent: validator failed for field \"enum\": %w", err)}
+		}
+	}
+	if v, ok := uuo.mutation.Enum2(); ok {
+		if err := user.Enum2Validator(v); err != nil {
+			return &ValidationError{Name: "enum_2", err: fmt.Errorf("ent: validator failed for field \"enum_2\": %w", err)}
+		}
+	}
+	return nil
+}
+
 func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	_spec := &sqlgraph.UpdateSpec{
 		Node: &sqlgraph.NodeSpec{
@@ -216,6 +626,131 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := uuo.mutation.Name(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: user.FieldName,
+		})
+	}
+	if value, ok := uuo.mutation.Optional(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: user.FieldOptional,
+		})
+	}
+	if uuo.mutation.OptionalCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Column: user.FieldOptional,
+		})
+	}
+	if value, ok := uuo.mutation.Int(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt,
+			Value:  value,
+			Column: user.FieldInt,
+		})
+	}
+	if value, ok := uuo.mutation.AddedInt(); ok {
+		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt,
+			Value:  value,
+			Column: user.FieldInt,
+		})
+	}
+	if value, ok := uuo.mutation.Uint(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeUint,
+			Value:  value,
+			Column: user.FieldUint,
+		})
+	}
+	if value, ok := uuo.mutation.AddedUint(); ok {
+		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
+			Type:   field.TypeUint,
+			Value:  value,
+			Column: user.FieldUint,
+		})
+	}
+	if value, ok := uuo.mutation.Time(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Value:  value,
+			Column: user.FieldTime,
+		})
+	}
+	if value, ok := uuo.mutation.Bool(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeBool,
+			Value:  value,
+			Column: user.FieldBool,
+		})
+	}
+	if value, ok := uuo.mutation.Enum(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeEnum,
+			Value:  value,
+			Column: user.FieldEnum,
+		})
+	}
+	if value, ok := uuo.mutation.Enum2(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeEnum,
+			Value:  value,
+			Column: user.FieldEnum2,
+		})
+	}
+	if value, ok := uuo.mutation.UUID(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeUUID,
+			Value:  value,
+			Column: user.FieldUUID,
+		})
+	}
+	if value, ok := uuo.mutation.Bytes(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeBytes,
+			Value:  value,
+			Column: user.FieldBytes,
+		})
+	}
+	if uuo.mutation.GroupCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   user.GroupTable,
+			Columns: []string{user.GroupColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: group.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.GroupIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   user.GroupTable,
+			Columns: []string{user.GroupColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: group.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &User{config: uuo.config}
 	_spec.Assign = _node.assignValues
