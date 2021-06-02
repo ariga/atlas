@@ -3,7 +3,6 @@ package integration
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -69,8 +68,13 @@ func TestMySQL(t *testing.T) {
 						},
 					},
 				},
+				Attrs: defaultAttrs(version),
 			}
 			postsT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: postsT.Columns[0]}}}
+			postsT.Indexes = []*schema.Index{
+				{Name: "author_id", Parts: []*schema.IndexPart{{C: postsT.Columns[1]}}},
+				{Name: "id_author_id_unique", Unique: true, Parts: []*schema.IndexPart{{C: postsT.Columns[1]}, {C: postsT.Columns[0]}}},
+			}
 			migrate := mysql.Migrate{Driver: drv}
 			err = migrate.Exec(ctx, []schema.Change{
 				&schema.AddTable{T: postsT},
@@ -112,17 +116,4 @@ func defaultAttrs(version string) []schema.Attr {
 			V: collation,
 		},
 	}
-}
-
-// printChanges for debug purpose. Do not remove.
-func printChanges(c []schema.Change) {
-	fmt.Printf("%T{\n", c)
-	for i := range c {
-		b, err := json.MarshalIndent(c[i], "\t", "\t")
-		if err != nil {
-			panic(err)
-		}
-		fmt.Printf("\t%T%s\n", c[i], string(b))
-	}
-	fmt.Println("}")
 }

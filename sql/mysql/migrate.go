@@ -3,8 +3,8 @@ package mysql
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
-	"text/template"
 
 	"ariga.io/atlas/sql/schema"
 )
@@ -32,10 +32,46 @@ func (m *Migrate) Exec(ctx context.Context, changes []schema.Change) (err error)
 }
 
 func (m *Migrate) addTable(ctx context.Context, add *schema.AddTable) error {
-	var b strings.Builder
-	if err := createTmpl.Execute(&b, add.T); err != nil {
-		return err
+	b := &strings.Builder{}
+	b.WriteString("CREATE TABLE ")
+	ident(b, add.T.Name)
+	b.WriteString(" (\n")
+	for i, c := range add.T.Columns {
+		if i != 0 {
+			b.WriteString(",\n")
+		}
+		b.WriteString("  ")
+		ident(b, c.Name)
+		b.WriteString(" " + c.Type.Raw)
+		if !c.Type.Null {
+			b.WriteString(" NOT")
+		}
+		b.WriteString(" NULL")
+		if x, ok := c.Default.(*schema.RawExpr); ok {
+			b.WriteString(" DEFAULT " + x.X)
+		}
+		attrs(b, c.Attrs)
+
 	}
+	if pk := add.T.PrimaryKey; pk != nil {
+		b.WriteString(",\n  ")
+		b.WriteString("PRIMARY KEY ")
+		parts(b, pk.Parts)
+	}
+	for _, idx := range add.T.Indexes {
+		b.WriteString(",\n  ")
+		if idx.Unique {
+			b.WriteString("UNIQUE ")
+		}
+		b.WriteString("INDEX ")
+		if idx.Name != "" {
+			ident(b, idx.Name)
+			b.WriteByte(' ')
+		}
+		parts(b, idx.Parts)
+	}
+	b.WriteString("\n)")
+	attrs(b, add.T.Attrs)
 	if _, err := m.ExecContext(ctx, b.String()); err != nil {
 		return fmt.Errorf("mysql: create table: %w", err)
 	}
@@ -63,40 +99,39 @@ func ident(b *strings.Builder, ident string) {
 	b.WriteByte('`')
 }
 
-var createTmpl = template.Must(template.New("create_table").
-	Funcs(template.FuncMap{
-		"add":   func(a, b int) int { return a + b },
-		"ident": func(s string) string { return "`" + s + "`" },
-		"attrs": attrs,
-	}).
-	Parse(`
-CREATE TABLE {{ ident $.Name }} (
-	{{- $nc := len $.Columns }}
-	{{- range $i, $c := $.Columns }}
-		{{- $comma := or (ne $i (add $nc -1)) $.PrimaryKey }}
-		{{ ident $c.Name }} {{ $c.Type.Raw }} {{ if not $c.Type.Null }}NOT {{ end }}NULL{{ with $attr := attrs $c }} {{ . }}{{ end }}{{ if $comma }},{{ end }}
-	{{- end }}
-	{{- with $.PrimaryKey }}
-		PRIMARY KEY ({{ range $i, $p := .Parts }}{{ if $i }}, {{ end }}{{ ident $p.C.Name }}{{ end }})
-	{{- end }}
-)`))
-
-func attrs(c *schema.Column) string {
-	var attr []string
-	if x, ok := c.Default.(*schema.RawExpr); ok {
-		attr = append(attr, "DEFAULT", x.X)
-	}
-	for i := range c.Attrs {
-		switch a := c.Attrs[i].(type) {
+func attrs(b *strings.Builder, attrs []schema.Attr) {
+	for i := range attrs {
+		switch a := attrs[i].(type) {
 		case *OnUpdate:
-			attr = append(attr, "ON UPDATE", a.A)
+			b.WriteString(" ON UPDATE " + a.A)
 		case *AutoIncrement:
-			attr = append(attr, "AUTO_INCREMENT")
+			b.WriteString(" AUTO_INCREMENT")
+			if a.V != 0 {
+				b.WriteByte(' ')
+				b.WriteString(strconv.FormatInt(a.V, 10))
+			}
+		case *schema.Charset:
+			b.WriteString(" CHARACTER SET " + a.V)
 		case *schema.Collation:
-			attr = append(attr, "COLLATE", a.V)
+			b.WriteString(" COLLATE " + a.V)
 		case *schema.Comment:
-			attr = append(attr, "COMMENT", "'"+strings.ReplaceAll(a.Text, "'", "\\'")+"'")
+			b.WriteString(" COMMENT '" + strings.ReplaceAll(a.Text, "'", "\\'") + "'")
 		}
 	}
-	return strings.Join(attr, " ")
+}
+
+func parts(b *strings.Builder, parts []*schema.IndexPart) {
+	b.WriteByte('(')
+	for i, part := range parts {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		switch {
+		case part.C != nil:
+			ident(b, part.C.Name)
+		case part.X != nil:
+			b.WriteString(part.X.(*schema.RawExpr).X)
+		}
+	}
+	b.WriteByte(')')
 }
