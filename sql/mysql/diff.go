@@ -3,7 +3,6 @@ package mysql
 import (
 	"fmt"
 	"reflect"
-	"sort"
 
 	"ariga.io/atlas/sql/schema"
 
@@ -56,18 +55,10 @@ func (d *Diff) SchemaDiff(from, to *schema.Schema) ([]schema.Change, error) {
 // TableDiff implements the schema.TableDiffer interface and returns a list of
 // changes that need to be applied in order to move from one state to the other.
 func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
-	var (
-		changes  []schema.Change
-		pk1, pk2 = pk(from), pk(to)
-	)
+	var changes []schema.Change
 	// PK modification is not support.
-	if n, m := len(pk1), len(pk2); n != m {
-		return nil, fmt.Errorf("mismatch number of columns for table %q primary key: %d != %d", to.Name, n, m)
-	}
-	for i := range pk1 {
-		if pk1[i].Name != pk2[i].Name {
-			return nil, fmt.Errorf("changing primary key of table %q is not supported", to.Name)
-		}
+	if pk1, pk2 := from.PrimaryKey, to.PrimaryKey; (pk1 != nil) != (pk2 != nil) || (pk1 != nil) && d.indexChange(pk1, pk2) != schema.NoChange {
+		return nil, fmt.Errorf("changing %q table primary key is not supported", to.Name)
 	}
 
 	// Charset change.
@@ -257,7 +248,7 @@ func (d *Diff) typeChanged(from, to *schema.Column) (bool, error) {
 		toT := toT.(*schema.SpatialType)
 		changed = fromT.T != toT.T
 	case *schema.TimeType:
-		toT := toT.(*schema.SpatialType)
+		toT := toT.(*schema.TimeType)
 		changed = fromT.T != toT.T
 	case *BitType:
 		toT := toT.(*BitType)
@@ -401,13 +392,6 @@ func partsChange(from, to []*schema.IndexPart) schema.ChangeKind {
 
 // noChange describes a zero change.
 var noChange struct{ schema.Change }
-
-func pk(t *schema.Table) []*schema.Column {
-	pk := make([]*schema.Column, len(t.PrimaryKey))
-	copy(pk, t.PrimaryKey)
-	sort.Slice(pk, func(i, j int) bool { return pk[i].Name < pk[j].Name })
-	return pk
-}
 
 func collate(attr []schema.Attr) *schema.Collation {
 	for i := range attr {

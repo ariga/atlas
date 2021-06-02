@@ -46,11 +46,31 @@ func TestMySQL(t *testing.T) {
 			postsT := &schema.Table{
 				Name: "posts",
 				Columns: []*schema.Column{
-					{Name: "id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
-					{Name: "author_id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true}},
+					{
+						Name:  "id",
+						Type:  &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}},
+						Attrs: []schema.Attr{&mysql.AutoIncrement{}},
+					},
+					{
+						Name:    "author_id",
+						Type:    &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true},
+						Default: &schema.RawExpr{X: "10"},
+					},
+					{
+						Name: "ctime",
+						Type: &schema.ColumnType{Raw: "timestamp", Type: &schema.TimeType{T: "timestamp"}},
+						Default: &schema.RawExpr{
+							X: "CURRENT_TIMESTAMP",
+						},
+						Attrs: []schema.Attr{
+							&mysql.OnUpdate{
+								A: "CURRENT_TIMESTAMP",
+							},
+						},
+					},
 				},
 			}
-			postsT.PrimaryKey = postsT.Columns[:1]
+			postsT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: postsT.Columns[0]}}}
 			migrate := mysql.Migrate{Driver: drv}
 			err = migrate.Exec(ctx, []schema.Change{
 				&schema.AddTable{T: postsT},

@@ -22,7 +22,7 @@ type (
 		Schema      *Schema
 		Columns     []*Column
 		Indexes     []*Index
-		PrimaryKey  []*Column
+		PrimaryKey  *Index
 		ForeignKeys []*ForeignKey
 		Attrs       []Attr // Attributes, constraints and options.
 	}

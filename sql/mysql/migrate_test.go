@@ -37,7 +37,9 @@ func TestMigrate_Exec(t *testing.T) {
 						{Name: "c", Type: &schema.ColumnType{Raw: "bigint", Null: true}},
 					},
 				}
-				t.PrimaryKey = t.Columns[:2]
+				t.PrimaryKey = &schema.Index{
+					Parts: []*schema.IndexPart{{C: t.Columns[0]}, {C: t.Columns[1]}},
+				}
 				return t
 			}(),
 		},

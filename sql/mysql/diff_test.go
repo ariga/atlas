@@ -25,7 +25,9 @@ func TestDiff_TableDiff(t *testing.T) {
 			name: "change primary key",
 			from: func() *schema.Table {
 				t := &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Columns: []*schema.Column{{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}}}}
-				t.PrimaryKey = t.Columns
+				t.PrimaryKey = &schema.Index{
+					Parts: []*schema.IndexPart{{C: t.Columns[0]}},
+				}
 				return t
 			}(),
 			to:      &schema.Table{Name: "users"},

@@ -189,19 +189,19 @@ func (*DefaultHCLConverter) convertEnum(ctx *hcl.EvalContext, col *ColumnHCL) (T
 	}, nil
 }
 
-func (*DefaultHCLConverter) convertBool(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
+func (*DefaultHCLConverter) convertBool(_ *hcl.EvalContext, col *ColumnHCL) (Type, error) {
 	return &BoolType{
 		T: col.TypeName,
 	}, nil
 }
 
-func (*DefaultHCLConverter) convertTime(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
+func (*DefaultHCLConverter) convertTime(_ *hcl.EvalContext, col *ColumnHCL) (Type, error) {
 	return &TimeType{
 		T: col.TypeName,
 	}, nil
 }
 
-func (*DefaultHCLConverter) convertJSON(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
+func (*DefaultHCLConverter) convertJSON(_ *hcl.EvalContext, col *ColumnHCL) (Type, error) {
 	return &JSONType{
 		T: col.TypeName,
 	}, nil
@@ -299,13 +299,20 @@ func addIndexes(tableHCL *tableHCL, table *Table) error {
 }
 
 func addPrimaryKeys(tableHCL *tableHCL, table *Table) error {
-	for _, pk := range tableHCL.PrimaryKey.Columns {
-		cn := pk.Name
-		pkc, ok := table.Column(cn)
+	parts := make([]*IndexPart, 0, len(tableHCL.PrimaryKey.Columns))
+	for seqno, c := range tableHCL.PrimaryKey.Columns {
+		pkc, ok := table.Column(c.Name)
 		if !ok {
-			return fmt.Errorf("schema: cannot set column %q as primary key for table %q", cn, table.Name)
+			return fmt.Errorf("schema: cannot set column %q as primary key for table %q", c.Name, table.Name)
 		}
-		table.PrimaryKey = append(table.PrimaryKey, pkc)
+		parts = append(parts, &IndexPart{
+			SeqNo: seqno,
+			C:     pkc,
+		})
+	}
+	table.PrimaryKey = &Index{
+		Table: table,
+		Parts: parts,
 	}
 	return nil
 }
@@ -475,47 +482,49 @@ func toColumn(ctx *hcl.EvalContext, column *ColumnHCL, converter HCLConverter) (
 	}, nil
 }
 
-type fileHCL struct {
-	Tables  []*tableHCL  `hcl:"table,block"`
-	Schemas []*schemaHCL `hcl:"schema,block"`
-}
+type (
+	fileHCL struct {
+		Tables  []*tableHCL  `hcl:"table,block"`
+		Schemas []*schemaHCL `hcl:"schema,block"`
+	}
 
-type schemaHCL struct {
-	Name string `hcl:",label"`
-}
+	schemaHCL struct {
+		Name string `hcl:",label"`
+	}
 
-type foreignKeyHCL struct {
-	Symbol     string      `hcl:",label"`
-	Columns    []columnRef `hcl:"columns"`
-	RefColumns []columnRef `hcl:"references"`
-	OnUpdate   string      `hcl:"on_update,optional"`
-	OnDelete   string      `hcl:"on_delete,optional"`
-	Remain     hcl.Body    `hcl:",remain"`
-}
+	foreignKeyHCL struct {
+		Symbol     string      `hcl:",label"`
+		Columns    []columnRef `hcl:"columns"`
+		RefColumns []columnRef `hcl:"references"`
+		OnUpdate   string      `hcl:"on_update,optional"`
+		OnDelete   string      `hcl:"on_delete,optional"`
+		Remain     hcl.Body    `hcl:",remain"`
+	}
 
-type primaryKeyHCL struct {
-	Columns []columnRef `hcl:"columns"`
-}
+	primaryKeyHCL struct {
+		Columns []columnRef `hcl:"columns"`
+	}
 
-type indexHCL struct {
-	Name    string      `hcl:",label"`
-	Columns []columnRef `hcl:"columns"`
-	Unique  bool        `hcl:"unique"`
-}
+	indexHCL struct {
+		Name    string      `hcl:",label"`
+		Columns []columnRef `hcl:"columns"`
+		Unique  bool        `hcl:"unique"`
+	}
 
-type tableHCL struct {
-	Name        string           `hcl:",label"`
-	Schema      schemaRef        `hcl:"schema"`
-	Columns     []*ColumnHCL     `hcl:"column,block"`
-	PrimaryKey  *primaryKeyHCL   `hcl:"primary_key,block"`
-	ForeignKeys []*foreignKeyHCL `hcl:"foreign_key,block"`
-	Indexes     []*indexHCL      `hcl:"index,block"`
-}
+	tableHCL struct {
+		Name        string           `hcl:",label"`
+		Schema      schemaRef        `hcl:"schema"`
+		Columns     []*ColumnHCL     `hcl:"column,block"`
+		PrimaryKey  *primaryKeyHCL   `hcl:"primary_key,block"`
+		ForeignKeys []*foreignKeyHCL `hcl:"foreign_key,block"`
+		Indexes     []*indexHCL      `hcl:"index,block"`
+	}
 
-type ColumnHCL struct {
-	Name     string   `hcl:",label"`
-	TypeName string   `hcl:"type"`
-	Null     bool     `hcl:"null,optional"`
-	Default  *string  `hcl:"default,optional"`
-	Remain   hcl.Body `hcl:",remain"`
-}
+	ColumnHCL struct {
+		Name     string   `hcl:",label"`
+		TypeName string   `hcl:"type"`
+		Null     bool     `hcl:"null,optional"`
+		Default  *string  `hcl:"default,optional"`
+		Remain   hcl.Body `hcl:",remain"`
+	}
+)
