@@ -140,9 +140,9 @@ func TestPrimaryKey(t *testing.T) {
 	require.NoError(t, err)
 	tbl1 := schemas[0].Tables[0]
 	tbl2 := schemas[0].Tables[1]
-	require.EqualValues(t, tbl1.Columns[0], tbl1.PrimaryKey[0])
-	require.EqualValues(t, tbl2.Columns[0], tbl2.PrimaryKey[0])
-	require.EqualValues(t, tbl2.Columns[1], tbl2.PrimaryKey[1])
+	require.EqualValues(t, tbl1.Columns[0], tbl1.PrimaryKey.Parts[0].C)
+	require.EqualValues(t, tbl2.Columns[0], tbl2.PrimaryKey.Parts[0].C)
+	require.EqualValues(t, tbl2.Columns[1], tbl2.PrimaryKey.Parts[1].C)
 }
 
 func TestForeignKey(t *testing.T) {

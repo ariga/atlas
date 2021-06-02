@@ -81,8 +81,8 @@ func TestDriver_InspectTable(t *testing.T) {
 					&schema.Collation{V: "utf8mb4_0900_ai_ci"},
 					&schema.Comment{Text: "Comment"},
 				}, t.Attrs)
-				require.Len(t.PrimaryKey, 1)
-				require.True(t.PrimaryKey[0] == t.Columns[0])
+				require.Len(t.PrimaryKey.Parts, 1)
+				require.True(t.PrimaryKey.Parts[0].C == t.Columns[0])
 				require.EqualValues([]*schema.Column{
 					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
 				}, t.Columns)
@@ -121,8 +121,8 @@ func TestDriver_InspectTable(t *testing.T) {
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
 				require.Equal("users", t.Name)
-				require.Len(t.PrimaryKey, 1)
-				require.True(t.PrimaryKey[0] == t.Columns[0])
+				require.Len(t.PrimaryKey.Parts, 1)
+				require.True(t.PrimaryKey.Parts[0].C == t.Columns[0])
 				require.EqualValues([]*schema.Column{
 					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
 					{Name: "v57_tiny", Type: &schema.ColumnType{Raw: "tinyint(1)", Type: &schema.BoolType{T: "tinyint"}}},

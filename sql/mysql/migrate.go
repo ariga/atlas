@@ -67,15 +67,36 @@ var createTmpl = template.Must(template.New("create_table").
 	Funcs(template.FuncMap{
 		"add":   func(a, b int) int { return a + b },
 		"ident": func(s string) string { return "`" + s + "`" },
+		"attrs": attrs,
 	}).
 	Parse(`
 CREATE TABLE {{ ident $.Name }} (
 	{{- $nc := len $.Columns }}
 	{{- range $i, $c := $.Columns }}
-		{{- $comma := or (ne $i (add $nc -1)) (len $.PrimaryKey) }}
-		{{ ident $c.Name }} {{ $c.Type.Raw }} {{ if not $c.Type.Null }}NOT {{ end }} NULL{{ if $comma }},{{ end }}
+		{{- $comma := or (ne $i (add $nc -1)) $.PrimaryKey }}
+		{{ ident $c.Name }} {{ $c.Type.Raw }} {{ if not $c.Type.Null }}NOT {{ end }}NULL{{ with $attr := attrs $c }} {{ . }}{{ end }}{{ if $comma }},{{ end }}
 	{{- end }}
 	{{- with $.PrimaryKey }}
-		PRIMARY KEY ({{ range $i, $c := . }}{{ if $i }}, {{ end }}{{ ident $c.Name }}{{ end }})
+		PRIMARY KEY ({{ range $i, $p := .Parts }}{{ if $i }}, {{ end }}{{ ident $p.C.Name }}{{ end }})
 	{{- end }}
 )`))
+
+func attrs(c *schema.Column) string {
+	var attr []string
+	if x, ok := c.Default.(*schema.RawExpr); ok {
+		attr = append(attr, "DEFAULT", x.X)
+	}
+	for i := range c.Attrs {
+		switch a := c.Attrs[i].(type) {
+		case *OnUpdate:
+			attr = append(attr, "ON UPDATE", a.A)
+		case *AutoIncrement:
+			attr = append(attr, "AUTO_INCREMENT")
+		case *schema.Collation:
+			attr = append(attr, "COLLATE", a.V)
+		case *schema.Comment:
+			attr = append(attr, "COMMENT", "'"+strings.ReplaceAll(a.Text, "'", "\\'")+"'")
+		}
+	}
+	return strings.Join(attr, " ")
+}

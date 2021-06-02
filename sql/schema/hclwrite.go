@@ -27,9 +27,9 @@ func MarshalHCL(schema *Schema) ([]byte, error) {
 				return nil, err
 			}
 		}
-		if len(tbl.PrimaryKey) > 0 {
+		if tbl.PrimaryKey != nil {
 			pkbody := tbody.AppendNewBlock("primary_key", nil).Body()
-			block, err := hclPrimaryKey(tbl)
+			block, err := hclIndex(tbl.PrimaryKey)
 			if err != nil {
 				return nil, err
 			}
@@ -207,16 +207,6 @@ func hclIndex(i *Index) (*hclBlock, error) {
 	}
 	idx.setRawList("columns", cols)
 	return idx, nil
-}
-
-func hclPrimaryKey(table *Table) (*hclBlock, error) {
-	pk := &hclBlock{}
-	var cols []string
-	for _, col := range table.PrimaryKey {
-		cols = append(cols, fmtColRef(table.Name, col.Name))
-	}
-	pk.setRawList("columns", cols)
-	return pk, nil
 }
 
 func hclColumn(c *Column) (*hclBlock, error) {

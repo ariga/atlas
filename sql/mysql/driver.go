@@ -370,7 +370,13 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 	}
 	t.Columns = append(t.Columns, c)
 	if key.String == "PRI" {
-		t.PrimaryKey = append(t.PrimaryKey, c)
+		if t.PrimaryKey == nil {
+			t.PrimaryKey = &schema.Index{Name: key.String}
+		}
+		t.PrimaryKey.Parts = append(t.PrimaryKey.Parts, &schema.IndexPart{
+			C:     c,
+			SeqNo: len(t.PrimaryKey.Parts),
+		})
 	}
 	return nil
 }
@@ -584,9 +590,12 @@ func parseColumn(typ string) (parts []string, size int64, unsigned bool, err err
 func extraAttr(c *schema.Column, extra string) error {
 	switch extra := strings.ToLower(extra); extra {
 	case "", "null": // ignore.
+	case "default_generated":
+		// The column has an expression default value
+		// and it's handled in Driver.addColumn.
 	case "auto_increment":
 		c.Attrs = append(c.Attrs, &AutoIncrement{A: extra})
-	case "on update current_timestamp", "default_generated":
+	case "default_generated on update current_timestamp", "on update current_timestamp":
 		c.Attrs = append(c.Attrs, &OnUpdate{A: extra})
 	default:
 		return fmt.Errorf("unknown attribute %q", extra)
