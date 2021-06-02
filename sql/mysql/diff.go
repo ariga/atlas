@@ -3,6 +3,7 @@ package mysql
 import (
 	"fmt"
 	"reflect"
+	"sort"
 
 	"ariga.io/atlas/sql/schema"
 
@@ -367,9 +368,13 @@ func partsChange(from, to []*schema.IndexPart) schema.ChangeKind {
 	if len(from) != len(to) {
 		return schema.ChangeParts
 	}
+	// MySQL starts counting the sequence number from 1, but internal tools start counting
+	// from 0. Therefore, we care only about the parts order and not their seqno attribute.
+	sort.Slice(to, func(i, j int) bool { return to[i].SeqNo < to[j].SeqNo })
+	sort.Slice(from, func(i, j int) bool { return from[i].SeqNo < from[j].SeqNo })
 	for i := range from {
 		switch {
-		case from[i].SeqNo != to[i].SeqNo || len(from[i].Attrs) != len(to[i].Attrs):
+		case len(from[i].Attrs) != len(to[i].Attrs):
 			return schema.ChangeParts
 		case from[i].C != nil && to[i].C != nil:
 			if from[i].C.Name != to[i].C.Name {
