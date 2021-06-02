@@ -41,7 +41,7 @@ var (
 		{Name: "time", Type: field.TypeTime},
 		{Name: "bool", Type: field.TypeBool},
 		{Name: "enum", Type: field.TypeEnum, Enums: []string{"1", "2", "3"}},
-		{Name: "enum_2", Type: field.TypeEnum, Enums: []string{"1", "2", "3"}},
+		{Name: "named_enum", Type: field.TypeEnum, Enums: []string{"1", "2", "3"}},
 		{Name: "uuid", Type: field.TypeUUID, Unique: true},
 		{Name: "bytes", Type: field.TypeBytes},
 		{Name: "group_id", Type: field.TypeInt, Nullable: true},

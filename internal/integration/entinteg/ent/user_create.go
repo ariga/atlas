@@ -73,9 +73,9 @@ func (uc *UserCreate) SetEnum(u user.Enum) *UserCreate {
 	return uc
 }
 
-// SetEnum2 sets the "enum_2" field.
-func (uc *UserCreate) SetEnum2(u user.Enum2) *UserCreate {
-	uc.mutation.SetEnum2(u)
+// SetNamedEnum sets the "named_enum" field.
+func (uc *UserCreate) SetNamedEnum(ue user.NamedEnum) *UserCreate {
+	uc.mutation.SetNamedEnum(ue)
 	return uc
 }
 
@@ -199,12 +199,12 @@ func (uc *UserCreate) check() error {
 			return &ValidationError{Name: "enum", err: fmt.Errorf("ent: validator failed for field \"enum\": %w", err)}
 		}
 	}
-	if _, ok := uc.mutation.Enum2(); !ok {
-		return &ValidationError{Name: "enum_2", err: errors.New("ent: missing required field \"enum_2\"")}
+	if _, ok := uc.mutation.NamedEnum(); !ok {
+		return &ValidationError{Name: "named_enum", err: errors.New("ent: missing required field \"named_enum\"")}
 	}
-	if v, ok := uc.mutation.Enum2(); ok {
-		if err := user.Enum2Validator(v); err != nil {
-			return &ValidationError{Name: "enum_2", err: fmt.Errorf("ent: validator failed for field \"enum_2\": %w", err)}
+	if v, ok := uc.mutation.NamedEnum(); ok {
+		if err := user.NamedEnumValidator(v); err != nil {
+			return &ValidationError{Name: "named_enum", err: fmt.Errorf("ent: validator failed for field \"named_enum\": %w", err)}
 		}
 	}
 	if _, ok := uc.mutation.UUID(); !ok {
@@ -296,13 +296,13 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		})
 		_node.Enum = value
 	}
-	if value, ok := uc.mutation.Enum2(); ok {
+	if value, ok := uc.mutation.NamedEnum(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
 			Type:   field.TypeEnum,
 			Value:  value,
-			Column: user.FieldEnum2,
+			Column: user.FieldNamedEnum,
 		})
-		_node.Enum2 = value
+		_node.NamedEnum = value
 	}
 	if value, ok := uc.mutation.UUID(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{

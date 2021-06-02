@@ -649,7 +649,7 @@ type UserMutation struct {
 	time              *time.Time
 	bool              *bool
 	enum              *user.Enum
-	enum_2            *user.Enum2
+	named_enum        *user.NamedEnum
 	uuid              *uuid.UUID
 	bytes             *[]byte
 	clearedFields     map[string]struct{}
@@ -1047,40 +1047,40 @@ func (m *UserMutation) ResetEnum() {
 	m.enum = nil
 }
 
-// SetEnum2 sets the "enum_2" field.
-func (m *UserMutation) SetEnum2(u user.Enum2) {
-	m.enum_2 = &u
+// SetNamedEnum sets the "named_enum" field.
+func (m *UserMutation) SetNamedEnum(ue user.NamedEnum) {
+	m.named_enum = &ue
 }
 
-// Enum2 returns the value of the "enum_2" field in the mutation.
-func (m *UserMutation) Enum2() (r user.Enum2, exists bool) {
-	v := m.enum_2
+// NamedEnum returns the value of the "named_enum" field in the mutation.
+func (m *UserMutation) NamedEnum() (r user.NamedEnum, exists bool) {
+	v := m.named_enum
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldEnum2 returns the old "enum_2" field's value of the User entity.
+// OldNamedEnum returns the old "named_enum" field's value of the User entity.
 // If the User object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UserMutation) OldEnum2(ctx context.Context) (v user.Enum2, err error) {
+func (m *UserMutation) OldNamedEnum(ctx context.Context) (v user.NamedEnum, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, fmt.Errorf("OldEnum2 is only allowed on UpdateOne operations")
+		return v, fmt.Errorf("OldNamedEnum is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, fmt.Errorf("OldEnum2 requires an ID field in the mutation")
+		return v, fmt.Errorf("OldNamedEnum requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldEnum2: %w", err)
+		return v, fmt.Errorf("querying old value for OldNamedEnum: %w", err)
 	}
-	return oldValue.Enum2, nil
+	return oldValue.NamedEnum, nil
 }
 
-// ResetEnum2 resets all changes to the "enum_2" field.
-func (m *UserMutation) ResetEnum2() {
-	m.enum_2 = nil
+// ResetNamedEnum resets all changes to the "named_enum" field.
+func (m *UserMutation) ResetNamedEnum() {
+	m.named_enum = nil
 }
 
 // SetUUID sets the "uuid" field.
@@ -1319,8 +1319,8 @@ func (m *UserMutation) Fields() []string {
 	if m.enum != nil {
 		fields = append(fields, user.FieldEnum)
 	}
-	if m.enum_2 != nil {
-		fields = append(fields, user.FieldEnum2)
+	if m.named_enum != nil {
+		fields = append(fields, user.FieldNamedEnum)
 	}
 	if m.uuid != nil {
 		fields = append(fields, user.FieldUUID)
@@ -1353,8 +1353,8 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.Bool()
 	case user.FieldEnum:
 		return m.Enum()
-	case user.FieldEnum2:
-		return m.Enum2()
+	case user.FieldNamedEnum:
+		return m.NamedEnum()
 	case user.FieldUUID:
 		return m.UUID()
 	case user.FieldBytes:
@@ -1384,8 +1384,8 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldBool(ctx)
 	case user.FieldEnum:
 		return m.OldEnum(ctx)
-	case user.FieldEnum2:
-		return m.OldEnum2(ctx)
+	case user.FieldNamedEnum:
+		return m.OldNamedEnum(ctx)
 	case user.FieldUUID:
 		return m.OldUUID(ctx)
 	case user.FieldBytes:
@@ -1450,12 +1450,12 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetEnum(v)
 		return nil
-	case user.FieldEnum2:
-		v, ok := value.(user.Enum2)
+	case user.FieldNamedEnum:
+		v, ok := value.(user.NamedEnum)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetEnum2(v)
+		m.SetNamedEnum(v)
 		return nil
 	case user.FieldUUID:
 		v, ok := value.(uuid.UUID)
@@ -1590,8 +1590,8 @@ func (m *UserMutation) ResetField(name string) error {
 	case user.FieldEnum:
 		m.ResetEnum()
 		return nil
-	case user.FieldEnum2:
-		m.ResetEnum2()
+	case user.FieldNamedEnum:
+		m.ResetNamedEnum()
 		return nil
 	case user.FieldUUID:
 		m.ResetUUID()

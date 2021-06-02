@@ -101,7 +101,7 @@ func (suite *ConvertSuite) TestUserColumns() {
 			},
 		},
 		{
-			fld: "enum_2",
+			fld: "named_enum",
 			expected: &schema.ColumnType{
 				Type: &schema.EnumType{Values: []string{"1", "2", "3"}},
 			},

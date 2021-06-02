@@ -32,8 +32,8 @@ type User struct {
 	Bool bool `json:"bool,omitempty"`
 	// Enum holds the value of the "enum" field.
 	Enum user.Enum `json:"enum,omitempty"`
-	// Enum2 holds the value of the "enum_2" field.
-	Enum2 user.Enum2 `json:"enum_2,omitempty"`
+	// NamedEnum holds the value of the "named_enum" field.
+	NamedEnum user.NamedEnum `json:"named_enum,omitempty"`
 	// UUID holds the value of the "uuid" field.
 	UUID uuid.UUID `json:"uuid,omitempty"`
 	// Bytes holds the value of the "bytes" field.
@@ -90,7 +90,7 @@ func (*User) scanValues(columns []string) ([]interface{}, error) {
 			values[i] = new(sql.NullBool)
 		case user.FieldID, user.FieldInt, user.FieldUint, user.FieldGroupID:
 			values[i] = new(sql.NullInt64)
-		case user.FieldName, user.FieldOptional, user.FieldEnum, user.FieldEnum2:
+		case user.FieldName, user.FieldOptional, user.FieldEnum, user.FieldNamedEnum:
 			values[i] = new(sql.NullString)
 		case user.FieldTime:
 			values[i] = new(sql.NullTime)
@@ -159,11 +159,11 @@ func (u *User) assignValues(columns []string, values []interface{}) error {
 			} else if value.Valid {
 				u.Enum = user.Enum(value.String)
 			}
-		case user.FieldEnum2:
+		case user.FieldNamedEnum:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field enum_2", values[i])
+				return fmt.Errorf("unexpected type %T for field named_enum", values[i])
 			} else if value.Valid {
-				u.Enum2 = user.Enum2(value.String)
+				u.NamedEnum = user.NamedEnum(value.String)
 			}
 		case user.FieldUUID:
 			if value, ok := values[i].(*uuid.UUID); !ok {
@@ -235,8 +235,8 @@ func (u *User) String() string {
 	builder.WriteString(fmt.Sprintf("%v", u.Bool))
 	builder.WriteString(", enum=")
 	builder.WriteString(fmt.Sprintf("%v", u.Enum))
-	builder.WriteString(", enum_2=")
-	builder.WriteString(fmt.Sprintf("%v", u.Enum2))
+	builder.WriteString(", named_enum=")
+	builder.WriteString(fmt.Sprintf("%v", u.NamedEnum))
 	builder.WriteString(", uuid=")
 	builder.WriteString(fmt.Sprintf("%v", u.UUID))
 	builder.WriteString(", bytes=")

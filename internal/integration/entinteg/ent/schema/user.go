@@ -25,7 +25,7 @@ func (User) Fields() []ent.Field {
 		field.Bool("bool"),
 		field.Enum("enum").
 			Values("1", "2", "3"),
-		field.Enum("enum_2").
+		field.Enum("named_enum").
 			NamedValues("a", "1", "b", "2", "c", "3"),
 		field.UUID("uuid", uuid.New()).
 			Unique(),

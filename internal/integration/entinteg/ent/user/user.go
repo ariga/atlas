@@ -25,8 +25,8 @@ const (
 	FieldBool = "bool"
 	// FieldEnum holds the string denoting the enum field in the database.
 	FieldEnum = "enum"
-	// FieldEnum2 holds the string denoting the enum_2 field in the database.
-	FieldEnum2 = "enum_2"
+	// FieldNamedEnum holds the string denoting the named_enum field in the database.
+	FieldNamedEnum = "named_enum"
 	// FieldUUID holds the string denoting the uuid field in the database.
 	FieldUUID = "uuid"
 	// FieldBytes holds the string denoting the bytes field in the database.
@@ -63,7 +63,7 @@ var Columns = []string{
 	FieldTime,
 	FieldBool,
 	FieldEnum,
-	FieldEnum2,
+	FieldNamedEnum,
 	FieldUUID,
 	FieldBytes,
 	FieldGroupID,
@@ -109,26 +109,26 @@ func EnumValidator(e Enum) error {
 	}
 }
 
-// Enum2 defines the type for the "enum_2" enum field.
-type Enum2 string
+// NamedEnum defines the type for the "named_enum" enum field.
+type NamedEnum string
 
-// Enum2 values.
+// NamedEnum values.
 const (
-	Enum2A Enum2 = "1"
-	Enum2B Enum2 = "2"
-	Enum2C Enum2 = "3"
+	NamedEnumA NamedEnum = "1"
+	NamedEnumB NamedEnum = "2"
+	NamedEnumC NamedEnum = "3"
 )
 
-func (enum_ Enum2) String() string {
-	return string(enum_)
+func (ne NamedEnum) String() string {
+	return string(ne)
 }
 
-// Enum2Validator is a validator for the "enum_2" field enum values. It is called by the builders before save.
-func Enum2Validator(enum_ Enum2) error {
-	switch enum_ {
-	case Enum2A, Enum2B, Enum2C:
+// NamedEnumValidator is a validator for the "named_enum" field enum values. It is called by the builders before save.
+func NamedEnumValidator(ne NamedEnum) error {
+	switch ne {
+	case NamedEnumA, NamedEnumB, NamedEnumC:
 		return nil
 	default:
-		return fmt.Errorf("user: invalid enum value for enum_2 field: %q", enum_)
+		return fmt.Errorf("user: invalid enum value for named_enum field: %q", ne)
 	}
 }

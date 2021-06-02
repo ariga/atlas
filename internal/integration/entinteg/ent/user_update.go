@@ -100,9 +100,9 @@ func (uu *UserUpdate) SetEnum(u user.Enum) *UserUpdate {
 	return uu
 }
 
-// SetEnum2 sets the "enum_2" field.
-func (uu *UserUpdate) SetEnum2(u user.Enum2) *UserUpdate {
-	uu.mutation.SetEnum2(u)
+// SetNamedEnum sets the "named_enum" field.
+func (uu *UserUpdate) SetNamedEnum(ue user.NamedEnum) *UserUpdate {
+	uu.mutation.SetNamedEnum(ue)
 	return uu
 }
 
@@ -255,9 +255,9 @@ func (uu *UserUpdate) check() error {
 			return &ValidationError{Name: "enum", err: fmt.Errorf("ent: validator failed for field \"enum\": %w", err)}
 		}
 	}
-	if v, ok := uu.mutation.Enum2(); ok {
-		if err := user.Enum2Validator(v); err != nil {
-			return &ValidationError{Name: "enum_2", err: fmt.Errorf("ent: validator failed for field \"enum_2\": %w", err)}
+	if v, ok := uu.mutation.NamedEnum(); ok {
+		if err := user.NamedEnumValidator(v); err != nil {
+			return &ValidationError{Name: "named_enum", err: fmt.Errorf("ent: validator failed for field \"named_enum\": %w", err)}
 		}
 	}
 	return nil
@@ -350,11 +350,11 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: user.FieldEnum,
 		})
 	}
-	if value, ok := uu.mutation.Enum2(); ok {
+	if value, ok := uu.mutation.NamedEnum(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeEnum,
 			Value:  value,
-			Column: user.FieldEnum2,
+			Column: user.FieldNamedEnum,
 		})
 	}
 	if value, ok := uu.mutation.UUID(); ok {
@@ -549,9 +549,9 @@ func (uuo *UserUpdateOne) SetEnum(u user.Enum) *UserUpdateOne {
 	return uuo
 }
 
-// SetEnum2 sets the "enum_2" field.
-func (uuo *UserUpdateOne) SetEnum2(u user.Enum2) *UserUpdateOne {
-	uuo.mutation.SetEnum2(u)
+// SetNamedEnum sets the "named_enum" field.
+func (uuo *UserUpdateOne) SetNamedEnum(ue user.NamedEnum) *UserUpdateOne {
+	uuo.mutation.SetNamedEnum(ue)
 	return uuo
 }
 
@@ -711,9 +711,9 @@ func (uuo *UserUpdateOne) check() error {
 			return &ValidationError{Name: "enum", err: fmt.Errorf("ent: validator failed for field \"enum\": %w", err)}
 		}
 	}
-	if v, ok := uuo.mutation.Enum2(); ok {
-		if err := user.Enum2Validator(v); err != nil {
-			return &ValidationError{Name: "enum_2", err: fmt.Errorf("ent: validator failed for field \"enum_2\": %w", err)}
+	if v, ok := uuo.mutation.NamedEnum(); ok {
+		if err := user.NamedEnumValidator(v); err != nil {
+			return &ValidationError{Name: "named_enum", err: fmt.Errorf("ent: validator failed for field \"named_enum\": %w", err)}
 		}
 	}
 	return nil
@@ -823,11 +823,11 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 			Column: user.FieldEnum,
 		})
 	}
-	if value, ok := uuo.mutation.Enum2(); ok {
+	if value, ok := uuo.mutation.NamedEnum(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeEnum,
 			Value:  value,
-			Column: user.FieldEnum2,
+			Column: user.FieldNamedEnum,
 		})
 	}
 	if value, ok := uuo.mutation.UUID(); ok {

@@ -683,22 +683,22 @@ func EnumNotIn(vs ...Enum) predicate.User {
 	})
 }
 
-// Enum2EQ applies the EQ predicate on the "enum_2" field.
-func Enum2EQ(v Enum2) predicate.User {
+// NamedEnumEQ applies the EQ predicate on the "named_enum" field.
+func NamedEnumEQ(v NamedEnum) predicate.User {
 	return predicate.User(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldEnum2), v))
+		s.Where(sql.EQ(s.C(FieldNamedEnum), v))
 	})
 }
 
-// Enum2NEQ applies the NEQ predicate on the "enum_2" field.
-func Enum2NEQ(v Enum2) predicate.User {
+// NamedEnumNEQ applies the NEQ predicate on the "named_enum" field.
+func NamedEnumNEQ(v NamedEnum) predicate.User {
 	return predicate.User(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldEnum2), v))
+		s.Where(sql.NEQ(s.C(FieldNamedEnum), v))
 	})
 }
 
-// Enum2In applies the In predicate on the "enum_2" field.
-func Enum2In(vs ...Enum2) predicate.User {
+// NamedEnumIn applies the In predicate on the "named_enum" field.
+func NamedEnumIn(vs ...NamedEnum) predicate.User {
 	v := make([]interface{}, len(vs))
 	for i := range v {
 		v[i] = vs[i]
@@ -710,12 +710,12 @@ func Enum2In(vs ...Enum2) predicate.User {
 			s.Where(sql.False())
 			return
 		}
-		s.Where(sql.In(s.C(FieldEnum2), v...))
+		s.Where(sql.In(s.C(FieldNamedEnum), v...))
 	})
 }
 
-// Enum2NotIn applies the NotIn predicate on the "enum_2" field.
-func Enum2NotIn(vs ...Enum2) predicate.User {
+// NamedEnumNotIn applies the NotIn predicate on the "named_enum" field.
+func NamedEnumNotIn(vs ...NamedEnum) predicate.User {
 	v := make([]interface{}, len(vs))
 	for i := range v {
 		v[i] = vs[i]
@@ -727,7 +727,7 @@ func Enum2NotIn(vs ...Enum2) predicate.User {
 			s.Where(sql.False())
 			return
 		}
-		s.Where(sql.NotIn(s.C(FieldEnum2), v...))
+		s.Where(sql.NotIn(s.C(FieldNamedEnum), v...))
 	})
 }
 
