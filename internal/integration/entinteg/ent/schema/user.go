@@ -39,6 +39,7 @@ func (User) Fields() []ent.Field {
 func (User) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("group", Group.Type).Unique().Field("group_id"),
+		edge.To("activities", Activity.Type),
 	}
 }
 

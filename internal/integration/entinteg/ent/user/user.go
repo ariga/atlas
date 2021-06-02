@@ -35,6 +35,8 @@ const (
 	FieldGroupID = "group_id"
 	// EdgeGroup holds the string denoting the group edge name in mutations.
 	EdgeGroup = "group"
+	// EdgeActivities holds the string denoting the activities edge name in mutations.
+	EdgeActivities = "activities"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// GroupTable is the table the holds the group relation/edge.
@@ -44,6 +46,11 @@ const (
 	GroupInverseTable = "groups"
 	// GroupColumn is the table column denoting the group relation/edge.
 	GroupColumn = "group_id"
+	// ActivitiesTable is the table the holds the activities relation/edge. The primary key declared below.
+	ActivitiesTable = "user_activities"
+	// ActivitiesInverseTable is the table name for the Activity entity.
+	// It exists in this package in order to avoid circular dependency with the "activity" package.
+	ActivitiesInverseTable = "activities"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -61,6 +68,12 @@ var Columns = []string{
 	FieldBytes,
 	FieldGroupID,
 }
+
+var (
+	// ActivitiesPrimaryKey and ActivitiesColumn2 are the table columns denoting the
+	// primary key for the activities relation (M2M).
+	ActivitiesPrimaryKey = []string{"user_id", "activity_id"}
+)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {

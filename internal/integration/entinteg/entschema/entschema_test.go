@@ -6,19 +6,44 @@ import (
 	"ariga.io/atlas/sql/schema"
 	"entgo.io/ent/entc"
 	"entgo.io/ent/entc/gen"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestConvert(t *testing.T) {
-	graph, err := entc.LoadGraph("../ent/schema", &gen.Config{})
-	require.NoError(t, err)
-	sch, err := Convert(graph)
-	require.NoError(t, err)
-	users, ok := sch.Table("users")
-	require.True(t, ok, "expected users table to exist")
-	require.EqualValues(t, "users", users.Name)
+type ConvertSuite struct {
+	suite.Suite
+	graph  *gen.Graph
+	schema *schema.Schema
+}
 
-	// column types
+func (suite *ConvertSuite) SetupSuite() {
+	graph, err := entc.LoadGraph("../ent/schema", &gen.Config{})
+	suite.Require().NoError(err)
+	sch, err := Convert(graph)
+	suite.Require().NoError(err)
+	suite.graph = graph
+	suite.schema = sch
+}
+
+func TestSuite(t *testing.T) {
+	suite.Run(t, new(ConvertSuite))
+}
+
+func (suite *ConvertSuite) TestTables() {
+	for _, n := range []string{
+		"users",
+		"groups",
+		"activities",
+		"user_activities",
+	} {
+		suite.Run(n, func() {
+			_, ok := suite.schema.Table(n)
+			suite.Require().Truef(ok, "expected table %q to exist", n)
+		})
+	}
+}
+
+func (suite *ConvertSuite) TestUserColumns() {
+	users, _ := suite.schema.Table("users")
 	for _, tt := range []struct {
 		fld      string
 		expected *schema.ColumnType
@@ -109,28 +134,32 @@ func TestConvert(t *testing.T) {
 		},
 	} {
 		column, ok := users.Column(tt.fld)
-		require.True(t, ok, "expected column to exist")
-		require.EqualValues(t, tt.expected, column.Type)
+		suite.Require().True(ok, "expected column to exist")
+		suite.Require().EqualValues(tt.expected, column.Type)
 	}
+}
 
-	// primary key
+func (suite *ConvertSuite) TestPrimaryKey() {
+	users, _ := suite.schema.Table("users")
 	id, ok := users.Column("id")
-	require.True(t, ok, "expected col id to exist")
-	require.EqualValues(t, &schema.Index{
+	suite.Require().True(ok, "expected col id to exist")
+	suite.Require().EqualValues(&schema.Index{
 		Parts: []*schema.IndexPart{
 			{C: id, SeqNo: 0},
 		},
 	}, users.PrimaryKey)
+}
 
-	// foreign key
+func (suite *ConvertSuite) TestForeignKey() {
+	users, _ := suite.schema.Table("users")
 	gid, ok := users.Column("group_id")
-	require.True(t, ok, "expected column group_id")
+	suite.Require().True(ok, "expected column group_id")
 	fk, ok := users.ForeignKey("users_groups_group")
-	groups, ok := sch.Table("groups")
-	require.True(t, ok, "expected table groups")
+	groups, ok := suite.schema.Table("groups")
+	suite.Require().True(ok, "expected table groups")
 	refcol, ok := groups.Column("id")
-	require.True(t, ok, "expected column id")
-	require.EqualValues(t, &schema.ForeignKey{
+	suite.Require().True(ok, "expected column id")
+	suite.Require().EqualValues(&schema.ForeignKey{
 		Symbol:     "users_groups_group",
 		Table:      users,
 		Columns:    []*schema.Column{gid},
@@ -139,25 +168,29 @@ func TestConvert(t *testing.T) {
 		OnUpdate:   "",
 		OnDelete:   schema.SetNull,
 	}, fk)
+}
 
-	// unique indexes
+func (suite *ConvertSuite) TestUnique() {
+	users, _ := suite.schema.Table("users")
 	uuidc, ok := users.Column("uuid")
-	require.True(t, ok, "expected column uuid")
+	suite.Require().True(ok, "expected column uuid")
 	uniqIdx, ok := users.Index("users_uuid_uniq")
-	require.True(t, ok, "expected index users_uuid_uniq")
-	require.EqualValues(t, &schema.Index{
+	suite.Require().True(ok, "expected index users_uuid_uniq")
+	suite.Require().EqualValues(&schema.Index{
 		Name:   "users_uuid_uniq",
 		Unique: true,
 		Table:  users,
 		Parts:  []*schema.IndexPart{{C: uuidc, SeqNo: 0}},
 	}, uniqIdx)
+}
 
-	// indexes
+func (suite *ConvertSuite) TestIndexes() {
+	users, _ := suite.schema.Table("users")
 	timec, ok := users.Column("time")
-	require.True(t, ok, "expected column time")
+	suite.Require().True(ok, "expected column time")
 	timeIdx, ok := users.Index("user_time")
-	require.True(t, ok, "expected time index")
-	require.EqualValues(t, &schema.Index{
+	suite.Require().True(ok, "expected time index")
+	suite.Require().EqualValues(&schema.Index{
 		Name:   "user_time",
 		Unique: false,
 		Table:  users,
@@ -165,4 +198,15 @@ func TestConvert(t *testing.T) {
 			{C: timec, SeqNo: 0},
 		},
 	}, timeIdx)
+}
+
+func (suite *ConvertSuite) TestRelationTable() {
+	relTable, ok := suite.schema.Table("user_activities")
+	suite.Require().True(ok, "expected relation table user_activities")
+	suite.Require().Len(relTable.Columns, 2)
+	suite.Require().Len(relTable.ForeignKeys, 2)
+	_, ok = relTable.Column("user_id")
+	suite.Require().True(ok, "expected user_id column")
+	_, ok = relTable.Column("activity_id")
+	suite.Require().True(ok, "expected activity_id column")
 }

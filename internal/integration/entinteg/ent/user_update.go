@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"ariga.io/atlas/integration/entinteg/ent/activity"
 	"ariga.io/atlas/integration/entinteg/ent/group"
 	"ariga.io/atlas/integration/entinteg/ent/predicate"
 	"ariga.io/atlas/integration/entinteg/ent/user"
@@ -143,6 +144,21 @@ func (uu *UserUpdate) SetGroup(g *Group) *UserUpdate {
 	return uu.SetGroupID(g.ID)
 }
 
+// AddActivityIDs adds the "activities" edge to the Activity entity by IDs.
+func (uu *UserUpdate) AddActivityIDs(ids ...int) *UserUpdate {
+	uu.mutation.AddActivityIDs(ids...)
+	return uu
+}
+
+// AddActivities adds the "activities" edges to the Activity entity.
+func (uu *UserUpdate) AddActivities(a ...*Activity) *UserUpdate {
+	ids := make([]int, len(a))
+	for i := range a {
+		ids[i] = a[i].ID
+	}
+	return uu.AddActivityIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (uu *UserUpdate) Mutation() *UserMutation {
 	return uu.mutation
@@ -152,6 +168,27 @@ func (uu *UserUpdate) Mutation() *UserMutation {
 func (uu *UserUpdate) ClearGroup() *UserUpdate {
 	uu.mutation.ClearGroup()
 	return uu
+}
+
+// ClearActivities clears all "activities" edges to the Activity entity.
+func (uu *UserUpdate) ClearActivities() *UserUpdate {
+	uu.mutation.ClearActivities()
+	return uu
+}
+
+// RemoveActivityIDs removes the "activities" edge to Activity entities by IDs.
+func (uu *UserUpdate) RemoveActivityIDs(ids ...int) *UserUpdate {
+	uu.mutation.RemoveActivityIDs(ids...)
+	return uu
+}
+
+// RemoveActivities removes "activities" edges to Activity entities.
+func (uu *UserUpdate) RemoveActivities(a ...*Activity) *UserUpdate {
+	ids := make([]int, len(a))
+	for i := range a {
+		ids[i] = a[i].ID
+	}
+	return uu.RemoveActivityIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -369,6 +406,60 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if uu.mutation.ActivitiesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   user.ActivitiesTable,
+			Columns: user.ActivitiesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: activity.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.RemovedActivitiesIDs(); len(nodes) > 0 && !uu.mutation.ActivitiesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   user.ActivitiesTable,
+			Columns: user.ActivitiesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: activity.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.ActivitiesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   user.ActivitiesTable,
+			Columns: user.ActivitiesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: activity.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, uu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{user.Label}
@@ -502,6 +593,21 @@ func (uuo *UserUpdateOne) SetGroup(g *Group) *UserUpdateOne {
 	return uuo.SetGroupID(g.ID)
 }
 
+// AddActivityIDs adds the "activities" edge to the Activity entity by IDs.
+func (uuo *UserUpdateOne) AddActivityIDs(ids ...int) *UserUpdateOne {
+	uuo.mutation.AddActivityIDs(ids...)
+	return uuo
+}
+
+// AddActivities adds the "activities" edges to the Activity entity.
+func (uuo *UserUpdateOne) AddActivities(a ...*Activity) *UserUpdateOne {
+	ids := make([]int, len(a))
+	for i := range a {
+		ids[i] = a[i].ID
+	}
+	return uuo.AddActivityIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (uuo *UserUpdateOne) Mutation() *UserMutation {
 	return uuo.mutation
@@ -511,6 +617,27 @@ func (uuo *UserUpdateOne) Mutation() *UserMutation {
 func (uuo *UserUpdateOne) ClearGroup() *UserUpdateOne {
 	uuo.mutation.ClearGroup()
 	return uuo
+}
+
+// ClearActivities clears all "activities" edges to the Activity entity.
+func (uuo *UserUpdateOne) ClearActivities() *UserUpdateOne {
+	uuo.mutation.ClearActivities()
+	return uuo
+}
+
+// RemoveActivityIDs removes the "activities" edge to Activity entities by IDs.
+func (uuo *UserUpdateOne) RemoveActivityIDs(ids ...int) *UserUpdateOne {
+	uuo.mutation.RemoveActivityIDs(ids...)
+	return uuo
+}
+
+// RemoveActivities removes "activities" edges to Activity entities.
+func (uuo *UserUpdateOne) RemoveActivities(a ...*Activity) *UserUpdateOne {
+	ids := make([]int, len(a))
+	for i := range a {
+		ids[i] = a[i].ID
+	}
+	return uuo.RemoveActivityIDs(ids...)
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
@@ -744,6 +871,60 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 				IDSpec: &sqlgraph.FieldSpec{
 					Type:   field.TypeInt,
 					Column: group.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if uuo.mutation.ActivitiesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   user.ActivitiesTable,
+			Columns: user.ActivitiesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: activity.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.RemovedActivitiesIDs(); len(nodes) > 0 && !uuo.mutation.ActivitiesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   user.ActivitiesTable,
+			Columns: user.ActivitiesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: activity.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.ActivitiesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   user.ActivitiesTable,
+			Columns: user.ActivitiesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: activity.FieldID,
 				},
 			},
 		}

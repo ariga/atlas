@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"ariga.io/atlas/integration/entinteg/ent/activity"
 	"ariga.io/atlas/integration/entinteg/ent/group"
 	"ariga.io/atlas/integration/entinteg/ent/user"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -107,6 +108,21 @@ func (uc *UserCreate) SetNillableGroupID(i *int) *UserCreate {
 // SetGroup sets the "group" edge to the Group entity.
 func (uc *UserCreate) SetGroup(g *Group) *UserCreate {
 	return uc.SetGroupID(g.ID)
+}
+
+// AddActivityIDs adds the "activities" edge to the Activity entity by IDs.
+func (uc *UserCreate) AddActivityIDs(ids ...int) *UserCreate {
+	uc.mutation.AddActivityIDs(ids...)
+	return uc
+}
+
+// AddActivities adds the "activities" edges to the Activity entity.
+func (uc *UserCreate) AddActivities(a ...*Activity) *UserCreate {
+	ids := make([]int, len(a))
+	for i := range a {
+		ids[i] = a[i].ID
+	}
+	return uc.AddActivityIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -322,6 +338,25 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.GroupID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := uc.mutation.ActivitiesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   user.ActivitiesTable,
+			Columns: user.ActivitiesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: activity.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

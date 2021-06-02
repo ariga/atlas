@@ -49,9 +49,11 @@ type User struct {
 type UserEdges struct {
 	// Group holds the value of the group edge.
 	Group *Group `json:"group,omitempty"`
+	// Activities holds the value of the activities edge.
+	Activities []*Activity `json:"activities,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // GroupOrErr returns the Group value or an error if the edge
@@ -66,6 +68,15 @@ func (e UserEdges) GroupOrErr() (*Group, error) {
 		return e.Group, nil
 	}
 	return nil, &NotLoadedError{edge: "group"}
+}
+
+// ActivitiesOrErr returns the Activities value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) ActivitiesOrErr() ([]*Activity, error) {
+	if e.loadedTypes[1] {
+		return e.Activities, nil
+	}
+	return nil, &NotLoadedError{edge: "activities"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -180,6 +191,11 @@ func (u *User) assignValues(columns []string, values []interface{}) error {
 // QueryGroup queries the "group" edge of the User entity.
 func (u *User) QueryGroup() *GroupQuery {
 	return (&UserClient{config: u.config}).QueryGroup(u)
+}
+
+// QueryActivities queries the "activities" edge of the User entity.
+func (u *User) QueryActivities() *ActivityQuery {
+	return (&UserClient{config: u.config}).QueryActivities(u)
 }
 
 // Update returns a builder for updating this User.

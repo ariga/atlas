@@ -4,10 +4,12 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"math"
 
+	"ariga.io/atlas/integration/entinteg/ent/activity"
 	"ariga.io/atlas/integration/entinteg/ent/group"
 	"ariga.io/atlas/integration/entinteg/ent/predicate"
 	"ariga.io/atlas/integration/entinteg/ent/user"
@@ -26,7 +28,8 @@ type UserQuery struct {
 	fields     []string
 	predicates []predicate.User
 	// eager-loading edges.
-	withGroup *GroupQuery
+	withGroup      *GroupQuery
+	withActivities *ActivityQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -78,6 +81,28 @@ func (uq *UserQuery) QueryGroup() *GroupQuery {
 			sqlgraph.From(user.Table, user.FieldID, selector),
 			sqlgraph.To(group.Table, group.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, false, user.GroupTable, user.GroupColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(uq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryActivities chains the current query on the "activities" edge.
+func (uq *UserQuery) QueryActivities() *ActivityQuery {
+	query := &ActivityQuery{config: uq.config}
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := uq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := uq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(activity.Table, activity.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, user.ActivitiesTable, user.ActivitiesPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(uq.driver.Dialect(), step)
 		return fromU, nil
@@ -261,12 +286,13 @@ func (uq *UserQuery) Clone() *UserQuery {
 		return nil
 	}
 	return &UserQuery{
-		config:     uq.config,
-		limit:      uq.limit,
-		offset:     uq.offset,
-		order:      append([]OrderFunc{}, uq.order...),
-		predicates: append([]predicate.User{}, uq.predicates...),
-		withGroup:  uq.withGroup.Clone(),
+		config:         uq.config,
+		limit:          uq.limit,
+		offset:         uq.offset,
+		order:          append([]OrderFunc{}, uq.order...),
+		predicates:     append([]predicate.User{}, uq.predicates...),
+		withGroup:      uq.withGroup.Clone(),
+		withActivities: uq.withActivities.Clone(),
 		// clone intermediate query.
 		sql:  uq.sql.Clone(),
 		path: uq.path,
@@ -281,6 +307,17 @@ func (uq *UserQuery) WithGroup(opts ...func(*GroupQuery)) *UserQuery {
 		opt(query)
 	}
 	uq.withGroup = query
+	return uq
+}
+
+// WithActivities tells the query-builder to eager-load the nodes that are connected to
+// the "activities" edge. The optional arguments are used to configure the query builder of the edge.
+func (uq *UserQuery) WithActivities(opts ...func(*ActivityQuery)) *UserQuery {
+	query := &ActivityQuery{config: uq.config}
+	for _, opt := range opts {
+		opt(query)
+	}
+	uq.withActivities = query
 	return uq
 }
 
@@ -349,8 +386,9 @@ func (uq *UserQuery) sqlAll(ctx context.Context) ([]*User, error) {
 	var (
 		nodes       = []*User{}
 		_spec       = uq.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			uq.withGroup != nil,
+			uq.withActivities != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]interface{}, error) {
@@ -395,6 +433,71 @@ func (uq *UserQuery) sqlAll(ctx context.Context) ([]*User, error) {
 			}
 			for i := range nodes {
 				nodes[i].Edges.Group = n
+			}
+		}
+	}
+
+	if query := uq.withActivities; query != nil {
+		fks := make([]driver.Value, 0, len(nodes))
+		ids := make(map[int]*User, len(nodes))
+		for _, node := range nodes {
+			ids[node.ID] = node
+			fks = append(fks, node.ID)
+			node.Edges.Activities = []*Activity{}
+		}
+		var (
+			edgeids []int
+			edges   = make(map[int][]*User)
+		)
+		_spec := &sqlgraph.EdgeQuerySpec{
+			Edge: &sqlgraph.EdgeSpec{
+				Inverse: false,
+				Table:   user.ActivitiesTable,
+				Columns: user.ActivitiesPrimaryKey,
+			},
+			Predicate: func(s *sql.Selector) {
+				s.Where(sql.InValues(user.ActivitiesPrimaryKey[0], fks...))
+			},
+			ScanValues: func() [2]interface{} {
+				return [2]interface{}{&sql.NullInt64{}, &sql.NullInt64{}}
+			},
+			Assign: func(out, in interface{}) error {
+				eout, ok := out.(*sql.NullInt64)
+				if !ok || eout == nil {
+					return fmt.Errorf("unexpected id value for edge-out")
+				}
+				ein, ok := in.(*sql.NullInt64)
+				if !ok || ein == nil {
+					return fmt.Errorf("unexpected id value for edge-in")
+				}
+				outValue := int(eout.Int64)
+				inValue := int(ein.Int64)
+				node, ok := ids[outValue]
+				if !ok {
+					return fmt.Errorf("unexpected node id in edges: %v", outValue)
+				}
+				if _, ok := edges[inValue]; !ok {
+					edgeids = append(edgeids, inValue)
+				}
+				edges[inValue] = append(edges[inValue], node)
+				return nil
+			},
+		}
+		if err := sqlgraph.QueryEdges(ctx, uq.driver, _spec); err != nil {
+			return nil, fmt.Errorf(`query edges "activities": %w`, err)
+		}
+		query.Where(activity.IDIn(edgeids...))
+		neighbors, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range neighbors {
+			nodes, ok := edges[n.ID]
+			if !ok {
+				return nil, fmt.Errorf(`unexpected "activities" node returned %v`, n.ID)
+			}
+			for i := range nodes {
+				nodes[i].Edges.Activities = append(nodes[i].Edges.Activities, n)
 			}
 		}
 	}
