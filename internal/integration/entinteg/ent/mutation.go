@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"ariga.io/atlas/integration/entinteg/ent/activity"
+	"ariga.io/atlas/integration/entinteg/ent/defaultcontainer"
 	"ariga.io/atlas/integration/entinteg/ent/predicate"
 	"ariga.io/atlas/integration/entinteg/ent/user"
 	"github.com/google/uuid"
@@ -25,9 +26,10 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeActivity = "Activity"
-	TypeGroup    = "Group"
-	TypeUser     = "User"
+	TypeActivity         = "Activity"
+	TypeDefaultContainer = "DefaultContainer"
+	TypeGroup            = "Group"
+	TypeUser             = "User"
 )
 
 // ActivityMutation represents an operation that mutates the Activity nodes in the graph.
@@ -407,6 +409,578 @@ func (m *ActivityMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown Activity edge %s", name)
+}
+
+// DefaultContainerMutation represents an operation that mutates the DefaultContainer nodes in the graph.
+type DefaultContainerMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	stringdef     *string
+	int           *int
+	addint        *int
+	bool          *bool
+	enum          *defaultcontainer.Enum
+	float         *float64
+	addfloat      *float64
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*DefaultContainer, error)
+	predicates    []predicate.DefaultContainer
+}
+
+var _ ent.Mutation = (*DefaultContainerMutation)(nil)
+
+// defaultcontainerOption allows management of the mutation configuration using functional options.
+type defaultcontainerOption func(*DefaultContainerMutation)
+
+// newDefaultContainerMutation creates new mutation for the DefaultContainer entity.
+func newDefaultContainerMutation(c config, op Op, opts ...defaultcontainerOption) *DefaultContainerMutation {
+	m := &DefaultContainerMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDefaultContainer,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDefaultContainerID sets the ID field of the mutation.
+func withDefaultContainerID(id int) defaultcontainerOption {
+	return func(m *DefaultContainerMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *DefaultContainer
+		)
+		m.oldValue = func(ctx context.Context) (*DefaultContainer, error) {
+			once.Do(func() {
+				if m.done {
+					err = fmt.Errorf("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().DefaultContainer.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDefaultContainer sets the old DefaultContainer of the mutation.
+func withDefaultContainer(node *DefaultContainer) defaultcontainerOption {
+	return func(m *DefaultContainerMutation) {
+		m.oldValue = func(context.Context) (*DefaultContainer, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DefaultContainerMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DefaultContainerMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, fmt.Errorf("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID
+// is only available if it was provided to the builder.
+func (m *DefaultContainerMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// SetStringdef sets the "stringdef" field.
+func (m *DefaultContainerMutation) SetStringdef(s string) {
+	m.stringdef = &s
+}
+
+// Stringdef returns the value of the "stringdef" field in the mutation.
+func (m *DefaultContainerMutation) Stringdef() (r string, exists bool) {
+	v := m.stringdef
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStringdef returns the old "stringdef" field's value of the DefaultContainer entity.
+// If the DefaultContainer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DefaultContainerMutation) OldStringdef(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, fmt.Errorf("OldStringdef is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, fmt.Errorf("OldStringdef requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStringdef: %w", err)
+	}
+	return oldValue.Stringdef, nil
+}
+
+// ResetStringdef resets all changes to the "stringdef" field.
+func (m *DefaultContainerMutation) ResetStringdef() {
+	m.stringdef = nil
+}
+
+// SetInt sets the "int" field.
+func (m *DefaultContainerMutation) SetInt(i int) {
+	m.int = &i
+	m.addint = nil
+}
+
+// Int returns the value of the "int" field in the mutation.
+func (m *DefaultContainerMutation) Int() (r int, exists bool) {
+	v := m.int
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInt returns the old "int" field's value of the DefaultContainer entity.
+// If the DefaultContainer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DefaultContainerMutation) OldInt(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, fmt.Errorf("OldInt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, fmt.Errorf("OldInt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInt: %w", err)
+	}
+	return oldValue.Int, nil
+}
+
+// AddInt adds i to the "int" field.
+func (m *DefaultContainerMutation) AddInt(i int) {
+	if m.addint != nil {
+		*m.addint += i
+	} else {
+		m.addint = &i
+	}
+}
+
+// AddedInt returns the value that was added to the "int" field in this mutation.
+func (m *DefaultContainerMutation) AddedInt() (r int, exists bool) {
+	v := m.addint
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetInt resets all changes to the "int" field.
+func (m *DefaultContainerMutation) ResetInt() {
+	m.int = nil
+	m.addint = nil
+}
+
+// SetBool sets the "bool" field.
+func (m *DefaultContainerMutation) SetBool(b bool) {
+	m.bool = &b
+}
+
+// Bool returns the value of the "bool" field in the mutation.
+func (m *DefaultContainerMutation) Bool() (r bool, exists bool) {
+	v := m.bool
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBool returns the old "bool" field's value of the DefaultContainer entity.
+// If the DefaultContainer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DefaultContainerMutation) OldBool(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, fmt.Errorf("OldBool is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, fmt.Errorf("OldBool requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBool: %w", err)
+	}
+	return oldValue.Bool, nil
+}
+
+// ResetBool resets all changes to the "bool" field.
+func (m *DefaultContainerMutation) ResetBool() {
+	m.bool = nil
+}
+
+// SetEnum sets the "enum" field.
+func (m *DefaultContainerMutation) SetEnum(d defaultcontainer.Enum) {
+	m.enum = &d
+}
+
+// Enum returns the value of the "enum" field in the mutation.
+func (m *DefaultContainerMutation) Enum() (r defaultcontainer.Enum, exists bool) {
+	v := m.enum
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEnum returns the old "enum" field's value of the DefaultContainer entity.
+// If the DefaultContainer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DefaultContainerMutation) OldEnum(ctx context.Context) (v defaultcontainer.Enum, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, fmt.Errorf("OldEnum is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, fmt.Errorf("OldEnum requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEnum: %w", err)
+	}
+	return oldValue.Enum, nil
+}
+
+// ResetEnum resets all changes to the "enum" field.
+func (m *DefaultContainerMutation) ResetEnum() {
+	m.enum = nil
+}
+
+// SetFloat sets the "float" field.
+func (m *DefaultContainerMutation) SetFloat(f float64) {
+	m.float = &f
+	m.addfloat = nil
+}
+
+// Float returns the value of the "float" field in the mutation.
+func (m *DefaultContainerMutation) Float() (r float64, exists bool) {
+	v := m.float
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFloat returns the old "float" field's value of the DefaultContainer entity.
+// If the DefaultContainer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DefaultContainerMutation) OldFloat(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, fmt.Errorf("OldFloat is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, fmt.Errorf("OldFloat requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFloat: %w", err)
+	}
+	return oldValue.Float, nil
+}
+
+// AddFloat adds f to the "float" field.
+func (m *DefaultContainerMutation) AddFloat(f float64) {
+	if m.addfloat != nil {
+		*m.addfloat += f
+	} else {
+		m.addfloat = &f
+	}
+}
+
+// AddedFloat returns the value that was added to the "float" field in this mutation.
+func (m *DefaultContainerMutation) AddedFloat() (r float64, exists bool) {
+	v := m.addfloat
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetFloat resets all changes to the "float" field.
+func (m *DefaultContainerMutation) ResetFloat() {
+	m.float = nil
+	m.addfloat = nil
+}
+
+// Op returns the operation name.
+func (m *DefaultContainerMutation) Op() Op {
+	return m.op
+}
+
+// Type returns the node type of this mutation (DefaultContainer).
+func (m *DefaultContainerMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DefaultContainerMutation) Fields() []string {
+	fields := make([]string, 0, 5)
+	if m.stringdef != nil {
+		fields = append(fields, defaultcontainer.FieldStringdef)
+	}
+	if m.int != nil {
+		fields = append(fields, defaultcontainer.FieldInt)
+	}
+	if m.bool != nil {
+		fields = append(fields, defaultcontainer.FieldBool)
+	}
+	if m.enum != nil {
+		fields = append(fields, defaultcontainer.FieldEnum)
+	}
+	if m.float != nil {
+		fields = append(fields, defaultcontainer.FieldFloat)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DefaultContainerMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case defaultcontainer.FieldStringdef:
+		return m.Stringdef()
+	case defaultcontainer.FieldInt:
+		return m.Int()
+	case defaultcontainer.FieldBool:
+		return m.Bool()
+	case defaultcontainer.FieldEnum:
+		return m.Enum()
+	case defaultcontainer.FieldFloat:
+		return m.Float()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DefaultContainerMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case defaultcontainer.FieldStringdef:
+		return m.OldStringdef(ctx)
+	case defaultcontainer.FieldInt:
+		return m.OldInt(ctx)
+	case defaultcontainer.FieldBool:
+		return m.OldBool(ctx)
+	case defaultcontainer.FieldEnum:
+		return m.OldEnum(ctx)
+	case defaultcontainer.FieldFloat:
+		return m.OldFloat(ctx)
+	}
+	return nil, fmt.Errorf("unknown DefaultContainer field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DefaultContainerMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case defaultcontainer.FieldStringdef:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStringdef(v)
+		return nil
+	case defaultcontainer.FieldInt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInt(v)
+		return nil
+	case defaultcontainer.FieldBool:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBool(v)
+		return nil
+	case defaultcontainer.FieldEnum:
+		v, ok := value.(defaultcontainer.Enum)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEnum(v)
+		return nil
+	case defaultcontainer.FieldFloat:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFloat(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DefaultContainer field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DefaultContainerMutation) AddedFields() []string {
+	var fields []string
+	if m.addint != nil {
+		fields = append(fields, defaultcontainer.FieldInt)
+	}
+	if m.addfloat != nil {
+		fields = append(fields, defaultcontainer.FieldFloat)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DefaultContainerMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case defaultcontainer.FieldInt:
+		return m.AddedInt()
+	case defaultcontainer.FieldFloat:
+		return m.AddedFloat()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DefaultContainerMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case defaultcontainer.FieldInt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddInt(v)
+		return nil
+	case defaultcontainer.FieldFloat:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddFloat(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DefaultContainer numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DefaultContainerMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DefaultContainerMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DefaultContainerMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown DefaultContainer nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DefaultContainerMutation) ResetField(name string) error {
+	switch name {
+	case defaultcontainer.FieldStringdef:
+		m.ResetStringdef()
+		return nil
+	case defaultcontainer.FieldInt:
+		m.ResetInt()
+		return nil
+	case defaultcontainer.FieldBool:
+		m.ResetBool()
+		return nil
+	case defaultcontainer.FieldEnum:
+		m.ResetEnum()
+		return nil
+	case defaultcontainer.FieldFloat:
+		m.ResetFloat()
+		return nil
+	}
+	return fmt.Errorf("unknown DefaultContainer field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DefaultContainerMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DefaultContainerMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DefaultContainerMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DefaultContainerMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DefaultContainerMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DefaultContainerMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DefaultContainerMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown DefaultContainer unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DefaultContainerMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown DefaultContainer edge %s", name)
 }
 
 // GroupMutation represents an operation that mutates the Group nodes in the graph.

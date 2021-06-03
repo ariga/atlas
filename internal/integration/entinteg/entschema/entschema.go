@@ -172,5 +172,8 @@ func convertColumn(col *sqlschema.Column) (*schema.Column, error) {
 		Name: col.Name,
 		Type: ct,
 	}
+	if col.Default != nil {
+		out.Default = &schema.RawExpr{X: fmt.Sprint(col.Default)}
+	}
 	return out, nil
 }

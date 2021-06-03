@@ -14,6 +14,8 @@ type Tx struct {
 	config
 	// Activity is the client for interacting with the Activity builders.
 	Activity *ActivityClient
+	// DefaultContainer is the client for interacting with the DefaultContainer builders.
+	DefaultContainer *DefaultContainerClient
 	// Group is the client for interacting with the Group builders.
 	Group *GroupClient
 	// User is the client for interacting with the User builders.
@@ -154,6 +156,7 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.Activity = NewActivityClient(tx.config)
+	tx.DefaultContainer = NewDefaultContainerClient(tx.config)
 	tx.Group = NewGroupClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }

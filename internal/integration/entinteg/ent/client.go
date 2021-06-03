@@ -10,6 +10,7 @@ import (
 	"ariga.io/atlas/integration/entinteg/ent/migrate"
 
 	"ariga.io/atlas/integration/entinteg/ent/activity"
+	"ariga.io/atlas/integration/entinteg/ent/defaultcontainer"
 	"ariga.io/atlas/integration/entinteg/ent/group"
 	"ariga.io/atlas/integration/entinteg/ent/user"
 
@@ -25,6 +26,8 @@ type Client struct {
 	Schema *migrate.Schema
 	// Activity is the client for interacting with the Activity builders.
 	Activity *ActivityClient
+	// DefaultContainer is the client for interacting with the DefaultContainer builders.
+	DefaultContainer *DefaultContainerClient
 	// Group is the client for interacting with the Group builders.
 	Group *GroupClient
 	// User is the client for interacting with the User builders.
@@ -43,6 +46,7 @@ func NewClient(opts ...Option) *Client {
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Activity = NewActivityClient(c.config)
+	c.DefaultContainer = NewDefaultContainerClient(c.config)
 	c.Group = NewGroupClient(c.config)
 	c.User = NewUserClient(c.config)
 }
@@ -76,11 +80,12 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:      ctx,
-		config:   cfg,
-		Activity: NewActivityClient(cfg),
-		Group:    NewGroupClient(cfg),
-		User:     NewUserClient(cfg),
+		ctx:              ctx,
+		config:           cfg,
+		Activity:         NewActivityClient(cfg),
+		DefaultContainer: NewDefaultContainerClient(cfg),
+		Group:            NewGroupClient(cfg),
+		User:             NewUserClient(cfg),
 	}, nil
 }
 
@@ -98,10 +103,11 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		config:   cfg,
-		Activity: NewActivityClient(cfg),
-		Group:    NewGroupClient(cfg),
-		User:     NewUserClient(cfg),
+		config:           cfg,
+		Activity:         NewActivityClient(cfg),
+		DefaultContainer: NewDefaultContainerClient(cfg),
+		Group:            NewGroupClient(cfg),
+		User:             NewUserClient(cfg),
 	}, nil
 }
 
@@ -132,6 +138,7 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	c.Activity.Use(hooks...)
+	c.DefaultContainer.Use(hooks...)
 	c.Group.Use(hooks...)
 	c.User.Use(hooks...)
 }
@@ -240,6 +247,96 @@ func (c *ActivityClient) QueryUsers(a *Activity) *UserQuery {
 // Hooks returns the client hooks.
 func (c *ActivityClient) Hooks() []Hook {
 	return c.hooks.Activity
+}
+
+// DefaultContainerClient is a client for the DefaultContainer schema.
+type DefaultContainerClient struct {
+	config
+}
+
+// NewDefaultContainerClient returns a client for the DefaultContainer from the given config.
+func NewDefaultContainerClient(c config) *DefaultContainerClient {
+	return &DefaultContainerClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `defaultcontainer.Hooks(f(g(h())))`.
+func (c *DefaultContainerClient) Use(hooks ...Hook) {
+	c.hooks.DefaultContainer = append(c.hooks.DefaultContainer, hooks...)
+}
+
+// Create returns a create builder for DefaultContainer.
+func (c *DefaultContainerClient) Create() *DefaultContainerCreate {
+	mutation := newDefaultContainerMutation(c.config, OpCreate)
+	return &DefaultContainerCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of DefaultContainer entities.
+func (c *DefaultContainerClient) CreateBulk(builders ...*DefaultContainerCreate) *DefaultContainerCreateBulk {
+	return &DefaultContainerCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for DefaultContainer.
+func (c *DefaultContainerClient) Update() *DefaultContainerUpdate {
+	mutation := newDefaultContainerMutation(c.config, OpUpdate)
+	return &DefaultContainerUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DefaultContainerClient) UpdateOne(dc *DefaultContainer) *DefaultContainerUpdateOne {
+	mutation := newDefaultContainerMutation(c.config, OpUpdateOne, withDefaultContainer(dc))
+	return &DefaultContainerUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DefaultContainerClient) UpdateOneID(id int) *DefaultContainerUpdateOne {
+	mutation := newDefaultContainerMutation(c.config, OpUpdateOne, withDefaultContainerID(id))
+	return &DefaultContainerUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for DefaultContainer.
+func (c *DefaultContainerClient) Delete() *DefaultContainerDelete {
+	mutation := newDefaultContainerMutation(c.config, OpDelete)
+	return &DefaultContainerDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a delete builder for the given entity.
+func (c *DefaultContainerClient) DeleteOne(dc *DefaultContainer) *DefaultContainerDeleteOne {
+	return c.DeleteOneID(dc.ID)
+}
+
+// DeleteOneID returns a delete builder for the given id.
+func (c *DefaultContainerClient) DeleteOneID(id int) *DefaultContainerDeleteOne {
+	builder := c.Delete().Where(defaultcontainer.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DefaultContainerDeleteOne{builder}
+}
+
+// Query returns a query builder for DefaultContainer.
+func (c *DefaultContainerClient) Query() *DefaultContainerQuery {
+	return &DefaultContainerQuery{
+		config: c.config,
+	}
+}
+
+// Get returns a DefaultContainer entity by its id.
+func (c *DefaultContainerClient) Get(ctx context.Context, id int) (*DefaultContainer, error) {
+	return c.Query().Where(defaultcontainer.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DefaultContainerClient) GetX(ctx context.Context, id int) *DefaultContainer {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *DefaultContainerClient) Hooks() []Hook {
+	return c.hooks.DefaultContainer
 }
 
 // GroupClient is a client for the Group schema.
