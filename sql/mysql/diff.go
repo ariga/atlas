@@ -326,7 +326,7 @@ func (d *Diff) charsetChange(from, top, to []schema.Attr) schema.Change {
 func (d *Diff) fkChange(from, to *schema.ForeignKey) schema.ChangeKind {
 	var change schema.ChangeKind
 	switch {
-	case from.Table.Name != to.Table.Name || from.Table.Schema.Name != to.Table.Schema.Name:
+	case from.Table.Name != to.Table.Name:
 		change |= schema.ChangeRefTable | schema.ChangeRefColumn
 	case len(from.RefColumns) != len(to.RefColumns):
 		change |= schema.ChangeRefColumn
@@ -347,13 +347,25 @@ func (d *Diff) fkChange(from, to *schema.ForeignKey) schema.ChangeKind {
 			}
 		}
 	}
-	if from.OnUpdate != to.OnUpdate {
+	if actionChanged(from.OnUpdate, to.OnUpdate) {
 		change |= schema.ChangeUpdateAction
 	}
-	if from.OnDelete != to.OnDelete {
+	if actionChanged(from.OnDelete, to.OnDelete) {
 		change |= schema.ChangeDeleteAction
 	}
 	return change
+}
+
+func actionChanged(from, to schema.ReferenceOption) bool {
+	// According to MySQL docs, specifying RESTRICT (or NO ACTION)
+	// is the same as omitting the ON DELETE or ON UPDATE clause.
+	if from == "" || from == schema.Restrict {
+		from = schema.NoAction
+	}
+	if to == "" || to == schema.Restrict {
+		to = schema.NoAction
+	}
+	return from != to
 }
 
 func commentChange(from, to []schema.Attr) schema.ChangeKind {
