@@ -128,17 +128,24 @@ func (*DefaultHCLConverter) convertBinary(ctx *hcl.EvalContext, col *ColumnHCL) 
 
 func (*DefaultHCLConverter) convertInteger(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
 	var v struct {
-		Unsigned bool     `hcl:"unsigned,optional"`
-		Remain   hcl.Body `hcl:",remain"`
+		Unsigned     bool         `hcl:"unsigned,optional"`
+		StorageBytes StorageBytes `hcl:"storage_bytes,optional"`
+		Remain       hcl.Body     `hcl:",remain"`
 	}
 	if col.Remain != nil {
 		if diag := gohcl.DecodeBody(col.Remain, ctx, &v); diag.HasErrors() {
 			return nil, diag
 		}
 	}
+	switch v.StorageBytes {
+	case Unspecified, OneByte, TwoBytes, ThreeBytes, FourBytes, EightBytes:
+	default:
+		return nil, fmt.Errorf("schema: unsupported storage_bytes size: %q", v.StorageBytes)
+	}
 	return &IntegerType{
-		T:        col.TypeName,
-		Unsigned: v.Unsigned,
+		T:            col.TypeName,
+		Unsigned:     v.Unsigned,
+		StorageBytes: v.StorageBytes,
 	}, nil
 }
 

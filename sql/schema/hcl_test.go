@@ -23,8 +23,9 @@ func TestBasicSchemaUnmarshal(t *testing.T) {
 			expected: &ColumnType{
 				Null: false,
 				Type: &IntegerType{
-					T:        "integer",
-					Unsigned: true,
+					T:            "integer",
+					Unsigned:     true,
+					StorageBytes: Unspecified,
 				},
 			},
 		},
@@ -122,6 +123,16 @@ func TestBasicSchemaUnmarshal(t *testing.T) {
 			expected: &ColumnType{
 				Type: &JSONType{
 					T: "json",
+				},
+			},
+		},
+		{
+			table:  "todos",
+			column: "storage_bytes",
+			expected: &ColumnType{
+				Type: &IntegerType{
+					T:            "integer",
+					StorageBytes: FourBytes,
 				},
 			},
 		},

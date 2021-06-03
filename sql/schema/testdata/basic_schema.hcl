@@ -64,4 +64,8 @@ table "todos" {
   column "json_col" {
     type = "json"
   }
+  column "storage_bytes" {
+    type = "integer"
+    storage_bytes = 4
+  }
 }
