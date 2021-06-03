@@ -218,7 +218,7 @@ func (s *ConvertSuite) TestDefault() {
 		col      string
 		expected string
 	}{
-		{col: "string", expected: `"default"`},
+		{col: "stringdef", expected: `"default"`},
 		{col: "int", expected: `1`},
 		{col: "bool", expected: `true`},
 		{col: "enum", expected: `"1"`},

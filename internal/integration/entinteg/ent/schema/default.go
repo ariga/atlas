@@ -11,7 +11,7 @@ type DefaultContainer struct {
 
 func (DefaultContainer) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("string").Default("default"),
+		field.String("stringdef").Default("default"),
 		field.Int("int").Default(1),
 		field.Bool("bool").Default(true),
 		field.Enum("enum").Values("1", "2").Default("1"),
