@@ -248,10 +248,17 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 			}
 			break
 		}
+		byteSize, err := intByteSize(t)
+		if err != nil {
+			return err
+		}
 		// For integer types, the size represents the display width and does not
 		// constrain the range of values that can be stored in the column.
+		// The storage byte-size is inferred from the type name (i.e TINYINT takes
+		// a single byte).
 		ft := &schema.IntegerType{
 			T:        t,
+			Size:     byteSize,
 			Unsigned: unsigned,
 		}
 		if attr := parts[len(parts)-1]; attr == "zerofill" && size != 0 {
@@ -792,6 +799,24 @@ type (
 		Values []string
 	}
 )
+
+// convert int type name to storage size in bytes, sizes taken from:
+// https://dev.mysql.com/doc/refman/8.0/en/integer-types.html
+func intByteSize(t string) (uint8, error) {
+	switch t {
+	case tTinyInt:
+		return 1, nil
+	case tSmallInt:
+		return 2, nil
+	case tMediumInt:
+		return 3, nil
+	case tInt:
+		return 4, nil
+	case tBigInt:
+		return 8, nil
+	}
+	return 0, fmt.Errorf("mysql: unsupported integer type %q", t)
+}
 
 // MySQL standard unescape field function from its codebase:
 // https://github.com/mysql/mysql-server/blob/8.0/sql/dd/impl/utils.cc

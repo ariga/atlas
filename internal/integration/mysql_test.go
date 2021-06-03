@@ -47,12 +47,12 @@ func TestMySQL(t *testing.T) {
 				Columns: []*schema.Column{
 					{
 						Name:  "id",
-						Type:  &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}},
+						Type:  &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint", Size: 8}},
 						Attrs: []schema.Attr{&mysql.AutoIncrement{}},
 					},
 					{
 						Name:    "author_id",
-						Type:    &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true},
+						Type:    &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint", Size: 8}, Null: true},
 						Default: &schema.RawExpr{X: "10"},
 					},
 					{
