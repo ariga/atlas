@@ -15,8 +15,8 @@ type DefaultContainer struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
-	// String holds the value of the "string" field.
-	String string `json:"string,omitempty"`
+	// Stringdef holds the value of the "stringdef" field.
+	Stringdef string `json:"stringdef,omitempty"`
 	// Int holds the value of the "int" field.
 	Int int `json:"int,omitempty"`
 	// Bool holds the value of the "bool" field.
@@ -38,7 +38,7 @@ func (*DefaultContainer) scanValues(columns []string) ([]interface{}, error) {
 			values[i] = new(sql.NullFloat64)
 		case defaultcontainer.FieldID, defaultcontainer.FieldInt:
 			values[i] = new(sql.NullInt64)
-		case defaultcontainer.FieldString, defaultcontainer.FieldEnum:
+		case defaultcontainer.FieldStringdef, defaultcontainer.FieldEnum:
 			values[i] = new(sql.NullString)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type DefaultContainer", columns[i])
@@ -61,11 +61,11 @@ func (dc *DefaultContainer) assignValues(columns []string, values []interface{})
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			dc.ID = int(value.Int64)
-		case defaultcontainer.FieldString:
+		case defaultcontainer.FieldStringdef:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field string", values[i])
+				return fmt.Errorf("unexpected type %T for field stringdef", values[i])
 			} else if value.Valid {
-				dc.String = value.String
+				dc.Stringdef = value.String
 			}
 		case defaultcontainer.FieldInt:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -119,8 +119,8 @@ func (dc *DefaultContainer) String() string {
 	var builder strings.Builder
 	builder.WriteString("DefaultContainer(")
 	builder.WriteString(fmt.Sprintf("id=%v", dc.ID))
-	builder.WriteString(", string=")
-	builder.WriteString(dc.String)
+	builder.WriteString(", stringdef=")
+	builder.WriteString(dc.Stringdef)
 	builder.WriteString(", int=")
 	builder.WriteString(fmt.Sprintf("%v", dc.Int))
 	builder.WriteString(", bool=")

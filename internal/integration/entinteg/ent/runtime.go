@@ -13,10 +13,10 @@ import (
 func init() {
 	defaultcontainerFields := schema.DefaultContainer{}.Fields()
 	_ = defaultcontainerFields
-	// defaultcontainerDescString is the schema descriptor for string field.
-	defaultcontainerDescString := defaultcontainerFields[0].Descriptor()
-	// defaultcontainer.DefaultString holds the default value on creation for the string field.
-	defaultcontainer.DefaultString = defaultcontainerDescString.Default.(string)
+	// defaultcontainerDescStringdef is the schema descriptor for stringdef field.
+	defaultcontainerDescStringdef := defaultcontainerFields[0].Descriptor()
+	// defaultcontainer.DefaultStringdef holds the default value on creation for the stringdef field.
+	defaultcontainer.DefaultStringdef = defaultcontainerDescStringdef.Default.(string)
 	// defaultcontainerDescInt is the schema descriptor for int field.
 	defaultcontainerDescInt := defaultcontainerFields[1].Descriptor()
 	// defaultcontainer.DefaultInt holds the default value on creation for the int field.

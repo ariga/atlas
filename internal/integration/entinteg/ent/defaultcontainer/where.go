@@ -90,10 +90,10 @@ func IDLTE(id int) predicate.DefaultContainer {
 	})
 }
 
-// String applies equality check predicate on the "string" field. It's identical to StringEQ.
-func String(v string) predicate.DefaultContainer {
+// Stringdef applies equality check predicate on the "stringdef" field. It's identical to StringdefEQ.
+func Stringdef(v string) predicate.DefaultContainer {
 	return predicate.DefaultContainer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldString), v))
+		s.Where(sql.EQ(s.C(FieldStringdef), v))
 	})
 }
 
@@ -118,22 +118,22 @@ func Float(v float64) predicate.DefaultContainer {
 	})
 }
 
-// StringEQ applies the EQ predicate on the "string" field.
-func StringEQ(v string) predicate.DefaultContainer {
+// StringdefEQ applies the EQ predicate on the "stringdef" field.
+func StringdefEQ(v string) predicate.DefaultContainer {
 	return predicate.DefaultContainer(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldString), v))
+		s.Where(sql.EQ(s.C(FieldStringdef), v))
 	})
 }
 
-// StringNEQ applies the NEQ predicate on the "string" field.
-func StringNEQ(v string) predicate.DefaultContainer {
+// StringdefNEQ applies the NEQ predicate on the "stringdef" field.
+func StringdefNEQ(v string) predicate.DefaultContainer {
 	return predicate.DefaultContainer(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldString), v))
+		s.Where(sql.NEQ(s.C(FieldStringdef), v))
 	})
 }
 
-// StringIn applies the In predicate on the "string" field.
-func StringIn(vs ...string) predicate.DefaultContainer {
+// StringdefIn applies the In predicate on the "stringdef" field.
+func StringdefIn(vs ...string) predicate.DefaultContainer {
 	v := make([]interface{}, len(vs))
 	for i := range v {
 		v[i] = vs[i]
@@ -145,12 +145,12 @@ func StringIn(vs ...string) predicate.DefaultContainer {
 			s.Where(sql.False())
 			return
 		}
-		s.Where(sql.In(s.C(FieldString), v...))
+		s.Where(sql.In(s.C(FieldStringdef), v...))
 	})
 }
 
-// StringNotIn applies the NotIn predicate on the "string" field.
-func StringNotIn(vs ...string) predicate.DefaultContainer {
+// StringdefNotIn applies the NotIn predicate on the "stringdef" field.
+func StringdefNotIn(vs ...string) predicate.DefaultContainer {
 	v := make([]interface{}, len(vs))
 	for i := range v {
 		v[i] = vs[i]
@@ -162,70 +162,70 @@ func StringNotIn(vs ...string) predicate.DefaultContainer {
 			s.Where(sql.False())
 			return
 		}
-		s.Where(sql.NotIn(s.C(FieldString), v...))
+		s.Where(sql.NotIn(s.C(FieldStringdef), v...))
 	})
 }
 
-// StringGT applies the GT predicate on the "string" field.
-func StringGT(v string) predicate.DefaultContainer {
+// StringdefGT applies the GT predicate on the "stringdef" field.
+func StringdefGT(v string) predicate.DefaultContainer {
 	return predicate.DefaultContainer(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldString), v))
+		s.Where(sql.GT(s.C(FieldStringdef), v))
 	})
 }
 
-// StringGTE applies the GTE predicate on the "string" field.
-func StringGTE(v string) predicate.DefaultContainer {
+// StringdefGTE applies the GTE predicate on the "stringdef" field.
+func StringdefGTE(v string) predicate.DefaultContainer {
 	return predicate.DefaultContainer(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldString), v))
+		s.Where(sql.GTE(s.C(FieldStringdef), v))
 	})
 }
 
-// StringLT applies the LT predicate on the "string" field.
-func StringLT(v string) predicate.DefaultContainer {
+// StringdefLT applies the LT predicate on the "stringdef" field.
+func StringdefLT(v string) predicate.DefaultContainer {
 	return predicate.DefaultContainer(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldString), v))
+		s.Where(sql.LT(s.C(FieldStringdef), v))
 	})
 }
 
-// StringLTE applies the LTE predicate on the "string" field.
-func StringLTE(v string) predicate.DefaultContainer {
+// StringdefLTE applies the LTE predicate on the "stringdef" field.
+func StringdefLTE(v string) predicate.DefaultContainer {
 	return predicate.DefaultContainer(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldString), v))
+		s.Where(sql.LTE(s.C(FieldStringdef), v))
 	})
 }
 
-// StringContains applies the Contains predicate on the "string" field.
-func StringContains(v string) predicate.DefaultContainer {
+// StringdefContains applies the Contains predicate on the "stringdef" field.
+func StringdefContains(v string) predicate.DefaultContainer {
 	return predicate.DefaultContainer(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldString), v))
+		s.Where(sql.Contains(s.C(FieldStringdef), v))
 	})
 }
 
-// StringHasPrefix applies the HasPrefix predicate on the "string" field.
-func StringHasPrefix(v string) predicate.DefaultContainer {
+// StringdefHasPrefix applies the HasPrefix predicate on the "stringdef" field.
+func StringdefHasPrefix(v string) predicate.DefaultContainer {
 	return predicate.DefaultContainer(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldString), v))
+		s.Where(sql.HasPrefix(s.C(FieldStringdef), v))
 	})
 }
 
-// StringHasSuffix applies the HasSuffix predicate on the "string" field.
-func StringHasSuffix(v string) predicate.DefaultContainer {
+// StringdefHasSuffix applies the HasSuffix predicate on the "stringdef" field.
+func StringdefHasSuffix(v string) predicate.DefaultContainer {
 	return predicate.DefaultContainer(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldString), v))
+		s.Where(sql.HasSuffix(s.C(FieldStringdef), v))
 	})
 }
 
-// StringEqualFold applies the EqualFold predicate on the "string" field.
-func StringEqualFold(v string) predicate.DefaultContainer {
+// StringdefEqualFold applies the EqualFold predicate on the "stringdef" field.
+func StringdefEqualFold(v string) predicate.DefaultContainer {
 	return predicate.DefaultContainer(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldString), v))
+		s.Where(sql.EqualFold(s.C(FieldStringdef), v))
 	})
 }
 
-// StringContainsFold applies the ContainsFold predicate on the "string" field.
-func StringContainsFold(v string) predicate.DefaultContainer {
+// StringdefContainsFold applies the ContainsFold predicate on the "stringdef" field.
+func StringdefContainsFold(v string) predicate.DefaultContainer {
 	return predicate.DefaultContainer(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldString), v))
+		s.Where(sql.ContainsFold(s.C(FieldStringdef), v))
 	})
 }
 

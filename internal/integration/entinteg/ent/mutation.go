@@ -417,7 +417,7 @@ type DefaultContainerMutation struct {
 	op            Op
 	typ           string
 	id            *int
-	string        *string
+	stringdef     *string
 	int           *int
 	addint        *int
 	bool          *bool
@@ -509,40 +509,40 @@ func (m *DefaultContainerMutation) ID() (id int, exists bool) {
 	return *m.id, true
 }
 
-// SetString sets the "string" field.
-func (m *DefaultContainerMutation) SetString(s string) {
-	m.string = &s
+// SetStringdef sets the "stringdef" field.
+func (m *DefaultContainerMutation) SetStringdef(s string) {
+	m.stringdef = &s
 }
 
-// String returns the value of the "string" field in the mutation.
-func (m *DefaultContainerMutation) String() (r string, exists bool) {
-	v := m.string
+// Stringdef returns the value of the "stringdef" field in the mutation.
+func (m *DefaultContainerMutation) Stringdef() (r string, exists bool) {
+	v := m.stringdef
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldString returns the old "string" field's value of the DefaultContainer entity.
+// OldStringdef returns the old "stringdef" field's value of the DefaultContainer entity.
 // If the DefaultContainer object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *DefaultContainerMutation) OldString(ctx context.Context) (v string, err error) {
+func (m *DefaultContainerMutation) OldStringdef(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, fmt.Errorf("OldString is only allowed on UpdateOne operations")
+		return v, fmt.Errorf("OldStringdef is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, fmt.Errorf("OldString requires an ID field in the mutation")
+		return v, fmt.Errorf("OldStringdef requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldString: %w", err)
+		return v, fmt.Errorf("querying old value for OldStringdef: %w", err)
 	}
-	return oldValue.String, nil
+	return oldValue.Stringdef, nil
 }
 
-// ResetString resets all changes to the "string" field.
-func (m *DefaultContainerMutation) ResetString() {
-	m.string = nil
+// ResetStringdef resets all changes to the "stringdef" field.
+func (m *DefaultContainerMutation) ResetStringdef() {
+	m.stringdef = nil
 }
 
 // SetInt sets the "int" field.
@@ -744,8 +744,8 @@ func (m *DefaultContainerMutation) Type() string {
 // AddedFields().
 func (m *DefaultContainerMutation) Fields() []string {
 	fields := make([]string, 0, 5)
-	if m.string != nil {
-		fields = append(fields, defaultcontainer.FieldString)
+	if m.stringdef != nil {
+		fields = append(fields, defaultcontainer.FieldStringdef)
 	}
 	if m.int != nil {
 		fields = append(fields, defaultcontainer.FieldInt)
@@ -767,8 +767,8 @@ func (m *DefaultContainerMutation) Fields() []string {
 // schema.
 func (m *DefaultContainerMutation) Field(name string) (ent.Value, bool) {
 	switch name {
-	case defaultcontainer.FieldString:
-		return m.String()
+	case defaultcontainer.FieldStringdef:
+		return m.Stringdef()
 	case defaultcontainer.FieldInt:
 		return m.Int()
 	case defaultcontainer.FieldBool:
@@ -786,8 +786,8 @@ func (m *DefaultContainerMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *DefaultContainerMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
-	case defaultcontainer.FieldString:
-		return m.OldString(ctx)
+	case defaultcontainer.FieldStringdef:
+		return m.OldStringdef(ctx)
 	case defaultcontainer.FieldInt:
 		return m.OldInt(ctx)
 	case defaultcontainer.FieldBool:
@@ -805,12 +805,12 @@ func (m *DefaultContainerMutation) OldField(ctx context.Context, name string) (e
 // type.
 func (m *DefaultContainerMutation) SetField(name string, value ent.Value) error {
 	switch name {
-	case defaultcontainer.FieldString:
+	case defaultcontainer.FieldStringdef:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetString(v)
+		m.SetStringdef(v)
 		return nil
 	case defaultcontainer.FieldInt:
 		v, ok := value.(int)
@@ -916,8 +916,8 @@ func (m *DefaultContainerMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *DefaultContainerMutation) ResetField(name string) error {
 	switch name {
-	case defaultcontainer.FieldString:
-		m.ResetString()
+	case defaultcontainer.FieldStringdef:
+		m.ResetStringdef()
 		return nil
 	case defaultcontainer.FieldInt:
 		m.ResetInt()

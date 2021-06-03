@@ -253,12 +253,12 @@ func (dcq *DefaultContainerQuery) Clone() *DefaultContainerQuery {
 // Example:
 //
 //	var v []struct {
-//		String string `json:"string,omitempty"`
+//		Stringdef string `json:"stringdef,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.DefaultContainer.Query().
-//		GroupBy(defaultcontainer.FieldString).
+//		GroupBy(defaultcontainer.FieldStringdef).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 //
@@ -280,11 +280,11 @@ func (dcq *DefaultContainerQuery) GroupBy(field string, fields ...string) *Defau
 // Example:
 //
 //	var v []struct {
-//		String string `json:"string,omitempty"`
+//		Stringdef string `json:"stringdef,omitempty"`
 //	}
 //
 //	client.DefaultContainer.Query().
-//		Select(defaultcontainer.FieldString).
+//		Select(defaultcontainer.FieldStringdef).
 //		Scan(ctx, &v)
 //
 func (dcq *DefaultContainerQuery) Select(field string, fields ...string) *DefaultContainerSelect {

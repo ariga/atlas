@@ -26,16 +26,16 @@ func (dcu *DefaultContainerUpdate) Where(ps ...predicate.DefaultContainer) *Defa
 	return dcu
 }
 
-// SetString sets the "string" field.
-func (dcu *DefaultContainerUpdate) SetString(s string) *DefaultContainerUpdate {
-	dcu.mutation.SetString(s)
+// SetStringdef sets the "stringdef" field.
+func (dcu *DefaultContainerUpdate) SetStringdef(s string) *DefaultContainerUpdate {
+	dcu.mutation.SetStringdef(s)
 	return dcu
 }
 
-// SetNillableString sets the "string" field if the given value is not nil.
-func (dcu *DefaultContainerUpdate) SetNillableString(s *string) *DefaultContainerUpdate {
+// SetNillableStringdef sets the "stringdef" field if the given value is not nil.
+func (dcu *DefaultContainerUpdate) SetNillableStringdef(s *string) *DefaultContainerUpdate {
 	if s != nil {
-		dcu.SetString(*s)
+		dcu.SetStringdef(*s)
 	}
 	return dcu
 }
@@ -200,11 +200,11 @@ func (dcu *DefaultContainerUpdate) sqlSave(ctx context.Context) (n int, err erro
 			}
 		}
 	}
-	if value, ok := dcu.mutation.String(); ok {
+	if value, ok := dcu.mutation.Stringdef(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: defaultcontainer.FieldString,
+			Column: defaultcontainer.FieldStringdef,
 		})
 	}
 	if value, ok := dcu.mutation.Int(); ok {
@@ -268,16 +268,16 @@ type DefaultContainerUpdateOne struct {
 	mutation *DefaultContainerMutation
 }
 
-// SetString sets the "string" field.
-func (dcuo *DefaultContainerUpdateOne) SetString(s string) *DefaultContainerUpdateOne {
-	dcuo.mutation.SetString(s)
+// SetStringdef sets the "stringdef" field.
+func (dcuo *DefaultContainerUpdateOne) SetStringdef(s string) *DefaultContainerUpdateOne {
+	dcuo.mutation.SetStringdef(s)
 	return dcuo
 }
 
-// SetNillableString sets the "string" field if the given value is not nil.
-func (dcuo *DefaultContainerUpdateOne) SetNillableString(s *string) *DefaultContainerUpdateOne {
+// SetNillableStringdef sets the "stringdef" field if the given value is not nil.
+func (dcuo *DefaultContainerUpdateOne) SetNillableStringdef(s *string) *DefaultContainerUpdateOne {
 	if s != nil {
-		dcuo.SetString(*s)
+		dcuo.SetStringdef(*s)
 	}
 	return dcuo
 }
@@ -466,11 +466,11 @@ func (dcuo *DefaultContainerUpdateOne) sqlSave(ctx context.Context) (_node *Defa
 			}
 		}
 	}
-	if value, ok := dcuo.mutation.String(); ok {
+	if value, ok := dcuo.mutation.Stringdef(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: defaultcontainer.FieldString,
+			Column: defaultcontainer.FieldStringdef,
 		})
 	}
 	if value, ok := dcuo.mutation.Int(); ok {

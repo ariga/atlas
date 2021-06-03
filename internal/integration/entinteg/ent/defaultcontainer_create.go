@@ -19,16 +19,16 @@ type DefaultContainerCreate struct {
 	hooks    []Hook
 }
 
-// SetString sets the "string" field.
-func (dcc *DefaultContainerCreate) SetString(s string) *DefaultContainerCreate {
-	dcc.mutation.SetString(s)
+// SetStringdef sets the "stringdef" field.
+func (dcc *DefaultContainerCreate) SetStringdef(s string) *DefaultContainerCreate {
+	dcc.mutation.SetStringdef(s)
 	return dcc
 }
 
-// SetNillableString sets the "string" field if the given value is not nil.
-func (dcc *DefaultContainerCreate) SetNillableString(s *string) *DefaultContainerCreate {
+// SetNillableStringdef sets the "stringdef" field if the given value is not nil.
+func (dcc *DefaultContainerCreate) SetNillableStringdef(s *string) *DefaultContainerCreate {
 	if s != nil {
-		dcc.SetString(*s)
+		dcc.SetStringdef(*s)
 	}
 	return dcc
 }
@@ -141,9 +141,9 @@ func (dcc *DefaultContainerCreate) SaveX(ctx context.Context) *DefaultContainer 
 
 // defaults sets the default values of the builder before save.
 func (dcc *DefaultContainerCreate) defaults() {
-	if _, ok := dcc.mutation.String(); !ok {
-		v := defaultcontainer.DefaultString
-		dcc.mutation.SetString(v)
+	if _, ok := dcc.mutation.Stringdef(); !ok {
+		v := defaultcontainer.DefaultStringdef
+		dcc.mutation.SetStringdef(v)
 	}
 	if _, ok := dcc.mutation.Int(); !ok {
 		v := defaultcontainer.DefaultInt
@@ -165,8 +165,8 @@ func (dcc *DefaultContainerCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (dcc *DefaultContainerCreate) check() error {
-	if _, ok := dcc.mutation.String(); !ok {
-		return &ValidationError{Name: "string", err: errors.New("ent: missing required field \"string\"")}
+	if _, ok := dcc.mutation.Stringdef(); !ok {
+		return &ValidationError{Name: "stringdef", err: errors.New("ent: missing required field \"stringdef\"")}
 	}
 	if _, ok := dcc.mutation.Int(); !ok {
 		return &ValidationError{Name: "int", err: errors.New("ent: missing required field \"int\"")}
@@ -212,13 +212,13 @@ func (dcc *DefaultContainerCreate) createSpec() (*DefaultContainer, *sqlgraph.Cr
 			},
 		}
 	)
-	if value, ok := dcc.mutation.String(); ok {
+	if value, ok := dcc.mutation.Stringdef(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: defaultcontainer.FieldString,
+			Column: defaultcontainer.FieldStringdef,
 		})
-		_node.String = value
+		_node.Stringdef = value
 	}
 	if value, ok := dcc.mutation.Int(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{

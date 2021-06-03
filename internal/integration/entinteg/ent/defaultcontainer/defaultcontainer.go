@@ -11,8 +11,8 @@ const (
 	Label = "default_container"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
-	// FieldString holds the string denoting the string field in the database.
-	FieldString = "string"
+	// FieldStringdef holds the string denoting the stringdef field in the database.
+	FieldStringdef = "stringdef"
 	// FieldInt holds the string denoting the int field in the database.
 	FieldInt = "int"
 	// FieldBool holds the string denoting the bool field in the database.
@@ -28,7 +28,7 @@ const (
 // Columns holds all SQL columns for defaultcontainer fields.
 var Columns = []string{
 	FieldID,
-	FieldString,
+	FieldStringdef,
 	FieldInt,
 	FieldBool,
 	FieldEnum,
@@ -46,8 +46,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
-	// DefaultString holds the default value on creation for the "string" field.
-	DefaultString string
+	// DefaultStringdef holds the default value on creation for the "stringdef" field.
+	DefaultStringdef string
 	// DefaultInt holds the default value on creation for the "int" field.
 	DefaultInt int
 	// DefaultBool holds the default value on creation for the "bool" field.
