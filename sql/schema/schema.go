@@ -127,20 +127,6 @@ const (
 	SetDefault ReferenceOption = "SET DEFAULT"
 )
 
-// StorageBytes represents the number of bytes used to store a value in an integer column.
-type StorageBytes uint8
-
-// Storage sizes in bytes, used by IntegerType columns, so they can be translated
-// to dialect specific integer types such as TINYINT and BIGINT.
-const (
-	Unspecified StorageBytes = 0
-	OneByte     StorageBytes = 1
-	TwoBytes    StorageBytes = 2
-	ThreeBytes  StorageBytes = 3
-	FourBytes   StorageBytes = 4
-	EightBytes  StorageBytes = 8
-)
-
 type (
 	// A Type represents a database type. The types below implements this
 	// interface and can be used for describing schemas.
@@ -182,10 +168,10 @@ type (
 
 	// IntegerType represents an int type.
 	IntegerType struct {
-		T            string
-		Unsigned     bool
-		StorageBytes StorageBytes
-		Attrs        []Attr
+		T        string
+		Unsigned bool
+		Size     uint8 // Size is the size in bytes used to store the value.
+		Attrs    []Attr
 	}
 
 	// DecimalType represents a fixed-point type that stores exact numeric values.
@@ -245,7 +231,7 @@ type (
 		attr()
 	}
 
-	// A column comment.
+	// Comment is a textual comment describing the column.
 	Comment struct {
 		Text string
 	}

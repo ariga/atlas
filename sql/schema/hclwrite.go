@@ -3,6 +3,8 @@ package schema
 import (
 	"bytes"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hcl/v2/hclwrite"
@@ -237,12 +239,9 @@ func hclColumn(c *Column) (*hclBlock, error) {
 	case *BoolType:
 		col.setStrAttr("type", "boolean")
 	case *IntegerType:
-		col.setStrAttr("type", "integer")
+		col.setStrAttr("type", toIntTypeName(ct))
 		if ct.Unsigned {
 			col.setBoolAttr("unsigned", ct.Unsigned)
-		}
-		if ct.StorageBytes != Unspecified {
-			col.setNumAttr("storage_bytes", int64(ct.StorageBytes))
 		}
 	case *FloatType:
 		col.setStrAttr("type", "float")
@@ -272,4 +271,17 @@ func hclColumn(c *Column) (*hclBlock, error) {
 		return nil, fmt.Errorf("schema: unmapped col type %T", c.Type.Type)
 	}
 	return col, nil
+}
+
+func toIntTypeName(t *IntegerType) string {
+	var b strings.Builder
+	if t.Unsigned {
+		b.WriteString("u")
+	}
+	b.WriteString("int")
+	if t.Size != 4 { // render 32 bits as "int" or "uint"
+		bits := int(t.Size * 8)
+		b.WriteString(strconv.Itoa(bits))
+	}
+	return b.String()
 }

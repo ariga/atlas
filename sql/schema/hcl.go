@@ -3,6 +3,7 @@ package schema
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -71,7 +72,7 @@ func (c *DefaultHCLConverter) ConvertAttrs(ctx *hcl.EvalContext, column *ColumnH
 
 func (c *DefaultHCLConverter) convertType(ctx *hcl.EvalContext, column *ColumnHCL) (Type, error) {
 	switch column.TypeName {
-	case "integer":
+	case "int", "int8", "int16", "int64", "uint", "uint8", "uint16", "uint64":
 		return c.convertInteger(ctx, column)
 	case "string":
 		return c.convertString(ctx, column)
@@ -127,26 +128,25 @@ func (*DefaultHCLConverter) convertBinary(ctx *hcl.EvalContext, col *ColumnHCL) 
 }
 
 func (*DefaultHCLConverter) convertInteger(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
-	var v struct {
-		Unsigned     bool         `hcl:"unsigned,optional"`
-		StorageBytes StorageBytes `hcl:"storage_bytes,optional"`
-		Remain       hcl.Body     `hcl:",remain"`
+	out := &IntegerType{
+		T: col.TypeName,
 	}
-	if col.Remain != nil {
-		if diag := gohcl.DecodeBody(col.Remain, ctx, &v); diag.HasErrors() {
-			return nil, diag
-		}
+	if strings.HasPrefix(col.TypeName, "u") {
+		out.Unsigned = true
 	}
-	switch v.StorageBytes {
-	case Unspecified, OneByte, TwoBytes, ThreeBytes, FourBytes, EightBytes:
+	switch col.TypeName {
+	case "int8", "uint8":
+		out.Size = 1
+	case "int16", "uint16":
+		out.Size = 2
+	case "int32", "uint32", "int", "integer", "uint":
+		out.Size = 4
+	case "int64", "uint64":
+		out.Size = 8
 	default:
-		return nil, fmt.Errorf("schema: unsupported storage_bytes size: %q", v.StorageBytes)
+		return nil, fmt.Errorf("schema: unknown integer column type %q", col.TypeName)
 	}
-	return &IntegerType{
-		T:            col.TypeName,
-		Unsigned:     v.Unsigned,
-		StorageBytes: v.StorageBytes,
-	}, nil
+	return out, nil
 }
 
 func (*DefaultHCLConverter) convertDecimal(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
