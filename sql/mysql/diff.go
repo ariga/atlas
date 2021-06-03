@@ -3,6 +3,7 @@ package mysql
 import (
 	"fmt"
 	"reflect"
+	"sort"
 
 	"ariga.io/atlas/sql/schema"
 
@@ -325,7 +326,7 @@ func (d *Diff) charsetChange(from, top, to []schema.Attr) schema.Change {
 func (d *Diff) fkChange(from, to *schema.ForeignKey) schema.ChangeKind {
 	var change schema.ChangeKind
 	switch {
-	case from.Table.Name != to.Table.Name || from.Table.Schema.Name != to.Table.Schema.Name:
+	case from.Table.Name != to.Table.Name:
 		change |= schema.ChangeRefTable | schema.ChangeRefColumn
 	case len(from.RefColumns) != len(to.RefColumns):
 		change |= schema.ChangeRefColumn
@@ -346,13 +347,25 @@ func (d *Diff) fkChange(from, to *schema.ForeignKey) schema.ChangeKind {
 			}
 		}
 	}
-	if from.OnUpdate != to.OnUpdate {
+	if actionChanged(from.OnUpdate, to.OnUpdate) {
 		change |= schema.ChangeUpdateAction
 	}
-	if from.OnDelete != to.OnDelete {
+	if actionChanged(from.OnDelete, to.OnDelete) {
 		change |= schema.ChangeDeleteAction
 	}
 	return change
+}
+
+func actionChanged(from, to schema.ReferenceOption) bool {
+	// According to MySQL docs, specifying RESTRICT (or NO ACTION)
+	// is the same as omitting the ON DELETE or ON UPDATE clause.
+	if from == "" || from == schema.Restrict {
+		from = schema.NoAction
+	}
+	if to == "" || to == schema.Restrict {
+		to = schema.NoAction
+	}
+	return from != to
 }
 
 func commentChange(from, to []schema.Attr) schema.ChangeKind {
@@ -367,9 +380,13 @@ func partsChange(from, to []*schema.IndexPart) schema.ChangeKind {
 	if len(from) != len(to) {
 		return schema.ChangeParts
 	}
+	// MySQL starts counting the sequence number from 1, but internal tools start counting
+	// from 0. Therefore, we care only about the parts order and not their seqno attribute.
+	sort.Slice(to, func(i, j int) bool { return to[i].SeqNo < to[j].SeqNo })
+	sort.Slice(from, func(i, j int) bool { return from[i].SeqNo < from[j].SeqNo })
 	for i := range from {
 		switch {
-		case from[i].SeqNo != to[i].SeqNo || len(from[i].Attrs) != len(to[i].Attrs):
+		case len(from[i].Attrs) != len(to[i].Attrs):
 			return schema.ChangeParts
 		case from[i].C != nil && to[i].C != nil:
 			if from[i].C.Name != to[i].C.Name {

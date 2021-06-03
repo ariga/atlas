@@ -5,9 +5,8 @@ schema "todo" {
 table "users" {
   schema = schema.todo
   column "id" {
-    type = "integer"
+    type = "uint"
     null = false
-    unsigned = true
   }
   column "name" {
     type = "string"
@@ -19,7 +18,7 @@ table "users" {
 table "roles" {
   schema = schema.todo
   column "id" {
-    type = "integer"
+    type = "int"
   }
   column "name" {
     type = "string"
@@ -29,7 +28,7 @@ table "roles" {
 table "todos" {
   schema = schema.todo
   column "id" {
-    type = "integer"
+    type = "int"
   }
   column "content" {
     type = "string"
@@ -63,5 +62,23 @@ table "todos" {
   }
   column "json_col" {
     type = "json"
+  }
+  column "int8" {
+    type = "int8"
+  }
+  column "uint8" {
+    type = "uint8"
+  }
+  column "int16" {
+    type = "int16"
+  }
+  column "int" {
+    type = "int"
+  }
+  column "int64" {
+    type = "int64"
+  }
+  column "uint64" {
+    type = "uint64"
   }
 }

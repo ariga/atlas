@@ -5,7 +5,7 @@ schema "todo" {
 table "tasks" {
   schema = schema.todo
   column "id" {
-    type = "integer"
+    type = "int"
   }
   column "text" {
     type = "string"
@@ -26,10 +26,10 @@ table "tasks" {
 table "group_vals" {
   schema = schema.todo
   column "id" {
-    type = "integer"
+    type = "int"
   }
   column "group_id" {
-    type = "integer"
+    type = "int"
   }
   column "value" {
     type = "string"
@@ -45,10 +45,10 @@ table "group_vals" {
 table "resources" {
   schema = schema.todo
   column "id" {
-    type = "integer"
+    type = "int"
   }
   column "task_id" {
-    type = "integer"
+    type = "int"
   }
   column "url" {
     type = "string"

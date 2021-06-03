@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -9,74 +10,171 @@ import (
 )
 
 func TestBasicSchemaUnmarshal(t *testing.T) {
-	filename := "testdata/basic_schema.hcl"
-	bytes, err := ioutil.ReadFile(filename)
-	require.NoError(t, err)
-	schemas, err := UnmarshalHCL(bytes, filename)
-	require.NoError(t, err)
-	require.EqualValues(t, schemas[0].Name, "todo")
-	tables := schemas[0].Tables
-	require.EqualValues(t, tables[0].Name, "users")
-	require.EqualValues(t, tables[0].Columns[0].Name, "id")
-	require.EqualValues(t, &ColumnType{
-		Null: false,
-		Type: &IntegerType{
-			T:        "integer",
-			Unsigned: true,
+	schema := getTestSchema(t, "basic_schema.hcl")
+	require.EqualValues(t, schema.Name, "todo")
+
+	for _, tt := range []struct {
+		table, column string
+		expected      *ColumnType
+	}{
+		{
+			table:  "users",
+			column: "id",
+			expected: &ColumnType{
+				Null: false,
+				Type: &IntegerType{
+					T:        "uint",
+					Unsigned: true,
+					Size:     4,
+				},
+			},
 		},
-	}, tables[0].Columns[0].Type)
-	require.EqualValues(t, tables[0].Columns[1].Name, "name")
-	require.EqualValues(t, &ColumnType{
-		Null: false,
-		Type: &IntegerType{
-			T: "integer",
+		{
+			table:  "users",
+			column: "name",
+			expected: &ColumnType{
+				Null: true,
+				Type: &StringType{
+					T:    "string",
+					Size: 255,
+				},
+			},
 		},
-	}, tables[1].Columns[0].Type)
-	require.EqualValues(t, tables[1].Name, "roles")
-	require.EqualValues(t, tables[1].Columns[0].Name, "id")
-	require.EqualValues(t, tables[1].Columns[1].Name, "name")
-	require.EqualValues(t, &ColumnType{
-		Null: false,
-		Type: &StringType{
-			T:    "string",
-			Size: 0,
+		{
+			table:  "roles",
+			column: "id",
+			expected: &ColumnType{
+				Null: false,
+				Type: &IntegerType{
+					T:    "int",
+					Size: 4,
+				},
+			},
 		},
-	}, tables[1].Columns[1].Type)
-	require.EqualValues(t, tables[2].Name, "todos")
-	require.EqualValues(t, &EnumType{
-		Values: []string{"pending", "in_progress", "done"},
-	}, tables[2].Columns[2].Type.Type)
-	require.EqualValues(t, &BinaryType{
-		T:    "binary",
-		Size: 128,
-	}, tables[2].Columns[3].Type.Type)
-	require.EqualValues(t, &BoolType{
-		T: "boolean",
-	}, tables[2].Columns[4].Type.Type)
-	require.EqualValues(t, &DecimalType{
-		T:         "decimal",
-		Precision: 2,
-		Scale:     5,
-	}, tables[2].Columns[5].Type.Type)
-	require.EqualValues(t, &FloatType{
-		T:         "float",
-		Precision: 2,
-	}, tables[2].Columns[6].Type.Type)
-	require.EqualValues(t, &TimeType{
-		T: "time",
-	}, tables[2].Columns[7].Type.Type)
-	require.EqualValues(t, &TimeType{
-		T: "json",
-	}, tables[2].Columns[8].Type.Type)
+		{
+			table:  "roles",
+			column: "name",
+			expected: &ColumnType{
+				Type: &StringType{
+					T: "string",
+				},
+			},
+		},
+		{
+			table:  "todos",
+			column: "status",
+			expected: &ColumnType{
+				Type: &EnumType{
+					Values: []string{"pending", "in_progress", "done"},
+				},
+			},
+		},
+		{
+			table:  "todos",
+			column: "signature",
+			expected: &ColumnType{
+				Type: &BinaryType{
+					T:    "binary",
+					Size: 128,
+				},
+			},
+		},
+		{
+			table:  "todos",
+			column: "visible",
+			expected: &ColumnType{
+				Type: &BoolType{
+					T: "boolean",
+				},
+			},
+		},
+		{
+			table:  "todos",
+			column: "decimal_col",
+			expected: &ColumnType{
+				Type: &DecimalType{
+					T:         "decimal",
+					Precision: 2,
+					Scale:     5,
+				},
+			},
+		},
+		{
+			table:  "todos",
+			column: "float_col",
+			expected: &ColumnType{
+				Type: &FloatType{
+					T:         "float",
+					Precision: 2,
+				},
+			},
+		},
+		{
+			table:  "todos",
+			column: "created",
+			expected: &ColumnType{
+				Type: &TimeType{
+					T: "time",
+				},
+			},
+		},
+		{
+			table:  "todos",
+			column: "json_col",
+			expected: &ColumnType{
+				Type: &JSONType{
+					T: "json",
+				},
+			},
+		},
+		{
+			table:  "todos",
+			column: "int8",
+			expected: &ColumnType{
+				Type: &IntegerType{
+					T:    "int8",
+					Size: 1,
+				},
+			},
+		},
+		{
+			table:  "todos",
+			column: "uint8",
+			expected: &ColumnType{
+				Type: &IntegerType{
+					T:        "uint8",
+					Size:     1,
+					Unsigned: true,
+				},
+			},
+		},
+		{
+			table:  "todos",
+			column: "uint64",
+			expected: &ColumnType{
+				Type: &IntegerType{
+					T:        "uint64",
+					Size:     8,
+					Unsigned: true,
+				},
+			},
+		},
+	} {
+		t.Run(fmt.Sprintf("%s_%s", tt.table, tt.column), func(t *testing.T) {
+			tbl, ok := schema.Table(tt.table)
+			require.Truef(t, ok, "expected table named %q", tt.table)
+			col, ok := tbl.Column(tt.column)
+			require.Truef(t, ok, "expected column named %q", tt.column)
+			require.EqualValues(t, tt.expected, col.Type)
+		})
+	}
 }
 
 func TestDefault(t *testing.T) {
-	filename := "testdata/defaults.hcl"
-	bytes, err := ioutil.ReadFile(filename)
-	require.NoError(t, err)
-	schemas, err := UnmarshalHCL(bytes, filename)
-	require.NoError(t, err)
-	require.EqualValues(t, schemas[0].Tables[0], &Table{
+	schema := getTestSchema(t, "defaults.hcl")
+	tbl, ok := schema.Table("tasks")
+	require.True(t, ok, "expected table tasks")
+	require.EqualValues(t, tbl, &Table{
 		Name: "tasks",
 		Schema: &Schema{
 			Name: "todo",
@@ -104,12 +202,10 @@ func TestDefault(t *testing.T) {
 }
 
 func TestAttributes(t *testing.T) {
-	filename := "testdata/attributes.hcl"
-	bytes, err := ioutil.ReadFile(filename)
-	require.NoError(t, err)
-	schemas, err := UnmarshalHCL(bytes, filename)
-	require.NoError(t, err)
-	require.EqualValues(t, schemas[0].Tables[0], &Table{
+	schema := getTestSchema(t, "attributes.hcl")
+	tbl, ok := schema.Table("tasks")
+	require.True(t, ok, "expected table tasks")
+	require.EqualValues(t, tbl, &Table{
 		Name: "tasks",
 		Schema: &Schema{
 			Name: "todo",
@@ -133,26 +229,22 @@ func TestAttributes(t *testing.T) {
 }
 
 func TestPrimaryKey(t *testing.T) {
-	filename := "testdata/indexes.hcl"
-	bytes, err := ioutil.ReadFile(filename)
-	require.NoError(t, err)
-	schemas, err := UnmarshalHCL(bytes, filename)
-	require.NoError(t, err)
-	tbl1 := schemas[0].Tables[0]
-	tbl2 := schemas[0].Tables[1]
+	schema := getTestSchema(t, "indexes.hcl")
+	tbl1, ok := schema.Table("tasks")
+	require.True(t, ok, "expected table tasks")
+	tbl2, ok := schema.Table("group_vals")
+	require.True(t, ok, "expected table group_vals")
 	require.EqualValues(t, tbl1.Columns[0], tbl1.PrimaryKey.Parts[0].C)
 	require.EqualValues(t, tbl2.Columns[0], tbl2.PrimaryKey.Parts[0].C)
 	require.EqualValues(t, tbl2.Columns[1], tbl2.PrimaryKey.Parts[1].C)
 }
 
 func TestForeignKey(t *testing.T) {
-	filename := "testdata/indexes.hcl"
-	bytes, err := ioutil.ReadFile(filename)
-	require.NoError(t, err)
-	schemas, err := UnmarshalHCL(bytes, filename)
-	require.NoError(t, err)
-	tasks := schemas[0].Tables[0]
-	resources := schemas[0].Tables[2]
+	schema := getTestSchema(t, "indexes.hcl")
+	tasks, ok := schema.Table("tasks")
+	require.True(t, ok, "expected table tasks")
+	resources, ok := schema.Table("resources")
+	require.True(t, ok, "expected table resources")
 	require.EqualValues(t, &ForeignKey{
 		Symbol:     "resource_task",
 		Table:      resources,
@@ -164,12 +256,9 @@ func TestForeignKey(t *testing.T) {
 }
 
 func TestIndex(t *testing.T) {
-	filename := "testdata/indexes.hcl"
-	bytes, err := ioutil.ReadFile(filename)
-	require.NoError(t, err)
-	schemas, err := UnmarshalHCL(bytes, filename)
-	require.NoError(t, err)
-	tasks := schemas[0].Tables[0]
+	schema := getTestSchema(t, "indexes.hcl")
+	tasks, ok := schema.Table("tasks")
+	require.True(t, ok, "expected table tasks")
 	textCol, ok := tasks.Column("text")
 	require.True(t, ok)
 	require.EqualValues(t, &Index{
@@ -206,5 +295,14 @@ func TestRewriteHCL(t *testing.T) {
 			require.EqualValues(t, fromFile, generated)
 		})
 	}
+}
 
+func getTestSchema(t *testing.T, filename string) *Schema {
+	path := filepath.Join("testdata", filename)
+	bytes, err := ioutil.ReadFile(path)
+	require.NoError(t, err)
+	schemas, err := UnmarshalHCL(bytes, path)
+	require.NoError(t, err)
+	require.Len(t, schemas, 1)
+	return schemas[0]
 }
