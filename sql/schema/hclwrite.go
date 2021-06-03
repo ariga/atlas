@@ -241,6 +241,9 @@ func hclColumn(c *Column) (*hclBlock, error) {
 		if ct.Unsigned {
 			col.setBoolAttr("unsigned", ct.Unsigned)
 		}
+		if ct.StorageBytes != Unspecified {
+			col.setNumAttr("storage_bytes", int64(ct.StorageBytes))
+		}
 	case *FloatType:
 		col.setStrAttr("type", "float")
 		col.setNumAttr("precision", int64(ct.Precision))
