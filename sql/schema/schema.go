@@ -231,7 +231,7 @@ type (
 		attr()
 	}
 
-	// Comment is a textual comment describing the column.
+	// Comment describes a schema element comment.
 	Comment struct {
 		Text string
 	}

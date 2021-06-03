@@ -129,10 +129,8 @@ func (*DefaultHCLConverter) convertBinary(ctx *hcl.EvalContext, col *ColumnHCL) 
 
 func (*DefaultHCLConverter) convertInteger(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
 	out := &IntegerType{
-		T: col.TypeName,
-	}
-	if strings.HasPrefix(col.TypeName, "u") {
-		out.Unsigned = true
+		T:        col.TypeName,
+		Unsigned: strings.HasPrefix(col.TypeName, "u"),
 	}
 	switch col.TypeName {
 	case "int8", "uint8":
