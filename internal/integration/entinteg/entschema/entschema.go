@@ -38,7 +38,7 @@ func addTables(sch *schema.Schema, graph *gen.Graph) error {
 			}
 			if ec.Unique {
 				tbl.Indexes = append(tbl.Indexes, &schema.Index{
-					Name:   fmt.Sprintf("%s_%s_uniq", tbl.Name, ec.Name),
+					Name:   ec.Name,
 					Unique: true,
 					Table:  tbl,
 					Attrs:  nil,
@@ -49,7 +49,7 @@ func addTables(sch *schema.Schema, graph *gen.Graph) error {
 			}
 		}
 		tbl.PrimaryKey = pk
-		if err := addTableIndexes(tbl, etbl); err != nil {
+		if err := addIndexes(tbl, etbl); err != nil {
 			return err
 		}
 		sch.Tables = append(sch.Tables, tbl)
@@ -57,7 +57,7 @@ func addTables(sch *schema.Schema, graph *gen.Graph) error {
 	return nil
 }
 
-func addTableIndexes(tbl *schema.Table, etbl *sqlschema.Table) error {
+func addIndexes(tbl *schema.Table, etbl *sqlschema.Table) error {
 	for _, eidx := range etbl.Indexes {
 		parts := make([]*schema.IndexPart, 0, len(eidx.Columns))
 		for _, c := range eidx.Columns {
@@ -82,43 +82,43 @@ func addTableIndexes(tbl *schema.Table, etbl *sqlschema.Table) error {
 
 func addForeignKeys(sch *schema.Schema, graph *gen.Graph) error {
 	for _, etbl := range graph.Tables() {
-		if len(etbl.ForeignKeys) > 0 {
-			tbl, ok := sch.Table(etbl.Name)
+		if len(etbl.ForeignKeys) == 0 {
+			continue
+		}
+		tbl, ok := sch.Table(etbl.Name)
+		if !ok {
+			return fmt.Errorf("entschema: could not find table %q", etbl.Name)
+		}
+		for _, efk := range etbl.ForeignKeys {
+			refTable, ok := sch.Table(efk.RefTable.Name)
 			if !ok {
-				return fmt.Errorf("entschema: could not find table %q", etbl.Name)
+				return fmt.Errorf("entschema: could not find ref table %q", refTable.Name)
 			}
-			for _, efk := range etbl.ForeignKeys {
-				refTable, ok := sch.Table(efk.RefTable.Name)
+			cols := make([]*schema.Column, 0, len(efk.Columns))
+			refCols := make([]*schema.Column, 0, len(efk.RefColumns))
+			for _, c := range efk.Columns {
+				col, ok := tbl.Column(c.Name)
 				if !ok {
-					return fmt.Errorf("entschema: could not find ref table %q", refTable.Name)
+					return fmt.Errorf("entschema: could not find column %q in table %q", c.Name, etbl.Name)
 				}
-				cols := make([]*schema.Column, 0, len(efk.Columns))
-				refCols := make([]*schema.Column, 0, len(efk.RefColumns))
-				for _, c := range efk.Columns {
-					col, ok := tbl.Column(c.Name)
-					if !ok {
-						return fmt.Errorf("entschema: could not find column %q in table %q", c.Name, etbl.Name)
-					}
-					cols = append(cols, col)
-				}
-				for _, c := range efk.RefColumns {
-					col, ok := refTable.Column(c.Name)
-					if !ok {
-						return fmt.Errorf("entschema: could not find column %q in ref table %q", c.Name, etbl.Name)
-					}
-					refCols = append(refCols, col)
-				}
-				fk := &schema.ForeignKey{
-					Symbol:     efk.Symbol,
-					Table:      tbl,
-					Columns:    cols,
-					RefTable:   refTable,
-					RefColumns: refCols,
-					OnUpdate:   schema.ReferenceOption(efk.OnUpdate),
-					OnDelete:   schema.ReferenceOption(efk.OnDelete),
-				}
-				tbl.ForeignKeys = append(tbl.ForeignKeys, fk)
+				cols = append(cols, col)
 			}
+			for _, c := range efk.RefColumns {
+				col, ok := refTable.Column(c.Name)
+				if !ok {
+					return fmt.Errorf("entschema: could not find column %q in ref table %q", c.Name, etbl.Name)
+				}
+				refCols = append(refCols, col)
+			}
+			tbl.ForeignKeys = append(tbl.ForeignKeys, &schema.ForeignKey{
+				Symbol:     efk.Symbol,
+				Table:      tbl,
+				Columns:    cols,
+				RefTable:   refTable,
+				RefColumns: refCols,
+				OnUpdate:   schema.ReferenceOption(efk.OnUpdate),
+				OnDelete:   schema.ReferenceOption(efk.OnDelete),
+			})
 		}
 	}
 	return nil
