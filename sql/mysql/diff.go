@@ -173,12 +173,12 @@ func (d *Diff) columnChange(from, to *schema.Column) (schema.ChangeKind, error) 
 		change |= schema.ChangeNull
 	}
 	change |= commentChange(from.Attrs, to.Attrs)
-	c1, c2 := collate(from.Attrs), collate(to.Attrs)
-	if (c1 != nil) != (c2 != nil) || (c1 != nil && c1.V != c2.V) {
+	var c1, c2 schema.Collation
+	if has(from.Attrs, &c1) != has(to.Attrs, &c2) || c1.V != c2.V {
 		change |= schema.ChangeCollation
 	}
-	s1, s2 := charset(from.Attrs), charset(to.Attrs)
-	if (s1 != nil) != (s2 != nil) || (s1 != nil && s1.V != s2.V) {
+	var cr1, cr2 schema.Charset
+	if has(from.Attrs, &cr1) != has(to.Attrs, &cr2) || cr1.V != cr2.V {
 		change |= schema.ChangeCharset
 	}
 	typeChanged, err := d.typeChanged(from, to)
@@ -277,22 +277,23 @@ func (d *Diff) indexChange(from, to *schema.Index) schema.ChangeKind {
 // collationChange returns the schema change for migrating the collation if
 // it was changed and its not the default attribute inherited from its parent.
 func (d *Diff) collationChange(from, top, to []schema.Attr) schema.Change {
-	switch fromA, topA, toA := collate(from), collate(top), collate(to); {
-	case fromA == nil && toA == nil:
-	case fromA == nil:
+	var fromC, topC, toC schema.Collation
+	switch fromHas, topHas, toHas := has(from, &fromC), has(top, &topC), has(to, &toC); {
+	case !fromHas && !toHas:
+	case !fromHas:
 		return &schema.AddAttr{
-			A: toA,
+			A: &toC,
 		}
-	case toA == nil:
-		if topA == nil || fromA.V != topA.V {
+	case !toHas:
+		if !topHas || fromC.V != topC.V {
 			return &schema.DropAttr{
-				A: fromA,
+				A: &fromC,
 			}
 		}
-	case fromA.V != toA.V:
+	case fromC.V != toC.V:
 		return &schema.ModifyAttr{
-			From: fromA,
-			To:   toA,
+			From: &fromC,
+			To:   &toC,
 		}
 	}
 	return noChange
@@ -301,22 +302,23 @@ func (d *Diff) collationChange(from, top, to []schema.Attr) schema.Change {
 // charsetChange returns the schema change for migrating the collation if
 // it was changed and its not the default attribute inherited from its parent.
 func (d *Diff) charsetChange(from, top, to []schema.Attr) schema.Change {
-	switch fromA, topA, toA := charset(from), charset(top), charset(to); {
-	case fromA == nil && toA == nil:
-	case fromA == nil:
+	var fromC, topC, toC schema.Charset
+	switch fromHas, topHas, toHas := has(from, &fromC), has(top, &topC), has(to, &toC); {
+	case !fromHas && !toHas:
+	case !fromHas:
 		return &schema.AddAttr{
-			A: toA,
+			A: &toC,
 		}
-	case toA == nil:
-		if topA == nil || fromA.V != topA.V {
+	case !toHas:
+		if !topHas || fromC.V != topC.V {
 			return &schema.DropAttr{
-				A: fromA,
+				A: &fromC,
 			}
 		}
-	case fromA.V != toA.V:
+	case fromC.V != toC.V:
 		return &schema.ModifyAttr{
-			From: fromA,
-			To:   toA,
+			From: &fromC,
+			To:   &toC,
 		}
 	}
 	return noChange
@@ -369,8 +371,8 @@ func actionChanged(from, to schema.ReferenceOption) bool {
 }
 
 func commentChange(from, to []schema.Attr) schema.ChangeKind {
-	c1, c2 := comment(from), comment(to)
-	if (c1 != nil) != (c2 != nil) || (c1 != nil && c1.Text != c2.Text) {
+	var c1, c2 schema.Comment
+	if has(from, &c1) != has(to, &c2) || c1.Text != c2.Text {
 		return schema.ChangeComment
 	}
 	return schema.NoChange
@@ -392,8 +394,8 @@ func partsChange(from, to []*schema.IndexPart) schema.ChangeKind {
 			if from[i].C.Name != to[i].C.Name {
 				return schema.ChangeParts
 			}
-			s1, s2 := subpart(from[i].Attrs), subpart(to[i].Attrs)
-			if (s1 != nil) != (s2 != nil) || (s1 != nil && s2 != nil && s1.Len != s2.Len) {
+			var s1, s2 SubPart
+			if has(from[i].Attrs, &s1) != has(to[i].Attrs, &s2) || s1.Len != s2.Len {
 				return schema.ChangeParts
 			}
 		case from[i].X != nil && to[i].X != nil:
@@ -409,24 +411,6 @@ func partsChange(from, to []*schema.IndexPart) schema.ChangeKind {
 
 // noChange describes a zero change.
 var noChange struct{ schema.Change }
-
-func collate(attr []schema.Attr) *schema.Collation {
-	for i := range attr {
-		if c, ok := attr[i].(*schema.Collation); ok {
-			return c
-		}
-	}
-	return nil
-}
-
-func charset(attr []schema.Attr) *schema.Charset {
-	for i := range attr {
-		if c, ok := attr[i].(*schema.Charset); ok {
-			return c
-		}
-	}
-	return nil
-}
 
 func checks(attr []schema.Attr) (checks []*Check) {
 	for i := range attr {
@@ -446,22 +430,18 @@ func checkByName(attr []schema.Attr, name string) (*Check, bool) {
 	return nil, false
 }
 
-func comment(attr []schema.Attr) *schema.Comment {
-	for i := range attr {
-		if c, ok := attr[i].(*schema.Comment); ok {
-			return c
+func has(attrs []schema.Attr, target interface{}) bool {
+	rv := reflect.ValueOf(target)
+	if rv.Kind() != reflect.Ptr || rv.IsNil() {
+		panic("mysql: target must be a non-nil pointer")
+	}
+	for _, attr := range attrs {
+		if reflect.TypeOf(attr).AssignableTo(rv.Type()) {
+			rv.Elem().Set(reflect.ValueOf(attr).Elem())
+			return true
 		}
 	}
-	return nil
-}
-
-func subpart(attr []schema.Attr) *SubPart {
-	for i := range attr {
-		if s, ok := attr[i].(*SubPart); ok {
-			return s
-		}
-	}
-	return nil
+	return false
 }
 
 func displayWidth(attr []schema.Attr) *DisplayWidth {
