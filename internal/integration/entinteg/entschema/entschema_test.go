@@ -210,3 +210,22 @@ func (s *ConvertSuite) TestRelationTable() {
 	_, ok = relTable.Column("activity_id")
 	s.Require().True(ok, "expected activity_id column")
 }
+
+func (s *ConvertSuite) TestDefault() {
+	tbl, ok := s.schema.Table("default_containers")
+	s.Require().True(ok, "expected default_containers table")
+	for _, tt := range []struct {
+		col      string
+		expected string
+	}{
+		{col: "string", expected: `"default"`},
+		{col: "int", expected: `1`},
+		{col: "bool", expected: `true`},
+		{col: "enum", expected: `"1"`},
+		{col: "float", expected: `1.5`},
+	} {
+		col, ok := tbl.Column(tt.col)
+		s.Require().Truef(ok, "expected col %q", tt.col)
+		s.Require().EqualValues(tt.expected, col.Default.(*schema.RawExpr).X)
+	}
+}

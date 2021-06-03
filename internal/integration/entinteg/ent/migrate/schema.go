@@ -20,6 +20,22 @@ var (
 		PrimaryKey:  []*schema.Column{ActivitiesColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{},
 	}
+	// DefaultContainersColumns holds the columns for the "default_containers" table.
+	DefaultContainersColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "string", Type: field.TypeString, Default: "default"},
+		{Name: "int", Type: field.TypeInt, Default: 1},
+		{Name: "bool", Type: field.TypeBool, Default: true},
+		{Name: "enum", Type: field.TypeEnum, Enums: []string{"1", "2"}, Default: "1"},
+		{Name: "float", Type: field.TypeFloat64, Default: 1.5},
+	}
+	// DefaultContainersTable holds the schema information for the "default_containers" table.
+	DefaultContainersTable = &schema.Table{
+		Name:        "default_containers",
+		Columns:     DefaultContainersColumns,
+		PrimaryKey:  []*schema.Column{DefaultContainersColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{},
+	}
 	// GroupsColumns holds the columns for the "groups" table.
 	GroupsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -95,6 +111,7 @@ var (
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		ActivitiesTable,
+		DefaultContainersTable,
 		GroupsTable,
 		UsersTable,
 		UserActivitiesTable,

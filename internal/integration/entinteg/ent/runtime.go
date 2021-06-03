@@ -2,8 +2,31 @@
 
 package ent
 
+import (
+	"ariga.io/atlas/integration/entinteg/ent/defaultcontainer"
+	"ariga.io/atlas/integration/entinteg/ent/schema"
+)
+
 // The init function reads all schema descriptors with runtime code
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	defaultcontainerFields := schema.DefaultContainer{}.Fields()
+	_ = defaultcontainerFields
+	// defaultcontainerDescString is the schema descriptor for string field.
+	defaultcontainerDescString := defaultcontainerFields[0].Descriptor()
+	// defaultcontainer.DefaultString holds the default value on creation for the string field.
+	defaultcontainer.DefaultString = defaultcontainerDescString.Default.(string)
+	// defaultcontainerDescInt is the schema descriptor for int field.
+	defaultcontainerDescInt := defaultcontainerFields[1].Descriptor()
+	// defaultcontainer.DefaultInt holds the default value on creation for the int field.
+	defaultcontainer.DefaultInt = defaultcontainerDescInt.Default.(int)
+	// defaultcontainerDescBool is the schema descriptor for bool field.
+	defaultcontainerDescBool := defaultcontainerFields[2].Descriptor()
+	// defaultcontainer.DefaultBool holds the default value on creation for the bool field.
+	defaultcontainer.DefaultBool = defaultcontainerDescBool.Default.(bool)
+	// defaultcontainerDescFloat is the schema descriptor for float field.
+	defaultcontainerDescFloat := defaultcontainerFields[4].Descriptor()
+	// defaultcontainer.DefaultFloat holds the default value on creation for the float field.
+	defaultcontainer.DefaultFloat = defaultcontainerDescFloat.Default.(float64)
 }
