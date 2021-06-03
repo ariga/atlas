@@ -106,7 +106,6 @@ func (*DefaultHCLConverter) convertString(ctx *hcl.EvalContext, col *ColumnHCL) 
 		}
 	}
 	return &StringType{
-		T:    col.TypeName,
 		Size: v.Size,
 	}, nil
 }
@@ -122,14 +121,12 @@ func (*DefaultHCLConverter) convertBinary(ctx *hcl.EvalContext, col *ColumnHCL) 
 		}
 	}
 	return &BinaryType{
-		T:    col.TypeName,
 		Size: v.Size,
 	}, nil
 }
 
 func (*DefaultHCLConverter) convertInteger(ctx *hcl.EvalContext, col *ColumnHCL) (Type, error) {
 	out := &IntegerType{
-		T:        col.TypeName,
 		Unsigned: strings.HasPrefix(col.TypeName, "u"),
 	}
 	switch col.TypeName {
@@ -158,7 +155,6 @@ func (*DefaultHCLConverter) convertDecimal(ctx *hcl.EvalContext, col *ColumnHCL)
 		}
 	}
 	return &DecimalType{
-		T:         col.TypeName,
 		Precision: v.Precision,
 		Scale:     v.Scale,
 	}, nil
@@ -174,7 +170,6 @@ func (*DefaultHCLConverter) convertFloat(ctx *hcl.EvalContext, col *ColumnHCL) (
 		}
 	}
 	return &FloatType{
-		T:         col.TypeName,
 		Precision: v.Precision,
 	}, nil
 }
@@ -195,21 +190,15 @@ func (*DefaultHCLConverter) convertEnum(ctx *hcl.EvalContext, col *ColumnHCL) (T
 }
 
 func (*DefaultHCLConverter) convertBool(_ *hcl.EvalContext, col *ColumnHCL) (Type, error) {
-	return &BoolType{
-		T: col.TypeName,
-	}, nil
+	return &BoolType{}, nil
 }
 
 func (*DefaultHCLConverter) convertTime(_ *hcl.EvalContext, col *ColumnHCL) (Type, error) {
-	return &TimeType{
-		T: col.TypeName,
-	}, nil
+	return &TimeType{}, nil
 }
 
 func (*DefaultHCLConverter) convertJSON(_ *hcl.EvalContext, col *ColumnHCL) (Type, error) {
-	return &JSONType{
-		T: col.TypeName,
-	}, nil
+	return &JSONType{}, nil
 }
 
 // UnmarshalHCL converts HCL .schema documents into a slice of Table elements.
