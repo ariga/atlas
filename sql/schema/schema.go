@@ -230,7 +230,7 @@ type (
 		attr()
 	}
 
-	// A column comment.
+	// Comment describes a schema element comment.
 	Comment struct {
 		Text string
 	}

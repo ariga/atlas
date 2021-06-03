@@ -70,6 +70,7 @@ func (m *Migrate) addTable(ctx context.Context, add *schema.AddTable) error {
 		}
 		parts(b, idx.Parts)
 	}
+	fks(b, add.T.ForeignKeys)
 	b.WriteString("\n)")
 	attrs(b, add.T.Attrs)
 	if _, err := m.ExecContext(ctx, b.String()); err != nil {
@@ -97,6 +98,40 @@ func ident(b *strings.Builder, ident string) {
 	b.WriteByte('`')
 	b.WriteString(ident)
 	b.WriteByte('`')
+}
+
+func fks(b *strings.Builder, fks []*schema.ForeignKey) {
+	for _, fk := range fks {
+		b.WriteString(",\n  ")
+		if fk.Symbol != "" {
+			b.WriteString("CONSTRAINT ")
+			ident(b, fk.Symbol)
+			b.WriteByte(' ')
+		}
+		b.WriteString("FOREIGN KEY (")
+		for i, c := range fk.Columns {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			ident(b, c.Name)
+		}
+		b.WriteString(") REFERENCES ")
+		ident(b, fk.RefTable.Name)
+		b.WriteString(" (")
+		for i, c := range fk.RefColumns {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			ident(b, c.Name)
+		}
+		b.WriteByte(')')
+		if fk.OnUpdate != "" {
+			b.WriteString(" ON UPDATE " + string(fk.OnUpdate))
+		}
+		if fk.OnDelete != "" {
+			b.WriteString(" ON DELETE " + string(fk.OnDelete))
+		}
+	}
 }
 
 func attrs(b *strings.Builder, attrs []schema.Attr) {
