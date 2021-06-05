@@ -268,3 +268,12 @@ func (*UnsupportedType) typ() {}
 func (*Comment) attr()   {}
 func (*Charset) attr()   {}
 func (*Collation) attr() {}
+
+type (
+	// Concretizer takes a Column type which has a non dialect-specific type fills in
+	// dialect specific details. For example, a column of type IntegerType and a size
+	// of 1 byte, will become a TINYINT in MySQL.
+	Concretizer interface {
+		Concretize(*Column) error
+	}
+)
