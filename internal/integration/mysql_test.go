@@ -18,7 +18,6 @@ func TestMySQL(t *testing.T) {
 		t.Run(version, func(t *testing.T) {
 			db, err := sql.Open("mysql", fmt.Sprintf("root:pass@tcp(localhost:%d)/test?parseTime=True", port))
 			require.NoError(t, err)
-			defer db.Close()
 			drv, err := mysql.Open(db)
 			require.NoError(t, err)
 
@@ -98,9 +97,12 @@ func TestMySQL(t *testing.T) {
 				&schema.AddTable{T: postsT},
 			})
 			require.NoError(t, err)
-			defer migrate.Exec(ctx, []schema.Change{
-				&schema.DropTable{T: postsT},
-				&schema.DropTable{T: usersT},
+			t.Cleanup(func() {
+				err := migrate.Exec(ctx, []schema.Change{
+					&schema.DropTable{T: postsT},
+					&schema.DropTable{T: usersT},
+				})
+				require.NoError(t, err)
 			})
 
 			t.Log("comparing tables")
@@ -115,6 +117,26 @@ func TestMySQL(t *testing.T) {
 			changes, err = diff.TableDiff(realm.Schemas[0].Tables[1], usersT)
 			require.NoError(t, err)
 			require.Empty(t, changes)
+
+			usersT.Columns = append(usersT.Columns, &schema.Column{
+				Name:    "a",
+				Type:    &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true},
+				Default: &schema.RawExpr{X: "10"},
+			}, &schema.Column{
+				Name:    "b",
+				Type:    &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true},
+				Default: &schema.RawExpr{X: "10"},
+			})
+			usersT.Indexes = append(usersT.Indexes, &schema.Index{
+				Unique: true,
+				Name:   "a_b_unique",
+				Parts:  []*schema.IndexPart{{C: usersT.Columns[1]}, {C: usersT.Columns[2]}},
+			})
+			changes, err = diff.TableDiff(realm.Schemas[0].Tables[1], usersT)
+			require.NoError(t, err)
+			require.NotEmpty(t, changes)
+			err = migrate.Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+			require.NoError(t, err)
 		})
 	}
 }
