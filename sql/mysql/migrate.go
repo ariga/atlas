@@ -59,10 +59,10 @@ func (m *Migrate) addTable(ctx context.Context, add *schema.AddTable) error {
 		})
 		if len(add.T.ForeignKeys) > 0 {
 			b.Comma()
-			fks(b, add.T.ForeignKeys)
+			fks(b, add.T.ForeignKeys...)
 		}
 	})
-	attrs(b, add.T.Attrs)
+	attrs(b, add.T.Attrs...)
 	if _, err := m.ExecContext(ctx, b.String()); err != nil {
 		return fmt.Errorf("mysql: create table: %w", err)
 	}
@@ -82,7 +82,7 @@ func (m *Migrate) modifyTable(ctx context.Context, modify *schema.ModifyTable) e
 		// might fail if the intermediate state violates the constraints.
 		case *schema.DropIndex:
 			dropIndexes = append(dropIndexes, change)
-		case *schema.DropAttr, *schema.AddForeignKey:
+		case *schema.DropAttr:
 		case *schema.ModifyForeignKey:
 			// Modifying foreign-key may require 2-3 different steps.
 			// Add support for it in future PRs.
@@ -140,12 +140,15 @@ func (m *Migrate) alterTable(ctx context.Context, t *schema.Table, changes []sch
 			}
 			b.P("INDEX").Ident(change.I.Name)
 			indexParts(b, change.I.Parts)
+		case *schema.AddForeignKey:
+			b.P("ADD")
+			fks(b, change.F)
 		case *schema.DropForeignKey:
 			b.P("DROP FOREIGN KEY").Ident(change.F.Symbol)
 		case *schema.AddAttr:
-			attrs(b, []schema.Attr{change.A})
+			attrs(b, change.A)
 		case *schema.ModifyAttr:
-			attrs(b, []schema.Attr{change.To})
+			attrs(b, change.To)
 		}
 	})
 	if _, err := m.ExecContext(ctx, b.String()); err != nil {
@@ -154,7 +157,7 @@ func (m *Migrate) alterTable(ctx context.Context, t *schema.Table, changes []sch
 	return nil
 }
 
-func fks(b *Builder, fks []*schema.ForeignKey) {
+func fks(b *Builder, fks ...*schema.ForeignKey) {
 	b.MapComma(fks, func(i int, b *Builder) {
 		fk := fks[i]
 		if fk.Symbol != "" {
@@ -190,7 +193,7 @@ func column(b *Builder, c *schema.Column) {
 	if x, ok := c.Default.(*schema.RawExpr); ok {
 		b.P("DEFAULT", x.X)
 	}
-	attrs(b, c.Attrs)
+	attrs(b, c.Attrs...)
 }
 
 func indexParts(b *Builder, parts []*schema.IndexPart) {
@@ -206,7 +209,7 @@ func indexParts(b *Builder, parts []*schema.IndexPart) {
 	})
 }
 
-func attrs(b *Builder, attrs []schema.Attr) {
+func attrs(b *Builder, attrs ...schema.Attr) {
 	for i := range attrs {
 		switch a := attrs[i].(type) {
 		case *OnUpdate:
@@ -310,6 +313,11 @@ func (b *Builder) Wrap(f func(b *Builder)) *Builder {
 		b.rewriteLastByte(')')
 	}
 	return b
+}
+
+// String overrides the Buffer.String method and ensure no spaces pad the returned statement.
+func (b *Builder) String() string {
+	return strings.TrimSpace(b.Buffer.String())
 }
 
 func (b *Builder) lastByte() byte {
