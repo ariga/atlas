@@ -1,6 +1,16 @@
 version: "3.9"
 
 services:
+  mysql56:
+    platform: linux/amd64
+    image: mysql:5.6.35
+    environment:
+      MYSQL_DATABASE: test
+      MYSQL_ROOT_PASSWORD: pass
+    healthcheck:
+      test: mysqladmin ping -ppass
+    ports:
+      - 3306:3306
   mysql57:
     platform: linux/amd64
     image: mysql:5.7.26

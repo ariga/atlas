@@ -39,6 +39,19 @@ jobs:
   integration:
     runs-on: ubuntu-latest
     services:
+      mysql56:
+        image: mysql:5.6.35
+        env:
+          MYSQL_DATABASE: test
+          MYSQL_ROOT_PASSWORD: pass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -ppass"
+          --health-interval 10s
+          --health-start-period 10s
+          --health-timeout 5s
+          --health-retries 10
       mysql57:
         image: mysql:5.7.26
         env:
