@@ -97,7 +97,15 @@ func (m *Migrate) modifyTable(ctx context.Context, modify *schema.ModifyTable) e
 			changes[1] = append(changes[1], &schema.AddForeignKey{
 				F: change.To,
 			})
-		case *schema.DropAttr, *schema.ModifyIndex:
+		// Index modification requires rebuilding the index.
+		case *schema.ModifyIndex:
+			changes[0] = append(changes[0], &schema.DropIndex{
+				I: change.From,
+			})
+			changes[1] = append(changes[1], &schema.AddIndex{
+				I: change.To,
+			})
+		case *schema.DropAttr:
 			return fmt.Errorf("mysql: unsupported change type: %T", change)
 		default:
 			changes[1] = append(changes[1], change)
