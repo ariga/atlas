@@ -1,13 +1,7 @@
-package schemaspec
+package schemacodec
 
-// Column holds a specification for a column in an SQL table.
-type Column struct {
-	Name     string
-	TypeName string
-	Default  *string
-	Null     bool
-	Attrs    []*Attr
-	Blocks   []*Block
+type Element interface {
+	elem()
 }
 
 type Attr struct {
@@ -33,3 +27,12 @@ type Bool bool
 func (String) lit() {}
 func (Number) lit() {}
 func (Bool) lit()   {}
+
+func (String) elem()      {}
+func (Number) elem()      {}
+func (Bool) elem()        {}
+func (*Block) elem()      {}
+func (*Attr) elem()       {}
+func (*ColumnSpec) elem() {}
+func (*TableSpec) elem()  {}
+func (*SchemaSpec) elem() {}

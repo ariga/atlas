@@ -3,33 +3,57 @@ package schemahcl
 import (
 	"fmt"
 
-	"ariga.io/atlas/sql/schema/schemaspec"
+	"ariga.io/atlas/sql/schema/schemacodec"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
-func Parse(body []byte, filename string) ([]*schemaspec.Column, error) {
+func Decode(body []byte, spec schemacodec.Spec) error {
 	parser := hclparse.NewParser()
-	srcHCL, diag := parser.ParseHCL(body, filename)
+	srcHCL, diag := parser.ParseHCL(body, "")
 	if diag.HasErrors() {
-		return nil, diag
+		return diag
 	}
 	if srcHCL == nil {
-		return nil, fmt.Errorf("schema: file %q contents is nil", filename)
+		return fmt.Errorf("schema: contents is nil")
 	}
-	f := &fileHCL{}
-	if diag := gohcl.DecodeBody(srcHCL.Body, nil, f); diag.HasErrors() {
-		return nil, diag
+	switch tgt := spec.(type) {
+	case *schemacodec.SchemaSpec:
+		f := &schemaFileHCL{}
+		if diag := gohcl.DecodeBody(srcHCL.Body, nil, f); diag.HasErrors() {
+			return diag
+		}
+		for _, tbl := range f.Tables {
+			spec, err := tbl.spec()
+			if err != nil {
+				return err
+			}
+			tgt.Tables = append(tgt.Tables, spec)
+		}
+		// TODO:
+		// case *schemacodec.MigrationSpec:
 	}
-	var out []*schemaspec.Column
-	for _, c := range f.Columns {
-		spec, err := c.spec()
+	return nil
+}
+
+type tableHCL struct {
+	Name    string    `hcl:",label"`
+	Columns []*colHCL `hcl:"column,block"`
+}
+
+func (t *tableHCL) spec() (*schemacodec.TableSpec, error) {
+	out := &schemacodec.TableSpec{
+		Name: t.Name,
+	}
+	for _, col := range t.Columns {
+		cs, err := col.spec()
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, spec)
+		out.Columns = append(out.Columns, cs)
 	}
 	return out, nil
 }
@@ -42,8 +66,8 @@ type colHCL struct {
 	Remain   hcl.Body `hcl:",remain"`
 }
 
-func (c *colHCL) spec() (*schemaspec.Column, error) {
-	out := &schemaspec.Column{
+func (c *colHCL) spec() (*schemacodec.ColumnSpec, error) {
+	out := &schemacodec.ColumnSpec{
 		Name:     c.Name,
 		TypeName: c.TypeName,
 		Null:     c.Null,
@@ -58,12 +82,14 @@ func (c *colHCL) spec() (*schemaspec.Column, error) {
 		return nil, err
 	}
 	out.Attrs = attrs
+
+	// todo: extract and recurse
 	for _, block := range body.Blocks {
 		attrs, err := toAttrs(block.Body.Attributes, skip())
 		if err != nil {
 			return nil, err
 		}
-		bl := &schemaspec.Block{
+		bl := &schemacodec.Block{
 			Type:   block.Type,
 			Labels: block.Labels,
 			Attrs:  attrs,
@@ -82,26 +108,26 @@ func skip(lst ...string) map[string]struct{} {
 	return out
 }
 
-func toAttrs(attrs hclsyntax.Attributes, skip map[string]struct{}) ([]*schemaspec.Attr, error) {
-	var out []*schemaspec.Attr
+func toAttrs(attrs hclsyntax.Attributes, skip map[string]struct{}) ([]*schemacodec.Attr, error) {
+	var out []*schemacodec.Attr
 	for _, attr := range attrs {
 		if _, ok := skip[attr.Name]; ok {
 			continue
 		}
-		at := &schemaspec.Attr{K: attr.Name}
+		at := &schemacodec.Attr{K: attr.Name}
 		value, diag := attr.Expr.Value(nil)
 		if diag.HasErrors() {
 			return nil, diag
 		}
 		switch value.Type().GoString() {
 		case "cty.String":
-			at.V = schemaspec.String(value.AsString())
+			at.V = schemacodec.String(value.AsString())
 		case "cty.Number":
 			bf := value.AsBigFloat()
 			num, _ := bf.Float64()
-			at.V = schemaspec.Number(num)
+			at.V = schemacodec.Number(num)
 		case "cty.Bool":
-			at.V = schemaspec.Bool(value.True())
+			at.V = schemacodec.Bool(value.True())
 		default:
 			return nil, fmt.Errorf("schemahcl: unsupported type %q", value.Type().GoString())
 		}
@@ -110,6 +136,6 @@ func toAttrs(attrs hclsyntax.Attributes, skip map[string]struct{}) ([]*schemaspe
 	return out, nil
 }
 
-type fileHCL struct {
-	Columns []*colHCL `hcl:"column,block"`
+type schemaFileHCL struct {
+	Tables []*tableHCL `hcl:"table,block"`
 }
