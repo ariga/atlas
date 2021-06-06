@@ -21,6 +21,8 @@ func TestMigrate_Exec(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mk.ExpectExec(escape("CREATE TABLE `pets` (`a` int NOT NULL, `b` bigint NOT NULL, `c` bigint NULL, PRIMARY KEY (`a`, `b`), UNIQUE INDEX `b_c_unique` (`b`, `c`))")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
+	mk.ExpectExec(escape("ALTER TABLE `users` ADD CONSTRAINT `spouse` FOREIGN KEY (`spouse_id`) REFERENCES `users` (`id`) ON DELETE SET NULL")).
+		WillReturnResult(sqlmock.NewResult(0, 0))
 	drv, err := Open(db)
 	require.NoError(t, err)
 	migrate := Migrate{Driver: drv}
@@ -46,6 +48,33 @@ func TestMigrate_Exec(t *testing.T) {
 				return t
 			}(),
 		},
+	})
+	require.NoError(t, err)
+	err = migrate.Exec(context.Background(), []schema.Change{
+		func() schema.Change {
+			users := &schema.Table{
+				Name: "users",
+				Columns: []*schema.Column{
+					{Name: "id", Type: &schema.ColumnType{Raw: "bigint"}},
+					{Name: "spouse_id", Type: &schema.ColumnType{Raw: "bigint", Null: true}},
+				},
+			}
+			return &schema.ModifyTable{
+				T: users,
+				Changes: []schema.Change{
+					&schema.AddForeignKey{
+						F: &schema.ForeignKey{
+							Symbol:     "spouse",
+							Table:      users,
+							Columns:    users.Columns[1:],
+							RefTable:   users,
+							RefColumns: users.Columns[:1],
+							OnDelete:   "SET NULL",
+						},
+					},
+				},
+			}
+		}(),
 	})
 	require.NoError(t, err)
 }
