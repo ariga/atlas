@@ -71,32 +71,46 @@ func (m *Migrate) addTable(ctx context.Context, add *schema.AddTable) error {
 
 // modifyTable builds and executes the queries for bringing the table into its modified state.
 func (m *Migrate) modifyTable(ctx context.Context, modify *schema.ModifyTable) error {
-	var (
-		changes     []schema.Change
-		dropIndexes []*schema.DropIndex
-	)
+	var changes [2][]schema.Change
 	for _, change := range modify.Changes {
 		switch change := change.(type) {
 		// Constraints should be dropped before dropping columns, because if a column
 		// is a part of multi-column constraints (like, unique index), ALTER TABLE
 		// might fail if the intermediate state violates the constraints.
 		case *schema.DropIndex:
-			dropIndexes = append(dropIndexes, change)
-		case *schema.DropAttr:
+			changes[0] = append(changes[0], change)
 		case *schema.ModifyForeignKey:
-			// Modifying foreign-key may require 2-3 different steps.
-			// Add support for it in future PRs.
-			return fmt.Errorf("unsupported schema change %T", change)
+			// Foreign-key modification is translated into 2 steps.
+			// Dropping the current foreign key and creating a new one.
+			changes[0] = append(changes[0], &schema.DropForeignKey{
+				F: change.From,
+			})
+			// Drop the auto-created index for referenced if the reference was changed.
+			if change.Change.Is(schema.ChangeRefTable | schema.ChangeRefColumn) {
+				changes[0] = append(changes[0], &schema.DropIndex{
+					I: &schema.Index{
+						Name:  change.From.Symbol,
+						Table: modify.T,
+					},
+				})
+			}
+			changes[1] = append(changes[1], &schema.AddForeignKey{
+				F: change.To,
+			})
+		case *schema.DropAttr, *schema.ModifyIndex:
+			return fmt.Errorf("mysql: unsupported change type: %T", change)
 		default:
-			changes = append(changes, change)
+			changes[1] = append(changes[1], change)
 		}
 	}
-	if len(dropIndexes) > 0 {
-		if err := m.dropIndexes(ctx, modify.T, dropIndexes); err != nil {
-			return err
+	for i := range changes {
+		if len(changes[i]) > 0 {
+			if err := m.alterTable(ctx, modify.T, changes[i]); err != nil {
+				return err
+			}
 		}
 	}
-	return m.alterTable(ctx, modify.T, changes)
+	return nil
 }
 
 // dropTable builds and executes the query for dropping a table from a schema.
@@ -104,18 +118,6 @@ func (m *Migrate) dropTable(ctx context.Context, drop *schema.DropTable) error {
 	b := Build("DROP TABLE").Table(drop.T)
 	if _, err := m.ExecContext(ctx, b.String()); err != nil {
 		return fmt.Errorf("mysql: drop table: %w", err)
-	}
-	return nil
-}
-
-// dropIndexes drops a list of table indexes.
-func (m *Migrate) dropIndexes(ctx context.Context, t *schema.Table, drop []*schema.DropIndex) error {
-	b := Build("ALTER TABLE").Table(t)
-	b.MapComma(drop, func(i int, b *Builder) {
-		b.P("DROP INDEX").Ident(drop[i].I.Name)
-	})
-	if _, err := m.ExecContext(ctx, b.String()); err != nil {
-		return fmt.Errorf("mysql: drop indexes: %w", err)
 	}
 	return nil
 }
@@ -140,6 +142,8 @@ func (m *Migrate) alterTable(ctx context.Context, t *schema.Table, changes []sch
 			}
 			b.P("INDEX").Ident(change.I.Name)
 			indexParts(b, change.I.Parts)
+		case *schema.DropIndex:
+			b.P("DROP INDEX").Ident(change.I.Name)
 		case *schema.AddForeignKey:
 			b.P("ADD")
 			fks(b, change.F)

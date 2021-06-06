@@ -46,7 +46,7 @@ type (
 		C *Column
 	}
 
-	// DropColumn describes a change that modifies a column.
+	// ModifyColumn describes a change that modifies a column.
 	ModifyColumn struct {
 		From, To *Column
 		Change   ChangeKind
@@ -129,6 +129,9 @@ const (
 	ChangeUpdateAction
 	ChangeDeleteAction
 )
+
+// Is reports whether c is match the given change kind.
+func (k ChangeKind) Is(c ChangeKind) bool { return k&c != 0 }
 
 type (
 	// Differ is the interface implemented by the different
