@@ -42,7 +42,7 @@ func TestEncode(t *testing.T) {
 }
 `, string(config))
 	tgt := &schema.SchemaSpec{}
-	err = Decode([]byte(config), tgt)
+	err = Decode(config, tgt)
 	require.NoError(t, err)
 	require.EqualValues(t, tbl, tgt.Tables[0])
 }
