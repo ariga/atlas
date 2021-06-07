@@ -19,8 +19,7 @@ func Decode(body []byte, spec schema.Spec) error {
 	if srcHCL == nil {
 		return fmt.Errorf("schemahcl: contents is nil")
 	}
-	switch tgt := spec.(type) {
-	case *schema.SchemaSpec:
+	if tgt, ok := spec.(*schema.SchemaSpec); ok {
 		f := &schemaFile{}
 		if diag := gohcl.DecodeBody(srcHCL.Body, nil, f); diag.HasErrors() {
 			return diag
@@ -32,10 +31,8 @@ func Decode(body []byte, spec schema.Spec) error {
 			}
 			tgt.Tables = append(tgt.Tables, spec)
 		}
-		// TODO:
-		// case *schema.MigrationSpec:
 	}
-	return nil
+	return fmt.Errorf("schemahcl: unsupported spec type %T", spec)
 }
 
 type table struct {
@@ -92,23 +89,12 @@ func (c *column) spec() (*schema.ColumnSpec, error) {
 	}
 	out.Attrs = attrs
 
-	// todo: extract and recurse
-	for _, block := range body.Blocks {
-		attrs, err := toAttrs(block.Body.Attributes, skipNone())
+	for _, blk := range body.Blocks {
+		resource, err := toResource(blk)
 		if err != nil {
 			return nil, err
 		}
-		var name string
-		if len(block.Labels) > 0 {
-			name = block.Labels[0]
-		}
-		spc := &schema.ResourceSpec{
-			Type:     block.Type,
-			Name:     name,
-			Attrs:    attrs,
-			Children: nil,
-		}
-		out.Children = append(out.Children, spc)
+		out.Children = append(out.Children, resource)
 	}
 	return out, nil
 }
@@ -149,6 +135,28 @@ func toAttrs(attrs hclsyntax.Attributes, skip map[string]struct{}) ([]*schema.Sp
 			return nil, fmt.Errorf("schemahcl: unsupported type %q", value.Type().GoString())
 		}
 		out = append(out, at)
+	}
+	return out, nil
+}
+
+func toResource(block *hclsyntax.Block) (*schema.ResourceSpec, error) {
+	out := &schema.ResourceSpec{
+		Type: block.Type,
+	}
+	if len(block.Labels) > 0 {
+		out.Name = block.Labels[0]
+	}
+	attrs, err := toAttrs(block.Body.Attributes, skipNone())
+	if err != nil {
+		return nil, err
+	}
+	out.Attrs = attrs
+	for _, blk := range block.Body.Blocks {
+		res, err := toResource(blk)
+		if err != nil {
+			return nil, err
+		}
+		out.Children = append(out.Children, res)
 	}
 	return out, nil
 }
