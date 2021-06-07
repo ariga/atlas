@@ -23,6 +23,7 @@ type SchemaSpec struct {
 type TableSpec struct {
 	Name     string
 	Columns  []*ColumnSpec
+	Attrs    []*SpecAttr
 	Children []*ResourceSpec
 }
 

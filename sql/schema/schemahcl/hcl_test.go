@@ -33,12 +33,12 @@ func TestEncode(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, `table "users" {
   column "user_id" {
-    type = "int64"
+    type  = "int64"
+    hello = "world"
     resource "super_index" {
       enabled = true
     }
   }
-  hello = "world"
 }
 `, string(config))
 }

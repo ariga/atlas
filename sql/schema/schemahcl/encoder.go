@@ -52,8 +52,18 @@ func writeResource(b *schema.ResourceSpec, body *hclwrite.Body) error {
 func writeTable(t *schema.TableSpec, body *hclwrite.Body) error {
 	blk := body.AppendNewBlock("table", []string{t.Name})
 	nb := blk.Body()
+	for _, attr := range t.Attrs {
+		if err := writeAttr(attr, nb); err != nil {
+			return err
+		}
+	}
 	for _, col := range t.Columns {
 		if err := writeColumn(col, nb); err != nil {
+			return err
+		}
+	}
+	for _, child := range t.Children {
+		if err := writeResource(child, nb); err != nil {
 			return err
 		}
 	}
@@ -71,7 +81,7 @@ func writeColumn(c *schema.ColumnSpec, body *hclwrite.Body) error {
 		nb.SetAttributeValue("null", cty.BoolVal(c.Null))
 	}
 	for _, attr := range c.Attrs {
-		if err := writeAttr(attr, body); err != nil {
+		if err := writeAttr(attr, nb); err != nil {
 			return err
 		}
 	}
