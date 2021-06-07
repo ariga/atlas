@@ -31,6 +31,7 @@ func Decode(body []byte, spec schema.Spec) error {
 			}
 			tgt.Tables = append(tgt.Tables, spec)
 		}
+		return nil
 	}
 	return fmt.Errorf("schemahcl: unsupported spec type %T", spec)
 }
