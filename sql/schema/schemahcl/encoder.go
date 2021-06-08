@@ -10,6 +10,8 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+// Encode implements schema.Encoder by taking a Spec and returning a byte slice of an HCL
+// document representing the spec.
 func Encode(elem schema.Element) ([]byte, error) {
 	f := hclwrite.NewFile()
 	if err := write(elem, f.Body()); err != nil {
