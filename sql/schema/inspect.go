@@ -60,7 +60,7 @@ type (
 		InspectTable(ctx context.Context, name string, opts *InspectTableOptions) (*Table, error)
 	}
 
-	// InspectTableOptions describes options for RealmInspector.
+	// InspectRealmOption describes options for RealmInspector.
 	InspectRealmOption struct {
 		// Schemas to inspect. Empty means all tables in the schema.
 		Schemas []string
