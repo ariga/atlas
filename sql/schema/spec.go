@@ -21,72 +21,67 @@ type (
 		Decode([]byte, Spec) error
 	}
 
+	// Codec wraps Encoder and Decoder.
 	Codec interface {
 		Encoder
 		Decoder
 	}
+
+	// ResourceSpec is a generic container for resources described in configurations.
+	ResourceSpec struct {
+		Name     string
+		Type     string
+		Attrs    []*SpecAttr
+		Children []*ResourceSpec
+	}
+
+	// SchemaSpec holds a specification for a Schema.
+	SchemaSpec struct {
+		Name   string
+		Tables []*TableSpec
+	}
+
+	// TableSpec holds a specification for an SQL table.
+	TableSpec struct {
+		Name     string
+		Columns  []*ColumnSpec
+		Attrs    []*SpecAttr
+		Children []*ResourceSpec
+	}
+
+	// ColumnSpec holds a specification for a column in an SQL table.
+	ColumnSpec struct {
+		Name     string
+		TypeName string
+		Default  *string
+		Null     bool
+		Attrs    []*SpecAttr
+		Children []*ResourceSpec
+	}
+
+	// Element is an object that can be encoded into bytes to be written to a configuration file representing
+	// Schema resources.
+	Element interface {
+		elem()
+	}
+
+	// SpecAttr is an attribute of a Spec.
+	SpecAttr struct {
+		K string
+		V Value
+	}
+	// Value represents the value of a SpecAttr.
+	Value interface {
+		val()
+	}
+	// SpecLiteral implements Value and represents a literal value (string, number, etc.)
+	SpecLiteral struct {
+		V string
+	}
 )
 
-// ResourceSpec is a generic container for resources described in configurations.
-type ResourceSpec struct {
-	Name     string
-	Type     string
-	Attrs    []*SpecAttr
-	Children []*ResourceSpec
-}
+func (SpecLiteral) val() {}
 
-// SchemaSpec holds a specification for a Schema.
-type SchemaSpec struct {
-	Name   string
-	Tables []*TableSpec
-}
-
-// TableSpec holds a specification for an SQL table.
-type TableSpec struct {
-	Name     string
-	Columns  []*ColumnSpec
-	Attrs    []*SpecAttr
-	Children []*ResourceSpec
-}
-
-// ColumnSpec holds a specification for a column in an SQL table.
-type ColumnSpec struct {
-	Name     string
-	TypeName string
-	Default  *string
-	Null     bool
-	Attrs    []*SpecAttr
-	Children []*ResourceSpec
-}
-
-// Element is an object that can be encoded into bytes to be written to a configuration file representing
-// Schema resources.
-type Element interface {
-	elem()
-}
-
-// SpecAttr is an attribute of a Spec.
-type SpecAttr struct {
-	K string
-	V SpecLiteral
-}
-
-// SpecLiteral is a literal value to be used in the V field of a SpecAttr.
-type SpecLiteral interface {
-	lit()
-}
-
-type String string
-type Number float64
-type Bool bool
-
-func (String) lit() {}
-func (Number) lit() {}
-func (Bool) lit()   {}
-
-func (String) elem()        {}
-func (Number) elem()        {}
-func (Bool) elem()          {}
 func (*ResourceSpec) elem() {}
 func (*SpecAttr) elem()     {}
 func (*ColumnSpec) elem()   {}

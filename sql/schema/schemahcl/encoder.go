@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"ariga.io/atlas/sql/schema"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -21,18 +22,13 @@ func Encode(elem schema.Element) ([]byte, error) {
 
 func writeAttr(attr *schema.SpecAttr, body *hclwrite.Body) error {
 	switch v := attr.V.(type) {
-	case schema.String:
-		body.SetAttributeValue(attr.K, cty.StringVal(string(v)))
-	case schema.Number:
-		body.SetAttributeValue(attr.K, cty.NumberFloatVal(float64(v)))
-	case schema.Bool:
-		body.SetAttributeValue(attr.K, cty.BoolVal(bool(v)))
+	case schema.SpecLiteral:
+		body.SetAttributeRaw(attr.K, hclRawTokens(v.V))
 	default:
 		return fmt.Errorf("schemacl: unknown literal type %T", v)
 	}
 	return nil
 }
-
 func writeResource(b *schema.ResourceSpec, body *hclwrite.Body) error {
 	blk := body.AppendNewBlock(b.Type, []string{b.Name})
 	nb := blk.Body()
@@ -105,4 +101,13 @@ func write(elem schema.Element, body *hclwrite.Body) error {
 		return writeColumn(e, body)
 	}
 	return nil
+}
+
+func hclRawTokens(s string) hclwrite.Tokens {
+	return hclwrite.Tokens{
+		&hclwrite.Token{
+			Type:  hclsyntax.TokenIdent,
+			Bytes: []byte(s),
+		},
+	}
 }

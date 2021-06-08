@@ -15,14 +15,14 @@ func TestEncode(t *testing.T) {
 				Name:     "user_id",
 				TypeName: "int64",
 				Attrs: []*schema.SpecAttr{
-					{K: "hello", V: schema.String("world")},
+					{K: "hello", V: schema.SpecLiteral{V: `"world"`}},
 				},
 				Children: []*schema.ResourceSpec{
 					{
 						Type: "resource",
 						Name: "super_index",
 						Attrs: []*schema.SpecAttr{
-							{K: "enabled", V: schema.Bool(true)},
+							{K: "enabled", V: schema.SpecLiteral{V: `true`}},
 						},
 					},
 				},
