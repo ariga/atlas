@@ -2,6 +2,7 @@ package schemahcl
 
 import (
 	"fmt"
+	"strconv"
 
 	"ariga.io/atlas/sql/schema"
 	"github.com/hashicorp/hcl/v2"
@@ -81,10 +82,10 @@ func (t *table) spec() (*schema.TableSpec, error) {
 
 func (c *column) spec() (*schema.ColumnSpec, error) {
 	spec := &schema.ColumnSpec{
-		Name:     c.Name,
-		TypeName: c.TypeName,
-		Null:     c.Null,
-		Default:  c.Default,
+		Name:    c.Name,
+		Type:    c.TypeName,
+		Null:    c.Null,
+		Default: c.Default,
 	}
 	body, ok := c.Remain.(*hclsyntax.Body)
 	if !ok {
@@ -131,13 +132,13 @@ func toAttrs(hclAttrs hclsyntax.Attributes, skip map[string]struct{}) ([]*schema
 		}
 		switch value.Type().GoString() {
 		case "cty.String":
-			at.V = schema.String(value.AsString())
+			at.V = &schema.SpecLiteral{V: strconv.Quote(value.AsString())}
 		case "cty.Number":
 			bf := value.AsBigFloat()
 			num, _ := bf.Float64()
-			at.V = schema.Number(num)
+			at.V = &schema.SpecLiteral{V: fmt.Sprintf("%f", num)}
 		case "cty.Bool":
-			at.V = schema.Bool(value.True())
+			at.V = &schema.SpecLiteral{V: strconv.FormatBool(value.True())}
 		default:
 			return nil, fmt.Errorf("schemahcl: unsupported type %q", value.Type().GoString())
 		}

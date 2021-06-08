@@ -80,7 +80,7 @@ type (
 	}
 )
 
-func (SpecLiteral) val() {}
+func (*SpecLiteral) val() {}
 
 func (*ResourceSpec) elem() {}
 func (*SpecAttr) elem()     {}
