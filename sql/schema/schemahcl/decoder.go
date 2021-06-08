@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
 )
 
 // Decode implements schema.Decoder. It parses an HCL document describing a schema Spec into spec.
@@ -130,14 +131,15 @@ func toAttrs(hclAttrs hclsyntax.Attributes, skip map[string]struct{}) ([]*schema
 		if diag.HasErrors() {
 			return nil, diag
 		}
-		switch value.Type().GoString() {
-		case "cty.String":
+
+		switch value.Type() {
+		case cty.String:
 			at.V = &schema.SpecLiteral{V: strconv.Quote(value.AsString())}
-		case "cty.Number":
+		case cty.Number:
 			bf := value.AsBigFloat()
 			num, _ := bf.Float64()
 			at.V = &schema.SpecLiteral{V: fmt.Sprintf("%f", num)}
-		case "cty.Bool":
+		case cty.Bool:
 			at.V = &schema.SpecLiteral{V: strconv.FormatBool(value.True())}
 		default:
 			return nil, fmt.Errorf("schemahcl: unsupported type %q", value.Type().GoString())
