@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
+// Decode implements schema.Decoder. It parses an HCL document describing a schema Spec into spec.
 func Decode(body []byte, spec schema.Spec) error {
 	parser := hclparse.NewParser()
 	srcHCL, diag := parser.ParseHCL(body, "in-memory.hcl")
@@ -36,11 +37,24 @@ func Decode(body []byte, spec schema.Spec) error {
 	return fmt.Errorf("schemahcl: unsupported spec type %T", spec)
 }
 
-type table struct {
-	Name    string    `hcl:",label"`
-	Columns []*column `hcl:"column,block"`
-	Remain  hcl.Body  `hcl:",remain"`
-}
+type (
+	schemaFile struct {
+		Tables []*table `hcl:"table,block"`
+		Remain hcl.Body `hcl:",remain"`
+	}
+	table struct {
+		Name    string    `hcl:",label"`
+		Columns []*column `hcl:"column,block"`
+		Remain  hcl.Body  `hcl:",remain"`
+	}
+	column struct {
+		Name     string   `hcl:",label"`
+		TypeName string   `hcl:"type"`
+		Null     bool     `hcl:"null,optional"`
+		Default  *string  `hcl:"default,optional"`
+		Remain   hcl.Body `hcl:",remain"`
+	}
+)
 
 func (t *table) spec() (*schema.TableSpec, error) {
 	out := &schema.TableSpec{
@@ -65,16 +79,8 @@ func (t *table) spec() (*schema.TableSpec, error) {
 	return out, nil
 }
 
-type column struct {
-	Name     string   `hcl:",label"`
-	TypeName string   `hcl:"type"`
-	Null     bool     `hcl:"null,optional"`
-	Default  *string  `hcl:"default,optional"`
-	Remain   hcl.Body `hcl:",remain"`
-}
-
 func (c *column) spec() (*schema.ColumnSpec, error) {
-	out := &schema.ColumnSpec{
+	spec := &schema.ColumnSpec{
 		Name:     c.Name,
 		TypeName: c.TypeName,
 		Null:     c.Null,
@@ -88,16 +94,16 @@ func (c *column) spec() (*schema.ColumnSpec, error) {
 	if err != nil {
 		return nil, err
 	}
-	out.Attrs = attrs
+	spec.Attrs = attrs
 
 	for _, blk := range body.Blocks {
 		resource, err := toResource(blk)
 		if err != nil {
 			return nil, err
 		}
-		out.Children = append(out.Children, resource)
+		spec.Children = append(spec.Children, resource)
 	}
-	return out, nil
+	return spec, nil
 }
 
 func skip(lst ...string) map[string]struct{} {
@@ -112,14 +118,14 @@ func skipNone() map[string]struct{} {
 	return skip()
 }
 
-func toAttrs(attrs hclsyntax.Attributes, skip map[string]struct{}) ([]*schema.SpecAttr, error) {
-	var out []*schema.SpecAttr
-	for _, attr := range attrs {
-		if _, ok := skip[attr.Name]; ok {
+func toAttrs(hclAttrs hclsyntax.Attributes, skip map[string]struct{}) ([]*schema.SpecAttr, error) {
+	var attrs []*schema.SpecAttr
+	for _, hclAttr := range hclAttrs {
+		if _, ok := skip[hclAttr.Name]; ok {
 			continue
 		}
-		at := &schema.SpecAttr{K: attr.Name}
-		value, diag := attr.Expr.Value(nil)
+		at := &schema.SpecAttr{K: hclAttr.Name}
+		value, diag := hclAttr.Expr.Value(nil)
 		if diag.HasErrors() {
 			return nil, diag
 		}
@@ -135,34 +141,29 @@ func toAttrs(attrs hclsyntax.Attributes, skip map[string]struct{}) ([]*schema.Sp
 		default:
 			return nil, fmt.Errorf("schemahcl: unsupported type %q", value.Type().GoString())
 		}
-		out = append(out, at)
+		attrs = append(attrs, at)
 	}
-	return out, nil
+	return attrs, nil
 }
 
 func toResource(block *hclsyntax.Block) (*schema.ResourceSpec, error) {
-	out := &schema.ResourceSpec{
+	spec := &schema.ResourceSpec{
 		Type: block.Type,
 	}
 	if len(block.Labels) > 0 {
-		out.Name = block.Labels[0]
+		spec.Name = block.Labels[0]
 	}
 	attrs, err := toAttrs(block.Body.Attributes, skipNone())
 	if err != nil {
 		return nil, err
 	}
-	out.Attrs = attrs
+	spec.Attrs = attrs
 	for _, blk := range block.Body.Blocks {
 		res, err := toResource(blk)
 		if err != nil {
 			return nil, err
 		}
-		out.Children = append(out.Children, res)
+		spec.Children = append(spec.Children, res)
 	}
-	return out, nil
-}
-
-type schemaFile struct {
-	Tables []*table `hcl:"table,block"`
-	Remain hcl.Body `hcl:",remain"`
+	return spec, nil
 }
