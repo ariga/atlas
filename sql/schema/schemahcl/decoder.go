@@ -65,8 +65,10 @@ type (
 
 func (t *table) spec(ctx *hcl.EvalContext) (*schema.TableSpec, error) {
 	out := &schema.TableSpec{
-		Name:       t.Name,
-		SchemaName: t.Schema.Name,
+		Name: t.Name,
+	}
+	if t.Schema != nil {
+		out.SchemaName = t.Schema.Name
 	}
 	for _, col := range t.Columns {
 		cs, err := col.spec(ctx)
@@ -218,18 +220,23 @@ func evalContext(f *hcl.File) (*hcl.EvalContext, error) {
 			"column": cty.MapVal(cols),
 		})
 	}
+	out := map[string]cty.Value{
+		"reference_option": cty.MapVal(map[string]cty.Value{
+			"no_action":   cty.StringVal(string(schema.NoAction)),
+			"restrict":    cty.StringVal(string(schema.Restrict)),
+			"cascade":     cty.StringVal(string(schema.Cascade)),
+			"set_null":    cty.StringVal(string(schema.SetNull)),
+			"set_default": cty.StringVal(string(schema.SetDefault)),
+		}),
+	}
+	if len(schemas) > 0 {
+		out["schema"] = cty.MapVal(schemas)
+	}
+	if len(tables) > 0 {
+		out["table"] = cty.MapVal(tables)
+	}
 	return &hcl.EvalContext{
-		Variables: map[string]cty.Value{
-			"schema": cty.MapVal(schemas),
-			"table":  cty.MapVal(tables),
-			"reference_option": cty.MapVal(map[string]cty.Value{
-				"no_action":   cty.StringVal(string(schema.NoAction)),
-				"restrict":    cty.StringVal(string(schema.Restrict)),
-				"cascade":     cty.StringVal(string(schema.Cascade)),
-				"set_null":    cty.StringVal(string(schema.SetNull)),
-				"set_default": cty.StringVal(string(schema.SetDefault)),
-			}),
-		},
+		Variables: out,
 	}, nil
 }
 
