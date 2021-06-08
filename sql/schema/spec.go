@@ -1,9 +1,31 @@
 package schema
 
-// Spec holds a specification for a schema resource (such as a Table, Column or Index).
-type Spec interface {
-	spec()
-}
+type (
+	// Spec holds a specification for a schema resource (such as a Table, Column or Index).
+	Spec interface {
+		spec()
+	}
+
+	// Encoder is the interface that wraps the Encode method.
+	//
+	// Encoder takes a Spec and returns a byte slice representing that Spec in some configuration
+	// format (for instance, HCL).
+	Encoder interface {
+		Encode(Spec) ([]byte, error)
+	}
+
+	// Decoder is the interface that wraps the Decode method.
+	//
+	// Decoder takes a byte slice representing a Spec and decodes it into a Spec.
+	Decoder interface {
+		Decode([]byte, Spec) error
+	}
+
+	Codec interface {
+		Encoder
+		Decoder
+	}
+)
 
 // ResourceSpec is a generic container for resources described in configurations.
 type ResourceSpec struct {
