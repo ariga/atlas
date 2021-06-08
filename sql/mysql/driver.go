@@ -410,12 +410,12 @@ func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
 	names := make(map[string]*schema.Index)
 	for rows.Next() {
 		var (
-			nonuniq               bool
-			seqno                 int
-			name                  string
-			column, subPart, expr sql.NullString
+			nonuniq                        bool
+			seqno                          int
+			name, indexType                string
+			column, subPart, expr, comment sql.NullString
 		)
-		if err := rows.Scan(&name, &column, &nonuniq, &seqno, &subPart, &expr); err != nil {
+		if err := rows.Scan(&name, &column, &nonuniq, &seqno, &indexType, &comment, &subPart, &expr); err != nil {
 			return fmt.Errorf("mysql: scanning index: %w", err)
 		}
 		// Ignore primary keys.
@@ -424,7 +424,19 @@ func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
 		}
 		idx, ok := names[name]
 		if !ok {
-			idx = &schema.Index{Name: name, Unique: !nonuniq, Table: t}
+			idx = &schema.Index{
+				Name:   name,
+				Unique: !nonuniq,
+				Table:  t,
+				Attrs: []schema.Attr{
+					&IndexType{T: indexType},
+				},
+			}
+			if validString(comment) {
+				idx.Attrs = append(t.Attrs, &schema.Comment{
+					Text: comment.String,
+				})
+			}
 			names[name] = idx
 			t.Indexes = append(t.Indexes, idx)
 		}
@@ -662,8 +674,8 @@ const (
 	columnsQuery = "SELECT `COLUMN_NAME`, `COLUMN_TYPE`, `COLUMN_COMMENT`, `IS_NULLABLE`, `COLUMN_KEY`, `COLUMN_DEFAULT`, `EXTRA`, `CHARACTER_SET_NAME`, `COLLATION_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
 
 	// Query to list table indexes.
-	indexesQuery     = "SELECT `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `SUB_PART`, NULL AS `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
-	indexesExprQuery = "SELECT `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `SUB_PART`, `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
+	indexesQuery     = "SELECT `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `INDEX_TYPE`, `INDEX_COMMENT`, `SUB_PART`, NULL AS `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
+	indexesExprQuery = "SELECT `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `INDEX_TYPE`, `INDEX_COMMENT`, `SUB_PART`, `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
 
 	// Query to list table information.
 	tableQuery = `
@@ -785,6 +797,12 @@ type (
 	ZeroFill struct {
 		schema.Attr
 		A string
+	}
+
+	// IndexType represents an index type.
+	IndexType struct {
+		schema.Attr
+		T string // BTREE, FULLTEXT, HASH, RTREE
 	}
 
 	// BitType represents a bit type.

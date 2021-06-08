@@ -219,7 +219,7 @@ type (
 		V string
 	}
 
-	// RawExpr represents a raw expresion like "uuid()".
+	// RawExpr represents a raw expression like "uuid()".
 	RawExpr struct {
 		X string
 	}
