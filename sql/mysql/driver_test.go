@@ -413,17 +413,17 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(escape(indexesExprQuery)).
 					WithArgs("public", "users").
 					WillReturnRows(rows(`
-+--------------+-------------+------------+--------------+------------+------------------+
-| INDEX_NAME   | COLUMN_NAME | NON_UNIQUE | SEQ_IN_INDEX | SUB_PART   | EXPRESSION       |
-+--------------+-------------+------------+--------------+------------+------------------+
-| nickname     | nickname    |          0 |            1 |        255 |      NULL        |
-| lower_nick   | NULL        |          1 |            1 |       NULL | lower(nickname)  |
-| non_unique   | oid         |          1 |            1 |       NULL |      NULL        |
-| non_unique   | uid         |          1 |            2 |       NULL |      NULL        |
-| PRIMARY      | id          |          0 |            1 |       NULL |      NULL        |
-| unique_index | uid         |          0 |            1 |       NULL |      NULL        |
-| unique_index | oid         |          0 |            2 |       NULL |      NULL        |
-+--------------+-------------+------------+--------------+------------+------------------+
++--------------+-------------+------------+--------------+--------------+--------------+------------+------------------+
+| INDEX_NAME   | COLUMN_NAME | NON_UNIQUE | SEQ_IN_INDEX | INDEX_TYPE   | COMMENT      | SUB_PART   | EXPRESSION       |
++--------------+-------------+------------+--------------+--------------+--------------+------------+------------------+
+| nickname     | nickname    |          0 |            1 | BTREE        |              |        255 |      NULL        |
+| lower_nick   | NULL        |          1 |            1 | HASH         |              |       NULL | lower(nickname)  |
+| non_unique   | oid         |          1 |            1 | BTREE        |              |       NULL |      NULL        |
+| non_unique   | uid         |          1 |            2 | BTREE        |              |       NULL |      NULL        |
+| PRIMARY      | id          |          0 |            1 | BTREE        |              |       NULL |      NULL        |
+| unique_index | uid         |          0 |            1 | BTREE        |              |       NULL |      NULL        |
+| unique_index | oid         |          0 |            2 | BTREE        |              |       NULL |      NULL        |
++--------------+-------------+------------+--------------+--------------+--------------+------------+------------------+
 `))
 				m.noFKs()
 			},
@@ -431,10 +431,10 @@ func TestDriver_InspectTable(t *testing.T) {
 				require.NoError(err)
 				require.Equal("users", t.Name)
 				indexes := []*schema.Index{
-					{Name: "nickname", Unique: true, Table: t}, // Implicitly created by the UNIQUE clause.
-					{Name: "lower_nick", Table: t},
-					{Name: "non_unique", Table: t},
-					{Name: "unique_index", Unique: true, Table: t},
+					{Name: "nickname", Unique: true, Table: t, Attrs: []schema.Attr{&IndexType{T: "BTREE"}}}, // Implicitly created by the UNIQUE clause.
+					{Name: "lower_nick", Table: t, Attrs: []schema.Attr{&IndexType{T: "HASH"}}},
+					{Name: "non_unique", Table: t, Attrs: []schema.Attr{&IndexType{T: "BTREE"}}},
+					{Name: "unique_index", Unique: true, Table: t, Attrs: []schema.Attr{&IndexType{T: "BTREE"}}},
 				}
 				columns := []*schema.Column{
 					{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int", Size: 4}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},

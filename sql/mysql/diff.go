@@ -268,6 +268,7 @@ func (d *Diff) indexChange(from, to *schema.Index) schema.ChangeKind {
 	var change schema.ChangeKind
 	change |= partsChange(from.Parts, to.Parts)
 	change |= commentChange(from.Attrs, to.Attrs)
+	change |= indexTypeChange(from.Attrs, to.Attrs)
 	if from.Unique != to.Unique {
 		change |= schema.ChangeUnique
 	}
@@ -374,6 +375,14 @@ func commentChange(from, to []schema.Attr) schema.ChangeKind {
 	var c1, c2 schema.Comment
 	if has(from, &c1) != has(to, &c2) || c1.Text != c2.Text {
 		return schema.ChangeComment
+	}
+	return schema.NoChange
+}
+
+func indexTypeChange(from, to []schema.Attr) schema.ChangeKind {
+	var c1, c2 IndexType
+	if has(from, &c1) != has(to, &c2) || c1.T != c2.T {
+		return schema.ChangeAttr
 	}
 	return schema.NoChange
 }

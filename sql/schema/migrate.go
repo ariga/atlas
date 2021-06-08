@@ -107,6 +107,7 @@ type ChangeKind uint
 const (
 	// Basic changes.
 	NoChange ChangeKind = 0
+	ChangeAttr
 
 	// Table and common changes.
 	ChangeCharset ChangeKind = 1 << iota
