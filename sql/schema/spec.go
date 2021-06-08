@@ -52,7 +52,7 @@ type (
 	// ColumnSpec holds a specification for a column in an SQL table.
 	ColumnSpec struct {
 		Name     string
-		TypeName string
+		Type     string
 		Default  *string
 		Null     bool
 		Attrs    []*SpecAttr

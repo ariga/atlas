@@ -71,7 +71,7 @@ func writeTable(t *schema.TableSpec, body *hclwrite.Body) error {
 func writeColumn(c *schema.ColumnSpec, body *hclwrite.Body) error {
 	blk := body.AppendNewBlock("column", []string{c.Name})
 	nb := blk.Body()
-	nb.SetAttributeValue("type", cty.StringVal(c.TypeName))
+	nb.SetAttributeValue("type", cty.StringVal(c.Type))
 	if c.Default != nil {
 		nb.SetAttributeValue("default", cty.StringVal(*c.Default))
 	}

@@ -12,8 +12,8 @@ func TestEncode(t *testing.T) {
 		Name: "users",
 		Columns: []*schema.ColumnSpec{
 			{
-				Name:     "user_id",
-				TypeName: "int64",
+				Name: "user_id",
+				Type: "int64",
 				Attrs: []*schema.SpecAttr{
 					{K: "hello", V: schema.SpecLiteral{V: `"world"`}},
 				},
