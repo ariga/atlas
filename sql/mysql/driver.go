@@ -232,7 +232,7 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 			Null: nullable.String == "YES",
 		},
 	}
-	ct, err := columnTypeFromRaw(c.Type.Raw)
+	ct, err := parseRawType(c.Type.Raw)
 	if err != nil {
 		return err
 	}
@@ -273,7 +273,7 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 	return nil
 }
 
-func columnTypeFromRaw(raw string) (schema.Type, error) {
+func parseRawType(raw string) (schema.Type, error) {
 	parts, size, unsigned, err := parseColumn(raw)
 	if err != nil {
 		return nil, err

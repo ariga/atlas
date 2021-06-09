@@ -32,7 +32,7 @@ func (s *SpecConverter) ColumnType(spec *schema.ColumnSpec) (schema.Type, error)
 		//case "json":
 		//	return s.convertJSON( spec)
 	}
-	return columnTypeFromRaw(spec.Type)
+	return parseRawType(spec.Type)
 }
 
 func (s *SpecConverter) convertInteger(spec *schema.ColumnSpec) (schema.Type, error) {
