@@ -232,126 +232,11 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 			Null: nullable.String == "YES",
 		},
 	}
-	parts, size, unsigned, err := parseColumn(c.Type.Raw)
+	ct, err := columnTypeFromRaw(c.Type.Raw)
 	if err != nil {
 		return err
 	}
-	switch t := parts[0]; t {
-	case tBit:
-		c.Type.Type = &BitType{
-			T: t,
-		}
-	case tTinyInt, tSmallInt, tMediumInt, tInt, tBigInt:
-		if size == 1 {
-			c.Type.Type = &schema.BoolType{
-				T: t,
-			}
-			break
-		}
-		byteSize, err := intByteSize(t)
-		if err != nil {
-			return err
-		}
-		// For integer types, the size represents the display width and does not
-		// constrain the range of values that can be stored in the column.
-		// The storage byte-size is inferred from the type name (i.e TINYINT takes
-		// a single byte).
-		ft := &schema.IntegerType{
-			T:        t,
-			Size:     byteSize,
-			Unsigned: unsigned,
-		}
-		if attr := parts[len(parts)-1]; attr == "zerofill" && size != 0 {
-			ft.Attrs = []schema.Attr{
-				&DisplayWidth{
-					N: int(size),
-				},
-				&ZeroFill{
-					A: attr,
-				},
-			}
-		}
-		c.Type.Type = ft
-	case tNumeric, tDecimal:
-		dt := &schema.DecimalType{
-			T: t,
-		}
-		if len(parts) > 1 {
-			p, err := strconv.ParseInt(parts[1], 10, 64)
-			if err != nil {
-				return fmt.Errorf("parse precision %q", parts[1])
-			}
-			dt.Precision = int(p)
-		}
-		if len(parts) > 2 {
-			s, err := strconv.ParseInt(parts[2], 10, 64)
-			if err != nil {
-				return fmt.Errorf("parse scale %q", parts[1])
-			}
-			dt.Scale = int(s)
-		}
-		c.Type.Type = dt
-	case tFloat, tDouble, tReal:
-		ft := &schema.FloatType{
-			T: t,
-		}
-		if len(parts) > 1 {
-			p, err := strconv.ParseInt(parts[1], 10, 64)
-			if err != nil {
-				return fmt.Errorf("parse precision %q", parts[1])
-			}
-			ft.Precision = int(p)
-		}
-		c.Type.Type = ft
-	case tBinary, tVarBinary:
-		c.Type.Type = &schema.BinaryType{
-			T:    t,
-			Size: int(size),
-		}
-	case tTinyBlob, tMediumBlob, tBlob, tLongBlob:
-		c.Type.Type = &schema.BinaryType{
-			T: t,
-		}
-	case tChar, tVarchar:
-		c.Type.Type = &schema.StringType{
-			T:    t,
-			Size: int(size),
-		}
-	case tTinyText, tMediumText, tText, tLongText:
-		c.Type.Type = &schema.StringType{
-			T: t,
-		}
-	case tEnum, tSet:
-		values := make([]string, len(parts)-1)
-		for i, e := range parts[1:] {
-			values[i] = strings.Trim(e, "'")
-		}
-		if t == tEnum {
-			c.Type.Type = &schema.EnumType{
-				Values: values,
-			}
-		} else {
-			c.Type.Type = &SetType{
-				Values: values,
-			}
-		}
-	case tDate, tDateTime, tTime, tTimestamp, tYear:
-		c.Type.Type = &schema.TimeType{
-			T: t,
-		}
-	case tJSON:
-		c.Type.Type = &schema.JSONType{
-			T: t,
-		}
-	case tPoint, tMultiPoint, tLineString, tMultiLineString, tPolygon, tMultiPolygon, tGeometry, tGeoCollection, tGeometryCollection:
-		c.Type.Type = &schema.SpatialType{
-			T: t,
-		}
-	default:
-		c.Type.Type = &schema.UnsupportedType{
-			T: t,
-		}
-	}
+	c.Type.Type = ct
 	if err := extraAttr(c, extra.String); err != nil {
 		return err
 	}
@@ -386,6 +271,128 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 		})
 	}
 	return nil
+}
+
+func columnTypeFromRaw(raw string) (schema.Type, error) {
+	parts, size, unsigned, err := parseColumn(raw)
+	if err != nil {
+		return nil, err
+	}
+	switch t := parts[0]; t {
+	case tBit:
+		return &BitType{
+			T: t,
+		}, nil
+	case tTinyInt, tSmallInt, tMediumInt, tInt, tBigInt:
+		if size == 1 {
+			return &schema.BoolType{
+				T: t,
+			}, nil
+		}
+		byteSize, err := intByteSize(t)
+		if err != nil {
+			return nil, err
+		}
+		// For integer types, the size represents the display width and does not
+		// constrain the range of values that can be stored in the column.
+		// The storage byte-size is inferred from the type name (i.e TINYINT takes
+		// a single byte).
+		ft := &schema.IntegerType{
+			T:        t,
+			Size:     byteSize,
+			Unsigned: unsigned,
+		}
+		if attr := parts[len(parts)-1]; attr == "zerofill" && size != 0 {
+			ft.Attrs = []schema.Attr{
+				&DisplayWidth{
+					N: int(size),
+				},
+				&ZeroFill{
+					A: attr,
+				},
+			}
+		}
+		return ft, nil
+	case tNumeric, tDecimal:
+		dt := &schema.DecimalType{
+			T: t,
+		}
+		if len(parts) > 1 {
+			p, err := strconv.ParseInt(parts[1], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("parse precision %q", parts[1])
+			}
+			dt.Precision = int(p)
+		}
+		if len(parts) > 2 {
+			s, err := strconv.ParseInt(parts[2], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("parse scale %q", parts[1])
+			}
+			dt.Scale = int(s)
+		}
+		return dt, nil
+	case tFloat, tDouble, tReal:
+		ft := &schema.FloatType{
+			T: t,
+		}
+		if len(parts) > 1 {
+			p, err := strconv.ParseInt(parts[1], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("parse precision %q", parts[1])
+			}
+			ft.Precision = int(p)
+		}
+		return ft, nil
+	case tBinary, tVarBinary:
+		return &schema.BinaryType{
+			T:    t,
+			Size: int(size),
+		}, nil
+	case tTinyBlob, tMediumBlob, tBlob, tLongBlob:
+		return &schema.BinaryType{
+			T: t,
+		}, nil
+	case tChar, tVarchar:
+		return &schema.StringType{
+			T:    t,
+			Size: int(size),
+		}, nil
+	case tTinyText, tMediumText, tText, tLongText:
+		return &schema.StringType{
+			T: t,
+		}, nil
+	case tEnum, tSet:
+		values := make([]string, len(parts)-1)
+		for i, e := range parts[1:] {
+			values[i] = strings.Trim(e, "'")
+		}
+		if t == tEnum {
+			return &schema.EnumType{
+				Values: values,
+			}, nil
+		} else {
+			return &SetType{
+				Values: values,
+			}, nil
+		}
+	case tDate, tDateTime, tTime, tTimestamp, tYear:
+		return &schema.TimeType{
+			T: t,
+		}, nil
+	case tJSON:
+		return &schema.JSONType{
+			T: t,
+		}, nil
+	case tPoint, tMultiPoint, tLineString, tMultiLineString, tPolygon, tMultiPolygon, tGeometry, tGeoCollection, tGeometryCollection:
+		return &schema.SpatialType{
+			T: t,
+		}, nil
+	default:
+		return &schema.UnsupportedType{
+			T: t,
+		}, nil
+	}
 }
 
 // indexes queries and appends the indexes of the given table.
