@@ -50,10 +50,13 @@ type (
 		Remain hcl.Body `hcl:",remain"`
 	}
 	table struct {
-		Name    string     `hcl:",label"`
-		Schema  *schemaRef `hcl:"schema,optional"`
-		Columns []*column  `hcl:"column,block"`
-		Remain  hcl.Body   `hcl:",remain"`
+		Name        string        `hcl:",label"`
+		Schema      *schemaRef    `hcl:"schema,optional"`
+		Columns     []*column     `hcl:"column,block"`
+		PrimaryKey  *primaryKey   `hcl:"primary_key,block"`
+		ForeignKeys []*foreignKey `hcl:"foreign_key,block"`
+		Indexes     []*index      `hcl:"index,block"`
+		Remain      hcl.Body      `hcl:",remain"`
 	}
 	column struct {
 		Name     string   `hcl:",label"`
@@ -61,6 +64,24 @@ type (
 		Null     bool     `hcl:"null,optional"`
 		Default  *string  `hcl:"default,optional"`
 		Remain   hcl.Body `hcl:",remain"`
+	}
+	primaryKey struct {
+		Columns []*columnRef `hcl:"columns,optional"`
+		Remain  hcl.Body     `hcl:",remain"`
+	}
+	foreignKey struct {
+		Symbol     string      `hcl:",label"`
+		Columns    []columnRef `hcl:"columns"`
+		RefColumns []columnRef `hcl:"references"`
+		OnUpdate   string      `hcl:"on_update,optional"`
+		OnDelete   string      `hcl:"on_delete,optional"`
+		Remain     hcl.Body    `hcl:",remain"`
+	}
+	index struct {
+		Name    string      `hcl:",label"`
+		Columns []columnRef `hcl:"columns"`
+		Unique  bool        `hcl:"unique"`
+		Remain  hcl.Body    `hcl:",remain"`
 	}
 	schemaRef struct {
 		Name string `cty:"name"`
@@ -84,6 +105,27 @@ func (t *table) spec(ctx *hcl.EvalContext) (*schema.TableSpec, error) {
 			return nil, err
 		}
 		out.Columns = append(out.Columns, cs)
+	}
+	if t.PrimaryKey != nil {
+		pk, err := t.PrimaryKey.spec(ctx)
+		if err != nil {
+			return nil, err
+		}
+		out.PrimaryKey = pk
+	}
+	for _, fk := range t.ForeignKeys {
+		fks, err := fk.spec(ctx)
+		if err != nil {
+			return nil, err
+		}
+		out.ForeignKeys = append(out.ForeignKeys, fks)
+	}
+	for _, idx := range t.Indexes {
+		is, err := idx.spec(ctx)
+		if err != nil {
+			return nil, err
+		}
+		out.Indexes = append(out.Indexes, is)
 	}
 	body, ok := t.Remain.(*hclsyntax.Body)
 	if !ok {
@@ -113,7 +155,6 @@ func (c *column) spec(ctx *hcl.EvalContext) (*schema.ColumnSpec, error) {
 		return nil, err
 	}
 	spec.Attrs = attrs
-
 	for _, blk := range body.Blocks {
 		resource, err := toResource(ctx, blk)
 		if err != nil {
@@ -122,6 +163,65 @@ func (c *column) spec(ctx *hcl.EvalContext) (*schema.ColumnSpec, error) {
 		spec.Children = append(spec.Children, resource)
 	}
 	return spec, nil
+}
+
+func (p *primaryKey) spec(ctx *hcl.EvalContext) (*schema.PrimaryKeySpec, error) {
+	common, err := extractCommon(ctx, p.Remain, skip("columns"))
+	if err != nil {
+		return nil, err
+	}
+	pk := &schema.PrimaryKeySpec{
+		Attrs:    common.attrs,
+		Children: common.children,
+	}
+	for _, col := range p.Columns {
+		pk.Columns = append(pk.Columns, col.Name)
+	}
+	return pk, nil
+}
+
+func (p *foreignKey) spec(ctx *hcl.EvalContext) (*schema.ForeignKeySpec, error) {
+	common, err := extractCommon(ctx, p.Remain, skip("columns", "references", "on_update", "on_delete"))
+	if err != nil {
+		return nil, err
+	}
+	fk := &schema.ForeignKeySpec{
+		Symbol:   p.Symbol,
+		Attrs:    common.attrs,
+		Children: common.children,
+		OnDelete: p.OnDelete,
+		OnUpdate: p.OnUpdate,
+	}
+	for _, col := range p.Columns {
+		fk.Columns = append(fk.Columns, col.Name)
+	}
+	var refTable string
+	for _, refCol := range p.RefColumns {
+		if refTable != "" && refCol.Table != refTable {
+			return nil, fmt.Errorf("schemahcl: expected all ref columns to be of same table for key %q", p.Symbol)
+		}
+		refTable = refCol.Table
+		fk.RefColumns = append(fk.RefColumns, refCol.Name)
+	}
+	fk.RefTable = refTable
+	return fk, nil
+}
+
+func (i *index) spec(ctx *hcl.EvalContext) (*schema.IndexSpec, error) {
+	common, err := extractCommon(ctx, i.Remain, skip("columns", "unique"))
+	if err != nil {
+		return nil, err
+	}
+	idx := &schema.IndexSpec{
+		Name:     i.Name,
+		Unique:   i.Unique,
+		Attrs:    common.attrs,
+		Children: common.children,
+	}
+	for _, col := range i.Columns {
+		idx.Columns = append(idx.Columns, col.Name)
+	}
+	return idx, nil
 }
 
 func skip(lst ...string) map[string]struct{} {
@@ -265,4 +365,31 @@ func toColumnRef(table, column string) (cty.Value, error) {
 		Table: table,
 	}
 	return gocty.ToCtyValue(c, typ)
+}
+
+type commonSpecParts struct {
+	attrs    []*schema.SpecAttr
+	children []*schema.ResourceSpec
+}
+
+func extractCommon(ctx *hcl.EvalContext, remain hcl.Body, skip map[string]struct{}) (*commonSpecParts, error) {
+	body, ok := remain.(*hclsyntax.Body)
+	if !ok {
+		return nil, fmt.Errorf("schemahcl: expected remainder to be of type *hclsyntax.Body")
+	}
+	attrs, err := toAttrs(ctx, body.Attributes, skip)
+	if err != nil {
+		return nil, err
+	}
+	common := &commonSpecParts{
+		attrs: attrs,
+	}
+	for _, blk := range body.Blocks {
+		resource, err := toResource(ctx, blk)
+		if err != nil {
+			return nil, err
+		}
+		common.children = append(common.children, resource)
+	}
+	return common, nil
 }

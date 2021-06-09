@@ -62,3 +62,101 @@ table "users" {
 	require.NoError(t, err)
 	require.Equal(t, "s1", tgt.Tables[0].SchemaName)
 }
+
+func TestPrimaryKey(t *testing.T) {
+	f := `
+table "users" {
+	column "name" {
+		type = "string"
+	}
+	column "age" {
+		type = "int"
+	}
+	primary_key {
+		columns = [
+			table.users.column.name
+		]
+	}
+}
+`
+	tgt := &schema.SchemaSpec{}
+	err := Decode([]byte(f), tgt)
+	require.NoError(t, err)
+	require.Equal(t, &schema.PrimaryKeySpec{
+		Columns: []string{"name"},
+	}, tgt.Tables[0].PrimaryKey)
+}
+
+func TestIndex(t *testing.T) {
+	f := `
+table "users" {
+	column "name" {
+		type = "string"
+	}
+	column "age" {
+		type = "int"
+	}
+	column "txn_id" {
+		type = "int"
+	}
+	index "txn_id" {
+		columns = [
+			table.users.column.txn_id
+		]
+		unique = true
+	}
+}
+`
+	tgt := &schema.SchemaSpec{}
+	err := Decode([]byte(f), tgt)
+	require.NoError(t, err)
+	require.Equal(t, &schema.IndexSpec{
+		Name:    "txn_id",
+		Unique:  true,
+		Columns: []string{"txn_id"},
+	}, tgt.Tables[0].Indexes[0])
+}
+
+func TestForeignKey(t *testing.T) {
+	f := `
+table "users" {
+	column "name" {
+		type = "string"
+	}
+	column "age" {
+		type = "int"
+	}
+	primary_key {
+		columns = [
+			table.users.column.name
+		]
+	}
+}
+
+table "user_messages" {
+	column "text" {
+		type = "string"
+	}
+	column "user_name" {
+		type = "string"
+	}
+	foreign_key "user_name_ref" {
+		columns = [
+			table.user_messages.column.user_name
+		]
+		references =  [
+			table.users.column.name
+		]
+	}
+}
+`
+	tgt := &schema.SchemaSpec{}
+	err := Decode([]byte(f), tgt)
+	require.NoError(t, err)
+	require.Equal(t, &schema.ForeignKeySpec{
+		Symbol:     "user_name_ref",
+		Columns:    []string{"user_name"},
+		RefTable:   "users",
+		RefColumns: []string{"name"},
+	}, tgt.Tables[1].ForeignKeys[0])
+}

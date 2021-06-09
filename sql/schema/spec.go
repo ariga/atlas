@@ -43,11 +43,14 @@ type (
 
 	// TableSpec holds a specification for an SQL table.
 	TableSpec struct {
-		Name       string
-		SchemaName string
-		Columns    []*ColumnSpec
-		Attrs      []*SpecAttr
-		Children   []*ResourceSpec
+		Name        string
+		SchemaName  string
+		Columns     []*ColumnSpec
+		PrimaryKey  *PrimaryKeySpec
+		ForeignKeys []*ForeignKeySpec
+		Indexes     []*IndexSpec
+		Attrs       []*SpecAttr
+		Children    []*ResourceSpec
 	}
 
 	// ColumnSpec holds a specification for a column in an SQL table.
@@ -56,6 +59,34 @@ type (
 		Type     string
 		Default  *string
 		Null     bool
+		Attrs    []*SpecAttr
+		Children []*ResourceSpec
+	}
+
+	// PrimaryKeySpec holds a specification for the primary key of a table.
+	PrimaryKeySpec struct {
+		Columns  []string
+		Attrs    []*SpecAttr
+		Children []*ResourceSpec
+	}
+
+	// ForeignKeySpec holds a specification for a foreign key of a table.
+	ForeignKeySpec struct {
+		Symbol     string
+		Columns    []string
+		RefTable   string
+		RefColumns []string
+		OnUpdate   string
+		OnDelete   string
+		Attrs      []*SpecAttr
+		Children   []*ResourceSpec
+	}
+
+	// IndexSpec holds a specification for an index of a table.
+	IndexSpec struct {
+		Name     string
+		Columns  []string
+		Unique   bool
 		Attrs    []*SpecAttr
 		Children []*ResourceSpec
 	}
@@ -83,13 +114,19 @@ type (
 
 func (*SpecLiteral) val() {}
 
-func (*ResourceSpec) elem() {}
-func (*SpecAttr) elem()     {}
-func (*ColumnSpec) elem()   {}
-func (*TableSpec) elem()    {}
-func (*SchemaSpec) elem()   {}
+func (*ResourceSpec) elem()   {}
+func (*SpecAttr) elem()       {}
+func (*ColumnSpec) elem()     {}
+func (*TableSpec) elem()      {}
+func (*SchemaSpec) elem()     {}
+func (*PrimaryKeySpec) elem() {}
+func (*ForeignKeySpec) elem() {}
+func (*IndexSpec) elem()      {}
 
-func (*ColumnSpec) spec()   {}
-func (*TableSpec) spec()    {}
-func (*SchemaSpec) spec()   {}
-func (*ResourceSpec) spec() {}
+func (*ColumnSpec) spec()     {}
+func (*TableSpec) spec()      {}
+func (*SchemaSpec) spec()     {}
+func (*ResourceSpec) spec()   {}
+func (*PrimaryKeySpec) spec() {}
+func (*ForeignKeySpec) spec() {}
+func (*IndexSpec) spec()      {}
