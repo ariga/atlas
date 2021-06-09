@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"strconv"
 	"testing"
 
 	"ariga.io/atlas/sql/schema"
@@ -116,6 +117,10 @@ func TestConverter(t *testing.T) {
 				Size: 20_000_000,
 			},
 		},
+		{
+			spec:     colspec("enum", "enum", listattr("values", "a", "b", "c")),
+			expected: &schema.EnumType{Values: []string{"a", "b", "c"}},
+		},
 	} {
 		t.Run(tt.spec.Name, func(t *testing.T) {
 			columnType, err := conv.ColumnType(tt.spec)
@@ -137,5 +142,15 @@ func attr(k, v string) *schema.SpecAttr {
 	return &schema.SpecAttr{
 		K: k,
 		V: &schema.SpecLiteral{V: v},
+	}
+}
+
+func listattr(k string, values ...string) *schema.SpecAttr {
+	for i, v := range values {
+		values[i] = strconv.Quote(v)
+	}
+	return &schema.SpecAttr{
+		K: k,
+		V: &schema.SpecLiteralList{V: values},
 	}
 }

@@ -84,6 +84,11 @@ type (
 	SpecLiteral struct {
 		V string
 	}
+
+	// SpecLiteralList implements Value and represents a list of literal values.
+	SpecLiteralList struct {
+		V []string
+	}
 )
 
 // Attr returns the value of the ColumnSpec attribute named `name` and reports whether such an attribute exists.
@@ -117,7 +122,24 @@ func (a *SpecAttr) Int() (int, error) {
 	return s, nil
 }
 
-func (*SpecLiteral) val() {}
+func (a *SpecAttr) StringList() ([]string, error) {
+	lst, ok := a.V.(*SpecLiteralList)
+	if !ok {
+		return nil, fmt.Errorf("schema: attribute %q is not a list", a.K)
+	}
+	out := make([]string, 0, len(lst.V))
+	for _, item := range lst.V {
+		unquote, err := strconv.Unquote(item)
+		if err != nil {
+			return nil, fmt.Errorf("schema: failed parsing item %q to string: %w", item, err)
+		}
+		out = append(out, unquote)
+	}
+	return out, nil
+}
+
+func (*SpecLiteral) val()     {}
+func (*SpecLiteralList) val() {}
 
 func (*ResourceSpec) elem() {}
 func (*SpecAttr) elem()     {}

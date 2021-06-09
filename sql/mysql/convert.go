@@ -19,8 +19,8 @@ func (s *SpecConverter) ColumnType(spec *schema.ColumnSpec) (schema.Type, error)
 		return s.convertString(spec)
 	case "binary":
 		return s.convertBinary(spec)
-		//case "enum":
-		//	return s.convertEnum( spec)
+	case "enum":
+		return s.convertEnum(spec)
 		//case "boolean":
 		//	return s.convertBool( spec)
 		//case "decimal":
@@ -82,6 +82,18 @@ func (s *SpecConverter) convertBinary(spec *schema.ColumnSpec) (schema.Type, err
 		return nil, fmt.Errorf("mysql: blob fields can be up to 4GB long")
 	}
 	return bt, nil
+}
+
+func (s *SpecConverter) convertEnum(spec *schema.ColumnSpec) (schema.Type, error) {
+	attr, ok := spec.Attr("values")
+	if !ok {
+		return nil, fmt.Errorf("mysql: expected enum fields to have values")
+	}
+	list, err := attr.StringList()
+	if err != nil {
+		return nil, err
+	}
+	return &schema.EnumType{Values: list}, nil
 }
 
 func (s *SpecConverter) convertString(spec *schema.ColumnSpec) (schema.Type, error) {
