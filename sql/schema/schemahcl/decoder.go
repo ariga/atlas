@@ -73,7 +73,7 @@ func (t *table) spec() (*schema.TableSpec, error) {
 	if !ok {
 		return nil, fmt.Errorf("schemahcl: expected remainder to be of type *hclsyntax.Body")
 	}
-	attrs, err := toAttrs(body.Attributes, skipNone())
+	attrs, err := toAttrs(body.Attributes, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -116,15 +116,13 @@ func skip(lst ...string) map[string]struct{} {
 	return out
 }
 
-func skipNone() map[string]struct{} {
-	return skip()
-}
-
 func toAttrs(hclAttrs hclsyntax.Attributes, skip map[string]struct{}) ([]*schema.SpecAttr, error) {
 	var attrs []*schema.SpecAttr
 	for _, hclAttr := range hclAttrs {
-		if _, ok := skip[hclAttr.Name]; ok {
-			continue
+		if skip != nil {
+			if _, ok := skip[hclAttr.Name]; ok {
+				continue
+			}
 		}
 		at := &schema.SpecAttr{K: hclAttr.Name}
 		value, diag := hclAttr.Expr.Value(nil)
@@ -156,7 +154,7 @@ func toResource(block *hclsyntax.Block) (*schema.ResourceSpec, error) {
 	if len(block.Labels) > 0 {
 		spec.Name = block.Labels[0]
 	}
-	attrs, err := toAttrs(block.Body.Attributes, skipNone())
+	attrs, err := toAttrs(block.Body.Attributes, nil)
 	if err != nil {
 		return nil, err
 	}

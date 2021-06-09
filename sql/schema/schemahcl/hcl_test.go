@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEncode(t *testing.T) {
+func TestReEncode(t *testing.T) {
 	tbl := &schema.TableSpec{
 		Name: "users",
 		Columns: []*schema.ColumnSpec{
