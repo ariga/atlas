@@ -24,13 +24,14 @@ func Encode(elem schema.Element) ([]byte, error) {
 
 func writeAttr(attr *schema.SpecAttr, body *hclwrite.Body) error {
 	switch v := attr.V.(type) {
-	case schema.SpecLiteral:
+	case *schema.SpecLiteral:
 		body.SetAttributeRaw(attr.K, hclRawTokens(v.V))
 	default:
 		return fmt.Errorf("schemacl: unknown literal type %T", v)
 	}
 	return nil
 }
+
 func writeResource(b *schema.ResourceSpec, body *hclwrite.Body) error {
 	blk := body.AppendNewBlock(b.Type, []string{b.Name})
 	nb := blk.Body()

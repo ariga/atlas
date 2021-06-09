@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEncode(t *testing.T) {
+func TestReEncode(t *testing.T) {
 	tbl := &schema.TableSpec{
 		Name: "users",
 		Columns: []*schema.ColumnSpec{
@@ -15,14 +15,14 @@ func TestEncode(t *testing.T) {
 				Name: "user_id",
 				Type: "int64",
 				Attrs: []*schema.SpecAttr{
-					{K: "hello", V: schema.SpecLiteral{V: `"world"`}},
+					{K: "hello", V: &schema.SpecLiteral{V: `"world"`}},
 				},
 				Children: []*schema.ResourceSpec{
 					{
 						Type: "resource",
 						Name: "super_index",
 						Attrs: []*schema.SpecAttr{
-							{K: "enabled", V: schema.SpecLiteral{V: `true`}},
+							{K: "enabled", V: &schema.SpecLiteral{V: `true`}},
 						},
 					},
 				},
@@ -41,4 +41,8 @@ func TestEncode(t *testing.T) {
   }
 }
 `, string(config))
+	tgt := &schema.SchemaSpec{}
+	err = Decode(config, tgt)
+	require.NoError(t, err)
+	require.EqualValues(t, tbl, tgt.Tables[0])
 }
