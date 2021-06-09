@@ -46,3 +46,19 @@ func TestReEncode(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, tbl, tgt.Tables[0])
 }
+
+func TestSchemaRef(t *testing.T) {
+	f := `schema "s1" {
+}
+
+table "users" {
+	schema = schema.s1
+	column "name" {
+		type = "string"
+	}
+}`
+	tgt := &schema.SchemaSpec{}
+	err := Decode([]byte(f), tgt)
+	require.NoError(t, err)
+	require.Equal(t, "s1", tgt.Tables[0].SchemaName)
+}
