@@ -65,7 +65,7 @@ type (
 
 	// PrimaryKeySpec holds a specification for the primary key of a table.
 	PrimaryKeySpec struct {
-		Columns  []string
+		Columns  []*ColumnRef
 		Attrs    []*SpecAttr
 		Children []*ResourceSpec
 	}
@@ -73,9 +73,8 @@ type (
 	// ForeignKeySpec holds a specification for a foreign key of a table.
 	ForeignKeySpec struct {
 		Symbol     string
-		Columns    []string
-		RefTable   string
-		RefColumns []string
+		Columns    []*ColumnRef
+		RefColumns []*ColumnRef
 		OnUpdate   string
 		OnDelete   string
 		Attrs      []*SpecAttr
@@ -85,10 +84,22 @@ type (
 	// IndexSpec holds a specification for an index of a table.
 	IndexSpec struct {
 		Name     string
-		Columns  []string
+		Columns  []*ColumnRef
 		Unique   bool
 		Attrs    []*SpecAttr
 		Children []*ResourceSpec
+	}
+
+	// ColumnRef is a reference to a Column described in another spec.
+	ColumnRef struct {
+		Name  string
+		Table string
+	}
+
+	// TableRef is a reference to a Table described in another spec.
+	TableRef struct {
+		Name   string
+		Schema string
 	}
 
 	// Element is an object that can be encoded into bytes to be written to a configuration file representing

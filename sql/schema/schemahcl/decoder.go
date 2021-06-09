@@ -175,7 +175,7 @@ func (p *primaryKey) spec(ctx *hcl.EvalContext) (*schema.PrimaryKeySpec, error) 
 		Children: common.children,
 	}
 	for _, col := range p.Columns {
-		pk.Columns = append(pk.Columns, col.Name)
+		pk.Columns = append(pk.Columns, &schema.ColumnRef{Table: col.Table, Name: col.Name})
 	}
 	return pk, nil
 }
@@ -193,17 +193,15 @@ func (p *foreignKey) spec(ctx *hcl.EvalContext) (*schema.ForeignKeySpec, error) 
 		OnUpdate: p.OnUpdate,
 	}
 	for _, col := range p.Columns {
-		fk.Columns = append(fk.Columns, col.Name)
+		fk.Columns = append(fk.Columns, &schema.ColumnRef{Table: col.Table, Name: col.Name})
 	}
 	var refTable string
 	for _, refCol := range p.RefColumns {
 		if refTable != "" && refCol.Table != refTable {
 			return nil, fmt.Errorf("schemahcl: expected all ref columns to be of same table for key %q", p.Symbol)
 		}
-		refTable = refCol.Table
-		fk.RefColumns = append(fk.RefColumns, refCol.Name)
+		fk.RefColumns = append(fk.RefColumns, &schema.ColumnRef{Table: refCol.Table, Name: refCol.Name})
 	}
-	fk.RefTable = refTable
 	return fk, nil
 }
 
@@ -219,7 +217,7 @@ func (i *index) spec(ctx *hcl.EvalContext) (*schema.IndexSpec, error) {
 		Children: common.children,
 	}
 	for _, col := range i.Columns {
-		idx.Columns = append(idx.Columns, col.Name)
+		idx.Columns = append(idx.Columns, &schema.ColumnRef{Table: col.Table, Name: col.Name})
 	}
 	return idx, nil
 }

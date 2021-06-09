@@ -83,7 +83,12 @@ table "users" {
 	err := Decode([]byte(f), tgt)
 	require.NoError(t, err)
 	require.Equal(t, &schema.PrimaryKeySpec{
-		Columns: []string{"name"},
+		Columns: []*schema.ColumnRef{
+			{
+				Table: "users",
+				Name:  "name",
+			},
+		},
 	}, tgt.Tables[0].PrimaryKey)
 }
 
@@ -111,9 +116,14 @@ table "users" {
 	err := Decode([]byte(f), tgt)
 	require.NoError(t, err)
 	require.Equal(t, &schema.IndexSpec{
-		Name:    "txn_id",
-		Unique:  true,
-		Columns: []string{"txn_id"},
+		Name:   "txn_id",
+		Unique: true,
+		Columns: []*schema.ColumnRef{
+			{
+				Name:  "txn_id",
+				Table: "users",
+			},
+		},
 	}, tgt.Tables[0].Indexes[0])
 }
 
@@ -154,9 +164,13 @@ table "user_messages" {
 	err := Decode([]byte(f), tgt)
 	require.NoError(t, err)
 	require.Equal(t, &schema.ForeignKeySpec{
-		Symbol:     "user_name_ref",
-		Columns:    []string{"user_name"},
-		RefTable:   "users",
-		RefColumns: []string{"name"},
+		Symbol: "user_name_ref",
+		Columns: []*schema.ColumnRef{
+			{Table: "user_messages", Name: "user_name"},
+		},
+
+		RefColumns: []*schema.ColumnRef{
+			{Table: "users", Name: "name"},
+		},
 	}, tgt.Tables[1].ForeignKeys[0])
 }
