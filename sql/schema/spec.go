@@ -43,10 +43,11 @@ type (
 
 	// TableSpec holds a specification for an SQL table.
 	TableSpec struct {
-		Name     string
-		Columns  []*ColumnSpec
-		Attrs    []*SpecAttr
-		Children []*ResourceSpec
+		Name       string
+		SchemaName string
+		Columns    []*ColumnSpec
+		Attrs      []*SpecAttr
+		Children   []*ResourceSpec
 	}
 
 	// ColumnSpec holds a specification for a column in an SQL table.
