@@ -168,7 +168,6 @@ table "user_messages" {
 		Columns: []*schema.ColumnRef{
 			{Table: "user_messages", Name: "user_name"},
 		},
-
 		RefColumns: []*schema.ColumnRef{
 			{Table: "users", Name: "name"},
 		},
