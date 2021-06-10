@@ -4,16 +4,15 @@ import "ariga.io/atlas/sql/schema"
 
 // Converter converts specs into Schema elements (Schema, Table, Column, etc).
 type Converter struct {
-
 }
 
-func (c *Converter) Build(spec *schema.SchemaSpec) (*schema.Schema, error) {
+func (c *Converter) Schema(spec *schema.SchemaSpec) (*schema.Schema, error) {
 	out := &schema.Schema{
 		Name: spec.Name,
 		Spec: spec,
 	}
 	for _, ts := range spec.Tables {
-		table, err := c.BuildTable(ts, out)
+		table, err := c.Table(ts, out)
 		if err != nil {
 			return nil, err
 		}
@@ -22,14 +21,14 @@ func (c *Converter) Build(spec *schema.SchemaSpec) (*schema.Schema, error) {
 	return out, nil
 }
 
-func (c *Converter) BuildTable(spec *schema.TableSpec, parent *schema.Schema) (*schema.Table, error) {
+func (c *Converter) Table(spec *schema.TableSpec, parent *schema.Schema) (*schema.Table, error) {
 	out := &schema.Table{
 		Name:   spec.Name,
 		Schema: parent,
 		Spec:   spec,
 	}
 	for _, csp := range spec.Columns {
-		col, err := c.BuildColumn(csp, out)
+		col, err := c.Column(csp, out)
 		if err != nil {
 			return nil, err
 		}
@@ -38,7 +37,7 @@ func (c *Converter) BuildTable(spec *schema.TableSpec, parent *schema.Schema) (*
 	return out, nil
 }
 
-func (c *Converter) BuildColumn(spec *schema.ColumnSpec, parent *schema.Table) (*schema.Column, error) {
+func (c *Converter) Column(spec *schema.ColumnSpec, parent *schema.Table) (*schema.Column, error) {
 	out := &schema.Column{
 		Name: spec.Name,
 		Spec: spec,

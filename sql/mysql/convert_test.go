@@ -8,7 +8,7 @@ import (
 )
 
 func TestBuilder_Build(t *testing.T) {
-	b := &Converter{}
+	converter := &Converter{}
 
 	spec := &schema.SchemaSpec{
 		Name: "schema",
@@ -24,7 +24,7 @@ func TestBuilder_Build(t *testing.T) {
 			},
 		},
 	}
-	sch, err := b.Build(spec)
+	sch, err := converter.Schema(spec)
 	require.NoError(t, err)
 	exp := &schema.Schema{
 		Name: "schema",
