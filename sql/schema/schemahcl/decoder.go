@@ -2,6 +2,7 @@ package schemahcl
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 
 	"ariga.io/atlas/sql/schema"
@@ -13,7 +14,7 @@ import (
 	"github.com/zclconf/go-cty/cty/gocty"
 )
 
-// Decode implements schema.Decoder. It parses an HCL document describing a schema Spec into spec.
+// Decode implements schema.Decoder. It parses an HCL document describing a schema into Spec.
 func Decode(body []byte, spec schema.Spec) error {
 	parser := hclparse.NewParser()
 	srcHCL, diag := parser.ParseHCL(body, "in-memory.hcl")
@@ -27,20 +28,20 @@ func Decode(body []byte, spec schema.Spec) error {
 	if err != nil {
 		return err
 	}
-	if tgt, ok := spec.(*schema.SchemaSpec); ok {
+	if s, ok := spec.(*schema.SchemaSpec); ok {
 		f := &schemaFile{}
 		if diag := gohcl.DecodeBody(srcHCL.Body, ctx, f); diag.HasErrors() {
 			return diag
 		}
 		if len(f.Schemas) > 0 {
-			tgt.Name = f.Schemas[0].Name
+			s.Name = f.Schemas[0].Name
 		}
 		for _, tbl := range f.Tables {
 			spec, err := tbl.spec(ctx)
 			if err != nil {
 				return err
 			}
-			tgt.Tables = append(tgt.Tables, spec)
+			s.Tables = append(s.Tables, spec)
 		}
 		return nil
 	}
@@ -249,22 +250,55 @@ func toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes, skip map[strin
 		if diag.HasErrors() {
 			return nil, diag
 		}
-
-		switch value.Type() {
-		case cty.String:
-			at.V = &schema.LiteralValue{V: strconv.Quote(value.AsString())}
-		case cty.Number:
-			bf := value.AsBigFloat()
-			num, _ := bf.Float64()
-			at.V = &schema.LiteralValue{V: fmt.Sprintf("%f", num)}
-		case cty.Bool:
-			at.V = &schema.LiteralValue{V: strconv.FormatBool(value.True())}
-		default:
-			return nil, fmt.Errorf("schemahcl: unsupported type %q", value.Type().GoString())
+		if value.CanIterateElements() {
+			v, err := extractListValue(value)
+			if err != nil {
+				return nil, err
+			}
+			at.V = v
+		} else {
+			v, err := extractLiteralValue(value)
+			if err != nil {
+				return nil, err
+			}
+			at.V = v
 		}
 		attrs = append(attrs, at)
 	}
+	// hclsyntax.Attributes is an alias for map[string]*Attribute
+	sort.Slice(attrs, func(i, j int) bool {
+		return attrs[i].K < attrs[j].K
+	})
 	return attrs, nil
+}
+
+func extractListValue(value cty.Value) (*schema.ListValue, error) {
+	lst := &schema.ListValue{}
+	it := value.ElementIterator()
+	for it.Next() {
+		_, v := it.Element()
+		litv, err := extractLiteralValue(v)
+		if err != nil {
+			return nil, err
+		}
+		lst.V = append(lst.V, litv.V)
+	}
+	return lst, nil
+}
+
+func extractLiteralValue(value cty.Value) (*schema.LiteralValue, error) {
+	switch value.Type() {
+	case cty.String:
+		return &schema.LiteralValue{V: strconv.Quote(value.AsString())}, nil
+	case cty.Number:
+		bf := value.AsBigFloat()
+		num, _ := bf.Float64()
+		return &schema.LiteralValue{V: fmt.Sprintf("%f", num)}, nil
+	case cty.Bool:
+		return &schema.LiteralValue{V: strconv.FormatBool(value.True())}, nil
+	default:
+		return nil, fmt.Errorf("schemahcl: unsupported type %q", value.Type().GoString())
+	}
 }
 
 func toResource(ctx *hcl.EvalContext, block *hclsyntax.Block) (*schema.ResourceSpec, error) {

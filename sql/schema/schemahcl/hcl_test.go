@@ -43,10 +43,10 @@ func TestReEncode(t *testing.T) {
   }
 }
 `, string(config))
-	tgt := &schema.SchemaSpec{}
-	err = Decode(config, tgt)
+	s := &schema.SchemaSpec{}
+	err = Decode(config, s)
 	require.NoError(t, err)
-	require.EqualValues(t, tbl, tgt.Tables[0])
+	require.EqualValues(t, tbl, s.Tables[0])
 }
 
 func TestSchemaRef(t *testing.T) {
@@ -59,10 +59,10 @@ table "users" {
 		type = "string"
 	}
 }`
-	tgt := &schema.SchemaSpec{}
-	err := Decode([]byte(f), tgt)
+	s := &schema.SchemaSpec{}
+	err := Decode([]byte(f), s)
 	require.NoError(t, err)
-	require.Equal(t, "s1", tgt.Tables[0].SchemaName)
+	require.Equal(t, "s1", s.Tables[0].SchemaName)
 }
 
 func TestPrimaryKey(t *testing.T) {
@@ -81,8 +81,8 @@ table "users" {
 	}
 }
 `
-	tgt := &schema.SchemaSpec{}
-	err := Decode([]byte(f), tgt)
+	s := &schema.SchemaSpec{}
+	err := Decode([]byte(f), s)
 	require.NoError(t, err)
 	require.Equal(t, &schema.PrimaryKeySpec{
 		Columns: []*schema.ColumnRef{
@@ -91,13 +91,13 @@ table "users" {
 				Name:  "name",
 			},
 		},
-	}, tgt.Tables[0].PrimaryKey)
-	encode, err := Encode(tgt)
+	}, s.Tables[0].PrimaryKey)
+	encode, err := Encode(s)
 	require.NoError(t, err)
 	generated := &schema.SchemaSpec{}
 	err = Decode(encode, generated)
 	require.NoError(t, err)
-	require.EqualValues(t, tgt, generated)
+	require.EqualValues(t, s, generated)
 }
 
 func TestIndex(t *testing.T) {
@@ -120,8 +120,8 @@ table "users" {
 	}
 }
 `
-	tgt := &schema.SchemaSpec{}
-	err := Decode([]byte(f), tgt)
+	s := &schema.SchemaSpec{}
+	err := Decode([]byte(f), s)
 	require.NoError(t, err)
 	require.Equal(t, &schema.IndexSpec{
 		Name:   "txn_id",
@@ -132,13 +132,13 @@ table "users" {
 				Table: "users",
 			},
 		},
-	}, tgt.Tables[0].Indexes[0])
-	encode, err := Encode(tgt)
+	}, s.Tables[0].Indexes[0])
+	encode, err := Encode(s)
 	require.NoError(t, err)
 	generated := &schema.SchemaSpec{}
 	err = Decode(encode, generated)
 	require.NoError(t, err)
-	require.EqualValues(t, tgt, generated)
+	require.EqualValues(t, s, generated)
 }
 
 func TestForeignKey(t *testing.T) {
@@ -175,8 +175,8 @@ table "user_messages" {
 	}
 }
 `
-	tgt := &schema.SchemaSpec{}
-	err := Decode([]byte(f), tgt)
+	s := &schema.SchemaSpec{}
+	err := Decode([]byte(f), s)
 	require.NoError(t, err)
 	require.Equal(t, &schema.ForeignKeySpec{
 		Symbol: "user_name_ref",
@@ -187,13 +187,13 @@ table "user_messages" {
 			{Table: "users", Name: "name"},
 		},
 		OnDelete: string(schema.NoAction),
-	}, tgt.Tables[1].ForeignKeys[0])
-	encode, err := Encode(tgt)
+	}, s.Tables[1].ForeignKeys[0])
+	encode, err := Encode(s)
 	require.NoError(t, err)
 	generated := &schema.SchemaSpec{}
 	err = Decode(encode, generated)
 	require.NoError(t, err)
-	require.EqualValues(t, tgt, generated)
+	require.EqualValues(t, s, generated)
 }
 
 func TestRewriteHCL(t *testing.T) {
