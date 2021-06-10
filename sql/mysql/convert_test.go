@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBuilder_Build(t *testing.T) {
+func TestConvertSchema(t *testing.T) {
 	spec := &schema.SchemaSpec{
 		Name: "schema",
 		Tables: []*schema.TableSpec{
