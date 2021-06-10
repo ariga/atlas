@@ -80,13 +80,13 @@ type (
 	Value interface {
 		val()
 	}
-	// SpecLiteral implements Value and represents a literal value (string, number, etc.)
-	SpecLiteral struct {
+	// LiteralValue implements Value and represents a literal value (string, number, etc.)
+	LiteralValue struct {
 		V string
 	}
 
-	// SpecLiteralList implements Value and represents a list of literal values.
-	SpecLiteralList struct {
+	// ListValue implements Value and represents a list of literal values.
+	ListValue struct {
 		V []string
 	}
 )
@@ -111,7 +111,7 @@ func getAttrVal(attrs []*SpecAttr, name string) (*SpecAttr, bool) {
 }
 
 func (a *SpecAttr) Int() (int, error) {
-	lit, ok := a.V.(*SpecLiteral)
+	lit, ok := a.V.(*LiteralValue)
 	if !ok {
 		return 0, fmt.Errorf("schema: cannot read attribute %q as literal", a.K)
 	}
@@ -123,7 +123,7 @@ func (a *SpecAttr) Int() (int, error) {
 }
 
 func (a *SpecAttr) StringList() ([]string, error) {
-	lst, ok := a.V.(*SpecLiteralList)
+	lst, ok := a.V.(*ListValue)
 	if !ok {
 		return nil, fmt.Errorf("schema: attribute %q is not a list", a.K)
 	}
@@ -138,8 +138,8 @@ func (a *SpecAttr) StringList() ([]string, error) {
 	return out, nil
 }
 
-func (*SpecLiteral) val()     {}
-func (*SpecLiteralList) val() {}
+func (*LiteralValue) val() {}
+func (*ListValue) val()    {}
 
 func (*ResourceSpec) elem() {}
 func (*SpecAttr) elem()     {}

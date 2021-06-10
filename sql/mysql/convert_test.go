@@ -141,7 +141,7 @@ func colspec(name, coltype string, attrs ...*schema.SpecAttr) *schema.ColumnSpec
 func attr(k, v string) *schema.SpecAttr {
 	return &schema.SpecAttr{
 		K: k,
-		V: &schema.SpecLiteral{V: v},
+		V: &schema.LiteralValue{V: v},
 	}
 }
 
@@ -151,6 +151,6 @@ func listattr(k string, values ...string) *schema.SpecAttr {
 	}
 	return &schema.SpecAttr{
 		K: k,
-		V: &schema.SpecLiteralList{V: values},
+		V: &schema.ListValue{V: values},
 	}
 }
