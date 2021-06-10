@@ -90,6 +90,12 @@ table "users" {
 			},
 		},
 	}, tgt.Tables[0].PrimaryKey)
+	encode, err := Encode(tgt)
+	require.NoError(t, err)
+	generated := &schema.SchemaSpec{}
+	err = Decode(encode, generated)
+	require.NoError(t, err)
+	require.EqualValues(t, tgt, generated)
 }
 
 func TestIndex(t *testing.T) {
@@ -125,6 +131,12 @@ table "users" {
 			},
 		},
 	}, tgt.Tables[0].Indexes[0])
+	encode, err := Encode(tgt)
+	require.NoError(t, err)
+	generated := &schema.SchemaSpec{}
+	err = Decode(encode, generated)
+	require.NoError(t, err)
+	require.EqualValues(t, tgt, generated)
 }
 
 func TestForeignKey(t *testing.T) {
@@ -157,6 +169,7 @@ table "user_messages" {
 		references =  [
 			table.users.column.name
 		]
+		on_delete = reference_option.no_action
 	}
 }
 `
@@ -171,5 +184,12 @@ table "user_messages" {
 		RefColumns: []*schema.ColumnRef{
 			{Table: "users", Name: "name"},
 		},
+		OnDelete: string(schema.NoAction),
 	}, tgt.Tables[1].ForeignKeys[0])
+	encode, err := Encode(tgt)
+	require.NoError(t, err)
+	generated := &schema.SchemaSpec{}
+	err = Decode(encode, generated)
+	require.NoError(t, err)
+	require.EqualValues(t, tgt, generated)
 }
