@@ -7,9 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBuilder_Build(t *testing.T) {
-	converter := &Converter{}
-
+func TestConvertSchema(t *testing.T) {
 	spec := &schema.SchemaSpec{
 		Name: "schema",
 		Tables: []*schema.TableSpec{
@@ -24,7 +22,7 @@ func TestBuilder_Build(t *testing.T) {
 			},
 		},
 	}
-	sch, err := converter.Schema(spec)
+	sch, err := ConvertSchema(spec)
 	require.NoError(t, err)
 	exp := &schema.Schema{
 		Name: "schema",
@@ -38,7 +36,12 @@ func TestBuilder_Build(t *testing.T) {
 			Columns: []*schema.Column{
 				{
 					Name: "col",
-					Type: &schema.ColumnType{},
+					Type: &schema.ColumnType{
+						Type: &schema.IntegerType{
+							T:    tInt,
+							Size: 4,
+						},
+					},
 					Spec: spec.Tables[0].Columns[0],
 				},
 			},
@@ -48,7 +51,6 @@ func TestBuilder_Build(t *testing.T) {
 }
 
 func TestConverter(t *testing.T) {
-	conv := &Converter{}
 	for _, tt := range []struct {
 		spec     *schema.ColumnSpec
 		expected schema.Type
@@ -158,7 +160,7 @@ func TestConverter(t *testing.T) {
 		},
 	} {
 		t.Run(tt.spec.Name, func(t *testing.T) {
-			columnType, err := conv.ColumnType(tt.spec)
+			columnType, err := ConvertColumnType(tt.spec)
 			require.NoError(t, err)
 			require.EqualValues(t, tt.expected, columnType)
 		})

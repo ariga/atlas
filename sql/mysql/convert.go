@@ -14,7 +14,7 @@ func ConvertSchema(spec *schema.SchemaSpec) (*schema.Schema, error) {
 		Spec: spec,
 	}
 	for _, ts := range spec.Tables {
-		table, err := c.Table(ts, out)
+		table, err := ConvertTable(ts, out)
 		if err != nil {
 			return nil, err
 		}
@@ -30,7 +30,7 @@ func ConvertTable(spec *schema.TableSpec, parent *schema.Schema) (*schema.Table,
 		Spec:   spec,
 	}
 	for _, csp := range spec.Columns {
-		col, err := c.Column(csp, out)
+		col, err := ConvertColumn(csp, out)
 		if err != nil {
 			return nil, err
 		}
@@ -50,26 +50,22 @@ func ConvertColumn(spec *schema.ColumnSpec, parent *schema.Table) (*schema.Colum
 	if spec.Default != nil {
 		out.Default = &schema.Literal{V: *spec.Default}
 	}
-	columnType, err := c.columnType(spec)
+	ct, err := ConvertColumnType(spec)
 	if err != nil {
 		return nil, err
 	}
-	out.Type.Type = columnType
+	out.Type.Type = ct
 	return out, err
 }
 
-func columnType(spec *schema.ColumnSpec) (schema.Type, error) {
-	return nil, nil
-}
-
-func (c *Converter) ColumnType(spec *schema.ColumnSpec) (schema.Type, error) {
+func ConvertColumnType(spec *schema.ColumnSpec) (schema.Type, error) {
 	switch spec.Type {
 	case "int", "int8", "int16", "int64", "uint", "uint8", "uint16", "uint64":
-		return c.convertInteger(spec)
+		return convertInteger(spec)
 	case "string":
-		return c.convertString(spec)
+		return convertString(spec)
 	case "binary":
-		return c.convertBinary(spec)
+		return convertBinary(spec)
 		//case "enum":
 		//	return s.convertEnum( spec)
 		//case "boolean":
@@ -86,7 +82,7 @@ func (c *Converter) ColumnType(spec *schema.ColumnSpec) (schema.Type, error) {
 	return parseRawType(spec.Type)
 }
 
-func (c *Converter) convertInteger(spec *schema.ColumnSpec) (schema.Type, error) {
+func convertInteger(spec *schema.ColumnSpec) (schema.Type, error) {
 	typ := &schema.IntegerType{
 		Unsigned: strings.HasPrefix(spec.Type, "u"),
 	}
@@ -109,7 +105,7 @@ func (c *Converter) convertInteger(spec *schema.ColumnSpec) (schema.Type, error)
 	return typ, nil
 }
 
-func (c *Converter) convertBinary(spec *schema.ColumnSpec) (schema.Type, error) {
+func convertBinary(spec *schema.ColumnSpec) (schema.Type, error) {
 	bt := &schema.BinaryType{}
 	if attr, ok := spec.Attr("size"); ok {
 		s, err := attr.Int()
@@ -135,7 +131,7 @@ func (c *Converter) convertBinary(spec *schema.ColumnSpec) (schema.Type, error) 
 	return bt, nil
 }
 
-func (c *Converter) convertString(spec *schema.ColumnSpec) (schema.Type, error) {
+func convertString(spec *schema.ColumnSpec) (schema.Type, error) {
 	st := &schema.StringType{
 		Size: 255,
 	}
