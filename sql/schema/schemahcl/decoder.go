@@ -32,6 +32,9 @@ func Decode(body []byte, spec schema.Spec) error {
 		if diag := gohcl.DecodeBody(srcHCL.Body, ctx, f); diag.HasErrors() {
 			return diag
 		}
+		if len(f.Schemas) > 0 {
+			tgt.Name = f.Schemas[0].Name
+		}
 		for _, tbl := range f.Tables {
 			spec, err := tbl.spec(ctx)
 			if err != nil {
@@ -46,6 +49,9 @@ func Decode(body []byte, spec schema.Spec) error {
 
 type (
 	schemaFile struct {
+		Schemas []struct {
+			Name string `hcl:",label"`
+		} `hcl:"schema,block"`
 		Tables []*table `hcl:"table,block"`
 		Remain hcl.Body `hcl:",remain"`
 	}
