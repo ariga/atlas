@@ -164,6 +164,8 @@ func (a *SpecAttr) Int() (int, error) {
 	return s, nil
 }
 
+// StringList returns a slice of strings from the Value of the SpecAttr. If The value is not a ListValue or the its
+// values cannot be converted to strings an error is returned.
 func (a *SpecAttr) StringList() ([]string, error) {
 	lst, ok := a.V.(*ListValue)
 	if !ok {
