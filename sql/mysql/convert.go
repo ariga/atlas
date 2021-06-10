@@ -8,6 +8,7 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
+// ConvertSchema converts a SchemaSpec into a Schema.
 func ConvertSchema(spec *schema.SchemaSpec) (*schema.Schema, error) {
 	out := &schema.Schema{
 		Name: spec.Name,
@@ -23,6 +24,7 @@ func ConvertSchema(spec *schema.SchemaSpec) (*schema.Schema, error) {
 	return out, nil
 }
 
+// ConvertTable converts a TableSpec to a Table.
 func ConvertTable(spec *schema.TableSpec, parent *schema.Schema) (*schema.Table, error) {
 	out := &schema.Table{
 		Name:   spec.Name,
@@ -39,6 +41,7 @@ func ConvertTable(spec *schema.TableSpec, parent *schema.Schema) (*schema.Table,
 	return out, nil
 }
 
+// ConvertColumn converts a ColumnSpec into a Column.
 func ConvertColumn(spec *schema.ColumnSpec, parent *schema.Table) (*schema.Column, error) {
 	out := &schema.Column{
 		Name: spec.Name,
@@ -59,6 +62,7 @@ func ConvertColumn(spec *schema.ColumnSpec, parent *schema.Table) (*schema.Colum
 }
 
 func ConvertColumnType(spec *schema.ColumnSpec) (schema.Type, error) {
+	// TODO: support: enum, boolean, decimal, float, time, json
 	switch spec.Type {
 	case "int", "int8", "int16", "int64", "uint", "uint8", "uint16", "uint64":
 		return convertInteger(spec)
@@ -66,18 +70,6 @@ func ConvertColumnType(spec *schema.ColumnSpec) (schema.Type, error) {
 		return convertString(spec)
 	case "binary":
 		return convertBinary(spec)
-		//case "enum":
-		//	return s.convertEnum( spec)
-		//case "boolean":
-		//	return s.convertBool( spec)
-		//case "decimal":
-		//	return s.convertDecimal( spec)
-		//case "float":
-		//	return s.convertFloat( spec)
-		//case "time":
-		//	return s.convertTime( spec)
-		//case "json":
-		//	return s.convertJSON( spec)
 	}
 	return parseRawType(spec.Type)
 }

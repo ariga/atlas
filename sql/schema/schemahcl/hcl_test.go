@@ -62,3 +62,134 @@ table "users" {
 	require.NoError(t, err)
 	require.Equal(t, "s1", tgt.Tables[0].SchemaName)
 }
+
+func TestPrimaryKey(t *testing.T) {
+	f := `
+table "users" {
+	column "name" {
+		type = "string"
+	}
+	column "age" {
+		type = "int"
+	}
+	primary_key {
+		columns = [
+			table.users.column.name
+		]
+	}
+}
+`
+	tgt := &schema.SchemaSpec{}
+	err := Decode([]byte(f), tgt)
+	require.NoError(t, err)
+	require.Equal(t, &schema.PrimaryKeySpec{
+		Columns: []*schema.ColumnRef{
+			{
+				Table: "users",
+				Name:  "name",
+			},
+		},
+	}, tgt.Tables[0].PrimaryKey)
+	encode, err := Encode(tgt)
+	require.NoError(t, err)
+	generated := &schema.SchemaSpec{}
+	err = Decode(encode, generated)
+	require.NoError(t, err)
+	require.EqualValues(t, tgt, generated)
+}
+
+func TestIndex(t *testing.T) {
+	f := `
+table "users" {
+	column "name" {
+		type = "string"
+	}
+	column "age" {
+		type = "int"
+	}
+	column "txn_id" {
+		type = "int"
+	}
+	index "txn_id" {
+		columns = [
+			table.users.column.txn_id
+		]
+		unique = true
+	}
+}
+`
+	tgt := &schema.SchemaSpec{}
+	err := Decode([]byte(f), tgt)
+	require.NoError(t, err)
+	require.Equal(t, &schema.IndexSpec{
+		Name:   "txn_id",
+		Unique: true,
+		Columns: []*schema.ColumnRef{
+			{
+				Name:  "txn_id",
+				Table: "users",
+			},
+		},
+	}, tgt.Tables[0].Indexes[0])
+	encode, err := Encode(tgt)
+	require.NoError(t, err)
+	generated := &schema.SchemaSpec{}
+	err = Decode(encode, generated)
+	require.NoError(t, err)
+	require.EqualValues(t, tgt, generated)
+}
+
+func TestForeignKey(t *testing.T) {
+	f := `
+table "users" {
+	column "name" {
+		type = "string"
+	}
+	column "age" {
+		type = "int"
+	}
+	primary_key {
+		columns = [
+			table.users.column.name
+		]
+	}
+}
+
+table "user_messages" {
+	column "text" {
+		type = "string"
+	}
+	column "user_name" {
+		type = "string"
+	}
+	foreign_key "user_name_ref" {
+		columns = [
+			table.user_messages.column.user_name
+		]
+		references =  [
+			table.users.column.name
+		]
+		on_delete = reference_option.no_action
+	}
+}
+`
+	tgt := &schema.SchemaSpec{}
+	err := Decode([]byte(f), tgt)
+	require.NoError(t, err)
+	require.Equal(t, &schema.ForeignKeySpec{
+		Symbol: "user_name_ref",
+		Columns: []*schema.ColumnRef{
+			{Table: "user_messages", Name: "user_name"},
+		},
+		RefColumns: []*schema.ColumnRef{
+			{Table: "users", Name: "name"},
+		},
+		OnDelete: string(schema.NoAction),
+	}, tgt.Tables[1].ForeignKeys[0])
+	encode, err := Encode(tgt)
+	require.NoError(t, err)
+	generated := &schema.SchemaSpec{}
+	err = Decode(encode, generated)
+	require.NoError(t, err)
+	require.EqualValues(t, tgt, generated)
+}
