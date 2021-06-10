@@ -24,7 +24,7 @@ func Encode(elem schema.Element) ([]byte, error) {
 
 func writeAttr(attr *schema.SpecAttr, body *hclwrite.Body) error {
 	switch v := attr.V.(type) {
-	case *schema.SpecLiteral:
+	case *schema.LiteralValue:
 		body.SetAttributeRaw(attr.K, hclRawTokens(v.V))
 	default:
 		return fmt.Errorf("schemacl: unknown literal type %T", v)

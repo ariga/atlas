@@ -252,13 +252,13 @@ func toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes, skip map[strin
 
 		switch value.Type() {
 		case cty.String:
-			at.V = &schema.SpecLiteral{V: strconv.Quote(value.AsString())}
+			at.V = &schema.LiteralValue{V: strconv.Quote(value.AsString())}
 		case cty.Number:
 			bf := value.AsBigFloat()
 			num, _ := bf.Float64()
-			at.V = &schema.SpecLiteral{V: fmt.Sprintf("%f", num)}
+			at.V = &schema.LiteralValue{V: fmt.Sprintf("%f", num)}
 		case cty.Bool:
-			at.V = &schema.SpecLiteral{V: strconv.FormatBool(value.True())}
+			at.V = &schema.LiteralValue{V: strconv.FormatBool(value.True())}
 		default:
 			return nil, fmt.Errorf("schemahcl: unsupported type %q", value.Type().GoString())
 		}
