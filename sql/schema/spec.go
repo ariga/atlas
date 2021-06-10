@@ -1,5 +1,10 @@
 package schema
 
+import (
+	"fmt"
+	"strconv"
+)
+
 type (
 	// Spec holds a specification for a schema resource (such as a Table, Column or Index).
 	Spec interface {
@@ -122,6 +127,37 @@ type (
 		V string
 	}
 )
+
+// Attr returns the value of the ColumnSpec attribute named `name` and reports whether such an attribute exists.
+func (c *ColumnSpec) Attr(name string) (*SpecAttr, bool) {
+	return getAttrVal(c.Attrs, name)
+}
+
+// Attr returns the value of the TableSpec attribute named `name` and reports whether such an attribute exists.
+func (t *TableSpec) Attr(name string) (*SpecAttr, bool) {
+	return getAttrVal(t.Attrs, name)
+}
+
+func getAttrVal(attrs []*SpecAttr, name string) (*SpecAttr, bool) {
+	for _, attr := range attrs {
+		if attr.K == name {
+			return attr, true
+		}
+	}
+	return nil, false
+}
+
+func (a *SpecAttr) Int() (int, error) {
+	lit, ok := a.V.(*SpecLiteral)
+	if !ok {
+		return 0, fmt.Errorf("schema: cannot read attribute %q as literal", a.K)
+	}
+	s, err := strconv.Atoi(lit.V)
+	if err != nil {
+		return 0, fmt.Errorf("schema: cannot read attribute %q as integer", a.K)
+	}
+	return s, nil
+}
 
 func (*SpecLiteral) val() {}
 
