@@ -417,12 +417,12 @@ func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
 	names := make(map[string]*schema.Index)
 	for rows.Next() {
 		var (
-			nonuniq                        bool
-			seqno                          int
-			name, indexType                string
-			column, subPart, expr, comment sql.NullString
+			nonuniq                                 bool
+			seqno                                   int
+			name, indexType                         string
+			column, subPart, expr, comment, collate sql.NullString
 		)
-		if err := rows.Scan(&name, &column, &nonuniq, &seqno, &indexType, &comment, &subPart, &expr); err != nil {
+		if err := rows.Scan(&name, &column, &nonuniq, &seqno, &indexType, &collate, &comment, &subPart, &expr); err != nil {
 			return fmt.Errorf("mysql: scanning index: %w", err)
 		}
 		// Ignore primary keys.
@@ -449,7 +449,10 @@ func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
 		}
 		// Rows are ordered by SEQ_IN_INDEX that specifies the
 		// position of the column in the index definition.
-		part := &schema.IndexPart{SeqNo: seqno}
+		part := &schema.IndexPart{
+			SeqNo: seqno,
+			Attrs: []schema.Attr{&schema.Collation{V: collate.String}},
+		}
 		switch {
 		case validString(expr):
 			part.X = &schema.RawExpr{
@@ -681,8 +684,8 @@ const (
 	columnsQuery = "SELECT `COLUMN_NAME`, `COLUMN_TYPE`, `COLUMN_COMMENT`, `IS_NULLABLE`, `COLUMN_KEY`, `COLUMN_DEFAULT`, `EXTRA`, `CHARACTER_SET_NAME`, `COLLATION_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?"
 
 	// Query to list table indexes.
-	indexesQuery     = "SELECT `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `INDEX_TYPE`, `INDEX_COMMENT`, `SUB_PART`, NULL AS `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
-	indexesExprQuery = "SELECT `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `INDEX_TYPE`, `INDEX_COMMENT`, `SUB_PART`, `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
+	indexesQuery     = "SELECT `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `INDEX_TYPE`, `COLLATION`, `INDEX_COMMENT`, `SUB_PART`, NULL AS `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
+	indexesExprQuery = "SELECT `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `INDEX_TYPE`, `COLLATION`, `INDEX_COMMENT`, `SUB_PART`, `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
 
 	// Query to list table information.
 	tableQuery = `
