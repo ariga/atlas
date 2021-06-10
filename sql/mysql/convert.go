@@ -62,7 +62,6 @@ func ConvertColumn(spec *schema.ColumnSpec, parent *schema.Table) (*schema.Colum
 }
 
 func ConvertColumnType(spec *schema.ColumnSpec) (schema.Type, error) {
-	// TODO: support: enum, boolean, decimal, float, time, json
 	switch spec.Type {
 	case "int", "int8", "int16", "int64", "uint", "uint8", "uint16", "uint64":
 		return convertInteger(spec)
@@ -70,6 +69,16 @@ func ConvertColumnType(spec *schema.ColumnSpec) (schema.Type, error) {
 		return convertString(spec)
 	case "binary":
 		return convertBinary(spec)
+	case "enum":
+		return convertEnum(spec)
+	case "boolean":
+		return convertBoolean(spec)
+	case "decimal":
+		return convertDecimal(spec)
+	case "float":
+		return convertFloat(spec)
+	case "time":
+		return convertTime(spec)
 	}
 	return parseRawType(spec.Type)
 }
@@ -145,4 +154,65 @@ func convertString(spec *schema.ColumnSpec) (schema.Type, error) {
 		return nil, fmt.Errorf("mysql: string fields can be up to 4GB long")
 	}
 	return st, nil
+}
+
+func convertEnum(spec *schema.ColumnSpec) (schema.Type, error) {
+	attr, ok := spec.Attr("values")
+	if !ok {
+		return nil, fmt.Errorf("mysql: expected enum fields to have values")
+	}
+	list, err := attr.StringList()
+	if err != nil {
+		return nil, err
+	}
+	return &schema.EnumType{Values: list}, nil
+}
+
+func convertBoolean(spec *schema.ColumnSpec) (schema.Type, error) {
+	return &schema.BoolType{T: "boolean"}, nil
+}
+
+func convertTime(spec *schema.ColumnSpec) (schema.Type, error) {
+	return &schema.TimeType{T: "timestamp"}, nil
+}
+
+func convertDecimal(spec *schema.ColumnSpec) (schema.Type, error) {
+	dt := &schema.DecimalType{
+		T: tDecimal,
+	}
+	if precision, ok := spec.Attr("precision"); ok {
+		p, err := precision.Int()
+		if err != nil {
+			return nil, err
+		}
+		dt.Precision = p
+	}
+	if scale, ok := spec.Attr("scale"); ok {
+		s, err := scale.Int()
+		if err != nil {
+			return nil, err
+		}
+		dt.Scale = s
+	}
+	return dt, nil
+}
+
+func convertFloat(spec *schema.ColumnSpec) (schema.Type, error) {
+	ft := &schema.FloatType{
+		T: tFloat,
+	}
+	if precision, ok := spec.Attr("precision"); ok {
+		p, err := precision.Int()
+		if err != nil {
+			return nil, err
+		}
+		ft.Precision = p
+	}
+	// A precision from 0 to 23 results in a 4-byte single-precision FLOAT column.
+	// A precision from 24 to 53 results in an 8-byte double-precision DOUBLE column:
+	// https://dev.mysql.com/doc/refman/8.0/en/floating-point-types.html
+	if ft.Precision > 23 {
+		ft.T = "double"
+	}
+	return ft, nil
 }

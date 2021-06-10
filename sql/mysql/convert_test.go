@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"strconv"
 	"testing"
 
 	"ariga.io/atlas/sql/schema"
@@ -158,6 +159,26 @@ func TestConverter(t *testing.T) {
 				Size: 20_000_000,
 			},
 		},
+		{
+			spec:     colspec("enum", "enum", listattr("values", "a", "b", "c")),
+			expected: &schema.EnumType{Values: []string{"a", "b", "c"}},
+		},
+		{
+			spec:     colspec("bool", "boolean"),
+			expected: &schema.BoolType{T: "boolean"},
+		},
+		{
+			spec:     colspec("decimal", "decimal", attr("precision", "10"), attr("scale", "2")),
+			expected: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
+		},
+		{
+			spec:     colspec("float", "float", attr("precision", "10")),
+			expected: &schema.FloatType{T: "float", Precision: 10},
+		},
+		{
+			spec:     colspec("float", "float", attr("precision", "25")),
+			expected: &schema.FloatType{T: "double", Precision: 25},
+		},
 	} {
 		t.Run(tt.spec.Name, func(t *testing.T) {
 			columnType, err := ConvertColumnType(tt.spec)
@@ -178,6 +199,16 @@ func colspec(name, coltype string, attrs ...*schema.SpecAttr) *schema.ColumnSpec
 func attr(k, v string) *schema.SpecAttr {
 	return &schema.SpecAttr{
 		K: k,
-		V: &schema.SpecLiteral{V: v},
+		V: &schema.LiteralValue{V: v},
+	}
+}
+
+func listattr(k string, values ...string) *schema.SpecAttr {
+	for i, v := range values {
+		values[i] = strconv.Quote(v)
+	}
+	return &schema.SpecAttr{
+		K: k,
+		V: &schema.ListValue{V: values},
 	}
 }

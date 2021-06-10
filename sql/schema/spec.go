@@ -122,9 +122,12 @@ type (
 	Value interface {
 		val()
 	}
-	// SpecLiteral implements Value and represents a literal value (string, number, etc.)
-	SpecLiteral struct {
+	// LiteralValue implements Value and represents a literal value (string, number, etc.)
+	LiteralValue struct {
 		V string
+	}
+	ListValue struct {
+		V []string
 	}
 )
 
@@ -147,8 +150,10 @@ func getAttrVal(attrs []*SpecAttr, name string) (*SpecAttr, bool) {
 	return nil, false
 }
 
+// Int returns an integer from the Value of the SpecAttr. If The value is not a LiteralValue or the value
+// cannot be converted to an integer an error is returned.
 func (a *SpecAttr) Int() (int, error) {
-	lit, ok := a.V.(*SpecLiteral)
+	lit, ok := a.V.(*LiteralValue)
 	if !ok {
 		return 0, fmt.Errorf("schema: cannot read attribute %q as literal", a.K)
 	}
@@ -159,7 +164,25 @@ func (a *SpecAttr) Int() (int, error) {
 	return s, nil
 }
 
-func (*SpecLiteral) val() {}
+func (a *SpecAttr) StringList() ([]string, error) {
+	lst, ok := a.V.(*ListValue)
+	if !ok {
+		return nil, fmt.Errorf("schema: attribute %q is not a list", a.K)
+	}
+	out := make([]string, 0, len(lst.V))
+	for _, item := range lst.V {
+		unquote, err := strconv.Unquote(item)
+		if err != nil {
+			return nil, fmt.Errorf("schema: failed parsing item %q to string: %w", item, err)
+		}
+		out = append(out, unquote)
+	}
+	return out, nil
+}
+
+
+func (*LiteralValue) val() {}
+func (*ListValue) val() {}
 
 func (*ResourceSpec) elem()   {}
 func (*SpecAttr) elem()       {}
