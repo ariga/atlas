@@ -8,9 +8,7 @@ import (
 )
 
 func TestBuilder_Build(t *testing.T) {
-	b := &Builder{
-		SpecConverter: &dummyConverter{},
-	}
+	b := &Converter{}
 
 	spec := &schema.SchemaSpec{
 		Name: "schema",
@@ -47,11 +45,4 @@ func TestBuilder_Build(t *testing.T) {
 		},
 	}
 	require.EqualValues(t, exp, sch)
-}
-
-type dummyConverter struct {
-}
-
-func (d *dummyConverter) ColumnType(spec *schema.ColumnSpec) (schema.Type, error) {
-	return nil, nil
 }
