@@ -43,11 +43,14 @@ type (
 
 	// TableSpec holds a specification for an SQL table.
 	TableSpec struct {
-		Name       string
-		SchemaName string
-		Columns    []*ColumnSpec
-		Attrs      []*SpecAttr
-		Children   []*ResourceSpec
+		Name        string
+		SchemaName  string
+		Columns     []*ColumnSpec
+		PrimaryKey  *PrimaryKeySpec
+		ForeignKeys []*ForeignKeySpec
+		Indexes     []*IndexSpec
+		Attrs       []*SpecAttr
+		Children    []*ResourceSpec
 	}
 
 	// ColumnSpec holds a specification for a column in an SQL table.
@@ -58,6 +61,45 @@ type (
 		Null     bool
 		Attrs    []*SpecAttr
 		Children []*ResourceSpec
+	}
+
+	// PrimaryKeySpec holds a specification for the primary key of a table.
+	PrimaryKeySpec struct {
+		Columns  []*ColumnRef
+		Attrs    []*SpecAttr
+		Children []*ResourceSpec
+	}
+
+	// ForeignKeySpec holds a specification for a foreign key of a table.
+	ForeignKeySpec struct {
+		Symbol     string
+		Columns    []*ColumnRef
+		RefColumns []*ColumnRef
+		OnUpdate   string
+		OnDelete   string
+		Attrs      []*SpecAttr
+		Children   []*ResourceSpec
+	}
+
+	// IndexSpec holds a specification for an index of a table.
+	IndexSpec struct {
+		Name     string
+		Columns  []*ColumnRef
+		Unique   bool
+		Attrs    []*SpecAttr
+		Children []*ResourceSpec
+	}
+
+	// ColumnRef is a reference to a Column described in another spec.
+	ColumnRef struct {
+		Name  string
+		Table string
+	}
+
+	// TableRef is a reference to a Table described in another spec.
+	TableRef struct {
+		Name   string
+		Schema string
 	}
 
 	// Element is an object that can be encoded into bytes to be written to a configuration file representing
@@ -83,13 +125,19 @@ type (
 
 func (*SpecLiteral) val() {}
 
-func (*ResourceSpec) elem() {}
-func (*SpecAttr) elem()     {}
-func (*ColumnSpec) elem()   {}
-func (*TableSpec) elem()    {}
-func (*SchemaSpec) elem()   {}
+func (*ResourceSpec) elem()   {}
+func (*SpecAttr) elem()       {}
+func (*ColumnSpec) elem()     {}
+func (*TableSpec) elem()      {}
+func (*SchemaSpec) elem()     {}
+func (*PrimaryKeySpec) elem() {}
+func (*ForeignKeySpec) elem() {}
+func (*IndexSpec) elem()      {}
 
-func (*ColumnSpec) spec()   {}
-func (*TableSpec) spec()    {}
-func (*SchemaSpec) spec()   {}
-func (*ResourceSpec) spec() {}
+func (*ColumnSpec) spec()     {}
+func (*TableSpec) spec()      {}
+func (*SchemaSpec) spec()     {}
+func (*ResourceSpec) spec()   {}
+func (*PrimaryKeySpec) spec() {}
+func (*ForeignKeySpec) spec() {}
+func (*IndexSpec) spec()      {}
