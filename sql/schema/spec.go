@@ -126,6 +126,7 @@ type (
 	LiteralValue struct {
 		V string
 	}
+	// ListValue implements Value and represents a list of literal value (string, number, etc.)
 	ListValue struct {
 		V []string
 	}
@@ -164,9 +165,9 @@ func (a *SpecAttr) Int() (int, error) {
 	return s, nil
 }
 
-// StringList returns a slice of strings from the Value of the SpecAttr. If The value is not a ListValue or the its
+// Strings returns a slice of strings from the Value of the SpecAttr. If The value is not a ListValue or the its
 // values cannot be converted to strings an error is returned.
-func (a *SpecAttr) StringList() ([]string, error) {
+func (a *SpecAttr) Strings() ([]string, error) {
 	lst, ok := a.V.(*ListValue)
 	if !ok {
 		return nil, fmt.Errorf("schema: attribute %q is not a list", a.K)

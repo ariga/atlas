@@ -161,7 +161,7 @@ func convertEnum(spec *schema.ColumnSpec) (schema.Type, error) {
 	if !ok {
 		return nil, fmt.Errorf("mysql: expected enum fields to have values")
 	}
-	list, err := attr.StringList()
+	list, err := attr.Strings()
 	if err != nil {
 		return nil, err
 	}
