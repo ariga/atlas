@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 
 	"ariga.io/atlas/sql/schema"
 
@@ -387,6 +388,16 @@ func indexTypeChange(from, to []schema.Attr) schema.ChangeKind {
 	return schema.NoChange
 }
 
+// indexCollation returns the index collation from its attribute.
+// The default collation is ascending if no order was specified.
+func indexCollation(attr []schema.Attr) *schema.Collation {
+	c := &schema.Collation{V: "A"}
+	if has(attr, c) {
+		c.V = strings.ToUpper(c.V)
+	}
+	return c
+}
+
 func partsChange(from, to []*schema.IndexPart) schema.ChangeKind {
 	if len(from) != len(to) {
 		return schema.ChangeParts
@@ -397,7 +408,7 @@ func partsChange(from, to []*schema.IndexPart) schema.ChangeKind {
 	sort.Slice(from, func(i, j int) bool { return from[i].SeqNo < from[j].SeqNo })
 	for i := range from {
 		switch {
-		case len(from[i].Attrs) != len(to[i].Attrs):
+		case indexCollation(from[i].Attrs).V != indexCollation(to[i].Attrs).V:
 			return schema.ChangeParts
 		case from[i].C != nil && to[i].C != nil:
 			if from[i].C.Name != to[i].C.Name {
