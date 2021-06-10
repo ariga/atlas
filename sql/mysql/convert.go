@@ -2,6 +2,7 @@ package mysql
 
 import "ariga.io/atlas/sql/schema"
 
+// ConvertSchema converts a SchemaSpec into a Schema.
 func ConvertSchema(spec *schema.SchemaSpec) (*schema.Schema, error) {
 	out := &schema.Schema{
 		Name: spec.Name,
@@ -17,6 +18,7 @@ func ConvertSchema(spec *schema.SchemaSpec) (*schema.Schema, error) {
 	return out, nil
 }
 
+// ConvertTable converts a TableSpec to a Table.
 func ConvertTable(spec *schema.TableSpec, parent *schema.Schema) (*schema.Table, error) {
 	out := &schema.Table{
 		Name:   spec.Name,
@@ -33,6 +35,7 @@ func ConvertTable(spec *schema.TableSpec, parent *schema.Schema) (*schema.Table,
 	return out, nil
 }
 
+// ConvertColumn converts a ColumnSpec into a Column.
 func ConvertColumn(spec *schema.ColumnSpec, parent *schema.Table) (*schema.Column, error) {
 	out := &schema.Column{
 		Name: spec.Name,
