@@ -1,6 +1,8 @@
 package schemahcl
 
 import (
+	"io/ioutil"
+	"path/filepath"
 	"testing"
 
 	"ariga.io/atlas/sql/schema"
@@ -192,4 +194,28 @@ table "user_messages" {
 	err = Decode(encode, generated)
 	require.NoError(t, err)
 	require.EqualValues(t, tgt, generated)
+}
+
+func TestRewriteHCL(t *testing.T) {
+	dir, err := ioutil.ReadDir("testdata/")
+	require.NoError(t, err)
+	for _, tt := range dir {
+		if tt.IsDir() {
+			continue
+		}
+		filename := filepath.Join("testdata", tt.Name())
+		t.Run(filename, func(t *testing.T) {
+			fb, err := ioutil.ReadFile(filename)
+			require.NoError(t, err)
+			decoded := &schema.SchemaSpec{}
+			err = Decode(fb, decoded)
+			require.NoError(t, err)
+			encode, err := Encode(decoded)
+			require.NoError(t, err)
+			generated := &schema.SchemaSpec{}
+			err = Decode(encode, generated)
+			require.NoError(t, err)
+			require.EqualValues(t, decoded, generated)
+		})
+	}
 }
