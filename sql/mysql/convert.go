@@ -2,11 +2,7 @@ package mysql
 
 import "ariga.io/atlas/sql/schema"
 
-// Converter converts specs into Schema elements (Schema, Table, Column, etc).
-type Converter struct {
-}
-
-func (c *Converter) Schema(spec *schema.SchemaSpec) (*schema.Schema, error) {
+func ConvertSchema(spec *schema.SchemaSpec) (*schema.Schema, error) {
 	out := &schema.Schema{
 		Name: spec.Name,
 		Spec: spec,
@@ -21,7 +17,7 @@ func (c *Converter) Schema(spec *schema.SchemaSpec) (*schema.Schema, error) {
 	return out, nil
 }
 
-func (c *Converter) Table(spec *schema.TableSpec, parent *schema.Schema) (*schema.Table, error) {
+func ConvertTable(spec *schema.TableSpec, parent *schema.Schema) (*schema.Table, error) {
 	out := &schema.Table{
 		Name:   spec.Name,
 		Schema: parent,
@@ -37,7 +33,7 @@ func (c *Converter) Table(spec *schema.TableSpec, parent *schema.Schema) (*schem
 	return out, nil
 }
 
-func (c *Converter) Column(spec *schema.ColumnSpec, parent *schema.Table) (*schema.Column, error) {
+func ConvertColumn(spec *schema.ColumnSpec, parent *schema.Table) (*schema.Column, error) {
 	out := &schema.Column{
 		Name: spec.Name,
 		Spec: spec,
@@ -56,6 +52,6 @@ func (c *Converter) Column(spec *schema.ColumnSpec, parent *schema.Table) (*sche
 	return out, err
 }
 
-func (c *Converter) columnType(spec *schema.ColumnSpec) (schema.Type, error) {
+func columnType(spec *schema.ColumnSpec) (schema.Type, error) {
 	return nil, nil
 }
