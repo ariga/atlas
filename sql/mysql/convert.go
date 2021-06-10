@@ -8,7 +8,7 @@ func ConvertSchema(spec *schema.SchemaSpec) (*schema.Schema, error) {
 		Spec: spec,
 	}
 	for _, ts := range spec.Tables {
-		table, err := c.Table(ts, out)
+		table, err := ConvertTable(ts, out)
 		if err != nil {
 			return nil, err
 		}
@@ -24,7 +24,7 @@ func ConvertTable(spec *schema.TableSpec, parent *schema.Schema) (*schema.Table,
 		Spec:   spec,
 	}
 	for _, csp := range spec.Columns {
-		col, err := c.Column(csp, out)
+		col, err := ConvertColumn(csp, out)
 		if err != nil {
 			return nil, err
 		}
@@ -44,11 +44,11 @@ func ConvertColumn(spec *schema.ColumnSpec, parent *schema.Table) (*schema.Colum
 	if spec.Default != nil {
 		out.Default = &schema.Literal{V: *spec.Default}
 	}
-	columnType, err := c.columnType(spec)
+	ct, err := columnType(spec)
 	if err != nil {
 		return nil, err
 	}
-	out.Type.Type = columnType
+	out.Type.Type = ct
 	return out, err
 }
 
