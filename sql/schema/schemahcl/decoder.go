@@ -250,18 +250,14 @@ func toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes, skip map[strin
 		if diag.HasErrors() {
 			return nil, diag
 		}
+		var err error
 		if value.CanIterateElements() {
-			v, err := extractListValue(value)
-			if err != nil {
-				return nil, err
-			}
-			at.V = v
+			at.V, err = extractListValue(value)
 		} else {
-			v, err := extractLiteralValue(value)
-			if err != nil {
-				return nil, err
-			}
-			at.V = v
+			at.V, err = extractLiteralValue(value)
+		}
+		if err != nil {
+			return nil, err
 		}
 		attrs = append(attrs, at)
 	}
@@ -293,7 +289,7 @@ func extractLiteralValue(value cty.Value) (*schema.LiteralValue, error) {
 	case cty.Number:
 		bf := value.AsBigFloat()
 		num, _ := bf.Float64()
-		return &schema.LiteralValue{V: fmt.Sprintf("%f", num)}, nil
+		return &schema.LiteralValue{V: strconv.FormatFloat(num, 'f', -1, 64)}, nil
 	case cty.Bool:
 		return &schema.LiteralValue{V: strconv.FormatBool(value.True())}, nil
 	default:

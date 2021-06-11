@@ -197,7 +197,7 @@ table "user_messages" {
 }
 
 func TestRewriteHCL(t *testing.T) {
-	dir, err := ioutil.ReadDir("testdata/")
+	dir, err := ioutil.ReadDir("testdata")
 	require.NoError(t, err)
 	for _, tt := range dir {
 		if tt.IsDir() {
