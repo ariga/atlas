@@ -10,35 +10,97 @@ import (
 
 // ConvertSchema converts a SchemaSpec into a Schema.
 func ConvertSchema(spec *schema.SchemaSpec) (*schema.Schema, error) {
-	out := &schema.Schema{
+	sch := &schema.Schema{
 		Name: spec.Name,
 		Spec: spec,
 	}
 	for _, ts := range spec.Tables {
-		table, err := ConvertTable(ts, out)
+		table, err := ConvertTable(ts, sch)
 		if err != nil {
 			return nil, err
 		}
-		out.Tables = append(out.Tables, table)
+		sch.Tables = append(sch.Tables, table)
 	}
-	return out, nil
+	for _, tbl := range sch.Tables {
+		if err := linkForeignKeys(tbl, sch); err != nil {
+			return nil, err
+		}
+	}
+	return sch, nil
 }
 
-// ConvertTable converts a TableSpec to a Table.
+// ConvertTable converts a TableSpec to a Table.  Table conversion is done without converting ForeignKeySpecs
+// into ForeignKeys, as the target tables do not necessarily exist in the schema at this point.
+// Instead, the linking is done by the ConvertSchema function.
 func ConvertTable(spec *schema.TableSpec, parent *schema.Schema) (*schema.Table, error) {
-	out := &schema.Table{
+	tbl := &schema.Table{
 		Name:   spec.Name,
 		Schema: parent,
 		Spec:   spec,
 	}
 	for _, csp := range spec.Columns {
-		col, err := ConvertColumn(csp, out)
+		col, err := ConvertColumn(csp, tbl)
 		if err != nil {
 			return nil, err
 		}
-		out.Columns = append(out.Columns, col)
+		tbl.Columns = append(tbl.Columns, col)
 	}
-	return out, nil
+	if spec.PrimaryKey != nil {
+		pk, err := ConvertPrimaryKey(spec.PrimaryKey, tbl)
+		if err != nil {
+			return nil, err
+		}
+		tbl.PrimaryKey = pk
+	}
+	for _, idx := range spec.Indexes {
+		i, err := ConvertIndex(idx, tbl)
+		if err != nil {
+			return nil, err
+		}
+		tbl.Indexes = append(tbl.Indexes, i)
+	}
+	return tbl, nil
+}
+
+// ConvertPrimaryKey converts a PrimaryKeySpec to an Index.
+func ConvertPrimaryKey(spec *schema.PrimaryKeySpec, parent *schema.Table) (*schema.Index, error) {
+	parts := make([]*schema.IndexPart, 0, len(spec.Columns))
+	for seqno, c := range spec.Columns {
+		pkc, ok := parent.Column(c.Name)
+		if !ok {
+			return nil, fmt.Errorf("mysql: cannot set column %q as primary key for table %q", c.Name, parent.Name)
+		}
+		parts = append(parts, &schema.IndexPart{
+			SeqNo: seqno,
+			C:     pkc,
+		})
+	}
+	return &schema.Index{
+		Table: parent,
+		Parts: parts,
+	}, nil
+}
+
+// ConvertIndex converts an IndexSpec to an Index.
+func ConvertIndex(spec *schema.IndexSpec, parent *schema.Table) (*schema.Index, error) {
+	parts := make([]*schema.IndexPart, 0, len(spec.Columns))
+	for seqno, c := range spec.Columns {
+		cn := c.Name
+		col, ok := parent.Column(cn)
+		if !ok {
+			return nil, fmt.Errorf("mysql: unknown column %q in table %q", cn, parent.Name)
+		}
+		parts = append(parts, &schema.IndexPart{
+			SeqNo: seqno,
+			C:     col,
+		})
+	}
+	return &schema.Index{
+		Name:   spec.Name,
+		Unique: spec.Unique,
+		Table:  parent,
+		Parts:  parts,
+	}, nil
 }
 
 // ConvertColumn converts a ColumnSpec into a Column.
@@ -81,6 +143,48 @@ func ConvertColumnType(spec *schema.ColumnSpec) (schema.Type, error) {
 		return convertTime(spec)
 	}
 	return parseRawType(spec.Type)
+}
+
+// linkForeignKeys creates the foreign keys defined in the Table's spec by creating references
+// to column in the provided Schema. It is assumed that the schema contains all of the tables
+// referenced by the FK definitions in the spec.
+func linkForeignKeys(tbl *schema.Table, sch *schema.Schema) error {
+	for _, spec := range tbl.Spec.ForeignKeys {
+		fk := &schema.ForeignKey{
+			Symbol:   spec.Symbol,
+			Table:    tbl,
+			OnUpdate: schema.ReferenceOption(spec.OnUpdate),
+			OnDelete: schema.ReferenceOption(spec.OnDelete),
+		}
+		for _, ref := range spec.Columns {
+			col, err := resolveCol(ref, sch)
+			if err != nil {
+				return err
+			}
+			fk.Columns = append(fk.Columns, col)
+		}
+		for _, ref := range spec.RefColumns {
+			col, err := resolveCol(ref, sch)
+			if err != nil {
+				return err
+			}
+			fk.RefColumns = append(fk.RefColumns, col)
+		}
+		tbl.ForeignKeys = append(tbl.ForeignKeys, fk)
+	}
+	return nil
+}
+
+func resolveCol(ref *schema.ColumnRef, sch *schema.Schema) (*schema.Column, error) {
+	tbl, ok := sch.Table(ref.Table)
+	if !ok {
+		return nil, fmt.Errorf("mysql: table %q not found", ref.Table)
+	}
+	col, ok := tbl.Column(ref.Name)
+	if !ok {
+		return nil, fmt.Errorf("mysql: column %q not found int table %q", ref.Name, ref.Table)
+	}
+	return col, nil
 }
 
 func convertInteger(spec *schema.ColumnSpec) (schema.Type, error) {

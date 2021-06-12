@@ -19,6 +19,48 @@ func TestConvertSchema(t *testing.T) {
 						Name: "col",
 						Type: "int",
 					},
+					{
+						Name: "age",
+						Type: "int",
+					},
+					{
+						Name: "account_name",
+						Type: "varchar(32)",
+					},
+				},
+				PrimaryKey: &schema.PrimaryKeySpec{
+					Columns: []*schema.ColumnRef{{Table: "table", Name: "col"}},
+				},
+				ForeignKeys: []*schema.ForeignKeySpec{
+					{
+						Symbol: "accounts",
+						Columns: []*schema.ColumnRef{
+							{Table: "table", Name: "account_name"},
+						},
+						RefColumns: []*schema.ColumnRef{
+							{Table: "accounts", Name: "name"},
+						},
+						OnDelete: string(schema.SetNull),
+					},
+				},
+				Indexes: []*schema.IndexSpec{
+					{
+						Name:   "index",
+						Unique: true,
+						Columns: []*schema.ColumnRef{
+							{Table: "table", Name: "col"},
+							{Table: "table", Name: "age"},
+						},
+					},
+				},
+			},
+			{
+				Name: "accounts",
+				Columns: []*schema.ColumnSpec{
+					{
+						Name: "name",
+						Type: "varchar(32)",
+					},
 				},
 			},
 		},
@@ -45,13 +87,76 @@ func TestConvertSchema(t *testing.T) {
 					},
 					Spec: spec.Tables[0].Columns[0],
 				},
+				{
+					Name: "age",
+					Type: &schema.ColumnType{
+						Type: &schema.IntegerType{
+							T:    tInt,
+							Size: 4,
+						},
+					},
+					Spec: spec.Tables[0].Columns[1],
+				},
+				{
+					Name: "account_name",
+					Type: &schema.ColumnType{
+						Type: &schema.StringType{
+							T:    tVarchar,
+							Size: 32,
+						},
+					},
+					Spec: spec.Tables[0].Columns[2],
+				},
 			},
+		},
+		{
+			Name:   "accounts",
+			Spec:   spec.Tables[1],
+			Schema: exp,
+			Columns: []*schema.Column{
+				{
+					Name: "name",
+					Type: &schema.ColumnType{
+						Type: &schema.StringType{
+							T:    tVarchar,
+							Size: 32,
+						},
+					},
+					Spec: spec.Tables[1].Columns[0],
+				},
+			},
+		},
+	}
+	exp.Tables[0].PrimaryKey = &schema.Index{
+		Table: exp.Tables[0],
+		Parts: []*schema.IndexPart{
+			{SeqNo: 0, C: exp.Tables[0].Columns[0]},
+		},
+	}
+	exp.Tables[0].Indexes = []*schema.Index{
+		{
+			Name:   "index",
+			Table:  exp.Tables[0],
+			Unique: true,
+			Parts: []*schema.IndexPart{
+				{SeqNo: 0, C: exp.Tables[0].Columns[0]},
+				{SeqNo: 1, C: exp.Tables[0].Columns[1]},
+			},
+		},
+	}
+	exp.Tables[0].ForeignKeys = []*schema.ForeignKey{
+		{
+			Symbol:     "accounts",
+			Table:      exp.Tables[0],
+			Columns:    []*schema.Column{exp.Tables[0].Columns[2]},
+			RefColumns: []*schema.Column{exp.Tables[1].Columns[0]},
+			OnDelete:   schema.SetNull,
 		},
 	}
 	require.EqualValues(t, exp, sch)
 }
 
-func TestConverter(t *testing.T) {
+func TestConvertColumnType(t *testing.T) {
 	for _, tt := range []struct {
 		spec     *schema.ColumnSpec
 		expected schema.Type
