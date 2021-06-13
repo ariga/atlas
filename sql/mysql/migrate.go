@@ -219,6 +219,9 @@ func indexParts(b *Builder, parts []*schema.IndexPart) {
 			case part.X != nil:
 				b.WriteString(part.X.(*schema.RawExpr).X)
 			}
+			if indexCollation(parts[i].Attrs).V == "D" {
+				b.P("DESC")
+			}
 		})
 	})
 }

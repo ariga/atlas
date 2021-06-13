@@ -23,7 +23,7 @@ func TestMigrate_Exec(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mk.ExpectExec(escape("ALTER TABLE `users` DROP INDEX `id_spouse_id`")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mk.ExpectExec(escape("ALTER TABLE `users` ADD CONSTRAINT `spouse` FOREIGN KEY (`spouse_id`) REFERENCES `users` (`id`) ON DELETE SET NULL, ADD INDEX `id_spouse_id` (`spouse_id`, `id`) COMMENT 'comment'")).
+	mk.ExpectExec(escape("ALTER TABLE `users` ADD CONSTRAINT `spouse` FOREIGN KEY (`spouse_id`) REFERENCES `users` (`id`) ON DELETE SET NULL, ADD INDEX `id_spouse_id` (`spouse_id`, `id` DESC) COMMENT 'comment'")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	drv, err := Open(db)
 	require.NoError(t, err)
@@ -76,7 +76,16 @@ func TestMigrate_Exec(t *testing.T) {
 					},
 					&schema.ModifyIndex{
 						From: &schema.Index{Name: "id_spouse_id", Parts: []*schema.IndexPart{{C: users.Columns[0]}, {C: users.Columns[1]}}},
-						To:   &schema.Index{Name: "id_spouse_id", Parts: []*schema.IndexPart{{C: users.Columns[1]}, {C: users.Columns[0]}}, Attrs: []schema.Attr{&schema.Comment{Text: "comment"}}},
+						To: &schema.Index{
+							Name: "id_spouse_id",
+							Parts: []*schema.IndexPart{
+								{C: users.Columns[1]},
+								{C: users.Columns[0], Attrs: []schema.Attr{&schema.Collation{V: "D"}}},
+							},
+							Attrs: []schema.Attr{
+								&schema.Comment{Text: "comment"},
+							},
+						},
 					},
 				},
 			}
