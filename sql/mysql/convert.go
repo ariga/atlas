@@ -29,9 +29,9 @@ func ConvertSchema(spec *schema.SchemaSpec) (*schema.Schema, error) {
 	return sch, nil
 }
 
-// ConvertTable converts a TableSpec to a Table.  Table conversion is done without converting ForeignKeySpecs
-// into ForeignKeys, as the target tables do not necessarily exist in the schema at this point.
-// Instead, the linking is done by the ConvertSchema function.
+// ConvertTable converts a TableSpec to a Table. Table conversion is done without converting
+// ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
+// at this point. Instead, the linking is done by the ConvertSchema function.
 func ConvertTable(spec *schema.TableSpec, parent *schema.Schema) (*schema.Table, error) {
 	tbl := &schema.Table{
 		Name:   spec.Name,
