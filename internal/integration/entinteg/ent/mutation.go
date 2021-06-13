@@ -1220,6 +1220,10 @@ type UserMutation struct {
 	addint            *int
 	uint              *uint
 	adduint           *uint
+	uint64            *uint64
+	adduint64         *uint64
+	int64             *int64
+	addint64          *int64
 	time              *time.Time
 	bool              *bool
 	enum              *user.Enum
@@ -1511,6 +1515,118 @@ func (m *UserMutation) AddedUint() (r uint, exists bool) {
 func (m *UserMutation) ResetUint() {
 	m.uint = nil
 	m.adduint = nil
+}
+
+// SetUint64 sets the "uint64" field.
+func (m *UserMutation) SetUint64(u uint64) {
+	m.uint64 = &u
+	m.adduint64 = nil
+}
+
+// Uint64 returns the value of the "uint64" field in the mutation.
+func (m *UserMutation) Uint64() (r uint64, exists bool) {
+	v := m.uint64
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUint64 returns the old "uint64" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldUint64(ctx context.Context) (v uint64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, fmt.Errorf("OldUint64 is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, fmt.Errorf("OldUint64 requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUint64: %w", err)
+	}
+	return oldValue.Uint64, nil
+}
+
+// AddUint64 adds u to the "uint64" field.
+func (m *UserMutation) AddUint64(u uint64) {
+	if m.adduint64 != nil {
+		*m.adduint64 += u
+	} else {
+		m.adduint64 = &u
+	}
+}
+
+// AddedUint64 returns the value that was added to the "uint64" field in this mutation.
+func (m *UserMutation) AddedUint64() (r uint64, exists bool) {
+	v := m.adduint64
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetUint64 resets all changes to the "uint64" field.
+func (m *UserMutation) ResetUint64() {
+	m.uint64 = nil
+	m.adduint64 = nil
+}
+
+// SetInt64 sets the "int64" field.
+func (m *UserMutation) SetInt64(i int64) {
+	m.int64 = &i
+	m.addint64 = nil
+}
+
+// Int64 returns the value of the "int64" field in the mutation.
+func (m *UserMutation) Int64() (r int64, exists bool) {
+	v := m.int64
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInt64 returns the old "int64" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldInt64(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, fmt.Errorf("OldInt64 is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, fmt.Errorf("OldInt64 requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInt64: %w", err)
+	}
+	return oldValue.Int64, nil
+}
+
+// AddInt64 adds i to the "int64" field.
+func (m *UserMutation) AddInt64(i int64) {
+	if m.addint64 != nil {
+		*m.addint64 += i
+	} else {
+		m.addint64 = &i
+	}
+}
+
+// AddedInt64 returns the value that was added to the "int64" field in this mutation.
+func (m *UserMutation) AddedInt64() (r int64, exists bool) {
+	v := m.addint64
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetInt64 resets all changes to the "int64" field.
+func (m *UserMutation) ResetInt64() {
+	m.int64 = nil
+	m.addint64 = nil
 }
 
 // SetTime sets the "time" field.
@@ -1871,7 +1987,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 13)
 	if m.name != nil {
 		fields = append(fields, user.FieldName)
 	}
@@ -1883,6 +1999,12 @@ func (m *UserMutation) Fields() []string {
 	}
 	if m.uint != nil {
 		fields = append(fields, user.FieldUint)
+	}
+	if m.uint64 != nil {
+		fields = append(fields, user.FieldUint64)
+	}
+	if m.int64 != nil {
+		fields = append(fields, user.FieldInt64)
 	}
 	if m.time != nil {
 		fields = append(fields, user.FieldTime)
@@ -1921,6 +2043,10 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.Int()
 	case user.FieldUint:
 		return m.Uint()
+	case user.FieldUint64:
+		return m.Uint64()
+	case user.FieldInt64:
+		return m.Int64()
 	case user.FieldTime:
 		return m.Time()
 	case user.FieldBool:
@@ -1952,6 +2078,10 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldInt(ctx)
 	case user.FieldUint:
 		return m.OldUint(ctx)
+	case user.FieldUint64:
+		return m.OldUint64(ctx)
+	case user.FieldInt64:
+		return m.OldInt64(ctx)
 	case user.FieldTime:
 		return m.OldTime(ctx)
 	case user.FieldBool:
@@ -2002,6 +2132,20 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUint(v)
+		return nil
+	case user.FieldUint64:
+		v, ok := value.(uint64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUint64(v)
+		return nil
+	case user.FieldInt64:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInt64(v)
 		return nil
 	case user.FieldTime:
 		v, ok := value.(time.Time)
@@ -2066,6 +2210,12 @@ func (m *UserMutation) AddedFields() []string {
 	if m.adduint != nil {
 		fields = append(fields, user.FieldUint)
 	}
+	if m.adduint64 != nil {
+		fields = append(fields, user.FieldUint64)
+	}
+	if m.addint64 != nil {
+		fields = append(fields, user.FieldInt64)
+	}
 	return fields
 }
 
@@ -2078,6 +2228,10 @@ func (m *UserMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedInt()
 	case user.FieldUint:
 		return m.AddedUint()
+	case user.FieldUint64:
+		return m.AddedUint64()
+	case user.FieldInt64:
+		return m.AddedInt64()
 	}
 	return nil, false
 }
@@ -2100,6 +2254,20 @@ func (m *UserMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddUint(v)
+		return nil
+	case user.FieldUint64:
+		v, ok := value.(uint64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddUint64(v)
+		return nil
+	case user.FieldInt64:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddInt64(v)
 		return nil
 	}
 	return fmt.Errorf("unknown User numeric field %s", name)
@@ -2154,6 +2322,12 @@ func (m *UserMutation) ResetField(name string) error {
 		return nil
 	case user.FieldUint:
 		m.ResetUint()
+		return nil
+	case user.FieldUint64:
+		m.ResetUint64()
+		return nil
+	case user.FieldInt64:
+		m.ResetInt64()
 		return nil
 	case user.FieldTime:
 		m.ResetTime()

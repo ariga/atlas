@@ -55,6 +55,18 @@ func (uc *UserCreate) SetUint(u uint) *UserCreate {
 	return uc
 }
 
+// SetUint64 sets the "uint64" field.
+func (uc *UserCreate) SetUint64(u uint64) *UserCreate {
+	uc.mutation.SetUint64(u)
+	return uc
+}
+
+// SetInt64 sets the "int64" field.
+func (uc *UserCreate) SetInt64(i int64) *UserCreate {
+	uc.mutation.SetInt64(i)
+	return uc
+}
+
 // SetTime sets the "time" field.
 func (uc *UserCreate) SetTime(t time.Time) *UserCreate {
 	uc.mutation.SetTime(t)
@@ -185,6 +197,12 @@ func (uc *UserCreate) check() error {
 	if _, ok := uc.mutation.Uint(); !ok {
 		return &ValidationError{Name: "uint", err: errors.New("ent: missing required field \"uint\"")}
 	}
+	if _, ok := uc.mutation.Uint64(); !ok {
+		return &ValidationError{Name: "uint64", err: errors.New("ent: missing required field \"uint64\"")}
+	}
+	if _, ok := uc.mutation.Int64(); !ok {
+		return &ValidationError{Name: "int64", err: errors.New("ent: missing required field \"int64\"")}
+	}
 	if _, ok := uc.mutation.Time(); !ok {
 		return &ValidationError{Name: "time", err: errors.New("ent: missing required field \"time\"")}
 	}
@@ -271,6 +289,22 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Column: user.FieldUint,
 		})
 		_node.Uint = value
+	}
+	if value, ok := uc.mutation.Uint64(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeUint64,
+			Value:  value,
+			Column: user.FieldUint64,
+		})
+		_node.Uint64 = value
+	}
+	if value, ok := uc.mutation.Int64(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Value:  value,
+			Column: user.FieldInt64,
+		})
+		_node.Int64 = value
 	}
 	if value, ok := uc.mutation.Time(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{

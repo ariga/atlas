@@ -122,6 +122,20 @@ func Uint(v uint) predicate.User {
 	})
 }
 
+// Uint64 applies equality check predicate on the "uint64" field. It's identical to Uint64EQ.
+func Uint64(v uint64) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldUint64), v))
+	})
+}
+
+// Int64 applies equality check predicate on the "int64" field. It's identical to Int64EQ.
+func Int64(v int64) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldInt64), v))
+	})
+}
+
 // Time applies equality check predicate on the "time" field. It's identical to TimeEQ.
 func Time(v time.Time) predicate.User {
 	return predicate.User(func(s *sql.Selector) {
@@ -542,6 +556,158 @@ func UintLT(v uint) predicate.User {
 func UintLTE(v uint) predicate.User {
 	return predicate.User(func(s *sql.Selector) {
 		s.Where(sql.LTE(s.C(FieldUint), v))
+	})
+}
+
+// Uint64EQ applies the EQ predicate on the "uint64" field.
+func Uint64EQ(v uint64) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldUint64), v))
+	})
+}
+
+// Uint64NEQ applies the NEQ predicate on the "uint64" field.
+func Uint64NEQ(v uint64) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldUint64), v))
+	})
+}
+
+// Uint64In applies the In predicate on the "uint64" field.
+func Uint64In(vs ...uint64) predicate.User {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.User(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldUint64), v...))
+	})
+}
+
+// Uint64NotIn applies the NotIn predicate on the "uint64" field.
+func Uint64NotIn(vs ...uint64) predicate.User {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.User(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldUint64), v...))
+	})
+}
+
+// Uint64GT applies the GT predicate on the "uint64" field.
+func Uint64GT(v uint64) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldUint64), v))
+	})
+}
+
+// Uint64GTE applies the GTE predicate on the "uint64" field.
+func Uint64GTE(v uint64) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldUint64), v))
+	})
+}
+
+// Uint64LT applies the LT predicate on the "uint64" field.
+func Uint64LT(v uint64) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldUint64), v))
+	})
+}
+
+// Uint64LTE applies the LTE predicate on the "uint64" field.
+func Uint64LTE(v uint64) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldUint64), v))
+	})
+}
+
+// Int64EQ applies the EQ predicate on the "int64" field.
+func Int64EQ(v int64) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldInt64), v))
+	})
+}
+
+// Int64NEQ applies the NEQ predicate on the "int64" field.
+func Int64NEQ(v int64) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldInt64), v))
+	})
+}
+
+// Int64In applies the In predicate on the "int64" field.
+func Int64In(vs ...int64) predicate.User {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.User(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldInt64), v...))
+	})
+}
+
+// Int64NotIn applies the NotIn predicate on the "int64" field.
+func Int64NotIn(vs ...int64) predicate.User {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.User(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldInt64), v...))
+	})
+}
+
+// Int64GT applies the GT predicate on the "int64" field.
+func Int64GT(v int64) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldInt64), v))
+	})
+}
+
+// Int64GTE applies the GTE predicate on the "int64" field.
+func Int64GTE(v int64) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldInt64), v))
+	})
+}
+
+// Int64LT applies the LT predicate on the "int64" field.
+func Int64LT(v int64) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldInt64), v))
+	})
+}
+
+// Int64LTE applies the LTE predicate on the "int64" field.
+func Int64LTE(v int64) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldInt64), v))
 	})
 }
 

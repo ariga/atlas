@@ -19,6 +19,10 @@ const (
 	FieldInt = "int"
 	// FieldUint holds the string denoting the uint field in the database.
 	FieldUint = "uint"
+	// FieldUint64 holds the string denoting the uint64 field in the database.
+	FieldUint64 = "uint64"
+	// FieldInt64 holds the string denoting the int64 field in the database.
+	FieldInt64 = "int64"
 	// FieldTime holds the string denoting the time field in the database.
 	FieldTime = "time"
 	// FieldBool holds the string denoting the bool field in the database.
@@ -60,6 +64,8 @@ var Columns = []string{
 	FieldOptional,
 	FieldInt,
 	FieldUint,
+	FieldUint64,
+	FieldInt64,
 	FieldTime,
 	FieldBool,
 	FieldEnum,
