@@ -56,6 +56,7 @@ func (m *Migrate) addTable(ctx context.Context, add *schema.AddTable) error {
 			}
 			b.P("INDEX").Ident(idx.Name)
 			indexParts(b, idx.Parts)
+			attrs(b, idx.Attrs...)
 		})
 		if len(add.T.ForeignKeys) > 0 {
 			b.Comma()
@@ -150,6 +151,7 @@ func (m *Migrate) alterTable(ctx context.Context, t *schema.Table, changes []sch
 			}
 			b.P("INDEX").Ident(change.I.Name)
 			indexParts(b, change.I.Parts)
+			attrs(b, change.I.Attrs...)
 		case *schema.DropIndex:
 			b.P("DROP INDEX").Ident(change.I.Name)
 		case *schema.AddForeignKey:

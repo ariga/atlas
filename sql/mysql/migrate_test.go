@@ -19,11 +19,11 @@ func TestMigrate_Exec(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mk.ExpectExec(escape("DROP TABLE `public`.`pets`")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mk.ExpectExec(escape("CREATE TABLE `pets` (`a` int NOT NULL, `b` bigint NOT NULL, `c` bigint NULL, PRIMARY KEY (`a`, `b`), UNIQUE INDEX `b_c_unique` (`b`, `c`))")).
+	mk.ExpectExec(escape("CREATE TABLE `pets` (`a` int NOT NULL, `b` bigint NOT NULL, `c` bigint NULL, PRIMARY KEY (`a`, `b`), UNIQUE INDEX `b_c_unique` (`b`, `c`) COMMENT 'comment')")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mk.ExpectExec(escape("ALTER TABLE `users` DROP INDEX `id_spouse_id`")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mk.ExpectExec(escape("ALTER TABLE `users` ADD CONSTRAINT `spouse` FOREIGN KEY (`spouse_id`) REFERENCES `users` (`id`) ON DELETE SET NULL, ADD INDEX `id_spouse_id` (`spouse_id`, `id`)")).
+	mk.ExpectExec(escape("ALTER TABLE `users` ADD CONSTRAINT `spouse` FOREIGN KEY (`spouse_id`) REFERENCES `users` (`id`) ON DELETE SET NULL, ADD INDEX `id_spouse_id` (`spouse_id`, `id`) COMMENT 'comment'")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	drv, err := Open(db)
 	require.NoError(t, err)
@@ -45,7 +45,7 @@ func TestMigrate_Exec(t *testing.T) {
 					Parts: []*schema.IndexPart{{C: t.Columns[0]}, {C: t.Columns[1]}},
 				}
 				t.Indexes = []*schema.Index{
-					{Name: "b_c_unique", Unique: true, Parts: []*schema.IndexPart{{C: t.Columns[1]}, {C: t.Columns[2]}}},
+					{Name: "b_c_unique", Unique: true, Parts: []*schema.IndexPart{{C: t.Columns[1]}, {C: t.Columns[2]}}, Attrs: []schema.Attr{&schema.Comment{Text: "comment"}}},
 				}
 				return t
 			}(),
@@ -76,7 +76,7 @@ func TestMigrate_Exec(t *testing.T) {
 					},
 					&schema.ModifyIndex{
 						From: &schema.Index{Name: "id_spouse_id", Parts: []*schema.IndexPart{{C: users.Columns[0]}, {C: users.Columns[1]}}},
-						To:   &schema.Index{Name: "id_spouse_id", Parts: []*schema.IndexPart{{C: users.Columns[1]}, {C: users.Columns[0]}}},
+						To:   &schema.Index{Name: "id_spouse_id", Parts: []*schema.IndexPart{{C: users.Columns[1]}, {C: users.Columns[0]}}, Attrs: []schema.Attr{&schema.Comment{Text: "comment"}}},
 					},
 				},
 			}
