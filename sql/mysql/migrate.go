@@ -17,7 +17,8 @@ type Migrate struct{ *Driver }
 // Exec executes the changes on the database. An error is returned
 // if one of the operations fail, or a change is not supported.
 func (m *Migrate) Exec(ctx context.Context, changes []schema.Change) (err error) {
-	for _, c := range changes {
+	planned := plan(changes)
+	for _, c := range planned {
 		switch c := c.(type) {
 		case *schema.AddTable:
 			err = m.addTable(ctx, c)
@@ -244,6 +245,113 @@ func attrs(b *Builder, attrs ...schema.Attr) {
 			b.P("COMMENT", "'"+strings.ReplaceAll(a.Text, "'", "\\'")+"'")
 		}
 	}
+}
+
+// plan detaches and postpones the foreign-key creation if
+// there's at least one circular reference in the changeset.
+func plan(changes []schema.Change) []schema.Change {
+	if !hasCycle(changes) {
+		return changes
+	}
+	var planned, deferred []schema.Change
+	for _, change := range changes {
+		switch change := change.(type) {
+		case *schema.AddTable:
+			var fks []schema.Change
+			for _, fk := range change.T.ForeignKeys {
+				if fk.RefTable != change.T {
+					fks = append(fks, &schema.AddForeignKey{F: fk})
+				}
+			}
+			if len(fks) > 0 {
+				deferred = append(deferred, &schema.ModifyTable{T: change.T, Changes: fks})
+				t := *change.T
+				t.ForeignKeys = nil
+				change = &schema.AddTable{T: &t, Extra: change.Extra}
+			}
+			planned = append(planned, change)
+		case *schema.ModifyTable:
+			var fks, rest []schema.Change
+			for _, c := range change.Changes {
+				switch c := c.(type) {
+				case *schema.AddForeignKey:
+					fks = append(fks, c)
+				default:
+					rest = append(rest, c)
+				}
+			}
+			if len(fks) > 0 {
+				deferred = append(deferred, &schema.ModifyTable{T: change.T, Changes: fks})
+			}
+			if len(rest) > 0 {
+				planned = append(planned, &schema.ModifyTable{T: change.T, Changes: rest})
+			}
+		default:
+			planned = append(planned, change)
+		}
+	}
+	return append(planned, deferred...)
+}
+
+// hasCycle reports if there is a circular reference between the given changeset.
+func hasCycle(changes []schema.Change) bool {
+	var (
+		visit          func(*schema.Table) bool
+		references     = references(changes)
+		progress, done = make(map[*schema.Table]bool), make(map[*schema.Table]bool)
+	)
+	visit = func(node *schema.Table) bool {
+		if done[node] {
+			return false
+		}
+		if progress[node] {
+			return true
+		}
+		progress[node] = true
+		for _, ref := range references[node] {
+			if visit(ref) {
+				return true
+			}
+		}
+		delete(progress, node)
+		done[node] = true
+		return false
+	}
+	for node := range references {
+		if visit(node) {
+			return true
+		}
+	}
+	return false
+}
+
+// references returns an adjacency list of all child tables and their references in parent tables.
+func references(changes []schema.Change) map[*schema.Table][]*schema.Table {
+	refs := make(map[*schema.Table][]*schema.Table)
+	for _, change := range changes {
+		switch change := change.(type) {
+		case *schema.AddTable:
+			for _, fk := range change.T.ForeignKeys {
+				if fk.RefTable != change.T {
+					refs[change.T] = append(refs[change.T], fk.RefTable)
+				}
+			}
+		case *schema.ModifyTable:
+			for _, c := range change.Changes {
+				switch c := c.(type) {
+				case *schema.AddForeignKey:
+					if c.F.RefTable != change.T {
+						refs[change.T] = append(refs[change.T], c.F.RefTable)
+					}
+				case *schema.ModifyForeignKey:
+					if c.To.RefTable != change.T {
+						refs[change.T] = append(refs[change.T], c.To.RefTable)
+					}
+				}
+			}
+		}
+	}
+	return refs
 }
 
 // A Builder provides a syntactic sugar API for writing SQL statements.
