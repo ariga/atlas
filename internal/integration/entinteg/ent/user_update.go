@@ -82,6 +82,32 @@ func (uu *UserUpdate) AddUint(u uint) *UserUpdate {
 	return uu
 }
 
+// SetUint64 sets the "uint64" field.
+func (uu *UserUpdate) SetUint64(u uint64) *UserUpdate {
+	uu.mutation.ResetUint64()
+	uu.mutation.SetUint64(u)
+	return uu
+}
+
+// AddUint64 adds u to the "uint64" field.
+func (uu *UserUpdate) AddUint64(u uint64) *UserUpdate {
+	uu.mutation.AddUint64(u)
+	return uu
+}
+
+// SetInt64 sets the "int64" field.
+func (uu *UserUpdate) SetInt64(i int64) *UserUpdate {
+	uu.mutation.ResetInt64()
+	uu.mutation.SetInt64(i)
+	return uu
+}
+
+// AddInt64 adds i to the "int64" field.
+func (uu *UserUpdate) AddInt64(i int64) *UserUpdate {
+	uu.mutation.AddInt64(i)
+	return uu
+}
+
 // SetTime sets the "time" field.
 func (uu *UserUpdate) SetTime(t time.Time) *UserUpdate {
 	uu.mutation.SetTime(t)
@@ -329,6 +355,34 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: user.FieldUint,
 		})
 	}
+	if value, ok := uu.mutation.Uint64(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeUint64,
+			Value:  value,
+			Column: user.FieldUint64,
+		})
+	}
+	if value, ok := uu.mutation.AddedUint64(); ok {
+		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
+			Type:   field.TypeUint64,
+			Value:  value,
+			Column: user.FieldUint64,
+		})
+	}
+	if value, ok := uu.mutation.Int64(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Value:  value,
+			Column: user.FieldInt64,
+		})
+	}
+	if value, ok := uu.mutation.AddedInt64(); ok {
+		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Value:  value,
+			Column: user.FieldInt64,
+		})
+	}
 	if value, ok := uu.mutation.Time(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
@@ -528,6 +582,32 @@ func (uuo *UserUpdateOne) SetUint(u uint) *UserUpdateOne {
 // AddUint adds u to the "uint" field.
 func (uuo *UserUpdateOne) AddUint(u uint) *UserUpdateOne {
 	uuo.mutation.AddUint(u)
+	return uuo
+}
+
+// SetUint64 sets the "uint64" field.
+func (uuo *UserUpdateOne) SetUint64(u uint64) *UserUpdateOne {
+	uuo.mutation.ResetUint64()
+	uuo.mutation.SetUint64(u)
+	return uuo
+}
+
+// AddUint64 adds u to the "uint64" field.
+func (uuo *UserUpdateOne) AddUint64(u uint64) *UserUpdateOne {
+	uuo.mutation.AddUint64(u)
+	return uuo
+}
+
+// SetInt64 sets the "int64" field.
+func (uuo *UserUpdateOne) SetInt64(i int64) *UserUpdateOne {
+	uuo.mutation.ResetInt64()
+	uuo.mutation.SetInt64(i)
+	return uuo
+}
+
+// AddInt64 adds i to the "int64" field.
+func (uuo *UserUpdateOne) AddInt64(i int64) *UserUpdateOne {
+	uuo.mutation.AddInt64(i)
 	return uuo
 }
 
@@ -800,6 +880,34 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 			Type:   field.TypeUint,
 			Value:  value,
 			Column: user.FieldUint,
+		})
+	}
+	if value, ok := uuo.mutation.Uint64(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeUint64,
+			Value:  value,
+			Column: user.FieldUint64,
+		})
+	}
+	if value, ok := uuo.mutation.AddedUint64(); ok {
+		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
+			Type:   field.TypeUint64,
+			Value:  value,
+			Column: user.FieldUint64,
+		})
+	}
+	if value, ok := uuo.mutation.Int64(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Value:  value,
+			Column: user.FieldInt64,
+		})
+	}
+	if value, ok := uuo.mutation.AddedInt64(); ok {
+		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Value:  value,
+			Column: user.FieldInt64,
 		})
 	}
 	if value, ok := uuo.mutation.Time(); ok {

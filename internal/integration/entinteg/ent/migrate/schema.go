@@ -54,6 +54,8 @@ var (
 		{Name: "optional", Type: field.TypeString, Nullable: true},
 		{Name: "int", Type: field.TypeInt},
 		{Name: "uint", Type: field.TypeUint},
+		{Name: "uint64", Type: field.TypeUint64},
+		{Name: "int64", Type: field.TypeInt64},
 		{Name: "time", Type: field.TypeTime},
 		{Name: "bool", Type: field.TypeBool},
 		{Name: "enum", Type: field.TypeEnum, Enums: []string{"1", "2", "3"}},
@@ -70,7 +72,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "users_groups_group",
-				Columns:    []*schema.Column{UsersColumns[11]},
+				Columns:    []*schema.Column{UsersColumns[13]},
 				RefColumns: []*schema.Column{GroupsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -79,7 +81,7 @@ var (
 			{
 				Name:    "user_time",
 				Unique:  false,
-				Columns: []*schema.Column{UsersColumns[5]},
+				Columns: []*schema.Column{UsersColumns[7]},
 			},
 		},
 	}

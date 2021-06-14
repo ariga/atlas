@@ -21,6 +21,8 @@ func (User) Fields() []ent.Field {
 			Optional(),
 		field.Int("int"),
 		field.Uint("uint"),
+		field.Uint64("uint64"),
+		field.Int64("int64"),
 		field.Time("time"),
 		field.Bool("bool"),
 		field.Enum("enum").

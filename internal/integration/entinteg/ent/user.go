@@ -26,6 +26,10 @@ type User struct {
 	Int int `json:"int,omitempty"`
 	// Uint holds the value of the "uint" field.
 	Uint uint `json:"uint,omitempty"`
+	// Uint64 holds the value of the "uint64" field.
+	Uint64 uint64 `json:"uint64,omitempty"`
+	// Int64 holds the value of the "int64" field.
+	Int64 int64 `json:"int64,omitempty"`
 	// Time holds the value of the "time" field.
 	Time time.Time `json:"time,omitempty"`
 	// Bool holds the value of the "bool" field.
@@ -88,7 +92,7 @@ func (*User) scanValues(columns []string) ([]interface{}, error) {
 			values[i] = new([]byte)
 		case user.FieldBool:
 			values[i] = new(sql.NullBool)
-		case user.FieldID, user.FieldInt, user.FieldUint, user.FieldGroupID:
+		case user.FieldID, user.FieldInt, user.FieldUint, user.FieldUint64, user.FieldInt64, user.FieldGroupID:
 			values[i] = new(sql.NullInt64)
 		case user.FieldName, user.FieldOptional, user.FieldEnum, user.FieldNamedEnum:
 			values[i] = new(sql.NullString)
@@ -140,6 +144,18 @@ func (u *User) assignValues(columns []string, values []interface{}) error {
 				return fmt.Errorf("unexpected type %T for field uint", values[i])
 			} else if value.Valid {
 				u.Uint = uint(value.Int64)
+			}
+		case user.FieldUint64:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field uint64", values[i])
+			} else if value.Valid {
+				u.Uint64 = uint64(value.Int64)
+			}
+		case user.FieldInt64:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field int64", values[i])
+			} else if value.Valid {
+				u.Int64 = value.Int64
 			}
 		case user.FieldTime:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -229,6 +245,10 @@ func (u *User) String() string {
 	builder.WriteString(fmt.Sprintf("%v", u.Int))
 	builder.WriteString(", uint=")
 	builder.WriteString(fmt.Sprintf("%v", u.Uint))
+	builder.WriteString(", uint64=")
+	builder.WriteString(fmt.Sprintf("%v", u.Uint64))
+	builder.WriteString(", int64=")
+	builder.WriteString(fmt.Sprintf("%v", u.Int64))
 	builder.WriteString(", time=")
 	builder.WriteString(u.Time.Format(time.ANSIC))
 	builder.WriteString(", bool=")
