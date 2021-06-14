@@ -113,7 +113,7 @@ func ConvertColumn(spec *schema.ColumnSpec, parent *schema.Table) (*schema.Colum
 		},
 	}
 	if spec.Default != nil {
-		out.Default = &schema.Literal{V: *spec.Default}
+		out.Default = &schema.Literal{V: spec.Default.V}
 	}
 	ct, err := ConvertColumnType(spec)
 	if err != nil {

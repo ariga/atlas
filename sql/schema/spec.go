@@ -62,7 +62,7 @@ type (
 	ColumnSpec struct {
 		Name     string
 		Type     string
-		Default  *string
+		Default  *LiteralValue
 		Null     bool
 		Attrs    []*SpecAttr
 		Children []*ResourceSpec
