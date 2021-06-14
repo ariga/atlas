@@ -74,7 +74,7 @@ func writeColumn(c *schema.ColumnSpec, body *hclwrite.Body) error {
 	nb := blk.Body()
 	nb.SetAttributeValue("type", cty.StringVal(c.Type))
 	if c.Default != nil {
-		nb.SetAttributeValue("default", cty.StringVal(*c.Default))
+		nb.SetAttributeRaw("default", hclRawTokens(c.Default.V))
 	}
 	if c.Null {
 		nb.SetAttributeValue("null", cty.BoolVal(c.Null))

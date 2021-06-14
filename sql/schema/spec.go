@@ -62,7 +62,7 @@ type (
 	ColumnSpec struct {
 		Name     string
 		Type     string
-		Default  *string
+		Default  *LiteralValue
 		Null     bool
 		Attrs    []*SpecAttr
 		Children []*ResourceSpec
@@ -118,14 +118,17 @@ type (
 		K string
 		V Value
 	}
+
 	// Value represents the value of a SpecAttr.
 	Value interface {
 		val()
 	}
+
 	// LiteralValue implements Value and represents a literal value (string, number, etc.)
 	LiteralValue struct {
 		V string
 	}
+
 	// ListValue implements Value and represents a list of literal value (string, number, etc.)
 	ListValue struct {
 		V []string
@@ -183,9 +186,8 @@ func (a *SpecAttr) Strings() ([]string, error) {
 	return out, nil
 }
 
-
 func (*LiteralValue) val() {}
-func (*ListValue) val() {}
+func (*ListValue) val()    {}
 
 func (*ResourceSpec) elem()   {}
 func (*SpecAttr) elem()       {}

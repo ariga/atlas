@@ -66,11 +66,11 @@ type (
 		Remain      hcl.Body      `hcl:",remain"`
 	}
 	column struct {
-		Name     string   `hcl:",label"`
-		TypeName string   `hcl:"type"`
-		Null     bool     `hcl:"null,optional"`
-		Default  *string  `hcl:"default,optional"`
-		Remain   hcl.Body `hcl:",remain"`
+		Name     string    `hcl:",label"`
+		TypeName string    `hcl:"type"`
+		Null     bool      `hcl:"null,optional"`
+		Default  cty.Value `hcl:"default,optional"`
+		Remain   hcl.Body  `hcl:",remain"`
 	}
 	primaryKey struct {
 		Columns []*columnRef `hcl:"columns,optional"`
@@ -148,10 +148,21 @@ func (t *table) spec(ctx *hcl.EvalContext) (*schema.TableSpec, error) {
 
 func (c *column) spec(ctx *hcl.EvalContext) (*schema.ColumnSpec, error) {
 	spec := &schema.ColumnSpec{
-		Name:    c.Name,
-		Type:    c.TypeName,
-		Null:    c.Null,
-		Default: c.Default,
+		Name: c.Name,
+		Type: c.TypeName,
+		Null: c.Null,
+	}
+	if c.Default != cty.NilVal {
+		v := &schema.LiteralValue{}
+		switch c.Default.Type() {
+		case cty.String:
+			v.V = strconv.Quote(c.Default.AsString())
+		case cty.Number:
+			v.V = fmt.Sprint(c.Default.AsBigFloat())
+		case cty.Bool:
+			v.V = strconv.FormatBool(c.Default.True())
+		}
+		spec.Default = v
 	}
 	body, ok := c.Remain.(*hclsyntax.Body)
 	if !ok {
