@@ -160,7 +160,7 @@ func convertColumn(col *sqlschema.Column) (*schema.ColumnSpec, error) {
 	}
 	if col.Default != nil {
 		v := fmt.Sprint(col.Default)
-		cspc.Default = &v
+		cspc.Default = &schema.LiteralValue{V: v}
 	}
 	return cspc, nil
 }

@@ -15,24 +15,24 @@ table "default_containers" {
   }
   column "stringdef" {
     type    = "string"
-    default = "\"default\""
+    default = "default"
   }
   column "int" {
     type    = "int"
-    default = "1"
+    default = 1
   }
   column "bool" {
     type    = "boolean"
-    default = "true"
+    default = true
   }
   column "enum" {
     type    = "enum"
-    default = "\"1\""
+    default = "1"
     values  = ["1", "2", ]
   }
   column "float" {
     type    = "float"
-    default = "1.5"
+    default = 1.5
   }
   primary_key {
     columns = [table.default_containers.column.id, ]

@@ -26,5 +26,5 @@ func Test(t *testing.T) {
 	}
 	expected, err := ioutil.ReadFile("testdata/ent.hcl")
 	require.NoError(t, err)
-	require.EqualValues(t, expected, encode)
+	require.EqualValues(t, string(expected), string(encode))
 }
