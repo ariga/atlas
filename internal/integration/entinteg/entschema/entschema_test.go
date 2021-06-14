@@ -242,7 +242,7 @@ func (s *ConvertSuite) TestDefault() {
 	} {
 		col, ok := columnSpec(tbl, tt.col)
 		s.Require().Truef(ok, "expected col %q", tt.col)
-		s.Require().EqualValues(tt.expected, *col.Default)
+		s.Require().EqualValues(schema.LiteralValue{V: tt.expected}, *col.Default)
 	}
 }
 
