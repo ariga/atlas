@@ -11,10 +11,8 @@ import (
 )
 
 func TestMigrate_Exec(t *testing.T) {
-	db, m, err := sqlmock.New()
+	migrate, mk, err := newMigrate("8.0.13")
 	require.NoError(t, err)
-	mk := mock{m}
-	mk.version("8.0.13")
 	mk.ExpectExec(escape("DROP TABLE `users`")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mk.ExpectExec(escape("DROP TABLE `public`.`pets`")).
@@ -25,9 +23,8 @@ func TestMigrate_Exec(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mk.ExpectExec(escape("ALTER TABLE `users` ADD CONSTRAINT `spouse` FOREIGN KEY (`spouse_id`) REFERENCES `users` (`id`) ON DELETE SET NULL, ADD INDEX `id_spouse_id` (`spouse_id`, `id` DESC) COMMENT 'comment'")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	drv, err := Open(db)
-	require.NoError(t, err)
-	migrate := Migrate{Driver: drv}
+	mk.ExpectExec(escape("CREATE TABLE `posts` (`id` bigint NOT NULL, `author_id` bigint NULL, CONSTRAINT `author` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE SET NULL)")).
+		WillReturnResult(sqlmock.NewResult(0, 0))
 	err = migrate.Exec(context.Background(), []schema.Change{
 		&schema.DropTable{T: &schema.Table{Name: "users"}},
 		&schema.DropTable{T: &schema.Table{Name: "pets", Schema: &schema.Schema{Name: "public"}}},
@@ -52,16 +49,26 @@ func TestMigrate_Exec(t *testing.T) {
 		},
 	})
 	require.NoError(t, err)
-	err = migrate.Exec(context.Background(), []schema.Change{
-		func() schema.Change {
-			users := &schema.Table{
-				Name: "users",
-				Columns: []*schema.Column{
-					{Name: "id", Type: &schema.ColumnType{Raw: "bigint"}},
-					{Name: "spouse_id", Type: &schema.ColumnType{Raw: "bigint", Null: true}},
-				},
-			}
-			return &schema.ModifyTable{
+	err = migrate.Exec(context.Background(), func() []schema.Change {
+		users := &schema.Table{
+			Name: "users",
+			Columns: []*schema.Column{
+				{Name: "id", Type: &schema.ColumnType{Raw: "bigint"}},
+				{Name: "spouse_id", Type: &schema.ColumnType{Raw: "bigint", Null: true}},
+			},
+		}
+		posts := &schema.Table{
+			Name: "posts",
+			Columns: []*schema.Column{
+				{Name: "id", Type: &schema.ColumnType{Raw: "bigint"}},
+				{Name: "author_id", Type: &schema.ColumnType{Raw: "bigint", Null: true}},
+			},
+		}
+		posts.ForeignKeys = []*schema.ForeignKey{
+			{Symbol: "author", Table: posts, Columns: posts.Columns[1:], RefTable: users, RefColumns: users.Columns[:1], OnDelete: "SET NULL"},
+		}
+		return []schema.Change{
+			&schema.ModifyTable{
 				T: users,
 				Changes: []schema.Change{
 					&schema.AddForeignKey{
@@ -88,8 +95,63 @@ func TestMigrate_Exec(t *testing.T) {
 						},
 					},
 				},
-			}
-		}(),
-	})
+			},
+			&schema.AddTable{T: posts},
+		}
+	}())
 	require.NoError(t, err)
+}
+
+func TestMigrate_DetachCycles(t *testing.T) {
+	migrate, mk, err := newMigrate("8.0.13")
+	require.NoError(t, err)
+	mk.ExpectExec(escape("CREATE TABLE `users` (`id` bigint NOT NULL, `workplace_id` bigint NULL)")).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mk.ExpectExec(escape("CREATE TABLE `workplaces` (`id` bigint NOT NULL, `owner_id` bigint NULL)")).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mk.ExpectExec(escape("ALTER TABLE `users` ADD CONSTRAINT `workplace` FOREIGN KEY (`workplace_id`) REFERENCES `workplaces` (`id`)")).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mk.ExpectExec(escape("ALTER TABLE `workplaces` ADD CONSTRAINT `owner` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`)")).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	err = migrate.Exec(context.Background(), func() []schema.Change {
+		users := &schema.Table{
+			Name: "users",
+			Columns: []*schema.Column{
+				{Name: "id", Type: &schema.ColumnType{Raw: "bigint"}},
+				{Name: "workplace_id", Type: &schema.ColumnType{Raw: "bigint", Null: true}},
+			},
+		}
+		workplaces := &schema.Table{
+			Name: "workplaces",
+			Columns: []*schema.Column{
+				{Name: "id", Type: &schema.ColumnType{Raw: "bigint"}},
+				{Name: "owner_id", Type: &schema.ColumnType{Raw: "bigint", Null: true}},
+			},
+		}
+		users.ForeignKeys = []*schema.ForeignKey{
+			{Symbol: "workplace", Table: users, Columns: users.Columns[1:], RefTable: workplaces, RefColumns: workplaces.Columns[:1]},
+		}
+		workplaces.ForeignKeys = []*schema.ForeignKey{
+			{Symbol: "owner", Table: workplaces, Columns: workplaces.Columns[1:], RefTable: users, RefColumns: users.Columns[:1]},
+		}
+		return []schema.Change{
+			&schema.AddTable{T: users},
+			&schema.AddTable{T: workplaces},
+		}
+	}())
+	require.NoError(t, err)
+}
+
+func newMigrate(version string) (*Migrate, *mock, error) {
+	db, m, err := sqlmock.New()
+	if err != nil {
+		return nil, nil, err
+	}
+	mk := &mock{m}
+	mk.version(version)
+	drv, err := Open(db)
+	if err != nil {
+		return nil, nil, err
+	}
+	return &Migrate{Driver: drv}, mk, nil
 }
