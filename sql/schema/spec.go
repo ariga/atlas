@@ -183,9 +183,8 @@ func (a *SpecAttr) Strings() ([]string, error) {
 	return out, nil
 }
 
-
 func (*LiteralValue) val() {}
-func (*ListValue) val() {}
+func (*ListValue) val()    {}
 
 func (*ResourceSpec) elem()   {}
 func (*SpecAttr) elem()       {}
