@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -250,9 +251,18 @@ func attrs(b *Builder, attrs ...schema.Attr) {
 // plan detaches and postpones the foreign-key creation if
 // there's at least one circular reference in the changeset.
 func plan(changes []schema.Change) []schema.Change {
-	if !hasCycle(changes) {
-		return changes
+	sorted, hasCycle := sortMap(changes)
+	if hasCycle {
+		return detachReferences(changes)
 	}
+	sort.Slice(changes, func(i, j int) bool {
+		return sorted[table(changes[i])] < sorted[table(changes[j])]
+	})
+	return changes
+}
+
+// detachReferences detaches all table references.
+func detachReferences(changes []schema.Change) []schema.Change {
 	var planned, deferred []schema.Change
 	for _, change := range changes {
 		switch change := change.(type) {
@@ -293,15 +303,18 @@ func plan(changes []schema.Change) []schema.Change {
 	return append(planned, deferred...)
 }
 
-// hasCycle reports if there is a circular reference between the given changeset.
-func hasCycle(changes []schema.Change) bool {
+// sortMap returns an index-map indicates the position of table in a topological
+// sort in reversed order based on its references, and a boolean indicate if there
+// is a non-self loop.
+func sortMap(changes []schema.Change) (map[*schema.Table]int, bool) {
 	var (
-		visit          func(*schema.Table) bool
-		references     = references(changes)
-		progress, done = make(map[*schema.Table]bool), make(map[*schema.Table]bool)
+		visit      func(*schema.Table) bool
+		references = references(changes)
+		sorted     = make(map[*schema.Table]int)
+		progress   = make(map[*schema.Table]bool)
 	)
 	visit = func(node *schema.Table) bool {
-		if done[node] {
+		if _, done := sorted[node]; done {
 			return false
 		}
 		if progress[node] {
@@ -314,15 +327,15 @@ func hasCycle(changes []schema.Change) bool {
 			}
 		}
 		delete(progress, node)
-		done[node] = true
+		sorted[node] = len(sorted)
 		return false
 	}
 	for node := range references {
 		if visit(node) {
-			return true
+			return nil, true
 		}
 	}
-	return false
+	return sorted, false
 }
 
 // references returns an adjacency list of all child tables and their references in parent tables.
@@ -352,6 +365,17 @@ func references(changes []schema.Change) map[*schema.Table][]*schema.Table {
 		}
 	}
 	return refs
+}
+
+// table extracts a table from the given change.
+func table(change schema.Change) (t *schema.Table) {
+	switch change := change.(type) {
+	case *schema.AddTable:
+		t = change.T
+	case *schema.ModifyTable:
+		t = change.T
+	}
+	return
 }
 
 // A Builder provides a syntactic sugar API for writing SQL statements.
