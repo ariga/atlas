@@ -23,7 +23,9 @@ func TestMigrate_Exec(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mk.ExpectExec(escape("ALTER TABLE `users` ADD CONSTRAINT `spouse` FOREIGN KEY (`spouse_id`) REFERENCES `users` (`id`) ON DELETE SET NULL, ADD INDEX `id_spouse_id` (`spouse_id`, `id` DESC) COMMENT 'comment'")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mk.ExpectExec(escape("CREATE TABLE `posts` (`id` bigint NOT NULL, `author_id` bigint NULL, CONSTRAINT `author` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE SET NULL)")).
+	mk.ExpectExec(escape("CREATE TABLE `posts` (`id` bigint NOT NULL, `author_id` bigint NULL, CONSTRAINT `author` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`))")).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mk.ExpectExec(escape("CREATE TABLE `comments` (`id` bigint NOT NULL, `post_id` bigint NULL, CONSTRAINT `comment` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`))")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	err = migrate.Exec(context.Background(), []schema.Change{
 		&schema.DropTable{T: &schema.Table{Name: "users"}},
@@ -65,9 +67,21 @@ func TestMigrate_Exec(t *testing.T) {
 			},
 		}
 		posts.ForeignKeys = []*schema.ForeignKey{
-			{Symbol: "author", Table: posts, Columns: posts.Columns[1:], RefTable: users, RefColumns: users.Columns[:1], OnDelete: "SET NULL"},
+			{Symbol: "author", Table: posts, Columns: posts.Columns[1:], RefTable: users, RefColumns: users.Columns[:1]},
+		}
+		comments := &schema.Table{
+			Name: "comments",
+			Columns: []*schema.Column{
+				{Name: "id", Type: &schema.ColumnType{Raw: "bigint"}},
+				{Name: "post_id", Type: &schema.ColumnType{Raw: "bigint", Null: true}},
+			},
+		}
+		comments.ForeignKeys = []*schema.ForeignKey{
+			{Symbol: "comment", Table: comments, Columns: comments.Columns[1:], RefTable: posts, RefColumns: posts.Columns[:1]},
 		}
 		return []schema.Change{
+			&schema.AddTable{T: posts},
+			&schema.AddTable{T: comments},
 			&schema.ModifyTable{
 				T: users,
 				Changes: []schema.Change{
@@ -96,7 +110,6 @@ func TestMigrate_Exec(t *testing.T) {
 					},
 				},
 			},
-			&schema.AddTable{T: posts},
 		}
 	}())
 	require.NoError(t, err)
