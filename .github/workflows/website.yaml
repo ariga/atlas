@@ -1,9 +1,10 @@
 name: Continuous Deployment
 on:
-  pull_request:
   push:
     branches:
       - master
+    paths:
+      - 'doc/**'
 jobs:
   docs:
     name: deploy atlasgo.io
