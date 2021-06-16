@@ -31,3 +31,13 @@ services:
       test: mysqladmin ping -ppass
     ports:
       - 3308:3306
+  postgres13:
+    platform: linux/amd64
+    image: postgres:13
+    environment:
+      POSTGRES_DB: test
+      POSTGRES_PASSWORD: pass
+    healthcheck:
+      test: pg_isready -U postgres
+    ports:
+      - 5434:5432

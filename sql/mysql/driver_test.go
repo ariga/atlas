@@ -2,11 +2,9 @@ package mysql
 
 import (
 	"context"
-	"database/sql/driver"
-	"regexp"
-	"strings"
 	"testing"
-	"unicode"
+
+	"ariga.io/atlas/sql/internal/sqltest"
 
 	"ariga.io/atlas/sql/schema"
 
@@ -52,18 +50,18 @@ func TestDriver_InspectTable(t *testing.T) {
 			name: "table collation",
 			before: func(m mock) {
 				m.version("8.0.13")
-				m.ExpectQuery(escape(tableQuery)).
+				m.ExpectQuery(sqltest.Escape(tableQuery)).
 					WithArgs("users").
-					WillReturnRows(rows(`
+					WillReturnRows(sqltest.Rows(`
 +--------------+--------------------+--------------------+----------------+---------------+
 | TABLE_SCHEMA | CHARACTER_SET_NAME | TABLE_COLLATION    | AUTO_INCREMENT | TABLE_COMMENT |
 +--------------+--------------------+--------------------+----------------+---------------+
 | test         | utf8mb4            | utf8mb4_0900_ai_ci | nil            | Comment       |
 +--------------+--------------------+--------------------+----------------+---------------+
 `))
-				m.ExpectQuery(escape(columnsQuery)).
+				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("test", "users").
-					WillReturnRows(rows(`
+					WillReturnRows(sqltest.Rows(`
 +--------------------+----------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
 | column_name        | column_type          | column_comment       | is_nullable | column_key | column_default | extra          | character_set_name | collation_name |
 +--------------------+----------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
@@ -93,9 +91,9 @@ func TestDriver_InspectTable(t *testing.T) {
 			before: func(m mock) {
 				m.version("8.0.13")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(escape(columnsQuery)).
+				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
-					WillReturnRows(rows(`
+					WillReturnRows(sqltest.Rows(`
 +--------------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
 | column_name        | column_type                  | column_comment       | is_nullable | column_key | column_default | extra          | character_set_name | collation_name |
 +--------------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
@@ -146,9 +144,9 @@ func TestDriver_InspectTable(t *testing.T) {
 			before: func(m mock) {
 				m.version("8.0.13")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(escape(columnsQuery)).
+				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
-					WillReturnRows(rows(`
+					WillReturnRows(sqltest.Rows(`
 +-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
 | column_name | column_type   | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name |
 +-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
@@ -173,9 +171,9 @@ func TestDriver_InspectTable(t *testing.T) {
 			before: func(m mock) {
 				m.version("8.0.13")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(escape(columnsQuery)).
+				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
-					WillReturnRows(rows(`
+					WillReturnRows(sqltest.Rows(`
 +-------------+--------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
 | column_name | column_type  | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name |
 +-------------+--------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
@@ -200,9 +198,9 @@ func TestDriver_InspectTable(t *testing.T) {
 			before: func(m mock) {
 				m.version("8.0.13")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(escape(columnsQuery)).
+				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
-					WillReturnRows(rows(`
+					WillReturnRows(sqltest.Rows(`
 +-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
 | column_name | column_type   | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name |
 +-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
@@ -235,9 +233,9 @@ func TestDriver_InspectTable(t *testing.T) {
 			before: func(m mock) {
 				m.version("8.0.13")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(escape(columnsQuery)).
+				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
-					WillReturnRows(rows(`
+					WillReturnRows(sqltest.Rows(`
 +-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
 | column_name | column_type   | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name |
 +-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
@@ -270,9 +268,9 @@ func TestDriver_InspectTable(t *testing.T) {
 			before: func(m mock) {
 				m.version("8.0.13")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(escape(columnsQuery)).
+				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
-					WillReturnRows(rows(`
+					WillReturnRows(sqltest.Rows(`
 +-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+-------------------+
 | column_name | column_type   | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name    |
 +-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+-------------------+
@@ -297,9 +295,9 @@ func TestDriver_InspectTable(t *testing.T) {
 			before: func(m mock) {
 				m.version("8.0.13")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(escape(columnsQuery)).
+				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
-					WillReturnRows(rows(`
+					WillReturnRows(sqltest.Rows(`
 +-------------+-------------+-------------------+-------------+------------+-------------------+-----------------------------+--------------------+----------------+
 | column_name | column_type | column_comment    | is_nullable | column_key | column_default    | extra                       | character_set_name | collation_name |
 +-------------+-------------+-------------------+-------------+------------+-------------------+-----------------------------+--------------------+----------------+
@@ -332,9 +330,9 @@ func TestDriver_InspectTable(t *testing.T) {
 			before: func(m mock) {
 				m.version("8.0.13")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(escape(columnsQuery)).
+				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
-					WillReturnRows(rows(`
+					WillReturnRows(sqltest.Rows(`
 +-------------+-------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
 | COLUMN_NAME | COLUMN_TYPE | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA | CHARACTER_SET_NAME | COLLATION_NAME |
 +-------------+-------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
@@ -357,9 +355,9 @@ func TestDriver_InspectTable(t *testing.T) {
 			before: func(m mock) {
 				m.version("8.0.13")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(escape(columnsQuery)).
+				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
-					WillReturnRows(rows(`
+					WillReturnRows(sqltest.Rows(`
 +-------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
 | column_name | column_type        | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name |
 +-------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
@@ -398,9 +396,9 @@ func TestDriver_InspectTable(t *testing.T) {
 			before: func(m mock) {
 				m.version("8.0.13")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(escape(columnsQuery)).
+				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
-					WillReturnRows(rows(`
+					WillReturnRows(sqltest.Rows(`
 +-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
 | COLUMN_NAME | COLUMN_TYPE  | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
 +-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
@@ -410,9 +408,9 @@ func TestDriver_InspectTable(t *testing.T) {
 | uid         | int          |                | NO          | MUL        | NULL           |                | NULL               | NULL               |
 +-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
 `))
-				m.ExpectQuery(escape(indexesExprQuery)).
+				m.ExpectQuery(sqltest.Escape(indexesExprQuery)).
 					WithArgs("public", "users").
-					WillReturnRows(rows(`
+					WillReturnRows(sqltest.Rows(`
 +--------------+-------------+------------+--------------+--------------+--------------+--------------+------------+------------------+
 | INDEX_NAME   | COLUMN_NAME | NON_UNIQUE | SEQ_IN_INDEX | INDEX_TYPE   | COLLATION    | COMMENT      | SUB_PART   | EXPRESSION       |
 +--------------+-------------+------------+--------------+--------------+--------------+--------------+------------+------------------+
@@ -469,9 +467,9 @@ func TestDriver_InspectTable(t *testing.T) {
 			before: func(m mock) {
 				m.version("8.0.13")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(escape(columnsQuery)).
+				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
-					WillReturnRows(rows(`
+					WillReturnRows(sqltest.Rows(`
 +-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
 | COLUMN_NAME | COLUMN_TYPE  | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
 +-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
@@ -481,9 +479,9 @@ func TestDriver_InspectTable(t *testing.T) {
 +-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
 `))
 				m.noIndexes()
-				m.ExpectQuery(escape(fksQuery)).
+				m.ExpectQuery(sqltest.Escape(fksQuery)).
 					WithArgs("public", "users").
-					WillReturnRows(rows(`
+					WillReturnRows(sqltest.Rows(`
 +------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
 | CONSTRAINT_NAME  | TABLE_NAME | COLUMN_NAME | TABLE_SCHEMA | REFERENCED_TABLE_NAME | REFERENCED_COLUMN_NAME | REFERENCED_SCHEMA_NAME | UPDATE_RULE | DELETE_RULE |
 +------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
@@ -518,9 +516,9 @@ func TestDriver_InspectTable(t *testing.T) {
 			before: func(m mock) {
 				m.version("8.0.16")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(escape(columnsQuery)).
+				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
-					WillReturnRows(rows(`
+					WillReturnRows(sqltest.Rows(`
 +-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
 | COLUMN_NAME | COLUMN_TYPE  | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
 +-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
@@ -530,9 +528,9 @@ func TestDriver_InspectTable(t *testing.T) {
 `))
 				m.noIndexes()
 				m.noFKs()
-				m.ExpectQuery(escape(checksQuery)).
+				m.ExpectQuery(sqltest.Escape(checksQuery)).
 					WithArgs("public", "users").
-					WillReturnRows(rows(`
+					WillReturnRows(sqltest.Rows(`
 +-------------------+----------+-----------------------------------------------------------------+
 | CONSTRAINT_NAME   | ENFORCED | CHECK_CLAUSE                                                    |
 +-------------------+----------+-----------------------------------------------------------------+
@@ -577,8 +575,8 @@ func TestDriver_InspectSchema(t *testing.T) {
 			name: "no tables",
 			before: func(m mock) {
 				m.version("5.7.23")
-				m.ExpectQuery(escape(schemasQuery + " WHERE `SCHEMA_NAME` IN (?)")).
-					WillReturnRows(rows(`
+				m.ExpectQuery(sqltest.Escape(schemasQuery + " WHERE `SCHEMA_NAME` IN (?)")).
+					WillReturnRows(sqltest.Rows(`
 +-------------+----------------------------+------------------------+
 | SCHEMA_NAME | DEFAULT_CHARACTER_SET_NAME | DEFAULT_COLLATION_NAME |
 +-------------+----------------------------+------------------------+
@@ -618,8 +616,8 @@ func TestDriver_InspectSchema(t *testing.T) {
 			name: "multi table",
 			before: func(m mock) {
 				m.version("8.0.13")
-				m.ExpectQuery(escape(schemasQuery + " WHERE `SCHEMA_NAME` IN (?)")).
-					WillReturnRows(rows(`
+				m.ExpectQuery(sqltest.Escape(schemasQuery + " WHERE `SCHEMA_NAME` IN (?)")).
+					WillReturnRows(sqltest.Rows(`
 +-------------+----------------------------+------------------------+
 | SCHEMA_NAME | DEFAULT_CHARACTER_SET_NAME | DEFAULT_COLLATION_NAME |
 +-------------+----------------------------+------------------------+
@@ -628,9 +626,9 @@ func TestDriver_InspectSchema(t *testing.T) {
 				`))
 				m.tables("public", "users", "pets")
 				m.tableExistsInSchema("public", "users", true)
-				m.ExpectQuery(escape(columnsQuery)).
+				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
-					WillReturnRows(rows(`
+					WillReturnRows(sqltest.Rows(`
 +-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
 | COLUMN_NAME | COLUMN_TYPE  | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
 +-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
@@ -639,9 +637,9 @@ func TestDriver_InspectSchema(t *testing.T) {
 +-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
 		`))
 				m.noIndexes()
-				m.ExpectQuery(escape(fksQuery)).
+				m.ExpectQuery(sqltest.Escape(fksQuery)).
 					WithArgs("public", "users").
-					WillReturnRows(rows(`
+					WillReturnRows(sqltest.Rows(`
 +------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
 | CONSTRAINT_NAME  | TABLE_NAME | COLUMN_NAME | TABLE_SCHEMA | REFERENCED_TABLE_NAME | REFERENCED_COLUMN_NAME | REFERENCED_SCHEMA_NAME | UPDATE_RULE | DELETE_RULE |
 +------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
@@ -650,9 +648,9 @@ func TestDriver_InspectSchema(t *testing.T) {
 		`))
 
 				m.tableExistsInSchema("public", "pets", true)
-				m.ExpectQuery(escape(columnsQuery)).
+				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "pets").
-					WillReturnRows(rows(`
+					WillReturnRows(sqltest.Rows(`
 +-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
 | COLUMN_NAME | COLUMN_TYPE  | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
 +-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
@@ -661,9 +659,9 @@ func TestDriver_InspectSchema(t *testing.T) {
 +-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
 		`))
 				m.noIndexes()
-				m.ExpectQuery(escape(fksQuery)).
+				m.ExpectQuery(sqltest.Escape(fksQuery)).
 					WithArgs("public", "pets").
-					WillReturnRows(rows(`
+					WillReturnRows(sqltest.Rows(`
 +------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
 | CONSTRAINT_NAME  | TABLE_NAME | COLUMN_NAME | TABLE_SCHEMA | REFERENCED_TABLE_NAME | REFERENCED_COLUMN_NAME | REFERENCED_SCHEMA_NAME | UPDATE_RULE | DELETE_RULE |
 +------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
@@ -722,8 +720,8 @@ func TestDriver_Realm(t *testing.T) {
 	require.NoError(t, err)
 	mk := mock{m}
 	mk.version("8.0.13")
-	mk.ExpectQuery(escape(schemasQuery + " WHERE `SCHEMA_NAME` NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')")).
-		WillReturnRows(rows(`
+	mk.ExpectQuery(sqltest.Escape(schemasQuery + " WHERE `SCHEMA_NAME` NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')")).
+		WillReturnRows(sqltest.Rows(`
 +-------------+----------------------------+------------------------+
 | SCHEMA_NAME | DEFAULT_CHARACTER_SET_NAME | DEFAULT_COLLATION_NAME |
 +-------------+----------------------------+------------------------+
@@ -760,9 +758,9 @@ func TestDriver_Realm(t *testing.T) {
 		return r
 	}(), realm)
 
-	mk.ExpectQuery(escape(schemasQuery+" WHERE `SCHEMA_NAME` IN (?, ?)")).
+	mk.ExpectQuery(sqltest.Escape(schemasQuery+" WHERE `SCHEMA_NAME` IN (?, ?)")).
 		WithArgs("test", "public").
-		WillReturnRows(rows(`
+		WillReturnRows(sqltest.Rows(`
 +-------------+----------------------------+------------------------+
 | SCHEMA_NAME | DEFAULT_CHARACTER_SET_NAME | DEFAULT_COLLATION_NAME |
 +-------------+----------------------------+------------------------+
@@ -813,8 +811,8 @@ type mock struct {
 }
 
 func (m mock) version(version string) {
-	m.ExpectQuery(escape(variablesQuery)).
-		WillReturnRows(rows(`
+	m.ExpectQuery(sqltest.Escape(variablesQuery)).
+		WillReturnRows(sqltest.Rows(`
 +-----------------+--------------------+------------------------+
 | @@version       | @@collation_server | @@character_set_server |
 +-----------------+--------------------+------------------------+
@@ -824,12 +822,12 @@ func (m mock) version(version string) {
 }
 
 func (m mock) noIndexes() {
-	m.ExpectQuery(escape(indexesExprQuery)).
+	m.ExpectQuery(sqltest.Escape(indexesExprQuery)).
 		WillReturnRows(sqlmock.NewRows([]string{"index_name", "column_name", "non_unique", "key_part", "expression"}))
 }
 
 func (m mock) noFKs() {
-	m.ExpectQuery(escape(fksQuery)).
+	m.ExpectQuery(sqltest.Escape(fksQuery)).
 		WillReturnRows(sqlmock.NewRows([]string{"CONSTRAINT_NAME", "TABLE_NAME", "COLUMN_NAME", "REFERENCED_TABLE_NAME", "REFERENCED_COLUMN_NAME", "REFERENCED_TABLE_SCHEMA", "UPDATE_RULE", "DELETE_RULE"}))
 }
 
@@ -838,7 +836,7 @@ func (m mock) tables(schema string, names ...string) {
 	for i := range names {
 		rows.AddRow(names[i])
 	}
-	m.ExpectQuery(escape(tablesQuery)).
+	m.ExpectQuery(sqltest.Escape(tablesQuery)).
 		WithArgs(schema).
 		WillReturnRows(rows)
 }
@@ -848,7 +846,7 @@ func (m mock) tableExists(schema, table string, exists bool) {
 	if exists {
 		rows.AddRow(schema, nil, nil, nil, nil)
 	}
-	m.ExpectQuery(escape(tableQuery)).
+	m.ExpectQuery(sqltest.Escape(tableQuery)).
 		WithArgs(table).
 		WillReturnRows(rows)
 }
@@ -858,59 +856,7 @@ func (m mock) tableExistsInSchema(schema, table string, exists bool) {
 	if exists {
 		rows.AddRow(schema, nil, nil, nil, nil)
 	}
-	m.ExpectQuery(escape(tableSchemaQuery)).
+	m.ExpectQuery(sqltest.Escape(tableSchemaQuery)).
 		WithArgs(table, schema).
 		WillReturnRows(rows)
-}
-
-func escape(query string) string {
-	rows := strings.Split(query, "\n")
-	for i := range rows {
-		rows[i] = strings.TrimPrefix(rows[i], " ")
-	}
-	query = strings.Join(rows, " ")
-	return strings.TrimSpace(regexp.QuoteMeta(query)) + "$"
-}
-
-// rows converts MySQL table output to sql.Rows.
-// All row values are parsed as text except the "nil" keyword. For example:
-//
-// 		+-------------+-------------+-------------+----------------+
-//		| column_name | column_type | is_nullable | column_default |
-//		+-------------+-------------+-------------+----------------+
-//		| c1          | float       | YES         | nil            |
-//		| c2          | int         | YES         |                |
-//		| c3          | double      | YES         | NULL           |
-//		+-------------+-------------+-------------+----------------+
-//
-func rows(table string) *sqlmock.Rows {
-	var (
-		rows  *sqlmock.Rows
-		lines = strings.Split(table, "\n")
-	)
-	for i := 0; i < len(lines); i++ {
-		line := strings.TrimFunc(lines[i], unicode.IsSpace)
-		// Skip new lines, header and footer.
-		if !strings.HasPrefix(line, "|") {
-			continue
-		}
-		columns := strings.FieldsFunc(line, func(r rune) bool {
-			return r == '|'
-		})
-		for i, c := range columns {
-			columns[i] = strings.TrimSpace(c)
-		}
-		if rows == nil {
-			rows = sqlmock.NewRows(columns)
-		} else {
-			values := make([]driver.Value, len(columns))
-			for i, c := range columns {
-				if c != "nil" {
-					values[i] = c
-				}
-			}
-			rows.AddRow(values...)
-		}
-	}
-	return rows
 }
