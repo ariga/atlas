@@ -8,6 +8,9 @@ jobs:
   docs:
     name: deploy atlasgo.io
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./doc/website
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2.1.5
