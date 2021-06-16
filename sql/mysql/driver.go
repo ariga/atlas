@@ -7,9 +7,10 @@ import (
 	"strconv"
 	"strings"
 
-	"golang.org/x/mod/semver"
-
+	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
+
+	"golang.org/x/mod/semver"
 )
 
 // Driver represents a MySQL driver for introspecting database schemas
@@ -181,17 +182,17 @@ func (d *Driver) table(ctx context.Context, name string, opts *schema.InspectTab
 		return nil, err
 	}
 	t := &schema.Table{Name: name, Schema: &schema.Schema{Name: tSchema.String}}
-	if validString(charset) {
+	if sqlx.ValidString(charset) {
 		t.Attrs = append(t.Attrs, &schema.Charset{
 			V: charset.String,
 		})
 	}
-	if validString(collation) {
+	if sqlx.ValidString(collation) {
 		t.Attrs = append(t.Attrs, &schema.Collation{
 			V: collation.String,
 		})
 	}
-	if validString(comment) {
+	if sqlx.ValidString(comment) {
 		t.Attrs = append(t.Attrs, &schema.Comment{
 			Text: comment.String,
 		})
@@ -240,22 +241,22 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 	if err := extraAttr(c, extra.String); err != nil {
 		return err
 	}
-	if validString(defaults) {
+	if sqlx.ValidString(defaults) {
 		c.Default = &schema.RawExpr{
 			X: defaults.String,
 		}
 	}
-	if validString(comment) {
+	if sqlx.ValidString(comment) {
 		c.Attrs = append(c.Attrs, &schema.Comment{
 			Text: comment.String,
 		})
 	}
-	if validString(charset) {
+	if sqlx.ValidString(charset) {
 		c.Attrs = append(c.Attrs, &schema.Charset{
 			V: charset.String,
 		})
 	}
-	if validString(collation) {
+	if sqlx.ValidString(collation) {
 		c.Attrs = append(c.Attrs, &schema.Collation{
 			V: collation.String,
 		})
@@ -439,7 +440,7 @@ func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
 					&IndexType{T: indexType},
 				},
 			}
-			if validString(comment) {
+			if sqlx.ValidString(comment) {
 				idx.Attrs = append(t.Attrs, &schema.Comment{
 					Text: comment.String,
 				})
@@ -454,16 +455,16 @@ func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
 			Attrs: []schema.Attr{&schema.Collation{V: collate.String}},
 		}
 		switch {
-		case validString(expr):
+		case sqlx.ValidString(expr):
 			part.X = &schema.RawExpr{
 				X: expr.String,
 			}
-		case validString(column):
+		case sqlx.ValidString(column):
 			part.C, ok = t.Column(column.String)
 			if !ok {
 				return fmt.Errorf("mysql: column %q was not found for index %q", column.String, idx.Name)
 			}
-			if validString(subPart) {
+			if sqlx.ValidString(subPart) {
 				n, err := strconv.Atoi(subPart.String)
 				if err != nil {
 					return fmt.Errorf("mysql: parse index prefix size %q: %w", subPart.String, err)
@@ -663,11 +664,6 @@ func linkSchemaTables(schemas []*schema.Schema) {
 			}
 		}
 	}
-}
-
-// validString reports if the given string is valid and not nullable.
-func validString(s sql.NullString) bool {
-	return s.Valid && s.String != "" && strings.ToLower(s.String) != "null"
 }
 
 const (

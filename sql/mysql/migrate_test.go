@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"ariga.io/atlas/sql/internal/sqltest"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -13,19 +14,19 @@ import (
 func TestMigrate_Exec(t *testing.T) {
 	migrate, mk, err := newMigrate("8.0.13")
 	require.NoError(t, err)
-	mk.ExpectExec(escape("DROP TABLE `users`")).
+	mk.ExpectExec(sqltest.Escape("DROP TABLE `users`")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mk.ExpectExec(escape("DROP TABLE `public`.`pets`")).
+	mk.ExpectExec(sqltest.Escape("DROP TABLE `public`.`pets`")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mk.ExpectExec(escape("CREATE TABLE `pets` (`a` int NOT NULL, `b` bigint NOT NULL, `c` bigint NULL, PRIMARY KEY (`a`, `b`), UNIQUE INDEX `b_c_unique` (`b`, `c`) COMMENT 'comment')")).
+	mk.ExpectExec(sqltest.Escape("CREATE TABLE `pets` (`a` int NOT NULL, `b` bigint NOT NULL, `c` bigint NULL, PRIMARY KEY (`a`, `b`), UNIQUE INDEX `b_c_unique` (`b`, `c`) COMMENT 'comment')")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mk.ExpectExec(escape("ALTER TABLE `users` DROP INDEX `id_spouse_id`")).
+	mk.ExpectExec(sqltest.Escape("ALTER TABLE `users` DROP INDEX `id_spouse_id`")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mk.ExpectExec(escape("ALTER TABLE `users` ADD CONSTRAINT `spouse` FOREIGN KEY (`spouse_id`) REFERENCES `users` (`id`) ON DELETE SET NULL, ADD INDEX `id_spouse_id` (`spouse_id`, `id` DESC) COMMENT 'comment'")).
+	mk.ExpectExec(sqltest.Escape("ALTER TABLE `users` ADD CONSTRAINT `spouse` FOREIGN KEY (`spouse_id`) REFERENCES `users` (`id`) ON DELETE SET NULL, ADD INDEX `id_spouse_id` (`spouse_id`, `id` DESC) COMMENT 'comment'")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mk.ExpectExec(escape("CREATE TABLE `posts` (`id` bigint NOT NULL, `author_id` bigint NULL, CONSTRAINT `author` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`))")).
+	mk.ExpectExec(sqltest.Escape("CREATE TABLE `posts` (`id` bigint NOT NULL, `author_id` bigint NULL, CONSTRAINT `author` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`))")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mk.ExpectExec(escape("CREATE TABLE `comments` (`id` bigint NOT NULL, `post_id` bigint NULL, CONSTRAINT `comment` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`))")).
+	mk.ExpectExec(sqltest.Escape("CREATE TABLE `comments` (`id` bigint NOT NULL, `post_id` bigint NULL, CONSTRAINT `comment` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`))")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	err = migrate.Exec(context.Background(), []schema.Change{
 		&schema.DropTable{T: &schema.Table{Name: "users"}},
@@ -118,13 +119,13 @@ func TestMigrate_Exec(t *testing.T) {
 func TestMigrate_DetachCycles(t *testing.T) {
 	migrate, mk, err := newMigrate("8.0.13")
 	require.NoError(t, err)
-	mk.ExpectExec(escape("CREATE TABLE `users` (`id` bigint NOT NULL, `workplace_id` bigint NULL)")).
+	mk.ExpectExec(sqltest.Escape("CREATE TABLE `users` (`id` bigint NOT NULL, `workplace_id` bigint NULL)")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mk.ExpectExec(escape("CREATE TABLE `workplaces` (`id` bigint NOT NULL, `owner_id` bigint NULL)")).
+	mk.ExpectExec(sqltest.Escape("CREATE TABLE `workplaces` (`id` bigint NOT NULL, `owner_id` bigint NULL)")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mk.ExpectExec(escape("ALTER TABLE `users` ADD CONSTRAINT `workplace` FOREIGN KEY (`workplace_id`) REFERENCES `workplaces` (`id`)")).
+	mk.ExpectExec(sqltest.Escape("ALTER TABLE `users` ADD CONSTRAINT `workplace` FOREIGN KEY (`workplace_id`) REFERENCES `workplaces` (`id`)")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mk.ExpectExec(escape("ALTER TABLE `workplaces` ADD CONSTRAINT `owner` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`)")).
+	mk.ExpectExec(sqltest.Escape("ALTER TABLE `workplaces` ADD CONSTRAINT `owner` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`)")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	err = migrate.Exec(context.Background(), func() []schema.Change {
 		users := &schema.Table{
