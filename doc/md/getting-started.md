@@ -1,9 +1,10 @@
 ---
 id: getting-started
-title: Home
-slug: /
+title: Getting Started
 ---
 
-### Welcome
+### Getting started
 
-Nothing to see here yet, please come back soon!
+```console
+echo "hello, world!"
+```
