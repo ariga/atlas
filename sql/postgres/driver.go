@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
@@ -112,16 +113,22 @@ func (d *Driver) columns(ctx context.Context, t *schema.Table) error {
 			return fmt.Errorf("postgres: %w", err)
 		}
 	}
-	return rows.Err()
+	if err := rows.Close(); err != nil {
+		return err
+	}
+	if err := d.enumValues(ctx, t.Columns); err != nil {
+		return err
+	}
+	return nil
 }
 
 // addColumn scans the current row and adds a new column from it to the table.
 func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 	var (
-		maxlen, precision, scale                                                  sql.NullInt64
-		name, typ, nullable, defaults, udt, identity, charset, collation, comment sql.NullString
+		typid, maxlen, precision, scale                                                    sql.NullInt64
+		name, typ, nullable, defaults, udt, identity, charset, collation, comment, typtype sql.NullString
 	)
-	if err := rows.Scan(&name, &typ, &nullable, &defaults, &maxlen, &precision, &scale, &charset, &collation, &udt, &identity, &comment); err != nil {
+	if err := rows.Scan(&name, &typ, &nullable, &defaults, &maxlen, &precision, &scale, &charset, &collation, &udt, &identity, &comment, &typtype, &typid); err != nil {
 		return err
 	}
 	c := &schema.Column{
@@ -130,6 +137,64 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 			Raw:  typ.String,
 			Null: nullable.String == "YES",
 		},
+	}
+	switch t := typ.String; t {
+	case "bigint", "int8":
+		c.Type.Type = &schema.IntegerType{T: t, Size: 8}
+	case "integer", "int", "int4":
+		c.Type.Type = &schema.IntegerType{T: t, Size: 4}
+	case "smallint", "int2":
+		c.Type.Type = &schema.IntegerType{T: t, Size: 2}
+	case "bit", "bit varying":
+		c.Type.Type = &BitType{T: t, Len: maxlen.Int64}
+	case "boolean", "bool":
+		c.Type.Type = &schema.BoolType{T: t}
+	case "bytea":
+		c.Type.Type = &schema.BinaryType{T: t}
+	case "character", "char", "character varying", "varchar", "text":
+		// A `character` column without length specifier is equivalent to `character(1)`,
+		// but `varchar` without length accepts strings of any size (same as `text`).
+		c.Type.Type = &schema.StringType{T: t, Size: int(maxlen.Int64)}
+	case "cidr", "inet", "macaddr", "macaddr8":
+		c.Type.Type = &NetworkType{T: t}
+	case "circle", "line", "lseg", "box", "path", "polygon":
+		c.Type.Type = &schema.SpatialType{T: t}
+	case "date", "time", "time with time zone", "time without time zone",
+		"timestamp", "timestamp with time zone", "timestamp without time zone":
+		c.Type.Type = &schema.TimeType{T: t}
+	case "interval":
+		// TODO: get 'interval_type' from query above before implementing.
+		c.Type.Type = &schema.UnsupportedType{T: t}
+	case "double precision", "float8", "real", "float4":
+		c.Type.Type = &schema.FloatType{T: t, Precision: int(precision.Int64)}
+	case "json", "jsonb":
+		c.Type.Type = &schema.JSONType{T: t}
+	case "money":
+		c.Type.Type = &CurrencyType{T: t}
+	case "numeric", "decimal":
+		c.Type.Type = &schema.DecimalType{T: t, Precision: int(precision.Int64), Scale: int(scale.Int64)}
+	case "smallserial", "serial2", "serial", "serial4", "bigserial", "serial8":
+		c.Type.Type = &SerialType{T: t, Precision: int(precision.Int64)}
+	case "uuid":
+		c.Type.Type = &UUIDType{T: t}
+	case "xml":
+		c.Type.Type = &XMLType{T: t}
+	case "ARRAY":
+		// Note that for ARRAY types, the 'udt_name' column holds the array type
+		// prefixed with '_'. For example, for 'integer[]' the result is '_int',
+		// and for 'text[N][M]' the result is also '_text'. That's because, the
+		// database ignores any size or multi-dimensions constraints.
+		c.Type.Type = &ArrayType{T: strings.TrimPrefix(udt.String, "_")}
+	case "USER-DEFINED":
+		c.Type.Type = &UserDefinedType{T: udt.String}
+		// The `typtype` column is set to 'e' for enum types, and the
+		// values are filled in batch after the rows above is closed.
+		// https://www.postgresql.org/docs/current/catalog-pg-type.html
+		if typtype.String == "e" {
+			c.Type.Type = &EnumType{T: udt.String, ID: typid.Int64}
+		}
+	default:
+		c.Type.Type = &schema.UnsupportedType{T: t}
 	}
 	if sqlx.ValidString(defaults) {
 		c.Default = &schema.RawExpr{
@@ -155,6 +220,108 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 	return nil
 }
 
+// enumValues fills enum columns with their values from the database.
+func (d *Driver) enumValues(ctx context.Context, columns []*schema.Column) error {
+	var (
+		args []interface{}
+		ids  = make(map[int64][]*EnumType)
+	)
+	for _, c := range columns {
+		if enum, ok := c.Type.Type.(*EnumType); ok {
+			if _, ok := ids[enum.ID]; !ok {
+				args = append(args, enum.ID)
+			}
+			ids[enum.ID] = append(ids[enum.ID], enum)
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query := `SELECT enumtypid, enumlabel FROM pg_enum WHERE enumtypid IN (` + strings.Repeat("?, ", len(ids)-1) + "?)"
+	rows, err := d.QueryContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("postgres: querying enum values: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var (
+			id int64
+			v  string
+		)
+		if err := rows.Scan(&id, &v); err != nil {
+			return fmt.Errorf("postgres: scanning enum label: %w", err)
+		}
+		for _, enum := range ids[id] {
+			enum.Values = append(enum.Values, v)
+		}
+	}
+	return nil
+}
+
+type (
+	// UserDefinedType defines a user-defined type attribute.
+	UserDefinedType struct {
+		schema.Type
+		T string
+	}
+
+	// EnumType represents an enum type.
+	EnumType struct {
+		schema.Type
+		T      string // Type name.
+		ID     int64  // Type id.
+		Values []string
+	}
+
+	// ArrayType defines an array type.
+	// https://www.postgresql.org/docs/current/arrays.html
+	ArrayType struct {
+		schema.Type
+		T string
+	}
+
+	// BitType defines a bit type.
+	// https://www.postgresql.org/docs/current/datatype-bit.html
+	BitType struct {
+		schema.Type
+		T   string
+		Len int64
+	}
+
+	// A NetworkType defines a network type.
+	// https://www.postgresql.org/docs/current/datatype-net-types.html
+	NetworkType struct {
+		schema.Type
+		T   string
+		Len int64
+	}
+
+	// A CurrencyType defines a currency type.
+	CurrencyType struct {
+		schema.Type
+		T string
+	}
+
+	// A SerialType defines a serial type.
+	SerialType struct {
+		schema.Type
+		T         string
+		Precision int
+	}
+
+	// A UUIDType defines a UUID type.
+	UUIDType struct {
+		schema.Type
+		T string
+	}
+
+	// A XMLType defines an XML type.
+	XMLType struct {
+		schema.Type
+		T string
+	}
+)
+
 const (
 	// Query to list runtime parameters.
 	paramsQuery = `SELECT setting FROM pg_settings WHERE name IN ('lc_collate', 'lc_ctype', 'server_version_num') ORDER BY name`
@@ -178,7 +345,7 @@ SELECT
 	pg_catalog.obj_description(t2.oid, 'pg_class') AS COMMENT
 FROM
 	INFORMATION_SCHEMA.TABLES AS t1
-	INNER JOIN pg_catalog.pg_class AS t2
+	JOIN pg_catalog.pg_class AS t2
 	ON t1.table_name = t2.relname
 WHERE
 	t1.TABLE_TYPE = 'BASE TABLE'
@@ -188,20 +355,24 @@ WHERE
 	// Query to list table columns.
 	columnsQuery = `
 SELECT
-	"column_name",
-	"data_type",
-	"is_nullable",
-	"column_default",
-	"character_maximum_length",
-	"numeric_precision",
-	"numeric_scale",
-	"character_set_name",
-	"collation_name",
-	"udt_name",
-	"is_identity",
-	col_description(to_regclass("table_schema" || '.' || "table_name")::oid, "ordinal_position") AS "comment"
+	t1.column_name,
+	t1.data_type,
+	t1.is_nullable,
+	t1.column_default,
+	t1.character_maximum_length,
+	t1.numeric_precision,
+	t1.numeric_scale,
+	t1.character_set_name,
+	t1.collation_name,
+	t1.udt_name,
+	t1.is_identity,
+	col_description(to_regclass("table_schema" || '.' || "table_name")::oid, "ordinal_position") AS comment,
+	t2.typtype,
+	t2.oid
 FROM
-	"information_schema"."columns"
+	"information_schema"."columns" AS t1
+	LEFT JOIN pg_catalog.pg_type AS t2
+	ON t1.udt_name = t2.typname
 WHERE
 	TABLE_SCHEMA = ? AND TABLE_NAME = ?
 `
