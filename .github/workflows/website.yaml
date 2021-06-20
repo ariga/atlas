@@ -3,9 +3,9 @@ on:
   push:
 #    branches:
 #      - master
-    paths:
-      - 'doc/**'
-      - 'internal/vanity/**'
+#    paths:
+#      - 'doc/**'
+#      - 'internal/vanity/**'
 jobs:
   docs:
     name: deploy atlasgo.io
