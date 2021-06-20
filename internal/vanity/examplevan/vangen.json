@@ -1,0 +1,9 @@
+{
+  "domain": "atlasgo.io",
+  "repositories": [
+    {
+      "prefix": "examplevan",
+      "url": "https://github.com/rotemtam/examplevan"
+    }
+  ]
+}

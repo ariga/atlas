@@ -1,10 +1,11 @@
 name: Continuous Deployment
 on:
   push:
-    branches:
-      - master
+#    branches:
+#      - master
     paths:
       - 'doc/**'
+      - 'internal/vanity/**'
 jobs:
   docs:
     name: deploy atlasgo.io
@@ -14,6 +15,7 @@ jobs:
         working-directory: ./doc/website
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
       - uses: actions/setup-node@v2.1.5
         with:
           node-version: 16
@@ -21,6 +23,9 @@ jobs:
         run: npm install
       - name: Build website
         run: npm run build
+      - name: generate vanity go module resources
+        run: go generate ./...
+        working-directory: ./internal/vanity/...
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
