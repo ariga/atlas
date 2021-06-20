@@ -69,6 +69,9 @@ func (d *Driver) inspectTable(ctx context.Context, name string, opts *schema.Ins
 	if err := d.columns(ctx, t); err != nil {
 		return nil, err
 	}
+	if err := d.indexes(ctx, t); err != nil {
+		return nil, err
+	}
 	return t, nil
 }
 
@@ -258,6 +261,75 @@ func (d *Driver) enumValues(ctx context.Context, columns []*schema.Column) error
 	return nil
 }
 
+// indexes queries and appends the indexes of the given table.
+func (d *Driver) indexes(ctx context.Context, t *schema.Table) error {
+	rows, err := d.QueryContext(ctx, indexesQuery, t.Schema.Name, t.Name)
+	if err != nil {
+		return fmt.Errorf("postgres: querying %q indexes: %w", t.Name, err)
+	}
+	defer rows.Close()
+	if err := d.addIndexes(t, rows); err != nil {
+		return err
+	}
+	return rows.Err()
+}
+
+// addIndexes scans the rows and adds the indexes to the table.
+func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
+	names := make(map[string]*schema.Index)
+	for rows.Next() {
+		var (
+			name                        string
+			uniq, primary               bool
+			column, contype, pred, expr sql.NullString
+		)
+		if err := rows.Scan(&name, &column, &primary, &uniq, &contype, &pred, &expr); err != nil {
+			return fmt.Errorf("postgres: scanning index: %w", err)
+		}
+		idx, ok := names[name]
+		if !ok {
+			idx = &schema.Index{
+				Name:   name,
+				Unique: uniq,
+				Table:  t,
+			}
+			if sqlx.ValidString(contype) {
+				idx.Attrs = append(t.Attrs, &ConType{T: contype.String})
+			}
+			if sqlx.ValidString(pred) {
+				idx.Attrs = append(t.Attrs, &IndexPredicate{P: pred.String})
+			}
+			names[name] = idx
+			if primary {
+				t.PrimaryKey = idx
+			} else {
+				t.Indexes = append(t.Indexes, idx)
+			}
+		}
+		switch {
+		case sqlx.ValidString(expr):
+			idx.Parts = append(idx.Parts, &schema.IndexPart{
+				SeqNo: len(idx.Parts) + 1,
+				X: &schema.RawExpr{
+					X: expr.String,
+				},
+			})
+		case sqlx.ValidString(column):
+			c, ok := t.Column(column.String)
+			if !ok {
+				return fmt.Errorf("postgres: column %q was not found for index %q", column.String, idx.Name)
+			}
+			idx.Parts = append(idx.Parts, &schema.IndexPart{
+				SeqNo: len(idx.Parts) + 1,
+				C:     c,
+			})
+		default:
+			return fmt.Errorf("postgres: invalid part for index %q", idx.Name)
+		}
+	}
+	return nil
+}
+
 type (
 	// UserDefinedType defines a user-defined type attribute.
 	UserDefinedType struct {
@@ -320,6 +392,20 @@ type (
 		schema.Type
 		T string
 	}
+
+	// ConType describes constraint type.
+	// https://www.postgresql.org/docs/current/catalog-pg-constraint.html
+	ConType struct {
+		schema.Attr
+		T string // c, f, p, u, t, x.
+	}
+
+	// IndexPredicate describes a partial index predicate.
+	// https://www.postgresql.org/docs/current/catalog-pg-index.html
+	IndexPredicate struct {
+		schema.Attr
+		P string
+	}
 )
 
 const (
@@ -375,5 +461,30 @@ FROM
 	ON t1.udt_name = t2.typname
 WHERE
 	TABLE_SCHEMA = ? AND TABLE_NAME = ?
+`
+
+	// Query to list table indexes.
+	indexesQuery = `
+SELECT
+	i.relname AS index_name,
+	a.attname AS column_name,
+	idx.indisprimary AS primary,
+	idx.indisunique AS unique,
+	c.contype AS constraint_type,
+	pg_get_expr(idx.indpred, idx.indrelid) AS predicate,
+	pg_get_expr(idx.indexprs, idx.indrelid) AS expression
+FROM
+	pg_index idx
+	JOIN pg_class i
+	ON i.oid = idx.indexrelid
+	LEFT JOIN pg_constraint c
+	ON idx.indexrelid = c.conindid
+	LEFT JOIN pg_attribute a
+	ON a.attrelid = idx.indexrelid
+WHERE
+	idx.indrelid = to_regclass($1 || '.' || $2)::oid
+	AND COALESCE(c.contype, '') <> 'f'
+ORDER BY
+	index_name, array_position(idx.indkey, a.attnum)
 `
 )

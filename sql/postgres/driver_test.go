@@ -90,6 +90,7 @@ func TestDriver_InspectTable(t *testing.T) {
      16774 | on
      16774 | off
 `))
+				m.noIndexes()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -122,6 +123,56 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c23", Type: &schema.ColumnType{Raw: "USER-DEFINED", Null: true, Type: &UserDefinedType{T: "ltree"}}},
 					{Name: "c24", Type: &schema.ColumnType{Raw: "USER-DEFINED", Type: &EnumType{T: "state", ID: 16774, Values: []string{"on", "off"}}}},
 				}, t.Columns)
+			},
+		},
+		{
+			name: "table indexes",
+			before: func(m mock) {
+				m.version("130000")
+				m.tableExists("public", "users", true)
+				m.ExpectQuery(sqltest.Escape(columnsQuery)).
+					WithArgs("public", "users").
+					WillReturnRows(sqltest.Rows(`
+ column_name |      data_type      | is_nullable |         column_default          | character_maximum_length | numeric_precision | numeric_scale | character_set_name | collation_name | udt_name | is_identity | comment | typtype |  oid
+-------------+---------------------+-------------+---------------------------------+--------------------------+-------------------+---------------+--------------------+----------------+----------+-------------+---------+---------+-------
+ id          | bigint              | NO          |                                 |                          |                64 |             0 |                    |                | int8     | NO          |         | b       |    20
+ c1          | smallint            | NO          |                                 |                          |                16 |             0 |                    |                | int2     | NO          |         | b       |    21
+`))
+				m.ExpectQuery(sqltest.Escape(indexesQuery)).
+					WithArgs("public", "users").
+					WillReturnRows(sqltest.Rows(`
+    index_name    | column_name | primary | unique | constraint_type |       predicate       |        expression
+------------------+-------------+---------+--------+-----------------+-----------------------+--------------------------
+ idx              | left        | f       | f      |                 |                       | "left"((c11)::text, 100)
+ idx1             | left        | f       | f      |                 | (id <> NULL::integer) | "left"((c11)::text, 100)
+ t1_c1_key        | c1          | f       | t      | u               |                       |
+ t1_pkey          | id          | t       | t      | p               |                       |
+ idx4             | c1          | f       | t      |                 |                       |
+ idx4             | id          | f       | t      |                 |                       |
+`))
+			},
+			expect: func(require *require.Assertions, t *schema.Table, err error) {
+				require.NoError(err)
+				require.Equal("users", t.Name)
+				columns := []*schema.Column{
+					{Name: "id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint", Size: 8}}},
+					{Name: "c1", Type: &schema.ColumnType{Raw: "smallint", Type: &schema.IntegerType{T: "smallint", Size: 2}}},
+				}
+				require.EqualValues(columns, t.Columns)
+				indexes := []*schema.Index{
+					{Name: "idx", Table: t, Parts: []*schema.IndexPart{{SeqNo: 1, X: &schema.RawExpr{X: `"left"((c11)::text, 100)`}}}},
+					{Name: "idx1", Table: t, Attrs: []schema.Attr{&IndexPredicate{P: `(id <> NULL::integer)`}}, Parts: []*schema.IndexPart{{SeqNo: 1, X: &schema.RawExpr{X: `"left"((c11)::text, 100)`}}}},
+					{Name: "t1_c1_key", Unique: true, Table: t, Attrs: []schema.Attr{&ConType{T: "u"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1]}}},
+					{Name: "idx4", Unique: true, Table: t, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1]}, {SeqNo: 2, C: columns[0]}}},
+				}
+				require.EqualValues(indexes, t.Indexes)
+				require.EqualValues(&schema.Index{
+					Name:   "t1_pkey",
+					Unique: true,
+					Table:  t,
+					Attrs:  []schema.Attr{&ConType{T: "p"}},
+					Parts:  []*schema.IndexPart{{SeqNo: 1, C: columns[0]}},
+				}, t.PrimaryKey)
 			},
 		},
 	}
@@ -171,4 +222,9 @@ func (m mock) tableExistsInSchema(schema, table string, exists bool) {
 	m.ExpectQuery(sqltest.Escape(tableSchemaQuery)).
 		WithArgs(table, schema).
 		WillReturnRows(rows)
+}
+
+func (m mock) noIndexes() {
+	m.ExpectQuery(sqltest.Escape(indexesQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"index_name", "column_name", "primary", "unique", "constraint_type", "predicate", "expression"}))
 }
