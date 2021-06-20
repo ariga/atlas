@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/schema/schemaspec"
 	"entgo.io/ent/entc"
 	"entgo.io/ent/entc/gen"
 	"github.com/stretchr/testify/require"
@@ -13,7 +14,7 @@ import (
 type ConvertSuite struct {
 	suite.Suite
 	graph  *gen.Graph
-	schema *schema.SchemaSpec
+	schema *schemaspec.SchemaSpec
 }
 
 func (s *ConvertSuite) SetupSuite() {
@@ -48,18 +49,18 @@ func (s *ConvertSuite) TestUserColumns() {
 	for _, tt := range []struct {
 		fld      string
 		expected *schema.ColumnType
-		exp      *schema.ColumnSpec
+		exp      *schemaspec.ColumnSpec
 	}{
 		{
 			fld: "name",
-			exp: &schema.ColumnSpec{
+			exp: &schemaspec.ColumnSpec{
 				Name: "name",
 				Type: "string",
 			},
 		},
 		{
 			fld: "optional",
-			exp: &schema.ColumnSpec{
+			exp: &schemaspec.ColumnSpec{
 				Name: "optional",
 				Type: "string",
 				Null: true,
@@ -67,86 +68,86 @@ func (s *ConvertSuite) TestUserColumns() {
 		},
 		{
 			fld: "int",
-			exp: &schema.ColumnSpec{
+			exp: &schemaspec.ColumnSpec{
 				Name: "int",
 				Type: "int",
 			},
 		},
 		{
 			fld: "uint",
-			exp: &schema.ColumnSpec{
+			exp: &schemaspec.ColumnSpec{
 				Name: "uint",
 				Type: "uint",
 			},
 		},
 		{
 			fld: "int64",
-			exp: &schema.ColumnSpec{
+			exp: &schemaspec.ColumnSpec{
 				Name: "int64",
 				Type: "int64",
 			},
 		},
 		{
 			fld: "uint64",
-			exp: &schema.ColumnSpec{
+			exp: &schemaspec.ColumnSpec{
 				Name: "uint64",
 				Type: "uint64",
 			},
 		},
 		{
 			fld: "time",
-			exp: &schema.ColumnSpec{
+			exp: &schemaspec.ColumnSpec{
 				Name: "time",
 				Type: "time",
 			},
 		},
 		{
 			fld: "bool",
-			exp: &schema.ColumnSpec{
+			exp: &schemaspec.ColumnSpec{
 				Name: "bool",
 				Type: "boolean",
 			},
 		},
 		{
 			fld: "enum",
-			exp: &schema.ColumnSpec{
+			exp: &schemaspec.ColumnSpec{
 				Name: "enum",
 				Type: "enum",
-				Attrs: []*schema.SpecAttr{
-					{K: "values", V: &schema.ListValue{V: []string{`"1"`, `"2"`, `"3"`}}},
+				Attrs: []*schemaspec.SpecAttr{
+					{K: "values", V: &schemaspec.ListValue{V: []string{`"1"`, `"2"`, `"3"`}}},
 				},
 			},
 		},
 		{
 			fld: "named_enum",
-			exp: &schema.ColumnSpec{
+			exp: &schemaspec.ColumnSpec{
 				Name: "named_enum",
 				Type: "enum",
-				Attrs: []*schema.SpecAttr{
-					{K: "values", V: &schema.ListValue{V: []string{`"1"`, `"2"`, `"3"`}}},
+				Attrs: []*schemaspec.SpecAttr{
+					{K: "values", V: &schemaspec.ListValue{V: []string{`"1"`, `"2"`, `"3"`}}},
 				},
 			},
 		},
 		{
 			fld: "uuid",
-			exp: &schema.ColumnSpec{
+			exp: &schemaspec.ColumnSpec{
 				Name: "uuid",
 				Type: "binary",
-				Attrs: []*schema.SpecAttr{
+				Attrs: []*schemaspec.SpecAttr{
 					intAttr("size", 16),
 				},
 			},
 		},
 		{
 			fld: "bytes",
-			exp: &schema.ColumnSpec{
+			exp: &schemaspec.ColumnSpec{
 				Name: "bytes",
 				Type: "binary",
 			},
 		},
 		{
 			fld: "group_id",
-			exp: &schema.ColumnSpec{
+			exp: &schemaspec.ColumnSpec{
 				Name: "group_id",
 				Null: true,
 				Type: "int",
@@ -163,8 +164,8 @@ func (s *ConvertSuite) TestUserColumns() {
 
 func (s *ConvertSuite) TestPrimaryKey() {
 	users, _ := tableSpec(s.schema, "users")
-	s.Require().EqualValues(&schema.PrimaryKeySpec{
-		Columns: []*schema.ColumnRef{
+	s.Require().EqualValues(&schemaspec.PrimaryKeySpec{
+		Columns: []*schemaspec.ColumnRef{
 			{Table: "users", Name: "id"},
 		},
 	}, users.PrimaryKey)
@@ -174,12 +175,12 @@ func (s *ConvertSuite) TestForeignKey() {
 	users, _ := tableSpec(s.schema, "users")
 	fk, ok := fkSpec(users, "users_groups_group")
 	s.Require().True(ok, "expected column id")
-	s.Require().EqualValues(&schema.ForeignKeySpec{
+	s.Require().EqualValues(&schemaspec.ForeignKeySpec{
 		Symbol: "users_groups_group",
-		Columns: []*schema.ColumnRef{
+		Columns: []*schemaspec.ColumnRef{
 			{Table: "users", Name: "group_id"},
 		},
-		RefColumns: []*schema.ColumnRef{
+		RefColumns: []*schemaspec.ColumnRef{
 			{Table: "groups", Name: "id"},
 		},
 		OnUpdate: "",
@@ -191,12 +192,12 @@ func (s *ConvertSuite) TestUnique() {
 	users, _ := tableSpec(s.schema, "users")
 	fk, ok := fkSpec(users, "users_groups_group")
 	s.Require().True(ok, "expected column id")
-	s.Require().EqualValues(&schema.ForeignKeySpec{
+	s.Require().EqualValues(&schemaspec.ForeignKeySpec{
 		Symbol: "users_groups_group",
-		Columns: []*schema.ColumnRef{
+		Columns: []*schemaspec.ColumnRef{
 			{Table: "users", Name: "group_id"},
 		},
-		RefColumns: []*schema.ColumnRef{
+		RefColumns: []*schemaspec.ColumnRef{
 			{Table: "groups", Name: "id"},
 		},
 		OnDelete: string(schema.SetNull),
@@ -207,10 +208,10 @@ func (s *ConvertSuite) TestIndexes() {
 	users, _ := tableSpec(s.schema, "users")
 	timeIdx, ok := indexSpec(users, "user_time")
 	s.Require().True(ok, "expected time index")
-	s.Require().EqualValues(&schema.IndexSpec{
+	s.Require().EqualValues(&schemaspec.IndexSpec{
 		Name:   "user_time",
 		Unique: false,
-		Columns: []*schema.ColumnRef{
+		Columns: []*schemaspec.ColumnRef{
 			{Table: "users", Name: "time"},
 		},
 	}, timeIdx)
@@ -242,11 +243,11 @@ func (s *ConvertSuite) TestDefault() {
 	} {
 		col, ok := columnSpec(tbl, tt.col)
 		s.Require().Truef(ok, "expected col %q", tt.col)
-		s.Require().EqualValues(schema.LiteralValue{V: tt.expected}, *col.Default)
+		s.Require().EqualValues(schemaspec.LiteralValue{V: tt.expected}, *col.Default)
 	}
 }
 
-func columnSpec(t *schema.TableSpec, name string) (*schema.ColumnSpec, bool) {
+func columnSpec(t *schemaspec.TableSpec, name string) (*schemaspec.ColumnSpec, bool) {
 	for _, c := range t.Columns {
 		if c.Name == name {
 			return c, true
@@ -255,7 +256,7 @@ func columnSpec(t *schema.TableSpec, name string) (*schema.ColumnSpec, bool) {
 	return nil, false
 }
 
-func fkSpec(t *schema.TableSpec, symbol string) (*schema.ForeignKeySpec, bool) {
+func fkSpec(t *schemaspec.TableSpec, symbol string) (*schemaspec.ForeignKeySpec, bool) {
 	for _, fk := range t.ForeignKeys {
 		if fk.Symbol == symbol {
 			return fk, true
@@ -264,7 +265,7 @@ func fkSpec(t *schema.TableSpec, symbol string) (*schema.ForeignKeySpec, bool) {
 	return nil, false
 }
 
-func indexSpec(t *schema.TableSpec, name string) (*schema.IndexSpec, bool) {
+func indexSpec(t *schemaspec.TableSpec, name string) (*schemaspec.IndexSpec, bool) {
 	for _, idx := range t.Indexes {
 		if idx.Name == name {
 			return idx, true

@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"strconv"
 
-	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/schema/schemaspec"
 	sqlschema "entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/entc/gen"
 	"entgo.io/ent/schema/field"
 )
 
-func Convert(graph *gen.Graph) (*schema.SchemaSpec, error) {
-	sch := &schema.SchemaSpec{}
+func Convert(graph *gen.Graph) (*schemaspec.SchemaSpec, error) {
+	sch := &schemaspec.SchemaSpec{}
 	if err := addTables(sch, graph); err != nil {
 		return nil, err
 	}
@@ -21,13 +21,13 @@ func Convert(graph *gen.Graph) (*schema.SchemaSpec, error) {
 	return sch, nil
 }
 
-func addTables(sch *schema.SchemaSpec, graph *gen.Graph) error {
+func addTables(sch *schemaspec.SchemaSpec, graph *gen.Graph) error {
 	for _, etbl := range graph.Tables() {
-		tbl := &schema.TableSpec{
+		tbl := &schemaspec.TableSpec{
 			SchemaName: sch.Name,
 			Name:       etbl.Name,
 		}
-		pk := &schema.PrimaryKeySpec{}
+		pk := &schemaspec.PrimaryKeySpec{}
 		for _, ec := range etbl.Columns {
 			col, err := convertColumn(ec)
 			if err != nil {
@@ -35,16 +35,16 @@ func addTables(sch *schema.SchemaSpec, graph *gen.Graph) error {
 			}
 			tbl.Columns = append(tbl.Columns, col)
 			if ec.PrimaryKey() {
-				pk.Columns = append(pk.Columns, &schema.ColumnRef{
+				pk.Columns = append(pk.Columns, &schemaspec.ColumnRef{
 					Table: etbl.Name,
 					Name:  col.Name,
 				})
 			}
 			if ec.Unique {
-				tbl.Indexes = append(tbl.Indexes, &schema.IndexSpec{
+				tbl.Indexes = append(tbl.Indexes, &schemaspec.IndexSpec{
 					Name:   ec.Name,
 					Unique: true,
-					Columns: []*schema.ColumnRef{
+					Columns: []*schemaspec.ColumnRef{
 						{Table: etbl.Name, Name: col.Name},
 					},
 				})
@@ -59,16 +59,16 @@ func addTables(sch *schema.SchemaSpec, graph *gen.Graph) error {
 	return nil
 }
 
-func addIndexes(tbl *schema.TableSpec, etbl *sqlschema.Table) error {
+func addIndexes(tbl *schemaspec.TableSpec, etbl *sqlschema.Table) error {
 	for _, eidx := range etbl.Indexes {
-		cols := make([]*schema.ColumnRef, 0, len(eidx.Columns))
+		cols := make([]*schemaspec.ColumnRef, 0, len(eidx.Columns))
 		for _, c := range eidx.Columns {
-			cols = append(cols, &schema.ColumnRef{
+			cols = append(cols, &schemaspec.ColumnRef{
 				Name:  c.Name,
 				Table: etbl.Name,
 			})
 		}
-		tbl.Indexes = append(tbl.Indexes, &schema.IndexSpec{
+		tbl.Indexes = append(tbl.Indexes, &schemaspec.IndexSpec{
 			Name:    eidx.Name,
 			Unique:  eidx.Unique,
 			Columns: cols,
@@ -77,7 +77,7 @@ func addIndexes(tbl *schema.TableSpec, etbl *sqlschema.Table) error {
 	return nil
 }
 
-func addForeignKeys(sch *schema.SchemaSpec, graph *gen.Graph) error {
+func addForeignKeys(sch *schemaspec.SchemaSpec, graph *gen.Graph) error {
 	for _, etbl := range graph.Tables() {
 		if len(etbl.ForeignKeys) == 0 {
 			continue
@@ -92,21 +92,21 @@ func addForeignKeys(sch *schema.SchemaSpec, graph *gen.Graph) error {
 			if !ok {
 				return fmt.Errorf("entschema: could not find ref table %q", refTable.Name)
 			}
-			cols := make([]*schema.ColumnRef, 0, len(efk.Columns))
-			refCols := make([]*schema.ColumnRef, 0, len(efk.RefColumns))
+			cols := make([]*schemaspec.ColumnRef, 0, len(efk.Columns))
+			refCols := make([]*schemaspec.ColumnRef, 0, len(efk.RefColumns))
 			for _, c := range efk.Columns {
-				cols = append(cols, &schema.ColumnRef{
+				cols = append(cols, &schemaspec.ColumnRef{
 					Name:  c.Name,
 					Table: etbl.Name,
 				})
 			}
 			for _, c := range efk.RefColumns {
-				refCols = append(refCols, &schema.ColumnRef{
+				refCols = append(refCols, &schemaspec.ColumnRef{
 					Name:  c.Name,
 					Table: refTable.Name,
 				})
 			}
-			tbl.ForeignKeys = append(tbl.ForeignKeys, &schema.ForeignKeySpec{
+			tbl.ForeignKeys = append(tbl.ForeignKeys, &schemaspec.ForeignKeySpec{
 				Symbol:     efk.Symbol,
 				Columns:    cols,
 				RefColumns: refCols,
@@ -118,8 +118,8 @@ func addForeignKeys(sch *schema.SchemaSpec, graph *gen.Graph) error {
 	return nil
 }
 
-func convertColumn(col *sqlschema.Column) (*schema.ColumnSpec, error) {
-	cspc := &schema.ColumnSpec{
+func convertColumn(col *sqlschema.Column) (*schemaspec.ColumnSpec, error) {
+	cspc := &schemaspec.ColumnSpec{
 		Name: col.Name,
 		Null: col.Nullable,
 	}
@@ -138,11 +138,11 @@ func convertColumn(col *sqlschema.Column) (*schema.ColumnSpec, error) {
 		cspc.Type = "time"
 	case field.TypeEnum:
 		cspc.Type = "enum"
-		lv := &schema.ListValue{V: col.Enums}
+		lv := &schemaspec.ListValue{V: col.Enums}
 		for i, v := range lv.V {
 			lv.V[i] = strconv.Quote(v)
 		}
-		cspc.Attrs = append(cspc.Attrs, &schema.SpecAttr{K: "values", V: lv})
+		cspc.Attrs = append(cspc.Attrs, &schemaspec.SpecAttr{K: "values", V: lv})
 	case field.TypeFloat32, field.TypeFloat64:
 		// TODO: when dialect specific attributes are supported, set precision on the dialect level
 		//  according to the byte-size of the float.
@@ -160,12 +160,12 @@ func convertColumn(col *sqlschema.Column) (*schema.ColumnSpec, error) {
 	}
 	if col.Default != nil {
 		v := fmt.Sprint(col.Default)
-		cspc.Default = &schema.LiteralValue{V: v}
+		cspc.Default = &schemaspec.LiteralValue{V: v}
 	}
 	return cspc, nil
 }
 
-func tableSpec(sch *schema.SchemaSpec, name string) (*schema.TableSpec, bool) {
+func tableSpec(sch *schemaspec.SchemaSpec, name string) (*schemaspec.TableSpec, bool) {
 	for _, t := range sch.Tables {
 		if t.Name == name {
 			return t, true
@@ -174,9 +174,9 @@ func tableSpec(sch *schema.SchemaSpec, name string) (*schema.TableSpec, bool) {
 	return nil, false
 }
 
-func intAttr(k string, v int) *schema.SpecAttr {
-	return &schema.SpecAttr{
+func intAttr(k string, v int) *schemaspec.SpecAttr {
+	return &schemaspec.SpecAttr{
 		K: k,
-		V: &schema.LiteralValue{V: strconv.Itoa(v)},
+		V: &schemaspec.LiteralValue{V: strconv.Itoa(v)},
 	}
 }

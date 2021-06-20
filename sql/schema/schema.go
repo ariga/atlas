@@ -1,5 +1,7 @@
 package schema
 
+import "ariga.io/atlas/sql/schema/schemaspec"
+
 type (
 	// A Realm or a database describes a domain of schema resources that are logically connected
 	// and can be accessed and queried in the same connection (e.g. a physical database instance).
@@ -14,7 +16,7 @@ type (
 		Realm  *Realm
 		Tables []*Table
 		Attrs  []Attr // Attributes and options.
-		Spec   *SchemaSpec
+		Spec   *schemaspec.SchemaSpec
 	}
 
 	// A Table represents a table definition.
@@ -26,7 +28,7 @@ type (
 		PrimaryKey  *Index
 		ForeignKeys []*ForeignKey
 		Attrs       []Attr // Attributes, constraints and options.
-		Spec        *TableSpec
+		Spec        *schemaspec.TableSpec
 	}
 
 	// A Column represents a column definition.
@@ -37,7 +39,7 @@ type (
 		Attrs       []Attr
 		Indexes     []*Index
 		ForeignKeys []*ForeignKey
-		Spec        *ColumnSpec
+		Spec        *schemaspec.ColumnSpec
 	}
 
 	// ColumnType represents a column type that is implemented by the dialect.

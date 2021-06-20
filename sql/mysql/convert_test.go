@@ -5,16 +5,17 @@ import (
 	"testing"
 
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/schema/schemaspec"
 	"github.com/stretchr/testify/require"
 )
 
 func TestConvertSchema(t *testing.T) {
-	spec := &schema.SchemaSpec{
+	spec := &schemaspec.SchemaSpec{
 		Name: "schema",
-		Tables: []*schema.TableSpec{
+		Tables: []*schemaspec.TableSpec{
 			{
 				Name: "table",
-				Columns: []*schema.ColumnSpec{
+				Columns: []*schemaspec.ColumnSpec{
 					{
 						Name: "col",
 						Type: "int",
@@ -28,26 +29,26 @@ func TestConvertSchema(t *testing.T) {
 						Type: "varchar(32)",
 					},
 				},
-				PrimaryKey: &schema.PrimaryKeySpec{
-					Columns: []*schema.ColumnRef{{Table: "table", Name: "col"}},
+				PrimaryKey: &schemaspec.PrimaryKeySpec{
+					Columns: []*schemaspec.ColumnRef{{Table: "table", Name: "col"}},
 				},
-				ForeignKeys: []*schema.ForeignKeySpec{
+				ForeignKeys: []*schemaspec.ForeignKeySpec{
 					{
 						Symbol: "accounts",
-						Columns: []*schema.ColumnRef{
+						Columns: []*schemaspec.ColumnRef{
 							{Table: "table", Name: "account_name"},
 						},
-						RefColumns: []*schema.ColumnRef{
+						RefColumns: []*schemaspec.ColumnRef{
 							{Table: "accounts", Name: "name"},
 						},
 						OnDelete: string(schema.SetNull),
 					},
 				},
-				Indexes: []*schema.IndexSpec{
+				Indexes: []*schemaspec.IndexSpec{
 					{
 						Name:   "index",
 						Unique: true,
-						Columns: []*schema.ColumnRef{
+						Columns: []*schemaspec.ColumnRef{
 							{Table: "table", Name: "col"},
 							{Table: "table", Name: "age"},
 						},
@@ -56,7 +57,7 @@ func TestConvertSchema(t *testing.T) {
 			},
 			{
 				Name: "accounts",
-				Columns: []*schema.ColumnSpec{
+				Columns: []*schemaspec.ColumnSpec{
 					{
 						Name: "name",
 						Type: "varchar(32)",
@@ -158,7 +159,7 @@ func TestConvertSchema(t *testing.T) {
 
 func TestConvertColumnType(t *testing.T) {
 	for _, tt := range []struct {
-		spec     *schema.ColumnSpec
+		spec     *schemaspec.ColumnSpec
 		expected schema.Type
 	}{
 		{
@@ -293,27 +294,27 @@ func TestConvertColumnType(t *testing.T) {
 	}
 }
 
-func colspec(name, coltype string, attrs ...*schema.SpecAttr) *schema.ColumnSpec {
-	return &schema.ColumnSpec{
+func colspec(name, coltype string, attrs ...*schemaspec.SpecAttr) *schemaspec.ColumnSpec {
+	return &schemaspec.ColumnSpec{
 		Name:  name,
 		Type:  coltype,
 		Attrs: attrs,
 	}
 }
 
-func attr(k, v string) *schema.SpecAttr {
-	return &schema.SpecAttr{
+func attr(k, v string) *schemaspec.SpecAttr {
+	return &schemaspec.SpecAttr{
 		K: k,
-		V: &schema.LiteralValue{V: v},
+		V: &schemaspec.LiteralValue{V: v},
 	}
 }
 
-func listattr(k string, values ...string) *schema.SpecAttr {
+func listattr(k string, values ...string) *schemaspec.SpecAttr {
 	for i, v := range values {
 		values[i] = strconv.Quote(v)
 	}
-	return &schema.SpecAttr{
+	return &schemaspec.SpecAttr{
 		K: k,
-		V: &schema.ListValue{V: values},
+		V: &schemaspec.ListValue{V: values},
 	}
 }
