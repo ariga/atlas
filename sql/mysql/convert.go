@@ -6,10 +6,11 @@ import (
 	"strings"
 
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/schema/schemaspec"
 )
 
-// ConvertSchema converts a SchemaSpec into a Schema.
-func ConvertSchema(spec *schema.SchemaSpec) (*schema.Schema, error) {
+// ConvertSchema converts a schemaspec.Schema into a schema.Schema.
+func ConvertSchema(spec *schemaspec.Schema) (*schema.Schema, error) {
 	sch := &schema.Schema{
 		Name: spec.Name,
 		Spec: spec,
@@ -29,10 +30,10 @@ func ConvertSchema(spec *schema.SchemaSpec) (*schema.Schema, error) {
 	return sch, nil
 }
 
-// ConvertTable converts a TableSpec to a Table. Table conversion is done without converting
+// ConvertTable converts a schemaspec.Table to a schema.Table. Table conversion is done without converting
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the ConvertSchema function.
-func ConvertTable(spec *schema.TableSpec, parent *schema.Schema) (*schema.Table, error) {
+func ConvertTable(spec *schemaspec.Table, parent *schema.Schema) (*schema.Table, error) {
 	tbl := &schema.Table{
 		Name:   spec.Name,
 		Schema: parent,
@@ -62,8 +63,8 @@ func ConvertTable(spec *schema.TableSpec, parent *schema.Schema) (*schema.Table,
 	return tbl, nil
 }
 
-// ConvertPrimaryKey converts a PrimaryKeySpec to an Index.
-func ConvertPrimaryKey(spec *schema.PrimaryKeySpec, parent *schema.Table) (*schema.Index, error) {
+// ConvertPrimaryKey converts a schemaspec.PrimaryKey to a schema.Index.
+func ConvertPrimaryKey(spec *schemaspec.PrimaryKey, parent *schema.Table) (*schema.Index, error) {
 	parts := make([]*schema.IndexPart, 0, len(spec.Columns))
 	for seqno, c := range spec.Columns {
 		pkc, ok := parent.Column(c.Name)
@@ -81,8 +82,8 @@ func ConvertPrimaryKey(spec *schema.PrimaryKeySpec, parent *schema.Table) (*sche
 	}, nil
 }
 
-// ConvertIndex converts an IndexSpec to an Index.
-func ConvertIndex(spec *schema.IndexSpec, parent *schema.Table) (*schema.Index, error) {
+// ConvertIndex converts an schemaspec.Index to a schema.Index.
+func ConvertIndex(spec *schemaspec.Index, parent *schema.Table) (*schema.Index, error) {
 	parts := make([]*schema.IndexPart, 0, len(spec.Columns))
 	for seqno, c := range spec.Columns {
 		cn := c.Name
@@ -103,8 +104,8 @@ func ConvertIndex(spec *schema.IndexSpec, parent *schema.Table) (*schema.Index, 
 	}, nil
 }
 
-// ConvertColumn converts a ColumnSpec into a Column.
-func ConvertColumn(spec *schema.ColumnSpec, parent *schema.Table) (*schema.Column, error) {
+// ConvertColumn converts a schemaspec.Column into a schema.Column.
+func ConvertColumn(spec *schemaspec.Column, parent *schema.Table) (*schema.Column, error) {
 	out := &schema.Column{
 		Name: spec.Name,
 		Spec: spec,
@@ -123,7 +124,8 @@ func ConvertColumn(spec *schema.ColumnSpec, parent *schema.Table) (*schema.Colum
 	return out, err
 }
 
-func ConvertColumnType(spec *schema.ColumnSpec) (schema.Type, error) {
+// ConvertColumnType converts a schemaspec.Column into a concrete MySQL schema.Type.
+func ConvertColumnType(spec *schemaspec.Column) (schema.Type, error) {
 	switch spec.Type {
 	case "int", "int8", "int16", "int64", "uint", "uint8", "uint16", "uint64":
 		return convertInteger(spec)
@@ -175,7 +177,7 @@ func linkForeignKeys(tbl *schema.Table, sch *schema.Schema) error {
 	return nil
 }
 
-func resolveCol(ref *schema.ColumnRef, sch *schema.Schema) (*schema.Column, error) {
+func resolveCol(ref *schemaspec.ColumnRef, sch *schema.Schema) (*schema.Column, error) {
 	tbl, ok := sch.Table(ref.Table)
 	if !ok {
 		return nil, fmt.Errorf("mysql: table %q not found", ref.Table)
@@ -187,7 +189,7 @@ func resolveCol(ref *schema.ColumnRef, sch *schema.Schema) (*schema.Column, erro
 	return col, nil
 }
 
-func convertInteger(spec *schema.ColumnSpec) (schema.Type, error) {
+func convertInteger(spec *schemaspec.Column) (schema.Type, error) {
 	typ := &schema.IntegerType{
 		Unsigned: strings.HasPrefix(spec.Type, "u"),
 	}
@@ -210,7 +212,7 @@ func convertInteger(spec *schema.ColumnSpec) (schema.Type, error) {
 	return typ, nil
 }
 
-func convertBinary(spec *schema.ColumnSpec) (schema.Type, error) {
+func convertBinary(spec *schemaspec.Column) (schema.Type, error) {
 	bt := &schema.BinaryType{}
 	if attr, ok := spec.Attr("size"); ok {
 		s, err := attr.Int()
@@ -236,7 +238,7 @@ func convertBinary(spec *schema.ColumnSpec) (schema.Type, error) {
 	return bt, nil
 }
 
-func convertString(spec *schema.ColumnSpec) (schema.Type, error) {
+func convertString(spec *schemaspec.Column) (schema.Type, error) {
 	st := &schema.StringType{
 		Size: 255,
 	}
@@ -260,7 +262,7 @@ func convertString(spec *schema.ColumnSpec) (schema.Type, error) {
 	return st, nil
 }
 
-func convertEnum(spec *schema.ColumnSpec) (schema.Type, error) {
+func convertEnum(spec *schemaspec.Column) (schema.Type, error) {
 	attr, ok := spec.Attr("values")
 	if !ok {
 		return nil, fmt.Errorf("mysql: expected enum fields to have values")
@@ -272,15 +274,15 @@ func convertEnum(spec *schema.ColumnSpec) (schema.Type, error) {
 	return &schema.EnumType{Values: list}, nil
 }
 
-func convertBoolean(spec *schema.ColumnSpec) (schema.Type, error) {
+func convertBoolean(spec *schemaspec.Column) (schema.Type, error) {
 	return &schema.BoolType{T: "boolean"}, nil
 }
 
-func convertTime(spec *schema.ColumnSpec) (schema.Type, error) {
+func convertTime(spec *schemaspec.Column) (schema.Type, error) {
 	return &schema.TimeType{T: "timestamp"}, nil
 }
 
-func convertDecimal(spec *schema.ColumnSpec) (schema.Type, error) {
+func convertDecimal(spec *schemaspec.Column) (schema.Type, error) {
 	dt := &schema.DecimalType{
 		T: tDecimal,
 	}
@@ -301,7 +303,7 @@ func convertDecimal(spec *schema.ColumnSpec) (schema.Type, error) {
 	return dt, nil
 }
 
-func convertFloat(spec *schema.ColumnSpec) (schema.Type, error) {
+func convertFloat(spec *schemaspec.Column) (schema.Type, error) {
 	ft := &schema.FloatType{
 		T: tFloat,
 	}

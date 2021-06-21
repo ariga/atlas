@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/schema/schemaspec"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
@@ -15,7 +16,7 @@ import (
 )
 
 // Decode implements schema.Decoder. It parses an HCL document describing a schema into Spec.
-func Decode(body []byte, spec schema.Spec) error {
+func Decode(body []byte, spec schemaspec.Spec) error {
 	parser := hclparse.NewParser()
 	srcHCL, diag := parser.ParseHCL(body, "in-memory.hcl")
 	if diag.HasErrors() {
@@ -28,7 +29,7 @@ func Decode(body []byte, spec schema.Spec) error {
 	if err != nil {
 		return err
 	}
-	if s, ok := spec.(*schema.SchemaSpec); ok {
+	if s, ok := spec.(*schemaspec.Schema); ok {
 		f := &schemaFile{}
 		if diag := gohcl.DecodeBody(srcHCL.Body, ctx, f); diag.HasErrors() {
 			return diag
@@ -99,8 +100,8 @@ type (
 	}
 )
 
-func (t *table) spec(ctx *hcl.EvalContext) (*schema.TableSpec, error) {
-	out := &schema.TableSpec{
+func (t *table) spec(ctx *hcl.EvalContext) (*schemaspec.Table, error) {
+	out := &schemaspec.Table{
 		Name: t.Name,
 	}
 	if t.Schema != nil {
@@ -146,14 +147,14 @@ func (t *table) spec(ctx *hcl.EvalContext) (*schema.TableSpec, error) {
 	return out, nil
 }
 
-func (c *column) spec(ctx *hcl.EvalContext) (*schema.ColumnSpec, error) {
-	spec := &schema.ColumnSpec{
+func (c *column) spec(ctx *hcl.EvalContext) (*schemaspec.Column, error) {
+	spec := &schemaspec.Column{
 		Name: c.Name,
 		Type: c.TypeName,
 		Null: c.Null,
 	}
 	if c.Default != cty.NilVal {
-		v := &schema.LiteralValue{}
+		v := &schemaspec.LiteralValue{}
 		switch c.Default.Type() {
 		case cty.String:
 			v.V = strconv.Quote(c.Default.AsString())
@@ -183,27 +184,27 @@ func (c *column) spec(ctx *hcl.EvalContext) (*schema.ColumnSpec, error) {
 	return spec, nil
 }
 
-func (p *primaryKey) spec(ctx *hcl.EvalContext) (*schema.PrimaryKeySpec, error) {
+func (p *primaryKey) spec(ctx *hcl.EvalContext) (*schemaspec.PrimaryKey, error) {
 	common, err := extractCommon(ctx, p.Remain, skip("columns"))
 	if err != nil {
 		return nil, err
 	}
-	pk := &schema.PrimaryKeySpec{
+	pk := &schemaspec.PrimaryKey{
 		Attrs:    common.attrs,
 		Children: common.children,
 	}
 	for _, col := range p.Columns {
-		pk.Columns = append(pk.Columns, &schema.ColumnRef{Table: col.Table, Name: col.Name})
+		pk.Columns = append(pk.Columns, &schemaspec.ColumnRef{Table: col.Table, Name: col.Name})
 	}
 	return pk, nil
 }
 
-func (p *foreignKey) spec(ctx *hcl.EvalContext) (*schema.ForeignKeySpec, error) {
+func (p *foreignKey) spec(ctx *hcl.EvalContext) (*schemaspec.ForeignKey, error) {
 	common, err := extractCommon(ctx, p.Remain, skip("columns", "references", "on_update", "on_delete"))
 	if err != nil {
 		return nil, err
 	}
-	fk := &schema.ForeignKeySpec{
+	fk := &schemaspec.ForeignKey{
 		Symbol:   p.Symbol,
 		Attrs:    common.attrs,
 		Children: common.children,
@@ -211,31 +212,31 @@ func (p *foreignKey) spec(ctx *hcl.EvalContext) (*schema.ForeignKeySpec, error) 
 		OnUpdate: p.OnUpdate,
 	}
 	for _, col := range p.Columns {
-		fk.Columns = append(fk.Columns, &schema.ColumnRef{Table: col.Table, Name: col.Name})
+		fk.Columns = append(fk.Columns, &schemaspec.ColumnRef{Table: col.Table, Name: col.Name})
 	}
 	var refTable string
 	for _, refCol := range p.RefColumns {
 		if refTable != "" && refCol.Table != refTable {
 			return nil, fmt.Errorf("schemahcl: expected all ref columns to be of same table for key %q", p.Symbol)
 		}
-		fk.RefColumns = append(fk.RefColumns, &schema.ColumnRef{Table: refCol.Table, Name: refCol.Name})
+		fk.RefColumns = append(fk.RefColumns, &schemaspec.ColumnRef{Table: refCol.Table, Name: refCol.Name})
 	}
 	return fk, nil
 }
 
-func (i *index) spec(ctx *hcl.EvalContext) (*schema.IndexSpec, error) {
+func (i *index) spec(ctx *hcl.EvalContext) (*schemaspec.Index, error) {
 	common, err := extractCommon(ctx, i.Remain, skip("columns", "unique"))
 	if err != nil {
 		return nil, err
 	}
-	idx := &schema.IndexSpec{
+	idx := &schemaspec.Index{
 		Name:     i.Name,
 		Unique:   i.Unique,
 		Attrs:    common.attrs,
 		Children: common.children,
 	}
 	for _, col := range i.Columns {
-		idx.Columns = append(idx.Columns, &schema.ColumnRef{Table: col.Table, Name: col.Name})
+		idx.Columns = append(idx.Columns, &schemaspec.ColumnRef{Table: col.Table, Name: col.Name})
 	}
 	return idx, nil
 }
@@ -248,15 +249,15 @@ func skip(lst ...string) map[string]struct{} {
 	return out
 }
 
-func toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes, skip map[string]struct{}) ([]*schema.SpecAttr, error) {
-	var attrs []*schema.SpecAttr
+func toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes, skip map[string]struct{}) ([]*schemaspec.Attr, error) {
+	var attrs []*schemaspec.Attr
 	for _, hclAttr := range hclAttrs {
 		if skip != nil {
 			if _, ok := skip[hclAttr.Name]; ok {
 				continue
 			}
 		}
-		at := &schema.SpecAttr{K: hclAttr.Name}
+		at := &schemaspec.Attr{K: hclAttr.Name}
 		value, diag := hclAttr.Expr.Value(ctx)
 		if diag.HasErrors() {
 			return nil, diag
@@ -279,8 +280,8 @@ func toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes, skip map[strin
 	return attrs, nil
 }
 
-func extractListValue(value cty.Value) (*schema.ListValue, error) {
-	lst := &schema.ListValue{}
+func extractListValue(value cty.Value) (*schemaspec.ListValue, error) {
+	lst := &schemaspec.ListValue{}
 	it := value.ElementIterator()
 	for it.Next() {
 		_, v := it.Element()
@@ -293,23 +294,23 @@ func extractListValue(value cty.Value) (*schema.ListValue, error) {
 	return lst, nil
 }
 
-func extractLiteralValue(value cty.Value) (*schema.LiteralValue, error) {
+func extractLiteralValue(value cty.Value) (*schemaspec.LiteralValue, error) {
 	switch value.Type() {
 	case cty.String:
-		return &schema.LiteralValue{V: strconv.Quote(value.AsString())}, nil
+		return &schemaspec.LiteralValue{V: strconv.Quote(value.AsString())}, nil
 	case cty.Number:
 		bf := value.AsBigFloat()
 		num, _ := bf.Float64()
-		return &schema.LiteralValue{V: strconv.FormatFloat(num, 'f', -1, 64)}, nil
+		return &schemaspec.LiteralValue{V: strconv.FormatFloat(num, 'f', -1, 64)}, nil
 	case cty.Bool:
-		return &schema.LiteralValue{V: strconv.FormatBool(value.True())}, nil
+		return &schemaspec.LiteralValue{V: strconv.FormatBool(value.True())}, nil
 	default:
 		return nil, fmt.Errorf("schemahcl: unsupported type %q", value.Type().GoString())
 	}
 }
 
-func toResource(ctx *hcl.EvalContext, block *hclsyntax.Block) (*schema.ResourceSpec, error) {
-	spec := &schema.ResourceSpec{
+func toResource(ctx *hcl.EvalContext, block *hclsyntax.Block) (*schemaspec.Resource, error) {
+	spec := &schemaspec.Resource{
 		Type: block.Type,
 	}
 	if len(block.Labels) > 0 {
@@ -413,8 +414,8 @@ func toColumnRef(table, column string) (cty.Value, error) {
 }
 
 type commonSpecParts struct {
-	attrs    []*schema.SpecAttr
-	children []*schema.ResourceSpec
+	attrs    []*schemaspec.Attr
+	children []*schemaspec.Resource
 }
 
 func extractCommon(ctx *hcl.EvalContext, remain hcl.Body, skip map[string]struct{}) (*commonSpecParts, error) {

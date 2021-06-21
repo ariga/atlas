@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/schema/schemaspec"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/zclconf/go-cty/cty"
@@ -12,7 +13,7 @@ import (
 
 // Encode implements schema.Encoder by taking a Spec and returning a byte slice of an HCL
 // document representing the spec.
-func Encode(elem schema.Element) ([]byte, error) {
+func Encode(elem schemaspec.Element) ([]byte, error) {
 	f := hclwrite.NewFile()
 	if err := write(elem, f.Body()); err != nil {
 		return nil, err
@@ -22,11 +23,11 @@ func Encode(elem schema.Element) ([]byte, error) {
 	return buf.Bytes(), err
 }
 
-func writeAttr(attr *schema.SpecAttr, body *hclwrite.Body) error {
+func writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 	switch v := attr.V.(type) {
-	case *schema.LiteralValue:
+	case *schemaspec.LiteralValue:
 		body.SetAttributeRaw(attr.K, hclRawTokens(v.V))
-	case *schema.ListValue:
+	case *schemaspec.ListValue:
 		body.SetAttributeRaw(attr.K, hclRawList(v.V))
 	default:
 		return fmt.Errorf("schemacl: unknown literal type %T", v)
@@ -34,13 +35,13 @@ func writeAttr(attr *schema.SpecAttr, body *hclwrite.Body) error {
 	return nil
 }
 
-func writeResource(b *schema.ResourceSpec, body *hclwrite.Body) error {
+func writeResource(b *schemaspec.Resource, body *hclwrite.Body) error {
 	blk := body.AppendNewBlock(b.Type, []string{b.Name})
 	nb := blk.Body()
 	return writeCommon(b.Attrs, b.Children, nb)
 }
 
-func writeTable(t *schema.TableSpec, body *hclwrite.Body) error {
+func writeTable(t *schemaspec.Table, body *hclwrite.Body) error {
 	blk := body.AppendNewBlock("table", []string{t.Name})
 	nb := blk.Body()
 	if t.SchemaName != "" {
@@ -69,7 +70,7 @@ func writeTable(t *schema.TableSpec, body *hclwrite.Body) error {
 	return writeCommon(t.Attrs, t.Children, nb)
 }
 
-func writeColumn(c *schema.ColumnSpec, body *hclwrite.Body) error {
+func writeColumn(c *schemaspec.Column, body *hclwrite.Body) error {
 	blk := body.AppendNewBlock("column", []string{c.Name})
 	nb := blk.Body()
 	nb.SetAttributeValue("type", cty.StringVal(c.Type))
@@ -82,7 +83,7 @@ func writeColumn(c *schema.ColumnSpec, body *hclwrite.Body) error {
 	return writeCommon(c.Attrs, c.Children, nb)
 }
 
-func writePk(pk *schema.PrimaryKeySpec, body *hclwrite.Body) error {
+func writePk(pk *schemaspec.PrimaryKey, body *hclwrite.Body) error {
 	blk := body.AppendNewBlock("primary_key", nil)
 	nb := blk.Body()
 	columns := make([]string, 0, len(pk.Columns))
@@ -93,7 +94,7 @@ func writePk(pk *schema.PrimaryKeySpec, body *hclwrite.Body) error {
 	return writeCommon(pk.Attrs, pk.Children, nb)
 }
 
-func writeIndex(idx *schema.IndexSpec, body *hclwrite.Body) error {
+func writeIndex(idx *schemaspec.Index, body *hclwrite.Body) error {
 	blk := body.AppendNewBlock("index", []string{idx.Name})
 	nb := blk.Body()
 	if idx.Unique {
@@ -107,7 +108,7 @@ func writeIndex(idx *schema.IndexSpec, body *hclwrite.Body) error {
 	return writeCommon(idx.Attrs, idx.Children, nb)
 }
 
-func writeFk(fk *schema.ForeignKeySpec, body *hclwrite.Body) error {
+func writeFk(fk *schemaspec.ForeignKey, body *hclwrite.Body) error {
 	blk := body.AppendNewBlock("foreign_key", []string{fk.Symbol})
 	nb := blk.Body()
 	columns := make([]string, 0, len(fk.Columns))
@@ -137,7 +138,7 @@ func writeFk(fk *schema.ForeignKeySpec, body *hclwrite.Body) error {
 	return writeCommon(fk.Attrs, fk.Children, nb)
 }
 
-func writeSchema(spec *schema.SchemaSpec, body *hclwrite.Body) error {
+func writeSchema(spec *schemaspec.Schema, body *hclwrite.Body) error {
 	if spec.Name != "" {
 		body.AppendNewBlock("schema", []string{spec.Name})
 	}
@@ -149,29 +150,29 @@ func writeSchema(spec *schema.SchemaSpec, body *hclwrite.Body) error {
 	return nil
 }
 
-func write(elem schema.Element, body *hclwrite.Body) error {
+func write(elem schemaspec.Element, body *hclwrite.Body) error {
 	switch e := elem.(type) {
-	case *schema.SchemaSpec:
+	case *schemaspec.Schema:
 		return writeSchema(e, body)
-	case *schema.SpecAttr:
+	case *schemaspec.Attr:
 		return writeAttr(e, body)
-	case *schema.ResourceSpec:
+	case *schemaspec.Resource:
 		return writeResource(e, body)
-	case *schema.TableSpec:
+	case *schemaspec.Table:
 		return writeTable(e, body)
-	case *schema.ColumnSpec:
+	case *schemaspec.Column:
 		return writeColumn(e, body)
-	case *schema.PrimaryKeySpec:
+	case *schemaspec.PrimaryKey:
 		return writePk(e, body)
-	case *schema.ForeignKeySpec:
+	case *schemaspec.ForeignKey:
 		return writeFk(e, body)
-	case *schema.IndexSpec:
+	case *schemaspec.Index:
 		return writeIndex(e, body)
 	}
 	return nil
 }
 
-func writeCommon(attrs []*schema.SpecAttr, children []*schema.ResourceSpec, body *hclwrite.Body) error {
+func writeCommon(attrs []*schemaspec.Attr, children []*schemaspec.Resource, body *hclwrite.Body) error {
 	for _, attr := range attrs {
 		if err := writeAttr(attr, body); err != nil {
 			return err
