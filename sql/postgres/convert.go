@@ -59,8 +59,9 @@ func convertBinary(spec *schemaspec.Column) (schema.Type, error) {
 	return &schema.BinaryType{T: "bytea"}, nil
 }
 
-// https://dba.stackexchange.com/questions/189876/size-limit-of-character-varying-postgresql
-const maxStringSize = 10485760
+// maxCharSize defines the maximum size of limited character types in Postgres (10 MB).
+// https://github.com/postgres/postgres/blob/REL_13_STABLE/src/include/access/htup_details.h#L585
+const maxCharSize = 10 << 20
 
 func convertString(spec *schemaspec.Column) (schema.Type, error) {
 	st := &schema.StringType{
