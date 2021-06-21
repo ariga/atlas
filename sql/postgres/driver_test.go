@@ -141,14 +141,15 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(sqltest.Escape(indexesQuery)).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-    index_name    | column_name | primary | unique | constraint_type |       predicate       |        expression
-------------------+-------------+---------+--------+-----------------+-----------------------+--------------------------
- idx              | left        | f       | f      |                 |                       | "left"((c11)::text, 100)
- idx1             | left        | f       | f      |                 | (id <> NULL::integer) | "left"((c11)::text, 100)
- t1_c1_key        | c1          | f       | t      | u               |                       |
- t1_pkey          | id          | t       | t      | p               |                       |
- idx4             | c1          | f       | t      |                 |                       |
- idx4             | id          | f       | t      |                 |                       |
+    index_name    | column_name | primary | unique | constraint_type | predicate             |   expression              | asc | desc | nulls_first | nulls_last 
+------------------+-------------+---------+--------+-----------------+-----------------------+---------------------------+-----+------+-------------+------------
+ idx              | left        | f       | f      |                 |                       | "left"((c11)::text, 100)  | f   | t    | t           | f
+ idx1             | left        | f       | f      |                 | (id <> NULL::integer) | "left"((c11)::text, 100)  | f   | t    | t           | f
+ t1_c1_key        | c1          | f       | t      | u               |                       |                           | f   | t    | t           | f
+ t1_pkey          | id          | t       | t      | p               |                       |                           | f   | t    | f           | f
+ idx4             | c1          | f       | t      |                 |                       |                           | t   | f    | f           | f
+ idx4             | id          | f       | t      |                 |                       |                           | t   | f    | f           | t
+
 `))
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
@@ -160,10 +161,10 @@ func TestDriver_InspectTable(t *testing.T) {
 				}
 				require.EqualValues(columns, t.Columns)
 				indexes := []*schema.Index{
-					{Name: "idx", Table: t, Parts: []*schema.IndexPart{{SeqNo: 1, X: &schema.RawExpr{X: `"left"((c11)::text, 100)`}}}},
-					{Name: "idx1", Table: t, Attrs: []schema.Attr{&IndexPredicate{P: `(id <> NULL::integer)`}}, Parts: []*schema.IndexPart{{SeqNo: 1, X: &schema.RawExpr{X: `"left"((c11)::text, 100)`}}}},
-					{Name: "t1_c1_key", Unique: true, Table: t, Attrs: []schema.Attr{&ConType{T: "u"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1]}}},
-					{Name: "idx4", Unique: true, Table: t, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1]}, {SeqNo: 2, C: columns[0]}}},
+					{Name: "idx", Table: t, Parts: []*schema.IndexPart{{SeqNo: 1, X: &schema.RawExpr{X: `"left"((c11)::text, 100)`}, Attrs: []schema.Attr{&IndexColumnProperty{Desc: true, NullsFirst: true}}}}},
+					{Name: "idx1", Table: t, Attrs: []schema.Attr{&IndexPredicate{P: `(id <> NULL::integer)`}}, Parts: []*schema.IndexPart{{SeqNo: 1, X: &schema.RawExpr{X: `"left"((c11)::text, 100)`}, Attrs: []schema.Attr{&IndexColumnProperty{Desc: true, NullsFirst: true}}}}},
+					{Name: "t1_c1_key", Unique: true, Table: t, Attrs: []schema.Attr{&ConType{T: "u"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1], Attrs: []schema.Attr{&IndexColumnProperty{Desc: true, NullsFirst: true}}}}},
+					{Name: "idx4", Unique: true, Table: t, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1], Attrs: []schema.Attr{&IndexColumnProperty{Asc: true}}}, {SeqNo: 2, C: columns[0], Attrs: []schema.Attr{&IndexColumnProperty{Asc: true, NullsLast: true}}}}},
 				}
 				require.EqualValues(indexes, t.Indexes)
 				require.EqualValues(&schema.Index{
@@ -171,7 +172,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					Unique: true,
 					Table:  t,
 					Attrs:  []schema.Attr{&ConType{T: "p"}},
-					Parts:  []*schema.IndexPart{{SeqNo: 1, C: columns[0]}},
+					Parts:  []*schema.IndexPart{{SeqNo: 1, C: columns[0], Attrs: []schema.Attr{&IndexColumnProperty{Desc: true}}}},
 				}, t.PrimaryKey)
 			},
 		},

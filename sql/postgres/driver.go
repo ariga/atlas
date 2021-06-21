@@ -279,11 +279,12 @@ func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
 	names := make(map[string]*schema.Index)
 	for rows.Next() {
 		var (
-			name                        string
-			uniq, primary               bool
-			column, contype, pred, expr sql.NullString
+			name                             string
+			uniq, primary                    bool
+			column, contype, pred, expr      sql.NullString
+			asc, desc, nullsfirst, nullslast sql.NullBool
 		)
-		if err := rows.Scan(&name, &column, &primary, &uniq, &contype, &pred, &expr); err != nil {
+		if err := rows.Scan(&name, &column, &primary, &uniq, &contype, &pred, &expr, &asc, &desc, &nullsfirst, &nullslast); err != nil {
 			return fmt.Errorf("postgres: scanning index: %w", err)
 		}
 		idx, ok := names[name]
@@ -306,26 +307,31 @@ func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
 				t.Indexes = append(t.Indexes, idx)
 			}
 		}
+		part := &schema.IndexPart{
+			SeqNo: len(idx.Parts) + 1,
+			Attrs: []schema.Attr{
+				&IndexColumnProperty{
+					Asc:        asc.Bool,
+					Desc:       desc.Bool,
+					NullsFirst: nullsfirst.Bool,
+					NullsLast:  nullslast.Bool,
+				},
+			},
+		}
 		switch {
 		case sqlx.ValidString(expr):
-			idx.Parts = append(idx.Parts, &schema.IndexPart{
-				SeqNo: len(idx.Parts) + 1,
-				X: &schema.RawExpr{
-					X: expr.String,
-				},
-			})
+			part.X = &schema.RawExpr{
+				X: expr.String,
+			}
 		case sqlx.ValidString(column):
-			c, ok := t.Column(column.String)
+			part.C, ok = t.Column(column.String)
 			if !ok {
 				return fmt.Errorf("postgres: column %q was not found for index %q", column.String, idx.Name)
 			}
-			idx.Parts = append(idx.Parts, &schema.IndexPart{
-				SeqNo: len(idx.Parts) + 1,
-				C:     c,
-			})
 		default:
 			return fmt.Errorf("postgres: invalid part for index %q", idx.Name)
 		}
+		idx.Parts = append(idx.Parts, part)
 	}
 	return nil
 }
@@ -406,6 +412,16 @@ type (
 		schema.Attr
 		P string
 	}
+
+	// IndexColumnProperty describes an index column property.
+	// https://www.postgresql.org/docs/current/functions-info.html#FUNCTIONS-INFO-INDEX-COLUMN-PROPS
+	IndexColumnProperty struct {
+		schema.Attr
+		Asc        bool
+		Desc       bool
+		NullsFirst bool
+		NullsLast  bool
+	}
 )
 
 const (
@@ -472,7 +488,11 @@ SELECT
 	idx.indisunique AS unique,
 	c.contype AS constraint_type,
 	pg_get_expr(idx.indpred, idx.indrelid) AS predicate,
-	pg_get_expr(idx.indexprs, idx.indrelid) AS expression
+	pg_get_expr(idx.indexprs, idx.indrelid) AS expression,
+	pg_index_column_has_property(idx.indexrelid, a.attnum, 'asc') AS asc,
+	pg_index_column_has_property(idx.indexrelid, a.attnum, 'desc') AS desc,
+	pg_index_column_has_property(idx.indexrelid, a.attnum, 'nulls_first') AS nulls_first,
+	pg_index_column_has_property(idx.indexrelid, a.attnum, 'nulls_last') AS nulls_last
 FROM
 	pg_index idx
 	JOIN pg_class i
@@ -485,6 +505,6 @@ WHERE
 	idx.indrelid = to_regclass($1 || '.' || $2)::oid
 	AND COALESCE(c.contype, '') <> 'f'
 ORDER BY
-	index_name, array_position(idx.indkey, a.attnum)
+	index_name, a.attnum
 `
 )
