@@ -10,6 +10,9 @@ module.exports = {
   organizationName: 'ariga', // Usually your GitHub org/user name.
   projectName: 'atlas', // Usually your repo name.
   themeConfig: {
+    gtag: {
+      trackingID: 'G-Z88N4TF03R'
+    },
     navbar: {
       title: 'Atlas',
       logo: {
