@@ -72,6 +72,9 @@ func (d *Driver) inspectTable(ctx context.Context, name string, opts *schema.Ins
 	if err := d.indexes(ctx, t); err != nil {
 		return nil, err
 	}
+	if err := d.fks(ctx, t); err != nil {
+		return nil, err
+	}
 	return t, nil
 }
 
@@ -408,6 +411,19 @@ func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
 	return nil
 }
 
+// fks queries and appends the foreign keys of the given table.
+func (d *Driver) fks(ctx context.Context, t *schema.Table) error {
+	rows, err := d.QueryContext(ctx, fksQuery, t.Schema.Name, t.Name)
+	if err != nil {
+		return fmt.Errorf("postgres: querying %q foreign keys: %w", t.Name, err)
+	}
+	defer rows.Close()
+	if err := sqlx.ScanFKs(t, rows); err != nil {
+		return fmt.Errorf("postgres: %w", err)
+	}
+	return rows.Err()
+}
+
 type (
 	// UserDefinedType defines a user-defined type attribute.
 	UserDefinedType struct {
@@ -578,5 +594,35 @@ WHERE
 	AND COALESCE(c.contype, '') <> 'f'
 ORDER BY
 	index_name, a.attnum
+`
+	fksQuery = `
+SELECT
+    t1.constraint_name,
+    t1.table_name,
+    t2.column_name,
+    t1.table_schema,
+    t3.table_name AS referenced_table_name,
+    t3.column_name AS referenced_column_name,
+    t3.table_schema AS referenced_schema_name,
+    t4.update_rule,
+    t4.delete_rule
+FROM
+    information_schema.table_constraints t1
+    JOIN information_schema.key_column_usage t2
+    ON t1.constraint_name = t2.constraint_name
+    AND t1.table_schema = t2.constraint_schema
+    JOIN information_schema.constraint_column_usage t3
+    ON t1.constraint_name = t3.constraint_name
+    AND t1.table_schema = t3.constraint_schema
+    JOIN information_schema.referential_constraints t4
+    ON t1.constraint_name = t4.constraint_name
+    AND t1.table_schema = t4.constraint_schema
+WHERE
+    t1.constraint_type = 'FOREIGN KEY'
+    AND t1.table_schema = 'public'
+    AND t1.table_name = 't4'
+ORDER BY
+    t1.constraint_name,
+    t2.ordinal_position
 `
 )
