@@ -119,6 +119,26 @@ func (t *Table) ForeignKey(symbol string) (*ForeignKey, bool) {
 	return nil, false
 }
 
+// Column returns the first column that matches the given name.
+func (f *ForeignKey) Column(name string) (*Column, bool) {
+	for _, c := range f.Columns {
+		if c.Name == name {
+			return c, true
+		}
+	}
+	return nil, false
+}
+
+// RefColumn returns the first referenced column that matches the given name.
+func (f *ForeignKey) RefColumn(name string) (*Column, bool) {
+	for _, c := range f.RefColumns {
+		if c.Name == name {
+			return c, true
+		}
+	}
+	return nil, false
+}
+
 // ReferenceOption for constraint actions.
 type ReferenceOption string
 

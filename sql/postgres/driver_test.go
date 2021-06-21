@@ -91,6 +91,7 @@ func TestDriver_InspectTable(t *testing.T) {
      16774 | off
 `))
 				m.noIndexes()
+				m.noFKs()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -151,6 +152,7 @@ func TestDriver_InspectTable(t *testing.T) {
  idx4             | id          | f       | t      |                 |                       |                           | t   | f    | f           | t
 
 `))
+				m.noFKs()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -174,6 +176,55 @@ func TestDriver_InspectTable(t *testing.T) {
 					Attrs:  []schema.Attr{&ConType{T: "p"}},
 					Parts:  []*schema.IndexPart{{SeqNo: 1, C: columns[0], Attrs: []schema.Attr{&IndexColumnProperty{Desc: true}}}},
 				}, t.PrimaryKey)
+			},
+		},
+		{
+			name: "fks",
+			before: func(m mock) {
+				m.version("130000")
+				m.tableExists("public", "users", true)
+				m.ExpectQuery(sqltest.Escape(columnsQuery)).
+					WithArgs("public", "users").
+					WithArgs("public", "users").
+					WillReturnRows(sqltest.Rows(`
+ column_name |      data_type      | is_nullable |         column_default          | character_maximum_length | numeric_precision | numeric_scale | character_set_name | collation_name | udt_name | is_identity | comment | typtype |  oid
+-------------+---------------------+-------------+---------------------------------+--------------------------+-------------------+---------------+--------------------+----------------+----------+-------------+---------+---------+-------
+ id          | integer             | NO          |                                 |                          |                32 |             0 |                    |                | int      | NO          |         | b       |    20
+ oid         | integer             | NO          |                                 |                          |                32 |             0 |                    |                | int      | NO          |         | b       |    21
+ uid         | integer             | NO          |                                 |                          |                32 |             0 |                    |                | int      | NO          |         | b       |    21
+`))
+				m.noIndexes()
+				m.ExpectQuery(sqltest.Escape(fksQuery)).
+					WithArgs("public", "users").
+					WillReturnRows(sqltest.Rows(`
+ constraint_name | table_name | column_name | table_schema | referenced_table_name | referenced_column_name | referenced_schema_name | update_rule | delete_rule
+-----------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------
+ multi_column    | users      | id          | public       | t1                    | gid                    | public                 | NO ACTION   | CASCADE
+ multi_column    | users      | id          | public       | t1                    | xid                    | public                 | NO ACTION   | CASCADE
+ multi_column    | users      | oid         | public       | t1                    | gid                    | public                 | NO ACTION   | CASCADE
+ multi_column    | users      | oid         | public       | t1                    | xid                    | public                 | NO ACTION   | CASCADE
+ self_reference  | users      | uid         | public       | users                 | id                     | public                 | NO ACTION   | CASCADE
+
+`))
+			},
+			expect: func(require *require.Assertions, t *schema.Table, err error) {
+				require.NoError(err)
+				require.Equal("users", t.Name)
+				require.Equal("public", t.Schema.Name)
+				fks := []*schema.ForeignKey{
+					{Symbol: "multi_column", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}}, RefColumns: []*schema.Column{{Name: "gid"}, {Name: "xid"}}},
+					{Symbol: "self_reference", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: t},
+				}
+				columns := []*schema.Column{
+					{Name: "id", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer", Size: 4}}, ForeignKeys: fks[0:1]},
+					{Name: "oid", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer", Size: 4}}, ForeignKeys: fks[0:1]},
+					{Name: "uid", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer", Size: 4}}, ForeignKeys: fks[1:2]},
+				}
+				fks[0].Columns = columns[:2]
+				fks[1].Columns = columns[2:]
+				fks[1].RefColumns = columns[:1]
+				require.EqualValues(columns, t.Columns)
+				require.EqualValues(fks, t.ForeignKeys)
 			},
 		},
 	}
@@ -228,4 +279,9 @@ func (m mock) tableExistsInSchema(schema, table string, exists bool) {
 func (m mock) noIndexes() {
 	m.ExpectQuery(sqltest.Escape(indexesQuery)).
 		WillReturnRows(sqlmock.NewRows([]string{"index_name", "column_name", "primary", "unique", "constraint_type", "predicate", "expression"}))
+}
+
+func (m mock) noFKs() {
+	m.ExpectQuery(sqltest.Escape(fksQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"constraint_name", "table_name", "column_name", "referenced_table_name", "referenced_column_name", "referenced_table_schema", "update_rule", "delete_rule"}))
 }
