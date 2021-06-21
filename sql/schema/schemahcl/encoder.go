@@ -35,13 +35,13 @@ func writeAttr(attr *schemaspec.SpecAttr, body *hclwrite.Body) error {
 	return nil
 }
 
-func writeResource(b *schemaspec.ResourceSpec, body *hclwrite.Body) error {
+func writeResource(b *schemaspec.Resource, body *hclwrite.Body) error {
 	blk := body.AppendNewBlock(b.Type, []string{b.Name})
 	nb := blk.Body()
 	return writeCommon(b.Attrs, b.Children, nb)
 }
 
-func writeTable(t *schemaspec.TableSpec, body *hclwrite.Body) error {
+func writeTable(t *schemaspec.Table, body *hclwrite.Body) error {
 	blk := body.AppendNewBlock("table", []string{t.Name})
 	nb := blk.Body()
 	if t.SchemaName != "" {
@@ -70,7 +70,7 @@ func writeTable(t *schemaspec.TableSpec, body *hclwrite.Body) error {
 	return writeCommon(t.Attrs, t.Children, nb)
 }
 
-func writeColumn(c *schemaspec.ColumnSpec, body *hclwrite.Body) error {
+func writeColumn(c *schemaspec.Column, body *hclwrite.Body) error {
 	blk := body.AppendNewBlock("column", []string{c.Name})
 	nb := blk.Body()
 	nb.SetAttributeValue("type", cty.StringVal(c.Type))
@@ -83,7 +83,7 @@ func writeColumn(c *schemaspec.ColumnSpec, body *hclwrite.Body) error {
 	return writeCommon(c.Attrs, c.Children, nb)
 }
 
-func writePk(pk *schemaspec.PrimaryKeySpec, body *hclwrite.Body) error {
+func writePk(pk *schemaspec.PrimaryKey, body *hclwrite.Body) error {
 	blk := body.AppendNewBlock("primary_key", nil)
 	nb := blk.Body()
 	columns := make([]string, 0, len(pk.Columns))
@@ -94,7 +94,7 @@ func writePk(pk *schemaspec.PrimaryKeySpec, body *hclwrite.Body) error {
 	return writeCommon(pk.Attrs, pk.Children, nb)
 }
 
-func writeIndex(idx *schemaspec.IndexSpec, body *hclwrite.Body) error {
+func writeIndex(idx *schemaspec.Index, body *hclwrite.Body) error {
 	blk := body.AppendNewBlock("index", []string{idx.Name})
 	nb := blk.Body()
 	if idx.Unique {
@@ -108,7 +108,7 @@ func writeIndex(idx *schemaspec.IndexSpec, body *hclwrite.Body) error {
 	return writeCommon(idx.Attrs, idx.Children, nb)
 }
 
-func writeFk(fk *schemaspec.ForeignKeySpec, body *hclwrite.Body) error {
+func writeFk(fk *schemaspec.ForeignKey, body *hclwrite.Body) error {
 	blk := body.AppendNewBlock("foreign_key", []string{fk.Symbol})
 	nb := blk.Body()
 	columns := make([]string, 0, len(fk.Columns))
@@ -138,7 +138,7 @@ func writeFk(fk *schemaspec.ForeignKeySpec, body *hclwrite.Body) error {
 	return writeCommon(fk.Attrs, fk.Children, nb)
 }
 
-func writeSchema(spec *schemaspec.SchemaSpec, body *hclwrite.Body) error {
+func writeSchema(spec *schemaspec.Schema, body *hclwrite.Body) error {
 	if spec.Name != "" {
 		body.AppendNewBlock("schema", []string{spec.Name})
 	}
@@ -152,27 +152,27 @@ func writeSchema(spec *schemaspec.SchemaSpec, body *hclwrite.Body) error {
 
 func write(elem schemaspec.Element, body *hclwrite.Body) error {
 	switch e := elem.(type) {
-	case *schemaspec.SchemaSpec:
+	case *schemaspec.Schema:
 		return writeSchema(e, body)
 	case *schemaspec.SpecAttr:
 		return writeAttr(e, body)
-	case *schemaspec.ResourceSpec:
+	case *schemaspec.Resource:
 		return writeResource(e, body)
-	case *schemaspec.TableSpec:
+	case *schemaspec.Table:
 		return writeTable(e, body)
-	case *schemaspec.ColumnSpec:
+	case *schemaspec.Column:
 		return writeColumn(e, body)
-	case *schemaspec.PrimaryKeySpec:
+	case *schemaspec.PrimaryKey:
 		return writePk(e, body)
-	case *schemaspec.ForeignKeySpec:
+	case *schemaspec.ForeignKey:
 		return writeFk(e, body)
-	case *schemaspec.IndexSpec:
+	case *schemaspec.Index:
 		return writeIndex(e, body)
 	}
 	return nil
 }
 
-func writeCommon(attrs []*schemaspec.SpecAttr, children []*schemaspec.ResourceSpec, body *hclwrite.Body) error {
+func writeCommon(attrs []*schemaspec.SpecAttr, children []*schemaspec.Resource, body *hclwrite.Body) error {
 	for _, attr := range attrs {
 		if err := writeAttr(attr, body); err != nil {
 			return err

@@ -11,16 +11,16 @@ import (
 )
 
 func TestReEncode(t *testing.T) {
-	tbl := &schemaspec.TableSpec{
+	tbl := &schemaspec.Table{
 		Name: "users",
-		Columns: []*schemaspec.ColumnSpec{
+		Columns: []*schemaspec.Column{
 			{
 				Name: "user_id",
 				Type: "int64",
 				Attrs: []*schemaspec.SpecAttr{
 					{K: "hello", V: &schemaspec.LiteralValue{V: `"world"`}},
 				},
-				Children: []*schemaspec.ResourceSpec{
+				Children: []*schemaspec.Resource{
 					{
 						Type: "resource",
 						Name: "super_index",
@@ -44,7 +44,7 @@ func TestReEncode(t *testing.T) {
   }
 }
 `, string(config))
-	s := &schemaspec.SchemaSpec{}
+	s := &schemaspec.Schema{}
 	err = Decode(config, s)
 	require.NoError(t, err)
 	require.EqualValues(t, tbl, s.Tables[0])
@@ -60,7 +60,7 @@ table "users" {
 		type = "string"
 	}
 }`
-	s := &schemaspec.SchemaSpec{}
+	s := &schemaspec.Schema{}
 	err := Decode([]byte(f), s)
 	require.NoError(t, err)
 	require.Equal(t, "s1", s.Tables[0].SchemaName)
@@ -82,10 +82,10 @@ table "users" {
 	}
 }
 `
-	s := &schemaspec.SchemaSpec{}
+	s := &schemaspec.Schema{}
 	err := Decode([]byte(f), s)
 	require.NoError(t, err)
-	require.Equal(t, &schemaspec.PrimaryKeySpec{
+	require.Equal(t, &schemaspec.PrimaryKey{
 		Columns: []*schemaspec.ColumnRef{
 			{
 				Table: "users",
@@ -95,7 +95,7 @@ table "users" {
 	}, s.Tables[0].PrimaryKey)
 	encode, err := Encode(s)
 	require.NoError(t, err)
-	generated := &schemaspec.SchemaSpec{}
+	generated := &schemaspec.Schema{}
 	err = Decode(encode, generated)
 	require.NoError(t, err)
 	require.EqualValues(t, s, generated)
@@ -121,10 +121,10 @@ table "users" {
 	}
 }
 `
-	s := &schemaspec.SchemaSpec{}
+	s := &schemaspec.Schema{}
 	err := Decode([]byte(f), s)
 	require.NoError(t, err)
-	require.Equal(t, &schemaspec.IndexSpec{
+	require.Equal(t, &schemaspec.Index{
 		Name:   "txn_id",
 		Unique: true,
 		Columns: []*schemaspec.ColumnRef{
@@ -136,7 +136,7 @@ table "users" {
 	}, s.Tables[0].Indexes[0])
 	encode, err := Encode(s)
 	require.NoError(t, err)
-	generated := &schemaspec.SchemaSpec{}
+	generated := &schemaspec.Schema{}
 	err = Decode(encode, generated)
 	require.NoError(t, err)
 	require.EqualValues(t, s, generated)
@@ -176,10 +176,10 @@ table "user_messages" {
 	}
 }
 `
-	s := &schemaspec.SchemaSpec{}
+	s := &schemaspec.Schema{}
 	err := Decode([]byte(f), s)
 	require.NoError(t, err)
-	require.Equal(t, &schemaspec.ForeignKeySpec{
+	require.Equal(t, &schemaspec.ForeignKey{
 		Symbol: "user_name_ref",
 		Columns: []*schemaspec.ColumnRef{
 			{Table: "user_messages", Name: "user_name"},
@@ -191,7 +191,7 @@ table "user_messages" {
 	}, s.Tables[1].ForeignKeys[0])
 	encode, err := Encode(s)
 	require.NoError(t, err)
-	generated := &schemaspec.SchemaSpec{}
+	generated := &schemaspec.Schema{}
 	err = Decode(encode, generated)
 	require.NoError(t, err)
 	require.EqualValues(t, s, generated)
@@ -208,12 +208,12 @@ func TestRewriteHCL(t *testing.T) {
 		t.Run(filename, func(t *testing.T) {
 			fb, err := ioutil.ReadFile(filename)
 			require.NoError(t, err)
-			decoded := &schemaspec.SchemaSpec{}
+			decoded := &schemaspec.Schema{}
 			err = Decode(fb, decoded)
 			require.NoError(t, err)
 			encode, err := Encode(decoded)
 			require.NoError(t, err)
-			generated := &schemaspec.SchemaSpec{}
+			generated := &schemaspec.Schema{}
 			err = Decode(encode, generated)
 			require.NoError(t, err)
 			require.EqualValues(t, decoded, generated)

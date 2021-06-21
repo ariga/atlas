@@ -14,7 +14,7 @@ import (
 type ConvertSuite struct {
 	suite.Suite
 	graph  *gen.Graph
-	schema *schemaspec.SchemaSpec
+	schema *schemaspec.Schema
 }
 
 func (s *ConvertSuite) SetupSuite() {
@@ -49,18 +49,18 @@ func (s *ConvertSuite) TestUserColumns() {
 	for _, tt := range []struct {
 		fld      string
 		expected *schema.ColumnType
-		exp      *schemaspec.ColumnSpec
+		exp      *schemaspec.Column
 	}{
 		{
 			fld: "name",
-			exp: &schemaspec.ColumnSpec{
+			exp: &schemaspec.Column{
 				Name: "name",
 				Type: "string",
 			},
 		},
 		{
 			fld: "optional",
-			exp: &schemaspec.ColumnSpec{
+			exp: &schemaspec.Column{
 				Name: "optional",
 				Type: "string",
 				Null: true,
@@ -68,49 +68,49 @@ func (s *ConvertSuite) TestUserColumns() {
 		},
 		{
 			fld: "int",
-			exp: &schemaspec.ColumnSpec{
+			exp: &schemaspec.Column{
 				Name: "int",
 				Type: "int",
 			},
 		},
 		{
 			fld: "uint",
-			exp: &schemaspec.ColumnSpec{
+			exp: &schemaspec.Column{
 				Name: "uint",
 				Type: "uint",
 			},
 		},
 		{
 			fld: "int64",
-			exp: &schemaspec.ColumnSpec{
+			exp: &schemaspec.Column{
 				Name: "int64",
 				Type: "int64",
 			},
 		},
 		{
 			fld: "uint64",
-			exp: &schemaspec.ColumnSpec{
+			exp: &schemaspec.Column{
 				Name: "uint64",
 				Type: "uint64",
 			},
 		},
 		{
 			fld: "time",
-			exp: &schemaspec.ColumnSpec{
+			exp: &schemaspec.Column{
 				Name: "time",
 				Type: "time",
 			},
 		},
 		{
 			fld: "bool",
-			exp: &schemaspec.ColumnSpec{
+			exp: &schemaspec.Column{
 				Name: "bool",
 				Type: "boolean",
 			},
 		},
 		{
 			fld: "enum",
-			exp: &schemaspec.ColumnSpec{
+			exp: &schemaspec.Column{
 				Name: "enum",
 				Type: "enum",
 				Attrs: []*schemaspec.SpecAttr{
@@ -120,7 +120,7 @@ func (s *ConvertSuite) TestUserColumns() {
 		},
 		{
 			fld: "named_enum",
-			exp: &schemaspec.ColumnSpec{
+			exp: &schemaspec.Column{
 				Name: "named_enum",
 				Type: "enum",
 				Attrs: []*schemaspec.SpecAttr{
@@ -130,7 +130,7 @@ func (s *ConvertSuite) TestUserColumns() {
 		},
 		{
 			fld: "uuid",
-			exp: &schemaspec.ColumnSpec{
+			exp: &schemaspec.Column{
 				Name: "uuid",
 				Type: "binary",
 				Attrs: []*schemaspec.SpecAttr{
@@ -140,14 +140,14 @@ func (s *ConvertSuite) TestUserColumns() {
 		},
 		{
 			fld: "bytes",
-			exp: &schemaspec.ColumnSpec{
+			exp: &schemaspec.Column{
 				Name: "bytes",
 				Type: "binary",
 			},
 		},
 		{
 			fld: "group_id",
-			exp: &schemaspec.ColumnSpec{
+			exp: &schemaspec.Column{
 				Name: "group_id",
 				Null: true,
 				Type: "int",
@@ -164,7 +164,7 @@ func (s *ConvertSuite) TestUserColumns() {
 
 func (s *ConvertSuite) TestPrimaryKey() {
 	users, _ := tableSpec(s.schema, "users")
-	s.Require().EqualValues(&schemaspec.PrimaryKeySpec{
+	s.Require().EqualValues(&schemaspec.PrimaryKey{
 		Columns: []*schemaspec.ColumnRef{
 			{Table: "users", Name: "id"},
 		},
@@ -175,7 +175,7 @@ func (s *ConvertSuite) TestForeignKey() {
 	users, _ := tableSpec(s.schema, "users")
 	fk, ok := fkSpec(users, "users_groups_group")
 	s.Require().True(ok, "expected column id")
-	s.Require().EqualValues(&schemaspec.ForeignKeySpec{
+	s.Require().EqualValues(&schemaspec.ForeignKey{
 		Symbol: "users_groups_group",
 		Columns: []*schemaspec.ColumnRef{
 			{Table: "users", Name: "group_id"},
@@ -192,7 +192,7 @@ func (s *ConvertSuite) TestUnique() {
 	users, _ := tableSpec(s.schema, "users")
 	fk, ok := fkSpec(users, "users_groups_group")
 	s.Require().True(ok, "expected column id")
-	s.Require().EqualValues(&schemaspec.ForeignKeySpec{
+	s.Require().EqualValues(&schemaspec.ForeignKey{
 		Symbol: "users_groups_group",
 		Columns: []*schemaspec.ColumnRef{
 			{Table: "users", Name: "group_id"},
@@ -208,7 +208,7 @@ func (s *ConvertSuite) TestIndexes() {
 	users, _ := tableSpec(s.schema, "users")
 	timeIdx, ok := indexSpec(users, "user_time")
 	s.Require().True(ok, "expected time index")
-	s.Require().EqualValues(&schemaspec.IndexSpec{
+	s.Require().EqualValues(&schemaspec.Index{
 		Name:   "user_time",
 		Unique: false,
 		Columns: []*schemaspec.ColumnRef{
@@ -247,7 +247,7 @@ func (s *ConvertSuite) TestDefault() {
 	}
 }
 
-func columnSpec(t *schemaspec.TableSpec, name string) (*schemaspec.ColumnSpec, bool) {
+func columnSpec(t *schemaspec.Table, name string) (*schemaspec.Column, bool) {
 	for _, c := range t.Columns {
 		if c.Name == name {
 			return c, true
@@ -256,7 +256,7 @@ func columnSpec(t *schemaspec.TableSpec, name string) (*schemaspec.ColumnSpec, b
 	return nil, false
 }
 
-func fkSpec(t *schemaspec.TableSpec, symbol string) (*schemaspec.ForeignKeySpec, bool) {
+func fkSpec(t *schemaspec.Table, symbol string) (*schemaspec.ForeignKey, bool) {
 	for _, fk := range t.ForeignKeys {
 		if fk.Symbol == symbol {
 			return fk, true
@@ -265,7 +265,7 @@ func fkSpec(t *schemaspec.TableSpec, symbol string) (*schemaspec.ForeignKeySpec,
 	return nil, false
 }
 
-func indexSpec(t *schemaspec.TableSpec, name string) (*schemaspec.IndexSpec, bool) {
+func indexSpec(t *schemaspec.Table, name string) (*schemaspec.Index, bool) {
 	for _, idx := range t.Indexes {
 		if idx.Name == name {
 			return idx, true

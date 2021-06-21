@@ -32,67 +32,67 @@ type (
 		Decoder
 	}
 
-	// ResourceSpec is a generic container for resources described in configurations.
-	ResourceSpec struct {
+	// Resource is a generic container for resources described in configurations.
+	Resource struct {
 		Name     string
 		Type     string
 		Attrs    []*SpecAttr
-		Children []*ResourceSpec
+		Children []*Resource
 	}
 
-	// SchemaSpec holds a specification for a Schema.
-	SchemaSpec struct {
+	// Schema holds a specification for a Schema.
+	Schema struct {
 		Name   string
-		Tables []*TableSpec
+		Tables []*Table
 	}
 
-	// TableSpec holds a specification for an SQL table.
-	TableSpec struct {
+	// Table holds a specification for an SQL table.
+	Table struct {
 		Name        string
 		SchemaName  string
-		Columns     []*ColumnSpec
-		PrimaryKey  *PrimaryKeySpec
-		ForeignKeys []*ForeignKeySpec
-		Indexes     []*IndexSpec
+		Columns     []*Column
+		PrimaryKey  *PrimaryKey
+		ForeignKeys []*ForeignKey
+		Indexes     []*Index
 		Attrs       []*SpecAttr
-		Children    []*ResourceSpec
+		Children    []*Resource
 	}
 
-	// ColumnSpec holds a specification for a column in an SQL table.
-	ColumnSpec struct {
+	// Column holds a specification for a column in an SQL table.
+	Column struct {
 		Name     string
 		Type     string
 		Default  *LiteralValue
 		Null     bool
 		Attrs    []*SpecAttr
-		Children []*ResourceSpec
+		Children []*Resource
 	}
 
-	// PrimaryKeySpec holds a specification for the primary key of a table.
-	PrimaryKeySpec struct {
+	// PrimaryKey holds a specification for the primary key of a table.
+	PrimaryKey struct {
 		Columns  []*ColumnRef
 		Attrs    []*SpecAttr
-		Children []*ResourceSpec
+		Children []*Resource
 	}
 
-	// ForeignKeySpec holds a specification for a foreign key of a table.
-	ForeignKeySpec struct {
+	// ForeignKey holds a specification for a foreign key of a table.
+	ForeignKey struct {
 		Symbol     string
 		Columns    []*ColumnRef
 		RefColumns []*ColumnRef
 		OnUpdate   string
 		OnDelete   string
 		Attrs      []*SpecAttr
-		Children   []*ResourceSpec
+		Children   []*Resource
 	}
 
-	// IndexSpec holds a specification for an index of a table.
-	IndexSpec struct {
+	// Index holds a specification for an index of a table.
+	Index struct {
 		Name     string
 		Columns  []*ColumnRef
 		Unique   bool
 		Attrs    []*SpecAttr
-		Children []*ResourceSpec
+		Children []*Resource
 	}
 
 	// ColumnRef is a reference to a Column described in another spec.
@@ -135,13 +135,13 @@ type (
 	}
 )
 
-// Attr returns the value of the ColumnSpec attribute named `name` and reports whether such an attribute exists.
-func (c *ColumnSpec) Attr(name string) (*SpecAttr, bool) {
+// Attr returns the value of the Column attribute named `name` and reports whether such an attribute exists.
+func (c *Column) Attr(name string) (*SpecAttr, bool) {
 	return getAttrVal(c.Attrs, name)
 }
 
-// Attr returns the value of the TableSpec attribute named `name` and reports whether such an attribute exists.
-func (t *TableSpec) Attr(name string) (*SpecAttr, bool) {
+// Attr returns the value of the Table attribute named `name` and reports whether such an attribute exists.
+func (t *Table) Attr(name string) (*SpecAttr, bool) {
 	return getAttrVal(t.Attrs, name)
 }
 
@@ -189,19 +189,19 @@ func (a *SpecAttr) Strings() ([]string, error) {
 func (*LiteralValue) val() {}
 func (*ListValue) val()    {}
 
-func (*ResourceSpec) elem()   {}
-func (*SpecAttr) elem()       {}
-func (*ColumnSpec) elem()     {}
-func (*TableSpec) elem()      {}
-func (*SchemaSpec) elem()     {}
-func (*PrimaryKeySpec) elem() {}
-func (*ForeignKeySpec) elem() {}
-func (*IndexSpec) elem()      {}
+func (*Resource) elem()   {}
+func (*SpecAttr) elem()   {}
+func (*Column) elem()     {}
+func (*Table) elem()      {}
+func (*Schema) elem()     {}
+func (*PrimaryKey) elem() {}
+func (*ForeignKey) elem() {}
+func (*Index) elem()      {}
 
-func (*ColumnSpec) spec()     {}
-func (*TableSpec) spec()      {}
-func (*SchemaSpec) spec()     {}
-func (*ResourceSpec) spec()   {}
-func (*PrimaryKeySpec) spec() {}
-func (*ForeignKeySpec) spec() {}
-func (*IndexSpec) spec()      {}
+func (*Column) spec()     {}
+func (*Table) spec()      {}
+func (*Schema) spec()     {}
+func (*Resource) spec()   {}
+func (*PrimaryKey) spec() {}
+func (*ForeignKey) spec() {}
+func (*Index) spec()      {}

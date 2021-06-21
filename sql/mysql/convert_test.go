@@ -10,12 +10,12 @@ import (
 )
 
 func TestConvertSchema(t *testing.T) {
-	spec := &schemaspec.SchemaSpec{
+	spec := &schemaspec.Schema{
 		Name: "schema",
-		Tables: []*schemaspec.TableSpec{
+		Tables: []*schemaspec.Table{
 			{
 				Name: "table",
-				Columns: []*schemaspec.ColumnSpec{
+				Columns: []*schemaspec.Column{
 					{
 						Name: "col",
 						Type: "int",
@@ -29,10 +29,10 @@ func TestConvertSchema(t *testing.T) {
 						Type: "varchar(32)",
 					},
 				},
-				PrimaryKey: &schemaspec.PrimaryKeySpec{
+				PrimaryKey: &schemaspec.PrimaryKey{
 					Columns: []*schemaspec.ColumnRef{{Table: "table", Name: "col"}},
 				},
-				ForeignKeys: []*schemaspec.ForeignKeySpec{
+				ForeignKeys: []*schemaspec.ForeignKey{
 					{
 						Symbol: "accounts",
 						Columns: []*schemaspec.ColumnRef{
@@ -44,7 +44,7 @@ func TestConvertSchema(t *testing.T) {
 						OnDelete: string(schema.SetNull),
 					},
 				},
-				Indexes: []*schemaspec.IndexSpec{
+				Indexes: []*schemaspec.Index{
 					{
 						Name:   "index",
 						Unique: true,
@@ -57,7 +57,7 @@ func TestConvertSchema(t *testing.T) {
 			},
 			{
 				Name: "accounts",
-				Columns: []*schemaspec.ColumnSpec{
+				Columns: []*schemaspec.Column{
 					{
 						Name: "name",
 						Type: "varchar(32)",
@@ -159,7 +159,7 @@ func TestConvertSchema(t *testing.T) {
 
 func TestConvertColumnType(t *testing.T) {
 	for _, tt := range []struct {
-		spec     *schemaspec.ColumnSpec
+		spec     *schemaspec.Column
 		expected schema.Type
 	}{
 		{
@@ -294,8 +294,8 @@ func TestConvertColumnType(t *testing.T) {
 	}
 }
 
-func colspec(name, coltype string, attrs ...*schemaspec.SpecAttr) *schemaspec.ColumnSpec {
-	return &schemaspec.ColumnSpec{
+func colspec(name, coltype string, attrs ...*schemaspec.SpecAttr) *schemaspec.Column {
+	return &schemaspec.Column{
 		Name:  name,
 		Type:  coltype,
 		Attrs: attrs,

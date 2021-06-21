@@ -16,7 +16,7 @@ type (
 		Realm  *Realm
 		Tables []*Table
 		Attrs  []Attr // Attributes and options.
-		Spec   *schemaspec.SchemaSpec
+		Spec   *schemaspec.Schema
 	}
 
 	// A Table represents a table definition.
@@ -28,7 +28,7 @@ type (
 		PrimaryKey  *Index
 		ForeignKeys []*ForeignKey
 		Attrs       []Attr // Attributes, constraints and options.
-		Spec        *schemaspec.TableSpec
+		Spec        *schemaspec.Table
 	}
 
 	// A Column represents a column definition.
@@ -39,7 +39,7 @@ type (
 		Attrs       []Attr
 		Indexes     []*Index
 		ForeignKeys []*ForeignKey
-		Spec        *schemaspec.ColumnSpec
+		Spec        *schemaspec.Column
 	}
 
 	// ColumnType represents a column type that is implemented by the dialect.

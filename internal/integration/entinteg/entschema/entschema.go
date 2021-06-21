@@ -10,8 +10,8 @@ import (
 	"entgo.io/ent/schema/field"
 )
 
-func Convert(graph *gen.Graph) (*schemaspec.SchemaSpec, error) {
-	sch := &schemaspec.SchemaSpec{}
+func Convert(graph *gen.Graph) (*schemaspec.Schema, error) {
+	sch := &schemaspec.Schema{}
 	if err := addTables(sch, graph); err != nil {
 		return nil, err
 	}
@@ -21,13 +21,13 @@ func Convert(graph *gen.Graph) (*schemaspec.SchemaSpec, error) {
 	return sch, nil
 }
 
-func addTables(sch *schemaspec.SchemaSpec, graph *gen.Graph) error {
+func addTables(sch *schemaspec.Schema, graph *gen.Graph) error {
 	for _, etbl := range graph.Tables() {
-		tbl := &schemaspec.TableSpec{
+		tbl := &schemaspec.Table{
 			SchemaName: sch.Name,
 			Name:       etbl.Name,
 		}
-		pk := &schemaspec.PrimaryKeySpec{}
+		pk := &schemaspec.PrimaryKey{}
 		for _, ec := range etbl.Columns {
 			col, err := convertColumn(ec)
 			if err != nil {
@@ -41,7 +41,7 @@ func addTables(sch *schemaspec.SchemaSpec, graph *gen.Graph) error {
 				})
 			}
 			if ec.Unique {
-				tbl.Indexes = append(tbl.Indexes, &schemaspec.IndexSpec{
+				tbl.Indexes = append(tbl.Indexes, &schemaspec.Index{
 					Name:   ec.Name,
 					Unique: true,
 					Columns: []*schemaspec.ColumnRef{
@@ -59,7 +59,7 @@ func addTables(sch *schemaspec.SchemaSpec, graph *gen.Graph) error {
 	return nil
 }
 
-func addIndexes(tbl *schemaspec.TableSpec, etbl *sqlschema.Table) error {
+func addIndexes(tbl *schemaspec.Table, etbl *sqlschema.Table) error {
 	for _, eidx := range etbl.Indexes {
 		cols := make([]*schemaspec.ColumnRef, 0, len(eidx.Columns))
 		for _, c := range eidx.Columns {
@@ -68,7 +68,7 @@ func addIndexes(tbl *schemaspec.TableSpec, etbl *sqlschema.Table) error {
 				Table: etbl.Name,
 			})
 		}
-		tbl.Indexes = append(tbl.Indexes, &schemaspec.IndexSpec{
+		tbl.Indexes = append(tbl.Indexes, &schemaspec.Index{
 			Name:    eidx.Name,
 			Unique:  eidx.Unique,
 			Columns: cols,
@@ -77,7 +77,7 @@ func addIndexes(tbl *schemaspec.TableSpec, etbl *sqlschema.Table) error {
 	return nil
 }
 
-func addForeignKeys(sch *schemaspec.SchemaSpec, graph *gen.Graph) error {
+func addForeignKeys(sch *schemaspec.Schema, graph *gen.Graph) error {
 	for _, etbl := range graph.Tables() {
 		if len(etbl.ForeignKeys) == 0 {
 			continue
@@ -106,7 +106,7 @@ func addForeignKeys(sch *schemaspec.SchemaSpec, graph *gen.Graph) error {
 					Table: refTable.Name,
 				})
 			}
-			tbl.ForeignKeys = append(tbl.ForeignKeys, &schemaspec.ForeignKeySpec{
+			tbl.ForeignKeys = append(tbl.ForeignKeys, &schemaspec.ForeignKey{
 				Symbol:     efk.Symbol,
 				Columns:    cols,
 				RefColumns: refCols,
@@ -118,8 +118,8 @@ func addForeignKeys(sch *schemaspec.SchemaSpec, graph *gen.Graph) error {
 	return nil
 }
 
-func convertColumn(col *sqlschema.Column) (*schemaspec.ColumnSpec, error) {
-	cspc := &schemaspec.ColumnSpec{
+func convertColumn(col *sqlschema.Column) (*schemaspec.Column, error) {
+	cspc := &schemaspec.Column{
 		Name: col.Name,
 		Null: col.Nullable,
 	}
@@ -165,7 +165,7 @@ func convertColumn(col *sqlschema.Column) (*schemaspec.ColumnSpec, error) {
 	return cspc, nil
 }
 
-func tableSpec(sch *schemaspec.SchemaSpec, name string) (*schemaspec.TableSpec, bool) {
+func tableSpec(sch *schemaspec.Schema, name string) (*schemaspec.Table, bool) {
 	for _, t := range sch.Tables {
 		if t.Name == name {
 			return t, true

@@ -29,7 +29,7 @@ func Decode(body []byte, spec schemaspec.Spec) error {
 	if err != nil {
 		return err
 	}
-	if s, ok := spec.(*schemaspec.SchemaSpec); ok {
+	if s, ok := spec.(*schemaspec.Schema); ok {
 		f := &schemaFile{}
 		if diag := gohcl.DecodeBody(srcHCL.Body, ctx, f); diag.HasErrors() {
 			return diag
@@ -100,8 +100,8 @@ type (
 	}
 )
 
-func (t *table) spec(ctx *hcl.EvalContext) (*schemaspec.TableSpec, error) {
-	out := &schemaspec.TableSpec{
+func (t *table) spec(ctx *hcl.EvalContext) (*schemaspec.Table, error) {
+	out := &schemaspec.Table{
 		Name: t.Name,
 	}
 	if t.Schema != nil {
@@ -147,8 +147,8 @@ func (t *table) spec(ctx *hcl.EvalContext) (*schemaspec.TableSpec, error) {
 	return out, nil
 }
 
-func (c *column) spec(ctx *hcl.EvalContext) (*schemaspec.ColumnSpec, error) {
-	spec := &schemaspec.ColumnSpec{
+func (c *column) spec(ctx *hcl.EvalContext) (*schemaspec.Column, error) {
+	spec := &schemaspec.Column{
 		Name: c.Name,
 		Type: c.TypeName,
 		Null: c.Null,
@@ -184,12 +184,12 @@ func (c *column) spec(ctx *hcl.EvalContext) (*schemaspec.ColumnSpec, error) {
 	return spec, nil
 }
 
-func (p *primaryKey) spec(ctx *hcl.EvalContext) (*schemaspec.PrimaryKeySpec, error) {
+func (p *primaryKey) spec(ctx *hcl.EvalContext) (*schemaspec.PrimaryKey, error) {
 	common, err := extractCommon(ctx, p.Remain, skip("columns"))
 	if err != nil {
 		return nil, err
 	}
-	pk := &schemaspec.PrimaryKeySpec{
+	pk := &schemaspec.PrimaryKey{
 		Attrs:    common.attrs,
 		Children: common.children,
 	}
@@ -199,12 +199,12 @@ func (p *primaryKey) spec(ctx *hcl.EvalContext) (*schemaspec.PrimaryKeySpec, err
 	return pk, nil
 }
 
-func (p *foreignKey) spec(ctx *hcl.EvalContext) (*schemaspec.ForeignKeySpec, error) {
+func (p *foreignKey) spec(ctx *hcl.EvalContext) (*schemaspec.ForeignKey, error) {
 	common, err := extractCommon(ctx, p.Remain, skip("columns", "references", "on_update", "on_delete"))
 	if err != nil {
 		return nil, err
 	}
-	fk := &schemaspec.ForeignKeySpec{
+	fk := &schemaspec.ForeignKey{
 		Symbol:   p.Symbol,
 		Attrs:    common.attrs,
 		Children: common.children,
@@ -224,12 +224,12 @@ func (p *foreignKey) spec(ctx *hcl.EvalContext) (*schemaspec.ForeignKeySpec, err
 	return fk, nil
 }
 
-func (i *index) spec(ctx *hcl.EvalContext) (*schemaspec.IndexSpec, error) {
+func (i *index) spec(ctx *hcl.EvalContext) (*schemaspec.Index, error) {
 	common, err := extractCommon(ctx, i.Remain, skip("columns", "unique"))
 	if err != nil {
 		return nil, err
 	}
-	idx := &schemaspec.IndexSpec{
+	idx := &schemaspec.Index{
 		Name:     i.Name,
 		Unique:   i.Unique,
 		Attrs:    common.attrs,
@@ -309,8 +309,8 @@ func extractLiteralValue(value cty.Value) (*schemaspec.LiteralValue, error) {
 	}
 }
 
-func toResource(ctx *hcl.EvalContext, block *hclsyntax.Block) (*schemaspec.ResourceSpec, error) {
-	spec := &schemaspec.ResourceSpec{
+func toResource(ctx *hcl.EvalContext, block *hclsyntax.Block) (*schemaspec.Resource, error) {
+	spec := &schemaspec.Resource{
 		Type: block.Type,
 	}
 	if len(block.Labels) > 0 {
@@ -415,7 +415,7 @@ func toColumnRef(table, column string) (cty.Value, error) {
 
 type commonSpecParts struct {
 	attrs    []*schemaspec.SpecAttr
-	children []*schemaspec.ResourceSpec
+	children []*schemaspec.Resource
 }
 
 func extractCommon(ctx *hcl.EvalContext, remain hcl.Body, skip map[string]struct{}) (*commonSpecParts, error) {
