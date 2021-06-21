@@ -142,7 +142,7 @@ func convertColumn(col *sqlschema.Column) (*schemaspec.Column, error) {
 		for i, v := range lv.V {
 			lv.V[i] = strconv.Quote(v)
 		}
-		cspc.Attrs = append(cspc.Attrs, &schemaspec.SpecAttr{K: "values", V: lv})
+		cspc.Attrs = append(cspc.Attrs, &schemaspec.Attr{K: "values", V: lv})
 	case field.TypeFloat32, field.TypeFloat64:
 		// TODO: when dialect specific attributes are supported, set precision on the dialect level
 		//  according to the byte-size of the float.
@@ -174,8 +174,8 @@ func tableSpec(sch *schemaspec.Schema, name string) (*schemaspec.Table, bool) {
 	return nil, false
 }
 
-func intAttr(k string, v int) *schemaspec.SpecAttr {
-	return &schemaspec.SpecAttr{
+func intAttr(k string, v int) *schemaspec.Attr {
+	return &schemaspec.Attr{
 		K: k,
 		V: &schemaspec.LiteralValue{V: strconv.Itoa(v)},
 	}

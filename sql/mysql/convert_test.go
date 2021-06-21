@@ -294,7 +294,7 @@ func TestConvertColumnType(t *testing.T) {
 	}
 }
 
-func colspec(name, coltype string, attrs ...*schemaspec.SpecAttr) *schemaspec.Column {
+func colspec(name, coltype string, attrs ...*schemaspec.Attr) *schemaspec.Column {
 	return &schemaspec.Column{
 		Name:  name,
 		Type:  coltype,
@@ -302,18 +302,18 @@ func colspec(name, coltype string, attrs ...*schemaspec.SpecAttr) *schemaspec.Co
 	}
 }
 
-func attr(k, v string) *schemaspec.SpecAttr {
-	return &schemaspec.SpecAttr{
+func attr(k, v string) *schemaspec.Attr {
+	return &schemaspec.Attr{
 		K: k,
 		V: &schemaspec.LiteralValue{V: v},
 	}
 }
 
-func listattr(k string, values ...string) *schemaspec.SpecAttr {
+func listattr(k string, values ...string) *schemaspec.Attr {
 	for i, v := range values {
 		values[i] = strconv.Quote(v)
 	}
-	return &schemaspec.SpecAttr{
+	return &schemaspec.Attr{
 		K: k,
 		V: &schemaspec.ListValue{V: values},
 	}

@@ -23,7 +23,7 @@ func Encode(elem schemaspec.Element) ([]byte, error) {
 	return buf.Bytes(), err
 }
 
-func writeAttr(attr *schemaspec.SpecAttr, body *hclwrite.Body) error {
+func writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 	switch v := attr.V.(type) {
 	case *schemaspec.LiteralValue:
 		body.SetAttributeRaw(attr.K, hclRawTokens(v.V))
@@ -154,7 +154,7 @@ func write(elem schemaspec.Element, body *hclwrite.Body) error {
 	switch e := elem.(type) {
 	case *schemaspec.Schema:
 		return writeSchema(e, body)
-	case *schemaspec.SpecAttr:
+	case *schemaspec.Attr:
 		return writeAttr(e, body)
 	case *schemaspec.Resource:
 		return writeResource(e, body)
@@ -172,7 +172,7 @@ func write(elem schemaspec.Element, body *hclwrite.Body) error {
 	return nil
 }
 
-func writeCommon(attrs []*schemaspec.SpecAttr, children []*schemaspec.Resource, body *hclwrite.Body) error {
+func writeCommon(attrs []*schemaspec.Attr, children []*schemaspec.Resource, body *hclwrite.Body) error {
 	for _, attr := range attrs {
 		if err := writeAttr(attr, body); err != nil {
 			return err

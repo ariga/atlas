@@ -249,15 +249,15 @@ func skip(lst ...string) map[string]struct{} {
 	return out
 }
 
-func toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes, skip map[string]struct{}) ([]*schemaspec.SpecAttr, error) {
-	var attrs []*schemaspec.SpecAttr
+func toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes, skip map[string]struct{}) ([]*schemaspec.Attr, error) {
+	var attrs []*schemaspec.Attr
 	for _, hclAttr := range hclAttrs {
 		if skip != nil {
 			if _, ok := skip[hclAttr.Name]; ok {
 				continue
 			}
 		}
-		at := &schemaspec.SpecAttr{K: hclAttr.Name}
+		at := &schemaspec.Attr{K: hclAttr.Name}
 		value, diag := hclAttr.Expr.Value(ctx)
 		if diag.HasErrors() {
 			return nil, diag
@@ -414,7 +414,7 @@ func toColumnRef(table, column string) (cty.Value, error) {
 }
 
 type commonSpecParts struct {
-	attrs    []*schemaspec.SpecAttr
+	attrs    []*schemaspec.Attr
 	children []*schemaspec.Resource
 }
 

@@ -17,14 +17,14 @@ func TestReEncode(t *testing.T) {
 			{
 				Name: "user_id",
 				Type: "int64",
-				Attrs: []*schemaspec.SpecAttr{
+				Attrs: []*schemaspec.Attr{
 					{K: "hello", V: &schemaspec.LiteralValue{V: `"world"`}},
 				},
 				Children: []*schemaspec.Resource{
 					{
 						Type: "resource",
 						Name: "super_index",
-						Attrs: []*schemaspec.SpecAttr{
+						Attrs: []*schemaspec.Attr{
 							{K: "enabled", V: &schemaspec.LiteralValue{V: `true`}},
 						},
 					},

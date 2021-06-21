@@ -113,7 +113,7 @@ func (s *ConvertSuite) TestUserColumns() {
 			exp: &schemaspec.Column{
 				Name: "enum",
 				Type: "enum",
-				Attrs: []*schemaspec.SpecAttr{
+				Attrs: []*schemaspec.Attr{
 					{K: "values", V: &schemaspec.ListValue{V: []string{`"1"`, `"2"`, `"3"`}}},
 				},
 			},
@@ -123,7 +123,7 @@ func (s *ConvertSuite) TestUserColumns() {
 			exp: &schemaspec.Column{
 				Name: "named_enum",
 				Type: "enum",
-				Attrs: []*schemaspec.SpecAttr{
+				Attrs: []*schemaspec.Attr{
 					{K: "values", V: &schemaspec.ListValue{V: []string{`"1"`, `"2"`, `"3"`}}},
 				},
 			},
@@ -133,7 +133,7 @@ func (s *ConvertSuite) TestUserColumns() {
 			exp: &schemaspec.Column{
 				Name: "uuid",
 				Type: "binary",
-				Attrs: []*schemaspec.SpecAttr{
+				Attrs: []*schemaspec.Attr{
 					intAttr("size", 16),
 				},
 			},

@@ -36,7 +36,7 @@ type (
 	Resource struct {
 		Name     string
 		Type     string
-		Attrs    []*SpecAttr
+		Attrs    []*Attr
 		Children []*Resource
 	}
 
@@ -54,7 +54,7 @@ type (
 		PrimaryKey  *PrimaryKey
 		ForeignKeys []*ForeignKey
 		Indexes     []*Index
-		Attrs       []*SpecAttr
+		Attrs       []*Attr
 		Children    []*Resource
 	}
 
@@ -64,14 +64,14 @@ type (
 		Type     string
 		Default  *LiteralValue
 		Null     bool
-		Attrs    []*SpecAttr
+		Attrs    []*Attr
 		Children []*Resource
 	}
 
 	// PrimaryKey holds a specification for the primary key of a table.
 	PrimaryKey struct {
 		Columns  []*ColumnRef
-		Attrs    []*SpecAttr
+		Attrs    []*Attr
 		Children []*Resource
 	}
 
@@ -82,7 +82,7 @@ type (
 		RefColumns []*ColumnRef
 		OnUpdate   string
 		OnDelete   string
-		Attrs      []*SpecAttr
+		Attrs      []*Attr
 		Children   []*Resource
 	}
 
@@ -91,7 +91,7 @@ type (
 		Name     string
 		Columns  []*ColumnRef
 		Unique   bool
-		Attrs    []*SpecAttr
+		Attrs    []*Attr
 		Children []*Resource
 	}
 
@@ -113,13 +113,13 @@ type (
 		elem()
 	}
 
-	// SpecAttr is an attribute of a Spec.
-	SpecAttr struct {
+	// Attr is an attribute of a Spec.
+	Attr struct {
 		K string
 		V Value
 	}
 
-	// Value represents the value of a SpecAttr.
+	// Value represents the value of a Attr.
 	Value interface {
 		val()
 	}
@@ -136,16 +136,16 @@ type (
 )
 
 // Attr returns the value of the Column attribute named `name` and reports whether such an attribute exists.
-func (c *Column) Attr(name string) (*SpecAttr, bool) {
+func (c *Column) Attr(name string) (*Attr, bool) {
 	return getAttrVal(c.Attrs, name)
 }
 
 // Attr returns the value of the Table attribute named `name` and reports whether such an attribute exists.
-func (t *Table) Attr(name string) (*SpecAttr, bool) {
+func (t *Table) Attr(name string) (*Attr, bool) {
 	return getAttrVal(t.Attrs, name)
 }
 
-func getAttrVal(attrs []*SpecAttr, name string) (*SpecAttr, bool) {
+func getAttrVal(attrs []*Attr, name string) (*Attr, bool) {
 	for _, attr := range attrs {
 		if attr.K == name {
 			return attr, true
@@ -154,9 +154,9 @@ func getAttrVal(attrs []*SpecAttr, name string) (*SpecAttr, bool) {
 	return nil, false
 }
 
-// Int returns an integer from the Value of the SpecAttr. If The value is not a LiteralValue or the value
+// Int returns an integer from the Value of the Attr. If The value is not a LiteralValue or the value
 // cannot be converted to an integer an error is returned.
-func (a *SpecAttr) Int() (int, error) {
+func (a *Attr) Int() (int, error) {
 	lit, ok := a.V.(*LiteralValue)
 	if !ok {
 		return 0, fmt.Errorf("schema: cannot read attribute %q as literal", a.K)
@@ -168,9 +168,9 @@ func (a *SpecAttr) Int() (int, error) {
 	return s, nil
 }
 
-// Strings returns a slice of strings from the Value of the SpecAttr. If The value is not a ListValue or the its
+// Strings returns a slice of strings from the Value of the Attr. If The value is not a ListValue or the its
 // values cannot be converted to strings an error is returned.
-func (a *SpecAttr) Strings() ([]string, error) {
+func (a *Attr) Strings() ([]string, error) {
 	lst, ok := a.V.(*ListValue)
 	if !ok {
 		return nil, fmt.Errorf("schema: attribute %q is not a list", a.K)
@@ -190,7 +190,7 @@ func (*LiteralValue) val() {}
 func (*ListValue) val()    {}
 
 func (*Resource) elem()   {}
-func (*SpecAttr) elem()   {}
+func (*Attr) elem()       {}
 func (*Column) elem()     {}
 func (*Table) elem()      {}
 func (*Schema) elem()     {}
