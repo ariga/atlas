@@ -141,6 +141,15 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 			Null: nullable.String == "YES",
 		},
 	}
+	c.Type.Type = columnType(&columnMeta{
+		typ:       typ.String,
+		size:      maxlen.Int64,
+		udt:       udt.String,
+		precision: precision.Int64,
+		scale:     scale.Int64,
+		typtype:   typtype.String,
+		typid:     typid.Int64,
+	})
 	switch t := typ.String; t {
 	case "bigint", "int8":
 		c.Type.Type = &schema.IntegerType{T: t, Size: 8}
@@ -221,6 +230,69 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 	}
 	t.Columns = append(t.Columns, c)
 	return nil
+}
+
+func columnType(c *columnMeta) schema.Type {
+	var typ schema.Type
+	switch t := c.typ; t {
+	case "bigint", "int8":
+		typ = &schema.IntegerType{T: t, Size: 8}
+	case "integer", "int", "int4":
+		typ = &schema.IntegerType{T: t, Size: 4}
+	case "smallint", "int2":
+		typ = &schema.IntegerType{T: t, Size: 2}
+	case "bit", "bit varying":
+		typ = &BitType{T: t, Len: c.size}
+	case "boolean", "bool":
+		typ = &schema.BoolType{T: t}
+	case "bytea":
+		typ = &schema.BinaryType{T: t}
+	case "character", "char", "character varying", "varchar", "text":
+		// A `character` column without length specifier is equivalent to `character(1)`,
+		// but `varchar` without length accepts strings of any size (same as `text`).
+		typ = &schema.StringType{T: t, Size: int(c.size)}
+	case "cidr", "inet", "macaddr", "macaddr8":
+		typ = &NetworkType{T: t}
+	case "circle", "line", "lseg", "box", "path", "polygon":
+		typ = &schema.SpatialType{T: t}
+	case "date", "time", "time with time zone", "time without time zone",
+		"timestamp", "timestamp with time zone", "timestamp without time zone":
+		typ = &schema.TimeType{T: t}
+	case "interval":
+		// TODO: get 'interval_type' from query above before implementing.
+		typ = &schema.UnsupportedType{T: t}
+	case "double precision", "float8", "real", "float4":
+		typ = &schema.FloatType{T: t, Precision: int(c.precision)}
+	case "json", "jsonb":
+		typ = &schema.JSONType{T: t}
+	case "money":
+		typ = &CurrencyType{T: t}
+	case "numeric", "decimal":
+		typ = &schema.DecimalType{T: t, Precision: int(c.precision), Scale: int(c.scale)}
+	case "smallserial", "serial2", "serial", "serial4", "bigserial", "serial8":
+		typ = &SerialType{T: t, Precision: int(c.precision)}
+	case "uuid":
+		typ = &UUIDType{T: t}
+	case "xml":
+		typ = &XMLType{T: t}
+	case "ARRAY":
+		// Note that for ARRAY types, the 'udt_name' column holds the array type
+		// prefixed with '_'. For example, for 'integer[]' the result is '_int',
+		// and for 'text[N][M]' the result is also '_text'. That's because, the
+		// database ignores any size or multi-dimensions constraints.
+		typ = &ArrayType{T: strings.TrimPrefix(c.udt, "_")}
+	case "USER-DEFINED":
+		typ = &UserDefinedType{T: c.udt}
+		// The `typtype` column is set to 'e' for enum types, and the
+		// values are filled in batch after the rows above is closed.
+		// https://www.postgresql.org/docs/current/catalog-pg-type.html
+		if c.typtype == "e" {
+			typ = &EnumType{T: c.udt, ID: c.typid}
+		}
+	default:
+		typ = &schema.UnsupportedType{T: t}
+	}
+	return typ
 }
 
 // enumValues fills enum columns with their values from the database.
