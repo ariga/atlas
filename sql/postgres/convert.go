@@ -203,8 +203,6 @@ func parseColumn(s string) (*columnMeta, error) {
 		c.precision = 53
 	case "real", "float4":
 		c.precision = 24
-	default:
-		return nil, fmt.Errorf("postgres: unknown column type %q", c.parts[0])
 	}
 	return c, nil
 }
