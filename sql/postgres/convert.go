@@ -75,7 +75,7 @@ func convertString(spec *schemaspec.Column) (schema.Type, error) {
 		st.Size = s
 	}
 	switch {
-	case st.Size < maxStringSize:
+	case st.Size < maxCharSize:
 		st.T = "varchar"
 	default:
 		st.T = "text"
