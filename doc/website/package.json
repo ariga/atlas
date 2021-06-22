@@ -26,6 +26,12 @@
     "react-dom": "^17.0.1",
     "url-loader": "^4.1.1"
   },
+  "resolutions": {
+    "trim": "^0.0.3",
+    "browserslist": "^4.16.5",
+    "glob-parent": "^5.1.2",
+    "css-what": "^5.0.1"
+  },
   "browserslist": {
     "production": [
       ">0.5%",

@@ -69,6 +69,12 @@ func (d *Driver) inspectTable(ctx context.Context, name string, opts *schema.Ins
 	if err := d.columns(ctx, t); err != nil {
 		return nil, err
 	}
+	if err := d.indexes(ctx, t); err != nil {
+		return nil, err
+	}
+	if err := d.fks(ctx, t); err != nil {
+		return nil, err
+	}
 	return t, nil
 }
 
@@ -138,6 +144,15 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 			Null: nullable.String == "YES",
 		},
 	}
+	c.Type.Type = columnType(&columnMeta{
+		typ:       typ.String,
+		size:      maxlen.Int64,
+		udt:       udt.String,
+		precision: precision.Int64,
+		scale:     scale.Int64,
+		typtype:   typtype.String,
+		typid:     typid.Int64,
+	})
 	switch t := typ.String; t {
 	case "bigint", "int8":
 		c.Type.Type = &schema.IntegerType{T: t, Size: 8}
@@ -220,6 +235,69 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 	return nil
 }
 
+func columnType(c *columnMeta) schema.Type {
+	var typ schema.Type
+	switch t := c.typ; t {
+	case "bigint", "int8":
+		typ = &schema.IntegerType{T: t, Size: 8}
+	case "integer", "int", "int4":
+		typ = &schema.IntegerType{T: t, Size: 4}
+	case "smallint", "int2":
+		typ = &schema.IntegerType{T: t, Size: 2}
+	case "bit", "bit varying":
+		typ = &BitType{T: t, Len: c.size}
+	case "boolean", "bool":
+		typ = &schema.BoolType{T: t}
+	case "bytea":
+		typ = &schema.BinaryType{T: t}
+	case "character", "char", "character varying", "varchar", "text":
+		// A `character` column without length specifier is equivalent to `character(1)`,
+		// but `varchar` without length accepts strings of any size (same as `text`).
+		typ = &schema.StringType{T: t, Size: int(c.size)}
+	case "cidr", "inet", "macaddr", "macaddr8":
+		typ = &NetworkType{T: t}
+	case "circle", "line", "lseg", "box", "path", "polygon":
+		typ = &schema.SpatialType{T: t}
+	case "date", "time", "time with time zone", "time without time zone",
+		"timestamp", "timestamp with time zone", "timestamp without time zone":
+		typ = &schema.TimeType{T: t}
+	case "interval":
+		// TODO: get 'interval_type' from query above before implementing.
+		typ = &schema.UnsupportedType{T: t}
+	case "double precision", "float8", "real", "float4":
+		typ = &schema.FloatType{T: t, Precision: int(c.precision)}
+	case "json", "jsonb":
+		typ = &schema.JSONType{T: t}
+	case "money":
+		typ = &CurrencyType{T: t}
+	case "numeric", "decimal":
+		typ = &schema.DecimalType{T: t, Precision: int(c.precision), Scale: int(c.scale)}
+	case "smallserial", "serial2", "serial", "serial4", "bigserial", "serial8":
+		typ = &SerialType{T: t, Precision: int(c.precision)}
+	case "uuid":
+		typ = &UUIDType{T: t}
+	case "xml":
+		typ = &XMLType{T: t}
+	case "ARRAY":
+		// Note that for ARRAY types, the 'udt_name' column holds the array type
+		// prefixed with '_'. For example, for 'integer[]' the result is '_int',
+		// and for 'text[N][M]' the result is also '_text'. That's because, the
+		// database ignores any size or multi-dimensions constraints.
+		typ = &ArrayType{T: strings.TrimPrefix(c.udt, "_")}
+	case "USER-DEFINED":
+		typ = &UserDefinedType{T: c.udt}
+		// The `typtype` column is set to 'e' for enum types, and the
+		// values are filled in batch after the rows above is closed.
+		// https://www.postgresql.org/docs/current/catalog-pg-type.html
+		if c.typtype == "e" {
+			typ = &EnumType{T: c.udt, ID: c.typid}
+		}
+	default:
+		typ = &schema.UnsupportedType{T: t}
+	}
+	return typ
+}
+
 // enumValues fills enum columns with their values from the database.
 func (d *Driver) enumValues(ctx context.Context, columns []*schema.Column) error {
 	var (
@@ -256,6 +334,94 @@ func (d *Driver) enumValues(ctx context.Context, columns []*schema.Column) error
 		}
 	}
 	return nil
+}
+
+// indexes queries and appends the indexes of the given table.
+func (d *Driver) indexes(ctx context.Context, t *schema.Table) error {
+	rows, err := d.QueryContext(ctx, indexesQuery, t.Schema.Name, t.Name)
+	if err != nil {
+		return fmt.Errorf("postgres: querying %q indexes: %w", t.Name, err)
+	}
+	defer rows.Close()
+	if err := d.addIndexes(t, rows); err != nil {
+		return err
+	}
+	return rows.Err()
+}
+
+// addIndexes scans the rows and adds the indexes to the table.
+func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
+	names := make(map[string]*schema.Index)
+	for rows.Next() {
+		var (
+			name                             string
+			uniq, primary                    bool
+			column, contype, pred, expr      sql.NullString
+			asc, desc, nullsfirst, nullslast sql.NullBool
+		)
+		if err := rows.Scan(&name, &column, &primary, &uniq, &contype, &pred, &expr, &asc, &desc, &nullsfirst, &nullslast); err != nil {
+			return fmt.Errorf("postgres: scanning index: %w", err)
+		}
+		idx, ok := names[name]
+		if !ok {
+			idx = &schema.Index{
+				Name:   name,
+				Unique: uniq,
+				Table:  t,
+			}
+			if sqlx.ValidString(contype) {
+				idx.Attrs = append(t.Attrs, &ConType{T: contype.String})
+			}
+			if sqlx.ValidString(pred) {
+				idx.Attrs = append(t.Attrs, &IndexPredicate{P: pred.String})
+			}
+			names[name] = idx
+			if primary {
+				t.PrimaryKey = idx
+			} else {
+				t.Indexes = append(t.Indexes, idx)
+			}
+		}
+		part := &schema.IndexPart{
+			SeqNo: len(idx.Parts) + 1,
+			Attrs: []schema.Attr{
+				&IndexColumnProperty{
+					Asc:        asc.Bool,
+					Desc:       desc.Bool,
+					NullsFirst: nullsfirst.Bool,
+					NullsLast:  nullslast.Bool,
+				},
+			},
+		}
+		switch {
+		case sqlx.ValidString(expr):
+			part.X = &schema.RawExpr{
+				X: expr.String,
+			}
+		case sqlx.ValidString(column):
+			part.C, ok = t.Column(column.String)
+			if !ok {
+				return fmt.Errorf("postgres: column %q was not found for index %q", column.String, idx.Name)
+			}
+		default:
+			return fmt.Errorf("postgres: invalid part for index %q", idx.Name)
+		}
+		idx.Parts = append(idx.Parts, part)
+	}
+	return nil
+}
+
+// fks queries and appends the foreign keys of the given table.
+func (d *Driver) fks(ctx context.Context, t *schema.Table) error {
+	rows, err := d.QueryContext(ctx, fksQuery, t.Schema.Name, t.Name)
+	if err != nil {
+		return fmt.Errorf("postgres: querying %q foreign keys: %w", t.Name, err)
+	}
+	defer rows.Close()
+	if err := sqlx.ScanFKs(t, rows); err != nil {
+		return fmt.Errorf("postgres: %w", err)
+	}
+	return rows.Err()
 }
 
 type (
@@ -320,6 +486,30 @@ type (
 		schema.Type
 		T string
 	}
+
+	// ConType describes constraint type.
+	// https://www.postgresql.org/docs/current/catalog-pg-constraint.html
+	ConType struct {
+		schema.Attr
+		T string // c, f, p, u, t, x.
+	}
+
+	// IndexPredicate describes a partial index predicate.
+	// https://www.postgresql.org/docs/current/catalog-pg-index.html
+	IndexPredicate struct {
+		schema.Attr
+		P string
+	}
+
+	// IndexColumnProperty describes an index column property.
+	// https://www.postgresql.org/docs/current/functions-info.html#FUNCTIONS-INFO-INDEX-COLUMN-PROPS
+	IndexColumnProperty struct {
+		schema.Attr
+		Asc        bool
+		Desc       bool
+		NullsFirst bool
+		NullsLast  bool
+	}
 )
 
 const (
@@ -375,5 +565,64 @@ FROM
 	ON t1.udt_name = t2.typname
 WHERE
 	TABLE_SCHEMA = ? AND TABLE_NAME = ?
+`
+
+	// Query to list table indexes.
+	indexesQuery = `
+SELECT
+	i.relname AS index_name,
+	a.attname AS column_name,
+	idx.indisprimary AS primary,
+	idx.indisunique AS unique,
+	c.contype AS constraint_type,
+	pg_get_expr(idx.indpred, idx.indrelid) AS predicate,
+	pg_get_expr(idx.indexprs, idx.indrelid) AS expression,
+	pg_index_column_has_property(idx.indexrelid, a.attnum, 'asc') AS asc,
+	pg_index_column_has_property(idx.indexrelid, a.attnum, 'desc') AS desc,
+	pg_index_column_has_property(idx.indexrelid, a.attnum, 'nulls_first') AS nulls_first,
+	pg_index_column_has_property(idx.indexrelid, a.attnum, 'nulls_last') AS nulls_last
+FROM
+	pg_index idx
+	JOIN pg_class i
+	ON i.oid = idx.indexrelid
+	LEFT JOIN pg_constraint c
+	ON idx.indexrelid = c.conindid
+	LEFT JOIN pg_attribute a
+	ON a.attrelid = idx.indexrelid
+WHERE
+	idx.indrelid = to_regclass($1 || '.' || $2)::oid
+	AND COALESCE(c.contype, '') <> 'f'
+ORDER BY
+	index_name, a.attnum
+`
+	fksQuery = `
+SELECT
+    t1.constraint_name,
+    t1.table_name,
+    t2.column_name,
+    t1.table_schema,
+    t3.table_name AS referenced_table_name,
+    t3.column_name AS referenced_column_name,
+    t3.table_schema AS referenced_schema_name,
+    t4.update_rule,
+    t4.delete_rule
+FROM
+    information_schema.table_constraints t1
+    JOIN information_schema.key_column_usage t2
+    ON t1.constraint_name = t2.constraint_name
+    AND t1.table_schema = t2.constraint_schema
+    JOIN information_schema.constraint_column_usage t3
+    ON t1.constraint_name = t3.constraint_name
+    AND t1.table_schema = t3.constraint_schema
+    JOIN information_schema.referential_constraints t4
+    ON t1.constraint_name = t4.constraint_name
+    AND t1.table_schema = t4.constraint_schema
+WHERE
+    t1.constraint_type = 'FOREIGN KEY'
+    AND t1.table_schema = 'public'
+    AND t1.table_name = 't4'
+ORDER BY
+    t1.constraint_name,
+    t2.ordinal_position
 `
 )

@@ -6,25 +6,26 @@ import (
 	"testing"
 
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/schema/schemaspec"
 	"github.com/stretchr/testify/require"
 )
 
 func TestReEncode(t *testing.T) {
-	tbl := &schema.TableSpec{
+	tbl := &schemaspec.Table{
 		Name: "users",
-		Columns: []*schema.ColumnSpec{
+		Columns: []*schemaspec.Column{
 			{
 				Name: "user_id",
 				Type: "int64",
-				Attrs: []*schema.SpecAttr{
-					{K: "hello", V: &schema.LiteralValue{V: `"world"`}},
+				Attrs: []*schemaspec.Attr{
+					{K: "hello", V: &schemaspec.LiteralValue{V: `"world"`}},
 				},
-				Children: []*schema.ResourceSpec{
+				Children: []*schemaspec.Resource{
 					{
 						Type: "resource",
 						Name: "super_index",
-						Attrs: []*schema.SpecAttr{
-							{K: "enabled", V: &schema.LiteralValue{V: `true`}},
+						Attrs: []*schemaspec.Attr{
+							{K: "enabled", V: &schemaspec.LiteralValue{V: `true`}},
 						},
 					},
 				},
@@ -43,7 +44,7 @@ func TestReEncode(t *testing.T) {
   }
 }
 `, string(config))
-	s := &schema.SchemaSpec{}
+	s := &schemaspec.Schema{}
 	err = Decode(config, s)
 	require.NoError(t, err)
 	require.EqualValues(t, tbl, s.Tables[0])
@@ -59,7 +60,7 @@ table "users" {
 		type = "string"
 	}
 }`
-	s := &schema.SchemaSpec{}
+	s := &schemaspec.Schema{}
 	err := Decode([]byte(f), s)
 	require.NoError(t, err)
 	require.Equal(t, "s1", s.Tables[0].SchemaName)
@@ -81,11 +82,11 @@ table "users" {
 	}
 }
 `
-	s := &schema.SchemaSpec{}
+	s := &schemaspec.Schema{}
 	err := Decode([]byte(f), s)
 	require.NoError(t, err)
-	require.Equal(t, &schema.PrimaryKeySpec{
-		Columns: []*schema.ColumnRef{
+	require.Equal(t, &schemaspec.PrimaryKey{
+		Columns: []*schemaspec.ColumnRef{
 			{
 				Table: "users",
 				Name:  "name",
@@ -94,7 +95,7 @@ table "users" {
 	}, s.Tables[0].PrimaryKey)
 	encode, err := Encode(s)
 	require.NoError(t, err)
-	generated := &schema.SchemaSpec{}
+	generated := &schemaspec.Schema{}
 	err = Decode(encode, generated)
 	require.NoError(t, err)
 	require.EqualValues(t, s, generated)
@@ -120,13 +121,13 @@ table "users" {
 	}
 }
 `
-	s := &schema.SchemaSpec{}
+	s := &schemaspec.Schema{}
 	err := Decode([]byte(f), s)
 	require.NoError(t, err)
-	require.Equal(t, &schema.IndexSpec{
+	require.Equal(t, &schemaspec.Index{
 		Name:   "txn_id",
 		Unique: true,
-		Columns: []*schema.ColumnRef{
+		Columns: []*schemaspec.ColumnRef{
 			{
 				Name:  "txn_id",
 				Table: "users",
@@ -135,7 +136,7 @@ table "users" {
 	}, s.Tables[0].Indexes[0])
 	encode, err := Encode(s)
 	require.NoError(t, err)
-	generated := &schema.SchemaSpec{}
+	generated := &schemaspec.Schema{}
 	err = Decode(encode, generated)
 	require.NoError(t, err)
 	require.EqualValues(t, s, generated)
@@ -175,22 +176,22 @@ table "user_messages" {
 	}
 }
 `
-	s := &schema.SchemaSpec{}
+	s := &schemaspec.Schema{}
 	err := Decode([]byte(f), s)
 	require.NoError(t, err)
-	require.Equal(t, &schema.ForeignKeySpec{
+	require.Equal(t, &schemaspec.ForeignKey{
 		Symbol: "user_name_ref",
-		Columns: []*schema.ColumnRef{
+		Columns: []*schemaspec.ColumnRef{
 			{Table: "user_messages", Name: "user_name"},
 		},
-		RefColumns: []*schema.ColumnRef{
+		RefColumns: []*schemaspec.ColumnRef{
 			{Table: "users", Name: "name"},
 		},
 		OnDelete: string(schema.NoAction),
 	}, s.Tables[1].ForeignKeys[0])
 	encode, err := Encode(s)
 	require.NoError(t, err)
-	generated := &schema.SchemaSpec{}
+	generated := &schemaspec.Schema{}
 	err = Decode(encode, generated)
 	require.NoError(t, err)
 	require.EqualValues(t, s, generated)
@@ -207,12 +208,12 @@ func TestRewriteHCL(t *testing.T) {
 		t.Run(filename, func(t *testing.T) {
 			fb, err := ioutil.ReadFile(filename)
 			require.NoError(t, err)
-			decoded := &schema.SchemaSpec{}
+			decoded := &schemaspec.Schema{}
 			err = Decode(fb, decoded)
 			require.NoError(t, err)
 			encode, err := Encode(decoded)
 			require.NoError(t, err)
-			generated := &schema.SchemaSpec{}
+			generated := &schemaspec.Schema{}
 			err = Decode(encode, generated)
 			require.NoError(t, err)
 			require.EqualValues(t, decoded, generated)

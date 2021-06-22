@@ -489,56 +489,10 @@ func (d *Driver) fks(ctx context.Context, t *schema.Table) error {
 		return fmt.Errorf("mysql: querying %q foreign keys: %w", t.Name, err)
 	}
 	defer rows.Close()
-	if err := d.addFKs(t, rows); err != nil {
+	if err := sqlx.ScanFKs(t, rows); err != nil {
 		return fmt.Errorf("mysql: %w", err)
 	}
 	return rows.Err()
-}
-
-// addFK scans the rows and adds the foreign-key to the table.
-// Reference elements are added as stubs and should be linked
-// manually by the caller.
-func (d *Driver) addFKs(t *schema.Table, rows *sql.Rows) error {
-	names := make(map[string]*schema.ForeignKey)
-	for rows.Next() {
-		var name, table, column, tSchema, refTable, refColumn, refSchema, updateRule, deleteRule string
-		if err := rows.Scan(&name, &table, &column, &tSchema, &refTable, &refColumn, &refSchema, &updateRule, &deleteRule); err != nil {
-			return err
-		}
-		fk, ok := names[name]
-		if !ok {
-			fk = &schema.ForeignKey{
-				Symbol:   name,
-				Table:    t,
-				RefTable: t,
-				OnDelete: schema.ReferenceOption(deleteRule),
-				OnUpdate: schema.ReferenceOption(updateRule),
-			}
-			if refTable != t.Name || tSchema != refSchema {
-				fk.RefTable = &schema.Table{Name: refTable, Schema: &schema.Schema{Name: refSchema}}
-			}
-			names[name] = fk
-			t.ForeignKeys = append(t.ForeignKeys, fk)
-		}
-		c, ok := t.Column(column)
-		if !ok {
-			return fmt.Errorf("column %q was not found for fk %q", column, fk.Symbol)
-		}
-		// Rows are ordered by ORDINAL_POSITION that specifies
-		// the position of the column in the FK definition.
-		fk.Columns = append(fk.Columns, c)
-		c.ForeignKeys = append(c.ForeignKeys, fk)
-
-		// Stub referenced columns or link if it's a self-reference.
-		if fk.Table != fk.RefTable {
-			fk.RefColumns = append(fk.RefColumns, &schema.Column{Name: refColumn})
-		} else if c, ok := t.Column(refColumn); ok {
-			fk.RefColumns = append(fk.RefColumns, c)
-		} else {
-			return fmt.Errorf("referenced column %q was not found for fk %q", refColumn, fk.Symbol)
-		}
-	}
-	return nil
 }
 
 // checks queries and appends the check constraints of the given table.

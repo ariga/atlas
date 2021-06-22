@@ -22,9 +22,9 @@ jobs:
         with:
           node-version: 16
       - name: Install Dependencies
-        run: npm install
+        run: yarn install
       - name: Build website
-        run: npm run build
+        run: yarn build
       - name: generate vanity go module resources
         run: go generate ./...
         working-directory: internal/vanity
@@ -35,6 +35,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
       - name: Deploy Website
-        run: npm run upload
+        run: yarn upload
       - name: Invalidate Cache
-        run: npm run invalidate-cdn
+        run: yarn invalidate-cdn
