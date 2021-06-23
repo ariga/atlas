@@ -64,3 +64,36 @@ func ScanFKs(t *schema.Table, rows *sql.Rows) error {
 	}
 	return nil
 }
+
+// LinkSchemaTables links foreign-key stub tables/columns to actual elements.
+func LinkSchemaTables(schemas []*schema.Schema) {
+	byName := make(map[string]map[string]*schema.Table)
+	for _, s := range schemas {
+		byName[s.Name] = make(map[string]*schema.Table)
+		for _, t := range s.Tables {
+			t.Schema = s
+			byName[s.Name][t.Name] = t
+		}
+	}
+	for _, s := range schemas {
+		for _, t := range s.Tables {
+			for _, fk := range t.ForeignKeys {
+				rs, ok := byName[fk.RefTable.Schema.Name]
+				if !ok {
+					continue
+				}
+				ref, ok := rs[fk.RefTable.Name]
+				if !ok {
+					continue
+				}
+				fk.RefTable = ref
+				for i, c := range fk.RefColumns {
+					rc, ok := ref.Column(c.Name)
+					if ok {
+						fk.RefColumns[i] = rc
+					}
+				}
+			}
+		}
+	}
+}
