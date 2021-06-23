@@ -7,14 +7,16 @@ import (
 	"ariga.io/atlas/sql/schema/schemaspec"
 )
 
-type TableConverter func(*schemaspec.Table, *schema.Schema) (*schema.Table, error)
-type ColumnConverter func(*schemaspec.Column, *schema.Table) (*schema.Column, error)
-type TypeConverter func(*schemaspec.Column) (schema.Type, error)
-type PrimaryKeyConverter func(*schemaspec.PrimaryKey, *schema.Table) (*schema.Index, error)
-type IndexConverter func(*schemaspec.Index, *schema.Table) (*schema.Index, error)
+type (
+	ConvertTableFunc      func(*schemaspec.Table, *schema.Schema) (*schema.Table, error)
+	ConvertColumnFunc     func(*schemaspec.Column, *schema.Table) (*schema.Column, error)
+	ConvertTypeFunc       func(*schemaspec.Column) (schema.Type, error)
+	ConvertPrimaryKeyFunc func(*schemaspec.PrimaryKey, *schema.Table) (*schema.Index, error)
+	ConvertIndexFunc      func(*schemaspec.Index, *schema.Table) (*schema.Index, error)
+)
 
 // ConvertSchema converts a schemaspec.Schema into a schema.Schema.
-func ConvertSchema(spec *schemaspec.Schema, convertTable TableConverter) (*schema.Schema, error) {
+func ConvertSchema(spec *schemaspec.Schema, convertTable ConvertTableFunc) (*schema.Schema, error) {
 	sch := &schema.Schema{
 		Name: spec.Name,
 		Spec: spec,
@@ -37,8 +39,8 @@ func ConvertSchema(spec *schemaspec.Schema, convertTable TableConverter) (*schem
 // ConvertTable converts a schemaspec.Table to a schema.Table. Table conversion is done without converting
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the ConvertSchema function.
-func ConvertTable(spec *schemaspec.Table, parent *schema.Schema, convertColumn ColumnConverter,
-	convertPk PrimaryKeyConverter, convertIndex IndexConverter) (*schema.Table, error) {
+func ConvertTable(spec *schemaspec.Table, parent *schema.Schema, convertColumn ConvertColumnFunc,
+	convertPk ConvertPrimaryKeyFunc, convertIndex ConvertIndexFunc) (*schema.Table, error) {
 	tbl := &schema.Table{
 		Name:   spec.Name,
 		Schema: parent,
@@ -69,7 +71,7 @@ func ConvertTable(spec *schemaspec.Table, parent *schema.Schema, convertColumn C
 }
 
 // ConvertColumn converts a schemaspec.Column into a schema.Column.
-func ConvertColumn(spec *schemaspec.Column, conv TypeConverter) (*schema.Column, error) {
+func ConvertColumn(spec *schemaspec.Column, conv ConvertTypeFunc) (*schema.Column, error) {
 	out := &schema.Column{
 		Name: spec.Name,
 		Spec: spec,
