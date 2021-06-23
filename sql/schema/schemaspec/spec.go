@@ -135,6 +135,36 @@ type (
 	}
 )
 
+// Table returns the first table that matches the given name and reports whether such a table was found.
+func (s *Schema) Table(name string) (*Table, bool) {
+	for _, t := range s.Tables {
+		if t.Name == name {
+			return t, true
+		}
+	}
+	return nil, false
+}
+
+// Column returns the first column that matches the given name and reports whether such a column was found.
+func (t *Table) Column(name string) (*Column, bool) {
+	for _, c := range t.Columns {
+		if c.Name == name {
+			return c, true
+		}
+	}
+	return nil, false
+}
+
+// Index returns the first index that matches the given name and reports whether such a column was found.
+func (t *Table) Index(name string) (*Index, bool) {
+	for _, i := range t.Indexes {
+		if i.Name == name {
+			return i, true
+		}
+	}
+	return nil, false
+}
+
 // Attr returns the value of the Column attribute named `name` and reports whether such an attribute exists.
 func (c *Column) Attr(name string) (*Attr, bool) {
 	return getAttrVal(c.Attrs, name)
