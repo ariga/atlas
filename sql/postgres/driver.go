@@ -75,6 +75,9 @@ func (d *Driver) inspectTable(ctx context.Context, name string, opts *schema.Ins
 	if err := d.fks(ctx, t); err != nil {
 		return nil, err
 	}
+	if err := d.checks(ctx, t); err != nil {
+		return nil, err
+	}
 	return t, nil
 }
 
@@ -424,6 +427,41 @@ func (d *Driver) fks(ctx context.Context, t *schema.Table) error {
 	return rows.Err()
 }
 
+// checks queries and appends the check constraints of the given table.
+func (d *Driver) checks(ctx context.Context, t *schema.Table) error {
+	rows, err := d.QueryContext(ctx, checksQuery, t.Schema.Name, t.Name)
+	if err != nil {
+		return fmt.Errorf("mysql: querying %q check constraints: %w", t.Name, err)
+	}
+	defer rows.Close()
+	if err := d.addChecks(t, rows); err != nil {
+		return err
+	}
+	return rows.Err()
+}
+
+// addChecks scans the rows and adds the checks to the table.
+func (d *Driver) addChecks(t *schema.Table, rows *sql.Rows) error {
+	names := make(map[string]*Check)
+	for rows.Next() {
+		var name, column, clause, indexes string
+		if err := rows.Scan(&name, &clause, &column, &indexes); err != nil {
+			return fmt.Errorf("postgres: scanning check: %w", err)
+		}
+		if _, ok := t.Column(column); !ok {
+			return fmt.Errorf("postgres: column %q was not found for check %q", column, name)
+		}
+		check, ok := names[name]
+		if !ok {
+			check = &Check{Name: name, Clause: clause}
+			names[name] = check
+			t.Attrs = append(t.Attrs, check)
+		}
+		check.Columns = append(check.Columns, column)
+	}
+	return nil
+}
+
 type (
 	// UserDefinedType defines a user-defined type attribute.
 	UserDefinedType struct {
@@ -510,6 +548,14 @@ type (
 		NullsFirst bool
 		NullsLast  bool
 	}
+
+	// Check attributes defines a CHECK constraint.
+	Check struct {
+		schema.Attr
+		Name    string
+		Clause  string
+		Columns []string
+	}
 )
 
 const (
@@ -526,7 +572,7 @@ FROM
 	ON t1.table_name = t2.relname
 WHERE
 	t1.TABLE_TYPE = 'BASE TABLE'
-	AND t1.TABLE_NAME = ?
+	AND t1.TABLE_NAME = $1
 	AND t1.TABLE_SCHEMA = (CURRENT_SCHEMA())
 `
 	tableSchemaQuery = `
@@ -539,8 +585,8 @@ FROM
 	ON t1.table_name = t2.relname
 WHERE
 	t1.TABLE_TYPE = 'BASE TABLE'
-	AND t1.TABLE_NAME = ?
-	AND t1.TABLE_SCHEMA = ?
+	AND t1.TABLE_NAME = $1
+	AND t1.TABLE_SCHEMA = $2
 `
 	// Query to list table columns.
 	columnsQuery = `
@@ -564,7 +610,7 @@ FROM
 	LEFT JOIN pg_catalog.pg_type AS t2
 	ON t1.udt_name = t2.typname
 WHERE
-	TABLE_SCHEMA = ? AND TABLE_NAME = ?
+	TABLE_SCHEMA = $1 AND TABLE_NAME = $2
 `
 
 	// Query to list table indexes.
@@ -619,10 +665,29 @@ FROM
     AND t1.table_schema = t4.constraint_schema
 WHERE
     t1.constraint_type = 'FOREIGN KEY'
-    AND t1.table_schema = 'public'
-    AND t1.table_name = 't4'
+    AND t1.table_schema = $1
+    AND t1.table_name = $2
 ORDER BY
     t1.constraint_name,
     t2.ordinal_position
+`
+
+	// Query to list table check constraints.
+	checksQuery = `
+SELECT
+	t1.conname AS constraint_name,
+	pg_get_expr(t1.conbin, to_regclass($1 || '.' || $2)::oid) as expression,
+	t2.attname as column_name,
+	t1.conkey as column_indexes
+FROM
+	pg_catalog.pg_constraint t1
+	JOIN pg_attribute t2
+	ON t2.attrelid = t1.conrelid
+	AND t2.attnum = ANY (t1.conkey)
+WHERE
+	t1.contype = 'c'
+	AND t1.conrelid = to_regclass($1 || '.' || $2)::oid
+ORDER BY
+	t1.conname, array_position(t1.conkey, t2.attnum)
 `
 )

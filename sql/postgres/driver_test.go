@@ -92,6 +92,7 @@ func TestDriver_InspectTable(t *testing.T) {
 `))
 				m.noIndexes()
 				m.noFKs()
+				m.noChecks()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -153,6 +154,7 @@ func TestDriver_InspectTable(t *testing.T) {
 
 `))
 				m.noFKs()
+				m.noChecks()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -206,6 +208,7 @@ func TestDriver_InspectTable(t *testing.T) {
  self_reference  | users      | uid         | public       | users                 | id                     | public                 | NO ACTION   | CASCADE
 
 `))
+				m.noChecks()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -225,6 +228,57 @@ func TestDriver_InspectTable(t *testing.T) {
 				fks[1].RefColumns = columns[:1]
 				require.EqualValues(columns, t.Columns)
 				require.EqualValues(fks, t.ForeignKeys)
+			},
+		},
+		{
+			name: "check",
+			before: func(m mock) {
+				m.version("130000")
+				m.tableExists("public", "users", true)
+				m.ExpectQuery(sqltest.Escape(columnsQuery)).
+					WithArgs("public", "users").
+					WithArgs("public", "users").
+					WillReturnRows(sqltest.Rows(`
+ column_name | data_type | is_nullable | column_default | character_maximum_length | numeric_precision | numeric_scale | character_set_name | collation_name | udt_name | is_identity | comment | typtype | oid
+-------------+-----------+-------------+----------------+--------------------------+-------------------+---------------+--------------------+----------------+----------+-------------+---------+---------+-----
+ c1          | integer   | NO          |                |                          |                32 |             0 |                    |                | int4     | NO          |         | b       |  23
+ c2          | integer   | NO          |                |                          |                32 |             0 |                    |                | int4     | NO          |         | b       |  23
+ c3          | integer   | NO          |                |                          |                32 |             0 |                    |                | int4     | NO          |         | b       |  23
+`))
+				m.noIndexes()
+				m.noFKs()
+				m.ExpectQuery(sqltest.Escape(checksQuery)).
+					WithArgs("public", "users").
+					WillReturnRows(sqltest.Rows(`
+ constraint_name    |       expression        | column_name | column_indexes 
+--------------------+-------------------------+-------------+----------------
+ boring             | (c1 > 1)                | c1          | {1}
+ users_c2_check     | (c2 > 0)                | c2          | {2}
+ users_c2_check1    | (c2 > 0)                | c2          | {2}
+ users_check        | ((c2 + c1) > 2)         | c2          | {2,1}
+ users_check        | ((c2 + c1) > 2)         | c1          | {2,1}
+ users_check1       | (((c2 + c1) + c3) > 10) | c2          | {2,1,3}
+ users_check1       | (((c2 + c1) + c3) > 10) | c1          | {2,1,3}
+ users_check1       | (((c2 + c1) + c3) > 10) | c3          | {2,1,3}
+`))
+				m.noChecks()
+			},
+			expect: func(require *require.Assertions, t *schema.Table, err error) {
+				require.NoError(err)
+				require.Equal("users", t.Name)
+				require.Equal("public", t.Schema.Name)
+				require.EqualValues([]*schema.Column{
+					{Name: "c1", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer", Size: 4}}},
+					{Name: "c2", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer", Size: 4}}},
+					{Name: "c3", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer", Size: 4}}},
+				}, t.Columns)
+				require.EqualValues([]schema.Attr{
+					&Check{Name: "boring", Clause: "(c1 > 1)", Columns: []string{"c1"}},
+					&Check{Name: "users_c2_check", Clause: "(c2 > 0)", Columns: []string{"c2"}},
+					&Check{Name: "users_c2_check1", Clause: "(c2 > 0)", Columns: []string{"c2"}},
+					&Check{Name: "users_check", Clause: "((c2 + c1) > 2)", Columns: []string{"c2", "c1"}},
+					&Check{Name: "users_check1", Clause: "(((c2 + c1) + c3) > 10)", Columns: []string{"c2", "c1", "c3"}},
+				}, t.Attrs)
 			},
 		},
 	}
@@ -284,4 +338,9 @@ func (m mock) noIndexes() {
 func (m mock) noFKs() {
 	m.ExpectQuery(sqltest.Escape(fksQuery)).
 		WillReturnRows(sqlmock.NewRows([]string{"constraint_name", "table_name", "column_name", "referenced_table_name", "referenced_column_name", "referenced_table_schema", "update_rule", "delete_rule"}))
+}
+
+func (m mock) noChecks() {
+	m.ExpectQuery(sqltest.Escape(checksQuery)).
+		WillReturnRows(sqlmock.NewRows([]string{"constraint_name", "expression", "column_name", "column_indexes"}))
 }
