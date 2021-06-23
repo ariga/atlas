@@ -42,7 +42,7 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 		return nil, fmt.Errorf("postgres: unexpected number of rows: %d", len(params))
 	}
 	drv.collate, drv.ctype, drv.version = params[0], params[1], params[2]
-	if len(drv.version) < 6 {
+	if len(drv.version) != 6 {
 		return nil, fmt.Errorf("postgres: malformed version: %s", drv.version)
 	}
 	drv.version = fmt.Sprintf("%s.%s.%s", drv.version[:2], drv.version[2:4], drv.version[4:])
@@ -50,6 +50,61 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 		return nil, fmt.Errorf("postgres: unsupported postgres version: %s", drv.version)
 	}
 	return drv, nil
+}
+
+// InspectRealm returns schema descriptions of all resources in the given realm.
+func (d *Driver) InspectRealm(ctx context.Context, opts *schema.InspectRealmOption) (*schema.Realm, error) {
+	schemas, err := d.schemas(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	realm := &schema.Realm{Schemas: schemas, Attrs: []schema.Attr{&schema.Collation{V: d.collate}, &CType{V: d.ctype}}}
+	for _, s := range schemas {
+		names, err := d.tableNames(ctx, s.Name, nil)
+		if err != nil {
+			return nil, err
+		}
+		for _, name := range names {
+			t, err := d.inspectTable(ctx, name, &schema.InspectTableOptions{Schema: s.Name}, s)
+			if err != nil {
+				return nil, err
+			}
+			s.Tables = append(s.Tables, t)
+		}
+		s.Realm = realm
+	}
+	sqlx.LinkSchemaTables(schemas)
+	return realm, nil
+}
+
+// InspectSchema returns schema descriptions of all tables in the given schema.
+func (d *Driver) InspectSchema(ctx context.Context, name string, opts *schema.InspectOptions) (*schema.Schema, error) {
+	schemas, err := d.schemas(ctx, &schema.InspectRealmOption{
+		Schemas: []string{name},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(schemas) == 0 {
+		return nil, &schema.NotExistError{
+			Err: fmt.Errorf("postgres: schema %q was not found", name),
+		}
+	}
+	names, err := d.tableNames(ctx, name, opts)
+	if err != nil {
+		return nil, err
+	}
+	s := schemas[0]
+	for _, name := range names {
+		t, err := d.inspectTable(ctx, name, &schema.InspectTableOptions{Schema: s.Name}, s)
+		if err != nil {
+			return nil, err
+		}
+		s.Tables = append(s.Tables, t)
+	}
+	sqlx.LinkSchemaTables(schemas)
+	s.Realm = &schema.Realm{Schemas: schemas, Attrs: []schema.Attr{&schema.Collation{V: d.collate}, &CType{V: d.ctype}}}
+	return s, nil
 }
 
 // InspectTable returns the schema description of the given table.
@@ -462,7 +517,64 @@ func (d *Driver) addChecks(t *schema.Table, rows *sql.Rows) error {
 	return nil
 }
 
+// schemas returns the list of the schemas in the database.
+func (d *Driver) schemas(ctx context.Context, opts *schema.InspectRealmOption) ([]*schema.Schema, error) {
+	var (
+		args  []interface{}
+		query = schemasQuery + " WHERE schema_name "
+	)
+	if opts != nil && len(opts.Schemas) > 0 {
+		query, args = inStrings(opts.Schemas, query, args)
+	} else {
+		query += "NOT IN ('information_schema', 'pg_catalog', 'pg_toast')"
+	}
+	rows, err := d.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: querying schemas: %w", err)
+	}
+	defer rows.Close()
+	var schemas []*schema.Schema
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		schemas = append(schemas, &schema.Schema{
+			Name: name,
+		})
+	}
+	return schemas, nil
+}
+
+// tableNames returns a list of all tables exist in the schema.
+func (d *Driver) tableNames(ctx context.Context, schema string, opts *schema.InspectOptions) ([]string, error) {
+	query, args := tablesQuery, []interface{}{schema}
+	if opts != nil && len(opts.Tables) > 0 {
+		query += " AND table_name "
+		query, args = inStrings(opts.Tables, query, args)
+	}
+	rows, err := d.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: querying schema tables: %w", err)
+	}
+	defer rows.Close()
+	var names []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, fmt.Errorf("postgres: scanning table name: %w", err)
+		}
+		names = append(names, name)
+	}
+	return names, nil
+}
+
 type (
+	// CType describes the character classification setting (LC_CTYPE).
+	CType struct {
+		schema.Attr
+		V string
+	}
 	// UserDefinedType defines a user-defined type attribute.
 	UserDefinedType struct {
 		schema.Type
@@ -561,19 +673,26 @@ type (
 const (
 	// Query to list runtime parameters.
 	paramsQuery = `SELECT setting FROM pg_settings WHERE name IN ('lc_collate', 'lc_ctype', 'server_version_num') ORDER BY name`
+
+	// Query to list database schemas.
+	schemasQuery = "SELECT schema_name FROM information_schema.schemata"
+
+	// Query to list schema tables.
+	tablesQuery = "SELECT table_name FROM information_schema.tables WHERE table_schema = $1"
+
 	// Query to list table information.
 	tableQuery = `
 SELECT
-	t1.TABLE_SCHEMA,
+	t1.table_schema,
 	pg_catalog.obj_description(t2.oid, 'pg_class') AS COMMENT
 FROM
-	INFORMATION_SCHEMA.TABLES AS t1
+	information_schema.tables AS t1
 	INNER JOIN pg_catalog.pg_class AS t2
 	ON t1.table_name = t2.relname
 WHERE
-	t1.TABLE_TYPE = 'BASE TABLE'
-	AND t1.TABLE_NAME = $1
-	AND t1.TABLE_SCHEMA = (CURRENT_SCHEMA())
+	t1.table_type = 'BASE TABLE'
+	AND t1.table_name = $1
+	AND t1.table_schema = (CURRENT_SCHEMA())
 `
 	tableSchemaQuery = `
 SELECT
@@ -691,3 +810,16 @@ ORDER BY
 	t1.conname, array_position(t1.conkey, t2.attnum)
 `
 )
+
+func inStrings(s []string, query string, args []interface{}) (string, []interface{}) {
+	query += "IN ("
+	for i := range s {
+		args = append(args, s[i])
+		if i > 0 {
+			query += ", "
+		}
+		query += fmt.Sprintf("$%d", len(args))
+	}
+	query += ")"
+	return query, args
+}

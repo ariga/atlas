@@ -53,7 +53,7 @@ func (d *Driver) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpti
 		}
 		s.Realm = realm
 	}
-	linkSchemaTables(schemas)
+	sqlx.LinkSchemaTables(schemas)
 	return realm, nil
 }
 
@@ -82,7 +82,7 @@ func (d *Driver) InspectSchema(ctx context.Context, name string, opts *schema.In
 		}
 		s.Tables = append(s.Tables, t)
 	}
-	linkSchemaTables(schemas)
+	sqlx.LinkSchemaTables(schemas)
 	s.Realm = &schema.Realm{Schemas: schemas, Attrs: []schema.Attr{&schema.Charset{V: d.charset}, &schema.Collation{V: d.collate}}}
 	return s, nil
 }
@@ -585,39 +585,6 @@ func extraAttr(c *schema.Column, extra string) error {
 		return fmt.Errorf("unknown attribute %q", extra)
 	}
 	return nil
-}
-
-// linkSchemaTables links foreign-key stub tables/columns to actual elements.
-func linkSchemaTables(schemas []*schema.Schema) {
-	byName := make(map[string]map[string]*schema.Table)
-	for _, s := range schemas {
-		byName[s.Name] = make(map[string]*schema.Table)
-		for _, t := range s.Tables {
-			t.Schema = s
-			byName[s.Name][t.Name] = t
-		}
-	}
-	for _, s := range schemas {
-		for _, t := range s.Tables {
-			for _, fk := range t.ForeignKeys {
-				rs, ok := byName[fk.RefTable.Schema.Name]
-				if !ok {
-					continue
-				}
-				ref, ok := rs[fk.RefTable.Name]
-				if !ok {
-					continue
-				}
-				fk.RefTable = ref
-				for i, c := range fk.RefColumns {
-					rc, ok := ref.Column(c.Name)
-					if ok {
-						fk.RefColumns[i] = rc
-					}
-				}
-			}
-		}
-	}
 }
 
 const (

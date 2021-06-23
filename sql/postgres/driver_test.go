@@ -295,6 +295,87 @@ func TestDriver_InspectTable(t *testing.T) {
 	}
 }
 
+func TestDriver_Realm(t *testing.T) {
+	db, m, err := sqlmock.New()
+	require.NoError(t, err)
+	mk := mock{m}
+	mk.version("130000")
+	drv, err := Open(db)
+	require.NoError(t, err)
+	mk.ExpectQuery(sqltest.Escape(schemasQuery + " WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast')")).
+		WillReturnRows(sqltest.Rows(`
+    schema_name
+--------------------
+ test
+ public
+`))
+	mk.tables("test")
+	mk.tables("public")
+	realm, err := drv.InspectRealm(context.Background(), &schema.InspectRealmOption{})
+	require.NoError(t, err)
+	require.EqualValues(t, func() *schema.Realm {
+		r := &schema.Realm{
+			Schemas: []*schema.Schema{
+				{
+					Name: "test",
+				},
+				{
+					Name: "public",
+				},
+			},
+			// Server default configuration.
+			Attrs: []schema.Attr{
+				&schema.Collation{
+					V: "en_US.utf8",
+				},
+				&CType{
+					V: "en_US.utf8",
+				},
+			},
+		}
+		r.Schemas[0].Realm = r
+		r.Schemas[1].Realm = r
+		return r
+	}(), realm)
+
+	mk.ExpectQuery(sqltest.Escape(schemasQuery+" WHERE schema_name IN ($1, $2)")).
+		WithArgs("test", "public").
+		WillReturnRows(sqltest.Rows(`
+    schema_name
+--------------------
+ test
+ public
+`))
+	mk.tables("test")
+	mk.tables("public")
+	realm, err = drv.InspectRealm(context.Background(), &schema.InspectRealmOption{Schemas: []string{"test", "public"}})
+	require.NoError(t, err)
+	require.EqualValues(t, func() *schema.Realm {
+		r := &schema.Realm{
+			Schemas: []*schema.Schema{
+				{
+					Name: "test",
+				},
+				{
+					Name: "public",
+				},
+			},
+			// Server default configuration.
+			Attrs: []schema.Attr{
+				&schema.Collation{
+					V: "en_US.utf8",
+				},
+				&CType{
+					V: "en_US.utf8",
+				},
+			},
+		}
+		r.Schemas[0].Realm = r
+		r.Schemas[1].Realm = r
+		return r
+	}(), realm)
+}
+
 type mock struct {
 	sqlmock.Sqlmock
 }
@@ -343,4 +424,14 @@ func (m mock) noFKs() {
 func (m mock) noChecks() {
 	m.ExpectQuery(sqltest.Escape(checksQuery)).
 		WillReturnRows(sqlmock.NewRows([]string{"constraint_name", "expression", "column_name", "column_indexes"}))
+}
+
+func (m mock) tables(schema string, names ...string) {
+	rows := sqlmock.NewRows([]string{"table_name"})
+	for i := range names {
+		rows.AddRow(names[i])
+	}
+	m.ExpectQuery(sqltest.Escape(tablesQuery)).
+		WithArgs(schema).
+		WillReturnRows(rows)
 }
