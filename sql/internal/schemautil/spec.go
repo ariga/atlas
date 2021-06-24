@@ -23,7 +23,7 @@ func LitAttr(k, v string) *schemaspec.Attr {
 	}
 }
 
-// ListAttr is a helper method for constructing *schemaspec.Column instances that contain list values.
+// ListAttr is a helper method for constructing *schemaspec.Attr instances that contain list values.
 func ListAttr(k string, values ...string) *schemaspec.Attr {
 	for i, v := range values {
 		values[i] = strconv.Quote(v)
