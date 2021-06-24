@@ -1,9 +1,9 @@
 package mysql
 
 import (
-	"strconv"
 	"testing"
 
+	"ariga.io/atlas/sql/internal/schemautil"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/schema/schemaspec"
 	"github.com/stretchr/testify/require"
@@ -163,7 +163,7 @@ func TestConvertColumnType(t *testing.T) {
 		expected schema.Type
 	}{
 		{
-			spec: colspec("int", "int"),
+			spec: schemautil.ColSpec("int", "int"),
 			expected: &schema.IntegerType{
 				T:        tInt,
 				Unsigned: false,
@@ -171,7 +171,7 @@ func TestConvertColumnType(t *testing.T) {
 			},
 		},
 		{
-			spec: colspec("uint", "uint"),
+			spec: schemautil.ColSpec("uint", "uint"),
 			expected: &schema.IntegerType{
 				T:        tInt,
 				Unsigned: true,
@@ -179,7 +179,7 @@ func TestConvertColumnType(t *testing.T) {
 			},
 		},
 		{
-			spec: colspec("int8", "int8"),
+			spec: schemautil.ColSpec("int8", "int8"),
 			expected: &schema.IntegerType{
 				T:        tTinyInt,
 				Unsigned: false,
@@ -187,7 +187,7 @@ func TestConvertColumnType(t *testing.T) {
 			},
 		},
 		{
-			spec: colspec("int64", "int64"),
+			spec: schemautil.ColSpec("int64", "int64"),
 			expected: &schema.IntegerType{
 				T:        tBigInt,
 				Unsigned: false,
@@ -195,7 +195,7 @@ func TestConvertColumnType(t *testing.T) {
 			},
 		},
 		{
-			spec: colspec("uint64", "uint64"),
+			spec: schemautil.ColSpec("uint64", "uint64"),
 			expected: &schema.IntegerType{
 				T:        tBigInt,
 				Unsigned: true,
@@ -203,35 +203,35 @@ func TestConvertColumnType(t *testing.T) {
 			},
 		},
 		{
-			spec: colspec("string_varchar", "string", attr("size", "255")),
+			spec: schemautil.ColSpec("string_varchar", "string", schemautil.LitAttr("size", "255")),
 			expected: &schema.StringType{
 				T:    tVarchar,
 				Size: 255,
 			},
 		},
 		{
-			spec: colspec("string_mediumtext", "string", attr("size", "100000")),
+			spec: schemautil.ColSpec("string_mediumtext", "string", schemautil.LitAttr("size", "100000")),
 			expected: &schema.StringType{
 				T:    tMediumText,
 				Size: 100_000,
 			},
 		},
 		{
-			spec: colspec("string_longtext", "string", attr("size", "17000000")),
+			spec: schemautil.ColSpec("string_longtext", "string", schemautil.LitAttr("size", "17000000")),
 			expected: &schema.StringType{
 				T:    tLongText,
 				Size: 17_000_000,
 			},
 		},
 		{
-			spec: colspec("varchar(255)", "varchar(255)"),
+			spec: schemautil.ColSpec("varchar(255)", "varchar(255)"),
 			expected: &schema.StringType{
 				T:    tVarchar,
 				Size: 255,
 			},
 		},
 		{
-			spec: colspec("decimal(10, 2) unsigned", "decimal(10, 2) unsigned"),
+			spec: schemautil.ColSpec("decimal(10, 2) unsigned", "decimal(10, 2) unsigned"),
 			expected: &schema.DecimalType{
 				T:         tDecimal,
 				Scale:     2,
@@ -239,50 +239,50 @@ func TestConvertColumnType(t *testing.T) {
 			},
 		},
 		{
-			spec: colspec("blob", "binary"),
+			spec: schemautil.ColSpec("blob", "binary"),
 			expected: &schema.BinaryType{
 				T: tBlob,
 			},
 		},
 		{
-			spec: colspec("tinyblob", "binary", attr("size", "16")),
+			spec: schemautil.ColSpec("tinyblob", "binary", schemautil.LitAttr("size", "16")),
 			expected: &schema.BinaryType{
 				T:    tTinyBlob,
 				Size: 16,
 			},
 		},
 		{
-			spec: colspec("mediumblob", "binary", attr("size", "100000")),
+			spec: schemautil.ColSpec("mediumblob", "binary", schemautil.LitAttr("size", "100000")),
 			expected: &schema.BinaryType{
 				T:    tMediumBlob,
 				Size: 100_000,
 			},
 		},
 		{
-			spec: colspec("longblob", "binary", attr("size", "20000000")),
+			spec: schemautil.ColSpec("longblob", "binary", schemautil.LitAttr("size", "20000000")),
 			expected: &schema.BinaryType{
 				T:    tLongBlob,
 				Size: 20_000_000,
 			},
 		},
 		{
-			spec:     colspec("enum", "enum", listattr("values", "a", "b", "c")),
+			spec:     schemautil.ColSpec("enum", "enum", schemautil.ListAttr("values", "a", "b", "c")),
 			expected: &schema.EnumType{Values: []string{"a", "b", "c"}},
 		},
 		{
-			spec:     colspec("bool", "boolean"),
+			spec:     schemautil.ColSpec("bool", "boolean"),
 			expected: &schema.BoolType{T: "boolean"},
 		},
 		{
-			spec:     colspec("decimal", "decimal", attr("precision", "10"), attr("scale", "2")),
+			spec:     schemautil.ColSpec("decimal", "decimal", schemautil.LitAttr("precision", "10"), schemautil.LitAttr("scale", "2")),
 			expected: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
 		},
 		{
-			spec:     colspec("float", "float", attr("precision", "10")),
+			spec:     schemautil.ColSpec("float", "float", schemautil.LitAttr("precision", "10")),
 			expected: &schema.FloatType{T: "float", Precision: 10},
 		},
 		{
-			spec:     colspec("float", "float", attr("precision", "25")),
+			spec:     schemautil.ColSpec("float", "float", schemautil.LitAttr("precision", "25")),
 			expected: &schema.FloatType{T: "double", Precision: 25},
 		},
 	} {
@@ -291,30 +291,5 @@ func TestConvertColumnType(t *testing.T) {
 			require.NoError(t, err)
 			require.EqualValues(t, tt.expected, columnType)
 		})
-	}
-}
-
-func colspec(name, coltype string, attrs ...*schemaspec.Attr) *schemaspec.Column {
-	return &schemaspec.Column{
-		Name:  name,
-		Type:  coltype,
-		Attrs: attrs,
-	}
-}
-
-func attr(k, v string) *schemaspec.Attr {
-	return &schemaspec.Attr{
-		K: k,
-		V: &schemaspec.LiteralValue{V: v},
-	}
-}
-
-func listattr(k string, values ...string) *schemaspec.Attr {
-	for i, v := range values {
-		values[i] = strconv.Quote(v)
-	}
-	return &schemaspec.Attr{
-		K: k,
-		V: &schemaspec.ListValue{V: values},
 	}
 }
