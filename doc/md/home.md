@@ -4,6 +4,7 @@ title: Atlas
 slug: /
 sidebar_position: 1
 ---
+
 ### Welcome to the Future of Database Migrations
 Atlas is a set of tools designed to help companies better manage changes to databases.
 It is conceptually similar to infrastructure-as-code projects (such as Terraform, etc.),
@@ -15,7 +16,7 @@ their ORM libraries, very close to the application code. Atlas strives to change
 approach and to help organizations push schema management (provisioning, change management,
 visibility, etc.) down to the infrastructure layer.
 
-### The Atlas Project includes:
+The Atlas Project includes:
 * The Atlas DDL - an HCL-based, dialect-agnostic, data definition language designed to
   describe all entity types and their relations across an organization.
 * A set of Go packages that can:
