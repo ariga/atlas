@@ -16,7 +16,7 @@ their ORM libraries, very close to the application code. Atlas strives to change
 approach and to help organizations push schema management (provisioning, change management,
 visibility, etc.) down to the infrastructure layer.
 
-### The Atlas Project includes
+The Atlas Project includes:
 * The Atlas DDL - an HCL-based, dialect-agnostic, data definition language designed to
   describe all entity types and their relations across an organization.
 * A set of Go packages that can:
