@@ -30,7 +30,8 @@
     "trim": "^0.0.3",
     "browserslist": "^4.16.5",
     "glob-parent": "^5.1.2",
-    "css-what": "^5.0.1"
+    "css-what": "^5.0.1",
+    "prismjs": "^1.24.0"
   },
   "browserslist": {
     "production": [
