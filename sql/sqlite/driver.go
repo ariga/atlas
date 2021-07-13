@@ -67,7 +67,39 @@ func (d *Driver) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpti
 		}
 		s.Realm = realm
 	}
+	sqlx.LinkSchemaTables(realm.Schemas)
 	return realm, nil
+}
+
+// InspectSchema returns schema descriptions of all tables in the given schema.
+func (d *Driver) InspectSchema(ctx context.Context, name string, _ *schema.InspectOptions) (*schema.Schema, error) {
+	schemas, err := d.databases(ctx, &schema.InspectRealmOption{
+		Schemas: []string{name},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(schemas) == 0 {
+		return nil, &schema.NotExistError{
+			Err: fmt.Errorf("sqlite: schema %q was not found", name),
+		}
+	}
+	tables, err := d.tables(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	s := schemas[0]
+	for _, t := range tables {
+		t, err := d.inspectTable(ctx, t)
+		if err != nil {
+			return nil, err
+		}
+		t.Schema = s
+		s.Tables = append(s.Tables, t)
+	}
+	sqlx.LinkSchemaTables(schemas)
+	s.Realm = &schema.Realm{Schemas: schemas}
+	return s, nil
 }
 
 // InspectTable returns the schema description of the given table.
@@ -94,6 +126,9 @@ func (d *Driver) inspectTable(ctx context.Context, t *schema.Table) (*schema.Tab
 		return nil, err
 	}
 	if err := d.indexes(ctx, t); err != nil {
+		return nil, err
+	}
+	if err := d.fks(ctx, t); err != nil {
 		return nil, err
 	}
 	return t, nil
@@ -274,6 +309,71 @@ func (d *Driver) indexColumns(ctx context.Context, t *schema.Table, idx *schema.
 	return nil
 }
 
+// fks queries and appends the foreign-keys of the given table.
+func (d *Driver) fks(ctx context.Context, t *schema.Table) error {
+	rows, err := d.QueryContext(ctx, fmt.Sprintf(fksQuery, t.Name))
+	if err != nil {
+		return fmt.Errorf("sqlite: querying %q foreign-keys: %w", t.Name, err)
+	}
+	if err := d.addFKs(t, rows); err != nil {
+		return fmt.Errorf("sqlite: scan %q foreign-keys: %w", t.Name, err)
+	}
+	return nil
+}
+
+func (d *Driver) addFKs(t *schema.Table, rows *sql.Rows) error {
+	ids := make(map[int]*schema.ForeignKey)
+	for rows.Next() {
+		var (
+			id                                                  int
+			column, refColumn, refTable, updateRule, deleteRule string
+		)
+		if err := rows.Scan(&id, &column, &refColumn, &refTable, &updateRule, &deleteRule); err != nil {
+			return err
+		}
+		fk, ok := ids[id]
+		if !ok {
+			fk = &schema.ForeignKey{
+				Symbol:   strconv.Itoa(id),
+				Table:    t,
+				RefTable: t,
+				OnDelete: schema.ReferenceOption(deleteRule),
+				OnUpdate: schema.ReferenceOption(updateRule),
+			}
+			if refTable != t.Name {
+				fk.RefTable = &schema.Table{Name: refTable}
+			}
+			ids[id] = fk
+			t.ForeignKeys = append(t.ForeignKeys, fk)
+		}
+		c, ok := t.Column(column)
+		if !ok {
+			return fmt.Errorf("column %q was not found for fk %q", column, fk.Symbol)
+		}
+		// Rows are ordered by SEQ that specifies the
+		// position of the column in the FK definition.
+		if _, ok := fk.Column(c.Name); !ok {
+			fk.Columns = append(fk.Columns, c)
+			c.ForeignKeys = append(c.ForeignKeys, fk)
+		}
+
+		// Stub referenced columns or link if it's a self-reference.
+		var rc *schema.Column
+		if fk.Table != fk.RefTable {
+			rc = &schema.Column{Name: refColumn}
+		} else if c, ok := t.Column(refColumn); ok {
+			rc = c
+		} else {
+			return fmt.Errorf("referenced column %q was not found for fk %q", refColumn, fk.Symbol)
+		}
+		if _, ok := fk.RefColumn(rc.Name); !ok {
+			fk.RefColumns = append(fk.RefColumns, rc)
+		}
+	}
+	// TODO(a8m): extract the foreign-key name from the `CREATE TABLE` statement.
+	return nil
+}
+
 // tableNames returns a list of all tables exist in the schema.
 func (d *Driver) tables(ctx context.Context, opts *schema.InspectOptions) ([]*schema.Table, error) {
 	var (
@@ -326,7 +426,7 @@ func (d *Driver) databases(ctx context.Context, opts *schema.InspectRealmOption)
 	}
 	rows, err := d.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("postgres: querying schemas: %w", err)
+		return nil, fmt.Errorf("sqlite: querying schemas: %w", err)
 	}
 	defer rows.Close()
 	var schemas []*schema.Schema
@@ -404,4 +504,6 @@ const (
 	indexesQuery = "SELECT `il`.`name`, `il`.`unique`, `il`.`origin`, `il`.`partial`, `m`.`sql` FROM pragma_index_list('%s') AS il JOIN sqlite_master AS m ON il.name = m.name"
 	// Query to list index columns.
 	indexColumnsQuery = "SELECT name FROM pragma_index_info('%s') ORDER BY seqno"
+	// Query to list table foreign-keys.
+	fksQuery = "SELECT `id`, `from`, `to`, `table`, `on_update`, `on_delete` FROM pragma_foreign_key_list('%s') ORDER BY id, seq"
 )
