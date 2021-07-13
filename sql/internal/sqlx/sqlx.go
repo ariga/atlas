@@ -97,3 +97,17 @@ func LinkSchemaTables(schemas []*schema.Schema) {
 		}
 	}
 }
+
+// ScanStrings scans sql.Rows into a slice of strings and closes it at the end.
+func ScanStrings(rows *sql.Rows) ([]string, error) {
+	defer rows.Close()
+	var vs []string
+	for rows.Next() {
+		var v string
+		if err := rows.Scan(&v); err != nil {
+			return nil, err
+		}
+		vs = append(vs, v)
+	}
+	return vs, nil
+}

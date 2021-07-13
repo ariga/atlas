@@ -530,14 +530,9 @@ func (d *Driver) tableNames(ctx context.Context, schema string, opts *schema.Ins
 	if err != nil {
 		return nil, fmt.Errorf("mysql: querying schema tables: %w", err)
 	}
-	defer rows.Close()
-	var names []string
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			return nil, fmt.Errorf("mysql: scanning table name: %w", err)
-		}
-		names = append(names, name)
+	names, err := sqlx.ScanStrings(rows)
+	if err != nil {
+		return nil, fmt.Errorf("mysql: scanning table names: %w", err)
 	}
 	return names, nil
 }
