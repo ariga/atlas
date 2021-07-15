@@ -82,8 +82,7 @@ func TestConvertSchema(t *testing.T) {
 					Name: "col",
 					Type: &schema.ColumnType{
 						Type: &schema.IntegerType{
-							T:    "integer",
-							Size: 4,
+							T: "integer",
 						},
 					},
 					Spec: spec.Tables[0].Columns[0],
@@ -92,8 +91,7 @@ func TestConvertSchema(t *testing.T) {
 					Name: "age",
 					Type: &schema.ColumnType{
 						Type: &schema.IntegerType{
-							T:    "integer",
-							Size: 4,
+							T: "integer",
 						},
 					},
 					Spec: spec.Tables[0].Columns[1],
@@ -168,7 +166,6 @@ func TestConvertColumnType(t *testing.T) {
 			expected: &schema.IntegerType{
 				T:        "integer",
 				Unsigned: false,
-				Size:     4,
 			},
 		},
 		{
@@ -184,7 +181,6 @@ func TestConvertColumnType(t *testing.T) {
 			expected: &schema.IntegerType{
 				T:        "bigint",
 				Unsigned: false,
-				Size:     8,
 			},
 		},
 		{

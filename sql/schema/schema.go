@@ -195,7 +195,6 @@ type (
 	IntegerType struct {
 		T        string
 		Unsigned bool
-		Size     uint8 // Size is the size in bytes used to store the value.
 		Attrs    []Attr
 	}
 

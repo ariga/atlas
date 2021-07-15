@@ -20,7 +20,6 @@ func TestConvertColumnType(t *testing.T) {
 			expected: &schema.IntegerType{
 				T:        "integer",
 				Unsigned: false,
-				Size:     4,
 			},
 		},
 		{
@@ -32,7 +31,6 @@ func TestConvertColumnType(t *testing.T) {
 			expected: &schema.IntegerType{
 				T:        "integer",
 				Unsigned: false,
-				Size:     8,
 			},
 		},
 		{

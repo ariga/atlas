@@ -66,16 +66,12 @@ func convertInteger(spec *schemaspec.Column) (schema.Type, error) {
 	}
 	switch spec.Type {
 	case "int8", "uint8":
-		typ.Size = 1
 		typ.T = tTinyInt
 	case "int16", "uint16":
-		typ.Size = 2
 		typ.T = tSmallInt
 	case "int32", "uint32", "int", "integer", "uint":
-		typ.Size = 4
 		typ.T = tInt
 	case "int64", "uint64":
-		typ.Size = 8
 		typ.T = tBigInt
 	default:
 		return nil, fmt.Errorf("mysql: unknown integer column type %q", spec.Type)
