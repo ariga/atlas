@@ -132,6 +132,9 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 		},
 	}
 	c.Type.Type, err = parseRawType(typ.String)
+	if err != nil {
+		return err
+	}
 	// TODO(a8m): extract collation from 'CREATE TABLE' statement.
 	t.Columns = append(t.Columns, c)
 	if primary {
