@@ -119,8 +119,9 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 	var (
 		nullable, primary   bool
 		name, typ, defaults sql.NullString
+		err                 error
 	)
-	if err := rows.Scan(&name, &typ, &nullable, &defaults, &primary); err != nil {
+	if err = rows.Scan(&name, &typ, &nullable, &defaults, &primary); err != nil {
 		return err
 	}
 	c := &schema.Column{
@@ -130,49 +131,7 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 			Null: nullable,
 		},
 	}
-	parts := columnParts(typ.String)
-	switch t := parts[0]; t {
-	case "bool", "boolean":
-		c.Type.Type = &schema.BoolType{T: t}
-	case "blob":
-		c.Type.Type = &schema.BinaryType{T: t}
-	case "int2", "int8", "int", "integer", "tinyint", "smallint", "mediumint", "bigint", "unsigned big int":
-		// All integer types have the same "type affinity".
-		c.Type.Type = &schema.IntegerType{T: t}
-	case "real", "double", "double precision", "float":
-		c.Type.Type = &schema.FloatType{T: t}
-	case "numeric", "decimal":
-		ct := &schema.DecimalType{T: t}
-		if len(parts) > 1 {
-			p, err := strconv.ParseInt(parts[1], 10, 64)
-			if err != nil {
-				return fmt.Errorf("parse precision %q", parts[1])
-			}
-			ct.Precision = int(p)
-		}
-		if len(parts) > 2 {
-			s, err := strconv.ParseInt(parts[2], 10, 64)
-			if err != nil {
-				return fmt.Errorf("parse scale %q", parts[1])
-			}
-			ct.Scale = int(s)
-		}
-		c.Type.Type = ct
-	case "character", "varchar", "varying character", "nchar", "native character", "nvarchar", "text", "clob":
-		ct := &schema.StringType{T: t}
-		if len(parts) > 1 {
-			p, err := strconv.ParseInt(parts[1], 10, 64)
-			if err != nil {
-				return fmt.Errorf("parse size %q", parts[1])
-			}
-			ct.Size = int(p)
-		}
-		c.Type.Type = ct
-	case "json":
-		c.Type.Type = &schema.JSONType{T: t}
-	case "date", "datetime":
-		c.Type.Type = &schema.TimeType{T: t}
-	}
+	c.Type.Type, err = parseRawType(typ.String)
 	// TODO(a8m): extract collation from 'CREATE TABLE' statement.
 	t.Columns = append(t.Columns, c)
 	if primary {
@@ -190,6 +149,54 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 		})
 	}
 	return nil
+}
+
+func parseRawType(c string) (schema.Type, error) {
+	parts := columnParts(c)
+	switch t := parts[0]; t {
+	case "bool", "boolean":
+		return &schema.BoolType{T: t}, nil
+	case "blob":
+		return &schema.BinaryType{T: t}, nil
+	case "int2", "int8", "int", "integer", "tinyint", "smallint", "mediumint", "bigint", "unsigned big int":
+		// All integer types have the same "type affinity".
+		return &schema.IntegerType{T: t}, nil
+	case "real", "double", "double precision", "float":
+		return &schema.FloatType{T: t}, nil
+	case "numeric", "decimal":
+		ct := &schema.DecimalType{T: t}
+		if len(parts) > 1 {
+			p, err := strconv.ParseInt(parts[1], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("parse precision %q", parts[1])
+			}
+			ct.Precision = int(p)
+		}
+		if len(parts) > 2 {
+			s, err := strconv.ParseInt(parts[2], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("parse scale %q", parts[1])
+			}
+			ct.Scale = int(s)
+		}
+		return ct, nil
+	case "character", "varchar", "varying character", "nchar", "native character", "nvarchar", "text", "clob":
+		ct := &schema.StringType{T: t}
+		if len(parts) > 1 {
+			p, err := strconv.ParseInt(parts[1], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("parse size %q", parts[1])
+			}
+			ct.Size = int(p)
+		}
+		return ct, nil
+	case "json":
+		return &schema.JSONType{T: t}, nil
+	case "date", "datetime":
+		return &schema.TimeType{T: t}, nil
+	default:
+		return nil, fmt.Errorf("unknown column type %q", t)
+	}
 }
 
 // indexes queries and appends the indexes of the given table.
