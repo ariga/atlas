@@ -220,3 +220,28 @@ func TestRewriteHCL(t *testing.T) {
 		})
 	}
 }
+
+func TestColumnOverride(t *testing.T) {
+	h := `schema "todo" {
+
+}
+
+table "user" {
+  schema = schema.todo
+  column "name" {
+    type = "string"
+    dialect "mysql" {
+      type = "varchar(255)"
+    }
+  }
+}`
+	decoded := &schemaspec.Schema{}
+	err := Decode([]byte(h), decoded)
+	require.NoError(t, err)
+	ut, ok := decoded.Table("user")
+	require.True(t, ok)
+	name, ok := ut.Column("name")
+	require.True(t, ok)
+	mo := name.OverridesFor("mysql")
+	require.NotNil(t, mo)
+}

@@ -80,7 +80,18 @@ func writeColumn(c *schemaspec.Column, body *hclwrite.Body) error {
 	if c.Null {
 		nb.SetAttributeValue("null", cty.BoolVal(c.Null))
 	}
+	for _, ov := range c.Overrides {
+		if err := writeOverride(ov, nb); err != nil {
+			return err
+		}
+	}
 	return writeCommon(c.Attrs, c.Children, nb)
+}
+
+func writeOverride(o *schemaspec.Override, body *hclwrite.Body) error {
+	blk := body.AppendNewBlock("dialect", []string{o.Dialect})
+	nb := blk.Body()
+	return writeCommon(o.Attrs, o.Children, nb)
 }
 
 func writePk(pk *schemaspec.PrimaryKey, body *hclwrite.Body) error {

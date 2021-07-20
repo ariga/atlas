@@ -50,3 +50,35 @@ func TestAccessors(t *testing.T) {
 	_, ok = t1.Index("idx2")
 	require.False(t, ok)
 }
+
+func TestColumn_OverridesFor(t *testing.T) {
+	col := &Column{}
+	col.Overrides = []*Override{
+		{
+			Dialect: "mysql",
+			Resource: &Resource{
+				Attrs: []*Attr{
+					{
+						K: "type",
+						V: &LiteralValue{V: "varchar(100)"},
+					},
+				},
+			},
+		},
+		{
+			Dialect: "postgres",
+			Resource: &Resource{
+				Attrs: []*Attr{
+					{
+						K: "type",
+						V: &LiteralValue{V: "varchar(200)"},
+					},
+				},
+			},
+		},
+	}
+	myo := col.OverridesFor("mysql")
+	require.EqualValues(t, myo.Attrs[0], col.Overrides[0].Attrs[0])
+	pgo := col.OverridesFor("postgres")
+	require.EqualValues(t, pgo.Attrs[0], col.Overrides[1].Attrs[0])
+}
