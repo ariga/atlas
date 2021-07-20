@@ -143,7 +143,7 @@ type (
 		V []string
 	}
 
-	// Overrider is the interface that wraps OverridesFor. schema.Element types that implement
+	// Overrider is the interface that wraps OverridesFor. Element types that implement
 	// this interface can expose an Override object for a specific dialect.
 	Overrider interface {
 		OverridesFor(dialect string) *Override
