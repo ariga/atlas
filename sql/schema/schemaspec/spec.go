@@ -108,6 +108,9 @@ type (
 		Schema string
 	}
 
+	// Override contains information about how to override some attributes of an Element
+	// for a specific dialect. For example, to select a specific column type or add
+	// special attributes when using MySQL, but not when using SQLite or Postgres.
 	Override struct {
 		Dialect string
 		*Resource
@@ -140,6 +143,8 @@ type (
 		V []string
 	}
 
+	// Overrider is the interface that wraps OverridesFor. schema.Element types that implement
+	// this interface can expose an Override object for a specific dialect.
 	Overrider interface {
 		OverridesFor(dialect string) *Override
 	}
