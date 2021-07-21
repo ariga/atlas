@@ -61,9 +61,9 @@ type (
 	// Column holds a specification for a column in an SQL table.
 	Column struct {
 		Name      string
-		Type      string
-		Default   *LiteralValue
-		Null      bool
+		Type      string        `override:"type"`
+		Default   *LiteralValue `override:"default"`
+		Null      bool          `override:"null"`
 		Attrs     []*Attr
 		Children  []*Resource
 		Overrides []*Override
@@ -146,14 +146,11 @@ type (
 	// Overrider is the interface that wraps the Override method. Element types that implement
 	// this interface can expose an Override object for a specific dialect.
 	Overrider interface {
-		Element
-		Attributer
 		Override(dialect string) *Override
 	}
 
-	// Attributer facilitates the reading and writing of attributes from an Element.
+	// Attributer facilitates the reading and writing of attributes.
 	Attributer interface {
-		Element
 
 		// Attr returns the Value of an attribute of the resource and reports whether an
 		// attribute by that name was found.

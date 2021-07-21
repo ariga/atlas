@@ -5,38 +5,57 @@ import (
 	"reflect"
 
 	"ariga.io/atlas/sql/schema/schemaspec"
-	"github.com/go-openapi/inflect"
 )
+
+// OverrideAttributer joins schemaspec.Overrider and schemaspec.Attributer.
+type OverrideAttributer interface {
+	schemaspec.Overrider
+	schemaspec.Attributer
+}
 
 // OverrideFor overrides the Element fields and attributes for the dialect.
 // It is used to modify the Element to a specific form relevant for a particular
 // dialect.
 //
-// OverrideFor will first try to find a field on the Overrider struct with the
-// name of each Attribute on the Override resource. It currently naively "camelizes"
-// the attribute name when searching for the field. If no such field is found, the
+// OverrideFor maps the schemaspec.Override attributes to the element fields
+// by looking at `override` struct tags on the target element struct definition.
+// If no field with a matching `override` tag is found, the
 // Overrider's relevant attribute is created/replaced.
-func OverrideFor(dialect string, element schemaspec.Overrider) error {
+func OverrideFor(dialect string, element OverrideAttributer) error {
 	override := element.Override(dialect)
 	if override == nil {
 		return nil
 	}
 	val := reflect.ValueOf(element).Elem()
+	names := nameToField(element)
 	for _, attr := range override.Attrs {
-		n := inflect.Camelize(attr.K) // TODO: infer the field name more intelligently
-		field := val.FieldByName(n)
-		if !field.IsValid() {
+		fld, ok := names[attr.K]
+		if !ok {
 			element.SetAttr(attr)
 			continue
 		}
-		if !field.CanSet() {
-			return fmt.Errorf("schema: cannot set field %s on type %T", n, element)
+		field := val.FieldByName(fld)
+		if !field.IsValid() || !field.CanSet() {
+			return fmt.Errorf("schema: cannot set field %s on type %T", fld, element)
 		}
 		if err := setField(field, attr); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func nameToField(element OverrideAttributer) map[string]string {
+	names := make(map[string]string)
+	t := reflect.ValueOf(element).Elem().Type()
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		key := f.Tag.Get("override")
+		if key != "" {
+			names[key] = f.Name
+		}
+	}
+	return names
 }
 
 func setField(field reflect.Value, attr *schemaspec.Attr) error {
