@@ -98,9 +98,9 @@ func TestDriver_InspectTable(t *testing.T) {
 				require.NoError(err)
 				require.Equal("users", t.Name)
 				require.EqualValues([]*schema.Column{
-					{Name: "id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint", Size: 8}}},
-					{Name: "rank", Type: &schema.ColumnType{Raw: "integer", Null: true, Type: &schema.IntegerType{T: "integer", Size: 4}}, Attrs: []schema.Attr{&schema.Comment{Text: "rank"}}},
-					{Name: "c1", Type: &schema.ColumnType{Raw: "smallint", Type: &schema.IntegerType{T: "smallint", Size: 2}}},
+					{Name: "id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
+					{Name: "rank", Type: &schema.ColumnType{Raw: "integer", Null: true, Type: &schema.IntegerType{T: "integer"}}, Attrs: []schema.Attr{&schema.Comment{Text: "rank"}}},
+					{Name: "c1", Type: &schema.ColumnType{Raw: "smallint", Type: &schema.IntegerType{T: "smallint"}}},
 					{Name: "c2", Type: &schema.ColumnType{Raw: "bit", Type: &BitType{T: "bit", Len: 1}}},
 					{Name: "c3", Type: &schema.ColumnType{Raw: "bit varying", Type: &BitType{T: "bit varying", Len: 10}}},
 					{Name: "c4", Type: &schema.ColumnType{Raw: "boolean", Type: &schema.BoolType{T: "boolean"}}},
@@ -118,7 +118,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c16", Type: &schema.ColumnType{Raw: "money", Type: &CurrencyType{T: "money"}}},
 					{Name: "c17", Type: &schema.ColumnType{Raw: "numeric", Type: &schema.DecimalType{T: "numeric"}}},
 					{Name: "c18", Type: &schema.ColumnType{Raw: "numeric", Type: &schema.DecimalType{T: "numeric", Precision: 4, Scale: 4}}},
-					{Name: "c19", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer", Size: 4}}, Default: &schema.RawExpr{X: "nextval('t1_c19_seq'::regclass)"}},
+					{Name: "c19", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}, Default: &schema.RawExpr{X: "nextval('t1_c19_seq'::regclass)"}},
 					{Name: "c20", Type: &schema.ColumnType{Raw: "uuid", Type: &UUIDType{T: "uuid"}}},
 					{Name: "c21", Type: &schema.ColumnType{Raw: "xml", Type: &XMLType{T: "xml"}}},
 					{Name: "c22", Type: &schema.ColumnType{Raw: "ARRAY", Null: true, Type: &ArrayType{T: "int4"}}},
@@ -160,8 +160,8 @@ func TestDriver_InspectTable(t *testing.T) {
 				require.NoError(err)
 				require.Equal("users", t.Name)
 				columns := []*schema.Column{
-					{Name: "id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint", Size: 8}}},
-					{Name: "c1", Type: &schema.ColumnType{Raw: "smallint", Type: &schema.IntegerType{T: "smallint", Size: 2}}},
+					{Name: "id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
+					{Name: "c1", Type: &schema.ColumnType{Raw: "smallint", Type: &schema.IntegerType{T: "smallint"}}},
 				}
 				require.EqualValues(columns, t.Columns)
 				indexes := []*schema.Index{
@@ -219,9 +219,9 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Symbol: "self_reference", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: t},
 				}
 				columns := []*schema.Column{
-					{Name: "id", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer", Size: 4}}, ForeignKeys: fks[0:1]},
-					{Name: "oid", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer", Size: 4}}, ForeignKeys: fks[0:1]},
-					{Name: "uid", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer", Size: 4}}, ForeignKeys: fks[1:2]},
+					{Name: "id", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}, ForeignKeys: fks[0:1]},
+					{Name: "oid", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}, ForeignKeys: fks[0:1]},
+					{Name: "uid", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}, ForeignKeys: fks[1:2]},
 				}
 				fks[0].Columns = columns[:2]
 				fks[1].Columns = columns[2:]
@@ -268,9 +268,9 @@ func TestDriver_InspectTable(t *testing.T) {
 				require.Equal("users", t.Name)
 				require.Equal("public", t.Schema.Name)
 				require.EqualValues([]*schema.Column{
-					{Name: "c1", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer", Size: 4}}},
-					{Name: "c2", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer", Size: 4}}},
-					{Name: "c3", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer", Size: 4}}},
+					{Name: "c1", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}},
+					{Name: "c2", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}},
+					{Name: "c3", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}},
 				}, t.Columns)
 				require.EqualValues([]schema.Attr{
 					&Check{Name: "boring", Clause: "(c1 > 1)", Columns: []string{"c1"}},

@@ -211,64 +211,6 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 		typtype:   typtype.String,
 		typid:     typid.Int64,
 	})
-	switch t := typ.String; t {
-	case "bigint", "int8":
-		c.Type.Type = &schema.IntegerType{T: t, Size: 8}
-	case "integer", "int", "int4":
-		c.Type.Type = &schema.IntegerType{T: t, Size: 4}
-	case "smallint", "int2":
-		c.Type.Type = &schema.IntegerType{T: t, Size: 2}
-	case "bit", "bit varying":
-		c.Type.Type = &BitType{T: t, Len: maxlen.Int64}
-	case "boolean", "bool":
-		c.Type.Type = &schema.BoolType{T: t}
-	case "bytea":
-		c.Type.Type = &schema.BinaryType{T: t}
-	case "character", "char", "character varying", "varchar", "text":
-		// A `character` column without length specifier is equivalent to `character(1)`,
-		// but `varchar` without length accepts strings of any size (same as `text`).
-		c.Type.Type = &schema.StringType{T: t, Size: int(maxlen.Int64)}
-	case "cidr", "inet", "macaddr", "macaddr8":
-		c.Type.Type = &NetworkType{T: t}
-	case "circle", "line", "lseg", "box", "path", "polygon":
-		c.Type.Type = &schema.SpatialType{T: t}
-	case "date", "time", "time with time zone", "time without time zone",
-		"timestamp", "timestamp with time zone", "timestamp without time zone":
-		c.Type.Type = &schema.TimeType{T: t}
-	case "interval":
-		// TODO: get 'interval_type' from query above before implementing.
-		c.Type.Type = &schema.UnsupportedType{T: t}
-	case "double precision", "float8", "real", "float4":
-		c.Type.Type = &schema.FloatType{T: t, Precision: int(precision.Int64)}
-	case "json", "jsonb":
-		c.Type.Type = &schema.JSONType{T: t}
-	case "money":
-		c.Type.Type = &CurrencyType{T: t}
-	case "numeric", "decimal":
-		c.Type.Type = &schema.DecimalType{T: t, Precision: int(precision.Int64), Scale: int(scale.Int64)}
-	case "smallserial", "serial2", "serial", "serial4", "bigserial", "serial8":
-		c.Type.Type = &SerialType{T: t, Precision: int(precision.Int64)}
-	case "uuid":
-		c.Type.Type = &UUIDType{T: t}
-	case "xml":
-		c.Type.Type = &XMLType{T: t}
-	case "ARRAY":
-		// Note that for ARRAY types, the 'udt_name' column holds the array type
-		// prefixed with '_'. For example, for 'integer[]' the result is '_int',
-		// and for 'text[N][M]' the result is also '_text'. That's because, the
-		// database ignores any size or multi-dimensions constraints.
-		c.Type.Type = &ArrayType{T: strings.TrimPrefix(udt.String, "_")}
-	case "USER-DEFINED":
-		c.Type.Type = &UserDefinedType{T: udt.String}
-		// The `typtype` column is set to 'e' for enum types, and the
-		// values are filled in batch after the rows above is closed.
-		// https://www.postgresql.org/docs/current/catalog-pg-type.html
-		if typtype.String == "e" {
-			c.Type.Type = &EnumType{T: udt.String, ID: typid.Int64}
-		}
-	default:
-		c.Type.Type = &schema.UnsupportedType{T: t}
-	}
 	if sqlx.ValidString(defaults) {
 		c.Default = &schema.RawExpr{
 			X: defaults.String,
@@ -296,12 +238,8 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 func columnType(c *columnMeta) schema.Type {
 	var typ schema.Type
 	switch t := c.typ; t {
-	case "bigint", "int8":
-		typ = &schema.IntegerType{T: t, Size: 8}
-	case "integer", "int", "int4":
-		typ = &schema.IntegerType{T: t, Size: 4}
-	case "smallint", "int2":
-		typ = &schema.IntegerType{T: t, Size: 2}
+	case "bigint", "int8", "integer", "int", "int4", "smallint", "int2":
+		typ = &schema.IntegerType{T: t}
 	case "bit", "bit varying":
 		typ = &BitType{T: t, Len: c.size}
 	case "boolean", "bool":

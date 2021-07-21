@@ -69,13 +69,10 @@ func convertInteger(spec *schemaspec.Column) (schema.Type, error) {
 	case "int8":
 		return nil, fmt.Errorf("postgres: 8-bit integers not supported")
 	case "int16":
-		typ.Size = 2
 		typ.T = "smallint"
 	case "int32", "int", "integer":
-		typ.Size = 4
 		typ.T = "integer"
 	case "int64":
-		typ.Size = 8
 		typ.T = "bigint"
 	default:
 		return nil, fmt.Errorf("mysql: unknown integer column type %q", spec.Type)

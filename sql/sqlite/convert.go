@@ -39,19 +39,6 @@ func convertInteger(spec *schemaspec.Column) (schema.Type, error) {
 	typ := &schema.IntegerType{
 		T: "integer",
 	}
-	switch t := spec.Type; t {
-	case "int8", "uint8":
-		typ.Size = 1
-	case "int16", "uint16":
-		typ.Size = 2
-
-	case "int32", "uint32", "int", "integer", "uint":
-		typ.Size = 4
-	case "int64", "uint64":
-		typ.Size = 8
-	default:
-		return nil, fmt.Errorf("sqlite: unknown integer column type %q", spec.Type)
-	}
 	return typ, nil
 }
 
