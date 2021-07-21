@@ -350,12 +350,12 @@ func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
 	names := make(map[string]*schema.Index)
 	for rows.Next() {
 		var (
-			name                             string
-			uniq, primary                    bool
-			column, contype, pred, expr      sql.NullString
-			asc, desc, nullsfirst, nullslast sql.NullBool
+			name                                 string
+			uniq, primary                        bool
+			asc, desc, nullsfirst, nullslast     sql.NullBool
+			column, contype, pred, expr, comment sql.NullString
 		)
-		if err := rows.Scan(&name, &column, &primary, &uniq, &contype, &pred, &expr, &asc, &desc, &nullsfirst, &nullslast); err != nil {
+		if err := rows.Scan(&name, &column, &primary, &uniq, &contype, &pred, &expr, &asc, &desc, &nullsfirst, &nullslast, &comment); err != nil {
 			return fmt.Errorf("postgres: scanning index: %w", err)
 		}
 		idx, ok := names[name]
@@ -364,6 +364,9 @@ func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
 				Name:   name,
 				Unique: uniq,
 				Table:  t,
+			}
+			if sqlx.ValidString(comment) {
+				idx.Attrs = append(t.Attrs, &schema.Comment{Text: comment.String})
 			}
 			if sqlx.ValidString(contype) {
 				idx.Attrs = append(t.Attrs, &ConType{T: contype.String})
@@ -678,7 +681,8 @@ SELECT
 	pg_index_column_has_property(idx.indexrelid, a.attnum, 'asc') AS asc,
 	pg_index_column_has_property(idx.indexrelid, a.attnum, 'desc') AS desc,
 	pg_index_column_has_property(idx.indexrelid, a.attnum, 'nulls_first') AS nulls_first,
-	pg_index_column_has_property(idx.indexrelid, a.attnum, 'nulls_last') AS nulls_last
+	pg_index_column_has_property(idx.indexrelid, a.attnum, 'nulls_last') AS nulls_last,
+	obj_description(to_regclass($1 || i.relname)::oid) AS comment
 FROM
 	pg_index idx
 	JOIN pg_class i
