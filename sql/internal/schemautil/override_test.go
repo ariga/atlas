@@ -34,7 +34,7 @@ func TestOverride(t *testing.T) {
 	err := schemautil.OverrideFor(mysql.Name, spec)
 	require.NoError(t, err)
 	require.EqualValues(t, "varchar(123)", spec.Type)
-	require.EqualValues(t, "howdy", spec.Default.V)
+	require.EqualValues(t, `"howdy"`, spec.Default.V)
 	require.True(t, spec.Null)
 	custom, ok := spec.Attr("custom")
 	require.True(t, ok)
