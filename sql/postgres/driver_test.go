@@ -143,14 +143,14 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(sqltest.Escape(indexesQuery)).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-    index_name    | column_name | primary | unique | constraint_type | predicate             |   expression              | asc | desc | nulls_first | nulls_last | comment
-------------------+-------------+---------+--------+-----------------+-----------------------+---------------------------+-----+------+-------------+------------+-----------
- idx              | left        | f       | f      |                 |                       | "left"((c11)::text, 100)  | f   | t    | t           | f          | boring
- idx1             | left        | f       | f      |                 | (id <> NULL::integer) | "left"((c11)::text, 100)  | f   | t    | t           | f          |
- t1_c1_key        | c1          | f       | t      | u               |                       |                           | f   | t    | t           | f          |
- t1_pkey          | id          | t       | t      | p               |                       |                           | f   | t    | f           | f          |
- idx4             | c1          | f       | t      |                 |                       |                           | t   | f    | f           | f          |
- idx4             | id          | f       | t      |                 |                       |                           | t   | f    | f           | t          |
+    index_name   | index_type  | column_name | primary | unique | constraint_type | predicate             |   expression              | asc | desc | nulls_first | nulls_last | comment
+-----------------+-------------+-------------+---------+--------+-----------------+-----------------------+---------------------------+-----+------+-------------+------------+-----------
+ idx             | hash        | left        | f       | f      |                 |                       | "left"((c11)::text, 100)  | f   | t    | t           | f          | boring
+ idx1            | btree       | left        | f       | f      |                 | (id <> NULL::integer) | "left"((c11)::text, 100)  | f   | t    | t           | f          |
+ t1_c1_key       | btree       | c1          | f       | t      | u               |                       |                           | f   | t    | t           | f          |
+ t1_pkey         | btree       | id          | t       | t      | p               |                       |                           | f   | t    | f           | f          |
+ idx4            | btree       | c1          | f       | t      |                 |                       |                           | t   | f    | f           | f          |
+ idx4            | btree       | id          | f       | t      |                 |                       |                           | t   | f    | f           | t          |
 
 `))
 				m.noFKs()
@@ -165,17 +165,17 @@ func TestDriver_InspectTable(t *testing.T) {
 				}
 				require.EqualValues(columns, t.Columns)
 				indexes := []*schema.Index{
-					{Name: "idx", Table: t, Parts: []*schema.IndexPart{{SeqNo: 1, X: &schema.RawExpr{X: `"left"((c11)::text, 100)`}, Attrs: []schema.Attr{&IndexColumnProperty{Desc: true, NullsFirst: true}}}}, Attrs: []schema.Attr{&schema.Comment{Text: "boring"}}},
-					{Name: "idx1", Table: t, Attrs: []schema.Attr{&IndexPredicate{P: `(id <> NULL::integer)`}}, Parts: []*schema.IndexPart{{SeqNo: 1, X: &schema.RawExpr{X: `"left"((c11)::text, 100)`}, Attrs: []schema.Attr{&IndexColumnProperty{Desc: true, NullsFirst: true}}}}},
-					{Name: "t1_c1_key", Unique: true, Table: t, Attrs: []schema.Attr{&ConType{T: "u"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1], Attrs: []schema.Attr{&IndexColumnProperty{Desc: true, NullsFirst: true}}}}},
-					{Name: "idx4", Unique: true, Table: t, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1], Attrs: []schema.Attr{&IndexColumnProperty{Asc: true}}}, {SeqNo: 2, C: columns[0], Attrs: []schema.Attr{&IndexColumnProperty{Asc: true, NullsLast: true}}}}},
+					{Name: "idx", Table: t, Attrs: []schema.Attr{&IndexType{T: "hash"}, &schema.Comment{Text: "boring"}}, Parts: []*schema.IndexPart{{SeqNo: 1, X: &schema.RawExpr{X: `"left"((c11)::text, 100)`}, Attrs: []schema.Attr{&IndexColumnProperty{Desc: true, NullsFirst: true}}}}},
+					{Name: "idx1", Table: t, Attrs: []schema.Attr{&IndexType{T: "btree"}, &IndexPredicate{P: `(id <> NULL::integer)`}}, Parts: []*schema.IndexPart{{SeqNo: 1, X: &schema.RawExpr{X: `"left"((c11)::text, 100)`}, Attrs: []schema.Attr{&IndexColumnProperty{Desc: true, NullsFirst: true}}}}},
+					{Name: "t1_c1_key", Unique: true, Table: t, Attrs: []schema.Attr{&IndexType{T: "btree"}, &ConType{T: "u"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1], Attrs: []schema.Attr{&IndexColumnProperty{Desc: true, NullsFirst: true}}}}},
+					{Name: "idx4", Unique: true, Table: t, Attrs: []schema.Attr{&IndexType{T: "btree"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1], Attrs: []schema.Attr{&IndexColumnProperty{Asc: true}}}, {SeqNo: 2, C: columns[0], Attrs: []schema.Attr{&IndexColumnProperty{Asc: true, NullsLast: true}}}}},
 				}
 				require.EqualValues(indexes, t.Indexes)
 				require.EqualValues(&schema.Index{
 					Name:   "t1_pkey",
 					Unique: true,
 					Table:  t,
-					Attrs:  []schema.Attr{&ConType{T: "p"}},
+					Attrs:  []schema.Attr{&IndexType{T: "btree"}, &ConType{T: "p"}},
 					Parts:  []*schema.IndexPart{{SeqNo: 1, C: columns[0], Attrs: []schema.Attr{&IndexColumnProperty{Desc: true}}}},
 				}, t.PrimaryKey)
 			},

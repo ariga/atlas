@@ -350,12 +350,12 @@ func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
 	names := make(map[string]*schema.Index)
 	for rows.Next() {
 		var (
-			name                                 string
+			name, typ                            string
 			uniq, primary                        bool
 			asc, desc, nullsfirst, nullslast     sql.NullBool
 			column, contype, pred, expr, comment sql.NullString
 		)
-		if err := rows.Scan(&name, &column, &primary, &uniq, &contype, &pred, &expr, &asc, &desc, &nullsfirst, &nullslast, &comment); err != nil {
+		if err := rows.Scan(&name, &typ, &column, &primary, &uniq, &contype, &pred, &expr, &asc, &desc, &nullsfirst, &nullslast, &comment); err != nil {
 			return fmt.Errorf("postgres: scanning index: %w", err)
 		}
 		idx, ok := names[name]
@@ -364,15 +364,18 @@ func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
 				Name:   name,
 				Unique: uniq,
 				Table:  t,
+				Attrs: []schema.Attr{
+					&IndexType{T: typ},
+				},
 			}
 			if sqlx.ValidString(comment) {
-				idx.Attrs = append(t.Attrs, &schema.Comment{Text: comment.String})
+				idx.Attrs = append(idx.Attrs, &schema.Comment{Text: comment.String})
 			}
 			if sqlx.ValidString(contype) {
-				idx.Attrs = append(t.Attrs, &ConType{T: contype.String})
+				idx.Attrs = append(idx.Attrs, &ConType{T: contype.String})
 			}
 			if sqlx.ValidString(pred) {
-				idx.Attrs = append(t.Attrs, &IndexPredicate{P: pred.String})
+				idx.Attrs = append(idx.Attrs, &IndexPredicate{P: pred.String})
 			}
 			names[name] = idx
 			if primary {
@@ -580,6 +583,13 @@ type (
 		T string // c, f, p, u, t, x.
 	}
 
+	// IndexType represents an index type.
+	// https://www.postgresql.org/docs/current/indexes-types.html
+	IndexType struct {
+		schema.Attr
+		T string // BTREE, BRIN, HASH, GiST, SP-GiST, GIN.
+	}
+
 	// IndexPredicate describes a partial index predicate.
 	// https://www.postgresql.org/docs/current/catalog-pg-index.html
 	IndexPredicate struct {
@@ -672,6 +682,7 @@ WHERE
 	indexesQuery = `
 SELECT
 	i.relname AS index_name,
+	am.amname AS index_type,
 	a.attname AS column_name,
 	idx.indisprimary AS primary,
 	idx.indisunique AS unique,
@@ -691,6 +702,8 @@ FROM
 	ON idx.indexrelid = c.conindid
 	LEFT JOIN pg_attribute a
 	ON a.attrelid = idx.indexrelid
+	JOIN pg_am am
+	ON am.oid = i.relam
 WHERE
 	idx.indrelid = to_regclass($1 || '.' || $2)::oid
 	AND COALESCE(c.contype, '') <> 'f'
