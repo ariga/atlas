@@ -147,6 +147,7 @@ type (
 	// this interface can expose an Override object for a specific dialect.
 	Overrider interface {
 		Element
+		Attributer
 		Override(dialect string) *Override
 	}
 

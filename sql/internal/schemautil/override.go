@@ -21,9 +21,7 @@ func OverrideFor(dialect string, element schemaspec.Overrider) error {
 		n := inflect.Camelize(attr.K) // TODO: infer the field name more intelligently
 		field := val.FieldByName(n)
 		if !field.IsValid() {
-			if err := addAttr(element, attr); err != nil {
-				return err
-			}
+			element.SetAttr(attr)
 			continue
 		}
 		if !field.CanSet() {
@@ -33,15 +31,6 @@ func OverrideFor(dialect string, element schemaspec.Overrider) error {
 			return err
 		}
 	}
-	return nil
-}
-
-func addAttr(element schemaspec.Overrider, attr *schemaspec.Attr) error {
-	a, ok := element.(schemaspec.Attributer)
-	if !ok {
-		fmt.Errorf("schema: cannot override attribute for a non schemaspec.Attributer")
-	}
-	a.SetAttr(attr)
 	return nil
 }
 
