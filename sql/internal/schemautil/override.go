@@ -73,13 +73,13 @@ func setField(field reflect.Value, attr *schemaspec.Attr) error {
 		}
 		field.SetBool(s)
 	case reflect.Ptr:
-		if field.Type() == reflect.ValueOf(&schemaspec.LiteralValue{}).Type() {
-			field.Set(reflect.ValueOf(attr.V.(*schemaspec.LiteralValue)))
-		} else {
-			return fmt.Errorf("schema: unsupported %s field type", field.Type().Name())
+		if field.Type() == reflect.TypeOf((*schemaspec.LiteralValue)(nil)) {
+			field.Set(reflect.ValueOf(attr.V))
+			return nil
 		}
+		fallthrough
 	default:
-		return fmt.Errorf("schema: unsupported kind %s", field.Kind().String())
+		return fmt.Errorf("schema: unsupported field type %q", field.Type())
 	}
 	return nil
 }
