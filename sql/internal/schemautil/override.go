@@ -11,6 +11,11 @@ import (
 // OverrideFor overrides the Element fields and attributes for the dialect.
 // It is used to modify the Element to a specific form relevant for a particular
 // dialect.
+//
+// OverrideFor will first try to find a field on the Overrider struct with the
+// name of each Attribute on the Override resource. It currently naively "camelizes"
+// the attribute name when searching for the field. If no such field is found, the
+// Overrider's relevant attribute is created/replaced.
 func OverrideFor(dialect string, element schemaspec.Overrider) error {
 	override := element.Override(dialect)
 	if override == nil {
