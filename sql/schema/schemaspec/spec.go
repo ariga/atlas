@@ -60,12 +60,13 @@ type (
 
 	// Column holds a specification for a column in an SQL table.
 	Column struct {
-		Name     string
-		Type     string
-		Default  *LiteralValue
-		Null     bool
-		Attrs    []*Attr
-		Children []*Resource
+		Name      string
+		Type      string
+		Default   *LiteralValue
+		Null      bool
+		Attrs     []*Attr
+		Children  []*Resource
+		Overrides []*Override
 	}
 
 	// PrimaryKey holds a specification for the primary key of a table.
@@ -107,6 +108,14 @@ type (
 		Schema string
 	}
 
+	// Override contains information about how to override some attributes of an Element
+	// for a specific dialect. For example, to select a specific column type or add
+	// special attributes when using MySQL, but not when using SQLite or Postgres.
+	Override struct {
+		Dialect string
+		Resource
+	}
+
 	// Element is an object that can be encoded into bytes to be written to a configuration file representing
 	// Schema resources.
 	Element interface {
@@ -132,6 +141,12 @@ type (
 	// ListValue implements Value and represents a list of literal value (string, number, etc.)
 	ListValue struct {
 		V []string
+	}
+
+	// Overrider is the interface that wraps the Override method. Element types that implement
+	// this interface can expose an Override object for a specific dialect.
+	Overrider interface {
+		Override(dialect string) *Override
 	}
 )
 
@@ -173,6 +188,15 @@ func (c *Column) Attr(name string) (*Attr, bool) {
 // Attr returns the value of the Table attribute named `name` and reports whether such an attribute exists.
 func (t *Table) Attr(name string) (*Attr, bool) {
 	return getAttrVal(t.Attrs, name)
+}
+
+func (c *Column) Override(dialect string) *Override {
+	for _, o := range c.Overrides {
+		if o.Dialect == dialect {
+			return o
+		}
+	}
+	return nil
 }
 
 func getAttrVal(attrs []*Attr, name string) (*Attr, bool) {

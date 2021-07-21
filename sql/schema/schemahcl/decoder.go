@@ -67,11 +67,12 @@ type (
 		Remain      hcl.Body      `hcl:",remain"`
 	}
 	column struct {
-		Name     string    `hcl:",label"`
-		TypeName string    `hcl:"type"`
-		Null     bool      `hcl:"null,optional"`
-		Default  cty.Value `hcl:"default,optional"`
-		Remain   hcl.Body  `hcl:",remain"`
+		Name      string      `hcl:",label"`
+		TypeName  string      `hcl:"type"`
+		Null      bool        `hcl:"null,optional"`
+		Default   cty.Value   `hcl:"default,optional"`
+		Overrides []*override `hcl:"dialect,block"`
+		Remain    hcl.Body    `hcl:",remain"`
 	}
 	primaryKey struct {
 		Columns []*columnRef `hcl:"columns,optional"`
@@ -97,6 +98,10 @@ type (
 	columnRef struct {
 		Name  string `cty:"name"`
 		Table string `cty:"table"`
+	}
+	override struct {
+		Dialect string   `hcl:",label"`
+		Remain  hcl.Body `hcl:",remain"`
 	}
 )
 
@@ -165,22 +170,19 @@ func (c *column) spec(ctx *hcl.EvalContext) (*schemaspec.Column, error) {
 		}
 		spec.Default = v
 	}
-	body, ok := c.Remain.(*hclsyntax.Body)
-	if !ok {
-		return nil, fmt.Errorf("schemahcl: expected remainder to be of type *hclsyntax.Body")
-	}
-	attrs, err := toAttrs(ctx, body.Attributes, skip("type", "default", "null"))
-	if err != nil {
-		return nil, err
-	}
-	spec.Attrs = attrs
-	for _, blk := range body.Blocks {
-		resource, err := toResource(ctx, blk)
+	for _, ov := range c.Overrides {
+		ovspec, err := ov.spec(ctx)
 		if err != nil {
 			return nil, err
 		}
-		spec.Children = append(spec.Children, resource)
+		spec.Overrides = append(spec.Overrides, ovspec)
 	}
+	common, err := extractCommon(ctx, c.Remain, skip("type", "default", "null", "dialect"))
+	if err != nil {
+		return nil, err
+	}
+	spec.Attrs = common.attrs
+	spec.Children = common.children
 	return spec, nil
 }
 
@@ -241,6 +243,20 @@ func (i *index) spec(ctx *hcl.EvalContext) (*schemaspec.Index, error) {
 	return idx, nil
 }
 
+func (o *override) spec(ctx *hcl.EvalContext) (*schemaspec.Override, error) {
+	common, err := extractCommon(ctx, o.Remain, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &schemaspec.Override{
+		Dialect: o.Dialect,
+		Resource: schemaspec.Resource{
+			Attrs:    common.attrs,
+			Children: common.children,
+		},
+	}, nil
+}
+
 func skip(lst ...string) map[string]struct{} {
 	out := make(map[string]struct{}, len(lst))
 	for _, item := range lst {
@@ -252,10 +268,8 @@ func skip(lst ...string) map[string]struct{} {
 func toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes, skip map[string]struct{}) ([]*schemaspec.Attr, error) {
 	var attrs []*schemaspec.Attr
 	for _, hclAttr := range hclAttrs {
-		if skip != nil {
-			if _, ok := skip[hclAttr.Name]; ok {
-				continue
-			}
+		if shouldSkip(skip, hclAttr.Name) {
+			continue
 		}
 		at := &schemaspec.Attr{K: hclAttr.Name}
 		value, diag := hclAttr.Expr.Value(ctx)
@@ -278,6 +292,14 @@ func toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes, skip map[strin
 		return attrs[i].K < attrs[j].K
 	})
 	return attrs, nil
+}
+
+func shouldSkip(skip map[string]struct{}, key string) bool {
+	if skip == nil {
+		return false
+	}
+	_, exists := skip[key]
+	return exists
 }
 
 func extractListValue(value cty.Value) (*schemaspec.ListValue, error) {
@@ -431,6 +453,9 @@ func extractCommon(ctx *hcl.EvalContext, remain hcl.Body, skip map[string]struct
 		attrs: attrs,
 	}
 	for _, blk := range body.Blocks {
+		if shouldSkip(skip, blk.Type) {
+			continue
+		}
 		resource, err := toResource(ctx, blk)
 		if err != nil {
 			return nil, err
