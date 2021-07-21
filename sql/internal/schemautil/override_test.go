@@ -17,13 +17,13 @@ func TestOverride(t *testing.T) {
 			Resource: schemaspec.Resource{
 				Attrs: []*schemaspec.Attr{
 					// A string field
-					schemautil.LitAttr("type", "varchar(123)"),
+					schemautil.StrLitAttr("type", "varchar(123)"),
 
 					// A boolean field
 					schemautil.LitAttr("null", "true"),
 
 					// A Literal
-					schemautil.LitAttr("default", "howdy"),
+					schemautil.StrLitAttr("default", "howdy"),
 
 					// A custom attribute
 					schemautil.LitAttr("custom", "1234"),

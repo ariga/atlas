@@ -249,13 +249,14 @@ func (a *Attr) Int() (int, error) {
 }
 
 // String returns a string from the Value of the Attr. If The value is not a LiteralValue
-// an error is returned.
+// an error is returned.  String values are expected to be quoted. If the value is not
+// properly quoted an error is returned.
 func (a *Attr) String() (string, error) {
 	lit, ok := a.V.(*LiteralValue)
 	if !ok {
 		return "", fmt.Errorf("schema: cannot read attribute %q as literal", a.K)
 	}
-	return lit.V, nil
+	return strconv.Unquote(lit.V)
 }
 
 // Bool returns a boolean from the Value of the Attr. If The value is not a LiteralValue or the value

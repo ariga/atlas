@@ -294,7 +294,7 @@ func TestOverride(t *testing.T) {
 			Dialect: "mysql",
 			Resource: schemaspec.Resource{
 				Attrs: []*schemaspec.Attr{
-					schemautil.LitAttr("type", "bigint"),
+					schemautil.StrLitAttr("type", "bigint"),
 				},
 			},
 		},
