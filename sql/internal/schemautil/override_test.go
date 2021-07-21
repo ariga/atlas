@@ -13,7 +13,7 @@ func TestOverride(t *testing.T) {
 	spec := schemautil.ColSpec("name", "string")
 	spec.Overrides = []*schemaspec.Override{
 		{
-			Dialect: mysql.Dialect,
+			Dialect: mysql.Name,
 			Resource: schemaspec.Resource{
 				Attrs: []*schemaspec.Attr{
 					// A string field
@@ -31,7 +31,7 @@ func TestOverride(t *testing.T) {
 			},
 		},
 	}
-	err := schemautil.OverrideFor(mysql.Dialect, spec)
+	err := schemautil.OverrideFor(mysql.Name, spec)
 	require.NoError(t, err)
 	require.EqualValues(t, "varchar(123)", spec.Type)
 	require.EqualValues(t, "howdy", spec.Default.V)

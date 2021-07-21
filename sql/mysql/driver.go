@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	Dialect = "mysql"
+	Name = "mysql"
 )
 
 // Driver represents a MySQL driver for introspecting database schemas
