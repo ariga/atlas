@@ -242,6 +242,6 @@ table "user" {
 	require.True(t, ok)
 	name, ok := ut.Column("name")
 	require.True(t, ok)
-	mo := name.OverridesFor("mysql")
+	mo := name.Override("mysql")
 	require.NotNil(t, mo)
 }

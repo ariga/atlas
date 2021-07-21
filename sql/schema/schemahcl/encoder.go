@@ -80,8 +80,8 @@ func writeColumn(c *schemaspec.Column, body *hclwrite.Body) error {
 	if c.Null {
 		nb.SetAttributeValue("null", cty.BoolVal(c.Null))
 	}
-	for _, ov := range c.Overrides {
-		if err := writeOverride(ov, nb); err != nil {
+	for _, o := range c.Overrides {
+		if err := writeOverride(o, nb); err != nil {
 			return err
 		}
 	}

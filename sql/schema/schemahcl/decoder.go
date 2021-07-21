@@ -250,7 +250,7 @@ func (o *override) spec(ctx *hcl.EvalContext) (*schemaspec.Override, error) {
 	}
 	return &schemaspec.Override{
 		Dialect: o.Dialect,
-		Resource: &schemaspec.Resource{
+		Resource: schemaspec.Resource{
 			Attrs:    common.attrs,
 			Children: common.children,
 		},

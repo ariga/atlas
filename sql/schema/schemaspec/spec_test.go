@@ -56,7 +56,7 @@ func TestColumn_OverridesFor(t *testing.T) {
 	col.Overrides = []*Override{
 		{
 			Dialect: "mysql",
-			Resource: &Resource{
+			Resource: Resource{
 				Attrs: []*Attr{
 					{
 						K: "type",
@@ -67,7 +67,7 @@ func TestColumn_OverridesFor(t *testing.T) {
 		},
 		{
 			Dialect: "postgres",
-			Resource: &Resource{
+			Resource: Resource{
 				Attrs: []*Attr{
 					{
 						K: "type",
@@ -77,8 +77,8 @@ func TestColumn_OverridesFor(t *testing.T) {
 			},
 		},
 	}
-	myo := col.OverridesFor("mysql")
+	myo := col.Override("mysql")
 	require.EqualValues(t, myo.Attrs[0], col.Overrides[0].Attrs[0])
-	pgo := col.OverridesFor("postgres")
+	pgo := col.Override("postgres")
 	require.EqualValues(t, pgo.Attrs[0], col.Overrides[1].Attrs[0])
 }

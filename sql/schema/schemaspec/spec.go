@@ -113,7 +113,7 @@ type (
 	// special attributes when using MySQL, but not when using SQLite or Postgres.
 	Override struct {
 		Dialect string
-		*Resource
+		Resource
 	}
 
 	// Element is an object that can be encoded into bytes to be written to a configuration file representing
@@ -143,10 +143,10 @@ type (
 		V []string
 	}
 
-	// Overrider is the interface that wraps OverridesFor. Element types that implement
+	// Overrider is the interface that wraps the Override method. Element types that implement
 	// this interface can expose an Override object for a specific dialect.
 	Overrider interface {
-		OverridesFor(dialect string) *Override
+		Override(dialect string) *Override
 	}
 )
 
@@ -190,7 +190,7 @@ func (t *Table) Attr(name string) (*Attr, bool) {
 	return getAttrVal(t.Attrs, name)
 }
 
-func (c *Column) OverridesFor(dialect string) *Override {
+func (c *Column) Override(dialect string) *Override {
 	for _, o := range c.Overrides {
 		if o.Dialect == dialect {
 			return o
