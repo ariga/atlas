@@ -105,29 +105,51 @@ type (
 type ChangeKind uint
 
 const (
-	// Basic changes.
+	// NoChange holds the zero value of a change kind.
 	NoChange ChangeKind = 0
-	ChangeAttr
 
-	// Table and common changes.
-	ChangeCharset ChangeKind = 1 << iota
+	// Common changes.
+
+	// ChangeAttr describes attributes change of an element.
+	// For example, a table CHECK was added or changed.
+	ChangeAttr ChangeKind = 1 << iota
+	// ChangeCharset describes character-set change.
+	ChangeCharset
+	// ChangeCollation describes collation/encoding change.
 	ChangeCollation
+	// ChangeComment describes comment chang (of any element).
 	ChangeComment
 
 	// Column specific changes.
+
+	// ChangeNull describe a change to the NULL constraint.
 	ChangeNull
+	// ChangeType describe a column type change.
 	ChangeType
+	// ChangeDefault describe a column default change.
 	ChangeDefault
 
 	// Index specific changes.
+
+	// ChangeUnique describes a change to the uniqueness constraint.
+	// For example, an index was changed from non-unique to unique.
 	ChangeUnique
+	// ChangeParts describes a change to one or more of the index parts.
+	// For example, index keeps its previous name, but the columns order
+	// was changed.
 	ChangeParts
 
 	// Foreign key specific changes.
+
+	// ChangeColumn describes a change to the foreign-key (child) columns.
 	ChangeColumn
-	ChangeRefTable
+	// ChangeRefColumn describes a change to the foreign-key (parent) columns.
 	ChangeRefColumn
+	// ChangeRefTable describes a change to the foreign-key (parent) table.
+	ChangeRefTable
+	// ChangeUpdateAction describes a change to the foreign-key update action.
 	ChangeUpdateAction
+	// ChangeDeleteAction describes a change to the foreign-key delete action.
 	ChangeDeleteAction
 )
 
@@ -136,17 +158,13 @@ func (k ChangeKind) Is(c ChangeKind) bool { return k&c != 0 }
 
 type (
 	// Differ is the interface implemented by the different
-	// migration drivers for comparing and diffing schemas.
+	// drivers for comparing and diffing schema top elements.
 	Differ interface {
 		// SchemaDiff returns a diff report for migrating a schema
 		// from state "from" to state "to". An error is returned
 		// if such step is not possible.
 		SchemaDiff(from, to *Schema) ([]Change, error)
-	}
 
-	// TableDiffer is the interface implemented by the different
-	// migration drivers for comparing and diffing tables.
-	TableDiffer interface {
 		// TableDiff returns a diff report for migrating a table
 		// from state "from" to state "to". An error is returned
 		// if such step is not possible.

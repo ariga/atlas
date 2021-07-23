@@ -171,7 +171,8 @@ type (
 
 	// EnumType represents an enum type.
 	EnumType struct {
-		Values []string
+		T      string   // Optional type.
+		Values []string // Enum values.
 	}
 
 	// BinaryType represents a type that stores a binary data.

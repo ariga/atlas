@@ -14,7 +14,7 @@ type NotExistError struct {
 
 func (e NotExistError) Error() string { return e.Err.Error() }
 
-// IsNotExistError reports an error is a NotExistError.
+// IsNotExistError reports if an error is a NotExistError.
 func IsNotExistError(err error) bool {
 	if err == nil {
 		return false

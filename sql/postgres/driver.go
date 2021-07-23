@@ -443,8 +443,11 @@ func (d *Driver) checks(ctx context.Context, t *schema.Table) error {
 func (d *Driver) addChecks(t *schema.Table, rows *sql.Rows) error {
 	names := make(map[string]*Check)
 	for rows.Next() {
-		var name, column, clause, indexes string
-		if err := rows.Scan(&name, &clause, &column, &indexes); err != nil {
+		var (
+			noInherit                     bool
+			name, column, clause, indexes string
+		)
+		if err := rows.Scan(&name, &clause, &column, &indexes, &noInherit); err != nil {
 			return fmt.Errorf("postgres: scanning check: %w", err)
 		}
 		if _, ok := t.Column(column); !ok {
@@ -452,7 +455,7 @@ func (d *Driver) addChecks(t *schema.Table, rows *sql.Rows) error {
 		}
 		check, ok := names[name]
 		if !ok {
-			check = &Check{Name: name, Clause: clause}
+			check = &Check{Name: name, Clause: clause, NoInherit: noInherit}
 			names[name] = check
 			t.Attrs = append(t.Attrs, check)
 		}
@@ -514,6 +517,7 @@ type (
 		schema.Attr
 		V string
 	}
+
 	// UserDefinedType defines a user-defined type attribute.
 	UserDefinedType struct {
 		schema.Type
@@ -608,11 +612,13 @@ type (
 	}
 
 	// Check attributes defines a CHECK constraint.
+	// https://www.postgresql.org/docs/current/catalog-pg-constraint.html
 	Check struct {
 		schema.Attr
-		Name    string
-		Clause  string
-		Columns []string
+		Name      string
+		Clause    string
+		NoInherit bool
+		Columns   []string
 	}
 )
 
@@ -747,7 +753,8 @@ SELECT
 	t1.conname AS constraint_name,
 	pg_get_expr(t1.conbin, to_regclass($1 || '.' || $2)::oid) as expression,
 	t2.attname as column_name,
-	t1.conkey as column_indexes
+	t1.conkey as column_indexes,
+	t1.connoinherit as no_inherit
 FROM
 	pg_catalog.pg_constraint t1
 	JOIN pg_attribute t2
