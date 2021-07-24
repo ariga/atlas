@@ -34,8 +34,10 @@ func ConvertIndex(spec *schemaspec.Index, parent *schema.Table) (*schema.Index, 
 
 // ConvertColumn converts a schemaspec.Column into a schema.Column.
 func ConvertColumn(spec *schemaspec.Column, parent *schema.Table) (*schema.Column, error) {
-	if err := schemautil.OverrideFor(Name, spec); err != nil {
-		return nil, err
+	if override := spec.Override(Name); override != nil {
+		if err := schemautil.Override(spec, override); err != nil {
+			return nil, err
+		}
 	}
 	return schemautil.ConvertColumn(spec, ConvertColumnType)
 }

@@ -11,27 +11,26 @@ import (
 
 func TestOverride(t *testing.T) {
 	spec := schemautil.ColSpec("name", "string")
-	spec.Overrides = []*schemaspec.Override{
-		{
-			Dialect: mysql.Name,
-			Resource: schemaspec.Resource{
-				Attrs: []*schemaspec.Attr{
-					// A string field
-					schemautil.StrLitAttr("type", "varchar(123)"),
+	override := &schemaspec.Override{
+		Dialect: mysql.Name,
+		Resource: schemaspec.Resource{
+			Attrs: []*schemaspec.Attr{
+				// A string field
+				schemautil.StrLitAttr("type", "varchar(123)"),
 
-					// A boolean field
-					schemautil.LitAttr("null", "true"),
+				// A boolean field
+				schemautil.LitAttr("null", "true"),
 
-					// A Literal
-					schemautil.StrLitAttr("default", "howdy"),
+				// A Literal
+				schemautil.StrLitAttr("default", "howdy"),
 
-					// A custom attribute
-					schemautil.LitAttr("custom", "1234"),
-				},
+				// A custom attribute
+				schemautil.LitAttr("custom", "1234"),
 			},
 		},
 	}
-	err := schemautil.OverrideFor(mysql.Name, spec)
+
+	err := schemautil.Override(spec, override)
 	require.NoError(t, err)
 	require.EqualValues(t, "varchar(123)", spec.Type)
 	require.EqualValues(t, `"howdy"`, spec.Default.V)

@@ -7,25 +7,15 @@ import (
 	"ariga.io/atlas/sql/schema/schemaspec"
 )
 
-// OverrideAttributer joins schemaspec.Overrider and schemaspec.Attributer.
-type OverrideAttributer interface {
-	schemaspec.Overrider
-	schemaspec.Attributer
-}
-
-// OverrideFor overrides the Element fields and attributes for the dialect.
-// It is used to modify the Element to a specific form relevant for a particular
-// dialect.
+// Override overrides the Element fields and attributes using the provided
+// schemaspec.Override. It is used to modify the Element to a specific form
+// relevant for a particular dialect.
 //
-// OverrideFor maps the schemaspec.Override attributes to the element fields
+// Override maps the schemaspec.Override attributes to the element fields
 // by looking at `override` struct tags on the target element struct definition.
 // If no field with a matching `override` tag is found, the
 // Overrider's relevant attribute is created/replaced.
-func OverrideFor(dialect string, element OverrideAttributer) error {
-	override := element.Override(dialect)
-	if override == nil {
-		return nil
-	}
+func Override(element schemaspec.Attributer, override *schemaspec.Override) error {
 	val := reflect.ValueOf(element).Elem()
 	names := nameToField(element)
 	for _, attr := range override.Attrs {
@@ -45,7 +35,7 @@ func OverrideFor(dialect string, element OverrideAttributer) error {
 	return nil
 }
 
-func nameToField(element OverrideAttributer) map[string]string {
+func nameToField(element schemaspec.Attributer) map[string]string {
 	names := make(map[string]string)
 	t := reflect.ValueOf(element).Elem().Type()
 	for i := 0; i < t.NumField(); i++ {
