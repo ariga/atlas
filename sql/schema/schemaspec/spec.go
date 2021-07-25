@@ -3,7 +3,6 @@ package schemaspec
 import (
 	"fmt"
 	"strconv"
-	"strings"
 )
 
 type (
