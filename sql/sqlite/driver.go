@@ -131,6 +131,7 @@ func (d *Driver) inspectTable(ctx context.Context, t *schema.Table) (*schema.Tab
 	if err := d.fks(ctx, t); err != nil {
 		return nil, err
 	}
+	// TODO(a8m): extract CHECK constraints from 'CREATE TABLE' statement.
 	return t, nil
 }
 
