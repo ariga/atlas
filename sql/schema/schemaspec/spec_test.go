@@ -53,11 +53,23 @@ func TestAccessors(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestColumn_OverridesFor(t *testing.T) {
+func TestColumn_Overrides(t *testing.T) {
 	col := &schemaspec.Column{}
 	col.Overrides = []*schemaspec.Override{
 		{
 			Dialect: "mysql",
+			Resource: schemaspec.Resource{
+				Attrs: []*schemaspec.Attr{
+					{
+						K: "type",
+						V: &schemaspec.LiteralValue{V: "varchar(100)"},
+					},
+				},
+			},
+		},
+		{
+			Dialect: "mysql",
+			Version: "10",
 			Resource: schemaspec.Resource{
 				Attrs: []*schemaspec.Attr{
 					{
@@ -79,10 +91,10 @@ func TestColumn_OverridesFor(t *testing.T) {
 			},
 		},
 	}
-	myo := col.Override("mysql")
+	myo := col.Override("mysql", "mysql 10")
 	require.EqualValues(t, myo.Attrs[0], col.Overrides[0].Attrs[0])
 	pgo := col.Override("postgres")
-	require.EqualValues(t, pgo.Attrs[0], col.Overrides[1].Attrs[0])
+	require.EqualValues(t, pgo.Attrs[0], col.Overrides[2].Attrs[0])
 }
 
 func TestResource_Merge(t *testing.T) {

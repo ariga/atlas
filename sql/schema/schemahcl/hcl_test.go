@@ -233,6 +233,10 @@ table "user" {
     dialect "mysql" {
       type = "varchar(255)"
     }
+	dialect "mysql" {
+	  version = "10"
+      type = "text"
+    }
   }
 }`
 	decoded := &schemaspec.Schema{}
@@ -244,4 +248,17 @@ table "user" {
 	require.True(t, ok)
 	mo := name.Override("mysql")
 	require.NotNil(t, mo)
+	attr, ok := mo.Attr("type")
+	require.True(t, ok)
+	typ, err := attr.String()
+	require.NoError(t, err)
+	require.EqualValues(t, "varchar(255)", typ)
+
+	mo = name.Override("mysql", "mysql 10")
+	require.NotNil(t, mo)
+	attr, ok = mo.Attr("type")
+	require.True(t, ok)
+	typ, err = attr.String()
+	require.NoError(t, err)
+	require.EqualValues(t, "text", typ)
 }

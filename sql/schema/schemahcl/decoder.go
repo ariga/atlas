@@ -101,6 +101,7 @@ type (
 	}
 	override struct {
 		Dialect string   `hcl:",label"`
+		Version string   `hcl:"version,optional"`
 		Remain  hcl.Body `hcl:",remain"`
 	}
 )
@@ -244,12 +245,13 @@ func (i *index) spec(ctx *hcl.EvalContext) (*schemaspec.Index, error) {
 }
 
 func (o *override) spec(ctx *hcl.EvalContext) (*schemaspec.Override, error) {
-	common, err := extractCommon(ctx, o.Remain, nil)
+	common, err := extractCommon(ctx, o.Remain, skip("version"))
 	if err != nil {
 		return nil, err
 	}
 	return &schemaspec.Override{
 		Dialect: o.Dialect,
+		Version: o.Version,
 		Resource: schemaspec.Resource{
 			Attrs:    common.attrs,
 			Children: common.children,

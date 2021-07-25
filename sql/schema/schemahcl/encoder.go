@@ -91,6 +91,7 @@ func writeColumn(c *schemaspec.Column, body *hclwrite.Body) error {
 func writeOverride(o *schemaspec.Override, body *hclwrite.Body) error {
 	blk := body.AppendNewBlock("dialect", []string{o.Dialect})
 	nb := blk.Body()
+	nb.SetAttributeValue("version", cty.StringVal(o.Version))
 	return writeCommon(o.Attrs, o.Children, nb)
 }
 
