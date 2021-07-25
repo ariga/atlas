@@ -306,12 +306,11 @@ func (r *Resource) Merge(other *Resource) {
 }
 
 func (o *Override) version() string {
-	w := strings.Builder{}
-	w.WriteString(o.Dialect)
-	if len(o.Version) > 0 {
-		w.WriteString(" " + o.Version)
+	v := o.Dialect
+	if o.Version != "" {
+		v += " " + o.Version
 	}
-	return w.String()
+	return v
 }
 
 func (r *Resource) Attr(name string) (*Attr, bool) {
