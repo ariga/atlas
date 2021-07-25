@@ -286,3 +286,22 @@ func TestConvertColumnType(t *testing.T) {
 		})
 	}
 }
+
+func TestOverride(t *testing.T) {
+	s := schemautil.ColSpec("int", "int")
+	s.Overrides = []*schemaspec.Override{
+		{
+			Dialect: "mysql",
+			Resource: schemaspec.Resource{
+				Attrs: []*schemaspec.Attr{
+					schemautil.StrLitAttr("type", "bigint"),
+				},
+			},
+		},
+	}
+	c, err := ConvertColumn(s, nil)
+	it, ok := c.Type.Type.(*schema.IntegerType)
+	require.True(t, ok)
+	require.NoError(t, err)
+	require.Equal(t, "bigint", it.T)
+}

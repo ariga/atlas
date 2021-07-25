@@ -23,6 +23,12 @@ func LitAttr(k, v string) *schemaspec.Attr {
 	}
 }
 
+// StrLitAttr is a helper method for constructing *schemaspec.Attr instances that contain literal values
+// representing string literals.
+func StrLitAttr(k, v string) *schemaspec.Attr {
+	return LitAttr(k, strconv.Quote(v))
+}
+
 // ListAttr is a helper method for constructing *schemaspec.Attr instances that contain list values.
 func ListAttr(k string, values ...string) *schemaspec.Attr {
 	for i, v := range values {

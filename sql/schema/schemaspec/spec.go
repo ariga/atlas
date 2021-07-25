@@ -61,9 +61,9 @@ type (
 	// Column holds a specification for a column in an SQL table.
 	Column struct {
 		Name      string
-		Type      string
-		Default   *LiteralValue
-		Null      bool
+		Type      string        `override:"type"`
+		Default   *LiteralValue `override:"default"`
+		Null      bool          `override:"null"`
 		Attrs     []*Attr
 		Children  []*Resource
 		Overrides []*Override
@@ -148,6 +148,18 @@ type (
 	Overrider interface {
 		Override(dialect string) *Override
 	}
+
+	// Attributer facilitates the reading and writing of attributes.
+	Attributer interface {
+
+		// Attr returns the Value of an attribute of the resource and reports whether an
+		// attribute by that name was found.
+		Attr(name string) (*Attr, bool)
+
+		// SetAttr sets the attribute on the Element. If an Attr with the same name exists
+		// it is replaced, if it does not exist it is replaced.
+		SetAttr(*Attr)
+	}
 )
 
 // Table returns the first table that matches the given name and reports whether such a table was found.
@@ -185,6 +197,10 @@ func (c *Column) Attr(name string) (*Attr, bool) {
 	return getAttrVal(c.Attrs, name)
 }
 
+func (c *Column) SetAttr(attr *Attr) {
+	c.Attrs = replaceOrAppendAttr(c.Attrs, attr)
+}
+
 // Attr returns the value of the Table attribute named `name` and reports whether such an attribute exists.
 func (t *Table) Attr(name string) (*Attr, bool) {
 	return getAttrVal(t.Attrs, name)
@@ -208,6 +224,16 @@ func getAttrVal(attrs []*Attr, name string) (*Attr, bool) {
 	return nil, false
 }
 
+func replaceOrAppendAttr(attrs []*Attr, attr *Attr) []*Attr {
+	for i, v := range attrs {
+		if v.K == attr.K {
+			attrs[i] = attr
+			return attrs
+		}
+	}
+	return append(attrs, attr)
+}
+
 // Int returns an integer from the Value of the Attr. If The value is not a LiteralValue or the value
 // cannot be converted to an integer an error is returned.
 func (a *Attr) Int() (int, error) {
@@ -220,6 +246,27 @@ func (a *Attr) Int() (int, error) {
 		return 0, fmt.Errorf("schema: cannot read attribute %q as integer", a.K)
 	}
 	return s, nil
+}
+
+// String returns a string from the Value of the Attr. If The value is not a LiteralValue
+// an error is returned.  String values are expected to be quoted. If the value is not
+// properly quoted an error is returned.
+func (a *Attr) String() (string, error) {
+	lit, ok := a.V.(*LiteralValue)
+	if !ok {
+		return "", fmt.Errorf("schema: cannot read attribute %q as literal", a.K)
+	}
+	return strconv.Unquote(lit.V)
+}
+
+// Bool returns a boolean from the Value of the Attr. If The value is not a LiteralValue or the value
+// cannot be converted to a boolean an error is returned.
+func (a *Attr) Bool() (bool, error) {
+	lit, ok := a.V.(*LiteralValue)
+	if !ok {
+		return false, fmt.Errorf("schema: cannot read attribute %q as literal", a.K)
+	}
+	return strconv.ParseBool(lit.V)
 }
 
 // Strings returns a slice of strings from the Value of the Attr. If The value is not a ListValue or the its
@@ -238,6 +285,10 @@ func (a *Attr) Strings() ([]string, error) {
 		out = append(out, unquote)
 	}
 	return out, nil
+}
+
+func (r *Resource) Attr(name string) (*Attr, bool) {
+	return getAttrVal(r.Attrs, name)
 }
 
 func (*LiteralValue) val() {}

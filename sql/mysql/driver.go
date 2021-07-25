@@ -13,6 +13,10 @@ import (
 	"golang.org/x/mod/semver"
 )
 
+const (
+	Name = "mysql"
+)
+
 // Driver represents a MySQL driver for introspecting database schemas
 // and apply migrations changes on them.
 type Driver struct {
