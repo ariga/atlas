@@ -233,9 +233,9 @@ table "user" {
     dialect "mysql" {
       type = "varchar(255)"
     }
-	dialect "mysql" {
-		version = "10"
-		type = "text"
+    dialect "mysql" {
+      version = "10"
+      type = "text"
     }
   }
 }`
