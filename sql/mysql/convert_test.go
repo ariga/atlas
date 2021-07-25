@@ -66,7 +66,8 @@ func TestConvertSchema(t *testing.T) {
 			},
 		},
 	}
-	sch, err := ConvertSchema(spec)
+	d := &Driver{}
+	sch, err := d.ConvertSchema(spec)
 	require.NoError(t, err)
 	exp := &schema.Schema{
 		Name: "schema",
