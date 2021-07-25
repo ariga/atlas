@@ -8,6 +8,11 @@ table "user" {
     type = "string"
     dialect "mysql" {
       type = "varchar(255)"
+      version = "8"
+    }
+    dialect "mysql" {
+      type = "varchar(100)"
+      version = "9"
     }
   }
 }

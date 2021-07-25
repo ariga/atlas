@@ -109,10 +109,11 @@ type (
 	}
 
 	// Override contains information about how to override some attributes of an Element
-	// for a specific dialect. For example, to select a specific column type or add
+	// for a specific dialect and version. For example, to select a specific column type or add
 	// special attributes when using MySQL, but not when using SQLite or Postgres.
 	Override struct {
 		Dialect string
+		Version string
 		Resource
 	}
 
@@ -144,9 +145,9 @@ type (
 	}
 
 	// Overrider is the interface that wraps the Override method. Element types that implement
-	// this interface can expose an Override object for a specific dialect.
+	// this interface can expose an Override object for specific dialect versions.
 	Overrider interface {
-		Override(dialect string) *Override
+		Override(versions ...string) *Override
 	}
 
 	// Attributer facilitates the reading and writing of attributes.
@@ -206,13 +207,22 @@ func (t *Table) Attr(name string) (*Attr, bool) {
 	return getAttrVal(t.Attrs, name)
 }
 
-func (c *Column) Override(dialect string) *Override {
-	for _, o := range c.Overrides {
-		if o.Dialect == dialect {
-			return o
+// Override searches the Column's Overrides for ones matching any of the versions
+// passed to it. It then creates an Override by merging the overrides for all of
+// the matching versions in the order they were passed.
+func (c *Column) Override(versions ...string) *Override {
+	var override *Override
+	for _, version := range versions {
+		for _, o := range c.Overrides {
+			if o.version() == version {
+				if override == nil {
+					override = o
+				}
+				override.Merge(&o.Resource)
+			}
 		}
 	}
-	return nil
+	return override
 }
 
 func getAttrVal(attrs []*Attr, name string) (*Attr, bool) {
@@ -292,6 +302,14 @@ func (r *Resource) Merge(other *Resource) {
 	for _, attr := range other.Attrs {
 		r.SetAttr(attr)
 	}
+}
+
+func (o *Override) version() string {
+	v := o.Dialect
+	if o.Version != "" {
+		v += " " + o.Version
+	}
+	return v
 }
 
 func (r *Resource) Attr(name string) (*Attr, bool) {
