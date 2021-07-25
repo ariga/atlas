@@ -53,11 +53,11 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) []schema.Change {
 
 // ColumnTypeChanged reports if the a column type was changed.
 func (d *diff) ColumnTypeChanged(c1, c2 *schema.Column) (bool, error) {
-	same, err := sqlx.ColumnTypeChanged(c1, c2)
+	changed, err := sqlx.ColumnTypeChanged(c1, c2)
 	if sqlx.IsUnsupportedTypeError(err) {
 		return d.typeChanged(c1, c2)
 	}
-	return same, err
+	return changed, err
 }
 
 // IndexAttrChanged reports if the index attributes were changed.
