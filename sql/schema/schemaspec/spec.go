@@ -287,8 +287,19 @@ func (a *Attr) Strings() ([]string, error) {
 	return out, nil
 }
 
+// Merge merges the attributes of another Resource into the Resource.
+func (r *Resource) Merge(other *Resource) {
+	for _, attr := range other.Attrs {
+		r.SetAttr(attr)
+	}
+}
+
 func (r *Resource) Attr(name string) (*Attr, bool) {
 	return getAttrVal(r.Attrs, name)
+}
+
+func (r *Resource) SetAttr(attr *Attr) {
+	r.Attrs = replaceOrAppendAttr(r.Attrs, attr)
 }
 
 func (*LiteralValue) val() {}

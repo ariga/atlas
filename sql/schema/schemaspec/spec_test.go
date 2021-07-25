@@ -1,22 +1,24 @@
-package schemaspec
+package schemaspec_test
 
 import (
 	"testing"
 
+	"ariga.io/atlas/sql/internal/schemautil"
+	"ariga.io/atlas/sql/schema/schemaspec"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAccessors(t *testing.T) {
-	s := &Schema{
+	s := &schemaspec.Schema{
 		Name: "hello",
-		Tables: []*Table{
+		Tables: []*schemaspec.Table{
 			{
 				Name: "t1",
-				Columns: []*Column{
+				Columns: []*schemaspec.Column{
 					{Name: "c1", Type: "string"},
 					{Name: "c2", Type: "string"},
 				},
-				Indexes: []*Index{
+				Indexes: []*schemaspec.Index{
 					{Name: "idx"},
 				},
 			},
@@ -52,26 +54,26 @@ func TestAccessors(t *testing.T) {
 }
 
 func TestColumn_OverridesFor(t *testing.T) {
-	col := &Column{}
-	col.Overrides = []*Override{
+	col := &schemaspec.Column{}
+	col.Overrides = []*schemaspec.Override{
 		{
 			Dialect: "mysql",
-			Resource: Resource{
-				Attrs: []*Attr{
+			Resource: schemaspec.Resource{
+				Attrs: []*schemaspec.Attr{
 					{
 						K: "type",
-						V: &LiteralValue{V: "varchar(100)"},
+						V: &schemaspec.LiteralValue{V: "varchar(100)"},
 					},
 				},
 			},
 		},
 		{
 			Dialect: "postgres",
-			Resource: Resource{
-				Attrs: []*Attr{
+			Resource: schemaspec.Resource{
+				Attrs: []*schemaspec.Attr{
 					{
 						K: "type",
-						V: &LiteralValue{V: "varchar(200)"},
+						V: &schemaspec.LiteralValue{V: "varchar(200)"},
 					},
 				},
 			},
@@ -81,4 +83,42 @@ func TestColumn_OverridesFor(t *testing.T) {
 	require.EqualValues(t, myo.Attrs[0], col.Overrides[0].Attrs[0])
 	pgo := col.Override("postgres")
 	require.EqualValues(t, pgo.Attrs[0], col.Overrides[1].Attrs[0])
+}
+
+func TestResource_Merge(t *testing.T) {
+	r := &schemaspec.Resource{
+		Attrs: []*schemaspec.Attr{
+			schemautil.StrLitAttr("existing", "old_val"),
+			schemautil.StrLitAttr("other", "val"),
+			schemautil.StrLitAttr("to_bool", "val"),
+		},
+	}
+	other := &schemaspec.Resource{
+		Attrs: []*schemaspec.Attr{
+			schemautil.StrLitAttr("new", "val"),
+			schemautil.StrLitAttr("existing", "val"),
+			schemautil.LitAttr("to_bool", "true"),
+		},
+	}
+	r.Merge(other)
+	require.EqualValues(t, "val", getStrAttr(t, r, "new"))
+	require.EqualValues(t, "val", getStrAttr(t, r, "existing"))
+	require.EqualValues(t, "val", getStrAttr(t, r, "other"))
+	require.EqualValues(t, true, getBoolAttr(t, r, "to_bool"))
+}
+
+func getStrAttr(t *testing.T, r *schemaspec.Resource, name string) string {
+	v, ok := r.Attr(name)
+	require.True(t, ok)
+	s, err := v.String()
+	require.NoError(t, err)
+	return s
+}
+
+func getBoolAttr(t *testing.T, r *schemaspec.Resource, name string) bool {
+	v, ok := r.Attr(name)
+	require.True(t, ok)
+	b, err := v.Bool()
+	require.NoError(t, err)
+	return b
 }
