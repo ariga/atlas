@@ -110,7 +110,7 @@ func TestMySQL(t *testing.T) {
 				Schemas: []string{"test"},
 			})
 			require.NoError(t, err)
-			diff := mysql.Diff{Driver: drv}
+			diff := drv.Diff()
 			changes, err := diff.TableDiff(realm.Schemas[0].Tables[0], postsT)
 			require.NoError(t, err)
 			require.Empty(t, changes)

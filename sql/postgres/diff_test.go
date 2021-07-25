@@ -1,4 +1,4 @@
-package mysql
+package postgres
 
 import (
 	"testing"
@@ -34,95 +34,33 @@ func TestDiff_TableDiff(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "add collation",
-			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}},
-			to:   &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Collation{V: "latin1"}}},
-			wantChanges: []schema.Change{
-				&schema.AddAttr{
-					A: &schema.Collation{V: "latin1"},
-				},
-			},
-		},
-		{
-			name: "drop collation",
-			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Collation{V: "latin1"}}},
-			to:   &schema.Table{Name: "users"},
-			wantChanges: []schema.Change{
-				&schema.DropAttr{
-					A: &schema.Collation{V: "latin1"},
-				},
-			},
-		},
-		{
-			name: "modify collation",
-			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Collation{V: "utf8"}}},
-			to:   &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Collation{V: "latin1"}}},
-			wantChanges: []schema.Change{
-				&schema.ModifyAttr{
-					From: &schema.Collation{V: "utf8"},
-					To:   &schema.Collation{V: "latin1"},
-				},
-			},
-		},
-		{
-			name: "add charset",
-			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}},
-			to:   &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Charset{V: "hebrew"}}},
-			wantChanges: []schema.Change{
-				&schema.AddAttr{
-					A: &schema.Charset{V: "hebrew"},
-				},
-			},
-		},
-		{
-			name: "drop charset",
-			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Charset{V: "hebrew"}}},
-			to:   &schema.Table{Name: "users"},
-			wantChanges: []schema.Change{
-				&schema.DropAttr{
-					A: &schema.Charset{V: "hebrew"},
-				},
-			},
-		},
-		{
-			name: "modify charset",
-			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Charset{V: "hebrew"}}},
-			to:   &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Charset{V: "binary"}}},
-			wantChanges: []schema.Change{
-				&schema.ModifyAttr{
-					From: &schema.Charset{V: "hebrew"},
-					To:   &schema.Charset{V: "binary"},
-				},
-			},
-		},
-		{
 			name: "add check",
 			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}},
-			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"}}},
+			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&Check{Name: "t1_c1_check", Clause: "(c1 > 1)"}}},
 			wantChanges: []schema.Change{
 				&schema.AddAttr{
-					A: &Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"},
+					A: &Check{Name: "t1_c1_check", Clause: "(c1 > 1)"},
 				},
 			},
 		},
 		{
 			name: "drop check",
-			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"}}},
+			from: &schema.Table{Name: "t1", Attrs: []schema.Attr{&Check{Name: "t1_c1_check", Clause: "(c1 > 1)"}}},
 			to:   &schema.Table{Name: "t1"},
 			wantChanges: []schema.Change{
 				&schema.DropAttr{
-					A: &Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"},
+					A: &Check{Name: "t1_c1_check", Clause: "(c1 > 1)"},
 				},
 			},
 		},
 		{
 			name: "modify check",
-			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"}}},
-			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')", Enforced: true}}},
+			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Check{Name: "t1_c1_check", Clause: "(c1 > 1)"}}},
+			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&Check{Name: "t1_c1_check", Clause: "(c1 > 1)", NoInherit: true}}},
 			wantChanges: []schema.Change{
 				&schema.ModifyAttr{
-					From: &Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"},
-					To:   &Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')", Enforced: true},
+					From: &Check{Name: "t1_c1_check", Clause: "(c1 > 1)"},
+					To:   &Check{Name: "t1_c1_check", Clause: "(c1 > 1)", NoInherit: true},
 				},
 			},
 		},
@@ -135,7 +73,7 @@ func TestDiff_TableDiff(t *testing.T) {
 					},
 					Columns: []*schema.Column{
 						{Name: "c1", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}},
-						{Name: "c2", Type: &schema.ColumnType{Raw: "tinyint", Type: &schema.IntegerType{T: "tinyint"}}},
+						{Name: "c2", Type: &schema.ColumnType{Raw: "int8", Type: &schema.IntegerType{T: "int8"}}},
 					},
 				}
 				to = &schema.Table{
@@ -175,7 +113,7 @@ func TestDiff_TableDiff(t *testing.T) {
 					},
 					Columns: []*schema.Column{
 						{Name: "c1", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}},
-						{Name: "c2", Type: &schema.ColumnType{Raw: "tinyint", Type: &schema.IntegerType{T: "tinyint"}}},
+						{Name: "c2", Type: &schema.ColumnType{Raw: "int8", Type: &schema.IntegerType{T: "int8"}}},
 						{Name: "c3", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
 					},
 				}
@@ -186,7 +124,7 @@ func TestDiff_TableDiff(t *testing.T) {
 					},
 					Columns: []*schema.Column{
 						{Name: "c1", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}},
-						{Name: "c2", Type: &schema.ColumnType{Raw: "tinyint", Type: &schema.IntegerType{T: "tinyint"}}},
+						{Name: "c2", Type: &schema.ColumnType{Raw: "int8", Type: &schema.IntegerType{T: "int8"}}},
 						{Name: "c3", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
 					},
 				}
@@ -194,10 +132,12 @@ func TestDiff_TableDiff(t *testing.T) {
 			from.Indexes = []*schema.Index{
 				{Name: "c1_index", Unique: true, Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[0]}}},
 				{Name: "c2_unique", Unique: true, Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}},
+				{Name: "c3_predicate", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}},
 			}
 			to.Indexes = []*schema.Index{
 				{Name: "c1_index", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[0]}}},
 				{Name: "c3_unique", Unique: true, Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: to.Columns[1]}}},
+				{Name: "c3_predicate", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}, Attrs: []schema.Attr{&IndexPredicate{P: "c3 <> NULL"}}},
 			}
 			return testcase{
 				name: "indexes",
@@ -206,6 +146,7 @@ func TestDiff_TableDiff(t *testing.T) {
 				wantChanges: []schema.Change{
 					&schema.ModifyIndex{From: from.Indexes[0], To: to.Indexes[0], Change: schema.ChangeUnique},
 					&schema.DropIndex{I: from.Indexes[1]},
+					&schema.ModifyIndex{From: from.Indexes[2], To: to.Indexes[2], Change: schema.ChangeAttr},
 					&schema.AddIndex{I: to.Indexes[1]},
 				},
 			}
@@ -262,7 +203,7 @@ func TestDiff_TableDiff(t *testing.T) {
 		}(),
 	}
 	for _, tt := range tests {
-		d := Driver{version: "8.0.19"}.Diff()
+		d := Driver{version: "13"}.Diff()
 		t.Run(tt.name, func(t *testing.T) {
 			changes, err := d.TableDiff(tt.from, tt.to)
 			require.Equal(t, tt.wantErr, err != nil)
@@ -275,17 +216,9 @@ func TestDiff_SchemaDiff(t *testing.T) {
 	var (
 		d    = Driver{}.Diff()
 		from = &schema.Schema{
-			Realm: &schema.Realm{
-				Attrs: []schema.Attr{
-					&schema.Collation{V: "latin1"},
-				},
-			},
 			Tables: []*schema.Table{
 				{Name: "users"},
 				{Name: "pets"},
-			},
-			Attrs: []schema.Attr{
-				&schema.Collation{V: "latin1"},
 			},
 		}
 		to = &schema.Schema{
@@ -298,9 +231,6 @@ func TestDiff_SchemaDiff(t *testing.T) {
 				},
 				{Name: "groups"},
 			},
-			Attrs: []schema.Attr{
-				&schema.Collation{V: "utf8"},
-			},
 		}
 	)
 	from.Tables[0].Schema = from
@@ -308,7 +238,6 @@ func TestDiff_SchemaDiff(t *testing.T) {
 	changes, err := d.SchemaDiff(from, to)
 	require.NoError(t, err)
 	require.EqualValues(t, []schema.Change{
-		&schema.ModifyAttr{From: from.Attrs[0], To: to.Attrs[0]},
 		&schema.ModifyTable{T: from.Tables[0], Changes: []schema.Change{&schema.AddColumn{C: to.Tables[0].Columns[0]}}},
 		&schema.DropTable{T: from.Tables[1]},
 		&schema.AddTable{T: to.Tables[1]},

@@ -250,16 +250,16 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(sqltest.Escape(checksQuery)).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
- constraint_name    |       expression        | column_name | column_indexes 
---------------------+-------------------------+-------------+----------------
- boring             | (c1 > 1)                | c1          | {1}
- users_c2_check     | (c2 > 0)                | c2          | {2}
- users_c2_check1    | (c2 > 0)                | c2          | {2}
- users_check        | ((c2 + c1) > 2)         | c2          | {2,1}
- users_check        | ((c2 + c1) > 2)         | c1          | {2,1}
- users_check1       | (((c2 + c1) + c3) > 10) | c2          | {2,1,3}
- users_check1       | (((c2 + c1) + c3) > 10) | c1          | {2,1,3}
- users_check1       | (((c2 + c1) + c3) > 10) | c3          | {2,1,3}
+ constraint_name    |       expression        | column_name | column_indexes | no_inherit
+--------------------+-------------------------+-------------+----------------+----------------
+ boring             | (c1 > 1)                | c1          | {1}            | t
+ users_c2_check     | (c2 > 0)                | c2          | {2}            | f
+ users_c2_check1    | (c2 > 0)                | c2          | {2}            | f
+ users_check        | ((c2 + c1) > 2)         | c2          | {2,1}          | f
+ users_check        | ((c2 + c1) > 2)         | c1          | {2,1}          | f
+ users_check1       | (((c2 + c1) + c3) > 10) | c2          | {2,1,3}        | f
+ users_check1       | (((c2 + c1) + c3) > 10) | c1          | {2,1,3}        | f
+ users_check1       | (((c2 + c1) + c3) > 10) | c3          | {2,1,3}        | f
 `))
 				m.noChecks()
 			},
@@ -273,7 +273,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c3", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}},
 				}, t.Columns)
 				require.EqualValues([]schema.Attr{
-					&Check{Name: "boring", Clause: "(c1 > 1)", Columns: []string{"c1"}},
+					&Check{Name: "boring", Clause: "(c1 > 1)", Columns: []string{"c1"}, NoInherit: true},
 					&Check{Name: "users_c2_check", Clause: "(c2 > 0)", Columns: []string{"c2"}},
 					&Check{Name: "users_c2_check1", Clause: "(c2 > 0)", Columns: []string{"c2"}},
 					&Check{Name: "users_check", Clause: "((c2 + c1) > 2)", Columns: []string{"c2", "c1"}},

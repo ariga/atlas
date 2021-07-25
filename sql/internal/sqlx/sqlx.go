@@ -111,3 +111,16 @@ func ScanStrings(rows *sql.Rows) ([]string, error) {
 	}
 	return vs, nil
 }
+
+// ValuesEqual checks if the 2 string slices are equal (including their order).
+func ValuesEqual(v1, v2 []string) bool {
+	if len(v1) != len(v2) {
+		return false
+	}
+	for i := range v1 {
+		if v1[i] != v2[i] {
+			return false
+		}
+	}
+	return true
+}
