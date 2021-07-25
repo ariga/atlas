@@ -66,7 +66,8 @@ func TestConvertSchema(t *testing.T) {
 			},
 		},
 	}
-	sch, err := ConvertSchema(spec)
+	d := &Driver{}
+	sch, err := d.ConvertSchema(spec)
 	require.NoError(t, err)
 	exp := &schema.Schema{
 		Name: "schema",
@@ -299,7 +300,8 @@ func TestOverride(t *testing.T) {
 			},
 		},
 	}
-	c, err := ConvertColumn(s, nil)
+	d := &Driver{}
+	c, err := d.ConvertColumn(s, nil)
 	it, ok := c.Type.Type.(*schema.IntegerType)
 	require.True(t, ok)
 	require.NoError(t, err)

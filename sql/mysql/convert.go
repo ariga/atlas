@@ -11,29 +11,29 @@ import (
 )
 
 // ConvertSchema converts a schemaspec.Schema into a schema.Schema.
-func ConvertSchema(spec *schemaspec.Schema) (*schema.Schema, error) {
-	return schemautil.ConvertSchema(spec, ConvertTable)
+func (d *Driver) ConvertSchema(spec *schemaspec.Schema) (*schema.Schema, error) {
+	return schemautil.ConvertSchema(spec, d.ConvertTable)
 }
 
 // ConvertTable converts a schemaspec.Table to a schema.Table. Table conversion is done without converting
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the ConvertSchema function.
-func ConvertTable(spec *schemaspec.Table, parent *schema.Schema) (*schema.Table, error) {
-	return schemautil.ConvertTable(spec, parent, ConvertColumn, ConvertPrimaryKey, ConvertIndex)
+func (d *Driver) ConvertTable(spec *schemaspec.Table, parent *schema.Schema) (*schema.Table, error) {
+	return schemautil.ConvertTable(spec, parent, d.ConvertColumn, d.ConvertPrimaryKey, d.ConvertIndex)
 }
 
 // ConvertPrimaryKey converts a schemaspec.PrimaryKey to a schema.Index.
-func ConvertPrimaryKey(spec *schemaspec.PrimaryKey, parent *schema.Table) (*schema.Index, error) {
+func (d *Driver) ConvertPrimaryKey(spec *schemaspec.PrimaryKey, parent *schema.Table) (*schema.Index, error) {
 	return schemautil.ConvertPrimaryKey(spec, parent)
 }
 
 // ConvertIndex converts an schemaspec.Index to a schema.Index.
-func ConvertIndex(spec *schemaspec.Index, parent *schema.Table) (*schema.Index, error) {
+func (d *Driver) ConvertIndex(spec *schemaspec.Index, parent *schema.Table) (*schema.Index, error) {
 	return schemautil.ConvertIndex(spec, parent)
 }
 
 // ConvertColumn converts a schemaspec.Column into a schema.Column.
-func ConvertColumn(spec *schemaspec.Column, parent *schema.Table) (*schema.Column, error) {
+func (d *Driver) ConvertColumn(spec *schemaspec.Column, parent *schema.Table) (*schema.Column, error) {
 	if override := spec.Override(Name); override != nil {
 		if err := schemautil.Override(spec, override); err != nil {
 			return nil, err
