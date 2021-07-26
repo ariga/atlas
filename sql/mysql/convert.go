@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"ariga.io/atlas/sql/internal/schemautil"
+	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/schema/schemaspec"
 )
@@ -34,7 +35,7 @@ func (d *Driver) ConvertIndex(spec *schemaspec.Index, parent *schema.Table) (*sc
 
 // ConvertColumn converts a schemaspec.Column into a schema.Column.
 func (d *Driver) ConvertColumn(spec *schemaspec.Column, parent *schema.Table) (*schema.Column, error) {
-	if override := spec.Override(Name); override != nil {
+	if override := spec.Override(sqlx.VersionPermutations(Name, d.version)...); override != nil {
 		if err := schemautil.Override(spec, override); err != nil {
 			return nil, err
 		}
