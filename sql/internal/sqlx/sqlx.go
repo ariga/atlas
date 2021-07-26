@@ -130,7 +130,7 @@ func ValuesEqual(v1, v2 []string) bool {
 //   VersionPermutations("mysql", "1.2.3") => ["mysql", "mysql 1", "mysql 1.2", "mysql 1.2.3"]
 //
 // VersionPermutations will split the version number by ".", " ", "-" or "_", and rejoin them
-// with ".". The output splice can be used by drivers to generate a list of permutations
+// with ".". The output slice can be used by drivers to generate a list of permutations
 // for searching for relevant overrides in schema element specs.
 func VersionPermutations(dialect, version string) []string {
 	parts := strings.FieldsFunc(version, func(r rune) bool {
