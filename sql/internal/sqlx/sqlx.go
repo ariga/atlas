@@ -124,3 +124,23 @@ func ValuesEqual(v1, v2 []string) bool {
 	}
 	return true
 }
+
+// VersionPermutations returns permutations of the dialect version sorted
+// from coarse to fine grained. For example:
+//
+//   VersionPermutations("mysql", "1.2.3") => ["mysql", "mysql 1", "mysql 1.2", "mysql 1.2.3"]
+//
+// VersionPermutations will split the version number by ".", " ", "-" or "_", and rejoin them
+// with ".". The output slice can be used by drivers to generate a list of permutations
+// for searching for relevant overrides in schema element specs.
+func VersionPermutations(dialect, version string) []string {
+	parts := strings.FieldsFunc(version, func(r rune) bool {
+		return r == '.' || r == ' ' || r == '-' || r == '_'
+	})
+	names := []string{dialect}
+	for i := range parts {
+		version := strings.Join(parts[0:i+1], ".")
+		names = append(names, dialect+" "+version)
+	}
+	return names
+}

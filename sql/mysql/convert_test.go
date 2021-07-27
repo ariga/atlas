@@ -293,6 +293,7 @@ func TestOverride(t *testing.T) {
 	s.Overrides = []*schemaspec.Override{
 		{
 			Dialect: "mysql",
+			Version: "8",
 			Resource: schemaspec.Resource{
 				Attrs: []*schemaspec.Attr{
 					schemautil.StrLitAttr("type", "bigint"),
@@ -300,7 +301,7 @@ func TestOverride(t *testing.T) {
 			},
 		},
 	}
-	d := &Driver{}
+	d := &Driver{version: "8.11"}
 	c, err := d.ConvertColumn(s, nil)
 	it, ok := c.Type.Type.(*schema.IntegerType)
 	require.True(t, ok)
