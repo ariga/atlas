@@ -6,39 +6,45 @@ import (
 	"strings"
 
 	"ariga.io/atlas/sql/internal/schemautil"
+	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/schema/schemaspec"
 )
 
 // ConvertSchema converts a schemaspec.Schema into a schema.Schema.
-func ConvertSchema(spec *schemaspec.Schema) (*schema.Schema, error) {
-	return schemautil.ConvertSchema(spec, ConvertTable)
+func (d *Driver) ConvertSchema(spec *schemaspec.Schema) (*schema.Schema, error) {
+	return schemautil.ConvertSchema(spec, d.ConvertTable)
 }
 
 // ConvertTable converts a schemaspec.Table to a schema.Table. Table conversion is done without converting
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the ConvertSchema function.
-func ConvertTable(spec *schemaspec.Table, parent *schema.Schema) (*schema.Table, error) {
-	return schemautil.ConvertTable(spec, parent, ConvertColumn, ConvertPrimaryKey, ConvertIndex)
+func (d *Driver) ConvertTable(spec *schemaspec.Table, parent *schema.Schema) (*schema.Table, error) {
+	return schemautil.ConvertTable(spec, parent, d.ConvertColumn, d.ConvertPrimaryKey, d.ConvertIndex)
 }
 
 // ConvertPrimaryKey converts a schemaspec.PrimaryKey to a schema.Index.
-func ConvertPrimaryKey(spec *schemaspec.PrimaryKey, parent *schema.Table) (*schema.Index, error) {
+func (d *Driver) ConvertPrimaryKey(spec *schemaspec.PrimaryKey, parent *schema.Table) (*schema.Index, error) {
 	return schemautil.ConvertPrimaryKey(spec, parent)
 }
 
 // ConvertIndex converts an schemaspec.Index to a schema.Index.
-func ConvertIndex(spec *schemaspec.Index, parent *schema.Table) (*schema.Index, error) {
+func (d *Driver) ConvertIndex(spec *schemaspec.Index, parent *schema.Table) (*schema.Index, error) {
 	return schemautil.ConvertIndex(spec, parent)
 }
 
 // ConvertColumn converts a schemaspec.Column into a schema.Column.
-func ConvertColumn(spec *schemaspec.Column, parent *schema.Table) (*schema.Column, error) {
-	return schemautil.ConvertColumn(spec, ConvertColumnType)
+func (d *Driver) ConvertColumn(spec *schemaspec.Column, parent *schema.Table) (*schema.Column, error) {
+	if override := spec.Override(sqlx.VersionPermutations(Name, d.version)...); override != nil {
+		if err := schemautil.Override(spec, override); err != nil {
+			return nil, err
+		}
+	}
+	return schemautil.ConvertColumn(spec, d.ConvertColumnType)
 }
 
 // ConvertColumnType converts a schemaspec.Column into a concrete MySQL schema.Type.
-func ConvertColumnType(spec *schemaspec.Column) (schema.Type, error) {
+func (d *Driver) ConvertColumnType(spec *schemaspec.Column) (schema.Type, error) {
 	switch spec.Type {
 	case "int", "int8", "int16", "int64", "uint", "uint8", "uint16", "uint64":
 		return convertInteger(spec)

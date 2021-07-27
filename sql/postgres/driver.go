@@ -12,6 +12,8 @@ import (
 	"golang.org/x/mod/semver"
 )
 
+const Name = "postgres"
+
 // Driver represents a PostgreSQL driver for introspecting database schemas
 // and apply migrations changes on them.
 type Driver struct {
