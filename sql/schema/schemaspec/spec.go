@@ -44,6 +44,7 @@ type (
 	Schema struct {
 		Name   string
 		Tables []*Table
+		Resource
 	}
 
 	// Table holds a specification for an SQL table.
@@ -54,8 +55,7 @@ type (
 		PrimaryKey  *PrimaryKey
 		ForeignKeys []*ForeignKey
 		Indexes     []*Index
-		Attrs       []*Attr
-		Children    []*Resource
+		Resource
 	}
 
 	// Column holds a specification for a column in an SQL table.
@@ -64,9 +64,8 @@ type (
 		Type      string        `override:"type"`
 		Default   *LiteralValue `override:"default"`
 		Null      bool          `override:"null"`
-		Attrs     []*Attr
-		Children  []*Resource
 		Overrides []*Override
+		Resource
 	}
 
 	// PrimaryKey holds a specification for the primary key of a table.
@@ -83,17 +82,15 @@ type (
 		RefColumns []*ColumnRef
 		OnUpdate   string
 		OnDelete   string
-		Attrs      []*Attr
-		Children   []*Resource
+		Resource
 	}
 
 	// Index holds a specification for an index of a table.
 	Index struct {
-		Name     string
-		Columns  []*ColumnRef
-		Unique   bool
-		Attrs    []*Attr
-		Children []*Resource
+		Name    string
+		Columns []*ColumnRef
+		Unique  bool
+		Resource
 	}
 
 	// ColumnRef is a reference to a Column described in another spec.
@@ -191,20 +188,6 @@ func (t *Table) Index(name string) (*Index, bool) {
 		}
 	}
 	return nil, false
-}
-
-// Attr returns the value of the Column attribute named `name` and reports whether such an attribute exists.
-func (c *Column) Attr(name string) (*Attr, bool) {
-	return getAttrVal(c.Attrs, name)
-}
-
-func (c *Column) SetAttr(attr *Attr) {
-	c.Attrs = replaceOrAppendAttr(c.Attrs, attr)
-}
-
-// Attr returns the value of the Table attribute named `name` and reports whether such an attribute exists.
-func (t *Table) Attr(name string) (*Attr, bool) {
-	return getAttrVal(t.Attrs, name)
 }
 
 // Override searches the Column's Overrides for ones matching any of the versions
