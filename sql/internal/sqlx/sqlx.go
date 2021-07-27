@@ -127,6 +127,7 @@ func ValuesEqual(v1, v2 []string) bool {
 
 // VersionPermutations returns permutations of the dialect version sorted
 // from coarse to fine grained. For example:
+//
 //   VersionPermutations("mysql", "1.2.3") => ["mysql", "mysql 1", "mysql 1.2", "mysql 1.2.3"]
 //
 // VersionPermutations will split the version number by ".", " ", "-" or "_", and rejoin them
