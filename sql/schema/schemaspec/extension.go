@@ -16,29 +16,29 @@ type ExtensionSpec interface {
 // Scan reads the attributes and children resources of the resource into the target ExtensionSpec.
 func (r *Resource) Scan(target ExtensionSpec) error {
 	v := reflect.ValueOf(target).Elem()
-	for tag, name := range specFields(target) {
-		field := v.FieldByName(name)
-		attr, ok := r.Attr(tag)
+	for _, ft := range specFields(target) {
+		field := v.FieldByName(ft.field)
+		attr, ok := r.Attr(ft.tag)
 		if !ok {
-			return fmt.Errorf("schemaspec: resource does not have attr %q", tag)
+			return fmt.Errorf("schemaspec: resource does not have attr %q", ft.tag)
 		}
 		switch field.Kind() {
 		case reflect.String:
 			s, err := attr.String()
 			if err != nil {
-				return fmt.Errorf("schemaspec: value of attr %q cannot be read as string: %w", name, err)
+				return fmt.Errorf("schemaspec: value of attr %q cannot be read as string: %w", ft.tag, err)
 			}
 			field.SetString(s)
 		case reflect.Int:
 			i, err := attr.Int()
 			if err != nil {
-				return fmt.Errorf("schemaspec: value of attr %q cannot be read as integer: %w", name, err)
+				return fmt.Errorf("schemaspec: value of attr %q cannot be read as integer: %w", ft.tag, err)
 			}
 			field.SetInt(int64(i))
 		case reflect.Bool:
 			b, err := attr.Bool()
 			if err != nil {
-				return fmt.Errorf("schemaspec: value of attr %q cannot be read as bool: %w", name, err)
+				return fmt.Errorf("schemaspec: value of attr %q cannot be read as bool: %w", ft.tag, err)
 			}
 			field.SetBool(b)
 		default:
@@ -55,8 +55,8 @@ func ExtAsResource(ext ExtensionSpec) *Resource {
 		Name: ext.Name(),
 	}
 	v := reflect.ValueOf(ext).Elem()
-	for tag, name := range specFields(ext) {
-		field := v.FieldByName(name)
+	for _, ft := range specFields(ext) {
+		field := v.FieldByName(ft.field)
 		var lit string
 		switch field.Kind() {
 		case reflect.String:
@@ -67,7 +67,7 @@ func ExtAsResource(ext ExtensionSpec) *Resource {
 			lit = strconv.FormatBool(field.Bool())
 		}
 		attr := &Attr{
-			K: tag,
+			K: ft.tag,
 			V: &LiteralValue{V: lit},
 		}
 		out.SetAttr(attr)
@@ -76,17 +76,21 @@ func ExtAsResource(ext ExtensionSpec) *Resource {
 }
 
 // specFields uses reflection to find struct fields that are tagged with "spec"
-// and returns a map from the tag to the field name.
-func specFields(ext ExtensionSpec) map[string]string {
+// and returns a list of mappings from the tag to the field name.
+func specFields(ext ExtensionSpec) []fieldTag {
 	t := reflect.TypeOf(ext)
-	fields := make(map[string]string)
+	var fields []fieldTag
 	for i := 0; i < t.Elem().NumField(); i++ {
 		f := t.Elem().Field(i)
 		lookup, ok := f.Tag.Lookup("spec")
 		if !ok {
 			continue
 		}
-		fields[lookup] = f.Name
+		fields = append(fields, fieldTag{field: f.Name, tag: lookup})
 	}
 	return fields
+}
+
+type fieldTag struct {
+	field, tag string
 }
