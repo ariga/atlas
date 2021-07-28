@@ -66,7 +66,8 @@ func TestConvertSchema(t *testing.T) {
 			},
 		},
 	}
-	sch, err := ConvertSchema(spec)
+	d := &Driver{}
+	sch, err := d.ConvertSchema(spec)
 	require.NoError(t, err)
 	exp := &schema.Schema{
 		Name: "schema",
@@ -262,7 +263,8 @@ func TestConvertColumnType(t *testing.T) {
 		},
 	} {
 		t.Run(tt.spec.Name, func(t *testing.T) {
-			columnType, err := ConvertColumnType(tt.spec)
+			d := &Driver{}
+			columnType, err := d.ConvertColumnType(tt.spec)
 			if tt.expectedErr != "" && err != nil {
 				require.Equal(t, tt.expectedErr, err.Error())
 				return
