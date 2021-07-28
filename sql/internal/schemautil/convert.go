@@ -7,6 +7,7 @@ import (
 	"ariga.io/atlas/sql/schema/schemaspec"
 )
 
+// List of convert function types.
 type (
 	ConvertTableFunc      func(*schemaspec.Table, *schema.Schema) (*schema.Table, error)
 	ConvertColumnFunc     func(*schemaspec.Column, *schema.Table) (*schema.Column, error)

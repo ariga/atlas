@@ -91,7 +91,7 @@ func TestMySQL(t *testing.T) {
 			postsT.ForeignKeys = []*schema.ForeignKey{
 				{Symbol: "author_id", Table: postsT, Columns: postsT.Columns[1:2], RefTable: usersT, RefColumns: usersT.Columns, OnDelete: schema.NoAction},
 			}
-			migrate := mysql.Migrate{Driver: drv}
+			migrate := drv.Migrate()
 			err = migrate.Exec(ctx, []schema.Change{
 				&schema.AddTable{T: usersT},
 				&schema.AddTable{T: postsT},

@@ -156,7 +156,7 @@ func TestMigrate_DetachCycles(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func newMigrate(version string) (*Migrate, *mock, error) {
+func newMigrate(version string) (schema.Execer, *mock, error) {
 	db, m, err := sqlmock.New()
 	if err != nil {
 		return nil, nil, err
@@ -167,5 +167,5 @@ func newMigrate(version string) (*Migrate, *mock, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	return &Migrate{Driver: drv}, mk, nil
+	return drv.Migrate(), mk, nil
 }
