@@ -13,8 +13,8 @@ type Extension interface {
 	Type() string
 }
 
-// Scan reads the attributes and children resources of the resource into the target Extension.
-func (r *Resource) Scan(target Extension) error {
+// As reads the attributes and children resources of the resource into the target Extension.
+func (r *Resource) As(target Extension) error {
 	v := reflect.ValueOf(target).Elem()
 	for _, ft := range specFields(target) {
 		field := v.FieldByName(ft.field)
@@ -48,12 +48,13 @@ func (r *Resource) Scan(target Extension) error {
 	return nil
 }
 
-// ExtAsResource writes the Extension as a Resource.
-func ExtAsResource(ext Extension) *Resource {
-	out := &Resource{
-		Type: ext.Type(),
-		Name: ext.Name(),
-	}
+// Scan reads the Extension into the Resource. Scan will reset any existing
+// attributes and children resources and override the type and name of the resource.
+func (r *Resource) Scan(ext Extension) error {
+	r.Type = ext.Type()
+	r.Name = ext.Name()
+	r.Attrs = nil
+	r.Children = nil
 	v := reflect.ValueOf(ext).Elem()
 	for _, ft := range specFields(ext) {
 		field := v.FieldByName(ft.field)
@@ -65,14 +66,16 @@ func ExtAsResource(ext Extension) *Resource {
 			lit = fmt.Sprintf("%d", field.Int())
 		case reflect.Bool:
 			lit = strconv.FormatBool(field.Bool())
+		default:
+			return fmt.Errorf("schemaspec: unsupported field kind %q", field.Kind())
 		}
 		attr := &Attr{
 			K: ft.tag,
 			V: &LiteralValue{V: lit},
 		}
-		out.SetAttr(attr)
+		r.SetAttr(attr)
 	}
-	return out
+	return nil
 }
 
 // specFields uses reflection to find struct fields that are tagged with "spec"

@@ -23,7 +23,7 @@ func (*OwnerBlock) Name() string {
 }
 
 func TestExtension(t *testing.T) {
-	r := &schemaspec.Resource{
+	original := &schemaspec.Resource{
 		Type: "owner",
 		Attrs: []*schemaspec.Attr{
 			schemautil.StrLitAttr("first_name", "tzuri"),
@@ -32,12 +32,14 @@ func TestExtension(t *testing.T) {
 		},
 	}
 	owner := OwnerBlock{}
-	err := r.Scan(&owner)
+	err := original.As(&owner)
 	require.NoError(t, err)
 	require.EqualValues(t, "tzuri", owner.FirstName)
 	require.EqualValues(t, 2019, owner.Born)
 	require.EqualValues(t, true, owner.Active)
 
-	resource := schemaspec.ExtAsResource(&owner)
-	require.EqualValues(t, r, resource)
+	scan := &schemaspec.Resource{}
+	err = scan.Scan(&owner)
+	require.NoError(t, err)
+	require.EqualValues(t, original, scan)
 }
