@@ -209,10 +209,12 @@ func (p *foreignKey) spec(ctx *hcl.EvalContext) (*schemaspec.ForeignKey, error) 
 	}
 	fk := &schemaspec.ForeignKey{
 		Symbol:   p.Symbol,
-		Attrs:    common.attrs,
-		Children: common.children,
 		OnDelete: p.OnDelete,
 		OnUpdate: p.OnUpdate,
+		Resource: schemaspec.Resource{
+			Attrs:    common.attrs,
+			Children: common.children,
+		},
 	}
 	for _, col := range p.Columns {
 		fk.Columns = append(fk.Columns, &schemaspec.ColumnRef{Table: col.Table, Name: col.Name})
@@ -233,10 +235,12 @@ func (i *index) spec(ctx *hcl.EvalContext) (*schemaspec.Index, error) {
 		return nil, err
 	}
 	idx := &schemaspec.Index{
-		Name:     i.Name,
-		Unique:   i.Unique,
-		Attrs:    common.attrs,
-		Children: common.children,
+		Name:   i.Name,
+		Unique: i.Unique,
+		Resource: schemaspec.Resource{
+			Attrs:    common.attrs,
+			Children: common.children,
+		},
 	}
 	for _, col := range i.Columns {
 		idx.Columns = append(idx.Columns, &schemaspec.ColumnRef{Table: col.Table, Name: col.Name})

@@ -9,9 +9,11 @@ import (
 // ColSpec is a helper method for constructing *schemaspec.Column instances.
 func ColSpec(name, coltype string, attrs ...*schemaspec.Attr) *schemaspec.Column {
 	return &schemaspec.Column{
-		Name:  name,
-		Type:  coltype,
-		Attrs: attrs,
+		Name: name,
+		Type: coltype,
+		Resource: schemaspec.Resource{
+			Attrs: attrs,
+		},
 	}
 }
 
