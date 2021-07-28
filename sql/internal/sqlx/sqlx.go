@@ -1,8 +1,10 @@
 package sqlx
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"ariga.io/atlas/sql/schema"
@@ -143,4 +145,108 @@ func VersionPermutations(dialect, version string) []string {
 		names = append(names, dialect+" "+version)
 	}
 	return names
+}
+
+// A Builder provides a syntactic sugar API for writing SQL statements.
+type Builder struct {
+	bytes.Buffer
+	QuoteChar byte
+}
+
+// P writes a list of phrases to the builder separated and
+// suffixed with whitespace.
+func (b *Builder) P(phrases ...string) *Builder {
+	for _, p := range phrases {
+		if p == "" {
+			continue
+		}
+		if b.Len() > 0 && b.lastByte() != ' ' {
+			b.WriteByte(' ')
+		}
+		b.WriteString(p)
+		if p[len(p)-1] != ' ' {
+			b.WriteByte(' ')
+		}
+	}
+	return b
+}
+
+// Ident writes the given string quoted as an SQL identifier.
+func (b *Builder) Ident(s string) *Builder {
+	if s != "" {
+		b.WriteByte(b.QuoteChar)
+		b.WriteString(s)
+		b.WriteByte(b.QuoteChar)
+		b.WriteByte(' ')
+	}
+	return b
+}
+
+// Table writes the table identifier to the builder, prefixed
+// with the schema name if exists.
+func (b *Builder) Table(t *schema.Table) *Builder {
+	if t.Schema != nil {
+		b.Ident(t.Schema.Name)
+		b.rewriteLastByte('.')
+	}
+	b.Ident(t.Name)
+	return b
+}
+
+// Comma writes a comma. If the current buffer ends
+// with whitespace, it will be replaced instead.
+func (b *Builder) Comma() *Builder {
+	if b.lastByte() == ' ' {
+		b.rewriteLastByte(',')
+		b.WriteByte(' ')
+	} else {
+		b.WriteString(", ")
+	}
+	return b
+}
+
+// MapComma maps the slice x using the function f and joins the result with
+// a comma separating between the written elements.
+func (b *Builder) MapComma(x interface{}, f func(i int, b *Builder)) *Builder {
+	s := reflect.ValueOf(x)
+	for i := 0; i < s.Len(); i++ {
+		if i > 0 {
+			b.Comma()
+		}
+		f(i, b)
+	}
+	return b
+}
+
+// Wrap wraps the written string with parentheses.
+func (b *Builder) Wrap(f func(b *Builder)) *Builder {
+	b.WriteByte('(')
+	f(b)
+	if b.lastByte() != ' ' {
+		b.WriteByte(')')
+	} else {
+		b.rewriteLastByte(')')
+	}
+	return b
+}
+
+// String overrides the Buffer.String method and ensure no spaces pad the returned statement.
+func (b *Builder) String() string {
+	return strings.TrimSpace(b.Buffer.String())
+}
+
+func (b *Builder) lastByte() byte {
+	if b.Len() == 0 {
+		return 0
+	}
+	buf := b.Buffer.Bytes()
+	return buf[len(buf)-1]
+}
+
+func (b *Builder) rewriteLastByte(c byte) {
+	if b.Len() == 0 {
+		return
+	}
+	buf := b.Buffer.Bytes()
+	buf[len(buf)-1] = c
 }
