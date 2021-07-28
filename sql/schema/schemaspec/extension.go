@@ -6,15 +6,15 @@ import (
 	"strconv"
 )
 
-// ExtensionSpec is the interface that should be implemented by extensions to
+// Extension is the interface that should be implemented by extensions to
 // the core Spec resources.
-type ExtensionSpec interface {
+type Extension interface {
 	Name() string
 	Type() string
 }
 
-// Scan reads the attributes and children resources of the resource into the target ExtensionSpec.
-func (r *Resource) Scan(target ExtensionSpec) error {
+// Scan reads the attributes and children resources of the resource into the target Extension.
+func (r *Resource) Scan(target Extension) error {
 	v := reflect.ValueOf(target).Elem()
 	for _, ft := range specFields(target) {
 		field := v.FieldByName(ft.field)
@@ -48,8 +48,8 @@ func (r *Resource) Scan(target ExtensionSpec) error {
 	return nil
 }
 
-// ExtAsResource writes the ExtensionSpec as a Resource.
-func ExtAsResource(ext ExtensionSpec) *Resource {
+// ExtAsResource writes the Extension as a Resource.
+func ExtAsResource(ext Extension) *Resource {
 	out := &Resource{
 		Type: ext.Type(),
 		Name: ext.Name(),
@@ -77,7 +77,7 @@ func ExtAsResource(ext ExtensionSpec) *Resource {
 
 // specFields uses reflection to find struct fields that are tagged with "spec"
 // and returns a list of mappings from the tag to the field name.
-func specFields(ext ExtensionSpec) []fieldTag {
+func specFields(ext Extension) []fieldTag {
 	t := reflect.TypeOf(ext)
 	var fields []fieldTag
 	for i := 0; i < t.Elem().NumField(); i++ {
