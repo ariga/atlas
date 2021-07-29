@@ -48,13 +48,15 @@ func (r *Resource) As(target Extension) error {
 	return nil
 }
 
-// Scan reads the Extension into the Resource. Scan will reset any existing
-// attributes and children resources and override the type and name of the resource.
+// Scan reads the Extension into the Resource. Scan will override the Resource
+// name or type if they are set for the extension.
 func (r *Resource) Scan(ext Extension) error {
-	r.Type = ext.Type()
-	r.Name = ext.Name()
-	r.Attrs = nil
-	r.Children = nil
+	if ext.Type() != "" {
+		r.Type = ext.Type()
+	}
+	if ext.Name() != "" {
+		r.Name = ext.Name()
+	}
 	v := reflect.ValueOf(ext).Elem()
 	for _, ft := range specFields(ext) {
 		field := v.FieldByName(ft.field)
