@@ -13,7 +13,7 @@ import (
 
 // Encode implements schema.Encoder by taking a Spec and returning a byte slice of an HCL
 // document representing the spec.
-func (c *codec) Encode(elem schemaspec.Element) ([]byte, error) {
+func Encode(elem schemaspec.Element) ([]byte, error) {
 	f := hclwrite.NewFile()
 	if err := write(elem, f.Body()); err != nil {
 		return nil, err

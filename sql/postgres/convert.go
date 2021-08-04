@@ -11,9 +11,9 @@ import (
 	"ariga.io/atlas/sql/schema/schemaspec"
 )
 
-// ConvertSchema converts a schemaspec.Schema into a schema.Schema.
-func (d *Driver) ConvertSchema(spec *schemaspec.Schema) (*schema.Schema, error) {
-	return schemautil.ConvertSchema(spec, d.ConvertTable)
+// ConvertSchema converts a schemaspec.Schema and its associated tables into a schema.Schema.
+func (d *Driver) ConvertSchema(spec *schemaspec.Schema, tables []*schemaspec.Table) (*schema.Schema, error) {
+	return schemautil.ConvertSchema(spec, tables, d.ConvertTable)
 }
 
 // ConvertTable converts a schemaspec.Table to a schema.Table. Table conversion is done without converting

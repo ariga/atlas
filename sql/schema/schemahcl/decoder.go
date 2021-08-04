@@ -15,20 +15,17 @@ import (
 	"github.com/zclconf/go-cty/cty/gocty"
 )
 
-type codec struct {
-}
-
 // DecodeFile parses an HCL document as a schemaspec.File.
-func (c *codec) DecodeFile(body []byte, filename string, file *schemaspec.File) error {
-	return c.decode(body, filename, file)
+func DecodeFile(body []byte, filename string, file *schemaspec.File) error {
+	return decode(body, filename, file)
 }
 
 // Decode implements schema.Decoder. It parses an HCL document describing a schema into Spec.
-func (c *codec) Decode(body []byte, spec schemaspec.Spec) error {
-	return c.decode(body, "in-memory.hcl", spec)
+func Decode(body []byte, spec schemaspec.Spec) error {
+	return decode(body, "in-memory.hcl", spec)
 }
 
-func (c *codec) decode(body []byte, filename string, spec schemaspec.Spec) error {
+func decode(body []byte, filename string, spec schemaspec.Spec) error {
 	parser := hclparse.NewParser()
 	srcHCL, diag := parser.ParseHCL(body, filename)
 	if diag.HasErrors() {

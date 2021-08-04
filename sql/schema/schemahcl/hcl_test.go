@@ -34,7 +34,7 @@ func TestReEncode(t *testing.T) {
 			},
 		},
 	}
-	config, err := testCodec().Encode(tbl)
+	config, err := Encode(tbl)
 	require.NoError(t, err)
 	require.Equal(t, `table "users" {
   column "user_id" {
@@ -47,7 +47,7 @@ func TestReEncode(t *testing.T) {
 }
 `, string(config))
 	s := &schemaspec.File{}
-	err = testCodec().DecodeFile(config, "file.hcl", s)
+	err = DecodeFile(config, "file.hcl", s)
 	require.NoError(t, err)
 	require.EqualValues(t, tbl, s.Tables[0])
 }
@@ -63,7 +63,7 @@ table "users" {
 	}
 }`
 	s := &schemaspec.File{}
-	err := testCodec().DecodeFile([]byte(f), "file.hcl", s)
+	err := DecodeFile([]byte(f), "file.hcl", s)
 	require.NoError(t, err)
 	require.Equal(t, "s1", s.Tables[0].SchemaName)
 }
@@ -85,8 +85,7 @@ table "users" {
 }
 `
 	s := &schemaspec.File{}
-	c := testCodec()
-	err := c.DecodeFile([]byte(f), "file.hcl", s)
+	err := DecodeFile([]byte(f), "file.hcl", s)
 	require.NoError(t, err)
 	require.Equal(t, &schemaspec.PrimaryKey{
 		Columns: []*schemaspec.ColumnRef{
@@ -96,10 +95,10 @@ table "users" {
 			},
 		},
 	}, s.Tables[0].PrimaryKey)
-	encode, err := c.Encode(s)
+	encode, err := Encode(s)
 	require.NoError(t, err)
 	generated := &schemaspec.File{}
-	err = c.DecodeFile(encode, "file.hcl", generated)
+	err = DecodeFile(encode, "file.hcl", generated)
 	require.NoError(t, err)
 	require.EqualValues(t, s, generated)
 }
@@ -125,8 +124,7 @@ table "users" {
 }
 `
 	s := &schemaspec.File{}
-	c := testCodec()
-	err := c.DecodeFile([]byte(f), "file.hcl", s)
+	err := DecodeFile([]byte(f), "file.hcl", s)
 	require.NoError(t, err)
 	require.Equal(t, &schemaspec.Index{
 		Name:   "txn_id",
@@ -138,10 +136,10 @@ table "users" {
 			},
 		},
 	}, s.Tables[0].Indexes[0])
-	encode, err := c.Encode(s)
+	encode, err := Encode(s)
 	require.NoError(t, err)
 	generated := &schemaspec.File{}
-	err = c.DecodeFile(encode, "file.hcl", generated)
+	err = DecodeFile(encode, "file.hcl", generated)
 	require.NoError(t, err)
 	require.EqualValues(t, s, generated)
 }
@@ -181,8 +179,8 @@ table "user_messages" {
 }
 `
 	s := &schemaspec.File{}
-	c := testCodec()
-	err := c.DecodeFile([]byte(f), "file.hcl", s)
+
+	err := DecodeFile([]byte(f), "file.hcl", s)
 	require.NoError(t, err)
 	require.Equal(t, &schemaspec.ForeignKey{
 		Symbol: "user_name_ref",
@@ -194,10 +192,10 @@ table "user_messages" {
 		},
 		OnDelete: string(schema.NoAction),
 	}, s.Tables[1].ForeignKeys[0])
-	encode, err := c.Encode(s)
+	encode, err := Encode(s)
 	require.NoError(t, err)
 	generated := &schemaspec.File{}
-	err = c.DecodeFile(encode, "file.hcl", generated)
+	err = DecodeFile(encode, "file.hcl", generated)
 	require.NoError(t, err)
 	require.EqualValues(t, s, generated)
 }
@@ -211,16 +209,15 @@ func TestRewriteHCL(t *testing.T) {
 		}
 		filename := filepath.Join("testdata", tt.Name())
 		t.Run(filename, func(t *testing.T) {
-			c := testCodec()
 			fb, err := ioutil.ReadFile(filename)
 			require.NoError(t, err)
 			decoded := &schemaspec.File{}
-			err = c.DecodeFile(fb, filename, decoded)
+			err = DecodeFile(fb, filename, decoded)
 			require.NoError(t, err)
-			encode, err := c.Encode(decoded)
+			encode, err := Encode(decoded)
 			require.NoError(t, err)
 			generated := &schemaspec.File{}
-			err = c.DecodeFile(encode, filename, generated)
+			err = DecodeFile(encode, filename, generated)
 			require.NoError(t, err)
 			require.EqualValues(t, decoded, generated)
 		})
@@ -247,7 +244,7 @@ table "user" {
 }`
 	decoded := &schemaspec.File{}
 
-	err := testCodec().DecodeFile([]byte(h), "file.hcl", decoded)
+	err := DecodeFile([]byte(h), "file.hcl", decoded)
 	require.NoError(t, err)
 	s := decoded.Schemas[0]
 	ut, ok := decoded.Table("user", s.Name)
@@ -269,8 +266,4 @@ table "user" {
 	typ, err = attr.String()
 	require.NoError(t, err)
 	require.EqualValues(t, "text", typ)
-}
-
-func testCodec() *codec {
-	return &codec{}
 }
