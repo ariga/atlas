@@ -13,8 +13,8 @@ import (
 
 type ConvertSuite struct {
 	suite.Suite
-	graph  *gen.Graph
-	schema *schemaspec.Schema
+	graph *gen.Graph
+	file  *schemaspec.File
 }
 
 func (s *ConvertSuite) SetupSuite() {
@@ -23,7 +23,7 @@ func (s *ConvertSuite) SetupSuite() {
 	sch, err := Convert(graph)
 	s.Require().NoError(err)
 	s.graph = graph
-	s.schema = sch
+	s.file = sch
 }
 
 func TestSuite(t *testing.T) {
@@ -38,14 +38,14 @@ func (s *ConvertSuite) TestTables() {
 		"user_activities",
 	} {
 		s.Run(n, func() {
-			_, ok := tableSpec(s.schema, n)
+			_, ok := s.file.Table(n, "")
 			s.Require().Truef(ok, "expected table %q to exist", n)
 		})
 	}
 }
 
 func (s *ConvertSuite) TestUserColumns() {
-	users, _ := tableSpec(s.schema, "users")
+	users, _ := s.file.Table("users", "")
 	for _, tt := range []struct {
 		fld      string
 		expected *schema.ColumnType
@@ -169,7 +169,7 @@ func (s *ConvertSuite) TestUserColumns() {
 }
 
 func (s *ConvertSuite) TestPrimaryKey() {
-	users, _ := tableSpec(s.schema, "users")
+	users, _ := s.file.Table("users", "")
 	s.Require().EqualValues(&schemaspec.PrimaryKey{
 		Columns: []*schemaspec.ColumnRef{
 			{Table: "users", Name: "id"},
@@ -178,7 +178,7 @@ func (s *ConvertSuite) TestPrimaryKey() {
 }
 
 func (s *ConvertSuite) TestForeignKey() {
-	users, _ := tableSpec(s.schema, "users")
+	users, _ := s.file.Table("users", "")
 	fk, ok := fkSpec(users, "users_groups_group")
 	s.Require().True(ok, "expected column id")
 	s.Require().EqualValues(&schemaspec.ForeignKey{
@@ -195,7 +195,7 @@ func (s *ConvertSuite) TestForeignKey() {
 }
 
 func (s *ConvertSuite) TestUnique() {
-	users, _ := tableSpec(s.schema, "users")
+	users, _ := s.file.Table("users", "")
 	fk, ok := fkSpec(users, "users_groups_group")
 	s.Require().True(ok, "expected column id")
 	s.Require().EqualValues(&schemaspec.ForeignKey{
@@ -211,7 +211,7 @@ func (s *ConvertSuite) TestUnique() {
 }
 
 func (s *ConvertSuite) TestIndexes() {
-	users, _ := tableSpec(s.schema, "users")
+	users, _ := s.file.Table("users", "")
 	timeIdx, ok := indexSpec(users, "user_time")
 	s.Require().True(ok, "expected time index")
 	s.Require().EqualValues(&schemaspec.Index{
@@ -224,7 +224,7 @@ func (s *ConvertSuite) TestIndexes() {
 }
 
 func (s *ConvertSuite) TestRelationTable() {
-	relTable, ok := tableSpec(s.schema, "user_activities")
+	relTable, ok := s.file.Table("user_activities", "")
 	s.Require().True(ok, "expected relation table user_activities")
 	s.Require().Len(relTable.Columns, 2)
 	s.Require().Len(relTable.ForeignKeys, 2)
@@ -235,7 +235,7 @@ func (s *ConvertSuite) TestRelationTable() {
 }
 
 func (s *ConvertSuite) TestDefault() {
-	tbl, ok := tableSpec(s.schema, "default_containers")
+	tbl, ok := s.file.Table("default_containers", "")
 	s.Require().True(ok, "expected default_containers table")
 	for _, tt := range []struct {
 		col      string

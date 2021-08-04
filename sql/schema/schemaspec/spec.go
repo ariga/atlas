@@ -32,6 +32,14 @@ type (
 		Decoder
 	}
 
+	// File represents a file containing Spec elements.
+	File struct {
+		Name    string
+		Schemas []*Schema
+		Tables  []*Table
+		Resource
+	}
+
 	// Resource is a generic container for resources described in configurations.
 	Resource struct {
 		Name     string
@@ -42,8 +50,7 @@ type (
 
 	// Schema holds a specification for a Schema.
 	Schema struct {
-		Name   string
-		Tables []*Table
+		Name string
 		Resource
 	}
 
@@ -161,9 +168,9 @@ type (
 )
 
 // Table returns the first table that matches the given name and reports whether such a table was found.
-func (s *Schema) Table(name string) (*Table, bool) {
+func (s *File) Table(name, schema string) (*Table, bool) {
 	for _, t := range s.Tables {
-		if t.Name == name {
+		if t.Name == name && t.SchemaName == schema {
 			return t, true
 		}
 	}
@@ -315,6 +322,7 @@ func (*PrimaryKey) elem() {}
 func (*ForeignKey) elem() {}
 func (*Index) elem()      {}
 
+func (*File) spec()       {}
 func (*Column) spec()     {}
 func (*Table) spec()      {}
 func (*Schema) spec()     {}

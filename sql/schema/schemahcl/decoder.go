@@ -15,10 +15,22 @@ import (
 	"github.com/zclconf/go-cty/cty/gocty"
 )
 
+type codec struct {
+}
+
+// DecodeFile parses an HCL document as a schemaspec.File.
+func (c *codec) DecodeFile(body []byte, filename string, file *schemaspec.File) error {
+	return c.decode(body, filename, file)
+}
+
 // Decode implements schema.Decoder. It parses an HCL document describing a schema into Spec.
-func Decode(body []byte, spec schemaspec.Spec) error {
+func (c *codec) Decode(body []byte, spec schemaspec.Spec) error {
+	return c.decode(body, "in-memory.hcl", spec)
+}
+
+func (c *codec) decode(body []byte, filename string, spec schemaspec.Spec) error {
 	parser := hclparse.NewParser()
-	srcHCL, diag := parser.ParseHCL(body, "in-memory.hcl")
+	srcHCL, diag := parser.ParseHCL(body, filename)
 	if diag.HasErrors() {
 		return diag
 	}
@@ -29,13 +41,17 @@ func Decode(body []byte, spec schemaspec.Spec) error {
 	if err != nil {
 		return err
 	}
-	if s, ok := spec.(*schemaspec.Schema); ok {
+	if s, ok := spec.(*schemaspec.File); ok {
 		f := &schemaFile{}
 		if diag := gohcl.DecodeBody(srcHCL.Body, ctx, f); diag.HasErrors() {
 			return diag
 		}
-		if len(f.Schemas) > 0 {
-			s.Name = f.Schemas[0].Name
+		for _, sch := range f.Schemas {
+			spec, err := sch.spec(ctx)
+			if err != nil {
+				return err
+			}
+			s.Schemas = append(s.Schemas, spec)
 		}
 		for _, tbl := range f.Tables {
 			spec, err := tbl.spec(ctx)
@@ -51,10 +67,12 @@ func Decode(body []byte, spec schemaspec.Spec) error {
 
 type (
 	schemaFile struct {
-		Schemas []struct {
-			Name string `hcl:",label"`
-		} `hcl:"schema,block"`
-		Tables []*table `hcl:"table,block"`
+		Schemas []*schemaHcl `hcl:"schema,block"`
+		Tables  []*table     `hcl:"table,block"`
+		Remain  hcl.Body     `hcl:",remain"`
+	}
+	schemaHcl struct {
+		Name   string   `hcl:",label"`
 		Remain hcl.Body `hcl:",remain"`
 	}
 	table struct {
@@ -105,6 +123,17 @@ type (
 		Remain  hcl.Body `hcl:",remain"`
 	}
 )
+
+func (s *schemaHcl) spec(ctx *hcl.EvalContext) (*schemaspec.Schema, error) {
+	spec := &schemaspec.Schema{Name: s.Name}
+	common, err := extractCommon(ctx, s.Remain, nil)
+	if err != nil {
+		return nil, err
+	}
+	spec.Attrs = common.attrs
+	spec.Children = common.children
+	return spec, nil
+}
 
 func (t *table) spec(ctx *hcl.EvalContext) (*schemaspec.Table, error) {
 	out := &schemaspec.Table{
