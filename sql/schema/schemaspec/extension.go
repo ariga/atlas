@@ -24,7 +24,8 @@ import (
 //   }
 //
 type Extension interface {
-	// Type
+	// Type returns the type name for the Extension, to be set in the
+	// Resource.Type field when using Resource.Scan.
 	Type() string
 }
 
