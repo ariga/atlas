@@ -50,7 +50,7 @@ func TestReEncode(t *testing.T) {
   }
 }
 `, string(config))
-	s := &schemaspec.Schema{}
+	s := &schemaspec.File{}
 	err = Decode(config, s)
 	require.NoError(t, err)
 	require.EqualValues(t, tbl, s.Tables[0])
@@ -66,7 +66,7 @@ table "users" {
 		type = "string"
 	}
 }`
-	s := &schemaspec.Schema{}
+	s := &schemaspec.File{}
 	err := Decode([]byte(f), s)
 	require.NoError(t, err)
 	require.Equal(t, "s1", s.Tables[0].SchemaName)
@@ -88,7 +88,7 @@ table "users" {
 	}
 }
 `
-	s := &schemaspec.Schema{}
+	s := &schemaspec.File{}
 	err := Decode([]byte(f), s)
 	require.NoError(t, err)
 	require.Equal(t, &schemaspec.PrimaryKey{
@@ -101,7 +101,7 @@ table "users" {
 	}, s.Tables[0].PrimaryKey)
 	encode, err := Encode(s)
 	require.NoError(t, err)
-	generated := &schemaspec.Schema{}
+	generated := &schemaspec.File{}
 	err = Decode(encode, generated)
 	require.NoError(t, err)
 	require.EqualValues(t, s, generated)
@@ -127,7 +127,7 @@ table "users" {
 	}
 }
 `
-	s := &schemaspec.Schema{}
+	s := &schemaspec.File{}
 	err := Decode([]byte(f), s)
 	require.NoError(t, err)
 	require.Equal(t, &schemaspec.Index{
@@ -142,7 +142,7 @@ table "users" {
 	}, s.Tables[0].Indexes[0])
 	encode, err := Encode(s)
 	require.NoError(t, err)
-	generated := &schemaspec.Schema{}
+	generated := &schemaspec.File{}
 	err = Decode(encode, generated)
 	require.NoError(t, err)
 	require.EqualValues(t, s, generated)
@@ -182,7 +182,8 @@ table "user_messages" {
 	}
 }
 `
-	s := &schemaspec.Schema{}
+	s := &schemaspec.File{}
+
 	err := Decode([]byte(f), s)
 	require.NoError(t, err)
 	require.Equal(t, &schemaspec.ForeignKey{
@@ -197,7 +198,7 @@ table "user_messages" {
 	}, s.Tables[1].ForeignKeys[0])
 	encode, err := Encode(s)
 	require.NoError(t, err)
-	generated := &schemaspec.Schema{}
+	generated := &schemaspec.File{}
 	err = Decode(encode, generated)
 	require.NoError(t, err)
 	require.EqualValues(t, s, generated)
@@ -214,13 +215,13 @@ func TestRewriteHCL(t *testing.T) {
 		t.Run(filename, func(t *testing.T) {
 			fb, err := ioutil.ReadFile(filename)
 			require.NoError(t, err)
-			decoded := &schemaspec.Schema{}
-			err = Decode(fb, decoded)
+			decoded := &schemaspec.File{}
+			err = DecodeFile(fb, filename, decoded)
 			require.NoError(t, err)
 			encode, err := Encode(decoded)
 			require.NoError(t, err)
-			generated := &schemaspec.Schema{}
-			err = Decode(encode, generated)
+			generated := &schemaspec.File{}
+			err = DecodeFile(encode, filename, generated)
 			require.NoError(t, err)
 			require.EqualValues(t, decoded, generated)
 		})
@@ -245,10 +246,12 @@ table "user" {
     }
   }
 }`
-	decoded := &schemaspec.Schema{}
+	decoded := &schemaspec.File{}
+
 	err := Decode([]byte(h), decoded)
 	require.NoError(t, err)
-	ut, ok := decoded.Table("user")
+	s := decoded.Schemas[0]
+	ut, ok := decoded.Table("user", s.Name)
 	require.True(t, ok)
 	name, ok := ut.Column("name")
 	require.True(t, ok)

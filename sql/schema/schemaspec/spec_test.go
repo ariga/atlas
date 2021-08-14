@@ -13,11 +13,12 @@ import (
 )
 
 func TestAccessors(t *testing.T) {
-	s := &schemaspec.Schema{
+	f := &schemaspec.File{
 		Name: "hello",
 		Tables: []*schemaspec.Table{
 			{
-				Name: "t1",
+				Name:       "t1",
+				SchemaName: "x",
 				Columns: []*schemaspec.Column{
 					{Name: "c1", Type: "string"},
 					{Name: "c2", Type: "string"},
@@ -27,19 +28,20 @@ func TestAccessors(t *testing.T) {
 				},
 			},
 			{
-				Name: "t2",
+				Name:       "t2",
+				SchemaName: "y",
 			},
 		},
 	}
-	t1, ok := s.Table("t1")
+	t1, ok := f.Table("t1", "x")
 	require.True(t, ok)
-	require.EqualValues(t, t1, s.Tables[0])
+	require.EqualValues(t, t1, f.Tables[0])
 
-	t2, ok := s.Table("t2")
-	require.EqualValues(t, t2, s.Tables[1])
+	t2, ok := f.Table("t2", "y")
+	require.EqualValues(t, t2, f.Tables[1])
 	require.True(t, ok)
 
-	_, ok = s.Table("t3")
+	_, ok = f.Table("t3", "x")
 	require.False(t, ok)
 
 	c1, ok := t1.Column("c1")

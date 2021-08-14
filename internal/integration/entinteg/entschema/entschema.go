@@ -14,18 +14,18 @@ import (
 	"entgo.io/ent/schema/field"
 )
 
-func Convert(graph *gen.Graph) (*schemaspec.Schema, error) {
-	sch := &schemaspec.Schema{}
-	if err := addTables(sch, graph); err != nil {
+func Convert(graph *gen.Graph) (*schemaspec.File, error) {
+	f := &schemaspec.File{}
+	if err := addTables(f, graph); err != nil {
 		return nil, err
 	}
-	if err := addForeignKeys(sch, graph); err != nil {
+	if err := addForeignKeys(f, graph); err != nil {
 		return nil, err
 	}
-	return sch, nil
+	return f, nil
 }
 
-func addTables(sch *schemaspec.Schema, graph *gen.Graph) error {
+func addTables(sch *schemaspec.File, graph *gen.Graph) error {
 	for _, etbl := range graph.Tables() {
 		tbl := &schemaspec.Table{
 			SchemaName: sch.Name,
@@ -81,18 +81,18 @@ func addIndexes(tbl *schemaspec.Table, etbl *sqlschema.Table) error {
 	return nil
 }
 
-func addForeignKeys(sch *schemaspec.Schema, graph *gen.Graph) error {
+func addForeignKeys(f *schemaspec.File, graph *gen.Graph) error {
 	for _, etbl := range graph.Tables() {
 		if len(etbl.ForeignKeys) == 0 {
 			continue
 		}
 
-		tbl, ok := tableSpec(sch, etbl.Name)
+		tbl, ok := f.Table(etbl.Name, "")
 		if !ok {
 			return fmt.Errorf("entschema: could not find table %q", etbl.Name)
 		}
 		for _, efk := range etbl.ForeignKeys {
-			refTable, ok := tableSpec(sch, efk.RefTable.Name)
+			refTable, ok := f.Table(efk.RefTable.Name, "")
 			if !ok {
 				return fmt.Errorf("entschema: could not find ref table %q", refTable.Name)
 			}
@@ -167,15 +167,6 @@ func convertColumn(col *sqlschema.Column) (*schemaspec.Column, error) {
 		cspc.Default = &schemaspec.LiteralValue{V: v}
 	}
 	return cspc, nil
-}
-
-func tableSpec(sch *schemaspec.Schema, name string) (*schemaspec.Table, bool) {
-	for _, t := range sch.Tables {
-		if t.Name == name {
-			return t, true
-		}
-	}
-	return nil, false
 }
 
 func intAttr(k string, v int) *schemaspec.Attr {

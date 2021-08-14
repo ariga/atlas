@@ -20,13 +20,14 @@ type (
 	ConvertIndexFunc      func(*schemaspec.Index, *schema.Table) (*schema.Index, error)
 )
 
-// ConvertSchema converts a schemaspec.Schema into a schema.Schema.
-func ConvertSchema(spec *schemaspec.Schema, convertTable ConvertTableFunc) (*schema.Schema, error) {
+// ConvertSchema converts a schemaspec.Schema with its relevant *schemaspec.Tables
+// into a schema.Schema.
+func ConvertSchema(spec *schemaspec.Schema, tables []*schemaspec.Table, convertTable ConvertTableFunc) (*schema.Schema, error) {
 	sch := &schema.Schema{
 		Name: spec.Name,
 		Spec: spec,
 	}
-	for _, ts := range spec.Tables {
+	for _, ts := range tables {
 		table, err := convertTable(ts, sch)
 		if err != nil {
 			return nil, err
