@@ -16,62 +16,62 @@ import (
 func TestConvertSchema(t *testing.T) {
 	spec := &schemaspec.Schema{
 		Name: "schema",
-		Tables: []*schemaspec.Table{
-			{
-				Name: "table",
-				Columns: []*schemaspec.Column{
-					{
-						Name: "col",
-						Type: "int",
-					},
-					{
-						Name: "age",
-						Type: "int",
-					},
-					{
-						Name: "account_name",
-						Type: "varchar(32)",
-					},
+	}
+	tables := []*schemaspec.Table{
+		{
+			Name: "table",
+			Columns: []*schemaspec.Column{
+				{
+					Name: "col",
+					Type: "int",
 				},
-				PrimaryKey: &schemaspec.PrimaryKey{
-					Columns: []*schemaspec.ColumnRef{{Table: "table", Name: "col"}},
+				{
+					Name: "age",
+					Type: "int",
 				},
-				ForeignKeys: []*schemaspec.ForeignKey{
-					{
-						Symbol: "accounts",
-						Columns: []*schemaspec.ColumnRef{
-							{Table: "table", Name: "account_name"},
-						},
-						RefColumns: []*schemaspec.ColumnRef{
-							{Table: "accounts", Name: "name"},
-						},
-						OnDelete: string(schema.SetNull),
+				{
+					Name: "account_name",
+					Type: "varchar(32)",
+				},
+			},
+			PrimaryKey: &schemaspec.PrimaryKey{
+				Columns: []*schemaspec.ColumnRef{{Table: "table", Name: "col"}},
+			},
+			ForeignKeys: []*schemaspec.ForeignKey{
+				{
+					Symbol: "accounts",
+					Columns: []*schemaspec.ColumnRef{
+						{Table: "table", Name: "account_name"},
 					},
+					RefColumns: []*schemaspec.ColumnRef{
+						{Table: "accounts", Name: "name"},
+					},
+					OnDelete: string(schema.SetNull),
 				},
-				Indexes: []*schemaspec.Index{
-					{
-						Name:   "index",
-						Unique: true,
-						Columns: []*schemaspec.ColumnRef{
-							{Table: "table", Name: "col"},
-							{Table: "table", Name: "age"},
-						},
+			},
+			Indexes: []*schemaspec.Index{
+				{
+					Name:   "index",
+					Unique: true,
+					Columns: []*schemaspec.ColumnRef{
+						{Table: "table", Name: "col"},
+						{Table: "table", Name: "age"},
 					},
 				},
 			},
-			{
-				Name: "accounts",
-				Columns: []*schemaspec.Column{
-					{
-						Name: "name",
-						Type: "varchar(32)",
-					},
+		},
+		{
+			Name: "accounts",
+			Columns: []*schemaspec.Column{
+				{
+					Name: "name",
+					Type: "varchar(32)",
 				},
 			},
 		},
 	}
 	d := &Driver{}
-	sch, err := d.ConvertSchema(spec)
+	sch, err := d.ConvertSchema(spec, tables)
 	require.NoError(t, err)
 	exp := &schema.Schema{
 		Name: "schema",
@@ -81,7 +81,7 @@ func TestConvertSchema(t *testing.T) {
 		{
 			Name:   "table",
 			Schema: exp,
-			Spec:   spec.Tables[0],
+			Spec:   tables[0],
 			Columns: []*schema.Column{
 				{
 					Name: "col",
@@ -90,7 +90,7 @@ func TestConvertSchema(t *testing.T) {
 							T: "integer",
 						},
 					},
-					Spec: spec.Tables[0].Columns[0],
+					Spec: tables[0].Columns[0],
 				},
 				{
 					Name: "age",
@@ -99,7 +99,7 @@ func TestConvertSchema(t *testing.T) {
 							T: "integer",
 						},
 					},
-					Spec: spec.Tables[0].Columns[1],
+					Spec: tables[0].Columns[1],
 				},
 				{
 					Name: "account_name",
@@ -109,13 +109,13 @@ func TestConvertSchema(t *testing.T) {
 							Size: 32,
 						},
 					},
-					Spec: spec.Tables[0].Columns[2],
+					Spec: tables[0].Columns[2],
 				},
 			},
 		},
 		{
 			Name:   "accounts",
-			Spec:   spec.Tables[1],
+			Spec:   tables[1],
 			Schema: exp,
 			Columns: []*schema.Column{
 				{
@@ -126,7 +126,7 @@ func TestConvertSchema(t *testing.T) {
 							Size: 32,
 						},
 					},
-					Spec: spec.Tables[1].Columns[0],
+					Spec: tables[1].Columns[0],
 				},
 			},
 		},

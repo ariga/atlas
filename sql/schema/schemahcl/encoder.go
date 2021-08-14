@@ -154,20 +154,31 @@ func writeFk(fk *schemaspec.ForeignKey, body *hclwrite.Body) error {
 	return writeCommon(fk.Attrs, fk.Children, nb)
 }
 
-func writeSchema(spec *schemaspec.Schema, body *hclwrite.Body) error {
-	if spec.Name != "" {
-		body.AppendNewBlock("schema", []string{spec.Name})
+func writeFile(spec *schemaspec.File, body *hclwrite.Body) error {
+	for _, sch := range spec.Schemas {
+		if err := writeSchema(sch, body); err != nil {
+			return err
+		}
 	}
 	for _, tbl := range spec.Tables {
 		if err := writeTable(tbl, body); err != nil {
 			return err
 		}
 	}
+	return writeCommon(spec.Attrs, spec.Children, body)
+}
+
+func writeSchema(spec *schemaspec.Schema, body *hclwrite.Body) error {
+	if spec.Name != "" {
+		body.AppendNewBlock("schema", []string{spec.Name})
+	}
 	return nil
 }
 
 func write(elem schemaspec.Element, body *hclwrite.Body) error {
 	switch e := elem.(type) {
+	case *schemaspec.File:
+		return writeFile(e, body)
 	case *schemaspec.Schema:
 		return writeSchema(e, body)
 	case *schemaspec.Attr:
@@ -184,8 +195,9 @@ func write(elem schemaspec.Element, body *hclwrite.Body) error {
 		return writeFk(e, body)
 	case *schemaspec.Index:
 		return writeIndex(e, body)
+	default:
+		return fmt.Errorf("schemahcl: unsupported element %T", e)
 	}
-	return nil
 }
 
 func writeCommon(attrs []*schemaspec.Attr, children []*schemaspec.Resource, body *hclwrite.Body) error {
