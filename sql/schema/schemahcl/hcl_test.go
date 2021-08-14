@@ -47,7 +47,7 @@ func TestReEncode(t *testing.T) {
 }
 `, string(config))
 	s := &schemaspec.File{}
-	err = DecodeFile(config, "file.hcl", s)
+	err = Decode(config, s)
 	require.NoError(t, err)
 	require.EqualValues(t, tbl, s.Tables[0])
 }
@@ -63,7 +63,7 @@ table "users" {
 	}
 }`
 	s := &schemaspec.File{}
-	err := DecodeFile([]byte(f), "file.hcl", s)
+	err := Decode([]byte(f), s)
 	require.NoError(t, err)
 	require.Equal(t, "s1", s.Tables[0].SchemaName)
 }
@@ -85,7 +85,7 @@ table "users" {
 }
 `
 	s := &schemaspec.File{}
-	err := DecodeFile([]byte(f), "file.hcl", s)
+	err := Decode([]byte(f), s)
 	require.NoError(t, err)
 	require.Equal(t, &schemaspec.PrimaryKey{
 		Columns: []*schemaspec.ColumnRef{
@@ -98,7 +98,7 @@ table "users" {
 	encode, err := Encode(s)
 	require.NoError(t, err)
 	generated := &schemaspec.File{}
-	err = DecodeFile(encode, "file.hcl", generated)
+	err = Decode(encode, generated)
 	require.NoError(t, err)
 	require.EqualValues(t, s, generated)
 }
@@ -124,7 +124,7 @@ table "users" {
 }
 `
 	s := &schemaspec.File{}
-	err := DecodeFile([]byte(f), "file.hcl", s)
+	err := Decode([]byte(f), s)
 	require.NoError(t, err)
 	require.Equal(t, &schemaspec.Index{
 		Name:   "txn_id",
@@ -139,7 +139,7 @@ table "users" {
 	encode, err := Encode(s)
 	require.NoError(t, err)
 	generated := &schemaspec.File{}
-	err = DecodeFile(encode, "file.hcl", generated)
+	err = Decode(encode, generated)
 	require.NoError(t, err)
 	require.EqualValues(t, s, generated)
 }
@@ -180,7 +180,7 @@ table "user_messages" {
 `
 	s := &schemaspec.File{}
 
-	err := DecodeFile([]byte(f), "file.hcl", s)
+	err := Decode([]byte(f), s)
 	require.NoError(t, err)
 	require.Equal(t, &schemaspec.ForeignKey{
 		Symbol: "user_name_ref",
@@ -195,7 +195,7 @@ table "user_messages" {
 	encode, err := Encode(s)
 	require.NoError(t, err)
 	generated := &schemaspec.File{}
-	err = DecodeFile(encode, "file.hcl", generated)
+	err = Decode(encode, generated)
 	require.NoError(t, err)
 	require.EqualValues(t, s, generated)
 }
@@ -244,7 +244,7 @@ table "user" {
 }`
 	decoded := &schemaspec.File{}
 
-	err := DecodeFile([]byte(h), "file.hcl", decoded)
+	err := Decode([]byte(h), decoded)
 	require.NoError(t, err)
 	s := decoded.Schemas[0]
 	ut, ok := decoded.Table("user", s.Name)

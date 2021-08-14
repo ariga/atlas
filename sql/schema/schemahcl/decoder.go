@@ -22,7 +22,7 @@ func DecodeFile(body []byte, filename string, file *schemaspec.File) error {
 
 // Decode implements schema.Decoder. It parses an HCL document describing a schema into Spec.
 func Decode(body []byte, spec schemaspec.Spec) error {
-	return decode(body, "in-memory.hcl", spec)
+	return decode(body, "", spec)
 }
 
 func decode(body []byte, filename string, spec schemaspec.Spec) error {
