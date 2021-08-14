@@ -8,20 +8,43 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 // Extension is the interface that should be implemented by extensions to
 // the core Spec resources.
+//
+// To specify the mapping from the extension struct fields to the schemaspec.Resource
+// use the `spec` key on the field's tag. To specify that a field should be mapped to
+// the corresponding Resource's `Name` specify ",name" to the tag value. For example:
+// field annotate
+//   type Example struct {
+//      Name  string `spec:,name"
+//   	Value int `spec:"value"`
+//   }
+//
 type Extension interface {
-	Name() string
+	// Type
 	Type() string
 }
 
 // As reads the attributes and children resources of the resource into the target Extension.
 func (r *Resource) As(target Extension) error {
+	var seenName bool
 	v := reflect.ValueOf(target).Elem()
 	for _, ft := range specFields(target) {
+		if seenName && ft.isName {
+			return fmt.Errorf("schemaspec: extension must have only one isName field")
+		}
 		field := v.FieldByName(ft.field)
+		if ft.isName {
+			seenName = true
+			if field.Kind() != reflect.String {
+				return fmt.Errorf("schemaspec: extension isName field must be of type string")
+			}
+			field.SetString(r.Name)
+			continue
+		}
 		attr, ok := r.Attr(ft.tag)
 		if !ok {
 			return fmt.Errorf("schemaspec: resource does not have attr %q", ft.tag)
@@ -58,12 +81,16 @@ func (r *Resource) Scan(ext Extension) error {
 	if ext.Type() != "" {
 		r.Type = ext.Type()
 	}
-	if ext.Name() != "" {
-		r.Name = ext.Name()
-	}
 	v := reflect.ValueOf(ext).Elem()
 	for _, ft := range specFields(ext) {
 		field := v.FieldByName(ft.field)
+		if ft.isName {
+			if field.Kind() != reflect.String {
+				return fmt.Errorf("schemaspec: extension name field must be string")
+			}
+			r.Name = field.String()
+			continue
+		}
 		var lit string
 		switch field.Kind() {
 		case reflect.String:
@@ -95,11 +122,17 @@ func specFields(ext Extension) []fieldTag {
 		if !ok {
 			continue
 		}
-		fields = append(fields, fieldTag{field: f.Name, tag: lookup})
+		parts := strings.Split(lookup, ",")
+		fields = append(fields, fieldTag{
+			field:  f.Name,
+			tag:    lookup,
+			isName: len(parts) > 1 && parts[1] == "name",
+		})
 	}
 	return fields
 }
 
 type fieldTag struct {
 	field, tag string
+	isName     bool
 }
