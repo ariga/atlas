@@ -271,3 +271,28 @@ table "user" {
 	require.NoError(t, err)
 	require.EqualValues(t, "text", typ)
 }
+
+func TestExtension(t *testing.T) {
+	f := `
+version = 1d
+
+hello "world" {
+  x = "y"
+}
+`
+	file := &schemaspec.File{}
+	err := Decode([]byte(f), file)
+	require.NoError(t, err)
+	v := Versioned{}
+	err = file.As(&v)
+	require.NoError(t, err)
+	require.EqualValues(t, v.Version, 1)
+}
+
+type Versioned struct {
+	Version string `spec:"version"`
+}
+
+func (*Versioned) Type() string {
+	return ""
+}
