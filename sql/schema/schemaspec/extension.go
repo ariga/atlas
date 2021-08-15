@@ -5,6 +5,7 @@
 package schemaspec
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -20,7 +21,7 @@ import (
 // field annotate
 //   type Example struct {
 //      Name  string `spec:,name"
-//   	Value int `spec:"value"`
+//      Value int `spec:"value"`
 //   }
 //
 type Extension interface {
@@ -34,14 +35,14 @@ func (r *Resource) As(target Extension) error {
 	var seenName bool
 	v := reflect.ValueOf(target).Elem()
 	for _, ft := range specFields(target) {
-		if seenName && ft.isName {
-			return fmt.Errorf("schemaspec: extension must have only one isName field")
-		}
 		field := v.FieldByName(ft.field)
 		if ft.isName {
+			if seenName {
+				return errors.New("schemaspec: extension must have only one isName field")
+			}
 			seenName = true
 			if field.Kind() != reflect.String {
-				return fmt.Errorf("schemaspec: extension isName field must be of type string")
+				return errors.New("schemaspec: extension isName field must be of type string")
 			}
 			field.SetString(r.Name)
 			continue
@@ -87,7 +88,7 @@ func (r *Resource) Scan(ext Extension) error {
 		field := v.FieldByName(ft.field)
 		if ft.isName {
 			if field.Kind() != reflect.String {
-				return fmt.Errorf("schemaspec: extension name field must be string")
+				return errors.New("schemaspec: extension name field must be string")
 			}
 			r.Name = field.String()
 			continue
