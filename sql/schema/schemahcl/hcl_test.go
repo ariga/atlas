@@ -285,10 +285,36 @@ version = 1
 	require.EqualValues(t, v.Version, 1)
 }
 
+func TestFileBlock(t *testing.T) {
+	h := `
+hello "world" {
+	greeting = "shalom"
+}
+`
+	file := &schemaspec.File{}
+	err := Decode([]byte(h), file)
+	require.NoError(t, err)
+	block := file.Children[0]
+	hello := Hello{}
+	err = block.As(&hello)
+	require.NoError(t, err)
+	require.EqualValues(t, hello.Name, "world")
+	require.EqualValues(t, hello.Greeting, "shalom")
+}
+
 type Versioned struct {
 	Version int `spec:"version"`
 }
 
 func (*Versioned) Type() string {
 	return ""
+}
+
+type Hello struct {
+	Name     string `spec:",name"`
+	Greeting string `spec:"greeting"`
+}
+
+func (*Hello) Type() string {
+	return "hello"
 }
