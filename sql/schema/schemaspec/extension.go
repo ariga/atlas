@@ -18,7 +18,6 @@ import (
 // To specify the mapping from the extension struct fields to the schemaspec.Resource
 // use the `spec` key on the field's tag. To specify that a field should be mapped to
 // the corresponding Resource's `Name` specify ",name" to the tag value. For example:
-// field annotate
 //   type Example struct {
 //      Name  string `spec:,name"
 //      Value int `spec:"value"`
