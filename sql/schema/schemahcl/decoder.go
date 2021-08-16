@@ -61,6 +61,12 @@ func decode(body []byte, filename string, spec schemaspec.Spec) error {
 			}
 			s.Tables = append(s.Tables, spec)
 		}
+		common, err := extractCommon(ctx, f.Remain, skip("schema", "table"))
+		if err != nil {
+			return err
+		}
+		s.Attrs = common.attrs
+		s.Children = common.children
 		return nil
 	}
 	return fmt.Errorf("schemahcl: unsupported spec type %T", spec)
