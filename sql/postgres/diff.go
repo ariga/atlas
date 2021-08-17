@@ -5,6 +5,8 @@
 package postgres
 
 import (
+	"strings"
+
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 )
@@ -65,9 +67,17 @@ func (d *diff) ColumnTypeChanged(c1, c2 *schema.Column) (bool, error) {
 }
 
 // IndexAttrChanged reports if the index attributes were changed.
+// The default type is BTREE if no type was specified.
 func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
-	var t1, t2 IndexType
-	if sqlx.Has(from, &t1) != sqlx.Has(to, &t2) || t1.T != t2.T {
+	t1 := &IndexType{T: "BTREE"}
+	if sqlx.Has(from, t1) {
+		t1.T = strings.ToUpper(t1.T)
+	}
+	t2 := &IndexType{T: "BTREE"}
+	if sqlx.Has(to, t2) {
+		t2.T = strings.ToUpper(t2.T)
+	}
+	if t1.T != t2.T {
 		return true
 	}
 	var p1, p2 IndexPredicate
@@ -79,10 +89,12 @@ func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 
 // IndexPartAttrChanged reports if the index-part attributes were changed.
 func (*diff) IndexPartAttrChanged(from, to []schema.Attr) bool {
-	var p1, p2 IndexColumnProperty
-	if sqlx.Has(from, &p1) != sqlx.Has(to, &p2) {
-		return true
-	}
+	// By default, B-tree indexes store rows
+	// in ascending order with nulls last.
+	p1 := &IndexColumnProperty{Asc: true, NullsLast: true}
+	sqlx.Has(from, p1)
+	p2 := &IndexColumnProperty{Asc: true, NullsLast: true}
+	sqlx.Has(to, p2)
 	return p1.Asc != p2.Asc || p1.Desc != p2.Desc || p1.NullsFirst != p2.NullsFirst || p1.NullsLast != p2.NullsLast
 }
 

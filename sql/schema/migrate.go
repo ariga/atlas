@@ -118,7 +118,7 @@ const (
 
 	// ChangeAttr describes attributes change of an element.
 	// For example, a table CHECK was added or changed.
-	ChangeAttr ChangeKind = 1 << iota
+	ChangeAttr ChangeKind = 1 << (iota - 1)
 	// ChangeCharset describes character-set change.
 	ChangeCharset
 	// ChangeCollation describes collation/encoding change.

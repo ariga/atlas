@@ -106,7 +106,7 @@ func (d *Diff) SchemaDiff(from, to *schema.Schema) ([]schema.Change, error) {
 func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
 	var changes []schema.Change
 	// PK modification is not supported.
-	if pk1, pk2 := from.PrimaryKey, to.PrimaryKey; (pk1 != nil) != (pk2 != nil) || (pk1 != nil) && d.indexChange(pk1, pk2) != schema.NoChange {
+	if pk1, pk2 := from.PrimaryKey, to.PrimaryKey; (pk1 != nil) != (pk2 != nil) || (pk1 != nil) && d.pkChange(pk1, pk2) != schema.NoChange {
 		return nil, fmt.Errorf("changing %q table primary key is not supported", to.Name)
 	}
 
@@ -214,17 +214,23 @@ func (d *Diff) columnChange(from, to *schema.Column) (schema.ChangeKind, error) 
 	return change, nil
 }
 
+// pkChange returns the schema changes (if any) for migrating one primary key to the other.
+func (d *Diff) pkChange(from, to *schema.Index) schema.ChangeKind {
+	change := d.indexChange(from, to)
+	return change & ^schema.ChangeUnique
+}
+
 // indexChange returns the schema changes (if any) for migrating one index to the other.
 func (d *Diff) indexChange(from, to *schema.Index) schema.ChangeKind {
 	var change schema.ChangeKind
-	change |= d.partsChange(from.Parts, to.Parts)
-	change |= commentChange(from.Attrs, to.Attrs)
-	if d.IndexAttrChanged(from.Attrs, to.Attrs) {
-		change |= schema.ChangeAttr
-	}
 	if from.Unique != to.Unique {
 		change |= schema.ChangeUnique
 	}
+	if d.IndexAttrChanged(from.Attrs, to.Attrs) {
+		change |= schema.ChangeAttr
+	}
+	change |= d.partsChange(from.Parts, to.Parts)
+	change |= commentChange(from.Attrs, to.Attrs)
 	return change
 }
 
