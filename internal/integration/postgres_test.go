@@ -60,7 +60,7 @@ func (s *pgSuite) TestAddDropTable() {
 	s.Require().NoError(err)
 	realm := s.loadRealm()
 	changes, err := s.drv.Diff().TableDiff(realm.Schemas[0].Tables[0], usersT)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Empty(changes)
 	err = s.drv.Migrate().Exec(ctx, []schema.Change{
 		&schema.DropTable{T: usersT},
@@ -69,19 +69,76 @@ func (s *pgSuite) TestAddDropTable() {
 	s.TestEmptyRealm()
 }
 
+func (s *pgSuite) TestRelation() {
+	ctx := context.Background()
+	usersT, postsT := s.users(), s.posts()
+	err := s.drv.Migrate().Exec(ctx, []schema.Change{
+		&schema.AddTable{T: usersT},
+		&schema.AddTable{T: postsT},
+	})
+	s.Require().NoError(err)
+	realm := s.loadRealm()
+	changes, err := s.drv.Diff().TableDiff(realm.Schemas[0].Tables[0], postsT)
+	s.Require().NoError(err)
+	s.Empty(changes)
+	changes, err = s.drv.Diff().TableDiff(realm.Schemas[0].Tables[1], usersT)
+	s.NoError(err)
+	s.Empty(changes)
+}
+
 func (s *pgSuite) users() *schema.Table {
 	usersT := &schema.Table{
 		Name:   "users",
 		Schema: s.realm().Schemas[0],
 		Columns: []*schema.Column{
 			{
-				Name: "id",
-				Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}},
+				Name:  "id",
+				Type:  &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}},
+				Attrs: []schema.Attr{&postgres.Identity{}},
 			},
 		},
 	}
 	usersT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: usersT.Columns[0]}}}
 	return usersT
+}
+
+func (s *pgSuite) posts() *schema.Table {
+	usersT := s.users()
+	postsT := &schema.Table{
+		Name:   "posts",
+		Schema: s.realm().Schemas[0],
+		Columns: []*schema.Column{
+			{
+				Name:  "id",
+				Type:  &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}},
+				Attrs: []schema.Attr{&postgres.Identity{}},
+			},
+			{
+				Name:    "author_id",
+				Type:    &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true},
+				Default: &schema.RawExpr{X: "10"},
+			},
+			{
+				Name: "ctime",
+				Type: &schema.ColumnType{Raw: "timestamp", Type: &schema.TimeType{T: "timestamp"}},
+				Default: &schema.RawExpr{
+					X: "CURRENT_TIMESTAMP",
+				},
+			},
+		},
+		Attrs: []schema.Attr{
+			&schema.Comment{Text: "posts comment"},
+		},
+	}
+	postsT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: postsT.Columns[0]}}}
+	postsT.Indexes = []*schema.Index{
+		{Name: "author_id", Parts: []*schema.IndexPart{{C: postsT.Columns[1]}}},
+		{Name: "id_author_id_unique", Unique: true, Parts: []*schema.IndexPart{{C: postsT.Columns[1]}, {C: postsT.Columns[0]}}},
+	}
+	postsT.ForeignKeys = []*schema.ForeignKey{
+		{Symbol: "author_id", Table: postsT, Columns: postsT.Columns[1:2], RefTable: usersT, RefColumns: usersT.Columns, OnDelete: schema.NoAction},
+	}
+	return postsT
 }
 
 func (s *pgSuite) loadRealm() *schema.Realm {

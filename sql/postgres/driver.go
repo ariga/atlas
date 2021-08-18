@@ -195,10 +195,10 @@ func (d *Driver) columns(ctx context.Context, t *schema.Table) error {
 // addColumn scans the current row and adds a new column from it to the table.
 func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 	var (
-		typid, maxlen, precision, scale                                                    sql.NullInt64
-		name, typ, nullable, defaults, udt, identity, charset, collation, comment, typtype sql.NullString
+		typid, maxlen, precision, scale                                                                sql.NullInt64
+		name, typ, nullable, defaults, udt, identity, generation, charset, collation, comment, typtype sql.NullString
 	)
-	if err := rows.Scan(&name, &typ, &nullable, &defaults, &maxlen, &precision, &scale, &charset, &collation, &udt, &identity, &comment, &typtype, &typid); err != nil {
+	if err := rows.Scan(&name, &typ, &nullable, &defaults, &maxlen, &precision, &scale, &charset, &collation, &udt, &identity, &generation, &comment, &typtype, &typid); err != nil {
 		return err
 	}
 	c := &schema.Column{
@@ -221,6 +221,11 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 		c.Default = &schema.RawExpr{
 			X: defaults.String,
 		}
+	}
+	if identity.String == "YES" {
+		c.Attrs = append(c.Attrs, &Identity{
+			Generation: generation.String,
+		})
 	}
 	if sqlx.ValidString(comment) {
 		c.Attrs = append(c.Attrs, &schema.Comment{
@@ -593,6 +598,12 @@ type (
 		T string // c, f, p, u, t, x.
 	}
 
+	// Identity defines an identity column.
+	Identity struct {
+		schema.Attr
+		Generation string // ALWAYS, BY DEFAULT.
+	}
+
 	// IndexType represents an index type.
 	// https://www.postgresql.org/docs/current/indexes-types.html
 	IndexType struct {
@@ -636,7 +647,7 @@ const (
 	schemasQuery = "SELECT schema_name FROM information_schema.schemata"
 
 	// Query to list schema tables.
-	tablesQuery = "SELECT table_name FROM information_schema.tables WHERE table_schema = $1"
+	tablesQuery = "SELECT table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE' AND table_schema = $1 ORDER BY table_name"
 
 	// Query to list table information.
 	tableQuery = `
@@ -679,6 +690,7 @@ SELECT
 	t1.collation_name,
 	t1.udt_name,
 	t1.is_identity,
+	t1.identity_generation,
 	col_description(to_regclass("table_schema" || '.' || "table_name")::oid, "ordinal_position") AS comment,
 	t2.typtype,
 	t2.oid

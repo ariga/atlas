@@ -59,6 +59,7 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) []schema.Change {
 
 // ColumnTypeChanged reports if the a column type was changed.
 func (d *diff) ColumnTypeChanged(c1, c2 *schema.Column) (bool, error) {
+	d.normalize(c1, c2)
 	changed, err := sqlx.ColumnTypeChanged(c1, c2)
 	if sqlx.IsUnsupportedTypeError(err) {
 		return d.typeChanged(c1, c2)
@@ -150,6 +151,23 @@ func (*diff) typeChanged(from, to *schema.Column) (bool, error) {
 		return false, &sqlx.UnsupportedTypeError{Type: fromT}
 	}
 	return changed, nil
+}
+
+func (d *diff) normalize(columns ...*schema.Column) {
+	for _, c := range columns {
+		switch t := c.Type.Type.(type) {
+		case nil:
+		case *schema.TimeType:
+			// "timestamp" and "timestamptz" are accepted as
+			// abbreviations for timestamp with(out) time zone.
+			switch t.T {
+			case "timestamp with time zone":
+				t.T = "timestamptz"
+			case "timestamp without time zone":
+				t.T = "timestamp"
+			}
+		}
+	}
 }
 
 func checks(attr []schema.Attr) (checks []*Check) {
