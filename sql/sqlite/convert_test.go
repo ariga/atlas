@@ -13,6 +13,153 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestConvertSchema(t *testing.T) {
+	spec := &schemaspec.Schema{
+		Name: "schema",
+	}
+	tables := []*schemaspec.Table{
+		{
+			Name: "table",
+			Columns: []*schemaspec.Column{
+				{
+					Name: "col",
+					Type: "int",
+				},
+				{
+					Name: "age",
+					Type: "int",
+				},
+				{
+					Name: "account_name",
+					Type: "varchar(32)",
+				},
+			},
+			PrimaryKey: &schemaspec.PrimaryKey{
+				Columns: []*schemaspec.ColumnRef{{Table: "table", Name: "col"}},
+			},
+			ForeignKeys: []*schemaspec.ForeignKey{
+				{
+					Symbol: "accounts",
+					Columns: []*schemaspec.ColumnRef{
+						{Table: "table", Name: "account_name"},
+					},
+					RefColumns: []*schemaspec.ColumnRef{
+						{Table: "accounts", Name: "name"},
+					},
+					OnDelete: string(schema.SetNull),
+				},
+			},
+			Indexes: []*schemaspec.Index{
+				{
+					Name:   "index",
+					Unique: true,
+					Columns: []*schemaspec.ColumnRef{
+						{Table: "table", Name: "col"},
+						{Table: "table", Name: "age"},
+					},
+				},
+			},
+		},
+		{
+			Name: "accounts",
+			Columns: []*schemaspec.Column{
+				{
+					Name: "name",
+					Type: "varchar(32)",
+				},
+			},
+		},
+	}
+	d := &Driver{}
+	sch, err := d.ConvertSchema(spec, tables)
+	require.NoError(t, err)
+	exp := &schema.Schema{
+		Name: "schema",
+		Spec: spec,
+	}
+	exp.Tables = []*schema.Table{
+		{
+			Name:   "table",
+			Schema: exp,
+			Spec:   tables[0],
+			Columns: []*schema.Column{
+				{
+					Name: "col",
+					Type: &schema.ColumnType{
+						Type: &schema.IntegerType{
+							T: "integer",
+						},
+					},
+					Spec: tables[0].Columns[0],
+				},
+				{
+					Name: "age",
+					Type: &schema.ColumnType{
+						Type: &schema.IntegerType{
+							T: "integer",
+						},
+					},
+					Spec: tables[0].Columns[1],
+				},
+				{
+					Name: "account_name",
+					Type: &schema.ColumnType{
+						Type: &schema.StringType{
+							T:    "varchar",
+							Size: 32,
+						},
+					},
+					Spec: tables[0].Columns[2],
+				},
+			},
+		},
+		{
+			Name:   "accounts",
+			Spec:   tables[1],
+			Schema: exp,
+			Columns: []*schema.Column{
+				{
+					Name: "name",
+					Type: &schema.ColumnType{
+						Type: &schema.StringType{
+							T:    "varchar",
+							Size: 32,
+						},
+					},
+					Spec: tables[1].Columns[0],
+				},
+			},
+		},
+	}
+	exp.Tables[0].PrimaryKey = &schema.Index{
+		Table: exp.Tables[0],
+		Parts: []*schema.IndexPart{
+			{SeqNo: 0, C: exp.Tables[0].Columns[0]},
+		},
+	}
+	exp.Tables[0].Indexes = []*schema.Index{
+		{
+			Name:   "index",
+			Table:  exp.Tables[0],
+			Unique: true,
+			Parts: []*schema.IndexPart{
+				{SeqNo: 0, C: exp.Tables[0].Columns[0]},
+				{SeqNo: 1, C: exp.Tables[0].Columns[1]},
+			},
+		},
+	}
+	exp.Tables[0].ForeignKeys = []*schema.ForeignKey{
+		{
+			Symbol:     "accounts",
+			Table:      exp.Tables[0],
+			Columns:    []*schema.Column{exp.Tables[0].Columns[2]},
+			RefColumns: []*schema.Column{exp.Tables[1].Columns[0]},
+			OnDelete:   schema.SetNull,
+		},
+	}
+	require.EqualValues(t, exp, sch)
+}
+
 func TestConvertColumnType(t *testing.T) {
 	for _, tt := range []struct {
 		spec        *schemaspec.Column
