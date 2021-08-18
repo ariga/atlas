@@ -105,6 +105,9 @@ func (d *Diff) SchemaDiff(from, to *schema.Schema) ([]schema.Change, error) {
 // changes that need to be applied in order to move from one state to the other.
 func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
 	var changes []schema.Change
+	if from.Name != to.Name {
+		return nil, fmt.Errorf("mismatched table names: %q != %q", from.Name, to.Name)
+	}
 	// PK modification is not supported.
 	if pk1, pk2 := from.PrimaryKey, to.PrimaryKey; (pk1 != nil) != (pk2 != nil) || (pk1 != nil) && d.pkChange(pk1, pk2) != schema.NoChange {
 		return nil, fmt.Errorf("changing %q table primary key is not supported", to.Name)

@@ -57,34 +57,34 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
- column_name |      data_type      | is_nullable |         column_default          | character_maximum_length | numeric_precision | numeric_scale | character_set_name | collation_name | udt_name | is_identity | comment | typtype |  oid  
--------------+---------------------+-------------+---------------------------------+--------------------------+-------------------+---------------+--------------------+----------------+----------+-------------+---------+---------+-------
- id          | bigint              | NO          |                                 |                          |                64 |             0 |                    |                | int8     | NO          |         | b       |    20
- rank        | integer             | YES         |                                 |                          |                32 |             0 |                    |                | int4     | NO          | rank    | b       |    23
- c1          | smallint            | NO          |                                 |                          |                16 |             0 |                    |                | int2     | NO          |         | b       |    21
- c2          | bit                 | NO          |                                 |                        1 |                   |               |                    |                | bit      | NO          |         | b       |  1560
- c3          | bit varying         | NO          |                                 |                       10 |                   |               |                    |                | varbit   | NO          |         | b       |  1562
- c4          | boolean             | NO          |                                 |                          |                   |               |                    |                | bool     | NO          |         | b       |    16
- c5          | bytea               | NO          |                                 |                          |                   |               |                    |                | bytea    | NO          |         | b       |    17
- c6          | character           | NO          |                                 |                      100 |                   |               |                    |                | bpchar   | NO          |         | b       |  1042
- c7          | character varying   | NO          |                                 |                          |                   |               |                    |                | varchar  | NO          |         | b       |  1043
- c8          | cidr                | NO          |                                 |                          |                   |               |                    |                | cidr     | NO          |         | b       |   650
- c9          | circle              | NO          |                                 |                          |                   |               |                    |                | circle   | NO          |         | b       |   718
- c10         | date                | NO          |                                 |                          |                   |               |                    |                | date     | NO          |         | b       |  1082
- c11         | time with time zone | NO          |                                 |                          |                   |               |                    |                | timetz   | NO          |         | b       |  1266
- c12         | double precision    | NO          |                                 |                          |                53 |               |                    |                | float8   | NO          |         | b       |   701
- c13         | real                | NO          |                                 |                          |                24 |               |                    |                | float4   | NO          |         | b       |   700
- c14         | json                | NO          |                                 |                          |                   |               |                    |                | json     | NO          |         | b       |   114
- c15         | jsonb               | NO          |                                 |                          |                   |               |                    |                | jsonb    | NO          |         | b       |  3802
- c16         | money               | NO          |                                 |                          |                   |               |                    |                | money    | NO          |         | b       |   790
- c17         | numeric             | NO          |                                 |                          |                   |               |                    |                | numeric  | NO          |         | b       |  1700
- c18         | numeric             | NO          |                                 |                          |                 4 |             4 |                    |                | numeric  | NO          |         | b       |  1700
- c19         | integer             | NO          | nextval('t1_c19_seq'::regclass) |                          |                32 |             0 |                    |                | int4     | NO          |         | b       |    23
- c20         | uuid                | NO          |                                 |                          |                   |               |                    |                | uuid     | NO          |         | b       |  2950
- c21         | xml                 | NO          |                                 |                          |                   |               |                    |                | xml      | NO          |         | b       |   142
- c22         | ARRAY               | YES         |                                 |                          |                   |               |                    |                | _int4    | NO          |         | b       |  1007
- c23         | USER-DEFINED        | YES         |                                 |                          |                   |               |                    |                | ltree    | NO          |         | b       | 16535
- c24         | USER-DEFINED        | NO          |                                 |                          |                   |               |                    |                | state    | NO          |         | e       | 16774
+ column_name |      data_type      | is_nullable |         column_default          | character_maximum_length | numeric_precision | numeric_scale | character_set_name | collation_name | udt_name | is_identity | identity_generation | comment | typtype |  oid  
+-------------+---------------------+-------------+---------------------------------+--------------------------+-------------------+---------------+--------------------+----------------+----------+-------------+---------------------+---------+---------+-------
+ id          | bigint              | NO          |                                 |                          |                64 |             0 |                    |                | int8     | NO          |                     |         | b       |    20
+ rank        | integer             | YES         |                                 |                          |                32 |             0 |                    |                | int4     | NO          |                     | rank    | b       |    23
+ c1          | smallint            | NO          |                                 |                          |                16 |             0 |                    |                | int2     | NO          |                     |         | b       |    21
+ c2          | bit                 | NO          |                                 |                        1 |                   |               |                    |                | bit      | NO          |                     |         | b       |  1560
+ c3          | bit varying         | NO          |                                 |                       10 |                   |               |                    |                | varbit   | NO          |                     |         | b       |  1562
+ c4          | boolean             | NO          |                                 |                          |                   |               |                    |                | bool     | NO          |                     |         | b       |    16
+ c5          | bytea               | NO          |                                 |                          |                   |               |                    |                | bytea    | NO          |                     |         | b       |    17
+ c6          | character           | NO          |                                 |                      100 |                   |               |                    |                | bpchar   | NO          |                     |         | b       |  1042
+ c7          | character varying   | NO          |                                 |                          |                   |               |                    |                | varchar  | NO          |                     |         | b       |  1043
+ c8          | cidr                | NO          |                                 |                          |                   |               |                    |                | cidr     | NO          |                     |         | b       |   650
+ c9          | circle              | NO          |                                 |                          |                   |               |                    |                | circle   | NO          |                     |         | b       |   718
+ c10         | date                | NO          |                                 |                          |                   |               |                    |                | date     | NO          |                     |         | b       |  1082
+ c11         | time with time zone | NO          |                                 |                          |                   |               |                    |                | timetz   | NO          |                     |         | b       |  1266
+ c12         | double precision    | NO          |                                 |                          |                53 |               |                    |                | float8   | NO          |                     |         | b       |   701
+ c13         | real                | NO          |                                 |                          |                24 |               |                    |                | float4   | NO          |                     |         | b       |   700
+ c14         | json                | NO          |                                 |                          |                   |               |                    |                | json     | NO          |                     |         | b       |   114
+ c15         | jsonb               | NO          |                                 |                          |                   |               |                    |                | jsonb    | NO          |                     |         | b       |  3802
+ c16         | money               | NO          |                                 |                          |                   |               |                    |                | money    | NO          |                     |         | b       |   790
+ c17         | numeric             | NO          |                                 |                          |                   |               |                    |                | numeric  | NO          |                     |         | b       |  1700
+ c18         | numeric             | NO          |                                 |                          |                 4 |             4 |                    |                | numeric  | NO          |                     |         | b       |  1700
+ c19         | integer             | NO          | nextval('t1_c19_seq'::regclass) |                          |                32 |             0 |                    |                | int4     | NO          |                     |         | b       |    23
+ c20         | uuid                | NO          |                                 |                          |                   |               |                    |                | uuid     | NO          |                     |         | b       |  2950
+ c21         | xml                 | NO          |                                 |                          |                   |               |                    |                | xml      | NO          |                     |         | b       |   142
+ c22         | ARRAY               | YES         |                                 |                          |                   |               |                    |                | _int4    | NO          |                     |         | b       |  1007
+ c23         | USER-DEFINED        | YES         |                                 |                          |                   |               |                    |                | ltree    | NO          |                     |         | b       | 16535
+ c24         | USER-DEFINED        | NO          |                                 |                          |                   |               |                    |                | state    | NO          |                     |         | e       | 16774
 `))
 				m.ExpectQuery(sqltest.Escape(`SELECT enumtypid, enumlabel FROM pg_enum WHERE enumtypid IN (?)`)).
 					WithArgs(16774).
@@ -139,10 +139,10 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
- column_name |      data_type      | is_nullable |         column_default          | character_maximum_length | numeric_precision | numeric_scale | character_set_name | collation_name | udt_name | is_identity | comment | typtype |  oid
--------------+---------------------+-------------+---------------------------------+--------------------------+-------------------+---------------+--------------------+----------------+----------+-------------+---------+---------+-------
- id          | bigint              | NO          |                                 |                          |                64 |             0 |                    |                | int8     | NO          |         | b       |    20
- c1          | smallint            | NO          |                                 |                          |                16 |             0 |                    |                | int2     | NO          |         | b       |    21
+ column_name |      data_type      | is_nullable |         column_default          | character_maximum_length | numeric_precision | numeric_scale | character_set_name | collation_name | udt_name | is_identity | identity_generation | comment | typtype |  oid
+-------------+---------------------+-------------+---------------------------------+--------------------------+-------------------+---------------+--------------------+----------------+----------+-------------+---------------------+---------+---------+-------
+ id          | bigint              | NO          |                                 |                          |                64 |             0 |                    |                | int8     | NO          |                     |         | b       |    20
+ c1          | smallint            | NO          |                                 |                          |                16 |             0 |                    |                | int2     | NO          |                     |         | b       |    21
 `))
 				m.ExpectQuery(sqltest.Escape(indexesQuery)).
 					WithArgs("public", "users").
@@ -193,11 +193,11 @@ func TestDriver_InspectTable(t *testing.T) {
 					WithArgs("public", "users").
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
- column_name |      data_type      | is_nullable |         column_default          | character_maximum_length | numeric_precision | numeric_scale | character_set_name | collation_name | udt_name | is_identity | comment | typtype |  oid
--------------+---------------------+-------------+---------------------------------+--------------------------+-------------------+---------------+--------------------+----------------+----------+-------------+---------+---------+-------
- id          | integer             | NO          |                                 |                          |                32 |             0 |                    |                | int      | NO          |         | b       |    20
- oid         | integer             | NO          |                                 |                          |                32 |             0 |                    |                | int      | NO          |         | b       |    21
- uid         | integer             | NO          |                                 |                          |                32 |             0 |                    |                | int      | NO          |         | b       |    21
+ column_name |      data_type      | is_nullable |         column_default          | character_maximum_length | numeric_precision | numeric_scale | character_set_name | collation_name | udt_name | is_identity | identity_generation | comment | typtype |  oid
+-------------+---------------------+-------------+---------------------------------+--------------------------+-------------------+---------------+--------------------+----------------+----------+-------------+---------------------+---------+---------+-------
+ id          | integer             | NO          |                                 |                          |                32 |             0 |                    |                | int      | NO          |                     |         | b       |    20
+ oid         | integer             | NO          |                                 |                          |                32 |             0 |                    |                | int      | NO          |                     |         | b       |    21
+ uid         | integer             | NO          |                                 |                          |                32 |             0 |                    |                | int      | NO          |                     |         | b       |    21
 `))
 				m.noIndexes()
 				m.ExpectQuery(sqltest.Escape(fksQuery)).
@@ -243,11 +243,11 @@ func TestDriver_InspectTable(t *testing.T) {
 					WithArgs("public", "users").
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
- column_name | data_type | is_nullable | column_default | character_maximum_length | numeric_precision | numeric_scale | character_set_name | collation_name | udt_name | is_identity | comment | typtype | oid
--------------+-----------+-------------+----------------+--------------------------+-------------------+---------------+--------------------+----------------+----------+-------------+---------+---------+-----
- c1          | integer   | NO          |                |                          |                32 |             0 |                    |                | int4     | NO          |         | b       |  23
- c2          | integer   | NO          |                |                          |                32 |             0 |                    |                | int4     | NO          |         | b       |  23
- c3          | integer   | NO          |                |                          |                32 |             0 |                    |                | int4     | NO          |         | b       |  23
+ column_name | data_type | is_nullable | column_default | character_maximum_length | numeric_precision | numeric_scale | character_set_name | collation_name | udt_name | is_identity | identity_generation | comment | typtype | oid
+-------------+-----------+-------------+----------------+--------------------------+-------------------+---------------+--------------------+----------------+----------+-------------+---------------------+---------+---------+-----
+ c1          | integer   | NO          |                |                          |                32 |             0 |                    |                | int4     | NO          |                     |         | b       |  23
+ c2          | integer   | NO          |                |                          |                32 |             0 |                    |                | int4     | NO          |                     |         | b       |  23
+ c3          | integer   | NO          |                |                          |                32 |             0 |                    |                | int4     | NO          |                     |         | b       |  23
 `))
 				m.noIndexes()
 				m.noFKs()
