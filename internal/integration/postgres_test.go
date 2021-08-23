@@ -86,6 +86,40 @@ func (s *pgSuite) TestRelation() {
 	s.Empty(changes)
 }
 
+func (s *pgSuite) TestAddIndexedColumns() {
+	ctx := context.Background()
+	usersT := s.users()
+	err := s.drv.Migrate().Exec(ctx, []schema.Change{
+		&schema.AddTable{T: usersT},
+	})
+	s.Require().NoError(err)
+	usersT.Columns = append(usersT.Columns, &schema.Column{
+		Name:    "a",
+		Type:    &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true},
+		Default: &schema.RawExpr{X: "10"},
+	}, &schema.Column{
+		Name:    "b",
+		Type:    &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true},
+		Default: &schema.RawExpr{X: "10"},
+	})
+	usersT.Indexes = append(usersT.Indexes, &schema.Index{
+		Unique: true,
+		Name:   "a_b_unique",
+		Parts:  []*schema.IndexPart{{C: usersT.Columns[1]}, {C: usersT.Columns[2]}},
+	})
+	realm := s.loadRealm()
+	changes, err := s.drv.Diff().TableDiff(realm.Schemas[0].Tables[0], usersT)
+	s.NoError(err)
+	s.NotEmpty(changes, "usersT contains 2 new columns and 1 new index")
+
+	err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+	s.NoError(err)
+	realm = s.loadRealm()
+	changes, err = s.drv.Diff().TableDiff(realm.Schemas[0].Tables[0], usersT)
+	s.NoError(err)
+	s.Empty(changes, "migrate should add the columns and the index to usersT")
+}
+
 func (s *pgSuite) users() *schema.Table {
 	usersT := &schema.Table{
 		Name:   "users",

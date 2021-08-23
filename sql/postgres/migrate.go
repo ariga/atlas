@@ -30,6 +30,8 @@ func (m *migrate) Exec(ctx context.Context, changes []schema.Change) (err error)
 			err = m.addTable(ctx, c)
 		case *schema.DropTable:
 			err = m.dropTable(ctx, c)
+		case *schema.ModifyTable:
+			err = m.modifyTable(ctx, c)
 		default:
 			err = fmt.Errorf("unsupported change %T", c)
 		}
@@ -74,6 +76,72 @@ func (m *migrate) dropTable(ctx context.Context, drop *schema.DropTable) error {
 	return nil
 }
 
+// modifyTable builds and executes the queries for bringing the table into its modified state.
+func (m *migrate) modifyTable(ctx context.Context, modify *schema.ModifyTable) error {
+	var (
+		changes     []schema.Change
+		addI, dropI []*schema.Index
+	)
+	for _, change := range modify.Changes {
+		switch change := change.(type) {
+		case *schema.DropAttr:
+			return fmt.Errorf("unsupported change type: %T", change)
+		case *schema.AddIndex:
+			addI = append(addI, change.I)
+		case *schema.DropIndex:
+			dropI = append(dropI, change.I)
+		case *schema.ModifyIndex:
+			// Index modification requires rebuilding the index.
+			addI = append(addI, change.To)
+			dropI = append(dropI, change.From)
+		case *schema.ModifyForeignKey:
+			// Foreign-key modification is translated into 2 steps.
+			// Dropping the current foreign key and creating a new one.
+			changes = append(changes, &schema.DropForeignKey{
+				F: change.From,
+			}, &schema.AddForeignKey{
+				F: change.To,
+			})
+		default:
+			changes = append(changes, change)
+		}
+	}
+	if err := m.dropIndexes(ctx, dropI...); err != nil {
+		return err
+	}
+	if len(changes) > 0 {
+		if err := m.alterTable(ctx, modify.T, changes); err != nil {
+			return err
+		}
+	}
+	return m.addIndexes(ctx, modify.T, addI...)
+}
+
+// alterTable modifies the given table by executing on it a list of changes in one SQL statement.
+func (m *migrate) alterTable(ctx context.Context, t *schema.Table, changes []schema.Change) error {
+	b := Build("ALTER TABLE").Table(t)
+	b.MapComma(changes, func(i int, b *sqlx.Builder) {
+		switch change := changes[i].(type) {
+		case *schema.AddColumn:
+			b.P("ADD COLUMN")
+			m.column(b, change.C)
+		case *schema.DropColumn:
+			b.P("DROP COLUMN").Ident(change.C.Name)
+		case *schema.ModifyColumn:
+			m.alterColumn(b, change)
+		case *schema.AddForeignKey:
+			b.P("ADD")
+			m.fks(b, change.F)
+		case *schema.DropForeignKey:
+			b.P("DROP FOREIGN KEY").Ident(change.F.Symbol)
+		}
+	})
+	if _, err := m.ExecContext(ctx, b.String()); err != nil {
+		return fmt.Errorf("alter table: %w", err)
+	}
+	return nil
+}
+
 func (m *migrate) addComments(ctx context.Context, t *schema.Table) error {
 	var c schema.Comment
 	if sqlx.Has(t.Attrs, &c) {
@@ -103,6 +171,16 @@ func (m *migrate) addComments(ctx context.Context, t *schema.Table) error {
 	return nil
 }
 
+func (m *migrate) dropIndexes(ctx context.Context, indexes ...*schema.Index) error {
+	for _, idx := range indexes {
+		b := Build("DROP INDEX").Ident(idx.Name)
+		if _, err := m.ExecContext(ctx, b.String()); err != nil {
+			return fmt.Errorf("drop index: %w", err)
+		}
+	}
+	return nil
+}
+
 func (m *migrate) addIndexes(ctx context.Context, t *schema.Table, indexes ...*schema.Index) error {
 	for _, idx := range indexes {
 		b := Build("CREATE")
@@ -122,6 +200,7 @@ func (m *migrate) addIndexes(ctx context.Context, t *schema.Table, indexes ...*s
 	}
 	return nil
 }
+
 func (m *migrate) column(b *sqlx.Builder, c *schema.Column) {
 	b.Ident(c.Name).P(c.Type.Raw)
 	if !c.Type.Null {
@@ -142,7 +221,42 @@ func (m *migrate) column(b *sqlx.Builder, c *schema.Column) {
 			}
 			b.P("GENERATED", attr.Generation, "AS IDENTITY")
 		default:
-			panic(fmt.Sprintf("unexpected collumn attribute: %T", attr))
+			panic(fmt.Sprintf("unexpected column attribute: %T", attr))
+		}
+	}
+}
+
+func (m *migrate) alterColumn(b *sqlx.Builder, c *schema.ModifyColumn) {
+	for k := c.Change; k.Is(schema.NoChange); {
+		b.P("ALTER COLUMN").Ident(c.To.Name)
+		switch {
+		case k.Is(schema.ChangeType):
+			b.P("TYPE").P(c.To.Type.Raw)
+			if collate := (schema.Collation{}); sqlx.Has(c.To.Attrs, &collate) {
+				b.P("COLLATE", collate.V)
+			}
+			k &= ^schema.ChangeType
+		case k.Is(schema.ChangeNull) && c.To.Type.Null:
+			b.P("SET NOT NULL")
+			k &= ^schema.ChangeNull
+		case k.Is(schema.ChangeNull) && !c.To.Type.Null:
+			b.P("DROP NOT NULL")
+			k &= ^schema.ChangeNull
+		case k.Is(schema.ChangeDefault) && c.To.Default != nil:
+			x, ok := c.To.Default.(*schema.RawExpr)
+			if !ok {
+				panic(fmt.Sprintf("unexpected column default: %T", c.To.Default))
+			}
+			b.P("SET DEFAULT", x.X)
+			k &= ^schema.ChangeDefault
+		case k.Is(schema.ChangeDefault) && c.To.Default == nil:
+			b.P("DROP DEFAULT")
+			k &= ^schema.ChangeDefault
+		default:
+			panic(fmt.Sprintf("unexpected column change: %d", k))
+		}
+		if !k.Is(schema.NoChange) {
+			b.Comma()
 		}
 	}
 }
