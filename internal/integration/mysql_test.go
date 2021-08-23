@@ -124,6 +124,23 @@ func (s *mysqlSuite) TestAddIndexedColumns() {
 	s.Empty(changes, "migrate should add the columns and the index to usersT")
 }
 
+func (s *mysqlSuite) TestChangeColumn() {
+	ctx := context.Background()
+	err := s.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: s.users()}})
+	s.Require().NoError(err)
+	usersT := s.users()
+	usersT.Columns[1].Type = &schema.ColumnType{Raw: "mediumint", Type: &schema.IntegerType{T: "mediumint"}, Null: true}
+	usersT.Columns[1].Default = &schema.RawExpr{X: "0"}
+	changes, err := s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
+	s.Require().NoError(err)
+	s.Len(changes, 1)
+	err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+	s.NoError(err)
+	changes, err = s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
+	s.Require().NoError(err)
+	s.Empty(changes)
+}
+
 func (s *mysqlSuite) loadRealm() *schema.Realm {
 	r, err := s.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
 		Schemas: []string{"test"},
@@ -155,6 +172,10 @@ func (s *mysqlSuite) users() *schema.Table {
 				Name:  "id",
 				Type:  &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}},
 				Attrs: []schema.Attr{&mysql.AutoIncrement{}},
+			},
+			{
+				Name: "x",
+				Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}},
 			},
 		},
 		Attrs: s.defaultAttrs(),
@@ -200,7 +221,7 @@ func (s *mysqlSuite) posts() *schema.Table {
 		{Name: "id_author_id_unique", Unique: true, Parts: []*schema.IndexPart{{C: postsT.Columns[1]}, {C: postsT.Columns[0]}}},
 	}
 	postsT.ForeignKeys = []*schema.ForeignKey{
-		{Symbol: "author_id", Table: postsT, Columns: postsT.Columns[1:2], RefTable: usersT, RefColumns: usersT.Columns, OnDelete: schema.NoAction},
+		{Symbol: "author_id", Table: postsT, Columns: postsT.Columns[1:2], RefTable: usersT, RefColumns: usersT.Columns[:1], OnDelete: schema.NoAction},
 	}
 	return postsT
 }
