@@ -160,7 +160,9 @@ const (
 )
 
 // Is reports whether c is match the given change kind.
-func (k ChangeKind) Is(c ChangeKind) bool { return k&c != 0 }
+func (k ChangeKind) Is(c ChangeKind) bool {
+	return k == c || k&c != 0
+}
 
 type (
 	// Differ is the interface implemented by the different

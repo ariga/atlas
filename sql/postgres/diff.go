@@ -155,6 +155,7 @@ func (*diff) typeChanged(from, to *schema.Column) (bool, error) {
 
 func (d *diff) normalize(columns ...*schema.Column) {
 	for _, c := range columns {
+		var cast string
 		switch t := c.Type.Type.(type) {
 		case nil:
 		case *schema.TimeType:
@@ -166,6 +167,45 @@ func (d *diff) normalize(columns ...*schema.Column) {
 			case "timestamp without time zone":
 				t.T = "timestamp"
 			}
+		case *schema.FloatType:
+			// The same numeric precision is used in all platform.
+			// See: https://www.postgresql.org/docs/current/datatype-numeric.html
+			switch {
+			case t.T == "float" && t.Precision < 25:
+				// float(1) to float(24) are selected as "real" type.
+				t.T = "real"
+				fallthrough
+			case t.T == "real":
+				t.Precision = 24
+			case t.T == "float" && t.Precision >= 25:
+				// float(25) to float(53) are selected as "double precision" type.
+				t.T = "double precision"
+				fallthrough
+			case t.T == "double precision":
+				t.Precision = 53
+			}
+			cast = t.T
+		case *schema.StringType:
+			switch t.T {
+			case "character varying", "varchar":
+				cast = "character varying"
+			case "character", "char":
+				// Character without length specifier
+				// is equivalent to character(1).
+				t.Size = 1
+				cast = "bpchar"
+			case "text":
+				cast = t.T
+			}
+		case *schema.JSONType:
+			switch t.T {
+			case "json", "jsonb":
+				cast = t.T
+			}
+		}
+		// Remove typecast format if exists (e.g. 'string'::text).
+		if x, ok := c.Default.(*schema.RawExpr); ok && cast != "" {
+			x.X = strings.TrimSuffix(x.X, "::"+cast)
 		}
 	}
 }

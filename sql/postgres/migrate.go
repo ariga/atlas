@@ -227,7 +227,7 @@ func (m *migrate) column(b *sqlx.Builder, c *schema.Column) {
 }
 
 func (m *migrate) alterColumn(b *sqlx.Builder, c *schema.ModifyColumn) {
-	for k := c.Change; k.Is(schema.NoChange); {
+	for k := c.Change; !k.Is(schema.NoChange); {
 		b.P("ALTER COLUMN").Ident(c.To.Name)
 		switch {
 		case k.Is(schema.ChangeType):
@@ -237,20 +237,20 @@ func (m *migrate) alterColumn(b *sqlx.Builder, c *schema.ModifyColumn) {
 			}
 			k &= ^schema.ChangeType
 		case k.Is(schema.ChangeNull) && c.To.Type.Null:
-			b.P("SET NOT NULL")
-			k &= ^schema.ChangeNull
-		case k.Is(schema.ChangeNull) && !c.To.Type.Null:
 			b.P("DROP NOT NULL")
 			k &= ^schema.ChangeNull
+		case k.Is(schema.ChangeNull) && !c.To.Type.Null:
+			b.P("SET NOT NULL")
+			k &= ^schema.ChangeNull
+		case k.Is(schema.ChangeDefault) && c.To.Default == nil:
+			b.P("DROP DEFAULT")
+			k &= ^schema.ChangeDefault
 		case k.Is(schema.ChangeDefault) && c.To.Default != nil:
 			x, ok := c.To.Default.(*schema.RawExpr)
 			if !ok {
 				panic(fmt.Sprintf("unexpected column default: %T", c.To.Default))
 			}
 			b.P("SET DEFAULT", x.X)
-			k &= ^schema.ChangeDefault
-		case k.Is(schema.ChangeDefault) && c.To.Default == nil:
-			b.P("DROP DEFAULT")
 			k &= ^schema.ChangeDefault
 		default:
 			panic(fmt.Sprintf("unexpected column change: %d", k))

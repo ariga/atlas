@@ -120,6 +120,50 @@ func (s *pgSuite) TestAddIndexedColumns() {
 	s.Empty(changes, "migrate should add the columns and the index to usersT")
 }
 
+func (s *pgSuite) TestChangeColumn() {
+	ctx := context.Background()
+	err := s.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: s.users()}})
+	s.Require().NoError(err)
+	usersT := s.users()
+	usersT.Columns[1].Type = &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}, Null: true}
+	usersT.Columns[1].Default = &schema.RawExpr{X: "0"}
+	changes, err := s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
+	s.Require().NoError(err)
+	s.Len(changes, 1)
+	err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+	s.NoError(err)
+	changes, err = s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
+	s.Require().NoError(err)
+	s.Empty(changes)
+}
+
+func (s *pgSuite) TestAddColumns() {
+	ctx := context.Background()
+	err := s.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: s.users()}})
+	s.Require().NoError(err)
+	usersT := s.users()
+	usersT.Columns = append(
+		usersT.Columns,
+		&schema.Column{Name: "a", Type: &schema.ColumnType{Raw: "bytea", Type: &schema.BinaryType{T: "bytea"}}},
+		&schema.Column{Name: "b", Type: &schema.ColumnType{Raw: "double precision", Type: &schema.FloatType{T: "double precision", Precision: 10}}, Default: &schema.RawExpr{X: "10.1"}},
+		&schema.Column{Name: "c", Type: &schema.ColumnType{Raw: "character", Type: &schema.StringType{T: "character"}}, Default: &schema.RawExpr{X: "'y'"}},
+		&schema.Column{Name: "d", Type: &schema.ColumnType{Raw: "numeric(10,2)", Type: &schema.DecimalType{T: "numeric", Precision: 10, Scale: 2}}, Default: &schema.RawExpr{X: "0.99"}},
+		&schema.Column{Name: "e", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}, Default: &schema.RawExpr{X: "'{}'"}},
+		&schema.Column{Name: "f", Type: &schema.ColumnType{Raw: "jsonb", Type: &schema.JSONType{T: "jsonb"}}, Default: &schema.RawExpr{X: "'1'"}},
+		&schema.Column{Name: "g", Type: &schema.ColumnType{Raw: "float(10)", Type: &schema.FloatType{T: "float", Precision: 10}}, Default: &schema.RawExpr{X: "'1'"}},
+		&schema.Column{Name: "h", Type: &schema.ColumnType{Raw: "float(30)", Type: &schema.FloatType{T: "float", Precision: 30}}, Default: &schema.RawExpr{X: "'1'"}},
+		&schema.Column{Name: "i", Type: &schema.ColumnType{Raw: "float(53)", Type: &schema.FloatType{T: "float", Precision: 53}}, Default: &schema.RawExpr{X: "1"}},
+	)
+	changes, err := s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
+	s.Require().NoError(err)
+	s.Len(changes, 9)
+	err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+	s.NoError(err)
+	changes, err = s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
+	s.Require().NoError(err)
+	s.Empty(changes)
+}
+
 func (s *pgSuite) users() *schema.Table {
 	usersT := &schema.Table{
 		Name:   "users",
@@ -129,6 +173,10 @@ func (s *pgSuite) users() *schema.Table {
 				Name:  "id",
 				Type:  &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}},
 				Attrs: []schema.Attr{&postgres.Identity{}},
+			},
+			{
+				Name: "x",
+				Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}},
 			},
 		},
 	}
@@ -170,7 +218,7 @@ func (s *pgSuite) posts() *schema.Table {
 		{Name: "id_author_id_unique", Unique: true, Parts: []*schema.IndexPart{{C: postsT.Columns[1]}, {C: postsT.Columns[0]}}},
 	}
 	postsT.ForeignKeys = []*schema.ForeignKey{
-		{Symbol: "author_id", Table: postsT, Columns: postsT.Columns[1:2], RefTable: usersT, RefColumns: usersT.Columns, OnDelete: schema.NoAction},
+		{Symbol: "author_id", Table: postsT, Columns: postsT.Columns[1:2], RefTable: usersT, RefColumns: usersT.Columns[:1], OnDelete: schema.NoAction},
 	}
 	return postsT
 }
