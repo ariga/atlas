@@ -154,10 +154,12 @@ func (s *pgSuite) TestAddColumns() {
 		&schema.Column{Name: "h", Type: &schema.ColumnType{Raw: "float(30)", Type: &schema.FloatType{T: "float", Precision: 30}}, Default: &schema.RawExpr{X: "'1'"}},
 		&schema.Column{Name: "i", Type: &schema.ColumnType{Raw: "float(53)", Type: &schema.FloatType{T: "float", Precision: 53}}, Default: &schema.RawExpr{X: "1"}},
 		&schema.Column{Name: "j", Type: &schema.ColumnType{Raw: "serial", Type: &postgres.SerialType{T: "serial"}}},
+		&schema.Column{Name: "k", Type: &schema.ColumnType{Raw: "money", Type: &postgres.CurrencyType{T: "money"}}, Default: &schema.RawExpr{X: "100"}},
+		&schema.Column{Name: "l", Type: &schema.ColumnType{Raw: "money", Type: &postgres.CurrencyType{T: "money"}, Null: true}, Default: &schema.RawExpr{X: "'52093.89'::money"}},
 	)
 	changes, err := s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
 	s.Require().NoError(err)
-	s.Len(changes, 10)
+	s.Len(changes, 12)
 	err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
 	s.Require().NoError(err)
 	changes, err = s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
