@@ -153,12 +153,13 @@ func (s *pgSuite) TestAddColumns() {
 		&schema.Column{Name: "g", Type: &schema.ColumnType{Raw: "float(10)", Type: &schema.FloatType{T: "float", Precision: 10}}, Default: &schema.RawExpr{X: "'1'"}},
 		&schema.Column{Name: "h", Type: &schema.ColumnType{Raw: "float(30)", Type: &schema.FloatType{T: "float", Precision: 30}}, Default: &schema.RawExpr{X: "'1'"}},
 		&schema.Column{Name: "i", Type: &schema.ColumnType{Raw: "float(53)", Type: &schema.FloatType{T: "float", Precision: 53}}, Default: &schema.RawExpr{X: "1"}},
+		&schema.Column{Name: "j", Type: &schema.ColumnType{Raw: "serial", Type: &postgres.SerialType{T: "serial"}}},
 	)
 	changes, err := s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
 	s.Require().NoError(err)
-	s.Len(changes, 9)
+	s.Len(changes, 10)
 	err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-	s.NoError(err)
+	s.Require().NoError(err)
 	changes, err = s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
 	s.Require().NoError(err)
 	s.Empty(changes)

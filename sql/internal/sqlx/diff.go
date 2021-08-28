@@ -65,6 +65,17 @@ type (
 		// changed. For example, action was changed from RESTRICT to CASCADE.
 		ReferenceChanged(from, to schema.ReferenceOption) bool
 	}
+
+	// A Normalizer wraps the methods for normalizing table elements
+	// that were inspected from the database, or were defined by the
+	// users to a standard form.
+	//
+	// If the DiffDriver implements the Normalizer interface, TableDiff
+	// normalizes its table inputs before starting the diff process.
+	Normalizer interface {
+		// Normalize normalizes a list of tables.
+		Normalize(...*schema.Table)
+	}
 )
 
 // SchemaDiff implements the schema.Differ interface and returns a list of
@@ -104,6 +115,11 @@ func (d *Diff) SchemaDiff(from, to *schema.Schema) ([]schema.Change, error) {
 // TableDiff implements the schema.TableDiffer interface and returns a list of
 // changes that need to be applied in order to move from one state to the other.
 func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
+	// Normalizing tables before starting the diff process.
+	if n, ok := d.DiffDriver.(Normalizer); ok {
+		n.Normalize(from, to)
+	}
+
 	var changes []schema.Change
 	if from.Name != to.Name {
 		return nil, fmt.Errorf("mismatched table names: %q != %q", from.Name, to.Name)
@@ -210,8 +226,9 @@ func (d *Diff) columnChange(from, to *schema.Column) (schema.ChangeKind, error) 
 	if changed {
 		change |= schema.ChangeType
 	}
-	d1, d2 := from.Default, to.Default
-	if (d1 != nil) != (d2 != nil) || (d1 != nil && d1.(*schema.RawExpr).X != d2.(*schema.RawExpr).X) {
+	d1, ok1 := from.Default.(*schema.RawExpr)
+	d2, ok2 := to.Default.(*schema.RawExpr)
+	if ok1 != ok2 || ok1 && d1.X != d2.X {
 		change |= schema.ChangeDefault
 	}
 	return change, nil

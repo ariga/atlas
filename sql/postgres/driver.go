@@ -218,9 +218,7 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 		typid:     typid.Int64,
 	})
 	if sqlx.ValidString(defaults) {
-		c.Default = &schema.RawExpr{
-			X: defaults.String,
-		}
+		c.Default = defaultExpr(defaults.String)
 	}
 	if identity.String == "YES" {
 		c.Attrs = append(c.Attrs, &Identity{
@@ -637,6 +635,13 @@ type (
 		NoInherit bool
 		Columns   []string
 	}
+
+	// SeqFuncExpr describe a sequence generator function.
+	// https://www.postgresql.org/docs/13/functions-sequence.html
+	SeqFuncExpr struct {
+		schema.Expr
+		X string
+	}
 )
 
 const (
@@ -797,4 +802,13 @@ func inStrings(s []string, query string, args []interface{}) (string, []interfac
 	}
 	query += ")"
 	return query, args
+}
+
+func defaultExpr(x string) schema.Expr {
+	for _, fn := range [...]string{"currval", "lastval", "setval", "nextval"} {
+		if strings.HasPrefix(x, fn) {
+			return &SeqFuncExpr{X: x}
+		}
+	}
+	return &schema.RawExpr{X: x}
 }

@@ -5,6 +5,7 @@
 package postgres
 
 import (
+	"fmt"
 	"strings"
 
 	"ariga.io/atlas/sql/internal/sqlx"
@@ -59,7 +60,6 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) []schema.Change {
 
 // ColumnTypeChanged reports if the a column type was changed.
 func (d *diff) ColumnTypeChanged(c1, c2 *schema.Column) (bool, error) {
-	d.normalize(c1, c2)
 	changed, err := sqlx.ColumnTypeChanged(c1, c2)
 	if sqlx.IsUnsupportedTypeError(err) {
 		return d.typeChanged(c1, c2)
@@ -153,8 +153,15 @@ func (*diff) typeChanged(from, to *schema.Column) (bool, error) {
 	return changed, nil
 }
 
-func (d *diff) normalize(columns ...*schema.Column) {
-	for _, c := range columns {
+// Normalize implements the sqlx.Normalizer interface.
+func (d *diff) Normalize(tables ...*schema.Table) {
+	for _, t := range tables {
+		d.normalize(t)
+	}
+}
+
+func (d *diff) normalize(table *schema.Table) {
+	for _, c := range table.Columns {
 		var cast string
 		switch t := c.Type.Type.(type) {
 		case nil:
@@ -202,6 +209,27 @@ func (d *diff) normalize(columns ...*schema.Column) {
 			case "json", "jsonb":
 				cast = t.T
 			}
+		case *SerialType:
+			// The smallserial, serial and bigserial data types are not true types, but merely a
+			// notational convenience for creating integers types with AUTO_INCREMENT property.
+			it := &schema.IntegerType{}
+			switch t.T {
+			case "smallserial":
+				it.T = "smallint"
+			case "serial":
+				it.T = "integer"
+			case "bigserial":
+				it.T = "bigint"
+			default:
+				panic(fmt.Sprintf("unexpected serial type: %q", it.T))
+			}
+			// The definition of "<column> <serial type>" is equivalent to specifying:
+			// "<column> <int type> NOT NULL DEFAULT nextval('<table>_<column>_seq')".
+			c.Default = &SeqFuncExpr{
+				X: fmt.Sprintf("nextval('%s_%s_seq')", table.Name, c.Name),
+			}
+			c.Type.Type = it
+			c.Type.Null = false
 		}
 		// Remove typecast format if exists (e.g. 'string'::text).
 		if x, ok := c.Default.(*schema.RawExpr); ok && cast != "" {
