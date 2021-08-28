@@ -6,6 +6,7 @@ package postgres
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"ariga.io/atlas/sql/internal/sqlx"
@@ -230,6 +231,16 @@ func (d *diff) normalize(table *schema.Table) {
 			}
 			c.Type.Type = it
 			c.Type.Null = false
+		case *CurrencyType:
+			x, ok := c.Default.(*schema.RawExpr)
+			if ok {
+				// Assume the currency default value is formatted (e.g. '$10,000')
+				// if we're unable to parse it, and delete it as we do not support
+				// this functionality atm.
+				if _, err := strconv.ParseFloat(x.X, 64); err != nil {
+					c.Default = nil
+				}
+			}
 		}
 		// Remove typecast format if exists (e.g. 'string'::text).
 		if x, ok := c.Default.(*schema.RawExpr); ok && cast != "" {
