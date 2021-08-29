@@ -208,7 +208,7 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 			Null: nullable.String == "YES",
 		},
 	}
-	c.Type.Type = columnType(&columnMeta{
+	c.Type.Type = columnType(&columnDesc{
 		typ:       typ.String,
 		size:      maxlen.Int64,
 		udt:       udt.String,
@@ -244,7 +244,7 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 	return nil
 }
 
-func columnType(c *columnMeta) schema.Type {
+func columnType(c *columnDesc) schema.Type {
 	var typ schema.Type
 	switch t := c.typ; t {
 	case "bigint", "int8", "integer", "int", "int4", "smallint", "int2":
@@ -306,21 +306,30 @@ func columnType(c *columnMeta) schema.Type {
 // enumValues fills enum columns with their values from the database.
 func (d *Driver) enumValues(ctx context.Context, columns []*schema.Column) error {
 	var (
-		args []interface{}
-		ids  = make(map[int64][]*EnumType)
+		args  []interface{}
+		ids   = make(map[int64][]*schema.EnumType)
+		query = "SELECT enumtypid, enumlabel FROM pg_enum WHERE enumtypid IN ("
 	)
 	for _, c := range columns {
 		if enum, ok := c.Type.Type.(*EnumType); ok {
 			if _, ok := ids[enum.ID]; !ok {
+				if len(args) > 0 {
+					query += ", "
+				}
 				args = append(args, enum.ID)
+				query += fmt.Sprintf("$%d", len(args))
 			}
-			ids[enum.ID] = append(ids[enum.ID], enum)
+			// Convert the intermediate type to the standard schema.EnumType.
+			e := &schema.EnumType{T: enum.T}
+			c.Type.Type = e
+			c.Type.Raw = enum.T
+			ids[enum.ID] = append(ids[enum.ID], e)
 		}
 	}
+	query += ")"
 	if len(ids) == 0 {
 		return nil
 	}
-	query := `SELECT enumtypid, enumlabel FROM pg_enum WHERE enumtypid IN (` + strings.Repeat("?, ", len(ids)-1) + "?)"
 	rows, err := d.QueryContext(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("postgres: querying enum values: %w", err)
@@ -637,7 +646,7 @@ type (
 	}
 
 	// SeqFuncExpr describe a sequence generator function.
-	// https://www.postgresql.org/docs/13/functions-sequence.html
+	// https://www.postgresql.org/docs/current/functions-sequence.html
 	SeqFuncExpr struct {
 		schema.Expr
 		X string

@@ -66,9 +66,9 @@ type (
 		ReferenceChanged(from, to schema.ReferenceOption) bool
 	}
 
-	// A Normalizer wraps the methods for normalizing table elements
-	// that were inspected from the database, or were defined by the
-	// users to a standard form.
+	// A Normalizer wraps the Normalize method for normalizing table
+	// elements that were inspected from the database, or were defined
+	// by the users to a standard form.
 	//
 	// If the DiffDriver implements the Normalizer interface, TableDiff
 	// normalizes its table inputs before starting the diff process.
@@ -378,7 +378,7 @@ func ColumnTypeChanged(from, to *schema.Column) (bool, error) {
 		changed = fromT.T != toT.T || fromT.Scale != toT.Scale || fromT.Precision != toT.Precision
 	case *schema.EnumType:
 		toT := toT.(*schema.EnumType)
-		changed = ValuesEqual(fromT.Values, toT.Values)
+		changed = !ValuesEqual(fromT.Values, toT.Values)
 	case *schema.FloatType:
 		toT := toT.(*schema.FloatType)
 		changed = fromT.T != toT.T || fromT.Precision != toT.Precision

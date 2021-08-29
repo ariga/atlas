@@ -44,6 +44,10 @@ func (m *migrate) Exec(ctx context.Context, changes []schema.Change) (err error)
 
 // addTable builds and executes the query for creating a table in a schema.
 func (m *migrate) addTable(ctx context.Context, add *schema.AddTable) error {
+	// Create enum types before using them in the `CREATE TABLE` statement.
+	if err := m.addTypes(ctx, add.T.Columns...); err != nil {
+		return err
+	}
 	b := Build("CREATE TABLE").Table(add.T)
 	b.Wrap(func(b *sqlx.Builder) {
 		b.MapComma(add.T.Columns, func(i int, b *sqlx.Builder) {
@@ -102,6 +106,29 @@ func (m *migrate) modifyTable(ctx context.Context, modify *schema.ModifyTable) e
 			}, &schema.AddForeignKey{
 				F: change.To,
 			})
+		case *schema.AddColumn:
+			if err := m.addTypes(ctx, change.C); err != nil {
+				return err
+			}
+			changes = append(changes, change)
+		case *schema.ModifyColumn:
+			from, ok1 := change.From.Type.Type.(*schema.EnumType)
+			to, ok2 := change.To.Type.Type.(*schema.EnumType)
+			switch {
+			// Enum was added.
+			case !ok1 && ok2:
+				if err := m.addTypes(ctx, change.To); err != nil {
+					return err
+				}
+			// Enum was changed.
+			case ok1 && ok2 && from.T == to.T:
+				if err := m.alterType(ctx, from, to); err != nil {
+					return err
+				}
+			// Not an enum, or was dropped.
+			default:
+				changes = append(changes, change)
+			}
 		default:
 			changes = append(changes, change)
 		}
@@ -179,6 +206,61 @@ func (m *migrate) dropIndexes(ctx context.Context, indexes ...*schema.Index) err
 		}
 	}
 	return nil
+}
+
+func (m *migrate) addTypes(ctx context.Context, columns ...*schema.Column) error {
+	for _, c := range columns {
+		e, ok := c.Type.Type.(*schema.EnumType)
+		if !ok {
+			continue
+		}
+		if e.T == "" {
+			return fmt.Errorf("missing enum name for column %q", c.Name)
+		}
+		c.Type.Raw = e.T
+		if exists, err := m.enumExists(ctx, e.T); err != nil {
+			return err
+		} else if exists {
+			continue
+		}
+		b := Build("CREATE TYPE").Ident(e.T).P("AS ENUM")
+		b.Wrap(func(b *sqlx.Builder) {
+			b.MapComma(e.Values, func(i int, b *sqlx.Builder) {
+				b.WriteString("'" + e.Values[i] + "'")
+			})
+		})
+		if _, err := m.ExecContext(ctx, b.String()); err != nil {
+			return fmt.Errorf("create enum type: %w", err)
+		}
+	}
+	return nil
+}
+
+func (m *migrate) alterType(ctx context.Context, from, to *schema.EnumType) error {
+	if len(from.Values) > len(to.Values) {
+		return fmt.Errorf("dropping enum (%q) value is not supported", from.T)
+	}
+	for i := range from.Values {
+		if from.Values[i] != to.Values[i] {
+			return fmt.Errorf("replacing or reordering enum (%q) value is not supported: %q != %q", to.T, to.Values, from.Values)
+		}
+	}
+	for _, v := range to.Values[len(from.Values):] {
+		b := Build("ALTER TYPE").Ident(from.T).P("ADD VALUE", "'"+v+"'")
+		if _, err := m.ExecContext(ctx, b.String()); err != nil {
+			return fmt.Errorf("adding a new value %q for enum %q: %w", v, to.T, err)
+		}
+	}
+	return nil
+}
+
+func (m *migrate) enumExists(ctx context.Context, name string) (bool, error) {
+	rows, err := m.Driver.QueryContext(ctx, "SELECT * FROM pg_type WHERE typname = $1 AND typtype = 'e'", name)
+	if err != nil {
+		return false, fmt.Errorf("check index existance: %w", err)
+	}
+	defer rows.Close()
+	return rows.Next(), rows.Err()
 }
 
 func (m *migrate) addIndexes(ctx context.Context, t *schema.Table, indexes ...*schema.Index) error {
