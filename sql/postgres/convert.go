@@ -38,7 +38,7 @@ func (d *Driver) ConvertIndex(spec *schemaspec.Index, parent *schema.Table) (*sc
 }
 
 // ConvertColumn converts a schemaspec.Column into a schema.Column.
-func (d *Driver) ConvertColumn(spec *schemaspec.Column, parent *schema.Table) (*schema.Column, error) {
+func (d *Driver) ConvertColumn(spec *schemaspec.Column, _ *schema.Table) (*schema.Column, error) {
 	if override := spec.Override(sqlx.VersionPermutations(Name, d.version)...); override != nil {
 		if err := schemautil.Override(spec, override); err != nil {
 			return nil, err
@@ -48,24 +48,24 @@ func (d *Driver) ConvertColumn(spec *schemaspec.Column, parent *schema.Table) (*
 }
 
 // ConvertColumnType converts a schemaspec.Column into a concrete MySQL schema.Type.
-func (d *Driver) ConvertColumnType(spec *schemaspec.Column) (schema.Type, error) {
+func (*Driver) ConvertColumnType(spec *schemaspec.Column) (schema.Type, error) {
 	switch spec.Type {
 	case "int", "int8", "int16", "int64", "uint", "uint8", "uint16", "uint64":
 		return convertInteger(spec)
 	case "string":
 		return convertString(spec)
-	case "binary":
-		return convertBinary(spec)
 	case "enum":
 		return convertEnum(spec)
-	case "boolean":
-		return convertBoolean(spec)
 	case "decimal":
 		return convertDecimal(spec)
 	case "float":
 		return convertFloat(spec)
 	case "time":
-		return convertTime(spec)
+		return &schema.TimeType{T: "timestamp"}, nil
+	case "binary":
+		return &schema.BinaryType{T: "bytea"}, nil
+	case "boolean":
+		return &schema.BoolType{T: "boolean"}, nil
 	}
 	return parseRawType(spec)
 }
@@ -88,10 +88,6 @@ func convertInteger(spec *schemaspec.Column) (schema.Type, error) {
 		return nil, fmt.Errorf("mysql: unknown integer column type %q", spec.Type)
 	}
 	return typ, nil
-}
-
-func convertBinary(spec *schemaspec.Column) (schema.Type, error) {
-	return &schema.BinaryType{T: "bytea"}, nil
 }
 
 // maxCharSize defines the maximum size of limited character types in Postgres (10 MB).
@@ -128,14 +124,6 @@ func convertEnum(spec *schemaspec.Column) (schema.Type, error) {
 		return nil, err
 	}
 	return &schema.EnumType{Values: list}, nil
-}
-
-func convertBoolean(spec *schemaspec.Column) (schema.Type, error) {
-	return &schema.BoolType{T: "boolean"}, nil
-}
-
-func convertTime(spec *schemaspec.Column) (schema.Type, error) {
-	return &schema.TimeType{T: "timestamp"}, nil
 }
 
 func convertDecimal(spec *schemaspec.Column) (schema.Type, error) {
@@ -176,7 +164,8 @@ func convertFloat(spec *schemaspec.Column) (schema.Type, error) {
 	return ft, nil
 }
 
-type columnMeta struct {
+// columnDesc represents a column descriptor.
+type columnDesc struct {
 	typ       string
 	size      int64
 	udt       string
@@ -195,15 +184,17 @@ func parseRawType(spec *schemaspec.Column) (schema.Type, error) {
 	return columnType(cm), nil
 }
 
-func parseColumn(s string) (*columnMeta, error) {
+func parseColumn(s string) (*columnDesc, error) {
 	parts := strings.FieldsFunc(s, func(r rune) bool {
 		return r == '(' || r == ')' || r == ' ' || r == ','
 	})
-	c := &columnMeta{
-		typ:   parts[0],
-		parts: parts,
-	}
-	var err error
+	var (
+		err error
+		c   = &columnDesc{
+			typ:   parts[0],
+			parts: parts,
+		}
+	)
 	switch c.parts[0] {
 	case "varchar":
 		if len(c.parts) > 1 {
@@ -243,7 +234,7 @@ func parseColumn(s string) (*columnMeta, error) {
 	return c, nil
 }
 
-func parseBitParts(parts []string, c *columnMeta) error {
+func parseBitParts(parts []string, c *columnDesc) error {
 	if len(parts) == 1 {
 		c.size = 1
 		return nil

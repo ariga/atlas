@@ -58,10 +58,7 @@ func (s *pgSuite) TestAddDropTable() {
 		&schema.AddTable{T: usersT},
 	})
 	s.Require().NoError(err)
-	realm := s.loadRealm()
-	changes, err := s.drv.Diff().TableDiff(realm.Schemas[0].Tables[0], usersT)
-	s.Require().NoError(err)
-	s.Empty(changes)
+	s.ensureNoChange(usersT)
 	err = s.drv.Migrate().Exec(ctx, []schema.Change{
 		&schema.DropTable{T: usersT},
 	})
@@ -77,13 +74,7 @@ func (s *pgSuite) TestRelation() {
 		&schema.AddTable{T: postsT},
 	})
 	s.Require().NoError(err)
-	realm := s.loadRealm()
-	changes, err := s.drv.Diff().TableDiff(realm.Schemas[0].Tables[0], postsT)
-	s.Require().NoError(err)
-	s.Empty(changes)
-	changes, err = s.drv.Diff().TableDiff(realm.Schemas[0].Tables[1], usersT)
-	s.NoError(err)
-	s.Empty(changes)
+	s.ensureNoChange(postsT, usersT)
 }
 
 func (s *pgSuite) TestAddIndexedColumns() {
@@ -114,10 +105,7 @@ func (s *pgSuite) TestAddIndexedColumns() {
 
 	err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
 	s.NoError(err)
-	realm = s.loadRealm()
-	changes, err = s.drv.Diff().TableDiff(realm.Schemas[0].Tables[0], usersT)
-	s.NoError(err)
-	s.Empty(changes, "migrate should add the columns and the index to usersT")
+	s.ensureNoChange(usersT)
 }
 
 func (s *pgSuite) TestChangeColumn() {
@@ -132,9 +120,7 @@ func (s *pgSuite) TestChangeColumn() {
 	s.Len(changes, 1)
 	err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
 	s.NoError(err)
-	changes, err = s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
-	s.Require().NoError(err)
-	s.Empty(changes)
+	s.ensureNoChange(usersT)
 }
 
 func (s *pgSuite) TestAddColumns() {
@@ -156,15 +142,59 @@ func (s *pgSuite) TestAddColumns() {
 		&schema.Column{Name: "j", Type: &schema.ColumnType{Raw: "serial", Type: &postgres.SerialType{T: "serial"}}},
 		&schema.Column{Name: "k", Type: &schema.ColumnType{Raw: "money", Type: &postgres.CurrencyType{T: "money"}}, Default: &schema.RawExpr{X: "100"}},
 		&schema.Column{Name: "l", Type: &schema.ColumnType{Raw: "money", Type: &postgres.CurrencyType{T: "money"}, Null: true}, Default: &schema.RawExpr{X: "'52093.89'::money"}},
+		&schema.Column{Name: "m", Type: &schema.ColumnType{Raw: "boolean", Type: &schema.BoolType{T: "boolean"}, Null: true}, Default: &schema.RawExpr{X: "false"}},
 	)
 	changes, err := s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
 	s.Require().NoError(err)
-	s.Len(changes, 12)
+	s.Len(changes, 13)
 	err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
 	s.Require().NoError(err)
+	s.ensureNoChange(usersT)
+}
+
+func (s *pgSuite) TestEnums() {
+	ctx := context.Background()
+	_, err := s.drv.ExecContext(ctx, "DROP TYPE IF EXISTS state, day")
+	s.Require().NoError(err)
+	usersT := &schema.Table{
+		Name:   "users",
+		Schema: s.realm().Schemas[0],
+		Columns: []*schema.Column{
+			{Name: "state", Type: &schema.ColumnType{Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}},
+		},
+	}
+	err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
+	s.Require().NoError(err, "create a new table with an enum column")
+	s.ensureNoChange(usersT)
+
+	usersT.Columns = append(
+		usersT.Columns,
+		&schema.Column{Name: "day", Type: &schema.ColumnType{Type: &schema.EnumType{T: "day", Values: []string{"sunday", "monday"}}}},
+	)
+	changes, err := s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
+	s.Require().NoError(err)
+	s.Len(changes, 1)
+	err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+	s.Require().NoError(err, "add a new enum column to existing table")
+	s.ensureNoChange(usersT)
+
+	e := usersT.Columns[1].Type.Type.(*schema.EnumType)
+	e.Values = append(e.Values, "tuesday")
 	changes, err = s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
 	s.Require().NoError(err)
-	s.Empty(changes)
+	s.Len(changes, 1)
+	err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+	s.Require().NoError(err, "append a value to existing enum")
+	s.ensureNoChange(usersT)
+
+	e = usersT.Columns[1].Type.Type.(*schema.EnumType)
+	e.Values = append(e.Values, "wednesday", "thursday", "friday", "saturday")
+	changes, err = s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
+	s.Require().NoError(err)
+	s.Len(changes, 1)
+	err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+	s.Require().NoError(err, "append multiple values to existing enum")
+	s.ensureNoChange(usersT)
 }
 
 func (s *pgSuite) users() *schema.Table {
@@ -232,6 +262,16 @@ func (s *pgSuite) loadRealm() *schema.Realm {
 	})
 	s.Require().NoError(err)
 	return r
+}
+
+func (s *pgSuite) ensureNoChange(tables ...*schema.Table) {
+	realm := s.loadRealm()
+	s.Require().Equal(len(realm.Schemas[0].Tables), len(tables))
+	for i, t := range tables {
+		changes, err := s.drv.Diff().TableDiff(realm.Schemas[0].Tables[i], t)
+		s.Require().NoError(err)
+		s.Empty(changes)
+	}
 }
 
 func (s *pgSuite) realm() *schema.Realm {

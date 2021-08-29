@@ -210,6 +210,8 @@ func (d *diff) normalize(table *schema.Table) {
 			case "json", "jsonb":
 				cast = t.T
 			}
+		case *EnumType:
+			c.Type.Type = &schema.EnumType{T: t.T, Values: t.Values}
 		case *SerialType:
 			// The smallserial, serial and bigserial data types are not true types, but merely a
 			// notational convenience for creating integers types with AUTO_INCREMENT property.
