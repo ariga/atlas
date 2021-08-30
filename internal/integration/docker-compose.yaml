@@ -11,6 +11,7 @@ services:
       test: mysqladmin ping -ppass
     ports:
       - 3306:3306
+
   mysql57:
     platform: linux/amd64
     image: mysql:5.7.26
@@ -21,6 +22,7 @@ services:
       test: mysqladmin ping -ppass
     ports:
       - 3307:3306
+
   mysql8:
     platform: linux/amd64
     image: mysql:8.0.19
@@ -31,6 +33,40 @@ services:
       test: mysqladmin ping -ppass
     ports:
       - 3308:3306
+
+  postgres10:
+    platform: linux/amd64
+    image: postgres:10
+    environment:
+      POSTGRES_DB: test
+      POSTGRES_PASSWORD: pass
+    healthcheck:
+      test: pg_isready -U postgres
+    ports:
+      - 5430:5432
+
+  postgres11:
+    platform: linux/amd64
+    image: postgres:11
+    environment:
+      POSTGRES_DB: test
+      POSTGRES_PASSWORD: pass
+    healthcheck:
+      test: pg_isready -U postgres
+    ports:
+      - 5431:5432
+
+  postgres12:
+    platform: linux/amd64
+    image: postgres:12
+    environment:
+      POSTGRES_DB: test
+      POSTGRES_PASSWORD: pass
+    healthcheck:
+      test: pg_isready -U postgres
+    ports:
+      - 5433:5432
+
   postgres13:
     platform: linux/amd64
     image: postgres:13

@@ -19,7 +19,7 @@ import (
 )
 
 func TestPostgres(t *testing.T) {
-	for version, port := range map[string]int{"13": 5434} {
+	for version, port := range map[string]int{"10": 5430, "11": 5431, "12": 5433, "13": 5434} {
 		t.Run(version, func(t *testing.T) {
 			db, err := sql.Open("postgres", fmt.Sprintf("host=localhost port=%d user=postgres dbname=test password=pass sslmode=disable", port))
 			require.NoError(t, err)
