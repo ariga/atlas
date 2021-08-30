@@ -143,10 +143,12 @@ func (s *pgSuite) TestAddColumns() {
 		&schema.Column{Name: "k", Type: &schema.ColumnType{Raw: "money", Type: &postgres.CurrencyType{T: "money"}}, Default: &schema.RawExpr{X: "100"}},
 		&schema.Column{Name: "l", Type: &schema.ColumnType{Raw: "money", Type: &postgres.CurrencyType{T: "money"}, Null: true}, Default: &schema.RawExpr{X: "'52093.89'::money"}},
 		&schema.Column{Name: "m", Type: &schema.ColumnType{Raw: "boolean", Type: &schema.BoolType{T: "boolean"}, Null: true}, Default: &schema.RawExpr{X: "false"}},
+		&schema.Column{Name: "n", Type: &schema.ColumnType{Raw: "point", Type: &schema.SpatialType{T: "point"}, Null: true}, Default: &schema.RawExpr{X: "'(1,2)'"}},
+		&schema.Column{Name: "o", Type: &schema.ColumnType{Raw: "line", Type: &schema.SpatialType{T: "line"}, Null: true}, Default: &schema.RawExpr{X: "'{1,2,3}'"}},
 	)
 	changes, err := s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
 	s.Require().NoError(err)
-	s.Len(changes, 13)
+	s.Len(changes, 15)
 	err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
 	s.Require().NoError(err)
 	s.ensureNoChange(usersT)

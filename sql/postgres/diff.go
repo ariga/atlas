@@ -206,10 +206,15 @@ func (d *diff) normalize(table *schema.Table) {
 				cast = t.T
 			}
 		case *schema.JSONType:
-			switch t.T {
-			case "json", "jsonb":
-				cast = t.T
-			}
+			cast = t.T
+		case *schema.SpatialType:
+			cast = t.T
+		case *UUIDType:
+			cast = t.T
+		case *NetworkType:
+			cast = t.T
+		case *XMLType:
+			cast = t.T
 		case *EnumType:
 			c.Type.Type = &schema.EnumType{T: t.T, Values: t.Values}
 		case *SerialType:
