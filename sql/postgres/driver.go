@@ -261,7 +261,7 @@ func columnType(c *columnDesc) schema.Type {
 		typ = &schema.StringType{T: t, Size: int(c.size)}
 	case "cidr", "inet", "macaddr", "macaddr8":
 		typ = &NetworkType{T: t}
-	case "circle", "line", "lseg", "box", "path", "polygon":
+	case "circle", "line", "lseg", "box", "path", "polygon", "point":
 		typ = &schema.SpatialType{T: t}
 	case "date", "time", "time with time zone", "time without time zone",
 		"timestamp", "timestamp with time zone", "timestamp without time zone":
