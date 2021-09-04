@@ -12,7 +12,7 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
-// A Migrate provides migration capabilities for schema elements.
+// A migrate provides migration capabilities for schema elements.
 type migrate struct{ *Driver }
 
 // Migrate returns a PostgreSQL schema executor.
