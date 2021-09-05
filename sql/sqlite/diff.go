@@ -56,6 +56,14 @@ func (d *diff) ColumnTypeChanged(c1, c2 *schema.Column) (bool, error) {
 	return changed, err
 }
 
+// ColumnDefaultChanged reports if the a default value of a column
+// type was changed.
+func (d *diff) ColumnDefaultChanged(from, to *schema.Column) bool {
+	d1, ok1 := from.Default.(*schema.RawExpr)
+	d2, ok2 := to.Default.(*schema.RawExpr)
+	return ok1 != ok2 || ok1 && d1.X != d2.X
+}
+
 // IndexAttrChanged reports if the index attributes were changed.
 func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 	var p1, p2 IndexPredicate

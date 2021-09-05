@@ -6,22 +6,20 @@ package postgres
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
+	"unicode"
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 )
 
 // A diff provides a PostgreSQL implementation for sqlx.DiffDriver.
-type diff struct {
-	version string
-}
+type diff struct{ *Driver }
 
 // Diff returns a PostgreSQL schema differ.
-func (d Driver) Diff() schema.Differ {
+func (d *Driver) Diff() schema.Differ {
 	return &sqlx.Diff{
-		DiffDriver: &diff{version: d.version},
+		DiffDriver: &diff{Driver: d},
 	}
 }
 
@@ -66,6 +64,21 @@ func (d *diff) ColumnTypeChanged(c1, c2 *schema.Column) (bool, error) {
 		return d.typeChanged(c1, c2)
 	}
 	return changed, err
+}
+
+// ColumnDefaultChanged reports if the a default value of a column
+// type was changed.
+func (d *diff) ColumnDefaultChanged(from, to *schema.Column) bool {
+	d1, ok1 := from.Default.(*schema.RawExpr)
+	d2, ok2 := to.Default.(*schema.RawExpr)
+	if ok1 != ok2 {
+		return true
+	}
+	if d1 == nil || d1.X == d2.X || trimCast(d1.X) == trimCast(d2.X) {
+		return false
+	}
+	// Use database comparison in case of mismatch (e.g. `SELECT ARRAY[1] = '{1}'::int[]`).
+	return !d.valuesEqual(d1.X, d2.X)
 }
 
 // IndexAttrChanged reports if the index attributes were changed.
@@ -113,9 +126,12 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 	return from != to
 }
 
-func (*diff) typeChanged(from, to *schema.Column) (bool, error) {
+func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	fromT, toT := from.Type.Type, to.Type.Type
-	var changed bool
+	var (
+		changed bool
+		x, y    = from.Type.Raw, to.Type.Raw
+	)
 	switch fromT := fromT.(type) {
 	case *EnumType:
 		toT := toT.(*schema.EnumType)
@@ -145,13 +161,19 @@ func (*diff) typeChanged(from, to *schema.Column) (bool, error) {
 	case *ArrayType:
 		toT := toT.(*ArrayType)
 		changed = fromT.T != toT.T
+		x, y = fromT.T, toT.T
 	case *UserDefinedType:
 		toT := toT.(*UserDefinedType)
 		changed = fromT.T != toT.T
 	default:
 		return false, &sqlx.UnsupportedTypeError{Type: fromT}
 	}
-	return changed, nil
+	// If we assume that a value was changed, we compare
+	// its underlying data type name.
+	if !changed {
+		return false, nil
+	}
+	return !d.typesEqual(x, y), nil
 }
 
 // Normalize implements the sqlx.Normalizer interface.
@@ -163,7 +185,6 @@ func (d *diff) Normalize(tables ...*schema.Table) {
 
 func (d *diff) normalize(table *schema.Table) {
 	for _, c := range table.Columns {
-		var cast string
 		switch t := c.Type.Type.(type) {
 		case nil:
 		case *schema.TimeType:
@@ -192,29 +213,13 @@ func (d *diff) normalize(table *schema.Table) {
 			case t.T == "double precision":
 				t.Precision = 53
 			}
-			cast = t.T
 		case *schema.StringType:
 			switch t.T {
-			case "character varying", "varchar":
-				cast = "character varying"
 			case "character", "char":
 				// Character without length specifier
 				// is equivalent to character(1).
 				t.Size = 1
-				cast = "bpchar"
-			case "text":
-				cast = t.T
 			}
-		case *schema.JSONType:
-			cast = t.T
-		case *schema.SpatialType:
-			cast = t.T
-		case *UUIDType:
-			cast = t.T
-		case *NetworkType:
-			cast = t.T
-		case *XMLType:
-			cast = t.T
 		case *EnumType:
 			c.Type.Type = &schema.EnumType{T: t.T, Values: t.Values}
 		case *SerialType:
@@ -238,22 +243,30 @@ func (d *diff) normalize(table *schema.Table) {
 			}
 			c.Type.Type = it
 			c.Type.Null = false
-		case *CurrencyType:
-			x, ok := c.Default.(*schema.RawExpr)
-			if ok {
-				// Assume the currency default value is formatted (e.g. '$10,000')
-				// if we're unable to parse it, and delete it as we do not support
-				// this functionality atm.
-				if _, err := strconv.ParseFloat(x.X, 64); err != nil {
-					c.Default = nil
-				}
-			}
-		}
-		// Remove typecast format if exists (e.g. 'string'::text).
-		if x, ok := c.Default.(*schema.RawExpr); ok && cast != "" {
-			x.X = strings.TrimSuffix(x.X, "::"+cast)
 		}
 	}
+}
+
+// valuesEqual reports if the DEFAULT values x and y
+// equal according to the database engine.
+func (d *diff) valuesEqual(x, y string) (b bool) {
+	// The DEFAULT expressions are safe to be inlined in the SELECT
+	// statement same as we inline them in the CREATE TABLE statement.
+	if err := d.Driver.QueryRow(fmt.Sprintf("SELECT %s = %s", x, y)).Scan(&b); err != nil {
+		return false
+	}
+	return b
+}
+
+// valuesEqual reports if the data types x and y
+// equal according to the database engine.
+func (d *diff) typesEqual(x, y string) (b bool) {
+	// The datatype are safe to be inlined in the SELECT statement
+	// same as we inline them in the CREATE TABLE statement.
+	if err := d.Driver.QueryRow(fmt.Sprintf("SELECT '%s'::regtype = '%s'::regtype", x, y)).Scan(&b); err != nil {
+		return false
+	}
+	return b
 }
 
 func checks(attr []schema.Attr) (checks []*Check) {
@@ -272,4 +285,17 @@ func checkByName(attr []schema.Attr, name string) (*Check, bool) {
 		}
 	}
 	return nil, false
+}
+
+func trimCast(s string) string {
+	i := strings.LastIndex(s, "::")
+	if i == -1 {
+		return s
+	}
+	for _, r := range s[i+2:] {
+		if r != ' ' && !unicode.IsLetter(r) {
+			return s
+		}
+	}
+	return s[:i]
 }

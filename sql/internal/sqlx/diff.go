@@ -53,6 +53,10 @@ type (
 		//
 		ColumnTypeChanged(from, to *schema.Column) (bool, error)
 
+		// ColumnDefaultChanged reports if the a default value of a column
+		// type was changed.
+		ColumnDefaultChanged(from, to *schema.Column) bool
+
 		// IndexAttrChanged reports if the index attributes were changed.
 		// For example, an index type or predicate (for partial indexes).
 		IndexAttrChanged(from, to []schema.Attr) bool
@@ -226,9 +230,7 @@ func (d *Diff) columnChange(from, to *schema.Column) (schema.ChangeKind, error) 
 	if changed {
 		change |= schema.ChangeType
 	}
-	d1, ok1 := from.Default.(*schema.RawExpr)
-	d2, ok2 := to.Default.(*schema.RawExpr)
-	if ok1 != ok2 || ok1 && d1.X != d2.X {
+	if changed := d.ColumnDefaultChanged(from, to); changed {
 		change |= schema.ChangeDefault
 	}
 	return change, nil
@@ -369,7 +371,7 @@ func ColumnTypeChanged(from, to *schema.Column) (bool, error) {
 	switch fromT := fromT.(type) {
 	case *schema.BinaryType:
 		toT := toT.(*schema.BinaryType)
-		changed = fromT.T != toT.T || fromT.Size != toT.Size
+		changed = fromT.T != toT.T
 	case *schema.BoolType:
 		toT := toT.(*schema.BoolType)
 		changed = fromT.T != toT.T
