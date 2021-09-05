@@ -154,6 +154,31 @@ func (s *pgSuite) TestAddColumns() {
 	s.ensureNoChange(usersT)
 }
 
+func (s *pgSuite) TestDefaultChange() {
+	ctx := context.Background()
+	err := s.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: s.users()}})
+	s.Require().NoError(err)
+	usersT := s.users()
+	usersT.Columns = append(
+		usersT.Columns,
+		&schema.Column{Name: "a", Type: &schema.ColumnType{Raw: "int[]", Type: &postgres.ArrayType{T: "int[]"}}, Default: &schema.RawExpr{X: "'{1}'"}},
+	)
+	changes, err := s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
+	s.Require().NoError(err)
+	s.Len(changes, 1)
+	err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+	s.Require().NoError(err)
+	usersT.Columns[2].Default = &schema.RawExpr{X: "ARRAY[1]"}
+	s.ensureNoChange(usersT)
+	usersT.Columns[2].Default = &schema.RawExpr{X: "ARRAY[1,2]"}
+	changes, err = s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
+	s.Require().NoError(err)
+	s.Len(changes, 1)
+	err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+	s.Require().NoError(err)
+	s.ensureNoChange(usersT)
+}
+
 func (s *pgSuite) TestEnums() {
 	ctx := context.Background()
 	_, err := s.drv.ExecContext(ctx, "DROP TYPE IF EXISTS state, day")

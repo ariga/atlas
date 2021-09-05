@@ -288,7 +288,7 @@ func columnType(c *columnDesc) schema.Type {
 		// prefixed with '_'. For example, for 'integer[]' the result is '_int',
 		// and for 'text[N][M]' the result is also '_text'. That's because, the
 		// database ignores any size or multi-dimensions constraints.
-		typ = &ArrayType{T: strings.TrimPrefix(c.udt, "_")}
+		typ = &ArrayType{T: strings.TrimPrefix(c.udt, "_") + "[]"}
 	case "USER-DEFINED":
 		typ = &UserDefinedType{T: c.udt}
 		// The `typtype` column is set to 'e' for enum types, and the
