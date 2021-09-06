@@ -86,7 +86,7 @@ func TestDriver_InspectTable(t *testing.T) {
  c23         | USER-DEFINED        | YES         |                                 |                          |                   |               |                    |                | ltree    | NO          |                     |         | b       | 16535
  c24         | USER-DEFINED        | NO          |                                 |                          |                   |               |                    |                | state    | NO          |                     |         | e       | 16774
 `))
-				m.ExpectQuery(sqltest.Escape(`SELECT enumtypid, enumlabel FROM pg_enum WHERE enumtypid IN (?)`)).
+				m.ExpectQuery(sqltest.Escape(`SELECT enumtypid, enumlabel FROM pg_enum WHERE enumtypid IN ($1)`)).
 					WithArgs(16774).
 					WillReturnRows(sqltest.Rows(`
  enumtypid | enumlabel
@@ -122,12 +122,12 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c16", Type: &schema.ColumnType{Raw: "money", Type: &CurrencyType{T: "money"}}},
 					{Name: "c17", Type: &schema.ColumnType{Raw: "numeric", Type: &schema.DecimalType{T: "numeric"}}},
 					{Name: "c18", Type: &schema.ColumnType{Raw: "numeric", Type: &schema.DecimalType{T: "numeric", Precision: 4, Scale: 4}}},
-					{Name: "c19", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}, Default: &schema.RawExpr{X: "nextval('t1_c19_seq'::regclass)"}},
+					{Name: "c19", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}, Default: &SeqFuncExpr{X: "nextval('t1_c19_seq'::regclass)"}},
 					{Name: "c20", Type: &schema.ColumnType{Raw: "uuid", Type: &UUIDType{T: "uuid"}}},
 					{Name: "c21", Type: &schema.ColumnType{Raw: "xml", Type: &XMLType{T: "xml"}}},
-					{Name: "c22", Type: &schema.ColumnType{Raw: "ARRAY", Null: true, Type: &ArrayType{T: "int4"}}},
+					{Name: "c22", Type: &schema.ColumnType{Raw: "ARRAY", Null: true, Type: &ArrayType{T: "int4[]"}}},
 					{Name: "c23", Type: &schema.ColumnType{Raw: "USER-DEFINED", Null: true, Type: &UserDefinedType{T: "ltree"}}},
-					{Name: "c24", Type: &schema.ColumnType{Raw: "USER-DEFINED", Type: &EnumType{T: "state", ID: 16774, Values: []string{"on", "off"}}}},
+					{Name: "c24", Type: &schema.ColumnType{Raw: "state", Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}},
 				}, t.Columns)
 			},
 		},

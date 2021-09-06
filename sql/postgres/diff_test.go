@@ -116,7 +116,7 @@ func TestDiff_TableDiff(t *testing.T) {
 						Name: "public",
 					},
 					Columns: []*schema.Column{
-						{Name: "c1", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}},
+						{Name: "c1", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}, Default: &schema.RawExpr{X: "'{}'"}},
 						{Name: "c2", Type: &schema.ColumnType{Raw: "int8", Type: &schema.IntegerType{T: "int8"}}},
 						{Name: "c3", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
 					},
@@ -127,7 +127,7 @@ func TestDiff_TableDiff(t *testing.T) {
 						Name: "public",
 					},
 					Columns: []*schema.Column{
-						{Name: "c1", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}},
+						{Name: "c1", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}, Default: &schema.RawExpr{X: "'{}'::json"}},
 						{Name: "c2", Type: &schema.ColumnType{Raw: "int8", Type: &schema.IntegerType{T: "int8"}}},
 						{Name: "c3", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
 					},
@@ -207,7 +207,7 @@ func TestDiff_TableDiff(t *testing.T) {
 		}(),
 	}
 	for _, tt := range tests {
-		d := Driver{version: "13"}.Diff()
+		d := (&Driver{version: "13"}).Diff()
 		t.Run(tt.name, func(t *testing.T) {
 			changes, err := d.TableDiff(tt.from, tt.to)
 			require.Equal(t, tt.wantErr, err != nil)
@@ -218,7 +218,7 @@ func TestDiff_TableDiff(t *testing.T) {
 
 func TestDiff_SchemaDiff(t *testing.T) {
 	var (
-		d    = Driver{}.Diff()
+		d    = (&Driver{version: "13"}).Diff()
 		from = &schema.Schema{
 			Tables: []*schema.Table{
 				{Name: "users"},

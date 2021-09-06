@@ -208,7 +208,7 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 			Null: nullable.String == "YES",
 		},
 	}
-	c.Type.Type = columnType(&columnMeta{
+	c.Type.Type = columnType(&columnDesc{
 		typ:       typ.String,
 		size:      maxlen.Int64,
 		udt:       udt.String,
@@ -218,9 +218,7 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 		typid:     typid.Int64,
 	})
 	if sqlx.ValidString(defaults) {
-		c.Default = &schema.RawExpr{
-			X: defaults.String,
-		}
+		c.Default = defaultExpr(defaults.String)
 	}
 	if identity.String == "YES" {
 		c.Attrs = append(c.Attrs, &Identity{
@@ -246,7 +244,7 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 	return nil
 }
 
-func columnType(c *columnMeta) schema.Type {
+func columnType(c *columnDesc) schema.Type {
 	var typ schema.Type
 	switch t := c.typ; t {
 	case "bigint", "int8", "integer", "int", "int4", "smallint", "int2":
@@ -263,7 +261,7 @@ func columnType(c *columnMeta) schema.Type {
 		typ = &schema.StringType{T: t, Size: int(c.size)}
 	case "cidr", "inet", "macaddr", "macaddr8":
 		typ = &NetworkType{T: t}
-	case "circle", "line", "lseg", "box", "path", "polygon":
+	case "circle", "line", "lseg", "box", "path", "polygon", "point":
 		typ = &schema.SpatialType{T: t}
 	case "date", "time", "time with time zone", "time without time zone",
 		"timestamp", "timestamp with time zone", "timestamp without time zone":
@@ -290,7 +288,7 @@ func columnType(c *columnMeta) schema.Type {
 		// prefixed with '_'. For example, for 'integer[]' the result is '_int',
 		// and for 'text[N][M]' the result is also '_text'. That's because, the
 		// database ignores any size or multi-dimensions constraints.
-		typ = &ArrayType{T: strings.TrimPrefix(c.udt, "_")}
+		typ = &ArrayType{T: strings.TrimPrefix(c.udt, "_") + "[]"}
 	case "USER-DEFINED":
 		typ = &UserDefinedType{T: c.udt}
 		// The `typtype` column is set to 'e' for enum types, and the
@@ -308,21 +306,30 @@ func columnType(c *columnMeta) schema.Type {
 // enumValues fills enum columns with their values from the database.
 func (d *Driver) enumValues(ctx context.Context, columns []*schema.Column) error {
 	var (
-		args []interface{}
-		ids  = make(map[int64][]*EnumType)
+		args  []interface{}
+		ids   = make(map[int64][]*schema.EnumType)
+		query = "SELECT enumtypid, enumlabel FROM pg_enum WHERE enumtypid IN ("
 	)
 	for _, c := range columns {
 		if enum, ok := c.Type.Type.(*EnumType); ok {
 			if _, ok := ids[enum.ID]; !ok {
+				if len(args) > 0 {
+					query += ", "
+				}
 				args = append(args, enum.ID)
+				query += fmt.Sprintf("$%d", len(args))
 			}
-			ids[enum.ID] = append(ids[enum.ID], enum)
+			// Convert the intermediate type to the standard schema.EnumType.
+			e := &schema.EnumType{T: enum.T}
+			c.Type.Type = e
+			c.Type.Raw = enum.T
+			ids[enum.ID] = append(ids[enum.ID], e)
 		}
 	}
+	query += ")"
 	if len(ids) == 0 {
 		return nil
 	}
-	query := `SELECT enumtypid, enumlabel FROM pg_enum WHERE enumtypid IN (` + strings.Repeat("?, ", len(ids)-1) + "?)"
 	rows, err := d.QueryContext(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("postgres: querying enum values: %w", err)
@@ -637,6 +644,13 @@ type (
 		NoInherit bool
 		Columns   []string
 	}
+
+	// SeqFuncExpr describe a sequence generator function.
+	// https://www.postgresql.org/docs/current/functions-sequence.html
+	SeqFuncExpr struct {
+		schema.Expr
+		X string
+	}
 )
 
 const (
@@ -797,4 +811,13 @@ func inStrings(s []string, query string, args []interface{}) (string, []interfac
 	}
 	query += ")"
 	return query, args
+}
+
+func defaultExpr(x string) schema.Expr {
+	for _, fn := range [...]string{"currval", "lastval", "setval", "nextval"} {
+		if strings.HasPrefix(x, fn) {
+			return &SeqFuncExpr{X: x}
+		}
+	}
+	return &schema.RawExpr{X: x}
 }

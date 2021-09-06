@@ -53,6 +53,10 @@ type (
 		//
 		ColumnTypeChanged(from, to *schema.Column) (bool, error)
 
+		// ColumnDefaultChanged reports if the a default value of a column
+		// type was changed.
+		ColumnDefaultChanged(from, to *schema.Column) bool
+
 		// IndexAttrChanged reports if the index attributes were changed.
 		// For example, an index type or predicate (for partial indexes).
 		IndexAttrChanged(from, to []schema.Attr) bool
@@ -64,6 +68,17 @@ type (
 		// ReferenceChanged reports if the foreign key referential action was
 		// changed. For example, action was changed from RESTRICT to CASCADE.
 		ReferenceChanged(from, to schema.ReferenceOption) bool
+	}
+
+	// A Normalizer wraps the Normalize method for normalizing table
+	// elements that were inspected from the database, or were defined
+	// by the users to a standard form.
+	//
+	// If the DiffDriver implements the Normalizer interface, TableDiff
+	// normalizes its table inputs before starting the diff process.
+	Normalizer interface {
+		// Normalize normalizes a list of tables.
+		Normalize(...*schema.Table)
 	}
 )
 
@@ -104,6 +119,11 @@ func (d *Diff) SchemaDiff(from, to *schema.Schema) ([]schema.Change, error) {
 // TableDiff implements the schema.TableDiffer interface and returns a list of
 // changes that need to be applied in order to move from one state to the other.
 func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
+	// Normalizing tables before starting the diff process.
+	if n, ok := d.DiffDriver.(Normalizer); ok {
+		n.Normalize(from, to)
+	}
+
 	var changes []schema.Change
 	if from.Name != to.Name {
 		return nil, fmt.Errorf("mismatched table names: %q != %q", from.Name, to.Name)
@@ -210,8 +230,7 @@ func (d *Diff) columnChange(from, to *schema.Column) (schema.ChangeKind, error) 
 	if changed {
 		change |= schema.ChangeType
 	}
-	d1, d2 := from.Default, to.Default
-	if (d1 != nil) != (d2 != nil) || (d1 != nil && d1.(*schema.RawExpr).X != d2.(*schema.RawExpr).X) {
+	if changed := d.ColumnDefaultChanged(from, to); changed {
 		change |= schema.ChangeDefault
 	}
 	return change, nil
@@ -352,7 +371,7 @@ func ColumnTypeChanged(from, to *schema.Column) (bool, error) {
 	switch fromT := fromT.(type) {
 	case *schema.BinaryType:
 		toT := toT.(*schema.BinaryType)
-		changed = fromT.T != toT.T || fromT.Size != toT.Size
+		changed = fromT.T != toT.T
 	case *schema.BoolType:
 		toT := toT.(*schema.BoolType)
 		changed = fromT.T != toT.T
@@ -361,7 +380,7 @@ func ColumnTypeChanged(from, to *schema.Column) (bool, error) {
 		changed = fromT.T != toT.T || fromT.Scale != toT.Scale || fromT.Precision != toT.Precision
 	case *schema.EnumType:
 		toT := toT.(*schema.EnumType)
-		changed = ValuesEqual(fromT.Values, toT.Values)
+		changed = !ValuesEqual(fromT.Values, toT.Values)
 	case *schema.FloatType:
 		toT := toT.(*schema.FloatType)
 		changed = fromT.T != toT.T || fromT.Precision != toT.Precision
