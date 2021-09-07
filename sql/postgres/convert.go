@@ -48,23 +48,25 @@ func (d *Driver) ConvertColumn(spec *schemaspec.Column, _ *schema.Table) (*schem
 }
 
 // ConvertColumnType converts a schemaspec.Column into a concrete MySQL schema.Type.
-func (*Driver) ConvertColumnType(spec *schemaspec.Column) (schema.Type, error) {
-	switch spec.Type {
-	case "int", "int8", "int16", "int64", "uint", "uint8", "uint16", "uint64":
+func (d *Driver) ConvertColumnType(spec *schemaspec.Column) (schema.Type, error) {
+	switch schemaspec.Type(spec.Type) {
+	case schemaspec.TypeInt, schemaspec.TypeInt8, schemaspec.TypeInt16,
+		schemaspec.TypeInt64, schemaspec.TypeUint, schemaspec.TypeUint8,
+		schemaspec.TypeUint16, schemaspec.TypeUint64:
 		return convertInteger(spec)
-	case "string":
+	case schemaspec.TypeString:
 		return convertString(spec)
-	case "enum":
+	case schemaspec.TypeEnum:
 		return convertEnum(spec)
-	case "decimal":
+	case schemaspec.TypeDecimal:
 		return convertDecimal(spec)
-	case "float":
+	case schemaspec.TypeFloat:
 		return convertFloat(spec)
-	case "time":
+	case schemaspec.TypeTime:
 		return &schema.TimeType{T: "timestamp"}, nil
-	case "binary":
+	case schemaspec.TypeBinary:
 		return &schema.BinaryType{T: "bytea"}, nil
-	case "boolean":
+	case schemaspec.TypeBoolean:
 		return &schema.BoolType{T: "boolean"}, nil
 	}
 	return parseRawType(spec)
@@ -75,14 +77,14 @@ func convertInteger(spec *schemaspec.Column) (schema.Type, error) {
 		return nil, fmt.Errorf("postgres: unsigned integers currently not supported")
 	}
 	typ := &schema.IntegerType{}
-	switch spec.Type {
-	case "int8":
+	switch schemaspec.Type(spec.Type) {
+	case schemaspec.TypeInt8:
 		return nil, fmt.Errorf("postgres: 8-bit integers not supported")
-	case "int16":
+	case schemaspec.TypeInt16:
 		typ.T = "smallint"
-	case "int32", "int", "integer":
+	case schemaspec.TypeInt:
 		typ.T = "integer"
-	case "int64":
+	case schemaspec.TypeInt64:
 		typ.T = "bigint"
 	default:
 		return nil, fmt.Errorf("mysql: unknown integer column type %q", spec.Type)
