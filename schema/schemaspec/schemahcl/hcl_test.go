@@ -76,3 +76,40 @@ endpoint "/hello" {
 	}
 	require.EqualValues(t, expected, resource.Children[0])
 }
+
+func TestReEncode(t *testing.T) {
+	testCases := []struct {
+		Name, Body string
+	}{
+		{
+			Name: "attr",
+			Body: `year = 2021`,
+		},
+		{
+			Name: "simple resource",
+			Body: `project "atlas" {
+	started_year = 2021
+	useful = true
+}`,
+		},
+		{
+			Name: "nested resource",
+			Body: `author "rotemtam" {
+	package "schemahcl" {
+		lang = "go"
+	}
+}`,
+		},
+	}
+	for _, tt := range testCases {
+		t.Run(tt.Name, func(t *testing.T) {
+			resource, err := decode([]byte(tt.Body))
+			require.NoError(t, err)
+			bytes, err := encode(resource)
+			require.NoError(t, err)
+			again, err := decode(bytes)
+			require.NoError(t, err)
+			require.EqualValues(t, resource, again, "expected resource to be the same after encoding")
+		})
+	}
+}
