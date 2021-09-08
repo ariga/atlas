@@ -79,14 +79,6 @@ func toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes) ([]*schemaspec
 	return attrs, nil
 }
 
-func shouldSkip(skip map[string]struct{}, key string) bool {
-	if skip == nil {
-		return false
-	}
-	_, exists := skip[key]
-	return exists
-}
-
 func extractListValue(value cty.Value) (*schemaspec.ListValue, error) {
 	lst := &schemaspec.ListValue{}
 	it := value.ElementIterator()
