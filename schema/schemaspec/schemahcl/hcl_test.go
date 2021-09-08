@@ -3,7 +3,7 @@ package schemahcl
 import (
 	"testing"
 
-	"ariga.io/atlas/schemaspec"
+	"ariga.io/atlas/schema/schemaspec"
 	"github.com/stretchr/testify/require"
 )
 
