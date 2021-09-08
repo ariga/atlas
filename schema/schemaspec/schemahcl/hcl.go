@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strconv"
 
-	schemaspec2 "ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/schema/schemaspec"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
@@ -17,7 +17,7 @@ type container struct {
 	Body hcl.Body `hcl:",remain"`
 }
 
-func decode(body []byte) (*schemaspec2.Resource, error) {
+func decode(body []byte) (*schemaspec.Resource, error) {
 	parser := hclparse.NewParser()
 	srcHCL, diag := parser.ParseHCL(body, "")
 	if diag.HasErrors() {
@@ -31,7 +31,7 @@ func decode(body []byte) (*schemaspec2.Resource, error) {
 	return extract(ctx, c.Body, nil)
 }
 
-func extract(ctx *hcl.EvalContext, remain hcl.Body, skip map[string]struct{}) (*schemaspec2.Resource, error) {
+func extract(ctx *hcl.EvalContext, remain hcl.Body, skip map[string]struct{}) (*schemaspec.Resource, error) {
 	body, ok := remain.(*hclsyntax.Body)
 	if !ok {
 		return nil, fmt.Errorf("schemahcl: expected remainder to be of type *hclsyntax.Body")
@@ -40,7 +40,7 @@ func extract(ctx *hcl.EvalContext, remain hcl.Body, skip map[string]struct{}) (*
 	if err != nil {
 		return nil, err
 	}
-	res := &schemaspec2.Resource{
+	res := &schemaspec.Resource{
 		Attrs: attrs,
 	}
 	for _, blk := range body.Blocks {
@@ -53,10 +53,10 @@ func extract(ctx *hcl.EvalContext, remain hcl.Body, skip map[string]struct{}) (*
 	return res, nil
 }
 
-func toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes) ([]*schemaspec2.Attr, error) {
-	var attrs []*schemaspec2.Attr
+func toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes) ([]*schemaspec.Attr, error) {
+	var attrs []*schemaspec.Attr
 	for _, hclAttr := range hclAttrs {
-		at := &schemaspec2.Attr{K: hclAttr.Name}
+		at := &schemaspec.Attr{K: hclAttr.Name}
 		value, diag := hclAttr.Expr.Value(ctx)
 		if diag.HasErrors() {
 			return nil, diag
@@ -79,8 +79,8 @@ func toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes) ([]*schemaspec
 	return attrs, nil
 }
 
-func extractListValue(value cty.Value) (*schemaspec2.ListValue, error) {
-	lst := &schemaspec2.ListValue{}
+func extractListValue(value cty.Value) (*schemaspec.ListValue, error) {
+	lst := &schemaspec.ListValue{}
 	it := value.ElementIterator()
 	for it.Next() {
 		_, v := it.Element()
@@ -93,23 +93,23 @@ func extractListValue(value cty.Value) (*schemaspec2.ListValue, error) {
 	return lst, nil
 }
 
-func extractLiteralValue(value cty.Value) (*schemaspec2.LiteralValue, error) {
+func extractLiteralValue(value cty.Value) (*schemaspec.LiteralValue, error) {
 	switch value.Type() {
 	case cty.String:
-		return &schemaspec2.LiteralValue{V: strconv.Quote(value.AsString())}, nil
+		return &schemaspec.LiteralValue{V: strconv.Quote(value.AsString())}, nil
 	case cty.Number:
 		bf := value.AsBigFloat()
 		num, _ := bf.Float64()
-		return &schemaspec2.LiteralValue{V: strconv.FormatFloat(num, 'f', -1, 64)}, nil
+		return &schemaspec.LiteralValue{V: strconv.FormatFloat(num, 'f', -1, 64)}, nil
 	case cty.Bool:
-		return &schemaspec2.LiteralValue{V: strconv.FormatBool(value.True())}, nil
+		return &schemaspec.LiteralValue{V: strconv.FormatBool(value.True())}, nil
 	default:
 		return nil, fmt.Errorf("schemahcl: unsupported type %q", value.Type().GoString())
 	}
 }
 
-func toResource(ctx *hcl.EvalContext, block *hclsyntax.Block) (*schemaspec2.Resource, error) {
-	spec := &schemaspec2.Resource{
+func toResource(ctx *hcl.EvalContext, block *hclsyntax.Block) (*schemaspec.Resource, error) {
+	spec := &schemaspec.Resource{
 		Type: block.Type,
 	}
 	if len(block.Labels) > 0 {
