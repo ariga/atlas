@@ -13,17 +13,15 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-type container struct {
-	Body hcl.Body `hcl:",remain"`
-}
-
 func decode(body []byte) (*schemaspec.Resource, error) {
 	parser := hclparse.NewParser()
 	srcHCL, diag := parser.ParseHCL(body, "")
 	if diag.HasErrors() {
 		return nil, diag
 	}
-	c := &container{}
+	c := &struct {
+		Body hcl.Body `hcl:",remain"`
+	}{}
 	ctx := &hcl.EvalContext{}
 	if diag := gohcl.DecodeBody(srcHCL.Body, ctx, c); diag.HasErrors() {
 		return nil, diag
