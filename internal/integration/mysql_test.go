@@ -12,6 +12,8 @@ import (
 
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/schema/schemahcl"
+	"ariga.io/atlas/sql/schema/schemaspec"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
@@ -44,6 +46,36 @@ type mysqlSuite struct {
 func (s *mysqlSuite) SetupTest() {
 	_, err := s.db.Exec("DROP TABLE IF EXISTS `posts`, `users`")
 	s.NoError(err, "truncate database")
+}
+
+func (s *mysqlSuite) TestHCL() {
+	ctx := context.Background()
+	realm, err := s.drv.InspectRealm(ctx, &schema.InspectRealmOption{
+		Schemas: []string{"test"},
+	})
+
+	s.NoError(err)
+	spec := `
+schema "test" {
+}
+
+table "hello" {
+	schema = schema.test
+	column "world" {
+		type = "string"
+	}
+}
+`
+	file := schemaspec.File{}
+	err = schemahcl.Decode([]byte(spec), &file)
+	s.NoError(err)
+	desired, err := s.drv.ConvertSchema(file.Schemas[0], file.Tables)
+	existing := realm.Schemas[0]
+	s.NoError(err)
+	diff, err := s.drv.Diff().SchemaDiff(existing, desired)
+	s.NoError(err)
+	err = s.drv.Migrate().Exec(ctx, diff)
+	s.NoError(err)
 }
 
 func (s *mysqlSuite) TestEmptyRealm() {
