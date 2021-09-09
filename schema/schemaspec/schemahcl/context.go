@@ -51,7 +51,7 @@ func evalCtx(f *hcl.File) (*hcl.EvalContext, error) {
 				continue
 			}
 			attrs := attrMap(blk.Body.Attributes)
-			// fill missing attributes with zero vals
+			// Fill missing attributes with zero values.
 			for n, t := range typ.AttributeTypes() {
 				if _, ok := attrs[n]; !ok {
 					attrs[n] = cty.NullVal(t)
