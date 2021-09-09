@@ -1,6 +1,7 @@
 package schemahcl
 
 import (
+	"bytes"
 	"fmt"
 	"sort"
 	"strconv"
@@ -10,8 +11,13 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/zclconf/go-cty/cty"
 )
+
+type container struct {
+	Body hcl.Body `hcl:",remain"`
+}
 
 func decode(body []byte) (*schemaspec.Resource, error) {
 	parser := hclparse.NewParser()
@@ -19,17 +25,21 @@ func decode(body []byte) (*schemaspec.Resource, error) {
 	if diag.HasErrors() {
 		return nil, diag
 	}
-	c := &struct {
-		Body hcl.Body `hcl:",remain"`
-	}{}
-	ctx := &hcl.EvalContext{}
+	if srcHCL == nil {
+		return nil, fmt.Errorf("schemahcl: no HCL syntax found in body")
+	}
+	c := &container{}
+	ctx, err := evalCtx(srcHCL)
+	if err != nil {
+		return nil, err
+	}
 	if diag := gohcl.DecodeBody(srcHCL.Body, ctx, c); diag.HasErrors() {
 		return nil, diag
 	}
-	return extract(ctx, c.Body, nil)
+	return extract(ctx, c.Body)
 }
 
-func extract(ctx *hcl.EvalContext, remain hcl.Body, skip map[string]struct{}) (*schemaspec.Resource, error) {
+func extract(ctx *hcl.EvalContext, remain hcl.Body) (*schemaspec.Resource, error) {
 	body, ok := remain.(*hclsyntax.Body)
 	if !ok {
 		return nil, fmt.Errorf("schemahcl: expected remainder to be of type *hclsyntax.Body")
@@ -126,4 +136,80 @@ func toResource(ctx *hcl.EvalContext, block *hclsyntax.Block) (*schemaspec.Resou
 		spec.Children = append(spec.Children, res)
 	}
 	return spec, nil
+}
+
+func encode(r *schemaspec.Resource) ([]byte, error) {
+	f := hclwrite.NewFile()
+	body := f.Body()
+	for _, attr := range r.Attrs {
+		if err := writeAttr(attr, body); err != nil {
+			return nil, err
+		}
+	}
+	for _, res := range r.Children {
+		if err := writeResource(res, body); err != nil {
+			return nil, err
+		}
+	}
+	var buf bytes.Buffer
+	_, err := f.WriteTo(&buf)
+	return buf.Bytes(), err
+}
+
+func writeResource(b *schemaspec.Resource, body *hclwrite.Body) error {
+	blk := body.AppendNewBlock(b.Type, []string{b.Name})
+	nb := blk.Body()
+	for _, attr := range b.Attrs {
+		if err := writeAttr(attr, nb); err != nil {
+			return err
+		}
+	}
+	for _, b := range b.Children {
+		if err := writeResource(b, nb); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
+	switch v := attr.V.(type) {
+	case *schemaspec.LiteralValue:
+		body.SetAttributeRaw(attr.K, hclRawTokens(v.V))
+	case *schemaspec.ListValue:
+		body.SetAttributeRaw(attr.K, hclRawList(v.V))
+	default:
+		return fmt.Errorf("schemacl: unknown literal type %T", v)
+	}
+	return nil
+}
+
+func hclRawTokens(s string) hclwrite.Tokens {
+	return hclwrite.Tokens{
+		&hclwrite.Token{
+			Type:  hclsyntax.TokenIdent,
+			Bytes: []byte(s),
+		},
+	}
+}
+
+func hclRawList(items []string) hclwrite.Tokens {
+	t := hclwrite.Tokens{&hclwrite.Token{
+		Type:  hclsyntax.TokenOBrack,
+		Bytes: []byte("["),
+	}}
+	for _, item := range items {
+		t = append(t, &hclwrite.Token{
+			Type:  hclsyntax.TokenIdent,
+			Bytes: []byte(item),
+		}, &hclwrite.Token{
+			Type:  hclsyntax.TokenComma,
+			Bytes: []byte(","),
+		})
+	}
+	t = append(t, &hclwrite.Token{
+		Type:  hclsyntax.TokenCBrack,
+		Bytes: []byte("]"),
+	})
+	return t
 }
