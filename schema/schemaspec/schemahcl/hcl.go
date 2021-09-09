@@ -15,6 +15,10 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+type container struct {
+	Body hcl.Body `hcl:",remain"`
+}
+
 func decode(body []byte) (*schemaspec.Resource, error) {
 	parser := hclparse.NewParser()
 	srcHCL, diag := parser.ParseHCL(body, "")
@@ -24,10 +28,11 @@ func decode(body []byte) (*schemaspec.Resource, error) {
 	if srcHCL == nil {
 		return nil, fmt.Errorf("schemahcl: no HCL syntax found in body")
 	}
-	c := &struct {
-		Body hcl.Body `hcl:",remain"`
-	}{}
-	ctx := &hcl.EvalContext{}
+	c := &container{}
+	ctx, err := evalCtx(srcHCL)
+	if err != nil {
+		return nil, err
+	}
 	if diag := gohcl.DecodeBody(srcHCL.Body, ctx, c); diag.HasErrors() {
 		return nil, diag
 	}

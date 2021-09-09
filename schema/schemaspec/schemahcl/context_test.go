@@ -1,0 +1,62 @@
+package schemahcl
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestReferences(t *testing.T) {
+	f := `
+backend "app" {
+	image = "ariga/app:1.2.3"
+	addr = "127.0.0.1:8081"
+}
+backend "admin" {
+	image = "ariga/admin:1.2.3"
+	addr = "127.0.0.1:8082"
+}
+endpoint "home" {
+	path = "/"
+	addr = backend.app.addr
+	timeout_ms = config.defaults.timeout_ms
+	retry = config.defaults.retry
+	description = "default: ${config.defaults.description}"
+}
+endpoint "admin" {
+	path = "/admin"
+	addr = backend.admin.addr
+}
+config "defaults" {
+	timeout_ms = 10
+	retry = false
+	description = "generic"
+}
+`
+	res, err := decode([]byte(f))
+	require.NoError(t, err)
+	home := res.Children[2]
+	attr, ok := home.Attr("addr")
+	require.True(t, ok)
+	s, err := attr.String()
+	require.NoError(t, err)
+	require.EqualValues(t, "127.0.0.1:8081", s)
+
+	attr, ok = home.Attr("timeout_ms")
+	require.True(t, ok)
+	timeoutMs, err := attr.Int()
+	require.NoError(t, err)
+	require.EqualValues(t, 10, timeoutMs)
+
+	attr, ok = home.Attr("retry")
+	require.True(t, ok)
+	retry, err := attr.Bool()
+	require.NoError(t, err)
+	require.EqualValues(t, false, retry)
+
+	attr, ok = home.Attr("description")
+	require.True(t, ok)
+	interpolated, err := attr.String()
+	require.NoError(t, err)
+	require.EqualValues(t, "default: generic", interpolated)
+}
