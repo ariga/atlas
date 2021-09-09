@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec"
+
 	"github.com/stretchr/testify/require"
 )
 

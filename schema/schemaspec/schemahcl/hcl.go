@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"ariga.io/atlas/schema/schemaspec"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"

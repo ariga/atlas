@@ -13,7 +13,8 @@ type (
 		Attrs    []*Attr
 		Children []*Resource
 	}
-	// Attr is an attribute of a Spec.
+
+	// Attr is an attribute of a Resource.
 	Attr struct {
 		K string
 		V Value
@@ -89,14 +90,14 @@ func (a *Attr) Strings() ([]string, error) {
 }
 
 func (r *Resource) Attr(name string) (*Attr, bool) {
-	return getAttrVal(r.Attrs, name)
+	return attrVal(r.Attrs, name)
 }
 
 func (r *Resource) SetAttr(attr *Attr) {
 	r.Attrs = replaceOrAppendAttr(r.Attrs, attr)
 }
 
-func getAttrVal(attrs []*Attr, name string) (*Attr, bool) {
+func attrVal(attrs []*Attr, name string) (*Attr, bool) {
 	for _, attr := range attrs {
 		if attr.K == name {
 			return attr, true
