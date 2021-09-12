@@ -369,9 +369,6 @@ func ColumnTypeChanged(from, to *schema.Column) (bool, error) {
 	}
 	var changed bool
 	switch fromT := fromT.(type) {
-	case *schema.BinaryType:
-		toT := toT.(*schema.BinaryType)
-		changed = fromT.T != toT.T
 	case *schema.BoolType:
 		toT := toT.(*schema.BoolType)
 		changed = fromT.T != toT.T

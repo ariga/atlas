@@ -40,9 +40,9 @@ func TestMigrate_Exec(t *testing.T) {
 				t := &schema.Table{
 					Name: "pets",
 					Columns: []*schema.Column{
-						{Name: "a", Type: &schema.ColumnType{Raw: "int"}},
-						{Name: "b", Type: &schema.ColumnType{Raw: "bigint"}},
-						{Name: "c", Type: &schema.ColumnType{Raw: "bigint", Null: true}},
+						{Name: "a", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
+						{Name: "b", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
+						{Name: "c", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true}},
 					},
 				}
 				t.PrimaryKey = &schema.Index{
@@ -60,15 +60,15 @@ func TestMigrate_Exec(t *testing.T) {
 		users := &schema.Table{
 			Name: "users",
 			Columns: []*schema.Column{
-				{Name: "id", Type: &schema.ColumnType{Raw: "bigint"}},
-				{Name: "spouse_id", Type: &schema.ColumnType{Raw: "bigint", Null: true}},
+				{Name: "id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
+				{Name: "spouse_id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true}},
 			},
 		}
 		posts := &schema.Table{
 			Name: "posts",
 			Columns: []*schema.Column{
-				{Name: "id", Type: &schema.ColumnType{Raw: "bigint"}},
-				{Name: "author_id", Type: &schema.ColumnType{Raw: "bigint", Null: true}},
+				{Name: "id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
+				{Name: "author_id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true}},
 			},
 		}
 		posts.ForeignKeys = []*schema.ForeignKey{
@@ -77,8 +77,8 @@ func TestMigrate_Exec(t *testing.T) {
 		comments := &schema.Table{
 			Name: "comments",
 			Columns: []*schema.Column{
-				{Name: "id", Type: &schema.ColumnType{Raw: "bigint"}},
-				{Name: "post_id", Type: &schema.ColumnType{Raw: "bigint", Null: true}},
+				{Name: "id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
+				{Name: "post_id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true}},
 			},
 		}
 		comments.ForeignKeys = []*schema.ForeignKey{
@@ -135,15 +135,15 @@ func TestMigrate_DetachCycles(t *testing.T) {
 		users := &schema.Table{
 			Name: "users",
 			Columns: []*schema.Column{
-				{Name: "id", Type: &schema.ColumnType{Raw: "bigint"}},
-				{Name: "workplace_id", Type: &schema.ColumnType{Raw: "bigint", Null: true}},
+				{Name: "id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
+				{Name: "workplace_id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true}},
 			},
 		}
 		workplaces := &schema.Table{
 			Name: "workplaces",
 			Columns: []*schema.Column{
-				{Name: "id", Type: &schema.ColumnType{Raw: "bigint"}},
-				{Name: "owner_id", Type: &schema.ColumnType{Raw: "bigint", Null: true}},
+				{Name: "id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
+				{Name: "owner_id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true}},
 			},
 		}
 		users.ForeignKeys = []*schema.ForeignKey{

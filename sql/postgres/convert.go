@@ -39,7 +39,8 @@ func (d *Driver) ConvertIndex(spec *schemaspec.Index, parent *schema.Table) (*sc
 
 // ConvertColumn converts a schemaspec.Column into a schema.Column.
 func (d *Driver) ConvertColumn(spec *schemaspec.Column, _ *schema.Table) (*schema.Column, error) {
-	if override := spec.Override(sqlx.VersionPermutations(Name, d.version)...); override != nil {
+	const driver = "postgres"
+	if override := spec.Override(sqlx.VersionPermutations(driver, d.version)...); override != nil {
 		if err := schemautil.Override(spec, override); err != nil {
 			return nil, err
 		}

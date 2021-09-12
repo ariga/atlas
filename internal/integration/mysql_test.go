@@ -81,13 +81,7 @@ func (s *mysqlSuite) TestRelation() {
 		&schema.AddTable{T: postsT},
 	})
 	s.NoError(err)
-	realm := s.loadRealm()
-	changes, err := s.drv.Diff().TableDiff(realm.Schemas[0].Tables[0], postsT)
-	s.NoError(err)
-	s.Empty(changes)
-	changes, err = s.drv.Diff().TableDiff(realm.Schemas[0].Tables[1], usersT)
-	s.NoError(err)
-	s.Empty(changes)
+	s.ensureNoChange(postsT, usersT)
 }
 
 func (s *mysqlSuite) TestAddIndexedColumns() {
@@ -115,13 +109,9 @@ func (s *mysqlSuite) TestAddIndexedColumns() {
 	changes, err := s.drv.Diff().TableDiff(realm.Schemas[0].Tables[0], usersT)
 	s.NoError(err)
 	s.NotEmpty(changes, "usersT contains 2 new columns and 1 new index")
-
 	err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
 	s.NoError(err)
-	realm = s.loadRealm()
-	changes, err = s.drv.Diff().TableDiff(realm.Schemas[0].Tables[0], usersT)
-	s.NoError(err)
-	s.Empty(changes, "migrate should add the columns and the index to usersT")
+	s.ensureNoChange(usersT)
 }
 
 func (s *mysqlSuite) TestChangeColumn() {
@@ -136,9 +126,29 @@ func (s *mysqlSuite) TestChangeColumn() {
 	s.Len(changes, 1)
 	err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
 	s.NoError(err)
-	changes, err = s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
+	s.ensureNoChange(usersT)
+}
+
+func (s *mysqlSuite) TestAddColumns() {
+	ctx := context.Background()
+	err := s.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: s.users()}})
 	s.Require().NoError(err)
-	s.Empty(changes)
+	usersT := s.users()
+	usersT.Columns = append(
+		usersT.Columns,
+		&schema.Column{Name: "a", Type: &schema.ColumnType{Raw: "tinyblob", Type: &schema.BinaryType{T: "tinyblob"}}},
+		&schema.Column{Name: "b", Type: &schema.ColumnType{Raw: "mediumblob", Type: &schema.BinaryType{T: "mediumblob"}}},
+		&schema.Column{Name: "c", Type: &schema.ColumnType{Raw: "blob", Type: &schema.BinaryType{T: "blob"}}},
+		&schema.Column{Name: "d", Type: &schema.ColumnType{Raw: "longblob", Type: &schema.BinaryType{T: "longblob"}}},
+		&schema.Column{Name: "e", Type: &schema.ColumnType{Raw: "binary", Type: &schema.BinaryType{T: "binary"}}},
+		&schema.Column{Name: "f", Type: &schema.ColumnType{Raw: "varbinary(255)", Type: &schema.BinaryType{T: "varbinary(255)"}}},
+	)
+	changes, err := s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
+	s.Require().NoError(err)
+	s.Len(changes, 6)
+	err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+	s.Require().NoError(err)
+	s.ensureNoChange(usersT)
 }
 
 func (s *mysqlSuite) loadRealm() *schema.Realm {
@@ -244,5 +254,15 @@ func (s *mysqlSuite) defaultAttrs() []schema.Attr {
 		&schema.Collation{
 			V: collation,
 		},
+	}
+}
+
+func (s *mysqlSuite) ensureNoChange(tables ...*schema.Table) {
+	realm := s.loadRealm()
+	s.Require().Equal(len(realm.Schemas[0].Tables), len(tables))
+	for i, t := range tables {
+		changes, err := s.drv.Diff().TableDiff(realm.Schemas[0].Tables[i], t)
+		s.Require().NoError(err)
+		s.Empty(changes)
 	}
 }

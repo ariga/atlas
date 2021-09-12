@@ -14,14 +14,12 @@ import (
 )
 
 // A diff provides a MySQL implementation for sqlx.DiffDriver.
-type diff struct {
-	version string
-}
+type diff struct{ *Driver }
 
 // Diff returns a MySQL schema differ.
-func (d Driver) Diff() schema.Differ {
+func (d *Driver) Diff() schema.Differ {
 	return &sqlx.Diff{
-		DiffDriver: &diff{version: d.version},
+		DiffDriver: &diff{Driver: d},
 	}
 }
 
@@ -203,6 +201,8 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	fromT, toT := from.Type.Type, to.Type.Type
 	var changed bool
 	switch fromT := fromT.(type) {
+	case *schema.BinaryType:
+		changed = d.mustFormat(fromT) != d.mustFormat(toT)
 	case *schema.IntegerType:
 		toT := toT.(*schema.IntegerType)
 		// MySQL v8.0.19 dropped the display width
@@ -225,8 +225,7 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 		toT := toT.(*schema.JSONType)
 		changed = fromT.T != toT.T
 	case *schema.StringType:
-		toT := toT.(*schema.StringType)
-		changed = fromT.T != toT.T || fromT.Size != toT.Size
+		changed = d.mustFormat(fromT) != d.mustFormat(toT)
 	case *schema.SpatialType:
 		toT := toT.(*schema.SpatialType)
 		changed = fromT.T != toT.T
