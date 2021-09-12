@@ -201,7 +201,7 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	fromT, toT := from.Type.Type, to.Type.Type
 	var changed bool
 	switch fromT := fromT.(type) {
-	case *schema.BinaryType:
+	case *schema.BinaryType, *schema.DecimalType, *schema.FloatType:
 		changed = d.mustFormat(fromT) != d.mustFormat(toT)
 	case *schema.IntegerType:
 		toT := toT.(*schema.IntegerType)
