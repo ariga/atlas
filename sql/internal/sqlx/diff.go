@@ -210,18 +210,9 @@ func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
 
 // columnChange returns the schema changes (if any) for migrating one column to the other.
 func (d *Diff) columnChange(from, to *schema.Column) (schema.ChangeKind, error) {
-	var change schema.ChangeKind
+	change := commentChange(from.Attrs, to.Attrs)
 	if from.Type.Null != to.Type.Null {
 		change |= schema.ChangeNull
-	}
-	change |= commentChange(from.Attrs, to.Attrs)
-	var c1, c2 schema.Collation
-	if Has(from.Attrs, &c1) != Has(to.Attrs, &c2) || c1.V != c2.V {
-		change |= schema.ChangeCollation
-	}
-	var cr1, cr2 schema.Charset
-	if Has(from.Attrs, &cr1) != Has(to.Attrs, &cr2) || cr1.V != cr2.V {
-		change |= schema.ChangeCharset
 	}
 	changed, err := d.ColumnTypeChanged(from, to)
 	if err != nil {
@@ -372,21 +363,12 @@ func ColumnTypeChanged(from, to *schema.Column) (bool, error) {
 	case *schema.BoolType:
 		toT := toT.(*schema.BoolType)
 		changed = fromT.T != toT.T
-	case *schema.DecimalType:
-		toT := toT.(*schema.DecimalType)
-		changed = fromT.T != toT.T || fromT.Scale != toT.Scale || fromT.Precision != toT.Precision
 	case *schema.EnumType:
 		toT := toT.(*schema.EnumType)
 		changed = !ValuesEqual(fromT.Values, toT.Values)
-	case *schema.FloatType:
-		toT := toT.(*schema.FloatType)
-		changed = fromT.T != toT.T || fromT.Precision != toT.Precision
 	case *schema.JSONType:
 		toT := toT.(*schema.JSONType)
 		changed = fromT.T != toT.T
-	case *schema.StringType:
-		toT := toT.(*schema.StringType)
-		changed = fromT.T != toT.T || fromT.Size != toT.Size
 	case *schema.SpatialType:
 		toT := toT.(*schema.SpatialType)
 		changed = fromT.T != toT.T

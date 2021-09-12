@@ -33,14 +33,17 @@ func (d *Driver) FormatType(t schema.Type) (string, error) {
 	case *schema.DecimalType:
 		f = strings.ToLower(t.T)
 		if f == tDecimal || f == tNumeric {
-			f = fmt.Sprintf("%s(%d,%d)", f, t.Precision, t.Scale)
+			// In MySQL, NUMERIC is implemented as DECIMAL.
+			f = fmt.Sprintf("decimal(%d,%d)", t.Precision, t.Scale)
 		}
 	case *schema.EnumType:
 		f = fmt.Sprintf("enum(%s)", formatValues(t.Values))
 	case *schema.FloatType:
 		f = strings.ToLower(t.T)
-		if f == tFloat || f == tDouble || f == tReal {
-			f = fmt.Sprintf("%s(%d)", f, t.Precision)
+		// FLOAT with precision > 24, become DOUBLE.
+		// Also, REAL is a synonym for DOUBLE (if REAL_AS_FLOAT was not set).
+		if f == tFloat && t.Precision > 24 || f == tReal {
+			f = tDouble
 		}
 	case *schema.IntegerType:
 		f = strings.ToLower(t.T)
