@@ -16,15 +16,6 @@ type OwnerBlock struct {
 	Active    bool   `spec:"active"`
 }
 
-// pet "donut" {
-//   born = 2002
-//   breed = "golden retriever"
-//   owner "rotemtam" {
-//      first_name = "rotem"
-//      active = true
-//      born = 1985
-// 	 }
-// }
 type PetBlock struct {
 	ID     string        `spec:",name"`
 	Breed  string        `spec:"breed"`
