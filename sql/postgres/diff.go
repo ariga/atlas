@@ -133,6 +133,9 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 		x, y    = from.Type.Raw, to.Type.Raw
 	)
 	switch fromT := fromT.(type) {
+	case *schema.BinaryType:
+		toT := toT.(*schema.BinaryType)
+		changed = fromT.T != toT.T
 	case *EnumType:
 		toT := toT.(*schema.EnumType)
 		changed = fromT.T != toT.T || !sqlx.ValuesEqual(fromT.Values, toT.Values)

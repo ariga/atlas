@@ -17,8 +17,6 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-const Name = "mysql"
-
 // Driver represents a MySQL driver for introspecting database schemas
 // and apply migrations changes on them.
 type Driver struct {
@@ -295,9 +293,6 @@ func parseRawType(raw string) (schema.Type, error) {
 			return &schema.BoolType{
 				T: t,
 			}, nil
-		}
-		if err != nil {
-			return nil, err
 		}
 		// For integer types, the size represents the display width and does not
 		// constrain the range of values that can be stored in the column.

@@ -17,8 +17,6 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
-const Name = "sqlite"
-
 // Driver represents an SQLite driver for introspecting database schemas
 // and apply migrations changes on them.
 type Driver struct {

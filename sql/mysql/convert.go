@@ -15,6 +15,67 @@ import (
 	"ariga.io/atlas/sql/schema/schemaspec"
 )
 
+// FormatType converts schema type to its column form in the database.
+// An error is returned if the type cannot be recognized.
+func (d *Driver) FormatType(t schema.Type) (string, error) {
+	var f string
+	switch t := t.(type) {
+	case *BitType:
+		f = strings.ToLower(t.T)
+	case *schema.BoolType:
+		f = strings.ToLower(t.T)
+	case *schema.BinaryType:
+		f = strings.ToLower(t.T)
+		if f == tVarBinary {
+			// Zero is also a valid length.
+			f = fmt.Sprintf("%s(%d)", f, t.Size)
+		}
+	case *schema.DecimalType:
+		f = strings.ToLower(t.T)
+		if f == tDecimal || f == tNumeric {
+			f = fmt.Sprintf("%s(%d,%d)", f, t.Precision, t.Scale)
+		}
+	case *schema.EnumType:
+		f = fmt.Sprintf("enum(%s)", formatValues(t.Values))
+	case *schema.FloatType:
+		f = strings.ToLower(t.T)
+		if f == tFloat || f == tDouble || f == tReal {
+			f = fmt.Sprintf("%s(%d)", f, t.Precision)
+		}
+	case *schema.IntegerType:
+		f = strings.ToLower(t.T)
+		if t.Unsigned {
+			f += " unsigned"
+		}
+	case *schema.JSONType:
+		f = strings.ToLower(t.T)
+	case *SetType:
+		f = fmt.Sprintf("enum(%s)", formatValues(t.Values))
+	case *schema.StringType:
+		f = strings.ToLower(t.T)
+		if f == tVarchar {
+			// Zero is also a valid length.
+			f = fmt.Sprintf("%s(%d)", f, t.Size)
+		}
+	case *schema.SpatialType:
+		f = strings.ToLower(t.T)
+	case *schema.TimeType:
+		f = strings.ToLower(t.T)
+	default:
+		return "", fmt.Errorf("mysql: invalid schema type: %T", t)
+	}
+	return f, nil
+}
+
+// mustFormat calls to FormatType and panics in case of error.
+func (d *Driver) mustFormat(t schema.Type) string {
+	s, err := d.FormatType(t)
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
+
 // ConvertSchema converts a schemaspec.Schema into a schema.Schema.
 func (d *Driver) ConvertSchema(spec *schemaspec.Schema, tables []*schemaspec.Table) (*schema.Schema, error) {
 	return schemautil.ConvertSchema(spec, tables, d.ConvertTable)
@@ -38,8 +99,9 @@ func (d *Driver) ConvertIndex(spec *schemaspec.Index, parent *schema.Table) (*sc
 }
 
 // ConvertColumn converts a schemaspec.Column into a schema.Column.
-func (d *Driver) ConvertColumn(spec *schemaspec.Column, parent *schema.Table) (*schema.Column, error) {
-	if override := spec.Override(sqlx.VersionPermutations(Name, d.version)...); override != nil {
+func (d *Driver) ConvertColumn(spec *schemaspec.Column, _ *schema.Table) (*schema.Column, error) {
+	const driver = "mysql"
+	if override := spec.Override(sqlx.VersionPermutations(driver, d.version)...); override != nil {
 		if err := schemautil.Override(spec, override); err != nil {
 			return nil, err
 		}
@@ -200,4 +262,16 @@ func convertFloat(spec *schemaspec.Column) (schema.Type, error) {
 		ft.T = "double"
 	}
 	return ft, nil
+}
+
+// formatValues formats ENUM and SET values.
+func formatValues(vs []string) string {
+	values := make([]string, len(vs))
+	for i := range vs {
+		values[i] = vs[i]
+		if !strings.HasPrefix(values[i], "'") || !strings.HasSuffix(values[i], "'") {
+			values[i] = "'" + values[i] + "'"
+		}
+	}
+	return strings.Join(values, ",")
 }
