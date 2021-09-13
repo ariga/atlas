@@ -296,14 +296,22 @@ func convertIntegerType(sche schema.Type) (*schemaspec.Column, error) {
 	if !ok {
 		return nil, errors.New("mysql: schema integer failed conversion")
 	}
-	switch v.Unsigned {
-	case true:
-		return schemautil.ColSpec("", "uint"), nil
-	case false:
-		return schemautil.ColSpec("", "int"), nil
-	default:
-		return nil, errors.New("mysql: schema integer failed to have sign")
+	switch v.T {
+	case tInt:
+		switch v.Unsigned {
+		case true:
+			return schemautil.ColSpec("", "uint"), nil
+		case false:
+			return schemautil.ColSpec("", "int"), nil
+		default:
+			return nil, errors.New("mysql: schema int failed to sign")
+		}
+	case tTinyInt:
+		return schemautil.ColSpec("", "int8"), nil
+	case tBigInt:
+		return schemautil.ColSpec("", "int64"), nil
 	}
+	return nil, errors.New("mysql: schema integer failed to sign")
 }
 
 func convertEnumSpec(sche schema.Type) (*schemaspec.Column, error) {

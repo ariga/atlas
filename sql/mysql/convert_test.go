@@ -311,20 +311,20 @@ func TestConvertFromColumnType(t *testing.T) {
 			},
 			expected: schemautil.ColSpec("", "uint"),
 		},
-		//{
-		//	expected: schemautil.ColSpec("int8", "int8"),
-		//	schem: &schema.IntegerType{
-		//		T:        tTinyInt,
-		//		Unsigned: false,
-		//	},
-		//},
-		//{
-		//	expected: schemautil.ColSpec("int64", "int64"),
-		//	schem: &schema.IntegerType{
-		//		T:        tBigInt,
-		//		Unsigned: false,
-		//	},
-		//},
+		{
+			schem: &schema.IntegerType{
+				T:        tTinyInt,
+				Unsigned: false,
+			},
+			expected: schemautil.ColSpec("", "int8"),
+		},
+		{
+			schem: &schema.IntegerType{
+				T:        tBigInt,
+				Unsigned: false,
+			},
+			expected: schemautil.ColSpec("", "int64"),
+		},
 		//{
 		//	expected: schemautil.ColSpec("uint64", "uint64"),
 		//	schem: &schema.IntegerType{
