@@ -324,8 +324,9 @@ func convertDecimalType(sche schema.Type) (*schemaspec.Column, error) {
 	if !ok {
 		return nil, errors.New("mysql: schema decimal failed conversion")
 	}
-	c := fmt.Sprintf("decimal(%d, %d) unsigned", v.Precision, v.Scale)
-	return schemautil.ColSpec("", c), nil
+	p := strconv.Itoa(v.Precision)
+	s := strconv.Itoa(v.Scale)
+	return schemautil.ColSpec("", "decimal", schemautil.LitAttr("precision", p), schemautil.LitAttr("scale", s)), nil
 }
 
 func convertStringType(sche schema.Type) (*schemaspec.Column, error) {

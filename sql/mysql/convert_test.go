@@ -361,13 +361,17 @@ func TestConvertFromColumnType(t *testing.T) {
 		//	expected: schemautil.ColSpec("", "varchar(255)"),
 		//},  DISCUSS
 		{
-			schem: &schema.DecimalType{
-				T:         tDecimal,
-				Scale:     2,
-				Precision: 10,
-			},
-			expected: schemautil.ColSpec("", "decimal(10, 2) unsigned"),
+			schem:    &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
+			expected: schemautil.ColSpec("", "decimal", schemautil.LitAttr("precision", "10"), schemautil.LitAttr("scale", "2")),
 		},
+		//{
+		//	schem: &schema.DecimalType{
+		//		T:         tDecimal,
+		//		Scale:     2,
+		//		Precision: 10,
+		//	},
+		//	expected: schemautil.ColSpec("", "decimal(10, 2) unsigned"),
+		//}, DISCUSS
 		{
 			schem: &schema.BinaryType{
 				T: tBlob,
@@ -400,13 +404,9 @@ func TestConvertFromColumnType(t *testing.T) {
 			expected: schemautil.ColSpec("", "enum", schemautil.ListAttr("values", "a", "b", "c")),
 		},
 		{
-			schem: &schema.BoolType{T: "boolean"},
-			expected:  schemautil.ColSpec("", "boolean"),
+			schem:    &schema.BoolType{T: "boolean"},
+			expected: schemautil.ColSpec("", "boolean"),
 		},
-		//{
-		//	expected:  schemautil.ColSpec("decimal", "decimal", schemautil.LitAttr("precision", "10"), schemautil.LitAttr("scale", "2")),
-		//	schem: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
-		//},
 		//{
 		//	expected:  schemautil.ColSpec("float", "float", schemautil.LitAttr("precision", "10")),
 		//	schem: &schema.FloatType{T: "float", Precision: 10},
