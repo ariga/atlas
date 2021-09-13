@@ -28,10 +28,10 @@ type (
 
 	// Column holds a specification for a column in an SQL table.
 	Column struct {
-		Name     string `spec:",name"`
-		Null     bool   `spec:"null" override:"null"`
-		TypeName string `spec:"type" override:"type"`
-		//Default   *LiteralValue `override:"default"`
+		Name     string                   `spec:",name"`
+		Null     bool                     `spec:"null" override:"null"`
+		TypeName string                   `spec:"type" override:"type"`
+		Default  *schemaspec.LiteralValue `spec:"default" override:"default"`
 		//Overrides []*Override
 		schemaspec.Resource
 	}
