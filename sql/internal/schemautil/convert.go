@@ -18,6 +18,7 @@ type (
 	ConvertTypeFunc       func(*schemaspec.Column) (schema.Type, error)
 	ConvertPrimaryKeyFunc func(*schemaspec.PrimaryKey, *schema.Table) (*schema.Index, error)
 	ConvertIndexFunc      func(*schemaspec.Index, *schema.Table) (*schema.Index, error)
+	TypeSpecFunc          func(schema.Type) (*schemaspec.Column, error)
 )
 
 // ConvertSchema converts a schemaspec.Schema with its relevant *schemaspec.Tables
@@ -177,4 +178,11 @@ func resolveCol(ref *schemaspec.ColumnRef, sch *schema.Schema) (*schema.Column, 
 		return nil, fmt.Errorf("mysql: column %q not found int table %q", ref.Name, ref.Table)
 	}
 	return col, nil
+}
+
+// ColumnSpec converts a schema.Column into a schemaspec.Column.
+func ColumnSpec(col *schema.Column, conv TypeSpecFunc) (*schemaspec.Column, error) {
+	out, _ := conv(col.Type.Type)
+	out.Name = col.Name
+	return out, nil
 }

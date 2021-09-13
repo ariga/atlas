@@ -281,6 +281,11 @@ func formatValues(vs []string) string {
 	return strings.Join(values, ",")
 }
 
+// ColumnTypeSpec converts a schema.Column into schemaspec.Column.
+func (d *Driver) ColumnTypeSpec(col *schema.Column, _ *schema.Table) (*schemaspec.Column, error) {
+	return schemautil.ColumnSpec(col, ColumnTypeSpec)
+}
+
 // ColumnTypeSpec converts from a concrete MySQL schema.Type into schemaspec.Column Type.
 func ColumnTypeSpec(t schema.Type) (*schemaspec.Column, error) {
 	switch t := t.(type) {
