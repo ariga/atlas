@@ -325,13 +325,13 @@ func TestConvertFromColumnType(t *testing.T) {
 			},
 			expected: schemautil.ColSpec("", "int64"),
 		},
-		//{
-		//	expected: schemautil.ColSpec("uint64", "uint64"),
-		//	schem: &schema.IntegerType{
-		//		T:        tBigInt,
-		//		Unsigned: true,
-		//	},
-		//},
+		{
+			schem: &schema.IntegerType{
+				T:        tBigInt,
+				Unsigned: true,
+			},
+			expected: schemautil.ColSpec("", "uint64"),
+		},
 		//{
 		//	expected: schemautil.ColSpec("string_varchar", "string", schemautil.LitAttr("size", "255")),
 		//	schem: &schema.StringType{
