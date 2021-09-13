@@ -181,8 +181,33 @@ func resolveCol(ref *schemaspec.ColumnRef, sch *schema.Schema) (*schema.Column, 
 }
 
 // ColumnSpec converts a schema.Column into a schemaspec.Column.
-func ColumnSpec(col *schema.Column, conv TypeSpecFunc) (*schemaspec.Column, error) {
-	out, _ := conv(col.Type.Type)
-	out.Name = col.Name
+func ColumnSpec(spec *schema.Column, conv TypeSpecFunc) (*schemaspec.Column, error) {
+	out, _ := conv(spec.Type.Type)
+	out.Name = spec.Name
+	//if spec.Default != nil{
+	//	out.Default = spec.Default
+	//}
+	//spec.
 	return out, nil
 }
+
+//
+//// ConvertColumn converts a schemaspec.Column into a schema.Column.
+//func ConvertColumn(spec *schemaspec.Column, conv ConvertTypeFunc) (*schema.Column, error) {
+//	out := &schema.Column{
+//		Name: spec.Name,
+//		Spec: spec,
+//		Type: &schema.ColumnType{
+//			Null: spec.Null,
+//		},
+//	}
+//	if spec.Default != nil {
+//		out.Default = &schema.Literal{V: spec.Default.V}
+//	}
+//	ct, err := conv(spec)
+//	if err != nil {
+//		return nil, err
+//	}
+//	out.Type.Type = ct
+//	return out, err
+//}
