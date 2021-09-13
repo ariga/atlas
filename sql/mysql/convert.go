@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 
 	"ariga.io/atlas/sql/internal/schemautil"
@@ -287,8 +288,24 @@ func ColumnTypeSpec(sche schema.Type) (*schemaspec.Column, error) {
 		return convertEnumSpec(sche)
 	case *schema.IntegerType:
 		return convertIntegerType(sche)
+	case *schema.StringType:
+		return convertStringType(sche)
 	}
+
 	return nil, errors.New("mysql: failed to convert column type from schema")
+}
+
+func convertStringType(sche schema.Type) (*schemaspec.Column, error) {
+	v, ok := sche.(*schema.StringType)
+	if !ok {
+		return nil, errors.New("mysql: schema string failed conversion")
+	}
+	switch v.T {
+	case tVarchar:
+		s := strconv.Itoa(v.Size)
+		return schemautil.ColSpec("", "string", schemautil.LitAttr("size", s)), nil
+	}
+	return nil, errors.New("mysql: schema string failed to convert")
 }
 
 func convertIntegerType(sche schema.Type) (*schemaspec.Column, error) {
