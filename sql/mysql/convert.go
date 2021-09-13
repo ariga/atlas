@@ -298,25 +298,17 @@ func convertIntegerType(sche schema.Type) (*schemaspec.Column, error) {
 	}
 	switch v.T {
 	case tInt:
-		switch v.Unsigned {
-		case true:
+		if v.Unsigned {
 			return schemautil.ColSpec("", "uint"), nil
-		case false:
-			return schemautil.ColSpec("", "int"), nil
-		default:
-			return nil, errors.New("mysql: schema int failed to sign")
 		}
+		return schemautil.ColSpec("", "int"), nil
 	case tTinyInt:
 		return schemautil.ColSpec("", "int8"), nil
 	case tBigInt:
-		switch v.Unsigned {
-		case true:
+		if v.Unsigned {
 			return schemautil.ColSpec("", "uint64"), nil
-		case false:
-			return schemautil.ColSpec("", "int64"), nil
-		default:
-			return nil, errors.New("mysql: schema bigint failed to sign")
 		}
+		return schemautil.ColSpec("", "int64"), nil
 	}
 	return nil, errors.New("mysql: schema integer failed to convert")
 }
