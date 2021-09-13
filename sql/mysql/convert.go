@@ -301,7 +301,7 @@ func convertStringType(sche schema.Type) (*schemaspec.Column, error) {
 		return nil, errors.New("mysql: schema string failed conversion")
 	}
 	switch v.T {
-	case tVarchar:
+	case tVarchar, tMediumText, tLongText:
 		s := strconv.Itoa(v.Size)
 		return schemautil.ColSpec("", "string", schemautil.LitAttr("size", s)), nil
 	}

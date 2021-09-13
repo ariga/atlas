@@ -339,35 +339,35 @@ func TestConvertFromColumnType(t *testing.T) {
 			},
 			expected: schemautil.ColSpec("", "string", schemautil.LitAttr("size", "255")),
 		},
+		{
+			schem: &schema.StringType{
+				T:    tMediumText,
+				Size: 100_000,
+			},
+			expected: schemautil.ColSpec("", "string", schemautil.LitAttr("size", "100000")),
+		},
+		{
+			schem: &schema.StringType{
+				T:    tLongText,
+				Size: 17_000_000,
+			},
+			expected: schemautil.ColSpec("", "string", schemautil.LitAttr("size", "17000000")),
+		},
 		//{
-		//	expected: schemautil.ColSpec("string_mediumtext", "string", schemautil.LitAttr("size", "100000")),
-		//	schem: &schema.StringType{
-		//		T:    tMediumText,
-		//		Size: 100_000,
-		//	},
-		//},
-		//{
-		//	expected: schemautil.ColSpec("string_longtext", "string", schemautil.LitAttr("size", "17000000")),
-		//	schem: &schema.StringType{
-		//		T:    tLongText,
-		//		Size: 17_000_000,
-		//	},
-		//},
-		//{
-		//	expected: schemautil.ColSpec("varchar(255)", "varchar(255)"),
 		//	schem: &schema.StringType{
 		//		T:    tVarchar,
 		//		Size: 255,
 		//	},
-		//},
-		//{
-		//	expected: schemautil.ColSpec("decimal(10, 2) unsigned", "decimal(10, 2) unsigned"),
-		//	schem: &schema.DecimalType{
-		//		T:         tDecimal,
-		//		Scale:     2,
-		//		Precision: 10,
-		//	},
-		//},
+		//	expected: schemautil.ColSpec("", "varchar(255)"),
+		//},  DISCUSS
+		{
+			expected: schemautil.ColSpec("decimal(10, 2) unsigned", "decimal(10, 2) unsigned"),
+			schem: &schema.DecimalType{
+				T:         tDecimal,
+				Scale:     2,
+				Precision: 10,
+			},
+		},
 		//{
 		//	expected: schemautil.ColSpec("blob", "binary"),
 		//	schem: &schema.BinaryType{
