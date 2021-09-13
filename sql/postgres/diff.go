@@ -133,9 +133,18 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 		x, y    = from.Type.Raw, to.Type.Raw
 	)
 	switch fromT := fromT.(type) {
+	case *schema.BinaryType:
+		toT := toT.(*schema.BinaryType)
+		changed = fromT.T != toT.T
+	case *schema.DecimalType:
+		toT := toT.(*schema.DecimalType)
+		changed = fromT.T != toT.T || fromT.Scale != toT.Scale || fromT.Precision != toT.Precision
 	case *EnumType:
 		toT := toT.(*schema.EnumType)
 		changed = fromT.T != toT.T || !sqlx.ValuesEqual(fromT.Values, toT.Values)
+	case *schema.FloatType:
+		toT := toT.(*schema.FloatType)
+		changed = fromT.T != toT.T || fromT.Precision != toT.Precision
 	case *schema.IntegerType:
 		toT := toT.(*schema.IntegerType)
 		// Unsigned integers are not supported.
@@ -146,6 +155,9 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	case *SerialType:
 		toT := toT.(*SerialType)
 		changed = fromT.T != toT.T || fromT.Precision != toT.Precision
+	case *schema.StringType:
+		toT := toT.(*schema.StringType)
+		changed = fromT.T != toT.T || fromT.Size != toT.Size
 	case *BitType:
 		toT := toT.(*BitType)
 		changed = fromT.T != toT.T || fromT.Len != toT.Len

@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"ariga.io/atlas/sql/internal/schemautil"
-	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema/schemaspec"
 	"github.com/stretchr/testify/require"
 )
@@ -16,7 +15,7 @@ import (
 func TestOverride(t *testing.T) {
 	spec := schemautil.ColSpec("name", "string")
 	override := &schemaspec.Override{
-		Dialect: mysql.Name,
+		Dialect: "mysql",
 		Resource: schemaspec.Resource{
 			Attrs: []*schemaspec.Attr{
 				// A string field

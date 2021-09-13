@@ -37,8 +37,9 @@ func (d *Driver) ConvertIndex(spec *schemaspec.Index, parent *schema.Table) (*sc
 }
 
 // ConvertColumn converts a schemaspec.Column into a schema.Column.
-func (d *Driver) ConvertColumn(spec *schemaspec.Column, parent *schema.Table) (*schema.Column, error) {
-	if override := spec.Override(sqlx.VersionPermutations(Name, d.version)...); override != nil {
+func (d *Driver) ConvertColumn(spec *schemaspec.Column, _ *schema.Table) (*schema.Column, error) {
+	const driver = "sqlite"
+	if override := spec.Override(sqlx.VersionPermutations(driver, d.version)...); override != nil {
 		if err := schemautil.Override(spec, override); err != nil {
 			return nil, err
 		}
@@ -82,7 +83,7 @@ func convertInteger(spec *schemaspec.Column) (schema.Type, error) {
 	return typ, nil
 }
 
-func convertBinary(spec *schemaspec.Column) (schema.Type, error) {
+func convertBinary(*schemaspec.Column) (schema.Type, error) {
 	bt := &schema.BinaryType{
 		T: "blob",
 	}
@@ -103,16 +104,16 @@ func convertString(spec *schemaspec.Column) (schema.Type, error) {
 	return st, nil
 }
 
-func convertEnum(spec *schemaspec.Column) (schema.Type, error) {
+func convertEnum(*schemaspec.Column) (schema.Type, error) {
 	// sqlite does not have a enum column type
 	return &schema.StringType{T: "text"}, nil
 }
 
-func convertBoolean(spec *schemaspec.Column) (schema.Type, error) {
+func convertBoolean(*schemaspec.Column) (schema.Type, error) {
 	return &schema.BoolType{T: "boolean"}, nil
 }
 
-func convertTime(spec *schemaspec.Column) (schema.Type, error) {
+func convertTime(*schemaspec.Column) (schema.Type, error) {
 	return &schema.TimeType{T: "datetime"}, nil
 }
 

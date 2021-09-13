@@ -266,7 +266,7 @@ func TestDiff_TableDiff(t *testing.T) {
 		}(),
 	}
 	for _, tt := range tests {
-		d := Driver{version: "8.0.19"}.Diff()
+		d := (&Driver{version: "8.0.19"}).Diff()
 		t.Run(tt.name, func(t *testing.T) {
 			changes, err := d.TableDiff(tt.from, tt.to)
 			require.Equal(t, tt.wantErr, err != nil)
@@ -277,7 +277,7 @@ func TestDiff_TableDiff(t *testing.T) {
 
 func TestDiff_SchemaDiff(t *testing.T) {
 	var (
-		d    = Driver{}.Diff()
+		d    = (&Driver{}).Diff()
 		from = &schema.Schema{
 			Realm: &schema.Realm{
 				Attrs: []schema.Attr{
