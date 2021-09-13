@@ -284,12 +284,12 @@ func formatValues(vs []string) string {
 func ColumnTypeSpec(sche schema.Type) (*schemaspec.Column, error) {
 	switch sche.(type) {
 	case *schema.EnumType:
-		return convertFromEnum(sche)
+		return convertEnumSpec(sche)
 	}
 	return nil, errors.New("mysql: failed to convert column type from schema")
 }
 
-func convertFromEnum(sche schema.Type) (*schemaspec.Column, error) {
+func convertEnumSpec(sche schema.Type) (*schemaspec.Column, error) {
 	v, ok := sche.(*schema.EnumType)
 	if !ok {
 		return nil, errors.New("mysql: schema enum failed conversion")
