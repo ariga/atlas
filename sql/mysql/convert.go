@@ -298,11 +298,33 @@ func ColumnTypeSpec(t schema.Type) (*schemaspec.Column, error) {
 		return boolSpec()
 	case *schema.FloatType:
 		return floatSpec(v)
-	case *schema.TimeType, *schema.JSONType, *schema.SpatialType, *schema.UnsupportedType:
-		return nil, errors.New("mysql: not implemented yet")
+	case *schema.TimeType:
+		return timeSpec(v)
+	case *schema.JSONType:
+		return jsonSpec(v)
+	case *schema.SpatialType:
+		return spatialSpec(v)
+	case *schema.UnsupportedType:
+		return unsupportedSpec(v)
 	default:
 		return nil, errors.New("mysql: failed to convert column type from schema")
 	}
+}
+
+func unsupportedSpec(v *schema.UnsupportedType) (*schemaspec.Column, error) {
+	return nil, errors.New("mysql: not implemented yet")
+}
+
+func spatialSpec(v *schema.SpatialType) (*schemaspec.Column, error) {
+	return nil, errors.New("mysql: not implemented yet")
+}
+
+func jsonSpec(v *schema.JSONType) (*schemaspec.Column, error) {
+	return nil, errors.New("mysql: not implemented yet")
+}
+
+func timeSpec(v *schema.TimeType) (*schemaspec.Column, error) {
+	return nil, errors.New("mysql: not implemented yet")
 }
 
 func floatSpec(v *schema.FloatType) (*schemaspec.Column, error) {
