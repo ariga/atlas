@@ -304,6 +304,8 @@ func ColumnTypeSpec(t schema.Type) (*schemaspec.Column, error) {
 		return jsonSpec(v)
 	case *schema.SpatialType:
 		return spatialSpec(v)
+	//case *schema.BitType: ??
+	//	return unsupportedSpec(v)
 	case *schema.UnsupportedType:
 		return unsupportedSpec(v)
 	default:
@@ -312,19 +314,19 @@ func ColumnTypeSpec(t schema.Type) (*schemaspec.Column, error) {
 }
 
 func unsupportedSpec(v *schema.UnsupportedType) (*schemaspec.Column, error) {
-	return nil, errors.New("mysql: not implemented yet")
+	return schemautil.ColSpec("", v.T), nil
 }
 
 func spatialSpec(v *schema.SpatialType) (*schemaspec.Column, error) {
-	return nil, errors.New("mysql: not implemented yet")
+	return schemautil.ColSpec("", v.T), nil
 }
 
 func jsonSpec(v *schema.JSONType) (*schemaspec.Column, error) {
-	return nil, errors.New("mysql: not implemented yet")
+	return schemautil.ColSpec("", v.T), nil
 }
 
 func timeSpec(v *schema.TimeType) (*schemaspec.Column, error) {
-	return nil, errors.New("mysql: not implemented yet")
+	return schemautil.ColSpec("", v.T), nil
 }
 
 func floatSpec(v *schema.FloatType) (*schemaspec.Column, error) {

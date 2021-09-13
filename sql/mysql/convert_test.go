@@ -393,12 +393,36 @@ func TestConvertFromColumnType(t *testing.T) {
 			expected: schemautil.ColSpec("", "boolean"),
 		},
 		{
-			schem: &schema.FloatType{T: "float", Precision: 10},
-			expected:  schemautil.ColSpec("", "float", schemautil.LitAttr("precision", "10")),
+			schem:    &schema.FloatType{T: "float", Precision: 10},
+			expected: schemautil.ColSpec("", "float", schemautil.LitAttr("precision", "10")),
 		},
 		{
-			schem: &schema.FloatType{T: "double", Precision: 25},
-			expected:  schemautil.ColSpec("", "float", schemautil.LitAttr("precision", "25")),
+			schem:    &schema.FloatType{T: "double", Precision: 25},
+			expected: schemautil.ColSpec("", "float", schemautil.LitAttr("precision", "25")),
+		},
+		{
+			schem:    &schema.TimeType{T: "date"},
+			expected: schemautil.ColSpec("", "date"),
+		},
+		{
+			schem:    &schema.TimeType{T: "datetime"},
+			expected: schemautil.ColSpec("", "datetime"),
+		},
+		{
+			schem:    &schema.TimeType{T: "time"},
+			expected: schemautil.ColSpec("", "time"),
+		},
+		{
+			schem:    &schema.TimeType{T: "timestamp"},
+			expected: schemautil.ColSpec("", "timestamp"),
+		},
+		{
+			schem:    &schema.TimeType{T: "year"},
+			expected: schemautil.ColSpec("", "year"),
+		},
+		{
+			schem:    &schema.TimeType{T: "year(4)"},
+			expected: schemautil.ColSpec("", "year(4)"),
 		},
 	} {
 		t.Run(tt.expected.Name, func(t *testing.T) {
