@@ -368,12 +368,12 @@ func TestConvertFromColumnType(t *testing.T) {
 			},
 			expected: schemautil.ColSpec("", "decimal(10, 2) unsigned"),
 		},
-		//{
-		//	expected: schemautil.ColSpec("blob", "binary"),
-		//	schem: &schema.BinaryType{
-		//		T: tBlob,
-		//	},
-		//},
+		{
+			schem: &schema.BinaryType{
+				T: tBlob,
+			},
+			expected: schemautil.ColSpec("", "binary"),
+		},
 		//{
 		//	expected: schemautil.ColSpec("tinyblob", "binary", schemautil.LitAttr("size", "16")),
 		//	schem: &schema.BinaryType{

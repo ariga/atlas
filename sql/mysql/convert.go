@@ -292,8 +292,22 @@ func ColumnTypeSpec(sche schema.Type) (*schemaspec.Column, error) {
 		return convertStringType(sche)
 	case *schema.DecimalType:
 		return convertDecimalType(sche)
+	case *schema.BinaryType:
+		return convertBinaryType(sche)
 	}
 	return nil, errors.New("mysql: failed to convert column type from schema")
+}
+
+func convertBinaryType(sche schema.Type) (*schemaspec.Column, error) {
+	v, ok := sche.(*schema.BinaryType)
+	if !ok {
+		return nil, errors.New("mysql: schema binary failed conversion")
+	}
+	switch v.T{
+	case tBlob:
+		return schemautil.ColSpec("", "binary"), nil
+	}
+	return nil, errors.New("mysql: schema binary failed to convert")
 }
 
 func convertDecimalType(sche schema.Type) (*schemaspec.Column, error) {
