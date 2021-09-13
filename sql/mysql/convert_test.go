@@ -292,7 +292,7 @@ func TestConvertColumnType(t *testing.T) {
 	}
 }
 
-func TestConvertFromColumnType(t *testing.T) {
+func TestColumnTypeSpec(t *testing.T) {
 	for _, tt := range []struct {
 		schem    schema.Type
 		expected *schemaspec.Column
