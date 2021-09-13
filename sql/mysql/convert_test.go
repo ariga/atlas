@@ -374,13 +374,13 @@ func TestConvertFromColumnType(t *testing.T) {
 			},
 			expected: schemautil.ColSpec("", "binary"),
 		},
-		//{
-		//	expected: schemautil.ColSpec("tinyblob", "binary", schemautil.LitAttr("size", "16")),
-		//	schem: &schema.BinaryType{
-		//		T:    tTinyBlob,
-		//		Size: 16,
-		//	},
-		//},
+		{
+			schem: &schema.BinaryType{
+				T:    tTinyBlob,
+				Size: 16,
+			},
+			expected: schemautil.ColSpec("", "binary", schemautil.LitAttr("size", "16")),
+		},
 		//{
 		//	expected: schemautil.ColSpec("mediumblob", "binary", schemautil.LitAttr("size", "100000")),
 		//	schem: &schema.BinaryType{
