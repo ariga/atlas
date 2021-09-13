@@ -14,6 +14,7 @@ import (
 // To specify the mapping from the extension struct fields to the schemaspec.Resource
 // use the `spec` key on the field's tag. To specify that a field should be mapped to
 // the corresponding Resource's `Name` specify ",name" to the tag value. For example:
+//
 //   type Example struct {
 //      Name  string `spec:,name"
 //      Value int `spec:"value"`
@@ -145,11 +146,10 @@ func scanAttr(key string, r *Resource, field reflect.Value) error {
 	default:
 		return fmt.Errorf("schemaspec: unsupported field kind %q", field.Kind())
 	}
-	attr := &Attr{
+	r.SetAttr(&Attr{
 		K: key,
 		V: &LiteralValue{V: lit},
-	}
-	r.SetAttr(attr)
+	})
 	return nil
 }
 
