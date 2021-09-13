@@ -295,12 +295,23 @@ func ColumnTypeSpec(sche schema.Type) (*schemaspec.Column, error) {
 	case *schema.BinaryType:
 		return convertBinaryType(sche)
 	case *schema.BoolType:
-		return convertBoolType(sche)
+		return convertBoolType()
+	case *schema.FloatType:
+		return convertFloatType(sche)
 	}
 	return nil, errors.New("mysql: failed to convert column type from schema")
 }
 
-func convertBoolType(sche schema.Type) (*schemaspec.Column, error) {
+func convertFloatType(sche schema.Type) (*schemaspec.Column, error) {
+	v, ok := sche.(*schema.FloatType)
+	if !ok {
+		return nil, errors.New("mysql: schema float failed conversion")
+	}
+	p := strconv.Itoa(v.Precision)
+	return schemautil.ColSpec("", "float", schemautil.LitAttr("precision", p)), nil
+}
+
+func convertBoolType() (*schemaspec.Column, error) {
 	return schemautil.ColSpec("", "boolean"), nil
 }
 

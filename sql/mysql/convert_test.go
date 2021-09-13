@@ -407,14 +407,14 @@ func TestConvertFromColumnType(t *testing.T) {
 			schem:    &schema.BoolType{T: "boolean"},
 			expected: schemautil.ColSpec("", "boolean"),
 		},
-		//{
-		//	expected:  schemautil.ColSpec("float", "float", schemautil.LitAttr("precision", "10")),
-		//	schem: &schema.FloatType{T: "float", Precision: 10},
-		//},
-		//{
-		//	expected:  schemautil.ColSpec("float", "float", schemautil.LitAttr("precision", "25")),
-		//	schem: &schema.FloatType{T: "double", Precision: 25},
-		//},
+		{
+			schem: &schema.FloatType{T: "float", Precision: 10},
+			expected:  schemautil.ColSpec("", "float", schemautil.LitAttr("precision", "10")),
+		},
+		{
+			schem: &schema.FloatType{T: "double", Precision: 25},
+			expected:  schemautil.ColSpec("", "float", schemautil.LitAttr("precision", "25")),
+		},
 	} {
 		t.Run(tt.expected.Name, func(t *testing.T) {
 			columnType, err := ColumnTypeSpec(tt.schem)
