@@ -304,8 +304,6 @@ func ColumnTypeSpec(t schema.Type) (*schemaspec.Column, error) {
 		return jsonSpec(v)
 	case *schema.SpatialType:
 		return spatialSpec(v)
-	//case *schema.BitType: ??
-	//	return unsupportedSpec(v)
 	case *schema.UnsupportedType:
 		return unsupportedSpec(v)
 	default:
