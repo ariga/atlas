@@ -303,12 +303,12 @@ func convertBinaryType(sche schema.Type) (*schemaspec.Column, error) {
 	if !ok {
 		return nil, errors.New("mysql: schema binary failed conversion")
 	}
-	switch v.T{
+	switch v.T {
 	case tBlob:
 		return schemautil.ColSpec("", "binary"), nil
-	case tTinyBlob:
+	case tTinyBlob, tMediumBlob, tLongBlob:
 		s := strconv.Itoa(v.Size)
-		return schemautil.ColSpec("", "binary",schemautil.LitAttr("size", s)), nil
+		return schemautil.ColSpec("", "binary", schemautil.LitAttr("size", s)), nil
 	}
 	return nil, errors.New("mysql: schema binary failed to convert")
 }

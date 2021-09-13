@@ -381,20 +381,20 @@ func TestConvertFromColumnType(t *testing.T) {
 			},
 			expected: schemautil.ColSpec("", "binary", schemautil.LitAttr("size", "16")),
 		},
-		//{
-		//	expected: schemautil.ColSpec("mediumblob", "binary", schemautil.LitAttr("size", "100000")),
-		//	schem: &schema.BinaryType{
-		//		T:    tMediumBlob,
-		//		Size: 100_000,
-		//	},
-		//},
-		//{
-		//	expected: schemautil.ColSpec("longblob", "binary", schemautil.LitAttr("size", "20000000")),
-		//	schem: &schema.BinaryType{
-		//		T:    tLongBlob,
-		//		Size: 20_000_000,
-		//	},
-		//},
+		{
+			schem: &schema.BinaryType{
+				T:    tMediumBlob,
+				Size: 100_000,
+			},
+			expected: schemautil.ColSpec("", "binary", schemautil.LitAttr("size", "100000")),
+		},
+		{
+			schem: &schema.BinaryType{
+				T:    tLongBlob,
+				Size: 20_000_000,
+			},
+			expected: schemautil.ColSpec("", "binary", schemautil.LitAttr("size", "20000000")),
+		},
 		{
 			schem:    &schema.EnumType{Values: []string{"a", "b", "c"}},
 			expected: schemautil.ColSpec("", "enum", schemautil.ListAttr("values", "a", "b", "c")),
