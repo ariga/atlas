@@ -353,25 +353,10 @@ func TestConvertFromColumnType(t *testing.T) {
 			},
 			expected: schemautil.ColSpec("", "string", schemautil.LitAttr("size", "17000000")),
 		},
-		//{
-		//	schem: &schema.StringType{
-		//		T:    tVarchar,
-		//		Size: 255,
-		//	},
-		//	expected: schemautil.ColSpec("", "varchar(255)"),
-		//},  DISCUSS
 		{
 			schem:    &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
 			expected: schemautil.ColSpec("", "decimal", schemautil.LitAttr("precision", "10"), schemautil.LitAttr("scale", "2")),
 		},
-		//{
-		//	schem: &schema.DecimalType{
-		//		T:         tDecimal,
-		//		Scale:     2,
-		//		Precision: 10,
-		//	},
-		//	expected: schemautil.ColSpec("", "decimal(10, 2) unsigned"),
-		//}, DISCUSS
 		{
 			schem: &schema.BinaryType{
 				T: tBlob,
