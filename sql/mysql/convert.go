@@ -285,25 +285,25 @@ func formatValues(vs []string) string {
 func ColumnTypeSpec(t schema.Type) (*schemaspec.Column, error) {
 	switch t.(type) {
 	case *schema.EnumType:
-		return convertEnumSpec(t)
+		return enumSpec(t)
 	case *schema.IntegerType:
-		return convertIntegerType(t)
+		return integerSpec(t)
 	case *schema.StringType:
-		return convertStringType(t)
+		return stringSpec(t)
 	case *schema.DecimalType:
-		return convertDecimalType(t)
+		return decimalSpec(t)
 	case *schema.BinaryType:
-		return convertBinaryType(t)
+		return binarySpec(t)
 	case *schema.BoolType:
-		return convertBoolType()
+		return boolSpec()
 	case *schema.FloatType:
-		return convertFloatType(t)
+		return floatSpec(t)
 	default:
 		return nil, errors.New("mysql: failed to convert column type from schema")
 	}
 }
 
-func convertFloatType(t schema.Type) (*schemaspec.Column, error) {
+func floatSpec(t schema.Type) (*schemaspec.Column, error) {
 	v, ok := t.(*schema.FloatType)
 	if !ok {
 		return nil, errors.New("mysql: schema float failed conversion")
@@ -312,11 +312,11 @@ func convertFloatType(t schema.Type) (*schemaspec.Column, error) {
 	return schemautil.ColSpec("", "float", schemautil.LitAttr("precision", p)), nil
 }
 
-func convertBoolType() (*schemaspec.Column, error) {
+func boolSpec() (*schemaspec.Column, error) {
 	return schemautil.ColSpec("", "boolean"), nil
 }
 
-func convertBinaryType(t schema.Type) (*schemaspec.Column, error) {
+func binarySpec(t schema.Type) (*schemaspec.Column, error) {
 	v, ok := t.(*schema.BinaryType)
 	if !ok {
 		return nil, errors.New("mysql: schema binary failed conversion")
@@ -331,7 +331,7 @@ func convertBinaryType(t schema.Type) (*schemaspec.Column, error) {
 	return nil, errors.New("mysql: schema binary failed to convert")
 }
 
-func convertDecimalType(t schema.Type) (*schemaspec.Column, error) {
+func decimalSpec(t schema.Type) (*schemaspec.Column, error) {
 	v, ok := t.(*schema.DecimalType)
 	if !ok {
 		return nil, errors.New("mysql: schema decimal failed conversion")
@@ -341,7 +341,7 @@ func convertDecimalType(t schema.Type) (*schemaspec.Column, error) {
 	return schemautil.ColSpec("", "decimal", schemautil.LitAttr("precision", p), schemautil.LitAttr("scale", s)), nil
 }
 
-func convertStringType(t schema.Type) (*schemaspec.Column, error) {
+func stringSpec(t schema.Type) (*schemaspec.Column, error) {
 	v, ok := t.(*schema.StringType)
 	if !ok {
 		return nil, errors.New("mysql: schema string failed conversion")
@@ -354,7 +354,7 @@ func convertStringType(t schema.Type) (*schemaspec.Column, error) {
 	return nil, errors.New("mysql: schema string failed to convert")
 }
 
-func convertIntegerType(t schema.Type) (*schemaspec.Column, error) {
+func integerSpec(t schema.Type) (*schemaspec.Column, error) {
 	v, ok := t.(*schema.IntegerType)
 	if !ok {
 		return nil, errors.New("mysql: schema integer failed conversion")
@@ -376,7 +376,7 @@ func convertIntegerType(t schema.Type) (*schemaspec.Column, error) {
 	return nil, errors.New("mysql: schema integer failed to convert")
 }
 
-func convertEnumSpec(t schema.Type) (*schemaspec.Column, error) {
+func enumSpec(t schema.Type) (*schemaspec.Column, error) {
 	v, ok := t.(*schema.EnumType)
 	if !ok {
 		return nil, errors.New("mysql: schema enum failed conversion")
