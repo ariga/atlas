@@ -209,7 +209,7 @@ func convertString(spec *schemaspec.Column) (schema.Type, error) {
 func convertEnum(spec *schemaspec.Column) (schema.Type, error) {
 	attr, ok := spec.Attr("values")
 	if !ok {
-		return nil, fmt.Errorf("mysql: expected enum fields to have values")
+		return nil, fmt.Errorf("mysql: schem enum fields to have values")
 	}
 	list, err := attr.Strings()
 	if err != nil {
@@ -277,4 +277,17 @@ func formatValues(vs []string) string {
 		}
 	}
 	return strings.Join(values, ",")
+}
+
+// ConvertFromColumnType converts from a concrete MySQL schema.Type into schemaspec.Column Type.
+func ConvertFromColumnType(sche schema.Type) (*schemaspec.Column, error) {
+	switch sche.(type) {
+	case *schema.EnumType:
+		return convertFromEnum(sche)
+	}
+	return schemautil.ColSpec("enum", "enum", schemautil.ListAttr("values", "a", "b", "c")), nil
+}
+
+func convertFromEnum(sche schema.Type) (*schemaspec.Column, error) {
+	return schemautil.ColSpec("enum", "enum", schemautil.ListAttr("values", "a", "b", "c")), nil
 }

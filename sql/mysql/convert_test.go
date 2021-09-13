@@ -292,6 +292,139 @@ func TestConvertColumnType(t *testing.T) {
 	}
 }
 
+func TestConvertFromColumnType(t *testing.T) {
+	for _, tt := range []struct {
+		schem    schema.Type
+		expected *schemaspec.Column
+	}{
+		//{
+		//	expected: schemautil.ColSpec("int", "int"),
+		//	schem: &schema.IntegerType{
+		//		T:        tInt,
+		//		Unsigned: false,
+		//	},
+		//},
+		//{
+		//	expected: schemautil.ColSpec("uint", "uint"),
+		//	schem: &schema.IntegerType{
+		//		T:        tInt,
+		//		Unsigned: true,
+		//	},
+		//},
+		//{
+		//	expected: schemautil.ColSpec("int8", "int8"),
+		//	schem: &schema.IntegerType{
+		//		T:        tTinyInt,
+		//		Unsigned: false,
+		//	},
+		//},
+		//{
+		//	expected: schemautil.ColSpec("int64", "int64"),
+		//	schem: &schema.IntegerType{
+		//		T:        tBigInt,
+		//		Unsigned: false,
+		//	},
+		//},
+		//{
+		//	expected: schemautil.ColSpec("uint64", "uint64"),
+		//	schem: &schema.IntegerType{
+		//		T:        tBigInt,
+		//		Unsigned: true,
+		//	},
+		//},
+		//{
+		//	expected: schemautil.ColSpec("string_varchar", "string", schemautil.LitAttr("size", "255")),
+		//	schem: &schema.StringType{
+		//		T:    tVarchar,
+		//		Size: 255,
+		//	},
+		//},
+		//{
+		//	expected: schemautil.ColSpec("string_mediumtext", "string", schemautil.LitAttr("size", "100000")),
+		//	schem: &schema.StringType{
+		//		T:    tMediumText,
+		//		Size: 100_000,
+		//	},
+		//},
+		//{
+		//	expected: schemautil.ColSpec("string_longtext", "string", schemautil.LitAttr("size", "17000000")),
+		//	schem: &schema.StringType{
+		//		T:    tLongText,
+		//		Size: 17_000_000,
+		//	},
+		//},
+		//{
+		//	expected: schemautil.ColSpec("varchar(255)", "varchar(255)"),
+		//	schem: &schema.StringType{
+		//		T:    tVarchar,
+		//		Size: 255,
+		//	},
+		//},
+		//{
+		//	expected: schemautil.ColSpec("decimal(10, 2) unsigned", "decimal(10, 2) unsigned"),
+		//	schem: &schema.DecimalType{
+		//		T:         tDecimal,
+		//		Scale:     2,
+		//		Precision: 10,
+		//	},
+		//},
+		//{
+		//	expected: schemautil.ColSpec("blob", "binary"),
+		//	schem: &schema.BinaryType{
+		//		T: tBlob,
+		//	},
+		//},
+		//{
+		//	expected: schemautil.ColSpec("tinyblob", "binary", schemautil.LitAttr("size", "16")),
+		//	schem: &schema.BinaryType{
+		//		T:    tTinyBlob,
+		//		Size: 16,
+		//	},
+		//},
+		//{
+		//	expected: schemautil.ColSpec("mediumblob", "binary", schemautil.LitAttr("size", "100000")),
+		//	schem: &schema.BinaryType{
+		//		T:    tMediumBlob,
+		//		Size: 100_000,
+		//	},
+		//},
+		//{
+		//	expected: schemautil.ColSpec("longblob", "binary", schemautil.LitAttr("size", "20000000")),
+		//	schem: &schema.BinaryType{
+		//		T:    tLongBlob,
+		//		Size: 20_000_000,
+		//	},
+		//},
+		{
+			schem:    &schema.EnumType{Values: []string{"a", "b", "c"}},
+			expected: schemautil.ColSpec("enum", "enum", schemautil.ListAttr("values", "a", "b", "c")),
+		},
+		//{
+		//	expected:  schemautil.ColSpec("bool", "boolean"),
+		//	schem: &schema.BoolType{T: "boolean"},
+		//},
+		//{
+		//	expected:  schemautil.ColSpec("decimal", "decimal", schemautil.LitAttr("precision", "10"), schemautil.LitAttr("scale", "2")),
+		//	schem: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
+		//},
+		//{
+		//	expected:  schemautil.ColSpec("float", "float", schemautil.LitAttr("precision", "10")),
+		//	schem: &schema.FloatType{T: "float", Precision: 10},
+		//},
+		//{
+		//	expected:  schemautil.ColSpec("float", "float", schemautil.LitAttr("precision", "25")),
+		//	schem: &schema.FloatType{T: "double", Precision: 25},
+		//},
+	} {
+		t.Run(tt.expected.Name, func(t *testing.T) {
+			columnType, err := ConvertFromColumnType(tt.schem)
+			require.NoError(t, err)
+			require.EqualValues(t, tt.expected, columnType)
+		})
+	}
+}
+
+
 func TestOverride(t *testing.T) {
 	s := schemautil.ColSpec("int", "int")
 	s.Overrides = []*schemaspec.Override{
