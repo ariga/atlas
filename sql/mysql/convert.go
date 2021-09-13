@@ -5,6 +5,7 @@
 package mysql
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -279,22 +280,22 @@ func formatValues(vs []string) string {
 	return strings.Join(values, ",")
 }
 
-// ConvertFromColumnType converts from a concrete MySQL schema.Type into schemaspec.Column Type.
-func ConvertFromColumnType(sche schema.Type) (*schemaspec.Column, error) {
+// ColumnTypeSpec converts from a concrete MySQL schema.Type into schemaspec.Column Type.
+func ColumnTypeSpec(sche schema.Type) (*schemaspec.Column, error) {
 	switch sche.(type) {
 	case *schema.EnumType:
 		return convertFromEnum(sche)
 	}
-	return nil, fmt.Errorf("mysql: failed to convert column type from schema")
+	return nil, errors.New("mysql: failed to convert column type from schema")
 }
 
 func convertFromEnum(sche schema.Type) (*schemaspec.Column, error) {
 	v, ok := sche.(*schema.EnumType)
 	if !ok {
-		return nil, fmt.Errorf("mysql: schema enum failed conversion")
+		return nil, errors.New("mysql: schema enum failed conversion")
 	}
-	if len(v.Values) < 1 {
-		return nil, fmt.Errorf("mysql: schema enum fields to have values")
+	if len(v.Values) == 0 {
+		return nil, errors.New("mysql: schema enum fields to have values")
 	}
-	return schemautil.ColSpec("enum", "enum", schemautil.ListAttr("values", v.Values...)), nil
+	return schemautil.ColSpec("", "enum", schemautil.ListAttr("values", v.Values...)), nil
 }

@@ -397,7 +397,7 @@ func TestConvertFromColumnType(t *testing.T) {
 		//},
 		{
 			schem:    &schema.EnumType{Values: []string{"a", "b", "c"}},
-			expected: schemautil.ColSpec("enum", "enum", schemautil.ListAttr("values", "a", "b", "c")),
+			expected: schemautil.ColSpec("", "enum", schemautil.ListAttr("values", "a", "b", "c")),
 		},
 		//{
 		//	expected:  schemautil.ColSpec("bool", "boolean"),
@@ -417,7 +417,7 @@ func TestConvertFromColumnType(t *testing.T) {
 		//},
 	} {
 		t.Run(tt.expected.Name, func(t *testing.T) {
-			columnType, err := ConvertFromColumnType(tt.schem)
+			columnType, err := ColumnTypeSpec(tt.schem)
 			require.NoError(t, err)
 			require.EqualValues(t, tt.expected, columnType)
 		})
