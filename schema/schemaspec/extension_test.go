@@ -16,6 +16,10 @@ type OwnerBlock struct {
 	Active    bool   `spec:"active"`
 }
 
+func (*OwnerBlock) Type() string {
+	return "owner"
+}
+
 type PetBlock struct {
 	ID     string        `spec:",name"`
 	Breed  string        `spec:"breed"`
@@ -25,10 +29,6 @@ type PetBlock struct {
 
 func (*PetBlock) Type() string {
 	return "pet"
-}
-
-func (*OwnerBlock) Type() string {
-	return "owner"
 }
 
 func TestExtension(t *testing.T) {
