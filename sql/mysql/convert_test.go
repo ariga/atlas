@@ -361,12 +361,12 @@ func TestConvertFromColumnType(t *testing.T) {
 		//	expected: schemautil.ColSpec("", "varchar(255)"),
 		//},  DISCUSS
 		{
-			expected: schemautil.ColSpec("decimal(10, 2) unsigned", "decimal(10, 2) unsigned"),
 			schem: &schema.DecimalType{
 				T:         tDecimal,
 				Scale:     2,
 				Precision: 10,
 			},
+			expected: schemautil.ColSpec("", "decimal(10, 2) unsigned"),
 		},
 		//{
 		//	expected: schemautil.ColSpec("blob", "binary"),

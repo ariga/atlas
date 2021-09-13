@@ -290,9 +290,19 @@ func ColumnTypeSpec(sche schema.Type) (*schemaspec.Column, error) {
 		return convertIntegerType(sche)
 	case *schema.StringType:
 		return convertStringType(sche)
+	case *schema.DecimalType:
+		return convertDecimalType(sche)
 	}
-
 	return nil, errors.New("mysql: failed to convert column type from schema")
+}
+
+func convertDecimalType(sche schema.Type) (*schemaspec.Column, error) {
+	v, ok := sche.(*schema.DecimalType)
+	if !ok {
+		return nil, errors.New("mysql: schema decimal failed conversion")
+	}
+	c := fmt.Sprintf("decimal(%d, %d) unsigned", v.Precision, v.Scale)
+	return schemautil.ColSpec("", c), nil
 }
 
 func convertStringType(sche schema.Type) (*schemaspec.Column, error) {
