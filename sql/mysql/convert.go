@@ -56,7 +56,7 @@ func (d *Driver) FormatType(t schema.Type) (string, error) {
 		f = fmt.Sprintf("enum(%s)", formatValues(t.Values))
 	case *schema.StringType:
 		f = strings.ToLower(t.T)
-		if f == tVarchar {
+		if f == tChar || f == tVarchar {
 			// Zero is also a valid length.
 			f = fmt.Sprintf("%s(%d)", f, t.Size)
 		}
