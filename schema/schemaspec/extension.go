@@ -14,7 +14,7 @@ import (
 // To specify the mapping from the extension struct fields to the schemaspec.Resource
 // use the `spec` key on the field's tag. To specify that a field should be mapped to
 // the corresponding Resource's `Name` specify ",name" to the tag value. For example:
-// 
+//
 //   type Example struct {
 //      Name  string `spec:,name"
 //      Value int `spec:"value"`
@@ -43,32 +43,59 @@ func (r *Resource) As(target Extension) error {
 			field.SetString(r.Name)
 			continue
 		}
-		attr, ok := r.Attr(ft.tag)
-		if !ok {
-			return fmt.Errorf("schemaspec: resource does not have attr %q", ft.tag)
+		if attr, ok := r.Attr(ft.tag); ok {
+			if err := setField(field, attr); err != nil {
+				return err
+			}
+			continue
 		}
-		switch field.Kind() {
-		case reflect.String:
-			s, err := attr.String()
-			if err != nil {
-				return fmt.Errorf("schemaspec: value of attr %q cannot be read as string: %w", ft.tag, err)
-			}
-			field.SetString(s)
-		case reflect.Int:
-			i, err := attr.Int()
-			if err != nil {
-				return fmt.Errorf("schemaspec: value of attr %q cannot be read as integer: %w", ft.tag, err)
-			}
-			field.SetInt(int64(i))
-		case reflect.Bool:
-			b, err := attr.Bool()
-			if err != nil {
-				return fmt.Errorf("schemaspec: value of attr %q cannot be read as bool: %w", ft.tag, err)
-			}
-			field.SetBool(b)
-		default:
-			return fmt.Errorf("schemaspec: unsupported field kind %q", field.Kind())
+		if err := setChildSlice(field, childrenOfType(r, ft.tag)); err != nil {
+			return err
 		}
+	}
+	return nil
+}
+
+func setChildSlice(field reflect.Value, children []*Resource) error {
+	if field.Type().Kind() != reflect.Slice {
+		return fmt.Errorf("schemaspec: expected field to be of kind slice")
+	}
+	typ := field.Type().Elem()
+	slc := reflect.MakeSlice(reflect.SliceOf(typ), 0, len(children))
+	for _, c := range children {
+		n := reflect.New(typ.Elem())
+		ext := n.Interface().(Extension)
+		if err := c.As(ext); err != nil {
+			return err
+		}
+		slc = reflect.Append(slc, reflect.ValueOf(ext))
+	}
+	field.Set(slc)
+	return nil
+}
+
+func setField(field reflect.Value, attr *Attr) error {
+	switch field.Kind() {
+	case reflect.String:
+		s, err := attr.String()
+		if err != nil {
+			return fmt.Errorf("schemaspec: value of attr %q cannot be read as string: %w", attr.K, err)
+		}
+		field.SetString(s)
+	case reflect.Int:
+		i, err := attr.Int()
+		if err != nil {
+			return fmt.Errorf("schemaspec: value of attr %q cannot be read as integer: %w", attr.K, err)
+		}
+		field.SetInt(int64(i))
+	case reflect.Bool:
+		b, err := attr.Bool()
+		if err != nil {
+			return fmt.Errorf("schemaspec: value of attr %q cannot be read as bool: %w", attr.K, err)
+		}
+		field.SetBool(b)
+	default:
+		return fmt.Errorf("schemaspec: unsupported field kind %q", field.Kind())
 	}
 	return nil
 }
@@ -82,31 +109,49 @@ func (r *Resource) Scan(ext Extension) error {
 	v := reflect.ValueOf(ext).Elem()
 	for _, ft := range specFields(ext) {
 		field := v.FieldByName(ft.field)
-		if ft.isName {
+		switch {
+		case ft.isName:
 			if field.Kind() != reflect.String {
 				return errors.New("schemaspec: extension name field must be string")
 			}
 			r.Name = field.String()
-			continue
-		}
-		var lit string
-		switch field.Kind() {
-		case reflect.String:
-			lit = strconv.Quote(field.String())
-		case reflect.Int:
-			lit = fmt.Sprintf("%d", field.Int())
-		case reflect.Bool:
-			lit = strconv.FormatBool(field.Bool())
+		case field.Kind() == reflect.Slice:
+			for i := 0; i < field.Len(); i++ {
+				ext := field.Index(i).Interface().(Extension)
+				child := &Resource{}
+				if err := child.Scan(ext); err != nil {
+					return err
+				}
+				r.Children = append(r.Children, child)
+			}
 		default:
-			return fmt.Errorf("schemaspec: unsupported field kind %q", field.Kind())
+			if err := scanAttr(ft.tag, r, field); err != nil {
+				return err
+			}
 		}
-		r.SetAttr(&Attr{
-			K: ft.tag,
-			V: &LiteralValue{V: lit},
-		})
 	}
 	return nil
 }
+
+func scanAttr(key string, r *Resource, field reflect.Value) error {
+	var lit string
+	switch field.Kind() {
+	case reflect.String:
+		lit = strconv.Quote(field.String())
+	case reflect.Int:
+		lit = fmt.Sprintf("%d", field.Int())
+	case reflect.Bool:
+		lit = strconv.FormatBool(field.Bool())
+	default:
+		return fmt.Errorf("schemaspec: unsupported field kind %q", field.Kind())
+	}
+	r.SetAttr(&Attr{
+		K: key,
+		V: &LiteralValue{V: lit},
+	})
+	return nil
+}
+
 
 // specFields uses reflection to find struct fields that are tagged with "spec"
 // and returns a list of mappings from the tag to the field name.
@@ -132,4 +177,14 @@ func specFields(ext Extension) []fieldTag {
 type fieldTag struct {
 	field, tag string
 	isName     bool
+}
+
+func childrenOfType(r *Resource, typ string) []*Resource {
+	var out []*Resource
+	for _, c := range r.Children {
+		if c.Type == typ {
+			out = append(out, c)
+		}
+	}
+	return out
 }
