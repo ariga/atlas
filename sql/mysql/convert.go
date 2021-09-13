@@ -285,9 +285,9 @@ func ConvertFromColumnType(sche schema.Type) (*schemaspec.Column, error) {
 	case *schema.EnumType:
 		return convertFromEnum(sche)
 	}
-	return schemautil.ColSpec("enum", "enum", schemautil.ListAttr("values", "a", "b", "c")), nil
+	return schemautil.ColSpec("enum", "enum", schemautil.ListAttr("values", "a", "b", "c","d")), nil
 }
 
 func convertFromEnum(sche schema.Type) (*schemaspec.Column, error) {
-	return schemautil.ColSpec("enum", "enum", schemautil.ListAttr("values", "a", "b", "c")), nil
+	return schemautil.ColSpec("enum", "enum", schemautil.ListAttr("values", "a", "b", "c","d")), nil
 }
