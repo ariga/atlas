@@ -297,20 +297,20 @@ func TestConvertFromColumnType(t *testing.T) {
 		schem    schema.Type
 		expected *schemaspec.Column
 	}{
-		//{
-		//	expected: schemautil.ColSpec("int", "int"),
-		//	schem: &schema.IntegerType{
-		//		T:        tInt,
-		//		Unsigned: false,
-		//	},
-		//},
-		//{
-		//	expected: schemautil.ColSpec("uint", "uint"),
-		//	schem: &schema.IntegerType{
-		//		T:        tInt,
-		//		Unsigned: true,
-		//	},
-		//},
+		{
+			schem: &schema.IntegerType{
+				T:        tInt,
+				Unsigned: false,
+			},
+			expected: schemautil.ColSpec("", "int"),
+		},
+		{
+			schem: &schema.IntegerType{
+				T:        tInt,
+				Unsigned: true,
+			},
+			expected: schemautil.ColSpec("", "uint"),
+		},
 		//{
 		//	expected: schemautil.ColSpec("int8", "int8"),
 		//	schem: &schema.IntegerType{
@@ -423,7 +423,6 @@ func TestConvertFromColumnType(t *testing.T) {
 		})
 	}
 }
-
 
 func TestOverride(t *testing.T) {
 	s := schemautil.ColSpec("int", "int")

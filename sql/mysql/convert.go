@@ -285,8 +285,25 @@ func ColumnTypeSpec(sche schema.Type) (*schemaspec.Column, error) {
 	switch sche.(type) {
 	case *schema.EnumType:
 		return convertEnumSpec(sche)
+	case *schema.IntegerType:
+		return convertIntegerType(sche)
 	}
 	return nil, errors.New("mysql: failed to convert column type from schema")
+}
+
+func convertIntegerType(sche schema.Type) (*schemaspec.Column, error) {
+	v, ok := sche.(*schema.IntegerType)
+	if !ok {
+		return nil, errors.New("mysql: schema integer failed conversion")
+	}
+	switch v.Unsigned {
+	case true:
+		return schemautil.ColSpec("", "uint"), nil
+	case false:
+		return schemautil.ColSpec("", "int"), nil
+	default:
+		return nil, errors.New("mysql: schema integer failed to have sign")
+	}
 }
 
 func convertEnumSpec(sche schema.Type) (*schemaspec.Column, error) {
