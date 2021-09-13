@@ -399,10 +399,10 @@ func TestConvertFromColumnType(t *testing.T) {
 			schem:    &schema.EnumType{Values: []string{"a", "b", "c"}},
 			expected: schemautil.ColSpec("", "enum", schemautil.ListAttr("values", "a", "b", "c")),
 		},
-		//{
-		//	expected:  schemautil.ColSpec("bool", "boolean"),
-		//	schem: &schema.BoolType{T: "boolean"},
-		//},
+		{
+			schem: &schema.BoolType{T: "boolean"},
+			expected:  schemautil.ColSpec("", "boolean"),
+		},
 		//{
 		//	expected:  schemautil.ColSpec("decimal", "decimal", schemautil.LitAttr("precision", "10"), schemautil.LitAttr("scale", "2")),
 		//	schem: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},

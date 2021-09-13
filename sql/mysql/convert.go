@@ -294,8 +294,14 @@ func ColumnTypeSpec(sche schema.Type) (*schemaspec.Column, error) {
 		return convertDecimalType(sche)
 	case *schema.BinaryType:
 		return convertBinaryType(sche)
+	case *schema.BoolType:
+		return convertBoolType(sche)
 	}
 	return nil, errors.New("mysql: failed to convert column type from schema")
+}
+
+func convertBoolType(sche schema.Type) (*schemaspec.Column, error) {
+	return schemautil.ColSpec("", "boolean"), nil
 }
 
 func convertBinaryType(sche schema.Type) (*schemaspec.Column, error) {
