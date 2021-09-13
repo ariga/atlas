@@ -298,6 +298,8 @@ func ColumnTypeSpec(t schema.Type) (*schemaspec.Column, error) {
 		return boolSpec()
 	case *schema.FloatType:
 		return floatSpec(v)
+	case *schema.TimeType, *schema.JSONType, *schema.SpatialType, *schema.UnsupportedType:
+		return nil, errors.New("mysql: not implemented yet")
 	default:
 		return nil, errors.New("mysql: failed to convert column type from schema")
 	}
