@@ -307,7 +307,7 @@ func ColumnTypeSpec(t schema.Type) (*schemaspec.Column, error) {
 	case *schema.UnsupportedType:
 		return unsupportedSpec(v)
 	default:
-		return nil, errors.New("mysql: failed to convert column type from schema")
+		return nil, fmt.Errorf("mysql: failed to convert column type %T to spec", t)
 	}
 }
 
