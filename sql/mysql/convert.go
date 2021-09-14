@@ -283,7 +283,7 @@ func formatValues(vs []string) string {
 
 // SchemaSpec converts from MySQL specific schema to Atlas specification.
 func (d *Driver) SchemaSpec(schem *schema.Schema) (*schemaspec.Schema, []*schemaspec.Table, error) {
-	return schemautil.Spec(schem, d.TableSpec)
+	return schemautil.SchemaSpec(schem, d.TableSpec)
 }
 
 // TableSpec converts a schemaspec.Table to a schema.Table.

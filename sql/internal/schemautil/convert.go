@@ -182,8 +182,8 @@ func resolveCol(ref *schemaspec.ColumnRef, sch *schema.Schema) (*schema.Column, 
 	return col, nil
 }
 
-// Spec converts a schema.Schema into scehmaspec.Schema and []schemaspec.Table.
-func Spec(s *schema.Schema, fn TableSpecFunc) (*schemaspec.Schema, []*schemaspec.Table, error) {
+// SchemaSpec converts a schema.Schema into scehmaspec.Schema and []schemaspec.Table.
+func SchemaSpec(s *schema.Schema, fn TableSpecFunc) (*schemaspec.Schema, []*schemaspec.Table, error) {
 	spec := &schemaspec.Schema{
 		Name: s.Name,
 	}
@@ -203,8 +203,8 @@ func TableSpec(tab *schema.Table, colSpec ColumnSpecFunc) (*schemaspec.Table, er
 	tbl := &schemaspec.Table{
 		Name: tab.Name,
 	}
-	for _, csp := range tab.Columns {
-		col, err := colSpec(csp)
+	for _, c := range tab.Columns {
+		col, err := colSpec(c)
 		if err != nil {
 			return nil, err
 		}
