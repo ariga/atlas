@@ -2,7 +2,10 @@ package schemahcl
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"path"
+	"regexp"
 	"sort"
 	"strconv"
 
@@ -19,6 +22,8 @@ import (
 type container struct {
 	Body hcl.Body `hcl:",remain"`
 }
+
+var alphanumeric = regexp.MustCompile("^[a-zA-Z0-9_]*$")
 
 func decode(body []byte) (*schemaspec.Resource, error) {
 	parser := hclparse.NewParser()
@@ -51,9 +56,10 @@ func extract(ctx *hcl.EvalContext, remain hcl.Body) (*schemaspec.Resource, error
 	}
 	res := &schemaspec.Resource{
 		Attrs: attrs,
+		Addr:  "/",
 	}
 	for _, blk := range body.Blocks {
-		resource, err := toResource(ctx, blk)
+		resource, err := toResource(ctx, blk, res)
 		if err != nil {
 			return nil, err
 		}
@@ -117,12 +123,16 @@ func extractLiteralValue(value cty.Value) (*schemaspec.LiteralValue, error) {
 	}
 }
 
-func toResource(ctx *hcl.EvalContext, block *hclsyntax.Block) (*schemaspec.Resource, error) {
+func toResource(ctx *hcl.EvalContext, block *hclsyntax.Block, parent *schemaspec.Resource) (*schemaspec.Resource, error) {
 	spec := &schemaspec.Resource{
 		Type: block.Type,
 	}
 	if len(block.Labels) > 0 {
 		spec.Name = block.Labels[0]
+		if !alphanumeric.MatchString(spec.Name) {
+			return nil, errors.New("schemahcl: resource names must contain only alphanumeric characters or underscores")
+		}
+		spec.Addr = path.Join(parent.Addr, spec.Type, spec.Name)
 	}
 	attrs, err := toAttrs(ctx, block.Body.Attributes)
 	if err != nil {
@@ -130,7 +140,7 @@ func toResource(ctx *hcl.EvalContext, block *hclsyntax.Block) (*schemaspec.Resou
 	}
 	spec.Attrs = attrs
 	for _, blk := range block.Body.Blocks {
-		res, err := toResource(ctx, blk)
+		res, err := toResource(ctx, blk, spec)
 		if err != nil {
 			return nil, err
 		}

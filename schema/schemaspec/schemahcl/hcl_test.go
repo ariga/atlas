@@ -44,9 +44,18 @@ arr = ["yada", "yada", "yada"]
 	require.EqualValues(t, []string{"yada", "yada", "yada"}, arr)
 }
 
-func TestResource(t *testing.T) {
+func TestResourceNameValid(t *testing.T) {
 	f := `
 endpoint "/hello" {
+}
+`
+	_, err := decode([]byte(f))
+	require.EqualError(t, err, "schemahcl: resource names must contain only alphanumeric characters or underscores")
+}
+
+func TestResource(t *testing.T) {
+	f := `
+endpoint "hello" {
 	handler {
 		active = true
 		addr = ":8080"
@@ -59,8 +68,9 @@ endpoint "/hello" {
 	require.NoError(t, err)
 	require.Len(t, resource.Children, 1)
 	expected := &schemaspec.Resource{
-		Name: "/hello",
+		Name: "hello",
 		Type: "endpoint",
+		Addr: "/endpoint/hello",
 		Children: []*schemaspec.Resource{
 			{
 				Type: "handler",

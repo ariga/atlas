@@ -10,6 +10,7 @@ type (
 	Resource struct {
 		Name     string
 		Type     string
+		Addr     string
 		Attrs    []*Attr
 		Children []*Resource
 	}
@@ -33,6 +34,11 @@ type (
 	// ListValue implements Value and represents a list of literal value (string, number, etc.)
 	ListValue struct {
 		V []string
+	}
+
+	// Ref is a reference to another Resource.
+	Ref struct {
+		Addr string
 	}
 )
 
