@@ -221,7 +221,9 @@ func ColumnSpec(c *schema.Column, fn TypeSpecFunc) (*schemaspec.Column, error) {
 	return &schemaspec.Column{
 		Name: c.Name,
 		Type: ct.Type,
-		Attrs: ct.Attrs,
 		Null: ct.Null,
+		Resource: schemaspec.Resource{
+			Attrs: ct.Attrs,
+		},
 	}, nil
 }
