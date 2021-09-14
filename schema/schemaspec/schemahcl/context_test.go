@@ -33,7 +33,7 @@ config "defaults" {
 	description = "generic"
 }
 `
-	res, err := decode([]byte(f))
+	res, err := Decode([]byte(f))
 	require.NoError(t, err)
 	home := res.Children[2]
 	attr, ok := home.Attr("addr")

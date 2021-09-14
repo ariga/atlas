@@ -20,7 +20,7 @@ type container struct {
 	Body hcl.Body `hcl:",remain"`
 }
 
-func decode(body []byte) (*schemaspec.Resource, error) {
+func Decode(body []byte) (*schemaspec.Resource, error) {
 	parser := hclparse.NewParser()
 	srcHCL, diag := parser.ParseHCL(body, "")
 	if diag.HasErrors() {
