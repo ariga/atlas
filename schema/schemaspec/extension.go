@@ -43,7 +43,7 @@ func (r *Resource) As(target Extension) error {
 			field.SetString(r.Name)
 			continue
 		}
-		// TODO: handle optional value (attr defined but not present in spec)
+		// TODO: handle optional value (attr defined but not present in spec).
 		if attr, ok := r.Attr(ft.tag); ok {
 			if err := setField(field, attr); err != nil {
 				return err
@@ -96,7 +96,6 @@ func setField(field reflect.Value, attr *Attr) error {
 		}
 		field.SetBool(b)
 	case reflect.Ptr:
-
 		field.Set(reflect.ValueOf(attr.V))
 	default:
 		return fmt.Errorf("schemaspec: unsupported field kind %q", field.Kind())
@@ -129,13 +128,11 @@ func (r *Resource) Scan(ext Extension) error {
 				r.Children = append(r.Children, child)
 			}
 		case field.Kind() == reflect.Ptr && field.Elem().Type() == reflect.TypeOf(LiteralValue{}):
-			v := field.Elem().FieldByName("V").Interface().(string)
-			r.SetAttr(
-				&Attr{
-					K: ft.tag,
-					V: &LiteralValue{V: v},
-				},
-			)
+			v := field.Elem().FieldByName("V").String()
+			r.SetAttr(&Attr{
+				K: ft.tag,
+				V: &LiteralValue{V: v},
+			})
 		default:
 			if err := scanAttr(ft.tag, r, field); err != nil {
 				return err
