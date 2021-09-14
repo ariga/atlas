@@ -291,13 +291,14 @@ func ColumnTypeSpec(t schema.Type) (*schemaspec.Column, error) {
 	case *schema.StringType:
 		return stringSpec(t)
 	case *schema.DecimalType:
-		return decimalSpec(t)
+		return schemautil.ColSpec("", "decimal",
+			schemautil.LitAttr("precision", strconv.Itoa(t.Precision)), schemautil.LitAttr("scale", strconv.Itoa(t.Scale))), nil
 	case *schema.BinaryType:
 		return binarySpec(t)
 	case *schema.BoolType:
 		return schemautil.ColSpec("", "boolean"), nil
 	case *schema.FloatType:
-		return floatSpec(t)
+		return schemautil.ColSpec("", "float", schemautil.LitAttr("precision", strconv.Itoa(t.Precision))), nil
 	case *schema.TimeType:
 		return schemautil.ColSpec("", t.T), nil
 	case *schema.JSONType:
@@ -311,11 +312,6 @@ func ColumnTypeSpec(t schema.Type) (*schemaspec.Column, error) {
 	}
 }
 
-func floatSpec(t *schema.FloatType) (*schemaspec.Column, error) {
-	p := strconv.Itoa(t.Precision)
-	return schemautil.ColSpec("", "float", schemautil.LitAttr("precision", p)), nil
-}
-
 func binarySpec(t *schema.BinaryType) (*schemaspec.Column, error) {
 	switch t.T {
 	case tBlob:
@@ -325,12 +321,6 @@ func binarySpec(t *schema.BinaryType) (*schemaspec.Column, error) {
 		return schemautil.ColSpec("", "binary", schemautil.LitAttr("size", s)), nil
 	}
 	return nil, errors.New("mysql: schema binary failed to convert")
-}
-
-func decimalSpec(t *schema.DecimalType) (*schemaspec.Column, error) {
-	p := strconv.Itoa(t.Precision)
-	s := strconv.Itoa(t.Scale)
-	return schemautil.ColSpec("", "decimal", schemautil.LitAttr("precision", p), schemautil.LitAttr("scale", s)), nil
 }
 
 func stringSpec(t *schema.StringType) (*schemaspec.Column, error) {
