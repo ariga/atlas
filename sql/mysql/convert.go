@@ -296,17 +296,17 @@ func ColumnTypeSpec(t schema.Type) (*schemaspec.Column, error) {
 	case *schema.BinaryType:
 		return binarySpec(t)
 	case *schema.BoolType:
-		return schemautil.ColSpec("", "boolean"), nil
+		return &schemaspec.Column{Type: "boolean"}, nil
 	case *schema.FloatType:
 		return schemautil.ColSpec("", "float", schemautil.LitAttr("precision", strconv.Itoa(t.Precision))), nil
 	case *schema.TimeType:
-		return schemautil.ColSpec("", t.T), nil
+		return &schemaspec.Column{Type: t.T}, nil
 	case *schema.JSONType:
-		return schemautil.ColSpec("", t.T), nil
+		return &schemaspec.Column{Type: t.T}, nil
 	case *schema.SpatialType:
-		return schemautil.ColSpec("", t.T), nil
+		return &schemaspec.Column{Type: t.T}, nil
 	case *schema.UnsupportedType:
-		return schemautil.ColSpec("", t.T), nil
+		return &schemaspec.Column{Type: t.T}, nil
 	default:
 		return nil, fmt.Errorf("mysql: failed to convert column type %T to spec", t)
 	}
@@ -315,7 +315,7 @@ func ColumnTypeSpec(t schema.Type) (*schemaspec.Column, error) {
 func binarySpec(t *schema.BinaryType) (*schemaspec.Column, error) {
 	switch t.T {
 	case tBlob:
-		return schemautil.ColSpec("", "binary"), nil
+		return &schemaspec.Column{Type: "binary"}, nil
 	case tTinyBlob, tMediumBlob, tLongBlob:
 		s := strconv.Itoa(t.Size)
 		return schemautil.ColSpec("", "binary", schemautil.LitAttr("size", s)), nil
@@ -338,14 +338,14 @@ func integerSpec(t *schema.IntegerType) (*schemaspec.Column, error) {
 		if t.Unsigned {
 			return schemautil.ColSpec("", "uint"), nil
 		}
-		return schemautil.ColSpec("", "int"), nil
+		return &schemaspec.Column{Type: "int"}, nil
 	case tTinyInt:
-		return schemautil.ColSpec("", "int8"), nil
+		return &schemaspec.Column{Type: "int8"}, nil
 	case tBigInt:
 		if t.Unsigned {
 			return schemautil.ColSpec("", "uint64"), nil
 		}
-		return schemautil.ColSpec("", "int64"), nil
+		return &schemaspec.Column{Type: "int64"}, nil
 	}
 	return nil, errors.New("mysql: schema integer failed to convert")
 }
