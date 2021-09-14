@@ -182,20 +182,20 @@ func resolveCol(ref *schemaspec.ColumnRef, sch *schema.Schema) (*schema.Column, 
 	return col, nil
 }
 
-// Spec converts a schema.Schema into scehmaspec.Schema and []schemaspec.Table
-func Spec(sche *schema.Schema, tab TableSpecFunc) (*schemaspec.Schema, []*schemaspec.Table, error) {
-	s := &schemaspec.Schema{
-		Name: sche.Name,
+// Spec converts a schema.Schema into scehmaspec.Schema and []schemaspec.Table.
+func Spec(s *schema.Schema, fn TableSpecFunc) (*schemaspec.Schema, []*schemaspec.Table, error) {
+	spec := &schemaspec.Schema{
+		Name: s.Name,
 	}
-	var tables []*schemaspec.Table
-	for _, ts := range sche.Tables {
-		table, err := tab(ts)
+	tables := make([]*schemaspec.Table, 0, len(s.Tables))
+	for _, t := range s.Tables {
+		table, err := fn(t)
 		if err != nil {
 			return nil, nil, err
 		}
 		tables = append(tables, table)
 	}
-	return s, tables, nil
+	return spec, tables, nil
 }
 
 // TableSpec converts  schema.Table to a schemaspec.Table.
