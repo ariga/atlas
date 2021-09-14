@@ -5,8 +5,10 @@
 package mysql
 
 import (
+	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 
 	"ariga.io/atlas/sql/internal/schemautil"
@@ -56,7 +58,7 @@ func (d *Driver) FormatType(t schema.Type) (string, error) {
 		f = fmt.Sprintf("enum(%s)", formatValues(t.Values))
 	case *schema.StringType:
 		f = strings.ToLower(t.T)
-		if f == tVarchar {
+		if f == tChar || f == tVarchar {
 			// Zero is also a valid length.
 			f = fmt.Sprintf("%s(%d)", f, t.Size)
 		}
@@ -277,4 +279,80 @@ func formatValues(vs []string) string {
 		}
 	}
 	return strings.Join(values, ",")
+}
+
+// ColumnTypeSpec converts from a concrete MySQL schema.Type into schemaspec.Column Type.
+func ColumnTypeSpec(t schema.Type) (*schemaspec.Column, error) {
+	switch t := t.(type) {
+	case *schema.EnumType:
+		return enumSpec(t)
+	case *schema.IntegerType:
+		return integerSpec(t)
+	case *schema.StringType:
+		return stringSpec(t)
+	case *schema.DecimalType:
+		return schemautil.ColSpec("", "decimal",
+			schemautil.LitAttr("precision", strconv.Itoa(t.Precision)), schemautil.LitAttr("scale", strconv.Itoa(t.Scale))), nil
+	case *schema.BinaryType:
+		return binarySpec(t)
+	case *schema.BoolType:
+		return &schemaspec.Column{Type: "boolean"}, nil
+	case *schema.FloatType:
+		return schemautil.ColSpec("", "float", schemautil.LitAttr("precision", strconv.Itoa(t.Precision))), nil
+	case *schema.TimeType:
+		return &schemaspec.Column{Type: t.T}, nil
+	case *schema.JSONType:
+		return &schemaspec.Column{Type: t.T}, nil
+	case *schema.SpatialType:
+		return &schemaspec.Column{Type: t.T}, nil
+	case *schema.UnsupportedType:
+		return &schemaspec.Column{Type: t.T}, nil
+	default:
+		return nil, fmt.Errorf("mysql: failed to convert column type %T to spec", t)
+	}
+}
+
+func binarySpec(t *schema.BinaryType) (*schemaspec.Column, error) {
+	switch t.T {
+	case tBlob:
+		return &schemaspec.Column{Type: "binary"}, nil
+	case tTinyBlob, tMediumBlob, tLongBlob:
+		s := strconv.Itoa(t.Size)
+		return schemautil.ColSpec("", "binary", schemautil.LitAttr("size", s)), nil
+	}
+	return nil, errors.New("mysql: schema binary failed to convert")
+}
+
+func stringSpec(t *schema.StringType) (*schemaspec.Column, error) {
+	switch t.T {
+	case tVarchar, tMediumText, tLongText:
+		s := strconv.Itoa(t.Size)
+		return schemautil.ColSpec("", "string", schemautil.LitAttr("size", s)), nil
+	}
+	return nil, errors.New("mysql: schema string failed to convert")
+}
+
+func integerSpec(t *schema.IntegerType) (*schemaspec.Column, error) {
+	switch t.T {
+	case tInt:
+		if t.Unsigned {
+			return schemautil.ColSpec("", "uint"), nil
+		}
+		return &schemaspec.Column{Type: "int"}, nil
+	case tTinyInt:
+		return &schemaspec.Column{Type: "int8"}, nil
+	case tBigInt:
+		if t.Unsigned {
+			return schemautil.ColSpec("", "uint64"), nil
+		}
+		return &schemaspec.Column{Type: "int64"}, nil
+	}
+	return nil, errors.New("mysql: schema integer failed to convert")
+}
+
+func enumSpec(t *schema.EnumType) (*schemaspec.Column, error) {
+	if len(t.Values) == 0 {
+		return nil, errors.New("mysql: schema enum fields to have values")
+	}
+	return schemautil.ColSpec("", "enum", schemautil.ListAttr("values", t.Values...)), nil
 }
