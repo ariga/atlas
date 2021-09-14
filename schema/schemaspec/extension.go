@@ -152,7 +152,6 @@ func scanAttr(key string, r *Resource, field reflect.Value) error {
 	return nil
 }
 
-
 // specFields uses reflection to find struct fields that are tagged with "spec"
 // and returns a list of mappings from the tag to the field name.
 func specFields(ext Extension) []fieldTag {

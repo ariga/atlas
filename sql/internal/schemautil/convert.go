@@ -19,6 +19,8 @@ type (
 	ConvertPrimaryKeyFunc func(*schemaspec.PrimaryKey, *schema.Table) (*schema.Index, error)
 	ConvertIndexFunc      func(*schemaspec.Index, *schema.Table) (*schema.Index, error)
 	TypeSpecFunc          func(schema.Type) (*schemaspec.Column, error)
+	ColumnSpecFunc        func(*schema.Column) (*schemaspec.Column, error)
+	TableSpecFunc         func(*schema.Table) (*schemaspec.Table, error)
 )
 
 // ConvertSchema converts a schemaspec.Schema with its relevant *schemaspec.Tables
@@ -180,34 +182,47 @@ func resolveCol(ref *schemaspec.ColumnRef, sch *schema.Schema) (*schema.Column, 
 	return col, nil
 }
 
-// ColumnSpec converts a schema.Column into a schemaspec.Column.
-func ColumnSpec(spec *schema.Column, conv TypeSpecFunc) (*schemaspec.Column, error) {
-	out, _ := conv(spec.Type.Type)
-	out.Name = spec.Name
-	//if spec.Default != nil{
-	//	out.Default = spec.Default
-	//}
-	//spec.
-	return out, nil
+// Spec converts a schema.Schema into scehmaspec.Schema and []schemaspec.Table
+func Spec(sche *schema.Schema, tab TableSpecFunc) (*schemaspec.Schema, []*schemaspec.Table, error) {
+	s := &schemaspec.Schema{
+		Name: sche.Name,
+	}
+	var tables []*schemaspec.Table
+	for _, ts := range sche.Tables {
+		table, err := tab(ts)
+		if err != nil {
+			return nil, nil, err
+		}
+		tables = append(tables, table)
+	}
+	return s, tables, nil
 }
 
-//
-//// ConvertColumn converts a schemaspec.Column into a schema.Column.
-//func ConvertColumn(spec *schemaspec.Column, conv ConvertTypeFunc) (*schema.Column, error) {
-//	out := &schema.Column{
-//		Name: spec.Name,
-//		Spec: spec,
-//		Type: &schema.ColumnType{
-//			Null: spec.Null,
-//		},
-//	}
-//	if spec.Default != nil {
-//		out.Default = &schema.Literal{V: spec.Default.V}
-//	}
-//	ct, err := conv(spec)
-//	if err != nil {
-//		return nil, err
-//	}
-//	out.Type.Type = ct
-//	return out, err
-//}
+// TableSpec converts  schema.Table to a schemaspec.Table.
+func TableSpec(tab *schema.Table, colSpec ColumnSpecFunc) (*schemaspec.Table, error) {
+	tbl := &schemaspec.Table{
+		Name: tab.Name,
+	}
+	for _, csp := range tab.Columns {
+		col, err := colSpec(csp)
+		if err != nil {
+			return nil, err
+		}
+		tbl.Columns = append(tbl.Columns, col)
+	}
+	return tbl, nil
+}
+
+func ColumnSpec(sche *schema.Column, typSpec TypeSpecFunc) (*schemaspec.Column, error) {
+	out := &schemaspec.Column{
+		Name: sche.Name,
+	}
+	ct, err := typSpec(sche.Type.Type)
+	if err != nil {
+		return nil, err
+	}
+	out.Type = ct.Type
+	out.Attrs = ct.Attrs
+	out.Null = ct.Null
+	return out, err
+}
