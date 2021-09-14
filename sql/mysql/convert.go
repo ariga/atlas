@@ -167,15 +167,15 @@ func convertBinary(spec *schemaspec.Column) (schema.Type, error) {
 	}
 	switch {
 	case bt.Size == 0:
-		bt.T = "blob"
+		bt.T = tBlob
 	case bt.Size <= math.MaxUint8:
-		bt.T = "tinyblob"
+		bt.T = tTinyBlob
 	case bt.Size > math.MaxUint8 && bt.Size <= math.MaxUint16:
-		bt.T = "blob"
+		bt.T = tBlob
 	case bt.Size > math.MaxUint16 && bt.Size <= 1<<24-1:
-		bt.T = "mediumblob"
+		bt.T = tMediumBlob
 	case bt.Size > 1<<24-1 && bt.Size <= math.MaxUint32:
-		bt.T = "longblob"
+		bt.T = tLongBlob
 	default:
 		return nil, fmt.Errorf("mysql: blob fields can be up to 4GB long")
 	}
@@ -195,11 +195,11 @@ func convertString(spec *schemaspec.Column) (schema.Type, error) {
 	}
 	switch {
 	case st.Size <= math.MaxUint16:
-		st.T = "varchar"
+		st.T = tVarchar
 	case st.Size > math.MaxUint16 && st.Size <= (1<<24-1):
-		st.T = "mediumtext"
+		st.T = tMediumText
 	case st.Size > (1<<24-1) && st.Size <= math.MaxUint32:
-		st.T = "longtext"
+		st.T = tLongText
 	default:
 		return nil, fmt.Errorf("mysql: string fields can be up to 4GB long")
 	}
@@ -262,7 +262,7 @@ func convertFloat(spec *schemaspec.Column) (schema.Type, error) {
 	// A precision from 24 to 53 results in an 8-byte double-precision DOUBLE column:
 	// https://dev.mysql.com/doc/refman/8.0/en/floating-point-types.html
 	if ft.Precision > 23 {
-		ft.T = "double"
+		ft.T = tDouble
 	}
 	return ft, nil
 }
