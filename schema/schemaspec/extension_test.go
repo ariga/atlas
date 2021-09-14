@@ -10,10 +10,11 @@ import (
 )
 
 type OwnerBlock struct {
-	ID        string `spec:",name"`
-	FirstName string `spec:"first_name"`
-	Born      int    `spec:"born"`
-	Active    bool   `spec:"active"`
+	ID        string                   `spec:",name"`
+	FirstName string                   `spec:"first_name"`
+	Born      int                      `spec:"born"`
+	Active    bool                     `spec:"active"`
+	Lit       *schemaspec.LiteralValue `spec:"lit"`
 }
 
 func (*OwnerBlock) Type() string {
@@ -39,6 +40,7 @@ func TestExtension(t *testing.T) {
 			schemautil.StrLitAttr("first_name", "tzuri"),
 			schemautil.LitAttr("born", "2019"),
 			schemautil.LitAttr("active", "true"),
+			schemautil.LitAttr("lit", "1000"),
 		},
 	}
 	owner := OwnerBlock{}
@@ -48,6 +50,7 @@ func TestExtension(t *testing.T) {
 	require.EqualValues(t, "name", owner.ID)
 	require.EqualValues(t, 2019, owner.Born)
 	require.EqualValues(t, true, owner.Active)
+	require.EqualValues(t, schemautil.LitAttr("lit", "1000").V, owner.Lit)
 
 	scan := &schemaspec.Resource{}
 	err = scan.Scan(&owner)
