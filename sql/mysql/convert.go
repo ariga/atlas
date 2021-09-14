@@ -281,17 +281,17 @@ func formatValues(vs []string) string {
 	return strings.Join(values, ",")
 }
 
-// Spec converts from MySQL specific schema to Atlas specification.
-func (d *Driver) Spec(schem *schema.Schema) (*schemaspec.Schema, []*schemaspec.Table, error) {
-	return schemautil.Spec(schem, d.TableSpec)
+// SchemaSpec converts from a concrete MySQL schema to Atlas specification.
+func (d *Driver) SchemaSpec(schem *schema.Schema) (*schemaspec.Schema, []*schemaspec.Table, error) {
+	return schemautil.SchemaSpec(schem, d.TableSpec)
 }
 
-// TableSpec converts a schemaspec.Table to a schema.Table.
+// TableSpec converts from a concrete MySQL schemaspec.Table to a schema.Table.
 func (d *Driver) TableSpec(tab *schema.Table) (*schemaspec.Table, error) {
 	return schemautil.TableSpec(tab, d.ColumnSpec)
 }
 
-// ColumnSpec converts a schema.Column into a schemaspec.Column.
+// ColumnSpec converts from a concrete MySQL schema.Column into a schemaspec.Column.
 func (d *Driver) ColumnSpec(col *schema.Column) (*schemaspec.Column, error) {
 	return schemautil.ColumnSpec(col, ColumnTypeSpec)
 }

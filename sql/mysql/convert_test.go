@@ -160,7 +160,7 @@ func TestConvertSchema(t *testing.T) {
 	require.EqualValues(t, exp, sch)
 }
 
-func TestSpec(t *testing.T) {
+func TestSchemaSpec(t *testing.T) {
 	spec := &schemaspec.Schema{
 		Name: "schema",
 	}
@@ -277,7 +277,7 @@ func TestSpec(t *testing.T) {
 		},
 	}
 	require.EqualValues(t, exp, sch)
-	cspec, ctables, err := d.Spec(sch)
+	cspec, ctables, err := d.SchemaSpec(sch)
 	require.NoError(t, err)
 	require.EqualValues(t, spec, cspec)
 	require.EqualValues(t, tables, ctables)

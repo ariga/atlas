@@ -183,29 +183,29 @@ func resolveCol(ref *schemaspec.ColumnRef, sch *schema.Schema) (*schema.Column, 
 	return col, nil
 }
 
-// Spec converts a schema.Schema into scehmaspec.Schema and []schemaspec.Table
-func Spec(sche *schema.Schema, tab TableSpecFunc) (*schemaspec.Schema, []*schemaspec.Table, error) {
-	s := &schemaspec.Schema{
-		Name: sche.Name,
+// SchemaSpec converts a schema.Schema into scehmaspec.Schema and []schemaspec.Table.
+func SchemaSpec(s *schema.Schema, fn TableSpecFunc) (*schemaspec.Schema, []*schemaspec.Table, error) {
+	spec := &schemaspec.Schema{
+		Name: s.Name,
 	}
-	var tables []*schemaspec.Table
-	for _, ts := range sche.Tables {
-		table, err := tab(ts)
+	tables := make([]*schemaspec.Table, 0, len(s.Tables))
+	for _, t := range s.Tables {
+		table, err := fn(t)
 		if err != nil {
 			return nil, nil, err
 		}
 		tables = append(tables, table)
 	}
-	return s, tables, nil
+	return spec, tables, nil
 }
 
-// TableSpec converts  schema.Table to a schemaspec.Table.
-func TableSpec(tab *schema.Table, colSpec ColumnSpecFunc, pkSpec PKSpecFunc) (*schemaspec.Table, error) {
+// TableSpec converts schema.Table to a schemaspec.Table.
+func TableSpec(tab *schema.Table, colSpec ColumnSpecFunc,pkSpec PKSpecFunc) (*schemaspec.Table, error) {
 	tbl := &schemaspec.Table{
 		Name: tab.Name,
 	}
-	for _, csp := range tab.Columns {
-		col, err := colSpec(csp)
+	for _, c := range tab.Columns {
+		col, err := colSpec(c)
 		if err != nil {
 			return nil, err
 		}
@@ -232,16 +232,18 @@ func TableSpec(tab *schema.Table, colSpec ColumnSpecFunc, pkSpec PKSpecFunc) (*s
 	return tbl, nil
 }
 
-func ColumnSpec(sche *schema.Column, typSpec TypeSpecFunc) (*schemaspec.Column, error) {
-	out := &schemaspec.Column{
-		Name: sche.Name,
-	}
-	ct, err := typSpec(sche.Type.Type)
+// ColumnSpec converts a schema.Column to a schemaspec.Column.
+func ColumnSpec(c *schema.Column, fn TypeSpecFunc) (*schemaspec.Column, error) {
+	ct, err := fn(c.Type.Type)
 	if err != nil {
 		return nil, err
 	}
-	out.Type = ct.Type
-	out.Attrs = ct.Attrs
-	out.Null = ct.Null
-	return out, err
+	return &schemaspec.Column{
+		Name: c.Name,
+		Type: ct.Type,
+		Null: ct.Null,
+		Resource: schemaspec.Resource{
+			Attrs: ct.Attrs,
+		},
+	}, nil
 }
