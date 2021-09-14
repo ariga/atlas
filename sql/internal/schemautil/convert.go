@@ -198,7 +198,7 @@ func SchemaSpec(s *schema.Schema, fn TableSpecFunc) (*schemaspec.Schema, []*sche
 	return spec, tables, nil
 }
 
-// TableSpec converts  schema.Table to a schemaspec.Table.
+// TableSpec converts schema.Table to a schemaspec.Table.
 func TableSpec(tab *schema.Table, colSpec ColumnSpecFunc) (*schemaspec.Table, error) {
 	tbl := &schemaspec.Table{
 		Name: tab.Name,
@@ -213,6 +213,7 @@ func TableSpec(tab *schema.Table, colSpec ColumnSpecFunc) (*schemaspec.Table, er
 	return tbl, nil
 }
 
+// ColumnSpec converts a schema.Column to a schemaspec.Column.
 func ColumnSpec(c *schema.Column, fn TypeSpecFunc) (*schemaspec.Column, error) {
 	ct, err := fn(c.Type.Type)
 	if err != nil {
