@@ -73,7 +73,7 @@ func toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes) ([]*schemaspec
 		var err error
 		switch {
 		case isRef(value):
-			at.V = &schemaspec.Ref{value.GetAttr("__ref").AsString()}
+			at.V = &schemaspec.Ref{V: value.GetAttr("__ref").AsString()}
 		case value.Type().IsTupleType():
 			at.V, err = extractListValue(value)
 		default:
