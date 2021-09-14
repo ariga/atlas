@@ -295,45 +295,25 @@ func ColumnTypeSpec(t schema.Type) (*schemaspec.Column, error) {
 	case *schema.BinaryType:
 		return binarySpec(t)
 	case *schema.BoolType:
-		return boolSpec()
+		return schemautil.ColSpec("", "boolean"), nil
 	case *schema.FloatType:
 		return floatSpec(t)
 	case *schema.TimeType:
-		return timeSpec(t)
+		return schemautil.ColSpec("", t.T), nil
 	case *schema.JSONType:
-		return jsonSpec(t)
+		return schemautil.ColSpec("", t.T), nil
 	case *schema.SpatialType:
-		return spatialSpec(t)
+		return schemautil.ColSpec("", t.T), nil
 	case *schema.UnsupportedType:
-		return unsupportedSpec(t)
+		return schemautil.ColSpec("", t.T), nil
 	default:
 		return nil, fmt.Errorf("mysql: failed to convert column type %T to spec", t)
 	}
 }
 
-func unsupportedSpec(t *schema.UnsupportedType) (*schemaspec.Column, error) {
-	return schemautil.ColSpec("", t.T), nil
-}
-
-func spatialSpec(t *schema.SpatialType) (*schemaspec.Column, error) {
-	return schemautil.ColSpec("", t.T), nil
-}
-
-func jsonSpec(t *schema.JSONType) (*schemaspec.Column, error) {
-	return schemautil.ColSpec("", t.T), nil
-}
-
-func timeSpec(t *schema.TimeType) (*schemaspec.Column, error) {
-	return schemautil.ColSpec("", t.T), nil
-}
-
 func floatSpec(t *schema.FloatType) (*schemaspec.Column, error) {
 	p := strconv.Itoa(t.Precision)
 	return schemautil.ColSpec("", "float", schemautil.LitAttr("precision", p)), nil
-}
-
-func boolSpec() (*schemaspec.Column, error) {
-	return schemautil.ColSpec("", "boolean"), nil
 }
 
 func binarySpec(t *schema.BinaryType) (*schemaspec.Column, error) {
