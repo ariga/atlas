@@ -281,8 +281,8 @@ func formatValues(vs []string) string {
 	return strings.Join(values, ",")
 }
 
-// Spec converts from MySQL specific schema to Atlas specification.
-func (d *Driver) Spec(schem *schema.Schema) (*schemaspec.Schema, []*schemaspec.Table, error) {
+// SchemaSpec converts from MySQL specific schema to Atlas specification.
+func (d *Driver) SchemaSpec(schem *schema.Schema) (*schemaspec.Schema, []*schemaspec.Table, error) {
 	return schemautil.Spec(schem, d.TableSpec)
 }
 
