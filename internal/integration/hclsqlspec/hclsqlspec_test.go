@@ -21,6 +21,12 @@ table "users" {
 	column "id" {
 		type = "uint"
 		null = false
+		default = 123
+	}
+	column "active" {
+		type = "boolean"
+		null = false
+		default = true
 	}
 }
 `)
@@ -38,6 +44,13 @@ table "users" {
 						Name:     "id",
 						TypeName: "uint",
 						Null:     false,
+						Default:  &schemaspec.LiteralValue{V: "123"},
+					},
+					{
+						Name:     "active",
+						TypeName: "boolean",
+						Null:     false,
+						Default:  &schemaspec.LiteralValue{V: "true"},
 					},
 				},
 			},
