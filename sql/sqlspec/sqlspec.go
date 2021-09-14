@@ -3,11 +3,6 @@ package sqlspec
 import "ariga.io/atlas/schema/schemaspec"
 
 type (
-	File struct {
-		Schemas []*Schema `spec:"schema"`
-		Tables  []*Table  `spec:"table"`
-		schemaspec.Resource
-	}
 
 	// Schema holds a specification for a Schema.
 	Schema struct {
@@ -36,10 +31,6 @@ type (
 		schemaspec.Resource
 	}
 )
-
-func (*File) Type() string {
-	return "file"
-}
 
 func (*Schema) Type() string {
 	return "schema"

@@ -3,6 +3,7 @@ package hclsqlspec
 import (
 	"testing"
 
+	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/sqlspec"
 	"github.com/stretchr/testify/require"
@@ -24,7 +25,7 @@ table "users" {
 }
 `)
 	require.NoError(t, err)
-	require.EqualValues(t, &sqlspec.File{
+	require.EqualValues(t, &db{
 		Schemas: []*sqlspec.Schema{
 			{Name: "hi"},
 		},
@@ -44,14 +45,21 @@ table "users" {
 	}, file)
 }
 
-func decode(f string) (*sqlspec.File, error) {
+func decode(f string) (*db, error) {
 	res, err := schemahcl.Decode([]byte(f))
 	if err != nil {
 		return nil, err
 	}
-	s := sqlspec.File{}
+	s := db{}
 	if err := res.As(&s); err != nil {
 		return nil, err
 	}
 	return &s, nil
 }
+
+type db struct {
+	Schemas []*sqlspec.Schema `spec:"schema"`
+	Tables  []*sqlspec.Table  `spec:"table"`
+	schemaspec.Extension
+}
+
