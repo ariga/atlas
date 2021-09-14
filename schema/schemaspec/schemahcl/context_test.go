@@ -75,7 +75,7 @@ country "israel" {
 	}
 }
 `
-	res, err := decode([]byte(f))
+	res, err := Decode([]byte(f))
 	require.NoError(t, err)
 	israel := res.Children[0]
 	givatyaim := israel.Children[2]
