@@ -213,16 +213,15 @@ func TableSpec(tab *schema.Table, colSpec ColumnSpecFunc) (*schemaspec.Table, er
 	return tbl, nil
 }
 
-func ColumnSpec(sche *schema.Column, typSpec TypeSpecFunc) (*schemaspec.Column, error) {
-	out := &schemaspec.Column{
-		Name: sche.Name,
-	}
-	ct, err := typSpec(sche.Type.Type)
+func ColumnSpec(c *schema.Column, fn TypeSpecFunc) (*schemaspec.Column, error) {
+	ct, err := fn(c.Type.Type)
 	if err != nil {
 		return nil, err
 	}
-	out.Type = ct.Type
-	out.Attrs = ct.Attrs
-	out.Null = ct.Null
-	return out, err
+	return &schemaspec.Column{
+		Name: c.Name,
+		Type: ct.Type,
+		Attrs: ct.Attrs,
+		Null: ct.Null,
+	}, nil
 }
