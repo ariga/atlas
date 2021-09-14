@@ -21,6 +21,7 @@ type (
 	TypeSpecFunc          func(schema.Type) (*schemaspec.Column, error)
 	ColumnSpecFunc        func(*schema.Column) (*schemaspec.Column, error)
 	TableSpecFunc         func(*schema.Table) (*schemaspec.Table, error)
+	PKSpecFunc            func(index *schema.Index) (*schemaspec.PrimaryKey, error)
 )
 
 // ConvertSchema converts a schemaspec.Schema with its relevant *schemaspec.Tables
@@ -199,7 +200,7 @@ func Spec(sche *schema.Schema, tab TableSpecFunc) (*schemaspec.Schema, []*schema
 }
 
 // TableSpec converts  schema.Table to a schemaspec.Table.
-func TableSpec(tab *schema.Table, colSpec ColumnSpecFunc) (*schemaspec.Table, error) {
+func TableSpec(tab *schema.Table, colSpec ColumnSpecFunc, pkSpec PKSpecFunc) (*schemaspec.Table, error) {
 	tbl := &schemaspec.Table{
 		Name: tab.Name,
 	}
@@ -210,6 +211,24 @@ func TableSpec(tab *schema.Table, colSpec ColumnSpecFunc) (*schemaspec.Table, er
 		}
 		tbl.Columns = append(tbl.Columns, col)
 	}
+
+	if tab.PrimaryKey != nil {
+		pk, err := pkSpec(tab.PrimaryKey)
+		if err != nil {
+			return nil, err
+		}
+		tbl.PrimaryKey = pk
+	}
+
+	//if spec.PrimaryKey != nil {
+	//	pk, err := convertPk(spec.PrimaryKey, tbl)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	tbl.PrimaryKey = pk
+	//}
+	//
+
 	return tbl, nil
 }
 
