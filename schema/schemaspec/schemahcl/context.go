@@ -2,6 +2,7 @@ package schemahcl
 
 import (
 	"fmt"
+	"path"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -33,7 +34,7 @@ func evalCtx(f *hcl.File) (*hcl.EvalContext, error) {
 	if !ok {
 		return nil, fmt.Errorf("schemahcl: expected an hcl body")
 	}
-	varMap, err := blockVarMap(b)
+	varMap, err := blockVarMap(b, "/")
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +44,7 @@ func evalCtx(f *hcl.File) (*hcl.EvalContext, error) {
 	return out, nil
 }
 
-func blockVarMap(b *hclsyntax.Body) (map[string]cty.Value, error) {
+func blockVarMap(b *hclsyntax.Body, parentAddr string) (map[string]cty.Value, error) {
 	types, err := typeDefs(b)
 	if err != nil {
 		return nil, fmt.Errorf("schemahcl: failed extracting type definitions: %w", err)
@@ -63,7 +64,9 @@ func blockVarMap(b *hclsyntax.Body) (map[string]cty.Value, error) {
 					attrs[n] = cty.NullVal(t)
 				}
 			}
-			varMap, err := blockVarMap(blk.Body)
+			self := path.Join(parentAddr, n, name)
+			attrs["__ref"] = cty.StringVal(self)
+			varMap, err := blockVarMap(blk.Body, self)
 			if err != nil {
 				return nil, err
 			}
@@ -71,6 +74,7 @@ func blockVarMap(b *hclsyntax.Body) (map[string]cty.Value, error) {
 			for k, v := range varMap {
 				attrs[k] = v
 			}
+
 			v[name] = cty.ObjectVal(attrs)
 		}
 		if len(v) > 0 {

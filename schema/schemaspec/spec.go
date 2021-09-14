@@ -34,6 +34,10 @@ type (
 	ListValue struct {
 		V []string
 	}
+
+	Ref struct {
+		V string
+	}
 )
 
 // Int returns an integer from the Value of the Attr. If The value is not a LiteralValue or the value
@@ -69,6 +73,14 @@ func (a *Attr) Bool() (bool, error) {
 		return false, fmt.Errorf("schema: cannot read attribute %q as literal", a.K)
 	}
 	return strconv.ParseBool(lit.V)
+}
+
+func (a *Attr) Ref() (string, error) {
+	ref, ok := a.V.(*Ref)
+	if !ok {
+		return "", fmt.Errorf("schema: cannot read attribute %q as ref", a.K)
+	}
+	return ref.V, nil
 }
 
 // Strings returns a slice of strings from the Value of the Attr. If The value is not a ListValue or the its
@@ -118,3 +130,4 @@ func replaceOrAppendAttr(attrs []*Attr, attr *Attr) []*Attr {
 
 func (*LiteralValue) val() {}
 func (*ListValue) val()    {}
+func (*Ref) val()          {}

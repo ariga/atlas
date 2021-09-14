@@ -85,3 +85,23 @@ country "israel" {
 	require.NoError(t, err)
 	require.EqualValues(t, "03", s)
 }
+
+func TestBlockReference(t *testing.T) {
+	f := `
+person "jon" {
+	
+}
+pet "garfield" {
+	type = "cat"
+	owner = person.jon
+}
+`
+	res, err := decode([]byte(f))
+	require.NoError(t, err)
+	garfield := res.Children[1]
+	attr, ok := garfield.Attr("owner")
+	require.True(t, ok)
+	ref, err := attr.Ref()
+	require.NoError(t, err)
+	require.EqualValues(t, "/person/jon", ref)
+}
