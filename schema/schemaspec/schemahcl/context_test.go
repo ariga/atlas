@@ -96,7 +96,7 @@ pet "garfield" {
 	owner = person.jon
 }
 `
-	res, err := decode([]byte(f))
+	res, err := Decode([]byte(f))
 	require.NoError(t, err)
 	garfield := res.Children[1]
 	attr, ok := garfield.Attr("owner")
