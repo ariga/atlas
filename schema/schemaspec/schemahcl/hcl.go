@@ -74,6 +74,8 @@ func toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes) ([]*schemaspec
 		switch {
 		case isRef(value):
 			at.V = &schemaspec.Ref{V: value.GetAttr("__ref").AsString()}
+		case isExpr(value):
+			at.V = &schemaspec.LiteralValue{V: value.GetAttr("__expr").AsString()}
 		case value.Type().IsTupleType():
 			at.V, err = extractListValue(value)
 		default:
@@ -93,6 +95,10 @@ func toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes) ([]*schemaspec
 
 func isRef(v cty.Value) bool {
 	return v.Type().IsObjectType() && v.Type().HasAttribute("__ref")
+}
+
+func isExpr(v cty.Value) bool {
+	return v.Type().IsObjectType() && v.Type().HasAttribute("__expr")
 }
 
 func extractListValue(value cty.Value) (*schemaspec.ListValue, error) {

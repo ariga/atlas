@@ -21,12 +21,12 @@ table "users" {
 	column "id" {
 		type = "uint"
 		null = false
-		default = 123
+		default = expr(123)
 	}
-	column "age" {
-		type = "int"
+	column "active" {
+		type = "boolean"
 		null = false
-		default = 10
+		default = expr(true)
 	}
 }
 `)
@@ -47,10 +47,10 @@ table "users" {
 						Default:  &schemaspec.LiteralValue{V: "123"},
 					},
 					{
-						Name:     "age",
-						TypeName: "int",
+						Name:     "active",
+						TypeName: "boolean",
 						Null:     false,
-						Default:  &schemaspec.LiteralValue{V: "10"},
+						Default:  &schemaspec.LiteralValue{V: "true"},
 					},
 				},
 			},

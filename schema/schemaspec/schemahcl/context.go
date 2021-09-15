@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/function"
 )
 
 // evalCtx constructs an *hcl.EvalContext with the Variables field populated with per
@@ -40,6 +41,28 @@ func evalCtx(f *hcl.File) (*hcl.EvalContext, error) {
 	}
 	out := &hcl.EvalContext{
 		Variables: varMap,
+		Functions: map[string]function.Function{
+			"expr": function.New(&function.Spec{
+				Params: []function.Parameter{
+					{
+						Name: "expr",
+						Type: cty.DynamicPseudoType,
+					},
+				},
+				Type: function.StaticReturnType(cty.Object(map[string]cty.Type{
+					"__expr": cty.String,
+				})),
+				Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+					lit, err := extractLiteralValue(args[0])
+					if err != nil {
+						return cty.Value{}, err
+					}
+					return cty.ObjectVal(map[string]cty.Value{
+						"__expr": cty.StringVal(lit.V),
+					}), nil
+				},
+			}),
+		},
 	}
 	return out, nil
 }

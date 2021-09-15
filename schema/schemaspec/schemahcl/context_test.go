@@ -105,3 +105,18 @@ pet "garfield" {
 	require.NoError(t, err)
 	require.EqualValues(t, "/person/jon", ref)
 }
+
+func TestExpr(t *testing.T) {
+	f := `
+i = expr(1)
+b = expr(true)
+s = expr("xyz")
+`
+	res, err := Decode([]byte(f))
+	require.NoError(t, err)
+	attr, ok := res.Attr("i")
+	require.True(t, ok)
+	i, err := attr.Int()
+	require.NoError(t, err)
+	require.EqualValues(t, 1, i)
+}
