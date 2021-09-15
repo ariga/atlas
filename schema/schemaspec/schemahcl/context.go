@@ -24,9 +24,6 @@ import (
 //		title = "{greeting.hebrew.word}, world!"
 //	}
 //
-// This currently only works for the top level blocks, nested blocks and their
-// attributes are not loaded into the eval context.
-// TODO(rotemtam): support nested blocks.
 func evalCtx(f *hcl.File) (*hcl.EvalContext, error) {
 	c := &container{}
 	if diag := gohcl.DecodeBody(f.Body, &hcl.EvalContext{}, c); diag.HasErrors() {
@@ -36,13 +33,21 @@ func evalCtx(f *hcl.File) (*hcl.EvalContext, error) {
 	if !ok {
 		return nil, fmt.Errorf("schemahcl: expected an hcl body")
 	}
-	types, err := extractTypes(b)
+	varMap, err := blockVars(b)
+	if err != nil {
+		return nil, err
+	}
+	return &hcl.EvalContext{
+		Variables: varMap,
+	}, nil
+}
+
+func blockVars(b *hclsyntax.Body) (map[string]cty.Value, error) {
+	types, err := typeDefs(b)
 	if err != nil {
 		return nil, fmt.Errorf("schemahcl: failed extracting type definitions: %w", err)
 	}
-	out := &hcl.EvalContext{
-		Variables: make(map[string]cty.Value),
-	}
+	vars := make(map[string]cty.Value)
 	for n, typ := range types {
 		v := make(map[string]cty.Value)
 		for _, blk := range blocksOfType(b.Blocks, n) {
@@ -57,11 +62,21 @@ func evalCtx(f *hcl.File) (*hcl.EvalContext, error) {
 					attrs[n] = cty.NullVal(t)
 				}
 			}
+			varMap, err := blockVars(blk.Body)
+			if err != nil {
+				return nil, err
+			}
+			// Merge children blocks in.
+			for k, v := range varMap {
+				attrs[k] = v
+			}
 			v[name] = cty.ObjectVal(attrs)
 		}
-		out.Variables[n] = cty.MapVal(v)
+		if len(v) > 0 {
+			vars[n] = cty.MapVal(v)
+		}
 	}
-	return out, nil
+	return vars, nil
 }
 
 func blockName(blk *hclsyntax.Block) string {
@@ -93,11 +108,23 @@ func attrMap(attrs hclsyntax.Attributes) map[string]cty.Value {
 	return out
 }
 
-// extractTypes returns a map of block types in the document. Types are computed
+func typeDefs(b *hclsyntax.Body) (map[string]cty.Type, error) {
+	types, err := extractTypes(b)
+	if err != nil {
+		return nil, err
+	}
+	objs := make(map[string]cty.Type)
+	for k, v := range types {
+		objs[k] = cty.Object(v)
+	}
+	return objs, nil
+}
+
+// extractTypes returns a map of block types a block. Types are computed
 // as an intersection fields in all instances. If conflicting field types are encountered
 // an error is returned.
 // TODO(rotemtam): type definitions should be fed into the hcl parser from the plugin system.
-func extractTypes(b *hclsyntax.Body) (map[string]cty.Type, error) {
+func extractTypes(b *hclsyntax.Body) (map[string]map[string]cty.Type, error) {
 	types := make(map[string]map[string]cty.Type)
 	for _, blk := range b.Blocks {
 		attrTypes := extractAttrTypes(&hcl.EvalContext{}, blk)
@@ -109,11 +136,7 @@ func extractTypes(b *hclsyntax.Body) (map[string]cty.Type, error) {
 			return nil, err
 		}
 	}
-	out := make(map[string]cty.Type)
-	for k, v := range types {
-		out[k] = cty.Object(v)
-	}
-	return out, nil
+	return types, nil
 }
 
 func mergeAttrTypes(target, other map[string]cty.Type) error {

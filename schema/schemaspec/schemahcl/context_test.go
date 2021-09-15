@@ -60,3 +60,28 @@ config "defaults" {
 	require.NoError(t, err)
 	require.EqualValues(t, "default: generic", interpolated)
 }
+
+func TestNestedReferences(t *testing.T) {
+	f := `
+country "israel" {
+	city "tel_aviv" {
+		phone_area_code = "03"
+	}
+	city "jerusalem" {
+		phone_area_code = "02"
+	}
+	city "givatayim" {
+		phone_area_code = country.israel.city.tel_aviv.phone_area_code
+	}
+}
+`
+	res, err := Decode([]byte(f))
+	require.NoError(t, err)
+	israel := res.Children[0]
+	givatyaim := israel.Children[2]
+	attr, ok := givatyaim.Attr("phone_area_code")
+	require.True(t, ok)
+	s, err := attr.String()
+	require.NoError(t, err)
+	require.EqualValues(t, "03", s)
+}
