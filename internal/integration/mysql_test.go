@@ -49,23 +49,38 @@ func (s *mysqlSuite) SetupTest() {
 }
 
 func (s *mysqlSuite) TestHCL() {
+	s.applyHcl(`
+schema "test" {
+}
+
+table "users" {
+	schema = schema.test
+	column "email" {
+		type = "string"
+	}
+}
+`)
+	realm := s.loadRealm()
+	table, ok := realm.Schemas[0].Table("users")
+	s.True(ok, "expected users table")
+	column, ok := table.Column("email")
+	s.True(ok, "expected name column")
+	s.Equal("users", table.Name)
+	s.Equal("email", column.Name)
+	s.Equal(column.Type.Raw, "varchar(255)")
+	s.applyHcl(`
+schema "test" {
+}
+`)
+	s.TestEmptyRealm()
+}
+
+func (s *mysqlSuite) applyHcl(spec string) {
 	ctx := context.Background()
 	realm, err := s.drv.InspectRealm(ctx, &schema.InspectRealmOption{
 		Schemas: []string{"test"},
 	})
-
 	s.NoError(err)
-	spec := `
-schema "test" {
-}
-
-table "hello" {
-	schema = schema.test
-	column "world" {
-		type = "string"
-	}
-}
-`
 	file := schemaspec.File{}
 	err = schemahcl.Decode([]byte(spec), &file)
 	s.NoError(err)
