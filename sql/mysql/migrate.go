@@ -173,7 +173,6 @@ func (m *migrate) alterTable(ctx context.Context, t *schema.Table, changes []sch
 			m.tableAttr(b, change.A)
 		case *schema.ModifyAttr:
 			m.tableAttr(b, change.To)
-
 		}
 	})
 	if _, err := m.ExecContext(ctx, b.String()); err != nil {
@@ -183,7 +182,7 @@ func (m *migrate) alterTable(ctx context.Context, t *schema.Table, changes []sch
 }
 
 func (m *migrate) column(b *sqlx.Builder, c *schema.Column) {
-	b.Ident(c.Name).P(c.Type.Raw)
+	b.Ident(c.Name).P(m.mustFormat(c.Type.Type))
 	if !c.Type.Null {
 		b.P("NOT")
 	}

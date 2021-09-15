@@ -16,8 +16,6 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-const Name = "postgres"
-
 // Driver represents a PostgreSQL driver for introspecting database schemas
 // and apply migrations changes on them.
 type Driver struct {
@@ -246,50 +244,50 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 
 func columnType(c *columnDesc) schema.Type {
 	var typ schema.Type
-	switch t := c.typ; t {
-	case "bigint", "int8", "integer", "int", "int4", "smallint", "int2":
+	switch t := c.typ; strings.ToLower(t) {
+	case tBigInt, tInt8, tInt, tInteger, tInt4, tSmallInt, tInt2:
 		typ = &schema.IntegerType{T: t}
-	case "bit", "bit varying":
+	case tBit, tBitVar:
 		typ = &BitType{T: t, Len: c.size}
-	case "boolean", "bool":
+	case tBool, tBoolean:
 		typ = &schema.BoolType{T: t}
-	case "bytea":
+	case tBytea:
 		typ = &schema.BinaryType{T: t}
-	case "character", "char", "character varying", "varchar", "text":
+	case tCharacter, tChar, tCharVar, tVarChar, tText:
 		// A `character` column without length specifier is equivalent to `character(1)`,
 		// but `varchar` without length accepts strings of any size (same as `text`).
 		typ = &schema.StringType{T: t, Size: int(c.size)}
-	case "cidr", "inet", "macaddr", "macaddr8":
+	case tCIDR, tInet, tMACAddr, tMACAddr8:
 		typ = &NetworkType{T: t}
-	case "circle", "line", "lseg", "box", "path", "polygon", "point":
+	case tCircle, tLine, tLseg, tBox, tPath, tPolygon, tPoint:
 		typ = &schema.SpatialType{T: t}
-	case "date", "time", "time with time zone", "time without time zone",
-		"timestamp", "timestamp with time zone", "timestamp without time zone":
+	case tDate, tTime, tTimeWTZ, tTimeWOTZ,
+		tTimestamp, tTimestampTZ, tTimestampWTZ, tTimestampWOTZ:
 		typ = &schema.TimeType{T: t}
-	case "interval":
+	case tInterval:
 		// TODO: get 'interval_type' from query above before implementing.
 		typ = &schema.UnsupportedType{T: t}
-	case "double precision", "float8", "real", "float4":
+	case tReal, tDouble, tFloat4, tFloat8:
 		typ = &schema.FloatType{T: t, Precision: int(c.precision)}
-	case "json", "jsonb":
+	case tJSON, tJSONB:
 		typ = &schema.JSONType{T: t}
-	case "money":
+	case tMoney:
 		typ = &CurrencyType{T: t}
-	case "numeric", "decimal":
+	case tDecimal, tNumeric:
 		typ = &schema.DecimalType{T: t, Precision: int(c.precision), Scale: int(c.scale)}
-	case "smallserial", "serial2", "serial", "serial4", "bigserial", "serial8":
+	case tSmallSerial, tSerial, tBigSerial, tSerial2, tSerial4, tSerial8:
 		typ = &SerialType{T: t, Precision: int(c.precision)}
-	case "uuid":
+	case tUUID:
 		typ = &UUIDType{T: t}
-	case "xml":
+	case tXML:
 		typ = &XMLType{T: t}
-	case "ARRAY":
+	case tArray:
 		// Note that for ARRAY types, the 'udt_name' column holds the array type
 		// prefixed with '_'. For example, for 'integer[]' the result is '_int',
 		// and for 'text[N][M]' the result is also '_text'. That's because, the
 		// database ignores any size or multi-dimensions constraints.
 		typ = &ArrayType{T: strings.TrimPrefix(c.udt, "_") + "[]"}
-	case "USER-DEFINED":
+	case tUserDefined:
 		typ = &UserDefinedType{T: c.udt}
 		// The `typtype` column is set to 'e' for enum types, and the
 		// values are filled in batch after the rows above is closed.
@@ -821,3 +819,73 @@ func defaultExpr(x string) schema.Expr {
 	}
 	return &schema.RawExpr{X: x}
 }
+
+// Standard column types (and their aliases) as defined in
+// PostgreSQL codebase/website.
+const (
+	tBit     = "bit"
+	tBitVar  = "bit varying"
+	tBoolean = "boolean"
+	tBool    = "bool" // boolean.
+	tBytea   = "bytea"
+
+	tCharacter = "character"
+	tChar      = "char" // character
+	tCharVar   = "character varying"
+	tVarChar   = "varchar" // character varying
+	tText      = "text"
+
+	tSmallInt = "smallint"
+	tInteger  = "integer"
+	tBigInt   = "bigint"
+	tInt      = "int"  // integer.
+	tInt2     = "int2" // smallint.
+	tInt4     = "int4" // integer.
+	tInt8     = "int8" // bigint.
+
+	tCIDR     = "cidr"
+	tInet     = "inet"
+	tMACAddr  = "macaddr"
+	tMACAddr8 = "macaddr8"
+
+	tCircle  = "circle"
+	tLine    = "line"
+	tLseg    = "lseg"
+	tBox     = "box"
+	tPath    = "path"
+	tPolygon = "polygon"
+	tPoint   = "point"
+
+	tDate          = "date"
+	tTime          = "time" // time without time zone
+	tTimeWTZ       = "time with time zone"
+	tTimeWOTZ      = "time without time zone"
+	tTimestamp     = "timestamp" // timestamp without time zone
+	tTimestampTZ   = "timestamptz"
+	tTimestampWTZ  = "timestamp with time zone"
+	tTimestampWOTZ = "timestamp without time zone"
+
+	tDouble = "double precision"
+	tReal   = "real"
+	tFloat8 = "float8" // double precision
+	tFloat4 = "float4" // real
+
+	tNumeric = "numeric"
+	tDecimal = "decimal" // numeric
+
+	tSmallSerial = "smallserial" // smallint with auto_increment.
+	tSerial      = "serial"      // integer with auto_increment.
+	tBigSerial   = "bigserial"   // bigint with auto_increment.
+	tSerial2     = "serial2"     // smallserial
+	tSerial4     = "serial4"     // serial
+	tSerial8     = "serial8"     // bigserial
+
+	tArray       = "array"
+	tXML         = "xml"
+	tJSON        = "json"
+	tJSONB       = "jsonb"
+	tUUID        = "uuid"
+	tMoney       = "money"
+	tInterval    = "interval"
+	tUserDefined = "user-defined"
+)
