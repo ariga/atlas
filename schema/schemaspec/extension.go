@@ -21,9 +21,28 @@ import (
 //   }
 //
 type Extension interface {
-	// Type returns the type name for the Extension, to be set in the
-	// Resource.Type field when using Resource.Scan.
-	Type() string
+	ext()
+}
+
+type registry map[string]Extension
+
+var extensions registry
+
+func (r registry) lookup(ext Extension) (string, bool) {
+	for k, v := range r {
+		if reflect.TypeOf(ext) == reflect.TypeOf(v) {
+			return k, true
+		}
+	}
+	return "", false
+}
+
+func init() {
+	extensions = make(registry)
+}
+
+func Register(name string, ext Extension) {
+	extensions[name] = ext
 }
 
 // As reads the attributes and children resources of the resource into the target Extension.
@@ -43,15 +62,16 @@ func (r *Resource) As(target Extension) error {
 			field.SetString(r.Name)
 			continue
 		}
-		// TODO: handle optional value (attr defined but not present in spec).
 		if attr, ok := r.Attr(ft.tag); ok {
 			if err := setField(field, attr); err != nil {
 				return err
 			}
 			continue
 		}
-		if err := setChildSlice(field, childrenOfType(r, ft.tag)); err != nil {
-			return err
+		if field.Type().Kind() == reflect.Slice {
+			if err := setChildSlice(field, childrenOfType(r, ft.tag)); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -106,8 +126,8 @@ func setField(field reflect.Value, attr *Attr) error {
 // Scan reads the Extension into the Resource. Scan will override the Resource
 // name or type if they are set for the extension.
 func (r *Resource) Scan(ext Extension) error {
-	if ext.Type() != "" {
-		r.Type = ext.Type()
+	if lookup, ok := extensions.lookup(ext); ok {
+		r.Type = lookup
 	}
 	v := reflect.ValueOf(ext).Elem()
 	for _, ft := range specFields(ext) {
@@ -125,9 +145,16 @@ func (r *Resource) Scan(ext Extension) error {
 				if err := child.Scan(ext); err != nil {
 					return err
 				}
+				child.Type = ft.tag
 				r.Children = append(r.Children, child)
 			}
-		case field.Kind() == reflect.Ptr && field.Elem().Type() == reflect.TypeOf(LiteralValue{}):
+		case field.Kind() == reflect.Ptr:
+			if field.IsNil() {
+				continue
+			}
+			if field.Elem().Type() != reflect.TypeOf(LiteralValue{}) {
+				return fmt.Errorf("schemaspec: pointer to non LiteralValue")
+			}
 			v := field.Elem().FieldByName("V").String()
 			r.SetAttr(&Attr{
 				K: ft.tag,

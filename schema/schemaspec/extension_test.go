@@ -10,6 +10,7 @@ import (
 )
 
 type OwnerBlock struct {
+	schemaspec.Extension
 	ID        string                   `spec:",name"`
 	FirstName string                   `spec:"first_name"`
 	Born      int                      `spec:"born"`
@@ -17,22 +18,16 @@ type OwnerBlock struct {
 	Lit       *schemaspec.LiteralValue `spec:"lit"`
 }
 
-func (*OwnerBlock) Type() string {
-	return "owner"
-}
-
 type PetBlock struct {
+	schemaspec.Extension
 	ID     string        `spec:",name"`
 	Breed  string        `spec:"breed"`
 	Born   int           `spec:"born"`
 	Owners []*OwnerBlock `spec:"owner"`
 }
 
-func (*PetBlock) Type() string {
-	return "pet"
-}
-
 func TestExtension(t *testing.T) {
+	schemaspec.Register("owner", &OwnerBlock{})
 	original := &schemaspec.Resource{
 		Name: "name",
 		Type: "owner",
@@ -59,6 +54,7 @@ func TestExtension(t *testing.T) {
 }
 
 func TestNested(t *testing.T) {
+	schemaspec.Register("pet", &PetBlock{})
 	pet := &schemaspec.Resource{
 		Name: "donut",
 		Type: "pet",
