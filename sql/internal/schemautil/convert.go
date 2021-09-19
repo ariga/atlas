@@ -201,9 +201,9 @@ func SchemaSpec(s *schema.Schema, fn TableSpecFunc) (*schemaspec.Schema, []*sche
 // TableSpec converts schema.Table to a schemaspec.Table.
 func TableSpec(t *schema.Table, fn ColumnSpecFunc) (*schemaspec.Table, error) {
 	spec := &schemaspec.Table{
-		Name: f.Name,
+		Name: t.Name,
 	}
-	for _, c := range f.Columns {
+	for _, c := range t.Columns {
 		col, err := fn(c)
 		if err != nil {
 			return nil, err
