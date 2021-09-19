@@ -200,12 +200,12 @@ func SchemaSpec(s *schema.Schema, fn TableSpecFunc) (*schemaspec.Schema, []*sche
 }
 
 // TableSpec converts schema.Table to a schemaspec.Table.
-func TableSpec(tab *schema.Table, colSpec ColumnSpecFunc,pkSpec PKSpecFunc) (*schemaspec.Table, error) {
+func TableSpec(tab *schema.Table, colFn ColumnSpecFunc, pkFun PKSpecFunc) (*schemaspec.Table, error) {
 	tbl := &schemaspec.Table{
 		Name: tab.Name,
 	}
 	for _, c := range tab.Columns {
-		col, err := colSpec(c)
+		col, err := colFn(c)
 		if err != nil {
 			return nil, err
 		}
@@ -213,22 +213,12 @@ func TableSpec(tab *schema.Table, colSpec ColumnSpecFunc,pkSpec PKSpecFunc) (*sc
 	}
 
 	if tab.PrimaryKey != nil {
-		pk, err := pkSpec(tab.PrimaryKey)
+		pk, err := pkFun(tab.PrimaryKey)
 		if err != nil {
 			return nil, err
 		}
 		tbl.PrimaryKey = pk
 	}
-
-	//if spec.PrimaryKey != nil {
-	//	pk, err := convertPk(spec.PrimaryKey, tbl)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	tbl.PrimaryKey = pk
-	//}
-	//
-
 	return tbl, nil
 }
 
@@ -246,4 +236,9 @@ func ColumnSpec(c *schema.Column, fn TypeSpecFunc) (*schemaspec.Column, error) {
 			Attrs: ct.Attrs,
 		},
 	}, nil
+}
+
+func PrimaryKeySpec(*schema.Index) (*schemaspec.PrimaryKey, error) {
+
+	return nil, nil
 }
