@@ -20,6 +20,7 @@ type (
 	ConvertIndexFunc      func(*schemaspec.Index, *schema.Table) (*schema.Index, error)
 	ColumnSpecFunc        func(*schema.Column) (*schemaspec.Column, error)
 	TableSpecFunc         func(*schema.Table) (*schemaspec.Table, error)
+	PKSpecFunc            func(index *schema.Index) (*schemaspec.PrimaryKey, error)
 )
 
 // ConvertSchema converts a schemaspec.Schema with its relevant *schemaspec.Tables
@@ -198,16 +199,37 @@ func SchemaSpec(s *schema.Schema, fn TableSpecFunc) (*schemaspec.Schema, []*sche
 }
 
 // TableSpec converts schema.Table to a schemaspec.Table.
-func TableSpec(t *schema.Table, fn ColumnSpecFunc) (*schemaspec.Table, error) {
+func TableSpec(t *schema.Table, colFn ColumnSpecFunc, pkFn PKSpecFunc) (*schemaspec.Table, error) {
 	spec := &schemaspec.Table{
 		Name: t.Name,
 	}
 	for _, c := range t.Columns {
-		col, err := fn(c)
+		col, err := colFn(c)
 		if err != nil {
 			return nil, err
 		}
 		spec.Columns = append(spec.Columns, col)
 	}
+	if t.PrimaryKey != nil {
+		pk, err := pkFn(t.PrimaryKey)
+		if err != nil {
+			return nil, err
+		}
+		spec.PrimaryKey = pk
+	}
 	return spec, nil
+}
+
+// PrimaryKeySpec converts schema.Index to a schemaspec.PrimaryKey.
+func PrimaryKeySpec(s *schema.Index) (*schemaspec.PrimaryKey, error) {
+	c := make([]*schemaspec.ColumnRef, 0, len(s.Parts))
+	for _, v := range s.Parts {
+		c = append(c, &schemaspec.ColumnRef{
+			Name:  v.C.Name,
+			Table: s.Table.Spec.Name,
+		})
+	}
+	return &schemaspec.PrimaryKey{
+		Columns: c,
+	}, nil
 }
