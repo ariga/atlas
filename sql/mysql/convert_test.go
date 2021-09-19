@@ -188,6 +188,19 @@ func TestSchemaSpec(t *testing.T) {
 					},
 				},
 			},
+			PrimaryKey: &schemaspec.PrimaryKey{
+				Columns: []*schemaspec.ColumnRef{{Table: "table", Name: "col"}},
+			},
+			Indexes: []*schemaspec.Index{
+				{
+					Name:   "index",
+					Unique: true,
+					Columns: []*schemaspec.ColumnRef{
+						{Table: "table", Name: "col"},
+						{Table: "table", Name: "age"},
+					},
+				},
+			},
 		},
 		{
 			Name: "accounts",
@@ -264,6 +277,23 @@ func TestSchemaSpec(t *testing.T) {
 					},
 					Spec: tables[1].Columns[0],
 				},
+			},
+		},
+	}
+	exp.Tables[0].PrimaryKey = &schema.Index{
+		Table: exp.Tables[0],
+		Parts: []*schema.IndexPart{
+			{SeqNo: 0, C: exp.Tables[0].Columns[0]},
+		},
+	}
+	exp.Tables[0].Indexes = []*schema.Index{
+		{
+			Name:   "index",
+			Table:  exp.Tables[0],
+			Unique: true,
+			Parts: []*schema.IndexPart{
+				{SeqNo: 0, C: exp.Tables[0].Columns[0]},
+				{SeqNo: 1, C: exp.Tables[0].Columns[1]},
 			},
 		},
 	}
