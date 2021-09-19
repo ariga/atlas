@@ -281,8 +281,34 @@ func formatValues(vs []string) string {
 	return strings.Join(values, ",")
 }
 
-// ColumnTypeSpec converts from a concrete MySQL schema.Type into schemaspec.Column Type.
-func ColumnTypeSpec(t schema.Type) (*schemaspec.Column, error) {
+// SchemaSpec converts from a concrete MySQL schema to Atlas specification.
+func (d *Driver) SchemaSpec(schem *schema.Schema) (*schemaspec.Schema, []*schemaspec.Table, error) {
+	return schemautil.SchemaSpec(schem, d.TableSpec)
+}
+
+// TableSpec converts from a concrete MySQL schemaspec.Table to a schema.Table.
+func (d *Driver) TableSpec(tab *schema.Table) (*schemaspec.Table, error) {
+	return schemautil.TableSpec(tab, d.ColumnSpec)
+}
+
+// ColumnSpec converts from a concrete MySQL schema.Column into a schemaspec.Column.
+func (d *Driver) ColumnSpec(col *schema.Column) (*schemaspec.Column, error) {
+	ct, err := columnTypeSpec(col.Type.Type)
+	if err != nil {
+		return nil, err
+	}
+	return &schemaspec.Column{
+		Name: col.Name,
+		Type: ct.Type,
+		Null: ct.Null,
+		Resource: schemaspec.Resource{
+			Attrs: ct.Attrs,
+		},
+	}, nil
+}
+
+// columnTypeSpec converts from a concrete MySQL schema.Type into schemaspec.Column Type.
+func columnTypeSpec(t schema.Type) (*schemaspec.Column, error) {
 	switch t := t.(type) {
 	case *schema.EnumType:
 		return enumSpec(t)
