@@ -211,7 +211,7 @@ func TableSpec(t *schema.Table, colFn ColumnSpecFunc, pkFun PKSpecFunc) (*schema
 		}
 		spec.Columns = append(spec.Columns, col)
 	}
-	if spec.PrimaryKey != nil {
+	if t.PrimaryKey != nil {
 		pk, err := pkFun(t.PrimaryKey)
 		if err != nil {
 			return nil, err
@@ -237,7 +237,16 @@ func ColumnSpec(c *schema.Column, fn TypeSpecFunc) (*schemaspec.Column, error) {
 	}, nil
 }
 
-func PrimaryKeySpec(*schema.Index) (*schemaspec.PrimaryKey, error) {
-
-	return nil, nil
+func PrimaryKeySpec(s *schema.Index) (*schemaspec.PrimaryKey, error) {
+	var c []*schemaspec.ColumnRef
+	for _, v := range s.Parts {
+		c = append(c, &schemaspec.ColumnRef{
+			Name:  v.C.Name,
+			Table: s.Table.Spec.Name,
+		})
+	}
+	p := &schemaspec.PrimaryKey{
+		Columns: c,
+	}
+	return p, nil
 }
