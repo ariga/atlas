@@ -286,17 +286,6 @@ func TestSchemaSpec(t *testing.T) {
 			{SeqNo: 0, C: exp.Tables[0].Columns[0]},
 		},
 	}
-	exp.Tables[0].Indexes = []*schema.Index{
-		{
-			Name:   "index",
-			Table:  exp.Tables[0],
-			Unique: true,
-			Parts: []*schema.IndexPart{
-				{SeqNo: 0, C: exp.Tables[0].Columns[0]},
-				{SeqNo: 1, C: exp.Tables[0].Columns[1]},
-			},
-		},
-	}
 	require.EqualValues(t, exp, sch)
 	cspec, ctables, err := d.SchemaSpec(sch)
 	require.NoError(t, err)
