@@ -199,18 +199,18 @@ func SchemaSpec(s *schema.Schema, fn TableSpecFunc) (*schemaspec.Schema, []*sche
 }
 
 // TableSpec converts schema.Table to a schemaspec.Table.
-func TableSpec(tab *schema.Table, colSpec ColumnSpecFunc) (*schemaspec.Table, error) {
-	tbl := &schemaspec.Table{
-		Name: tab.Name,
+func TableSpec(t *schema.Table, fn ColumnSpecFunc) (*schemaspec.Table, error) {
+	spec := &schemaspec.Table{
+		Name: f.Name,
 	}
-	for _, c := range tab.Columns {
-		col, err := colSpec(c)
+	for _, c := range f.Columns {
+		col, err := fn(c)
 		if err != nil {
 			return nil, err
 		}
-		tbl.Columns = append(tbl.Columns, col)
+		spec.Columns = append(spec.Columns, col)
 	}
-	return tbl, nil
+	return spec, nil
 }
 
 // ColumnSpec converts a schema.Column to a schemaspec.Column.
