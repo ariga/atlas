@@ -201,12 +201,11 @@ func (r *Resource) Scan(ext Extension) error {
 			}
 		}
 	}
-	for _, attr := range ext.Extra().Attrs {
+	extra := ext.Extra()
+	for _, attr := range extra.Attrs {
 		r.SetAttr(attr)
 	}
-	for _, child := range ext.Extra().Children {
-		r.Children = append(r.Children, child)
-	}
+	r.Children = append(r.Children, extra.Children...)
 	return nil
 }
 
