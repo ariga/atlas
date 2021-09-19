@@ -268,7 +268,23 @@ func IndexSpec(s *schema.Index) (*schemaspec.Index, error) {
 
 // ForeignKeySpec converts schema.ForeignKey to schemaspec.ForeignKey
 func ForeignKeySpec(s *schema.ForeignKey) (*schemaspec.ForeignKey, error) {
+	c := make([]*schemaspec.ColumnRef, 0, len(s.Columns))
+	for _, v := range s.Columns {
+		c = append(c, &schemaspec.ColumnRef{
+			Name:  v.Name,
+			Table: s.Table.Name,
+		})
+	}
+	r := make([]*schemaspec.ColumnRef, 0, len(s.RefColumns))
+	for _, v := range s.RefColumns {
+		r = append(r, &schemaspec.ColumnRef{
+			Name:  v.Name,
+			Table: s.Table.Name,
+		})
+	}
 	return &schemaspec.ForeignKey{
-		Symbol: s.Symbol,
+		Symbol:     s.Symbol,
+		Columns:    c,
+		RefColumns: r,
 	}, nil
 }
