@@ -21,7 +21,20 @@ import (
 //   }
 //
 type Extension interface {
-	ext()
+	// Extra returns a *Resource representing any extra children and attributes.
+	Extra() *Resource
+}
+
+type DefaultExtension struct {
+	extra *Resource
+}
+
+// Extra implements the Extension interface.
+func (d *DefaultExtension) Extra() *Resource {
+	if d.extra == nil {
+		d.extra = &Resource{}
+	}
+	return d.extra
 }
 
 type registry map[string]Extension
@@ -49,6 +62,14 @@ func Register(name string, ext Extension) {
 func (r *Resource) As(target Extension) error {
 	var seenName bool
 	v := reflect.ValueOf(target).Elem()
+	existingAttrs := make(map[string]struct{})
+	for _, ea := range r.Attrs {
+		existingAttrs[ea.K] = struct{}{}
+	}
+	existingChildren := make(map[string]struct{})
+	for _, ec := range r.Children {
+		existingChildren[ec.Type] = struct{}{}
+	}
 	for _, ft := range specFields(target) {
 		field := v.FieldByName(ft.field)
 		if ft.isName {
@@ -66,13 +87,27 @@ func (r *Resource) As(target Extension) error {
 			if err := setField(field, attr); err != nil {
 				return err
 			}
+			delete(existingAttrs, attr.K)
 			continue
 		}
 		if field.Type().Kind() == reflect.Slice {
 			if err := setChildSlice(field, childrenOfType(r, ft.tag)); err != nil {
 				return err
 			}
+			delete(existingChildren, ft.tag)
 		}
+	}
+	extras := target.Extra()
+	for attrName := range existingAttrs {
+		attr, ok := r.Attr(attrName)
+		if !ok {
+			return fmt.Errorf("schemaspec: expected attr %q to exist", attrName)
+		}
+		extras.SetAttr(attr)
+	}
+	for childType := range existingChildren {
+		children := childrenOfType(r, childType)
+		extras.Children = append(extras.Children, children...)
 	}
 	return nil
 }
@@ -165,6 +200,12 @@ func (r *Resource) Scan(ext Extension) error {
 				return err
 			}
 		}
+	}
+	for _, attr := range ext.Extra().Attrs {
+		r.SetAttr(attr)
+	}
+	for _, child := range ext.Extra().Children {
+		r.Children = append(r.Children, child)
 	}
 	return nil
 }
