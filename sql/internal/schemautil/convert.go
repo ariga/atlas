@@ -279,12 +279,14 @@ func ForeignKeySpec(s *schema.ForeignKey) (*schemaspec.ForeignKey, error) {
 	for _, v := range s.RefColumns {
 		r = append(r, &schemaspec.ColumnRef{
 			Name:  v.Name,
-			Table: s.Table.Name,
+			Table: s.Symbol,
 		})
 	}
 	return &schemaspec.ForeignKey{
 		Symbol:     s.Symbol,
 		Columns:    c,
 		RefColumns: r,
+		OnDelete:   string(s.OnDelete),
+		OnUpdate:   string(s.OnUpdate),
 	}, nil
 }

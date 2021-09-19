@@ -317,6 +317,7 @@ func (d *Driver) IndexSpec(idx *schema.Index) (*schemaspec.Index, error) {
 	return schemautil.IndexSpec(idx)
 }
 
+// ForeignKeySpec converts from a concrete MySQL schema.ForeignKey into a schemaspec.ForeignKey
 func (d *Driver) ForeignKeySpec(fk *schema.ForeignKey) (*schemaspec.ForeignKey, error) {
 	return schemautil.ForeignKeySpec(fk)
 }
