@@ -18,7 +18,6 @@ type (
 	ConvertTypeFunc       func(*schemaspec.Column) (schema.Type, error)
 	ConvertPrimaryKeyFunc func(*schemaspec.PrimaryKey, *schema.Table) (*schema.Index, error)
 	ConvertIndexFunc      func(*schemaspec.Index, *schema.Table) (*schema.Index, error)
-	TypeSpecFunc          func(schema.Type) (*schemaspec.Column, error)
 	ColumnSpecFunc        func(*schema.Column) (*schemaspec.Column, error)
 	TableSpecFunc         func(*schema.Table) (*schemaspec.Table, error)
 )
@@ -211,20 +210,4 @@ func TableSpec(t *schema.Table, fn ColumnSpecFunc) (*schemaspec.Table, error) {
 		spec.Columns = append(spec.Columns, col)
 	}
 	return spec, nil
-}
-
-// ColumnSpec converts a schema.Column to a schemaspec.Column.
-func ColumnSpec(c *schema.Column, fn TypeSpecFunc) (*schemaspec.Column, error) {
-	ct, err := fn(c.Type.Type)
-	if err != nil {
-		return nil, err
-	}
-	return &schemaspec.Column{
-		Name: c.Name,
-		Type: ct.Type,
-		Null: ct.Null,
-		Resource: schemaspec.Resource{
-			Attrs: ct.Attrs,
-		},
-	}, nil
 }

@@ -293,11 +293,22 @@ func (d *Driver) TableSpec(tab *schema.Table) (*schemaspec.Table, error) {
 
 // ColumnSpec converts from a concrete MySQL schema.Column into a schemaspec.Column.
 func (d *Driver) ColumnSpec(col *schema.Column) (*schemaspec.Column, error) {
-	return schemautil.ColumnSpec(col, ColumnTypeSpec)
+	ct, err := columnTypeSpec(col.Type.Type)
+	if err != nil {
+		return nil, err
+	}
+	return &schemaspec.Column{
+		Name: col.Name,
+		Type: ct.Type,
+		Null: ct.Null,
+		Resource: schemaspec.Resource{
+			Attrs: ct.Attrs,
+		},
+	}, nil
 }
 
-// ColumnTypeSpec converts from a concrete MySQL schema.Type into schemaspec.Column Type.
-func ColumnTypeSpec(t schema.Type) (*schemaspec.Column, error) {
+// columnTypeSpec converts from a concrete MySQL schema.Type into schemaspec.Column Type.
+func columnTypeSpec(t schema.Type) (*schemaspec.Column, error) {
 	switch t := t.(type) {
 	case *schema.EnumType:
 		return enumSpec(t)

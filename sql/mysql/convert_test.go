@@ -540,7 +540,7 @@ func TestColumnTypeSpec(t *testing.T) {
 		},
 	} {
 		t.Run(tt.expected.Name, func(t *testing.T) {
-			columnType, err := ColumnTypeSpec(tt.schem)
+			columnType, err := columnTypeSpec(tt.schem)
 			require.NoError(t, err)
 			require.EqualValues(t, tt.expected, columnType)
 		})
