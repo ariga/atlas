@@ -244,5 +244,16 @@ func PrimaryKeySpec(s *schema.Index) (*schemaspec.PrimaryKey, error) {
 
 // IndexSpec converts schema.Index to schemaspec.Index
 func IndexSpec(s *schema.Index) (*schemaspec.Index, error) {
-	return nil, nil
+	c := make([]*schemaspec.ColumnRef, 0, len(s.Parts))
+	for _, v := range s.Parts {
+		c = append(c, &schemaspec.ColumnRef{
+			Name:  v.C.Name,
+			Table: s.Table.Spec.Name,
+		})
+	}
+	return &schemaspec.Index{
+		Name:    s.Name,
+		Unique:  s.Unique,
+		Columns: c,
+	}, nil
 }
