@@ -22,6 +22,7 @@ type (
 	TableSpecFunc         func(*schema.Table) (*schemaspec.Table, error)
 	PKSpecFunc            func(index *schema.Index) (*schemaspec.PrimaryKey, error)
 	IndexSpecFunc         func(index *schema.Index) (*schemaspec.Index, error)
+	ForeignKeySpecFunc    func(fk *schema.ForeignKey) (*schemaspec.ForeignKey, error)
 )
 
 // ConvertSchema converts a schemaspec.Schema with its relevant *schemaspec.Tables
@@ -200,7 +201,7 @@ func SchemaSpec(s *schema.Schema, fn TableSpecFunc) (*schemaspec.Schema, []*sche
 }
 
 // TableSpec converts schema.Table to a schemaspec.Table.
-func TableSpec(t *schema.Table, colFn ColumnSpecFunc, pkFn PKSpecFunc, inFn IndexSpecFunc) (*schemaspec.Table, error) {
+func TableSpec(t *schema.Table, colFn ColumnSpecFunc, pkFn PKSpecFunc, inFn IndexSpecFunc, fkFn ForeignKeySpecFunc) (*schemaspec.Table, error) {
 	spec := &schemaspec.Table{
 		Name: t.Name,
 	}
@@ -224,6 +225,13 @@ func TableSpec(t *schema.Table, colFn ColumnSpecFunc, pkFn PKSpecFunc, inFn Inde
 			return nil, err
 		}
 		spec.Indexes = append(spec.Indexes, i)
+	}
+	for _, fk := range t.ForeignKeys {
+		f, err := fkFn(fk)
+		if err != nil {
+			return nil, err
+		}
+		spec.ForeignKeys = append(spec.ForeignKeys, f)
 	}
 	return spec, nil
 }
@@ -255,5 +263,12 @@ func IndexSpec(s *schema.Index) (*schemaspec.Index, error) {
 		Name:    s.Name,
 		Unique:  s.Unique,
 		Columns: c,
+	}, nil
+}
+
+// ForeignKeySpec converts schema.ForeignKey to schemaspec.ForeignKey
+func ForeignKeySpec(s *schema.ForeignKey) (*schemaspec.ForeignKey, error) {
+	return &schemaspec.ForeignKey{
+		Symbol: s.Symbol,
 	}, nil
 }

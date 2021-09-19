@@ -288,7 +288,7 @@ func (d *Driver) SchemaSpec(schem *schema.Schema) (*schemaspec.Schema, []*schema
 
 // TableSpec converts from a concrete MySQL schemaspec.Table to a schema.Table.
 func (d *Driver) TableSpec(tab *schema.Table) (*schemaspec.Table, error) {
-	return schemautil.TableSpec(tab, d.ColumnSpec, d.PrimaryKeySpec, d.IndexSpec)
+	return schemautil.TableSpec(tab, d.ColumnSpec, d.PrimaryKeySpec, d.IndexSpec, d.ForeignKeySpec)
 }
 
 // ColumnSpec converts from a concrete MySQL schema.Column into a schemaspec.Column.
@@ -315,6 +315,10 @@ func (d *Driver) PrimaryKeySpec(idx *schema.Index) (*schemaspec.PrimaryKey, erro
 // IndexSpec converts from a concrete MySQL schema.Index into a schemaspec.Index
 func (d *Driver) IndexSpec(idx *schema.Index) (*schemaspec.Index, error) {
 	return schemautil.IndexSpec(idx)
+}
+
+func (d *Driver) ForeignKeySpec(fk *schema.ForeignKey) (*schemaspec.ForeignKey, error) {
+	return schemautil.ForeignKeySpec(fk)
 }
 
 // columnTypeSpec converts from a concrete MySQL schema.Type into schemaspec.Column Type.
