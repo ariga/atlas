@@ -18,7 +18,6 @@ type (
 		//PrimaryKey  *PrimaryKey
 		//ForeignKeys []*ForeignKey
 		//Indexes     []*Index
-		schemaspec.DefaultExtension
 	}
 
 	// Column holds a specification for a column in an SQL table.
@@ -28,6 +27,5 @@ type (
 		TypeName string                   `spec:"type" override:"type"`
 		Default  *schemaspec.LiteralValue `spec:"default" override:"default"`
 		//Overrides []*Override
-		schemaspec.DefaultExtension
 	}
 )

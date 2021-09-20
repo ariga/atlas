@@ -26,6 +26,15 @@ type PetBlock struct {
 	Owners []*OwnerBlock `spec:"owner"`
 }
 
+func TestInvalidExt(t *testing.T) {
+	r := &schemaspec.Resource{}
+	err := r.As(1)
+	require.EqualError(t, err, "schemaspec: expected target to be a pointer")
+	var p *string
+	err = r.As(p)
+	require.EqualError(t, err, "schemaspec: expected target to be a pointer to a struct")
+}
+
 func TestExtension(t *testing.T) {
 	schemaspec.Register("owner", &OwnerBlock{})
 	original := &schemaspec.Resource{
@@ -53,7 +62,7 @@ func TestExtension(t *testing.T) {
 	require.EqualValues(t, 2019, owner.Born)
 	require.EqualValues(t, true, owner.Active)
 	require.EqualValues(t, schemautil.LitAttr("lit", "1000").V, owner.Lit)
-	attr, ok := owner.Extra().Attr("extra")
+	attr, ok := owner.Remain().Attr("extra")
 	require.True(t, ok)
 	eb, err := attr.Bool()
 	require.NoError(t, err)
