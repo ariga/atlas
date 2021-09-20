@@ -43,6 +43,6 @@
 //	}
 //
 // Extension structs may implement the Remainer interface if they wish to store
-// any attributes and children that aren't matched by their tagged fields. As a convenience
+// any attributes and children that are not matched by their tagged fields. As a convenience
 // the package exports a DefaultExtension type that can be embedded to support this behavior.
 package schemaspec
