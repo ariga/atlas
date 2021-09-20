@@ -5,6 +5,9 @@
 package mysql
 
 import (
+	"fmt"
+	"reflect"
+	"strconv"
 	"strings"
 
 	"ariga.io/atlas/sql/internal/sqlx"
@@ -73,21 +76,27 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) []schema.Change {
 	return changes
 }
 
-// ColumnTypeChanged reports if the a column type was changed.
-func (d *diff) ColumnTypeChanged(c1, c2 *schema.Column) (bool, error) {
-	changed, err := sqlx.ColumnTypeChanged(c1, c2)
-	if sqlx.IsUnsupportedTypeError(err) {
-		return d.typeChanged(c1, c2)
+// ColumnChange returns the schema changes (if any) for migrating one column to the other.
+func (d *diff) ColumnChange(from, to *schema.Column) (schema.ChangeKind, error) {
+	change := sqlx.CommentChange(from.Attrs, to.Attrs)
+	if from.Type.Null != to.Type.Null {
+		change |= schema.ChangeNull
 	}
-	return changed, err
-}
-
-// ColumnDefaultChanged reports if the a default value of a column
-// type was changed.
-func (d *diff) ColumnDefaultChanged(from, to *schema.Column) bool {
-	d1, ok1 := from.Default.(*schema.RawExpr)
-	d2, ok2 := to.Default.(*schema.RawExpr)
-	return ok1 != ok2 || ok1 && d1.X != d2.X
+	changed, err := d.typeChanged(from, to)
+	if err != nil {
+		return schema.NoChange, err
+	}
+	if changed {
+		change |= schema.ChangeType
+	}
+	changed, err = d.defaultChanged(from, to)
+	if err != nil {
+		return schema.NoChange, err
+	}
+	if changed {
+		change |= schema.ChangeDefault
+	}
+	return change, nil
 }
 
 // IndexAttrChanged reports if the index attributes were changed.
@@ -199,10 +208,19 @@ func checks(attr []schema.Attr) (checks []*Check) {
 
 func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	fromT, toT := from.Type.Type, to.Type.Type
+	if fromT == nil || toT == nil {
+		return false, fmt.Errorf("mysql: missing type infromation for column %q", from.Name)
+	}
+	if reflect.TypeOf(fromT) != reflect.TypeOf(toT) {
+		return true, nil
+	}
 	var changed bool
 	switch fromT := fromT.(type) {
-	case *schema.BinaryType, *schema.DecimalType, *schema.FloatType:
+	case *schema.BinaryType, *schema.BoolType, *schema.DecimalType, *schema.FloatType:
 		changed = d.mustFormat(fromT) != d.mustFormat(toT)
+	case *schema.EnumType:
+		toT := toT.(*schema.EnumType)
+		changed = !sqlx.ValuesEqual(fromT.Values, toT.Values)
 	case *schema.IntegerType:
 		toT := toT.(*schema.IntegerType)
 		// MySQL v8.0.19 dropped the display width
@@ -242,6 +260,75 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 		return false, &sqlx.UnsupportedTypeError{Type: fromT}
 	}
 	return changed, nil
+}
+
+// defaultChanged reports if the a default value of a column
+// type was changed.
+func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
+	d1, ok1 := from.Default.(*schema.RawExpr)
+	d2, ok2 := to.Default.(*schema.RawExpr)
+	if ok1 != ok2 {
+		return true, nil
+	}
+	if d1 == nil || d1.X == d2.X {
+		return false, nil
+	}
+	switch from.Type.Type.(type) {
+	case *schema.BoolType:
+		a, err1 := boolValue(d1.X)
+		b, err2 := boolValue(d2.X)
+		if err1 == nil && err2 == nil {
+			return a != b, nil
+		}
+		return false, nil
+	case *schema.IntegerType:
+		return !d.equalsIntValues(d1.X, d2.X), nil
+	default:
+		x1 := strings.Trim(d1.X, "'")
+		x2 := strings.Trim(d2.X, "'")
+		return x1 != x2, nil
+	}
+}
+
+// equalsIntValues report if the 2 int default values are ~equal.
+// Note that default expression are not supported atm.
+func (d *diff) equalsIntValues(x1, x2 string) bool {
+	x1 = strings.ToLower(strings.Trim(x1, "' "))
+	x2 = strings.ToLower(strings.Trim(x2, "' "))
+	if x1 == x2 {
+		return true
+	}
+	d1, err := strconv.ParseInt(x1, 10, 64)
+	if err != nil {
+		// Numbers are rounded down to their nearest integer.
+		f, err := strconv.ParseFloat(x1, 64)
+		if err != nil {
+			return false
+		}
+		d1 = int64(f)
+	}
+	d2, err := strconv.ParseInt(x2, 10, 64)
+	if err != nil {
+		// Numbers are rounded down to their nearest integer.
+		f, err := strconv.ParseFloat(x2, 64)
+		if err != nil {
+			return false
+		}
+		d2 = int64(f)
+	}
+	return d1 == d2
+}
+
+// boolValue returns the MySQL boolean value for the given string (if it is known).
+func boolValue(x string) (bool, error) {
+	switch x {
+	case "1", "'1'", "TRUE", "true":
+		return true, nil
+	case "0", "'0'", "FALSE", "false":
+		return false, nil
+	default:
+		return false, fmt.Errorf("mysql: unknown value: %q", x)
+	}
 }
 
 func checkByName(attr []schema.Attr, name string) (*Check, bool) {
