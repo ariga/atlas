@@ -30,7 +30,7 @@
 // the corresponding Resource's `Name` specify ",name" to the tag value. For example,
 //
 //  type Point struct {
-//      Id string `spec:",name"`
+//      ID string `spec:",name"`
 //      X  int    `spec:"x"
 //      Y  int    `spec:"y"
 //  }
