@@ -8,13 +8,14 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"testing"
 
-	"ariga.io/atlas/sql/mysql"
-	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/schema/schemahcl"
 	"ariga.io/atlas/sql/schema/schemaspec"
 
+	"ariga.io/atlas/sql/mysql"
+	"ariga.io/atlas/sql/schema"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -44,53 +45,7 @@ type mysqlSuite struct {
 }
 
 func (s *mysqlSuite) SetupTest() {
-	_, err := s.db.Exec("DROP TABLE IF EXISTS `posts`, `users`")
-	s.NoError(err, "truncate database")
-}
-
-func (s *mysqlSuite) TestHCL() {
-	s.applyHcl(`
-schema "test" {
-}
-
-table "users" {
-	schema = schema.test
-	column "email" {
-		type = "string"
-	}
-}
-`)
-	realm := s.loadRealm()
-	table, ok := realm.Schemas[0].Table("users")
-	s.True(ok, "expected users table")
-	column, ok := table.Column("email")
-	s.True(ok, "expected name column")
-	s.Equal("users", table.Name)
-	s.Equal("email", column.Name)
-	s.Equal(column.Type.Raw, "varchar(255)")
-	s.applyHcl(`
-schema "test" {
-}
-`)
-	s.TestEmptyRealm()
-}
-
-func (s *mysqlSuite) applyHcl(spec string) {
-	ctx := context.Background()
-	realm, err := s.drv.InspectRealm(ctx, &schema.InspectRealmOption{
-		Schemas: []string{"test"},
-	})
-	s.NoError(err)
-	file := schemaspec.File{}
-	err = schemahcl.Decode([]byte(spec), &file)
-	s.NoError(err)
-	desired, err := s.drv.ConvertSchema(file.Schemas[0], file.Tables)
-	existing := realm.Schemas[0]
-	s.NoError(err)
-	diff, err := s.drv.Diff().SchemaDiff(existing, desired)
-	s.NoError(err)
-	err = s.drv.Migrate().Exec(ctx, diff)
-	s.NoError(err)
+	s.dropTables("posts", "users")
 }
 
 func (s *mysqlSuite) TestEmptyRealm() {
@@ -161,21 +116,6 @@ func (s *mysqlSuite) TestAddIndexedColumns() {
 	s.ensureNoChange(usersT)
 }
 
-func (s *mysqlSuite) TestChangeColumn() {
-	ctx := context.Background()
-	err := s.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: s.users()}})
-	s.Require().NoError(err)
-	usersT := s.users()
-	usersT.Columns[1].Type = &schema.ColumnType{Raw: "mediumint", Type: &schema.IntegerType{T: "mediumint"}, Null: true}
-	usersT.Columns[1].Default = &schema.RawExpr{X: "0"}
-	changes, err := s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
-	s.Require().NoError(err)
-	s.Len(changes, 1)
-	err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-	s.NoError(err)
-	s.ensureNoChange(usersT)
-}
-
 func (s *mysqlSuite) TestAddColumns() {
 	ctx := context.Background()
 	err := s.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: s.users()}})
@@ -215,6 +155,227 @@ func (s *mysqlSuite) TestAddColumns() {
 	err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
 	s.Require().NoError(err)
 	s.ensureNoChange(usersT)
+}
+
+func (s *mysqlSuite) TestColumnInt() {
+	ctx := context.Background()
+	s.Run("ChangeType", func() {
+		usersT := &schema.Table{
+			Name:    "users",
+			Columns: []*schema.Column{{Name: "a", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}}},
+		}
+		err := s.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
+		s.Require().NoError(err)
+		for _, t := range []string{"tinyint", "smallint", "mediumint", "bigint"} {
+			usersT.Columns[0].Type.Type = &schema.IntegerType{T: t}
+			changes, err := s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
+			s.Require().NoError(err)
+			s.Require().Len(changes, 1)
+			err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+			s.Require().NoError(err)
+			s.ensureNoChange(usersT)
+		}
+		s.dropTables(usersT.Name)
+	})
+
+	s.Run("ChangeDefault", func() {
+		usersT := &schema.Table{
+			Name:    "users",
+			Columns: []*schema.Column{{Name: "a", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}, Default: &schema.RawExpr{X: "1"}}},
+		}
+		err := s.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
+		s.Require().NoError(err)
+		s.ensureNoChange(usersT)
+		for _, x := range []string{"2", "'3'", "10.1"} {
+			usersT.Columns[0].Default.(*schema.RawExpr).X = x
+			changes, err := s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
+			s.Require().NoError(err)
+			s.Require().Len(changes, 1)
+			err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+			s.ensureNoChange(usersT)
+		}
+		s.dropTables(usersT.Name)
+	})
+}
+
+func (s *mysqlSuite) TestColumnString() {
+	ctx := context.Background()
+	s.Run("ChangeType", func() {
+		usersT := &schema.Table{
+			Name:    "users",
+			Columns: []*schema.Column{{Name: "a", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(20)"}}}},
+		}
+		err := s.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
+		s.Require().NoError(err)
+		for _, t := range []string{"varchar(255)", "char(120)", "tinytext", "mediumtext", "longtext"} {
+			usersT.Columns[0].Type.Type = &schema.StringType{T: t}
+			changes, err := s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
+			s.Require().NoError(err)
+			s.Require().Len(changes, 1)
+			err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+			s.Require().NoError(err)
+			s.ensureNoChange(usersT)
+		}
+		s.dropTables(usersT.Name)
+	})
+
+	s.Run("AddWithDefault", func() {
+		usersT := &schema.Table{
+			Name: "users",
+			Columns: []*schema.Column{
+				{Name: "a", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}, Default: &schema.RawExpr{X: "hello"}},
+				{Name: "b", Type: &schema.ColumnType{Type: &schema.StringType{T: "char(255)"}}, Default: &schema.RawExpr{X: "'world'"}},
+			},
+		}
+		err := s.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
+		s.Require().NoError(err)
+		s.ensureNoChange(usersT)
+		s.dropTables(usersT.Name)
+	})
+
+	s.Run("ChangeDefault", func() {
+		usersT := &schema.Table{
+			Name:    "users",
+			Columns: []*schema.Column{{Name: "a", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}, Default: &schema.RawExpr{X: "hello"}}},
+		}
+		err := s.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
+		s.Require().NoError(err)
+		s.ensureNoChange(usersT)
+		for _, x := range []string{"2", "'3'", "'world'"} {
+			usersT.Columns[0].Default.(*schema.RawExpr).X = x
+			changes, err := s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
+			s.Require().NoError(err)
+			s.Require().Len(changes, 1)
+			err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+			s.ensureNoChange(usersT)
+		}
+		s.dropTables(usersT.Name)
+	})
+}
+
+func (s *mysqlSuite) TestColumnBool() {
+	ctx := context.Background()
+	s.Run("Add", func() {
+		usersT := &schema.Table{
+			Name: "users",
+			Columns: []*schema.Column{
+				{Name: "a", Type: &schema.ColumnType{Type: &schema.BoolType{T: "bool"}}},
+				{Name: "b", Type: &schema.ColumnType{Type: &schema.BoolType{T: "boolean"}}},
+				{Name: "c", Type: &schema.ColumnType{Type: &schema.BoolType{T: "tinyint"}}},
+				{Name: "d", Type: &schema.ColumnType{Type: &schema.BoolType{T: "tinyint(1)"}}},
+			},
+		}
+		err := s.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
+		s.Require().NoError(err)
+		s.ensureNoChange(usersT)
+		s.dropTables(usersT.Name)
+	})
+
+	s.Run("AddWithDefault", func() {
+		usersT := &schema.Table{
+			Name: "users",
+			Columns: []*schema.Column{
+				{Name: "a", Type: &schema.ColumnType{Type: &schema.BoolType{T: "bool"}}, Default: &schema.RawExpr{X: "1"}},
+				{Name: "b", Type: &schema.ColumnType{Type: &schema.BoolType{T: "bool"}}, Default: &schema.RawExpr{X: "0"}},
+				{Name: "c", Type: &schema.ColumnType{Type: &schema.BoolType{T: "bool"}}, Default: &schema.RawExpr{X: "'1'"}},
+				{Name: "d", Type: &schema.ColumnType{Type: &schema.BoolType{T: "bool"}}, Default: &schema.RawExpr{X: "'0'"}},
+				{Name: "e", Type: &schema.ColumnType{Type: &schema.BoolType{T: "bool"}}, Default: &schema.RawExpr{X: "true"}},
+				{Name: "f", Type: &schema.ColumnType{Type: &schema.BoolType{T: "bool"}}, Default: &schema.RawExpr{X: "false"}},
+				{Name: "g", Type: &schema.ColumnType{Type: &schema.BoolType{T: "bool"}}, Default: &schema.RawExpr{X: "TRUE"}},
+				{Name: "h", Type: &schema.ColumnType{Type: &schema.BoolType{T: "bool"}}, Default: &schema.RawExpr{X: "FALSE"}},
+			},
+		}
+		err := s.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
+		s.Require().NoError(err)
+		s.ensureNoChange(usersT)
+		s.dropTables(usersT.Name)
+	})
+
+	s.Run("ChangeDefault", func() {
+		usersT := &schema.Table{
+			Name: "users",
+			Columns: []*schema.Column{
+				{Name: "a", Type: &schema.ColumnType{Type: &schema.BoolType{T: "bool"}}, Default: &schema.RawExpr{X: "1"}},
+			},
+		}
+		err := s.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
+		s.Require().NoError(err)
+		s.ensureNoChange(usersT)
+		// Change default from "true" to "false" to "true".
+		for _, x := range []string{"false", "true"} {
+			usersT.Columns[0].Default.(*schema.RawExpr).X = x
+			changes, err := s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
+			s.Require().NoError(err)
+			s.Require().Len(changes, 1)
+			err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+			s.ensureNoChange(usersT)
+		}
+		s.dropTables(usersT.Name)
+	})
+
+	s.Run("ChangeNull", func() {
+		usersT := &schema.Table{
+			Name: "users",
+			Columns: []*schema.Column{
+				{Name: "a", Type: &schema.ColumnType{Type: &schema.BoolType{T: "bool"}, Null: true}},
+			},
+		}
+		err := s.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
+		s.Require().NoError(err)
+		s.ensureNoChange(usersT)
+		usersT.Columns[0].Type.Null = false
+		changes, err := s.drv.Diff().TableDiff(s.loadRealm().Schemas[0].Tables[0], usersT)
+		s.Require().NoError(err)
+		s.Require().Len(changes, 1)
+		err = s.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+		s.ensureNoChange(usersT)
+		s.dropTables(usersT.Name)
+	})
+}
+
+func (s *mysqlSuite) TestHCL() {
+	s.applyHcl(`
+schema "test" {
+}
+
+table "users" {
+	schema = schema.test
+	column "email" {
+		type = "string"
+	}
+}
+`)
+	realm := s.loadRealm()
+	table, ok := realm.Schemas[0].Table("users")
+	s.True(ok, "expected users table")
+	column, ok := table.Column("email")
+	s.True(ok, "expected name column")
+	s.Equal("users", table.Name)
+	s.Equal("email", column.Name)
+	s.Equal(column.Type.Raw, "varchar(255)")
+	s.applyHcl(`
+schema "test" {
+}
+`)
+	s.TestEmptyRealm()
+}
+
+func (s *mysqlSuite) applyHcl(spec string) {
+	ctx := context.Background()
+	realm, err := s.drv.InspectRealm(ctx, &schema.InspectRealmOption{
+		Schemas: []string{"test"},
+	})
+	s.NoError(err)
+	var file schemaspec.File
+	err = schemahcl.Decode([]byte(spec), &file)
+	s.NoError(err)
+	desired, err := s.drv.ConvertSchema(file.Schemas[0], file.Tables)
+	existing := realm.Schemas[0]
+	s.NoError(err)
+	diff, err := s.drv.Diff().SchemaDiff(existing, desired)
+	s.NoError(err)
+	err = s.drv.Migrate().Exec(ctx, diff)
+	s.NoError(err)
 }
 
 func (s *mysqlSuite) loadRealm() *schema.Realm {
@@ -331,4 +492,12 @@ func (s *mysqlSuite) ensureNoChange(tables ...*schema.Table) {
 		s.Require().NoError(err)
 		s.Empty(changes)
 	}
+}
+
+func (s *mysqlSuite) dropTables(names ...string) {
+	if len(names) == 0 {
+		return
+	}
+	_, err := s.db.Exec("DROP TABLE IF EXISTS " + strings.Join(names, ", "))
+	s.Require().NoError(err, "drop tables %q", names)
 }
