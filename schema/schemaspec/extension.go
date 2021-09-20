@@ -12,7 +12,7 @@ import (
 // additional attributes and children resources.
 type Remainer interface {
 	// Remain returns a resource representing any extra children and attributes
-	// that are related to the struct but were not mapped to any of it's fields.
+	// that are related to the struct but were not mapped to any of its fields.
 	Remain() *Resource
 }
 
