@@ -103,5 +103,5 @@ pet "garfield" {
 	require.True(t, ok)
 	ref, err := attr.Ref()
 	require.NoError(t, err)
-	require.EqualValues(t, "/person/jon", ref)
+	require.EqualValues(t, "$person.jon", ref)
 }

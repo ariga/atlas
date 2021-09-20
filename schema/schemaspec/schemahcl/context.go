@@ -2,7 +2,6 @@ package schemahcl
 
 import (
 	"fmt"
-	"path"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -34,7 +33,7 @@ func evalCtx(f *hcl.File) (*hcl.EvalContext, error) {
 	if !ok {
 		return nil, fmt.Errorf("schemahcl: expected an hcl body")
 	}
-	vars, err := blockVars(b, "/")
+	vars, err := blockVars(b, "")
 	if err != nil {
 		return nil, err
 	}
@@ -49,11 +48,11 @@ func blockVars(b *hclsyntax.Body, parentAddr string) (map[string]cty.Value, erro
 		return nil, fmt.Errorf("schemahcl: failed extracting type definitions: %w", err)
 	}
 	vars := make(map[string]cty.Value)
-	for n, typ := range types {
+	for typeName, typ := range types {
 		v := make(map[string]cty.Value)
-		for _, blk := range blocksOfType(b.Blocks, n) {
-			name := blockName(blk)
-			if name == "" {
+		for _, blk := range blocksOfType(b.Blocks, typeName) {
+			blkName := blockName(blk)
+			if blkName == "" {
 				continue
 			}
 			attrs := attrMap(blk.Body.Attributes)
@@ -63,7 +62,7 @@ func blockVars(b *hclsyntax.Body, parentAddr string) (map[string]cty.Value, erro
 					attrs[n] = cty.NullVal(t)
 				}
 			}
-			self := path.Join(parentAddr, n, name)
+			self := addr(parentAddr, typeName, blkName)
 			attrs["__ref"] = cty.StringVal(self)
 			varMap, err := blockVars(blk.Body, self)
 			if err != nil {
@@ -74,13 +73,21 @@ func blockVars(b *hclsyntax.Body, parentAddr string) (map[string]cty.Value, erro
 				attrs[k] = v
 			}
 
-			v[name] = cty.ObjectVal(attrs)
+			v[blkName] = cty.ObjectVal(attrs)
 		}
 		if len(v) > 0 {
-			vars[n] = cty.MapVal(v)
+			vars[typeName] = cty.MapVal(v)
 		}
 	}
 	return vars, nil
+}
+
+func addr(parentAddr, typeName, blkName string) string {
+	var prefixDot string
+	if len(parentAddr) > 0 {
+		prefixDot = "."
+	}
+	return fmt.Sprintf("%s%s$%s.%s", parentAddr, prefixDot, typeName, blkName)
 }
 
 func blockName(blk *hclsyntax.Block) string {

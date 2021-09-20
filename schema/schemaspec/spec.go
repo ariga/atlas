@@ -36,10 +36,10 @@ type (
 	}
 
 	// Ref implements Value and represents a reference to another Resource.
-	// The path to a Resource under the root Resource "/" is expressed as "/<type>/<name>/..."
+	// The path to a Resource under the root Resource is expressed as "$<type>.<name>..."
 	// recursively. For example, a resource of type "table" that is named "users" and is a direct
-	// child of the root Resource's address shall be "/table/users". A child resource of that table
-	// of type "column" and named "id", shall be referenced as "/table/users/column/id", and so on.
+	// child of the root Resource's address shall be "$table.users". A child resource of that table
+	// of type "column" and named "id", shall be referenced as "$table.users.$column.id", and so on.
 	Ref struct {
 		V string
 	}
