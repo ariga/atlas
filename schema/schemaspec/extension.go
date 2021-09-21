@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // Remainer is the interface that is implemented by types that can store
@@ -31,9 +32,14 @@ func (d *DefaultExtension) Remain() *Resource {
 
 type registry map[string]interface{}
 
-var extensions registry
+var (
+	extensions   = make(registry)
+	extensionsMu sync.RWMutex
+)
 
 func (r registry) lookup(ext interface{}) (string, bool) {
+	extensionsMu.RLock()
+	defer extensionsMu.RUnlock()
 	for k, v := range r {
 		if reflect.TypeOf(ext) == reflect.TypeOf(v) {
 			return k, true
@@ -42,12 +48,18 @@ func (r registry) lookup(ext interface{}) (string, bool) {
 	return "", false
 }
 
-func init() {
-	extensions = make(registry)
-}
-
 // Register records the type of ext in the global extension registry.
+// If Register is called twice with the same name or if ext is nil,
+// it panics.
 func Register(name string, ext interface{}) {
+	extensionsMu.Lock()
+	defer extensionsMu.Unlock()
+	if ext == nil {
+		panic("schemaspec: Register extension is nil")
+	}
+	if _, dup := extensions[name]; dup {
+		panic("sql: Register called twice for type " + name)
+	}
 	extensions[name] = ext
 }
 
