@@ -56,6 +56,12 @@ table "users" {
 						Null:     false,
 						Default:  &schemaspec.LiteralValue{V: "10"},
 					},
+					{
+						Name:     "active",
+						TypeName: "bool",
+						Null:     false,
+						Default:  &schemaspec.LiteralValue{V: "true"},
+					},
 				},
 			},
 		},
