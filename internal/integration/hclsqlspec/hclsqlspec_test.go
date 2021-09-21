@@ -58,6 +58,29 @@ table "users" {
 	}, file)
 }
 
+func TestWithRemain(t *testing.T) {
+	file, err := decode(`
+schema "hi" {
+	x = 1
+}`)
+	require.NoError(t, err)
+	require.EqualValues(t, &db{
+		Schemas: []*sqlspec.Schema{
+			{
+				Name: "hi",
+				DefaultExtension: schemaspec.DefaultExtension{
+					Extra: schemaspec.Resource{
+						Attrs: []*schemaspec.Attr{
+							{K: "x", V: &schemaspec.LiteralValue{V: "1"}},
+						},
+					},
+				},
+			},
+		},
+		Tables: []*sqlspec.Table{},
+	}, file)
+}
+
 func decode(f string) (*db, error) {
 	res, err := schemahcl.Decode([]byte(f))
 	if err != nil {
@@ -73,6 +96,4 @@ func decode(f string) (*db, error) {
 type db struct {
 	Schemas []*sqlspec.Schema `spec:"schema"`
 	Tables  []*sqlspec.Table  `spec:"table"`
-	schemaspec.Extension
 }
-
