@@ -160,6 +160,129 @@ func TestConvertSchema(t *testing.T) {
 	require.EqualValues(t, exp, sch)
 }
 
+func TestSchemaSpec(t *testing.T) {
+	spec := &schemaspec.Schema{
+		Name: "schema",
+	}
+	tables := []*schemaspec.Table{
+		{
+			Name: "table",
+			Columns: []*schemaspec.Column{
+				{
+					Name: "col",
+					Type: "int",
+				},
+				{
+					Name: "age",
+					Type: "int",
+				},
+				{
+					Name: "account_name",
+					Type: "string",
+					Resource: schemaspec.Resource{
+						Attrs: []*schemaspec.Attr{
+							{
+								K: "size", V: &schemaspec.LiteralValue{V: "32"},
+							},
+						},
+					},
+				},
+			},
+			PrimaryKey: &schemaspec.PrimaryKey{
+				Columns: []*schemaspec.ColumnRef{{Table: "table", Name: "col"}},
+			},
+		},
+		{
+			Name: "accounts",
+			Columns: []*schemaspec.Column{
+				{
+					Name: "name",
+					Type: "string",
+					Resource: schemaspec.Resource{
+						Attrs: []*schemaspec.Attr{
+							{
+								K: "size", V: &schemaspec.LiteralValue{V: "32"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	d := &Driver{}
+	sch, err := d.ConvertSchema(spec, tables)
+	require.NoError(t, err)
+	exp := &schema.Schema{
+		Name: "schema",
+		Spec: spec,
+	}
+	exp.Tables = []*schema.Table{
+		{
+			Name:   "table",
+			Schema: exp,
+			Spec:   tables[0],
+			Columns: []*schema.Column{
+				{
+					Name: "col",
+					Type: &schema.ColumnType{
+						Type: &schema.IntegerType{
+							T: tInt,
+						},
+					},
+					Spec: tables[0].Columns[0],
+				},
+				{
+					Name: "age",
+					Type: &schema.ColumnType{
+						Type: &schema.IntegerType{
+							T: tInt,
+						},
+					},
+					Spec: tables[0].Columns[1],
+				},
+				{
+					Name: "account_name",
+					Type: &schema.ColumnType{
+						Type: &schema.StringType{
+							T:    tVarchar,
+							Size: 32,
+						},
+					},
+					Spec: tables[0].Columns[2],
+				},
+			},
+		},
+		{
+			Name:   "accounts",
+			Spec:   tables[1],
+			Schema: exp,
+			Columns: []*schema.Column{
+				{
+					Name: "name",
+					Type: &schema.ColumnType{
+						Type: &schema.StringType{
+							T:    tVarchar,
+							Size: 32,
+						},
+					},
+					Spec: tables[1].Columns[0],
+				},
+			},
+		},
+	}
+	exp.Tables[0].PrimaryKey = &schema.Index{
+		Table: exp.Tables[0],
+		Parts: []*schema.IndexPart{
+			{SeqNo: 0, C: exp.Tables[0].Columns[0]},
+		},
+	}
+	require.EqualValues(t, exp, sch)
+	cspec, ctables, err := d.SchemaSpec(sch)
+	require.NoError(t, err)
+	require.EqualValues(t, spec, cspec)
+	require.EqualValues(t, tables, ctables)
+}
+
 func TestConvertColumnType(t *testing.T) {
 	for _, tt := range []struct {
 		spec     *schemaspec.Column
@@ -426,7 +549,7 @@ func TestColumnTypeSpec(t *testing.T) {
 		},
 	} {
 		t.Run(tt.expected.Name, func(t *testing.T) {
-			columnType, err := ColumnTypeSpec(tt.schem)
+			columnType, err := columnTypeSpec(tt.schem)
 			require.NoError(t, err)
 			require.EqualValues(t, tt.expected, columnType)
 		})
