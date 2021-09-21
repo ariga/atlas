@@ -58,7 +58,7 @@ func Register(name string, ext interface{}) {
 		panic("schemaspec: Register extension is nil")
 	}
 	if _, dup := extensions[name]; dup {
-		panic("sql: Register called twice for type " + name)
+		panic("schemaspec: Register called twice for type " + name)
 	}
 	extensions[name] = ext
 }
