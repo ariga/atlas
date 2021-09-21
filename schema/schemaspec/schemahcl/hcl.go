@@ -104,6 +104,8 @@ func extractListValue(value cty.Value) (*schemaspec.ListValue, error) {
 
 func extractLiteralValue(value cty.Value) (*schemaspec.LiteralValue, error) {
 	switch value.Type() {
+	case ctySchemaLit:
+		return value.EncapsulatedValue().(*schemaspec.LiteralValue), nil
 	case cty.String:
 		return &schemaspec.LiteralValue{V: strconv.Quote(value.AsString())}, nil
 	case cty.Number:

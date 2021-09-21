@@ -28,6 +28,10 @@ table "users" {
 		null = false
 		default = 10
 	}
+	column "active" {
+		type = "bool"
+		default = true
+	}
 }
 `)
 	require.NoError(t, err)
