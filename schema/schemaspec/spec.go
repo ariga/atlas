@@ -93,7 +93,12 @@ func (r *Resource) Attr(name string) (*Attr, bool) {
 	return attrVal(r.Attrs, name)
 }
 
+// SetAttr sets the Attr on the Resource. If r is nil, a zero value Resource
+// is initialized. If an Attr with the same key exists, it is replaced by attr.
 func (r *Resource) SetAttr(attr *Attr) {
+	if r == nil {
+		*r = Resource{}
+	}
 	r.Attrs = replaceOrAppendAttr(r.Attrs, attr)
 }
 

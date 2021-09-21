@@ -7,8 +7,7 @@ type (
 	// Schema holds a specification for a Schema.
 	Schema struct {
 		Name string `spec:",name"`
-		schemaspec.Resource
-		schemaspec.Extension
+		schemaspec.DefaultExtension
 	}
 
 	// Table holds a specification for an SQL table.
@@ -19,8 +18,6 @@ type (
 		//PrimaryKey  *PrimaryKey
 		//ForeignKeys []*ForeignKey
 		//Indexes     []*Index
-		schemaspec.Resource
-		schemaspec.Extension
 	}
 
 	// Column holds a specification for a column in an SQL table.
@@ -30,7 +27,5 @@ type (
 		TypeName string                   `spec:"type" override:"type"`
 		Default  *schemaspec.LiteralValue `spec:"default" override:"default"`
 		//Overrides []*Override
-		schemaspec.Resource
-		schemaspec.Extension
 	}
 )

@@ -8,27 +8,32 @@ import (
 	"strings"
 )
 
-// Extension is the interface that should be implemented by extensions to
-// the core Spec resources.
-//
-// To specify the mapping from the extension struct fields to the schemaspec.Resource
-// use the `spec` key on the field's tag. To specify that a field should be mapped to
-// the corresponding Resource's `Name` specify ",name" to the tag value. For example:
-//
-//   type Example struct {
-//      Name  string `spec:,name"
-//      Value int `spec:"value"`
-//   }
-//
-type Extension interface {
-	ext()
+// Remainer is the interface that is implemented by types that can store
+// additional attributes and children resources.
+type Remainer interface {
+	// Remain returns a resource representing any extra children and attributes
+	// that are related to the struct but were not mapped to any of its fields.
+	Remain() *Resource
 }
 
-type registry map[string]Extension
+// DefaultExtension can be embedded in structs that need basic default behavior.
+// For instance, DefaultExtension implements Remainer, and has a private *Resource
+// field that can store additional attributes and children that do not match the
+// structs fields.
+type DefaultExtension struct {
+	Extra Resource
+}
+
+// Remain implements the Remainer interface.
+func (d *DefaultExtension) Remain() *Resource {
+	return &d.Extra
+}
+
+type registry map[string]interface{}
 
 var extensions registry
 
-func (r registry) lookup(ext Extension) (string, bool) {
+func (r registry) lookup(ext interface{}) (string, bool) {
 	for k, v := range r {
 		if reflect.TypeOf(ext) == reflect.TypeOf(v) {
 			return k, true
@@ -41,12 +46,17 @@ func init() {
 	extensions = make(registry)
 }
 
-func Register(name string, ext Extension) {
+// Register records the type of ext in the global extension registry.
+func Register(name string, ext interface{}) {
 	extensions[name] = ext
 }
 
-// As reads the attributes and children resources of the resource into the target Extension.
-func (r *Resource) As(target Extension) error {
+// As reads the attributes and children resources of the resource into the target struct.
+func (r *Resource) As(target interface{}) error {
+	if err := validateStructPtr(target); err != nil {
+		return err
+	}
+	existingAttrs, existingChildren := existingElements(r)
 	var seenName bool
 	v := reflect.ValueOf(target).Elem()
 	for _, ft := range specFields(target) {
@@ -66,15 +76,55 @@ func (r *Resource) As(target Extension) error {
 			if err := setField(field, attr); err != nil {
 				return err
 			}
+			delete(existingAttrs, attr.K)
 			continue
 		}
 		if field.Type().Kind() == reflect.Slice {
 			if err := setChildSlice(field, childrenOfType(r, ft.tag)); err != nil {
 				return err
 			}
+			delete(existingChildren, ft.tag)
 		}
 	}
+	rem, ok := target.(Remainer)
+	if !ok {
+		return nil
+	}
+	extras := rem.Remain()
+	for attrName := range existingAttrs {
+		attr, ok := r.Attr(attrName)
+		if !ok {
+			return fmt.Errorf("schemaspec: expected attr %q to exist", attrName)
+		}
+		extras.SetAttr(attr)
+	}
+	for childType := range existingChildren {
+		children := childrenOfType(r, childType)
+		extras.Children = append(extras.Children, children...)
+	}
 	return nil
+}
+
+func validateStructPtr(target interface{}) error {
+	typeOf := reflect.TypeOf(target)
+	if typeOf.Kind() != reflect.Ptr {
+		return errors.New("schemaspec: expected target to be a pointer")
+	}
+	if typeOf.Elem().Kind() != reflect.Struct {
+		return errors.New("schemaspec: expected target to be a pointer to a struct")
+	}
+	return nil
+}
+
+func existingElements(r *Resource) (attrs, children map[string]struct{}) {
+	attrs, children = make(map[string]struct{}), make(map[string]struct{})
+	for _, ea := range r.Attrs {
+		attrs[ea.K] = struct{}{}
+	}
+	for _, ec := range r.Children {
+		children[ec.Type] = struct{}{}
+	}
+	return
 }
 
 func setChildSlice(field reflect.Value, children []*Resource) error {
@@ -85,7 +135,7 @@ func setChildSlice(field reflect.Value, children []*Resource) error {
 	slc := reflect.MakeSlice(reflect.SliceOf(typ), 0, len(children))
 	for _, c := range children {
 		n := reflect.New(typ.Elem())
-		ext := n.Interface().(Extension)
+		ext := n.Interface()
 		if err := c.As(ext); err != nil {
 			return err
 		}
@@ -125,7 +175,7 @@ func setField(field reflect.Value, attr *Attr) error {
 
 // Scan reads the Extension into the Resource. Scan will override the Resource
 // name or type if they are set for the extension.
-func (r *Resource) Scan(ext Extension) error {
+func (r *Resource) Scan(ext interface{}) error {
 	if lookup, ok := extensions.lookup(ext); ok {
 		r.Type = lookup
 	}
@@ -140,7 +190,7 @@ func (r *Resource) Scan(ext Extension) error {
 			r.Name = field.String()
 		case field.Kind() == reflect.Slice:
 			for i := 0; i < field.Len(); i++ {
-				ext := field.Index(i).Interface().(Extension)
+				ext := field.Index(i).Interface()
 				child := &Resource{}
 				if err := child.Scan(ext); err != nil {
 					return err
@@ -166,6 +216,15 @@ func (r *Resource) Scan(ext Extension) error {
 			}
 		}
 	}
+	rem, ok := ext.(Remainer)
+	if !ok {
+		return nil
+	}
+	extra := rem.Remain()
+	for _, attr := range extra.Attrs {
+		r.SetAttr(attr)
+	}
+	r.Children = append(r.Children, extra.Children...)
 	return nil
 }
 
@@ -190,7 +249,7 @@ func scanAttr(key string, r *Resource, field reflect.Value) error {
 
 // specFields uses reflection to find struct fields that are tagged with "spec"
 // and returns a list of mappings from the tag to the field name.
-func specFields(ext Extension) []fieldTag {
+func specFields(ext interface{}) []fieldTag {
 	t := reflect.TypeOf(ext)
 	var fields []fieldTag
 	for i := 0; i < t.Elem().NumField(); i++ {

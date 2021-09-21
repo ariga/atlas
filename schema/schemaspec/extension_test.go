@@ -10,7 +10,7 @@ import (
 )
 
 type OwnerBlock struct {
-	schemaspec.Extension
+	schemaspec.DefaultExtension
 	ID        string                   `spec:",name"`
 	FirstName string                   `spec:"first_name"`
 	Born      int                      `spec:"born"`
@@ -19,11 +19,20 @@ type OwnerBlock struct {
 }
 
 type PetBlock struct {
-	schemaspec.Extension
+	schemaspec.DefaultExtension
 	ID     string        `spec:",name"`
 	Breed  string        `spec:"breed"`
 	Born   int           `spec:"born"`
 	Owners []*OwnerBlock `spec:"owner"`
+}
+
+func TestInvalidExt(t *testing.T) {
+	r := &schemaspec.Resource{}
+	err := r.As(1)
+	require.EqualError(t, err, "schemaspec: expected target to be a pointer")
+	var p *string
+	err = r.As(p)
+	require.EqualError(t, err, "schemaspec: expected target to be a pointer to a struct")
 }
 
 func TestExtension(t *testing.T) {
@@ -36,6 +45,13 @@ func TestExtension(t *testing.T) {
 			schemautil.LitAttr("born", "2019"),
 			schemautil.LitAttr("active", "true"),
 			schemautil.LitAttr("lit", "1000"),
+			schemautil.LitAttr("extra", "true"),
+		},
+		Children: []*schemaspec.Resource{
+			{
+				Name: "extra",
+				Type: "extra",
+			},
 		},
 	}
 	owner := OwnerBlock{}
@@ -46,6 +62,11 @@ func TestExtension(t *testing.T) {
 	require.EqualValues(t, 2019, owner.Born)
 	require.EqualValues(t, true, owner.Active)
 	require.EqualValues(t, schemautil.LitAttr("lit", "1000").V, owner.Lit)
+	attr, ok := owner.Remain().Attr("extra")
+	require.True(t, ok)
+	eb, err := attr.Bool()
+	require.NoError(t, err)
+	require.True(t, eb)
 
 	scan := &schemaspec.Resource{}
 	err = scan.Scan(&owner)
