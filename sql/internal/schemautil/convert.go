@@ -200,7 +200,7 @@ func SchemaSpec(s *schema.Schema, fn TableSpecFunc) (*schemaspec.Schema, []*sche
 }
 
 // TableSpec converts schema.Table to a schemaspec.Table.
-func TableSpec(t *schema.Table, colFn ColumnSpecFunc, pkFn PKSpecFunc, inFn IndexSpecFunc) (*schemaspec.Table, error) {
+func TableSpec(t *schema.Table, colFn ColumnSpecFunc, pkFn PKSpecFunc, idxFn IndexSpecFunc) (*schemaspec.Table, error) {
 	spec := &schemaspec.Table{
 		Name: t.Name,
 	}
@@ -219,7 +219,7 @@ func TableSpec(t *schema.Table, colFn ColumnSpecFunc, pkFn PKSpecFunc, inFn Inde
 		spec.PrimaryKey = pk
 	}
 	for _, idx := range t.Indexes {
-		i, err := inFn(idx)
+		i, err := idxFn(idx)
 		if err != nil {
 			return nil, err
 		}
