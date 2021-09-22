@@ -5,6 +5,7 @@
 package schemautil
 
 import (
+	"errors"
 	"fmt"
 
 	"ariga.io/atlas/sql/schema"
@@ -20,7 +21,7 @@ type (
 	ConvertIndexFunc      func(*schemaspec.Index, *schema.Table) (*schema.Index, error)
 	ColumnSpecFunc        func(*schema.Column) (*schemaspec.Column, error)
 	TableSpecFunc         func(*schema.Table) (*schemaspec.Table, error)
-	PKSpecFunc            func(index *schema.Index) (*schemaspec.PrimaryKey, error)
+	PrimaryKeySpecFunc    func(index *schema.Index) (*schemaspec.PrimaryKey, error)
 	IndexSpecFunc         func(index *schema.Index) (*schemaspec.Index, error)
 )
 
@@ -200,7 +201,7 @@ func SchemaSpec(s *schema.Schema, fn TableSpecFunc) (*schemaspec.Schema, []*sche
 }
 
 // TableSpec converts schema.Table to a schemaspec.Table.
-func TableSpec(t *schema.Table, colFn ColumnSpecFunc, pkFn PKSpecFunc, idxFn IndexSpecFunc) (*schemaspec.Table, error) {
+func TableSpec(t *schema.Table, colFn ColumnSpecFunc, pkFn PrimaryKeySpecFunc, idxFn IndexSpecFunc) (*schemaspec.Table, error) {
 	spec := &schemaspec.Table{
 		Name: t.Name,
 	}
@@ -244,10 +245,10 @@ func PrimaryKeySpec(s *schema.Index) (*schemaspec.PrimaryKey, error) {
 
 // IndexSpec converts schema.Index to schemaspec.Index
 func IndexSpec(idx *schema.Index) (*schemaspec.Index, error) {
-	c := make([]*schemaspec.ColumnRef, 0, len(s.Parts))
+	c := make([]*schemaspec.ColumnRef, 0, len(idx.Parts))
 	for _, p := range idx.Parts {
 		if p.C == nil {
-			return nil, errros.New("index expression are not support")
+			return nil, errors.New("index expression are not support")
 		}
 		c = append(c, &schemaspec.ColumnRef{
 			Name:  p.C.Name,
