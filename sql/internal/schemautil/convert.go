@@ -248,7 +248,7 @@ func IndexSpec(idx *schema.Index) (*schemaspec.Index, error) {
 	c := make([]*schemaspec.ColumnRef, 0, len(idx.Parts))
 	for _, p := range idx.Parts {
 		if p.C == nil {
-			return nil, errors.New("index expression are not support")
+			return nil, errors.New("index expression is not supported")
 		}
 		c = append(c, &schemaspec.ColumnRef{
 			Name:  p.C.Name,
