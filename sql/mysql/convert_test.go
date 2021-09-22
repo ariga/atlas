@@ -191,6 +191,28 @@ func TestSchemaSpec(t *testing.T) {
 			PrimaryKey: &schemaspec.PrimaryKey{
 				Columns: []*schemaspec.ColumnRef{{Table: "table", Name: "col"}},
 			},
+			Indexes: []*schemaspec.Index{
+				{
+					Name:   "index",
+					Unique: true,
+					Columns: []*schemaspec.ColumnRef{
+						{Table: "table", Name: "col"},
+						{Table: "table", Name: "age"},
+					},
+				},
+			},
+			ForeignKeys: []*schemaspec.ForeignKey{
+				{
+					Symbol: "accounts",
+					Columns: []*schemaspec.ColumnRef{
+						{Table: "table", Name: "account_name"},
+					},
+					RefColumns: []*schemaspec.ColumnRef{
+						{Table: "accounts", Name: "name"},
+					},
+					OnDelete: string(schema.SetNull),
+				},
+			},
 		},
 		{
 			Name: "accounts",
@@ -274,6 +296,26 @@ func TestSchemaSpec(t *testing.T) {
 		Table: exp.Tables[0],
 		Parts: []*schema.IndexPart{
 			{SeqNo: 0, C: exp.Tables[0].Columns[0]},
+		},
+	}
+	exp.Tables[0].Indexes = []*schema.Index{
+		{
+			Name:   "index",
+			Table:  exp.Tables[0],
+			Unique: true,
+			Parts: []*schema.IndexPart{
+				{SeqNo: 0, C: exp.Tables[0].Columns[0]},
+				{SeqNo: 1, C: exp.Tables[0].Columns[1]},
+			},
+		},
+	}
+	exp.Tables[0].ForeignKeys = []*schema.ForeignKey{
+		{
+			Symbol:     "accounts",
+			Table:      exp.Tables[0],
+			Columns:    []*schema.Column{exp.Tables[0].Columns[2]},
+			RefColumns: []*schema.Column{exp.Tables[1].Columns[0]},
+			OnDelete:   schema.SetNull,
 		},
 	}
 	require.EqualValues(t, exp, sch)
