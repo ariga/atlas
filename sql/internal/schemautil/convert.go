@@ -23,6 +23,7 @@ type (
 	TableSpecFunc         func(*schema.Table) (*schemaspec.Table, error)
 	PrimaryKeySpecFunc    func(index *schema.Index) (*schemaspec.PrimaryKey, error)
 	IndexSpecFunc         func(index *schema.Index) (*schemaspec.Index, error)
+	ForeignKeySpecFunc    func(fk *schema.ForeignKey) (*schemaspec.ForeignKey, error)
 )
 
 // ConvertSchema converts a schemaspec.Schema with its relevant *schemaspec.Tables
@@ -201,7 +202,7 @@ func SchemaSpec(s *schema.Schema, fn TableSpecFunc) (*schemaspec.Schema, []*sche
 }
 
 // TableSpec converts schema.Table to a schemaspec.Table.
-func TableSpec(t *schema.Table, colFn ColumnSpecFunc, pkFn PrimaryKeySpecFunc, idxFn IndexSpecFunc) (*schemaspec.Table, error) {
+func TableSpec(t *schema.Table, colFn ColumnSpecFunc, pkFn PrimaryKeySpecFunc, idxFn IndexSpecFunc, fkFn ForeignKeySpecFunc) (*schemaspec.Table, error) {
 	spec := &schemaspec.Table{
 		Name: t.Name,
 	}
@@ -225,6 +226,13 @@ func TableSpec(t *schema.Table, colFn ColumnSpecFunc, pkFn PrimaryKeySpecFunc, i
 			return nil, err
 		}
 		spec.Indexes = append(spec.Indexes, i)
+	}
+	for _, fk := range t.ForeignKeys {
+		f, err := fkFn(fk)
+		if err != nil {
+			return nil, err
+		}
+		spec.ForeignKeys = append(spec.ForeignKeys, f)
 	}
 	return spec, nil
 }
@@ -259,5 +267,30 @@ func IndexSpec(idx *schema.Index) (*schemaspec.Index, error) {
 		Name:    idx.Name,
 		Unique:  idx.Unique,
 		Columns: c,
+	}, nil
+}
+
+// ForeignKeySpec converts schema.ForeignKey to schemaspec.ForeignKey
+func ForeignKeySpec(s *schema.ForeignKey) (*schemaspec.ForeignKey, error) {
+	c := make([]*schemaspec.ColumnRef, 0, len(s.Columns))
+	for _, v := range s.Columns {
+		c = append(c, &schemaspec.ColumnRef{
+			Name:  v.Name,
+			Table: s.Table.Name,
+		})
+	}
+	r := make([]*schemaspec.ColumnRef, 0, len(s.RefColumns))
+	for _, v := range s.RefColumns {
+		r = append(r, &schemaspec.ColumnRef{
+			Name:  v.Name,
+			Table: s.Symbol,
+		})
+	}
+	return &schemaspec.ForeignKey{
+		Symbol:     s.Symbol,
+		Columns:    c,
+		RefColumns: r,
+		OnDelete:   string(s.OnDelete),
+		OnUpdate:   string(s.OnUpdate),
 	}, nil
 }
