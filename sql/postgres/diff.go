@@ -6,6 +6,7 @@ package postgres
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"unicode"
 
@@ -57,28 +58,46 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) []schema.Change {
 	return changes
 }
 
-// ColumnTypeChanged reports if the a column type was changed.
-func (d *diff) ColumnTypeChanged(c1, c2 *schema.Column) (bool, error) {
-	changed, err := sqlx.ColumnTypeChanged(c1, c2)
-	if sqlx.IsUnsupportedTypeError(err) {
-		return d.typeChanged(c1, c2)
+// ColumnChange returns the schema changes (if any) for migrating one column to the other.
+func (d *diff) ColumnChange(from, to *schema.Column) (schema.ChangeKind, error) {
+	change := sqlx.CommentChange(from.Attrs, to.Attrs)
+	if from.Type.Null != to.Type.Null {
+		change |= schema.ChangeNull
 	}
-	return changed, err
+	changed, err := d.typeChanged(from, to)
+	if err != nil {
+		return schema.NoChange, err
+	}
+	if changed {
+		change |= schema.ChangeType
+	}
+	changed, err = d.defaultChanged(from, to)
+	if err != nil {
+		return schema.NoChange, err
+	}
+	if changed {
+		change |= schema.ChangeDefault
+	}
+	return change, nil
 }
 
-// ColumnDefaultChanged reports if the a default value of a column
+// defaultChanged reports if the a default value of a column
 // type was changed.
-func (d *diff) ColumnDefaultChanged(from, to *schema.Column) bool {
+func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
 	d1, ok1 := from.Default.(*schema.RawExpr)
 	d2, ok2 := to.Default.(*schema.RawExpr)
 	if ok1 != ok2 {
-		return true
+		return true, nil
 	}
 	if d1 == nil || d1.X == d2.X || trimCast(d1.X) == trimCast(d2.X) {
-		return false
+		return false, nil
 	}
 	// Use database comparison in case of mismatch (e.g. `SELECT ARRAY[1] = '{1}'::int[]`).
-	return !d.valuesEqual(d1.X, d2.X)
+	equals, err := d.valuesEqual(d1.X, d2.X)
+	if err != nil {
+		return false, err
+	}
+	return !equals, nil
 }
 
 // IndexAttrChanged reports if the index attributes were changed.
@@ -128,10 +147,13 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 
 func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	fromT, toT := from.Type.Type, to.Type.Type
-	var (
-		changed bool
-		x, y    = from.Type.Raw, to.Type.Raw
-	)
+	if fromT == nil || toT == nil {
+		return false, fmt.Errorf("postgres: missing type infromation for column %q", from.Name)
+	}
+	if reflect.TypeOf(fromT) != reflect.TypeOf(toT) {
+		return true, nil
+	}
+	var changed bool
 	switch fromT := fromT.(type) {
 	case *schema.BinaryType:
 		toT := toT.(*schema.BinaryType)
@@ -140,6 +162,9 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 		toT := toT.(*schema.DecimalType)
 		changed = fromT.T != toT.T || fromT.Scale != toT.Scale || fromT.Precision != toT.Precision
 	case *EnumType:
+		toT := toT.(*schema.EnumType)
+		changed = fromT.T != toT.T || !sqlx.ValuesEqual(fromT.Values, toT.Values)
+	case *schema.EnumType:
 		toT := toT.(*schema.EnumType)
 		changed = fromT.T != toT.T || !sqlx.ValuesEqual(fromT.Values, toT.Values)
 	case *schema.FloatType:
@@ -173,19 +198,31 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	case *ArrayType:
 		toT := toT.(*ArrayType)
 		changed = fromT.T != toT.T
-		x, y = fromT.T, toT.T
+		// Array types can be defined differently, but they may represent the same type.
+		// Therefore, in case of mismatch, we verify it using the database engine.
+		if changed {
+			equals, err := d.typesEqual(fromT.T, toT.T)
+			return !equals, err
+		}
 	case *UserDefinedType:
 		toT := toT.(*UserDefinedType)
+		changed = fromT.T != toT.T
+	case *schema.BoolType:
+		toT := toT.(*schema.BoolType)
+		changed = fromT.T != toT.T
+	case *schema.JSONType:
+		toT := toT.(*schema.JSONType)
+		changed = fromT.T != toT.T
+	case *schema.SpatialType:
+		toT := toT.(*schema.SpatialType)
+		changed = fromT.T != toT.T
+	case *schema.TimeType:
+		toT := toT.(*schema.TimeType)
 		changed = fromT.T != toT.T
 	default:
 		return false, &sqlx.UnsupportedTypeError{Type: fromT}
 	}
-	// If we assume that a value was changed, we compare
-	// its underlying data type name.
-	if !changed {
-		return false, nil
-	}
-	return !d.typesEqual(x, y), nil
+	return changed, nil
 }
 
 // Normalize implements the sqlx.Normalizer interface.
@@ -261,24 +298,26 @@ func (d *diff) normalize(table *schema.Table) {
 
 // valuesEqual reports if the DEFAULT values x and y
 // equal according to the database engine.
-func (d *diff) valuesEqual(x, y string) (b bool) {
+func (d *diff) valuesEqual(x, y string) (bool, error) {
+	var b bool
 	// The DEFAULT expressions are safe to be inlined in the SELECT
 	// statement same as we inline them in the CREATE TABLE statement.
 	if err := d.Driver.QueryRow(fmt.Sprintf("SELECT %s = %s", x, y)).Scan(&b); err != nil {
-		return false
+		return false, err
 	}
-	return b
+	return b, nil
 }
 
-// valuesEqual reports if the data types x and y
+// typesEqual reports if the data types x and y
 // equal according to the database engine.
-func (d *diff) typesEqual(x, y string) (b bool) {
+func (d *diff) typesEqual(x, y string) (bool, error) {
+	var b bool
 	// The datatype are safe to be inlined in the SELECT statement
 	// same as we inline them in the CREATE TABLE statement.
 	if err := d.Driver.QueryRow(fmt.Sprintf("SELECT '%s'::regtype = '%s'::regtype", x, y)).Scan(&b); err != nil {
-		return false
+		return false, err
 	}
-	return b
+	return b, nil
 }
 
 func checks(attr []schema.Attr) (checks []*Check) {

@@ -188,7 +188,12 @@ func (m *migrate) column(b *sqlx.Builder, c *schema.Column) {
 	}
 	b.P("NULL")
 	if x, ok := c.Default.(*schema.RawExpr); ok {
-		b.P("DEFAULT", x.X)
+		v := x.X
+		// Ensure string default values are quoted.
+		if _, ok := c.Type.Type.(*schema.StringType); ok {
+			v = quote(v)
+		}
+		b.P("DEFAULT", v)
 	}
 	for _, a := range c.Attrs {
 		switch a := a.(type) {
@@ -274,7 +279,7 @@ func (*migrate) attr(b *sqlx.Builder, attrs ...schema.Attr) {
 		case *schema.Collation:
 			b.P("COLLATE", a.V)
 		case *schema.Comment:
-			b.P("COMMENT", "'"+strings.ReplaceAll(a.Text, "'", "\\'")+"'")
+			b.P("COMMENT", quote(a.Text))
 		}
 	}
 }
@@ -283,4 +288,12 @@ func (*migrate) attr(b *sqlx.Builder, attrs ...schema.Attr) {
 func Build(phrase string) *sqlx.Builder {
 	b := &sqlx.Builder{QuoteChar: '`'}
 	return b.P(phrase)
+}
+
+func quote(s string) string {
+	if strings.HasPrefix(s, "'") && strings.HasSuffix(s, "'") ||
+		strings.HasPrefix(s, "\"") && strings.HasSuffix(s, "\"") {
+		return s
+	}
+	return strconv.Quote(s)
 }
