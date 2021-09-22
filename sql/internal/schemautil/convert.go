@@ -243,17 +243,20 @@ func PrimaryKeySpec(s *schema.Index) (*schemaspec.PrimaryKey, error) {
 }
 
 // IndexSpec converts schema.Index to schemaspec.Index
-func IndexSpec(s *schema.Index) (*schemaspec.Index, error) {
+func IndexSpec(idx *schema.Index) (*schemaspec.Index, error) {
 	c := make([]*schemaspec.ColumnRef, 0, len(s.Parts))
-	for _, v := range s.Parts {
+	for _, p := range idx.Parts {
+		if p.C == nil {
+			return nil, errros.New("index expression are not support")
+		}
 		c = append(c, &schemaspec.ColumnRef{
-			Name:  v.C.Name,
-			Table: s.Table.Spec.Name,
+			Name:  p.C.Name,
+			Table: idx.Table.Spec.Name,
 		})
 	}
 	return &schemaspec.Index{
-		Name:    s.Name,
-		Unique:  s.Unique,
+		Name:    idx.Name,
+		Unique:  idx.Unique,
 		Columns: c,
 	}, nil
 }
