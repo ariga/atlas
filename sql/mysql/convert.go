@@ -25,7 +25,11 @@ func (d *Driver) FormatType(t schema.Type) (string, error) {
 	case *BitType:
 		f = strings.ToLower(t.T)
 	case *schema.BoolType:
-		f = strings.ToLower(t.T)
+		// Map all flavors to a single form.
+		switch f = strings.ToLower(t.T); f {
+		case "bool", "boolean", "tinyint", "tinyint(1)":
+			f = "bool"
+		}
 	case *schema.BinaryType:
 		f = strings.ToLower(t.T)
 		if f == tVarBinary {

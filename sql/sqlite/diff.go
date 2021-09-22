@@ -5,6 +5,9 @@
 package sqlite
 
 import (
+	"fmt"
+	"reflect"
+
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 )
@@ -44,21 +47,74 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) []schema.Change {
 	return changes
 }
 
-// ColumnTypeChanged reports if the a column type was changed.
-func (d *diff) ColumnTypeChanged(c1, c2 *schema.Column) (bool, error) {
-	changed, err := sqlx.ColumnTypeChanged(c1, c2)
-	if sqlx.IsUnsupportedTypeError(err) {
-		// All integer types have the same "type affinity".
-		if _, ok := c1.Type.Type.(*schema.IntegerType); ok {
-			return false, nil
-		}
+// ColumnChange returns the schema changes (if any) for migrating one column to the other.
+func (d *diff) ColumnChange(from, to *schema.Column) (schema.ChangeKind, error) {
+	change := sqlx.CommentChange(from.Attrs, to.Attrs)
+	if from.Type.Null != to.Type.Null {
+		change |= schema.ChangeNull
 	}
-	return changed, err
+	changed, err := d.typeChanged(from, to)
+	if err != nil {
+		return schema.NoChange, err
+	}
+	if changed {
+		change |= schema.ChangeType
+	}
+	if changed := d.defaultChanged(from, to); changed {
+		change |= schema.ChangeDefault
+	}
+	return change, nil
 }
 
-// ColumnDefaultChanged reports if the a default value of a column
+// typeChanged reports if the a column type was changed.
+func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
+	fromT, toT := from.Type.Type, to.Type.Type
+	if fromT == nil || toT == nil {
+		return false, fmt.Errorf("sqlite: missing type infromation for column %q", from.Name)
+	}
+	if reflect.TypeOf(fromT) != reflect.TypeOf(toT) {
+		return true, nil
+	}
+	var changed bool
+	switch fromT := fromT.(type) {
+	case *schema.BoolType:
+		toT := toT.(*schema.BoolType)
+		changed = fromT.T != toT.T
+	case *schema.BinaryType:
+		toT := toT.(*schema.BinaryType)
+		changed = fromT.T != toT.T
+	case *schema.DecimalType:
+		toT := toT.(*schema.DecimalType)
+		changed = fromT.T != toT.T
+	case *schema.FloatType:
+		toT := toT.(*schema.FloatType)
+		changed = fromT.T != toT.T
+	case *schema.EnumType:
+		toT := toT.(*schema.EnumType)
+		changed = !sqlx.ValuesEqual(fromT.Values, toT.Values)
+	case *schema.IntegerType:
+		// All integer types have the same "type affinity".
+	case *schema.JSONType:
+		toT := toT.(*schema.JSONType)
+		changed = fromT.T != toT.T
+	case *schema.StringType:
+		toT := toT.(*schema.StringType)
+		changed = fromT.T != toT.T
+	case *schema.SpatialType:
+		toT := toT.(*schema.SpatialType)
+		changed = fromT.T != toT.T
+	case *schema.TimeType:
+		toT := toT.(*schema.TimeType)
+		changed = fromT.T != toT.T
+	default:
+		return false, &sqlx.UnsupportedTypeError{Type: fromT}
+	}
+	return changed, nil
+}
+
+// defaultChanged reports if the a default value of a column
 // type was changed.
-func (d *diff) ColumnDefaultChanged(from, to *schema.Column) bool {
+func (d *diff) defaultChanged(from, to *schema.Column) bool {
 	d1, ok1 := from.Default.(*schema.RawExpr)
 	d2, ok2 := to.Default.(*schema.RawExpr)
 	return ok1 != ok2 || ok1 && d1.X != d2.X

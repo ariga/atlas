@@ -33,26 +33,26 @@ func evalCtx(f *hcl.File) (*hcl.EvalContext, error) {
 	if !ok {
 		return nil, fmt.Errorf("schemahcl: expected an hcl body")
 	}
-	varMap, err := blockVars(b)
+	vars, err := blockVars(b, "")
 	if err != nil {
 		return nil, err
 	}
 	return &hcl.EvalContext{
-		Variables: varMap,
+		Variables: vars,
 	}, nil
 }
 
-func blockVars(b *hclsyntax.Body) (map[string]cty.Value, error) {
+func blockVars(b *hclsyntax.Body, parentAddr string) (map[string]cty.Value, error) {
 	types, err := typeDefs(b)
 	if err != nil {
 		return nil, fmt.Errorf("schemahcl: failed extracting type definitions: %w", err)
 	}
 	vars := make(map[string]cty.Value)
-	for n, typ := range types {
+	for typeName, typ := range types {
 		v := make(map[string]cty.Value)
-		for _, blk := range blocksOfType(b.Blocks, n) {
-			name := blockName(blk)
-			if name == "" {
+		for _, blk := range blocksOfType(b.Blocks, typeName) {
+			blkName := blockName(blk)
+			if blkName == "" {
 				continue
 			}
 			attrs := attrMap(blk.Body.Attributes)
@@ -62,7 +62,9 @@ func blockVars(b *hclsyntax.Body) (map[string]cty.Value, error) {
 					attrs[n] = cty.NullVal(t)
 				}
 			}
-			varMap, err := blockVars(blk.Body)
+			self := addr(parentAddr, typeName, blkName)
+			attrs["__ref"] = cty.StringVal(self)
+			varMap, err := blockVars(blk.Body, self)
 			if err != nil {
 				return nil, err
 			}
@@ -70,13 +72,22 @@ func blockVars(b *hclsyntax.Body) (map[string]cty.Value, error) {
 			for k, v := range varMap {
 				attrs[k] = v
 			}
-			v[name] = cty.ObjectVal(attrs)
+
+			v[blkName] = cty.ObjectVal(attrs)
 		}
 		if len(v) > 0 {
-			vars[n] = cty.MapVal(v)
+			vars[typeName] = cty.MapVal(v)
 		}
 	}
 	return vars, nil
+}
+
+func addr(parentAddr, typeName, blkName string) string {
+	var prefixDot string
+	if len(parentAddr) > 0 {
+		prefixDot = "."
+	}
+	return fmt.Sprintf("%s%s$%s.%s", parentAddr, prefixDot, typeName, blkName)
 }
 
 func blockName(blk *hclsyntax.Block) string {

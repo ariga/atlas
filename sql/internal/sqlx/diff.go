@@ -5,7 +5,6 @@
 package sqlx
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -34,28 +33,8 @@ type (
 		// one state to the other. For example, dropping or adding a `CHECK` constraint.
 		TableAttrDiff(from, to *schema.Table) []schema.Change
 
-		// ColumnTypeChanged reports if the a column type was changed. An implementation
-		// example looks as follows:
-		//
-		//	func (d *Diff) ColumnTypeChanged(c1, c2 *schema.Column) (bool, error) {
-		//
-		//		// Use the generic `sqlx.ColumnTypeChanged` function.
-		//		changed, err := sqlx.ColumnTypeChanged(c1, c2)
-		//
-		//		// If the type is not supported by the generic function (e.g.
-		//		// MySQL set type), fallback to the driver specific logic.
-		//		if sqlx.IsUnsupportedTypeError(err) {
-		//			return d.typeChanged(c1, c2)
-		//		}
-		//
-		//		return changed, err
-		//	}
-		//
-		ColumnTypeChanged(from, to *schema.Column) (bool, error)
-
-		// ColumnDefaultChanged reports if the a default value of a column
-		// type was changed.
-		ColumnDefaultChanged(from, to *schema.Column) bool
+		// ColumnChange returns the schema changes (if any) for migrating one column to the other.
+		ColumnChange(from, to *schema.Column) (schema.ChangeKind, error)
 
 		// IndexAttrChanged reports if the index attributes were changed.
 		// For example, an index type or predicate (for partial indexes).
@@ -143,7 +122,7 @@ func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
 			changes = append(changes, &schema.DropColumn{C: c1})
 			continue
 		}
-		change, err := d.columnChange(c1, c2)
+		change, err := d.ColumnChange(c1, c2)
 		if err != nil {
 			return nil, err
 		}
@@ -208,25 +187,6 @@ func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
 	return changes, nil
 }
 
-// columnChange returns the schema changes (if any) for migrating one column to the other.
-func (d *Diff) columnChange(from, to *schema.Column) (schema.ChangeKind, error) {
-	change := commentChange(from.Attrs, to.Attrs)
-	if from.Type.Null != to.Type.Null {
-		change |= schema.ChangeNull
-	}
-	changed, err := d.ColumnTypeChanged(from, to)
-	if err != nil {
-		return schema.NoChange, err
-	}
-	if changed {
-		change |= schema.ChangeType
-	}
-	if changed := d.ColumnDefaultChanged(from, to); changed {
-		change |= schema.ChangeDefault
-	}
-	return change, nil
-}
-
 // pkChange returns the schema changes (if any) for migrating one primary key to the other.
 func (d *Diff) pkChange(from, to *schema.Index) schema.ChangeKind {
 	change := d.indexChange(from, to)
@@ -243,7 +203,7 @@ func (d *Diff) indexChange(from, to *schema.Index) schema.ChangeKind {
 		change |= schema.ChangeAttr
 	}
 	change |= d.partsChange(from.Parts, to.Parts)
-	change |= commentChange(from.Attrs, to.Attrs)
+	change |= CommentChange(from.Attrs, to.Attrs)
 	return change
 }
 
@@ -306,7 +266,8 @@ func (d *Diff) fkChange(from, to *schema.ForeignKey) schema.ChangeKind {
 	return change
 }
 
-func commentChange(from, to []schema.Attr) schema.ChangeKind {
+// CommentChange reports if the element comment was changed.
+func CommentChange(from, to []schema.Attr) schema.ChangeKind {
 	var c1, c2 schema.Comment
 	if Has(from, &c1) != Has(to, &c2) || c1.Text != c2.Text {
 		return schema.ChangeComment
@@ -338,45 +299,4 @@ type UnsupportedTypeError struct {
 
 func (e UnsupportedTypeError) Error() string {
 	return fmt.Sprintf("unsupported type %T", e.Type)
-}
-
-// IsUnsupportedTypeError reports if an error is a UnsupportedTypeError.
-func IsUnsupportedTypeError(err error) bool {
-	if err == nil {
-		return false
-	}
-	var e *UnsupportedTypeError
-	return errors.As(err, &e)
-}
-
-// ColumnTypeChanged reports whether c1 and c2 have the same column type.
-func ColumnTypeChanged(from, to *schema.Column) (bool, error) {
-	fromT, toT := from.Type.Type, to.Type.Type
-	if fromT == nil || toT == nil {
-		return false, fmt.Errorf("missing type infromation for column %q", from.Name)
-	}
-	if reflect.TypeOf(fromT) != reflect.TypeOf(toT) {
-		return true, nil
-	}
-	var changed bool
-	switch fromT := fromT.(type) {
-	case *schema.BoolType:
-		toT := toT.(*schema.BoolType)
-		changed = fromT.T != toT.T
-	case *schema.EnumType:
-		toT := toT.(*schema.EnumType)
-		changed = !ValuesEqual(fromT.Values, toT.Values)
-	case *schema.JSONType:
-		toT := toT.(*schema.JSONType)
-		changed = fromT.T != toT.T
-	case *schema.SpatialType:
-		toT := toT.(*schema.SpatialType)
-		changed = fromT.T != toT.T
-	case *schema.TimeType:
-		toT := toT.(*schema.TimeType)
-		changed = fromT.T != toT.T
-	default:
-		return false, &UnsupportedTypeError{Type: fromT}
-	}
-	return changed, nil
 }
