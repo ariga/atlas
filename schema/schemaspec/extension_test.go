@@ -1,6 +1,8 @@
 package schemaspec_test
 
 import (
+	"fmt"
+	"strconv"
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec"
@@ -20,10 +22,12 @@ type OwnerBlock struct {
 
 type PetBlock struct {
 	schemaspec.DefaultExtension
-	ID     string        `spec:",name"`
-	Breed  string        `spec:"breed"`
-	Born   int           `spec:"born"`
-	Owners []*OwnerBlock `spec:"owner"`
+	ID        string        `spec:",name"`
+	Breed     string        `spec:"breed"`
+	Born      int           `spec:"born"`
+	Favorite  *Food         `spec:"favorite_food"`
+	Allergies []*Food       `spec:"allergy"`
+	Owners    []*OwnerBlock `spec:"owner"`
 }
 
 func TestInvalidExt(t *testing.T) {
@@ -82,6 +86,8 @@ func TestNested(t *testing.T) {
 		Attrs: []*schemaspec.Attr{
 			schemautil.StrLitAttr("breed", "golden retriever"),
 			schemautil.LitAttr("born", "2002"),
+			schemautil.StrLitAttr("favorite_food", "pasta"),
+			schemautil.ListAttr("allergy", "peanut", "chocolate"),
 		},
 		Children: []*schemaspec.Resource{
 			{
@@ -101,7 +107,14 @@ func TestNested(t *testing.T) {
 	require.EqualValues(t, PetBlock{
 		ID:    "donut",
 		Breed: "golden retriever",
-		Born:  2002,
+		Favorite: &Food{
+			Name: "pasta",
+		},
+		Allergies: []*Food{
+			{Name: "peanut"},
+			{Name: "chocolate"},
+		},
+		Born: 2002,
 		Owners: []*OwnerBlock{
 			{ID: "rotemtam", FirstName: "rotem", Born: 1985, Active: true},
 		},
@@ -110,4 +123,25 @@ func TestNested(t *testing.T) {
 	err = scan.Scan(&pb)
 	require.NoError(t, err)
 	require.EqualValues(t, pet, scan)
+}
+
+type Food struct {
+	Name string
+}
+
+func (f *Food) Scan(value schemaspec.Value) error {
+	v, ok := value.(*schemaspec.LiteralValue)
+	if !ok {
+		return fmt.Errorf("expected value to be literal")
+	}
+	s, err := strconv.Unquote(v.V)
+	if err != nil {
+		return fmt.Errorf("expected attr %q to be convertible to string", v.V)
+	}
+	f.Name = s
+	return nil
+}
+
+func (f *Food) Value() schemaspec.Value {
+	return &schemaspec.LiteralValue{V: strconv.Quote(f.Name)}
 }

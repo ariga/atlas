@@ -121,6 +121,10 @@ func (r *Resource) SetAttr(attr *Attr) {
 	r.Attrs = replaceOrAppendAttr(r.Attrs, attr)
 }
 
+func (l *LiteralValue) Value() Value {
+	return l
+}
+
 func attrVal(attrs []*Attr, name string) (*Attr, bool) {
 	for _, attr := range attrs {
 		if attr.K == name {

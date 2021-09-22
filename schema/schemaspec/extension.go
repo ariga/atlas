@@ -25,6 +25,18 @@ type DefaultExtension struct {
 	Extra Resource
 }
 
+// Scanner is the interface used by Scan.
+type Scanner interface {
+	// Scan assigns a Value.
+	Scan(v Value) error
+}
+
+// Valuer is the interface used by Value.
+type Valuer interface {
+	// Value returns a Value representation of the struct.
+	Value() Value
+}
+
 // Remain implements the Remainer interface.
 func (d *DefaultExtension) Remain() *Resource {
 	return &d.Extra
@@ -178,7 +190,32 @@ func setField(field reflect.Value, attr *Attr) error {
 		}
 		field.SetBool(b)
 	case reflect.Ptr:
+		if _, ok := field.Interface().(Scanner); ok {
+			n := reflect.New(field.Type().Elem())
+			n.Interface().(Scanner).Scan(attr.V)
+			field.Set(n)
+			return nil
+		}
 		field.Set(reflect.ValueOf(attr.V))
+	case reflect.Slice:
+		list, ok := attr.V.(*ListValue)
+		if !ok {
+			return fmt.Errorf("schemaspec: expected attr %q to have a ListValue", attr.K)
+		}
+		elemType := field.Type().Elem()
+		slcOf := reflect.New(reflect.SliceOf(elemType)).Elem()
+		for _, item := range list.V {
+			elem := reflect.New(elemType.Elem())
+			scanner, ok := elem.Interface().(Scanner)
+			if !ok {
+				return fmt.Errorf("schemaspec: expected %s to implement Scanner", elemType)
+			}
+			if err := scanner.Scan(&LiteralValue{V: item}); err != nil {
+				return err
+			}
+			slcOf = reflect.Append(slcOf, elem)
+		}
+		field.Set(slcOf)
 	default:
 		return fmt.Errorf("schemaspec: unsupported field kind %q", field.Kind())
 	}
@@ -200,6 +237,19 @@ func (r *Resource) Scan(ext interface{}) error {
 				return errors.New("schemaspec: extension name field must be string")
 			}
 			r.Name = field.String()
+		case isValuerSlice(field):
+			list := &ListValue{}
+			for i := 0; i < field.Len(); i++ {
+				ext := field.Index(i).Interface()
+				if valuer, ok := ext.(Valuer); ok {
+					lit, ok := valuer.Value().(*LiteralValue)
+					if !ok {
+						return fmt.Errorf("schemaspec: expected %T to be *LiteralValue", lit)
+					}
+					list.V = append(list.V, lit.V)
+				}
+			}
+			r.SetAttr(&Attr{K: ft.tag, V: list})
 		case field.Kind() == reflect.Slice:
 			for i := 0; i < field.Len(); i++ {
 				ext := field.Index(i).Interface()
@@ -211,17 +261,18 @@ func (r *Resource) Scan(ext interface{}) error {
 				r.Children = append(r.Children, child)
 			}
 		case field.Kind() == reflect.Ptr:
+			attr := &Attr{
+				K: ft.tag,
+			}
 			if field.IsNil() {
 				continue
 			}
-			if field.Elem().Type() != reflect.TypeOf(LiteralValue{}) {
-				return fmt.Errorf("schemaspec: pointer to non LiteralValue")
+			if valuer, ok := field.Interface().(Valuer); ok {
+				attr.V = valuer.Value()
+				r.SetAttr(attr)
+				continue
 			}
-			v := field.Elem().FieldByName("V").String()
-			r.SetAttr(&Attr{
-				K: ft.tag,
-				V: &LiteralValue{V: v},
-			})
+			return fmt.Errorf("schemaspec: pointer to unhandled type %s", field.Type())
 		default:
 			if err := scanAttr(ft.tag, r, field); err != nil {
 				return err
@@ -238,6 +289,14 @@ func (r *Resource) Scan(ext interface{}) error {
 	}
 	r.Children = append(r.Children, extra.Children...)
 	return nil
+}
+
+func isValuerSlice(field reflect.Value) bool {
+	if field.Kind() != reflect.Slice {
+		return false
+	}
+	inter := reflect.TypeOf((*Valuer)(nil)).Elem()
+	return field.Type().Elem().Implements(inter)
 }
 
 func scanAttr(key string, r *Resource, field reflect.Value) error {
