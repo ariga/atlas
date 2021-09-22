@@ -28,6 +28,10 @@ table "users" {
 		null = false
 		default = 10
 	}
+	column "active" {
+		type = "bool"
+		default = true
+	}
 }
 `)
 	require.NoError(t, err)
@@ -51,6 +55,12 @@ table "users" {
 						TypeName: "int",
 						Null:     false,
 						Default:  &schemaspec.LiteralValue{V: "10"},
+					},
+					{
+						Name:     "active",
+						TypeName: "bool",
+						Null:     false,
+						Default:  &schemaspec.LiteralValue{V: "true"},
 					},
 				},
 			},

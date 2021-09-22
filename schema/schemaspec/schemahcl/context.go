@@ -2,7 +2,10 @@ package schemahcl
 
 import (
 	"fmt"
+	"reflect"
+	"strconv"
 
+	"ariga.io/atlas/schema/schemaspec"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -57,9 +60,9 @@ func blockVars(b *hclsyntax.Body, parentAddr string) (map[string]cty.Value, erro
 			}
 			attrs := attrMap(blk.Body.Attributes)
 			// Fill missing attributes with zero values.
-			for n, t := range typ.AttributeTypes() {
+			for n := range typ.AttributeTypes() {
 				if _, ok := attrs[n]; !ok {
-					attrs[n] = cty.NullVal(t)
+					attrs[n] = cty.NullVal(ctySchemaLit)
 				}
 			}
 			self := addr(parentAddr, typeName, blkName)
@@ -110,14 +113,40 @@ func blocksOfType(blocks hclsyntax.Blocks, typeName string) []*hclsyntax.Block {
 func attrMap(attrs hclsyntax.Attributes) map[string]cty.Value {
 	out := make(map[string]cty.Value)
 	for _, v := range attrs {
-		value, err := v.Expr.Value(nil)
+		value, diag := v.Expr.Value(nil)
+		if diag.HasErrors() {
+			continue
+		}
+		literalValue, err := extractLiteralValue(value)
 		if err != nil {
 			continue
 		}
-		out[v.Name] = value
+		out[v.Name] = cty.CapsuleVal(ctySchemaLit, literalValue)
 	}
 	return out
 }
+
+// ctySchemaLit is a cty.Capsule type the encapsulates a schemaspec.LiteralValue.
+var ctySchemaLit = cty.CapsuleWithOps("lit", reflect.TypeOf(schemaspec.LiteralValue{}), &cty.CapsuleOps{
+	// ConversionFrom facilitates reading the encapsulated type as a string, as is needed, for example,
+	// when interpolating it in a string expression.
+	ConversionFrom: func(src cty.Type) func(interface{}, cty.Path) (cty.Value, error) {
+		if src != cty.String {
+			return nil
+		}
+		return func(i interface{}, path cty.Path) (cty.Value, error) {
+			lit, ok := i.(*schemaspec.LiteralValue)
+			if !ok {
+				return cty.Value{}, fmt.Errorf("schemahcl: expected *schemaspec.LiteralValue got %T", i)
+			}
+			uq, err := strconv.Unquote(lit.V)
+			if err != nil {
+				return cty.StringVal(lit.V), nil
+			}
+			return cty.StringVal(uq), nil
+		}
+	},
+})
 
 func typeDefs(b *hclsyntax.Body) (map[string]cty.Type, error) {
 	types, err := extractTypes(b)
@@ -152,13 +181,10 @@ func extractTypes(b *hclsyntax.Body) (map[string]map[string]cty.Type, error) {
 
 func mergeAttrTypes(target, other map[string]cty.Type) error {
 	for k, v := range other {
-		targetV, exists := target[k]
+		_, exists := target[k]
 		if !exists {
 			target[k] = v
 			continue
-		}
-		if !v.Equals(targetV) {
-			return fmt.Errorf("schemahcl: field %q must have a constant type. %q!=%q", k, targetV.GoString(), v.GoString())
 		}
 	}
 	return nil
