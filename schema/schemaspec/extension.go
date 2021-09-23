@@ -85,6 +85,7 @@ func (r *Resource) As(target interface{}) error {
 	v := reflect.ValueOf(target).Elem()
 	for _, ft := range specFields(target) {
 		field := v.FieldByName(ft.field)
+
 		if ft.isName {
 			if seenName {
 				return errors.New("schemaspec: extension must have only one isName field")
@@ -103,7 +104,23 @@ func (r *Resource) As(target interface{}) error {
 			delete(existingAttrs, attr.K)
 			continue
 		}
-		if field.Type().Kind() == reflect.Slice {
+		if isValuer(field) {
+			fmt.Println("@@@ KAKAKAK A")
+		}
+		if isSingleResource(field.Type()) {
+			c := findChild(r, ft.tag, "X") // TODO get real name
+			if c == nil {
+				return fmt.Errorf("schemaspec: could not find child %q:%q", ft.tag, "")
+			}
+			n := reflect.New(field.Type().Elem())
+			fmt.Println("@@ type", n.Interface())
+			ext := n.Interface()
+			if err := c.As(ext); err != nil {
+				return err
+			}
+			field.Set(n)
+		}
+		if isResourceSlice(field.Type()) {
 			if err := setChildSlice(field, childrenOfType(r, ft.tag)); err != nil {
 				return err
 			}
@@ -192,7 +209,9 @@ func setField(field reflect.Value, attr *Attr) error {
 	case reflect.Ptr:
 		if _, ok := field.Interface().(Scanner); ok {
 			n := reflect.New(field.Type().Elem())
-			n.Interface().(Scanner).Scan(attr.V)
+			if err := n.Interface().(Scanner).Scan(attr.V); err != nil {
+				return err
+			}
 			field.Set(n)
 			return nil
 		}
@@ -299,6 +318,36 @@ func isValuerSlice(field reflect.Value) bool {
 	return field.Type().Elem().Implements(inter)
 }
 
+func isValuer(field reflect.Value) bool {
+	_, ok := field.Interface().(Valuer)
+	return ok
+}
+
+func isSingleResource(t reflect.Type) bool {
+	if t.Kind() != reflect.Ptr {
+		return false
+	}
+	elem := t.Elem()
+	if elem.Kind() != reflect.Struct {
+		return false
+	}
+	for i := 0; i < elem.NumField(); i++ {
+		f := elem.Field(i)
+		_, ok := f.Tag.Lookup("spec")
+		if ok {
+			return true
+		}
+	}
+	return false
+}
+
+func isResourceSlice(t reflect.Type) bool {
+	if t.Kind() != reflect.Slice {
+		return false
+	}
+	return isSingleResource(t.Elem())
+}
+
 func scanAttr(key string, r *Resource, field reflect.Value) error {
 	var lit string
 	switch field.Kind() {
@@ -352,4 +401,13 @@ func childrenOfType(r *Resource, typ string) []*Resource {
 		}
 	}
 	return out
+}
+
+func findChild(r *Resource, typ, name string) *Resource {
+	for _, c := range r.Children {
+		if c.Type == typ && c.Name == name {
+			return c
+		}
+	}
+	return nil
 }

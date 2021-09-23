@@ -17,7 +17,12 @@ schema "hi" {
 
 table "users" {
 	schema = "hi"
-	
+
+	primary_key "X" {
+		columns = [
+			table.users.column.id
+		]
+	}
 	column "id" {
 		type = "uint"
 		null = false
@@ -43,6 +48,11 @@ table "users" {
 			{
 				Name:       "users",
 				SchemaName: "hi",
+				PrimaryKey: &sqlspec.PrimaryKey{
+					Columns: []*sqlspec.ColumnRef{
+						{Table: "users", Name: "id"},
+					},
+				},
 				Columns: []*sqlspec.Column{
 					{
 						Name:     "id",
