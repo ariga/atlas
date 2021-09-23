@@ -22,11 +22,12 @@ func StrLitAttr(k, v string) *schemaspec.Attr {
 
 // ListAttr is a helper method for constructing *schemaspec.Attr instances that contain list values.
 func ListAttr(k string, values ...string) *schemaspec.Attr {
-	for i, v := range values {
-		values[i] = strconv.Quote(v)
+	lst := &schemaspec.ListValue{}
+	for _, v := range values {
+		lst.V = append(lst.V, &schemaspec.LiteralValue{V: strconv.Quote(v)})
 	}
 	return &schemaspec.Attr{
 		K: k,
-		V: &schemaspec.ListValue{V: values},
+		V: lst,
 	}
 }

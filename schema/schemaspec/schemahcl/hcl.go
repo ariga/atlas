@@ -104,7 +104,7 @@ func extractListValue(value cty.Value) (*schemaspec.ListValue, error) {
 		if err != nil {
 			return nil, err
 		}
-		lst.V = append(lst.V, litv.V)
+		lst.V = append(lst.V, litv)
 	}
 	return lst, nil
 }
@@ -187,7 +187,15 @@ func writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 	case *schemaspec.LiteralValue:
 		body.SetAttributeRaw(attr.K, hclRawTokens(v.V))
 	case *schemaspec.ListValue:
-		body.SetAttributeRaw(attr.K, hclRawList(v.V))
+		lst := make([]string, 0, len(v.V))
+		for _, item := range v.V {
+			val, err := schemaspec.StrVal(item)
+			if err != nil {
+				return err
+			}
+			lst = append(lst, val)
+		}
+		body.SetAttributeRaw(attr.K, hclRawList(lst))
 	default:
 		return fmt.Errorf("schemacl: unknown literal type %T", v)
 	}
