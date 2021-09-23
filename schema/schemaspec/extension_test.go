@@ -20,10 +20,11 @@ type OwnerBlock struct {
 
 type PetBlock struct {
 	schemaspec.DefaultExtension
-	ID     string        `spec:",name"`
-	Breed  string        `spec:"breed"`
-	Born   int           `spec:"born"`
-	Owners []*OwnerBlock `spec:"owner"`
+	ID        string        `spec:",name"`
+	Breed     string        `spec:"breed"`
+	Born      int           `spec:"born"`
+	Owners    []*OwnerBlock `spec:"owner"`
+	RoleModel *PetBlock     `spec:"role_model"`
 }
 
 func TestInvalidExt(t *testing.T) {
@@ -93,6 +94,14 @@ func TestNested(t *testing.T) {
 					schemautil.LitAttr("active", "true"),
 				},
 			},
+			{
+				Name: "gonnie",
+				Type: "role_model",
+				Attrs: []*schemaspec.Attr{
+					schemautil.StrLitAttr("breed", "golden retriever"),
+					schemautil.LitAttr("born", "1998"),
+				},
+			},
 		},
 	}
 	pb := PetBlock{}
@@ -104,6 +113,12 @@ func TestNested(t *testing.T) {
 		Born:  2002,
 		Owners: []*OwnerBlock{
 			{ID: "rotemtam", FirstName: "rotem", Born: 1985, Active: true},
+		},
+		RoleModel: &PetBlock{
+			ID:     "gonnie",
+			Breed:  "golden retriever",
+			Born:   1998,
+			Owners: []*OwnerBlock{},
 		},
 	}, pb)
 	scan := &schemaspec.Resource{}

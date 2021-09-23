@@ -73,7 +73,8 @@ func (r *Resource) As(target interface{}) error {
 	v := reflect.ValueOf(target).Elem()
 	for _, ft := range specFields(target) {
 		field := v.FieldByName(ft.field)
-		if ft.isName {
+		switch {
+		case ft.isName:
 			if seenName {
 				return errors.New("schemaspec: extension must have only one isName field")
 			}
@@ -82,19 +83,29 @@ func (r *Resource) As(target interface{}) error {
 				return errors.New("schemaspec: extension isName field must be of type string")
 			}
 			field.SetString(r.Name)
-			continue
-		}
-		if attr, ok := r.Attr(ft.tag); ok {
+		case hasAttr(r, ft.tag):
+			attr, _ := r.Attr(ft.tag)
 			if err := setField(field, attr); err != nil {
 				return err
 			}
 			delete(existingAttrs, attr.K)
-			continue
-		}
-		if field.Type().Kind() == reflect.Slice {
+		case isResourceSlice(field.Type()):
 			if err := setChildSlice(field, childrenOfType(r, ft.tag)); err != nil {
 				return err
 			}
+			delete(existingChildren, ft.tag)
+		case isSingleResource(field.Type()):
+			c := childrenOfType(r, ft.tag)
+			if len(c) == 0 {
+				continue
+			}
+			res := c[0]
+			n := reflect.New(field.Type().Elem())
+			ext := n.Interface()
+			if err := res.As(ext); err != nil {
+				return err
+			}
+			field.Set(n)
 			delete(existingChildren, ft.tag)
 		}
 	}
@@ -200,7 +211,7 @@ func (r *Resource) Scan(ext interface{}) error {
 				return errors.New("schemaspec: extension name field must be string")
 			}
 			r.Name = field.String()
-		case field.Kind() == reflect.Slice:
+		case isResourceSlice(field.Type()):
 			for i := 0; i < field.Len(); i++ {
 				ext := field.Index(i).Interface()
 				child := &Resource{}
@@ -210,6 +221,17 @@ func (r *Resource) Scan(ext interface{}) error {
 				child.Type = ft.tag
 				r.Children = append(r.Children, child)
 			}
+		case isSingleResource(field.Type()):
+			if field.IsNil() {
+				continue
+			}
+			ext := field.Interface()
+			child := &Resource{}
+			if err := child.Scan(ext); err != nil {
+				return err
+			}
+			child.Type = ft.tag
+			r.Children = append(r.Children, child)
 		case field.Kind() == reflect.Ptr:
 			if field.IsNil() {
 				continue
@@ -293,4 +315,34 @@ func childrenOfType(r *Resource, typ string) []*Resource {
 		}
 	}
 	return out
+}
+
+func isSingleResource(t reflect.Type) bool {
+	if t.Kind() != reflect.Ptr {
+		return false
+	}
+	elem := t.Elem()
+	if elem.Kind() != reflect.Struct {
+		return false
+	}
+	for i := 0; i < elem.NumField(); i++ {
+		f := elem.Field(i)
+		_, ok := f.Tag.Lookup("spec")
+		if ok {
+			return true
+		}
+	}
+	return false
+}
+
+func isResourceSlice(t reflect.Type) bool {
+	if t.Kind() != reflect.Slice {
+		return false
+	}
+	return isSingleResource(t.Elem())
+}
+
+func hasAttr(r *Resource, name string) bool {
+	_, ok := r.Attr(name)
+	return ok
 }
