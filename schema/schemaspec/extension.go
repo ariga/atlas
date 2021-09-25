@@ -33,8 +33,10 @@ func (d *DefaultExtension) Remain() *Resource {
 type registry map[string]interface{}
 
 var (
-	extensions   = make(registry)
-	extensionsMu sync.RWMutex
+	extensions       = make(registry)
+	extensionsMu     sync.RWMutex
+	valuerInterface  = reflect.TypeOf((*Valuer)(nil)).Elem()
+	scannerInterface = reflect.TypeOf((*Scanner)(nil)).Elem()
 )
 
 func (r registry) lookup(ext interface{}) (string, bool) {
@@ -61,6 +63,29 @@ func Register(name string, ext interface{}) {
 		panic("schemaspec: Register called twice for type " + name)
 	}
 	extensions[name] = ext
+}
+
+// Scanner is the interface used by Scan.
+type Scanner interface {
+	// Scan assigns a Value.
+	Scan(v Value) error
+}
+
+// Valuer is the interface used by Value.
+type Valuer interface {
+	// Value returns a Value representation of the struct.
+	Value() Value
+}
+
+func isValuerSlice(t reflect.Type) bool {
+	if t.Kind() != reflect.Slice {
+		return false
+	}
+	return isValuer(t.Elem())
+}
+
+func isValuer(t reflect.Type) bool {
+	return t.Implements(valuerInterface)
 }
 
 // As reads the attributes and children resources of the resource into the target struct.
@@ -169,26 +194,48 @@ func setChildSlice(field reflect.Value, children []*Resource) error {
 }
 
 func setField(field reflect.Value, attr *Attr) error {
-	switch field.Kind() {
-	case reflect.String:
+	switch {
+	case field.Kind() == reflect.String:
 		s, err := attr.String()
 		if err != nil {
 			return fmt.Errorf("schemaspec: value of attr %q cannot be read as string: %w", attr.K, err)
 		}
 		field.SetString(s)
-	case reflect.Int:
+	case field.Kind() == reflect.Int:
 		i, err := attr.Int()
 		if err != nil {
 			return fmt.Errorf("schemaspec: value of attr %q cannot be read as integer: %w", attr.K, err)
 		}
 		field.SetInt(int64(i))
-	case reflect.Bool:
+	case field.Kind() == reflect.Bool:
 		b, err := attr.Bool()
 		if err != nil {
 			return fmt.Errorf("schemaspec: value of attr %q cannot be read as bool: %w", attr.K, err)
 		}
 		field.SetBool(b)
-	case reflect.Ptr:
+	case field.Type().Implements(scannerInterface):
+		n := reflect.New(field.Type().Elem())
+		s := n.Interface().(Scanner)
+		if err := s.Scan(attr.V); err != nil {
+			return fmt.Errorf("schemaspec: value of attr %q cannot be scanned: %w", attr.K, err)
+		}
+		field.Set(reflect.ValueOf(s))
+	case field.Kind() == reflect.Slice && field.Type().Elem().Implements(scannerInterface):
+		lst, ok := attr.V.(*ListValue)
+		if !ok {
+			return fmt.Errorf("schemaspec: expected attribute value to be a ListValue")
+		}
+		slc := reflect.MakeSlice(reflect.SliceOf(field.Type().Elem()), 0, len(lst.V))
+		for _, item := range lst.V {
+			n := reflect.New(field.Type().Elem().Elem())
+			s := n.Interface().(Scanner)
+			if err := s.Scan(item); err != nil {
+				return fmt.Errorf("schemaspec: value of attr %q cannot be scanned: %w", attr.K, err)
+			}
+			slc = reflect.Append(slc, reflect.ValueOf(s))
+		}
+		field.Set(slc)
+	case field.Kind() == reflect.Ptr:
 		field.Set(reflect.ValueOf(attr.V))
 	default:
 		return fmt.Errorf("schemaspec: unsupported field kind %q", field.Kind())
@@ -232,6 +279,17 @@ func (r *Resource) Scan(ext interface{}) error {
 			}
 			child.Type = ft.tag
 			r.Children = append(r.Children, child)
+		case field.Type().Implements(valuerInterface):
+			if field.IsNil() {
+				continue
+			}
+			v := field.Interface().(Valuer)
+			r.SetAttr(&Attr{
+				K: ft.tag,
+				V: v.Value(),
+			})
+		case field.Kind() == reflect.Slice && field.Type().Elem().Implements(valuerInterface):
+			// TODO
 		case field.Kind() == reflect.Ptr:
 			if field.IsNil() {
 				continue
