@@ -327,8 +327,7 @@ func isSingleResource(t reflect.Type) bool {
 	}
 	for i := 0; i < elem.NumField(); i++ {
 		f := elem.Field(i)
-		_, ok := f.Tag.Lookup("spec")
-		if ok {
+		if _, ok := f.Tag.Lookup("spec"); ok {
 			return true
 		}
 	}
