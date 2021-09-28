@@ -30,9 +30,9 @@ type (
 		V string
 	}
 
-	// ListValue implements Value and represents a list of literal value (string, number, etc.)
+	// ListValue implements Value and represents a list of Values.
 	ListValue struct {
-		V []string
+		V []Value
 	}
 
 	// Ref implements Value and represents a reference to another Resource.
@@ -63,11 +63,7 @@ func (a *Attr) Int() (int, error) {
 // an error is returned.  String values are expected to be quoted. If the value is not
 // properly quoted an error is returned.
 func (a *Attr) String() (string, error) {
-	lit, ok := a.V.(*LiteralValue)
-	if !ok {
-		return "", fmt.Errorf("schema: cannot read attribute %q as literal", a.K)
-	}
-	return strconv.Unquote(lit.V)
+	return StrVal(a.V)
 }
 
 // Bool returns a boolean from the Value of the Attr. If The value is not a LiteralValue or the value
@@ -99,11 +95,11 @@ func (a *Attr) Strings() ([]string, error) {
 	}
 	out := make([]string, 0, len(lst.V))
 	for _, item := range lst.V {
-		unquote, err := strconv.Unquote(item)
+		sv, err := StrVal(item)
 		if err != nil {
 			return nil, fmt.Errorf("schema: failed parsing item %q to string: %w", item, err)
 		}
-		out = append(out, unquote)
+		out = append(out, sv)
 	}
 	return out, nil
 }
@@ -138,6 +134,17 @@ func replaceOrAppendAttr(attrs []*Attr, attr *Attr) []*Attr {
 		}
 	}
 	return append(attrs, attr)
+}
+
+// StrVal returns the raw string representation of v. If v is not a *LiteralValue
+// it returns an error. If the raw string representation of v cannot be read as
+// a string by unquoting it, an error is returned as well.
+func StrVal(v Value) (string, error) {
+	lit, ok := v.(*LiteralValue)
+	if !ok {
+		return "", fmt.Errorf("schemaspec: expected %T to be LiteralValue", v)
+	}
+	return strconv.Unquote(lit.V)
 }
 
 func (*LiteralValue) val() {}
