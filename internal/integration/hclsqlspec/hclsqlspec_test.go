@@ -75,6 +75,8 @@ table "users" {
 						Columns: []*sqlspec.ColumnRef{
 							{Ref: &schemaspec.Ref{V: "$table.users.$column.id"}},
 						},
+						Attrs:    []*schemaspec.Attr{},
+						Children: []*schemaspec.Resource{},
 					},
 				},
 			},
