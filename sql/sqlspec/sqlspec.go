@@ -31,8 +31,12 @@ type (
 
 	// PrimaryKey holds a specification for the primary key of a table.
 	PrimaryKey struct {
-		Columns *schemaspec.Ref `spec:"column"`
+		Columns []*ColumnRef `spec:"column"`
 		//Attrs    []*schemaspec.Attr     `spec:"attr"`
 		//Children []*schemaspec.Resource `spec:"child"`
+	}
+
+	ColumnRef struct {
+		Ref *schemaspec.Ref `spec:"ref"`
 	}
 )

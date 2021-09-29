@@ -34,7 +34,9 @@ table "users" {
 	}
 
 	primary_key {
-		column = table.users.column.id
+		column {
+ 			ref = table.users.column.id
+		}
 	}
 }
 
@@ -68,11 +70,12 @@ table "users" {
 						Default:  &schemaspec.LiteralValue{V: "true"},
 					},
 				},
-				PrimaryKey: []*sqlspec.PrimaryKey{{
-					Columns: &schemaspec.Ref{
-						V: "$table.users.$column.id",
+				PrimaryKey: []*sqlspec.PrimaryKey{
+					{
+						Columns: []*sqlspec.ColumnRef{
+							{Ref: &schemaspec.Ref{V: "$table.users.$column.id"}},
+						},
 					},
-				},
 				},
 			},
 		},
