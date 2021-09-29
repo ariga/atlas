@@ -15,7 +15,7 @@ type (
 		Name       string    `spec:",name"`
 		SchemaName string    `spec:"schema"`
 		Columns    []*Column `spec:"column"`
-		//PrimaryKey  *PrimaryKey
+		PrimaryKey *PrimaryKey
 		//ForeignKeys []*ForeignKey
 		//Indexes     []*Index
 	}
@@ -27,5 +27,12 @@ type (
 		TypeName string                   `spec:"type" override:"type"`
 		Default  *schemaspec.LiteralValue `spec:"default" override:"default"`
 		//Overrides []*Override
+	}
+
+	// PrimaryKey holds a specification for the primary key of a table.
+	PrimaryKey struct {
+		Columns  []*schemaspec.Ref
+		Attrs    []*schemaspec.Attr
+		Children []*schemaspec.Resource
 	}
 )

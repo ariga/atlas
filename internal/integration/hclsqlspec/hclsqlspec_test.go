@@ -63,6 +63,11 @@ table "users" {
 						Default:  &schemaspec.LiteralValue{V: "true"},
 					},
 				},
+				PrimaryKey: &sqlspec.PrimaryKey{
+					Columns: []*schemaspec.Ref{{
+						V: "$table.users.$column.id",
+					}},
+				},
 			},
 		},
 	}, file)
