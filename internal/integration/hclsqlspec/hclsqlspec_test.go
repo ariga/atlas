@@ -34,9 +34,7 @@ table "users" {
 	}
 
 	primary_key {
-		columns = [
-			table.users.column.id
-		]
+		columns = table.users.column.id
 	}
 }
 
@@ -71,8 +69,8 @@ table "users" {
 					},
 				},
 				PrimaryKey: &sqlspec.PrimaryKey{
-					Columns: []*schemaspec.Ref{
-						{V: "$table.users.$column.id"},
+					Columns: &schemaspec.Ref{
+						V: "$table.users.$column.id",
 					},
 				},
 			},
