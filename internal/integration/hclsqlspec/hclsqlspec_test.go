@@ -32,7 +32,12 @@ table "users" {
 		type = "bool"
 		default = true
 	}
+
+	primary_key {
+		column = table.users.column.id
+	}
 }
+
 `)
 	require.NoError(t, err)
 	require.EqualValues(t, &db{
@@ -63,10 +68,11 @@ table "users" {
 						Default:  &schemaspec.LiteralValue{V: "true"},
 					},
 				},
-				PrimaryKey: &sqlspec.PrimaryKey{
-					Columns: []*schemaspec.Ref{{
+				PrimaryKey: []*sqlspec.PrimaryKey{{
+					Columns: &schemaspec.Ref{
 						V: "$table.users.$column.id",
-					}},
+					},
+				},
 				},
 			},
 		},
