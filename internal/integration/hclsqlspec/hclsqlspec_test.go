@@ -52,7 +52,6 @@ table "users" {
 	}
 
 	foreign_key "fk" {
-		symbol = "my_symbol"
 		columns = table.users.column.account_active
 		ref_columns = table.accounts.column.active
 		on_delete = "SET NULL"
@@ -96,7 +95,6 @@ table "accounts" {
 	}
 
 	foreign_key "fk" {
-		symbol = "my_symbol"
 		columns = table.accounts.column.user_active
 		ref_columns = table.users.column.active
 		on_delete = "SET NULL"
@@ -162,8 +160,7 @@ table "accounts" {
 				},
 				ForeignKeys: []*sqlspec.ForeignKey{
 					{
-						Name:   "fk",
-						Symbol: "my_symbol",
+						Symbol: "fk",
 						Columns: &schemaspec.Ref{
 							V: "$table.users.$column.account_active",
 						},
@@ -226,8 +223,7 @@ table "accounts" {
 				},
 				ForeignKeys: []*sqlspec.ForeignKey{
 					{
-						Name:   "fk",
-						Symbol: "my_symbol",
+						Symbol: "fk",
 						Columns: &schemaspec.Ref{
 							V: "$table.accounts.$column.user_active",
 						},

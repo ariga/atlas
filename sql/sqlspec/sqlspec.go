@@ -45,8 +45,7 @@ type (
 
 	// ForeignKey holds a specification for the Foreign key of a table.
 	ForeignKey struct {
-		Name       string          `spec:",name"`
-		Symbol     string          `spec:"symbol"`
+		Symbol     string          `spec:",name"`
 		Columns    *schemaspec.Ref `spec:"columns"`
 		RefColumns *schemaspec.Ref `spec:"ref_columns"`
 		OnUpdate   ReferenceOption `spec:"on_update"`
