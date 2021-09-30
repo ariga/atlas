@@ -45,6 +45,23 @@ table "users" {
 		unique = false
 		columns = table.users.column.active
 	}
+	
+	//foreign_key "fk" {
+	//	symbol = "my_symbol"
+	//	columns = table.users.column.account_name
+	//	ref_columns = table.accounts.column.name
+	//	OnDelete = "SET NULL"
+	//}
+}
+
+table "accounts" {
+	schema = "hi"
+	
+	column "id" {
+		type = "uint"
+		null = false
+		default = 123
+	}
 }
 
 `)
@@ -108,6 +125,22 @@ table "users" {
 							V: "$table.users.$column.age",
 						},
 						OnDelete: string(sqlspec.SetNull),
+					},
+				},
+			},
+			{
+				Name:       "accounts",
+				SchemaName: "hi",
+				Columns: []*sqlspec.Column{
+					{
+						Name:     "id",
+						TypeName: "uint",
+						Null:     false,
+					},
+					{
+						Name:     "name",
+						TypeName: "string",
+						Null:     false,
 					},
 				},
 			},
