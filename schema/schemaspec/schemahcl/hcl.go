@@ -100,6 +100,10 @@ func extractListValue(value cty.Value) (*schemaspec.ListValue, error) {
 	it := value.ElementIterator()
 	for it.Next() {
 		_, v := it.Element()
+		if isRef(v) {
+			lst.V = append(lst.V, &schemaspec.Ref{V: v.GetAttr("__ref").AsString()})
+			continue
+		}
 		litv, err := extractLiteralValue(v)
 		if err != nil {
 			return nil, err
