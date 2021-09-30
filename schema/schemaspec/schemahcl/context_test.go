@@ -3,6 +3,7 @@ package schemahcl
 import (
 	"testing"
 
+	"ariga.io/atlas/schema/schemaspec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -104,6 +105,37 @@ pet "garfield" {
 	ref, err := attr.Ref()
 	require.NoError(t, err)
 	require.EqualValues(t, "$person.jon", ref)
+}
+
+func TestListRefs(t *testing.T) {
+	f := `
+user "simba" {
+	
+}
+user "mufasa" {
+
+}
+group "lion_kings" {
+	members = [
+		user.simba,
+		user.mufasa,
+	]
+}
+`
+	res, err := Decode([]byte(f))
+	require.NoError(t, err)
+	group := res.Children[2]
+	members, ok := group.Attr("members")
+	require.True(t, ok)
+	require.EqualValues(t,
+		&schemaspec.ListValue{
+			V: []schemaspec.Value{
+				&schemaspec.Ref{V: "$user.simba"},
+				&schemaspec.Ref{V: "$user.mufasa"},
+			},
+		},
+		members.V,
+	)
 }
 
 func TestNestedDifference(t *testing.T) {
