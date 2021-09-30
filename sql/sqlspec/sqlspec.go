@@ -12,12 +12,12 @@ type (
 
 	// Table holds a specification for an SQL table.
 	Table struct {
-		Name       string    `spec:",name"`
-		SchemaName string    `spec:"schema"`
-		Columns    []*Column `spec:"column"`
-		//PrimaryKey  *PrimaryKey
+		Name       string      `spec:",name"`
+		SchemaName string      `spec:"schema"`
+		Columns    []*Column   `spec:"column"`
+		PrimaryKey *PrimaryKey `spec:"primary_key"`
 		//ForeignKeys []*ForeignKey
-		//Indexes     []*Index
+		Indexes []*Index `spec:"index"`
 	}
 
 	// Column holds a specification for a column in an SQL table.
@@ -27,5 +27,19 @@ type (
 		TypeName string                   `spec:"type" override:"type"`
 		Default  *schemaspec.LiteralValue `spec:"default" override:"default"`
 		//Overrides []*Override
+	}
+
+	// PrimaryKey holds a specification for the primary key of a table.
+	PrimaryKey struct {
+		Columns *schemaspec.Ref `spec:"columns"`
+		schemaspec.DefaultExtension
+	}
+
+	// Index holds a specification for the index key of a table.
+	Index struct {
+		Name    string          `spec:",name"`
+		Unique  bool            `spec:"unique"`
+		Columns *schemaspec.Ref `spec:"columns"`
+		schemaspec.DefaultExtension
 	}
 )

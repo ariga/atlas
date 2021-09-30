@@ -32,7 +32,21 @@ table "users" {
 		type = "bool"
 		default = true
 	}
+
+	primary_key {
+		columns = table.users.column.id
+	}
+	
+	index "age" {
+		unique = true
+		columns = table.users.column.age
+	}
+	index "active" {
+		unique = false
+		columns = table.users.column.active
+	}
 }
+
 `)
 	require.NoError(t, err)
 	require.EqualValues(t, &db{
@@ -61,6 +75,27 @@ table "users" {
 						TypeName: "bool",
 						Null:     false,
 						Default:  &schemaspec.LiteralValue{V: "true"},
+					},
+				},
+				PrimaryKey: &sqlspec.PrimaryKey{
+					Columns: &schemaspec.Ref{
+						V: "$table.users.$column.id",
+					},
+				},
+				Indexes: []*sqlspec.Index{
+					{
+						Name:   "age",
+						Unique: true,
+						Columns: &schemaspec.Ref{
+							V: "$table.users.$column.age",
+						},
+					},
+					{
+						Name:   "active",
+						Unique: false,
+						Columns: &schemaspec.Ref{
+							V: "$table.users.$column.active",
+						},
 					},
 				},
 			},
