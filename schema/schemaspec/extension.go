@@ -170,6 +170,8 @@ func setChildSlice(field reflect.Value, children []*Resource) error {
 
 func setField(field reflect.Value, attr *Attr) error {
 	switch field.Kind() {
+	case reflect.Slice:
+		return setSliceAttr(field, attr)
 	case reflect.String:
 		s, err := attr.String()
 		if err != nil {
@@ -193,6 +195,26 @@ func setField(field reflect.Value, attr *Attr) error {
 	default:
 		return fmt.Errorf("schemaspec: unsupported field kind %q", field.Kind())
 	}
+	return nil
+}
+
+// setSliceAttr sets the value of attr to the slice field. This function expects both the target field
+// and the source attr to be slices. Currently, only slices of type *Ref are supported.
+// TODO(rotemtam): support also strings, booleans and numeric values.
+func setSliceAttr(field reflect.Value, attr *Attr) error {
+	lst, ok := attr.V.(*ListValue)
+	if !ok {
+		return fmt.Errorf("schemaspec: field is of type slice but attr %q does not contain a ListValue", attr.K)
+	}
+	typ := field.Type().Elem()
+	if typ != reflect.TypeOf(&Ref{}) {
+		return fmt.Errorf("schemaspec: currently on ref slice values supported, got %s", typ)
+	}
+	slc := reflect.MakeSlice(reflect.SliceOf(typ), 0, len(lst.V))
+	for _, c := range lst.V {
+		slc = reflect.Append(slc, reflect.ValueOf(c))
+	}
+	field.Set(slc)
 	return nil
 }
 
@@ -265,6 +287,8 @@ func (r *Resource) Scan(ext interface{}) error {
 func scanAttr(key string, r *Resource, field reflect.Value) error {
 	var lit string
 	switch field.Kind() {
+	case reflect.Slice:
+		return scanSliceAttr(key, r, field)
 	case reflect.String:
 		lit = strconv.Quote(field.String())
 	case reflect.Int:
@@ -277,6 +301,26 @@ func scanAttr(key string, r *Resource, field reflect.Value) error {
 	r.SetAttr(&Attr{
 		K: key,
 		V: &LiteralValue{V: lit},
+	})
+	return nil
+}
+
+// scanSliceAttr sets an Attr named "key" into the Resource r, by converting
+// the value stored in "field" into a *ListValue. Currently, only slices of *Ref
+// values are supported. TODO(rotemtam): support strings, booleans and numeric values.
+func scanSliceAttr(key string, r *Resource, field reflect.Value) error {
+	typ := field.Type()
+	if typ.Kind() != reflect.Slice || typ.Elem() != reflect.TypeOf(&Ref{}) {
+		return fmt.Errorf("schemaspec: currently on ref slice values supported, got %s", typ)
+	}
+	lst := &ListValue{}
+	for i := 0; i < field.Len(); i++ {
+		item := field.Index(i).Interface().(*Ref)
+		lst.V = append(lst.V, item)
+	}
+	r.SetAttr(&Attr{
+		K: key,
+		V: lst,
 	})
 	return nil
 }

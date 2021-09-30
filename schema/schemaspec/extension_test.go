@@ -126,3 +126,39 @@ func TestNested(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, pet, scan)
 }
+
+func TestListRef(t *testing.T) {
+	type A struct {
+		Name  string            `spec:",name"`
+		Users []*schemaspec.Ref `spec:"users"`
+	}
+	schemaspec.Register("res", &A{})
+	resource := &schemaspec.Resource{
+		Name: "x",
+		Type: "res",
+		Attrs: []*schemaspec.Attr{
+			{
+				K: "users",
+				V: &schemaspec.ListValue{
+					V: []schemaspec.Value{
+						&schemaspec.Ref{V: "$user.a8m"},
+						&schemaspec.Ref{V: "$user.rotemtam"},
+					},
+				},
+			},
+		},
+	}
+
+	tgt := A{}
+	err := resource.As(&tgt)
+	require.NoError(t, err)
+	require.Len(t, tgt.Users, 2)
+	require.EqualValues(t, []*schemaspec.Ref{
+		{V: "$user.a8m"},
+		{V: "$user.rotemtam"},
+	}, tgt.Users)
+	scan := &schemaspec.Resource{}
+	err = scan.Scan(&tgt)
+	require.NoError(t, err)
+	require.EqualValues(t, resource, scan)
+}
