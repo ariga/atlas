@@ -154,7 +154,6 @@ var ctySchemaLit = cty.CapsuleWithOps("lit", reflect.TypeOf(schemaspec.LiteralVa
 // are an intersection of all existing blocks of the same type.
 func defRegistry(b *hclsyntax.Body) *blockDef {
 	reg := &blockDef{
-		name:     "",
 		fields:   make(map[string]struct{}),
 		children: make(map[string]*blockDef),
 	}
