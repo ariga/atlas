@@ -101,12 +101,21 @@ func TestReEncode(t *testing.T) {
 	}
 }`,
 		},
+		{
+			Name: "block reference",
+			Body: `user "rotemtam" {
+}
+task "code" {
+	owner = user.rotemtam
+}
+`,
+		},
 	}
 	for _, tt := range testCases {
 		t.Run(tt.Name, func(t *testing.T) {
 			resource, err := Decode([]byte(tt.Body))
 			require.NoError(t, err)
-			bytes, err := encode(resource)
+			bytes, err := Encode(resource)
 			require.NoError(t, err)
 			again, err := Decode(bytes)
 			require.NoError(t, err)

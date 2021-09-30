@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
 
@@ -100,6 +101,10 @@ func extractListValue(value cty.Value) (*schemaspec.ListValue, error) {
 	it := value.ElementIterator()
 	for it.Next() {
 		_, v := it.Element()
+		if isRef(v) {
+			lst.V = append(lst.V, &schemaspec.Ref{V: v.GetAttr("__ref").AsString()})
+			continue
+		}
 		litv, err := extractLiteralValue(v)
 		if err != nil {
 			return nil, err
@@ -148,7 +153,7 @@ func toResource(ctx *hcl.EvalContext, block *hclsyntax.Block) (*schemaspec.Resou
 	return spec, nil
 }
 
-func encode(r *schemaspec.Resource) ([]byte, error) {
+func Encode(r *schemaspec.Resource) ([]byte, error) {
 	f := hclwrite.NewFile()
 	body := f.Body()
 	for _, attr := range r.Attrs {
@@ -184,6 +189,9 @@ func writeResource(b *schemaspec.Resource, body *hclwrite.Body) error {
 
 func writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 	switch v := attr.V.(type) {
+	case *schemaspec.Ref:
+		expr := strings.ReplaceAll(v.V, "$", "")
+		body.SetAttributeRaw(attr.K, hclRawTokens(expr))
 	case *schemaspec.LiteralValue:
 		body.SetAttributeRaw(attr.K, hclRawTokens(v.V))
 	case *schemaspec.ListValue:
