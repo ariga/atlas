@@ -206,7 +206,7 @@ table "accounts" {
 				},
 				PrimaryKey: &sqlspec.PrimaryKey{
 					Columns: &schemaspec.Ref{
-						V: "$table.users.$column.id",
+						V: "$table.accounts.$column.id",
 					},
 				},
 				Indexes: []*sqlspec.Index{
