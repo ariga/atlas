@@ -285,6 +285,35 @@ schema "hi" {
 	}, file)
 }
 
+func TestMultiTable(t *testing.T) {
+	_, err := decode(`
+schema "hi" {
+
+}
+
+table "users" {
+	schema = "hi"
+	column "id" {
+		type = "uint"
+		null = false
+		default = 123
+	}
+}
+
+table "accounts" {
+	schema = "hi"
+	column "id" {
+		type = "string"
+	}
+	index "name" {
+		unique = true
+	}
+}
+
+`)
+	require.NoError(t, err)
+}
+
 func decode(f string) (*db, error) {
 	res, err := schemahcl.Decode([]byte(f))
 	if err != nil {
