@@ -39,7 +39,7 @@ table "users" {
 	}
 
 	primary_key {
-		columns = table.users.column.id
+		columns = [table.users.column.id]
 	}
 	
 	index "age" {
@@ -82,7 +82,7 @@ table "accounts" {
 	}
 
 	primary_key {
-		columns = table.accounts.column.id
+		columns = [table.accounts.column.id]
 	}
 	
 	index "age" {
@@ -138,8 +138,10 @@ table "accounts" {
 					},
 				},
 				PrimaryKey: &sqlspec.PrimaryKey{
-					Columns: &schemaspec.Ref{
-						V: "$table.users.$column.id",
+					Columns: []*schemaspec.Ref{
+						{
+							V: "$table.users.$column.id",
+						},
 					},
 				},
 				Indexes: []*sqlspec.Index{
@@ -201,8 +203,10 @@ table "accounts" {
 					},
 				},
 				PrimaryKey: &sqlspec.PrimaryKey{
-					Columns: &schemaspec.Ref{
-						V: "$table.accounts.$column.id",
+					Columns: []*schemaspec.Ref{
+						{
+							V: "$table.accounts.$column.id",
+						},
 					},
 				},
 				Indexes: []*sqlspec.Index{

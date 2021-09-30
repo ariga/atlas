@@ -31,7 +31,7 @@ type (
 
 	// PrimaryKey holds a specification for the primary key of a table.
 	PrimaryKey struct {
-		Columns *schemaspec.Ref `spec:"columns"`
+		Columns []*schemaspec.Ref `spec:"columns"`
 		schemaspec.DefaultExtension
 	}
 
