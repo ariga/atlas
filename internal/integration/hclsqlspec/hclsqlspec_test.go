@@ -55,7 +55,7 @@ table "users" {
 		symbol = "my_symbol"
 		columns = table.users.column.account_active
 		ref_columns = table.accounts.column.active
-		OnDelete = "SET NULL"
+		on_delete = "SET NULL"
 	}
 }
 
@@ -92,14 +92,14 @@ table "accounts" {
 	}
 	index "active" {
 		unique = false
-		columns = table.users.column.active
+		columns = table.accounts.column.active
 	}
 
 	foreign_key "fk" {
 		symbol = "my_symbol"
 		columns = table.accounts.column.user_active
 		ref_columns = table.users.column.active
-		OnDelete = "SET NULL"
+		on_delete = "SET NULL"
 	}
 }
 
@@ -162,6 +162,7 @@ table "accounts" {
 				},
 				ForeignKeys: []*sqlspec.ForeignKey{
 					{
+						Name:   "fk",
 						Symbol: "my_symbol",
 						Columns: &schemaspec.Ref{
 							V: "$table.users.$column.account_active",
@@ -170,6 +171,7 @@ table "accounts" {
 							V: "$table.accounts.$column.active",
 						},
 						OnDelete: string(sqlspec.SetNull),
+						OnUpdate: "",
 					},
 				},
 			},
@@ -212,19 +214,20 @@ table "accounts" {
 						Name:   "age",
 						Unique: true,
 						Columns: &schemaspec.Ref{
-							V: "$table.users.$column.age",
+							V: "$table.accounts.$column.age",
 						},
 					},
 					{
 						Name:   "active",
 						Unique: false,
 						Columns: &schemaspec.Ref{
-							V: "$table.users.$column.active",
+							V: "$table.accounts.$column.active",
 						},
 					},
 				},
 				ForeignKeys: []*sqlspec.ForeignKey{
 					{
+						Name:   "fk",
 						Symbol: "my_symbol",
 						Columns: &schemaspec.Ref{
 							V: "$table.accounts.$column.user_active",
@@ -233,6 +236,7 @@ table "accounts" {
 							V: "$table.users.$column.active",
 						},
 						OnDelete: string(sqlspec.SetNull),
+						OnUpdate: "",
 					},
 				},
 			},
