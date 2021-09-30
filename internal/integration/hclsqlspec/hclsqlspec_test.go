@@ -44,11 +44,11 @@ table "users" {
 	
 	index "age" {
 		unique = true
-		columns = table.users.column.age
+		columns = [table.users.column.age]
 	}
 	index "active" {
 		unique = false
-		columns = table.users.column.active
+		columns = [table.users.column.active]
 	}
 
 	foreign_key "fk" {
@@ -87,11 +87,11 @@ table "accounts" {
 	
 	index "age" {
 		unique = true
-		columns = table.accounts.column.age
+		columns = [table.accounts.column.age]
 	}
 	index "active" {
 		unique = false
-		columns = table.accounts.column.active
+		columns = [table.accounts.column.active]
 	}
 
 	foreign_key "fk" {
@@ -151,15 +151,19 @@ table "accounts" {
 					{
 						Name:   "age",
 						Unique: true,
-						Columns: &schemaspec.Ref{
-							V: "$table.users.$column.age",
+						Columns: []*schemaspec.Ref{
+							{
+								V: "$table.users.$column.age",
+							},
 						},
 					},
 					{
 						Name:   "active",
 						Unique: false,
-						Columns: &schemaspec.Ref{
-							V: "$table.users.$column.active",
+						Columns: []*schemaspec.Ref{
+							{
+								V: "$table.users.$column.active",
+							},
 						},
 					},
 				},
@@ -216,15 +220,19 @@ table "accounts" {
 					{
 						Name:   "age",
 						Unique: true,
-						Columns: &schemaspec.Ref{
-							V: "$table.accounts.$column.age",
+						Columns: []*schemaspec.Ref{
+							{
+								V: "$table.accounts.$column.age",
+							},
 						},
 					},
 					{
 						Name:   "active",
 						Unique: false,
-						Columns: &schemaspec.Ref{
-							V: "$table.accounts.$column.active",
+						Columns: []*schemaspec.Ref{
+							{
+								V: "$table.accounts.$column.active",
+							},
 						},
 					},
 				},

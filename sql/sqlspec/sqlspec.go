@@ -37,9 +37,9 @@ type (
 
 	// Index holds a specification for the index key of a table.
 	Index struct {
-		Name    string          `spec:",name"`
-		Unique  bool            `spec:"unique"`
-		Columns *schemaspec.Ref `spec:"columns"`
+		Name    string            `spec:",name"`
+		Unique  bool              `spec:"unique"`
+		Columns []*schemaspec.Ref `spec:"columns"`
 		schemaspec.DefaultExtension
 	}
 
