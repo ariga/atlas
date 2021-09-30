@@ -105,3 +105,25 @@ pet "garfield" {
 	require.NoError(t, err)
 	require.EqualValues(t, "$person.jon", ref)
 }
+
+func TestNestedDifference(t *testing.T) {
+	f := `
+person "john" {
+	nickname = "jonnie"
+	hobby "hockey" {
+		active = true
+	}
+}
+person "jane" {
+	nickname = "janie"
+	hobby "football" {
+		budget = 1000
+	}
+	car "ferrari" {
+		year = 1960
+	}
+}
+`
+	_, err := Decode([]byte(f))
+	require.NoError(t, err)
+}

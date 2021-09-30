@@ -36,7 +36,8 @@ func evalCtx(f *hcl.File) (*hcl.EvalContext, error) {
 	if !ok {
 		return nil, fmt.Errorf("schemahcl: expected an hcl body")
 	}
-	vars, err := blockVars(b, "")
+	defs := defRegistry(b)
+	vars, err := blockVars(b, "", defs)
 	if err != nil {
 		return nil, err
 	}
@@ -45,29 +46,29 @@ func evalCtx(f *hcl.File) (*hcl.EvalContext, error) {
 	}, nil
 }
 
-func blockVars(b *hclsyntax.Body, parentAddr string) (map[string]cty.Value, error) {
-	types, err := typeDefs(b)
-	if err != nil {
-		return nil, fmt.Errorf("schemahcl: failed extracting type definitions: %w", err)
-	}
+func blockVars(b *hclsyntax.Body, parentAddr string, defs *blockDef) (map[string]cty.Value, error) {
 	vars := make(map[string]cty.Value)
-	for typeName, typ := range types {
+	for name, def := range defs.children {
 		v := make(map[string]cty.Value)
-		for _, blk := range blocksOfType(b.Blocks, typeName) {
+		blocks := blocksOfType(b.Blocks, name)
+		if len(blocks) == 0 {
+			v[name] = cty.NullVal(def.asCty())
+		}
+		for _, blk := range blocks {
 			blkName := blockName(blk)
 			if blkName == "" {
 				continue
 			}
 			attrs := attrMap(blk.Body.Attributes)
 			// Fill missing attributes with zero values.
-			for n := range typ.AttributeTypes() {
+			for n := range def.fields {
 				if _, ok := attrs[n]; !ok {
 					attrs[n] = cty.NullVal(ctySchemaLit)
 				}
 			}
-			self := addr(parentAddr, typeName, blkName)
+			self := addr(parentAddr, name, blkName)
 			attrs["__ref"] = cty.StringVal(self)
-			varMap, err := blockVars(blk.Body, self)
+			varMap, err := blockVars(blk.Body, self, def)
 			if err != nil {
 				return nil, err
 			}
@@ -79,7 +80,7 @@ func blockVars(b *hclsyntax.Body, parentAddr string) (map[string]cty.Value, erro
 			v[blkName] = cty.ObjectVal(attrs)
 		}
 		if len(v) > 0 {
-			vars[typeName] = cty.MapVal(v)
+			vars[name] = cty.MapVal(v)
 		}
 	}
 	return vars, nil
@@ -148,56 +149,69 @@ var ctySchemaLit = cty.CapsuleWithOps("lit", reflect.TypeOf(schemaspec.LiteralVa
 	},
 })
 
-func typeDefs(b *hclsyntax.Body) (map[string]cty.Type, error) {
-	types, err := extractTypes(b)
-	if err != nil {
-		return nil, err
+// defRegistry returns a tree of blockDef structs representing the schema of the
+// blocks in the *hclsyntax.Body. The returned fields and children of each type
+// are an intersection of all existing blocks of the same type.
+func defRegistry(b *hclsyntax.Body) *blockDef {
+	reg := &blockDef{
+		name:     "",
+		fields:   make(map[string]struct{}),
+		children: make(map[string]*blockDef),
 	}
-	objs := make(map[string]cty.Type)
-	for k, v := range types {
-		objs[k] = cty.Object(v)
-	}
-	return objs, nil
-}
-
-// extractTypes returns a map of block types a block. Types are computed
-// as an intersection fields in all instances. If conflicting field types are encountered
-// an error is returned.
-// TODO(rotemtam): type definitions should be fed into the hcl parser from the plugin system.
-func extractTypes(b *hclsyntax.Body) (map[string]map[string]cty.Type, error) {
-	types := make(map[string]map[string]cty.Type)
 	for _, blk := range b.Blocks {
-		attrTypes := extractAttrTypes(&hcl.EvalContext{}, blk)
-		if _, ok := types[blk.Type]; !ok {
-			types[blk.Type] = attrTypes
-			continue
-		}
-		if err := mergeAttrTypes(types[blk.Type], attrTypes); err != nil {
-			return nil, err
-		}
+		reg.child(extractDef(blk, reg))
 	}
-	return types, nil
+	return reg
 }
 
-func mergeAttrTypes(target, other map[string]cty.Type) error {
-	for k, v := range other {
-		_, exists := target[k]
-		if !exists {
-			target[k] = v
-			continue
-		}
-	}
-	return nil
+// blockDef describes a type of block in the HCL document.
+type blockDef struct {
+	name     string
+	fields   map[string]struct{}
+	parent   *blockDef
+	children map[string]*blockDef
 }
 
-func extractAttrTypes(ctx *hcl.EvalContext, blk *hclsyntax.Block) map[string]cty.Type {
-	attrTypes := make(map[string]cty.Type)
-	for _, attr := range blk.Body.Attributes {
-		value, err := attr.Expr.Value(ctx)
-		if err != nil {
-			continue
-		}
-		attrTypes[attr.Name] = value.Type()
+// child updates the definition for the child type of the blockDef.
+func (t *blockDef) child(c *blockDef) {
+	ex, ok := t.children[c.name]
+	if !ok {
+		t.children[c.name] = c
+		return
 	}
-	return attrTypes
+	for f := range c.fields {
+		ex.fields[f] = struct{}{}
+	}
+	for _, c := range c.children {
+		ex.child(c)
+	}
+}
+
+// asCty returns a cty.Type representing the blockDef.
+func (t *blockDef) asCty() cty.Type {
+	f := make(map[string]cty.Type)
+	for attr := range t.fields {
+		f[attr] = ctySchemaLit
+	}
+	f["__ref"] = cty.String
+	for _, c := range t.children {
+		f[c.name] = c.asCty()
+	}
+	return cty.Object(f)
+}
+
+func extractDef(blk *hclsyntax.Block, parent *blockDef) *blockDef {
+	cur := &blockDef{
+		name:     blk.Type,
+		parent:   parent,
+		fields:   make(map[string]struct{}),
+		children: make(map[string]*blockDef),
+	}
+	for _, a := range blk.Body.Attributes {
+		cur.fields[a.Name] = struct{}{}
+	}
+	for _, c := range blk.Body.Blocks {
+		cur.child(extractDef(c, cur))
+	}
+	return cur
 }
