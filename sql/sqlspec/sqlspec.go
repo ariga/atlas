@@ -49,8 +49,8 @@ type (
 	// ForeignKey holds a specification for the Foreign key of a table.
 	ForeignKey struct {
 		Symbol     string                 `spec:",name"`
-		Columns    *schemaspec.Ref        `spec:"columns"`
-		RefColumns *schemaspec.Ref        `spec:"ref_columns"`
+		Columns    []*schemaspec.Ref      `spec:"columns"`
+		RefColumns []*schemaspec.Ref      `spec:"ref_columns"`
 		OnUpdate   schema.ReferenceOption `spec:"on_update"`
 		OnDelete   schema.ReferenceOption `spec:"on_delete"`
 		schemaspec.DefaultExtension
