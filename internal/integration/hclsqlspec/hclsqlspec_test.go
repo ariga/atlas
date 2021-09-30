@@ -40,21 +40,21 @@ table "users" {
 	}
 
 	primary_key {
-		columns = table.users.column.id
+		columns = [table.users.column.id, table.users.column.age]
 	}
 	
 	index "age" {
 		unique = true
-		columns = table.users.column.age
+		columns = [table.users.column.age]
 	}
 	index "active" {
 		unique = false
-		columns = table.users.column.active
+		columns = [table.users.column.active]
 	}
 
 	foreign_key "fk" {
-		columns = table.users.column.account_active
-		ref_columns = table.accounts.column.active
+		columns = [table.users.column.account_active]
+		ref_columns = [table.accounts.column.active]
 		on_delete = "SET NULL"
 	}
 }
@@ -83,21 +83,21 @@ table "accounts" {
 	}
 
 	primary_key {
-		columns = table.accounts.column.id
+		columns = [table.accounts.column.id]
 	}
 	
 	index "age" {
 		unique = true
-		columns = table.accounts.column.age
+		columns = [table.accounts.column.age]
 	}
 	index "active" {
 		unique = false
-		columns = table.accounts.column.active
+		columns = [table.accounts.column.active]
 	}
 
 	foreign_key "fk" {
-		columns = table.accounts.column.user_active
-		ref_columns = table.users.column.active
+		columns = [table.accounts.column.user_active]
+		ref_columns = [table.users.column.active]
 		on_delete = "SET NULL"
 	}
 }
@@ -139,34 +139,47 @@ table "accounts" {
 					},
 				},
 				PrimaryKey: &sqlspec.PrimaryKey{
-					Columns: &schemaspec.Ref{
-						V: "$table.users.$column.id",
+					Columns: []*schemaspec.Ref{
+						{
+							V: "$table.users.$column.id",
+						},
+						{
+							V: "$table.users.$column.age",
+						},
 					},
 				},
 				Indexes: []*sqlspec.Index{
 					{
 						Name:   "age",
 						Unique: true,
-						Columns: &schemaspec.Ref{
-							V: "$table.users.$column.age",
+						Columns: []*schemaspec.Ref{
+							{
+								V: "$table.users.$column.age",
+							},
 						},
 					},
 					{
 						Name:   "active",
 						Unique: false,
-						Columns: &schemaspec.Ref{
-							V: "$table.users.$column.active",
+						Columns: []*schemaspec.Ref{
+							{
+								V: "$table.users.$column.active",
+							},
 						},
 					},
 				},
 				ForeignKeys: []*sqlspec.ForeignKey{
 					{
 						Symbol: "fk",
-						Columns: &schemaspec.Ref{
-							V: "$table.users.$column.account_active",
+						Columns: []*schemaspec.Ref{
+							{
+								V: "$table.users.$column.account_active",
+							},
 						},
-						RefColumns: &schemaspec.Ref{
-							V: "$table.accounts.$column.active",
+						RefColumns: []*schemaspec.Ref{
+							{
+								V: "$table.accounts.$column.active",
+							},
 						},
 						OnDelete: schema.SetNull,
 					},
@@ -202,34 +215,44 @@ table "accounts" {
 					},
 				},
 				PrimaryKey: &sqlspec.PrimaryKey{
-					Columns: &schemaspec.Ref{
-						V: "$table.accounts.$column.id",
+					Columns: []*schemaspec.Ref{
+						{
+							V: "$table.accounts.$column.id",
+						},
 					},
 				},
 				Indexes: []*sqlspec.Index{
 					{
 						Name:   "age",
 						Unique: true,
-						Columns: &schemaspec.Ref{
-							V: "$table.accounts.$column.age",
+						Columns: []*schemaspec.Ref{
+							{
+								V: "$table.accounts.$column.age",
+							},
 						},
 					},
 					{
 						Name:   "active",
 						Unique: false,
-						Columns: &schemaspec.Ref{
-							V: "$table.accounts.$column.active",
+						Columns: []*schemaspec.Ref{
+							{
+								V: "$table.accounts.$column.active",
+							},
 						},
 					},
 				},
 				ForeignKeys: []*sqlspec.ForeignKey{
 					{
 						Symbol: "fk",
-						Columns: &schemaspec.Ref{
-							V: "$table.accounts.$column.user_active",
+						Columns: []*schemaspec.Ref{
+							{
+								V: "$table.accounts.$column.user_active",
+							},
 						},
-						RefColumns: &schemaspec.Ref{
-							V: "$table.users.$column.active",
+						RefColumns: []*schemaspec.Ref{
+							{
+								V: "$table.users.$column.active",
+							},
 						},
 						OnDelete: schema.SetNull,
 					},
