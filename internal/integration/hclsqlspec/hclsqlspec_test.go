@@ -170,7 +170,7 @@ table "accounts" {
 						RefColumns: &schemaspec.Ref{
 							V: "$table.accounts.$column.active",
 						},
-						OnDelete: string(sqlspec.SetNull),
+						OnDelete: sqlspec.SetNull,
 					},
 				},
 			},
@@ -234,7 +234,7 @@ table "accounts" {
 						RefColumns: &schemaspec.Ref{
 							V: "$table.users.$column.active",
 						},
-						OnDelete: string(sqlspec.SetNull),
+						OnDelete: sqlspec.SetNull,
 					},
 				},
 			},

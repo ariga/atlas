@@ -49,8 +49,8 @@ type (
 		Symbol     string          `spec:"symbol"`
 		Columns    *schemaspec.Ref `spec:"columns"`
 		RefColumns *schemaspec.Ref `spec:"ref_columns"`
-		OnUpdate   string          `spec:"on_update"`
-		OnDelete   string          `spec:"on_delete"`
+		OnUpdate   ReferenceOption `spec:"on_update"`
+		OnDelete   ReferenceOption `spec:"on_delete"`
 		schemaspec.DefaultExtension
 	}
 
