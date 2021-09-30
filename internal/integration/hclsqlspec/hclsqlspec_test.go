@@ -98,6 +98,18 @@ table "users" {
 						},
 					},
 				},
+				ForeignKeys: []*sqlspec.ForeignKey{
+					{
+						Symbol: "accounts",
+						Columns: &schemaspec.Ref{
+							V: "$table.users.$column.age",
+						},
+						RefColumns: &schemaspec.Ref{
+							V: "$table.users.$column.age",
+						},
+						OnDelete: string(sqlspec.SetNull),
+					},
+				},
 			},
 		},
 	}, file)
