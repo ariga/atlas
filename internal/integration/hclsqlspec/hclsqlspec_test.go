@@ -39,7 +39,7 @@ table "users" {
 	}
 
 	primary_key {
-		columns = [table.users.column.id]
+		columns = [table.users.column.id, table.users.column.age]
 	}
 	
 	index "age" {
@@ -141,6 +141,9 @@ table "accounts" {
 					Columns: []*schemaspec.Ref{
 						{
 							V: "$table.users.$column.id",
+						},
+						{
+							V: "$table.users.$column.age",
 						},
 					},
 				},
