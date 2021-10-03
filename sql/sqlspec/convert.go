@@ -198,9 +198,9 @@ func resolveCol(ref *schemaspec.Ref, sch *schema.Schema) (*schema.Column, error)
 	return col, nil
 }
 
-// SchemaSpec converts a schema.Schema into Schema and []Table.
-func SchemaSpec(s *schema.Schema, fn TableSpecFunc) (*sqlspec.Schema, []*sqlspec.Table, error) {
-	spec := &sqlspec.Schema{
+// FromSchema converts a schema.Schema into Schema and []Table.
+func FromSchema(s *schema.Schema, fn TableSpecFunc) (*Schema, []*Table, error) {
+	spec := &Schema{
 		Name: s.Name,
 	}
 	tables := make([]*sqlspec.Table, 0, len(s.Tables))
@@ -214,9 +214,9 @@ func SchemaSpec(s *schema.Schema, fn TableSpecFunc) (*sqlspec.Schema, []*sqlspec
 	return spec, tables, nil
 }
 
-// TableSpec converts a schema.Table to a Table.
-func TableSpec(t *schema.Table, colFn ColumnSpecFunc, pkFn PrimaryKeySpecFunc, idxFn IndexSpecFunc, fkFn ForeignKeySpecFunc) (*sqlspec.Table, error) {
-	spec := &sqlspec.Table{
+// FromTable converts a schema.Table to a Table.
+func FromTable(t *schema.Table, colFn ColumnSpecFunc, pkFn PrimaryKeySpecFunc, idxFn IndexSpecFunc, fkFn ForeignKeySpecFunc) (*Table, error) {
+	spec := &Table{
 		Name: t.Name,
 	}
 	for _, c := range t.Columns {
@@ -250,8 +250,8 @@ func TableSpec(t *schema.Table, colFn ColumnSpecFunc, pkFn PrimaryKeySpecFunc, i
 	return spec, nil
 }
 
-// PrimaryKeySpec converts schema.Index to a PrimaryKey.
-func PrimaryKeySpec(s *schema.Index) (*sqlspec.PrimaryKey, error) {
+// FromPrimaryKey converts schema.Index to a PrimaryKey.
+func FromPrimaryKey(s *schema.Index) (*PrimaryKey, error) {
 	c := make([]*schemaspec.Ref, 0, len(s.Parts))
 	for _, v := range s.Parts {
 		c = append(c, toReference(v.C.Name, s.Table.Name))
@@ -261,8 +261,8 @@ func PrimaryKeySpec(s *schema.Index) (*sqlspec.PrimaryKey, error) {
 	}, nil
 }
 
-// IndexSpec converts schema.Index to Index
-func IndexSpec(idx *schema.Index) (*sqlspec.Index, error) {
+// FromIndex converts schema.Index to Index
+func FromIndex(idx *schema.Index) (*Index, error) {
 	c := make([]*schemaspec.Ref, 0, len(idx.Parts))
 	for _, p := range idx.Parts {
 		if p.C == nil {
@@ -277,8 +277,8 @@ func IndexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 	}, nil
 }
 
-// ForeignKeySpec converts schema.ForeignKey to ForeignKey
-func ForeignKeySpec(s *schema.ForeignKey) (*sqlspec.ForeignKey, error) {
+// FromForeignKey converts schema.ForeignKey to ForeignKey
+func FromForeignKey(s *schema.ForeignKey) (*ForeignKey, error) {
 	c := make([]*schemaspec.Ref, 0, len(s.Columns))
 	for _, v := range s.Columns {
 		c = append(c, toReference(v.Name, s.Table.Name))
