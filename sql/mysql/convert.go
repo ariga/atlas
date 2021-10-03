@@ -192,7 +192,7 @@ func convertString(spec *sqlspec.Column) (schema.Type, error) {
 	st := &schema.StringType{
 		Size: 255,
 	}
-	if attr, ok := spec.Attr("size"); ok {
+	if attr, ok := spec.DefaultExtension.Extra.Attr("size"); ok {
 		s, err := attr.Int()
 		if err != nil {
 			return nil, err
@@ -213,7 +213,7 @@ func convertString(spec *sqlspec.Column) (schema.Type, error) {
 }
 
 func convertEnum(spec *sqlspec.Column) (schema.Type, error) {
-	attr, ok := spec.Attr("values")
+	attr, ok := spec.DefaultExtension.Extra.Attr("values")
 	if !ok {
 		return nil, fmt.Errorf("mysql: expected enum fields to have values")
 	}
@@ -236,14 +236,14 @@ func convertDecimal(spec *sqlspec.Column) (schema.Type, error) {
 	dt := &schema.DecimalType{
 		T: tDecimal,
 	}
-	if precision, ok := spec.Attr("precision"); ok {
+	if precision, ok := spec.DefaultExtension.Extra.Attr("precision"); ok {
 		p, err := precision.Int()
 		if err != nil {
 			return nil, err
 		}
 		dt.Precision = p
 	}
-	if scale, ok := spec.Attr("scale"); ok {
+	if scale, ok := spec.DefaultExtension.Extra.Attr("scale"); ok {
 		s, err := scale.Int()
 		if err != nil {
 			return nil, err
@@ -257,7 +257,7 @@ func convertFloat(spec *sqlspec.Column) (schema.Type, error) {
 	ft := &schema.FloatType{
 		T: tFloat,
 	}
-	if precision, ok := spec.Attr("precision"); ok {
+	if precision, ok := spec.DefaultExtension.Extra.Attr("precision"); ok {
 		p, err := precision.Int()
 		if err != nil {
 			return nil, err
