@@ -12,9 +12,9 @@ import (
 	"strings"
 
 	"ariga.io/atlas/sql/internal/schemautil"
-	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/schema/schemaspec"
+	"ariga.io/atlas/sql/sqlspec"
 )
 
 // FormatType converts schema type to its column form in the database.
@@ -86,41 +86,41 @@ func (d *Driver) mustFormat(t schema.Type) string {
 }
 
 // ConvertSchema converts a schemaspec.Schema into a schema.Schema.
-func (d *Driver) ConvertSchema(spec *schemaspec.Schema, tables []*schemaspec.Table) (*schema.Schema, error) {
-	return schemautil.ConvertSchema(spec, tables, d.ConvertTable)
+func (d *Driver) ConvertSchema(spec *sqlspec.Schema, tables []*sqlspec.Table) (*schema.Schema, error) {
+	return sqlspec.ConvertSchema(spec, tables, d.ConvertTable)
 }
 
 // ConvertTable converts a schemaspec.Table to a schema.Table. Table conversion is done without converting
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the ConvertSchema function.
-func (d *Driver) ConvertTable(spec *schemaspec.Table, parent *schema.Schema) (*schema.Table, error) {
-	return schemautil.ConvertTable(spec, parent, d.ConvertColumn, d.ConvertPrimaryKey, d.ConvertIndex)
+func (d *Driver) ConvertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, error) {
+	return sqlspec.ConvertTable(spec, parent, d.ConvertColumn, d.ConvertPrimaryKey, d.ConvertIndex)
 }
 
 // ConvertPrimaryKey converts a schemaspec.PrimaryKey to a schema.Index.
-func (d *Driver) ConvertPrimaryKey(spec *schemaspec.PrimaryKey, parent *schema.Table) (*schema.Index, error) {
-	return schemautil.ConvertPrimaryKey(spec, parent)
+func (d *Driver) ConvertPrimaryKey(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, error) {
+	return sqlspec.ConvertPrimaryKey(spec, parent)
 }
 
 // ConvertIndex converts an schemaspec.Index to a schema.Index.
-func (d *Driver) ConvertIndex(spec *schemaspec.Index, parent *schema.Table) (*schema.Index, error) {
-	return schemautil.ConvertIndex(spec, parent)
+func (d *Driver) ConvertIndex(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
+	return sqlspec.ConvertIndex(spec, parent)
 }
 
 // ConvertColumn converts a schemaspec.Column into a schema.Column.
-func (d *Driver) ConvertColumn(spec *schemaspec.Column, _ *schema.Table) (*schema.Column, error) {
-	const driver = "mysql"
-	if override := spec.Override(sqlx.VersionPermutations(driver, d.version)...); override != nil {
-		if err := schemautil.Override(spec, override); err != nil {
-			return nil, err
-		}
-	}
-	return schemautil.ConvertColumn(spec, ConvertColumnType)
+func (d *Driver) ConvertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error) {
+	//const driver = "mysql"
+	//if override := spec.Override(sqlx.VersionPermutations(driver, d.version)...); override != nil {
+	//	if err := schemautil.Override(spec, override); err != nil {
+	//		return nil, err
+	//	}
+	//}
+	return sqlspec.ConvertColumn(spec, ConvertColumnType)
 }
 
 // ConvertColumnType converts a schemaspec.Column into a concrete MySQL schema.Type.
-func ConvertColumnType(spec *schemaspec.Column) (schema.Type, error) {
-	switch schemaspec.Type(spec.Type) {
+func ConvertColumnType(spec *sqlspec.Column) (schema.Type, error) {
+	switch schemaspec.Type(spec.TypeName) {
 	case schemaspec.TypeInt, schemaspec.TypeInt8, schemaspec.TypeInt16,
 		schemaspec.TypeInt64, schemaspec.TypeUint, schemaspec.TypeUint8,
 		schemaspec.TypeUint16, schemaspec.TypeUint64:
@@ -132,22 +132,22 @@ func ConvertColumnType(spec *schemaspec.Column) (schema.Type, error) {
 	case schemaspec.TypeEnum:
 		return convertEnum(spec)
 	case schemaspec.TypeBoolean:
-		return convertBoolean(spec)
+		return convertBoolean()
 	case schemaspec.TypeDecimal:
 		return convertDecimal(spec)
 	case schemaspec.TypeFloat:
 		return convertFloat(spec)
 	case schemaspec.TypeTime:
-		return convertTime(spec)
+		return convertTime()
 	}
-	return parseRawType(spec.Type)
+	return parseRawType(spec.TypeName)
 }
 
-func convertInteger(spec *schemaspec.Column) (schema.Type, error) {
+func convertInteger(spec *sqlspec.Column) (schema.Type, error) {
 	typ := &schema.IntegerType{
-		Unsigned: strings.HasPrefix(spec.Type, "u"),
+		Unsigned: strings.HasPrefix(spec.TypeName, "u"),
 	}
-	switch spec.Type {
+	switch spec.TypeName {
 	case "int8", "uint8":
 		typ.T = tTinyInt
 	case "int16", "uint16":
@@ -157,12 +157,12 @@ func convertInteger(spec *schemaspec.Column) (schema.Type, error) {
 	case "int64", "uint64":
 		typ.T = tBigInt
 	default:
-		return nil, fmt.Errorf("mysql: unknown integer column type %q", spec.Type)
+		return nil, fmt.Errorf("mysql: unknown integer column type %q", spec.TypeName)
 	}
 	return typ, nil
 }
 
-func convertBinary(spec *schemaspec.Column) (schema.Type, error) {
+func convertBinary(spec *sqlspec.Column) (schema.Type, error) {
 	bt := &schema.BinaryType{}
 	if attr, ok := spec.Attr("size"); ok {
 		s, err := attr.Int()
@@ -188,7 +188,7 @@ func convertBinary(spec *schemaspec.Column) (schema.Type, error) {
 	return bt, nil
 }
 
-func convertString(spec *schemaspec.Column) (schema.Type, error) {
+func convertString(spec *sqlspec.Column) (schema.Type, error) {
 	st := &schema.StringType{
 		Size: 255,
 	}
@@ -212,7 +212,7 @@ func convertString(spec *schemaspec.Column) (schema.Type, error) {
 	return st, nil
 }
 
-func convertEnum(spec *schemaspec.Column) (schema.Type, error) {
+func convertEnum(spec *sqlspec.Column) (schema.Type, error) {
 	attr, ok := spec.Attr("values")
 	if !ok {
 		return nil, fmt.Errorf("mysql: expected enum fields to have values")
@@ -224,15 +224,15 @@ func convertEnum(spec *schemaspec.Column) (schema.Type, error) {
 	return &schema.EnumType{Values: list}, nil
 }
 
-func convertBoolean(spec *schemaspec.Column) (schema.Type, error) {
+func convertBoolean() (schema.Type, error) {
 	return &schema.BoolType{T: "boolean"}, nil
 }
 
-func convertTime(spec *schemaspec.Column) (schema.Type, error) {
+func convertTime() (schema.Type, error) {
 	return &schema.TimeType{T: "timestamp"}, nil
 }
 
-func convertDecimal(spec *schemaspec.Column) (schema.Type, error) {
+func convertDecimal(spec *sqlspec.Column) (schema.Type, error) {
 	dt := &schema.DecimalType{
 		T: tDecimal,
 	}
@@ -253,7 +253,7 @@ func convertDecimal(spec *schemaspec.Column) (schema.Type, error) {
 	return dt, nil
 }
 
-func convertFloat(spec *schemaspec.Column) (schema.Type, error) {
+func convertFloat(spec *sqlspec.Column) (schema.Type, error) {
 	ft := &schema.FloatType{
 		T: tFloat,
 	}
