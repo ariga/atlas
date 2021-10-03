@@ -30,6 +30,7 @@ type (
 		TypeName string                   `spec:"type" override:"type"`
 		Default  *schemaspec.LiteralValue `spec:"default" override:"default"`
 		//Overrides []*Override
+		schemaspec.DefaultExtension
 	}
 
 	// PrimaryKey holds a specification for the primary key of a table.

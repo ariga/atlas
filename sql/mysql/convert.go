@@ -164,7 +164,7 @@ func convertInteger(spec *sqlspec.Column) (schema.Type, error) {
 
 func convertBinary(spec *sqlspec.Column) (schema.Type, error) {
 	bt := &schema.BinaryType{}
-	if attr, ok := spec.Attr("size"); ok {
+	if attr, ok := spec.DefaultExtension.Extra.Attr("size"); ok {
 		s, err := attr.Int()
 		if err != nil {
 			return nil, err
