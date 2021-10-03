@@ -23,14 +23,17 @@ table "users" {
   primary_key {
     columns = [
       table.users.column.id,
-      table.users.column.age]
+      table.users.column.age
+    ]
   }
 
   foreign_key "fk" {
     columns = [
-      table.users.column.account_active]
+      table.users.column.account_active
+    ]
     ref_columns = [
-      table.accounts.column.active]
+      table.accounts.column.active
+    ]
     on_delete = "SET NULL"
   }
 }
@@ -47,12 +50,11 @@ Terraform, etc.), but focused on the special challenges of managing
 stateful, always-online resources containing many organizations' most
 prized resources asset - their data. 
 
-Today, most companies
-manage their database schemas using the migration features of their 
-ORM libraries, very close to the application code. Atlas strives to 
-change this approach and to help organizations push schema management 
-(provisioning, change management, visibility, etc.) down to the 
-infrastructure layer.
+Today, most companies manage their database schemas using the migration 
+features of their ORM libraries, very close to the application code. 
+Atlas strives to change this approach and to help organizations push
+schema management(provisioning, change management, visibility, etc.) 
+down to the infrastructure layer.
 
 Atlas Data Management provides a set of Go packages that can
 provision resources within databases and safely manage the change
