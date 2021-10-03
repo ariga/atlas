@@ -9,7 +9,7 @@ import (
 
 	"ariga.io/atlas/sql/internal/schemautil"
 	"ariga.io/atlas/sql/schema"
-	"ariga.io/atlas/sql/schema/schemaspec"
+	"ariga.io/atlas/sql/sqlspec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -446,134 +446,134 @@ import (
 func TestColumnTypeSpec(t *testing.T) {
 	for _, tt := range []struct {
 		schem    schema.Type
-		expected *schemaspec.Column
+		expected *sqlspec.Column
 	}{
 		{
 			schem: &schema.IntegerType{
 				T:        tInt,
 				Unsigned: false,
 			},
-			expected: schemautil.ColSpec("", "int"),
+			expected: sqlspec.ColSpec("", "int"),
 		},
 		{
 			schem: &schema.IntegerType{
 				T:        tInt,
 				Unsigned: true,
 			},
-			expected: schemautil.ColSpec("", "uint"),
+			expected: sqlspec.ColSpec("", "uint"),
 		},
 		{
 			schem: &schema.IntegerType{
 				T:        tTinyInt,
 				Unsigned: false,
 			},
-			expected: schemautil.ColSpec("", "int8"),
+			expected: sqlspec.ColSpec("", "int8"),
 		},
 		{
 			schem: &schema.IntegerType{
 				T:        tBigInt,
 				Unsigned: false,
 			},
-			expected: schemautil.ColSpec("", "int64"),
+			expected: sqlspec.ColSpec("", "int64"),
 		},
 		{
 			schem: &schema.IntegerType{
 				T:        tBigInt,
 				Unsigned: true,
 			},
-			expected: schemautil.ColSpec("", "uint64"),
+			expected: sqlspec.ColSpec("", "uint64"),
 		},
 		{
 			schem: &schema.StringType{
 				T:    tVarchar,
 				Size: 255,
 			},
-			expected: schemautil.ColSpec("", "string", schemautil.LitAttr("size", "255")),
+			expected: sqlspec.ColSpec("", "string", sqlspec.LitAttr("size", "255")),
 		},
 		{
 			schem: &schema.StringType{
 				T:    tMediumText,
 				Size: 100_000,
 			},
-			expected: schemautil.ColSpec("", "string", schemautil.LitAttr("size", "100000")),
+			expected: sqlspec.ColSpec("", "string", sqlspec.LitAttr("size", "100000")),
 		},
 		{
 			schem: &schema.StringType{
 				T:    tLongText,
 				Size: 17_000_000,
 			},
-			expected: schemautil.ColSpec("", "string", schemautil.LitAttr("size", "17000000")),
+			expected: sqlspec.ColSpec("", "string", sqlspec.LitAttr("size", "17000000")),
 		},
 		{
 			schem:    &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
-			expected: schemautil.ColSpec("", "decimal", schemautil.LitAttr("precision", "10"), schemautil.LitAttr("scale", "2")),
+			expected: sqlspec.ColSpec("", "decimal", sqlspec.LitAttr("precision", "10"), sqlspec.LitAttr("scale", "2")),
 		},
 		{
 			schem: &schema.BinaryType{
 				T: tBlob,
 			},
-			expected: schemautil.ColSpec("", "binary"),
+			expected: sqlspec.ColSpec("", "binary"),
 		},
 		{
 			schem: &schema.BinaryType{
 				T:    tTinyBlob,
 				Size: 16,
 			},
-			expected: schemautil.ColSpec("", "binary", schemautil.LitAttr("size", "16")),
+			expected: sqlspec.ColSpec("", "binary", sqlspec.LitAttr("size", "16")),
 		},
 		{
 			schem: &schema.BinaryType{
 				T:    tMediumBlob,
 				Size: 100_000,
 			},
-			expected: schemautil.ColSpec("", "binary", schemautil.LitAttr("size", "100000")),
+			expected: sqlspec.ColSpec("", "binary", sqlspec.LitAttr("size", "100000")),
 		},
 		{
 			schem: &schema.BinaryType{
 				T:    tLongBlob,
 				Size: 20_000_000,
 			},
-			expected: schemautil.ColSpec("", "binary", schemautil.LitAttr("size", "20000000")),
+			expected: sqlspec.ColSpec("", "binary", sqlspec.LitAttr("size", "20000000")),
 		},
 		{
 			schem:    &schema.EnumType{Values: []string{"a", "b", "c"}},
-			expected: schemautil.ColSpec("", "enum", schemautil.ListAttr("values", "a", "b", "c")),
+			expected: sqlspec.ColSpec("", "enum", schemautil.ListAttr("values", "a", "b", "c")),
 		},
 		{
 			schem:    &schema.BoolType{T: "boolean"},
-			expected: schemautil.ColSpec("", "boolean"),
+			expected: sqlspec.ColSpec("", "boolean"),
 		},
 		{
 			schem:    &schema.FloatType{T: "float", Precision: 10},
-			expected: schemautil.ColSpec("", "float", schemautil.LitAttr("precision", "10")),
+			expected: sqlspec.ColSpec("", "float", schemautil.LitAttr("precision", "10")),
 		},
 		{
 			schem:    &schema.FloatType{T: "double", Precision: 25},
-			expected: schemautil.ColSpec("", "float", schemautil.LitAttr("precision", "25")),
+			expected: sqlspec.ColSpec("", "float", schemautil.LitAttr("precision", "25")),
 		},
 		{
 			schem:    &schema.TimeType{T: "date"},
-			expected: schemautil.ColSpec("", "date"),
+			expected: sqlspec.ColSpec("", "date"),
 		},
 		{
 			schem:    &schema.TimeType{T: "datetime"},
-			expected: schemautil.ColSpec("", "datetime"),
+			expected: sqlspec.ColSpec("", "datetime"),
 		},
 		{
 			schem:    &schema.TimeType{T: "time"},
-			expected: schemautil.ColSpec("", "time"),
+			expected: sqlspec.ColSpec("", "time"),
 		},
 		{
 			schem:    &schema.TimeType{T: "timestamp"},
-			expected: schemautil.ColSpec("", "timestamp"),
+			expected: sqlspec.ColSpec("", "timestamp"),
 		},
 		{
 			schem:    &schema.TimeType{T: "year"},
-			expected: schemautil.ColSpec("", "year"),
+			expected: sqlspec.ColSpec("", "year"),
 		},
 		{
 			schem:    &schema.TimeType{T: "year(4)"},
-			expected: schemautil.ColSpec("", "year(4)"),
+			expected: sqlspec.ColSpec("", "year(4)"),
 		},
 	} {
 		t.Run(tt.expected.Name, func(t *testing.T) {

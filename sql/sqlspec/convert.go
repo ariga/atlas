@@ -7,6 +7,7 @@ package sqlspec
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
@@ -321,5 +322,37 @@ func toReference(cName string, tName string) *schemaspec.Ref {
 	v := "$table." + tName + ".$column." + cName
 	return &schemaspec.Ref{
 		V: v,
+	}
+}
+
+// ColSpec is a helper method for constructing *Column instances.
+func ColSpec(name, coltype string, attrs ...*schemaspec.Attr) *Column {
+	return &Column{
+		Name:     name,
+		TypeName: coltype,
+		DefaultExtension: schemaspec.DefaultExtension{
+			Extra: schemaspec.Resource{
+				Attrs: attrs,
+			},
+		},
+	}
+}
+
+// LitAttr is a helper method for constructing *schemaspec.Attr instances that contain literal values.
+func LitAttr(k, v string) *schemaspec.Attr {
+	return &schemaspec.Attr{
+		K: k,
+		V: &schemaspec.LiteralValue{V: v},
+	}
+}
+
+// ListAttr is a helper method for constructing *schemaspec.Attr instances that contain list values.
+func ListAttr(k string, atttributes ...string) *schemaspec.Attr {
+	for i, v := range atttributes {
+		atttributes[i] = schemaspec.Attr{K: k, V: strconv.Quote(v)}
+	}
+	return &schemaspec.Attr{
+		K: k,
+		V: &schemaspec.ListValue{V: atttributes},
 	}
 }
