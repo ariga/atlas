@@ -1,4 +1,4 @@
-package sqlspecutil
+package sqlspec
 
 import (
 	"testing"
