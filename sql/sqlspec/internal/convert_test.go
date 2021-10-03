@@ -1,4 +1,4 @@
-package sqlspec
+package internal
 
 import (
 	"testing"
