@@ -128,7 +128,7 @@ func ConvertIndex(spec *Index, parent *schema.Table) (*schema.Index, error) {
 func ConvertPrimaryKey(spec *PrimaryKey, parent *schema.Table) (*schema.Index, error) {
 	parts := make([]*schema.IndexPart, 0, len(spec.Columns))
 	for seqno, c := range spec.Columns {
-		n, err := getColumnName(c)
+		n, err := columnName(c)
 		if err != nil {
 			return nil, fmt.Errorf("sqlspec: cannot get column name %q as primary key for table %q", c.V, parent.Name)
 		}
@@ -178,21 +178,21 @@ func linkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *Table) error 
 }
 
 func resolveCol(ref *schemaspec.Ref, sch *schema.Schema) (*schema.Column, error) {
-	t, err := getTableName(ref)
+	t, err := tableName(ref)
 	if err != nil {
-		return nil, fmt.Errorf("mysql: table %q not found", ref.V)
+		return nil, fmt.Errorf("sqlspec: table %q not found", ref.V)
 	}
 	tbl, ok := sch.Table(t)
 	if !ok {
-		return nil, fmt.Errorf("mysql: table %q not found", t)
+		return nil, fmt.Errorf("sqlspec: table %q not found", t)
 	}
-	c, err := getColumnName(ref)
+	c, err := columnName(ref)
 	if err != nil {
-		return nil, fmt.Errorf("mysql: column %q not found", ref.V)
+		return nil, fmt.Errorf("sqlspec: column %q not found", ref.V)
 	}
 	col, ok := tbl.Column(c)
 	if !ok {
-		return nil, fmt.Errorf("mysql: column %q not found in table %q", c, t)
+		return nil, fmt.Errorf("sqlspec: column %q not found in table %q", c, t)
 	}
 	return col, nil
 }
@@ -295,7 +295,7 @@ func ForeignKeySpec(s *schema.ForeignKey) (*ForeignKey, error) {
 	}, nil
 }
 
-func getColumnName(ref *schemaspec.Ref) (string, error) {
+func columnName(ref *schemaspec.Ref) (string, error) {
 	s := strings.Split(ref.V, "$column.")
 	if len(s) != 2 {
 		return "", fmt.Errorf("sqlspec: failed to extract column name from %q", ref)
@@ -304,7 +304,7 @@ func getColumnName(ref *schemaspec.Ref) (string, error) {
 	return s[1], nil
 }
 
-func getTableName(ref *schemaspec.Ref) (string, error) {
+func tableName(ref *schemaspec.Ref) (string, error) {
 	s := strings.Split(ref.V, "$column.")
 	if len(s) != 2 {
 		return "", fmt.Errorf("sqlspec: failed to split by column name from %q", ref)

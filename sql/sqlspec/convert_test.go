@@ -7,16 +7,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRef_GetColumnName(t *testing.T) {
+func TestRef_ColumnName(t *testing.T) {
 	ref := &schemaspec.Ref{V: "$table.accounts.$column.user_active"}
-	c, err := getColumnName(ref)
+	c, err := columnName(ref)
 	require.NoError(t, err)
 	require.Equal(t, "user_active", c)
 }
 
-func TestRef_GetTableName(t *testing.T) {
+func TestRef_TableName(t *testing.T) {
 	ref := &schemaspec.Ref{V: "$table.accounts.$column.user_active"}
-	c, err := getTableName(ref)
+	c, err := tableName(ref)
 	require.NoError(t, err)
 	require.Equal(t, "accounts", c)
 }
