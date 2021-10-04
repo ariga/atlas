@@ -13,6 +13,9 @@ module.exports = {
     gtag: {
       trackingID: 'G-Z88N4TF03R'
     },
+    prism: {
+      additionalLanguages: ['hcl'],
+    },
     navbar: {
       title: 'Atlas',
       logo: {
