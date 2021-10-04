@@ -7,7 +7,6 @@ package mysql
 import (
 	"testing"
 
-	"ariga.io/atlas/sql/internal/schemautil"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
 	"github.com/stretchr/testify/require"
@@ -537,7 +536,7 @@ func TestColumnTypeSpec(t *testing.T) {
 		},
 		{
 			schem:    &schema.EnumType{Values: []string{"a", "b", "c"}},
-			expected: sqlspec.ColSpec("", "enum", schemautil.ListAttr("values", "a", "b", "c")),
+			expected: sqlspec.ColSpec("", "enum", sqlspec.ListAttr("values", "a", "b", "c")),
 		},
 		{
 			schem:    &schema.BoolType{T: "boolean"},
@@ -545,11 +544,11 @@ func TestColumnTypeSpec(t *testing.T) {
 		},
 		{
 			schem:    &schema.FloatType{T: "float", Precision: 10},
-			expected: sqlspec.ColSpec("", "float", schemautil.LitAttr("precision", "10")),
+			expected: sqlspec.ColSpec("", "float", sqlspec.LitAttr("precision", "10")),
 		},
 		{
 			schem:    &schema.FloatType{T: "double", Precision: 25},
-			expected: sqlspec.ColSpec("", "float", schemautil.LitAttr("precision", "25")),
+			expected: sqlspec.ColSpec("", "float", sqlspec.LitAttr("precision", "25")),
 		},
 		{
 			schem:    &schema.TimeType{T: "date"},

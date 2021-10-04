@@ -118,7 +118,7 @@ func (d *Driver) ConvertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.C
 	return sqlspec.ConvertColumn(spec, ConvertColumnType)
 }
 
-// ConvertColumnType converts a schemaspec.Column into a concrete MySQL schema.Type.
+// ConvertColumnType converts a sqlspec.Column into a concrete MySQL schema.Type.
 func ConvertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 	switch schemaspec.Type(spec.TypeName) {
 	case schemaspec.TypeInt, schemaspec.TypeInt8, schemaspec.TypeInt16,
@@ -286,24 +286,24 @@ func formatValues(vs []string) string {
 }
 
 // SchemaSpec converts from a concrete MySQL schema to Atlas specification.
-func (d *Driver) SchemaSpec(schem *schema.Schema) (*schemaspec.Schema, []*schemaspec.Table, error) {
-	return schemautil.SchemaSpec(schem, d.TableSpec)
+func (d *Driver) SchemaSpec(schem *schema.Schema) (*sqlspec.Schema, []*schemaspec.Table, error) {
+	return sqlspec.FromSchema(schem, d.TableSpec)
 }
 
 // TableSpec converts from a concrete MySQL schemaspec.Table to a schema.Table.
-func (d *Driver) TableSpec(tab *schema.Table) (*schemaspec.Table, error) {
-	return schemautil.TableSpec(tab, d.ColumnSpec, schemautil.PrimaryKeySpec, schemautil.IndexSpec, schemautil.ForeignKeySpec)
+func (d *Driver) TableSpec(tab *schema.Table) (*sqlspec.Table, error) {
+	return sqlspec.FromTable(tab, d.ColumnSpec, schemautil.PrimaryKeySpec, schemautil.IndexSpec, schemautil.ForeignKeySpec)
 }
 
 // ColumnSpec converts from a concrete MySQL schema.Column into a schemaspec.Column.
-func (d *Driver) ColumnSpec(col *schema.Column) (*schemaspec.Column, error) {
+func (d *Driver) ColumnSpec(col *schema.Column) (*sqlspec.Column, error) {
 	ct, err := columnTypeSpec(col.Type.Type)
 	if err != nil {
 		return nil, err
 	}
-	return &schemaspec.Column{
+	return &sqlspec.Column{
 		Name: col.Name,
-		Type: ct.Type,
+		TypeName: ct.Type,
 		Null: ct.Null,
 		Resource: schemaspec.Resource{
 			Attrs: ct.Attrs,
@@ -312,7 +312,7 @@ func (d *Driver) ColumnSpec(col *schema.Column) (*schemaspec.Column, error) {
 }
 
 // columnTypeSpec converts from a concrete MySQL schema.Type into schemaspec.Column Type.
-func columnTypeSpec(t schema.Type) (*schemaspec.Column, error) {
+func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	switch t := t.(type) {
 	case *schema.EnumType:
 		return enumSpec(t)
@@ -321,31 +321,31 @@ func columnTypeSpec(t schema.Type) (*schemaspec.Column, error) {
 	case *schema.StringType:
 		return stringSpec(t)
 	case *schema.DecimalType:
-		return schemautil.ColSpec("", "decimal",
+		return sqlspec.ColSpec("", "decimal",
 			schemautil.LitAttr("precision", strconv.Itoa(t.Precision)), schemautil.LitAttr("scale", strconv.Itoa(t.Scale))), nil
 	case *schema.BinaryType:
 		return binarySpec(t)
 	case *schema.BoolType:
-		return &schemaspec.Column{Type: "boolean"}, nil
+		return &sqlspec.Column{Type: "boolean"}, nil
 	case *schema.FloatType:
-		return schemautil.ColSpec("", "float", schemautil.LitAttr("precision", strconv.Itoa(t.Precision))), nil
+		return sqlspec.ColSpec("", "float", schemautil.LitAttr("precision", strconv.Itoa(t.Precision))), nil
 	case *schema.TimeType:
-		return &schemaspec.Column{Type: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	case *schema.JSONType:
-		return &schemaspec.Column{Type: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	case *schema.SpatialType:
-		return &schemaspec.Column{Type: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	case *schema.UnsupportedType:
-		return &schemaspec.Column{Type: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	default:
 		return nil, fmt.Errorf("mysql: failed to convert column type %T to spec", t)
 	}
 }
 
-func binarySpec(t *schema.BinaryType) (*schemaspec.Column, error) {
+func binarySpec(t *schema.BinaryType) (*sqlspec.Column, error) {
 	switch t.T {
 	case tBlob:
-		return &schemaspec.Column{Type: "binary"}, nil
+		return &sqlspec.Column{Type: "binary"}, nil
 	case tTinyBlob, tMediumBlob, tLongBlob:
 		s := strconv.Itoa(t.Size)
 		return schemautil.ColSpec("", "binary", schemautil.LitAttr("size", s)), nil
@@ -353,36 +353,36 @@ func binarySpec(t *schema.BinaryType) (*schemaspec.Column, error) {
 	return nil, errors.New("mysql: schema binary failed to convert")
 }
 
-func stringSpec(t *schema.StringType) (*schemaspec.Column, error) {
+func stringSpec(t *schema.StringType) (*sqlspec.Column, error) {
 	switch t.T {
 	case tVarchar, tMediumText, tLongText:
 		s := strconv.Itoa(t.Size)
-		return schemautil.ColSpec("", "string", schemautil.LitAttr("size", s)), nil
+		return sqlspec.ColSpec("", "string", schemautil.LitAttr("size", s)), nil
 	}
 	return nil, errors.New("mysql: schema string failed to convert")
 }
 
-func integerSpec(t *schema.IntegerType) (*schemaspec.Column, error) {
+func integerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
 	switch t.T {
 	case tInt:
 		if t.Unsigned {
 			return schemautil.ColSpec("", "uint"), nil
 		}
-		return &schemaspec.Column{Type: "int"}, nil
+		return &sqlspec.Column{Type: "int"}, nil
 	case tTinyInt:
-		return &schemaspec.Column{Type: "int8"}, nil
+		return &sqlspec.Column{Type: "int8"}, nil
 	case tBigInt:
 		if t.Unsigned {
 			return schemautil.ColSpec("", "uint64"), nil
 		}
-		return &schemaspec.Column{Type: "int64"}, nil
+		return &sqlspec.Column{Type: "int64"}, nil
 	}
 	return nil, errors.New("mysql: schema integer failed to convert")
 }
 
-func enumSpec(t *schema.EnumType) (*schemaspec.Column, error) {
+func enumSpec(t *schema.EnumType) (*sqlspec.Column, error) {
 	if len(t.Values) == 0 {
 		return nil, errors.New("mysql: schema enum fields to have values")
 	}
-	return schemautil.ColSpec("", "enum", schemautil.ListAttr("values", t.Values...)), nil
+	return sqlspec.ColSpec("", "enum", schemautil.ListAttr("values", t.Values...)), nil
 }
