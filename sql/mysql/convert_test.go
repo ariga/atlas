@@ -310,137 +310,137 @@ import (
 //	require.EqualValues(t, tables, ctables)
 //}
 
-//func TestConvertColumnType(t *testing.T) {
-//	for _, tt := range []struct {
-//		spec     *schemaspec.Column
-//		expected schema.Type
-//	}{
-//		{
-//			spec: schemautil.ColSpec("int", "int"),
-//			expected: &schema.IntegerType{
-//				T:        tInt,
-//				Unsigned: false,
-//			},
-//		},
-//		{
-//			spec: schemautil.ColSpec("uint", "uint"),
-//			expected: &schema.IntegerType{
-//				T:        tInt,
-//				Unsigned: true,
-//			},
-//		},
-//		{
-//			spec: schemautil.ColSpec("int8", "int8"),
-//			expected: &schema.IntegerType{
-//				T:        tTinyInt,
-//				Unsigned: false,
-//			},
-//		},
-//		{
-//			spec: schemautil.ColSpec("int64", "int64"),
-//			expected: &schema.IntegerType{
-//				T:        tBigInt,
-//				Unsigned: false,
-//			},
-//		},
-//		{
-//			spec: schemautil.ColSpec("uint64", "uint64"),
-//			expected: &schema.IntegerType{
-//				T:        tBigInt,
-//				Unsigned: true,
-//			},
-//		},
-//		{
-//			spec: schemautil.ColSpec("string_varchar", "string", schemautil.LitAttr("size", "255")),
-//			expected: &schema.StringType{
-//				T:    tVarchar,
-//				Size: 255,
-//			},
-//		},
-//		{
-//			spec: schemautil.ColSpec("string_mediumtext", "string", schemautil.LitAttr("size", "100000")),
-//			expected: &schema.StringType{
-//				T:    tMediumText,
-//				Size: 100_000,
-//			},
-//		},
-//		{
-//			spec: schemautil.ColSpec("string_longtext", "string", schemautil.LitAttr("size", "17000000")),
-//			expected: &schema.StringType{
-//				T:    tLongText,
-//				Size: 17_000_000,
-//			},
-//		},
-//		{
-//			spec: schemautil.ColSpec("varchar(255)", "varchar(255)"),
-//			expected: &schema.StringType{
-//				T:    tVarchar,
-//				Size: 255,
-//			},
-//		},
-//		{
-//			spec: schemautil.ColSpec("decimal(10, 2) unsigned", "decimal(10, 2) unsigned"),
-//			expected: &schema.DecimalType{
-//				T:         tDecimal,
-//				Scale:     2,
-//				Precision: 10,
-//			},
-//		},
-//		{
-//			spec: schemautil.ColSpec("blob", "binary"),
-//			expected: &schema.BinaryType{
-//				T: tBlob,
-//			},
-//		},
-//		{
-//			spec: schemautil.ColSpec("tinyblob", "binary", schemautil.LitAttr("size", "16")),
-//			expected: &schema.BinaryType{
-//				T:    tTinyBlob,
-//				Size: 16,
-//			},
-//		},
-//		{
-//			spec: schemautil.ColSpec("mediumblob", "binary", schemautil.LitAttr("size", "100000")),
-//			expected: &schema.BinaryType{
-//				T:    tMediumBlob,
-//				Size: 100_000,
-//			},
-//		},
-//		{
-//			spec: schemautil.ColSpec("longblob", "binary", schemautil.LitAttr("size", "20000000")),
-//			expected: &schema.BinaryType{
-//				T:    tLongBlob,
-//				Size: 20_000_000,
-//			},
-//		},
-//		{
-//			spec:     schemautil.ColSpec("enum", "enum", schemautil.ListAttr("values", "a", "b", "c")),
-//			expected: &schema.EnumType{Values: []string{"a", "b", "c"}},
-//		},
-//		{
-//			spec:     schemautil.ColSpec("bool", "boolean"),
-//			expected: &schema.BoolType{T: "boolean"},
-//		},
-//		{
-//			spec:     schemautil.ColSpec("decimal", "decimal", schemautil.LitAttr("precision", "10"), schemautil.LitAttr("scale", "2")),
-//			expected: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
-//		},
-//		{
-//			spec:     schemautil.ColSpec("float", "float", schemautil.LitAttr("precision", "10")),
-//			expected: &schema.FloatType{T: "float", Precision: 10},
-//		},
-//		{
-//			spec:     schemautil.ColSpec("float", "float", schemautil.LitAttr("precision", "25")),
-//			expected: &schema.FloatType{T: "double", Precision: 25},
-//		},
-//	} {
-//		t.Run(tt.spec.Name, func(t *testing.T) {
-//			columnType, err := ConvertColumnType(tt.spec)
-//			require.NoError(t, err)
-//			require.EqualValues(t, tt.expected, columnType)
-//		})
-//	}
-//}
+func TestConvertColumnType(t *testing.T) {
+	for _, tt := range []struct {
+		spec     *sqlspec.Column
+		expected schema.Type
+	}{
+		{
+			spec: sqlspec.ColSpec("int", "int"),
+			expected: &schema.IntegerType{
+				T:        tInt,
+				Unsigned: false,
+			},
+		},
+		{
+			spec: sqlspec.ColSpec("uint", "uint"),
+			expected: &schema.IntegerType{
+				T:        tInt,
+				Unsigned: true,
+			},
+		},
+		{
+			spec: sqlspec.ColSpec("int8", "int8"),
+			expected: &schema.IntegerType{
+				T:        tTinyInt,
+				Unsigned: false,
+			},
+		},
+		{
+			spec: sqlspec.ColSpec("int64", "int64"),
+			expected: &schema.IntegerType{
+				T:        tBigInt,
+				Unsigned: false,
+			},
+		},
+		{
+			spec: sqlspec.ColSpec("uint64", "uint64"),
+			expected: &schema.IntegerType{
+				T:        tBigInt,
+				Unsigned: true,
+			},
+		},
+		{
+			spec: sqlspec.ColSpec("string_varchar", "string", sqlspec.LitAttr("size", "255")),
+			expected: &schema.StringType{
+				T:    tVarchar,
+				Size: 255,
+			},
+		},
+		{
+			spec: sqlspec.ColSpec("string_mediumtext", "string", sqlspec.LitAttr("size", "100000")),
+			expected: &schema.StringType{
+				T:    tMediumText,
+				Size: 100_000,
+			},
+		},
+		{
+			spec: sqlspec.ColSpec("string_longtext", "string", sqlspec.LitAttr("size", "17000000")),
+			expected: &schema.StringType{
+				T:    tLongText,
+				Size: 17_000_000,
+			},
+		},
+		{
+			spec: sqlspec.ColSpec("varchar(255)", "varchar(255)"),
+			expected: &schema.StringType{
+				T:    tVarchar,
+				Size: 255,
+			},
+		},
+		{
+			spec: sqlspec.ColSpec("decimal(10, 2) unsigned", "decimal(10, 2) unsigned"),
+			expected: &schema.DecimalType{
+				T:         tDecimal,
+				Scale:     2,
+				Precision: 10,
+			},
+		},
+		{
+			spec: sqlspec.ColSpec("blob", "binary"),
+			expected: &schema.BinaryType{
+				T: tBlob,
+			},
+		},
+		{
+			spec: sqlspec.ColSpec("tinyblob", "binary", sqlspec.LitAttr("size", "16")),
+			expected: &schema.BinaryType{
+				T:    tTinyBlob,
+				Size: 16,
+			},
+		},
+		{
+			spec: sqlspec.ColSpec("mediumblob", "binary", sqlspec.LitAttr("size", "100000")),
+			expected: &schema.BinaryType{
+				T:    tMediumBlob,
+				Size: 100_000,
+			},
+		},
+		{
+			spec: sqlspec.ColSpec("longblob", "binary", sqlspec.LitAttr("size", "20000000")),
+			expected: &schema.BinaryType{
+				T:    tLongBlob,
+				Size: 20_000_000,
+			},
+		},
+		{
+			spec:     sqlspec.ColSpec("enum", "enum", sqlspec.ListAttr("values", "a", "b", "c")),
+			expected: &schema.EnumType{Values: []string{"a", "b", "c"}},
+		},
+		{
+			spec:     sqlspec.ColSpec("bool", "boolean"),
+			expected: &schema.BoolType{T: "boolean"},
+		},
+		{
+			spec:     sqlspec.ColSpec("decimal", "decimal", sqlspec.LitAttr("precision", "10"), sqlspec.LitAttr("scale", "2")),
+			expected: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
+		},
+		{
+			spec:     sqlspec.ColSpec("float", "float", sqlspec.LitAttr("precision", "10")),
+			expected: &schema.FloatType{T: "float", Precision: 10},
+		},
+		{
+			spec:     sqlspec.ColSpec("float", "float", sqlspec.LitAttr("precision", "25")),
+			expected: &schema.FloatType{T: "double", Precision: 25},
+		},
+	} {
+		t.Run(tt.spec.Name, func(t *testing.T) {
+			columnType, err := ConvertColumnType(tt.spec)
+			require.NoError(t, err)
+			require.EqualValues(t, tt.expected, columnType)
+		})
+	}
+}
 
 func TestColumnTypeSpec(t *testing.T) {
 	for _, tt := range []struct {
