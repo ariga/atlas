@@ -352,7 +352,7 @@ func LitAttr(k, v string) *schemaspec.Attr {
 
 // ListAttr is a helper method for constructing *schemaspec.Attr instances that contain list values.
 func ListAttr(k string, values ...string) *schemaspec.Attr {
-	l := make([]schemaspec.Value, len(values), len(values))
+	l := make([]schemaspec.Value, len(values))
 	for i, v := range values {
 		l[i] = &schemaspec.LiteralValue{V: strconv.Quote(v)}
 	}
