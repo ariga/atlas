@@ -25,11 +25,11 @@ type (
 
 	// Column holds a specification for a column in an SQL table.
 	Column struct {
-		Name     string                   `spec:",name"`
-		Null     bool                     `spec:"null" override:"null"`
-		TypeName string                   `spec:"type" override:"type"`
-		Default  *schemaspec.LiteralValue `spec:"default" override:"default"`
-		//Overrides []*Override
+		Name      string                   `spec:",name"`
+		Null      bool                     `spec:"null" override:"null"`
+		TypeName  string                   `spec:"type" override:"type"`
+		Default   *schemaspec.LiteralValue `spec:"default" override:"default"`
+		Overrides []*Override
 		schemaspec.DefaultExtension
 	}
 
@@ -56,4 +56,33 @@ type (
 		OnDelete   schema.ReferenceOption `spec:"on_delete"`
 		schemaspec.DefaultExtension
 	}
+
+	// Override contains information about how to override some attributes of an Element
+	// for a specific dialect and version. For example, to select a specific column type or add
+	// special attributes when using MySQL, but not when using SQLite or Postgres.
+	Override struct {
+		Dialect string `spec:"dialect"`
+		Version string `spec:"version"`
+		schemaspec.DefaultExtension
+	}
 )
+
+// Override searches the Column's Overrides for ones matching any of the versions
+// passed to it. It then creates an Override by merging the overrides for all of
+// the matching versions in the order they were passed.
+func (c *Column) Override(versions ...string) *Override {
+	var override *Override
+	for _, version := range versions {
+		for _, o := range c.Overrides {
+			if o.Version == version {
+				if override == nil {
+					override = o
+				}
+				for _, a := range o.Extra.Attrs {
+					override.Extra.SetAttr(a)
+				}
+			}
+		}
+	}
+	return override
+}

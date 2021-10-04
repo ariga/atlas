@@ -585,23 +585,23 @@ func TestColumnTypeSpec(t *testing.T) {
 	}
 }
 
-//func TestOverride(t *testing.T) {
-//	s := schemautil.ColSpec("int", "int")
-//	s.Overrides = []*schemaspec.Override{
-//		{
-//			Dialect: "mysql",
-//			Version: "8",
-//			Resource: schemaspec.Resource{
-//				Attrs: []*schemaspec.Attr{
-//					schemautil.StrLitAttr("type", "bigint"),
-//				},
-//			},
-//		},
-//	}
-//	d := &Driver{version: "8.11"}
-//	c, err := d.Column(s, nil)
-//	it, ok := c.Type.Type.(*schema.IntegerType)
-//	require.True(t, ok)
-//	require.NoError(t, err)
-//	require.Equal(t, "bigint", it.T)
-//}
+func TestOverride(t *testing.T) {
+	s := specutil.ColSpec("int", "int")
+	s.Overrides = []*sqlspec.Override{
+		{
+			Dialect: "mysql",
+			Version: "8",
+			DefaultExtension: schemaspec.DefaultExtension{Extra: schemaspec.Resource{
+				Attrs: []*schemaspec.Attr{
+					specutil.StrLitAttr("type", "bigint"),
+				}},
+			},
+		},
+	}
+	d := &Driver{version: "8.11"}
+	c, err := d.Column(s, nil)
+	it, ok := c.Type.Type.(*schema.IntegerType)
+	require.True(t, ok)
+	require.NoError(t, err)
+	require.Equal(t, "bigint", it.T)
+}

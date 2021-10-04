@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"ariga.io/atlas/sql/internal/specutil"
+	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/schema/schemaspec"
 	"ariga.io/atlas/sql/sqlspec"
@@ -109,12 +110,12 @@ func (d *Driver) Index(spec *sqlspec.Index, parent *schema.Table) (*schema.Index
 
 // Column converts a sqlspec.Column into a schema.Column.
 func (d *Driver) Column(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error) {
-	//const driver = "mysql"
-	//if override := spec.Override(sqlx.VersionPermutations(driver, d.version)...); override != nil {
-	//	if err := schemautil.Override(spec, override); err != nil {
-	//		return nil, err
-	//	}
-	//}
+	const driver = "mysql"
+	if override := spec.Override(sqlx.VersionPermutations(driver, d.version)...); override != nil {
+		if err := specutil.Override(spec, override); err != nil {
+			return nil, err
+		}
+	}
 	return specutil.Column(spec, ColumnType)
 }
 

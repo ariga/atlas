@@ -361,3 +361,9 @@ func ListAttr(k string, values ...string) *schemaspec.Attr {
 		V: &schemaspec.ListValue{V: l},
 	}
 }
+
+// StrLitAttr is a helper method for constructing *schemaspec.Attr instances that contain literal values
+// representing string literals.
+func StrLitAttr(k, v string) *schemaspec.Attr {
+	return LitAttr(k, strconv.Quote(v))
+}
