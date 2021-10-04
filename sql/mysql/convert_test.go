@@ -7,6 +7,7 @@ package mysql
 import (
 	"testing"
 
+	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
 	"github.com/stretchr/testify/require"
@@ -152,163 +153,175 @@ import (
 //	require.EqualValues(t, exp, sch)
 //}
 
-//func TestSchemaSpec(t *testing.T) {
-//	spec := &sqlspec.Schema{
-//		Name: "schema",
-//	}
-//	tables := []*sqlspec.Table{
-//		{
-//			Name: "table",
-//			Columns: []*sqlspec.Column{
-//				{
-//					Name: "col",
-//					TypeName: "int",
-//				},
-//				{
-//					Name: "age",
-//					TypeName: "int",
-//				},
-//				{
-//					Name: "account_name",
-//					TypeName: "string",
-//					Resource: schemaspec.Resource{
-//						Attrs: []*schemaspec.Attr{
-//							{
-//								K: "size", V: &schemaspec.LiteralValue{V: "32"},
-//							},
-//						},
-//					},
-//				},
-//			},
-//			PrimaryKey: &sqlspec.PrimaryKey{
-//				Columns: []*sqlspec.ColumnRef{{Table: "table", Name: "col"}},
-//			},
-//			Indexes: []*sqlspec.Index{
-//				{
-//					Name:   "index",
-//					Unique: true,
-//					Columns: []*sqlspec.Column{
-//						{Table: "table", Name: "col"},
-//						{Table: "table", Name: "age"},
-//					},
-//				},
-//			},
-//			ForeignKeys: []*sqlspec.ForeignKey{
-//				{
-//					Symbol: "accounts",
-//					Columns: []*sqlspec.ColumnRef{
-//						{Table: "table", Name: "account_name"},
-//					},
-//					RefColumns: []*sqlspec.ColumnRef{
-//						{Table: "accounts", Name: "name"},
-//					},
-//					OnDelete: schema.SetNull,
-//				},
-//			},
-//		},
-//		{
-//			Name: "accounts",
-//			Columns: []*sqlspec.Column{
-//				{
-//					Name: "name",
-//					Type: "string",
-//					Resource: sqlspec.Resource{
-//						Attrs: []*sqlspec.Attr{
-//							{
-//								K: "size", V: &sqlspec.LiteralValue{V: "32"},
-//							},
-//						},
-//					},
-//				},
-//			},
-//		},
-//	}
-//	d := &Driver{}
-//	sch, err := d.ConvertSchema(spec, tables)
-//	require.NoError(t, err)
-//	exp := &schema.Schema{
-//		Name: "schema",
-//	}
-//	exp.Tables = []*schema.Table{
-//		{
-//			Name:   "table",
-//			Schema: exp,
-//			Columns: []*schema.Column{
-//				{
-//					Name: "col",
-//					Type: &schema.ColumnType{
-//						Type: &schema.IntegerType{
-//							T: tInt,
-//						},
-//					},
-//				},
-//				{
-//					Name: "age",
-//					Type: &schema.ColumnType{
-//						Type: &schema.IntegerType{
-//							T: tInt,
-//						},
-//					},
-//				},
-//				{
-//					Name: "account_name",
-//					Type: &schema.ColumnType{
-//						Type: &schema.StringType{
-//							T:    tVarchar,
-//							Size: 32,
-//						},
-//					},
-//				},
-//			},
-//		},
-//		{
-//			Name:   "accounts",
-//			Schema: exp,
-//			Columns: []*schema.Column{
-//				{
-//					Name: "name",
-//					Type: &schema.ColumnType{
-//						Type: &schema.StringType{
-//							T:    tVarchar,
-//							Size: 32,
-//						},
-//					},
-//				},
-//			},
-//		},
-//	}
-//	exp.Tables[0].PrimaryKey = &schema.Index{
-//		Table: exp.Tables[0],
-//		Parts: []*schema.IndexPart{
-//			{SeqNo: 0, C: exp.Tables[0].Columns[0]},
-//		},
-//	}
-//	exp.Tables[0].Indexes = []*schema.Index{
-//		{
-//			Name:   "index",
-//			Table:  exp.Tables[0],
-//			Unique: true,
-//			Parts: []*schema.IndexPart{
-//				{SeqNo: 0, C: exp.Tables[0].Columns[0]},
-//				{SeqNo: 1, C: exp.Tables[0].Columns[1]},
-//			},
-//		},
-//	}
-//	exp.Tables[0].ForeignKeys = []*schema.ForeignKey{
-//		{
-//			Symbol:     "accounts",
-//			Table:      exp.Tables[0],
-//			Columns:    []*schema.Column{exp.Tables[0].Columns[2]},
-//			RefColumns: []*schema.Column{exp.Tables[1].Columns[0]},
-//			OnDelete:   schema.SetNull,
-//		},
-//	}
-//	require.EqualValues(t, exp, sch)
-//	cspec, ctables, err := d.SchemaSpec(sch)
-//	require.NoError(t, err)
-//	require.EqualValues(t, spec, cspec)
-//	require.EqualValues(t, tables, ctables)
-//}
+func TestSchemaSpec(t *testing.T) {
+	spec := &sqlspec.Schema{
+		Name: "schema",
+	}
+	tables := []*sqlspec.Table{
+		{
+			Name: "table",
+			Columns: []*sqlspec.Column{
+				{
+					Name:     "col",
+					TypeName: "int",
+				},
+				{
+					Name:     "age",
+					TypeName: "int",
+				},
+				{
+					Name:     "account_name",
+					TypeName: "string",
+					DefaultExtension: schemaspec.DefaultExtension{
+						Extra: schemaspec.Resource{
+							Attrs: []*schemaspec.Attr{
+								{
+									K: "size", V: &schemaspec.LiteralValue{V: "32"},
+								},
+							},
+						},
+					},
+				},
+			},
+			PrimaryKey: &sqlspec.PrimaryKey{
+				Columns: []*schemaspec.Ref{{V: "$table.table.$column.col"}},
+			},
+			Indexes: []*sqlspec.Index{
+				{
+					Name:   "index",
+					Unique: true,
+					Columns: []*schemaspec.Ref{
+						{
+							V: "$table.table.$column.col",
+						},
+						{
+							V: "$table.table.$column.age",
+						},
+					},
+				},
+			},
+			ForeignKeys: []*sqlspec.ForeignKey{
+				{
+					Symbol: "accounts",
+					Columns: []*schemaspec.Ref{
+						{
+							V: "$table.table.$column.account_name",
+						},
+					},
+					RefColumns: []*schemaspec.Ref{
+						{
+							V: "$table.accounts.$column.name",
+						},
+					},
+					OnDelete: schema.SetNull,
+				},
+			},
+		},
+		{
+			Name: "accounts",
+			Columns: []*sqlspec.Column{
+				{
+					Name:     "name",
+					TypeName: "string",
+					DefaultExtension: schemaspec.DefaultExtension{
+						Extra: schemaspec.Resource{
+							Attrs: []*schemaspec.Attr{
+								{
+									K: "size", V: &schemaspec.LiteralValue{V: "32"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	d := &Driver{}
+	sch, err := d.ConvertSchema(spec, tables)
+	require.NoError(t, err)
+	exp := &schema.Schema{
+		Name: "schema",
+	}
+	exp.Tables = []*schema.Table{
+		{
+			Name:   "table",
+			Schema: exp,
+			Columns: []*schema.Column{
+				{
+					Name: "col",
+					Type: &schema.ColumnType{
+						Type: &schema.IntegerType{
+							T: tInt,
+						},
+					},
+				},
+				{
+					Name: "age",
+					Type: &schema.ColumnType{
+						Type: &schema.IntegerType{
+							T: tInt,
+						},
+					},
+				},
+				{
+					Name: "account_name",
+					Type: &schema.ColumnType{
+						Type: &schema.StringType{
+							T:    tVarchar,
+							Size: 32,
+						},
+					},
+				},
+			},
+		},
+		{
+			Name:   "accounts",
+			Schema: exp,
+			Columns: []*schema.Column{
+				{
+					Name: "name",
+					Type: &schema.ColumnType{
+						Type: &schema.StringType{
+							T:    tVarchar,
+							Size: 32,
+						},
+					},
+				},
+			},
+		},
+	}
+	exp.Tables[0].PrimaryKey = &schema.Index{
+		Table: exp.Tables[0],
+		Parts: []*schema.IndexPart{
+			{SeqNo: 0, C: exp.Tables[0].Columns[0]},
+		},
+	}
+	exp.Tables[0].Indexes = []*schema.Index{
+		{
+			Name:   "index",
+			Table:  exp.Tables[0],
+			Unique: true,
+			Parts: []*schema.IndexPart{
+				{SeqNo: 0, C: exp.Tables[0].Columns[0]},
+				{SeqNo: 1, C: exp.Tables[0].Columns[1]},
+			},
+		},
+	}
+	exp.Tables[0].ForeignKeys = []*schema.ForeignKey{
+		{
+			Symbol:     "accounts",
+			Table:      exp.Tables[0],
+			Columns:    []*schema.Column{exp.Tables[0].Columns[2]},
+			RefColumns: []*schema.Column{exp.Tables[1].Columns[0]},
+			OnDelete:   schema.SetNull,
+		},
+	}
+	require.EqualValues(t, exp, sch)
+	cspec, ctables, err := d.SchemaSpec(sch)
+	require.NoError(t, err)
+	require.EqualValues(t, spec, cspec)
+	require.EqualValues(t, tables, ctables)
+}
 
 func TestConvertColumnType(t *testing.T) {
 	for _, tt := range []struct {

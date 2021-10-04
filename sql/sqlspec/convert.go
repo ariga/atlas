@@ -107,7 +107,10 @@ func ConvertColumn(spec *Column, conv ConvertTypeFunc) (*schema.Column, error) {
 func ConvertIndex(spec *Index, parent *schema.Table) (*schema.Index, error) {
 	parts := make([]*schema.IndexPart, 0, len(spec.Columns))
 	for seqno, c := range spec.Columns {
-		cn := c.V
+		cn,err := columnName(c)
+		if err != nil{
+			return nil, err
+		}
 		col, ok := parent.Column(cn)
 		if !ok {
 			return nil, fmt.Errorf("sqlspec: unknown column %q in table %q", cn, parent.Name)
