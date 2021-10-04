@@ -31,17 +31,18 @@ type (
 func ConvertSchema(spec *schemaspec.Schema, tables []*schemaspec.Table, convertTable ConvertTableFunc) (*schema.Schema, error) {
 	sch := &schema.Schema{
 		Name: spec.Name,
-		Spec: spec,
 	}
+	m := make(map[*schema.Table]*schemaspec.Table)
 	for _, ts := range tables {
 		table, err := convertTable(ts, sch)
 		if err != nil {
 			return nil, err
 		}
 		sch.Tables = append(sch.Tables, table)
+		m[table] = ts
 	}
 	for _, tbl := range sch.Tables {
-		if err := linkForeignKeys(tbl, sch); err != nil {
+		if err := linkForeignKeys(tbl, sch, m[tbl]); err != nil {
 			return nil, err
 		}
 	}
@@ -56,7 +57,6 @@ func ConvertTable(spec *schemaspec.Table, parent *schema.Schema, convertColumn C
 	tbl := &schema.Table{
 		Name:   spec.Name,
 		Schema: parent,
-		Spec:   spec,
 	}
 	for _, csp := range spec.Columns {
 		col, err := convertColumn(csp, tbl)
@@ -86,7 +86,6 @@ func ConvertTable(spec *schemaspec.Table, parent *schema.Schema, convertColumn C
 func ConvertColumn(spec *schemaspec.Column, conv ConvertTypeFunc) (*schema.Column, error) {
 	out := &schema.Column{
 		Name: spec.Name,
-		Spec: spec,
 		Type: &schema.ColumnType{
 			Null: spec.Null,
 		},
@@ -146,8 +145,8 @@ func ConvertPrimaryKey(spec *schemaspec.PrimaryKey, parent *schema.Table) (*sche
 // linkForeignKeys creates the foreign keys defined in the Table's spec by creating references
 // to column in the provided Schema. It is assumed that the schema contains all of the tables
 // referenced by the FK definitions in the spec.
-func linkForeignKeys(tbl *schema.Table, sch *schema.Schema) error {
-	for _, spec := range tbl.Spec.ForeignKeys {
+func linkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *schemaspec.Table) error {
+	for _, spec := range table.ForeignKeys {
 		fk := &schema.ForeignKey{
 			Symbol:   spec.Symbol,
 			Table:    tbl,
@@ -243,7 +242,7 @@ func PrimaryKeySpec(s *schema.Index) (*schemaspec.PrimaryKey, error) {
 	for _, v := range s.Parts {
 		c = append(c, &schemaspec.ColumnRef{
 			Name:  v.C.Name,
-			Table: s.Table.Spec.Name,
+			Table: s.Table.Name,
 		})
 	}
 	return &schemaspec.PrimaryKey{
@@ -260,7 +259,7 @@ func IndexSpec(idx *schema.Index) (*schemaspec.Index, error) {
 		}
 		c = append(c, &schemaspec.ColumnRef{
 			Name:  p.C.Name,
-			Table: idx.Table.Spec.Name,
+			Table: idx.Table.Name,
 		})
 	}
 	return &schemaspec.Index{

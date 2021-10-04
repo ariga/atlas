@@ -75,13 +75,11 @@ func TestConvertSchema(t *testing.T) {
 	require.NoError(t, err)
 	exp := &schema.Schema{
 		Name: "schema",
-		Spec: spec,
 	}
 	exp.Tables = []*schema.Table{
 		{
 			Name:   "table",
 			Schema: exp,
-			Spec:   tables[0],
 			Columns: []*schema.Column{
 				{
 					Name: "col",
@@ -90,7 +88,6 @@ func TestConvertSchema(t *testing.T) {
 							T: tInt,
 						},
 					},
-					Spec: tables[0].Columns[0],
 				},
 				{
 					Name: "age",
@@ -99,7 +96,6 @@ func TestConvertSchema(t *testing.T) {
 							T: tInt,
 						},
 					},
-					Spec: tables[0].Columns[1],
 				},
 				{
 					Name: "account_name",
@@ -109,13 +105,11 @@ func TestConvertSchema(t *testing.T) {
 							Size: 32,
 						},
 					},
-					Spec: tables[0].Columns[2],
 				},
 			},
 		},
 		{
 			Name:   "accounts",
-			Spec:   tables[1],
 			Schema: exp,
 			Columns: []*schema.Column{
 				{
@@ -126,7 +120,6 @@ func TestConvertSchema(t *testing.T) {
 							Size: 32,
 						},
 					},
-					Spec: tables[1].Columns[0],
 				},
 			},
 		},
@@ -236,13 +229,11 @@ func TestSchemaSpec(t *testing.T) {
 	require.NoError(t, err)
 	exp := &schema.Schema{
 		Name: "schema",
-		Spec: spec,
 	}
 	exp.Tables = []*schema.Table{
 		{
 			Name:   "table",
 			Schema: exp,
-			Spec:   tables[0],
 			Columns: []*schema.Column{
 				{
 					Name: "col",
@@ -251,7 +242,6 @@ func TestSchemaSpec(t *testing.T) {
 							T: tInt,
 						},
 					},
-					Spec: tables[0].Columns[0],
 				},
 				{
 					Name: "age",
@@ -260,7 +250,6 @@ func TestSchemaSpec(t *testing.T) {
 							T: tInt,
 						},
 					},
-					Spec: tables[0].Columns[1],
 				},
 				{
 					Name: "account_name",
@@ -270,13 +259,11 @@ func TestSchemaSpec(t *testing.T) {
 							Size: 32,
 						},
 					},
-					Spec: tables[0].Columns[2],
 				},
 			},
 		},
 		{
 			Name:   "accounts",
-			Spec:   tables[1],
 			Schema: exp,
 			Columns: []*schema.Column{
 				{
@@ -287,7 +274,6 @@ func TestSchemaSpec(t *testing.T) {
 							Size: 32,
 						},
 					},
-					Spec: tables[1].Columns[0],
 				},
 			},
 		},
