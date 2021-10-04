@@ -11,11 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	"ariga.io/atlas/sql/schema/schemahcl"
-	"ariga.io/atlas/sql/schema/schemaspec"
-
+	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlspec"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -339,7 +338,7 @@ schema "test" {
 }
 
 table "users" {
-	schema = schema.test
+	schema = "test"
 	column "email" {
 		type = "string"
 	}
@@ -366,10 +365,9 @@ func (s *mysqlSuite) applyHcl(spec string) {
 		Schemas: []string{"test"},
 	})
 	s.NoError(err)
-	var file schemaspec.File
-	err = schemahcl.Decode([]byte(spec), &file)
+	r, err := decode(spec)
 	s.NoError(err)
-	desired, err := s.drv.Schema(file.Schemas[0], file.Tables)
+	desired, err := s.drv.Schema(r.Schemas[0], r.Tables)
 	existing := realm.Schemas[0]
 	s.NoError(err)
 	diff, err := s.drv.Diff().SchemaDiff(existing, desired)
@@ -500,4 +498,21 @@ func (s *mysqlSuite) dropTables(names ...string) {
 	}
 	_, err := s.db.Exec("DROP TABLE IF EXISTS " + strings.Join(names, ", "))
 	s.Require().NoError(err, "drop tables %q", names)
+}
+
+func decode(f string) (*db, error) {
+	res, err := schemahcl.Decode([]byte(f))
+	if err != nil {
+		return nil, err
+	}
+	s := db{}
+	if err := res.As(&s); err != nil {
+		return nil, err
+	}
+	return &s, nil
+}
+
+type db struct {
+	Schemas []*sqlspec.Schema `spec:"schema"`
+	Tables  []*sqlspec.Table  `spec:"table"`
 }
