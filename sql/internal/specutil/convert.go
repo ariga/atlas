@@ -7,6 +7,7 @@ package specutil
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
@@ -107,7 +108,10 @@ func Column(spec *sqlspec.Column, conv ConvertTypeFunc) (*schema.Column, error) 
 func Index(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
 	parts := make([]*schema.IndexPart, 0, len(spec.Columns))
 	for seqno, c := range spec.Columns {
-		cn := c.V
+		cn, err := columnName(c)
+		if err != nil {
+			return nil, err
+		}
 		col, ok := parent.Column(cn)
 		if !ok {
 			return nil, fmt.Errorf("sqlspec: unknown column %q in table %q", cn, parent.Name)
@@ -322,5 +326,38 @@ func toReference(cName string, tName string) *schemaspec.Ref {
 	v := "$table." + tName + ".$column." + cName
 	return &schemaspec.Ref{
 		V: v,
+	}
+}
+
+// ColSpec is a helper method for constructing *sqlspec.Column instances.
+func ColSpec(name, coltype string, attrs ...*schemaspec.Attr) *sqlspec.Column {
+	return &sqlspec.Column{
+		Name:     name,
+		TypeName: coltype,
+		DefaultExtension: schemaspec.DefaultExtension{
+			Extra: schemaspec.Resource{
+				Attrs: attrs,
+			},
+		},
+	}
+}
+
+// LitAttr is a helper method for constructing *schemaspec.Attr instances that contain literal values.
+func LitAttr(k, v string) *schemaspec.Attr {
+	return &schemaspec.Attr{
+		K: k,
+		V: &schemaspec.LiteralValue{V: v},
+	}
+}
+
+// ListAttr is a helper method for constructing *schemaspec.Attr instances that contain list values.
+func ListAttr(k string, values ...string) *schemaspec.Attr {
+	l := make([]schemaspec.Value, len(values), len(values))
+	for i, v := range values {
+		l[i] = &schemaspec.LiteralValue{V: strconv.Quote(v)}
+	}
+	return &schemaspec.Attr{
+		K: k,
+		V: &schemaspec.ListValue{V: l},
 	}
 }
