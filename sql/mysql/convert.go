@@ -296,7 +296,17 @@ func (d *Driver) TableSpec(tab *schema.Table) (*sqlspec.Table, error) {
 
 // ColumnSpec converts from a concrete MySQL schema.Column into a schemaspec.Column.
 func (d *Driver) ColumnSpec(col *schema.Column) (*sqlspec.Column, error) {
-	return columnTypeSpec(col.Type.Type)
+	ct, err := columnTypeSpec(col.Type.Type)
+	if err != nil {
+		return nil, err
+	}
+	return &sqlspec.Column{
+		Name:             col.Name,
+		TypeName:         ct.TypeName,
+		Null:             ct.Null,
+		DefaultExtension: ct.DefaultExtension,
+	}, nil
+
 }
 
 // columnTypeSpec converts from a concrete MySQL schema.Type into schemaspec.Column Type.
