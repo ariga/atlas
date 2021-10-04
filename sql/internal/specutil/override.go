@@ -74,7 +74,7 @@ func setField(field reflect.Value, attr *schemaspec.Attr) error {
 		}
 		fallthrough
 	default:
-		return fmt.Errorf("schema: unsupported field type %q", field.Type())
+		return fmt.Errorf("sqlspec: unsupported field type %q", field.Type())
 	}
 	return nil
 }

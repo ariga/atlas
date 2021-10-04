@@ -74,7 +74,7 @@ func (c *Column) Override(versions ...string) *Override {
 	var override *Override
 	for _, version := range versions {
 		for _, o := range c.Overrides {
-			if o.Version == version {
+			if o.version() == version {
 				if override == nil {
 					override = o
 				}
@@ -85,4 +85,12 @@ func (c *Column) Override(versions ...string) *Override {
 		}
 	}
 	return override
+}
+
+func (o *Override) version() string {
+	v := o.Dialect
+	if o.Version != "" {
+		v += " " + o.Version
+	}
+	return v
 }
