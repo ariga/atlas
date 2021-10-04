@@ -2,7 +2,7 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package sqlspec
+package specutil
 
 import (
 	"errors"
@@ -11,29 +11,30 @@ import (
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlspec"
 )
 
 // List of convert function types.
 type (
-	ConvertTableFunc      func(*Table, *schema.Schema) (*schema.Table, error)
-	ConvertColumnFunc     func(*Column, *schema.Table) (*schema.Column, error)
-	ConvertTypeFunc       func(*Column) (schema.Type, error)
-	ConvertPrimaryKeyFunc func(*PrimaryKey, *schema.Table) (*schema.Index, error)
-	ConvertIndexFunc      func(*Index, *schema.Table) (*schema.Index, error)
-	ColumnSpecFunc        func(*schema.Column) (*Column, error)
-	TableSpecFunc         func(*schema.Table) (*Table, error)
-	PrimaryKeySpecFunc    func(index *schema.Index) (*PrimaryKey, error)
-	IndexSpecFunc         func(index *schema.Index) (*Index, error)
-	ForeignKeySpecFunc    func(fk *schema.ForeignKey) (*ForeignKey, error)
+	ConvertTableFunc      func(*sqlspec.Table, *schema.Schema) (*schema.Table, error)
+	ConvertColumnFunc     func(*sqlspec.Column, *schema.Table) (*schema.Column, error)
+	ConvertTypeFunc       func(*sqlspec.Column) (schema.Type, error)
+	ConvertPrimaryKeyFunc func(*sqlspec.PrimaryKey, *schema.Table) (*schema.Index, error)
+	ConvertIndexFunc      func(*sqlspec.Index, *schema.Table) (*schema.Index, error)
+	ColumnSpecFunc        func(*schema.Column) (*sqlspec.Column, error)
+	TableSpecFunc         func(*schema.Table) (*sqlspec.Table, error)
+	PrimaryKeySpecFunc    func(index *schema.Index) (*sqlspec.PrimaryKey, error)
+	IndexSpecFunc         func(index *schema.Index) (*sqlspec.Index, error)
+	ForeignKeySpecFunc    func(fk *schema.ForeignKey) (*sqlspec.ForeignKey, error)
 )
 
-// ConvertSchema converts a Schema with its relevant *Tables
+// Schema converts a sqlspec.Schema with its relevant []sqlspec.Tables
 // into a schema.Schema.
-func ConvertSchema(spec *Schema, tables []*Table, convertTable ConvertTableFunc) (*schema.Schema, error) {
+func Schema(spec *sqlspec.Schema, tables []*sqlspec.Table, convertTable ConvertTableFunc) (*schema.Schema, error) {
 	sch := &schema.Schema{
 		Name: spec.Name,
 	}
-	m := make(map[*schema.Table]*Table)
+	m := make(map[*schema.Table]*sqlspec.Table)
 	for _, ts := range tables {
 		table, err := convertTable(ts, sch)
 		if err != nil {
@@ -50,10 +51,10 @@ func ConvertSchema(spec *Schema, tables []*Table, convertTable ConvertTableFunc)
 	return sch, nil
 }
 
-// ConvertTable converts a Table to a schema.Table. Table conversion is done without converting
+// Table converts a sqlspec.Table to a schema.Table. Table conversion is done without converting
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
-// at this point. Instead, the linking is done by the ConvertSchema function.
-func ConvertTable(spec *Table, parent *schema.Schema, convertColumn ConvertColumnFunc,
+// at this point. Instead, the linking is done by the Schema function.
+func Table(spec *sqlspec.Table, parent *schema.Schema, convertColumn ConvertColumnFunc,
 	convertPk ConvertPrimaryKeyFunc, convertIndex ConvertIndexFunc) (*schema.Table, error) {
 	tbl := &schema.Table{
 		Name:   spec.Name,
@@ -83,8 +84,8 @@ func ConvertTable(spec *Table, parent *schema.Schema, convertColumn ConvertColum
 	return tbl, nil
 }
 
-// ConvertColumn converts a Column into a schema.Column.
-func ConvertColumn(spec *Column, conv ConvertTypeFunc) (*schema.Column, error) {
+// Column converts a sqlspec.Column into a schema.Column.
+func Column(spec *sqlspec.Column, conv ConvertTypeFunc) (*schema.Column, error) {
 	out := &schema.Column{
 		Name: spec.Name,
 		Type: &schema.ColumnType{
@@ -102,8 +103,8 @@ func ConvertColumn(spec *Column, conv ConvertTypeFunc) (*schema.Column, error) {
 	return out, err
 }
 
-// ConvertIndex converts an Index to a schema.Index.
-func ConvertIndex(spec *Index, parent *schema.Table) (*schema.Index, error) {
+// Index converts a sqlspec.Index to a schema.Index.
+func Index(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
 	parts := make([]*schema.IndexPart, 0, len(spec.Columns))
 	for seqno, c := range spec.Columns {
 		cn := c.V
@@ -124,8 +125,8 @@ func ConvertIndex(spec *Index, parent *schema.Table) (*schema.Index, error) {
 	}, nil
 }
 
-// ConvertPrimaryKey converts a PrimaryKey to a schema.Index.
-func ConvertPrimaryKey(spec *PrimaryKey, parent *schema.Table) (*schema.Index, error) {
+// PrimaryKey converts a sqlspec.PrimaryKey to a schema.Index.
+func PrimaryKey(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, error) {
 	parts := make([]*schema.IndexPart, 0, len(spec.Columns))
 	for seqno, c := range spec.Columns {
 		n, err := columnName(c)
@@ -150,7 +151,7 @@ func ConvertPrimaryKey(spec *PrimaryKey, parent *schema.Table) (*schema.Index, e
 // linkForeignKeys creates the foreign keys defined in the Table's spec by creating references
 // to column in the provided Schema. It is assumed that the schema contains all of the tables
 // referenced by the FK definitions in the spec.
-func linkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *Table) error {
+func linkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *sqlspec.Table) error {
 	for _, spec := range table.ForeignKeys {
 		fk := &schema.ForeignKey{
 			Symbol:   spec.Symbol,
@@ -197,12 +198,12 @@ func resolveCol(ref *schemaspec.Ref, sch *schema.Schema) (*schema.Column, error)
 	return col, nil
 }
 
-// FromSchema converts a schema.Schema into Schema and []Table.
-func FromSchema(s *schema.Schema, fn TableSpecFunc) (*Schema, []*Table, error) {
-	spec := &Schema{
+// FromSchema converts a schema.Schema into sqlspec.Schema and []sqlspec.Table.
+func FromSchema(s *schema.Schema, fn TableSpecFunc) (*sqlspec.Schema, []*sqlspec.Table, error) {
+	spec := &sqlspec.Schema{
 		Name: s.Name,
 	}
-	tables := make([]*Table, 0, len(s.Tables))
+	tables := make([]*sqlspec.Table, 0, len(s.Tables))
 	for _, t := range s.Tables {
 		table, err := fn(t)
 		if err != nil {
@@ -213,9 +214,9 @@ func FromSchema(s *schema.Schema, fn TableSpecFunc) (*Schema, []*Table, error) {
 	return spec, tables, nil
 }
 
-// FromTable converts a schema.Table to a Table.
-func FromTable(t *schema.Table, colFn ColumnSpecFunc, pkFn PrimaryKeySpecFunc, idxFn IndexSpecFunc, fkFn ForeignKeySpecFunc) (*Table, error) {
-	spec := &Table{
+// FromTable converts a schema.Table to a sqlspec.Table.
+func FromTable(t *schema.Table, colFn ColumnSpecFunc, pkFn PrimaryKeySpecFunc, idxFn IndexSpecFunc, fkFn ForeignKeySpecFunc) (*sqlspec.Table, error) {
+	spec := &sqlspec.Table{
 		Name: t.Name,
 	}
 	for _, c := range t.Columns {
@@ -249,19 +250,19 @@ func FromTable(t *schema.Table, colFn ColumnSpecFunc, pkFn PrimaryKeySpecFunc, i
 	return spec, nil
 }
 
-// FromPrimaryKey converts schema.Index to a PrimaryKey.
-func FromPrimaryKey(s *schema.Index) (*PrimaryKey, error) {
+// FromPrimaryKey converts schema.Index to a sqlspec.PrimaryKey.
+func FromPrimaryKey(s *schema.Index) (*sqlspec.PrimaryKey, error) {
 	c := make([]*schemaspec.Ref, 0, len(s.Parts))
 	for _, v := range s.Parts {
 		c = append(c, toReference(v.C.Name, s.Table.Name))
 	}
-	return &PrimaryKey{
+	return &sqlspec.PrimaryKey{
 		Columns: c,
 	}, nil
 }
 
-// FromIndex converts schema.Index to Index
-func FromIndex(idx *schema.Index) (*Index, error) {
+// FromIndex converts schema.Index to sqlspec.Index
+func FromIndex(idx *schema.Index) (*sqlspec.Index, error) {
 	c := make([]*schemaspec.Ref, 0, len(idx.Parts))
 	for _, p := range idx.Parts {
 		if p.C == nil {
@@ -269,15 +270,15 @@ func FromIndex(idx *schema.Index) (*Index, error) {
 		}
 		c = append(c, toReference(p.C.Name, idx.Table.Name))
 	}
-	return &Index{
+	return &sqlspec.Index{
 		Name:    idx.Name,
 		Unique:  idx.Unique,
 		Columns: c,
 	}, nil
 }
 
-// FromForeignKey converts schema.ForeignKey to ForeignKey
-func FromForeignKey(s *schema.ForeignKey) (*ForeignKey, error) {
+// FromForeignKey converts schema.ForeignKey to sqlspec.ForeignKey
+func FromForeignKey(s *schema.ForeignKey) (*sqlspec.ForeignKey, error) {
 	c := make([]*schemaspec.Ref, 0, len(s.Columns))
 	for _, v := range s.Columns {
 		c = append(c, toReference(v.Name, s.Table.Name))
@@ -286,7 +287,7 @@ func FromForeignKey(s *schema.ForeignKey) (*ForeignKey, error) {
 	for _, v := range s.RefColumns {
 		r = append(r, toReference(v.Name, s.Symbol))
 	}
-	return &ForeignKey{
+	return &sqlspec.ForeignKey{
 		Symbol:     s.Symbol,
 		Columns:    c,
 		RefColumns: r,
