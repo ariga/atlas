@@ -505,7 +505,7 @@ func decode(f string) (*db, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := db{}
+	var s db
 	if err := res.As(&s); err != nil {
 		return nil, err
 	}
