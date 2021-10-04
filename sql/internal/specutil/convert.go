@@ -17,21 +17,21 @@ import (
 
 // List of convert function types.
 type (
-	ConvertTableFunc      func(*sqlspec.Table, *schema.Schema) (*schema.Table, error)
-	ConvertColumnFunc     func(*sqlspec.Column, *schema.Table) (*schema.Column, error)
-	ConvertTypeFunc       func(*sqlspec.Column) (schema.Type, error)
-	ConvertPrimaryKeyFunc func(*sqlspec.PrimaryKey, *schema.Table) (*schema.Index, error)
-	ConvertIndexFunc      func(*sqlspec.Index, *schema.Table) (*schema.Index, error)
-	ColumnSpecFunc        func(*schema.Column) (*sqlspec.Column, error)
-	TableSpecFunc         func(*schema.Table) (*sqlspec.Table, error)
-	PrimaryKeySpecFunc    func(index *schema.Index) (*sqlspec.PrimaryKey, error)
-	IndexSpecFunc         func(index *schema.Index) (*sqlspec.Index, error)
-	ForeignKeySpecFunc    func(fk *schema.ForeignKey) (*sqlspec.ForeignKey, error)
+	TableFunc          func(*sqlspec.Table, *schema.Schema) (*schema.Table, error)
+	ColumnFunc         func(*sqlspec.Column, *schema.Table) (*schema.Column, error)
+	TypeFunc           func(*sqlspec.Column) (schema.Type, error)
+	PrimaryKeyFunc     func(*sqlspec.PrimaryKey, *schema.Table) (*schema.Index, error)
+	IndexFunc          func(*sqlspec.Index, *schema.Table) (*schema.Index, error)
+	FromColumnFunc     func(*schema.Column) (*sqlspec.Column, error)
+	FromTableFunc      func(*schema.Table) (*sqlspec.Table, error)
+	FromPrimaryKeyFunc func(index *schema.Index) (*sqlspec.PrimaryKey, error)
+	FromIndexFunc      func(index *schema.Index) (*sqlspec.Index, error)
+	FromForeignKeyFunc func(fk *schema.ForeignKey) (*sqlspec.ForeignKey, error)
 )
 
 // Schema converts a sqlspec.Schema with its relevant []sqlspec.Tables
 // into a schema.Schema.
-func Schema(spec *sqlspec.Schema, tables []*sqlspec.Table, convertTable ConvertTableFunc) (*schema.Schema, error) {
+func Schema(spec *sqlspec.Schema, tables []*sqlspec.Table, convertTable TableFunc) (*schema.Schema, error) {
 	sch := &schema.Schema{
 		Name: spec.Name,
 	}
@@ -55,8 +55,8 @@ func Schema(spec *sqlspec.Schema, tables []*sqlspec.Table, convertTable ConvertT
 // Table converts a sqlspec.Table to a schema.Table. Table conversion is done without converting
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the Schema function.
-func Table(spec *sqlspec.Table, parent *schema.Schema, convertColumn ConvertColumnFunc,
-	convertPk ConvertPrimaryKeyFunc, convertIndex ConvertIndexFunc) (*schema.Table, error) {
+func Table(spec *sqlspec.Table, parent *schema.Schema, convertColumn ColumnFunc,
+	convertPk PrimaryKeyFunc, convertIndex IndexFunc) (*schema.Table, error) {
 	tbl := &schema.Table{
 		Name:   spec.Name,
 		Schema: parent,
@@ -86,7 +86,7 @@ func Table(spec *sqlspec.Table, parent *schema.Schema, convertColumn ConvertColu
 }
 
 // Column converts a sqlspec.Column into a schema.Column.
-func Column(spec *sqlspec.Column, conv ConvertTypeFunc) (*schema.Column, error) {
+func Column(spec *sqlspec.Column, conv TypeFunc) (*schema.Column, error) {
 	out := &schema.Column{
 		Name: spec.Name,
 		Type: &schema.ColumnType{
@@ -203,7 +203,7 @@ func resolveCol(ref *schemaspec.Ref, sch *schema.Schema) (*schema.Column, error)
 }
 
 // FromSchema converts a schema.Schema into sqlspec.Schema and []sqlspec.Table.
-func FromSchema(s *schema.Schema, fn TableSpecFunc) (*sqlspec.Schema, []*sqlspec.Table, error) {
+func FromSchema(s *schema.Schema, fn FromTableFunc) (*sqlspec.Schema, []*sqlspec.Table, error) {
 	spec := &sqlspec.Schema{
 		Name: s.Name,
 	}
@@ -219,7 +219,7 @@ func FromSchema(s *schema.Schema, fn TableSpecFunc) (*sqlspec.Schema, []*sqlspec
 }
 
 // FromTable converts a schema.Table to a sqlspec.Table.
-func FromTable(t *schema.Table, colFn ColumnSpecFunc, pkFn PrimaryKeySpecFunc, idxFn IndexSpecFunc, fkFn ForeignKeySpecFunc) (*sqlspec.Table, error) {
+func FromTable(t *schema.Table, colFn FromColumnFunc, pkFn FromPrimaryKeyFunc, idxFn FromIndexFunc, fkFn FromForeignKeyFunc) (*sqlspec.Table, error) {
 	spec := &sqlspec.Table{
 		Name: t.Name,
 	}

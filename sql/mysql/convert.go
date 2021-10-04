@@ -85,41 +85,41 @@ func (d *Driver) mustFormat(t schema.Type) string {
 	return s
 }
 
-// ConvertSchema converts a schemaspec.Schema into a schema.Schema.
-func (d *Driver) ConvertSchema(spec *sqlspec.Schema, tables []*sqlspec.Table) (*schema.Schema, error) {
-	return specutil.Schema(spec, tables, d.ConvertTable)
+// Schema converts a sqlspec.Schema into a schema.Schema.
+func (d *Driver) Schema(spec *sqlspec.Schema, tables []*sqlspec.Table) (*schema.Schema, error) {
+	return specutil.Schema(spec, tables, d.Table)
 }
 
-// ConvertTable converts a schemaspec.Table to a schema.Table. Table conversion is done without converting
+// Table converts a sqlspec.Table to a schema.Table. Table conversion is done without converting
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
-// at this point. Instead, the linking is done by the ConvertSchema function.
-func (d *Driver) ConvertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, error) {
-	return specutil.Table(spec, parent, d.ConvertColumn, d.ConvertPrimaryKey, d.ConvertIndex)
+// at this point. Instead, the linking is done by the Schema function.
+func (d *Driver) Table(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, error) {
+	return specutil.Table(spec, parent, d.Column, d.PrimaryKey, d.Index)
 }
 
-// ConvertPrimaryKey converts a schemaspec.PrimaryKey to a schema.Index.
-func (d *Driver) ConvertPrimaryKey(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, error) {
+// PrimaryKey converts a sqlspec.PrimaryKey to a schema.Index.
+func (d *Driver) PrimaryKey(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, error) {
 	return specutil.PrimaryKey(spec, parent)
 }
 
-// ConvertIndex converts an schemaspec.Index to a schema.Index.
-func (d *Driver) ConvertIndex(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
+// Index converts an sqlspec.Index to a schema.Index.
+func (d *Driver) Index(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
 	return specutil.Index(spec, parent)
 }
 
-// ConvertColumn converts a schemaspec.Column into a schema.Column.
-func (d *Driver) ConvertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error) {
+// Column converts a sqlspec.Column into a schema.Column.
+func (d *Driver) Column(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error) {
 	//const driver = "mysql"
 	//if override := spec.Override(sqlx.VersionPermutations(driver, d.version)...); override != nil {
 	//	if err := schemautil.Override(spec, override); err != nil {
 	//		return nil, err
 	//	}
 	//}
-	return specutil.Column(spec, ConvertColumnType)
+	return specutil.Column(spec, ColumnType)
 }
 
-// ConvertColumnType converts a sqlspec.Column into a concrete MySQL schema.Type.
-func ConvertColumnType(spec *sqlspec.Column) (schema.Type, error) {
+// ColumnType converts a sqlspec.Column into a concrete MySQL schema.Type.
+func ColumnType(spec *sqlspec.Column) (schema.Type, error) {
 	switch schemaspec.Type(spec.TypeName) {
 	case schemaspec.TypeInt, schemaspec.TypeInt8, schemaspec.TypeInt16,
 		schemaspec.TypeInt64, schemaspec.TypeUint, schemaspec.TypeUint8,
@@ -285,18 +285,18 @@ func formatValues(vs []string) string {
 	return strings.Join(values, ",")
 }
 
-// SchemaSpec converts from a concrete MySQL schema to Atlas specification.
-func (d *Driver) SchemaSpec(schem *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error) {
-	return specutil.FromSchema(schem, d.TableSpec)
+// FromSchema converts from a concrete MySQL schema to Atlas specification.
+func (d *Driver) FromSchema(schem *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error) {
+	return specutil.FromSchema(schem, d.FromTable)
 }
 
-// TableSpec converts from a concrete MySQL schemaspec.Table to a schema.Table.
-func (d *Driver) TableSpec(tab *schema.Table) (*sqlspec.Table, error) {
-	return specutil.FromTable(tab, d.ColumnSpec, specutil.FromPrimaryKey, specutil.FromIndex, specutil.FromForeignKey)
+// FromTable converts from a concrete MySQL schema.Table to a sqlspec.Table.
+func (d *Driver) FromTable(tab *schema.Table) (*sqlspec.Table, error) {
+	return specutil.FromTable(tab, d.FromColumn, specutil.FromPrimaryKey, specutil.FromIndex, specutil.FromForeignKey)
 }
 
-// ColumnSpec converts from a concrete MySQL schema.Column into a schemaspec.Column.
-func (d *Driver) ColumnSpec(col *schema.Column) (*sqlspec.Column, error) {
+// FromColumn converts from a concrete MySQL schema.Column into a sqlspec.Column.
+func (d *Driver) FromColumn(col *schema.Column) (*sqlspec.Column, error) {
 	ct, err := columnTypeSpec(col.Type.Type)
 	if err != nil {
 		return nil, err
@@ -310,7 +310,7 @@ func (d *Driver) ColumnSpec(col *schema.Column) (*sqlspec.Column, error) {
 
 }
 
-// columnTypeSpec converts from a concrete MySQL schema.Type into schemaspec.Column Type.
+// columnTypeSpec converts from a concrete MySQL schema.Type into sqlspec.Column Type.
 func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	switch t := t.(type) {
 	case *schema.EnumType:

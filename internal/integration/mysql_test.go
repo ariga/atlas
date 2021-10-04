@@ -369,7 +369,7 @@ func (s *mysqlSuite) applyHcl(spec string) {
 	var file schemaspec.File
 	err = schemahcl.Decode([]byte(spec), &file)
 	s.NoError(err)
-	desired, err := s.drv.ConvertSchema(file.Schemas[0], file.Tables)
+	desired, err := s.drv.Schema(file.Schemas[0], file.Tables)
 	existing := realm.Schemas[0]
 	s.NoError(err)
 	diff, err := s.drv.Diff().SchemaDiff(existing, desired)

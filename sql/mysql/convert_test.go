@@ -68,7 +68,7 @@ func TestConvertSchema(t *testing.T) {
 		},
 	}
 	d := &Driver{}
-	sch, err := d.ConvertSchema(spec, tables)
+	sch, err := d.Schema(spec, tables)
 	require.NoError(t, err)
 	exp := &schema.Schema{
 		Name: "schema",
@@ -226,7 +226,7 @@ func TestSchemaSpec(t *testing.T) {
 		},
 	}
 	d := &Driver{}
-	sch, err := d.ConvertSchema(spec, tables)
+	sch, err := d.Schema(spec, tables)
 	require.NoError(t, err)
 	exp := &schema.Schema{
 		Name: "schema",
@@ -306,7 +306,7 @@ func TestSchemaSpec(t *testing.T) {
 		},
 	}
 	require.EqualValues(t, exp, sch)
-	cspec, ctables, err := d.SchemaSpec(sch)
+	cspec, ctables, err := d.FromSchema(sch)
 	require.NoError(t, err)
 	require.EqualValues(t, spec, cspec)
 	require.EqualValues(t, tables, ctables)
@@ -437,7 +437,7 @@ func TestConvertColumnType(t *testing.T) {
 		},
 	} {
 		t.Run(tt.spec.Name, func(t *testing.T) {
-			columnType, err := ConvertColumnType(tt.spec)
+			columnType, err := ColumnType(tt.spec)
 			require.NoError(t, err)
 			require.EqualValues(t, tt.expected, columnType)
 		})
@@ -599,7 +599,7 @@ func TestColumnTypeSpec(t *testing.T) {
 //		},
 //	}
 //	d := &Driver{version: "8.11"}
-//	c, err := d.ConvertColumn(s, nil)
+//	c, err := d.Column(s, nil)
 //	it, ok := c.Type.Type.(*schema.IntegerType)
 //	require.True(t, ok)
 //	require.NoError(t, err)
