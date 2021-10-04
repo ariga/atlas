@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
 
@@ -20,6 +21,7 @@ type container struct {
 	Body hcl.Body `hcl:",remain"`
 }
 
+// Decode decodes the input Atlas HCL document and returns a *schemaspec.Resource representing it.
 func Decode(body []byte) (*schemaspec.Resource, error) {
 	parser := hclparse.NewParser()
 	srcHCL, diag := parser.ParseHCL(body, "")
@@ -152,7 +154,9 @@ func toResource(ctx *hcl.EvalContext, block *hclsyntax.Block) (*schemaspec.Resou
 	return spec, nil
 }
 
-func encode(r *schemaspec.Resource) ([]byte, error) {
+// Encode encodes the give *schemaspec.Resource into a byte slice containing an Atlas HCL
+// document representing it.
+func Encode(r *schemaspec.Resource) ([]byte, error) {
 	f := hclwrite.NewFile()
 	body := f.Body()
 	for _, attr := range r.Attrs {
@@ -188,6 +192,9 @@ func writeResource(b *schemaspec.Resource, body *hclwrite.Body) error {
 
 func writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 	switch v := attr.V.(type) {
+	case *schemaspec.Ref:
+		expr := strings.ReplaceAll(v.V, "$", "")
+		body.SetAttributeRaw(attr.K, hclRawTokens(expr))
 	case *schemaspec.LiteralValue:
 		body.SetAttributeRaw(attr.K, hclRawTokens(v.V))
 	case *schemaspec.ListValue:
