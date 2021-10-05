@@ -18,7 +18,7 @@ syntaxes are (such as YAML, TypeScript or Go) in the future.
 ## HCL
 
 The Atlas DDL currently supports an HCL syntax we call Atlas HCL. It is similar to other HCL based languages such as
-TerraForm.
+Terraform.
 
 ### Resources
 
@@ -116,7 +116,7 @@ playlist "comedy" {
 
 ### Reading with Go
 
-To read an Atlas HCL document with Go use the `Decode` ([doc](https://pkg.go.dev/ariga.io/atlas@v0.0.0-20211004124157-99ae6aaad16b/schema/schemaspec/schemahcl#Decode)) function
+To read an Atlas HCL document with Go use the `Decode` ([doc](https://pkg.go.dev/ariga.io/atlas/schema/schemaspec/schemahcl#Decode)) function
 from the `schemahcl` package:
 
 ```go
@@ -124,6 +124,7 @@ package hcl
 
 import (
   "testing"
+
   "github.com/stretchr/testify/require"
   "ariga.io/atlas/schema/schemaspec"
   "ariga.io/atlas/schema/schemaspec/schemahcl"
@@ -171,7 +172,6 @@ To encode `schemaspec.Resource` instances back into HCL, use the `schemahcl.Enco
 ([doc](https://pkg.go.dev/ariga.io/atlas@v0.0.0-20211004124157-99ae6aaad16b/schema/schemaspec/schemahcl#Encode)) function:
 
 ```go
-
 func TestSeinfeldEncode(t *testing.T) {
 	r := &schemaspec.Resource{
 		Children: []*schemaspec.Resource{
@@ -193,7 +193,7 @@ func TestSeinfeldEncode(t *testing.T) {
 ## Extensions
 
 Applications working with `schemaspec` objects are expected to extend the Atlas language by
-defining their own type structs  that objects can be handled in a type-safe way. Resource
+defining their own type structs that objects can be handled in a type-safe way. Resource
 objects provide the `As` method to read a resource into an extension struct, as well as a
 `Scan` method to read an extension struct back into a Resource.
 
