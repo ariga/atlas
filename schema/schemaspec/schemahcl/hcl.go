@@ -21,8 +21,8 @@ type container struct {
 	Body hcl.Body `hcl:",remain"`
 }
 
-// Decode decodes the input Atlas HCL document and returns a *schemaspec.Resource representing it.
-func Decode(body []byte) (*schemaspec.Resource, error) {
+// decode decodes the input Atlas HCL document and returns a *schemaspec.Resource representing it.
+func decode(body []byte) (*schemaspec.Resource, error) {
 	parser := hclparse.NewParser()
 	srcHCL, diag := parser.ParseHCL(body, "")
 	if diag.HasErrors() {
@@ -154,9 +154,9 @@ func toResource(ctx *hcl.EvalContext, block *hclsyntax.Block) (*schemaspec.Resou
 	return spec, nil
 }
 
-// Encode encodes the give *schemaspec.Resource into a byte slice containing an Atlas HCL
+// encode encodes the give *schemaspec.Resource into a byte slice containing an Atlas HCL
 // document representing it.
-func Encode(r *schemaspec.Resource) ([]byte, error) {
+func encode(r *schemaspec.Resource) ([]byte, error) {
 	f := hclwrite.NewFile()
 	body := f.Body()
 	for _, attr := range r.Attrs {

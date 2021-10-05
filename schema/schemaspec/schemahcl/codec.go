@@ -11,17 +11,17 @@ func New() *Codec {
 	return &Codec{}
 }
 
-// Encode implements schemaspec.Encoder.
+// encode implements schemaspec.Encoder.
 func (*Codec) Encode(f *schemaspec.File) ([]byte, error) {
-	return Encode(&schemaspec.Resource{
+	return encode(&schemaspec.Resource{
 		Attrs:    f.Attrs,
 		Children: f.Resources,
 	})
 }
 
-// Decode implements schemaspec.Decoder.
+// decode implements schemaspec.Decoder.
 func (*Codec) Decode(body []byte) (*schemaspec.File, error) {
-	r, err := Decode(body)
+	r, err := decode(body)
 	if err != nil {
 		return nil, err
 	}

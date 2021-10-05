@@ -15,7 +15,7 @@ b = true
 s = "hello, world"
 arr = ["yada", "yada", "yada"]
 `
-	resource, err := Decode([]byte(f))
+	resource, err := decode([]byte(f))
 	require.NoError(t, err)
 	require.Len(t, resource.Attrs, 4)
 
@@ -55,7 +55,7 @@ endpoint "/hello" {
 	timeout_ms = 100
 }
 `
-	resource, err := Decode([]byte(f))
+	resource, err := decode([]byte(f))
 	require.NoError(t, err)
 	require.Len(t, resource.Children, 1)
 	expected := &schemaspec.Resource{
@@ -113,11 +113,11 @@ task "code" {
 	}
 	for _, tt := range testCases {
 		t.Run(tt.Name, func(t *testing.T) {
-			resource, err := Decode([]byte(tt.Body))
+			resource, err := decode([]byte(tt.Body))
 			require.NoError(t, err)
-			bytes, err := Encode(resource)
+			bytes, err := encode(resource)
 			require.NoError(t, err)
-			again, err := Decode(bytes)
+			again, err := decode(bytes)
 			require.NoError(t, err)
 			require.EqualValues(t, resource, again, "expected resource to be the same after encoding")
 		})
