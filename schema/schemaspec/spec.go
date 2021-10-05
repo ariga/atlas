@@ -63,7 +63,7 @@ type (
 		Decode([]byte) (*File, error)
 	}
 
-	// Codec is the interfae that groups Encoder and Deccoder.
+	// Codec is the interfae that groups Encoder and Decoder.
 	Codec interface {
 		Encoder
 		Decoder
