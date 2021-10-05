@@ -45,13 +45,17 @@ user "rotemtam" {
   email = "rotem@atlasgo.io"
   active = true
   credits = 42
-  tags = ["data", "infrastructure", "hcl"]
+  tags = [
+    "data",
+    "infrastructure",
+    "hcl"]
 }
 ```
 
 ### Children
 
 Resources can have child resources. For example:
+
 ```hcl
 user "rotemtam" {
   // ..
@@ -67,8 +71,7 @@ user "rotemtam" {
 ### References
 
 Attributes can hold references to other resources. The address of any resource is
-`<type>.<name>`, recursively. Suppose we have this block describing some http
-service:
+`<type>.<name>`, recursively. Suppose we have this block describing some http service:
 
 ```hcl
 service "todolist" {
@@ -77,32 +80,80 @@ service "todolist" {
   }
 }
 ```
+
 If we want to reference the child "port" resource of the service we can use
 `service.todolist.port.http`:
+
 ```hcl
 server "production" {
   endpoint "todo" {
     path = "/todo"
-    service_port = service.todolist.port.http 
+    service_port = service.todolist.port.http
   }
 }
 ```
 
-Attributes can hold references to other attributes. When a document is parsed
-the reference is replaced with the referenced value. The address of any attribute
-is `<type>.<name>.<attr name>`.
+Attributes can hold references to other attributes. When a document is parsed the reference is replaced with the
+referenced value. The address of any attribute is `<type>.<name>.<attr name>`.
 
 ```hcl
-show "friends" {
+group "seinfeld" {
   id = 1
 }
-group "seinfeld" {
+show "friends" {
   id = 2
 }
 playlist "comedy" {
   show_ids = [
-    show.friends.id, // will equal 1 
-    show.seinfeld.id // will equal 2
+    show.seinfeld.id
+    // will equal 1
+    show.friends.id,
+    // will equal 2 
   ]
+}
+```
+
+### Atlas HCL and Go
+
+To read an Atlas HCL document with Go use the `Decode` function
+from the `schemahcl` package:
+
+```go
+package hcl
+
+import (
+  "testing"
+  "github.com/stretchr/testify/require"
+  "ariga.io/atlas/schema/schemaspec"
+  "ariga.io/atlas/schema/schemaspec/schemahcl"
+)
+
+func TestSeinfeld(t *testing.T) {
+	f := `
+  show "seinfeld" {
+      writers = [
+          "Jerry Seinfeld",
+          "Larry David",
+      ]
+  }`
+
+	s, err := schemahcl.Decode([]byte(f))
+	require.NoError(t, err)
+	seinfeld := s.Children[0]
+	require.EqualValues(t, &schemaspec.Resource{
+		Type: "show",
+		Name: "seinfeld",
+		Attrs: []*schemaspec.Attr{
+			{
+				K: "writers",
+				V: &schemaspec.ListValue{
+					V: []schemaspec.Value{
+						&schemaspec.LiteralValue{V: `"Jerry Seinfeld"`},
+						&schemaspec.LiteralValue{V: `"Larry David"`},
+					},
+				},
+			},
+		},
+	}, seinfeld)
 }
 ```
