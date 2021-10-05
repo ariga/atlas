@@ -5,7 +5,7 @@ title: Data Definition Language
 
 ## Introduction
 
-In the core of the Atlas project lies the Atlas Data Definition Language (DDL). The DDL is designed to capture an
+In the core of the Atlas project resides the Atlas Data Definition Language (DDL). The DDL is designed to capture an
 organization's data topologies and other aspects of its data infrastructure.
 
 In the design of the DDL we took two important considerations:
