@@ -34,9 +34,13 @@ config "defaults" {
 	description = "generic"
 }
 `
-	res, err := Decode([]byte(f))
+	codec := New()
+	file, err := codec.Decode([]byte(f))
 	require.NoError(t, err)
-	home := res.Children[2]
+
+	home, ok := file.Find("endpoint").Named("home")
+	require.True(t, ok)
+
 	attr, ok := home.Attr("addr")
 	require.True(t, ok)
 	s, err := attr.String()
@@ -76,12 +80,17 @@ country "israel" {
 	}
 }
 `
-	res, err := Decode([]byte(f))
+	codec := New()
+	res, err := codec.Decode([]byte(f))
 	require.NoError(t, err)
-	israel := res.Children[0]
+
+	israel, ok := res.Find("country").Named("israel")
+	require.True(t, ok)
+
 	givatyaim := israel.Children[2]
 	attr, ok := givatyaim.Attr("phone_area_code")
 	require.True(t, ok)
+
 	s, err := attr.String()
 	require.NoError(t, err)
 	require.EqualValues(t, "03", s)
@@ -97,9 +106,13 @@ pet "garfield" {
 	owner = person.jon
 }
 `
-	res, err := Decode([]byte(f))
+	codec := New()
+	file, err := codec.Decode([]byte(f))
 	require.NoError(t, err)
-	garfield := res.Children[1]
+
+	garfield, ok := file.Find("pet").Named("garfield")
+	require.True(t, ok)
+
 	attr, ok := garfield.Attr("owner")
 	require.True(t, ok)
 	ref, err := attr.Ref()
@@ -122,9 +135,12 @@ group "lion_kings" {
 	]
 }
 `
-	res, err := Decode([]byte(f))
+	codec := New()
+	file, err := codec.Decode([]byte(f))
 	require.NoError(t, err)
-	group := res.Children[2]
+	group, ok := file.Find("group").Named("lion_kings")
+	require.True(t, ok)
+
 	members, ok := group.Attr("members")
 	require.True(t, ok)
 	require.EqualValues(t,
@@ -156,6 +172,7 @@ person "jane" {
 	}
 }
 `
-	_, err := Decode([]byte(f))
+	codec := New()
+	_, err := codec.Decode([]byte(f))
 	require.NoError(t, err)
 }

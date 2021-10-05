@@ -315,7 +315,8 @@ table "accounts" {
 }
 
 func decode(f string) (*db, error) {
-	res, err := schemahcl.Decode([]byte(f))
+	codec := schemahcl.New()
+	res, err := codec.Decode([]byte(f))
 	if err != nil {
 		return nil, err
 	}

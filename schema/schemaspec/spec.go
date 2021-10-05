@@ -14,6 +14,9 @@ type (
 		Children []*Resource
 	}
 
+	// Resources is a slice of Resource elements.
+	Resources []*Resource
+
 	// Attr is an attribute of a Resource.
 	Attr struct {
 		K string
@@ -42,6 +45,28 @@ type (
 	// of type "column" and named "id", shall be referenced as "$table.users.$column.id", and so on.
 	Ref struct {
 		V string
+	}
+
+	// File reperesents an Atlas DDL configuration file.
+	File struct {
+		Attrs     []*Attr
+		Resources []*Resource
+	}
+
+	// Encoder encodes a File into a byte slice.
+	Encoder interface {
+		Encode(*File) ([]byte, error)
+	}
+
+	// Decoder decodes a byte slice into a File.
+	Decoder interface {
+		Decode([]byte) (*File, error)
+	}
+
+	// Codec is the interfae that groups Encoder and Deccoder.
+	Codec interface {
+		Encoder
+		Decoder
 	}
 )
 
@@ -104,8 +129,44 @@ func (a *Attr) Strings() ([]string, error) {
 	return out, nil
 }
 
+// Attr returns the requested attribute and reports if it was found.
 func (r *Resource) Attr(name string) (*Attr, bool) {
 	return attrVal(r.Attrs, name)
+}
+
+// Attr returns the requested attribute and reports if it was found.
+func (f *File) Attr(name string) (*Attr, bool) {
+	return attrVal(f.Attrs, name)
+}
+
+// Find returns all the top level resources in the file of the requested type.
+func (f *File) Find(typ string) Resources {
+	var resources []*Resource
+	for _, r := range f.Resources {
+		if r.Type == typ {
+			resources = append(resources, r)
+		}
+	}
+	return resources
+}
+
+// As reads the attributes and children resources of the File into the target struct.
+func (f *File) As(target interface{}) error {
+	r := &Resource{
+		Children: f.Resources,
+		Attrs:    f.Attrs,
+	}
+	return r.As(target)
+}
+
+// Named returns the requested Resource and reports if it was found.
+func (r Resources) Named(name string) (*Resource, bool) {
+	for _, item := range r {
+		if item.Name == name {
+			return item, true
+		}
+	}
+	return nil, false
 }
 
 // SetAttr sets the Attr on the Resource. If r is nil, a zero value Resource
