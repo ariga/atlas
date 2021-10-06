@@ -421,6 +421,7 @@ func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
 			if !ok {
 				return fmt.Errorf("postgres: column %q was not found for index %q", column.String, idx.Name)
 			}
+			part.C.Indexes = append(part.C.Indexes, idx)
 		default:
 			return fmt.Errorf("postgres: invalid part for index %q", idx.Name)
 		}
