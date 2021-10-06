@@ -167,21 +167,24 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
 					{Name: "c1", Type: &schema.ColumnType{Raw: "smallint", Type: &schema.IntegerType{T: "smallint"}}},
 				}
-				require.EqualValues(columns, t.Columns)
 				indexes := []*schema.Index{
 					{Name: "idx", Table: t, Attrs: []schema.Attr{&IndexType{T: "hash"}, &schema.Comment{Text: "boring"}}, Parts: []*schema.IndexPart{{SeqNo: 1, X: &schema.RawExpr{X: `"left"((c11)::text, 100)`}, Attrs: []schema.Attr{&IndexColumnProperty{Desc: true, NullsFirst: true}}}}},
 					{Name: "idx1", Table: t, Attrs: []schema.Attr{&IndexType{T: "btree"}, &IndexPredicate{P: `(id <> NULL::integer)`}}, Parts: []*schema.IndexPart{{SeqNo: 1, X: &schema.RawExpr{X: `"left"((c11)::text, 100)`}, Attrs: []schema.Attr{&IndexColumnProperty{Desc: true, NullsFirst: true}}}}},
 					{Name: "t1_c1_key", Unique: true, Table: t, Attrs: []schema.Attr{&IndexType{T: "btree"}, &ConType{T: "u"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1], Attrs: []schema.Attr{&IndexColumnProperty{Desc: true, NullsFirst: true}}}}},
 					{Name: "idx4", Unique: true, Table: t, Attrs: []schema.Attr{&IndexType{T: "btree"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1], Attrs: []schema.Attr{&IndexColumnProperty{Asc: true}}}, {SeqNo: 2, C: columns[0], Attrs: []schema.Attr{&IndexColumnProperty{Asc: true, NullsLast: true}}}}},
 				}
-				require.EqualValues(indexes, t.Indexes)
-				require.EqualValues(&schema.Index{
+				pk := &schema.Index{
 					Name:   "t1_pkey",
 					Unique: true,
 					Table:  t,
 					Attrs:  []schema.Attr{&IndexType{T: "btree"}, &ConType{T: "p"}},
 					Parts:  []*schema.IndexPart{{SeqNo: 1, C: columns[0], Attrs: []schema.Attr{&IndexColumnProperty{Desc: true}}}},
-				}, t.PrimaryKey)
+				}
+				columns[0].Indexes = append(columns[0].Indexes, pk, indexes[3])
+				columns[1].Indexes = indexes[2:]
+				require.EqualValues(columns, t.Columns)
+				require.EqualValues(indexes, t.Indexes)
+				require.EqualValues(pk, t.PrimaryKey)
 			},
 		},
 		{
