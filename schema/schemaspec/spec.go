@@ -43,6 +43,12 @@ type (
 	Ref struct {
 		V string
 	}
+
+	// Decoder is the interface that wraps the Decode function.
+	Decoder interface {
+		// Decode decodes an Atlas DDL document into target.
+		Decode(target interface{}) error
+	}
 )
 
 // Int returns an integer from the Value of the Attr. If The value is not a LiteralValue or the value
