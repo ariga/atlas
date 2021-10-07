@@ -18,13 +18,13 @@ import (
 )
 
 // Unmarshal parses the Atlas HCL-encoded data and stores the result in the target.
-func Unmarshal(body []byte, target interface{}) error {
-	spec, err := decode(body)
+func Unmarshal(data []byte, v interface{}) error {
+	spec, err := decode(data)
 	if err != nil {
 		return fmt.Errorf("schemahcl: failed decoding: %w", err)
 	}
-	if err := spec.As(target); err != nil {
-		return fmt.Errorf("schemahcl: failed reading spec as %T: %w", target, err)
+	if err := spec.As(v); err != nil {
+		return fmt.Errorf("schemahcl: failed reading spec as %T: %w", v, err)
 	}
 	return nil
 }
