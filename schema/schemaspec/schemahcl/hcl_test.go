@@ -35,19 +35,22 @@ endpoint "/hello" {
 	timeout_ms = 100
 }
 `
-	type Handler struct {
-		Active bool   `spec:"active"`
-		Addr   string `spec:"addr"`
-	}
-	type Endpoint struct {
-		Name        string   `spec:",name"`
-		Description string   `spec:"description"`
-		TimeoutMs   int      `spec:"timeout_ms"`
-		Handler     *Handler `spec:"handler"`
-	}
-	type File struct {
-		Endpoints []*Endpoint `spec:"endpoint"`
-	}
+	type (
+		Handler struct {
+			Active bool   `spec:"active"`
+			Addr   string `spec:"addr"`
+		}
+
+		Endpoint struct {
+			Name        string   `spec:",name"`
+			Description string   `spec:"description"`
+			TimeoutMs   int      `spec:"timeout_ms"`
+			Handler     *Handler `spec:"handler"`
+		}
+		File struct {
+			Endpoints []*Endpoint `spec:"endpoint"`
+		}
+	)
 	var test File
 	err := Unmarshal([]byte(f), &test)
 	require.NoError(t, err)

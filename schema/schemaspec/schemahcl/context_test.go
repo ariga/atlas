@@ -112,14 +112,16 @@ country "israel" {
 	}
 }
 `
-	type City struct {
-		Name          string `spec:",name"`
-		PhoneAreaCode string `spec:"phone_area_code"`
-	}
-	type Country struct {
-		Name   string  `spec:",name"`
-		Cities []*City `spec:"city"`
-	}
+	type (
+		City struct {
+			Name          string `spec:",name"`
+			PhoneAreaCode string `spec:"phone_area_code"`
+		}
+		Country struct {
+			Name   string  `spec:",name"`
+			Cities []*City `spec:"city"`
+		}
+	)
 	var test struct {
 		Countries []*Country `spec:"country"`
 	}
@@ -146,14 +148,16 @@ pet "garfield" {
 	owner = person.jon
 }
 `
-	type Person struct {
-		Name string `spec:",name"`
-	}
-	type Pet struct {
-		Name  string          `spec:",name"`
-		Type  string          `spec:"type"`
-		Owner *schemaspec.Ref `spec:"owner"`
-	}
+	type (
+		Person struct {
+			Name string `spec:",name"`
+		}
+		Pet struct {
+			Name  string          `spec:",name"`
+			Type  string          `spec:"type"`
+			Owner *schemaspec.Ref `spec:"owner"`
+		}
+	)
 	var test struct {
 		People []*Person `spec:"person"`
 		Pets   []*Pet    `spec:"pet"`
@@ -182,13 +186,15 @@ group "lion_kings" {
 	]
 }
 `
-	type User struct {
-		Name string `spec:",name"`
-	}
-	type Group struct {
-		Name    string            `spec:",name"`
-		Members []*schemaspec.Ref `spec:"members"`
-	}
+	type (
+		User struct {
+			Name string `spec:",name"`
+		}
+		Group struct {
+			Name    string            `spec:",name"`
+			Members []*schemaspec.Ref `spec:"members"`
+		}
+	)
 	var test struct {
 		Users  []*User  `spec:"user"`
 		Groups []*Group `spec:"group"`
@@ -222,21 +228,23 @@ person "jane" {
 	}
 }
 `
-	type Hobby struct {
-		Name   string `spec:",name"`
-		Active bool   `spec:"active"`
-		Budget int    `spec:"budget"`
-	}
-	type Car struct {
-		Name string `spec:",name"`
-		Year int    `spec:"year"`
-	}
-	type Person struct {
-		Name     string   `spec:",name"`
-		Nickname string   `spec:"nickname"`
-		Hobbies  []*Hobby `spec:"hobby"`
-		Car      *Car     `spec:"car"`
-	}
+	type (
+		Hobby struct {
+			Name   string `spec:",name"`
+			Active bool   `spec:"active"`
+			Budget int    `spec:"budget"`
+		}
+		Car struct {
+			Name string `spec:",name"`
+			Year int    `spec:"year"`
+		}
+		Person struct {
+			Name     string   `spec:",name"`
+			Nickname string   `spec:"nickname"`
+			Hobbies  []*Hobby `spec:"hobby"`
+			Car      *Car     `spec:"car"`
+		}
+	)
 	var test struct {
 		People []*Person `spec:"person"`
 	}
