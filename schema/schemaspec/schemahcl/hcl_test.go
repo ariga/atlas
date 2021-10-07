@@ -3,8 +3,6 @@ package schemahcl
 import (
 	"testing"
 
-	"ariga.io/atlas/schema/schemaspec"
-
 	"github.com/stretchr/testify/require"
 )
 
@@ -13,35 +11,17 @@ func TestAttributes(t *testing.T) {
 i = 1
 b = true
 s = "hello, world"
-arr = ["yada", "yada", "yada"]
 `
-	resource, err := Decode([]byte(f))
+	var test struct {
+		Int  int    `spec:"i"`
+		Bool bool   `spec:"b"`
+		Str  string `spec:"s"`
+	}
+	err := Unmarshal([]byte(f), &test)
 	require.NoError(t, err)
-	require.Len(t, resource.Attrs, 4)
-
-	attr, ok := resource.Attr("i")
-	require.True(t, ok)
-	i, err := attr.Int()
-	require.NoError(t, err)
-	require.EqualValues(t, 1, i)
-
-	attr, ok = resource.Attr("b")
-	require.True(t, ok)
-	b, err := attr.Bool()
-	require.NoError(t, err)
-	require.EqualValues(t, true, b)
-
-	attr, ok = resource.Attr("s")
-	require.True(t, ok)
-	s, err := attr.String()
-	require.NoError(t, err)
-	require.EqualValues(t, "hello, world", s)
-
-	attr, ok = resource.Attr("arr")
-	require.True(t, ok)
-	arr, err := attr.Strings()
-	require.NoError(t, err)
-	require.EqualValues(t, []string{"yada", "yada", "yada"}, arr)
+	require.EqualValues(t, 1, test.Int)
+	require.EqualValues(t, true, test.Bool)
+	require.EqualValues(t, "hello, world", test.Str)
 }
 
 func TestResource(t *testing.T) {
@@ -55,27 +35,33 @@ endpoint "/hello" {
 	timeout_ms = 100
 }
 `
-	resource, err := Decode([]byte(f))
+	type Handler struct {
+		Active bool   `spec:"active"`
+		Addr   string `spec:"addr"`
+	}
+	type Endpoint struct {
+		Name        string   `spec:",name"`
+		Description string   `spec:"description"`
+		TimeoutMs   int      `spec:"timeout_ms"`
+		Handler     *Handler `spec:"handler"`
+	}
+	type File struct {
+		Endpoints []*Endpoint `spec:"endpoint"`
+	}
+	var test File
+	err := Unmarshal([]byte(f), &test)
 	require.NoError(t, err)
-	require.Len(t, resource.Children, 1)
-	expected := &schemaspec.Resource{
-		Name: "/hello",
-		Type: "endpoint",
-		Children: []*schemaspec.Resource{
-			{
-				Type: "handler",
-				Attrs: []*schemaspec.Attr{
-					{K: "active", V: &schemaspec.LiteralValue{V: `true`}},
-					{K: "addr", V: &schemaspec.LiteralValue{V: `":8080"`}},
-				},
-			},
-		},
-		Attrs: []*schemaspec.Attr{
-			{K: "description", V: &schemaspec.LiteralValue{V: `"the hello handler"`}},
-			{K: "timeout_ms", V: &schemaspec.LiteralValue{V: `100`}},
+	require.Len(t, test.Endpoints, 1)
+	expected := &Endpoint{
+		Name:        "/hello",
+		Description: "the hello handler",
+		TimeoutMs:   100,
+		Handler: &Handler{
+			Active: true,
+			Addr:   ":8080",
 		},
 	}
-	require.EqualValues(t, expected, resource.Children[0])
+	require.EqualValues(t, expected, test.Endpoints[0])
 }
 
 func TestReEncode(t *testing.T) {
@@ -113,11 +99,11 @@ task "code" {
 	}
 	for _, tt := range testCases {
 		t.Run(tt.Name, func(t *testing.T) {
-			resource, err := Decode([]byte(tt.Body))
+			resource, err := decode([]byte(tt.Body))
 			require.NoError(t, err)
 			bytes, err := Encode(resource)
 			require.NoError(t, err)
-			again, err := Decode(bytes)
+			again, err := decode(bytes)
 			require.NoError(t, err)
 			require.EqualValues(t, resource, again, "expected resource to be the same after encoding")
 		})

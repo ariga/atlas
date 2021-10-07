@@ -1,7 +1,6 @@
 package hclsqlspec
 
 import (
-	"strings"
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec"
@@ -317,7 +316,7 @@ table "accounts" {
 
 func decode(f string) (*db, error) {
 	d := &db{}
-	if err := schemahcl.NewDecoder(strings.NewReader(f)).Decode(d); err != nil {
+	if err := schemahcl.Unmarshal([]byte(f), d); err != nil {
 		return nil, err
 	}
 	return d, nil

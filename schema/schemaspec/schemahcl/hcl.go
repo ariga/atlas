@@ -17,12 +17,24 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+// Unmarshal parses the Atlas HCL-encoded data and stores the result in the target.
+func Unmarshal(body []byte, target interface{}) error {
+	spec, err := decode(body)
+	if err != nil {
+		return fmt.Errorf("schemahcl: failed decoding: %w", err)
+	}
+	if err := spec.As(target); err != nil {
+		return fmt.Errorf("schemahcl: failed reading spec as %T: %w", target, err)
+	}
+	return nil
+}
+
 type container struct {
 	Body hcl.Body `hcl:",remain"`
 }
 
-// Decode decodes the input Atlas HCL document and returns a *schemaspec.Resource representing it.
-func Decode(body []byte) (*schemaspec.Resource, error) {
+// decode decodes the input Atlas HCL document and returns a *schemaspec.Resource representing it.
+func decode(body []byte) (*schemaspec.Resource, error) {
 	parser := hclparse.NewParser()
 	srcHCL, diag := parser.ParseHCL(body, "")
 	if diag.HasErrors() {

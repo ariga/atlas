@@ -44,10 +44,10 @@ type (
 		V string
 	}
 
-	// Decoder is the interface that wraps the Decode function.
-	Decoder interface {
-		// Decode decodes an Atlas DDL document into target.
-		Decode(target interface{}) error
+	// Unmarshaler is the interface that wraps the Unmarshal function.
+	Unmarshaler interface {
+		// Unmarshal decodes an Atlas DDL document into target.
+		Unmarshal(target interface{}) error
 	}
 )
 
