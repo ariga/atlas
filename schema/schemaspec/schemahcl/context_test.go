@@ -34,19 +34,21 @@ config "defaults" {
 	description = "generic"
 }
 `
-	type Backend struct {
-		Name  string `spec:",name"`
-		Image string `spec:"image"`
-		Addr  string `spec:"addr"`
-	}
-	type Endpoint struct {
-		Name      string `spec:",name"`
-		Path      string `spec:"path"`
-		Addr      string `spec:"addr"`
-		TimeoutMs int    `spec:"timeout_ms"`
-		Retry     bool   `spec:"retry"`
-		Desc      string `spec:"description"`
-	}
+	type (
+		Backend struct {
+			Name  string `spec:",name"`
+			Image string `spec:"image"`
+			Addr  string `spec:"addr"`
+		}
+		Endpoint struct {
+			Name      string `spec:",name"`
+			Path      string `spec:"path"`
+			Addr      string `spec:"addr"`
+			TimeoutMs int    `spec:"timeout_ms"`
+			Retry     bool   `spec:"retry"`
+			Desc      string `spec:"description"`
+		}
+	)
 	var test struct {
 		Backends  []*Backend  `spec:"backend"`
 		Endpoints []*Endpoint `spec:"endpoint"`
