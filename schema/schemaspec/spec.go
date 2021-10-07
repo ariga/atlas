@@ -43,12 +43,6 @@ type (
 	Ref struct {
 		V string
 	}
-
-	// Unmarshaler is the interface that wraps the Unmarshal function.
-	Unmarshaler interface {
-		// Unmarshal decodes an Atlas DDL document into target.
-		Unmarshal(target interface{}) error
-	}
 )
 
 // Int returns an integer from the Value of the Attr. If The value is not a LiteralValue or the value
