@@ -34,7 +34,43 @@ config "defaults" {
 	description = "generic"
 }
 `
-	res, err := Decode([]byte(f))
+	type (
+		Backend struct {
+			Name  string `spec:",name"`
+			Image string `spec:"image"`
+			Addr  string `spec:"addr"`
+		}
+		Endpoint struct {
+			Name      string `spec:",name"`
+			Path      string `spec:"path"`
+			Addr      string `spec:"addr"`
+			TimeoutMs int    `spec:"timeout_ms"`
+			Retry     bool   `spec:"retry"`
+			Desc      string `spec:"description"`
+		}
+	)
+	var test struct {
+		Backends  []*Backend  `spec:"backend"`
+		Endpoints []*Endpoint `spec:"endpoint"`
+	}
+	err := Unmarshal([]byte(f), &test)
+	require.EqualValues(t, []*Endpoint{
+		{
+			Name:      "home",
+			Path:      "/",
+			Addr:      "127.0.0.1:8081",
+			Retry:     false,
+			TimeoutMs: 10,
+			Desc:      "default: generic",
+		},
+		{
+			Name: "admin",
+			Path: "/admin",
+			Addr: "127.0.0.1:8082",
+		},
+	}, test.Endpoints)
+	require.NoError(t, err)
+	res, err := decode([]byte(f))
 	require.NoError(t, err)
 	home := res.Children[2]
 	attr, ok := home.Attr("addr")
@@ -76,15 +112,30 @@ country "israel" {
 	}
 }
 `
-	res, err := Decode([]byte(f))
+	type (
+		City struct {
+			Name          string `spec:",name"`
+			PhoneAreaCode string `spec:"phone_area_code"`
+		}
+		Country struct {
+			Name   string  `spec:",name"`
+			Cities []*City `spec:"city"`
+		}
+	)
+	var test struct {
+		Countries []*Country `spec:"country"`
+	}
+	err := Unmarshal([]byte(f), &test)
+	israel := &Country{
+		Name: "israel",
+		Cities: []*City{
+			{Name: "tel_aviv", PhoneAreaCode: "03"},
+			{Name: "jerusalem", PhoneAreaCode: "02"},
+			{Name: "givatayim", PhoneAreaCode: "03"},
+		},
+	}
 	require.NoError(t, err)
-	israel := res.Children[0]
-	givatyaim := israel.Children[2]
-	attr, ok := givatyaim.Attr("phone_area_code")
-	require.True(t, ok)
-	s, err := attr.String()
-	require.NoError(t, err)
-	require.EqualValues(t, "03", s)
+	require.EqualValues(t, israel, test.Countries[0])
 }
 
 func TestBlockReference(t *testing.T) {
@@ -97,14 +148,27 @@ pet "garfield" {
 	owner = person.jon
 }
 `
-	res, err := Decode([]byte(f))
+	type (
+		Person struct {
+			Name string `spec:",name"`
+		}
+		Pet struct {
+			Name  string          `spec:",name"`
+			Type  string          `spec:"type"`
+			Owner *schemaspec.Ref `spec:"owner"`
+		}
+	)
+	var test struct {
+		People []*Person `spec:"person"`
+		Pets   []*Pet    `spec:"pet"`
+	}
+	err := Unmarshal([]byte(f), &test)
 	require.NoError(t, err)
-	garfield := res.Children[1]
-	attr, ok := garfield.Attr("owner")
-	require.True(t, ok)
-	ref, err := attr.Ref()
-	require.NoError(t, err)
-	require.EqualValues(t, "$person.jon", ref)
+	require.EqualValues(t, &Pet{
+		Name:  "garfield",
+		Type:  "cat",
+		Owner: &schemaspec.Ref{V: "$person.jon"},
+	}, test.Pets[0])
 }
 
 func TestListRefs(t *testing.T) {
@@ -122,20 +186,28 @@ group "lion_kings" {
 	]
 }
 `
-	res, err := Decode([]byte(f))
-	require.NoError(t, err)
-	group := res.Children[2]
-	members, ok := group.Attr("members")
-	require.True(t, ok)
-	require.EqualValues(t,
-		&schemaspec.ListValue{
-			V: []schemaspec.Value{
-				&schemaspec.Ref{V: "$user.simba"},
-				&schemaspec.Ref{V: "$user.mufasa"},
-			},
-		},
-		members.V,
+	type (
+		User struct {
+			Name string `spec:",name"`
+		}
+		Group struct {
+			Name    string            `spec:",name"`
+			Members []*schemaspec.Ref `spec:"members"`
+		}
 	)
+	var test struct {
+		Users  []*User  `spec:"user"`
+		Groups []*Group `spec:"group"`
+	}
+	err := Unmarshal([]byte(f), &test)
+	require.NoError(t, err)
+	require.EqualValues(t, &Group{
+		Name: "lion_kings",
+		Members: []*schemaspec.Ref{
+			{V: "$user.simba"},
+			{V: "$user.mufasa"},
+		},
+	}, test.Groups[0])
 }
 
 func TestNestedDifference(t *testing.T) {
@@ -156,6 +228,46 @@ person "jane" {
 	}
 }
 `
-	_, err := Decode([]byte(f))
+	type (
+		Hobby struct {
+			Name   string `spec:",name"`
+			Active bool   `spec:"active"`
+			Budget int    `spec:"budget"`
+		}
+		Car struct {
+			Name string `spec:",name"`
+			Year int    `spec:"year"`
+		}
+		Person struct {
+			Name     string   `spec:",name"`
+			Nickname string   `spec:"nickname"`
+			Hobbies  []*Hobby `spec:"hobby"`
+			Car      *Car     `spec:"car"`
+		}
+	)
+	var test struct {
+		People []*Person `spec:"person"`
+	}
+	err := Unmarshal([]byte(f), &test)
 	require.NoError(t, err)
+	john := &Person{
+		Name:     "john",
+		Nickname: "jonnie",
+		Hobbies: []*Hobby{
+			{Name: "hockey", Active: true},
+		},
+	}
+	require.EqualValues(t, john, test.People[0])
+	jane := &Person{
+		Name:     "jane",
+		Nickname: "janie",
+		Hobbies: []*Hobby{
+			{Name: "football", Budget: 1000},
+		},
+		Car: &Car{
+			Name: "ferrari",
+			Year: 1960,
+		},
+	}
+	require.EqualValues(t, jane, test.People[1])
 }

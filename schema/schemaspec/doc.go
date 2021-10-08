@@ -10,9 +10,9 @@
 // with it.
 //
 // Users of Atlas applications are expected to interface with this package via a configuration
-// language specific Encoder and Decoder. For example, via the `schemahcl` package:
+// language specific Encoder and Unmarshaler. For example, via the `schemahcl` package:
 //
-//   schemahcl.Decode([]byte(`
+//   schemahcl.Unmarshal([]byte(`
 //		table "users" {
 //			column "id" {
 //				type = "int"
