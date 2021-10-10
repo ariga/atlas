@@ -281,13 +281,13 @@ func (r *Resource) Scan(ext interface{}) error {
 
 func scanPtr(key string, r *Resource, field reflect.Value) error {
 	attr := &Attr{K: key}
-	switch field.Elem().Type() {
+	switch e := field.Elem(); e.Type() {
 	case reflect.TypeOf(LiteralValue{}):
-		attr.V = &LiteralValue{V: field.Elem().FieldByName("V").String()}
+		attr.V = &LiteralValue{V: e.FieldByName("V").String()}
 	case reflect.TypeOf(Ref{}):
-		attr.V = &Ref{V: field.Elem().FieldByName("V").String()}
+		attr.V = &Ref{V: e.FieldByName("V").String()}
 	default:
-		return fmt.Errorf("schemaspec: unsupported pointer to %s", field.Elem().String())
+		return fmt.Errorf("schemaspec: unsupported pointer to %s", e)
 	}
 	r.SetAttr(attr)
 	return nil
