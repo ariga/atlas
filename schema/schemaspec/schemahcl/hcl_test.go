@@ -7,8 +7,7 @@ import (
 )
 
 func TestAttributes(t *testing.T) {
-	f := `
-i = 1
+	f := `i = 1
 b = true
 s = "hello, world"
 `
@@ -22,17 +21,19 @@ s = "hello, world"
 	require.EqualValues(t, 1, test.Int)
 	require.EqualValues(t, true, test.Bool)
 	require.EqualValues(t, "hello, world", test.Str)
+	marshal, err := Marshal(&test)
+	require.NoError(t, err)
+	require.EqualValues(t, f, string(marshal))
 }
 
 func TestResource(t *testing.T) {
-	f := `
-endpoint "/hello" {
-	handler {
-		active = true
-		addr = ":8080"
-	}
-	description = "the hello handler"
-	timeout_ms = 100
+	f := `endpoint "/hello" {
+  description = "the hello handler"
+  timeout_ms  = 100
+  handler {
+    active = true
+    addr   = ":8080"
+  }
 }
 `
 	type (
@@ -65,50 +66,7 @@ endpoint "/hello" {
 		},
 	}
 	require.EqualValues(t, expected, test.Endpoints[0])
-}
-
-func TestReEncode(t *testing.T) {
-	testCases := []struct {
-		Name, Body string
-	}{
-		{
-			Name: "attr",
-			Body: `year = 2021`,
-		},
-		{
-			Name: "simple resource",
-			Body: `project "atlas" {
-	started_year = 2021
-	useful = true
-}`,
-		},
-		{
-			Name: "nested resource",
-			Body: `author "rotemtam" {
-	package "schemahcl" {
-		lang = "go"
-	}
-}`,
-		},
-		{
-			Name: "block reference",
-			Body: `user "rotemtam" {
-}
-task "code" {
-	owner = user.rotemtam
-}
-`,
-		},
-	}
-	for _, tt := range testCases {
-		t.Run(tt.Name, func(t *testing.T) {
-			resource, err := decode([]byte(tt.Body))
-			require.NoError(t, err)
-			bytes, err := Encode(resource)
-			require.NoError(t, err)
-			again, err := decode(bytes)
-			require.NoError(t, err)
-			require.EqualValues(t, resource, again, "expected resource to be the same after encoding")
-		})
-	}
+	buf, err := Marshal(&test)
+	require.NoError(t, err)
+	require.EqualValues(t, f, string(buf))
 }

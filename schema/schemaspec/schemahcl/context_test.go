@@ -54,6 +54,7 @@ config "defaults" {
 		Endpoints []*Endpoint `spec:"endpoint"`
 	}
 	err := Unmarshal([]byte(f), &test)
+	require.NoError(t, err)
 	require.EqualValues(t, []*Endpoint{
 		{
 			Name:      "home",
@@ -69,33 +70,6 @@ config "defaults" {
 			Addr: "127.0.0.1:8082",
 		},
 	}, test.Endpoints)
-	require.NoError(t, err)
-	res, err := decode([]byte(f))
-	require.NoError(t, err)
-	home := res.Children[2]
-	attr, ok := home.Attr("addr")
-	require.True(t, ok)
-	s, err := attr.String()
-	require.NoError(t, err)
-	require.EqualValues(t, "127.0.0.1:8081", s)
-
-	attr, ok = home.Attr("timeout_ms")
-	require.True(t, ok)
-	timeoutMs, err := attr.Int()
-	require.NoError(t, err)
-	require.EqualValues(t, 10, timeoutMs)
-
-	attr, ok = home.Attr("retry")
-	require.True(t, ok)
-	retry, err := attr.Bool()
-	require.NoError(t, err)
-	require.EqualValues(t, false, retry)
-
-	attr, ok = home.Attr("description")
-	require.True(t, ok)
-	interpolated, err := attr.String()
-	require.NoError(t, err)
-	require.EqualValues(t, "default: generic", interpolated)
 }
 
 func TestNestedReferences(t *testing.T) {
@@ -139,13 +113,11 @@ country "israel" {
 }
 
 func TestBlockReference(t *testing.T) {
-	f := `
-person "jon" {
-	
+	f := `person "jon" {
 }
 pet "garfield" {
-	type = "cat"
-	owner = person.jon
+  type  = "cat"
+  owner = person.jon
 }
 `
 	type (
@@ -169,6 +141,9 @@ pet "garfield" {
 		Type:  "cat",
 		Owner: &schemaspec.Ref{V: "$person.jon"},
 	}, test.Pets[0])
+	marshal, err := Marshal(&test)
+	require.NoError(t, err)
+	require.EqualValues(t, f, string(marshal))
 }
 
 func TestListRefs(t *testing.T) {

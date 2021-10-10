@@ -258,14 +258,9 @@ func (r *Resource) Scan(ext interface{}) error {
 			if field.IsNil() {
 				continue
 			}
-			if field.Elem().Type() != reflect.TypeOf(LiteralValue{}) {
-				return fmt.Errorf("schemaspec: pointer to non LiteralValue")
+			if err := scanPtr(ft.tag, r, field); err != nil {
+				return err
 			}
-			v := field.Elem().FieldByName("V").String()
-			r.SetAttr(&Attr{
-				K: ft.tag,
-				V: &LiteralValue{V: v},
-			})
 		default:
 			if err := scanAttr(ft.tag, r, field); err != nil {
 				return err
@@ -281,6 +276,20 @@ func (r *Resource) Scan(ext interface{}) error {
 		r.SetAttr(attr)
 	}
 	r.Children = append(r.Children, extra.Children...)
+	return nil
+}
+
+func scanPtr(key string, r *Resource, field reflect.Value) error {
+	attr := &Attr{K: key}
+	switch e := field.Elem(); e.Type() {
+	case reflect.TypeOf(LiteralValue{}):
+		attr.V = &LiteralValue{V: e.FieldByName("V").String()}
+	case reflect.TypeOf(Ref{}):
+		attr.V = &Ref{V: e.FieldByName("V").String()}
+	default:
+		return fmt.Errorf("schemaspec: unsupported pointer to %s", e)
+	}
+	r.SetAttr(attr)
 	return nil
 }
 
