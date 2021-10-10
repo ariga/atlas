@@ -17,6 +17,15 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+// Marshal returns the Atlas HCL encoding of v.
+func Marshal(v interface{}) ([]byte, error) {
+	r := &schemaspec.Resource{}
+	if err := r.Scan(v); err != nil {
+		return nil, fmt.Errorf("schemahcl: failed scanning %T to resource: %w", v, err)
+	}
+	return encode(r)
+}
+
 // Unmarshal parses the Atlas HCL-encoded data and stores the result in the target.
 func Unmarshal(data []byte, v interface{}) error {
 	spec, err := decode(data)
@@ -166,9 +175,9 @@ func toResource(ctx *hcl.EvalContext, block *hclsyntax.Block) (*schemaspec.Resou
 	return spec, nil
 }
 
-// Encode encodes the give *schemaspec.Resource into a byte slice containing an Atlas HCL
+// encode encodes the give *schemaspec.Resource into a byte slice containing an Atlas HCL
 // document representing it.
-func Encode(r *schemaspec.Resource) ([]byte, error) {
+func encode(r *schemaspec.Resource) ([]byte, error) {
 	f := hclwrite.NewFile()
 	body := f.Body()
 	for _, attr := range r.Attrs {
@@ -187,7 +196,11 @@ func Encode(r *schemaspec.Resource) ([]byte, error) {
 }
 
 func writeResource(b *schemaspec.Resource, body *hclwrite.Body) error {
-	blk := body.AppendNewBlock(b.Type, []string{b.Name})
+	var labels []string
+	if b.Name != "" {
+		labels = append(labels, b.Name)
+	}
+	blk := body.AppendNewBlock(b.Type, labels)
 	nb := blk.Body()
 	for _, attr := range b.Attrs {
 		if err := writeAttr(attr, nb); err != nil {
