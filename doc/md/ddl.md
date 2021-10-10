@@ -155,33 +155,47 @@ show "seinfeld" {
 
 ```
 
-Observe that `Decode` returns a `schemaspec.Resource`. This Go type is
-a generic container for resources described in the Atlas DDL. Applications
-are not expected to work with it directly as it is not structured and 
-not type-safe. In the section about [Extensions](#Extensions), we discuss the way applications can
-work with data coming from Atlas HCL documents. 
+Observe that similar to the standard-library's `json.Unmarshal` function, this function
+takes as arguments a byte-slice and an empty interface.  The empty interface should be a
+pointer to a struct into which the `Unmarshal` function will read the values. The struct
+fields must be annotated with `spec` tags that define the mapping from HCL to the Go type.
+This mapping is discussed in the section about [Extensions](#Extensions).
 
 ### Writing with Go
 
-To encode `schemaspec.Resource` instances back into HCL, use the `schemahcl.Encode` 
-([doc](https://pkg.go.dev/ariga.io/atlas@v0.0.0-20211004124157-99ae6aaad16b/schema/schemaspec/schemahcl#Encode)) function:
+To encode a Go struct back into HCL, use the `schemahcl.Marshal`
+([doc](https://pkg.go.dev/ariga.io/atlas/schema/schemaspec/schemahcl#Marshal)) function:
 
 ```go
-func TestSeinfeldEncode(t *testing.T) {
-	r := &schemaspec.Resource{
-		Children: []*schemaspec.Resource{
-			{
-				Name: "seinfeld",
-				Type: "show",
-			},
-		},
-	}
-	encode, err := Encode(r)
-	require.NoError(t, err)
-	expected := `show "seinfeld" {
-}
-`
-	require.EqualValues(t, expected, string(encode))
+func ExampleMarshal() {
+  type (
+    Point struct {
+      ID string `spec:",name"`
+      X  int    `spec:"x"`
+      Y  int    `spec:"y"`
+    }
+  )
+  var test = struct {
+    Points []*Point `spec:"point"`
+  }{
+    Points: []*Point{
+      {ID: "start", X: 0, Y: 0},
+      {ID: "end", X: 1, Y: 1},
+    },
+  }
+  b, err := Marshal(&test)
+  if err != nil {
+    panic(err)
+  }
+  fmt.Println(string(b))
+  // Output: point "start" {
+  //   x = 0
+  //   y = 0
+  // }
+  // point "end" {
+  //   x = 1
+  //   y = 1
+  // }
 }
 ```
 
@@ -243,7 +257,6 @@ point "A" {
 Going from the extension struct back into Resource form is possible using the `Scan` method:
 
 ```go
-
 func TestPointScan(t *testing.T) {
   point := &Point{
     ID: "A",
