@@ -1,6 +1,7 @@
 package schemahcl
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -69,4 +70,37 @@ func TestResource(t *testing.T) {
 	marshal, err := Marshal(&test)
 	require.NoError(t, err)
 	require.EqualValues(t, f, string(marshal))
+}
+
+func ExampleUnmarshal() {
+	f := `
+show "seinfeld" {
+	writer "jerry" {
+		full_name = "Jerry Seinfeld"	
+	}
+	writer "larry" {
+		full_name = "Larry David"	
+	}
+}`
+
+	type (
+		Writer struct {
+			ID       string `spec:",name"`
+			FullName string `spec:"full_name"`
+		}
+		Show struct {
+			Name    string    `spec:",name"`
+			Writers []*Writer `spec:"writer"`
+		}
+	)
+	var test struct {
+		Shows []*Show `spec:"show"`
+	}
+	err := Unmarshal([]byte(f), &test)
+	if err != nil {
+		panic(err)
+	}
+	seinfeld := test.Shows[0]
+	fmt.Printf("the show %q has %d writers.", seinfeld.Name, len(seinfeld.Writers))
+	// Output: the show "seinfeld" has 2 writers.
 }

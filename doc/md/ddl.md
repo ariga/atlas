@@ -116,48 +116,43 @@ playlist "comedy" {
 
 ### Reading with Go
 
-To read an Atlas HCL document with Go use the `Decode` ([doc](https://pkg.go.dev/ariga.io/atlas/schema/schemaspec/schemahcl#Decode)) function
+To read an Atlas HCL document with Go use the `Unmarshal` ([doc](https://pkg.go.dev/ariga.io/atlas/schema/schemaspec/schemahcl#Unmarshal)) function
 from the `schemahcl` package:
 
 ```go
-package hcl
+func ExampleUnmarshal() {
+    f := `
+show "seinfeld" {
+	writer "jerry" {
+		full_name = "Jerry Seinfeld"	
+	}
+	writer "larry" {
+		full_name = "Larry David"	
+	}
+}`
 
-import (
-  "testing"
-
-  "github.com/stretchr/testify/require"
-  "ariga.io/atlas/schema/schemaspec"
-  "ariga.io/atlas/schema/schemaspec/schemahcl"
-)
-
-func TestSeinfeld(t *testing.T) {
-	f := `
-  show "seinfeld" {
-      writers = [
-          "Jerry Seinfeld",
-          "Larry David",
-      ]
-  }`
-
-	s, err := schemahcl.Decode([]byte(f))
-	require.NoError(t, err)
-	seinfeld := s.Children[0]
-	require.EqualValues(t, &schemaspec.Resource{
-		Type: "show",
-		Name: "seinfeld",
-		Attrs: []*schemaspec.Attr{
-			{
-				K: "writers",
-				V: &schemaspec.ListValue{
-					V: []schemaspec.Value{
-						&schemaspec.LiteralValue{V: `"Jerry Seinfeld"`},
-						&schemaspec.LiteralValue{V: `"Larry David"`},
-					},
-				},
-			},
-		},
-	}, seinfeld)
+  type (
+      Writer struct {
+        ID       string `spec:",name"`
+        FullName string `spec:"full_name"`
+      }
+      Show struct {
+        Name    string    `spec:",name"`
+        Writers []*Writer `spec:"writer"`
+      }
+    )
+  var test struct {
+    Shows []*Show `spec:"show"`
+  }
+  err := Unmarshal([]byte(f), &test)
+  if err != nil {
+    panic(err)
+  }
+  seinfeld := test.Shows[0]
+  fmt.Printf("the show %q has %d writers.", seinfeld.Name, len(seinfeld.Writers))
+  // Output: the show "seinfeld" has 2 writers.
 }
+
 ```
 
 Observe that `Decode` returns a `schemaspec.Resource`. This Go type is

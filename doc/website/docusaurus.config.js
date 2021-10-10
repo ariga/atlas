@@ -23,12 +23,12 @@ module.exports = {
         src: 'img/square.svg',
       },
       items: [
-        {
-          type: 'doc',
-          docId: 'getting-started',
-          position: 'left',
-          label: 'Welcome',
-        },
+        // {
+        //   type: 'doc',
+        //   docId: 'getting-started',
+        //   position: 'left',
+        //   label: 'Welcome',
+        // },
         // {to: '/blog', label: 'Blog', position: 'left'},
         {
           href: 'https://github.com/ariga/atlas',
