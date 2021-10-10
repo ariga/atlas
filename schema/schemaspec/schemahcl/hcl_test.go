@@ -66,7 +66,7 @@ func TestResource(t *testing.T) {
 		},
 	}
 	require.EqualValues(t, expected, test.Endpoints[0])
-	marshal, err := Marshal(&test)
+	buf, err := Marshal(&test)
 	require.NoError(t, err)
-	require.EqualValues(t, f, string(marshal))
+	require.EqualValues(t, f, string(buf))
 }
