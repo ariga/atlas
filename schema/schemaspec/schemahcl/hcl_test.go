@@ -104,3 +104,34 @@ show "seinfeld" {
 	fmt.Printf("the show %q has %d writers.", seinfeld.Name, len(seinfeld.Writers))
 	// Output: the show "seinfeld" has 2 writers.
 }
+
+func ExampleMarshal() {
+	type (
+		Point struct {
+			ID string `spec:",name"`
+			X  int    `spec:"x"`
+			Y  int    `spec:"y"`
+		}
+	)
+	var test = struct {
+		Points []*Point `spec:"point"`
+	}{
+		Points: []*Point{
+			{ID: "start", X: 0, Y: 0},
+			{ID: "end", X: 1, Y: 1},
+		},
+	}
+	b, err := Marshal(&test)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(b))
+	// Output: point "start" {
+	//   x = 0
+	//   y = 0
+	// }
+	// point "end" {
+	//   x = 1
+	//   y = 1
+	// }
+}
