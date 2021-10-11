@@ -2,6 +2,7 @@ package schemahcl
 
 import (
 	"fmt"
+	"log"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -123,10 +124,11 @@ func ExampleMarshal() {
 	}
 	b, err := Marshal(&test)
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 	fmt.Println(string(b))
-	// Output: point "start" {
+	// Output:
+	// point "start" {
 	//   x = 0
 	//   y = 0
 	// }
