@@ -1,6 +1,8 @@
 package schemahcl
 
 import (
+	"fmt"
+	"log"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -69,4 +71,69 @@ func TestResource(t *testing.T) {
 	buf, err := Marshal(&test)
 	require.NoError(t, err)
 	require.EqualValues(t, f, string(buf))
+}
+
+func ExampleUnmarshal() {
+	f := `
+show "seinfeld" {
+	writer "jerry" {
+		full_name = "Jerry Seinfeld"	
+	}
+	writer "larry" {
+		full_name = "Larry David"	
+	}
+}`
+
+	type (
+		Writer struct {
+			ID       string `spec:",name"`
+			FullName string `spec:"full_name"`
+		}
+		Show struct {
+			Name    string    `spec:",name"`
+			Writers []*Writer `spec:"writer"`
+		}
+	)
+	var test struct {
+		Shows []*Show `spec:"show"`
+	}
+	err := Unmarshal([]byte(f), &test)
+	if err != nil {
+		panic(err)
+	}
+	seinfeld := test.Shows[0]
+	fmt.Printf("the show %q has %d writers.", seinfeld.Name, len(seinfeld.Writers))
+	// Output: the show "seinfeld" has 2 writers.
+}
+
+func ExampleMarshal() {
+	type (
+		Point struct {
+			ID string `spec:",name"`
+			X  int    `spec:"x"`
+			Y  int    `spec:"y"`
+		}
+	)
+	var test = struct {
+		Points []*Point `spec:"point"`
+	}{
+		Points: []*Point{
+			{ID: "start", X: 0, Y: 0},
+			{ID: "end", X: 1, Y: 1},
+		},
+	}
+	b, err := Marshal(&test)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	fmt.Println(string(b))
+	// Output:
+	// point "start" {
+	//   x = 0
+	//   y = 0
+	// }
+	// point "end" {
+	//   x = 1
+	//   y = 1
+	// }
 }

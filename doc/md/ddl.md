@@ -116,90 +116,97 @@ playlist "comedy" {
 
 ### Reading with Go
 
-To read an Atlas HCL document with Go use the `Decode` ([doc](https://pkg.go.dev/ariga.io/atlas/schema/schemaspec/schemahcl#Decode)) function
+To read an Atlas HCL document with Go use the `Unmarshal` ([doc](https://pkg.go.dev/ariga.io/atlas/schema/schemaspec/schemahcl#Unmarshal)) function
 from the `schemahcl` package:
 
 ```go
-package hcl
+func ExampleUnmarshal() {
+    f := `
+show "seinfeld" {
+	writer "jerry" {
+		full_name = "Jerry Seinfeld"	
+	}
+	writer "larry" {
+		full_name = "Larry David"	
+	}
+}`
 
-import (
-  "testing"
-
-  "github.com/stretchr/testify/require"
-  "ariga.io/atlas/schema/schemaspec"
-  "ariga.io/atlas/schema/schemaspec/schemahcl"
-)
-
-func TestSeinfeld(t *testing.T) {
-	f := `
-  show "seinfeld" {
-      writers = [
-          "Jerry Seinfeld",
-          "Larry David",
-      ]
-  }`
-
-	s, err := schemahcl.Decode([]byte(f))
-	require.NoError(t, err)
-	seinfeld := s.Children[0]
-	require.EqualValues(t, &schemaspec.Resource{
-		Type: "show",
-		Name: "seinfeld",
-		Attrs: []*schemaspec.Attr{
-			{
-				K: "writers",
-				V: &schemaspec.ListValue{
-					V: []schemaspec.Value{
-						&schemaspec.LiteralValue{V: `"Jerry Seinfeld"`},
-						&schemaspec.LiteralValue{V: `"Larry David"`},
-					},
-				},
-			},
-		},
-	}, seinfeld)
+  type (
+      Writer struct {
+        ID       string `spec:",name"`
+        FullName string `spec:"full_name"`
+      }
+      Show struct {
+        Name    string    `spec:",name"`
+        Writers []*Writer `spec:"writer"`
+      }
+    )
+  var test struct {
+    Shows []*Show `spec:"show"`
+  }
+  err := Unmarshal([]byte(f), &test)
+  if err != nil {
+    panic(err)
+  }
+  seinfeld := test.Shows[0]
+  fmt.Printf("the show %q has %d writers.", seinfeld.Name, len(seinfeld.Writers))
+  // Output: the show "seinfeld" has 2 writers.
 }
+
 ```
 
-Observe that `Decode` returns a `schemaspec.Resource`. This Go type is
-a generic container for resources described in the Atlas DDL. Applications
-are not expected to work with it directly as it is not structured and 
-not type-safe. In the section about [Extensions](#Extensions), we discuss the way applications can
-work with data coming from Atlas HCL documents. 
+Observe that similar to the standard-library's `json.Unmarshal` function, this function
+takes as arguments a byte-slice and an empty interface.  The empty interface should be a
+pointer to a struct into which the `Unmarshal` function will read the values. The struct
+fields must be annotated with `spec` tags that define the mapping from HCL to the Go type.
+This mapping is discussed in the section about [Extensions](#Extensions).
 
 ### Writing with Go
 
-To encode `schemaspec.Resource` instances back into HCL, use the `schemahcl.Encode` 
-([doc](https://pkg.go.dev/ariga.io/atlas@v0.0.0-20211004124157-99ae6aaad16b/schema/schemaspec/schemahcl#Encode)) function:
+To encode a Go struct back into HCL, use the `schemahcl.Marshal`
+([doc](https://pkg.go.dev/ariga.io/atlas/schema/schemaspec/schemahcl#Marshal)) function:
 
 ```go
-func TestSeinfeldEncode(t *testing.T) {
-	r := &schemaspec.Resource{
-		Children: []*schemaspec.Resource{
-			{
-				Name: "seinfeld",
-				Type: "show",
-			},
-		},
-	}
-	encode, err := Encode(r)
-	require.NoError(t, err)
-	expected := `show "seinfeld" {
-}
-`
-	require.EqualValues(t, expected, string(encode))
+func ExampleMarshal() {
+  type (
+    Point struct {
+      ID string `spec:",name"`
+      X  int    `spec:"x"`
+      Y  int    `spec:"y"`
+    }
+  )
+  var test = struct {
+    Points []*Point `spec:"point"`
+  }{
+    Points: []*Point{
+      {ID: "start", X: 0, Y: 0},
+      {ID: "end", X: 1, Y: 1},
+    },
+  }
+  b, err := Marshal(&test)
+  if err != nil {
+    panic(err)
+  }
+  fmt.Println(string(b))
+  // Output: point "start" {
+  //   x = 0
+  //   y = 0
+  // }
+  // point "end" {
+  //   x = 1
+  //   y = 1
+  // }
 }
 ```
 
 ## Extensions
 
-Applications working with `schemaspec` objects are expected to extend the Atlas language by
-defining their own type structs that objects can be handled in a type-safe way. Resource
-objects provide the `As` method to read a resource into an extension struct, as well as a
-`Scan` method to read an extension struct back into a Resource.
+Applications working with the Atlas DDL are expected to extend the Atlas language by
+defining their own type structs that objects can be handled in a type-safe way. 
 
-The mapping between the extension struct fields and a Resource is done by placing tags on the
+The mapping between the extension struct fields and the configuration syntax is done by placing tags on the
 extension struct field using the `spec` key in the tag. To specify that a field should be mapped to
-the corresponding Resource's `Name` specify ",name" to the tag value. For example,
+the corresponding resource's name specify ",name" to the tag value. For example,
 ```go
 type Point struct {
     ID string `spec:",name"`
@@ -207,64 +214,24 @@ type Point struct {
     Y  int    `spec:"y"`
 }
 ```
+
 Would be able to capture a Resource defined in Atlas HCL as:
+
 ```hcl
-  point "origin" {
-      x = 100
-      y = 200
-  }
+point "origin" {
+  x = 100
+  y = 200
+}
 ```
+
 To operate correctly, struct extensions should be registered using the `schemaspec.Register`
 function:
+
 ```go
 schemaspec.Register("point", &Point{})
 ```
 
-### Reading from Resource
-Reading the `schemaspec.Resource` into the extension struct is done using the `As` method.
-For example:
-```go
-func TestPoint(t *testing.T) {
-	f := `
-point "A" {
-	x = 100
-	y = 100
-}`
-	decode, err := Decode([]byte(f))
-	require.NoError(t, err)
-	p := Point{}
-	err = decode.Children[0].As(&p)
-	require.NoError(t, err)
-	expected := Point{
-		ID: "A",
-		X:  100,
-		Y:  100,
-	}
-	require.EqualValues(t, expected, p)
-}
-```
-### Writing to Resource
-
-Going from the extension struct back into Resource form is possible using the `Scan` method:
-
-```go
-
-func TestPointScan(t *testing.T) {
-  point := &Point{
-    ID: "A",
-    X:  100,
-    Y:  100,
-  }
-  r := &schemaspec.Resource{}
-  err := r.Scan(point)
-  require.NoError(t, err)
-  require.EqualValues(t, &schemaspec.Resource{
-    Type: "point",
-    Name: "A",
-    Attrs: []*schemaspec.Attr{
-      {K: "x", V: &schemaspec.LiteralValue{V: "100"}},
-      {K: "y", V: &schemaspec.LiteralValue{V: "100"}},
-    },
-  }, r)
-}
-```
+Extension structs may implement the [Remainer](https://pkg.go.dev/ariga.io/atlas/schema/schemaspec#Remainer)
+interface if they wish to store any attributes and children that are not matched by their
+tagged fields. As a convenience the `schemaspec` package exports a `DefaultExtension` type that
+can be embedded to support this behavior.
