@@ -230,3 +230,8 @@ function:
 ```go
 schemaspec.Register("point", &Point{})
 ```
+
+Extension structs may implement the [Remainer](https://pkg.go.dev/ariga.io/atlas/schema/schemaspec#Remainer)
+interface if they wish to store any attributes and children that are not matched by their
+tagged fields. As a convenience the `schemaspec` package exports a `DefaultExtension` type that
+can be embedded to support this behavior.

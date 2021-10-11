@@ -10,7 +10,7 @@
 // with it.
 //
 // Users of Atlas applications are expected to interface with this package via a configuration
-// language specific Encoder and Unmarshaler. For example, via the `schemahcl` package:
+// language package. For example, via the `schemahcl` package:
 //
 //   schemahcl.Unmarshal([]byte(`
 //		table "users" {
@@ -18,9 +18,9 @@
 //				type = "int"
 //			}
 //		}
-//  `))
+//  `), &someStruct{})
 //
-// Applications working with schemaspec objects are expected to extend the Atlas language by
+// Applications working with the Atlas DDL  are expected to extend the Atlas language by
 // defining their own type structs  that objects can be handled in a type-safe way. Resource
 // objects provide the `As` method to read a resource into an extension struct, as well as a
 // `Scan` method to read an extension struct back into a Resource.
