@@ -201,14 +201,12 @@ func ExampleMarshal() {
 
 ## Extensions
 
-Applications working with `schemaspec` objects are expected to extend the Atlas language by
-defining their own type structs that objects can be handled in a type-safe way. Resource
-objects provide the `As` method to read a resource into an extension struct, as well as a
-`Scan` method to read an extension struct back into a Resource.
+Applications working with the Atlas DDL are expected to extend the Atlas language by
+defining their own type structs that objects can be handled in a type-safe way. 
 
-The mapping between the extension struct fields and a Resource is done by placing tags on the
+The mapping between the extension struct fields and the configuration syntax is done by placing tags on the
 extension struct field using the `spec` key in the tag. To specify that a field should be mapped to
-the corresponding Resource's `Name` specify ",name" to the tag value. For example,
+the corresponding resource's name specify ",name" to the tag value. For example,
 ```go
 type Point struct {
     ID string `spec:",name"`
@@ -216,63 +214,19 @@ type Point struct {
     Y  int    `spec:"y"`
 }
 ```
+
 Would be able to capture a Resource defined in Atlas HCL as:
+
 ```hcl
-  point "origin" {
-      x = 100
-      y = 200
-  }
+point "origin" {
+  x = 100
+  y = 200
+}
 ```
+
 To operate correctly, struct extensions should be registered using the `schemaspec.Register`
 function:
+
 ```go
 schemaspec.Register("point", &Point{})
-```
-
-### Reading from Resource
-Reading the `schemaspec.Resource` into the extension struct is done using the `As` method.
-For example:
-```go
-func TestPoint(t *testing.T) {
-	f := `
-point "A" {
-	x = 100
-	y = 100
-}`
-	decode, err := Decode([]byte(f))
-	require.NoError(t, err)
-	p := Point{}
-	err = decode.Children[0].As(&p)
-	require.NoError(t, err)
-	expected := Point{
-		ID: "A",
-		X:  100,
-		Y:  100,
-	}
-	require.EqualValues(t, expected, p)
-}
-```
-### Writing to Resource
-
-Going from the extension struct back into Resource form is possible using the `Scan` method:
-
-```go
-func TestPointScan(t *testing.T) {
-  point := &Point{
-    ID: "A",
-    X:  100,
-    Y:  100,
-  }
-  r := &schemaspec.Resource{}
-  err := r.Scan(point)
-  require.NoError(t, err)
-  require.EqualValues(t, &schemaspec.Resource{
-    Type: "point",
-    Name: "A",
-    Attrs: []*schemaspec.Attr{
-      {K: "x", V: &schemaspec.LiteralValue{V: "100"}},
-      {K: "y", V: &schemaspec.LiteralValue{V: "100"}},
-    },
-  }, r)
-}
 ```
