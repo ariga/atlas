@@ -107,7 +107,10 @@ func Column(spec *sqlspec.Column, conv ConvertTypeFunc) (*schema.Column, error) 
 func Index(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
 	parts := make([]*schema.IndexPart, 0, len(spec.Columns))
 	for seqno, c := range spec.Columns {
-		cn := c.V
+		cn, err := columnName(c)
+		if err != nil {
+			return nil, fmt.Errorf("specutil: failed converting column to index: %w", err)
+		}
 		col, ok := parent.Column(cn)
 		if !ok {
 			return nil, fmt.Errorf("sqlspec: unknown column %q in table %q", cn, parent.Name)
