@@ -43,6 +43,18 @@ type (
 	Ref struct {
 		V string
 	}
+
+	// Marshaler is the interface implemented by types that can marshal objects into a
+	// valid Atlas DDL representation.
+	Marshaler interface {
+		MarshalSpec(v interface{}) ([]byte, error)
+	}
+
+	// Unmarshaler is the interface implemented by types that can unmarshal an Atlas DDL
+	// representation into an object.
+	Unmarshaler interface {
+		UnmarshalSpec([]byte, interface{}) error
+	}
 )
 
 // Int returns an integer from the Value of the Attr. If The value is not a LiteralValue or the value

@@ -17,6 +17,21 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+// Default is a default implementation of schemaspec.Marshaler and schemaspec.Unmarshaler
+// for Atlas HCL documents.
+var Default = &defaultCodec{}
+
+type defaultCodec struct {
+}
+
+func (*defaultCodec) UnmarshalSpec(data []byte, v interface{}) error {
+	return Unmarshal(data, v)
+}
+
+func (m *defaultCodec) MarshalSpec(v interface{}) ([]byte, error) {
+	return Marshal(v)
+}
+
 // Marshal returns the Atlas HCL encoding of v.
 func Marshal(v interface{}) ([]byte, error) {
 	r := &schemaspec.Resource{}

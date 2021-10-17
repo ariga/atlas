@@ -5,6 +5,7 @@ import (
 	"log"
 	"testing"
 
+	"ariga.io/atlas/schema/schemaspec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -136,4 +137,11 @@ func ExampleMarshal() {
 	//   x = 1
 	//   y = 1
 	// }
+}
+
+func TestInterface(t *testing.T) {
+	var (
+		_ schemaspec.Unmarshaler = &defaultCodec{}
+		_ schemaspec.Marshaler   = &defaultCodec{}
+	)
 }
