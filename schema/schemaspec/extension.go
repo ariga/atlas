@@ -30,6 +30,10 @@ func (d *DefaultExtension) Remain() *Resource {
 	return &d.Extra
 }
 
+func (d *DefaultExtension) Attr(name string) (*Attr, bool) {
+	return d.Extra.Attr(name)
+}
+
 type registry map[string]interface{}
 
 var (
