@@ -21,6 +21,7 @@ type (
 		PrimaryKey  *PrimaryKey   `spec:"primary_key"`
 		ForeignKeys []*ForeignKey `spec:"foreign_key"`
 		Indexes     []*Index      `spec:"index"`
+		schemaspec.DefaultExtension
 	}
 
 	// Column holds a specification for a column in an SQL table.
@@ -29,6 +30,7 @@ type (
 		Null     bool                     `spec:"null" override:"null"`
 		TypeName string                   `spec:"type" override:"type"`
 		Default  *schemaspec.LiteralValue `spec:"default" override:"default"`
+		schemaspec.DefaultExtension
 	}
 
 	// PrimaryKey holds a specification for the primary key of a table.
