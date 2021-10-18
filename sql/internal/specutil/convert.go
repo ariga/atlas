@@ -113,7 +113,7 @@ func Index(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
 		}
 		col, ok := parent.Column(cn)
 		if !ok {
-			return nil, fmt.Errorf("sqlspec: unknown column %q in table %q", cn, parent.Name)
+			return nil, fmt.Errorf("specutil: unknown column %q in table %q", cn, parent.Name)
 		}
 		parts = append(parts, &schema.IndexPart{
 			SeqNo: seqno,
