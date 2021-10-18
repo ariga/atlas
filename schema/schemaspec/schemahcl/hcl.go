@@ -24,10 +24,12 @@ var Default = &defaultCodec{}
 type defaultCodec struct {
 }
 
+// UnmarshalSpec implements schemaspec.Unmarshaler by invoking Unmarshal.
 func (*defaultCodec) UnmarshalSpec(data []byte, v interface{}) error {
 	return Unmarshal(data, v)
 }
 
+// MarshalSpec implements schemaspec.Marshaler by invoking Marshal.
 func (m *defaultCodec) MarshalSpec(v interface{}) ([]byte, error) {
 	return Marshal(v)
 }
