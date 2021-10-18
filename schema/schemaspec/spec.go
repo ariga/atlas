@@ -116,6 +116,7 @@ func (a *Attr) Strings() ([]string, error) {
 	return out, nil
 }
 
+// Attr returns the Attr by the provided name and reports whether it was found.
 func (r *Resource) Attr(name string) (*Attr, bool) {
 	return attrVal(r.Attrs, name)
 }

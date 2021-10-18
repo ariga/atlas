@@ -30,6 +30,11 @@ func (d *DefaultExtension) Remain() *Resource {
 	return &d.Extra
 }
 
+// Attr returns the Attr by the provided name and reports whether it was found.
+func (d *DefaultExtension) Attr(name string) (*Attr, bool) {
+	return d.Extra.Attr(name)
+}
+
 type registry map[string]interface{}
 
 var (
