@@ -47,7 +47,7 @@ type (
 	// Marshaler is the interface implemented by types that can marshal objects into a
 	// valid Atlas DDL representation.
 	Marshaler interface {
-		MarshalSpec(v interface{}) ([]byte, error)
+		MarshalSpec(interface{}) ([]byte, error)
 	}
 
 	// Unmarshaler is the interface implemented by types that can unmarshal an Atlas DDL
