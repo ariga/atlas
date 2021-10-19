@@ -78,3 +78,9 @@ const (
 	TypeFloat   Type = "float"
 	TypeTime    Type = "time"
 )
+
+func init() {
+	schemaspec.Register("column", &Column{})
+	schemaspec.Register("table", &Table{})
+	schemaspec.Register("schema", &Schema{})
+}
