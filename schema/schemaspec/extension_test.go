@@ -143,12 +143,12 @@ func TestRef(t *testing.T) {
 			},
 		},
 	}
-	tgt := A{}
-	err := resource.As(&tgt)
+	var a A
+	err := resource.As(&a)
 	require.NoError(t, err)
-	require.EqualValues(t, &schemaspec.Ref{V: "$user.rotemtam"}, tgt.User)
+	require.EqualValues(t, &schemaspec.Ref{V: "$user.rotemtam"}, a.User)
 	scan := &schemaspec.Resource{}
-	err = scan.Scan(&tgt)
+	err = scan.Scan(&a)
 	require.NoError(t, err)
 	require.EqualValues(t, resource, scan)
 }
@@ -175,16 +175,16 @@ func TestListRef(t *testing.T) {
 		},
 	}
 
-	var tgt B
-	err := resource.As(&tgt)
+	var b B
+	err := resource.As(&b)
 	require.NoError(t, err)
-	require.Len(t, tgt.Users, 2)
+	require.Len(t, b.Users, 2)
 	require.EqualValues(t, []*schemaspec.Ref{
 		{V: "$user.a8m"},
 		{V: "$user.rotemtam"},
-	}, tgt.Users)
+	}, b.Users)
 	scan := &schemaspec.Resource{}
-	err = scan.Scan(&tgt)
+	err = scan.Scan(&b)
 	require.NoError(t, err)
 	require.EqualValues(t, resource, scan)
 }
