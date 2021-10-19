@@ -1,6 +1,8 @@
 package mysql
 
 import (
+	"fmt"
+	"log"
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
@@ -252,7 +254,7 @@ func TestConvertSpecColumnType(t *testing.T) {
 			},
 		},
 		{
-			spec:     specutil.NewCol("enum", "enum", specutil.ListAttr("values", "a", "b", "c")),
+			spec:     specutil.NewCol("enum", "enum", specutil.ListAttr("values", `"a"`, `"b"`, `"c"`)),
 			expected: &schema.EnumType{Values: []string{"a", "b", "c"}},
 		},
 		{
@@ -273,10 +275,32 @@ func TestConvertSpecColumnType(t *testing.T) {
 		},
 	} {
 		t.Run(tt.spec.Name, func(t *testing.T) {
-			// todo(rotemtam): test uses unexported method, change test after implementing driver Marshal
-			columnType, err := convertColumnType(tt.spec)
+			var s schema.Schema
+			err := UnmarshalSpec(doc(tt.spec), schemahcl.Unmarshal, &s)
 			require.NoError(t, err)
-			require.EqualValues(t, tt.expected, columnType)
+			tbl, ok := s.Table("table")
+			require.True(t, ok)
+			col, ok := tbl.Column(tt.spec.Name)
+			require.True(t, ok)
+			require.EqualValues(t, tt.expected, col.Type.Type)
 		})
 	}
+}
+
+// doc returns an Atlas HCL document containing the column spec.
+func doc(c *sqlspec.Column) []byte {
+	mm, err := schemahcl.Marshal(c)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	tmpl := `
+schema "default" {
+}
+table "table" {
+	schema = "default"
+	%s
+}
+`
+	body := fmt.Sprintf(tmpl, string(mm))
+	return []byte(body)
 }
