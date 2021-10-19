@@ -20,8 +20,7 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 	if err := unmarshaler.UnmarshalSpec(data, &doc); err != nil {
 		return err
 	}
-	switch v := v.(type) {
-	case *schema.Schema:
+	if v, ok := v.(*schema.Schema); ok {
 		if len(doc.Schemas) != 1 {
 			return fmt.Errorf("mysql: expecting document to contain a single schema, got %d", len(doc.Schemas))
 		}
@@ -30,10 +29,9 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 			return fmt.Errorf("mysql: failed converting to *schema.Schema: %w", err)
 		}
 		*v = *conv
-	default:
-		return fmt.Errorf("mysql: failed unmarshaling spec. %T is not supported", v)
+		return nil
 	}
-	return nil
+	return fmt.Errorf("mysql: failed unmarshaling spec. %T is not supported", v)
 }
 
 // convertTable converts a sqlspec.Table to a schema.Table. Table conversion is done without converting
