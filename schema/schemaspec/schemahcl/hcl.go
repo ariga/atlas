@@ -17,26 +17,30 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-// Marshal returns the Atlas HCL encoding of v.
-func Marshal(v interface{}) ([]byte, error) {
-	r := &schemaspec.Resource{}
-	if err := r.Scan(v); err != nil {
-		return nil, fmt.Errorf("schemahcl: failed scanning %T to resource: %w", v, err)
-	}
-	return encode(r)
-}
+var (
+	// Marshal returns the Atlas HCL encoding of v.
+	Marshal = schemaspec.MarshalerFunc(func(v interface{}) ([]byte, error) {
+		r := &schemaspec.Resource{}
+		if err := r.Scan(v); err != nil {
+			return nil, fmt.Errorf("schemahcl: failed scanning %T to resource: %w", v, err)
+		}
+		return encode(r)
+	})
+)
 
-// Unmarshal parses the Atlas HCL-encoded data and stores the result in the target.
-func Unmarshal(data []byte, v interface{}) error {
-	spec, err := decode(data)
-	if err != nil {
-		return fmt.Errorf("schemahcl: failed decoding: %w", err)
-	}
-	if err := spec.As(v); err != nil {
-		return fmt.Errorf("schemahcl: failed reading spec as %T: %w", v, err)
-	}
-	return nil
-}
+var (
+	// Unmarshal parses the Atlas HCL-encoded data and stores the result in the target.
+	Unmarshal = schemaspec.UnmarshalerFunc(func(data []byte, v interface{}) error {
+		spec, err := decode(data)
+		if err != nil {
+			return fmt.Errorf("schemahcl: failed decoding: %w", err)
+		}
+		if err := spec.As(v); err != nil {
+			return fmt.Errorf("schemahcl: failed reading spec as %T: %w", v, err)
+		}
+		return nil
+	})
+)
 
 type container struct {
 	Body hcl.Body `hcl:",remain"`
