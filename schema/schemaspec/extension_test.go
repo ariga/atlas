@@ -132,10 +132,10 @@ func TestRef(t *testing.T) {
 		Name string          `spec:",name"`
 		User *schemaspec.Ref `spec:"user"`
 	}
-	schemaspec.Register("res", &A{})
+	schemaspec.Register("a", &A{})
 	resource := &schemaspec.Resource{
 		Name: "x",
-		Type: "res",
+		Type: "a",
 		Attrs: []*schemaspec.Attr{
 			{
 				K: "user",
@@ -154,14 +154,14 @@ func TestRef(t *testing.T) {
 }
 
 func TestListRef(t *testing.T) {
-	type A struct {
+	type B struct {
 		Name  string            `spec:",name"`
 		Users []*schemaspec.Ref `spec:"users"`
 	}
-	schemaspec.Register("res", &A{})
+	schemaspec.Register("b", &B{})
 	resource := &schemaspec.Resource{
 		Name: "x",
-		Type: "res",
+		Type: "b",
 		Attrs: []*schemaspec.Attr{
 			{
 				K: "users",
@@ -175,7 +175,7 @@ func TestListRef(t *testing.T) {
 		},
 	}
 
-	tgt := A{}
+	var tgt B
 	err := resource.As(&tgt)
 	require.NoError(t, err)
 	require.Len(t, tgt.Users, 2)
