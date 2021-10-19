@@ -306,10 +306,12 @@ func (o *Override) version() string {
 	return v
 }
 
+// Attr returns the Attr with the given name and reports if it exists.
 func (r *Resource) Attr(name string) (*Attr, bool) {
 	return getAttrVal(r.Attrs, name)
 }
 
+// SetAttr appends or replaces the Attr the the Resource's attributes.
 func (r *Resource) SetAttr(attr *Attr) {
 	r.Attrs = replaceOrAppendAttr(r.Attrs, attr)
 }
