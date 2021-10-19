@@ -20,7 +20,7 @@ type (
 		V Value
 	}
 
-	// Value represents the value of a Attr.
+	// Value represents the value of an Attr.
 	Value interface {
 		val()
 	}
@@ -55,6 +55,14 @@ type (
 	Unmarshaler interface {
 		UnmarshalSpec([]byte, interface{}) error
 	}
+
+	// MarshalerFunc is the function type that is implemented by the MarshalSpec
+	// method of the Marshaler interface.
+	MarshalerFunc func(interface{}) ([]byte, error)
+
+	// UnmarshalerFunc is the function type that is implemented by the UnmarshalSpec
+	// method of the Unmarshaler interface.
+	UnmarshalerFunc func([]byte, interface{}) error
 )
 
 // Int returns an integer from the Value of the Attr. If The value is not a LiteralValue or the value
@@ -130,6 +138,16 @@ func (r *Resource) SetAttr(attr *Attr) {
 	r.Attrs = replaceOrAppendAttr(r.Attrs, attr)
 }
 
+// MarshalSpec implements Marshaler.
+func (f MarshalerFunc) MarshalSpec(v interface{}) ([]byte, error) {
+	return f(v)
+}
+
+// UnmarshalSpec implements Unmarshaler.
+func (f UnmarshalerFunc) UnmarshalSpec(data []byte, v interface{}) error {
+	return f(data, v)
+}
+
 func attrVal(attrs []*Attr, name string) (*Attr, bool) {
 	for _, attr := range attrs {
 		if attr.K == name {
@@ -163,3 +181,8 @@ func StrVal(v Value) (string, error) {
 func (*LiteralValue) val() {}
 func (*ListValue) val()    {}
 func (*Ref) val()          {}
+
+var (
+	_ Unmarshaler = UnmarshalerFunc(nil)
+	_ Marshaler   = MarshalerFunc(nil)
+)

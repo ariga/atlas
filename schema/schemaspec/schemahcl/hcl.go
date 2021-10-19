@@ -17,32 +17,21 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-type MarshalerFunc func(interface{}) ([]byte, error)
-
-func (f MarshalerFunc) MarshalSpec(v interface{}) ([]byte, error) {
-	return f(v)
-}
-
 var (
 	// Marshal returns the Atlas HCL encoding of v.
-	Marshal = MarshalerFunc(func(v interface{}) ([]byte, error) {
+	Marshal = schemaspec.MarshalerFunc(func(v interface{}) ([]byte, error) {
 		r := &schemaspec.Resource{}
 		if err := r.Scan(v); err != nil {
 			return nil, fmt.Errorf("schemahcl: failed scanning %T to resource: %w", v, err)
 		}
 		return encode(r)
 	})
-	_ schemaspec.Marshaler = MarshalerFunc(nil)
+	_ schemaspec.Marshaler = schemaspec.MarshalerFunc(nil)
 )
 
-type UnmarshalerFunc func([]byte, interface{}) error
-
-func (f UnmarshalerFunc) UnmarshalSpec(data []byte, v interface{}) error {
-	return f(data, v)
-}
-
 var (
-	Unmarshal = UnmarshalerFunc(func(data []byte, v interface{}) error {
+	// Unmarshal parses the Atlas HCL-encoded data and stores the result in the target.
+	Unmarshal = schemaspec.UnmarshalerFunc(func(data []byte, v interface{}) error {
 		spec, err := decode(data)
 		if err != nil {
 			return fmt.Errorf("schemahcl: failed decoding: %w", err)
@@ -52,7 +41,6 @@ var (
 		}
 		return nil
 	})
-	_ schemaspec.Unmarshaler = UnmarshalerFunc(nil)
 )
 
 type container struct {
