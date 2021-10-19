@@ -26,7 +26,6 @@ var (
 		}
 		return encode(r)
 	})
-	_ schemaspec.Marshaler = schemaspec.MarshalerFunc(nil)
 )
 
 var (
