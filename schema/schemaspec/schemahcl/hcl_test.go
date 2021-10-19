@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,6 +30,9 @@ s = "hello, world"
 	require.EqualValues(t, f, string(marshal))
 }
 
+func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}) error {
+	return unmarshaler.UnmarshalSpec(data, v)
+}
 func TestResource(t *testing.T) {
 	f := `endpoint "/hello" {
   description = "the hello handler"
@@ -56,7 +60,7 @@ func TestResource(t *testing.T) {
 		}
 	)
 	var test File
-	err := Unmarshal([]byte(f), &test)
+	err := UnmarshalSpec([]byte(f), Unmarshal, &test)
 	require.NoError(t, err)
 	require.Len(t, test.Endpoints, 1)
 	expected := &Endpoint{
@@ -137,11 +141,4 @@ func ExampleMarshal() {
 	//   x = 1
 	//   y = 1
 	// }
-}
-
-func TestInterface(t *testing.T) {
-	var (
-		_ schemaspec.Unmarshaler = &defaultCodec{}
-		_ schemaspec.Marshaler   = &defaultCodec{}
-	)
 }

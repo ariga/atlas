@@ -17,43 +17,43 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-// Default is a default implementation of schemaspec.Marshaler and schemaspec.Unmarshaler
-// for Atlas HCL documents.
-var Default = &defaultCodec{}
+type MarshalerFunc func(interface{}) ([]byte, error)
 
-type defaultCodec struct {
+func (f MarshalerFunc) MarshalSpec(v interface{}) ([]byte, error) {
+	return f(v)
 }
 
-// UnmarshalSpec implements schemaspec.Unmarshaler by invoking Unmarshal.
-func (*defaultCodec) UnmarshalSpec(data []byte, v interface{}) error {
-	return Unmarshal(data, v)
+var (
+	// Marshal returns the Atlas HCL encoding of v.
+	Marshal = MarshalerFunc(func(v interface{}) ([]byte, error) {
+		r := &schemaspec.Resource{}
+		if err := r.Scan(v); err != nil {
+			return nil, fmt.Errorf("schemahcl: failed scanning %T to resource: %w", v, err)
+		}
+		return encode(r)
+	})
+	_ schemaspec.Marshaler = MarshalerFunc(nil)
+)
+
+type UnmarshalerFunc func([]byte, interface{}) error
+
+func (f UnmarshalerFunc) UnmarshalSpec(data []byte, v interface{}) error {
+	return f(data, v)
 }
 
-// MarshalSpec implements schemaspec.Marshaler by invoking Marshal.
-func (m *defaultCodec) MarshalSpec(v interface{}) ([]byte, error) {
-	return Marshal(v)
-}
-
-// Marshal returns the Atlas HCL encoding of v.
-func Marshal(v interface{}) ([]byte, error) {
-	r := &schemaspec.Resource{}
-	if err := r.Scan(v); err != nil {
-		return nil, fmt.Errorf("schemahcl: failed scanning %T to resource: %w", v, err)
-	}
-	return encode(r)
-}
-
-// Unmarshal parses the Atlas HCL-encoded data and stores the result in the target.
-func Unmarshal(data []byte, v interface{}) error {
-	spec, err := decode(data)
-	if err != nil {
-		return fmt.Errorf("schemahcl: failed decoding: %w", err)
-	}
-	if err := spec.As(v); err != nil {
-		return fmt.Errorf("schemahcl: failed reading spec as %T: %w", v, err)
-	}
-	return nil
-}
+var (
+	Unmarshal = UnmarshalerFunc(func(data []byte, v interface{}) error {
+		spec, err := decode(data)
+		if err != nil {
+			return fmt.Errorf("schemahcl: failed decoding: %w", err)
+		}
+		if err := spec.As(v); err != nil {
+			return fmt.Errorf("schemahcl: failed reading spec as %T: %w", v, err)
+		}
+		return nil
+	})
+	_ schemaspec.Unmarshaler = UnmarshalerFunc(nil)
+)
 
 type container struct {
 	Body hcl.Body `hcl:",remain"`
