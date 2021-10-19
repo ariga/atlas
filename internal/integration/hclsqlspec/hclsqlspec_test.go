@@ -314,6 +314,21 @@ table "accounts" {
 	require.NoError(t, err)
 }
 
+func TestMarshalTopLevel(t *testing.T) {
+	c := &sqlspec.Column{
+		Name:     "column",
+		Null:     true,
+		TypeName: "string",
+	}
+	h, err := schemahcl.Marshal(c)
+	require.NoError(t, err)
+	require.EqualValues(t, `column "column" {
+  null = true
+  type = "string"
+}
+`, string(h))
+}
+
 func decode(f string) (*db, error) {
 	d := &db{}
 	if err := schemahcl.Unmarshal([]byte(f), d); err != nil {
