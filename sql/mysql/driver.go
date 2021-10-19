@@ -268,7 +268,7 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 	t.Columns = append(t.Columns, c)
 	if key.String == "PRI" {
 		if t.PrimaryKey == nil {
-			t.PrimaryKey = &schema.Index{Name: key.String}
+			t.PrimaryKey = &schema.Index{Table: t, Name: key.String}
 		}
 		t.PrimaryKey.Parts = append(t.PrimaryKey.Parts, &schema.IndexPart{
 			C:     c,
