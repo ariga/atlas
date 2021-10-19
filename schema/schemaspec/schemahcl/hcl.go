@@ -184,6 +184,11 @@ func toResource(ctx *hcl.EvalContext, block *hclsyntax.Block) (*schemaspec.Resou
 func encode(r *schemaspec.Resource) ([]byte, error) {
 	f := hclwrite.NewFile()
 	body := f.Body()
+	// If the resource has a Type then it is rendered as an HCL block.
+	if r.Type != "" {
+		blk := body.AppendNewBlock(r.Type, labels(r))
+		body = blk.Body()
+	}
 	for _, attr := range r.Attrs {
 		if err := writeAttr(attr, body); err != nil {
 			return nil, err
@@ -200,11 +205,7 @@ func encode(r *schemaspec.Resource) ([]byte, error) {
 }
 
 func writeResource(b *schemaspec.Resource, body *hclwrite.Body) error {
-	var labels []string
-	if b.Name != "" {
-		labels = append(labels, b.Name)
-	}
-	blk := body.AppendNewBlock(b.Type, labels)
+	blk := body.AppendNewBlock(b.Type, labels(b))
 	nb := blk.Body()
 	for _, attr := range b.Attrs {
 		if err := writeAttr(attr, nb); err != nil {
@@ -217,6 +218,14 @@ func writeResource(b *schemaspec.Resource, body *hclwrite.Body) error {
 		}
 	}
 	return nil
+}
+
+func labels(r *schemaspec.Resource) []string {
+	var l []string
+	if r.Name != "" {
+		l = append(l, r.Name)
+	}
+	return l
 }
 
 func writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
