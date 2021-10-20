@@ -371,11 +371,10 @@ func parseRawType(raw string) (schema.Type, error) {
 			return &schema.EnumType{
 				Values: values,
 			}, nil
-		} else {
-			return &SetType{
-				Values: values,
-			}, nil
 		}
+		return &SetType{
+			Values: values,
+		}, nil
 	case tDate, tDateTime, tTime, tTimestamp, tYear:
 		return &schema.TimeType{
 			T: t,

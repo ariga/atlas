@@ -61,6 +61,8 @@ type (
 	Type string
 )
 
+// Type<X> are Types that represent database agnostic column types to be used
+// in Atlas DDL documents.
 const (
 	TypeInt     Type = "int"
 	TypeInt8    Type = "int8"

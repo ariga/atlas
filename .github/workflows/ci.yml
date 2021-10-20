@@ -13,8 +13,8 @@ jobs:
       - name: Run linters
         uses: golangci/golangci-lint-action@v2.5.2
         with:
-          version: v1.28
-
+          version: v1.42.1
+          args: --verbose --enable revive
   unit:
     runs-on: ubuntu-latest
     strategy:
