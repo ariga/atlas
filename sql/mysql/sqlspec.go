@@ -348,5 +348,9 @@ func nenumSpec(t *schema.EnumType) (*sqlspec.Column, error) {
 	if len(t.Values) == 0 {
 		return nil, errors.New("mysql: schema enum fields to have values")
 	}
-	return specutil.NewCol("", "enum", specutil.ListAttr("values", t.Values...)), nil
+	quoted := make([]string, 0, len(t.Values))
+	for _, v := range t.Values {
+		quoted = append(quoted, strconv.Quote(v))
+	}
+	return specutil.NewCol("", "enum", specutil.ListAttr("values", quoted...)), nil
 }
