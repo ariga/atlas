@@ -13,22 +13,22 @@ import (
 	"ariga.io/atlas/sql/sqlspec"
 )
 
-type ddlDoc struct {
+type doc struct {
 	Tables  []*sqlspec.Table  `spec:"table"`
 	Schemas []*sqlspec.Schema `spec:"schema"`
 }
 
 // UnmarshalSpec unmarshals an Atlas DDL document using an unmarshaler into v.
 func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}) error {
-	var doc ddlDoc
-	if err := unmarshaler.UnmarshalSpec(data, &doc); err != nil {
+	var d doc
+	if err := unmarshaler.UnmarshalSpec(data, &d); err != nil {
 		return err
 	}
 	if v, ok := v.(*schema.Schema); ok {
-		if len(doc.Schemas) != 1 {
-			return fmt.Errorf("mysql: expecting document to contain a single schema, got %d", len(doc.Schemas))
+		if len(d.Schemas) != 1 {
+			return fmt.Errorf("mysql: expecting document to contain a single schema, got %d", len(d.Schemas))
 		}
-		conv, err := specutil.Schema(doc.Schemas[0], doc.Tables, convertTable)
+		conv, err := specutil.Schema(d.Schemas[0], d.Tables, convertTable)
 		if err != nil {
 			return fmt.Errorf("mysql: failed converting to *schema.Schema: %w", err)
 		}
@@ -51,11 +51,10 @@ func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) 
 	if err != nil {
 		return nil, fmt.Errorf("mysql: failed converting schema to spec: %w", err)
 	}
-	doc := &ddlDoc{
+	return marshaler.MarshalSpec(&doc{
 		Tables:  tables,
 		Schemas: []*sqlspec.Schema{spec},
-	}
-	return marshaler.MarshalSpec(doc)
+	})
 }
 
 // convertTable converts a sqlspec.Table to a schema.Table. Table conversion is done without converting
