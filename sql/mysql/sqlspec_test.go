@@ -276,7 +276,7 @@ func TestUnmarshalSpecColumnTypes(t *testing.T) {
 	} {
 		t.Run(tt.spec.Name, func(t *testing.T) {
 			var s schema.Schema
-			err := UnmarshalSpec(doc(tt.spec), schemahcl.Unmarshal, &s)
+			err := UnmarshalSpec(hcl(tt.spec), schemahcl.Unmarshal, &s)
 			require.NoError(t, err)
 			tbl, ok := s.Table("table")
 			require.True(t, ok)
@@ -287,8 +287,8 @@ func TestUnmarshalSpecColumnTypes(t *testing.T) {
 	}
 }
 
-// doc returns an Atlas HCL document containing the column spec.
-func doc(c *sqlspec.Column) []byte {
+// hcl returns an Atlas HCL document containing the column spec.
+func hcl(c *sqlspec.Column) []byte {
 	mm, err := schemahcl.Marshal(c)
 	if err != nil {
 		log.Fatalln(err)
