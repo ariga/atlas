@@ -78,6 +78,9 @@ country "israel" {
     metadata {
         phone_prefix = "972"
     }
+    metadata {
+        phone_prefix = "123"
+    }
     metadata "geo" {
 		continent = "asia"
     }
@@ -85,6 +88,7 @@ country "israel" {
 
 metadata  = country.israel.metadata.0
 phone_prefix = country.israel.metadata.0.phone_prefix
+phone_prefix_2 = country.israel.metadata.1.phone_prefix
 continent = country.israel.metadata.geo.continent
 `
 	type (
@@ -97,14 +101,16 @@ continent = country.israel.metadata.geo.continent
 		}
 	)
 	var test struct {
-		Countries   []*Country      `spec:"country"`
-		MetadataRef *schemaspec.Ref `spec:"metadata"`
-		PhonePrefix string          `spec:"phone_prefix"`
-		Continent   string          `spec:"continent"`
+		Countries    []*Country      `spec:"country"`
+		MetadataRef  *schemaspec.Ref `spec:"metadata"`
+		PhonePrefix  string          `spec:"phone_prefix"`
+		PhonePrefix2 string          `spec:"phone_prefix_2"`
+		Continent    string          `spec:"continent"`
 	}
 	err := Unmarshal([]byte(f), &test)
 	require.NoError(t, err)
 	require.EqualValues(t, "972", test.PhonePrefix)
+	require.EqualValues(t, "123", test.PhonePrefix2)
 	require.EqualValues(t, "asia", test.Continent)
 	require.EqualValues(t, "$country.israel.$metadata.0", test.MetadataRef.V)
 }
