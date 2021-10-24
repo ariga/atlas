@@ -75,9 +75,9 @@ config "defaults" {
 func TestUnlabeledBlockReferences(t *testing.T) {
 	f := `
 country "israel" {
-	metadata {
-		phone_prefix = "972"
-	}
+    metadata {
+        phone_prefix = "972"
+    }
     metadata "geo" {
 		continent = "asia"
     }
