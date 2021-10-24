@@ -54,10 +54,12 @@ func blockVars(b *hclsyntax.Body, parentAddr string, defs *blockDef) (map[string
 		if len(blocks) == 0 {
 			v[name] = cty.NullVal(def.asCty())
 		}
+		var anonCounter int
 		for _, blk := range blocks {
 			blkName := blockName(blk)
 			if blkName == "" {
-				continue
+				blkName = strconv.Itoa(anonCounter)
+				anonCounter += 1
 			}
 			attrs := attrMap(blk.Body.Attributes)
 			// Fill missing attributes with zero values.
