@@ -72,6 +72,61 @@ config "defaults" {
 	}, test.Endpoints)
 }
 
+func TestUnlabeledBlockReferences(t *testing.T) {
+	f := `
+country "israel" {
+    metadata {
+        phone_prefix = "972"
+    }
+    metadata {
+        phone_prefix = "123"
+    }
+    metadata "geo" {
+		continent = "asia"
+    }
+}
+
+metadata  = country.israel.metadata.0
+phone_prefix = country.israel.metadata.0.phone_prefix
+phone_prefix_2 = country.israel.metadata.1.phone_prefix
+continent = country.israel.metadata.geo.continent
+`
+	type (
+		Metadata struct {
+			PhonePrefix string `spec:"phone_prefix"`
+			Continent   string `spec:"continent"`
+		}
+		Country struct {
+			Metadata []*Metadata `spec:"metadata"`
+		}
+		Test struct {
+			Countries    []*Country      `spec:"country"`
+			MetadataRef  *schemaspec.Ref `spec:"metadata"`
+			PhonePrefix  string          `spec:"phone_prefix"`
+			PhonePrefix2 string          `spec:"phone_prefix_2"`
+			Continent    string          `spec:"continent"`
+		}
+	)
+	var test Test
+	err := Unmarshal([]byte(f), &test)
+	require.NoError(t, err)
+	require.EqualValues(t, test, Test{
+		Countries: []*Country{
+			{
+				Metadata: []*Metadata{
+					{PhonePrefix: "972"},
+					{PhonePrefix: "123"},
+					{Continent: "asia"},
+				},
+			},
+		},
+		MetadataRef:  &schemaspec.Ref{V: "$country.israel.$metadata.0"},
+		PhonePrefix:  "972",
+		PhonePrefix2: "123",
+		Continent:    "asia",
+	})
+}
+
 func TestNestedReferences(t *testing.T) {
 	f := `
 country "israel" {
