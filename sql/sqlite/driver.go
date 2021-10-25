@@ -522,3 +522,59 @@ const (
 	// Query to list table foreign-keys.
 	fksQuery = "SELECT `id`, `from`, `to`, `table`, `on_update`, `on_delete` FROM pragma_foreign_key_list('%s') ORDER BY id, seq"
 )
+
+// MySQL standard column types as defined in its codebase. Name and order
+// is organized differently than MySQL.
+//
+// https://github.com/mysql/mysql-server/blob/8.0/include/field_types.h
+// https://github.com/mysql/mysql-server/blob/8.0/sql/dd/types/column.h
+// https://github.com/mysql/mysql-server/blob/8.0/sql/sql_show.cc
+// https://github.com/mysql/mysql-server/blob/8.0/sql/gis/geometries.cc
+const (
+	tBit       = "bit"       // MYSQL_TYPE_BIT
+	tInt       = "int"       // MYSQL_TYPE_LONG
+	tTinyInt   = "tinyint"   // MYSQL_TYPE_TINY
+	tSmallInt  = "smallint"  // MYSQL_TYPE_SHORT
+	tMediumInt = "mediumint" // MYSQL_TYPE_INT24
+	tBigInt    = "bigint"    // MYSQL_TYPE_LONGLONG
+
+	tDecimal = "decimal" // MYSQL_TYPE_DECIMAL
+	tNumeric = "numeric" // MYSQL_TYPE_DECIMAL (numeric_type rule in sql_yacc.yy)
+	tFloat   = "float"   // MYSQL_TYPE_FLOAT
+	tDouble  = "double"  // MYSQL_TYPE_DOUBLE
+	tReal    = "real"    // MYSQL_TYPE_FLOAT or MYSQL_TYPE_DOUBLE (real_type in sql_yacc.yy)
+
+	tTimestamp = "timestamp" // MYSQL_TYPE_TIMESTAMP
+	tDate      = "date"      // MYSQL_TYPE_DATE
+	tTime      = "time"      // MYSQL_TYPE_TIME
+	tDateTime  = "datetime"  // MYSQL_TYPE_DATETIME
+	tYear      = "year"      // MYSQL_TYPE_YEAR
+
+	tVarchar    = "varchar"    // MYSQL_TYPE_VAR_STRING, MYSQL_TYPE_VARCHAR
+	tChar       = "char"       // MYSQL_TYPE_STRING
+	tVarBinary  = "varbinary"  // MYSQL_TYPE_VAR_STRING + NULL CHARACTER_SET.
+	tBinary     = "binary"     // MYSQL_TYPE_STRING + NULL CHARACTER_SET.
+	tBlob       = "blob"       // MYSQL_TYPE_BLOB
+	tTinyBlob   = "tinyblob"   // MYSQL_TYPE_TINYBLOB
+	tMediumBlob = "mediumblob" // MYSQL_TYPE_MEDIUM_BLOB
+	tLongBlob   = "longblob"   // MYSQL_TYPE_LONG_BLOB
+	tText       = "text"       // MYSQL_TYPE_BLOB + CHARACTER_SET utf8mb4
+	tTinyText   = "tinytext"   // MYSQL_TYPE_TINYBLOB + CHARACTER_SET utf8mb4
+	tMediumText = "mediumtext" // MYSQL_TYPE_MEDIUM_BLOB + CHARACTER_SET utf8mb4
+	tLongText   = "longtext"   // MYSQL_TYPE_LONG_BLOB with + CHARACTER_SET utf8mb4
+
+	tEnum = "enum" // MYSQL_TYPE_ENUM
+	tSet  = "set"  // MYSQL_TYPE_SET
+	tJSON = "json" // MYSQL_TYPE_JSON
+
+	tGeometry           = "geometry"           // MYSQL_TYPE_GEOMETRY
+	tPoint              = "point"              // Geometry_type::kPoint
+	tMultiPoint         = "multipoint"         // Geometry_type::kMultipoint
+	tLineString         = "linestring"         // Geometry_type::kLinestring
+	tMultiLineString    = "multilinestring"    // Geometry_type::kMultilinestring
+	tPolygon            = "polygon"            // Geometry_type::kPolygon
+	tMultiPolygon       = "multipolygon"       // Geometry_type::kMultipolygon
+	tGeoCollection      = "geomcollection"     // Geometry_type::kGeometrycollection
+	tGeometryCollection = "geometrycollection" // Geometry_type::kGeometrycollection
+)
+
