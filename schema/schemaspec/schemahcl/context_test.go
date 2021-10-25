@@ -99,20 +99,32 @@ continent = country.israel.metadata.geo.continent
 		Country struct {
 			Metadata []*Metadata `spec:"metadata"`
 		}
+		Test struct {
+			Countries    []*Country      `spec:"country"`
+			MetadataRef  *schemaspec.Ref `spec:"metadata"`
+			PhonePrefix  string          `spec:"phone_prefix"`
+			PhonePrefix2 string          `spec:"phone_prefix_2"`
+			Continent    string          `spec:"continent"`
+		}
 	)
-	var test struct {
-		Countries    []*Country      `spec:"country"`
-		MetadataRef  *schemaspec.Ref `spec:"metadata"`
-		PhonePrefix  string          `spec:"phone_prefix"`
-		PhonePrefix2 string          `spec:"phone_prefix_2"`
-		Continent    string          `spec:"continent"`
-	}
+	var test Test
 	err := Unmarshal([]byte(f), &test)
 	require.NoError(t, err)
-	require.EqualValues(t, "972", test.PhonePrefix)
-	require.EqualValues(t, "123", test.PhonePrefix2)
-	require.EqualValues(t, "asia", test.Continent)
-	require.EqualValues(t, "$country.israel.$metadata.0", test.MetadataRef.V)
+	require.EqualValues(t, test, Test{
+		Countries: []*Country{
+			{
+				Metadata: []*Metadata{
+					{PhonePrefix: "972"},
+					{PhonePrefix: "123"},
+					{Continent: "asia"},
+				},
+			},
+		},
+		MetadataRef:  &schemaspec.Ref{V: "$country.israel.$metadata.0"},
+		PhonePrefix:  "972",
+		PhonePrefix2: "123",
+		Continent:    "asia",
+	})
 }
 
 func TestNestedReferences(t *testing.T) {
