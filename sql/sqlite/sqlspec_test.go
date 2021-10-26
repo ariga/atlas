@@ -22,11 +22,7 @@ table "table" {
 	column "col" {
 		type = "int"
 	}
-	
-}
-`
-	b := `
-column "age" {
+	column "age" {
 		type = "int"
 	}
 	column "account_name" {
@@ -36,6 +32,10 @@ column "age" {
 	primary_key {
 		columns = [table.table.column.col]
 	}
+}
+`
+	b := `
+	
 	index "index" {
 		unique = true
 		columns = [
@@ -80,23 +80,23 @@ table "accounts" {
 						},
 					},
 				},
-				//{
-				//	Name: "age",
-				//	Type: &schema.ColumnType{
-				//		Type: &schema.IntegerType{
-				//			T: "integer",
-				//		},
-				//	},
-				//},
-				//{
-				//	Name: "account_name",
-				//	Type: &schema.ColumnType{
-				//		Type: &schema.StringType{
-				//			T:    "varchar",
-				//			Size: 32,
-				//		},
-				//	},
-				//},
+				{
+					Name: "age",
+					Type: &schema.ColumnType{
+						Type: &schema.IntegerType{
+							T: "integer",
+						},
+					},
+				},
+				{
+					Name: "account_name",
+					Type: &schema.ColumnType{
+						Type: &schema.StringType{
+							T:    "text",
+							Size: 32,
+						},
+					},
+				},
 			},
 		},
 		//{
@@ -115,12 +115,12 @@ table "accounts" {
 		//	},
 		//},
 	}
-	//exp.Tables[0].PrimaryKey = &schema.Index{
-	//	Table: exp.Tables[0],
-	//	Parts: []*schema.IndexPart{
-	//		{SeqNo: 0, C: exp.Tables[0].Columns[0]},
-	//	},
-	//}
+	exp.Tables[0].PrimaryKey = &schema.Index{
+		Table: exp.Tables[0],
+		Parts: []*schema.IndexPart{
+			{SeqNo: 0, C: exp.Tables[0].Columns[0]},
+		},
+	}
 	//exp.Tables[0].Indexes = []*schema.Index{
 	//	{
 	//		Name:   "index",
