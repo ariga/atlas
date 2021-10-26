@@ -21,18 +21,18 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 	if err := unmarshaler.UnmarshalSpec(data, &d); err != nil {
 		return err
 	}
-	if v, ok := v.(*schema.Schema); ok {
-		if len(d.Schemas) != 1 {
-			return fmt.Errorf("sqlite: expecting document to contain a single schema, got %d", len(d.Schemas))
-		}
-		conv, err := specutil.Schema(d.Schemas[0], d.Tables, convertTable)
-		if err != nil {
-			return fmt.Errorf("sqlite: failed converting to *schema.Schema: %w", err)
-		}
-		*v = *conv
-		return nil
+	if v, ok := v.(*schema.Schema); !ok {
+		return fmt.Errorf("sqlite: failed unmarshaling spec. %T is not supported", v)
 	}
-	return fmt.Errorf("sqlite: failed unmarshaling spec. %T is not supported", v)
+	if len(d.Schemas) != 1 {
+		return fmt.Errorf("sqlite: expecting document to contain a single schema, got %d", len(d.Schemas))
+	}
+	conv, err := specutil.Schema(d.Schemas[0], d.Tables, convertTable)
+	if err != nil {
+		return fmt.Errorf("sqlite: failed converting to *schema.Schema: %w", err)
+	}
+	*v = *conv
+	return nil
 }
 
 // convertTable converts a sqlspec.Table to a schema.Table. Table conversion is done without converting
