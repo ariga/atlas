@@ -83,6 +83,7 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 	return parseRawType(spec.TypeName)
 }
 
+// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
 func nconvertInteger(spec *sqlspec.Column) (schema.Type, error) {
 	if strings.HasPrefix(spec.TypeName, "u") {
 		// todo(rotemtam): support his once we can express CHECK(col >= 0)
@@ -94,6 +95,7 @@ func nconvertInteger(spec *sqlspec.Column) (schema.Type, error) {
 	return typ, nil
 }
 
+// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
 func nconvertBinary(spec *sqlspec.Column) (schema.Type, error) {
 	bt := &schema.BinaryType{
 		T: "blob",
@@ -101,6 +103,7 @@ func nconvertBinary(spec *sqlspec.Column) (schema.Type, error) {
 	return bt, nil
 }
 
+// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
 func nconvertString(spec *sqlspec.Column) (schema.Type, error) {
 	st := &schema.StringType{
 		T: "text",
@@ -115,19 +118,23 @@ func nconvertString(spec *sqlspec.Column) (schema.Type, error) {
 	return st, nil
 }
 
+// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
 func nconvertEnum(spec *sqlspec.Column) (schema.Type, error) {
 	// sqlite does not have a enum column type
 	return &schema.StringType{T: "text"}, nil
 }
 
+// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
 func nconvertBoolean(spec *sqlspec.Column) (schema.Type, error) {
 	return &schema.BoolType{T: "boolean"}, nil
 }
 
+// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
 func nconvertTime(spec *sqlspec.Column) (schema.Type, error) {
 	return &schema.TimeType{T: "datetime"}, nil
 }
 
+// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
 func nconvertDecimal(spec *sqlspec.Column) (schema.Type, error) {
 	dt := &schema.DecimalType{
 		T: "decimal",
@@ -149,6 +156,7 @@ func nconvertDecimal(spec *sqlspec.Column) (schema.Type, error) {
 	return dt, nil
 }
 
+// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
 func nconvertFloat(spec *sqlspec.Column) (schema.Type, error) {
 	ft := &schema.FloatType{
 		T: "real",
