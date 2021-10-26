@@ -5,7 +5,6 @@
 package sqlite
 
 import (
-	"fmt"
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
@@ -39,6 +38,15 @@ table "table" {
 			table.table.column.age,
 		]
 	}
+	foreign_key "accounts" {
+		columns = [
+			table.table.column.account_name,
+		]
+		ref_columns = [
+			table.accounts.column.name,
+		]
+		on_delete = "SET NULL"
+	}
 }
 
 table "accounts" {
@@ -51,19 +59,6 @@ table "accounts" {
 	}
 }
 `
-	b := `
-foreign_key "accounts" {
-		columns = [
-			table.table.column.account_name,
-		]
-		ref_columns = [
-			table.accounts.column.name,
-		]
-		on_delete = "SET NULL"
-	}
-
-`
-	fmt.Println(b)
 	exp := &schema.Schema{
 		Name: "schema",
 	}
@@ -133,15 +128,15 @@ foreign_key "accounts" {
 			},
 		},
 	}
-	//exp.Tables[0].ForeignKeys = []*schema.ForeignKey{
-	//	{
-	//		Symbol:     "accounts",
-	//		Table:      exp.Tables[0],
-	//		Columns:    []*schema.Column{exp.Tables[0].Columns[2]},
-	//		RefColumns: []*schema.Column{exp.Tables[1].Columns[0]},
-	//		OnDelete:   schema.SetNull,
-	//	},
-	//}
+	exp.Tables[0].ForeignKeys = []*schema.ForeignKey{
+		{
+			Symbol:     "accounts",
+			Table:      exp.Tables[0],
+			Columns:    []*schema.Column{exp.Tables[0].Columns[2]},
+			RefColumns: []*schema.Column{exp.Tables[1].Columns[0]},
+			OnDelete:   schema.SetNull,
+		},
+	}
 	exp.Tables[1].PrimaryKey = &schema.Index{
 		Table: exp.Tables[1],
 		Parts: []*schema.IndexPart{
