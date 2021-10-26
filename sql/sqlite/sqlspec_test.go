@@ -5,6 +5,7 @@
 package sqlite
 
 import (
+	"fmt"
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
@@ -21,7 +22,11 @@ table "table" {
 	column "col" {
 		type = "int"
 	}
-	column "age" {
+	
+}
+`
+	b := `
+column "age" {
 		type = "int"
 	}
 	column "account_name" {
@@ -47,7 +52,6 @@ table "table" {
 		]
 		on_delete = "SET NULL"
 	}
-}
 
 table "accounts" {
 	column "name" {
@@ -59,6 +63,7 @@ table "accounts" {
 	}
 }
 `
+	fmt.Println(b)
 	exp := &schema.Schema{
 		Name: "schema",
 	}
@@ -75,67 +80,67 @@ table "accounts" {
 						},
 					},
 				},
-				{
-					Name: "age",
-					Type: &schema.ColumnType{
-						Type: &schema.IntegerType{
-							T: "integer",
-						},
-					},
-				},
-				{
-					Name: "account_name",
-					Type: &schema.ColumnType{
-						Type: &schema.StringType{
-							T:    "varchar",
-							Size: 32,
-						},
-					},
-				},
+				//{
+				//	Name: "age",
+				//	Type: &schema.ColumnType{
+				//		Type: &schema.IntegerType{
+				//			T: "integer",
+				//		},
+				//	},
+				//},
+				//{
+				//	Name: "account_name",
+				//	Type: &schema.ColumnType{
+				//		Type: &schema.StringType{
+				//			T:    "varchar",
+				//			Size: 32,
+				//		},
+				//	},
+				//},
 			},
 		},
-		{
-			Name:   "accounts",
-			Schema: exp,
-			Columns: []*schema.Column{
-				{
-					Name: "name",
-					Type: &schema.ColumnType{
-						Type: &schema.StringType{
-							T:    "varchar",
-							Size: 32,
-						},
-					},
-				},
-			},
-		},
+		//{
+		//	Name:   "accounts",
+		//	Schema: exp,
+		//	Columns: []*schema.Column{
+		//		{
+		//			Name: "name",
+		//			Type: &schema.ColumnType{
+		//				Type: &schema.StringType{
+		//					T:    "varchar",
+		//					Size: 32,
+		//				},
+		//			},
+		//		},
+		//	},
+		//},
 	}
-	exp.Tables[0].PrimaryKey = &schema.Index{
-		Table: exp.Tables[0],
-		Parts: []*schema.IndexPart{
-			{SeqNo: 0, C: exp.Tables[0].Columns[0]},
-		},
-	}
-	exp.Tables[0].Indexes = []*schema.Index{
-		{
-			Name:   "index",
-			Table:  exp.Tables[0],
-			Unique: true,
-			Parts: []*schema.IndexPart{
-				{SeqNo: 0, C: exp.Tables[0].Columns[0]},
-				{SeqNo: 1, C: exp.Tables[0].Columns[1]},
-			},
-		},
-	}
-	exp.Tables[0].ForeignKeys = []*schema.ForeignKey{
-		{
-			Symbol:     "accounts",
-			Table:      exp.Tables[0],
-			Columns:    []*schema.Column{exp.Tables[0].Columns[2]},
-			RefColumns: []*schema.Column{exp.Tables[1].Columns[0]},
-			OnDelete:   schema.SetNull,
-		},
-	}
+	//exp.Tables[0].PrimaryKey = &schema.Index{
+	//	Table: exp.Tables[0],
+	//	Parts: []*schema.IndexPart{
+	//		{SeqNo: 0, C: exp.Tables[0].Columns[0]},
+	//	},
+	//}
+	//exp.Tables[0].Indexes = []*schema.Index{
+	//	{
+	//		Name:   "index",
+	//		Table:  exp.Tables[0],
+	//		Unique: true,
+	//		Parts: []*schema.IndexPart{
+	//			{SeqNo: 0, C: exp.Tables[0].Columns[0]},
+	//			{SeqNo: 1, C: exp.Tables[0].Columns[1]},
+	//		},
+	//	},
+	//}
+	//exp.Tables[0].ForeignKeys = []*schema.ForeignKey{
+	//	{
+	//		Symbol:     "accounts",
+	//		Table:      exp.Tables[0],
+	//		Columns:    []*schema.Column{exp.Tables[0].Columns[2]},
+	//		RefColumns: []*schema.Column{exp.Tables[1].Columns[0]},
+	//		OnDelete:   schema.SetNull,
+	//	},
+	//}
 
 	s := schema.Schema{}
 	err := UnmarshalSpec([]byte(f), schemahcl.Unmarshal, &s)
