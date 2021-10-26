@@ -145,7 +145,7 @@ table "accounts" {
 		},
 	}
 
-	s := schema.Schema{}
+	var s schema.Schema
 	err := UnmarshalSpec([]byte(f), schemahcl.Unmarshal, &s)
 	require.NoError(t, err)
 	require.EqualValues(t, exp, &s)
