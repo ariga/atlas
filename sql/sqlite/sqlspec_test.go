@@ -8,7 +8,9 @@ import (
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
+	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlspec"
 
 	"github.com/stretchr/testify/require"
 )
@@ -116,7 +118,6 @@ table "accounts" {
 		Parts: []*schema.IndexPart{
 			{SeqNo: 0, C: exp.Tables[0].Columns[0]},
 		},
-
 	}
 	exp.Tables[0].Indexes = []*schema.Index{
 		{
@@ -149,4 +150,106 @@ table "accounts" {
 	err := UnmarshalSpec([]byte(f), schemahcl.Unmarshal, &s)
 	require.NoError(t, err)
 	require.EqualValues(t, exp, &s)
+}
+
+func TestMarshalSpecColumnType(t *testing.T) {
+	for _, tt := range []struct {
+		schem       schema.Type
+		expected    *sqlspec.Column
+	}{
+		{
+			schem: &schema.IntegerType{
+				T: tInteger,
+			},
+			expected:    specutil.NewCol("column", "int"),
+		},
+		//{
+		//	schem: &schema.IntegerType{
+		//		T: tInteger,
+		//		Unsigned: true,
+		//	},
+		//	expected:    nil,
+		//},
+		//{
+		//	schem: schemautil.ColSpec("int64", "int64"),
+		//	expected: &schema.IntegerType{
+		//		T:        "integer",
+		//		Unsigned: false,
+		//	},
+		//},
+		//{
+		//	schem:        schemautil.ColSpec("uint64", "uint64"),
+		//	expectedErr: "sqlite: unsigned integers currently not supported",
+		//},
+		//{
+		//	schem: schemautil.ColSpec("string_varchar", "string", schemautil.LitAttr("size", "255")),
+		//	expected: &schema.StringType{
+		//		T:    "text",
+		//		Size: 255,
+		//	},
+		//},
+		//{
+		//	schem: schemautil.ColSpec("string_test", "string", schemautil.LitAttr("size", "10485761")),
+		//	expected: &schema.StringType{
+		//		T:    "text",
+		//		Size: 10_485_761,
+		//	},
+		//},
+		//{
+		//	schem: schemautil.ColSpec("varchar(255)", "varchar(255)"),
+		//	expected: &schema.StringType{
+		//		T:    "varchar",
+		//		Size: 255,
+		//	},
+		//},
+		//{
+		//	schem: schemautil.ColSpec("decimal(10, 2)", "decimal(10, 2)"),
+		//	expected: &schema.DecimalType{
+		//		T:         "decimal",
+		//		Scale:     2,
+		//		Precision: 10,
+		//	},
+		//},
+		//{
+		//	schem:     schemautil.ColSpec("enum", "enum", schemautil.ListAttr("values", "a", "b", "c")),
+		//	expected: &schema.StringType{T: "text"},
+		//},
+		//{
+		//	schem:     schemautil.ColSpec("bool", "boolean"),
+		//	expected: &schema.BoolType{T: "boolean"},
+		//},
+		//{
+		//	schem:     schemautil.ColSpec("decimal", "decimal", schemautil.LitAttr("precision", "10"), schemautil.LitAttr("scale", "2")),
+		//	expected: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
+		//},
+		//{
+		//	schem:     schemautil.ColSpec("float", "float", schemautil.LitAttr("precision", "10")),
+		//	expected: &schema.FloatType{T: "real", Precision: 10},
+		//},
+	} {
+		t.Run(tt.expected.TypeName, func(t *testing.T) {
+			s := schema.Schema{
+				Tables: []*schema.Table{
+					{
+						Name: "table",
+						Columns: []*schema.Column{
+							{
+								Name: "column",
+								Type: &schema.ColumnType{Type: tt.schem},
+							},
+						},
+					},
+				},
+			}
+			s.Tables[0].Schema = &s
+			ddl, err := MarshalSpec(&s, schemahcl.Marshal)
+			require.NoError(t, err)
+			var test struct {
+				Table *sqlspec.Table `spec:"table"`
+			}
+			err = schemahcl.Unmarshal(ddl, &test)
+			require.NoError(t, err)
+			require.EqualValues(t, tt.expected, test.Table.Columns[0])
+		})
+	}
 }
