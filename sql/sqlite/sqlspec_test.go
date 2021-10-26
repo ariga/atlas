@@ -32,10 +32,6 @@ table "table" {
 	primary_key {
 		columns = [table.table.column.col]
 	}
-}
-`
-	b := `
-	
 	index "index" {
 		unique = true
 		columns = [
@@ -43,15 +39,7 @@ table "table" {
 			table.table.column.age,
 		]
 	}
-	foreign_key "accounts" {
-		columns = [
-			table.table.column.account_name,
-		]
-		ref_columns = [
-			table.accounts.column.name,
-		]
-		on_delete = "SET NULL"
-	}
+}
 
 table "accounts" {
 	column "name" {
@@ -62,6 +50,18 @@ table "accounts" {
 		columns = [table.accounts.column.name]
 	}
 }
+`
+	b := `
+foreign_key "accounts" {
+		columns = [
+			table.table.column.account_name,
+		]
+		ref_columns = [
+			table.accounts.column.name,
+		]
+		on_delete = "SET NULL"
+	}
+
 `
 	fmt.Println(b)
 	exp := &schema.Schema{
@@ -99,39 +99,40 @@ table "accounts" {
 				},
 			},
 		},
-		//{
-		//	Name:   "accounts",
-		//	Schema: exp,
-		//	Columns: []*schema.Column{
-		//		{
-		//			Name: "name",
-		//			Type: &schema.ColumnType{
-		//				Type: &schema.StringType{
-		//					T:    "varchar",
-		//					Size: 32,
-		//				},
-		//			},
-		//		},
-		//	},
-		//},
+		{
+			Name:   "accounts",
+			Schema: exp,
+			Columns: []*schema.Column{
+				{
+					Name: "name",
+					Type: &schema.ColumnType{
+						Type: &schema.StringType{
+							T:    "text",
+							Size: 32,
+						},
+					},
+				},
+			},
+		},
 	}
 	exp.Tables[0].PrimaryKey = &schema.Index{
 		Table: exp.Tables[0],
 		Parts: []*schema.IndexPart{
 			{SeqNo: 0, C: exp.Tables[0].Columns[0]},
 		},
+
 	}
-	//exp.Tables[0].Indexes = []*schema.Index{
-	//	{
-	//		Name:   "index",
-	//		Table:  exp.Tables[0],
-	//		Unique: true,
-	//		Parts: []*schema.IndexPart{
-	//			{SeqNo: 0, C: exp.Tables[0].Columns[0]},
-	//			{SeqNo: 1, C: exp.Tables[0].Columns[1]},
-	//		},
-	//	},
-	//}
+	exp.Tables[0].Indexes = []*schema.Index{
+		{
+			Name:   "index",
+			Table:  exp.Tables[0],
+			Unique: true,
+			Parts: []*schema.IndexPart{
+				{SeqNo: 0, C: exp.Tables[0].Columns[0]},
+				{SeqNo: 1, C: exp.Tables[0].Columns[1]},
+			},
+		},
+	}
 	//exp.Tables[0].ForeignKeys = []*schema.ForeignKey{
 	//	{
 	//		Symbol:     "accounts",
@@ -141,6 +142,12 @@ table "accounts" {
 	//		OnDelete:   schema.SetNull,
 	//	},
 	//}
+	exp.Tables[1].PrimaryKey = &schema.Index{
+		Table: exp.Tables[1],
+		Parts: []*schema.IndexPart{
+			{SeqNo: 0, C: exp.Tables[1].Columns[0]},
+		},
+	}
 
 	s := schema.Schema{}
 	err := UnmarshalSpec([]byte(f), schemahcl.Unmarshal, &s)
