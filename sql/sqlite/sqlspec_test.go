@@ -171,37 +171,13 @@ func TestMarshalSpecColumnType(t *testing.T) {
 		//	expected:    nil,
 		//},
 		//{
-		//	schem: schemautil.ColSpec("int64", "int64"),
-		//	expected: &schema.IntegerType{
-		//		T:        "integer",
-		//		Unsigned: false,
-		//	},
-		//},
-		//{
-		//	schem:        schemautil.ColSpec("uint64", "uint64"),
-		//	expectedErr: "sqlite: unsigned integers currently not supported",
-		//},
-		//{
-		//	schem: schemautil.ColSpec("string_varchar", "string", schemautil.LitAttr("size", "255")),
-		//	expected: &schema.StringType{
-		//		T:    "text",
-		//		Size: 255,
-		//	},
-		//},
-		//{
-		//	schem: schemautil.ColSpec("string_test", "string", schemautil.LitAttr("size", "10485761")),
-		//	expected: &schema.StringType{
-		//		T:    "text",
-		//		Size: 10_485_761,
-		//	},
-		//},
-		//{
-		//	schem: schemautil.ColSpec("varchar(255)", "varchar(255)"),
-		//	expected: &schema.StringType{
-		//		T:    "varchar",
-		//		Size: 255,
-		//	},
-		//},
+		{
+			schem: &schema.StringType{
+				T:    tText,
+				Size: 17_000_000,
+			},
+			expected:   specutil.NewCol("column", "string", specutil.LitAttr("size", "17000000")),
+		},
 		//{
 		//	schem: schemautil.ColSpec("decimal(10, 2)", "decimal(10, 2)"),
 		//	expected: &schema.DecimalType{
