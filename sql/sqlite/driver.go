@@ -522,3 +522,13 @@ const (
 	// Query to list table foreign-keys.
 	fksQuery = "SELECT `id`, `from`, `to`, `table`, `on_update`, `on_delete` FROM pragma_foreign_key_list('%s') ORDER BY id, seq"
 )
+
+// SQLite standard data types as defined in its codebase and documentation.
+// https://www.sqlite.org/datatype3.html
+// https://github.com/sqlite/sqlite/blob/master/src/global.c
+const (
+	tInteger = "integer" // SQLITE_TYPE_INTEGER
+	tReal    = "real"    // SQLITE_TYPE_REAL
+	tText    = "text"    // SQLITE_TYPE_TEXT
+	tBlob    = "blob"    // SQLITE_TYPE_BLOB
+)

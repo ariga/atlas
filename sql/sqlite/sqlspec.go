@@ -90,7 +90,7 @@ func nconvertInteger(spec *sqlspec.Column) (schema.Type, error) {
 		return nil, fmt.Errorf("sqlite: unsigned integers currently not supported")
 	}
 	typ := &schema.IntegerType{
-		T: "integer",
+		T: tInteger,
 	}
 	return typ, nil
 }
@@ -98,7 +98,7 @@ func nconvertInteger(spec *sqlspec.Column) (schema.Type, error) {
 // temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
 func nconvertBinary(spec *sqlspec.Column) (schema.Type, error) {
 	bt := &schema.BinaryType{
-		T: "blob",
+		T: tBlob,
 	}
 	return bt, nil
 }
@@ -106,7 +106,7 @@ func nconvertBinary(spec *sqlspec.Column) (schema.Type, error) {
 // temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
 func nconvertString(spec *sqlspec.Column) (schema.Type, error) {
 	st := &schema.StringType{
-		T: "text",
+		T: tText,
 	}
 	if attr, ok := spec.Attr("size"); ok {
 		s, err := attr.Int()
@@ -159,7 +159,7 @@ func nconvertDecimal(spec *sqlspec.Column) (schema.Type, error) {
 // temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
 func nconvertFloat(spec *sqlspec.Column) (schema.Type, error) {
 	ft := &schema.FloatType{
-		T: "real",
+		T: tReal,
 	}
 	if precision, ok := spec.Attr("precision"); ok {
 		p, err := precision.Int()
