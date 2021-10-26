@@ -21,7 +21,8 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 	if err := unmarshaler.UnmarshalSpec(data, &d); err != nil {
 		return err
 	}
-	if v, ok := v.(*schema.Schema); !ok {
+	s, ok := v.(*schema.Schema)
+	if !ok {
 		return fmt.Errorf("sqlite: failed unmarshaling spec. %T is not supported", v)
 	}
 	if len(d.Schemas) != 1 {
@@ -31,7 +32,7 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 	if err != nil {
 		return fmt.Errorf("sqlite: failed converting to *schema.Schema: %w", err)
 	}
-	*v = *conv
+	*s = *conv
 	return nil
 }
 
@@ -41,7 +42,6 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, error) {
 	return specutil.Table(spec, parent, convertColumn, convertPrimaryKey, convertIndex)
 }
-
 
 // convertPrimaryKey converts a sqlspec.PrimaryKey to a schema.Index.
 func convertPrimaryKey(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, error) {
@@ -79,8 +79,9 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 		return nconvertFloat(spec)
 	case sqlspec.TypeTime:
 		return nconvertTime(spec)
+	default:
+		return parseRawType(spec.TypeName)
 	}
-	return parseRawType(spec.TypeName)
 }
 
 // temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
