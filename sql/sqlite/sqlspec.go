@@ -23,16 +23,16 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 	}
 	if v, ok := v.(*schema.Schema); ok {
 		if len(d.Schemas) != 1 {
-			return fmt.Errorf("mysql: expecting document to contain a single schema, got %d", len(d.Schemas))
+			return fmt.Errorf("sqlite: expecting document to contain a single schema, got %d", len(d.Schemas))
 		}
 		conv, err := specutil.Schema(d.Schemas[0], d.Tables, convertTable)
 		if err != nil {
-			return fmt.Errorf("mysql: failed converting to *schema.Schema: %w", err)
+			return fmt.Errorf("sqlite: failed converting to *schema.Schema: %w", err)
 		}
 		*v = *conv
 		return nil
 	}
-	return fmt.Errorf("mysql: failed unmarshaling spec. %T is not supported", v)
+	return fmt.Errorf("sqlite: failed unmarshaling spec. %T is not supported", v)
 }
 
 // convertTable converts a sqlspec.Table to a schema.Table. Table conversion is done without converting
@@ -58,7 +58,7 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 	return specutil.Column(spec, convertColumnType)
 }
 
-// convertColumnType converts a sqlspec.Column into a concrete MySQL schema.Type.
+// convertColumnType converts a sqlspec.Column into a concrete SQLite schema.Type.
 func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 	switch sqlspec.Type(spec.TypeName) {
 	case sqlspec.TypeInt, sqlspec.TypeInt8, sqlspec.TypeInt16,
