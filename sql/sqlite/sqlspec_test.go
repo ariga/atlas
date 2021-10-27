@@ -170,6 +170,10 @@ func TestMarshalSpecColumnType(t *testing.T) {
 			schem:    &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
 			expected: specutil.NewCol("column", "decimal", specutil.LitAttr("precision", "10"), specutil.LitAttr("scale", "2")),
 		},
+		{
+			schem:    &schema.EnumType{T: "enum", Values: []string{"a", "b", "c"}},
+			expected: specutil.NewCol("column", "enum", specutil.ListAttr("values", "a", "b", "c")),
+		},
 		//},
 		//{
 		//	schem:     schemautil.ColSpec("enum", "enum", schemautil.ListAttr("values", "a", "b", "c")),
@@ -211,7 +215,6 @@ func TestMarshalSpecColumnType(t *testing.T) {
 		})
 	}
 }
-
 
 //{
 //	schem: &schema.IntegerType{
