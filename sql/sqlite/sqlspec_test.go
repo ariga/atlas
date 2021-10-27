@@ -8,7 +8,9 @@ import (
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
+	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlspec"
 
 	"github.com/stretchr/testify/require"
 )
@@ -116,7 +118,6 @@ table "accounts" {
 		Parts: []*schema.IndexPart{
 			{SeqNo: 0, C: exp.Tables[0].Columns[0]},
 		},
-
 	}
 	exp.Tables[0].Indexes = []*schema.Index{
 		{
@@ -149,4 +150,93 @@ table "accounts" {
 	err := UnmarshalSpec([]byte(f), schemahcl.Unmarshal, &s)
 	require.NoError(t, err)
 	require.EqualValues(t, exp, &s)
+}
+
+func TestMarshalSpecColumnType(t *testing.T) {
+	for _, tt := range []struct {
+		schem    schema.Type
+		expected *sqlspec.Column
+	}{
+		{
+			schem:    &schema.IntegerType{T: tInteger},
+			expected: specutil.NewCol("column", "int"),
+		},
+		{
+			schem:    &schema.StringType{T: tText, Size: 17_000_000},
+			expected: specutil.NewCol("column", "string", specutil.LitAttr("size", "17000000")),
+		},
+		{
+			schem:    &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
+			expected: specutil.NewCol("column", "decimal", specutil.LitAttr("precision", "10"), specutil.LitAttr("scale", "2")),
+		},
+		{
+			schem:    &schema.EnumType{T: "enum", Values: []string{"a", "b", "c"}},
+			expected: specutil.NewCol("column", "enum", specutil.ListAttr("values", "a", "b", "c")),
+		},
+		{
+			schem:    &schema.BoolType{T: "boolean"},
+			expected: specutil.NewCol("column", "boolean"),
+		},
+		{
+			schem:    &schema.FloatType{T: "float", Precision: 10},
+			expected: specutil.NewCol("column", "float", specutil.LitAttr("precision", "10")),
+		},
+	} {
+		t.Run(tt.expected.TypeName, func(t *testing.T) {
+			s := schema.Schema{
+				Tables: []*schema.Table{
+					{
+						Name: "table",
+						Columns: []*schema.Column{
+							{
+								Name: "column",
+								Type: &schema.ColumnType{Type: tt.schem},
+							},
+						},
+					},
+				},
+			}
+			s.Tables[0].Schema = &s
+			ddl, err := MarshalSpec(&s, schemahcl.Marshal)
+			require.NoError(t, err)
+			var test struct {
+				Table *sqlspec.Table `spec:"table"`
+			}
+			err = schemahcl.Unmarshal(ddl, &test)
+			require.NoError(t, err)
+			require.EqualValues(t, tt.expected.TypeName, test.Table.Columns[0].TypeName)
+			require.ElementsMatch(t, tt.expected.Extra.Attrs, test.Table.Columns[0].Extra.Attrs)
+		})
+	}
+}
+
+func TestNotSupportedMarshalSpecColumnType(t *testing.T) {
+	for _, tt := range []struct {
+		schem    schema.Type
+		expected *sqlspec.Column
+	}{
+		{
+			schem:    &schema.IntegerType{T: tInteger, Unsigned: true},
+			expected: specutil.NewCol("column", "int"),
+		},
+	} {
+		t.Run(tt.expected.TypeName, func(t *testing.T) {
+			s := schema.Schema{
+				Tables: []*schema.Table{
+					{
+						Name: "table",
+						Columns: []*schema.Column{
+							{
+								Name: "column",
+								Type: &schema.ColumnType{Type: tt.schem},
+							},
+						},
+					},
+				},
+			}
+			s.Tables[0].Schema = &s
+			_, err := MarshalSpec(&s, schemahcl.Marshal)
+			require.Error(t, err)
+		})
+	}
 }

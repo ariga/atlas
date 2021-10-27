@@ -1,7 +1,9 @@
 package sqlite
 
 import (
+	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
@@ -34,6 +36,22 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 	}
 	*s = *conv
 	return nil
+}
+
+// MarshalSpec marshals v into an Atlas DDL document using a schemaspec.Marshaler.
+func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) {
+	s, ok := v.(*schema.Schema)
+	if !ok {
+		return nil, fmt.Errorf("sqlite: failed marshaling spec. %T is not supported", v)
+	}
+	spec, tables, err := schemaSpec(s)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: failed converting schema to spec: %w", err)
+	}
+	return marshaler.MarshalSpec(&doc{
+		Tables:  tables,
+		Schemas: []*sqlspec.Schema{spec},
+	})
 }
 
 // convertTable converts a sqlspec.Table to a schema.Table. Table conversion is done without converting
@@ -170,4 +188,103 @@ func nconvertFloat(spec *sqlspec.Column) (schema.Type, error) {
 		ft.Precision = p
 	}
 	return ft, nil
+}
+
+// schemaSpec converts from a concrete SQLite schema to Atlas specification.
+func schemaSpec(schem *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error) {
+	return specutil.FromSchema(schem, tableSpec)
+}
+
+// tableSpec converts from a concrete SQLite sqlspec.Table to a schema.Table.
+func tableSpec(tab *schema.Table) (*sqlspec.Table, error) {
+	return specutil.FromTable(tab, columnSpec, specutil.FromPrimaryKey, specutil.FromIndex, specutil.FromForeignKey)
+}
+
+// columnSpec converts from a concrete SQLite schema.Column into a sqlspec.Column.
+func columnSpec(col *schema.Column) (*sqlspec.Column, error) {
+	ct, err := ncolumnTypeSpec(col.Type.Type)
+	if err != nil {
+		return nil, err
+	}
+	return &sqlspec.Column{
+		Name:     col.Name,
+		TypeName: ct.TypeName,
+		Null:     ct.Null,
+		DefaultExtension: schemaspec.DefaultExtension{
+			Extra: schemaspec.Resource{Attrs: ct.DefaultExtension.Extra.Attrs},
+		},
+	}, nil
+}
+
+// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
+func ncolumnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
+	switch t := t.(type) {
+	case *schema.EnumType:
+		return nenumSpec(t)
+	case *schema.IntegerType:
+		return nintegerSpec(t)
+	case *schema.StringType:
+		return nstringSpec(t)
+	case *schema.DecimalType:
+		precision := specutil.LitAttr("precision", strconv.Itoa(t.Precision))
+		scale := specutil.LitAttr("scale", strconv.Itoa(t.Scale))
+		return specutil.NewCol("", "decimal", precision, scale), nil
+	case *schema.BinaryType:
+		return nbinarySpec(t)
+	case *schema.BoolType:
+		return &sqlspec.Column{TypeName: "boolean"}, nil
+	case *schema.FloatType:
+		precision := specutil.LitAttr("precision", strconv.Itoa(t.Precision))
+		return specutil.NewCol("", "float", precision), nil
+	case *schema.TimeType:
+		return &sqlspec.Column{TypeName: t.T}, nil
+	case *schema.JSONType:
+		return &sqlspec.Column{TypeName: t.T}, nil
+	case *schema.SpatialType:
+		return &sqlspec.Column{TypeName: t.T}, nil
+	case *schema.UnsupportedType:
+		return &sqlspec.Column{TypeName: t.T}, nil
+	default:
+		return nil, fmt.Errorf("sqlite: failed to convert column type %T to spec", t)
+	}
+}
+
+// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
+func nbinarySpec(t *schema.BinaryType) (*sqlspec.Column, error) {
+	if t.T != tBlob {
+		return nil, fmt.Errorf("sqlite/spec/binary: failed to convert type %q", t.T)
+	}
+	return &sqlspec.Column{TypeName: "binary"}, nil
+}
+
+// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
+func nstringSpec(t *schema.StringType) (*sqlspec.Column, error) {
+	if t.T != tText {
+		return nil, fmt.Errorf("sqlite/spec/string: failed to convert type %q", t.T)
+	}
+	s := strconv.Itoa(t.Size)
+	return specutil.NewCol("", "string", specutil.LitAttr("size", s)), nil
+}
+
+// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
+func nintegerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
+	if t.Unsigned {
+		return nil, errors.New("sqlite/spec/integer: unsigned integers currently not supported")
+	}
+	if t.T != tInteger {
+		return nil, fmt.Errorf("sqlite/spec/integer: failed to convert type %q", t.T)
+	}
+	return &sqlspec.Column{TypeName: "int"}, nil
+}
+
+// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
+func nenumSpec(t *schema.EnumType) (*sqlspec.Column, error) {
+	if len(t.Values) == 0 {
+		return nil, errors.New("sqlite/spec/enum: schema enum fields to have values")
+	}
+	quoted := make([]string, 0, len(t.Values))
+	for _, v := range t.Values {
+		quoted = append(quoted, strconv.Quote(v))
+	}
+	return specutil.NewCol("", "enum", specutil.ListAttr("values", quoted...)), nil
 }
