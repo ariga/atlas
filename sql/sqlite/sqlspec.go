@@ -40,11 +40,8 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 
 // MarshalSpec marshals v into an Atlas DDL document using a schemaspec.Marshaler.
 func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) {
-	var (
-		s  *schema.Schema
-		ok bool
-	)
-	if s, ok = v.(*schema.Schema); !ok {
+	s, ok := v.(*schema.Schema)
+	if !ok {
 		return nil, fmt.Errorf("sqlite: failed marshaling spec. %T is not supported", v)
 	}
 	spec, tables, err := schemaSpec(s)
