@@ -216,7 +216,7 @@ func columnSpec(col *schema.Column) (*sqlspec.Column, error) {
 	}, nil
 }
 
-// columnTypeSpec converts from a concrete SQLite schema.Type into sqlspec.Column Type.
+// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
 func ncolumnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	switch t := t.(type) {
 	case *schema.EnumType:
