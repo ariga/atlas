@@ -161,7 +161,6 @@ func TestMarshalSpecColumnType(t *testing.T) {
 			schem:    &schema.IntegerType{T: tInteger},
 			expected: specutil.NewCol("column", "int"),
 		},
-
 		{
 			schem:    &schema.StringType{T: tText, Size: 17_000_000},
 			expected: specutil.NewCol("column", "string", specutil.LitAttr("size", "17000000")),
@@ -174,20 +173,14 @@ func TestMarshalSpecColumnType(t *testing.T) {
 			schem:    &schema.EnumType{T: "enum", Values: []string{"a", "b", "c"}},
 			expected: specutil.NewCol("column", "enum", specutil.ListAttr("values", "a", "b", "c")),
 		},
-		//},
-		//{
-		//	schem:     schemautil.ColSpec("enum", "enum", schemautil.ListAttr("values", "a", "b", "c")),
-		//	expected: &schema.StringType{T: "text"},
-		//},
-		//{
-		//	schem:     schemautil.ColSpec("bool", "boolean"),
-		//	expected: &schema.BoolType{T: "boolean"},
-		//},
-		//{
-		//{
-		//	schem:     schemautil.ColSpec("float", "float", schemautil.LitAttr("precision", "10")),
-		//	expected: &schema.FloatType{T: "real", Precision: 10},
-		//},
+		{
+			schem:    &schema.BoolType{T: "boolean"},
+			expected: specutil.NewCol("column", "boolean"),
+		},
+		{
+			schem:    &schema.FloatType{T: "float", Precision: 10},
+			expected: specutil.NewCol("column", "float", specutil.LitAttr("precision", "10")),
+		},
 	} {
 		t.Run(tt.expected.TypeName, func(t *testing.T) {
 			s := schema.Schema{
@@ -216,11 +209,33 @@ func TestMarshalSpecColumnType(t *testing.T) {
 	}
 }
 
-//{
-//	schem: &schema.IntegerType{
-//		T: tInteger,
-//		Unsigned: true,
-//	},
-//	expected:    nil,
-//},
-//{
+func TestNotSupportedMarshalSpecColumnType(t *testing.T) {
+	for _, tt := range []struct {
+		schem    schema.Type
+		expected *sqlspec.Column
+	}{
+		{
+			schem:    &schema.IntegerType{T: tInteger, Unsigned: true},
+			expected: specutil.NewCol("column", "int"),
+		},
+	} {
+		t.Run(tt.expected.TypeName, func(t *testing.T) {
+			s := schema.Schema{
+				Tables: []*schema.Table{
+					{
+						Name: "table",
+						Columns: []*schema.Column{
+							{
+								Name: "column",
+								Type: &schema.ColumnType{Type: tt.schem},
+							},
+						},
+					},
+				},
+			}
+			s.Tables[0].Schema = &s
+			_, err := MarshalSpec(&s, schemahcl.Marshal)
+			require.Error(t, err)
+		})
+	}
+}
