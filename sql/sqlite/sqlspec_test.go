@@ -158,37 +158,18 @@ func TestMarshalSpecColumnType(t *testing.T) {
 		expected *sqlspec.Column
 	}{
 		{
-			schem: &schema.IntegerType{
-				T: tInteger,
-			},
+			schem:    &schema.IntegerType{T: tInteger},
 			expected: specutil.NewCol("column", "int"),
 		},
-		//{
-		//	schem: &schema.IntegerType{
-		//		T: tInteger,
-		//		Unsigned: true,
-		//	},
-		//	expected:    nil,
-		//},
-		//{
+
 		{
-			schem: &schema.StringType{
-				T:    tText,
-				Size: 17_000_000,
-			},
+			schem:    &schema.StringType{T: tText, Size: 17_000_000},
 			expected: specutil.NewCol("column", "string", specutil.LitAttr("size", "17000000")),
 		},
 		{
 			schem:    &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
 			expected: specutil.NewCol("column", "decimal", specutil.LitAttr("precision", "10"), specutil.LitAttr("scale", "2")),
 		},
-		//{
-		//	schem: schemautil.ColSpec("decimal(10, 2)", "decimal(10, 2)"),
-		//	expected: &schema.DecimalType{
-		//		T:         "decimal",
-		//		Scale:     2,
-		//		Precision: 10,
-		//	},
 		//},
 		//{
 		//	schem:     schemautil.ColSpec("enum", "enum", schemautil.ListAttr("values", "a", "b", "c")),
@@ -199,9 +180,6 @@ func TestMarshalSpecColumnType(t *testing.T) {
 		//	expected: &schema.BoolType{T: "boolean"},
 		//},
 		//{
-		//	schem:     schemautil.ColSpec("decimal", "decimal", schemautil.LitAttr("precision", "10"), schemautil.LitAttr("scale", "2")),
-		//	expected: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
-		//},
 		//{
 		//	schem:     schemautil.ColSpec("float", "float", schemautil.LitAttr("precision", "10")),
 		//	expected: &schema.FloatType{T: "real", Precision: 10},
@@ -233,3 +211,13 @@ func TestMarshalSpecColumnType(t *testing.T) {
 		})
 	}
 }
+
+
+//{
+//	schem: &schema.IntegerType{
+//		T: tInteger,
+//		Unsigned: true,
+//	},
+//	expected:    nil,
+//},
+//{
