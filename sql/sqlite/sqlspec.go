@@ -251,41 +251,36 @@ func ncolumnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 
 // temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
 func nbinarySpec(t *schema.BinaryType) (*sqlspec.Column, error) {
-	switch t.T {
-	case tBlob:
-		return &sqlspec.Column{TypeName: "binary"}, nil
-	default:
-		return nil, fmt.Errorf("sqlite: schema binary failed to convert type %q", t.T)
+	if t.T != tBlob {
+		return nil, fmt.Errorf("sqlite/spec/binary: failed to convert type %q", t.T)
 	}
+	return &sqlspec.Column{TypeName: "binary"}, nil
 }
 
 // temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
 func nstringSpec(t *schema.StringType) (*sqlspec.Column, error) {
-	switch t.T {
-	case tText:
-		s := strconv.Itoa(t.Size)
-		return specutil.NewCol("", "string", specutil.LitAttr("size", s)), nil
+	if t.T != tText {
+		return nil, fmt.Errorf("sqlite/spec/string: failed to convert type %q", t.T)
 	}
-	return nil, errors.New("sqlite: schema string failed to convert")
+	s := strconv.Itoa(t.Size)
+	return specutil.NewCol("", "string", specutil.LitAttr("size", s)), nil
 }
 
 // temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
 func nintegerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
-	if t.Unsigned{
-		return nil,errors.New("sqlite: unsigned integers currently not supported")
+	if t.Unsigned {
+		return nil, errors.New("sqlite/spec/integer: unsigned integers currently not supported")
 	}
-	switch t.T {
-	case tInteger:
-		return &sqlspec.Column{TypeName: "int"}, nil
-	default:
-		return nil, errors.New("sqlite: schema integer failed to convert")
+	if t.T != tInteger {
+		return nil, fmt.Errorf("sqlite/spec/integer: failed to convert type %q", t.T)
 	}
+	return &sqlspec.Column{TypeName: "int"}, nil
 }
 
 // temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
 func nenumSpec(t *schema.EnumType) (*sqlspec.Column, error) {
 	if len(t.Values) == 0 {
-		return nil, errors.New("sqlite: schema enum fields to have values")
+		return nil, errors.New("sqlite/spec/enum: schema enum fields to have values")
 	}
 	quoted := make([]string, 0, len(t.Values))
 	for _, v := range t.Values {
