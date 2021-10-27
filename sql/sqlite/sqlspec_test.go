@@ -206,7 +206,6 @@ func TestMarshalSpecColumnType(t *testing.T) {
 			require.NoError(t, err)
 			require.EqualValues(t, tt.expected.TypeName, test.Table.Columns[0].TypeName)
 			require.ElementsMatch(t, tt.expected.Extra.Attrs, test.Table.Columns[0].Extra.Attrs)
-			require.NoError(t, err)
 		})
 	}
 }
