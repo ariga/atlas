@@ -193,17 +193,17 @@ func nconvertFloat(spec *sqlspec.Column) (schema.Type, error) {
 	return ft, nil
 }
 
-// schemaSpec converts from a concrete MySQL schema to Atlas specification.
+// schemaSpec converts from a concrete SQLite schema to Atlas specification.
 func schemaSpec(schem *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error) {
 	return specutil.FromSchema(schem, tableSpec)
 }
 
-// tableSpec converts from a concrete MySQL sqlspec.Table to a schema.Table.
+// tableSpec converts from a concrete SQLite sqlspec.Table to a schema.Table.
 func tableSpec(tab *schema.Table) (*sqlspec.Table, error) {
 	return specutil.FromTable(tab, columnSpec, specutil.FromPrimaryKey, specutil.FromIndex, specutil.FromForeignKey)
 }
 
-// columnSpec converts from a concrete MySQL schema.Column into a sqlspec.Column.
+// columnSpec converts from a concrete SQLite schema.Column into a sqlspec.Column.
 func columnSpec(col *schema.Column) (*sqlspec.Column, error) {
 	ct, err := ncolumnTypeSpec(col.Type.Type)
 	if err != nil {
@@ -219,7 +219,7 @@ func columnSpec(col *schema.Column) (*sqlspec.Column, error) {
 	}, nil
 }
 
-// columnTypeSpec converts from a concrete MySQL schema.Type into sqlspec.Column Type.
+// columnTypeSpec converts from a concrete SQLite schema.Type into sqlspec.Column Type.
 func ncolumnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	switch t := t.(type) {
 	case *schema.EnumType:
@@ -248,7 +248,7 @@ func ncolumnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	case *schema.UnsupportedType:
 		return &sqlspec.Column{TypeName: t.T}, nil
 	default:
-		return nil, fmt.Errorf("mysql: failed to convert column type %T to spec", t)
+		return nil, fmt.Errorf("sqlite: failed to convert column type %T to spec", t)
 	}
 }
 
