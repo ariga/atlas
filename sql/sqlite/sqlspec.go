@@ -255,7 +255,7 @@ func nbinarySpec(t *schema.BinaryType) (*sqlspec.Column, error) {
 	case tBlob:
 		return &sqlspec.Column{TypeName: "binary"}, nil
 	default:
-		return nil, errors.New("sqlite: schema binary failed to convert")
+		return nil, fmt.Errorf("sqlite: schema binary failed to convert type %q", t.T)
 	}
 }
 
