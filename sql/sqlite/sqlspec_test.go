@@ -154,14 +154,14 @@ table "accounts" {
 
 func TestMarshalSpecColumnType(t *testing.T) {
 	for _, tt := range []struct {
-		schem       schema.Type
-		expected    *sqlspec.Column
+		schem    schema.Type
+		expected *sqlspec.Column
 	}{
 		{
 			schem: &schema.IntegerType{
 				T: tInteger,
 			},
-			expected:    specutil.NewCol("column", "int"),
+			expected: specutil.NewCol("column", "int"),
 		},
 		//{
 		//	schem: &schema.IntegerType{
@@ -176,7 +176,11 @@ func TestMarshalSpecColumnType(t *testing.T) {
 				T:    tText,
 				Size: 17_000_000,
 			},
-			expected:   specutil.NewCol("column", "string", specutil.LitAttr("size", "17000000")),
+			expected: specutil.NewCol("column", "string", specutil.LitAttr("size", "17000000")),
+		},
+		{
+			schem:    &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
+			expected: specutil.NewCol("column", "decimal", specutil.LitAttr("precision", "10"), specutil.LitAttr("scale", "2")),
 		},
 		//{
 		//	schem: schemautil.ColSpec("decimal(10, 2)", "decimal(10, 2)"),
