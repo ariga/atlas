@@ -229,47 +229,47 @@ func TestUnmarshalSpecColumnTypes(t *testing.T) {
 				T: tBlob,
 			},
 		},
-		//{
-		//	spec: specutil.NewCol("tinyblob", "binary", specutil.LitAttr("size", "16")),
-		//	expected: &schema.BinaryType{
-		//		T:    tBlob,
-		//		Size: 16,
-		//	},
-		//},
-		//{
-		//	spec: specutil.NewCol("mediumblob", "binary", specutil.LitAttr("size", "100000")),
-		//	expected: &schema.BinaryType{
-		//		T:    tBlob,
-		//		Size: 100_000,
-		//	},
-		//},
-		//{
-		//	spec: specutil.NewCol("longblob", "binary", specutil.LitAttr("size", "20000000")),
-		//	expected: &schema.BinaryType{
-		//		T:    tBlob,
-		//		Size: 20_000_000,
-		//	},
-		//},
-		//{
-		//	spec:     specutil.NewCol("enum", "enum", specutil.ListAttr("values", `"a"`, `"b"`, `"c"`)),
-		//	expected: &schema.EnumType{Values: []string{"a", "b", "c"}},
-		//},
-		//{
-		//	spec:     specutil.NewCol("bool", "boolean"),
-		//	expected: &schema.BoolType{T: "boolean"},
-		//},
-		//{
-		//	spec:     specutil.NewCol("decimal", "decimal", specutil.LitAttr("precision", "10"), specutil.LitAttr("scale", "2")),
-		//	expected: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
-		//},
-		//{
-		//	spec:     specutil.NewCol("float", "float", specutil.LitAttr("precision", "10")),
-		//	expected: &schema.FloatType{T: "float", Precision: 10},
-		//},
-		//{
-		//	spec:     specutil.NewCol("float", "float", specutil.LitAttr("precision", "25")),
-		//	expected: &schema.FloatType{T: "double", Precision: 25},
-		//},
+		{
+			spec: specutil.NewCol("tinyblob", "binary", specutil.LitAttr("size", "16")),
+			expected: &schema.BinaryType{
+				T:    tBlob,
+				Size: 16,
+			},
+		},
+		{
+			spec: specutil.NewCol("mediumblob", "binary", specutil.LitAttr("size", "100000")),
+			expected: &schema.BinaryType{
+				T:    tBlob,
+				Size: 100_000,
+			},
+		},
+		{
+			spec: specutil.NewCol("longblob", "binary", specutil.LitAttr("size", "20000000")),
+			expected: &schema.BinaryType{
+				T:    tBlob,
+				Size: 20_000_000,
+			},
+		},
+		{
+			spec:     specutil.NewCol("enum", "enum", specutil.ListAttr("values", `"a"`, `"b"`, `"c"`)),
+			expected: &schema.EnumType{Values: []string{"a", "b", "c"}},
+		},
+		{
+			spec:     specutil.NewCol("bool", "boolean"),
+			expected: &schema.BoolType{T: "boolean"},
+		},
+		{
+			spec:     specutil.NewCol("decimal", "decimal", specutil.LitAttr("precision", "10"), specutil.LitAttr("scale", "2")),
+			expected: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
+		},
+		{
+			spec:     specutil.NewCol("float", "float", specutil.LitAttr("precision", "10")),
+			expected: &schema.FloatType{T: "float", Precision: 10},
+		},
+		{
+			spec:     specutil.NewCol("float", "float", specutil.LitAttr("precision", "25")),
+			expected: &schema.FloatType{T: "double", Precision: 25},
+		},
 	} {
 		t.Run(tt.spec.Name, func(t *testing.T) {
 			var s schema.Schema
