@@ -180,13 +180,6 @@ func TestUnmarshalSpecColumnTypes(t *testing.T) {
 				Unsigned: false,
 			},
 		},
-		//{
-		//	spec: specutil.NewCol("uint64", "uint64"),
-		//	expected: &schema.IntegerType{
-		//		T:        tInteger,
-		//		Unsigned: true,
-		//	},
-		//},
 		{
 			spec: specutil.NewCol("string_varchar", "string", specutil.LitAttr("size", "255")),
 			expected: &schema.StringType{
@@ -261,11 +254,11 @@ func TestUnmarshalSpecColumnTypes(t *testing.T) {
 		},
 		{
 			spec:     specutil.NewCol("float", "float", specutil.LitAttr("precision", "10")),
-			expected: &schema.FloatType{T: "float", Precision: 10},
+			expected: &schema.FloatType{T: tReal, Precision: 10},
 		},
 		{
 			spec:     specutil.NewCol("float", "float", specutil.LitAttr("precision", "25")),
-			expected: &schema.FloatType{T: "double", Precision: 25},
+			expected: &schema.FloatType{T: tReal, Precision: 25},
 		},
 	} {
 		t.Run(tt.spec.Name, func(t *testing.T) {
@@ -277,6 +270,22 @@ func TestUnmarshalSpecColumnTypes(t *testing.T) {
 			col, ok := tbl.Column(tt.spec.Name)
 			require.True(t, ok)
 			require.EqualValues(t, tt.expected, col.Type.Type)
+		})
+	}
+}
+
+func TestNotSupportedUnmarshalSpecColumnTypes(t *testing.T) {
+	for _, tt := range []struct {
+		spec *sqlspec.Column
+	}{
+		{
+			spec: specutil.NewCol("uint64", "uint64"),
+		},
+	} {
+		t.Run(tt.spec.Name, func(t *testing.T) {
+			var s schema.Schema
+			err := UnmarshalSpec(hcl(tt.spec), schemahcl.Unmarshal, &s)
+			require.Error(t, err)
 		})
 	}
 }
