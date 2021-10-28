@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
-	"ariga.io/atlas/sql/internal/schemautil"
 	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
@@ -41,14 +40,14 @@ func TestUnmarshalSpecColumnTypes(t *testing.T) {
 			},
 		},
 		{
-			spec: schemautil.ColSpec("varchar(255)", "varchar(255)"),
+			spec: specutil.NewCol("varchar(255)", "varchar(255)"),
 			expected: &schema.StringType{
 				T:    "varchar",
 				Size: 255,
 			},
 		},
 		{
-			spec: schemautil.ColSpec("decimal(10, 2)", "decimal(10, 2)"),
+			spec: specutil.NewCol("decimal(10, 2)", "decimal(10, 2)"),
 			expected: &schema.DecimalType{
 				T:         "decimal",
 				Scale:     2,
@@ -56,47 +55,47 @@ func TestUnmarshalSpecColumnTypes(t *testing.T) {
 			},
 		},
 		{
-			spec:     schemautil.ColSpec("enum", "enum", schemautil.ListAttr("values", "a", "b", "c")),
+			spec:     specutil.NewCol("enum", "enum", specutil.ListAttr("values", "a", "b", "c")),
 			expected: &schema.EnumType{Values: []string{"a", "b", "c"}},
 		},
 		{
-			spec:     schemautil.ColSpec("bool", "boolean"),
+			spec:     specutil.NewCol("bool", "boolean"),
 			expected: &schema.BoolType{T: "boolean"},
 		},
 		{
-			spec:     schemautil.ColSpec("decimal", "decimal", schemautil.LitAttr("precision", "10"), schemautil.LitAttr("scale", "2")),
+			spec:     specutil.NewCol("decimal", "decimal", specutil.LitAttr("precision", "10"), specutil.LitAttr("scale", "2")),
 			expected: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
 		},
 		{
-			spec:     schemautil.ColSpec("float", "float", schemautil.LitAttr("precision", "10")),
+			spec:     specutil.NewCol("float", "float", specutil.LitAttr("precision", "10")),
 			expected: &schema.FloatType{T: "real", Precision: 10},
 		},
 		{
-			spec:     schemautil.ColSpec("float", "float", schemautil.LitAttr("precision", "25")),
+			spec:     specutil.NewCol("float", "float", specutil.LitAttr("precision", "25")),
 			expected: &schema.FloatType{T: "double precision", Precision: 25},
 		},
 		{
-			spec:     schemautil.ColSpec("cidr", "cidr"),
+			spec:     specutil.NewCol("cidr", "cidr"),
 			expected: &NetworkType{T: "cidr"},
 		},
 		{
-			spec:     schemautil.ColSpec("money", "money"),
+			spec:     specutil.NewCol("money", "money"),
 			expected: &CurrencyType{T: "money"},
 		},
 		{
-			spec:     schemautil.ColSpec("bit", "bit"),
+			spec:     specutil.NewCol("bit", "bit"),
 			expected: &BitType{T: "bit", Len: 1},
 		},
 		{
-			spec:     schemautil.ColSpec("bitvar", "bit varying"),
+			spec:     specutil.NewCol("bitvar", "bit varying"),
 			expected: &BitType{T: "bit varying"},
 		},
 		{
-			spec:     schemautil.ColSpec("bitvar8", "bit varying(8)"),
+			spec:     specutil.NewCol("bitvar8", "bit varying(8)"),
 			expected: &BitType{T: "bit varying", Len: 8},
 		},
 		{
-			spec:     schemautil.ColSpec("bit8", "bit(8)"),
+			spec:     specutil.NewCol("bit8", "bit(8)"),
 			expected: &BitType{T: "bit", Len: 8},
 		},
 	} {
