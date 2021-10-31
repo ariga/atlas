@@ -69,38 +69,39 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 		return nconvertInteger(spec)
 	case sqlspec.TypeString:
 		return nconvertString(spec)
-	case sqlspec.TypeBinary:
-		return nconvertBinary(spec)
 	case sqlspec.TypeEnum:
 		return nconvertEnum(spec)
-	case sqlspec.TypeBoolean:
-		return nconvertBoolean(spec)
 	case sqlspec.TypeDecimal:
 		return nconvertDecimal(spec)
 	case sqlspec.TypeFloat:
 		return nconvertFloat(spec)
 	case sqlspec.TypeTime:
-		return nconvertTime(spec)
+		return &schema.TimeType{T: tTimestamp}, nil
+	case sqlspec.TypeBinary:
+		return &schema.BinaryType{T: tBytea}, nil
+	case sqlspec.TypeBoolean:
+		return &schema.BoolType{T: tBoolean}, nil
 	}
-	return parseRawType(spec.TypeName)
+	return parseRawType(spec)
 }
 
 // temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
 func nconvertInteger(spec *sqlspec.Column) (schema.Type, error) {
-	typ := &schema.IntegerType{
-		Unsigned: strings.HasPrefix(spec.TypeName, "u"),
+	if strings.HasPrefix(spec.TypeName, "u") {
+		return nil, fmt.Errorf("postgres: unsigned integers currently not supported")
 	}
-	switch spec.TypeName {
-	case "int8", "uint8":
-		typ.T = tTinyInt
-	case "int16", "uint16":
+	typ := &schema.IntegerType{}
+	switch sqlspec.Type(spec.TypeName) {
+	case sqlspec.TypeInt8:
+		return nil, fmt.Errorf("postgres: 8-bit integers not supported")
+	case sqlspec.TypeInt16:
 		typ.T = tSmallInt
-	case "int32", "uint32", "int", "integer", "uint":
-		typ.T = tInt
-	case "int64", "uint64":
+	case sqlspec.TypeInt:
+		typ.T = tInteger
+	case sqlspec.TypeInt64:
 		typ.T = tBigInt
 	default:
-		return nil, fmt.Errorf("mysql: unknown integer column type %q", spec.TypeName)
+		return nil, fmt.Errorf("postgres: unknown integer column type %q", spec.TypeName)
 	}
 	return typ, nil
 }
@@ -145,14 +146,10 @@ func nconvertString(spec *sqlspec.Column) (schema.Type, error) {
 		st.Size = s
 	}
 	switch {
-	case st.Size <= math.MaxUint16:
-		st.T = tVarchar
-	case st.Size > math.MaxUint16 && st.Size <= (1<<24-1):
-		st.T = tMediumText
-	case st.Size > (1<<24-1) && st.Size <= math.MaxUint32:
-		st.T = tLongText
+	case st.Size < maxCharSize:
+		st.T = tVarChar
 	default:
-		return nil, fmt.Errorf("mysql: string fields can be up to 4GB long")
+		st.T = tText
 	}
 	return st, nil
 }
@@ -161,7 +158,7 @@ func nconvertString(spec *sqlspec.Column) (schema.Type, error) {
 func nconvertEnum(spec *sqlspec.Column) (schema.Type, error) {
 	attr, ok := spec.Attr("values")
 	if !ok {
-		return nil, fmt.Errorf("mysql: expected enum fields to have values")
+		return nil, errors.New("postgres: expected enum fields to have values")
 	}
 	list, err := attr.Strings()
 	if err != nil {
@@ -205,7 +202,7 @@ func nconvertDecimal(spec *sqlspec.Column) (schema.Type, error) {
 // temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
 func nconvertFloat(spec *sqlspec.Column) (schema.Type, error) {
 	ft := &schema.FloatType{
-		T: tFloat,
+		T: tReal,
 	}
 	if precision, ok := spec.Attr("precision"); ok {
 		p, err := precision.Int()
@@ -214,9 +211,6 @@ func nconvertFloat(spec *sqlspec.Column) (schema.Type, error) {
 		}
 		ft.Precision = p
 	}
-	// A precision from 0 to 23 results in a 4-byte single-precision FLOAT column.
-	// A precision from 24 to 53 results in an 8-byte double-precision DOUBLE column:
-	// https://dev.mysql.com/doc/refman/8.0/en/floating-point-types.html
 	if ft.Precision > 23 {
 		ft.T = tDouble
 	}
