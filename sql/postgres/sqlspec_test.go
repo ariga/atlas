@@ -29,9 +29,9 @@ table "table" {
 		type = "string"
 		size = 32
 	}
-	//primary_key {
-	//	columns = [table.table.column.col]
-	//}
+	primary_key {
+		columns = [table.table.column.col]
+	}
 	//index "index" {
 	//	unique = true
 	//	columns = [
@@ -114,12 +114,12 @@ table "table" {
 		//	},
 		//},
 	}
-	//exp.Tables[0].PrimaryKey = &schema.Index{
-	//	Table: exp.Tables[0],
-	//	Parts: []*schema.IndexPart{
-	//		{SeqNo: 0, C: exp.Tables[0].Columns[0]},
-	//	},
-	//}
+	exp.Tables[0].PrimaryKey = &schema.Index{
+		Table: exp.Tables[0],
+		Parts: []*schema.IndexPart{
+			{SeqNo: 0, C: exp.Tables[0].Columns[0]},
+		},
+	}
 	//exp.Tables[0].Indexes = []*schema.Index{
 	//	{
 	//		Name:   "index",
