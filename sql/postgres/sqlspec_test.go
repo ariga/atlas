@@ -50,15 +50,15 @@ table "table" {
 	//}
 }
 
-//table "accounts" {
-//	column "name" {
-//		type = "string"
-//		size = 32
-//	}
-//	primary_key {
-//		columns = [table.accounts.column.name]
-//	}
-//}
+table "accounts" {
+	column "name" {
+		type = "string"
+		size = 32
+	}
+	primary_key {
+		columns = [table.accounts.column.name]
+	}
+}
 `
 	s := schema.Schema{}
 	err := UnmarshalSpec([]byte(f), schemahcl.Unmarshal, &s)
@@ -98,21 +98,21 @@ table "table" {
 				},
 			},
 		},
-		//{
-		//	Name:   "accounts",
-		//	Schema: exp,
-		//	Columns: []*schema.Column{
-		//		{
-		//			Name: "name",
-		//			Type: &schema.ColumnType{
-		//				Type: &schema.StringType{
-		//					T:    "varchar",
-		//					Size: 32,
-		//				},
-		//			},
-		//		},
-		//	},
-		//},
+		{
+			Name:   "accounts",
+			Schema: exp,
+			Columns: []*schema.Column{
+				{
+					Name: "name",
+					Type: &schema.ColumnType{
+						Type: &schema.StringType{
+							T:    "varchar",
+							Size: 32,
+						},
+					},
+				},
+			},
+		},
 	}
 	exp.Tables[0].PrimaryKey = &schema.Index{
 		Table: exp.Tables[0],
@@ -140,7 +140,12 @@ table "table" {
 	//		OnDelete:   schema.SetNull,
 	//	},
 	//}
-
+	exp.Tables[1].PrimaryKey = &schema.Index{
+		Table: exp.Tables[1],
+		Parts: []*schema.IndexPart{
+			{SeqNo: 0, C: exp.Tables[1].Columns[0]},
+		},
+	}
 	require.EqualValues(t, exp, &s)
 }
 
