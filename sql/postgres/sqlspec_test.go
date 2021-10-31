@@ -289,6 +289,6 @@ table "table" {
 	%s
 }
 `
-	body := fmt.Sprintf(tmpl, string(buf))
+	body := fmt.Sprintf(tmpl, buf)
 	return []byte(body)
 }
