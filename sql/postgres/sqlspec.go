@@ -3,8 +3,6 @@ package postgres
 import (
 	"errors"
 	"fmt"
-	"math"
-	"strconv"
 	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
@@ -81,8 +79,10 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 		return &schema.BinaryType{T: tBytea}, nil
 	case sqlspec.TypeBoolean:
 		return &schema.BoolType{T: tBoolean}, nil
+	default:
+		//return parseRawType(spec)
+		return nil, nil
 	}
-	return parseRawType(spec)
 }
 
 // temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
@@ -104,33 +104,6 @@ func nconvertInteger(spec *sqlspec.Column) (schema.Type, error) {
 		return nil, fmt.Errorf("postgres: unknown integer column type %q", spec.TypeName)
 	}
 	return typ, nil
-}
-
-// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
-func nconvertBinary(spec *sqlspec.Column) (schema.Type, error) {
-	bt := &schema.BinaryType{}
-	if attr, ok := spec.Attr("size"); ok {
-		s, err := attr.Int()
-		if err != nil {
-			return nil, err
-		}
-		bt.Size = s
-	}
-	switch {
-	case bt.Size == 0:
-		bt.T = tBlob
-	case bt.Size <= math.MaxUint8:
-		bt.T = tTinyBlob
-	case bt.Size > math.MaxUint8 && bt.Size <= math.MaxUint16:
-		bt.T = tBlob
-	case bt.Size > math.MaxUint16 && bt.Size <= 1<<24-1:
-		bt.T = tMediumBlob
-	case bt.Size > 1<<24-1 && bt.Size <= math.MaxUint32:
-		bt.T = tLongBlob
-	default:
-		return nil, fmt.Errorf("mysql: blob fields can be up to 4GB long")
-	}
-	return bt, nil
 }
 
 // temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
@@ -165,16 +138,6 @@ func nconvertEnum(spec *sqlspec.Column) (schema.Type, error) {
 		return nil, err
 	}
 	return &schema.EnumType{Values: list}, nil
-}
-
-// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
-func nconvertBoolean(_ *sqlspec.Column) (schema.Type, error) {
-	return &schema.BoolType{T: "boolean"}, nil
-}
-
-// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
-func nconvertTime(_ *sqlspec.Column) (schema.Type, error) {
-	return &schema.TimeType{T: "timestamp"}, nil
 }
 
 // temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
