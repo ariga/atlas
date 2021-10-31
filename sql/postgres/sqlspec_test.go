@@ -22,13 +22,13 @@ table "table" {
 	column "col" {
 		type = "int"
 	}
-	//column "age" {
-	//	type = "int"
-	//}
-	//column "account_name" {
-	//	type = "string"
-	//	size = 32
-	//}
+	column "age" {
+		type = "int"
+	}
+	column "account_name" {
+		type = "string"
+		size = 32
+	}
 	//primary_key {
 	//	columns = [table.table.column.col]
 	//}
@@ -79,23 +79,23 @@ table "table" {
 						},
 					},
 				},
-				//{
-				//	Name: "age",
-				//	Type: &schema.ColumnType{
-				//		Type: &schema.IntegerType{
-				//			T: "integer",
-				//		},
-				//	},
-				//},
-				//{
-				//	Name: "account_name",
-				//	Type: &schema.ColumnType{
-				//		Type: &schema.StringType{
-				//			T:    "varchar",
-				//			Size: 32,
-				//		},
-				//	},
-				//},
+				{
+					Name: "age",
+					Type: &schema.ColumnType{
+						Type: &schema.IntegerType{
+							T: "integer",
+						},
+					},
+				},
+				{
+					Name: "account_name",
+					Type: &schema.ColumnType{
+						Type: &schema.StringType{
+							T:    "varchar",
+							Size: 32,
+						},
+					},
+				},
 			},
 		},
 		//{
