@@ -6,7 +6,6 @@ package sqlite
 
 import (
 	"fmt"
-	"log"
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
@@ -263,7 +262,7 @@ func TestUnmarshalSpecColumnTypes(t *testing.T) {
 	} {
 		t.Run(tt.spec.Name, func(t *testing.T) {
 			var s schema.Schema
-			err := UnmarshalSpec(hcl(tt.spec), schemahcl.Unmarshal, &s)
+			err := UnmarshalSpec(hcl(t, tt.spec), schemahcl.Unmarshal, &s)
 			require.NoError(t, err)
 			tbl, ok := s.Table("table")
 			require.True(t, ok)
@@ -275,26 +274,16 @@ func TestUnmarshalSpecColumnTypes(t *testing.T) {
 }
 
 func TestNotSupportedUnmarshalSpecColumnTypes(t *testing.T) {
-	for _, tt := range []struct {
-		spec *sqlspec.Column
-	}{
-		{
-			spec: specutil.NewCol("uint64", "uint64"),
-		},
-	} {
-		t.Run(tt.spec.Name, func(t *testing.T) {
-			var s schema.Schema
-			err := UnmarshalSpec(hcl(tt.spec), schemahcl.Unmarshal, &s)
-			require.Error(t, err)
-		})
-	}
+	var s schema.Schema
+	err := UnmarshalSpec(hcl(t, specutil.NewCol("uint64", "uint64")), schemahcl.Unmarshal, &s)
+	require.Error(t, err)
 }
 
 // hcl returns an Atlas HCL document containing the column spec.
-func hcl(c *sqlspec.Column) []byte {
-	mm, err := schemahcl.Marshal(c)
+func hcl(t *testing.T, c *sqlspec.Column) []byte {
+	buf, err := schemahcl.Marshal(c)
 	if err != nil {
-		log.Fatalln(err)
+		t.Fatal(err)
 	}
 	tmpl := `
 schema "default" {
@@ -304,7 +293,7 @@ table "table" {
 	%s
 }
 `
-	body := fmt.Sprintf(tmpl, string(mm))
+	body := fmt.Sprintf(tmpl, buf)
 	return []byte(body)
 }
 
