@@ -274,19 +274,9 @@ func TestUnmarshalSpecColumnTypes(t *testing.T) {
 }
 
 func TestNotSupportedUnmarshalSpecColumnTypes(t *testing.T) {
-	for _, tt := range []struct {
-		spec *sqlspec.Column
-	}{
-		{
-			spec: specutil.NewCol("uint64", "uint64"),
-		},
-	} {
-		t.Run(tt.spec.Name, func(t *testing.T) {
-			var s schema.Schema
-			err := UnmarshalSpec(hcl(t, tt.spec), schemahcl.Unmarshal, &s)
-			require.Error(t, err)
-		})
-	}
+	var s schema.Schema
+	err := UnmarshalSpec(hcl(t, specutil.NewCol("uint64", "uint64")), schemahcl.Unmarshal, &s)
+	require.Error(t, err)
 }
 
 // hcl returns an Atlas HCL document containing the column spec.
