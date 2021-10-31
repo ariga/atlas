@@ -35,7 +35,7 @@ func TestUnmarshalSpecColumnTypes(t *testing.T) {
 		{
 			spec: specutil.NewCol("string_test", "string", specutil.LitAttr("size", "10485761")),
 			expected: &schema.StringType{
-				T:    "varchar",
+				T:    "text",
 				Size: 10_485_761,
 			},
 		},
@@ -55,7 +55,7 @@ func TestUnmarshalSpecColumnTypes(t *testing.T) {
 			},
 		},
 		{
-			spec:     specutil.NewCol("enum", "enum", specutil.ListAttr("values", "a", "b", "c")),
+			spec:     specutil.NewCol("enum", "enum", specutil.ListAttr("values", `"a"`, `"b"`, `"c"`)),
 			expected: &schema.EnumType{Values: []string{"a", "b", "c"}},
 		},
 		{
