@@ -112,6 +112,33 @@ func TestUnmarshalSpecColumnTypes(t *testing.T) {
 	}
 }
 
+func TestNotSupportedUnmarshalSpecColumnTypes(t *testing.T) {
+	for _, tt := range []struct {
+		spec        *sqlspec.Column
+		expectedErr string
+	}{
+		{
+			spec:        specutil.NewCol("uint", "uint"),
+			expectedErr: "postgres: failed converting to *schema.Schema: unsigned integers currently not supported",
+		},
+		{
+			spec:        specutil.NewCol("int8", "int8"),
+			expectedErr: "postgres: failed converting to *schema.Schema: 8-bit integers not supported",
+		},
+
+		{
+			spec:        specutil.NewCol("uint64", "uint64"),
+			expectedErr: "postgres: failed converting to *schema.Schema: unsigned integers currently not supported",
+		},
+	} {
+		t.Run(tt.spec.Name, func(t *testing.T) {
+			var s schema.Schema
+			err := UnmarshalSpec(hcl(tt.spec), schemahcl.Unmarshal, &s)
+			require.Equal(t, tt.expectedErr, err.Error())
+		})
+	}
+}
+
 // hcl returns an Atlas HCL document containing the column spec.
 func hcl(c *sqlspec.Column) []byte {
 	mm, err := schemahcl.Marshal(c)
@@ -129,17 +156,3 @@ table "table" {
 	body := fmt.Sprintf(tmpl, string(mm))
 	return []byte(body)
 }
-
-//{
-//	spec:        schemautil.ColSpec("uint", "uint"),
-//	expectedErr: "postgres: unsigned integers currently not supported",
-//},
-//{
-//	spec:        schemautil.ColSpec("int8", "int8"),
-//	expectedErr: "postgres: 8-bit integers not supported",
-//},
-
-//{
-//	spec:        schemautil.ColSpec("uint64", "uint64"),
-//	expectedErr: "postgres: unsigned integers currently not supported",
-//},

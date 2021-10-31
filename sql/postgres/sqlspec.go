@@ -24,16 +24,16 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 	}
 	if v, ok := v.(*schema.Schema); ok {
 		if len(d.Schemas) != 1 {
-			return fmt.Errorf("mysql: expecting document to contain a single schema, got %d", len(d.Schemas))
+			return fmt.Errorf("postgres: expecting document to contain a single schema, got %d", len(d.Schemas))
 		}
 		conv, err := specutil.Schema(d.Schemas[0], d.Tables, convertTable)
 		if err != nil {
-			return fmt.Errorf("mysql: failed converting to *schema.Schema: %w", err)
+			return fmt.Errorf("postgres: failed converting to *schema.Schema: %w", err)
 		}
 		*v = *conv
 		return nil
 	}
-	return fmt.Errorf("mysql: failed unmarshaling spec. %T is not supported", v)
+	return fmt.Errorf("postgres: failed unmarshaling spec. %T is not supported", v)
 }
 
 // convertTable converts a sqlspec.Table to a schema.Table. Table conversion is done without converting
@@ -58,7 +58,7 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 	return specutil.Column(spec, convertColumnType)
 }
 
-// convertColumnType converts a sqlspec.Column into a concrete MySQL schema.Type.
+// convertColumnType converts a sqlspec.Column into a concrete Postgres schema.Type.
 func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 	switch sqlspec.Type(spec.TypeName) {
 	case sqlspec.TypeInt, sqlspec.TypeInt8, sqlspec.TypeInt16,
@@ -87,12 +87,12 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 // temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
 func nconvertInteger(spec *sqlspec.Column) (schema.Type, error) {
 	if strings.HasPrefix(spec.TypeName, "u") {
-		return nil, fmt.Errorf("postgres: unsigned integers currently not supported")
+		return nil, fmt.Errorf("unsigned integers currently not supported")
 	}
 	typ := &schema.IntegerType{}
 	switch sqlspec.Type(spec.TypeName) {
 	case sqlspec.TypeInt8:
-		return nil, fmt.Errorf("postgres: 8-bit integers not supported")
+		return nil, fmt.Errorf("8-bit integers not supported")
 	case sqlspec.TypeInt16:
 		typ.T = tSmallInt
 	case sqlspec.TypeInt:
@@ -100,7 +100,7 @@ func nconvertInteger(spec *sqlspec.Column) (schema.Type, error) {
 	case sqlspec.TypeInt64:
 		typ.T = tBigInt
 	default:
-		return nil, fmt.Errorf("postgres: unknown integer column type %q", spec.TypeName)
+		return nil, fmt.Errorf("unknown integer column type %q", spec.TypeName)
 	}
 	return typ, nil
 }
@@ -130,7 +130,7 @@ func nconvertString(spec *sqlspec.Column) (schema.Type, error) {
 func nconvertEnum(spec *sqlspec.Column) (schema.Type, error) {
 	attr, ok := spec.Attr("values")
 	if !ok {
-		return nil, errors.New("postgres: expected enum fields to have values")
+		return nil, errors.New("expected enum fields to have values")
 	}
 	list, err := attr.Strings()
 	if err != nil {
