@@ -141,7 +141,7 @@ func TestNotSupportedUnmarshalSpecColumnTypes(t *testing.T) {
 
 // hcl returns an Atlas HCL document containing the column spec.
 func hcl(c *sqlspec.Column) []byte {
-	mm, err := schemahcl.Marshal(c)
+	buf, err := schemahcl.Marshal(c)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -153,6 +153,6 @@ table "table" {
 	%s
 }
 `
-	body := fmt.Sprintf(tmpl, string(mm))
+	body := fmt.Sprintf(tmpl, string(buf))
 	return []byte(body)
 }
