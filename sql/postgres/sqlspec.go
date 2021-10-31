@@ -80,8 +80,7 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 	case sqlspec.TypeBoolean:
 		return &schema.BoolType{T: tBoolean}, nil
 	default:
-		//return parseRawType(spec)
-		return nil, nil
+		return nparseRawType(spec)
 	}
 }
 
@@ -178,4 +177,13 @@ func nconvertFloat(spec *sqlspec.Column) (schema.Type, error) {
 		ft.T = tDouble
 	}
 	return ft, nil
+}
+
+// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
+func nparseRawType(spec *sqlspec.Column) (schema.Type, error) {
+	cm, err := parseColumn(spec.TypeName)
+	if err != nil {
+		return nil, err
+	}
+	return columnType(cm), nil
 }
