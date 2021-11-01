@@ -387,14 +387,20 @@ func TestMarshalSpecColumnType(t *testing.T) {
 			},
 			expected: specutil.NewCol("bitvar", "bit varying"),
 		},
-		//{
-		//	spec:     specutil.NewCol("bitvar8", "bit varying(8)"),
-		//	expected: &BitType{T: tBitVar, Len: 8},
-		//},
-		//{
-		//	spec:     specutil.NewCol("bit8", "bit(8)"),
-		//	expected: &BitType{T: tBit, Len: 8},
-		//},
+		{
+			schem: &BitType{
+				T: tBit,
+				Len: 8,
+			},
+			expected: specutil.NewCol("bit8", "bit(8)"),
+		},
+		{
+			schem: &BitType{
+				T: tBitVar,
+				Len: 8,
+			},
+			expected: specutil.NewCol("bitvar8", "bit varying(8)"),
+		},
 	} {
 		t.Run(tt.expected.Name, func(t *testing.T) {
 			s := schema.Schema{

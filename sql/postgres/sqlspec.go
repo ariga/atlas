@@ -310,7 +310,7 @@ func nintegerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
 		}
 		return &sqlspec.Column{TypeName: "int64"}, nil
 	}
-	return nil, errors.New("mysql: schema integer failed to convert")
+	return nil, errors.New("schema integer failed to convert")
 }
 
 // temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
@@ -329,13 +329,17 @@ func nenumSpec(t *schema.EnumType) (*sqlspec.Column, error) {
 func nbitSpec(t *BitType) (*sqlspec.Column, error) {
 	switch t.T {
 	case tBit:
-		return &sqlspec.Column{TypeName: tBit}, nil
+		if t.Len == 1 {
+			return &sqlspec.Column{TypeName: tBit}, nil
+		}
+		n := fmt.Sprintf("%s(%d)", tBit, t.Len)
+		return specutil.NewCol("", n), nil
 	case tBitVar:
-		return &sqlspec.Column{TypeName: tBitVar}, nil
-	//case tTinyBlob, tMediumBlob, tLongBlob:
-	//	size := specutil.LitAttr("size", strconv.Itoa(t.Size))
-	//	return specutil.NewCol("", "binary", size), nil
-	//}
+		if t.Len == 0 {
+			return &sqlspec.Column{TypeName: tBitVar}, nil
+		}
+		n := fmt.Sprintf("%s(%d)", tBitVar, t.Len)
+		return specutil.NewCol("", n), nil
 	}
 	return nil, errors.New("schema bit failed to convert")
 }
