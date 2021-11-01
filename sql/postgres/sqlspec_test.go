@@ -374,18 +374,19 @@ func TestMarshalSpecColumnType(t *testing.T) {
 			},
 			expected: specutil.NewCol("money", "money"),
 		},
-		//{
-		//	spec:     specutil.NewCol("money", "money"),
-		//	expected: &CurrencyType{T: tMoney},
-		//},
-		//{
-		//	spec:     specutil.NewCol("bit", "bit"),
-		//	expected: &BitType{T: tBit, Len: 1},
-		//},
-		//{
-		//	spec:     specutil.NewCol("bitvar", "bit varying"),
-		//	expected: &BitType{T: tBitVar},
-		//},
+		{
+			schem: &BitType{
+				T: tBit,
+				Len: 1,
+			},
+			expected: specutil.NewCol("bit", "bit"),
+		},
+		{
+			schem: &BitType{
+				T: tBitVar,
+			},
+			expected: specutil.NewCol("bitvar", "bit varying"),
+		},
 		//{
 		//	spec:     specutil.NewCol("bitvar8", "bit varying(8)"),
 		//	expected: &BitType{T: tBitVar, Len: 8},

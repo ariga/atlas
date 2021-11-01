@@ -267,6 +267,8 @@ func ncolumnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 		return &sqlspec.Column{TypeName: t.T}, nil
 	case *CurrencyType:
 		return &sqlspec.Column{TypeName: t.T}, nil
+	case *BitType:
+		return nbitSpec(t)
 	default:
 		return nil, fmt.Errorf("mysql: failed to convert column type %T to spec", t)
 	}
@@ -321,4 +323,19 @@ func nenumSpec(t *schema.EnumType) (*sqlspec.Column, error) {
 		quoted = append(quoted, strconv.Quote(v))
 	}
 	return specutil.NewCol("", "enum", specutil.ListAttr("values", quoted...)), nil
+}
+
+// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
+func nbitSpec(t *BitType) (*sqlspec.Column, error) {
+	switch t.T {
+	case tBit:
+		return &sqlspec.Column{TypeName: tBit}, nil
+	case tBitVar:
+		return &sqlspec.Column{TypeName: tBitVar}, nil
+	//case tTinyBlob, tMediumBlob, tLongBlob:
+	//	size := specutil.LitAttr("size", strconv.Itoa(t.Size))
+	//	return specutil.NewCol("", "binary", size), nil
+	//}
+	}
+	return nil, errors.New("schema bit failed to convert")
 }
