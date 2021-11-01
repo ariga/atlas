@@ -362,6 +362,12 @@ func TestMarshalSpecColumnType(t *testing.T) {
 			},
 			expected: specutil.NewCol("float_double", "float", specutil.LitAttr("precision", "25")),
 		},
+		{
+			schem: &NetworkType{
+				T: tCIDR,
+			},
+			expected: specutil.NewCol("network", "cidr"),
+		},
 		//{
 		//	spec:     specutil.NewCol("cidr", "cidr"),
 		//	expected: &NetworkType{T: tCIDR},
