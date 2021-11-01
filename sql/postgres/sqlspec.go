@@ -283,7 +283,6 @@ func nstringSpec(t *schema.StringType) (*sqlspec.Column, error) {
 	default:
 		return nil, errors.New("schema string failed to convert")
 	}
-
 }
 
 // temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
