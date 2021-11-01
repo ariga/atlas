@@ -326,28 +326,16 @@ func TestMarshalSpecColumnType(t *testing.T) {
 			},
 			expected: specutil.NewCol("string_text", "string", specutil.LitAttr("size", "10485761")),
 		},
-		//{
-		//	spec: specutil.NewCol("string_test", "string", specutil.LitAttr("size", "10485761")),
-		//	expected: &schema.StringType{
-		//		T:    tText,
-		//		Size: 10_485_761,
-		//	},
-		//},
-		//{
-		//	spec: specutil.NewCol("varchar(255)", "varchar(255)"),
-		//	expected: &schema.StringType{
-		//		T:    tVarChar,
-		//		Size: 255,
-		//	},
-		//},
-		//{
-		//	spec: specutil.NewCol("decimal(10, 2)", "decimal(10, 2)"),
-		//	expected: &schema.DecimalType{
-		//		T:         tDecimal,
-		//		Scale:     2,
-		//		Precision: 10,
-		//	},
-		//},
+		{
+			schem: &schema.DecimalType{
+				T:         tDecimal,
+				Scale:     2,
+				Precision: 10,
+			},
+			expected: specutil.NewCol("decimal", "decimal",
+				specutil.LitAttr("precision", "10"), specutil.LitAttr("scale", "2")),
+		},
+
 		//{
 		//	spec:     specutil.NewCol("enum", "enum", specutil.ListAttr("values", `"a"`, `"b"`, `"c"`)),
 		//	expected: &schema.EnumType{Values: []string{"a", "b", "c"}},
