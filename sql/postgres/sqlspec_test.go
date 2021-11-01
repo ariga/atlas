@@ -335,19 +335,19 @@ func TestMarshalSpecColumnType(t *testing.T) {
 			expected: specutil.NewCol("decimal", "decimal",
 				specutil.LitAttr("precision", "10"), specutil.LitAttr("scale", "2")),
 		},
-
-		//{
-		//	spec:     specutil.NewCol("enum", "enum", specutil.ListAttr("values", `"a"`, `"b"`, `"c"`)),
-		//	expected: &schema.EnumType{Values: []string{"a", "b", "c"}},
-		//},
-		//{
-		//	spec:     specutil.NewCol("bool", "boolean"),
-		//	expected: &schema.BoolType{T: tBoolean},
-		//},
-		//{
-		//	spec:     specutil.NewCol("decimal", "decimal", specutil.LitAttr("precision", "10"), specutil.LitAttr("scale", "2")),
-		//	expected: &schema.DecimalType{T: tDecimal, Precision: 10, Scale: 2},
-		//},
+		{
+			schem: &schema.EnumType{
+				Values: []string{"a", "b", "c"},
+			},
+			expected: specutil.NewCol("enum", "enum",
+				specutil.ListAttr("values", "a", "b", "c")),
+		},
+		{
+			schem: &schema.BoolType{
+				T: tBoolean,
+			},
+			expected: specutil.NewCol("boolean", "boolean"),
+		},
 		//{
 		//	spec:     specutil.NewCol("float", "float", specutil.LitAttr("precision", "10")),
 		//	expected: &schema.FloatType{T: tReal, Precision: 10},
