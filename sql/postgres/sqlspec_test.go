@@ -303,7 +303,7 @@ func TestMarshalSpecColumnType(t *testing.T) {
 				T:        tInt,
 				Unsigned: false,
 			},
-			expected: specutil.NewCol("column", "int"),
+			expected: specutil.NewCol("int", "int"),
 		},
 		{
 			schem: &schema.IntegerType{
@@ -348,14 +348,20 @@ func TestMarshalSpecColumnType(t *testing.T) {
 			},
 			expected: specutil.NewCol("boolean", "boolean"),
 		},
-		//{
-		//	spec:     specutil.NewCol("float", "float", specutil.LitAttr("precision", "10")),
-		//	expected: &schema.FloatType{T: tReal, Precision: 10},
-		//},
-		//{
-		//	spec:     specutil.NewCol("float", "float", specutil.LitAttr("precision", "25")),
-		//	expected: &schema.FloatType{T: tDouble, Precision: 25},
-		//},
+		{
+			schem: &schema.FloatType{
+				T:         tReal,
+				Precision: 10,
+			},
+			expected: specutil.NewCol("float_real", "float", specutil.LitAttr("precision", "10")),
+		},
+		{
+			schem: &schema.FloatType{
+				T:         tDouble,
+				Precision: 25,
+			},
+			expected: specutil.NewCol("float_double", "float", specutil.LitAttr("precision", "25")),
+		},
 		//{
 		//	spec:     specutil.NewCol("cidr", "cidr"),
 		//	expected: &NetworkType{T: tCIDR},
