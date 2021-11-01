@@ -45,11 +45,11 @@ func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) 
 		ok bool
 	)
 	if s, ok = v.(*schema.Schema); !ok {
-		return nil, fmt.Errorf("mysql: failed marshaling spec. %T is not supported", v)
+		return nil, fmt.Errorf("failed marshaling spec. %T is not supported", v)
 	}
 	spec, tables, err := schemaSpec(s)
 	if err != nil {
-		return nil, fmt.Errorf("mysql: failed converting schema to spec: %w", err)
+		return nil, fmt.Errorf("failed converting schema to spec: %w", err)
 	}
 	return marshaler.MarshalSpec(&doc{
 		Tables:  tables,
@@ -209,17 +209,17 @@ func nparseRawType(spec *sqlspec.Column) (schema.Type, error) {
 	return columnType(cm), nil
 }
 
-// schemaSpec converts from a concrete MySQL schema to Atlas specification.
+// schemaSpec converts from a concrete Postgres schema to Atlas specification.
 func schemaSpec(schem *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error) {
 	return specutil.FromSchema(schem, tableSpec)
 }
 
-// tableSpec converts from a concrete MySQL sqlspec.Table to a schema.Table.
+// tableSpec converts from a concrete Postgres sqlspec.Table to a schema.Table.
 func tableSpec(tab *schema.Table) (*sqlspec.Table, error) {
 	return specutil.FromTable(tab, columnSpec, specutil.FromPrimaryKey, specutil.FromIndex, specutil.FromForeignKey)
 }
 
-// columnSpec converts from a concrete MySQL schema.Column into a sqlspec.Column.
+// columnSpec converts from a concrete Postgres schema.Column into a sqlspec.Column.
 func columnSpec(col *schema.Column) (*sqlspec.Column, error) {
 	ct, err := ncolumnTypeSpec(col.Type.Type)
 	if err != nil {
@@ -235,7 +235,7 @@ func columnSpec(col *schema.Column) (*sqlspec.Column, error) {
 	}, nil
 }
 
-// columnTypeSpec converts from a concrete MySQL schema.Type into sqlspec.Column Type.
+// columnTypeSpec converts from a concrete Postgres schema.Type into sqlspec.Column Type.
 func ncolumnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	switch t := t.(type) {
 	case *schema.EnumType:
@@ -270,7 +270,7 @@ func ncolumnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	case *BitType:
 		return nbitSpec(t)
 	default:
-		return nil, fmt.Errorf("mysql: failed to convert column type %T to spec", t)
+		return nil, fmt.Errorf("failed to convert column type %T to spec", t)
 	}
 }
 
@@ -283,7 +283,7 @@ func nbinarySpec(t *schema.BinaryType) (*sqlspec.Column, error) {
 	//	size := specutil.LitAttr("size", strconv.Itoa(t.Size))
 	//	return specutil.NewCol("", "binary", size), nil
 	//}
-	return nil, errors.New("mysql: schema binary failed to convert")
+	return nil, errors.New("schema binary failed to convert")
 }
 
 // temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
@@ -292,8 +292,10 @@ func nstringSpec(t *schema.StringType) (*sqlspec.Column, error) {
 	case tVarChar, tText:
 		s := strconv.Itoa(t.Size)
 		return specutil.NewCol("", "string", specutil.LitAttr("size", s)), nil
+	default:
+		return nil, errors.New("schema string failed to convert")
 	}
-	return nil, errors.New("mysql: schema string failed to convert")
+
 }
 
 // temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
@@ -309,14 +311,15 @@ func nintegerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
 			return specutil.NewCol("", "uint64"), nil
 		}
 		return &sqlspec.Column{TypeName: "int64"}, nil
+	default:
+		return nil, errors.New("schema integer failed to convert")
 	}
-	return nil, errors.New("schema integer failed to convert")
 }
 
 // temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
 func nenumSpec(t *schema.EnumType) (*sqlspec.Column, error) {
 	if len(t.Values) == 0 {
-		return nil, errors.New("mysql: schema enum fields to have values")
+		return nil, errors.New("schema enum fields to have values")
 	}
 	quoted := make([]string, 0, len(t.Values))
 	for _, v := range t.Values {
