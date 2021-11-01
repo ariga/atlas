@@ -265,6 +265,8 @@ func ncolumnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 		return &sqlspec.Column{TypeName: t.T}, nil
 	case *NetworkType:
 		return &sqlspec.Column{TypeName: t.T}, nil
+	case *CurrencyType:
+		return &sqlspec.Column{TypeName: t.T}, nil
 	default:
 		return nil, fmt.Errorf("mysql: failed to convert column type %T to spec", t)
 	}

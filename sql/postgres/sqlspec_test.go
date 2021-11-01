@@ -368,10 +368,12 @@ func TestMarshalSpecColumnType(t *testing.T) {
 			},
 			expected: specutil.NewCol("network", "cidr"),
 		},
-		//{
-		//	spec:     specutil.NewCol("cidr", "cidr"),
-		//	expected: &NetworkType{T: tCIDR},
-		//},
+		{
+			schem: &CurrencyType{
+				T: tMoney,
+			},
+			expected: specutil.NewCol("money", "money"),
+		},
 		//{
 		//	spec:     specutil.NewCol("money", "money"),
 		//	expected: &CurrencyType{T: tMoney},
