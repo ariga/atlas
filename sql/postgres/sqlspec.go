@@ -282,11 +282,11 @@ func nbinarySpec(t *schema.BinaryType) (*sqlspec.Column, error) {
 
 // temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
 func nstringSpec(t *schema.StringType) (*sqlspec.Column, error) {
-	//switch t.T {
-	//case tVarchar, tMediumText, tLongText:
-	//	s := strconv.Itoa(t.Size)
-	//	return specutil.NewCol("", "string", specutil.LitAttr("size", s)), nil
-	//}
+	switch t.T {
+	case tVarChar, tText:
+		s := strconv.Itoa(t.Size)
+		return specutil.NewCol("", "string", specutil.LitAttr("size", s)), nil
+	}
 	return nil, errors.New("mysql: schema string failed to convert")
 }
 
@@ -298,8 +298,6 @@ func nintegerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
 			return specutil.NewCol("", "uint"), nil
 		}
 		return &sqlspec.Column{TypeName: "int"}, nil
-	//case tTinyInt:
-	//	return &sqlspec.Column{TypeName: "int8"}, nil
 	case tBigInt:
 		if t.Unsigned {
 			return specutil.NewCol("", "uint64"), nil

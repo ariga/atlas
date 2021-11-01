@@ -319,6 +319,13 @@ func TestMarshalSpecColumnType(t *testing.T) {
 			},
 			expected: specutil.NewCol("string_varchar", "string", specutil.LitAttr("size", "255")),
 		},
+		{
+			schem: &schema.StringType{
+				T:    tText,
+				Size: 10_485_761,
+			},
+			expected: specutil.NewCol("string_text", "string", specutil.LitAttr("size", "10485761")),
+		},
 		//{
 		//	spec: specutil.NewCol("string_test", "string", specutil.LitAttr("size", "10485761")),
 		//	expected: &schema.StringType{
@@ -386,7 +393,7 @@ func TestMarshalSpecColumnType(t *testing.T) {
 		//	expected: &BitType{T: tBit, Len: 8},
 		//},
 	} {
-		t.Run(tt.expected.TypeName, func(t *testing.T) {
+		t.Run(tt.expected.Name, func(t *testing.T) {
 			s := schema.Schema{
 				Tables: []*schema.Table{
 					{
