@@ -249,7 +249,7 @@ func ncolumnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 		scale := specutil.LitAttr("scale", strconv.Itoa(t.Scale))
 		return specutil.NewCol("", "decimal", precision, scale), nil
 	case *schema.BinaryType:
-		return nbinarySpec(t)
+		return &sqlspec.Column{TypeName: t.T}, nil
 	case *schema.BoolType:
 		return &sqlspec.Column{TypeName: "boolean"}, nil
 	case *schema.FloatType:
@@ -272,18 +272,6 @@ func ncolumnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	default:
 		return nil, fmt.Errorf("failed to convert column type %T to spec", t)
 	}
-}
-
-// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
-func nbinarySpec(t *schema.BinaryType) (*sqlspec.Column, error) {
-	//switch t.T {
-	//case tBlob:
-	//	return &sqlspec.Column{TypeName: "binary"}, nil
-	//case tTinyBlob, tMediumBlob, tLongBlob:
-	//	size := specutil.LitAttr("size", strconv.Itoa(t.Size))
-	//	return specutil.NewCol("", "binary", size), nil
-	//}
-	return nil, errors.New("schema binary failed to convert")
 }
 
 // temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
