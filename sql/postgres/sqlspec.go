@@ -327,19 +327,23 @@ func nenumSpec(t *schema.EnumType) (*sqlspec.Column, error) {
 
 // temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
 func nbitSpec(t *BitType) (*sqlspec.Column, error) {
+	var c *sqlspec.Column
 	switch t.T {
 	case tBit:
 		if t.Len == 1 {
-			return &sqlspec.Column{TypeName: tBit}, nil
+			c = &sqlspec.Column{TypeName: tBit}
+		} else {
+			c = specutil.NewCol("", fmt.Sprintf("%s(%d)", tBit, t.Len))
 		}
-		n := fmt.Sprintf("%s(%d)", tBit, t.Len)
-		return specutil.NewCol("", n), nil
+		return c, nil
 	case tBitVar:
 		if t.Len == 0 {
-			return &sqlspec.Column{TypeName: tBitVar}, nil
+			c = &sqlspec.Column{TypeName: tBitVar}
+		} else {
+			c = specutil.NewCol("", fmt.Sprintf("%s(%d)", tBitVar, t.Len))
 		}
-		n := fmt.Sprintf("%s(%d)", tBitVar, t.Len)
-		return specutil.NewCol("", n), nil
+		return c, nil
+	default:
+		return nil, errors.New("schema bit failed to convert")
 	}
-	return nil, errors.New("schema bit failed to convert")
 }
