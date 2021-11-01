@@ -3,6 +3,7 @@ package postgres
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
@@ -35,6 +36,25 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 	}
 	*s = *conv
 	return nil
+}
+
+// MarshalSpec marshals v into an Atlas DDL document using a schemaspec.Marshaler.
+func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) {
+	var (
+		s  *schema.Schema
+		ok bool
+	)
+	if s, ok = v.(*schema.Schema); !ok {
+		return nil, fmt.Errorf("failed marshaling spec. %T is not supported", v)
+	}
+	spec, tables, err := schemaSpec(s)
+	if err != nil {
+		return nil, fmt.Errorf("failed converting schema to spec: %w", err)
+	}
+	return marshaler.MarshalSpec(&doc{
+		Tables:  tables,
+		Schemas: []*sqlspec.Schema{spec},
+	})
 }
 
 // convertTable converts a sqlspec.Table to a schema.Table. Table conversion is done without converting
@@ -187,4 +207,133 @@ func nparseRawType(spec *sqlspec.Column) (schema.Type, error) {
 		return nil, err
 	}
 	return columnType(cm), nil
+}
+
+// schemaSpec converts from a concrete Postgres schema to Atlas specification.
+func schemaSpec(schem *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error) {
+	return specutil.FromSchema(schem, tableSpec)
+}
+
+// tableSpec converts from a concrete Postgres sqlspec.Table to a schema.Table.
+func tableSpec(tab *schema.Table) (*sqlspec.Table, error) {
+	return specutil.FromTable(tab, columnSpec, specutil.FromPrimaryKey, specutil.FromIndex, specutil.FromForeignKey)
+}
+
+// columnSpec converts from a concrete Postgres schema.Column into a sqlspec.Column.
+func columnSpec(col *schema.Column) (*sqlspec.Column, error) {
+	ct, err := ncolumnTypeSpec(col.Type.Type)
+	if err != nil {
+		return nil, err
+	}
+	return &sqlspec.Column{
+		Name:     col.Name,
+		TypeName: ct.TypeName,
+		Null:     ct.Null,
+		DefaultExtension: schemaspec.DefaultExtension{
+			Extra: schemaspec.Resource{Attrs: ct.DefaultExtension.Extra.Attrs},
+		},
+	}, nil
+}
+
+// columnTypeSpec converts from a concrete Postgres schema.Type into sqlspec.Column Type.
+func ncolumnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
+	switch t := t.(type) {
+	case *schema.EnumType:
+		return nenumSpec(t)
+	case *schema.IntegerType:
+		return nintegerSpec(t)
+	case *schema.StringType:
+		return nstringSpec(t)
+	case *schema.DecimalType:
+		precision := specutil.LitAttr("precision", strconv.Itoa(t.Precision))
+		scale := specutil.LitAttr("scale", strconv.Itoa(t.Scale))
+		return specutil.NewCol("", "decimal", precision, scale), nil
+	case *schema.BinaryType:
+		return &sqlspec.Column{TypeName: t.T}, nil
+	case *schema.BoolType:
+		return &sqlspec.Column{TypeName: "boolean"}, nil
+	case *schema.FloatType:
+		precision := specutil.LitAttr("precision", strconv.Itoa(t.Precision))
+		return specutil.NewCol("", "float", precision), nil
+	case *schema.TimeType:
+		return &sqlspec.Column{TypeName: t.T}, nil
+	case *schema.JSONType:
+		return &sqlspec.Column{TypeName: t.T}, nil
+	case *schema.SpatialType:
+		return &sqlspec.Column{TypeName: t.T}, nil
+	case *schema.UnsupportedType:
+		return &sqlspec.Column{TypeName: t.T}, nil
+	case *NetworkType:
+		return &sqlspec.Column{TypeName: t.T}, nil
+	case *CurrencyType:
+		return &sqlspec.Column{TypeName: t.T}, nil
+	case *BitType:
+		return nbitSpec(t)
+	default:
+		return nil, fmt.Errorf("failed to convert column type %T to spec", t)
+	}
+}
+
+// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
+func nstringSpec(t *schema.StringType) (*sqlspec.Column, error) {
+	switch t.T {
+	case tVarChar, tText:
+		s := strconv.Itoa(t.Size)
+		return specutil.NewCol("", "string", specutil.LitAttr("size", s)), nil
+	default:
+		return nil, errors.New("schema string failed to convert")
+	}
+}
+
+// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
+func nintegerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
+	switch t.T {
+	case tInt:
+		if t.Unsigned {
+			return specutil.NewCol("", "uint"), nil
+		}
+		return &sqlspec.Column{TypeName: "int"}, nil
+	case tBigInt:
+		if t.Unsigned {
+			return specutil.NewCol("", "uint64"), nil
+		}
+		return &sqlspec.Column{TypeName: "int64"}, nil
+	default:
+		return nil, errors.New("schema integer failed to convert")
+	}
+}
+
+// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
+func nenumSpec(t *schema.EnumType) (*sqlspec.Column, error) {
+	if len(t.Values) == 0 {
+		return nil, errors.New("schema enum fields to have values")
+	}
+	quoted := make([]string, 0, len(t.Values))
+	for _, v := range t.Values {
+		quoted = append(quoted, strconv.Quote(v))
+	}
+	return specutil.NewCol("", "enum", specutil.ListAttr("values", quoted...)), nil
+}
+
+// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
+func nbitSpec(t *BitType) (*sqlspec.Column, error) {
+	var c *sqlspec.Column
+	switch t.T {
+	case tBit:
+		if t.Len == 1 {
+			c = &sqlspec.Column{TypeName: tBit}
+		} else {
+			c = specutil.NewCol("", fmt.Sprintf("%s(%d)", tBit, t.Len))
+		}
+		return c, nil
+	case tBitVar:
+		if t.Len == 0 {
+			c = &sqlspec.Column{TypeName: tBitVar}
+		} else {
+			c = specutil.NewCol("", fmt.Sprintf("%s(%d)", tBitVar, t.Len))
+		}
+		return c, nil
+	default:
+		return nil, errors.New("schema bit failed to convert")
+	}
 }

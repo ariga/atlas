@@ -157,35 +157,35 @@ func TestUnmarshalSpecColumnTypes(t *testing.T) {
 		{
 			spec: specutil.NewCol("int64", "int64"),
 			expected: &schema.IntegerType{
-				T:        "bigint",
+				T:        tBigInt,
 				Unsigned: false,
 			},
 		},
 		{
 			spec: specutil.NewCol("string_varchar", "string", specutil.LitAttr("size", "255")),
 			expected: &schema.StringType{
-				T:    "varchar",
+				T:    tVarChar,
 				Size: 255,
 			},
 		},
 		{
 			spec: specutil.NewCol("string_test", "string", specutil.LitAttr("size", "10485761")),
 			expected: &schema.StringType{
-				T:    "text",
+				T:    tText,
 				Size: 10_485_761,
 			},
 		},
 		{
 			spec: specutil.NewCol("varchar(255)", "varchar(255)"),
 			expected: &schema.StringType{
-				T:    "varchar",
+				T:    tVarChar,
 				Size: 255,
 			},
 		},
 		{
 			spec: specutil.NewCol("decimal(10, 2)", "decimal(10, 2)"),
 			expected: &schema.DecimalType{
-				T:         "decimal",
+				T:         tDecimal,
 				Scale:     2,
 				Precision: 10,
 			},
@@ -196,43 +196,43 @@ func TestUnmarshalSpecColumnTypes(t *testing.T) {
 		},
 		{
 			spec:     specutil.NewCol("bool", "boolean"),
-			expected: &schema.BoolType{T: "boolean"},
+			expected: &schema.BoolType{T: tBoolean},
 		},
 		{
 			spec:     specutil.NewCol("decimal", "decimal", specutil.LitAttr("precision", "10"), specutil.LitAttr("scale", "2")),
-			expected: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
+			expected: &schema.DecimalType{T: tDecimal, Precision: 10, Scale: 2},
 		},
 		{
 			spec:     specutil.NewCol("float", "float", specutil.LitAttr("precision", "10")),
-			expected: &schema.FloatType{T: "real", Precision: 10},
+			expected: &schema.FloatType{T: tReal, Precision: 10},
 		},
 		{
 			spec:     specutil.NewCol("float", "float", specutil.LitAttr("precision", "25")),
-			expected: &schema.FloatType{T: "double precision", Precision: 25},
+			expected: &schema.FloatType{T: tDouble, Precision: 25},
 		},
 		{
 			spec:     specutil.NewCol("cidr", "cidr"),
-			expected: &NetworkType{T: "cidr"},
+			expected: &NetworkType{T: tCIDR},
 		},
 		{
 			spec:     specutil.NewCol("money", "money"),
-			expected: &CurrencyType{T: "money"},
+			expected: &CurrencyType{T: tMoney},
 		},
 		{
 			spec:     specutil.NewCol("bit", "bit"),
-			expected: &BitType{T: "bit", Len: 1},
+			expected: &BitType{T: tBit, Len: 1},
 		},
 		{
 			spec:     specutil.NewCol("bitvar", "bit varying"),
-			expected: &BitType{T: "bit varying"},
+			expected: &BitType{T: tBitVar},
 		},
 		{
 			spec:     specutil.NewCol("bitvar8", "bit varying(8)"),
-			expected: &BitType{T: "bit varying", Len: 8},
+			expected: &BitType{T: tBitVar, Len: 8},
 		},
 		{
 			spec:     specutil.NewCol("bit8", "bit(8)"),
-			expected: &BitType{T: "bit", Len: 8},
+			expected: &BitType{T: tBit, Len: 8},
 		},
 	} {
 		t.Run(tt.spec.Name, func(t *testing.T) {
@@ -291,4 +291,141 @@ table "table" {
 `
 	body := fmt.Sprintf(tmpl, buf)
 	return []byte(body)
+}
+
+func TestMarshalSpecColumnType(t *testing.T) {
+	for _, tt := range []struct {
+		schem    schema.Type
+		expected *sqlspec.Column
+	}{
+		{
+			schem: &schema.IntegerType{
+				T:        tInt,
+				Unsigned: false,
+			},
+			expected: specutil.NewCol("int", "int"),
+		},
+		{
+			schem: &schema.IntegerType{
+				T:        tBigInt,
+				Unsigned: false,
+			},
+			expected: specutil.NewCol("int64", "int64"),
+		},
+		{
+			schem: &schema.StringType{
+				T:    tVarChar,
+				Size: 255,
+			},
+			expected: specutil.NewCol("string_varchar", "string", specutil.LitAttr("size", "255")),
+		},
+		{
+			schem: &schema.StringType{
+				T:    tText,
+				Size: 10_485_761,
+			},
+			expected: specutil.NewCol("string_text", "string", specutil.LitAttr("size", "10485761")),
+		},
+		{
+			schem: &schema.DecimalType{
+				T:         tDecimal,
+				Scale:     2,
+				Precision: 10,
+			},
+			expected: specutil.NewCol("decimal", "decimal",
+				specutil.LitAttr("precision", "10"), specutil.LitAttr("scale", "2")),
+		},
+		{
+			schem: &schema.EnumType{
+				Values: []string{"a", "b", "c"},
+			},
+			expected: specutil.NewCol("enum", "enum",
+				specutil.ListAttr("values", "a", "b", "c")),
+		},
+		{
+			schem: &schema.BoolType{
+				T: tBoolean,
+			},
+			expected: specutil.NewCol("boolean", "boolean"),
+		},
+		{
+			schem: &schema.FloatType{
+				T:         tReal,
+				Precision: 10,
+			},
+			expected: specutil.NewCol("float_real", "float", specutil.LitAttr("precision", "10")),
+		},
+		{
+			schem: &schema.FloatType{
+				T:         tDouble,
+				Precision: 25,
+			},
+			expected: specutil.NewCol("float_double", "float", specutil.LitAttr("precision", "25")),
+		},
+		{
+			schem: &NetworkType{
+				T: tCIDR,
+			},
+			expected: specutil.NewCol("network", "cidr"),
+		},
+		{
+			schem: &CurrencyType{
+				T: tMoney,
+			},
+			expected: specutil.NewCol("money", "money"),
+		},
+		{
+			schem: &BitType{
+				T: tBit,
+				Len: 1,
+			},
+			expected: specutil.NewCol("bit", "bit"),
+		},
+		{
+			schem: &BitType{
+				T: tBitVar,
+			},
+			expected: specutil.NewCol("bitvar", "bit varying"),
+		},
+		{
+			schem: &BitType{
+				T: tBit,
+				Len: 8,
+			},
+			expected: specutil.NewCol("bit8", "bit(8)"),
+		},
+		{
+			schem: &BitType{
+				T: tBitVar,
+				Len: 8,
+			},
+			expected: specutil.NewCol("bitvar8", "bit varying(8)"),
+		},
+	} {
+		t.Run(tt.expected.Name, func(t *testing.T) {
+			s := schema.Schema{
+				Tables: []*schema.Table{
+					{
+						Name: "table",
+						Columns: []*schema.Column{
+							{
+								Name: "column",
+								Type: &schema.ColumnType{Type: tt.schem},
+							},
+						},
+					},
+				},
+			}
+			s.Tables[0].Schema = &s
+			ddl, err := MarshalSpec(&s, schemahcl.Marshal)
+			require.NoError(t, err)
+			var test struct {
+				Table *sqlspec.Table `spec:"table"`
+			}
+			err = schemahcl.Unmarshal(ddl, &test)
+			require.NoError(t, err)
+			require.EqualValues(t, tt.expected.TypeName, test.Table.Columns[0].TypeName)
+			require.ElementsMatch(t, tt.expected.Extra.Attrs, test.Table.Columns[0].Extra.Attrs)
+		})
+	}
 }
