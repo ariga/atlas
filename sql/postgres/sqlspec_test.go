@@ -216,7 +216,7 @@ func TestUnmarshalSpecColumnTypes(t *testing.T) {
 		},
 		{
 			spec:     specutil.NewCol("money", "money"),
-			expected: &CurrencyType{T:tMoney},
+			expected: &CurrencyType{T: tMoney},
 		},
 		{
 			spec:     specutil.NewCol("bit", "bit"),
@@ -320,124 +320,70 @@ func TestMarshalSpecColumnType(t *testing.T) {
 			expected: specutil.NewCol("string_varchar", "string", specutil.LitAttr("size", "255")),
 		},
 		//{
-		//	schem: &schema.IntegerType{
-		//		T:        tInt,
-		//		Unsigned: true,
+		//	spec: specutil.NewCol("string_test", "string", specutil.LitAttr("size", "10485761")),
+		//	expected: &schema.StringType{
+		//		T:    tText,
+		//		Size: 10_485_761,
 		//	},
-		//	expected: specutil.NewCol("column", "uint"),
 		//},
 		//{
-		//	schem: &schema.IntegerType{
-		//		T:        tTinyInt,
-		//		Unsigned: false,
-		//	},
-		//	expected: specutil.NewCol("column", "int8"),
-		//},
-		//{
-		//	schem: &schema.IntegerType{
-		//		T:        tBigInt,
-		//		Unsigned: false,
-		//	},
-		//	expected: specutil.NewCol("column", "int64"),
-		//},
-		//{
-		//	schem: &schema.IntegerType{
-		//		T:        tBigInt,
-		//		Unsigned: true,
-		//	},
-		//	expected: specutil.NewCol("column", "uint64"),
-		//},
-		//{
-		//	schem: &schema.StringType{
-		//		T:    tVarchar,
+		//	spec: specutil.NewCol("varchar(255)", "varchar(255)"),
+		//	expected: &schema.StringType{
+		//		T:    tVarChar,
 		//		Size: 255,
 		//	},
-		//	expected: specutil.NewCol("column", "string", specutil.LitAttr("size", "255")),
 		//},
 		//{
-		//	schem: &schema.StringType{
-		//		T:    tMediumText,
-		//		Size: 100_000,
+		//	spec: specutil.NewCol("decimal(10, 2)", "decimal(10, 2)"),
+		//	expected: &schema.DecimalType{
+		//		T:         tDecimal,
+		//		Scale:     2,
+		//		Precision: 10,
 		//	},
-		//	expected: specutil.NewCol("column", "string", specutil.LitAttr("size", "100000")),
 		//},
 		//{
-		//	schem: &schema.StringType{
-		//		T:    tLongText,
-		//		Size: 17_000_000,
-		//	},
-		//	expected: specutil.NewCol("column", "string", specutil.LitAttr("size", "17000000")),
+		//	spec:     specutil.NewCol("enum", "enum", specutil.ListAttr("values", `"a"`, `"b"`, `"c"`)),
+		//	expected: &schema.EnumType{Values: []string{"a", "b", "c"}},
 		//},
 		//{
-		//	schem:    &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
-		//	expected: specutil.NewCol("column", "decimal", specutil.LitAttr("precision", "10"), specutil.LitAttr("scale", "2")),
+		//	spec:     specutil.NewCol("bool", "boolean"),
+		//	expected: &schema.BoolType{T: tBoolean},
 		//},
 		//{
-		//	schem: &schema.BinaryType{
-		//		T: tBlob,
-		//	},
-		//	expected: specutil.NewCol("column", "binary"),
+		//	spec:     specutil.NewCol("decimal", "decimal", specutil.LitAttr("precision", "10"), specutil.LitAttr("scale", "2")),
+		//	expected: &schema.DecimalType{T: tDecimal, Precision: 10, Scale: 2},
 		//},
 		//{
-		//	schem: &schema.BinaryType{
-		//		T:    tTinyBlob,
-		//		Size: 16,
-		//	},
-		//	expected: specutil.NewCol("column", "binary", specutil.LitAttr("size", "16")),
+		//	spec:     specutil.NewCol("float", "float", specutil.LitAttr("precision", "10")),
+		//	expected: &schema.FloatType{T: tReal, Precision: 10},
 		//},
 		//{
-		//	schem: &schema.BinaryType{
-		//		T:    tMediumBlob,
-		//		Size: 100_000,
-		//	},
-		//	expected: specutil.NewCol("column", "binary", specutil.LitAttr("size", "100000")),
+		//	spec:     specutil.NewCol("float", "float", specutil.LitAttr("precision", "25")),
+		//	expected: &schema.FloatType{T: tDouble, Precision: 25},
 		//},
 		//{
-		//	schem: &schema.BinaryType{
-		//		T:    tLongBlob,
-		//		Size: 20_000_000,
-		//	},
-		//	expected: specutil.NewCol("column", "binary", specutil.LitAttr("size", "20000000")),
+		//	spec:     specutil.NewCol("cidr", "cidr"),
+		//	expected: &NetworkType{T: tCIDR},
 		//},
 		//{
-		//	schem:    &schema.EnumType{Values: []string{"a", "b", "c"}},
-		//	expected: specutil.NewCol("column", "enum", specutil.ListAttr("values", `a`, `b`, `c`)),
+		//	spec:     specutil.NewCol("money", "money"),
+		//	expected: &CurrencyType{T: tMoney},
 		//},
 		//{
-		//	schem:    &schema.BoolType{T: "boolean"},
-		//	expected: specutil.NewCol("column", "boolean"),
+		//	spec:     specutil.NewCol("bit", "bit"),
+		//	expected: &BitType{T: tBit, Len: 1},
 		//},
 		//{
-		//	schem:    &schema.FloatType{T: "float", Precision: 10},
-		//	expected: specutil.NewCol("column", "float", specutil.LitAttr("precision", "10")),
+		//	spec:     specutil.NewCol("bitvar", "bit varying"),
+		//	expected: &BitType{T: tBitVar},
 		//},
 		//{
-		//	schem:    &schema.FloatType{T: "double", Precision: 25},
-		//	expected: specutil.NewCol("column", "float", specutil.LitAttr("precision", "25")),
+		//	spec:     specutil.NewCol("bitvar8", "bit varying(8)"),
+		//	expected: &BitType{T: tBitVar, Len: 8},
 		//},
 		//{
-		//	schem:    &schema.TimeType{T: "date"},
-		//	expected: specutil.NewCol("column", "date"),
-		//},
-		//{
-		//	schem:    &schema.TimeType{T: "datetime"},
-		//	expected: specutil.NewCol("column", "datetime"),
-		//},
-		//{
-		//	schem:    &schema.TimeType{T: "time"},
-		//	expected: specutil.NewCol("column", "time"),
-		//},
-		//{
-		//	schem:    &schema.TimeType{T: "timestamp"},
-		//	expected: specutil.NewCol("column", "timestamp"),
-		//},
-		//{
-		//	schem:    &schema.TimeType{T: "year"},
-		//	expected: specutil.NewCol("column", "year"),
-		//},
-		//{
-		//	schem:    &schema.TimeType{T: "year(4)"},
-		//	expected: specutil.NewCol("column", "year(4)"),
+		//	spec:     specutil.NewCol("bit8", "bit(8)"),
+		//	expected: &BitType{T: tBit, Len: 8},
 		//},
 	} {
 		t.Run(tt.expected.TypeName, func(t *testing.T) {
