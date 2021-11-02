@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"ariga.io/atlas/sql/schema/schemaspec"
+	"ariga.io/atlas/schema/schemaspec"
 	sqlschema "entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/entc/gen"
 	"entgo.io/ent/schema/field"

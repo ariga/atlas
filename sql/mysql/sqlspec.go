@@ -360,5 +360,5 @@ func (d *Driver) mustFormat(t schema.Type) string {
 	if err != nil {
 		panic(err)
 	}
-	return s.Name
+	return s.TypeName
 }
