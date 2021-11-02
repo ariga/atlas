@@ -364,13 +364,12 @@ func (s *mysqlSuite) applyHcl(spec string) {
 		Schemas: []string{"test"},
 	})
 	s.NoError(err)
-	var sche schema.Schema
-	err = mysql.UnmarshalSpec([]byte(spec), schemahcl.Unmarshal, &sche)
+	var desired schema.Schema
+	err = mysql.UnmarshalSpec([]byte(spec), schemahcl.Unmarshal, &desired)
 	s.NoError(err)
-	desired, err := s.drv.ConvertSchema(&sche, sche.Tables)
 	existing := realm.Schemas[0]
 	s.NoError(err)
-	diff, err := s.drv.Diff().SchemaDiff(existing, desired)
+	diff, err := s.drv.Diff().SchemaDiff(existing, &desired)
 	s.NoError(err)
 	err = s.drv.Migrate().Exec(ctx, diff)
 	s.NoError(err)
