@@ -353,3 +353,12 @@ func nenumSpec(t *schema.EnumType) (*sqlspec.Column, error) {
 	}
 	return specutil.NewCol("", "enum", specutil.ListAttr("values", quoted...)), nil
 }
+
+// mustFormat calls to FormatType and panics in case of error.
+func (d *Driver) mustFormat(t schema.Type) string {
+	s, err := ncolumnTypeSpec(t)
+	if err != nil {
+		panic(err)
+	}
+	return s.Name
+}
