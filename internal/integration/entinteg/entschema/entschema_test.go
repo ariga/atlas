@@ -18,7 +18,7 @@ import (
 type ConvertSuite struct {
 	suite.Suite
 	graph *gen.Graph
-	file  *schemaspec.File
+	file  *schema.Schema
 }
 
 func (s *ConvertSuite) SetupSuite() {
