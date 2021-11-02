@@ -85,15 +85,15 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 	case sqlspec.TypeInt, sqlspec.TypeInt8, sqlspec.TypeInt16,
 		sqlspec.TypeInt64, sqlspec.TypeUint, sqlspec.TypeUint8,
 		sqlspec.TypeUint16, sqlspec.TypeUint64:
-		return nconvertInteger(spec)
+		return convertInteger(spec)
 	case sqlspec.TypeString:
-		return nconvertString(spec)
+		return convertString(spec)
 	case sqlspec.TypeEnum:
-		return nconvertEnum(spec)
+		return convertEnum(spec)
 	case sqlspec.TypeDecimal:
-		return nconvertDecimal(spec)
+		return convertDecimal(spec)
 	case sqlspec.TypeFloat:
-		return nconvertFloat(spec)
+		return convertFloat(spec)
 	case sqlspec.TypeTime:
 		return &schema.TimeType{T: tTimestamp}, nil
 	case sqlspec.TypeBinary:
@@ -101,12 +101,11 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 	case sqlspec.TypeBoolean:
 		return &schema.BoolType{T: tBoolean}, nil
 	default:
-		return nparseRawType(spec)
+		return parseRawType(spec)
 	}
 }
 
-// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
-func nconvertInteger(spec *sqlspec.Column) (schema.Type, error) {
+func convertInteger(spec *sqlspec.Column) (schema.Type, error) {
 	if strings.HasPrefix(spec.TypeName, "u") {
 		return nil, fmt.Errorf("unsigned integers currently not supported")
 	}
@@ -126,8 +125,7 @@ func nconvertInteger(spec *sqlspec.Column) (schema.Type, error) {
 	return typ, nil
 }
 
-// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
-func nconvertString(spec *sqlspec.Column) (schema.Type, error) {
+func convertString(spec *sqlspec.Column) (schema.Type, error) {
 	st := &schema.StringType{
 		Size: 255,
 	}
@@ -147,8 +145,7 @@ func nconvertString(spec *sqlspec.Column) (schema.Type, error) {
 	return st, nil
 }
 
-// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
-func nconvertEnum(spec *sqlspec.Column) (schema.Type, error) {
+func convertEnum(spec *sqlspec.Column) (schema.Type, error) {
 	attr, ok := spec.Attr("values")
 	if !ok {
 		return nil, errors.New("expected enum fields to have values")
@@ -160,8 +157,7 @@ func nconvertEnum(spec *sqlspec.Column) (schema.Type, error) {
 	return &schema.EnumType{Values: list}, nil
 }
 
-// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
-func nconvertDecimal(spec *sqlspec.Column) (schema.Type, error) {
+func convertDecimal(spec *sqlspec.Column) (schema.Type, error) {
 	dt := &schema.DecimalType{
 		T: tDecimal,
 	}
@@ -182,8 +178,7 @@ func nconvertDecimal(spec *sqlspec.Column) (schema.Type, error) {
 	return dt, nil
 }
 
-// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
-func nconvertFloat(spec *sqlspec.Column) (schema.Type, error) {
+func convertFloat(spec *sqlspec.Column) (schema.Type, error) {
 	ft := &schema.FloatType{
 		T: tReal,
 	}
@@ -200,8 +195,7 @@ func nconvertFloat(spec *sqlspec.Column) (schema.Type, error) {
 	return ft, nil
 }
 
-// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
-func nparseRawType(spec *sqlspec.Column) (schema.Type, error) {
+func parseRawType(spec *sqlspec.Column) (schema.Type, error) {
 	cm, err := parseColumn(spec.TypeName)
 	if err != nil {
 		return nil, err
@@ -221,7 +215,7 @@ func tableSpec(tab *schema.Table) (*sqlspec.Table, error) {
 
 // columnSpec converts from a concrete Postgres schema.Column into a sqlspec.Column.
 func columnSpec(col *schema.Column) (*sqlspec.Column, error) {
-	ct, err := ncolumnTypeSpec(col.Type.Type)
+	ct, err := columnTypeSpec(col.Type.Type)
 	if err != nil {
 		return nil, err
 	}
@@ -236,14 +230,14 @@ func columnSpec(col *schema.Column) (*sqlspec.Column, error) {
 }
 
 // columnTypeSpec converts from a concrete Postgres schema.Type into sqlspec.Column Type.
-func ncolumnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
+func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	switch t := t.(type) {
 	case *schema.EnumType:
-		return nenumSpec(t)
+		return enumSpec(t)
 	case *schema.IntegerType:
-		return nintegerSpec(t)
+		return integerSpec(t)
 	case *schema.StringType:
-		return nstringSpec(t)
+		return stringSpec(t)
 	case *schema.DecimalType:
 		precision := specutil.LitAttr("precision", strconv.Itoa(t.Precision))
 		scale := specutil.LitAttr("scale", strconv.Itoa(t.Scale))
@@ -268,14 +262,13 @@ func ncolumnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	case *CurrencyType:
 		return &sqlspec.Column{TypeName: t.T}, nil
 	case *BitType:
-		return nbitSpec(t)
+		return bitSpec(t)
 	default:
 		return nil, fmt.Errorf("failed to convert column type %T to spec", t)
 	}
 }
 
-// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
-func nstringSpec(t *schema.StringType) (*sqlspec.Column, error) {
+func stringSpec(t *schema.StringType) (*sqlspec.Column, error) {
 	switch t.T {
 	case tVarChar, tText:
 		s := strconv.Itoa(t.Size)
@@ -285,8 +278,7 @@ func nstringSpec(t *schema.StringType) (*sqlspec.Column, error) {
 	}
 }
 
-// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
-func nintegerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
+func integerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
 	switch t.T {
 	case tInt:
 		if t.Unsigned {
@@ -303,8 +295,7 @@ func nintegerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
 	}
 }
 
-// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
-func nenumSpec(t *schema.EnumType) (*sqlspec.Column, error) {
+func enumSpec(t *schema.EnumType) (*sqlspec.Column, error) {
 	if len(t.Values) == 0 {
 		return nil, errors.New("schema enum fields to have values")
 	}
@@ -315,8 +306,7 @@ func nenumSpec(t *schema.EnumType) (*sqlspec.Column, error) {
 	return specutil.NewCol("", "enum", specutil.ListAttr("values", quoted...)), nil
 }
 
-// temporarily prefixed with "n" until we complete the refactor of replacing sql/schemaspec with sqlspec.
-func nbitSpec(t *BitType) (*sqlspec.Column, error) {
+func bitSpec(t *BitType) (*sqlspec.Column, error) {
 	var c *sqlspec.Column
 	switch t.T {
 	case tBit:
