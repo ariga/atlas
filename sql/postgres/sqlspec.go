@@ -337,3 +337,86 @@ func nbitSpec(t *BitType) (*sqlspec.Column, error) {
 		return nil, errors.New("schema bit failed to convert")
 	}
 }
+
+
+func parseColumn(s string) (*columnDesc, error) {
+	parts := strings.FieldsFunc(s, func(r rune) bool {
+		return r == '(' || r == ')' || r == ' ' || r == ','
+	})
+	var (
+		err error
+		c   = &columnDesc{
+			typ:   parts[0],
+			parts: parts,
+		}
+	)
+	switch c.parts[0] {
+	case tVarChar:
+		if len(c.parts) > 1 {
+			c.size, err = strconv.ParseInt(c.parts[1], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("postgres: parse size %q: %w", parts[1], err)
+			}
+		}
+	case tDecimal, tNumeric:
+		if len(parts) > 1 {
+			c.precision, err = strconv.ParseInt(parts[1], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("postgres: parse precision %q: %w", parts[1], err)
+			}
+		}
+		if len(parts) > 2 {
+			c.scale, err = strconv.ParseInt(parts[2], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("postgres: parse scale %q: %w", parts[1], err)
+			}
+		}
+	case tBit:
+		if err := parseBitParts(parts, c); err != nil {
+			return nil, err
+		}
+	case tDouble, tFloat8:
+		c.precision = 53
+	case tReal, tFloat4:
+		c.precision = 24
+	}
+	return c, nil
+}
+
+func parseBitParts(parts []string, c *columnDesc) error {
+	if len(parts) == 1 {
+		c.size = 1
+		return nil
+	}
+	parts = parts[1:]
+	if parts[0] == "varying" {
+		c.typ = tBitVar
+		parts = parts[1:]
+	}
+	if len(parts) == 0 {
+		return nil
+	}
+	size, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		return fmt.Errorf("postgres: parse size %q: %w", parts[1], err)
+	}
+	c.size = size
+	return nil
+}
+
+
+// columnDesc represents a column descriptor.
+type columnDesc struct {
+	typ       string
+	size      int64
+	udt       string
+	precision int64
+	scale     int64
+	typtype   string
+	typid     int64
+	parts     []string
+}
+
+// maxCharSize defines the maximum size of limited character types in Postgres (10 MB).
+// https://github.com/postgres/postgres/blob/REL_13_STABLE/src/include/access/htup_details.h#L585
+const maxCharSize = 10 << 20
