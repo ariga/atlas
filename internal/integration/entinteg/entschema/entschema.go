@@ -9,26 +9,27 @@ import (
 	"strconv"
 
 	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/sql/schema"
 	sqlschema "entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/entc/gen"
 	"entgo.io/ent/schema/field"
 )
 
-func Convert(graph *gen.Graph) (*schemaspec.File, error) {
-	f := &schemaspec.File{}
-	if err := addTables(f, graph); err != nil {
+func Convert(graph *gen.Graph) (*schema.Schema, error) {
+	var f schema.Schema
+	if err := addTables(&f, graph); err != nil {
 		return nil, err
 	}
-	if err := addForeignKeys(f, graph); err != nil {
+	if err := addForeignKeys(&f, graph); err != nil {
 		return nil, err
 	}
 	return f, nil
 }
 
-func addTables(sch *schemaspec.File, graph *gen.Graph) error {
+func addTables(sch *schema.Schema, graph *gen.Graph) error {
 	for _, etbl := range graph.Tables() {
-		tbl := &schemaspec.Table{
-			SchemaName: sch.Name,
+		tbl := &schema.Table{
+			Schema: sch,
 			Name:       etbl.Name,
 		}
 		pk := &schemaspec.PrimaryKey{}
@@ -81,7 +82,7 @@ func addIndexes(tbl *schemaspec.Table, etbl *sqlschema.Table) error {
 	return nil
 }
 
-func addForeignKeys(f *schemaspec.File, graph *gen.Graph) error {
+func addForeignKeys(f *schema.Schema,, graph *gen.Graph) error {
 	for _, etbl := range graph.Tables() {
 		if len(etbl.ForeignKeys) == 0 {
 			continue

@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"ariga.io/atlas/integration/entinteg/entschema"
-	"ariga.io/atlas/sql/schema/schemahcl"
+	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"entgo.io/ent/entc"
 	"entgo.io/ent/entc/gen"
 	"github.com/stretchr/testify/require"
@@ -24,7 +24,7 @@ func Test(t *testing.T) {
 	if err != nil {
 		t.Fatalf("entinteg: failed converting graph to schema: %v", err)
 	}
-	encode, err := schemahcl.Encode(spec)
+	encode, err := schemahcl.Marshal(spec)
 	if err != nil {
 		t.Fatalf("entinteg: failed encoding hcl document: %v", err)
 	}
