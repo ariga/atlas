@@ -11,9 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"ariga.io/atlas/sql/schema/schemahcl"
-	"ariga.io/atlas/sql/schema/schemaspec"
-
+	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
 	_ "github.com/go-sql-driver/mysql"
@@ -366,10 +364,10 @@ func (s *mysqlSuite) applyHcl(spec string) {
 		Schemas: []string{"test"},
 	})
 	s.NoError(err)
-	var file schemaspec.File
-	err = schemahcl.Decode([]byte(spec), &file)
+	var sche schema.Schema
+	err = mysql.UnmarshalSpec([]byte(spec), schemahcl.Unmarshal, &sche)
 	s.NoError(err)
-	desired, err := s.drv.ConvertSchema(file.Schemas[0], file.Tables)
+	desired, err := s.drv.ConvertSchema(&sche, sche.Tables)
 	existing := realm.Schemas[0]
 	s.NoError(err)
 	diff, err := s.drv.Diff().SchemaDiff(existing, desired)
