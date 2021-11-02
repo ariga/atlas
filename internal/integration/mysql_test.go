@@ -337,7 +337,7 @@ schema "test" {
 }
 
 table "users" {
-	schema = schema.test
+	schema = "test"
 	column "email" {
 		type = "string"
 	}
