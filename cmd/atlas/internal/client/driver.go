@@ -25,19 +25,19 @@ type (
 		schema.Inspector
 	}
 
-	driverName string
+	dbName string
 )
 
 const (
-	MYSQL    driverName = "mysql"
-	POSTGRES driverName = "postgres"
-	SQLITE   driverName = "sqlite3"
+	mysqlDB    dbName = "mysql"
+	postgresDB dbName = "postgres"
+	sqliteDB   dbName = "sqlite3"
 )
 
-var providers = map[driverName]func(string) (*AtlasDriver, func(), error){
-	MYSQL:    openMysql,
-	POSTGRES: openPostgres,
-	SQLITE:   openSqlite,
+var providers = map[dbName]func(string) (*AtlasDriver, func(), error){
+	mysqlDB:    atlasDriverMysql,
+	postgresDB: atlasDriverPostgres,
+	sqliteDB:   atlasDriverSqlite,
 }
 
 // NewAtlasDriver connects a new Atlas Driver returns AtlasDriver and a closer.
@@ -46,14 +46,14 @@ func NewAtlasDriver(dsn string) (*AtlasDriver, func(), error) {
 	if len(a) != 2 {
 		return nil, nil, fmt.Errorf("failed to parse %s", dsn)
 	}
-	p := providers[driverName(a[0])]
+	p := providers[dbName(a[0])]
 	if p == nil {
 		return nil, nil, fmt.Errorf("failed to parse %s", dsn)
 	}
 	return p(a[1])
 }
 
-func openMysql(dsn string) (*AtlasDriver, func(), error) {
+func atlasDriverMysql(dsn string) (*AtlasDriver, func(), error) {
 	db, err := sql.Open("mysql", dsn)
 	closer := func() {
 		_ = db.Close()
@@ -71,7 +71,7 @@ func openMysql(dsn string) (*AtlasDriver, func(), error) {
 		drv,
 	}, closer, nil
 }
-func openPostgres(dsn string) (*AtlasDriver, func(), error) {
+func atlasDriverPostgres(dsn string) (*AtlasDriver, func(), error) {
 	db, err := sql.Open("postgres", dsn)
 	closer := func() {
 		_ = db.Close()
@@ -89,7 +89,7 @@ func openPostgres(dsn string) (*AtlasDriver, func(), error) {
 		drv,
 	}, closer, nil
 }
-func openSqlite(dsn string) (*AtlasDriver, func(), error) {
+func atlasDriverSqlite(dsn string) (*AtlasDriver, func(), error) {
 	db, err := sql.Open("sqlite3", dsn)
 	closer := func() {
 		_ = db.Close()
