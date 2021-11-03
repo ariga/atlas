@@ -22,11 +22,11 @@ type (
 	}
 )
 
-// NewAtlasDriver connects a new Atlas Driver.
-func NewAtlasDriver(ctx context.Context, dsn string) (*atlasDriver, error) {
+// NewAtlasDriver connects a new Atlas Driver returns atlasDriver and a closer.
+func NewAtlasDriver(ctx context.Context, dsn string) (*atlasDriver, func(), error) {
 	return &atlasDriver{
 		nil,
 		nil,
 		nil,
-	}, nil
+	}, nil, nil
 }
