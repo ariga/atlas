@@ -15,16 +15,16 @@ type (
 		schema.Inspector
 	}
 	// AtlasDriver implements the Driver interface using Atlas.
-	atlasDriver struct {
+	AtlasDriver struct {
 		*mysql.Driver
 		schema.Differ
 		schema.Execer
 	}
 )
 
-// NewAtlasDriver connects a new Atlas Driver returns atlasDriver and a closer.
-func NewAtlasDriver(ctx context.Context, dsn string) (*atlasDriver, func(), error) {
-	return &atlasDriver{
+// NewAtlasDriver connects a new Atlas Driver returns AtlasDriver and a closer.
+func NewAtlasDriver(ctx context.Context, dsn string) (*AtlasDriver, func(), error) {
+	return &AtlasDriver{
 		nil,
 		nil,
 		nil,
