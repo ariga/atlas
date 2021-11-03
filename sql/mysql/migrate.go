@@ -74,7 +74,6 @@ func (m *migrate) addTable(ctx context.Context, add *schema.AddTable) error {
 		}
 	})
 	m.tableAttr(b, add.T.Attrs...)
-	fmt.Println(b.String())
 	if _, err := m.ExecContext(ctx, b.String()); err != nil {
 		return fmt.Errorf("create table: %w", err)
 	}
