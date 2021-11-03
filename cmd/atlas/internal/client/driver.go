@@ -1,4 +1,4 @@
-package driver
+package client
 
 import (
 	"context"
@@ -8,11 +8,13 @@ import (
 )
 
 type (
+	// Driver provides to diff, execute and inspect against a Data Source.
 	Driver interface {
 		schema.Differ
 		schema.Execer
 		schema.Inspector
 	}
+	// AtlasDriver implements the Driver interface using Atlas.
 	atlasDriver struct {
 		*mysql.Driver
 		schema.Differ
@@ -20,6 +22,7 @@ type (
 	}
 )
 
+// NewAtlasDriver connects a new Atlas Driver.
 func NewAtlasDriver(ctx context.Context, dsn string) (*atlasDriver, error) {
 	return &atlasDriver{
 		nil,
