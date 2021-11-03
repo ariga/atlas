@@ -1,7 +1,6 @@
 package client
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -38,7 +37,11 @@ const (
 	SQLITE   driverName = "sqlite3"
 )
 
-var providers map[driverName]func(string) (*AtlasDriver, func(), error)
+var providers = map[driverName]func(string) (*AtlasDriver, func(), error){
+	MYSQL:    openMysql,
+	POSTGRES: openPostgres,
+	SQLITE:   openSqlite,
+}
 
 // NewAtlasDriver connects a new Atlas Driver returns AtlasDriver and a closer.
 func NewAtlasDriver(dsn string) (*AtlasDriver, func(), error) {
@@ -71,7 +74,7 @@ func openMysql(dsn string) (*AtlasDriver, func(), error) {
 		drv,
 	}, closer, nil
 }
-func openPostgres(ctx context.Context, dsn string) (*AtlasDriver, func(), error) {
+func openPostgres(dsn string) (*AtlasDriver, func(), error) {
 	db, err := sql.Open("postgres", dsn)
 	closer := func() {
 		_ = db.Close()
@@ -89,7 +92,7 @@ func openPostgres(ctx context.Context, dsn string) (*AtlasDriver, func(), error)
 		drv,
 	}, closer, nil
 }
-func openSqlite(ctx context.Context, dsn string) (*AtlasDriver, func(), error) {
+func openSqlite(dsn string) (*AtlasDriver, func(), error) {
 	db, err := sql.Open("sqlite3", dsn)
 	closer := func() {
 		_ = db.Close()
