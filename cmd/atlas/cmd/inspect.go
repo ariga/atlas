@@ -37,7 +37,7 @@ to quickly create a Cobra application.`,
 }
 
 func init() {
-	schema.AddCommand(inspectCmd)
+	schemaCmd.AddCommand(inspectCmd)
 
 	// Here you will define your flags and configuration settings.
 
