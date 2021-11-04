@@ -2,6 +2,6 @@
 // Example usage:
 //		d, _ := driver.NewAtlas(dsn)
 //		defer d.Close()
-//		data := schema.Inspect(ctx, d.Inspector, "schemaName")
+//		data := schema.Inspect(ctx, d.Inspector,schemahcl.Marshal, "schemaName")
 //
 package atlas
