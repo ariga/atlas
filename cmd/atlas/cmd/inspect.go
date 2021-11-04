@@ -32,9 +32,14 @@ var inspectCmd = &cobra.Command{
 		fmt.Println("inspect called")
 		fmt.Println(dsn)
 	},
+	Example: `
+Atlas schema inspect -d mysql://user:pass@host:port/dbname
+Atlas schema inspect -d postgres://user:pass@host:port/dbname
+Atlas schema inspect --dsn sqlite3://path/to/dbname.sqlite3`,
 }
 
 func init() {
 	schemaCmd.AddCommand(inspectCmd)
-	inspectCmd.Flags().StringVarP(&dsn, "dsn", "d", "[driver+transport://user:pass@host/dbname?opt1=a&opt2=b]", "Select database using the dsn format")
+	inspectCmd.Flags().StringVarP(&dsn, "dsn", "d", "", "Select database using the dsn format [driver+transport://user:pass@host/dbname?opt1=a&opt2=b]")
+	_ = inspectCmd.MarkFlagRequired("dsn")
 }
