@@ -21,6 +21,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var dsn string
+
 // inspectCmd represents the inspect command
 var inspectCmd = &cobra.Command{
 	Use:   "inspect",
@@ -33,11 +35,13 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("inspect called")
+		fmt.Println(dsn)
 	},
 }
 
 func init() {
 	schemaCmd.AddCommand(inspectCmd)
+	inspectCmd.Flags().StringVarP(&dsn, "dsn", "d", "[driver+transport://user:pass@host/dbname?opt1=a&opt2=b]", "Select database using the dsn format")
 
 	// Here you will define your flags and configuration settings.
 
