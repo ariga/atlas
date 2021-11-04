@@ -1,19 +1,6 @@
 package driver
 
 import (
-	"database/sql"
-	"fmt"
-	"strings"
-
-	"ariga.io/atlas/sql/mysql"
-	"ariga.io/atlas/sql/postgres"
-	"ariga.io/atlas/sql/schema"
-	"ariga.io/atlas/sql/sqlite"
-)
-
-package driver
-
-import (
 "database/sql"
 "fmt"
 "strings"
