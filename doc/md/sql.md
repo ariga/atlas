@@ -100,7 +100,7 @@ column "active" {
 #### Virtual Types
 
 Since RDBMS engines vary in their support for different column
-types, Atlas supports the notion of "virtual types".  To make schemas more
+types, Atlas supports the notion of "virtual types". To make schemas more
 portable, users can select "virtual" types for their columns that will be
 projected to a database-specific type in runtime. The types are backed by
 the [sqlspec.Type](https://pkg.go.dev/ariga.io/atlas@master/sql/sqlspec#Type)
