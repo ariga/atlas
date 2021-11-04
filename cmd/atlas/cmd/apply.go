@@ -6,21 +6,34 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// applyCmd represents the apply command
-var applyCmd = &cobra.Command{
-	Use:   "apply",
-	Short: "Apply atlas schema to data source.",
-	Long:  `Apply atlas schema to data source.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("apply called")
-	},
-	Example: `
+type tApplyFlags struct {
+	dsn  string
+	file string
+}
+
+var (
+	applyFlags tApplyFlags
+	// applyCmd represents the apply command
+	applyCmd = &cobra.Command{
+		Use:   "apply",
+		Short: "Apply atlas schema to data source.",
+		Long:  `Apply atlas schema to data source.`,
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("apply called")
+			fmt.Println(applyFlags)
+		},
+		Example: `
 atlas schema apply -d mysql://user:pass@host:port/dbname -f atlas.hcl
 atlas schema apply -d postgres://user:pass@host:port/dbname -f atlas.hcl
 atlas schema apply --dsn sqlite3://path/to/dbname.sqlite3 --file atlas.hcl
 `,
-}
+	}
+)
 
 func init() {
 	schemaCmd.AddCommand(applyCmd)
+	applyCmd.Flags().StringVarP(&applyFlags.dsn, "dsn", "d", "", "[driver+transport://user:pass@host/dbname?opt1=a&opt2=b] Select data source using the dsn format")
+	applyCmd.Flags().StringVarP(&applyFlags.file, "file", "f", "", "[/path/to/file] file containing schema")
+	_ = applyCmd.MarkFlagRequired("dsn")
+	_ = applyCmd.MarkFlagRequired("file")
 }
