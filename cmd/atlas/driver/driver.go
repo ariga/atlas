@@ -22,6 +22,10 @@ type (
 	dbName string
 )
 
+func (a *Atlas) Close() error {
+	return a.db.Close()
+}
+
 const (
 	mysqlDB    dbName = "mysql"
 	postgresDB dbName = "postgres"
