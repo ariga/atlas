@@ -7,7 +7,7 @@ import (
 )
 
 // Inspect returns the schema description by its name.
-func Inspect(ctx context.Context, i schema.Inspector) ([]byte, error) {
+func Inspect(ctx context.Context, i schema.Inspector, name string) (*schema.Realm, error) {
 	return nil, nil
 }
 
