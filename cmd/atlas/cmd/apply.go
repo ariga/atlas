@@ -9,8 +9,8 @@ import (
 // applyCmd represents the apply command
 var applyCmd = &cobra.Command{
 	Use:   "apply",
-	Short: "Apply atlas schema to database.",
-	Long:  `Apply atlas schema to database.`,
+	Short: "Apply atlas schema to data source.",
+	Long:  `Apply atlas schema to data source.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("apply called")
 	},
