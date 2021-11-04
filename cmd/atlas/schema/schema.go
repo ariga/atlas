@@ -3,11 +3,12 @@ package schema
 import (
 	"context"
 
+	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/schema"
 )
 
 // Inspect returns the schema description by its name.
-func Inspect(ctx context.Context, i schema.Inspector, name string) (*schema.Realm, error) {
+func Inspect(ctx context.Context, i schema.Inspector, m schemaspec.Marshaler, name string) ([]byte, error) {
 	return nil, nil
 }
 
