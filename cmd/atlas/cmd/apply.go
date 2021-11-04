@@ -1,4 +1,3 @@
-
 package cmd
 
 import (
@@ -10,16 +9,16 @@ import (
 // applyCmd represents the apply command
 var applyCmd = &cobra.Command{
 	Use:   "apply",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Apply atlas schema to database.",
+	Long:  `Apply atlas schema to database.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("apply called")
 	},
+	Example: `
+atlas schema apply -d mysql://user:pass@host:port/dbname -f atlas.hcl
+atlas schema apply -d postgres://user:pass@host:port/dbname -f atlas.hcl
+atlas schema apply --dsn sqlite3://path/to/dbname.sqlite3 --file atlas.hcl
+`,
 }
 
 func init() {
