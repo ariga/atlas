@@ -4,12 +4,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type tInspectFlags struct {
-	dsn string
-}
-
 var (
-	inspectFlags tInspectFlags
+	inspectFlags = struct {
+		dsn string
+	}{}
 
 	// inspectCmd represents the inspect command
 	inspectCmd = &cobra.Command{

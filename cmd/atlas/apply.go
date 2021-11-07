@@ -4,13 +4,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type tApplyFlags struct {
-	dsn  string
-	file string
-}
-
 var (
-	applyFlags tApplyFlags
+	applyFlags = struct {
+		dsn  string
+		file string
+	}{}
 	// applyCmd represents the apply command
 	applyCmd = &cobra.Command{
 		Use:   "apply",
