@@ -26,7 +26,14 @@ func (a *Atlas) Close() error {
 	return a.db.Close()
 }
 
-var providers map[string]func(string) (*Atlas, error)
+var providers = map[string]func(string) (*Atlas, error){}
+
+func Register(key string, p func(string) (*Atlas, error)) {
+	if _, ok := providers[key]; ok {
+		panic("provider is already initialized")
+	}
+	providers[key] = p
+}
 
 // NewAtlas connects a new Atlas Driver returns Atlas and a closer.
 func NewAtlas(dsn string) (*Atlas, error) {
