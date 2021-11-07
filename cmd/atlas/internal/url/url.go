@@ -13,6 +13,7 @@ type (
 		m map[string]func(string) (*Atlas, error)
 	}
 
+	// Mux is used for routing dsn to correct provider.
 	Mux struct {
 		providers *providerMap
 	}
@@ -26,10 +27,12 @@ type (
 	}
 )
 
+// Close release all resources taken by Driver.
 func (a *Atlas) Close() error {
 	return a.DB.Close()
 }
 
+// NewMux returns a new Mux.
 func NewMux() *Mux {
 	return &Mux{
 		providers: &providerMap{
@@ -40,6 +43,7 @@ func NewMux() *Mux {
 
 var defaultURLMux *Mux
 
+// DefaultURLMux returns the default system "Mux".
 func DefaultURLMux() *Mux {
 	if defaultURLMux == nil {
 		defaultURLMux = NewMux()
@@ -54,10 +58,12 @@ func (m *providerMap) register(key string, p func(string) (*Atlas, error)) {
 	m.m[key] = p
 }
 
+// RegisterProvider is used to register an Atlas provider by key..
 func (u *Mux) RegisterProvider(key string, p func(string) (*Atlas, error)) {
 	u.providers.register(key, p)
 }
 
+// OpenAtlas is used for opening an atlas driver on a specific data source.
 func (u *Mux) OpenAtlas(dsn string) (*Atlas, error) {
 	key, dsn, err := parseDSN(dsn)
 	if err != nil {
