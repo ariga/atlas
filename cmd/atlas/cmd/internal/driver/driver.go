@@ -11,16 +11,15 @@ import (
 type (
 	// Atlas implements the Driver interface using Atlas.
 	Atlas struct {
-		db        *sql.DB
+		DB        *sql.DB
 		Differ    schema.Differ
 		Execer    schema.Execer
 		Inspector schema.Inspector
 	}
-	dbName string
 )
 
 func (a *Atlas) Close() error {
-	return a.db.Close()
+	return a.DB.Close()
 }
 
 var providers = map[string]func(string) (*Atlas, error){}

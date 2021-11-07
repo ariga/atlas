@@ -1,20 +1,21 @@
-package driver
+package provider
 
 import (
 	"database/sql"
 
+	"ariga.io/atlas/cmd/atlas/cmd/internal/driver"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/sqlite"
 )
 
 func init() {
-	Register("mysql", atlasDriverMysql)
-	Register("postgres", atlasDriverPostgres)
-	Register("sqlite3", atlasDriverSqlite)
+	driver.Register("mysql", mysqlP)
+	driver.Register("postgres", postgresP)
+	driver.Register("sqlite3", sqliteP)
 }
 
-func atlasDriverMysql(dsn string) (*Atlas, error) {
+func mysqlP(dsn string) (*driver.Atlas, error) {
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, err
@@ -23,14 +24,14 @@ func atlasDriverMysql(dsn string) (*Atlas, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Atlas{
-		db:        db,
+	return &driver.Atlas{
+		DB:        db,
 		Differ:    drv.Diff(),
 		Execer:    drv.Migrate(),
 		Inspector: drv,
 	}, nil
 }
-func atlasDriverPostgres(dsn string) (*Atlas, error) {
+func postgresP(dsn string) (*driver.Atlas, error) {
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		return nil, err
@@ -39,14 +40,14 @@ func atlasDriverPostgres(dsn string) (*Atlas, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Atlas{
-		db:        db,
+	return &driver.Atlas{
+		DB:        db,
 		Differ:    drv.Diff(),
 		Execer:    drv.Migrate(),
 		Inspector: drv,
 	}, nil
 }
-func atlasDriverSqlite(dsn string) (*Atlas, error) {
+func sqliteP(dsn string) (*driver.Atlas, error) {
 	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, err
@@ -55,8 +56,8 @@ func atlasDriverSqlite(dsn string) (*Atlas, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Atlas{
-		db:        db,
+	return &driver.Atlas{
+		DB:        db,
 		Differ:    drv.Diff(),
 		Execer:    nil,
 		Inspector: drv,
