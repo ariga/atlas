@@ -13,16 +13,16 @@ func Test_ProviderNotSupported(t *testing.T) {
 }
 
 func Test_RegisterProvider(t *testing.T) {
-	u := new(driver.URLMux)
+	u := driver.NewURLMux()
 	p := func(s string) (*driver.Atlas, error) { return nil, nil }
-	require.NotPanics(t, func() { u.Providers.Register("key", p) })
+	require.NotPanics(t, func() { u.RegisterProvider("key", p) })
 }
 
 func Test_RegisterTwiceSameKeyFails(t *testing.T) {
-	u := new(driver.URLMux)
+	u := driver.NewURLMux()
 	p := func(s string) (*driver.Atlas, error) { return nil, nil }
-	require.NotPanics(t, func() { u.Providers.Register("key", p) })
-	require.Panics(t, func() { u.Providers.Register("key", p) })
+	require.NotPanics(t, func() { u.RegisterProvider("key", p) })
+	require.Panics(t, func() { u.RegisterProvider("key", p) })
 }
 
 func Test_GetDriverFails(t *testing.T) {
@@ -31,9 +31,9 @@ func Test_GetDriverFails(t *testing.T) {
 }
 
 func Test_GetDriverSuccess(t *testing.T) {
-	u := new(driver.URLMux)
+	u := driver.NewURLMux()
 	p := func(s string) (*driver.Atlas, error) { return nil, nil }
-	u.Providers.Register("key", p)
+	u.RegisterProvider("key", p)
 	_, err := driver.NewAtlas("key://open")
 	require.NoError(t, err)
 }
