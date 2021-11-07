@@ -3,7 +3,7 @@ package driver_test
 import (
 	"testing"
 
-	"ariga.io/atlas/cmd/atlas/cmd/internal/driver"
+	"ariga.io/atlas/cmd/atlas/internal/driver"
 	"github.com/stretchr/testify/require"
 )
 
