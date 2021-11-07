@@ -1,4 +1,4 @@
-package driver
+package url
 
 import (
 	"database/sql"

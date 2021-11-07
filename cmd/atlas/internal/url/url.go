@@ -1,4 +1,4 @@
-package driver
+package url
 
 import (
 	"database/sql"
@@ -9,6 +9,14 @@ import (
 )
 
 type (
+	providerMap struct {
+		m map[string]func(string) (*Atlas, error)
+	}
+
+	Mux struct {
+		providers *providerMap
+	}
+
 	// Atlas implements the Driver interface using Atlas.
 	Atlas struct {
 		DB        *sql.DB
@@ -22,25 +30,17 @@ func (a *Atlas) Close() error {
 	return a.DB.Close()
 }
 
-type providerMap struct {
-	m map[string]func(string) (*Atlas, error)
-}
-
-type URLMux struct {
-	providers *providerMap
-}
-
-func NewURLMux() *URLMux {
-	return &URLMux{
+func NewURLMux() *Mux {
+	return &Mux{
 		providers: &providerMap{
 			m: make(map[string]func(string) (*Atlas, error)),
 		},
 	}
 }
 
-var defaultURLMux *URLMux
+var defaultURLMux *Mux
 
-func DefaultURLMux() *URLMux {
+func DefaultURLMux() *Mux {
 	if defaultURLMux == nil {
 		defaultURLMux = NewURLMux()
 	}
@@ -54,11 +54,11 @@ func (m *providerMap) register(key string, p func(string) (*Atlas, error)) {
 	m.m[key] = p
 }
 
-func (u *URLMux) RegisterProvider(key string, p func(string) (*Atlas, error)) {
+func (u *Mux) RegisterProvider(key string, p func(string) (*Atlas, error)) {
 	u.providers.register(key, p)
 }
 
-func (u *URLMux) OpenAtlas(dsn string)(*Atlas,error){
+func (u *Mux) OpenAtlas(dsn string) (*Atlas, error) {
 	key, dsn, err := parseDSN(dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init atlas driver, %s", err)
