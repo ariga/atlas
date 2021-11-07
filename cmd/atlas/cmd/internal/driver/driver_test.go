@@ -22,3 +22,15 @@ func Test_RegisterTwiceSameKeyFails(t *testing.T) {
 	require.NotPanics(t, func() { driver.Register("key", p) })
 	require.Panics(t, func() { driver.Register("key", p) })
 }
+
+func Test_GetDriverFails(t *testing.T) {
+	_, err := driver.NewAtlas("key://open")
+	require.Error(t, err)
+}
+
+func Test_GetDriverSuccess(t *testing.T) {
+	p := func(s string) (*driver.Atlas, error) { return nil, nil }
+	driver.Register("key", p)
+	_, err := driver.NewAtlas("key://open")
+	require.NoError(t, err)
+}
