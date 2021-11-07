@@ -58,13 +58,12 @@ func (u *URLMux) RegisterProvider(key string, p func(string) (*Atlas, error)) {
 	u.providers.register(key, p)
 }
 
-// NewAtlas connects a new Atlas Driver returns Atlas and a closer.
-func NewAtlas(dsn string) (*Atlas, error) {
+func (u *URLMux) OpenAtlas(dsn string)(*Atlas,error){
 	key, dsn, err := parseDSN(dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init atlas driver, %s", err)
 	}
-	p, ok := DefaultURLMux().providers.m[key]
+	p, ok := u.providers.m[key]
 	if !ok {
 		return nil, fmt.Errorf("could not find provider, %s", err)
 	}
