@@ -9,9 +9,10 @@ import (
 )
 
 func init() {
-	Register("mysql", mysqlProvider)
-	Register("postgres", postgresProvider)
-	Register("sqlite3", sqliteProvider)
+	d := DefaultURLMux()
+	d.Providers.Register("mysql", mysqlProvider)
+	d.Providers.Register("postgres", postgresProvider)
+	d.Providers.Register("sqlite3", sqliteProvider)
 }
 
 func mysqlProvider(dsn string) (*Atlas, error) {
