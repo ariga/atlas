@@ -12,7 +12,6 @@ var (
 	inspectCmd = &cobra.Command{
 		Use:   "inspect",
 		Short: "Inspect atlas schema.",
-		Long:  `Inspect atlas schema.`,
 		Run:   func(cmd *cobra.Command, args []string) {},
 		Example: `
 atlas schema inspect -d mysql://user:pass@host:port/dbname
