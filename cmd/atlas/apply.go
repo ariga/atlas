@@ -13,7 +13,6 @@ var (
 	applyCmd = &cobra.Command{
 		Use:   "apply",
 		Short: "Apply atlas schema to data source.",
-		Long:  `Apply atlas schema to data source.`,
 		Run:   func(cmd *cobra.Command, args []string) {},
 		Example: `
 atlas schema apply -d mysql://user:pass@host:port/dbname -f atlas.hcl
