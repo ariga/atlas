@@ -5,10 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"ariga.io/atlas/sql/mysql"
-	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
-	"ariga.io/atlas/sql/sqlite"
 )
 
 type (
@@ -54,53 +51,4 @@ func parseDSN(url string) (string, string, error) {
 		return "", "nil", fmt.Errorf("failed to parse dsn")
 	}
 	return a[0], a[1], nil
-}
-
-func atlasDriverMysql(dsn string) (*Atlas, error) {
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		return nil, err
-	}
-	drv, err := mysql.Open(db)
-	if err != nil {
-		return nil, err
-	}
-	return &Atlas{
-		db:        db,
-		Differ:    drv.Diff(),
-		Execer:    drv.Migrate(),
-		Inspector: drv,
-	}, nil
-}
-func atlasDriverPostgres(dsn string) (*Atlas, error) {
-	db, err := sql.Open("postgres", dsn)
-	if err != nil {
-		return nil, err
-	}
-	drv, err := postgres.Open(db)
-	if err != nil {
-		return nil, err
-	}
-	return &Atlas{
-		db:        db,
-		Differ:    drv.Diff(),
-		Execer:    drv.Migrate(),
-		Inspector: drv,
-	}, nil
-}
-func atlasDriverSqlite(dsn string) (*Atlas, error) {
-	db, err := sql.Open("sqlite3", dsn)
-	if err != nil {
-		return nil, err
-	}
-	drv, err := sqlite.Open(db)
-	if err != nil {
-		return nil, err
-	}
-	return &Atlas{
-		db:        db,
-		Differ:    drv.Diff(),
-		Execer:    nil,
-		Inspector: drv,
-	}, nil
 }
