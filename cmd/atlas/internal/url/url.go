@@ -30,7 +30,7 @@ func (a *Atlas) Close() error {
 	return a.DB.Close()
 }
 
-func NewURLMux() *Mux {
+func NewMux() *Mux {
 	return &Mux{
 		providers: &providerMap{
 			m: make(map[string]func(string) (*Atlas, error)),
@@ -42,7 +42,7 @@ var defaultURLMux *Mux
 
 func DefaultURLMux() *Mux {
 	if defaultURLMux == nil {
-		defaultURLMux = NewURLMux()
+		defaultURLMux = NewMux()
 	}
 	return defaultURLMux
 }
