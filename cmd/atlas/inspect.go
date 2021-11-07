@@ -5,11 +5,10 @@ import (
 )
 
 var (
-	inspectFlags = struct {
+	inspectFlags struct {
 		dsn string
-	}{}
-
-	// inspectCmd represents the inspect command
+	}
+	// inspectCmd represents the inspect command.
 	inspectCmd = &cobra.Command{
 		Use:   "inspect",
 		Short: "Inspect atlas schema.",
