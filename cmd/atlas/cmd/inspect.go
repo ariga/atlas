@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 
+	"ariga.io/atlas/cmd/atlas/cmd/internal/driver"
 	"github.com/spf13/cobra"
 )
 
@@ -16,6 +18,11 @@ var inspectCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("inspect called")
 		fmt.Println(dsn)
+		a, err := driver.NewAtlas(dsn)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		fmt.Println(a)
 	},
 	Example: `
 atlas schema inspect -d mysql://user:pass@host:port/dbname

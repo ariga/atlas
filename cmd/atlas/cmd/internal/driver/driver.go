@@ -38,8 +38,8 @@ var providers = map[dbName]func(string) (*Atlas, error){
 	sqliteDB:   atlasDriverSqlite,
 }
 
-// NewAtlasDriver connects a new Atlas Driver returns Atlas and a closer.
-func NewAtlasDriver(dsn string) (*Atlas, error) {
+// NewAtlas connects a new Atlas Driver returns Atlas and a closer.
+func NewAtlas(dsn string) (*Atlas, error) {
 	a := strings.Split(dsn, "://")
 	if len(a) != 2 {
 		return nil, fmt.Errorf("failed to parse %s", dsn)
