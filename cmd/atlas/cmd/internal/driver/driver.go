@@ -1,14 +1,14 @@
 package driver
 
 import (
-"database/sql"
-"fmt"
-"strings"
+	"database/sql"
+	"fmt"
+	"strings"
 
-"ariga.io/atlas/sql/mysql"
-"ariga.io/atlas/sql/postgres"
-"ariga.io/atlas/sql/schema"
-"ariga.io/atlas/sql/sqlite"
+	"ariga.io/atlas/sql/mysql"
+	"ariga.io/atlas/sql/postgres"
+	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlite"
 )
 
 type (
@@ -26,29 +26,27 @@ func (a *Atlas) Close() error {
 	return a.db.Close()
 }
 
-const (
-	mysqlDB    dbName = "mysql"
-	postgresDB dbName = "postgres"
-	sqliteDB   dbName = "sqlite3"
-)
-
-var providers = map[dbName]func(string) (*Atlas, error){
-	mysqlDB:    atlasDriverMysql,
-	postgresDB: atlasDriverPostgres,
-	sqliteDB:   atlasDriverSqlite,
-}
+var providers map[string]func(string) (*Atlas, error)
 
 // NewAtlas connects a new Atlas Driver returns Atlas and a closer.
 func NewAtlas(dsn string) (*Atlas, error) {
-	a := strings.Split(dsn, "://")
+	key, dsn, err := parseDSN(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init atlas driver, %s", err)
+	}
+	p, ok := providers[key]
+	if !ok {
+		return nil, fmt.Errorf("could not find provider, %s", err)
+	}
+	return p(dsn)
+}
+
+func parseDSN(url string) (string, string, error) {
+	a := strings.Split(url, "://")
 	if len(a) != 2 {
-		return nil, fmt.Errorf("failed to parse %s", dsn)
+		return "", "nil", fmt.Errorf("failed to parse dsn")
 	}
-	p := providers[dbName(a[0])]
-	if p == nil {
-		return nil, fmt.Errorf("failed to parse %s", dsn)
-	}
-	return p(a[1])
+	return a[0], a[1], nil
 }
 
 func atlasDriverMysql(dsn string) (*Atlas, error) {
