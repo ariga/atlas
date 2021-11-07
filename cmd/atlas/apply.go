@@ -5,11 +5,11 @@ import (
 )
 
 var (
-	applyFlags = struct {
+	applyFlags struct {
 		dsn  string
 		file string
-	}{}
-	// applyCmd represents the apply command
+	}
+	// applyCmd represents the apply command.
 	applyCmd = &cobra.Command{
 		Use:   "apply",
 		Short: "Apply atlas schema to data source.",
