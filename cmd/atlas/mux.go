@@ -1,4 +1,4 @@
-package mux
+package main
 
 import (
 	"database/sql"
@@ -23,11 +23,6 @@ type (
 	}
 )
 
-// Close release all resources taken by Driver.
-func (a *Driver) Close() error {
-	return a.DB.Close()
-}
-
 // NewMux returns a new Mux.
 func NewMux() *Mux {
 	return &Mux{
@@ -37,12 +32,7 @@ func NewMux() *Mux {
 
 var defaultURLMux = NewMux()
 
-// DefaultMux returns the default system "Mux".
-func DefaultMux() *Mux {
-	return defaultURLMux
-}
-
-// RegisterProvider is used to register an Driver provider by key..
+// RegisterProvider is used to register a Driver provider by key.
 func (u *Mux) RegisterProvider(key string, p func(string) (*Driver, error)) {
 	if _, ok := u.providers[key]; ok {
 		panic("provider is already initialized")
@@ -67,9 +57,6 @@ func parseDSN(url string) (string, string, error) {
 	a := strings.Split(url, "://")
 	if len(a) != 2 {
 		return "", "", fmt.Errorf("failed to parse dsn")
-``
-
-??
 	}
 	return a[0], a[1], nil
 }

@@ -3,18 +3,16 @@ package main
 import (
 	"database/sql"
 
-	"ariga.io/atlas/cmd/atlas/internal/mux"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
 )
 
 func init() {
-	d := mux.DefaultMux()
-	d.RegisterProvider("mysql", mysqlProvider)
-	d.RegisterProvider("postgres", postgresProvider)
+	defaultURLMux.RegisterProvider("mysql", mysqlProvider)
+	defaultURLMux.RegisterProvider("postgres", postgresProvider)
 }
 
-func mysqlProvider(dsn string) (*mux.Driver, error) {
+func mysqlProvider(dsn string) (*Driver, error) {
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, err
@@ -23,14 +21,14 @@ func mysqlProvider(dsn string) (*mux.Driver, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &mux.Driver{
+	return &Driver{
 		DB:        db,
 		Differ:    drv.Diff(),
 		Execer:    drv.Migrate(),
 		Inspector: drv,
 	}, nil
 }
-func postgresProvider(dsn string) (*mux.Driver, error) {
+func postgresProvider(dsn string) (*Driver, error) {
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		return nil, err
@@ -39,7 +37,7 @@ func postgresProvider(dsn string) (*mux.Driver, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &mux.Driver{
+	return &Driver{
 		DB:        db,
 		Differ:    drv.Diff(),
 		Execer:    drv.Migrate(),
