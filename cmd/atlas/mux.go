@@ -18,10 +18,10 @@ type (
 	// Driver implements the Atlas interface.
 	Driver struct {
 		*sql.DB
-		Differ    schema.Differ
-		Execer    schema.Execer
-		Inspector schema.Inspector
-		MarshalSpec   func(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error)
+		Differ      schema.Differ
+		Execer      schema.Execer
+		Inspector   schema.Inspector
+		MarshalSpec func(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error)
 	}
 )
 
@@ -61,4 +61,9 @@ func parseDSN(url string) (string, string, error) {
 		return "", "", fmt.Errorf("failed to parse dsn")
 	}
 	return a[0], a[1], nil
+}
+
+func schemaFromDSN(dsn string) (string, error) {
+	a := strings.SplitAfter(dsn, "/")
+	return a[len(a)-1], nil
 }
