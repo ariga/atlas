@@ -25,7 +25,7 @@ type (
 
 // Close release all resources taken by Driver.
 func (a *Driver) Close() error {
-	return a.Close()
+	return a.DB.Close()
 }
 
 // NewMux returns a new Mux.
