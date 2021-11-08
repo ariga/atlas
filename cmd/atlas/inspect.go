@@ -18,9 +18,9 @@ var (
 		Short: "Inspect atlas schema.",
 		Run:   func(cmd *cobra.Command, args []string) { runInspect(inspectFlags.dsn) },
 		Example: `
-atlas schema inspect -d mysql://user:pass@host:port/dbname
-atlas schema inspect -d postgres://user:pass@host:port/dbname
-atlas schema inspect --dsn sqlite3://path/to/dbname.sqlite3`,
+atlas schema inspect -d "mysql://user:pass@host:port/dbname"
+atlas schema inspect -d "postgres://user:pass@host:port/dbname"
+atlas schema inspect --dsn "sqlite3://path/to/dbname.sqlite3"`,
 	}
 )
 
