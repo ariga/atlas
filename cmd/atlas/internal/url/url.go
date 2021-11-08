@@ -9,13 +9,9 @@ import (
 )
 
 type (
-	providerMap struct {
-		m map[string]func(string) (*Atlas, error)
-	}
-
 	// Mux is used for routing dsn to correct provider.
 	Mux struct {
-		providers *providerMap
+		providers map[string]func(string) (*Atlas, error)
 	}
 
 	// Atlas implements the Driver interface using Atlas.
