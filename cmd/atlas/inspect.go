@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -25,6 +25,7 @@ atlas schema inspect --dsn sqlite3://path/to/dbname.sqlite3`,
 
 func init() {
 	schemaCmd.AddCommand(inspectCmd)
+	schemaCmd.SetOut(os.Stdout)
 	inspectCmd.Flags().StringVarP(
 		&inspectFlags.dsn,
 		"dsn",
@@ -41,5 +42,5 @@ func runInspect(dsn string) {
 	cobra.CheckErr(err)
 	schema, err := a.Inspector.InspectSchema(ctx, "todo", nil)
 	cobra.CheckErr(err)
-	fmt.Println(schema)
+	schemaCmd.Println(schema)
 }
