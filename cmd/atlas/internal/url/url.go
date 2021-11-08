@@ -37,13 +37,10 @@ func NewMux() *Mux {
 	}
 }
 
-var defaultURLMux *Mux
+var defaultURLMux = NewMux()
 
 // DefaultURLMux returns the default system "Mux".
 func DefaultURLMux() *Mux {
-	if defaultURLMux == nil {
-		defaultURLMux = NewMux()
-	}
 	return defaultURLMux
 }
 
