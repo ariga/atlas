@@ -5,6 +5,7 @@ import (
 
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 func init() {
