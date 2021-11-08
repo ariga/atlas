@@ -2,7 +2,12 @@ package main
 
 import (
 	"context"
+	"io/ioutil"
 
+	"ariga.io/atlas/sql/schema"
+
+	"ariga.io/atlas/schema/schemaspec/schemahcl"
+	"ariga.io/atlas/sql/mysql"
 	"github.com/spf13/cobra"
 )
 
@@ -38,9 +43,13 @@ func runApply(dsn string, file string) {
 	cobra.CheckErr(err)
 	name, err := schemaNameFromDSN(dsn)
 	cobra.CheckErr(err)
-	schema, err := a.Inspector.InspectSchema(ctx, name, nil)
+	s, err := a.Inspector.InspectSchema(ctx, name, nil)
 	cobra.CheckErr(err)
-	changes, err := a.Differ.SchemaDiff(schema, schema)
+	f, err := ioutil.ReadFile(file)
+	cobra.CheckErr(err)
+	var desired schema.Schema
+	err = mysql.UnmarshalSpec(f, schemahcl.Unmarshal, &desired)
+	changes, err := a.Differ.SchemaDiff(s, s)
 	cobra.CheckErr(err)
 	err = a.Execer.Exec(ctx, changes)
 	cobra.CheckErr(err)
