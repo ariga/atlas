@@ -30,7 +30,7 @@ func NewMux() *Mux {
 	}
 }
 
-var defaultURLMux = NewMux()
+var defaultMux = NewMux()
 
 // RegisterProvider is used to register a Driver provider by key.
 func (u *Mux) RegisterProvider(key string, p func(string) (*Driver, error)) {
