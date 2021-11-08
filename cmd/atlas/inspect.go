@@ -41,7 +41,7 @@ func runInspect(dsn string) {
 	ctx := context.Background()
 	a, err := defaultMux.OpenAtlas(dsn)
 	cobra.CheckErr(err)
-	name,err := schemaFromDSN(dsn)
+	name, err := schemaNameFromDSN(dsn)
 	cobra.CheckErr(err)
 	schema, err := a.Inspector.InspectSchema(ctx, name, nil)
 	cobra.CheckErr(err)
