@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/schema"
 )
 
@@ -20,6 +21,7 @@ type (
 		Differ    schema.Differ
 		Execer    schema.Execer
 		Inspector schema.Inspector
+		MarshalSpec   func(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error)
 	}
 )
 

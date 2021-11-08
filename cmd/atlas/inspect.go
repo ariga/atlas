@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 
+	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"github.com/spf13/cobra"
 )
 
@@ -42,5 +43,7 @@ func runInspect(dsn string) {
 	cobra.CheckErr(err)
 	schema, err := a.Inspector.InspectSchema(ctx, "todo", nil)
 	cobra.CheckErr(err)
-	schemaCmd.Println(schema)
+	ddl, err := a.MarshalSpec(schema, schemahcl.Marshal)
+	cobra.CheckErr(err)
+	schemaCmd.Println(string(ddl))
 }
