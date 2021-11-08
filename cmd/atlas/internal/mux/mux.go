@@ -1,4 +1,4 @@
-package url
+package mux
 
 import (
 	"database/sql"
@@ -11,12 +11,12 @@ import (
 type (
 	// Mux is used for routing dsn to correct provider.
 	Mux struct {
-		providers map[string]func(string) (*Atlas, error)
+		providers map[string]func(string) (*Driver, error)
 	}
 
-	// Atlas implements the Driver interface using Atlas.
-	Atlas struct {
-		DB        *sql.DB
+	// Driver implements the Atlas interface.
+	Driver struct {
+		*sql.DB
 		Differ    schema.Differ
 		Execer    schema.Execer
 		Inspector schema.Inspector
@@ -24,45 +24,39 @@ type (
 )
 
 // Close release all resources taken by Driver.
-func (a *Atlas) Close() error {
-	return a.DB.Close()
+func (a *Driver) Close() error {
+	return a.Close()
 }
 
 // NewMux returns a new Mux.
 func NewMux() *Mux {
 	return &Mux{
-		providers: &providerMap{
-			m: make(map[string]func(string) (*Atlas, error)),
-		},
+		providers: make(map[string]func(string) (*Driver, error)),
 	}
 }
 
 var defaultURLMux = NewMux()
 
-// DefaultURLMux returns the default system "Mux".
-func DefaultURLMux() *Mux {
+// DefaultMux returns the default system "Mux".
+func DefaultMux() *Mux {
 	return defaultURLMux
 }
 
-func (m *providerMap) register(key string, p func(string) (*Atlas, error)) {
-	if _, ok := m.m[key]; ok {
+// RegisterProvider is used to register an Driver provider by key..
+func (u *Mux) RegisterProvider(key string, p func(string) (*Driver, error)) {
+	if _, ok := u.providers[key]; ok {
 		panic("provider is already initialized")
 	}
-	m.m[key] = p
-}
-
-// RegisterProvider is used to register an Atlas provider by key..
-func (u *Mux) RegisterProvider(key string, p func(string) (*Atlas, error)) {
-	u.providers.register(key, p)
+	u.providers[key] = p
 }
 
 // OpenAtlas is used for opening an atlas driver on a specific data source.
-func (u *Mux) OpenAtlas(dsn string) (*Atlas, error) {
+func (u *Mux) OpenAtlas(dsn string) (*Driver, error) {
 	key, dsn, err := parseDSN(dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init atlas driver, %s", err)
 	}
-	p, ok := u.providers.m[key]
+	p, ok := u.providers[key]
 	if !ok {
 		return nil, fmt.Errorf("could not find provider, %s", err)
 	}

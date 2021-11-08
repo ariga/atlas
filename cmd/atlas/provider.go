@@ -1,21 +1,20 @@
-package url
+package main
 
 import (
 	"database/sql"
-	"errors"
 
+	"ariga.io/atlas/cmd/atlas/internal/mux"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
 )
 
 func init() {
-	d := DefaultURLMux()
+	d := mux.DefaultMux()
 	d.RegisterProvider("mysql", mysqlProvider)
 	d.RegisterProvider("postgres", postgresProvider)
-	d.RegisterProvider("sqlite3", sqliteProvider)
 }
 
-func mysqlProvider(dsn string) (*Atlas, error) {
+func mysqlProvider(dsn string) (*mux.Driver, error) {
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, err
@@ -24,14 +23,14 @@ func mysqlProvider(dsn string) (*Atlas, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Atlas{
+	return &mux.Driver{
 		DB:        db,
 		Differ:    drv.Diff(),
 		Execer:    drv.Migrate(),
 		Inspector: drv,
 	}, nil
 }
-func postgresProvider(dsn string) (*Atlas, error) {
+func postgresProvider(dsn string) (*mux.Driver, error) {
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		return nil, err
@@ -40,13 +39,10 @@ func postgresProvider(dsn string) (*Atlas, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Atlas{
+	return &mux.Driver{
 		DB:        db,
 		Differ:    drv.Diff(),
 		Execer:    drv.Migrate(),
 		Inspector: drv,
 	}, nil
-}
-func sqliteProvider(dsn string) (*Atlas, error) {
-	return nil, errors.New("sqlite3 not supported")
 }
