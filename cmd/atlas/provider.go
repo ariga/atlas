@@ -8,8 +8,8 @@ import (
 )
 
 func init() {
-	defaultURLMux.RegisterProvider("mysql", mysqlProvider)
-	defaultURLMux.RegisterProvider("postgres", postgresProvider)
+	defaultMux.RegisterProvider("mysql", mysqlProvider)
+	defaultMux.RegisterProvider("postgres", postgresProvider)
 }
 
 func mysqlProvider(dsn string) (*Driver, error) {
