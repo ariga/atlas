@@ -63,7 +63,11 @@ func parseDSN(url string) (string, string, error) {
 	return a[0], a[1], nil
 }
 
-func schemaNameFromDSN(dsn string) (string, error) {
+func schemaNameFromDSN(url string) (string, error) {
+	_, dsn, err := parseDSN(url)
+	if err != nil {
+		return "", err
+	}
 	a := strings.SplitAfter(dsn, "/")
 	return a[len(a)-1], nil
 }
