@@ -20,9 +20,8 @@ var (
 			inspectRun(inspectFlags.dsn)
 		},
 		Example: `
-atlas schema inspect -d "mysql://user:pass@host:port/dbname"
-atlas schema inspect -d "postgres://user:pass@host:port/dbname"
-atlas schema inspect --dsn "sqlite3://path/to/dbname.sqlite3"`,
+atlas schema inspect -d mysql://user:pass@host:port/dbname
+atlas schema inspect --dsn postgres://user:pass@host:port/dbname`,
 	}
 )
 
