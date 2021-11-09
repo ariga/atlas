@@ -7,6 +7,7 @@ import (
 	"ariga.io/atlas/sql/schema"
 
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
+	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 )
 
@@ -51,6 +52,14 @@ func applyRun(d *Driver, u schemaUnmarshaler, dsn string, file string) {
 	err = u.unmarshal(f, &desired)
 	changes, err := d.Differ.SchemaDiff(s, &desired)
 	cobra.CheckErr(err)
-	err = d.Execer.Exec(ctx, changes)
+	prompt := promptui.Select{
+		Label: "Are you sure?",
+		Items: []string{"Continue", "Abort"},
+	}
+	_, result, err := prompt.Run()
 	cobra.CheckErr(err)
+	if result == "Continnue" {
+		err = d.Execer.Exec(ctx, changes)
+		cobra.CheckErr(err)
+	}
 }
