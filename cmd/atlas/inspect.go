@@ -17,7 +17,7 @@ var (
 		Use:   "inspect",
 		Short: "Inspect atlas schema.",
 		Run:   func(cmd *cobra.Command, args []string) { 
-			runInspect(inspectFlags.dsn) 
+			inspectRun(inspectFlags.dsn)
 		},
 		Example: `
 atlas schema inspect -d "mysql://user:pass@host:port/dbname"
@@ -39,7 +39,7 @@ func init() {
 	cobra.CheckErr(inspectCmd.MarkFlagRequired("dsn"))
 }
 
-func runInspect(dsn string) {
+func inspectRun(dsn string) {
 	ctx := context.Background()
 	a, err := defaultMux.OpenAtlas(dsn)
 	cobra.CheckErr(err)
