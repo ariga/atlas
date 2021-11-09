@@ -24,11 +24,12 @@ func mysqlProvider(dsn string) (*Driver, error) {
 		return nil, err
 	}
 	return &Driver{
-		DB:        db,
-		Differ:    drv.Diff(),
-		Execer:    drv.Migrate(),
-		Inspector: drv,
+		DB:            db,
+		Differ:        drv.Diff(),
+		Execer:        drv.Migrate(),
+		Inspector:     drv,
 		MarshalSpec:   mysql.MarshalSpec,
+		UnMarshalSpec: mysql.UnmarshalSpec,
 	}, nil
 }
 func postgresProvider(dsn string) (*Driver, error) {
@@ -41,10 +42,11 @@ func postgresProvider(dsn string) (*Driver, error) {
 		return nil, err
 	}
 	return &Driver{
-		DB:        db,
-		Differ:    drv.Diff(),
-		Execer:    drv.Migrate(),
-		Inspector: drv,
-		MarshalSpec: postgres.MarshalSpec,
+		DB:            db,
+		Differ:        drv.Diff(),
+		Execer:        drv.Migrate(),
+		Inspector:     drv,
+		MarshalSpec:   postgres.MarshalSpec,
+		UnMarshalSpec: postgres.UnmarshalSpec,
 	}, nil
 }

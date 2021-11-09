@@ -7,7 +7,6 @@ import (
 	"ariga.io/atlas/sql/schema"
 
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
-	"ariga.io/atlas/sql/mysql"
 	"github.com/spf13/cobra"
 )
 
@@ -23,7 +22,8 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			a, err := defaultMux.OpenAtlas(applyFlags.dsn)
 			cobra.CheckErr(err)
-			applyRun(a, applyFlags.dsn, applyFlags.file)
+			u := schemaUnmarshal{a, schemahcl.Unmarshal}
+			applyRun(a, &u, applyFlags.dsn, applyFlags.file)
 		},
 		Example: `
 atlas schema apply -d mysql://user:pass@host:port/dbname -f atlas.hcl
@@ -39,7 +39,7 @@ func init() {
 	cobra.CheckErr(applyCmd.MarkFlagRequired("file"))
 }
 
-func applyRun(d *Driver, dsn string, file string) {
+func applyRun(d *Driver, u schemaUnmarshaler, dsn string, file string) {
 	ctx := context.Background()
 	name, err := schemaNameFromDSN(dsn)
 	cobra.CheckErr(err)
@@ -48,7 +48,7 @@ func applyRun(d *Driver, dsn string, file string) {
 	f, err := ioutil.ReadFile(file)
 	cobra.CheckErr(err)
 	var desired schema.Schema
-	err = mysql.UnmarshalSpec(f, schemahcl.Unmarshal, &desired)
+	err = u.unmarshal(f, &desired)
 	changes, err := d.Differ.SchemaDiff(s, s)
 	cobra.CheckErr(err)
 	err = d.Execer.Exec(ctx, changes)
