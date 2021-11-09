@@ -49,7 +49,7 @@ func applyRun(d *Driver, u schemaUnmarshaler, dsn string, file string) {
 	cobra.CheckErr(err)
 	var desired schema.Schema
 	err = u.unmarshal(f, &desired)
-	changes, err := d.Differ.SchemaDiff(s, s)
+	changes, err := d.Differ.SchemaDiff(s, &desired)
 	cobra.CheckErr(err)
 	err = d.Execer.Exec(ctx, changes)
 	cobra.CheckErr(err)

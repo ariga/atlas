@@ -43,7 +43,7 @@ type (
 	}
 
 	schemaUnmarshaler interface {
-		unmarshal([]byte, interface{}) error
+			unmarshal([]byte, interface{}) error
 	}
 )
 
