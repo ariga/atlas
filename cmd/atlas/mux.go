@@ -2,11 +2,14 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/schema"
+	"github.com/go-sql-driver/mysql"
+	"github.com/jackc/pgconn"
 )
 
 type (
@@ -64,10 +67,24 @@ func parseDSN(url string) (string, string, error) {
 }
 
 func schemaNameFromDSN(url string) (string, error) {
-	_, dsn, err := parseDSN(url)
+	key, dsn, err := parseDSN(url)
 	if err != nil {
 		return "", err
 	}
-	a := strings.SplitAfter(dsn, "/")
-	return a[len(a)-1], nil
+	switch key {
+	case "mysql":
+		cfg, err := mysql.ParseDSN(dsn)
+		if err != nil {
+			return "", err
+		}
+		return cfg.DBName, err
+	case "postgres":
+		cfg, err := pgconn.ParseConfig(dsn)
+		if err != nil {
+			return "", err
+		}
+		return cfg.Database, err
+	default:
+		return "",errors.New("failed to get DB name from connection")
+	}
 }
