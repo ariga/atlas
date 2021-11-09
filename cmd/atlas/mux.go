@@ -26,6 +26,15 @@ type (
 		Inspector   schema.Inspector
 		MarshalSpec func(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error)
 	}
+
+	schemaPrint struct {
+		d *Driver
+		m schemaspec.Marshaler
+	}
+
+	schemaPrinter interface {
+		print(*schema.Schema) ([]byte, error)
+	}
 )
 
 // NewMux returns a new Mux.
@@ -85,6 +94,14 @@ func schemaNameFromDSN(url string) (string, error) {
 		}
 		return cfg.Database, err
 	default:
-		return "",errors.New("failed to get DB name from connection")
+		return "", errors.New("failed to get DB name from connection")
 	}
+}
+
+func newSchemaPrinter(d *Driver, m schemaspec.Marshaler) *schemaPrint {
+	return &schemaPrint{d: d, m: m}
+}
+
+func (p *schemaPrint) print(s *schema.Schema) ([]byte, error) {
+	return p.d.MarshalSpec(s, p.m)
 }
