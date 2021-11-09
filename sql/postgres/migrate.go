@@ -284,7 +284,7 @@ func (m *migrate) addIndexes(ctx context.Context, t *schema.Table, indexes ...*s
 }
 
 func (m *migrate) column(b *sqlx.Builder, c *schema.Column) {
-	b.Ident(c.Name).P(c.Type.Raw)
+	b.Ident(c.Name).P(m.mustFormat(c.Type.Type))
 	if !c.Type.Null {
 		b.P("NOT")
 	}
@@ -313,7 +313,7 @@ func (m *migrate) alterColumn(b *sqlx.Builder, c *schema.ModifyColumn) {
 		b.P("ALTER COLUMN").Ident(c.To.Name)
 		switch {
 		case k.Is(schema.ChangeType):
-			b.P("TYPE").P(c.To.Type.Raw)
+			b.P("TYPE").P(m.mustFormat(c.To.Type.Type))
 			if collate := (schema.Collation{}); sqlx.Has(c.To.Attrs, &collate) {
 				b.P("COLLATE", collate.V)
 			}

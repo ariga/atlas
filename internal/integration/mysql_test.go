@@ -408,9 +408,6 @@ func (t *myTest) ensureNoChange(tables ...*schema.Table) {
 }
 
 func (t *myTest) dropTables(names ...string) {
-	if len(names) == 0 {
-		return
-	}
 	t.Cleanup(func() {
 		_, err := t.db.Exec("DROP TABLE IF EXISTS " + strings.Join(names, ", "))
 		require.NoError(t.T, err, "drop tables %q", names)

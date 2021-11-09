@@ -18,6 +18,8 @@ import (
 func (d *Driver) FormatType(t schema.Type) (string, error) {
 	var f string
 	switch t := t.(type) {
+	case *ArrayType:
+		f = strings.ToLower(t.T)
 	case *BitType:
 		f = strings.ToLower(t.T)
 		// BIT without a length is equivalent to BIT(1).
@@ -97,8 +99,8 @@ func (d *Driver) FormatType(t schema.Type) (string, error) {
 		case p == 0 && s == 0:
 		case s < 0:
 			return "", fmt.Errorf("postgres: decimal type must have scale >= 0: %d", s)
-		case p == 0 || s > 0:
-			return "", fmt.Errorf("postgres: decimal type must have precision > 0: %d", p)
+		case p == 0 && s > 0:
+			return "", fmt.Errorf("postgres: decimal type must have precision between 1 and 1000: %d", p)
 		case s == 0:
 			f = fmt.Sprintf("%s(%d)", f, p)
 		default:
@@ -126,6 +128,15 @@ func (d *Driver) FormatType(t schema.Type) (string, error) {
 		return "", fmt.Errorf("postgres: invalid schema type: %T", t)
 	}
 	return f, nil
+}
+
+// mustFormat calls to FormatType and panics in case of error.
+func (d *Driver) mustFormat(t schema.Type) string {
+	s, err := d.FormatType(t)
+	if err != nil {
+		panic(err)
+	}
+	return s
 }
 
 // maxCharSize defines the maximum size of limited character types in Postgres (10 MB).
