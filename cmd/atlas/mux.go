@@ -27,13 +27,13 @@ type (
 		MarshalSpec func(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error)
 	}
 
-	schemaPrint struct {
-		d *Driver
-		m schemaspec.Marshaler
+	schemaMarshal struct {
+		driver    *Driver
+		marshaler schemaspec.Marshaler
 	}
 
-	schemaPrinter interface {
-		print(*schema.Schema) ([]byte, error)
+	schemaMarshaler interface {
+		marshal(*schema.Schema) ([]byte, error)
 	}
 )
 
@@ -98,10 +98,6 @@ func schemaNameFromDSN(url string) (string, error) {
 	}
 }
 
-func newSchemaPrinter(d *Driver, m schemaspec.Marshaler) *schemaPrint {
-	return &schemaPrint{d: d, m: m}
-}
-
-func (p *schemaPrint) print(s *schema.Schema) ([]byte, error) {
-	return p.d.MarshalSpec(s, p.m)
+func (p *schemaMarshal) marshal(s *schema.Schema) ([]byte, error) {
+	return p.driver.MarshalSpec(s, p.marshaler)
 }
