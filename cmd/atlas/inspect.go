@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"os"
 
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"github.com/spf13/cobra"
@@ -27,7 +26,6 @@ atlas schema inspect --dsn postgres://user:pass@host:port/dbname`,
 
 func init() {
 	schemaCmd.AddCommand(inspectCmd)
-	schemaCmd.SetOut(os.Stdout)
 	inspectCmd.Flags().StringVarP(
 		&inspectFlags.dsn,
 		"dsn",

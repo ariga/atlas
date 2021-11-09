@@ -1,6 +1,10 @@
 package main
 
-import "github.com/spf13/cobra"
+import (
+	"os"
+
+	"github.com/spf13/cobra"
+)
 
 func main() {
 	Execute()
@@ -10,7 +14,6 @@ func main() {
 var rootCmd = &cobra.Command{
 	Use:   "atlas",
 	Short: "Work with any data source from the command line.",
-	Long:  `Work with any data source from the command line.`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -24,4 +27,6 @@ func init() {
 }
 
 // initConfig reads in config file and ENV variables if set.
-func initConfig() {}
+func initConfig() {
+	rootCmd.SetOut(os.Stdout)
+}
