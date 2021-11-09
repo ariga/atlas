@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"os"
 
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"github.com/spf13/cobra"
@@ -16,17 +15,20 @@ var (
 	inspectCmd = &cobra.Command{
 		Use:   "inspect",
 		Short: "Inspect atlas schema.",
-		Run:   func(cmd *cobra.Command, args []string) { runInspect(inspectFlags.dsn) },
+		Run: func(cmd *cobra.Command, args []string) {
+			a, err := defaultMux.OpenAtlas(inspectFlags.dsn)
+			cobra.CheckErr(err)
+			m := schemaMarshal{a, schemahcl.Marshal}
+			inspectRun(a, &m, inspectFlags.dsn)
+		},
 		Example: `
-atlas schema inspect -d "mysql://user:pass@host:port/dbname"
-atlas schema inspect -d "postgres://user:pass@host:port/dbname"
-atlas schema inspect --dsn "sqlite3://path/to/dbname.sqlite3"`,
+atlas schema inspect -d mysql://user:pass@host:port/dbname
+atlas schema inspect --dsn postgres://user:pass@host:port/dbname`,
 	}
 )
 
 func init() {
 	schemaCmd.AddCommand(inspectCmd)
-	schemaCmd.SetOut(os.Stdout)
 	inspectCmd.Flags().StringVarP(
 		&inspectFlags.dsn,
 		"dsn",
@@ -37,15 +39,13 @@ func init() {
 	cobra.CheckErr(inspectCmd.MarkFlagRequired("dsn"))
 }
 
-func runInspect(dsn string) {
+func inspectRun(a *Driver, m schemaMarshaler, dsn string) {
 	ctx := context.Background()
-	a, err := defaultMux.OpenAtlas(dsn)
-	cobra.CheckErr(err)
 	name, err := schemaNameFromDSN(dsn)
 	cobra.CheckErr(err)
-	schema, err := a.Inspector.InspectSchema(ctx, name, nil)
+	s, err := a.Inspector.InspectSchema(ctx, name, nil)
 	cobra.CheckErr(err)
-	ddl, err := a.MarshalSpec(schema, schemahcl.Marshal)
+	ddl, err := m.marshal(s)
 	cobra.CheckErr(err)
-	schemaCmd.Println(string(ddl))
+	schemaCmd.Print(string(ddl))
 }
