@@ -20,12 +20,14 @@ var (
 	applyCmd = &cobra.Command{
 		Use:   "apply",
 		Short: "Apply atlas schema to data source.",
-		Run:   func(cmd *cobra.Command, args []string) { runApply(applyFlags.dsn, applyFlags.file) },
+		Run: func(cmd *cobra.Command, args []string) {
+			a, err := defaultMux.OpenAtlas(applyFlags.dsn)
+			cobra.CheckErr(err)
+			applyRun(a, applyFlags.dsn, applyFlags.file)
+		},
 		Example: `
-atlas schema apply -d "mysql://user:pass@host:port/dbname" -f atlas.hcl
-atlas schema apply -d "postgres://user:pass@host:port/dbname" -f atlas.hcl
-atlas schema apply --dsn "sqlite3://path/to/dbname.sqlite3" --file atlas.hcl
-`,
+atlas schema apply -d mysql://user:pass@host:port/dbname -f atlas.hcl
+atlas schema apply --dsn "postgres://user:pass@host:port/dbname" -f atlas.hcl`,
 	}
 )
 
@@ -37,20 +39,18 @@ func init() {
 	cobra.CheckErr(applyCmd.MarkFlagRequired("file"))
 }
 
-func runApply(dsn string, file string) {
+func applyRun(d *Driver, dsn string, file string) {
 	ctx := context.Background()
-	a, err := defaultMux.OpenAtlas(dsn)
-	cobra.CheckErr(err)
 	name, err := schemaNameFromDSN(dsn)
 	cobra.CheckErr(err)
-	s, err := a.Inspector.InspectSchema(ctx, name, nil)
+	s, err := d.Inspector.InspectSchema(ctx, name, nil)
 	cobra.CheckErr(err)
 	f, err := ioutil.ReadFile(file)
 	cobra.CheckErr(err)
 	var desired schema.Schema
 	err = mysql.UnmarshalSpec(f, schemahcl.Unmarshal, &desired)
-	changes, err := a.Differ.SchemaDiff(s, s)
+	changes, err := d.Differ.SchemaDiff(s, s)
 	cobra.CheckErr(err)
-	err = a.Execer.Exec(ctx, changes)
+	err = d.Execer.Exec(ctx, changes)
 	cobra.CheckErr(err)
 }
