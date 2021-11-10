@@ -134,7 +134,7 @@ func (i *interceptor) off() {
 }
 
 func (i *interceptor) clear() {
-	i.history = []string{}
+	i.history = nil
 }
 
 func (i *interceptor) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
