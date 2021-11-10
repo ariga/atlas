@@ -16,10 +16,10 @@ var (
 		Use:   "inspect",
 		Short: "Inspect atlas schema.",
 		Run: func(cmd *cobra.Command, args []string) {
-			a, err := defaultMux.OpenAtlas(inspectFlags.dsn)
+			d, err := defaultMux.OpenAtlas(inspectFlags.dsn)
 			cobra.CheckErr(err)
-			m := schemaMarshal{a, schemahcl.Marshal}
-			inspectRun(a, &m, inspectFlags.dsn)
+			m := schemaMarshal{driver: d, marshaler: schemahcl.Marshal}
+			inspectRun(d, &m, inspectFlags.dsn)
 		},
 		Example: `
 atlas schema inspect -d mysql://user:pass@host:port/dbname
@@ -39,11 +39,11 @@ func init() {
 	cobra.CheckErr(inspectCmd.MarkFlagRequired("dsn"))
 }
 
-func inspectRun(a *Driver, m schemaMarshaler, dsn string) {
+func inspectRun(d *Driver, m schemaMarshaler, dsn string) {
 	ctx := context.Background()
 	name, err := schemaNameFromDSN(dsn)
 	cobra.CheckErr(err)
-	s, err := a.Inspector.InspectSchema(ctx, name, nil)
+	s, err := d.Inspector.InspectSchema(ctx, name, nil)
 	cobra.CheckErr(err)
 	ddl, err := m.marshal(s)
 	cobra.CheckErr(err)
