@@ -21,15 +21,20 @@ var (
 		Use:   "apply",
 		Short: "Apply atlas schema to data source.",
 		Run: func(cmd *cobra.Command, args []string) {
-			a, err := defaultMux.OpenAtlas(applyFlags.dsn)
+			d, err := defaultMux.OpenAtlas(applyFlags.dsn)
 			cobra.CheckErr(err)
-			u := schemaUnmarshal{unmarshalSpec: a.UnMarshalSpec, unmarshaler: schemahcl.Unmarshal}
-			applyRun(a, &u, applyFlags.dsn, applyFlags.file)
+			u := schemaUnmarshal{unmarshalSpec: d.UnMarshalSpec, unmarshaler: schemahcl.Unmarshal}
+			applyRun(d, &u, applyFlags.dsn, applyFlags.file)
 		},
 		Example: `
 atlas schema apply -d mysql://user:pass@host:port/dbname -f atlas.hcl
 atlas schema apply --dsn postgres://user:pass@host:port/dbname -f atlas.hcl`,
 	}
+)
+
+const (
+	answerApply = "Apply"
+	answerAbort = "Abort"
 )
 
 func init() {
@@ -44,21 +49,21 @@ func applyRun(d *Driver, u schemaUnmarshaler, dsn string, file string) {
 	ctx := context.Background()
 	name, err := schemaNameFromDSN(dsn)
 	cobra.CheckErr(err)
-	s, err := d.Inspector.InspectSchema(ctx, name, nil)
+	s, err := d.InspectSchema(ctx, name, nil)
 	cobra.CheckErr(err)
 	f, err := ioutil.ReadFile(file)
 	cobra.CheckErr(err)
 	var desired schema.Schema
 	err = u.unmarshal(f, &desired)
-	changes, err := d.Differ.SchemaDiff(s, &desired)
+	changes, err := d.SchemaDiff(s, &desired)
 	cobra.CheckErr(err)
 	prompt := promptui.Select{
 		Label: "Are you sure?",
-		Items: []string{"Continue", "Abort"},
+		Items: []string{answerApply, answerAbort},
 	}
 	_, result, err := prompt.Run()
 	cobra.CheckErr(err)
-	if result == "Continnue" {
+	if result == answerApply {
 		err = d.Execer.Exec(ctx, changes)
 		cobra.CheckErr(err)
 	}
