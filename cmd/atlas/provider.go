@@ -5,8 +5,6 @@ import (
 
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
-	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/lib/pq"
 )
 
 func init() {
@@ -24,11 +22,11 @@ func mysqlProvider(dsn string) (*Driver, error) {
 		return nil, err
 	}
 	return &Driver{
-		DB:          db,
-		Differ:      drv.Diff(),
-		Execer:      drv.Migrate(),
-		Inspector:   drv,
-		MarshalSpec: mysql.MarshalSpec,
+		Differ:        drv.Diff(),
+		Execer:        drv.Migrate(),
+		Inspector:     drv,
+		MarshalSpec:   mysql.MarshalSpec,
+		UnmarshalSpec: mysql.UnmarshalSpec,
 	}, nil
 }
 func postgresProvider(dsn string) (*Driver, error) {
@@ -41,10 +39,10 @@ func postgresProvider(dsn string) (*Driver, error) {
 		return nil, err
 	}
 	return &Driver{
-		DB:          db,
-		Differ:      drv.Diff(),
-		Execer:      drv.Migrate(),
-		Inspector:   drv,
-		MarshalSpec: postgres.MarshalSpec,
+		Differ:        drv.Diff(),
+		Execer:        drv.Migrate(),
+		Inspector:     drv,
+		MarshalSpec:   postgres.MarshalSpec,
+		UnmarshalSpec: postgres.UnmarshalSpec,
 	}, nil
 }
