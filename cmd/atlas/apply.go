@@ -28,7 +28,7 @@ var (
 		},
 		Example: `
 atlas schema apply -d mysql://user:pass@host:port/dbname -f atlas.hcl
-atlas schema apply --dsn "postgres://user:pass@host:port/dbname" -f atlas.hcl`,
+atlas schema apply --dsn postgres://user:pass@host:port/dbname -f atlas.hcl`,
 	}
 )
 
