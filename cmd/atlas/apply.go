@@ -58,6 +58,15 @@ func applyRun(d *Driver, u schemaUnmarshaler, dsn string, file string) {
 	cobra.CheckErr(err)
 	changes, err := d.SchemaDiff(s, &desired)
 	cobra.CheckErr(err)
+	schemaCmd.Println("-- Planned Changes:")
+	for _, ch := range changes {
+		desc, err := changeDescriptor(ctx, ch, d)
+		cobra.CheckErr(err)
+		schemaCmd.Println("--", desc.typ, ":", desc.subject)
+		for _, q := range desc.queries {
+			schemaCmd.Println(q, ";")
+		}
+	}
 	prompt := promptui.Select{
 		Label: "Are you sure?",
 		Items: []string{answerApply, answerAbort},
