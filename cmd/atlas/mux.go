@@ -28,22 +28,22 @@ type (
 		UnMarshalSpec func(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}) error
 	}
 
-	schemaMarshal struct {
-		driver    *Driver
-		marshaler schemaspec.Marshaler
-	}
-
-	schemaMarshaler interface {
-		marshal(*schema.Schema) ([]byte, error)
-	}
-
 	schemaUnmarshal struct {
-		driver      *Driver
+		unmarshalSpec func(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}) error
 		unmarshaler schemaspec.Unmarshaler
 	}
 
 	schemaUnmarshaler interface {
-			unmarshal([]byte, interface{}) error
+		unmarshal([]byte, interface{}) error
+	}
+
+	schemaMarshal struct {
+		marshalSpec func(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error)
+		marshaler   schemaspec.Marshaler
+	}
+
+	schemaMarshaler interface {
+		marshal(*schema.Schema) ([]byte, error)
 	}
 )
 
@@ -109,9 +109,9 @@ func schemaNameFromDSN(url string) (string, error) {
 }
 
 func (p *schemaMarshal) marshal(s *schema.Schema) ([]byte, error) {
-	return p.driver.MarshalSpec(s, p.marshaler)
+	return p.marshalSpec(s, p.marshaler)
 }
 
 func (p *schemaUnmarshal) unmarshal(b []byte, v interface{}) error {
-	return p.driver.UnMarshalSpec(b, p.unmarshaler, v)
+	return p.unMarshalSpec(b, p.unmarshaler, v)
 }

@@ -23,7 +23,7 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			a, err := defaultMux.OpenAtlas(applyFlags.dsn)
 			cobra.CheckErr(err)
-			u := schemaUnmarshal{a, schemahcl.Unmarshal}
+			u := schemaUnmarshal{unmarshalSpec: a.UnMarshalSpec, unmarshaler: schemahcl.Unmarshal}
 			applyRun(a, &u, applyFlags.dsn, applyFlags.file)
 		},
 		Example: `
