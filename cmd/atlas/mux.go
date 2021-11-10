@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -102,7 +101,7 @@ func schemaNameFromDSN(url string) (string, error) {
 		}
 		return cfg.Database, err
 	default:
-		return "", errors.New("failed to get DB name from connection")
+		return "", fmt.Errorf("unknown database type: %q", key)
 	}
 }
 
