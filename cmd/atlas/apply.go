@@ -58,7 +58,7 @@ func applyRun(d *Driver, u schemaUnmarshaler, dsn string, file string) {
 	cobra.CheckErr(err)
 	changes, err := d.SchemaDiff(s, &desired)
 	cobra.CheckErr(err)
-	schemaCmd.Println("-- Planned changes:")
+	schemaCmd.Println("-- Planned Changes:")
 	for _, ch := range changes {
 		desc, err := changeDescriptor(ctx, ch, d)
 		cobra.CheckErr(err)
