@@ -18,7 +18,7 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			d, err := defaultMux.OpenAtlas(inspectFlags.dsn)
 			cobra.CheckErr(err)
-			m := schemaMarshal{driver: d, marshaler: schemahcl.Marshal}
+			m := schemaMarshal{marshalSpec: d.MarshalSpec, marshaler: schemahcl.Marshal}
 			inspectRun(d, &m, inspectFlags.dsn)
 		},
 		Example: `
@@ -43,7 +43,7 @@ func inspectRun(d *Driver, m schemaMarshaler, dsn string) {
 	ctx := context.Background()
 	name, err := schemaNameFromDSN(dsn)
 	cobra.CheckErr(err)
-	s, err := d.Inspector.InspectSchema(ctx, name, nil)
+	s, err := d.InspectSchema(ctx, name, nil)
 	cobra.CheckErr(err)
 	ddl, err := m.marshal(s)
 	cobra.CheckErr(err)

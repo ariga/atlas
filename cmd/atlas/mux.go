@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -21,14 +20,14 @@ type (
 	// Driver implements the Atlas interface.
 	Driver struct {
 		*sql.DB
-		Differ      schema.Differ
-		Execer      schema.Execer
-		Inspector   schema.Inspector
+		schema.Differ
+		schema.Execer
+		schema.Inspector
 		MarshalSpec func(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error)
 	}
 
 	schemaMarshal struct {
-		driver    *Driver
+		marshalSpec    func(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error)
 		marshaler schemaspec.Marshaler
 	}
 
@@ -99,5 +98,5 @@ func schemaNameFromDSN(url string) (string, error) {
 }
 
 func (p *schemaMarshal) marshal(s *schema.Schema) ([]byte, error) {
-	return p.driver.MarshalSpec(s, p.marshaler)
+	return p.marshalSpec(s, p.marshaler)
 }
