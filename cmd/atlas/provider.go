@@ -17,7 +17,8 @@ func mysqlProvider(dsn string) (*Driver, error) {
 	if err != nil {
 		return nil, err
 	}
-	drv, err := mysql.Open(db)
+	i := &interceptor{ExecQuerier: db}
+	drv, err := mysql.Open(i)
 	if err != nil {
 		return nil, err
 	}
@@ -25,6 +26,7 @@ func mysqlProvider(dsn string) (*Driver, error) {
 		Differ:        drv.Diff(),
 		Execer:        drv.Migrate(),
 		Inspector:     drv,
+		interceptor:   i,
 		MarshalSpec:   mysql.MarshalSpec,
 		UnmarshalSpec: mysql.UnmarshalSpec,
 	}, nil
@@ -34,7 +36,8 @@ func postgresProvider(dsn string) (*Driver, error) {
 	if err != nil {
 		return nil, err
 	}
-	drv, err := postgres.Open(db)
+	i := &interceptor{ExecQuerier: db}
+	drv, err := postgres.Open(i)
 	if err != nil {
 		return nil, err
 	}
@@ -42,6 +45,7 @@ func postgresProvider(dsn string) (*Driver, error) {
 		Differ:        drv.Diff(),
 		Execer:        drv.Migrate(),
 		Inspector:     drv,
+		interceptor:   i,
 		MarshalSpec:   postgres.MarshalSpec,
 		UnmarshalSpec: postgres.UnmarshalSpec,
 	}, nil

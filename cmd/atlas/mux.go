@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -23,6 +25,7 @@ type (
 		schema.Inspector
 		MarshalSpec   func(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error)
 		UnmarshalSpec func(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}) error
+		interceptor   *interceptor
 	}
 
 	schemaUnmarshal struct {
@@ -111,4 +114,33 @@ func (p *schemaMarshal) marshal(s *schema.Schema) ([]byte, error) {
 
 func (p *schemaUnmarshal) unmarshal(b []byte, v interface{}) error {
 	return p.unmarshalSpec(b, p.unmarshaler, v)
+}
+
+// interceptor is an ExecQuerier that when activated can intercept and store queries initiated by Exec
+// invocations. interceptor is used for capturing the planned SQL statement that a migration is going
+// to perform.
+type interceptor struct {
+	schema.ExecQuerier
+	intercept bool
+	history   []string
+}
+
+func (i *interceptor) on() {
+	i.intercept = true
+}
+
+func (i *interceptor) off() {
+	i.intercept = false
+}
+
+func (i *interceptor) clear() {
+	i.history = []string{}
+}
+
+func (i *interceptor) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	if i.intercept {
+		i.history = append(i.history, query)
+		return nil, nil
+	}
+	return i.ExecQuerier.ExecContext(ctx, query, args...)
 }
