@@ -30,7 +30,7 @@ type (
 
 	schemaUnmarshal struct {
 		unmarshalSpec func(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}) error
-		unmarshaler schemaspec.Unmarshaler
+		unmarshaler   schemaspec.Unmarshaler
 	}
 
 	schemaUnmarshaler interface {
@@ -113,5 +113,5 @@ func (p *schemaMarshal) marshal(s *schema.Schema) ([]byte, error) {
 }
 
 func (p *schemaUnmarshal) unmarshal(b []byte, v interface{}) error {
-	return p.unMarshalSpec(b, p.unmarshaler, v)
+	return p.unmarshalSpec(b, p.unmarshaler, v)
 }
