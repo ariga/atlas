@@ -41,16 +41,22 @@ func changeDescriptor(ctx context.Context, c schema.Change, d *Driver) (*changeD
 		desc.typ = "DropAttr"
 	case *schema.AddIndex:
 		desc.typ = "AddIndex"
+		desc.subject = c.I.Name
 	case *schema.DropIndex:
 		desc.typ = "DropIndex"
+		desc.subject = c.I.Name
 	case *schema.ModifyIndex:
 		desc.typ = "ModifyIndex"
+		desc.subject = c.From.Name
 	case *schema.AddForeignKey:
 		desc.typ = "AddForeignKey"
+		desc.subject = c.F.Symbol
 	case *schema.DropForeignKey:
 		desc.typ = "DropForeignKey"
+		desc.subject = c.F.Symbol
 	case *schema.ModifyForeignKey:
 		desc.typ = "ModifyForeignKey"
+		desc.subject = c.From.Symbol
 	}
 	d.interceptor.on()
 	defer d.interceptor.clear()
