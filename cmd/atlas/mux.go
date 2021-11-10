@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"strings"
 
+	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/schema"
+	"github.com/go-sql-driver/mysql"
+	"github.com/jackc/pgconn"
 )
 
 type (
@@ -17,9 +20,19 @@ type (
 	// Driver implements the Atlas interface.
 	Driver struct {
 		*sql.DB
-		Differ    schema.Differ
-		Execer    schema.Execer
-		Inspector schema.Inspector
+		schema.Differ
+		schema.Execer
+		schema.Inspector
+		MarshalSpec func(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error)
+	}
+
+	schemaMarshal struct {
+		marshalSpec func(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error)
+		marshaler   schemaspec.Marshaler
+	}
+
+	schemaMarshaler interface {
+		marshal(*schema.Schema) ([]byte, error)
 	}
 )
 
@@ -59,4 +72,31 @@ func parseDSN(url string) (string, string, error) {
 		return "", "", fmt.Errorf("failed to parse dsn")
 	}
 	return a[0], a[1], nil
+}
+
+func schemaNameFromDSN(url string) (string, error) {
+	key, dsn, err := parseDSN(url)
+	if err != nil {
+		return "", err
+	}
+	switch key {
+	case "mysql":
+		cfg, err := mysql.ParseDSN(dsn)
+		if err != nil {
+			return "", err
+		}
+		return cfg.DBName, err
+	case "postgres":
+		cfg, err := pgconn.ParseConfig(dsn)
+		if err != nil {
+			return "", err
+		}
+		return cfg.Database, err
+	default:
+		return "", fmt.Errorf("unknown database type: %q", key)
+	}
+}
+
+func (p *schemaMarshal) marshal(s *schema.Schema) ([]byte, error) {
+	return p.marshalSpec(s, p.marshaler)
 }
