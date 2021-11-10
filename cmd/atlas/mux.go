@@ -27,8 +27,8 @@ type (
 	}
 
 	schemaMarshal struct {
-		marshalSpec    func(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error)
-		marshaler schemaspec.Marshaler
+		marshalSpec func(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error)
+		marshaler   schemaspec.Marshaler
 	}
 
 	schemaMarshaler interface {
