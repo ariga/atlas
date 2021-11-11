@@ -301,7 +301,7 @@ func binarySpec(t *schema.BinaryType) (*sqlspec.Column, error) {
 		size := specutil.LitAttr("size", strconv.Itoa(t.Size))
 		return specutil.NewCol("", "binary", size), nil
 	}
-	return nil, errors.New("mysql: schema binary failed to convert")
+	return nil, fmt.Errorf("mysql: schema binary failed to convert %s", t.T)
 }
 
 func stringSpec(t *schema.StringType) (*sqlspec.Column, error) {
