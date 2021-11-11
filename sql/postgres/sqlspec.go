@@ -274,7 +274,7 @@ func stringSpec(t *schema.StringType) (*sqlspec.Column, error) {
 		s := strconv.Itoa(t.Size)
 		return specutil.NewCol("", "string", specutil.LitAttr("size", s)), nil
 	default:
-		return nil, errors.New("schema string failed to convert")
+		return nil, fmt.Errorf("schema string failed to convert type %T", t)
 	}
 }
 
@@ -327,4 +327,3 @@ func bitSpec(t *BitType) (*sqlspec.Column, error) {
 		return nil, errors.New("schema bit failed to convert")
 	}
 }
-
