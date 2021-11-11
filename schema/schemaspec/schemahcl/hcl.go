@@ -238,9 +238,16 @@ func writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 	case *schemaspec.ListValue:
 		lst := make([]string, 0, len(v.V))
 		for _, item := range v.V {
-			val, err := schemaspec.StrVal(item)
-			if err != nil {
-				return err
+			var val string
+			var err error
+			switch v := item.(type) {
+			case *schemaspec.Ref:
+				val = strings.ReplaceAll(v.V, "$", "")
+			default:
+				val, err = schemaspec.StrVal(item)
+				if err != nil {
+					return err
+				}
 			}
 			lst = append(lst, val)
 		}

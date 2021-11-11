@@ -121,7 +121,7 @@ func ExampleMarshal() {
 		Points []*Point `spec:"point"`
 	}{
 		Points: []*Point{
-			{ID: "start", X: 0, Y: 0, Z: []*schemaspec.Ref{{V: "a"}}},
+			{ID: "start", X: 0, Y: 0, Z: []*schemaspec.Ref{{V: "$a"}}},
 			{ID: "end", X: 1, Y: 1, Z: []*schemaspec.Ref{{V: "b"}}},
 		},
 	}
@@ -134,11 +134,11 @@ func ExampleMarshal() {
 	// point "start" {
 	//   x = 0
 	//   y = 0
-	//   z = ['a']
+	//   z = [a, ]
 	// }
 	// point "end" {
 	//   x = 1
 	//   y = 1
-	//   z = ['b']
+	//   z = [b, ]
 	// }
 }
