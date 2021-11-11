@@ -22,8 +22,8 @@ var (
 			inspectRun(d, &m, inspectFlags.dsn)
 		},
 		Example: `
-atlas schema inspect -d mysql://user:pass@host:port/dbname
-atlas schema inspect --dsn postgres://user:pass@host:port/dbname`,
+atlas schema inspect -d mysql://user:pass@tcp(localhost:3306)/dbname
+atlas schema inspect --dsn postgres://user:pass@tcp(host:port)/dbname`,
 	}
 )
 
@@ -34,7 +34,7 @@ func init() {
 		"dsn",
 		"d",
 		"",
-		"[driver+transport://user:pass@host/dbname?opt1=a&opt2=b] Select data source using the dsn format",
+		"[driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format",
 	)
 	cobra.CheckErr(inspectCmd.MarkFlagRequired("dsn"))
 }

@@ -27,8 +27,8 @@ var (
 			applyRun(d, &u, applyFlags.dsn, applyFlags.file)
 		},
 		Example: `
-atlas schema apply -d mysql://user:pass@host:port/dbname -f atlas.hcl
-atlas schema apply --dsn postgres://user:pass@host:port/dbname -f atlas.hcl`,
+atlas schema apply -d mysql://user:pass@tcp(localhost:3306)/dbname -f atlas.hcl
+atlas schema apply --dsn postgres://user:pass@tcp(host:port)/dbname -f atlas.hcl`,
 	}
 )
 
@@ -39,7 +39,7 @@ const (
 
 func init() {
 	schemaCmd.AddCommand(applyCmd)
-	applyCmd.Flags().StringVarP(&applyFlags.dsn, "dsn", "d", "", "[driver+transport://user:pass@host/dbname?opt1=a&opt2=b] Select data source using the dsn format")
+	applyCmd.Flags().StringVarP(&applyFlags.dsn, "dsn", "d", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format")
 	applyCmd.Flags().StringVarP(&applyFlags.file, "file", "f", "", "[/path/to/file] file containing schema")
 	cobra.CheckErr(applyCmd.MarkFlagRequired("dsn"))
 	cobra.CheckErr(applyCmd.MarkFlagRequired("file"))
