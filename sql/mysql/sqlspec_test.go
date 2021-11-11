@@ -333,6 +333,13 @@ func TestMarshalSpecColumnType(t *testing.T) {
 		},
 		{
 			schem: &schema.IntegerType{
+				T:        tMediumInt,
+				Unsigned: false,
+			},
+			expected: specutil.NewCol("column", "int24"),
+		},
+		{
+			schem: &schema.IntegerType{
 				T:        tBigInt,
 				Unsigned: false,
 			},
@@ -348,6 +355,27 @@ func TestMarshalSpecColumnType(t *testing.T) {
 		{
 			schem: &schema.StringType{
 				T:    tVarchar,
+				Size: 255,
+			},
+			expected: specutil.NewCol("column", "string", specutil.LitAttr("size", "255")),
+		},
+		{
+			schem: &schema.StringType{
+				T:    tTinyText,
+				Size: 255,
+			},
+			expected: specutil.NewCol("column", "string", specutil.LitAttr("size", "255")),
+		},
+		{
+			schem: &schema.StringType{
+				T:    tText,
+				Size: 255,
+			},
+			expected: specutil.NewCol("column", "string", specutil.LitAttr("size", "255")),
+		},
+		{
+			schem: &schema.StringType{
+				T:    tChar,
 				Size: 255,
 			},
 			expected: specutil.NewCol("column", "string", specutil.LitAttr("size", "255")),
