@@ -114,7 +114,6 @@ func ExampleMarshal() {
 			X  int               `spec:"x"`
 			Y  int               `spec:"y"`
 			Z  []*schemaspec.Ref `spec:"z"`
-
 		}
 	)
 	var test = struct {
