@@ -133,11 +133,11 @@ func (a *Attr) Bools() ([]bool, error) {
 	}
 	out := make([]bool, 0, len(lst.V))
 	for _, item := range lst.V {
-		sv, err := BoolVal(item)
+		b, err := BoolVal(item)
 		if err != nil {
 			return nil, fmt.Errorf("schemaspec: failed parsing item %q to bool: %w", item, err)
 		}
-		out = append(out, sv)
+		out = append(out, b)
 	}
 	return out, nil
 }
