@@ -135,7 +135,7 @@ func (a *Attr) Bools() ([]bool, error) {
 	for _, item := range lst.V {
 		b, err := BoolVal(item)
 		if err != nil {
-			return nil, fmt.Errorf("schemaspec: failed parsing item %q to bool: %w", item, err)
+			return nil, err
 		}
 		out = append(out, b)
 	}
@@ -204,7 +204,11 @@ func BoolVal(v Value) (bool, error) {
 	if !ok {
 		return false, fmt.Errorf("schemaspec: expected %T to be LiteralValue", v)
 	}
-	return strconv.ParseBool(lit.V)
+	b, err := strconv.ParseBool(lit.V)
+	if err != nil {
+		return false, fmt.Errorf("failed parsing %q as bool: %w", lit.V, err)
+	}
+	return b, nil
 }
 
 func (*LiteralValue) val() {}
