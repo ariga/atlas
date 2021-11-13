@@ -129,7 +129,7 @@ func (a *Attr) Strings() ([]string, error) {
 func (a *Attr) Bools() ([]bool, error) {
 	lst, ok := a.V.(*ListValue)
 	if !ok {
-		return nil, fmt.Errorf("schema: attribute %q is not a list", a.K)
+		return nil, fmt.Errorf("schemaspec: attribute %q is not a list", a.K)
 	}
 	out := make([]bool, 0, len(lst.V))
 	for _, item := range lst.V {
