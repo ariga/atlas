@@ -327,4 +327,3 @@ func bitSpec(t *BitType) (*sqlspec.Column, error) {
 		return nil, errors.New("schema bit failed to convert")
 	}
 }
-
