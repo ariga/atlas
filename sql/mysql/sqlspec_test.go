@@ -454,7 +454,6 @@ func TestMarshalSpecColumnType(t *testing.T) {
 			}
 			s.Tables[0].Schema = &s
 			ddl, err := MarshalSpec(&s, schemahcl.Marshal)
-			fmt.Println(string(ddl))
 			require.NoError(t, err)
 			var test struct {
 				Table *sqlspec.Table `spec:"table"`

@@ -358,7 +358,7 @@ func scanSliceAttr(key string, r *Resource, field reflect.Value) error {
 			lst.V = append(lst.V, &LiteralValue{V: strconv.FormatBool(item)})
 		}
 	case reflect.Ptr:
-		if typ.Kind() != reflect.Slice || typ.Elem() != reflect.TypeOf(&Ref{}) {
+		if typ.Elem() != reflect.TypeOf(&Ref{}) {
 			return fmt.Errorf("schemaspec: currently on ref slice values supported, got %s", typ)
 		}
 		for i := 0; i < field.Len(); i++ {
