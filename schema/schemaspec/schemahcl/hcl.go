@@ -238,11 +238,15 @@ func writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 	case *schemaspec.ListValue:
 		lst := make([]string, 0, len(v.V))
 		for _, item := range v.V {
-			val, err := schemaspec.StrVal(item)
-			if err != nil {
-				return err
+			switch v := item.(type) {
+			case *schemaspec.Ref:
+				expr := strings.ReplaceAll(v.V, "$", "")
+				lst = append(lst, expr)
+			case *schemaspec.LiteralValue:
+				lst = append(lst, v.V)
+			default:
+				return fmt.Errorf("cannot write elem type %T of attr %q to HCL list", v, attr)
 			}
-			lst = append(lst, val)
 		}
 		body.SetAttributeRaw(attr.K, hclRawList(lst))
 	default:

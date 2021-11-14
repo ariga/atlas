@@ -340,7 +340,7 @@ func TestMarshalSpecColumnType(t *testing.T) {
 				Values: []string{"a", "b", "c"},
 			},
 			expected: specutil.NewCol("enum", "enum",
-				specutil.ListAttr("values", "a", "b", "c")),
+				specutil.ListAttr("values", `"a"`, `"b"`, `"c"`)),
 		},
 		{
 			schem: &schema.BoolType{
@@ -376,7 +376,7 @@ func TestMarshalSpecColumnType(t *testing.T) {
 		},
 		{
 			schem: &BitType{
-				T: tBit,
+				T:   tBit,
 				Len: 1,
 			},
 			expected: specutil.NewCol("bit", "bit"),
@@ -389,14 +389,14 @@ func TestMarshalSpecColumnType(t *testing.T) {
 		},
 		{
 			schem: &BitType{
-				T: tBit,
+				T:   tBit,
 				Len: 8,
 			},
 			expected: specutil.NewCol("bit8", "bit(8)"),
 		},
 		{
 			schem: &BitType{
-				T: tBitVar,
+				T:   tBitVar,
 				Len: 8,
 			},
 			expected: specutil.NewCol("bitvar8", "bit varying(8)"),
