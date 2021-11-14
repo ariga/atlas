@@ -209,10 +209,10 @@ func FromSchema(s *schema.Schema, fn TableSpecFunc) (*sqlspec.Schema, []*sqlspec
 	tables := make([]*sqlspec.Table, 0, len(s.Tables))
 	for _, t := range s.Tables {
 		table, err := fn(t)
-		table.SchemaName = s.Name
 		if err != nil {
 			return nil, nil, err
 		}
+		table.SchemaName = s.Name
 		tables = append(tables, table)
 	}
 	return spec, tables, nil
