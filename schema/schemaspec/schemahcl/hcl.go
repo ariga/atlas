@@ -242,10 +242,10 @@ func writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 				val string
 				err error
 			)
-			switch v := item.(type) {
-			case *schemaspec.Ref:
+			v, ok := item.(*schemaspec.Ref)
+			if ok {
 				val = strings.ReplaceAll(v.V, "$", "")
-			default:
+			} else {
 				val, err = schemaspec.StrVal(item)
 				if err != nil {
 					return err
