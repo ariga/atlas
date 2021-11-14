@@ -206,7 +206,7 @@ func BoolVal(v Value) (bool, error) {
 	}
 	b, err := strconv.ParseBool(lit.V)
 	if err != nil {
-		return false, fmt.Errorf("failed parsing %q as bool: %w", lit.V, err)
+		return false, fmt.Errorf("schemaspec: failed parsing %q as bool: %w", lit.V, err)
 	}
 	return b, nil
 }
