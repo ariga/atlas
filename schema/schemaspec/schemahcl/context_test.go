@@ -303,11 +303,9 @@ person "jane" {
 }
 
 func TestSchemaRefParse(t *testing.T) {
-	type (
-		Point struct {
-			Z []*schemaspec.Ref `spec:"z"`
-		}
-	)
+	type Point struct {
+		Z []*schemaspec.Ref `spec:"z"`
+	}
 	var test = struct {
 		Points []*Point `spec:"point"`
 	}{
