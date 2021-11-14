@@ -424,6 +424,55 @@ func TestMySQL_ForeignKey(t *testing.T) {
 			t.ensureNoChange(postsT, usersT)
 		})
 	})
+
+	t.Run("AddDrop", func(t *testing.T) {
+		myRun(t, func(t *myTest) {
+			usersT := t.users()
+			t.dropTables(usersT.Name)
+			err := t.drv.Migrate().Exec(ctx, []schema.Change{
+				&schema.AddTable{T: usersT},
+			})
+			require.NoError(t, err)
+			t.ensureNoChange(usersT)
+
+			// Add foreign key.
+			usersT.Columns = append(usersT.Columns, &schema.Column{
+				Name: "spouse_id",
+				Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true},
+			})
+			usersT.ForeignKeys = append(usersT.ForeignKeys, &schema.ForeignKey{
+				Symbol:     "spouse_id",
+				Table:      usersT,
+				Columns:    usersT.Columns[len(usersT.Columns)-1:],
+				RefTable:   usersT,
+				RefColumns: usersT.Columns[:1],
+				OnDelete:   schema.NoAction,
+			})
+
+			changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
+			require.NoError(t, err)
+			require.Len(t, changes, 2)
+			addC, ok := changes[0].(*schema.AddColumn)
+			require.True(t, ok)
+			require.Equal(t, "spouse_id", addC.C.Name)
+			addF, ok := changes[1].(*schema.AddForeignKey)
+			require.True(t, ok)
+			require.Equal(t, "spouse_id", addF.F.Symbol)
+			err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+			require.NoError(t, err)
+			t.ensureNoChange(usersT)
+
+			// Drop foreign keys.
+			usersT.Columns = usersT.Columns[:len(usersT.Columns)-1]
+			usersT.ForeignKeys = usersT.ForeignKeys[:len(usersT.ForeignKeys)-1]
+			changes, err = t.drv.Diff().TableDiff(t.loadUsers(), usersT)
+			require.NoError(t, err)
+			require.Len(t, changes, 2)
+			err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+			require.NoError(t, err)
+			t.ensureNoChange(usersT)
+		})
+	})
 }
 
 func TestMySQL_HCL(t *testing.T) {
