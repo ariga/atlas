@@ -323,7 +323,9 @@ func integerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
 	case tTinyInt:
 		return &sqlspec.Column{TypeName: "int8"}, nil
 	case tMediumInt:
-		return &sqlspec.Column{TypeName: "int24"}, nil
+		return &sqlspec.Column{TypeName: tMediumInt}, nil
+	case tSmallInt:
+		return &sqlspec.Column{TypeName: tSmallInt}, nil
 	case tBigInt:
 		if t.Unsigned {
 			return specutil.NewCol("", "uint64"), nil

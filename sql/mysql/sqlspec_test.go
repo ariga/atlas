@@ -336,7 +336,14 @@ func TestMarshalSpecColumnType(t *testing.T) {
 				T:        tMediumInt,
 				Unsigned: false,
 			},
-			expected: specutil.NewCol("column", "int24"),
+			expected: specutil.NewCol("column", tMediumInt),
+		},
+		{
+			schem: &schema.IntegerType{
+				T:        tSmallInt,
+				Unsigned: false,
+			},
+			expected: specutil.NewCol("column", tSmallInt),
 		},
 		{
 			schem: &schema.IntegerType{
