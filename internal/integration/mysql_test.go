@@ -59,8 +59,7 @@ func TestMySQL_AddDropTable(t *testing.T) {
 			&schema.AddTable{T: usersT},
 		})
 		require.NoError(t, err)
-		realm := t.loadRealm()
-		changes, err := t.drv.Diff().TableDiff(realm.Schemas[0].Tables[0], usersT)
+		changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
 		require.NoError(t, err)
 		require.Empty(t, changes)
 		err = t.drv.Migrate().Exec(ctx, []schema.Change{
@@ -109,8 +108,7 @@ func TestMySQL_AddIndexedColumns(t *testing.T) {
 			Name:   "a_b_unique",
 			Parts:  []*schema.IndexPart{{C: usersT.Columns[1]}, {C: usersT.Columns[2]}},
 		})
-		realm := t.loadRealm()
-		changes, err := t.drv.Diff().TableDiff(realm.Schemas[0].Tables[0], usersT)
+		changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
 		require.NoError(t, err)
 		require.NotEmpty(t, changes, "usersT contains 2 new columns and 1 new index")
 		err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
@@ -154,7 +152,7 @@ func TestMySQL_AddColumns(t *testing.T) {
 			&schema.Column{Name: "y", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "point"}}},
 			&schema.Column{Name: "z", Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp"}}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP"}},
 		)
-		changes, err := t.drv.Diff().TableDiff(t.loadRealm().Schemas[0].Tables[0], usersT)
+		changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
 		require.NoError(t, err)
 		require.Len(t, changes, 24)
 		err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
@@ -176,7 +174,7 @@ func TestMySQL_ColumnInt(t *testing.T) {
 			t.dropTables(usersT.Name)
 			for _, typ := range []string{"tinyint", "smallint", "mediumint", "bigint"} {
 				usersT.Columns[0].Type.Type = &schema.IntegerType{T: typ}
-				changes, err := t.drv.Diff().TableDiff(t.loadRealm().Schemas[0].Tables[0], usersT)
+				changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
 				require.NoError(t, err)
 				require.Len(t, changes, 1)
 				err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
@@ -198,7 +196,7 @@ func TestMySQL_ColumnInt(t *testing.T) {
 			t.ensureNoChange(usersT)
 			for _, x := range []string{"2", "'3'", "10.1"} {
 				usersT.Columns[0].Default.(*schema.RawExpr).X = x
-				changes, err := t.drv.Diff().TableDiff(t.loadRealm().Schemas[0].Tables[0], usersT)
+				changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
 				require.NoError(t, err)
 				require.Len(t, changes, 1)
 				err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
@@ -221,7 +219,7 @@ func TestMySQL_ColumnString(t *testing.T) {
 			t.dropTables(usersT.Name)
 			for _, typ := range []string{"varchar(255)", "char(120)", "tinytext", "mediumtext", "longtext"} {
 				usersT.Columns[0].Type.Type = &schema.StringType{T: typ}
-				changes, err := t.drv.Diff().TableDiff(t.loadRealm().Schemas[0].Tables[0], usersT)
+				changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
 				require.NoError(t, err)
 				require.Len(t, changes, 1)
 				err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
@@ -259,7 +257,7 @@ func TestMySQL_ColumnString(t *testing.T) {
 			t.ensureNoChange(usersT)
 			for _, x := range []string{"2", "'3'", "'world'"} {
 				usersT.Columns[0].Default.(*schema.RawExpr).X = x
-				changes, err := t.drv.Diff().TableDiff(t.loadRealm().Schemas[0].Tables[0], usersT)
+				changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
 				require.NoError(t, err)
 				require.Len(t, changes, 1)
 				err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
@@ -326,7 +324,7 @@ func TestMySQL_ColumnBool(t *testing.T) {
 			// Change default from "true" to "false" to "true".
 			for _, x := range []string{"false", "true"} {
 				usersT.Columns[0].Default.(*schema.RawExpr).X = x
-				changes, err := t.drv.Diff().TableDiff(t.loadRealm().Schemas[0].Tables[0], usersT)
+				changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
 				require.NoError(t, err)
 				require.Len(t, changes, 1)
 				err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
@@ -348,11 +346,82 @@ func TestMySQL_ColumnBool(t *testing.T) {
 			t.dropTables(usersT.Name)
 			t.ensureNoChange(usersT)
 			usersT.Columns[0].Type.Null = false
-			changes, err := t.drv.Diff().TableDiff(t.loadRealm().Schemas[0].Tables[0], usersT)
+			changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
 			require.NoError(t, err)
 			require.Len(t, changes, 1)
 			err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
 			t.ensureNoChange(usersT)
+		})
+	})
+}
+
+func TestMySQL_ForeignKey(t *testing.T) {
+	ctx := context.Background()
+	t.Run("ChangeAction", func(t *testing.T) {
+		myRun(t, func(t *myTest) {
+			usersT, postsT := t.users(), t.posts()
+			t.dropTables(postsT.Name, usersT.Name)
+			err := t.drv.Migrate().Exec(ctx, []schema.Change{
+				&schema.AddTable{T: usersT},
+				&schema.AddTable{T: postsT},
+			})
+			require.NoError(t, err)
+			t.ensureNoChange(postsT, usersT)
+
+			postsT = t.loadPosts()
+			fk, ok := postsT.ForeignKey("author_id")
+			require.True(t, ok)
+			fk.OnUpdate = schema.SetNull
+			fk.OnDelete = schema.Cascade
+			changes, err := t.drv.Diff().TableDiff(t.loadPosts(), postsT)
+			require.NoError(t, err)
+			require.Len(t, changes, 1)
+			modifyF, ok := changes[0].(*schema.ModifyForeignKey)
+			require.True(t, ok)
+			require.True(t, modifyF.Change == schema.ChangeUpdateAction|schema.ChangeDeleteAction)
+
+			err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: postsT, Changes: changes}})
+			require.NoError(t, err)
+			t.ensureNoChange(postsT, usersT)
+		})
+	})
+
+	t.Run("UnsetNull", func(t *testing.T) {
+		myRun(t, func(t *myTest) {
+			usersT, postsT := t.users(), t.posts()
+			t.dropTables(postsT.Name, usersT.Name)
+			fk, ok := postsT.ForeignKey("author_id")
+			require.True(t, ok)
+			fk.OnDelete = schema.SetNull
+			fk.OnUpdate = schema.SetNull
+			err := t.drv.Migrate().Exec(ctx, []schema.Change{
+				&schema.AddTable{T: usersT},
+				&schema.AddTable{T: postsT},
+			})
+			require.NoError(t, err)
+			t.ensureNoChange(postsT, usersT)
+
+			postsT = t.loadPosts()
+			c, ok := postsT.Column("author_id")
+			require.True(t, ok)
+			c.Type.Null = false
+			fk, ok = postsT.ForeignKey("author_id")
+			require.True(t, ok)
+			fk.OnUpdate = schema.NoAction
+			fk.OnDelete = schema.NoAction
+			changes, err := t.drv.Diff().TableDiff(t.loadPosts(), postsT)
+			require.NoError(t, err)
+			require.Len(t, changes, 2)
+			modifyC, ok := changes[0].(*schema.ModifyColumn)
+			require.True(t, ok)
+			require.True(t, modifyC.Change == schema.ChangeNull)
+			modifyF, ok := changes[1].(*schema.ModifyForeignKey)
+			require.True(t, ok)
+			require.True(t, modifyF.Change == schema.ChangeUpdateAction|schema.ChangeDeleteAction)
+
+			err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: postsT, Changes: changes}})
+			require.NoError(t, err)
+			t.ensureNoChange(postsT, usersT)
 		})
 	})
 }
@@ -369,12 +438,11 @@ table "users" {
 	}
 }
 `)
-		realm := t.loadRealm()
-		table, ok := realm.Schemas[0].Table("users")
-		require.True(t, ok, "expected users table")
-		column, ok := table.Column("email")
+		users := t.loadUsers()
+		t.dropTables(users.Name)
+		column, ok := users.Column("email")
 		require.True(t, ok, "expected name column")
-		require.Equal(t, "users", table.Name)
+		require.Equal(t, "users", users.Name)
 		require.Equal(t, "email", column.Name)
 		require.Equal(t, column.Type.Raw, "varchar(255)")
 		t.applyHcl(`
@@ -497,6 +565,22 @@ func (t *myTest) loadRealm() *schema.Realm {
 	})
 	require.NoError(t, err)
 	return r
+}
+
+func (t *myTest) loadUsers() *schema.Table {
+	realm := t.loadRealm()
+	require.Len(t, realm.Schemas, 1)
+	users, ok := realm.Schemas[0].Table("users")
+	require.True(t, ok)
+	return users
+}
+
+func (t *myTest) loadPosts() *schema.Table {
+	realm := t.loadRealm()
+	require.Len(t, realm.Schemas, 1)
+	users, ok := realm.Schemas[0].Table("posts")
+	require.True(t, ok)
+	return users
 }
 
 // defaultConfig returns the default charset and

@@ -1,8 +1,6 @@
 package specutil
 
 import (
-	"strconv"
-
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/sqlspec"
 )
@@ -26,17 +24,11 @@ func LitAttr(k, v string) *schemaspec.Attr {
 	}
 }
 
-// StrLitAttr is a helper method for constructing *schemaspec.Attr instances that contain literal values
-// representing string literals.
-func StrLitAttr(k, v string) *schemaspec.Attr {
-	return LitAttr(k, strconv.Quote(v))
-}
-
 // ListAttr is a helper method for constructing *schemaspec.Attr instances that contain list values.
-func ListAttr(k string, values ...string) *schemaspec.Attr {
+func ListAttr(k string, litValues ...string) *schemaspec.Attr {
 	lv := &schemaspec.ListValue{}
-	for _, v := range values {
-		lv.V = append(lv.V, &schemaspec.LiteralValue{V: strconv.Quote(v)})
+	for _, v := range litValues {
+		lv.V = append(lv.V, &schemaspec.LiteralValue{V: v})
 	}
 	return &schemaspec.Attr{
 		K: k,

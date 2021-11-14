@@ -238,6 +238,8 @@ group "lion_kings" {
 			{V: "$user.mufasa"},
 		},
 	}, test.Groups[0])
+	_, err = Marshal(&test)
+	require.NoError(t, err)
 }
 
 func TestNestedDifference(t *testing.T) {
