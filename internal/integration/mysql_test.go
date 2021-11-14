@@ -627,9 +627,9 @@ func (t *myTest) loadUsers() *schema.Table {
 func (t *myTest) loadPosts() *schema.Table {
 	realm := t.loadRealm()
 	require.Len(t, realm.Schemas, 1)
-	users, ok := realm.Schemas[0].Table("posts")
+	posts, ok := realm.Schemas[0].Table("posts")
 	require.True(t, ok)
-	return users
+	return posts
 }
 
 // defaultConfig returns the default charset and

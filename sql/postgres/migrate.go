@@ -86,7 +86,7 @@ func (m *migrate) modifyTable(ctx context.Context, modify *schema.ModifyTable) e
 		changes     []schema.Change
 		addI, dropI []*schema.Index
 	)
-	for _, change := range modify.Changes {
+	for _, change := range skipAutoDropped(modify.Changes) {
 		switch change := change.(type) {
 		case *schema.DropAttr:
 			return fmt.Errorf("unsupported change type: %T", change)
@@ -160,7 +160,7 @@ func (m *migrate) alterTable(ctx context.Context, t *schema.Table, changes []sch
 			b.P("ADD")
 			m.fks(b, change.F)
 		case *schema.DropForeignKey:
-			b.P("DROP FOREIGN KEY").Ident(change.F.Symbol)
+			b.P("DROP CONSTRAINT").Ident(change.F.Symbol)
 		}
 	})
 	if _, err := m.ExecContext(ctx, b.String()); err != nil {
@@ -419,6 +419,32 @@ func (m *migrate) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
 			b.P("ON DELETE", string(fk.OnDelete))
 		}
 	})
+}
+
+// skipAutoDropped filters unnecessary changes that are automatically
+// dropped by the database before running ALTER TABLE.
+func skipAutoDropped(changes []schema.Change) []schema.Change {
+	dropC := make(map[string]bool)
+	for _, c := range changes {
+		if c, ok := c.(*schema.DropColumn); ok {
+			dropC[c.C.Name] = true
+		}
+	}
+	for i, c := range changes {
+		switch c := c.(type) {
+		case *schema.DropIndex:
+			// Simple case for skipping key dropping, if its only column is also dropped.
+			// See https://www.postgresql.org/docs/current/sql-altertable.html
+			if len(c.I.Parts) == 1 && c.I.Parts[0].C != nil && dropC[c.I.Parts[0].C.Name] {
+				changes = append(changes[:i], changes[i+1:]...)
+			}
+		case *schema.DropForeignKey:
+			if len(c.F.Columns) == 1 && dropC[c.F.Columns[0].Name] {
+				changes = append(changes[:i], changes[i+1:]...)
+			}
+		}
+	}
+	return changes
 }
 
 // Build instantiates a new builder and writes the given phrase to it.

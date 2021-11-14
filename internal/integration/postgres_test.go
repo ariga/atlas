@@ -283,6 +283,126 @@ func TestPostgres_Enums(t *testing.T) {
 	})
 }
 
+func TestPostgres_ForeignKey(t *testing.T) {
+	ctx := context.Background()
+	t.Run("ChangeAction", func(t *testing.T) {
+		pgRun(t, func(t *pgTest) {
+			usersT, postsT := t.users(), t.posts()
+			t.dropTables(postsT.Name, usersT.Name)
+			err := t.drv.Migrate().Exec(ctx, []schema.Change{
+				&schema.AddTable{T: usersT},
+				&schema.AddTable{T: postsT},
+			})
+			require.NoError(t, err)
+			t.ensureNoChange(postsT, usersT)
+
+			postsT = t.loadPosts()
+			fk, ok := postsT.ForeignKey("author_id")
+			require.True(t, ok)
+			fk.OnUpdate = schema.SetNull
+			fk.OnDelete = schema.Cascade
+			changes, err := t.drv.Diff().TableDiff(t.loadPosts(), postsT)
+			require.NoError(t, err)
+			require.Len(t, changes, 1)
+			modifyF, ok := changes[0].(*schema.ModifyForeignKey)
+			require.True(t, ok)
+			require.True(t, modifyF.Change == schema.ChangeUpdateAction|schema.ChangeDeleteAction)
+
+			err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: postsT, Changes: changes}})
+			require.NoError(t, err)
+			t.ensureNoChange(postsT, usersT)
+		})
+	})
+
+	t.Run("UnsetNull", func(t *testing.T) {
+		pgRun(t, func(t *pgTest) {
+			usersT, postsT := t.users(), t.posts()
+			t.dropTables(postsT.Name, usersT.Name)
+			fk, ok := postsT.ForeignKey("author_id")
+			require.True(t, ok)
+			fk.OnDelete = schema.SetNull
+			fk.OnUpdate = schema.SetNull
+			err := t.drv.Migrate().Exec(ctx, []schema.Change{
+				&schema.AddTable{T: usersT},
+				&schema.AddTable{T: postsT},
+			})
+			require.NoError(t, err)
+			t.ensureNoChange(postsT, usersT)
+
+			postsT = t.loadPosts()
+			c, ok := postsT.Column("author_id")
+			require.True(t, ok)
+			c.Type.Null = false
+			fk, ok = postsT.ForeignKey("author_id")
+			require.True(t, ok)
+			fk.OnUpdate = schema.NoAction
+			fk.OnDelete = schema.NoAction
+			changes, err := t.drv.Diff().TableDiff(t.loadPosts(), postsT)
+			require.NoError(t, err)
+			require.Len(t, changes, 2)
+			modifyC, ok := changes[0].(*schema.ModifyColumn)
+			require.True(t, ok)
+			require.True(t, modifyC.Change == schema.ChangeNull)
+			modifyF, ok := changes[1].(*schema.ModifyForeignKey)
+			require.True(t, ok)
+			require.True(t, modifyF.Change == schema.ChangeUpdateAction|schema.ChangeDeleteAction)
+
+			err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: postsT, Changes: changes}})
+			require.NoError(t, err)
+			t.ensureNoChange(postsT, usersT)
+		})
+	})
+
+	t.Run("AddDrop", func(t *testing.T) {
+		pgRun(t, func(t *pgTest) {
+			usersT := t.users()
+			t.dropTables(usersT.Name)
+			err := t.drv.Migrate().Exec(ctx, []schema.Change{
+				&schema.AddTable{T: usersT},
+			})
+			require.NoError(t, err)
+			t.ensureNoChange(usersT)
+
+			// Add foreign key.
+			usersT.Columns = append(usersT.Columns, &schema.Column{
+				Name: "spouse_id",
+				Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true},
+			})
+			usersT.ForeignKeys = append(usersT.ForeignKeys, &schema.ForeignKey{
+				Symbol:     "spouse_id",
+				Table:      usersT,
+				Columns:    usersT.Columns[len(usersT.Columns)-1:],
+				RefTable:   usersT,
+				RefColumns: usersT.Columns[:1],
+				OnDelete:   schema.NoAction,
+			})
+
+			changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
+			require.NoError(t, err)
+			require.Len(t, changes, 2)
+			addC, ok := changes[0].(*schema.AddColumn)
+			require.True(t, ok)
+			require.Equal(t, "spouse_id", addC.C.Name)
+			addF, ok := changes[1].(*schema.AddForeignKey)
+			require.True(t, ok)
+			require.Equal(t, "spouse_id", addF.F.Symbol)
+			err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+			require.NoError(t, err)
+			t.ensureNoChange(usersT)
+
+			// Drop foreign keys.
+			usersT.Columns = usersT.Columns[:len(usersT.Columns)-1]
+			usersT.ForeignKeys = usersT.ForeignKeys[:len(usersT.ForeignKeys)-1]
+			changes, err = t.drv.Diff().TableDiff(t.loadUsers(), usersT)
+			require.NoError(t, err)
+			require.Len(t, changes, 2)
+			err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+			require.NoError(t, err)
+			t.ensureNoChange(usersT)
+		})
+	})
+}
+
 func (t *pgTest) loadRealm() *schema.Realm {
 	r, err := t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
 		Schemas: []string{"public"},
@@ -297,6 +417,14 @@ func (t *pgTest) loadUsers() *schema.Table {
 	users, ok := realm.Schemas[0].Table("users")
 	require.True(t, ok)
 	return users
+}
+
+func (t *pgTest) loadPosts() *schema.Table {
+	realm := t.loadRealm()
+	require.Len(t, realm.Schemas, 1)
+	posts, ok := realm.Schemas[0].Table("posts")
+	require.True(t, ok)
+	return posts
 }
 
 func (t *pgTest) users() *schema.Table {
