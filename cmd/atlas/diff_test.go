@@ -53,14 +53,14 @@ table "groups" {
 	}
 	require.EqualValues(t, []*changeDesc{
 		{
-			typ:     "ModifyTable",
+			typ:     "Modify Table",
 			subject: "users",
 			queries: []string{
 				"ALTER TABLE `default`.`users` MODIFY COLUMN `id` varchar(255) NOT NULL, ADD COLUMN `name` varchar(255) NOT NULL",
 			},
 		},
 		{
-			typ:     "AddTable",
+			typ:     "Add Table",
 			subject: "groups",
 			queries: []string{
 				"CREATE TABLE `default`.`groups` (`id` int NOT NULL)",
