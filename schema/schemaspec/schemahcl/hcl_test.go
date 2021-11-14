@@ -5,7 +5,6 @@ import (
 	"log"
 	"testing"
 
-	"ariga.io/atlas/schema/schemaspec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -110,18 +109,17 @@ show "seinfeld" {
 func ExampleMarshal() {
 	type (
 		Point struct {
-			ID string            `spec:",name"`
-			X  int               `spec:"x"`
-			Y  int               `spec:"y"`
-			Z  []*schemaspec.Ref `spec:"z"`
+			ID string `spec:",name"`
+			X  int    `spec:"x"`
+			Y  int    `spec:"y"`
 		}
 	)
 	var test = struct {
 		Points []*Point `spec:"point"`
 	}{
 		Points: []*Point{
-			{ID: "start", X: 0, Y: 0, Z: []*schemaspec.Ref{{V: "$a"}}},
-			{ID: "end", X: 1, Y: 1, Z: []*schemaspec.Ref{{V: "b"}}},
+			{ID: "start", X: 0, Y: 0},
+			{ID: "end", X: 1, Y: 1},
 		},
 	}
 	b, err := Marshal(&test)
@@ -133,11 +131,9 @@ func ExampleMarshal() {
 	// point "start" {
 	//   x = 0
 	//   y = 0
-	//   z = [a, ]
 	// }
 	// point "end" {
 	//   x = 1
 	//   y = 1
-	//   z = [b, ]
 	// }
 }
