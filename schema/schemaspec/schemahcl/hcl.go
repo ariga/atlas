@@ -242,14 +242,10 @@ func writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 				val string
 				err error
 			)
-			v, ok := item.(*schemaspec.Ref)
-			if ok {
+			if v, ok := item.(*schemaspec.Ref); ok {
 				val = strings.ReplaceAll(v.V, "$", "")
-			} else {
-				val, err = schemaspec.StrVal(item)
-				if err != nil {
-					return err
-				}
+			} else if val, err = schemaspec.StrVal(item); err != nil {
+				return err
 			}
 			lst = append(lst, val)
 		}
