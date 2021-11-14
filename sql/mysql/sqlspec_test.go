@@ -427,7 +427,7 @@ func TestMarshalSpecColumnType(t *testing.T) {
 		},
 		{
 			schem:    &schema.EnumType{Values: []string{"a", "b", "c"}},
-			expected: specutil.NewCol("column", "enum", specutil.ListAttr("values", `a`, `b`, `c`)),
+			expected: specutil.NewCol("column", "enum", specutil.ListAttr("values", `"a"`, `"b"`, `"c"`)),
 		},
 		{
 			schem:    &schema.BoolType{T: "boolean"},

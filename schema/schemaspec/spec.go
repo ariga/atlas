@@ -106,7 +106,7 @@ func (a *Attr) Ref() (string, error) {
 	return ref.V, nil
 }
 
-// Strings returns a slice of strings from the Value of the Attr. If The value is not a ListValue or the its
+// Strings returns a slice of strings from the Value of the Attr. If The value is not a ListValue or its
 // values cannot be converted to strings an error is returned.
 func (a *Attr) Strings() ([]string, error) {
 	lst, ok := a.V.(*ListValue)
@@ -117,9 +117,27 @@ func (a *Attr) Strings() ([]string, error) {
 	for _, item := range lst.V {
 		sv, err := StrVal(item)
 		if err != nil {
-			return nil, fmt.Errorf("schema: failed parsing item %q to string: %w", item, err)
+			return nil, fmt.Errorf("schemaspec: failed parsing item %q to string: %w", item, err)
 		}
 		out = append(out, sv)
+	}
+	return out, nil
+}
+
+// Bools returns a slice of bools from the Value of the Attr. If The value is not a ListValue or its
+// values cannot be converted to bools an error is returned.
+func (a *Attr) Bools() ([]bool, error) {
+	lst, ok := a.V.(*ListValue)
+	if !ok {
+		return nil, fmt.Errorf("schemaspec: attribute %q is not a list", a.K)
+	}
+	out := make([]bool, 0, len(lst.V))
+	for _, item := range lst.V {
+		b, err := BoolVal(item)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, b)
 	}
 	return out, nil
 }
@@ -176,6 +194,21 @@ func StrVal(v Value) (string, error) {
 		return "", fmt.Errorf("schemaspec: expected %T to be LiteralValue", v)
 	}
 	return strconv.Unquote(lit.V)
+}
+
+// BoolVal returns the bool representation of v. If v is not a *LiteralValue
+// it returns an error. If the raw string representation of v cannot be read as
+// a bool, an error is returned as well.
+func BoolVal(v Value) (bool, error) {
+	lit, ok := v.(*LiteralValue)
+	if !ok {
+		return false, fmt.Errorf("schemaspec: expected %T to be LiteralValue", v)
+	}
+	b, err := strconv.ParseBool(lit.V)
+	if err != nil {
+		return false, fmt.Errorf("schemaspec: failed parsing %q as bool: %w", lit.V, err)
+	}
+	return b, nil
 }
 
 func (*LiteralValue) val() {}

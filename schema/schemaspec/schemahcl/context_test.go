@@ -238,6 +238,8 @@ group "lion_kings" {
 			{V: "$user.mufasa"},
 		},
 	}, test.Groups[0])
+	_, err = Marshal(&test)
+	require.NoError(t, err)
 }
 
 func TestNestedDifference(t *testing.T) {
@@ -300,4 +302,29 @@ person "jane" {
 		},
 	}
 	require.EqualValues(t, jane, test.People[1])
+}
+
+func TestSchemaRefParse(t *testing.T) {
+	type Point struct {
+		Z []*schemaspec.Ref `spec:"z"`
+	}
+	var test = struct {
+		Points []*Point `spec:"point"`
+	}{
+		Points: []*Point{
+			{Z: []*schemaspec.Ref{{V: "$a"}}},
+			{Z: []*schemaspec.Ref{{V: "b"}}},
+		},
+	}
+	b, err := Marshal(&test)
+	require.NoError(t, err)
+	expected :=
+		`point {
+  z = [a, ]
+}
+point {
+  z = [b, ]
+}
+`
+	require.Equal(t, expected, string(b))
 }
