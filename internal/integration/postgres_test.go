@@ -34,7 +34,7 @@ var pgTests struct {
 func pgRun(t *testing.T, fn func(*pgTest)) {
 	pgTests.Do(func() {
 		pgTests.drivers = make(map[string]*pgTest)
-		for version, port := range map[string]int{"10": 5430, "11": 5431, "12": 5433, "13": 5434} {
+		for version, port := range map[string]int{"10": 5430, "11": 5431, "12": 5432, "13": 5433, "14": 5434} {
 			db, err := sql.Open("postgres", fmt.Sprintf("host=localhost port=%d user=postgres dbname=test password=pass sslmode=disable", port))
 			require.NoError(t, err)
 			drv, err := postgres.Open(db)
