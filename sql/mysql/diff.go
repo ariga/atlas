@@ -124,6 +124,24 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 	return from != to
 }
 
+// Normalize implements the sqlx.Normalizer interface.
+func (d *diff) Normalize(from, to *schema.Table) {
+	for i, idx := range from.Indexes {
+		if _, ok := to.Index(idx.Name); ok {
+			continue
+		}
+		// MySQL requires that foreign key columns be indexed; Therefore, if the child
+		// table is defined on non-indexed columns, an index is automatically created
+		// to satisfy the constraint.
+		// Therefore, if no such key was defined on the desired state, the diff will
+		// recommend to drop it on migration. Therefore, we fix it by dropping it from
+		// the current state manually.
+		if keySupportsFK(from, idx) {
+			from.Indexes = append(from.Indexes[:i], from.Indexes[i+1:]...)
+		}
+	}
+}
+
 // collationChange returns the schema change for migrating the collation if
 // it was changed and its not the default attribute inherited from its parent.
 func (d *diff) collationChange(from, top, to []schema.Attr) schema.Change {
@@ -359,4 +377,25 @@ func displayWidth(attr []schema.Attr) *DisplayWidth {
 		return nil
 	}
 	return d
+}
+
+// keySupportsFK reports if the index key was created automatically by MySQL
+// to support the constraint. See sql/sql_table.cc#find_fk_supporting_key.
+func keySupportsFK(t *schema.Table, idx *schema.Index) bool {
+	if _, ok := t.ForeignKey(idx.Name); ok {
+		return true
+	}
+search:
+	for _, fk := range t.ForeignKeys {
+		if len(fk.Columns) != len(idx.Parts) {
+			continue
+		}
+		for i, c := range fk.Columns {
+			if idx.Parts[i].C == nil || idx.Parts[i].C.Name != c.Name {
+				continue search
+			}
+		}
+		return true
+	}
+	return false
 }

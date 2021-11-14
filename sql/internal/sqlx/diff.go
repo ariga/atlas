@@ -49,15 +49,14 @@ type (
 		ReferenceChanged(from, to schema.ReferenceOption) bool
 	}
 
-	// A Normalizer wraps the Normalize method for normalizing table
-	// elements that were inspected from the database, or were defined
-	// by the users to a standard form.
+	// A Normalizer wraps the Normalize method for normalizing the from and to tables before
+	// running diffing. The "from" usually represents the inspected database state (current),
+	// and the second represents the desired state.
 	//
-	// If the DiffDriver implements the Normalizer interface, TableDiff
-	// normalizes its table inputs before starting the diff process.
+	// If the DiffDriver implements the Normalizer interface, TableDiff normalizes its table
+	// inputs before starting the diff process.
 	Normalizer interface {
-		// Normalize normalizes a list of tables.
-		Normalize(...*schema.Table)
+		Normalize(from, to *schema.Table)
 	}
 )
 
