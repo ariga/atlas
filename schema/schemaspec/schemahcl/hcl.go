@@ -239,7 +239,7 @@ func writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 		lst := make([]string, 0, len(v.V))
 		for _, item := range v.V {
 			var (
-				v string
+				val string
 				err error
 			)
 			switch v := item.(type) {
