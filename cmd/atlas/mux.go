@@ -98,7 +98,7 @@ func schemaNameFromDSN(url string) (string, error) {
 		}
 		return cfg.DBName, err
 	case "postgres":
-		cfg, err := pgconn.ParseConfig(dsn)
+		cfg, err := pgconn.ParseConfig(url)
 		if err != nil {
 			return "", err
 		}
