@@ -652,3 +652,12 @@ func (t *myTest) defaultAttrs() []schema.Attr {
 		},
 	}
 }
+
+func TestMySQL_Ent(t *testing.T) {
+	ctx := context.Background()
+	t.Run("Inspect", func(t *testing.T) {
+		myRun(t, func(t *myTest) {
+			println(ctx)
+		})
+	})
+}
