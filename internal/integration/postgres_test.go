@@ -88,7 +88,10 @@ func TestPostgres_Relation(t *testing.T) {
 func TestPostgres_AddIndexedColumns(t *testing.T) {
 	pgRun(t, func(t *pgTest) {
 		ctx := context.Background()
-		usersT := t.users()
+		usersT := &schema.Table{
+			Name:    "users",
+			Columns: []*schema.Column{{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}}},
+		}
 		err := t.drv.Migrate().Exec(ctx, []schema.Change{
 			&schema.AddTable{T: usersT},
 		})
@@ -102,20 +105,35 @@ func TestPostgres_AddIndexedColumns(t *testing.T) {
 			Name:    "b",
 			Type:    &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true},
 			Default: &schema.RawExpr{X: "10"},
+		}, &schema.Column{
+			Name:    "c",
+			Type:    &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true},
+			Default: &schema.RawExpr{X: "10"},
 		})
+		parts := usersT.Columns[len(usersT.Columns)-3:]
 		usersT.Indexes = append(usersT.Indexes, &schema.Index{
 			Unique: true,
-			Name:   "a_b_unique",
-			Parts:  []*schema.IndexPart{{C: usersT.Columns[1]}, {C: usersT.Columns[2]}},
+			Name:   "a_b_c_unique",
+			Parts:  []*schema.IndexPart{{C: parts[0]}, {C: parts[1]}, {C: parts[2]}},
 		})
-		realm := t.loadRealm()
-		changes, err := t.drv.Diff().TableDiff(realm.Schemas[0].Tables[0], usersT)
+		changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
 		require.NoError(t, err)
-		require.NotEmpty(t, changes, "usersT contains 2 new columns and 1 new index")
-
+		require.NotEmpty(t, changes, "usersT contains 3 new columns and 1 new index")
 		err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
 		require.NoError(t, err)
 		t.ensureNoChange(usersT)
+
+		// Dropping a column involves in a multi-column
+		// index causes the index to be dropped as well.
+		usersT.Columns = usersT.Columns[:len(usersT.Columns)-1]
+		changes, err = t.drv.Diff().TableDiff(t.loadUsers(), usersT)
+		require.NoError(t, err)
+		err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+		require.NoError(t, err)
+		t.ensureNoChange(t.loadUsers())
+		usersT = t.loadUsers()
+		_, ok := usersT.Index("a_b_c_unique")
+		require.False(t, ok)
 	})
 }
 

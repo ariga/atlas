@@ -436,27 +436,27 @@ func skipAutoChanges(changes []schema.Change) []schema.Change {
 			dropC[c.C.Name] = true
 		}
 	}
-search:
 	for i, c := range changes {
 		switch c := c.(type) {
-		// Simple case for skipping key dropping, if its columns are dropped.
+		// Indexes involving the column are automatically dropped
+		// with it. This true for multi-columns indexes as well.
 		// See https://www.postgresql.org/docs/current/sql-altertable.html
 		case *schema.DropIndex:
 			for _, p := range c.I.Parts {
-				if p.C == nil || !dropC[p.C.Name] {
-					continue search
+				if p.C == nil && dropC[p.C.Name] {
+					changes = append(changes[:i], changes[i+1:]...)
+					break
 				}
 			}
-			changes = append(changes[:i], changes[i+1:]...)
 		// Simple case for skipping constraint dropping,
 		// if the child table columns were dropped.
 		case *schema.DropForeignKey:
 			for _, c := range c.F.Columns {
-				if !dropC[c.Name] {
-					continue search
+				if dropC[c.Name] {
+					changes = append(changes[:i], changes[i+1:]...)
+					break
 				}
 			}
-			changes = append(changes[:i], changes[i+1:]...)
 		}
 	}
 	return changes
