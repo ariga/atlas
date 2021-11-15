@@ -15,7 +15,10 @@ import (
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
+	"entgo.io/ent/dialect"
+	"entgo.io/ent/examples/traversal/ent"
 
+	entsql "entgo.io/ent/dialect/sql"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 )
@@ -657,7 +660,10 @@ func TestMySQL_Ent(t *testing.T) {
 	ctx := context.Background()
 	t.Run("Inspect", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
-			println(ctx)
+			drv := entsql.OpenDB(dialect.MySQL, t.db)
+			client := ent.NewClient(ent.Driver(drv))
+			err := client.Schema.Create(ctx)
+			require.NoError(t, err)
 		})
 	})
 }
