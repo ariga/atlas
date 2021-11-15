@@ -9,20 +9,26 @@ import (
 )
 
 func TestAttributes(t *testing.T) {
-	f := `i = 1
-b = true
-s = "hello, world"
+	f := `i  = 1
+b  = true
+s  = "hello, world"
+sl = ["hello", "world", ]
+bl = [true, false, ]
 `
 	var test struct {
-		Int  int    `spec:"i"`
-		Bool bool   `spec:"b"`
-		Str  string `spec:"s"`
+		Int        int      `spec:"i"`
+		Bool       bool     `spec:"b"`
+		Str        string   `spec:"s"`
+		StringList []string `spec:"sl"`
+		BoolList   []bool   `spec:"bl"`
 	}
 	err := Unmarshal([]byte(f), &test)
 	require.NoError(t, err)
 	require.EqualValues(t, 1, test.Int)
 	require.EqualValues(t, true, test.Bool)
 	require.EqualValues(t, "hello, world", test.Str)
+	require.EqualValues(t, []string{"hello", "world"}, test.StringList)
+	require.EqualValues(t, []bool{true, false}, test.BoolList)
 	marshal, err := Marshal(&test)
 	require.NoError(t, err)
 	require.EqualValues(t, f, string(marshal))

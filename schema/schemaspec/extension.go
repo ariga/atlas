@@ -204,20 +204,41 @@ func setField(field reflect.Value, attr *Attr) error {
 }
 
 // setSliceAttr sets the value of attr to the slice field. This function expects both the target field
-// and the source attr to be slices. Currently, only slices of type *Ref are supported.
-// TODO(rotemtam): support also strings, booleans and numeric values.
+// and the source attr to be slices.
 func setSliceAttr(field reflect.Value, attr *Attr) error {
 	lst, ok := attr.V.(*ListValue)
 	if !ok {
 		return fmt.Errorf("schemaspec: field is of type slice but attr %q does not contain a ListValue", attr.K)
 	}
 	typ := field.Type().Elem()
-	if typ != reflect.TypeOf(&Ref{}) {
-		return fmt.Errorf("schemaspec: currently on ref slice values supported, got %s", typ)
-	}
+
 	slc := reflect.MakeSlice(reflect.SliceOf(typ), 0, len(lst.V))
-	for _, c := range lst.V {
-		slc = reflect.Append(slc, reflect.ValueOf(c))
+	switch typ.Kind() {
+	case reflect.String:
+		s, err := attr.Strings()
+		if err != nil {
+			return fmt.Errorf("cannot read attribute %q as string list: %w", attr.K, err)
+		}
+		for _, item := range s {
+			slc = reflect.Append(slc, reflect.ValueOf(item))
+		}
+	case reflect.Bool:
+		bools, err := attr.Bools()
+		if err != nil {
+			return fmt.Errorf("cannot read attribute %q as bool list: %w", attr.K, err)
+		}
+		for _, item := range bools {
+			slc = reflect.Append(slc, reflect.ValueOf(item))
+		}
+	case reflect.Ptr:
+		if typ != reflect.TypeOf(&Ref{}) {
+			return fmt.Errorf("only pointers to refs supported, got %s", typ)
+		}
+		for _, c := range lst.V {
+			slc = reflect.Append(slc, reflect.ValueOf(c))
+		}
+	default:
+		return fmt.Errorf("slice of unsupported kind: %q", typ.Kind())
 	}
 	field.Set(slc)
 	return nil
@@ -320,17 +341,32 @@ func scanAttr(key string, r *Resource, field reflect.Value) error {
 }
 
 // scanSliceAttr sets an Attr named "key" into the Resource r, by converting
-// the value stored in "field" into a *ListValue. Currently, only slices of *Ref
-// values are supported. TODO(rotemtam): support strings, booleans and numeric values.
+// the value stored in "field" into a *ListValue.
 func scanSliceAttr(key string, r *Resource, field reflect.Value) error {
 	typ := field.Type()
-	if typ.Kind() != reflect.Slice || typ.Elem() != reflect.TypeOf(&Ref{}) {
-		return fmt.Errorf("schemaspec: currently on ref slice values supported, got %s", typ)
-	}
 	lst := &ListValue{}
-	for i := 0; i < field.Len(); i++ {
-		item := field.Index(i).Interface().(*Ref)
-		lst.V = append(lst.V, item)
+
+	switch typ.Elem().Kind() {
+	case reflect.String:
+		for i := 0; i < field.Len(); i++ {
+			item := field.Index(i).Interface().(string)
+			lst.V = append(lst.V, &LiteralValue{V: strconv.Quote(item)})
+		}
+	case reflect.Bool:
+		for i := 0; i < field.Len(); i++ {
+			item := field.Index(i).Interface().(bool)
+			lst.V = append(lst.V, &LiteralValue{V: strconv.FormatBool(item)})
+		}
+	case reflect.Ptr:
+		if typ.Elem() != reflect.TypeOf(&Ref{}) {
+			return fmt.Errorf("schemaspec: currently on ref slice values supported, got %s", typ)
+		}
+		for i := 0; i < field.Len(); i++ {
+			item := field.Index(i).Interface().(*Ref)
+			lst.V = append(lst.V, item)
+		}
+	default:
+		return fmt.Errorf("unsupported kind %q for %q", typ.Kind(), key)
 	}
 	r.SetAttr(&Attr{
 		K: key,
