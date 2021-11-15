@@ -16,7 +16,8 @@ import (
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
 	"entgo.io/ent/dialect"
-	"entgo.io/ent/examples/traversal/ent"
+	entm2m2types "entgo.io/ent/examples/m2m2types/ent"
+	enttraversal "entgo.io/ent/examples/traversal/ent"
 
 	entsql "entgo.io/ent/dialect/sql"
 	_ "github.com/go-sql-driver/mysql"
@@ -658,10 +659,39 @@ func (t *myTest) defaultAttrs() []schema.Attr {
 
 func TestMySQL_Ent(t *testing.T) {
 	ctx := context.Background()
-	t.Run("Inspect", func(t *testing.T) {
+	t.Run("ent-traversal", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			drv := entsql.OpenDB(dialect.MySQL, t.db)
-			client := ent.NewClient(ent.Driver(drv))
+			client := enttraversal.NewClient(enttraversal.Driver(drv))
+			err := client.Schema.Create(ctx)
+			require.NoError(t, err)
+			r, err := t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
+				Schemas: []string{"test"},
+			})
+			require.NoError(t, err)
+			changes, err := t.drv.Diff().SchemaDiff(r.Schemas[0], &schema.Schema{})
+			require.NoError(t, err)
+			require.NotEmpty(t, changes)
+			err = t.drv.Migrate().Exec(ctx, changes)
+			require.NoError(t, err)
+			e, err := t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
+				Schemas: []string{"test"},
+			})
+			require.Empty(t, e.Schemas[0].Tables)
+			changes, err = t.drv.Diff().SchemaDiff(e.Schemas[0], r.Schemas[0])
+			require.NoError(t, err)
+			require.NotEmpty(t, changes)
+			err = t.drv.Migrate().Exec(ctx, changes)
+			require.NoError(t, err)
+			err = client.Schema.Create(ctx)
+			t.ensureNoChange(r.Schemas[0].Tables...)
+		})
+	})
+
+	t.Run("ent-m2m2types", func(t *testing.T) {
+		myRun(t, func(t *myTest) {
+			drv := entsql.OpenDB(dialect.MySQL, t.db)
+			client := entm2m2types.NewClient(entm2m2types.Driver(drv))
 			err := client.Schema.Create(ctx)
 			require.NoError(t, err)
 			r, err := t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
