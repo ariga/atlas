@@ -664,6 +664,26 @@ func TestMySQL_Ent(t *testing.T) {
 			client := ent.NewClient(ent.Driver(drv))
 			err := client.Schema.Create(ctx)
 			require.NoError(t, err)
+			r, err := t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
+				Schemas: []string{"test"},
+			})
+			require.NoError(t, err)
+			changes, err := t.drv.Diff().SchemaDiff(r.Schemas[0], &schema.Schema{})
+			require.NoError(t, err)
+			require.NotEmpty(t, changes)
+			err = t.drv.Migrate().Exec(ctx, changes)
+			require.NoError(t, err)
+			e, err := t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
+				Schemas: []string{"test"},
+			})
+			require.Empty(t, e.Schemas[0].Tables)
+			changes, err = t.drv.Diff().SchemaDiff(e.Schemas[0], r.Schemas[0])
+			require.NoError(t, err)
+			require.NotEmpty(t, changes)
+			err = t.drv.Migrate().Exec(ctx, changes)
+			require.NoError(t, err)
+			err = client.Schema.Create(ctx)
+			t.ensureNoChange(r.Schemas[0].Tables...)
 		})
 	})
 }
