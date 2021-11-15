@@ -9,7 +9,6 @@ import (
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/schema"
 	"github.com/go-sql-driver/mysql"
-	"github.com/jackc/pgconn"
 )
 
 type (
@@ -98,11 +97,7 @@ func schemaNameFromDSN(url string) (string, error) {
 		}
 		return cfg.DBName, err
 	case "postgres":
-		cfg, err := pgconn.ParseConfig(url)
-		if err != nil {
-			return "", err
-		}
-		return cfg.Database, err
+		return "public", nil
 	default:
 		return "", fmt.Errorf("unknown database type: %q", key)
 	}
