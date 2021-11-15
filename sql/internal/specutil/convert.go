@@ -212,6 +212,7 @@ func FromSchema(s *schema.Schema, fn TableSpecFunc) (*sqlspec.Schema, []*sqlspec
 		if err != nil {
 			return nil, nil, err
 		}
+		table.SchemaName = s.Name
 		tables = append(tables, table)
 	}
 	return spec, tables, nil
