@@ -71,7 +71,7 @@ func (u *Mux) OpenAtlas(dsn string) (*Driver, error) {
 	}
 	p, ok := u.providers[key]
 	if !ok {
-		return nil, fmt.Errorf("could not find provider, %s", err)
+		return nil, fmt.Errorf("could not find provider, %s", key)
 	}
 	return p(dsn)
 }
