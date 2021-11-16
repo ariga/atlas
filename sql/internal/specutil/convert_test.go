@@ -66,7 +66,7 @@ func TestFromForeignKey(t *testing.T) {
 		Table:      tbl,
 		Columns: tbl.Columns[1:],
 		RefTable:   tbl,
-		RefColumns: []*schema.Column{tbl.Columns[0]},
+		RefColumns: tbl.Columns[:1],
 	}
 	key, err := FromForeignKey(fk)
 	require.NoError(t, err)
