@@ -53,6 +53,20 @@ func (r registry) lookup(ext interface{}) (string, bool) {
 	return "", false
 }
 
+// implementors returns a slice of the names of the extensions that implement i.
+func (r registry) implementors(i reflect.Type) ([]string, error) {
+	if i.Kind() != reflect.Interface {
+		return nil, fmt.Errorf("schemaspec: expected interface got %s", i.Kind())
+	}
+	var names []string
+	for name, typ := range r {
+		if reflect.TypeOf(typ).Implements(i) {
+			names = append(names, name)
+		}
+	}
+	return names, nil
+}
+
 // Register records the type of ext in the global extension registry.
 // If Register is called twice with the same name or if ext is nil,
 // it panics.
@@ -88,12 +102,23 @@ func (r *Resource) As(target interface{}) error {
 				return errors.New("schemaspec: extension isName field must be of type string")
 			}
 			field.SetString(r.Name)
+
 		case hasAttr(r, ft.tag):
 			attr, _ := r.Attr(ft.tag)
 			if err := setField(field, attr); err != nil {
 				return err
 			}
 			delete(existingAttrs, attr.K)
+		case ft.isInterfaceSlice:
+			implors, _ := extensions.implementors(field.Type().Elem())
+			cot := childrenOfType(r, implors...)
+			fmt.Println(implors, cot, r.Children)
+			if err := setChildSlice(field, cot); err != nil {
+				return err
+			}
+			for _, i := range implors {
+				delete(existingChildren, i)
+			}
 		case isResourceSlice(field.Type()):
 			if err := setChildSlice(field, childrenOfType(r, ft.tag)); err != nil {
 				return err
@@ -388,24 +413,27 @@ func specFields(ext interface{}) []fieldTag {
 		}
 		parts := strings.Split(lookup, ",")
 		fields = append(fields, fieldTag{
-			field:  f.Name,
-			tag:    lookup,
-			isName: len(parts) > 1 && parts[1] == "name",
+			field:            f.Name,
+			tag:              lookup,
+			isName:           len(parts) > 1 && parts[1] == "name",
+			isInterfaceSlice: f.Type.Kind() == reflect.Slice && f.Type.Elem().Kind() == reflect.Interface,
 		})
 	}
 	return fields
 }
 
 type fieldTag struct {
-	field, tag string
-	isName     bool
+	field, tag               string
+	isName, isInterfaceSlice bool
 }
 
-func childrenOfType(r *Resource, typ string) []*Resource {
+func childrenOfType(r *Resource, types ...string) []*Resource {
 	var out []*Resource
 	for _, c := range r.Children {
-		if c.Type == typ {
-			out = append(out, c)
+		for _, typ := range types {
+			if c.Type == typ {
+				out = append(out, c)
+			}
 		}
 	}
 	return out

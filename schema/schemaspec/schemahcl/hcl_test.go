@@ -5,6 +5,7 @@ import (
 	"log"
 	"testing"
 
+	"ariga.io/atlas/schema/schemaspec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -142,4 +143,48 @@ func ExampleMarshal() {
 	//   x = 1
 	//   y = 1
 	// }
+}
+
+func TestInterface(t *testing.T) {
+	f := `
+zoo "ramat_gan" {
+	lion "simba" {
+		friend = "rafiki"
+	}
+	parrot "iago" {
+		boss = "jafar"
+	}
+}
+`
+	type (
+		Animal interface {
+			animal()
+		}
+		Parrot struct {
+			Animal
+			Boss string `spec:"boss"`
+		}
+		Lion struct {
+			Animal
+			Friend string `spec:"friend"`
+		}
+		Zoo struct {
+			Animals []Animal `spec:",interface"`
+		}
+	)
+	schemaspec.Register("lion", &Lion{})
+	schemaspec.Register("parrot", &Parrot{})
+	var test Zoo
+	err := Unmarshal([]byte(f), &test)
+	require.NoError(t, err)
+	require.EqualValues(t, Zoo{
+		Animals: []Animal{
+			&Lion{
+				Friend: "rafiki",
+			},
+			&Parrot{
+				Boss: "jafar",
+			},
+		},
+	}, test)
 }
