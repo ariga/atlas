@@ -58,6 +58,10 @@ func applyRun(d *Driver, u schemaUnmarshaler, dsn string, file string) {
 	cobra.CheckErr(err)
 	changes, err := d.SchemaDiff(s, &desired)
 	cobra.CheckErr(err)
+	if len(changes) == 0 {
+		schemaCmd.Println("Schema is synced, no changes to be made")
+		return
+	}
 	schemaCmd.Println("-- Planned Changes:")
 	for _, ch := range changes {
 		desc, err := changeDescriptor(ctx, ch, d)
