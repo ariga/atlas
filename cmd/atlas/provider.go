@@ -32,7 +32,8 @@ func mysqlProvider(dsn string) (*Driver, error) {
 	}, nil
 }
 func postgresProvider(dsn string) (*Driver, error) {
-	db, err := sql.Open("postgres", dsn)
+	url := "postgres://" + dsn
+	db, err := sql.Open("postgres", url)
 	if err != nil {
 		return nil, err
 	}

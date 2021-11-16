@@ -92,7 +92,7 @@ func (m *migrate) dropTable(ctx context.Context, drop *schema.DropTable) error {
 // modifyTable builds and executes the queries for bringing the table into its modified state.
 func (m *migrate) modifyTable(ctx context.Context, modify *schema.ModifyTable) error {
 	var changes [2][]schema.Change
-	for _, change := range modify.Changes {
+	for _, change := range skipAutoChanges(modify.Changes) {
 		switch change := change.(type) {
 		// Constraints should be dropped before dropping columns, because if a column
 		// is a part of multi-column constraints (like, unique index), ALTER TABLE
@@ -288,6 +288,33 @@ func (*migrate) attr(b *sqlx.Builder, attrs ...schema.Attr) {
 func Build(phrase string) *sqlx.Builder {
 	b := &sqlx.Builder{QuoteChar: '`'}
 	return b.P(phrase)
+}
+
+// skipAutoChanges filters unnecessary changes that are automatically
+// happened by the database when ALTER TABLE is executed.
+func skipAutoChanges(changes []schema.Change) []schema.Change {
+	dropC := make(map[string]bool)
+	for _, c := range changes {
+		if c, ok := c.(*schema.DropColumn); ok {
+			dropC[c.C.Name] = true
+		}
+	}
+search:
+	for i, c := range changes {
+		// Simple case for skipping key dropping, if its columns are dropped.
+		// https://dev.mysql.com/doc/refman/8.0/en/alter-table.html#alter-table-add-drop-column
+		c, ok := c.(*schema.DropIndex)
+		if !ok {
+			continue
+		}
+		for _, p := range c.I.Parts {
+			if p.C == nil || !dropC[p.C.Name] {
+				continue search
+			}
+		}
+		changes = append(changes[:i], changes[i+1:]...)
+	}
+	return changes
 }
 
 func quote(s string) string {
