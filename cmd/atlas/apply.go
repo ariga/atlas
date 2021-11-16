@@ -19,7 +19,7 @@ var (
 	// applyCmd represents the apply command.
 	applyCmd = &cobra.Command{
 		Use:   "apply",
-		Short: "Apply atlas schema to data source.",
+		Short: "Apply an atlas schema to data source",
 		Run: func(cmd *cobra.Command, args []string) {
 			d, err := defaultMux.OpenAtlas(applyFlags.dsn)
 			cobra.CheckErr(err)
@@ -28,7 +28,7 @@ var (
 		},
 		Example: `
 atlas schema apply -d mysql://user:pass@tcp(localhost:3306)/dbname -f atlas.hcl
-atlas schema apply --dsn postgres://user:pass@tcp(host:port)/dbname -f atlas.hcl`,
+atlas schema apply --dsn postgres://user:pass@host:port/dbname -f atlas.hcl`,
 	}
 )
 
