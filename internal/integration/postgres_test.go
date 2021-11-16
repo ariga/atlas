@@ -576,7 +576,7 @@ func TestPostgres_Ent(t *testing.T) {
 
 	t.Run("ent-m2m2types", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
-			drv := entsql.OpenDB(dialect.MySQL, t.db)
+			drv := entsql.OpenDB(dialect.Postgres, t.db)
 			client := entm2m2types.NewClient(entm2m2types.Driver(drv))
 			err := client.Schema.Create(ctx)
 			require.NoError(t, err)
