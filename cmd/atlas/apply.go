@@ -19,7 +19,7 @@ var (
 	// applyCmd represents the apply command.
 	applyCmd = &cobra.Command{
 		Use:   "apply",
-		Short: "Apply an atlas schema to data source",
+		Short: "Apply an atlas schema to a data source",
 		Run: func(cmd *cobra.Command, args []string) {
 			d, err := defaultMux.OpenAtlas(applyFlags.dsn)
 			cobra.CheckErr(err)
