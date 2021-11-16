@@ -8,7 +8,7 @@ import (
 var schemaCmd = &cobra.Command{
 	Use:   "schema",
 	Short: "Work with atlas schemas",
-	Long:  `Interact with the schema and data source`,
+	Long:  "Interact with the schema and data source",
 }
 
 func init() {
