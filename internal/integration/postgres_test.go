@@ -14,6 +14,10 @@ import (
 
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
+	entm2m2types "entgo.io/ent/examples/m2m2types/ent"
+	enttraversal "entgo.io/ent/examples/traversal/ent"
 
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/require"
@@ -534,5 +538,70 @@ func (t *pgTest) dropTables(names ...string) {
 	t.Cleanup(func() {
 		_, err := t.db.Exec("DROP TABLE IF EXISTS " + strings.Join(names, ", "))
 		require.NoError(t.T, err, "drop tables %q", names)
+	})
+}
+
+func TestPostgres_Ent(t *testing.T) {
+	ctx := context.Background()
+	t.Run("ent-traversal", func(t *testing.T) {
+		pgRun(t, func(t *pgTest) {
+			drv := entsql.OpenDB(dialect.Postgres, t.db)
+			client := enttraversal.NewClient(enttraversal.Driver(drv))
+			err := client.Schema.Create(ctx)
+			require.NoError(t, err)
+			r, err := t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
+				Schemas: []string{"public"},
+			})
+			require.NoError(t, err)
+			require.NotEmpty(t, r.Schemas)
+			changes, err := t.drv.Diff().SchemaDiff(r.Schemas[0], &schema.Schema{})
+			require.NoError(t, err)
+			require.NotEmpty(t, changes)
+			err = t.drv.Migrate().Exec(ctx, changes)
+			require.NoError(t, err)
+			e, err := t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
+				Schemas: []string{"public"},
+			})
+			require.NotEmpty(t, e.Schemas)
+			require.Empty(t, e.Schemas[0].Tables)
+			changes, err = t.drv.Diff().SchemaDiff(e.Schemas[0], r.Schemas[0])
+			require.NoError(t, err)
+			require.NotEmpty(t, changes)
+			err = t.drv.Migrate().Exec(ctx, changes)
+			require.NoError(t, err)
+			err = client.Schema.Create(ctx)
+			t.ensureNoChange(r.Schemas[0].Tables...)
+		})
+	})
+
+	t.Run("ent-m2m2types", func(t *testing.T) {
+		pgRun(t, func(t *pgTest) {
+			drv := entsql.OpenDB(dialect.MySQL, t.db)
+			client := entm2m2types.NewClient(entm2m2types.Driver(drv))
+			err := client.Schema.Create(ctx)
+			require.NoError(t, err)
+			r, err := t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
+				Schemas: []string{"public"},
+			})
+			require.NotEmpty(t, r.Schemas)
+			require.NoError(t, err)
+			changes, err := t.drv.Diff().SchemaDiff(r.Schemas[0], &schema.Schema{})
+			require.NoError(t, err)
+			require.NotEmpty(t, changes)
+			err = t.drv.Migrate().Exec(ctx, changes)
+			require.NoError(t, err)
+			e, err := t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
+				Schemas: []string{"public"},
+			})
+			require.NotEmpty(t, e.Schemas)
+			require.Empty(t, e.Schemas[0].Tables)
+			changes, err = t.drv.Diff().SchemaDiff(e.Schemas[0], r.Schemas[0])
+			require.NoError(t, err)
+			require.NotEmpty(t, changes)
+			err = t.drv.Migrate().Exec(ctx, changes)
+			require.NoError(t, err)
+			err = client.Schema.Create(ctx)
+			t.ensureNoChange(r.Schemas[0].Tables...)
+		})
 	})
 }
