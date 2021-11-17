@@ -64,7 +64,7 @@ func TestFromForeignKey(t *testing.T) {
 	fk := &schema.ForeignKey{
 		Symbol:     "fk",
 		Table:      tbl,
-		Columns: tbl.Columns[1:],
+		Columns:    tbl.Columns[1:],
 		RefTable:   tbl,
 		RefColumns: tbl.Columns[:1],
 	}
