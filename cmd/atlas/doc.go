@@ -17,7 +17,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	d := path.Join(pwd, "../../../doc/md/CLI")
+	d := path.Join(pwd, "../../doc/md/CLI")
 	base.RootCmd.DisableAutoGenTag = true
 	err = doc.GenMarkdownTree(base.RootCmd, d)
 	if err != nil {
