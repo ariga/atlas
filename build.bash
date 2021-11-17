@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-package_name="atlas"
+package="ariga.io/atlas/cmd/atlas"
+package_split=(${package//\// })
+package_name=${package_split[3]}
 
 platforms=("windows/amd64" "darwin/amd64")
 
@@ -14,8 +16,7 @@ do
         output_name+='.exe'
     fi
 
-    echo $output_name
-    env GOOS=$GOOS GOARCH=$GOARCH go build ./cmd/atlas -o $output_name
+    env GOOS=$GOOS GOARCH=$GOARCH go build -o $output_name $package
     if [ $? -ne 0 ]; then
         echo 'An error has occurred! Aborting the script execution...'
         exit 1
