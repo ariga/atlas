@@ -7,6 +7,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
@@ -383,11 +384,16 @@ func (m *migrate) partAttr(b *sqlx.Builder, attr schema.Attr) {
 }
 
 func (m *migrate) indexAttrs(b *sqlx.Builder, attrs []schema.Attr) {
+	// Avoid appending the default method.
+	if t := (IndexType{}); sqlx.Has(attrs, &t) && strings.ToLower(t.T) != "btree" {
+		b.P("USING").P(t.T)
+	}
+	if p := (IndexPredicate{}); sqlx.Has(attrs, &p) {
+		b.P("WHERE").P(p.P)
+	}
 	for _, attr := range attrs {
-		switch attr := attr.(type) {
-		case *schema.Comment:
-		case *IndexPredicate:
-			b.P("WHERE").P(attr.P)
+		switch attr.(type) {
+		case *schema.Comment, *ConType, *IndexType, *IndexPredicate:
 		default:
 			panic(fmt.Sprintf("unexpected index attribute: %T", attr))
 		}
