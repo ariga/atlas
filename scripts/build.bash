@@ -6,7 +6,10 @@ package_name=${package_split[3]}
 
 platforms=("windows/amd64" "darwin/amd64")
 TAG=$(git describe --tags --abbrev=0)
-
+if [[ -z "$TAG" ]]; then
+  echo "branch must be tagged!"
+  exit 1
+fi
 
 for platform in "${platforms[@]}"
 do
