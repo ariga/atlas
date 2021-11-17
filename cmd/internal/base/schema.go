@@ -1,4 +1,4 @@
-package main
+package base
 
 import (
 	"github.com/spf13/cobra"
@@ -12,5 +12,5 @@ var schemaCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(schemaCmd)
+	RootCmd.AddCommand(schemaCmd)
 }
