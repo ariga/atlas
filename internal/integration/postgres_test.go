@@ -15,6 +15,7 @@ import (
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
 
+	"entgo.io/ent/dialect"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/require"
 )
@@ -352,6 +353,12 @@ func TestPostgres_ForeignKey(t *testing.T) {
 			t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
 			ensureNoChange(t, usersT)
 		})
+	})
+}
+
+func TestPostgres_Ent(t *testing.T) {
+	pgRun(t, func(t *pgTest) {
+		testEntIntegration(t, dialect.Postgres, t.db)
 	})
 }
 
