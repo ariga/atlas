@@ -313,11 +313,60 @@ func TestMarshalSpecColumnType(t *testing.T) {
 			expected: specutil.NewCol("int64", "int64"),
 		},
 		{
+			schem: &schema.IntegerType{
+				T:        tInteger,
+				Unsigned: false,
+			},
+			expected: specutil.NewCol("integer", "int"),
+		},
+		{
+			schem: &schema.IntegerType{
+				T:        tInt2,
+				Unsigned: false,
+			},
+			expected: specutil.NewCol("int2", tInt2),
+		},
+		{
+			schem: &schema.IntegerType{
+				T:        tInt4,
+				Unsigned: false,
+			},
+			expected: specutil.NewCol("int4", tInt4),
+		},
+		{
+			schem: &schema.IntegerType{
+				T:        tInt8,
+				Unsigned: false,
+			},
+			expected: specutil.NewCol("int8", tInt8),
+		},
+		{
 			schem: &schema.StringType{
 				T:    tVarChar,
 				Size: 255,
 			},
 			expected: specutil.NewCol("string_varchar", "string", specutil.LitAttr("size", "255")),
+		},
+		{
+			schem: &schema.StringType{
+				T:    tChar,
+				Size: 255,
+			},
+			expected: specutil.NewCol("string_tchar", "string", specutil.LitAttr("size", "255")),
+		},
+		{
+			schem: &schema.StringType{
+				T:    tCharacter,
+				Size: 255,
+			},
+			expected: specutil.NewCol("string_Character", "string", specutil.LitAttr("size", "255")),
+		},
+		{
+			schem: &schema.StringType{
+				T:    tCharVar,
+				Size: 255,
+			},
+			expected: specutil.NewCol("string_CharVar", "string", specutil.LitAttr("size", "255")),
 		},
 		{
 			schem: &schema.StringType{
