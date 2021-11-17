@@ -4,7 +4,7 @@ package="ariga.io/atlas/cmd/atlas"
 package_split=(${package//\// })
 package_name=${package_split[3]}
 
-platforms=("windows/amd64" "darwin/amd64")
+platforms=("windows/amd64" "darwin/amd64" "darwin/arm64" "linux/amd64")
 TAG=$(git describe --tags --abbrev=0)
 if [[ -z "$TAG" ]]; then
   echo "branch must be tagged!"
