@@ -169,6 +169,18 @@ func linkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *sqlspec.Table
 			}
 			fk.Columns = append(fk.Columns, col)
 		}
+		if len(spec.RefColumns) == 0 {
+			return fmt.Errorf("sqlspec: missing reference (parent) columns for foreign key: %q", spec.Symbol)
+		}
+		name, err := tableName(spec.RefColumns[0])
+		if err != nil {
+			return err
+		}
+		t, ok := sch.Table(name)
+		if !ok {
+			return fmt.Errorf("sqlspec: undefined table %q for foreign key: %q", name, spec.Symbol)
+		}
+		fk.RefTable = t
 		for _, ref := range spec.RefColumns {
 			col, err := resolveCol(ref, sch)
 			if err != nil {

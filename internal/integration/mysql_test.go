@@ -458,18 +458,42 @@ schema "test" {
 }
 table "users" {
 	schema = "test"
-	column "email" {
-		type = "string"
+	column "id" {
+		type = "int"
+	}
+	primary_key {
+		columns = [table.users.column.id]
+	}
+}
+table "posts" {
+	schema = "test"
+	column "id" {
+		type = "int"
+	}
+	column "author_id" {
+		type = "int"
+	}
+	foreign_key "author" {
+		columns = [
+			table.posts.column.author_id,
+		]
+		ref_columns = [
+			table.users.column.id,
+		]
+	}
+	primary_key {
+		columns = [table.users.column.id]
 	}
 }
 `)
 		users := t.loadUsers()
-		t.dropTables(users.Name)
-		column, ok := users.Column("email")
-		require.True(t, ok, "expected name column")
+		posts := t.loadPosts()
+		t.dropTables(users.Name, posts.Name)
+		column, ok := users.Column("id")
+		require.True(t, ok, "expected id column")
 		require.Equal(t, "users", users.Name)
-		require.Equal(t, "email", column.Name)
-		require.Equal(t, column.Type.Raw, "varchar(255)")
+		column, ok = posts.Column("author_id")
+		require.Equal(t, "author_id", column.Name)
 		t.applyHcl(`
 schema "test" {
 }

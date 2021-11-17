@@ -137,6 +137,7 @@ table "accounts" {
 			Symbol:     "accounts",
 			Table:      exp.Tables[0],
 			Columns:    []*schema.Column{exp.Tables[0].Columns[2]},
+			RefTable:   exp.Tables[1],
 			RefColumns: []*schema.Column{exp.Tables[1].Columns[0]},
 			OnDelete:   schema.SetNull,
 		},
