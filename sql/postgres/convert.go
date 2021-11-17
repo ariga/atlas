@@ -49,6 +49,7 @@ func (d *Driver) FormatType(t schema.Type) (string, error) {
 		}
 	case *schema.StringType:
 		switch f = strings.ToLower(t.T); f {
+		case tText:
 		// CHAR(n) is alias for CHARACTER(n). If not length was
 		// specified, the definition is equivalent to CHARACTER(1).
 		case tChar, tCharacter:
