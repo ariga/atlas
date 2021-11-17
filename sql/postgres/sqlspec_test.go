@@ -349,6 +349,27 @@ func TestMarshalSpecColumnType(t *testing.T) {
 		},
 		{
 			schem: &schema.StringType{
+				T:    tChar,
+				Size: 255,
+			},
+			expected: specutil.NewCol("string_tchar", "string", specutil.LitAttr("size", "255")),
+		},
+		{
+			schem: &schema.StringType{
+				T:    tCharacter,
+				Size: 255,
+			},
+			expected: specutil.NewCol("string_Character", "string", specutil.LitAttr("size", "255")),
+		},
+		{
+			schem: &schema.StringType{
+				T:    tCharVar,
+				Size: 255,
+			},
+			expected: specutil.NewCol("string_CharVar", "string", specutil.LitAttr("size", "255")),
+		},
+		{
+			schem: &schema.StringType{
 				T:    tText,
 				Size: 10_485_761,
 			},

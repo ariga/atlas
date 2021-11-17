@@ -270,7 +270,7 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 
 func stringSpec(t *schema.StringType) (*sqlspec.Column, error) {
 	switch t.T {
-	case tVarChar, tText:
+	case tVarChar, tText, tChar, tCharacter, tCharVar:
 		s := strconv.Itoa(t.Size)
 		return specutil.NewCol("", "string", specutil.LitAttr("size", s)), nil
 	default:
