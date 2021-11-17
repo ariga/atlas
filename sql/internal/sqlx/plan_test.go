@@ -31,18 +31,21 @@ func TestDetachCycles(t *testing.T) {
 		{Symbol: "workplace", Table: users, Columns: users.Columns[1:], RefTable: workplaces, RefColumns: workplaces.Columns[:1]},
 	}
 	changes := []schema.Change{&schema.AddTable{T: workplaces}, &schema.AddTable{T: users}}
-	planned := DetachCycles(changes)
+	planned, err := DetachCycles(changes)
+	require.NoError(t, err)
 	require.Equal(t, changes, planned)
 
 	deletion := []schema.Change{&schema.DropTable{T: users}, &schema.DropTable{T: workplaces}}
-	planned = DetachCycles(deletion)
+	planned, err = DetachCycles(deletion)
+	require.NoError(t, err)
 	require.Equal(t, deletion, planned)
 
 	// Create a circular reference.
 	workplaces.ForeignKeys = []*schema.ForeignKey{
 		{Symbol: "owner", Table: workplaces, Columns: workplaces.Columns[1:], RefTable: users, RefColumns: users.Columns[:1]},
 	}
-	planned = DetachCycles(changes)
+	planned, err = DetachCycles(changes)
+	require.NoError(t, err)
 	require.Len(t, planned, 4)
 	require.Empty(t, planned[0].(*schema.AddTable).T.ForeignKeys)
 	require.Empty(t, planned[1].(*schema.AddTable).T.ForeignKeys)
@@ -63,7 +66,8 @@ func TestDetachCycles(t *testing.T) {
 		},
 	}, planned[3])
 
-	planned = DetachCycles(deletion)
+	planned, err = DetachCycles(deletion)
+	require.NoError(t, err)
 	require.Equal(t, &schema.ModifyTable{
 		T: users,
 		Changes: []schema.Change{

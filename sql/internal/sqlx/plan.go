@@ -5,6 +5,8 @@
 package sqlx
 
 import (
+	"errors"
+	"fmt"
 	"sort"
 
 	"ariga.io/atlas/sql/schema"
@@ -14,17 +16,20 @@ import (
 // references between changes if there is at least one circular
 // reference in the changeset. More explicitly, it postpones fks
 // creation, or deletes fks before deletes their tables.
-func DetachCycles(changes []schema.Change) []schema.Change {
-	sorted, hasCycle := sortMap(changes)
-	if hasCycle {
-		return detachReferences(changes)
+func DetachCycles(changes []schema.Change) ([]schema.Change, error) {
+	sorted, err := sortMap(changes)
+	if err == errCycle {
+		return detachReferences(changes), nil
+	}
+	if err != nil {
+		return nil, err
 	}
 	planned := make([]schema.Change, len(changes))
 	copy(planned, changes)
 	sort.Slice(planned, func(i, j int) bool {
 		return sorted[table(planned[i])] < sorted[table(planned[j])]
 	})
-	return planned
+	return planned, nil
 }
 
 // detachReferences detaches all table references.
@@ -83,16 +88,22 @@ func detachReferences(changes []schema.Change) []schema.Change {
 	return append(planned, deferred...)
 }
 
+// errCycle is an internal error to indicate a case of a cycle.
+var errCycle = errors.New("cycle detected")
+
 // sortMap returns an index-map indicates the position of table in a topological
 // sort in reversed order based on its references, and a boolean indicate if there
 // is a non-self loop.
-func sortMap(changes []schema.Change) (map[string]int, bool) {
+func sortMap(changes []schema.Change) (map[string]int, error) {
 	var (
-		visit    func(string) bool
-		deps     = dependencies(changes)
-		sorted   = make(map[string]int)
-		progress = make(map[string]bool)
+		visit     func(string) bool
+		sorted    = make(map[string]int)
+		progress  = make(map[string]bool)
+		deps, err = dependencies(changes)
 	)
+	if err != nil {
+		return nil, err
+	}
 	visit = func(name string) bool {
 		if _, done := sorted[name]; done {
 			return false
@@ -112,25 +123,31 @@ func sortMap(changes []schema.Change) (map[string]int, bool) {
 	}
 	for node := range deps {
 		if visit(node) {
-			return nil, true
+			return nil, errCycle
 		}
 	}
-	return sorted, false
+	return sorted, nil
 }
 
 // dependencies returned an adjacency list of all tables and the table they depend on
-func dependencies(changes []schema.Change) map[string][]*schema.Table {
+func dependencies(changes []schema.Change) (map[string][]*schema.Table, error) {
 	deps := make(map[string][]*schema.Table)
 	for _, change := range changes {
 		switch change := change.(type) {
 		case *schema.AddTable:
 			for _, fk := range change.T.ForeignKeys {
+				if err := checkFK(fk); err != nil {
+					return nil, err
+				}
 				if fk.RefTable != change.T {
 					deps[change.T.Name] = append(deps[change.T.Name], fk.RefTable)
 				}
 			}
 		case *schema.DropTable:
 			for _, fk := range change.T.ForeignKeys {
+				if err := checkFK(fk); err != nil {
+					return nil, err
+				}
 				if isDropped(changes, fk.RefTable) {
 					deps[fk.RefTable.Name] = append(deps[fk.RefTable.Name], fk.Table)
 				}
@@ -139,10 +156,16 @@ func dependencies(changes []schema.Change) map[string][]*schema.Table {
 			for _, c := range change.Changes {
 				switch c := c.(type) {
 				case *schema.AddForeignKey:
+					if err := checkFK(c.F); err != nil {
+						return nil, err
+					}
 					if c.F.RefTable != change.T {
 						deps[change.T.Name] = append(deps[change.T.Name], c.F.RefTable)
 					}
 				case *schema.ModifyForeignKey:
+					if err := checkFK(c.To); err != nil {
+						return nil, err
+					}
 					if c.To.RefTable != change.T {
 						deps[change.T.Name] = append(deps[change.T.Name], c.To.RefTable)
 					}
@@ -150,7 +173,27 @@ func dependencies(changes []schema.Change) map[string][]*schema.Table {
 			}
 		}
 	}
-	return deps
+	return deps, nil
+}
+
+func checkFK(fk *schema.ForeignKey) error {
+	var cause []string
+	if fk.Table == nil {
+		cause = append(cause, "child table")
+	}
+	if len(fk.Columns) == 0 {
+		cause = append(cause, "child columns")
+	}
+	if fk.RefTable == nil {
+		cause = append(cause, "parent table")
+	}
+	if len(fk.RefColumns) == 0 {
+		cause = append(cause, "parent columns")
+	}
+	if len(cause) != 0 {
+		return fmt.Errorf("missing %q for foreign key: %q", cause, fk.Symbol)
+	}
+	return nil
 }
 
 // table extracts a table from the given change.
