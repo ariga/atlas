@@ -289,7 +289,7 @@ func FromForeignKey(s *schema.ForeignKey) (*sqlspec.ForeignKey, error) {
 	}
 	r := make([]*schemaspec.Ref, 0, len(s.RefColumns))
 	for _, v := range s.RefColumns {
-		r = append(r, toReference(v.Name, s.Symbol))
+		r = append(r, toReference(v.Name, s.RefTable.Name))
 	}
 	return &sqlspec.ForeignKey{
 		Symbol:     s.Symbol,
