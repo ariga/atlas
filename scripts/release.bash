@@ -23,8 +23,12 @@ do
 
     env GOOS=$GOOS GOARCH=$GOARCH go build -o $output_name $package
     if [ $? -ne 0 ]; then
-        echo 'An error has occurred! Aborting the script execution...'
+        echo 'An error has occurred building! Aborting the script execution...'
         exit 1
     fi
     aws s3 cp $output_name s3://release.ariga.io/atlas-ci/$output_name
+    if [ $? -ne 0 ]; then
+        echo 'An error has occurred uploading to aws! Aborting the script execution...'
+        exit 1
+    fi
 done
