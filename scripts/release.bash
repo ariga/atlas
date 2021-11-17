@@ -26,4 +26,5 @@ do
         echo 'An error has occurred! Aborting the script execution...'
         exit 1
     fi
+    aws s3 cp $output_name s3://release.ariga.io/atlas-ci/$output_name
 done
