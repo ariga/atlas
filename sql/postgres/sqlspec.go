@@ -290,10 +290,8 @@ func integerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
 			return specutil.NewCol("", "uint64"), nil
 		}
 		return &sqlspec.Column{TypeName: "int64"}, nil
-	case tInt2, tInt4, tInt8:
-		return &sqlspec.Column{TypeName: t.T}, nil
 	default:
-		return nil, errors.New("schema integer failed to convert")
+		return &sqlspec.Column{TypeName: t.T}, nil
 	}
 }
 
