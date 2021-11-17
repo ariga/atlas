@@ -280,7 +280,7 @@ func stringSpec(t *schema.StringType) (*sqlspec.Column, error) {
 
 func integerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
 	switch t.T {
-	case tInt:
+	case tInt, tInteger:
 		if t.Unsigned {
 			return specutil.NewCol("", "uint"), nil
 		}
@@ -290,6 +290,8 @@ func integerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
 			return specutil.NewCol("", "uint64"), nil
 		}
 		return &sqlspec.Column{TypeName: "int64"}, nil
+	case tInt2, tInt4, tInt8:
+		return &sqlspec.Column{TypeName: t.T}, nil
 	default:
 		return nil, errors.New("schema integer failed to convert")
 	}
