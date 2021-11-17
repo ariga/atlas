@@ -57,10 +57,9 @@ func detachReferences(changes []schema.Change) []schema.Change {
 				planned = append(planned, &schema.ModifyTable{T: change.T, Changes: fks})
 				t := *change.T
 				t.ForeignKeys = nil
-				deferred = append(deferred, &schema.DropTable{T: &t, Extra: change.Extra})
-			} else {
-				planned = append(planned, change)
+				change = &schema.DropTable{T: &t, Extra: change.Extra}
 			}
+			deferred = append(deferred, change)
 		case *schema.ModifyTable:
 			var fks, rest []schema.Change
 			for _, c := range change.Changes {

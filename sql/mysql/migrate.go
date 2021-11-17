@@ -49,7 +49,7 @@ func (m *migrate) addTable(ctx context.Context, add *schema.AddTable) error {
 	b := Build("CREATE TABLE").Table(add.T)
 	b.Wrap(func(b *sqlx.Builder) {
 		b.MapComma(add.T.Columns, func(i int, b *sqlx.Builder) {
-			m.column(b, add.T.Columns[i])
+			m.column(b, add.T, add.T.Columns[i])
 		})
 		if pk := add.T.PrimaryKey; pk != nil {
 			b.Comma().P("PRIMARY KEY")
@@ -148,10 +148,10 @@ func (m *migrate) alterTable(ctx context.Context, t *schema.Table, changes []sch
 		switch change := changes[i].(type) {
 		case *schema.AddColumn:
 			b.P("ADD COLUMN")
-			m.column(b, change.C)
+			m.column(b, t, change.C)
 		case *schema.ModifyColumn:
 			b.P("MODIFY COLUMN")
-			m.column(b, change.To)
+			m.column(b, t, change.To)
 		case *schema.DropColumn:
 			b.P("DROP COLUMN").Ident(change.C.Name)
 		case *schema.AddIndex:
@@ -181,7 +181,7 @@ func (m *migrate) alterTable(ctx context.Context, t *schema.Table, changes []sch
 	return nil
 }
 
-func (m *migrate) column(b *sqlx.Builder, c *schema.Column) {
+func (m *migrate) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) {
 	b.Ident(c.Name).P(m.mustFormat(c.Type.Type))
 	if !c.Type.Null {
 		b.P("NOT")
@@ -189,14 +189,21 @@ func (m *migrate) column(b *sqlx.Builder, c *schema.Column) {
 	b.P("NULL")
 	if x, ok := c.Default.(*schema.RawExpr); ok {
 		v := x.X
-		// Ensure string default values are quoted.
-		if _, ok := c.Type.Type.(*schema.StringType); ok {
+		// Ensure string/enum default values are quoted.
+		switch c.Type.Type.(type) {
+		case *schema.EnumType, *schema.StringType:
 			v = quote(v)
 		}
 		b.P("DEFAULT", v)
 	}
 	for _, a := range c.Attrs {
 		switch a := a.(type) {
+		case *schema.Collation:
+			// Define the collation explicitly
+			// in case it is not the default.
+			if m.collation(t) != a.V {
+				b.P("COLLATE", a.V)
+			}
 		case *OnUpdate:
 			b.P("ON UPDATE", a.A)
 		case *AutoIncrement:
@@ -271,6 +278,16 @@ func (m *migrate) tableAttr(b *sqlx.Builder, attrs ...schema.Attr) {
 			m.attr(b, a)
 		}
 	}
+}
+
+// collation returns the table collation from its attributes
+// or from the default defined in the schema or the database.
+func (m *migrate) collation(t *schema.Table) string {
+	var c schema.Collation
+	if sqlx.Has(t.Attrs, &c) || t.Schema != nil && sqlx.Has(t.Schema.Attrs, &c) {
+		return c.V
+	}
+	return m.collate
 }
 
 func (*migrate) attr(b *sqlx.Builder, attrs ...schema.Attr) {
