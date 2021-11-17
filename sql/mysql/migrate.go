@@ -24,8 +24,11 @@ func (d *Driver) Migrate() schema.Execer {
 
 // Exec executes the changes on the database. An error is returned
 // if one of the operations fail, or a change is not supported.
-func (m *migrate) Exec(ctx context.Context, changes []schema.Change) (err error) {
-	planned := sqlx.DetachCycles(changes)
+func (m *migrate) Exec(ctx context.Context, changes []schema.Change) error {
+	planned, err := sqlx.DetachCycles(changes)
+	if err != nil {
+		return err
+	}
 	for _, c := range planned {
 		switch c := c.(type) {
 		case *schema.AddTable:
@@ -41,7 +44,7 @@ func (m *migrate) Exec(ctx context.Context, changes []schema.Change) (err error)
 			return err
 		}
 	}
-	return
+	return nil
 }
 
 // addTable builds and executes the query for creating a table in a schema.
