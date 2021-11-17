@@ -4,7 +4,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"path"
@@ -19,7 +18,6 @@ func main() {
 		log.Fatal(err)
 	}
 	d := path.Join(pwd, "../../../doc/md/cli")
-	fmt.Println(d)
 	err = doc.GenMarkdownTree(base.RootCmd, d)
 	if err != nil {
 		log.Fatal(err)
