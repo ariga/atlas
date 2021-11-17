@@ -34,6 +34,10 @@ func TestDetachCycles(t *testing.T) {
 	planned := DetachCycles(changes)
 	require.Equal(t, changes, planned)
 
+	deletion := []schema.Change{&schema.DropTable{T: users}, &schema.DropTable{T: workplaces}}
+	planned = DetachCycles(deletion)
+	require.Equal(t, deletion, planned)
+
 	// Create a circular reference.
 	workplaces.ForeignKeys = []*schema.ForeignKey{
 		{Symbol: "owner", Table: workplaces, Columns: workplaces.Columns[1:], RefTable: users, RefColumns: users.Columns[:1]},
@@ -58,4 +62,25 @@ func TestDetachCycles(t *testing.T) {
 			},
 		},
 	}, planned[3])
+
+	planned = DetachCycles(deletion)
+	require.Equal(t, &schema.ModifyTable{
+		T: users,
+		Changes: []schema.Change{
+			&schema.DropForeignKey{
+				F: &schema.ForeignKey{Symbol: "workplace", Table: users, Columns: users.Columns[1:], RefTable: workplaces, RefColumns: workplaces.Columns[:1]},
+			},
+		},
+	}, planned[0])
+	require.Equal(t, &schema.ModifyTable{
+		T: workplaces,
+		Changes: []schema.Change{
+			&schema.DropForeignKey{
+				F: &schema.ForeignKey{Symbol: "owner", Table: workplaces, Columns: workplaces.Columns[1:], RefTable: users, RefColumns: users.Columns[:1]},
+			},
+		},
+	}, planned[1])
+	users.ForeignKeys = nil
+	workplaces.ForeignKeys = nil
+	require.Equal(t, deletion, planned[2:])
 }
