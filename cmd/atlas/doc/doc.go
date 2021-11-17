@@ -18,6 +18,7 @@ func main() {
 		log.Fatal(err)
 	}
 	d := path.Join(pwd, "../../../doc/md/cli")
+	base.RootCmd.DisableAutoGenTag = true
 	err = doc.GenMarkdownTree(base.RootCmd, d)
 	if err != nil {
 		log.Fatal(err)
