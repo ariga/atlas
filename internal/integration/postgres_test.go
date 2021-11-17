@@ -52,50 +52,23 @@ func pgRun(t *testing.T, fn func(*pgTest)) {
 
 func TestPostgres_AddDropTable(t *testing.T) {
 	pgRun(t, func(t *pgTest) {
-		ctx := context.Background()
-		usersT := t.users()
-		err := t.drv.Migrate().Exec(ctx, []schema.Change{
-			&schema.AddTable{T: usersT},
-		})
-		require.NoError(t, err)
-		realm := t.loadRealm()
-		changes, err := t.drv.Diff().TableDiff(realm.Schemas[0].Tables[0], usersT)
-		require.NoError(t, err)
-		require.Empty(t, changes)
-		err = t.drv.Migrate().Exec(ctx, []schema.Change{
-			&schema.DropTable{T: usersT},
-		})
-		require.NoError(t, err)
-		// Ensure the realm is empty.
-		require.EqualValues(t, t.realm(), t.loadRealm())
+		testAddDrop(t)
 	})
 }
 
 func TestPostgres_Relation(t *testing.T) {
 	pgRun(t, func(t *pgTest) {
-		ctx := context.Background()
-		usersT, postsT := t.users(), t.posts()
-		err := t.drv.Migrate().Exec(ctx, []schema.Change{
-			&schema.AddTable{T: usersT},
-			&schema.AddTable{T: postsT},
-		})
-		require.NoError(t, err)
-		t.dropTables(postsT.Name, usersT.Name)
-		t.ensureNoChange(postsT, usersT)
+		testRelation(t)
 	})
 }
 
 func TestPostgres_AddIndexedColumns(t *testing.T) {
 	pgRun(t, func(t *pgTest) {
-		ctx := context.Background()
 		usersT := &schema.Table{
 			Name:    "users",
 			Columns: []*schema.Column{{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}}},
 		}
-		err := t.drv.Migrate().Exec(ctx, []schema.Change{
-			&schema.AddTable{T: usersT},
-		})
-		require.NoError(t, err)
+		t.migrate(&schema.AddTable{T: usersT})
 		t.dropTables(usersT.Name)
 		usersT.Columns = append(usersT.Columns, &schema.Column{
 			Name:    "a",
@@ -116,21 +89,17 @@ func TestPostgres_AddIndexedColumns(t *testing.T) {
 			Name:   "a_b_c_unique",
 			Parts:  []*schema.IndexPart{{C: parts[0]}, {C: parts[1]}, {C: parts[2]}},
 		})
-		changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-		require.NoError(t, err)
+		changes := t.diff(t.loadUsers(), usersT)
 		require.NotEmpty(t, changes, "usersT contains 3 new columns and 1 new index")
-		err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-		require.NoError(t, err)
-		t.ensureNoChange(usersT)
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, usersT)
 
 		// Dropping a column involves in a multi-column
 		// index causes the index to be dropped as well.
 		usersT.Columns = usersT.Columns[:len(usersT.Columns)-1]
-		changes, err = t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-		require.NoError(t, err)
-		err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-		require.NoError(t, err)
-		t.ensureNoChange(t.loadUsers())
+		changes = t.diff(t.loadUsers(), usersT)
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, t.loadUsers())
 		usersT = t.loadUsers()
 		_, ok := usersT.Index("a_b_c_unique")
 		require.False(t, ok)
@@ -139,11 +108,9 @@ func TestPostgres_AddIndexedColumns(t *testing.T) {
 
 func TestPostgres_AddColumns(t *testing.T) {
 	pgRun(t, func(t *pgTest) {
-		ctx := context.Background()
 		usersT := t.users()
-		err := t.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
-		require.NoError(t, err)
 		t.dropTables(usersT.Name)
+		t.migrate(&schema.AddTable{T: usersT})
 		usersT.Columns = append(
 			usersT.Columns,
 			&schema.Column{Name: "a", Type: &schema.ColumnType{Type: &schema.BinaryType{T: "bytea"}}},
@@ -162,12 +129,10 @@ func TestPostgres_AddColumns(t *testing.T) {
 			&schema.Column{Name: "n", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "point"}, Null: true}, Default: &schema.RawExpr{X: "'(1,2)'"}},
 			&schema.Column{Name: "o", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "line"}, Null: true}, Default: &schema.RawExpr{X: "'{1,2,3}'"}},
 		)
-		changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-		require.NoError(t, err)
+		changes := t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 15)
-		err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-		require.NoError(t, err)
-		t.ensureNoChange(usersT)
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, usersT)
 	})
 }
 
@@ -183,12 +148,10 @@ func TestPostgres_ColumnInt(t *testing.T) {
 			require.NoError(t, err)
 			t.dropTables(usersT.Name)
 			change(usersT.Columns[0])
-			changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-			require.NoError(t, err)
+			changes := t.diff(t.loadUsers(), usersT)
 			require.Len(t, changes, 1)
-			err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-			require.NoError(t, err)
-			t.ensureNoChange(usersT)
+			t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+			ensureNoChange(t, usersT)
 		})
 	}
 
@@ -213,36 +176,30 @@ func TestPostgres_ColumnInt(t *testing.T) {
 
 func TestPostgres_ColumnArray(t *testing.T) {
 	pgRun(t, func(t *pgTest) {
-		ctx := context.Background()
 		usersT := t.users()
-		err := t.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
-		require.NoError(t, err)
 		t.dropTables(usersT.Name)
+		t.migrate(&schema.AddTable{T: usersT})
 
 		// Add column.
 		usersT.Columns = append(
 			usersT.Columns,
 			&schema.Column{Name: "a", Type: &schema.ColumnType{Raw: "int[]", Type: &postgres.ArrayType{T: "int[]"}}, Default: &schema.RawExpr{X: "'{1}'"}},
 		)
-		changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-		require.NoError(t, err)
+		changes := t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 1)
-		err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-		require.NoError(t, err)
-		t.ensureNoChange(usersT)
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, usersT)
 
 		// Check default.
 		usersT.Columns[2].Default = &schema.RawExpr{X: "ARRAY[1]"}
-		t.ensureNoChange(usersT)
+		ensureNoChange(t, usersT)
 
 		// Change default.
 		usersT.Columns[2].Default = &schema.RawExpr{X: "ARRAY[1,2]"}
-		changes, err = t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-		require.NoError(t, err)
+		changes = t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 1)
-		err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-		require.NoError(t, err)
-		t.ensureNoChange(usersT)
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, usersT)
 	})
 }
 
@@ -265,70 +222,60 @@ func TestPostgres_Enums(t *testing.T) {
 		err := t.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
 		require.NoError(t, err, "create a new table with an enum column")
 		t.dropTables(usersT.Name)
-		t.ensureNoChange(usersT)
+		ensureNoChange(t, usersT)
 
 		// Add another enum column.
 		usersT.Columns = append(
 			usersT.Columns,
 			&schema.Column{Name: "day", Type: &schema.ColumnType{Type: &schema.EnumType{T: "day", Values: []string{"sunday", "monday"}}}},
 		)
-		changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-		require.NoError(t, err)
+		changes := t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 1)
 		err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
 		require.NoError(t, err, "add a new enum column to existing table")
-		t.ensureNoChange(usersT)
+		ensureNoChange(t, usersT)
 
 		// Add a new value to an existing enum.
 		e := usersT.Columns[1].Type.Type.(*schema.EnumType)
 		e.Values = append(e.Values, "tuesday")
-		changes, err = t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-		require.NoError(t, err)
+		changes = t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 1)
 		err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
 		require.NoError(t, err, "append a value to existing enum")
-		t.ensureNoChange(usersT)
+		ensureNoChange(t, usersT)
 
 		// Add multiple new values to an existing enum.
 		e = usersT.Columns[1].Type.Type.(*schema.EnumType)
 		e.Values = append(e.Values, "wednesday", "thursday", "friday", "saturday")
-		changes, err = t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-		require.NoError(t, err)
+		changes = t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 1)
 		err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
 		require.NoError(t, err, "append multiple values to existing enum")
-		t.ensureNoChange(usersT)
+		ensureNoChange(t, usersT)
 	})
 }
 
 func TestPostgres_ForeignKey(t *testing.T) {
-	ctx := context.Background()
 	t.Run("ChangeAction", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
 			usersT, postsT := t.users(), t.posts()
 			t.dropTables(postsT.Name, usersT.Name)
-			err := t.drv.Migrate().Exec(ctx, []schema.Change{
-				&schema.AddTable{T: usersT},
-				&schema.AddTable{T: postsT},
-			})
-			require.NoError(t, err)
-			t.ensureNoChange(postsT, usersT)
+			t.migrate(&schema.AddTable{T: usersT}, &schema.AddTable{T: postsT})
+			ensureNoChange(t, postsT, usersT)
 
 			postsT = t.loadPosts()
 			fk, ok := postsT.ForeignKey("author_id")
 			require.True(t, ok)
 			fk.OnUpdate = schema.SetNull
 			fk.OnDelete = schema.Cascade
-			changes, err := t.drv.Diff().TableDiff(t.loadPosts(), postsT)
-			require.NoError(t, err)
+			changes := t.diff(t.loadPosts(), postsT)
 			require.Len(t, changes, 1)
 			modifyF, ok := changes[0].(*schema.ModifyForeignKey)
 			require.True(t, ok)
 			require.True(t, modifyF.Change == schema.ChangeUpdateAction|schema.ChangeDeleteAction)
 
-			err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: postsT, Changes: changes}})
-			require.NoError(t, err)
-			t.ensureNoChange(postsT, usersT)
+			t.migrate(&schema.ModifyTable{T: postsT, Changes: changes})
+			ensureNoChange(t, postsT, usersT)
 		})
 	})
 
@@ -340,12 +287,8 @@ func TestPostgres_ForeignKey(t *testing.T) {
 			require.True(t, ok)
 			fk.OnDelete = schema.SetNull
 			fk.OnUpdate = schema.SetNull
-			err := t.drv.Migrate().Exec(ctx, []schema.Change{
-				&schema.AddTable{T: usersT},
-				&schema.AddTable{T: postsT},
-			})
-			require.NoError(t, err)
-			t.ensureNoChange(postsT, usersT)
+			t.migrate(&schema.AddTable{T: usersT}, &schema.AddTable{T: postsT})
+			ensureNoChange(t, postsT, usersT)
 
 			postsT = t.loadPosts()
 			c, ok := postsT.Column("author_id")
@@ -355,8 +298,7 @@ func TestPostgres_ForeignKey(t *testing.T) {
 			require.True(t, ok)
 			fk.OnUpdate = schema.NoAction
 			fk.OnDelete = schema.NoAction
-			changes, err := t.drv.Diff().TableDiff(t.loadPosts(), postsT)
-			require.NoError(t, err)
+			changes := t.diff(t.loadPosts(), postsT)
 			require.Len(t, changes, 2)
 			modifyC, ok := changes[0].(*schema.ModifyColumn)
 			require.True(t, ok)
@@ -365,9 +307,8 @@ func TestPostgres_ForeignKey(t *testing.T) {
 			require.True(t, ok)
 			require.True(t, modifyF.Change == schema.ChangeUpdateAction|schema.ChangeDeleteAction)
 
-			err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: postsT, Changes: changes}})
-			require.NoError(t, err)
-			t.ensureNoChange(postsT, usersT)
+			t.migrate(&schema.ModifyTable{T: postsT, Changes: changes})
+			ensureNoChange(t, postsT, usersT)
 		})
 	})
 
@@ -375,11 +316,8 @@ func TestPostgres_ForeignKey(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
 			usersT := t.users()
 			t.dropTables(usersT.Name)
-			err := t.drv.Migrate().Exec(ctx, []schema.Change{
-				&schema.AddTable{T: usersT},
-			})
-			require.NoError(t, err)
-			t.ensureNoChange(usersT)
+			t.migrate(&schema.AddTable{T: usersT})
+			ensureNoChange(t, usersT)
 
 			// Add foreign key.
 			usersT.Columns = append(usersT.Columns, &schema.Column{
@@ -395,8 +333,7 @@ func TestPostgres_ForeignKey(t *testing.T) {
 				OnDelete:   schema.NoAction,
 			})
 
-			changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-			require.NoError(t, err)
+			changes := t.diff(t.loadUsers(), usersT)
 			require.Len(t, changes, 2)
 			addC, ok := changes[0].(*schema.AddColumn)
 			require.True(t, ok)
@@ -404,19 +341,16 @@ func TestPostgres_ForeignKey(t *testing.T) {
 			addF, ok := changes[1].(*schema.AddForeignKey)
 			require.True(t, ok)
 			require.Equal(t, "spouse_id", addF.F.Symbol)
-			err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-			require.NoError(t, err)
-			t.ensureNoChange(usersT)
+			t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+			ensureNoChange(t, usersT)
 
 			// Drop foreign keys.
 			usersT.Columns = usersT.Columns[:len(usersT.Columns)-1]
 			usersT.ForeignKeys = usersT.ForeignKeys[:len(usersT.ForeignKeys)-1]
-			changes, err = t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-			require.NoError(t, err)
+			changes = t.diff(t.loadUsers(), usersT)
 			require.Len(t, changes, 2)
-			err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-			require.NoError(t, err)
-			t.ensureNoChange(usersT)
+			t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+			ensureNoChange(t, usersT)
 		})
 	})
 }
@@ -520,14 +454,15 @@ func (t *pgTest) realm() *schema.Realm {
 	return r
 }
 
-func (t *pgTest) ensureNoChange(tables ...*schema.Table) {
-	realm := t.loadRealm()
-	require.Equal(t, len(realm.Schemas[0].Tables), len(tables))
-	for i := range tables {
-		changes, err := t.drv.Diff().TableDiff(realm.Schemas[0].Tables[i], tables[i])
-		require.NoError(t, err)
-		require.Empty(t, changes)
-	}
+func (t *pgTest) diff(t1, t2 *schema.Table) []schema.Change {
+	changes, err := t.drv.Diff().TableDiff(t1, t2)
+	require.NoError(t, err)
+	return changes
+}
+
+func (t *pgTest) migrate(changes ...schema.Change) {
+	err := t.drv.Migrate().Exec(context.Background(), changes)
+	require.NoError(t, err)
 }
 
 func (t *pgTest) dropTables(names ...string) {

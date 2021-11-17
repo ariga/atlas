@@ -53,49 +53,23 @@ func myRun(t *testing.T, fn func(*myTest)) {
 
 func TestMySQL_AddDropTable(t *testing.T) {
 	myRun(t, func(t *myTest) {
-		ctx := context.Background()
-		usersT := t.users()
-		err := t.drv.Migrate().Exec(ctx, []schema.Change{
-			&schema.AddTable{T: usersT},
-		})
-		require.NoError(t, err)
-		changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-		require.NoError(t, err)
-		require.Empty(t, changes)
-		err = t.drv.Migrate().Exec(ctx, []schema.Change{
-			&schema.DropTable{T: usersT},
-		})
-		require.NoError(t, err)
-		// Ensure the realm is empty.
-		require.EqualValues(t, t.realm(), t.loadRealm())
+		testAddDrop(t)
 	})
 }
 
 func TestMySQL_Relation(t *testing.T) {
 	myRun(t, func(t *myTest) {
-		ctx := context.Background()
-		usersT, postsT := t.users(), t.posts()
-		err := t.drv.Migrate().Exec(ctx, []schema.Change{
-			&schema.AddTable{T: usersT},
-			&schema.AddTable{T: postsT},
-		})
-		require.NoError(t, err)
-		t.dropTables("posts", "users")
-		t.ensureNoChange(postsT, usersT)
+		testRelation(t)
 	})
 }
 
 func TestMySQL_AddIndexedColumns(t *testing.T) {
 	myRun(t, func(t *myTest) {
-		ctx := context.Background()
 		usersT := &schema.Table{
 			Name:    "users",
 			Columns: []*schema.Column{{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}}},
 		}
-		err := t.drv.Migrate().Exec(ctx, []schema.Change{
-			&schema.AddTable{T: usersT},
-		})
-		require.NoError(t, err)
+		t.migrate(&schema.AddTable{T: usersT})
 		t.dropTables(usersT.Name)
 		usersT.Columns = append(usersT.Columns, &schema.Column{
 			Name:    "a",
@@ -116,21 +90,17 @@ func TestMySQL_AddIndexedColumns(t *testing.T) {
 			Name:   "a_b_c_unique",
 			Parts:  []*schema.IndexPart{{C: parts[0]}, {C: parts[1]}, {C: parts[2]}},
 		})
-		changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-		require.NoError(t, err)
+		changes := t.diff(t.loadUsers(), usersT)
 		require.NotEmpty(t, changes, "usersT contains 2 new columns and 1 new index")
-		err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-		require.NoError(t, err)
-		t.ensureNoChange(usersT)
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, usersT)
 
 		// Dropping a column should remove
 		// it from the key.
 		usersT.Columns = usersT.Columns[:len(usersT.Columns)-1]
-		changes, err = t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-		require.NoError(t, err)
-		err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-		require.NoError(t, err)
-		t.ensureNoChange(t.loadUsers())
+		changes = t.diff(t.loadUsers(), usersT)
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, t.loadUsers())
 
 		// Dropping a column from both table and index.
 		usersT = t.loadUsers()
@@ -139,12 +109,10 @@ func TestMySQL_AddIndexedColumns(t *testing.T) {
 		require.Len(t, idx.Parts, 2)
 		usersT.Columns = usersT.Columns[:len(usersT.Columns)-1]
 		idx.Parts = idx.Parts[:len(idx.Parts)-1]
-		changes, err = t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-		require.NoError(t, err)
+		changes = t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 2)
-		err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-		require.NoError(t, err)
-		t.ensureNoChange(t.loadUsers())
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, t.loadUsers())
 
 		// Dropping a column should remove
 		// single-column keys as well.
@@ -153,12 +121,10 @@ func TestMySQL_AddIndexedColumns(t *testing.T) {
 		require.True(t, ok)
 		require.Len(t, idx.Parts, 1)
 		usersT.Columns = usersT.Columns[:len(usersT.Columns)-1]
-		changes, err = t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-		require.NoError(t, err)
+		changes = t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 1)
-		err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-		require.NoError(t, err)
-		t.ensureNoChange(t.loadUsers())
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, t.loadUsers())
 		idx, ok = t.loadUsers().Index("a_b_c_unique")
 		require.False(t, ok)
 	})
@@ -166,10 +132,8 @@ func TestMySQL_AddIndexedColumns(t *testing.T) {
 
 func TestMySQL_AddColumns(t *testing.T) {
 	myRun(t, func(t *myTest) {
-		ctx := context.Background()
-		err := t.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: t.users()}})
-		require.NoError(t, err)
 		usersT := t.users()
+		t.migrate(&schema.AddTable{T: usersT})
 		t.dropTables(usersT.Name)
 		usersT.Columns = append(
 			usersT.Columns,
@@ -199,34 +163,28 @@ func TestMySQL_AddColumns(t *testing.T) {
 			&schema.Column{Name: "y", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "point"}}},
 			&schema.Column{Name: "z", Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp"}}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP"}},
 		)
-		changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-		require.NoError(t, err)
+		changes := t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 24)
-		err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-		require.NoError(t, err)
-		t.ensureNoChange(usersT)
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, usersT)
 	})
 }
 
 func TestMySQL_ColumnInt(t *testing.T) {
-	ctx := context.Background()
 	t.Run("ChangeType", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			usersT := &schema.Table{
 				Name:    "users",
 				Columns: []*schema.Column{{Name: "a", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}}},
 			}
-			err := t.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
-			require.NoError(t, err)
+			t.migrate(&schema.AddTable{T: usersT})
 			t.dropTables(usersT.Name)
 			for _, typ := range []string{"tinyint", "smallint", "mediumint", "bigint"} {
 				usersT.Columns[0].Type.Type = &schema.IntegerType{T: typ}
-				changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-				require.NoError(t, err)
+				changes := t.diff(t.loadUsers(), usersT)
 				require.Len(t, changes, 1)
-				err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-				require.NoError(t, err)
-				t.ensureNoChange(usersT)
+				t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+				ensureNoChange(t, usersT)
 			}
 		})
 	})
@@ -237,41 +195,35 @@ func TestMySQL_ColumnInt(t *testing.T) {
 				Name:    "users",
 				Columns: []*schema.Column{{Name: "a", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}, Default: &schema.RawExpr{X: "1"}}},
 			}
-			err := t.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
-			require.NoError(t, err)
+			t.migrate(&schema.AddTable{T: usersT})
 			t.dropTables(usersT.Name)
-			t.ensureNoChange(usersT)
+			ensureNoChange(t, usersT)
 			for _, x := range []string{"2", "'3'", "10.1"} {
 				usersT.Columns[0].Default.(*schema.RawExpr).X = x
-				changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-				require.NoError(t, err)
+				changes := t.diff(t.loadUsers(), usersT)
 				require.Len(t, changes, 1)
-				err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-				t.ensureNoChange(usersT)
+				t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+				ensureNoChange(t, usersT)
 			}
 		})
 	})
 }
 
 func TestMySQL_ColumnString(t *testing.T) {
-	ctx := context.Background()
 	t.Run("ChangeType", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			usersT := &schema.Table{
 				Name:    "users",
 				Columns: []*schema.Column{{Name: "a", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(20)"}}}},
 			}
-			err := t.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
-			require.NoError(t, err)
+			t.migrate(&schema.AddTable{T: usersT})
 			t.dropTables(usersT.Name)
 			for _, typ := range []string{"varchar(255)", "char(120)", "tinytext", "mediumtext", "longtext"} {
 				usersT.Columns[0].Type.Type = &schema.StringType{T: typ}
-				changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-				require.NoError(t, err)
+				changes := t.diff(t.loadUsers(), usersT)
 				require.Len(t, changes, 1)
-				err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-				require.NoError(t, err)
-				t.ensureNoChange(usersT)
+				t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+				ensureNoChange(t, usersT)
 			}
 		})
 	})
@@ -285,10 +237,9 @@ func TestMySQL_ColumnString(t *testing.T) {
 					{Name: "b", Type: &schema.ColumnType{Type: &schema.StringType{T: "char(255)"}}, Default: &schema.RawExpr{X: "'world'"}},
 				},
 			}
-			err := t.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
-			require.NoError(t, err)
+			t.migrate(&schema.AddTable{T: usersT})
 			t.dropTables(usersT.Name)
-			t.ensureNoChange(usersT)
+			ensureNoChange(t, usersT)
 		})
 	})
 
@@ -298,24 +249,21 @@ func TestMySQL_ColumnString(t *testing.T) {
 				Name:    "users",
 				Columns: []*schema.Column{{Name: "a", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}, Default: &schema.RawExpr{X: "hello"}}},
 			}
-			err := t.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
-			require.NoError(t, err)
+			t.migrate(&schema.AddTable{T: usersT})
 			t.dropTables(usersT.Name)
-			t.ensureNoChange(usersT)
+			ensureNoChange(t, usersT)
 			for _, x := range []string{"2", "'3'", "'world'"} {
 				usersT.Columns[0].Default.(*schema.RawExpr).X = x
-				changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-				require.NoError(t, err)
+				changes := t.diff(t.loadUsers(), usersT)
 				require.Len(t, changes, 1)
-				err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-				t.ensureNoChange(usersT)
+				t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+				ensureNoChange(t, usersT)
 			}
 		})
 	})
 }
 
 func TestMySQL_ColumnBool(t *testing.T) {
-	ctx := context.Background()
 	t.Run("Add", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			usersT := &schema.Table{
@@ -327,10 +275,9 @@ func TestMySQL_ColumnBool(t *testing.T) {
 					{Name: "d", Type: &schema.ColumnType{Type: &schema.BoolType{T: "tinyint(1)"}}},
 				},
 			}
-			err := t.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
-			require.NoError(t, err)
+			t.migrate(&schema.AddTable{T: usersT})
 			t.dropTables(usersT.Name)
-			t.ensureNoChange(usersT)
+			ensureNoChange(t, usersT)
 		})
 	})
 
@@ -349,10 +296,9 @@ func TestMySQL_ColumnBool(t *testing.T) {
 					{Name: "h", Type: &schema.ColumnType{Type: &schema.BoolType{T: "bool"}}, Default: &schema.RawExpr{X: "FALSE"}},
 				},
 			}
-			err := t.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
-			require.NoError(t, err)
+			t.migrate(&schema.AddTable{T: usersT})
 			t.dropTables(usersT.Name)
-			t.ensureNoChange(usersT)
+			ensureNoChange(t, usersT)
 		})
 	})
 
@@ -364,18 +310,16 @@ func TestMySQL_ColumnBool(t *testing.T) {
 					{Name: "a", Type: &schema.ColumnType{Type: &schema.BoolType{T: "bool"}}, Default: &schema.RawExpr{X: "1"}},
 				},
 			}
-			err := t.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
-			require.NoError(t, err)
+			t.migrate(&schema.AddTable{T: usersT})
 			t.dropTables(usersT.Name)
-			t.ensureNoChange(usersT)
+			ensureNoChange(t, usersT)
 			// Change default from "true" to "false" to "true".
 			for _, x := range []string{"false", "true"} {
 				usersT.Columns[0].Default.(*schema.RawExpr).X = x
-				changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-				require.NoError(t, err)
+				changes := t.diff(t.loadUsers(), usersT)
 				require.Len(t, changes, 1)
-				err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-				t.ensureNoChange(usersT)
+				t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+				ensureNoChange(t, usersT)
 			}
 		})
 	})
@@ -388,48 +332,39 @@ func TestMySQL_ColumnBool(t *testing.T) {
 					{Name: "a", Type: &schema.ColumnType{Type: &schema.BoolType{T: "bool"}, Null: true}},
 				},
 			}
-			err := t.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
-			require.NoError(t, err)
+			t.migrate(&schema.AddTable{T: usersT})
 			t.dropTables(usersT.Name)
-			t.ensureNoChange(usersT)
+			ensureNoChange(t, usersT)
 			usersT.Columns[0].Type.Null = false
-			changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-			require.NoError(t, err)
+			changes := t.diff(t.loadUsers(), usersT)
 			require.Len(t, changes, 1)
-			err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-			t.ensureNoChange(usersT)
+			t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+			ensureNoChange(t, usersT)
 		})
 	})
 }
 
 func TestMySQL_ForeignKey(t *testing.T) {
-	ctx := context.Background()
 	t.Run("ChangeAction", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			usersT, postsT := t.users(), t.posts()
 			t.dropTables(postsT.Name, usersT.Name)
-			err := t.drv.Migrate().Exec(ctx, []schema.Change{
-				&schema.AddTable{T: usersT},
-				&schema.AddTable{T: postsT},
-			})
-			require.NoError(t, err)
-			t.ensureNoChange(postsT, usersT)
+			t.migrate(&schema.AddTable{T: usersT}, &schema.AddTable{T: postsT})
+			ensureNoChange(t, postsT, usersT)
 
 			postsT = t.loadPosts()
 			fk, ok := postsT.ForeignKey("author_id")
 			require.True(t, ok)
 			fk.OnUpdate = schema.SetNull
 			fk.OnDelete = schema.Cascade
-			changes, err := t.drv.Diff().TableDiff(t.loadPosts(), postsT)
-			require.NoError(t, err)
+			changes := t.diff(t.loadPosts(), postsT)
 			require.Len(t, changes, 1)
 			modifyF, ok := changes[0].(*schema.ModifyForeignKey)
 			require.True(t, ok)
 			require.True(t, modifyF.Change == schema.ChangeUpdateAction|schema.ChangeDeleteAction)
 
-			err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: postsT, Changes: changes}})
-			require.NoError(t, err)
-			t.ensureNoChange(postsT, usersT)
+			t.migrate(&schema.ModifyTable{T: postsT, Changes: changes})
+			ensureNoChange(t, postsT, usersT)
 		})
 	})
 
@@ -441,12 +376,8 @@ func TestMySQL_ForeignKey(t *testing.T) {
 			require.True(t, ok)
 			fk.OnDelete = schema.SetNull
 			fk.OnUpdate = schema.SetNull
-			err := t.drv.Migrate().Exec(ctx, []schema.Change{
-				&schema.AddTable{T: usersT},
-				&schema.AddTable{T: postsT},
-			})
-			require.NoError(t, err)
-			t.ensureNoChange(postsT, usersT)
+			t.migrate(&schema.AddTable{T: usersT}, &schema.AddTable{T: postsT})
+			ensureNoChange(t, postsT, usersT)
 
 			postsT = t.loadPosts()
 			c, ok := postsT.Column("author_id")
@@ -456,8 +387,7 @@ func TestMySQL_ForeignKey(t *testing.T) {
 			require.True(t, ok)
 			fk.OnUpdate = schema.NoAction
 			fk.OnDelete = schema.NoAction
-			changes, err := t.drv.Diff().TableDiff(t.loadPosts(), postsT)
-			require.NoError(t, err)
+			changes := t.diff(t.loadPosts(), postsT)
 			require.Len(t, changes, 2)
 			modifyC, ok := changes[0].(*schema.ModifyColumn)
 			require.True(t, ok)
@@ -466,9 +396,8 @@ func TestMySQL_ForeignKey(t *testing.T) {
 			require.True(t, ok)
 			require.True(t, modifyF.Change == schema.ChangeUpdateAction|schema.ChangeDeleteAction)
 
-			err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: postsT, Changes: changes}})
-			require.NoError(t, err)
-			t.ensureNoChange(postsT, usersT)
+			t.migrate(&schema.ModifyTable{T: postsT, Changes: changes})
+			ensureNoChange(t, postsT, usersT)
 		})
 	})
 
@@ -476,11 +405,8 @@ func TestMySQL_ForeignKey(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			usersT := t.users()
 			t.dropTables(usersT.Name)
-			err := t.drv.Migrate().Exec(ctx, []schema.Change{
-				&schema.AddTable{T: usersT},
-			})
-			require.NoError(t, err)
-			t.ensureNoChange(usersT)
+			t.migrate(&schema.AddTable{T: usersT})
+			ensureNoChange(t, usersT)
 
 			// Add foreign key.
 			usersT.Columns = append(usersT.Columns, &schema.Column{
@@ -496,8 +422,7 @@ func TestMySQL_ForeignKey(t *testing.T) {
 				OnDelete:   schema.NoAction,
 			})
 
-			changes, err := t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-			require.NoError(t, err)
+			changes := t.diff(t.loadUsers(), usersT)
 			require.Len(t, changes, 2)
 			addC, ok := changes[0].(*schema.AddColumn)
 			require.True(t, ok)
@@ -505,19 +430,16 @@ func TestMySQL_ForeignKey(t *testing.T) {
 			addF, ok := changes[1].(*schema.AddForeignKey)
 			require.True(t, ok)
 			require.Equal(t, "spouse_id", addF.F.Symbol)
-			err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-			require.NoError(t, err)
-			t.ensureNoChange(usersT)
+			t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+			ensureNoChange(t, usersT)
 
 			// Drop foreign keys.
 			usersT.Columns = usersT.Columns[:len(usersT.Columns)-1]
 			usersT.ForeignKeys = usersT.ForeignKeys[:len(usersT.ForeignKeys)-1]
-			changes, err = t.drv.Diff().TableDiff(t.loadUsers(), usersT)
-			require.NoError(t, err)
+			changes = t.diff(t.loadUsers(), usersT)
 			require.Len(t, changes, 2)
-			err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
-			require.NoError(t, err)
-			t.ensureNoChange(usersT)
+			t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+			ensureNoChange(t, usersT)
 		})
 	})
 }
@@ -561,14 +483,15 @@ func (t *myTest) applyHcl(spec string) {
 	require.NoError(t, err)
 }
 
-func (t *myTest) ensureNoChange(tables ...*schema.Table) {
-	realm := t.loadRealm()
-	require.Equal(t, len(realm.Schemas[0].Tables), len(tables))
-	for i := range tables {
-		changes, err := t.drv.Diff().TableDiff(realm.Schemas[0].Tables[i], tables[i])
-		require.NoError(t, err)
-		require.Empty(t, changes)
-	}
+func (t *myTest) diff(t1, t2 *schema.Table) []schema.Change {
+	changes, err := t.drv.Diff().TableDiff(t1, t2)
+	require.NoError(t, err)
+	return changes
+}
+
+func (t *myTest) migrate(changes ...schema.Change) {
+	err := t.drv.Migrate().Exec(context.Background(), changes)
+	require.NoError(t, err)
 }
 
 func (t *myTest) dropTables(names ...string) {
