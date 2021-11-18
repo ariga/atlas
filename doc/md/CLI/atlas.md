@@ -1,6 +1,6 @@
 ## atlas
 
-Work with any data source from the command line.
+A database toolkit.
 
 ### Options
 
