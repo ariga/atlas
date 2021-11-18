@@ -1,14 +1,10 @@
 ---
-id: Welcome to Atlas
+id: Getting Started
 slug: /CLI/
 sidebar_position: 2
 ---
 
-## CLI
-
-Work with any data source from the command line.
-
-![Alt Text](https://release.ariga.io/images/assets/atlas-intro.gif)
+![Atlas CLI in Action](https://release.ariga.io/images/assets/atlas-intro.gif)
 
 ## Installation
 
