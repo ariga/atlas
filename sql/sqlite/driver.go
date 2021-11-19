@@ -237,6 +237,8 @@ func parseRawType(c string) (schema.Type, error) {
 		return &schema.JSONType{T: t}, nil
 	case "date", "datetime":
 		return &schema.TimeType{T: t}, nil
+	case "uuid":
+		return &UUIDType{T: t}, nil
 	default:
 		return nil, fmt.Errorf("unknown column type %q", t)
 	}
@@ -482,6 +484,12 @@ type (
 	IndexPredicate struct {
 		schema.Attr
 		P string
+	}
+
+	// A UUIDType defines a UUID type.
+	UUIDType struct {
+		schema.Type
+		T string
 	}
 )
 
