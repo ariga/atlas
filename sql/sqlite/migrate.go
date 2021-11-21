@@ -28,6 +28,10 @@ func (m *migrate) Exec(ctx context.Context, changes []schema.Change) (err error)
 		switch c := c.(type) {
 		case *schema.AddTable:
 			err = m.addTable(ctx, c)
+		case *schema.DropTable:
+			err = m.dropTable(ctx, c)
+		case *schema.ModifyTable:
+			err = m.modifyTable(ctx, c)
 		default:
 			err = fmt.Errorf("unsupported change %T", c)
 		}
@@ -62,6 +66,53 @@ func (m *migrate) addTable(ctx context.Context, add *schema.AddTable) error {
 	}
 	if err := m.addIndexes(ctx, add.T, add.T.Indexes...); err != nil {
 		return err
+	}
+	return nil
+}
+
+// dropTable builds and executes the query for dropping a table from a schema.
+func (m *migrate) dropTable(ctx context.Context, drop *schema.DropTable) error {
+	if err := m.skipConstraints(ctx, func(ctx context.Context) error {
+		_, err := m.ExecContext(ctx, Build("DROP TABLE").Table(drop.T).String())
+		return err
+	}); err != nil {
+		return fmt.Errorf("sqlite: drop table: %w", err)
+	}
+	return nil
+}
+
+// modifyTable builds and executes the queries for bringing the table into its modified state.
+// If the modification contains changes that are not index creation/deletion or a simple column
+// addition, the changes are applied using a temporary table following the procedure mentioned
+// in: https://www.sqlite.org/lang_altertable.html#making_other_kinds_of_table_schema_changes.
+func (m *migrate) modifyTable(ctx context.Context, modify *schema.ModifyTable) error {
+	if alterable(modify) {
+		return m.alterTable(ctx, modify)
+	}
+	if err := m.skipConstraints(ctx, func(ctx context.Context) error {
+		newT := *modify.T
+		indexes := newT.Indexes
+		newT.Indexes = nil
+		newT.Name = "new_" + newT.Name
+		// Create a new table with a temporary name, and copy the existing rows to it.
+		if err := m.addTable(ctx, &schema.AddTable{T: &newT}); err != nil {
+			return err
+		}
+		if err := m.copyRows(ctx, modify.T, &newT, modify.Changes); err != nil {
+			return err
+		}
+		// Drop the current table, and rename the new one to its real name.
+		stmt := Build("DROP TABLE").Table(modify.T).String()
+		if _, err := m.ExecContext(ctx, stmt); err != nil {
+			return err
+		}
+		stmt = Build("ALTER TABLE").Table(&newT).P("RENAME TO").Table(modify.T).String()
+		if _, err := m.ExecContext(ctx, stmt); err != nil {
+			return err
+		}
+		return m.addIndexes(ctx, modify.T, indexes...)
+	}); err != nil {
+		return fmt.Errorf("sqlite: modify table: %w", err)
 	}
 	return nil
 }
@@ -137,6 +188,112 @@ func (m *migrate) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
 			b.P("ON DELETE", string(fk.OnDelete))
 		}
 	})
+}
+
+// skipConstraints runs f without enforcement on the foreign keys constraints if
+// they are enabled.
+func (m *migrate) skipConstraints(ctx context.Context, f func(context.Context) error) (err error) {
+	var enabled bool
+	if err = m.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(enabled); err != nil {
+		return fmt.Errorf("checking foreign_keys enforcement: %w", err)
+	}
+	if !enabled {
+		return f(ctx)
+	}
+	if _, err := m.ExecContext(ctx, "PRAGMA foreign_keys = off"); err != nil {
+		return fmt.Errorf("disabling the enforcement of foreign-keys constraints: %w", err)
+	}
+	defer func() {
+		if _, rerr := m.ExecContext(ctx, "PRAGMA foreign_keys = on"); rerr != nil && err == nil {
+			err = rerr
+		}
+	}()
+	return f(ctx)
+}
+
+func (m *migrate) copyRows(ctx context.Context, from *schema.Table, to *schema.Table, changes []schema.Change) error {
+	var (
+		args       []interface{}
+		fromC, toC []string
+	)
+	for _, column := range to.Columns {
+		// Find a change that associated with this column, if exists.
+		var change schema.Change
+		for i := range changes {
+			switch changes[i].(type) {
+			case *schema.AddColumn, *schema.DropColumn, *schema.ModifyColumn:
+				if change != nil {
+					return fmt.Errorf("duplicate changes for column: %q: %T, %T", column.Name, change, changes[i])
+				}
+				change = changes[i]
+			}
+		}
+		switch change := change.(type) {
+		// We expect that new columns are added with DEFAULT values,
+		// or defined as nullable if the table is not empty.
+		case *schema.AddColumn:
+		// Column modification requires special handling if it was
+		// converted from nullable to non-nullable with default value.
+		case *schema.ModifyColumn:
+			toC = append(toC, column.Name)
+			if !column.Type.Null && column.Default != nil && change.Change.Is(schema.ChangeNull|schema.ChangeDefault) {
+				fromC = append(fromC, fmt.Sprintf("COALESCE(`%[1]s`, ?) AS `%[1]s`", column.Name))
+				args = append(args, column.Default.(*schema.RawExpr).X)
+			} else {
+				fromC = append(fromC, column.Name)
+			}
+		// Columns without changes, should transfer as-is.
+		case nil:
+			toC = append(toC, column.Name)
+			fromC = append(fromC, column.Name)
+		}
+	}
+	stmt := fmt.Sprintf("INSERT INTO %s (%s) SELECT (%s) FROM %s", to.Name, toC, fromC, from.Name)
+	if _, err := m.ExecContext(ctx, stmt, args...); err != nil {
+		return fmt.Errorf("copy rows from %q to %q: %w", from.Name, to.Name, err)
+	}
+	return nil
+}
+
+// alterTable alters the table with the given changes. Assuming the changes are "alterable".
+func (m *migrate) alterTable(ctx context.Context, modify *schema.ModifyTable) error {
+	for _, change := range modify.Changes {
+		switch change := change.(type) {
+		case *schema.AddIndex:
+			if err := m.addIndexes(ctx, modify.T, change.I); err != nil {
+				return err
+			}
+		case *schema.DropIndex:
+			b := Build("DROP INDEX").Ident(change.I.Name)
+			if _, err := m.ExecContext(ctx, b.String()); err != nil {
+				return fmt.Errorf("sqlite: drop index %q to table: %q", change.I.Name, modify.T.Name)
+			}
+		case *schema.AddColumn:
+			b := Build("ALTER TABLE").Table(modify.T).P("ADD COLUMN")
+			m.column(b, change.C)
+			if _, err := m.ExecContext(ctx, b.String()); err != nil {
+				return fmt.Errorf("sqlite: add column %q to table: %q", change.C.Name, modify.T.Name)
+			}
+		default:
+			return fmt.Errorf("sqlite: unexpected change in alter table: %T", change)
+		}
+	}
+	return nil
+}
+
+func alterable(modify *schema.ModifyTable) bool {
+	for _, change := range modify.Changes {
+		switch change := change.(type) {
+		case *schema.DropIndex, *schema.AddIndex:
+		case *schema.AddColumn:
+			if len(change.C.Indexes) > 0 || len(change.C.ForeignKeys) > 0 || change.C.Default != nil {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // Build instantiates a new builder and writes the given phrase to it.
