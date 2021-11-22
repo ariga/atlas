@@ -146,3 +146,39 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 	}
 	return from != to
 }
+
+// Normalize implements the sqlx.Normalizer interface.
+func (d *diff) Normalize(from, to *schema.Table) {
+	for _, fk1 := range from.ForeignKeys {
+		if _, ok := to.ForeignKey(fk1.Symbol); ok {
+			continue
+		}
+		// In SQLite, there is no easy way to get the foreign-key constraint
+		// name, except for parsing the CREATE statement). Therefore, we check
+		// if there is a foreign-key with identical properties.
+		for _, fk2 := range to.ForeignKeys {
+			if sameFK(fk1, fk2) {
+				fk1.Symbol = fk2.Symbol
+				break
+			}
+		}
+	}
+}
+
+func sameFK(fk1, fk2 *schema.ForeignKey) bool {
+	if fk1.Table.Name != fk2.Table.Name || fk1.RefTable.Name != fk2.RefTable.Name ||
+		len(fk1.Columns) != len(fk2.Columns) || len(fk1.RefColumns) != len(fk2.RefColumns) {
+		return false
+	}
+	for i, c1 := range fk1.Columns {
+		if c1.Name != fk2.Columns[i].Name {
+			return false
+		}
+	}
+	for i, c1 := range fk1.RefColumns {
+		if c1.Name != fk2.RefColumns[i].Name {
+			return false
+		}
+	}
+	return true
+}
