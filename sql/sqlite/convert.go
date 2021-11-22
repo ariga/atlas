@@ -25,7 +25,7 @@ func (d *Driver) FormatType(t schema.Type) (string, error) {
 	case *schema.StringType:
 		f = strings.ToLower(t.T)
 	case *schema.TimeType:
-		strings.ToLower(t.T)
+		f = strings.ToLower(t.T)
 	case *schema.FloatType:
 		f = strings.ToLower(t.T)
 	case *schema.DecimalType:

@@ -62,11 +62,11 @@ func (d *Driver) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpti
 			return nil, err
 		}
 		for _, t := range tables {
+			t.Schema = s
 			t, err := d.inspectTable(ctx, t)
 			if err != nil {
 				return nil, err
 			}
-			t.Schema = s
 			s.Tables = append(s.Tables, t)
 		}
 		s.Realm = realm
@@ -76,7 +76,7 @@ func (d *Driver) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpti
 }
 
 // InspectSchema returns schema descriptions of all tables in the given schema.
-func (d *Driver) InspectSchema(ctx context.Context, name string, _ *schema.InspectOptions) (*schema.Schema, error) {
+func (d *Driver) InspectSchema(ctx context.Context, name string, opts *schema.InspectOptions) (*schema.Schema, error) {
 	schemas, err := d.databases(ctx, &schema.InspectRealmOption{
 		Schemas: []string{name},
 	})
@@ -88,17 +88,17 @@ func (d *Driver) InspectSchema(ctx context.Context, name string, _ *schema.Inspe
 			Err: fmt.Errorf("sqlite: schema %q was not found", name),
 		}
 	}
-	tables, err := d.tables(ctx, nil)
+	tables, err := d.tables(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
 	s := schemas[0]
 	for _, t := range tables {
+		t.Schema = s
 		t, err := d.inspectTable(ctx, t)
 		if err != nil {
 			return nil, err
 		}
-		t.Schema = s
 		s.Tables = append(s.Tables, t)
 	}
 	sqlx.LinkSchemaTables(schemas)
@@ -108,21 +108,21 @@ func (d *Driver) InspectSchema(ctx context.Context, name string, _ *schema.Inspe
 
 // InspectTable returns the schema description of the given table.
 func (d *Driver) InspectTable(ctx context.Context, name string, opts *schema.InspectTableOptions) (*schema.Table, error) {
-	if opts != nil && opts.Schema != "" {
-		return nil, fmt.Errorf("sqlite: querying custom schema is not supported. got: %q", opts.Schema)
+	if opts != nil && opts.Schema != "main" {
+		return nil, fmt.Errorf("sqlite: querying attached database is not supported. got: %q", opts.Schema)
 	}
-	tables, err := d.tables(ctx, &schema.InspectOptions{
+	s, err := d.InspectSchema(ctx, "main", &schema.InspectOptions{
 		Tables: []string{name},
 	})
 	if err != nil {
 		return nil, err
 	}
-	if len(tables) == 0 {
+	if len(s.Tables) == 0 {
 		return nil, &schema.NotExistError{
 			Err: fmt.Errorf("sqlite: table %q was not found", name),
 		}
 	}
-	return d.inspectTable(ctx, tables[0])
+	return s.Tables[0], nil
 }
 
 func (d *Driver) inspectTable(ctx context.Context, t *schema.Table) (*schema.Table, error) {
@@ -175,6 +175,11 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 	if err != nil {
 		return err
 	}
+	if sqlx.ValidString(defaults) {
+		c.Default = &schema.RawExpr{
+			X: defaults.String,
+		}
+	}
 	// TODO(a8m): extract collation from 'CREATE TABLE' statement.
 	t.Columns = append(t.Columns, c)
 	if primary {
@@ -195,6 +200,11 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 }
 
 func parseRawType(c string) (schema.Type, error) {
+	// A datatype may be zero or more names.
+	// https://www.sqlite.org/datatypes.html
+	if c == "" {
+		return &schema.UnsupportedType{}, nil
+	}
 	parts := columnParts(c)
 	switch t := parts[0]; t {
 	case "bool", "boolean":
@@ -235,7 +245,7 @@ func parseRawType(c string) (schema.Type, error) {
 		return ct, nil
 	case "json":
 		return &schema.JSONType{T: t}, nil
-	case "date", "datetime":
+	case "date", "datetime", "time", "timestamp":
 		return &schema.TimeType{T: t}, nil
 	case "uuid":
 		return &UUIDType{T: t}, nil
@@ -358,7 +368,7 @@ func (d *Driver) addFKs(t *schema.Table, rows *sql.Rows) error {
 				OnUpdate: schema.ReferenceOption(updateRule),
 			}
 			if refTable != t.Name {
-				fk.RefTable = &schema.Table{Name: refTable}
+				fk.RefTable = &schema.Table{Name: refTable, Schema: &schema.Schema{Name: t.Schema.Name}}
 			}
 			ids[id] = fk
 			t.ForeignKeys = append(t.ForeignKeys, fk)
@@ -374,7 +384,7 @@ func (d *Driver) addFKs(t *schema.Table, rows *sql.Rows) error {
 			c.ForeignKeys = append(c.ForeignKeys, fk)
 		}
 
-		// Stub referenced columns or link if it's a self-reference.
+		// Stub referenced columns or link if it is a self-reference.
 		var rc *schema.Column
 		if fk.Table != fk.RefTable {
 			rc = &schema.Column{Name: refColumn}
@@ -449,8 +459,13 @@ func (d *Driver) databases(ctx context.Context, opts *schema.InspectRealmOption)
 	var schemas []*schema.Schema
 	for rows.Next() {
 		var name, file string
-		if err := rows.Scan(&name); err != nil {
+		if err := rows.Scan(&name, &file); err != nil {
 			return nil, err
+		}
+		// File is missing if the database is not
+		// associated with a file (:memory: mode).
+		if file == "" {
+			file = ":memory:"
 		}
 		schemas = append(schemas, &schema.Schema{
 			Name:  name,
