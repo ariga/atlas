@@ -44,7 +44,7 @@ func (m *migrate) Exec(ctx context.Context, changes []schema.Change) (err error)
 
 // addTable builds and executes the query for creating a table in a schema.
 func (m *migrate) addTable(ctx context.Context, add *schema.AddTable) error {
-	b := Build("CREATE TABLE").Table(add.T)
+	b := Build("CREATE TABLE").Ident(add.T.Name)
 	b.Wrap(func(b *sqlx.Builder) {
 		b.MapComma(add.T.Columns, func(i int, b *sqlx.Builder) {
 			m.column(b, add.T.Columns[i])
@@ -73,7 +73,7 @@ func (m *migrate) addTable(ctx context.Context, add *schema.AddTable) error {
 // dropTable builds and executes the query for dropping a table from a schema.
 func (m *migrate) dropTable(ctx context.Context, drop *schema.DropTable) error {
 	if err := m.skipConstraints(ctx, func(ctx context.Context) error {
-		_, err := m.ExecContext(ctx, Build("DROP TABLE").Table(drop.T).String())
+		_, err := m.ExecContext(ctx, Build("DROP TABLE").Ident(drop.T.Name).String())
 		return err
 	}); err != nil {
 		return fmt.Errorf("sqlite: drop table: %w", err)
@@ -102,11 +102,11 @@ func (m *migrate) modifyTable(ctx context.Context, modify *schema.ModifyTable) e
 			return err
 		}
 		// Drop the current table, and rename the new one to its real name.
-		stmt := Build("DROP TABLE").Table(modify.T).String()
+		stmt := Build("DROP TABLE").Ident(modify.T.Name).String()
 		if _, err := m.ExecContext(ctx, stmt); err != nil {
 			return err
 		}
-		stmt = Build("ALTER TABLE").Table(&newT).P("RENAME TO").Table(modify.T).String()
+		stmt = Build("ALTER TABLE").Ident(newT.Name).P("RENAME TO").Ident(modify.T.Name).String()
 		if _, err := m.ExecContext(ctx, stmt); err != nil {
 			return err
 		}
@@ -138,7 +138,7 @@ func (m *migrate) addIndexes(ctx context.Context, t *schema.Table, indexes ...*s
 		if idx.Name != "" {
 			b.Ident(idx.Name)
 		}
-		b.P("ON").Table(t)
+		b.P("ON").Ident(t.Name)
 		m.indexParts(b, idx.Parts)
 		if p := (IndexPredicate{}); sqlx.Has(idx.Attrs, &p) {
 			b.P("WHERE").P(p.P)
@@ -175,7 +175,7 @@ func (m *migrate) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
 				b.Ident(fk.Columns[i].Name)
 			})
 		})
-		b.P("REFERENCES").Table(fk.RefTable)
+		b.P("REFERENCES").Ident(fk.RefTable.Name)
 		b.Wrap(func(b *sqlx.Builder) {
 			b.MapComma(fk.RefColumns, func(i int, b *sqlx.Builder) {
 				b.Ident(fk.RefColumns[i].Name)
@@ -194,7 +194,7 @@ func (m *migrate) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
 // they are enabled.
 func (m *migrate) skipConstraints(ctx context.Context, f func(context.Context) error) (err error) {
 	var enabled bool
-	if err = m.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(enabled); err != nil {
+	if err = m.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&enabled); err != nil {
 		return fmt.Errorf("checking foreign_keys enforcement: %w", err)
 	}
 	if !enabled {
@@ -269,7 +269,7 @@ func (m *migrate) alterTable(ctx context.Context, modify *schema.ModifyTable) er
 				return fmt.Errorf("sqlite: drop index %q to table: %q", change.I.Name, modify.T.Name)
 			}
 		case *schema.AddColumn:
-			b := Build("ALTER TABLE").Table(modify.T).P("ADD COLUMN")
+			b := Build("ALTER TABLE").Ident(modify.T.Name).P("ADD COLUMN")
 			m.column(b, change.C)
 			if _, err := m.ExecContext(ctx, b.String()); err != nil {
 				return fmt.Errorf("sqlite: add column %q to table: %q", change.C.Name, modify.T.Name)
