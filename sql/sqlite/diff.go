@@ -113,17 +113,18 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 
 // Normalize implements the sqlx.Normalizer interface.
 func (d *diff) Normalize(from, to *schema.Table) {
+	used := make([]bool, len(to.ForeignKeys))
+	// In SQLite, there is no easy way to get the foreign-key constraint
+	// name, except for parsing the CREATE statement). Therefore, we check
+	// if there is a foreign-key with identical properties.
 	for _, fk1 := range from.ForeignKeys {
-		if !isNumber(fk1.Symbol) {
-			continue
-		}
-		// In SQLite, there is no easy way to get the foreign-key constraint
-		// name, except for parsing the CREATE statement). Therefore, we check
-		// if there is a foreign-key with identical properties.
-		for _, fk2 := range to.ForeignKeys {
-			if sameFK(fk1, fk2) {
+		for i, fk2 := range to.ForeignKeys {
+			if used[i] {
+				continue
+			}
+			if fk2.Symbol == fk1.Symbol && !isNumber(fk1.Symbol) || sameFK(fk1, fk2) {
 				fk1.Symbol = fk2.Symbol
-				break
+				used[i] = true
 			}
 		}
 	}
