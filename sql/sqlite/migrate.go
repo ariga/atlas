@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	"ariga.io/atlas/sql/internal/sqlx"
-
 	"ariga.io/atlas/sql/schema"
 )
 
@@ -64,10 +63,7 @@ func (m *migrate) addTable(ctx context.Context, add *schema.AddTable) error {
 	if _, err := m.ExecContext(ctx, b.String()); err != nil {
 		return fmt.Errorf("create table: %w", err)
 	}
-	if err := m.addIndexes(ctx, add.T, add.T.Indexes...); err != nil {
-		return err
-	}
-	return nil
+	return m.addIndexes(ctx, add.T, add.T.Indexes...)
 }
 
 // dropTable builds and executes the query for dropping a table from a schema.
@@ -76,7 +72,7 @@ func (m *migrate) dropTable(ctx context.Context, drop *schema.DropTable) error {
 		_, err := m.ExecContext(ctx, Build("DROP TABLE").Ident(drop.T.Name).String())
 		return err
 	}); err != nil {
-		return fmt.Errorf("sqlite: drop table: %w", err)
+		return fmt.Errorf("drop table: %w", err)
 	}
 	return nil
 }
@@ -112,7 +108,7 @@ func (m *migrate) modifyTable(ctx context.Context, modify *schema.ModifyTable) e
 		}
 		return m.addIndexes(ctx, modify.T, indexes...)
 	}); err != nil {
-		return fmt.Errorf("sqlite: modify table: %w", err)
+		return fmt.Errorf("modify table: %w", err)
 	}
 	return nil
 }
@@ -237,7 +233,7 @@ func (m *migrate) copyRows(ctx context.Context, from *schema.Table, to *schema.T
 		case *schema.ModifyColumn:
 			toC = append(toC, column.Name)
 			if !column.Type.Null && column.Default != nil && change.Change.Is(schema.ChangeNull|schema.ChangeDefault) {
-				fromC = append(fromC, fmt.Sprintf("COALESCE(`%[1]s`, ?) AS `%[1]s`", column.Name))
+				fromC = append(fromC, fmt.Sprintf("IFNULL(`%[1]s`, ?) AS `%[1]s`", column.Name))
 				args = append(args, column.Default.(*schema.RawExpr).X)
 			} else {
 				fromC = append(fromC, column.Name)
@@ -266,16 +262,16 @@ func (m *migrate) alterTable(ctx context.Context, modify *schema.ModifyTable) er
 		case *schema.DropIndex:
 			b := Build("DROP INDEX").Ident(change.I.Name)
 			if _, err := m.ExecContext(ctx, b.String()); err != nil {
-				return fmt.Errorf("sqlite: drop index %q to table: %q", change.I.Name, modify.T.Name)
+				return fmt.Errorf("drop index %q to table: %q", change.I.Name, modify.T.Name)
 			}
 		case *schema.AddColumn:
 			b := Build("ALTER TABLE").Ident(modify.T.Name).P("ADD COLUMN")
 			m.column(b, change.C)
 			if _, err := m.ExecContext(ctx, b.String()); err != nil {
-				return fmt.Errorf("sqlite: add column %q to table: %q", change.C.Name, modify.T.Name)
+				return fmt.Errorf("add column %q to table: %q", change.C.Name, modify.T.Name)
 			}
 		default:
-			return fmt.Errorf("sqlite: unexpected change in alter table: %T", change)
+			return fmt.Errorf("unexpected change in alter table: %T", change)
 		}
 	}
 	return nil

@@ -32,7 +32,7 @@ func TestDriver_InspectTable(t *testing.T) {
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.Nil(t)
 				require.Error(err)
-				require.True(schema.IsNotExistError(err), "expect not exists error")
+				require.True(schema.IsNotExistError(err), "expect not exists error: %v", err)
 			},
 		},
 		{
@@ -179,7 +179,7 @@ func TestDriver_InspectTable(t *testing.T) {
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
 				fks := []*schema.ForeignKey{
-					{Symbol: "0", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: &schema.Table{Name: "t2"}, RefColumns: []*schema.Column{{Name: "id"}, {Name: "c1"}}},
+					{Symbol: "0", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: &schema.Table{Name: "t2", Schema: &schema.Schema{Name: "main"}}, RefColumns: []*schema.Column{{Name: "id"}, {Name: "c1"}}},
 					{Symbol: "1", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: t},
 				}
 				columns := []*schema.Column{
@@ -233,6 +233,13 @@ func (m mock) systemVars(version string) {
       RTRIM
       NOCASE
       BINARY
+`))
+	m.ExpectQuery(sqltest.Escape(databasesQuery + " WHERE name IN (?)")).
+		WithArgs("main").
+		WillReturnRows(sqltest.Rows(`
+ name |   file    
+------+-----------
+ main |   
 `))
 }
 
