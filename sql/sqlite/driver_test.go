@@ -135,6 +135,7 @@ func TestDriver_InspectTable(t *testing.T) {
 						},
 						Attrs: []schema.Attr{
 							&CreateStmt{S: "CREATE UNIQUE INDEX c1u on users(c1, c2)"},
+							&IndexOrigin{O: "c"},
 						},
 					},
 					{
@@ -146,6 +147,7 @@ func TestDriver_InspectTable(t *testing.T) {
 						},
 						Attrs: []schema.Attr{
 							&CreateStmt{S: "CREATE INDEX c1_c2 on users(c1, c2*2) WHERE c1 <> NULL"},
+							&IndexOrigin{O: "c"},
 							&IndexPredicate{P: "c1 <> NULL"},
 						},
 					},
