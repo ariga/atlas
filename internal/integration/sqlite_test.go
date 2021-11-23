@@ -41,6 +41,12 @@ func TestSQLite_AddDropTable(t *testing.T) {
 	})
 }
 
+func TestSQLite_Relation(t *testing.T) {
+	liteRun(t, func(t *liteTest) {
+		testRelation(t)
+	})
+}
+
 func (t *liteTest) loadRealm() *schema.Realm {
 	r, err := t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{})
 	require.NoError(t, err)
@@ -70,12 +76,12 @@ func (t *liteTest) users() *schema.Table {
 		Columns: []*schema.Column{
 			{
 				Name:  "id",
-				Type:  &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}},
+				Type:  &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
 				Attrs: []schema.Attr{&postgres.Identity{}},
 			},
 			{
 				Name: "x",
-				Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}},
+				Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}},
 			},
 		},
 	}
@@ -91,12 +97,12 @@ func (t *liteTest) posts() *schema.Table {
 		Columns: []*schema.Column{
 			{
 				Name:  "id",
-				Type:  &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}},
+				Type:  &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
 				Attrs: []schema.Attr{&postgres.Identity{}},
 			},
 			{
 				Name:    "author_id",
-				Type:    &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true},
+				Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Null: true},
 				Default: &schema.RawExpr{X: "10"},
 			},
 			{

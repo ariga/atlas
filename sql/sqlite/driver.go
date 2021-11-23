@@ -446,7 +446,7 @@ func (d *Driver) databases(ctx context.Context, opts *schema.InspectRealmOption)
 		query = databasesQuery
 	)
 	if opts != nil && len(opts.Schemas) > 0 {
-		query += " name IN (" + strings.Repeat("?, ", len(opts.Schemas)-1) + "?)"
+		query += " WHERE name IN (" + strings.Repeat("?, ", len(opts.Schemas)-1) + "?)"
 		for _, s := range opts.Schemas {
 			args = append(args, s)
 		}
@@ -458,18 +458,18 @@ func (d *Driver) databases(ctx context.Context, opts *schema.InspectRealmOption)
 	defer rows.Close()
 	var schemas []*schema.Schema
 	for rows.Next() {
-		var name, file string
+		var name, file sql.NullString
 		if err := rows.Scan(&name, &file); err != nil {
 			return nil, err
 		}
 		// File is missing if the database is not
 		// associated with a file (:memory: mode).
-		if file == "" {
-			file = ":memory:"
+		if file.String == "" {
+			file.String = ":memory:"
 		}
 		schemas = append(schemas, &schema.Schema{
-			Name:  name,
-			Attrs: []schema.Attr{&File{Name: file}},
+			Name:  name.String,
+			Attrs: []schema.Attr{&File{Name: file.String}},
 		})
 	}
 	return schemas, nil
