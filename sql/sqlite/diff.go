@@ -72,44 +72,8 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	if fromT == nil || toT == nil {
 		return false, fmt.Errorf("sqlite: missing type infromation for column %q", from.Name)
 	}
-	if reflect.TypeOf(fromT) != reflect.TypeOf(toT) {
-		return true, nil
-	}
-	var changed bool
-	switch fromT := fromT.(type) {
-	case *schema.BoolType:
-		toT := toT.(*schema.BoolType)
-		changed = fromT.T != toT.T
-	case *schema.BinaryType:
-		toT := toT.(*schema.BinaryType)
-		changed = fromT.T != toT.T
-	case *schema.DecimalType:
-		toT := toT.(*schema.DecimalType)
-		changed = fromT.T != toT.T
-	case *schema.FloatType:
-		toT := toT.(*schema.FloatType)
-		changed = fromT.T != toT.T
-	case *schema.EnumType:
-		toT := toT.(*schema.EnumType)
-		changed = !sqlx.ValuesEqual(fromT.Values, toT.Values)
-	case *schema.IntegerType:
-		// All integer types have the same "type affinity".
-	case *schema.JSONType:
-		toT := toT.(*schema.JSONType)
-		changed = fromT.T != toT.T
-	case *schema.StringType:
-		toT := toT.(*schema.StringType)
-		changed = fromT.T != toT.T
-	case *schema.SpatialType:
-		toT := toT.(*schema.SpatialType)
-		changed = fromT.T != toT.T
-	case *schema.TimeType:
-		toT := toT.(*schema.TimeType)
-		changed = fromT.T != toT.T
-	default:
-		return false, &sqlx.UnsupportedTypeError{Type: fromT}
-	}
-	return changed, nil
+	// Types are mismatched if they do not have the same "type affinity".
+	return reflect.TypeOf(fromT) != reflect.TypeOf(toT), nil
 }
 
 // defaultChanged reports if the a default value of a column
@@ -150,7 +114,7 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 // Normalize implements the sqlx.Normalizer interface.
 func (d *diff) Normalize(from, to *schema.Table) {
 	for _, fk1 := range from.ForeignKeys {
-		if _, ok := to.ForeignKey(fk1.Symbol); ok {
+		if !isNumber(fk1.Symbol) {
 			continue
 		}
 		// In SQLite, there is no easy way to get the foreign-key constraint
