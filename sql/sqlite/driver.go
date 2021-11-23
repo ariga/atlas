@@ -233,7 +233,7 @@ func parseRawType(c string) (schema.Type, error) {
 			ct.Scale = int(s)
 		}
 		return ct, nil
-	case "character", "varchar", "varying character", "nchar", "native character", "nvarchar", "text", "clob":
+	case "char", "character", "varchar", "varying character", "nchar", "native character", "nvarchar", "text", "clob":
 		ct := &schema.StringType{T: t}
 		if len(parts) > 1 {
 			p, err := strconv.ParseInt(parts[1], 10, 64)
@@ -289,7 +289,10 @@ func (d *Driver) addIndexes(t *schema.Table, rows *sql.Rows) error {
 			Name:   name.String,
 			Unique: uniq,
 			Table:  t,
-			Attrs:  []schema.Attr{&CreateStmt{S: stmt.String}},
+			Attrs: []schema.Attr{
+				&CreateStmt{S: stmt.String},
+				&IndexOrigin{O: origin.String},
+			},
 		}
 		if partial {
 			i := strings.Index(stmt.String, "WHERE")
@@ -501,6 +504,13 @@ type (
 		P string
 	}
 
+	// IndexOrigin describes how the index was created.
+	// See: https://www.sqlite.org/pragma.html#pragma_index_list
+	IndexOrigin struct {
+		schema.Attr
+		O string
+	}
+
 	// A UUIDType defines a UUID type.
 	UUIDType struct {
 		schema.Type
@@ -535,7 +545,7 @@ const (
 	// Query to list attached database files.
 	databasesQuery = "SELECT `name`, `file` FROM pragma_database_list()"
 	// Query to list database tables.
-	tablesQuery = "SELECT `name`, `sql` FROM sqlite_master WHERE type='table'"
+	tablesQuery = "SELECT `name`, `sql` FROM sqlite_master WHERE `type`='table' AND `name` NOT LIKE 'sqlite_%'"
 	// Query to list table information.
 	columnsQuery = "SELECT `name`, `type`, (not `notnull`) AS `nullable`, `dflt_value`, (`pk` <> 0) AS `pk`  FROM pragma_table_info('%s') ORDER BY `pk`, `cid`"
 	// Query to list table indexes.
