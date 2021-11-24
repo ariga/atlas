@@ -134,6 +134,26 @@ func TestSQLite_AddIndexedColumns(t *testing.T) {
 	})
 }
 
+func TestSQLite_AutoIncrement(t *testing.T) {
+	liteRun(t, func(t *liteTest) {
+		usersT := &schema.Table{
+			Name: "users",
+			Columns: []*schema.Column{
+				{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}}, Attrs: []schema.Attr{sqlite.AutoIncrement{}}},
+			},
+		}
+		usersT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: usersT.Columns[0]}}}
+		t.migrate(&schema.AddTable{T: usersT})
+		t.dropTables(usersT.Name)
+		_, err := t.db.Exec("INSERT INTO users DEFAULT VALUES")
+		require.NoError(t, err)
+		var id int
+		err = t.db.QueryRow("SELECT id FROM users").Scan(&id)
+		require.NoError(t, err)
+		require.Equal(t, 1, id)
+	})
+}
+
 func (t *liteTest) loadRealm() *schema.Realm {
 	r, err := t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
 		Schemas: []string{"main"},
@@ -164,9 +184,8 @@ func (t *liteTest) users() *schema.Table {
 		Schema: t.realm().Schemas[0],
 		Columns: []*schema.Column{
 			{
-				Name:  "id",
-				Type:  &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
-				Attrs: []schema.Attr{&postgres.Identity{}},
+				Name: "id",
+				Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
 			},
 			{
 				Name: "x",

@@ -49,7 +49,8 @@ func (m *migrate) addTable(ctx context.Context, add *schema.AddTable) error {
 		b.MapComma(add.T.Columns, func(i int, b *sqlx.Builder) {
 			m.column(b, add.T.Columns[i])
 		})
-		if pk := add.T.PrimaryKey; pk != nil {
+		// Primary keys with auto-increment are inlined on the column definition.
+		if pk := add.T.PrimaryKey; pk != nil && !autoincPK(pk) {
 			b.Comma().P("PRIMARY KEY")
 			m.indexParts(b, pk.Parts)
 		}
@@ -122,6 +123,9 @@ func (m *migrate) column(b *sqlx.Builder, c *schema.Column) {
 	b.P("NULL")
 	if x, ok := c.Default.(*schema.RawExpr); ok {
 		b.P("DEFAULT", x.X)
+	}
+	if sqlx.Has(c.Attrs, &AutoIncrement{}) {
+		b.P("PRIMARY KEY AUTOINCREMENT")
 	}
 }
 
@@ -326,6 +330,11 @@ func alterable(modify *schema.ModifyTable) bool {
 		}
 	}
 	return true
+}
+
+func autoincPK(pk *schema.Index) bool {
+	return sqlx.Has(pk.Attrs, &AutoIncrement{}) ||
+		len(pk.Parts) == 1 && pk.Parts[0].C != nil && sqlx.Has(pk.Parts[0].C.Attrs, &AutoIncrement{})
 }
 
 // Build instantiates a new builder and writes the given phrase to it.
