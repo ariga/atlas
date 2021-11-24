@@ -110,6 +110,12 @@ Inspect and save output to a schema file.
 atlas schema inspect -d "postgres://root:pass@0.0.0.0:5432/example?sslmode=disable" >> atlas.hcl
 ```
 
+:::caution
+
+sslmode disable is not recommended in prod.
+
+:::
+
 </TabItem>
 </Tabs>
 
@@ -133,6 +139,12 @@ atlas schema apply -d "mysql://root:pass@tcp(localhost:3306)/example" -f atlas.h
 ```shell
 atlas schema apply -d "postgres://root:pass@0.0.0.0:5432/example?sslmode=disable" -f atlas.hcl
 ```
+
+:::caution
+
+sslmode disable is not recommended in prod.
+
+:::
 
 </TabItem>
 </Tabs>
