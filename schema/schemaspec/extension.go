@@ -110,13 +110,15 @@ func (r *Resource) As(target interface{}) error {
 			}
 			delete(existingAttrs, attr.K)
 		case ft.isInterfaceSlice:
-			implors, _ := extensions.implementors(field.Type().Elem())
-			cot := childrenOfType(r, implors...)
-			fmt.Println(implors, cot, r.Children)
-			if err := setChildSlice(field, cot); err != nil {
+			impls, err := extensions.implementors(field.Type().Elem())
+			if err != nil {
 				return err
 			}
-			for _, i := range implors {
+			children := childrenOfType(r, impls...)
+			if err := setChildSlice(field, children); err != nil {
+				return err
+			}
+			for _, i := range impls {
 				delete(existingChildren, i)
 			}
 		case isResourceSlice(field.Type()):
