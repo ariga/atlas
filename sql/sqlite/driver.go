@@ -558,8 +558,7 @@ func autoinc(t *schema.Table) {
 	if t.PrimaryKey == nil || len(t.PrimaryKey.Parts) != 1 || t.PrimaryKey.Parts[0].C == nil {
 		return
 	}
-	var c CreateStmt
-	if !sqlx.Has(t.Attrs, &c) || !reAutoinc.MatchString(c.S) {
+	if c := (CreateStmt{}); !sqlx.Has(t.Attrs, &c) || !reAutoinc.MatchString(c.S) {
 		return
 	}
 	// Annotate table elements with "AUTOINCREMENT".
