@@ -54,8 +54,90 @@ func TestSQLite_Ent(t *testing.T) {
 	})
 }
 
+func TestSQLite_AddIndexedColumns(t *testing.T) {
+	liteRun(t, func(t *liteTest) {
+		usersT := &schema.Table{
+			Name:    "users",
+			Columns: []*schema.Column{{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}}},
+		}
+		t.migrate(&schema.AddTable{T: usersT})
+		t.dropTables(usersT.Name)
+
+		// Insert 2 records to the users table, and make sure they are there
+		// after executing migration.
+		_, err := t.db.Exec("INSERT INTO users (id) VALUES (1), (2)")
+		require.NoError(t, err)
+
+		usersT.Columns = append(usersT.Columns, &schema.Column{
+			Name:    "a",
+			Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Null: true},
+			Default: &schema.RawExpr{X: "10"},
+		}, &schema.Column{
+			Name:    "b",
+			Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Null: true},
+			Default: &schema.RawExpr{X: "20"},
+		}, &schema.Column{
+			Name:    "c",
+			Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Null: true},
+			Default: &schema.RawExpr{X: "30"},
+		})
+		usersT.Indexes = append(usersT.Indexes, &schema.Index{
+			Unique: true,
+			Name:   "id_a_b_c_unique",
+			Parts:  []*schema.IndexPart{{C: usersT.Columns[0]}, {C: usersT.Columns[1]}, {C: usersT.Columns[2]}, {C: usersT.Columns[3]}},
+		})
+		changes := t.diff(t.loadUsers(), usersT)
+		require.Len(t, changes, 4, "usersT contains 3 new columns and 1 new index")
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, usersT)
+
+		// Scan records from the table to ensure correctness of
+		// the rows transferring.
+		rows, err := t.db.Query("SELECT * FROM users")
+		require.NoError(t, err)
+		require.True(t, rows.Next())
+		var v [4]int
+		require.NoError(t, rows.Scan(&v[0], &v[1], &v[2], &v[3]))
+		require.Equal(t, [4]int{1, 10, 20, 30}, v)
+		require.True(t, rows.Next())
+		require.NoError(t, rows.Scan(&v[0], &v[1], &v[2], &v[3]))
+		require.Equal(t, [4]int{2, 10, 20, 30}, v)
+		require.False(t, rows.Next())
+		require.NoError(t, rows.Close())
+
+		// Dropping a column from both table and index.
+		usersT = t.loadUsers()
+		idx, ok := usersT.Index("id_a_b_c_unique")
+		require.True(t, ok)
+		require.Len(t, idx.Parts, 4)
+		usersT.Columns = usersT.Columns[:len(usersT.Columns)-1]
+		idx.Parts = idx.Parts[:len(idx.Parts)-1]
+		changes = t.diff(t.loadUsers(), usersT)
+		require.Len(t, changes, 2)
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, t.loadUsers())
+
+		// Scan records from the table to ensure correctness of
+		// the rows transferring.
+		rows, err = t.db.Query("SELECT * FROM users")
+		require.NoError(t, err)
+		require.True(t, rows.Next())
+		var u [3]int
+		require.NoError(t, rows.Scan(&u[0], &u[1], &u[2]))
+		require.Equal(t, [3]int{1, 10, 20}, u)
+		require.True(t, rows.Next())
+		require.NoError(t, rows.Scan(&u[0], &u[1], &u[2]))
+		require.Equal(t, [3]int{2, 10, 20}, u)
+		require.False(t, rows.Next())
+		require.NoError(t, rows.Close())
+
+	})
+}
+
 func (t *liteTest) loadRealm() *schema.Realm {
-	r, err := t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{})
+	r, err := t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
+		Schemas: []string{"main"},
+	})
 	require.NoError(t, err)
 	return r
 }
