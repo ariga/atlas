@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
@@ -151,6 +152,7 @@ func (d *Driver) columns(ctx context.Context, t *schema.Table) error {
 			return fmt.Errorf("sqlite: %w", err)
 		}
 	}
+	autoinc(t)
 	return rows.Err()
 }
 
@@ -491,6 +493,12 @@ type (
 		S string
 	}
 
+	// AutoIncrement describes the `AUTOINCREMENT` configuration.
+	// https://www.sqlite.org/autoinc.html
+	AutoIncrement struct {
+		schema.Attr
+	}
+
 	// WithoutRowID describes the `WITHOUT ROWID` configuration.
 	// See: https://sqlite.org/withoutrowid.html
 	WithoutRowID struct {
@@ -539,6 +547,24 @@ func isNumber(s string) bool {
 		}
 	}
 	return true
+}
+
+var reAutoinc = regexp.MustCompile(`(?i)PRIMARY\s+KEY\s+AUTOINCREMENT`)
+
+// autoinc checks if the table contains a "PRIMARY KEY AUTOINCREMENT" on its
+// CREATE statement, according to https://www.sqlite.org/syntax/column-constraint.html.
+// This is a workaround until we will embed a proper SQLite parser in atlas.
+func autoinc(t *schema.Table) {
+	if t.PrimaryKey == nil || len(t.PrimaryKey.Parts) != 1 || t.PrimaryKey.Parts[0].C == nil {
+		return
+	}
+	var c CreateStmt
+	if !sqlx.Has(t.Attrs, &c) || !reAutoinc.MatchString(c.S) {
+		return
+	}
+	// Annotate table elements with "AUTOINCREMENT".
+	t.PrimaryKey.Attrs = append(t.PrimaryKey.Attrs, AutoIncrement{})
+	t.PrimaryKey.Parts[0].C.Attrs = append(t.PrimaryKey.Parts[0].C.Attrs, AutoIncrement{})
 }
 
 const (
