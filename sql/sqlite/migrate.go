@@ -237,12 +237,27 @@ func (m *migrate) copyRows(ctx context.Context, from *schema.Table, to *schema.T
 		// Find a change that associated with this column, if exists.
 		var change schema.Change
 		for i := range changes {
-			switch changes[i].(type) {
-			case *schema.AddColumn, *schema.DropColumn, *schema.ModifyColumn:
+			switch c := changes[i].(type) {
+			case *schema.AddColumn:
+				if c.C.Name != column.Name {
+					break
+				}
 				if change != nil {
-					return fmt.Errorf("duplicate changes for column: %q: %T, %T", column.Name, change, changes[i])
+					return fmt.Errorf("duplicate changes for column: %q: %T, %T", column.Name, change, c)
 				}
 				change = changes[i]
+			case *schema.ModifyColumn:
+				if c.To.Name != column.Name {
+					break
+				}
+				if change != nil {
+					return fmt.Errorf("duplicate changes for column: %q: %T, %T", column.Name, change, c)
+				}
+				change = changes[i]
+			case *schema.DropColumn:
+				if c.C.Name == column.Name {
+					return fmt.Errorf("unexpected drop column: %q", column.Name)
+				}
 			}
 		}
 		switch change := change.(type) {
@@ -265,7 +280,7 @@ func (m *migrate) copyRows(ctx context.Context, from *schema.Table, to *schema.T
 			fromC = append(fromC, column.Name)
 		}
 	}
-	stmt := fmt.Sprintf("INSERT INTO %s (%s) SELECT (%s) FROM %s", to.Name, toC, fromC, from.Name)
+	stmt := fmt.Sprintf("INSERT INTO %s (%s) SELECT %s FROM %s", to.Name, strings.Join(toC, ", "), strings.Join(fromC, ", "), from.Name)
 	if _, err := m.ExecContext(ctx, stmt, args...); err != nil {
 		return fmt.Errorf("copy rows from %q to %q: %w", from.Name, to.Name, err)
 	}
