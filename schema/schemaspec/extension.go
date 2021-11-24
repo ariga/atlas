@@ -102,7 +102,6 @@ func (r *Resource) As(target interface{}) error {
 				return errors.New("schemaspec: extension isName field must be of type string")
 			}
 			field.SetString(r.Name)
-
 		case hasAttr(r, ft.tag):
 			attr, _ := r.Attr(ft.tag)
 			if err := setField(field, attr); err != nil {
@@ -110,14 +109,26 @@ func (r *Resource) As(target interface{}) error {
 			}
 			delete(existingAttrs, attr.K)
 		case ft.isInterfaceSlice:
-			impls, err := extensions.implementors(field.Type().Elem())
+			elem := field.Type().Elem()
+			impls, err := extensions.implementors(elem)
 			if err != nil {
 				return err
 			}
 			children := childrenOfType(r, impls...)
-			if err := setChildSlice(field, children); err != nil {
-				return err
+			slc := reflect.MakeSlice(reflect.SliceOf(elem), 0, len(children))
+			for _, c := range children {
+				typ, ok := extensions[c.Type]
+				if !ok {
+					return fmt.Errorf("extension %q not registered", c.Type)
+				}
+				n := reflect.New(reflect.TypeOf(typ).Elem())
+				ext := n.Interface()
+				if err := c.As(ext); err != nil {
+					return err
+				}
+				slc = reflect.Append(slc, reflect.ValueOf(ext))
 			}
+			field.Set(slc)
 			for _, i := range impls {
 				delete(existingChildren, i)
 			}

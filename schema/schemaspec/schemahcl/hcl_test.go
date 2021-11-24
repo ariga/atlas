@@ -169,15 +169,17 @@ zoo "ramat_gan" {
 			Friend string `spec:"friend"`
 		}
 		Zoo struct {
-			Animals []Animal `spec:",interface"`
+			Animals []Animal `spec:""`
 		}
 	)
 	schemaspec.Register("lion", &Lion{})
 	schemaspec.Register("parrot", &Parrot{})
-	var test Zoo
+	var test struct {
+		Zoo *Zoo `spec:"zoo"`
+	}
 	err := Unmarshal([]byte(f), &test)
 	require.NoError(t, err)
-	require.EqualValues(t, Zoo{
+	require.EqualValues(t, &Zoo{
 		Animals: []Animal{
 			&Lion{
 				Friend: "rafiki",
@@ -186,5 +188,5 @@ zoo "ramat_gan" {
 				Boss: "jafar",
 			},
 		},
-	}, test)
+	}, test.Zoo)
 }
