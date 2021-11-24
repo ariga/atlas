@@ -154,6 +154,52 @@ func TestSQLite_AutoIncrement(t *testing.T) {
 	})
 }
 
+func TestSQLite_AddColumns(t *testing.T) {
+	liteRun(t, func(t *liteTest) {
+		usersT := &schema.Table{
+			Name: "users",
+			Columns: []*schema.Column{
+				{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}}, Attrs: []schema.Attr{sqlite.AutoIncrement{}}},
+			},
+		}
+		usersT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: usersT.Columns[0]}}}
+		t.migrate(&schema.AddTable{T: usersT})
+		t.dropTables(usersT.Name)
+		_, err := t.db.Exec("INSERT INTO users (id) VALUES (1), (2)")
+		require.NoError(t, err)
+		usersT.Columns = append(
+			usersT.Columns,
+			&schema.Column{Name: "null_int", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Null: true}},
+			&schema.Column{Name: "notnull_int", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}}, Default: &schema.RawExpr{X: "1"}},
+			&schema.Column{Name: "null_real", Type: &schema.ColumnType{Type: &schema.FloatType{T: "real"}, Null: true}},
+			&schema.Column{Name: "notnull_real", Type: &schema.ColumnType{Type: &schema.FloatType{T: "real"}}, Default: &schema.RawExpr{X: "1.0"}},
+			&schema.Column{Name: "null_text", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Null: true}},
+			&schema.Column{Name: "notnull_text1", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}}, Default: &schema.RawExpr{X: "hello"}},
+			&schema.Column{Name: "notnull_text2", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}}, Default: &schema.RawExpr{X: "'hello'"}},
+			&schema.Column{Name: "null_blob", Type: &schema.ColumnType{Type: &schema.BinaryType{T: "blob"}, Null: true}},
+			&schema.Column{Name: "notnull_blob", Type: &schema.ColumnType{Type: &schema.BinaryType{T: "blob"}}, Default: &schema.RawExpr{X: "'blob'"}},
+		)
+		changes := t.diff(t.loadUsers(), usersT)
+		require.Len(t, changes, 9)
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, usersT)
+
+		// Scan records from the table to ensure correctness of
+		// the rows transferring.
+		rows, err := t.db.Query("SELECT id, notnull_int FROM users")
+		require.NoError(t, err)
+		require.True(t, rows.Next())
+		var v [2]int
+		require.NoError(t, rows.Scan(&v[0], &v[1]))
+		require.Equal(t, [2]int{1, 1}, v)
+		require.True(t, rows.Next())
+		require.NoError(t, rows.Scan(&v[0], &v[1]))
+		require.Equal(t, [2]int{2, 1}, v)
+		require.False(t, rows.Next())
+		require.NoError(t, rows.Close())
+	})
+}
+
 func (t *liteTest) loadRealm() *schema.Realm {
 	r, err := t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
 		Schemas: []string{"main"},
