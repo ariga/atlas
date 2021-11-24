@@ -24,8 +24,11 @@ func (d *Driver) Migrate() schema.Execer {
 
 // Exec executes the changes on the database. An error is returned
 // if one of the operations fail, or a change is not supported.
-func (m *migrate) Exec(ctx context.Context, changes []schema.Change) (err error) {
-	planned := sqlx.DetachCycles(changes)
+func (m *migrate) Exec(ctx context.Context, changes []schema.Change) error {
+	planned, err := sqlx.DetachCycles(changes)
+	if err != nil {
+		return err
+	}
 	for _, c := range planned {
 		switch c := c.(type) {
 		case *schema.AddTable:
@@ -41,7 +44,7 @@ func (m *migrate) Exec(ctx context.Context, changes []schema.Change) (err error)
 			return err
 		}
 	}
-	return
+	return nil
 }
 
 // addTable builds and executes the query for creating a table in a schema.
@@ -49,7 +52,7 @@ func (m *migrate) addTable(ctx context.Context, add *schema.AddTable) error {
 	b := Build("CREATE TABLE").Table(add.T)
 	b.Wrap(func(b *sqlx.Builder) {
 		b.MapComma(add.T.Columns, func(i int, b *sqlx.Builder) {
-			m.column(b, add.T.Columns[i])
+			m.column(b, add.T, add.T.Columns[i])
 		})
 		if pk := add.T.PrimaryKey; pk != nil {
 			b.Comma().P("PRIMARY KEY")
@@ -92,7 +95,7 @@ func (m *migrate) dropTable(ctx context.Context, drop *schema.DropTable) error {
 // modifyTable builds and executes the queries for bringing the table into its modified state.
 func (m *migrate) modifyTable(ctx context.Context, modify *schema.ModifyTable) error {
 	var changes [2][]schema.Change
-	for _, change := range modify.Changes {
+	for _, change := range skipAutoChanges(modify.Changes) {
 		switch change := change.(type) {
 		// Constraints should be dropped before dropping columns, because if a column
 		// is a part of multi-column constraints (like, unique index), ALTER TABLE
@@ -148,10 +151,10 @@ func (m *migrate) alterTable(ctx context.Context, t *schema.Table, changes []sch
 		switch change := changes[i].(type) {
 		case *schema.AddColumn:
 			b.P("ADD COLUMN")
-			m.column(b, change.C)
+			m.column(b, t, change.C)
 		case *schema.ModifyColumn:
 			b.P("MODIFY COLUMN")
-			m.column(b, change.To)
+			m.column(b, t, change.To)
 		case *schema.DropColumn:
 			b.P("DROP COLUMN").Ident(change.C.Name)
 		case *schema.AddIndex:
@@ -181,7 +184,7 @@ func (m *migrate) alterTable(ctx context.Context, t *schema.Table, changes []sch
 	return nil
 }
 
-func (m *migrate) column(b *sqlx.Builder, c *schema.Column) {
+func (m *migrate) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) {
 	b.Ident(c.Name).P(m.mustFormat(c.Type.Type))
 	if !c.Type.Null {
 		b.P("NOT")
@@ -189,14 +192,21 @@ func (m *migrate) column(b *sqlx.Builder, c *schema.Column) {
 	b.P("NULL")
 	if x, ok := c.Default.(*schema.RawExpr); ok {
 		v := x.X
-		// Ensure string default values are quoted.
-		if _, ok := c.Type.Type.(*schema.StringType); ok {
+		// Ensure string/enum default values are quoted.
+		switch c.Type.Type.(type) {
+		case *schema.EnumType, *schema.StringType:
 			v = quote(v)
 		}
 		b.P("DEFAULT", v)
 	}
 	for _, a := range c.Attrs {
 		switch a := a.(type) {
+		case *schema.Collation:
+			// Define the collation explicitly
+			// in case it is not the default.
+			if m.collation(t) != a.V {
+				b.P("COLLATE", a.V)
+			}
 		case *OnUpdate:
 			b.P("ON UPDATE", a.A)
 		case *AutoIncrement:
@@ -273,6 +283,16 @@ func (m *migrate) tableAttr(b *sqlx.Builder, attrs ...schema.Attr) {
 	}
 }
 
+// collation returns the table collation from its attributes
+// or from the default defined in the schema or the database.
+func (m *migrate) collation(t *schema.Table) string {
+	var c schema.Collation
+	if sqlx.Has(t.Attrs, &c) || t.Schema != nil && sqlx.Has(t.Schema.Attrs, &c) {
+		return c.V
+	}
+	return m.collate
+}
+
 func (*migrate) attr(b *sqlx.Builder, attrs ...schema.Attr) {
 	for _, a := range attrs {
 		switch a := a.(type) {
@@ -288,6 +308,33 @@ func (*migrate) attr(b *sqlx.Builder, attrs ...schema.Attr) {
 func Build(phrase string) *sqlx.Builder {
 	b := &sqlx.Builder{QuoteChar: '`'}
 	return b.P(phrase)
+}
+
+// skipAutoChanges filters unnecessary changes that are automatically
+// happened by the database when ALTER TABLE is executed.
+func skipAutoChanges(changes []schema.Change) []schema.Change {
+	dropC := make(map[string]bool)
+	for _, c := range changes {
+		if c, ok := c.(*schema.DropColumn); ok {
+			dropC[c.C.Name] = true
+		}
+	}
+search:
+	for i, c := range changes {
+		// Simple case for skipping key dropping, if its columns are dropped.
+		// https://dev.mysql.com/doc/refman/8.0/en/alter-table.html#alter-table-add-drop-column
+		c, ok := c.(*schema.DropIndex)
+		if !ok {
+			continue
+		}
+		for _, p := range c.I.Parts {
+			if p.C == nil || !dropC[p.C.Name] {
+				continue search
+			}
+		}
+		changes = append(changes[:i], changes[i+1:]...)
+	}
+	return changes
 }
 
 func quote(s string) string {

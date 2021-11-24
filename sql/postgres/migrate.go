@@ -7,6 +7,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
@@ -22,8 +23,11 @@ func (d *Driver) Migrate() schema.Execer {
 
 // Exec executes the changes on the database. An error is returned
 // if one of the operations fail, or a change is not supported.
-func (m *migrate) Exec(ctx context.Context, changes []schema.Change) (err error) {
-	planned := sqlx.DetachCycles(changes)
+func (m *migrate) Exec(ctx context.Context, changes []schema.Change) error {
+	planned, err := sqlx.DetachCycles(changes)
+	if err != nil {
+		return err
+	}
 	for _, c := range planned {
 		switch c := c.(type) {
 		case *schema.AddTable:
@@ -39,7 +43,7 @@ func (m *migrate) Exec(ctx context.Context, changes []schema.Change) (err error)
 			return err
 		}
 	}
-	return
+	return nil
 }
 
 // addTable builds and executes the query for creating a table in a schema.
@@ -86,7 +90,7 @@ func (m *migrate) modifyTable(ctx context.Context, modify *schema.ModifyTable) e
 		changes     []schema.Change
 		addI, dropI []*schema.Index
 	)
-	for _, change := range modify.Changes {
+	for _, change := range skipAutoChanges(modify.Changes) {
 		switch change := change.(type) {
 		case *schema.DropAttr:
 			return fmt.Errorf("unsupported change type: %T", change)
@@ -160,7 +164,7 @@ func (m *migrate) alterTable(ctx context.Context, t *schema.Table, changes []sch
 			b.P("ADD")
 			m.fks(b, change.F)
 		case *schema.DropForeignKey:
-			b.P("DROP FOREIGN KEY").Ident(change.F.Symbol)
+			b.P("DROP CONSTRAINT").Ident(change.F.Symbol)
 		}
 	})
 	if _, err := m.ExecContext(ctx, b.String()); err != nil {
@@ -383,11 +387,16 @@ func (m *migrate) partAttr(b *sqlx.Builder, attr schema.Attr) {
 }
 
 func (m *migrate) indexAttrs(b *sqlx.Builder, attrs []schema.Attr) {
+	// Avoid appending the default method.
+	if t := (IndexType{}); sqlx.Has(attrs, &t) && strings.ToLower(t.T) != "btree" {
+		b.P("USING").P(t.T)
+	}
+	if p := (IndexPredicate{}); sqlx.Has(attrs, &p) {
+		b.P("WHERE").P(p.P)
+	}
 	for _, attr := range attrs {
-		switch attr := attr.(type) {
-		case *schema.Comment:
-		case *IndexPredicate:
-			b.P("WHERE").P(attr.P)
+		switch attr.(type) {
+		case *schema.Comment, *ConType, *IndexType, *IndexPredicate:
 		default:
 			panic(fmt.Sprintf("unexpected index attribute: %T", attr))
 		}
@@ -425,4 +434,39 @@ func (m *migrate) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
 func Build(phrase string) *sqlx.Builder {
 	b := &sqlx.Builder{QuoteChar: '"'}
 	return b.P(phrase)
+}
+
+// skipAutoChanges filters unnecessary changes that are automatically
+// happened by the database when ALTER TABLE is executed.
+func skipAutoChanges(changes []schema.Change) []schema.Change {
+	dropC := make(map[string]bool)
+	for _, c := range changes {
+		if c, ok := c.(*schema.DropColumn); ok {
+			dropC[c.C.Name] = true
+		}
+	}
+	for i, c := range changes {
+		switch c := c.(type) {
+		// Indexes involving the column are automatically dropped
+		// with it. This true for multi-columns indexes as well.
+		// See https://www.postgresql.org/docs/current/sql-altertable.html
+		case *schema.DropIndex:
+			for _, p := range c.I.Parts {
+				if p.C == nil && dropC[p.C.Name] {
+					changes = append(changes[:i], changes[i+1:]...)
+					break
+				}
+			}
+		// Simple case for skipping constraint dropping,
+		// if the child table columns were dropped.
+		case *schema.DropForeignKey:
+			for _, c := range c.F.Columns {
+				if dropC[c.Name] {
+					changes = append(changes[:i], changes[i+1:]...)
+					break
+				}
+			}
+		}
+	}
+	return changes
 }

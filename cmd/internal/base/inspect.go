@@ -1,4 +1,4 @@
-package main
+package base
 
 import (
 	"context"
@@ -14,7 +14,7 @@ var (
 	// inspectCmd represents the inspect command.
 	inspectCmd = &cobra.Command{
 		Use:   "inspect",
-		Short: "Inspect atlas schema.",
+		Short: "Inspect an atlas schema",
 		Run: func(cmd *cobra.Command, args []string) {
 			d, err := defaultMux.OpenAtlas(inspectFlags.dsn)
 			cobra.CheckErr(err)
@@ -23,7 +23,7 @@ var (
 		},
 		Example: `
 atlas schema inspect -d mysql://user:pass@tcp(localhost:3306)/dbname
-atlas schema inspect --dsn postgres://user:pass@tcp(host:port)/dbname`,
+atlas schema inspect --dsn postgres://user:pass@host:port/dbname`,
 	}
 )
 

@@ -49,6 +49,7 @@ func (d *Driver) FormatType(t schema.Type) (string, error) {
 		}
 	case *schema.StringType:
 		switch f = strings.ToLower(t.T); f {
+		case tText:
 		// CHAR(n) is alias for CHARACTER(n). If not length was
 		// specified, the definition is equivalent to CHARACTER(1).
 		case tChar, tCharacter:
@@ -123,6 +124,8 @@ func (d *Driver) FormatType(t schema.Type) (string, error) {
 	case *UUIDType:
 		f = strings.ToLower(t.T)
 	case *schema.SpatialType:
+		f = strings.ToLower(t.T)
+	case *NetworkType:
 		f = strings.ToLower(t.T)
 	default:
 		return "", fmt.Errorf("postgres: invalid schema type: %T", t)

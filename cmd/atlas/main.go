@@ -3,21 +3,18 @@ package main
 import (
 	"os"
 
+	"ariga.io/atlas/cmd/internal/base"
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 	"github.com/spf13/cobra"
 )
 
 func main() {
 	cobra.OnInitialize(initConfig)
-	cobra.CheckErr(rootCmd.Execute())
-}
-
-// rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
-	Use:   "atlas",
-	Short: "Work with any data source from the command line.",
+	cobra.CheckErr(base.RootCmd.Execute())
 }
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	rootCmd.SetOut(os.Stdout)
+	base.RootCmd.SetOut(os.Stdout)
 }

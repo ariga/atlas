@@ -270,17 +270,17 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 
 func stringSpec(t *schema.StringType) (*sqlspec.Column, error) {
 	switch t.T {
-	case tVarChar, tText:
+	case tVarChar, tText, tChar, tCharacter, tCharVar:
 		s := strconv.Itoa(t.Size)
 		return specutil.NewCol("", "string", specutil.LitAttr("size", s)), nil
 	default:
-		return nil, errors.New("schema string failed to convert")
+		return nil, fmt.Errorf("schema string failed to convert type %T", t)
 	}
 }
 
 func integerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
 	switch t.T {
-	case tInt:
+	case tInt, tInteger:
 		if t.Unsigned {
 			return specutil.NewCol("", "uint"), nil
 		}
@@ -291,7 +291,7 @@ func integerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
 		}
 		return &sqlspec.Column{TypeName: "int64"}, nil
 	default:
-		return nil, errors.New("schema integer failed to convert")
+		return &sqlspec.Column{TypeName: t.T}, nil
 	}
 }
 

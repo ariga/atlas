@@ -72,44 +72,8 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	if fromT == nil || toT == nil {
 		return false, fmt.Errorf("sqlite: missing type infromation for column %q", from.Name)
 	}
-	if reflect.TypeOf(fromT) != reflect.TypeOf(toT) {
-		return true, nil
-	}
-	var changed bool
-	switch fromT := fromT.(type) {
-	case *schema.BoolType:
-		toT := toT.(*schema.BoolType)
-		changed = fromT.T != toT.T
-	case *schema.BinaryType:
-		toT := toT.(*schema.BinaryType)
-		changed = fromT.T != toT.T
-	case *schema.DecimalType:
-		toT := toT.(*schema.DecimalType)
-		changed = fromT.T != toT.T
-	case *schema.FloatType:
-		toT := toT.(*schema.FloatType)
-		changed = fromT.T != toT.T
-	case *schema.EnumType:
-		toT := toT.(*schema.EnumType)
-		changed = !sqlx.ValuesEqual(fromT.Values, toT.Values)
-	case *schema.IntegerType:
-		// All integer types have the same "type affinity".
-	case *schema.JSONType:
-		toT := toT.(*schema.JSONType)
-		changed = fromT.T != toT.T
-	case *schema.StringType:
-		toT := toT.(*schema.StringType)
-		changed = fromT.T != toT.T
-	case *schema.SpatialType:
-		toT := toT.(*schema.SpatialType)
-		changed = fromT.T != toT.T
-	case *schema.TimeType:
-		toT := toT.(*schema.TimeType)
-		changed = fromT.T != toT.T
-	default:
-		return false, &sqlx.UnsupportedTypeError{Type: fromT}
-	}
-	return changed, nil
+	// Types are mismatched if they do not have the same "type affinity".
+	return reflect.TypeOf(fromT) != reflect.TypeOf(toT), nil
 }
 
 // defaultChanged reports if the a default value of a column
@@ -145,4 +109,41 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 		to = schema.NoAction
 	}
 	return from != to
+}
+
+// Normalize implements the sqlx.Normalizer interface.
+func (d *diff) Normalize(from, to *schema.Table) {
+	used := make([]bool, len(to.ForeignKeys))
+	// In SQLite, there is no easy way to get the foreign-key constraint
+	// name, except for parsing the CREATE statement). Therefore, we check
+	// if there is a foreign-key with identical properties.
+	for _, fk1 := range from.ForeignKeys {
+		for i, fk2 := range to.ForeignKeys {
+			if used[i] {
+				continue
+			}
+			if fk2.Symbol == fk1.Symbol && !isNumber(fk1.Symbol) || sameFK(fk1, fk2) {
+				fk1.Symbol = fk2.Symbol
+				used[i] = true
+			}
+		}
+	}
+}
+
+func sameFK(fk1, fk2 *schema.ForeignKey) bool {
+	if fk1.Table.Name != fk2.Table.Name || fk1.RefTable.Name != fk2.RefTable.Name ||
+		len(fk1.Columns) != len(fk2.Columns) || len(fk1.RefColumns) != len(fk2.RefColumns) {
+		return false
+	}
+	for i, c1 := range fk1.Columns {
+		if c1.Name != fk2.Columns[i].Name {
+			return false
+		}
+	}
+	for i, c1 := range fk1.RefColumns {
+		if c1.Name != fk2.RefColumns[i].Name {
+			return false
+		}
+	}
+	return true
 }

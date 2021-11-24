@@ -176,10 +176,13 @@ func TestDiff_TableDiff(t *testing.T) {
 				}
 			)
 			from.ForeignKeys = []*schema.ForeignKey{
-				{Table: from, Columns: from.Columns, RefTable: ref, RefColumns: ref.Columns[:1]},
+				{Symbol: "fk1", Table: to, Columns: to.Columns, RefTable: ref, RefColumns: ref.Columns[1:]},
+				{Symbol: "1", Table: from, Columns: from.Columns, RefTable: ref, RefColumns: ref.Columns[:1]},
 			}
 			to.ForeignKeys = []*schema.ForeignKey{
-				{Table: to, Columns: to.Columns, RefTable: ref, RefColumns: ref.Columns[1:]},
+				{Symbol: "fk1", Table: to, Columns: to.Columns, RefTable: ref, RefColumns: ref.Columns[:1]},
+				// The below "constraint" is identical to "0" above, therefore, the differ does not report a change.
+				{Symbol: "constraint", Table: from, Columns: from.Columns, RefTable: ref, RefColumns: ref.Columns[:1]},
 			}
 			return testcase{
 				name: "foreign-keys",

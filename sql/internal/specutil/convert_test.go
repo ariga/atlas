@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlspec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,4 +21,62 @@ func TestRef_TableName(t *testing.T) {
 	c, err := tableName(ref)
 	require.NoError(t, err)
 	require.Equal(t, "accounts", c)
+}
+
+func TestFromSpec_SchemaName(t *testing.T) {
+	sc := &schema.Schema{
+		Name: "schema",
+		Tables: []*schema.Table{
+			{},
+		},
+	}
+	sc.Tables[0].Schema = sc
+	s, ta, err := FromSchema(sc, func(table *schema.Table) (*sqlspec.Table, error) {
+		return &sqlspec.Table{}, nil
+	})
+	require.NoError(t, err)
+	require.Equal(t, sc.Name, s.Name)
+	require.Equal(t, sc.Name, ta[0].SchemaName)
+}
+
+func TestFromForeignKey(t *testing.T) {
+	tbl := &schema.Table{
+		Name: "users",
+		Columns: []*schema.Column{
+			{
+				Name: "id",
+				Type: &schema.ColumnType{
+					Type: &schema.IntegerType{
+						T: "int",
+					},
+				},
+			},
+			{
+				Name: "parent_id",
+				Type: &schema.ColumnType{
+					Type: &schema.IntegerType{
+						T: "int",
+					},
+				},
+			},
+		},
+	}
+	fk := &schema.ForeignKey{
+		Symbol:     "fk",
+		Table:      tbl,
+		Columns:    tbl.Columns[1:],
+		RefTable:   tbl,
+		RefColumns: tbl.Columns[:1],
+	}
+	key, err := FromForeignKey(fk)
+	require.NoError(t, err)
+	require.EqualValues(t, &sqlspec.ForeignKey{
+		Symbol: "fk",
+		Columns: []*schemaspec.Ref{
+			{V: "$table.users.$column.parent_id"},
+		},
+		RefColumns: []*schemaspec.Ref{
+			{V: "$table.users.$column.id"},
+		},
+	}, key)
 }

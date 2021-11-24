@@ -1,4 +1,4 @@
-package main
+package base
 
 import (
 	"github.com/spf13/cobra"
@@ -7,10 +7,10 @@ import (
 // schemaCmd represents the schema command
 var schemaCmd = &cobra.Command{
 	Use:   "schema",
-	Short: "Work with atlas schemas.",
-	Long:  `Provides ability to interact with schema and data source.`,
+	Short: "Work with atlas schemas",
+	Long:  "Interact with the schema and data source",
 }
 
 func init() {
-	rootCmd.AddCommand(schemaCmd)
+	RootCmd.AddCommand(schemaCmd)
 }

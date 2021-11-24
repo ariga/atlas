@@ -301,16 +301,16 @@ func binarySpec(t *schema.BinaryType) (*sqlspec.Column, error) {
 		size := specutil.LitAttr("size", strconv.Itoa(t.Size))
 		return specutil.NewCol("", "binary", size), nil
 	}
-	return nil, errors.New("mysql: schema binary failed to convert")
+	return nil, fmt.Errorf("mysql: schema binary failed to convert %q", t.T)
 }
 
 func stringSpec(t *schema.StringType) (*sqlspec.Column, error) {
 	switch t.T {
-	case tVarchar, tMediumText, tLongText:
+	case tVarchar, tMediumText, tLongText, tTinyText, tText, tChar:
 		s := strconv.Itoa(t.Size)
 		return specutil.NewCol("", "string", specutil.LitAttr("size", s)), nil
 	}
-	return nil, errors.New("mysql: schema string failed to convert")
+	return nil, fmt.Errorf("mysql: schema string failed to convert %q", t.T)
 }
 
 func integerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
@@ -322,13 +322,17 @@ func integerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
 		return &sqlspec.Column{TypeName: "int"}, nil
 	case tTinyInt:
 		return &sqlspec.Column{TypeName: "int8"}, nil
+	case tMediumInt:
+		return &sqlspec.Column{TypeName: tMediumInt}, nil
+	case tSmallInt:
+		return &sqlspec.Column{TypeName: tSmallInt}, nil
 	case tBigInt:
 		if t.Unsigned {
 			return specutil.NewCol("", "uint64"), nil
 		}
 		return &sqlspec.Column{TypeName: "int64"}, nil
 	}
-	return nil, errors.New("mysql: schema integer failed to convert")
+	return nil, fmt.Errorf("mysql: schema integer failed to convert %q", t.T)
 }
 
 func enumSpec(t *schema.EnumType) (*sqlspec.Column, error) {

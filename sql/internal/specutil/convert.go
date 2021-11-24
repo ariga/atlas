@@ -169,6 +169,18 @@ func linkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *sqlspec.Table
 			}
 			fk.Columns = append(fk.Columns, col)
 		}
+		if len(spec.RefColumns) == 0 {
+			return fmt.Errorf("sqlspec: missing reference (parent) columns for foreign key: %q", spec.Symbol)
+		}
+		name, err := tableName(spec.RefColumns[0])
+		if err != nil {
+			return err
+		}
+		t, ok := sch.Table(name)
+		if !ok {
+			return fmt.Errorf("sqlspec: undefined table %q for foreign key: %q", name, spec.Symbol)
+		}
+		fk.RefTable = t
 		for _, ref := range spec.RefColumns {
 			col, err := resolveCol(ref, sch)
 			if err != nil {
@@ -212,6 +224,7 @@ func FromSchema(s *schema.Schema, fn TableSpecFunc) (*sqlspec.Schema, []*sqlspec
 		if err != nil {
 			return nil, nil, err
 		}
+		table.SchemaName = s.Name
 		tables = append(tables, table)
 	}
 	return spec, tables, nil
@@ -288,7 +301,7 @@ func FromForeignKey(s *schema.ForeignKey) (*sqlspec.ForeignKey, error) {
 	}
 	r := make([]*schemaspec.Ref, 0, len(s.RefColumns))
 	for _, v := range s.RefColumns {
-		r = append(r, toReference(v.Name, s.Symbol))
+		r = append(r, toReference(v.Name, s.RefTable.Name))
 	}
 	return &sqlspec.ForeignKey{
 		Symbol:     s.Symbol,

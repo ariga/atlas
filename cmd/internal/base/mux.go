@@ -1,4 +1,4 @@
-package main
+package base
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/schema"
 	"github.com/go-sql-driver/mysql"
-	"github.com/jackc/pgconn"
 )
 
 type (
@@ -72,7 +71,7 @@ func (u *Mux) OpenAtlas(dsn string) (*Driver, error) {
 	}
 	p, ok := u.providers[key]
 	if !ok {
-		return nil, fmt.Errorf("could not find provider, %s", err)
+		return nil, fmt.Errorf("could not find provider: %s", key)
 	}
 	return p(dsn)
 }
@@ -98,11 +97,7 @@ func schemaNameFromDSN(url string) (string, error) {
 		}
 		return cfg.DBName, err
 	case "postgres":
-		cfg, err := pgconn.ParseConfig(dsn)
-		if err != nil {
-			return "", err
-		}
-		return cfg.Database, err
+		return "public", nil
 	default:
 		return "", fmt.Errorf("unknown database type: %q", key)
 	}

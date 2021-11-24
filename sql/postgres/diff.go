@@ -155,37 +155,16 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	}
 	var changed bool
 	switch fromT := fromT.(type) {
-	case *schema.BinaryType:
-		toT := toT.(*schema.BinaryType)
-		changed = fromT.T != toT.T
-	case *schema.DecimalType:
-		toT := toT.(*schema.DecimalType)
-		changed = fromT.T != toT.T || fromT.Scale != toT.Scale || fromT.Precision != toT.Precision
+	case *schema.BinaryType, *schema.BoolType, *schema.DecimalType, *schema.FloatType,
+		*schema.IntegerType, *schema.JSONType, *schema.SpatialType, *schema.StringType,
+		*schema.TimeType, *BitType, *SerialType, *NetworkType:
+		changed = d.mustFormat(toT) != d.mustFormat(fromT)
 	case *EnumType:
 		toT := toT.(*schema.EnumType)
 		changed = fromT.T != toT.T || !sqlx.ValuesEqual(fromT.Values, toT.Values)
 	case *schema.EnumType:
 		toT := toT.(*schema.EnumType)
 		changed = fromT.T != toT.T || !sqlx.ValuesEqual(fromT.Values, toT.Values)
-	case *schema.FloatType:
-		toT := toT.(*schema.FloatType)
-		changed = fromT.T != toT.T || fromT.Precision != toT.Precision
-	case *schema.IntegerType:
-		toT := toT.(*schema.IntegerType)
-		// Unsigned integers are not supported.
-		changed = fromT.T != toT.T
-	case *NetworkType:
-		toT := toT.(*NetworkType)
-		changed = fromT.T != toT.T
-	case *SerialType:
-		toT := toT.(*SerialType)
-		changed = fromT.T != toT.T || fromT.Precision != toT.Precision
-	case *schema.StringType:
-		toT := toT.(*schema.StringType)
-		changed = fromT.T != toT.T || fromT.Size != toT.Size
-	case *BitType:
-		toT := toT.(*BitType)
-		changed = fromT.T != toT.T || fromT.Len != toT.Len
 	case *CurrencyType:
 		toT := toT.(*CurrencyType)
 		changed = fromT.T != toT.T
@@ -207,18 +186,6 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	case *UserDefinedType:
 		toT := toT.(*UserDefinedType)
 		changed = fromT.T != toT.T
-	case *schema.BoolType:
-		toT := toT.(*schema.BoolType)
-		changed = fromT.T != toT.T
-	case *schema.JSONType:
-		toT := toT.(*schema.JSONType)
-		changed = fromT.T != toT.T
-	case *schema.SpatialType:
-		toT := toT.(*schema.SpatialType)
-		changed = fromT.T != toT.T
-	case *schema.TimeType:
-		toT := toT.(*schema.TimeType)
-		changed = fromT.T != toT.T
 	default:
 		return false, &sqlx.UnsupportedTypeError{Type: fromT}
 	}
@@ -226,10 +193,9 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 }
 
 // Normalize implements the sqlx.Normalizer interface.
-func (d *diff) Normalize(tables ...*schema.Table) {
-	for _, t := range tables {
-		d.normalize(t)
-	}
+func (d *diff) Normalize(from, to *schema.Table) {
+	d.normalize(from)
+	d.normalize(to)
 }
 
 func (d *diff) normalize(table *schema.Table) {
