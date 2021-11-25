@@ -53,6 +53,20 @@ func (r registry) lookup(ext interface{}) (string, bool) {
 	return "", false
 }
 
+// implementers returns a slice of the names of the extensions that implement i.
+func (r registry) implementers(i reflect.Type) ([]string, error) {
+	if i.Kind() != reflect.Interface {
+		return nil, fmt.Errorf("schemaspec: expected interface got %s", i.Kind())
+	}
+	var names []string
+	for name, typ := range r {
+		if reflect.TypeOf(typ).Implements(i) {
+			names = append(names, name)
+		}
+	}
+	return names, nil
+}
+
 // Register records the type of ext in the global extension registry.
 // If Register is called twice with the same name or if ext is nil,
 // it panics.
@@ -94,6 +108,53 @@ func (r *Resource) As(target interface{}) error {
 				return err
 			}
 			delete(existingAttrs, attr.K)
+		case ft.isInterfaceSlice():
+			elem := field.Type().Elem()
+			impls, err := extensions.implementers(elem)
+			if err != nil {
+				return err
+			}
+			children := childrenOfType(r, impls...)
+			slc := reflect.MakeSlice(reflect.SliceOf(elem), 0, len(children))
+			for _, c := range children {
+				typ, ok := extensions[c.Type]
+				if !ok {
+					return fmt.Errorf("extension %q not registered", c.Type)
+				}
+				n := reflect.New(reflect.TypeOf(typ).Elem())
+				ext := n.Interface()
+				if err := c.As(ext); err != nil {
+					return err
+				}
+				slc = reflect.Append(slc, reflect.ValueOf(ext))
+			}
+			field.Set(slc)
+			for _, i := range impls {
+				delete(existingChildren, i)
+			}
+		case ft.isInterface():
+			impls, err := extensions.implementers(ft.typ)
+			if err != nil {
+				return err
+			}
+			children := childrenOfType(r, impls...)
+			if len(children) == 0 {
+				continue
+			}
+			if len(children) > 1 {
+				return fmt.Errorf("more than one blocks implement %q", ft.typ)
+			}
+			c := children[0]
+			typ, ok := extensions[c.Type]
+			if !ok {
+				return fmt.Errorf("extension %q not registered", c.Type)
+			}
+			n := reflect.New(reflect.TypeOf(typ).Elem())
+			ext := n.Interface()
+			if err := c.As(ext); err != nil {
+				return err
+			}
+			field.Set(n)
 		case isResourceSlice(field.Type()):
 			if err := setChildSlice(field, childrenOfType(r, ft.tag)); err != nil {
 				return err
@@ -391,6 +452,7 @@ func specFields(ext interface{}) []fieldTag {
 			field:  f.Name,
 			tag:    lookup,
 			isName: len(parts) > 1 && parts[1] == "name",
+			typ:    f.Type,
 		})
 	}
 	return fields
@@ -399,13 +461,24 @@ func specFields(ext interface{}) []fieldTag {
 type fieldTag struct {
 	field, tag string
 	isName     bool
+	typ        reflect.Type
 }
 
-func childrenOfType(r *Resource, typ string) []*Resource {
+func (f fieldTag) isInterfaceSlice() bool {
+	return f.typ.Kind() == reflect.Slice && f.typ.Elem().Kind() == reflect.Interface
+}
+
+func (f fieldTag) isInterface() bool {
+	return f.typ.Kind() == reflect.Interface
+}
+
+func childrenOfType(r *Resource, types ...string) []*Resource {
 	var out []*Resource
 	for _, c := range r.Children {
-		if c.Type == typ {
-			out = append(out, c)
+		for _, typ := range types {
+			if c.Type == typ {
+				out = append(out, c)
+			}
 		}
 	}
 	return out

@@ -5,6 +5,7 @@ import (
 	"log"
 	"testing"
 
+	"ariga.io/atlas/schema/schemaspec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -142,4 +143,80 @@ func ExampleMarshal() {
 	//   x = 1
 	//   y = 1
 	// }
+}
+
+func TestInterface(t *testing.T) {
+	type (
+		Animal interface {
+			animal()
+		}
+		Parrot struct {
+			Animal
+			Name string `spec:",name"`
+			Boss string `spec:"boss"`
+		}
+		Lion struct {
+			Animal
+			Name   string `spec:",name"`
+			Friend string `spec:"friend"`
+		}
+		Zoo struct {
+			Animals []Animal `spec:""`
+		}
+		Cast struct {
+			Animal Animal `spec:""`
+		}
+	)
+	schemaspec.Register("lion", &Lion{})
+	schemaspec.Register("parrot", &Parrot{})
+	t.Run("single", func(t *testing.T) {
+		f := `
+cast "lion_king" {
+	lion "simba" {
+		friend = "rafiki"
+	}
+}
+`
+		var test struct {
+			Cast *Cast `spec:"cast"`
+		}
+		err := Unmarshal([]byte(f), &test)
+		require.NoError(t, err)
+		require.EqualValues(t, &Cast{
+			Animal: &Lion{
+				Name:   "simba",
+				Friend: "rafiki",
+			},
+		}, test.Cast)
+	})
+	t.Run("slice", func(t *testing.T) {
+		f := `
+zoo "ramat_gan" {
+	lion "simba" {
+		friend = "rafiki"
+	}
+	parrot "iago" {
+		boss = "jafar"
+	}
+}
+`
+		var test struct {
+			Zoo *Zoo `spec:"zoo"`
+		}
+		err := Unmarshal([]byte(f), &test)
+		require.NoError(t, err)
+		require.EqualValues(t, &Zoo{
+			Animals: []Animal{
+				&Lion{
+					Name:   "simba",
+					Friend: "rafiki",
+				},
+				&Parrot{
+					Name: "iago",
+					Boss: "jafar",
+				},
+			},
+		}, test.Zoo)
+	})
+
 }
