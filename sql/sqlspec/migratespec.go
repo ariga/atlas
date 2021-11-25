@@ -1,22 +1,27 @@
-package migratespec
+package sqlspec
 
 import (
 	"ariga.io/atlas/schema/schemaspec"
-	"ariga.io/atlas/sql/sqlspec"
 )
 
 type (
+	// Change is the interface implemented by change specifications. Change instances are supposed
+	// to be mappable to schema.Change instances.
 	Change interface {
 		c()
 	}
+
+	// ModifyTable is a specification for a schema.ModifyTable.
 	ModifyTable struct {
 		Change
 		Table   string   `spec:"table"`
 		Changes []Change `spec:""`
 	}
+
+	// AddColumn is a specification for a schema.AddColumn.
 	AddColumn struct {
 		Change
-		Column *sqlspec.Column `spec:"column"`
+		Column *Column `spec:"column"`
 	}
 )
 

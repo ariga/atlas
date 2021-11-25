@@ -1,10 +1,9 @@
-package hclmigratespec
+package hclsqlspec
 
 import (
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
-	"ariga.io/atlas/sql/migratespec"
 	"ariga.io/atlas/sql/sqlspec"
 	"github.com/stretchr/testify/require"
 )
@@ -21,14 +20,14 @@ modify_table {
 }
 `
 	var test struct {
-		Changes []migratespec.Change `spec:""`
+		Changes []sqlspec.Change `spec:""`
 	}
 	err := schemahcl.Unmarshal([]byte(f), &test)
 	require.NoError(t, err)
-	require.EqualValues(t, &migratespec.ModifyTable{
+	require.EqualValues(t, &sqlspec.ModifyTable{
 		Table: "users",
-		Changes: []migratespec.Change{
-			&migratespec.AddColumn{
+		Changes: []sqlspec.Change{
+			&sqlspec.AddColumn{
 				Column: &sqlspec.Column{
 					Name:     "id",
 					Null:     false,
