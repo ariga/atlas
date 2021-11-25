@@ -8,7 +8,7 @@ type (
 	// Change is the interface implemented by change specifications. Change instances are supposed
 	// to be mappable to schema.Change instances.
 	Change interface {
-		c()
+		change()
 	}
 
 	// ModifyTable is a specification for a schema.ModifyTable.

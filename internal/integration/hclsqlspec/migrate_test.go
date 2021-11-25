@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test(t *testing.T) {
+func TestMigrate(t *testing.T) {
 	f := `
 modify_table {
 	table = "users"
