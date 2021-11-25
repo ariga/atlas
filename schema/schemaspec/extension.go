@@ -53,8 +53,8 @@ func (r registry) lookup(ext interface{}) (string, bool) {
 	return "", false
 }
 
-// implementors returns a slice of the names of the extensions that implement i.
-func (r registry) implementors(i reflect.Type) ([]string, error) {
+// implementers returns a slice of the names of the extensions that implement i.
+func (r registry) implementers(i reflect.Type) ([]string, error) {
 	if i.Kind() != reflect.Interface {
 		return nil, fmt.Errorf("schemaspec: expected interface got %s", i.Kind())
 	}
@@ -108,9 +108,9 @@ func (r *Resource) As(target interface{}) error {
 				return err
 			}
 			delete(existingAttrs, attr.K)
-		case ft.isInterfaceSlice:
+		case ft.isInterfaceSlice():
 			elem := field.Type().Elem()
-			impls, err := extensions.implementors(elem)
+			impls, err := extensions.implementers(elem)
 			if err != nil {
 				return err
 			}
@@ -132,6 +132,29 @@ func (r *Resource) As(target interface{}) error {
 			for _, i := range impls {
 				delete(existingChildren, i)
 			}
+		case ft.isInterface():
+			impls, err := extensions.implementers(ft.typ)
+			if err != nil {
+				return err
+			}
+			children := childrenOfType(r, impls...)
+			if len(children) == 0 {
+				continue
+			}
+			if len(children) > 1 {
+				return fmt.Errorf("more than one blocks implement %q", ft.typ)
+			}
+			c := children[0]
+			typ, ok := extensions[c.Type]
+			if !ok {
+				return fmt.Errorf("extension %q not registered", c.Type)
+			}
+			n := reflect.New(reflect.TypeOf(typ).Elem())
+			ext := n.Interface()
+			if err := c.As(ext); err != nil {
+				return err
+			}
+			field.Set(n)
 		case isResourceSlice(field.Type()):
 			if err := setChildSlice(field, childrenOfType(r, ft.tag)); err != nil {
 				return err
@@ -426,18 +449,27 @@ func specFields(ext interface{}) []fieldTag {
 		}
 		parts := strings.Split(lookup, ",")
 		fields = append(fields, fieldTag{
-			field:            f.Name,
-			tag:              lookup,
-			isName:           len(parts) > 1 && parts[1] == "name",
-			isInterfaceSlice: f.Type.Kind() == reflect.Slice && f.Type.Elem().Kind() == reflect.Interface,
+			field:  f.Name,
+			tag:    lookup,
+			isName: len(parts) > 1 && parts[1] == "name",
+			typ:    f.Type,
 		})
 	}
 	return fields
 }
 
 type fieldTag struct {
-	field, tag               string
-	isName, isInterfaceSlice bool
+	field, tag string
+	isName     bool
+	typ        reflect.Type
+}
+
+func (f fieldTag) isInterfaceSlice() bool {
+	return f.typ.Kind() == reflect.Slice && f.typ.Elem().Kind() == reflect.Interface
+}
+
+func (f fieldTag) isInterface() bool {
+	return f.typ.Kind() == reflect.Interface
 }
 
 func childrenOfType(r *Resource, types ...string) []*Resource {
