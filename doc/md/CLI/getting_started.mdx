@@ -86,3 +86,65 @@ Move the atlas binary to a file location on your system PATH.
 
 </TabItem>
 </Tabs>
+
+## Schema Inspection
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'PostgreSQL', value: 'postgres'},
+]}>
+<TabItem value="mysql">
+
+Inspect and save output to a schema file.
+```shell
+atlas schema inspect -d "mysql://root:pass@tcp(localhost:3306)/example" >> atlas.hcl
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+Inspect and save output to a schema file.
+```shell
+atlas schema inspect -d "postgres://root:pass@0.0.0.0:5432/example?sslmode=disable" >> atlas.hcl
+```
+
+:::caution
+
+sslmode disable is not recommended in prod.
+
+:::
+
+</TabItem>
+</Tabs>
+
+## Apply change to Schema
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'PostgreSQL', value: 'postgres'},
+]}>
+<TabItem value="mysql">
+
+```shell
+atlas schema apply -d "mysql://root:pass@tcp(localhost:3306)/example" -f atlas.hcl
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```shell
+atlas schema apply -d "postgres://root:pass@0.0.0.0:5432/example?sslmode=disable" -f atlas.hcl
+```
+
+:::caution
+
+sslmode disable is not recommended in prod.
+
+:::
+
+</TabItem>
+</Tabs>
