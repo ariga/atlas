@@ -7,6 +7,7 @@ package integration
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"testing"
 
 	"ariga.io/atlas/sql/postgres"
@@ -197,6 +198,58 @@ func TestSQLite_AddColumns(t *testing.T) {
 		require.Equal(t, [2]int{2, 1}, v)
 		require.False(t, rows.Next())
 		require.NoError(t, rows.Close())
+	})
+}
+
+func TestSQLite_ColumnInt(t *testing.T) {
+	t.Run("ChangeTypeNull", func(t *testing.T) {
+		liteRun(t, func(t *liteTest) {
+			usersT := &schema.Table{
+				Name:    "users",
+				Columns: []*schema.Column{{Name: "a", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}}}},
+			}
+			t.migrate(&schema.AddTable{T: usersT})
+			t.dropTables(usersT.Name)
+			usersT.Columns[0].Type.Null = true
+			usersT.Columns[0].Type.Type = &schema.FloatType{T: "real"}
+			changes := t.diff(t.loadUsers(), usersT)
+			require.Len(t, changes, 1)
+			require.Equal(t, schema.ChangeNull|schema.ChangeType, changes[0].(*schema.ModifyColumn).Change)
+			t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+			ensureNoChange(t, usersT)
+		})
+	})
+
+	t.Run("ChangeDefault", func(t *testing.T) {
+		liteRun(t, func(t *liteTest) {
+			usersT := &schema.Table{
+				Name:    "users",
+				Columns: []*schema.Column{{Name: "a", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}, Default: &schema.RawExpr{X: "1"}}},
+			}
+			t.migrate(&schema.AddTable{T: usersT})
+			t.dropTables(usersT.Name)
+			ensureNoChange(t, usersT)
+			for _, x := range []string{"2", "'3'", "10.1"} {
+				usersT.Columns[0].Default.(*schema.RawExpr).X = x
+				changes := t.diff(t.loadUsers(), usersT)
+				require.Len(t, changes, 1)
+				t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+				ensureNoChange(t, usersT)
+				_, err := t.db.Exec("INSERT INTO users DEFAULT VALUES")
+				require.NoError(t, err)
+			}
+
+			rows, err := t.db.Query("SELECT a FROM users")
+			require.NoError(t, err)
+			for _, e := range []driver.Value{2, 3, 10.1} {
+				var v driver.Value
+				require.True(t, rows.Next())
+				require.NoError(t, rows.Scan(&v))
+				require.EqualValues(t, e, v)
+			}
+			require.False(t, rows.Next())
+			require.NoError(t, rows.Close())
+		})
 	})
 }
 
