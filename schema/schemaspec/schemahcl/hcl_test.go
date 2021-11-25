@@ -145,8 +145,7 @@ func ExampleMarshal() {
 	// }
 }
 
-func TestInterfaceSlice(t *testing.T) {
-
+func TestInterface(t *testing.T) {
 	type (
 		Animal interface {
 			animal()
