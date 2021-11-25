@@ -253,6 +253,105 @@ func TestSQLite_ColumnInt(t *testing.T) {
 	})
 }
 
+func TestSQLite_ForeignKey(t *testing.T) {
+	t.Run("ChangeAction", func(t *testing.T) {
+		liteRun(t, func(t *liteTest) {
+			usersT, postsT := t.users(), t.posts()
+			t.dropTables(postsT.Name, usersT.Name)
+			t.migrate(&schema.AddTable{T: usersT}, &schema.AddTable{T: postsT})
+			ensureNoChange(t, postsT, usersT)
+
+			postsT = t.loadPosts()
+			// The "author_id" constraint. SQLite does not support
+			// getting the foreign-key constraint names at the moment.
+			fk := postsT.ForeignKeys[0]
+			fk.OnUpdate = schema.SetNull
+			fk.OnDelete = schema.Cascade
+			changes := t.diff(t.loadPosts(), postsT)
+			require.Len(t, changes, 1)
+			modifyF, ok := changes[0].(*schema.ModifyForeignKey)
+			require.True(t, ok)
+			require.True(t, modifyF.Change == schema.ChangeUpdateAction|schema.ChangeDeleteAction)
+
+			t.migrate(&schema.ModifyTable{T: postsT, Changes: changes})
+			ensureNoChange(t, postsT, usersT)
+		})
+	})
+
+	t.Run("UnsetNull", func(t *testing.T) {
+		liteRun(t, func(t *liteTest) {
+			usersT, postsT := t.users(), t.posts()
+			t.dropTables(postsT.Name, usersT.Name)
+			fk := postsT.ForeignKeys[0]
+			fk.OnDelete = schema.SetNull
+			fk.OnUpdate = schema.SetNull
+			t.migrate(&schema.AddTable{T: usersT}, &schema.AddTable{T: postsT})
+			ensureNoChange(t, postsT, usersT)
+
+			postsT = t.loadPosts()
+			c, ok := postsT.Column("author_id")
+			require.True(t, ok)
+			c.Type.Null = false
+			fk = postsT.ForeignKeys[0]
+			fk.OnUpdate = schema.NoAction
+			fk.OnDelete = schema.NoAction
+			changes := t.diff(t.loadPosts(), postsT)
+			require.Len(t, changes, 2)
+			modifyC, ok := changes[0].(*schema.ModifyColumn)
+			require.True(t, ok)
+			require.True(t, modifyC.Change == schema.ChangeNull)
+			modifyF, ok := changes[1].(*schema.ModifyForeignKey)
+			require.True(t, ok)
+			require.True(t, modifyF.Change == schema.ChangeUpdateAction|schema.ChangeDeleteAction)
+
+			t.migrate(&schema.ModifyTable{T: postsT, Changes: changes})
+			ensureNoChange(t, postsT, usersT)
+		})
+	})
+
+	t.Run("AddDrop", func(t *testing.T) {
+		liteRun(t, func(t *liteTest) {
+			usersT := t.users()
+			t.dropTables(usersT.Name)
+			t.migrate(&schema.AddTable{T: usersT})
+			ensureNoChange(t, usersT)
+
+			// Add foreign key.
+			usersT.Columns = append(usersT.Columns, &schema.Column{
+				Name: "spouse_id",
+				Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true},
+			})
+			usersT.ForeignKeys = append(usersT.ForeignKeys, &schema.ForeignKey{
+				Symbol:     "spouse_id",
+				Table:      usersT,
+				Columns:    usersT.Columns[len(usersT.Columns)-1:],
+				RefTable:   usersT,
+				RefColumns: usersT.Columns[:1],
+				OnDelete:   schema.NoAction,
+			})
+
+			changes := t.diff(t.loadUsers(), usersT)
+			require.Len(t, changes, 2)
+			addC, ok := changes[0].(*schema.AddColumn)
+			require.True(t, ok)
+			require.Equal(t, "spouse_id", addC.C.Name)
+			addF, ok := changes[1].(*schema.AddForeignKey)
+			require.True(t, ok)
+			require.Equal(t, "spouse_id", addF.F.Symbol)
+			t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+			ensureNoChange(t, usersT)
+
+			// Drop foreign keys.
+			usersT.Columns = usersT.Columns[:len(usersT.Columns)-1]
+			usersT.ForeignKeys = usersT.ForeignKeys[:len(usersT.ForeignKeys)-1]
+			changes = t.diff(t.loadUsers(), usersT)
+			require.Len(t, changes, 2)
+			t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+			ensureNoChange(t, usersT)
+		})
+	})
+}
+
 func (t *liteTest) loadRealm() *schema.Realm {
 	r, err := t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
 		Schemas: []string{"main"},
