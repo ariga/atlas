@@ -265,7 +265,11 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 		return &sqlspec.Column{TypeName: t.T}, nil
 	case *NetworkType:
 		return &sqlspec.Column{TypeName: t.T}, nil
+	case *SerialType:
+		return &sqlspec.Column{TypeName: t.T}, nil
 	case *UUIDType:
+		return &sqlspec.Column{TypeName: t.T}, nil
+	case *XMLType:
 		return &sqlspec.Column{TypeName: t.T}, nil
 	default:
 		return nil, fmt.Errorf("failed to convert column type %T to spec", t)
