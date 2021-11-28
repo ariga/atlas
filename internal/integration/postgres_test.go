@@ -12,6 +12,7 @@ import (
 	"sync"
 	"testing"
 
+	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
 
@@ -363,6 +364,69 @@ func TestPostgres_Ent(t *testing.T) {
 	pgRun(t, func(t *pgTest) {
 		testEntIntegration(t, dialect.Postgres, t.db)
 	})
+}
+
+func TestPostgres_HCL(t *testing.T) {
+	pgRun(t, func(t *pgTest) {
+		t.applyHcl(`
+schema "public" {
+}
+table "users" {
+	schema = "public"
+	column "id" {
+		type = "int"
+	}
+	primary_key {
+		columns = [table.users.column.id]
+	}
+}
+table "posts" {
+	schema = "public"
+	column "id" {
+		type = "int"
+	}
+	column "author_id" {
+		type = "int"
+	}
+	foreign_key "author" {
+		columns = [
+			table.posts.column.author_id,
+		]
+		ref_columns = [
+			table.users.column.id,
+		]
+	}
+	primary_key {
+		columns = [table.users.column.id]
+	}
+}
+`)
+		users := t.loadUsers()
+		posts := t.loadPosts()
+		t.dropTables(users.Name, posts.Name)
+		column, ok := users.Column("id")
+		require.True(t, ok, "expected id column")
+		require.Equal(t, "users", users.Name)
+		column, ok = posts.Column("author_id")
+		require.Equal(t, "author_id", column.Name)
+		t.applyHcl(`
+schema "test" {
+}
+`)
+		require.Empty(t, t.realm().Schemas[0].Tables)
+	})
+}
+
+func (t *pgTest) applyHcl(spec string) {
+	realm := t.loadRealm()
+	var desired schema.Schema
+	err := postgres.UnmarshalSpec([]byte(spec), schemahcl.Unmarshal, &desired)
+	require.NoError(t, err)
+	existing := realm.Schemas[0]
+	diff, err := t.drv.Diff().SchemaDiff(existing, &desired)
+	require.NoError(t, err)
+	err = t.drv.Migrate().Exec(context.Background(), diff)
+	require.NoError(t, err)
 }
 
 func (t *pgTest) loadRealm() *schema.Realm {
