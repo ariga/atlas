@@ -114,28 +114,28 @@ table "accounts" {
 				SchemaName: "hi",
 				Columns: []*sqlspec.Column{
 					{
-						Name:     "id",
-						TypeName: "uint",
-						Null:     false,
-						Default:  &schemaspec.LiteralValue{V: "123"},
+						Name:    "id",
+						Type:    "uint",
+						Null:    false,
+						Default: &schemaspec.LiteralValue{V: "123"},
 					},
 					{
-						Name:     "age",
-						TypeName: "int",
-						Null:     false,
-						Default:  &schemaspec.LiteralValue{V: "10"},
+						Name:    "age",
+						Type:    "int",
+						Null:    false,
+						Default: &schemaspec.LiteralValue{V: "10"},
 					},
 					{
-						Name:     "active",
-						TypeName: "bool",
-						Null:     false,
-						Default:  &schemaspec.LiteralValue{V: "true"},
+						Name:    "active",
+						Type:    "bool",
+						Null:    false,
+						Default: &schemaspec.LiteralValue{V: "true"},
 					},
 					{
-						Name:     "account_active",
-						TypeName: "bool",
-						Null:     false,
-						Default:  &schemaspec.LiteralValue{V: "true"},
+						Name:    "account_active",
+						Type:    "bool",
+						Null:    false,
+						Default: &schemaspec.LiteralValue{V: "true"},
 					},
 				},
 				PrimaryKey: &sqlspec.PrimaryKey{
@@ -190,28 +190,28 @@ table "accounts" {
 				SchemaName: "hi",
 				Columns: []*sqlspec.Column{
 					{
-						Name:     "id",
-						TypeName: "uint",
-						Null:     false,
-						Default:  &schemaspec.LiteralValue{V: "123"},
+						Name:    "id",
+						Type:    "uint",
+						Null:    false,
+						Default: &schemaspec.LiteralValue{V: "123"},
 					},
 					{
-						Name:     "age",
-						TypeName: "int",
-						Null:     false,
-						Default:  &schemaspec.LiteralValue{V: "10"},
+						Name:    "age",
+						Type:    "int",
+						Null:    false,
+						Default: &schemaspec.LiteralValue{V: "10"},
 					},
 					{
-						Name:     "active",
-						TypeName: "bool",
-						Null:     false,
-						Default:  &schemaspec.LiteralValue{V: "true"},
+						Name:    "active",
+						Type:    "bool",
+						Null:    false,
+						Default: &schemaspec.LiteralValue{V: "true"},
 					},
 					{
-						Name:     "user_active",
-						TypeName: "bool",
-						Null:     false,
-						Default:  &schemaspec.LiteralValue{V: "true"},
+						Name:    "user_active",
+						Type:    "bool",
+						Null:    false,
+						Default: &schemaspec.LiteralValue{V: "true"},
 					},
 				},
 				PrimaryKey: &sqlspec.PrimaryKey{
@@ -316,9 +316,9 @@ table "accounts" {
 
 func TestMarshalTopLevel(t *testing.T) {
 	c := &sqlspec.Column{
-		Name:     "column",
-		Null:     true,
-		TypeName: "string",
+		Name: "column",
+		Null: true,
+		Type: "string",
 	}
 	h, err := schemahcl.Marshal(c)
 	require.NoError(t, err)

@@ -82,7 +82,7 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 
 // convertColumnType converts a sqlspec.Column into a concrete Postgres schema.Type.
 func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
-	switch sqlspec.Type(spec.TypeName) {
+	switch sqlspec.Type(spec.Type) {
 	case sqlspec.TypeInt, sqlspec.TypeInt8, sqlspec.TypeInt16,
 		sqlspec.TypeInt64, sqlspec.TypeUint, sqlspec.TypeUint8,
 		sqlspec.TypeUint16, sqlspec.TypeUint64:
@@ -107,11 +107,11 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 }
 
 func convertInteger(spec *sqlspec.Column) (schema.Type, error) {
-	if strings.HasPrefix(spec.TypeName, "u") {
+	if strings.HasPrefix(spec.Type, "u") {
 		return nil, fmt.Errorf("unsigned integers currently not supported")
 	}
 	typ := &schema.IntegerType{}
-	switch sqlspec.Type(spec.TypeName) {
+	switch sqlspec.Type(spec.Type) {
 	case sqlspec.TypeInt8:
 		return nil, fmt.Errorf("8-bit integers not supported")
 	case sqlspec.TypeInt16:
@@ -121,7 +121,7 @@ func convertInteger(spec *sqlspec.Column) (schema.Type, error) {
 	case sqlspec.TypeInt64:
 		typ.T = tBigInt
 	default:
-		return nil, fmt.Errorf("unknown integer column type %q", spec.TypeName)
+		return nil, fmt.Errorf("unknown integer column type %q", spec.Type)
 	}
 	return typ, nil
 }
@@ -197,13 +197,13 @@ func convertFloat(spec *sqlspec.Column) (schema.Type, error) {
 }
 
 func parseRawType(spec *sqlspec.Column) (schema.Type, error) {
-	d, err := parseColumn(spec.TypeName)
+	d, err := parseColumn(spec.Type)
 	if err != nil {
 		return nil, err
 	}
 	// Normalize PostgreSQL array data types from "CREATE TABLE" format to
 	// "INFORMATION_SCHEMA" format (i.e. as it is inspected from the database).
-	if t, ok := arrayType(spec.TypeName); ok {
+	if t, ok := arrayType(spec.Type); ok {
 		d = &columnDesc{typ: tArray, udt: t}
 	}
 	return columnType(d), nil
@@ -226,9 +226,9 @@ func columnSpec(col *schema.Column) (*sqlspec.Column, error) {
 		return nil, err
 	}
 	return &sqlspec.Column{
-		Name:     col.Name,
-		TypeName: ct.TypeName,
-		Null:     ct.Null,
+		Name: col.Name,
+		Type: ct.Type,
+		Null: ct.Null,
 		DefaultExtension: schemaspec.DefaultExtension{
 			Extra: schemaspec.Resource{Attrs: ct.DefaultExtension.Extra.Attrs},
 		},
@@ -249,34 +249,34 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 		scale := specutil.LitAttr("scale", strconv.Itoa(t.Scale))
 		return specutil.NewCol("", "decimal", precision, scale), nil
 	case *schema.BinaryType:
-		return &sqlspec.Column{TypeName: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	case *schema.BoolType:
-		return &sqlspec.Column{TypeName: "boolean"}, nil
+		return &sqlspec.Column{Type: "boolean"}, nil
 	case *schema.FloatType:
 		precision := specutil.LitAttr("precision", strconv.Itoa(t.Precision))
 		return specutil.NewCol("", "float", precision), nil
 	case *schema.TimeType:
-		return &sqlspec.Column{TypeName: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	case *schema.JSONType:
-		return &sqlspec.Column{TypeName: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	case *schema.SpatialType:
-		return &sqlspec.Column{TypeName: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	case *schema.UnsupportedType:
-		return &sqlspec.Column{TypeName: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	case *ArrayType:
-		return &sqlspec.Column{TypeName: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	case *BitType:
 		return bitSpec(t)
 	case *CurrencyType:
-		return &sqlspec.Column{TypeName: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	case *NetworkType:
-		return &sqlspec.Column{TypeName: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	case *SerialType:
-		return &sqlspec.Column{TypeName: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	case *UUIDType:
-		return &sqlspec.Column{TypeName: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	case *XMLType:
-		return &sqlspec.Column{TypeName: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	default:
 		return nil, fmt.Errorf("failed to convert column type %T to spec", t)
 	}
@@ -298,14 +298,14 @@ func integerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
 		if t.Unsigned {
 			return specutil.NewCol("", "uint"), nil
 		}
-		return &sqlspec.Column{TypeName: "int"}, nil
+		return &sqlspec.Column{Type: "int"}, nil
 	case tBigInt:
 		if t.Unsigned {
 			return specutil.NewCol("", "uint64"), nil
 		}
-		return &sqlspec.Column{TypeName: "int64"}, nil
+		return &sqlspec.Column{Type: "int64"}, nil
 	default:
-		return &sqlspec.Column{TypeName: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	}
 }
 
@@ -325,14 +325,14 @@ func bitSpec(t *BitType) (*sqlspec.Column, error) {
 	switch t.T {
 	case tBit:
 		if t.Len == 1 {
-			c = &sqlspec.Column{TypeName: tBit}
+			c = &sqlspec.Column{Type: tBit}
 		} else {
 			c = specutil.NewCol("", fmt.Sprintf("%s(%d)", tBit, t.Len))
 		}
 		return c, nil
 	case tBitVar:
 		if t.Len == 0 {
-			c = &sqlspec.Column{TypeName: tBitVar}
+			c = &sqlspec.Column{Type: tBitVar}
 		} else {
 			c = specutil.NewCol("", fmt.Sprintf("%s(%d)", tBitVar, t.Len))
 		}

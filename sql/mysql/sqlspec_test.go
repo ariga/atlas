@@ -474,7 +474,7 @@ func TestMarshalSpecColumnType(t *testing.T) {
 			expected: specutil.NewCol("column", "year(4)"),
 		},
 	} {
-		t.Run(tt.expected.TypeName, func(t *testing.T) {
+		t.Run(tt.expected.Type, func(t *testing.T) {
 			s := schema.Schema{
 				Tables: []*schema.Table{
 					{
@@ -496,7 +496,7 @@ func TestMarshalSpecColumnType(t *testing.T) {
 			}
 			err = schemahcl.Unmarshal(ddl, &test)
 			require.NoError(t, err)
-			require.EqualValues(t, tt.expected.TypeName, test.Table.Columns[0].TypeName)
+			require.EqualValues(t, tt.expected.Type, test.Table.Columns[0].Type)
 			require.ElementsMatch(t, tt.expected.Extra.Attrs, test.Table.Columns[0].Extra.Attrs)
 		})
 	}
