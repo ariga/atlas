@@ -235,6 +235,14 @@ func TestUnmarshalSpecColumnTypes(t *testing.T) {
 			spec:     specutil.NewCol("bit8", "bit(8)"),
 			expected: &BitType{T: tBit, Len: 8},
 		},
+		{
+			spec:     specutil.NewCol("texts", "text[]"),
+			expected: &ArrayType{T: "text[]"},
+		},
+		{
+			spec:     specutil.NewCol("texts", "text[2]"),
+			expected: &ArrayType{T: "text[]"},
+		},
 	} {
 		t.Run(tt.spec.Name, func(t *testing.T) {
 			var s schema.Schema
