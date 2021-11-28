@@ -8,8 +8,8 @@ import (
 // NewCol is a helper method for constructing *sqlspec.Column instances.
 func NewCol(name, coltype string, attrs ...*schemaspec.Attr) *sqlspec.Column {
 	return &sqlspec.Column{
-		Name:     name,
-		TypeName: coltype,
+		Name: name,
+		Type: coltype,
 		DefaultExtension: schemaspec.DefaultExtension{
 			Extra: schemaspec.Resource{Attrs: attrs},
 		},

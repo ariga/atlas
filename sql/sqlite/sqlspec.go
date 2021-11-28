@@ -78,7 +78,7 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 
 // convertColumnType converts a sqlspec.Column into a concrete SQLite schema.Type.
 func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
-	switch sqlspec.Type(spec.TypeName) {
+	switch sqlspec.Type(spec.Type) {
 	case sqlspec.TypeInt, sqlspec.TypeInt8, sqlspec.TypeInt16,
 		sqlspec.TypeInt64, sqlspec.TypeUint, sqlspec.TypeUint8,
 		sqlspec.TypeUint16, sqlspec.TypeUint64:
@@ -98,12 +98,12 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 	case sqlspec.TypeTime:
 		return convertTime(spec)
 	default:
-		return parseRawType(spec.TypeName)
+		return parseRawType(spec.Type)
 	}
 }
 
 func convertInteger(spec *sqlspec.Column) (schema.Type, error) {
-	if strings.HasPrefix(spec.TypeName, "u") {
+	if strings.HasPrefix(spec.Type, "u") {
 		// todo(rotemtam): support his once we can express CHECK(col >= 0)
 		return nil, fmt.Errorf("sqlite: unsigned integers currently not supported")
 	}
@@ -199,9 +199,9 @@ func columnSpec(col *schema.Column) (*sqlspec.Column, error) {
 		return nil, err
 	}
 	return &sqlspec.Column{
-		Name:     col.Name,
-		TypeName: ct.TypeName,
-		Null:     ct.Null,
+		Name: col.Name,
+		Type: ct.Type,
+		Null: ct.Null,
 		DefaultExtension: schemaspec.DefaultExtension{
 			Extra: schemaspec.Resource{Attrs: ct.DefaultExtension.Extra.Attrs},
 		},
@@ -223,18 +223,18 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	case *schema.BinaryType:
 		return binarySpec(t)
 	case *schema.BoolType:
-		return &sqlspec.Column{TypeName: "boolean"}, nil
+		return &sqlspec.Column{Type: "boolean"}, nil
 	case *schema.FloatType:
 		precision := specutil.LitAttr("precision", strconv.Itoa(t.Precision))
 		return specutil.NewCol("", "float", precision), nil
 	case *schema.TimeType:
-		return &sqlspec.Column{TypeName: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	case *schema.JSONType:
-		return &sqlspec.Column{TypeName: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	case *schema.SpatialType:
-		return &sqlspec.Column{TypeName: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	case *schema.UnsupportedType:
-		return &sqlspec.Column{TypeName: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	default:
 		return nil, fmt.Errorf("sqlite: failed to convert column type %T to spec", t)
 	}
@@ -244,7 +244,7 @@ func binarySpec(t *schema.BinaryType) (*sqlspec.Column, error) {
 	if t.T != tBlob {
 		return nil, fmt.Errorf("sqlite/spec/binary: failed to convert type %q", t.T)
 	}
-	return &sqlspec.Column{TypeName: "binary"}, nil
+	return &sqlspec.Column{Type: "binary"}, nil
 }
 
 func stringSpec(t *schema.StringType) (*sqlspec.Column, error) {
@@ -262,7 +262,7 @@ func integerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
 	if t.T != tInteger {
 		return nil, fmt.Errorf("sqlite/spec/integer: failed to convert type %q", t.T)
 	}
-	return &sqlspec.Column{TypeName: "int"}, nil
+	return &sqlspec.Column{Type: "int"}, nil
 }
 
 func enumSpec(t *schema.EnumType) (*sqlspec.Column, error) {
