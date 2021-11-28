@@ -112,6 +112,8 @@ func TestPostgres_AddColumns(t *testing.T) {
 		usersT := t.users()
 		t.dropTables(usersT.Name)
 		t.migrate(&schema.AddTable{T: usersT})
+		_, err := t.db.Exec("CREATE EXTENSION IF NOT EXISTS hstore")
+		require.NoError(t, err)
 		usersT.Columns = append(
 			usersT.Columns,
 			&schema.Column{Name: "a", Type: &schema.ColumnType{Type: &schema.BinaryType{T: "bytea"}}},
@@ -129,9 +131,10 @@ func TestPostgres_AddColumns(t *testing.T) {
 			&schema.Column{Name: "m", Type: &schema.ColumnType{Type: &schema.BoolType{T: "boolean"}, Null: true}, Default: &schema.RawExpr{X: "false"}},
 			&schema.Column{Name: "n", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "point"}, Null: true}, Default: &schema.RawExpr{X: "'(1,2)'"}},
 			&schema.Column{Name: "o", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "line"}, Null: true}, Default: &schema.RawExpr{X: "'{1,2,3}'"}},
+			&schema.Column{Name: "p", Type: &schema.ColumnType{Type: &postgres.UserDefinedType{T: "hstore"}, Null: true}, Default: &schema.RawExpr{X: "'a => 1'"}},
 		)
 		changes := t.diff(t.loadUsers(), usersT)
-		require.Len(t, changes, 15)
+		require.Len(t, changes, 16)
 		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
 		ensureNoChange(t, usersT)
 	})
