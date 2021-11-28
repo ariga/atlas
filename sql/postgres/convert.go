@@ -127,6 +127,8 @@ func (d *Driver) FormatType(t schema.Type) (string, error) {
 		f = strings.ToLower(t.T)
 	case *NetworkType:
 		f = strings.ToLower(t.T)
+	case *UserDefinedType:
+		f = strings.ToLower(t.T)
 	default:
 		return "", fmt.Errorf("postgres: invalid schema type: %T", t)
 	}
