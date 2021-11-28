@@ -157,7 +157,7 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	switch fromT := fromT.(type) {
 	case *schema.BinaryType, *schema.BoolType, *schema.DecimalType, *schema.FloatType,
 		*schema.IntegerType, *schema.JSONType, *schema.SpatialType, *schema.StringType,
-		*schema.TimeType, *BitType, *SerialType, *NetworkType:
+		*schema.TimeType, *BitType, *SerialType, *NetworkType, *UserDefinedType:
 		changed = d.mustFormat(toT) != d.mustFormat(fromT)
 	case *EnumType:
 		toT := toT.(*schema.EnumType)
@@ -183,9 +183,6 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 			equals, err := d.typesEqual(fromT.T, toT.T)
 			return !equals, err
 		}
-	case *UserDefinedType:
-		toT := toT.(*UserDefinedType)
-		changed = fromT.T != toT.T
 	default:
 		return false, &sqlx.UnsupportedTypeError{Type: fromT}
 	}
