@@ -201,7 +201,7 @@ func columnSpec(col *schema.Column) (*sqlspec.Column, error) {
 	return &sqlspec.Column{
 		Name: col.Name,
 		Type: ct.Type,
-		Null: ct.Null,
+		Null: col.Type.Null,
 		DefaultExtension: schemaspec.DefaultExtension{
 			Extra: schemaspec.Resource{Attrs: ct.DefaultExtension.Extra.Attrs},
 		},

@@ -40,6 +40,8 @@ func (d *Driver) FormatType(t schema.Type) (string, error) {
 		f = strings.ToLower(t.T)
 	case *UUIDType:
 		f = strings.ToLower(t.T)
+	case *schema.UnsupportedType:
+		return "", fmt.Errorf("sqlite: unsupported type: %q", t.T)
 	default:
 		return "", fmt.Errorf("sqlite: invalid schema type: %T", t)
 	}
