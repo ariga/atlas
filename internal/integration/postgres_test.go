@@ -386,6 +386,9 @@ table "posts" {
 	column "id" {
 		type = "int"
 	}
+	column "tags" {
+		type = "text[]"
+	}
 	column "author_id" {
 		type = "int"
 	}

@@ -29,9 +29,9 @@ modify_table {
 		Changes: []sqlspec.Change{
 			&sqlspec.AddColumn{
 				Column: &sqlspec.Column{
-					Name:     "id",
-					Null:     false,
-					TypeName: "int",
+					Name: "id",
+					Null: false,
+					Type: "int",
 				},
 			},
 		},

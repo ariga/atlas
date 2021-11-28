@@ -81,7 +81,7 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 
 // convertColumnType converts a sqlspec.Column into a concrete MySQL schema.Type.
 func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
-	switch sqlspec.Type(spec.TypeName) {
+	switch sqlspec.Type(spec.Type) {
 	case sqlspec.TypeInt, sqlspec.TypeInt8, sqlspec.TypeInt16,
 		sqlspec.TypeInt64, sqlspec.TypeUint, sqlspec.TypeUint8,
 		sqlspec.TypeUint16, sqlspec.TypeUint64:
@@ -101,14 +101,14 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 	case sqlspec.TypeTime:
 		return convertTime(spec)
 	}
-	return parseRawType(spec.TypeName)
+	return parseRawType(spec.Type)
 }
 
 func convertInteger(spec *sqlspec.Column) (schema.Type, error) {
 	typ := &schema.IntegerType{
-		Unsigned: strings.HasPrefix(spec.TypeName, "u"),
+		Unsigned: strings.HasPrefix(spec.Type, "u"),
 	}
-	switch spec.TypeName {
+	switch spec.Type {
 	case "int8", "uint8":
 		typ.T = tTinyInt
 	case "int16", "uint16":
@@ -118,7 +118,7 @@ func convertInteger(spec *sqlspec.Column) (schema.Type, error) {
 	case "int64", "uint64":
 		typ.T = tBigInt
 	default:
-		return nil, fmt.Errorf("mysql: unknown integer column type %q", spec.TypeName)
+		return nil, fmt.Errorf("mysql: unknown integer column type %q", spec.Type)
 	}
 	return typ, nil
 }
@@ -251,9 +251,9 @@ func columnSpec(col *schema.Column) (*sqlspec.Column, error) {
 		return nil, err
 	}
 	return &sqlspec.Column{
-		Name:     col.Name,
-		TypeName: ct.TypeName,
-		Null:     ct.Null,
+		Name: col.Name,
+		Type: ct.Type,
+		Null: col.Type.Null,
 		DefaultExtension: schemaspec.DefaultExtension{
 			Extra: schemaspec.Resource{Attrs: ct.DefaultExtension.Extra.Attrs},
 		},
@@ -276,18 +276,18 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	case *schema.BinaryType:
 		return binarySpec(t)
 	case *schema.BoolType:
-		return &sqlspec.Column{TypeName: "boolean"}, nil
+		return &sqlspec.Column{Type: "boolean"}, nil
 	case *schema.FloatType:
 		precision := specutil.LitAttr("precision", strconv.Itoa(t.Precision))
 		return specutil.NewCol("", "float", precision), nil
 	case *schema.TimeType:
-		return &sqlspec.Column{TypeName: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	case *schema.JSONType:
-		return &sqlspec.Column{TypeName: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	case *schema.SpatialType:
-		return &sqlspec.Column{TypeName: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	case *schema.UnsupportedType:
-		return &sqlspec.Column{TypeName: t.T}, nil
+		return &sqlspec.Column{Type: t.T}, nil
 	default:
 		return nil, fmt.Errorf("mysql: failed to convert column type %T to spec", t)
 	}
@@ -296,7 +296,7 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 func binarySpec(t *schema.BinaryType) (*sqlspec.Column, error) {
 	switch t.T {
 	case tBlob:
-		return &sqlspec.Column{TypeName: "binary"}, nil
+		return &sqlspec.Column{Type: "binary"}, nil
 	case tTinyBlob, tMediumBlob, tLongBlob:
 		size := specutil.LitAttr("size", strconv.Itoa(t.Size))
 		return specutil.NewCol("", "binary", size), nil
@@ -319,18 +319,18 @@ func integerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
 		if t.Unsigned {
 			return specutil.NewCol("", "uint"), nil
 		}
-		return &sqlspec.Column{TypeName: "int"}, nil
+		return &sqlspec.Column{Type: "int"}, nil
 	case tTinyInt:
-		return &sqlspec.Column{TypeName: "int8"}, nil
+		return &sqlspec.Column{Type: "int8"}, nil
 	case tMediumInt:
-		return &sqlspec.Column{TypeName: tMediumInt}, nil
+		return &sqlspec.Column{Type: tMediumInt}, nil
 	case tSmallInt:
-		return &sqlspec.Column{TypeName: tSmallInt}, nil
+		return &sqlspec.Column{Type: tSmallInt}, nil
 	case tBigInt:
 		if t.Unsigned {
 			return specutil.NewCol("", "uint64"), nil
 		}
-		return &sqlspec.Column{TypeName: "int64"}, nil
+		return &sqlspec.Column{Type: "int64"}, nil
 	}
 	return nil, fmt.Errorf("mysql: schema integer failed to convert %q", t.T)
 }

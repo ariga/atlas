@@ -64,6 +64,8 @@ func (d *Driver) FormatType(t schema.Type) (string, error) {
 		f = strings.ToLower(t.T)
 	case *schema.TimeType:
 		f = strings.ToLower(t.T)
+	case *schema.UnsupportedType:
+		return "", fmt.Errorf("mysql: unsupported type: %q", t.T)
 	default:
 		return "", fmt.Errorf("mysql: invalid schema type: %T", t)
 	}
