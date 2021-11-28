@@ -29,6 +29,9 @@ table "table" {
 		type = "string"
 		size = 32
 	}
+	column "tags" {
+		type = "hstore"
+	}
 	primary_key {
 		columns = [table.table.column.col]
 	}
@@ -93,6 +96,14 @@ table "accounts" {
 						Type: &schema.StringType{
 							T:    "varchar",
 							Size: 32,
+						},
+					},
+				},
+				{
+					Name: "tags",
+					Type: &schema.ColumnType{
+						Type: &UserDefinedType{
+							T: "hstore",
 						},
 					},
 				},
@@ -470,6 +481,10 @@ func TestMarshalSpecColumnType(t *testing.T) {
 								Name: "column",
 								Type: &schema.ColumnType{Type: tt.schem},
 							},
+							{
+								Name: "nullable_column",
+								Type: &schema.ColumnType{Type: tt.schem, Null: true},
+							},
 						},
 					},
 				},
@@ -482,8 +497,14 @@ func TestMarshalSpecColumnType(t *testing.T) {
 			}
 			err = schemahcl.Unmarshal(ddl, &test)
 			require.NoError(t, err)
+
+			require.False(t, test.Table.Columns[0].Null)
 			require.EqualValues(t, tt.expected.Type, test.Table.Columns[0].Type)
 			require.ElementsMatch(t, tt.expected.Extra.Attrs, test.Table.Columns[0].Extra.Attrs)
+
+			require.True(t, test.Table.Columns[1].Null)
+			require.EqualValues(t, tt.expected.Type, test.Table.Columns[1].Type)
+			require.ElementsMatch(t, tt.expected.Extra.Attrs, test.Table.Columns[1].Extra.Attrs)
 		})
 	}
 }

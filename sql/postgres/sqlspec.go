@@ -206,7 +206,13 @@ func parseRawType(spec *sqlspec.Column) (schema.Type, error) {
 	if t, ok := arrayType(spec.Type); ok {
 		d = &columnDesc{typ: tArray, udt: t}
 	}
-	return columnType(d), nil
+	t := columnType(d)
+	// If the type is unknown (to us), we fallback to user-defined but expect
+	// to improve this in future versions by ensuring this against the database.
+	if ut, ok := t.(*schema.UnsupportedType); ok {
+		t = &UserDefinedType{T: ut.T}
+	}
+	return t, nil
 }
 
 // schemaSpec converts from a concrete Postgres schema to Atlas specification.
@@ -228,7 +234,7 @@ func columnSpec(col *schema.Column) (*sqlspec.Column, error) {
 	return &sqlspec.Column{
 		Name: col.Name,
 		Type: ct.Type,
-		Null: ct.Null,
+		Null: col.Type.Null,
 		DefaultExtension: schemaspec.DefaultExtension{
 			Extra: schemaspec.Resource{Attrs: ct.DefaultExtension.Extra.Attrs},
 		},
@@ -274,6 +280,8 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	case *SerialType:
 		return &sqlspec.Column{Type: t.T}, nil
 	case *UUIDType:
+		return &sqlspec.Column{Type: t.T}, nil
+	case *UserDefinedType:
 		return &sqlspec.Column{Type: t.T}, nil
 	case *XMLType:
 		return &sqlspec.Column{Type: t.T}, nil
