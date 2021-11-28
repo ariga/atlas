@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/internal/specutil"
@@ -196,11 +197,16 @@ func convertFloat(spec *sqlspec.Column) (schema.Type, error) {
 }
 
 func parseRawType(spec *sqlspec.Column) (schema.Type, error) {
-	cm, err := parseColumn(spec.TypeName)
+	d, err := parseColumn(spec.TypeName)
 	if err != nil {
 		return nil, err
 	}
-	return columnType(cm), nil
+	// Normalize PostgreSQL array data types from "CREATE TABLE" format to
+	// "INFORMATION_SCHEMA" format (i.e. as it is inspected from the database).
+	if t, ok := arrayType(spec.TypeName); ok {
+		d = &columnDesc{typ: tArray, udt: t}
+	}
+	return columnType(d), nil
 }
 
 // schemaSpec converts from a concrete Postgres schema to Atlas specification.
@@ -334,4 +340,19 @@ func bitSpec(t *BitType) (*sqlspec.Column, error) {
 	default:
 		return nil, errors.New("schema bit failed to convert")
 	}
+}
+
+// arrayType reports if the given string is an array type (e.g. int[], text[2]),
+// and returns its "udt_name" as it was inspected from the database.
+func arrayType(t string) (string, bool) {
+	i, j := strings.LastIndexByte(t, '['), strings.LastIndexByte(t, ']')
+	if i == -1 || j == -1 {
+		return "", false
+	}
+	for _, r := range t[i+1 : j] {
+		if !unicode.IsDigit(r) {
+			return "", false
+		}
+	}
+	return t[:strings.IndexByte(t, '[')], true
 }
