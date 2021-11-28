@@ -133,9 +133,10 @@ func TestPostgres_AddColumns(t *testing.T) {
 			&schema.Column{Name: "n", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "point"}, Null: true}, Default: &schema.RawExpr{X: "'(1,2)'"}},
 			&schema.Column{Name: "o", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "line"}, Null: true}, Default: &schema.RawExpr{X: "'{1,2,3}'"}},
 			&schema.Column{Name: "p", Type: &schema.ColumnType{Type: &postgres.UserDefinedType{T: "hstore"}, Null: true}, Default: &schema.RawExpr{X: "'a => 1'"}},
+			&schema.Column{Name: "q", Type: &schema.ColumnType{Type: &postgres.ArrayType{T: "text[]"}, Null: true}, Default: &schema.RawExpr{X: "'{}'"}},
 		)
 		changes := t.diff(t.loadUsers(), usersT)
-		require.Len(t, changes, 16)
+		require.Len(t, changes, 17)
 		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
 		ensureNoChange(t, usersT)
 	})
