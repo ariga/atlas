@@ -80,7 +80,7 @@ services:
 
   postgres14:
     platform: linux/amd64
-    image: postgres:13
+    image: postgres:14
     environment:
       POSTGRES_DB: test
       POSTGRES_PASSWORD: pass
