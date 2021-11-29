@@ -13,7 +13,7 @@ Runs on all platforms:
 * Linux
 * Windows
 
-Instructions for other platforms and databases: [Getting Started](https://atlasgo.io/CLI/).
+Instructions for other platforms and databases: [Getting Started](https://atlasgo.io/).
 
 ## Installation
 
