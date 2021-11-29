@@ -5,9 +5,12 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 	"sync"
 	"testing"
@@ -15,7 +18,6 @@ import (
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
-
 	"entgo.io/ent/dialect"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
@@ -26,6 +28,7 @@ type myTest struct {
 	db      *sql.DB
 	drv     *mysql.Driver
 	version string
+	port    int
 }
 
 var myTests struct {
@@ -41,7 +44,7 @@ func myRun(t *testing.T, fn func(*myTest)) {
 			require.NoError(t, err)
 			drv, err := mysql.Open(db)
 			require.NoError(t, err)
-			myTests.drivers[version] = &myTest{db: db, drv: drv, version: version}
+			myTests.drivers[version] = &myTest{db: db, drv: drv, version: version, port: port}
 		}
 	})
 	for version, tt := range myTests.drivers {
@@ -503,16 +506,33 @@ schema "test" {
 }
 
 func TestMySQL_CLI(t *testing.T) {
+	defer os.RemoveAll("atlas")
 	t.Run("Inspect", func(t *testing.T) {
-		myRun(t, func(t *myTest) {
+		for _, tt := range []struct {
+			cmd      string
+			expected string
+		}{
+			{
+				cmd:      "atlas inspect",
+				expected: "no",
+			},
+		} {
+			myRun(t, func(mt *myTest) {
+				t.Run(tt.cmd, func(t *testing.T) {
+					cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas", "schema", "inspect", "-d",
+						mt.dsn())
 
-		})
+					stderr := bytes.NewBuffer(nil)
+					cmd.Stderr = stderr
+					require.NoError(t, cmd.Run(), stderr.String())
+				})
+			})
+		}
 	})
-	t.Run("Apply", func(t *testing.T) {
-		myRun(t, func(t *myTest) {
+}
 
-		})
-	})
+func (t *myTest) dsn() string {
+	return fmt.Sprintf("mysql://root:pass@tcp(localhost:%d)/test", t.port)
 }
 
 func (t *myTest) applyHcl(spec string) {
