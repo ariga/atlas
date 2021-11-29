@@ -509,8 +509,12 @@ func TestMySQL_CLI(t *testing.T) {
 	t.Run("Inspect", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			defer os.RemoveAll("atlas")
-			cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas", "schema", "inspect", "-d",
-				t.dsn())
+			cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+				"schema",
+				"inspect",
+				"-d",
+				t.dsn(),
+			)
 			stderr := bytes.NewBuffer(nil)
 			stdout := bytes.NewBuffer(nil)
 			cmd.Stderr = stderr
