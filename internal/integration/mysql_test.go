@@ -511,14 +511,16 @@ func TestMySQL_CLI(t *testing.T) {
 			defer os.RemoveAll("atlas")
 			cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas", "schema", "inspect", "-d",
 				t.dsn())
-			expected := "schema \"test\" {\n}\n"
 			stderr := bytes.NewBuffer(nil)
 			stdout := bytes.NewBuffer(nil)
 			cmd.Stderr = stderr
 			cmd.Stdout = stdout
 			require.NoError(t, cmd.Run(), stderr.String())
+			var actual schema.Schema
+			err := mysql.UnmarshalSpec(stdout.Bytes(), schemahcl.Unmarshal, &actual)
+			require.NoError(t, err)
 			require.Empty(t, stderr.String())
-			require.Equal(t, expected, stdout.String())
+			require.Equal(t, schema.Schema{Name: "test"}, actual)
 		})
 	})
 }
