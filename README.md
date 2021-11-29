@@ -1,6 +1,5 @@
-![Atlas CLI in Action](https://release.ariga.io/images/assets/atlas-intro.gif)
 
-# Data Build Tool
+# A database toolkit.
 
 [Meet Atlas CLI](https://blog.ariga.io/meet-atlas-cli/).
 
