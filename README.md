@@ -1,19 +1,20 @@
-# Atlas - A database toolkit
 
-[Meet Atlas CLI](https://blog.ariga.io/meet-atlas-cli/).
+# Atlas -  A Database Toolkit
 
-Supported databases: 
+Atlas is a CLI designed to help companies better work with their data. It includes several components that can
+be used individually but are designed to work very well together.
+
+### Supported databases: 
 * MySQL
 * PostgresSQL
 
-Runs on all platforms:
+### Runs on all platforms:
 * Mac
 * Linux
 * Windows
 
-Instructions for other platforms and databases: [Getting Started](https://atlasgo.io/).
 
-## Installation
+## Quick Installation
 
 Download latest release.
 ```shell
@@ -32,8 +33,11 @@ sudo mv ./atlas-darwin-amd64-v0.1.1 /usr/local/bin/atlas
 ```shell
 sudo chown root: /usr/local/bin/atlas
 ```
+Instructions for other platforms and databases: [Getting Started](https://atlasgo.io/).
 
-## Schema Inspection
+## Getting Started
+
+### Schema Inspection
 
 Inspect and save output to a schema file.
 ```shell
@@ -45,3 +49,8 @@ atlas schema inspect -d "mysql://root:pass@tcp(localhost:3306)/example" >> atlas
 ```shell
 atlas schema apply -d "mysql://root:pass@tcp(localhost:3306)/example" -f atlas.hcl
 ```
+
+Full [CLI documentation](https://atlasgo.io/CLI/atlas). 
+
+### About the Project
+Read more about the motivation of the project [Here](https://blog.ariga.io/meet-atlas-cli/).
