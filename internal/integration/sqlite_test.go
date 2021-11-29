@@ -10,6 +10,7 @@ import (
 	"database/sql/driver"
 	"testing"
 
+	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlite"
@@ -351,6 +352,70 @@ func TestSQLite_ForeignKey(t *testing.T) {
 		})
 	})
 }
+
+func TestSQLite_HCL(t *testing.T) {
+	liteRun(t, func(t *liteTest) {
+		t.applyHcl(`
+schema "public" {
+}
+table "users" {
+	schema = "public"
+	column "id" {
+		type = "int"
+	}
+	primary_key {
+		columns = [table.users.column.id]
+	}
+}
+table "posts" {
+	schema = "public"
+	column "id" {
+		type = "int"
+	}
+	column "author_id" {
+		type = "int"
+	}
+	foreign_key "author" {
+		columns = [
+			table.posts.column.author_id,
+		]
+		ref_columns = [
+			table.users.column.id,
+		]
+	}
+	primary_key {
+		columns = [table.users.column.id]
+	}
+}
+`)
+		users := t.loadUsers()
+		posts := t.loadPosts()
+		t.dropTables(users.Name, posts.Name)
+		column, ok := users.Column("id")
+		require.True(t, ok, "expected id column")
+		require.Equal(t, "users", users.Name)
+		column, ok = posts.Column("author_id")
+		require.Equal(t, "author_id", column.Name)
+		t.applyHcl(`
+schema "test" {
+}
+`)
+		require.Empty(t, t.realm().Schemas[0].Tables)
+	})
+}
+
+func (t *liteTest) applyHcl(spec string) {
+	realm := t.loadRealm()
+	var desired schema.Schema
+	err := sqlite.UnmarshalSpec([]byte(spec), schemahcl.Unmarshal, &desired)
+	require.NoError(t, err)
+	existing := realm.Schemas[0]
+	diff, err := t.drv.Diff().SchemaDiff(existing, &desired)
+	require.NoError(t, err)
+	err = t.drv.Migrate().Exec(context.Background(), diff)
+	require.NoError(t, err)
+}
+
 
 func (t *liteTest) loadRealm() *schema.Realm {
 	r, err := t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
