@@ -4,63 +4,150 @@ title: Atlas
 slug: /
 sidebar_position: 1
 ---
-### Welcome to Atlas
 
-Atlas is a set of tools designed to help companies better work with their data. It includes several components that can
-be used individually but are designed to work very well together.
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
-Atlas is currently in preview mode, we are still getting set up.
 
-### Data Definition Language (DDL)
-The Atlas DDL is an HCL-based, dialect-agnostic, data definition language designed to describe diverse data topologies
-in organizations. For example,
-```hcl
-table "users" {
-  schema = "app"
+![Atlas CLI in Action](https://release.ariga.io/images/assets/atlas-intro.gif)
 
-  column "id" {
-    type = "uint"
-    null = false
-    default = 123
-  }
-  
-  column "email" {
-    type = "string"
-    null = false
-    unique = true
-  }
-  
-  primary_key {
-    columns = [
-      table.users.column.id,
-    ]
-  }
-}
+## Installation
+
+<Tabs
+defaultValue="apple-intel"
+values={[
+{label: 'Apple Intel', value: 'apple-intel'},
+{label: 'Apple Silicon', value: 'apple-silicon'},
+{label: 'Linux', value: 'linux'},
+{label: 'Windows', value: 'windows'},
+]}>
+<TabItem value="apple-intel">
+
+Download latest release.
+```shell
+curl -LO https://release.ariga.io/atlas/atlas-darwin-amd64-v0.1.1
 ```
 
-In addition, Atlas provides a set of packages and tools built on-top of
-them that allow users to inspect an existing database or codebase to
-produce Atlas DDL documents.
+Make the atlas binary executable.
+```shell
+chmod +x ./atlas-darwin-amd64-v0.1.1
+```
 
-### Atlas Data Management
+Move the atlas binary to a file location on your system PATH.
+```shell
+sudo mv ./atlas-darwin-amd64-v0.1.1 /usr/local/bin/atlas
+```
+```shell
+sudo chown root: /usr/local/bin/atlas
+```
 
-It is conceptually similar to  infrastructure-as-code projects (such as
-Terraform, etc.), but focused on the special challenges of managing
-stateful, always-online resources containing many organizations' most
-prized resources asset - their data.
+</TabItem>
+<TabItem value="apple-silicon">
 
-Today, most companies manage their database schemas using the migration
-features of their ORM libraries, very close to the application code.
-Atlas strives to change this approach and to help organizations push
-schema management(provisioning, change management, visibility, etc.)
-down to the infrastructure layer.
+Download latest release.
+```shell
+curl -LO https://release.ariga.io/atlas/atlas-darwin-arm64-v0.1.1
+```
 
-Atlas Data Management provides a set of Go packages that can
-provision resources within databases and safely manage the change
-(migration) of database schemas from one version to another.
+Make the atlas binary executable.
+```shell
+chmod +x ./atlas-darwin-arm64-v0.1.1
+```
 
-### Stability
+Move the atlas binary to a file location on your system PATH.
+```shell
+sudo mv ./atlas-darwin-arm64-v0.1.1 /usr/local/bin/atlas
+```
+```shell
+sudo chown root: /usr/local/bin/atlas
+```
 
-Atlas is under heavy development. We follow SemVer and so the APIs are subject to change until we
-reach v1.0.0. We commit to mention any breaking change on the relevant version’s release notes. The “master” branch is
-continuously tested and considered safe to use.
+</TabItem>
+<TabItem value="linux">
+
+Download latest release.
+```shell
+curl -LO https://release.ariga.io/atlas/atlas-linux-amd64-v0.1.1
+```
+
+Move the atlas binary to a file location on your system PATH.
+```shell
+sudo install -o root -g root -m 0755 ./atlas-linux-amd64-v0.1.1 /usr/local/bin/atlas
+```
+
+</TabItem>
+<TabItem value="windows">
+
+Download latest release.
+```shell
+curl -LO https://release.ariga.io/atlas/atlas-windows-amd64-v0.1.1.exe
+```
+Move the atlas binary to a file location on your system PATH.
+
+
+</TabItem>
+</Tabs>
+
+## Schema Inspection
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'PostgreSQL', value: 'postgres'},
+]}>
+<TabItem value="mysql">
+
+Inspect and save output to a schema file.
+```shell
+atlas schema inspect -d "mysql://root:pass@tcp(localhost:3306)/example" >> atlas.hcl
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+Inspect and save output to a schema file.
+```shell
+atlas schema inspect -d "postgres://root:pass@0.0.0.0:5432/example?sslmode=disable" >> atlas.hcl
+```
+
+:::caution
+
+sslmode disable is not recommended in prod.
+
+:::
+
+</TabItem>
+</Tabs>
+
+## Apply change to Schema
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'PostgreSQL', value: 'postgres'},
+]}>
+<TabItem value="mysql">
+
+```shell
+atlas schema apply -d "mysql://root:pass@tcp(localhost:3306)/example" -f atlas.hcl
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```shell
+atlas schema apply -d "postgres://root:pass@0.0.0.0:5432/example?sslmode=disable" -f atlas.hcl
+```
+
+:::caution
+
+sslmode disable is not recommended in prod.
+
+:::
+
+</TabItem>
+</Tabs>
+
+For more details and future plans read [Meet Atlas CLI](https://blog.ariga.io/meet-atlas-cli/).
