@@ -502,6 +502,19 @@ schema "test" {
 	})
 }
 
+func TestMySQL_CLI(t *testing.T) {
+	t.Run("Inspect", func(t *testing.T) {
+		myRun(t, func(t *myTest) {
+
+		})
+	})
+	t.Run("Apply", func(t *testing.T) {
+		myRun(t, func(t *myTest) {
+
+		})
+	})
+}
+
 func (t *myTest) applyHcl(spec string) {
 	realm := t.loadRealm()
 	var desired schema.Schema
