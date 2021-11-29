@@ -18,6 +18,21 @@ modify_table {
 		}
 	}
 }
+
+add_table {
+	table "products" {
+		column "sku" {
+			type = "string"
+		}
+		index "sku" {
+			unique = true
+		}
+	}
+}
+
+drop_table {
+	table = "products"
+}
 `
 	var test struct {
 		Changes []sqlspec.Change `spec:""`
@@ -36,4 +51,19 @@ modify_table {
 			},
 		},
 	}, test.Changes[0])
+	require.EqualValues(t, &sqlspec.AddTable{
+		Table: &sqlspec.Table{
+			Name: "products",
+			Columns: []*sqlspec.Column{
+				{Name: "sku", Type: "string"},
+			},
+			Indexes: []*sqlspec.Index{
+				{Name: "sku", Unique: true},
+			},
+			ForeignKeys: []*sqlspec.ForeignKey{},
+		},
+	}, test.Changes[1])
+	require.EqualValues(t, &sqlspec.DropTable{
+		Table: "products",
+	}, test.Changes[2])
 }

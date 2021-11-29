@@ -11,6 +11,18 @@ type (
 		change()
 	}
 
+	// AddTable is a specification for a schema.AddTable.
+	AddTable struct {
+		Change
+		Table *Table `spec:"table"`
+	}
+
+	// DropTable is a specification for a schema.DropTable.
+	DropTable struct {
+		Change
+		Table string `spec:"table"`
+	}
+
 	// ModifyTable is a specification for a schema.ModifyTable.
 	ModifyTable struct {
 		Change
@@ -28,4 +40,6 @@ type (
 func init() {
 	schemaspec.Register("modify_table", &ModifyTable{})
 	schemaspec.Register("add_column", &AddColumn{})
+	schemaspec.Register("add_table", &AddTable{})
+	schemaspec.Register("drop_table", &DropTable{})
 }
