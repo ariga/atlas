@@ -516,7 +516,7 @@ func TestMySQL_CLI(t *testing.T) {
 			stdout := bytes.NewBuffer(nil)
 			cmd.Stderr = stderr
 			cmd.Stdout = stdout
-			require.NoError(t, cmd.Run())
+			require.NoError(t, cmd.Run(), stderr.String())
 			require.Empty(t, stderr.String())
 			require.Equal(t, expected, stdout.String())
 		})
