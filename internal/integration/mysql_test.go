@@ -5,9 +5,11 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
+	"os/exec"
 	"strings"
 	"sync"
 	"testing"
@@ -15,7 +17,6 @@ import (
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
-
 	"entgo.io/ent/dialect"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
@@ -26,6 +27,7 @@ type myTest struct {
 	db      *sql.DB
 	drv     *mysql.Driver
 	version string
+	port    int
 }
 
 var myTests struct {
@@ -41,12 +43,12 @@ func myRun(t *testing.T, fn func(*myTest)) {
 			require.NoError(t, err)
 			drv, err := mysql.Open(db)
 			require.NoError(t, err)
-			myTests.drivers[version] = &myTest{db: db, drv: drv, version: version}
+			myTests.drivers[version] = &myTest{db: db, drv: drv, version: version, port: port}
 		}
 	})
 	for version, tt := range myTests.drivers {
 		t.Run(version, func(t *testing.T) {
-			tt := &myTest{T: t, db: tt.db, drv: tt.drv, version: version}
+			tt := &myTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port}
 			fn(tt)
 		})
 	}
@@ -500,6 +502,35 @@ schema "test" {
 `)
 		require.Empty(t, t.realm().Schemas[0].Tables)
 	})
+}
+
+func TestMySQL_CLI(t *testing.T) {
+	// Required to have a clean "stderr" while running first time.
+	c := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas")
+	require.NoError(t, c.Run())
+	t.Run("Inspect", func(t *testing.T) {
+		myRun(t, func(t *myTest) {
+			cmd := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas",
+				"schema",
+				"inspect",
+				"-d",
+				t.dsn(),
+			)
+			stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+			cmd.Stderr = stderr
+			cmd.Stdout = stdout
+			require.NoError(t, cmd.Run(), stderr.String())
+			var actual schema.Schema
+			err := mysql.UnmarshalSpec(stdout.Bytes(), schemahcl.Unmarshal, &actual)
+			require.NoError(t, err)
+			require.Empty(t, stderr.String())
+			require.Equal(t, schema.Schema{Name: "test"}, actual)
+		})
+	})
+}
+
+func (t *myTest) dsn() string {
+	return fmt.Sprintf("mysql://root:pass@tcp(localhost:%d)/test", t.port)
 }
 
 func (t *myTest) applyHcl(spec string) {
