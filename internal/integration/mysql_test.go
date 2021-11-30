@@ -510,6 +510,22 @@ func TestMySQL_CLI(t *testing.T) {
 	require.NoError(t, c.Run())
 	t.Run("Inspect", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
+			h := `
+			schema "test" {
+			}
+			table "users" {
+				schema = "test"
+				column "id" {
+					type = "int"
+				}
+				primary_key {
+					columns = [table.users.column.id]
+				}
+			}`
+			var expected schema.Schema
+			err := mysql.UnmarshalSpec([]byte(h), schemahcl.Unmarshal, &expected)
+			require.NoError(t, err)
+			t.applyHcl(h)
 			cmd := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas",
 				"schema",
 				"inspect",
@@ -521,10 +537,10 @@ func TestMySQL_CLI(t *testing.T) {
 			cmd.Stdout = stdout
 			require.NoError(t, cmd.Run(), stderr.String())
 			var actual schema.Schema
-			err := mysql.UnmarshalSpec(stdout.Bytes(), schemahcl.Unmarshal, &actual)
+			err = mysql.UnmarshalSpec(stdout.Bytes(), schemahcl.Unmarshal, &actual)
 			require.NoError(t, err)
 			require.Empty(t, stderr.String())
-			require.Equal(t, schema.Schema{Name: "test"}, actual)
+			require.Equal(t, expected, actual)
 		})
 	})
 }
