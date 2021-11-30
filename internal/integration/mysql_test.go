@@ -509,9 +509,7 @@ func TestMySQL_CLI(t *testing.T) {
 	t.Run("Inspect", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			defer os.RemoveAll("atlas")
-			c := exec.Command("go", "get", "-d", "ariga.io/atlas/cmd/atlas")
-			require.NoError(t, c.Run())
-			cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+			cmd := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas",
 				"schema",
 				"inspect",
 				"-d",
