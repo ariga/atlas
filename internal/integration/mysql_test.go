@@ -9,6 +9,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -508,8 +511,9 @@ func TestMySQL_CLI(t *testing.T) {
 	// Required to have a clean "stderr" while running first time.
 	c := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas")
 	require.NoError(t, c.Run())
-	t.Run("Inspect", func(t *testing.T) {
+	t.Run("SchemaInspect", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
+			t.dropTables("users")
 			h := `
 			schema "test" {
 			}
@@ -541,6 +545,48 @@ func TestMySQL_CLI(t *testing.T) {
 			require.NoError(t, err)
 			require.Empty(t, stderr.String())
 			require.Equal(t, expected, actual)
+		})
+	})
+	t.Run("SchemaApply", func(t *testing.T) {
+		myRun(t, func(t *myTest) {
+			t.dropTables("users")
+			h := `
+			schema "test" {
+			}
+			table "users" {
+				schema = "test"
+				column "id" {
+					type = "int"
+				}
+				primary_key {
+					columns = [table.users.column.id]
+				}
+			}`
+			f := "atlas.hcl"
+			err := ioutil.WriteFile(f, []byte(h), 0644)
+			require.NoError(t, err)
+			defer os.Remove(f)
+			cmd := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas",
+				"schema",
+				"apply",
+				"-d",
+				t.dsn(),
+				"-f",
+				f,
+			)
+			stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+			cmd.Stderr = stderr
+			cmd.Stdout = stdout
+			stdin, err := cmd.StdinPipe()
+			require.NoError(t, err)
+			defer stdin.Close()
+			_, err = io.WriteString(stdin, "\n")
+			require.NoError(t, err)
+			require.NoError(t, cmd.Run(), stderr.String(), stdout.String())
+			require.Empty(t, stderr.String(), stderr.String())
+			require.Containsf(t, stdout.String(), "-- Planned", "")
+			u := t.users()
+			require.NotNil(t, u)
 		})
 	})
 }
