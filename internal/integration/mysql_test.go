@@ -584,7 +584,7 @@ func TestMySQL_CLI(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run(), stderr.String(), stdout.String())
 			require.Empty(t, stderr.String(), stderr.String())
-			require.Containsf(t, stdout.String(), "-- Planned", "")
+			require.Containsf(t, stdout.String(), "-- Planned")
 			u := t.users()
 			require.NotNil(t, u)
 		})
