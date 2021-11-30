@@ -91,9 +91,9 @@ func (r *Resource) As(target interface{}) error {
 	var seenName bool
 	v := reflect.ValueOf(target).Elem()
 	for _, ft := range specFields(target) {
-		field := v.FieldByName(ft.field)
+		field := v.FieldByName(ft.Name)
 		switch {
-		case ft.isName:
+		case ft.isName():
 			if seenName {
 				return errors.New("schemaspec: extension must have only one isName field")
 			}
@@ -133,7 +133,7 @@ func (r *Resource) As(target interface{}) error {
 				delete(existingChildren, i)
 			}
 		case ft.isInterface():
-			impls, err := extensions.implementers(ft.typ)
+			impls, err := extensions.implementers(ft.Type)
 			if err != nil {
 				return err
 			}
@@ -142,7 +142,7 @@ func (r *Resource) As(target interface{}) error {
 				continue
 			}
 			if len(children) > 1 {
-				return fmt.Errorf("more than one blocks implement %q", ft.typ)
+				return fmt.Errorf("more than one blocks implement %q", ft.Type)
 			}
 			c := children[0]
 			typ, ok := extensions[c.Type]
@@ -313,9 +313,9 @@ func (r *Resource) Scan(ext interface{}) error {
 	}
 	v := reflect.ValueOf(ext).Elem()
 	for _, ft := range specFields(ext) {
-		field := v.FieldByName(ft.field)
+		field := v.FieldByName(ft.Name)
 		switch {
-		case ft.isName:
+		case ft.isName():
 			if field.Kind() != reflect.String {
 				return errors.New("schemaspec: extension name field must be string")
 			}
@@ -438,38 +438,42 @@ func scanSliceAttr(key string, r *Resource, field reflect.Value) error {
 
 // specFields uses reflection to find struct fields that are tagged with "spec"
 // and returns a list of mappings from the tag to the field name.
-func specFields(ext interface{}) []fieldTag {
+func specFields(ext interface{}) []fieldDesc {
 	t := reflect.TypeOf(ext)
-	var fields []fieldTag
+	var fields []fieldDesc
 	for i := 0; i < t.Elem().NumField(); i++ {
 		f := t.Elem().Field(i)
 		lookup, ok := f.Tag.Lookup("spec")
 		if !ok {
 			continue
 		}
-		parts := strings.Split(lookup, ",")
-		fields = append(fields, fieldTag{
-			field:  f.Name,
-			tag:    lookup,
-			isName: len(parts) > 1 && parts[1] == "name",
-			typ:    f.Type,
+		fields = append(fields, fieldDesc{
+			tag:         lookup,
+			StructField: f,
 		})
 	}
 	return fields
 }
 
-type fieldTag struct {
-	field, tag string
-	isName     bool
-	typ        reflect.Type
+type fieldDesc struct {
+	tag string
+	reflect.StructField
 }
 
-func (f fieldTag) isInterfaceSlice() bool {
-	return f.typ.Kind() == reflect.Slice && f.typ.Elem().Kind() == reflect.Interface
+func (f fieldDesc) isName() bool {
+	if f.tag == "" {
+		return false
+	}
+	parts := strings.Split(f.tag, ",")
+	return len(parts) > 1 && parts[1] == "name"
 }
 
-func (f fieldTag) isInterface() bool {
-	return f.typ.Kind() == reflect.Interface
+func (f fieldDesc) isInterfaceSlice() bool {
+	return f.Type.Kind() == reflect.Slice && f.Type.Elem().Kind() == reflect.Interface
+}
+
+func (f fieldDesc) isInterface() bool {
+	return f.Type.Kind() == reflect.Interface
 }
 
 func childrenOfType(r *Resource, types ...string) []*Resource {
