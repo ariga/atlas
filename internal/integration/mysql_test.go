@@ -9,7 +9,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -506,8 +505,7 @@ schema "test" {
 }
 
 func TestMySQL_CLI(t *testing.T) {
-	defer os.RemoveAll("atlas")
-	// Required to have a clean "stdout" while running first time.
+	// Required to have a clean "stderr" while running first time.
 	c := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas")
 	require.NoError(t, c.Run())
 	t.Run("Inspect", func(t *testing.T) {
@@ -518,9 +516,7 @@ func TestMySQL_CLI(t *testing.T) {
 				"-d",
 				t.dsn(),
 			)
-			var (
-				stdout, stderr = bytes.NewBuffer(nil), bytes.NewBuffer(nil)
-			)
+			stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
 			cmd.Stderr = stderr
 			cmd.Stdout = stdout
 			require.NoError(t, cmd.Run(), stderr.String())
