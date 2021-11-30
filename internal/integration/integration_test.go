@@ -1,11 +1,18 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"io"
+	"io/ioutil"
+	"os"
+	"os/exec"
 	"testing"
 	"time"
 
+	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/schema"
 
 	entsql "entgo.io/ent/dialect/sql"
@@ -25,6 +32,7 @@ type T interface {
 	dropTables(...string)
 	migrate(...schema.Change)
 	diff(*schema.Table, *schema.Table) []schema.Change
+	applyHcl(spec string)
 }
 
 func testAddDrop(t T) {
@@ -89,6 +97,64 @@ func testEntIntegration(t T, dialect string, db *sql.DB) {
 		changes[i] = &schema.DropTable{T: t}
 	}
 	t.migrate(changes...)
+}
+
+func testCLISchemaInspect(t T, h string, dsn string, unmarshalSpec func(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}) error) {
+	// Required to have a clean "stderr" while running first time.
+	c := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas")
+	require.NoError(t, c.Run())
+	t.dropTables("users")
+	var expected schema.Schema
+	err := unmarshalSpec([]byte(h), schemahcl.Unmarshal, &expected)
+	require.NoError(t, err)
+	t.applyHcl(h)
+	cmd := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas",
+		"schema",
+		"inspect",
+		"-d",
+		dsn,
+	)
+	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	require.NoError(t, cmd.Run(), stderr.String())
+	var actual schema.Schema
+	err = unmarshalSpec(stdout.Bytes(), schemahcl.Unmarshal, &actual)
+	require.NoError(t, err)
+	require.Empty(t, stderr.String())
+	require.Equal(t, expected, actual)
+}
+
+func testCLISchemaApply(t T, h string, dsn string) {
+	// Required to have a clean "stderr" while running first time.
+	c := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas")
+	require.NoError(t, c.Run())
+	t.dropTables("users")
+	f := "atlas.hcl"
+	err := ioutil.WriteFile(f, []byte(h), 0644)
+	require.NoError(t, err)
+	defer os.Remove(f)
+	cmd := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas",
+		"schema",
+		"apply",
+		"-d",
+		dsn,
+		"-f",
+		f,
+	)
+	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	stdin, err := cmd.StdinPipe()
+	require.NoError(t, err)
+	defer stdin.Close()
+	_, err = io.WriteString(stdin, "\n")
+	require.NoError(t, err)
+	require.NoError(t, cmd.Run(), stderr.String(), stdout.String())
+	require.Empty(t, stderr.String(), stderr.String())
+	require.Contains(t, stdout.String(), "-- Planned")
+	u := t.users()
+	require.NotNil(t, u)
 }
 
 func ensureNoChange(t T, tables ...*schema.Table) {

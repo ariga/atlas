@@ -26,6 +26,7 @@ type pgTest struct {
 	db      *sql.DB
 	drv     *postgres.Driver
 	version string
+	port    int
 }
 
 var pgTests struct {
@@ -41,12 +42,12 @@ func pgRun(t *testing.T, fn func(*pgTest)) {
 			require.NoError(t, err)
 			drv, err := postgres.Open(db)
 			require.NoError(t, err)
-			pgTests.drivers[version] = &pgTest{db: db, drv: drv, version: version}
+			pgTests.drivers[version] = &pgTest{db: db, drv: drv, version: version, port: port}
 		}
 	})
 	for version, tt := range pgTests.drivers {
 		t.Run(version, func(t *testing.T) {
-			tt := &pgTest{T: t, db: tt.db, drv: tt.drv, version: version}
+			tt := &pgTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port}
 			fn(tt)
 		})
 	}
@@ -414,11 +415,40 @@ table "posts" {
 		column, ok = posts.Column("author_id")
 		require.Equal(t, "author_id", column.Name)
 		t.applyHcl(`
-schema "test" {
+schema "public" {
 }
 `)
 		require.Empty(t, t.realm().Schemas[0].Tables)
 	})
+}
+
+func TestPostgres_CLI(t *testing.T) {
+	h := `
+			schema "public" {
+			}
+			table "users" {
+				schema = "public"
+				column "id" {
+					type = "int"
+				}
+				primary_key {
+					columns = [table.users.column.id]
+				}
+			}`
+	t.Run("SchemaInspect", func(t *testing.T) {
+		pgRun(t, func(t *pgTest) {
+			testCLISchemaInspect(t, h, t.dsn(), postgres.UnmarshalSpec)
+		})
+	})
+	t.Run("SchemaApply", func(t *testing.T) {
+		pgRun(t, func(t *pgTest) {
+			testCLISchemaApply(t, h, t.dsn())
+		})
+	})
+}
+
+func (t *pgTest) dsn() string {
+	return fmt.Sprintf("postgres://postgres:pass@localhost:%d/test?sslmode=disable", t.port)
 }
 
 func (t *pgTest) applyHcl(spec string) {
