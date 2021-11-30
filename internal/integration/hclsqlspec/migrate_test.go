@@ -10,8 +10,7 @@ import (
 
 func TestMigrate(t *testing.T) {
 	f := `
-modify_table {
-	table = "users"
+modify_table "users" {
 	add_column {
 		column "id" {
 			type = "int"
@@ -24,15 +23,13 @@ add_table {
 		column "sku" {
 			type = "string"
 		}
-		index "sku" {
+		index "xyz" {
 			unique = true
 		}
 	}
 }
 
-drop_table {
-	table = "products"
-}
+drop_table "products" {}
 `
 	var test struct {
 		Changes []sqlspec.Change `spec:""`
@@ -58,7 +55,7 @@ drop_table {
 				{Name: "sku", Type: "string"},
 			},
 			Indexes: []*sqlspec.Index{
-				{Name: "sku", Unique: true},
+				{Name: "xyz", Unique: true},
 			},
 			ForeignKeys: []*sqlspec.ForeignKey{},
 		},

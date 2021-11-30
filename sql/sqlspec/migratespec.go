@@ -20,13 +20,13 @@ type (
 	// DropTable is a specification for a schema.DropTable.
 	DropTable struct {
 		Change
-		Table string `spec:"table"`
+		Table string `spec:",name"`
 	}
 
 	// ModifyTable is a specification for a schema.ModifyTable.
 	ModifyTable struct {
 		Change
-		Table   string   `spec:"table"`
+		Table   string   `spec:",name"`
 		Changes []Change `spec:""`
 	}
 
