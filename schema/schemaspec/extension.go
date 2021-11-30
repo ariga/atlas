@@ -91,7 +91,7 @@ func (r *Resource) As(target interface{}) error {
 	var seenName bool
 	v := reflect.ValueOf(target).Elem()
 	for _, ft := range specFields(target) {
-		field := v.FieldByName(ft.fld.Name)
+		field := v.FieldByName(ft.Name)
 		switch {
 		case ft.isName():
 			if seenName {
@@ -133,7 +133,7 @@ func (r *Resource) As(target interface{}) error {
 				delete(existingChildren, i)
 			}
 		case ft.isInterface():
-			impls, err := extensions.implementers(ft.fld.Type)
+			impls, err := extensions.implementers(ft.Type)
 			if err != nil {
 				return err
 			}
@@ -142,7 +142,7 @@ func (r *Resource) As(target interface{}) error {
 				continue
 			}
 			if len(children) > 1 {
-				return fmt.Errorf("more than one blocks implement %q", ft.fld.Type)
+				return fmt.Errorf("more than one blocks implement %q", ft.Type)
 			}
 			c := children[0]
 			typ, ok := extensions[c.Type]
@@ -313,7 +313,7 @@ func (r *Resource) Scan(ext interface{}) error {
 	}
 	v := reflect.ValueOf(ext).Elem()
 	for _, ft := range specFields(ext) {
-		field := v.FieldByName(ft.fld.Name)
+		field := v.FieldByName(ft.Name)
 		switch {
 		case ft.isName():
 			if field.Kind() != reflect.String {
@@ -448,8 +448,8 @@ func specFields(ext interface{}) []fieldDesc {
 			continue
 		}
 		fields = append(fields, fieldDesc{
-			tag: lookup,
-			fld: f,
+			tag:         lookup,
+			StructField: f,
 		})
 	}
 	return fields
@@ -457,7 +457,7 @@ func specFields(ext interface{}) []fieldDesc {
 
 type fieldDesc struct {
 	tag string
-	fld reflect.StructField
+	reflect.StructField
 }
 
 func (f fieldDesc) isName() bool {
@@ -469,11 +469,11 @@ func (f fieldDesc) isName() bool {
 }
 
 func (f fieldDesc) isInterfaceSlice() bool {
-	return f.fld.Type.Kind() == reflect.Slice && f.fld.Type.Elem().Kind() == reflect.Interface
+	return f.Type.Kind() == reflect.Slice && f.Type.Elem().Kind() == reflect.Interface
 }
 
 func (f fieldDesc) isInterface() bool {
-	return f.fld.Type.Kind() == reflect.Interface
+	return f.Type.Kind() == reflect.Interface
 }
 
 func childrenOfType(r *Resource, types ...string) []*Resource {
