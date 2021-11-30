@@ -161,13 +161,22 @@ func TestDriver_InspectTable(t *testing.T) {
 			name: "table fks",
 			before: func(m mock) {
 				m.systemVars("3.36.0")
-				m.tableExists("users", true, "CREATE TABLE users(id INTEGER PRIMARY KEY)")
+				m.tableExists("users", true, `
+CREATE TABLE users(
+	id INTEGER PRIMARY KEY,
+	c1 int,
+	c2 integer NOT NULL CONSTRAINT c2_fk REFERENCES users (c1) ON DELETE SET NULL,
+	c3 integer NOT NULL REFERENCES users (c1) ON DELETE SET NULL,
+	CONSTRAINT "c1_c2_fk" FOREIGN KEY (c1, c2) REFERENCES t2 (id, c1)
+)
+`)
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, "users"))).
 					WillReturnRows(sqltest.Rows(`
  name |   type       | nullable | dflt_value  | primary 
 ------+--------------+----------+ ------------+----------
  c1   | int           |  1      |             |  0
  c2   | integer       |  0      |             |  0
+ c3   | integer       |  0      |             |  0
 `))
 				m.noIndexes("users")
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(fksQuery, "users"))).
@@ -182,15 +191,16 @@ func TestDriver_InspectTable(t *testing.T) {
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
 				fks := []*schema.ForeignKey{
-					{Symbol: "0", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: &schema.Table{Name: "t2", Schema: &schema.Schema{Name: "main"}}, RefColumns: []*schema.Column{{Name: "id"}, {Name: "c1"}}},
-					{Symbol: "1", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: t},
+					{Symbol: "c1_c2_fk", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: &schema.Table{Name: "t2", Schema: &schema.Schema{Name: "main"}}, RefColumns: []*schema.Column{{Name: "id"}, {Name: "c1"}}},
+					{Symbol: "c2_fk", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: t},
 				}
 				columns := []*schema.Column{
 					{Name: "c1", Type: &schema.ColumnType{Null: true, Type: &schema.IntegerType{T: "int"}, Raw: "int"}, ForeignKeys: fks[:1]},
 					{Name: "c2", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer"}, ForeignKeys: fks},
+					{Name: "c3", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer"}},
 				}
-				fks[0].Columns = columns
-				fks[1].Columns = columns[1:]
+				fks[0].Columns = columns[:2]
+				fks[1].Columns = columns[1:2]
 				fks[1].RefColumns = columns[:1]
 				require.Equal(t.Columns, columns)
 				require.Equal(t.ForeignKeys, fks)
@@ -207,6 +217,101 @@ func TestDriver_InspectTable(t *testing.T) {
 			table, err := drv.InspectTable(context.Background(), "users", tt.opts)
 			tt.expect(require.New(t), table, err)
 		})
+	}
+}
+
+func TestRegex_TableConstraint(t *testing.T) {
+	tests := []struct {
+		input   string
+		matches []string
+	}{
+		{
+			input:   `CREATE TABLE pets (id int NOT NULL, owner_id int, CONSTRAINT "owner_fk" FOREIGN KEY(owner_id) REFERENCES users(id))`,
+			matches: []string{"owner_fk", "owner_id", "users", "id"},
+		},
+		{
+			input:   `CREATE TABLE pets (id int NOT NULL, owner_id int, CONSTRAINT "owner_fk" FOREIGN KEY (owner_id) REFERENCES users(id))`,
+			matches: []string{"owner_fk", "owner_id", "users", "id"},
+		},
+		{
+			input: `
+CREATE TABLE pets (
+id int NOT NULL,
+owner_id int,
+CONSTRAINT owner_fk
+	FOREIGN KEY ("owner_id") REFERENCES "users" (id)
+)`,
+			matches: []string{"owner_fk", `"owner_id"`, "users", "id"},
+		},
+		{
+			input: `
+CREATE TABLE pets (
+id int NOT NULL,
+c int,
+d int,
+CONSTRAINT "c_d_fk" FOREIGN KEY (c, d) REFERENCES "users" (a, b)
+)`,
+			matches: []string{"c_d_fk", "c, d", "users", "a, b"},
+		},
+		{
+			input:   `CREATE TABLE pets (id int NOT NULL,c int,d int,CONSTRAINT "c_d_fk" FOREIGN KEY (c, "d") REFERENCES "users" (a, "b"))`,
+			matches: []string{"c_d_fk", `c, "d"`, "users", `a, "b"`},
+		},
+		{
+			input: `CREATE TABLE pets (id int NOT NULL,c int,d int,CONSTRAINT FOREIGN KEY (c, "d") REFERENCES "users" (a, "b"))`,
+		},
+		{
+			input: `CREATE TABLE pets (id int NOT NULL,c int,d int,CONSTRAINT name FOREIGN KEY c REFERENCES "users" (a, "b"))`,
+		},
+		{
+			input: `CREATE TABLE pets (id int NOT NULL,c int,d int,CONSTRAINT name FOREIGN KEY c REFERENCES (a, "b"))`,
+		},
+	}
+	for _, tt := range tests {
+		m := reConstT.FindStringSubmatch(tt.input)
+		require.Equal(t, len(m) != 0, len(tt.matches) != 0)
+		if len(m) > 0 {
+			require.Equal(t, tt.matches, m[1:])
+		}
+	}
+}
+
+func TestRegex_ColumnConstraint(t *testing.T) {
+	tests := []struct {
+		input   string
+		matches []string
+	}{
+		{
+			input:   `CREATE TABLE pets (id int NOT NULL, owner_id int CONSTRAINT "owner_fk" REFERENCES users(id))`,
+			matches: []string{"owner_id", "owner_fk", "users", "id"},
+		},
+		{
+			input:   `CREATE TABLE pets (id int NOT NULL, owner_id int CONSTRAINT "owner_fk" REFERENCES users(id))`,
+			matches: []string{"owner_id", "owner_fk", "users", "id"},
+		},
+		{
+			input: `
+CREATE TABLE pets (
+	id int NOT NULL,
+	c int REFERENCES users(id),
+	d int CONSTRAINT "dfk" REFERENCES users(id)
+)`,
+			matches: []string{"d", "dfk", "users", "id"},
+		},
+		{
+			input: `
+CREATE TABLE t1 (
+	c int REFERENCES users(id),
+	d text CONSTRAINT "dfk" CHECK (d <> '') REFERENCES t2(d)
+)`,
+		},
+	}
+	for _, tt := range tests {
+		m := reConstC.FindStringSubmatch(tt.input)
+		require.Equal(t, len(m) != 0, len(tt.matches) != 0)
+		if len(m) > 0 {
+			require.Equal(t, tt.matches, m[1:])
+		}
 	}
 }
 

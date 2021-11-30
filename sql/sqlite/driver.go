@@ -350,7 +350,7 @@ func (d *Driver) fks(ctx context.Context, t *schema.Table) error {
 	if err := d.addFKs(t, rows); err != nil {
 		return fmt.Errorf("sqlite: scan %q foreign-keys: %w", t.Name, err)
 	}
-	return nil
+	return fillConstName(t)
 }
 
 func (d *Driver) addFKs(t *schema.Table, rows *sql.Rows) error {
@@ -564,6 +564,77 @@ func autoinc(t *schema.Table) {
 	// Annotate table elements with "AUTOINCREMENT".
 	t.PrimaryKey.Attrs = append(t.PrimaryKey.Attrs, AutoIncrement{})
 	t.PrimaryKey.Parts[0].C.Attrs = append(t.PrimaryKey.Parts[0].C.Attrs, AutoIncrement{})
+}
+
+// The following regexes extract named foreign-key constraints defined in the table-constraints or inlined
+// as column-constraints. Note, we assume the SQL statements are valid as they are returned by SQLite.
+var (
+	reConstC = regexp.MustCompile("(?i)(?:[(,]\\s*)[\"`]*(\\w+)[\"`]*[^,]*\\s+CONSTRAINT\\s+[\"`]*(\\w+)[\"`]*\\s+REFERENCES\\s+[\"`]*(\\w+)[\"`]*\\s*\\(([,\"` \\w]+)\\)")
+	reConstT = regexp.MustCompile("(?i)CONSTRAINT\\s+[\"`]*(\\w+)[\"`]*\\s+FOREIGN\\s+KEY\\s*\\(([,\"` \\w]+)\\)\\s+REFERENCES\\s+[\"`]*(\\w+)[\"`]*\\s*\\(([,\"` \\w]+)\\)")
+)
+
+// fillConstName fills foreign-key constrain names from CREATE TABLE statement.
+func fillConstName(t *schema.Table) error {
+	var c CreateStmt
+	if !sqlx.Has(t.Attrs, &c) {
+		return fmt.Errorf("missing CREATE statment for table: %q", t.Name)
+	}
+	// Loop over table constraints.
+	for _, m := range reConstT.FindAllStringSubmatch(c.S, -1) {
+		if len(m) != 5 {
+			return fmt.Errorf("unexpected number of matches for a table constraint: %q", m)
+		}
+		// Pattern matches "constraint_name", "columns", "ref_table" and "ref_columns".
+		for _, fk := range t.ForeignKeys {
+			// Found a foreign-key match for the constraint.
+			if matchFK(fk, columns(m[2]), m[3], columns(m[4])) {
+				fk.Symbol = m[1]
+				break
+			}
+		}
+	}
+	// Loop over inlined column constraints.
+	for _, m := range reConstC.FindAllStringSubmatch(c.S, -1) {
+		if len(m) != 5 {
+			return fmt.Errorf("unexpected number of matches for a column constraint: %q", m)
+		}
+		// Pattern matches "column", "constraint_name", "ref_table" and "ref_columns".
+		for _, fk := range t.ForeignKeys {
+			// Found a foreign-key match for the constraint.
+			if matchFK(fk, columns(m[1]), m[3], columns(m[4])) {
+				fk.Symbol = m[2]
+				break
+			}
+		}
+	}
+	return nil
+}
+
+// columns from the matched regex above.
+func columns(s string) []string {
+	names := strings.Split(s, ",")
+	for i := range names {
+		names[i] = strings.Trim(strings.TrimSpace(names[i]), "`\"")
+	}
+	return names
+}
+
+// matchFK reports if the foreign-key matches the given attributes.
+func matchFK(fk *schema.ForeignKey, columns []string, refTable string, refColumns []string) bool {
+	if len(fk.Columns) != len(columns) || fk.RefTable.Name != refTable || len(fk.RefColumns) != len(refColumns) {
+		return false
+	}
+	for i := range columns {
+		if fk.Columns[i].Name != columns[i] {
+			return false
+		}
+	}
+	for i := range refColumns {
+		if fk.RefColumns[i].Name != refColumns[i] {
+			return false
+		}
+	}
+	return true
 }
 
 const (
