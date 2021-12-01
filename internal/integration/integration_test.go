@@ -99,6 +99,20 @@ func testEntIntegration(t T, dialect string, db *sql.DB) {
 	t.migrate(changes...)
 }
 
+func testHCLIntegration(t T, full string, empty string) {
+	t.applyHcl(full)
+	users := t.loadUsers()
+	posts := t.loadPosts()
+	t.dropTables(users.Name, posts.Name)
+	column, ok := users.Column("id")
+	require.True(t, ok, "expected id column")
+	require.Equal(t, "users", users.Name)
+	column, ok = posts.Column("author_id")
+	require.Equal(t, "author_id", column.Name)
+	t.applyHcl(empty)
+	require.Empty(t, t.realm().Schemas[0].Tables)
+}
+
 func testCLISchemaInspect(t T, h string, dsn string, unmarshalSpec func(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}) error) {
 	// Required to have a clean "stderr" while running first time.
 	c := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas")
