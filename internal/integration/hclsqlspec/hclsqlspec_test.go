@@ -17,7 +17,7 @@ schema "hi" {
 }
 
 table "users" {
-	schema = "hi"
+	schema = schema.hi
 	
 	column "id" {
 		type = "uint"
@@ -60,7 +60,7 @@ table "users" {
 }
 
 table "accounts" {
-	schema = "hi"
+	schema = schema.hi
 	
 	column "id" {
 		type = "uint"
@@ -110,8 +110,8 @@ table "accounts" {
 		},
 		Tables: []*sqlspec.Table{
 			{
-				Name:       "users",
-				SchemaName: "hi",
+				Name:   "users",
+				Schema: &schemaspec.Ref{V: "$schema.hi"},
 				Columns: []*sqlspec.Column{
 					{
 						Name:    "id",
@@ -186,8 +186,8 @@ table "accounts" {
 				},
 			},
 			{
-				Name:       "accounts",
-				SchemaName: "hi",
+				Name:   "accounts",
+				Schema: &schemaspec.Ref{V: "$schema.hi"},
 				Columns: []*sqlspec.Column{
 					{
 						Name:    "id",
@@ -292,7 +292,7 @@ schema "hi" {
 }
 
 table "users" {
-	schema = "hi"
+	schema = schema.hi
 	column "id" {
 		type = "uint"
 		null = false
@@ -301,7 +301,7 @@ table "users" {
 }
 
 table "accounts" {
-	schema = "hi"
+	schema = schema.hi
 	column "id" {
 		type = "string"
 	}

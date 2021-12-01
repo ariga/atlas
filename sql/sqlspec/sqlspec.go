@@ -15,12 +15,12 @@ type (
 
 	// Table holds a specification for an SQL table.
 	Table struct {
-		Name        string        `spec:",name"`
-		SchemaName  string        `spec:"schema"`
-		Columns     []*Column     `spec:"column"`
-		PrimaryKey  *PrimaryKey   `spec:"primary_key"`
-		ForeignKeys []*ForeignKey `spec:"foreign_key"`
-		Indexes     []*Index      `spec:"index"`
+		Name        string          `spec:",name"`
+		Schema      *schemaspec.Ref `spec:"schema"`
+		Columns     []*Column       `spec:"column"`
+		PrimaryKey  *PrimaryKey     `spec:"primary_key"`
+		ForeignKeys []*ForeignKey   `spec:"foreign_key"`
+		Indexes     []*Index        `spec:"index"`
 		schemaspec.DefaultExtension
 	}
 

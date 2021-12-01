@@ -16,7 +16,7 @@ func TestDiffPrint(t *testing.T) {
 schema "default" {
 }
 table "users" {
-	schema = "default"
+	schema = schema.default
 	column "id" {
 		type = "int"
 	}
@@ -26,7 +26,7 @@ table "users" {
 schema "default" {
 }
 table "users" {
-	schema = "default"
+	schema = schema.default
 	column "id" {
 		type = "string"
 	}
@@ -36,7 +36,7 @@ table "users" {
 }
 
 table "groups" {
-	schema = "default"
+	schema = schema.default
 	column "id" {
 		type = "int"
 	}
