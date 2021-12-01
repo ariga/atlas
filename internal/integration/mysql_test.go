@@ -499,7 +499,7 @@ func TestMySQL_CLI(t *testing.T) {
 			schema "test" {
 			}
 			table "users" {
-				schema = "public"
+				schema = schema.test
 				column "id" {
 					type = "int"
 				}
