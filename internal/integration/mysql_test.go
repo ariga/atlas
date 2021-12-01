@@ -457,8 +457,7 @@ func TestMySQL_Ent(t *testing.T) {
 }
 
 func TestMySQL_HCL(t *testing.T) {
-	myRun(t, func(t *myTest) {
-		t.applyHcl(`
+	full := `
 schema "test" {
 }
 table "users" {
@@ -490,20 +489,13 @@ table "posts" {
 		columns = [table.users.column.id]
 	}
 }
-`)
-		users := t.loadUsers()
-		posts := t.loadPosts()
-		t.dropTables(users.Name, posts.Name)
-		column, ok := users.Column("id")
-		require.True(t, ok, "expected id column")
-		require.Equal(t, "users", users.Name)
-		column, ok = posts.Column("author_id")
-		require.Equal(t, "author_id", column.Name)
-		t.applyHcl(`
+`
+	empty := `
 schema "test" {
 }
-`)
-		require.Empty(t, t.realm().Schemas[0].Tables)
+`
+	myRun(t, func(t *myTest) {
+		testHCLIntegration(t, full, empty)
 	})
 }
 

@@ -368,8 +368,7 @@ func TestPostgres_Ent(t *testing.T) {
 }
 
 func TestPostgres_HCL(t *testing.T) {
-	pgRun(t, func(t *pgTest) {
-		t.applyHcl(`
+	full := `
 schema "public" {
 }
 table "users" {
@@ -404,20 +403,13 @@ table "posts" {
 		columns = [table.users.column.id]
 	}
 }
-`)
-		users := t.loadUsers()
-		posts := t.loadPosts()
-		t.dropTables(users.Name, posts.Name)
-		column, ok := users.Column("id")
-		require.True(t, ok, "expected id column")
-		require.Equal(t, "users", users.Name)
-		column, ok = posts.Column("author_id")
-		require.Equal(t, "author_id", column.Name)
-		t.applyHcl(`
-schema "test" {
+`
+	empty := `
+schema "public" {
 }
-`)
-		require.Empty(t, t.realm().Schemas[0].Tables)
+`
+	pgRun(t, func(t *pgTest) {
+		testHCLIntegration(t, full, empty)
 	})
 }
 

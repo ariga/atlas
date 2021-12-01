@@ -25,6 +25,7 @@ type T interface {
 	dropTables(...string)
 	migrate(...schema.Change)
 	diff(*schema.Table, *schema.Table) []schema.Change
+	applyHcl(spec string)
 }
 
 func testAddDrop(t T) {
@@ -89,6 +90,20 @@ func testEntIntegration(t T, dialect string, db *sql.DB) {
 		changes[i] = &schema.DropTable{T: t}
 	}
 	t.migrate(changes...)
+}
+
+func testHCLIntegration(t T, full string, empty string) {
+	t.applyHcl(full)
+	users := t.loadUsers()
+	posts := t.loadPosts()
+	t.dropTables(users.Name, posts.Name)
+	column, ok := users.Column("id")
+	require.True(t, ok, "expected id column")
+	require.Equal(t, "users", users.Name)
+	column, ok = posts.Column("author_id")
+	require.Equal(t, "author_id", column.Name)
+	t.applyHcl(empty)
+	require.Empty(t, t.realm().Schemas[0].Tables)
 }
 
 func ensureNoChange(t T, tables ...*schema.Table) {

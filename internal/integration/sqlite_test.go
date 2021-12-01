@@ -354,8 +354,7 @@ func TestSQLite_ForeignKey(t *testing.T) {
 }
 
 func TestSQLite_HCL(t *testing.T) {
-	liteRun(t, func(t *liteTest) {
-		t.applyHcl(`
+	full := `
 schema "public" {
 }
 table "users" {
@@ -387,20 +386,13 @@ table "posts" {
 		columns = [table.users.column.id]
 	}
 }
-`)
-		users := t.loadUsers()
-		posts := t.loadPosts()
-		t.dropTables(users.Name, posts.Name)
-		column, ok := users.Column("id")
-		require.True(t, ok, "expected id column")
-		require.Equal(t, "users", users.Name)
-		column, ok = posts.Column("author_id")
-		require.Equal(t, "author_id", column.Name)
-		t.applyHcl(`
-schema "test" {
+`
+	empty := `
+schema "public" {
 }
-`)
-		require.Empty(t, t.realm().Schemas[0].Tables)
+`
+	liteRun(t, func(t *liteTest) {
+		testHCLIntegration(t, full, empty)
 	})
 }
 
@@ -415,7 +407,6 @@ func (t *liteTest) applyHcl(spec string) {
 	err = t.drv.Migrate().Exec(context.Background(), diff)
 	require.NoError(t, err)
 }
-
 
 func (t *liteTest) loadRealm() *schema.Realm {
 	r, err := t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{
