@@ -5,14 +5,9 @@
 package integration
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"os"
-	"os/exec"
 	"strings"
 	"sync"
 	"testing"
@@ -500,17 +495,11 @@ schema "test" {
 }
 
 func TestMySQL_CLI(t *testing.T) {
-	// Required to have a clean "stderr" while running first time.
-	c := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas")
-	require.NoError(t, c.Run())
-	t.Run("SchemaInspect", func(t *testing.T) {
-		myRun(t, func(t *myTest) {
-			t.dropTables("users")
-			h := `
+	h := `
 			schema "test" {
 			}
 			table "users" {
-				schema = "test"
+				schema = "public"
 				column "id" {
 					type = "int"
 				}
@@ -518,67 +507,14 @@ func TestMySQL_CLI(t *testing.T) {
 					columns = [table.users.column.id]
 				}
 			}`
-			var expected schema.Schema
-			err := mysql.UnmarshalSpec([]byte(h), schemahcl.Unmarshal, &expected)
-			require.NoError(t, err)
-			t.applyHcl(h)
-			cmd := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas",
-				"schema",
-				"inspect",
-				"-d",
-				t.dsn(),
-			)
-			stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
-			cmd.Stderr = stderr
-			cmd.Stdout = stdout
-			require.NoError(t, cmd.Run(), stderr.String())
-			var actual schema.Schema
-			err = mysql.UnmarshalSpec(stdout.Bytes(), schemahcl.Unmarshal, &actual)
-			require.NoError(t, err)
-			require.Empty(t, stderr.String())
-			require.Equal(t, expected, actual)
+	t.Run("SchemaInspect", func(t *testing.T) {
+		myRun(t, func(t *myTest) {
+			testCLISchemaInspect(t, h, t.dsn(), mysql.UnmarshalSpec)
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
-			t.dropTables("users")
-			h := `
-			schema "test" {
-			}
-			table "users" {
-				schema = "test"
-				column "id" {
-					type = "int"
-				}
-				primary_key {
-					columns = [table.users.column.id]
-				}
-			}`
-			f := "atlas.hcl"
-			err := ioutil.WriteFile(f, []byte(h), 0644)
-			require.NoError(t, err)
-			defer os.Remove(f)
-			cmd := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas",
-				"schema",
-				"apply",
-				"-d",
-				t.dsn(),
-				"-f",
-				f,
-			)
-			stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
-			cmd.Stderr = stderr
-			cmd.Stdout = stdout
-			stdin, err := cmd.StdinPipe()
-			require.NoError(t, err)
-			defer stdin.Close()
-			_, err = io.WriteString(stdin, "\n")
-			require.NoError(t, err)
-			require.NoError(t, cmd.Run(), stderr.String(), stdout.String())
-			require.Empty(t, stderr.String(), stderr.String())
-			require.Contains(t, stdout.String(), "-- Planned")
-			u := t.users()
-			require.NotNil(t, u)
+			testCLISchemaApply(t, h, t.dsn())
 		})
 	})
 }
