@@ -36,7 +36,7 @@ func TestFromSpec_SchemaName(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, sc.Name, s.Name)
-	require.Equal(t, sc.Name, ta[0].SchemaName)
+	require.Equal(t, "$schema." + sc.Name, ta[0].Schema.V)
 }
 
 func TestFromForeignKey(t *testing.T) {

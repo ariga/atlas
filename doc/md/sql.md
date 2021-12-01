@@ -25,7 +25,7 @@ A `table` describes a table in a SQL database.
 #### Full Example:
 ```hcl
 table "users" {
-  schema = "default"
+  schema = schema.default
   column "id" {
     type = "int"
   }
@@ -57,13 +57,13 @@ table "users" {
 
 #### Properties
 
-| Name        | Kind            | Type        | Description                                             |
-|-------------|-----------------|-------------|---------------------------------------------------------|
-| schema      | attribute       | string      | References the name of the schema containing the table. |
-| column      | resource (list) | column      | Describes a column in the table.                        |
-| primary_key | resource        | primary_key | Describes the table's primary key.                      |
-| foreign_key | resource (list) | foreign_key | Describes the table's foreign keys.                     |
-| index       | resource (list) | index       | Describes the table's indexes.                          |
+| Name        | Kind            | Type        | Description                                  |
+|-------------|-----------------|-------------|----------------------------------------------|
+| schema      | attribute       | reference   | References the  schema containing the table. |
+| column      | resource (list) | column      | Describes a column in the table.             |
+| primary_key | resource        | primary_key | Describes the table's primary key.           |
+| foreign_key | resource (list) | foreign_key | Describes the table's foreign keys.          |
+| index       | resource (list) | index       | Describes the table's indexes.               |
 
 ### Column
 

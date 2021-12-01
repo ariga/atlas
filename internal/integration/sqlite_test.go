@@ -358,7 +358,7 @@ func TestSQLite_HCL(t *testing.T) {
 schema "public" {
 }
 table "users" {
-	schema = "public"
+	schema = schema.public
 	column "id" {
 		type = "int"
 	}
@@ -367,7 +367,7 @@ table "users" {
 	}
 }
 table "posts" {
-	schema = "public"
+	schema = schema.public
 	column "id" {
 		type = "int"
 	}

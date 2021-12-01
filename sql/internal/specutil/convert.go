@@ -224,7 +224,9 @@ func FromSchema(s *schema.Schema, fn TableSpecFunc) (*sqlspec.Schema, []*sqlspec
 		if err != nil {
 			return nil, nil, err
 		}
-		table.SchemaName = s.Name
+		if s.Name != "" {
+			table.Schema = schemaRef(s.Name)
+		}
 		tables = append(tables, table)
 	}
 	return spec, tables, nil
@@ -270,7 +272,7 @@ func FromTable(t *schema.Table, colFn ColumnSpecFunc, pkFn PrimaryKeySpecFunc, i
 func FromPrimaryKey(s *schema.Index) (*sqlspec.PrimaryKey, error) {
 	c := make([]*schemaspec.Ref, 0, len(s.Parts))
 	for _, v := range s.Parts {
-		c = append(c, toReference(v.C.Name, s.Table.Name))
+		c = append(c, colRef(v.C.Name, s.Table.Name))
 	}
 	return &sqlspec.PrimaryKey{
 		Columns: c,
@@ -284,7 +286,7 @@ func FromIndex(idx *schema.Index) (*sqlspec.Index, error) {
 		if p.C == nil {
 			return nil, errors.New("index expression is not supported")
 		}
-		c = append(c, toReference(p.C.Name, idx.Table.Name))
+		c = append(c, colRef(p.C.Name, idx.Table.Name))
 	}
 	return &sqlspec.Index{
 		Name:    idx.Name,
@@ -297,11 +299,11 @@ func FromIndex(idx *schema.Index) (*sqlspec.Index, error) {
 func FromForeignKey(s *schema.ForeignKey) (*sqlspec.ForeignKey, error) {
 	c := make([]*schemaspec.Ref, 0, len(s.Columns))
 	for _, v := range s.Columns {
-		c = append(c, toReference(v.Name, s.Table.Name))
+		c = append(c, colRef(v.Name, s.Table.Name))
 	}
 	r := make([]*schemaspec.Ref, 0, len(s.RefColumns))
 	for _, v := range s.RefColumns {
-		r = append(r, toReference(v.Name, s.RefTable.Name))
+		r = append(r, colRef(v.Name, s.RefTable.Name))
 	}
 	return &sqlspec.ForeignKey{
 		Symbol:     s.Symbol,
@@ -334,9 +336,13 @@ func tableName(ref *schemaspec.Ref) (string, error) {
 	return s[1], nil
 }
 
-func toReference(cName string, tName string) *schemaspec.Ref {
+func colRef(cName string, tName string) *schemaspec.Ref {
 	v := "$table." + tName + ".$column." + cName
 	return &schemaspec.Ref{
 		V: v,
 	}
+}
+
+func schemaRef(n string) *schemaspec.Ref {
+	return &schemaspec.Ref{V: "$schema." + n}
 }

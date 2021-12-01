@@ -456,7 +456,7 @@ func TestMySQL_HCL(t *testing.T) {
 schema "test" {
 }
 table "users" {
-	schema = "test"
+	schema = schema.test
 	column "id" {
 		type = "int"
 	}
@@ -465,7 +465,7 @@ table "users" {
 	}
 }
 table "posts" {
-	schema = "test"
+	schema = schema.test
 	column "id" {
 		type = "int"
 	}
@@ -499,7 +499,7 @@ func TestMySQL_CLI(t *testing.T) {
 			schema "test" {
 			}
 			table "users" {
-				schema = "public"
+				schema = schema.test
 				column "id" {
 					type = "int"
 				}

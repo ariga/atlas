@@ -305,7 +305,7 @@ func hcl(c *sqlspec.Column) []byte {
 schema "default" {
 }
 table "table" {
-	schema = "default"
+	schema = schema.default
 	%s
 }
 `
