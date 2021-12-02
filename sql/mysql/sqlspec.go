@@ -350,8 +350,11 @@ func binarySpec(t *schema.BinaryType) (*sqlspec.Column, error) {
 func stringSpec(t *schema.StringType) (*sqlspec.Column, error) {
 	switch t.T {
 	case tVarchar, tMediumText, tLongText, tTinyText, tText, tChar:
-		s := strconv.Itoa(t.Size)
-		return specutil.NewCol("", "string", specutil.LitAttr("size", s)), nil
+		c := &sqlspec.Column{Type: t.T}
+		if t.Size > 0 {
+			c.Extra.Attrs = append(c.Extra.Attrs, specutil.LitAttr("size", strconv.Itoa(t.Size)))
+		}
+		return c, nil
 	}
 	return nil, fmt.Errorf("mysql: schema string failed to convert %q", t.T)
 }
