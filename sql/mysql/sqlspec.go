@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"ariga.io/atlas/sql/internal/sqlx"
+
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/schema"
@@ -24,18 +26,33 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 	if err := unmarshaler.UnmarshalSpec(data, &d); err != nil {
 		return err
 	}
-	if v, ok := v.(*schema.Schema); ok {
-		if len(d.Schemas) != 1 {
-			return fmt.Errorf("mysql: expecting document to contain a single schema, got %d", len(d.Schemas))
-		}
-		conv, err := specutil.Schema(d.Schemas[0], d.Tables, convertTable)
-		if err != nil {
-			return fmt.Errorf("mysql: failed converting to *schema.Schema: %w", err)
-		}
-		*v = *conv
-		return nil
+	s, ok := v.(*schema.Schema)
+	if !ok {
+		return fmt.Errorf("mysql: failed unmarshaling spec. %T is not supported", v)
 	}
-	return fmt.Errorf("mysql: failed unmarshaling spec. %T is not supported", v)
+	if len(d.Schemas) != 1 {
+		return fmt.Errorf("mysql: expecting document to contain a single schema, got %d", len(d.Schemas))
+	}
+	conv, err := specutil.Schema(d.Schemas[0], d.Tables, convertTable)
+	if err != nil {
+		return fmt.Errorf("mysql: failed converting to *schema.Schema: %w", err)
+	}
+	if attr, ok := d.Schemas[0].Attr("charset"); ok {
+		c, err := attr.String()
+		if err != nil {
+			return err
+		}
+		conv.Attrs = append(conv.Attrs, &schema.Charset{V: c})
+	}
+	if attr, ok := d.Schemas[0].Attr("collation"); ok {
+		c, err := attr.String()
+		if err != nil {
+			return err
+		}
+		conv.Attrs = append(conv.Attrs, &schema.Collation{V: c})
+	}
+	*s = *conv
+	return nil
 }
 
 // MarshalSpec marshals v into an Atlas DDL document using a schemaspec.Marshaler.
@@ -235,25 +252,51 @@ func convertFloat(spec *sqlspec.Column) (schema.Type, error) {
 }
 
 // schemaSpec converts from a concrete MySQL schema to Atlas specification.
-func schemaSpec(schem *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error) {
-	return specutil.FromSchema(schem, tableSpec)
+func schemaSpec(s *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error) {
+	sc, t, err := specutil.FromSchema(s, tableSpec)
+	if err != nil {
+		return nil, nil, err
+	}
+	if c, ok := hasCharset(s.Attrs, nil); ok {
+		sc.Extra.Attrs = append(sc.Extra.Attrs, specutil.StrAttr("charset", c))
+	}
+	if c, ok := hasCollate(s.Attrs, nil); ok {
+		sc.Extra.Attrs = append(sc.Extra.Attrs, specutil.StrAttr("collation", c))
+	}
+	return sc, t, nil
 }
 
 // tableSpec converts from a concrete MySQL sqlspec.Table to a schema.Table.
-func tableSpec(tab *schema.Table) (*sqlspec.Table, error) {
-	return specutil.FromTable(tab, columnSpec, specutil.FromPrimaryKey, specutil.FromIndex, specutil.FromForeignKey)
-}
-
-// columnSpec converts from a concrete MySQL schema.Column into a sqlspec.Column.
-func columnSpec(col *schema.Column) (*sqlspec.Column, error) {
-	ct, err := columnTypeSpec(col.Type.Type)
+func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
+	ts, err := specutil.FromTable(t, columnSpec, specutil.FromPrimaryKey, specutil.FromIndex, specutil.FromForeignKey)
 	if err != nil {
 		return nil, err
 	}
+	if c, ok := hasCharset(t.Attrs, t.Schema.Attrs); ok {
+		ts.Extra.Attrs = append(ts.Extra.Attrs, specutil.StrAttr("charset", c))
+	}
+	if c, ok := hasCollate(t.Attrs, t.Schema.Attrs); ok {
+		ts.Extra.Attrs = append(ts.Extra.Attrs, specutil.StrAttr("collation", c))
+	}
+	return ts, nil
+}
+
+// columnSpec converts from a concrete MySQL schema.Column into a sqlspec.Column.
+func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
+	ct, err := columnTypeSpec(c.Type.Type)
+	if err != nil {
+		return nil, err
+	}
+	if c, ok := hasCharset(c.Attrs, t.Attrs); ok {
+		ct.Extra.Attrs = append(ct.Extra.Attrs, specutil.StrAttr("charset", c))
+	}
+	if c, ok := hasCollate(c.Attrs, t.Attrs); ok {
+		ct.Extra.Attrs = append(ct.Extra.Attrs, specutil.StrAttr("collation", c))
+	}
 	return &sqlspec.Column{
-		Name: col.Name,
+		Name: c.Name,
 		Type: ct.Type,
-		Null: col.Type.Null,
+		Null: c.Type.Null,
 		DefaultExtension: schemaspec.DefaultExtension{
 			Extra: schemaspec.Resource{Attrs: ct.DefaultExtension.Extra.Attrs},
 		},
@@ -344,4 +387,26 @@ func enumSpec(t *schema.EnumType) (*sqlspec.Column, error) {
 		quoted = append(quoted, strconv.Quote(v))
 	}
 	return specutil.NewCol("", "enum", specutil.ListAttr("values", quoted...)), nil
+}
+
+// hasCharset reports if the attribute contains the "charset" attribute,
+// and it needs to be defined explicitly on the schema. This is true, in
+// case the element charset is different from its parent charset.
+func hasCharset(attr []schema.Attr, parent []schema.Attr) (string, bool) {
+	var c, p schema.Charset
+	if sqlx.Has(attr, &c) && (parent == nil || sqlx.Has(parent, &p) && c.V != p.V) {
+		return c.V, true
+	}
+	return "", false
+}
+
+// hasCollate reports if the attribute contains the "collation" attribute,
+// and it needs to be defined explicitly on the schema. This is true, in
+// case the element collation is different from its parent collation.
+func hasCollate(attr []schema.Attr, parent []schema.Attr) (string, bool) {
+	var c, p schema.Collation
+	if sqlx.Has(attr, &c) && (parent == nil || sqlx.Has(parent, &p) && c.V != p.V) {
+		return c.V, true
+	}
+	return "", false
 }

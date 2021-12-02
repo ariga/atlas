@@ -193,7 +193,7 @@ func tableSpec(tab *schema.Table) (*sqlspec.Table, error) {
 }
 
 // columnSpec converts from a concrete SQLite schema.Column into a sqlspec.Column.
-func columnSpec(col *schema.Column) (*sqlspec.Column, error) {
+func columnSpec(col *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 	ct, err := columnTypeSpec(col.Type.Type)
 	if err != nil {
 		return nil, err
