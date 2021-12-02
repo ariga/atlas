@@ -115,14 +115,14 @@ func testHCLIntegration(t T, full string, empty string) {
 
 func testCLISchemaInspect(t T, h string, dsn string, unmarshalSpec func(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}) error) {
 	// Required to have a clean "stderr" while running first time.
-	c := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas")
-	require.NoError(t, c.Run())
+	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	require.NoError(t, err)
 	t.dropTables("users")
 	var expected schema.Schema
-	err := unmarshalSpec([]byte(h), schemahcl.Unmarshal, &expected)
+	err = unmarshalSpec([]byte(h), schemahcl.Unmarshal, &expected)
 	require.NoError(t, err)
 	t.applyHcl(h)
-	cmd := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas",
+	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
 		"schema",
 		"inspect",
 		"-d",
@@ -141,14 +141,14 @@ func testCLISchemaInspect(t T, h string, dsn string, unmarshalSpec func(data []b
 
 func testCLISchemaApply(t T, h string, dsn string) {
 	// Required to have a clean "stderr" while running first time.
-	c := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas")
-	require.NoError(t, c.Run())
+	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	require.NoError(t, err)
 	t.dropTables("users")
 	f := "atlas.hcl"
-	err := ioutil.WriteFile(f, []byte(h), 0644)
+	err = ioutil.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
 	defer os.Remove(f)
-	cmd := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas",
+	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
 		"schema",
 		"apply",
 		"-d",
@@ -167,7 +167,7 @@ func testCLISchemaApply(t T, h string, dsn string) {
 	require.NoError(t, cmd.Run(), stderr.String(), stdout.String())
 	require.Empty(t, stderr.String(), stderr.String())
 	require.Contains(t, stdout.String(), "-- Planned")
-	u := t.users()
+	u := t.loadUsers()
 	require.NotNil(t, u)
 }
 

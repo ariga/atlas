@@ -497,6 +497,8 @@ schema "test" {
 func TestMySQL_CLI(t *testing.T) {
 	h := `
 			schema "test" {
+				charset   = "%s"
+				collation = "%s"
 			}
 			table "users" {
 				schema = schema.test
@@ -509,12 +511,16 @@ func TestMySQL_CLI(t *testing.T) {
 			}`
 	t.Run("SchemaInspect", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
-			testCLISchemaInspect(t, h, t.dsn(), mysql.UnmarshalSpec)
+			attrs := t.defaultAttrs()
+			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
+			testCLISchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn(), mysql.UnmarshalSpec)
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
-			testCLISchemaApply(t, h, t.dsn())
+			attrs := t.defaultAttrs()
+			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
+			testCLISchemaApply(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn())
 		})
 	})
 }
