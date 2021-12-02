@@ -221,15 +221,13 @@ func TestMarshalSpec_Charset(t *testing.T) {
   schema = schema.test
   column "a" {
     null      = false
-    type      = "string"
-    size      = 0
+    type      = "text"
     charset   = "latin1"
     collation = "latin1_swedish_ci"
   }
   column "b" {
     null = false
-    type = "string"
-    size = 0
+    type = "text"
   }
 }
 table "posts" {
@@ -238,13 +236,11 @@ table "posts" {
   collation = "latin1_swedish_ci"
   column "a" {
     null = false
-    type = "string"
-    size = 0
+    type = "text"
   }
   column "b" {
     null      = false
-    type      = "string"
-    size      = 0
+    type      = "text"
     charset   = "utf8mb4"
     collation = "utf8mb4_0900_ai_ci"
   }
