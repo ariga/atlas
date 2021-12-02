@@ -7,10 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"ariga.io/atlas/sql/internal/sqlx"
-
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/internal/specutil"
+	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
 )
@@ -37,19 +36,8 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 	if err != nil {
 		return fmt.Errorf("mysql: failed converting to *schema.Schema: %w", err)
 	}
-	if attr, ok := d.Schemas[0].Attr("charset"); ok {
-		c, err := attr.String()
-		if err != nil {
-			return err
-		}
-		conv.Attrs = append(conv.Attrs, &schema.Charset{V: c})
-	}
-	if attr, ok := d.Schemas[0].Attr("collation"); ok {
-		c, err := attr.String()
-		if err != nil {
-			return err
-		}
-		conv.Attrs = append(conv.Attrs, &schema.Collation{V: c})
+	if err := convertCharset(d.Schemas[0], &conv.Attrs); err != nil {
+		return err
 	}
 	*s = *conv
 	return nil
@@ -78,7 +66,14 @@ func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) 
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the convertSchema function.
 func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, error) {
-	return specutil.Table(spec, parent, convertColumn, convertPrimaryKey, convertIndex)
+	t, err := specutil.Table(spec, parent, convertColumn, convertPrimaryKey, convertIndex)
+	if err != nil {
+		return nil, err
+	}
+	if err := convertCharset(spec, &t.Attrs); err != nil {
+		return nil, err
+	}
+	return t, err
 }
 
 // convertPrimaryKey converts a sqlspec.PrimaryKey to a schema.Index.
@@ -93,7 +88,14 @@ func convertIndex(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, err
 
 // convertColumn converts a sqlspec.Column into a schema.Column.
 func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error) {
-	return specutil.Column(spec, convertColumnType)
+	c, err := specutil.Column(spec, convertColumnType)
+	if err != nil {
+		return nil, err
+	}
+	if err := convertCharset(spec, &c.Attrs); err != nil {
+		return nil, err
+	}
+	return c, err
 }
 
 // convertColumnType converts a sqlspec.Column into a concrete MySQL schema.Type.
@@ -350,11 +352,10 @@ func binarySpec(t *schema.BinaryType) (*sqlspec.Column, error) {
 func stringSpec(t *schema.StringType) (*sqlspec.Column, error) {
 	switch t.T {
 	case tVarchar, tMediumText, tLongText, tTinyText, tText, tChar:
-		c := &sqlspec.Column{Type: t.T}
-		if t.Size > 0 {
-			c.Extra.Attrs = append(c.Extra.Attrs, specutil.LitAttr("size", strconv.Itoa(t.Size)))
+		if t.Size == 0 {
+			return &sqlspec.Column{Type: t.T}, nil
 		}
-		return c, nil
+		return specutil.NewCol("", "string", specutil.LitAttr("size", strconv.Itoa(t.Size))), nil
 	}
 	return nil, fmt.Errorf("mysql: schema string failed to convert %q", t.T)
 }
@@ -390,6 +391,28 @@ func enumSpec(t *schema.EnumType) (*sqlspec.Column, error) {
 		quoted = append(quoted, strconv.Quote(v))
 	}
 	return specutil.NewCol("", "enum", specutil.ListAttr("values", quoted...)), nil
+}
+
+// convertCharset converts spec charset/collation
+// attributes to schema element attributes.
+func convertCharset(spec interface {
+	Attr(string) (*schemaspec.Attr, bool)
+}, attrs *[]schema.Attr) error {
+	if attr, ok := spec.Attr("charset"); ok {
+		s, err := attr.String()
+		if err != nil {
+			return err
+		}
+		*attrs = append(*attrs, &schema.Charset{V: s})
+	}
+	if attr, ok := spec.Attr("collation"); ok {
+		s, err := attr.String()
+		if err != nil {
+			return err
+		}
+		*attrs = append(*attrs, &schema.Collation{V: s})
+	}
+	return nil
 }
 
 // hasCharset reports if the attribute contains the "charset" attribute,

@@ -251,6 +251,32 @@ schema "test" {
 }
 `
 	require.EqualValues(t, expected, buf)
+
+	var (
+		s2    schema.Schema
+		latin = []schema.Attr{
+			&schema.Charset{V: "latin1"},
+			&schema.Collation{V: "latin1_swedish_ci"},
+		}
+		utf8mb4 = []schema.Attr{
+			&schema.Charset{V: "utf8mb4"},
+			&schema.Collation{V: "utf8mb4_0900_ai_ci"},
+		}
+	)
+	require.NoError(t, UnmarshalSpec(buf, schemahcl.Unmarshal, &s2))
+	require.Equal(t, utf8mb4, s2.Attrs)
+	posts, ok := s2.Table("posts")
+	require.True(t, ok)
+	require.Equal(t, latin, posts.Attrs)
+	users, ok := s2.Table("users")
+	require.True(t, ok)
+	require.Empty(t, users.Attrs)
+	a, ok := users.Column("a")
+	require.True(t, ok)
+	require.Equal(t, latin, a.Attrs)
+	b, ok := posts.Column("b")
+	require.True(t, ok)
+	require.Equal(t, utf8mb4, b.Attrs)
 }
 
 func TestUnmarshalSpecColumnTypes(t *testing.T) {
