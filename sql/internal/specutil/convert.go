@@ -21,7 +21,7 @@ type (
 	ConvertTypeFunc       func(*sqlspec.Column) (schema.Type, error)
 	ConvertPrimaryKeyFunc func(*sqlspec.PrimaryKey, *schema.Table) (*schema.Index, error)
 	ConvertIndexFunc      func(*sqlspec.Index, *schema.Table) (*schema.Index, error)
-	ColumnSpecFunc        func(*schema.Column) (*sqlspec.Column, error)
+	ColumnSpecFunc        func(*schema.Column, *schema.Table) (*sqlspec.Column, error)
 	TableSpecFunc         func(*schema.Table) (*sqlspec.Table, error)
 	PrimaryKeySpecFunc    func(index *schema.Index) (*sqlspec.PrimaryKey, error)
 	IndexSpecFunc         func(index *schema.Index) (*sqlspec.Index, error)
@@ -238,7 +238,7 @@ func FromTable(t *schema.Table, colFn ColumnSpecFunc, pkFn PrimaryKeySpecFunc, i
 		Name: t.Name,
 	}
 	for _, c := range t.Columns {
-		col, err := colFn(c)
+		col, err := colFn(c, t)
 		if err != nil {
 			return nil, err
 		}

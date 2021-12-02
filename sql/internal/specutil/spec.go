@@ -1,6 +1,8 @@
 package specutil
 
 import (
+	"strconv"
+
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/sqlspec"
 )
@@ -13,6 +15,14 @@ func NewCol(name, coltype string, attrs ...*schemaspec.Attr) *sqlspec.Column {
 		DefaultExtension: schemaspec.DefaultExtension{
 			Extra: schemaspec.Resource{Attrs: attrs},
 		},
+	}
+}
+
+// StrAttr is a helper method for constructing *schemaspec.Attr of type string.
+func StrAttr(k, v string) *schemaspec.Attr {
+	return &schemaspec.Attr{
+		K: k,
+		V: &schemaspec.LiteralValue{V: strconv.Quote(v)},
 	}
 }
 

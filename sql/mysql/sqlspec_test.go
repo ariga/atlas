@@ -60,7 +60,7 @@ table "accounts" {
 	}
 }
 `
-	s := schema.Schema{}
+	var s schema.Schema
 	err := UnmarshalSpec([]byte(f), schemahcl.Unmarshal, &s)
 	require.NoError(t, err)
 
@@ -149,6 +149,112 @@ table "accounts" {
 		},
 	}
 	require.EqualValues(t, exp, &s)
+}
+
+func TestMarshalSpec_Charset(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Attrs: []schema.Attr{
+			&schema.Charset{V: "utf8mb4"},
+			&schema.Collation{V: "utf8mb4_0900_ai_ci"},
+		},
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Attrs: []schema.Attr{
+					&schema.Charset{V: "utf8mb4"},
+					&schema.Collation{V: "utf8mb4_0900_ai_ci"},
+				},
+				Columns: []*schema.Column{
+					{
+						Name: "a",
+						Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}},
+						Attrs: []schema.Attr{
+							&schema.Charset{V: "latin1"},
+							&schema.Collation{V: "latin1_swedish_ci"},
+						},
+					},
+					{
+						Name: "b",
+						Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}},
+						Attrs: []schema.Attr{
+							&schema.Charset{V: "utf8mb4"},
+							&schema.Collation{V: "utf8mb4_0900_ai_ci"},
+						},
+					},
+				},
+			},
+			{
+				Name: "posts",
+				Attrs: []schema.Attr{
+					&schema.Charset{V: "latin1"},
+					&schema.Collation{V: "latin1_swedish_ci"},
+				},
+				Columns: []*schema.Column{
+					{
+						Name: "a",
+						Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}},
+						Attrs: []schema.Attr{
+							&schema.Charset{V: "latin1"},
+							&schema.Collation{V: "latin1_swedish_ci"},
+						},
+					},
+					{
+						Name: "b",
+						Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}},
+						Attrs: []schema.Attr{
+							&schema.Charset{V: "utf8mb4"},
+							&schema.Collation{V: "utf8mb4_0900_ai_ci"},
+						},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	s.Tables[1].Schema = s
+	buf, err := MarshalSpec(s, schemahcl.Marshal)
+	require.NoError(t, err)
+	// Charset and collate that are identical to their parent elements
+	// should not be printed as they are inherited by default from it.
+	const expected = `table "users" {
+  schema = schema.test
+  column "a" {
+    null      = false
+    type      = "string"
+    size      = 0
+    charset   = "latin1"
+    collation = "latin1_swedish_ci"
+  }
+  column "b" {
+    null = false
+    type = "string"
+    size = 0
+  }
+}
+table "posts" {
+  schema    = schema.test
+  charset   = "latin1"
+  collation = "latin1_swedish_ci"
+  column "a" {
+    null = false
+    type = "string"
+    size = 0
+  }
+  column "b" {
+    null      = false
+    type      = "string"
+    size      = 0
+    charset   = "utf8mb4"
+    collation = "utf8mb4_0900_ai_ci"
+  }
+}
+schema "test" {
+  charset   = "utf8mb4"
+  collation = "utf8mb4_0900_ai_ci"
+}
+`
+	require.EqualValues(t, expected, buf)
 }
 
 func TestUnmarshalSpecColumnTypes(t *testing.T) {
