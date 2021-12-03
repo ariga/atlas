@@ -328,3 +328,27 @@ point {
 `
 	require.Equal(t, expected, string(b))
 }
+
+func TestVarInterpolation(t *testing.T) {
+	data := map[string]interface{}{
+		"i": 42,
+		"s": "hello, world.",
+		"b": true,
+	}
+	h := `
+i = vars.i 
+s = vars.s
+b = vars.b
+`
+	var test struct {
+		Int  int    `spec:"i"`
+		Str  string `spec:"s"`
+		Bool bool   `spec:"b"`
+	}
+	unmarshal := UnmarshalWith(Variables(data))
+	err := unmarshal([]byte(h), &test)
+	require.NoError(t, err)
+	require.EqualValues(t, 42, test.Int)
+	require.EqualValues(t, "hello, world.", test.Str)
+	require.EqualValues(t, true, test.Bool)
+}

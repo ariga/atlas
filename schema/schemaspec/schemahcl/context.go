@@ -27,9 +27,13 @@ import (
 //		title = "{greeting.hebrew.word}, world!"
 //	}
 //
-func evalCtx(f *hcl.File) (*hcl.EvalContext, error) {
+func evalCtx(f *hcl.File, cfg *unmarshalConfig) (*hcl.EvalContext, error) {
 	c := &container{}
-	if diag := gohcl.DecodeBody(f.Body, &hcl.EvalContext{}, c); diag.HasErrors() {
+	ctx, err := ctxFromVars(cfg.Variables)
+	if err != nil {
+		return nil, err
+	}
+	if diag := gohcl.DecodeBody(f.Body, ctx, c); diag.HasErrors() {
 		return nil, diag
 	}
 	b, ok := c.Body.(*hclsyntax.Body)
@@ -41,8 +45,31 @@ func evalCtx(f *hcl.File) (*hcl.EvalContext, error) {
 	if err != nil {
 		return nil, err
 	}
+	vars["vars"] = ctx.Variables["vars"]
 	return &hcl.EvalContext{
 		Variables: vars,
+	}, nil
+}
+
+func ctxFromVars(vars map[string]interface{}) (*hcl.EvalContext, error) {
+	m := make(map[string]cty.Value)
+	for k, v := range vars {
+		switch v := v.(type) {
+		case int:
+			m[k] = cty.NumberIntVal(int64(v))
+		case string:
+			m[k] = cty.StringVal(v)
+		case bool:
+			m[k] = cty.BoolVal(v)
+		default:
+			return nil, fmt.Errorf("schemahcl: unsupported variable type: %T", v)
+		}
+	}
+	v := map[string]cty.Value{
+		"vars": cty.ObjectVal(m),
+	}
+	return &hcl.EvalContext{
+		Variables: v,
 	}, nil
 }
 
