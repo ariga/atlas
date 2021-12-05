@@ -15,7 +15,7 @@ import (
 // This is due to SQLite flexibility to allow any data types
 // and use a set of rules to define the type affinity.
 // See: https://www.sqlite.org/datatype3.html
-func (d *Driver) FormatType(t schema.Type) (string, error) {
+func FormatType(t schema.Type) (string, error) {
 	var f string
 	switch t := t.(type) {
 	case *schema.BoolType:
@@ -49,8 +49,8 @@ func (d *Driver) FormatType(t schema.Type) (string, error) {
 }
 
 // mustFormat calls to FormatType and panics in case of error.
-func (d *Driver) mustFormat(t schema.Type) string {
-	s, err := d.FormatType(t)
+func mustFormat(t schema.Type) string {
+	s, err := FormatType(t)
 	if err != nil {
 		panic(err)
 	}

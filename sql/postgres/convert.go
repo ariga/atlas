@@ -15,7 +15,7 @@ import (
 
 // FormatType converts schema type to its column form in the database.
 // An error is returned if the type cannot be recognized.
-func (d *Driver) FormatType(t schema.Type) (string, error) {
+func FormatType(t schema.Type) (string, error) {
 	var f string
 	switch t := t.(type) {
 	case *ArrayType:
@@ -138,8 +138,8 @@ func (d *Driver) FormatType(t schema.Type) (string, error) {
 }
 
 // mustFormat calls to FormatType and panics in case of error.
-func (d *Driver) mustFormat(t schema.Type) string {
-	s, err := d.FormatType(t)
+func mustFormat(t schema.Type) string {
+	s, err := FormatType(t)
 	if err != nil {
 		panic(err)
 	}
