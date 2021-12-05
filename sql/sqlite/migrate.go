@@ -116,7 +116,7 @@ func (m *migrate) modifyTable(ctx context.Context, modify *schema.ModifyTable) e
 }
 
 func (m *migrate) column(b *sqlx.Builder, c *schema.Column) {
-	b.Ident(c.Name).P(m.mustFormat(c.Type.Type))
+	b.Ident(c.Name).P(mustFormat(c.Type.Type))
 	if !c.Type.Null {
 		b.P("NOT")
 	}
