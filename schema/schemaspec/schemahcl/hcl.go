@@ -116,7 +116,6 @@ func toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes) ([]*schemaspec
 		case value.Type().IsTupleType():
 			at.V, err = extractListValue(value)
 		default:
-			fmt.Println(value)
 			at.V, err = extractLiteralValue(value)
 		}
 		if err != nil {
