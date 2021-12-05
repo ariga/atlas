@@ -5,8 +5,6 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-var defaultUnmarshaler = &Unmarshaler{}
-
 type (
 	// Config configures
 	Config struct {

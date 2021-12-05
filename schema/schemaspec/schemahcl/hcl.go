@@ -44,6 +44,7 @@ type (
 	}
 )
 
+// UnmarshalSpec implements schemaspec.Unmarshaler.
 func (u *Unmarshaler) UnmarshalSpec(data []byte, v interface{}) error {
 	spec, err := decode(u.config.ctx, data)
 	if err != nil {
