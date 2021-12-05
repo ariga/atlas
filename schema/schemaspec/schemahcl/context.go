@@ -131,26 +131,29 @@ func attrMap(attrs hclsyntax.Attributes) map[string]cty.Value {
 }
 
 // ctySchemaLit is a cty.Capsule type the encapsulates a schemaspec.LiteralValue.
-var ctySchemaLit = cty.CapsuleWithOps("lit", reflect.TypeOf(schemaspec.LiteralValue{}), &cty.CapsuleOps{
-	// ConversionFrom facilitates reading the encapsulated type as a string, as is needed, for example,
-	// when interpolating it in a string expression.
-	ConversionFrom: func(src cty.Type) func(interface{}, cty.Path) (cty.Value, error) {
-		if src != cty.String {
-			return nil
-		}
-		return func(i interface{}, path cty.Path) (cty.Value, error) {
-			lit, ok := i.(*schemaspec.LiteralValue)
-			if !ok {
-				return cty.Value{}, fmt.Errorf("schemahcl: expected *schemaspec.LiteralValue got %T", i)
+var (
+	ctySchemaLit = cty.CapsuleWithOps("lit", reflect.TypeOf(schemaspec.LiteralValue{}), &cty.CapsuleOps{
+		// ConversionFrom facilitates reading the encapsulated type as a string, as is needed, for example,
+		// when interpolating it in a string expression.
+		ConversionFrom: func(src cty.Type) func(interface{}, cty.Path) (cty.Value, error) {
+			if src != cty.String {
+				return nil
 			}
-			uq, err := strconv.Unquote(lit.V)
-			if err != nil {
-				return cty.StringVal(lit.V), nil
+			return func(i interface{}, path cty.Path) (cty.Value, error) {
+				lit, ok := i.(*schemaspec.LiteralValue)
+				if !ok {
+					return cty.Value{}, fmt.Errorf("schemahcl: expected *schemaspec.LiteralValue got %T", i)
+				}
+				uq, err := strconv.Unquote(lit.V)
+				if err != nil {
+					return cty.StringVal(lit.V), nil
+				}
+				return cty.StringVal(uq), nil
 			}
-			return cty.StringVal(uq), nil
-		}
-	},
-})
+		},
+	})
+	ctySchemaType = cty.Capsule("type", reflect.TypeOf(schemaspec.Type{}))
+)
 
 // defRegistry returns a tree of blockDef structs representing the schema of the
 // blocks in the *hclsyntax.Body. The returned fields and children of each type

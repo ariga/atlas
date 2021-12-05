@@ -63,6 +63,12 @@ type (
 	// UnmarshalerFunc is the function type that is implemented by the UnmarshalSpec
 	// method of the Unmarshaler interface.
 	UnmarshalerFunc func([]byte, interface{}) error
+
+	// Type represents the type of the field in a schema.
+	Type struct {
+		Name string
+		T    string
+	}
 )
 
 // Int returns an integer from the Value of the Attr. If The value is not a LiteralValue or the value
@@ -214,6 +220,7 @@ func BoolVal(v Value) (bool, error) {
 func (*LiteralValue) val() {}
 func (*ListValue) val()    {}
 func (*Ref) val()          {}
+func (*Type) val()         {}
 
 var (
 	_ Unmarshaler = UnmarshalerFunc(nil)

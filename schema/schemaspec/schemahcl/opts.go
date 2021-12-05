@@ -1,6 +1,7 @@
 package schemahcl
 
 import (
+	"ariga.io/atlas/schema/schemaspec"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -32,5 +33,14 @@ func NewUnmarshaler(opts ...Option) *Unmarshaler {
 func EvalContext(ctx *hcl.EvalContext) Option {
 	return func(config *Config) {
 		config.ctx = ctx
+	}
+}
+
+// WithTypes configures the list of given types as identifiers in the unmarshaling context.
+func WithTypes(types []*schemaspec.Type) Option {
+	return func(config *Config) {
+		for _, t := range types {
+			config.ctx.Variables[t.Name] = cty.CapsuleVal(ctySchemaType, t)
+		}
 	}
 }
