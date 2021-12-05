@@ -541,11 +541,43 @@ func (d *Driver) tableNames(ctx context.Context, schema string, opts *schema.Ins
 	return names, nil
 }
 
-// supportsCheck reports if connected MySQL database supports the CHECK clause.
-func (d *Driver) supportsCheck() bool { return semver.Compare("v"+d.version, "v8.0.16") != -1 }
+// supportsCheck reports if the connected database supports the CHECK clause.
+func (d *Driver) supportsCheck() bool {
+	v := "8.0.16"
+	if d.mariadb() {
+		v = "10.2.1"
+	}
+	return d.compareV(v) != -1
+}
 
-// supportsIndexExpr reports if connected MySQL database supports index expressions (functional key part).
-func (d *Driver) supportsIndexExpr() bool { return semver.Compare("v"+d.version, "v8.0.13") != -1 }
+// supportsIndexExpr reports if the connected database supports
+// index expressions (functional key part).
+func (d *Driver) supportsIndexExpr() bool {
+	return !d.mariadb() && d.compareV("8.0.13") != -1
+}
+
+// supportsDisplayWidth reports if the connected database supports
+// getting the display width information from the information schema.
+func (d *Driver) supportsDisplayWidth() bool {
+	// MySQL v8.0.19 dropped the display width
+	// information from the information schema
+	return d.mariadb() || d.compareV("8.0.19") == -1
+}
+
+// mariadb reports if the Driver is connected to a MariaDB database.
+func (d *Driver) mariadb() bool {
+	return strings.Index(d.version, "MariaDB") > 0
+}
+
+// compareV returns an integer comparing two versions according to
+// semantic version precedence.
+func (d *Driver) compareV(w string) int {
+	v := d.version
+	if d.mariadb() {
+		v = v[:strings.Index(v, "MariaDB")-1]
+	}
+	return semver.Compare("v"+v, "v"+w)
+}
 
 // parseColumn returns column parts, size and signed-info from a MySQL type.
 func parseColumn(typ string) (parts []string, size int64, unsigned bool, err error) {

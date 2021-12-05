@@ -12,8 +12,6 @@ import (
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
-
-	"golang.org/x/mod/semver"
 )
 
 // A diff provides a MySQL implementation for sqlx.DiffDriver.
@@ -243,7 +241,7 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 		toT := toT.(*schema.IntegerType)
 		// MySQL v8.0.19 dropped the display width
 		// information from the information schema.
-		if semver.Compare("v"+d.version, "v8.0.19") == -1 {
+		if d.supportsDisplayWidth() {
 			ft, _, _, err := parseColumn(fromT.T)
 			if err != nil {
 				return false, err

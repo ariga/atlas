@@ -144,6 +144,39 @@ func TestDriver_InspectTable(t *testing.T) {
 			},
 		},
 		{
+			name: "maria/types",
+			before: func(m mock) {
+				m.version("10.7.1-MariaDB")
+				m.tableExists("public", "users", true)
+				m.ExpectQuery(sqltest.Escape(columnsQuery)).
+					WithArgs("public", "users").
+					WillReturnRows(sqltest.Rows(`
++---------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
+| column_name   | column_type                  | column_comment       | is_nullable | column_key | column_default | extra          | character_set_name | collation_name |
++---------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
+| id            | bigint(20)                   |                      | NO          | PRI        | NULL           | auto_increment | NULL               | NULL           |
+| tiny_int      | tinyint(1)                   |                      | NO          |            | NULL           |                | NULL               | NULL           |
++---------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
+`))
+				m.ExpectQuery(sqltest.Escape(indexesQuery)).
+					WillReturnRows(sqlmock.NewRows([]string{"index_name", "column_name", "non_unique", "key_part", "expression"}))
+				m.noFKs()
+				m.ExpectQuery(sqltest.Escape(checksQuery)).
+					WithArgs("public", "users").
+					WillReturnRows(sqlmock.NewRows([]string{"CONSTRAINT_NAME", "ENFORCED", "CHECK_CLAUSE"}))
+			},
+			expect: func(require *require.Assertions, t *schema.Table, err error) {
+				require.NoError(err)
+				require.Equal("users", t.Name)
+				require.Len(t.PrimaryKey.Parts, 1)
+				require.True(t.PrimaryKey.Parts[0].C == t.Columns[0])
+				require.EqualValues([]*schema.Column{
+					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
+					{Name: "tiny_int", Type: &schema.ColumnType{Raw: "tinyint(1)", Type: &schema.BoolType{T: "tinyint"}}},
+				}, t.Columns)
+			},
+		},
+		{
 			name: "decimal types",
 			before: func(m mock) {
 				m.version("8.0.13")
