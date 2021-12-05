@@ -338,14 +338,14 @@ x = from_ctx
 	var test struct {
 		X int `spec:"x"`
 	}
-	unmarshaler := UnmarshalWith(
+	unmarshaler := NewUnmarshaler(
 		EvalContext(&hcl.EvalContext{
 			Variables: map[string]cty.Value{
 				"from_ctx": cty.NumberIntVal(42),
 			},
 		}),
 	)
-	err := unmarshaler([]byte(f), &test)
+	err := unmarshaler.UnmarshalSpec([]byte(f), &test)
 	require.NoError(t, err)
 	require.EqualValues(t, 42, test.X)
 }

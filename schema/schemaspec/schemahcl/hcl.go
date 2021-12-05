@@ -30,11 +30,29 @@ var (
 
 var (
 	// Unmarshal parses the Atlas HCL-encoded data and stores the result in the target.
-	Unmarshal = UnmarshalWith()
+	Unmarshal = schemaspec.UnmarshalerFunc(NewUnmarshaler().UnmarshalSpec)
 )
 
-type container struct {
-	Body hcl.Body `hcl:",remain"`
+type (
+	container struct {
+		Body hcl.Body `hcl:",remain"`
+	}
+
+	// Unmarshaler implements schemaspec.Unmarshaler
+	Unmarshaler struct {
+		config *Config
+	}
+)
+
+func (u *Unmarshaler) UnmarshalSpec(data []byte, v interface{}) error {
+	spec, err := decode(u.config.ctx, data)
+	if err != nil {
+		return fmt.Errorf("schemahcl: failed decoding: %w", err)
+	}
+	if err := spec.As(v); err != nil {
+		return fmt.Errorf("schemahcl: failed reading spec as %T: %w", v, err)
+	}
+	return nil
 }
 
 // decode decodes the input Atlas HCL document and returns a *schemaspec.Resource representing it.
