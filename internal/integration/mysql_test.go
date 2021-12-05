@@ -525,6 +525,181 @@ func TestMySQL_CLI(t *testing.T) {
 	})
 }
 
+func TestMySQL_Sanity(t *testing.T) {
+	n := "atlas_types_sanity"
+	ddl := `
+create table atlas_types_sanity
+(
+    tBit       bit(10)       default b'100'            null,
+    tInt       int(10)       default 4             not null,
+    tTinyInt   tinyint(10)   default 8                 null,
+    tSmallInt  smallint(10)  default 2                 null,
+    tMediumInt mediumint(10) default 11                null,
+    tBigInt    bigint(10)    default 4                 null,
+    tDecimal   decimal       default 4                 null,
+    tNumeric   numeric       default 4             not null,
+    tFloat     float(10, 0)  default 4                 null,
+    tDouble    double(10, 0) default 4                 null,
+    tReal      double(10, 0) default 4                 null,
+    tTimestamp timestamp     default CURRENT_TIMESTAMP null,
+    tDate      date                                    null,
+    tTime      time                                    null,
+    tDateTime  datetime                                null,
+    tYear      year                                    null,
+    tVarchar   varchar(10)   default 'Titan'           null,
+    tChar      char(25)      default 'Olimpia'         not null,
+    tVarBinary varbinary(30) default 'Titan'           null,
+    tBinary    binary(5)     default 'Titan'           null
+) CHARSET = latin1 COLLATE latin1_swedish_ci;
+`
+	myRun(t, func(t *myTest) {
+		t.dropTables(n)
+		_, err := t.db.Exec(ddl)
+		require.NoError(t, err)
+		realm := t.loadRealm()
+		require.Len(t, realm.Schemas, 1)
+		ts, ok := realm.Schemas[0].Table(n)
+		require.True(t, ok)
+		expected := schema.Table{
+			Name: n,
+			Attrs: []schema.Attr{
+				&schema.Charset{V: "latin1"},
+				&schema.Collation{V: "latin1_swedish_ci"},
+			},
+			Schema: realm.Schemas[0],
+			Columns: []*schema.Column{
+				{
+					Name:    "tBit",
+					Type:    &schema.ColumnType{Type: &mysql.BitType{T: "bit"}, Raw: "bit(10)", Null: true},
+					Default: &schema.RawExpr{X: "b'100'"},
+				},
+				{
+					Name: "tInt",
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int", Unsigned: false},
+						Raw: t.valueByVersion("int(10)", "int(10)", "int"), Null: false},
+					Default: &schema.RawExpr{X: "4"},
+				},
+				{
+					Name: "tTinyInt",
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "tinyint", Unsigned: false},
+						Raw: t.valueByVersion("tinyint(10)", "tinyint(10)", "tinyint"), Null: true},
+					Default: &schema.RawExpr{X: "8"},
+				},
+				{
+					Name: "tSmallInt",
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "smallint", Unsigned: false},
+						Raw: t.valueByVersion("smallint(10)", "smallint(10)", "smallint"), Null: true},
+					Default: &schema.RawExpr{X: "2"},
+				},
+				{
+					Name: "tMediumInt",
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "mediumint", Unsigned: false},
+						Raw: t.valueByVersion("mediumint(10)", "mediumint(10)", "mediumint"), Null: true},
+					Default: &schema.RawExpr{X: "11"},
+				},
+				{
+					Name: "tBigInt",
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false},
+						Raw: t.valueByVersion("bigint(10)", "bigint(10)", "bigint"), Null: true},
+					Default: &schema.RawExpr{X: "4"},
+				},
+				{
+					Name: "tDecimal",
+					Type: &schema.ColumnType{Type: &schema.DecimalType{T: "decimal", Precision: 10},
+						Raw: "decimal(10,0)", Null: true},
+					Default: &schema.RawExpr{X: "4"},
+				},
+				{
+					Name: "tNumeric",
+					Type: &schema.ColumnType{Type: &schema.DecimalType{T: "decimal", Precision: 10},
+						Raw: "decimal(10,0)", Null: false},
+					Default: &schema.RawExpr{X: "4"},
+				},
+				{
+					Name: "tFloat",
+					Type: &schema.ColumnType{Type: &schema.FloatType{T: "float", Precision: 10},
+						Raw: "float(10,0)", Null: true},
+					Default: &schema.RawExpr{X: "4"},
+				},
+				{
+					Name: "tDouble",
+					Type: &schema.ColumnType{Type: &schema.FloatType{T: "double", Precision: 10},
+						Raw: "double(10,0)", Null: true},
+					Default: &schema.RawExpr{X: "4"},
+				},
+				{
+					Name: "tReal",
+					Type: &schema.ColumnType{Type: &schema.FloatType{T: "double", Precision: 10},
+						Raw: "double(10,0)", Null: true},
+					Default: &schema.RawExpr{X: "4"},
+				},
+				{
+					Name: "tTimestamp",
+					Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp"},
+						Raw: "timestamp", Null: true},
+					Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP"},
+				},
+				{
+					Name: "tDate",
+					Type: &schema.ColumnType{Type: &schema.TimeType{T: "date"},
+						Raw: "date", Null: true},
+				},
+				{
+					Name: "tTime",
+					Type: &schema.ColumnType{Type: &schema.TimeType{T: "time"},
+						Raw: "time", Null: true},
+				},
+				{
+					Name: "tDateTime",
+					Type: &schema.ColumnType{Type: &schema.TimeType{T: "datetime"},
+						Raw: "datetime", Null: true},
+				},
+				{
+					Name: "tYear",
+					Type: &schema.ColumnType{Type: &schema.TimeType{T: "year"},
+						Raw: t.valueByVersion("year(4)", "year(4)", "year"), Null: true},
+				},
+				{
+					Name: "tVarchar",
+					Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar", Size: 10},
+						Raw: "varchar(10)", Null: true},
+					Default: &schema.RawExpr{X: "Titan"},
+					Attrs: []schema.Attr{
+						&schema.Charset{V: "latin1"},
+						&schema.Collation{V: "latin1_swedish_ci"},
+					},
+				},
+				{
+					Name: "tChar",
+					Type: &schema.ColumnType{Type: &schema.StringType{T: "char", Size: 25},
+						Raw: "char(25)", Null: false},
+					Default: &schema.RawExpr{X: "Olimpia"},
+					Attrs: []schema.Attr{
+						&schema.Charset{V: "latin1"},
+						&schema.Collation{V: "latin1_swedish_ci"},
+					},
+				},
+				{
+					Name: "tVarBinary",
+					Type: &schema.ColumnType{Type: &schema.BinaryType{T: "varbinary", Size: 30},
+						Raw: "varbinary(30)", Null: true},
+					Default: &schema.RawExpr{X: t.valueByVersion("Titan", "Titan", "0x546974616E")},
+				},
+				{
+					Name: "tBinary",
+					Type: &schema.ColumnType{Type: &schema.BinaryType{T: "binary", Size: 5},
+						Raw: "binary(5)", Null: true},
+					Default: &schema.RawExpr{X: t.valueByVersion(
+						"Titan",
+						"Titan",
+						"0x546974616E")},
+				},
+			},
+		}
+		require.EqualValues(t, &expected, ts)
+	})
+}
+
 func (t *myTest) dsn() string {
 	return fmt.Sprintf("mysql://root:pass@tcp(localhost:%d)/test", t.port)
 }
@@ -634,6 +809,20 @@ func (t *myTest) posts() *schema.Table {
 		{Symbol: "author_id", Table: postsT, Columns: postsT.Columns[1:2], RefTable: usersT, RefColumns: usersT.Columns[:1], OnDelete: schema.NoAction},
 	}
 	return postsT
+}
+
+func (t *myTest) valueByVersion(v56 string, v57 string, v8 string) string {
+	switch t.version {
+	case "56":
+		return v56
+	case "57":
+		return v57
+	case "8":
+		return v8
+	default:
+		t.Fatalf("unrecognized version: %q", t.version)
+		return ""
+	}
 }
 
 func (t *myTest) loadRealm() *schema.Realm {
