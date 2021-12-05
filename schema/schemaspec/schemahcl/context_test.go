@@ -349,3 +349,28 @@ x = from_ctx
 	require.NoError(t, err)
 	require.EqualValues(t, 42, test.X)
 }
+
+func TestWithTypes(t *testing.T) {
+	f := `
+first = int
+second = bool
+`
+	unmarshaler := NewUnmarshaler(
+		WithTypes(
+			[]*schemaspec.Type{
+				{Name: "int", T: "int"},
+				{Name: "bool", T: "bool"},
+			},
+		),
+	)
+	var test struct {
+		First  *schemaspec.Type `spec:"first"`
+		Second *schemaspec.Type `spec:"second"`
+	}
+	err := unmarshaler.UnmarshalSpec([]byte(f), &test)
+	require.NoError(t, err)
+	require.EqualValues(t, "int", test.First.Name)
+	require.EqualValues(t, "int", test.First.T)
+	require.EqualValues(t, "bool", test.Second.Name)
+	require.EqualValues(t, "bool", test.Second.T)
+}

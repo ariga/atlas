@@ -111,9 +111,12 @@ func toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes) ([]*schemaspec
 		switch {
 		case isRef(value):
 			at.V = &schemaspec.Ref{V: value.GetAttr("__ref").AsString()}
+		case value.Type() == ctySchemaType:
+			at.V = value.EncapsulatedValue().(*schemaspec.Type)
 		case value.Type().IsTupleType():
 			at.V, err = extractListValue(value)
 		default:
+			fmt.Println(value)
 			at.V, err = extractLiteralValue(value)
 		}
 		if err != nil {
