@@ -6,7 +6,7 @@ import (
 )
 
 type (
-	// Config configures
+	// Config configures an unmarshaling.
 	Config struct {
 		ctx *hcl.EvalContext
 	}
