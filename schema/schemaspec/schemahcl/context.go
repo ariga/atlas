@@ -27,7 +27,7 @@ import (
 //		title = "{greeting.hebrew.word}, world!"
 //	}
 //
-func evalCtx(f *hcl.File) (*hcl.EvalContext, error) {
+func evalCtx(ctx *hcl.EvalContext, f *hcl.File) (*hcl.EvalContext, error) {
 	c := &container{}
 	if diag := gohcl.DecodeBody(f.Body, &hcl.EvalContext{}, c); diag.HasErrors() {
 		return nil, diag
@@ -41,9 +41,10 @@ func evalCtx(f *hcl.File) (*hcl.EvalContext, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &hcl.EvalContext{
-		Variables: vars,
-	}, nil
+	for k, v := range vars {
+		ctx.Variables[k] = v
+	}
+	return ctx, nil
 }
 
 func blockVars(b *hclsyntax.Body, parentAddr string, defs *blockDef) (map[string]cty.Value, error) {

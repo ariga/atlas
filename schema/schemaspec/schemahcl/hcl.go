@@ -30,24 +30,34 @@ var (
 
 var (
 	// Unmarshal parses the Atlas HCL-encoded data and stores the result in the target.
-	Unmarshal = schemaspec.UnmarshalerFunc(func(data []byte, v interface{}) error {
-		spec, err := decode(data)
-		if err != nil {
-			return fmt.Errorf("schemahcl: failed decoding: %w", err)
-		}
-		if err := spec.As(v); err != nil {
-			return fmt.Errorf("schemahcl: failed reading spec as %T: %w", v, err)
-		}
-		return nil
-	})
+	Unmarshal = schemaspec.UnmarshalerFunc(NewUnmarshaler().UnmarshalSpec)
 )
 
-type container struct {
-	Body hcl.Body `hcl:",remain"`
+type (
+	container struct {
+		Body hcl.Body `hcl:",remain"`
+	}
+
+	// Unmarshaler implements schemaspec.Unmarshaler
+	Unmarshaler struct {
+		config *Config
+	}
+)
+
+// UnmarshalSpec implements schemaspec.Unmarshaler.
+func (u *Unmarshaler) UnmarshalSpec(data []byte, v interface{}) error {
+	spec, err := decode(u.config.ctx, data)
+	if err != nil {
+		return fmt.Errorf("schemahcl: failed decoding: %w", err)
+	}
+	if err := spec.As(v); err != nil {
+		return fmt.Errorf("schemahcl: failed reading spec as %T: %w", v, err)
+	}
+	return nil
 }
 
 // decode decodes the input Atlas HCL document and returns a *schemaspec.Resource representing it.
-func decode(body []byte) (*schemaspec.Resource, error) {
+func decode(ctx *hcl.EvalContext, body []byte) (*schemaspec.Resource, error) {
 	parser := hclparse.NewParser()
 	srcHCL, diag := parser.ParseHCL(body, "")
 	if diag.HasErrors() {
@@ -57,7 +67,7 @@ func decode(body []byte) (*schemaspec.Resource, error) {
 		return nil, fmt.Errorf("schemahcl: no HCL syntax found in body")
 	}
 	c := &container{}
-	ctx, err := evalCtx(srcHCL)
+	ctx, err := evalCtx(ctx, srcHCL)
 	if err != nil {
 		return nil, err
 	}
