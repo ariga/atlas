@@ -153,7 +153,6 @@ func testCLISchemaApply(t T, h string, dsn string) {
 		"apply",
 		"-d",
 		dsn,
-		dsn,
 		"-f",
 		f,
 	)

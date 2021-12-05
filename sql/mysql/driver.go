@@ -244,9 +244,12 @@ func (d *Driver) addColumn(t *schema.Table, rows *sql.Rows) error {
 		return err
 	}
 	if sqlx.ValidString(defaults) {
-		c.Default = &schema.RawExpr{
-			X: defaults.String,
+		x := defaults.String
+		// From MariaDB 10.2.7, literals are quoted to distinguish them from expressions.
+		if d.mariadb() && strings.HasPrefix(x, "'") && strings.HasSuffix(x, "'") {
+			x = x[1 : len(x)-1]
 		}
+		c.Default = &schema.RawExpr{X: x}
 	}
 	if sqlx.ValidString(comment) {
 		c.Attrs = append(c.Attrs, &schema.Comment{

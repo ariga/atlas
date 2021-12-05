@@ -36,7 +36,7 @@ var myTests struct {
 func myRun(t *testing.T, fn func(*myTest)) {
 	myTests.Do(func() {
 		myTests.drivers = make(map[string]*myTest)
-		for version, port := range map[string]int{"56": 3306, "57": 3307, "8": 3308, "Maria107": 4306} {
+		for version, port := range map[string]int{"56": 3306, "57": 3307, "8": 3308, "Maria107": 4306, "Maria102": 4307, "Maria103": 4308} {
 			db, err := sql.Open("mysql", fmt.Sprintf("root:pass@tcp(localhost:%d)/test?parseTime=True", port))
 			require.NoError(t, err)
 			drv, err := mysql.Open(db)
@@ -46,9 +46,6 @@ func myRun(t *testing.T, fn func(*myTest)) {
 	})
 	for version, tt := range myTests.drivers {
 		t.Run(version, func(t *testing.T) {
-			tt.db.Exec("DROP DATABASE test")
-			tt.db.Exec("CREATE DATABASE test")
-			tt.db.Exec("USE test")
 			tt := &myTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port}
 			fn(tt)
 		})
@@ -455,6 +452,11 @@ func TestMySQL_ForeignKey(t *testing.T) {
 
 func TestMySQL_Ent(t *testing.T) {
 	myRun(t, func(t *myTest) {
+		// Temporary skip Maria until
+		// JSON will be supported.
+		if t.mariadb() {
+			t.Skip()
+		}
 		testEntIntegration(t, dialect.MySQL, t.db)
 	})
 }
@@ -584,31 +586,31 @@ create table atlas_types_sanity
 				{
 					Name: "tInt",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int", Unsigned: false},
-						Raw: t.valueByVersion("int(10)", "int(10)", "int"), Null: false},
+						Raw: t.valueByVersion(map[string]string{"8": "int"}, "int(10)"), Null: false},
 					Default: &schema.RawExpr{X: "4"},
 				},
 				{
 					Name: "tTinyInt",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "tinyint", Unsigned: false},
-						Raw: t.valueByVersion("tinyint(10)", "tinyint(10)", "tinyint"), Null: true},
+						Raw: t.valueByVersion(map[string]string{"8": "tinyint"}, "tinyint(10)"), Null: true},
 					Default: &schema.RawExpr{X: "8"},
 				},
 				{
 					Name: "tSmallInt",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "smallint", Unsigned: false},
-						Raw: t.valueByVersion("smallint(10)", "smallint(10)", "smallint"), Null: true},
+						Raw: t.valueByVersion(map[string]string{"8": "smallint"}, "smallint(10)"), Null: true},
 					Default: &schema.RawExpr{X: "2"},
 				},
 				{
 					Name: "tMediumInt",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "mediumint", Unsigned: false},
-						Raw: t.valueByVersion("mediumint(10)", "mediumint(10)", "mediumint"), Null: true},
+						Raw: t.valueByVersion(map[string]string{"8": "mediumint"}, "mediumint(10)"), Null: true},
 					Default: &schema.RawExpr{X: "11"},
 				},
 				{
 					Name: "tBigInt",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false},
-						Raw: t.valueByVersion("bigint(10)", "bigint(10)", "bigint"), Null: true},
+						Raw: t.valueByVersion(map[string]string{"8": "bigint"}, "bigint(10)"), Null: true},
 					Default: &schema.RawExpr{X: "4"},
 				},
 				{
@@ -645,7 +647,14 @@ create table atlas_types_sanity
 					Name: "tTimestamp",
 					Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp"},
 						Raw: "timestamp", Null: true},
-					Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP"},
+					Default: &schema.RawExpr{
+						X: func() string {
+							if t.mariadb() {
+								return "current_timestamp()"
+							}
+							return "CURRENT_TIMESTAMP"
+						}(),
+					},
 				},
 				{
 					Name: "tDate",
@@ -665,7 +674,7 @@ create table atlas_types_sanity
 				{
 					Name: "tYear",
 					Type: &schema.ColumnType{Type: &schema.TimeType{T: "year"},
-						Raw: t.valueByVersion("year(4)", "year(4)", "year"), Null: true},
+						Raw: t.valueByVersion(map[string]string{"8": "year"}, "year(4)"), Null: true},
 				},
 				{
 					Name: "tVarchar",
@@ -691,16 +700,13 @@ create table atlas_types_sanity
 					Name: "tVarBinary",
 					Type: &schema.ColumnType{Type: &schema.BinaryType{T: "varbinary", Size: 30},
 						Raw: "varbinary(30)", Null: true},
-					Default: &schema.RawExpr{X: t.valueByVersion("Titan", "Titan", "0x546974616E")},
+					Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"8": "0x546974616E"}, "Titan")},
 				},
 				{
 					Name: "tBinary",
 					Type: &schema.ColumnType{Type: &schema.BinaryType{T: "binary", Size: 5},
 						Raw: "binary(5)", Null: true},
-					Default: &schema.RawExpr{X: t.valueByVersion(
-						"Titan",
-						"Titan",
-						"0x546974616E")},
+					Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"8": "0x546974616E"}, "Titan")},
 				},
 			},
 		}
@@ -819,18 +825,11 @@ func (t *myTest) posts() *schema.Table {
 	return postsT
 }
 
-func (t *myTest) valueByVersion(v56 string, v57 string, v8 string) string {
-	switch t.version {
-	case "56":
-		return v56
-	case "57":
-		return v57
-	case "8":
-		return v8
-	default:
-		t.Fatalf("unrecognized version: %q", t.version)
-		return ""
+func (t *myTest) valueByVersion(values map[string]string, defaults string) string {
+	if v, ok := values[t.version]; ok {
+		return v
 	}
+	return defaults
 }
 
 func (t *myTest) loadRealm() *schema.Realm {
@@ -870,7 +869,7 @@ func (t *myTest) defaultAttrs() []schema.Attr {
 	case t.version == "8":
 		charset = "utf8mb4"
 		collation = "utf8mb4_0900_ai_ci"
-	case t.mariadb():
+	case t.version == "Maria107":
 		charset = "utf8mb4"
 		collation = "utf8mb4_general_ci"
 	}
