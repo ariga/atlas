@@ -295,8 +295,7 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	case *schema.EnumType:
 		return enumSpec(t)
 	default:
-		d := &Driver{} // Remove after https://github.com/ariga/atlas/pull/277
-		f, err := d.FormatType(t)
+		f, err := FormatType(t)
 		if err != nil {
 			return nil, err
 		}
