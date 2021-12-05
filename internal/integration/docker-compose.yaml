@@ -88,3 +88,36 @@ services:
       test: pg_isready -U postgres
     ports:
       - 5434:5432
+
+  mariadb:
+    platform: linux/amd64
+    image: mariadb
+    environment:
+      MYSQL_DATABASE: test
+      MYSQL_ROOT_PASSWORD: pass
+    healthcheck:
+      test: mysqladmin ping -ppass
+    ports:
+      - 4306:3306
+
+  mariadb102:
+    platform: linux/amd64
+    image: mariadb:10.2.32
+    environment:
+      MYSQL_DATABASE: test
+      MYSQL_ROOT_PASSWORD: pass
+    healthcheck:
+      test: mysqladmin ping -ppass
+    ports:
+      - 4307:3306
+
+  mariadb103:
+    platform: linux/amd64
+    image: mariadb:10.3.13
+    environment:
+      MYSQL_DATABASE: test
+      MYSQL_ROOT_PASSWORD: pass
+    healthcheck:
+      test: mysqladmin ping -ppass
+    ports:
+      - 4308:3306

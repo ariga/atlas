@@ -613,7 +613,8 @@ func extraAttr(c *schema.Column, extra string) error {
 		// and it's handled in Driver.addColumn.
 	case "auto_increment":
 		c.Attrs = append(c.Attrs, &AutoIncrement{A: extra})
-	case "default_generated on update current_timestamp", "on update current_timestamp":
+	case "default_generated on update current_timestamp", "on update current_timestamp",
+		"on update current_timestamp()" /* MariaDB format. */ :
 		c.Attrs = append(c.Attrs, &OnUpdate{A: extra})
 	default:
 		return fmt.Errorf("unknown attribute %q", extra)

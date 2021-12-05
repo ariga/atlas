@@ -299,6 +299,10 @@ func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
 		return false, nil
 	case *schema.IntegerType:
 		return !d.equalsIntValues(d1.X, d2.X), nil
+	case *schema.TimeType:
+		x1 := strings.ToLower(strings.Trim(d1.X, "' ()"))
+		x2 := strings.ToLower(strings.Trim(d2.X, "' ()"))
+		return x1 != x2, nil
 	default:
 		x1 := strings.Trim(d1.X, "'")
 		x2 := strings.Trim(d2.X, "'")
