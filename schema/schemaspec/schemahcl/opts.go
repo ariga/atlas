@@ -36,6 +36,7 @@ func EvalContext(ctx *hcl.EvalContext) Option {
 	}
 }
 
+// WithTypes configures the list of given types as identifiers in the unmarshaling context.
 func WithTypes(types []*schemaspec.Type) Option {
 	return func(config *Config) {
 		for _, t := range types {
