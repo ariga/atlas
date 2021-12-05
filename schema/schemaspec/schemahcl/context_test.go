@@ -4,7 +4,9 @@ import (
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec"
+	"github.com/hashicorp/hcl/v2"
 	"github.com/stretchr/testify/require"
+	"github.com/zclconf/go-cty/cty"
 )
 
 func TestReferences(t *testing.T) {
@@ -327,4 +329,23 @@ point {
 }
 `
 	require.Equal(t, expected, string(b))
+}
+
+func TestEvalContext(t *testing.T) {
+	f := `
+x = from_ctx
+`
+	var test struct {
+		X int `spec:"x"`
+	}
+	unmarshaler := UnmarshalWith(
+		EvalContext(&hcl.EvalContext{
+			Variables: map[string]cty.Value{
+				"from_ctx": cty.NumberIntVal(42),
+			},
+		}),
+	)
+	err := unmarshaler([]byte(f), &test)
+	require.NoError(t, err)
+	require.EqualValues(t, 42, test.X)
 }
