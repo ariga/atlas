@@ -161,9 +161,9 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(sqltest.Escape(indexesQuery)).
 					WillReturnRows(sqlmock.NewRows([]string{"index_name", "column_name", "non_unique", "key_part", "expression"}))
 				m.noFKs()
-				m.ExpectQuery(sqltest.Escape(checksQuery)).
+				m.ExpectQuery(sqltest.Escape(marChecksQuery)).
 					WithArgs("public", "users").
-					WillReturnRows(sqlmock.NewRows([]string{"CONSTRAINT_NAME", "ENFORCED", "CHECK_CLAUSE"}))
+					WillReturnRows(sqlmock.NewRows([]string{"CONSTRAINT_NAME", "CHECK_CLAUSE", "ENFORCED"}))
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -565,14 +565,14 @@ func TestDriver_InspectTable(t *testing.T) {
 `))
 				m.noIndexes()
 				m.noFKs()
-				m.ExpectQuery(sqltest.Escape(checksQuery)).
+				m.ExpectQuery(sqltest.Escape(myChecksQuery)).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+-------------------+----------+-----------------------------------------------------------------+
-| CONSTRAINT_NAME   | ENFORCED | CHECK_CLAUSE                                                    |
-+-------------------+----------+-----------------------------------------------------------------+
-| users_chk_1       | YES      | (` + "`c6`" + ` <>_latin1\'foo\\\'s\')                          |
-+-------------------+----------+-----------------------------------------------------------------+
++-------------------+-------------------------------------------+------------+
+| CONSTRAINT_NAME   | CHECK_CLAUSE                              |  ENFORCED  |
++-------------------+-------------------------------------------+------------+
+| users_chk_1       | (` + "`c6`" + ` <>_latin1\'foo\\\'s\')    |  YES       |
++-------------------+-------------------------------------------+------------+
 `))
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {

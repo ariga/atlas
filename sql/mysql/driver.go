@@ -114,10 +114,8 @@ func (d *Driver) inspectTable(ctx context.Context, name string, opts *schema.Ins
 	if err := d.fks(ctx, t); err != nil {
 		return nil, err
 	}
-	if d.supportsCheck() {
-		if err := d.checks(ctx, t); err != nil {
-			return nil, err
-		}
+	if err := d.checks(ctx, t); err != nil {
+		return nil, err
 	}
 	return t, nil
 }
@@ -501,20 +499,24 @@ func (d *Driver) fks(ctx context.Context, t *schema.Table) error {
 
 // checks queries and appends the check constraints of the given table.
 func (d *Driver) checks(ctx context.Context, t *schema.Table) error {
-	rows, err := d.QueryContext(ctx, checksQuery, t.Schema.Name, t.Name)
+	query, ok := d.supportsCheck()
+	if !ok {
+		return nil
+	}
+	rows, err := d.QueryContext(ctx, query, t.Schema.Name, t.Name)
 	if err != nil {
 		return fmt.Errorf("mysql: querying %q check constraints: %w", t.Name, err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var name, enforced, clause string
-		if err := rows.Scan(&name, &enforced, &clause); err != nil {
+		var name, clause, enforced sql.NullString
+		if err := rows.Scan(&name, &clause, &enforced); err != nil {
 			return fmt.Errorf("mysql: %w", err)
 		}
 		t.Attrs = append(t.Attrs, &Check{
-			Name:     name,
-			Clause:   unescape(clause),
-			Enforced: clause != "NO",
+			Name:     name.String,
+			Clause:   unescape(clause.String),
+			Enforced: clause.String != "NO",
 		})
 
 	}
@@ -541,13 +543,14 @@ func (d *Driver) tableNames(ctx context.Context, schema string, opts *schema.Ins
 	return names, nil
 }
 
-// supportsCheck reports if the connected database supports the CHECK clause.
-func (d *Driver) supportsCheck() bool {
-	v := "8.0.16"
+// supportsCheck reports if the connected database supports
+// the CHECK clause, and return the querying for getting them.
+func (d *Driver) supportsCheck() (string, bool) {
+	v, q := "8.0.16", myChecksQuery
 	if d.mariadb() {
-		v = "10.2.1"
+		v, q = "10.2.1", marChecksQuery
 	}
-	return d.compareV(v) != -1
+	return q, d.compareV(v) != -1
 }
 
 // supportsIndexExpr reports if the connected database supports
@@ -668,11 +671,9 @@ WHERE
 `
 
 	// Query to list table check constraints.
-	checksQuery = `
-SELECT
-	t1.CONSTRAINT_NAME,
-	t1.ENFORCED,
-	t2.CHECK_CLAUSE
+	myChecksQuery  = `SELECT t1.CONSTRAINT_NAME, t2.CHECK_CLAUSE, t1.ENFORCED` + checksQuery
+	marChecksQuery = `SELECT t1.CONSTRAINT_NAME, t2.CHECK_CLAUSE, "YES" AS ENFORCED` + checksQuery
+	checksQuery    = `
 FROM
 	INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS t1
 	JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS AS t2
