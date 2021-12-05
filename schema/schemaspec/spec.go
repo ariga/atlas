@@ -2,6 +2,7 @@ package schemaspec
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 )
 
@@ -64,10 +65,25 @@ type (
 	// method of the Unmarshaler interface.
 	UnmarshalerFunc func([]byte, interface{}) error
 
+	// TypeSpec represents a specification for defining a Type.
+	TypeSpec struct {
+		Name       string
+		T          string
+		Attributes []*TypeAttr
+	}
+
+	// TypeAttr describes an attribute of a TypeSpec, for example `varchar` fields
+	// can have a `size` attribute.
+	TypeAttr struct {
+		Name     string
+		Kind     reflect.Kind
+		Required bool
+	}
+
 	// Type represents the type of the field in a schema.
 	Type struct {
-		Name string
-		T    string
+		T          string
+		Attributes []*Attr
 	}
 )
 
