@@ -26,8 +26,7 @@ table "table" {
 		type = "int"
 	}
 	column "account_name" {
-		type = "string"
-		size = 32
+		type = "varchar(32)"
 	}
 	primary_key {
 		columns = [table.table.column.col]
@@ -52,8 +51,7 @@ table "table" {
 
 table "accounts" {
 	column "name" {
-		type = "string"
-		size = 32
+		type = "varchar(32)"
 	}
 	primary_key {
 		columns = [table.accounts.column.name]
@@ -292,52 +290,50 @@ func TestUnmarshalSpecColumnTypes(t *testing.T) {
 			},
 		},
 		{
-			spec: specutil.NewCol("uint", "uint"),
+			spec: specutil.NewCol("uint", "int unsigned"),
 			expected: &schema.IntegerType{
 				T:        tInt,
 				Unsigned: true,
 			},
 		},
 		{
-			spec: specutil.NewCol("int8", "int8"),
+			spec: specutil.NewCol("int8", "tinyint"),
 			expected: &schema.IntegerType{
 				T:        tTinyInt,
 				Unsigned: false,
 			},
 		},
 		{
-			spec: specutil.NewCol("int64", "int64"),
+			spec: specutil.NewCol("int64", "bigint"),
 			expected: &schema.IntegerType{
 				T:        tBigInt,
 				Unsigned: false,
 			},
 		},
 		{
-			spec: specutil.NewCol("uint64", "uint64"),
+			spec: specutil.NewCol("uint64", "bigint unsigned"),
 			expected: &schema.IntegerType{
 				T:        tBigInt,
 				Unsigned: true,
 			},
 		},
 		{
-			spec: specutil.NewCol("string_varchar", "string", specutil.LitAttr("size", "255")),
+			spec: specutil.NewCol("string_varchar", "varchar(255)"),
 			expected: &schema.StringType{
 				T:    tVarchar,
 				Size: 255,
 			},
 		},
 		{
-			spec: specutil.NewCol("string_mediumtext", "string", specutil.LitAttr("size", "100000")),
+			spec: specutil.NewCol("string_mediumtext", "mediumtext"),
 			expected: &schema.StringType{
-				T:    tMediumText,
-				Size: 100_000,
+				T: tMediumText,
 			},
 		},
 		{
-			spec: specutil.NewCol("string_longtext", "string", specutil.LitAttr("size", "17000000")),
+			spec: specutil.NewCol("string_longtext", "longtext"),
 			expected: &schema.StringType{
-				T:    tLongText,
-				Size: 17_000_000,
+				T: tLongText,
 			},
 		},
 		{
@@ -356,30 +352,27 @@ func TestUnmarshalSpecColumnTypes(t *testing.T) {
 			},
 		},
 		{
-			spec: specutil.NewCol("blob", "binary"),
+			spec: specutil.NewCol("blob", "blob"),
 			expected: &schema.BinaryType{
 				T: tBlob,
 			},
 		},
 		{
-			spec: specutil.NewCol("tinyblob", "binary", specutil.LitAttr("size", "16")),
+			spec: specutil.NewCol("tinyblob", "tinyblob"),
 			expected: &schema.BinaryType{
-				T:    tTinyBlob,
-				Size: 16,
+				T: tTinyBlob,
 			},
 		},
 		{
-			spec: specutil.NewCol("mediumblob", "binary", specutil.LitAttr("size", "100000")),
+			spec: specutil.NewCol("mediumblob", "mediumblob"),
 			expected: &schema.BinaryType{
-				T:    tMediumBlob,
-				Size: 100_000,
+				T: tMediumBlob,
 			},
 		},
 		{
-			spec: specutil.NewCol("longblob", "binary", specutil.LitAttr("size", "20000000")),
+			spec: specutil.NewCol("longblob", "longblob"),
 			expected: &schema.BinaryType{
-				T:    tLongBlob,
-				Size: 20_000_000,
+				T: tLongBlob,
 			},
 		},
 		{
@@ -391,16 +384,16 @@ func TestUnmarshalSpecColumnTypes(t *testing.T) {
 			expected: &schema.BoolType{T: "boolean"},
 		},
 		{
-			spec:     specutil.NewCol("decimal", "decimal", specutil.LitAttr("precision", "10"), specutil.LitAttr("scale", "2")),
+			spec:     specutil.NewCol("decimal", "decimal(10, 2)"),
 			expected: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
 		},
 		{
-			spec:     specutil.NewCol("float", "float", specutil.LitAttr("precision", "10")),
+			spec:     specutil.NewCol("float", "float(10)"),
 			expected: &schema.FloatType{T: "float", Precision: 10},
 		},
 		{
-			spec:     specutil.NewCol("float", "float", specutil.LitAttr("precision", "25")),
-			expected: &schema.FloatType{T: "double", Precision: 25},
+			spec:     specutil.NewCol("double", "double"),
+			expected: &schema.FloatType{T: "double"},
 		},
 	} {
 		t.Run(tt.spec.Name, func(t *testing.T) {
@@ -451,14 +444,14 @@ func TestMarshalSpecColumnType(t *testing.T) {
 				T:        tInt,
 				Unsigned: true,
 			},
-			expected: specutil.NewCol("column", "uint"),
+			expected: specutil.NewCol("column", "int unsigned"),
 		},
 		{
 			schem: &schema.IntegerType{
 				T:        tTinyInt,
 				Unsigned: false,
 			},
-			expected: specutil.NewCol("column", "int8"),
+			expected: specutil.NewCol("column", "tinyint"),
 		},
 		{
 			schem: &schema.IntegerType{
@@ -479,87 +472,81 @@ func TestMarshalSpecColumnType(t *testing.T) {
 				T:        tBigInt,
 				Unsigned: false,
 			},
-			expected: specutil.NewCol("column", "int64"),
+			expected: specutil.NewCol("column", "bigint"),
 		},
 		{
 			schem: &schema.IntegerType{
 				T:        tBigInt,
 				Unsigned: true,
 			},
-			expected: specutil.NewCol("column", "uint64"),
+			expected: specutil.NewCol("column", "bigint unsigned"),
 		},
 		{
 			schem: &schema.StringType{
 				T:    tVarchar,
 				Size: 255,
 			},
-			expected: specutil.NewCol("column", "string", specutil.LitAttr("size", "255")),
+			expected: specutil.NewCol("column", "varchar(255)"),
 		},
 		{
 			schem: &schema.StringType{
-				T:    tTinyText,
-				Size: 255,
+				T: tTinyText,
 			},
-			expected: specutil.NewCol("column", "string", specutil.LitAttr("size", "255")),
+			expected: specutil.NewCol("column", "tinytext"),
 		},
 		{
 			schem: &schema.StringType{
-				T:    tText,
-				Size: 255,
+				T: tText,
 			},
-			expected: specutil.NewCol("column", "string", specutil.LitAttr("size", "255")),
+			expected: specutil.NewCol("column", "text"),
 		},
 		{
 			schem: &schema.StringType{
 				T:    tChar,
 				Size: 255,
 			},
-			expected: specutil.NewCol("column", "string", specutil.LitAttr("size", "255")),
+			expected: specutil.NewCol("column", "char(255)"),
 		},
 		{
 			schem: &schema.StringType{
-				T:    tMediumText,
-				Size: 100_000,
+				T: tMediumText,
 			},
-			expected: specutil.NewCol("column", "string", specutil.LitAttr("size", "100000")),
+			expected: specutil.NewCol("column", "mediumtext"),
 		},
 		{
 			schem: &schema.StringType{
-				T:    tLongText,
-				Size: 17_000_000,
+				T: tLongText,
 			},
-			expected: specutil.NewCol("column", "string", specutil.LitAttr("size", "17000000")),
+			expected: specutil.NewCol("column", "longtext"),
 		},
 		{
 			schem:    &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
-			expected: specutil.NewCol("column", "decimal", specutil.LitAttr("precision", "10"), specutil.LitAttr("scale", "2")),
+			expected: specutil.NewCol("column", "decimal(10,2)"),
 		},
 		{
 			schem: &schema.BinaryType{
 				T: tBlob,
 			},
-			expected: specutil.NewCol("column", "binary"),
+			expected: specutil.NewCol("column", "blob"),
 		},
 		{
 			schem: &schema.BinaryType{
 				T:    tTinyBlob,
 				Size: 16,
 			},
-			expected: specutil.NewCol("column", "binary", specutil.LitAttr("size", "16")),
+			expected: specutil.NewCol("column", "tinyblob"),
 		},
 		{
 			schem: &schema.BinaryType{
 				T:    tMediumBlob,
-				Size: 100_000,
 			},
-			expected: specutil.NewCol("column", "binary", specutil.LitAttr("size", "100000")),
+			expected: specutil.NewCol("column", "mediumblob"),
 		},
 		{
 			schem: &schema.BinaryType{
 				T:    tLongBlob,
-				Size: 20_000_000,
 			},
-			expected: specutil.NewCol("column", "binary", specutil.LitAttr("size", "20000000")),
+			expected: specutil.NewCol("column", "longblob"),
 		},
 		{
 			schem:    &schema.EnumType{Values: []string{"a", "b", "c"}},
@@ -567,15 +554,15 @@ func TestMarshalSpecColumnType(t *testing.T) {
 		},
 		{
 			schem:    &schema.BoolType{T: "boolean"},
-			expected: specutil.NewCol("column", "boolean"),
+			expected: specutil.NewCol("column", "bool"),
 		},
 		{
 			schem:    &schema.FloatType{T: "float", Precision: 10},
-			expected: specutil.NewCol("column", "float", specutil.LitAttr("precision", "10")),
+			expected: specutil.NewCol("column", "float"),
 		},
 		{
 			schem:    &schema.FloatType{T: "double", Precision: 25},
-			expected: specutil.NewCol("column", "float", specutil.LitAttr("precision", "25")),
+			expected: specutil.NewCol("column", "double"),
 		},
 		{
 			schem:    &schema.TimeType{T: "date"},

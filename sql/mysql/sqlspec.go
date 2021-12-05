@@ -100,25 +100,8 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 
 // convertColumnType converts a sqlspec.Column into a concrete MySQL schema.Type.
 func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
-	switch sqlspec.Type(spec.Type) {
-	case sqlspec.TypeInt, sqlspec.TypeInt8, sqlspec.TypeInt16,
-		sqlspec.TypeInt64, sqlspec.TypeUint, sqlspec.TypeUint8,
-		sqlspec.TypeUint16, sqlspec.TypeUint64:
-		return convertInteger(spec)
-	case sqlspec.TypeString:
-		return convertString(spec)
-	case sqlspec.TypeBinary:
-		return convertBinary(spec)
-	case sqlspec.TypeEnum:
+	if spec.Type == "enum" {
 		return convertEnum(spec)
-	case sqlspec.TypeBoolean:
-		return convertBoolean(spec)
-	case sqlspec.TypeDecimal:
-		return convertDecimal(spec)
-	case sqlspec.TypeFloat:
-		return convertFloat(spec)
-	case sqlspec.TypeTime:
-		return convertTime(spec)
 	}
 	return parseRawType(spec.Type)
 }
@@ -126,6 +109,7 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 func convertInteger(spec *sqlspec.Column) (schema.Type, error) {
 	typ := &schema.IntegerType{
 		Unsigned: strings.HasPrefix(spec.Type, "u"),
+		T:        spec.Type,
 	}
 	switch spec.Type {
 	case "int8", "uint8":
@@ -310,31 +294,13 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	switch t := t.(type) {
 	case *schema.EnumType:
 		return enumSpec(t)
-	case *schema.IntegerType:
-		return integerSpec(t)
-	case *schema.StringType:
-		return stringSpec(t)
-	case *schema.DecimalType:
-		precision := specutil.LitAttr("precision", strconv.Itoa(t.Precision))
-		scale := specutil.LitAttr("scale", strconv.Itoa(t.Scale))
-		return specutil.NewCol("", "decimal", precision, scale), nil
-	case *schema.BinaryType:
-		return binarySpec(t)
-	case *schema.BoolType:
-		return &sqlspec.Column{Type: "boolean"}, nil
-	case *schema.FloatType:
-		precision := specutil.LitAttr("precision", strconv.Itoa(t.Precision))
-		return specutil.NewCol("", "float", precision), nil
-	case *schema.TimeType:
-		return &sqlspec.Column{Type: t.T}, nil
-	case *schema.JSONType:
-		return &sqlspec.Column{Type: t.T}, nil
-	case *schema.SpatialType:
-		return &sqlspec.Column{Type: t.T}, nil
-	case *schema.UnsupportedType:
-		return &sqlspec.Column{Type: t.T}, nil
 	default:
-		return nil, fmt.Errorf("mysql: failed to convert column type %T to spec", t)
+		d := &Driver{} // Remove after https://github.com/ariga/atlas/pull/277
+		f, err := d.FormatType(t)
+		if err != nil {
+			return nil, err
+		}
+		return &sqlspec.Column{Type: f}, nil
 	}
 }
 
