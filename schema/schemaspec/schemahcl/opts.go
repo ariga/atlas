@@ -46,11 +46,11 @@ func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
 		for _, typeSpec := range typeSpecs {
 			if len(typeSpec.Attributes) == 0 {
 				typ := &schemaspec.Type{T: typeSpec.T}
-				config.ctx.Variables[typeSpec.Name] = cty.CapsuleVal(ctySchemaType, typ)
+				config.ctx.Variables[typeSpec.Name] = cty.CapsuleVal(ctyTypeSpec, typ)
 				continue
 			}
 			spec := &function.Spec{
-				Type: function.StaticReturnType(ctySchemaType),
+				Type: function.StaticReturnType(ctyTypeSpec),
 			}
 			for _, arg := range typeSpec.Attributes {
 				p := function.Parameter{
@@ -79,7 +79,7 @@ func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
 						a.V = v
 						t.Attributes = append(t.Attributes, &a)
 					}
-					return cty.CapsuleVal(ctySchemaType, t), nil
+					return cty.CapsuleVal(ctyTypeSpec, t), nil
 				}
 			}
 			config.ctx.Functions[typeSpec.Name] = function.New(spec)
