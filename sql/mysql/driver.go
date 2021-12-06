@@ -524,11 +524,11 @@ func (d *Driver) checks(ctx context.Context, t *schema.Table) error {
 		t.Attrs = append(t.Attrs, check)
 		// In MariaDB, JSON is an alias to LONGTEXT, and the JSON_VALID
 		// CHECK constraint is automatically created for the column for
-		// versions >= 10.4.3.
-		if d.mariadb() && d.compareV("10.4.3") >= 0 {
+		// versions >= 10.4.3. However, we expect tools like Atlas and
+		// Ent to manually add this CHECK for older versions of MariaDB.
+		if d.mariadb() {
 			c, ok := t.Column(check.Name)
 			if ok && c.Type.Raw == tLongText && check.Clause == fmt.Sprintf("json_valid(`%s`)", c.Name) {
-				c.Attrs = append(c.Attrs, check)
 				c.Type.Raw = tJSON
 				c.Type.Type = &schema.JSONType{T: tJSON}
 			}

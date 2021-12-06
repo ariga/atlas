@@ -199,6 +199,13 @@ func (m *migrate) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) {
 		}
 		b.P("DEFAULT", v)
 	}
+	// Add manually the JSON_VALID constraint for older
+	// versions < 10.4.3. See Driver.checks for full info.
+	if _, ok := c.Type.Type.(*schema.JSONType); ok && m.mariadb() && m.compareV("10.4.3") == -1 && !sqlx.Has(c.Attrs, &Check{}) {
+		b.P("CHECK").Wrap(func(b *sqlx.Builder) {
+			b.WriteString(fmt.Sprintf("json_valid(`%s`)", c.Name))
+		})
+	}
 	for _, a := range c.Attrs {
 		switch a := a.(type) {
 		case *schema.Collation:
