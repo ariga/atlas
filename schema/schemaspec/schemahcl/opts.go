@@ -19,8 +19,8 @@ type (
 	Option func(*Config)
 )
 
-// NewUnmarshaler returns a schemaspec.Unmarshaler configured with options.
-func NewUnmarshaler(opts ...Option) *Unmarshaler {
+// New returns a state configured with options.
+func New(opts ...Option) *state {
 	cfg := &Config{
 		ctx: &hcl.EvalContext{
 			Variables: make(map[string]cty.Value),
@@ -30,7 +30,7 @@ func NewUnmarshaler(opts ...Option) *Unmarshaler {
 	for _, opt := range opts {
 		opt(cfg)
 	}
-	return &Unmarshaler{config: cfg}
+	return &state{config: cfg}
 }
 
 // EvalContext configures an unmarshaler to decode with an *hcl.EvalContext.
