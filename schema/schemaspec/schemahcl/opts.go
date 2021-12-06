@@ -75,7 +75,7 @@ func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
 						if err != nil {
 							return cty.NilVal, err
 						}
-						t.Attributes = append(t.Attributes, schemaspec.Attr{K: typeSpec.Attributes[i].Name, V: v})
+						t.Attributes = append(t.Attributes, &schemaspec.Attr{K: typeSpec.Attributes[i].Name, V: v})
 					}
 					return cty.CapsuleVal(ctyTypeSpec, t), nil
 				}
