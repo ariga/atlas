@@ -516,11 +516,23 @@ func (d *Driver) checks(ctx context.Context, t *schema.Table) error {
 		if err := rows.Scan(&name, &clause, &enforced); err != nil {
 			return fmt.Errorf("mysql: %w", err)
 		}
-		t.Attrs = append(t.Attrs, &Check{
+		check := &Check{
 			Name:     name.String,
 			Clause:   unescape(clause.String),
 			Enforced: clause.String != "NO",
-		})
+		}
+		t.Attrs = append(t.Attrs, check)
+		// In MariaDB, JSON is an alias to LONGTEXT, and the JSON_VALID
+		// CHECK constraint is automatically created for the column for
+		// versions >= 10.4.3.
+		if d.mariadb() && d.compareV("10.4.3") >= 0 {
+			c, ok := t.Column(check.Name)
+			if ok && c.Type.Raw == tLongText && check.Clause == fmt.Sprintf("json_valid(`%s`)", c.Name) {
+				c.Attrs = append(c.Attrs, check)
+				c.Type.Raw = tJSON
+				c.Type.Type = &schema.JSONType{T: tJSON}
+			}
+		}
 
 	}
 	return rows.Err()
