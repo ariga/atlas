@@ -1,6 +1,7 @@
 package schemahcl
 
 import (
+	"reflect"
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec"
@@ -354,23 +355,36 @@ func TestWithTypes(t *testing.T) {
 	f := `
 first = int
 second = bool
+sized = varchar(255)
 `
 	unmarshaler := NewUnmarshaler(
 		WithTypes(
-			[]*schemaspec.Type{
+			[]*schemaspec.TypeSpec{
 				{Name: "int", T: "int"},
 				{Name: "bool", T: "bool"},
+				{
+					Name: "varchar",
+					T:    "varchar",
+					Attributes: []*schemaspec.TypeAttr{
+						{Name: "size", Kind: reflect.Int, Required: false},
+					},
+				},
 			},
 		),
 	)
 	var test struct {
-		First  *schemaspec.Type `spec:"first"`
-		Second *schemaspec.Type `spec:"second"`
+		First   *schemaspec.Type `spec:"first"`
+		Second  *schemaspec.Type `spec:"second"`
+		Varchar *schemaspec.Type `spec:"sized"`
 	}
 	err := unmarshaler.UnmarshalSpec([]byte(f), &test)
 	require.NoError(t, err)
-	require.EqualValues(t, "int", test.First.Name)
 	require.EqualValues(t, "int", test.First.T)
-	require.EqualValues(t, "bool", test.Second.Name)
 	require.EqualValues(t, "bool", test.Second.T)
+	require.EqualValues(t, &schemaspec.Type{
+		T: "varchar",
+		Attributes: []*schemaspec.Attr{
+			{K: "size", V: &schemaspec.LiteralValue{V: "255"}},
+		},
+	}, test.Varchar)
 }

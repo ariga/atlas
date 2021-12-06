@@ -152,7 +152,7 @@ var (
 			}
 		},
 	})
-	ctySchemaType = cty.Capsule("type", reflect.TypeOf(schemaspec.Type{}))
+	ctyTypeSpec = cty.Capsule("type", reflect.TypeOf(schemaspec.Type{}))
 )
 
 // defRegistry returns a tree of blockDef structs representing the schema of the
