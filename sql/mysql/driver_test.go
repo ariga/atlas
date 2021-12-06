@@ -156,6 +156,8 @@ func TestDriver_InspectTable(t *testing.T) {
 +---------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
 | id            | bigint(20)                   |                      | NO          | PRI        | NULL           | auto_increment | NULL               | NULL           |
 | tiny_int      | tinyint(1)                   |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| longtext      | longtext                     |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| jsonc         | longtext                     |                      | NO          |            | NULL           |                | NULL               | NULL           |
 +---------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
 `))
 				m.ExpectQuery(sqltest.Escape(indexesQuery)).
@@ -163,7 +165,13 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.noFKs()
 				m.ExpectQuery(sqltest.Escape(marChecksQuery)).
 					WithArgs("public", "users").
-					WillReturnRows(sqlmock.NewRows([]string{"CONSTRAINT_NAME", "CHECK_CLAUSE", "ENFORCED"}))
+					WillReturnRows(sqltest.Rows(`
++-------------------+-------------------------------------------+------------+
+| CONSTRAINT_NAME   | CHECK_CLAUSE                              |  ENFORCED  |
++-------------------+-------------------------------------------+------------+
+| jsonc             | json_valid(` + "`jsonc`" + `)             |  YES       |
++-------------------+-------------------------------------------+------------+
+`))
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -173,6 +181,8 @@ func TestDriver_InspectTable(t *testing.T) {
 				require.EqualValues([]*schema.Column{
 					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
 					{Name: "tiny_int", Type: &schema.ColumnType{Raw: "tinyint(1)", Type: &schema.BoolType{T: "tinyint"}}},
+					{Name: "longtext", Type: &schema.ColumnType{Raw: "longtext", Type: &schema.StringType{T: "longtext"}}},
+					{Name: "jsonc", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}, Attrs: []schema.Attr{&Check{Name: "jsonc", Clause: "json_valid(`jsonc`)", Enforced: true}}},
 				}, t.Columns)
 			},
 		},
