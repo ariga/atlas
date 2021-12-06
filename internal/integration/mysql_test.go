@@ -452,11 +452,6 @@ func TestMySQL_ForeignKey(t *testing.T) {
 
 func TestMySQL_Ent(t *testing.T) {
 	myRun(t, func(t *myTest) {
-		// Temporary skip Maria until
-		// JSON will be supported.
-		if t.mariadb() {
-			t.Skip()
-		}
 		testEntIntegration(t, dialect.MySQL, t.db)
 	})
 }
@@ -886,7 +881,7 @@ create table atlas_types_sanity
 					{
 						Name: "tJSON",
 						Type: func() *schema.ColumnType {
-							if t.mariadb() {
+							if t.version == "Maria102" || t.version == "Maria103" {
 								return &schema.ColumnType{Type: &schema.StringType{T: "longtext"},
 									Raw: "longtext", Null: true}
 							}
