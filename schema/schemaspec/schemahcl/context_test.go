@@ -339,14 +339,14 @@ x = from_ctx
 	var test struct {
 		X int `spec:"x"`
 	}
-	unmarshaler := NewUnmarshaler(
+	s := New(
 		EvalContext(&hcl.EvalContext{
 			Variables: map[string]cty.Value{
 				"from_ctx": cty.NumberIntVal(42),
 			},
 		}),
 	)
-	err := unmarshaler.UnmarshalSpec([]byte(f), &test)
+	err := s.UnmarshalSpec([]byte(f), &test)
 	require.NoError(t, err)
 	require.EqualValues(t, 42, test.X)
 }
@@ -357,7 +357,7 @@ first = int
 second = bool
 sized = varchar(255)
 `
-	unmarshaler := NewUnmarshaler(
+	s := New(
 		WithTypes(
 			[]*schemaspec.TypeSpec{
 				{Name: "int", T: "int"},
@@ -377,7 +377,7 @@ sized = varchar(255)
 		Second  *schemaspec.Type `spec:"second"`
 		Varchar *schemaspec.Type `spec:"sized"`
 	}
-	err := unmarshaler.UnmarshalSpec([]byte(f), &test)
+	err := s.UnmarshalSpec([]byte(f), &test)
 	require.NoError(t, err)
 	require.EqualValues(t, "int", test.First.T)
 	require.EqualValues(t, "bool", test.Second.T)

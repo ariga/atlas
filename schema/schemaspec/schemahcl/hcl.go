@@ -19,18 +19,12 @@ import (
 
 var (
 	// Marshal returns the Atlas HCL encoding of v.
-	Marshal = schemaspec.MarshalerFunc(func(v interface{}) ([]byte, error) {
-		r := &schemaspec.Resource{}
-		if err := r.Scan(v); err != nil {
-			return nil, fmt.Errorf("schemahcl: failed scanning %T to resource: %w", v, err)
-		}
-		return encode(r)
-	})
+	Marshal = schemaspec.MarshalerFunc(New().MarshalSpec)
 )
 
 var (
 	// Unmarshal parses the Atlas HCL-encoded data and stores the result in the target.
-	Unmarshal = schemaspec.UnmarshalerFunc(NewUnmarshaler().UnmarshalSpec)
+	Unmarshal = schemaspec.UnmarshalerFunc(New().UnmarshalSpec)
 )
 
 type (
@@ -38,15 +32,25 @@ type (
 		Body hcl.Body `hcl:",remain"`
 	}
 
-	// Unmarshaler implements schemaspec.Unmarshaler
-	Unmarshaler struct {
+	// state implements schemaspec.Unmarshaler and schemaspec.Marshaler for Atlas HCL syntax
+	// and stores a configuration for these operations.
+	state struct {
 		config *Config
 	}
 )
 
+// MarshalSpec implements schemaspec.Marshaler for Atlas HCL documents.
+func (s *state) MarshalSpec(v interface{}) ([]byte, error) {
+	r := &schemaspec.Resource{}
+	if err := r.Scan(v); err != nil {
+		return nil, fmt.Errorf("schemahcl: failed scanning %T to resource: %w", v, err)
+	}
+	return encode(r)
+}
+
 // UnmarshalSpec implements schemaspec.Unmarshaler.
-func (u *Unmarshaler) UnmarshalSpec(data []byte, v interface{}) error {
-	spec, err := decode(u.config.ctx, data)
+func (s *state) UnmarshalSpec(data []byte, v interface{}) error {
+	spec, err := decode(s.config.ctx, data)
 	if err != nil {
 		return fmt.Errorf("schemahcl: failed decoding: %w", err)
 	}
