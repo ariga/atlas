@@ -439,6 +439,135 @@ func TestPostgres_CLI(t *testing.T) {
 	})
 }
 
+func TestPostgres_Sanity(t *testing.T) {
+	n := "atlas_types_sanity"
+	t.Run("Common", func(t *testing.T) {
+		ddl := `
+create table atlas_types_sanity
+(
+    "tBit"                 bit(10)                    default b'100'             null,
+    "tBitVar"              bit varying(10)            default b'100'             null,
+    "tBoolean"             boolean                    default false           not null,
+    "tBool"                bool                       default false           not null,
+    "tBytea"               bytea                      default E'\\001'        not null,
+    "tCharacter"           character(10)              default 'atlas'             null,
+    "tChar"                char(10)                   default 'atlas'             null,
+    "tCharVar"             character varying(10)      default 'atlas'             null,
+    "tVarChar"             varchar(10)                default 'atlas'             null,
+    "tText"                text                       default 'atlas'             null,
+    "tSmallInt"            smallint                   default '10'                null,
+    "tInteger"             integer                    default '10'                null,
+    "tBigInt"              bigint                     default '10'                null,
+    "tInt"                 int                        default '10'                null,
+    "tInt2"                int2                       default '10'                null,
+    "tInt4"                int4                       default '10'                null,
+    "tInt8"                int8                       default '10'                null
+);
+`
+		pgRun(t, func(t *pgTest) {
+			t.dropTables(n)
+			_, err := t.db.Exec(ddl)
+			require.NoError(t, err)
+			realm := t.loadRealm()
+			require.Len(t, realm.Schemas, 1)
+			ts, ok := realm.Schemas[0].Table(n)
+			require.True(t, ok)
+			expected := schema.Table{
+				Name:   n,
+				Schema: realm.Schemas[0],
+				Columns: []*schema.Column{
+					{
+						Name:    "tBit",
+						Type:    &schema.ColumnType{Type: &postgres.BitType{T: "bit", Len: 10}, Raw: "bit", Null: true},
+						Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"10": "B'100'::\"bit\""}, "'100'::\"bit\"")},
+					},
+					{
+						Name:    "tBitVar",
+						Type:    &schema.ColumnType{Type: &postgres.BitType{T: "bit varying", Len: 10}, Raw: "bit varying", Null: true},
+						Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"10": "B'100'::\"bit\""}, "'100'::\"bit\"")},
+					},
+					{
+						Name:    "tBoolean",
+						Type:    &schema.ColumnType{Type: &schema.BoolType{T: "boolean"}, Raw: "boolean", Null: false},
+						Default: &schema.RawExpr{X: "false"},
+					},
+					{
+						Name:    "tBool",
+						Type:    &schema.ColumnType{Type: &schema.BoolType{T: "boolean"}, Raw: "boolean", Null: false},
+						Default: &schema.RawExpr{X: "false"},
+					},
+					{
+						Name:    "tBytea",
+						Type:    &schema.ColumnType{Type: &schema.BinaryType{T: "bytea"}, Raw: "bytea", Null: false},
+						Default: &schema.RawExpr{X: "'\\x01'::bytea"},
+					},
+					{
+						Name:    "tCharacter",
+						Type:    &schema.ColumnType{Type: &schema.StringType{T: "character", Size: 10}, Raw: "character", Null: true},
+						Default: &schema.RawExpr{X: "'atlas'::bpchar"},
+					},
+					{
+						Name:    "tChar",
+						Type:    &schema.ColumnType{Type: &schema.StringType{T: "character", Size: 10}, Raw: "character", Null: true},
+						Default: &schema.RawExpr{X: "'atlas'::bpchar"},
+					},
+					{
+						Name:    "tCharVar",
+						Type:    &schema.ColumnType{Type: &schema.StringType{T: "character varying", Size: 10}, Raw: "character varying", Null: true},
+						Default: &schema.RawExpr{X: "'atlas'::character varying"},
+					},
+					{
+						Name:    "tVarChar",
+						Type:    &schema.ColumnType{Type: &schema.StringType{T: "character varying", Size: 10}, Raw: "character varying", Null: true},
+						Default: &schema.RawExpr{X: "'atlas'::character varying"},
+					},
+					{
+						Name:    "tText",
+						Type:    &schema.ColumnType{Type: &schema.StringType{T: "text"}, Raw: "text", Null: true},
+						Default: &schema.RawExpr{X: "'atlas'::text"},
+					},
+					{
+						Name:    "tSmallInt",
+						Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "smallint"}, Raw: "smallint", Null: true},
+						Default: &schema.RawExpr{X: "'10'::smallint"},
+					},
+					{
+						Name:    "tInteger",
+						Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer", Null: true},
+						Default: &schema.RawExpr{X: "10"},
+					},
+					{
+						Name:    "tBigInt",
+						Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}, Raw: "bigint", Null: true},
+						Default: &schema.RawExpr{X: "'10'::bigint"},
+					},
+					{
+						Name:    "tInt",
+						Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer", Null: true},
+						Default: &schema.RawExpr{X: "10"},
+					},
+					{
+						Name:    "tInt2",
+						Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "smallint"}, Raw: "smallint", Null: true},
+						Default: &schema.RawExpr{X: "'10'::smallint"},
+					},
+					{
+						Name:    "tInt4",
+						Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer", Null: true},
+						Default: &schema.RawExpr{X: "10"},
+					},
+					{
+						Name:    "tInt8",
+						Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}, Raw: "bigint", Null: true},
+						Default: &schema.RawExpr{X: "'10'::bigint"},
+					},
+				},
+			}
+			require.EqualValues(t, &expected, ts)
+		})
+	})
+}
+
 func (t *pgTest) dsn() string {
 	return fmt.Sprintf("postgres://postgres:pass@localhost:%d/test?sslmode=disable", t.port)
 }
@@ -453,6 +582,13 @@ func (t *pgTest) applyHcl(spec string) {
 	require.NoError(t, err)
 	err = t.drv.Migrate().Exec(context.Background(), diff)
 	require.NoError(t, err)
+}
+
+func (t *pgTest) valueByVersion(values map[string]string, defaults string) string {
+	if v, ok := values[t.version]; ok {
+		return v
+	}
+	return defaults
 }
 
 func (t *pgTest) loadRealm() *schema.Realm {
