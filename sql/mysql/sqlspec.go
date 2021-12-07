@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -100,6 +101,9 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 
 // convertColumnType converts a sqlspec.Column into a concrete MySQL schema.Type.
 func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
+	if spec.XType != nil {
+
+	}
 	switch sqlspec.Type(spec.Type) {
 	case sqlspec.TypeInt, sqlspec.TypeInt8, sqlspec.TypeInt16,
 		sqlspec.TypeInt64, sqlspec.TypeUint, sqlspec.TypeUint8,
@@ -435,4 +439,18 @@ func hasCollate(attr []schema.Attr, parent []schema.Attr) (string, bool) {
 		return c.V, true
 	}
 	return "", false
+}
+
+var TypeSpecs = []*schemaspec.TypeSpec{
+	{
+		Name: "int",
+		T:    "int",
+	},
+	{
+		Name: "varchar",
+		T:    "varchar",
+		Attributes: []*schemaspec.TypeAttr{
+			{Name: "size", Kind: reflect.Int, Required: true},
+		},
+	},
 }

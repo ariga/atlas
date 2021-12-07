@@ -629,3 +629,44 @@ func TestMarshalSpecColumnType(t *testing.T) {
 		})
 	}
 }
+
+func TestTypes(t *testing.T) {
+
+	hclState := schemahcl.New(schemahcl.WithTypes(TypeSpecs))
+	for _, tt := range []struct {
+		hcl      string
+		expected schema.Type
+	}{
+		{
+			hcl:      "int",
+			expected: &schema.IntegerType{T: tInt},
+		},
+		{
+			hcl:      "varchar(255)",
+			expected: &schema.StringType{T: tVarchar, Size: 255},
+		},
+	} {
+		t.Run(tt.hcl, func(t *testing.T) {
+			var test schema.Schema
+			doc := fmt.Sprintf(`
+schema "test" {
+}
+table "test" {
+	schema = schema.test
+	column "test" {
+		type = "int"
+		xtype = %s
+	}
+}
+`, tt.hcl)
+			err := UnmarshalSpec([]byte(doc), hclState, &test)
+			require.NoError(t, err)
+			table, ok := test.Table("test")
+			require.True(t, ok)
+			column, ok := table.Column("test")
+			require.True(t, ok)
+			require.EqualValues(t, column.Type.Type, tt.expected)
+		})
+	}
+
+}
