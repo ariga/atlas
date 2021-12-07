@@ -645,6 +645,10 @@ func TestTypes(t *testing.T) {
 			hcl:      "varchar(255)",
 			expected: &schema.StringType{T: tVarchar, Size: 255},
 		},
+		{
+			hcl:      "int\nunsigned=true",
+			expected: &schema.IntegerType{T: tInt, Unsigned: true},
+		},
 	} {
 		t.Run(tt.hcl, func(t *testing.T) {
 			var test schema.Schema

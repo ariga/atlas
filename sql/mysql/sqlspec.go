@@ -102,7 +102,15 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 // convertColumnType converts a sqlspec.Column into a concrete MySQL schema.Type.
 func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 	if spec.XType != nil {
-
+		typeSpec, ok := findTypeSpec(spec.XType.T)
+		if !ok {
+			return nil, fmt.Errorf("mysql: could not find type spec for %q", spec.XType.T)
+		}
+		printType, err := sqlspec.PrintType(spec.XType, typeSpec)
+		if err != nil {
+			return nil, err
+		}
+		return parseRawType(printType)
 	}
 	switch sqlspec.Type(spec.Type) {
 	case sqlspec.TypeInt, sqlspec.TypeInt8, sqlspec.TypeInt16,
@@ -453,4 +461,13 @@ var TypeSpecs = []*schemaspec.TypeSpec{
 			{Name: "size", Kind: reflect.Int, Required: true},
 		},
 	},
+}
+
+func findTypeSpec(name string) (*schemaspec.TypeSpec, bool) {
+	for _, s := range TypeSpecs {
+		if s.Name == name {
+			return s, true
+		}
+	}
+	return nil, false
 }
