@@ -373,6 +373,9 @@ func scanPtr(key string, r *Resource, field reflect.Value) error {
 		attr.V = &LiteralValue{V: e.FieldByName("V").String()}
 	case reflect.TypeOf(Ref{}):
 		attr.V = &Ref{V: e.FieldByName("V").String()}
+	case reflect.TypeOf(Type{}):
+		t := e.Interface().(Type)
+		attr.V = &t
 	default:
 		return fmt.Errorf("schemaspec: unsupported pointer to %s", e)
 	}

@@ -352,10 +352,9 @@ x = from_ctx
 }
 
 func TestWithTypes(t *testing.T) {
-	f := `
-first = int
+	f := `first  = int
 second = bool
-sized = varchar(255)
+sized  = varchar(255)
 `
 	s := New(
 		WithTypes(
@@ -387,4 +386,7 @@ sized = varchar(255)
 			{K: "size", V: &schemaspec.LiteralValue{V: "255"}},
 		},
 	}, test.Varchar)
+	after, err := s.MarshalSpec(&test)
+	require.NoError(t, err)
+	require.EqualValues(t, f, string(after))
 }

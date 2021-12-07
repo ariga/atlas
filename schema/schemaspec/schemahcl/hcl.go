@@ -2,6 +2,7 @@ package schemahcl
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -45,7 +46,7 @@ func (s *state) MarshalSpec(v interface{}) ([]byte, error) {
 	if err := r.Scan(v); err != nil {
 		return nil, fmt.Errorf("schemahcl: failed scanning %T to resource: %w", v, err)
 	}
-	return encode(r)
+	return s.encode(r)
 }
 
 // UnmarshalSpec implements schemaspec.Unmarshaler.
@@ -197,7 +198,7 @@ func toResource(ctx *hcl.EvalContext, block *hclsyntax.Block) (*schemaspec.Resou
 
 // encode encodes the give *schemaspec.Resource into a byte slice containing an Atlas HCL
 // document representing it.
-func encode(r *schemaspec.Resource) ([]byte, error) {
+func (s *state) encode(r *schemaspec.Resource) ([]byte, error) {
 	f := hclwrite.NewFile()
 	body := f.Body()
 	// If the resource has a Type then it is rendered as an HCL block.
@@ -206,12 +207,12 @@ func encode(r *schemaspec.Resource) ([]byte, error) {
 		body = blk.Body()
 	}
 	for _, attr := range r.Attrs {
-		if err := writeAttr(attr, body); err != nil {
+		if err := s.writeAttr(attr, body); err != nil {
 			return nil, err
 		}
 	}
 	for _, res := range r.Children {
-		if err := writeResource(res, body); err != nil {
+		if err := s.writeResource(res, body); err != nil {
 			return nil, err
 		}
 	}
@@ -220,16 +221,16 @@ func encode(r *schemaspec.Resource) ([]byte, error) {
 	return buf.Bytes(), err
 }
 
-func writeResource(b *schemaspec.Resource, body *hclwrite.Body) error {
+func (s *state) writeResource(b *schemaspec.Resource, body *hclwrite.Body) error {
 	blk := body.AppendNewBlock(b.Type, labels(b))
 	nb := blk.Body()
 	for _, attr := range b.Attrs {
-		if err := writeAttr(attr, nb); err != nil {
+		if err := s.writeAttr(attr, nb); err != nil {
 			return err
 		}
 	}
 	for _, b := range b.Children {
-		if err := writeResource(b, nb); err != nil {
+		if err := s.writeResource(b, nb); err != nil {
 			return err
 		}
 	}
@@ -244,11 +245,21 @@ func labels(r *schemaspec.Resource) []string {
 	return l
 }
 
-func writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
+func (s *state) writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 	switch v := attr.V.(type) {
 	case *schemaspec.Ref:
 		expr := strings.ReplaceAll(v.V, "$", "")
 		body.SetAttributeRaw(attr.K, hclRawTokens(expr))
+	case *schemaspec.Type:
+		spec, ok := s.findTypeSpec(v.T)
+		if !ok {
+			return fmt.Errorf("schemahcl: type spec for %q not found", v.T)
+		}
+		s, err := hclType(spec, v)
+		if err != nil {
+			return err
+		}
+		body.SetAttributeRaw(attr.K, hclRawTokens(s))
 	case *schemaspec.LiteralValue:
 		body.SetAttributeRaw(attr.K, hclRawTokens(v.V))
 	case *schemaspec.ListValue:
@@ -269,6 +280,30 @@ func writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 		return fmt.Errorf("schemacl: unknown literal type %T", v)
 	}
 	return nil
+}
+
+func (s *state) findTypeSpec(t string) (*schemaspec.TypeSpec, bool) {
+	for _, v := range s.config.types {
+		if v.T == t {
+			return v, true
+		}
+	}
+	return nil, false
+}
+
+func hclType(spec *schemaspec.TypeSpec, typ *schemaspec.Type) (string, error) {
+	if len(spec.Attributes) == 0 {
+		return typ.T, nil
+	}
+	args := make([]string, 0, len(spec.Attributes))
+	for _, arg := range typ.Attributes {
+		lit, ok := arg.V.(*schemaspec.LiteralValue)
+		if !ok {
+			return "", errors.New("expecting literal value")
+		}
+		args = append(args, lit.V)
+	}
+	return fmt.Sprintf("%s(%s)", typ.T, strings.Join(args, ",")), nil
 }
 
 func hclRawTokens(s string) hclwrite.Tokens {

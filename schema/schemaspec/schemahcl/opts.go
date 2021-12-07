@@ -12,7 +12,8 @@ import (
 type (
 	// Config configures an unmarshaling.
 	Config struct {
-		ctx *hcl.EvalContext
+		ctx   *hcl.EvalContext
+		types []*schemaspec.TypeSpec
 	}
 
 	// Option configures a Config.
@@ -44,6 +45,7 @@ func EvalContext(ctx *hcl.EvalContext) Option {
 func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
 	return func(config *Config) {
 		for _, typeSpec := range typeSpecs {
+			config.types = append(config.types, typeSpec)
 			if len(typeSpec.Attributes) == 0 {
 				typ := &schemaspec.Type{T: typeSpec.T}
 				config.ctx.Variables[typeSpec.Name] = cty.CapsuleVal(ctyTypeSpec, typ)
