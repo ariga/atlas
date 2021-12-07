@@ -46,7 +46,7 @@ func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
 	return func(config *Config) {
 		for _, typeSpec := range typeSpecs {
 			config.types = append(config.types, typeSpec)
-			if len(typeSpec.Attributes) == 0 {
+			if len(typeFuncArgs(typeSpec)) == 0 {
 				typ := &schemaspec.Type{T: typeSpec.T}
 				config.ctx.Variables[typeSpec.Name] = cty.CapsuleVal(ctyTypeSpec, typ)
 				continue
@@ -54,7 +54,7 @@ func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
 			spec := &function.Spec{
 				Type: function.StaticReturnType(ctyTypeSpec),
 			}
-			for _, arg := range typeSpec.Attributes {
+			for _, arg := range typeFuncArgs(typeSpec) {
 				p := function.Parameter{
 					Name:      arg.Name,
 					AllowNull: !arg.Required,
@@ -85,4 +85,18 @@ func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
 			config.ctx.Functions[typeSpec.Name] = function.New(spec)
 		}
 	}
+}
+
+// typeFuncArgs returns the type attributes that are configured via arguments to the
+// type definition, for example precision and scale in a decimal definition, i.e `decimal(10,2)`.
+func typeFuncArgs(spec *schemaspec.TypeSpec) []*schemaspec.TypeAttr {
+	var args []*schemaspec.TypeAttr
+	for _, attr := range spec.Attributes {
+		// TODO(rotemtam): this should be defined on the TypeSpec.
+		if attr.Name == "unsigned" {
+			continue
+		}
+		args = append(args, attr)
+	}
+	return args
 }

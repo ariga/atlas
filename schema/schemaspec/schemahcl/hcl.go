@@ -292,11 +292,15 @@ func (s *state) findTypeSpec(t string) (*schemaspec.TypeSpec, bool) {
 }
 
 func hclType(spec *schemaspec.TypeSpec, typ *schemaspec.Type) (string, error) {
-	if len(spec.Attributes) == 0 {
+	if len(typeFuncArgs(spec)) == 0 {
 		return typ.T, nil
 	}
 	args := make([]string, 0, len(spec.Attributes))
-	for _, arg := range typ.Attributes {
+	for _, param := range typeFuncArgs(spec) {
+		arg, ok := findAttr(typ.Attributes, param.Name)
+		if !ok {
+			continue
+		}
 		lit, ok := arg.V.(*schemaspec.LiteralValue)
 		if !ok {
 			return "", errors.New("expecting literal value")
@@ -304,6 +308,15 @@ func hclType(spec *schemaspec.TypeSpec, typ *schemaspec.Type) (string, error) {
 		args = append(args, lit.V)
 	}
 	return fmt.Sprintf("%s(%s)", typ.T, strings.Join(args, ",")), nil
+}
+
+func findAttr(attrs []*schemaspec.Attr, k string) (*schemaspec.Attr, bool) {
+	for _, atr := range attrs {
+		if atr.K == k {
+			return atr, true
+		}
+	}
+	return nil, false
 }
 
 func hclRawTokens(s string) hclwrite.Tokens {
