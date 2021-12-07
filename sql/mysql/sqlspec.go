@@ -106,6 +106,9 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 		if !ok {
 			return nil, fmt.Errorf("mysql: could not find type spec for %q", spec.XType.T)
 		}
+		nfa := typeNonFuncArgs(typeSpec)
+		picked := pickAttrs(spec.Extra.Attrs, nfa)
+		spec.XType.Attributes = append(spec.XType.Attributes, picked...)
 		printType, err := sqlspec.PrintType(spec.XType, typeSpec)
 		if err != nil {
 			return nil, err
@@ -133,6 +136,20 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 		return convertTime(spec)
 	}
 	return parseRawType(spec.Type)
+}
+
+func pickAttrs(src []*schemaspec.Attr, wanted []*schemaspec.TypeAttr) []*schemaspec.Attr {
+	keys := make(map[string]struct{})
+	for _, w := range wanted {
+		keys[w.Name] = struct{}{}
+	}
+	var picked []*schemaspec.Attr
+	for _, attr := range src {
+		if _, ok := keys[attr.K]; ok {
+			picked = append(picked, attr)
+		}
+	}
+	return picked
 }
 
 func convertInteger(spec *sqlspec.Column) (schema.Type, error) {
@@ -453,6 +470,9 @@ var TypeSpecs = []*schemaspec.TypeSpec{
 	{
 		Name: "int",
 		T:    "int",
+		Attributes: []*schemaspec.TypeAttr{
+			{Name: "unsigned", Kind: reflect.Bool},
+		},
 	},
 	{
 		Name: "varchar",
@@ -470,4 +490,17 @@ func findTypeSpec(name string) (*schemaspec.TypeSpec, bool) {
 		}
 	}
 	return nil, false
+}
+
+// typeNonFuncArgs returns the type attributes that are NOT configured via arguments to the
+// type definition, `int unsigned`.
+func typeNonFuncArgs(spec *schemaspec.TypeSpec) []*schemaspec.TypeAttr {
+	var args []*schemaspec.TypeAttr
+	for _, attr := range spec.Attributes {
+		// TODO(rotemtam): this should be defined on the TypeSpec.
+		if attr.Name == "unsigned" {
+			args = append(args, attr)
+		}
+	}
+	return args
 }
