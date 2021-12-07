@@ -237,6 +237,7 @@ func (*LiteralValue) val() {}
 func (*ListValue) val()    {}
 func (*Ref) val()          {}
 func (*Type) val()         {}
+func (*TypeSpec) val()     {}
 
 var (
 	_ Unmarshaler = UnmarshalerFunc(nil)
