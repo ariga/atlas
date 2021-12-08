@@ -396,6 +396,64 @@ schema "public" {
 	})
 }
 
+func TestSQLite_Sanity(t *testing.T) {
+	n := "atlas_types_sanity"
+	ddl := `
+create table atlas_types_sanity
+(
+    "tInteger"                 integer(10)                     default 100                                   null,
+    "tReal"                    real(10)                        default 100                                   null,
+    "tText"                    text(10)                        default 'I am Text'                       not null,
+    "tBlob"                    blob(10)                        default 'A'                               not null
+);
+`
+	liteRun(t, func(t *liteTest) {
+		t.dropTables(n)
+		_, err := t.db.Exec(ddl)
+		require.NoError(t, err)
+		realm := t.loadRealm()
+		require.Len(t, realm.Schemas, 1)
+		ts, ok := realm.Schemas[0].Table(n)
+		require.True(t, ok)
+		expected := schema.Table{
+			Name:   n,
+			Schema: realm.Schemas[0],
+			Attrs:  ts.Attrs,
+			Columns: []*schema.Column{
+				{
+					Name: "tInteger",
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer", Unsigned: false}, Raw: "integer(10)", Null: true},
+					Default: &schema.RawExpr{
+						X: "100",
+					},
+				},
+				{
+					Name: "tReal",
+					Type: &schema.ColumnType{Type: &schema.FloatType{T: "real", Precision: 0}, Raw: "real(10)", Null: true},
+					Default: &schema.RawExpr{
+						X: "100",
+					},
+				},
+				{
+					Name: "tText",
+					Type: &schema.ColumnType{Type: &schema.StringType{T: "text", Size: 10}, Raw: "text(10)", Null: false},
+					Default: &schema.RawExpr{
+						X: "'I am Text'",
+					},
+				},
+				{
+					Name: "tBlob",
+					Type: &schema.ColumnType{Type: &schema.BinaryType{T: "blob", Size: 0}, Raw: "blob(10)", Null: false},
+					Default: &schema.RawExpr{
+						X: "'A'",
+					},
+				},
+			},
+		}
+		require.EqualValues(t, &expected, ts)
+	})
+}
+
 func (t *liteTest) applyHcl(spec string) {
 	realm := t.loadRealm()
 	var desired schema.Schema
