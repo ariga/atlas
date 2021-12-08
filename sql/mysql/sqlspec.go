@@ -519,6 +519,7 @@ func hasCollate(attr []schema.Attr, parent []schema.Attr) (string, bool) {
 	return "", false
 }
 
+// TypeSpecs is a list of the TypeSpecs supported by the MySQL driver.
 var TypeSpecs = []*schemaspec.TypeSpec{
 	sqlspec.TypeSpec(tInt, sqlspec.UnsignedTypeAttr()),
 	sqlspec.TypeSpec(tTinyInt, sqlspec.UnsignedTypeAttr()),
