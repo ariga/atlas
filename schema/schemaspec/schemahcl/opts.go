@@ -119,16 +119,3 @@ func typeFuncArgs(spec *schemaspec.TypeSpec) []*schemaspec.TypeAttr {
 	}
 	return args
 }
-
-// typeVariadicFuncArgs returns the type attributes that are configured via a variadic
-// type definition, for example in an enum("a", "b", "c").
-func typeVariadicFuncArgs(spec *schemaspec.TypeSpec) []*schemaspec.TypeAttr {
-	var args []*schemaspec.TypeAttr
-	for _, attr := range spec.Attributes {
-		if attr.Kind == reflect.Slice {
-			continue
-		}
-		args = append(args, attr)
-	}
-	return args
-}
