@@ -355,6 +355,7 @@ func TestWithTypes(t *testing.T) {
 	f := `first  = int
 second = bool
 sized  = varchar(255)
+variadic = enum("a","b","c")
 `
 	s := New(
 		WithTypes(
@@ -374,13 +375,21 @@ sized  = varchar(255)
 						{Name: "size", Kind: reflect.Int, Required: false},
 					},
 				},
+				{
+					Name: "enum",
+					T:    "enum",
+					Attributes: []*schemaspec.TypeAttr{
+						{Name: "values", Kind: reflect.Slice, Required: false},
+					},
+				},
 			},
 		),
 	)
 	var test struct {
-		First   *schemaspec.Type `spec:"first"`
-		Second  *schemaspec.Type `spec:"second"`
-		Varchar *schemaspec.Type `spec:"sized"`
+		First    *schemaspec.Type `spec:"first"`
+		Second   *schemaspec.Type `spec:"second"`
+		Varchar  *schemaspec.Type `spec:"sized"`
+		Variadic *schemaspec.Type `spec:"variadic"`
 	}
 	err := s.UnmarshalSpec([]byte(f), &test)
 	require.NoError(t, err)
@@ -392,6 +401,21 @@ sized  = varchar(255)
 			{K: "size", V: &schemaspec.LiteralValue{V: "255"}},
 		},
 	}, test.Varchar)
+	require.EqualValues(t, &schemaspec.Type{
+		T: "enum",
+		Attributes: []*schemaspec.Attr{
+			{
+				K: "values",
+				V: &schemaspec.ListValue{
+					V: []schemaspec.Value{
+						&schemaspec.LiteralValue{V: `"a"`},
+						&schemaspec.LiteralValue{V: `"b"`},
+						&schemaspec.LiteralValue{V: `"c"`},
+					},
+				},
+			},
+		},
+	}, test.Variadic)
 	after, err := s.MarshalSpec(&test)
 	require.NoError(t, err)
 	require.EqualValues(t, f, string(after))

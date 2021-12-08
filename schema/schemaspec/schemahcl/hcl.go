@@ -301,11 +301,18 @@ func hclType(spec *schemaspec.TypeSpec, typ *schemaspec.Type) (string, error) {
 		if !ok {
 			continue
 		}
-		lit, ok := arg.V.(*schemaspec.LiteralValue)
-		if !ok {
-			return "", errors.New("expecting literal value")
+		switch val := arg.V.(type) {
+		case *schemaspec.LiteralValue:
+			args = append(args, val.V)
+		case *schemaspec.ListValue:
+			for _, li := range val.V {
+				lit, ok := li.(*schemaspec.LiteralValue)
+				if !ok {
+					return "", errors.New("expecting literal value")
+				}
+				args = append(args, lit.V)
+			}
 		}
-		args = append(args, lit.V)
 	}
 	return fmt.Sprintf("%s(%s)", typ.T, strings.Join(args, ",")), nil
 }

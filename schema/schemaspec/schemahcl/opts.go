@@ -1,6 +1,7 @@
 package schemahcl
 
 import (
+	"fmt"
 	"reflect"
 
 	"ariga.io/atlas/schema/schemaspec"
@@ -44,7 +45,8 @@ func EvalContext(ctx *hcl.EvalContext) Option {
 // WithTypes configures the list of given types as identifiers in the unmarshaling context.
 func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
 	return func(config *Config) {
-		for _, typeSpec := range typeSpecs {
+		for _, ts := range typeSpecs {
+			typeSpec := ts
 			config.types = append(config.types, typeSpec)
 			if len(typeFuncArgs(typeSpec)) == 0 {
 				typ := &schemaspec.Type{T: typeSpec.T}
@@ -60,24 +62,43 @@ func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
 					AllowNull: !arg.Required,
 				}
 				switch arg.Kind {
+				case reflect.Slice:
+					p.Type = cty.DynamicPseudoType
+					spec.VarParam = &p
 				case reflect.String:
 					p.Type = cty.String
+					spec.Params = append(spec.Params, p)
 				case reflect.Int, reflect.Float32:
 					p.Type = cty.Number
+					spec.Params = append(spec.Params, p)
 				case reflect.Bool:
 					p.Type = cty.Bool
+					spec.Params = append(spec.Params, p)
 				}
-				spec.Params = append(spec.Params, p)
 				spec.Impl = func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 					t := &schemaspec.Type{
 						T: typeSpec.T,
 					}
-					for i, arg := range args {
-						v, err := extractLiteralValue(arg)
-						if err != nil {
-							return cty.NilVal, err
+					if spec.VarParam != nil {
+						fmt.Println(spec)
+						lst := &schemaspec.ListValue{}
+						for _, arg := range args {
+							v, err := extractLiteralValue(arg)
+							if err != nil {
+								return cty.NilVal, err
+							}
+							lst.V = append(lst.V, v)
 						}
-						t.Attributes = append(t.Attributes, &schemaspec.Attr{K: typeSpec.Attributes[i].Name, V: v})
+						t.Attributes = append(t.Attributes, &schemaspec.Attr{K: spec.VarParam.Name, V: lst})
+					} else {
+						for i, arg := range args {
+							v, err := extractLiteralValue(arg)
+							if err != nil {
+								return cty.NilVal, err
+							}
+							attrName := typeSpec.Attributes[i].Name
+							t.Attributes = append(t.Attributes, &schemaspec.Attr{K: attrName, V: v})
+						}
 					}
 					return cty.CapsuleVal(ctyTypeSpec, t), nil
 				}
@@ -94,6 +115,19 @@ func typeFuncArgs(spec *schemaspec.TypeSpec) []*schemaspec.TypeAttr {
 	for _, attr := range spec.Attributes {
 		// TODO(rotemtam): this should be defined on the TypeSpec.
 		if attr.Name == "unsigned" {
+			continue
+		}
+		args = append(args, attr)
+	}
+	return args
+}
+
+// typeVariadicFuncArgs returns the type attributes that are configured via a variadic
+// type definition, for example in an enum("a", "b", "c").
+func typeVariadicFuncArgs(spec *schemaspec.TypeSpec) []*schemaspec.TypeAttr {
+	var args []*schemaspec.TypeAttr
+	for _, attr := range spec.Attributes {
+		if attr.Kind == reflect.Slice {
 			continue
 		}
 		args = append(args, attr)
