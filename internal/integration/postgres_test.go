@@ -441,130 +441,386 @@ func TestPostgres_CLI(t *testing.T) {
 
 func TestPostgres_Sanity(t *testing.T) {
 	n := "atlas_types_sanity"
-	t.Run("Common", func(t *testing.T) {
-		ddl := `
+	ddl := `
+DROP TYPE IF EXISTS address;
+CREATE TYPE address AS (city VARCHAR(90), street VARCHAR(90));
 create table atlas_types_sanity
 (
-    "tBit"                 bit(10)                    default b'100'             null,
-    "tBitVar"              bit varying(10)            default b'100'             null,
-    "tBoolean"             boolean                    default false           not null,
-    "tBool"                bool                       default false           not null,
-    "tBytea"               bytea                      default E'\\001'        not null,
-    "tCharacter"           character(10)              default 'atlas'             null,
-    "tChar"                char(10)                   default 'atlas'             null,
-    "tCharVar"             character varying(10)      default 'atlas'             null,
-    "tVarChar"             varchar(10)                default 'atlas'             null,
-    "tText"                text                       default 'atlas'             null,
-    "tSmallInt"            smallint                   default '10'                null,
-    "tInteger"             integer                    default '10'                null,
-    "tBigInt"              bigint                     default '10'                null,
-    "tInt"                 int                        default '10'                null,
-    "tInt2"                int2                       default '10'                null,
-    "tInt4"                int4                       default '10'                null,
-    "tInt8"                int8                       default '10'                null
+    "tBit"                 bit(10)                     default b'100'                                   null,
+    "tBitVar"              bit varying(10)             default b'100'                                   null,
+    "tBoolean"             boolean                     default false                                not null,
+    "tBool"                bool                        default false                                not null,
+    "tBytea"               bytea                       default E'\\001'                             not null,
+    "tCharacter"           character(10)               default 'atlas'                                  null,
+    "tChar"                char(10)                    default 'atlas'                                  null,
+    "tCharVar"             character varying(10)       default 'atlas'                                  null,
+    "tVarChar"             varchar(10)                 default 'atlas'                                  null,
+    "tText"                text                        default 'atlas'                                  null,
+    "tSmallInt"            smallint                    default '10'                                     null,
+    "tInteger"             integer                     default '10'                                     null,
+    "tBigInt"              bigint                      default '10'                                     null,
+    "tInt"                 int                         default '10'                                     null,
+    "tInt2"                int2                        default '10'                                     null,
+    "tInt4"                int4                        default '10'                                     null,
+    "tInt8"                int8                        default '10'                                     null,
+    "tCIDR"                cidr                        default '127.0.0.1'                              null,
+    "tInet"                inet                        default '127.0.0.1'                              null,
+    "tMACAddr"             macaddr                     default '08:00:2b:01:02:03'                      null,
+    "tMACAddr8"            macaddr8                    default '08:00:2b:01:02:03:04:05'                null,
+    "tCircle"              circle                      default                                          null,
+    "tLine"                line                        default                                          null,
+    "tLseg"                lseg                        default                                          null, 
+    "tBox"                 box                         default                                          null,
+    "tPath"                path                        default                                          null,
+    "tPoint"               point                       default                                          null,
+    "tDate"                date                        default current_date                             null,
+    "tTime"                time                        default current_time                             null,
+    "tTimeWTZ"             time with time zone         default current_time                             null,
+    "tTimeWOTZ"            time without time zone      default current_time                             null,
+    "tTimestamp"           timestamp                   default now()                                    null,
+    "tTimestampTZ"         timestamptz                 default now()                                    null,
+    "tTimestampWTZ"        timestamp with time zone    default now()                                    null,
+    "tTimestampWOTZ"       timestamp without time zone default now()                                    null,
+    "tDouble"              double precision            default 0                                        null,
+    "tReal"                real                        default 0                                        null,
+    "tFloat8"              float8                      default 0                                        null,
+    "tFloat4"              float4                      default 0                                        null,
+    "tNumeric"             numeric                     default 0                                        null,
+    "tDecimal"             decimal                     default 0                                        null,
+    "tSmallSerial"         smallserial                                                                      ,
+    "tSerial"              serial                                                                           ,
+    "tBigSerial"           bigserial                                                                        ,
+    "tSerial2"             serial2                                                                          ,
+    "tSerial4"             serial4                                                                          ,
+    "tSerial8"             serial8                                                                          ,
+    "tArray"               text[10][10]                 default '{}'                                    null,
+    "tXML"                 xml                          default '<a>foo</a>'                            null,  
+    "tJSON"                json                         default '{"key":"value"}'                       null,
+    "tJSONB"               jsonb                        default '{"key":"value"}'                       null,
+    "tUUID"                uuid                         default  'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' null,
+    "tMoney"               money                        default  18                                     null,
+    "tInterval"            interval                     default '4 hours'                               null, 
+    "tUserDefined"         address                      default '("ab","cd")'                           null
 );
 `
-		pgRun(t, func(t *pgTest) {
-			t.dropTables(n)
-			_, err := t.db.Exec(ddl)
-			require.NoError(t, err)
-			realm := t.loadRealm()
-			require.Len(t, realm.Schemas, 1)
-			ts, ok := realm.Schemas[0].Table(n)
-			require.True(t, ok)
-			expected := schema.Table{
-				Name:   n,
-				Schema: realm.Schemas[0],
-				Columns: []*schema.Column{
-					{
-						Name:    "tBit",
-						Type:    &schema.ColumnType{Type: &postgres.BitType{T: "bit", Len: 10}, Raw: "bit", Null: true},
-						Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"10": "B'100'::\"bit\""}, "'100'::\"bit\"")},
-					},
-					{
-						Name:    "tBitVar",
-						Type:    &schema.ColumnType{Type: &postgres.BitType{T: "bit varying", Len: 10}, Raw: "bit varying", Null: true},
-						Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"10": "B'100'::\"bit\""}, "'100'::\"bit\"")},
-					},
-					{
-						Name:    "tBoolean",
-						Type:    &schema.ColumnType{Type: &schema.BoolType{T: "boolean"}, Raw: "boolean", Null: false},
-						Default: &schema.RawExpr{X: "false"},
-					},
-					{
-						Name:    "tBool",
-						Type:    &schema.ColumnType{Type: &schema.BoolType{T: "boolean"}, Raw: "boolean", Null: false},
-						Default: &schema.RawExpr{X: "false"},
-					},
-					{
-						Name:    "tBytea",
-						Type:    &schema.ColumnType{Type: &schema.BinaryType{T: "bytea"}, Raw: "bytea", Null: false},
-						Default: &schema.RawExpr{X: "'\\x01'::bytea"},
-					},
-					{
-						Name:    "tCharacter",
-						Type:    &schema.ColumnType{Type: &schema.StringType{T: "character", Size: 10}, Raw: "character", Null: true},
-						Default: &schema.RawExpr{X: "'atlas'::bpchar"},
-					},
-					{
-						Name:    "tChar",
-						Type:    &schema.ColumnType{Type: &schema.StringType{T: "character", Size: 10}, Raw: "character", Null: true},
-						Default: &schema.RawExpr{X: "'atlas'::bpchar"},
-					},
-					{
-						Name:    "tCharVar",
-						Type:    &schema.ColumnType{Type: &schema.StringType{T: "character varying", Size: 10}, Raw: "character varying", Null: true},
-						Default: &schema.RawExpr{X: "'atlas'::character varying"},
-					},
-					{
-						Name:    "tVarChar",
-						Type:    &schema.ColumnType{Type: &schema.StringType{T: "character varying", Size: 10}, Raw: "character varying", Null: true},
-						Default: &schema.RawExpr{X: "'atlas'::character varying"},
-					},
-					{
-						Name:    "tText",
-						Type:    &schema.ColumnType{Type: &schema.StringType{T: "text"}, Raw: "text", Null: true},
-						Default: &schema.RawExpr{X: "'atlas'::text"},
-					},
-					{
-						Name:    "tSmallInt",
-						Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "smallint"}, Raw: "smallint", Null: true},
-						Default: &schema.RawExpr{X: "'10'::smallint"},
-					},
-					{
-						Name:    "tInteger",
-						Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer", Null: true},
-						Default: &schema.RawExpr{X: "10"},
-					},
-					{
-						Name:    "tBigInt",
-						Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}, Raw: "bigint", Null: true},
-						Default: &schema.RawExpr{X: "'10'::bigint"},
-					},
-					{
-						Name:    "tInt",
-						Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer", Null: true},
-						Default: &schema.RawExpr{X: "10"},
-					},
-					{
-						Name:    "tInt2",
-						Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "smallint"}, Raw: "smallint", Null: true},
-						Default: &schema.RawExpr{X: "'10'::smallint"},
-					},
-					{
-						Name:    "tInt4",
-						Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer", Null: true},
-						Default: &schema.RawExpr{X: "10"},
-					},
-					{
-						Name:    "tInt8",
-						Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}, Raw: "bigint", Null: true},
-						Default: &schema.RawExpr{X: "'10'::bigint"},
+	pgRun(t, func(t *pgTest) {
+		t.dropTables(n)
+		_, err := t.db.Exec(ddl)
+		require.NoError(t, err)
+		realm := t.loadRealm()
+		require.Len(t, realm.Schemas, 1)
+		ts, ok := realm.Schemas[0].Table(n)
+		require.True(t, ok)
+		expected := schema.Table{
+			Name:   n,
+			Schema: realm.Schemas[0],
+			Columns: []*schema.Column{
+				{
+					Name:    "tBit",
+					Type:    &schema.ColumnType{Type: &postgres.BitType{T: "bit", Len: 10}, Raw: "bit", Null: true},
+					Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"10": "B'100'::\"bit\""}, "'100'::\"bit\"")},
+				},
+				{
+					Name:    "tBitVar",
+					Type:    &schema.ColumnType{Type: &postgres.BitType{T: "bit varying", Len: 10}, Raw: "bit varying", Null: true},
+					Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"10": "B'100'::\"bit\""}, "'100'::\"bit\"")},
+				},
+				{
+					Name:    "tBoolean",
+					Type:    &schema.ColumnType{Type: &schema.BoolType{T: "boolean"}, Raw: "boolean", Null: false},
+					Default: &schema.RawExpr{X: "false"},
+				},
+				{
+					Name:    "tBool",
+					Type:    &schema.ColumnType{Type: &schema.BoolType{T: "boolean"}, Raw: "boolean", Null: false},
+					Default: &schema.RawExpr{X: "false"},
+				},
+				{
+					Name:    "tBytea",
+					Type:    &schema.ColumnType{Type: &schema.BinaryType{T: "bytea"}, Raw: "bytea", Null: false},
+					Default: &schema.RawExpr{X: "'\\x01'::bytea"},
+				},
+				{
+					Name:    "tCharacter",
+					Type:    &schema.ColumnType{Type: &schema.StringType{T: "character", Size: 10}, Raw: "character", Null: true},
+					Default: &schema.RawExpr{X: "'atlas'::bpchar"},
+				},
+				{
+					Name:    "tChar",
+					Type:    &schema.ColumnType{Type: &schema.StringType{T: "character", Size: 10}, Raw: "character", Null: true},
+					Default: &schema.RawExpr{X: "'atlas'::bpchar"},
+				},
+				{
+					Name:    "tCharVar",
+					Type:    &schema.ColumnType{Type: &schema.StringType{T: "character varying", Size: 10}, Raw: "character varying", Null: true},
+					Default: &schema.RawExpr{X: "'atlas'::character varying"},
+				},
+				{
+					Name:    "tVarChar",
+					Type:    &schema.ColumnType{Type: &schema.StringType{T: "character varying", Size: 10}, Raw: "character varying", Null: true},
+					Default: &schema.RawExpr{X: "'atlas'::character varying"},
+				},
+				{
+					Name:    "tText",
+					Type:    &schema.ColumnType{Type: &schema.StringType{T: "text"}, Raw: "text", Null: true},
+					Default: &schema.RawExpr{X: "'atlas'::text"},
+				},
+				{
+					Name:    "tSmallInt",
+					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "smallint"}, Raw: "smallint", Null: true},
+					Default: &schema.RawExpr{X: "'10'::smallint"},
+				},
+				{
+					Name:    "tInteger",
+					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer", Null: true},
+					Default: &schema.RawExpr{X: "10"},
+				},
+				{
+					Name:    "tBigInt",
+					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}, Raw: "bigint", Null: true},
+					Default: &schema.RawExpr{X: "'10'::bigint"},
+				},
+				{
+					Name:    "tInt",
+					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer", Null: true},
+					Default: &schema.RawExpr{X: "10"},
+				},
+				{
+					Name:    "tInt2",
+					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "smallint"}, Raw: "smallint", Null: true},
+					Default: &schema.RawExpr{X: "'10'::smallint"},
+				},
+				{
+					Name:    "tInt4",
+					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer", Null: true},
+					Default: &schema.RawExpr{X: "10"},
+				},
+				{
+					Name:    "tInt8",
+					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}, Raw: "bigint", Null: true},
+					Default: &schema.RawExpr{X: "'10'::bigint"},
+				},
+				{
+					Name:    "tCIDR",
+					Type:    &schema.ColumnType{Type: &postgres.NetworkType{T: "cidr"}, Raw: "cidr", Null: true},
+					Default: &schema.RawExpr{X: "'127.0.0.1/32'::cidr"},
+				},
+				{
+					Name:    "tInet",
+					Type:    &schema.ColumnType{Type: &postgres.NetworkType{T: "inet"}, Raw: "inet", Null: true},
+					Default: &schema.RawExpr{X: "'127.0.0.1'::inet"},
+				},
+				{
+					Name:    "tMACAddr",
+					Type:    &schema.ColumnType{Type: &postgres.NetworkType{T: "macaddr"}, Raw: "macaddr", Null: true},
+					Default: &schema.RawExpr{X: "'08:00:2b:01:02:03'::macaddr"},
+				},
+				{
+					Name:    "tMACAddr8",
+					Type:    &schema.ColumnType{Type: &postgres.NetworkType{T: "macaddr8"}, Raw: "macaddr8", Null: true},
+					Default: &schema.RawExpr{X: "'08:00:2b:01:02:03:04:05'::macaddr8"},
+				},
+				{
+					Name: "tCircle",
+					Type: &schema.ColumnType{Type: &schema.SpatialType{T: "circle"}, Raw: "circle", Null: true},
+				},
+				{
+					Name: "tLine",
+					Type: &schema.ColumnType{Type: &schema.SpatialType{T: "line"}, Raw: "line", Null: true},
+				},
+				{
+					Name: "tLseg",
+					Type: &schema.ColumnType{Type: &schema.SpatialType{T: "lseg"}, Raw: "lseg", Null: true},
+				},
+				{
+					Name: "tBox",
+					Type: &schema.ColumnType{Type: &schema.SpatialType{T: "box"}, Raw: "box", Null: true},
+				},
+				{
+					Name: "tPath",
+					Type: &schema.ColumnType{Type: &schema.SpatialType{T: "path"}, Raw: "path", Null: true},
+				},
+				{
+					Name: "tPoint",
+					Type: &schema.ColumnType{Type: &schema.SpatialType{T: "point"}, Raw: "point", Null: true},
+				},
+				{
+					Name:    "tDate",
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "date"}, Raw: "date", Null: true},
+					Default: &schema.RawExpr{X: "CURRENT_DATE"},
+				},
+				{
+					Name:    "tTime",
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time without time zone"}, Raw: "time without time zone", Null: true},
+					Default: &schema.RawExpr{X: "CURRENT_TIME"},
+				},
+				{
+					Name:    "tTimeWTZ",
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time with time zone"}, Raw: "time with time zone", Null: true},
+					Default: &schema.RawExpr{X: "CURRENT_TIME"},
+				},
+				{
+					Name:    "tTimeWOTZ",
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time without time zone"}, Raw: "time without time zone", Null: true},
+					Default: &schema.RawExpr{X: "CURRENT_TIME"},
+				},
+				{
+					Name:    "tTimestamp",
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone"}, Raw: "timestamp without time zone", Null: true},
+					Default: &schema.RawExpr{X: "now()"},
+				},
+				{
+					Name:    "tTimestampTZ",
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone"}, Raw: "timestamp with time zone", Null: true},
+					Default: &schema.RawExpr{X: "now()"},
+				},
+				{
+					Name:    "tTimestampWTZ",
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone"}, Raw: "timestamp with time zone", Null: true},
+					Default: &schema.RawExpr{X: "now()"},
+				},
+				{
+					Name:    "tTimestampWOTZ",
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone"}, Raw: "timestamp without time zone", Null: true},
+					Default: &schema.RawExpr{X: "now()"},
+				},
+				{
+					Name:    "tDouble",
+					Type:    &schema.ColumnType{Type: &schema.FloatType{T: "double precision", Precision: 53}, Raw: "double precision", Null: true},
+					Default: &schema.RawExpr{X: "0"},
+				},
+				{
+					Name:    "tReal",
+					Type:    &schema.ColumnType{Type: &schema.FloatType{T: "real", Precision: 24}, Raw: "real", Null: true},
+					Default: &schema.RawExpr{X: "0"},
+				},
+				{
+					Name:    "tFloat8",
+					Type:    &schema.ColumnType{Type: &schema.FloatType{T: "double precision", Precision: 53}, Raw: "double precision", Null: true},
+					Default: &schema.RawExpr{X: "0"},
+				},
+				{
+					Name:    "tFloat4",
+					Type:    &schema.ColumnType{Type: &schema.FloatType{T: "real", Precision: 24}, Raw: "real", Null: true},
+					Default: &schema.RawExpr{X: "0"},
+				},
+				{
+					Name:    "tNumeric",
+					Type:    &schema.ColumnType{Type: &schema.DecimalType{T: "numeric", Precision: 0}, Raw: "numeric", Null: true},
+					Default: &schema.RawExpr{X: "0"},
+				},
+				{
+					Name:    "tDecimal",
+					Type:    &schema.ColumnType{Type: &schema.DecimalType{T: "numeric", Precision: 0}, Raw: "numeric", Null: true},
+					Default: &schema.RawExpr{X: "0"},
+				},
+				{
+					Name: "tSmallSerial",
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "smallint", Unsigned: false}, Raw: "smallint", Null: false},
+					Default: &postgres.SeqFuncExpr{
+						Expr: nil,
+						X:    "nextval('\"atlas_types_sanity_tSmallSerial_seq\"'::regclass)",
 					},
 				},
-			}
-			require.EqualValues(t, &expected, ts)
-		})
+				{
+					Name: "tSerial",
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer", Unsigned: false}, Raw: "integer", Null: false},
+					Default: &postgres.SeqFuncExpr{
+						Expr: nil,
+						X:    "nextval('\"atlas_types_sanity_tSerial_seq\"'::regclass)",
+					},
+				},
+				{
+					Name: "tBigSerial",
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false}, Raw: "bigint", Null: false},
+					Default: &postgres.SeqFuncExpr{
+						Expr: nil,
+						X:    "nextval('\"atlas_types_sanity_tBigSerial_seq\"'::regclass)",
+					},
+				},
+				{
+					Name: "tSerial2",
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "smallint", Unsigned: false}, Raw: "smallint", Null: false},
+					Default: &postgres.SeqFuncExpr{
+						Expr: nil,
+						X:    "nextval('\"atlas_types_sanity_tSerial2_seq\"'::regclass)",
+					},
+				},
+				{
+					Name: "tSerial4",
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer", Unsigned: false}, Raw: "integer", Null: false},
+					Default: &postgres.SeqFuncExpr{
+						Expr: nil,
+						X:    "nextval('\"atlas_types_sanity_tSerial4_seq\"'::regclass)",
+					},
+				},
+				{
+					Name: "tSerial8",
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false}, Raw: "bigint", Null: false},
+					Default: &postgres.SeqFuncExpr{
+						Expr: nil,
+						X:    "nextval('\"atlas_types_sanity_tSerial8_seq\"'::regclass)",
+					},
+				},
+				{
+					Name: "tArray",
+					Type: &schema.ColumnType{Type: &postgres.ArrayType{T: "text[]"}, Raw: "ARRAY", Null: true},
+					Default: &schema.RawExpr{
+						X: "'{}'::text[]",
+					},
+				},
+				{
+					Name: "tXML",
+					Type: &schema.ColumnType{Type: &postgres.XMLType{T: "xml"}, Raw: "xml", Null: true},
+					Default: &schema.RawExpr{
+						X: "'<a>foo</a>'::xml",
+					},
+				},
+				{
+					Name: "tJSON",
+					Type: &schema.ColumnType{Type: &schema.JSONType{T: "json"}, Raw: "json", Null: true},
+					Default: &schema.RawExpr{
+						X: "'{\"key\":\"value\"}'::json",
+					},
+				},
+				{
+					Name: "tJSONB",
+					Type: &schema.ColumnType{Type: &schema.JSONType{T: "jsonb"}, Raw: "jsonb", Null: true},
+					Default: &schema.RawExpr{
+						X: "'{\"key\": \"value\"}'::jsonb",
+					},
+				},
+				{
+					Name: "tUUID",
+					Type: &schema.ColumnType{Type: &postgres.UUIDType{T: "uuid"}, Raw: "uuid", Null: true},
+					Default: &schema.RawExpr{
+						X: "'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'::uuid",
+					},
+				},
+				{
+					Name: "tMoney",
+					Type: &schema.ColumnType{Type: &postgres.CurrencyType{T: "money"}, Raw: "money", Null: true},
+					Default: &schema.RawExpr{
+						X: "18",
+					},
+				},
+				{
+					Name: "tInterval",
+					Type: &schema.ColumnType{Type: &schema.UnsupportedType{T: "interval"}, Raw: "interval", Null: true},
+					Default: &schema.RawExpr{
+						X: "'04:00:00'::interval",
+					},
+				},
+				{
+					Name: "tUserDefined",
+					Type: &schema.ColumnType{Type: &postgres.UserDefinedType{T: "address"}, Raw: "USER-DEFINED", Null: true},
+					Default: &schema.RawExpr{
+						X: "'(ab,cd)'::address",
+					},
+				},
+			},
+		}
+		require.EqualValues(t, &expected, ts)
 	})
 }
 
