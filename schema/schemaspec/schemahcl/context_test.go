@@ -359,8 +359,14 @@ sized  = varchar(255)
 	s := New(
 		WithTypes(
 			[]*schemaspec.TypeSpec{
-				{Name: "int", T: "int"},
 				{Name: "bool", T: "bool"},
+				{
+					Name: "int",
+					T:    "int",
+					Attributes: []*schemaspec.TypeAttr{
+						{Name: "unsigned", Kind: reflect.Bool, Required: false},
+					},
+				},
 				{
 					Name: "varchar",
 					T:    "varchar",
