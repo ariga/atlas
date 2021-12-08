@@ -631,26 +631,91 @@ func TestMarshalSpecColumnType(t *testing.T) {
 }
 
 func TestTypes(t *testing.T) {
-
 	hclState := schemahcl.New(schemahcl.WithTypes(TypeSpecs))
 	for _, tt := range []struct {
-		hcl      string
-		expected schema.Type
+		typeExpr  string
+		extraAttr string
+		expected  schema.Type
 	}{
 		{
-			hcl:      "int",
-			expected: &schema.IntegerType{T: tInt},
-		},
-		{
-			hcl:      "varchar(255)",
+			typeExpr: "varchar(255)",
 			expected: &schema.StringType{T: tVarchar, Size: 255},
 		},
 		{
-			hcl:      "int\nunsigned=true",
-			expected: &schema.IntegerType{T: tInt, Unsigned: true},
+			typeExpr: "char(255)",
+			expected: &schema.StringType{T: tChar, Size: 255},
+		},
+		{
+			typeExpr: "binary(255)",
+			expected: &schema.BinaryType{T: tBinary, Size: 255},
+		},
+		{
+			typeExpr: "varbinary(255)",
+			expected: &schema.BinaryType{T: tVarBinary, Size: 255},
+		},
+		{
+			typeExpr: "int",
+			expected: &schema.IntegerType{T: tInt},
+		},
+		{
+			typeExpr:  "int",
+			extraAttr: "unsigned=true",
+			expected:  &schema.IntegerType{T: tInt, Unsigned: true},
+		},
+		{
+			typeExpr: "bigint",
+			expected: &schema.IntegerType{T: tBigInt},
+		},
+		{
+			typeExpr:  "bigint",
+			extraAttr: "unsigned=true",
+			expected:  &schema.IntegerType{T: tBigInt, Unsigned: true},
+		},
+		{
+			typeExpr: "tinyint",
+			expected: &schema.IntegerType{T: tTinyInt},
+		},
+		{
+			typeExpr:  "tinyint",
+			extraAttr: "unsigned=true",
+			expected:  &schema.IntegerType{T: tTinyInt, Unsigned: true},
+		},
+		{
+			typeExpr: "smallint",
+			expected: &schema.IntegerType{T: tSmallInt},
+		},
+		{
+			typeExpr:  "smallint",
+			extraAttr: "unsigned=true",
+			expected:  &schema.IntegerType{T: tSmallInt, Unsigned: true},
+		},
+		{
+			typeExpr: "mediumint",
+			expected: &schema.IntegerType{T: tMediumInt},
+		},
+		{
+			typeExpr:  "mediumint",
+			extraAttr: "unsigned=true",
+			expected:  &schema.IntegerType{T: tMediumInt, Unsigned: true},
+		},
+		{
+			typeExpr: "tinytext",
+			expected: &schema.StringType{T: tTinyText},
+		},
+		{
+			typeExpr: "mediumtext",
+			expected: &schema.StringType{T: tMediumText},
+		},
+		{
+			typeExpr: "longtext",
+			expected: &schema.StringType{T: tLongText},
+		},
+		{
+			typeExpr: "text",
+			expected: &schema.StringType{T: tText},
 		},
 	} {
-		t.Run(tt.hcl, func(t *testing.T) {
+		t.Run(tt.typeExpr, func(t *testing.T) {
 			var test schema.Schema
 			doc := fmt.Sprintf(`
 schema "test" {
@@ -660,17 +725,24 @@ table "test" {
 	column "test" {
 		type = "int"
 		xtype = %s
+		%s
 	}
 }
-`, tt.hcl)
+`, tt.typeExpr, tt.extraAttr)
 			err := UnmarshalSpec([]byte(doc), hclState, &test)
 			require.NoError(t, err)
 			table, ok := test.Table("test")
 			require.True(t, ok)
 			column, ok := table.Column("test")
 			require.True(t, ok)
-			require.EqualValues(t, column.Type.Type, tt.expected)
+			require.EqualValues(t, tt.expected, column.Type.Type)
+			spec, err := MarshalSpec(&test, hclState)
+			require.NoError(t, err)
+			var after schema.Schema
+			fmt.Println(string(spec))
+			err = UnmarshalSpec(spec, hclState, &after)
+			require.NoError(t, err)
+			require.EqualValues(t, test, after)
 		})
 	}
-
 }

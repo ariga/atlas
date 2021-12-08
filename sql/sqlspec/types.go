@@ -2,6 +2,7 @@ package sqlspec
 
 import (
 	"errors"
+	"reflect"
 	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
@@ -39,4 +40,30 @@ func PrintType(typ *schemaspec.Type, spec *schemaspec.TypeSpec) (string, error) 
 		mid = "(" + strings.Join(args, ",") + ")"
 	}
 	return typ.T + mid + suffix, nil
+}
+
+// TypeSpec returns a TypeSpec with the provided name.
+func TypeSpec(name string, attrs ...*schemaspec.TypeAttr) *schemaspec.TypeSpec {
+	return &schemaspec.TypeSpec{
+		Name:       name,
+		T:          name,
+		Attributes: attrs,
+	}
+}
+
+// SizeTypeAttr returns a TypeAttr for a size attribute.
+func SizeTypeAttr(required bool) *schemaspec.TypeAttr {
+	return &schemaspec.TypeAttr{
+		Name:     "size",
+		Kind:     reflect.Int,
+		Required: required,
+	}
+}
+
+// UnsignedTypeAttr returns a TypeAttr for an `unsigned` attribute relevant for integer types.
+func UnsignedTypeAttr() *schemaspec.TypeAttr {
+	return &schemaspec.TypeAttr{
+		Name: "unsigned",
+		Kind: reflect.Bool,
+	}
 }

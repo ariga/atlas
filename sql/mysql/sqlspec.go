@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -108,7 +107,7 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 		}
 		nfa := typeNonFuncArgs(typeSpec)
 		picked := pickAttrs(spec.Extra.Attrs, nfa)
-		spec.XType.Attributes = append(spec.XType.Attributes, picked...)
+		spec.XType.Attributes = appendIfNotExist(spec.XType.Attributes, picked)
 		printType, err := sqlspec.PrintType(spec.XType, typeSpec)
 		if err != nil {
 			return nil, err
@@ -150,6 +149,19 @@ func pickAttrs(src []*schemaspec.Attr, wanted []*schemaspec.TypeAttr) []*schemas
 		}
 	}
 	return picked
+}
+
+func appendIfNotExist(base []*schemaspec.Attr, additional []*schemaspec.Attr) []*schemaspec.Attr {
+	exists := make(map[string]struct{})
+	for _, attr := range base {
+		exists[attr.K] = struct{}{}
+	}
+	for _, attr := range additional {
+		if _, ok := exists[attr.K]; !ok {
+			base = append(base, attr)
+		}
+	}
+	return base
 }
 
 func convertInteger(spec *sqlspec.Column) (schema.Type, error) {
@@ -325,9 +337,10 @@ func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 		ct.Extra.Attrs = append(ct.Extra.Attrs, specutil.StrAttr("collation", c))
 	}
 	return &sqlspec.Column{
-		Name: c.Name,
-		Type: ct.Type,
-		Null: c.Type.Null,
+		Name:  c.Name,
+		Type:  ct.Type,
+		XType: ct.XType,
+		Null:  c.Type.Null,
 		DefaultExtension: schemaspec.DefaultExtension{
 			Extra: schemaspec.Resource{Attrs: ct.DefaultExtension.Extra.Attrs},
 		},
@@ -336,35 +349,75 @@ func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 
 // columnTypeSpec converts from a concrete MySQL schema.Type into sqlspec.Column Type.
 func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
-	switch t := t.(type) {
-	case *schema.EnumType:
-		return enumSpec(t)
-	case *schema.IntegerType:
-		return integerSpec(t)
-	case *schema.StringType:
-		return stringSpec(t)
-	case *schema.DecimalType:
-		precision := specutil.LitAttr("precision", strconv.Itoa(t.Precision))
-		scale := specutil.LitAttr("scale", strconv.Itoa(t.Scale))
-		return specutil.NewCol("", "decimal", precision, scale), nil
-	case *schema.BinaryType:
-		return binarySpec(t)
-	case *schema.BoolType:
-		return &sqlspec.Column{Type: "boolean"}, nil
-	case *schema.FloatType:
-		precision := specutil.LitAttr("precision", strconv.Itoa(t.Precision))
-		return specutil.NewCol("", "float", precision), nil
-	case *schema.TimeType:
-		return &sqlspec.Column{Type: t.T}, nil
-	case *schema.JSONType:
-		return &sqlspec.Column{Type: t.T}, nil
-	case *schema.SpatialType:
-		return &sqlspec.Column{Type: t.T}, nil
-	case *schema.UnsupportedType:
-		return &sqlspec.Column{Type: t.T}, nil
-	default:
-		return nil, fmt.Errorf("mysql: failed to convert column type %T to spec", t)
+	c := &sqlspec.Column{
+		XType: &schemaspec.Type{},
 	}
+	s, err := FormatType(t)
+	if err != nil {
+		return nil, err
+	}
+	parts := strings.FieldsFunc(s, func(r rune) bool {
+		return r == '(' || r == ')' || r == ' ' || r == ','
+	})
+	typeSpec, ok := findTypeSpec(parts[0])
+	if !ok {
+		return nil, fmt.Errorf("type spec for %q not found", parts[0])
+	}
+	c.XType.T = typeSpec.T
+	if len(parts)-1 > len(typeSpec.Attributes) {
+		return nil, fmt.Errorf("formatted type %q has more parts than type spec %q attributes", s, c.XType.T)
+	}
+	for i, part := range parts[1:] {
+		tat := typeSpec.Attributes[i]
+		// TODO(rotemtam): this should be defined on the TypeSpec
+		if part == "unsigned" && part == tat.Name {
+			c.Extra.Attrs = append(c.Extra.Attrs, specutil.LitAttr(tat.Name, "true"))
+		}
+		c.XType.Attributes = append(c.XType.Attributes, specutil.LitAttr(tat.Name, part))
+	}
+	//if size != 0 {
+	//	xt.Attributes = append(xt.Attributes, &schemaspec.Attr{
+	//		K: "size",
+	//		V: &schemaspec.LiteralValue{V: strconv.Itoa(int(size))},
+	//	})
+	//}
+	//if unsigned {
+	//	xt.Attributes = append(xt.Attributes, &schemaspec.Attr{
+	//		K: "unsigned",
+	//		V: &schemaspec.LiteralValue{V: "true"},
+	//	})
+	//}
+
+	return c, nil
+	//switch t := t.(type) {
+	//case *schema.EnumType:
+	//	return enumSpec(t)
+	//case *schema.IntegerType:
+	//	return integerSpec(t)
+	//case *schema.StringType:
+	//	return stringSpec(t)
+	//case *schema.DecimalType:
+	//	precision := specutil.LitAttr("precision", strconv.Itoa(t.Precision))
+	//	scale := specutil.LitAttr("scale", strconv.Itoa(t.Scale))
+	//	return specutil.NewCol("", "decimal", precision, scale), nil
+	//case *schema.BinaryType:
+	//	return binarySpec(t)
+	//case *schema.BoolType:
+	//	return &sqlspec.Column{Type: "boolean"}, nil
+	//case *schema.FloatType:
+	//	precision := specutil.LitAttr("precision", strconv.Itoa(t.Precision))
+	//	return specutil.NewCol("", "float", precision), nil
+	//case *schema.TimeType:
+	//	return &sqlspec.Column{Type: t.T}, nil
+	//case *schema.JSONType:
+	//	return &sqlspec.Column{Type: t.T}, nil
+	//case *schema.SpatialType:
+	//	return &sqlspec.Column{Type: t.T}, nil
+	//case *schema.UnsupportedType:
+	//	return &sqlspec.Column{Type: t.T}, nil
+	//default:
+	//	return nil, fmt.Errorf("mysql: failed to convert column type %T to spec", t)
+	//}
 }
 
 func binarySpec(t *schema.BinaryType) (*sqlspec.Column, error) {
@@ -467,20 +520,24 @@ func hasCollate(attr []schema.Attr, parent []schema.Attr) (string, bool) {
 }
 
 var TypeSpecs = []*schemaspec.TypeSpec{
-	{
-		Name: "int",
-		T:    "int",
-		Attributes: []*schemaspec.TypeAttr{
-			{Name: "unsigned", Kind: reflect.Bool},
-		},
-	},
-	{
-		Name: "varchar",
-		T:    "varchar",
-		Attributes: []*schemaspec.TypeAttr{
-			{Name: "size", Kind: reflect.Int, Required: true},
-		},
-	},
+	sqlspec.TypeSpec(tInt, sqlspec.UnsignedTypeAttr()),
+	sqlspec.TypeSpec(tTinyInt, sqlspec.UnsignedTypeAttr()),
+	sqlspec.TypeSpec(tSmallInt, sqlspec.UnsignedTypeAttr()),
+	sqlspec.TypeSpec(tMediumInt, sqlspec.UnsignedTypeAttr()),
+	sqlspec.TypeSpec(tBigInt, sqlspec.UnsignedTypeAttr()),
+	sqlspec.TypeSpec("varchar", sqlspec.SizeTypeAttr(true)),
+	sqlspec.TypeSpec("char", sqlspec.SizeTypeAttr(true)),
+	sqlspec.TypeSpec("binary", sqlspec.SizeTypeAttr(true)),
+	sqlspec.TypeSpec("varbinary", sqlspec.SizeTypeAttr(true)),
+	sqlspec.TypeSpec("tinytext"),
+	sqlspec.TypeSpec("mediumtext"),
+	sqlspec.TypeSpec("longtext"),
+	sqlspec.TypeSpec("text"),
+	sqlspec.TypeSpec("tinyblob"),
+	sqlspec.TypeSpec("mediumblob"),
+	sqlspec.TypeSpec("longblob"),
+	sqlspec.TypeSpec("blob"),
+	{Name: "boolean", T: tTinyInt},
 }
 
 func findTypeSpec(name string) (*schemaspec.TypeSpec, bool) {

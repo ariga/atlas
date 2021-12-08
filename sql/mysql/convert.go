@@ -26,7 +26,7 @@ func FormatType(t schema.Type) (string, error) {
 		}
 	case *schema.BinaryType:
 		f = strings.ToLower(t.T)
-		if f == tVarBinary {
+		if f == tVarBinary || f == tBinary {
 			// Zero is also a valid length.
 			f = fmt.Sprintf("%s(%d)", f, t.Size)
 		}
