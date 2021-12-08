@@ -1,7 +1,6 @@
 package schemahcl
 
 import (
-	"fmt"
 	"reflect"
 
 	"ariga.io/atlas/schema/schemaspec"
@@ -76,7 +75,6 @@ func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
 					spec.Params = append(spec.Params, p)
 				}
 				spec.Impl = func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-					fmt.Println(typeSpec)
 					t := &schemaspec.Type{
 						T: typeSpec.T,
 					}
