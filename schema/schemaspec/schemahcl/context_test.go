@@ -352,9 +352,9 @@ x = from_ctx
 }
 
 func TestWithTypes(t *testing.T) {
-	f := `first  = int
-second = bool
-sized  = varchar(255)
+	f := `first    = int
+second   = bool
+sized    = varchar(255)
 variadic = enum("a","b","c")
 `
 	s := New(

@@ -1,7 +1,6 @@
 package schemahcl
 
 import (
-	"fmt"
 	"reflect"
 
 	"ariga.io/atlas/schema/schemaspec"
@@ -80,7 +79,6 @@ func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
 						T: typeSpec.T,
 					}
 					if spec.VarParam != nil {
-						fmt.Println(spec)
 						lst := &schemaspec.ListValue{}
 						for _, arg := range args {
 							v, err := extractLiteralValue(arg)
