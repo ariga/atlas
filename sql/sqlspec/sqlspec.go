@@ -28,8 +28,8 @@ type (
 	Column struct {
 		Name    string                   `spec:",name"`
 		Null    bool                     `spec:"null" override:"null"`
-		Type    string                   `spec:"type" override:"type"`
-		XType   *schemaspec.Type         `spec:"xtype"`
+		//Type    string                   `spec:"type" override:"type"`
+		Type   *schemaspec.Type         `spec:"type"`
 		Default *schemaspec.LiteralValue `spec:"default" override:"default"`
 		schemaspec.DefaultExtension
 	}

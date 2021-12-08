@@ -11,7 +11,7 @@ import (
 func NewCol(name, coltype string, attrs ...*schemaspec.Attr) *sqlspec.Column {
 	return &sqlspec.Column{
 		Name: name,
-		Type: coltype,
+		//Type: coltype,
 		DefaultExtension: schemaspec.DefaultExtension{
 			Extra: schemaspec.Resource{Attrs: attrs},
 		},
