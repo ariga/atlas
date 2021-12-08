@@ -1,10 +1,8 @@
 package mysql
 
 import (
-	"errors"
 	"fmt"
 	"math"
-	"strconv"
 	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
@@ -418,61 +416,6 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	//default:
 	//	return nil, fmt.Errorf("mysql: failed to convert column type %T to spec", t)
 	//}
-}
-
-func binarySpec(t *schema.BinaryType) (*sqlspec.Column, error) {
-	switch t.T {
-	case tBlob:
-		return &sqlspec.Column{Type: "binary"}, nil
-	case tTinyBlob, tMediumBlob, tLongBlob:
-		size := specutil.LitAttr("size", strconv.Itoa(t.Size))
-		return specutil.NewCol("", "binary", size), nil
-	}
-	return nil, fmt.Errorf("mysql: schema binary failed to convert %q", t.T)
-}
-
-func stringSpec(t *schema.StringType) (*sqlspec.Column, error) {
-	switch t.T {
-	case tVarchar, tMediumText, tLongText, tTinyText, tText, tChar:
-		if t.Size == 0 {
-			return &sqlspec.Column{Type: t.T}, nil
-		}
-		return specutil.NewCol("", "string", specutil.LitAttr("size", strconv.Itoa(t.Size))), nil
-	}
-	return nil, fmt.Errorf("mysql: schema string failed to convert %q", t.T)
-}
-
-func integerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
-	switch t.T {
-	case tInt:
-		if t.Unsigned {
-			return specutil.NewCol("", "uint"), nil
-		}
-		return &sqlspec.Column{Type: "int"}, nil
-	case tTinyInt:
-		return &sqlspec.Column{Type: "int8"}, nil
-	case tMediumInt:
-		return &sqlspec.Column{Type: tMediumInt}, nil
-	case tSmallInt:
-		return &sqlspec.Column{Type: tSmallInt}, nil
-	case tBigInt:
-		if t.Unsigned {
-			return specutil.NewCol("", "uint64"), nil
-		}
-		return &sqlspec.Column{Type: "int64"}, nil
-	}
-	return nil, fmt.Errorf("mysql: schema integer failed to convert %q", t.T)
-}
-
-func enumSpec(t *schema.EnumType) (*sqlspec.Column, error) {
-	if len(t.Values) == 0 {
-		return nil, errors.New("mysql: schema enum fields to have values")
-	}
-	quoted := make([]string, 0, len(t.Values))
-	for _, v := range t.Values {
-		quoted = append(quoted, strconv.Quote(v))
-	}
-	return specutil.NewCol("", "enum", specutil.ListAttr("values", quoted...)), nil
 }
 
 // convertCharset converts spec charset/collation
