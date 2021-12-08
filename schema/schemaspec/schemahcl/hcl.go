@@ -311,9 +311,9 @@ func hclType(spec *schemaspec.TypeSpec, typ *schemaspec.Type) (string, error) {
 }
 
 func findAttr(attrs []*schemaspec.Attr, k string) (*schemaspec.Attr, bool) {
-	for _, atr := range attrs {
-		if atr.K == k {
-			return atr, true
+	for _, attr := range attrs {
+		if attr.K == k {
+			return attr, true
 		}
 	}
 	return nil, false
