@@ -214,7 +214,6 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 		for _, p := range parts[1:] {
 			lits = append(lits, strconv.Quote(p))
 		}
-
 		c.Type.Attributes = append(c.Type.Attributes, specutil.ListAttr(vs.Name, lits...))
 		return c, nil
 	}
