@@ -401,10 +401,33 @@ func TestSQLite_Sanity(t *testing.T) {
 	ddl := `
 create table atlas_types_sanity
 (
-    "tInteger"                 integer(10)                     default 100                                   null,
-    "tReal"                    real(10)                        default 100                                   null,
-    "tText"                    text(10)                        default 'I am Text'                       not null,
-    "tBlob"                    blob(10)                        default 'A'                               not null
+    "tInteger"            integer(10)                     default 100                                   null,
+    "tInt"                int(10)                         default 100                                   null,
+    "tTinyIny"            tinyint(10)                     default 100                                   null,
+    "tSmallInt"           smallint(10)                    default 100                                   null,
+    "tMediumInt"          mediumint(10)                   default 100                                   null,
+    "tIntegerBigInt"      bigint(10)                      default 100                                   null,
+    "tUnsignedBigInt"     unsigned big int(10)            default 100                                   null,
+    "tInt2"               int2(10)                        default 100                                   null,
+    "tInt8"               int8(10)                        default 100                                   null,
+    "tReal"               real(10)                        default 100                                   null,
+    "tDouble"             double(10)                      default 100                                   null,
+    "tDoublePrecision"    double precision(10)            default 100                                   null,
+    "tFloat"              float(10)                       default 100                                   null,
+    "tText"               text(10)                        default 'I am Text'                       not null,
+    "tCharacter"          character(10)                   default 'I am Text'                       not null,
+    "tVarchar"            varchar(10)                     default 'I am Text'                       not null,
+    "tVaryingCharacter"   varying character(10)           default 'I am Text'                       not null,
+    "tNchar"              nchar(10)                       default 'I am Text'                       not null,
+    "tNativeCharacter"    native character(10)            default 'I am Text'                       not null,
+    "tNVarChar"           nvarchar(10)                    default 'I am Text'                       not null,
+    "tClob"               clob(10)                        default 'I am Text'                       not null,
+    "tBlob"               blob(10)                        default 'A'                               not null,
+    "tNumeric"            numeric(10)                     default 100                               not null,
+    "tDecimal"            decimal(10,5)                   default 100                               not null,
+    "tBoolean"            boolean                         default false                             not null,
+    "tDate"               date                            default 'now()'                           not null ,
+    "tDatetime"           datetime                        default 'now()'                           not null 
 );
 `
 	liteRun(t, func(t *liteTest) {
@@ -428,8 +451,85 @@ create table atlas_types_sanity
 					},
 				},
 				{
+					Name: "tInt",
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int", Unsigned: false}, Raw: "int(10)", Null: true},
+					Default: &schema.RawExpr{
+						X: "100",
+					},
+				},
+				{
+					Name: "tTinyIny",
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "tinyint", Unsigned: false}, Raw: "tinyint(10)", Null: true},
+					Default: &schema.RawExpr{
+						X: "100",
+					},
+				},
+				{
+					Name: "tSmallInt",
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "smallint", Unsigned: false}, Raw: "smallint(10)", Null: true},
+					Default: &schema.RawExpr{
+						X: "100",
+					},
+				},
+				{
+					Name: "tMediumInt",
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "mediumint", Unsigned: false}, Raw: "mediumint(10)", Null: true},
+					Default: &schema.RawExpr{
+						X: "100",
+					},
+				},
+				{
+					Name: "tIntegerBigInt",
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false}, Raw: "bigint(10)", Null: true},
+					Default: &schema.RawExpr{
+						X: "100",
+					},
+				},
+				{
+					Name: "tUnsignedBigInt",
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "unsigned big int", Unsigned: false}, Raw: "unsigned big int(10)", Null: true},
+					Default: &schema.RawExpr{
+						X: "100",
+					},
+				},
+				{
+					Name: "tInt2",
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int2", Unsigned: false}, Raw: "int2(10)", Null: true},
+					Default: &schema.RawExpr{
+						X: "100",
+					},
+				},
+				{
+					Name: "tInt8",
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int8", Unsigned: false}, Raw: "int8(10)", Null: true},
+					Default: &schema.RawExpr{
+						X: "100",
+					},
+				},
+				{
 					Name: "tReal",
 					Type: &schema.ColumnType{Type: &schema.FloatType{T: "real", Precision: 0}, Raw: "real(10)", Null: true},
+					Default: &schema.RawExpr{
+						X: "100",
+					},
+				},
+				{
+					Name: "tDouble",
+					Type: &schema.ColumnType{Type: &schema.FloatType{T: "double", Precision: 0}, Raw: "double(10)", Null: true},
+					Default: &schema.RawExpr{
+						X: "100",
+					},
+				},
+				{
+					Name: "tDoublePrecision",
+					Type: &schema.ColumnType{Type: &schema.FloatType{T: "double precision", Precision: 0}, Raw: "double precision(10)", Null: true},
+					Default: &schema.RawExpr{
+						X: "100",
+					},
+				},
+				{
+					Name: "tFloat",
+					Type: &schema.ColumnType{Type: &schema.FloatType{T: "float", Precision: 0}, Raw: "float(10)", Null: true},
 					Default: &schema.RawExpr{
 						X: "100",
 					},
@@ -442,10 +542,94 @@ create table atlas_types_sanity
 					},
 				},
 				{
+					Name: "tCharacter",
+					Type: &schema.ColumnType{Type: &schema.StringType{T: "character", Size: 10}, Raw: "character(10)", Null: false},
+					Default: &schema.RawExpr{
+						X: "'I am Text'",
+					},
+				},
+				{
+					Name: "tVarchar",
+					Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar", Size: 10}, Raw: "varchar(10)", Null: false},
+					Default: &schema.RawExpr{
+						X: "'I am Text'",
+					},
+				},
+				{
+					Name: "tVaryingCharacter",
+					Type: &schema.ColumnType{Type: &schema.StringType{T: "varying character", Size: 10}, Raw: "varying character(10)", Null: false},
+					Default: &schema.RawExpr{
+						X: "'I am Text'",
+					},
+				},
+				{
+					Name: "tNchar",
+					Type: &schema.ColumnType{Type: &schema.StringType{T: "nchar", Size: 10}, Raw: "nchar(10)", Null: false},
+					Default: &schema.RawExpr{
+						X: "'I am Text'",
+					},
+				},
+				{
+					Name: "tNativeCharacter",
+					Type: &schema.ColumnType{Type: &schema.StringType{T: "native character", Size: 10}, Raw: "native character(10)", Null: false},
+					Default: &schema.RawExpr{
+						X: "'I am Text'",
+					},
+				},
+				{
+					Name: "tNVarChar",
+					Type: &schema.ColumnType{Type: &schema.StringType{T: "nvarchar", Size: 10}, Raw: "nvarchar(10)", Null: false},
+					Default: &schema.RawExpr{
+						X: "'I am Text'",
+					},
+				},
+				{
+					Name: "tClob",
+					Type: &schema.ColumnType{Type: &schema.StringType{T: "clob", Size: 10}, Raw: "clob(10)", Null: false},
+					Default: &schema.RawExpr{
+						X: "'I am Text'",
+					},
+				},
+				{
 					Name: "tBlob",
 					Type: &schema.ColumnType{Type: &schema.BinaryType{T: "blob", Size: 0}, Raw: "blob(10)", Null: false},
 					Default: &schema.RawExpr{
 						X: "'A'",
+					},
+				},
+				{
+					Name: "tNumeric",
+					Type: &schema.ColumnType{Type: &schema.DecimalType{T: "numeric", Precision: 10}, Raw: "numeric(10)", Null: false},
+					Default: &schema.RawExpr{
+						X: "100",
+					},
+				},
+				{
+					Name: "tDecimal",
+					Type: &schema.ColumnType{Type: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 5}, Raw: "decimal(10,5)", Null: false},
+					Default: &schema.RawExpr{
+						X: "100",
+					},
+				},
+				{
+					Name: "tBoolean",
+					Type: &schema.ColumnType{Type: &schema.BoolType{T: "boolean"}, Raw: "boolean", Null: false},
+					Default: &schema.RawExpr{
+						X: "false",
+					},
+				},
+				{
+					Name: "tDate",
+					Type: &schema.ColumnType{Type: &schema.TimeType{T: "date"}, Raw: "date", Null: false},
+					Default: &schema.RawExpr{
+						X: "'now()'",
+					},
+				},
+				{
+					Name: "tDatetime",
+					Type: &schema.ColumnType{Type: &schema.TimeType{T: "datetime"}, Raw: "datetime", Null: false},
+					Default: &schema.RawExpr{
+						X: "'now()'",
 					},
 				},
 			},
