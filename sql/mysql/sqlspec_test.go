@@ -361,6 +361,10 @@ func TestTypes(t *testing.T) {
 			typeExpr: "text",
 			expected: &schema.StringType{T: tText},
 		},
+		{
+			typeExpr: `enum("on","off")`,
+			expected: &schema.EnumType{Values: []string{"on", "off"}},
+		},
 	} {
 		t.Run(tt.typeExpr, func(t *testing.T) {
 			var test schema.Schema

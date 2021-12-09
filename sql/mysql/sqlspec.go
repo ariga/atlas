@@ -2,6 +2,8 @@ package mysql
 
 import (
 	"fmt"
+	"reflect"
+	"strconv"
 	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
@@ -207,6 +209,15 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 		return nil, fmt.Errorf("type spec for %q not found", parts[0])
 	}
 	c.Type.T = typeSpec.T
+	if vs, ok := findVariadicAttr(typeSpec); ok && len(parts) > 1 {
+		var lits []string
+		for _, p := range parts[1:] {
+			lits = append(lits, strconv.Quote(p))
+		}
+
+		c.Type.Attributes = append(c.Type.Attributes, specutil.ListAttr(vs.Name, lits...))
+		return c, nil
+	}
 	if len(parts)-1 > len(typeSpec.Attributes) {
 		return nil, fmt.Errorf("formatted type %q has more parts than type spec %q attributes", s, c.Type.T)
 	}
@@ -220,6 +231,15 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	}
 
 	return c, nil
+}
+
+func findVariadicAttr(t *schemaspec.TypeSpec) (*schemaspec.TypeAttr, bool) {
+	for _, ta := range t.Attributes {
+		if ta.Kind == reflect.Slice {
+			return ta, true
+		}
+	}
+	return nil, false
 }
 
 // convertCharset converts spec charset/collation
@@ -285,6 +305,7 @@ var TypeSpecs = []*schemaspec.TypeSpec{
 	sqlspec.TypeSpec("mediumblob"),
 	sqlspec.TypeSpec("longblob"),
 	sqlspec.TypeSpec("blob"),
+	sqlspec.TypeSpec("enum", &schemaspec.TypeAttr{Name: "values", Kind: reflect.Slice, Required: true}),
 	{Name: "boolean", T: tTinyInt},
 }
 
