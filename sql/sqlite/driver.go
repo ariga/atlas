@@ -531,10 +531,12 @@ func columnParts(t string) []string {
 	parts := strings.FieldsFunc(t, func(r rune) bool {
 		return r == '(' || r == ')' || r == ' ' || r == ','
 	})
-	// Join the type back if it was separated with space (e.g. 'varying character').
-	if len(parts) > 1 && !isNumber(parts[0]) && !isNumber(parts[1]) {
-		parts[1] = parts[0] + " " + parts[1]
-		parts = parts[1:]
+	for k := 0; k < 2; k++ {
+		// Join the type back if it was separated with space (e.g. 'varying character').
+		if len(parts) > 1 && !isNumber(parts[0]) && !isNumber(parts[1]) {
+			parts[1] = parts[0] + " " + parts[1]
+			parts = parts[1:]
+		}
 	}
 	return parts
 }
