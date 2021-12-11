@@ -3,9 +3,13 @@ package specutil
 import (
 	"errors"
 	"fmt"
+	"reflect"
+	"strconv"
 	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/sql/schema"
+	"github.com/go-openapi/inflect"
 )
 
 // PrintType returns the string representation of a column type which can be parsed
@@ -79,4 +83,82 @@ func (r *TypeRegistry) Find(t string) (*schemaspec.TypeSpec, bool) {
 		}
 	}
 	return nil, false
+}
+
+// Convert converts the schema.Type to a *schemaspec.Type.
+func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
+	s := &schemaspec.Type{}
+	vof := reflect.ValueOf(typ)
+	if vof.Kind() == reflect.Ptr {
+		vof = vof.Elem()
+	}
+	tf := vof.FieldByName("T")
+	if !tf.IsValid() {
+		return nil, fmt.Errorf("specutil: cannot convert schema.Type without T field for %T", typ)
+	}
+	if tf.Kind() != reflect.String {
+		return nil, fmt.Errorf("specutil: cannot convert non-string T field for %T", typ)
+	}
+	s.T = tf.String()
+	typeSpec, ok := r.Find(s.T)
+	if !ok {
+		return nil, fmt.Errorf("specutil: type %q not found in registry", s.T)
+	}
+	for _, tat := range typeSpec.Attributes {
+		n := inflect.Camelize(tat.Name)
+		field := vof.FieldByName(n)
+		if !field.IsValid() {
+			return nil, fmt.Errorf("invalid field name %q for attr %q on type spec %q", n, tat.Name, typeSpec.T)
+		}
+		if field.Kind() != tat.Kind {
+			return nil, errors.New("incompatible kinds on typespec attr and typefield ")
+		}
+		switch tat.Kind {
+		case reflect.Int:
+			i := strconv.Itoa(int(field.Int()))
+			s.Attributes = append(s.Attributes, LitAttr(tat.Name, i))
+		case reflect.Bool:
+			b := strconv.FormatBool(field.Bool())
+			s.Attributes = append(s.Attributes, LitAttr(tat.Name, b))
+		case reflect.Slice:
+			var lits []string
+			for i := 0; i < field.Len(); i++ {
+				fi := field.Index(i)
+				if fi.Kind() != reflect.String {
+					return nil, errors.New("specutil: only string slices currently supported")
+				}
+				lits = append(lits, strconv.Quote(fi.String()))
+			}
+			s.Attributes = append(s.Attributes, ListAttr(tat.Name, lits...))
+		default:
+			return nil, fmt.Errorf("specutil: unsupported attr kind %s for attribute %q of %q", tat.Kind, tat.Name, typeSpec.Name)
+		}
+	}
+	return s, nil
+}
+
+// TypeSpec returns a TypeSpec with the provided name.
+func TypeSpec(name string, attrs ...*schemaspec.TypeAttr) *schemaspec.TypeSpec {
+	return &schemaspec.TypeSpec{
+		Name:       name,
+		T:          name,
+		Attributes: attrs,
+	}
+}
+
+// SizeTypeAttr returns a TypeAttr for a size attribute.
+func SizeTypeAttr(required bool) *schemaspec.TypeAttr {
+	return &schemaspec.TypeAttr{
+		Name:     "size",
+		Kind:     reflect.Int,
+		Required: required,
+	}
+}
+
+// UnsignedTypeAttr returns a TypeAttr for an `unsigned` attribute relevant for integer types.
+func UnsignedTypeAttr() *schemaspec.TypeAttr {
+	return &schemaspec.TypeAttr{
+		Name: "unsigned",
+		Kind: reflect.Bool,
+	}
 }

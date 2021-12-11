@@ -75,7 +75,7 @@ type (
 	// TypeAttr describes an attribute of a TypeSpec, for example `varchar` fields
 	// can have a `size` attribute.
 	TypeAttr struct {
-		Name     string
+		Name     string // Name should be a snake_case of related the schema.Type struct field.
 		Kind     reflect.Kind
 		Required bool
 	}
@@ -231,6 +231,16 @@ func BoolVal(v Value) (bool, error) {
 		return false, fmt.Errorf("schemaspec: failed parsing %q as bool: %w", lit.V, err)
 	}
 	return b, nil
+}
+
+// Attr returns a TypeAttr by name and reports if one was found.
+func (s *TypeSpec) Attr(name string) (*TypeAttr, bool) {
+	for _, ta := range s.Attributes {
+		if ta.Name == name {
+			return ta, true
+		}
+	}
+	return nil, false
 }
 
 func (*LiteralValue) val() {}
