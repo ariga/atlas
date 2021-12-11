@@ -50,3 +50,15 @@ func TestTypePrint(t *testing.T) {
 		})
 	}
 }
+
+func TestRegistry(t *testing.T) {
+	r := &TypeRegistry{}
+	text := &schemaspec.TypeSpec{Name: "text", T: "text"}
+	err := r.Register(text)
+	require.NoError(t, err)
+	err = r.Register(text)
+	require.EqualError(t, err, `specutil: type with T of "text" already registered`)
+	spec, ok := r.FindByName("text")
+	require.True(t, ok)
+	require.EqualValues(t, spec, text)
+}
