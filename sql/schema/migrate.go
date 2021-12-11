@@ -231,8 +231,8 @@ type (
 	// drivers for executing schema changes.
 	Execer interface {
 		// Exec responsible for executing the given changeset.
-		// An error may return from Exec if the driver does not
-		// know how to execute a change.
+		// An error may return from Exec if the driver does not know
+		// how to exec a change.
 		Exec(ctx context.Context, changes []Change) error
 	}
 )
