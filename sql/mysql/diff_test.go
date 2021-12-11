@@ -318,3 +318,67 @@ func TestDiff_SchemaDiff(t *testing.T) {
 		&schema.AddTable{T: to.Tables[1]},
 	}, changes)
 }
+
+func TestDiff_RealmDiff(t *testing.T) {
+	var (
+		d    = (&Driver{}).Diff()
+		from = &schema.Realm{
+			Schemas: []*schema.Schema{
+				{
+					Name: "public",
+					Tables: []*schema.Table{
+						{Name: "users"},
+						{Name: "pets"},
+					},
+					Attrs: []schema.Attr{
+						&schema.Collation{V: "latin1"},
+					},
+				},
+				{
+					Name: "internal",
+					Tables: []*schema.Table{
+						{Name: "pets"},
+					},
+				},
+			},
+		}
+		to = &schema.Realm{
+			Schemas: []*schema.Schema{
+				{
+					Name: "public",
+					Tables: []*schema.Table{
+						{
+							Name: "users",
+							Columns: []*schema.Column{
+								{Name: "t2_id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
+							},
+						},
+						{Name: "pets"},
+					},
+					Attrs: []schema.Attr{
+						&schema.Collation{V: "latin1"},
+					},
+				},
+				{
+					Name: "test",
+					Tables: []*schema.Table{
+						{Name: "pets"},
+					},
+				},
+			},
+		}
+	)
+	from.Schemas[0].Realm = from
+	from.Schemas[0].Tables[0].Schema = from.Schemas[0]
+	from.Schemas[0].Tables[1].Schema = from.Schemas[0]
+	to.Schemas[0].Realm = to
+	to.Schemas[0].Tables[0].Schema = to.Schemas[0]
+	changes, err := d.RealmDiff(from, to)
+	require.NoError(t, err)
+	require.EqualValues(t, []schema.Change{
+		&schema.ModifyTable{T: from.Schemas[0].Tables[0], Changes: []schema.Change{&schema.AddColumn{C: to.Schemas[0].Tables[0].Columns[0]}}},
+		&schema.DropSchema{S: from.Schemas[1]},
+		&schema.AddSchema{S: to.Schemas[1]},
+		&schema.AddTable{T: to.Schemas[1].Tables[0]},
+	}, changes)
+}
