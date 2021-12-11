@@ -312,7 +312,7 @@ func TestDiff_SchemaDiff(t *testing.T) {
 	changes, err := d.SchemaDiff(from, to)
 	require.NoError(t, err)
 	require.EqualValues(t, []schema.Change{
-		&schema.ModifyAttr{From: from.Attrs[0], To: to.Attrs[0]},
+		&schema.ModifySchema{Changes: []schema.Change{&schema.ModifyAttr{From: from.Attrs[0], To: to.Attrs[0]}}},
 		&schema.ModifyTable{T: from.Tables[0], Changes: []schema.Change{&schema.AddColumn{C: to.Tables[0].Columns[0]}}},
 		&schema.DropTable{T: from.Tables[1]},
 		&schema.AddTable{T: to.Tables[1]},
@@ -356,7 +356,7 @@ func TestDiff_RealmDiff(t *testing.T) {
 						{Name: "pets"},
 					},
 					Attrs: []schema.Attr{
-						&schema.Collation{V: "latin1"},
+						&schema.Collation{V: "utf8"},
 					},
 				},
 				{
@@ -376,6 +376,7 @@ func TestDiff_RealmDiff(t *testing.T) {
 	changes, err := d.RealmDiff(from, to)
 	require.NoError(t, err)
 	require.EqualValues(t, []schema.Change{
+		&schema.ModifySchema{Changes: []schema.Change{&schema.ModifyAttr{From: from.Schemas[0].Attrs[0], To: to.Schemas[0].Attrs[0]}}},
 		&schema.ModifyTable{T: from.Schemas[0].Tables[0], Changes: []schema.Change{&schema.AddColumn{C: to.Schemas[0].Tables[0].Columns[0]}}},
 		&schema.DropSchema{S: from.Schemas[1]},
 		&schema.AddSchema{S: to.Schemas[1]},
