@@ -1,12 +1,10 @@
-package sqlspec_test
+package specutil
 
 import (
 	"reflect"
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec"
-	"ariga.io/atlas/sql/internal/specutil"
-	"ariga.io/atlas/sql/sqlspec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,7 +28,7 @@ func TestTypePrint(t *testing.T) {
 		},
 		{
 			spec:     intSpec,
-			typ:      &schemaspec.Type{T: "int", Attributes: []*schemaspec.Attr{specutil.LitAttr("unsigned", "true")}},
+			typ:      &schemaspec.Type{T: "int", Attributes: []*schemaspec.Attr{LitAttr("unsigned", "true")}},
 			expected: "int unsigned",
 		},
 		{
@@ -41,12 +39,12 @@ func TestTypePrint(t *testing.T) {
 					{Name: "size", Kind: reflect.Int, Required: true},
 				},
 			},
-			typ:      &schemaspec.Type{T: "varchar", Attributes: []*schemaspec.Attr{specutil.LitAttr("size", "255")}},
+			typ:      &schemaspec.Type{T: "varchar", Attributes: []*schemaspec.Attr{LitAttr("size", "255")}},
 			expected: "varchar(255)",
 		},
 	} {
 		t.Run(tt.expected, func(t *testing.T) {
-			s, err := sqlspec.PrintType(tt.typ, tt.spec)
+			s, err := PrintType(tt.typ, tt.spec)
 			require.NoError(t, err)
 			require.EqualValues(t, tt.expected, s)
 		})
