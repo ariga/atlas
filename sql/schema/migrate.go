@@ -24,6 +24,20 @@ type (
 		change()
 	}
 
+	// AddSchema describes a schema (named database) creation change.
+	// Unlike table creation, schemas and their elements are described
+	// with separate changes. For example, "AddSchema" and "AddTable"
+	AddSchema struct {
+		S     *Schema
+		Extra []Expr // Extra clauses and options.
+	}
+
+	// DropSchema describes a schema (named database) removal change.
+	DropSchema struct {
+		S     *Schema
+		Extra []Expr // Extra clauses and options.
+	}
+
 	// AddTable describes a table creation change.
 	AddTable struct {
 		T     *Table
@@ -168,6 +182,11 @@ type (
 	// Differ is the interface implemented by the different
 	// drivers for comparing and diffing schema top elements.
 	Differ interface {
+		// RealmDiff returns a diff report for migrating a realm
+		// (or a database) from state "from" to state "to". An error
+		// is returned if such step is not possible.
+		RealmDiff(from, to *Realm) ([]Change, error)
+
 		// SchemaDiff returns a diff report for migrating a schema
 		// from state "from" to state "to". An error is returned
 		// if such step is not possible.
@@ -193,6 +212,8 @@ type (
 func (*AddAttr) change()          {}
 func (*DropAttr) change()         {}
 func (*ModifyAttr) change()       {}
+func (*AddSchema) change()        {}
+func (*DropSchema) change()       {}
 func (*AddTable) change()         {}
 func (*DropTable) change()        {}
 func (*ModifyTable) change()      {}

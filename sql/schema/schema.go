@@ -78,6 +78,16 @@ type (
 	}
 )
 
+// Schema returns the first schema that matched the given name.
+func (r *Realm) Schema(name string) (*Schema, bool) {
+	for _, t := range r.Schemas {
+		if t.Name == name {
+			return t, true
+		}
+	}
+	return nil, false
+}
+
 // Table returns the first table that matched the given name.
 func (s *Schema) Table(name string) (*Table, bool) {
 	for _, t := range s.Tables {
