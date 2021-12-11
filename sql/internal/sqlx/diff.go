@@ -75,9 +75,7 @@ func (d *Diff) RealmDiff(from, to *schema.Realm) ([]schema.Change, error) {
 		if err != nil {
 			return nil, err
 		}
-		if len(change) > 0 {
-			changes = append(changes, change...)
-		}
+		changes = append(changes, change...)
 	}
 	// Add schemas.
 	for _, s1 := range to.Schemas {
@@ -97,7 +95,11 @@ func (d *Diff) RealmDiff(from, to *schema.Realm) ([]schema.Change, error) {
 func (d *Diff) SchemaDiff(from, to *schema.Schema) ([]schema.Change, error) {
 	var changes []schema.Change
 	// Drop or modify attributes (collations, checks, etc).
-	changes = append(changes, d.SchemaAttrDiff(from, to)...)
+	if change := d.SchemaAttrDiff(from, to); len(change) > 0 {
+		changes = append(changes, &schema.ModifySchema{
+			Changes: change,
+		})
+	}
 
 	// Drop or modify tables.
 	for _, t1 := range from.Tables {

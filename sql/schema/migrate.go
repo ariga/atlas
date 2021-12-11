@@ -38,6 +38,12 @@ type (
 		Extra []Expr // Extra clauses and options.
 	}
 
+	// ModifySchema describes a modification change for schema attributes.
+	ModifySchema struct {
+		S       *Schema
+		Changes []Change
+	}
+
 	// AddTable describes a table creation change.
 	AddTable struct {
 		T     *Table
@@ -214,6 +220,7 @@ func (*DropAttr) change()         {}
 func (*ModifyAttr) change()       {}
 func (*AddSchema) change()        {}
 func (*DropSchema) change()       {}
+func (*ModifySchema) change()     {}
 func (*AddTable) change()         {}
 func (*DropTable) change()        {}
 func (*ModifyTable) change()      {}
