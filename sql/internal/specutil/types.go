@@ -14,7 +14,11 @@ import (
 
 // PrintType returns the string representation of a column type which can be parsed
 // by the driver into a schema.Type.
-func PrintType(typ *schemaspec.Type, spec *schemaspec.TypeSpec) (string, error) {
+func (r *TypeRegistry) PrintType(typ *schemaspec.Type) (string, error) {
+	spec, ok := r.Find(typ.T)
+	if !ok {
+		return "", fmt.Errorf("specutil: type %q not found in registry", typ.T)
+	}
 	if len(spec.Attributes) == 0 {
 		return typ.T, nil
 	}
