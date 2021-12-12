@@ -448,7 +448,3 @@ func unsignedTypeAttr() *schemaspec.TypeAttr {
 		Kind: reflect.Bool,
 	}
 }
-
-func columnType(typ *schemaspec.Type, extra []*schemaspec.Attr) (schema.Type, error) {
-
-}

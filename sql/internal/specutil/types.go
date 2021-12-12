@@ -159,6 +159,7 @@ func (r *TypeRegistry) Specs() []*schemaspec.TypeSpec {
 	return r.r
 }
 
+// Type converts a *schemaspec.Type into a schema.Type.
 func (r *TypeRegistry) Type(typ *schemaspec.Type, extra []*schemaspec.Attr, parser func(string) (schema.Type, error)) (schema.Type, error) {
 	typeSpec, ok := r.Find(typ.T)
 	if !ok {
