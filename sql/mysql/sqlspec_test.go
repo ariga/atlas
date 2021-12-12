@@ -740,9 +740,8 @@ column "test" {
 `, tt.typeExpr, tt.extraAttr)
 			err := hclState.UnmarshalSpec([]byte(doc), &test)
 			require.NoError(t, err)
-			typ := test.Columns[0].Type
-			TypeRegistry.Convert(typ)
-			require.EqualValues(t, tt.expected, actual)
+			col := test.Columns[0]
+			convertColumnType()
 			//err := UnmarshalSpec([]byte(doc), hclState, &test)
 			//require.NoError(t, err)
 			//table, ok := test.Table("test")

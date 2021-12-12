@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -438,5 +439,16 @@ func hasCollate(attr []schema.Attr, parent []schema.Attr) (string, bool) {
 }
 
 var TypeRegistry = specutil.NewRegistry(
-	specutil.TypeSpec(tInt, specutil.UnsignedTypeAttr()),
+	specutil.TypeSpec(tInt, unsignedTypeAttr()),
 )
+
+func unsignedTypeAttr() *schemaspec.TypeAttr {
+	return &schemaspec.TypeAttr{
+		Name: "unsigned",
+		Kind: reflect.Bool,
+	}
+}
+
+func columnType(typ *schemaspec.Type, extra []*schemaspec.Attr) (schema.Type, error) {
+
+}

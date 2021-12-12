@@ -155,6 +155,21 @@ func (r *TypeRegistry) Specs() []*schemaspec.TypeSpec {
 	return r.r
 }
 
+func (r *TypeRegistry) Type(typ *schemaspec.Type, extra []*schemaspec.Attr, parser func(string) (schema.Type, error)) (schema.Type, error) {
+	typeSpec, ok := r.Find(typ.T)
+	if !ok {
+		return nil, fmt.Errorf("specutil: typespec not found for %s", typ.T)
+	}
+	nfa := typeNonFuncArgs(typeSpec)
+	picked := pickTypeAttrs(extra, nfa)
+	typ.Attributes = appendIfNotExist(typ.Attributes, picked)
+	printType, err := PrintType(typ, typeSpec)
+	if err != nil {
+		return nil, err
+	}
+	return parser(printType)
+}
+
 // TypeSpec returns a TypeSpec with the provided name.
 func TypeSpec(name string, attrs ...*schemaspec.TypeAttr) *schemaspec.TypeSpec {
 	return &schemaspec.TypeSpec{
@@ -171,4 +186,45 @@ func SizeTypeAttr(required bool) *schemaspec.TypeAttr {
 		Kind:     reflect.Int,
 		Required: required,
 	}
+}
+
+// typeNonFuncArgs returns the type attributes that are NOT configured via arguments to the
+// type definition, `int unsigned`.
+func typeNonFuncArgs(spec *schemaspec.TypeSpec) []*schemaspec.TypeAttr {
+	var args []*schemaspec.TypeAttr
+	for _, attr := range spec.Attributes {
+		// TODO(rotemtam): this should be defined on the TypeSpec.
+		if attr.Name == "unsigned" {
+			args = append(args, attr)
+		}
+	}
+	return args
+}
+
+// pickTypeAttrs returns the relevant Attrs matching the wanted TypeAttrs.
+func pickTypeAttrs(src []*schemaspec.Attr, wanted []*schemaspec.TypeAttr) []*schemaspec.Attr {
+	keys := make(map[string]struct{})
+	for _, w := range wanted {
+		keys[w.Name] = struct{}{}
+	}
+	var picked []*schemaspec.Attr
+	for _, attr := range src {
+		if _, ok := keys[attr.K]; ok {
+			picked = append(picked, attr)
+		}
+	}
+	return picked
+}
+
+func appendIfNotExist(base []*schemaspec.Attr, additional []*schemaspec.Attr) []*schemaspec.Attr {
+	exists := make(map[string]struct{})
+	for _, attr := range base {
+		exists[attr.K] = struct{}{}
+	}
+	for _, attr := range additional {
+		if _, ok := exists[attr.K]; !ok {
+			base = append(base, attr)
+		}
+	}
+	return base
 }
