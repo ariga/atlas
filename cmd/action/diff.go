@@ -62,7 +62,7 @@ func changeDescriptor(ctx context.Context, c schema.Change, d *Driver) (*changeD
 	defer d.interceptor.clear()
 	defer d.interceptor.off()
 	if err := d.Exec(ctx, []schema.Change{c}); err != nil {
-		return nil, fmt.Errorf("atlas: failed getting planned sql: %Web", err)
+		return nil, fmt.Errorf("atlas: failed getting planned sql: %w", err)
 	}
 	desc.queries = d.interceptor.history
 	return desc, nil
