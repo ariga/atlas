@@ -45,7 +45,10 @@ func TestTypePrint(t *testing.T) {
 		},
 	} {
 		t.Run(tt.expected, func(t *testing.T) {
-			s, err := PrintType(tt.typ, tt.spec)
+			r := &TypeRegistry{}
+			err := r.Register(tt.spec)
+			require.NoError(t, err)
+			s, err := r.PrintType(tt.typ)
 			require.NoError(t, err)
 			require.EqualValues(t, tt.expected, s)
 		})
