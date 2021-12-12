@@ -1,4 +1,4 @@
-package base
+package action
 
 import "github.com/spf13/cobra"
 

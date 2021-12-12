@@ -8,7 +8,7 @@ import (
 	"os"
 	"path"
 
-	"ariga.io/atlas/cmd/internal/base"
+	"ariga.io/atlas/cmd/action"
 	"github.com/spf13/cobra/doc"
 )
 
@@ -18,8 +18,8 @@ func main() {
 		log.Fatal(err)
 	}
 	d := path.Join(pwd, "../../doc/md/CLI")
-	base.RootCmd.DisableAutoGenTag = true
-	err = doc.GenMarkdownTree(base.RootCmd, d)
+	action.RootCmd.DisableAutoGenTag = true
+	err = doc.GenMarkdownTree(action.RootCmd, d)
 	if err != nil {
 		log.Fatal(err)
 	}
