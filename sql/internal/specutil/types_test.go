@@ -14,7 +14,7 @@ func TestTypePrint(t *testing.T) {
 		Name: "int",
 		T:    "int",
 		Attributes: []*schemaspec.TypeAttr{
-			{Name: "unsigned", Kind: reflect.Bool, Required: false},
+			unsignedTypeAttr(),
 		},
 	}
 	for _, tt := range []struct {
@@ -68,7 +68,7 @@ func TestRegistryConvert(t *testing.T) {
 	r := &TypeRegistry{}
 	err := r.Register(
 		TypeSpec("varchar", SizeTypeAttr(true)),
-		TypeSpec("int", UnsignedTypeAttr()),
+		TypeSpec("int", unsignedTypeAttr()),
 		TypeSpec(
 			"decimal",
 			&schemaspec.TypeAttr{
@@ -90,8 +90,9 @@ func TestRegistryConvert(t *testing.T) {
 	)
 	require.NoError(t, err)
 	for _, tt := range []struct {
-		typ      schema.Type
-		expected *schemaspec.Type
+		typ         schema.Type
+		expected    *schemaspec.Type
+		expectedErr string
 	}{
 		{
 			typ:      &schema.StringType{T: "varchar", Size: 255},
@@ -118,11 +119,27 @@ func TestRegistryConvert(t *testing.T) {
 				ListAttr("values", `"on"`, `"off"`),
 			}},
 		},
+		{
+			typ:         nil,
+			expected:    &schemaspec.Type{},
+			expectedErr: "specutil: invalid schema.Type on Convert",
+		},
 	} {
 		t.Run(tt.expected.T, func(t *testing.T) {
 			convert, err := r.Convert(tt.typ)
+			if tt.expectedErr != "" {
+				require.EqualError(t, err, tt.expectedErr)
+				return
+			}
 			require.NoError(t, err)
 			require.EqualValues(t, tt.expected, convert)
 		})
+	}
+}
+
+func unsignedTypeAttr() *schemaspec.TypeAttr {
+	return &schemaspec.TypeAttr{
+		Name: "unsigned",
+		Kind: reflect.Bool,
 	}
 }
