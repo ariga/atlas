@@ -60,12 +60,46 @@ type (
 	}
 )
 
+// RealmDiff implements the schema.Differ for Realm objects and returns a list of changes
+// that need to be applied in order to move a database from the current state to the desired.
+func (d *Diff) RealmDiff(from, to *schema.Realm) ([]schema.Change, error) {
+	var changes []schema.Change
+	// Drop or modify schema.
+	for _, s1 := range from.Schemas {
+		s2, ok := to.Schema(s1.Name)
+		if !ok {
+			changes = append(changes, &schema.DropSchema{S: s1})
+			continue
+		}
+		change, err := d.SchemaDiff(s1, s2)
+		if err != nil {
+			return nil, err
+		}
+		changes = append(changes, change...)
+	}
+	// Add schemas.
+	for _, s1 := range to.Schemas {
+		if _, ok := from.Schema(s1.Name); ok {
+			continue
+		}
+		changes = append(changes, &schema.AddSchema{S: s1})
+		for _, t := range s1.Tables {
+			changes = append(changes, &schema.AddTable{T: t})
+		}
+	}
+	return changes, nil
+}
+
 // SchemaDiff implements the schema.Differ interface and returns a list of
 // changes that need to be applied in order to move from one state to the other.
 func (d *Diff) SchemaDiff(from, to *schema.Schema) ([]schema.Change, error) {
 	var changes []schema.Change
 	// Drop or modify attributes (collations, checks, etc).
-	changes = append(changes, d.SchemaAttrDiff(from, to)...)
+	if change := d.SchemaAttrDiff(from, to); len(change) > 0 {
+		changes = append(changes, &schema.ModifySchema{
+			Changes: change,
+		})
+	}
 
 	// Drop or modify tables.
 	for _, t1 := range from.Tables {

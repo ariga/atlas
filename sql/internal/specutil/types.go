@@ -80,3 +80,4 @@ func (r *TypeRegistry) Find(t string) (*schemaspec.TypeSpec, bool) {
 	}
 	return nil, false
 }
+
