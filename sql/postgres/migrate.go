@@ -24,7 +24,11 @@ func (d *Driver) Migrate() schema.Execer {
 // Exec executes the changes on the database. An error is returned
 // if one of the operations fail, or a change is not supported.
 func (m *migrate) Exec(ctx context.Context, changes []schema.Change) error {
-	planned, err := sqlx.DetachCycles(changes)
+	planned, err := m.topLevel(ctx, changes)
+	if err != nil {
+		return err
+	}
+	planned, err = sqlx.DetachCycles(planned)
 	if err != nil {
 		return err
 	}
@@ -44,6 +48,26 @@ func (m *migrate) Exec(ctx context.Context, changes []schema.Change) error {
 		}
 	}
 	return nil
+}
+
+// topLevel executes first the changes for creating or dropping schemas (top-level schema elements).
+func (m *migrate) topLevel(ctx context.Context, changes []schema.Change) ([]schema.Change, error) {
+	planned := make([]schema.Change, 0, len(changes))
+	for _, c := range changes {
+		switch c := c.(type) {
+		case *schema.AddSchema:
+			if _, err := m.ExecContext(ctx, Build("CREATE SCHEMA").Ident(c.S.Name).String()); err != nil {
+				return nil, fmt.Errorf("add schema: %w", err)
+			}
+		case *schema.DropSchema:
+			if _, err := m.ExecContext(ctx, Build("DROP SCHEMA").Ident(c.S.Name).String()); err != nil {
+				return nil, fmt.Errorf("drop schema: %w", err)
+			}
+		default:
+			planned = append(planned, c)
+		}
+	}
+	return planned, nil
 }
 
 // addTable builds and executes the query for creating a table in a schema.

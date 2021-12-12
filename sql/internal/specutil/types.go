@@ -99,11 +99,14 @@ func (r *TypeRegistry) Find(t string) (*schemaspec.TypeSpec, bool) {
 // Convert converts the schema.Type to a *schemaspec.Type.
 func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 	s := &schemaspec.Type{}
-	vof := reflect.ValueOf(typ)
-	if vof.Kind() == reflect.Ptr {
-		vof = vof.Elem()
+	rv := reflect.ValueOf(typ)
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
 	}
-	tf := vof.FieldByName("T")
+	if !rv.IsValid() {
+		return nil, errors.New("specutil: invalid schema.Type on Convert")
+	}
+	tf := rv.FieldByName("T")
 	if !tf.IsValid() {
 		return nil, fmt.Errorf("specutil: cannot convert schema.Type without T field for %T", typ)
 	}
@@ -115,24 +118,24 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 	if !ok {
 		return nil, fmt.Errorf("specutil: type %q not found in registry", s.T)
 	}
-	for _, tat := range typeSpec.Attributes {
-		n := inflect.Camelize(tat.Name)
-		field := vof.FieldByName(n)
+	for _, attr := range typeSpec.Attributes {
+		n := inflect.Camelize(attr.Name)
+		field := rv.FieldByName(n)
 		if !field.IsValid() {
-			return nil, fmt.Errorf("invalid field name %q for attr %q on type spec %q", n, tat.Name, typeSpec.T)
+			return nil, fmt.Errorf("invalid field name %q for attr %q on type spec %q", n, attr.Name, typeSpec.T)
 		}
-		if field.Kind() != tat.Kind {
-			return nil, errors.New("incompatible kinds on typespec attr and typefield ")
+		if field.Kind() != attr.Kind {
+			return nil, errors.New("incompatible kinds on typespec attr and typefield")
 		}
-		switch tat.Kind {
+		switch attr.Kind {
 		case reflect.Int:
 			i := strconv.Itoa(int(field.Int()))
-			s.Attributes = append(s.Attributes, LitAttr(tat.Name, i))
+			s.Attributes = append(s.Attributes, LitAttr(attr.Name, i))
 		case reflect.Bool:
 			b := strconv.FormatBool(field.Bool())
-			s.Attributes = append(s.Attributes, LitAttr(tat.Name, b))
+			s.Attributes = append(s.Attributes, LitAttr(attr.Name, b))
 		case reflect.Slice:
-			var lits []string
+			lits := make([]string, 0, field.Len())
 			for i := 0; i < field.Len(); i++ {
 				fi := field.Index(i)
 				if fi.Kind() != reflect.String {
@@ -140,9 +143,9 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 				}
 				lits = append(lits, strconv.Quote(fi.String()))
 			}
-			s.Attributes = append(s.Attributes, ListAttr(tat.Name, lits...))
+			s.Attributes = append(s.Attributes, ListAttr(attr.Name, lits...))
 		default:
-			return nil, fmt.Errorf("specutil: unsupported attr kind %s for attribute %q of %q", tat.Kind, tat.Name, typeSpec.Name)
+			return nil, fmt.Errorf("specutil: unsupported attr kind %s for attribute %q of %q", attr.Kind, attr.Name, typeSpec.Name)
 		}
 	}
 	return s, nil
@@ -167,13 +170,5 @@ func SizeTypeAttr(required bool) *schemaspec.TypeAttr {
 		Name:     "size",
 		Kind:     reflect.Int,
 		Required: required,
-	}
-}
-
-// UnsignedTypeAttr returns a TypeAttr for an `unsigned` attribute relevant for integer types.
-func UnsignedTypeAttr() *schemaspec.TypeAttr {
-	return &schemaspec.TypeAttr{
-		Name: "unsigned",
-		Kind: reflect.Bool,
 	}
 }

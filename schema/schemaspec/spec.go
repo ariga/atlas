@@ -67,15 +67,18 @@ type (
 
 	// TypeSpec represents a specification for defining a Type.
 	TypeSpec struct {
-		Name       string // Name is the identifier for the type in an Atlas DDL document.
-		T          string // T is the database identifier for the type.
+		// Name is the identifier for the type in an Atlas DDL document.
+		Name string
+		// T is the database identifier for the type.
+		T          string
 		Attributes []*TypeAttr
 	}
 
 	// TypeAttr describes an attribute of a TypeSpec, for example `varchar` fields
 	// can have a `size` attribute.
 	TypeAttr struct {
-		Name     string // Name should be a snake_case of related the schema.Type struct field.
+		// Name should be a snake_case of related the schema.Type struct field.
+		Name     string
 		Kind     reflect.Kind
 		Required bool
 	}
