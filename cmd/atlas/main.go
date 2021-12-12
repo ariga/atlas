@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"ariga.io/atlas/cmd/base"
+	"ariga.io/atlas/cmd/action"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	"github.com/spf13/cobra"
@@ -11,10 +11,10 @@ import (
 
 func main() {
 	cobra.OnInitialize(initConfig)
-	cobra.CheckErr(base.RootCmd.Execute())
+	cobra.CheckErr(action.RootCmd.Execute())
 }
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	base.RootCmd.SetOut(os.Stdout)
+	action.RootCmd.SetOut(os.Stdout)
 }

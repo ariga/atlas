@@ -20,6 +20,7 @@ atlas schema apply --dsn postgres://user:pass@host:port/dbname -f atlas.hcl
   -d, --dsn string    [driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format
   -f, --file string   [/path/to/file] file containing schema
   -h, --help          help for apply
+  -w, --web           open in UI server
 ```
 
 ### SEE ALSO

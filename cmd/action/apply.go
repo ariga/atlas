@@ -1,4 +1,4 @@
-package base
+package action
 
 import (
 	"context"
@@ -12,10 +12,11 @@ import (
 )
 
 var (
-	applyFlags struct {
-		dsn  string
-		file string
-		web  bool
+	// ApplyFlags are the flags used in Apply command.
+	ApplyFlags struct {
+		DSN  string
+		File string
+		Web  bool
 	}
 	// ApplyCmd represents the apply command.
 	ApplyCmd = &cobra.Command{
@@ -35,18 +36,19 @@ const (
 
 func init() {
 	schemaCmd.AddCommand(ApplyCmd)
-	ApplyCmd.Flags().StringVarP(&applyFlags.dsn, "dsn", "d", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format")
-	ApplyCmd.Flags().StringVarP(&applyFlags.file, "file", "f", "", "[/path/to/file] file containing schema")
-	ApplyCmd.Flags().BoolVarP(&applyFlags.web, "web", "w", false, "open in UI server")
+	ApplyCmd.Flags().StringVarP(&ApplyFlags.DSN, "dsn", "d", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format")
+	ApplyCmd.Flags().StringVarP(&ApplyFlags.File, "file", "f", "", "[/path/to/file] file containing schema")
+	ApplyCmd.Flags().BoolVarP(&ApplyFlags.Web, "web", "w", false, "open in UI server")
 	cobra.CheckErr(ApplyCmd.MarkFlagRequired("dsn"))
 	cobra.CheckErr(ApplyCmd.MarkFlagRequired("file"))
 }
 
+// CmdApplyRun is the command used when running CLI.
 func CmdApplyRun(cmd *cobra.Command, args []string) {
-	d, err := defaultMux.OpenAtlas(applyFlags.dsn)
+	d, err := defaultMux.OpenAtlas(ApplyFlags.DSN)
 	cobra.CheckErr(err)
 	u := schemaUnmarshal{unmarshalSpec: d.UnmarshalSpec, unmarshaler: schemahcl.Unmarshal}
-	applyRun(d, &u, applyFlags.dsn, applyFlags.file)
+	applyRun(d, &u, ApplyFlags.DSN, ApplyFlags.File)
 }
 
 func applyRun(d *Driver, u schemaUnmarshaler, dsn string, file string) {
