@@ -67,7 +67,9 @@ type (
 
 	// TypeSpec represents a specification for defining a Type.
 	TypeSpec struct {
+		// Name is the identifier for the type in an Atlas DDL document.
 		Name       string
+		 // T is the database identifier for the type.
 		T          string
 		Attributes []*TypeAttr
 	}
