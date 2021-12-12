@@ -18,6 +18,10 @@ import (
 func TestMigrate_Exec(t *testing.T) {
 	migrate, mk, err := newMigrate("8.0.13")
 	require.NoError(t, err)
+	mk.ExpectExec(sqltest.Escape("CREATE DATABASE `test` CHARACTER SET latin")).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mk.ExpectExec(sqltest.Escape("DROP DATABASE `atlas`")).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 	mk.ExpectExec(sqltest.Escape("DROP TABLE `users`")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mk.ExpectExec(sqltest.Escape("DROP TABLE `public`.`pets`")).
@@ -33,6 +37,8 @@ func TestMigrate_Exec(t *testing.T) {
 	mk.ExpectExec(sqltest.Escape("CREATE TABLE `comments` (`id` bigint NOT NULL, `post_id` bigint NULL, CONSTRAINT `comment` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`))")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	err = migrate.Exec(context.Background(), []schema.Change{
+		&schema.AddSchema{S: &schema.Schema{Name: "test", Attrs: []schema.Attr{&schema.Charset{V: "latin"}}}},
+		&schema.DropSchema{S: &schema.Schema{Name: "atlas", Attrs: []schema.Attr{&schema.Charset{V: "latin"}}}},
 		&schema.DropTable{T: &schema.Table{Name: "users"}},
 		&schema.DropTable{T: &schema.Table{Name: "pets", Schema: &schema.Schema{Name: "public"}}},
 		&schema.AddTable{
