@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	ApplyConfig struct {
+	applyFlags struct {
 		dsn  string
 		file string
 		web  bool
@@ -21,12 +21,7 @@ var (
 	ApplyCmd = &cobra.Command{
 		Use:   "apply",
 		Short: "Apply an atlas schema to a data source",
-		Run: func(cmd *cobra.Command, args []string) {
-			d, err := defaultMux.OpenAtlas(ApplyConfig.dsn)
-			cobra.CheckErr(err)
-			u := schemaUnmarshal{unmarshalSpec: d.UnmarshalSpec, unmarshaler: schemahcl.Unmarshal}
-			applyRun(d, &u, ApplyConfig.dsn, ApplyConfig.file)
-		},
+		Run:   CmdApplyRun,
 		Example: `
 atlas schema apply -d mysql://user:pass@tcp(localhost:3306)/dbname -f atlas.hcl
 atlas schema apply --dsn postgres://user:pass@host:port/dbname -f atlas.hcl`,
@@ -40,11 +35,18 @@ const (
 
 func init() {
 	schemaCmd.AddCommand(ApplyCmd)
-	ApplyCmd.Flags().StringVarP(&ApplyConfig.dsn, "dsn", "d", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format")
-	ApplyCmd.Flags().StringVarP(&ApplyConfig.file, "file", "f", "", "[/path/to/file] file containing schema")
-	ApplyCmd.Flags().BoolVarP(&ApplyConfig.web, "web", "w", false, "open in UI server")
+	ApplyCmd.Flags().StringVarP(&applyFlags.dsn, "dsn", "d", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format")
+	ApplyCmd.Flags().StringVarP(&applyFlags.file, "file", "f", "", "[/path/to/file] file containing schema")
+	ApplyCmd.Flags().BoolVarP(&applyFlags.web, "web", "w", false, "open in UI server")
 	cobra.CheckErr(ApplyCmd.MarkFlagRequired("dsn"))
 	cobra.CheckErr(ApplyCmd.MarkFlagRequired("file"))
+}
+
+func CmdApplyRun(cmd *cobra.Command, args []string) {
+	d, err := defaultMux.OpenAtlas(applyFlags.dsn)
+	cobra.CheckErr(err)
+	u := schemaUnmarshal{unmarshalSpec: d.UnmarshalSpec, unmarshaler: schemahcl.Unmarshal}
+	applyRun(d, &u, applyFlags.dsn, applyFlags.file)
 }
 
 func applyRun(d *Driver, u schemaUnmarshaler, dsn string, file string) {
