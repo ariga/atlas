@@ -5,12 +5,17 @@ import (
 	"log"
 	"testing"
 
+	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
 
 	"github.com/stretchr/testify/require"
+)
+
+var (
+	hclState = schemahcl.New(schemahcl.WithTypes(TypeRegistry.Specs()))
 )
 
 func TestSQLSpec(t *testing.T) {
@@ -626,6 +631,131 @@ func TestMarshalSpecColumnType(t *testing.T) {
 			require.NoError(t, err)
 			require.EqualValues(t, tt.expected.Type, test.Table.Columns[0].Type)
 			require.ElementsMatch(t, tt.expected.Extra.Attrs, test.Table.Columns[0].Extra.Attrs)
+		})
+	}
+}
+
+func TestTypes(t *testing.T) {
+
+	for _, tt := range []struct {
+		typeExpr  string
+		extraAttr string
+		expected  schema.Type
+	}{
+		{
+			typeExpr: "varchar(255)",
+			expected: &schema.StringType{T: tVarchar, Size: 255},
+		},
+		{
+			typeExpr: "char(255)",
+			expected: &schema.StringType{T: tChar, Size: 255},
+		},
+		{
+			typeExpr: "binary(255)",
+			expected: &schema.BinaryType{T: tBinary, Size: 255},
+		},
+		{
+			typeExpr: "varbinary(255)",
+			expected: &schema.BinaryType{T: tVarBinary, Size: 255},
+		},
+		{
+			typeExpr: "int",
+			expected: &schema.IntegerType{T: tInt},
+		},
+		{
+			typeExpr:  "int",
+			extraAttr: "unsigned=true",
+			expected:  &schema.IntegerType{T: tInt, Unsigned: true},
+		},
+		{
+			typeExpr: "bigint",
+			expected: &schema.IntegerType{T: tBigInt},
+		},
+		{
+			typeExpr:  "bigint",
+			extraAttr: "unsigned=true",
+			expected:  &schema.IntegerType{T: tBigInt, Unsigned: true},
+		},
+		{
+			typeExpr: "tinyint",
+			expected: &schema.IntegerType{T: tTinyInt},
+		},
+		{
+			typeExpr:  "tinyint",
+			extraAttr: "unsigned=true",
+			expected:  &schema.IntegerType{T: tTinyInt, Unsigned: true},
+		},
+		{
+			typeExpr: "smallint",
+			expected: &schema.IntegerType{T: tSmallInt},
+		},
+		{
+			typeExpr:  "smallint",
+			extraAttr: "unsigned=true",
+			expected:  &schema.IntegerType{T: tSmallInt, Unsigned: true},
+		},
+		{
+			typeExpr: "mediumint",
+			expected: &schema.IntegerType{T: tMediumInt},
+		},
+		{
+			typeExpr:  "mediumint",
+			extraAttr: "unsigned=true",
+			expected:  &schema.IntegerType{T: tMediumInt, Unsigned: true},
+		},
+		{
+			typeExpr: "tinytext",
+			expected: &schema.StringType{T: tTinyText},
+		},
+		{
+			typeExpr: "mediumtext",
+			expected: &schema.StringType{T: tMediumText},
+		},
+		{
+			typeExpr: "longtext",
+			expected: &schema.StringType{T: tLongText},
+		},
+		{
+			typeExpr: "text",
+			expected: &schema.StringType{T: tText},
+		},
+		{
+			typeExpr: `enum("on","off")`,
+			expected: &schema.EnumType{Values: []string{"on", "off"}},
+		},
+	} {
+		t.Run(tt.typeExpr, func(t *testing.T) {
+			type col struct {
+				Type *schemaspec.Type `spec:"type"`
+				schemaspec.DefaultExtension
+			}
+			var test struct {
+				Columns []*col `spec:"column"`
+			}
+			doc := fmt.Sprintf(`
+column "test" {
+	type = %s
+	%s
+}
+`, tt.typeExpr, tt.extraAttr)
+			err := hclState.UnmarshalSpec([]byte(doc), &test)
+			require.NoError(t, err)
+			typ := test.Columns[0].Type
+			TypeRegistry.Convert(typ)
+			require.EqualValues(t, tt.expected, actual)
+			//err := UnmarshalSpec([]byte(doc), hclState, &test)
+			//require.NoError(t, err)
+			//table, ok := test.Table("test")
+			//require.True(t, ok)
+			//column, ok := table.Column("test")
+			//require.True(t, ok)
+			//require.EqualValues(t, tt.expected, column.Type.Type)
+			//spec, err := MarshalSpec(&test, hclState)
+			//require.NoError(t, err)
+			//var after schema.Schema
+			//err = UnmarshalSpec(spec, hclState, &after)
+			//require.NoError(t, err)
+			//require.EqualValues(t, test, after)
 		})
 	}
 }

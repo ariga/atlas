@@ -3,6 +3,7 @@ package specutil
 import (
 	"errors"
 	"fmt"
+	"log"
 	"reflect"
 	"strconv"
 	"strings"
@@ -63,6 +64,16 @@ func (r *TypeRegistry) Register(specs ...*schemaspec.TypeSpec) error {
 	}
 	r.r = append(r.r, specs...)
 	return nil
+}
+
+// NewRegistry creates a new *TypeRegistry, registers the provided types and panics
+// if an error occurs.
+func NewRegistry(specs ...*schemaspec.TypeSpec) *TypeRegistry {
+	r := &TypeRegistry{}
+	if err := r.Register(specs...); err != nil {
+		log.Fatalf("failed registering types: %s", err)
+	}
+	return r
 }
 
 // FindByName searches the registry for types that have the provided name.
@@ -135,6 +146,10 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 		}
 	}
 	return s, nil
+}
+
+func (r *TypeRegistry) Specs() []*schemaspec.TypeSpec {
+	return r.r
 }
 
 // TypeSpec returns a TypeSpec with the provided name.

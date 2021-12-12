@@ -436,3 +436,7 @@ func hasCollate(attr []schema.Attr, parent []schema.Attr) (string, bool) {
 	}
 	return "", false
 }
+
+var TypeRegistry = specutil.NewRegistry(
+	specutil.TypeSpec(tInt, specutil.UnsignedTypeAttr()),
+)
