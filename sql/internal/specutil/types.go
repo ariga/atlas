@@ -78,8 +78,8 @@ func (r *TypeRegistry) Register(specs ...*schemaspec.TypeSpec) error {
 		if _, exists := r.FindByName(s.Name); exists {
 			return fmt.Errorf("specutil: type with name of %q already registered", s.T)
 		}
+		r.r = append(r.r, s)
 	}
-	r.r = append(r.r, specs...)
 	return nil
 }
 
@@ -191,9 +191,14 @@ func (r *TypeRegistry) Type(typ *schemaspec.Type, extra []*schemaspec.Attr, pars
 
 // TypeSpec returns a TypeSpec with the provided name.
 func TypeSpec(name string, attrs ...*schemaspec.TypeAttr) *schemaspec.TypeSpec {
+	return AliasTypeSpec(name, name, attrs...)
+}
+
+// AliasTypeSpec returns a TypeSpec with the provided name.
+func AliasTypeSpec(name, dbType string, attrs ...*schemaspec.TypeAttr) *schemaspec.TypeSpec {
 	return &schemaspec.TypeSpec{
 		Name:       name,
-		T:          name,
+		T:          dbType,
 		Attributes: attrs,
 	}
 }

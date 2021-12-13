@@ -3,6 +3,7 @@ package postgres
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"unicode"
@@ -102,7 +103,7 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 	case sqlspec.TypeBoolean:
 		return &schema.BoolType{T: tBoolean}, nil
 	default:
-		return parseRawType(spec)
+		return parseRawType(spec.Type)
 	}
 }
 
@@ -196,16 +197,17 @@ func convertFloat(spec *sqlspec.Column) (schema.Type, error) {
 	return ft, nil
 }
 
-func parseRawType(spec *sqlspec.Column) (schema.Type, error) {
-	d, err := parseColumn(spec.Type)
+func parseRawType(typ string) (schema.Type, error) {
+	d, err := parseColumn(typ)
 	if err != nil {
 		return nil, err
 	}
 	// Normalize PostgreSQL array data types from "CREATE TABLE" format to
 	// "INFORMATION_SCHEMA" format (i.e. as it is inspected from the database).
-	if t, ok := arrayType(spec.Type); ok {
+	if t, ok := arrayType(typ); ok {
 		d = &columnDesc{typ: tArray, udt: t}
 	}
+
 	t := columnType(d)
 	// If the type is unknown (to us), we fallback to user-defined but expect
 	// to improve this in future versions by ensuring this against the database.
@@ -364,3 +366,58 @@ func arrayType(t string) (string, bool) {
 	}
 	return t[:strings.IndexByte(t, '[')], true
 }
+
+// TypeRegistry contains the supported TypeSpecs for the mysql driver.
+var TypeRegistry = specutil.NewRegistry(
+	specutil.TypeSpec(tBit, specutil.SizeTypeAttr(true)),
+	specutil.AliasTypeSpec("bit_varying", tBitVar, specutil.SizeTypeAttr(true)),
+	specutil.TypeSpec(tVarChar, specutil.SizeTypeAttr(true)),
+	specutil.TypeSpec(tChar, specutil.SizeTypeAttr(true)),
+	specutil.TypeSpec(tCharacter, specutil.SizeTypeAttr(true)),
+	specutil.TypeSpec(tInt2),
+	specutil.TypeSpec(tInt4),
+	specutil.TypeSpec(tInt8),
+	specutil.TypeSpec(tInt),
+	specutil.TypeSpec(tInteger),
+	specutil.TypeSpec(tSmallInt),
+	specutil.TypeSpec(tBigInt),
+	specutil.TypeSpec(tText),
+	specutil.TypeSpec(tBoolean),
+	specutil.TypeSpec(tBool),
+	specutil.TypeSpec(tBytea),
+	specutil.TypeSpec(tCIDR),
+	specutil.TypeSpec(tInet),
+	specutil.TypeSpec(tMACAddr),
+	specutil.TypeSpec(tMACAddr8),
+	specutil.TypeSpec(tCircle),
+	specutil.TypeSpec(tLine),
+	specutil.TypeSpec(tLseg),
+	specutil.TypeSpec(tBox),
+	specutil.TypeSpec(tPath),
+	specutil.TypeSpec(tPoint),
+	specutil.TypeSpec(tDate),
+	specutil.TypeSpec(tTime),
+	specutil.AliasTypeSpec("time_with_time_zone", tTimeWTZ),
+	specutil.AliasTypeSpec("time_without_time_zone", tTimeWOTZ),
+	specutil.TypeSpec(tTimestamp),
+	specutil.AliasTypeSpec("timestamp_with_time_zone", tTimestampWTZ),
+	specutil.AliasTypeSpec("timestamp_without_time_zone", tTimestampWOTZ),
+	specutil.TypeSpec("enum", &schemaspec.TypeAttr{Name: "values", Kind: reflect.Slice, Required: true}),
+	specutil.AliasTypeSpec("double_precision", tDouble),
+	specutil.TypeSpec(tReal),
+	specutil.TypeSpec(tFloat8),
+	specutil.TypeSpec(tFloat4),
+	specutil.TypeSpec(tNumeric),
+	specutil.TypeSpec(tDecimal),
+	specutil.TypeSpec(tSmallSerial),
+	specutil.TypeSpec(tSerial),
+	specutil.TypeSpec(tBigSerial),
+	specutil.TypeSpec(tSerial2),
+	specutil.TypeSpec(tSerial4),
+	specutil.TypeSpec(tSerial8),
+	specutil.TypeSpec(tXML),
+	specutil.TypeSpec(tJSON),
+	specutil.TypeSpec(tJSONB),
+	specutil.TypeSpec(tUUID),
+	specutil.TypeSpec(tMoney),
+)

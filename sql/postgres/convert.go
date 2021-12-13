@@ -174,7 +174,7 @@ func parseColumn(s string) (*columnDesc, error) {
 		}
 	)
 	switch c.parts[0] {
-	case tVarChar:
+	case tVarChar, tCharVar, tChar, tCharacter:
 		if len(c.parts) > 1 {
 			c.size, err = strconv.ParseInt(c.parts[1], 10, 64)
 			if err != nil {
@@ -202,6 +202,8 @@ func parseColumn(s string) (*columnDesc, error) {
 		c.precision = 53
 	case tReal, tFloat4:
 		c.precision = 24
+	case tTime, tTimestamp:
+		c.typ = strings.Join(c.parts, " ")
 	}
 	return c, nil
 }
