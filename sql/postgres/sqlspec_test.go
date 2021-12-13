@@ -722,10 +722,6 @@ func TestTypes(t *testing.T) {
 			typeExpr: "money",
 			expected: &CurrencyType{T: tMoney},
 		},
-		{
-			typeExpr: "interval",
-			expected: &SerialType{T: tInterval},
-		},
 	} {
 		t.Run(tt.typeExpr, func(t *testing.T) {
 			// simulates sqlspec.Column until we change its Type field.
