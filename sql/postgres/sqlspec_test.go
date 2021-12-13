@@ -516,9 +516,8 @@ func TestMarshalSpecColumnType(t *testing.T) {
 func TestTypes(t *testing.T) {
 	// TODO(rotemtam): enum, timestamptz, interval
 	for _, tt := range []struct {
-		typeExpr  string
-		extraAttr string
-		expected  schema.Type
+		typeExpr string
+		expected schema.Type
 	}{
 		{
 			typeExpr: "bit(10)",
@@ -733,9 +732,9 @@ func TestTypes(t *testing.T) {
 				Columns []*col `spec:"column"`
 			}
 			doc := fmt.Sprintf(`column {
-	type = %s%s
+	type = %s
 }
-`, tt.typeExpr, lineIfSet(tt.extraAttr))
+`, tt.typeExpr)
 			err := hclState.UnmarshalSpec([]byte(doc), &test)
 			require.NoError(t, err)
 			column := test.Columns[0]
@@ -751,11 +750,4 @@ func TestTypes(t *testing.T) {
 
 func hclEqual(t *testing.T, expected, actual []byte) {
 	require.EqualValues(t, string(hclwrite.Format(expected)), string(hclwrite.Format(actual)))
-}
-
-func lineIfSet(s string) string {
-	if s != "" {
-		return "\n" + s
-	}
-	return s
 }
