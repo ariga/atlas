@@ -19,6 +19,7 @@ atlas schema inspect --dsn postgres://user:pass@host:port/dbname
 ```
   -d, --dsn string   [driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format
   -h, --help         help for inspect
+  -w, --web          open in UI server
 ```
 
 ### SEE ALSO

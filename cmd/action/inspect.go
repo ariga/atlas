@@ -11,6 +11,7 @@ var (
 	// InspectFlags are the flags used in Inspect command.
 	InspectFlags struct {
 		DSN string
+		Web bool
 	}
 	// InspectCmd represents the inspect command.
 	InspectCmd = &cobra.Command{
@@ -32,6 +33,7 @@ func init() {
 		"",
 		"[driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format",
 	)
+	InspectCmd.Flags().BoolVarP(&InspectFlags.Web, "web", "w", false, "open in UI server")
 	cobra.CheckErr(InspectCmd.MarkFlagRequired("dsn"))
 }
 
