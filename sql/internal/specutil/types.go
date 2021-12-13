@@ -52,7 +52,7 @@ func (r *TypeRegistry) PrintType(typ *schemaspec.Type) (string, error) {
 				if err != nil {
 					return "", fmt.Errorf("expecting list items to be quoted strings: %w", err)
 				}
-				args = append(args, `'`+uq+`'`)
+				args = append(args, "'"+uq+"'")
 			}
 		default:
 			return "", fmt.Errorf("unsupported type %T for PrintType", v)
