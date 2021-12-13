@@ -367,7 +367,7 @@ func arrayType(t string) (string, bool) {
 	return t[:strings.IndexByte(t, '[')], true
 }
 
-// TypeRegistry contains the supported TypeSpecs for the mysql driver.
+// TypeRegistry contains the supported TypeSpecs for the postgres driver.
 var TypeRegistry = specutil.NewRegistry(
 	specutil.TypeSpec(tBit, specutil.SizeTypeAttr(true)),
 	specutil.AliasTypeSpec("bit_varying", tBitVar, specutil.SizeTypeAttr(true)),
