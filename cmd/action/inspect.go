@@ -8,19 +8,15 @@ import (
 )
 
 var (
-	inspectFlags struct {
-		dsn string
+	// InspectFlags are the flags used in Inspect command.
+	InspectFlags struct {
+		DSN string
 	}
-	// inspectCmd represents the inspect command.
-	inspectCmd = &cobra.Command{
+	// InspectCmd represents the inspect command.
+	InspectCmd = &cobra.Command{
 		Use:   "inspect",
 		Short: "Inspect an atlas schema",
-		Run: func(cmd *cobra.Command, args []string) {
-			d, err := defaultMux.OpenAtlas(inspectFlags.dsn)
-			cobra.CheckErr(err)
-			m := schemaMarshal{marshalSpec: d.MarshalSpec, marshaler: schemahcl.Marshal}
-			inspectRun(d, &m, inspectFlags.dsn)
-		},
+		Run:   CmdInspectRun,
 		Example: `
 atlas schema inspect -d mysql://user:pass@tcp(localhost:3306)/dbname
 atlas schema inspect --dsn postgres://user:pass@host:port/dbname`,
@@ -28,15 +24,23 @@ atlas schema inspect --dsn postgres://user:pass@host:port/dbname`,
 )
 
 func init() {
-	schemaCmd.AddCommand(inspectCmd)
-	inspectCmd.Flags().StringVarP(
-		&inspectFlags.dsn,
+	schemaCmd.AddCommand(InspectCmd)
+	InspectCmd.Flags().StringVarP(
+		&InspectFlags.DSN,
 		"dsn",
 		"d",
 		"",
 		"[driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format",
 	)
-	cobra.CheckErr(inspectCmd.MarkFlagRequired("dsn"))
+	cobra.CheckErr(InspectCmd.MarkFlagRequired("dsn"))
+}
+
+// CmdInspectRun is the command used when running CLI.
+func CmdInspectRun(cmd *cobra.Command, args []string) {
+	d, err := defaultMux.OpenAtlas(InspectFlags.DSN)
+	cobra.CheckErr(err)
+	m := schemaMarshal{marshalSpec: d.MarshalSpec, marshaler: schemahcl.Marshal}
+	inspectRun(d, &m, InspectFlags.DSN)
 }
 
 func inspectRun(d *Driver, m schemaMarshaler, dsn string) {
