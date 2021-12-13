@@ -397,13 +397,13 @@ variadic = enum("a","b","c")
 	require.EqualValues(t, "bool", test.Second.T)
 	require.EqualValues(t, &schemaspec.Type{
 		T: "varchar",
-		Attributes: []*schemaspec.Attr{
+		Attrs: []*schemaspec.Attr{
 			{K: "size", V: &schemaspec.LiteralValue{V: "255"}},
 		},
 	}, test.Varchar)
 	require.EqualValues(t, &schemaspec.Type{
 		T: "enum",
-		Attributes: []*schemaspec.Attr{
+		Attrs: []*schemaspec.Attr{
 			{
 				K: "values",
 				V: &schemaspec.ListValue{

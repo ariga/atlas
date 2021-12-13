@@ -85,8 +85,8 @@ type (
 
 	// Type represents the type of the field in a schema.
 	Type struct {
-		T          string
-		Attributes []*Attr
+		T     string
+		Attrs []*Attr
 	}
 )
 

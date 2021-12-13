@@ -29,7 +29,7 @@ func TestTypePrint(t *testing.T) {
 		},
 		{
 			spec:     intSpec,
-			typ:      &schemaspec.Type{T: "int", Attributes: []*schemaspec.Attr{LitAttr("unsigned", "true")}},
+			typ:      &schemaspec.Type{T: "int", Attrs: []*schemaspec.Attr{LitAttr("unsigned", "true")}},
 			expected: "int unsigned",
 		},
 		{
@@ -40,7 +40,7 @@ func TestTypePrint(t *testing.T) {
 					{Name: "size", Kind: reflect.Int, Required: true},
 				},
 			},
-			typ:      &schemaspec.Type{T: "varchar", Attributes: []*schemaspec.Attr{LitAttr("size", "255")}},
+			typ:      &schemaspec.Type{T: "varchar", Attrs: []*schemaspec.Attr{LitAttr("size", "255")}},
 			expected: "varchar(255)",
 		},
 	} {
@@ -99,26 +99,26 @@ func TestRegistryConvert(t *testing.T) {
 	}{
 		{
 			typ:      &schema.StringType{T: "varchar", Size: 255},
-			expected: &schemaspec.Type{T: "varchar", Attributes: []*schemaspec.Attr{LitAttr("size", "255")}},
+			expected: &schemaspec.Type{T: "varchar", Attrs: []*schemaspec.Attr{LitAttr("size", "255")}},
 		},
 		{
 			typ:      &schema.IntegerType{T: "int", Unsigned: true},
-			expected: &schemaspec.Type{T: "int", Attributes: []*schemaspec.Attr{LitAttr("unsigned", "true")}},
+			expected: &schemaspec.Type{T: "int", Attrs: []*schemaspec.Attr{LitAttr("unsigned", "true")}},
 		},
 		{
 			typ:      &schema.IntegerType{T: "int", Unsigned: true},
-			expected: &schemaspec.Type{T: "int", Attributes: []*schemaspec.Attr{LitAttr("unsigned", "true")}},
+			expected: &schemaspec.Type{T: "int", Attrs: []*schemaspec.Attr{LitAttr("unsigned", "true")}},
 		},
 		{
 			typ: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
-			expected: &schemaspec.Type{T: "decimal", Attributes: []*schemaspec.Attr{
+			expected: &schemaspec.Type{T: "decimal", Attrs: []*schemaspec.Attr{
 				LitAttr("precision", "10"),
 				LitAttr("scale", "2"),
 			}},
 		},
 		{
 			typ: &schema.EnumType{T: "enum", Values: []string{"on", "off"}},
-			expected: &schemaspec.Type{T: "enum", Attributes: []*schemaspec.Attr{
+			expected: &schemaspec.Type{T: "enum", Attrs: []*schemaspec.Attr{
 				ListAttr("values", `"on"`, `"off"`),
 			}},
 		},

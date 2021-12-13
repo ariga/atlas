@@ -128,7 +128,7 @@ func toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes) ([]*schemaspec
 		}
 		attrs = append(attrs, at)
 	}
-	// hclsyntax.Attributes is an alias for map[string]*Attribute
+	// hclsyntax.Attrs is an alias for map[string]*Attribute
 	sort.Slice(attrs, func(i, j int) bool {
 		return attrs[i].K < attrs[j].K
 	})
@@ -297,7 +297,7 @@ func hclType(spec *schemaspec.TypeSpec, typ *schemaspec.Type) (string, error) {
 	}
 	args := make([]string, 0, len(spec.Attributes))
 	for _, param := range typeFuncArgs(spec) {
-		arg, ok := findAttr(typ.Attributes, param.Name)
+		arg, ok := findAttr(typ.Attrs, param.Name)
 		if !ok {
 			continue
 		}

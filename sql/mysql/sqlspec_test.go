@@ -15,9 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	hclState = schemahcl.New(schemahcl.WithTypes(TypeRegistry.Specs()))
-)
+var hclState = schemahcl.New(schemahcl.WithTypes(TypeRegistry.Specs()))
 
 func TestSQLSpec(t *testing.T) {
 	f := `

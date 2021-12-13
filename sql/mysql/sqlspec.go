@@ -438,6 +438,7 @@ func hasCollate(attr []schema.Attr, parent []schema.Attr) (string, bool) {
 	return "", false
 }
 
+// TypeRegistry contains the supported TypeSpecs for the mysql driver.
 var TypeRegistry = specutil.NewRegistry(
 	specutil.TypeSpec(tInt, unsignedTypeAttr()),
 	specutil.TypeSpec(tBigInt, unsignedTypeAttr()),
