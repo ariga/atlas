@@ -293,7 +293,7 @@ func (s *state) findTypeSpec(t string) (*schemaspec.TypeSpec, bool) {
 
 func hclType(spec *schemaspec.TypeSpec, typ *schemaspec.Type) (string, error) {
 	if len(typeFuncArgs(spec)) == 0 {
-		return typ.T, nil
+		return spec.Name, nil
 	}
 	args := make([]string, 0, len(spec.Attributes))
 	for _, param := range typeFuncArgs(spec) {
@@ -314,7 +314,7 @@ func hclType(spec *schemaspec.TypeSpec, typ *schemaspec.Type) (string, error) {
 			}
 		}
 	}
-	return fmt.Sprintf("%s(%s)", typ.T, strings.Join(args, ",")), nil
+	return fmt.Sprintf("%s(%s)", spec.Name, strings.Join(args, ",")), nil
 }
 
 func findAttr(attrs []*schemaspec.Attr, k string) (*schemaspec.Attr, bool) {
