@@ -3,6 +3,7 @@ package specutil
 import (
 	"errors"
 	"fmt"
+	"log"
 	"reflect"
 	"strconv"
 	"strings"
@@ -26,7 +27,7 @@ func (r *TypeRegistry) PrintType(typ *schemaspec.Type) (string, error) {
 		args        []string
 		mid, suffix string
 	)
-	for _, arg := range typ.Attributes {
+	for _, arg := range typ.Attrs {
 		// TODO(rotemtam): make this part of the TypeSpec
 		if arg.K == "unsigned" {
 			b, err := arg.Bool()
@@ -38,11 +39,24 @@ func (r *TypeRegistry) PrintType(typ *schemaspec.Type) (string, error) {
 			}
 			continue
 		}
-		lit, ok := arg.V.(*schemaspec.LiteralValue)
-		if !ok {
-			return "", errors.New("expecting literal value")
+		switch v := arg.V.(type) {
+		case *schemaspec.LiteralValue:
+			args = append(args, v.V)
+		case *schemaspec.ListValue:
+			for _, li := range v.V {
+				lit, ok := li.(*schemaspec.LiteralValue)
+				if !ok {
+					return "", fmt.Errorf("expecting literal value. got: %T", li)
+				}
+				uq, err := strconv.Unquote(lit.V)
+				if err != nil {
+					return "", fmt.Errorf("expecting list items to be quoted strings: %w", err)
+				}
+				args = append(args, "'"+uq+"'")
+			}
+		default:
+			return "", fmt.Errorf("unsupported type %T for PrintType", v)
 		}
-		args = append(args, lit.V)
 	}
 	if len(args) > 0 {
 		mid = "(" + strings.Join(args, ",") + ")"
@@ -67,6 +81,16 @@ func (r *TypeRegistry) Register(specs ...*schemaspec.TypeSpec) error {
 	}
 	r.r = append(r.r, specs...)
 	return nil
+}
+
+// NewRegistry creates a new *TypeRegistry, registers the provided types and panics
+// if an error occurs.
+func NewRegistry(specs ...*schemaspec.TypeSpec) *TypeRegistry {
+	r := &TypeRegistry{}
+	if err := r.Register(specs...); err != nil {
+		log.Fatalf("failed registering types: %s", err)
+	}
+	return r
 }
 
 // FindByName searches the registry for types that have the provided name.
@@ -123,10 +147,10 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 		switch attr.Kind {
 		case reflect.Int:
 			i := strconv.Itoa(int(field.Int()))
-			s.Attributes = append(s.Attributes, LitAttr(attr.Name, i))
+			s.Attrs = append(s.Attrs, LitAttr(attr.Name, i))
 		case reflect.Bool:
 			b := strconv.FormatBool(field.Bool())
-			s.Attributes = append(s.Attributes, LitAttr(attr.Name, b))
+			s.Attrs = append(s.Attrs, LitAttr(attr.Name, b))
 		case reflect.Slice:
 			lits := make([]string, 0, field.Len())
 			for i := 0; i < field.Len(); i++ {
@@ -136,12 +160,33 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 				}
 				lits = append(lits, strconv.Quote(fi.String()))
 			}
-			s.Attributes = append(s.Attributes, ListAttr(attr.Name, lits...))
+			s.Attrs = append(s.Attrs, ListAttr(attr.Name, lits...))
 		default:
 			return nil, fmt.Errorf("specutil: unsupported attr kind %s for attribute %q of %q", attr.Kind, attr.Name, typeSpec.Name)
 		}
 	}
 	return s, nil
+}
+
+// Specs returns the TypeSpecs in the registry.
+func (r *TypeRegistry) Specs() []*schemaspec.TypeSpec {
+	return r.r
+}
+
+// Type converts a *schemaspec.Type into a schema.Type.
+func (r *TypeRegistry) Type(typ *schemaspec.Type, extra []*schemaspec.Attr, parser func(string) (schema.Type, error)) (schema.Type, error) {
+	typeSpec, ok := r.Find(typ.T)
+	if !ok {
+		return nil, fmt.Errorf("specutil: typespec not found for %s", typ.T)
+	}
+	nfa := typeNonFuncArgs(typeSpec)
+	picked := pickTypeAttrs(extra, nfa)
+	typ.Attrs = appendIfNotExist(typ.Attrs, picked)
+	printType, err := r.PrintType(typ)
+	if err != nil {
+		return nil, err
+	}
+	return parser(printType)
 }
 
 // TypeSpec returns a TypeSpec with the provided name.
@@ -160,4 +205,45 @@ func SizeTypeAttr(required bool) *schemaspec.TypeAttr {
 		Kind:     reflect.Int,
 		Required: required,
 	}
+}
+
+// typeNonFuncArgs returns the type attributes that are NOT configured via arguments to the
+// type definition, `int unsigned`.
+func typeNonFuncArgs(spec *schemaspec.TypeSpec) []*schemaspec.TypeAttr {
+	var args []*schemaspec.TypeAttr
+	for _, attr := range spec.Attributes {
+		// TODO(rotemtam): this should be defined on the TypeSpec.
+		if attr.Name == "unsigned" {
+			args = append(args, attr)
+		}
+	}
+	return args
+}
+
+// pickTypeAttrs returns the relevant Attrs matching the wanted TypeAttrs.
+func pickTypeAttrs(src []*schemaspec.Attr, wanted []*schemaspec.TypeAttr) []*schemaspec.Attr {
+	keys := make(map[string]struct{})
+	for _, w := range wanted {
+		keys[w.Name] = struct{}{}
+	}
+	var picked []*schemaspec.Attr
+	for _, attr := range src {
+		if _, ok := keys[attr.K]; ok {
+			picked = append(picked, attr)
+		}
+	}
+	return picked
+}
+
+func appendIfNotExist(base []*schemaspec.Attr, additional []*schemaspec.Attr) []*schemaspec.Attr {
+	exists := make(map[string]struct{})
+	for _, attr := range base {
+		exists[attr.K] = struct{}{}
+	}
+	for _, attr := range additional {
+		if _, ok := exists[attr.K]; !ok {
+			base = append(base, attr)
+		}
+	}
+	return base
 }

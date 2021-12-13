@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -435,4 +436,29 @@ func hasCollate(attr []schema.Attr, parent []schema.Attr) (string, bool) {
 		return c.V, true
 	}
 	return "", false
+}
+
+// TypeRegistry contains the supported TypeSpecs for the mysql driver.
+var TypeRegistry = specutil.NewRegistry(
+	specutil.TypeSpec(tInt, unsignedTypeAttr()),
+	specutil.TypeSpec(tBigInt, unsignedTypeAttr()),
+	specutil.TypeSpec(tTinyInt, unsignedTypeAttr()),
+	specutil.TypeSpec(tSmallInt, unsignedTypeAttr()),
+	specutil.TypeSpec(tMediumInt, unsignedTypeAttr()),
+	specutil.TypeSpec(tText),
+	specutil.TypeSpec(tTinyText),
+	specutil.TypeSpec(tMediumText),
+	specutil.TypeSpec(tLongText),
+	specutil.TypeSpec(tVarchar, specutil.SizeTypeAttr(true)),
+	specutil.TypeSpec(tChar, specutil.SizeTypeAttr(true)),
+	specutil.TypeSpec(tBinary, specutil.SizeTypeAttr(true)),
+	specutil.TypeSpec(tVarBinary, specutil.SizeTypeAttr(true)),
+	specutil.TypeSpec(tEnum, &schemaspec.TypeAttr{Name: "values", Kind: reflect.Slice, Required: true}),
+)
+
+func unsignedTypeAttr() *schemaspec.TypeAttr {
+	return &schemaspec.TypeAttr{
+		Name: "unsigned",
+		Kind: reflect.Bool,
+	}
 }

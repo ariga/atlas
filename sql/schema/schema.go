@@ -17,7 +17,7 @@ type (
 		Name   string
 		Realm  *Realm
 		Tables []*Table
-		Attrs  []Attr // Attributes and options.
+		Attrs  []Attr // Attrs and options.
 	}
 
 	// A Table represents a table definition.
@@ -28,7 +28,7 @@ type (
 		Indexes     []*Index
 		PrimaryKey  *Index
 		ForeignKeys []*ForeignKey
-		Attrs       []Attr // Attributes, constraints and options.
+		Attrs       []Attr // Attrs, constraints and options.
 	}
 
 	// A Column represents a column definition.

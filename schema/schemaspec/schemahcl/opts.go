@@ -87,7 +87,7 @@ func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
 							}
 							lst.V = append(lst.V, v)
 						}
-						t.Attributes = append(t.Attributes, &schemaspec.Attr{K: spec.VarParam.Name, V: lst})
+						t.Attrs = append(t.Attrs, &schemaspec.Attr{K: spec.VarParam.Name, V: lst})
 					} else {
 						for i, arg := range args {
 							v, err := extractLiteralValue(arg)
@@ -95,7 +95,7 @@ func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
 								return cty.NilVal, err
 							}
 							attrName := typeSpec.Attributes[i].Name
-							t.Attributes = append(t.Attributes, &schemaspec.Attr{K: attrName, V: v})
+							t.Attrs = append(t.Attrs, &schemaspec.Attr{K: attrName, V: v})
 						}
 					}
 					return cty.CapsuleVal(ctyTypeSpec, t), nil
