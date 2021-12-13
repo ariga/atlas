@@ -10,6 +10,7 @@ import (
 	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
+	"github.com/hashicorp/hcl/v2/hclwrite"
 
 	"github.com/stretchr/testify/require"
 )
@@ -636,7 +637,6 @@ func TestMarshalSpecColumnType(t *testing.T) {
 }
 
 func TestTypes(t *testing.T) {
-
 	for _, tt := range []struct {
 		typeExpr  string
 		extraAttr string
@@ -725,6 +725,7 @@ func TestTypes(t *testing.T) {
 		},
 	} {
 		t.Run(tt.typeExpr, func(t *testing.T) {
+			// simulates sqlspec.Column until we change its Type field.
 			type col struct {
 				Type *schemaspec.Type `spec:"type"`
 				schemaspec.DefaultExtension
@@ -732,31 +733,30 @@ func TestTypes(t *testing.T) {
 			var test struct {
 				Columns []*col `spec:"column"`
 			}
-			doc := fmt.Sprintf(`
-column "test" {
-	type = %s
-	%s
+			doc := fmt.Sprintf(`column {
+	type = %s%s
 }
-`, tt.typeExpr, tt.extraAttr)
+`, tt.typeExpr, lineIfSet(tt.extraAttr))
 			err := hclState.UnmarshalSpec([]byte(doc), &test)
 			require.NoError(t, err)
 			column := test.Columns[0]
 			typ, err := TypeRegistry.Type(column.Type, column.Extra.Attrs, parseRawType)
 			require.NoError(t, err)
 			require.EqualValues(t, tt.expected, typ)
-			//err := UnmarshalSpec([]byte(doc), hclState, &test)
-			//require.NoError(t, err)
-			//table, ok := test.Table("test")
-			//require.True(t, ok)
-			//column, ok := table.Column("test")
-			//require.True(t, ok)
-			//require.EqualValues(t, tt.expected, column.Type.Type)
-			//spec, err := MarshalSpec(&test, hclState)
-			//require.NoError(t, err)
-			//var after schema.Schema
-			//err = UnmarshalSpec(spec, hclState, &after)
-			//require.NoError(t, err)
-			//require.EqualValues(t, test, after)
+			spec, err := hclState.MarshalSpec(&test)
+			require.NoError(t, err)
+			hclEqual(t, []byte(doc), spec)
 		})
 	}
+}
+
+func hclEqual(t *testing.T, expected, actual []byte) {
+	require.EqualValues(t, string(hclwrite.Format(expected)), string(hclwrite.Format(actual)))
+}
+
+func lineIfSet(s string) string {
+	if s != "" {
+		return "\n" + s
+	}
+	return s
 }

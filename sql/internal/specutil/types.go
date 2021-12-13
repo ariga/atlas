@@ -39,11 +39,25 @@ func (r *TypeRegistry) PrintType(typ *schemaspec.Type) (string, error) {
 			}
 			continue
 		}
-		lit, ok := arg.V.(*schemaspec.LiteralValue)
-		if !ok {
-			return "", errors.New("expecting literal value")
+		switch v := arg.V.(type) {
+		case *schemaspec.LiteralValue:
+			args = append(args, v.V)
+		case *schemaspec.ListValue:
+			for _, li := range v.V {
+				lit, ok := li.(*schemaspec.LiteralValue)
+				if !ok {
+					return "", errors.New("expecting literal value")
+				}
+				uq, err := strconv.Unquote(lit.V)
+				if err != nil {
+					return "", fmt.Errorf("expecting list items to be quoted strings: %w", err)
+				}
+
+				args = append(args, `'`+uq+`'`)
+			}
+		default:
+			return "", fmt.Errorf("unsupported type %T for PrintType", v)
 		}
-		args = append(args, lit.V)
 	}
 	if len(args) > 0 {
 		mid = "(" + strings.Join(args, ",") + ")"
@@ -168,7 +182,7 @@ func (r *TypeRegistry) Type(typ *schemaspec.Type, extra []*schemaspec.Attr, pars
 	nfa := typeNonFuncArgs(typeSpec)
 	picked := pickTypeAttrs(extra, nfa)
 	typ.Attributes = appendIfNotExist(typ.Attributes, picked)
-	printType, err := PrintType(typ, typeSpec)
+	printType, err := r.PrintType(typ)
 	if err != nil {
 		return nil, err
 	}
