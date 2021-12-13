@@ -314,7 +314,6 @@ func hclType(spec *schemaspec.TypeSpec, typ *schemaspec.Type) (string, error) {
 			}
 		}
 	}
-
 	return fmt.Sprintf("%s(%s)", spec.Name, strings.Join(args, ",")), nil
 }
 
