@@ -743,11 +743,7 @@ func TestTypes(t *testing.T) {
 			require.EqualValues(t, tt.expected, typ)
 			spec, err := hclState.MarshalSpec(&test)
 			require.NoError(t, err)
-			hclEqual(t, []byte(doc), spec)
+			require.EqualValues(t, string(hclwrite.Format([]byte(doc))), string(hclwrite.Format(spec)))
 		})
 	}
-}
-
-func hclEqual(t *testing.T, expected, actual []byte) {
-	require.EqualValues(t, string(hclwrite.Format(expected)), string(hclwrite.Format(actual)))
 }
