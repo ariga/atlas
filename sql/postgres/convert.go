@@ -202,8 +202,8 @@ func parseColumn(s string) (*columnDesc, error) {
 		c.precision = 53
 	case tReal, tFloat4:
 		c.precision = 24
-	case tTime, tTimestamp:
-		c.typ = strings.Join(c.parts, " ")
+	default:
+		c.typ = s
 	}
 	return c, nil
 }
