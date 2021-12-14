@@ -47,12 +47,12 @@ func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
 		for _, ts := range typeSpecs {
 			typeSpec := ts
 			config.types = append(config.types, typeSpec)
-			// if no required args exist, register the type as a variable in the HCL context.
+			// If no required args exist, register the type as a variable in the HCL context.
 			if len(typeFuncReqArgs(typeSpec)) == 0 {
 				typ := &schemaspec.Type{T: typeSpec.T}
 				config.ctx.Variables[typeSpec.Name] = cty.CapsuleVal(ctyTypeSpec, typ)
 			}
-			// if func args exist, register the type as a function in HCL.
+			// If func args exist, register the type as a function in HCL.
 			if len(typeFuncArgs(typeSpec)) > 0 {
 				config.ctx.Functions[typeSpec.Name] = typeFuncSpec(typeSpec)
 			}
