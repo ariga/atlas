@@ -14,7 +14,7 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
-// A diff provides a MySQL implementation for schema.Inspector.
+// A diff provides a PostgreSQL implementation for schema.Inspector.
 type inspect struct{ conn }
 
 var _ schema.Inspector = (*inspect)(nil)

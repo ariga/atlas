@@ -151,7 +151,7 @@ func TestPostgres_ColumnInt(t *testing.T) {
 				Name:    "users",
 				Columns: []*schema.Column{{Name: "a", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}}},
 			}
-			err := t.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
+			err := t.drv.Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
 			require.NoError(t, err)
 			t.dropTables(usersT.Name)
 			change(usersT.Columns[0])
@@ -226,7 +226,7 @@ func TestPostgres_Enums(t *testing.T) {
 		})
 
 		// Create table with an enum column.
-		err := t.drv.Migrate().Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
+		err := t.drv.Exec(ctx, []schema.Change{&schema.AddTable{T: usersT}})
 		require.NoError(t, err, "create a new table with an enum column")
 		t.dropTables(usersT.Name)
 		ensureNoChange(t, usersT)
@@ -238,7 +238,7 @@ func TestPostgres_Enums(t *testing.T) {
 		)
 		changes := t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 1)
-		err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+		err = t.drv.Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
 		require.NoError(t, err, "add a new enum column to existing table")
 		ensureNoChange(t, usersT)
 
@@ -247,7 +247,7 @@ func TestPostgres_Enums(t *testing.T) {
 		e.Values = append(e.Values, "tuesday")
 		changes = t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 1)
-		err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+		err = t.drv.Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
 		require.NoError(t, err, "append a value to existing enum")
 		ensureNoChange(t, usersT)
 
@@ -256,7 +256,7 @@ func TestPostgres_Enums(t *testing.T) {
 		e.Values = append(e.Values, "wednesday", "thursday", "friday", "saturday")
 		changes = t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 1)
-		err = t.drv.Migrate().Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+		err = t.drv.Exec(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
 		require.NoError(t, err, "append multiple values to existing enum")
 		ensureNoChange(t, usersT)
 	})
@@ -834,9 +834,9 @@ func (t *pgTest) applyHcl(spec string) {
 	err := postgres.UnmarshalSpec([]byte(spec), schemahcl.Unmarshal, &desired)
 	require.NoError(t, err)
 	existing := realm.Schemas[0]
-	diff, err := t.drv.Diff().SchemaDiff(existing, &desired)
+	diff, err := t.drv.SchemaDiff(existing, &desired)
 	require.NoError(t, err)
-	err = t.drv.Migrate().Exec(context.Background(), diff)
+	err = t.drv.Exec(context.Background(), diff)
 	require.NoError(t, err)
 }
 
@@ -947,13 +947,13 @@ func (t *pgTest) realm() *schema.Realm {
 }
 
 func (t *pgTest) diff(t1, t2 *schema.Table) []schema.Change {
-	changes, err := t.drv.Diff().TableDiff(t1, t2)
+	changes, err := t.drv.TableDiff(t1, t2)
 	require.NoError(t, err)
 	return changes
 }
 
 func (t *pgTest) migrate(changes ...schema.Change) {
-	err := t.drv.Migrate().Exec(context.Background(), changes)
+	err := t.drv.Exec(context.Background(), changes)
 	require.NoError(t, err)
 }
 

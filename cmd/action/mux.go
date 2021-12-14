@@ -19,12 +19,17 @@ type (
 
 	// Driver implements the Atlas interface.
 	Driver struct {
-		schema.Differ
-		schema.Execer
-		schema.Inspector
+		driver
 		MarshalSpec   func(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error)
 		UnmarshalSpec func(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}) error
 		interceptor   *interceptor
+	}
+
+	// A schema driver.
+	driver interface {
+		schema.Differ
+		schema.Execer
+		schema.Inspector
 	}
 
 	schemaUnmarshal struct {

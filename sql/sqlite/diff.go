@@ -13,16 +13,7 @@ import (
 )
 
 // A diff provides a SQLite implementation for sqlx.DiffDriver.
-type diff struct {
-	version string
-}
-
-// Diff returns a SQLite schema differ.
-func (d Driver) Diff() schema.Differ {
-	return &sqlx.Diff{
-		DiffDriver: &diff{version: d.version},
-	}
-}
+type diff struct{ conn }
 
 // SchemaAttrDiff returns a changeset for migrating schema attributes from one state to the other.
 func (d *diff) SchemaAttrDiff(_, _ *schema.Schema) []schema.Change {
@@ -43,7 +34,7 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) []schema.Change {
 			A: &WithoutRowID{},
 		})
 	}
-	// TODO: support diffing constraints after it's supported.
+	// TODO: support diffing constraints after it's added on inspection.
 	return changes
 }
 

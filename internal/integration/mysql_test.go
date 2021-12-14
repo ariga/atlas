@@ -916,20 +916,20 @@ func (t *myTest) applyHcl(spec string) {
 	err := mysql.UnmarshalSpec([]byte(spec), schemahcl.Unmarshal, &desired)
 	require.NoError(t, err)
 	existing := realm.Schemas[0]
-	diff, err := t.drv.Diff().SchemaDiff(existing, &desired)
+	diff, err := t.drv.SchemaDiff(existing, &desired)
 	require.NoError(t, err)
-	err = t.drv.Migrate().Exec(context.Background(), diff)
+	err = t.drv.Exec(context.Background(), diff)
 	require.NoError(t, err)
 }
 
 func (t *myTest) diff(t1, t2 *schema.Table) []schema.Change {
-	changes, err := t.drv.Diff().TableDiff(t1, t2)
+	changes, err := t.drv.TableDiff(t1, t2)
 	require.NoError(t, err)
 	return changes
 }
 
 func (t *myTest) migrate(changes ...schema.Change) {
-	err := t.drv.Migrate().Exec(context.Background(), changes)
+	err := t.drv.Exec(context.Background(), changes)
 	require.NoError(t, err)
 }
 
