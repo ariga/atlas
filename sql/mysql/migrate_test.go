@@ -177,5 +177,5 @@ func newMigrate(version string) (schema.Execer, *mock, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	return drv.Migrate(), mk, nil
+	return drv, mk, nil
 }

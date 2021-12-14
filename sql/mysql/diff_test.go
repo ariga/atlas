@@ -9,6 +9,7 @@ import (
 
 	"ariga.io/atlas/sql/schema"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -266,9 +267,14 @@ func TestDiff_TableDiff(t *testing.T) {
 		}(),
 	}
 	for _, tt := range tests {
-		d := (&Driver{version: "8.0.19"}).Diff()
+		db, m, err := sqlmock.New()
+		require.NoError(t, err)
+		mr := mock{m}
+		mr.version("8.0.19")
+		drv, err := Open(db)
+		require.NoError(t, err)
 		t.Run(tt.name, func(t *testing.T) {
-			changes, err := d.TableDiff(tt.from, tt.to)
+			changes, err := drv.TableDiff(tt.from, tt.to)
 			require.Equal(t, tt.wantErr, err != nil)
 			require.EqualValues(t, tt.wantChanges, changes)
 		})
@@ -276,40 +282,43 @@ func TestDiff_TableDiff(t *testing.T) {
 }
 
 func TestDiff_SchemaDiff(t *testing.T) {
-	var (
-		d    = (&Driver{}).Diff()
-		from = &schema.Schema{
-			Realm: &schema.Realm{
-				Attrs: []schema.Attr{
-					&schema.Collation{V: "latin1"},
-				},
-			},
-			Tables: []*schema.Table{
-				{Name: "users"},
-				{Name: "pets"},
-			},
+	db, m, err := sqlmock.New()
+	require.NoError(t, err)
+	mr := mock{m}
+	mr.version("8.0.19")
+	drv, err := Open(db)
+	require.NoError(t, err)
+	from := &schema.Schema{
+		Realm: &schema.Realm{
 			Attrs: []schema.Attr{
 				&schema.Collation{V: "latin1"},
 			},
-		}
-		to = &schema.Schema{
-			Tables: []*schema.Table{
-				{
-					Name: "users",
-					Columns: []*schema.Column{
-						{Name: "t2_id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
-					},
+		},
+		Tables: []*schema.Table{
+			{Name: "users"},
+			{Name: "pets"},
+		},
+		Attrs: []schema.Attr{
+			&schema.Collation{V: "latin1"},
+		},
+	}
+	to := &schema.Schema{
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{Name: "t2_id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
 				},
-				{Name: "groups"},
 			},
-			Attrs: []schema.Attr{
-				&schema.Collation{V: "utf8"},
-			},
-		}
-	)
+			{Name: "groups"},
+		},
+		Attrs: []schema.Attr{
+			&schema.Collation{V: "utf8"},
+		},
+	}
 	from.Tables[0].Schema = from
 	from.Tables[1].Schema = from
-	changes, err := d.SchemaDiff(from, to)
+	changes, err := drv.SchemaDiff(from, to)
 	require.NoError(t, err)
 	require.EqualValues(t, []schema.Change{
 		&schema.ModifySchema{Changes: []schema.Change{&schema.ModifyAttr{From: from.Attrs[0], To: to.Attrs[0]}}},
@@ -320,60 +329,63 @@ func TestDiff_SchemaDiff(t *testing.T) {
 }
 
 func TestDiff_RealmDiff(t *testing.T) {
-	var (
-		d    = (&Driver{}).Diff()
-		from = &schema.Realm{
-			Schemas: []*schema.Schema{
-				{
-					Name: "public",
-					Tables: []*schema.Table{
-						{Name: "users"},
-						{Name: "pets"},
-					},
-					Attrs: []schema.Attr{
-						&schema.Collation{V: "latin1"},
-					},
+	db, m, err := sqlmock.New()
+	require.NoError(t, err)
+	mr := mock{m}
+	mr.version("8.0.19")
+	drv, err := Open(db)
+	require.NoError(t, err)
+	from := &schema.Realm{
+		Schemas: []*schema.Schema{
+			{
+				Name: "public",
+				Tables: []*schema.Table{
+					{Name: "users"},
+					{Name: "pets"},
 				},
-				{
-					Name: "internal",
-					Tables: []*schema.Table{
-						{Name: "pets"},
-					},
+				Attrs: []schema.Attr{
+					&schema.Collation{V: "latin1"},
 				},
 			},
-		}
-		to = &schema.Realm{
-			Schemas: []*schema.Schema{
-				{
-					Name: "public",
-					Tables: []*schema.Table{
-						{
-							Name: "users",
-							Columns: []*schema.Column{
-								{Name: "t2_id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
-							},
+			{
+				Name: "internal",
+				Tables: []*schema.Table{
+					{Name: "pets"},
+				},
+			},
+		},
+	}
+	to := &schema.Realm{
+		Schemas: []*schema.Schema{
+			{
+				Name: "public",
+				Tables: []*schema.Table{
+					{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "t2_id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
 						},
-						{Name: "pets"},
 					},
-					Attrs: []schema.Attr{
-						&schema.Collation{V: "utf8"},
-					},
+					{Name: "pets"},
 				},
-				{
-					Name: "test",
-					Tables: []*schema.Table{
-						{Name: "pets"},
-					},
+				Attrs: []schema.Attr{
+					&schema.Collation{V: "utf8"},
 				},
 			},
-		}
-	)
+			{
+				Name: "test",
+				Tables: []*schema.Table{
+					{Name: "pets"},
+				},
+			},
+		},
+	}
 	from.Schemas[0].Realm = from
 	from.Schemas[0].Tables[0].Schema = from.Schemas[0]
 	from.Schemas[0].Tables[1].Schema = from.Schemas[0]
 	to.Schemas[0].Realm = to
 	to.Schemas[0].Tables[0].Schema = to.Schemas[0]
-	changes, err := d.RealmDiff(from, to)
+	changes, err := drv.RealmDiff(from, to)
 	require.NoError(t, err)
 	require.EqualValues(t, []schema.Change{
 		&schema.ModifySchema{Changes: []schema.Change{&schema.ModifyAttr{From: from.Schemas[0].Attrs[0], To: to.Schemas[0].Attrs[0]}}},
