@@ -14,12 +14,7 @@ import (
 )
 
 // A migrate provides migration capabilities for schema elements.
-type migrate struct{ *Driver }
-
-// Migrate returns a PostgreSQL schema executor.
-func (d *Driver) Migrate() schema.Execer {
-	return &migrate{Driver: d}
-}
+type migrate struct{ conn }
 
 // Exec executes the changes on the database. An error is returned
 // if one of the operations fail, or a change is not supported.
@@ -283,7 +278,7 @@ func (m *migrate) alterType(ctx context.Context, from, to *schema.EnumType) erro
 }
 
 func (m *migrate) enumExists(ctx context.Context, name string) (bool, error) {
-	rows, err := m.Driver.QueryContext(ctx, "SELECT * FROM pg_type WHERE typname = $1 AND typtype = 'e'", name)
+	rows, err := m.QueryContext(ctx, "SELECT * FROM pg_type WHERE typname = $1 AND typtype = 'e'", name)
 	if err != nil {
 		return false, fmt.Errorf("check index existance: %w", err)
 	}
