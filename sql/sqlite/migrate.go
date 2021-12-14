@@ -14,12 +14,7 @@ import (
 )
 
 // A migrate provides migration capabilities for schema elements.
-type migrate struct{ *Driver }
-
-// Migrate returns a SQLite schema executor.
-func (d *Driver) Migrate() schema.Execer {
-	return &migrate{Driver: d}
-}
+type migrate struct{ conn }
 
 // Exec executes the changes on the database. An error is returned
 // if one of the operations fail, or a change is not supported.
