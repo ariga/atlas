@@ -354,6 +354,7 @@ x = from_ctx
 func TestWithTypes(t *testing.T) {
 	f := `first    = int
 second   = bool
+third    = int(10)
 sized    = varchar(255)
 variadic = enum("a","b","c")
 `
@@ -365,6 +366,7 @@ variadic = enum("a","b","c")
 					Name: "int",
 					T:    "int",
 					Attributes: []*schemaspec.TypeAttr{
+						{Name: "size", Kind: reflect.Int, Required: false},
 						{Name: "unsigned", Kind: reflect.Bool, Required: false},
 					},
 				},
@@ -388,6 +390,7 @@ variadic = enum("a","b","c")
 	var test struct {
 		First    *schemaspec.Type `spec:"first"`
 		Second   *schemaspec.Type `spec:"second"`
+		Third    *schemaspec.Type `spec:"third"`
 		Varchar  *schemaspec.Type `spec:"sized"`
 		Variadic *schemaspec.Type `spec:"variadic"`
 	}
@@ -416,6 +419,12 @@ variadic = enum("a","b","c")
 			},
 		},
 	}, test.Variadic)
+	require.EqualValues(t, &schemaspec.Type{
+		T: "int",
+		Attrs: []*schemaspec.Attr{
+			{K: "size", V: &schemaspec.LiteralValue{V: "10"}},
+		},
+	}, test.Third)
 	after, err := s.MarshalSpec(&test)
 	require.NoError(t, err)
 	require.EqualValues(t, f, string(after))
