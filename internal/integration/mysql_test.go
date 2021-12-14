@@ -789,7 +789,7 @@ create table atlas_types_sanity
 					},
 					{
 						Name: "tSet",
-						Type: &schema.ColumnType{Type: &mysql.SetType{Values: []string{"set('a", "b"}},
+						Type: &schema.ColumnType{Type: &mysql.SetType{Values: []string{"a", "b"}},
 							Raw: "set('a','b')", Null: true},
 						Attrs: []schema.Attr{
 							&schema.Charset{V: "latin1"},
