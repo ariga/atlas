@@ -15,14 +15,7 @@ import (
 )
 
 // A diff provides a PostgreSQL implementation for sqlx.DiffDriver.
-type diff struct{ *Driver }
-
-// Diff returns a PostgreSQL schema differ.
-func (d *Driver) Diff() schema.Differ {
-	return &sqlx.Diff{
-		DiffDriver: &diff{Driver: d},
-	}
-}
+type diff struct{ conn }
 
 // SchemaAttrDiff returns a changeset for migrating schema attributes from one state to the other.
 func (d *diff) SchemaAttrDiff(_, _ *schema.Schema) []schema.Change {
@@ -265,7 +258,7 @@ func (d *diff) valuesEqual(x, y string) (bool, error) {
 	var b bool
 	// The DEFAULT expressions are safe to be inlined in the SELECT
 	// statement same as we inline them in the CREATE TABLE statement.
-	if err := d.Driver.QueryRow(fmt.Sprintf("SELECT %s = %s", x, y)).Scan(&b); err != nil {
+	if err := d.QueryRow(fmt.Sprintf("SELECT %s = %s", x, y)).Scan(&b); err != nil {
 		return false, err
 	}
 	return b, nil
@@ -277,7 +270,7 @@ func (d *diff) typesEqual(x, y string) (bool, error) {
 	var b bool
 	// The datatype are safe to be inlined in the SELECT statement
 	// same as we inline them in the CREATE TABLE statement.
-	if err := d.Driver.QueryRow(fmt.Sprintf("SELECT '%s'::regtype = '%s'::regtype", x, y)).Scan(&b); err != nil {
+	if err := d.QueryRow(fmt.Sprintf("SELECT '%s'::regtype = '%s'::regtype", x, y)).Scan(&b); err != nil {
 		return false, err
 	}
 	return b, nil

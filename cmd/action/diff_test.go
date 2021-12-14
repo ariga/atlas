@@ -7,6 +7,8 @@ import (
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
+
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,7 +45,7 @@ table "groups" {
 }
 `
 	ctx := context.Background()
-	d := dummyDriver()
+	d := mockDriver(t)
 	changes := diff(t, d, beforeHcl, afterHcl)
 	var changeDescs []*changeDesc
 	for _, ch := range changes {
@@ -81,12 +83,16 @@ func diff(t *testing.T, d *Driver, beforeHcl, afterHcl string) []schema.Change {
 	return diff
 }
 
-func dummyDriver() *Driver {
-	i := &interceptor{}
-	drv := &mysql.Driver{ExecQuerier: i}
+func mockDriver(t *testing.T) *Driver {
+	db, m, err := sqlmock.New()
+	require.NoError(t, err)
+	m.ExpectQuery(".*").
+		WillReturnRows(sqlmock.NewRows([]string{"1", "2", "3"}).AddRow("8.0.19", "utf8_general_ci", "utf8"))
+	i := &interceptor{ExecQuerier: db}
+	drv, err := mysql.Open(i)
+	require.NoError(t, err)
 	return &Driver{
-		Execer:      drv.Migrate(),
-		Differ:      drv.Diff(),
+		driver:      drv,
 		interceptor: i,
 	}
 }
