@@ -111,7 +111,8 @@ func typeFuncSpecImpl(spec *function.Spec, typeSpec *schemaspec.TypeSpec) functi
 				if err != nil {
 					return cty.NilVal, err
 				}
-				attrName := typeSpec.Attributes[i].Name
+
+				attrName := spec.Params[i].Name
 				t.Attrs = append(t.Attrs, &schemaspec.Attr{K: attrName, V: v})
 			}
 		}

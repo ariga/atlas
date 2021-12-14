@@ -721,6 +721,158 @@ func TestTypes(t *testing.T) {
 			typeExpr: `enum("on","off")`,
 			expected: &schema.EnumType{Values: []string{"on", "off"}},
 		},
+		{
+			typeExpr: "bit(10)",
+			expected: &BitType{T: tBit},
+		},
+		{
+			typeExpr: "int(10)",
+			expected: &schema.IntegerType{T: tInt},
+		},
+		{
+			typeExpr: "tinyint(10)",
+			expected: &schema.IntegerType{T: tTinyInt},
+		},
+		{
+			typeExpr: "smallint(10)",
+			expected: &schema.IntegerType{T: tSmallInt},
+		},
+		{
+			typeExpr: "mediumint(10)",
+			expected: &schema.IntegerType{T: tMediumInt},
+		},
+		{
+			typeExpr: "bigint(10)",
+			expected: &schema.IntegerType{T: tBigInt},
+		},
+		{
+			typeExpr: "decimal",
+			expected: &schema.DecimalType{T: tDecimal},
+		},
+		{
+			typeExpr: "numeric",
+			expected: &schema.DecimalType{T: tNumeric},
+		},
+		{
+			typeExpr: "float(10,0)",
+			expected: &schema.FloatType{T: tFloat, Precision: 10},
+		},
+		{
+			typeExpr: "double(10,0)",
+			expected: &schema.FloatType{T: tDouble, Precision: 10},
+		},
+		{
+			typeExpr: "real",
+			expected: &schema.FloatType{T: tReal},
+		},
+		{
+			typeExpr: "timestamp",
+			expected: &schema.TimeType{T: tTimestamp},
+		},
+		{
+			typeExpr: "date",
+			expected: &schema.TimeType{T: tDate},
+		},
+		{
+			typeExpr: "time",
+			expected: &schema.TimeType{T: tTime},
+		},
+		{
+			typeExpr: "datetime",
+			expected: &schema.TimeType{T: tDateTime},
+		},
+		{
+			typeExpr: "year",
+			expected: &schema.TimeType{T: tYear},
+		},
+		{
+			typeExpr: "varchar(10)",
+			expected: &schema.StringType{T: tVarchar, Size: 10},
+		},
+		{
+			typeExpr: "char(25)",
+			expected: &schema.StringType{T: tChar, Size: 25},
+		},
+		{
+			typeExpr: "varbinary(30)",
+			expected: &schema.BinaryType{T: tVarBinary, Size: 30},
+		},
+		{
+			typeExpr: "binary(5)",
+			expected: &schema.BinaryType{T: tBinary, Size: 5},
+		},
+		{
+			typeExpr: "blob(5)",
+			expected: &schema.StringType{T: tBlob},
+		},
+		{
+			typeExpr: "tinyblob",
+			expected: &schema.StringType{T: tTinyBlob},
+		},
+		{
+			typeExpr: "mediumblob",
+			expected: &schema.StringType{T: tMediumBlob},
+		},
+		{
+			typeExpr: "longblob",
+			expected: &schema.StringType{T: tLongBlob},
+		},
+		{
+			typeExpr: "text(13)",
+			expected: &schema.StringType{T: tText},
+		},
+		{
+			typeExpr: "tinytext",
+			expected: &schema.StringType{T: tTinyText},
+		},
+		{
+			typeExpr: "mediumtext",
+			expected: &schema.StringType{T: tMediumText},
+		},
+		{
+			typeExpr: "longtext",
+			expected: &schema.StringType{T: tLongText},
+		},
+		{
+			typeExpr: `enum("a","b")`,
+			expected: &schema.EnumType{Values: []string{"a", "b"}},
+		},
+		{
+			typeExpr: `set("a","b")`,
+			expected: &SetType{Values: []string{"a", "b"}},
+		},
+		{
+			typeExpr: "geometry",
+			expected: &schema.SpatialType{T: tGeometry},
+		},
+		{
+			typeExpr: "point",
+			expected: &schema.SpatialType{T: tPoint},
+		},
+		{
+			typeExpr: "multipoint",
+			expected: &schema.SpatialType{T: tMultiPoint},
+		},
+		{
+			typeExpr: "linestring",
+			expected: &schema.SpatialType{T: tLineString},
+		},
+		{
+			typeExpr: "multilinestring",
+			expected: &schema.SpatialType{T: tMultiLineString},
+		},
+		{
+			typeExpr: "polygon",
+			expected: &schema.SpatialType{T: tPolygon},
+		},
+		{
+			typeExpr: "multipolygon",
+			expected: &schema.SpatialType{T: tMultiPolygon},
+		},
+		{
+			typeExpr: "geometrycollection",
+			expected: &schema.SpatialType{T: tGeometryCollection},
+		},
 	} {
 		t.Run(tt.typeExpr, func(t *testing.T) {
 			// simulates sqlspec.Column until we change its Type field.

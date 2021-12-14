@@ -366,7 +366,7 @@ func parseRawType(raw string) (schema.Type, error) {
 	case tEnum, tSet:
 		// Parse the enum values according to the MySQL format.
 		// github.com/mysql/mysql-server/blob/8.0/sql/field.cc#Field_enum::sql_type
-		rv := strings.TrimSuffix(strings.TrimPrefix(raw, "enum("), ")")
+		rv := strings.TrimSuffix(strings.TrimPrefix(raw, t+"("), ")")
 		if rv == "" {
 			return nil, fmt.Errorf("mysql: unexpected enum type: %q", raw)
 		}
