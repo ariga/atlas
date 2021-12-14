@@ -3,6 +3,7 @@ package sqlite
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -275,3 +276,35 @@ func enumSpec(t *schema.EnumType) (*sqlspec.Column, error) {
 	}
 	return specutil.NewCol("", "enum", specutil.ListAttr("values", quoted...)), nil
 }
+
+// TypeRegistry contains the supported TypeSpecs for the mysql driver.
+var TypeRegistry = specutil.NewRegistry(
+	specutil.TypeSpec(tReal, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
+	specutil.TypeSpec(tBlob, specutil.SizeTypeAttr(false)),
+	specutil.TypeSpec(tText, specutil.SizeTypeAttr(false)),
+
+	specutil.TypeSpec("integer", specutil.SizeTypeAttr(false)),
+	specutil.TypeSpec("int", specutil.SizeTypeAttr(false)),
+	specutil.TypeSpec("tinyint", specutil.SizeTypeAttr(false)),
+	specutil.TypeSpec("smallint", specutil.SizeTypeAttr(false)),
+	specutil.TypeSpec("mediumint", specutil.SizeTypeAttr(false)),
+	specutil.TypeSpec("bigint", specutil.SizeTypeAttr(false)),
+	specutil.AliasTypeSpec("unsigned_big_int", "unsigned big int", specutil.SizeTypeAttr(false)),
+	specutil.TypeSpec("int2", specutil.SizeTypeAttr(false)),
+	specutil.TypeSpec("int8", specutil.SizeTypeAttr(false)),
+	specutil.TypeSpec("double", specutil.SizeTypeAttr(false)),
+	specutil.AliasTypeSpec("double_precision", "double precision", specutil.SizeTypeAttr(false)),
+	specutil.TypeSpec("float", specutil.SizeTypeAttr(false)),
+	specutil.TypeSpec("character", specutil.SizeTypeAttr(false)),
+	specutil.TypeSpec("varchar", specutil.SizeTypeAttr(false)),
+	specutil.TypeSpec("varying"),
+	specutil.TypeSpec("nchar", specutil.SizeTypeAttr(false)),
+	specutil.TypeSpec("native"),
+	specutil.TypeSpec("nvarchar", specutil.SizeTypeAttr(false)),
+	specutil.TypeSpec("clob", specutil.SizeTypeAttr(false)),
+	specutil.TypeSpec("numeric", specutil.SizeTypeAttr(false)),
+	specutil.TypeSpec("decimal", &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
+	specutil.TypeSpec("boolean"),
+	specutil.TypeSpec("date"),
+	specutil.TypeSpec("datetime"),
+)
