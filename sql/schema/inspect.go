@@ -43,26 +43,10 @@ type (
 		Tables []string
 	}
 
-	// Inspector is the interface implemented by the different database
-	// drivers for inspecting multiple tables.
-	Inspector interface {
-		// InspectSchema returns the schema description by its name. A NotExistError
-		// error is returned if the schema does not exists in the database.
-		InspectSchema(ctx context.Context, name string, opts *InspectOptions) (*Schema, error)
-	}
-
 	// InspectTableOptions describes options for TableInspector.
 	InspectTableOptions struct {
 		// Schema defines an optional schema to inspect.
 		Schema string
-	}
-
-	// TableInspector is the interface implemented by the different database
-	// drivers for inspecting their schema tables.
-	TableInspector interface {
-		// InspectTable returns the table description by its name. A NotExistError
-		// error is returned if the table does not exists in the database.
-		InspectTable(ctx context.Context, name string, opts *InspectTableOptions) (*Table, error)
 	}
 
 	// InspectRealmOption describes options for RealmInspector.
@@ -71,9 +55,18 @@ type (
 		Schemas []string
 	}
 
-	// RealmInspector is the interface implemented by the different database
-	// drivers for inspecting multiple schemas (realm).
-	RealmInspector interface {
+	// Inspector is the interface implemented by the different database
+	// drivers for inspecting multiple tables.
+	Inspector interface {
+		// InspectSchema returns the schema description by its name. A NotExistError
+		// error is returned if the schema does not exists in the database.
+		InspectSchema(ctx context.Context, name string, opts *InspectOptions) (*Schema, error)
+
+		// InspectTable returns the table description by its name. A NotExistError
+		// error is returned if the table does not exists in the database.
+		InspectTable(ctx context.Context, name string, opts *InspectTableOptions) (*Table, error)
+
+		// InspectRealm returns the description of the connected database.
 		InspectRealm(ctx context.Context, opts *InspectRealmOption) (*Realm, error)
 	}
 )

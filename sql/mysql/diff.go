@@ -15,14 +15,7 @@ import (
 )
 
 // A diff provides a MySQL implementation for sqlx.DiffDriver.
-type diff struct{ *Driver }
-
-// Diff returns a MySQL schema differ.
-func (d *Driver) Diff() schema.Differ {
-	return &sqlx.Diff{
-		DiffDriver: &diff{Driver: d},
-	}
-}
+type diff struct{ conn }
 
 // SchemaAttrDiff returns a changeset for migrating schema attributes from one state to the other.
 func (d *diff) SchemaAttrDiff(from, to *schema.Schema) []schema.Change {
