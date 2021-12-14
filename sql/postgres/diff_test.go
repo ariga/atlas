@@ -7,6 +7,8 @@ package postgres
 import (
 	"testing"
 
+	"github.com/DATA-DOG/go-sqlmock"
+
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/stretchr/testify/require"
@@ -207,9 +209,14 @@ func TestDiff_TableDiff(t *testing.T) {
 		}(),
 	}
 	for _, tt := range tests {
-		d := (&Driver{version: "13"}).Diff()
+		db, m, err := sqlmock.New()
+		require.NoError(t, err)
+		mr := mock{m}
+		mr.version("130000")
+		drv, err := Open(db)
+		require.NoError(t, err)
 		t.Run(tt.name, func(t *testing.T) {
-			changes, err := d.TableDiff(tt.from, tt.to)
+			changes, err := drv.TableDiff(tt.from, tt.to)
 			require.Equal(t, tt.wantErr, err != nil)
 			require.EqualValues(t, tt.wantChanges, changes)
 		})
@@ -217,29 +224,32 @@ func TestDiff_TableDiff(t *testing.T) {
 }
 
 func TestDiff_SchemaDiff(t *testing.T) {
-	var (
-		d    = (&Driver{version: "13"}).Diff()
-		from = &schema.Schema{
-			Tables: []*schema.Table{
-				{Name: "users"},
-				{Name: "pets"},
-			},
-		}
-		to = &schema.Schema{
-			Tables: []*schema.Table{
-				{
-					Name: "users",
-					Columns: []*schema.Column{
-						{Name: "t2_id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
-					},
+	db, m, err := sqlmock.New()
+	require.NoError(t, err)
+	mr := mock{m}
+	mr.version("130000")
+	drv, err := Open(db)
+	require.NoError(t, err)
+	from := &schema.Schema{
+		Tables: []*schema.Table{
+			{Name: "users"},
+			{Name: "pets"},
+		},
+	}
+	to := &schema.Schema{
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{Name: "t2_id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
 				},
-				{Name: "groups"},
 			},
-		}
-	)
+			{Name: "groups"},
+		},
+	}
 	from.Tables[0].Schema = from
 	from.Tables[1].Schema = from
-	changes, err := d.SchemaDiff(from, to)
+	changes, err := drv.SchemaDiff(from, to)
 	require.NoError(t, err)
 	require.EqualValues(t, []schema.Change{
 		&schema.ModifyTable{T: from.Tables[0], Changes: []schema.Change{&schema.AddColumn{C: to.Tables[0].Columns[0]}}},
