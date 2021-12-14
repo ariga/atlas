@@ -314,6 +314,10 @@ func hclType(spec *schemaspec.TypeSpec, typ *schemaspec.Type) (string, error) {
 			}
 		}
 	}
+	// if no args were chosen and the type can be described without a function
+	if len(args) == 0 && len(typeFuncReqArgs(spec)) == 0 {
+		return spec.Name, nil
+	}
 	return fmt.Sprintf("%s(%s)", spec.Name, strings.Join(args, ",")), nil
 }
 
