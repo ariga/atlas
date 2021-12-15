@@ -109,7 +109,6 @@ func TestRegistryConvert(t *testing.T) {
 			typ:      &schema.IntegerType{T: "int", Unsigned: true},
 			expected: &schemaspec.Type{T: "int", Attrs: []*schemaspec.Attr{LitAttr("unsigned", "true")}},
 		},
-
 		{
 			typ: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2}, // decimal(10,2)
 			expected: &schemaspec.Type{T: "decimal", Attrs: []*schemaspec.Attr{

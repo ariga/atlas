@@ -156,7 +156,7 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 			s.Attrs = append([]*schemaspec.Attr{LitAttr(attr.Name, i)}, s.Attrs...)
 		case reflect.Bool:
 			v := field.Bool()
-			if v == false && len(s.Attrs) == 0 {
+			if !v && len(s.Attrs) == 0 {
 				break
 			}
 			b := strconv.FormatBool(v)
