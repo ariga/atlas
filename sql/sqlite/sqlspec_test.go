@@ -8,13 +8,17 @@ import (
 	"fmt"
 	"testing"
 
+	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
 
+	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/stretchr/testify/require"
 )
+
+var hclState = schemahcl.New(schemahcl.WithTypes(TypeRegistry.Specs()))
 
 func TestSQLSpec(t *testing.T) {
 	f := `
@@ -383,6 +387,154 @@ func TestNotSupportedMarshalSpecColumnType(t *testing.T) {
 			s.Tables[0].Schema = &s
 			_, err := MarshalSpec(&s, schemahcl.Marshal)
 			require.Error(t, err)
+		})
+	}
+}
+
+func TestTypes(t *testing.T) {
+	for _, tt := range []struct {
+		typeExpr string
+		expected schema.Type
+	}{
+		{
+			typeExpr: "integer(10)",
+			expected: &schema.IntegerType{T: "integer"},
+		},
+		{
+			typeExpr: "int(10)",
+			expected: &schema.IntegerType{T: "int"},
+		},
+		{
+			typeExpr: "tinyint(10)",
+			expected: &schema.IntegerType{T: "tinyint"},
+		},
+		{
+			typeExpr: "smallint(10)",
+			expected: &schema.IntegerType{T: "smallint"},
+		},
+		{
+			typeExpr: "mediumint(10)",
+			expected: &schema.IntegerType{T: "mediumint"},
+		},
+		{
+			typeExpr: "bigint(10)",
+			expected: &schema.IntegerType{T: "bigint"},
+		},
+		{
+			typeExpr: "unsigned_big_int(10)",
+			expected: &schema.IntegerType{T: "unsigned big int"},
+		},
+		{
+			typeExpr: "int2(10)",
+			expected: &schema.IntegerType{T: "int2"},
+		},
+		{
+			typeExpr: "int8(10)",
+			expected: &schema.IntegerType{T: "int8"},
+		},
+		{
+			typeExpr: "real",
+			expected: &schema.FloatType{T: "real"},
+		},
+		{
+			typeExpr: "double",
+			expected: &schema.FloatType{T: "double"},
+		},
+		{
+			typeExpr: "double_precision",
+			expected: &schema.FloatType{T: "double precision"},
+		},
+		{
+			typeExpr: "float(10)",
+			expected: &schema.FloatType{T: "float"},
+		},
+		{
+			typeExpr: "text(10)",
+			expected: &schema.StringType{T: "text", Size: 10},
+		},
+		{
+			typeExpr: "character(10)",
+			expected: &schema.StringType{T: "character", Size: 10},
+		},
+		{
+			typeExpr: "varchar(10)",
+			expected: &schema.StringType{T: "varchar", Size: 10},
+		},
+		{
+			typeExpr: "varying_character",
+			expected: &schema.StringType{T: "varying character"},
+		},
+		{
+			typeExpr: "nchar(10)",
+			expected: &schema.StringType{T: "nchar", Size: 10},
+		},
+		{
+			typeExpr: "native_character",
+			expected: &schema.StringType{T: "native character"},
+		},
+		{
+			typeExpr: "nvarchar(10)",
+			expected: &schema.StringType{T: "nvarchar", Size: 10},
+		},
+		{
+			typeExpr: "clob(10)",
+			expected: &schema.StringType{T: "clob", Size: 10},
+		},
+		{
+			typeExpr: "blob(10)",
+			expected: &schema.BinaryType{T: "blob"},
+		},
+		{
+			typeExpr: "numeric(10)",
+			expected: &schema.DecimalType{T: "numeric", Precision: 10},
+		},
+		{
+			typeExpr: "decimal(10,5)",
+			expected: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 5},
+		},
+		{
+			typeExpr: "boolean",
+			expected: &schema.BoolType{T: "boolean"},
+		},
+		{
+			typeExpr: "date",
+			expected: &schema.TimeType{T: "date"},
+		},
+		{
+			typeExpr: "datetime",
+			expected: &schema.TimeType{T: "datetime"},
+		},
+		{
+			typeExpr: "json",
+			expected: &schema.JSONType{T: "json"},
+		},
+		{
+			typeExpr: "uuid",
+			expected: &UUIDType{T: "uuid"},
+		},
+	} {
+		t.Run(tt.typeExpr, func(t *testing.T) {
+			// Simulates sqlspec.Column until we change its Type field.
+			type col struct {
+				Type *schemaspec.Type `spec:"type"`
+				schemaspec.DefaultExtension
+			}
+			var test struct {
+				Columns []*col `spec:"column"`
+			}
+			doc := fmt.Sprintf(`column {
+	type = %s
+}
+`, tt.typeExpr)
+			err := hclState.UnmarshalSpec([]byte(doc), &test)
+			require.NoError(t, err)
+			column := test.Columns[0]
+			typ, err := TypeRegistry.Type(column.Type, column.Extra.Attrs, parseRawType)
+			require.NoError(t, err)
+			require.EqualValues(t, tt.expected, typ)
+			spec, err := hclState.MarshalSpec(&test)
+			require.NoError(t, err)
+			require.EqualValues(t, string(hclwrite.Format([]byte(doc))), string(hclwrite.Format(spec)))
 		})
 	}
 }
