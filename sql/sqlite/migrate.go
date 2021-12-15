@@ -40,6 +40,9 @@ func (m *migrate) Exec(ctx context.Context, changes []schema.Change) (err error)
 // addTable builds and executes the query for creating a table in a schema.
 func (m *migrate) addTable(ctx context.Context, add *schema.AddTable) error {
 	b := Build("CREATE TABLE").Ident(add.T.Name)
+	if sqlx.Has(add.Extra, &schema.IfNotExists{}) {
+		b.P("IF NOT EXISTS")
+	}
 	b.Wrap(func(b *sqlx.Builder) {
 		b.MapComma(add.T.Columns, func(i int, b *sqlx.Builder) {
 			m.column(b, add.T.Columns[i])
@@ -66,7 +69,11 @@ func (m *migrate) addTable(ctx context.Context, add *schema.AddTable) error {
 // dropTable builds and executes the query for dropping a table from a schema.
 func (m *migrate) dropTable(ctx context.Context, drop *schema.DropTable) error {
 	if err := m.skipConstraints(ctx, func(ctx context.Context) error {
-		_, err := m.ExecContext(ctx, Build("DROP TABLE").Ident(drop.T.Name).String())
+		b := Build("DROP TABLE").Ident(drop.T.Name)
+		if sqlx.Has(drop.Extra, &schema.IfExists{}) {
+			b.P("IF EXISTS")
+		}
+		_, err := m.ExecContext(ctx, b.String())
 		return err
 	}); err != nil {
 		return fmt.Errorf("drop table: %w", err)
