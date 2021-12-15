@@ -110,11 +110,28 @@ func TestRegistryConvert(t *testing.T) {
 			expected: &schemaspec.Type{T: "int", Attrs: []*schemaspec.Attr{LitAttr("unsigned", "true")}},
 		},
 		{
-			typ: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
+			typ: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2}, // decimal(10,2)
 			expected: &schemaspec.Type{T: "decimal", Attrs: []*schemaspec.Attr{
 				LitAttr("precision", "10"),
 				LitAttr("scale", "2"),
 			}},
+		},
+		{
+			typ: &schema.DecimalType{T: "decimal", Precision: 10}, // decimal(10)
+			expected: &schemaspec.Type{T: "decimal", Attrs: []*schemaspec.Attr{
+				LitAttr("precision", "10"),
+			}},
+		},
+		{
+			typ: &schema.DecimalType{T: "decimal", Scale: 2}, // decimal(0,2)
+			expected: &schemaspec.Type{T: "decimal", Attrs: []*schemaspec.Attr{
+				LitAttr("precision", "0"),
+				LitAttr("scale", "2"),
+			}},
+		},
+		{
+			typ:      &schema.DecimalType{T: "decimal"}, // decimal
+			expected: &schemaspec.Type{T: "decimal"},
 		},
 		{
 			typ: &schema.EnumType{T: "enum", Values: []string{"on", "off"}},
