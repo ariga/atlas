@@ -308,17 +308,27 @@ func CommentChange(from, to []schema.Attr) schema.ChangeKind {
 	return schema.NoChange
 }
 
-// Has finds the first attribute in the attribute list that
+var (
+	attrsType   = reflect.TypeOf(([]schema.Attr)(nil))
+	clausesType = reflect.TypeOf(([]schema.Clause)(nil))
+	exprsType   = reflect.TypeOf(([]schema.Expr)(nil))
+)
+
+// Has finds the first element in the elements list that
 // matches target, and if so, sets target to that attribute
 // value and returns true.
-func Has(attrs []schema.Attr, target interface{}) bool {
-	rv := reflect.ValueOf(target)
-	if rv.Kind() != reflect.Ptr || rv.IsNil() {
+func Has(elements, target interface{}) bool {
+	ev := reflect.ValueOf(elements)
+	if t := ev.Type(); t != attrsType && t != clausesType && t != exprsType {
+		panic(fmt.Sprintf("unexpected elements type: %T", t))
+	}
+	tv := reflect.ValueOf(target)
+	if tv.Kind() != reflect.Ptr || tv.IsNil() {
 		panic("target must be a non-nil pointer")
 	}
-	for _, attr := range attrs {
-		if reflect.TypeOf(attr).AssignableTo(rv.Type()) {
-			rv.Elem().Set(reflect.ValueOf(attr).Elem())
+	for i := 0; i < ev.Len(); i++ {
+		if e := ev.Index(i).Elem(); e.Type().AssignableTo(tv.Type()) {
+			tv.Elem().Set(e.Elem())
 			return true
 		}
 	}

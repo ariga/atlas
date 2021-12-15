@@ -24,9 +24,9 @@ func TestMigrate_Exec(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mk.ExpectExec(sqltest.Escape("DROP TABLE `users`")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mk.ExpectExec(sqltest.Escape("DROP TABLE `public`.`pets`")).
+	mk.ExpectExec(sqltest.Escape("DROP TABLE `public`.`pets` IF EXISTS")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mk.ExpectExec(sqltest.Escape("CREATE TABLE `pets` (`a` int NOT NULL, `b` bigint NOT NULL, `c` bigint NULL, PRIMARY KEY (`a`, `b`), UNIQUE INDEX `b_c_unique` (`b`, `c`) COMMENT \"comment\")")).
+	mk.ExpectExec(sqltest.Escape("CREATE TABLE `pets` IF NOT EXISTS (`a` int NOT NULL, `b` bigint NOT NULL, `c` bigint NULL, PRIMARY KEY (`a`, `b`), UNIQUE INDEX `b_c_unique` (`b`, `c`) COMMENT \"comment\")")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mk.ExpectExec(sqltest.Escape("ALTER TABLE `users` DROP INDEX `id_spouse_id`")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
@@ -40,7 +40,7 @@ func TestMigrate_Exec(t *testing.T) {
 		&schema.AddSchema{S: &schema.Schema{Name: "test", Attrs: []schema.Attr{&schema.Charset{V: "latin"}}}},
 		&schema.DropSchema{S: &schema.Schema{Name: "atlas", Attrs: []schema.Attr{&schema.Charset{V: "latin"}}}},
 		&schema.DropTable{T: &schema.Table{Name: "users"}},
-		&schema.DropTable{T: &schema.Table{Name: "pets", Schema: &schema.Schema{Name: "public"}}},
+		&schema.DropTable{T: &schema.Table{Name: "pets", Schema: &schema.Schema{Name: "public"}}, Extra: []schema.Clause{&schema.IfExists{}}},
 		&schema.AddTable{
 			T: func() *schema.Table {
 				t := &schema.Table{
@@ -59,6 +59,9 @@ func TestMigrate_Exec(t *testing.T) {
 				}
 				return t
 			}(),
+			Extra: []schema.Clause{
+				&schema.IfNotExists{},
+			},
 		},
 	})
 	require.NoError(t, err)
