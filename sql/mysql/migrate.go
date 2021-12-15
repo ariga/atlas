@@ -53,6 +53,9 @@ func (m *migrate) topLevel(ctx context.Context, changes []schema.Change) ([]sche
 		switch c := c.(type) {
 		case *schema.AddSchema:
 			b := Build("CREATE DATABASE").Ident(c.S.Name)
+			if sqlx.Has(c.Extra, &schema.IfNotExists{}) {
+				b.P("IF NOT EXISTS")
+			}
 			if a := (schema.Charset{}); sqlx.Has(c.S.Attrs, &a) {
 				b.P("CHARACTER SET", a.V)
 			}
@@ -76,6 +79,9 @@ func (m *migrate) topLevel(ctx context.Context, changes []schema.Change) ([]sche
 // addTable builds and executes the query for creating a table in a schema.
 func (m *migrate) addTable(ctx context.Context, add *schema.AddTable) error {
 	b := Build("CREATE TABLE").Table(add.T)
+	if sqlx.Has(add.Extra, &schema.IfNotExists{}) {
+		b.P("IF NOT EXISTS")
+	}
 	b.Wrap(func(b *sqlx.Builder) {
 		b.MapComma(add.T.Columns, func(i int, b *sqlx.Builder) {
 			m.column(b, add.T, add.T.Columns[i])
@@ -112,6 +118,9 @@ func (m *migrate) addTable(ctx context.Context, add *schema.AddTable) error {
 // dropTable builds and executes the query for dropping a table from a schema.
 func (m *migrate) dropTable(ctx context.Context, drop *schema.DropTable) error {
 	b := Build("DROP TABLE").Table(drop.T)
+	if sqlx.Has(drop.Extra, &schema.IfExists{}) {
+		b.P("IF EXISTS")
+	}
 	if _, err := m.ExecContext(ctx, b.String()); err != nil {
 		return fmt.Errorf("drop table: %w", err)
 	}

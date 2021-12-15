@@ -24,18 +24,33 @@ type (
 		change()
 	}
 
+	// Clause carries additional information that can be added
+	// to schema changes. The Clause interface can be implemented
+	// outside this package as follows:
+	//
+	//	type Authorization struct {
+	//		schema.Clause
+	//		UserName string
+	//	}
+	//
+	//	var c schema.Clause = &Authorization{UserName: "a8m"}
+	//
+	Clause interface {
+		clause()
+	}
+
 	// AddSchema describes a schema (named database) creation change.
 	// Unlike table creation, schemas and their elements are described
 	// with separate changes. For example, "AddSchema" and "AddTable"
 	AddSchema struct {
 		S     *Schema
-		Extra []Expr // Extra clauses and options.
+		Extra []Clause // Extra clauses and options.
 	}
 
 	// DropSchema describes a schema (named database) removal change.
 	DropSchema struct {
 		S     *Schema
-		Extra []Expr // Extra clauses and options.
+		Extra []Clause // Extra clauses and options.
 	}
 
 	// ModifySchema describes a modification change for schema attributes.
@@ -47,13 +62,13 @@ type (
 	// AddTable describes a table creation change.
 	AddTable struct {
 		T     *Table
-		Extra []Expr // Extra clauses and options.
+		Extra []Clause // Extra clauses and options.
 	}
 
 	// DropTable describes a table removal change.
 	DropTable struct {
 		T     *Table
-		Extra []Expr // Extra clauses.
+		Extra []Clause // Extra clauses.
 	}
 
 	// ModifyTable describes a table modification change.
@@ -124,6 +139,14 @@ type (
 	ModifyAttr struct {
 		From, To Attr
 	}
+
+	// IfExists represents a clause in a schema change that is commonly
+	// supported by multiple statements (e.g. DROP TABLE or DROP SCHEMA).
+	IfExists struct{}
+
+	// IfNotExists represents a clause in a schema change that is commonly
+	// supported by multiple statements (e.g. CREATE TABLE or CREATE SCHEMA).
+	IfNotExists struct{}
 )
 
 // A ChangeKind describes a change kind that can be combined
@@ -233,3 +256,7 @@ func (*ModifyColumn) change()     {}
 func (*AddForeignKey) change()    {}
 func (*DropForeignKey) change()   {}
 func (*ModifyForeignKey) change() {}
+
+// clauses.
+func (*IfExists) clause()    {}
+func (*IfNotExists) clause() {}
