@@ -442,67 +442,67 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			typeExpr: "double_precision",
-			expected: &schema.FloatType{T: "double_precision"},
+			expected: &schema.FloatType{T: "double precision"},
 		},
 		{
 			typeExpr: "float(10)",
-			expected: &schema.IntegerType{T: "float"},
+			expected: &schema.FloatType{T: "float"},
 		},
 		{
 			typeExpr: "text(10)",
-			expected: &schema.IntegerType{T: "text"},
+			expected: &schema.StringType{T: "text", Size: 10},
 		},
 		{
 			typeExpr: "character(10)",
-			expected: &schema.IntegerType{T: "character"},
+			expected: &schema.StringType{T: "character", Size: 10},
 		},
 		{
 			typeExpr: "varchar(10)",
-			expected: &schema.IntegerType{T: "varchar"},
+			expected: &schema.StringType{T: "varchar", Size: 10},
 		},
 		{
-			typeExpr: "varying",
-			expected: &schema.IntegerType{T: "varying"},
+			typeExpr: "varying_character",
+			expected: &schema.StringType{T: "varying character"},
 		},
 		{
 			typeExpr: "nchar(10)",
-			expected: &schema.IntegerType{T: "nchar"},
+			expected: &schema.StringType{T: "nchar", Size: 10},
 		},
 		{
-			typeExpr: "native",
-			expected: &schema.IntegerType{T: "native"},
+			typeExpr: "native_character",
+			expected: &schema.StringType{T: "native character"},
 		},
 		{
 			typeExpr: "nvarchar(10)",
-			expected: &schema.IntegerType{T: "nvarchar"},
+			expected: &schema.StringType{T: "nvarchar", Size: 10},
 		},
 		{
 			typeExpr: "clob(10)",
-			expected: &schema.IntegerType{T: "clob"},
+			expected: &schema.StringType{T: "clob", Size: 10},
 		},
 		{
 			typeExpr: "blob(10)",
-			expected: &schema.IntegerType{T: "blob"},
+			expected: &schema.BinaryType{T: "blob"},
 		},
 		{
 			typeExpr: "numeric(10)",
-			expected: &schema.IntegerType{T: "numeric"},
+			expected: &schema.DecimalType{T: "numeric", Precision: 10},
 		},
 		{
 			typeExpr: "decimal(10,5)",
-			expected: &schema.IntegerType{T: "decimal"},
+			expected: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 5},
 		},
 		{
 			typeExpr: "boolean",
-			expected: &schema.IntegerType{T: "boolean"},
+			expected: &schema.BoolType{T: "boolean"},
 		},
 		{
 			typeExpr: "date",
-			expected: &schema.IntegerType{T: "date"},
+			expected: &schema.TimeType{T: "date"},
 		},
 		{
 			typeExpr: "datetime",
-			expected: &schema.IntegerType{T: "datetime"},
+			expected: &schema.TimeType{T: "datetime"},
 		},
 	} {
 		t.Run(tt.typeExpr, func(t *testing.T) {
