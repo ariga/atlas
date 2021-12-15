@@ -135,7 +135,9 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 	if !ok {
 		return nil, fmt.Errorf("specutil: type %q not found in registry", s.T)
 	}
-	for _, attr := range typeSpec.Attributes {
+	// Iterate the attributes in reverse order, so we can skip zero value and optional attrs.
+	for i := len(typeSpec.Attributes) - 1; i >= 0; i-- {
+		attr := typeSpec.Attributes[i]
 		n := inflect.Camelize(attr.Name)
 		field := rv.FieldByName(n)
 		if !field.IsValid() {
@@ -146,11 +148,19 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 		}
 		switch attr.Kind {
 		case reflect.Int:
-			i := strconv.Itoa(int(field.Int()))
-			s.Attrs = append(s.Attrs, LitAttr(attr.Name, i))
+			v := int(field.Int())
+			if v == 0 && len(s.Attrs) == 0 {
+				break
+			}
+			i := strconv.Itoa(v)
+			s.Attrs = append([]*schemaspec.Attr{LitAttr(attr.Name, i)}, s.Attrs...)
 		case reflect.Bool:
-			b := strconv.FormatBool(field.Bool())
-			s.Attrs = append(s.Attrs, LitAttr(attr.Name, b))
+			v := field.Bool()
+			if v == false && len(s.Attrs) == 0 {
+				break
+			}
+			b := strconv.FormatBool(v)
+			s.Attrs = append([]*schemaspec.Attr{LitAttr(attr.Name, b)}, s.Attrs...)
 		case reflect.Slice:
 			lits := make([]string, 0, field.Len())
 			for i := 0; i < field.Len(); i++ {
@@ -160,7 +170,7 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 				}
 				lits = append(lits, strconv.Quote(fi.String()))
 			}
-			s.Attrs = append(s.Attrs, ListAttr(attr.Name, lits...))
+			s.Attrs = append([]*schemaspec.Attr{ListAttr(attr.Name, lits...)}, s.Attrs...)
 		default:
 			return nil, fmt.Errorf("specutil: unsupported attr kind %s for attribute %q of %q", attr.Kind, attr.Name, typeSpec.Name)
 		}
