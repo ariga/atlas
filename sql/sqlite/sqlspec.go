@@ -306,4 +306,6 @@ var TypeRegistry = specutil.NewRegistry(
 	specutil.TypeSpec("boolean"),
 	specutil.TypeSpec("date"),
 	specutil.TypeSpec("datetime"),
+	specutil.TypeSpec("json"),
+	specutil.TypeSpec("uuid"),
 )

@@ -13,8 +13,8 @@ import (
 	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
-	"github.com/hashicorp/hcl/v2/hclwrite"
 
+	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/stretchr/testify/require"
 )
 
@@ -504,9 +504,17 @@ func TestTypes(t *testing.T) {
 			typeExpr: "datetime",
 			expected: &schema.TimeType{T: "datetime"},
 		},
+		{
+			typeExpr: "json",
+			expected: &schema.JSONType{T: "json"},
+		},
+		{
+			typeExpr: "uuid",
+			expected: &UUIDType{T: "uuid"},
+		},
 	} {
 		t.Run(tt.typeExpr, func(t *testing.T) {
-			// simulates sqlspec.Column until we change its Type field.
+			// Simulates sqlspec.Column until we change its Type field.
 			type col struct {
 				Type *schemaspec.Type `spec:"type"`
 				schemaspec.DefaultExtension
