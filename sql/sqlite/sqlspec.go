@@ -277,7 +277,7 @@ func enumSpec(t *schema.EnumType) (*sqlspec.Column, error) {
 	return specutil.NewCol("", "enum", specutil.ListAttr("values", quoted...)), nil
 }
 
-// TypeRegistry contains the supported TypeSpecs for the mysql driver.
+// TypeRegistry contains the supported TypeSpecs for the sqlite driver.
 var TypeRegistry = specutil.NewRegistry(
 	specutil.TypeSpec(tReal, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
 	specutil.TypeSpec(tBlob, specutil.SizeTypeAttr(false)),
