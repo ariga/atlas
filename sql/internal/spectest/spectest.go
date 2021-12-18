@@ -12,17 +12,12 @@ import (
 
 // RegistrySanityTest runs a sanity for a TypeRegistry, generated a dummy *schemaspec.Type
 // then converting it to a schema.Type and back to a *schemaspec.Type.
-func RegistrySanityTest(t *testing.T,
-	registry *specutil.TypeRegistry,
-	formatter func(schema.Type) (string, error),
-	parser func(string) (schema.Type, error),
-) {
+func RegistrySanityTest(t *testing.T, registry *specutil.TypeRegistry, parser func(string) (schema.Type, error)) {
 	for _, ts := range registry.Specs() {
 		t.Run(ts.Name, func(t *testing.T) {
 			spec := dummyType(t, ts)
 			styp, err := registry.Type(spec, nil, parser)
 			require.NoError(t, err)
-			//_, err = formatter(styp)
 			require.NoErrorf(t, err, "failed formatting: %styp", err)
 			convert, err := registry.Convert(styp)
 			require.NoError(t, err)

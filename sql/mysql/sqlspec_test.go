@@ -902,7 +902,7 @@ func TestTypes(t *testing.T) {
 }
 
 func TestRegistrySanity(t *testing.T) {
-	spectest.RegistrySanityTest(t, TypeRegistry, FormatType, parseRawType)
+	spectest.RegistrySanityTest(t, TypeRegistry, parseRawType)
 }
 
 func hclEqual(t *testing.T, expected, actual []byte) {
