@@ -750,5 +750,5 @@ func TestTypes(t *testing.T) {
 }
 
 func TestRegistrySanity(t *testing.T) {
-	spectest.RegistrySanityTest(t, TypeRegistry, parseRawType)
+	spectest.RegistrySanityTest(t, TypeRegistry, parseRawType, []string{"enum"})
 }

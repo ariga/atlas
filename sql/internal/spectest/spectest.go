@@ -12,8 +12,11 @@ import (
 
 // RegistrySanityTest runs a sanity for a TypeRegistry, generated a dummy *schemaspec.Type
 // then converting it to a schema.Type and back to a *schemaspec.Type.
-func RegistrySanityTest(t *testing.T, registry *specutil.TypeRegistry, parser func(string) (schema.Type, error)) {
+func RegistrySanityTest(t *testing.T, registry *specutil.TypeRegistry, parser func(string) (schema.Type, error), skip []string) {
 	for _, ts := range registry.Specs() {
+		if contains(ts.Name, skip) {
+			continue
+		}
 		t.Run(ts.Name, func(t *testing.T) {
 			spec := dummyType(t, ts)
 			styp, err := registry.Type(spec, nil, parser)
@@ -26,6 +29,15 @@ func RegistrySanityTest(t *testing.T, registry *specutil.TypeRegistry, parser fu
 			require.EqualValues(t, styp, after)
 		})
 	}
+}
+
+func contains(needle string, haystack []string) bool {
+	for _, item := range haystack {
+		if item == needle {
+			return true
+		}
+	}
+	return false
 }
 
 func dummyType(t *testing.T, ts *schemaspec.TypeSpec) *schemaspec.Type {

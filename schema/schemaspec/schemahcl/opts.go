@@ -77,7 +77,7 @@ func typeFuncSpec(typeSpec *schemaspec.TypeSpec) function.Function {
 		case reflect.String:
 			p.Type = cty.String
 			spec.Params = append(spec.Params, p)
-		case reflect.Int, reflect.Float32:
+		case reflect.Int, reflect.Float32, reflect.Int64:
 			p.Type = cty.Number
 			spec.Params = append(spec.Params, p)
 		case reflect.Bool:

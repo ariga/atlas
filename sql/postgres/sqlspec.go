@@ -370,7 +370,7 @@ func arrayType(t string) (string, bool) {
 // TypeRegistry contains the supported TypeSpecs for the postgres driver.
 var TypeRegistry = specutil.NewRegistry(
 	specutil.TypeSpec(tBit, &schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64}),
-	specutil.AliasTypeSpec("bit_varying", tBitVar, specutil.SizeTypeAttr(true), &schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64}),
+	specutil.AliasTypeSpec("bit_varying", tBitVar, &schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64}),
 	specutil.TypeSpec(tVarChar, specutil.SizeTypeAttr(true)),
 	specutil.TypeSpec(tChar, specutil.SizeTypeAttr(true)),
 	specutil.TypeSpec(tCharacter, specutil.SizeTypeAttr(true)),
@@ -402,7 +402,7 @@ var TypeRegistry = specutil.NewRegistry(
 	specutil.TypeSpec(tTimestamp),
 	specutil.AliasTypeSpec("timestamp_with_time_zone", tTimestampWTZ),
 	specutil.AliasTypeSpec("timestamp_without_time_zone", tTimestampWOTZ),
-	//specutil.TypeSpec("enum", &schemaspec.TypeAttr{Name: "values", Kind: reflect.Slice, Required: true}),
+	specutil.TypeSpec("enum", &schemaspec.TypeAttr{Name: "values", Kind: reflect.Slice, Required: true}),
 	specutil.AliasTypeSpec("double_precision", tDouble),
 	specutil.TypeSpec(tReal),
 	specutil.TypeSpec(tFloat8),
