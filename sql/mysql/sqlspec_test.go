@@ -7,6 +7,7 @@ import (
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
+	"ariga.io/atlas/sql/internal/spectest"
 	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
@@ -898,6 +899,10 @@ func TestTypes(t *testing.T) {
 			hclEqual(t, []byte(doc), spec)
 		})
 	}
+}
+
+func TestRegistrySanity(t *testing.T) {
+	spectest.RegistrySanityTest(t, TypeRegistry, FormatType, parseRawType)
 }
 
 func hclEqual(t *testing.T, expected, actual []byte) {
