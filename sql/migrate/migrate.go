@@ -44,6 +44,9 @@ type (
 		// Cmd or statement to execute.
 		Cmd string
 
+		// Args for placeholder parameters in the statement above.
+		Args []interface{}
+
 		// A Comment describes the change.
 		Comment string
 

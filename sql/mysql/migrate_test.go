@@ -193,14 +193,6 @@ func TestPlanChanges(t *testing.T) {
 		},
 		{
 			changes: []schema.Change{
-				&schema.DropSchema{S: &schema.Schema{Name: "atlas", Attrs: []schema.Attr{&schema.Charset{V: "latin"}}}},
-			},
-			plan: &migrate.Plan{
-				Changes: []*migrate.Change{{Cmd: "DROP DATABASE `atlas`"}},
-			},
-		},
-		{
-			changes: []schema.Change{
 				&schema.AddTable{
 					T: &schema.Table{
 						Name: "posts",
