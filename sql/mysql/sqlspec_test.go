@@ -534,6 +534,9 @@ table "test" {
 			spec, err := MarshalSpec(&test, hclState)
 			require.NoError(t, err)
 			fmt.Println(string(spec))
+			var after schema.Schema
+			err = UnmarshalSpec(spec, hclState, &after)
+			require.NoError(t, err)
 			//column := test.Tables[0].Columns[0]
 
 			//require.NoError(t, err)
