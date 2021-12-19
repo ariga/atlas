@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package migrate_test
 
 import (
@@ -43,7 +47,13 @@ func TestDir_Plan(t *testing.T) {
 	require.Equal(t, []string{"DROP TABLE IF EXISTS t;", "CREATE TABLE t(c int);", "CREATE TABLE t(c int);"}, m.executed)
 
 	m.changes = append(m.changes, &schema.AddTable{T: &schema.Table{Name: "t1"}}, &schema.AddTable{T: &schema.Table{Name: "t2"}})
-	m.plan = &migrate.Plan{Name: "add_t1_t2", Changes: []*migrate.Change{{Cmd: "CREATE TABLE t1(c int);"}, {Cmd: "CREATE TABLE t2(c int);"}}}
+	m.plan = &migrate.Plan{
+		Name: "add_t1_t2",
+		Changes: []*migrate.Change{
+			{Cmd: "CREATE TABLE t1(c int);"},
+			{Cmd: "CREATE TABLE t2(c int);"},
+		},
+	}
 	plan, err = dir.Plan(ctx, "plan_name", migrate.Realm(nil))
 	require.NoError(t, err)
 	require.NotNil(t, plan)

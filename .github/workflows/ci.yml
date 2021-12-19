@@ -182,6 +182,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2.3.4
       - uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
       - uses: actions/cache@v2.1.6
         with:
           path: ~/go/pkg/mod
