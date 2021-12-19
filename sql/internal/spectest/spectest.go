@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package spectest
 
 import (
@@ -31,9 +35,9 @@ func RegistrySanityTest(t *testing.T, registry *specutil.TypeRegistry, parser fu
 	}
 }
 
-func contains(needle string, haystack []string) bool {
-	for _, item := range haystack {
-		if item == needle {
+func contains(s string, l []string) bool {
+	for i := range l {
+		if s == l[i] {
 			return true
 		}
 	}
