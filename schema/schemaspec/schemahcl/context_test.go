@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/schema/schemaspec/internal/schemautil"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
@@ -428,4 +429,38 @@ variadic = enum("a","b","c")
 	after, err := s.MarshalSpec(&test)
 	require.NoError(t, err)
 	require.EqualValues(t, f, string(after))
+}
+
+func TestOptionalArgs(t *testing.T) {
+	s := New(
+		WithTypes([]*schemaspec.TypeSpec{
+			{
+				T:    "float",
+				Name: "float",
+				Attributes: []*schemaspec.TypeAttr{
+					{Name: "precision", Kind: reflect.Int, Required: false},
+					{Name: "scale", Kind: reflect.Int, Required: false},
+				},
+			},
+		}),
+	)
+	f := `arg_0 = float
+arg_1 = float(10)
+arg_2 = float(10,2)
+`
+	var test struct {
+		Arg0 *schemaspec.Type `spec:"arg_0"`
+		Arg1 *schemaspec.Type `spec:"arg_1"`
+		Arg2 *schemaspec.Type `spec:"arg_2"`
+	}
+	err := s.UnmarshalSpec([]byte(f), &test)
+	require.NoError(t, err)
+	require.Nil(t, test.Arg0.Attrs)
+	require.EqualValues(t, []*schemaspec.Attr{
+		schemautil.LitAttr("precision", "10"),
+	}, test.Arg1.Attrs)
+	require.EqualValues(t, []*schemaspec.Attr{
+		schemautil.LitAttr("precision", "10"),
+		schemautil.LitAttr("scale", "2"),
+	}, test.Arg2.Attrs)
 }
