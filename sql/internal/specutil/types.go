@@ -16,7 +16,7 @@ import (
 // PrintType returns the string representation of a column type which can be parsed
 // by the driver into a schema.Type.
 func (r *TypeRegistry) PrintType(typ *schemaspec.Type) (string, error) {
-	spec, ok := r.Find(typ.T)
+	spec, ok := r.findT(typ.T)
 	if !ok {
 		return "", fmt.Errorf("specutil: type %q not found in registry", typ.T)
 	}
@@ -72,10 +72,10 @@ type TypeRegistry struct {
 // Register adds one or more TypeSpec to the registry.
 func (r *TypeRegistry) Register(specs ...*schemaspec.TypeSpec) error {
 	for _, s := range specs {
-		if _, exists := r.Find(s.T); exists {
+		if _, exists := r.findT(s.T); exists {
 			return fmt.Errorf("specutil: type with T of %q already registered", s.T)
 		}
-		if _, exists := r.FindByName(s.Name); exists {
+		if _, exists := r.findName(s.Name); exists {
 			return fmt.Errorf("specutil: type with name of %q already registered", s.T)
 		}
 		r.r = append(r.r, s)
@@ -93,8 +93,8 @@ func NewRegistry(specs ...*schemaspec.TypeSpec) *TypeRegistry {
 	return r
 }
 
-// FindByName searches the registry for types that have the provided name.
-func (r *TypeRegistry) FindByName(name string) (*schemaspec.TypeSpec, bool) {
+// findName searches the registry for types that have the provided name.
+func (r *TypeRegistry) findName(name string) (*schemaspec.TypeSpec, bool) {
 	for _, current := range r.r {
 		if current.Name == name {
 			return current, true
@@ -103,8 +103,8 @@ func (r *TypeRegistry) FindByName(name string) (*schemaspec.TypeSpec, bool) {
 	return nil, false
 }
 
-// Find searches the registry for types that have the provided T.
-func (r *TypeRegistry) Find(t string) (*schemaspec.TypeSpec, bool) {
+// findT searches the registry for types that have the provided T.
+func (r *TypeRegistry) findT(t string) (*schemaspec.TypeSpec, bool) {
 	for _, current := range r.r {
 		if current.T == t {
 			return current, true
@@ -115,7 +115,6 @@ func (r *TypeRegistry) Find(t string) (*schemaspec.TypeSpec, bool) {
 
 // Convert converts the schema.Type to a *schemaspec.Type.
 func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
-	s := &schemaspec.Type{}
 	rv := reflect.ValueOf(typ)
 	if rv.Kind() == reflect.Ptr {
 		rv = rv.Elem()
@@ -123,31 +122,25 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 	if !rv.IsValid() {
 		return nil, errors.New("specutil: invalid schema.Type on Convert")
 	}
-	tf := rv.FieldByName("T")
-	if !tf.IsValid() {
-		return nil, fmt.Errorf("specutil: cannot convert schema.Type without T field for %T", typ)
-	}
-	if tf.Kind() != reflect.String {
-		return nil, fmt.Errorf("specutil: cannot convert non-string T field for %T", typ)
-	}
-	s.T = tf.String()
-	typeSpec, ok := r.Find(s.T)
+	typeSpec, ok := r.findType(rv)
 	if !ok {
-		return nil, fmt.Errorf("specutil: type %q not found in registry", s.T)
+		return nil, fmt.Errorf("specutil: cannot find type spec for %s", rv.Type())
 	}
+	s := &schemaspec.Type{T: typeSpec.T}
 	// Iterate the attributes in reverse order, so we can skip zero value and optional attrs.
 	for i := len(typeSpec.Attributes) - 1; i >= 0; i-- {
 		attr := typeSpec.Attributes[i]
 		n := inflect.Camelize(attr.Name)
 		field := rv.FieldByName(n)
+		// If TypeSpec has an attribute that isn't mapped to a field on the schema.Type skip it.
 		if !field.IsValid() {
-			return nil, fmt.Errorf("invalid field name %q for attr %q on type spec %q", n, attr.Name, typeSpec.T)
+			continue
 		}
 		if field.Kind() != attr.Kind {
 			return nil, errors.New("incompatible kinds on typespec attr and typefield")
 		}
 		switch attr.Kind {
-		case reflect.Int:
+		case reflect.Int, reflect.Int64:
 			v := int(field.Int())
 			if v == 0 && len(s.Attrs) == 0 {
 				break
@@ -178,6 +171,29 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 	return s, nil
 }
 
+func (r *TypeRegistry) findType(rv reflect.Value) (*schemaspec.TypeSpec, bool) {
+	tf := rv.FieldByName("T")
+	if tf.IsValid() && tf.Kind() == reflect.String {
+		name := tf.String()
+		if typeSpec, ok := r.findT(name); ok {
+			return typeSpec, true
+		}
+	}
+	if typeSpec, ok := r.findRType(rv.Type()); ok {
+		return typeSpec, true
+	}
+	return nil, false
+}
+
+func (r *TypeRegistry) findRType(rt reflect.Type) (*schemaspec.TypeSpec, bool) {
+	for _, ts := range r.Specs() {
+		if ts.RType != nil && ts.RType == rt {
+			return ts, true
+		}
+	}
+	return nil, false
+}
+
 // Specs returns the TypeSpecs in the registry.
 func (r *TypeRegistry) Specs() []*schemaspec.TypeSpec {
 	return r.r
@@ -185,7 +201,7 @@ func (r *TypeRegistry) Specs() []*schemaspec.TypeSpec {
 
 // Type converts a *schemaspec.Type into a schema.Type.
 func (r *TypeRegistry) Type(typ *schemaspec.Type, extra []*schemaspec.Attr, parser func(string) (schema.Type, error)) (schema.Type, error) {
-	typeSpec, ok := r.Find(typ.T)
+	typeSpec, ok := r.findT(typ.T)
 	if !ok {
 		return nil, fmt.Errorf("specutil: typespec not found for %s", typ.T)
 	}

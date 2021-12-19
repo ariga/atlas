@@ -440,8 +440,22 @@ func hasCollate(attr []schema.Attr, parent []schema.Attr) (string, bool) {
 
 // TypeRegistry contains the supported TypeSpecs for the mysql driver.
 var TypeRegistry = specutil.NewRegistry(
-	specutil.TypeSpec(tEnum, &schemaspec.TypeAttr{Name: "values", Kind: reflect.Slice, Required: true}),
-	specutil.TypeSpec(tSet, &schemaspec.TypeAttr{Name: "values", Kind: reflect.Slice, Required: true}),
+	&schemaspec.TypeSpec{
+		Name: tEnum,
+		T:    tEnum,
+		Attributes: []*schemaspec.TypeAttr{
+			{Name: "values", Kind: reflect.Slice, Required: true},
+		},
+		RType: reflect.TypeOf(schema.EnumType{}),
+	},
+	&schemaspec.TypeSpec{
+		Name: tSet,
+		T:    tSet,
+		Attributes: []*schemaspec.TypeAttr{
+			{Name: "values", Kind: reflect.Slice, Required: true},
+		},
+		RType: reflect.TypeOf(SetType{}),
+	},
 	specutil.TypeSpec(tBit, specutil.SizeTypeAttr(false)),
 	specutil.TypeSpec(tInt, unsignedTypeAttr(), specutil.SizeTypeAttr(false)),
 	specutil.TypeSpec(tTinyInt, unsignedTypeAttr(), specutil.SizeTypeAttr(false)),
@@ -458,7 +472,7 @@ var TypeRegistry = specutil.NewRegistry(
 	specutil.TypeSpec(tTime),
 	specutil.TypeSpec(tDateTime),
 	specutil.TypeSpec(tYear),
-	specutil.TypeSpec(tVarchar, specutil.SizeTypeAttr(false)),
+	specutil.TypeSpec(tVarchar, specutil.SizeTypeAttr(true)),
 	specutil.TypeSpec(tChar, specutil.SizeTypeAttr(false)),
 	specutil.TypeSpec(tVarBinary, specutil.SizeTypeAttr(false)),
 	specutil.TypeSpec(tBinary, specutil.SizeTypeAttr(false)),

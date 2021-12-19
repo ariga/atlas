@@ -369,8 +369,8 @@ func arrayType(t string) (string, bool) {
 
 // TypeRegistry contains the supported TypeSpecs for the postgres driver.
 var TypeRegistry = specutil.NewRegistry(
-	specutil.TypeSpec(tBit, specutil.SizeTypeAttr(true)),
-	specutil.AliasTypeSpec("bit_varying", tBitVar, specutil.SizeTypeAttr(true)),
+	specutil.TypeSpec(tBit, &schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64}),
+	specutil.AliasTypeSpec("bit_varying", tBitVar, &schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64}),
 	specutil.TypeSpec(tVarChar, specutil.SizeTypeAttr(true)),
 	specutil.TypeSpec(tChar, specutil.SizeTypeAttr(true)),
 	specutil.TypeSpec(tCharacter, specutil.SizeTypeAttr(true)),

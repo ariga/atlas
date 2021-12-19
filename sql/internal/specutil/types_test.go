@@ -62,7 +62,7 @@ func TestRegistry(t *testing.T) {
 	require.NoError(t, err)
 	err = r.Register(text)
 	require.EqualError(t, err, `specutil: type with T of "text" already registered`)
-	spec, ok := r.FindByName("text")
+	spec, ok := r.findName("text")
 	require.True(t, ok)
 	require.EqualValues(t, spec, text)
 }

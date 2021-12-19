@@ -72,6 +72,10 @@ type (
 		// T is the database identifier for the type.
 		T          string
 		Attributes []*TypeAttr
+		// RType is the reflect.Type of the schema.Type used to describe the TypeSpec.
+		// This field is optional and used to determine the TypeSpec in cases where the
+		// schema.Type does not have a `T` field.
+		RType reflect.Type
 	}
 
 	// TypeAttr describes an attribute of a TypeSpec, for example `varchar` fields
