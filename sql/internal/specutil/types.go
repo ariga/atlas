@@ -88,7 +88,10 @@ func (r *TypeRegistry) Register(specs ...*schemaspec.TypeSpec) error {
 
 func validSpec(typeSpec *schemaspec.TypeSpec) error {
 	var seenOptional bool
-	for _, attr := range typeSpec.Attributes {
+	for i, attr := range typeSpec.Attributes {
+		if attr.Kind == reflect.Slice && i < len(typeSpec.Attributes)-1 {
+			return fmt.Errorf("attr %q is of kind slice but not last", attr.Name)
+		}
 		if seenOptional && attr.Required {
 			return fmt.Errorf("attr %q required after optional attr", attr.Name)
 		}

@@ -73,6 +73,32 @@ func TestValidSpec(t *testing.T) {
 		Name: "X",
 		T:    "X",
 		Attributes: []*schemaspec.TypeAttr{
+			{Name: "a", Required: false, Kind: reflect.Slice},
+			{Name: "b", Required: true},
+		},
+	})
+	require.EqualError(t, err, `specutil: invalid typespec "X": attr "a" is of kind slice but not last`)
+	err = registry.Register(&schemaspec.TypeSpec{
+		Name: "Z",
+		T:    "Z",
+		Attributes: []*schemaspec.TypeAttr{
+			{Name: "b", Required: true},
+			{Name: "a", Required: false, Kind: reflect.Slice},
+		},
+	})
+	require.NoError(t, err)
+	err = registry.Register(&schemaspec.TypeSpec{
+		Name: "Z2",
+		T:    "Z2",
+		Attributes: []*schemaspec.TypeAttr{
+			{Name: "a", Required: false, Kind: reflect.Slice},
+		},
+	})
+	require.NoError(t, err)
+	err = registry.Register(&schemaspec.TypeSpec{
+		Name: "X",
+		T:    "X",
+		Attributes: []*schemaspec.TypeAttr{
 			{Name: "a", Required: false},
 			{Name: "b", Required: true},
 		},
