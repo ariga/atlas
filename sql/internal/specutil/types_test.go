@@ -67,6 +67,37 @@ func TestRegistry(t *testing.T) {
 	require.EqualValues(t, spec, text)
 }
 
+func TestValidSpec(t *testing.T) {
+	registry := &TypeRegistry{}
+	err := registry.Register(&schemaspec.TypeSpec{
+		Name: "X",
+		T:    "X",
+		Attributes: []*schemaspec.TypeAttr{
+			{Name: "a", Required: false},
+			{Name: "b", Required: true},
+		},
+	})
+	require.EqualError(t, err, `specutil: invalid typespec "X": attr "b" required after optional attr`)
+	err = registry.Register(&schemaspec.TypeSpec{
+		Name: "X",
+		T:    "X",
+		Attributes: []*schemaspec.TypeAttr{
+			{Name: "a", Required: true},
+			{Name: "b", Required: false},
+		},
+	})
+	require.NoError(t, err)
+	err = registry.Register(&schemaspec.TypeSpec{
+		Name: "Y",
+		T:    "Y",
+		Attributes: []*schemaspec.TypeAttr{
+			{Name: "a", Required: false},
+			{Name: "b", Required: false},
+		},
+	})
+	require.NoError(t, err)
+}
+
 func TestRegistryConvert(t *testing.T) {
 	r := &TypeRegistry{}
 	err := r.Register(
