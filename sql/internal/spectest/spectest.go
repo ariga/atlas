@@ -31,9 +31,9 @@ func RegistrySanityTest(t *testing.T, registry *specutil.TypeRegistry, parser fu
 	}
 }
 
-func contains(needle string, haystack []string) bool {
-	for _, item := range haystack {
-		if item == needle {
+func contains(s string, l []string) bool {
+	for i := range l {
+		if s == l[i] {
 			return true
 		}
 	}
