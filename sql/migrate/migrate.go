@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package migrate
 
 import (
@@ -17,11 +21,12 @@ import (
 )
 
 type (
-	// Plan defines a planned changeset to bring the attached schema to the new desired state.
-	// Additional information is calculated by the different to indicate if the changeset is
-	// transactional (can be rolled-back) and reversible (a down file can be generated to it).
+	// A Plan defines a planned changeset that its execution brings the database to
+	// the new desired state. Additional information is calculated by the different
+	// drivers to indicate if the changeset is transactional (can be rolled-back) and
+	// reversible (a down file can be generated to it).
 	Plan struct {
-		// Name of the plan, or auto-generated.
+		// Name of the plan. Provided by the user or auto-generated.
 		Name string
 
 		// Reversible describes if the changeset is reversible.
@@ -52,10 +57,11 @@ type (
 )
 
 type (
-	// The Driver interface must be implemented by the different flavours to support database
-	// migration authoring, planning and applying. ExecQuerier, Inspector and Differ, provide
-	// basic schema primitives for working with database schemas, and the PlanChanges method
-	// is used for generating migration plan/spec for executing the actual changes on the database.
+	// The Driver interface must be implemented by the different dialects to support database
+	// migration authoring/planning and applying. ExecQuerier, Inspector and Differ, provide
+	// basic schema primitives for inspecting database schemas, calculate the difference between
+	// schema elements, and executing raw SQL statements. The PlanApplier interface wraps the
+	// methods for generating migration plan for applying the actual changes on the database.
 	Driver interface {
 		schema.Differ
 		schema.ExecQuerier
@@ -63,7 +69,7 @@ type (
 		PlanApplier
 	}
 
-	// PlanApplier wraps the 2 methods for planning and applying changes
+	// PlanApplier wraps the methods for planning and applying changes
 	// on the database.
 	PlanApplier interface {
 		PlanChanges(context.Context, string, []schema.Change) (*Plan, error)
@@ -74,7 +80,8 @@ type (
 	// The types below provides a few builtin options for reading a state
 	// from a migration directory, a static object (e.g. a parsed file).
 	//
-	// In next Go version, the State will be replaced with `interface { Realm | Schema }`.
+	// In next Go version, the State will be replaced with the following
+	// union type `interface { Realm | Schema }`.
 	StateReader interface {
 		ReadState(ctx context.Context) (*schema.Realm, error)
 	}
@@ -112,7 +119,7 @@ func Schema(s *schema.Schema) StateReader {
 }
 
 type (
-	// Dir represents a versioned migration history.
+	// Dir represents a versioned migration directory.
 	Dir struct {
 		fs        fs.FS
 		conn      Driver
@@ -168,11 +175,6 @@ func (d *dirFS) WriteFile(name string, data []byte, perm fs.FileMode) error {
 // RemoveFile implements the FileWriter interface.
 func (d *dirFS) RemoveFile(name string) error {
 	return os.Remove(filepath.Join(d.dir, name))
-}
-
-// Glob implements the fs.GlobFS interface.
-func (d *dirFS) Glob(pattern string) ([]string, error) {
-	return filepath.Glob(pattern)
 }
 
 // DirFS configures the FS used by the migration directory.
@@ -385,7 +387,7 @@ func (d *Dir) readStateOf(ctx context.Context, n int) (*schema.Realm, []string, 
 	case n > 0:
 		files = files[:n]
 	}
-	// Files are expected to be sort alphabetically.
+	// Files are expected to be sorted lexicographically.
 	sort.Slice(files, func(i, j int) bool {
 		return files[i] < files[j]
 	})
