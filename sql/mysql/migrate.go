@@ -64,7 +64,7 @@ func (p *planApply) Exec(ctx context.Context, changes []schema.Change) error {
 	return p.ApplyChanges(ctx, changes)
 }
 
-// state represents the state of an planning. It is not part of
+// state represents the state of a planning. It is not part of
 // planApply so that multiple planning/applying can be called
 // in parallel.
 type state struct {
