@@ -20,7 +20,7 @@ schema "default" {
 table "users" {
 	schema = schema.default
 	column "id" {
-		type = "int"
+		type = int
 	}
 }
 `
@@ -30,17 +30,17 @@ schema "default" {
 table "users" {
 	schema = schema.default
 	column "id" {
-		type = "string"
+		type = varchar(255)
 	}
 	column "name" {
-		type = "string"
+		type = varchar(255)
 	}
 }
 
 table "groups" {
 	schema = schema.default
 	column "id" {
-		type = "int"
+		type = int
 	}
 }
 `
@@ -73,9 +73,10 @@ table "groups" {
 
 func diff(t *testing.T, d *Driver, beforeHcl, afterHcl string) []schema.Change {
 	before, after := schema.Schema{}, schema.Schema{}
-	err := mysql.UnmarshalSpec([]byte(beforeHcl), schemahcl.Unmarshal, &before)
+	hcl := schemahcl.New(schemahcl.WithTypes(d.Types))
+	err := mysql.UnmarshalSpec([]byte(beforeHcl), hcl, &before)
 	require.NoError(t, err)
-	err = mysql.UnmarshalSpec([]byte(afterHcl), schemahcl.Unmarshal, &after)
+	err = mysql.UnmarshalSpec([]byte(afterHcl), hcl, &after)
 	require.NoError(t, err)
 	before.Realm = &schema.Realm{}
 	diff, err := d.SchemaDiff(&before, &after)
@@ -94,5 +95,6 @@ func mockDriver(t *testing.T) *Driver {
 	return &Driver{
 		driver:      drv,
 		interceptor: i,
+		Types:       mysql.TypeRegistry.Specs(),
 	}
 }

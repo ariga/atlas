@@ -27,6 +27,7 @@ func mysqlProvider(dsn string) (*Driver, error) {
 		interceptor:   i,
 		MarshalSpec:   mysql.MarshalSpec,
 		UnmarshalSpec: mysql.UnmarshalSpec,
+		Types:         mysql.TypeRegistry.Specs(),
 	}, nil
 }
 func postgresProvider(dsn string) (*Driver, error) {
@@ -45,5 +46,6 @@ func postgresProvider(dsn string) (*Driver, error) {
 		interceptor:   i,
 		MarshalSpec:   postgres.MarshalSpec,
 		UnmarshalSpec: postgres.UnmarshalSpec,
+		Types:         postgres.TypeRegistry.Specs(),
 	}, nil
 }
