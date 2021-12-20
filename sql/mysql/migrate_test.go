@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"ariga.io/atlas/sql/internal/sqltest"
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -36,7 +37,7 @@ func TestMigrate_Exec(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mk.ExpectExec(sqltest.Escape("CREATE TABLE `comments` (`id` bigint NOT NULL, `post_id` bigint NULL, CONSTRAINT `comment` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`))")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	err = migrate.Exec(context.Background(), []schema.Change{
+	err = migrate.ApplyChanges(context.Background(), []schema.Change{
 		&schema.AddSchema{S: &schema.Schema{Name: "test", Attrs: []schema.Attr{&schema.Charset{V: "latin"}}}},
 		&schema.DropSchema{S: &schema.Schema{Name: "atlas", Attrs: []schema.Attr{&schema.Charset{V: "latin"}}}},
 		&schema.DropTable{T: &schema.Table{Name: "users"}},
@@ -65,7 +66,7 @@ func TestMigrate_Exec(t *testing.T) {
 		},
 	})
 	require.NoError(t, err)
-	err = migrate.Exec(context.Background(), func() []schema.Change {
+	err = migrate.ApplyChanges(context.Background(), func() []schema.Change {
 		users := &schema.Table{
 			Name: "users",
 			Columns: []*schema.Column{
@@ -140,7 +141,7 @@ func TestMigrate_DetachCycles(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mk.ExpectExec(sqltest.Escape("ALTER TABLE `workplaces` ADD CONSTRAINT `owner` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`)")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	err = migrate.Exec(context.Background(), func() []schema.Change {
+	err = migrate.ApplyChanges(context.Background(), func() []schema.Change {
 		users := &schema.Table{
 			Name: "users",
 			Columns: []*schema.Column{
@@ -169,7 +170,108 @@ func TestMigrate_DetachCycles(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func newMigrate(version string) (schema.Execer, *mock, error) {
+func TestPlanChanges(t *testing.T) {
+	tests := []struct {
+		changes []schema.Change
+		plan    *migrate.Plan
+	}{
+		{
+			changes: []schema.Change{
+				&schema.AddSchema{S: &schema.Schema{Name: "test", Attrs: []schema.Attr{&schema.Charset{V: "latin"}}}},
+			},
+			plan: &migrate.Plan{
+				Reversible: true,
+				Changes:    []*migrate.Change{{Cmd: "CREATE DATABASE `test` CHARACTER SET latin", Reverse: "DROP DATABASE `test`"}}},
+		},
+		{
+			changes: []schema.Change{
+				&schema.DropSchema{S: &schema.Schema{Name: "atlas", Attrs: []schema.Attr{&schema.Charset{V: "latin"}}}},
+			},
+			plan: &migrate.Plan{
+				Changes: []*migrate.Change{{Cmd: "DROP DATABASE `atlas`"}},
+			},
+		},
+		{
+			changes: []schema.Change{
+				&schema.AddTable{
+					T: &schema.Table{
+						Name: "posts",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+							{Name: "text", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Null: true}},
+						},
+					},
+				},
+			},
+			plan: &migrate.Plan{
+				Reversible: true,
+				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` bigint NOT NULL, `text` text NULL)", Reverse: "DROP TABLE `posts`"}},
+			},
+		},
+		{
+			changes: []schema.Change{
+				&schema.DropTable{T: &schema.Table{Name: "posts"}},
+			},
+			plan: &migrate.Plan{
+				Changes: []*migrate.Change{{Cmd: "DROP TABLE `posts`"}},
+			},
+		},
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+						},
+					}
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.AddColumn{
+								C: &schema.Column{Name: "name", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
+							},
+							&schema.AddIndex{
+								I: &schema.Index{
+									Name: "id_key",
+									Parts: []*schema.IndexPart{
+										{C: users.Columns[0]},
+									},
+									Attrs: []schema.Attr{
+										&schema.Comment{Text: "comment"},
+									},
+								},
+							},
+						},
+					}
+				}(),
+			},
+			plan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `users` ADD COLUMN `name` varchar(255) NOT NULL, ADD INDEX `id_key` (`id`) COMMENT \"comment\"",
+						Reverse: "ALTER TABLE `users` DROP COLUMN `name` DROP INDEX `id_key`",
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		db, _, err := newMigrate("8.0.13")
+		require.NoError(t, err)
+		plan, err := db.PlanChanges(context.Background(), "plan", tt.changes)
+		require.NoError(t, err)
+		require.Equal(t, tt.plan.Reversible, plan.Reversible)
+		require.Equal(t, tt.plan.Transactional, plan.Transactional)
+		for i, c := range plan.Changes {
+			require.Equal(t, tt.plan.Changes[i].Cmd, c.Cmd)
+			require.Equal(t, tt.plan.Changes[i].Reverse, c.Reverse)
+		}
+	}
+}
+
+func newMigrate(version string) (migrate.PlanApplier, *mock, error) {
 	db, m, err := sqlmock.New()
 	if err != nil {
 		return nil, nil, err
@@ -180,5 +282,5 @@ func newMigrate(version string) (schema.Execer, *mock, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	return drv, mk, nil
+	return drv.Execer.(migrate.PlanApplier), mk, nil
 }

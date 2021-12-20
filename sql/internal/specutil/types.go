@@ -72,6 +72,9 @@ type TypeRegistry struct {
 // Register adds one or more TypeSpec to the registry.
 func (r *TypeRegistry) Register(specs ...*schemaspec.TypeSpec) error {
 	for _, s := range specs {
+		if err := validSpec(s); err != nil {
+			return fmt.Errorf("specutil: invalid typespec %q: %w", s.Name, err)
+		}
 		if _, exists := r.findT(s.T); exists {
 			return fmt.Errorf("specutil: type with T of %q already registered", s.T)
 		}
@@ -79,6 +82,20 @@ func (r *TypeRegistry) Register(specs ...*schemaspec.TypeSpec) error {
 			return fmt.Errorf("specutil: type with name of %q already registered", s.T)
 		}
 		r.r = append(r.r, s)
+	}
+	return nil
+}
+
+func validSpec(typeSpec *schemaspec.TypeSpec) error {
+	var seenOptional bool
+	for i, attr := range typeSpec.Attributes {
+		if attr.Kind == reflect.Slice && i < len(typeSpec.Attributes)-1 {
+			return fmt.Errorf("attr %q is of kind slice but not last", attr.Name)
+		}
+		if seenOptional && attr.Required {
+			return fmt.Errorf("attr %q required after optional attr", attr.Name)
+		}
+		seenOptional = !attr.Required
 	}
 	return nil
 }
