@@ -29,7 +29,7 @@ import (
 //
 func evalCtx(ctx *hcl.EvalContext, f *hcl.File) (*hcl.EvalContext, error) {
 	c := &container{}
-	if diag := gohcl.DecodeBody(f.Body, &hcl.EvalContext{}, c); diag.HasErrors() {
+	if diag := gohcl.DecodeBody(f.Body, ctx, c); diag.HasErrors() {
 		return nil, diag
 	}
 	b, ok := c.Body.(*hclsyntax.Body)
