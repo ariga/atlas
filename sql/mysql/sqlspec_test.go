@@ -518,12 +518,14 @@ func TestTypes(t *testing.T) {
 		},
 	} {
 		t.Run(tt.typeExpr, func(t *testing.T) {
-			doc := fmt.Sprintf(`schema "test" {}
-table "test" {
+			doc := fmt.Sprintf(`table "test" {
 	schema = schema.test
 	column "test" {
+		null = false
 		type = %s%s
 	}
+}
+schema "test" {
 }
 `, tt.typeExpr, lineIfSet(tt.extraAttr))
 			var test schema.Schema
@@ -537,6 +539,7 @@ table "test" {
 			var after schema.Schema
 			err = UnmarshalSpec(spec, hclState, &after)
 			require.NoError(t, err)
+			require.EqualValues(t, tt.expected, after.Tables[0].Columns[0].Type.Type)
 			//column := test.Tables[0].Columns[0]
 
 			//require.NoError(t, err)
