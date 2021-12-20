@@ -79,7 +79,7 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 	return specutil.Column(spec, convertColumnType)
 }
 
-// convertColumnType converts a sqlspec.Column into a concrete postgres schema.Type.
+// convertColumnType converts a sqlspec.Column into a concrete Postgres schema.Type.
 func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 	return TypeRegistry.Type(spec.Type, spec.Extra.Attrs, parseRawType)
 }
@@ -130,7 +130,7 @@ func columnSpec(col *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 	}, nil
 }
 
-// columnTypeSpec converts from a concrete postgres schema.Type into sqlspec.Column Type.
+// columnTypeSpec converts from a concrete Postgres schema.Type into sqlspec.Column Type.
 func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	st, err := TypeRegistry.Convert(t)
 	if err != nil {
@@ -154,7 +154,7 @@ func arrayType(t string) (string, bool) {
 	return t[:strings.IndexByte(t, '[')], true
 }
 
-// TypeRegistry contains the supported TypeSpecs for the postgres driver.
+// TypeRegistry contains the supported TypeSpecs for the Postgres driver.
 var TypeRegistry = specutil.NewRegistry(
 	specutil.TypeSpec(tBit, &schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64}),
 	specutil.AliasTypeSpec("bit_varying", tBitVar, &schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64}),
