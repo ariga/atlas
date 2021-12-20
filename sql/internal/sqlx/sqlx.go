@@ -234,6 +234,14 @@ func (b *Builder) Wrap(f func(b *Builder)) *Builder {
 	return b
 }
 
+// Clone returns a duplicate of the builder.
+func (b *Builder) Clone() *Builder {
+	return &Builder{
+		QuoteChar: b.QuoteChar,
+		Buffer:    *bytes.NewBufferString(b.String()),
+	}
+}
+
 // String overrides the Buffer.String method and ensure no spaces pad the returned statement.
 func (b *Builder) String() string {
 	return strings.TrimSpace(b.Buffer.String())
