@@ -54,7 +54,7 @@ type (
 		// command is reversible.
 		Reverse string
 
-		// The Source that caused this change.
+		// The Source that caused this change, or nil.
 		Source schema.Change
 	}
 )

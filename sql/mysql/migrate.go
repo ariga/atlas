@@ -247,9 +247,9 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 // changes in one SQL statement.
 func (s *state) alterTable(t *schema.Table, changes []schema.Change) {
 	var (
-		reversible = true
-		reverse    = Build("ALTER TABLE").Table(t)
 		b          = Build("ALTER TABLE").Table(t)
+		reversible = true
+		reverse    = b.Clone()
 	)
 	b.MapComma(changes, func(i int, b *sqlx.Builder) {
 		switch change := changes[i].(type) {

@@ -10,31 +10,79 @@ import (
 	"strings"
 
 	"ariga.io/atlas/sql/internal/sqlx"
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 )
 
-// A migrate provides migration capabilities for schema elements.
-type migrate struct{ conn }
+// A planApply provides migration capabilities for schema elements.
+type planApply struct{ conn }
 
-// Exec executes the changes on the database. An error is returned
-// if one of the operations fail, or a change is not supported.
-func (m *migrate) Exec(ctx context.Context, changes []schema.Change) error {
-	planned, err := m.topLevel(ctx, changes)
+// PlanChanges returns a migration plan for the given schema changes.
+func (p *planApply) PlanChanges(ctx context.Context, name string, changes []schema.Change) (*migrate.Plan, error) {
+	s := &state{
+		conn: p.conn,
+		Plan: migrate.Plan{
+			Name:          name,
+			Reversible:    true,
+			Transactional: true,
+		},
+	}
+	if err := s.plan(ctx, changes); err != nil {
+		return nil, err
+	}
+	for _, c := range s.Changes {
+		if c.Reverse == "" {
+			s.Reversible = false
+		}
+	}
+	return &s.Plan, nil
+}
+
+// ApplyChanges applies the changes on the database. An error is returned
+// if the driver is unable to produce a plan to do so, or one of the statements
+// is failed or unsupported.
+func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change) error {
+	plan, err := p.PlanChanges(ctx, "apply", changes)
 	if err != nil {
 		return err
 	}
-	planned, err = sqlx.DetachCycles(planned)
+	for _, c := range plan.Changes {
+		if _, err := p.ExecContext(ctx, c.Cmd); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Exec calls ApplyChanges. Exists here for backwards compatibility.
+func (p *planApply) Exec(ctx context.Context, changes []schema.Change) error {
+	return p.ApplyChanges(ctx, changes)
+}
+
+// state represents the state of a planning. It is not part of
+// planApply so that multiple planning/applying can be called
+// in parallel.
+type state struct {
+	conn
+	migrate.Plan
+}
+
+// Exec executes the changes on the database. An error is returned
+// if one of the operations fail, or a change is not supported.
+func (s *state) plan(ctx context.Context, changes []schema.Change) error {
+	planned := s.topLevel(changes)
+	planned, err := sqlx.DetachCycles(planned)
 	if err != nil {
 		return err
 	}
 	for _, c := range planned {
 		switch c := c.(type) {
 		case *schema.AddTable:
-			err = m.addTable(ctx, c)
+			err = s.addTable(ctx, c)
 		case *schema.DropTable:
-			err = m.dropTable(ctx, c)
+			s.dropTable(c)
 		case *schema.ModifyTable:
-			err = m.modifyTable(ctx, c)
+			err = s.modifyTable(ctx, c)
 		default:
 			err = fmt.Errorf("unsupported change %T", c)
 		}
@@ -46,7 +94,7 @@ func (m *migrate) Exec(ctx context.Context, changes []schema.Change) error {
 }
 
 // topLevel executes first the changes for creating or dropping schemas (top-level schema elements).
-func (m *migrate) topLevel(ctx context.Context, changes []schema.Change) ([]schema.Change, error) {
+func (s *state) topLevel(changes []schema.Change) []schema.Change {
 	planned := make([]schema.Change, 0, len(changes))
 	for _, c := range changes {
 		switch c := c.(type) {
@@ -55,24 +103,33 @@ func (m *migrate) topLevel(ctx context.Context, changes []schema.Change) ([]sche
 			if sqlx.Has(c.Extra, &schema.IfNotExists{}) {
 				b.P("IF NOT EXISTS")
 			}
-			if _, err := m.ExecContext(ctx, b.String()); err != nil {
-				return nil, fmt.Errorf("add schema: %w", err)
-			}
+			s.append(&migrate.Change{
+				Cmd:     b.String(),
+				Source:  c,
+				Reverse: Build("DROP SCHEMA").Ident(c.S.Name).String(),
+				Comment: fmt.Sprintf("Add new schema named %q", c.S.Name),
+			})
 		case *schema.DropSchema:
-			if _, err := m.ExecContext(ctx, Build("DROP SCHEMA").Ident(c.S.Name).String()); err != nil {
-				return nil, fmt.Errorf("drop schema: %w", err)
+			b := Build("DROP SCHEMA").Ident(c.S.Name)
+			if sqlx.Has(c.Extra, &schema.IfExists{}) {
+				b.P("IF NOT EXISTS")
 			}
+			s.append(&migrate.Change{
+				Cmd:     b.String(),
+				Source:  c,
+				Comment: fmt.Sprintf("Drop schema named %q", c.S.Name),
+			})
 		default:
 			planned = append(planned, c)
 		}
 	}
-	return planned, nil
+	return planned
 }
 
 // addTable builds and executes the query for creating a table in a schema.
-func (m *migrate) addTable(ctx context.Context, add *schema.AddTable) error {
+func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 	// Create enum types before using them in the `CREATE TABLE` statement.
-	if err := m.addTypes(ctx, add.T.Columns...); err != nil {
+	if err := s.addTypes(ctx, add.T.Columns...); err != nil {
 		return err
 	}
 	b := Build("CREATE TABLE").Table(add.T)
@@ -81,40 +138,43 @@ func (m *migrate) addTable(ctx context.Context, add *schema.AddTable) error {
 	}
 	b.Wrap(func(b *sqlx.Builder) {
 		b.MapComma(add.T.Columns, func(i int, b *sqlx.Builder) {
-			m.column(b, add.T.Columns[i])
+			s.column(b, add.T.Columns[i])
 		})
 		if pk := add.T.PrimaryKey; pk != nil {
 			b.Comma().P("PRIMARY KEY")
-			m.indexParts(b, pk.Parts)
+			s.indexParts(b, pk.Parts)
 		}
 		if len(add.T.ForeignKeys) > 0 {
 			b.Comma()
-			m.fks(b, add.T.ForeignKeys...)
+			s.fks(b, add.T.ForeignKeys...)
 		}
 	})
-	if _, err := m.ExecContext(ctx, b.String()); err != nil {
-		return fmt.Errorf("create table: %w", err)
-	}
-	if err := m.addIndexes(ctx, add.T, add.T.Indexes...); err != nil {
-		return err
-	}
-	return m.addComments(ctx, add.T)
+	s.append(&migrate.Change{
+		Cmd:     b.String(),
+		Source:  add,
+		Comment: fmt.Sprintf("create %q table", add.T.Name),
+		Reverse: Build("DROP TABLE").Table(add.T).String(),
+	})
+	s.addIndexes(add.T, add.T.Indexes...)
+	s.addComments(add.T)
+	return nil
 }
 
 // dropTable builds and executes the query for dropping a table from a schema.
-func (m *migrate) dropTable(ctx context.Context, drop *schema.DropTable) error {
+func (s *state) dropTable(drop *schema.DropTable) {
 	b := Build("DROP TABLE").Table(drop.T)
 	if sqlx.Has(drop.Extra, &schema.IfExists{}) {
 		b.P("IF EXISTS")
 	}
-	if _, err := m.ExecContext(ctx, b.String()); err != nil {
-		return fmt.Errorf("drop table: %w", err)
-	}
-	return nil
+	s.append(&migrate.Change{
+		Cmd:     b.String(),
+		Source:  drop,
+		Comment: fmt.Sprintf("drop %q table", drop.T.Name),
+	})
 }
 
 // modifyTable builds and executes the queries for bringing the table into its modified state.
-func (m *migrate) modifyTable(ctx context.Context, modify *schema.ModifyTable) error {
+func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) error {
 	var (
 		changes     []schema.Change
 		addI, dropI []*schema.Index
@@ -140,7 +200,7 @@ func (m *migrate) modifyTable(ctx context.Context, modify *schema.ModifyTable) e
 				F: change.To,
 			})
 		case *schema.AddColumn:
-			if err := m.addTypes(ctx, change.C); err != nil {
+			if err := s.addTypes(ctx, change.C); err != nil {
 				return err
 			}
 			changes = append(changes, change)
@@ -150,12 +210,12 @@ func (m *migrate) modifyTable(ctx context.Context, modify *schema.ModifyTable) e
 			switch {
 			// Enum was added.
 			case !ok1 && ok2:
-				if err := m.addTypes(ctx, change.To); err != nil {
+				if err := s.addTypes(ctx, change.To); err != nil {
 					return err
 				}
 			// Enum was changed.
 			case ok1 && ok2 && from.T == to.T:
-				if err := m.alterType(ctx, from, to); err != nil {
+				if err := s.alterType(from, to); err != nil {
 					return err
 				}
 			// Not an enum, or was dropped.
@@ -166,82 +226,100 @@ func (m *migrate) modifyTable(ctx context.Context, modify *schema.ModifyTable) e
 			changes = append(changes, change)
 		}
 	}
-	if err := m.dropIndexes(ctx, dropI...); err != nil {
-		return err
-	}
+	s.dropIndexes(modify.T, dropI...)
 	if len(changes) > 0 {
-		if err := m.alterTable(ctx, modify.T, changes); err != nil {
-			return err
-		}
+		s.alterTable(modify.T, changes)
 	}
-	return m.addIndexes(ctx, modify.T, addI...)
+	s.addIndexes(modify.T, addI...)
+	return nil
 }
 
 // alterTable modifies the given table by executing on it a list of changes in one SQL statement.
-func (m *migrate) alterTable(ctx context.Context, t *schema.Table, changes []schema.Change) error {
-	b := Build("ALTER TABLE").Table(t)
+func (s *state) alterTable(t *schema.Table, changes []schema.Change) {
+	var (
+		b          = Build("ALTER TABLE").Table(t)
+		reversible = true
+		reverse    = b.Clone()
+	)
 	b.MapComma(changes, func(i int, b *sqlx.Builder) {
 		switch change := changes[i].(type) {
 		case *schema.AddColumn:
 			b.P("ADD COLUMN")
-			m.column(b, change.C)
+			s.column(b, change.C)
+			reverse.P("DROP COLUMN").Ident(change.C.Name)
 		case *schema.DropColumn:
 			b.P("DROP COLUMN").Ident(change.C.Name)
+			reversible = false
 		case *schema.ModifyColumn:
-			m.alterColumn(b, change)
+			s.alterColumn(b, change.Change, change.To)
+			s.alterColumn(reverse, change.Change, change.From)
 		case *schema.AddForeignKey:
 			b.P("ADD")
-			m.fks(b, change.F)
+			s.fks(b, change.F)
+			reverse.P("DROP CONSTRAINT").Ident(change.F.Symbol)
 		case *schema.DropForeignKey:
 			b.P("DROP CONSTRAINT").Ident(change.F.Symbol)
+			reversible = false
 		}
 	})
-	if _, err := m.ExecContext(ctx, b.String()); err != nil {
-		return fmt.Errorf("alter table: %w", err)
+	change := &migrate.Change{
+		Cmd: b.String(),
+		Source: &schema.ModifyTable{
+			T:       t,
+			Changes: changes,
+		},
+		Comment: fmt.Sprintf("Modify %q table", t.Name),
 	}
-	return nil
+	if reversible {
+		change.Reverse = reverse.String()
+	}
+	s.append(change)
 }
 
-func (m *migrate) addComments(ctx context.Context, t *schema.Table) error {
+func (s *state) addComments(t *schema.Table) {
 	var c schema.Comment
 	if sqlx.Has(t.Attrs, &c) {
-		b := Build("COMMENT ON TABLE").Table(t).P("IS", "'"+c.Text+"'")
-		if _, err := m.ExecContext(ctx, b.String()); err != nil {
-			return fmt.Errorf("add comment to table: %w", err)
-		}
+		b := Build("COMMENT ON TABLE").Table(t)
+		s.append(&migrate.Change{
+			Cmd:     b.Clone().P("IS", quote(c.Text)).String(),
+			Comment: fmt.Sprintf("add comment to table: %q", t.Name),
+			Reverse: b.Clone().P("IS NULL").String(),
+		})
 	}
 	for i := range t.Columns {
 		if sqlx.Has(t.Columns[i].Attrs, &c) {
 			b := Build("COMMENT ON COLUMN").Table(t)
 			b.WriteByte('.')
-			b.Ident(t.Columns[i].Name).P("IS", "'"+c.Text+"'")
-			if _, err := m.ExecContext(ctx, b.String()); err != nil {
-				return fmt.Errorf("add comment to column: %w", err)
-			}
+			b.Ident(t.Columns[i].Name)
+			s.append(&migrate.Change{
+				Cmd:     b.Clone().P("IS", quote(c.Text)).String(),
+				Comment: fmt.Sprintf("add comment to column: %q on table: %q", t.Columns[i].Name, t.Name),
+				Reverse: b.Clone().P("IS NULL").String(),
+			})
 		}
 	}
 	for i := range t.Indexes {
 		if sqlx.Has(t.Indexes[i].Attrs, &c) {
-			b := Build("COMMENT ON INDEX").Ident(t.Indexes[i].Name).P("IS", "'"+c.Text+"'")
-			if _, err := m.ExecContext(ctx, b.String()); err != nil {
-				return fmt.Errorf("add comment to index: %w", err)
-			}
+			b := Build("COMMENT ON INDEX").Ident(t.Indexes[i].Name).P("IS", quote(c.Text))
+			s.append(&migrate.Change{
+				Cmd:     b.Clone().P("IS", quote(c.Text)).String(),
+				Comment: fmt.Sprintf("add comment to index: %q on table: %q", t.Indexes[i].Name, t.Name),
+				Reverse: b.Clone().P("IS NULL").String(),
+			})
 		}
 	}
-	return nil
 }
 
-func (m *migrate) dropIndexes(ctx context.Context, indexes ...*schema.Index) error {
+func (s *state) dropIndexes(t *schema.Table, indexes ...*schema.Index) {
 	for _, idx := range indexes {
-		b := Build("DROP INDEX").Ident(idx.Name)
-		if _, err := m.ExecContext(ctx, b.String()); err != nil {
-			return fmt.Errorf("drop index: %w", err)
-		}
+		s.append(&migrate.Change{
+			Cmd:     Build("DROP INDEX").Ident(idx.Name).String(),
+			Comment: fmt.Sprintf("Drop index %q to table: %q", idx.Name, t.Name),
+		})
 	}
-	return nil
 }
 
-func (m *migrate) addTypes(ctx context.Context, columns ...*schema.Column) error {
+func (s *state) addTypes(ctx context.Context, columns ...*schema.Column) error {
 	for _, c := range columns {
 		e, ok := c.Type.Type.(*schema.EnumType)
 		if !ok {
@@ -251,7 +329,7 @@ func (m *migrate) addTypes(ctx context.Context, columns ...*schema.Column) error
 			return fmt.Errorf("missing enum name for column %q", c.Name)
 		}
 		c.Type.Raw = e.T
-		if exists, err := m.enumExists(ctx, e.T); err != nil {
+		if exists, err := s.enumExists(ctx, e.T); err != nil {
 			return err
 		} else if exists {
 			continue
@@ -262,14 +340,16 @@ func (m *migrate) addTypes(ctx context.Context, columns ...*schema.Column) error
 				b.WriteString("'" + e.Values[i] + "'")
 			})
 		})
-		if _, err := m.ExecContext(ctx, b.String()); err != nil {
-			return fmt.Errorf("create enum type: %w", err)
-		}
+		s.append(&migrate.Change{
+			Cmd:     b.String(),
+			Comment: fmt.Sprintf("create enum type %q", e.T),
+			Reverse: Build("DROP TYPE").Ident(e.T).String(),
+		})
 	}
 	return nil
 }
 
-func (m *migrate) alterType(ctx context.Context, from, to *schema.EnumType) error {
+func (s *state) alterType(from, to *schema.EnumType) error {
 	if len(from.Values) > len(to.Values) {
 		return fmt.Errorf("dropping enum (%q) value is not supported", from.T)
 	}
@@ -279,16 +359,16 @@ func (m *migrate) alterType(ctx context.Context, from, to *schema.EnumType) erro
 		}
 	}
 	for _, v := range to.Values[len(from.Values):] {
-		b := Build("ALTER TYPE").Ident(from.T).P("ADD VALUE", "'"+v+"'")
-		if _, err := m.ExecContext(ctx, b.String()); err != nil {
-			return fmt.Errorf("adding a new value %q for enum %q: %w", v, to.T, err)
-		}
+		s.append(&migrate.Change{
+			Cmd:     Build("ALTER TYPE").Ident(from.T).P("ADD VALUE", quote(v)).String(),
+			Comment: fmt.Sprintf("add value to enum type: %q", from.T),
+		})
 	}
 	return nil
 }
 
-func (m *migrate) enumExists(ctx context.Context, name string) (bool, error) {
-	rows, err := m.QueryContext(ctx, "SELECT * FROM pg_type WHERE typname = $1 AND typtype = 'e'", name)
+func (s *state) enumExists(ctx context.Context, name string) (bool, error) {
+	rows, err := s.QueryContext(ctx, "SELECT * FROM pg_type WHERE typname = $1 AND typtype = 'e'", name)
 	if err != nil {
 		return false, fmt.Errorf("check index existance: %w", err)
 	}
@@ -296,7 +376,7 @@ func (m *migrate) enumExists(ctx context.Context, name string) (bool, error) {
 	return rows.Next(), rows.Err()
 }
 
-func (m *migrate) addIndexes(ctx context.Context, t *schema.Table, indexes ...*schema.Index) error {
+func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) {
 	for _, idx := range indexes {
 		b := Build("CREATE")
 		if idx.Unique {
@@ -307,16 +387,17 @@ func (m *migrate) addIndexes(ctx context.Context, t *schema.Table, indexes ...*s
 			b.Ident(idx.Name)
 		}
 		b.P("ON").Table(t)
-		m.indexParts(b, idx.Parts)
-		m.indexAttrs(b, idx.Attrs)
-		if _, err := m.ExecContext(ctx, b.String()); err != nil {
-			return fmt.Errorf("create index: %w", err)
-		}
+		s.indexParts(b, idx.Parts)
+		s.indexAttrs(b, idx.Attrs)
+		s.append(&migrate.Change{
+			Cmd:     b.String(),
+			Reverse: Build("DROP INDEX").Ident(idx.Name).String(),
+			Comment: fmt.Sprintf("Create index %q to table: %q", idx.Name, t.Name),
+		})
 	}
-	return nil
 }
 
-func (m *migrate) column(b *sqlx.Builder, c *schema.Column) {
+func (s *state) column(b *sqlx.Builder, c *schema.Column) {
 	b.Ident(c.Name).P(mustFormat(c.Type.Type))
 	if !c.Type.Null {
 		b.P("NOT")
@@ -341,29 +422,29 @@ func (m *migrate) column(b *sqlx.Builder, c *schema.Column) {
 	}
 }
 
-func (m *migrate) alterColumn(b *sqlx.Builder, c *schema.ModifyColumn) {
-	for k := c.Change; !k.Is(schema.NoChange); {
-		b.P("ALTER COLUMN").Ident(c.To.Name)
+func (s *state) alterColumn(b *sqlx.Builder, k schema.ChangeKind, c *schema.Column) {
+	for !k.Is(schema.NoChange) {
+		b.P("ALTER COLUMN").Ident(c.Name)
 		switch {
 		case k.Is(schema.ChangeType):
-			b.P("TYPE").P(mustFormat(c.To.Type.Type))
-			if collate := (schema.Collation{}); sqlx.Has(c.To.Attrs, &collate) {
+			b.P("TYPE").P(mustFormat(c.Type.Type))
+			if collate := (schema.Collation{}); sqlx.Has(c.Attrs, &collate) {
 				b.P("COLLATE", collate.V)
 			}
 			k &= ^schema.ChangeType
-		case k.Is(schema.ChangeNull) && c.To.Type.Null:
+		case k.Is(schema.ChangeNull) && c.Type.Null:
 			b.P("DROP NOT NULL")
 			k &= ^schema.ChangeNull
-		case k.Is(schema.ChangeNull) && !c.To.Type.Null:
+		case k.Is(schema.ChangeNull) && !c.Type.Null:
 			b.P("SET NOT NULL")
 			k &= ^schema.ChangeNull
-		case k.Is(schema.ChangeDefault) && c.To.Default == nil:
+		case k.Is(schema.ChangeDefault) && c.Default == nil:
 			b.P("DROP DEFAULT")
 			k &= ^schema.ChangeDefault
-		case k.Is(schema.ChangeDefault) && c.To.Default != nil:
-			x, ok := c.To.Default.(*schema.RawExpr)
+		case k.Is(schema.ChangeDefault) && c.Default != nil:
+			x, ok := c.Default.(*schema.RawExpr)
 			if !ok {
-				panic(fmt.Sprintf("unexpected column default: %T", c.To.Default))
+				panic(fmt.Sprintf("unexpected column default: %T", c.Default))
 			}
 			b.P("SET DEFAULT", x.X)
 			k &= ^schema.ChangeDefault
@@ -376,7 +457,7 @@ func (m *migrate) alterColumn(b *sqlx.Builder, c *schema.ModifyColumn) {
 	}
 }
 
-func (m *migrate) indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {
+func (s *state) indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {
 	b.Wrap(func(b *sqlx.Builder) {
 		b.MapComma(parts, func(i int, b *sqlx.Builder) {
 			switch part := parts[i]; {
@@ -386,13 +467,13 @@ func (m *migrate) indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {
 				b.WriteString(part.X.(*schema.RawExpr).X)
 			}
 			for _, attr := range parts[i].Attrs {
-				m.partAttr(b, attr)
+				s.partAttr(b, attr)
 			}
 		})
 	})
 }
 
-func (m *migrate) partAttr(b *sqlx.Builder, attr schema.Attr) {
+func (s *state) partAttr(b *sqlx.Builder, attr schema.Attr) {
 	switch attr := attr.(type) {
 	case *IndexColumnProperty:
 		switch {
@@ -415,7 +496,7 @@ func (m *migrate) partAttr(b *sqlx.Builder, attr schema.Attr) {
 	}
 }
 
-func (m *migrate) indexAttrs(b *sqlx.Builder, attrs []schema.Attr) {
+func (s *state) indexAttrs(b *sqlx.Builder, attrs []schema.Attr) {
 	// Avoid appending the default method.
 	if t := (IndexType{}); sqlx.Has(attrs, &t) && strings.ToLower(t.T) != "btree" {
 		b.P("USING").P(t.T)
@@ -432,7 +513,7 @@ func (m *migrate) indexAttrs(b *sqlx.Builder, attrs []schema.Attr) {
 	}
 }
 
-func (m *migrate) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
+func (s *state) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
 	b.MapComma(fks, func(i int, b *sqlx.Builder) {
 		fk := fks[i]
 		if fk.Symbol != "" {
@@ -457,6 +538,10 @@ func (m *migrate) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
 			b.P("ON DELETE", string(fk.OnDelete))
 		}
 	})
+}
+
+func (s *state) append(c *migrate.Change) {
+	s.Changes = append(s.Changes, c)
 }
 
 // Build instantiates a new builder and writes the given phrase to it.
@@ -498,4 +583,11 @@ func skipAutoChanges(changes []schema.Change) []schema.Change {
 		}
 	}
 	return changes
+}
+
+func quote(s string) string {
+	if strings.HasPrefix(s, "'") && strings.HasSuffix(s, "'") {
+		return s
+	}
+	return "'" + s + "'"
 }
