@@ -7,7 +7,9 @@ import (
 	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
+
 	"github.com/go-sql-driver/mysql"
 )
 
@@ -19,17 +21,10 @@ type (
 
 	// Driver implements the Atlas interface.
 	Driver struct {
-		driver
+		migrate.Driver
 		MarshalSpec   func(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error)
 		UnmarshalSpec func(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}) error
 		interceptor   *interceptor
-	}
-
-	// A schema driver.
-	driver interface {
-		schema.Differ
-		schema.Execer
-		schema.Inspector
 	}
 
 	schemaUnmarshal struct {

@@ -282,5 +282,5 @@ func newMigrate(version string) (migrate.PlanApplier, *mock, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	return drv.Execer.(migrate.PlanApplier), mk, nil
+	return drv, mk, nil
 }
