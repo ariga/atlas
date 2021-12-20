@@ -261,11 +261,6 @@ func (s *state) writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 			return err
 		}
 		body.SetAttributeRaw(attr.K, hclRawTokens(st))
-		for _, a := range v.Attrs {
-			if err := s.writeAttr(a, body); err != nil {
-				return err
-			}
-		}
 	case *schemaspec.LiteralValue:
 		body.SetAttributeRaw(attr.K, hclRawTokens(v.V))
 	case *schemaspec.ListValue:

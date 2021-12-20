@@ -158,7 +158,14 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &sqlspec.Column{Type: st}, nil
+	c := &sqlspec.Column{Type: st}
+	for _, attr := range st.Attrs {
+		// TODO(rotemtam): infer this from the TypeSpec
+		if attr.K == "unsigned" {
+			c.Extra.Attrs = append(c.Extra.Attrs, attr)
+		}
+	}
+	return c, nil
 }
 
 // convertCharset converts spec charset/collation

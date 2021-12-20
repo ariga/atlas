@@ -23,7 +23,14 @@ type (
 
 // New returns a state configured with options.
 func New(opts ...Option) *state {
-	cfg := &Config{}
+	cfg := &Config{
+		newCtx: func() *hcl.EvalContext {
+			return &hcl.EvalContext{
+				Variables: make(map[string]cty.Value),
+				Functions: make(map[string]function.Function),
+			}
+		},
+	}
 	for _, opt := range opts {
 		opt(cfg)
 	}
