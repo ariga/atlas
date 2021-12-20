@@ -79,7 +79,7 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 	return specutil.Column(spec, convertColumnType)
 }
 
-// convertColumnType converts a sqlspec.Column into a concrete MySQL schema.Type.
+// convertColumnType converts a sqlspec.Column into a concrete postgres schema.Type.
 func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 	return TypeRegistry.Type(spec.Type, spec.Extra.Attrs, parseRawType)
 }
@@ -130,7 +130,7 @@ func columnSpec(col *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 	}, nil
 }
 
-// columnTypeSpec converts from a concrete MySQL schema.Type into sqlspec.Column Type.
+// columnTypeSpec converts from a concrete postgres schema.Type into sqlspec.Column Type.
 func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	st, err := TypeRegistry.Convert(t)
 	if err != nil {
