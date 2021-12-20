@@ -278,7 +278,7 @@ schema "test" {
 }
 
 func TestTypes(t *testing.T) {
-	for _, tt := range []struct {
+	tests := []struct {
 		typeExpr  string
 		extraAttr string
 		expected  schema.Type
@@ -307,6 +307,10 @@ func TestTypes(t *testing.T) {
 			typeExpr:  "int",
 			extraAttr: "unsigned=true",
 			expected:  &schema.IntegerType{T: tInt, Unsigned: true},
+		},
+		{
+			typeExpr: "int",
+			expected: &schema.IntegerType{T: tInt},
 		},
 		{
 			typeExpr: "bigint",
@@ -516,7 +520,8 @@ func TestTypes(t *testing.T) {
 			typeExpr: "geometrycollection",
 			expected: &schema.SpatialType{T: tGeometryCollection},
 		},
-	} {
+	}
+	for _, tt := range tests {
 		t.Run(tt.typeExpr, func(t *testing.T) {
 			doc := fmt.Sprintf(`table "test" {
 	schema = schema.test
@@ -535,7 +540,6 @@ schema "test" {
 			require.EqualValues(t, tt.expected, colspec.Type.Type)
 			spec, err := MarshalSpec(&test, hclState)
 			require.NoError(t, err)
-			fmt.Println(string(spec))
 			var after schema.Schema
 			err = UnmarshalSpec(spec, hclState, &after)
 			require.NoError(t, err)
