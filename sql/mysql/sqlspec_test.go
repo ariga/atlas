@@ -6,8 +6,6 @@ import (
 
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/schema"
-	"github.com/hashicorp/hcl/v2/hclwrite"
-
 	"github.com/stretchr/testify/require"
 )
 
@@ -544,19 +542,8 @@ schema "test" {
 			err = UnmarshalSpec(spec, hclState, &after)
 			require.NoError(t, err)
 			require.EqualValues(t, tt.expected, after.Tables[0].Columns[0].Type.Type)
-			//column := test.Tables[0].Columns[0]
-
-			//require.NoError(t, err)
-			//require.EqualValues(t, tt.expected, typ)
-			//spec, err := hclState.MarshalSpec(&test)
-			//require.NoError(t, err)
-			//hclEqual(t, []byte(doc), spec)
 		})
 	}
-}
-
-func hclEqual(t *testing.T, expected, actual []byte) {
-	require.EqualValues(t, string(hclwrite.Format(expected)), string(hclwrite.Format(actual)))
 }
 
 func lineIfSet(s string) string {
