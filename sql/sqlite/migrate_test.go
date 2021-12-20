@@ -127,7 +127,7 @@ func TestPlanChanges(t *testing.T) {
 		m.systemVars("3.36.0")
 		drv, err := Open(db)
 		require.NoError(t, err)
-		plan, err := drv.Execer.(migrate.PlanApplier).PlanChanges(context.Background(), "plan", tt.changes)
+		plan, err := drv.PlanChanges(context.Background(), "plan", tt.changes)
 		require.NoError(t, err)
 		require.Equal(t, tt.plan.Reversible, plan.Reversible)
 		require.Equal(t, tt.plan.Transactional, plan.Transactional)

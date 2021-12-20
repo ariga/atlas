@@ -54,11 +54,6 @@ func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change) e
 	return nil
 }
 
-// Exec calls ApplyChanges. Exists here for backwards compatibility.
-func (p *planApply) Exec(ctx context.Context, changes []schema.Change) error {
-	return p.ApplyChanges(ctx, changes)
-}
-
 // state represents the state of a planning. It is not part of
 // planApply so that multiple planning/applying can be called
 // in parallel.
