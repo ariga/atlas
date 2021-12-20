@@ -1,6 +1,7 @@
 package schemahcl
 
 import (
+	"fmt"
 	"reflect"
 
 	"ariga.io/atlas/schema/schemaspec"
@@ -66,26 +67,28 @@ func typeFuncSpec(typeSpec *schemaspec.TypeSpec) function.Function {
 		Type: function.StaticReturnType(ctyTypeSpec),
 	}
 	for _, arg := range typeFuncArgs(typeSpec) {
+		if arg.Kind == reflect.Slice || !arg.Required {
+			spec.VarParam = &function.Parameter{
+				Name: "args",
+				Type: cty.DynamicPseudoType,
+			}
+			continue
+		}
 		p := function.Parameter{
 			Name:      arg.Name,
 			AllowNull: !arg.Required,
 		}
 		switch arg.Kind {
-		case reflect.Slice:
-			p.Type = cty.DynamicPseudoType
-			spec.VarParam = &p
 		case reflect.String:
 			p.Type = cty.String
-			spec.Params = append(spec.Params, p)
 		case reflect.Int, reflect.Float32, reflect.Int64:
 			p.Type = cty.Number
-			spec.Params = append(spec.Params, p)
 		case reflect.Bool:
 			p.Type = cty.Bool
-			spec.Params = append(spec.Params, p)
 		}
-		spec.Impl = typeFuncSpecImpl(spec, typeSpec)
+		spec.Params = append(spec.Params, p)
 	}
+	spec.Impl = typeFuncSpecImpl(spec, typeSpec)
 	return function.New(spec)
 }
 
@@ -95,25 +98,37 @@ func typeFuncSpecImpl(spec *function.Spec, typeSpec *schemaspec.TypeSpec) functi
 		t := &schemaspec.Type{
 			T: typeSpec.T,
 		}
-		if spec.VarParam != nil {
-			lst := &schemaspec.ListValue{}
-			for _, arg := range args {
-				v, err := extractLiteralValue(arg)
-				if err != nil {
-					return cty.NilVal, err
+		if len(args) > len(typeSpec.Attributes) && typeSpec.Attributes[len(typeSpec.Attributes)-1].Kind != reflect.Slice {
+			return cty.NilVal, fmt.Errorf("too many arguments for type definition %q", typeSpec.Name)
+		}
+		// TypeRegistry enforces that:
+		// 1. Required attrs come before optionals
+		// 2. Slice attrs can only be last
+		for _, attr := range typeFuncArgs(typeSpec) {
+			// If the attribute is a slice, read all remaining args into a list value.
+			if attr.Kind == reflect.Slice {
+				lst := &schemaspec.ListValue{}
+				for _, arg := range args {
+					v, err := extractLiteralValue(arg)
+					if err != nil {
+						return cty.NilVal, err
+					}
+					lst.V = append(lst.V, v)
 				}
-				lst.V = append(lst.V, v)
+				t.Attrs = append(t.Attrs, &schemaspec.Attr{K: attr.Name, V: lst})
+				break
 			}
-			t.Attrs = append(t.Attrs, &schemaspec.Attr{K: spec.VarParam.Name, V: lst})
-		} else {
-			for i, arg := range args {
-				v, err := extractLiteralValue(arg)
-				if err != nil {
-					return cty.NilVal, err
-				}
-				attrName := spec.Params[i].Name
-				t.Attrs = append(t.Attrs, &schemaspec.Attr{K: attrName, V: v})
+			if len(args) == 0 {
+				break
 			}
+			// Pop the first arg and add it as a literal to the type.
+			var arg cty.Value
+			arg, args = args[0], args[1:]
+			v, err := extractLiteralValue(arg)
+			if err != nil {
+				return cty.NilVal, err
+			}
+			t.Attrs = append(t.Attrs, &schemaspec.Attr{K: attr.Name, V: v})
 		}
 		return cty.CapsuleVal(ctyTypeSpec, t), nil
 	}
