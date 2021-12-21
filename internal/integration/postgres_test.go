@@ -375,7 +375,7 @@ schema "public" {
 table "users" {
 	schema = schema.public
 	column "id" {
-		type = "int"
+		type = int
 	}
 	primary_key {
 		columns = [table.users.column.id]
@@ -384,13 +384,13 @@ table "users" {
 table "posts" {
 	schema = schema.public
 	column "id" {
-		type = "int"
+		type = int
 	}
 	column "tags" {
 		type = "text[]"
 	}
 	column "author_id" {
-		type = "int"
+		type = int
 	}
 	foreign_key "author" {
 		columns = [
@@ -421,7 +421,7 @@ func TestPostgres_CLI(t *testing.T) {
 			table "users" {
 				schema = schema.public
 				column "id" {
-					type = "int"
+					type = int
 				}
 				primary_key {
 					columns = [table.users.column.id]
@@ -429,7 +429,7 @@ func TestPostgres_CLI(t *testing.T) {
 			}`
 	t.Run("SchemaInspect", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
-			testCLISchemaInspect(t, h, t.dsn(), postgres.UnmarshalSpec)
+			testCLISchemaInspect(t, h, t.dsn(), postgres.UnmarshalSpec, schemahcl.New(schemahcl.WithTypes(postgres.TypeRegistry.Specs())))
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
@@ -831,7 +831,7 @@ func (t *pgTest) dsn() string {
 func (t *pgTest) applyHcl(spec string) {
 	realm := t.loadRealm()
 	var desired schema.Schema
-	err := postgres.UnmarshalSpec([]byte(spec), schemahcl.Unmarshal, &desired)
+	err := postgres.UnmarshalSpec([]byte(spec), schemahcl.New(schemahcl.WithTypes(postgres.TypeRegistry.Specs())), &desired)
 	require.NoError(t, err)
 	existing := realm.Schemas[0]
 	diff, err := t.drv.SchemaDiff(existing, &desired)
