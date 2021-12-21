@@ -119,7 +119,7 @@ var TypeRegistry = specutil.NewRegistry(
 	specutil.TypeSpec(tReal, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
 	specutil.TypeSpec(tBlob, specutil.SizeTypeAttr(false)),
 	specutil.TypeSpec(tText, specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("integer", specutil.SizeTypeAttr(false)),
+	specutil.TypeSpec(tInteger, specutil.SizeTypeAttr(false)),
 	specutil.TypeSpec("int", specutil.SizeTypeAttr(false)),
 	specutil.TypeSpec("tinyint", specutil.SizeTypeAttr(false)),
 	specutil.TypeSpec("smallint", specutil.SizeTypeAttr(false)),
