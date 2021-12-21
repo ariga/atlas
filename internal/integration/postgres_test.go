@@ -387,7 +387,7 @@ table "posts" {
 		type = int
 	}
 	column "tags" {
-		type = "text[]"
+		type = sql("text[]")
 	}
 	column "author_id" {
 		type = int
