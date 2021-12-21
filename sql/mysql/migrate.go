@@ -47,16 +47,7 @@ func (p *planApply) PlanChanges(_ context.Context, name string, changes []schema
 // if the driver is unable to produce a plan to it, or one of the statements
 // is failed or unsupported.
 func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change) error {
-	plan, err := p.PlanChanges(ctx, "apply", changes)
-	if err != nil {
-		return err
-	}
-	for _, c := range plan.Changes {
-		if _, err := p.ExecContext(ctx, c.Cmd); err != nil {
-			return err
-		}
-	}
-	return nil
+	return sqlx.ApplyChanges(ctx, changes, p)
 }
 
 // state represents the state of a planning. It is not part of
