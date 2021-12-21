@@ -518,7 +518,6 @@ func TestMySQL_CLI(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
-
 			testCLISchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn(), mysql.UnmarshalSpec, schemahcl.New(schemahcl.WithTypes(mysql.TypeRegistry.Specs())))
 		})
 	})
