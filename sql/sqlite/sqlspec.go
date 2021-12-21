@@ -76,7 +76,7 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 
 // convertColumnType converts a sqlspec.Column into a concrete SQLite schema.Type.
 func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
-	return TypeRegistry.Type(spec.Type, spec.Extra.Attrs, parseRawType)
+	return TypeRegistry.Type(spec.Type, spec.Extra.Attrs)
 }
 
 // schemaSpec converts from a concrete SQLite schema to Atlas specification.
@@ -116,33 +116,37 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 
 // TypeRegistry contains the supported TypeSpecs for the sqlite driver.
 var TypeRegistry = specutil.NewRegistry(
-	specutil.TypeSpec(tReal, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
-	specutil.TypeSpec(tBlob, specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec(tText, specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec(tInteger, specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("int", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("tinyint", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("smallint", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("mediumint", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("bigint", specutil.SizeTypeAttr(false)),
-	specutil.AliasTypeSpec("unsigned_big_int", "unsigned big int", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("int2", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("int8", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("double", specutil.SizeTypeAttr(false)),
-	specutil.AliasTypeSpec("double_precision", "double precision", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("float", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("character", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("varchar", specutil.SizeTypeAttr(false)),
-	specutil.AliasTypeSpec("varying_character", "varying character", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("nchar", specutil.SizeTypeAttr(false)),
-	specutil.AliasTypeSpec("native_character", "native character", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("nvarchar", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("clob", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("numeric", &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
-	specutil.TypeSpec("decimal", &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
-	specutil.TypeSpec("boolean"),
-	specutil.TypeSpec("date"),
-	specutil.TypeSpec("datetime"),
-	specutil.TypeSpec("json"),
-	specutil.TypeSpec("uuid"),
+	specutil.WithFormatter(FormatType),
+	specutil.WithParser(parseRawType),
+	specutil.WithSpecs(
+		specutil.TypeSpec(tReal, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
+		specutil.TypeSpec(tBlob, specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec(tText, specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec(tInteger, specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("int", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("tinyint", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("smallint", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("mediumint", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("bigint", specutil.SizeTypeAttr(false)),
+		specutil.AliasTypeSpec("unsigned_big_int", "unsigned big int", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("int2", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("int8", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("double", specutil.SizeTypeAttr(false)),
+		specutil.AliasTypeSpec("double_precision", "double precision", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("float", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("character", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("varchar", specutil.SizeTypeAttr(false)),
+		specutil.AliasTypeSpec("varying_character", "varying character", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("nchar", specutil.SizeTypeAttr(false)),
+		specutil.AliasTypeSpec("native_character", "native character", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("nvarchar", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("clob", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("numeric", &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
+		specutil.TypeSpec("decimal", &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
+		specutil.TypeSpec("boolean"),
+		specutil.TypeSpec("date"),
+		specutil.TypeSpec("datetime"),
+		specutil.TypeSpec("json"),
+		specutil.TypeSpec("uuid"),
+	),
 )
