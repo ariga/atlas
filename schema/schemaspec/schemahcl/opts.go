@@ -56,7 +56,6 @@ func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
 				ctx.Functions[typeSpec.Name] = typeFuncSpec(typeSpec)
 			}
 		}
-		ctx.Functions["raw"] = rawTypeImpl()
 		return ctx
 	}
 	return func(config *Config) {
@@ -65,19 +64,6 @@ func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
 	}
 }
 
-func rawTypeImpl() function.Function {
-	s := &function.Spec{
-		Params: []function.Parameter{
-			{Name: "def", Type: cty.String, AllowNull: false},
-		},
-		Type: function.StaticReturnType(ctyTypeSpec),
-		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-			t := &schemaspec.Type{T: args[0].AsString()}
-			return cty.CapsuleVal(ctyTypeSpec, t), nil
-		},
-	}
-	return function.New(s)
-}
 
 // typeFuncSpec returns the HCL function for defining the type in the spec.
 func typeFuncSpec(typeSpec *schemaspec.TypeSpec) function.Function {
