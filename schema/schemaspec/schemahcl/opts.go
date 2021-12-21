@@ -64,7 +64,6 @@ func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
 	}
 }
 
-
 // typeFuncSpec returns the HCL function for defining the type in the spec.
 func typeFuncSpec(typeSpec *schemaspec.TypeSpec) function.Function {
 	spec := &function.Spec{
