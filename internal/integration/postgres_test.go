@@ -421,7 +421,7 @@ func TestPostgres_CLI(t *testing.T) {
 			table "users" {
 				schema = schema.public
 				column "id" {
-					type = int
+					type = integer
 				}
 				primary_key {
 					columns = [table.users.column.id]
