@@ -97,7 +97,7 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 
 // convertColumnType converts a sqlspec.Column into a concrete MySQL schema.Type.
 func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
-	return TypeRegistry.Type(spec.Type, spec.Extra.Attrs, parseRawType)
+	return TypeRegistry.Type(spec.Type, spec.Extra.Attrs)
 }
 
 // schemaSpec converts from a concrete MySQL schema to Atlas specification.
@@ -214,58 +214,62 @@ func hasCollate(attr []schema.Attr, parent []schema.Attr) (string, bool) {
 
 // TypeRegistry contains the supported TypeSpecs for the mysql driver.
 var TypeRegistry = specutil.NewRegistry(
-	&schemaspec.TypeSpec{
-		Name: tEnum,
-		T:    tEnum,
-		Attributes: []*schemaspec.TypeAttr{
-			{Name: "values", Kind: reflect.Slice, Required: true},
+	specutil.WithFormatter(FormatType),
+	specutil.WithParser(parseRawType),
+	specutil.WithSpecs(
+		&schemaspec.TypeSpec{
+			Name: tEnum,
+			T:    tEnum,
+			Attributes: []*schemaspec.TypeAttr{
+				{Name: "values", Kind: reflect.Slice, Required: true},
+			},
+			RType: reflect.TypeOf(schema.EnumType{}),
 		},
-		RType: reflect.TypeOf(schema.EnumType{}),
-	},
-	&schemaspec.TypeSpec{
-		Name: tSet,
-		T:    tSet,
-		Attributes: []*schemaspec.TypeAttr{
-			{Name: "values", Kind: reflect.Slice, Required: true},
+		&schemaspec.TypeSpec{
+			Name: tSet,
+			T:    tSet,
+			Attributes: []*schemaspec.TypeAttr{
+				{Name: "values", Kind: reflect.Slice, Required: true},
+			},
+			RType: reflect.TypeOf(SetType{}),
 		},
-		RType: reflect.TypeOf(SetType{}),
-	},
-	specutil.TypeSpec(tBit, specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec(tInt, unsignedTypeAttr(), specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec(tTinyInt, unsignedTypeAttr(), specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec(tSmallInt, unsignedTypeAttr(), specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec(tMediumInt, unsignedTypeAttr(), specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec(tBigInt, unsignedTypeAttr(), specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec(tDecimal),
-	specutil.TypeSpec(tNumeric),
-	specutil.TypeSpec(tFloat, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
-	specutil.TypeSpec(tDouble, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
-	specutil.TypeSpec(tReal, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
-	specutil.TypeSpec(tTimestamp),
-	specutil.TypeSpec(tDate),
-	specutil.TypeSpec(tTime),
-	specutil.TypeSpec(tDateTime),
-	specutil.TypeSpec(tYear),
-	specutil.TypeSpec(tVarchar, specutil.SizeTypeAttr(true)),
-	specutil.TypeSpec(tChar, specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec(tVarBinary, specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec(tBinary, specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec(tBlob, specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec(tTinyBlob),
-	specutil.TypeSpec(tMediumBlob),
-	specutil.TypeSpec(tLongBlob),
-	specutil.TypeSpec(tText, specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec(tTinyText),
-	specutil.TypeSpec(tMediumText),
-	specutil.TypeSpec(tLongText),
-	specutil.TypeSpec(tGeometry),
-	specutil.TypeSpec(tPoint),
-	specutil.TypeSpec(tMultiPoint),
-	specutil.TypeSpec(tLineString),
-	specutil.TypeSpec(tMultiLineString),
-	specutil.TypeSpec(tPolygon),
-	specutil.TypeSpec(tMultiPolygon),
-	specutil.TypeSpec(tGeometryCollection),
+		specutil.TypeSpec(tBit, specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec(tInt, unsignedTypeAttr(), specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec(tTinyInt, unsignedTypeAttr(), specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec(tSmallInt, unsignedTypeAttr(), specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec(tMediumInt, unsignedTypeAttr(), specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec(tBigInt, unsignedTypeAttr(), specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec(tDecimal),
+		specutil.TypeSpec(tNumeric),
+		specutil.TypeSpec(tFloat, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
+		specutil.TypeSpec(tDouble, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
+		specutil.TypeSpec(tReal, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
+		specutil.TypeSpec(tTimestamp),
+		specutil.TypeSpec(tDate),
+		specutil.TypeSpec(tTime),
+		specutil.TypeSpec(tDateTime),
+		specutil.TypeSpec(tYear),
+		specutil.TypeSpec(tVarchar, specutil.SizeTypeAttr(true)),
+		specutil.TypeSpec(tChar, specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec(tVarBinary, specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec(tBinary, specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec(tBlob, specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec(tTinyBlob),
+		specutil.TypeSpec(tMediumBlob),
+		specutil.TypeSpec(tLongBlob),
+		specutil.TypeSpec(tText, specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec(tTinyText),
+		specutil.TypeSpec(tMediumText),
+		specutil.TypeSpec(tLongText),
+		specutil.TypeSpec(tGeometry),
+		specutil.TypeSpec(tPoint),
+		specutil.TypeSpec(tMultiPoint),
+		specutil.TypeSpec(tLineString),
+		specutil.TypeSpec(tMultiLineString),
+		specutil.TypeSpec(tPolygon),
+		specutil.TypeSpec(tMultiPolygon),
+		specutil.TypeSpec(tGeometryCollection),
+	),
 )
 
 func unsignedTypeAttr() *schemaspec.TypeAttr {

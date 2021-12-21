@@ -66,7 +66,27 @@ func (r *TypeRegistry) PrintType(typ *schemaspec.Type) (string, error) {
 
 // TypeRegistry is a collection of *schemaspec.TypeSpec.
 type TypeRegistry struct {
-	r []*schemaspec.TypeSpec
+	r         []*schemaspec.TypeSpec
+	formatter func(schema.Type) (string, error)
+	parser    func(string) (schema.Type, error)
+}
+
+// WithFormatter configures the registry to use a formatting function for printing
+// schema.Type as string.
+func WithFormatter(formatter func(schema.Type) (string, error)) RegistryOption {
+	return func(registry *TypeRegistry) error {
+		registry.formatter = formatter
+		return nil
+	}
+}
+
+// WithParser configures the registry to use a parsing function for converting
+// a string to a schema.Type.
+func WithParser(parser func(string) (schema.Type, error)) RegistryOption {
+	return func(registry *TypeRegistry) error {
+		registry.parser = parser
+		return nil
+	}
 }
 
 // Register adds one or more TypeSpec to the registry.
@@ -100,12 +120,25 @@ func validSpec(typeSpec *schemaspec.TypeSpec) error {
 	return nil
 }
 
+type RegistryOption func(*TypeRegistry) error
+
+func WithSpecs(specs ...*schemaspec.TypeSpec) RegistryOption {
+	return func(registry *TypeRegistry) error {
+		if err := registry.Register(specs...); err != nil {
+			return fmt.Errorf("failed registering types: %s", err)
+		}
+		return nil
+	}
+}
+
 // NewRegistry creates a new *TypeRegistry, registers the provided types and panics
 // if an error occurs.
-func NewRegistry(specs ...*schemaspec.TypeSpec) *TypeRegistry {
+func NewRegistry(opts ...RegistryOption) *TypeRegistry {
 	r := &TypeRegistry{}
-	if err := r.Register(specs...); err != nil {
-		log.Fatalf("failed registering types: %s", err)
+	for _, opt := range opts {
+		if err := opt(r); err != nil {
+			log.Fatalf("failed configuring registry: %s", err)
+		}
 	}
 	return r
 }
@@ -217,7 +250,7 @@ func (r *TypeRegistry) Specs() []*schemaspec.TypeSpec {
 }
 
 // Type converts a *schemaspec.Type into a schema.Type.
-func (r *TypeRegistry) Type(typ *schemaspec.Type, extra []*schemaspec.Attr, parser func(string) (schema.Type, error)) (schema.Type, error) {
+func (r *TypeRegistry) Type(typ *schemaspec.Type, extra []*schemaspec.Attr) (schema.Type, error) {
 	typeSpec, ok := r.findT(typ.T)
 	if !ok {
 		return nil, fmt.Errorf("specutil: typespec not found for %s", typ.T)
@@ -229,7 +262,7 @@ func (r *TypeRegistry) Type(typ *schemaspec.Type, extra []*schemaspec.Attr, pars
 	if err != nil {
 		return nil, err
 	}
-	return parser(printType)
+	return r.parser(printType)
 }
 
 // TypeSpec returns a TypeSpec with the provided name.

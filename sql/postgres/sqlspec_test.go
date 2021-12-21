@@ -394,5 +394,5 @@ schema "test" {
 }
 
 func TestRegistrySanity(t *testing.T) {
-	spectest.RegistrySanityTest(t, TypeRegistry, parseRawType, []string{"enum"})
+	spectest.RegistrySanityTest(t, TypeRegistry, []string{"enum"})
 }
