@@ -8,13 +8,8 @@ import (
 	"fmt"
 	"testing"
 
-	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
-	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/schema"
-	"ariga.io/atlas/sql/sqlspec"
-
-	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,14 +22,13 @@ schema "schema" {
 
 table "table" {
 	column "col" {
-		type = "int"
+		type = integer
 	}
 	column "age" {
-		type = "int"
+		type = integer
 	}
 	column "account_name" {
-		type = "string"
-		size = 32
+		type = varchar(32)
 	}
 	primary_key {
 		columns = [table.table.column.col]
@@ -59,8 +53,7 @@ table "table" {
 
 table "accounts" {
 	column "name" {
-		type = "string"
-		size = 32
+		type = varchar(32)
 	}
 	primary_key {
 		columns = [table.accounts.column.name]
@@ -95,7 +88,7 @@ table "accounts" {
 					Name: "account_name",
 					Type: &schema.ColumnType{
 						Type: &schema.StringType{
-							T:    "text",
+							T:    "varchar",
 							Size: 32,
 						},
 					},
@@ -110,7 +103,7 @@ table "accounts" {
 					Name: "name",
 					Type: &schema.ColumnType{
 						Type: &schema.StringType{
-							T:    "text",
+							T:    "varchar",
 							Size: 32,
 						},
 					},
@@ -153,242 +146,9 @@ table "accounts" {
 	}
 
 	var s schema.Schema
-	err := UnmarshalSpec([]byte(f), schemahcl.Unmarshal, &s)
+	err := UnmarshalSpec([]byte(f), hclState, &s)
 	require.NoError(t, err)
 	require.EqualValues(t, exp, &s)
-}
-
-func TestUnmarshalSpecColumnTypes(t *testing.T) {
-	for _, tt := range []struct {
-		spec     *sqlspec.Column
-		expected schema.Type
-	}{
-		{
-			spec: specutil.NewCol("int", "int"),
-			expected: &schema.IntegerType{
-				T:        tInteger,
-				Unsigned: false,
-			},
-		},
-		{
-			spec: specutil.NewCol("int8", "int8"),
-			expected: &schema.IntegerType{
-				T:        tInteger,
-				Unsigned: false,
-			},
-		},
-		{
-			spec: specutil.NewCol("int64", "int64"),
-			expected: &schema.IntegerType{
-				T:        tInteger,
-				Unsigned: false,
-			},
-		},
-		{
-			spec: specutil.NewCol("string_varchar", "string", specutil.LitAttr("size", "255")),
-			expected: &schema.StringType{
-				T:    tText,
-				Size: 255,
-			},
-		},
-		{
-			spec: specutil.NewCol("string_mediumtext", "string", specutil.LitAttr("size", "100000")),
-			expected: &schema.StringType{
-				T:    tText,
-				Size: 100_000,
-			},
-		},
-		{
-			spec: specutil.NewCol("string_longtext", "string", specutil.LitAttr("size", "17000000")),
-			expected: &schema.StringType{
-				T:    tText,
-				Size: 17_000_000,
-			},
-		},
-		{
-			spec: specutil.NewCol("varchar(255)", "varchar(255)"),
-			expected: &schema.StringType{
-				T:    "varchar",
-				Size: 255,
-			},
-		},
-		{
-			spec: specutil.NewCol("decimal(10, 2) unsigned", "decimal(10, 2) unsigned"),
-			expected: &schema.DecimalType{
-				T:         "decimal",
-				Scale:     2,
-				Precision: 10,
-			},
-		},
-		{
-			spec: specutil.NewCol("blob", "binary"),
-			expected: &schema.BinaryType{
-				T: tBlob,
-			},
-		},
-		{
-			spec: specutil.NewCol("tinyblob", "binary", specutil.LitAttr("size", "16")),
-			expected: &schema.BinaryType{
-				T: tBlob,
-			},
-		},
-		{
-			spec: specutil.NewCol("mediumblob", "binary", specutil.LitAttr("size", "100000")),
-			expected: &schema.BinaryType{
-				T: tBlob,
-			},
-		},
-		{
-			spec: specutil.NewCol("longblob", "binary", specutil.LitAttr("size", "20000000")),
-			expected: &schema.BinaryType{
-				T: tBlob,
-			},
-		},
-		{
-			spec:     specutil.NewCol("enum", "enum", specutil.ListAttr("values", `"a"`, `"b"`, `"c"`)),
-			expected: &schema.StringType{T: tText},
-		},
-		{
-			spec:     specutil.NewCol("bool", "boolean"),
-			expected: &schema.BoolType{T: "boolean"},
-		},
-		{
-			spec:     specutil.NewCol("decimal", "decimal", specutil.LitAttr("precision", "10"), specutil.LitAttr("scale", "2")),
-			expected: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
-		},
-		{
-			spec:     specutil.NewCol("float", "float", specutil.LitAttr("precision", "10")),
-			expected: &schema.FloatType{T: tReal, Precision: 10},
-		},
-		{
-			spec:     specutil.NewCol("float", "float", specutil.LitAttr("precision", "25")),
-			expected: &schema.FloatType{T: tReal, Precision: 25},
-		},
-	} {
-		t.Run(tt.spec.Name, func(t *testing.T) {
-			var s schema.Schema
-			err := UnmarshalSpec(hcl(t, tt.spec), schemahcl.Unmarshal, &s)
-			require.NoError(t, err)
-			tbl, ok := s.Table("table")
-			require.True(t, ok)
-			col, ok := tbl.Column(tt.spec.Name)
-			require.True(t, ok)
-			require.EqualValues(t, tt.expected, col.Type.Type)
-		})
-	}
-}
-
-func TestNotSupportedUnmarshalSpecColumnTypes(t *testing.T) {
-	var s schema.Schema
-	err := UnmarshalSpec(hcl(t, specutil.NewCol("uint64", "uint64")), schemahcl.Unmarshal, &s)
-	require.Error(t, err)
-}
-
-// hcl returns an Atlas HCL document containing the column spec.
-func hcl(t *testing.T, c *sqlspec.Column) []byte {
-	buf, err := schemahcl.Marshal(c)
-	if err != nil {
-		t.Fatal(err)
-	}
-	tmpl := `
-schema "default" {
-}
-table "table" {
-	schema = schema.default
-	%s
-}
-`
-	body := fmt.Sprintf(tmpl, buf)
-	return []byte(body)
-}
-
-func TestMarshalSpecColumnType(t *testing.T) {
-	for _, tt := range []struct {
-		schem    schema.Type
-		expected *sqlspec.Column
-	}{
-		{
-			schem:    &schema.IntegerType{T: tInteger},
-			expected: specutil.NewCol("column", "int"),
-		},
-		{
-			schem:    &schema.StringType{T: tText, Size: 17_000_000},
-			expected: specutil.NewCol("column", "string", specutil.LitAttr("size", "17000000")),
-		},
-		{
-			schem:    &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2},
-			expected: specutil.NewCol("column", "decimal", specutil.LitAttr("precision", "10"), specutil.LitAttr("scale", "2")),
-		},
-		{
-			schem:    &schema.EnumType{T: "enum", Values: []string{"a", "b", "c"}},
-			expected: specutil.NewCol("column", "enum", specutil.ListAttr("values", `"a"`, `"b"`, `"c"`)),
-		},
-		{
-			schem:    &schema.BoolType{T: "boolean"},
-			expected: specutil.NewCol("column", "boolean"),
-		},
-		{
-			schem:    &schema.FloatType{T: "float", Precision: 10},
-			expected: specutil.NewCol("column", "float", specutil.LitAttr("precision", "10")),
-		},
-	} {
-		t.Run(tt.expected.Type, func(t *testing.T) {
-			s := schema.Schema{
-				Tables: []*schema.Table{
-					{
-						Name: "table",
-						Columns: []*schema.Column{
-							{
-								Name: "column",
-								Type: &schema.ColumnType{Type: tt.schem},
-							},
-						},
-					},
-				},
-			}
-			s.Tables[0].Schema = &s
-			ddl, err := MarshalSpec(&s, schemahcl.Marshal)
-			require.NoError(t, err)
-			var test struct {
-				Table *sqlspec.Table `spec:"table"`
-			}
-			err = schemahcl.Unmarshal(ddl, &test)
-			require.NoError(t, err)
-			require.EqualValues(t, tt.expected.Type, test.Table.Columns[0].Type)
-			require.ElementsMatch(t, tt.expected.Extra.Attrs, test.Table.Columns[0].Extra.Attrs)
-		})
-	}
-}
-
-func TestNotSupportedMarshalSpecColumnType(t *testing.T) {
-	for _, tt := range []struct {
-		schem    schema.Type
-		expected *sqlspec.Column
-	}{
-		{
-			schem:    &schema.IntegerType{T: tInteger, Unsigned: true},
-			expected: specutil.NewCol("column", "int"),
-		},
-	} {
-		t.Run(tt.expected.Type, func(t *testing.T) {
-			s := schema.Schema{
-				Tables: []*schema.Table{
-					{
-						Name: "table",
-						Columns: []*schema.Column{
-							{
-								Name: "column",
-								Type: &schema.ColumnType{Type: tt.schem},
-							},
-						},
-					},
-				},
-			}
-			s.Tables[0].Schema = &s
-			_, err := MarshalSpec(&s, schemahcl.Marshal)
-			require.Error(t, err)
-		})
-	}
 }
 
 func TestTypes(t *testing.T) {
@@ -514,27 +274,27 @@ func TestTypes(t *testing.T) {
 		},
 	} {
 		t.Run(tt.typeExpr, func(t *testing.T) {
-			// Simulates sqlspec.Column until we change its Type field.
-			type col struct {
-				Type *schemaspec.Type `spec:"type"`
-				schemaspec.DefaultExtension
-			}
-			var test struct {
-				Columns []*col `spec:"column"`
-			}
-			doc := fmt.Sprintf(`column {
-	type = %s
+			var test schema.Schema
+			doc := fmt.Sprintf(`table "test" {
+	schema = schema.test
+	column "test" {
+		null = false
+		type = %s
+	}
+}
+schema "test" {
 }
 `, tt.typeExpr)
-			err := hclState.UnmarshalSpec([]byte(doc), &test)
+			err := UnmarshalSpec([]byte(doc), hclState, &test)
 			require.NoError(t, err)
-			column := test.Columns[0]
-			typ, err := TypeRegistry.Type(column.Type, column.Extra.Attrs, parseRawType)
+			colspec := test.Tables[0].Columns[0]
+			require.EqualValues(t, tt.expected, colspec.Type.Type)
+			spec, err := MarshalSpec(&test, hclState)
 			require.NoError(t, err)
-			require.EqualValues(t, tt.expected, typ)
-			spec, err := hclState.MarshalSpec(&test)
+			var after schema.Schema
+			err = UnmarshalSpec(spec, hclState, &after)
 			require.NoError(t, err)
-			require.EqualValues(t, string(hclwrite.Format([]byte(doc))), string(hclwrite.Format(spec)))
+			require.EqualValues(t, tt.expected, after.Tables[0].Columns[0].Type.Type)
 		})
 	}
 }

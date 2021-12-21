@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"ariga.io/atlas/schema/schemaspec"
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/schema"
 
 	entsql "entgo.io/ent/dialect/sql"
@@ -113,13 +112,13 @@ func testHCLIntegration(t T, full string, empty string) {
 	require.Empty(t, t.realm().Schemas[0].Tables)
 }
 
-func testCLISchemaInspect(t T, h string, dsn string, unmarshalSpec func(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}) error) {
+func testCLISchemaInspect(t T, h string, dsn string, unmarshalSpec func([]byte, schemaspec.Unmarshaler, interface{}) error, unmarshaler schemaspec.Unmarshaler) {
 	// Required to have a clean "stderr" while running first time.
 	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
 	require.NoError(t, err)
 	t.dropTables("users")
 	var expected schema.Schema
-	err = unmarshalSpec([]byte(h), schemahcl.Unmarshal, &expected)
+	err = unmarshalSpec([]byte(h), unmarshaler, &expected)
 	require.NoError(t, err)
 	t.applyHcl(h)
 	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
@@ -133,7 +132,7 @@ func testCLISchemaInspect(t T, h string, dsn string, unmarshalSpec func(data []b
 	cmd.Stdout = stdout
 	require.NoError(t, cmd.Run(), stderr.String())
 	var actual schema.Schema
-	err = unmarshalSpec(stdout.Bytes(), schemahcl.Unmarshal, &actual)
+	err = unmarshalSpec(stdout.Bytes(), unmarshaler, &actual)
 	require.NoError(t, err)
 	require.Empty(t, stderr.String())
 	require.Equal(t, expected, actual)

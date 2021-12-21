@@ -360,7 +360,7 @@ schema "public" {
 table "users" {
 	schema = schema.public
 	column "id" {
-		type = "int"
+		type = int
 	}
 	primary_key {
 		columns = [table.users.column.id]
@@ -369,10 +369,10 @@ table "users" {
 table "posts" {
 	schema = schema.public
 	column "id" {
-		type = "int"
+		type = int
 	}
 	column "author_id" {
-		type = "int"
+		type = int
 	}
 	foreign_key "author" {
 		columns = [
@@ -641,7 +641,7 @@ create table atlas_types_sanity
 func (t *liteTest) applyHcl(spec string) {
 	realm := t.loadRealm()
 	var desired schema.Schema
-	err := sqlite.UnmarshalSpec([]byte(spec), schemahcl.Unmarshal, &desired)
+	err := sqlite.UnmarshalSpec([]byte(spec), schemahcl.New(schemahcl.WithTypes(sqlite.TypeRegistry.Specs())), &desired)
 	require.NoError(t, err)
 	existing := realm.Schemas[0]
 	diff, err := t.drv.SchemaDiff(existing, &desired)

@@ -27,9 +27,9 @@ type (
 	// Column holds a specification for a column in an SQL table.
 	Column struct {
 		Name    string                   `spec:",name"`
-		Null    bool                     `spec:"null" override:"null"`
-		Type    string                   `spec:"type" override:"type"`
-		Default *schemaspec.LiteralValue `spec:"default" override:"default"`
+		Null    bool                     `spec:"null"`
+		Type    *schemaspec.Type         `spec:"type"`
+		Default *schemaspec.LiteralValue `spec:"default"`
 		schemaspec.DefaultExtension
 	}
 

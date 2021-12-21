@@ -10,25 +10,24 @@ import (
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/internal/specutil"
-	"ariga.io/atlas/sql/schema"
 	"github.com/stretchr/testify/require"
 )
 
 // RegistrySanityTest runs a sanity for a TypeRegistry, generated a dummy *schemaspec.Type
 // then converting it to a schema.Type and back to a *schemaspec.Type.
-func RegistrySanityTest(t *testing.T, registry *specutil.TypeRegistry, parser func(string) (schema.Type, error), skip []string) {
+func RegistrySanityTest(t *testing.T, registry *specutil.TypeRegistry, skip []string) {
 	for _, ts := range registry.Specs() {
 		if contains(ts.Name, skip) {
 			continue
 		}
 		t.Run(ts.Name, func(t *testing.T) {
 			spec := dummyType(t, ts)
-			styp, err := registry.Type(spec, nil, parser)
+			styp, err := registry.Type(spec, nil)
 			require.NoError(t, err)
 			require.NoErrorf(t, err, "failed formatting: %styp", err)
 			convert, err := registry.Convert(styp)
 			require.NoError(t, err)
-			after, err := registry.Type(convert, nil, parser)
+			after, err := registry.Type(convert, nil)
 			require.NoError(t, err)
 			require.EqualValues(t, styp, after)
 		})
