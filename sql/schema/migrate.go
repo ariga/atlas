@@ -4,8 +4,6 @@
 
 package schema
 
-import "context"
-
 type (
 	// A Change represents a schema change. The types below implement this
 	// interface and can be used for describing schema changes.
@@ -207,35 +205,24 @@ func (k ChangeKind) Is(c ChangeKind) bool {
 	return k == c || k&c != 0
 }
 
-type (
-	// Differ is the interface implemented by the different
-	// drivers for comparing and diffing schema top elements.
-	Differ interface {
-		// RealmDiff returns a diff report for migrating a realm
-		// (or a database) from state "from" to state "to". An error
-		// is returned if such step is not possible.
-		RealmDiff(from, to *Realm) ([]Change, error)
+// Differ is the interface implemented by the different
+// drivers for comparing and diffing schema top elements.
+type Differ interface {
+	// RealmDiff returns a diff report for migrating a realm
+	// (or a database) from state "from" to state "to". An error
+	// is returned if such step is not possible.
+	RealmDiff(from, to *Realm) ([]Change, error)
 
-		// SchemaDiff returns a diff report for migrating a schema
-		// from state "from" to state "to". An error is returned
-		// if such step is not possible.
-		SchemaDiff(from, to *Schema) ([]Change, error)
+	// SchemaDiff returns a diff report for migrating a schema
+	// from state "from" to state "to". An error is returned
+	// if such step is not possible.
+	SchemaDiff(from, to *Schema) ([]Change, error)
 
-		// TableDiff returns a diff report for migrating a table
-		// from state "from" to state "to". An error is returned
-		// if such step is not possible.
-		TableDiff(from, to *Table) ([]Change, error)
-	}
-
-	// Execer is the interface implemented by the different
-	// drivers for executing schema changes.
-	Execer interface {
-		// Exec responsible for executing the given changeset.
-		// An error may return from Exec if the driver does not know
-		// how to exec a change.
-		Exec(ctx context.Context, changes []Change) error
-	}
-)
+	// TableDiff returns a diff report for migrating a table
+	// from state "from" to state "to". An error is returned
+	// if such step is not possible.
+	TableDiff(from, to *Table) ([]Change, error)
+}
 
 // changes.
 func (*AddAttr) change()          {}

@@ -54,7 +54,7 @@ type (
 		// command is reversible.
 		Reverse string
 
-		// The Source that caused this change.
+		// The Source that caused this change, or nil.
 		Source schema.Change
 	}
 )
@@ -75,7 +75,12 @@ type (
 	// PlanApplier wraps the methods for planning and applying changes
 	// on the database.
 	PlanApplier interface {
+		// PlanChanges returns a migration plan for applying the given changeset.
 		PlanChanges(context.Context, string, []schema.Change) (*Plan, error)
+
+		// ApplyChanges is responsible for applying the given changeset.
+		// An error may return from ApplyChanges if the driver is unable
+		// to execute a change.
 		ApplyChanges(context.Context, []schema.Change) error
 	}
 

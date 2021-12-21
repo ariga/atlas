@@ -2,7 +2,7 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package sqlite
+package postgres
 
 import (
 	"context"
@@ -21,6 +21,24 @@ func TestPlanChanges(t *testing.T) {
 	}{
 		{
 			changes: []schema.Change{
+				&schema.AddSchema{S: &schema.Schema{Name: "test"}},
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes:       []*migrate.Change{{Cmd: `CREATE SCHEMA "test"`, Reverse: `DROP SCHEMA "test"`}}},
+		},
+		{
+			changes: []schema.Change{
+				&schema.DropSchema{S: &schema.Schema{Name: "atlas"}},
+			},
+			plan: &migrate.Plan{
+				Transactional: true,
+				Changes:       []*migrate.Change{{Cmd: `DROP SCHEMA "atlas"`}},
+			},
+		},
+		{
+			changes: []schema.Change{
 				&schema.AddTable{
 					T: &schema.Table{
 						Name: "posts",
@@ -34,7 +52,7 @@ func TestPlanChanges(t *testing.T) {
 			plan: &migrate.Plan{
 				Reversible:    true,
 				Transactional: true,
-				Changes:       []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` integer NOT NULL, `text` text NULL)", Reverse: "DROP TABLE `posts`"}},
+				Changes:       []*migrate.Change{{Cmd: `CREATE TABLE "posts" ("id" integer NOT NULL, "text" text NULL)`, Reverse: `DROP TABLE "posts"`}},
 			},
 		},
 		{
@@ -42,11 +60,10 @@ func TestPlanChanges(t *testing.T) {
 				&schema.DropTable{T: &schema.Table{Name: "posts"}},
 			},
 			plan: &migrate.Plan{
+				Reversible:    false,
 				Transactional: true,
 				Changes: []*migrate.Change{
-					{Cmd: "PRAGMA foreign_keys = off"},
-					{Cmd: "DROP TABLE `posts`"},
-					{Cmd: "PRAGMA foreign_keys = on"},
+					{Cmd: `DROP TABLE "posts"`},
 				},
 			},
 		},
@@ -63,7 +80,7 @@ func TestPlanChanges(t *testing.T) {
 						T: users,
 						Changes: []schema.Change{
 							&schema.AddColumn{
-								C: &schema.Column{Name: "name", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
+								C: &schema.Column{Name: "name", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar", Size: 255}}},
 							},
 							&schema.AddIndex{
 								I: &schema.Index{
@@ -81,10 +98,11 @@ func TestPlanChanges(t *testing.T) {
 				}(),
 			},
 			plan: &migrate.Plan{
+				Reversible:    true,
 				Transactional: true,
 				Changes: []*migrate.Change{
-					{Cmd: "ALTER TABLE `users` ADD COLUMN `name` varchar(255) NOT NULL"},
-					{Cmd: "CREATE INDEX `id_key` ON `users` (`id`)", Reverse: "DROP INDEX `id_key`"},
+					{Cmd: `ALTER TABLE "users" ADD COLUMN "name" character varying(255) NOT NULL`, Reverse: `ALTER TABLE "users" DROP COLUMN "name"`},
+					{Cmd: `CREATE INDEX "id_key" ON "users" ("id")`, Reverse: `DROP INDEX "id_key"`},
 				},
 			},
 		},
@@ -108,23 +126,18 @@ func TestPlanChanges(t *testing.T) {
 				}(),
 			},
 			plan: &migrate.Plan{
+				Reversible:    false,
 				Transactional: true,
 				Changes: []*migrate.Change{
-					{Cmd: "PRAGMA foreign_keys = off"},
-					{Cmd: "CREATE TABLE `new_users` (`id` bigint NOT NULL)", Reverse: "DROP TABLE `new_users`"},
-					{Cmd: "INSERT INTO new_users (id) SELECT id FROM users"},
-					{Cmd: "DROP TABLE `users`"},
-					{Cmd: "ALTER TABLE `new_users` RENAME TO `users`"},
-					{Cmd: "PRAGMA foreign_keys = on"},
+					{Cmd: `ALTER TABLE "users" DROP COLUMN "name"`},
 				},
 			},
 		},
 	}
 	for _, tt := range tests {
-		db, mk, err := sqlmock.New()
+		db, m, err := sqlmock.New()
 		require.NoError(t, err)
-		m := mock{mk}
-		m.systemVars("3.36.0")
+		mock{m}.version("130000")
 		drv, err := Open(db)
 		require.NoError(t, err)
 		plan, err := drv.PlanChanges(context.Background(), "plan", tt.changes)

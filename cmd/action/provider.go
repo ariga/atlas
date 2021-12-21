@@ -23,7 +23,7 @@ func mysqlProvider(dsn string) (*Driver, error) {
 		return nil, err
 	}
 	return &Driver{
-		driver:        drv,
+		Driver:        drv,
 		interceptor:   i,
 		MarshalSpec:   mysql.MarshalSpec,
 		UnmarshalSpec: mysql.UnmarshalSpec,
@@ -42,7 +42,7 @@ func postgresProvider(dsn string) (*Driver, error) {
 		return nil, err
 	}
 	return &Driver{
-		driver:        drv,
+		Driver:        drv,
 		interceptor:   i,
 		MarshalSpec:   postgres.MarshalSpec,
 		UnmarshalSpec: postgres.UnmarshalSpec,

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"ariga.io/atlas/sql/internal/sqlx"
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 
 	"golang.org/x/mod/semver"
@@ -20,8 +21,8 @@ type (
 	Driver struct {
 		conn
 		schema.Differ
-		schema.Execer
 		schema.Inspector
+		migrate.PlanApplier
 	}
 
 	// database connection and its information.
@@ -41,10 +42,10 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 		return nil, fmt.Errorf("mysql: scanning system variables: %w", err)
 	}
 	return &Driver{
-		conn:      c,
-		Differ:    &sqlx.Diff{DiffDriver: &diff{c}},
-		Execer:    &planApply{c},
-		Inspector: &inspect{c},
+		conn:        c,
+		Differ:      &sqlx.Diff{DiffDriver: &diff{c}},
+		Inspector:   &inspect{c},
+		PlanApplier: &planApply{c},
 	}, nil
 }
 

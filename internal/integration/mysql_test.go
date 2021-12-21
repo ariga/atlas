@@ -918,7 +918,7 @@ func (t *myTest) applyHcl(spec string) {
 	existing := realm.Schemas[0]
 	diff, err := t.drv.SchemaDiff(existing, &desired)
 	require.NoError(t, err)
-	err = t.drv.Exec(context.Background(), diff)
+	err = t.drv.ApplyChanges(context.Background(), diff)
 	require.NoError(t, err)
 }
 
@@ -929,7 +929,7 @@ func (t *myTest) diff(t1, t2 *schema.Table) []schema.Change {
 }
 
 func (t *myTest) migrate(changes ...schema.Change) {
-	err := t.drv.Exec(context.Background(), changes)
+	err := t.drv.ApplyChanges(context.Background(), changes)
 	require.NoError(t, err)
 }
 

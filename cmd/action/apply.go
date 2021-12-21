@@ -84,7 +84,7 @@ func applyRun(d *Driver, u schemaUnmarshaler, dsn string, file string) {
 	_, result, err := prompt.Run()
 	cobra.CheckErr(err)
 	if result == answerApply {
-		err = d.Exec(ctx, changes)
+		err = d.ApplyChanges(ctx, changes)
 		cobra.CheckErr(err)
 	}
 }

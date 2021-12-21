@@ -59,11 +59,6 @@ func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change) e
 	return nil
 }
 
-// Exec calls ApplyChanges. Exists here for backwards compatibility.
-func (p *planApply) Exec(ctx context.Context, changes []schema.Change) error {
-	return p.ApplyChanges(ctx, changes)
-}
-
 // state represents the state of a planning. It is not part of
 // planApply so that multiple planning/applying can be called
 // in parallel.
@@ -117,7 +112,7 @@ func (s *state) topLevel(changes []schema.Change) []schema.Change {
 				Cmd:     b.String(),
 				Source:  c,
 				Reverse: Build("DROP DATABASE").Ident(c.S.Name).String(),
-				Comment: fmt.Sprintf("Add new schema named %q", c.S.Name),
+				Comment: fmt.Sprintf("add new schema named %q", c.S.Name),
 			})
 		case *schema.DropSchema:
 			b := Build("DROP DATABASE").Ident(c.S.Name)
@@ -127,7 +122,7 @@ func (s *state) topLevel(changes []schema.Change) []schema.Change {
 			s.append(&migrate.Change{
 				Cmd:     b.String(),
 				Source:  c,
-				Comment: fmt.Sprintf("Drop schema named %q", c.S.Name),
+				Comment: fmt.Sprintf("drop schema named %q", c.S.Name),
 			})
 		default:
 			planned = append(planned, c)
@@ -174,7 +169,7 @@ func (s *state) addTable(add *schema.AddTable) {
 		Cmd:     b.String(),
 		Source:  add,
 		Reverse: Build("DROP TABLE").Table(add.T).String(),
-		Comment: fmt.Sprintf("Create %q table", add.T.Name),
+		Comment: fmt.Sprintf("create %q table", add.T.Name),
 	})
 }
 
@@ -188,7 +183,7 @@ func (s *state) dropTable(drop *schema.DropTable) {
 	s.append(&migrate.Change{
 		Cmd:     b.String(),
 		Source:  drop,
-		Comment: fmt.Sprintf("Drop %q table", drop.T.Name),
+		Comment: fmt.Sprintf("drop %q table", drop.T.Name),
 	})
 }
 
@@ -247,9 +242,9 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 // changes in one SQL statement.
 func (s *state) alterTable(t *schema.Table, changes []schema.Change) {
 	var (
-		reversible = true
-		reverse    = Build("ALTER TABLE").Table(t)
 		b          = Build("ALTER TABLE").Table(t)
+		reversible = true
+		reverse    = b.Clone()
 	)
 	b.MapComma(changes, func(i int, b *sqlx.Builder) {
 		switch change := changes[i].(type) {
@@ -299,7 +294,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) {
 			T:       t,
 			Changes: changes,
 		},
-		Comment: fmt.Sprintf("Modify %q table", t.Name),
+		Comment: fmt.Sprintf("modify %q table", t.Name),
 	}
 	if reversible {
 		change.Reverse = reverse.String()

@@ -93,7 +93,7 @@ func mockDriver(t *testing.T) *Driver {
 	drv, err := mysql.Open(i)
 	require.NoError(t, err)
 	return &Driver{
-		driver:      drv,
+		Driver:      drv,
 		interceptor: i,
 		Types:       mysql.TypeRegistry.Specs(),
 	}

@@ -170,6 +170,28 @@ func testCLISchemaApply(t T, h string, dsn string) {
 	require.NotNil(t, u)
 }
 
+func TestCLIVersion(t *testing.T) {
+	// Required to have a clean "stderr" while running first time.
+	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	require.NoError(t, err)
+	cmd := exec.Command("go", "run",
+		"-ldflags",
+		"-X ariga.io/atlas/cmd/action/internal/build.Version=v0.1.2 -X ariga.io/atlas/cmd/action/internal/build.Date=2018-04-03",
+		"ariga.io/atlas/cmd/atlas",
+		"version",
+	)
+	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	expected := `atlas version 0.1.2 (2018-04-03)
+https://github.com/ariga/atlas/releases/tag/v0.1.2
+`
+	require.NoError(t, cmd.Run(), stderr.String())
+	require.NoError(t, err)
+	require.Empty(t, stderr.String())
+	require.Equal(t, expected, stdout.String())
+}
+
 func ensureNoChange(t T, tables ...*schema.Table) {
 	realm := t.loadRealm()
 	require.Equal(t, len(realm.Schemas[0].Tables), len(tables))
