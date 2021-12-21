@@ -254,7 +254,9 @@ func (s *state) writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 	case *schemaspec.Type:
 		spec, ok := s.findTypeSpec(v.T)
 		if !ok {
-			return fmt.Errorf("schemahcl: type spec for %q not found", v.T)
+			v := fmt.Sprintf("sql(%q)", v.T)
+			body.SetAttributeRaw(attr.K, hclRawTokens(v))
+			break
 		}
 		st, err := hclType(spec, v)
 		if err != nil {

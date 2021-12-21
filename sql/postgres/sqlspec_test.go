@@ -366,6 +366,10 @@ func TestTypes(t *testing.T) {
 			typeExpr: "money",
 			expected: &CurrencyType{T: tMoney},
 		},
+		{
+			typeExpr: `sql("int[]")`,
+			expected: &ArrayType{T: "int[]"},
+		},
 	} {
 		t.Run(tt.typeExpr, func(t *testing.T) {
 			var test schema.Schema

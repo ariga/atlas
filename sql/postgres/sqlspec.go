@@ -211,5 +211,6 @@ var TypeRegistry = specutil.NewRegistry(
 		specutil.TypeSpec(tUUID),
 		specutil.TypeSpec(tMoney),
 		specutil.TypeSpec("hstore"),
+		specutil.TypeSpec("sql", &schemaspec.TypeAttr{Name: "def", Required: true, Kind: reflect.String}),
 	),
 )

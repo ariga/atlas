@@ -176,7 +176,11 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 	}
 	typeSpec, ok := r.findType(rv)
 	if !ok {
-		return nil, fmt.Errorf("specutil: cannot find type spec for %s", rv.Type())
+		t, err := r.formatter(typ)
+		if err != nil {
+			return nil, fmt.Errorf("specutil: cannot format type %T: %w", typ, err)
+		}
+		return &schemaspec.Type{T: t}, nil
 	}
 	s := &schemaspec.Type{T: typeSpec.T}
 	// Iterate the attributes in reverse order, so we can skip zero value and optional attrs.
@@ -255,7 +259,7 @@ func (r *TypeRegistry) Specs() []*schemaspec.TypeSpec {
 func (r *TypeRegistry) Type(typ *schemaspec.Type, extra []*schemaspec.Attr) (schema.Type, error) {
 	typeSpec, ok := r.findT(typ.T)
 	if !ok {
-		return nil, fmt.Errorf("specutil: typespec not found for %s", typ.T)
+		return r.parser(typ.T)
 	}
 	nfa := typeNonFuncArgs(typeSpec)
 	picked := pickTypeAttrs(extra, nfa)
