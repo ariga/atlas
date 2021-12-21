@@ -1,11 +1,8 @@
 package sqlite
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
-	"strconv"
-	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/internal/specutil"
@@ -79,108 +76,7 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 
 // convertColumnType converts a sqlspec.Column into a concrete SQLite schema.Type.
 func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
-	switch sqlspec.Type(spec.Type) {
-	case sqlspec.TypeInt, sqlspec.TypeInt8, sqlspec.TypeInt16,
-		sqlspec.TypeInt64, sqlspec.TypeUint, sqlspec.TypeUint8,
-		sqlspec.TypeUint16, sqlspec.TypeUint64:
-		return convertInteger(spec)
-	case sqlspec.TypeString:
-		return convertString(spec)
-	case sqlspec.TypeBinary:
-		return convertBinary(spec)
-	case sqlspec.TypeEnum:
-		return convertEnum(spec)
-	case sqlspec.TypeBoolean:
-		return convertBoolean(spec)
-	case sqlspec.TypeDecimal:
-		return convertDecimal(spec)
-	case sqlspec.TypeFloat:
-		return convertFloat(spec)
-	case sqlspec.TypeTime:
-		return convertTime(spec)
-	default:
-		return parseRawType(spec.Type)
-	}
-}
-
-func convertInteger(spec *sqlspec.Column) (schema.Type, error) {
-	if strings.HasPrefix(spec.Type, "u") {
-		// todo(rotemtam): support his once we can express CHECK(col >= 0)
-		return nil, fmt.Errorf("sqlite: unsigned integers currently not supported")
-	}
-	typ := &schema.IntegerType{
-		T: tInteger,
-	}
-	return typ, nil
-}
-
-func convertBinary(spec *sqlspec.Column) (schema.Type, error) {
-	bt := &schema.BinaryType{
-		T: tBlob,
-	}
-	return bt, nil
-}
-
-func convertString(spec *sqlspec.Column) (schema.Type, error) {
-	st := &schema.StringType{
-		T: tText,
-	}
-	if attr, ok := spec.Attr("size"); ok {
-		s, err := attr.Int()
-		if err != nil {
-			return nil, err
-		}
-		st.Size = s
-	}
-	return st, nil
-}
-
-func convertEnum(spec *sqlspec.Column) (schema.Type, error) {
-	// sqlite does not have a enum column type
-	return &schema.StringType{T: "text"}, nil
-}
-
-func convertBoolean(spec *sqlspec.Column) (schema.Type, error) {
-	return &schema.BoolType{T: "boolean"}, nil
-}
-
-func convertTime(spec *sqlspec.Column) (schema.Type, error) {
-	return &schema.TimeType{T: "datetime"}, nil
-}
-
-func convertDecimal(spec *sqlspec.Column) (schema.Type, error) {
-	dt := &schema.DecimalType{
-		T: "decimal",
-	}
-	if precision, ok := spec.Attr("precision"); ok {
-		p, err := precision.Int()
-		if err != nil {
-			return nil, err
-		}
-		dt.Precision = p
-	}
-	if scale, ok := spec.Attr("scale"); ok {
-		s, err := scale.Int()
-		if err != nil {
-			return nil, err
-		}
-		dt.Scale = s
-	}
-	return dt, nil
-}
-
-func convertFloat(spec *sqlspec.Column) (schema.Type, error) {
-	ft := &schema.FloatType{
-		T: tReal,
-	}
-	if precision, ok := spec.Attr("precision"); ok {
-		p, err := precision.Int()
-		if err != nil {
-			return nil, err
-		}
-		ft.Precision = p
-	}
-	return ft, nil
+	return TypeRegistry.Type(spec.Type, spec.Extra.Attrs)
 }
 
 // schemaSpec converts from a concrete SQLite schema to Atlas specification.
@@ -209,103 +105,48 @@ func columnSpec(col *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 	}, nil
 }
 
+// columnTypeSpec converts from a concrete MySQL schema.Type into sqlspec.Column Type.
 func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
-	switch t := t.(type) {
-	case *schema.EnumType:
-		return enumSpec(t)
-	case *schema.IntegerType:
-		return integerSpec(t)
-	case *schema.StringType:
-		return stringSpec(t)
-	case *schema.DecimalType:
-		precision := specutil.LitAttr("precision", strconv.Itoa(t.Precision))
-		scale := specutil.LitAttr("scale", strconv.Itoa(t.Scale))
-		return specutil.NewCol("", "decimal", precision, scale), nil
-	case *schema.BinaryType:
-		return binarySpec(t)
-	case *schema.BoolType:
-		return &sqlspec.Column{Type: "boolean"}, nil
-	case *schema.FloatType:
-		precision := specutil.LitAttr("precision", strconv.Itoa(t.Precision))
-		return specutil.NewCol("", "float", precision), nil
-	case *schema.TimeType:
-		return &sqlspec.Column{Type: t.T}, nil
-	case *schema.JSONType:
-		return &sqlspec.Column{Type: t.T}, nil
-	case *schema.SpatialType:
-		return &sqlspec.Column{Type: t.T}, nil
-	case *schema.UnsupportedType:
-		return &sqlspec.Column{Type: t.T}, nil
-	default:
-		return nil, fmt.Errorf("sqlite: failed to convert column type %T to spec", t)
+	st, err := TypeRegistry.Convert(t)
+	if err != nil {
+		return nil, err
 	}
-}
-
-func binarySpec(t *schema.BinaryType) (*sqlspec.Column, error) {
-	if t.T != tBlob {
-		return nil, fmt.Errorf("sqlite/spec/binary: failed to convert type %q", t.T)
-	}
-	return &sqlspec.Column{Type: "binary"}, nil
-}
-
-func stringSpec(t *schema.StringType) (*sqlspec.Column, error) {
-	if t.T != tText {
-		return nil, fmt.Errorf("sqlite/spec/string: failed to convert type %q", t.T)
-	}
-	s := strconv.Itoa(t.Size)
-	return specutil.NewCol("", "string", specutil.LitAttr("size", s)), nil
-}
-
-func integerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
-	if t.Unsigned {
-		return nil, errors.New("sqlite/spec/integer: unsigned integers currently not supported")
-	}
-	if t.T != tInteger {
-		return nil, fmt.Errorf("sqlite/spec/integer: failed to convert type %q", t.T)
-	}
-	return &sqlspec.Column{Type: "int"}, nil
-}
-
-func enumSpec(t *schema.EnumType) (*sqlspec.Column, error) {
-	if len(t.Values) == 0 {
-		return nil, errors.New("sqlite/spec/enum: schema enum fields to have values")
-	}
-	quoted := make([]string, 0, len(t.Values))
-	for _, v := range t.Values {
-		quoted = append(quoted, strconv.Quote(v))
-	}
-	return specutil.NewCol("", "enum", specutil.ListAttr("values", quoted...)), nil
+	return &sqlspec.Column{Type: st}, nil
 }
 
 // TypeRegistry contains the supported TypeSpecs for the sqlite driver.
 var TypeRegistry = specutil.NewRegistry(
-	specutil.TypeSpec(tReal, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
-	specutil.TypeSpec(tBlob, specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec(tText, specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("integer", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("int", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("tinyint", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("smallint", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("mediumint", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("bigint", specutil.SizeTypeAttr(false)),
-	specutil.AliasTypeSpec("unsigned_big_int", "unsigned big int", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("int2", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("int8", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("double", specutil.SizeTypeAttr(false)),
-	specutil.AliasTypeSpec("double_precision", "double precision", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("float", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("character", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("varchar", specutil.SizeTypeAttr(false)),
-	specutil.AliasTypeSpec("varying_character", "varying character", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("nchar", specutil.SizeTypeAttr(false)),
-	specutil.AliasTypeSpec("native_character", "native character", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("nvarchar", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("clob", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("numeric", specutil.SizeTypeAttr(false)),
-	specutil.TypeSpec("decimal", &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
-	specutil.TypeSpec("boolean"),
-	specutil.TypeSpec("date"),
-	specutil.TypeSpec("datetime"),
-	specutil.TypeSpec("json"),
-	specutil.TypeSpec("uuid"),
+	specutil.WithFormatter(FormatType),
+	specutil.WithParser(parseRawType),
+	specutil.WithSpecs(
+		specutil.TypeSpec(tReal, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
+		specutil.TypeSpec(tBlob, specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec(tText, specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec(tInteger, specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("int", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("tinyint", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("smallint", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("mediumint", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("bigint", specutil.SizeTypeAttr(false)),
+		specutil.AliasTypeSpec("unsigned_big_int", "unsigned big int", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("int2", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("int8", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("double", specutil.SizeTypeAttr(false)),
+		specutil.AliasTypeSpec("double_precision", "double precision", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("float", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("character", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("varchar", specutil.SizeTypeAttr(false)),
+		specutil.AliasTypeSpec("varying_character", "varying character", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("nchar", specutil.SizeTypeAttr(false)),
+		specutil.AliasTypeSpec("native_character", "native character", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("nvarchar", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("clob", specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec("numeric", &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
+		specutil.TypeSpec("decimal", &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
+		specutil.TypeSpec("boolean"),
+		specutil.TypeSpec("date"),
+		specutil.TypeSpec("datetime"),
+		specutil.TypeSpec("json"),
+		specutil.TypeSpec("uuid"),
+	),
 )

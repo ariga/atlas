@@ -51,7 +51,8 @@ func (s *state) MarshalSpec(v interface{}) ([]byte, error) {
 
 // UnmarshalSpec implements schemaspec.Unmarshaler.
 func (s *state) UnmarshalSpec(data []byte, v interface{}) error {
-	spec, err := decode(s.config.ctx, data)
+	ctx := s.config.newCtx()
+	spec, err := decode(ctx, data)
 	if err != nil {
 		return fmt.Errorf("schemahcl: failed decoding: %w", err)
 	}
@@ -253,13 +254,15 @@ func (s *state) writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 	case *schemaspec.Type:
 		spec, ok := s.findTypeSpec(v.T)
 		if !ok {
-			return fmt.Errorf("schemahcl: type spec for %q not found", v.T)
+			v := fmt.Sprintf("sql(%q)", v.T)
+			body.SetAttributeRaw(attr.K, hclRawTokens(v))
+			break
 		}
-		s, err := hclType(spec, v)
+		st, err := hclType(spec, v)
 		if err != nil {
 			return err
 		}
-		body.SetAttributeRaw(attr.K, hclRawTokens(s))
+		body.SetAttributeRaw(attr.K, hclRawTokens(st))
 	case *schemaspec.LiteralValue:
 		body.SetAttributeRaw(attr.K, hclRawTokens(v.V))
 	case *schemaspec.ListValue:

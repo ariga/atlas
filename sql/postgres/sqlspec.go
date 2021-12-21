@@ -1,10 +1,8 @@
 package postgres
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
 	"unicode"
 
@@ -83,118 +81,7 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 
 // convertColumnType converts a sqlspec.Column into a concrete Postgres schema.Type.
 func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
-	switch sqlspec.Type(spec.Type) {
-	case sqlspec.TypeInt, sqlspec.TypeInt8, sqlspec.TypeInt16,
-		sqlspec.TypeInt64, sqlspec.TypeUint, sqlspec.TypeUint8,
-		sqlspec.TypeUint16, sqlspec.TypeUint64:
-		return convertInteger(spec)
-	case sqlspec.TypeString:
-		return convertString(spec)
-	case sqlspec.TypeEnum:
-		return convertEnum(spec)
-	case sqlspec.TypeDecimal:
-		return convertDecimal(spec)
-	case sqlspec.TypeFloat:
-		return convertFloat(spec)
-	case sqlspec.TypeTime:
-		return &schema.TimeType{T: tTimestamp}, nil
-	case sqlspec.TypeBinary:
-		return &schema.BinaryType{T: tBytea}, nil
-	case sqlspec.TypeBoolean:
-		return &schema.BoolType{T: tBoolean}, nil
-	default:
-		return parseRawType(spec.Type)
-	}
-}
-
-func convertInteger(spec *sqlspec.Column) (schema.Type, error) {
-	if strings.HasPrefix(spec.Type, "u") {
-		return nil, fmt.Errorf("unsigned integers currently not supported")
-	}
-	typ := &schema.IntegerType{}
-	switch sqlspec.Type(spec.Type) {
-	case sqlspec.TypeInt8:
-		return nil, fmt.Errorf("8-bit integers not supported")
-	case sqlspec.TypeInt16:
-		typ.T = tSmallInt
-	case sqlspec.TypeInt:
-		typ.T = tInteger
-	case sqlspec.TypeInt64:
-		typ.T = tBigInt
-	default:
-		return nil, fmt.Errorf("unknown integer column type %q", spec.Type)
-	}
-	return typ, nil
-}
-
-func convertString(spec *sqlspec.Column) (schema.Type, error) {
-	st := &schema.StringType{
-		Size: 255,
-	}
-	if attr, ok := spec.Attr("size"); ok {
-		s, err := attr.Int()
-		if err != nil {
-			return nil, err
-		}
-		st.Size = s
-	}
-	switch {
-	case st.Size < maxCharSize:
-		st.T = tVarChar
-	default:
-		st.T = tText
-	}
-	return st, nil
-}
-
-func convertEnum(spec *sqlspec.Column) (schema.Type, error) {
-	attr, ok := spec.Attr("values")
-	if !ok {
-		return nil, errors.New("expected enum fields to have values")
-	}
-	list, err := attr.Strings()
-	if err != nil {
-		return nil, err
-	}
-	return &schema.EnumType{Values: list}, nil
-}
-
-func convertDecimal(spec *sqlspec.Column) (schema.Type, error) {
-	dt := &schema.DecimalType{
-		T: tDecimal,
-	}
-	if precision, ok := spec.Attr("precision"); ok {
-		p, err := precision.Int()
-		if err != nil {
-			return nil, err
-		}
-		dt.Precision = p
-	}
-	if scale, ok := spec.Attr("scale"); ok {
-		s, err := scale.Int()
-		if err != nil {
-			return nil, err
-		}
-		dt.Scale = s
-	}
-	return dt, nil
-}
-
-func convertFloat(spec *sqlspec.Column) (schema.Type, error) {
-	ft := &schema.FloatType{
-		T: tReal,
-	}
-	if precision, ok := spec.Attr("precision"); ok {
-		p, err := precision.Int()
-		if err != nil {
-			return nil, err
-		}
-		ft.Precision = p
-	}
-	if ft.Precision > 23 {
-		ft.T = tDouble
-	}
-	return ft, nil
+	return TypeRegistry.Type(spec.Type, spec.Extra.Attrs)
 }
 
 func parseRawType(typ string) (schema.Type, error) {
@@ -245,111 +132,11 @@ func columnSpec(col *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 
 // columnTypeSpec converts from a concrete Postgres schema.Type into sqlspec.Column Type.
 func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
-	switch t := t.(type) {
-	case *schema.EnumType:
-		return enumSpec(t)
-	case *schema.IntegerType:
-		return integerSpec(t)
-	case *schema.StringType:
-		return stringSpec(t)
-	case *schema.DecimalType:
-		precision := specutil.LitAttr("precision", strconv.Itoa(t.Precision))
-		scale := specutil.LitAttr("scale", strconv.Itoa(t.Scale))
-		return specutil.NewCol("", "decimal", precision, scale), nil
-	case *schema.BinaryType:
-		return &sqlspec.Column{Type: t.T}, nil
-	case *schema.BoolType:
-		return &sqlspec.Column{Type: "boolean"}, nil
-	case *schema.FloatType:
-		precision := specutil.LitAttr("precision", strconv.Itoa(t.Precision))
-		return specutil.NewCol("", "float", precision), nil
-	case *schema.TimeType:
-		return &sqlspec.Column{Type: t.T}, nil
-	case *schema.JSONType:
-		return &sqlspec.Column{Type: t.T}, nil
-	case *schema.SpatialType:
-		return &sqlspec.Column{Type: t.T}, nil
-	case *schema.UnsupportedType:
-		return &sqlspec.Column{Type: t.T}, nil
-	case *ArrayType:
-		return &sqlspec.Column{Type: t.T}, nil
-	case *BitType:
-		return bitSpec(t)
-	case *CurrencyType:
-		return &sqlspec.Column{Type: t.T}, nil
-	case *NetworkType:
-		return &sqlspec.Column{Type: t.T}, nil
-	case *SerialType:
-		return &sqlspec.Column{Type: t.T}, nil
-	case *UUIDType:
-		return &sqlspec.Column{Type: t.T}, nil
-	case *UserDefinedType:
-		return &sqlspec.Column{Type: t.T}, nil
-	case *XMLType:
-		return &sqlspec.Column{Type: t.T}, nil
-	default:
-		return nil, fmt.Errorf("failed to convert column type %T to spec", t)
+	st, err := TypeRegistry.Convert(t)
+	if err != nil {
+		return nil, err
 	}
-}
-
-func stringSpec(t *schema.StringType) (*sqlspec.Column, error) {
-	switch t.T {
-	case tVarChar, tText, tChar, tCharacter, tCharVar:
-		s := strconv.Itoa(t.Size)
-		return specutil.NewCol("", "string", specutil.LitAttr("size", s)), nil
-	default:
-		return nil, fmt.Errorf("schema string failed to convert type %T", t)
-	}
-}
-
-func integerSpec(t *schema.IntegerType) (*sqlspec.Column, error) {
-	switch t.T {
-	case tInt, tInteger:
-		if t.Unsigned {
-			return specutil.NewCol("", "uint"), nil
-		}
-		return &sqlspec.Column{Type: "int"}, nil
-	case tBigInt:
-		if t.Unsigned {
-			return specutil.NewCol("", "uint64"), nil
-		}
-		return &sqlspec.Column{Type: "int64"}, nil
-	default:
-		return &sqlspec.Column{Type: t.T}, nil
-	}
-}
-
-func enumSpec(t *schema.EnumType) (*sqlspec.Column, error) {
-	if len(t.Values) == 0 {
-		return nil, errors.New("schema enum fields to have values")
-	}
-	quoted := make([]string, 0, len(t.Values))
-	for _, v := range t.Values {
-		quoted = append(quoted, strconv.Quote(v))
-	}
-	return specutil.NewCol("", "enum", specutil.ListAttr("values", quoted...)), nil
-}
-
-func bitSpec(t *BitType) (*sqlspec.Column, error) {
-	var c *sqlspec.Column
-	switch t.T {
-	case tBit:
-		if t.Len == 1 {
-			c = &sqlspec.Column{Type: tBit}
-		} else {
-			c = specutil.NewCol("", fmt.Sprintf("%s(%d)", tBit, t.Len))
-		}
-		return c, nil
-	case tBitVar:
-		if t.Len == 0 {
-			c = &sqlspec.Column{Type: tBitVar}
-		} else {
-			c = specutil.NewCol("", fmt.Sprintf("%s(%d)", tBitVar, t.Len))
-		}
-		return c, nil
-	default:
-		return nil, errors.New("schema bit failed to convert")
-	}
+	return &sqlspec.Column{Type: st}, nil
 }
 
 // arrayType reports if the given string is an array type (e.g. int[], text[2]),
@@ -367,57 +154,63 @@ func arrayType(t string) (string, bool) {
 	return t[:strings.IndexByte(t, '[')], true
 }
 
-// TypeRegistry contains the supported TypeSpecs for the postgres driver.
+// TypeRegistry contains the supported TypeSpecs for the Postgres driver.
 var TypeRegistry = specutil.NewRegistry(
-	specutil.TypeSpec(tBit, &schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64}),
-	specutil.AliasTypeSpec("bit_varying", tBitVar, &schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64}),
-	specutil.TypeSpec(tVarChar, specutil.SizeTypeAttr(true)),
-	specutil.TypeSpec(tChar, specutil.SizeTypeAttr(true)),
-	specutil.TypeSpec(tCharacter, specutil.SizeTypeAttr(true)),
-	specutil.TypeSpec(tInt2),
-	specutil.TypeSpec(tInt4),
-	specutil.TypeSpec(tInt8),
-	specutil.TypeSpec(tInt),
-	specutil.TypeSpec(tInteger),
-	specutil.TypeSpec(tSmallInt),
-	specutil.TypeSpec(tBigInt),
-	specutil.TypeSpec(tText),
-	specutil.TypeSpec(tBoolean),
-	specutil.TypeSpec(tBool),
-	specutil.TypeSpec(tBytea),
-	specutil.TypeSpec(tCIDR),
-	specutil.TypeSpec(tInet),
-	specutil.TypeSpec(tMACAddr),
-	specutil.TypeSpec(tMACAddr8),
-	specutil.TypeSpec(tCircle),
-	specutil.TypeSpec(tLine),
-	specutil.TypeSpec(tLseg),
-	specutil.TypeSpec(tBox),
-	specutil.TypeSpec(tPath),
-	specutil.TypeSpec(tPoint),
-	specutil.TypeSpec(tDate),
-	specutil.TypeSpec(tTime),
-	specutil.AliasTypeSpec("time_with_time_zone", tTimeWTZ),
-	specutil.AliasTypeSpec("time_without_time_zone", tTimeWOTZ),
-	specutil.TypeSpec(tTimestamp),
-	specutil.AliasTypeSpec("timestamp_with_time_zone", tTimestampWTZ),
-	specutil.AliasTypeSpec("timestamp_without_time_zone", tTimestampWOTZ),
-	specutil.TypeSpec("enum", &schemaspec.TypeAttr{Name: "values", Kind: reflect.Slice, Required: true}),
-	specutil.AliasTypeSpec("double_precision", tDouble),
-	specutil.TypeSpec(tReal),
-	specutil.TypeSpec(tFloat8),
-	specutil.TypeSpec(tFloat4),
-	specutil.TypeSpec(tNumeric),
-	specutil.TypeSpec(tDecimal),
-	specutil.TypeSpec(tSmallSerial),
-	specutil.TypeSpec(tSerial),
-	specutil.TypeSpec(tBigSerial),
-	specutil.TypeSpec(tSerial2),
-	specutil.TypeSpec(tSerial4),
-	specutil.TypeSpec(tSerial8),
-	specutil.TypeSpec(tXML),
-	specutil.TypeSpec(tJSON),
-	specutil.TypeSpec(tJSONB),
-	specutil.TypeSpec(tUUID),
-	specutil.TypeSpec(tMoney),
+	specutil.WithFormatter(FormatType),
+	specutil.WithParser(parseRawType),
+	specutil.WithSpecs(
+		specutil.TypeSpec(tBit, &schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64}),
+		specutil.AliasTypeSpec("bit_varying", tBitVar, &schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64}),
+		specutil.TypeSpec(tVarChar, specutil.SizeTypeAttr(true)),
+		specutil.TypeSpec(tChar, specutil.SizeTypeAttr(true)),
+		specutil.TypeSpec(tCharacter, specutil.SizeTypeAttr(true)),
+		specutil.TypeSpec(tInt2),
+		specutil.TypeSpec(tInt4),
+		specutil.TypeSpec(tInt8),
+		specutil.TypeSpec(tInt),
+		specutil.TypeSpec(tInteger),
+		specutil.TypeSpec(tSmallInt),
+		specutil.TypeSpec(tBigInt),
+		specutil.TypeSpec(tText),
+		specutil.TypeSpec(tBoolean),
+		specutil.TypeSpec(tBool),
+		specutil.TypeSpec(tBytea),
+		specutil.TypeSpec(tCIDR),
+		specutil.TypeSpec(tInet),
+		specutil.TypeSpec(tMACAddr),
+		specutil.TypeSpec(tMACAddr8),
+		specutil.TypeSpec(tCircle),
+		specutil.TypeSpec(tLine),
+		specutil.TypeSpec(tLseg),
+		specutil.TypeSpec(tBox),
+		specutil.TypeSpec(tPath),
+		specutil.TypeSpec(tPoint),
+		specutil.TypeSpec(tDate),
+		specutil.TypeSpec(tTime),
+		specutil.AliasTypeSpec("time_with_time_zone", tTimeWTZ),
+		specutil.AliasTypeSpec("time_without_time_zone", tTimeWOTZ),
+		specutil.TypeSpec(tTimestamp),
+		specutil.AliasTypeSpec("timestamp_with_time_zone", tTimestampWTZ),
+		specutil.AliasTypeSpec("timestamp_without_time_zone", tTimestampWOTZ),
+		specutil.TypeSpec("enum", &schemaspec.TypeAttr{Name: "values", Kind: reflect.Slice, Required: true}),
+		specutil.AliasTypeSpec("double_precision", tDouble),
+		specutil.TypeSpec(tReal),
+		specutil.TypeSpec(tFloat8),
+		specutil.TypeSpec(tFloat4),
+		specutil.TypeSpec(tNumeric),
+		specutil.TypeSpec(tDecimal),
+		specutil.TypeSpec(tSmallSerial),
+		specutil.TypeSpec(tSerial),
+		specutil.TypeSpec(tBigSerial),
+		specutil.TypeSpec(tSerial2),
+		specutil.TypeSpec(tSerial4),
+		specutil.TypeSpec(tSerial8),
+		specutil.TypeSpec(tXML),
+		specutil.TypeSpec(tJSON),
+		specutil.TypeSpec(tJSONB),
+		specutil.TypeSpec(tUUID),
+		specutil.TypeSpec(tMoney),
+		specutil.TypeSpec("hstore"),
+		specutil.TypeSpec("sql", &schemaspec.TypeAttr{Name: "def", Required: true, Kind: reflect.String}),
+	),
 )

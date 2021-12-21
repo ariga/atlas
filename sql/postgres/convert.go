@@ -146,10 +146,6 @@ func mustFormat(t schema.Type) string {
 	return s
 }
 
-// maxCharSize defines the maximum size of limited character types in Postgres (10 MB).
-// https://github.com/postgres/postgres/blob/REL_13_STABLE/src/include/access/htup_details.h#L585
-const maxCharSize = 10 << 20
-
 // columnDesc represents a column descriptor.
 type columnDesc struct {
 	typ       string

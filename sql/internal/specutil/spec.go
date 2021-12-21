@@ -8,7 +8,7 @@ import (
 )
 
 // NewCol is a helper method for constructing *sqlspec.Column instances.
-func NewCol(name, coltype string, attrs ...*schemaspec.Attr) *sqlspec.Column {
+func NewCol(name string, coltype *schemaspec.Type, attrs ...*schemaspec.Attr) *sqlspec.Column {
 	return &sqlspec.Column{
 		Name: name,
 		Type: coltype,

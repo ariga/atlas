@@ -463,7 +463,7 @@ schema "test" {
 table "users" {
 	schema = schema.test
 	column "id" {
-		type = "int"
+		type = int
 	}
 	primary_key {
 		columns = [table.users.column.id]
@@ -472,10 +472,10 @@ table "users" {
 table "posts" {
 	schema = schema.test
 	column "id" {
-		type = "int"
+		type = int
 	}
 	column "author_id" {
-		type = "int"
+		type = int
 	}
 	foreign_key "author" {
 		columns = [
@@ -508,7 +508,7 @@ func TestMySQL_CLI(t *testing.T) {
 			table "users" {
 				schema = schema.test
 				column "id" {
-					type = "int"
+					type = int
 				}
 				primary_key {
 					columns = [table.users.column.id]
@@ -518,7 +518,7 @@ func TestMySQL_CLI(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
-			testCLISchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn(), mysql.UnmarshalSpec)
+			testCLISchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn(), mysql.UnmarshalSpec, schemahcl.New(schemahcl.WithTypes(mysql.TypeRegistry.Specs())))
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
@@ -913,7 +913,7 @@ func (t *myTest) dsn() string {
 func (t *myTest) applyHcl(spec string) {
 	realm := t.loadRealm()
 	var desired schema.Schema
-	err := mysql.UnmarshalSpec([]byte(spec), schemahcl.Unmarshal, &desired)
+	err := mysql.UnmarshalSpec([]byte(spec), schemahcl.New(schemahcl.WithTypes(mysql.TypeRegistry.Specs())), &desired)
 	require.NoError(t, err)
 	existing := realm.Schemas[0]
 	diff, err := t.drv.SchemaDiff(existing, &desired)

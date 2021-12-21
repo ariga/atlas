@@ -48,7 +48,7 @@ func init() {
 func CmdApplyRun(cmd *cobra.Command, args []string) {
 	d, err := defaultMux.OpenAtlas(ApplyFlags.DSN)
 	cobra.CheckErr(err)
-	u := schemaUnmarshal{unmarshalSpec: d.UnmarshalSpec, unmarshaler: schemahcl.Unmarshal}
+	u := schemaUnmarshal{unmarshalSpec: d.UnmarshalSpec, unmarshaler: schemahcl.New(schemahcl.WithTypes(d.Types))}
 	applyRun(d, &u, ApplyFlags.DSN, ApplyFlags.File)
 }
 

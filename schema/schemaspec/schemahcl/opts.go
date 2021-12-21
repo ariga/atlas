@@ -13,8 +13,8 @@ import (
 type (
 	// Config configures an unmarshaling.
 	Config struct {
-		ctx   *hcl.EvalContext
-		types []*schemaspec.TypeSpec
+		types  []*schemaspec.TypeSpec
+		newCtx func() *hcl.EvalContext
 	}
 
 	// Option configures a Config.
@@ -24,9 +24,11 @@ type (
 // New returns a state configured with options.
 func New(opts ...Option) *state {
 	cfg := &Config{
-		ctx: &hcl.EvalContext{
-			Variables: make(map[string]cty.Value),
-			Functions: make(map[string]function.Function),
+		newCtx: func() *hcl.EvalContext {
+			return &hcl.EvalContext{
+				Variables: make(map[string]cty.Value),
+				Functions: make(map[string]function.Function),
+			}
 		},
 	}
 	for _, opt := range opts {
@@ -35,30 +37,45 @@ func New(opts ...Option) *state {
 	return &state{config: cfg}
 }
 
-// EvalContext configures an unmarshaler to decode with an *hcl.EvalContext.
-func EvalContext(ctx *hcl.EvalContext) Option {
-	return func(config *Config) {
-		config.ctx = ctx
-	}
-}
-
 // WithTypes configures the list of given types as identifiers in the unmarshaling context.
 func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
-	return func(config *Config) {
+	newCtx := func() *hcl.EvalContext {
+		ctx := &hcl.EvalContext{
+			Variables: make(map[string]cty.Value),
+			Functions: make(map[string]function.Function),
+		}
 		for _, ts := range typeSpecs {
 			typeSpec := ts
-			config.types = append(config.types, typeSpec)
 			// If no required args exist, register the type as a variable in the HCL context.
 			if len(typeFuncReqArgs(typeSpec)) == 0 {
 				typ := &schemaspec.Type{T: typeSpec.T}
-				config.ctx.Variables[typeSpec.Name] = cty.CapsuleVal(ctyTypeSpec, typ)
+				ctx.Variables[typeSpec.Name] = cty.CapsuleVal(ctyTypeSpec, typ)
 			}
 			// If func args exist, register the type as a function in HCL.
 			if len(typeFuncArgs(typeSpec)) > 0 {
-				config.ctx.Functions[typeSpec.Name] = typeFuncSpec(typeSpec)
+				ctx.Functions[typeSpec.Name] = typeFuncSpec(typeSpec)
 			}
 		}
+		ctx.Functions["sql"] = rawTypeImpl()
+		return ctx
 	}
+	return func(config *Config) {
+		config.newCtx = newCtx
+		config.types = append(config.types, typeSpecs...)
+	}
+}
+
+func rawTypeImpl() function.Function {
+	return function.New(&function.Spec{
+		Params: []function.Parameter{
+			{Name: "def", Type: cty.String, AllowNull: false},
+		},
+		Type: function.StaticReturnType(ctyTypeSpec),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			t := &schemaspec.Type{T: args[0].AsString()}
+			return cty.CapsuleVal(ctyTypeSpec, t), nil
+		},
+	})
 }
 
 // typeFuncSpec returns the HCL function for defining the type in the spec.

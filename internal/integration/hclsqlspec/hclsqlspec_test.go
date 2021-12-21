@@ -1,10 +1,10 @@
 package hclsqlspec
 
 import (
+	"strconv"
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec"
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
 	"github.com/stretchr/testify/require"
@@ -20,22 +20,22 @@ table "users" {
 	schema = schema.hi
 	
 	column "id" {
-		type = "uint"
+		type = int
 		null = false
 		default = 123
 	}
 	column "age" {
-		type = "int"
+		type = int
 		null = false
 		default = 10
 	}
 	column "active" {
-		type = "bool"
+		type = boolean
 		default = true
 	}
 
 	column "account_active" {
-		type = "bool"
+		type = boolean
 		default = true
 	}
 
@@ -63,22 +63,22 @@ table "accounts" {
 	schema = schema.hi
 	
 	column "id" {
-		type = "uint"
+		type = int
 		null = false
 		default = 123
 	}
 	column "age" {
-		type = "int"
+		type = int
 		null = false
 		default = 10
 	}
 	column "active" {
-		type = "bool"
+		type = boolean
 		default = true
 	}
 
 	column "user_active" {
-		type = "bool"
+		type = boolean
 		default = true
 	}
 
@@ -104,7 +104,7 @@ table "accounts" {
 
 `)
 	require.NoError(t, err)
-	require.EqualValues(t, &db{
+	expected := &db{
 		Schemas: []*sqlspec.Schema{
 			{Name: "hi"},
 		},
@@ -115,25 +115,25 @@ table "accounts" {
 				Columns: []*sqlspec.Column{
 					{
 						Name:    "id",
-						Type:    "uint",
+						Type:    &schemaspec.Type{T: "int"},
 						Null:    false,
 						Default: &schemaspec.LiteralValue{V: "123"},
 					},
 					{
 						Name:    "age",
-						Type:    "int",
+						Type:    &schemaspec.Type{T: "int"},
 						Null:    false,
 						Default: &schemaspec.LiteralValue{V: "10"},
 					},
 					{
 						Name:    "active",
-						Type:    "bool",
+						Type:    &schemaspec.Type{T: "boolean"},
 						Null:    false,
 						Default: &schemaspec.LiteralValue{V: "true"},
 					},
 					{
 						Name:    "account_active",
-						Type:    "bool",
+						Type:    &schemaspec.Type{T: "boolean"},
 						Null:    false,
 						Default: &schemaspec.LiteralValue{V: "true"},
 					},
@@ -191,25 +191,25 @@ table "accounts" {
 				Columns: []*sqlspec.Column{
 					{
 						Name:    "id",
-						Type:    "uint",
+						Type:    &schemaspec.Type{T: "int"},
 						Null:    false,
 						Default: &schemaspec.LiteralValue{V: "123"},
 					},
 					{
 						Name:    "age",
-						Type:    "int",
+						Type:    &schemaspec.Type{T: "int"},
 						Null:    false,
 						Default: &schemaspec.LiteralValue{V: "10"},
 					},
 					{
 						Name:    "active",
-						Type:    "bool",
+						Type:    &schemaspec.Type{T: "boolean"},
 						Null:    false,
 						Default: &schemaspec.LiteralValue{V: "true"},
 					},
 					{
 						Name:    "user_active",
-						Type:    "bool",
+						Type:    &schemaspec.Type{T: "boolean"},
 						Null:    false,
 						Default: &schemaspec.LiteralValue{V: "true"},
 					},
@@ -259,7 +259,8 @@ table "accounts" {
 				},
 			},
 		},
-	}, file)
+	}
+	require.EqualValues(t, expected, file)
 }
 
 func TestWithRemain(t *testing.T) {
@@ -294,7 +295,8 @@ schema "hi" {
 table "users" {
 	schema = schema.hi
 	column "id" {
-		type = "uint"
+		type = int
+		unsigned = true
 		null = false
 		default = 123
 	}
@@ -303,7 +305,7 @@ table "users" {
 table "accounts" {
 	schema = schema.hi
 	column "id" {
-		type = "string"
+		type = varchar(255)
 	}
 	index "name" {
 		unique = true
@@ -318,20 +320,20 @@ func TestMarshalTopLevel(t *testing.T) {
 	c := &sqlspec.Column{
 		Name: "column",
 		Null: true,
-		Type: "string",
+		Type: &schemaspec.Type{T: "varchar", Attrs: attrs(size(255))},
 	}
-	h, err := schemahcl.Marshal(c)
+	h, err := hcl.MarshalSpec(c)
 	require.NoError(t, err)
 	require.EqualValues(t, `column "column" {
   null = true
-  type = "string"
+  type = varchar(255)
 }
 `, string(h))
 }
 
 func decode(f string) (*db, error) {
 	d := &db{}
-	if err := schemahcl.Unmarshal([]byte(f), d); err != nil {
+	if err := hcl.UnmarshalSpec([]byte(f), d); err != nil {
 		return nil, err
 	}
 	return d, nil
@@ -340,4 +342,22 @@ func decode(f string) (*db, error) {
 type db struct {
 	Schemas []*sqlspec.Schema `spec:"schema"`
 	Tables  []*sqlspec.Table  `spec:"table"`
+}
+
+func attrs(attrs ...*schemaspec.Attr) []*schemaspec.Attr {
+	return attrs
+}
+
+func size(n int) *schemaspec.Attr {
+	return &schemaspec.Attr{
+		K: "size",
+		V: &schemaspec.LiteralValue{V: strconv.Itoa(n)},
+	}
+}
+
+func unsigned(b bool) *schemaspec.Attr {
+	return &schemaspec.Attr{
+		K: "unsigned",
+		V: &schemaspec.LiteralValue{V: strconv.FormatBool(b)},
+	}
 }
