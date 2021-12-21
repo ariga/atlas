@@ -66,7 +66,7 @@ func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
 }
 
 func rawTypeImpl() function.Function {
-	s := &function.Spec{
+	return function.New(&function.Spec{
 		Params: []function.Parameter{
 			{Name: "def", Type: cty.String, AllowNull: false},
 		},
@@ -75,8 +75,7 @@ func rawTypeImpl() function.Function {
 			t := &schemaspec.Type{T: args[0].AsString()}
 			return cty.CapsuleVal(ctyTypeSpec, t), nil
 		},
-	}
-	return function.New(s)
+	})
 }
 
 // typeFuncSpec returns the HCL function for defining the type in the spec.
