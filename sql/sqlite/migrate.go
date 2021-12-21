@@ -86,8 +86,8 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) (err error) {
 	if s.skipFKs && s.conn.fkEnabled {
 		// Callers should note that these 2 pragmas are no-op in transactions,
 		// and therefore, should not call BEGIN manually. https://sqlite.org/pragma.html#pragma_foreign_keys
-		s.Changes = append([]*migrate.Change{{Cmd: "PRAGMA foreign_keys = off", Comment: "Disable the enforcement of foreign-keys constraints"}}, s.Changes...)
-		s.append(&migrate.Change{Cmd: "PRAGMA foreign_keys = on", Comment: "Enable back the enforcement of foreign-keys constraints"})
+		s.Changes = append([]*migrate.Change{{Cmd: "PRAGMA foreign_keys = off", Comment: "disable the enforcement of foreign-keys constraints"}}, s.Changes...)
+		s.append(&migrate.Change{Cmd: "PRAGMA foreign_keys = on", Comment: "enable back the enforcement of foreign-keys constraints"})
 	}
 	return nil
 }
@@ -119,7 +119,7 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 		Cmd:     b.String(),
 		Source:  add,
 		Reverse: Build("DROP TABLE").Table(add.T).String(),
-		Comment: fmt.Sprintf("Create %q table", add.T.Name),
+		Comment: fmt.Sprintf("create %q table", add.T.Name),
 	})
 	return s.addIndexes(ctx, add.T, add.T.Indexes...)
 }
@@ -134,7 +134,7 @@ func (s *state) dropTable(ctx context.Context, drop *schema.DropTable) error {
 	s.append(&migrate.Change{
 		Cmd:     b.String(),
 		Source:  drop,
-		Comment: fmt.Sprintf("Drop %q table", drop.T.Name),
+		Comment: fmt.Sprintf("drop %q table", drop.T.Name),
 	})
 	return nil
 }
@@ -163,12 +163,12 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 	s.append(&migrate.Change{
 		Cmd:     Build("DROP TABLE").Ident(modify.T.Name).String(),
 		Source:  modify,
-		Comment: fmt.Sprintf("Drop %q table after copying rows", modify.T.Name),
+		Comment: fmt.Sprintf("drop %q table after copying rows", modify.T.Name),
 	})
 	s.append(&migrate.Change{
 		Cmd:     Build("ALTER TABLE").Ident(newT.Name).P("RENAME TO").Ident(modify.T.Name).String(),
 		Source:  modify,
-		Comment: fmt.Sprintf("Rename temporary table %q to %q", newT.Name, modify.T.Name),
+		Comment: fmt.Sprintf("rename temporary table %q to %q", newT.Name, modify.T.Name),
 	})
 	return s.addIndexes(ctx, modify.T, indexes...)
 }
@@ -226,7 +226,7 @@ func (s *state) addIndexes(ctx context.Context, t *schema.Table, indexes ...*sch
 			Cmd:     b.String(),
 			Source:  &schema.AddIndex{I: idx},
 			Reverse: Build("DROP INDEX").Ident(idx.Name).String(),
-			Comment: fmt.Sprintf("Create index %q to table: %q", idx.Name, t.Name),
+			Comment: fmt.Sprintf("create index %q to table: %q", idx.Name, t.Name),
 		})
 	}
 	return nil
@@ -328,7 +328,7 @@ func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.
 	s.append(&migrate.Change{
 		Cmd:     stmt,
 		Args:    args,
-		Comment: fmt.Sprintf("Copy rows from old table %q to new temporary table %q", from.Name, to.Name),
+		Comment: fmt.Sprintf("copy rows from old table %q to new temporary table %q", from.Name, to.Name),
 	})
 	return nil
 }
@@ -346,7 +346,7 @@ func (s *state) alterTable(ctx context.Context, modify *schema.ModifyTable) erro
 			s.append(&migrate.Change{
 				Cmd:     b.String(),
 				Source:  change,
-				Comment: fmt.Sprintf("Drop index %q to table: %q", change.I.Name, modify.T.Name),
+				Comment: fmt.Sprintf("drop index %q to table: %q", change.I.Name, modify.T.Name),
 			})
 		case *schema.AddColumn:
 			b := Build("ALTER TABLE").Ident(modify.T.Name).P("ADD COLUMN")
@@ -355,7 +355,7 @@ func (s *state) alterTable(ctx context.Context, modify *schema.ModifyTable) erro
 			s.append(&migrate.Change{
 				Cmd:     b.String(),
 				Source:  change,
-				Comment: fmt.Sprintf("Add column %q to table: %q", change.C.Name, modify.T.Name),
+				Comment: fmt.Sprintf("add column %q to table: %q", change.C.Name, modify.T.Name),
 			})
 		default:
 			return fmt.Errorf("unexpected change in alter table: %T", change)
