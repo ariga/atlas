@@ -120,6 +120,7 @@ func validSpec(typeSpec *schemaspec.TypeSpec) error {
 	return nil
 }
 
+// RegistryOption configures a TypeRegistry.
 type RegistryOption func(*TypeRegistry) error
 
 // WithSpecs configures the registry to register the given list of type specs.
