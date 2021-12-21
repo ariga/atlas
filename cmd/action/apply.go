@@ -3,6 +3,7 @@ package action
 import (
 	"context"
 	"io/ioutil"
+	"strings"
 
 	"ariga.io/atlas/sql/schema"
 
@@ -68,14 +69,14 @@ func applyRun(d *Driver, u schemaUnmarshaler, dsn string, file string) {
 		schemaCmd.Println("Schema is synced, no changes to be made")
 		return
 	}
+	p, err := d.PlanChanges(ctx, "plan", changes)
+	cobra.CheckErr(err)
 	schemaCmd.Println("-- Planned Changes:")
-	for _, ch := range changes {
-		desc, err := changeDescriptor(ctx, ch, d)
-		cobra.CheckErr(err)
-		schemaCmd.Println("--", desc.typ, ":", desc.subject)
-		for _, q := range desc.queries {
-			schemaCmd.Println(q, ";")
+	for _, c := range p.Changes {
+		if c.Comment != "" {
+			schemaCmd.Println("--", strings.ToUpper(c.Comment[:1])+c.Comment[1:])
 		}
+		schemaCmd.Println(c.Cmd)
 	}
 	prompt := promptui.Select{
 		Label: "Are you sure?",

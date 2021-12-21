@@ -17,14 +17,12 @@ func mysqlProvider(dsn string) (*Driver, error) {
 	if err != nil {
 		return nil, err
 	}
-	i := &interceptor{ExecQuerier: db}
-	drv, err := mysql.Open(i)
+	drv, err := mysql.Open(db)
 	if err != nil {
 		return nil, err
 	}
 	return &Driver{
 		Driver:        drv,
-		interceptor:   i,
 		MarshalSpec:   mysql.MarshalSpec,
 		UnmarshalSpec: mysql.UnmarshalSpec,
 		Types:         mysql.TypeRegistry.Specs(),
@@ -36,14 +34,12 @@ func postgresProvider(dsn string) (*Driver, error) {
 	if err != nil {
 		return nil, err
 	}
-	i := &interceptor{ExecQuerier: db}
-	drv, err := postgres.Open(i)
+	drv, err := postgres.Open(db)
 	if err != nil {
 		return nil, err
 	}
 	return &Driver{
 		Driver:        drv,
-		interceptor:   i,
 		MarshalSpec:   postgres.MarshalSpec,
 		UnmarshalSpec: postgres.UnmarshalSpec,
 		Types:         postgres.TypeRegistry.Specs(),

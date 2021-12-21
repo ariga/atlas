@@ -5,12 +5,37 @@
 package sqlx
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"sort"
 
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 )
+
+type execPlanner interface {
+	ExecContext(context.Context, string, ...interface{}) (sql.Result, error)
+	PlanChanges(context.Context, string, []schema.Change) (*migrate.Plan, error)
+}
+
+// ApplyChanges is a helper used by the different drivers to apply changes.
+func ApplyChanges(ctx context.Context, changes []schema.Change, p execPlanner) error {
+	plan, err := p.PlanChanges(ctx, "apply", changes)
+	if err != nil {
+		return err
+	}
+	for _, c := range plan.Changes {
+		if _, err := p.ExecContext(ctx, c.Cmd, c.Args...); err != nil {
+			if c.Comment != "" {
+				err = fmt.Errorf("%s: %w", c.Comment, err)
+			}
+			return err
+		}
+	}
+	return nil
+}
 
 // DetachCycles takes a list of schema changes, and detaches
 // references between changes if there is at least one circular
