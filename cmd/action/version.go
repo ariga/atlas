@@ -2,20 +2,20 @@ package action
 
 import (
 	"fmt"
-	"regexp"
+	"path"
 	"strings"
 
 	"ariga.io/atlas/cmd/action/internal/build"
+
 	"github.com/spf13/cobra"
+	"golang.org/x/mod/semver"
 )
 
-var (
-	versionCmd = &cobra.Command{
-		Use:    "version",
-		Hidden: true,
-		Run:    cmdVersionRun,
-	}
-)
+var versionCmd = &cobra.Command{
+	Use:    "version",
+	Hidden: true,
+	Run:    cmdVersionRun,
+}
 
 func init() {
 	RootCmd.AddCommand(versionCmd)
@@ -23,25 +23,19 @@ func init() {
 
 }
 
-func cmdVersionRun(cmd *cobra.Command, args []string) {
-	RootCmd.Print(format(build.Version, build.Date))
-}
-
-func format(version, buildDate string) string {
-	version = strings.TrimPrefix(version, "v")
-	var dateStr string
-	if buildDate != "" {
-		dateStr = fmt.Sprintf(" (%s)", buildDate)
+func cmdVersionRun(_ *cobra.Command, _ []string) {
+	var (
+		b strings.Builder
+		v = strings.TrimPrefix(build.Version, "v")
+	)
+	fmt.Fprintf(&b, "atlas version %s", v)
+	if build.Date != "" {
+		fmt.Fprintf(&b, " (%s)", build.Date)
 	}
-	return fmt.Sprintf("atlas version %s%s\n%s\n", version, dateStr, changelogURL(version))
-}
-
-func changelogURL(version string) string {
-	path := "https://github.com/ariga/atlas"
-	r := regexp.MustCompile(`^v?\d+\.\d+\.\d+(-[\w.]+)?$`)
-	if !r.MatchString(version) {
-		return fmt.Sprintf("%s/releases/latest", path)
+	release := path.Join("tag", build.Version)
+	if !semver.IsValid(build.Version) {
+		release = "latest"
 	}
-	url := fmt.Sprintf("%s/releases/tag/v%s", path, strings.TrimPrefix(version, "v"))
-	return url
+	fmt.Fprintf(&b, "\nhttps://github.com/ariga/atlas/releases/%s\n", release)
+	RootCmd.Print(b.String())
 }
