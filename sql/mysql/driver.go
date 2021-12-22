@@ -56,13 +56,13 @@ func (d *conn) supportsCheck() (string, bool) {
 	if d.mariadb() {
 		v, q = "10.2.1", marChecksQuery
 	}
-	return q, d.compareV(v) != -1
+	return q, d.gteV(v)
 }
 
 // supportsIndexExpr reports if the connected database supports
 // index expressions (functional key part).
 func (d *conn) supportsIndexExpr() bool {
-	return !d.mariadb() && d.compareV("8.0.13") != -1
+	return !d.mariadb() && d.gteV("8.0.13")
 }
 
 // supportsDisplayWidth reports if the connected database supports
@@ -70,7 +70,17 @@ func (d *conn) supportsIndexExpr() bool {
 func (d *conn) supportsDisplayWidth() bool {
 	// MySQL v8.0.19 dropped the display width
 	// information from the information schema
-	return d.mariadb() || d.compareV("8.0.19") == -1
+	return d.mariadb() || d.ltV("8.0.19")
+}
+
+// supportsExprDefault reports if the connected database supports
+// expressions in the DEFAULT clause on column definition.
+func (d *conn) supportsExprDefault() bool {
+	v := "8.0.13"
+	if d.mariadb() {
+		v = "10.2.1"
+	}
+	return d.gteV(v)
 }
 
 // mariadb reports if the Driver is connected to a MariaDB database.
@@ -87,6 +97,15 @@ func (d *conn) compareV(w string) int {
 	}
 	return semver.Compare("v"+v, "v"+w)
 }
+
+// gtV reports if the connection version is > w.
+func (d *conn) gtV(w string) bool { return d.compareV(w) == 1 }
+
+// gtV reports if the connection version is >= w.
+func (d *conn) gteV(w string) bool { return d.compareV(w) >= 0 }
+
+// ltV reports if the connection version is < w.
+func (d *conn) ltV(w string) bool { return d.compareV(w) == -1 }
 
 // MySQL standard unescape field function from its codebase:
 // https://github.com/mysql/mysql-server/blob/8.0/sql/dd/impl/utils.cc
