@@ -228,12 +228,11 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 		return err
 	}
 	if sqlx.ValidString(defaults) {
-		x := defaults.String
-		// From MariaDB 10.2.7, literals are quoted to distinguish them from expressions.
-		if i.mariadb() && strings.HasPrefix(x, "'") && strings.HasSuffix(x, "'") {
-			x = x[1 : len(x)-1]
+		if i.mariadb() {
+			c.Default = i.marDefaultExpr(c, defaults.String)
+		} else {
+			c.Default = i.myDefaultExpr(c, defaults.String, extra.String)
 		}
-		c.Default = &schema.RawExpr{X: x}
 	}
 	if sqlx.ValidString(comment) {
 		c.Attrs = append(c.Attrs, &schema.Comment{
@@ -570,7 +569,7 @@ func extraAttr(c *schema.Column, extra string) error {
 	case "", "null": // ignore.
 	case "default_generated":
 		// The column has an expression default value
-		// and it's handled in Driver.addColumn.
+		// and it is handled in Driver.addColumn.
 	case "auto_increment":
 		c.Attrs = append(c.Attrs, &AutoIncrement{A: extra})
 	case "default_generated on update current_timestamp", "on update current_timestamp",
@@ -580,6 +579,58 @@ func extraAttr(c *schema.Column, extra string) error {
 		return fmt.Errorf("unknown attribute %q", extra)
 	}
 	return nil
+}
+
+// myDefaultExpr returns the correct schema.Expr based on the column attributes for MySQL.
+func (i *inspect) myDefaultExpr(c *schema.Column, x, extra string) schema.Expr {
+	// In MySQL, the DEFAULT_GENERATED indicates the column has an expression default value.
+	if i.supportsExprDefault() && strings.Contains(strings.ToLower(extra), "default_generated") {
+		return &schema.RawExpr{X: x}
+	}
+	// Otherwise, use literal constants and quote integer
+	switch c.Type.Type.(type) {
+	case *BitType, *schema.BoolType, *schema.IntegerType, *schema.DecimalType, *schema.FloatType:
+	case *schema.TimeType:
+		// "current_timestamp" is exceptional in old versions
+		// of MySQL for timestamp and datetime data types.
+		if strings.ToLower(x) == "current_timestamp" {
+			return &schema.RawExpr{X: x}
+		}
+		x = quote(x)
+	default:
+		x = quote(x)
+	}
+	return &schema.Literal{V: x}
+}
+
+// marDefaultExpr returns the correct schema.Expr based on the column attributes for MariaDB.
+func (i *inspect) marDefaultExpr(c *schema.Column, x string) schema.Expr {
+	// From MariaDB 10.2.7, string-based literals are quoted to distinguish them from expressions.
+	if i.gteV("10.2.7") && strings.HasPrefix(x, "'") && strings.HasSuffix(x, "'") {
+		return &schema.Literal{V: x}
+	}
+	// In this case, we need to manually check if the expression is literal, or fallback to raw expression.
+	switch c.Type.Type.(type) {
+	case *BitType:
+		// Bit literal values. See https://mariadb.com/kb/en/binary-literals.
+		if strings.HasPrefix(x, "b'") && strings.HasSuffix(x, "'") {
+			return &schema.Literal{V: x}
+		}
+	case *schema.BoolType, *schema.IntegerType, *schema.DecimalType, *schema.FloatType:
+		if _, err := strconv.ParseFloat(x, 64); err == nil {
+			return &schema.Literal{V: x}
+		}
+	case *schema.TimeType:
+		// "current_timestamp" is exceptional in old versions
+		// of MySQL (i.e. MariaDB in this case).
+		if strings.ToLower(x) == "current_timestamp" {
+			return &schema.RawExpr{X: x}
+		}
+	}
+	if !i.supportsExprDefault() {
+		return &schema.Literal{V: quote(x)}
+	}
+	return &schema.RawExpr{X: x}
 }
 
 const (

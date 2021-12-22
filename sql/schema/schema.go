@@ -248,12 +248,13 @@ type (
 		expr()
 	}
 
-	// Literal represents a basic literal expression like "1".
+	// Literal represents a basic literal expression like 1, or '1'.
+	// String literals are usually quoted with single or double quotes.
 	Literal struct {
 		V string
 	}
 
-	// RawExpr represents a raw expression like "uuid()".
+	// RawExpr represents a raw expression like "uuid()" or "current_timestamp()".
 	RawExpr struct {
 		X string
 	}
