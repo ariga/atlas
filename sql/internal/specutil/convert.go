@@ -22,7 +22,7 @@ type (
 	ConvertPrimaryKeyFunc func(*sqlspec.PrimaryKey, *schema.Table) (*schema.Index, error)
 	ConvertIndexFunc      func(*sqlspec.Index, *schema.Table) (*schema.Index, error)
 	ColumnSpecFunc        func(*schema.Column, *schema.Table) (*sqlspec.Column, error)
-	ColumnTypeSpecFunc    func(t schema.Type) (*sqlspec.Column, error)
+	ColumnTypeSpecFunc    func(schema.Type) (*sqlspec.Column, error)
 	TableSpecFunc         func(*schema.Table) (*sqlspec.Table, error)
 	PrimaryKeySpecFunc    func(index *schema.Index) (*sqlspec.PrimaryKey, error)
 	IndexSpecFunc         func(index *schema.Index) (*sqlspec.Index, error)
