@@ -132,24 +132,17 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 
 // columnSpec converts from a concrete MySQL schema.Column into a sqlspec.Column.
 func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
-	ct, err := columnTypeSpec(c.Type.Type)
+	col, err := specutil.FromColumn(c, columnTypeSpec)
 	if err != nil {
 		return nil, err
 	}
 	if c, ok := hasCharset(c.Attrs, t.Attrs); ok {
-		ct.Extra.Attrs = append(ct.Extra.Attrs, specutil.StrAttr("charset", c))
+		col.Extra.Attrs = append(col.Extra.Attrs, specutil.StrAttr("charset", c))
 	}
 	if c, ok := hasCollate(c.Attrs, t.Attrs); ok {
-		ct.Extra.Attrs = append(ct.Extra.Attrs, specutil.StrAttr("collation", c))
+		col.Extra.Attrs = append(col.Extra.Attrs, specutil.StrAttr("collation", c))
 	}
-	return &sqlspec.Column{
-		Name: c.Name,
-		Type: ct.Type,
-		Null: c.Type.Null,
-		DefaultExtension: schemaspec.DefaultExtension{
-			Extra: schemaspec.Resource{Attrs: ct.DefaultExtension.Extra.Attrs},
-		},
-	}, nil
+	return col, nil
 }
 
 // columnTypeSpec converts from a concrete MySQL schema.Type into sqlspec.Column Type.
