@@ -90,19 +90,8 @@ func tableSpec(tab *schema.Table) (*sqlspec.Table, error) {
 }
 
 // columnSpec converts from a concrete SQLite schema.Column into a sqlspec.Column.
-func columnSpec(col *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
-	ct, err := columnTypeSpec(col.Type.Type)
-	if err != nil {
-		return nil, err
-	}
-	return &sqlspec.Column{
-		Name: col.Name,
-		Type: ct.Type,
-		Null: col.Type.Null,
-		DefaultExtension: schemaspec.DefaultExtension{
-			Extra: schemaspec.Resource{Attrs: ct.DefaultExtension.Extra.Attrs},
-		},
-	}, nil
+func columnSpec(col *schema.Column, _ *schema.Table) (*sqlspec.Column, error) {
+	return specutil.FromColumn(col, columnTypeSpec)
 }
 
 // columnTypeSpec converts from a concrete MySQL schema.Type into sqlspec.Column Type.

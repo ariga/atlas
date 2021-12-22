@@ -22,6 +22,7 @@ type (
 	ConvertPrimaryKeyFunc func(*sqlspec.PrimaryKey, *schema.Table) (*schema.Index, error)
 	ConvertIndexFunc      func(*sqlspec.Index, *schema.Table) (*schema.Index, error)
 	ColumnSpecFunc        func(*schema.Column, *schema.Table) (*sqlspec.Column, error)
+	ColumnTypeSpecFunc    func(t schema.Type) (*sqlspec.Column, error)
 	TableSpecFunc         func(*schema.Table) (*sqlspec.Table, error)
 	PrimaryKeySpecFunc    func(index *schema.Index) (*sqlspec.PrimaryKey, error)
 	IndexSpecFunc         func(index *schema.Index) (*sqlspec.Index, error)
@@ -279,6 +280,22 @@ func FromPrimaryKey(s *schema.Index) (*sqlspec.PrimaryKey, error) {
 	}, nil
 }
 
+// FromColumn converts a *schema.Column into a *sqlspec.Column using the ColumnTypeSpecFunc.
+func FromColumn(col *schema.Column, columnTypeSpec ColumnTypeSpecFunc) (*sqlspec.Column, error) {
+	ct, err := columnTypeSpec(col.Type.Type)
+	if err != nil {
+		return nil, err
+	}
+	return &sqlspec.Column{
+		Name: col.Name,
+		Type: ct.Type,
+		Null: col.Type.Null,
+		DefaultExtension: schemaspec.DefaultExtension{
+			Extra: schemaspec.Resource{Attrs: ct.DefaultExtension.Extra.Attrs},
+		},
+	}, nil
+}
+
 // FromIndex converts schema.Index to sqlspec.Index
 func FromIndex(idx *schema.Index) (*sqlspec.Index, error) {
 	c := make([]*schemaspec.Ref, 0, len(idx.Parts))
@@ -318,7 +335,6 @@ func columnName(ref *schemaspec.Ref) (string, error) {
 	s := strings.Split(ref.V, "$column.")
 	if len(s) != 2 {
 		return "", fmt.Errorf("sqlspec: failed to extract column name from %q", ref)
-
 	}
 	return s[1], nil
 }
