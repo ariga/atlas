@@ -139,8 +139,8 @@ func TestMySQL_AddIndexedColumns(t *testing.T) {
 func TestMySQL_AddColumns(t *testing.T) {
 	myRun(t, func(t *myTest) {
 		usersT := t.users()
-		t.migrate(&schema.AddTable{T: usersT})
 		t.dropTables(usersT.Name)
+		t.migrate(&schema.AddTable{T: usersT})
 		usersT.Columns = append(
 			usersT.Columns,
 			&schema.Column{Name: "a", Type: &schema.ColumnType{Raw: "tinyblob", Type: &schema.BinaryType{T: "tinyblob"}}},
@@ -148,7 +148,7 @@ func TestMySQL_AddColumns(t *testing.T) {
 			&schema.Column{Name: "c", Type: &schema.ColumnType{Raw: "blob", Type: &schema.BinaryType{T: "blob"}}},
 			&schema.Column{Name: "d", Type: &schema.ColumnType{Raw: "longblob", Type: &schema.BinaryType{T: "longblob"}}},
 			&schema.Column{Name: "e", Type: &schema.ColumnType{Raw: "binary", Type: &schema.BinaryType{T: "binary"}}},
-			&schema.Column{Name: "f", Type: &schema.ColumnType{Raw: "varbinary(255)", Type: &schema.BinaryType{T: "varbinary(255)"}}},
+			&schema.Column{Name: "f", Type: &schema.ColumnType{Raw: "varbinary(255)", Type: &schema.BinaryType{T: "varbinary(255)"}}, Default: &schema.Literal{V: "foo"}},
 			&schema.Column{Name: "g", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar", Size: 255}}},
 			&schema.Column{Name: "h", Type: &schema.ColumnType{Raw: "varchar(255)", Type: &schema.StringType{T: "varchar(255)"}}},
 			&schema.Column{Name: "i", Type: &schema.ColumnType{Raw: "tinytext", Type: &schema.StringType{T: "tinytext"}}},
@@ -595,67 +595,67 @@ create table atlas_types_sanity
 					{
 						Name:    "tBit",
 						Type:    &schema.ColumnType{Type: &mysql.BitType{T: "bit"}, Raw: "bit(10)", Null: true},
-						Default: &schema.RawExpr{X: "b'100'"},
+						Default: &schema.Literal{V: "b'100'"},
 					},
 					{
 						Name: "tInt",
 						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int", Unsigned: false},
 							Raw: t.valueByVersion(map[string]string{"8": "int"}, "int(10)"), Null: false},
-						Default: &schema.RawExpr{X: "4"},
+						Default: &schema.Literal{V: "4"},
 					},
 					{
 						Name: "tTinyInt",
 						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "tinyint", Unsigned: false},
 							Raw: t.valueByVersion(map[string]string{"8": "tinyint"}, "tinyint(10)"), Null: true},
-						Default: &schema.RawExpr{X: "8"},
+						Default: &schema.Literal{V: "8"},
 					},
 					{
 						Name: "tSmallInt",
 						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "smallint", Unsigned: false},
 							Raw: t.valueByVersion(map[string]string{"8": "smallint"}, "smallint(10)"), Null: true},
-						Default: &schema.RawExpr{X: "2"},
+						Default: &schema.Literal{V: "2"},
 					},
 					{
 						Name: "tMediumInt",
 						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "mediumint", Unsigned: false},
 							Raw: t.valueByVersion(map[string]string{"8": "mediumint"}, "mediumint(10)"), Null: true},
-						Default: &schema.RawExpr{X: "11"},
+						Default: &schema.Literal{V: "11"},
 					},
 					{
 						Name: "tBigInt",
 						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false},
 							Raw: t.valueByVersion(map[string]string{"8": "bigint"}, "bigint(10)"), Null: true},
-						Default: &schema.RawExpr{X: "4"},
+						Default: &schema.Literal{V: "4"},
 					},
 					{
 						Name: "tDecimal",
 						Type: &schema.ColumnType{Type: &schema.DecimalType{T: "decimal", Precision: 10},
 							Raw: "decimal(10,0)", Null: true},
-						Default: &schema.RawExpr{X: "4"},
+						Default: &schema.Literal{V: "4"},
 					},
 					{
 						Name: "tNumeric",
 						Type: &schema.ColumnType{Type: &schema.DecimalType{T: "decimal", Precision: 10},
 							Raw: "decimal(10,0)", Null: false},
-						Default: &schema.RawExpr{X: "4"},
+						Default: &schema.Literal{V: "4"},
 					},
 					{
 						Name: "tFloat",
 						Type: &schema.ColumnType{Type: &schema.FloatType{T: "float", Precision: 10},
 							Raw: "float(10,0)", Null: true},
-						Default: &schema.RawExpr{X: "4"},
+						Default: &schema.Literal{V: "4"},
 					},
 					{
 						Name: "tDouble",
 						Type: &schema.ColumnType{Type: &schema.FloatType{T: "double", Precision: 10},
 							Raw: "double(10,0)", Null: true},
-						Default: &schema.RawExpr{X: "4"},
+						Default: &schema.Literal{V: "4"},
 					},
 					{
 						Name: "tReal",
 						Type: &schema.ColumnType{Type: &schema.FloatType{T: "double", Precision: 10},
 							Raw: "double(10,0)", Null: true},
-						Default: &schema.RawExpr{X: "4"},
+						Default: &schema.Literal{V: "4"},
 					},
 					{
 						Name: "tTimestamp",
@@ -694,7 +694,7 @@ create table atlas_types_sanity
 						Name: "tVarchar",
 						Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar", Size: 10},
 							Raw: "varchar(10)", Null: true},
-						Default: &schema.RawExpr{X: "Titan"},
+						Default: &schema.Literal{V: t.quoted("Titan")},
 						Attrs: []schema.Attr{
 							&schema.Charset{V: "latin1"},
 							&schema.Collation{V: "latin1_swedish_ci"},
@@ -704,7 +704,7 @@ create table atlas_types_sanity
 						Name: "tChar",
 						Type: &schema.ColumnType{Type: &schema.StringType{T: "char", Size: 25},
 							Raw: "char(25)", Null: false},
-						Default: &schema.RawExpr{X: "Olimpia"},
+						Default: &schema.Literal{V: t.quoted("Olimpia")},
 						Attrs: []schema.Attr{
 							&schema.Charset{V: "latin1"},
 							&schema.Collation{V: "latin1_swedish_ci"},
@@ -714,13 +714,13 @@ create table atlas_types_sanity
 						Name: "tVarBinary",
 						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "varbinary", Size: 30},
 							Raw: "varbinary(30)", Null: true},
-						Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"8": "0x546974616E"}, "Titan")},
+						Default: &schema.Literal{V: t.valueByVersion(map[string]string{"8": "0x546974616E"}, t.quoted("Titan"))},
 					},
 					{
 						Name: "tBinary",
 						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "binary", Size: 5},
 							Raw: "binary(5)", Null: true},
-						Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"8": "0x546974616E"}, "Titan")},
+						Default: &schema.Literal{V: t.valueByVersion(map[string]string{"8": "0x546974616E"}, t.quoted("Titan"))},
 					},
 					{
 						Name: "tBlob",
@@ -1022,6 +1022,14 @@ func (t *myTest) valueByVersion(values map[string]string, defaults string) strin
 		return v
 	}
 	return defaults
+}
+
+func (t *myTest) quoted(s string) string {
+	c := "\""
+	if t.mariadb() {
+		c = "'"
+	}
+	return c + s + c
 }
 
 func (t *myTest) loadRealm() *schema.Realm {
