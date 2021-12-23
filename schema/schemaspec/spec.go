@@ -31,6 +31,11 @@ type (
 		V string
 	}
 
+	// RawExpr implements Value and represents any raw expression.
+	RawExpr struct {
+		X string
+	}
+
 	// ListValue implements Value and represents a list of Values.
 	ListValue struct {
 		V []Value
@@ -251,6 +256,7 @@ func (s *TypeSpec) Attr(name string) (*TypeAttr, bool) {
 }
 
 func (*LiteralValue) val() {}
+func (*RawExpr) val()      {}
 func (*ListValue) val()    {}
 func (*Ref) val()          {}
 func (*Type) val()         {}

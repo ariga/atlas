@@ -286,14 +286,36 @@ func FromColumn(col *schema.Column, columnTypeSpec ColumnTypeSpecFunc) (*sqlspec
 	if err != nil {
 		return nil, err
 	}
-	return &sqlspec.Column{
+	spec := &sqlspec.Column{
 		Name: col.Name,
 		Type: ct.Type,
 		Null: col.Type.Null,
 		DefaultExtension: schemaspec.DefaultExtension{
 			Extra: schemaspec.Resource{Attrs: ct.DefaultExtension.Extra.Attrs},
 		},
-	}, nil
+	}
+	if col.Default != nil {
+		lv, err := toLitValue(col.Default)
+		if err != nil {
+			return nil, err
+		}
+		spec.Default = lv
+	}
+	return spec, nil
+}
+
+func toLitValue(expr schema.Expr) (*schemaspec.LiteralValue, error) {
+	var v string
+	switch expr := expr.(type) {
+	case *schema.RawExpr:
+		v = expr.X
+	case *schema.Literal:
+		v = expr.V
+	default:
+		return nil, fmt.Errorf("converting expr %T to literal value", expr)
+	}
+	//v = fmt.Sprintf("expr(%q)", v)
+	return &schemaspec.LiteralValue{V: v}, nil
 }
 
 // FromIndex converts schema.Index to sqlspec.Index
