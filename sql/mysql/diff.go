@@ -274,31 +274,42 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 // defaultChanged reports if the a default value of a column
 // type was changed.
 func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
-	d1, ok1 := from.Default.(*schema.RawExpr)
-	d2, ok2 := to.Default.(*schema.RawExpr)
-	if ok1 != ok2 {
+	var d1, d2 string
+	switch d := from.Default.(type) {
+	case *schema.Literal:
+		d1 = d.V
+	case *schema.RawExpr:
+		d1 = d.X
+	}
+	switch d := to.Default.(type) {
+	case *schema.Literal:
+		d2 = d.V
+	case *schema.RawExpr:
+		d2 = d.X
+	}
+	if (d1 != "") != (d2 != "") {
 		return true, nil
 	}
-	if d1 == nil || d1.X == d2.X {
+	if d1 == d2 {
 		return false, nil
 	}
 	switch from.Type.Type.(type) {
 	case *schema.BoolType:
-		a, err1 := boolValue(d1.X)
-		b, err2 := boolValue(d2.X)
+		a, err1 := boolValue(d1)
+		b, err2 := boolValue(d2)
 		if err1 == nil && err2 == nil {
 			return a != b, nil
 		}
 		return false, nil
 	case *schema.IntegerType:
-		return !d.equalsIntValues(d1.X, d2.X), nil
+		return !d.equalsIntValues(d1, d2), nil
 	case *schema.TimeType:
-		x1 := strings.ToLower(strings.Trim(d1.X, "' ()"))
-		x2 := strings.ToLower(strings.Trim(d2.X, "' ()"))
+		x1 := strings.ToLower(strings.Trim(d1, "' ()"))
+		x2 := strings.ToLower(strings.Trim(d2, "' ()"))
 		return x1 != x2, nil
 	default:
-		x1 := strings.Trim(d1.X, "'")
-		x2 := strings.Trim(d2.X, "'")
+		x1 := strings.Trim(d1, "'")
+		x2 := strings.Trim(d2, "'")
 		return x1 != x2, nil
 	}
 }
