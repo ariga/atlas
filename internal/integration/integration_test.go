@@ -188,7 +188,7 @@ func TestCLI_Version(t *testing.T) {
 			name: "release",
 			cmd: exec.Command("go", "run",
 				"-ldflags",
-				"-X ariga.io/atlas/cmd/action/internal/build.Version=v1.2.3",
+				"-X ariga.io/atlas/cmd/action.version=v1.2.3",
 				"ariga.io/atlas/cmd/atlas",
 				"version",
 			),

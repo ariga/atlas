@@ -12,5 +12,5 @@ var RootCmd = &cobra.Command{
 }
 
 func CheckForUpdate() {
-	update.CheckForUpdate()
+	update.CheckForUpdate(version)
 }

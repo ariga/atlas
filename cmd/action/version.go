@@ -3,16 +3,19 @@ package action
 import (
 	"fmt"
 
-	"ariga.io/atlas/cmd/action/internal/build"
 	"github.com/spf13/cobra"
 	"golang.org/x/mod/semver"
 )
+
+// Version is the atlas CLI build version
+// Should be set by build script "-X 'ariga.io/atlas/cmd/action.version=${version}'"
+var version string
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show atlas CLI version",
 	Run: func(cmd *cobra.Command, args []string) {
-		v, u := parse(build.Version)
+		v, u := parse(version)
 		RootCmd.Println(fmt.Sprintf("atlas CLI version %s\n%s", v, u))
 	},
 }
