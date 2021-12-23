@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMigrate_Exec(t *testing.T) {
+func TestMigrate_ApplyChanges(t *testing.T) {
 	migrate, mk, err := newMigrate("8.0.13")
 	require.NoError(t, err)
 	mk.ExpectExec(sqltest.Escape("CREATE DATABASE `test` CHARACTER SET latin")).
@@ -27,7 +27,7 @@ func TestMigrate_Exec(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mk.ExpectExec(sqltest.Escape("DROP TABLE `public`.`pets` IF EXISTS")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
-	mk.ExpectExec(sqltest.Escape("CREATE TABLE `pets` IF NOT EXISTS (`a` int NOT NULL, `b` bigint NOT NULL, `c` bigint NULL, PRIMARY KEY (`a`, `b`), UNIQUE INDEX `b_c_unique` (`b`, `c`) COMMENT \"comment\")")).
+	mk.ExpectExec(sqltest.Escape("CREATE TABLE `pets` IF NOT EXISTS (`a` int NOT NULL DEFAULT (int(rand())), `b` bigint NOT NULL DEFAULT 1, `c` bigint NULL, PRIMARY KEY (`a`, `b`), UNIQUE INDEX `b_c_unique` (`b`, `c`) COMMENT \"comment\")")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mk.ExpectExec(sqltest.Escape("ALTER TABLE `users` DROP INDEX `id_spouse_id`")).
 		WillReturnResult(sqlmock.NewResult(0, 0))
@@ -47,8 +47,8 @@ func TestMigrate_Exec(t *testing.T) {
 				t := &schema.Table{
 					Name: "pets",
 					Columns: []*schema.Column{
-						{Name: "a", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
-						{Name: "b", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
+						{Name: "a", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Default: &schema.RawExpr{X: "(int(rand()))"}},
+						{Name: "b", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}, Default: &schema.Literal{V: "1"}},
 						{Name: "c", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true}},
 					},
 				}

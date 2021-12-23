@@ -255,6 +255,7 @@ type (
 	}
 
 	// RawExpr represents a raw expression like "uuid()" or "current_timestamp()".
+	// Unlike literals, raw expression are usually inlined as is on migration.
 	RawExpr struct {
 		X string
 	}

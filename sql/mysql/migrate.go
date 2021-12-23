@@ -299,18 +299,10 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) {
 		b.P("NOT")
 	}
 	b.P("NULL")
-	if x, ok := c.Default.(*schema.RawExpr); ok {
-		v := x.X
-		// Ensure string/enum default values are quoted.
-		switch c.Type.Type.(type) {
-		case *schema.EnumType, *schema.StringType:
-			v = quote(v)
-		}
-		b.P("DEFAULT", v)
-	}
+	columnDefault(b, c)
 	// Add manually the JSON_VALID constraint for older
 	// versions < 10.4.3. See Driver.checks for full info.
-	if _, ok := c.Type.Type.(*schema.JSONType); ok && s.mariadb() && s.compareV("10.4.3") == -1 && !sqlx.Has(c.Attrs, &Check{}) {
+	if _, ok := c.Type.Type.(*schema.JSONType); ok && s.mariadb() && s.ltV("10.4.3") && !sqlx.Has(c.Attrs, &Check{}) {
 		b.P("CHECK").Wrap(func(b *sqlx.Builder) {
 			b.WriteString(fmt.Sprintf("json_valid(`%s`)", c.Name))
 		})
@@ -421,6 +413,22 @@ func (*state) attr(b *sqlx.Builder, attrs ...schema.Attr) {
 		case *schema.Comment:
 			b.P("COMMENT", quote(a.Text))
 		}
+	}
+}
+
+// columnDefault writes the default value of column to the builder.
+func columnDefault(b *sqlx.Builder, c *schema.Column) {
+	switch x := c.Default.(type) {
+	case *schema.Literal:
+		v := x.V
+		switch c.Type.Type.(type) {
+		case *BitType, *schema.BoolType, *schema.IntegerType, *schema.DecimalType, *schema.FloatType:
+		default:
+			v = quote(v)
+		}
+		b.P("DEFAULT", v)
+	case *schema.RawExpr:
+		b.P("DEFAULT", x.X)
 	}
 }
 
