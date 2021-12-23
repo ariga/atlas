@@ -11,14 +11,13 @@ require (
 	github.com/hashicorp/hcl/v2 v2.10.1 // indirect
 	github.com/lib/pq v1.10.4
 	github.com/mattn/go-sqlite3 v1.14.9
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1-0.20210427113832-6241f9ab9942
 	github.com/zclconf/go-cty v1.10.0 // indirect
 )
 
 require (
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
-	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-openapi/inflect v0.19.0 // indirect
 	github.com/google/go-cmp v0.5.6 // indirect

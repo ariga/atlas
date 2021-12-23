@@ -197,6 +197,7 @@ func TestCLI_Version(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("ATLAS_NO_UPDATE_NOTIFIER", "true")
 			stdout := bytes.NewBuffer(nil)
 			tt.cmd.Stdout = stdout
 			require.NoError(t, tt.cmd.Run())
