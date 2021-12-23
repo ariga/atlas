@@ -5,6 +5,7 @@
 package mysql
 
 import (
+	"encoding/hex"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -294,6 +295,13 @@ func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
 		return false, nil
 	}
 	switch from.Type.Type.(type) {
+	case *schema.BinaryType:
+		a, err1 := binValue(d1)
+		b, err2 := binValue(d2)
+		if err1 != nil || err2 != nil {
+			return true, nil
+		}
+		return !equalsStringValues(a, b), nil
 	case *schema.BoolType:
 		a, err1 := boolValue(d1)
 		b, err2 := boolValue(d2)
@@ -303,6 +311,8 @@ func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
 		return false, nil
 	case *schema.IntegerType:
 		return !d.equalsIntValues(d1, d2), nil
+	case *schema.StringType:
+		return !equalsStringValues(d1, d2), nil
 	case *schema.TimeType:
 		x1 := strings.ToLower(strings.Trim(d1, "' ()"))
 		x2 := strings.ToLower(strings.Trim(d2, "' ()"))
@@ -343,7 +353,15 @@ func (d *diff) equalsIntValues(x1, x2 string) bool {
 	return d1 == d2
 }
 
-// boolValue returns the MySQL boolean value for the given string (if it is known).
+// equalsStringValues report if the 2 string default values are
+// equal after dropping their quotes.
+func equalsStringValues(x1, x2 string) bool {
+	a, err1 := unquote(x1)
+	b, err2 := unquote(x2)
+	return a == b && err1 == nil && err2 == nil
+}
+
+// boolValue returns the MySQL boolean value from the given string (if it is known).
 func boolValue(x string) (bool, error) {
 	switch x {
 	case "1", "'1'", "TRUE", "true":
@@ -353,6 +371,18 @@ func boolValue(x string) (bool, error) {
 	default:
 		return false, fmt.Errorf("mysql: unknown value: %q", x)
 	}
+}
+
+// binValue returns the MySQL binary value from the given string (if it is known).
+func binValue(x string) (string, error) {
+	if !isHex(x) {
+		return x, nil
+	}
+	d, err := hex.DecodeString(x[2:])
+	if err != nil {
+		return x, err
+	}
+	return string(d), nil
 }
 
 func checkByName(attr []schema.Attr, name string) (*Check, bool) {

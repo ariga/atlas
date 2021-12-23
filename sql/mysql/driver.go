@@ -98,10 +98,7 @@ func (d *conn) compareV(w string) int {
 	return semver.Compare("v"+v, "v"+w)
 }
 
-// gtV reports if the connection version is > w.
-func (d *conn) gtV(w string) bool { return d.compareV(w) == 1 }
-
-// gtV reports if the connection version is >= w.
+// gteV reports if the connection version is >= w.
 func (d *conn) gteV(w string) bool { return d.compareV(w) >= 0 }
 
 // ltV reports if the connection version is < w.
@@ -172,4 +169,11 @@ const (
 	tMultiPolygon       = "multipolygon"       // Geometry_type::kMultipolygon
 	tGeoCollection      = "geomcollection"     // Geometry_type::kGeometrycollection
 	tGeometryCollection = "geometrycollection" // Geometry_type::kGeometrycollection
+)
+
+// Additional common constants in MySQL.
+const (
+	currentTS     = "current_timestamp"
+	defaultGen    = "default_generated"
+	autoIncrement = "auto_increment"
 )

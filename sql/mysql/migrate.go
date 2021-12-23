@@ -299,7 +299,7 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) {
 		b.P("NOT")
 	}
 	b.P("NULL")
-	columnDefault(b, c)
+	s.columnDefault(b, c)
 	// Add manually the JSON_VALID constraint for older
 	// versions < 10.4.3. See Driver.checks for full info.
 	if _, ok := c.Type.Type.(*schema.JSONType); ok && s.mariadb() && s.ltV("10.4.3") && !sqlx.Has(c.Attrs, &Check{}) {
@@ -417,18 +417,26 @@ func (*state) attr(b *sqlx.Builder, attrs ...schema.Attr) {
 }
 
 // columnDefault writes the default value of column to the builder.
-func columnDefault(b *sqlx.Builder, c *schema.Column) {
+func (s *state) columnDefault(b *sqlx.Builder, c *schema.Column) {
 	switch x := c.Default.(type) {
 	case *schema.Literal:
 		v := x.V
-		switch c.Type.Type.(type) {
-		case *BitType, *schema.BoolType, *schema.IntegerType, *schema.DecimalType, *schema.FloatType:
-		default:
+		if !hasNumericDefault(c.Type.Type) && !isHex(v) {
 			v = quote(v)
 		}
 		b.P("DEFAULT", v)
 	case *schema.RawExpr:
-		b.P("DEFAULT", x.X)
+		v := x.X
+		// For backwards compatibility, quote raw expressions that are not wrapped
+		// with parens for non-numeric column types (i.e. literals).
+		switch t := c.Type.Type; {
+		case isHex(v), hasNumericDefault(t), strings.HasPrefix(v, "(") && strings.HasSuffix(v, ")"):
+		default:
+			if _, ok := t.(*schema.TimeType); !ok || !strings.HasPrefix(strings.ToLower(v), currentTS) {
+				v = quote(v)
+			}
+		}
+		b.P("DEFAULT", v)
 	}
 }
 
@@ -471,4 +479,15 @@ func quote(s string) string {
 		return s
 	}
 	return strconv.Quote(s)
+}
+
+func unquote(s string) (string, error) {
+	switch {
+	case strings.HasPrefix(s, "\"") && strings.HasSuffix(s, "\""):
+		return strconv.Unquote(s)
+	case strings.HasPrefix(s, "'") && strings.HasSuffix(s, "'"):
+		return strings.ReplaceAll(s[1:len(s)-1], "''", "'"), nil
+	default:
+		return s, nil
+	}
 }

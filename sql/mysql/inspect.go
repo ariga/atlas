@@ -567,10 +567,10 @@ func parseColumn(typ string) (parts []string, size int64, unsigned bool, err err
 func extraAttr(c *schema.Column, extra string) error {
 	switch extra := strings.ToLower(extra); extra {
 	case "", "null": // ignore.
-	case "default_generated":
+	case defaultGen:
 		// The column has an expression default value
 		// and it is handled in Driver.addColumn.
-	case "auto_increment":
+	case autoIncrement:
 		c.Attrs = append(c.Attrs, &AutoIncrement{A: extra})
 	case "default_generated on update current_timestamp", "on update current_timestamp",
 		"on update current_timestamp()" /* MariaDB format. */ :
@@ -584,24 +584,38 @@ func extraAttr(c *schema.Column, extra string) error {
 // myDefaultExpr returns the correct schema.Expr based on the column attributes for MySQL.
 func (i *inspect) myDefaultExpr(c *schema.Column, x, extra string) schema.Expr {
 	// In MySQL, the DEFAULT_GENERATED indicates the column has an expression default value.
-	if i.supportsExprDefault() && strings.Contains(strings.ToLower(extra), "default_generated") {
+	if i.supportsExprDefault() && strings.Contains(strings.ToLower(extra), defaultGen) {
 		return &schema.RawExpr{X: x}
 	}
-	// Otherwise, use literal constants and quote integer
+
 	switch c.Type.Type.(type) {
+	case *schema.BinaryType:
+		// MySQL v8 uses Hexadecimal representation.
+		if isHex(x) {
+			return &schema.Literal{V: x}
+		}
 	case *BitType, *schema.BoolType, *schema.IntegerType, *schema.DecimalType, *schema.FloatType:
+		return &schema.Literal{V: x}
 	case *schema.TimeType:
 		// "current_timestamp" is exceptional in old versions
 		// of MySQL for timestamp and datetime data types.
-		if strings.ToLower(x) == "current_timestamp" {
+		if strings.ToLower(x) == currentTS {
 			return &schema.RawExpr{X: x}
 		}
-		x = quote(x)
-	default:
-		x = quote(x)
 	}
-	return &schema.Literal{V: x}
+	return &schema.Literal{V: quote(x)}
 }
+
+// hasNumericDefault reports if the given type has a numeric default value.
+func hasNumericDefault(t schema.Type) bool {
+	switch t.(type) {
+	case *BitType, *schema.BoolType, *schema.IntegerType, *schema.DecimalType, *schema.FloatType:
+		return true
+	}
+	return false
+}
+
+func isHex(x string) bool { return len(x) > 2 && strings.ToLower(x[:2]) == "0x" }
 
 // marDefaultExpr returns the correct schema.Expr based on the column attributes for MariaDB.
 func (i *inspect) marDefaultExpr(c *schema.Column, x string) schema.Expr {
@@ -623,7 +637,7 @@ func (i *inspect) marDefaultExpr(c *schema.Column, x string) schema.Expr {
 	case *schema.TimeType:
 		// "current_timestamp" is exceptional in old versions
 		// of MySQL (i.e. MariaDB in this case).
-		if strings.ToLower(x) == "current_timestamp" {
+		if strings.ToLower(x) == currentTS {
 			return &schema.RawExpr{X: x}
 		}
 	}
