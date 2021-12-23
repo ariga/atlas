@@ -13,7 +13,6 @@ import (
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/schema"
-
 	entsql "entgo.io/ent/dialect/sql"
 	"entgo.io/ent/entc/integration/ent"
 	"github.com/stretchr/testify/require"
@@ -168,6 +167,42 @@ func testCLISchemaApply(t T, h string, dsn string) {
 	require.Contains(t, stdout.String(), "-- Planned")
 	u := t.loadUsers()
 	require.NotNil(t, u)
+}
+
+func TestCLI_Version(t *testing.T) {
+	// Required to have a clean "stderr" while running first time.
+	require.NoError(t, exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run())
+	tests := []struct {
+		name     string
+		cmd      *exec.Cmd
+		expected string
+	}{
+		{
+			name: "dev mode",
+			cmd: exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+				"version",
+			),
+			expected: "atlas CLI version - development\nhttps://github.com/ariga/atlas/releases/tag/latest\n",
+		},
+		{
+			name: "release",
+			cmd: exec.Command("go", "run",
+				"-ldflags",
+				"-X ariga.io/atlas/cmd/action/internal/build.Version=v1.2.3",
+				"ariga.io/atlas/cmd/atlas",
+				"version",
+			),
+			expected: "atlas CLI version v1.2.3\nhttps://github.com/ariga/atlas/releases/tag/v1.2.3\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stdout := bytes.NewBuffer(nil)
+			tt.cmd.Stdout = stdout
+			require.NoError(t, tt.cmd.Run())
+			require.Equal(t, tt.expected, stdout.String())
+		})
+	}
 }
 
 func ensureNoChange(t T, tables ...*schema.Table) {
