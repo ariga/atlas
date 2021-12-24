@@ -7,6 +7,7 @@ package specutil
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
@@ -310,12 +311,22 @@ func toLitValue(expr schema.Expr) (*schemaspec.LiteralValue, error) {
 	case *schema.RawExpr:
 		v = expr.X
 	case *schema.Literal:
-		v = expr.V
+		v = normalizeQuotes(expr.V)
 	default:
 		return nil, fmt.Errorf("converting expr %T to literal value", expr)
 	}
-	//v = fmt.Sprintf("expr(%q)", v)
 	return &schemaspec.LiteralValue{V: v}, nil
+}
+
+func normalizeQuotes(s string) string {
+	if len(s) < 2 {
+		return s
+	}
+	// If string is quoted with single quotes:
+	if strings.HasPrefix(s, `'`) && strings.HasSuffix(s, `'`) {
+		return strconv.Quote(s[1 : len(s)-1])
+	}
+	return s
 }
 
 // FromIndex converts schema.Index to sqlspec.Index

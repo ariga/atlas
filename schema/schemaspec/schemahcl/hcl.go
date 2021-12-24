@@ -264,6 +264,7 @@ func (s *state) writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 		}
 		body.SetAttributeRaw(attr.K, hclRawTokens(st))
 	case *schemaspec.LiteralValue:
+
 		body.SetAttributeRaw(attr.K, hclRawTokens(v.V))
 	case *schemaspec.ListValue:
 		lst := make([]string, 0, len(v.V))

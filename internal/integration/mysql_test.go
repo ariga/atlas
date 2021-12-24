@@ -537,6 +537,7 @@ func TestMySQL_DefaultsHCL(t *testing.T) {
 create table atlas_defaults
 (
 	string varchar(255) default "hello_world",
+	quoted varchar(100) default 'never say "never"',
 	number int default 42
 )
 `
@@ -547,7 +548,10 @@ create table atlas_defaults
 		hcl := schemahcl.New(schemahcl.WithTypes(mysql.TypeRegistry.Specs()))
 		spec, err := mysql.MarshalSpec(realm.Schemas[0], hcl)
 		require.NoError(t, err)
+		var s schema.Schema
 		fmt.Println(string(spec))
+		err = mysql.UnmarshalSpec(spec, hcl, &s)
+		require.NoError(t, err)
 	})
 }
 
