@@ -11,7 +11,7 @@ require (
 	github.com/lib/pq v1.10.3
 	github.com/manifoldco/promptui v0.9.0
 	github.com/spf13/cobra v1.2.1
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1-0.20210427113832-6241f9ab9942
 	github.com/zclconf/go-cty v1.8.0
 	golang.org/x/mod v0.4.3-0.20210512182355-6088ed88cecd
 	golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1 // indirect
@@ -19,7 +19,11 @@ require (
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 )
 
-require github.com/go-openapi/inflect v0.19.0
+require (
+	github.com/go-openapi/inflect v0.19.0
+	github.com/mitchellh/go-homedir v1.0.0
+	github.com/pelletier/go-toml/v2 v2.0.0-beta.4
+)
 
 require (
 	github.com/agext/levenshtein v1.2.1 // indirect

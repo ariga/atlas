@@ -7,7 +7,7 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-// Version is the atlas CLI build version
+// version is the atlas CLI build version
 // Should be set by build script "-X 'ariga.io/atlas/cmd/action.version=${version}'"
 var version string
 

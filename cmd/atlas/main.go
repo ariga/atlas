@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"ariga.io/atlas/cmd/action"
@@ -11,7 +12,18 @@ import (
 
 func main() {
 	cobra.OnInitialize(initConfig)
-	cobra.CheckErr(action.RootCmd.Execute())
+	err := action.RootCmd.Execute()
+	// Print error from command
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+	}
+	// Check for update
+	action.CheckForUpdate()
+	// Exit code according to command success
+	if err != nil {
+		os.Exit(1)
+	}
+
 }
 
 // initConfig reads in config file and ENV variables if set.
