@@ -14,7 +14,7 @@ import (
 )
 
 type (
-	// Store is where the latest release data is stored on CLI host
+	// Store is where the latest release data is stored on CLI host.
 	Store struct {
 		Version   string    `json:"version"`
 		URL       string    `json:"url"`
