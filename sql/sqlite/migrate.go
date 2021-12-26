@@ -170,15 +170,15 @@ func (s *state) column(b *sqlx.Builder, c *schema.Column) {
 		b.P("NOT")
 	}
 	b.P("NULL")
-	if x, ok := c.Default.(*schema.RawExpr); ok {
-		b.P("DEFAULT", x.X)
+	if c.Default != nil {
+		b.P("DEFAULT", defaultValue(c))
 	}
 	if sqlx.Has(c.Attrs, &AutoIncrement{}) {
 		b.P("PRIMARY KEY AUTOINCREMENT")
 	}
 }
 
-func (s *state) addIndexes(ctx context.Context, t *schema.Table, indexes ...*schema.Index) error {
+func (s *state) addIndexes(_ context.Context, t *schema.Table, indexes ...*schema.Index) error {
 	for _, idx := range indexes {
 		// PRIMARY KEY or UNIQUE columns automatically create indexes with the generated name.
 		// See: sqlite/build.c#sqlite3CreateIndex. Therefore, we ignore such PKs, but create
@@ -305,7 +305,7 @@ func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.
 			toC = append(toC, column.Name)
 			if !column.Type.Null && column.Default != nil && change.Change.Is(schema.ChangeNull|schema.ChangeDefault) {
 				fromC = append(fromC, fmt.Sprintf("IFNULL(`%[1]s`, ?) AS `%[1]s`", column.Name))
-				args = append(args, column.Default.(*schema.RawExpr).X)
+				args = append(args, defaultValue(column))
 			} else {
 				fromC = append(fromC, column.Name)
 			}
@@ -383,4 +383,15 @@ func autoincPK(pk *schema.Index) bool {
 func Build(phrase string) *sqlx.Builder {
 	b := &sqlx.Builder{QuoteChar: '`'}
 	return b.P(phrase)
+}
+
+func defaultValue(c *schema.Column) string {
+	switch x := c.Default.(type) {
+	case *schema.Literal:
+		return x.V
+	case *schema.RawExpr:
+		return x.X
+	default:
+		panic(fmt.Sprintf("unexpected default value type: %T", x))
+	}
 }

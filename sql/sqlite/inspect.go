@@ -153,9 +153,7 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 		return err
 	}
 	if sqlx.ValidString(defaults) {
-		c.Default = &schema.RawExpr{
-			X: defaults.String,
-		}
+		c.Default = defaultExpr(defaults.String)
 	}
 	// TODO(a8m): extract collation from 'CREATE TABLE' statement.
 	t.Columns = append(t.Columns, c)
@@ -516,6 +514,35 @@ func columnParts(t string) []string {
 	return parts
 }
 
+func defaultExpr(x string) schema.Expr {
+	switch {
+	// Literals definition.
+	// https://www.sqlite.org/syntax/literal-value.html
+	case isBlob(x), isBool(x), isNumeric(x),
+		strings.HasPrefix(x, `"`) && strings.HasSuffix(x, `"`),
+		strings.HasPrefix(x, "'") && strings.HasSuffix(x, "'"):
+		return &schema.Literal{V: x}
+	default:
+		// We wrap the CURRENT_TIMESTAMP literals in raw-expressions
+		// as they are not parsable in most decoders.
+		return &schema.RawExpr{X: x}
+	}
+}
+
+// isNumeric reports if the given string is a valid numeric literal
+// according to https://www.sqlite.org/syntax/numeric-literal.html.
+func isNumeric(s string) bool {
+	// Hex digits.
+	if strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X") {
+		// SQLite allows odd length hex string.
+		_, err := strconv.ParseUint(s[2:], 16, 64)
+		return err == nil
+	}
+	// Digits with optional exponent.
+	_, err := strconv.ParseFloat(s, 64)
+	return err == nil
+}
+
 // isNumber reports whether the string is a number (category N).
 func isNumber(s string) bool {
 	for _, r := range s {
@@ -524,6 +551,20 @@ func isNumber(s string) bool {
 		}
 	}
 	return true
+}
+
+// blob literals are hex strings preceded by 'x' (or 'X).
+func isBlob(s string) bool {
+	if (strings.HasPrefix(s, "x'") || strings.HasPrefix(s, "X'")) && strings.HasSuffix(s, "'") {
+		_, err := strconv.ParseUint(s[2:len(s)-1], 16, 64)
+		return err == nil
+	}
+	return false
+}
+
+func isBool(s string) bool {
+	_, err := strconv.ParseBool(s)
+	return err == nil
 }
 
 var reAutoinc = regexp.MustCompile(`(?i)PRIMARY\s+KEY\s+AUTOINCREMENT`)
