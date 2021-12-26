@@ -95,7 +95,14 @@ func Column(spec *sqlspec.Column, conv ConvertTypeFunc) (*schema.Column, error) 
 		},
 	}
 	if spec.Default != nil {
-		out.Default = &schema.Literal{V: spec.Default.V}
+		switch d := spec.Default.(type) {
+		case *schemaspec.LiteralValue:
+			out.Default = &schema.Literal{V: d.V}
+		case *schemaspec.RawExpr:
+			out.Default = &schema.RawExpr{X: d.X}
+		default:
+			return nil, fmt.Errorf("unsupported value type for default: %T", d)
+		}
 	}
 	ct, err := conv(spec)
 	if err != nil {
@@ -296,7 +303,7 @@ func FromColumn(col *schema.Column, columnTypeSpec ColumnTypeSpecFunc) (*sqlspec
 		},
 	}
 	if col.Default != nil {
-		lv, err := toLitValue(col.Default)
+		lv, err := toValue(col.Default)
 		if err != nil {
 			return nil, err
 		}
@@ -305,28 +312,35 @@ func FromColumn(col *schema.Column, columnTypeSpec ColumnTypeSpecFunc) (*sqlspec
 	return spec, nil
 }
 
-func toLitValue(expr schema.Expr) (*schemaspec.LiteralValue, error) {
-	var v string
+func toValue(expr schema.Expr) (schemaspec.Value, error) {
+	var (
+		v   string
+		err error
+	)
 	switch expr := expr.(type) {
 	case *schema.RawExpr:
-		v = expr.X
+		return &schemaspec.RawExpr{X: expr.X}, nil
 	case *schema.Literal:
-		v = normalizeQuotes(expr.V)
+		v, err = normalizeQuotes(expr.V)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, fmt.Errorf("converting expr %T to literal value", expr)
 	}
 	return &schemaspec.LiteralValue{V: v}, nil
 }
 
-func normalizeQuotes(s string) string {
+func normalizeQuotes(s string) (string, error) {
 	if len(s) < 2 {
-		return s
+		return s, nil
 	}
 	// If string is quoted with single quotes:
 	if strings.HasPrefix(s, `'`) && strings.HasSuffix(s, `'`) {
-		return strconv.Quote(s[1 : len(s)-1])
+		uq := strings.ReplaceAll(s[1:len(s)-1], "''", "'")
+		return strconv.Quote(uq), nil
 	}
-	return s
+	return s, nil
 }
 
 // FromIndex converts schema.Index to sqlspec.Index

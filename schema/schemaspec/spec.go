@@ -256,6 +256,7 @@ func (s *TypeSpec) Attr(name string) (*TypeAttr, bool) {
 }
 
 func (*LiteralValue) val() {}
+func (*RawExpr) val() {}
 func (*ListValue) val()    {}
 func (*Ref) val()          {}
 func (*Type) val()         {}

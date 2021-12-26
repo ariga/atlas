@@ -56,7 +56,7 @@ func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
 				ctx.Functions[typeSpec.Name] = typeFuncSpec(typeSpec)
 			}
 		}
-		ctx.Functions["sql"] = rawTypeImpl()
+		ctx.Functions["sql"] = rawExprImpl()
 		return ctx
 	}
 	return func(config *Config) {
@@ -65,15 +65,15 @@ func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
 	}
 }
 
-func rawTypeImpl() function.Function {
+func rawExprImpl() function.Function {
 	return function.New(&function.Spec{
 		Params: []function.Parameter{
 			{Name: "def", Type: cty.String, AllowNull: false},
 		},
-		Type: function.StaticReturnType(ctyTypeSpec),
+		Type: function.StaticReturnType(ctyRawExpr),
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-			t := &schemaspec.Type{T: args[0].AsString()}
-			return cty.CapsuleVal(ctyTypeSpec, t), nil
+			t := &schemaspec.RawExpr{X: args[0].AsString()}
+			return cty.CapsuleVal(ctyRawExpr, t), nil
 		},
 	})
 }

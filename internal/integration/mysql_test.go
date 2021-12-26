@@ -538,6 +538,8 @@ create table atlas_defaults
 (
 	string varchar(255) default "hello_world",
 	quoted varchar(100) default 'never say "never"',
+	tBit bit(10) default b'10101',
+	ts timestamp default CURRENT_TIMESTAMP,
 	number int default 42
 )
 `
@@ -549,9 +551,12 @@ create table atlas_defaults
 		spec, err := mysql.MarshalSpec(realm.Schemas[0], hcl)
 		require.NoError(t, err)
 		var s schema.Schema
-		fmt.Println(string(spec))
 		err = mysql.UnmarshalSpec(spec, hcl, &s)
 		require.NoError(t, err)
+		t.dropTables(n)
+		t.applyHcl(string(spec))
+		fmt.Println(string(spec))
+		ensureNoChange(t, realm.Schemas[0].Tables[0])
 	})
 }
 
