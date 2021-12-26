@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package update
 
 import (
@@ -62,7 +66,7 @@ func enabled(version string) bool {
 }
 
 func shouldUpdate(version string, path string, latestReleaseF func() (LatestRelease, error)) (bool, string, error) {
-	r, _ := localStore(path)
+	r := localStore(path)
 	if shouldSkip(r) {
 		return false, "", nil
 	}
@@ -80,7 +84,7 @@ func shouldUpdate(version string, path string, latestReleaseF func() (LatestRele
 }
 
 func latestReleaseFromGithub() (LatestRelease, error) {
-	req, err := http.NewRequest("GET", "https://api.github.com/repos/ariga/atlas/releases/latest", nil)
+	req, err := http.NewRequest(http.MethodGet, "https://api.github.com/repos/ariga/atlas/releases/latest", nil)
 	if err != nil {
 		return LatestRelease{}, err
 	}
@@ -98,13 +102,11 @@ func latestReleaseFromGithub() (LatestRelease, error) {
 	if err != nil {
 		return LatestRelease{}, err
 	}
-	ok := resp.StatusCode >= 200 && resp.StatusCode < 300
-	if !ok {
+	if resp.StatusCode != http.StatusOK {
 		return LatestRelease{}, fmt.Errorf("update: failed to fetch latest release version")
 	}
 	var b LatestRelease
-	err = json.Unmarshal(data, &b)
-	if err != nil {
+	if err := json.Unmarshal(data, &b); err != nil {
 		return LatestRelease{}, err
 	}
 	return b, nil
@@ -117,17 +119,17 @@ func shouldSkip(r *Store) bool {
 	return time.Since(r.CheckedAt).Hours() < 24
 }
 
-func localStore(path string) (*Store, error) {
+func localStore(path string) *Store {
 	b, err := ioutil.ReadFile(fileLocation(path))
 	if err != nil {
-		return nil, err
+		return nil
 	}
 	var s Store
 	err = json.Unmarshal(b, &s)
 	if err != nil {
-		return nil, err
+		return nil
 	}
-	return &s, nil
+	return &s
 }
 
 func saveStore(path string, l LatestRelease, t time.Time) error {
@@ -140,7 +142,7 @@ func saveStore(path string, l LatestRelease, t time.Time) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(fileLocation(path), b, 0600)
+	err = ioutil.WriteFile(fileLocation(path), b, 0644)
 	return err
 }
 
