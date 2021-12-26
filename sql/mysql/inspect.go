@@ -587,7 +587,6 @@ func (i *inspect) myDefaultExpr(c *schema.Column, x, extra string) schema.Expr {
 	if i.supportsExprDefault() && strings.Contains(strings.ToLower(extra), defaultGen) {
 		return &schema.RawExpr{X: x}
 	}
-
 	switch c.Type.Type.(type) {
 	case *schema.BinaryType:
 		// MySQL v8 uses Hexadecimal representation.

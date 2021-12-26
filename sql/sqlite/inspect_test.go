@@ -44,17 +44,17 @@ func TestDriver_InspectTable(t *testing.T) {
 					WillReturnRows(sqltest.Rows(`
  name |   type       | nullable | dflt_value  | primary 
 ------+--------------+----------+ ------------+----------
- c1   | int           |  1      |             |  0
- c2   | integer       |  0      |             |  0
- c3   | varchar(100)  |  1      |             |  0
+ c1   | int           |  1      |     a       |  0
+ c2   | integer       |  0      |     97      |  0
+ c3   | varchar(100)  |  1      |    'A'      |  0
  c4   | boolean       |  0      |             |  0
  c5   | json          |  0      |             |  0
  c6   | datetime      |  0      |             |  0
- c7   | blob          |  0      |             |  0
+ c7   | blob          |  0      |    x'a'     |  0
  c8   | text          |  0      |             |  0
  c9   | numeric(10,2) |  0      |             |  0
  c10  | real          |  0      |             |  0
- id   | integer       |  0      |             |  1
+ id   | integer       |  0      |     0x1     |  1
 `))
 				m.noIndexes("users")
 				m.noFKs("users")
@@ -62,17 +62,17 @@ func TestDriver_InspectTable(t *testing.T) {
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
 				columns := []*schema.Column{
-					{Name: "c1", Type: &schema.ColumnType{Null: true, Type: &schema.IntegerType{T: "int"}, Raw: "int"}},
-					{Name: "c2", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer"}},
-					{Name: "c3", Type: &schema.ColumnType{Null: true, Type: &schema.StringType{T: "varchar", Size: 100}, Raw: "varchar(100)"}},
+					{Name: "c1", Type: &schema.ColumnType{Null: true, Type: &schema.IntegerType{T: "int"}, Raw: "int"}, Default: &schema.RawExpr{X: "a"}},
+					{Name: "c2", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer"}, Default: &schema.Literal{V: "97"}},
+					{Name: "c3", Type: &schema.ColumnType{Null: true, Type: &schema.StringType{T: "varchar", Size: 100}, Raw: "varchar(100)"}, Default: &schema.Literal{V: "'A'"}},
 					{Name: "c4", Type: &schema.ColumnType{Type: &schema.BoolType{T: "boolean"}, Raw: "boolean"}},
 					{Name: "c5", Type: &schema.ColumnType{Type: &schema.JSONType{T: "json"}, Raw: "json"}},
 					{Name: "c6", Type: &schema.ColumnType{Type: &schema.TimeType{T: "datetime"}, Raw: "datetime"}},
-					{Name: "c7", Type: &schema.ColumnType{Type: &schema.BinaryType{T: "blob"}, Raw: "blob"}},
+					{Name: "c7", Type: &schema.ColumnType{Type: &schema.BinaryType{T: "blob"}, Raw: "blob"}, Default: &schema.Literal{V: "x'a'"}},
 					{Name: "c8", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Raw: "text"}},
 					{Name: "c9", Type: &schema.ColumnType{Type: &schema.DecimalType{T: "numeric", Precision: 10, Scale: 2}, Raw: "numeric(10,2)"}},
 					{Name: "c10", Type: &schema.ColumnType{Type: &schema.FloatType{T: "real"}, Raw: "real"}},
-					{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer"}, Attrs: []schema.Attr{AutoIncrement{}}},
+					{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer"}, Attrs: []schema.Attr{AutoIncrement{}}, Default: &schema.Literal{V: "0x1"}},
 				}
 				require.Equal(t.Columns, columns)
 				require.EqualValues(&schema.Index{

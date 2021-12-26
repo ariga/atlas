@@ -73,15 +73,15 @@ func TestSQLite_AddIndexedColumns(t *testing.T) {
 		usersT.Columns = append(usersT.Columns, &schema.Column{
 			Name:    "a",
 			Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Null: true},
-			Default: &schema.RawExpr{X: "10"},
+			Default: &schema.Literal{V: "10"},
 		}, &schema.Column{
 			Name:    "b",
 			Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Null: true},
-			Default: &schema.RawExpr{X: "20"},
+			Default: &schema.Literal{V: "20"},
 		}, &schema.Column{
 			Name:    "c",
 			Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Null: true},
-			Default: &schema.RawExpr{X: "30"},
+			Default: &schema.Literal{V: "30"},
 		})
 		usersT.Indexes = append(usersT.Indexes, &schema.Index{
 			Unique: true,
@@ -172,14 +172,14 @@ func TestSQLite_AddColumns(t *testing.T) {
 		usersT.Columns = append(
 			usersT.Columns,
 			&schema.Column{Name: "null_int", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Null: true}},
-			&schema.Column{Name: "notnull_int", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}}, Default: &schema.RawExpr{X: "1"}},
+			&schema.Column{Name: "notnull_int", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}}, Default: &schema.Literal{V: "1"}},
 			&schema.Column{Name: "null_real", Type: &schema.ColumnType{Type: &schema.FloatType{T: "real"}, Null: true}},
-			&schema.Column{Name: "notnull_real", Type: &schema.ColumnType{Type: &schema.FloatType{T: "real"}}, Default: &schema.RawExpr{X: "1.0"}},
+			&schema.Column{Name: "notnull_real", Type: &schema.ColumnType{Type: &schema.FloatType{T: "real"}}, Default: &schema.Literal{V: "1.0"}},
 			&schema.Column{Name: "null_text", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Null: true}},
 			&schema.Column{Name: "notnull_text1", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}}, Default: &schema.RawExpr{X: "hello"}},
-			&schema.Column{Name: "notnull_text2", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}}, Default: &schema.RawExpr{X: "'hello'"}},
+			&schema.Column{Name: "notnull_text2", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}}, Default: &schema.Literal{V: "'hello'"}},
 			&schema.Column{Name: "null_blob", Type: &schema.ColumnType{Type: &schema.BinaryType{T: "blob"}, Null: true}},
-			&schema.Column{Name: "notnull_blob", Type: &schema.ColumnType{Type: &schema.BinaryType{T: "blob"}}, Default: &schema.RawExpr{X: "'blob'"}},
+			&schema.Column{Name: "notnull_blob", Type: &schema.ColumnType{Type: &schema.BinaryType{T: "blob"}}, Default: &schema.Literal{V: "'blob'"}},
 		)
 		changes := t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 9)
@@ -225,13 +225,13 @@ func TestSQLite_ColumnInt(t *testing.T) {
 		liteRun(t, func(t *liteTest) {
 			usersT := &schema.Table{
 				Name:    "users",
-				Columns: []*schema.Column{{Name: "a", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}, Default: &schema.RawExpr{X: "1"}}},
+				Columns: []*schema.Column{{Name: "a", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}, Default: &schema.Literal{V: "1"}}},
 			}
 			t.migrate(&schema.AddTable{T: usersT})
 			t.dropTables(usersT.Name)
 			ensureNoChange(t, usersT)
 			for _, x := range []string{"2", "'3'", "10.1"} {
-				usersT.Columns[0].Default.(*schema.RawExpr).X = x
+				usersT.Columns[0].Default.(*schema.Literal).V = x
 				changes := t.diff(t.loadUsers(), usersT)
 				require.Len(t, changes, 1)
 				t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
@@ -446,190 +446,190 @@ create table atlas_types_sanity
 				{
 					Name: "tInteger",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer", Unsigned: false}, Raw: "integer(10)", Null: true},
-					Default: &schema.RawExpr{
-						X: "100",
+					Default: &schema.Literal{
+						V: "100",
 					},
 				},
 				{
 					Name: "tInt",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int", Unsigned: false}, Raw: "int(10)", Null: true},
-					Default: &schema.RawExpr{
-						X: "100",
+					Default: &schema.Literal{
+						V: "100",
 					},
 				},
 				{
 					Name: "tTinyIny",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "tinyint", Unsigned: false}, Raw: "tinyint(10)", Null: true},
-					Default: &schema.RawExpr{
-						X: "100",
+					Default: &schema.Literal{
+						V: "100",
 					},
 				},
 				{
 					Name: "tSmallInt",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "smallint", Unsigned: false}, Raw: "smallint(10)", Null: true},
-					Default: &schema.RawExpr{
-						X: "100",
+					Default: &schema.Literal{
+						V: "100",
 					},
 				},
 				{
 					Name: "tMediumInt",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "mediumint", Unsigned: false}, Raw: "mediumint(10)", Null: true},
-					Default: &schema.RawExpr{
-						X: "100",
+					Default: &schema.Literal{
+						V: "100",
 					},
 				},
 				{
 					Name: "tIntegerBigInt",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false}, Raw: "bigint(10)", Null: true},
-					Default: &schema.RawExpr{
-						X: "100",
+					Default: &schema.Literal{
+						V: "100",
 					},
 				},
 				{
 					Name: "tUnsignedBigInt",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "unsigned big int", Unsigned: false}, Raw: "unsigned big int(10)", Null: true},
-					Default: &schema.RawExpr{
-						X: "100",
+					Default: &schema.Literal{
+						V: "100",
 					},
 				},
 				{
 					Name: "tInt2",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int2", Unsigned: false}, Raw: "int2(10)", Null: true},
-					Default: &schema.RawExpr{
-						X: "100",
+					Default: &schema.Literal{
+						V: "100",
 					},
 				},
 				{
 					Name: "tInt8",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int8", Unsigned: false}, Raw: "int8(10)", Null: true},
-					Default: &schema.RawExpr{
-						X: "100",
+					Default: &schema.Literal{
+						V: "100",
 					},
 				},
 				{
 					Name: "tReal",
 					Type: &schema.ColumnType{Type: &schema.FloatType{T: "real", Precision: 0}, Raw: "real(10)", Null: true},
-					Default: &schema.RawExpr{
-						X: "100",
+					Default: &schema.Literal{
+						V: "100",
 					},
 				},
 				{
 					Name: "tDouble",
 					Type: &schema.ColumnType{Type: &schema.FloatType{T: "double", Precision: 0}, Raw: "double(10)", Null: true},
-					Default: &schema.RawExpr{
-						X: "100",
+					Default: &schema.Literal{
+						V: "100",
 					},
 				},
 				{
 					Name: "tDoublePrecision",
 					Type: &schema.ColumnType{Type: &schema.FloatType{T: "double precision", Precision: 0}, Raw: "double precision(10)", Null: true},
-					Default: &schema.RawExpr{
-						X: "100",
+					Default: &schema.Literal{
+						V: "100",
 					},
 				},
 				{
 					Name: "tFloat",
 					Type: &schema.ColumnType{Type: &schema.FloatType{T: "float", Precision: 0}, Raw: "float(10)", Null: true},
-					Default: &schema.RawExpr{
-						X: "100",
+					Default: &schema.Literal{
+						V: "100",
 					},
 				},
 				{
 					Name: "tText",
 					Type: &schema.ColumnType{Type: &schema.StringType{T: "text", Size: 10}, Raw: "text(10)", Null: false},
-					Default: &schema.RawExpr{
-						X: "'I am Text'",
+					Default: &schema.Literal{
+						V: "'I am Text'",
 					},
 				},
 				{
 					Name: "tCharacter",
 					Type: &schema.ColumnType{Type: &schema.StringType{T: "character", Size: 10}, Raw: "character(10)", Null: false},
-					Default: &schema.RawExpr{
-						X: "'I am Text'",
+					Default: &schema.Literal{
+						V: "'I am Text'",
 					},
 				},
 				{
 					Name: "tVarchar",
 					Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar", Size: 10}, Raw: "varchar(10)", Null: false},
-					Default: &schema.RawExpr{
-						X: "'I am Text'",
+					Default: &schema.Literal{
+						V: "'I am Text'",
 					},
 				},
 				{
 					Name: "tVaryingCharacter",
 					Type: &schema.ColumnType{Type: &schema.StringType{T: "varying character", Size: 10}, Raw: "varying character(10)", Null: false},
-					Default: &schema.RawExpr{
-						X: "'I am Text'",
+					Default: &schema.Literal{
+						V: "'I am Text'",
 					},
 				},
 				{
 					Name: "tNchar",
 					Type: &schema.ColumnType{Type: &schema.StringType{T: "nchar", Size: 10}, Raw: "nchar(10)", Null: false},
-					Default: &schema.RawExpr{
-						X: "'I am Text'",
+					Default: &schema.Literal{
+						V: "'I am Text'",
 					},
 				},
 				{
 					Name: "tNativeCharacter",
 					Type: &schema.ColumnType{Type: &schema.StringType{T: "native character", Size: 10}, Raw: "native character(10)", Null: false},
-					Default: &schema.RawExpr{
-						X: "'I am Text'",
+					Default: &schema.Literal{
+						V: "'I am Text'",
 					},
 				},
 				{
 					Name: "tNVarChar",
 					Type: &schema.ColumnType{Type: &schema.StringType{T: "nvarchar", Size: 10}, Raw: "nvarchar(10)", Null: false},
-					Default: &schema.RawExpr{
-						X: "'I am Text'",
+					Default: &schema.Literal{
+						V: "'I am Text'",
 					},
 				},
 				{
 					Name: "tClob",
 					Type: &schema.ColumnType{Type: &schema.StringType{T: "clob", Size: 10}, Raw: "clob(10)", Null: false},
-					Default: &schema.RawExpr{
-						X: "'I am Text'",
+					Default: &schema.Literal{
+						V: "'I am Text'",
 					},
 				},
 				{
 					Name: "tBlob",
 					Type: &schema.ColumnType{Type: &schema.BinaryType{T: "blob", Size: 0}, Raw: "blob(10)", Null: false},
-					Default: &schema.RawExpr{
-						X: "'A'",
+					Default: &schema.Literal{
+						V: "'A'",
 					},
 				},
 				{
 					Name: "tNumeric",
 					Type: &schema.ColumnType{Type: &schema.DecimalType{T: "numeric", Precision: 10}, Raw: "numeric(10)", Null: false},
-					Default: &schema.RawExpr{
-						X: "100",
+					Default: &schema.Literal{
+						V: "100",
 					},
 				},
 				{
 					Name: "tDecimal",
 					Type: &schema.ColumnType{Type: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 5}, Raw: "decimal(10,5)", Null: false},
-					Default: &schema.RawExpr{
-						X: "100",
+					Default: &schema.Literal{
+						V: "100",
 					},
 				},
 				{
 					Name: "tBoolean",
 					Type: &schema.ColumnType{Type: &schema.BoolType{T: "boolean"}, Raw: "boolean", Null: false},
-					Default: &schema.RawExpr{
-						X: "false",
+					Default: &schema.Literal{
+						V: "false",
 					},
 				},
 				{
 					Name: "tDate",
 					Type: &schema.ColumnType{Type: &schema.TimeType{T: "date"}, Raw: "date", Null: false},
-					Default: &schema.RawExpr{
-						X: "'now()'",
+					Default: &schema.Literal{
+						V: "'now()'",
 					},
 				},
 				{
 					Name: "tDatetime",
 					Type: &schema.ColumnType{Type: &schema.TimeType{T: "datetime"}, Raw: "datetime", Null: false},
-					Default: &schema.RawExpr{
-						X: "'now()'",
+					Default: &schema.Literal{
+						V: "'now()'",
 					},
 				},
 			},
