@@ -142,8 +142,7 @@ func saveStore(path string, l LatestRelease, t time.Time) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(fileLocation(path), b, 0644)
-	return err
+	return ioutil.WriteFile(fileLocation(path), b, 0644)
 }
 
 func fileLocation(p string) string {
