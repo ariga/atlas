@@ -555,7 +555,6 @@ create table atlas_defaults
 		require.NoError(t, err)
 		t.dropTables(n)
 		t.applyHcl(string(spec))
-		fmt.Println(string(spec))
 		ensureNoChange(t, realm.Schemas[0].Tables[0])
 	})
 }
