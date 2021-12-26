@@ -21,7 +21,7 @@ type (
 		CheckedAt time.Time `json:"checkedat"`
 	}
 
-	// LatestRelease implements the required fields from https://api.github.com/repos/ariga/atlas/releases/latest
+	// LatestRelease holds the required fields from https://api.github.com/repos/ariga/atlas/releases/latest.
 	LatestRelease struct {
 		Version string `json:"tag_name"`
 		URL     string `json:"html_url"`
