@@ -125,8 +125,7 @@ func localStore(path string) *Store {
 		return nil
 	}
 	var s Store
-	err = json.Unmarshal(b, &s)
-	if err != nil {
+	if err := json.Unmarshal(b, &s); err != nil {
 		return nil
 	}
 	return &s

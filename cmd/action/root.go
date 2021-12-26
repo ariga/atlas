@@ -13,5 +13,5 @@ var RootCmd = &cobra.Command{
 
 // CheckForUpdate exposes internal update logic to CLI
 func CheckForUpdate() {
-	update.CheckForUpdate(version, RootCmd.Println)
+	update.CheckForUpdate(version, RootCmd.PrintErrln)
 }
