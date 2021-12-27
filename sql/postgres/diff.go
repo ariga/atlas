@@ -77,16 +77,16 @@ func (d *diff) ColumnChange(from, to *schema.Column) (schema.ChangeKind, error) 
 // defaultChanged reports if the a default value of a column
 // type was changed.
 func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
-	d1, ok1 := from.Default.(*schema.RawExpr)
-	d2, ok2 := to.Default.(*schema.RawExpr)
+	d1, ok1 := sqlx.DefaultValue(from)
+	d2, ok2 := sqlx.DefaultValue(to)
 	if ok1 != ok2 {
 		return true, nil
 	}
-	if d1 == nil || d1.X == d2.X || trimCast(d1.X) == trimCast(d2.X) {
+	if trimCast(d1) == trimCast(d2) {
 		return false, nil
 	}
 	// Use database comparison in case of mismatch (e.g. `SELECT ARRAY[1] = '{1}'::int[]`).
-	equals, err := d.valuesEqual(d1.X, d2.X)
+	equals, err := d.valuesEqual(d1, d2)
 	if err != nil {
 		return false, err
 	}
@@ -143,6 +143,24 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	if fromT == nil || toT == nil {
 		return false, fmt.Errorf("postgres: missing type infromation for column %q", from.Name)
 	}
+	// Skip checking SERIAL types as they are not real types in the database, but more
+	// like a convenience way for creating integers types with AUTO_INCREMENT property.
+	if s, ok := to.Type.Type.(*SerialType); ok {
+		i, ok := from.Type.Type.(*schema.IntegerType)
+		if !ok {
+			return true, nil
+		}
+		var it string
+		switch s.T {
+		case tSmallSerial:
+			it = tSmallInt
+		case tSerial:
+			it = tInteger
+		case tBigSerial:
+			it = tBigInt
+		}
+		return i.T != it, nil
+	}
 	if reflect.TypeOf(fromT) != reflect.TypeOf(toT) {
 		return true, nil
 	}
@@ -150,7 +168,7 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	switch fromT := fromT.(type) {
 	case *schema.BinaryType, *schema.BoolType, *schema.DecimalType, *schema.FloatType,
 		*schema.IntegerType, *schema.JSONType, *schema.SpatialType, *schema.StringType,
-		*schema.TimeType, *BitType, *SerialType, *NetworkType, *UserDefinedType:
+		*schema.TimeType, *BitType, *NetworkType, *UserDefinedType:
 		changed = mustFormat(toT) != mustFormat(fromT)
 	case *EnumType:
 		toT := toT.(*schema.EnumType)
@@ -228,26 +246,11 @@ func (d *diff) normalize(table *schema.Table) {
 		case *EnumType:
 			c.Type.Type = &schema.EnumType{T: t.T, Values: t.Values}
 		case *SerialType:
-			// The smallserial, serial and bigserial data types are not true types, but merely a
-			// notational convenience for creating integers types with AUTO_INCREMENT property.
-			it := &schema.IntegerType{}
-			switch t.T {
-			case "smallserial":
-				it.T = "smallint"
-			case "serial":
-				it.T = "integer"
-			case "bigserial":
-				it.T = "bigint"
-			default:
-				panic(fmt.Sprintf("unexpected serial type: %q", it.T))
-			}
 			// The definition of "<column> <serial type>" is equivalent to specifying:
 			// "<column> <int type> NOT NULL DEFAULT nextval('<table>_<column>_seq')".
-			c.Default = &SeqFuncExpr{
-				X: fmt.Sprintf("nextval('%s_%s_seq')", table.Name, c.Name),
+			c.Default = &schema.RawExpr{
+				X: fmt.Sprintf("nextval('%s_%s_seq'::regclass)", table.Name, c.Name),
 			}
-			c.Type.Type = it
-			c.Type.Null = false
 		}
 	}
 }

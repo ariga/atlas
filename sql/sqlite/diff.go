@@ -70,10 +70,9 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 // defaultChanged reports if the a default value of a column
 // type was changed.
 func (d *diff) defaultChanged(from, to *schema.Column) bool {
-	if ok1, ok2 := from.Default != nil, to.Default != nil; !ok1 || !ok2 {
-		return ok1 != ok2
-	}
-	return defaultValue(from) != defaultValue(to)
+	d1, ok1 := sqlx.DefaultValue(from)
+	d2, ok2 := sqlx.DefaultValue(to)
+	return ok1 != ok2 || d1 != d2
 }
 
 // IndexAttrChanged reports if the index attributes were changed.

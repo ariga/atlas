@@ -61,7 +61,7 @@ func TestDriver_InspectTable(t *testing.T) {
 -------------+---------------------+-------------+---------------------------------+--------------------------+-------------------+---------------+--------------------+----------------+----------+-------------+---------------------+---------+---------+-------
  id          | bigint              | NO          |                                 |                          |                64 |             0 |                    |                | int8     | NO          |                     |         | b       |    20
  rank        | integer             | YES         |                                 |                          |                32 |             0 |                    |                | int4     | NO          |                     | rank    | b       |    23
- c1          | smallint            | NO          |                                 |                          |                16 |             0 |                    |                | int2     | NO          |                     |         | b       |    21
+ c1          | smallint            | NO          |           1000                  |                          |                16 |             0 |                    |                | int2     | NO          |                     |         | b       |    21
  c2          | bit                 | NO          |                                 |                        1 |                   |               |                    |                | bit      | NO          |                     |         | b       |  1560
  c3          | bit varying         | NO          |                                 |                       10 |                   |               |                    |                | varbit   | NO          |                     |         | b       |  1562
  c4          | boolean             | NO          |                                 |                          |                   |               |                    |                | bool     | NO          |                     |         | b       |    16
@@ -73,9 +73,9 @@ func TestDriver_InspectTable(t *testing.T) {
  c10         | date                | NO          |                                 |                          |                   |               |                    |                | date     | NO          |                     |         | b       |  1082
  c11         | time with time zone | NO          |                                 |                          |                   |               |                    |                | timetz   | NO          |                     |         | b       |  1266
  c12         | double precision    | NO          |                                 |                          |                53 |               |                    |                | float8   | NO          |                     |         | b       |   701
- c13         | real                | NO          |                                 |                          |                24 |               |                    |                | float4   | NO          |                     |         | b       |   700
- c14         | json                | NO          |                                 |                          |                   |               |                    |                | json     | NO          |                     |         | b       |   114
- c15         | jsonb               | NO          |                                 |                          |                   |               |                    |                | jsonb    | NO          |                     |         | b       |  3802
+ c13         | real                | NO          |           random()              |                          |                24 |               |                    |                | float4   | NO          |                     |         | b       |   700
+ c14         | json                | NO          |           '{}'::json            |                          |                   |               |                    |                | json     | NO          |                     |         | b       |   114
+ c15         | jsonb               | NO          |           '{}'::jsonb           |                          |                   |               |                    |                | jsonb    | NO          |                     |         | b       |  3802
  c16         | money               | NO          |                                 |                          |                   |               |                    |                | money    | NO          |                     |         | b       |   790
  c17         | numeric             | NO          |                                 |                          |                   |               |                    |                | numeric  | NO          |                     |         | b       |  1700
  c18         | numeric             | NO          |                                 |                          |                 4 |             4 |                    |                | numeric  | NO          |                     |         | b       |  1700
@@ -104,7 +104,7 @@ func TestDriver_InspectTable(t *testing.T) {
 				require.EqualValues([]*schema.Column{
 					{Name: "id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
 					{Name: "rank", Type: &schema.ColumnType{Raw: "integer", Null: true, Type: &schema.IntegerType{T: "integer"}}, Attrs: []schema.Attr{&schema.Comment{Text: "rank"}}},
-					{Name: "c1", Type: &schema.ColumnType{Raw: "smallint", Type: &schema.IntegerType{T: "smallint"}}},
+					{Name: "c1", Type: &schema.ColumnType{Raw: "smallint", Type: &schema.IntegerType{T: "smallint"}}, Default: &schema.Literal{V: "1000"}},
 					{Name: "c2", Type: &schema.ColumnType{Raw: "bit", Type: &BitType{T: "bit", Len: 1}}},
 					{Name: "c3", Type: &schema.ColumnType{Raw: "bit varying", Type: &BitType{T: "bit varying", Len: 10}}},
 					{Name: "c4", Type: &schema.ColumnType{Raw: "boolean", Type: &schema.BoolType{T: "boolean"}}},
@@ -116,13 +116,13 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c10", Type: &schema.ColumnType{Raw: "date", Type: &schema.TimeType{T: "date"}}},
 					{Name: "c11", Type: &schema.ColumnType{Raw: "time with time zone", Type: &schema.TimeType{T: "time with time zone"}}},
 					{Name: "c12", Type: &schema.ColumnType{Raw: "double precision", Type: &schema.FloatType{T: "double precision", Precision: 53}}},
-					{Name: "c13", Type: &schema.ColumnType{Raw: "real", Type: &schema.FloatType{T: "real", Precision: 24}}},
-					{Name: "c14", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}},
-					{Name: "c15", Type: &schema.ColumnType{Raw: "jsonb", Type: &schema.JSONType{T: "jsonb"}}},
+					{Name: "c13", Type: &schema.ColumnType{Raw: "real", Type: &schema.FloatType{T: "real", Precision: 24}}, Default: &schema.RawExpr{X: "random()"}},
+					{Name: "c14", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}, Default: &schema.Literal{V: "'{}'"}},
+					{Name: "c15", Type: &schema.ColumnType{Raw: "jsonb", Type: &schema.JSONType{T: "jsonb"}}, Default: &schema.Literal{V: "'{}'"}},
 					{Name: "c16", Type: &schema.ColumnType{Raw: "money", Type: &CurrencyType{T: "money"}}},
 					{Name: "c17", Type: &schema.ColumnType{Raw: "numeric", Type: &schema.DecimalType{T: "numeric"}}},
 					{Name: "c18", Type: &schema.ColumnType{Raw: "numeric", Type: &schema.DecimalType{T: "numeric", Precision: 4, Scale: 4}}},
-					{Name: "c19", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}, Default: &SeqFuncExpr{X: "nextval('t1_c19_seq'::regclass)"}},
+					{Name: "c19", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}, Default: &schema.RawExpr{X: "nextval('t1_c19_seq'::regclass)"}},
 					{Name: "c20", Type: &schema.ColumnType{Raw: "uuid", Type: &UUIDType{T: "uuid"}}},
 					{Name: "c21", Type: &schema.ColumnType{Raw: "xml", Type: &XMLType{T: "xml"}}},
 					{Name: "c22", Type: &schema.ColumnType{Raw: "ARRAY", Null: true, Type: &ArrayType{T: "int4[]"}}},

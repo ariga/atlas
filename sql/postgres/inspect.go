@@ -179,7 +179,7 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 		typid:     typid.Int64,
 	})
 	if sqlx.ValidString(defaults) {
-		c.Default = defaultExpr(defaults.String)
+		c.Default = defaultExpr(c, defaults.String)
 	}
 	if identity.String == "YES" {
 		c.Attrs = append(c.Attrs, &Identity{
@@ -504,13 +504,43 @@ func inStrings(s []string, query string, args []interface{}) (string, []interfac
 	return query, args
 }
 
-func defaultExpr(x string) schema.Expr {
-	for _, fn := range [...]string{"currval", "lastval", "setval", "nextval"} {
-		if strings.HasPrefix(x, fn) {
-			return &SeqFuncExpr{X: x}
+func defaultExpr(c *schema.Column, x string) schema.Expr {
+	switch {
+	case sqlx.IsLiteralBool(x), sqlx.IsLiteralNumber(x), sqlx.IsQuoted(x, '\''):
+		return &schema.Literal{V: x}
+	default:
+		// Try casting or fallback to raw expressions (e.g. column text[] has the default of '{}':text[]).
+		if v, ok := canConvert(c.Type, x); ok {
+			return &schema.Literal{V: v}
 		}
+		return &schema.RawExpr{X: x}
 	}
-	return &schema.RawExpr{X: x}
+}
+
+func canConvert(t *schema.ColumnType, x string) (string, bool) {
+	r := t.Raw
+	if t, ok := t.Type.(*ArrayType); ok {
+		r = t.T
+	}
+	i := strings.Index(x, "::"+r)
+	if i == -1 || !sqlx.IsQuoted(x[:i], '\'') {
+		return "", false
+	}
+	q := x[0:i]
+	x = x[1 : i-1]
+	switch t.Type.(type) {
+	case *schema.BoolType:
+		if sqlx.IsLiteralBool(x) {
+			return x, true
+		}
+	case *schema.DecimalType, *schema.IntegerType, *schema.FloatType:
+		if sqlx.IsLiteralNumber(x) {
+			return x, true
+		}
+	case *ArrayType, *schema.BinaryType, *schema.JSONType, *NetworkType, *schema.SpatialType, *schema.StringType, *schema.TimeType, *UUIDType, *XMLType:
+		return q, true
+	}
+	return "", false
 }
 
 type (
@@ -627,13 +657,6 @@ type (
 		Clause    string
 		NoInherit bool
 		Columns   []string
-	}
-
-	// SeqFuncExpr describe a sequence generator function.
-	// https://www.postgresql.org/docs/current/functions-sequence.html
-	SeqFuncExpr struct {
-		schema.Expr
-		X string
 	}
 )
 

@@ -389,9 +389,7 @@ func (s *state) column(b *sqlx.Builder, c *schema.Column) {
 		b.P("NOT")
 	}
 	b.P("NULL")
-	if x, ok := c.Default.(*schema.RawExpr); ok {
-		b.P("DEFAULT", x.X)
-	}
+	s.columnDefault(b, c)
 	for _, attr := range c.Attrs {
 		switch attr := attr.(type) {
 		case *schema.Comment:
@@ -404,6 +402,25 @@ func (s *state) column(b *sqlx.Builder, c *schema.Column) {
 			b.P("GENERATED", attr.Generation, "AS IDENTITY")
 		default:
 			panic(fmt.Sprintf("unexpected column attribute: %T", attr))
+		}
+	}
+}
+
+// columnDefault writes the default value of column to the builder.
+func (s *state) columnDefault(b *sqlx.Builder, c *schema.Column) {
+	switch x := c.Default.(type) {
+	case *schema.Literal:
+		v := x.V
+		switch c.Type.Type.(type) {
+		case *schema.BoolType, *schema.DecimalType, *schema.IntegerType, *schema.FloatType:
+		default:
+			v = quote(v)
+		}
+		b.P("DEFAULT", v)
+	case *schema.RawExpr:
+		// Ignore identity functions added by the differ.
+		if _, ok := c.Type.Type.(*SerialType); !ok {
+			b.P("DEFAULT", x.X)
 		}
 	}
 }

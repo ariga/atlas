@@ -76,15 +76,15 @@ func TestPostgres_AddIndexedColumns(t *testing.T) {
 		usersT.Columns = append(usersT.Columns, &schema.Column{
 			Name:    "a",
 			Type:    &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true},
-			Default: &schema.RawExpr{X: "10"},
+			Default: &schema.Literal{V: "10"},
 		}, &schema.Column{
 			Name:    "b",
 			Type:    &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true},
-			Default: &schema.RawExpr{X: "10"},
+			Default: &schema.Literal{V: "10"},
 		}, &schema.Column{
 			Name:    "c",
 			Type:    &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true},
-			Default: &schema.RawExpr{X: "10"},
+			Default: &schema.Literal{V: "10"},
 		})
 		parts := usersT.Columns[len(usersT.Columns)-3:]
 		usersT.Indexes = append(usersT.Indexes, &schema.Index{
@@ -119,22 +119,22 @@ func TestPostgres_AddColumns(t *testing.T) {
 		usersT.Columns = append(
 			usersT.Columns,
 			&schema.Column{Name: "a", Type: &schema.ColumnType{Type: &schema.BinaryType{T: "bytea"}}},
-			&schema.Column{Name: "b", Type: &schema.ColumnType{Type: &schema.FloatType{T: "double precision", Precision: 10}}, Default: &schema.RawExpr{X: "10.1"}},
-			&schema.Column{Name: "c", Type: &schema.ColumnType{Type: &schema.StringType{T: "character"}}, Default: &schema.RawExpr{X: "'y'"}},
-			&schema.Column{Name: "d", Type: &schema.ColumnType{Type: &schema.DecimalType{T: "numeric", Precision: 10, Scale: 2}}, Default: &schema.RawExpr{X: "0.99"}},
-			&schema.Column{Name: "e", Type: &schema.ColumnType{Type: &schema.JSONType{T: "json"}}, Default: &schema.RawExpr{X: "'{}'"}},
-			&schema.Column{Name: "f", Type: &schema.ColumnType{Type: &schema.JSONType{T: "jsonb"}}, Default: &schema.RawExpr{X: "'1'"}},
-			&schema.Column{Name: "g", Type: &schema.ColumnType{Type: &schema.FloatType{T: "float", Precision: 10}}, Default: &schema.RawExpr{X: "'1'"}},
-			&schema.Column{Name: "h", Type: &schema.ColumnType{Type: &schema.FloatType{T: "float", Precision: 30}}, Default: &schema.RawExpr{X: "'1'"}},
-			&schema.Column{Name: "i", Type: &schema.ColumnType{Type: &schema.FloatType{T: "float", Precision: 53}}, Default: &schema.RawExpr{X: "1"}},
+			&schema.Column{Name: "b", Type: &schema.ColumnType{Type: &schema.FloatType{T: "double precision", Precision: 10}}, Default: &schema.Literal{V: "10.1"}},
+			&schema.Column{Name: "c", Type: &schema.ColumnType{Type: &schema.StringType{T: "character"}}, Default: &schema.Literal{V: "'y'"}},
+			&schema.Column{Name: "d", Type: &schema.ColumnType{Type: &schema.DecimalType{T: "numeric", Precision: 10, Scale: 2}}, Default: &schema.Literal{V: "0.99"}},
+			&schema.Column{Name: "e", Type: &schema.ColumnType{Type: &schema.JSONType{T: "json"}}, Default: &schema.Literal{V: "'{}'"}},
+			&schema.Column{Name: "f", Type: &schema.ColumnType{Type: &schema.JSONType{T: "jsonb"}}, Default: &schema.Literal{V: "'1'"}},
+			&schema.Column{Name: "g", Type: &schema.ColumnType{Type: &schema.FloatType{T: "float", Precision: 10}}, Default: &schema.Literal{V: "'1'"}},
+			&schema.Column{Name: "h", Type: &schema.ColumnType{Type: &schema.FloatType{T: "float", Precision: 30}}, Default: &schema.Literal{V: "'1'"}},
+			&schema.Column{Name: "i", Type: &schema.ColumnType{Type: &schema.FloatType{T: "float", Precision: 53}}, Default: &schema.Literal{V: "1"}},
 			&schema.Column{Name: "j", Type: &schema.ColumnType{Type: &postgres.SerialType{T: "serial"}}},
-			&schema.Column{Name: "k", Type: &schema.ColumnType{Type: &postgres.CurrencyType{T: "money"}}, Default: &schema.RawExpr{X: "100"}},
+			&schema.Column{Name: "k", Type: &schema.ColumnType{Type: &postgres.CurrencyType{T: "money"}}, Default: &schema.Literal{V: "'100'"}},
 			&schema.Column{Name: "l", Type: &schema.ColumnType{Type: &postgres.CurrencyType{T: "money"}, Null: true}, Default: &schema.RawExpr{X: "'52093.89'::money"}},
-			&schema.Column{Name: "m", Type: &schema.ColumnType{Type: &schema.BoolType{T: "boolean"}, Null: true}, Default: &schema.RawExpr{X: "false"}},
-			&schema.Column{Name: "n", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "point"}, Null: true}, Default: &schema.RawExpr{X: "'(1,2)'"}},
-			&schema.Column{Name: "o", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "line"}, Null: true}, Default: &schema.RawExpr{X: "'{1,2,3}'"}},
+			&schema.Column{Name: "m", Type: &schema.ColumnType{Type: &schema.BoolType{T: "boolean"}, Null: true}, Default: &schema.Literal{V: "false"}},
+			&schema.Column{Name: "n", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "point"}, Null: true}, Default: &schema.Literal{V: "'(1,2)'"}},
+			&schema.Column{Name: "o", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "line"}, Null: true}, Default: &schema.Literal{V: "'{1,2,3}'"}},
 			&schema.Column{Name: "p", Type: &schema.ColumnType{Type: &postgres.UserDefinedType{T: "hstore"}, Null: true}, Default: &schema.RawExpr{X: "'a => 1'"}},
-			&schema.Column{Name: "q", Type: &schema.ColumnType{Type: &postgres.ArrayType{T: "text[]"}, Null: true}, Default: &schema.RawExpr{X: "'{}'"}},
+			&schema.Column{Name: "q", Type: &schema.ColumnType{Type: &postgres.ArrayType{T: "text[]"}, Null: true}, Default: &schema.Literal{V: "'{}'"}},
 		)
 		changes := t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 17)
@@ -190,7 +190,7 @@ func TestPostgres_ColumnArray(t *testing.T) {
 		// Add column.
 		usersT.Columns = append(
 			usersT.Columns,
-			&schema.Column{Name: "a", Type: &schema.ColumnType{Raw: "int[]", Type: &postgres.ArrayType{T: "int[]"}}, Default: &schema.RawExpr{X: "'{1}'"}},
+			&schema.Column{Name: "a", Type: &schema.ColumnType{Raw: "int[]", Type: &postgres.ArrayType{T: "int[]"}}, Default: &schema.Literal{V: "'{1}'"}},
 		)
 		changes := t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 1)
@@ -528,17 +528,17 @@ create table atlas_types_sanity
 				{
 					Name:    "tBoolean",
 					Type:    &schema.ColumnType{Type: &schema.BoolType{T: "boolean"}, Raw: "boolean", Null: false},
-					Default: &schema.RawExpr{X: "false"},
+					Default: &schema.Literal{V: "false"},
 				},
 				{
 					Name:    "tBool",
 					Type:    &schema.ColumnType{Type: &schema.BoolType{T: "boolean"}, Raw: "boolean", Null: false},
-					Default: &schema.RawExpr{X: "false"},
+					Default: &schema.Literal{V: "false"},
 				},
 				{
 					Name:    "tBytea",
 					Type:    &schema.ColumnType{Type: &schema.BinaryType{T: "bytea"}, Raw: "bytea", Null: false},
-					Default: &schema.RawExpr{X: "'\\x01'::bytea"},
+					Default: &schema.Literal{V: "'\\x01'"},
 				},
 				{
 					Name:    "tCharacter",
@@ -553,72 +553,72 @@ create table atlas_types_sanity
 				{
 					Name:    "tCharVar",
 					Type:    &schema.ColumnType{Type: &schema.StringType{T: "character varying", Size: 10}, Raw: "character varying", Null: true},
-					Default: &schema.RawExpr{X: "'atlas'::character varying"},
+					Default: &schema.Literal{V: "'atlas'"},
 				},
 				{
 					Name:    "tVarChar",
 					Type:    &schema.ColumnType{Type: &schema.StringType{T: "character varying", Size: 10}, Raw: "character varying", Null: true},
-					Default: &schema.RawExpr{X: "'atlas'::character varying"},
+					Default: &schema.Literal{V: "'atlas'"},
 				},
 				{
 					Name:    "tText",
 					Type:    &schema.ColumnType{Type: &schema.StringType{T: "text"}, Raw: "text", Null: true},
-					Default: &schema.RawExpr{X: "'atlas'::text"},
+					Default: &schema.Literal{V: "'atlas'"},
 				},
 				{
 					Name:    "tSmallInt",
 					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "smallint"}, Raw: "smallint", Null: true},
-					Default: &schema.RawExpr{X: "'10'::smallint"},
+					Default: &schema.Literal{V: "10"},
 				},
 				{
 					Name:    "tInteger",
 					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer", Null: true},
-					Default: &schema.RawExpr{X: "10"},
+					Default: &schema.Literal{V: "10"},
 				},
 				{
 					Name:    "tBigInt",
 					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}, Raw: "bigint", Null: true},
-					Default: &schema.RawExpr{X: "'10'::bigint"},
+					Default: &schema.Literal{V: "10"},
 				},
 				{
 					Name:    "tInt",
 					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer", Null: true},
-					Default: &schema.RawExpr{X: "10"},
+					Default: &schema.Literal{V: "10"},
 				},
 				{
 					Name:    "tInt2",
 					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "smallint"}, Raw: "smallint", Null: true},
-					Default: &schema.RawExpr{X: "'10'::smallint"},
+					Default: &schema.Literal{V: "10"},
 				},
 				{
 					Name:    "tInt4",
 					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer", Null: true},
-					Default: &schema.RawExpr{X: "10"},
+					Default: &schema.Literal{V: "10"},
 				},
 				{
 					Name:    "tInt8",
 					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}, Raw: "bigint", Null: true},
-					Default: &schema.RawExpr{X: "'10'::bigint"},
+					Default: &schema.Literal{V: "10"},
 				},
 				{
 					Name:    "tCIDR",
 					Type:    &schema.ColumnType{Type: &postgres.NetworkType{T: "cidr"}, Raw: "cidr", Null: true},
-					Default: &schema.RawExpr{X: "'127.0.0.1/32'::cidr"},
+					Default: &schema.Literal{V: "'127.0.0.1/32'"},
 				},
 				{
 					Name:    "tInet",
 					Type:    &schema.ColumnType{Type: &postgres.NetworkType{T: "inet"}, Raw: "inet", Null: true},
-					Default: &schema.RawExpr{X: "'127.0.0.1'::inet"},
+					Default: &schema.Literal{V: "'127.0.0.1'"},
 				},
 				{
 					Name:    "tMACAddr",
 					Type:    &schema.ColumnType{Type: &postgres.NetworkType{T: "macaddr"}, Raw: "macaddr", Null: true},
-					Default: &schema.RawExpr{X: "'08:00:2b:01:02:03'::macaddr"},
+					Default: &schema.Literal{V: "'08:00:2b:01:02:03'"},
 				},
 				{
 					Name:    "tMACAddr8",
 					Type:    &schema.ColumnType{Type: &postgres.NetworkType{T: "macaddr8"}, Raw: "macaddr8", Null: true},
-					Default: &schema.RawExpr{X: "'08:00:2b:01:02:03:04:05'::macaddr8"},
+					Default: &schema.Literal{V: "'08:00:2b:01:02:03:04:05'"},
 				},
 				{
 					Name: "tCircle",
@@ -687,121 +687,115 @@ create table atlas_types_sanity
 				{
 					Name:    "tDouble",
 					Type:    &schema.ColumnType{Type: &schema.FloatType{T: "double precision", Precision: 53}, Raw: "double precision", Null: true},
-					Default: &schema.RawExpr{X: "0"},
+					Default: &schema.Literal{V: "0"},
 				},
 				{
 					Name:    "tReal",
 					Type:    &schema.ColumnType{Type: &schema.FloatType{T: "real", Precision: 24}, Raw: "real", Null: true},
-					Default: &schema.RawExpr{X: "0"},
+					Default: &schema.Literal{V: "0"},
 				},
 				{
 					Name:    "tFloat8",
 					Type:    &schema.ColumnType{Type: &schema.FloatType{T: "double precision", Precision: 53}, Raw: "double precision", Null: true},
-					Default: &schema.RawExpr{X: "0"},
+					Default: &schema.Literal{V: "0"},
 				},
 				{
 					Name:    "tFloat4",
 					Type:    &schema.ColumnType{Type: &schema.FloatType{T: "real", Precision: 24}, Raw: "real", Null: true},
-					Default: &schema.RawExpr{X: "0"},
+					Default: &schema.Literal{V: "0"},
 				},
 				{
 					Name:    "tNumeric",
 					Type:    &schema.ColumnType{Type: &schema.DecimalType{T: "numeric", Precision: 0}, Raw: "numeric", Null: true},
-					Default: &schema.RawExpr{X: "0"},
+					Default: &schema.Literal{V: "0"},
 				},
 				{
 					Name:    "tDecimal",
 					Type:    &schema.ColumnType{Type: &schema.DecimalType{T: "numeric", Precision: 0}, Raw: "numeric", Null: true},
-					Default: &schema.RawExpr{X: "0"},
+					Default: &schema.Literal{V: "0"},
 				},
 				{
 					Name: "tSmallSerial",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "smallint", Unsigned: false}, Raw: "smallint", Null: false},
-					Default: &postgres.SeqFuncExpr{
-						Expr: nil,
-						X:    "nextval('\"atlas_types_sanity_tSmallSerial_seq\"'::regclass)",
+					Default: &schema.RawExpr{
+						X: "nextval('\"atlas_types_sanity_tSmallSerial_seq\"'::regclass)",
 					},
 				},
 				{
 					Name: "tSerial",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer", Unsigned: false}, Raw: "integer", Null: false},
-					Default: &postgres.SeqFuncExpr{
-						Expr: nil,
-						X:    "nextval('\"atlas_types_sanity_tSerial_seq\"'::regclass)",
+					Default: &schema.RawExpr{
+						X: "nextval('\"atlas_types_sanity_tSerial_seq\"'::regclass)",
 					},
 				},
 				{
 					Name: "tBigSerial",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false}, Raw: "bigint", Null: false},
-					Default: &postgres.SeqFuncExpr{
-						Expr: nil,
-						X:    "nextval('\"atlas_types_sanity_tBigSerial_seq\"'::regclass)",
+					Default: &schema.RawExpr{
+						X: "nextval('\"atlas_types_sanity_tBigSerial_seq\"'::regclass)",
 					},
 				},
 				{
 					Name: "tSerial2",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "smallint", Unsigned: false}, Raw: "smallint", Null: false},
-					Default: &postgres.SeqFuncExpr{
-						Expr: nil,
-						X:    "nextval('\"atlas_types_sanity_tSerial2_seq\"'::regclass)",
+					Default: &schema.RawExpr{
+						X: "nextval('\"atlas_types_sanity_tSerial2_seq\"'::regclass)",
 					},
 				},
 				{
 					Name: "tSerial4",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer", Unsigned: false}, Raw: "integer", Null: false},
-					Default: &postgres.SeqFuncExpr{
-						Expr: nil,
-						X:    "nextval('\"atlas_types_sanity_tSerial4_seq\"'::regclass)",
+					Default: &schema.RawExpr{
+						X: "nextval('\"atlas_types_sanity_tSerial4_seq\"'::regclass)",
 					},
 				},
 				{
 					Name: "tSerial8",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false}, Raw: "bigint", Null: false},
-					Default: &postgres.SeqFuncExpr{
-						Expr: nil,
-						X:    "nextval('\"atlas_types_sanity_tSerial8_seq\"'::regclass)",
+					Default: &schema.RawExpr{
+						X: "nextval('\"atlas_types_sanity_tSerial8_seq\"'::regclass)",
 					},
 				},
 				{
 					Name: "tArray",
 					Type: &schema.ColumnType{Type: &postgres.ArrayType{T: "text[]"}, Raw: "ARRAY", Null: true},
-					Default: &schema.RawExpr{
-						X: "'{}'::text[]",
+					Default: &schema.Literal{
+						V: "'{}'",
 					},
 				},
 				{
 					Name: "tXML",
 					Type: &schema.ColumnType{Type: &postgres.XMLType{T: "xml"}, Raw: "xml", Null: true},
-					Default: &schema.RawExpr{
-						X: "'<a>foo</a>'::xml",
+					Default: &schema.Literal{
+						V: "'<a>foo</a>'",
 					},
 				},
 				{
 					Name: "tJSON",
 					Type: &schema.ColumnType{Type: &schema.JSONType{T: "json"}, Raw: "json", Null: true},
-					Default: &schema.RawExpr{
-						X: "'{\"key\":\"value\"}'::json",
+					Default: &schema.Literal{
+						V: "'{\"key\":\"value\"}'",
 					},
 				},
 				{
 					Name: "tJSONB",
 					Type: &schema.ColumnType{Type: &schema.JSONType{T: "jsonb"}, Raw: "jsonb", Null: true},
-					Default: &schema.RawExpr{
-						X: "'{\"key\": \"value\"}'::jsonb",
+					Default: &schema.Literal{
+						V: "'{\"key\": \"value\"}'",
 					},
 				},
 				{
 					Name: "tUUID",
 					Type: &schema.ColumnType{Type: &postgres.UUIDType{T: "uuid"}, Raw: "uuid", Null: true},
-					Default: &schema.RawExpr{
-						X: "'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'::uuid",
+					Default: &schema.Literal{
+						V: "'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'",
 					},
 				},
 				{
 					Name: "tMoney",
 					Type: &schema.ColumnType{Type: &postgres.CurrencyType{T: "money"}, Raw: "money", Null: true},
-					Default: &schema.RawExpr{
-						X: "18",
+					Default: &schema.Literal{
+						V: "18",
 					},
 				},
 				{
@@ -905,7 +899,7 @@ func (t *pgTest) posts() *schema.Table {
 			{
 				Name:    "author_id",
 				Type:    &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true},
-				Default: &schema.RawExpr{X: "10"},
+				Default: &schema.Literal{V: "10"},
 			},
 			{
 				Name: "ctime",
