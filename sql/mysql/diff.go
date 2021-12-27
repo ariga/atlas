@@ -275,20 +275,9 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 // defaultChanged reports if the a default value of a column
 // type was changed.
 func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
-	var d1, d2 string
-	switch d := from.Default.(type) {
-	case *schema.Literal:
-		d1 = d.V
-	case *schema.RawExpr:
-		d1 = d.X
-	}
-	switch d := to.Default.(type) {
-	case *schema.Literal:
-		d2 = d.V
-	case *schema.RawExpr:
-		d2 = d.X
-	}
-	if (d1 != "") != (d2 != "") {
+	d1, ok1 := sqlx.DefaultValue(from)
+	d2, ok2 := sqlx.DefaultValue(to)
+	if ok1 != ok2 {
 		return true, nil
 	}
 	if d1 == d2 {

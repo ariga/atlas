@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"ariga.io/atlas/sql/schema"
@@ -271,4 +272,37 @@ func IsQuoted(s string, q ...byte) bool {
 		}
 	}
 	return false
+}
+
+// IsLiteralBool reports if the given string is a valid literal bool.
+func IsLiteralBool(s string) bool {
+	_, err := strconv.ParseBool(s)
+	return err == nil
+}
+
+// IsLiteralNumber reports if the given string is a literal number.
+func IsLiteralNumber(s string) bool {
+	// Hex digits.
+	if strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X") {
+		// Some databases allow odd length hex string.
+		_, err := strconv.ParseUint(s[2:], 16, 64)
+		return err == nil
+	}
+	// Digits with optional exponent.
+	_, err := strconv.ParseFloat(s, 64)
+	return err == nil
+}
+
+// DefaultValue returns the string represents the DEFAULT of a column.
+func DefaultValue(c *schema.Column) (string, bool) {
+	switch x := c.Default.(type) {
+	case nil:
+		return "", false
+	case *schema.Literal:
+		return x.V, true
+	case *schema.RawExpr:
+		return x.X, true
+	default:
+		panic(fmt.Sprintf("unexpected default value type: %T", x))
+	}
 }
