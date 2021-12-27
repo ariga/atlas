@@ -262,3 +262,13 @@ func (b *Builder) rewriteLastByte(c byte) {
 	buf := b.Buffer.Bytes()
 	buf[len(buf)-1] = c
 }
+
+// IsQuoted reports if the given string is quoted with one of the given quotes (e.g. '\'', '"', '`').
+func IsQuoted(s string, q ...byte) bool {
+	for i := range q {
+		if l, r := strings.IndexByte(s, q[i]), strings.LastIndexByte(s, q[i]); l < r && l == 0 && r == len(s)-1 {
+			return true
+		}
+	}
+	return false
+}

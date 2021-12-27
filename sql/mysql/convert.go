@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 )
 
@@ -86,7 +87,7 @@ func formatValues(vs []string) string {
 	values := make([]string, len(vs))
 	for i := range vs {
 		values[i] = vs[i]
-		if !strings.HasPrefix(values[i], "'") || !strings.HasSuffix(values[i], "'") {
+		if !sqlx.IsQuoted(values[i], '"', '\'') {
 			values[i] = "'" + values[i] + "'"
 		}
 	}

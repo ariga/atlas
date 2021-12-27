@@ -572,8 +572,8 @@ func skipAutoChanges(changes []schema.Change) []schema.Change {
 }
 
 func quote(s string) string {
-	if strings.HasPrefix(s, "'") && strings.HasSuffix(s, "'") {
+	if sqlx.IsQuoted(s, '\'') {
 		return s
 	}
-	return "'" + s + "'"
+	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
 }

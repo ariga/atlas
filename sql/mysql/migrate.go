@@ -474,8 +474,7 @@ search:
 }
 
 func quote(s string) string {
-	if strings.HasPrefix(s, "'") && strings.HasSuffix(s, "'") ||
-		strings.HasPrefix(s, "\"") && strings.HasSuffix(s, "\"") {
+	if sqlx.IsQuoted(s, '"', '\'') {
 		return s
 	}
 	return strconv.Quote(s)
@@ -483,9 +482,9 @@ func quote(s string) string {
 
 func unquote(s string) (string, error) {
 	switch {
-	case strings.HasPrefix(s, "\"") && strings.HasSuffix(s, "\""):
+	case sqlx.IsQuoted(s, '"'):
 		return strconv.Unquote(s)
-	case strings.HasPrefix(s, "'") && strings.HasSuffix(s, "'"):
+	case sqlx.IsQuoted(s, '\''):
 		return strings.ReplaceAll(s[1:len(s)-1], "''", "'"), nil
 	default:
 		return s, nil
