@@ -518,9 +518,7 @@ func defaultExpr(x string) schema.Expr {
 	switch {
 	// Literals definition.
 	// https://www.sqlite.org/syntax/literal-value.html
-	case isBlob(x), isBool(x), isNumeric(x),
-		strings.HasPrefix(x, `"`) && strings.HasSuffix(x, `"`),
-		strings.HasPrefix(x, "'") && strings.HasSuffix(x, "'"):
+	case isBlob(x), isBool(x), isNumeric(x), sqlx.IsQuoted(x, '"', '\''):
 		return &schema.Literal{V: x}
 	default:
 		// We wrap the CURRENT_TIMESTAMP literals in raw-expressions
