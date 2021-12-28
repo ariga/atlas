@@ -103,31 +103,31 @@ func TestDiff_TableDiff(t *testing.T) {
 		{
 			name: "add check",
 			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}},
-			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"}}},
+			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&schema.Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"}}},
 			wantChanges: []schema.Change{
 				&schema.AddAttr{
-					A: &Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"},
+					A: &schema.Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"},
 				},
 			},
 		},
 		{
 			name: "drop check",
-			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"}}},
+			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"}}},
 			to:   &schema.Table{Name: "t1"},
 			wantChanges: []schema.Change{
 				&schema.DropAttr{
-					A: &Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"},
+					A: &schema.Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"},
 				},
 			},
 		},
 		{
 			name: "modify check",
-			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"}}},
-			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')", Enforced: true}}},
+			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"}}},
+			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&schema.Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')", Attrs: []schema.Attr{&Enforced{}}}}},
 			wantChanges: []schema.Change{
 				&schema.ModifyAttr{
-					From: &Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"},
-					To:   &Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')", Enforced: true},
+					From: &schema.Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')"},
+					To:   &schema.Check{Name: "users_chk1_c1", Clause: "(`c1` <>_latin1\\'foo\\')", Attrs: []schema.Attr{&Enforced{}}},
 				},
 			},
 		},

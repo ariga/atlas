@@ -50,7 +50,7 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) []schema.Change {
 			changes = append(changes, &schema.DropAttr{
 				A: c1,
 			})
-		case c1.Clause != c2.Clause || c1.Enforced != c2.Enforced:
+		case c1.Clause != c2.Clause || sqlx.Has(c1.Attrs, &Enforced{}) != sqlx.Has(c2.Attrs, &Enforced{}):
 			changes = append(changes, &schema.ModifyAttr{
 				From: c1,
 				To:   c2,
@@ -207,9 +207,9 @@ func indexType(attr []schema.Attr) *IndexType {
 // noChange describes a zero change.
 var noChange struct{ schema.Change }
 
-func checks(attr []schema.Attr) (checks []*Check) {
+func checks(attr []schema.Attr) (checks []*schema.Check) {
 	for i := range attr {
-		if c, ok := attr[i].(*Check); ok {
+		if c, ok := attr[i].(*schema.Check); ok {
 			checks = append(checks, c)
 		}
 	}
@@ -374,9 +374,9 @@ func binValue(x string) (string, error) {
 	return string(d), nil
 }
 
-func checkByName(attr []schema.Attr, name string) (*Check, bool) {
+func checkByName(attr []schema.Attr, name string) (*schema.Check, bool) {
 	for i := range attr {
-		if c, ok := attr[i].(*Check); ok && c.Name == name {
+		if c, ok := attr[i].(*schema.Check); ok && c.Name == name {
 			return c, true
 		}
 	}

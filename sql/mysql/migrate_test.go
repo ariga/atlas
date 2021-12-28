@@ -223,7 +223,7 @@ func TestPlanChanges(t *testing.T) {
 							&schema.Charset{V: "utf8mb4"},
 							&schema.Collation{V: "utf8mb4_bin"},
 							&schema.Comment{Text: "posts comment"},
-							&Check{Name: "id_nonzero", Clause: "(`id` > 0)"},
+							&schema.Check{Name: "id_nonzero", Clause: "(`id` > 0)"},
 						},
 					}
 					t.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: t.Columns[0]}}}

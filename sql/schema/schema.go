@@ -281,6 +281,13 @@ type (
 	Collation struct {
 		V string
 	}
+
+	// Check describes a CHECK constraint.
+	Check struct {
+		Name   string // Optional constraint name.
+		Clause string // Actual CHECK.
+		Attrs  []Attr // Additional attributes (e.g. ENFORCED).
+	}
 )
 
 // expressions.
@@ -301,6 +308,7 @@ func (*DecimalType) typ()     {}
 func (*UnsupportedType) typ() {}
 
 // attributes.
+func (*Check) attr()     {}
 func (*Comment) attr()   {}
 func (*Charset) attr()   {}
 func (*Collation) attr() {}

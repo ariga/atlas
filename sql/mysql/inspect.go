@@ -499,10 +499,12 @@ func (i *inspect) checks(ctx context.Context, t *schema.Table) error {
 		if err := rows.Scan(&name, &clause, &enforced); err != nil {
 			return fmt.Errorf("mysql: %w", err)
 		}
-		check := &Check{
-			Name:     name.String,
-			Clause:   unescape(clause.String),
-			Enforced: clause.String != "NO",
+		check := &schema.Check{
+			Name:   name.String,
+			Clause: unescape(clause.String),
+		}
+		if enforced.String != "NO" {
+			check.Attrs = append(check.Attrs, &Enforced{})
 		}
 		t.Attrs = append(t.Attrs, check)
 		// In MariaDB, JSON is an alias to LONGTEXT, and the JSON_VALID
@@ -764,12 +766,10 @@ type (
 		Len int
 	}
 
-	// Check attributes defines a CHECK constraint.
-	Check struct {
+	// Enforced attributes defines the ENFORCED flag for CHECK constraint.
+	// Similar to AUTO_INCREMENT, checks with this attributes are enforced.
+	Enforced struct {
 		schema.Attr
-		Name     string
-		Clause   string
-		Enforced bool
 	}
 
 	// The DisplayWidth represents a display width of an integer type.
