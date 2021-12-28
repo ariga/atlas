@@ -8,6 +8,7 @@ import (
 	"unicode"
 
 	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
@@ -225,4 +226,16 @@ var TypeRegistry = specutil.NewRegistry(
 		specutil.TypeSpec("hstore"),
 		specutil.TypeSpec("sql", &schemaspec.TypeAttr{Name: "def", Required: true, Kind: reflect.String}),
 	),
+)
+
+var (
+	hclState = schemahcl.New(schemahcl.WithTypes(TypeRegistry.Specs()))
+	// UnmarshalHCL unmarshals an Atlas HCL DDL document into v.
+	UnmarshalHCL = schemaspec.UnmarshalerFunc(func(bytes []byte, i interface{}) error {
+		return UnmarshalSpec(bytes, hclState, i)
+	})
+	// MarshalHCL marshals v into an Atlas HCL DDL document.
+	MarshalHCL = schemaspec.MarshalerFunc(func(v interface{}) ([]byte, error) {
+		return MarshalSpec(v, hclState)
+	})
 )

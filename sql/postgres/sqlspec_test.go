@@ -4,13 +4,10 @@ import (
 	"fmt"
 	"testing"
 
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/internal/spectest"
 	"ariga.io/atlas/sql/schema"
 	"github.com/stretchr/testify/require"
 )
-
-var hclState = schemahcl.New(schemahcl.WithTypes(TypeRegistry.Specs()))
 
 func TestSQLSpec(t *testing.T) {
 	f := `
@@ -61,7 +58,7 @@ table "accounts" {
 }
 `
 	var s schema.Schema
-	err := UnmarshalSpec([]byte(f), hclState, &s)
+	err := UnmarshalHCL([]byte(f), &s)
 	require.NoError(t, err)
 	exp := &schema.Schema{
 		Name: "schema",
@@ -383,14 +380,14 @@ func TestTypes(t *testing.T) {
 schema "test" {
 }
 `, tt.typeExpr)
-			err := UnmarshalSpec([]byte(doc), hclState, &test)
+			err := UnmarshalHCL([]byte(doc), &test)
 			require.NoError(t, err)
 			colspec := test.Tables[0].Columns[0]
 			require.EqualValues(t, tt.expected, colspec.Type.Type)
-			spec, err := MarshalSpec(&test, hclState)
+			spec, err := MarshalHCL(&test)
 			require.NoError(t, err)
 			var after schema.Schema
-			err = UnmarshalSpec(spec, hclState, &after)
+			err = UnmarshalHCL(spec, &after)
 			require.NoError(t, err)
 			require.EqualValues(t, tt.expected, after.Tables[0].Columns[0].Type.Type)
 		})
