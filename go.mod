@@ -22,7 +22,6 @@ require (
 require (
 	github.com/go-openapi/inflect v0.19.0
 	github.com/mitchellh/go-homedir v1.0.0
-	github.com/pelletier/go-toml/v2 v2.0.0-beta.4
 )
 
 require (

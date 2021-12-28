@@ -86,7 +86,7 @@ func TestDriver_InspectTable(t *testing.T) {
 				require.Len(t.PrimaryKey.Parts, 1)
 				require.True(t.PrimaryKey.Parts[0].C == t.Columns[0])
 				require.EqualValues([]*schema.Column{
-					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
+					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoIncrement{}}},
 				}, t.Columns)
 			},
 		},
@@ -126,7 +126,7 @@ func TestDriver_InspectTable(t *testing.T) {
 				require.Len(t.PrimaryKey.Parts, 1)
 				require.True(t.PrimaryKey.Parts[0].C == t.Columns[0])
 				require.EqualValues([]*schema.Column{
-					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
+					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoIncrement{}}},
 					{Name: "v57_tiny", Type: &schema.ColumnType{Raw: "tinyint(1)", Type: &schema.BoolType{T: "tinyint"}}},
 					{Name: "v57_tiny_unsigned", Type: &schema.ColumnType{Raw: "tinyint(4) unsigned", Type: &schema.IntegerType{T: "tinyint", Unsigned: true}}},
 					{Name: "v57_small", Type: &schema.ColumnType{Raw: "smallint(6)", Type: &schema.IntegerType{T: "smallint"}}},
@@ -179,7 +179,7 @@ func TestDriver_InspectTable(t *testing.T) {
 				require.Len(t.PrimaryKey.Parts, 1)
 				require.True(t.PrimaryKey.Parts[0].C == t.Columns[0])
 				require.EqualValues([]*schema.Column{
-					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
+					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoIncrement{}}},
 					{Name: "tiny_int", Type: &schema.ColumnType{Raw: "tinyint(1)", Type: &schema.BoolType{T: "tinyint"}}},
 					{Name: "longtext", Type: &schema.ColumnType{Raw: "longtext", Type: &schema.StringType{T: "longtext"}}},
 					{Name: "jsonc", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}},
@@ -482,7 +482,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "unique_index", Unique: true, Table: t, Attrs: []schema.Attr{&IndexType{T: "BTREE"}}},
 				}
 				columns := []*schema.Column{
-					{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
+					{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&AutoIncrement{}}},
 					{Name: "nickname", Type: &schema.ColumnType{Raw: "varchar(255)", Type: &schema.StringType{T: "varchar", Size: 255}}, Indexes: indexes[0:1], Attrs: []schema.Attr{&schema.Charset{V: "utf8mb4"}, &schema.Collation{V: "utf8mb4_0900_ai_ci"}}},
 					{Name: "oid", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Indexes: indexes[2:]},
 					{Name: "uid", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Indexes: indexes[2:]},
@@ -547,7 +547,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Symbol: "self_reference", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: t},
 				}
 				columns := []*schema.Column{
-					{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}, ForeignKeys: fks[0:1]},
+					{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&AutoIncrement{}}, ForeignKeys: fks[0:1]},
 					{Name: "oid", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, ForeignKeys: fks[0:1]},
 					{Name: "uid", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, ForeignKeys: fks[1:2]},
 				}
@@ -590,7 +590,7 @@ func TestDriver_InspectTable(t *testing.T) {
 				require.Equal("users", t.Name)
 				require.Equal("public", t.Schema.Name)
 				columns := []*schema.Column{
-					{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
+					{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&AutoIncrement{}}},
 					{Name: "c1", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
 				}
 				require.EqualValues(columns, t.Columns)
@@ -727,7 +727,7 @@ func TestDriver_InspectSchema(t *testing.T) {
 					{Symbol: "spouse_id", Table: users, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: users},
 				}
 				userColumns := []*schema.Column{
-					{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
+					{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&AutoIncrement{}}},
 					{Name: "spouse_id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}, Null: true}, ForeignKeys: userFKs},
 				}
 				userFKs[0].Columns = userColumns[1:]
@@ -740,7 +740,7 @@ func TestDriver_InspectSchema(t *testing.T) {
 					{Symbol: "owner_id", Table: pets, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: users, RefColumns: userColumns[:1]},
 				}
 				petsColumns := []*schema.Column{
-					{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&AutoIncrement{A: "auto_increment"}}},
+					{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&AutoIncrement{}}},
 					{Name: "owner_id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}, Null: true}, ForeignKeys: petsFKs},
 				}
 				petsFKs[0].Columns = petsColumns[1:]

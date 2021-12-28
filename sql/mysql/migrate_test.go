@@ -193,19 +193,65 @@ func TestPlanChanges(t *testing.T) {
 		},
 		{
 			changes: []schema.Change{
-				&schema.AddTable{
-					T: &schema.Table{
+				func() *schema.AddTable {
+					t := &schema.Table{
 						Name: "posts",
 						Columns: []*schema.Column{
-							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoIncrement{}}},
 							{Name: "text", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Null: true}},
 						},
-					},
-				},
+					}
+					t.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: t.Columns[0]}}}
+					return &schema.AddTable{T: t}
+				}(),
 			},
 			plan: &migrate.Plan{
 				Reversible: true,
-				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` bigint NOT NULL, `text` text NULL)", Reverse: "DROP TABLE `posts`"}},
+				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` bigint NOT NULL AUTO_INCREMENT, `text` text NULL, PRIMARY KEY (`id`))", Reverse: "DROP TABLE `posts`"}},
+			},
+		},
+		{
+			changes: []schema.Change{
+				func() *schema.AddTable {
+					t := &schema.Table{
+						Name: "posts",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoIncrement{V: 100}}},
+							{Name: "text", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Null: true}},
+						},
+						Attrs: []schema.Attr{
+							&schema.Charset{V: "utf8mb4"},
+							&schema.Collation{V: "utf8mb4_bin"},
+							&schema.Comment{Text: "posts comment"},
+						},
+					}
+					t.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: t.Columns[0]}}}
+					return &schema.AddTable{T: t}
+				}(),
+			},
+			plan: &migrate.Plan{
+				Reversible: true,
+				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` bigint NOT NULL AUTO_INCREMENT, `text` text NULL, PRIMARY KEY (`id`)) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT \"posts comment\" AUTO_INCREMENT 100", Reverse: "DROP TABLE `posts`"}},
+			},
+		},
+		{
+			changes: []schema.Change{
+				func() *schema.AddTable {
+					t := &schema.Table{
+						Name: "posts",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoIncrement{}}},
+							{Name: "text", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Null: true}},
+						},
+						Attrs: []schema.Attr{&AutoIncrement{V: 10}},
+					}
+					t.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: t.Columns[0]}}}
+					return &schema.AddTable{T: t}
+				}(),
+			},
+			plan: &migrate.Plan{
+				Reversible: true,
+				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` bigint NOT NULL AUTO_INCREMENT, `text` text NULL, PRIMARY KEY (`id`)) AUTO_INCREMENT 10", Reverse: "DROP TABLE `posts`"}},
 			},
 		},
 		{
