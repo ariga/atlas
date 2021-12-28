@@ -766,7 +766,7 @@ type (
 		Len int
 	}
 
-	// Enforced attributes defines the ENFORCED flag for CHECK constraint.
+	// Enforced attribute defines the ENFORCED flag for CHECK constraint.
 	// Similar to AUTO_INCREMENT, checks with this attributes are enforced.
 	Enforced struct {
 		schema.Attr

@@ -421,7 +421,7 @@ func (i *inspect) checks(ctx context.Context, t *schema.Table) error {
 
 // addChecks scans the rows and adds the checks to the table.
 func (i *inspect) addChecks(t *schema.Table, rows *sql.Rows) error {
-	names := make(map[string]*Check)
+	names := make(map[string]*schema.Check)
 	for rows.Next() {
 		var (
 			noInherit                     bool
@@ -435,11 +435,15 @@ func (i *inspect) addChecks(t *schema.Table, rows *sql.Rows) error {
 		}
 		check, ok := names[name]
 		if !ok {
-			check = &Check{Name: name, Clause: clause, NoInherit: noInherit}
+			check = &schema.Check{Name: name, Clause: clause, Attrs: []schema.Attr{&CheckColumns{}}}
+			if noInherit {
+				check.Attrs = append(check.Attrs, &NoInherit{})
+			}
 			names[name] = check
 			t.Attrs = append(t.Attrs, check)
 		}
-		check.Columns = append(check.Columns, column)
+		c := check.Attrs[0].(*CheckColumns)
+		c.Columns = append(c.Columns, column)
 	}
 	return nil
 }
@@ -649,14 +653,18 @@ type (
 		NullsLast  bool
 	}
 
-	// Check attributes defines a CHECK constraint.
+	// NoInherit attribute defines the NO INHERIT flag for CHECK constraint.
 	// https://www.postgresql.org/docs/current/catalog-pg-constraint.html
-	Check struct {
+	NoInherit struct {
 		schema.Attr
-		Name      string
-		Clause    string
-		NoInherit bool
-		Columns   []string
+	}
+
+	// CheckColumns attribute hold the column named used by the CHECK constraints.
+	// This attribute is added on inspection for internal usage and has no meaning
+	// on migration.
+	CheckColumns struct {
+		schema.Attr
+		Columns []string
 	}
 )
 

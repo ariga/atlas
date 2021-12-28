@@ -27,13 +27,13 @@ func (d *diff) SchemaAttrDiff(_, _ *schema.Schema) []schema.Change {
 func (d *diff) TableAttrDiff(from, to *schema.Table) []schema.Change {
 	var changes []schema.Change
 	// Drop or modify checks.
-	for _, c1 := range checks(from.Attrs) {
-		switch c2, ok := checkByName(to.Attrs, c1.Name); {
+	for _, c1 := range sqlx.Checks(from.Attrs) {
+		switch c2, ok := sqlx.CheckByName(to.Attrs, c1.Name); {
 		case !ok:
 			changes = append(changes, &schema.DropAttr{
 				A: c1,
 			})
-		case c1.Clause != c2.Clause || c1.NoInherit != c2.NoInherit:
+		case c1.Clause != c2.Clause || sqlx.Has(c1.Attrs, &NoInherit{}) != sqlx.Has(c2.Attrs, &NoInherit{}):
 			changes = append(changes, &schema.ModifyAttr{
 				From: c1,
 				To:   c2,
@@ -41,8 +41,8 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) []schema.Change {
 		}
 	}
 	// Add checks.
-	for _, c1 := range checks(to.Attrs) {
-		if _, ok := checkByName(from.Attrs, c1.Name); !ok {
+	for _, c1 := range sqlx.Checks(to.Attrs) {
+		if _, ok := sqlx.CheckByName(from.Attrs, c1.Name); !ok {
 			changes = append(changes, &schema.AddAttr{
 				A: c1,
 			})
@@ -277,24 +277,6 @@ func (d *diff) typesEqual(x, y string) (bool, error) {
 		return false, err
 	}
 	return b, nil
-}
-
-func checks(attr []schema.Attr) (checks []*Check) {
-	for i := range attr {
-		if c, ok := attr[i].(*Check); ok {
-			checks = append(checks, c)
-		}
-	}
-	return checks
-}
-
-func checkByName(attr []schema.Attr, name string) (*Check, bool) {
-	for i := range attr {
-		if c, ok := attr[i].(*Check); ok && c.Name == name {
-			return c, true
-		}
-	}
-	return nil, false
 }
 
 func trimCast(s string) string {

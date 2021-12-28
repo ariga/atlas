@@ -320,3 +320,23 @@ func DefaultValue(c *schema.Column) (string, bool) {
 		panic(fmt.Sprintf("unexpected default value type: %T", x))
 	}
 }
+
+// Checks constrains from table or column attributes.
+func Checks(attr []schema.Attr) (checks []*schema.Check) {
+	for i := range attr {
+		if c, ok := attr[i].(*schema.Check); ok {
+			checks = append(checks, c)
+		}
+	}
+	return checks
+}
+
+// CheckByName returns a CHECK by its constraints name.
+func CheckByName(attr []schema.Attr, name string) (*schema.Check, bool) {
+	for i := range attr {
+		if c, ok := attr[i].(*schema.Check); ok && c.Name == name {
+			return c, true
+		}
+	}
+	return nil, false
+}
