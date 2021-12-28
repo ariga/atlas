@@ -156,6 +156,12 @@ func (s *state) addTable(add *schema.AddTable) error {
 			b.Comma()
 			s.fks(b, add.T.ForeignKeys...)
 		}
+		for _, attr := range add.T.Attrs {
+			if c, ok := attr.(*Check); ok {
+				b.Comma()
+				check(b, c)
+			}
+		}
 	})
 	if err := s.tableAttr(b, add.T.Attrs...); err != nil {
 		return err
@@ -402,6 +408,9 @@ func (s *state) tableAttr(b *sqlx.Builder, attrs ...schema.Attr) error {
 				return fmt.Errorf("missing value for table option AUTO_INCREMENT")
 			}
 			b.P("AUTO_INCREMENT", strconv.FormatInt(a.V, 10))
+		case *Check:
+			// Ignore CHECK constraints as they are not real attribute,
+			// and handled on CREATE or ALTER.
 		case *schema.Charset:
 			b.P("CHARACTER SET", a.V)
 		case *schema.Collation:
@@ -493,6 +502,22 @@ search:
 		changes = append(changes[:i], changes[i+1:]...)
 	}
 	return changes
+}
+
+// checks writes the CHECK constraint to the builder.
+func check(b *sqlx.Builder, c *Check) {
+	clause := c.Clause
+	// Expressions should be wrapped with parens.
+	if t := strings.TrimSpace(clause); !strings.HasPrefix(t, "(") || !strings.HasSuffix(t, ")") {
+		clause = "(" + t + ")"
+	}
+	if c.Name != "" {
+		b.P("CONSTRAINT").Ident(c.Name)
+	}
+	b.P("CHECK", clause)
+	if c.Enforced {
+		b.P("ENFORCED")
+	}
 }
 
 func quote(s string) string {
