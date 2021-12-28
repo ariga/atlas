@@ -3,11 +3,13 @@ package postgres
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"unicode"
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/internal/specutil"
+	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
 )
@@ -76,7 +78,27 @@ func convertIndex(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, err
 
 // convertColumn converts a sqlspec.Column into a schema.Column.
 func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error) {
+	if err := fixDefaultQuotes(spec.Default); err != nil {
+		return nil, err
+	}
 	return specutil.Column(spec, convertColumnType)
+}
+
+// fixDefaultQuotes fixes the quotes on the Default field to be single quotes
+// instead of double quotes.
+func fixDefaultQuotes(value schemaspec.Value) error {
+	lv, ok := value.(*schemaspec.LiteralValue)
+	if !ok {
+		return nil
+	}
+	if sqlx.IsQuoted(lv.V, '"') {
+		uq, err := strconv.Unquote(lv.V)
+		if err != nil {
+			return err
+		}
+		lv.V = "'" + uq + "'"
+	}
+	return nil
 }
 
 // convertColumnType converts a sqlspec.Column into a concrete Postgres schema.Type.
@@ -151,6 +173,7 @@ var TypeRegistry = specutil.NewRegistry(
 		specutil.TypeSpec(tBit, &schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64}),
 		specutil.AliasTypeSpec("bit_varying", tBitVar, &schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64}),
 		specutil.TypeSpec(tVarChar, specutil.SizeTypeAttr(true)),
+		specutil.AliasTypeSpec("character_varying", tCharVar, &schemaspec.TypeAttr{Name: "size", Kind: reflect.Int}),
 		specutil.TypeSpec(tChar, specutil.SizeTypeAttr(true)),
 		specutil.TypeSpec(tCharacter, specutil.SizeTypeAttr(true)),
 		specutil.TypeSpec(tInt2),

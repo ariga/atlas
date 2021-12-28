@@ -7,6 +7,7 @@ package specutil
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
@@ -94,7 +95,14 @@ func Column(spec *sqlspec.Column, conv ConvertTypeFunc) (*schema.Column, error) 
 		},
 	}
 	if spec.Default != nil {
-		out.Default = &schema.Literal{V: spec.Default.V}
+		switch d := spec.Default.(type) {
+		case *schemaspec.LiteralValue:
+			out.Default = &schema.Literal{V: d.V}
+		case *schemaspec.RawExpr:
+			out.Default = &schema.RawExpr{X: d.X}
+		default:
+			return nil, fmt.Errorf("unsupported value type for default: %T", d)
+		}
 	}
 	ct, err := conv(spec)
 	if err != nil {
@@ -286,14 +294,53 @@ func FromColumn(col *schema.Column, columnTypeSpec ColumnTypeSpecFunc) (*sqlspec
 	if err != nil {
 		return nil, err
 	}
-	return &sqlspec.Column{
+	spec := &sqlspec.Column{
 		Name: col.Name,
 		Type: ct.Type,
 		Null: col.Type.Null,
 		DefaultExtension: schemaspec.DefaultExtension{
 			Extra: schemaspec.Resource{Attrs: ct.DefaultExtension.Extra.Attrs},
 		},
-	}, nil
+	}
+	if col.Default != nil {
+		lv, err := toValue(col.Default)
+		if err != nil {
+			return nil, err
+		}
+		spec.Default = lv
+	}
+	return spec, nil
+}
+
+func toValue(expr schema.Expr) (schemaspec.Value, error) {
+	var (
+		v   string
+		err error
+	)
+	switch expr := expr.(type) {
+	case *schema.RawExpr:
+		return &schemaspec.RawExpr{X: expr.X}, nil
+	case *schema.Literal:
+		v, err = normalizeQuotes(expr.V)
+		if err != nil {
+			return nil, err
+		}
+		return &schemaspec.LiteralValue{V: v}, nil
+	default:
+		return nil, fmt.Errorf("converting expr %T to literal value", expr)
+	}
+}
+
+func normalizeQuotes(s string) (string, error) {
+	if len(s) < 2 {
+		return s, nil
+	}
+	// If string is quoted with single quotes:
+	if strings.HasPrefix(s, `'`) && strings.HasSuffix(s, `'`) {
+		uq := strings.ReplaceAll(s[1:len(s)-1], "''", "'")
+		return strconv.Quote(uq), nil
+	}
+	return s, nil
 }
 
 // FromIndex converts schema.Index to sqlspec.Index

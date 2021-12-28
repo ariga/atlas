@@ -117,6 +117,8 @@ func toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes) ([]*schemaspec
 		switch {
 		case isRef(value):
 			at.V = &schemaspec.Ref{V: value.GetAttr("__ref").AsString()}
+		case value.Type() == ctyRawExpr:
+			at.V = value.EncapsulatedValue().(*schemaspec.RawExpr)
 		case value.Type() == ctyTypeSpec:
 			at.V = value.EncapsulatedValue().(*schemaspec.Type)
 		case value.Type().IsTupleType():
@@ -247,6 +249,7 @@ func labels(r *schemaspec.Resource) []string {
 }
 
 func (s *state) writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
+	attr = normalizeLiterals(attr)
 	switch v := attr.V.(type) {
 	case *schemaspec.Ref:
 		expr := strings.ReplaceAll(v.V, "$", "")
@@ -265,6 +268,10 @@ func (s *state) writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 		body.SetAttributeRaw(attr.K, hclRawTokens(st))
 	case *schemaspec.LiteralValue:
 		body.SetAttributeRaw(attr.K, hclRawTokens(v.V))
+	case *schemaspec.RawExpr:
+		// TODO(rotemtam): the func name should be decided on contextual basis.
+		fnc := fmt.Sprintf("sql(%q)", v.X)
+		body.SetAttributeRaw(attr.K, hclRawTokens(fnc))
 	case *schemaspec.ListValue:
 		lst := make([]string, 0, len(v.V))
 		for _, item := range v.V {
@@ -283,6 +290,21 @@ func (s *state) writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 		return fmt.Errorf("schemacl: unknown literal type %T", v)
 	}
 	return nil
+}
+
+// normalizeLiterals transforms attriburtes with LiteralValue that cannot be
+// written as correct HCL into RawExpr.
+func normalizeLiterals(attr *schemaspec.Attr) *schemaspec.Attr {
+	lv, ok := attr.V.(*schemaspec.LiteralValue)
+	if !ok {
+		return attr
+	}
+	exp := "x = " + lv.V
+	p := hclparse.NewParser()
+	if _, diag := p.ParseHCL([]byte(exp), ""); diag != nil {
+		return &schemaspec.Attr{K: attr.K, V: &schemaspec.RawExpr{X: lv.V}}
+	}
+	return attr
 }
 
 func (s *state) findTypeSpec(t string) (*schemaspec.TypeSpec, bool) {

@@ -171,11 +171,8 @@ func parseColumn(s string) (*columnDesc, error) {
 	)
 	switch c.parts[0] {
 	case tVarChar, tCharVar, tChar, tCharacter:
-		if len(c.parts) > 1 {
-			c.size, err = strconv.ParseInt(c.parts[1], 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("postgres: parse size %q: %w", parts[1], err)
-			}
+		if err := parseCharParts(c.parts, c); err != nil {
+			return nil, err
 		}
 	case tDecimal, tNumeric:
 		if len(parts) > 1 {
@@ -202,6 +199,29 @@ func parseColumn(s string) (*columnDesc, error) {
 		c.typ = s
 	}
 	return c, nil
+}
+
+func parseCharParts(parts []string, c *columnDesc) error {
+	j := strings.Join(parts, " ")
+	switch {
+	case strings.HasPrefix(j, tVarChar):
+		c.typ = tVarChar
+		parts = parts[1:]
+	case strings.HasPrefix(j, tCharVar):
+		c.typ = tCharVar
+		parts = parts[2:]
+	default:
+		parts = parts[1:]
+	}
+	if len(parts) == 0 {
+		return nil
+	}
+	size, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		return fmt.Errorf("postgres: parse size %q: %w", parts[1], err)
+	}
+	c.size = size
+	return nil
 }
 
 func parseBitParts(parts []string, c *columnDesc) error {

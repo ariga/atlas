@@ -257,11 +257,31 @@ func setField(field reflect.Value, attr *Attr) error {
 		}
 		field.SetBool(b)
 	case reflect.Ptr:
+		if err := setPtr(field, attr.V); err != nil {
+			return fmt.Errorf("schemaspec: failed setting pointer field %q: %w", attr.K, err)
+		}
+	case reflect.Interface:
 		field.Set(reflect.ValueOf(attr.V))
 	default:
 		return fmt.Errorf("schemaspec: unsupported field kind %q", field.Kind())
 	}
 	return nil
+}
+
+func setPtr(field reflect.Value, val Value) error {
+	rt := reflect.TypeOf(val)
+	if field.Type() == rt {
+		field.Set(reflect.ValueOf(val))
+		return nil
+	}
+	if x, ok := val.(*RawExpr); ok {
+		i := field.Interface()
+		if _, ok := i.(*Type); ok {
+			field.Set(reflect.ValueOf(&Type{T: x.X}))
+			return nil
+		}
+	}
+	return fmt.Errorf("unhandled pointer type %T", val)
 }
 
 // setSliceAttr sets the value of attr to the slice field. This function expects both the target field
@@ -394,6 +414,20 @@ func scanAttr(key string, r *Resource, field reflect.Value) error {
 		lit = fmt.Sprintf("%d", field.Int())
 	case reflect.Bool:
 		lit = strconv.FormatBool(field.Bool())
+	case reflect.Interface:
+		if field.IsNil() {
+			return nil
+		}
+		i := field.Interface()
+		v, ok := i.(Value)
+		if !ok {
+			return fmt.Errorf("schemaspec: unsupported interface type %T for field %q", i, key)
+		}
+		r.SetAttr(&Attr{
+			K: key,
+			V: v,
+		})
+		return nil
 	default:
 		return fmt.Errorf("schemaspec: unsupported field kind %q", field.Kind())
 	}

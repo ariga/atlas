@@ -530,6 +530,35 @@ func TestMySQL_CLI(t *testing.T) {
 	})
 }
 
+func TestMySQL_DefaultsHCL(t *testing.T) {
+	n := "atlas_defaults"
+	myRun(t, func(t *myTest) {
+		ddl := `
+create table atlas_defaults
+(
+	string varchar(255) default "hello_world",
+	quoted varchar(100) default 'never say "never"',
+	tBit bit(10) default b'10101',
+	ts timestamp default CURRENT_TIMESTAMP,
+	number int default 42
+)
+`
+		t.dropTables(n)
+		_, err := t.db.Exec(ddl)
+		require.NoError(t, err)
+		realm := t.loadRealm()
+		hcl := schemahcl.New(schemahcl.WithTypes(mysql.TypeRegistry.Specs()))
+		spec, err := mysql.MarshalSpec(realm.Schemas[0], hcl)
+		require.NoError(t, err)
+		var s schema.Schema
+		err = mysql.UnmarshalSpec(spec, hcl, &s)
+		require.NoError(t, err)
+		t.dropTables(n)
+		t.applyHcl(string(spec))
+		ensureNoChange(t, realm.Schemas[0].Tables[0])
+	})
+}
+
 func TestMySQL_Sanity(t *testing.T) {
 	n := "atlas_types_sanity"
 	t.Run("Common", func(t *testing.T) {

@@ -396,6 +396,34 @@ schema "public" {
 	})
 }
 
+func TestSQLite_DefaultsHCL(t *testing.T) {
+	n := "atlas_defaults"
+	liteRun(t, func(t *liteTest) {
+		ddl := `
+create table atlas_defaults
+(
+	string varchar(255) default "hello_world",
+	quoted varchar(100) default 'never say "never"',
+	d date default current_timestamp,
+	n integer default 0x100 
+)
+`
+		t.dropTables(n)
+		_, err := t.db.Exec(ddl)
+		require.NoError(t, err)
+		realm := t.loadRealm()
+		hcl := schemahcl.New(schemahcl.WithTypes(sqlite.TypeRegistry.Specs()))
+		spec, err := sqlite.MarshalSpec(realm.Schemas[0], hcl)
+		require.NoError(t, err)
+		var s schema.Schema
+		err = sqlite.UnmarshalSpec(spec, hcl, &s)
+		require.NoError(t, err)
+		t.dropTables(n)
+		t.applyHcl(string(spec))
+		ensureNoChange(t, realm.Schemas[0].Tables[0])
+	})
+}
+
 func TestSQLite_Sanity(t *testing.T) {
 	n := "atlas_types_sanity"
 	ddl := `

@@ -153,6 +153,7 @@ var (
 		},
 	})
 	ctyTypeSpec = cty.Capsule("type", reflect.TypeOf(schemaspec.Type{}))
+	ctyRawExpr  = cty.Capsule("raw_expr", reflect.TypeOf(schemaspec.RawExpr{}))
 )
 
 // defRegistry returns a tree of blockDef structs representing the schema of the

@@ -26,10 +26,10 @@ type (
 
 	// Column holds a specification for a column in an SQL table.
 	Column struct {
-		Name    string                   `spec:",name"`
-		Null    bool                     `spec:"null"`
-		Type    *schemaspec.Type         `spec:"type"`
-		Default *schemaspec.LiteralValue `spec:"default"`
+		Name    string           `spec:",name"`
+		Null    bool             `spec:"null"`
+		Type    *schemaspec.Type `spec:"type"`
+		Default schemaspec.Value `spec:"default"`
 		schemaspec.DefaultExtension
 	}
 
