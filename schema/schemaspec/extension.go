@@ -274,10 +274,10 @@ func setPtr(field reflect.Value, val Value) error {
 		field.Set(reflect.ValueOf(val))
 		return nil
 	}
-	if rx, ok := val.(*RawExpr); ok {
+	if x, ok := val.(*RawExpr); ok {
 		i := field.Interface()
 		if _, ok := i.(*Type); ok {
-			field.Set(reflect.ValueOf(&Type{T: rx.X}))
+			field.Set(reflect.ValueOf(&Type{T: x.X}))
 			return nil
 		}
 	}

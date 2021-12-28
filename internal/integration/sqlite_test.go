@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
-	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlite"
@@ -405,7 +404,7 @@ create table atlas_defaults
 (
 	string varchar(255) default "hello_world",
 	quoted varchar(100) default 'never say "never"',
-	d date default 'now()',
+	d date default current_timestamp,
 	n integer default 0x100 
 )
 `
@@ -413,11 +412,11 @@ create table atlas_defaults
 		_, err := t.db.Exec(ddl)
 		require.NoError(t, err)
 		realm := t.loadRealm()
-		hcl := schemahcl.New(schemahcl.WithTypes(mysql.TypeRegistry.Specs()))
-		spec, err := mysql.MarshalSpec(realm.Schemas[0], hcl)
+		hcl := schemahcl.New(schemahcl.WithTypes(sqlite.TypeRegistry.Specs()))
+		spec, err := sqlite.MarshalSpec(realm.Schemas[0], hcl)
 		require.NoError(t, err)
 		var s schema.Schema
-		err = mysql.UnmarshalSpec(spec, hcl, &s)
+		err = sqlite.UnmarshalSpec(spec, hcl, &s)
 		require.NoError(t, err)
 		t.dropTables(n)
 		t.applyHcl(string(spec))

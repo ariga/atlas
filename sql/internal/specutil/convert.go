@@ -325,10 +325,10 @@ func toValue(expr schema.Expr) (schemaspec.Value, error) {
 		if err != nil {
 			return nil, err
 		}
+		return &schemaspec.LiteralValue{V: v}, nil
 	default:
 		return nil, fmt.Errorf("converting expr %T to literal value", expr)
 	}
-	return &schemaspec.LiteralValue{V: v}, nil
 }
 
 func normalizeQuotes(s string) (string, error) {
