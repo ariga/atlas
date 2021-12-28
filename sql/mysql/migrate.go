@@ -69,7 +69,9 @@ func (s *state) plan(changes []schema.Change) error {
 	for _, c := range planned {
 		switch c := c.(type) {
 		case *schema.AddTable:
-			s.addTable(c)
+			if err := s.addTable(c); err != nil {
+				return err
+			}
 		case *schema.DropTable:
 			s.dropTable(c)
 		case *schema.ModifyTable:
@@ -124,7 +126,7 @@ func (s *state) topLevel(changes []schema.Change) []schema.Change {
 
 // addTable builds and appends the migrate.Change
 // for creating a table in a schema.
-func (s *state) addTable(add *schema.AddTable) {
+func (s *state) addTable(add *schema.AddTable) error {
 	b := Build("CREATE TABLE").Table(add.T)
 	if sqlx.Has(add.Extra, &schema.IfNotExists{}) {
 		b.P("IF NOT EXISTS")
@@ -155,13 +157,16 @@ func (s *state) addTable(add *schema.AddTable) {
 			s.fks(b, add.T.ForeignKeys...)
 		}
 	})
-	s.tableAttr(b, add.T.Attrs...)
+	if err := s.tableAttr(b, add.T.Attrs...); err != nil {
+		return err
+	}
 	s.append(&migrate.Change{
 		Cmd:     b.String(),
 		Source:  add,
 		Reverse: Build("DROP TABLE").Table(add.T).String(),
 		Comment: fmt.Sprintf("create %q table", add.T.Name),
 	})
+	return nil
 }
 
 // dropTable builds and appends the migrate.Change
@@ -223,7 +228,9 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 	}
 	for i := range changes {
 		if len(changes[i]) > 0 {
-			s.alterTable(modify.T, changes[i])
+			if err := s.alterTable(modify.T, changes[i]); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -231,8 +238,9 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 
 // alterTable modifies the given table by executing on it a list of
 // changes in one SQL statement.
-func (s *state) alterTable(t *schema.Table, changes []schema.Change) {
+func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 	var (
+		errors     []string
 		b          = Build("ALTER TABLE").Table(t)
 		reversible = true
 		reverse    = b.Clone()
@@ -271,14 +279,23 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) {
 			b.P("DROP FOREIGN KEY").Ident(change.F.Symbol)
 			reversible = false
 		case *schema.AddAttr:
-			s.tableAttr(b, change.A)
+			if err := s.tableAttr(b, change.A); err != nil {
+				errors = append(errors, fmt.Sprintf("add attribute: %s", err.Error()))
+			}
 			// Unsupported reverse operation.
 			reversible = false
 		case *schema.ModifyAttr:
-			s.tableAttr(b, change.To)
-			s.tableAttr(reverse, change.From)
+			if err := s.tableAttr(b, change.To); err != nil {
+				errors = append(errors, fmt.Sprintf("modify attribute: %s", err.Error()))
+			}
+			if err := s.tableAttr(reverse, change.From); err != nil {
+				errors = append(errors, fmt.Sprintf("reverse modify attribute: %s", err.Error()))
+			}
 		}
 	})
+	if len(errors) > 0 {
+		return fmt.Errorf("alter table: %s", strings.Join(errors, ", "))
+	}
 	change := &migrate.Change{
 		Cmd: b.String(),
 		Source: &schema.ModifyTable{
@@ -291,6 +308,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) {
 		change.Reverse = reverse.String()
 	}
 	s.append(change)
+	return nil
 }
 
 func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) {
@@ -319,8 +337,9 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) {
 			b.P("ON UPDATE", a.A)
 		case *AutoIncrement:
 			b.P("AUTO_INCREMENT")
-			if a.V != 0 {
-				b.P(strconv.FormatInt(a.V, 10))
+			// Auto increment with value should be configured on table options.
+			if a.V != 0 && !sqlx.Has(t.Attrs, &AutoIncrement{}) {
+				t.Attrs = append(t.Attrs, a)
 			}
 		default:
 			s.attr(b, a)
@@ -375,20 +394,23 @@ func (s *state) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
 
 // tableAttr writes the given table attribute to the SQL
 // statement builder when a table is created or altered.
-func (s *state) tableAttr(b *sqlx.Builder, attrs ...schema.Attr) {
+func (s *state) tableAttr(b *sqlx.Builder, attrs ...schema.Attr) error {
 	for _, a := range attrs {
 		switch a := a.(type) {
 		case *AutoIncrement:
-			b.P("AUTO_INCREMENT")
-			if a.V != 0 {
-				b.P(strconv.FormatInt(a.V, 10))
+			if a.V == 0 {
+				return fmt.Errorf("missing value for table option AUTO_INCREMENT")
 			}
+			b.P("AUTO_INCREMENT", strconv.FormatInt(a.V, 10))
 		case *schema.Charset:
 			b.P("CHARACTER SET", a.V)
-		default:
-			s.attr(b, a)
+		case *schema.Collation:
+			b.P("COLLATE", a.V)
+		case *schema.Comment:
+			b.P("COMMENT", quote(a.Text))
 		}
 	}
+	return nil
 }
 
 // collation returns the table collation from its attributes

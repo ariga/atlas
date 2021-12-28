@@ -223,6 +223,20 @@ func (b *Builder) MapComma(x interface{}, f func(i int, b *Builder)) *Builder {
 	return b
 }
 
+// MapCommaErr is like MapComma, but returns an error if f returns an error.
+func (b *Builder) MapCommaErr(x interface{}, f func(i int, b *Builder) error) error {
+	s := reflect.ValueOf(x)
+	for i := 0; i < s.Len(); i++ {
+		if i > 0 {
+			b.Comma()
+		}
+		if err := f(i, b); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Wrap wraps the written string with parentheses.
 func (b *Builder) Wrap(f func(b *Builder)) *Builder {
 	b.WriteByte('(')

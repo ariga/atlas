@@ -224,7 +224,7 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 		return err
 	}
 	c.Type.Type = ct
-	if err := extraAttr(c, extra.String); err != nil {
+	if err := extraAttr(t, c, extra.String); err != nil {
 		return err
 	}
 	if sqlx.ValidString(defaults) {
@@ -564,14 +564,18 @@ func parseColumn(typ string) (parts []string, size int64, unsigned bool, err err
 
 // extraAttr parses the EXTRA column from the INFORMATION_SCHEMA.COLUMNS table
 // and appends its parsed representation to the column.
-func extraAttr(c *schema.Column, extra string) error {
+func extraAttr(t *schema.Table, c *schema.Column, extra string) error {
 	switch extra := strings.ToLower(extra); extra {
 	case "", "null": // ignore.
 	case defaultGen:
 		// The column has an expression default value
 		// and it is handled in Driver.addColumn.
 	case autoIncrement:
-		c.Attrs = append(c.Attrs, &AutoIncrement{A: extra})
+		a := &AutoIncrement{}
+		// Reference to the table attribute if exists, as
+		// there can be only one auto_increment in a table.
+		sqlx.Has(t.Attrs, a)
+		c.Attrs = append(c.Attrs, a)
 	case "default_generated on update current_timestamp", "on update current_timestamp",
 		"on update current_timestamp()" /* MariaDB format. */ :
 		c.Attrs = append(c.Attrs, &OnUpdate{A: extra})
@@ -742,9 +746,9 @@ ORDER BY
 
 type (
 	// AutoIncrement attribute for columns with "AUTO_INCREMENT" as a default.
+	// V represent an optional start value for the counter.
 	AutoIncrement struct {
 		schema.Attr
-		A string
 		V int64
 	}
 
