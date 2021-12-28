@@ -594,7 +594,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c1", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
 				}
 				require.EqualValues(columns, t.Columns)
-				require.EqualValues([]schema.Attr{&Check{Name: "users_chk_1", Clause: "(`c6` <>_latin1\\'foo\\'s\\')", Enforced: true}}, t.Attrs)
+				require.EqualValues([]schema.Attr{&schema.Check{Name: "users_chk_1", Clause: "(`c6` <>_latin1\\'foo\\'s\\')", Attrs: []schema.Attr{&Enforced{}}}}, t.Attrs)
 			},
 		},
 	}

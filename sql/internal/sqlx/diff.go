@@ -320,7 +320,7 @@ var (
 func Has(elements, target interface{}) bool {
 	ev := reflect.ValueOf(elements)
 	if t := ev.Type(); t != attrsType && t != clausesType && t != exprsType {
-		panic(fmt.Sprintf("unexpected elements type: %T", t))
+		panic(fmt.Sprintf("unexpected elements type: %T", elements))
 	}
 	tv := reflect.ValueOf(target)
 	if tv.Kind() != reflect.Ptr || tv.IsNil() {

@@ -157,7 +157,7 @@ func (s *state) addTable(add *schema.AddTable) error {
 			s.fks(b, add.T.ForeignKeys...)
 		}
 		for _, attr := range add.T.Attrs {
-			if c, ok := attr.(*Check); ok {
+			if c, ok := attr.(*schema.Check); ok {
 				b.Comma()
 				check(b, c)
 			}
@@ -326,7 +326,7 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) {
 	s.columnDefault(b, c)
 	// Add manually the JSON_VALID constraint for older
 	// versions < 10.4.3. See Driver.checks for full info.
-	if _, ok := c.Type.Type.(*schema.JSONType); ok && s.mariadb() && s.ltV("10.4.3") && !sqlx.Has(c.Attrs, &Check{}) {
+	if _, ok := c.Type.Type.(*schema.JSONType); ok && s.mariadb() && s.ltV("10.4.3") && !sqlx.Has(c.Attrs, &schema.Check{}) {
 		b.P("CHECK").Wrap(func(b *sqlx.Builder) {
 			b.WriteString(fmt.Sprintf("json_valid(`%s`)", c.Name))
 		})
@@ -408,7 +408,7 @@ func (s *state) tableAttr(b *sqlx.Builder, attrs ...schema.Attr) error {
 				return fmt.Errorf("missing value for table option AUTO_INCREMENT")
 			}
 			b.P("AUTO_INCREMENT", strconv.FormatInt(a.V, 10))
-		case *Check:
+		case *schema.Check:
 			// Ignore CHECK constraints as they are not real attribute,
 			// and handled on CREATE or ALTER.
 		case *schema.Charset:
@@ -505,7 +505,7 @@ search:
 }
 
 // checks writes the CHECK constraint to the builder.
-func check(b *sqlx.Builder, c *Check) {
+func check(b *sqlx.Builder, c *schema.Check) {
 	clause := c.Clause
 	// Expressions should be wrapped with parens.
 	if t := strings.TrimSpace(clause); !strings.HasPrefix(t, "(") || !strings.HasSuffix(t, ")") {
@@ -515,7 +515,7 @@ func check(b *sqlx.Builder, c *Check) {
 		b.P("CONSTRAINT").Ident(c.Name)
 	}
 	b.P("CHECK", clause)
-	if c.Enforced {
+	if sqlx.Has(c.Attrs, &Enforced{}) {
 		b.P("ENFORCED")
 	}
 }
