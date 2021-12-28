@@ -439,6 +439,36 @@ func TestPostgres_CLI(t *testing.T) {
 	})
 }
 
+func TestPostgres_DefaultsHCL(t *testing.T) {
+	n := "atlas_defaults"
+	pgRun(t, func(t *pgTest) {
+		ddl := `
+create table atlas_defaults
+(
+	string varchar(255) default 'hello_world',
+	quoted varchar(100) default 'never say "never"',
+	tBit bit(10) default b'10101',
+	ts timestamp default CURRENT_TIMESTAMP,
+	tstz timestamp with time zone default CURRENT_TIMESTAMP,
+	number int default 42
+)
+`
+		t.dropTables(n)
+		_, err := t.db.Exec(ddl)
+		require.NoError(t, err)
+		realm := t.loadRealm()
+		hcl := schemahcl.New(schemahcl.WithTypes(postgres.TypeRegistry.Specs()))
+		spec, err := postgres.MarshalSpec(realm.Schemas[0], hcl)
+		require.NoError(t, err)
+		var s schema.Schema
+		err = postgres.UnmarshalSpec(spec, hcl, &s)
+		require.NoError(t, err)
+		t.dropTables(n)
+		t.applyHcl(string(spec))
+		ensureNoChange(t, realm.Schemas[0].Tables[0])
+	})
+}
+
 func TestPostgres_Sanity(t *testing.T) {
 	n := "atlas_types_sanity"
 	ddl := `
