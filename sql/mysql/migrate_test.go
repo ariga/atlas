@@ -223,6 +223,7 @@ func TestPlanChanges(t *testing.T) {
 							&schema.Charset{V: "utf8mb4"},
 							&schema.Collation{V: "utf8mb4_bin"},
 							&schema.Comment{Text: "posts comment"},
+							&Check{Name: "id_nonzero", Clause: "(`id` > 0)"},
 						},
 					}
 					t.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: t.Columns[0]}}}
@@ -231,7 +232,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 			plan: &migrate.Plan{
 				Reversible: true,
-				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` bigint NOT NULL AUTO_INCREMENT, `text` text NULL, PRIMARY KEY (`id`)) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT \"posts comment\" AUTO_INCREMENT 100", Reverse: "DROP TABLE `posts`"}},
+				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` bigint NOT NULL AUTO_INCREMENT, `text` text NULL, PRIMARY KEY (`id`), CONSTRAINT `id_nonzero` CHECK (`id` > 0)) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT \"posts comment\" AUTO_INCREMENT 100", Reverse: "DROP TABLE `posts`"}},
 			},
 		},
 		{
