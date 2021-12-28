@@ -9,6 +9,7 @@ import (
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/internal/specutil"
+	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
 )
@@ -90,7 +91,7 @@ func fixDefaultQuotes(value schemaspec.Value) error {
 	if !ok {
 		return nil
 	}
-	if len(lv.V) > 2 && strings.HasPrefix(lv.V, "\"") && strings.HasSuffix(lv.V, "\"") {
+	if sqlx.IsQuoted(lv.V, '"') {
 		uq, err := strconv.Unquote(lv.V)
 		if err != nil {
 			return err
