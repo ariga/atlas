@@ -33,7 +33,7 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) []schema.Change {
 			changes = append(changes, &schema.DropAttr{
 				A: c1,
 			})
-		case c1.Clause != c2.Clause || sqlx.Has(c1.Attrs, &NoInherit{}) != sqlx.Has(c2.Attrs, &NoInherit{}):
+		case c1.Expr != c2.Expr || sqlx.Has(c1.Attrs, &NoInherit{}) != sqlx.Has(c2.Attrs, &NoInherit{}):
 			changes = append(changes, &schema.ModifyAttr{
 				From: c1,
 				To:   c2,

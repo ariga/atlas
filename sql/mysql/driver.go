@@ -83,6 +83,12 @@ func (d *conn) supportsExprDefault() bool {
 	return d.gteV(v)
 }
 
+// supportsEnforceCheck reports if the connected database supports
+// the ENFORCED option in CHECK constraint syntax.
+func (d *conn) supportsEnforceCheck() bool {
+	return !d.mariadb() && d.gteV("8.0.16")
+}
+
 // mariadb reports if the Driver is connected to a MariaDB database.
 func (d *conn) mariadb() bool {
 	return strings.Index(d.version, "MariaDB") > 0

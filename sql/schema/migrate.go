@@ -123,6 +123,22 @@ type (
 		Change   ChangeKind
 	}
 
+	// AddCheck describes a CHECK constraint creation change.
+	AddCheck struct {
+		C *Check
+	}
+
+	// DropCheck describes a CHECK constraint removal change.
+	DropCheck struct {
+		C *Check
+	}
+
+	// ModifyCheck describes a change that modifies a check.
+	ModifyCheck struct {
+		From, To *Check
+		Change   ChangeKind
+	}
+
 	// AddAttr describes an attribute addition.
 	AddAttr struct {
 		A Attr
@@ -237,6 +253,9 @@ func (*ModifyTable) change()      {}
 func (*AddIndex) change()         {}
 func (*DropIndex) change()        {}
 func (*ModifyIndex) change()      {}
+func (*AddCheck) change()         {}
+func (*DropCheck) change()        {}
+func (*ModifyCheck) change()      {}
 func (*AddColumn) change()        {}
 func (*DropColumn) change()       {}
 func (*ModifyColumn) change()     {}

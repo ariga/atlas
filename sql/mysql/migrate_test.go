@@ -223,7 +223,7 @@ func TestPlanChanges(t *testing.T) {
 							&schema.Charset{V: "utf8mb4"},
 							&schema.Collation{V: "utf8mb4_bin"},
 							&schema.Comment{Text: "posts comment"},
-							&schema.Check{Name: "id_nonzero", Clause: "(`id` > 0)"},
+							&schema.Check{Name: "id_nonzero", Expr: "(`id` > 0)"},
 						},
 					}
 					t.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: t.Columns[0]}}}
@@ -289,6 +289,13 @@ func TestPlanChanges(t *testing.T) {
 									},
 								},
 							},
+							&schema.AddCheck{
+								C: &schema.Check{
+									Name:  "id_nonzero",
+									Expr:  "(id > 0)",
+									Attrs: []schema.Attr{&Enforced{}},
+								},
+							},
 						},
 					}
 				}(),
@@ -297,15 +304,106 @@ func TestPlanChanges(t *testing.T) {
 				Reversible: true,
 				Changes: []*migrate.Change{
 					{
-						Cmd:     "ALTER TABLE `users` ADD COLUMN `name` varchar(255) NOT NULL, ADD INDEX `id_key` (`id`) COMMENT \"comment\"",
-						Reverse: "ALTER TABLE `users` DROP COLUMN `name` DROP INDEX `id_key`",
+						Cmd:     "ALTER TABLE `users` ADD COLUMN `name` varchar(255) NOT NULL, ADD INDEX `id_key` (`id`) COMMENT \"comment\", ADD CONSTRAINT `id_nonzero` CHECK (id > 0) ENFORCED",
+						Reverse: "ALTER TABLE `users` DROP COLUMN `name`, DROP INDEX `id_key`, DROP CHECK `id_nonzero`",
+					},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+						},
+					}
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.DropCheck{
+								C: &schema.Check{
+									Name:  "id_nonzero",
+									Expr:  "(id > 0)",
+									Attrs: []schema.Attr{&Enforced{}},
+								},
+							},
+						},
+					}
+				}(),
+			},
+			plan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `users` DROP CHECK `id_nonzero`",
+						Reverse: "ALTER TABLE `users` ADD CONSTRAINT `id_nonzero` CHECK (id > 0) ENFORCED",
+					},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+						},
+					}
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.ModifyCheck{
+								From: &schema.Check{
+									Name:  "check1",
+									Expr:  "(id > 0)",
+									Attrs: []schema.Attr{&Enforced{}},
+								},
+								To: &schema.Check{
+									Name: "check1",
+									Expr: "(id > 0)",
+								},
+							},
+							&schema.ModifyCheck{
+								From: &schema.Check{
+									Name: "check2",
+									Expr: "(id > 0)",
+								},
+								To: &schema.Check{
+									Name:  "check2",
+									Expr:  "(id > 0)",
+									Attrs: []schema.Attr{&Enforced{}},
+								},
+							},
+							&schema.ModifyCheck{
+								From: &schema.Check{
+									Name: "check3",
+									Expr: "(id > 0)",
+								},
+								To: &schema.Check{
+									Name: "check3",
+									Expr: "(id >= 0)",
+								},
+							},
+						},
+					}
+				}(),
+			},
+			plan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `users` ALTER CHECK `check1` ENFORCED, ALTER CHECK `check2` NOT ENFORCED, DROP CHECK `check3`, ADD CONSTRAINT `check3` CHECK (id >= 0)",
+						Reverse: "ALTER TABLE `users` ALTER CHECK `check1` NOT ENFORCED, ALTER CHECK `check2` ENFORCED, DROP CHECK `check3`, ADD CONSTRAINT `check3` CHECK (id > 0)",
 					},
 				},
 			},
 		},
 	}
 	for _, tt := range tests {
-		db, _, err := newMigrate("8.0.13")
+		db, _, err := newMigrate("8.0.16")
 		require.NoError(t, err)
 		plan, err := db.PlanChanges(context.Background(), "plan", tt.changes)
 		require.NoError(t, err)

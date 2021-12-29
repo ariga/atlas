@@ -500,8 +500,8 @@ func (i *inspect) checks(ctx context.Context, t *schema.Table) error {
 			return fmt.Errorf("mysql: %w", err)
 		}
 		check := &schema.Check{
-			Name:   name.String,
-			Clause: unescape(clause.String),
+			Name: name.String,
+			Expr: unescape(clause.String),
 		}
 		if enforced.String != "NO" {
 			check.Attrs = append(check.Attrs, &Enforced{})
@@ -513,7 +513,7 @@ func (i *inspect) checks(ctx context.Context, t *schema.Table) error {
 		// Ent to manually add this CHECK for older versions of MariaDB.
 		if i.mariadb() {
 			c, ok := t.Column(check.Name)
-			if ok && c.Type.Raw == tLongText && check.Clause == fmt.Sprintf("json_valid(`%s`)", c.Name) {
+			if ok && c.Type.Raw == tLongText && check.Expr == fmt.Sprintf("json_valid(`%s`)", c.Name) {
 				c.Type.Raw = tJSON
 				c.Type.Type = &schema.JSONType{T: tJSON}
 			}

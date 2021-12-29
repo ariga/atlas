@@ -435,7 +435,7 @@ func (i *inspect) addChecks(t *schema.Table, rows *sql.Rows) error {
 		}
 		check, ok := names[name]
 		if !ok {
-			check = &schema.Check{Name: name, Clause: clause, Attrs: []schema.Attr{&CheckColumns{}}}
+			check = &schema.Check{Name: name, Expr: clause, Attrs: []schema.Attr{&CheckColumns{}}}
 			if noInherit {
 				check.Attrs = append(check.Attrs, &NoInherit{})
 			}
