@@ -5,7 +5,10 @@ import (
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/sql/mysql"
+	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlite"
 	"ariga.io/atlas/sql/sqlspec"
 	"github.com/stretchr/testify/require"
 )
@@ -329,6 +332,72 @@ func TestMarshalTopLevel(t *testing.T) {
   type = varchar(255)
 }
 `, string(h))
+}
+
+func TestRealm(t *testing.T) {
+	f := `schema "account_a" {
+}
+table "t1" {
+	schema = schema.account_a
+}
+schema "account_b" {
+}
+table "t2" {
+	schema = schema.account_b
+}
+`
+	for _, tt := range []struct {
+		name string
+		schemaspec.Marshaler
+		schemaspec.Unmarshaler
+	}{
+		{
+			name:        "mysql",
+			Marshaler:   mysql.MarshalHCL,
+			Unmarshaler: mysql.UnmarshalHCL,
+		},
+		{
+			name:        "postgres",
+			Marshaler:   postgres.MarshalHCL,
+			Unmarshaler: postgres.UnmarshalHCL,
+		},
+		{
+			name:        "sqlite",
+			Marshaler:   sqlite.MarshalHCL,
+			Unmarshaler: sqlite.UnmarshalHCL,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var r schema.Realm
+			err := tt.UnmarshalSpec([]byte(f), &r)
+			require.NoError(t, err)
+			exp := &schema.Realm{
+				Schemas: []*schema.Schema{
+					{
+						Name: "account_a",
+						Tables: []*schema.Table{
+							{Name: "t1"},
+						},
+					},
+					{
+						Name: "account_b",
+						Tables: []*schema.Table{
+							{Name: "t2"},
+						},
+					},
+				},
+			}
+			exp.Schemas[0].Tables[0].Schema = exp.Schemas[0]
+			exp.Schemas[1].Tables[0].Schema = exp.Schemas[1]
+			require.EqualValues(t, exp, &r)
+			hcl, err := tt.MarshalSpec(&r)
+			require.NoError(t, err)
+			var after schema.Realm
+			err = tt.UnmarshalSpec(hcl, &after)
+			require.NoError(t, err)
+			require.EqualValues(t, exp, &after)
+		})
+	}
 }
 
 func decode(f string) (*db, error) {

@@ -59,28 +59,7 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 
 // MarshalSpec marshals v into an Atlas DDL document using a schemaspec.Marshaler.
 func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) {
-	d := &doc{}
-	switch s := v.(type) {
-	case *schema.Schema:
-		spec, tables, err := schemaSpec(s)
-		if err != nil {
-			return nil, fmt.Errorf("mysql: failed converting schema to spec: %w", err)
-		}
-		d.Tables = tables
-		d.Schemas = []*sqlspec.Schema{spec}
-	case *schema.Realm:
-		for _, s := range s.Schemas {
-			spec, tables, err := schemaSpec(s)
-			if err != nil {
-				return nil, fmt.Errorf("mysql: failed converting schema to spec: %w", err)
-			}
-			d.Tables = append(d.Tables, tables...)
-			d.Schemas = append(d.Schemas, spec)
-		}
-	default:
-		return nil, fmt.Errorf("mysql: failed marshaling spec. %T is not supported", v)
-	}
-	return marshaler.MarshalSpec(d)
+	return specutil.Marshal(v, marshaler, schemaSpec)
 }
 
 var (
