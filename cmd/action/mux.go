@@ -24,24 +24,6 @@ type (
 		schemaspec.Unmarshaler
 		Types []*schemaspec.TypeSpec
 	}
-
-	schemaUnmarshal struct {
-		unmarshalSpec func(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}) error
-		unmarshaler   schemaspec.Unmarshaler
-	}
-
-	schemaUnmarshaler interface {
-		unmarshal([]byte, interface{}) error
-	}
-
-	schemaMarshal struct {
-		marshalSpec func(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error)
-		marshaler   schemaspec.Marshaler
-	}
-
-	schemaMarshaler interface {
-		marshal(*schema.Schema) ([]byte, error)
-	}
 )
 
 // NewMux returns a new Mux.
