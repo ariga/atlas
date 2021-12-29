@@ -100,6 +100,9 @@ func TestPlanChanges(t *testing.T) {
 							&schema.AddCheck{
 								C: &schema.Check{Name: "name_not_empty", Expr: `("name" <> '')`},
 							},
+							&schema.DropCheck{
+								C: &schema.Check{Name: "id_nonzero", Expr: `("id" <> 0)`},
+							},
 						},
 					}
 				}(),
@@ -108,7 +111,7 @@ func TestPlanChanges(t *testing.T) {
 				Reversible:    true,
 				Transactional: true,
 				Changes: []*migrate.Change{
-					{Cmd: `ALTER TABLE "users" ADD COLUMN "name" character varying(255) NOT NULL, ADD CONSTRAINT "name_not_empty" CHECK ("name" <> '')`, Reverse: `ALTER TABLE "users" DROP COLUMN "name", DROP CONSTRAINT "name_not_empty"`},
+					{Cmd: `ALTER TABLE "users" ADD COLUMN "name" character varying(255) NOT NULL, ADD CONSTRAINT "name_not_empty" CHECK ("name" <> ''), DROP CONSTRAINT "id_nonzero"`, Reverse: `ALTER TABLE "users" DROP COLUMN "name", DROP CONSTRAINT "name_not_empty", ADD CONSTRAINT "id_nonzero" CHECK ("id" <> 0)`},
 					{Cmd: `CREATE INDEX "id_key" ON "users" ("id")`, Reverse: `DROP INDEX "id_key"`},
 				},
 			},

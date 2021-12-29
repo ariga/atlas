@@ -261,6 +261,9 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			if reversible = change.C.Name != ""; reversible {
 				reverse.Comma().P("DROP CONSTRAINT").Ident(change.C.Name)
 			}
+		case *schema.DropCheck:
+			b.P("DROP CONSTRAINT").Ident(change.C.Name)
+			check(reverse.Comma().P("ADD"), change.C)
 		}
 	})
 	change := &migrate.Change{
