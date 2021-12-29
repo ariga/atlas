@@ -220,25 +220,27 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 	}
 	s.dropIndexes(modify.T, dropI...)
 	if len(changes) > 0 {
-		s.alterTable(modify.T, changes)
+		if err := s.alterTable(modify.T, changes); err != nil {
+			return err
+		}
 	}
 	s.addIndexes(modify.T, addI...)
 	return nil
 }
 
 // alterTable modifies the given table by executing on it a list of changes in one SQL statement.
-func (s *state) alterTable(t *schema.Table, changes []schema.Change) {
+func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 	var (
 		b          = Build("ALTER TABLE").Table(t)
+		reverse    = Build("")
 		reversible = true
-		reverse    = b.Clone()
 	)
 	b.MapComma(changes, func(i int, b *sqlx.Builder) {
 		switch change := changes[i].(type) {
 		case *schema.AddColumn:
 			b.P("ADD COLUMN")
 			s.column(b, change.C)
-			reverse.P("DROP COLUMN").Ident(change.C.Name)
+			reverse.Comma().P("DROP COLUMN").Ident(change.C.Name)
 		case *schema.DropColumn:
 			b.P("DROP COLUMN").Ident(change.C.Name)
 			reversible = false
@@ -248,10 +250,17 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) {
 		case *schema.AddForeignKey:
 			b.P("ADD")
 			s.fks(b, change.F)
-			reverse.P("DROP CONSTRAINT").Ident(change.F.Symbol)
+			reverse.Comma().P("DROP CONSTRAINT").Ident(change.F.Symbol)
 		case *schema.DropForeignKey:
 			b.P("DROP CONSTRAINT").Ident(change.F.Symbol)
 			reversible = false
+		case *schema.AddCheck:
+			check(b.P("ADD"), change.C)
+			// Reverse operation is supported if
+			// the constraint name is not generated.
+			if reversible = change.C.Name != ""; reversible {
+				reverse.Comma().P("DROP CONSTRAINT").Ident(change.C.Name)
+			}
 		}
 	})
 	change := &migrate.Change{
@@ -263,9 +272,14 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) {
 		Comment: fmt.Sprintf("Modify %q table", t.Name),
 	}
 	if reversible {
-		change.Reverse = reverse.String()
+		b := Build("ALTER TABLE").Table(t)
+		if _, err := b.ReadFrom(reverse); err != nil {
+			return fmt.Errorf("unexpected buffer read: %w", err)
+		}
+		change.Reverse = b.String()
 	}
 	s.append(change)
+	return nil
 }
 
 func (s *state) addComments(t *schema.Table) {
