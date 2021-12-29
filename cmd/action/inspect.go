@@ -3,7 +3,6 @@ package action
 import (
 	"context"
 
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"github.com/spf13/cobra"
 )
 
@@ -41,17 +40,16 @@ func init() {
 func CmdInspectRun(cmd *cobra.Command, args []string) {
 	d, err := defaultMux.OpenAtlas(InspectFlags.DSN)
 	cobra.CheckErr(err)
-	m := schemaMarshal{marshalSpec: d.MarshalSpec, marshaler: schemahcl.New(schemahcl.WithTypes(d.Types))}
-	inspectRun(d, &m, InspectFlags.DSN)
+	inspectRun(d, InspectFlags.DSN)
 }
 
-func inspectRun(d *Driver, m schemaMarshaler, dsn string) {
+func inspectRun(d *Driver, dsn string) {
 	ctx := context.Background()
 	name, err := schemaNameFromDSN(dsn)
 	cobra.CheckErr(err)
 	s, err := d.InspectSchema(ctx, name, nil)
 	cobra.CheckErr(err)
-	ddl, err := m.marshal(s)
+	ddl, err := d.MarshalSpec(s)
 	cobra.CheckErr(err)
 	schemaCmd.Print(string(ddl))
 }

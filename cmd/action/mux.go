@@ -20,9 +20,9 @@ type (
 	// Driver implements the Atlas interface.
 	Driver struct {
 		migrate.Driver
-		MarshalSpec   func(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error)
-		UnmarshalSpec func(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}) error
-		Types         []*schemaspec.TypeSpec
+		schemaspec.Marshaler
+		schemaspec.Unmarshaler
+		Types []*schemaspec.TypeSpec
 	}
 
 	schemaUnmarshal struct {
