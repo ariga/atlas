@@ -46,13 +46,17 @@ func TestPlanChanges(t *testing.T) {
 							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}}},
 							{Name: "text", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Null: true}},
 						},
+						Attrs: []schema.Attr{
+							&schema.Check{Name: "id_nonzero", Expr: `("id" > 0)`},
+							&schema.Check{Name: "text_len", Expr: `(length("text") > 0)`, Attrs: []schema.Attr{&NoInherit{}}},
+						},
 					},
 				},
 			},
 			plan: &migrate.Plan{
 				Reversible:    true,
 				Transactional: true,
-				Changes:       []*migrate.Change{{Cmd: `CREATE TABLE "posts" ("id" integer NOT NULL, "text" text NULL)`, Reverse: `DROP TABLE "posts"`}},
+				Changes:       []*migrate.Change{{Cmd: `CREATE TABLE "posts" ("id" integer NOT NULL, "text" text NULL, CONSTRAINT "id_nonzero" CHECK ("id" > 0), CONSTRAINT "text_len" CHECK (length("text") > 0) NO INHERIT)`, Reverse: `DROP TABLE "posts"`}},
 			},
 		},
 		{
