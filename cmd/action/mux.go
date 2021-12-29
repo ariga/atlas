@@ -6,8 +6,6 @@ import (
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/migrate"
-	"ariga.io/atlas/sql/schema"
-
 	"github.com/go-sql-driver/mysql"
 )
 
@@ -81,12 +79,4 @@ func schemaNameFromDSN(url string) (string, error) {
 	default:
 		return "", fmt.Errorf("unknown database type: %q", key)
 	}
-}
-
-func (p *schemaMarshal) marshal(s *schema.Schema) ([]byte, error) {
-	return p.marshalSpec(s, p.marshaler)
-}
-
-func (p *schemaUnmarshal) unmarshal(b []byte, v interface{}) error {
-	return p.unmarshalSpec(b, p.unmarshaler, v)
 }
