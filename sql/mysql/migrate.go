@@ -159,7 +159,7 @@ func (s *state) addTable(add *schema.AddTable) error {
 		for _, attr := range add.T.Attrs {
 			if c, ok := attr.(*schema.Check); ok {
 				b.Comma()
-				check(b, c)
+				s.check(b, c)
 			}
 		}
 	})
@@ -248,19 +248,19 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 	var (
 		errors     []string
 		b          = Build("ALTER TABLE").Table(t)
+		reverse    = Build("")
 		reversible = true
-		reverse    = b.Clone()
 	)
 	b.MapComma(changes, func(i int, b *sqlx.Builder) {
 		switch change := changes[i].(type) {
 		case *schema.AddColumn:
 			b.P("ADD COLUMN")
 			s.column(b, t, change.C)
-			reverse.P("DROP COLUMN").Ident(change.C.Name)
+			reverse.Comma().P("DROP COLUMN").Ident(change.C.Name)
 		case *schema.ModifyColumn:
 			b.P("MODIFY COLUMN")
 			s.column(b, t, change.To)
-			reverse.P("MODIFY COLUMN")
+			reverse.Comma().P("MODIFY COLUMN")
 			s.column(reverse, t, change.From)
 		case *schema.DropColumn:
 			b.P("DROP COLUMN").Ident(change.C.Name)
@@ -273,14 +273,14 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			b.P("INDEX").Ident(change.I.Name)
 			s.indexParts(b, change.I.Parts)
 			s.attr(b, change.I.Attrs...)
-			reverse.P("DROP INDEX").Ident(change.I.Name)
+			reverse.Comma().P("DROP INDEX").Ident(change.I.Name)
 		case *schema.DropIndex:
 			b.P("DROP INDEX").Ident(change.I.Name)
 			reversible = false
 		case *schema.AddForeignKey:
 			b.P("ADD")
 			s.fks(b, change.F)
-			reverse.P("DROP FOREIGN KEY").Ident(change.F.Symbol)
+			reverse.Comma().P("DROP FOREIGN KEY").Ident(change.F.Symbol)
 		case *schema.DropForeignKey:
 			b.P("DROP FOREIGN KEY").Ident(change.F.Symbol)
 			reversible = false
@@ -297,6 +297,39 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			if err := s.tableAttr(reverse, change.From); err != nil {
 				errors = append(errors, fmt.Sprintf("reverse modify attribute: %s", err.Error()))
 			}
+		case *schema.AddCheck:
+			s.check(b.P("ADD"), change.C)
+			// Reverse operation is supported if
+			// the constraint name is not generated.
+			if reversible = change.C.Name != ""; reversible {
+				reverse.Comma().P("DROP CHECK").Ident(change.C.Name)
+			}
+		case *schema.DropCheck:
+			b.P("DROP CHECK").Ident(change.C.Name)
+			s.check(reverse.Comma().P("ADD"), change.C)
+		case *schema.ModifyCheck:
+			switch {
+			case change.From.Name == "":
+				errors = append(errors, "cannot modify unnamed check constraint")
+			case change.From.Name != change.To.Name:
+				errors = append(errors, fmt.Sprintf("mismatch check constraint names: %q != %q", change.From.Name, change.To.Name))
+			// Enforcement added.
+			case s.supportsEnforceCheck() && sqlx.Has(change.From.Attrs, &Enforced{}) && !sqlx.Has(change.To.Attrs, &Enforced{}):
+				b.P("ALTER CHECK").Ident(change.From.Name).P("ENFORCED")
+				reverse.Comma().P("ALTER CHECK").Ident(change.From.Name).P("NOT ENFORCED")
+			// Enforcement dropped.
+			case s.supportsEnforceCheck() && !sqlx.Has(change.From.Attrs, &Enforced{}) && sqlx.Has(change.To.Attrs, &Enforced{}):
+				b.P("ALTER CHECK").Ident(change.From.Name).P("NOT ENFORCED")
+				reverse.Comma().P("ALTER CHECK").Ident(change.From.Name).P("ENFORCED")
+			// Expr was changed.
+			case change.From.Expr != change.To.Expr:
+				b.P("DROP CHECK").Ident(change.From.Name).Comma().P("ADD")
+				s.check(b, change.To)
+				reverse.Comma().P("DROP CHECK").Ident(change.To.Name).Comma().P("ADD")
+				s.check(reverse, change.From)
+			default:
+				errors = append(errors, "unknown check constraints change")
+			}
 		}
 	})
 	if len(errors) > 0 {
@@ -311,7 +344,11 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 		Comment: fmt.Sprintf("modify %q table", t.Name),
 	}
 	if reversible {
-		change.Reverse = reverse.String()
+		b := Build("ALTER TABLE").Table(t)
+		if _, err := b.ReadFrom(reverse); err != nil {
+			return fmt.Errorf("unexpected buffer read: %w", err)
+		}
+		change.Reverse = b.String()
 	}
 	s.append(change)
 	return nil
@@ -409,7 +446,7 @@ func (s *state) tableAttr(b *sqlx.Builder, attrs ...schema.Attr) error {
 			}
 			b.P("AUTO_INCREMENT", strconv.FormatInt(a.V, 10))
 		case *schema.Check:
-			// Ignore CHECK constraints as they are not real attribute,
+			// Ignore CHECK constraints as they are not real attributes,
 			// and handled on CREATE or ALTER.
 		case *schema.Charset:
 			b.P("CHARACTER SET", a.V)
@@ -505,17 +542,17 @@ search:
 }
 
 // checks writes the CHECK constraint to the builder.
-func check(b *sqlx.Builder, c *schema.Check) {
-	clause := c.Clause
+func (s *state) check(b *sqlx.Builder, c *schema.Check) {
+	expr := c.Expr
 	// Expressions should be wrapped with parens.
-	if t := strings.TrimSpace(clause); !strings.HasPrefix(t, "(") || !strings.HasSuffix(t, ")") {
-		clause = "(" + t + ")"
+	if t := strings.TrimSpace(expr); !strings.HasPrefix(t, "(") || !strings.HasSuffix(t, ")") {
+		expr = "(" + t + ")"
 	}
 	if c.Name != "" {
 		b.P("CONSTRAINT").Ident(c.Name)
 	}
-	b.P("CHECK", clause)
-	if sqlx.Has(c.Attrs, &Enforced{}) {
+	b.P("CHECK", expr)
+	if s.supportsEnforceCheck() && sqlx.Has(c.Attrs, &Enforced{}) {
 		b.P("ENFORCED")
 	}
 }

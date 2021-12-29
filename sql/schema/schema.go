@@ -284,9 +284,9 @@ type (
 
 	// Check describes a CHECK constraint.
 	Check struct {
-		Name   string // Optional constraint name.
-		Clause string // Actual CHECK.
-		Attrs  []Attr // Additional attributes (e.g. ENFORCED).
+		Name  string // Optional constraint name.
+		Expr  string // Actual CHECK.
+		Attrs []Attr // Additional attributes (e.g. ENFORCED).
 	}
 )
 

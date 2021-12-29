@@ -47,11 +47,11 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) []schema.Change {
 	for _, c1 := range sqlx.Checks(from.Attrs) {
 		switch c2, ok := sqlx.CheckByName(to.Attrs, c1.Name); {
 		case !ok:
-			changes = append(changes, &schema.DropAttr{
-				A: c1,
+			changes = append(changes, &schema.DropCheck{
+				C: c1,
 			})
-		case c1.Clause != c2.Clause || sqlx.Has(c1.Attrs, &Enforced{}) != sqlx.Has(c2.Attrs, &Enforced{}):
-			changes = append(changes, &schema.ModifyAttr{
+		case c1.Expr != c2.Expr || sqlx.Has(c1.Attrs, &Enforced{}) != sqlx.Has(c2.Attrs, &Enforced{}):
+			changes = append(changes, &schema.ModifyCheck{
 				From: c1,
 				To:   c2,
 			})
@@ -60,8 +60,8 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) []schema.Change {
 	// Add checks.
 	for _, c1 := range sqlx.Checks(to.Attrs) {
 		if _, ok := sqlx.CheckByName(from.Attrs, c1.Name); !ok {
-			changes = append(changes, &schema.AddAttr{
-				A: c1,
+			changes = append(changes, &schema.AddCheck{
+				C: c1,
 			})
 		}
 	}

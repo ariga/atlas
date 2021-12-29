@@ -868,7 +868,7 @@ create table atlas_types_sanity
 						return []schema.Attr{
 							&schema.Charset{V: "latin1"},
 							&schema.Collation{V: "latin1_swedish_ci"},
-							&schema.Check{Name: "tJSON", Clause: "json_valid(`tJSON`)", Attrs: []schema.Attr{&mysql.Enforced{}}},
+							&schema.Check{Name: "tJSON", Expr: "json_valid(`tJSON`)", Attrs: []schema.Attr{&mysql.Enforced{}}},
 						}
 					}
 					return []schema.Attr{

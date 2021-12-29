@@ -42,31 +42,31 @@ func TestDiff_TableDiff(t *testing.T) {
 		{
 			name: "add check",
 			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}},
-			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&schema.Check{Name: "t1_c1_check", Clause: "(c1 > 1)"}}},
+			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&schema.Check{Name: "t1_c1_check", Expr: "(c1 > 1)"}}},
 			wantChanges: []schema.Change{
 				&schema.AddAttr{
-					A: &schema.Check{Name: "t1_c1_check", Clause: "(c1 > 1)"},
+					A: &schema.Check{Name: "t1_c1_check", Expr: "(c1 > 1)"},
 				},
 			},
 		},
 		{
 			name: "drop check",
-			from: &schema.Table{Name: "t1", Attrs: []schema.Attr{&schema.Check{Name: "t1_c1_check", Clause: "(c1 > 1)"}}},
+			from: &schema.Table{Name: "t1", Attrs: []schema.Attr{&schema.Check{Name: "t1_c1_check", Expr: "(c1 > 1)"}}},
 			to:   &schema.Table{Name: "t1"},
 			wantChanges: []schema.Change{
 				&schema.DropAttr{
-					A: &schema.Check{Name: "t1_c1_check", Clause: "(c1 > 1)"},
+					A: &schema.Check{Name: "t1_c1_check", Expr: "(c1 > 1)"},
 				},
 			},
 		},
 		{
 			name: "modify check",
-			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Check{Name: "t1_c1_check", Clause: "(c1 > 1)"}}},
-			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&schema.Check{Name: "t1_c1_check", Clause: "(c1 > 1)", Attrs: []schema.Attr{&NoInherit{}}}}},
+			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Check{Name: "t1_c1_check", Expr: "(c1 > 1)"}}},
+			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&schema.Check{Name: "t1_c1_check", Expr: "(c1 > 1)", Attrs: []schema.Attr{&NoInherit{}}}}},
 			wantChanges: []schema.Change{
 				&schema.ModifyAttr{
-					From: &schema.Check{Name: "t1_c1_check", Clause: "(c1 > 1)"},
-					To:   &schema.Check{Name: "t1_c1_check", Clause: "(c1 > 1)", Attrs: []schema.Attr{&NoInherit{}}},
+					From: &schema.Check{Name: "t1_c1_check", Expr: "(c1 > 1)"},
+					To:   &schema.Check{Name: "t1_c1_check", Expr: "(c1 > 1)", Attrs: []schema.Attr{&NoInherit{}}},
 				},
 			},
 		},

@@ -198,13 +198,15 @@ func (b *Builder) Table(t *schema.Table) *Builder {
 	return b
 }
 
-// Comma writes a comma. If the current buffer ends
-// with whitespace, it will be replaced instead.
+// Comma writes a comma in case the buffer is not empty, or
+// replaces the last char if it is a whitespace.
 func (b *Builder) Comma() *Builder {
-	if b.lastByte() == ' ' {
+	switch {
+	case b.Len() == 0:
+	case b.lastByte() == ' ':
 		b.rewriteLastByte(',')
 		b.WriteByte(' ')
-	} else {
+	default:
 		b.WriteString(", ")
 	}
 	return b
