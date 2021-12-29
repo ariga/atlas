@@ -8,12 +8,9 @@ import (
 	"fmt"
 	"testing"
 
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/schema"
 	"github.com/stretchr/testify/require"
 )
-
-var hclState = schemahcl.New(schemahcl.WithTypes(TypeRegistry.Specs()))
 
 func TestSQLSpec(t *testing.T) {
 	f := `

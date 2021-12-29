@@ -457,11 +457,10 @@ create table atlas_defaults
 		_, err := t.db.Exec(ddl)
 		require.NoError(t, err)
 		realm := t.loadRealm()
-		hcl := schemahcl.New(schemahcl.WithTypes(postgres.TypeRegistry.Specs()))
-		spec, err := postgres.MarshalSpec(realm.Schemas[0], hcl)
+		spec, err := postgres.MarshalHCL(realm.Schemas[0])
 		require.NoError(t, err)
 		var s schema.Schema
-		err = postgres.UnmarshalSpec(spec, hcl, &s)
+		err = postgres.UnmarshalHCL(spec, &s)
 		require.NoError(t, err)
 		t.dropTables(n)
 		t.applyHcl(string(spec))
@@ -855,7 +854,7 @@ func (t *pgTest) dsn() string {
 func (t *pgTest) applyHcl(spec string) {
 	realm := t.loadRealm()
 	var desired schema.Schema
-	err := postgres.UnmarshalSpec([]byte(spec), schemahcl.New(schemahcl.WithTypes(postgres.TypeRegistry.Specs())), &desired)
+	err := postgres.UnmarshalHCL([]byte(spec), &desired)
 	require.NoError(t, err)
 	existing := realm.Schemas[0]
 	diff, err := t.drv.SchemaDiff(existing, &desired)

@@ -10,7 +10,6 @@ import (
 	"database/sql/driver"
 	"testing"
 
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlite"
@@ -412,11 +411,10 @@ create table atlas_defaults
 		_, err := t.db.Exec(ddl)
 		require.NoError(t, err)
 		realm := t.loadRealm()
-		hcl := schemahcl.New(schemahcl.WithTypes(sqlite.TypeRegistry.Specs()))
-		spec, err := sqlite.MarshalSpec(realm.Schemas[0], hcl)
+		spec, err := sqlite.MarshalHCL(realm.Schemas[0])
 		require.NoError(t, err)
 		var s schema.Schema
-		err = sqlite.UnmarshalSpec(spec, hcl, &s)
+		err = sqlite.UnmarshalHCL(spec, &s)
 		require.NoError(t, err)
 		t.dropTables(n)
 		t.applyHcl(string(spec))
@@ -669,7 +667,7 @@ create table atlas_types_sanity
 func (t *liteTest) applyHcl(spec string) {
 	realm := t.loadRealm()
 	var desired schema.Schema
-	err := sqlite.UnmarshalSpec([]byte(spec), schemahcl.New(schemahcl.WithTypes(sqlite.TypeRegistry.Specs())), &desired)
+	err := sqlite.UnmarshalHCL([]byte(spec), &desired)
 	require.NoError(t, err)
 	existing := realm.Schemas[0]
 	diff, err := t.drv.SchemaDiff(existing, &desired)

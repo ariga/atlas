@@ -547,11 +547,10 @@ create table atlas_defaults
 		_, err := t.db.Exec(ddl)
 		require.NoError(t, err)
 		realm := t.loadRealm()
-		hcl := schemahcl.New(schemahcl.WithTypes(mysql.TypeRegistry.Specs()))
-		spec, err := mysql.MarshalSpec(realm.Schemas[0], hcl)
+		spec, err := mysql.MarshalHCL(realm.Schemas[0])
 		require.NoError(t, err)
 		var s schema.Schema
-		err = mysql.UnmarshalSpec(spec, hcl, &s)
+		err = mysql.UnmarshalHCL(spec, &s)
 		require.NoError(t, err)
 		t.dropTables(n)
 		t.applyHcl(string(spec))
@@ -942,7 +941,7 @@ func (t *myTest) dsn() string {
 func (t *myTest) applyHcl(spec string) {
 	realm := t.loadRealm()
 	var desired schema.Schema
-	err := mysql.UnmarshalSpec([]byte(spec), schemahcl.New(schemahcl.WithTypes(mysql.TypeRegistry.Specs())), &desired)
+	err := mysql.UnmarshalHCL([]byte(spec), &desired)
 	require.NoError(t, err)
 	existing := realm.Schemas[0]
 	diff, err := t.drv.SchemaDiff(existing, &desired)

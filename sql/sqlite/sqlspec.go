@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
@@ -138,4 +139,16 @@ var TypeRegistry = specutil.NewRegistry(
 		specutil.TypeSpec("json"),
 		specutil.TypeSpec("uuid"),
 	),
+)
+
+var (
+	hclState = schemahcl.New(schemahcl.WithTypes(TypeRegistry.Specs()))
+	// UnmarshalHCL unmarshals an Atlas HCL DDL document into v.
+	UnmarshalHCL = schemaspec.UnmarshalerFunc(func(bytes []byte, i interface{}) error {
+		return UnmarshalSpec(bytes, hclState, i)
+	})
+	// MarshalHCL marshals v into an Atlas HCL DDL document.
+	MarshalHCL = schemaspec.MarshalerFunc(func(v interface{}) ([]byte, error) {
+		return MarshalSpec(v, hclState)
+	})
 )
