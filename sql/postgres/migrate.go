@@ -134,6 +134,12 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 			b.Comma()
 			s.fks(b, add.T.ForeignKeys...)
 		}
+		for _, attr := range add.T.Attrs {
+			if c, ok := attr.(*schema.Check); ok {
+				b.Comma()
+				check(b, c)
+			}
+		}
 	})
 	s.append(&migrate.Change{
 		Cmd:     b.String(),
@@ -586,6 +592,22 @@ func skipAutoChanges(changes []schema.Change) []schema.Change {
 		}
 	}
 	return changes
+}
+
+// checks writes the CHECK constraint to the builder.
+func check(b *sqlx.Builder, c *schema.Check) {
+	expr := c.Expr
+	// Expressions should be wrapped with parens.
+	if t := strings.TrimSpace(expr); !strings.HasPrefix(t, "(") || !strings.HasSuffix(t, ")") {
+		expr = "(" + t + ")"
+	}
+	if c.Name != "" {
+		b.P("CONSTRAINT").Ident(c.Name)
+	}
+	b.P("CHECK", expr)
+	if sqlx.Has(c.Attrs, &NoInherit{}) {
+		b.P("NO INHERIT")
+	}
 }
 
 func quote(s string) string {
