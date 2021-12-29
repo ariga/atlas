@@ -272,6 +272,48 @@ schema "test" {
 	require.Equal(t, utf8mb4, b.Attrs)
 }
 
+func TestRealm(t *testing.T) {
+	f := `schema "account_a" {
+}
+table "t1" {
+	schema = schema.account_a
+}
+schema "account_b" {
+}
+table "t2" {
+	schema = schema.account_b
+}
+`
+	var r schema.Realm
+	err := UnmarshalHCL([]byte(f), &r)
+	require.NoError(t, err)
+	exp := &schema.Realm{
+		Schemas: []*schema.Schema{
+			{
+				Name: "account_a",
+				Tables: []*schema.Table{
+					{Name: "t1"},
+				},
+			},
+			{
+				Name: "account_b",
+				Tables: []*schema.Table{
+					{Name: "t2"},
+				},
+			},
+		},
+	}
+	exp.Schemas[0].Tables[0].Schema = exp.Schemas[0]
+	exp.Schemas[1].Tables[0].Schema = exp.Schemas[1]
+	require.EqualValues(t, exp, &r)
+	hcl, err := MarshalHCL(&r)
+	require.NoError(t, err)
+	var after schema.Realm
+	err = UnmarshalHCL(hcl, &after)
+	require.NoError(t, err)
+	require.EqualValues(t, exp, &after)
+}
+
 func TestTypes(t *testing.T) {
 	tests := []struct {
 		typeExpr  string
