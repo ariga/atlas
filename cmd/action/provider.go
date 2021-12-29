@@ -23,7 +23,7 @@ func mysqlProvider(dsn string) (*Driver, error) {
 	}
 	return &Driver{
 		Driver:      drv,
-		Marshaler:   mysql.MarshalHCL, // TODO(rotemtam): change this when more syntaxes available.
+		Marshaler:   mysql.MarshalHCL,
 		Unmarshaler: mysql.UnmarshalHCL,
 		Types:       mysql.TypeRegistry.Specs(),
 	}, nil
