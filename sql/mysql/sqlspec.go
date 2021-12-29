@@ -23,41 +23,64 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 	if err := unmarshaler.UnmarshalSpec(data, &d); err != nil {
 		return err
 	}
-	s, ok := v.(*schema.Schema)
-	if !ok {
+	switch v := v.(type) {
+	case *schema.Realm:
+		realm, err := specutil.Realm(d.Schemas, d.Tables, convertTable)
+		if err != nil {
+			return fmt.Errorf("mysql: failed converting to *schema.Realm: %w", err)
+		}
+		for _, schemaSpec := range d.Schemas {
+			schm, ok := realm.Schema(schemaSpec.Name)
+			if !ok {
+				return fmt.Errorf("could not find schema: %q", schemaSpec.Name)
+			}
+			if err := convertCharset(schemaSpec, &schm.Attrs); err != nil {
+				return err
+			}
+		}
+		*v = *realm
+	case *schema.Schema:
+		if len(d.Schemas) != 1 {
+			return fmt.Errorf("mysql: expecting document to contain a single schema, got %d", len(d.Schemas))
+		}
+		conv, err := specutil.Schema(d.Schemas[0], d.Tables, convertTable)
+		if err != nil {
+			return fmt.Errorf("mysql: failed converting to *schema.Schema: %w", err)
+		}
+		if err := convertCharset(d.Schemas[0], &conv.Attrs); err != nil {
+			return err
+		}
+		*v = *conv
+	default:
 		return fmt.Errorf("mysql: failed unmarshaling spec. %T is not supported", v)
 	}
-	if len(d.Schemas) != 1 {
-		return fmt.Errorf("mysql: expecting document to contain a single schema, got %d", len(d.Schemas))
-	}
-	conv, err := specutil.Schema(d.Schemas[0], d.Tables, convertTable)
-	if err != nil {
-		return fmt.Errorf("mysql: failed converting to *schema.Schema: %w", err)
-	}
-	if err := convertCharset(d.Schemas[0], &conv.Attrs); err != nil {
-		return err
-	}
-	*s = *conv
 	return nil
 }
 
 // MarshalSpec marshals v into an Atlas DDL document using a schemaspec.Marshaler.
 func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) {
-	var (
-		s  *schema.Schema
-		ok bool
-	)
-	if s, ok = v.(*schema.Schema); !ok {
+	d := &doc{}
+	switch s := v.(type) {
+	case *schema.Schema:
+		spec, tables, err := schemaSpec(s)
+		if err != nil {
+			return nil, fmt.Errorf("mysql: failed converting schema to spec: %w", err)
+		}
+		d.Tables = tables
+		d.Schemas = []*sqlspec.Schema{spec}
+	case *schema.Realm:
+		for _, s := range s.Schemas {
+			spec, tables, err := schemaSpec(s)
+			if err != nil {
+				return nil, fmt.Errorf("mysql: failed converting schema to spec: %w", err)
+			}
+			d.Tables = append(d.Tables, tables...)
+			d.Schemas = append(d.Schemas, spec)
+		}
+	default:
 		return nil, fmt.Errorf("mysql: failed marshaling spec. %T is not supported", v)
 	}
-	spec, tables, err := schemaSpec(s)
-	if err != nil {
-		return nil, fmt.Errorf("mysql: failed converting schema to spec: %w", err)
-	}
-	return marshaler.MarshalSpec(&doc{
-		Tables:  tables,
-		Schemas: []*sqlspec.Schema{spec},
-	})
+	return marshaler.MarshalSpec(d)
 }
 
 var (

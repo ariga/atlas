@@ -30,6 +30,29 @@ type (
 	ForeignKeySpecFunc    func(fk *schema.ForeignKey) (*sqlspec.ForeignKey, error)
 )
 
+// Realm converts the schemas and tables into a schema.Realm.
+func Realm(schemas []*sqlspec.Schema, tables []*sqlspec.Table, convertTable ConvertTableFunc) (*schema.Realm, error) {
+	r := &schema.Realm{}
+	for _, schemaSpec := range schemas {
+		var schemaTables []*sqlspec.Table
+		for _, tableSpec := range tables {
+			name, err := schemaName(tableSpec.Schema)
+			if err != nil {
+				return nil, fmt.Errorf("specutil: cannot extract schema name for table %q: %w", tableSpec.Name, err)
+			}
+			if name == schemaSpec.Name {
+				schemaTables = append(schemaTables, tableSpec)
+			}
+		}
+		sch, err := Schema(schemaSpec, schemaTables, convertTable)
+		if err != nil {
+			return nil, err
+		}
+		r.Schemas = append(r.Schemas, sch)
+	}
+	return r, nil
+}
+
 // Schema converts a sqlspec.Schema with its relevant []sqlspec.Tables
 // into a schema.Schema.
 func Schema(spec *sqlspec.Schema, tables []*sqlspec.Table, convertTable ConvertTableFunc) (*schema.Schema, error) {
@@ -222,6 +245,23 @@ func resolveCol(ref *schemaspec.Ref, sch *schema.Schema) (*schema.Column, error)
 	return col, nil
 }
 
+// FromRealm converts a schema.Realm into []sqlspec.Schema and []sqlspec.Table.
+func FromRealm(r *schema.Realm, fn TableSpecFunc) ([]*sqlspec.Schema, []*sqlspec.Table, error) {
+	var (
+		schemas []*sqlspec.Schema
+		tables  []*sqlspec.Table
+	)
+	for _, sch := range r.Schemas {
+		schemaSpec, tableSpecs, err := FromSchema(sch, fn)
+		if err != nil {
+			return nil, nil, fmt.Errorf("specutil: cannot convert schema %q: %w", sch.Name, err)
+		}
+		schemas = append(schemas, schemaSpec)
+		tables = append(tables, tableSpecs...)
+	}
+	return schemas, tables, nil
+}
+
 // FromSchema converts a schema.Schema into sqlspec.Schema and []sqlspec.Table.
 func FromSchema(s *schema.Schema, fn TableSpecFunc) (*sqlspec.Schema, []*sqlspec.Table, error) {
 	spec := &sqlspec.Schema{
@@ -376,6 +416,14 @@ func FromForeignKey(s *schema.ForeignKey) (*sqlspec.ForeignKey, error) {
 		OnDelete:   s.OnDelete,
 		OnUpdate:   s.OnUpdate,
 	}, nil
+}
+
+func schemaName(ref *schemaspec.Ref) (string, error) {
+	parts := strings.Split(ref.V, ".")
+	if len(parts) < 2 || parts[0] != "$schema" {
+		return "", fmt.Errorf("expected ref format of $schema.name")
+	}
+	return parts[1], nil
 }
 
 func columnName(ref *schemaspec.Ref) (string, error) {

@@ -529,6 +529,18 @@ func TestMySQL_CLI(t *testing.T) {
 	})
 }
 
+func TestMySQL_Realm(t *testing.T) {
+	myRun(t, func(t *myTest) {
+		realm := t.loadRealm()
+		hcl, err := mysql.MarshalHCL(realm)
+		require.NoError(t, err)
+		var r schema.Realm
+		err = mysql.UnmarshalHCL(hcl, &r)
+		require.NoError(t, err)
+		require.EqualValues(t, realm.Schemas[0].Name, r.Schemas[0].Name)
+	})
+}
+
 func TestMySQL_DefaultsHCL(t *testing.T) {
 	n := "atlas_defaults"
 	myRun(t, func(t *myTest) {
@@ -548,7 +560,7 @@ create table atlas_defaults
 		realm := t.loadRealm()
 		spec, err := mysql.MarshalHCL(realm.Schemas[0])
 		require.NoError(t, err)
-		var s schema.Schema
+		var s schema.Realm
 		err = mysql.UnmarshalHCL(spec, &s)
 		require.NoError(t, err)
 		t.dropTables(n)
