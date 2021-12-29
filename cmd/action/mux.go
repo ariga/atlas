@@ -6,8 +6,6 @@ import (
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/migrate"
-	"ariga.io/atlas/sql/schema"
-
 	"github.com/go-sql-driver/mysql"
 )
 
@@ -20,27 +18,9 @@ type (
 	// Driver implements the Atlas interface.
 	Driver struct {
 		migrate.Driver
-		MarshalSpec   func(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error)
-		UnmarshalSpec func(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}) error
-		Types         []*schemaspec.TypeSpec
-	}
-
-	schemaUnmarshal struct {
-		unmarshalSpec func(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}) error
-		unmarshaler   schemaspec.Unmarshaler
-	}
-
-	schemaUnmarshaler interface {
-		unmarshal([]byte, interface{}) error
-	}
-
-	schemaMarshal struct {
-		marshalSpec func(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error)
-		marshaler   schemaspec.Marshaler
-	}
-
-	schemaMarshaler interface {
-		marshal(*schema.Schema) ([]byte, error)
+		schemaspec.Marshaler
+		schemaspec.Unmarshaler
+		Types []*schemaspec.TypeSpec
 	}
 )
 
@@ -99,12 +79,4 @@ func schemaNameFromDSN(url string) (string, error) {
 	default:
 		return "", fmt.Errorf("unknown database type: %q", key)
 	}
-}
-
-func (p *schemaMarshal) marshal(s *schema.Schema) ([]byte, error) {
-	return p.marshalSpec(s, p.marshaler)
-}
-
-func (p *schemaUnmarshal) unmarshal(b []byte, v interface{}) error {
-	return p.unmarshalSpec(b, p.unmarshaler, v)
 }

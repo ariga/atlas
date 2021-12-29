@@ -12,7 +12,6 @@ import (
 	"sync"
 	"testing"
 
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
 	"entgo.io/ent/dialect"
@@ -518,7 +517,7 @@ func TestMySQL_CLI(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
-			testCLISchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn(), mysql.UnmarshalSpec, schemahcl.New(schemahcl.WithTypes(mysql.TypeRegistry.Specs())))
+			testCLISchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn(), mysql.UnmarshalHCL)
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {

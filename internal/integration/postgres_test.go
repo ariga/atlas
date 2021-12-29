@@ -12,7 +12,6 @@ import (
 	"sync"
 	"testing"
 
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
 
@@ -429,7 +428,7 @@ func TestPostgres_CLI(t *testing.T) {
 			}`
 	t.Run("SchemaInspect", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
-			testCLISchemaInspect(t, h, t.dsn(), postgres.UnmarshalSpec, schemahcl.New(schemahcl.WithTypes(postgres.TypeRegistry.Specs())))
+			testCLISchemaInspect(t, h, t.dsn(), postgres.UnmarshalHCL)
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {

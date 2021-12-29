@@ -7,7 +7,6 @@ import (
 
 	"ariga.io/atlas/sql/schema"
 
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 )
@@ -48,11 +47,10 @@ func init() {
 func CmdApplyRun(cmd *cobra.Command, args []string) {
 	d, err := defaultMux.OpenAtlas(ApplyFlags.DSN)
 	cobra.CheckErr(err)
-	u := schemaUnmarshal{unmarshalSpec: d.UnmarshalSpec, unmarshaler: schemahcl.New(schemahcl.WithTypes(d.Types))}
-	applyRun(d, &u, ApplyFlags.DSN, ApplyFlags.File)
+	applyRun(d, ApplyFlags.DSN, ApplyFlags.File)
 }
 
-func applyRun(d *Driver, u schemaUnmarshaler, dsn string, file string) {
+func applyRun(d *Driver, dsn string, file string) {
 	ctx := context.Background()
 	name, err := schemaNameFromDSN(dsn)
 	cobra.CheckErr(err)
@@ -61,7 +59,7 @@ func applyRun(d *Driver, u schemaUnmarshaler, dsn string, file string) {
 	f, err := ioutil.ReadFile(file)
 	cobra.CheckErr(err)
 	var desired schema.Schema
-	err = u.unmarshal(f, &desired)
+	err = d.UnmarshalSpec(f, &desired)
 	cobra.CheckErr(err)
 	changes, err := d.SchemaDiff(s, &desired)
 	cobra.CheckErr(err)

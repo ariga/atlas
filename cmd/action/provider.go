@@ -22,10 +22,10 @@ func mysqlProvider(dsn string) (*Driver, error) {
 		return nil, err
 	}
 	return &Driver{
-		Driver:        drv,
-		MarshalSpec:   mysql.MarshalSpec,
-		UnmarshalSpec: mysql.UnmarshalSpec,
-		Types:         mysql.TypeRegistry.Specs(),
+		Driver:      drv,
+		Marshaler:   mysql.MarshalHCL,
+		Unmarshaler: mysql.UnmarshalHCL,
+		Types:       mysql.TypeRegistry.Specs(),
 	}, nil
 }
 func postgresProvider(dsn string) (*Driver, error) {
@@ -39,9 +39,9 @@ func postgresProvider(dsn string) (*Driver, error) {
 		return nil, err
 	}
 	return &Driver{
-		Driver:        drv,
-		MarshalSpec:   postgres.MarshalSpec,
-		UnmarshalSpec: postgres.UnmarshalSpec,
-		Types:         postgres.TypeRegistry.Specs(),
+		Driver:      drv,
+		Marshaler:   postgres.MarshalHCL,
+		Unmarshaler: postgres.UnmarshalHCL,
+		Types:       postgres.TypeRegistry.Specs(),
 	}, nil
 }
