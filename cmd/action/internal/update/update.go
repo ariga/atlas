@@ -32,6 +32,11 @@ type (
 	}
 )
 
+const (
+	// AtlasNoUpdateNotifier when enabled it cancels checking for update
+	AtlasNoUpdateNotifier = "ATLAS_NO_UPDATE_NOTIFIER"
+)
+
 // CheckForUpdate implements a notification to the user when a later release is available
 // 1. Check release file ~/.atlas/release.json for latest known release and poll time
 // 2. If last poll was more than 24h, poll GitHub public API https://docs.github.com/en/rest/reference/releases#get-the-latest-release
@@ -53,7 +58,7 @@ func CheckForUpdate(version string, logF func(i ...interface{})) {
 }
 
 func enabled(version string) bool {
-	if _, ok := os.LookupEnv("ATLAS_NO_UPDATE_NOTIFIER"); ok {
+	if _, ok := os.LookupEnv(AtlasNoUpdateNotifier); ok {
 		return false
 	}
 	if _, ok := os.LookupEnv("GITHUB_ACTIONS"); ok {

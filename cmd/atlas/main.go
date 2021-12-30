@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"ariga.io/atlas/cmd/action"
@@ -16,7 +15,7 @@ func main() {
 	err := action.RootCmd.Execute()
 	// Print error from command
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error:", err)
+		action.RootCmd.PrintErrln("Error:", err)
 	}
 	// Check for update
 	action.CheckForUpdate()
