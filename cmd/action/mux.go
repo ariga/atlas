@@ -1,11 +1,14 @@
 package action
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/sqlite"
 	"github.com/go-sql-driver/mysql"
 )
 
@@ -20,7 +23,6 @@ type (
 		migrate.Driver
 		schemaspec.Marshaler
 		schemaspec.Unmarshaler
-		Types []*schemaspec.TypeSpec
 	}
 )
 
@@ -76,7 +78,28 @@ func schemaNameFromDSN(url string) (string, error) {
 		return cfg.DBName, err
 	case "postgres":
 		return "public", nil
+	case "sqlite3":
+		return schemaName(dsn)
 	default:
 		return "", fmt.Errorf("unknown database type: %q", key)
 	}
+}
+
+func schemaName(dsn string) (string, error) {
+	db, err := sql.Open("sqlite3", dsn)
+	if err != nil {
+		return "", err
+	}
+	drv, err := sqlite.Open(db)
+	if err != nil {
+		return "", err
+	}
+	r, err := drv.InspectRealm(context.Background(), nil)
+	if err != nil {
+		return "", err
+	}
+	if len(r.Schemas) > 1 {
+		return "", fmt.Errorf("number of schemas > 1, n=%d", len(r.Schemas))
+	}
+	return r.Schemas[0].Name, nil
 }
