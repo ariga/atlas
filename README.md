@@ -6,7 +6,9 @@ be used individually but are designed to work very well together.
 
 ### Supported databases: 
 * MySQL
+* MariaDB
 * PostgresSQL
+* SQLiteDB
 
 ### Runs on all platforms:
 * Mac

@@ -11,4 +11,5 @@ A database toolkit.
 ### SEE ALSO
 
 * [atlas schema](atlas_schema.md)	 - Work with atlas schemas
+* [atlas version](atlas_version.md)	 - Show atlas CLI version
 

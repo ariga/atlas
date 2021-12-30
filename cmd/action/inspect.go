@@ -19,7 +19,9 @@ var (
 		Run:   CmdInspectRun,
 		Example: `
 atlas schema inspect -d mysql://user:pass@tcp(localhost:3306)/dbname
-atlas schema inspect --dsn postgres://user:pass@host:port/dbname`,
+atlas schema inspect -d maria://user:pass@tcp(localhost:3306)/dbname
+atlas schema inspect --dsn postgres://user:pass@host:port/dbname
+atlas schema inspect -d sqlite3://file:ex1.db?_fk=1`,
 	}
 )
 
