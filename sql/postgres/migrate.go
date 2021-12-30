@@ -231,6 +231,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 // alterTable modifies the given table by executing on it a list of changes in one SQL statement.
 func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 	var (
+		errors     []string
 		b          = Build("ALTER TABLE").Table(t)
 		reverse    = Build("")
 		reversible = true
@@ -264,8 +265,27 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 		case *schema.DropCheck:
 			b.P("DROP CONSTRAINT").Ident(change.C.Name)
 			check(reverse.Comma().P("ADD"), change.C)
+		case *schema.ModifyCheck:
+			switch {
+			case change.From.Name == "":
+				errors = append(errors, "cannot modify unnamed check constraint")
+			case change.From.Name != change.To.Name:
+				errors = append(errors, fmt.Sprintf("mismatch check constraint names: %q != %q", change.From.Name, change.To.Name))
+			case change.From.Expr != change.To.Expr,
+				sqlx.Has(change.From.Attrs, &NoInherit{}) && !sqlx.Has(change.To.Attrs, &NoInherit{}),
+				!sqlx.Has(change.From.Attrs, &NoInherit{}) && sqlx.Has(change.To.Attrs, &NoInherit{}):
+				b.P("DROP CONSTRAINT").Ident(change.From.Name).Comma().P("ADD")
+				check(b, change.To)
+				reverse.Comma().P("DROP CONSTRAINT").Ident(change.To.Name).Comma().P("ADD")
+				check(reverse, change.From)
+			default:
+				errors = append(errors, "unknown check constraints change")
+			}
 		}
 	})
+	if len(errors) > 0 {
+		return fmt.Errorf("alter table: %s", strings.Join(errors, ", "))
+	}
 	change := &migrate.Change{
 		Cmd: b.String(),
 		Source: &schema.ModifyTable{
