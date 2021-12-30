@@ -934,6 +934,9 @@ create table atlas_types_sanity
 }
 
 func (t *myTest) dsn() string {
+	if t.mariadb() {
+		return fmt.Sprintf("maria://root:pass@tcp(localhost:%d)/test", t.port)
+	}
 	return fmt.Sprintf("mysql://root:pass@tcp(localhost:%d)/test", t.port)
 }
 
