@@ -14,6 +14,10 @@ var version string
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show atlas CLI version",
+	Long: `Show atlas CLI version
+
+On any command, the CLI will check for updates with the GitHub public API once every 24 hours.
+To cancel this behavior, set the environment parameter "ATLAS_NO_UPDATE_NOTIFIER"`,
 	Run: func(cmd *cobra.Command, args []string) {
 		v, u := parse(version)
 		RootCmd.Println(fmt.Sprintf("atlas CLI version %s\n%s", v, u))
