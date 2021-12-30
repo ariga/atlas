@@ -5,11 +5,13 @@ import (
 
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
+	"ariga.io/atlas/sql/sqlite"
 )
 
 func init() {
 	defaultMux.RegisterProvider("mysql", mysqlProvider)
 	defaultMux.RegisterProvider("postgres", postgresProvider)
+	defaultMux.RegisterProvider("sqlite3", sqliteProvider)
 }
 
 func mysqlProvider(dsn string) (*Driver, error) {
@@ -25,7 +27,6 @@ func mysqlProvider(dsn string) (*Driver, error) {
 		Driver:      drv,
 		Marshaler:   mysql.MarshalHCL,
 		Unmarshaler: mysql.UnmarshalHCL,
-		Types:       mysql.TypeRegistry.Specs(),
 	}, nil
 }
 func postgresProvider(dsn string) (*Driver, error) {
@@ -42,6 +43,20 @@ func postgresProvider(dsn string) (*Driver, error) {
 		Driver:      drv,
 		Marshaler:   postgres.MarshalHCL,
 		Unmarshaler: postgres.UnmarshalHCL,
-		Types:       postgres.TypeRegistry.Specs(),
+	}, nil
+}
+func sqliteProvider(dsn string) (*Driver, error) {
+	db, err := sql.Open("sqlite3", dsn)
+	if err != nil {
+		return nil, err
+	}
+	drv, err := sqlite.Open(db)
+	if err != nil {
+		return nil, err
+	}
+	return &Driver{
+		Driver:      drv,
+		Marshaler:   sqlite.MarshalHCL,
+		Unmarshaler: sqlite.UnmarshalHCL,
 	}, nil
 }

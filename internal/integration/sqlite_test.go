@@ -8,6 +8,9 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"fmt"
+	"path"
+	"strings"
 	"testing"
 
 	"ariga.io/atlas/sql/postgres"
@@ -21,19 +24,21 @@ import (
 
 type liteTest struct {
 	*testing.T
-	db  *sql.DB
-	drv *sqlite.Driver
+	db   *sql.DB
+	drv  *sqlite.Driver
+	file string
 }
 
 func liteRun(t *testing.T, fn func(test *liteTest)) {
-	db, err := sql.Open("sqlite3", "file:atlas?mode=memory&cache=shared&_fk=1")
+	f := path.Join(t.TempDir(), strings.ReplaceAll(t.Name(), "/", "_"))
+	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&_fk=1", f))
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, db.Close())
 	})
 	drv, err := sqlite.Open(db)
 	require.NoError(t, err)
-	tt := &liteTest{T: t, db: db, drv: drv}
+	tt := &liteTest{T: t, db: db, drv: drv, file: f}
 	fn(tt)
 }
 
@@ -422,6 +427,28 @@ create table atlas_defaults
 	})
 }
 
+func TestSQLite_CLI(t *testing.T) {
+	h := `
+			schema "main" {
+			}
+			table "users" {
+				schema = schema.main
+				column "id" {
+					type = int
+				}
+			}`
+	t.Run("SchemaInspect", func(t *testing.T) {
+		liteRun(t, func(t *liteTest) {
+			testCLISchemaInspect(t, h, t.dsn(), sqlite.UnmarshalHCL)
+		})
+	})
+	t.Run("SchemaApply", func(t *testing.T) {
+		liteRun(t, func(t *liteTest) {
+			testCLISchemaApply(t, h, t.dsn())
+		})
+	})
+}
+
 func TestSQLite_Sanity(t *testing.T) {
 	n := "atlas_types_sanity"
 	ddl := `
@@ -764,7 +791,7 @@ func (t *liteTest) realm() *schema.Realm {
 			{
 				Name: "main",
 				Attrs: []schema.Attr{
-					&sqlite.File{Name: ":memory:"},
+					&sqlite.File{Name: t.file},
 				},
 			},
 		},
@@ -791,4 +818,8 @@ func (t *liteTest) dropTables(names ...string) {
 			require.NoError(t.T, err, "drop tables %q", names[i])
 		}
 	})
+}
+
+func (t *liteTest) dsn() string {
+	return fmt.Sprintf("sqlite3://file:%s?cache=shared&_fk=1", t.file)
 }

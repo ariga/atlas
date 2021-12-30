@@ -21,6 +21,7 @@ require (
 
 require (
 	github.com/go-openapi/inflect v0.19.0
+	github.com/mattn/go-sqlite3 v1.14.10
 	github.com/mitchellh/go-homedir v1.0.0
 )
 

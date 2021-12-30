@@ -10,7 +10,7 @@ require (
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/hashicorp/hcl/v2 v2.10.1 // indirect
 	github.com/lib/pq v1.10.4
-	github.com/mattn/go-sqlite3 v1.14.9
+	github.com/mattn/go-sqlite3 v1.14.10
 	github.com/stretchr/testify v1.7.1-0.20210427113832-6241f9ab9942
 	github.com/zclconf/go-cty v1.10.0 // indirect
 )
