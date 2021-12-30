@@ -12,7 +12,7 @@ func init() {
 	defaultMux.RegisterProvider("mysql", mysqlProvider)
 	defaultMux.RegisterProvider("maria", mysqlProvider)
 	defaultMux.RegisterProvider("postgres", postgresProvider)
-	defaultMux.RegisterProvider("sqlite3", sqliteProvider)
+	defaultMux.RegisterProvider("sqlite", sqliteProvider)
 }
 
 func mysqlProvider(dsn string) (*Driver, error) {

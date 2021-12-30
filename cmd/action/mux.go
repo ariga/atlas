@@ -78,7 +78,7 @@ func schemaNameFromDSN(url string) (string, error) {
 		return cfg.DBName, err
 	case "postgres":
 		return "public", nil
-	case "sqlite3":
+	case "sqlite":
 		return schemaName(dsn)
 	default:
 		return "", fmt.Errorf("unknown database type: %q", key)
