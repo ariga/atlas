@@ -61,7 +61,7 @@ func Marshal(v interface{}, marshaler schemaspec.Marshaler, schemaSpec func(sche
 	case *schema.Schema:
 		spec, tables, err := schemaSpec(s)
 		if err != nil {
-			return nil, fmt.Errorf("mysql: failed converting schema to spec: %w", err)
+			return nil, fmt.Errorf("specutil: failed converting schema to spec: %w", err)
 		}
 		d.Tables = tables
 		d.Schemas = []*sqlspec.Schema{spec}
@@ -69,13 +69,13 @@ func Marshal(v interface{}, marshaler schemaspec.Marshaler, schemaSpec func(sche
 		for _, s := range s.Schemas {
 			spec, tables, err := schemaSpec(s)
 			if err != nil {
-				return nil, fmt.Errorf("mysql: failed converting schema to spec: %w", err)
+				return nil, fmt.Errorf("specutil: failed converting schema to spec: %w", err)
 			}
 			d.Tables = append(d.Tables, tables...)
 			d.Schemas = append(d.Schemas, spec)
 		}
 	default:
-		return nil, fmt.Errorf("mysql: failed marshaling spec. %T is not supported", v)
+		return nil, fmt.Errorf("specutil: failed marshaling spec. %T is not supported", v)
 	}
 	return marshaler.MarshalSpec(d)
 }
@@ -91,20 +91,20 @@ func Unmarshal(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}, c
 	case *schema.Realm:
 		realm, err := Realm(d.Schemas, d.Tables, convertTable)
 		if err != nil {
-			return fmt.Errorf("postgres: failed converting to *schema.Realm: %w", err)
+			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
 		}
 		*v = *realm
 	case *schema.Schema:
 		if len(d.Schemas) != 1 {
-			return fmt.Errorf("postgres: expecting document to contain a single schema, got %d", len(d.Schemas))
+			return fmt.Errorf("specutil: expecting document to contain a single schema, got %d", len(d.Schemas))
 		}
 		conv, err := Schema(d.Schemas[0], d.Tables, convertTable)
 		if err != nil {
-			return fmt.Errorf("postgres: failed converting to *schema.Schema: %w", err)
+			return fmt.Errorf("specutil: failed converting to *schema.Schema: %w", err)
 		}
 		*v = *conv
 	default:
-		return fmt.Errorf("postgres: failed unmarshaling spec. %T is not supported", v)
+		return fmt.Errorf("specutil: failed unmarshaling spec. %T is not supported", v)
 	}
 	return nil
 }
