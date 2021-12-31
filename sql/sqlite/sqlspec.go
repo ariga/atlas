@@ -1,7 +1,6 @@
 package sqlite
 
 import (
-	"fmt"
 	"reflect"
 
 	"ariga.io/atlas/schema/schemaspec"
@@ -11,46 +10,14 @@ import (
 	"ariga.io/atlas/sql/sqlspec"
 )
 
-type doc struct {
-	Tables  []*sqlspec.Table  `spec:"table"`
-	Schemas []*sqlspec.Schema `spec:"schema"`
-}
-
 // UnmarshalSpec unmarshals an Atlas DDL document using an unmarshaler into v.
 func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}) error {
-	var d doc
-	if err := unmarshaler.UnmarshalSpec(data, &d); err != nil {
-		return err
-	}
-	s, ok := v.(*schema.Schema)
-	if !ok {
-		return fmt.Errorf("sqlite: failed unmarshaling spec. %T is not supported", v)
-	}
-	if len(d.Schemas) != 1 {
-		return fmt.Errorf("sqlite: expecting document to contain a single schema, got %d", len(d.Schemas))
-	}
-	conv, err := specutil.Schema(d.Schemas[0], d.Tables, convertTable)
-	if err != nil {
-		return fmt.Errorf("sqlite: failed converting to *schema.Schema: %w", err)
-	}
-	*s = *conv
-	return nil
+	return specutil.Unmarshal(data, unmarshaler, v, convertTable)
 }
 
 // MarshalSpec marshals v into an Atlas DDL document using a schemaspec.Marshaler.
 func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) {
-	s, ok := v.(*schema.Schema)
-	if !ok {
-		return nil, fmt.Errorf("sqlite: failed marshaling spec. %T is not supported", v)
-	}
-	spec, tables, err := schemaSpec(s)
-	if err != nil {
-		return nil, fmt.Errorf("sqlite: failed converting schema to spec: %w", err)
-	}
-	return marshaler.MarshalSpec(&doc{
-		Tables:  tables,
-		Schemas: []*sqlspec.Schema{spec},
-	})
+	return specutil.Marshal(v, marshaler, schemaSpec)
 }
 
 // convertTable converts a sqlspec.Table to a schema.Table. Table conversion is done without converting
