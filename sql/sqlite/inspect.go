@@ -111,7 +111,9 @@ func (i *inspect) inspectTable(ctx context.Context, t *schema.Table) (*schema.Ta
 	if err := i.fks(ctx, t); err != nil {
 		return nil, err
 	}
-	// TODO(a8m): extract CHECK constraints from 'CREATE TABLE' statement.
+	if err := fillChecks(t); err != nil {
+		return nil, err
+	}
 	return t, nil
 }
 
@@ -375,7 +377,6 @@ func (i *inspect) addFKs(t *schema.Table, rows *sql.Rows) error {
 			fk.RefColumns = append(fk.RefColumns, rc)
 		}
 	}
-	// TODO(a8m): extract the foreign-key name from the `CREATE TABLE` statement.
 	return nil
 }
 
@@ -563,11 +564,12 @@ func autoinc(t *schema.Table) {
 	t.PrimaryKey.Parts[0].C.Attrs = append(t.PrimaryKey.Parts[0].C.Attrs, AutoIncrement{})
 }
 
-// The following regexes extract named foreign-key constraints defined in the table-constraints or inlined
+// The following regexes extract named FKs and CHECK constraints defined in table-constraints or inlined
 // as column-constraints. Note, we assume the SQL statements are valid as they are returned by SQLite.
 var (
-	reConstC = regexp.MustCompile("(?i)(?:[(,]\\s*)[\"`]*(\\w+)[\"`]*[^,]*\\s+CONSTRAINT\\s+[\"`]*(\\w+)[\"`]*\\s+REFERENCES\\s+[\"`]*(\\w+)[\"`]*\\s*\\(([,\"` \\w]+)\\)")
-	reConstT = regexp.MustCompile("(?i)CONSTRAINT\\s+[\"`]*(\\w+)[\"`]*\\s+FOREIGN\\s+KEY\\s*\\(([,\"` \\w]+)\\)\\s+REFERENCES\\s+[\"`]*(\\w+)[\"`]*\\s*\\(([,\"` \\w]+)\\)")
+	reFKC   = regexp.MustCompile("(?i)(?:[(,]\\s*)[\"`]*(\\w+)[\"`]*[^,]*\\s+CONSTRAINT\\s+[\"`]*(\\w+)[\"`]*\\s+REFERENCES\\s+[\"`]*(\\w+)[\"`]*\\s*\\(([,\"` \\w]+)\\)")
+	reFKT   = regexp.MustCompile("(?i)CONSTRAINT\\s+[\"`]*(\\w+)[\"`]*\\s+FOREIGN\\s+KEY\\s*\\(([,\"` \\w]+)\\)\\s+REFERENCES\\s+[\"`]*(\\w+)[\"`]*\\s*\\(([,\"` \\w]+)\\)")
+	reCheck = regexp.MustCompile("(?i)(?:CONSTRAINT\\s+[\"`]?(\\w+)[\"`]?\\s+)?CHECK\\s*\\(")
 )
 
 // fillConstName fills foreign-key constrain names from CREATE TABLE statement.
@@ -577,7 +579,7 @@ func fillConstName(t *schema.Table) error {
 		return fmt.Errorf("missing CREATE statment for table: %q", t.Name)
 	}
 	// Loop over table constraints.
-	for _, m := range reConstT.FindAllStringSubmatch(c.S, -1) {
+	for _, m := range reFKT.FindAllStringSubmatch(c.S, -1) {
 		if len(m) != 5 {
 			return fmt.Errorf("unexpected number of matches for a table constraint: %q", m)
 		}
@@ -591,7 +593,7 @@ func fillConstName(t *schema.Table) error {
 		}
 	}
 	// Loop over inlined column constraints.
-	for _, m := range reConstC.FindAllStringSubmatch(c.S, -1) {
+	for _, m := range reFKC.FindAllStringSubmatch(c.S, -1) {
 		if len(m) != 5 {
 			return fmt.Errorf("unexpected number of matches for a column constraint: %q", m)
 		}
@@ -632,6 +634,52 @@ func matchFK(fk *schema.ForeignKey, columns []string, refTable string, refColumn
 		}
 	}
 	return true
+}
+
+// fillChecks extracts the CHECK constrains from the CREATE TABLE statement,
+// and appends them to the table attributes.
+func fillChecks(t *schema.Table) error {
+	var c CreateStmt
+	if !sqlx.Has(t.Attrs, &c) {
+		return fmt.Errorf("missing CREATE statment for table: %q", t.Name)
+	}
+	for i := 0; i < len(c.S); {
+		idx := reCheck.FindStringSubmatchIndex(c.S[i:])
+		// No more matches.
+		if len(idx) != 4 {
+			break
+		}
+		var (
+			r, l int
+			expr = c.S[idx[1]-1:]
+		)
+		for i := 0; i < len(expr); i++ {
+			switch expr[i] {
+			case '(':
+				r++
+			case ')':
+				l++
+			case '\'', '"':
+				// Skip unescaped strings.
+				if j := strings.IndexByte(expr[i+1:], expr[i]); j != -1 {
+					i += j + 1
+				}
+			}
+			// Balanced parens.
+			if r == l {
+				check := &schema.Check{Expr: expr[:i+1]}
+				// Matching group for constraint name.
+				if idx[2] != -1 && idx[3] != -1 {
+					check.Name = c.S[idx[2]:idx[3]]
+				}
+				t.Attrs = append(t.Attrs, check)
+				idx[1] = idx[1] + i
+				break
+			}
+		}
+		c.S = c.S[idx[1]:]
+	}
+	return nil
 }
 
 const (

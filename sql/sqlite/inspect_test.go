@@ -158,16 +158,17 @@ func TestDriver_InspectTable(t *testing.T) {
 			},
 		},
 		{
-			name: "table fks",
+			name: "table constraints",
 			before: func(m mock) {
 				m.systemVars("3.36.0")
 				m.tableExists("users", true, `
 CREATE TABLE users(
 	id INTEGER PRIMARY KEY,
-	c1 int,
-	c2 integer NOT NULL CONSTRAINT c2_fk REFERENCES users (c1) ON DELETE SET NULL,
+	c1 int CHECK (c1 > 10),
+	c2 integer NOT NULL CONSTRAINT c2_fk REFERENCES users (c1) ON DELETE SET NULL constraint "ck1" CHECK ((c1 + c2) % 2 = 0),
 	c3 integer NOT NULL REFERENCES users (c1) ON DELETE SET NULL,
-	CONSTRAINT "c1_c2_fk" FOREIGN KEY (c1, c2) REFERENCES t2 (id, c1)
+	CONSTRAINT "c1_c2_fk" FOREIGN KEY (c1, c2) REFERENCES t2 (id, c1),
+	CONSTRAINT "id_nonzero" CHECK (id <> 0)
 )
 `)
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, "users"))).
@@ -202,8 +203,14 @@ CREATE TABLE users(
 				fks[0].Columns = columns[:2]
 				fks[1].Columns = columns[1:2]
 				fks[1].RefColumns = columns[:1]
+				checks := []schema.Attr{
+					&schema.Check{Expr: "(c1 > 10)"},
+					&schema.Check{Name: "ck1", Expr: "((c1 + c2) % 2 = 0)"},
+					&schema.Check{Name: "id_nonzero", Expr: "(id <> 0)"},
+				}
 				require.Equal(t.Columns, columns)
 				require.Equal(t.ForeignKeys, fks)
+				require.Equal(t.Attrs[1:], checks)
 			},
 		},
 	}
@@ -220,7 +227,7 @@ CREATE TABLE users(
 	}
 }
 
-func TestRegex_TableConstraint(t *testing.T) {
+func TestRegex_TableFK(t *testing.T) {
 	tests := []struct {
 		input   string
 		matches []string
@@ -268,7 +275,7 @@ CONSTRAINT "c_d_fk" FOREIGN KEY (c, d) REFERENCES "users" (a, b)
 		},
 	}
 	for _, tt := range tests {
-		m := reConstT.FindStringSubmatch(tt.input)
+		m := reFKT.FindStringSubmatch(tt.input)
 		require.Equal(t, len(m) != 0, len(tt.matches) != 0)
 		if len(m) > 0 {
 			require.Equal(t, tt.matches, m[1:])
@@ -276,7 +283,7 @@ CONSTRAINT "c_d_fk" FOREIGN KEY (c, d) REFERENCES "users" (a, b)
 	}
 }
 
-func TestRegex_ColumnConstraint(t *testing.T) {
+func TestRegex_ColumnFK(t *testing.T) {
 	tests := []struct {
 		input   string
 		matches []string
@@ -307,10 +314,96 @@ CREATE TABLE t1 (
 		},
 	}
 	for _, tt := range tests {
-		m := reConstC.FindStringSubmatch(tt.input)
+		m := reFKC.FindStringSubmatch(tt.input)
 		require.Equal(t, len(m) != 0, len(tt.matches) != 0)
 		if len(m) > 0 {
 			require.Equal(t, tt.matches, m[1:])
+		}
+	}
+}
+
+func TestRegex_Checks(t *testing.T) {
+	tests := []struct {
+		input  string
+		checks []*schema.Check
+	}{
+		{
+			input: `CREATE TABLE pets (id int NOT NULL, owner_id int CONSTRAINT "ck1" CHECK (owner_id <> 0))`,
+			checks: []*schema.Check{
+				{Name: "ck1", Expr: "(owner_id <> 0)"},
+			},
+		},
+		{
+			input: `CREATE TABLE pets (id int NOT NULL, owner_id int CHECK (owner_id <> 0) CONSTRAINT "ck1")`,
+			checks: []*schema.Check{
+				{Expr: "(owner_id <> 0)"},
+			},
+		},
+		{
+			input: `CREATE TABLE pets (id int NOT NULL CHECK ("id" <> 0), owner_id int CONSTRAINT "ck1" CHECK ((owner_id) <> 0))`,
+			checks: []*schema.Check{
+				{Expr: `("id" <> 0)`},
+				{Name: "ck1", Expr: "((owner_id) <> 0)"},
+			},
+		},
+		{
+			input: `CREATE TABLE pets (id int NOT NULL CHECK ("(" <> ')'), owner_id int CONSTRAINT "ck1" CHECK ((owner_id) <> 0))`,
+			checks: []*schema.Check{
+				{Expr: `("(" <> ')')`},
+				{Name: "ck1", Expr: "((owner_id) <> 0)"},
+			},
+		},
+		{
+			input: "CREATE TABLE pets (\n\tid int NOT NULL CHECK (id <> 0) CHECK ((id % 2) = 0)\n,\n\towner_id int CHECK ((owner_id) <> 0)\n)",
+			checks: []*schema.Check{
+				{Expr: "(id <> 0)"},
+				{Expr: "((id % 2) = 0)"},
+				{Expr: "((owner_id) <> 0)"},
+			},
+		},
+		{
+			input: `CREATE TABLE t1(
+				x INTEGER CHECK( x<5 ),
+				y REAL CHECK( y>x ))`,
+			checks: []*schema.Check{
+				{Expr: "( x<5 )"},
+				{Expr: "( y>x )"},
+			},
+		},
+		{
+			input: `CREATE TABLE t(
+				x INTEGER CONSTRAINT one CHECK( typeof(coalesce(x,0))=="integer" ),
+				y NUMERIC CONSTRAINT two CHECK( typeof(coalesce(y,0.1))=='real' ),
+				z TEXT CONSTRAINT three CHECK( typeof(coalesce(z,''))=='text' )
+			)`,
+			checks: []*schema.Check{
+				{Name: "one", Expr: `( typeof(coalesce(x,0))=="integer" )`},
+				{Name: "two", Expr: `( typeof(coalesce(y,0.1))=='real' )`},
+				{Name: "three", Expr: `( typeof(coalesce(z,''))=='text' )`},
+			},
+		},
+		{
+			input: `CREATE TABLE t(
+				x char check ('foo''(' <> 1)
+			)`,
+			checks: []*schema.Check{
+				{Expr: `('foo''(' <> 1)`},
+			},
+		},
+		// Invalid inputs.
+		{
+			input: "CREATE TABLE t(x char check)",
+		},
+		{
+			input: "CREATE TABLE t(x char constraint x check)",
+		},
+	}
+	for _, tt := range tests {
+		table := &schema.Table{Attrs: []schema.Attr{&CreateStmt{S: tt.input}}}
+		require.NoError(t, fillChecks(table))
+		require.Equal(t, len(table.Attrs[1:]), len(tt.checks))
+		for i := range tt.checks {
+			require.Equal(t, tt.checks[i], table.Attrs[i+1])
 		}
 	}
 }
