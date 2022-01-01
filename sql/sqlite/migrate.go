@@ -27,7 +27,7 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 			Transactional: true,
 		},
 	}
-	if err := s.plan(ctx, changes); err != nil {
+	if err := s.plan(changes); err != nil {
 		return nil, err
 	}
 	for _, c := range s.Changes {
@@ -56,15 +56,15 @@ type state struct {
 
 // Exec executes the changes on the database. An error is returned
 // if one of the operations fail, or a change is not supported.
-func (s *state) plan(ctx context.Context, changes []schema.Change) (err error) {
+func (s *state) plan(changes []schema.Change) (err error) {
 	for _, c := range changes {
 		switch c := c.(type) {
 		case *schema.AddTable:
-			err = s.addTable(ctx, c)
+			err = s.addTable(c)
 		case *schema.DropTable:
-			err = s.dropTable(ctx, c)
+			err = s.dropTable(c)
 		case *schema.ModifyTable:
-			err = s.modifyTable(ctx, c)
+			err = s.modifyTable(c)
 		default:
 			err = fmt.Errorf("unsupported change %T", c)
 		}
@@ -84,7 +84,7 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) (err error) {
 }
 
 // addTable builds and executes the query for creating a table in a schema.
-func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
+func (s *state) addTable(add *schema.AddTable) error {
 	b := Build("CREATE TABLE").Ident(add.T.Name)
 	if sqlx.Has(add.Extra, &schema.IfNotExists{}) {
 		b.P("IF NOT EXISTS")
@@ -102,6 +102,12 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 			b.Comma()
 			s.fks(b, add.T.ForeignKeys...)
 		}
+		for _, attr := range add.T.Attrs {
+			if c, ok := attr.(*schema.Check); ok {
+				b.Comma()
+				check(b, c)
+			}
+		}
 	})
 	if p := (WithoutRowID{}); sqlx.Has(add.T.Attrs, &p) {
 		b.P("WITHOUT ROWID")
@@ -112,11 +118,11 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 		Reverse: Build("DROP TABLE").Table(add.T).String(),
 		Comment: fmt.Sprintf("create %q table", add.T.Name),
 	})
-	return s.addIndexes(ctx, add.T, add.T.Indexes...)
+	return s.addIndexes(add.T, add.T.Indexes...)
 }
 
 // dropTable builds and executes the query for dropping a table from a schema.
-func (s *state) dropTable(ctx context.Context, drop *schema.DropTable) error {
+func (s *state) dropTable(drop *schema.DropTable) error {
 	s.skipFKs = true
 	b := Build("DROP TABLE").Ident(drop.T.Name)
 	if sqlx.Has(drop.Extra, &schema.IfExists{}) {
@@ -134,9 +140,9 @@ func (s *state) dropTable(ctx context.Context, drop *schema.DropTable) error {
 // If the modification contains changes that are not index creation/deletion or a simple column
 // addition, the changes are applied using a temporary table following the procedure mentioned
 // in: https://www.sqlite.org/lang_altertable.html#making_other_kinds_of_table_schema_changes.
-func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) error {
+func (s *state) modifyTable(modify *schema.ModifyTable) error {
 	if alterable(modify) {
-		return s.alterTable(ctx, modify)
+		return s.alterTable(modify)
 	}
 	s.skipFKs = true
 	newT := *modify.T
@@ -144,7 +150,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 	newT.Indexes = nil
 	newT.Name = "new_" + newT.Name
 	// Create a new table with a temporary name, and copy the existing rows to it.
-	if err := s.addTable(ctx, &schema.AddTable{T: &newT}); err != nil {
+	if err := s.addTable(&schema.AddTable{T: &newT}); err != nil {
 		return err
 	}
 	if err := s.copyRows(modify.T, &newT, modify.Changes); err != nil {
@@ -161,7 +167,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 		Source:  modify,
 		Comment: fmt.Sprintf("rename temporary table %q to %q", newT.Name, modify.T.Name),
 	})
-	return s.addIndexes(ctx, modify.T, indexes...)
+	return s.addIndexes(modify.T, indexes...)
 }
 
 func (s *state) column(b *sqlx.Builder, c *schema.Column) {
@@ -178,7 +184,7 @@ func (s *state) column(b *sqlx.Builder, c *schema.Column) {
 	}
 }
 
-func (s *state) addIndexes(_ context.Context, t *schema.Table, indexes ...*schema.Index) error {
+func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) error {
 	for _, idx := range indexes {
 		// PRIMARY KEY or UNIQUE columns automatically create indexes with the generated name.
 		// See: sqlite/build.c#sqlite3CreateIndex. Therefore, we ignore such PKs, but create
@@ -325,11 +331,11 @@ func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.
 }
 
 // alterTable alters the table with the given changes. Assuming the changes are "alterable".
-func (s *state) alterTable(ctx context.Context, modify *schema.ModifyTable) error {
+func (s *state) alterTable(modify *schema.ModifyTable) error {
 	for _, change := range modify.Changes {
 		switch change := change.(type) {
 		case *schema.AddIndex:
-			if err := s.addIndexes(ctx, modify.T, change.I); err != nil {
+			if err := s.addIndexes(modify.T, change.I); err != nil {
 				return err
 			}
 		case *schema.DropIndex:
@@ -372,6 +378,19 @@ func alterable(modify *schema.ModifyTable) bool {
 		}
 	}
 	return true
+}
+
+// checks writes the CHECK constraint to the builder.
+func check(b *sqlx.Builder, c *schema.Check) {
+	expr := c.Expr
+	// Expressions should be wrapped with parens.
+	if t := strings.TrimSpace(expr); !strings.HasPrefix(t, "(") || !strings.HasSuffix(t, ")") {
+		expr = "(" + t + ")"
+	}
+	if c.Name != "" {
+		b.P("CONSTRAINT").Ident(c.Name)
+	}
+	b.P("CHECK", expr)
 }
 
 func autoincPK(pk *schema.Index) bool {

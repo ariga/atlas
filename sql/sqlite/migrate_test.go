@@ -28,13 +28,17 @@ func TestPlanChanges(t *testing.T) {
 							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}}},
 							{Name: "text", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Null: true}},
 						},
+						Attrs: []schema.Attr{
+							&schema.Check{Expr: "(text <> '')"},
+							&schema.Check{Name: "positive_id", Expr: "(id <> 0)"},
+						},
 					},
 				},
 			},
 			plan: &migrate.Plan{
 				Reversible:    true,
 				Transactional: true,
-				Changes:       []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` integer NOT NULL, `text` text NULL)", Reverse: "DROP TABLE `posts`"}},
+				Changes:       []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` integer NOT NULL, `text` text NULL, CHECK (text <> ''), CONSTRAINT `positive_id` CHECK (id <> 0))", Reverse: "DROP TABLE `posts`"}},
 			},
 		},
 		{
@@ -96,12 +100,18 @@ func TestPlanChanges(t *testing.T) {
 						Columns: []*schema.Column{
 							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
 						},
+						Attrs: []schema.Attr{
+							&schema.Check{Expr: "(id <> 0)"},
+						},
 					}
 					return &schema.ModifyTable{
 						T: users,
 						Changes: []schema.Change{
 							&schema.DropColumn{
 								C: &schema.Column{Name: "name", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
+							},
+							&schema.AddCheck{
+								C: &schema.Check{Expr: "(id <> 0)"},
 							},
 						},
 					}
@@ -111,7 +121,7 @@ func TestPlanChanges(t *testing.T) {
 				Transactional: true,
 				Changes: []*migrate.Change{
 					{Cmd: "PRAGMA foreign_keys = off"},
-					{Cmd: "CREATE TABLE `new_users` (`id` bigint NOT NULL)", Reverse: "DROP TABLE `new_users`"},
+					{Cmd: "CREATE TABLE `new_users` (`id` bigint NOT NULL, CHECK (id <> 0))", Reverse: "DROP TABLE `new_users`"},
 					{Cmd: "INSERT INTO new_users (id) SELECT id FROM users"},
 					{Cmd: "DROP TABLE `users`"},
 					{Cmd: "ALTER TABLE `new_users` RENAME TO `users`"},
