@@ -343,3 +343,67 @@ type UnsupportedTypeError struct {
 func (e UnsupportedTypeError) Error() string {
 	return fmt.Sprintf("unsupported type %T", e.Type)
 }
+
+// CheckDiff computes the change diff between the 2 tables. A compare
+// function is provided to check if a Check object was modified.
+func CheckDiff(from, to *schema.Table, compare func(c1, c2 *schema.Check) bool) []schema.Change {
+	var changes []schema.Change
+	// Drop or modify checks.
+	for _, c1 := range checks(from.Attrs) {
+		switch c2, ok := similarCheck(to.Attrs, c1); {
+		case !ok:
+			changes = append(changes, &schema.DropCheck{
+				C: c1,
+			})
+		case compare(c1, c2):
+			changes = append(changes, &schema.ModifyCheck{
+				From: c1,
+				To:   c2,
+			})
+		}
+	}
+	// Add checks.
+	for _, c1 := range checks(to.Attrs) {
+		if _, ok := similarCheck(from.Attrs, c1); !ok {
+			changes = append(changes, &schema.AddCheck{
+				C: c1,
+			})
+		}
+	}
+	return changes
+}
+
+// checks extracts all constraints from table attributes.
+func checks(attr []schema.Attr) (checks []*schema.Check) {
+	for i := range attr {
+		if c, ok := attr[i].(*schema.Check); ok {
+			checks = append(checks, c)
+		}
+	}
+	return checks
+}
+
+// similarCheck returns a CHECK by its constraints name or expression.
+func similarCheck(attrs []schema.Attr, c *schema.Check) (*schema.Check, bool) {
+	var byName, byExpr *schema.Check
+	for i := 0; i < len(attrs) && (byName == nil || byExpr == nil); i++ {
+		check, ok := attrs[i].(*schema.Check)
+		if !ok {
+			continue
+		}
+		if check.Name != "" && check.Name == c.Name {
+			byName = check
+		}
+		if check.Expr == c.Expr {
+			byExpr = check
+		}
+	}
+	// Give precedence to constraint name.
+	if byName != nil {
+		return byName, true
+	}
+	if byExpr != nil {
+		return byExpr, true
+	}
+	return nil, false
+}

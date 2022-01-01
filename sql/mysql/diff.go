@@ -35,37 +35,15 @@ func (d *diff) SchemaAttrDiff(from, to *schema.Schema) []schema.Change {
 // TableAttrDiff returns a changeset for migrating table attributes from one state to the other.
 func (d *diff) TableAttrDiff(from, to *schema.Table) []schema.Change {
 	var changes []schema.Change
-	// Charset change.
 	if change := d.charsetChange(from.Attrs, from.Schema.Attrs, to.Attrs); change != noChange {
 		changes = append(changes, change)
 	}
-	// Collation change.
 	if change := d.collationChange(from.Attrs, from.Schema.Attrs, to.Attrs); change != noChange {
 		changes = append(changes, change)
 	}
-	// Drop or modify checks.
-	for _, c1 := range sqlx.Checks(from.Attrs) {
-		switch c2, ok := sqlx.CheckByName(to.Attrs, c1.Name); {
-		case !ok:
-			changes = append(changes, &schema.DropCheck{
-				C: c1,
-			})
-		case c1.Expr != c2.Expr || sqlx.Has(c1.Attrs, &Enforced{}) != sqlx.Has(c2.Attrs, &Enforced{}):
-			changes = append(changes, &schema.ModifyCheck{
-				From: c1,
-				To:   c2,
-			})
-		}
-	}
-	// Add checks.
-	for _, c1 := range sqlx.Checks(to.Attrs) {
-		if _, ok := sqlx.CheckByName(from.Attrs, c1.Name); !ok {
-			changes = append(changes, &schema.AddCheck{
-				C: c1,
-			})
-		}
-	}
-	return changes
+	return append(changes, sqlx.CheckDiff(from, to, func(c1, c2 *schema.Check) bool {
+		return c1.Expr != c2.Expr || sqlx.Has(c1.Attrs, &Enforced{}) != sqlx.Has(c2.Attrs, &Enforced{})
+	})...)
 }
 
 // ColumnChange returns the schema changes (if any) for migrating one column to the other.
