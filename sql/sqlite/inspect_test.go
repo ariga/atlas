@@ -399,8 +399,19 @@ func TestRegex_Checks(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		table := &schema.Table{Attrs: []schema.Attr{&CreateStmt{S: tt.input}}}
-		require.NoError(t, fillChecks(table))
+		const name = "users"
+		db, m, err := sqlmock.New()
+		require.NoError(t, err)
+		mk := mock{m}
+		mk.systemVars("3.36.0")
+		mk.tableExists(name, true, tt.input)
+		mk.noColumns(name)
+		mk.noIndexes(name)
+		mk.noFKs(name)
+		drv, err := Open(db)
+		require.NoError(t, err)
+		table, err := drv.InspectTable(context.Background(), name, nil)
+		require.NoError(t, err)
 		require.Equal(t, len(table.Attrs[1:]), len(tt.checks))
 		for i := range tt.checks {
 			require.Equal(t, tt.checks[i], table.Attrs[i+1])
@@ -452,6 +463,11 @@ func (m mock) tableExists(table string, exists bool, stmt ...string) {
 	m.ExpectQuery(sqltest.Escape(tablesQuery + " AND name IN (?)")).
 		WithArgs(table).
 		WillReturnRows(rows)
+}
+
+func (m mock) noColumns(table string) {
+	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, table))).
+		WillReturnRows(sqlmock.NewRows([]string{"name", "type", "nullable", "dflt_value", "primary"}))
 }
 
 func (m mock) noIndexes(table string) {
