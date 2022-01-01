@@ -34,8 +34,9 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) []schema.Change {
 			A: &WithoutRowID{},
 		})
 	}
-	// TODO: support diffing constraints after it's added on inspection.
-	return changes
+	return append(changes, sqlx.CheckDiff(from, to, func(c1, c2 *schema.Check) bool {
+		return c1.Expr != c2.Expr
+	})...)
 }
 
 // ColumnChange returns the schema changes (if any) for migrating one column to the other.
