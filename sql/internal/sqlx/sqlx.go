@@ -165,7 +165,7 @@ func (b *Builder) P(phrases ...string) *Builder {
 		if p == "" {
 			continue
 		}
-		if b.Len() > 0 && b.lastByte() != ' ' {
+		if b.Len() > 0 && b.lastByte() != ' ' && b.lastByte() != '(' {
 			b.WriteByte(' ')
 		}
 		b.WriteString(p)
