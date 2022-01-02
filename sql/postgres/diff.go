@@ -50,6 +50,9 @@ func (d *diff) ColumnChange(from, to *schema.Column) (schema.ChangeKind, error) 
 	if changed {
 		change |= schema.ChangeDefault
 	}
+	if identityChanged(from.Attrs, to.Attrs) {
+		change |= schema.ChangeAttr
+	}
 	return change, nil
 }
 
@@ -256,6 +259,44 @@ func (d *diff) typesEqual(x, y string) (bool, error) {
 		return false, err
 	}
 	return b, nil
+}
+
+// Default IDENTITY attributes.
+const (
+	defaultIdentityGen  = "BY DEFAULT"
+	defaultSeqStart     = 1
+	defaultSeqIncrement = 1
+)
+
+// identityChanged reports if one of the identity attributes was changed.
+func identityChanged(from, to []schema.Attr) bool {
+	i1, ok1 := identity(from)
+	i2, ok2 := identity(to)
+	if !ok1 && !ok2 || ok1 != ok2 {
+		return ok1 != ok2
+	}
+	return i1.Generation != i2.Generation || i1.Sequence.Start != i2.Sequence.Start || i1.Sequence.Increment != i2.Sequence.Increment
+}
+
+func identity(attrs []schema.Attr) (*Identity, bool) {
+	i := &Identity{}
+	if !sqlx.Has(attrs, i) {
+		return nil, false
+	}
+	if i.Generation == "" {
+		i.Generation = defaultIdentityGen
+	}
+	if i.Sequence == nil {
+		i.Sequence = &Sequence{Start: defaultSeqStart, Increment: defaultSeqIncrement}
+		return i, true
+	}
+	if i.Sequence.Start == 0 {
+		i.Sequence.Start = defaultSeqStart
+	}
+	if i.Sequence.Increment == 0 {
+		i.Sequence.Increment = defaultSeqIncrement
+	}
+	return i, true
 }
 
 func trimCast(s string) string {
