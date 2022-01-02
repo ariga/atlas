@@ -28,7 +28,7 @@ func TestDiff_TableDiff(t *testing.T) {
 			to:   &schema.Table{Name: "users"},
 		},
 		{
-			name: "change primary key",
+			name: "change primary key columns",
 			from: func() *schema.Table {
 				t := &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Columns: []*schema.Column{{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}}}}
 				t.PrimaryKey = &schema.Index{
@@ -38,6 +38,36 @@ func TestDiff_TableDiff(t *testing.T) {
 			}(),
 			to:      &schema.Table{Name: "users"},
 			wantErr: true,
+		},
+		{
+			name: "change identity attributes",
+			from: func() *schema.Table {
+				t := &schema.Table{
+					Name: "users",
+					Columns: []*schema.Column{
+						{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+					},
+				}
+				t.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: t.Columns[0]}}}
+				return t
+			}(),
+			to: func() *schema.Table {
+				t := &schema.Table{
+					Name: "users",
+					Columns: []*schema.Column{
+						{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&Identity{Sequence: &Sequence{Start: 1024, Increment: 1}}}},
+					},
+				}
+				t.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: t.Columns[0]}}}
+				return t
+			}(),
+			wantChanges: []schema.Change{
+				&schema.ModifyColumn{
+					From:   &schema.Column{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+					To:     &schema.Column{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&Identity{Sequence: &Sequence{Start: 1024, Increment: 1}}}},
+					Change: schema.ChangeAttr,
+				},
+			},
 		},
 		{
 			name: "add check",

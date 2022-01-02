@@ -440,7 +440,7 @@ func (s *state) column(b *sqlx.Builder, c *schema.Column) {
 			b.P("COLLATE").Ident(attr.V)
 		case *Identity:
 			if attr.Generation == "" {
-				attr.Generation = "BY DEFAULT"
+				attr.Generation = defaultIdentityGen
 			}
 			b.P("GENERATED", attr.Generation, "AS IDENTITY")
 		default:
