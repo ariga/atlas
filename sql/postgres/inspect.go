@@ -156,10 +156,10 @@ func (i *inspect) columns(ctx context.Context, t *schema.Table) error {
 // addColumn scans the current row and adds a new column from it to the table.
 func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 	var (
-		typid, maxlen, precision, scale                                                                sql.NullInt64
+		typid, maxlen, precision, scale, seqstart, seqinc                                              sql.NullInt64
 		name, typ, nullable, defaults, udt, identity, generation, charset, collation, comment, typtype sql.NullString
 	)
-	if err := rows.Scan(&name, &typ, &nullable, &defaults, &maxlen, &precision, &scale, &charset, &collation, &udt, &identity, &generation, &comment, &typtype, &typid); err != nil {
+	if err := rows.Scan(&name, &typ, &nullable, &defaults, &maxlen, &precision, &scale, &charset, &collation, &udt, &identity, &seqstart, &seqinc, &generation, &comment, &typtype, &typid); err != nil {
 		return err
 	}
 	c := &schema.Column{
@@ -184,6 +184,10 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 	if identity.String == "YES" {
 		c.Attrs = append(c.Attrs, &Identity{
 			Generation: generation.String,
+			Sequence: &Sequence{
+				Start:     seqstart.Int64,
+				Increment: seqinc.Int64,
+			},
 		})
 	}
 	if sqlx.ValidString(comment) {
@@ -623,10 +627,17 @@ type (
 		T string // c, f, p, u, t, x.
 	}
 
+	// Sequence defines (the supported) sequence options.
+	// https://www.postgresql.org/docs/current/sql-createsequence.html
+	Sequence struct {
+		Start, Increment int64
+	}
+
 	// Identity defines an identity column.
 	Identity struct {
 		schema.Attr
 		Generation string // ALWAYS, BY DEFAULT.
+		Sequence   *Sequence
 	}
 
 	// IndexType represents an index type.
@@ -719,6 +730,8 @@ SELECT
 	t1.collation_name,
 	t1.udt_name,
 	t1.is_identity,
+	t1.identity_start,
+	t1.identity_increment,
 	t1.identity_generation,
 	col_description(to_regclass("table_schema" || '.' || "table_name")::oid, "ordinal_position") AS comment,
 	t2.typtype,
