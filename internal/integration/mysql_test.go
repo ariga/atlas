@@ -529,6 +529,26 @@ func TestMySQL_CLI(t *testing.T) {
 	})
 }
 
+func TestMySQL_HCL_Realm(t *testing.T) {
+	myRun(t, func(t *myTest) {
+		t.dropDB("second")
+		realm := t.loadRealm()
+		hcl, err := mysql.MarshalHCL(realm)
+		require.NoError(t, err)
+		wa := string(hcl) + `
+schema "second" {
+}
+`
+		t.applyRealmHcl(wa)
+		realm, err = t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{})
+		require.NoError(t, err)
+		_, ok := realm.Schema("test")
+		require.True(t, ok)
+		_, ok = realm.Schema("second")
+		require.True(t, ok)
+	})
+}
+
 func TestMySQL_DefaultsHCL(t *testing.T) {
 	n := "atlas_defaults"
 	myRun(t, func(t *myTest) {
@@ -548,7 +568,7 @@ create table atlas_defaults
 		realm := t.loadRealm()
 		spec, err := mysql.MarshalHCL(realm.Schemas[0])
 		require.NoError(t, err)
-		var s schema.Schema
+		var s schema.Realm
 		err = mysql.UnmarshalHCL(spec, &s)
 		require.NoError(t, err)
 		t.dropTables(n)
@@ -934,10 +954,11 @@ create table atlas_types_sanity
 }
 
 func (t *myTest) dsn() string {
+	d := "mysql"
 	if t.mariadb() {
-		return fmt.Sprintf("maria://root:pass@tcp(localhost:%d)/test", t.port)
+		d = "mariadb"
 	}
-	return fmt.Sprintf("mysql://root:pass@tcp(localhost:%d)/test", t.port)
+	return fmt.Sprintf("%s://root:pass@tcp(localhost:%d)/test", d, t.port)
 }
 
 func (t *myTest) applyHcl(spec string) {
@@ -947,6 +968,17 @@ func (t *myTest) applyHcl(spec string) {
 	require.NoError(t, err)
 	existing := realm.Schemas[0]
 	diff, err := t.drv.SchemaDiff(existing, &desired)
+	require.NoError(t, err)
+	err = t.drv.ApplyChanges(context.Background(), diff)
+	require.NoError(t, err)
+}
+
+func (t *myTest) applyRealmHcl(spec string) {
+	realm := t.loadRealm()
+	var desired schema.Realm
+	err := mysql.UnmarshalHCL([]byte(spec), &desired)
+	require.NoError(t, err)
+	diff, err := t.drv.RealmDiff(realm, &desired)
 	require.NoError(t, err)
 	err = t.drv.ApplyChanges(context.Background(), diff)
 	require.NoError(t, err)
@@ -967,6 +999,13 @@ func (t *myTest) dropTables(names ...string) {
 	t.Cleanup(func() {
 		_, err := t.db.Exec("DROP TABLE IF EXISTS " + strings.Join(names, ", "))
 		require.NoError(t.T, err, "drop tables %q", names)
+	})
+}
+
+func (t *myTest) dropDB(names ...string) {
+	t.Cleanup(func() {
+		_, err := t.db.Exec("DROP DATABASE IF EXISTS " + strings.Join(names, ", "))
+		require.NoError(t.T, err, "drop db %q", names)
 	})
 }
 

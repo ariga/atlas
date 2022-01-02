@@ -12,6 +12,7 @@ import (
 	"sync"
 	"testing"
 
+	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
 
@@ -411,6 +412,37 @@ schema "public" {
 	pgRun(t, func(t *pgTest) {
 		testHCLIntegration(t, full, empty)
 	})
+}
+
+func TestPostgres_HCL_Realm(t *testing.T) {
+	pgRun(t, func(t *pgTest) {
+		t.dropSchemas("second")
+		realm := t.loadRealm()
+		hcl, err := mysql.MarshalHCL(realm)
+		require.NoError(t, err)
+		wa := string(hcl) + `
+schema "second" {
+}
+`
+		t.applyRealmHcl(wa)
+		realm, err = t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{})
+		require.NoError(t, err)
+		_, ok := realm.Schema("public")
+		require.True(t, ok)
+		_, ok = realm.Schema("second")
+		require.True(t, ok)
+	})
+}
+
+func (t *pgTest) applyRealmHcl(spec string) {
+	realm := t.loadRealm()
+	var desired schema.Realm
+	err := mysql.UnmarshalHCL([]byte(spec), &desired)
+	require.NoError(t, err)
+	diff, err := t.drv.RealmDiff(realm, &desired)
+	require.NoError(t, err)
+	err = t.drv.ApplyChanges(context.Background(), diff)
+	require.NoError(t, err)
 }
 
 func TestPostgres_CLI(t *testing.T) {
@@ -983,5 +1015,12 @@ func (t *pgTest) dropTables(names ...string) {
 	t.Cleanup(func() {
 		_, err := t.db.Exec("DROP TABLE IF EXISTS " + strings.Join(names, ", "))
 		require.NoError(t.T, err, "drop tables %q", names)
+	})
+}
+
+func (t *pgTest) dropSchemas(names ...string) {
+	t.Cleanup(func() {
+		_, err := t.db.Exec("DROP SCHEMA IF EXISTS " + strings.Join(names, ", "))
+		require.NoError(t.T, err, "drop schema %q", names)
 	})
 }
