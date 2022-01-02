@@ -954,7 +954,11 @@ create table atlas_types_sanity
 }
 
 func (t *myTest) dsn() string {
-	return fmt.Sprintf("mysql://root:pass@tcp(localhost:%d)/test", t.port)
+	d := "mysql"
+	if t.mariadb() {
+		d = "mariadb"
+	}
+	return fmt.Sprintf("%s://root:pass@tcp(localhost:%d)/test", d, t.port)
 }
 
 func (t *myTest) applyHcl(spec string) {
