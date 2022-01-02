@@ -7,6 +7,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"ariga.io/atlas/sql/internal/sqlx"
@@ -434,18 +435,30 @@ func (s *state) column(b *sqlx.Builder, c *schema.Column) {
 	b.P("NULL")
 	s.columnDefault(b, c)
 	for _, attr := range c.Attrs {
-		switch attr := attr.(type) {
+		switch a := attr.(type) {
 		case *schema.Comment:
 		case *schema.Collation:
-			b.P("COLLATE").Ident(attr.V)
+			b.P("COLLATE").Ident(a.V)
 		case *Identity:
-			if attr.Generation == "" {
-				attr.Generation = defaultIdentityGen
-			}
-			b.P("GENERATED", attr.Generation, "AS IDENTITY")
+			// Handled below.
 		default:
 			panic(fmt.Sprintf("unexpected column attribute: %T", attr))
 		}
+	}
+	id, ok := identity(c.Attrs)
+	if !ok {
+		return
+	}
+	b.P("GENERATED", id.Generation, "AS IDENTITY")
+	if id.Sequence.Start != defaultSeqStart || id.Sequence.Increment != defaultSeqIncrement {
+		b.Wrap(func(b *sqlx.Builder) {
+			if id.Sequence.Start != defaultSeqStart {
+				b.P("START WITH", strconv.FormatInt(id.Sequence.Start, 10))
+			}
+			if id.Sequence.Increment != defaultSeqIncrement {
+				b.P("INCREMENT BY", strconv.FormatInt(id.Sequence.Increment, 10))
+			}
+		})
 	}
 }
 
