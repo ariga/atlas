@@ -821,5 +821,5 @@ func (t *liteTest) dropTables(names ...string) {
 }
 
 func (t *liteTest) dsn() string {
-	return fmt.Sprintf("sqlite3://file:%s?cache=shared&_fk=1", t.file)
+	return fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", t.file)
 }

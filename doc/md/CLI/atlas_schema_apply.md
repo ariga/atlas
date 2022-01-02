@@ -11,9 +11,9 @@ atlas schema apply [flags]
 ```
 
 atlas schema apply -d mysql://user:pass@tcp(localhost:3306)/dbname -f atlas.hcl
-atlas schema apply -d maria://user:pass@tcp(localhost:3306)/dbname -f atlas.hcl
+atlas schema apply -d mariadb://user:pass@tcp(localhost:3306)/dbname -f atlas.hcl
 atlas schema apply --dsn postgres://user:pass@host:port/dbname -f atlas.hcl
-atlas schema apply -d sqlite3://file:ex1.db?_fk=1 -f atlas.hcl
+atlas schema apply -d sqlite://file:ex1.db?_fk=1 -f atlas.hcl
 ```
 
 ### Options
