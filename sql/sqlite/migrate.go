@@ -6,6 +6,8 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -27,7 +29,7 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 			Transactional: true,
 		},
 	}
-	if err := s.plan(changes); err != nil {
+	if err := s.plan(ctx, changes); err != nil {
 		return nil, err
 	}
 	for _, c := range s.Changes {
@@ -56,15 +58,15 @@ type state struct {
 
 // Exec executes the changes on the database. An error is returned
 // if one of the operations fail, or a change is not supported.
-func (s *state) plan(changes []schema.Change) (err error) {
+func (s *state) plan(ctx context.Context, changes []schema.Change) (err error) {
 	for _, c := range changes {
 		switch c := c.(type) {
 		case *schema.AddTable:
-			err = s.addTable(c)
+			err = s.addTable(ctx, c)
 		case *schema.DropTable:
 			err = s.dropTable(c)
 		case *schema.ModifyTable:
-			err = s.modifyTable(c)
+			err = s.modifyTable(ctx, c)
 		default:
 			err = fmt.Errorf("unsupported change %T", c)
 		}
@@ -84,7 +86,7 @@ func (s *state) plan(changes []schema.Change) (err error) {
 }
 
 // addTable builds and executes the query for creating a table in a schema.
-func (s *state) addTable(add *schema.AddTable) error {
+func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 	b := Build("CREATE TABLE").Ident(add.T.Name)
 	if sqlx.Has(add.Extra, &schema.IfNotExists{}) {
 		b.P("IF NOT EXISTS")
@@ -118,6 +120,9 @@ func (s *state) addTable(add *schema.AddTable) error {
 		Reverse: Build("DROP TABLE").Table(add.T).String(),
 		Comment: fmt.Sprintf("create %q table", add.T.Name),
 	})
+	if err := s.tableSeq(ctx, add); err != nil {
+		return err
+	}
 	return s.addIndexes(add.T, add.T.Indexes...)
 }
 
@@ -140,7 +145,7 @@ func (s *state) dropTable(drop *schema.DropTable) error {
 // If the modification contains changes that are not index creation/deletion or a simple column
 // addition, the changes are applied using a temporary table following the procedure mentioned
 // in: https://www.sqlite.org/lang_altertable.html#making_other_kinds_of_table_schema_changes.
-func (s *state) modifyTable(modify *schema.ModifyTable) error {
+func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) error {
 	if alterable(modify) {
 		return s.alterTable(modify)
 	}
@@ -150,7 +155,7 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 	newT.Indexes = nil
 	newT.Name = "new_" + newT.Name
 	// Create a new table with a temporary name, and copy the existing rows to it.
-	if err := s.addTable(&schema.AddTable{T: &newT}); err != nil {
+	if err := s.addTable(ctx, &schema.AddTable{T: &newT}); err != nil {
 		return err
 	}
 	if err := s.copyRows(modify.T, &newT, modify.Changes); err != nil {
@@ -357,6 +362,37 @@ func (s *state) alterTable(modify *schema.ModifyTable) error {
 		default:
 			return fmt.Errorf("unexpected change in alter table: %T", change)
 		}
+	}
+	return nil
+}
+
+// tableSeq sets the sequence value of the table if it was provided by
+// the user on table creation.
+func (s *state) tableSeq(ctx context.Context, add *schema.AddTable) error {
+	var inc AutoIncrement
+	for _, c := range add.T.Columns {
+		if sqlx.Has(c.Attrs, &inc) {
+			break
+		}
+	}
+	if inc.Seq == 0 {
+		return nil
+	}
+	// SQLite tracks the AUTOINCREMENT in the "sqlite_sequence" table that is created and initialized automatically
+	// whenever such table is created. However, the rows are populated after the first insertion, and therefore, we
+	// check if the sequence row exists, and we either created it for non zero sequence, or update it if it is 0 and
+	// the configured sequence is > 0.
+	var seq int64
+	switch err := s.QueryRowContext(ctx, "SELECT seq FROM sqlite_sequence WHERE name = ?", add.T.Name).Scan(&seq); {
+	case errors.Is(err, sql.ErrNoRows):
+		s.append(&migrate.Change{
+			Cmd:     fmt.Sprintf("INSERT INTO sqlite_sequence (name, seq) VALUES (%q, %d)", add.T.Name, inc.Seq),
+			Source:  add,
+			Reverse: fmt.Sprintf("UPDATE sqlite_sequence SET seq = 0 WHERE name = %q", add.T.Name),
+			Comment: fmt.Sprintf("set sequence for %q table", add.T.Name),
+		})
+	case err != nil:
+		return fmt.Errorf("query sequence value for table %q: %w", add.T.Name, err)
 	}
 	return nil
 }

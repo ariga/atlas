@@ -6,7 +6,10 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"testing"
+
+	"ariga.io/atlas/sql/internal/sqltest"
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
@@ -17,6 +20,7 @@ import (
 func TestPlanChanges(t *testing.T) {
 	tests := []struct {
 		changes []schema.Change
+		mock    func(mock)
 		plan    *migrate.Plan
 	}{
 		{
@@ -39,6 +43,36 @@ func TestPlanChanges(t *testing.T) {
 				Reversible:    true,
 				Transactional: true,
 				Changes:       []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` integer NOT NULL, `text` text NULL, CHECK (text <> ''), CONSTRAINT `positive_id` CHECK (id <> 0))", Reverse: "DROP TABLE `posts`"}},
+			},
+		},
+		{
+			changes: []schema.Change{
+				&schema.AddTable{
+					T: &schema.Table{
+						Name: "posts",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}}, Attrs: []schema.Attr{&AutoIncrement{Seq: 1024}}},
+							{Name: "text", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Null: true}},
+						},
+						Attrs: []schema.Attr{
+							&schema.Check{Expr: "(text <> '')"},
+							&schema.Check{Name: "positive_id", Expr: "(id <> 0)"},
+						},
+					},
+				},
+			},
+			mock: func(m mock) {
+				m.ExpectQuery(sqltest.Escape("SELECT seq FROM sqlite_sequence WHERE name = ?")).
+					WithArgs("posts").
+					WillReturnError(sql.ErrNoRows)
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{Cmd: "CREATE TABLE `posts` (`id` integer NOT NULL PRIMARY KEY AUTOINCREMENT, `text` text NULL, CHECK (text <> ''), CONSTRAINT `positive_id` CHECK (id <> 0))", Reverse: "DROP TABLE `posts`"},
+					{Cmd: `INSERT INTO sqlite_sequence (name, seq) VALUES ("posts", 1024)`, Reverse: `UPDATE sqlite_sequence SET seq = 0 WHERE name = "posts"`},
+				},
 			},
 		},
 		{
@@ -135,6 +169,9 @@ func TestPlanChanges(t *testing.T) {
 		require.NoError(t, err)
 		m := mock{mk}
 		m.systemVars("3.36.0")
+		if tt.mock != nil {
+			tt.mock(m)
+		}
 		drv, err := Open(db)
 		require.NoError(t, err)
 		plan, err := drv.PlanChanges(context.Background(), "plan", tt.changes)

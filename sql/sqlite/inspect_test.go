@@ -72,7 +72,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c8", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Raw: "text"}},
 					{Name: "c9", Type: &schema.ColumnType{Type: &schema.DecimalType{T: "numeric", Precision: 10, Scale: 2}, Raw: "numeric(10,2)"}},
 					{Name: "c10", Type: &schema.ColumnType{Type: &schema.FloatType{T: "real"}, Raw: "real"}},
-					{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer"}, Attrs: []schema.Attr{AutoIncrement{}}, Default: &schema.Literal{V: "0x1"}},
+					{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer"}, Attrs: []schema.Attr{&AutoIncrement{}}, Default: &schema.Literal{V: "0x1"}},
 				}
 				require.Equal(t.Columns, columns)
 				require.EqualValues(&schema.Index{
@@ -80,7 +80,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					Unique: true,
 					Table:  t,
 					Parts:  []*schema.IndexPart{{SeqNo: 1, C: columns[len(columns)-1]}},
-					Attrs:  []schema.Attr{AutoIncrement{}},
+					Attrs:  []schema.Attr{&AutoIncrement{}},
 				}, t.PrimaryKey)
 			},
 		},
@@ -446,6 +446,9 @@ func (m mock) systemVars(version string) {
       NOCASE
       BINARY
 `))
+}
+
+func (m mock) tableExists(table string, exists bool, stmt ...string) {
 	m.ExpectQuery(sqltest.Escape(databasesQuery + " WHERE name IN (?)")).
 		WithArgs("main").
 		WillReturnRows(sqltest.Rows(`
@@ -453,9 +456,6 @@ func (m mock) systemVars(version string) {
 ------+-----------
  main |   
 `))
-}
-
-func (m mock) tableExists(table string, exists bool, stmt ...string) {
 	rows := sqlmock.NewRows([]string{"name", "sql"})
 	if exists {
 		rows.AddRow(table, stmt[0])
