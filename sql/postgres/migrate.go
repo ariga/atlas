@@ -247,8 +247,12 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			b.P("DROP COLUMN").Ident(change.C.Name)
 			reversible = false
 		case *schema.ModifyColumn:
-			s.alterColumn(b, change.Change, change.To)
-			s.alterColumn(reverse, change.Change, change.From)
+			if err := s.alterColumn(b, change.Change, change.To); err != nil {
+				errors = append(errors, err.Error())
+			}
+			if err := s.alterColumn(reverse, change.Change, change.From); err != nil {
+				errors = append(errors, err.Error())
+			}
 		case *schema.AddForeignKey:
 			b.P("ADD")
 			s.fks(b, change.F)
@@ -481,7 +485,7 @@ func (s *state) columnDefault(b *sqlx.Builder, c *schema.Column) {
 	}
 }
 
-func (s *state) alterColumn(b *sqlx.Builder, k schema.ChangeKind, c *schema.Column) {
+func (s *state) alterColumn(b *sqlx.Builder, k schema.ChangeKind, c *schema.Column) error {
 	for !k.Is(schema.NoChange) {
 		b.P("ALTER COLUMN").Ident(c.Name)
 		switch {
@@ -501,19 +505,25 @@ func (s *state) alterColumn(b *sqlx.Builder, k schema.ChangeKind, c *schema.Colu
 			b.P("DROP DEFAULT")
 			k &= ^schema.ChangeDefault
 		case k.Is(schema.ChangeDefault) && c.Default != nil:
-			x, ok := c.Default.(*schema.RawExpr)
-			if !ok {
-				panic(fmt.Sprintf("unexpected column default: %T", c.Default))
-			}
-			b.P("SET DEFAULT", x.X)
+			s.columnDefault(b.P("SET"), c)
 			k &= ^schema.ChangeDefault
+		case k.Is(schema.ChangeAttr):
+			id, ok := identity(c.Attrs)
+			if !ok {
+				return fmt.Errorf("unexpected attribute change: %v", c.Attrs)
+			}
+			// The syntax for altering identity columns is identical to sequence_options.
+			// https://www.postgresql.org/docs/current/sql-altersequence.html
+			b.P("SET START WITH", strconv.FormatInt(id.Sequence.Start, 10), "SET INCREMENT BY", strconv.FormatInt(id.Sequence.Increment, 10), "RESTART")
+			k &= ^schema.ChangeAttr
 		default:
-			panic(fmt.Sprintf("unexpected column change: %d", k))
+			return fmt.Errorf("unexpected column change: %d", k)
 		}
 		if !k.Is(schema.NoChange) {
 			b.Comma()
 		}
 	}
+	return nil
 }
 
 func (s *state) indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {
