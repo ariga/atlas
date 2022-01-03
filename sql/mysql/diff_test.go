@@ -22,6 +22,12 @@ func TestDiff_TableDiff(t *testing.T) {
 	}
 	tests := []testcase{
 		{
+			name:    "mismatched names",
+			from:    &schema.Table{Name: "users"},
+			to:      &schema.Table{Name: "pets"},
+			wantErr: true,
+		},
+		{
 			name: "no changes",
 			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}},
 			to:   &schema.Table{Name: "users"},
@@ -286,6 +292,11 @@ func TestDiff_SchemaDiff(t *testing.T) {
 	mock{m}.version("8.0.19")
 	drv, err := Open(db)
 	require.NoError(t, err)
+
+	changes, err := drv.SchemaDiff(&schema.Schema{Name: "public"}, &schema.Schema{Name: "test"})
+	require.Error(t, err)
+	require.Nil(t, changes)
+
 	from := &schema.Schema{
 		Realm: &schema.Realm{
 			Attrs: []schema.Attr{
@@ -316,7 +327,7 @@ func TestDiff_SchemaDiff(t *testing.T) {
 	}
 	from.Tables[0].Schema = from
 	from.Tables[1].Schema = from
-	changes, err := drv.SchemaDiff(from, to)
+	changes, err = drv.SchemaDiff(from, to)
 	require.NoError(t, err)
 	require.EqualValues(t, []schema.Change{
 		&schema.ModifySchema{Changes: []schema.Change{&schema.ModifyAttr{From: from.Attrs[0], To: to.Attrs[0]}}},

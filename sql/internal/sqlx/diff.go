@@ -93,6 +93,9 @@ func (d *Diff) RealmDiff(from, to *schema.Realm) ([]schema.Change, error) {
 // SchemaDiff implements the schema.Differ interface and returns a list of
 // changes that need to be applied in order to move from one state to the other.
 func (d *Diff) SchemaDiff(from, to *schema.Schema) ([]schema.Change, error) {
+	if from.Name != to.Name {
+		return nil, fmt.Errorf("mismatched schema names: %q != %q", from.Name, to.Name)
+	}
 	var changes []schema.Change
 	// Drop or modify attributes (collations, checks, etc).
 	if change := d.SchemaAttrDiff(from, to); len(change) > 0 {
@@ -131,11 +134,13 @@ func (d *Diff) SchemaDiff(from, to *schema.Schema) ([]schema.Change, error) {
 // TableDiff implements the schema.TableDiffer interface and returns a list of
 // changes that need to be applied in order to move from one state to the other.
 func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
+	if from.Name != to.Name {
+		return nil, fmt.Errorf("mismatched table names: %q != %q", from.Name, to.Name)
+	}
 	// Normalizing tables before starting the diff process.
 	if n, ok := d.DiffDriver.(Normalizer); ok {
 		n.Normalize(from, to)
 	}
-
 	var changes []schema.Change
 	if from.Name != to.Name {
 		return nil, fmt.Errorf("mismatched table names: %q != %q", from.Name, to.Name)
