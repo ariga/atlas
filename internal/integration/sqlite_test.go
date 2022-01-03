@@ -359,10 +359,10 @@ func TestSQLite_ForeignKey(t *testing.T) {
 
 func TestSQLite_HCL(t *testing.T) {
 	full := `
-schema "public" {
+schema "main" {
 }
 table "users" {
-	schema = schema.public
+	schema = schema.main
 	column "id" {
 		type = int
 	}
@@ -371,7 +371,7 @@ table "users" {
 	}
 }
 table "posts" {
-	schema = schema.public
+	schema = schema.main
 	column "id" {
 		type = int
 	}
@@ -392,7 +392,7 @@ table "posts" {
 }
 `
 	empty := `
-schema "public" {
+schema "main" {
 }
 `
 	liteRun(t, func(t *liteTest) {
