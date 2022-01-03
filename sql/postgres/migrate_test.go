@@ -192,6 +192,11 @@ func TestPlanChanges(t *testing.T) {
 							&schema.DropColumn{
 								C: &schema.Column{Name: "name", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
 							},
+							&schema.ModifyColumn{
+								From:   &schema.Column{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&Identity{}}},
+								To:     &schema.Column{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&Identity{Sequence: &Sequence{Start: 1024}}}},
+								Change: schema.ChangeAttr,
+							},
 						},
 					}
 				}(),
@@ -200,7 +205,7 @@ func TestPlanChanges(t *testing.T) {
 				Reversible:    false,
 				Transactional: true,
 				Changes: []*migrate.Change{
-					{Cmd: `ALTER TABLE "users" DROP COLUMN "name"`},
+					{Cmd: `ALTER TABLE "users" DROP COLUMN "name", ALTER COLUMN "id" SET START WITH 1024 SET INCREMENT BY 1 RESTART`},
 				},
 			},
 		},
