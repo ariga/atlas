@@ -263,8 +263,11 @@ func (r *TypeRegistry) Type(typ *schemaspec.Type, extra []*schemaspec.Attr) (sch
 	}
 	nfa := typeNonFuncArgs(typeSpec)
 	picked := pickTypeAttrs(extra, nfa)
-	typ.Attrs = appendIfNotExist(typ.Attrs, picked)
-	printType, err := r.PrintType(typ)
+	cp := &schemaspec.Type{
+		T:     typ.T,
+	}
+	cp.Attrs = appendIfNotExist(typ.Attrs, picked)
+	printType, err := r.PrintType(cp)
 	if err != nil {
 		return nil, err
 	}
