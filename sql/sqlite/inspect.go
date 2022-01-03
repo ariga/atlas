@@ -129,8 +129,7 @@ func (i *inspect) columns(ctx context.Context, t *schema.Table) error {
 			return fmt.Errorf("sqlite: %w", err)
 		}
 	}
-	autoinc(t)
-	return rows.Err()
+	return autoinc(t)
 }
 
 // addColumn scans the current row and adds a new column from it to the table.
@@ -471,6 +470,13 @@ type (
 	// https://www.sqlite.org/autoinc.html
 	AutoIncrement struct {
 		schema.Attr
+		// Seq represents the value in sqlite_sequence table.
+		// i.e. https://www.sqlite.org/fileformat2.html#seqtab.
+		//
+		// Setting this value manually to > 0 indicates that
+		// a custom value is necessary and should be handled
+		// on migrate.
+		Seq int64
 	}
 
 	// WithoutRowID describes the `WITHOUT ROWID` configuration.
@@ -547,21 +553,35 @@ func isBlob(s string) bool {
 	return false
 }
 
-var reAutoinc = regexp.MustCompile(`(?i)PRIMARY\s+KEY\s+AUTOINCREMENT`)
+var reAutoinc = regexp.MustCompile("(?i)(?:[(,]\\s*)[\"`]?(\\w+)[\"`]?\\s+INTEGER\\s+[^,]*PRIMARY\\s+KEY\\s+[^,]*AUTOINCREMENT")
 
 // autoinc checks if the table contains a "PRIMARY KEY AUTOINCREMENT" on its
 // CREATE statement, according to https://www.sqlite.org/syntax/column-constraint.html.
 // This is a workaround until we will embed a proper SQLite parser in atlas.
-func autoinc(t *schema.Table) {
+func autoinc(t *schema.Table) error {
+	var c CreateStmt
+	if !sqlx.Has(t.Attrs, &c) {
+		return fmt.Errorf("missing CREATE statment for table: %q", t.Name)
+	}
 	if t.PrimaryKey == nil || len(t.PrimaryKey.Parts) != 1 || t.PrimaryKey.Parts[0].C == nil {
-		return
+		return nil
 	}
-	if c := (CreateStmt{}); !sqlx.Has(t.Attrs, &c) || !reAutoinc.MatchString(c.S) {
-		return
+	matches := reAutoinc.FindStringSubmatch(c.S)
+	if len(matches) != 2 {
+		return nil
 	}
+	pkc, ok := t.Column(matches[1])
+	if !ok {
+		return fmt.Errorf("sqlite: column %q was not found for AUTOINCREMENT", matches[1])
+	}
+	if t.PrimaryKey == nil || len(t.PrimaryKey.Parts) != 1 || t.PrimaryKey.Parts[0].C != pkc {
+		return fmt.Errorf("sqlite: unexpected primary key: %v", t.PrimaryKey)
+	}
+	inc := &AutoIncrement{}
 	// Annotate table elements with "AUTOINCREMENT".
-	t.PrimaryKey.Attrs = append(t.PrimaryKey.Attrs, AutoIncrement{})
-	t.PrimaryKey.Parts[0].C.Attrs = append(t.PrimaryKey.Parts[0].C.Attrs, AutoIncrement{})
+	t.PrimaryKey.Attrs = append(t.PrimaryKey.Attrs, inc)
+	pkc.Attrs = append(pkc.Attrs, inc)
+	return nil
 }
 
 // The following regexes extract named FKs and CHECK constraints defined in table-constraints or inlined
