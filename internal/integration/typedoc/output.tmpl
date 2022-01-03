@@ -1,0 +1,45 @@
+---
+title: SQL Column Types
+id: sql-column-types
+slug: /sql/column_types
+---
+
+{{ range . }}
+{{- $d := .}}
+    {{- /*gotype: ariga.io/atlas/integration/typedoc.Driver */ -}}
+
+### {{ .Name }}
+
+<table>
+    <thead>
+        <th>HCL</th>
+        <th>SQL</th>
+        <th>Attributes</th>
+        <th>Example</th>
+    </thead>
+    <tbody>
+        {{ range .Types }}
+        <tr>
+            <td>{{ .Name }}</td>
+            <td>{{ .T }}</td>
+            <td>
+                <ul>
+                    {{- range .Attributes }}
+                        <li>{{ .Name }} ({{ .Kind }})</li>
+                    {{- end }}
+                </ul>
+            </td>
+            <td>
+                {{ range col_hcl . $d.Types }}
+                <pre>
+                    {{ . }}
+                </pre>
+                {{end }}
+            </td>
+        </tr>
+        {{ end }}
+    </tbody>
+</table>
+
+{{ end }}
+
