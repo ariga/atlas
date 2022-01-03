@@ -400,6 +400,26 @@ table "t2" {
 	}
 }
 
+func TestUnsignedImmutability(t *testing.T) {
+	f := `table "users" {
+	column "id" {
+		type = bigint
+		unsigned = true
+	}
+	column "shouldnt" {
+		type = bigint
+	}
+}
+schema "test" {
+}`
+	var s schema.Schema
+	err := mysql.UnmarshalHCL([]byte(f), &s)
+	require.NoError(t, err)
+	tbl := s.Tables[0]
+	require.EqualValues(t, &schema.IntegerType{T: "bigint", Unsigned: true}, tbl.Columns[0].Type.Type)
+	require.EqualValues(t, &schema.IntegerType{T: "bigint", Unsigned: false}, tbl.Columns[1].Type.Type)
+}
+
 func decode(f string) (*db, error) {
 	d := &db{}
 	if err := hcl.UnmarshalSpec([]byte(f), d); err != nil {
