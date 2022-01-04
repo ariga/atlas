@@ -85,7 +85,7 @@ func shouldUpdate(version string, path string, latestReleaseF func() (LatestRele
 	if semver.Compare(version, l.Version) != -1 {
 		return false, "", nil
 	}
-	return true, fmt.Sprintf("new atlas version %s, %s", l.Version, l.URL), nil
+	return true, fmt.Sprintf("A new version of Atlas is available (%s):\n%s", l.Version, l.URL), nil
 }
 
 func latestReleaseFromGithub() (LatestRelease, error) {

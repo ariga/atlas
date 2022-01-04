@@ -28,7 +28,7 @@ func TestCheckForUpdate(t *testing.T) {
 			store:          &Store{Version: "v1.2.3", URL: url, CheckedAt: time.Now().Add(-25 * time.Hour)},
 			latestRelease:  &LatestRelease{Version: "v2.2.3", URL: url},
 			shouldNotify:   true,
-			message:        fmt.Sprintf("new atlas version v2.2.3, %s", url),
+			message:        fmt.Sprintf("A new version of Atlas is available (v2.2.3):\n%s", url),
 		},
 		{
 			name:           "fresh store do nothing",
@@ -43,7 +43,7 @@ func TestCheckForUpdate(t *testing.T) {
 			latestVersion:  "v2.2.3",
 			latestRelease:  &LatestRelease{Version: "v2.2.3", URL: url},
 			shouldNotify:   true,
-			message:        fmt.Sprintf("new atlas version v2.2.3, %s", url),
+			message:        fmt.Sprintf("A new version of Atlas is available (v2.2.3):\n%s", url),
 		},
 		{
 			name:           "no store fetch and update newer minor version",
@@ -51,7 +51,7 @@ func TestCheckForUpdate(t *testing.T) {
 			latestVersion:  "v1.3.3",
 			latestRelease:  &LatestRelease{Version: "v2.2.3", URL: url},
 			shouldNotify:   true,
-			message:        fmt.Sprintf("new atlas version v2.2.3, %s", url),
+			message:        fmt.Sprintf("A new version of Atlas is available (v2.2.3):\n%s", url),
 		},
 		{
 			name:           "no store fetch and update newer patch version",
@@ -59,7 +59,7 @@ func TestCheckForUpdate(t *testing.T) {
 			latestVersion:  "v1.2.4",
 			latestRelease:  &LatestRelease{Version: "v2.2.3", URL: url},
 			shouldNotify:   true,
-			message:        fmt.Sprintf("new atlas version v2.2.3, %s", url),
+			message:        fmt.Sprintf("A new version of Atlas is available (v2.2.3):\n%s", url),
 		},
 	}
 	for _, tt := range tests {
