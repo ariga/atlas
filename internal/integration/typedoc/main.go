@@ -46,10 +46,10 @@ func main() {
 		})
 	}
 	f, err := os.Create("../../../doc/md/sql_types.md")
-	defer f.Close()
 	if err != nil {
 		log.Fatalf("error: %s", err)
 	}
+	defer f.Close()
 	if err := parse.Execute(f, drivers); err != nil {
 		log.Fatalf("error: %s", err)
 	}
