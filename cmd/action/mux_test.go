@@ -1,9 +1,13 @@
 package action_test
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"ariga.io/atlas/cmd/action"
+
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,4 +42,77 @@ func Test_GetDriverSuccess(t *testing.T) {
 	u.RegisterProvider("key", p)
 	_, err := u.OpenAtlas("key://open")
 	require.NoError(t, err)
+}
+
+func Test_SQLiteFileDoestNotExist(t *testing.T) {
+	var tests = []struct {
+		dsn      string
+		expected string
+	}{
+		{
+			dsn:      "sqlite://test.db",
+			expected: `failed opening "test.db": stat test.db: no such file or directory`,
+		},
+		{
+			dsn:      "sqlite://some_random_string_like_this",
+			expected: `failed opening "some_random_string_like_this": stat some_random_string_like_this: no such file or directory`,
+		},
+		{
+			dsn:      "sqlite://file:/home/fred/data.db",
+			expected: `failed opening "/home/fred/data.db": stat /home/fred/data.db: no such file or directory`,
+		},
+		{
+			dsn:      "sqlite://file:///home/fred/data.db",
+			expected: `failed opening "/home/fred/data.db": stat /home/fred/data.db: no such file or directory`,
+		},
+		{
+			dsn:      "sqlite://file://localhost/home/fred/data.db",
+			expected: `failed opening "/localhost/home/fred/data.db": stat /localhost/home/fred/data.db: no such file or directory`,
+		},
+		{
+			dsn:      "sqlite://file://darkstar/home/fred/data.db",
+			expected: `failed opening "/darkstar/home/fred/data.db": stat /darkstar/home/fred/data.db: no such file or directory`,
+		},
+		{
+			dsn:      "sqlite://file:data.db?mode=ro&cache=private",
+			expected: `failed opening "data.db": stat data.db: no such file or directory`,
+		},
+		{
+			dsn:      "sqlite://file:/home/fred/data.db?vfs=unix-dotfile",
+			expected: `failed opening "/home/fred/data.db": stat /home/fred/data.db: no such file or directory`,
+		},
+		{
+			dsn:      "sqlite://file:data.db?mode=readonly",
+			expected: `failed opening "data.db": stat data.db: no such file or directory`,
+		},
+		{
+			dsn:      "sqlite://asdad?cache=shared&mode=memory",
+			expected: `failed opening "asdad": stat asdad: no such file or directory`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.dsn, func(t *testing.T) {
+			_, err := action.SchemaNameFromDSN(tt.dsn)
+			require.EqualError(t, err, tt.expected)
+		})
+	}
+}
+
+func Test_SQLiteFileExist(t *testing.T) {
+	r := require.New(t)
+	file, err := ioutil.TempFile("", "tmp")
+	r.NoError(err)
+	t.Cleanup(func() {
+		err := os.Remove(file.Name())
+		r.NoError(err)
+	})
+	dsn := "sqlite://file://" + file.Name()
+	_, err = action.SchemaNameFromDSN(dsn)
+	r.NoError(err)
+}
+
+func Test_SQLiteInMemory(t *testing.T) {
+	r := require.New(t)
+	_, err := action.SchemaNameFromDSN("sqlite://file:test.db?cache=shared&mode=memory")
+	r.NoError(err)
 }

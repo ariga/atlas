@@ -4,11 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlite"
+
 	"github.com/go-sql-driver/mysql"
 )
 
@@ -33,7 +37,10 @@ func NewMux() *Mux {
 	}
 }
 
-var defaultMux = NewMux()
+var (
+	defaultMux = NewMux()
+	inMemory   = regexp.MustCompile("^file:.*:memory:$|:memory:|^file:.*mode=memory.*")
+)
 
 // RegisterProvider is used to register a Driver provider by key.
 func (u *Mux) RegisterProvider(key string, p func(string) (*Driver, error)) {
@@ -57,14 +64,15 @@ func (u *Mux) OpenAtlas(dsn string) (*Driver, error) {
 }
 
 func parseDSN(url string) (string, string, error) {
-	a := strings.Split(url, "://")
+	a := strings.SplitN(url, "://", 2)
 	if len(a) != 2 {
 		return "", "", fmt.Errorf("failed to parse dsn")
 	}
 	return a[0], a[1], nil
 }
 
-func schemaNameFromDSN(url string) (string, error) {
+// SchemaNameFromDSN parses the dsn the returns schema name
+func SchemaNameFromDSN(url string) (string, error) {
 	key, dsn, err := parseDSN(url)
 	if err != nil {
 		return "", err
@@ -86,6 +94,10 @@ func schemaNameFromDSN(url string) (string, error) {
 }
 
 func schemaName(dsn string) (string, error) {
+	err := sqliteFileExists(dsn)
+	if err != nil {
+		return "", err
+	}
 	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return "", err
@@ -98,8 +110,31 @@ func schemaName(dsn string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if len(r.Schemas) > 1 {
-		return "", fmt.Errorf("number of schemas > 1, n=%d", len(r.Schemas))
+	if len(r.Schemas) != 1 {
+		return "", fmt.Errorf("must have exactly 1 schema, got: %d", len(r.Schemas))
 	}
 	return r.Schemas[0].Name, nil
+}
+
+func sqliteFileExists(dsn string) error {
+	if !inMemory.MatchString(dsn) {
+		return fileExists(dsn)
+	}
+	return nil
+}
+
+func fileExists(dsn string) error {
+	s := strings.Split(dsn, "?")
+	f := dsn
+	if len(s) == 2 {
+		f = s[0]
+	}
+	if strings.Contains(f, "file:") {
+		f = strings.SplitAfter(f, "file:")[1]
+	}
+	f = filepath.Clean(f)
+	if _, err := os.Stat(f); err != nil {
+		return fmt.Errorf("failed opening %q: %w", f, err)
+	}
+	return nil
 }
