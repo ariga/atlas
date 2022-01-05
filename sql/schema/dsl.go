@@ -150,9 +150,8 @@ func NewColumn(name string) *Column {
 
 // NewNullColumn creates a new nullable column with the given name.
 func NewNullColumn(name string) *Column {
-	c := &Column{Name: name}
-	c.SetNull(true)
-	return c
+	return NewColumn(name).
+		SetNull(true)
 }
 
 // NewBoolColumn creates a new BoolType column.
