@@ -1,6 +1,7 @@
 ---
 id: sql-hcl
 title: SQL Syntax
+slug: /ddl/sql
 ---
 The [sqlspec](https://pkg.go.dev/ariga.io/atlas@master/sql/sqlspec) package defines
 the resource types used to describe an SQL database schema. Used with the

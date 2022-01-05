@@ -1,5 +1,6 @@
 ---
-id: ddl 
+id: ddl-intro
+slug: /ddl/intro
 title: Data Definition Language
 ---
 
