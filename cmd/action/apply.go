@@ -54,7 +54,7 @@ func CmdApplyRun(cmd *cobra.Command, args []string) {
 
 func applyRun(d *Driver, dsn string, file string) {
 	ctx := context.Background()
-	name, err := schemaNameFromDSN(dsn)
+	name, err := SchemaNameFromDSN(dsn)
 	cobra.CheckErr(err)
 	s, err := d.InspectSchema(ctx, name, nil)
 	cobra.CheckErr(err)
