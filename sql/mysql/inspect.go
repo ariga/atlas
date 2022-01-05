@@ -268,11 +268,11 @@ func parseRawType(raw string) (schema.Type, error) {
 		return nil, err
 	}
 	switch t := parts[0]; t {
-	case tBit:
+	case TypeBit:
 		return &BitType{
 			T: t,
 		}, nil
-	case tTinyInt, tSmallInt, tMediumInt, tInt, tBigInt:
+	case TypeTinyInt, TypeSmallInt, TypeMediumInt, TypeInt, TypeBigInt:
 		if size == 1 {
 			return &schema.BoolType{
 				T: t,
@@ -297,7 +297,7 @@ func parseRawType(raw string) (schema.Type, error) {
 			}
 		}
 		return ft, nil
-	case tNumeric, tDecimal:
+	case TypeNumeric, TypeDecimal:
 		dt := &schema.DecimalType{
 			T: t,
 		}
@@ -316,7 +316,7 @@ func parseRawType(raw string) (schema.Type, error) {
 			dt.Scale = int(s)
 		}
 		return dt, nil
-	case tFloat, tDouble, tReal:
+	case TypeFloat, TypeDouble, TypeReal:
 		ft := &schema.FloatType{
 			T: t,
 		}
@@ -328,25 +328,25 @@ func parseRawType(raw string) (schema.Type, error) {
 			ft.Precision = int(p)
 		}
 		return ft, nil
-	case tBinary, tVarBinary:
+	case TypeBinary, TypeVarBinary:
 		return &schema.BinaryType{
 			T:    t,
 			Size: int(size),
 		}, nil
-	case tTinyBlob, tMediumBlob, tBlob, tLongBlob:
+	case TypeTinyBlob, TypeMediumBlob, TypeBlob, TypeLongBlob:
 		return &schema.BinaryType{
 			T: t,
 		}, nil
-	case tChar, tVarchar:
+	case TypeChar, TypeVarchar:
 		return &schema.StringType{
 			T:    t,
 			Size: int(size),
 		}, nil
-	case tTinyText, tMediumText, tText, tLongText:
+	case TypeTinyText, TypeMediumText, TypeText, TypeLongText:
 		return &schema.StringType{
 			T: t,
 		}, nil
-	case tEnum, tSet:
+	case TypeEnum, TypeSet:
 		// Parse the enum values according to the MySQL format.
 		// github.com/mysql/mysql-server/blob/8.0/sql/field.cc#Field_enum::sql_type
 		rv := strings.TrimSuffix(strings.TrimPrefix(raw, t+"("), ")")
@@ -357,7 +357,7 @@ func parseRawType(raw string) (schema.Type, error) {
 		for i := range values {
 			values[i] = strings.Trim(values[i], "'")
 		}
-		if t == tEnum {
+		if t == TypeEnum {
 			return &schema.EnumType{
 				Values: values,
 			}, nil
@@ -365,15 +365,15 @@ func parseRawType(raw string) (schema.Type, error) {
 		return &SetType{
 			Values: values,
 		}, nil
-	case tDate, tDateTime, tTime, tTimestamp, tYear:
+	case TypeDate, TypeDateTime, TypeTime, TypeTimestamp, TypeYear:
 		return &schema.TimeType{
 			T: t,
 		}, nil
-	case tJSON:
+	case TypeJSON:
 		return &schema.JSONType{
 			T: t,
 		}, nil
-	case tPoint, tMultiPoint, tLineString, tMultiLineString, tPolygon, tMultiPolygon, tGeometry, tGeoCollection, tGeometryCollection:
+	case TypePoint, TypeMultiPoint, TypeLineString, TypeMultiLineString, TypePolygon, TypeMultiPolygon, TypeGeometry, TypeGeoCollection, TypeGeometryCollection:
 		return &schema.SpatialType{
 			T: t,
 		}, nil
@@ -513,9 +513,9 @@ func (i *inspect) checks(ctx context.Context, t *schema.Table) error {
 		// Ent to manually add this CHECK for older versions of MariaDB.
 		if i.mariadb() {
 			c, ok := t.Column(check.Name)
-			if ok && c.Type.Raw == tLongText && check.Expr == fmt.Sprintf("json_valid(`%s`)", c.Name) {
-				c.Type.Raw = tJSON
-				c.Type.Type = &schema.JSONType{T: tJSON}
+			if ok && c.Type.Raw == TypeLongText && check.Expr == fmt.Sprintf("json_valid(`%s`)", c.Name) {
+				c.Type.Raw = TypeJSON
+				c.Type.Type = &schema.JSONType{T: TypeJSON}
 			}
 		}
 
@@ -548,14 +548,14 @@ func parseColumn(typ string) (parts []string, size int64, unsigned bool, err err
 	switch parts = strings.FieldsFunc(typ, func(r rune) bool {
 		return r == '(' || r == ')' || r == ' ' || r == ','
 	}); parts[0] {
-	case tTinyInt, tSmallInt, tMediumInt, tInt, tBigInt:
+	case TypeTinyInt, TypeSmallInt, TypeMediumInt, TypeInt, TypeBigInt:
 		if attr := parts[len(parts)-1]; attr == "unsigned" || attr == "zerofill" {
 			unsigned = true
 		}
 		if len(parts) > 2 || len(parts) == 2 && !unsigned {
 			size, err = strconv.ParseInt(parts[1], 10, 64)
 		}
-	case tBinary, tVarBinary, tChar, tVarchar:
+	case TypeBinary, TypeVarBinary, TypeChar, TypeVarchar:
 		size, err = strconv.ParseInt(parts[1], 10, 64)
 	}
 	if err != nil {

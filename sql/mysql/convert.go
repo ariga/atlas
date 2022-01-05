@@ -27,12 +27,12 @@ func FormatType(t schema.Type) (string, error) {
 		}
 	case *schema.BinaryType:
 		f = strings.ToLower(t.T)
-		if f == tVarBinary {
+		if f == TypeVarBinary {
 			// Zero is also a valid length.
 			f = fmt.Sprintf("%s(%d)", f, t.Size)
 		}
 	case *schema.DecimalType:
-		if f = strings.ToLower(t.T); f != tDecimal && f != tNumeric {
+		if f = strings.ToLower(t.T); f != TypeDecimal && f != TypeNumeric {
 			return "", fmt.Errorf("mysql: unexpected decimal type: %q", t.T)
 		}
 		switch p, s := t.Precision, t.Scale; {
@@ -56,8 +56,8 @@ func FormatType(t schema.Type) (string, error) {
 		f = strings.ToLower(t.T)
 		// FLOAT with precision > 24, become DOUBLE.
 		// Also, REAL is a synonym for DOUBLE (if REAL_AS_FLOAT was not set).
-		if f == tFloat && t.Precision > 24 || f == tReal {
-			f = tDouble
+		if f == TypeFloat && t.Precision > 24 || f == TypeReal {
+			f = TypeDouble
 		}
 	case *schema.IntegerType:
 		f = strings.ToLower(t.T)
@@ -70,7 +70,7 @@ func FormatType(t schema.Type) (string, error) {
 		f = fmt.Sprintf("enum(%s)", formatValues(t.Values))
 	case *schema.StringType:
 		f = strings.ToLower(t.T)
-		if f == tChar || f == tVarchar {
+		if f == TypeChar || f == TypeVarchar {
 			// Zero is also a valid length.
 			f = fmt.Sprintf("%s(%d)", f, t.Size)
 		}
