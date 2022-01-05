@@ -60,8 +60,8 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 // https://www.sqlite.org/datatype3.html
 // https://github.com/sqlite/sqlite/blob/master/src/global.c
 const (
-	tInteger = "integer" // SQLITE_TYPE_INTEGER
-	tReal    = "real"    // SQLITE_TYPE_REAL
-	tText    = "text"    // SQLITE_TYPE_TEXT
-	tBlob    = "blob"    // SQLITE_TYPE_BLOB
+	TypeInteger = "integer" // SQLITE_TYPE_INTEGER
+	TypeReal    = "real"    // SQLITE_TYPE_REAL
+	TypeText    = "text"    // SQLITE_TYPE_TEXT
+	TypeBlob    = "blob"    // SQLITE_TYPE_BLOB
 )
