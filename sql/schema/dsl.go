@@ -9,7 +9,7 @@ import (
 )
 
 // The functions and methods below provide a DSL for creating schema resources using
-// a fluent interface. Note, methods named "Add<T>" links the arguments in both directions.
+// a fluent interface. Note that some methods create links between the schema elements.
 
 // New creates a new Schema.
 func New(name string) *Schema {
@@ -162,8 +162,7 @@ func NewBoolColumn(name, typ string) *Column {
 
 // NewNullBoolColumn creates a new nullable BoolType column.
 func NewNullBoolColumn(name, typ string) *Column {
-	return NewColumn(name).
-		SetType(&BoolType{T: typ}).
+	return NewBoolColumn(name, typ).
 		SetNull(true)
 }
 
@@ -175,8 +174,7 @@ func NewIntColumn(name, typ string) *Column {
 
 // NewNullIntColumn creates a new nullable IntegerType column.
 func NewNullIntColumn(name, typ string) *Column {
-	return NewColumn(name).
-		SetType(&IntegerType{T: typ}).
+	return NewIntColumn(name, typ).
 		SetNull(true)
 }
 
@@ -188,8 +186,7 @@ func NewUintColumn(name, typ string) *Column {
 
 // NewNullUintColumn creates a new nullable unsigned IntegerType column.
 func NewNullUintColumn(name, typ string) *Column {
-	return NewColumn(name).
-		SetType(&IntegerType{T: typ, Unsigned: true}).
+	return NewUintColumn(name, typ).
 		SetNull(true)
 }
 
@@ -223,7 +220,8 @@ func NewEnumColumn(name string, opts ...EnumOption) *Column {
 
 // NewNullEnumColumn creates a new nullable EnumType column.
 func NewNullEnumColumn(name string, opts ...EnumOption) *Column {
-	return NewEnumColumn(name, opts...).SetNull(true)
+	return NewEnumColumn(name, opts...).
+		SetNull(true)
 }
 
 // BinaryOption allows configuring BinaryType using functional options.
@@ -247,7 +245,8 @@ func NewBinaryColumn(name, typ string, opts ...BinaryOption) *Column {
 
 // NewNullBinaryColumn creates a new nullable BinaryType column.
 func NewNullBinaryColumn(name, typ string, opts ...BinaryOption) *Column {
-	return NewBinaryColumn(name, typ, opts...).SetNull(true)
+	return NewBinaryColumn(name, typ, opts...).
+		SetNull(true)
 }
 
 // StringOption allows configuring StringType using functional options.
@@ -271,7 +270,8 @@ func NewStringColumn(name, typ string, opts ...StringOption) *Column {
 
 // NewNullStringColumn creates a new nullable StringType column.
 func NewNullStringColumn(name, typ string, opts ...StringOption) *Column {
-	return NewStringColumn(name, typ, opts...).SetNull(true)
+	return NewStringColumn(name, typ, opts...).
+		SetNull(true)
 }
 
 // DecimalOption allows configuring DecimalType using functional options.
@@ -302,7 +302,8 @@ func NewDecimalColumn(name, typ string, opts ...DecimalOption) *Column {
 
 // NewNullDecimalColumn creates a new nullable DecimalType column.
 func NewNullDecimalColumn(name, typ string, opts ...DecimalOption) *Column {
-	return NewDecimalColumn(name, typ, opts...).SetNull(true)
+	return NewDecimalColumn(name, typ, opts...).
+		SetNull(true)
 }
 
 // FloatOption allows configuring FloatType using functional options.
@@ -326,37 +327,44 @@ func NewFloatColumn(name, typ string, opts ...FloatOption) *Column {
 
 // NewNullFloatColumn creates a new nullable FloatType column.
 func NewNullFloatColumn(name, typ string, opts ...FloatOption) *Column {
-	return NewFloatColumn(name, typ, opts...).SetNull(true)
+	return NewFloatColumn(name, typ, opts...).
+		SetNull(true)
 }
 
 // NewTimeColumn creates a new TimeType column.
 func NewTimeColumn(name, typ string) *Column {
-	return NewColumn(name).SetType(&TimeType{T: typ})
+	return NewColumn(name).
+		SetType(&TimeType{T: typ})
 }
 
 // NewNullTimeColumn creates a new nullable TimeType column.
 func NewNullTimeColumn(name, typ string) *Column {
-	return NewTimeColumn(name, typ).SetNull(true)
+	return NewTimeColumn(name, typ).
+		SetNull(true)
 }
 
 // NewJSONColumn creates a new JSONType column.
 func NewJSONColumn(name, typ string) *Column {
-	return NewColumn(name).SetType(&JSONType{T: typ})
+	return NewColumn(name).
+		SetType(&JSONType{T: typ})
 }
 
 // NewNullJSONColumn creates a new nullable JSONType column.
 func NewNullJSONColumn(name, typ string) *Column {
-	return NewJSONColumn(name, typ).SetNull(true)
+	return NewJSONColumn(name, typ).
+		SetNull(true)
 }
 
 // NewSpatialColumn creates a new SpatialType column.
 func NewSpatialColumn(name, typ string) *Column {
-	return NewColumn(name).SetType(&SpatialType{T: typ})
+	return NewColumn(name).
+		SetType(&SpatialType{T: typ})
 }
 
 // NewNullSpatialColumn creates a new nullable SpatialType column.
 func NewNullSpatialColumn(name, typ string) *Column {
-	return NewSpatialColumn(name, typ).SetNull(true)
+	return NewSpatialColumn(name, typ).
+		SetNull(true)
 }
 
 // SetNull configures the nullability of the column
