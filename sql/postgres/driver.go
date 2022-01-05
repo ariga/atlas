@@ -72,69 +72,69 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 // Standard column types (and their aliases) as defined in
 // PostgreSQL codebase/website.
 const (
-	tBit     = "bit"
-	tBitVar  = "bit varying"
-	tBoolean = "boolean"
-	tBool    = "bool" // boolean.
-	tBytea   = "bytea"
+	TypeBit     = "bit"
+	TypeBitVar  = "bit varying"
+	TypeBoolean = "boolean"
+	TypeBool    = "bool" // boolean.
+	TypeBytea   = "bytea"
 
-	tCharacter = "character"
-	tChar      = "char" // character
-	tCharVar   = "character varying"
-	tVarChar   = "varchar" // character varying
-	tText      = "text"
+	TypeCharacter = "character"
+	TypeChar      = "char" // character
+	TypeCharVar   = "character varying"
+	TypeVarChar   = "varchar" // character varying
+	TypeText      = "text"
 
-	tSmallInt = "smallint"
-	tInteger  = "integer"
-	tBigInt   = "bigint"
-	tInt      = "int"  // integer.
-	tInt2     = "int2" // smallint.
-	tInt4     = "int4" // integer.
-	tInt8     = "int8" // bigint.
+	TypeSmallInt = "smallint"
+	TypeInteger  = "integer"
+	TypeBigInt   = "bigint"
+	TypeInt      = "int"  // integer.
+	TypeInt2     = "int2" // smallint.
+	TypeInt4     = "int4" // integer.
+	TypeInt8     = "int8" // bigint.
 
-	tCIDR     = "cidr"
-	tInet     = "inet"
-	tMACAddr  = "macaddr"
-	tMACAddr8 = "macaddr8"
+	TypeCIDR     = "cidr"
+	TypeInet     = "inet"
+	TypeMACAddr  = "macaddr"
+	TypeMACAddr8 = "macaddr8"
 
-	tCircle  = "circle"
-	tLine    = "line"
-	tLseg    = "lseg"
-	tBox     = "box"
-	tPath    = "path"
-	tPolygon = "polygon"
-	tPoint   = "point"
+	TypeCircle  = "circle"
+	TypeLine    = "line"
+	TypeLseg    = "lseg"
+	TypeBox     = "box"
+	TypePath    = "path"
+	TypePolygon = "polygon"
+	TypePoint   = "point"
 
-	tDate          = "date"
-	tTime          = "time" // time without time zone
-	tTimeWTZ       = "time with time zone"
-	tTimeWOTZ      = "time without time zone"
-	tTimestamp     = "timestamp" // timestamp without time zone
-	tTimestampTZ   = "timestamptz"
-	tTimestampWTZ  = "timestamp with time zone"
-	tTimestampWOTZ = "timestamp without time zone"
+	TypeDate          = "date"
+	TypeTime          = "time" // time without time zone
+	TypeTimeWTZ       = "time with time zone"
+	TypeTimeWOTZ      = "time without time zone"
+	TypeTimestamp     = "timestamp" // timestamp without time zone
+	TypeTimestampTZ   = "timestamptz"
+	TypeTimestampWTZ  = "timestamp with time zone"
+	TypeTimestampWOTZ = "timestamp without time zone"
 
-	tDouble = "double precision"
-	tReal   = "real"
-	tFloat8 = "float8" // double precision
-	tFloat4 = "float4" // real
+	TypeDouble = "double precision"
+	TypeReal   = "real"
+	TypeFloat8 = "float8" // double precision
+	TypeFloat4 = "float4" // real
 
-	tNumeric = "numeric"
-	tDecimal = "decimal" // numeric
+	TypeNumeric = "numeric"
+	TypeDecimal = "decimal" // numeric
 
-	tSmallSerial = "smallserial" // smallint with auto_increment.
-	tSerial      = "serial"      // integer with auto_increment.
-	tBigSerial   = "bigserial"   // bigint with auto_increment.
-	tSerial2     = "serial2"     // smallserial
-	tSerial4     = "serial4"     // serial
-	tSerial8     = "serial8"     // bigserial
+	TypeSmallSerial = "smallserial" // smallint with auto_increment.
+	TypeSerial      = "serial"      // integer with auto_increment.
+	TypeBigSerial   = "bigserial"   // bigint with auto_increment.
+	TypeSerial2     = "serial2"     // smallserial
+	TypeSerial4     = "serial4"     // serial
+	TypeSerial8     = "serial8"     // bigserial
 
-	tArray       = "array"
-	tXML         = "xml"
-	tJSON        = "json"
-	tJSONB       = "jsonb"
-	tUUID        = "uuid"
-	tMoney       = "money"
-	tInterval    = "interval"
-	tUserDefined = "user-defined"
+	TypeArray       = "array"
+	TypeXML         = "xml"
+	TypeJSON        = "json"
+	TypeJSONB       = "jsonb"
+	TypeUUID        = "uuid"
+	TypeMoney       = "money"
+	TypeInterval    = "interval"
+	TypeUserDefined = "user-defined"
 )

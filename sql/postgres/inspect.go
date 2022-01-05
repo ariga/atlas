@@ -212,49 +212,49 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 func columnType(c *columnDesc) schema.Type {
 	var typ schema.Type
 	switch t := c.typ; strings.ToLower(t) {
-	case tBigInt, tInt8, tInt, tInteger, tInt4, tSmallInt, tInt2:
+	case TypeBigInt, TypeInt8, TypeInt, TypeInteger, TypeInt4, TypeSmallInt, TypeInt2:
 		typ = &schema.IntegerType{T: t}
-	case tBit, tBitVar:
+	case TypeBit, TypeBitVar:
 		typ = &BitType{T: t, Len: c.size}
-	case tBool, tBoolean:
+	case TypeBool, TypeBoolean:
 		typ = &schema.BoolType{T: t}
-	case tBytea:
+	case TypeBytea:
 		typ = &schema.BinaryType{T: t}
-	case tCharacter, tChar, tCharVar, tVarChar, tText:
+	case TypeCharacter, TypeChar, TypeCharVar, TypeVarChar, TypeText:
 		// A `character` column without length specifier is equivalent to `character(1)`,
 		// but `varchar` without length accepts strings of any size (same as `text`).
 		typ = &schema.StringType{T: t, Size: int(c.size)}
-	case tCIDR, tInet, tMACAddr, tMACAddr8:
+	case TypeCIDR, TypeInet, TypeMACAddr, TypeMACAddr8:
 		typ = &NetworkType{T: t}
-	case tCircle, tLine, tLseg, tBox, tPath, tPolygon, tPoint:
+	case TypeCircle, TypeLine, TypeLseg, TypeBox, TypePath, TypePolygon, TypePoint:
 		typ = &schema.SpatialType{T: t}
-	case tDate, tTime, tTimeWTZ, tTimeWOTZ,
-		tTimestamp, tTimestampTZ, tTimestampWTZ, tTimestampWOTZ:
+	case TypeDate, TypeTime, TypeTimeWTZ, TypeTimeWOTZ,
+		TypeTimestamp, TypeTimestampTZ, TypeTimestampWTZ, TypeTimestampWOTZ:
 		typ = &schema.TimeType{T: t}
-	case tInterval:
+	case TypeInterval:
 		// TODO: get 'interval_type' from query above before implementing.
 		typ = &schema.UnsupportedType{T: t}
-	case tReal, tDouble, tFloat4, tFloat8:
+	case TypeReal, TypeDouble, TypeFloat4, TypeFloat8:
 		typ = &schema.FloatType{T: t, Precision: int(c.precision)}
-	case tJSON, tJSONB:
+	case TypeJSON, TypeJSONB:
 		typ = &schema.JSONType{T: t}
-	case tMoney:
+	case TypeMoney:
 		typ = &CurrencyType{T: t}
-	case tDecimal, tNumeric:
+	case TypeDecimal, TypeNumeric:
 		typ = &schema.DecimalType{T: t, Precision: int(c.precision), Scale: int(c.scale)}
-	case tSmallSerial, tSerial, tBigSerial, tSerial2, tSerial4, tSerial8:
+	case TypeSmallSerial, TypeSerial, TypeBigSerial, TypeSerial2, TypeSerial4, TypeSerial8:
 		typ = &SerialType{T: t, Precision: int(c.precision)}
-	case tUUID:
+	case TypeUUID:
 		typ = &UUIDType{T: t}
-	case tXML:
+	case TypeXML:
 		typ = &XMLType{T: t}
-	case tArray:
+	case TypeArray:
 		// Note that for ARRAY types, the 'udt_name' column holds the array type
 		// prefixed with '_'. For example, for 'integer[]' the result is '_int',
 		// and for 'text[N][M]' the result is also '_text'. That's because, the
 		// database ignores any size or multi-dimensions constraints.
 		typ = &ArrayType{T: strings.TrimPrefix(c.udt, "_") + "[]"}
-	case tUserDefined:
+	case TypeUserDefined:
 		typ = &UserDefinedType{T: c.udt}
 		// The `typtype` column is set to 'e' for enum types, and the
 		// values are filled in batch after the rows above is closed.

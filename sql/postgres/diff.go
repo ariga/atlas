@@ -134,12 +134,12 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 		}
 		var it string
 		switch s.T {
-		case tSmallSerial:
-			it = tSmallInt
-		case tSerial:
-			it = tInteger
-		case tBigSerial:
-			it = tBigInt
+		case TypeSmallSerial:
+			it = TypeSmallInt
+		case TypeSerial:
+			it = TypeInteger
+		case TypeBigSerial:
+			it = TypeBigInt
 		}
 		return i.T != it, nil
 	}
