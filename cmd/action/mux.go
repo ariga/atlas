@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"ariga.io/atlas/cmd/action/internal/uri"
+	"ariga.io/atlas/cmd/action/internal"
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlite"
@@ -88,7 +88,7 @@ func schemaNameFromDSN(url string) (string, error) {
 }
 
 func schemaName(dsn string) (string, error) {
-	err := uri.SqliteExists(dsn)
+	err := action.SQLiteExists(dsn)
 	if err != nil {
 		return "", err
 	}

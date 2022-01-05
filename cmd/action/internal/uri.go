@@ -2,10 +2,9 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package uri
+package action
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,8 +14,8 @@ import (
 
 var inMemory = regexp.MustCompile("^file:.*:memory:$|:memory:|^file:.*mode=memory.*")
 
-// SqliteExists returns nil if the sqlite dsn is in memory or file exists, otherwise error.
-func SqliteExists(dsn string) error {
+// SQLiteExists returns nil if the sqlite dsn is in memory or file exists, otherwise error.
+func SQLiteExists(dsn string) error {
 	if !inMemory.MatchString(dsn) {
 		return fileExists(dsn)
 	}
@@ -25,20 +24,16 @@ func SqliteExists(dsn string) error {
 
 func fileExists(dsn string) error {
 	s := strings.Split(dsn, "?")
-	fn := dsn
+	f := dsn
 	if len(s) == 2 {
-		fn = s[0]
+		f = s[0]
 	}
-	if strings.Contains(fn, "file:") {
-		fn = strings.SplitAfter(fn, "file:")[1]
+	if strings.Contains(f, "file:") {
+		f = strings.SplitAfter(f, "file:")[1]
 	}
-	fn = filepath.Clean(fn)
-	_, err := os.Stat(fn)
-	if errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("file %s does not exist", fn)
-	}
-	if errors.Is(err, os.ErrPermission) {
-		return fmt.Errorf("no permission to access file %s", fn)
+	f = filepath.Clean(f)
+	if _, err := os.Stat(f); err != nil {
+		return fmt.Errorf("failed opening %q: %w", f, err)
 	}
 	return nil
 }
