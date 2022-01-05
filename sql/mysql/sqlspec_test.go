@@ -69,7 +69,7 @@ table "accounts" {
 					Name: "col",
 					Type: &schema.ColumnType{
 						Type: &schema.IntegerType{
-							T: tInt,
+							T: TypeInt,
 						},
 					},
 				},
@@ -77,7 +77,7 @@ table "accounts" {
 					Name: "age",
 					Type: &schema.ColumnType{
 						Type: &schema.IntegerType{
-							T: tInt,
+							T: TypeInt,
 						},
 					},
 				},
@@ -85,7 +85,7 @@ table "accounts" {
 					Name: "account_name",
 					Type: &schema.ColumnType{
 						Type: &schema.StringType{
-							T:    tVarchar,
+							T:    TypeVarchar,
 							Size: 32,
 						},
 					},
@@ -100,7 +100,7 @@ table "accounts" {
 					Name: "name",
 					Type: &schema.ColumnType{
 						Type: &schema.StringType{
-							T:    tVarchar,
+							T:    TypeVarchar,
 							Size: 32,
 						},
 					},
@@ -280,84 +280,84 @@ func TestTypes(t *testing.T) {
 	}{
 		{
 			typeExpr: "varchar(255)",
-			expected: &schema.StringType{T: tVarchar, Size: 255},
+			expected: &schema.StringType{T: TypeVarchar, Size: 255},
 		},
 		{
 			typeExpr: "char(255)",
-			expected: &schema.StringType{T: tChar, Size: 255},
+			expected: &schema.StringType{T: TypeChar, Size: 255},
 		},
 		{
 			typeExpr: "binary(255)",
-			expected: &schema.BinaryType{T: tBinary, Size: 255},
+			expected: &schema.BinaryType{T: TypeBinary, Size: 255},
 		},
 		{
 			typeExpr: "varbinary(255)",
-			expected: &schema.BinaryType{T: tVarBinary, Size: 255},
+			expected: &schema.BinaryType{T: TypeVarBinary, Size: 255},
 		},
 		{
 			typeExpr: "int",
-			expected: &schema.IntegerType{T: tInt},
+			expected: &schema.IntegerType{T: TypeInt},
 		},
 		{
 			typeExpr:  "int",
 			extraAttr: "unsigned=true",
-			expected:  &schema.IntegerType{T: tInt, Unsigned: true},
+			expected:  &schema.IntegerType{T: TypeInt, Unsigned: true},
 		},
 		{
 			typeExpr: "int",
-			expected: &schema.IntegerType{T: tInt},
+			expected: &schema.IntegerType{T: TypeInt},
 		},
 		{
 			typeExpr: "bigint",
-			expected: &schema.IntegerType{T: tBigInt},
+			expected: &schema.IntegerType{T: TypeBigInt},
 		},
 		{
 			typeExpr:  "bigint",
 			extraAttr: "unsigned=true",
-			expected:  &schema.IntegerType{T: tBigInt, Unsigned: true},
+			expected:  &schema.IntegerType{T: TypeBigInt, Unsigned: true},
 		},
 		{
 			typeExpr: "tinyint",
-			expected: &schema.IntegerType{T: tTinyInt},
+			expected: &schema.IntegerType{T: TypeTinyInt},
 		},
 		{
 			typeExpr:  "tinyint",
 			extraAttr: "unsigned=true",
-			expected:  &schema.IntegerType{T: tTinyInt, Unsigned: true},
+			expected:  &schema.IntegerType{T: TypeTinyInt, Unsigned: true},
 		},
 		{
 			typeExpr: "smallint",
-			expected: &schema.IntegerType{T: tSmallInt},
+			expected: &schema.IntegerType{T: TypeSmallInt},
 		},
 		{
 			typeExpr:  "smallint",
 			extraAttr: "unsigned=true",
-			expected:  &schema.IntegerType{T: tSmallInt, Unsigned: true},
+			expected:  &schema.IntegerType{T: TypeSmallInt, Unsigned: true},
 		},
 		{
 			typeExpr: "mediumint",
-			expected: &schema.IntegerType{T: tMediumInt},
+			expected: &schema.IntegerType{T: TypeMediumInt},
 		},
 		{
 			typeExpr:  "mediumint",
 			extraAttr: "unsigned=true",
-			expected:  &schema.IntegerType{T: tMediumInt, Unsigned: true},
+			expected:  &schema.IntegerType{T: TypeMediumInt, Unsigned: true},
 		},
 		{
 			typeExpr: "tinytext",
-			expected: &schema.StringType{T: tTinyText},
+			expected: &schema.StringType{T: TypeTinyText},
 		},
 		{
 			typeExpr: "mediumtext",
-			expected: &schema.StringType{T: tMediumText},
+			expected: &schema.StringType{T: TypeMediumText},
 		},
 		{
 			typeExpr: "longtext",
-			expected: &schema.StringType{T: tLongText},
+			expected: &schema.StringType{T: TypeLongText},
 		},
 		{
 			typeExpr: "text",
-			expected: &schema.StringType{T: tText},
+			expected: &schema.StringType{T: TypeText},
 		},
 		{
 			typeExpr: `enum("on","off")`,
@@ -365,115 +365,115 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			typeExpr: "bit(10)",
-			expected: &BitType{T: tBit},
+			expected: &BitType{T: TypeBit},
 		},
 		{
 			typeExpr: "int(10)",
-			expected: &schema.IntegerType{T: tInt},
+			expected: &schema.IntegerType{T: TypeInt},
 		},
 		{
 			typeExpr: "tinyint(10)",
-			expected: &schema.IntegerType{T: tTinyInt},
+			expected: &schema.IntegerType{T: TypeTinyInt},
 		},
 		{
 			typeExpr: "smallint(10)",
-			expected: &schema.IntegerType{T: tSmallInt},
+			expected: &schema.IntegerType{T: TypeSmallInt},
 		},
 		{
 			typeExpr: "mediumint(10)",
-			expected: &schema.IntegerType{T: tMediumInt},
+			expected: &schema.IntegerType{T: TypeMediumInt},
 		},
 		{
 			typeExpr: "bigint(10)",
-			expected: &schema.IntegerType{T: tBigInt},
+			expected: &schema.IntegerType{T: TypeBigInt},
 		},
 		{
 			typeExpr: "decimal",
-			expected: &schema.DecimalType{T: tDecimal},
+			expected: &schema.DecimalType{T: TypeDecimal},
 		},
 		{
 			typeExpr: "numeric",
-			expected: &schema.DecimalType{T: tNumeric},
+			expected: &schema.DecimalType{T: TypeNumeric},
 		},
 		{
 			typeExpr: "float(10,0)",
-			expected: &schema.FloatType{T: tFloat, Precision: 10},
+			expected: &schema.FloatType{T: TypeFloat, Precision: 10},
 		},
 		{
 			typeExpr: "double(10,0)",
-			expected: &schema.FloatType{T: tDouble, Precision: 10},
+			expected: &schema.FloatType{T: TypeDouble, Precision: 10},
 		},
 		{
 			typeExpr: "real",
-			expected: &schema.FloatType{T: tReal},
+			expected: &schema.FloatType{T: TypeReal},
 		},
 		{
 			typeExpr: "timestamp",
-			expected: &schema.TimeType{T: tTimestamp},
+			expected: &schema.TimeType{T: TypeTimestamp},
 		},
 		{
 			typeExpr: "date",
-			expected: &schema.TimeType{T: tDate},
+			expected: &schema.TimeType{T: TypeDate},
 		},
 		{
 			typeExpr: "time",
-			expected: &schema.TimeType{T: tTime},
+			expected: &schema.TimeType{T: TypeTime},
 		},
 		{
 			typeExpr: "datetime",
-			expected: &schema.TimeType{T: tDateTime},
+			expected: &schema.TimeType{T: TypeDateTime},
 		},
 		{
 			typeExpr: "year",
-			expected: &schema.TimeType{T: tYear},
+			expected: &schema.TimeType{T: TypeYear},
 		},
 		{
 			typeExpr: "varchar(10)",
-			expected: &schema.StringType{T: tVarchar, Size: 10},
+			expected: &schema.StringType{T: TypeVarchar, Size: 10},
 		},
 		{
 			typeExpr: "char(25)",
-			expected: &schema.StringType{T: tChar, Size: 25},
+			expected: &schema.StringType{T: TypeChar, Size: 25},
 		},
 		{
 			typeExpr: "varbinary(30)",
-			expected: &schema.BinaryType{T: tVarBinary, Size: 30},
+			expected: &schema.BinaryType{T: TypeVarBinary, Size: 30},
 		},
 		{
 			typeExpr: "binary(5)",
-			expected: &schema.BinaryType{T: tBinary, Size: 5},
+			expected: &schema.BinaryType{T: TypeBinary, Size: 5},
 		},
 		{
 			typeExpr: "blob(5)",
-			expected: &schema.StringType{T: tBlob},
+			expected: &schema.StringType{T: TypeBlob},
 		},
 		{
 			typeExpr: "tinyblob",
-			expected: &schema.StringType{T: tTinyBlob},
+			expected: &schema.StringType{T: TypeTinyBlob},
 		},
 		{
 			typeExpr: "mediumblob",
-			expected: &schema.StringType{T: tMediumBlob},
+			expected: &schema.StringType{T: TypeMediumBlob},
 		},
 		{
 			typeExpr: "longblob",
-			expected: &schema.StringType{T: tLongBlob},
+			expected: &schema.StringType{T: TypeLongBlob},
 		},
 		{
 			typeExpr: "text(13)",
-			expected: &schema.StringType{T: tText},
+			expected: &schema.StringType{T: TypeText},
 		},
 		{
 			typeExpr: "tinytext",
-			expected: &schema.StringType{T: tTinyText},
+			expected: &schema.StringType{T: TypeTinyText},
 		},
 		{
 			typeExpr: "mediumtext",
-			expected: &schema.StringType{T: tMediumText},
+			expected: &schema.StringType{T: TypeMediumText},
 		},
 		{
 			typeExpr: "longtext",
-			expected: &schema.StringType{T: tLongText},
+			expected: &schema.StringType{T: TypeLongText},
 		},
 		{
 			typeExpr: `enum("a","b")`,
@@ -485,35 +485,35 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			typeExpr: "geometry",
-			expected: &schema.SpatialType{T: tGeometry},
+			expected: &schema.SpatialType{T: TypeGeometry},
 		},
 		{
 			typeExpr: "point",
-			expected: &schema.SpatialType{T: tPoint},
+			expected: &schema.SpatialType{T: TypePoint},
 		},
 		{
 			typeExpr: "multipoint",
-			expected: &schema.SpatialType{T: tMultiPoint},
+			expected: &schema.SpatialType{T: TypeMultiPoint},
 		},
 		{
 			typeExpr: "linestring",
-			expected: &schema.SpatialType{T: tLineString},
+			expected: &schema.SpatialType{T: TypeLineString},
 		},
 		{
 			typeExpr: "multilinestring",
-			expected: &schema.SpatialType{T: tMultiLineString},
+			expected: &schema.SpatialType{T: TypeMultiLineString},
 		},
 		{
 			typeExpr: "polygon",
-			expected: &schema.SpatialType{T: tPolygon},
+			expected: &schema.SpatialType{T: TypePolygon},
 		},
 		{
 			typeExpr: "multipolygon",
-			expected: &schema.SpatialType{T: tMultiPolygon},
+			expected: &schema.SpatialType{T: TypeMultiPolygon},
 		},
 		{
 			typeExpr: "geometrycollection",
-			expected: &schema.SpatialType{T: tGeometryCollection},
+			expected: &schema.SpatialType{T: TypeGeometryCollection},
 		},
 	}
 	for _, tt := range tests {
