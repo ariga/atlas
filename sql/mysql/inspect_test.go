@@ -57,11 +57,11 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(sqltest.Escape(tableQuery)).
 					WithArgs("users").
 					WillReturnRows(sqltest.Rows(`
-+--------------+--------------------+--------------------+----------------+---------------+
-| TABLE_SCHEMA | CHARACTER_SET_NAME | TABLE_COLLATION    | AUTO_INCREMENT | TABLE_COMMENT |
-+--------------+--------------------+--------------------+----------------+---------------+
-| test         | utf8mb4            | utf8mb4_0900_ai_ci | nil            | Comment       |
-+--------------+--------------------+--------------------+----------------+---------------+
++--------------+--------------------+--------------------+----------------+---------------+--------------------+
+| TABLE_SCHEMA | CHARACTER_SET_NAME | TABLE_COLLATION    | AUTO_INCREMENT | TABLE_COMMENT | CREATE_OPTIONS     |
++--------------+--------------------+--------------------+----------------+---------------+--------------------+
+| test         | utf8mb4            | utf8mb4_0900_ai_ci | nil            | Comment       | COMPRESSION="ZLIB" |
++--------------+--------------------+--------------------+----------------+---------------+--------------------+
 `))
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("test", "users").
@@ -82,6 +82,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					&schema.Charset{V: "utf8mb4"},
 					&schema.Collation{V: "utf8mb4_0900_ai_ci"},
 					&schema.Comment{Text: "Comment"},
+					&CreateOptions{V: `COMPRESSION="ZLIB"`},
 				}, t.Attrs)
 				require.Len(t.PrimaryKey.Parts, 1)
 				require.True(t.PrimaryKey.Parts[0].C == t.Columns[0])
@@ -889,9 +890,9 @@ func (m mock) tables(schema string, names ...string) {
 }
 
 func (m mock) tableExists(schema, table string, exists bool) {
-	rows := sqlmock.NewRows([]string{"table_schema", "table_collation", "character_set", "auto_increment", "table_comment"})
+	rows := sqlmock.NewRows([]string{"table_schema", "table_collation", "character_set", "auto_increment", "table_comment", "create_options"})
 	if exists {
-		rows.AddRow(schema, nil, nil, nil, nil)
+		rows.AddRow(schema, nil, nil, nil, nil, nil)
 	}
 	m.ExpectQuery(sqltest.Escape(tableQuery)).
 		WithArgs(table).
@@ -899,9 +900,9 @@ func (m mock) tableExists(schema, table string, exists bool) {
 }
 
 func (m mock) tableExistsInSchema(schema, table string, exists bool) {
-	rows := sqlmock.NewRows([]string{"table_schema", "table_collation", "character_set", "auto_increment", "table_comment"})
+	rows := sqlmock.NewRows([]string{"table_schema", "table_collation", "character_set", "auto_increment", "table_comment", "create_options"})
 	if exists {
-		rows.AddRow(schema, nil, nil, nil, nil)
+		rows.AddRow(schema, nil, nil, nil, nil, nil)
 	}
 	m.ExpectQuery(sqltest.Escape(tableSchemaQuery)).
 		WithArgs(table, schema).
