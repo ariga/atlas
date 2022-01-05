@@ -404,7 +404,7 @@ func (c *Column) SetComment(v string) *Column {
 	return c
 }
 
-// AddAttrs adds and additional attributes to the column.
+// AddAttrs adds additional attributes to the column.
 func (c *Column) AddAttrs(attrs ...Attr) *Column {
 	c.Attrs = append(c.Attrs, attrs...)
 	return c
