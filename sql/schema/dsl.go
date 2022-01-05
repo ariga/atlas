@@ -37,7 +37,7 @@ func (s *Schema) SetComment(v string) *Schema {
 	return s
 }
 
-// AddAttrs adds and additional attributes to the schema.
+// AddAttrs adds additional attributes to the schema.
 func (s *Schema) AddAttrs(attrs ...Attr) *Schema {
 	s.Attrs = append(s.Attrs, attrs...)
 	return s
