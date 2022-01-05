@@ -68,7 +68,7 @@ func Test_SqliteFileDoestNotExist(t *testing.T) {
 	}
 }
 
-func Test_SqliteFileExist(t *testing.T) {
+func Test_SQLiteFileExist(t *testing.T) {
 	r := require.New(t)
 	file, err := ioutil.TempFile("", "tmp")
 	r.NoError(err)
@@ -81,7 +81,7 @@ func Test_SqliteFileExist(t *testing.T) {
 	r.NoError(err)
 }
 
-func Test_SqliteInMemory(t *testing.T) {
+func Test_SQLiteInMemory(t *testing.T) {
 	r := require.New(t)
 	dsn := "file:test.db?cache=shared&mode=memory"
 	err := action.SQLiteExists(dsn)
