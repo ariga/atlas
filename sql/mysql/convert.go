@@ -32,10 +32,23 @@ func FormatType(t schema.Type) (string, error) {
 			f = fmt.Sprintf("%s(%d)", f, t.Size)
 		}
 	case *schema.DecimalType:
-		f = strings.ToLower(t.T)
-		if f == tDecimal || f == tNumeric {
-			// In MySQL, NUMERIC is implemented as DECIMAL.
-			f = fmt.Sprintf("decimal(%d,%d)", t.Precision, t.Scale)
+		if f = strings.ToLower(t.T); f != tDecimal && f != tNumeric {
+			return "", fmt.Errorf("mysql: unexpected decimal type: %q", t.T)
+		}
+		switch p, s := t.Precision, t.Scale; {
+		case p < 0 || s < 0:
+			return "", fmt.Errorf("mysql: decimal type must have precision > 0 and scale >= 0: %d, %d", p, s)
+		case p < s:
+			return "", fmt.Errorf("mysql: decimal type must have precision >= scale: %d < %d", p, s)
+		case p == 0 && s == 0:
+			// The default value for precision is 10 (i.e. decimal(0,0) = decimal(10)).
+			p = 10
+			fallthrough
+		case s == 0:
+			// In standard SQL, the syntax DECIMAL(M) is equivalent to DECIMAL(M,0),
+			f = fmt.Sprintf("decimal(%d)", p)
+		default:
+			f = fmt.Sprintf("decimal(%d,%d)", p, s)
 		}
 	case *schema.EnumType:
 		f = fmt.Sprintf("enum(%s)", formatValues(t.Values))
