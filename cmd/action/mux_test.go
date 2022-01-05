@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"ariga.io/atlas/cmd/action"
+
 	"github.com/stretchr/testify/require"
 )
 

@@ -3,12 +3,17 @@ package action
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlite"
+
 	"github.com/go-sql-driver/mysql"
 )
 
@@ -33,7 +38,10 @@ func NewMux() *Mux {
 	}
 }
 
-var defaultMux = NewMux()
+var (
+	defaultMux  = NewMux()
+	sqliteInMem = regexp.MustCompile("^file:.*:memory:$|:memory:|^file:.*mode=memory.*")
+)
 
 // RegisterProvider is used to register a Driver provider by key.
 func (u *Mux) RegisterProvider(key string, p func(string) (*Driver, error)) {
@@ -57,7 +65,7 @@ func (u *Mux) OpenAtlas(dsn string) (*Driver, error) {
 }
 
 func parseDSN(url string) (string, string, error) {
-	a := strings.Split(url, "://")
+	a := strings.SplitN(url, "://", 2)
 	if len(a) != 2 {
 		return "", "", fmt.Errorf("failed to parse dsn")
 	}
@@ -86,6 +94,11 @@ func schemaNameFromDSN(url string) (string, error) {
 }
 
 func schemaName(dsn string) (string, error) {
+	if !sqliteInMem.MatchString(dsn) {
+		if err := fileExists(dsn); err != nil {
+			return "", err
+		}
+	}
 	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return "", err
@@ -98,8 +111,28 @@ func schemaName(dsn string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if len(r.Schemas) > 1 {
-		return "", fmt.Errorf("number of schemas > 1, n=%d", len(r.Schemas))
+	if len(r.Schemas) != 1 {
+		return "", fmt.Errorf("must have exactly 1 schema, got: %d", len(r.Schemas))
 	}
 	return r.Schemas[0].Name, nil
+}
+
+func fileExists(uri string) error {
+	s := strings.Split(uri, "?")
+	fn := uri
+	if len(s) == 2 {
+		fn = s[0]
+	}
+	if strings.Contains(fn, "file:") {
+		fn = strings.SplitAfter(fn, "file:")[1]
+	}
+	fn = filepath.Clean(fn)
+	_, err := os.Stat(fn)
+	if errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("file %s does not exist", fn)
+	}
+	if errors.Is(err, os.ErrPermission) {
+		return fmt.Errorf("no permission to access file %s", fn)
+	}
+	return nil
 }
