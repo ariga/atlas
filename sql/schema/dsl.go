@@ -444,7 +444,7 @@ func (i *Index) SetTable(t *Table) *Index {
 	return i
 }
 
-// AddAttrs adds and additional attributes to the index.
+// AddAttrs adds additional attributes to the index.
 func (i *Index) AddAttrs(attrs ...Attr) *Index {
 	i.Attrs = append(i.Attrs, attrs...)
 	return i
