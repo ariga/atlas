@@ -761,7 +761,7 @@ type (
 		V int64
 	}
 
-	// CreateOptions attributes for describing extra options used with CREATE TABLE.
+	// CreateOptions attribute for describing extra options used with CREATE TABLE.
 	CreateOptions struct {
 		schema.Attr
 		V string
