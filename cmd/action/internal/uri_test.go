@@ -21,43 +21,43 @@ func Test_SqliteFileDoestNotExist(t *testing.T) {
 	}{
 		{
 			dsn:      "test.db",
-			expected: "file test.db does not exist",
+			expected: `failed opening "test.db": stat test.db: no such file or directory`,
 		},
 		{
 			dsn:      "some_random_string_like_this",
-			expected: "file some_random_string_like_this does not exist",
+			expected: `failed opening "some_random_string_like_this": stat some_random_string_like_this: no such file or directory`,
 		},
 		{
 			dsn:      "file:/home/fred/data.db",
-			expected: "file /home/fred/data.db does not exist",
+			expected: `failed opening "/home/fred/data.db": stat /home/fred/data.db: no such file or directory`,
 		},
 		{
 			dsn:      "file:///home/fred/data.db",
-			expected: "file /home/fred/data.db does not exist",
+			expected: `failed opening "/home/fred/data.db": stat /home/fred/data.db: no such file or directory`,
 		},
 		{
 			dsn:      "file://localhost/home/fred/data.db",
-			expected: "file /localhost/home/fred/data.db does not exist",
+			expected: `failed opening "/localhost/home/fred/data.db": stat /localhost/home/fred/data.db: no such file or directory`,
 		},
 		{
 			dsn:      "file://darkstar/home/fred/data.db",
-			expected: "file /darkstar/home/fred/data.db does not exist",
+			expected: `failed opening "/darkstar/home/fred/data.db": stat /darkstar/home/fred/data.db: no such file or directory`,
 		},
 		{
 			dsn:      "file:data.db?mode=ro&cache=private",
-			expected: "file data.db does not exist",
+			expected: `failed opening "data.db": stat data.db: no such file or directory`,
 		},
 		{
 			dsn:      "file:/home/fred/data.db?vfs=unix-dotfile",
-			expected: "file /home/fred/data.db does not exist",
+			expected: `failed opening "/home/fred/data.db": stat /home/fred/data.db: no such file or directory`,
 		},
 		{
 			dsn:      "file:data.db?mode=readonly",
-			expected: "file data.db does not exist",
+			expected: `failed opening "data.db": stat data.db: no such file or directory`,
 		},
 		{
 			dsn:      "asdad?cache=shared&mode=memory",
-			expected: "file asdad does not exist",
+			expected: `failed opening "asdad": stat asdad: no such file or directory`,
 		},
 	}
 	for _, tt := range tests {
