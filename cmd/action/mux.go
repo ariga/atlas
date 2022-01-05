@@ -71,6 +71,7 @@ func parseDSN(url string) (string, string, error) {
 	return a[0], a[1], nil
 }
 
+// SchemaNameFromDSN parses the dsn the returns schema name
 func SchemaNameFromDSN(url string) (string, error) {
 	key, dsn, err := parseDSN(url)
 	if err != nil {
