@@ -156,10 +156,10 @@ func (i *inspect) table(ctx context.Context, name string, opts *schema.InspectTa
 	}
 	row := i.QueryRowContext(ctx, query, args...)
 	var (
-		autoinc                              sql.NullInt64
-		tSchema, charset, collation, comment sql.NullString
+		autoinc                                       sql.NullInt64
+		tSchema, charset, collation, comment, options sql.NullString
 	)
-	if err := row.Scan(&tSchema, &charset, &collation, &autoinc, &comment); err != nil {
+	if err := row.Scan(&tSchema, &charset, &collation, &autoinc, &comment, &options); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, &schema.NotExistError{
 				Err: fmt.Errorf("mysql: table %q was not found", name),
@@ -181,6 +181,11 @@ func (i *inspect) table(ctx context.Context, name string, opts *schema.InspectTa
 	if sqlx.ValidString(comment) {
 		t.Attrs = append(t.Attrs, &schema.Comment{
 			Text: comment.String,
+		})
+	}
+	if sqlx.ValidString(options) {
+		t.Attrs = append(t.Attrs, &CreateOptions{
+			V: options.String,
 		})
 	}
 	if autoinc.Valid {
@@ -676,7 +681,8 @@ SELECT
 	t2.CHARACTER_SET_NAME,
 	t1.TABLE_COLLATION,
 	t1.AUTO_INCREMENT,
-	t1.TABLE_COMMENT
+	t1.TABLE_COMMENT,
+	t1.CREATE_OPTIONS
 FROM
 	INFORMATION_SCHEMA.TABLES AS t1
 	JOIN INFORMATION_SCHEMA.COLLATIONS AS t2
@@ -691,7 +697,8 @@ SELECT
 	t2.CHARACTER_SET_NAME,
 	t1.TABLE_COLLATION,
 	t1.AUTO_INCREMENT,
-	t1.TABLE_COMMENT
+	t1.TABLE_COMMENT,
+	t1.CREATE_OPTIONS
 FROM
 	INFORMATION_SCHEMA.TABLES AS t1
 	JOIN INFORMATION_SCHEMA.COLLATIONS AS t2
@@ -752,6 +759,12 @@ type (
 	AutoIncrement struct {
 		schema.Attr
 		V int64
+	}
+
+	// CreateOptions attributes for describing extra options used with CREATE TABLE.
+	CreateOptions struct {
+		schema.Attr
+		V string
 	}
 
 	// OnUpdate attribute for columns with "ON UPDATE CURRENT_TIMESTAMP" as a default.
