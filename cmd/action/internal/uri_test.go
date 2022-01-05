@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_SqliteFileDoestNotExist(t *testing.T) {
+func Test_SQLiteFileDoestNotExist(t *testing.T) {
 	var tests = []struct {
 		dsn      string
 		expected string
