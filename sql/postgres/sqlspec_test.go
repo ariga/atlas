@@ -163,205 +163,205 @@ func TestTypes(t *testing.T) {
 	}{
 		{
 			typeExpr: "bit(10)",
-			expected: &BitType{T: tBit, Len: 10},
+			expected: &BitType{T: TypeBit, Len: 10},
 		},
 		{
 			typeExpr: "bit_varying(10)",
-			expected: &BitType{T: tBitVar, Len: 10},
+			expected: &BitType{T: TypeBitVar, Len: 10},
 		},
 		{
 			typeExpr: "boolean",
-			expected: &schema.BoolType{T: tBoolean},
+			expected: &schema.BoolType{T: TypeBoolean},
 		},
 		{
 			typeExpr: "bool",
-			expected: &schema.BoolType{T: tBool},
+			expected: &schema.BoolType{T: TypeBool},
 		},
 		{
 			typeExpr: "bytea",
-			expected: &schema.BinaryType{T: tBytea},
+			expected: &schema.BinaryType{T: TypeBytea},
 		},
 		{
 			typeExpr: "varchar(255)",
-			expected: &schema.StringType{T: tVarChar, Size: 255},
+			expected: &schema.StringType{T: TypeVarChar, Size: 255},
 		},
 		{
 			typeExpr: "char(255)",
-			expected: &schema.StringType{T: tChar, Size: 255},
+			expected: &schema.StringType{T: TypeChar, Size: 255},
 		},
 		{
 			typeExpr: "character(255)",
-			expected: &schema.StringType{T: tCharacter, Size: 255},
+			expected: &schema.StringType{T: TypeCharacter, Size: 255},
 		},
 		{
 			typeExpr: "text",
-			expected: &schema.StringType{T: tText},
+			expected: &schema.StringType{T: TypeText},
 		},
 		{
 			typeExpr: "smallint",
-			expected: &schema.IntegerType{T: tSmallInt},
+			expected: &schema.IntegerType{T: TypeSmallInt},
 		},
 		{
 			typeExpr: "integer",
-			expected: &schema.IntegerType{T: tInteger},
+			expected: &schema.IntegerType{T: TypeInteger},
 		},
 		{
 			typeExpr: "bigint",
-			expected: &schema.IntegerType{T: tBigInt},
+			expected: &schema.IntegerType{T: TypeBigInt},
 		},
 		{
 			typeExpr: "int",
-			expected: &schema.IntegerType{T: tInt},
+			expected: &schema.IntegerType{T: TypeInt},
 		},
 		{
 			typeExpr: "int2",
-			expected: &schema.IntegerType{T: tInt2},
+			expected: &schema.IntegerType{T: TypeInt2},
 		},
 		{
 			typeExpr: "int4",
-			expected: &schema.IntegerType{T: tInt4},
+			expected: &schema.IntegerType{T: TypeInt4},
 		},
 		{
 			typeExpr: "int8",
-			expected: &schema.IntegerType{T: tInt8},
+			expected: &schema.IntegerType{T: TypeInt8},
 		},
 		{
 			typeExpr: "cidr",
-			expected: &NetworkType{T: tCIDR},
+			expected: &NetworkType{T: TypeCIDR},
 		},
 		{
 			typeExpr: "inet",
-			expected: &NetworkType{T: tInet},
+			expected: &NetworkType{T: TypeInet},
 		},
 		{
 			typeExpr: "macaddr",
-			expected: &NetworkType{T: tMACAddr},
+			expected: &NetworkType{T: TypeMACAddr},
 		},
 		{
 			typeExpr: "macaddr8",
-			expected: &NetworkType{T: tMACAddr8},
+			expected: &NetworkType{T: TypeMACAddr8},
 		},
 		{
 			typeExpr: "circle",
-			expected: &schema.SpatialType{T: tCircle},
+			expected: &schema.SpatialType{T: TypeCircle},
 		},
 		{
 			typeExpr: "line",
-			expected: &schema.SpatialType{T: tLine},
+			expected: &schema.SpatialType{T: TypeLine},
 		},
 		{
 			typeExpr: "lseg",
-			expected: &schema.SpatialType{T: tLseg},
+			expected: &schema.SpatialType{T: TypeLseg},
 		},
 		{
 			typeExpr: "box",
-			expected: &schema.SpatialType{T: tBox},
+			expected: &schema.SpatialType{T: TypeBox},
 		},
 		{
 			typeExpr: "path",
-			expected: &schema.SpatialType{T: tPath},
+			expected: &schema.SpatialType{T: TypePath},
 		},
 		{
 			typeExpr: "point",
-			expected: &schema.SpatialType{T: tPoint},
+			expected: &schema.SpatialType{T: TypePoint},
 		},
 
 		{
 			typeExpr: "date",
-			expected: &schema.TimeType{T: tDate},
+			expected: &schema.TimeType{T: TypeDate},
 		},
 		{
 			typeExpr: "time",
-			expected: &schema.TimeType{T: tTime},
+			expected: &schema.TimeType{T: TypeTime},
 		},
 		{
 			typeExpr: "time_with_time_zone",
-			expected: &schema.TimeType{T: tTimeWTZ},
+			expected: &schema.TimeType{T: TypeTimeWTZ},
 		},
 		{
 			typeExpr: "time_without_time_zone",
-			expected: &schema.TimeType{T: tTimeWOTZ},
+			expected: &schema.TimeType{T: TypeTimeWOTZ},
 		},
 		{
 			typeExpr: "timestamp",
-			expected: &schema.TimeType{T: tTimestamp},
+			expected: &schema.TimeType{T: TypeTimestamp},
 		},
 		{
 			typeExpr: "timestamp_with_time_zone",
-			expected: &schema.TimeType{T: tTimestampWTZ},
+			expected: &schema.TimeType{T: TypeTimestampWTZ},
 		},
 		{
 			typeExpr: "timestamp_without_time_zone",
-			expected: &schema.TimeType{T: tTimestampWOTZ},
+			expected: &schema.TimeType{T: TypeTimestampWOTZ},
 		},
 		{
 			typeExpr: "time",
-			expected: &schema.TimeType{T: tTime},
+			expected: &schema.TimeType{T: TypeTime},
 		},
 		{
 			typeExpr: "real",
-			expected: &schema.FloatType{T: tReal, Precision: 24},
+			expected: &schema.FloatType{T: TypeReal, Precision: 24},
 		},
 		{
 			typeExpr: "float8",
-			expected: &schema.FloatType{T: tFloat8, Precision: 53},
+			expected: &schema.FloatType{T: TypeFloat8, Precision: 53},
 		},
 		{
 			typeExpr: "float4",
-			expected: &schema.FloatType{T: tFloat4, Precision: 24},
+			expected: &schema.FloatType{T: TypeFloat4, Precision: 24},
 		},
 		{
 			typeExpr: "numeric",
-			expected: &schema.DecimalType{T: tNumeric},
+			expected: &schema.DecimalType{T: TypeNumeric},
 		},
 		{
 			typeExpr: "decimal",
-			expected: &schema.DecimalType{T: tDecimal},
+			expected: &schema.DecimalType{T: TypeDecimal},
 		},
 		{
 			typeExpr: "smallserial",
-			expected: &SerialType{T: tSmallSerial},
+			expected: &SerialType{T: TypeSmallSerial},
 		},
 		{
 			typeExpr: "serial",
-			expected: &SerialType{T: tSerial},
+			expected: &SerialType{T: TypeSerial},
 		},
 		{
 			typeExpr: "bigserial",
-			expected: &SerialType{T: tBigSerial},
+			expected: &SerialType{T: TypeBigSerial},
 		},
 		{
 			typeExpr: "serial2",
-			expected: &SerialType{T: tSerial2},
+			expected: &SerialType{T: TypeSerial2},
 		},
 		{
 			typeExpr: "serial4",
-			expected: &SerialType{T: tSerial4},
+			expected: &SerialType{T: TypeSerial4},
 		},
 		{
 			typeExpr: "serial8",
-			expected: &SerialType{T: tSerial8},
+			expected: &SerialType{T: TypeSerial8},
 		},
 
 		{
 			typeExpr: "xml",
-			expected: &XMLType{T: tXML},
+			expected: &XMLType{T: TypeXML},
 		},
 		{
 			typeExpr: "json",
-			expected: &schema.JSONType{T: tJSON},
+			expected: &schema.JSONType{T: TypeJSON},
 		},
 		{
 			typeExpr: "jsonb",
-			expected: &schema.JSONType{T: tJSONB},
+			expected: &schema.JSONType{T: TypeJSONB},
 		},
 		{
 			typeExpr: "uuid",
-			expected: &UUIDType{T: tUUID},
+			expected: &UUIDType{T: TypeUUID},
 		},
 		{
 			typeExpr: "money",
-			expected: &CurrencyType{T: tMoney},
+			expected: &CurrencyType{T: TypeMoney},
 		},
 		{
 			typeExpr: `sql("int[]")`,

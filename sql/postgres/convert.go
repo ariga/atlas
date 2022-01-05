@@ -23,7 +23,7 @@ func FormatType(t schema.Type) (string, error) {
 	case *BitType:
 		f = strings.ToLower(t.T)
 		// BIT without a length is equivalent to BIT(1).
-		if f == tBit && t.Len == 0 {
+		if f == TypeBit && t.Len == 0 {
 			f = fmt.Sprintf("%s(1)", f)
 		}
 	case *schema.BoolType:
@@ -39,31 +39,31 @@ func FormatType(t schema.Type) (string, error) {
 		f = t.T
 	case *schema.IntegerType:
 		switch f = strings.ToLower(t.T); f {
-		case tSmallInt, tInteger, tBigInt:
-		case tInt2:
-			f = tSmallInt
-		case tInt, tInt4:
-			f = tInteger
-		case tInt8:
-			f = tBigInt
+		case TypeSmallInt, TypeInteger, TypeBigInt:
+		case TypeInt2:
+			f = TypeSmallInt
+		case TypeInt, TypeInt4:
+			f = TypeInteger
+		case TypeInt8:
+			f = TypeBigInt
 		}
 	case *schema.StringType:
 		switch f = strings.ToLower(t.T); f {
-		case tText:
+		case TypeText:
 		// CHAR(n) is alias for CHARACTER(n). If not length was
 		// specified, the definition is equivalent to CHARACTER(1).
-		case tChar, tCharacter:
+		case TypeChar, TypeCharacter:
 			n := t.Size
 			if n == 0 {
 				n = 1
 			}
-			f = fmt.Sprintf("%s(%d)", tCharacter, n)
+			f = fmt.Sprintf("%s(%d)", TypeCharacter, n)
 		// VARCHAR(n) is alias for CHARACTER VARYING(n). If not length
 		// was specified, the type accepts strings of any size.
-		case tVarChar, tCharVar:
-			f = tCharVar
+		case TypeVarChar, TypeCharVar:
+			f = TypeCharVar
 			if t.Size != 0 {
-				f = fmt.Sprintf("%s(%d)", tCharVar, t.Size)
+				f = fmt.Sprintf("%s(%d)", TypeCharVar, t.Size)
 			}
 		default:
 			return "", fmt.Errorf("postgres: unexpected string type: %q", t.T)
@@ -71,28 +71,28 @@ func FormatType(t schema.Type) (string, error) {
 	case *schema.TimeType:
 		switch f = strings.ToLower(t.T); f {
 		// TIMESTAMPTZ is accepted as an abbreviation for TIMESTAMP WITH TIME ZONE.
-		case tTimestampTZ:
-			f = tTimestampWTZ
+		case TypeTimestampTZ:
+			f = TypeTimestampWTZ
 		// TIME be equivalent to TIME WITHOUT TIME ZONE.
-		case tTime:
-			f = tTimeWOTZ
+		case TypeTime:
+			f = TypeTimeWOTZ
 		// TIMESTAMP be equivalent to TIMESTAMP WITHOUT TIME ZONE.
-		case tTimestamp:
-			f = tTimestampWOTZ
+		case TypeTimestamp:
+			f = TypeTimestampWOTZ
 		}
 	case *schema.FloatType:
 		switch f = strings.ToLower(t.T); f {
-		case tFloat4:
-			f = tReal
-		case tFloat8:
-			f = tDouble
+		case TypeFloat4:
+			f = TypeReal
+		case TypeFloat8:
+			f = TypeDouble
 		}
 	case *schema.DecimalType:
 		switch f = strings.ToLower(t.T); f {
-		case tNumeric:
+		case TypeNumeric:
 		// The DECIMAL type is an alias for NUMERIC.
-		case tDecimal:
-			f = tNumeric
+		case TypeDecimal:
+			f = TypeNumeric
 		default:
 			return "", fmt.Errorf("postgres: unexpected decimal type: %q", t.T)
 		}
@@ -109,13 +109,13 @@ func FormatType(t schema.Type) (string, error) {
 		}
 	case *SerialType:
 		switch f = strings.ToLower(t.T); f {
-		case tSmallSerial, tSerial, tBigSerial:
-		case tSerial2:
-			f = tSmallSerial
-		case tSerial4:
-			f = tSerial
-		case tSerial8:
-			f = tBigSerial
+		case TypeSmallSerial, TypeSerial, TypeBigSerial:
+		case TypeSerial2:
+			f = TypeSmallSerial
+		case TypeSerial4:
+			f = TypeSerial
+		case TypeSerial8:
+			f = TypeBigSerial
 		default:
 			return "", fmt.Errorf("postgres: unexpected serial type: %q", t.T)
 		}
@@ -170,11 +170,11 @@ func parseColumn(s string) (*columnDesc, error) {
 		}
 	)
 	switch c.parts[0] {
-	case tVarChar, tCharVar, tChar, tCharacter:
+	case TypeVarChar, TypeCharVar, TypeChar, TypeCharacter:
 		if err := parseCharParts(c.parts, c); err != nil {
 			return nil, err
 		}
-	case tDecimal, tNumeric:
+	case TypeDecimal, TypeNumeric:
 		if len(parts) > 1 {
 			c.precision, err = strconv.ParseInt(parts[1], 10, 64)
 			if err != nil {
@@ -187,13 +187,13 @@ func parseColumn(s string) (*columnDesc, error) {
 				return nil, fmt.Errorf("postgres: parse scale %q: %w", parts[1], err)
 			}
 		}
-	case tBit:
+	case TypeBit:
 		if err := parseBitParts(parts, c); err != nil {
 			return nil, err
 		}
-	case tDouble, tFloat8:
+	case TypeDouble, TypeFloat8:
 		c.precision = 53
-	case tReal, tFloat4:
+	case TypeReal, TypeFloat4:
 		c.precision = 24
 	default:
 		c.typ = s
@@ -204,11 +204,11 @@ func parseColumn(s string) (*columnDesc, error) {
 func parseCharParts(parts []string, c *columnDesc) error {
 	j := strings.Join(parts, " ")
 	switch {
-	case strings.HasPrefix(j, tVarChar):
-		c.typ = tVarChar
+	case strings.HasPrefix(j, TypeVarChar):
+		c.typ = TypeVarChar
 		parts = parts[1:]
-	case strings.HasPrefix(j, tCharVar):
-		c.typ = tCharVar
+	case strings.HasPrefix(j, TypeCharVar):
+		c.typ = TypeCharVar
 		parts = parts[2:]
 	default:
 		parts = parts[1:]
@@ -231,7 +231,7 @@ func parseBitParts(parts []string, c *columnDesc) error {
 	}
 	parts = parts[1:]
 	if parts[0] == "varying" {
-		c.typ = tBitVar
+		c.typ = TypeBitVar
 		parts = parts[1:]
 	}
 	if len(parts) == 0 {
