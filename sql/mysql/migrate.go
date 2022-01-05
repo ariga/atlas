@@ -440,6 +440,8 @@ func (s *state) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
 func (s *state) tableAttr(b *sqlx.Builder, attrs ...schema.Attr) error {
 	for _, a := range attrs {
 		switch a := a.(type) {
+		case *CreateOptions:
+			b.P(a.V)
 		case *AutoIncrement:
 			if a.V == 0 {
 				return fmt.Errorf("missing value for table option AUTO_INCREMENT")
