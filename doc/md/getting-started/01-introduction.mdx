@@ -1,0 +1,142 @@
+---
+id: getting-started-installation
+title: Setting Up
+slug: /cli/getting-started/setting-up
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+### Introduction
+
+Atlas CLI is an open-source tool designed to help software engineers, DBAs and DevOps
+practitioners to manage their database schemas.  Atlas users can use the [Atlas DDL](ddl-intro)
+(Data-definition language), to describe the desired database schema and use the command-line
+tool to plan and apply the migrations to their systems. 
+
+In this guide, we will install the latest version of Atlas, and use it to manage
+the schema of a local database that we will run inside a Docker container.
+
+### Install the CLI
+
+<Tabs
+defaultValue="apple-intel"
+values={[
+{label: 'Apple Intel', value: 'apple-intel'},
+{label: 'Apple Silicon', value: 'apple-silicon'},
+{label: 'Linux', value: 'linux'},
+{label: 'Windows', value: 'windows'},
+]}>
+<TabItem value="apple-intel">
+
+Download latest release.
+```shell
+curl -LO https://release.ariga.io/atlas/atlas-darwin-amd64-v0.1.1
+```
+
+Make the atlas binary executable.
+```shell
+chmod +x ./atlas-darwin-amd64-v0.1.1
+```
+
+Move the atlas binary to a file location on your system PATH.
+```shell
+sudo mv ./atlas-darwin-amd64-v0.1.1 /usr/local/bin/atlas
+```
+```shell
+sudo chown root: /usr/local/bin/atlas
+```
+
+</TabItem>
+<TabItem value="apple-silicon">
+
+Download latest release.
+```shell
+curl -LO https://release.ariga.io/atlas/atlas-darwin-arm64-v0.1.1
+```
+
+Make the atlas binary executable.
+```shell
+chmod +x ./atlas-darwin-arm64-v0.1.1
+```
+
+Move the atlas binary to a file location on your system PATH.
+```shell
+sudo mv ./atlas-darwin-arm64-v0.1.1 /usr/local/bin/atlas
+```
+```shell
+sudo chown root: /usr/local/bin/atlas
+```
+
+</TabItem>
+<TabItem value="linux">
+
+Download latest release.
+```shell
+curl -LO https://release.ariga.io/atlas/atlas-linux-amd64-v0.1.1
+```
+
+Move the atlas binary to a file location on your system PATH.
+```shell
+sudo install -o root -g root -m 0755 ./atlas-linux-amd64-v0.1.1 /usr/local/bin/atlas
+```
+
+</TabItem>
+<TabItem value="windows">
+
+Download latest release.
+```shell
+curl -LO https://release.ariga.io/atlas/atlas-windows-amd64-v0.1.1.exe
+```
+Move the atlas binary to a file location on your system PATH.
+
+
+</TabItem>
+</Tabs>
+
+To verify that the CLI is installed correctly run:
+```shell
+atlas
+```
+You should see the help text describing the different Atlas sub-commands:
+```
+A database toolkit.
+
+Usage:
+  atlas [command]
+
+Available Commands:
+  completion  generate the autocompletion script for the specified shell
+  env         Print atlas env params
+  help        Help about any command
+  schema      Work with atlas schemas
+  version     Show atlas CLI version
+
+Flags:
+  -h, --help   help for atlas
+
+Use "atlas [command] --help" for more information about a command.
+```
+### Start a Local Database Container
+
+For the purpose of this guide, we will start a local Docker container running MySQL.
+
+```shell
+docker run --name atlas-db  -p 3306:3306  -e MYSQL_ROOT_PASSWORD=pass -e MYSQL_DATABASE=example   mysql:8.0.27
+```
+
+To verify the local database is running, run the MySQL command-line interface
+from within the container:
+
+```shell
+docker  exec -it  atlas-db  mysql --password='pass' example
+```
+Run `show tables;` to verify that the database is empty:
+```text
+mysql> show tables;
+Empty set (0.00 sec)
+mysql>
+```
+
+In the next section, we will learn how to use the Atlas CLI to inspect the
+schema of our running database.

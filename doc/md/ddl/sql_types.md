@@ -1,9 +1,8 @@
 ---
+id: ddl-sql-types
 title: SQL Column Types
-id: sql-column-types
-slug: /sql/column_types
+slug: /ddl/sql-types
 ---
-
 ### MySQL/MariaDB
 
 <table>
