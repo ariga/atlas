@@ -96,20 +96,19 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 
 // Normalize implements the sqlx.Normalizer interface.
 func (d *diff) Normalize(from, to *schema.Table) {
-	for i, idx := range from.Indexes {
-		if _, ok := to.Index(idx.Name); ok {
-			continue
-		}
+	indexes := make([]*schema.Index, 0, len(from.Indexes))
+	for _, idx := range from.Indexes {
 		// MySQL requires that foreign key columns be indexed; Therefore, if the child
 		// table is defined on non-indexed columns, an index is automatically created
 		// to satisfy the constraint.
 		// Therefore, if no such key was defined on the desired state, the diff will
 		// recommend to drop it on migration. Therefore, we fix it by dropping it from
 		// the current state manually.
-		if keySupportsFK(from, idx) {
-			from.Indexes = append(from.Indexes[:i], from.Indexes[i+1:]...)
+		if _, ok := to.Index(idx.Name); ok || !keySupportsFK(from, idx) {
+			indexes = append(indexes, idx)
 		}
 	}
+	from.Indexes = indexes
 }
 
 // collationChange returns the schema change for migrating the collation if
