@@ -199,6 +199,7 @@ func TestPlanChanges(t *testing.T) {
 						Columns: []*schema.Column{
 							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoIncrement{}}},
 							{Name: "text", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Null: true}},
+							{Name: "uuid", Type: &schema.ColumnType{Type: &schema.StringType{T: "char", Size: 36}, Null: true}, Attrs: []schema.Attr{&schema.Charset{V: "utf8mb4"}, &schema.Collation{V: "utf8mb4_bin"}}},
 						},
 					}
 					t.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: t.Columns[0]}}}
@@ -207,7 +208,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 			plan: &migrate.Plan{
 				Reversible: true,
-				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` bigint NOT NULL AUTO_INCREMENT, `text` text NULL, PRIMARY KEY (`id`))", Reverse: "DROP TABLE `posts`"}},
+				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` bigint NOT NULL AUTO_INCREMENT, `text` text NULL, `uuid` char(36) NULL CHARACTER SET utf8mb4 COLLATE utf8mb4_bin, PRIMARY KEY (`id`))", Reverse: "DROP TABLE `posts`"}},
 			},
 		},
 		{

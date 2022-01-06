@@ -370,6 +370,12 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) {
 	}
 	for _, a := range c.Attrs {
 		switch a := a.(type) {
+		case *schema.Charset:
+			// Define the charset explicitly
+			// in case it is not the default.
+			if s.character(t) != a.V {
+				b.P("CHARACTER SET", a.V)
+			}
 		case *schema.Collation:
 			// Define the collation explicitly
 			// in case it is not the default.
@@ -459,6 +465,16 @@ func (s *state) tableAttr(b *sqlx.Builder, attrs ...schema.Attr) error {
 		}
 	}
 	return nil
+}
+
+// character returns the table character-set from its attributes
+// or from the default defined in the schema or the database.
+func (s *state) character(t *schema.Table) string {
+	var c schema.Charset
+	if sqlx.Has(t.Attrs, &c) || t.Schema != nil && sqlx.Has(t.Schema.Attrs, &c) {
+		return c.V
+	}
+	return s.charset
 }
 
 // collation returns the table collation from its attributes
