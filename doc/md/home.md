@@ -25,17 +25,17 @@ values={[
 
 Download latest release.
 ```shell
-curl -LO https://release.ariga.io/atlas/atlas-darwin-amd64-v0.1.1
+curl -LO https://release.ariga.io/atlas/atlas-darwin-amd64-v0.2.0
 ```
 
 Make the atlas binary executable.
 ```shell
-chmod +x ./atlas-darwin-amd64-v0.1.1
+chmod +x ./atlas-darwin-amd64-v0.2.0
 ```
 
 Move the atlas binary to a file location on your system PATH.
 ```shell
-sudo mv ./atlas-darwin-amd64-v0.1.1 /usr/local/bin/atlas
+sudo mv ./atlas-darwin-amd64-v0.2.0 /usr/local/bin/atlas
 ```
 ```shell
 sudo chown root: /usr/local/bin/atlas
@@ -46,17 +46,17 @@ sudo chown root: /usr/local/bin/atlas
 
 Download latest release.
 ```shell
-curl -LO https://release.ariga.io/atlas/atlas-darwin-arm64-v0.1.1
+curl -LO https://release.ariga.io/atlas/atlas-darwin-arm64-v0.2.0
 ```
 
 Make the atlas binary executable.
 ```shell
-chmod +x ./atlas-darwin-arm64-v0.1.1
+chmod +x ./atlas-darwin-arm64-v0.2.0
 ```
 
 Move the atlas binary to a file location on your system PATH.
 ```shell
-sudo mv ./atlas-darwin-arm64-v0.1.1 /usr/local/bin/atlas
+sudo mv ./atlas-darwin-arm64-v0.2.0 /usr/local/bin/atlas
 ```
 ```shell
 sudo chown root: /usr/local/bin/atlas
@@ -67,12 +67,12 @@ sudo chown root: /usr/local/bin/atlas
 
 Download latest release.
 ```shell
-curl -LO https://release.ariga.io/atlas/atlas-linux-amd64-v0.1.1
+curl -LO https://release.ariga.io/atlas/atlas-linux-amd64-v0.2.0
 ```
 
 Move the atlas binary to a file location on your system PATH.
 ```shell
-sudo install -o root -g root -m 0755 ./atlas-linux-amd64-v0.1.1 /usr/local/bin/atlas
+sudo install -o root -g root -m 0755 ./atlas-linux-amd64-v0.2.0 /usr/local/bin/atlas
 ```
 
 </TabItem>
@@ -80,7 +80,7 @@ sudo install -o root -g root -m 0755 ./atlas-linux-amd64-v0.1.1 /usr/local/bin/a
 
 Download latest release.
 ```shell
-curl -LO https://release.ariga.io/atlas/atlas-windows-amd64-v0.1.1.exe
+curl -LO https://release.ariga.io/atlas/atlas-windows-amd64-v0.2.0.exe
 ```
 Move the atlas binary to a file location on your system PATH.
 
