@@ -2,7 +2,6 @@
 id: sql-hcl
 title: SQL Syntax
 ---
-
 The [sqlspec](https://pkg.go.dev/ariga.io/atlas@master/sql/sqlspec) package defines
 the resource types used to describe an SQL database schema. Used with the
 [Atlas HCL](ddl#hcl) syntax, it is easy to compose documents describing the desired
@@ -27,13 +26,13 @@ A `table` describes a table in a SQL database.
 table "users" {
   schema = schema.default
   column "id" {
-    type = "int"
+    type = int
   }
   column "name" {
-    type = "string"
+    type = varchar(255)
   }
   column "manager_id" {
-    type = "int"
+    type = int
   }
   primary_key {
     columns = [
@@ -74,17 +73,17 @@ A column is a child resource of a `table`.
 ```hcl
 
 column "name" {
-  type = "string"
+  type = text
   null = false
 }
 
 column "age" {
-  type = "int"
+  type = integer
   default = 42
 }
 
 column "active" {
-  type = "bool"
+  type = tinyint(1)
   default = true
 }
 ```
@@ -94,57 +93,21 @@ column "active" {
 | Name    | Kind      | Type                     | Description                                                |
 |---------|-----------|--------------------------|------------------------------------------------------------|
 | null    | attribute | bool                     | Defines whether the column is nullable.                    |
-| type    | attribute | string                   | Defines the type of data that can be stored in the column. |
+| type    | attribute | *schemaspec.Type         | Defines the type of data that can be stored in the column. |
 | default | attribute | *schemaspec.LiteralValue | Defines the default value of the column.                   |
 
-#### Virtual Types
+### Column Types
 
-Since RDBMS engines vary in their support for different column
-types, Atlas supports the notion of "virtual types". To make schemas more
-portable, users can select these types for their columns that will be
-projected to a database-specific type in runtime. The types are backed by
-the [sqlspec.Type](https://pkg.go.dev/ariga.io/atlas@master/sql/sqlspec#Type)
-in the Atlas codebase:
-```go
-const (
-	TypeInt     Type = "int"
-	TypeInt8    Type = "int8"
-	TypeInt16   Type = "int16"
-	TypeInt64   Type = "int64"
-	TypeUint    Type = "uint"
-	TypeUint8   Type = "uint8"
-	TypeUint16  Type = "uint16"
-	TypeUint64  Type = "uint64"
-	TypeString  Type = "string"
-	TypeBinary  Type = "binary"
-	TypeEnum    Type = "enum"
-	TypeBoolean Type = "boolean"
-	TypeDecimal Type = "decimal"
-	TypeFloat   Type = "float"
-	TypeTime    Type = "time"
-)
-```
+The SQL dialects supported by Atlas (Postgres, MySQL, MariaDB, and SQLite) vary in
+the types they support. At this point, the Atlas DDL does not attempt to abstract the
+away the differences between various databases. This means, that the schema documents
+are tied to a specific database engine and version. This may change in a future version
+of Atlas as we plan to add support for "Virtual Types". This section lists the various
+types that are supported in each database.
 
-##### Integer Types
+For a full list of supported column types, [click here](/sql/column_types).
 
-| Type    | MySQL             | Postgres | SQLite  |
-|---------|-------------------|----------|---------|
-| int     | INT               | INTEGER  | INTEGER |
-| int8    | TINYINT           | X        | INTEGER |
-| int16   | SMALLINT          | SMALLINT | INTEGER |
-| int64   | BIGINT            | BIGINT   | INTEGER |
-| uint    | INT UNSIGNED      | X        | X       |
-| uint8   | TINYINT UNSIGNED  | X        | X       |
-| uint16  | SMALLINT UNSIGNED | X        | X       |
-| uint64  | BIGINT UNSIGNED   | X        | X       |
-
-##### String Types
-
-##### Binary Types
-
-##### Other Types
-
-### Primary Key 
+### Primary Key
 
 A `primary_key` is a child resource of a `table`, it defines the table's
 primary key. 
@@ -169,6 +132,7 @@ Foreign keys are child resources of a `table`, they define some columns in the t
 as references to columns in other tables. 
 
 #### Example
+
 ```hcl
 foreign_key "manager_fk" {
   columns = [table.users.column.manager_id]
@@ -204,5 +168,3 @@ index "idx_name" {
 |-----------|-----------|------------------------|--------------------------------------------------------------|
 | columns   | attribute | reference (list)       | The columns that comprise the index.                         |
 | unique    | attribute | boolean                | Defines whether a uniqueness constraint is set on the index. |
-
- 
