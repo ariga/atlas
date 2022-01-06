@@ -4,6 +4,8 @@ title: Applying Schemas
 slug: /cli/getting-started/applying-schemas
 ---
 
+### Declarative migrations
+
 In the previous section, we learned how to inspect an existing database and write
 its schema as an Atlas DDL HCL file. In this section, we will learn how to use
 the Atlas CLI to modify a database's schema. To do this, we will use Atlas's 
@@ -39,7 +41,7 @@ As you can see, similar to the `inspect` command, the `-d` flag is used to defin
 DSN to connect to the database, and an additional flag `-f` specifies the path to
 the file containing the desired schema. 
 
-### Adding a new tables to our database
+### Adding new tables to our database
 
 Let's modify our simplified blogging platform schema from the previous step by adding
 a third table, `categories`. Each table will have an `id` and a `name`. In addition,
