@@ -108,7 +108,7 @@ table "users" {
 ```
 This block represents a [Table](../ddl/sql.md#table) resource with an `id`, and `name`
 columns. The `schema` field references the `example` schema that is defined elsewhere
-in this document. In addition the `primary_key` sub-block defines the `id` column as 
+in this document. In addition, the `primary_key` sub-block defines the `id` column as 
 the primary key for the table. In SQL databases, columns usually have a type attribute
 that defines the kind of data that can be stored in that column. Atlas strives to 
 mimic the syntax of the database that the user is working against. In this case, the
