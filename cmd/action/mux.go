@@ -60,6 +60,11 @@ func (u *Mux) OpenAtlas(dsn string) (*Driver, error) {
 	if !ok {
 		return nil, fmt.Errorf("could not find provider: %s", key)
 	}
+	if key == "sqlite" {
+		if err := sqliteFileExists(dsn); err != nil {
+			return nil, err
+		}
+	}
 	return p(dsn)
 }
 
