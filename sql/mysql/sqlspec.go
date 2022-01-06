@@ -223,7 +223,7 @@ func hasCollate(attr []schema.Attr, parent []schema.Attr) (string, bool) {
 // TypeRegistry contains the supported TypeSpecs for the mysql driver.
 var TypeRegistry = specutil.NewRegistry(
 	specutil.WithFormatter(FormatType),
-	specutil.WithParser(parseRawType),
+	specutil.WithParser(ParseType),
 	specutil.WithSpecs(
 		&schemaspec.TypeSpec{
 			Name: TypeEnum,
