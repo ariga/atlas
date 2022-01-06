@@ -224,7 +224,7 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 			Null: nullable.String == "YES",
 		},
 	}
-	ct, err := parseRawType(c.Type.Raw)
+	ct, err := ParseType(c.Type.Raw)
 	if err != nil {
 		return err
 	}
@@ -265,128 +265,6 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 		})
 	}
 	return nil
-}
-
-func parseRawType(raw string) (schema.Type, error) {
-	parts, size, unsigned, err := parseColumn(raw)
-	if err != nil {
-		return nil, err
-	}
-	switch t := parts[0]; t {
-	case TypeBit:
-		return &BitType{
-			T: t,
-		}, nil
-	case TypeTinyInt, TypeSmallInt, TypeMediumInt, TypeInt, TypeBigInt:
-		if size == 1 {
-			return &schema.BoolType{
-				T: t,
-			}, nil
-		}
-		// For integer types, the size represents the display width and does not
-		// constrain the range of values that can be stored in the column.
-		// The storage byte-size is inferred from the type name (i.e TINYINT takes
-		// a single byte).
-		ft := &schema.IntegerType{
-			T:        t,
-			Unsigned: unsigned,
-		}
-		if attr := parts[len(parts)-1]; attr == "zerofill" && size != 0 {
-			ft.Attrs = []schema.Attr{
-				&DisplayWidth{
-					N: int(size),
-				},
-				&ZeroFill{
-					A: attr,
-				},
-			}
-		}
-		return ft, nil
-	case TypeNumeric, TypeDecimal:
-		dt := &schema.DecimalType{
-			T: t,
-		}
-		if len(parts) > 1 {
-			p, err := strconv.ParseInt(parts[1], 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("parse precision %q", parts[1])
-			}
-			dt.Precision = int(p)
-		}
-		if len(parts) > 2 {
-			s, err := strconv.ParseInt(parts[2], 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("parse scale %q", parts[1])
-			}
-			dt.Scale = int(s)
-		}
-		return dt, nil
-	case TypeFloat, TypeDouble, TypeReal:
-		ft := &schema.FloatType{
-			T: t,
-		}
-		if len(parts) > 1 {
-			p, err := strconv.ParseInt(parts[1], 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("parse precision %q", parts[1])
-			}
-			ft.Precision = int(p)
-		}
-		return ft, nil
-	case TypeBinary, TypeVarBinary:
-		return &schema.BinaryType{
-			T:    t,
-			Size: int(size),
-		}, nil
-	case TypeTinyBlob, TypeMediumBlob, TypeBlob, TypeLongBlob:
-		return &schema.BinaryType{
-			T: t,
-		}, nil
-	case TypeChar, TypeVarchar:
-		return &schema.StringType{
-			T:    t,
-			Size: int(size),
-		}, nil
-	case TypeTinyText, TypeMediumText, TypeText, TypeLongText:
-		return &schema.StringType{
-			T: t,
-		}, nil
-	case TypeEnum, TypeSet:
-		// Parse the enum values according to the MySQL format.
-		// github.com/mysql/mysql-server/blob/8.0/sql/field.cc#Field_enum::sql_type
-		rv := strings.TrimSuffix(strings.TrimPrefix(raw, t+"("), ")")
-		if rv == "" {
-			return nil, fmt.Errorf("mysql: unexpected enum type: %q", raw)
-		}
-		values := strings.Split(rv, "','")
-		for i := range values {
-			values[i] = strings.Trim(values[i], "'")
-		}
-		if t == TypeEnum {
-			return &schema.EnumType{
-				Values: values,
-			}, nil
-		}
-		return &SetType{
-			Values: values,
-		}, nil
-	case TypeDate, TypeDateTime, TypeTime, TypeTimestamp, TypeYear:
-		return &schema.TimeType{
-			T: t,
-		}, nil
-	case TypeJSON:
-		return &schema.JSONType{
-			T: t,
-		}, nil
-	case TypePoint, TypeMultiPoint, TypeLineString, TypeMultiLineString, TypePolygon, TypeMultiPolygon, TypeGeometry, TypeGeoCollection, TypeGeometryCollection:
-		return &schema.SpatialType{
-			T: t,
-		}, nil
-	default:
-		return &schema.UnsupportedType{
-			T: t,
-		}, nil
-	}
 }
 
 // indexes queries and appends the indexes of the given table.
