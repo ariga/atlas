@@ -128,7 +128,6 @@ docker run --name atlas-db  -p 3306:3306  -e MYSQL_ROOT_PASSWORD=pass -e MYSQL_D
 To verify the local database is running, run the MySQL command-line interface
 from within the container:
 
-Connect to our database using a native client to validate:
 ```shell
 docker  exec -it  atlas-db  mysql --password='pass' example
 ```
