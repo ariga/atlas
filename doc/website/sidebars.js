@@ -18,15 +18,17 @@ module.exports = {
             label: 'Getting Started',
             items: [
                 'getting-started/getting-started-installation',
-                'getting-started/getting-started-inspection'
+                'getting-started/getting-started-inspection',
+                'getting-started/getting-started-apply'
             ]
         },
         {
             type: 'category',
             label: 'Data Definition Language',
             items: [
-                {type: 'doc', id: 'ddl-intro', label: 'Introduction'},
-                'sql-hcl',
+                {type: 'doc', id: 'ddl/ddl-intro', label: 'Introduction'},
+                {type: 'doc', id: 'ddl/ddl-sql', label: 'SQL'},
+                {type: 'doc', id: 'ddl/ddl-sql-types', label: 'SQL Types'},
             ]
         },
         {

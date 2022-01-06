@@ -31,6 +31,9 @@ Flags:
   -h, --help         help for inspect
   -w, --web          open in UI server
 ```
+
+### Inspecting our database
+
 To inspect our locally-running MySQL instance from the [previous](01-introduction.mdx) section,
 use the `-d` flag and write output to a file named `atlas.hcl`:
 ```shell
@@ -48,10 +51,12 @@ schema "example" {
 }
 ```
 As you can see, Atlas inspected our (empty) database and wrote an Atlas HCL document 
-containing only a [Schema](sql.md#schema) resource.
+containing only a [Schema](../ddl/sql.md#schema) resource.
 
 Next, let's create some tables in our SQL database and see how they are reflected
 in the inspected Atlas HCL document. 
+
+### Modifying our database schema manually
 
 In our MySQL command-line prompt, let's create two tables:
 ```sql
@@ -76,6 +81,8 @@ table for the authors and a blog_posts table for the contents:
 
 ![Blog ERD](https://atlasgo.io/uploads/images/blog-erd.png)
 
+### Inspecting table schemas with Atlas CLI
+
 Next, let's re-run our inspection command:
 ```shell
 atlas schema inspect -d "mysql://root:pass@tcp(localhost:3306)/example" > atlas.hcl
@@ -99,10 +106,15 @@ table "users" {
   }
 }
 ```
-This block represents a [Table](sql.md#table) resource with an `id`, and `name`
+This block represents a [Table](../ddl/sql.md#table) resource with an `id`, and `name`
 columns. The `schema` field references the `example` schema that is defined elsewhere
 in this document. In addition the `primary_key` sub-block defines the `id` column as 
-the primary key for the table.
+the primary key for the table. In SQL databases, columns usually have a type attribute
+that defines the kind of data that can be stored in that column. Atlas strives to 
+mimic the syntax of the database that the user is working against. In this case, the
+type for the `id` column is `int`, and `varchar(100)` for the `name` column. To
+see the full list of supported types, [click here](../ddl/sql_types.md).
+
 
 Next, consider this block:
 ```hcl
@@ -140,9 +152,12 @@ table "blog_posts" {
 }
 ```
 This block represents the `blog_posts` table. In addition to the elements
-we saw in the `users` table, here we can find a [Foreign Key](sql.md#foreign-key)
+we saw in the `users` table, here we can find a [Foreign Key](../ddl/sql.md#foreign-key)
 block, declaring that the `author_id` column references the `id` column on the
 `users` table.
+
+To learn more about the resource types that are available to describe SQL schemas,
+read the [SQL Syntax](../ddl/sql.md) documentation.
 
 In the next section, we will see how we can modify our database's schema by 
 applying a modified Atlas HCL file using the Atlas CLI.

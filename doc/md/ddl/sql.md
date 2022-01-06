@@ -1,11 +1,11 @@
 ---
-id: sql-hcl
+id: ddl-sql
 title: SQL Syntax
 slug: /ddl/sql
 ---
 The [sqlspec](https://pkg.go.dev/ariga.io/atlas@master/sql/sqlspec) package defines
 the resource types used to describe an SQL database schema. Used with the
-[Atlas HCL](ddl#hcl) syntax, it is easy to compose documents describing the desired
+[Atlas HCL](#hcl) syntax, it is easy to compose documents describing the desired
 state of a SQL database.  
 
 ## Resource Types
@@ -106,7 +106,7 @@ are tied to a specific database engine and version. This may change in a future 
 of Atlas as we plan to add support for "Virtual Types". This section lists the various
 types that are supported in each database.
 
-For a full list of supported column types, [click here](/sql/column_types).
+For a full list of supported column types, [click here](sql_types.md).
 
 ### Primary Key
 
