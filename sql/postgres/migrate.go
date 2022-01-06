@@ -622,22 +622,25 @@ func Build(phrase string) *sqlx.Builder {
 // skipAutoChanges filters unnecessary changes that are automatically
 // happened by the database when ALTER TABLE is executed.
 func skipAutoChanges(changes []schema.Change) []schema.Change {
-	dropC := make(map[string]bool)
+	var (
+		dropC   = make(map[string]bool)
+		planned = make([]schema.Change, 0, len(changes))
+	)
 	for _, c := range changes {
 		if c, ok := c.(*schema.DropColumn); ok {
 			dropC[c.C.Name] = true
 		}
 	}
-	for i, c := range changes {
+search:
+	for _, c := range changes {
 		switch c := c.(type) {
 		// Indexes involving the column are automatically dropped
 		// with it. This true for multi-columns indexes as well.
 		// See https://www.postgresql.org/docs/current/sql-altertable.html
 		case *schema.DropIndex:
 			for _, p := range c.I.Parts {
-				if p.C == nil && dropC[p.C.Name] {
-					changes = append(changes[:i], changes[i+1:]...)
-					break
+				if p.C != nil && dropC[p.C.Name] {
+					continue search
 				}
 			}
 		// Simple case for skipping constraint dropping,
@@ -645,13 +648,13 @@ func skipAutoChanges(changes []schema.Change) []schema.Change {
 		case *schema.DropForeignKey:
 			for _, c := range c.F.Columns {
 				if dropC[c.Name] {
-					changes = append(changes[:i], changes[i+1:]...)
-					break
+					continue search
 				}
 			}
 		}
+		planned = append(planned, c)
 	}
-	return changes
+	return planned
 }
 
 // checks writes the CHECK constraint to the builder.

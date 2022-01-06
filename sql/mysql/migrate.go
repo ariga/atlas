@@ -535,28 +535,31 @@ func Build(phrase string) *sqlx.Builder {
 // skipAutoChanges filters unnecessary changes that are automatically
 // happened by the database when ALTER TABLE is executed.
 func skipAutoChanges(changes []schema.Change) []schema.Change {
-	dropC := make(map[string]bool)
+	var (
+		dropC   = make(map[string]bool)
+		planned = make([]schema.Change, 0, len(changes))
+	)
 	for _, c := range changes {
 		if c, ok := c.(*schema.DropColumn); ok {
 			dropC[c.C.Name] = true
 		}
 	}
-search:
 	for i, c := range changes {
 		// Simple case for skipping key dropping, if its columns are dropped.
 		// https://dev.mysql.com/doc/refman/8.0/en/alter-table.html#alter-table-add-drop-column
 		c, ok := c.(*schema.DropIndex)
 		if !ok {
+			planned = append(planned, changes[i])
 			continue
 		}
 		for _, p := range c.I.Parts {
 			if p.C == nil || !dropC[p.C.Name] {
-				continue search
+				planned = append(planned, c)
+				break
 			}
 		}
-		changes = append(changes[:i], changes[i+1:]...)
 	}
-	return changes
+	return planned
 }
 
 // checks writes the CHECK constraint to the builder.
