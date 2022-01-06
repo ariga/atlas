@@ -4,6 +4,145 @@ title: Inspecting Schemas
 slug: /cli/getting-started/inspection
 ---
 
+Atlas features a Data Definition Language (DDL) that has an [HCL-syntax](https://github.com/hashicorp/hcl)
+for defining the desired state of database schemas. In this section we will learn how to use the Atlas
+CLI to inspect an existing database and write it's schema in HCL to a file. 
+
+Inspection is done via the `atlas schema inspect` command. To learn about its parameters, run:
 ```shell
-atlas schema inspect
+atlas schema inspect --help
 ```
+View the output:
+```text
+Inspect an atlas schema
+
+Usage:
+  atlas schema inspect [flags]
+
+Examples:
+
+atlas schema inspect -d "mysql://user:pass@tcp(localhost:3306)/dbname"
+atlas schema inspect -d "mariadb://user:pass@tcp(localhost:3306)/dbname"
+atlas schema inspect --dsn "postgres://user:pass@host:port/dbname"
+atlas schema inspect -d "sqlite://file:ex1.db?_fk=1"
+
+Flags:
+  -d, --dsn string   [driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format
+  -h, --help         help for inspect
+  -w, --web          open in UI server
+```
+To inspect our locally-running MySQL instance from the [previous](01-introduction.mdx) section,
+use the `-d` flag and write output to a file named `atlas.hcl`:
+```shell
+atlas schema inspect -d "mysql://root:pass@tcp(localhost:3306)/example" > atlas.hcl
+```
+To view the contents of the created file:
+```shell
+cat atlas.hcl
+```
+View the output:
+```hcl
+schema "example" {
+  charset   = "utf8mb4"
+  collation = "utf8mb4_0900_ai_ci"
+}
+```
+As you can see, Atlas inspected our (empty) database and wrote an Atlas HCL document 
+containing only a [Schema](sql.md#schema) resource.
+
+Next, let's create some tables in our SQL database and see how they are reflected
+in the inspected Atlas HCL document. 
+
+In our MySQL command-line prompt, let's create two tables:
+```sql
+CREATE table users (
+    id int PRIMARY KEY,
+    name varchar(100)
+);
+CREATE TABLE blog_posts (
+    id int PRIMARY KEY,
+    title varchar(100),
+    body text,
+    author_id int,
+    FOREIGN KEY (author_id) REFERENCES users(id)
+);
+```
+Observe that the tables are created successfully:
+```text
+Query OK, 0 rows affected (0.02 sec)
+```
+Our schema represents a highly simplified blogging system with a users
+table for the authors and a blog_posts table for the contents:
+
+![Blog ERD](https://atlasgo.io/uploads/images/blog-erd.png)
+
+Next, let's re-run our inspection command:
+```shell
+atlas schema inspect -d "mysql://root:pass@tcp(localhost:3306)/example" > atlas.hcl
+```
+Browse through the updated contents of the file, it contains 3 blocks representing
+our schema as before, and two new blocks representing the `users` and `blog_posts` tables.
+Consider the following block:
+```hcl
+table "users" {
+  schema = schema.example
+  column "id" {
+    null = false
+    type = int
+  }
+  column "name" {
+    null = true
+    type = varchar(100)
+  }
+  primary_key {
+    columns = [table.users.column.id, ]
+  }
+}
+```
+This block represents a [Table](sql.md#table) resource with an `id`, and `name`
+columns. The `schema` field references the `example` schema that is defined elsewhere
+in this document. In addition the `primary_key` sub-block defines the `id` column as 
+the primary key for the table.
+
+Next, consider this block:
+```hcl
+table "blog_posts" {
+  schema = schema.example
+  column "id" {
+    null = false
+    type = int
+  }
+  column "title" {
+    null = true
+    type = varchar(100)
+  }
+  column "body" {
+    null = true
+    type = text
+  }
+  column "author_id" {
+    null = true
+    type = int
+  }
+  primary_key {
+    columns = [table.blog_posts.column.id, ]
+  }
+  foreign_key "blog_posts_ibfk_1" {
+    columns     = [table.blog_posts.column.author_id, ]
+    ref_columns = [table.users.column.id, ]
+    on_update   = "NO ACTION"
+    on_delete   = "NO ACTION"
+  }
+  index "author_id" {
+    unique  = false
+    columns = [table.blog_posts.column.author_id, ]
+  }
+}
+```
+This block represents the `blog_posts` table. In addition to the elements
+we saw in the `users` table, here we can find a [Foreign Key](sql.md#foreign-key)
+block, declaring that the `author_id` column references the `id` column on the
+`users` table.
+
+In the next section, we will see how we can modify our database's schema by 
+applying a modified Atlas HCL file using the Atlas CLI.

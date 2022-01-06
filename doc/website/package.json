@@ -12,7 +12,7 @@
     "serve": "docusaurus serve",
     "write-translations": "docusaurus write-translations",
     "write-heading-ids": "docusaurus write-heading-ids",
-    "upload": "aws s3 sync build/ s3://ariga-atlas-website/ --delete",
+    "upload": "aws s3 sync build/ s3://ariga-atlas-website/ --delete --exclude uploads/*",
     "invalidate-cdn": "aws cloudfront create-invalidation --distribution-id E3VOJYSV9YO33D --paths \"/*\""
   },
   "dependencies": {
