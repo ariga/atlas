@@ -70,9 +70,15 @@ func FormatType(t schema.Type) (string, error) {
 		f = fmt.Sprintf("enum(%s)", formatValues(t.Values))
 	case *schema.StringType:
 		f = strings.ToLower(t.T)
-		if f == TypeChar || f == TypeVarchar {
+		switch f {
+		case TypeChar:
+			// Not a single char.
+			if t.Size > 0 {
+				f += fmt.Sprintf("(%d)", t.Size)
+			}
+		case TypeVarchar:
 			// Zero is also a valid length.
-			f = fmt.Sprintf("%s(%d)", f, t.Size)
+			f = fmt.Sprintf("varchar(%d)", t.Size)
 		}
 	case *schema.SpatialType:
 		f = strings.ToLower(t.T)

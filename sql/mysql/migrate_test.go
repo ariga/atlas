@@ -219,6 +219,7 @@ func TestPlanChanges(t *testing.T) {
 						Columns: []*schema.Column{
 							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}, Attrs: []schema.Attr{&AutoIncrement{V: 100}}},
 							{Name: "text", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Null: true}},
+							{Name: "ch", Type: &schema.ColumnType{Type: &schema.StringType{T: "char"}}},
 						},
 						Attrs: []schema.Attr{
 							&schema.Charset{V: "utf8mb4"},
@@ -234,7 +235,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 			plan: &migrate.Plan{
 				Reversible: true,
-				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` bigint NOT NULL AUTO_INCREMENT, `text` text NULL, PRIMARY KEY (`id`), CONSTRAINT `id_nonzero` CHECK (`id` > 0)) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT \"posts comment\" COMPRESSION=\"ZLIB\" AUTO_INCREMENT 100", Reverse: "DROP TABLE `posts`"}},
+				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` bigint NOT NULL AUTO_INCREMENT, `text` text NULL, `ch` char NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `id_nonzero` CHECK (`id` > 0)) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT \"posts comment\" COMPRESSION=\"ZLIB\" AUTO_INCREMENT 100", Reverse: "DROP TABLE `posts`"}},
 			},
 		},
 		{
