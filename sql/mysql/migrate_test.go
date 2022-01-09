@@ -299,6 +299,10 @@ func TestPlanChanges(t *testing.T) {
 									Attrs: []schema.Attr{&Enforced{}},
 								},
 							},
+							&schema.ModifyAttr{
+								From: &AutoIncrement{V: 1},
+								To:   &AutoIncrement{V: 1000},
+							},
 						},
 					}
 				}(),
@@ -307,7 +311,7 @@ func TestPlanChanges(t *testing.T) {
 				Reversible: true,
 				Changes: []*migrate.Change{
 					{
-						Cmd:     "ALTER TABLE `users` ADD COLUMN `name` varchar(255) NOT NULL, ADD INDEX `id_key` (`id`) COMMENT \"comment\", ADD CONSTRAINT `id_nonzero` CHECK (id > 0) ENFORCED",
+						Cmd:     "ALTER TABLE `users` ADD COLUMN `name` varchar(255) NOT NULL, ADD INDEX `id_key` (`id`) COMMENT \"comment\", ADD CONSTRAINT `id_nonzero` CHECK (id > 0) ENFORCED, AUTO_INCREMENT 1000",
 						Reverse: "ALTER TABLE `users` DROP COLUMN `name`, DROP INDEX `id_key`, DROP CHECK `id_nonzero`",
 					},
 				},

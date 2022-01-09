@@ -50,6 +50,17 @@ func TestDiff_TableDiff(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "modify counter",
+			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&AutoIncrement{V: 1}}},
+			to:   &schema.Table{Name: "users", Attrs: []schema.Attr{&AutoIncrement{V: 100}}},
+			wantChanges: []schema.Change{
+				&schema.ModifyAttr{
+					From: &AutoIncrement{V: 1},
+					To:   &AutoIncrement{V: 100},
+				},
+			},
+		},
+		{
 			name: "add collation",
 			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}},
 			to:   &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Collation{V: "latin1"}}},
