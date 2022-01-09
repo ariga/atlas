@@ -35,6 +35,9 @@ func (d *diff) SchemaAttrDiff(from, to *schema.Schema) []schema.Change {
 // TableAttrDiff returns a changeset for migrating table attributes from one state to the other.
 func (d *diff) TableAttrDiff(from, to *schema.Table) []schema.Change {
 	var changes []schema.Change
+	if change := d.autoIncChange(from.Attrs, to.Attrs); change != noChange {
+		changes = append(changes, change)
+	}
 	if change := d.charsetChange(from.Attrs, from.Schema.Attrs, to.Attrs); change != noChange {
 		changes = append(changes, change)
 	}
@@ -156,6 +159,22 @@ func (d *diff) charsetChange(from, top, to []schema.Attr) schema.Change {
 		return &schema.ModifyAttr{
 			From: &fromC,
 			To:   &toC,
+		}
+	}
+	return noChange
+}
+
+// autoIncChange returns the schema change for changing the AUTO_INCREMENT
+// attribute in case it is not the default.
+func (d *diff) autoIncChange(from, to []schema.Attr) schema.Change {
+	var fromA, toA AutoIncrement
+	// The table is empty and AUTO_INCREMENT was not configured. This can happen
+	// because older versions of MySQL (< 8.0) stored the AUTO_INCREMENT counter
+	// in main memory (not persistent), and the value is reset on process restart.
+	if sqlx.Has(from, &fromA) && sqlx.Has(to, &toA) && fromA.V <= 1 && toA.V > 1 {
+		return &schema.ModifyAttr{
+			From: &fromA,
+			To:   &toA,
 		}
 	}
 	return noChange

@@ -387,7 +387,7 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) {
 		case *AutoIncrement:
 			b.P("AUTO_INCREMENT")
 			// Auto increment with value should be configured on table options.
-			if a.V != 0 && !sqlx.Has(t.Attrs, &AutoIncrement{}) {
+			if a.V > 0 && !sqlx.Has(t.Attrs, &AutoIncrement{}) {
 				t.Attrs = append(t.Attrs, a)
 			}
 		default:
@@ -449,10 +449,10 @@ func (s *state) tableAttr(b *sqlx.Builder, attrs ...schema.Attr) error {
 		case *CreateOptions:
 			b.P(a.V)
 		case *AutoIncrement:
-			if a.V == 0 {
-				return fmt.Errorf("missing value for table option AUTO_INCREMENT")
+			// Update the AUTO_INCREMENT if it is not the default.
+			if a.V > 1 {
+				b.P("AUTO_INCREMENT", strconv.FormatInt(a.V, 10))
 			}
-			b.P("AUTO_INCREMENT", strconv.FormatInt(a.V, 10))
 		case *schema.Check:
 			// Ignore CHECK constraints as they are not real attributes,
 			// and handled on CREATE or ALTER.
