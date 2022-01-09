@@ -361,7 +361,7 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			typeExpr: `enum("on","off")`,
-			expected: &schema.EnumType{Values: []string{"on", "off"}},
+			expected: &schema.EnumType{T: TypeEnum, Values: []string{"on", "off"}},
 		},
 		{
 			typeExpr: "bit(10)",
@@ -477,7 +477,7 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			typeExpr: `enum("a","b")`,
-			expected: &schema.EnumType{Values: []string{"a", "b"}},
+			expected: &schema.EnumType{T: "enum", Values: []string{"a", "b"}},
 		},
 		{
 			typeExpr: `set("a","b")`,

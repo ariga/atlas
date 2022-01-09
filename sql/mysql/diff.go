@@ -268,7 +268,7 @@ func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
 		return false, nil
 	case *schema.IntegerType:
 		return !d.equalsIntValues(d1, d2), nil
-	case *schema.StringType:
+	case *schema.EnumType, *SetType, *schema.StringType:
 		return !equalsStringValues(d1, d2), nil
 	case *schema.TimeType:
 		x1 := strings.ToLower(strings.Trim(d1, "' ()"))

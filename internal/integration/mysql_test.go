@@ -166,7 +166,7 @@ func TestMySQL_AddColumns(t *testing.T) {
 			&schema.Column{Name: "r", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
 			&schema.Column{Name: "s", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
 			&schema.Column{Name: "t", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "smallint"}}},
-			&schema.Column{Name: "u", Type: &schema.ColumnType{Type: &schema.EnumType{Values: []string{"a", "b", "c"}}}},
+			&schema.Column{Name: "u", Type: &schema.ColumnType{Type: &schema.EnumType{T: "enum", Values: []string{"a", "b", "c"}}}},
 			&schema.Column{Name: "v", Type: &schema.ColumnType{Type: &schema.StringType{T: "char(36)"}}},
 			&schema.Column{Name: "x", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "line"}}},
 			&schema.Column{Name: "y", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "point"}}},
@@ -831,7 +831,7 @@ create table atlas_types_sanity
 					},
 					{
 						Name: "tEnum",
-						Type: &schema.ColumnType{Type: &schema.EnumType{Values: []string{"a", "b"}},
+						Type: &schema.ColumnType{Type: &schema.EnumType{T: "enum", Values: []string{"a", "b"}},
 							Raw: "enum('a','b')", Null: true},
 						Attrs: []schema.Attr{
 							&schema.Charset{V: "latin1"},
