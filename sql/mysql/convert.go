@@ -192,6 +192,7 @@ func ParseType(raw string) (schema.Type, error) {
 		}
 		if t == TypeEnum {
 			return &schema.EnumType{
+				T:      TypeEnum,
 				Values: values,
 			}, nil
 		}

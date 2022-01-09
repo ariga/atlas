@@ -33,6 +33,11 @@ func TestDiff_TableDiff(t *testing.T) {
 			to:   &schema.Table{Name: "users"},
 		},
 		{
+			name: "no changes",
+			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Columns: []*schema.Column{{Name: "enum", Default: &schema.RawExpr{X: "'A'"}, Type: &schema.ColumnType{Type: &schema.EnumType{Values: []string{"A"}}}}}},
+			to:   &schema.Table{Name: "users", Columns: []*schema.Column{{Name: "enum", Default: &schema.RawExpr{X: `"A"`}, Type: &schema.ColumnType{Type: &schema.EnumType{Values: []string{"A"}}}}}},
+		},
+		{
 			name: "change primary key",
 			from: func() *schema.Table {
 				t := &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Columns: []*schema.Column{{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}}}}
