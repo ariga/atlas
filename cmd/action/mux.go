@@ -71,7 +71,7 @@ func (u *Mux) OpenAtlas(dsn string) (*Driver, error) {
 func parseDSN(url string) (string, string, error) {
 	a := strings.SplitN(url, "://", 2)
 	if len(a) != 2 {
-		return "", "", fmt.Errorf("failed to parse dsn")
+		return "", "", fmt.Errorf(`failed to parse dsn: "%s"`, url)
 	}
 	return a[0], a[1], nil
 }
