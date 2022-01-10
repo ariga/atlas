@@ -162,6 +162,10 @@ func TestTypes(t *testing.T) {
 			expected: &schema.IntegerType{T: "int"},
 		},
 		{
+			typeExpr: `sql("custom")`,
+			expected: &schema.UnsupportedType{T: "custom"},
+		},
+		{
 			typeExpr: "tinyint(10)",
 			expected: &schema.IntegerType{T: "tinyint"},
 		},

@@ -287,6 +287,10 @@ func TestTypes(t *testing.T) {
 			expected: &schema.StringType{T: TypeChar, Size: 255},
 		},
 		{
+			typeExpr: `sql("custom")`,
+			expected: &schema.UnsupportedType{T: "custom"},
+		},
+		{
 			typeExpr: "binary(255)",
 			expected: &schema.BinaryType{T: TypeBinary, Size: 255},
 		},

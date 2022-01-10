@@ -226,7 +226,7 @@ func parseRawType(c string) (schema.Type, error) {
 	case "uuid":
 		return &UUIDType{T: t}, nil
 	default:
-		return nil, fmt.Errorf("unknown column type %q", t)
+		return &schema.UnsupportedType{T: t}, nil
 	}
 }
 
