@@ -77,8 +77,12 @@ func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 	return indexType(from).T != indexType(to).T
 }
 
-// IndexPartAttrChanged reports if the index-part attributes were changed.
+// IndexPartAttrChanged reports if the index-part attributes (collation or prefix) were changed.
 func (*diff) IndexPartAttrChanged(from, to []schema.Attr) bool {
+	var s1, s2 SubPart
+	if sqlx.Has(from, &s1) != sqlx.Has(to, &s2) || s1.Len != s2.Len {
+		return true
+	}
 	return indexCollation(from).V != indexCollation(to).V
 }
 

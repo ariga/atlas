@@ -97,7 +97,7 @@ func (d *Diff) SchemaDiff(from, to *schema.Schema) ([]schema.Change, error) {
 		return nil, fmt.Errorf("mismatched schema names: %q != %q", from.Name, to.Name)
 	}
 	var changes []schema.Change
-	// Drop or modify attributes (collations, checks, etc).
+	// Drop or modify attributes (collations, charset, etc).
 	if change := d.SchemaAttrDiff(from, to); len(change) > 0 {
 		changes = append(changes, &schema.ModifySchema{
 			Changes: change,
