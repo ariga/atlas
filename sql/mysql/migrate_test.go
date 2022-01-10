@@ -229,14 +229,23 @@ func TestPlanChanges(t *testing.T) {
 							&schema.Check{Name: "id_nonzero", Expr: "(`id` > 0)"},
 							&CreateOptions{V: `COMPRESSION="ZLIB"`},
 						},
+						Indexes: []*schema.Index{
+							{
+								Name: "text_prefix",
+								Parts: []*schema.IndexPart{
+									{Attrs: []schema.Attr{&SubPart{Len: 100}, &schema.Collation{V: "D"}}},
+								},
+							},
+						},
 					}
+					t.Indexes[0].Parts[0].C = t.Columns[1]
 					t.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: t.Columns[0]}}}
 					return &schema.AddTable{T: t}
 				}(),
 			},
 			plan: &migrate.Plan{
 				Reversible: true,
-				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` bigint NOT NULL AUTO_INCREMENT, `text` text NULL, `ch` char NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `id_nonzero` CHECK (`id` > 0)) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT \"posts comment\" COMPRESSION=\"ZLIB\" AUTO_INCREMENT 100", Reverse: "DROP TABLE `posts`"}},
+				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` bigint NOT NULL AUTO_INCREMENT, `text` text NULL, `ch` char NOT NULL, PRIMARY KEY (`id`), INDEX `text_prefix` (`text` (100) DESC), CONSTRAINT `id_nonzero` CHECK (`id` > 0)) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT \"posts comment\" COMPRESSION=\"ZLIB\" AUTO_INCREMENT 100", Reverse: "DROP TABLE `posts`"}},
 			},
 		},
 		{
