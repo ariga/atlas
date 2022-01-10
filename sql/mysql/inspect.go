@@ -457,9 +457,13 @@ func extraAttr(t *schema.Table, c *schema.Column, extra string) error {
 		// and it is handled in Driver.addColumn.
 	case autoIncrement:
 		a := &AutoIncrement{}
-		// Reference to the table attribute if exists, as
-		// there can be only one auto_increment in a table.
-		sqlx.Has(t.Attrs, a)
+		// Reference to the table attribute if exists, as there can be only one
+		// auto_increment in a table. Or, set it in case the information_schema
+		// does not show it due to the session cache introduced in MySQL > 8.
+		// See information_schema_stats_expiry for more info.
+		if !sqlx.Has(t.Attrs, a) {
+			t.Attrs = append(t.Attrs, a)
+		}
 		c.Attrs = append(c.Attrs, a)
 	case "default_generated on update current_timestamp", "on update current_timestamp",
 		"on update current_timestamp()" /* MariaDB format. */ :

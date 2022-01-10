@@ -83,6 +83,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					&schema.Collation{V: "utf8mb4_0900_ai_ci"},
 					&schema.Comment{Text: "Comment"},
 					&CreateOptions{V: `COMPRESSION="ZLIB"`},
+					&AutoIncrement{},
 				}, t.Attrs)
 				require.Len(t.PrimaryKey.Parts, 1)
 				require.True(t.PrimaryKey.Parts[0].C == t.Columns[0])
@@ -595,7 +596,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c1", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
 				}
 				require.EqualValues(columns, t.Columns)
-				require.EqualValues([]schema.Attr{&schema.Check{Name: "users_chk_1", Expr: "(`c6` <>_latin1\\'foo\\'s\\')", Attrs: []schema.Attr{&Enforced{}}}}, t.Attrs)
+				require.EqualValues([]schema.Attr{&AutoIncrement{}, &schema.Check{Name: "users_chk_1", Expr: "(`c6` <>_latin1\\'foo\\'s\\')", Attrs: []schema.Attr{&Enforced{}}}}, t.Attrs)
 			},
 		},
 	}
