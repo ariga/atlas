@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -204,7 +205,7 @@ func (i *inspect) columns(ctx context.Context, t *schema.Table) error {
 	}
 	defer rows.Close()
 	for rows.Next() {
-		if err := i.addColumn(t, rows); err != nil {
+		if err := i.addColumn(ctx, t, rows); err != nil {
 			return fmt.Errorf("mysql: %w", err)
 		}
 	}
@@ -212,7 +213,7 @@ func (i *inspect) columns(ctx context.Context, t *schema.Table) error {
 }
 
 // addColumn scans the current row and adds a new column from it to the table.
-func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
+func (i *inspect) addColumn(ctx context.Context, t *schema.Table, rows *sql.Rows) error {
 	var name, typ, comment, nullable, key, defaults, extra, charset, collation sql.NullString
 	if err := rows.Scan(&name, &typ, &comment, &nullable, &key, &defaults, &extra, &charset, &collation); err != nil {
 		return err
@@ -229,7 +230,7 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 		return err
 	}
 	c.Type.Type = ct
-	if err := extraAttr(t, c, extra.String); err != nil {
+	if err := i.extraAttr(ctx, t, c, extra.String); err != nil {
 		return err
 	}
 	if sqlx.ValidString(defaults) {
@@ -410,7 +411,7 @@ func (i *inspect) checks(ctx context.Context, t *schema.Table) error {
 func (i *inspect) tableNames(ctx context.Context, schema string, opts *schema.InspectOptions) ([]string, error) {
 	query, args := tablesQuery, []interface{}{schema}
 	if opts != nil && len(opts.Tables) > 0 {
-		query += " AND `TABLE_NAME` IN (" + strings.Repeat("?, ", len(opts.Tables)-1) + "?)"
+		query = fmt.Sprintf(tablesQueryArgs, strings.Repeat("?, ", len(opts.Tables)-1)+"?")
 		for _, s := range opts.Tables {
 			args = append(args, s)
 		}
@@ -426,30 +427,9 @@ func (i *inspect) tableNames(ctx context.Context, schema string, opts *schema.In
 	return names, nil
 }
 
-// parseColumn returns column parts, size and signed-info from a MySQL type.
-func parseColumn(typ string) (parts []string, size int64, unsigned bool, err error) {
-	switch parts = strings.FieldsFunc(typ, func(r rune) bool {
-		return r == '(' || r == ')' || r == ' ' || r == ','
-	}); parts[0] {
-	case TypeTinyInt, TypeSmallInt, TypeMediumInt, TypeInt, TypeBigInt:
-		if attr := parts[len(parts)-1]; attr == "unsigned" || attr == "zerofill" {
-			unsigned = true
-		}
-		if len(parts) > 2 || len(parts) == 2 && !unsigned {
-			size, err = strconv.ParseInt(parts[1], 10, 64)
-		}
-	case TypeBinary, TypeVarBinary, TypeChar, TypeVarchar:
-		size, err = strconv.ParseInt(parts[1], 10, 64)
-	}
-	if err != nil {
-		return nil, 0, false, fmt.Errorf("parse %q to int: %w", parts[1], err)
-	}
-	return parts, size, unsigned, nil
-}
-
 // extraAttr parses the EXTRA column from the INFORMATION_SCHEMA.COLUMNS table
 // and appends its parsed representation to the column.
-func extraAttr(t *schema.Table, c *schema.Column, extra string) error {
+func (i *inspect) extraAttr(ctx context.Context, t *schema.Table, c *schema.Column, extra string) error {
 	switch extra := strings.ToLower(extra); extra {
 	case "", "null": // ignore.
 	case defaultGen:
@@ -457,11 +437,15 @@ func extraAttr(t *schema.Table, c *schema.Column, extra string) error {
 		// and it is handled in Driver.addColumn.
 	case autoIncrement:
 		a := &AutoIncrement{}
-		// Reference to the table attribute if exists, as there can be only one
-		// auto_increment in a table. Or, set it in case the information_schema
-		// does not show it due to the session cache introduced in MySQL > 8.
-		// See information_schema_stats_expiry for more info.
+		// A table can have only one AUTO_INCREMENT column. If it was returned as NULL
+		// from INFORMATION_SCHEMA, it is due to information_schema_stats_expiry and we
+		// need to extract it from the 'CREATE TABLE' command.
 		if !sqlx.Has(t.Attrs, a) {
+			inc, err := i.loadAutoinc(ctx, t)
+			if err != nil {
+				return err
+			}
+			*a = *inc
 			t.Attrs = append(t.Attrs, a)
 		}
 		c.Attrs = append(c.Attrs, a)
@@ -472,6 +456,38 @@ func extraAttr(t *schema.Table, c *schema.Column, extra string) error {
 		return fmt.Errorf("unknown attribute %q", extra)
 	}
 	return nil
+}
+
+var reAutoinc = regexp.MustCompile(`(?i)\s+AUTO_INCREMENT\s*=\s*(\d+)\s+`)
+
+// loadAutoinc loads the updated AUTO_INCREMENT from CREATE TABLE.
+func (i *inspect) loadAutoinc(ctx context.Context, t *schema.Table) (*AutoIncrement, error) {
+	c, err := i.createStmt(ctx, t)
+	if err != nil {
+		return nil, err
+	}
+	matches := reAutoinc.FindStringSubmatch(c.S)
+	if len(matches) != 2 {
+		return &AutoIncrement{}, nil
+	}
+	v, err := strconv.ParseInt(matches[1], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	return &AutoIncrement{V: v}, nil
+}
+
+// createStmt loads the CREATE TABLE statement for the table.
+func (i *inspect) createStmt(ctx context.Context, t *schema.Table) (*CreateStmt, error) {
+	c := &CreateStmt{}
+	if sqlx.Has(t.Attrs, c) {
+		return c, nil
+	}
+	if err := i.QueryRowContext(ctx, Build("SHOW CREATE TABLE").Table(t).String()).Scan(&sql.NullString{}, &c.S); err != nil {
+		return nil, fmt.Errorf("query CREATE TABLE %q: %w", t.Name, err)
+	}
+	t.Attrs = append(t.Attrs, c)
+	return c, nil
 }
 
 // myDefaultExpr returns the correct schema.Expr based on the column attributes for MySQL.
@@ -496,6 +512,27 @@ func (i *inspect) myDefaultExpr(c *schema.Column, x, extra string) schema.Expr {
 		}
 	}
 	return &schema.Literal{V: quote(x)}
+}
+
+// parseColumn returns column parts, size and signed-info from a MySQL type.
+func parseColumn(typ string) (parts []string, size int64, unsigned bool, err error) {
+	switch parts = strings.FieldsFunc(typ, func(r rune) bool {
+		return r == '(' || r == ')' || r == ' ' || r == ','
+	}); parts[0] {
+	case TypeTinyInt, TypeSmallInt, TypeMediumInt, TypeInt, TypeBigInt:
+		if attr := parts[len(parts)-1]; attr == "unsigned" || attr == "zerofill" {
+			unsigned = true
+		}
+		if len(parts) > 2 || len(parts) == 2 && !unsigned {
+			size, err = strconv.ParseInt(parts[1], 10, 64)
+		}
+	case TypeBinary, TypeVarBinary, TypeChar, TypeVarchar:
+		size, err = strconv.ParseInt(parts[1], 10, 64)
+	}
+	if err != nil {
+		return nil, 0, false, fmt.Errorf("parse %q to int: %w", parts[1], err)
+	}
+	return parts, size, unsigned, nil
 }
 
 // hasNumericDefault reports if the given type has a numeric default value.
@@ -548,6 +585,9 @@ const (
 
 	// Query to list schema tables.
 	tablesQuery = "SELECT `TABLE_NAME` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_TYPE` = 'BASE TABLE' AND `TABLE_SCHEMA` = ? ORDER BY `TABLE_NAME`"
+
+	// Query to list specific schema tables.
+	tablesQueryArgs = "SELECT `TABLE_NAME` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_TYPE` = 'BASE TABLE' AND `TABLE_SCHEMA` = ? AND `TABLE_NAME` IN (%s) ORDER BY `TABLE_NAME`"
 
 	// Query to list table columns.
 	columnsQuery = "SELECT `COLUMN_NAME`, `COLUMN_TYPE`, `COLUMN_COMMENT`, `IS_NULLABLE`, `COLUMN_KEY`, `COLUMN_DEFAULT`, `EXTRA`, `CHARACTER_SET_NAME`, `COLLATION_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `ORDINAL_POSITION`"
@@ -647,6 +687,12 @@ type (
 	CreateOptions struct {
 		schema.Attr
 		V string
+	}
+
+	// CreateStmt describes the SQL statement used to create a table.
+	CreateStmt struct {
+		schema.Attr
+		S string
 	}
 
 	// OnUpdate attribute for columns with "ON UPDATE CURRENT_TIMESTAMP" as a default.
