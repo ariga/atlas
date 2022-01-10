@@ -69,9 +69,7 @@ func (s *state) plan(changes []schema.Change) error {
 	for _, c := range planned {
 		switch c := c.(type) {
 		case *schema.AddTable:
-			if err := s.addTable(c); err != nil {
-				return err
-			}
+			s.addTable(c)
 		case *schema.DropTable:
 			s.dropTable(c)
 		case *schema.ModifyTable:
@@ -126,7 +124,7 @@ func (s *state) topLevel(changes []schema.Change) []schema.Change {
 
 // addTable builds and appends the migrate.Change
 // for creating a table in a schema.
-func (s *state) addTable(add *schema.AddTable) error {
+func (s *state) addTable(add *schema.AddTable) {
 	b := Build("CREATE TABLE").Table(add.T)
 	if sqlx.Has(add.Extra, &schema.IfNotExists{}) {
 		b.P("IF NOT EXISTS")
@@ -163,16 +161,13 @@ func (s *state) addTable(add *schema.AddTable) error {
 			}
 		}
 	})
-	if err := s.tableAttr(b, add.T.Attrs...); err != nil {
-		return err
-	}
+	s.tableAttr(b, add, add.T.Attrs...)
 	s.append(&migrate.Change{
 		Cmd:     b.String(),
 		Source:  add,
 		Reverse: Build("DROP TABLE").Table(add.T).String(),
 		Comment: fmt.Sprintf("create %q table", add.T.Name),
 	})
-	return nil
 }
 
 // dropTable builds and appends the migrate.Change
@@ -285,18 +280,12 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			b.P("DROP FOREIGN KEY").Ident(change.F.Symbol)
 			reversible = false
 		case *schema.AddAttr:
-			if err := s.tableAttr(b, change.A); err != nil {
-				errors = append(errors, fmt.Sprintf("add attribute: %s", err.Error()))
-			}
+			s.tableAttr(b, change, change.A)
 			// Unsupported reverse operation.
 			reversible = false
 		case *schema.ModifyAttr:
-			if err := s.tableAttr(b, change.To); err != nil {
-				errors = append(errors, fmt.Sprintf("modify attribute: %s", err.Error()))
-			}
-			if err := s.tableAttr(reverse, change.From); err != nil {
-				errors = append(errors, fmt.Sprintf("reverse modify attribute: %s", err.Error()))
-			}
+			s.tableAttr(b, change, change.To)
+			s.tableAttr(reverse.Comma(), change, change.From)
 		case *schema.AddCheck:
 			s.check(b.P("ADD"), change.C)
 			// Reverse operation is supported if
@@ -443,14 +432,14 @@ func (s *state) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
 
 // tableAttr writes the given table attribute to the SQL
 // statement builder when a table is created or altered.
-func (s *state) tableAttr(b *sqlx.Builder, attrs ...schema.Attr) error {
+func (s *state) tableAttr(b *sqlx.Builder, c schema.Change, attrs ...schema.Attr) {
 	for _, a := range attrs {
 		switch a := a.(type) {
 		case *CreateOptions:
 			b.P(a.V)
 		case *AutoIncrement:
-			// Update the AUTO_INCREMENT if it is not the default.
-			if a.V > 1 {
+			// Update the AUTO_INCREMENT if it is an update change or it is not the default.
+			if _, ok := c.(*schema.ModifyAttr); ok || a.V > 1 {
 				b.P("AUTO_INCREMENT", strconv.FormatInt(a.V, 10))
 			}
 		case *schema.Check:
@@ -464,7 +453,6 @@ func (s *state) tableAttr(b *sqlx.Builder, attrs ...schema.Attr) error {
 			b.P("COMMENT", quote(a.Text))
 		}
 	}
-	return nil
 }
 
 // character returns the table character-set from its attributes
