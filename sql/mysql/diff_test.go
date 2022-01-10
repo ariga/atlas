@@ -221,10 +221,12 @@ func TestDiff_TableDiff(t *testing.T) {
 			from.Indexes = []*schema.Index{
 				{Name: "c1_index", Unique: true, Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[0]}}},
 				{Name: "c2_unique", Unique: true, Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}},
+				{Name: "c1_prefix", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1], Attrs: []schema.Attr{&SubPart{Len: 50}}}}},
 			}
 			to.Indexes = []*schema.Index{
 				{Name: "c1_index", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[0]}}},
 				{Name: "c3_unique", Unique: true, Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: to.Columns[1]}}},
+				{Name: "c1_prefix", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[0], Attrs: []schema.Attr{&SubPart{Len: 100}}}}},
 			}
 			return testcase{
 				name: "indexes",
@@ -233,6 +235,7 @@ func TestDiff_TableDiff(t *testing.T) {
 				wantChanges: []schema.Change{
 					&schema.ModifyIndex{From: from.Indexes[0], To: to.Indexes[0], Change: schema.ChangeUnique},
 					&schema.DropIndex{I: from.Indexes[1]},
+					&schema.ModifyIndex{From: from.Indexes[2], To: to.Indexes[2], Change: schema.ChangeParts},
 					&schema.AddIndex{I: to.Indexes[1]},
 				},
 			}

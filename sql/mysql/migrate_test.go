@@ -181,7 +181,8 @@ func TestPlanChanges(t *testing.T) {
 			},
 			plan: &migrate.Plan{
 				Reversible: true,
-				Changes:    []*migrate.Change{{Cmd: "CREATE DATABASE `test` CHARACTER SET latin", Reverse: "DROP DATABASE `test`"}}},
+				Changes:    []*migrate.Change{{Cmd: "CREATE DATABASE `test` CHARACTER SET latin", Reverse: "DROP DATABASE `test`"}},
+			},
 		},
 		{
 			changes: []schema.Change{
