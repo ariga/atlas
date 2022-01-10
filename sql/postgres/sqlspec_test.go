@@ -166,6 +166,10 @@ func TestTypes(t *testing.T) {
 			expected: &BitType{T: TypeBit, Len: 10},
 		},
 		{
+			typeExpr: `hstore`,
+			expected: &UserDefinedType{T: "hstore"},
+		},
+		{
 			typeExpr: "bit_varying(10)",
 			expected: &BitType{T: TypeBitVar, Len: 10},
 		},

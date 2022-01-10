@@ -167,6 +167,11 @@ func (r *TypeRegistry) findT(t string) (*schemaspec.TypeSpec, bool) {
 
 // Convert converts the schema.Type to a *schemaspec.Type.
 func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
+	if ut, ok := typ.(*schema.UnsupportedType); ok {
+		return &schemaspec.Type{
+			T: ut.T,
+		}, nil
+	}
 	rv := reflect.ValueOf(typ)
 	if rv.Kind() == reflect.Ptr {
 		rv = rv.Elem()
@@ -264,7 +269,7 @@ func (r *TypeRegistry) Type(typ *schemaspec.Type, extra []*schemaspec.Attr) (sch
 	nfa := typeNonFuncArgs(typeSpec)
 	picked := pickTypeAttrs(extra, nfa)
 	cp := &schemaspec.Type{
-		T:     typ.T,
+		T: typ.T,
 	}
 	cp.Attrs = appendIfNotExist(typ.Attrs, picked)
 	printType, err := r.PrintType(cp)
