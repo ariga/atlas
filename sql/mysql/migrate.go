@@ -394,10 +394,12 @@ func (s *state) indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {
 			case part.X != nil:
 				b.WriteString(part.X.(*schema.RawExpr).X)
 			}
-			for _, a := range parts[i].Attrs {
-				if c, ok := a.(*schema.Collation); ok && c.V == "D" {
-					b.P("DESC")
-				}
+			if s := (&SubPart{}); sqlx.Has(parts[i].Attrs, s) {
+				b.WriteString(fmt.Sprintf("(%d)", s.Len))
+			}
+			// Ignore default collation (i.e. "ASC")
+			if c := (&schema.Collation{}); sqlx.Has(parts[i].Attrs, c) && c.V == "D" {
+				b.P("DESC")
 			}
 		})
 	})
