@@ -108,9 +108,9 @@ show "friends" {
 playlist "comedy" {
   show_ids = [
     show.seinfeld.id
-     will equal 1
+    // will equal 1
     show.friends.id,
-     will equal 2 
+    // will equal 2 
   ]
 }
 ```
