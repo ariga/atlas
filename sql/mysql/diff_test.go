@@ -71,12 +71,13 @@ func TestDiff_TableDiff(t *testing.T) {
 			},
 		},
 		{
-			name: "drop collation",
-			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Collation{V: "latin1"}}},
+			name: "drop collation means modify",
+			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public", Attrs: []schema.Attr{&schema.Collation{V: "utf8mb4_0900_ai_ci"}}}, Attrs: []schema.Attr{&schema.Collation{V: "utf8mb4_bin"}}},
 			to:   &schema.Table{Name: "users"},
 			wantChanges: []schema.Change{
-				&schema.DropAttr{
-					A: &schema.Collation{V: "latin1"},
+				&schema.ModifyAttr{
+					From: &schema.Collation{V: "utf8mb4_bin"},
+					To:   &schema.Collation{V: "utf8mb4_0900_ai_ci"},
 				},
 			},
 		},
@@ -102,12 +103,13 @@ func TestDiff_TableDiff(t *testing.T) {
 			},
 		},
 		{
-			name: "drop charset",
-			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Charset{V: "hebrew"}}},
+			name: "drop charset means modify",
+			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public", Attrs: []schema.Attr{&schema.Charset{V: "hebrew"}}}, Attrs: []schema.Attr{&schema.Charset{V: "hebrew_bin"}}},
 			to:   &schema.Table{Name: "users"},
 			wantChanges: []schema.Change{
-				&schema.DropAttr{
-					A: &schema.Charset{V: "hebrew"},
+				&schema.ModifyAttr{
+					From: &schema.Charset{V: "hebrew_bin"},
+					To:   &schema.Charset{V: "hebrew"},
 				},
 			},
 		},

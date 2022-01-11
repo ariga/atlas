@@ -96,7 +96,7 @@ func (s *state) topLevel(changes []schema.Change) []schema.Change {
 				b.P("IF NOT EXISTS")
 			}
 			if a := (schema.Charset{}); sqlx.Has(c.S.Attrs, &a) {
-				b.P("CHARACTER SET", a.V)
+				b.P("CHARSET", a.V)
 			}
 			if a := (schema.Collation{}); sqlx.Has(c.S.Attrs, &a) {
 				b.P("COLLATE", a.V)
@@ -233,7 +233,7 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 				I: change.To,
 			})
 		case *schema.DropAttr:
-			return fmt.Errorf("unsupported change type: %T", change)
+			return fmt.Errorf("unsupported change type: %v", change.A)
 		default:
 			changes[1] = append(changes[1], change)
 		}
@@ -384,7 +384,7 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 			// Define the charset explicitly
 			// in case it is not the default.
 			if s.character(t) != a.V {
-				b.P("CHARACTER SET", a.V)
+				b.P("CHARSET", a.V)
 			}
 		case *schema.Collation:
 			// Define the collation explicitly
@@ -470,7 +470,7 @@ func (s *state) tableAttr(b *sqlx.Builder, c schema.Change, attrs ...schema.Attr
 			// Ignore CHECK constraints as they are not real attributes,
 			// and handled on CREATE or ALTER.
 		case *schema.Charset:
-			b.P("CHARACTER SET", a.V)
+			b.P("CHARSET", a.V)
 		case *schema.Collation:
 			b.P("COLLATE", a.V)
 		case *schema.Comment:

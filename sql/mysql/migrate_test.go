@@ -19,7 +19,7 @@ import (
 func TestMigrate_ApplyChanges(t *testing.T) {
 	migrate, mk, err := newMigrate("8.0.13")
 	require.NoError(t, err)
-	mk.ExpectExec(sqltest.Escape("CREATE DATABASE `test` CHARACTER SET latin")).
+	mk.ExpectExec(sqltest.Escape("CREATE DATABASE `test` CHARSET latin")).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mk.ExpectExec(sqltest.Escape("DROP DATABASE `atlas`")).
 		WillReturnResult(sqlmock.NewResult(0, 1))
@@ -181,7 +181,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 			plan: &migrate.Plan{
 				Reversible: true,
-				Changes:    []*migrate.Change{{Cmd: "CREATE DATABASE `test` CHARACTER SET latin", Reverse: "DROP DATABASE `test`"}},
+				Changes:    []*migrate.Change{{Cmd: "CREATE DATABASE `test` CHARSET latin", Reverse: "DROP DATABASE `test`"}},
 			},
 		},
 		{
@@ -209,7 +209,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 			plan: &migrate.Plan{
 				Reversible: true,
-				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` bigint NOT NULL AUTO_INCREMENT, `text` text NULL, `uuid` char(36) NULL CHARACTER SET utf8mb4 COLLATE utf8mb4_bin, PRIMARY KEY (`id`))", Reverse: "DROP TABLE `posts`"}},
+				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` bigint NOT NULL AUTO_INCREMENT, `text` text NULL, `uuid` char(36) NULL CHARSET utf8mb4 COLLATE utf8mb4_bin, PRIMARY KEY (`id`))", Reverse: "DROP TABLE `posts`"}},
 			},
 		},
 		{
@@ -245,7 +245,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 			plan: &migrate.Plan{
 				Reversible: true,
-				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` bigint NOT NULL AUTO_INCREMENT, `text` text NULL, `ch` char NOT NULL, PRIMARY KEY (`id`), INDEX `text_prefix` (`text` (100) DESC), CONSTRAINT `id_nonzero` CHECK (`id` > 0)) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT \"posts comment\" COMPRESSION=\"ZLIB\" AUTO_INCREMENT 100", Reverse: "DROP TABLE `posts`"}},
+				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` bigint NOT NULL AUTO_INCREMENT, `text` text NULL, `ch` char NOT NULL, PRIMARY KEY (`id`), INDEX `text_prefix` (`text` (100) DESC), CONSTRAINT `id_nonzero` CHECK (`id` > 0)) CHARSET utf8mb4 COLLATE utf8mb4_bin COMMENT \"posts comment\" COMPRESSION=\"ZLIB\" AUTO_INCREMENT 100", Reverse: "DROP TABLE `posts`"}},
 			},
 		},
 		{

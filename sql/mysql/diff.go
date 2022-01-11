@@ -129,9 +129,13 @@ func (d *diff) collationChange(from, top, to []schema.Attr) schema.Change {
 			A: &toC,
 		}
 	case !toHas:
-		if !topHas || fromC.V != topC.V {
-			return &schema.DropAttr{
-				A: &fromC,
+		// There is no way to DROP a COLLATE that was configured on the table
+		// and it is not the default. Therefore, we use ModifyAttr and give it
+		// the inherited (and default) collation from schema or server.
+		if topHas && fromC.V != topC.V {
+			return &schema.ModifyAttr{
+				From: &fromC,
+				To:   &topC,
 			}
 		}
 	case fromC.V != toC.V:
@@ -154,9 +158,13 @@ func (d *diff) charsetChange(from, top, to []schema.Attr) schema.Change {
 			A: &toC,
 		}
 	case !toHas:
-		if !topHas || fromC.V != topC.V {
-			return &schema.DropAttr{
-				A: &fromC,
+		// There is no way to DROP a CHARSET that was configured on the table
+		// and it is not the default. Therefore, we use ModifyAttr and give it
+		// the inherited (and default) collation from schema or server.
+		if topHas && fromC.V != topC.V {
+			return &schema.ModifyAttr{
+				From: &fromC,
+				To:   &topC,
 			}
 		}
 	case fromC.V != toC.V:
