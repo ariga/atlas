@@ -69,7 +69,9 @@ func (s *state) plan(changes []schema.Change) error {
 	for _, c := range planned {
 		switch c := c.(type) {
 		case *schema.AddTable:
-			s.addTable(c)
+			if err := s.addTable(c); err != nil {
+				return err
+			}
 		case *schema.DropTable:
 			s.dropTable(c)
 		case *schema.ModifyTable:
@@ -124,14 +126,19 @@ func (s *state) topLevel(changes []schema.Change) []schema.Change {
 
 // addTable builds and appends the migrate.Change
 // for creating a table in a schema.
-func (s *state) addTable(add *schema.AddTable) {
-	b := Build("CREATE TABLE").Table(add.T)
+func (s *state) addTable(add *schema.AddTable) error {
+	var (
+		errors []string
+		b      = Build("CREATE TABLE").Table(add.T)
+	)
 	if sqlx.Has(add.Extra, &schema.IfNotExists{}) {
 		b.P("IF NOT EXISTS")
 	}
 	b.Wrap(func(b *sqlx.Builder) {
 		b.MapComma(add.T.Columns, func(i int, b *sqlx.Builder) {
-			s.column(b, add.T, add.T.Columns[i])
+			if err := s.column(b, add.T, add.T.Columns[i]); err != nil {
+				errors = append(errors, err.Error())
+			}
 		})
 		if pk := add.T.PrimaryKey; pk != nil {
 			b.Comma().P("PRIMARY KEY")
@@ -161,6 +168,9 @@ func (s *state) addTable(add *schema.AddTable) {
 			}
 		}
 	})
+	if len(errors) > 0 {
+		return fmt.Errorf("create table %q: %s", add.T.Name, strings.Join(errors, ", "))
+	}
 	s.tableAttr(b, add, add.T.Attrs...)
 	s.append(&migrate.Change{
 		Cmd:     b.String(),
@@ -168,6 +178,7 @@ func (s *state) addTable(add *schema.AddTable) {
 		Reverse: Build("DROP TABLE").Table(add.T).String(),
 		Comment: fmt.Sprintf("create %q table", add.T.Name),
 	})
+	return nil
 }
 
 // dropTable builds and appends the migrate.Change
@@ -250,13 +261,19 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 		switch change := changes[i].(type) {
 		case *schema.AddColumn:
 			b.P("ADD COLUMN")
-			s.column(b, t, change.C)
+			if err := s.column(b, t, change.C); err != nil {
+				errors = append(errors, err.Error())
+			}
 			reverse.Comma().P("DROP COLUMN").Ident(change.C.Name)
 		case *schema.ModifyColumn:
 			b.P("MODIFY COLUMN")
-			s.column(b, t, change.To)
+			if err := s.column(b, t, change.To); err != nil {
+				errors = append(errors, err.Error())
+			}
 			reverse.Comma().P("MODIFY COLUMN")
-			s.column(reverse, t, change.From)
+			if err := s.column(reverse, t, change.From); err != nil {
+				errors = append(errors, err.Error())
+			}
 		case *schema.DropColumn:
 			b.P("DROP COLUMN").Ident(change.C.Name)
 			reversible = false
@@ -322,7 +339,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 		}
 	})
 	if len(errors) > 0 {
-		return fmt.Errorf("alter table: %s", strings.Join(errors, ", "))
+		return fmt.Errorf("alter table %q: %s", t.Name, strings.Join(errors, ", "))
 	}
 	change := &migrate.Change{
 		Cmd: b.String(),
@@ -343,8 +360,12 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 	return nil
 }
 
-func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) {
-	b.Ident(c.Name).P(mustFormat(c.Type.Type))
+func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error {
+	typ, err := FormatType(c.Type.Type)
+	if err != nil {
+		return fmt.Errorf("format type for column %q: %w", c.Name, err)
+	}
+	b.Ident(c.Name).P(typ)
 	if !c.Type.Null {
 		b.P("NOT")
 	}
@@ -383,6 +404,7 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) {
 			s.attr(b, a)
 		}
 	}
+	return nil
 }
 
 func (s *state) indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {

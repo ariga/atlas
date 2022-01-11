@@ -86,9 +86,10 @@ func FormatType(t schema.Type) (string, error) {
 	case *schema.TimeType:
 		f = strings.ToLower(t.T)
 	case *schema.UnsupportedType:
-		return "", fmt.Errorf("mysql: unsupported type: %q", t.T)
+		// Do not accept unsupported types as we should cover all cases.
+		return "", fmt.Errorf("unsupported type %q", t.T)
 	default:
-		return "", fmt.Errorf("mysql: invalid schema type: %T", t)
+		return "", fmt.Errorf("invalid schema type %T", t)
 	}
 	return f, nil
 }
