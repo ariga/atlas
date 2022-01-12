@@ -122,9 +122,6 @@ table "accounts" {
 		Parts: []*schema.IndexPart{
 			{SeqNo: 0, C: exp.Tables[0].Columns[0]},
 		},
-		Attrs: []schema.Attr{
-			&schema.Comment{Text: "index comment"},
-		},
 	}
 	exp.Tables[0].Indexes = []*schema.Index{
 		{
@@ -134,6 +131,9 @@ table "accounts" {
 			Parts: []*schema.IndexPart{
 				{SeqNo: 0, C: exp.Tables[0].Columns[0]},
 				{SeqNo: 1, C: exp.Tables[0].Columns[1]},
+			},
+			Attrs: []schema.Attr{
+				&schema.Comment{Text: "index comment"},
 			},
 		},
 	}
