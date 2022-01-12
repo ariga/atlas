@@ -107,7 +107,7 @@ func Table(spec *sqlspec.Table, parent *schema.Schema, convertColumn ConvertColu
 		tbl.Indexes = append(tbl.Indexes, i)
 	}
 	if spec.Comment != "" {
-		tbl.Attrs = append(tbl.Attrs, &schema.Comment{Text: spec.Comment})
+		tbl.SetComment(spec.Comment)
 	}
 	return tbl, nil
 }
@@ -121,7 +121,7 @@ func Column(spec *sqlspec.Column, conv ConvertTypeFunc) (*schema.Column, error) 
 		},
 	}
 	if spec.Comment != "" {
-		out.Attrs = append(out.Attrs, &schema.Comment{Text: spec.Comment})
+		out.SetComment(spec.Comment)
 	}
 	if spec.Default != nil {
 		switch d := spec.Default.(type) {
@@ -165,7 +165,7 @@ func Index(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
 		Parts:  parts,
 	}
 	if spec.Comment != "" {
-		i.Attrs = append(i.Attrs, &schema.Comment{Text: spec.Comment})
+		i.SetComment(spec.Comment)
 	}
 	return i, nil
 }
