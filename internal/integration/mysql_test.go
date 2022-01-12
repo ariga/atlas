@@ -954,6 +954,7 @@ create table atlas_types_sanity
 				},
 			}
 			require.EqualValues(t, &expected, ts)
+			t.hclDriftTest(n, realm, expected)
 		})
 	})
 }

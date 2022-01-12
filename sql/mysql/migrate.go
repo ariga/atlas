@@ -383,7 +383,8 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 		case *schema.Charset:
 			// Define the charset explicitly
 			// in case it is not the default.
-			if s.character(t) != a.V {
+			// For MariaDB 10.2.7 and above you can't modify the Json type CHARSET
+			if s.character(t) != a.V && s.mariadb() && s.ltV("10.2.7") {
 				b.P("CHARSET", a.V)
 			}
 		case *schema.Collation:
