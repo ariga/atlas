@@ -149,7 +149,7 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 			Null: nullable,
 		},
 	}
-	c.Type.Type, err = parseRawType(typ.String)
+	c.Type.Type, err = ParseType(typ.String)
 	if err != nil {
 		return err
 	}
@@ -173,61 +173,6 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 		})
 	}
 	return nil
-}
-
-func parseRawType(c string) (schema.Type, error) {
-	// A datatype may be zero or more names.
-	// https://www.sqlite.org/datatypes.html
-	if c == "" {
-		return &schema.UnsupportedType{}, nil
-	}
-	parts := columnParts(c)
-	switch t := parts[0]; t {
-	case "bool", "boolean":
-		return &schema.BoolType{T: t}, nil
-	case "blob":
-		return &schema.BinaryType{T: t}, nil
-	case "int2", "int8", "int", "integer", "tinyint", "smallint", "mediumint", "bigint", "unsigned big int":
-		// All integer types have the same "type affinity".
-		return &schema.IntegerType{T: t}, nil
-	case "real", "double", "double precision", "float":
-		return &schema.FloatType{T: t}, nil
-	case "numeric", "decimal":
-		ct := &schema.DecimalType{T: t}
-		if len(parts) > 1 {
-			p, err := strconv.ParseInt(parts[1], 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("parse precision %q", parts[1])
-			}
-			ct.Precision = int(p)
-		}
-		if len(parts) > 2 {
-			s, err := strconv.ParseInt(parts[2], 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("parse scale %q", parts[1])
-			}
-			ct.Scale = int(s)
-		}
-		return ct, nil
-	case "char", "character", "varchar", "varying character", "nchar", "native character", "nvarchar", "text", "clob":
-		ct := &schema.StringType{T: t}
-		if len(parts) > 1 {
-			p, err := strconv.ParseInt(parts[1], 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("parse size %q", parts[1])
-			}
-			ct.Size = int(p)
-		}
-		return ct, nil
-	case "json":
-		return &schema.JSONType{T: t}, nil
-	case "date", "datetime", "time", "timestamp":
-		return &schema.TimeType{T: t}, nil
-	case "uuid":
-		return &UUIDType{T: t}, nil
-	default:
-		return &schema.UnsupportedType{T: t}, nil
-	}
 }
 
 // indexes queries and appends the indexes of the given table.
