@@ -480,6 +480,10 @@ func TestTypes(t *testing.T) {
 			expected: &schema.StringType{T: TypeLongBlob},
 		},
 		{
+			typeExpr: "json",
+			expected: &schema.JSONType{T: TypeJSON},
+		},
+		{
 			typeExpr: "text(13)",
 			expected: &schema.StringType{T: TypeText},
 		},

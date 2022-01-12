@@ -74,7 +74,7 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 // TypeRegistry contains the supported TypeSpecs for the sqlite driver.
 var TypeRegistry = specutil.NewRegistry(
 	specutil.WithFormatter(FormatType),
-	specutil.WithParser(parseRawType),
+	specutil.WithParser(ParseType),
 	specutil.WithSpecs(
 		specutil.TypeSpec(TypeReal, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
 		specutil.TypeSpec(TypeBlob, specutil.SizeTypeAttr(false)),

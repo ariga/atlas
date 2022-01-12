@@ -265,6 +265,7 @@ var TypeRegistry = specutil.NewRegistry(
 		specutil.TypeSpec(TypeTinyBlob),
 		specutil.TypeSpec(TypeMediumBlob),
 		specutil.TypeSpec(TypeLongBlob),
+		specutil.TypeSpec(TypeJSON),
 		specutil.TypeSpec(TypeText, specutil.SizeTypeAttr(false)),
 		specutil.TypeSpec(TypeTinyText),
 		specutil.TypeSpec(TypeMediumText),
