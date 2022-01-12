@@ -223,35 +223,29 @@ func TestMarshalSpec_Charset(t *testing.T) {
 	// Charset and collate that are identical to their parent elements
 	// should not be printed as they are inherited by default from it.
 	const expected = `table "users" {
-  schema  = schema.test
-  comment = ""
+  schema = schema.test
   column "a" {
     null      = false
     type      = text
-    comment   = ""
     charset   = "latin1"
     collation = "latin1_swedish_ci"
   }
   column "b" {
-    null    = false
-    type    = text
-    comment = ""
+    null = false
+    type = text
   }
 }
 table "posts" {
   schema    = schema.test
-  comment   = ""
   charset   = "latin1"
   collation = "latin1_swedish_ci"
   column "a" {
-    null    = false
-    type    = text
-    comment = ""
+    null = false
+    type = text
   }
   column "b" {
     null      = false
     type      = text
-    comment   = ""
     charset   = "utf8mb4"
     collation = "utf8mb4_0900_ai_ci"
   }

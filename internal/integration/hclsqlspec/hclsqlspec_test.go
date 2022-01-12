@@ -328,9 +328,8 @@ func TestMarshalTopLevel(t *testing.T) {
 	h, err := hcl.MarshalSpec(c)
 	require.NoError(t, err)
 	require.EqualValues(t, `column "column" {
-  null    = true
-  type    = varchar(255)
-  comment = ""
+  null = true
+  type = varchar(255)
 }
 `, string(h))
 }
