@@ -20,6 +20,7 @@ schema "schema" {
 table "table" {
 	column "col" {
 		type = integer
+		comment = "column comment"
 	}
 	column "age" {
 		type = integer
@@ -36,6 +37,7 @@ table "table" {
 			table.table.column.col,
 			table.table.column.age,
 		]
+		comment = "index comment"
 	}
 	foreign_key "accounts" {
 		columns = [
@@ -46,6 +48,7 @@ table "table" {
 		]
 		on_delete = "SET NULL"
 	}
+	comment = "table comment"
 }
 
 table "accounts" {
@@ -72,6 +75,9 @@ table "accounts" {
 							T: "integer",
 						},
 					},
+					Attrs: []schema.Attr{
+						&schema.Comment{Text: "column comment"},
+					},
 				},
 				{
 					Name: "age",
@@ -90,6 +96,9 @@ table "accounts" {
 						},
 					},
 				},
+			},
+			Attrs: []schema.Attr{
+				&schema.Comment{Text: "table comment"},
 			},
 		},
 		{
@@ -122,6 +131,9 @@ table "accounts" {
 			Parts: []*schema.IndexPart{
 				{SeqNo: 0, C: exp.Tables[0].Columns[0]},
 				{SeqNo: 1, C: exp.Tables[0].Columns[1]},
+			},
+			Attrs: []schema.Attr{
+				&schema.Comment{Text: "index comment"},
 			},
 		},
 	}

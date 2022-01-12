@@ -106,6 +106,9 @@ func Table(spec *sqlspec.Table, parent *schema.Schema, convertColumn ConvertColu
 		}
 		tbl.Indexes = append(tbl.Indexes, i)
 	}
+	if spec.Comment != "" {
+		tbl.SetComment(spec.Comment)
+	}
 	return tbl, nil
 }
 
@@ -116,6 +119,9 @@ func Column(spec *sqlspec.Column, conv ConvertTypeFunc) (*schema.Column, error) 
 		Type: &schema.ColumnType{
 			Null: spec.Null,
 		},
+	}
+	if spec.Comment != "" {
+		out.SetComment(spec.Comment)
 	}
 	if spec.Default != nil {
 		switch d := spec.Default.(type) {
@@ -152,12 +158,16 @@ func Index(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
 			C:     col,
 		})
 	}
-	return &schema.Index{
+	i := &schema.Index{
 		Name:   spec.Name,
 		Unique: spec.Unique,
 		Table:  parent,
 		Parts:  parts,
-	}, nil
+	}
+	if spec.Comment != "" {
+		i.SetComment(spec.Comment)
+	}
+	return i, nil
 }
 
 // PrimaryKey converts a sqlspec.PrimaryKey to a schema.Index.

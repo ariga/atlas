@@ -16,6 +16,7 @@ schema "schema" {
 table "table" {
 	column "col" {
 		type = int
+		comment = "column comment"
 	}
 	column "age" {
 		type = int
@@ -32,6 +33,7 @@ table "table" {
 			table.table.column.col,
 			table.table.column.age,
 		]
+		comment = "index comment"
 	}
 	foreign_key "accounts" {
 		columns = [
@@ -42,6 +44,7 @@ table "table" {
 		]
 		on_delete = "SET NULL"
 	}
+	comment = "table comment"
 }
 
 table "accounts" {
@@ -72,6 +75,9 @@ table "accounts" {
 							T: TypeInt,
 						},
 					},
+					Attrs: []schema.Attr{
+						&schema.Comment{Text: "column comment"},
+					},
 				},
 				{
 					Name: "age",
@@ -90,6 +96,9 @@ table "accounts" {
 						},
 					},
 				},
+			},
+			Attrs: []schema.Attr{
+				&schema.Comment{Text: "table comment"},
 			},
 		},
 		{
@@ -122,6 +131,9 @@ table "accounts" {
 			Parts: []*schema.IndexPart{
 				{SeqNo: 0, C: exp.Tables[0].Columns[0]},
 				{SeqNo: 1, C: exp.Tables[0].Columns[1]},
+			},
+			Attrs: []schema.Attr{
+				&schema.Comment{Text: "index comment"},
 			},
 		},
 	}
@@ -211,29 +223,35 @@ func TestMarshalSpec_Charset(t *testing.T) {
 	// Charset and collate that are identical to their parent elements
 	// should not be printed as they are inherited by default from it.
 	const expected = `table "users" {
-  schema = schema.test
+  schema  = schema.test
+  comment = ""
   column "a" {
     null      = false
     type      = text
+    comment   = ""
     charset   = "latin1"
     collation = "latin1_swedish_ci"
   }
   column "b" {
-    null = false
-    type = text
+    null    = false
+    type    = text
+    comment = ""
   }
 }
 table "posts" {
   schema    = schema.test
+  comment   = ""
   charset   = "latin1"
   collation = "latin1_swedish_ci"
   column "a" {
-    null = false
-    type = text
+    null    = false
+    type    = text
+    comment = ""
   }
   column "b" {
     null      = false
     type      = text
+    comment   = ""
     charset   = "utf8mb4"
     collation = "utf8mb4_0900_ai_ci"
   }
