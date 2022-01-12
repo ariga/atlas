@@ -892,6 +892,7 @@ create table atlas_types_sanity
 				},
 			}
 			require.EqualValues(t, &expected, ts)
+			t.hclDriftTest(n, realm, expected)
 		})
 	})
 	t.Run("JSON", func(t *testing.T) {
@@ -1154,4 +1155,16 @@ func (t *myTest) defaultAttrs() []schema.Attr {
 			V: collation,
 		},
 	}
+}
+
+func (t *myTest) hclDriftTest(n string, realm *schema.Realm, expected schema.Table) {
+	spec, err := mysql.MarshalHCL(realm.Schemas[0])
+	require.NoError(t, err)
+	t.dropTables(n)
+	t.applyHcl(string(spec))
+	realm = t.loadRealm()
+	require.Len(t, realm.Schemas, 1)
+	ts, ok := realm.Schemas[0].Table(n)
+	require.True(t, ok)
+	require.EqualValues(t, &expected, ts)
 }
