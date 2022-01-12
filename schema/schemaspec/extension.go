@@ -274,12 +274,20 @@ func setPtr(field reflect.Value, val Value) error {
 		field.Set(reflect.ValueOf(val))
 		return nil
 	}
-	if x, ok := val.(*RawExpr); ok {
+	switch t := val.(type) {
+	case *RawExpr:
 		i := field.Interface()
 		if _, ok := i.(*Type); ok {
-			field.Set(reflect.ValueOf(&Type{T: x.X}))
+			field.Set(reflect.ValueOf(&Type{T: t.X}))
 			return nil
 		}
+	case *LiteralValue:
+		s, err := StrVal(t)
+		if err != nil {
+			return err
+		}
+		field.Set(reflect.ValueOf(&s))
+		return nil
 	}
 	return fmt.Errorf("unhandled pointer type %T", val)
 }

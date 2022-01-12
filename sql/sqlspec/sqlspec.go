@@ -21,7 +21,7 @@ type (
 		PrimaryKey  *PrimaryKey     `spec:"primary_key"`
 		ForeignKeys []*ForeignKey   `spec:"foreign_key"`
 		Indexes     []*Index        `spec:"index"`
-		Comment     string          `spec:"comment"`
+		Comment     *string         `spec:"comment"`
 		schemaspec.DefaultExtension
 	}
 
@@ -31,7 +31,7 @@ type (
 		Null    bool             `spec:"null"`
 		Type    *schemaspec.Type `spec:"type"`
 		Default schemaspec.Value `spec:"default"`
-		Comment string           `spec:"comment"`
+		Comment *string          `spec:"comment"`
 		schemaspec.DefaultExtension
 	}
 
@@ -46,7 +46,7 @@ type (
 		Name    string            `spec:",name"`
 		Unique  bool              `spec:"unique"`
 		Columns []*schemaspec.Ref `spec:"columns"`
-		Comment string            `spec:"comment"`
+		Comment *string           `spec:"comment"`
 		schemaspec.DefaultExtension
 	}
 
