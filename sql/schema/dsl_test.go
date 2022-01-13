@@ -48,7 +48,9 @@ func TestSchema_AddTables(t *testing.T) {
 		SetPrimaryKey(schema.NewPrimaryKey(userColumns[0])).
 		SetComment("users table").
 		AddIndexes(
-			schema.NewUniqueIndex("unique_name").AddColumns(userColumns[2]),
+			schema.NewUniqueIndex("unique_name").
+				AddColumns(userColumns[2]).
+				SetComment("index comment"),
 		)
 	postColumns := []*schema.Column{
 		schema.NewIntColumn("id", "int"),
@@ -87,7 +89,12 @@ func TestSchema_AddTables(t *testing.T) {
 			users.PrimaryKey = &schema.Index{Unique: true, Parts: []*schema.IndexPart{{C: users.Columns[0]}}}
 			users.PrimaryKey.Table = users
 			users.Columns[0].Indexes = append(users.Columns[0].Indexes, users.PrimaryKey)
-			users.Indexes = append(users.Indexes, &schema.Index{Name: "unique_name", Unique: true, Parts: []*schema.IndexPart{{C: users.Columns[2]}}})
+			users.Indexes = append(users.Indexes, &schema.Index{
+				Name:   "unique_name",
+				Unique: true,
+				Parts:  []*schema.IndexPart{{C: users.Columns[2]}},
+				Attrs:  []schema.Attr{&schema.Comment{Text: "index comment"}},
+			})
 			users.Indexes[0].Table = users
 			users.Columns[2].Indexes = users.Indexes
 
