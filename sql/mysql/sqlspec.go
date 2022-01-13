@@ -178,9 +178,7 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 
 // convertCharset converts spec charset/collation
 // attributes to schema element attributes.
-func convertCharset(spec interface {
-	Attr(string) (*schemaspec.Attr, bool)
-}, attrs *[]schema.Attr) error {
+func convertCharset(spec specutil.Attrer, attrs *[]schema.Attr) error {
 	if attr, ok := spec.Attr("charset"); ok {
 		s, err := attr.String()
 		if err != nil {
