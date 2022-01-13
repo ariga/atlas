@@ -6,7 +6,7 @@ module.exports = {
   baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/logoAtlas.svg',
   organizationName: 'ariga', // Usually your GitHub org/user name.
   projectName: 'atlas', // Usually your repo name.
   themeConfig: {
@@ -20,7 +20,7 @@ module.exports = {
       title: 'Atlas',
       logo: {
         alt: 'My Site Logo',
-        src: 'img/square.svg',
+        src: 'img/logoAtlas.svg',
       },
       items: [
         // {
@@ -29,7 +29,10 @@ module.exports = {
         //   position: 'left',
         //   label: 'Welcome',
         // },
-        // {to: '/blog', label: 'Blog', position: 'left'},
+        // {to: '/blog', label: 'Docs', position: 'left'},
+        // {to: '/blog', label: 'Tutorials', position: 'left'},
+        // {to: '/blog', label: 'Atlas For Ent', position: 'left'},
+        // {to: '/blog', label: 'Getting Started', position: 'left'},
         {
           href: 'https://github.com/ariga/atlas',
           label: 'GitHub',
@@ -37,50 +40,33 @@ module.exports = {
         },
       ],
     },
-    footer: {
-      style: 'dark',
-      links: [
+    //
+    "footer": {
+      "links": [
         {
-          title: 'Docs',
-          items: [
-            {
-              label: 'Welcome',
-              to: '/',
-            },
-          ],
+          "title": "Docs",
+          "items": [
+            {"label": "Getting Started", "to": "/docs/cli/getting-started/setting-up"},
+            {"label": "Data Definition Language ", "to": "/docs/ddl/intro"},
+            {"label": "CLI Reference", "to": "/docs/CLI/atlas"},
+          ]
         },
         {
-          title: 'Community',
-          items: [
-            // {
-            //   label: 'Stack Overflow',
-            //   href: 'https://stackoverflow.com/questions/tagged/docusaurus',
-            // },
-            // {
-            //   label: 'Discord',
-            //   href: 'https://discordapp.com/invite/docusaurus',
-            // },
-            // {
-            //   label: 'Twitter',
-            //   href: 'https://twitter.com/docusaurus',
-            // },
-          ],
-        },
-        {
-          title: 'More',
-          items: [
-            // {
-            //   label: 'Blog',
-            //   to: '/blog',
-            // },
-            {
-              label: 'GitHub',
-              href: 'https://github.com/ariga/atlas',
-            },
-          ],
+          "title": "Community",
+          "items": [
+            {"label": "GitHub", "to": "https://github.com/ariga/atlas"},
+            {"label": "Discord", "to": "https://discord.com/QhsmBAWzrC"},
+          ]
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} The Atlas Authors, Inc. Built with Docusaurus.`,
+      copyright: `
+      Copyright © ${new Date().getFullYear()} Facebook, Inc.
+      The Go gopher was designed by <a href="http://reneefrench.blogspot.com/">Renee French</a>.
+      <br/>
+      The design is licensed under the Creative Commons 3.0 Attributions license. Read this 
+      <a href="https://blog.golang.org/gopher">article</a> for more details.
+      <br/>
+      `,
     },
   },
   presets: [

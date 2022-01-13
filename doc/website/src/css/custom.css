@@ -5,6 +5,14 @@
  * work well for content-centric websites.
  */
 
+.navbar__title {
+  font-size: 24px;
+}
+
+.navbar__brand img {
+  height: 65px;
+}
+
 /* You can override the default Infima variables here. */
 :root {
   --ifm-color-primary: #3578e5;
