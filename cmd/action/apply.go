@@ -14,9 +14,10 @@ import (
 var (
 	// ApplyFlags are the flags used in Apply command.
 	ApplyFlags struct {
-		DSN  string
-		File string
-		Web  bool
+		DSN     string
+		File    string
+		Web     bool
+		Address string
 	}
 	// ApplyCmd represents the apply command.
 	ApplyCmd = &cobra.Command{
@@ -40,7 +41,8 @@ func init() {
 	schemaCmd.AddCommand(ApplyCmd)
 	ApplyCmd.Flags().StringVarP(&ApplyFlags.DSN, "dsn", "d", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format")
 	ApplyCmd.Flags().StringVarP(&ApplyFlags.File, "file", "f", "", "[/path/to/file] file containing schema")
-	ApplyCmd.Flags().BoolVarP(&ApplyFlags.Web, "web", "w", false, "open in UI server")
+	ApplyCmd.Flags().BoolVarP(&ApplyFlags.Web, "web", "w", false, "Open in a local Atlas UI")
+	ApplyCmd.Flags().StringVarP(&ApplyFlags.Address, "address", "", "127.0.0.1:5800", "used with -w, local address to bind the server to")
 	cobra.CheckErr(ApplyCmd.MarkFlagRequired("dsn"))
 	cobra.CheckErr(ApplyCmd.MarkFlagRequired("file"))
 }
@@ -48,7 +50,7 @@ func init() {
 // CmdApplyRun is the command used when running CLI.
 func CmdApplyRun(cmd *cobra.Command, args []string) {
 	if ApplyFlags.Web {
-		schemaCmd.PrintErrln("Opening the Graphical UI server is not available in this release")
+		schemaCmd.PrintErrln("The Atlas UI is not available in this release.")
 		return
 	}
 	d, err := defaultMux.OpenAtlas(ApplyFlags.DSN)
