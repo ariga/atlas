@@ -172,28 +172,29 @@ func TestMigrate_DetachCycles(t *testing.T) {
 
 func TestPlanChanges(t *testing.T) {
 	tests := []struct {
-		changes []schema.Change
-		plan    *migrate.Plan
+		input    []schema.Change
+		wantPlan *migrate.Plan
+		wantErr  bool
 	}{
 		{
-			changes: []schema.Change{
+			input: []schema.Change{
 				&schema.AddSchema{S: &schema.Schema{Name: "test", Attrs: []schema.Attr{&schema.Charset{V: "latin"}}}},
 			},
-			plan: &migrate.Plan{
+			wantPlan: &migrate.Plan{
 				Reversible: true,
 				Changes:    []*migrate.Change{{Cmd: "CREATE DATABASE `test` CHARSET latin", Reverse: "DROP DATABASE `test`"}},
 			},
 		},
 		{
-			changes: []schema.Change{
+			input: []schema.Change{
 				&schema.DropSchema{S: &schema.Schema{Name: "atlas", Attrs: []schema.Attr{&schema.Charset{V: "latin"}}}},
 			},
-			plan: &migrate.Plan{
+			wantPlan: &migrate.Plan{
 				Changes: []*migrate.Change{{Cmd: "DROP DATABASE `atlas`"}},
 			},
 		},
 		{
-			changes: []schema.Change{
+			input: []schema.Change{
 				func() *schema.AddTable {
 					t := &schema.Table{
 						Name: "posts",
@@ -207,13 +208,13 @@ func TestPlanChanges(t *testing.T) {
 					return &schema.AddTable{T: t}
 				}(),
 			},
-			plan: &migrate.Plan{
+			wantPlan: &migrate.Plan{
 				Reversible: true,
 				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` bigint NOT NULL AUTO_INCREMENT, `text` text NULL, `uuid` char(36) NULL CHARSET utf8mb4 COLLATE utf8mb4_bin, PRIMARY KEY (`id`))", Reverse: "DROP TABLE `posts`"}},
 			},
 		},
 		{
-			changes: []schema.Change{
+			input: []schema.Change{
 				func() *schema.AddTable {
 					t := &schema.Table{
 						Name: "posts",
@@ -243,13 +244,13 @@ func TestPlanChanges(t *testing.T) {
 					return &schema.AddTable{T: t}
 				}(),
 			},
-			plan: &migrate.Plan{
+			wantPlan: &migrate.Plan{
 				Reversible: true,
 				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` bigint NOT NULL AUTO_INCREMENT, `text` text NULL, `ch` char NOT NULL, PRIMARY KEY (`id`), INDEX `text_prefix` (`text` (100) DESC), CONSTRAINT `id_nonzero` CHECK (`id` > 0)) CHARSET utf8mb4 COLLATE utf8mb4_bin COMMENT \"posts comment\" COMPRESSION=\"ZLIB\" AUTO_INCREMENT 100", Reverse: "DROP TABLE `posts`"}},
 			},
 		},
 		{
-			changes: []schema.Change{
+			input: []schema.Change{
 				func() *schema.AddTable {
 					t := &schema.Table{
 						Name: "posts",
@@ -263,21 +264,21 @@ func TestPlanChanges(t *testing.T) {
 					return &schema.AddTable{T: t}
 				}(),
 			},
-			plan: &migrate.Plan{
+			wantPlan: &migrate.Plan{
 				Reversible: true,
 				Changes:    []*migrate.Change{{Cmd: "CREATE TABLE `posts` (`id` bigint NOT NULL AUTO_INCREMENT, `text` text NULL, PRIMARY KEY (`id`)) AUTO_INCREMENT 10", Reverse: "DROP TABLE `posts`"}},
 			},
 		},
 		{
-			changes: []schema.Change{
+			input: []schema.Change{
 				&schema.DropTable{T: &schema.Table{Name: "posts"}},
 			},
-			plan: &migrate.Plan{
+			wantPlan: &migrate.Plan{
 				Changes: []*migrate.Change{{Cmd: "DROP TABLE `posts`"}},
 			},
 		},
 		{
-			changes: []schema.Change{
+			input: []schema.Change{
 				func() schema.Change {
 					users := &schema.Table{
 						Name: "users",
@@ -317,7 +318,7 @@ func TestPlanChanges(t *testing.T) {
 					}
 				}(),
 			},
-			plan: &migrate.Plan{
+			wantPlan: &migrate.Plan{
 				Reversible: true,
 				Changes: []*migrate.Change{
 					{
@@ -328,7 +329,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 		},
 		{
-			changes: []schema.Change{
+			input: []schema.Change{
 				func() schema.Change {
 					users := &schema.Table{
 						Name: "users",
@@ -350,7 +351,7 @@ func TestPlanChanges(t *testing.T) {
 					}
 				}(),
 			},
-			plan: &migrate.Plan{
+			wantPlan: &migrate.Plan{
 				Reversible: true,
 				Changes: []*migrate.Change{
 					{
@@ -361,7 +362,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 		},
 		{
-			changes: []schema.Change{
+			input: []schema.Change{
 				func() schema.Change {
 					users := &schema.Table{
 						Name: "users",
@@ -408,7 +409,7 @@ func TestPlanChanges(t *testing.T) {
 					}
 				}(),
 			},
-			plan: &migrate.Plan{
+			wantPlan: &migrate.Plan{
 				Reversible: true,
 				Changes: []*migrate.Change{
 					{
@@ -418,17 +419,38 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		{
+			input: []schema.Change{
+				&schema.AddTable{
+					T: schema.NewTable("users").AddColumns(schema.NewIntColumn("id", "bigint").SetCharset("utf8mb4")),
+				},
+			},
+			wantErr: true,
+		},
+		{
+			input: []schema.Change{
+				&schema.AddTable{
+					T: schema.NewTable("users").AddColumns(schema.NewIntColumn("id", "bigint").SetCollation("utf8mb4_general_ci")),
+				},
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		db, _, err := newMigrate("8.0.16")
 		require.NoError(t, err)
-		plan, err := db.PlanChanges(context.Background(), "plan", tt.changes)
+		plan, err := db.PlanChanges(context.Background(), "wantPlan", tt.input)
+		if tt.wantErr {
+			require.Error(t, err, "expect plan to fail")
+			return
+		}
 		require.NoError(t, err)
-		require.Equal(t, tt.plan.Reversible, plan.Reversible)
-		require.Equal(t, tt.plan.Transactional, plan.Transactional)
+		require.NotNil(t, plan)
+		require.Equal(t, tt.wantPlan.Reversible, plan.Reversible)
+		require.Equal(t, tt.wantPlan.Transactional, plan.Transactional)
 		for i, c := range plan.Changes {
-			require.Equal(t, tt.plan.Changes[i].Cmd, c.Cmd)
-			require.Equal(t, tt.plan.Changes[i].Reverse, c.Reverse)
+			require.Equal(t, tt.wantPlan.Changes[i].Cmd, c.Cmd)
+			require.Equal(t, tt.wantPlan.Changes[i].Reverse, c.Reverse)
 		}
 	}
 }
