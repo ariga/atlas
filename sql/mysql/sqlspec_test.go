@@ -16,6 +16,7 @@ schema "schema" {
 table "table" {
 	column "col" {
 		type = int
+		comment = "column comment"
 	}
 	column "age" {
 		type = int
@@ -32,6 +33,7 @@ table "table" {
 			table.table.column.col,
 			table.table.column.age,
 		]
+		comment = "index comment"
 	}
 	foreign_key "accounts" {
 		columns = [
@@ -42,6 +44,7 @@ table "table" {
 		]
 		on_delete = "SET NULL"
 	}
+	comment = "table comment"
 }
 
 table "accounts" {
@@ -72,6 +75,9 @@ table "accounts" {
 							T: TypeInt,
 						},
 					},
+					Attrs: []schema.Attr{
+						&schema.Comment{Text: "column comment"},
+					},
 				},
 				{
 					Name: "age",
@@ -90,6 +96,9 @@ table "accounts" {
 						},
 					},
 				},
+			},
+			Attrs: []schema.Attr{
+				&schema.Comment{Text: "table comment"},
 			},
 		},
 		{
@@ -122,6 +131,9 @@ table "accounts" {
 			Parts: []*schema.IndexPart{
 				{SeqNo: 0, C: exp.Tables[0].Columns[0]},
 				{SeqNo: 1, C: exp.Tables[0].Columns[1]},
+			},
+			Attrs: []schema.Attr{
+				&schema.Comment{Text: "index comment"},
 			},
 		},
 	}
@@ -270,6 +282,79 @@ schema "test" {
 	b, ok := posts.Column("b")
 	require.True(t, ok)
 	require.Equal(t, utf8mb4, b.Attrs)
+}
+
+func TestMarshalSpec_Comment(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Attrs: []schema.Attr{
+					&schema.Comment{Text: "table comment"},
+				},
+				Columns: []*schema.Column{
+					{
+						Name: "a",
+						Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}},
+						Attrs: []schema.Attr{
+							&schema.Comment{Text: "column comment"},
+						},
+					},
+				},
+			},
+			{
+				Name: "posts",
+				Columns: []*schema.Column{
+					{
+						Name: "a",
+						Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	s.Tables[1].Schema = s
+	s.Tables[0].Indexes = []*schema.Index{
+		{
+			Name:   "index",
+			Table:  s.Tables[0],
+			Unique: true,
+			Parts:  []*schema.IndexPart{{SeqNo: 0, C: s.Tables[0].Columns[0]}},
+			Attrs: []schema.Attr{
+				&schema.Comment{Text: "index comment"},
+			},
+		},
+	}
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	// We expect a zero value comment to not bre present in the marshaled HCL.
+	const expected = `table "users" {
+  schema  = schema.test
+  comment = "table comment"
+  column "a" {
+    null    = false
+    type    = text
+    comment = "column comment"
+  }
+  index "index" {
+    unique  = true
+    columns = [table.users.column.a, ]
+    comment = "index comment"
+  }
+}
+table "posts" {
+  schema = schema.test
+  column "a" {
+    null = false
+    type = text
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
 }
 
 func TestTypes(t *testing.T) {

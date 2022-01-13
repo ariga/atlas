@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
 )
@@ -106,6 +107,9 @@ func Table(spec *sqlspec.Table, parent *schema.Schema, convertColumn ConvertColu
 		}
 		tbl.Indexes = append(tbl.Indexes, i)
 	}
+	if err := convertCommentFromSpec(spec, &tbl.Attrs); err != nil {
+		return nil, err
+	}
 	return tbl, nil
 }
 
@@ -132,6 +136,9 @@ func Column(spec *sqlspec.Column, conv ConvertTypeFunc) (*schema.Column, error) 
 		return nil, err
 	}
 	out.Type.Type = ct
+	if err := convertCommentFromSpec(spec, &out.Attrs); err != nil {
+		return nil, err
+	}
 	return out, err
 }
 
@@ -152,12 +159,16 @@ func Index(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
 			C:     col,
 		})
 	}
-	return &schema.Index{
+	i := &schema.Index{
 		Name:   spec.Name,
 		Unique: spec.Unique,
 		Table:  parent,
 		Parts:  parts,
-	}, nil
+	}
+	if err := convertCommentFromSpec(spec, &i.Attrs); err != nil {
+		return nil, err
+	}
+	return i, nil
 }
 
 // PrimaryKey converts a sqlspec.PrimaryKey to a schema.Index.
@@ -314,6 +325,7 @@ func FromTable(t *schema.Table, colFn ColumnSpecFunc, pkFn PrimaryKeySpecFunc, i
 		}
 		spec.ForeignKeys = append(spec.ForeignKeys, f)
 	}
+	convertCommentFromSchema(t.Attrs, &spec.Extra.Attrs)
 	return spec, nil
 }
 
@@ -349,6 +361,7 @@ func FromColumn(col *schema.Column, columnTypeSpec ColumnTypeSpecFunc) (*sqlspec
 		}
 		spec.Default = lv
 	}
+	convertCommentFromSchema(col.Attrs, &spec.Extra.Attrs)
 	return spec, nil
 }
 
@@ -392,11 +405,13 @@ func FromIndex(idx *schema.Index) (*sqlspec.Index, error) {
 		}
 		c = append(c, colRef(p.C.Name, idx.Table.Name))
 	}
-	return &sqlspec.Index{
+	i := &sqlspec.Index{
 		Name:    idx.Name,
 		Unique:  idx.Unique,
 		Columns: c,
-	}, nil
+	}
+	convertCommentFromSchema(idx.Attrs, &i.Extra.Attrs)
+	return i, nil
 }
 
 // FromForeignKey converts schema.ForeignKey to sqlspec.ForeignKey
@@ -456,4 +471,26 @@ func colRef(cName string, tName string) *schemaspec.Ref {
 
 func schemaRef(n string) *schemaspec.Ref {
 	return &schemaspec.Ref{V: "$schema." + n}
+}
+
+// convertCommentFromSpec converts a spec comment attribute to a schema element attribute.
+func convertCommentFromSpec(spec interface {
+	Attr(string) (*schemaspec.Attr, bool)
+}, attrs *[]schema.Attr) error {
+	if c, ok := spec.Attr("comment"); ok {
+		s, err := c.String()
+		if err != nil {
+			return err
+		}
+		*attrs = append(*attrs, &schema.Comment{Text: s})
+	}
+	return nil
+}
+
+// convertCommentFromSchema converts a schema element comment attribute to a spec comment attribute.
+func convertCommentFromSchema(src []schema.Attr, trgt *[]*schemaspec.Attr) {
+	var c schema.Comment
+	if sqlx.Has(src, &c) {
+		*trgt = append(*trgt, StrAttr("comment", c.Text))
+	}
 }

@@ -452,6 +452,13 @@ func (i *Index) SetTable(t *Table) *Index {
 	return i
 }
 
+// SetComment sets or appends the Comment attribute
+// to the index with the given value.
+func (i *Index) SetComment(v string) *Index {
+	replaceOrAppend(&i.Attrs, &Comment{Text: v})
+	return i
+}
+
 // AddAttrs adds additional attributes to the index.
 func (i *Index) AddAttrs(attrs ...Attr) *Index {
 	i.Attrs = append(i.Attrs, attrs...)
