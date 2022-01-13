@@ -930,27 +930,21 @@ create table atlas_types_sanity
 				}(),
 				Schema: realm.Schemas[0],
 				Columns: []*schema.Column{
-					{
-						Name: "tJSON",
-						Type: func() *schema.ColumnType {
-							if t.version == "Maria102" || t.version == "Maria103" {
-								return &schema.ColumnType{Type: &schema.StringType{T: "longtext"},
-									Raw: "longtext", Null: true}
+					func() *schema.Column {
+						c := &schema.Column{Name: "tJSON", Type: &schema.ColumnType{Type: &schema.JSONType{T: "json"}, Raw: "json", Null: true}}
+						switch t.version {
+						case "Maria107":
+							c.Attrs = []schema.Attr{}
+						case "Maria102", "Maria103":
+							c.Type.Raw = "longtext"
+							c.Type.Type = &schema.StringType{T: "longtext"}
+							c.Attrs = []schema.Attr{
+								&schema.Charset{V: "utf8mb4"},
+								&schema.Collation{V: "utf8mb4_bin"},
 							}
-							return &schema.ColumnType{Type: &schema.JSONType{T: "json"},
-								Raw: "json", Null: true}
-
-						}(),
-						Attrs: func() []schema.Attr {
-							if t.mariadb() {
-								return []schema.Attr{
-									&schema.Charset{V: "utf8mb4"},
-									&schema.Collation{V: "utf8mb4_bin"},
-								}
-							}
-							return nil
-						}(),
-					},
+						}
+						return c
+					}(),
 				},
 			}
 			require.EqualValues(t, &expected, ts)

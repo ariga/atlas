@@ -392,7 +392,7 @@ func (i *inspect) checks(ctx context.Context, t *schema.Table) error {
 		}
 		t.Attrs = append(t.Attrs, check)
 		// In MariaDB, JSON is an alias to LONGTEXT. For versions >= 10.4.3, the CHARSET and COLLATE set to utf8mb4
-		// and a CHECK constraint is automatically created for the column as well (i.e. JSON_VALID(`<c>`)). However,
+		// and a CHECK constraint is automatically created for the column as well (i.e. JSON_VALID(`<C>`)). However,
 		// we expect tools like Atlas and Ent to manually add this CHECK for older versions of MariaDB.
 		if i.mariadb() {
 			c, ok := t.Column(check.Name)
