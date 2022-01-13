@@ -47,6 +47,10 @@ func init() {
 
 // CmdApplyRun is the command used when running CLI.
 func CmdApplyRun(cmd *cobra.Command, args []string) {
+	if ApplyFlags.Web {
+		schemaCmd.PrintErrln("Open in UI server is not available in this release")
+		return
+	}
 	d, err := defaultMux.OpenAtlas(ApplyFlags.DSN)
 	cobra.CheckErr(err)
 	applyRun(d, ApplyFlags.DSN, ApplyFlags.File)
