@@ -41,7 +41,7 @@ func init() {
 // CmdInspectRun is the command used when running CLI.
 func CmdInspectRun(cmd *cobra.Command, args []string) {
 	if InspectFlags.Web {
-		schemaCmd.PrintErrln("Opening the UI server is not available in this release")
+		schemaCmd.PrintErrln("Opening the Graphical UI server is not available in this release")
 		return
 	}
 	d, err := defaultMux.OpenAtlas(InspectFlags.DSN)
