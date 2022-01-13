@@ -25,9 +25,6 @@ img {
   margin-bottom: 10px;
 }
 
-/*section {*/
-/*  margin-bottom: 30px;*/
-/*}*/
 /* COMMON */
 .title {
   text-align: left;
@@ -52,7 +49,6 @@ img {
 
 .paragraph, .paragraph2 {
   font-size: 1.3vw;
-  /*line-height: 2.25rem;*/
   color: #757889;
   text-align: center;
 }
@@ -163,9 +159,9 @@ ul {
   margin-right: 5%;
 }
 
-ul li a {
+.nav .li a {
   color: white;
-  font-size: 1.4vw;
+  font-size: 1.4vw;;
 }
 
 .slide1 {
@@ -289,18 +285,16 @@ ul li a {
     color: white;
     width: 90%;
     justify-content: flex-start;
+    margin: 0;
+    padding: 0;
   }
   .nav li {
     padding: 0;
     text-decoration: none;
     margin-right: 4%;
   }
-  ul {
-    margin: 0;
-    padding: 0;
-  }
 
-  ul li a {
+  ul .linkItem {
     color: white;
     font-size: 3.4vw;
   }

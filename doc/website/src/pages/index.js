@@ -13,8 +13,8 @@ function Chip({ text }) {
 }
 function Nav() {
     return  <ul className={index.nav}>
-        <li className=""><Link to={"/docs/cli/getting-started/setting-up"}>Docs</Link></li>
-        <li className=""><Link to="/docs/cli/CLI/atlas">Getting Started</Link></li>
+        <li className="linkItem"><Link to={"/cli/getting-started/setting-up"}><span style={{color: "white"}}>Docs</span></Link></li>
+        <li className="linkItem"><Link to="/CLI/atlas"><span style={{color: "white"}}>Getting Started</span></Link></li>
     </ul>
 }
 
@@ -56,7 +56,7 @@ export default function () {
                         on your desired state.
                     </p>
                     <button style={{marginTop: "5%"}} className={index.primaryButton}>
-                        <a href="/docs/cli/getting-started/setting-up">Get Started</a>
+                        <a href="/cli/getting-started/setting-up">Get Started</a>
                     </button>
                 </div>
                 <div className={index.imageContainer}><img src="https://atlasgo.io/uploads/landing/gopher-cli.png" alt=""/></div>
@@ -78,7 +78,7 @@ export default function () {
                     </p>
                 </section>
 
-                <button className={index.textButton}><Link to="/docs/ddl/intro">
+                <button className={index.textButton}><Link to="/ddl/intro">
                     Read More <span>&#8594;</span>
                 </Link></button>
 
