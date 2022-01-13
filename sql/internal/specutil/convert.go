@@ -473,10 +473,13 @@ func schemaRef(n string) *schemaspec.Ref {
 	return &schemaspec.Ref{V: "$schema." + n}
 }
 
-// convertCommentFromSpec converts a spec comment attribute to a schema element attribute.
-func convertCommentFromSpec(spec interface {
+// Attrer is the interface that wraps the Attr method.
+type Attrer interface {
 	Attr(string) (*schemaspec.Attr, bool)
-}, attrs *[]schema.Attr) error {
+}
+
+// convertCommentFromSpec converts a spec comment attribute to a schema element attribute.
+func convertCommentFromSpec(spec Attrer, attrs *[]schema.Attr) error {
 	if c, ok := spec.Attr("comment"); ok {
 		s, err := c.String()
 		if err != nil {
