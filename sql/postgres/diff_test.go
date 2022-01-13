@@ -100,6 +100,38 @@ func TestDiff_TableDiff(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "add comment",
+			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}},
+			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&schema.Comment{Text: "t1"}}},
+			wantChanges: []schema.Change{
+				&schema.AddAttr{
+					A: &schema.Comment{Text: "t1"},
+				},
+			},
+		},
+		{
+			name: "drop comment",
+			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Comment{Text: "t1"}}},
+			to:   &schema.Table{Name: "t1"},
+			wantChanges: []schema.Change{
+				&schema.ModifyAttr{
+					From: &schema.Comment{Text: "t1"},
+					To:   &schema.Comment{Text: ""},
+				},
+			},
+		},
+		{
+			name: "modify comment",
+			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Comment{Text: "t1"}}},
+			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&schema.Comment{Text: "t1!"}}},
+			wantChanges: []schema.Change{
+				&schema.ModifyAttr{
+					From: &schema.Comment{Text: "t1"},
+					To:   &schema.Comment{Text: "t1!"},
+				},
+			},
+		},
 		func() testcase {
 			var (
 				from = &schema.Table{
