@@ -613,14 +613,3 @@ func quote(s string) string {
 	}
 	return strconv.Quote(s)
 }
-
-func unquote(s string) (string, error) {
-	switch {
-	case sqlx.IsQuoted(s, '"'):
-		return strconv.Unquote(s)
-	case sqlx.IsQuoted(s, '\''):
-		return strings.ReplaceAll(s[1:len(s)-1], "''", "'"), nil
-	default:
-		return s, nil
-	}
-}

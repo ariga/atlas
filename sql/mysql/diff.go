@@ -38,6 +38,9 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) []schema.Change {
 	if change := d.autoIncChange(from.Attrs, to.Attrs); change != noChange {
 		changes = append(changes, change)
 	}
+	if change := sqlx.CommentDiff(from.Attrs, to.Attrs); change != nil {
+		changes = append(changes, change)
+	}
 	if change := d.charsetChange(from.Attrs, from.Schema.Attrs, to.Attrs); change != noChange {
 		changes = append(changes, change)
 	}
@@ -102,7 +105,7 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 }
 
 // Normalize implements the sqlx.Normalizer interface.
-func (d *diff) Normalize(from, to *schema.Table) {
+func (*diff) Normalize(from, to *schema.Table) {
 	indexes := make([]*schema.Index, 0, len(from.Indexes))
 	for _, idx := range from.Indexes {
 		// MySQL requires that foreign key columns be indexed; Therefore, if the child
@@ -120,7 +123,7 @@ func (d *diff) Normalize(from, to *schema.Table) {
 
 // collationChange returns the schema change for migrating the collation if
 // it was changed and its not the default attribute inherited from its parent.
-func (d *diff) collationChange(from, top, to []schema.Attr) schema.Change {
+func (*diff) collationChange(from, top, to []schema.Attr) schema.Change {
 	var fromC, topC, toC schema.Collation
 	switch fromHas, topHas, toHas := sqlx.Has(from, &fromC), sqlx.Has(top, &topC), sqlx.Has(to, &toC); {
 	case !fromHas && !toHas:
@@ -149,7 +152,7 @@ func (d *diff) collationChange(from, top, to []schema.Attr) schema.Change {
 
 // charsetChange returns the schema change for migrating the collation if
 // it was changed and its not the default attribute inherited from its parent.
-func (d *diff) charsetChange(from, top, to []schema.Attr) schema.Change {
+func (*diff) charsetChange(from, top, to []schema.Attr) schema.Change {
 	var fromC, topC, toC schema.Charset
 	switch fromHas, topHas, toHas := sqlx.Has(from, &fromC), sqlx.Has(top, &topC), sqlx.Has(to, &toC); {
 	case !fromHas && !toHas:
@@ -178,7 +181,7 @@ func (d *diff) charsetChange(from, top, to []schema.Attr) schema.Change {
 
 // autoIncChange returns the schema change for changing the AUTO_INCREMENT
 // attribute in case it is not the default.
-func (d *diff) autoIncChange(from, to []schema.Attr) schema.Change {
+func (*diff) autoIncChange(from, to []schema.Attr) schema.Change {
 	var fromA, toA AutoIncrement
 	// The table is empty and AUTO_INCREMENT was not configured. This can happen
 	// because older versions of MySQL (< 8.0) stored the AUTO_INCREMENT counter
@@ -344,8 +347,8 @@ func (d *diff) equalsIntValues(x1, x2 string) bool {
 // equalsStringValues report if the 2 string default values are
 // equal after dropping their quotes.
 func equalsStringValues(x1, x2 string) bool {
-	a, err1 := unquote(x1)
-	b, err2 := unquote(x2)
+	a, err1 := sqlx.Unquote(x1)
+	b, err2 := sqlx.Unquote(x2)
 	return a == b && err1 == nil && err2 == nil
 }
 

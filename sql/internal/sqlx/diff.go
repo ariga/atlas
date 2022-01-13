@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strconv"
+	"strings"
 
 	"ariga.io/atlas/sql/schema"
 )
@@ -349,6 +351,39 @@ func (e UnsupportedTypeError) Error() string {
 	return fmt.Sprintf("unsupported type %T", e.Type)
 }
 
+// CommentDiff computes the comment diff between the 2 attribute list.
+// Note that, the implementation relies on the fact that both PostgreSQL
+// and MySQL treat empty comment as "no comment" and a way to clear comments.
+func CommentDiff(from, to []schema.Attr) schema.Change {
+	var fromC, toC schema.Comment
+	switch fromHas, toHas := Has(from, &fromC), Has(to, &toC); {
+	case !fromHas && !toHas:
+	case !fromHas && toC.Text != "":
+		return &schema.AddAttr{
+			A: &toC,
+		}
+	case !toHas:
+		// In MySQL, there is no way to DROP a comment. Instead, setting it to empty ('')
+		// will remove it from INFORMATION_SCHEMA. We use the same approach in PostgreSQL,
+		// because comments can be dropped either by setting them to NULL or empty string.
+		// See: postgres/backend/commands/comment.c#CreateComments.
+		return &schema.ModifyAttr{
+			From: &fromC,
+			To:   &toC,
+		}
+	default:
+		v1, err1 := Unquote(fromC.Text)
+		v2, err2 := Unquote(toC.Text)
+		if err1 == nil && err2 == nil && v1 != v2 {
+			return &schema.ModifyAttr{
+				From: &fromC,
+				To:   &toC,
+			}
+		}
+	}
+	return nil
+}
+
 // CheckDiff computes the change diff between the 2 tables. A compare
 // function is provided to check if a Check object was modified.
 func CheckDiff(from, to *schema.Table, compare func(c1, c2 *schema.Check) bool) []schema.Change {
@@ -411,4 +446,16 @@ func similarCheck(attrs []schema.Attr, c *schema.Check) (*schema.Check, bool) {
 		return byExpr, true
 	}
 	return nil, false
+}
+
+// Unquote single or double quotes.
+func Unquote(s string) (string, error) {
+	switch {
+	case IsQuoted(s, '"'):
+		return strconv.Unquote(s)
+	case IsQuoted(s, '\''):
+		return strings.ReplaceAll(s[1:len(s)-1], "''", "'"), nil
+	default:
+		return s, nil
+	}
 }
