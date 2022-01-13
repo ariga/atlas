@@ -19,10 +19,11 @@ atlas schema apply -d "sqlite://file:ex1.db?_fk=1" -f atlas.hcl
 ### Options
 
 ```
-  -d, --dsn string    [driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format
-  -f, --file string   [/path/to/file] file containing schema
-  -h, --help          help for apply
-  -w, --web           open in UI server
+      --address string   used with -w, local address to bind the server to (default "127.0.0.1:5800")
+  -d, --dsn string       [driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format
+  -f, --file string      [/path/to/file] file containing schema
+  -h, --help             help for apply
+  -w, --web              Open in a local Atlas UI
 ```
 
 ### SEE ALSO
