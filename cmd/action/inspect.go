@@ -9,8 +9,9 @@ import (
 var (
 	// InspectFlags are the flags used in Inspect command.
 	InspectFlags struct {
-		DSN string
-		Web bool
+		DSN  string
+		Web  bool
+		Addr string
 	}
 	// InspectCmd represents the inspect command.
 	InspectCmd = &cobra.Command{
@@ -34,14 +35,15 @@ func init() {
 		"",
 		"[driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format",
 	)
-	InspectCmd.Flags().BoolVarP(&InspectFlags.Web, "web", "w", false, "open in UI server")
+	InspectCmd.Flags().BoolVarP(&InspectFlags.Web, "web", "w", false, "Open in a local Atlas UI")
+	InspectCmd.Flags().StringVarP(&InspectFlags.Addr, "addr", "", "127.0.0.1:5800", "used with -w, local address to bind the server to")
 	cobra.CheckErr(InspectCmd.MarkFlagRequired("dsn"))
 }
 
 // CmdInspectRun is the command used when running CLI.
-func CmdInspectRun(cmd *cobra.Command, args []string) {
+func CmdInspectRun(_ *cobra.Command, _ []string) {
 	if InspectFlags.Web {
-		schemaCmd.PrintErrln("Opening the Graphical UI server is not available in this release")
+		schemaCmd.PrintErrln("The Atlas UI is not available in this release.")
 		return
 	}
 	d, err := defaultMux.OpenAtlas(InspectFlags.DSN)
