@@ -23,10 +23,22 @@ func (s *Schema) SetCharset(v string) *Schema {
 	return s
 }
 
+// UnsetCharset unsets the Charset attribute.
+func (s *Schema) UnsetCharset() *Schema {
+	del(&s.Attrs, &Charset{})
+	return s
+}
+
 // SetCollation sets or appends the Collation attribute
 // to the schema with the given value.
 func (s *Schema) SetCollation(v string) *Schema {
 	replaceOrAppend(&s.Attrs, &Collation{V: v})
+	return s
+}
+
+// UnsetCollation the Collation attribute.
+func (s *Schema) UnsetCollation() *Schema {
+	del(&s.Attrs, &Collation{})
 	return s
 }
 
@@ -70,10 +82,22 @@ func (t *Table) SetCharset(v string) *Table {
 	return t
 }
 
+// UnsetCharset unsets the Charset attribute.
+func (t *Table) UnsetCharset() *Table {
+	del(&t.Attrs, &Charset{})
+	return t
+}
+
 // SetCollation sets or appends the Collation attribute
 // to the table with the given value.
 func (t *Table) SetCollation(v string) *Table {
 	replaceOrAppend(&t.Attrs, &Collation{V: v})
+	return t
+}
+
+// UnsetCollation the Collation attribute.
+func (t *Table) UnsetCollation() *Table {
+	del(&t.Attrs, &Collation{})
 	return t
 }
 
@@ -398,10 +422,22 @@ func (c *Column) SetCharset(v string) *Column {
 	return c
 }
 
+// UnsetCharset unsets the Charset attribute.
+func (c *Column) UnsetCharset() *Column {
+	del(&c.Attrs, &Charset{})
+	return c
+}
+
 // SetCollation sets or appends the Collation attribute
 // to the column with the given value.
 func (c *Column) SetCollation(v string) *Column {
 	replaceOrAppend(&c.Attrs, &Collation{V: v})
+	return c
+}
+
+// UnsetCollation the Collation attribute.
+func (c *Column) UnsetCollation() *Column {
+	del(&c.Attrs, &Collation{})
 	return c
 }
 
@@ -594,4 +630,16 @@ func replaceOrAppend(attrs *[]Attr, v Attr) {
 		}
 	}
 	*attrs = append(*attrs, v)
+}
+
+// del searches an attribute of the same type as v in
+// the list and delete it.
+func del(attrs *[]Attr, v Attr) {
+	t := reflect.TypeOf(v)
+	for i := range *attrs {
+		if reflect.TypeOf((*attrs)[i]) == t {
+			*attrs = append((*attrs)[:i], (*attrs)[i+1:]...)
+			return
+		}
+	}
 }

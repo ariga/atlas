@@ -382,7 +382,7 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 		switch a := a.(type) {
 		case *schema.Charset:
 			if !supportsCharset(c.Type.Type) {
-				return fmt.Errorf("column %q of type %T does not support the CHARSET", c.Name, c.Type.Type)
+				return fmt.Errorf("column %q of type %T does not support the CHARSE attribute", c.Name, c.Type.Type)
 			}
 			// Define the charset explicitly
 			// in case it is not the default.
@@ -391,7 +391,7 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 			}
 		case *schema.Collation:
 			if !supportsCharset(c.Type.Type) {
-				return fmt.Errorf("column %q of type %T does not support the COLLATE", c.Name, c.Type.Type)
+				return fmt.Errorf("column %q of type %T does not support the COLLATE attribute", c.Name, c.Type.Type)
 			}
 			// Define the collation explicitly
 			// in case it is not the default.

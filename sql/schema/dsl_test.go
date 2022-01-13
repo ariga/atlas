@@ -139,6 +139,8 @@ func TestSchema_SetCharset(t *testing.T) {
 	s.SetCharset("latin1")
 	require.Len(t, s.Attrs, 1)
 	require.Equal(t, &schema.Charset{V: "latin1"}, s.Attrs[0])
+	s.UnsetCharset()
+	require.Empty(t, s.Attrs)
 }
 
 func TestSchema_SetCollation(t *testing.T) {
@@ -150,6 +152,8 @@ func TestSchema_SetCollation(t *testing.T) {
 	s.SetCollation("latin1_swedish_ci")
 	require.Len(t, s.Attrs, 1)
 	require.Equal(t, &schema.Collation{V: "latin1_swedish_ci"}, s.Attrs[0])
+	s.UnsetCollation()
+	require.Empty(t, s.Attrs)
 }
 
 func TestSchema_SetComment(t *testing.T) {
