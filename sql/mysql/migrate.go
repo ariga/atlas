@@ -381,12 +381,18 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 	for _, a := range c.Attrs {
 		switch a := a.(type) {
 		case *schema.Charset:
+			if !supportsCharset(c.Type.Type) {
+				return fmt.Errorf("column %q of type %T does not support the CHARSET", c.Name, c.Type.Type)
+			}
 			// Define the charset explicitly
 			// in case it is not the default.
 			if s.character(t) != a.V {
 				b.P("CHARSET", a.V)
 			}
 		case *schema.Collation:
+			if !supportsCharset(c.Type.Type) {
+				return fmt.Errorf("column %q of type %T does not support the COLLATE", c.Name, c.Type.Type)
+			}
 			// Define the collation explicitly
 			// in case it is not the default.
 			if s.collation(t) != a.V {
@@ -587,6 +593,17 @@ func (s *state) check(b *sqlx.Builder, c *schema.Check) {
 	b.P("CHECK", expr)
 	if s.supportsEnforceCheck() && sqlx.Has(c.Attrs, &Enforced{}) {
 		b.P("ENFORCED")
+	}
+}
+
+// supportsCharset reports if the given type supports the CHARSET and COLLATE
+// clauses. See: https://dev.mysql.com/doc/refman/8.0/en/charset-column.html
+func supportsCharset(t schema.Type) bool {
+	switch t.(type) {
+	case *schema.StringType, *schema.EnumType, *SetType:
+		return true
+	default:
+		return false
 	}
 }
 
