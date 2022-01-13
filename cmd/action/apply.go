@@ -14,10 +14,10 @@ import (
 var (
 	// ApplyFlags are the flags used in Apply command.
 	ApplyFlags struct {
-		DSN     string
-		File    string
-		Web     bool
-		Address string
+		DSN  string
+		File string
+		Web  bool
+		Addr string
 	}
 	// ApplyCmd represents the apply command.
 	ApplyCmd = &cobra.Command{
@@ -42,7 +42,7 @@ func init() {
 	ApplyCmd.Flags().StringVarP(&ApplyFlags.DSN, "dsn", "d", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format")
 	ApplyCmd.Flags().StringVarP(&ApplyFlags.File, "file", "f", "", "[/path/to/file] file containing schema")
 	ApplyCmd.Flags().BoolVarP(&ApplyFlags.Web, "web", "w", false, "Open in a local Atlas UI")
-	ApplyCmd.Flags().StringVarP(&ApplyFlags.Address, "address", "", "127.0.0.1:5800", "used with -w, local address to bind the server to")
+	ApplyCmd.Flags().StringVarP(&ApplyFlags.Addr, "addr", "", "127.0.0.1:5800", "used with -w, local address to bind the server to")
 	cobra.CheckErr(ApplyCmd.MarkFlagRequired("dsn"))
 	cobra.CheckErr(ApplyCmd.MarkFlagRequired("file"))
 }
