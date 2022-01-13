@@ -19,10 +19,10 @@ atlas schema inspect -d "sqlite://file:ex1.db?_fk=1"
 ### Options
 
 ```
-      --address string   used with -w, local address to bind the server to (default "127.0.0.1:5800")
-  -d, --dsn string       [driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format
-  -h, --help             help for inspect
-  -w, --web              Open in a local Atlas UI
+      --addr string   used with -w, local address to bind the server to (default "127.0.0.1:5800")
+  -d, --dsn string    [driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format
+  -h, --help          help for inspect
+  -w, --web           Open in a local Atlas UI
 ```
 
 ### SEE ALSO
