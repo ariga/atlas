@@ -409,7 +409,6 @@ func TestMarshalSpec_Check(t *testing.T) {
 		)
 	buf, err := MarshalSpec(s, hclState)
 	require.NoError(t, err)
-	// We expect a zero value comment to not be present in the marshaled HCL.
 	const expected = `table "products" {
   schema = schema.test
   column "price1" {
