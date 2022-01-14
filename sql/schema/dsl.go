@@ -448,14 +448,6 @@ func (c *Column) SetComment(v string) *Column {
 	return c
 }
 
-// AddChecks appends the given checks to the attribute list.
-func (c *Column) AddChecks(checks ...*Check) *Column {
-	for _, chk := range checks {
-		c.Attrs = append(c.Attrs, chk)
-	}
-	return c
-}
-
 // AddAttrs adds additional attributes to the column.
 func (c *Column) AddAttrs(attrs ...Attr) *Column {
 	c.Attrs = append(c.Attrs, attrs...)

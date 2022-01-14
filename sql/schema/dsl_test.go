@@ -171,12 +171,7 @@ func TestCheck(t *testing.T) {
 	enforced := &struct{ schema.Attr }{}
 	tbl := schema.NewTable("table").
 		AddColumns(
-			schema.NewColumn("price1").
-				AddChecks(
-					schema.NewCheck().
-						SetExpr("price1 > 0").
-						AddAttrs(enforced),
-				),
+			schema.NewColumn("price1"),
 			schema.NewColumn("price2"),
 		)
 	require.Empty(t, tbl.Attrs)
@@ -184,17 +179,17 @@ func TestCheck(t *testing.T) {
 		schema.NewCheck().
 			SetName("unique prices").
 			SetExpr("price1 <> price2"),
+		schema.NewCheck().
+			SetExpr("price1 > 0").
+			AddAttrs(enforced),
 	)
-	require.Len(t, tbl.Attrs, 1)
+	require.Len(t, tbl.Attrs, 2)
 	require.Equal(t, &schema.Check{
 		Name: "unique prices",
 		Expr: "price1 <> price2",
 	}, tbl.Attrs[0])
-	require.Len(t, tbl.Columns, 2)
-	require.Len(t, tbl.Columns[0].Attrs, 1)
-	require.Len(t, tbl.Columns[1].Attrs, 0)
 	require.Equal(t, &schema.Check{
 		Expr:  "price1 > 0",
 		Attrs: []schema.Attr{enforced},
-	}, tbl.Columns[0].Attrs[0])
+	}, tbl.Attrs[1])
 }
