@@ -289,7 +289,7 @@ func TestDiff_SchemaDiff(t *testing.T) {
 	changes, err := drv.SchemaDiff(from, to)
 	require.NoError(t, err)
 	require.EqualValues(t, []schema.Change{
-		&schema.ModifyTable{T: from.Tables[0], Changes: []schema.Change{&schema.AddColumn{C: to.Tables[0].Columns[0]}}},
+		&schema.ModifyTable{T: to.Tables[0], Changes: []schema.Change{&schema.AddColumn{C: to.Tables[0].Columns[0]}}},
 		&schema.DropTable{T: from.Tables[1]},
 		&schema.AddTable{T: to.Tables[1]},
 	}, changes)

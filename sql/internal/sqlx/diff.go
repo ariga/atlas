@@ -102,6 +102,7 @@ func (d *Diff) SchemaDiff(from, to *schema.Schema) ([]schema.Change, error) {
 	// Drop or modify attributes (collations, charset, etc).
 	if change := d.SchemaAttrDiff(from, to); len(change) > 0 {
 		changes = append(changes, &schema.ModifySchema{
+			S:       to,
 			Changes: change,
 		})
 	}
@@ -119,7 +120,7 @@ func (d *Diff) SchemaDiff(from, to *schema.Schema) ([]schema.Change, error) {
 		}
 		if len(change) > 0 {
 			changes = append(changes, &schema.ModifyTable{
-				T:       t1,
+				T:       t2,
 				Changes: change,
 			})
 		}
@@ -457,5 +458,22 @@ func Unquote(s string) (string, error) {
 		return strings.ReplaceAll(s[1:len(s)-1], "''", "'"), nil
 	default:
 		return s, nil
+	}
+}
+
+// SingleQuote quotes the given string with single quote.
+func SingleQuote(s string) (string, error) {
+	switch {
+	case IsQuoted(s, '\''):
+		return s, nil
+	case IsQuoted(s, '"'):
+		v, err := strconv.Unquote(s)
+		if err != nil {
+			return "", err
+		}
+		s = v
+		fallthrough
+	default:
+		return "'" + strings.ReplaceAll(s, "'", "''") + "'", nil
 	}
 }
