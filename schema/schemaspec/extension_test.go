@@ -115,10 +115,9 @@ func TestNested(t *testing.T) {
 			{ID: "rotemtam", FirstName: "rotem", Born: 1985, Active: true},
 		},
 		RoleModel: &PetBlock{
-			ID:     "gonnie",
-			Breed:  "golden retriever",
-			Born:   1998,
-			Owners: []*OwnerBlock{},
+			ID:    "gonnie",
+			Breed: "golden retriever",
+			Born:  1998,
 		},
 	}, pb)
 	scan := &schemaspec.Resource{}
