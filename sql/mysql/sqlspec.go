@@ -177,8 +177,7 @@ func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 
 func checkSpec(s *schema.Check) *sqlspec.Check {
 	c := specutil.FromCheck(s)
-	var e Enforced
-	if sqlx.Has(s.Attrs, &e) {
+	if e := (Enforced{}); sqlx.Has(s.Attrs, &e) {
 		c.Extra.Attrs = append(c.Extra.Attrs, specutil.BoolAttr("enforced", true))
 	}
 	return c
