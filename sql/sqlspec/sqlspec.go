@@ -50,9 +50,8 @@ type (
 
 	// Check holds a specification for a check constraint on a table.
 	Check struct {
-		Name     string `spec:",name"`
-		Expr     string `spec:"expr"`
-		Enforced bool   `spec:"enforced"`
+		Name string `spec:",name"`
+		Expr string `spec:"expr"`
 		schemaspec.DefaultExtension
 	}
 

@@ -23,7 +23,7 @@ type (
 	ConvertTypeFunc       func(*sqlspec.Column) (schema.Type, error)
 	ConvertPrimaryKeyFunc func(*sqlspec.PrimaryKey, *schema.Table) (*schema.Index, error)
 	ConvertIndexFunc      func(*sqlspec.Index, *schema.Table) (*schema.Index, error)
-	ConvertCheckFunc      func(*sqlspec.Check) *schema.Check
+	ConvertCheckFunc      func(*sqlspec.Check) (*schema.Check, error)
 	ColumnSpecFunc        func(*schema.Column, *schema.Table) (*sqlspec.Column, error)
 	ColumnTypeSpecFunc    func(schema.Type) (*sqlspec.Column, error)
 	TableSpecFunc         func(*schema.Table) (*sqlspec.Table, error)
@@ -110,7 +110,11 @@ func Table(spec *sqlspec.Table, parent *schema.Schema, convertColumn ConvertColu
 		tbl.Indexes = append(tbl.Indexes, i)
 	}
 	for _, c := range spec.Checks {
-		tbl.AddChecks(convertCheck(c))
+		c, err := convertCheck(c)
+		if err != nil {
+			return nil, err
+		}
+		tbl.AddChecks(c)
 	}
 	if err := convertCommentFromSpec(spec, &tbl.Attrs); err != nil {
 		return nil, err
@@ -177,12 +181,12 @@ func Index(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
 }
 
 // Check converts a sqlspec.Check to a schema.Check.
-func Check(spec *sqlspec.Check) *schema.Check {
+func Check(spec *sqlspec.Check) (*schema.Check, error) {
 	c := &schema.Check{
 		Name: spec.Name,
 		Expr: spec.Expr,
 	}
-	return c
+	return c, nil
 }
 
 // PrimaryKey converts a sqlspec.PrimaryKey to a schema.Index.

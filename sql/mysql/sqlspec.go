@@ -89,12 +89,21 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 }
 
 // convertCheck converts a sqlspec.Check into a schema.Check.
-func convertCheck(spec *sqlspec.Check) *schema.Check {
-	c := specutil.Check(spec)
-	if spec.Enforced {
-		c.AddAttrs(&Enforced{})
+func convertCheck(spec *sqlspec.Check) (*schema.Check, error) {
+	c, err := specutil.Check(spec)
+	if err != nil {
+		return nil, err
 	}
-	return c
+	if attr, ok := spec.Attr("enforced"); ok {
+		b, err := attr.Bool()
+		if err != nil {
+			return nil, err
+		}
+		if b {
+			c.AddAttrs(&Enforced{})
+		}
+	}
+	return c, nil
 }
 
 // convertColumn converts a sqlspec.Column into a schema.Column.
@@ -170,7 +179,7 @@ func checkSpec(s *schema.Check) *sqlspec.Check {
 	c := specutil.FromCheck(s)
 	var e Enforced
 	if sqlx.Has(s.Attrs, &e) {
-		c.Enforced = true
+		c.Extra.Attrs = append(c.Extra.Attrs, specutil.BoolAttr("enforced", true))
 	}
 	return c
 }

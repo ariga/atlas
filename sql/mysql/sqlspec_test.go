@@ -420,8 +420,7 @@ func TestMarshalSpec_Check(t *testing.T) {
     type = int
   }
   check "price1 positive" {
-    expr     = "price1 > 0"
-    enforced = false
+    expr = "price1 > 0"
   }
   check {
     expr     = "price1 <> price2"
