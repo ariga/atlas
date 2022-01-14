@@ -166,11 +166,12 @@ func (s *state) dropTable(drop *schema.DropTable) {
 	})
 }
 
-// modifyTable builds and executes the queries for bringing the table into its modified state.
+// modifyTable builds the statements that bring the table into its modified state.
 func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) error {
 	var (
 		changes     []schema.Change
 		addI, dropI []*schema.Index
+		comments    []*migrate.Change
 	)
 	for _, change := range skipAutoChanges(modify.Changes) {
 		switch change := change.(type) {
@@ -179,7 +180,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 			if err != nil {
 				return err
 			}
-			s.tableComment(modify.T, to, from)
+			comments = append(comments, s.tableComment(modify.T, to, from))
 		case *schema.DropAttr:
 			return fmt.Errorf("unsupported change type: %T", change)
 		case *schema.AddIndex:
@@ -204,6 +205,18 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 			}
 			changes = append(changes, change)
 		case *schema.ModifyColumn:
+			k := change.Change
+			if change.Change.Is(schema.ChangeComment) {
+				from, to, err := commentChange(sqlx.CommentDiff(change.From.Attrs, change.To.Attrs))
+				if err != nil {
+					return err
+				}
+				comments = append(comments, s.columnComment(modify.T, change.To, to, from))
+				// If only the comment was changed.
+				if k &= ^schema.ChangeComment; k.Is(schema.NoChange) {
+					continue
+				}
+			}
 			from, ok1 := change.From.Type.Type.(*schema.EnumType)
 			to, ok2 := change.To.Type.Type.(*schema.EnumType)
 			switch {
@@ -214,7 +227,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 				}
 				// If only the enum values were changed,
 				// there is no need to ALTER the table.
-				if change.Change == schema.ChangeType {
+				if k == schema.ChangeType {
 					continue
 				}
 			// Enum was added (and column type was changed).
@@ -235,6 +248,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 		}
 	}
 	s.addIndexes(modify.T, addI...)
+	s.append(comments...)
 	return nil
 }
 
@@ -322,18 +336,11 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 func (s *state) addComments(t *schema.Table) {
 	var c schema.Comment
 	if sqlx.Has(t.Attrs, &c) && c.Text != "" {
-		s.tableComment(t, c.Text, "")
+		s.append(s.tableComment(t, c.Text, ""))
 	}
 	for i := range t.Columns {
 		if sqlx.Has(t.Columns[i].Attrs, &c) && c.Text != "" {
-			b := Build("COMMENT ON COLUMN").Table(t)
-			b.WriteByte('.')
-			b.Ident(t.Columns[i].Name)
-			s.append(&migrate.Change{
-				Cmd:     b.Clone().P("IS", quote(c.Text)).String(),
-				Comment: fmt.Sprintf("set comment to column: %q on table: %q", t.Columns[i].Name, t.Name),
-				Reverse: b.Clone().P("IS NULL").String(),
-			})
+			s.append(s.columnComment(t, t.Columns[i], c.Text, ""))
 		}
 	}
 	for i := range t.Indexes {
@@ -348,13 +355,24 @@ func (s *state) addComments(t *schema.Table) {
 	}
 }
 
-func (s *state) tableComment(t *schema.Table, to, from string) {
+func (s *state) tableComment(t *schema.Table, to, from string) *migrate.Change {
 	b := Build("COMMENT ON TABLE").Table(t).P("IS")
-	s.append(&migrate.Change{
+	return &migrate.Change{
 		Cmd:     b.Clone().P(quote(to)).String(),
 		Comment: fmt.Sprintf("set comment to table: %q", t.Name),
 		Reverse: b.Clone().P(quote(from)).String(),
-	})
+	}
+}
+
+func (s *state) columnComment(t *schema.Table, c *schema.Column, to, from string) *migrate.Change {
+	b := Build("COMMENT ON COLUMN").Table(t)
+	b.WriteByte('.')
+	b.Ident(c.Name).P("IS")
+	return &migrate.Change{
+		Cmd:     b.Clone().P(quote(to)).String(),
+		Comment: fmt.Sprintf("set comment to column: %q on table: %q", c.Name, t.Name),
+		Reverse: b.Clone().P(quote(from)).String(),
+	}
 }
 
 func (s *state) dropIndexes(t *schema.Table, indexes ...*schema.Index) {
@@ -625,8 +643,8 @@ func (s *state) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
 	})
 }
 
-func (s *state) append(c *migrate.Change) {
-	s.Changes = append(s.Changes, c)
+func (s *state) append(c ...*migrate.Change) {
+	s.Changes = append(s.Changes, c...)
 }
 
 // Build instantiates a new builder and writes the given phrase to it.
