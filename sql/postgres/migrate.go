@@ -174,13 +174,12 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 	)
 	for _, change := range skipAutoChanges(modify.Changes) {
 		switch change := change.(type) {
-		case *schema.ModifyAttr:
-			to, ok1 := change.To.(*schema.Comment)
-			from, ok2 := change.From.(*schema.Comment)
-			if !ok1 || !ok2 {
-				return fmt.Errorf("unsupported ModifyAttr(%T, %T) change", change.From, change.To)
+		case *schema.AddAttr, *schema.ModifyAttr:
+			from, to, err := commentChange(change)
+			if err != nil {
+				return err
 			}
-			s.tableComment(modify.T, to.Text, from.Text)
+			s.tableComment(modify.T, to, from)
 		case *schema.DropAttr:
 			return fmt.Errorf("unsupported change type: %T", change)
 		case *schema.AddIndex:
@@ -530,6 +529,9 @@ func (s *state) alterColumn(b *sqlx.Builder, k schema.ChangeKind, c *schema.Colu
 			// https://www.postgresql.org/docs/current/sql-altersequence.html
 			b.P("SET START WITH", strconv.FormatInt(id.Sequence.Start, 10), "SET INCREMENT BY", strconv.FormatInt(id.Sequence.Increment, 10), "RESTART")
 			k &= ^schema.ChangeAttr
+		case k.Is(schema.ChangeComment):
+			// Handled separately on modifyTable.
+			k &= ^schema.ChangeComment
 		default:
 			return fmt.Errorf("unexpected column change: %d", k)
 		}
@@ -669,6 +671,30 @@ search:
 		planned = append(planned, c)
 	}
 	return planned
+}
+
+// commentChange extracts the information for modify a comment from the given change.
+func commentChange(c schema.Change) (from, to string, err error) {
+	switch c := c.(type) {
+	case *schema.AddAttr:
+		toC, ok := c.A.(*schema.Comment)
+		if ok {
+			to = toC.Text
+			return
+		}
+		err = fmt.Errorf("unexpected AddAttr.(%T) for comment change", c.A)
+	case *schema.ModifyAttr:
+		fromC, ok1 := c.From.(*schema.Comment)
+		toC, ok2 := c.To.(*schema.Comment)
+		if ok1 && ok2 {
+			from, to = fromC.Text, toC.Text
+			return
+		}
+		err = fmt.Errorf("unsupported ModifyAttr(%T, %T) change", c.From, c.To)
+	default:
+		err = fmt.Errorf("unexpected change %T", c)
+	}
+	return
 }
 
 // checks writes the CHECK constraint to the builder.
