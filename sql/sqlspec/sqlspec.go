@@ -21,6 +21,7 @@ type (
 		PrimaryKey  *PrimaryKey     `spec:"primary_key"`
 		ForeignKeys []*ForeignKey   `spec:"foreign_key"`
 		Indexes     []*Index        `spec:"index"`
+		Checks      []*Check        `spec:"check"`
 		schemaspec.DefaultExtension
 	}
 
@@ -44,6 +45,13 @@ type (
 		Name    string            `spec:",name"`
 		Unique  bool              `spec:"unique"`
 		Columns []*schemaspec.Ref `spec:"columns"`
+		schemaspec.DefaultExtension
+	}
+
+	// Check holds a specification for a check constraint on a table.
+	Check struct {
+		Name string `spec:",name"`
+		Expr string `spec:"expr"`
 		schemaspec.DefaultExtension
 	}
 
