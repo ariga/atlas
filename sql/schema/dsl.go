@@ -454,6 +454,29 @@ func (c *Column) AddAttrs(attrs ...Attr) *Column {
 	return c
 }
 
+// NewCheck creates a new check.
+func NewCheck() *Check {
+	return &Check{}
+}
+
+// SetName configures the name of the check constraint.
+func (c *Check) SetName(name string) *Check {
+	c.Name = name
+	return c
+}
+
+// SetExpr configures the expression of the check constraint.
+func (c *Check) SetExpr(expr string) *Check {
+	c.Expr = expr
+	return c
+}
+
+// AddAttrs adds additional attributes to the check constraint.
+func (c *Check) AddAttrs(attrs ...Attr) *Check {
+	c.Attrs = append(c.Attrs, attrs...)
+	return c
+}
+
 // NewIndex creates a new index with the given name.
 func NewIndex(name string) *Index {
 	return &Index{Name: name}

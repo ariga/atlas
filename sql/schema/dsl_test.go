@@ -166,3 +166,30 @@ func TestSchema_SetComment(t *testing.T) {
 	require.Len(t, s.Attrs, 1)
 	require.Equal(t, &schema.Comment{Text: "2"}, s.Attrs[0])
 }
+
+func TestCheck(t *testing.T) {
+	enforced := &struct{ schema.Attr }{}
+	tbl := schema.NewTable("table").
+		AddColumns(
+			schema.NewColumn("price1"),
+			schema.NewColumn("price2"),
+		)
+	require.Empty(t, tbl.Attrs)
+	tbl.AddChecks(
+		schema.NewCheck().
+			SetName("unique prices").
+			SetExpr("price1 <> price2"),
+		schema.NewCheck().
+			SetExpr("price1 > 0").
+			AddAttrs(enforced),
+	)
+	require.Len(t, tbl.Attrs, 2)
+	require.Equal(t, &schema.Check{
+		Name: "unique prices",
+		Expr: "price1 <> price2",
+	}, tbl.Attrs[0])
+	require.Equal(t, &schema.Check{
+		Expr:  "price1 > 0",
+		Attrs: []schema.Attr{enforced},
+	}, tbl.Attrs[1])
+}
