@@ -285,7 +285,6 @@ schema "hi" {
 				},
 			},
 		},
-		Tables: []*sqlspec.Table{},
 	}, file)
 }
 

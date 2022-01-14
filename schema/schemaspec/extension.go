@@ -220,6 +220,9 @@ func setChildSlice(field reflect.Value, children []*Resource) error {
 	if field.Type().Kind() != reflect.Slice {
 		return fmt.Errorf("schemaspec: expected field to be of kind slice")
 	}
+	if len(children) == 0 {
+		return nil
+	}
 	typ := field.Type().Elem()
 	slc := reflect.MakeSlice(reflect.SliceOf(typ), 0, len(children))
 	for _, c := range children {
