@@ -174,6 +174,13 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 	)
 	for _, change := range skipAutoChanges(modify.Changes) {
 		switch change := change.(type) {
+		case *schema.ModifyAttr:
+			to, ok1 := change.To.(*schema.Comment)
+			from, ok2 := change.From.(*schema.Comment)
+			if !ok1 || !ok2 {
+				return fmt.Errorf("unsupported ModifyAttr(%T, %T) change", change.From, change.To)
+			}
+			s.tableComment(modify.T, to.Text, from.Text)
 		case *schema.DropAttr:
 			return fmt.Errorf("unsupported change type: %T", change)
 		case *schema.AddIndex:
@@ -313,12 +320,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 func (s *state) addComments(t *schema.Table) {
 	var c schema.Comment
 	if sqlx.Has(t.Attrs, &c) {
-		b := Build("COMMENT ON TABLE").Table(t)
-		s.append(&migrate.Change{
-			Cmd:     b.Clone().P("IS", quote(c.Text)).String(),
-			Comment: fmt.Sprintf("add comment to table: %q", t.Name),
-			Reverse: b.Clone().P("IS NULL").String(),
-		})
+		s.tableComment(t, c.Text, "")
 	}
 	for i := range t.Columns {
 		if sqlx.Has(t.Columns[i].Attrs, &c) {
@@ -327,7 +329,7 @@ func (s *state) addComments(t *schema.Table) {
 			b.Ident(t.Columns[i].Name)
 			s.append(&migrate.Change{
 				Cmd:     b.Clone().P("IS", quote(c.Text)).String(),
-				Comment: fmt.Sprintf("add comment to column: %q on table: %q", t.Columns[i].Name, t.Name),
+				Comment: fmt.Sprintf("set comment to column: %q on table: %q", t.Columns[i].Name, t.Name),
 				Reverse: b.Clone().P("IS NULL").String(),
 			})
 		}
@@ -337,11 +339,20 @@ func (s *state) addComments(t *schema.Table) {
 			b := Build("COMMENT ON INDEX").Ident(t.Indexes[i].Name).P("IS", quote(c.Text))
 			s.append(&migrate.Change{
 				Cmd:     b.Clone().P("IS", quote(c.Text)).String(),
-				Comment: fmt.Sprintf("add comment to index: %q on table: %q", t.Indexes[i].Name, t.Name),
+				Comment: fmt.Sprintf("set comment to index: %q on table: %q", t.Indexes[i].Name, t.Name),
 				Reverse: b.Clone().P("IS NULL").String(),
 			})
 		}
 	}
+}
+
+func (s *state) tableComment(t *schema.Table, to, from string) {
+	b := Build("COMMENT ON TABLE").Table(t).P("IS")
+	s.append(&migrate.Change{
+		Cmd:     b.Clone().P(quote(to)).String(),
+		Comment: fmt.Sprintf("set comment to table: %q", t.Name),
+		Reverse: b.Clone().P(quote(from)).String(),
+	})
 }
 
 func (s *state) dropIndexes(t *schema.Table, indexes ...*schema.Index) {
