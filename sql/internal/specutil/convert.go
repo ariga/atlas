@@ -182,11 +182,10 @@ func Index(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
 
 // Check converts a sqlspec.Check to a schema.Check.
 func Check(spec *sqlspec.Check) (*schema.Check, error) {
-	c := &schema.Check{
+	return &schema.Check{
 		Name: spec.Name,
 		Expr: spec.Expr,
-	}
-	return c, nil
+	}, nil
 }
 
 // PrimaryKey converts a sqlspec.PrimaryKey to a schema.Index.
@@ -459,11 +458,10 @@ func FromForeignKey(s *schema.ForeignKey) (*sqlspec.ForeignKey, error) {
 
 // FromCheck converts schema.Check to sqlspec.Check.
 func FromCheck(s *schema.Check) *sqlspec.Check {
-	c := &sqlspec.Check{
+	return &sqlspec.Check{
 		Name: s.Name,
 		Expr: s.Expr,
 	}
-	return c
 }
 
 func schemaName(ref *schemaspec.Ref) (string, error) {
