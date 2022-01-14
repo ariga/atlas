@@ -185,6 +185,60 @@ func TestPlanChanges(t *testing.T) {
 				Changes:    []*migrate.Change{{Cmd: "CREATE DATABASE `test` CHARSET latin", Reverse: "DROP DATABASE `test`"}},
 			},
 		},
+		// Default database charset can be omitted.
+		{
+			input: []schema.Change{
+				&schema.AddSchema{S: schema.New("test").SetCharset("utf8")},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes:    []*migrate.Change{{Cmd: "CREATE DATABASE `test`", Reverse: "DROP DATABASE `test`"}},
+			},
+		},
+		// Add the default database charset on modify can be omitted.
+		{
+			input: []schema.Change{
+				&schema.ModifySchema{
+					S: schema.New("test").SetCharset("utf8"),
+					Changes: []schema.Change{
+						&schema.AddAttr{A: &schema.Charset{V: "utf8"}},
+					},
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+			},
+		},
+		// Add custom charset.
+		{
+			input: []schema.Change{
+				&schema.ModifySchema{
+					S: schema.New("test").SetCharset("latin1"),
+					Changes: []schema.Change{
+						&schema.AddAttr{A: &schema.Charset{V: "latin1"}},
+					},
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes:    []*migrate.Change{{Cmd: "ALTER DATABASE `test` CHARSET latin1", Reverse: "ALTER DATABASE `test`CHARSET utf8"}},
+			},
+		},
+		// Modify charset.
+		{
+			input: []schema.Change{
+				&schema.ModifySchema{
+					S: schema.New("test").SetCharset("utf8"),
+					Changes: []schema.Change{
+						&schema.ModifyAttr{From: &schema.Charset{V: "latin1"}, To: &schema.Charset{V: "utf8"}},
+					},
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes:    []*migrate.Change{{Cmd: "ALTER DATABASE `test` CHARSET utf8", Reverse: "ALTER DATABASE `test`CHARSET latin1"}},
+			},
+		},
 		{
 			input: []schema.Change{
 				&schema.DropSchema{S: &schema.Schema{Name: "atlas", Attrs: []schema.Attr{&schema.Charset{V: "latin"}}}},

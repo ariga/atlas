@@ -61,8 +61,11 @@ type state struct {
 // plan builds the migration plan for applying the
 // given changes on the attached connection.
 func (s *state) plan(changes []schema.Change) error {
-	planned := s.topLevel(changes)
-	planned, err := sqlx.DetachCycles(planned)
+	planned, err := s.topLevel(changes)
+	if err != nil {
+		return err
+	}
+	planned, err = sqlx.DetachCycles(planned)
 	if err != nil {
 		return err
 	}
@@ -86,7 +89,7 @@ func (s *state) plan(changes []schema.Change) error {
 }
 
 // topLevel appends first the changes for creating or dropping schemas (top-level schema elements).
-func (s *state) topLevel(changes []schema.Change) []schema.Change {
+func (s *state) topLevel(changes []schema.Change) ([]schema.Change, error) {
 	planned := make([]schema.Change, 0, len(changes))
 	for _, c := range changes {
 		switch c := c.(type) {
@@ -95,10 +98,12 @@ func (s *state) topLevel(changes []schema.Change) []schema.Change {
 			if sqlx.Has(c.Extra, &schema.IfNotExists{}) {
 				b.P("IF NOT EXISTS")
 			}
-			if a := (schema.Charset{}); sqlx.Has(c.S.Attrs, &a) {
+			// Schema was created with CHARSET and it is not the default database character set.
+			if a := (schema.Charset{}); sqlx.Has(c.S.Attrs, &a) && a.V != "" && a.V != s.charset {
 				b.P("CHARSET", a.V)
 			}
-			if a := (schema.Collation{}); sqlx.Has(c.S.Attrs, &a) {
+			// Schema was created with COLLATE and it is not the default database collation.
+			if a := (schema.Collation{}); sqlx.Has(c.S.Attrs, &a) && a.V != "" && a.V != s.collate {
 				b.P("COLLATE", a.V)
 			}
 			s.append(&migrate.Change{
@@ -117,11 +122,76 @@ func (s *state) topLevel(changes []schema.Change) []schema.Change {
 				Source:  c,
 				Comment: fmt.Sprintf("drop schema named %q", c.S.Name),
 			})
+		case *schema.ModifySchema:
+			if err := s.modifySchema(c); err != nil {
+				return nil, err
+			}
 		default:
 			planned = append(planned, c)
 		}
 	}
-	return planned
+	return planned, nil
+}
+
+// modifySchema builds and appends the migrate.Changes for bringing
+// the schema into its modified state.
+func (s *state) modifySchema(modify *schema.ModifySchema) error {
+	b, r := Build(""), Build("")
+	for _, change := range modify.Changes {
+		switch change := change.(type) {
+		// Add schema attributes to an existing schema only if
+		// it is different from the default server configuration.
+		case *schema.AddAttr:
+			switch a := change.A.(type) {
+			case *schema.Charset:
+				if a.V != "" && a.V != s.charset {
+					b.Comma().P("CHARSET", a.V)
+					r.Comma().P("CHARSET", s.charset)
+				}
+			case *schema.Collation:
+				if a.V != "" && a.V != s.collate {
+					b.Comma().P("COLLATE", a.V)
+					r.Comma().P("COLLATE", s.collate)
+				}
+			default:
+				return fmt.Errorf("unexpected schema AddAttr: %T", a)
+			}
+		case *schema.ModifyAttr:
+			switch to := change.To.(type) {
+			case *schema.Charset:
+				from, ok := change.From.(*schema.Charset)
+				if !ok {
+					return fmt.Errorf("mismatch ModifyAttr attributes: %T != %T", change.To, change.From)
+				}
+				b.Comma().P("CHARSET", to.V)
+				r.Comma().P("CHARSET", from.V)
+			case *schema.Collation:
+				from, ok := change.From.(*schema.Collation)
+				if !ok {
+					return fmt.Errorf("mismatch ModifyAttr attributes: %T != %T", change.To, change.From)
+				}
+				b.Comma().P("COLLATE", to.V)
+				r.Comma().P("COLLATE", from.V)
+			default:
+				return fmt.Errorf("unexpected schema ModifyAttr: %T", change)
+			}
+		default:
+			return fmt.Errorf("unsupported ModifySchema change %T", change)
+		}
+	}
+	if b.Len() > 0 {
+		bs := Build("ALTER DATABASE").Ident(modify.S.Name)
+		rs := bs.Clone()
+		bs.WriteString(b.String())
+		rs.WriteString(r.String())
+		s.append(&migrate.Change{
+			Cmd:     bs.String(),
+			Reverse: rs.String(),
+			Source:  modify,
+			Comment: fmt.Sprintf("modify %q schema", modify.S.Name),
+		})
+	}
+	return nil
 }
 
 // addTable builds and appends the migrate.Change
