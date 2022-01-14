@@ -87,13 +87,18 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) (err error) {
 
 // addTable builds and executes the query for creating a table in a schema.
 func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
-	b := Build("CREATE TABLE").Ident(add.T.Name)
+	var (
+		errs []string
+		b    = Build("CREATE TABLE").Ident(add.T.Name)
+	)
 	if sqlx.Has(add.Extra, &schema.IfNotExists{}) {
 		b.P("IF NOT EXISTS")
 	}
 	b.Wrap(func(b *sqlx.Builder) {
 		b.MapComma(add.T.Columns, func(i int, b *sqlx.Builder) {
-			s.column(b, add.T.Columns[i])
+			if err := s.column(b, add.T.Columns[i]); err != nil {
+				errs = append(errs, err.Error())
+			}
 		})
 		// Primary keys with auto-increment are inlined on the column definition.
 		if pk := add.T.PrimaryKey; pk != nil && !autoincPK(pk) {
@@ -111,6 +116,9 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 			}
 		}
 	})
+	if len(errs) > 0 {
+		return fmt.Errorf("create table %q: %s", add.T.Name, strings.Join(errs, ", "))
+	}
 	if p := (WithoutRowID{}); sqlx.Has(add.T.Attrs, &p) {
 		b.P("WITHOUT ROWID")
 	}
@@ -175,18 +183,23 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 	return s.addIndexes(modify.T, indexes...)
 }
 
-func (s *state) column(b *sqlx.Builder, c *schema.Column) {
+func (s *state) column(b *sqlx.Builder, c *schema.Column) error {
 	b.Ident(c.Name).P(mustFormat(c.Type.Type))
 	if !c.Type.Null {
 		b.P("NOT")
 	}
 	b.P("NULL")
 	if c.Default != nil {
-		b.P("DEFAULT", defaultValue(c))
+		x, err := defaultValue(c)
+		if err != nil {
+			return err
+		}
+		b.P("DEFAULT", x)
 	}
 	if sqlx.Has(c.Attrs, &AutoIncrement{}) {
 		b.P("PRIMARY KEY AUTOINCREMENT")
 	}
+	return nil
 }
 
 func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) error {
@@ -316,7 +329,11 @@ func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.
 			toC = append(toC, column.Name)
 			if !column.Type.Null && column.Default != nil && change.Change.Is(schema.ChangeNull|schema.ChangeDefault) {
 				fromC = append(fromC, fmt.Sprintf("IFNULL(`%[1]s`, ?) AS `%[1]s`", column.Name))
-				args = append(args, defaultValue(column))
+				x, err := defaultValue(column)
+				if err != nil {
+					return err
+				}
+				args = append(args, x)
 			} else {
 				fromC = append(fromC, column.Name)
 			}
@@ -352,7 +369,9 @@ func (s *state) alterTable(modify *schema.ModifyTable) error {
 			})
 		case *schema.AddColumn:
 			b := Build("ALTER TABLE").Ident(modify.T.Name).P("ADD COLUMN")
-			s.column(b, change.C)
+			if err := s.column(b, change.C); err != nil {
+				return err
+			}
 			// Unsupported reverse operation (DROP COLUMN).
 			s.append(&migrate.Change{
 				Cmd:     b.String(),
@@ -440,13 +459,13 @@ func Build(phrase string) *sqlx.Builder {
 	return b.P(phrase)
 }
 
-func defaultValue(c *schema.Column) string {
+func defaultValue(c *schema.Column) (string, error) {
 	switch x := c.Default.(type) {
 	case *schema.Literal:
-		return x.V
+		return sqlx.SingleQuote(x.V)
 	case *schema.RawExpr:
-		return x.X
+		return x.X, nil
 	default:
-		panic(fmt.Sprintf("unexpected default value type: %T", x))
+		return "", fmt.Errorf("unexpected default value type: %T", x)
 	}
 }

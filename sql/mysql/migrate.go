@@ -145,13 +145,13 @@ func (s *state) modifySchema(modify *schema.ModifySchema) error {
 			switch a := change.A.(type) {
 			case *schema.Charset:
 				if a.V != "" && a.V != s.charset {
-					b.Comma().P("CHARSET", a.V)
-					r.Comma().P("CHARSET", s.charset)
+					b.P("CHARSET", a.V)
+					r.P("CHARSET", s.charset)
 				}
 			case *schema.Collation:
 				if a.V != "" && a.V != s.collate {
-					b.Comma().P("COLLATE", a.V)
-					r.Comma().P("COLLATE", s.collate)
+					b.P("COLLATE", a.V)
+					r.P("COLLATE", s.collate)
 				}
 			default:
 				return fmt.Errorf("unexpected schema AddAttr: %T", a)
@@ -163,15 +163,15 @@ func (s *state) modifySchema(modify *schema.ModifySchema) error {
 				if !ok {
 					return fmt.Errorf("mismatch ModifyAttr attributes: %T != %T", change.To, change.From)
 				}
-				b.Comma().P("CHARSET", to.V)
-				r.Comma().P("CHARSET", from.V)
+				b.P("CHARSET", to.V)
+				r.P("CHARSET", from.V)
 			case *schema.Collation:
 				from, ok := change.From.(*schema.Collation)
 				if !ok {
 					return fmt.Errorf("mismatch ModifyAttr attributes: %T != %T", change.To, change.From)
 				}
-				b.Comma().P("COLLATE", to.V)
-				r.Comma().P("COLLATE", from.V)
+				b.P("COLLATE", to.V)
+				r.P("COLLATE", from.V)
 			default:
 				return fmt.Errorf("unexpected schema ModifyAttr: %T", change)
 			}
