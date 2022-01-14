@@ -209,6 +209,26 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		{
+			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}},
+					Changes: []schema.Change{
+						&schema.ModifyAttr{
+							To:   &schema.Comment{Text: "foo"},
+							From: &schema.Comment{Text: "bar"},
+						},
+					},
+				},
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{Cmd: `COMMENT ON TABLE "public"."users" IS 'foo'`, Reverse: `COMMENT ON TABLE "public"."users" IS 'bar'`},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		db, m, err := sqlmock.New()
