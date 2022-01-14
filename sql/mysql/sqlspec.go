@@ -78,7 +78,7 @@ var (
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the convertSchema function.
 func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, error) {
-	t, err := specutil.Table(spec, parent, convertColumn, convertPrimaryKey, convertIndex)
+	t, err := specutil.Table(spec, parent, convertColumn, specutil.PrimaryKey, specutil.Index, convertCheck)
 	if err != nil {
 		return nil, err
 	}
@@ -88,14 +88,22 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 	return t, err
 }
 
-// convertPrimaryKey converts a sqlspec.PrimaryKey to a schema.Index.
-func convertPrimaryKey(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, error) {
-	return specutil.PrimaryKey(spec, parent)
-}
-
-// convertIndex converts an sqlspec.Index to a schema.Index.
-func convertIndex(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
-	return specutil.Index(spec, parent)
+// convertCheck converts a sqlspec.Check into a schema.Check.
+func convertCheck(spec *sqlspec.Check) (*schema.Check, error) {
+	c, err := specutil.Check(spec)
+	if err != nil {
+		return nil, err
+	}
+	if attr, ok := spec.Attr("enforced"); ok {
+		b, err := attr.Bool()
+		if err != nil {
+			return nil, err
+		}
+		if b {
+			c.AddAttrs(&Enforced{})
+		}
+	}
+	return c, nil
 }
 
 // convertColumn converts a sqlspec.Column into a schema.Column.
@@ -132,7 +140,14 @@ func schemaSpec(s *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error) {
 
 // tableSpec converts from a concrete MySQL sqlspec.Table to a schema.Table.
 func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
-	ts, err := specutil.FromTable(t, columnSpec, specutil.FromPrimaryKey, specutil.FromIndex, specutil.FromForeignKey)
+	ts, err := specutil.FromTable(
+		t,
+		columnSpec,
+		specutil.FromPrimaryKey,
+		specutil.FromIndex,
+		specutil.FromForeignKey,
+		checkSpec,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -158,6 +173,14 @@ func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 		col.Extra.Attrs = append(col.Extra.Attrs, specutil.StrAttr("collation", c))
 	}
 	return col, nil
+}
+
+func checkSpec(s *schema.Check) *sqlspec.Check {
+	c := specutil.FromCheck(s)
+	if e := (Enforced{}); sqlx.Has(s.Attrs, &e) {
+		c.Extra.Attrs = append(c.Extra.Attrs, specutil.BoolAttr("enforced", true))
+	}
+	return c
 }
 
 // columnTypeSpec converts from a concrete MySQL schema.Type into sqlspec.Column Type.

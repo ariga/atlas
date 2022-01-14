@@ -23,12 +23,14 @@ type (
 	ConvertTypeFunc       func(*sqlspec.Column) (schema.Type, error)
 	ConvertPrimaryKeyFunc func(*sqlspec.PrimaryKey, *schema.Table) (*schema.Index, error)
 	ConvertIndexFunc      func(*sqlspec.Index, *schema.Table) (*schema.Index, error)
+	ConvertCheckFunc      func(*sqlspec.Check) (*schema.Check, error)
 	ColumnSpecFunc        func(*schema.Column, *schema.Table) (*sqlspec.Column, error)
 	ColumnTypeSpecFunc    func(schema.Type) (*sqlspec.Column, error)
 	TableSpecFunc         func(*schema.Table) (*sqlspec.Table, error)
-	PrimaryKeySpecFunc    func(index *schema.Index) (*sqlspec.PrimaryKey, error)
-	IndexSpecFunc         func(index *schema.Index) (*sqlspec.Index, error)
-	ForeignKeySpecFunc    func(fk *schema.ForeignKey) (*sqlspec.ForeignKey, error)
+	PrimaryKeySpecFunc    func(*schema.Index) (*sqlspec.PrimaryKey, error)
+	IndexSpecFunc         func(*schema.Index) (*sqlspec.Index, error)
+	ForeignKeySpecFunc    func(*schema.ForeignKey) (*sqlspec.ForeignKey, error)
+	CheckSpecFunc         func(*schema.Check) *sqlspec.Check
 )
 
 // Realm converts the schemas and tables into a schema.Realm.
@@ -81,7 +83,7 @@ func Schema(spec *sqlspec.Schema, tables []*sqlspec.Table, convertTable ConvertT
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the Schema function.
 func Table(spec *sqlspec.Table, parent *schema.Schema, convertColumn ConvertColumnFunc,
-	convertPk ConvertPrimaryKeyFunc, convertIndex ConvertIndexFunc) (*schema.Table, error) {
+	convertPk ConvertPrimaryKeyFunc, convertIndex ConvertIndexFunc, convertCheck ConvertCheckFunc) (*schema.Table, error) {
 	tbl := &schema.Table{
 		Name:   spec.Name,
 		Schema: parent,
@@ -106,6 +108,13 @@ func Table(spec *sqlspec.Table, parent *schema.Schema, convertColumn ConvertColu
 			return nil, err
 		}
 		tbl.Indexes = append(tbl.Indexes, i)
+	}
+	for _, c := range spec.Checks {
+		c, err := convertCheck(c)
+		if err != nil {
+			return nil, err
+		}
+		tbl.AddChecks(c)
 	}
 	if err := convertCommentFromSpec(spec, &tbl.Attrs); err != nil {
 		return nil, err
@@ -169,6 +178,14 @@ func Index(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
 		return nil, err
 	}
 	return i, nil
+}
+
+// Check converts a sqlspec.Check to a schema.Check.
+func Check(spec *sqlspec.Check) (*schema.Check, error) {
+	return &schema.Check{
+		Name: spec.Name,
+		Expr: spec.Expr,
+	}, nil
 }
 
 // PrimaryKey converts a sqlspec.PrimaryKey to a schema.Index.
@@ -293,7 +310,8 @@ func FromSchema(s *schema.Schema, fn TableSpecFunc) (*sqlspec.Schema, []*sqlspec
 }
 
 // FromTable converts a schema.Table to a sqlspec.Table.
-func FromTable(t *schema.Table, colFn ColumnSpecFunc, pkFn PrimaryKeySpecFunc, idxFn IndexSpecFunc, fkFn ForeignKeySpecFunc) (*sqlspec.Table, error) {
+func FromTable(t *schema.Table, colFn ColumnSpecFunc, pkFn PrimaryKeySpecFunc, idxFn IndexSpecFunc,
+	fkFn ForeignKeySpecFunc, ckFn CheckSpecFunc) (*sqlspec.Table, error) {
 	spec := &sqlspec.Table{
 		Name: t.Name,
 	}
@@ -324,6 +342,11 @@ func FromTable(t *schema.Table, colFn ColumnSpecFunc, pkFn PrimaryKeySpecFunc, i
 			return nil, err
 		}
 		spec.ForeignKeys = append(spec.ForeignKeys, f)
+	}
+	for _, attr := range t.Attrs {
+		if c, ok := attr.(*schema.Check); ok {
+			spec.Checks = append(spec.Checks, ckFn(c))
+		}
 	}
 	convertCommentFromSchema(t.Attrs, &spec.Extra.Attrs)
 	return spec, nil
@@ -396,7 +419,7 @@ func normalizeQuotes(s string) (string, error) {
 	return s, nil
 }
 
-// FromIndex converts schema.Index to sqlspec.Index
+// FromIndex converts schema.Index to sqlspec.Index.
 func FromIndex(idx *schema.Index) (*sqlspec.Index, error) {
 	c := make([]*schemaspec.Ref, 0, len(idx.Parts))
 	for _, p := range idx.Parts {
@@ -414,7 +437,7 @@ func FromIndex(idx *schema.Index) (*sqlspec.Index, error) {
 	return i, nil
 }
 
-// FromForeignKey converts schema.ForeignKey to sqlspec.ForeignKey
+// FromForeignKey converts schema.ForeignKey to sqlspec.ForeignKey.
 func FromForeignKey(s *schema.ForeignKey) (*sqlspec.ForeignKey, error) {
 	c := make([]*schemaspec.Ref, 0, len(s.Columns))
 	for _, v := range s.Columns {
@@ -431,6 +454,14 @@ func FromForeignKey(s *schema.ForeignKey) (*sqlspec.ForeignKey, error) {
 		OnDelete:   s.OnDelete,
 		OnUpdate:   s.OnUpdate,
 	}, nil
+}
+
+// FromCheck converts schema.Check to sqlspec.Check.
+func FromCheck(s *schema.Check) *sqlspec.Check {
+	return &sqlspec.Check{
+		Name: s.Name,
+		Expr: s.Expr,
+	}
 }
 
 func schemaName(ref *schemaspec.Ref) (string, error) {

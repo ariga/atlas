@@ -21,6 +21,12 @@ table "table" {
 	column "age" {
 		type = int
 	}
+	column "price1" {
+		type = int
+	}
+	column "price2" {
+		type = int
+	}
 	column "account_name" {
 		type = varchar(32)
 	}
@@ -43,6 +49,13 @@ table "table" {
 			table.accounts.column.name,
 		]
 		on_delete = "SET NULL"
+	}
+	check "positive price" {
+		expr = "price1 > 0"
+	}
+	check {
+		expr     = "price1 <> price2"
+		enforced = true
 	}
 	comment = "table comment"
 }
@@ -88,6 +101,22 @@ table "accounts" {
 					},
 				},
 				{
+					Name: "price1",
+					Type: &schema.ColumnType{
+						Type: &schema.IntegerType{
+							T: TypeInt,
+						},
+					},
+				},
+				{
+					Name: "price2",
+					Type: &schema.ColumnType{
+						Type: &schema.IntegerType{
+							T: TypeInt,
+						},
+					},
+				},
+				{
 					Name: "account_name",
 					Type: &schema.ColumnType{
 						Type: &schema.StringType{
@@ -98,6 +127,14 @@ table "accounts" {
 				},
 			},
 			Attrs: []schema.Attr{
+				&schema.Check{
+					Name: "positive price",
+					Expr: "price1 > 0",
+				},
+				&schema.Check{
+					Expr:  "price1 <> price2",
+					Attrs: []schema.Attr{&Enforced{}},
+				},
 				&schema.Comment{Text: "table comment"},
 			},
 		},
@@ -141,7 +178,7 @@ table "accounts" {
 		{
 			Symbol:     "accounts",
 			Table:      exp.Tables[0],
-			Columns:    []*schema.Column{exp.Tables[0].Columns[2]},
+			Columns:    []*schema.Column{exp.Tables[0].Columns[4]},
 			RefTable:   exp.Tables[1],
 			RefColumns: []*schema.Column{exp.Tables[1].Columns[0]},
 			OnDelete:   schema.SetNull,
@@ -349,6 +386,45 @@ table "posts" {
   column "a" {
     null = false
     type = text
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestMarshalSpec_Check(t *testing.T) {
+	s := schema.New("test").
+		AddTables(
+			schema.NewTable("products").
+				AddColumns(
+					schema.NewIntColumn("price1", TypeInt),
+					schema.NewIntColumn("price2", TypeInt),
+				).
+				AddChecks(
+					schema.NewCheck().SetName("price1 positive").SetExpr("price1 > 0"),
+					schema.NewCheck().SetExpr("price1 <> price2").AddAttrs(&Enforced{}),
+				),
+		)
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "products" {
+  schema = schema.test
+  column "price1" {
+    null = false
+    type = int
+  }
+  column "price2" {
+    null = false
+    type = int
+  }
+  check "price1 positive" {
+    expr = "price1 > 0"
+  }
+  check {
+    expr     = "price1 <> price2"
+    enforced = true
   }
 }
 schema "test" {
