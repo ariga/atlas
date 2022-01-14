@@ -132,7 +132,14 @@ func schemaSpec(s *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error) {
 
 // tableSpec converts from a concrete MySQL sqlspec.Table to a schema.Table.
 func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
-	ts, err := specutil.FromTable(t, columnSpec, specutil.FromPrimaryKey, specutil.FromIndex, specutil.FromForeignKey)
+	ts, err := specutil.FromTable(
+		t,
+		columnSpec,
+		specutil.FromPrimaryKey,
+		specutil.FromIndex,
+		specutil.FromForeignKey,
+		checkSpec,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -158,6 +165,15 @@ func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 		col.Extra.Attrs = append(col.Extra.Attrs, specutil.StrAttr("collation", c))
 	}
 	return col, nil
+}
+
+func checkSpec(s *schema.Check) *sqlspec.Check {
+	c := specutil.FromCheck(s)
+	var e Enforced
+	if sqlx.Has(s.Attrs, &e) {
+		c.Enforced = true
+	}
+	return c
 }
 
 // columnTypeSpec converts from a concrete MySQL schema.Type into sqlspec.Column Type.

@@ -54,7 +54,14 @@ func schemaSpec(schem *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error)
 
 // tableSpec converts from a concrete SQLite sqlspec.Table to a schema.Table.
 func tableSpec(tab *schema.Table) (*sqlspec.Table, error) {
-	return specutil.FromTable(tab, columnSpec, specutil.FromPrimaryKey, specutil.FromIndex, specutil.FromForeignKey)
+	return specutil.FromTable(
+		tab,
+		columnSpec,
+		specutil.FromPrimaryKey,
+		specutil.FromIndex,
+		specutil.FromForeignKey,
+		specutil.FromCheck,
+	)
 }
 
 // columnSpec converts from a concrete SQLite schema.Column into a sqlspec.Column.

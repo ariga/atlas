@@ -21,6 +21,12 @@ table "table" {
 	column "age" {
 		type = int
 	}
+	column "price1" {
+		type = int
+	}
+	column "price2" {
+		type = int
+	}
 	column "account_name" {
 		type = varchar(32)
 	}
@@ -45,6 +51,12 @@ table "table" {
 		on_delete = "SET NULL"
 	}
 	comment = "table comment"
+	check {
+		expr = "price1 <> price2"
+	}
+	check "positive price" {
+		expr = "price > 0"
+	}
 }
 
 table "accounts" {
@@ -88,6 +100,22 @@ table "accounts" {
 					},
 				},
 				{
+					Name: "price1",
+					Type: &schema.ColumnType{
+						Type: &schema.IntegerType{
+							T: TypeInt,
+						},
+					},
+				},
+				{
+					Name: "price2",
+					Type: &schema.ColumnType{
+						Type: &schema.IntegerType{
+							T: TypeInt,
+						},
+					},
+				},
+				{
 					Name: "account_name",
 					Type: &schema.ColumnType{
 						Type: &schema.StringType{
@@ -99,6 +127,11 @@ table "accounts" {
 			},
 			Attrs: []schema.Attr{
 				&schema.Comment{Text: "table comment"},
+				&schema.Check{Expr: "price1 <> price2"},
+				&schema.Check{
+					Name: "positive price",
+					Expr: "price1 > 0",
+				},
 			},
 		},
 		{
@@ -349,6 +382,47 @@ table "posts" {
   column "a" {
     null = false
     type = text
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestMarshalSpec_Check(t *testing.T) {
+	s := schema.New("test").
+		AddTables(
+			schema.NewTable("products").
+				AddColumns(
+					schema.NewIntColumn("price1", TypeInt),
+					schema.NewIntColumn("price2", TypeInt),
+				).
+				AddChecks(
+					schema.NewCheck().SetName("price1 positive").SetExpr("price1 > 0"),
+					schema.NewCheck().SetExpr("price1 <> price2").AddAttrs(&Enforced{}),
+				),
+		)
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	// We expect a zero value comment to not be present in the marshaled HCL.
+	const expected = `table "products" {
+  schema = schema.test
+  column "price1" {
+    null = false
+    type = int
+  }
+  column "price2" {
+    null = false
+    type = int
+  }
+  check "price1 positive" {
+    expr     = "price1 > 0"
+    enforced = false
+  }
+  check {
+    expr     = "price1 <> price2"
+    enforced = true
   }
 }
 schema "test" {
