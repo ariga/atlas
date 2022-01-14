@@ -184,10 +184,25 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 		case *schema.DropAttr:
 			return fmt.Errorf("unsupported change type: %T", change)
 		case *schema.AddIndex:
+			if c := (schema.Comment{}); sqlx.Has(change.I.Attrs, &c) {
+				comments = append(comments, s.indexComment(modify.T, change.I, c.Text, ""))
+			}
 			addI = append(addI, change.I)
 		case *schema.DropIndex:
 			dropI = append(dropI, change.I)
 		case *schema.ModifyIndex:
+			k := change.Change
+			if change.Change.Is(schema.ChangeComment) {
+				from, to, err := commentChange(sqlx.CommentDiff(change.From.Attrs, change.To.Attrs))
+				if err != nil {
+					return err
+				}
+				comments = append(comments, s.indexComment(modify.T, change.To, to, from))
+				// If only the comment of the index was changed.
+				if k &= ^schema.ChangeComment; k.Is(schema.NoChange) {
+					continue
+				}
+			}
 			// Index modification requires rebuilding the index.
 			addI = append(addI, change.To)
 			dropI = append(dropI, change.From)
@@ -203,6 +218,9 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 			if err := s.addTypes(ctx, change.C); err != nil {
 				return err
 			}
+			if c := (schema.Comment{}); sqlx.Has(change.C.Attrs, &c) {
+				comments = append(comments, s.columnComment(modify.T, change.C, c.Text, ""))
+			}
 			changes = append(changes, change)
 		case *schema.ModifyColumn:
 			k := change.Change
@@ -212,7 +230,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 					return err
 				}
 				comments = append(comments, s.columnComment(modify.T, change.To, to, from))
-				// If only the comment was changed.
+				// If only the comment of the column was changed.
 				if k &= ^schema.ChangeComment; k.Is(schema.NoChange) {
 					continue
 				}
@@ -345,17 +363,12 @@ func (s *state) addComments(t *schema.Table) {
 	}
 	for i := range t.Indexes {
 		if sqlx.Has(t.Indexes[i].Attrs, &c) && c.Text != "" {
-			b := Build("COMMENT ON INDEX").Ident(t.Indexes[i].Name).P("IS", quote(c.Text))
-			s.append(&migrate.Change{
-				Cmd:     b.Clone().P("IS", quote(c.Text)).String(),
-				Comment: fmt.Sprintf("set comment to index: %q on table: %q", t.Indexes[i].Name, t.Name),
-				Reverse: b.Clone().P("IS NULL").String(),
-			})
+			s.append(s.indexComment(t, t.Indexes[i], c.Text, ""))
 		}
 	}
 }
 
-func (s *state) tableComment(t *schema.Table, to, from string) *migrate.Change {
+func (*state) tableComment(t *schema.Table, to, from string) *migrate.Change {
 	b := Build("COMMENT ON TABLE").Table(t).P("IS")
 	return &migrate.Change{
 		Cmd:     b.Clone().P(quote(to)).String(),
@@ -364,13 +377,22 @@ func (s *state) tableComment(t *schema.Table, to, from string) *migrate.Change {
 	}
 }
 
-func (s *state) columnComment(t *schema.Table, c *schema.Column, to, from string) *migrate.Change {
+func (*state) columnComment(t *schema.Table, c *schema.Column, to, from string) *migrate.Change {
 	b := Build("COMMENT ON COLUMN").Table(t)
 	b.WriteByte('.')
 	b.Ident(c.Name).P("IS")
 	return &migrate.Change{
 		Cmd:     b.Clone().P(quote(to)).String(),
 		Comment: fmt.Sprintf("set comment to column: %q on table: %q", c.Name, t.Name),
+		Reverse: b.Clone().P(quote(from)).String(),
+	}
+}
+
+func (*state) indexComment(t *schema.Table, idx *schema.Index, to, from string) *migrate.Change {
+	b := Build("COMMENT ON INDEX").Ident(idx.Name).P("IS")
+	return &migrate.Change{
+		Cmd:     b.Clone().P(quote(to)).String(),
+		Comment: fmt.Sprintf("set comment to index: %q on table: %q", idx.Name, t.Name),
 		Reverse: b.Clone().P(quote(from)).String(),
 	}
 }
@@ -691,7 +713,7 @@ search:
 	return planned
 }
 
-// commentChange extracts the information for modify a comment from the given change.
+// commentChange extracts the information for modifying a comment from the given change.
 func commentChange(c schema.Change) (from, to string, err error) {
 	switch c := c.(type) {
 	case *schema.AddAttr:
