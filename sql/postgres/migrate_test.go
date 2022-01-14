@@ -139,7 +139,7 @@ func TestPlanChanges(t *testing.T) {
 						T: users,
 						Changes: []schema.Change{
 							&schema.AddColumn{
-								C: &schema.Column{Name: "name", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar", Size: 255}}},
+								C: &schema.Column{Name: "name", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar", Size: 255}}, Attrs: []schema.Attr{&schema.Comment{Text: "foo"}}},
 							},
 							&schema.AddIndex{
 								I: &schema.Index{
@@ -177,6 +177,14 @@ func TestPlanChanges(t *testing.T) {
 					{
 						Cmd:     `CREATE INDEX "id_key" ON "users" ("id")`,
 						Reverse: `DROP INDEX "id_key"`,
+					},
+					{
+						Cmd:     `COMMENT ON COLUMN "users" ."name" IS 'foo'`,
+						Reverse: `COMMENT ON COLUMN "users" ."name" IS ''`,
+					},
+					{
+						Cmd:     `COMMENT ON INDEX "id_key" IS 'comment'`,
+						Reverse: `COMMENT ON INDEX "id_key" IS ''`,
 					},
 				},
 			},
@@ -404,6 +412,40 @@ func TestPlanChanges(t *testing.T) {
 				Transactional: true,
 				Changes: []*migrate.Change{
 					{Cmd: `COMMENT ON COLUMN "users" ."state" IS 'foo'`, Reverse: `COMMENT ON COLUMN "users" ."state" IS 'bar'`},
+				},
+			},
+		},
+		// Modify index comment.
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+						},
+					}
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.ModifyIndex{
+								From: schema.NewIndex("id_key").
+									AddColumns(users.Columns[0]).
+									SetComment("foo"),
+								To: schema.NewIndex("id_key").
+									AddColumns(users.Columns[0]).
+									SetComment("bar"),
+								Change: schema.ChangeComment,
+							},
+						},
+					}
+				}(),
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{Cmd: `COMMENT ON INDEX "id_key" IS 'bar'`, Reverse: `COMMENT ON INDEX "id_key" IS 'foo'`},
 				},
 			},
 		},
