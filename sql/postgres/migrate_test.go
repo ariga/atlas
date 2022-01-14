@@ -315,6 +315,98 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		// Modify column type and drop comment.
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "state", Type: &schema.ColumnType{Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}},
+						},
+					}
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.ModifyColumn{
+								From:   &schema.Column{Name: "state", Type: &schema.ColumnType{Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}, Attrs: []schema.Attr{&schema.Comment{Text: "foo"}}},
+								To:     &schema.Column{Name: "state", Type: &schema.ColumnType{Type: &schema.EnumType{T: "state", Values: []string{"on", "off", "unknown"}}}},
+								Change: schema.ChangeType | schema.ChangeComment,
+							},
+						},
+					}
+				}(),
+			},
+			plan: &migrate.Plan{
+				Reversible:    false,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{Cmd: `ALTER TYPE "state" ADD VALUE 'unknown'`},
+					{Cmd: `COMMENT ON COLUMN "users" ."state" IS ''`, Reverse: `COMMENT ON COLUMN "users" ."state" IS 'foo'`},
+				},
+			},
+		},
+		// Modify column type and add comment.
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "state", Type: &schema.ColumnType{Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}},
+						},
+					}
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.ModifyColumn{
+								From:   &schema.Column{Name: "state", Type: &schema.ColumnType{Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}},
+								To:     &schema.Column{Name: "state", Type: &schema.ColumnType{Type: &schema.EnumType{T: "state", Values: []string{"on", "off", "unknown"}}}, Attrs: []schema.Attr{&schema.Comment{Text: "foo"}}},
+								Change: schema.ChangeType | schema.ChangeComment,
+							},
+						},
+					}
+				}(),
+			},
+			plan: &migrate.Plan{
+				Reversible:    false,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{Cmd: `ALTER TYPE "state" ADD VALUE 'unknown'`},
+					{Cmd: `COMMENT ON COLUMN "users" ."state" IS 'foo'`, Reverse: `COMMENT ON COLUMN "users" ."state" IS ''`},
+				},
+			},
+		},
+		// Modify column comment.
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "state", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}}},
+						},
+					}
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.ModifyColumn{
+								From:   &schema.Column{Name: "state", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}}, Attrs: []schema.Attr{&schema.Comment{Text: "bar"}}},
+								To:     &schema.Column{Name: "state", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}}, Attrs: []schema.Attr{&schema.Comment{Text: "foo"}}},
+								Change: schema.ChangeComment,
+							},
+						},
+					}
+				}(),
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{Cmd: `COMMENT ON COLUMN "users" ."state" IS 'foo'`, Reverse: `COMMENT ON COLUMN "users" ."state" IS 'bar'`},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		db, mk, err := sqlmock.New()
