@@ -208,20 +208,23 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 			from, ok1 := change.From.Type.Type.(*schema.EnumType)
 			to, ok2 := change.To.Type.Type.(*schema.EnumType)
 			switch {
-			// Enum was added.
-			case !ok1 && ok2:
-				if err := s.addTypes(ctx, change.To); err != nil {
-					return err
-				}
 			// Enum was changed.
 			case ok1 && ok2 && from.T == to.T:
 				if err := s.alterType(from, to); err != nil {
 					return err
 				}
-			// Not an enum, or was dropped.
-			default:
-				changes = append(changes, change)
+				// If only the enum values were changed,
+				// there is no need to ALTER the table.
+				if change.Change == schema.ChangeType {
+					continue
+				}
+			// Enum was added (and column type was changed).
+			case !ok1 && ok2:
+				if err := s.addTypes(ctx, change.To); err != nil {
+					return err
+				}
 			}
+			changes = append(changes, change)
 		default:
 			changes = append(changes, change)
 		}

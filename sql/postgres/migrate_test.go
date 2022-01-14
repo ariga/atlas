@@ -8,8 +8,10 @@ import (
 	"context"
 	"testing"
 
+	"ariga.io/atlas/sql/internal/sqltest"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 )
@@ -17,6 +19,7 @@ import (
 func TestPlanChanges(t *testing.T) {
 	tests := []struct {
 		changes []schema.Change
+		mock    func(mock)
 		plan    *migrate.Plan
 	}{
 		{
@@ -230,11 +233,78 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "state", Type: &schema.ColumnType{Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}},
+						},
+					}
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.ModifyColumn{
+								From:   &schema.Column{Name: "state", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}}},
+								To:     &schema.Column{Name: "state", Type: &schema.ColumnType{Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}},
+								Change: schema.ChangeType,
+							},
+						},
+					}
+				}(),
+			},
+			mock: func(m mock) {
+				m.ExpectQuery(sqltest.Escape("SELECT * FROM pg_type WHERE typname = $1 AND typtype = 'e'")).
+					WithArgs("state").WillReturnRows(sqlmock.NewRows([]string{"name"}))
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{Cmd: `CREATE TYPE "state" AS ENUM ('on', 'off')`, Reverse: `DROP TYPE "state"`},
+					{Cmd: `ALTER TABLE "users" ALTER COLUMN "state" TYPE state`, Reverse: `ALTER TABLE "users" ALTER COLUMN "state" TYPE text`},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "state", Type: &schema.ColumnType{Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}},
+						},
+					}
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.ModifyColumn{
+								From:   &schema.Column{Name: "state", Type: &schema.ColumnType{Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}},
+								To:     &schema.Column{Name: "state", Type: &schema.ColumnType{Type: &schema.EnumType{T: "state", Values: []string{"on", "off", "unknown"}}}},
+								Change: schema.ChangeType,
+							},
+						},
+					}
+				}(),
+			},
+			plan: &migrate.Plan{
+				Reversible:    false,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{Cmd: `ALTER TYPE "state" ADD VALUE 'unknown'`},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
-		db, m, err := sqlmock.New()
+		db, mk, err := sqlmock.New()
 		require.NoError(t, err)
-		mock{m}.version("130000")
+		m := mock{mk}
+		m.version("130000")
+		if tt.mock != nil {
+			tt.mock(m)
+		}
 		drv, err := Open(db)
 		require.NoError(t, err)
 		plan, err := drv.PlanChanges(context.Background(), "plan", tt.changes)
