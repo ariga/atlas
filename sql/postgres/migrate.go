@@ -319,11 +319,11 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 
 func (s *state) addComments(t *schema.Table) {
 	var c schema.Comment
-	if sqlx.Has(t.Attrs, &c) {
+	if sqlx.Has(t.Attrs, &c) && c.Text != "" {
 		s.tableComment(t, c.Text, "")
 	}
 	for i := range t.Columns {
-		if sqlx.Has(t.Columns[i].Attrs, &c) {
+		if sqlx.Has(t.Columns[i].Attrs, &c) && c.Text != "" {
 			b := Build("COMMENT ON COLUMN").Table(t)
 			b.WriteByte('.')
 			b.Ident(t.Columns[i].Name)
@@ -335,7 +335,7 @@ func (s *state) addComments(t *schema.Table) {
 		}
 	}
 	for i := range t.Indexes {
-		if sqlx.Has(t.Indexes[i].Attrs, &c) {
+		if sqlx.Has(t.Indexes[i].Attrs, &c) && c.Text != "" {
 			b := Build("COMMENT ON INDEX").Ident(t.Indexes[i].Name).P("IS", quote(c.Text))
 			s.append(&migrate.Change{
 				Cmd:     b.Clone().P("IS", quote(c.Text)).String(),

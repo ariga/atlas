@@ -43,10 +43,11 @@ func TestPlanChanges(t *testing.T) {
 					T: &schema.Table{
 						Name: "posts",
 						Columns: []*schema.Column{
-							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}}, Attrs: []schema.Attr{&Identity{}}},
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}}, Attrs: []schema.Attr{&Identity{}, &schema.Comment{}}},
 							{Name: "text", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Null: true}},
 						},
 						Attrs: []schema.Attr{
+							&schema.Comment{},
 							&schema.Check{Name: "id_nonzero", Expr: `("id" > 0)`},
 							&schema.Check{Name: "text_len", Expr: `(length("text") > 0)`, Attrs: []schema.Attr{&NoInherit{}}},
 						},
