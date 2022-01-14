@@ -24,6 +24,9 @@ table "table" {
 	column "age" {
 		type = integer
 	}
+	column "price" {
+		type = integer
+	}
 	column "account_name" {
 		type = varchar(32)
 	}
@@ -45,6 +48,9 @@ table "table" {
 			table.accounts.column.name,
 		]
 		on_delete = "SET NULL"
+	}
+	check "positive price" {
+		expr = "price > 0"
 	}
 }
 
@@ -82,6 +88,14 @@ table "accounts" {
 					},
 				},
 				{
+					Name: "price",
+					Type: &schema.ColumnType{
+						Type: &schema.IntegerType{
+							T: "integer",
+						},
+					},
+				},
+				{
 					Name: "account_name",
 					Type: &schema.ColumnType{
 						Type: &schema.StringType{
@@ -89,6 +103,12 @@ table "accounts" {
 							Size: 32,
 						},
 					},
+				},
+			},
+			Attrs: []schema.Attr{
+				&schema.Check{
+					Name: "positive price",
+					Expr: "price > 0",
 				},
 			},
 		},
@@ -129,7 +149,7 @@ table "accounts" {
 		{
 			Symbol:     "accounts",
 			Table:      exp.Tables[0],
-			Columns:    []*schema.Column{exp.Tables[0].Columns[2]},
+			Columns:    []*schema.Column{exp.Tables[0].Columns[3]},
 			RefTable:   exp.Tables[1],
 			RefColumns: []*schema.Column{exp.Tables[1].Columns[0]},
 			OnDelete:   schema.SetNull,

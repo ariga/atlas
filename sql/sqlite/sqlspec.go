@@ -24,17 +24,7 @@ func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) 
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the convertSchema function.
 func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, error) {
-	return specutil.Table(spec, parent, convertColumn, convertPrimaryKey, convertIndex)
-}
-
-// convertPrimaryKey converts a sqlspec.PrimaryKey to a schema.Index.
-func convertPrimaryKey(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, error) {
-	return specutil.PrimaryKey(spec, parent)
-}
-
-// convertIndex converts an sqlspec.Index to a schema.Index.
-func convertIndex(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
-	return specutil.Index(spec, parent)
+	return specutil.Table(spec, parent, convertColumn, specutil.PrimaryKey, specutil.Index, specutil.Check)
 }
 
 // convertColumn converts a sqlspec.Column into a schema.Column.

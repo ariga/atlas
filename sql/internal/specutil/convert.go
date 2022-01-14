@@ -23,6 +23,7 @@ type (
 	ConvertTypeFunc       func(*sqlspec.Column) (schema.Type, error)
 	ConvertPrimaryKeyFunc func(*sqlspec.PrimaryKey, *schema.Table) (*schema.Index, error)
 	ConvertIndexFunc      func(*sqlspec.Index, *schema.Table) (*schema.Index, error)
+	ConvertCheckFunc      func(*sqlspec.Check) *schema.Check
 	ColumnSpecFunc        func(*schema.Column, *schema.Table) (*sqlspec.Column, error)
 	ColumnTypeSpecFunc    func(schema.Type) (*sqlspec.Column, error)
 	TableSpecFunc         func(*schema.Table) (*sqlspec.Table, error)
@@ -82,7 +83,7 @@ func Schema(spec *sqlspec.Schema, tables []*sqlspec.Table, convertTable ConvertT
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the Schema function.
 func Table(spec *sqlspec.Table, parent *schema.Schema, convertColumn ConvertColumnFunc,
-	convertPk ConvertPrimaryKeyFunc, convertIndex ConvertIndexFunc) (*schema.Table, error) {
+	convertPk ConvertPrimaryKeyFunc, convertIndex ConvertIndexFunc, convertCheck ConvertCheckFunc) (*schema.Table, error) {
 	tbl := &schema.Table{
 		Name:   spec.Name,
 		Schema: parent,
@@ -107,6 +108,9 @@ func Table(spec *sqlspec.Table, parent *schema.Schema, convertColumn ConvertColu
 			return nil, err
 		}
 		tbl.Indexes = append(tbl.Indexes, i)
+	}
+	for _, c := range spec.Checks {
+		tbl.AddChecks(convertCheck(c))
 	}
 	if err := convertCommentFromSpec(spec, &tbl.Attrs); err != nil {
 		return nil, err
@@ -170,6 +174,15 @@ func Index(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
 		return nil, err
 	}
 	return i, nil
+}
+
+// Check converts a sqlspec.Check to a schema.Check.
+func Check(spec *sqlspec.Check) *schema.Check {
+	c := &schema.Check{
+		Name: spec.Name,
+		Expr: spec.Expr,
+	}
+	return c
 }
 
 // PrimaryKey converts a sqlspec.PrimaryKey to a schema.Index.

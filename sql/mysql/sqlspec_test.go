@@ -50,13 +50,14 @@ table "table" {
 		]
 		on_delete = "SET NULL"
 	}
-	comment = "table comment"
-	check {
-		expr = "price1 <> price2"
-	}
 	check "positive price" {
-		expr = "price > 0"
+		expr = "price1 > 0"
 	}
+	check {
+		expr     = "price1 <> price2"
+		enforced = true
+	}
+	comment = "table comment"
 }
 
 table "accounts" {
@@ -126,12 +127,15 @@ table "accounts" {
 				},
 			},
 			Attrs: []schema.Attr{
-				&schema.Comment{Text: "table comment"},
-				&schema.Check{Expr: "price1 <> price2"},
 				&schema.Check{
 					Name: "positive price",
 					Expr: "price1 > 0",
 				},
+				&schema.Check{
+					Expr:  "price1 <> price2",
+					Attrs: []schema.Attr{&Enforced{}},
+				},
+				&schema.Comment{Text: "table comment"},
 			},
 		},
 		{
@@ -174,7 +178,7 @@ table "accounts" {
 		{
 			Symbol:     "accounts",
 			Table:      exp.Tables[0],
-			Columns:    []*schema.Column{exp.Tables[0].Columns[2]},
+			Columns:    []*schema.Column{exp.Tables[0].Columns[4]},
 			RefTable:   exp.Tables[1],
 			RefColumns: []*schema.Column{exp.Tables[1].Columns[0]},
 			OnDelete:   schema.SetNull,
