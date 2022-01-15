@@ -1,3 +1,6 @@
+run:
+  timeout: 3m
+
 issues:
   include:
     - EXC0012
