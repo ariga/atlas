@@ -33,7 +33,7 @@ func (d *diff) SchemaAttrDiff(from, to *schema.Schema) []schema.Change {
 }
 
 // TableAttrDiff returns a changeset for migrating table attributes from one state to the other.
-func (d *diff) TableAttrDiff(from, to *schema.Table) []schema.Change {
+func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 	var changes []schema.Change
 	if change := d.autoIncChange(from.Attrs, to.Attrs); change != noChange {
 		changes = append(changes, change)
@@ -47,9 +47,12 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) []schema.Change {
 	if change := d.collationChange(from.Attrs, from.Schema.Attrs, to.Attrs); change != noChange {
 		changes = append(changes, change)
 	}
+	if _, ok := d.supportsCheck(); !ok && sqlx.Has(to.Attrs, &schema.Check{}) {
+		return nil, fmt.Errorf("version %q does not support CHECK constraints", d.version)
+	}
 	return append(changes, sqlx.CheckDiff(from, to, func(c1, c2 *schema.Check) bool {
 		return c1.Expr != c2.Expr || sqlx.Has(c1.Attrs, &Enforced{}) != sqlx.Has(c2.Attrs, &Enforced{})
-	})...)
+	})...), nil
 }
 
 // ColumnChange returns the schema changes (if any) for migrating one column to the other.

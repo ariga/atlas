@@ -339,6 +339,21 @@ func TestDiff_TableDiff(t *testing.T) {
 	}
 }
 
+func TestDiff_UnsupportedChecks(t *testing.T) {
+	db, m, err := sqlmock.New()
+	require.NoError(t, err)
+	mock{m}.version("5.6.35")
+	drv, err := Open(db)
+	require.NoError(t, err)
+	s := schema.New("public")
+	changes, err := drv.TableDiff(
+		schema.NewTable("t").SetSchema(s),
+		schema.NewTable("t").SetSchema(s).AddChecks(schema.NewCheck()),
+	)
+	require.Nil(t, changes)
+	require.EqualError(t, err, `version "5.6.35" does not support CHECK constraints`)
+}
+
 func TestDiff_SchemaDiff(t *testing.T) {
 	db, m, err := sqlmock.New()
 	require.NoError(t, err)

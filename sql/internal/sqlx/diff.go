@@ -33,7 +33,7 @@ type (
 
 		// TableAttrDiff returns a changeset for migrating table attributes from
 		// one state to the other. For example, dropping or adding a `CHECK` constraint.
-		TableAttrDiff(from, to *schema.Table) []schema.Change
+		TableAttrDiff(from, to *schema.Table) ([]schema.Change, error)
 
 		// ColumnChange returns the schema changes (if any) for migrating one column to the other.
 		ColumnChange(from, to *schema.Column) (schema.ChangeKind, error)
@@ -154,7 +154,11 @@ func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
 	}
 
 	// Drop or modify attributes (collations, checks, etc).
-	changes = append(changes, d.TableAttrDiff(from, to)...)
+	change, err := d.TableAttrDiff(from, to)
+	if err != nil {
+		return nil, err
+	}
+	changes = append(changes, change...)
 
 	// Drop or modify columns.
 	for _, c1 := range from.Columns {
