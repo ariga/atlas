@@ -97,7 +97,7 @@ export default function () {
                    </h2>
                    <p className={index.paragraph2}
                       style={{ color: "#757889" }}>
-                       With a simple command line flag, Atlas opens up as a rich user interface to visualize your data topology and manage your data topology.
+                       With a single command-line flag, Atlas opens up as a rich user interface to visualize and manage your data topology.
                    </p>
                </section>
                 <button className={index.secondaryButton}> get started </button>
