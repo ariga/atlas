@@ -876,6 +876,12 @@ create table atlas_types_sanity
 		}
 		require.EqualValues(t, &expected, ts)
 	})
+
+	t.Run("ImplicitIndexes", func(t *testing.T) {
+		pgRun(t, func(t *pgTest) {
+			testImplicitIndexes(t, t.db)
+		})
+	})
 }
 
 func (t *pgTest) dsn() string {
@@ -910,19 +916,19 @@ func (t *pgTest) loadRealm() *schema.Realm {
 }
 
 func (t *pgTest) loadUsers() *schema.Table {
-	realm := t.loadRealm()
-	require.Len(t, realm.Schemas, 1)
-	users, ok := realm.Schemas[0].Table("users")
-	require.True(t, ok)
-	return users
+	return t.loadTable("users")
 }
 
 func (t *pgTest) loadPosts() *schema.Table {
+	return t.loadTable("posts")
+}
+
+func (t *pgTest) loadTable(name string) *schema.Table {
 	realm := t.loadRealm()
 	require.Len(t, realm.Schemas, 1)
-	posts, ok := realm.Schemas[0].Table("posts")
+	table, ok := realm.Schemas[0].Table(name)
 	require.True(t, ok)
-	return posts
+	return table
 }
 
 func (t *pgTest) users() *schema.Table {

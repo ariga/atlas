@@ -950,6 +950,12 @@ create table atlas_types_sanity
 			require.EqualValues(t, &expected, ts)
 		})
 	})
+
+	t.Run("ImplicitIndexes", func(t *testing.T) {
+		myRun(t, func(t *myTest) {
+			testImplicitIndexes(t, t.db)
+		})
+	})
 }
 
 func (t *myTest) dsn() string {
@@ -1109,19 +1115,19 @@ func (t *myTest) loadRealm() *schema.Realm {
 }
 
 func (t *myTest) loadUsers() *schema.Table {
-	realm := t.loadRealm()
-	require.Len(t, realm.Schemas, 1)
-	users, ok := realm.Schemas[0].Table("users")
-	require.True(t, ok)
-	return users
+	return t.loadTable("users")
 }
 
 func (t *myTest) loadPosts() *schema.Table {
+	return t.loadTable("posts")
+}
+
+func (t *myTest) loadTable(name string) *schema.Table {
 	realm := t.loadRealm()
 	require.Len(t, realm.Schemas, 1)
-	posts, ok := realm.Schemas[0].Table("posts")
+	table, ok := realm.Schemas[0].Table(name)
 	require.True(t, ok)
-	return posts
+	return table
 }
 
 func (t *myTest) mariadb() bool { return strings.HasPrefix(t.version, "Maria") }

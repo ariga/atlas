@@ -27,6 +27,7 @@ type T interface {
 	loadUsers() *schema.Table
 	posts() *schema.Table
 	loadPosts() *schema.Table
+	loadTable(string) *schema.Table
 	dropTables(...string)
 	migrate(...schema.Change)
 	diff(*schema.Table, *schema.Table) []schema.Change
@@ -95,6 +96,36 @@ func testEntIntegration(t T, dialect string, db *sql.DB) {
 		changes[i] = &schema.DropTable{T: t}
 	}
 	t.migrate(changes...)
+}
+
+func testImplicitIndexes(t T, db *sql.DB) {
+	const (
+		name = "implicit_indexes"
+		ddl  = "create table implicit_indexes(c1 int unique, c2 int unique, unique(c1,c2), unique(c2,c1))"
+	)
+	t.dropTables(name)
+	_, err := db.Exec(ddl)
+	require.NoError(t, err)
+	current := t.loadTable(name)
+	c1, c2 := schema.NewNullIntColumn("c1", "int"), schema.NewNullIntColumn("c2", "int")
+	desired := schema.NewTable(name).
+		AddColumns(c1, c2).
+		AddIndexes(
+			schema.NewUniqueIndex("").AddColumns(c1),
+			schema.NewUniqueIndex("").AddColumns(c2),
+			schema.NewUniqueIndex("").AddColumns(c1, c2),
+			schema.NewUniqueIndex("").AddColumns(c2, c1),
+		)
+	changes := t.diff(current, desired)
+	require.Empty(t, changes)
+	desired.AddIndexes(
+		schema.NewIndex("c1_key").AddColumns(c1),
+		schema.NewIndex("c2_key").AddColumns(c2),
+	)
+	changes = t.diff(current, desired)
+	require.NotEmpty(t, changes)
+	t.migrate(&schema.ModifyTable{T: desired, Changes: changes})
+	ensureNoChange(t, desired)
 }
 
 func testHCLIntegration(t T, full string, empty string) {
