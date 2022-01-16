@@ -6,7 +6,7 @@ module.exports = {
   baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
-  favicon: 'static/img/favicon.icon',
+  favicon: 'https://atlasgo.io/uploads/favicon.icon',
   organizationName: 'ariga', // Usually your GitHub org/user name.
   projectName: 'atlas', // Usually your repo name.
   themeConfig: {
