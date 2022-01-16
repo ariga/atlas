@@ -17,7 +17,7 @@ img {
   max-width: 100%;
 }
 
-.textWithChip {
+.subtitleWithChipWrapper {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -31,7 +31,7 @@ img {
 }
 .title2 {
   text-align: center;
-  font-size: 3vw;
+  font-size: 3.5vw;
   line-height: 120%;
   font-weight: 900;
   margin-bottom: 15px;
@@ -41,9 +41,10 @@ img {
   font-size: 2vw;
   text-align: center;
 }
-.subtitleNoMargin {
+.subtitleMargin {
   font-size: 2vw;
 }
+
 .paragraph, .paragraph2 {
   font-size: 1.3vw;
   color: #757889;
@@ -238,14 +239,16 @@ img {
     font-size: 7.5vw;
   }
   .paragraph2 {
-    font-size: 4vw;
+    font-size: 3.5vw
   }
   .paragraph {
     font-size: 5vw;
   }
-  .subtitle, .subtitleNoMargin {
-    font-size: 5vw;
+  .subtitle, .subtitleMargin {
+    font-size: 5.5vw;
   }
+
+
   .subtitle2 {
     font-size: 6vw;
   }
@@ -313,15 +316,17 @@ img {
   .section {
     width: 100%;
   }
-  .textWithChip {
+  .subtitleWithChipWrapper {
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    margin-bottom: 0;
   }
-  .subtitleNoMargin {
+
+  .subtitleMargin {
     margin-bottom: 20px;
   }
-  .textWithChip .subtitle, .textWithChip .chip {
+  .subtitleWithChipWrapper .chip {
     margin-bottom: 20px;
   }
 }

@@ -90,7 +90,7 @@ export default function () {
                     Read More <span>&#8594;</span>
                 </Link></button>
 
-                <img src="https://atlasgo.io/uploads/landing/tables.png" alt="ent"/>
+                <img style={{margin: "20px 0" }} src="https://atlasgo.io/uploads/landing/tables.png" alt="ent"/>
                <section className={index.section} style={{ marginTop: "10px" }}>
                    <h2 className={index.title2} style={{ textAlign: "center", color: "#000939" }}>
                        Visualize your schemas <br/> using the <span style={{color: "#2064E9"}}>Atlas UI</span>
@@ -110,7 +110,7 @@ export default function () {
             <div className={index.container}>
                 <section className={index.section}>
                     <h1 style={{color: "#000939"}} className={index.title2}>Migrate,&nbsp; <span style={{color: "#2064E9"}}>  your way.</span></h1>
-                   <p className={index.paragraph2}>Atlas provides the user with two types of migrations - declarative and versioned.</p>
+                    <p className={index.paragraph2}>Atlas provides the user with two types of migrations - declarative and versioned.</p>
                </section>
 
                 <section className={index.section}>
@@ -119,8 +119,8 @@ export default function () {
                 </section>
 
                 <section className={index.section}>
-                    <div className={index.textWithChip}>
-                        <h2 style={{color: "#000939", marginRight: "10px"}} className={index.subtitleNoMargin}>Versioned Migrations</h2>
+                    <div className={index.subtitleWithChipWrapper}>
+                        <h2 style={{color: "#000939", marginRight: "10px"}} className={index.subtitleMargin}>Versioned Migrations</h2>
                         <Chip text="Coming soon" />
                     </div>
                     <p className={index.paragraph2}>Atlas offers you an alternative workflow, in which migrations are explicitly defined and <br/>
