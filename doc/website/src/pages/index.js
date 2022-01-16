@@ -6,6 +6,13 @@ import index from './index.module.css';
 import GithubIcon from '../assets/icons/github.svg';
 import DiscordIcon from '../assets/icons/discord.svg';
 
+const getDeviceType = () => {
+    const ua = navigator.userAgent;
+    const tablet = /(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua);
+    const mobile = /Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(ua);
+    return tablet && mobile;
+};
+
 function Chip({ text }) {
     return <div className={index.chip}>
         {text}
@@ -46,6 +53,9 @@ function Header() {
 }
 
 export default function () {
+    const isMobile = getDeviceType();
+
+    const erdImage = isMobile ? "https://atlasgo.io/upload/erd-vertical.png" : "https://atlasgo.io/upload/erd-wide.png";
     return <LayoutProviders>
         {/* first slide */}
         <div className={index.slide1}>
@@ -67,7 +77,9 @@ export default function () {
                         <a className={index.primaryButtonText} href="/cli/getting-started/setting-up">Get Started</a>
                     </button>
                 </div>
-                <div className={index.imageContainer}><img src="https://atlasgo.io/uploads/landing/gopher-cli.png" alt=""/></div>
+                <div className={index.imageContainer}>
+                    <img src="https://atlasgo.io/upload/gopher-hero.png" alt=""/>
+                </div>
             </div>
         </div>
 
@@ -86,11 +98,11 @@ export default function () {
                     </p>
                 </section>
 
-                <button className={index.textButton}><Link to="/ddl/intro">
-                    Read More <span>&#8594;</span>
-                </Link></button>
+                <button className={index.textButton}>
+                    <Link to="/ddl/intro">Read More <span>&#8594;</span></Link>
+                </button>
 
-                <img style={{margin: "20px 0" }} src="https://atlasgo.io/uploads/landing/tables.png" alt="ent"/>
+                <img style={{margin: "20px 0" }} src={erdImage} alt="erd"/>
                <section className={index.section} style={{ marginTop: "10px" }}>
                    <h2 className={index.title2} style={{ textAlign: "center", color: "#000939" }}>
                        Visualize your schemas <br/> using the <span style={{color: "#2064E9"}}>Atlas UI</span>
@@ -105,7 +117,7 @@ export default function () {
                         Get Started
                     </a>
                 </button>
-                <img style={{ maxWidth: "65%", maxHeight: "70%", marginTop: "40px" }} src="https://atlasgo.io/uploads/landing/dashboard2.png" alt="ent"/>
+                <img style={{ maxWidth: "65%", maxHeight: "70%", marginTop: "40px" }} src="https://atlasgo.io/upload/visualize.png" alt="ent"/>
             </div>
         </div>
 
