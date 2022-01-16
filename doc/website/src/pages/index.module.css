@@ -10,7 +10,6 @@ body {
 p, h1, h2, a{
   margin: 0;
   letter-spacing: 0.15px;
-  text-align: center;
 }
 
 img {
@@ -24,8 +23,6 @@ img {
   align-items: center;
   margin-bottom: 10px;
 }
-
-/* COMMON */
 .title {
   text-align: left;
   font-size: 3.8vw;
@@ -33,6 +30,7 @@ img {
   font-weight: 900
 }
 .title2 {
+  text-align: center;
   font-size: 3vw;
   line-height: 120%;
   font-weight: 900;
@@ -41,12 +39,11 @@ img {
 .subtitle, .subtitle2 {
   margin-bottom: 10px;
   font-size: 2vw;
+  text-align: center;
 }
-
 .subtitleNoMargin {
   font-size: 2vw;
 }
-
 .paragraph, .paragraph2 {
   font-size: 1.3vw;
   color: #757889;
@@ -56,16 +53,24 @@ img {
 .primaryButton {
   background: #82C7FF;
   border-radius: 24px;
-  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.15px;
-  font-size: 1vw;
-  line-height: 1.688rem;
   height: 48px;
   border: none;
   padding: 10px 30px;
   cursor: pointer;
 }
+.primaryButtonText {
+  font-weight: 700;
+  letter-spacing: 0.15px;
+  font-size: 1.3vw;
+  line-height: 1.688rem;
+  color: #000939;
+}
+.primaryButtonText:hover {
+  text-decoration: none;
+  color: #000939;
+}
+
 .secondaryButton {
   background: #2064E9;
   border-radius: 24px;
@@ -114,7 +119,6 @@ img {
   width: 75%;
   margin: 0 auto;
 }
-
 .rowContainer {
   flex-flow: row;
 }
@@ -123,7 +127,7 @@ img {
   display: flex;
   justify-content: center;
   align-content: center;
-  padding: 10px 0;
+  padding: 15px 0;
   margin-bottom: 20px;
 }
 
@@ -146,22 +150,23 @@ img {
   align-items: center;
   color: white;
   width: 70%;
-}
-
-ul {
   margin: 0;
-  padding: 0;
 }
 
-.nav li {
-  padding: 5px;
+.nav .linkItem {
+  padding-right: 5px;
   text-decoration: none;
   margin-right: 5%;
+  color: white;
 }
 
-.nav .li a {
+.nav .linkItem a {
   color: white;
-  font-size: 1.4vw;;
+  font-size: 1.5vw;
+}
+
+.nav .linkItem a:hover {
+  text-decoration: none;
 }
 
 .slide1 {
@@ -249,8 +254,16 @@ ul {
     flex-flow: column;
     width: 90%;
   }
-  .primaryButton {
-    font-size: 4vw;
+  .primaryButtonText {
+    font-weight: 700;
+    letter-spacing: 0.15px;
+    font-size: 3vw;
+    color: #000939;
+    padding: 8px 12px;
+  }
+  .primaryButtonText:hover {
+    text-decoration: none;
+    color: white;
   }
   .secondaryButton {
     font-size: 4vw;
@@ -268,8 +281,10 @@ ul {
     padding-bottom: 20px;
   }
   .slide1 .header{
-    padding: 20px;
+    width: 90%;
+    margin: 10px auto 0 auto;
   }
+
   .slide1 .imageContainer {
     align-self: flex-end;
     width: 100%;
@@ -288,16 +303,13 @@ ul {
     margin: 0;
     padding: 0;
   }
-  .nav li {
-    padding: 0;
-    text-decoration: none;
-    margin-right: 4%;
-  }
 
-  ul .linkItem {
+  .nav .linkItem a {
     color: white;
     font-size: 3.4vw;
+    padding-right: 5px;
   }
+
   .section {
     width: 100%;
   }
