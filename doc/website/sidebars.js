@@ -41,6 +41,7 @@ module.exports = {
                 'CLI/atlas_schema_apply',
                 'CLI/atlas_schema_inspect',
                 'CLI/atlas_version',
+                'ui/atlas-ui-intro',
             ]
         }
     ],

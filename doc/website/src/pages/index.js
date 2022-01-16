@@ -100,7 +100,11 @@ export default function () {
                        With a single command-line flag, Atlas opens up as a rich user interface to visualize and manage your data topology.
                    </p>
                </section>
-                <button className={index.secondaryButton}> get started </button>
+                <button className={index.secondaryButton}>
+                    <Link to="ui/intro">
+                        Get Started
+                    </Link>
+                </button>
                 <img style={{ maxWidth: "65%", maxHeight: "70%", marginTop: "40px" }} src="https://atlasgo.io/uploads/landing/dashboard2.png" alt="ent"/>
             </div>
         </div>

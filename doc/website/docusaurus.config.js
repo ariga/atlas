@@ -60,7 +60,7 @@ module.exports = {
         },
       ],
       copyright: `
-      Copyright © ${new Date().getFullYear()} Facebook, Inc.
+      Copyright © ${new Date().getFullYear()} The Atlas Authors.
       The Go gopher was designed by <a href="http://reneefrench.blogspot.com/">Renee French</a>.
       <br/>
       The design is licensed under the Creative Commons 3.0 Attributions license. Read this 
