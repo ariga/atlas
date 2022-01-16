@@ -3,8 +3,6 @@ package postgres
 import (
 	"reflect"
 	"strconv"
-	"strings"
-	"unicode"
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
@@ -61,26 +59,6 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 	return TypeRegistry.Type(spec.Type, spec.Extra.Attrs)
 }
 
-func parseRawType(typ string) (schema.Type, error) {
-	d, err := parseColumn(typ)
-	if err != nil {
-		return nil, err
-	}
-	// Normalize PostgreSQL array data types from "CREATE TABLE" format to
-	// "INFORMATION_SCHEMA" format (i.e. as it is inspected from the database).
-	if t, ok := arrayType(typ); ok {
-		d = &columnDesc{typ: TypeArray, udt: t}
-	}
-
-	t := columnType(d)
-	// If the type is unknown (to us), we fallback to user-defined but expect
-	// to improve this in future versions by ensuring this against the database.
-	if ut, ok := t.(*schema.UnsupportedType); ok {
-		t = &UserDefinedType{T: ut.T}
-	}
-	return t, nil
-}
-
 // schemaSpec converts from a concrete Postgres schema to Atlas specification.
 func schemaSpec(schem *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error) {
 	return specutil.FromSchema(schem, tableSpec)
@@ -112,25 +90,10 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	return &sqlspec.Column{Type: st}, nil
 }
 
-// arrayType reports if the given string is an array type (e.g. int[], text[2]),
-// and returns its "udt_name" as it was inspected from the database.
-func arrayType(t string) (string, bool) {
-	i, j := strings.LastIndexByte(t, '['), strings.LastIndexByte(t, ']')
-	if i == -1 || j == -1 {
-		return "", false
-	}
-	for _, r := range t[i+1 : j] {
-		if !unicode.IsDigit(r) {
-			return "", false
-		}
-	}
-	return t[:strings.IndexByte(t, '[')], true
-}
-
 // TypeRegistry contains the supported TypeSpecs for the Postgres driver.
 var TypeRegistry = specutil.NewRegistry(
 	specutil.WithFormatter(FormatType),
-	specutil.WithParser(parseRawType),
+	specutil.WithParser(ParseType),
 	specutil.WithSpecs(
 		specutil.TypeSpec(TypeBit, &schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64}),
 		specutil.AliasTypeSpec("bit_varying", TypeBitVar, &schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64}),

@@ -7,6 +7,7 @@ package postgres
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -144,6 +145,41 @@ func mustFormat(t schema.Type) string {
 		panic(err)
 	}
 	return s
+}
+
+// ParseType returns the schema.Type value represented by the given raw type.
+// The raw value is expected to follow the format in PostgreSQL information schema
+// or as an input for the CREATE TABLE statement.
+func ParseType(typ string) (schema.Type, error) {
+	d, err := parseColumn(typ)
+	if err != nil {
+		return nil, err
+	}
+	// Normalize PostgreSQL array data types from "CREATE TABLE" format to
+	// "INFORMATION_SCHEMA" format (i.e. as it is inspected from the database).
+	if t, ok := arrayType(typ); ok {
+		d = &columnDesc{typ: TypeArray, udt: t}
+	}
+	t := columnType(d)
+	// If the type is unknown (to us), we fallback to user-defined but expect
+	// to improve this in future versions by ensuring this against the database.
+	if ut, ok := t.(*schema.UnsupportedType); ok {
+		t = &UserDefinedType{T: ut.T}
+	}
+	return t, nil
+}
+
+// reArray parses array declaration. See: https://postgresql.org/docs/current/arrays.html.
+var reArray = regexp.MustCompile(`(?i)(\w+)\s*(?:(?:\[\d*])+|\s+ARRAY\s*(?:\[\d*])*)`)
+
+// arrayType reports if the given string is an array type (e.g. int[], text[2]),
+// and returns its "udt_name" as it was inspected from the database.
+func arrayType(t string) (string, bool) {
+	matches := reArray.FindStringSubmatch(t)
+	if len(matches) != 2 {
+		return "", false
+	}
+	return matches[1], true
 }
 
 // columnDesc represents a column descriptor.
