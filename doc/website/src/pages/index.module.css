@@ -20,7 +20,7 @@ img {
 /* MOBILE FIRST */
 .header{
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-content: center;
   padding: 15px 0;
   margin-bottom: 20px;
@@ -30,6 +30,8 @@ img {
   margin-right: 25px;
   height: 24px;
   width: 24px;
+  line-height: 21px;
+  padding-right: 5px;
 }
 
 .socialLinks {
@@ -38,22 +40,14 @@ img {
   align-items: center;
 }
 
+/* start navbar*/
 .nav {
   list-style-type: none;
   display: flex;
   justify-content: flex-start;
   align-items: center;
   color: white;
-  width: 70%;
-  margin: 0;
-}
-.nav {
-  list-style-type: none;
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  color: white;
-  width: 70%;
+  width: 75%;
   margin: 0;
 }
 
@@ -66,13 +60,41 @@ img {
 
 .nav .linkItem a {
   color: white;
-  font-size: 3.5vw;
+  font-size: 16px;
 }
 
 .nav .linkItem a:hover {
   text-decoration: none;
+  color: #2064E9;
 }
-/* partials */
+/* end navbar*/
+
+/*titles*/
+.title {
+  text-align: left;
+  font-weight: 900;
+  font-size: 34px;
+  line-height: 50px;
+}
+
+.titleSecondary {
+  text-align: center;
+  font-size: 28px;
+  line-height: 32px;
+  font-weight: 900;
+  margin: 15px 0;
+}
+
+.subtitle {
+  font-size: 22px;
+  line-height: 25px;
+  text-align: center;
+}
+
+.subtitleMargin {
+  margin-bottom: 10px;
+}
+
 .subtitleWithChipWrapper {
   display: flex;
   justify-content: center;
@@ -80,34 +102,23 @@ img {
   flex-direction: column;
   margin-bottom: 10px;
 }
-.title {
-  text-align: left;
-  font-size: 7vw;
-  line-height: 120%;
-  font-weight: 900
-}
-.title2 {
-  text-align: center;
-  font-size: 6vw;
-  line-height: 120%;
-  font-weight: 900;
-  margin-bottom: 15px;
-}
-.subtitle, .subtitle2 {
-  font-size: 5vw;
-  text-align: center;
-}
-.subtitleMargin {
-  font-size: 5vw;
-  margin-bottom: 10px;
-}
-.paragraph, .paragraph2 {
-  font-size: 4vw;
+/*end titles*/
+
+/* text */
+.paragraph, .paragraphSecondary {
+  font-size: 18px;
+  line-height: 28px;
   color: #757889;
   text-align: center;
 }
 
-/* buttons */
+.paragraphSecondary {
+  font-size: 14px;
+  line-height: 28px;
+}
+/*end text */
+
+/*buttons*/
 .primaryButton, .secondaryButton {
   border-radius: 24px;
   text-transform: uppercase;
@@ -116,12 +127,14 @@ img {
   padding: 5px 25px;
   cursor: pointer;
 }
+
 .primaryButtonText, .secondaryButtonText {
-  font-weight: 700;
   letter-spacing: 0.15px;
-  font-size: 2.5vw;
-  line-height: 1.688rem;
+  font-weight: bold;
+  font-size: 16px;
+  line-height: 27px;
 }
+
 .primaryButtonText:hover, .secondaryButtonText:hover {
   text-decoration: none;
   color: #000939;
@@ -139,9 +152,11 @@ img {
   padding: 5px 35px;
   background: #2064E9;
 }
+
 .secondaryButtonText {
   color: white;
 }
+
 .secondaryButtonText:hover {
   color: white;
 }
@@ -153,8 +168,8 @@ img {
   position: relative;
   -webkit-tap-highlight-color: transparent;
   background-color: transparent;
-  font-size: 4vw;
-  line-height: 2.25rem;
+  font-size: 14px;
+  line-height: 36px;
   outline: 0;
   border: 0;
   margin: 0;
@@ -168,10 +183,12 @@ img {
   vertical-align: middle;
   -moz-appearance: none;
   -webkit-appearance: none;
+  margin-top: 10px;
 }
+/*end buttons*/
 
+/*containers*/
 .container, .rowContainer {
-  padding: 5.5vw 0;
   display: flex;
   flex-flow: column;
   justify-content: center;
@@ -181,24 +198,12 @@ img {
 }
 
 .slide1 {
-  background-image: url("https://atlasgo.io/uploads/landing/background.png");
-  background-color: #cccccc;
+  background-color: #013758;
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
   position: relative;
   padding-bottom: 80px;
-}
-
-.slide1 .imageContainer {
-  /*align-self: flex-end;*/
-  /*width: 50%;*/
-  /*position: relative;*/
-  /*left: -20px;*/
-}
-
-.slide1 .slide1LeftSide {
-  /*width: 48%;*/
 }
 
 .slide2 {
@@ -213,17 +218,16 @@ img {
   background-color: rgba(0, 9, 57, 0.1);
 }
 
-.heroBanner {
-  padding: 4rem 0;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-}
-
 .section {
   margin-bottom: 10%;
 }
 
+.sectionNoMargin {
+  margin: 0;
+}
+/*end containers */
+
+/*images*/
 .linux {
   width: 10%;
   margin: 10px 0;
@@ -239,74 +243,32 @@ img {
   padding: 5px 20px;
 }
 
+.heroBanner {
+  padding: 4rem 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.imageContainer {
+  transform: unset;
+}
+
 /*TABLET*/
 @media only screen
-  and (min-width: 768px) {
-  .title {
-    text-align: left;
-    font-size: 7vw;
-  }
-  .title2 {
-    font-size: 5vw;
-  }
-  .paragraph2 {
-    font-size: 3vw
-  }
-  .paragraph {
-    font-size: 3vw;
-  }
-
-  .primaryButton, .secondaryButton {
-    border-radius: 24px;
-    text-transform: uppercase;
-    height: 48px;
-    border: none;
-    padding: 10px 50px;
-    cursor: pointer;
-  }
-
-  .textButton {
-    font-size: 2.4vw;
-  }
-
-  .section {
-    margin-bottom: 3%;
-  }
-  .subtitle, .subtitleMargin {
-    font-size: 5.5vw;
-  }
-
-  .subtitle2 {
-    font-size: 6vw;
-  }
-  .container, .rowContainer {
-    padding: 6vw 0;
-    flex-flow: column;
+  and (min-width: 525px) {
+  /* start navbar*/
+  .header {
+    margin: 0 auto 20px auto;
+    align-content: flex-start;
+    justify-content: space-between;
     width: 90%;
   }
 
-  .slide1 {
-    padding-bottom: 20px;
-  }
-  .slide1 .header{
-    width: 90%;
-    margin: 10px auto 0 auto;
-  }
-
-  .slide1 .imageContainer {
-    align-self: flex-end;
-    width: 100%;
-    position: relative;
-    left: 0;
-  }
-  .slide1 .slide1LeftSide {
-    width: 100%;
-  }
   .nav {
     list-style-type: none;
     display: flex;
     color: white;
-    width: 90%;
     justify-content: flex-start;
     margin: 0;
     padding: 0;
@@ -314,8 +276,26 @@ img {
 
   .nav .linkItem a {
     color: white;
-    font-size: 3.4vw;
-    padding-right: 5px;
+    font-size: 18px;
+  }
+  /*end navbar*/
+
+  /*titels*/
+  .title {
+    margin-bottom: 10px;
+    text-align: left;
+    font-size: 48px;
+    line-height: 55px;
+  }
+
+  .titleSecondary {
+    font-size: 32px;
+    line-height: 55px;
+  }
+
+  .subtitle, .subtitleMargin {
+    font-size: 30px;
+    line-height: 34px;
   }
 
   .subtitleWithChipWrapper {
@@ -328,20 +308,77 @@ img {
   .subtitleMargin {
     margin-bottom: 20px;
   }
+
   .subtitleWithChipWrapper .chip {
     margin-bottom: 20px;
   }
+  /*end titles*/
+
+  .paragraphSecondary, .paragraph {
+    font-size: 20px;
+    line-height: 36px;
+  }
+
+  /*buttons*/
+  .primaryButton, .secondaryButton {
+    border-radius: 24px;
+    text-transform: uppercase;
+    height: 48px;
+    border: none;
+    padding: 10px 50px;
+    cursor: pointer;
+  }
+
+  .primaryButtonText, .secondaryButtonText {
+    font-size: 16px;
+    line-height: 27px;
+  }
+
+  .textButton {
+    font-size: 20px;
+    line-height: 36px;
+
+  }
+  /*end buttons*/
+
+  .sectionNoMargin {
+    width: 55%;
+  }
+
+  /*containers*/
+  .container, .rowContainer {
+    flex-flow: column;
+    width: 90%;
+  }
+
+  .slide1 {
+    padding-bottom: 40px;
+  }
+
+  .slide1 .imageContainer {
+    align-self: flex-end;
+    width: 100%;
+    position: relative;
+    left: -20px;
+    transition: unset;
+  }
+
+  .slide1 .slide1LeftSide {
+    width: 100%;
+  }
+
+  .section {
+    margin-bottom: 5%;
+    width: 55%;
+  }
+  /*end containers*/
 }
 
 /*DESKTOP*/
 @media only screen
 and (min-width: 1100px) {
   .header{
-    display: flex;
-    justify-content: center;
-    align-content: center;
-    padding: 15px 0;
-    margin-bottom: 20px;
+    width: 75%;
   }
 
   .socialLinks  a {
@@ -357,15 +394,10 @@ and (min-width: 1100px) {
   }
 
   .nav {
-    list-style-type: none;
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    color: white;
-    width: 70%;
     margin: 0;
   }
 
+  /*start navbar*/
   .nav .linkItem {
     padding-right: 5px;
     text-decoration: none;
@@ -375,58 +407,44 @@ and (min-width: 1100px) {
 
   .nav .linkItem a {
     color: white;
-    font-size: 1.5vw;
+    /*font-size: 1vw;*/
   }
 
   .nav .linkItem a:hover {
     text-decoration: none;
   }
-  /* partials */
+  /*end navbar */
+
+  .title {
+    font-size: 50px;
+    line-height: 60px;
+    text-align: left;
+  }
+
+  .titleSecondary {
+    text-align: center;
+    font-size: 48px;
+    line-height: 55px;
+    font-weight: 900;
+    margin: 50px 0 10px 0;
+  }
+
+  .subtitle {
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
   .subtitleWithChipWrapper {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: 0;
     flex-direction: row;
   }
-  .title {
-    text-align: left;
-    font-size: 3vw;
-    line-height: 120%;
-    font-weight: 900
-  }
-  .title2 {
-    text-align: center;
-    font-size: 3vw;
-    line-height: 120%;
-    font-weight: 900;
-    margin: 30px 0;
-  }
-  .subtitle, .subtitle2 {
-    margin-bottom: 10px;
-    font-size: 2vw;
-    text-align: center;
-  }
-  .subtitleMargin {
-    font-size: 2vw;
-  }
-  .paragraph, .paragraph2 {
-    font-size: 1.3vw;
+
+  .paragraph, .paragraphSecondary {
     color: #757889;
     text-align: center;
-  }
-
-  .container, .rowContainer {
-    padding: 0;
-    display: flex;
-    flex-flow: column;
-    justify-content: center;
-    align-items: center;
-    width: 75%;
-    margin: 0 auto;
-  }
-  .rowContainer {
-    flex-flow: row;
   }
 
   .primaryButton, .secondaryButton {
@@ -438,49 +456,23 @@ and (min-width: 1100px) {
     cursor: pointer;
   }
 
-  .secondaryButton {
-    /*margin-top: 10px;*/
+  .container, .rowContainer {
+    padding: 0;
+    display: flex;
+    flex-flow: column;
+    justify-content: center;
+    align-items: center;
+    width: 75%;
+    margin: 0 auto;
   }
 
-  .primaryButtonText, .secondaryButtonText {
-    font-size: 1.1vw;
+  .rowContainer {
+    flex-flow: row;
   }
 
-  .textButton {
-    font-size: 1.4vw;
-  }
-
-  .slide1 {
-    background-image: url("https://atlasgo.io/uploads/landing/background.png");
-    background-color: #cccccc;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: cover;
-    position: relative;
-    padding-bottom: 80px;
-  }
-
-  .slide1 .imageContainer {
-    align-self: flex-end;
-    width: 50%;
-    position: relative;
-    left: -20px;
-  }
-
-  .slide1 .slide1LeftSide {
-    width: 48%;
-  }
-
-  .slide2 {
-    background-color: rgba(0, 9, 57, 0.1);
-  }
-
-  .slide3 {
-    background-color: #000939;
-  }
-
-  .slide4 {
-    background-color: rgba(0, 9, 57, 0.1);
+  .section {
+    margin-bottom: 35px;
+    width: 55%;
   }
 
   .heroBanner {
@@ -490,27 +482,10 @@ and (min-width: 1100px) {
     overflow: hidden;
   }
 
-  .section {
-    width: 70%;
-    margin-bottom: 35px;
-  }
-
-  .linux {
-    width: 10%;
-    margin: 10px 0;
-  }
-
-  .chip {
-    background: #CACACA;
-    border-radius: 24px;
-    color: white;
-    height: 35px;
-    font-weight: 700;
-    width: fit-content;
-    padding: 5px 20px;
+  .imageContainer {
+    transform: translate(-10%, 0%);
   }
 }
-
 
 
 
