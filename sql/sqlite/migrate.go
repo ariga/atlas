@@ -389,12 +389,12 @@ func (s *state) alterTable(modify *schema.ModifyTable) error {
 // the user on table creation.
 func (s *state) tableSeq(ctx context.Context, add *schema.AddTable) error {
 	var inc AutoIncrement
-	for _, c := range add.T.Columns {
-		if sqlx.Has(c.Attrs, &inc) {
-			break
-		}
-	}
-	if inc.Seq == 0 {
+	switch pk := add.T.PrimaryKey; {
+	// Sequence was set on the table.
+	case sqlx.Has(add.T.Attrs, &inc) && inc.Seq > 0:
+	// Sequence was set on table primary-key (a single column PK).
+	case pk != nil && len(pk.Parts) == 1 && pk.Parts[0].C != nil && sqlx.Has(pk.Parts[0].C.Attrs, &inc) && inc.Seq > 0:
+	default:
 		return nil
 	}
 	// SQLite tracks the AUTOINCREMENT in the "sqlite_sequence" table that is created and initialized automatically
