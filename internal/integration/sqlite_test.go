@@ -689,6 +689,12 @@ create table atlas_types_sanity
 		}
 		require.EqualValues(t, &expected, ts)
 	})
+
+	t.Run("ImplicitIndexes", func(t *testing.T) {
+		liteRun(t, func(t *liteTest) {
+			testImplicitIndexes(t, t.db)
+		})
+	})
 }
 
 func (t *liteTest) applyHcl(spec string) {
@@ -712,19 +718,19 @@ func (t *liteTest) loadRealm() *schema.Realm {
 }
 
 func (t *liteTest) loadUsers() *schema.Table {
-	realm := t.loadRealm()
-	require.Len(t, realm.Schemas, 1)
-	users, ok := realm.Schemas[0].Table("users")
-	require.True(t, ok)
-	return users
+	return t.loadTable("users")
 }
 
 func (t *liteTest) loadPosts() *schema.Table {
+	return t.loadTable("posts")
+}
+
+func (t *liteTest) loadTable(name string) *schema.Table {
 	realm := t.loadRealm()
 	require.Len(t, realm.Schemas, 1)
-	posts, ok := realm.Schemas[0].Table("posts")
+	table, ok := realm.Schemas[0].Table(name)
 	require.True(t, ok)
-	return posts
+	return table
 }
 
 func (t *liteTest) users() *schema.Table {
