@@ -52,6 +52,14 @@ function Header() {
     </div>
 }
 
+function AtlasButton({ link, text, type, style }) {
+    return (
+        <button style={{...style}} className={index[type]}>
+            <a className={index[`${type}Text`]} href={link}>{text}</a>
+        </button>
+    )
+}
+
 export default function () {
     const isMobile = getDeviceType();
 
@@ -73,9 +81,7 @@ export default function () {
                         intelligently plans schema migrations for you, based
                         on your desired state.
                     </p>
-                    <button style={{marginTop: "5%"}} className={index.primaryButton}>
-                        <a className={index.primaryButtonText} href="/cli/getting-started/setting-up">Get Started</a>
-                    </button>
+                    <AtlasButton style={{"margin-top": "5%"}} text="Get Started"  link="/cli/getting-started/setting-up" type="primaryButton"/>
                 </div>
                 <div className={index.imageContainer}>
                     <img src="https://atlasgo.io/upload/gopher-hero.png" alt=""/>
@@ -112,12 +118,9 @@ export default function () {
                        With a single command-line flag, Atlas opens up as a rich user interface to visualize and manage your data topology.
                    </p>
                </section>
-                <button className={index.secondaryButton}>
-                    <a className={index.secondaryButtonText} href="/ui/intro">
-                        Get Started
-                    </a>
-                </button>
-                <img style={{ maxWidth: "65%", maxHeight: "70%", marginTop: "40px" }} src="https://atlasgo.io/upload/visualize.png" alt="ent"/>
+                <AtlasButton text="Get Started" link="/ui/intro" type="secondaryButton"/>
+
+                <img style={{ maxWidth: "65%", maxHeight: "70%", marginTop: "20px" }} src="https://atlasgo.io/upload/visualize.png" alt="ent"/>
             </div>
         </div>
 

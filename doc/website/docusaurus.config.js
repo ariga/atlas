@@ -45,7 +45,7 @@ module.exports = {
           "title": "Community",
           "items": [
             {"label": "GitHub", "to": "https://github.com/ariga/atlas"},
-            {"label": "Discord", "to": "https://discord.com/QhsmBAWzrC"},
+            {"label": "Discord", "to": "https://discord.com/invite/QhsmBAWzrC"},
           ]
         },
       ],
