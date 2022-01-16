@@ -75,7 +75,7 @@ export default function () {
                     <AtlasButton style={{"marginTop": "5%"}} text="Get Started"  link="/cli/getting-started/setting-up" type="primaryButton"/>
                 </div>
                 <div className={index.imageContainer}>
-                    <img src="https://atlasgo.io/upload/gopher-hero.png" alt=""/>
+                    <img src="https://atlasgo.io/uploads/images/help_cmd.png" alt=""/>
                 </div>
             </div>
         </div>
@@ -102,7 +102,7 @@ export default function () {
                 <BrowserOnly>
                     {() => {
                         const mobile = window.innerWidth < 768;
-                        const erdImage = mobile ? "https://atlasgo.io/upload/erd-vertical.png" : "https://atlasgo.io/upload/erd-wide.png";
+                        const erdImage = mobile ? "https://atlasgo.io/uploads/images/erd_2.png" : "https://atlasgo.io/uploads/images/erd_1.png";
                         return <img style={{margin: "20px 0" }} src={erdImage} alt="erd"/>
                     }}
                 </BrowserOnly>
@@ -118,7 +118,7 @@ export default function () {
                </section>
                 <AtlasButton text="Get Started" link="/ui/intro" type="secondaryButton"/>
 
-                <img style={{ maxWidth: "65%", maxHeight: "70%", marginTop: "20px" }} src="https://atlasgo.io/upload/visualize.png" alt="ent"/>
+                <img style={{ maxWidth: "65%", maxHeight: "70%", marginTop: "20px" }} src="https://atlasgo.io/uploads/images/schema_screen.png" alt="ent"/>
             </div>
         </div>
 
