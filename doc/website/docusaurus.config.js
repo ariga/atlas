@@ -6,7 +6,7 @@ module.exports = {
   baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
-  favicon: 'img/favicon.icon',
+  favicon: 'static/img/favicon.icon',
   organizationName: 'ariga', // Usually your GitHub org/user name.
   projectName: 'atlas', // Usually your repo name.
   themeConfig: {
@@ -19,8 +19,8 @@ module.exports = {
     navbar: {
       title: 'Atlas',
       logo: {
-        alt: 'My Site Logo',
-        src: 'img/logoAtlas.svg',
+        alt: 'Atlas',
+        src: 'https://atlasgo.io/uploads/landing/logo.svg',
       },
       items: [
         // {
