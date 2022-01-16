@@ -5,10 +5,7 @@ import Footer from '@theme/Footer';
 import index from './index.module.css';
 import GithubIcon from '../assets/icons/github.svg';
 import DiscordIcon from '../assets/icons/discord.svg';
-
-const isMobile = () => {
-    return window.innerWidth < 768;
-};
+import BrowserOnly from "@docusaurus/core/lib/client/exports/BrowserOnly";
 
 function Chip({ text }) {
     return <div className={index.chip}>
@@ -58,9 +55,6 @@ function AtlasButton({ link, text, type, style }) {
 }
 
 export default function () {
-    const mobile = isMobile();
-
-    const erdImage = mobile ? "https://atlasgo.io/upload/erd-vertical.png" : "https://atlasgo.io/upload/erd-wide.png";
     return <LayoutProviders>
         {/* first slide */}
         <div className={index.slide1}>
@@ -105,8 +99,15 @@ export default function () {
                     <Link to="/ddl/intro">Read More <span>&#8594;</span></Link>
                 </button>
 
-                <img style={{margin: "20px 0" }} src={erdImage} alt="erd"/>
-               <section className={index.section} style={{ marginTop: "10px" }}>
+                <BrowserOnly>
+                    {() => {
+                        const mobile = window.innerWidth < 768;
+                        const erdImage = mobile ? "https://atlasgo.io/upload/erd-vertical.png" : "https://atlasgo.io/upload/erd-wide.png";
+                        return <img style={{margin: "20px 0" }} src={erdImage} alt="erd"/>
+                    }}
+                </BrowserOnly>
+
+                <section className={index.section} style={{ marginTop: "10px" }}>
                    <h2 className={index.title2} style={{ textAlign: "center", color: "#000939" }}>
                        Visualize your schemas <br/> using the <span style={{color: "#2064E9"}}>Atlas UI</span>
                    </h2>
