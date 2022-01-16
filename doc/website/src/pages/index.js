@@ -125,7 +125,7 @@ export default function () {
         <div className={index.slide4}>
             <div className={index.container}>
                 <section className={index.section}>
-                    <h1 style={{color: "#000939"}} className={index.title2}>Migrate,&nbsp; <span style={{color: "#2064E9"}}>  your way.</span></h1>
+                    <h1 style={{color: "#000939"}} className={index.title2}>Migrate,&nbsp;<span style={{color: "#2064E9"}}>your way.</span></h1>
                     <p className={index.paragraph2}>Atlas provides the user with two types of migrations - declarative and versioned.</p>
                </section>
 
