@@ -6,11 +6,8 @@ import index from './index.module.css';
 import GithubIcon from '../assets/icons/github.svg';
 import DiscordIcon from '../assets/icons/discord.svg';
 
-const getDeviceType = () => {
-    const ua = navigator.userAgent;
-    const tablet = /(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua);
-    const mobile = /Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(ua);
-    return tablet && mobile;
+const isMobile = () => {
+    return window.innerWidth < 768;
 };
 
 function Chip({ text }) {
@@ -61,9 +58,9 @@ function AtlasButton({ link, text, type, style }) {
 }
 
 export default function () {
-    const isMobile = getDeviceType();
+    const mobile = isMobile();
 
-    const erdImage = isMobile ? "https://atlasgo.io/upload/erd-vertical.png" : "https://atlasgo.io/upload/erd-wide.png";
+    const erdImage = mobile ? "https://atlasgo.io/upload/erd-vertical.png" : "https://atlasgo.io/upload/erd-wide.png";
     return <LayoutProviders>
         {/* first slide */}
         <div className={index.slide1}>
@@ -81,7 +78,7 @@ export default function () {
                         intelligently plans schema migrations for you, based
                         on your desired state.
                     </p>
-                    <AtlasButton style={{"margin-top": "5%"}} text="Get Started"  link="/cli/getting-started/setting-up" type="primaryButton"/>
+                    <AtlasButton style={{"marginTop": "5%"}} text="Get Started"  link="/cli/getting-started/setting-up" type="primaryButton"/>
                 </div>
                 <div className={index.imageContainer}>
                     <img src="https://atlasgo.io/upload/gopher-hero.png" alt=""/>
