@@ -101,9 +101,9 @@ export default function () {
                    </p>
                </section>
                 <button className={index.secondaryButton}>
-                    <Link to="ui/intro">
+                    <a className={index.secondaryButtonText} href="/ui/intro">
                         Get Started
-                    </Link>
+                    </a>
                 </button>
                 <img style={{ maxWidth: "65%", maxHeight: "70%", marginTop: "40px" }} src="https://atlasgo.io/uploads/landing/dashboard2.png" alt="ent"/>
             </div>

@@ -17,6 +17,7 @@ img {
   max-width: 100%;
 }
 
+/* partials */
 .subtitleWithChipWrapper {
   display: flex;
   justify-content: center;
@@ -44,13 +45,13 @@ img {
 .subtitleMargin {
   font-size: 2vw;
 }
-
 .paragraph, .paragraph2 {
   font-size: 1.3vw;
   color: #757889;
   text-align: center;
 }
 
+/* buttons */
 .primaryButton {
   background: #82C7FF;
   border-radius: 24px;
@@ -71,21 +72,26 @@ img {
   text-decoration: none;
   color: #000939;
 }
-
 .secondaryButton {
   background: #2064E9;
   border-radius: 24px;
+  width: 242px;
+  height: 48px;
+  border: none;
+  padding: 0 30px;
+  cursor: pointer;
+}
+.secondaryButtonText {
   font-weight: 700;
   color: white;
   text-transform: capitalize;
   letter-spacing: 0.15px;
   font-size: 1.4vw;
   line-height: 1.688rem;
-  width: 242px;
-  height: 48px;
-  border: none;
-  padding: 0 30px;
-  cursor: pointer;
+}
+.secondaryButtonText:hover {
+  text-decoration: none;
+  color: white;
 }
 .textButton {
   color: #2064E9;
@@ -280,6 +286,17 @@ img {
     height: 40px;
     padding: 5px 30px;
   }
+  .secondaryButtonText {
+    font-weight: 700;
+    letter-spacing: 0.15px;
+    font-size: 4vw;
+    line-height: 1.688rem;
+  }
+  .secondaryButtonText:hover {
+    text-decoration: none;
+    color: white;
+  }
+
   .slide1 {
     padding-bottom: 20px;
   }
