@@ -335,7 +335,7 @@ img {
 
 /*DESKTOP*/
 @media only screen
-and (min-width: 1224px) {
+and (min-width: 1100px) {
   .header{
     display: flex;
     justify-content: center;
