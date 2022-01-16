@@ -401,6 +401,26 @@ func TestTypes(t *testing.T) {
 			typeExpr: `sql("int[]")`,
 			expected: &ArrayType{T: "int[]"},
 		},
+		{
+			typeExpr: `sql("int[2]")`,
+			expected: &ArrayType{T: "int[]"},
+		},
+		{
+			typeExpr: `sql("text[][]")`,
+			expected: &ArrayType{T: "text[]"},
+		},
+		{
+			typeExpr: `sql("integer [3][3]")`,
+			expected: &ArrayType{T: "integer[]"},
+		},
+		{
+			typeExpr: `sql("integer ARRAY[4]")`,
+			expected: &ArrayType{T: "integer[]"},
+		},
+		{
+			typeExpr: `sql("integer ARRAY")`,
+			expected: &ArrayType{T: "integer[]"},
+		},
 	} {
 		t.Run(tt.typeExpr, func(t *testing.T) {
 			var test schema.Schema
