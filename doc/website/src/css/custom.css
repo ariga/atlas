@@ -20,12 +20,6 @@
   font-size: 18px;
 }
 
-@media screen and (max-width: 966px) {
-  .footer__title {
-    text-align: center;
-  }
-}
-
 /* You can override the default Infima variables here. */
 :root {
   --ifm-color-primary: #3578e5;
