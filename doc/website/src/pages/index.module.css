@@ -1,9 +1,217 @@
 /* stylelint-disable docusaurus/copyright-header */
 
+body {
+  font-family: Helvetica;
+}
 /**
  * CSS files with the .module.css suffix will be treated as CSS modules
  * and scoped locally.
  */
+p, h1, h2, a{
+  margin: 0;
+  letter-spacing: 0.15px;
+}
+
+img {
+  max-height: unset;
+  max-width: 100%;
+}
+
+/* MOBILE FIRST */
+.header{
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  padding: 15px 0;
+  margin-bottom: 20px;
+}
+
+.socialLinks  a {
+  margin-right: 25px;
+  height: 24px;
+  width: 24px;
+}
+
+.socialLinks {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.nav {
+  list-style-type: none;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  color: white;
+  width: 70%;
+  margin: 0;
+}
+.nav {
+  list-style-type: none;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  color: white;
+  width: 70%;
+  margin: 0;
+}
+
+.nav .linkItem {
+  padding-right: 5px;
+  text-decoration: none;
+  margin-right: 5%;
+  color: white;
+}
+
+.nav .linkItem a {
+  color: white;
+  font-size: 3.5vw;
+}
+
+.nav .linkItem a:hover {
+  text-decoration: none;
+}
+/* partials */
+.subtitleWithChipWrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  margin-bottom: 10px;
+}
+.title {
+  text-align: left;
+  font-size: 7vw;
+  line-height: 120%;
+  font-weight: 900
+}
+.title2 {
+  text-align: center;
+  font-size: 6vw;
+  line-height: 120%;
+  font-weight: 900;
+  margin-bottom: 15px;
+}
+.subtitle, .subtitle2 {
+  font-size: 5vw;
+  text-align: center;
+}
+.subtitleMargin {
+  font-size: 5vw;
+  margin-bottom: 10px;
+}
+.paragraph, .paragraph2 {
+  font-size: 4vw;
+  color: #757889;
+  text-align: center;
+}
+
+/* buttons */
+.primaryButton, .secondaryButton {
+  border-radius: 24px;
+  text-transform: uppercase;
+  height: 35px;
+  border: none;
+  padding: 5px 25px;
+  cursor: pointer;
+}
+.primaryButtonText, .secondaryButtonText {
+  font-weight: 700;
+  letter-spacing: 0.15px;
+  font-size: 2.5vw;
+  line-height: 1.688rem;
+}
+.primaryButtonText:hover, .secondaryButtonText:hover {
+  text-decoration: none;
+  color: #000939;
+}
+
+.primaryButton {
+  background: #82C7FF;
+}
+
+.primaryButtonText {
+  color: #000939;
+}
+
+.secondaryButton {
+  padding: 5px 35px;
+  background: #2064E9;
+}
+.secondaryButtonText {
+  color: white;
+}
+.secondaryButtonText:hover {
+  color: white;
+}
+
+.textButton {
+  color: #2064E9;
+  -webkit-text-decoration: none;
+  text-decoration: none;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+  background-color: transparent;
+  font-size: 4vw;
+  line-height: 2.25rem;
+  outline: 0;
+  border: 0;
+  margin: 0;
+  border-radius: 0;
+  padding: 0;
+  cursor: pointer;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  vertical-align: middle;
+  -moz-appearance: none;
+  -webkit-appearance: none;
+}
+
+.container, .rowContainer {
+  padding: 5.5vw 0;
+  display: flex;
+  flex-flow: column;
+  justify-content: center;
+  align-items: center;
+  width: 85%;
+  margin: 0 auto;
+}
+
+.slide1 {
+  background-image: url("https://atlasgo.io/uploads/landing/background.png");
+  background-color: #cccccc;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  position: relative;
+  padding-bottom: 80px;
+}
+
+.slide1 .imageContainer {
+  /*align-self: flex-end;*/
+  /*width: 50%;*/
+  /*position: relative;*/
+  /*left: -20px;*/
+}
+
+.slide1 .slide1LeftSide {
+  /*width: 48%;*/
+}
+
+.slide2 {
+  background-color: rgba(0, 9, 57, 0.1);
+}
+
+.slide3 {
+  background-color: #000939;
+}
+
+.slide4 {
+  background-color: rgba(0, 9, 57, 0.1);
+}
 
 .heroBanner {
   padding: 4rem 0;
@@ -12,14 +220,297 @@
   overflow: hidden;
 }
 
-@media screen and (max-width: 966px) {
-  .heroBanner {
-    padding: 2rem;
+.section {
+  margin-bottom: 10%;
+}
+
+.linux {
+  width: 10%;
+  margin: 10px 0;
+}
+
+.chip {
+  background: #CACACA;
+  border-radius: 24px;
+  color: white;
+  height: 35px;
+  font-weight: 700;
+  width: fit-content;
+  padding: 5px 20px;
+}
+
+/*TABLET*/
+@media only screen
+  and (min-width: 768px) {
+  .title {
+    text-align: left;
+    font-size: 7vw;
+  }
+  .title2 {
+    font-size: 5vw;
+  }
+  .paragraph2 {
+    font-size: 3vw
+  }
+  .paragraph {
+    font-size: 3vw;
+  }
+
+  .primaryButton, .secondaryButton {
+    border-radius: 24px;
+    text-transform: uppercase;
+    height: 48px;
+    border: none;
+    padding: 10px 50px;
+    cursor: pointer;
+  }
+
+  .textButton {
+    font-size: 2.4vw;
+  }
+
+  .section {
+    margin-bottom: 3%;
+  }
+  .subtitle, .subtitleMargin {
+    font-size: 5.5vw;
+  }
+
+  .subtitle2 {
+    font-size: 6vw;
+  }
+  .container, .rowContainer {
+    padding: 6vw 0;
+    flex-flow: column;
+    width: 90%;
+  }
+
+  .slide1 {
+    padding-bottom: 20px;
+  }
+  .slide1 .header{
+    width: 90%;
+    margin: 10px auto 0 auto;
+  }
+
+  .slide1 .imageContainer {
+    align-self: flex-end;
+    width: 100%;
+    position: relative;
+    left: 0;
+  }
+  .slide1 .slide1LeftSide {
+    width: 100%;
+  }
+  .nav {
+    list-style-type: none;
+    display: flex;
+    color: white;
+    width: 90%;
+    justify-content: flex-start;
+    margin: 0;
+    padding: 0;
+  }
+
+  .nav .linkItem a {
+    color: white;
+    font-size: 3.4vw;
+    padding-right: 5px;
+  }
+
+  .subtitleWithChipWrapper {
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 0;
+  }
+
+  .subtitleMargin {
+    margin-bottom: 20px;
+  }
+  .subtitleWithChipWrapper .chip {
+    margin-bottom: 20px;
   }
 }
 
-.buttons {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/*DESKTOP*/
+@media only screen
+and (min-width: 1224px) {
+  .header{
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    padding: 15px 0;
+    margin-bottom: 20px;
+  }
+
+  .socialLinks  a {
+    margin-right: 25px;
+    height: 24px;
+    width: 24px;
+  }
+
+  .socialLinks {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .nav {
+    list-style-type: none;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    color: white;
+    width: 70%;
+    margin: 0;
+  }
+
+  .nav .linkItem {
+    padding-right: 5px;
+    text-decoration: none;
+    margin-right: 5%;
+    color: white;
+  }
+
+  .nav .linkItem a {
+    color: white;
+    font-size: 1.5vw;
+  }
+
+  .nav .linkItem a:hover {
+    text-decoration: none;
+  }
+  /* partials */
+  .subtitleWithChipWrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-direction: row;
+  }
+  .title {
+    text-align: left;
+    font-size: 3vw;
+    line-height: 120%;
+    font-weight: 900
+  }
+  .title2 {
+    text-align: center;
+    font-size: 3vw;
+    line-height: 120%;
+    font-weight: 900;
+    margin: 30px 0;
+  }
+  .subtitle, .subtitle2 {
+    margin-bottom: 10px;
+    font-size: 2vw;
+    text-align: center;
+  }
+  .subtitleMargin {
+    font-size: 2vw;
+  }
+  .paragraph, .paragraph2 {
+    font-size: 1.3vw;
+    color: #757889;
+    text-align: center;
+  }
+
+  .container, .rowContainer {
+    padding: 0;
+    display: flex;
+    flex-flow: column;
+    justify-content: center;
+    align-items: center;
+    width: 75%;
+    margin: 0 auto;
+  }
+  .rowContainer {
+    flex-flow: row;
+  }
+
+  .primaryButton, .secondaryButton {
+    border-radius: 24px;
+    text-transform: uppercase;
+    height: 48px;
+    border: none;
+    padding: 10px 50px;
+    cursor: pointer;
+  }
+
+  .secondaryButton {
+    /*margin-top: 10px;*/
+  }
+
+  .primaryButtonText, .secondaryButtonText {
+    font-size: 1.1vw;
+  }
+
+  .textButton {
+    font-size: 1.4vw;
+  }
+
+  .slide1 {
+    background-image: url("https://atlasgo.io/uploads/landing/background.png");
+    background-color: #cccccc;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    position: relative;
+    padding-bottom: 80px;
+  }
+
+  .slide1 .imageContainer {
+    align-self: flex-end;
+    width: 50%;
+    position: relative;
+    left: -20px;
+  }
+
+  .slide1 .slide1LeftSide {
+    width: 48%;
+  }
+
+  .slide2 {
+    background-color: rgba(0, 9, 57, 0.1);
+  }
+
+  .slide3 {
+    background-color: #000939;
+  }
+
+  .slide4 {
+    background-color: rgba(0, 9, 57, 0.1);
+  }
+
+  .heroBanner {
+    padding: 4rem 0;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .section {
+    width: 70%;
+    margin-bottom: 35px;
+  }
+
+  .linux {
+    width: 10%;
+    margin: 10px 0;
+  }
+
+  .chip {
+    background: #CACACA;
+    border-radius: 24px;
+    color: white;
+    height: 35px;
+    font-weight: 700;
+    width: fit-content;
+    padding: 5px 20px;
+  }
 }
+
+
+
+

@@ -12,7 +12,6 @@
 module.exports = {
     // By default, Docusaurus generates a sidebar from the docs folder structure
     tutorialSidebar: [
-        {type: 'doc', id: 'home'},
         {
             type: 'category',
             label: 'Getting Started',
@@ -41,6 +40,7 @@ module.exports = {
                 'CLI/atlas_schema_apply',
                 'CLI/atlas_schema_inspect',
                 'CLI/atlas_version',
+                'ui/atlas-ui-intro',
             ]
         }
     ],
