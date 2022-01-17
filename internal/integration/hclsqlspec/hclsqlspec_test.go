@@ -319,16 +319,12 @@ table "accounts" {
 }
 
 func TestMarshalTopLevel(t *testing.T) {
-	c := &sqlspec.Column{
-		Name: "column",
-		Null: true,
-		Type: &schemaspec.Type{T: "varchar", Attrs: attrs(size(255))},
+	c := &sqlspec.Schema{
+		Name: "schema",
 	}
 	h, err := hcl.MarshalSpec(c)
 	require.NoError(t, err)
-	require.EqualValues(t, `column "column" {
-  null = true
-  type = varchar(255)
+	require.EqualValues(t, `schema "schema" {
 }
 `, string(h))
 }
