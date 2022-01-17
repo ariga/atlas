@@ -6,7 +6,7 @@
  */
 
 .navbar__title {
-  font-size: 24px;
+  font-size: 20px;
 }
 
 .navbar__brand img {
@@ -14,10 +14,10 @@
 }
 
 .footer__title {
-  font-size: 24px;
+  font-size: 22px;
 }
 .footer__link-item {
-  font-size: 18px;
+  font-size: 16px;
 }
 
 /* You can override the default Infima variables here. */

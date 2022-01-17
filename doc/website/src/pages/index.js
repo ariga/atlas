@@ -12,6 +12,7 @@ function Chip({ text }) {
         {text}
     </div>
 }
+
 function Nav() {
     return  <ul className={index.nav}>
         <li className={index.linkItem}>
@@ -55,11 +56,20 @@ function AtlasButton({ link, text, type, style }) {
 }
 
 export default function () {
-    return <LayoutProviders>
-        {/* first slide */}
-        <div className={index.slide1}>
-            <Header />
 
+    return <LayoutProviders>
+        <BrowserOnly>
+            {() => {
+                const slide1 = document.getElementById("slide1");
+                 if (slide1) {
+                     slide1.style.backgroundImage = 'url(https://atlasgo.io/uploads/landing/background.png)'
+                 }
+            }}
+        </BrowserOnly>
+
+        {/* first slide */}
+        <div id="slide1" className={index.slide1}>
+            <Header />
             <div className={index.rowContainer}>
                 <div className={index.slide1LeftSide}>
                     <h2 className={index.title}
@@ -83,11 +93,11 @@ export default function () {
         {/* 2nd slide */}
         <div className={index.slide2}>
             <div className={index.container}>
-                <section className={index.section}>
-                    <h2 className={index.title2} style={{ textAlign: "center", color: "#000939" }}>
+                <section className={index.sectionNoMargin}>
+                    <h2 className={index.titleSecondary} style={{ textAlign: "center", color: "#000939" }}>
                         Define your schemas using the <span style={{color: "#2064E9"}}>Atlas DDL</span>
                     </h2>
-                    <p className={index.paragraph2}
+                    <p className={index.paragraphSecondary}
                        style={{ color: "#757889" }}>
                         Atlas DDL is a declarative, Terraform-like configuration language designed to capture an
                         organization’s data topology. Currently, it supports defining schemas for SQL databases such as
@@ -108,10 +118,10 @@ export default function () {
                 </BrowserOnly>
 
                 <section className={index.section} style={{ marginTop: "10px" }}>
-                   <h2 className={index.title2} style={{ textAlign: "center", color: "#000939" }}>
+                   <h2 className={index.titleSecondary} style={{ textAlign: "center", color: "#000939" }}>
                        Visualize your schemas <br/> using the <span style={{color: "#2064E9"}}>Atlas UI</span>
                    </h2>
-                   <p className={index.paragraph2}
+                   <p className={index.paragraphSecondary}
                       style={{ color: "#757889" }}>
                        With a single command-line flag, Atlas opens up as a rich user interface to visualize and manage your data topology.
                    </p>
@@ -126,13 +136,13 @@ export default function () {
         <div className={index.slide4}>
             <div className={index.container}>
                 <section className={index.section}>
-                    <h1 style={{color: "#000939"}} className={index.title2}>Migrate,&nbsp;<span style={{color: "#2064E9"}}>your way.</span></h1>
-                    <p className={index.paragraph2}>Atlas provides the user with two types of migrations - declarative and versioned.</p>
+                    <h1 style={{color: "#000939"}} className={index.titleSecondary}>Migrate,&nbsp;<span style={{color: "#2064E9"}}>your way.</span></h1>
+                    <p className={index.paragraphSecondary}>Atlas provides the user with two types of migrations - declarative and versioned.</p>
                </section>
 
                 <section className={index.section}>
                     <h2 style={{color: "#000939"}} className={index.subtitle}>Declarative Migrations</h2>
-                    <p className={index.paragraph2}>Declarative migrations are migrations in which the user provides the desired <br /> state, and Atlas gets your schema there instantly.</p>
+                    <p className={index.paragraphSecondary}>Declarative migrations are migrations in which the user provides the desired <br /> state, and Atlas gets your schema there instantly.</p>
                 </section>
 
                 <section className={index.section}>
@@ -140,7 +150,7 @@ export default function () {
                         <h2 style={{color: "#000939", marginRight: "10px"}} className={index.subtitleMargin}>Versioned Migrations</h2>
                         <Chip text="Coming soon" />
                     </div>
-                    <p className={index.paragraph2}>Atlas offers you an alternative workflow, in which migrations are explicitly defined and <br/>
+                    <p className={index.paragraphSecondary}>Atlas offers you an alternative workflow, in which migrations are explicitly defined and <br/>
                         assigned a version. Atlas can then bring a schema to the desired version by following <br/>
                         the migrations between the current version and the specified one.</p>
                 </section>
