@@ -90,7 +90,6 @@ const (
 )
 
 func init() {
-	schemaspec.Register("column", &Column{})
 	schemaspec.Register("table", &Table{})
 	schemaspec.Register("schema", &Schema{})
 }
