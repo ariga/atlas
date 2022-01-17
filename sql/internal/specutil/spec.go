@@ -9,17 +9,6 @@ import (
 	"ariga.io/atlas/sql/sqlspec"
 )
 
-// NewCol is a helper method for constructing *sqlspec.Column instances.
-func NewCol(name string, coltype *schemaspec.Type, attrs ...*schemaspec.Attr) *sqlspec.Column {
-	return &sqlspec.Column{
-		Name: name,
-		Type: coltype,
-		DefaultExtension: schemaspec.DefaultExtension{
-			Extra: schemaspec.Resource{Attrs: attrs},
-		},
-	}
-}
-
 // StrAttr is a helper method for constructing *schemaspec.Attr of type string.
 func StrAttr(k, v string) *schemaspec.Attr {
 	return &schemaspec.Attr{
