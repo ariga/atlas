@@ -6,6 +6,7 @@ package mysql
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"ariga.io/atlas/sql/internal/sqltest"
@@ -625,15 +626,16 @@ func TestDriver_InspectTable(t *testing.T) {
 func TestDriver_InspectSchema(t *testing.T) {
 	tests := []struct {
 		name   string
+		schema string
 		opts   *schema.InspectOptions
 		before func(mock)
 		expect func(*require.Assertions, *schema.Schema, error)
 	}{
 		{
-			name: "no tables",
+			name: "attached schema",
 			before: func(m mock) {
 				m.version("5.7.23")
-				m.ExpectQuery(sqltest.Escape(schemasQuery + " WHERE `SCHEMA_NAME` IN (?)")).
+				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= SCHEMA()"))).
 					WillReturnRows(sqltest.Rows(`
 +-------------+----------------------------+------------------------+
 | SCHEMA_NAME | DEFAULT_CHARACTER_SET_NAME | DEFAULT_COLLATION_NAME |
@@ -671,10 +673,12 @@ func TestDriver_InspectSchema(t *testing.T) {
 			},
 		},
 		{
-			name: "multi table",
+			name:   "multi table",
+			schema: "public",
 			before: func(m mock) {
 				m.version("8.0.13")
-				m.ExpectQuery(sqltest.Escape(schemasQuery + " WHERE `SCHEMA_NAME` IN (?)")).
+				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= ?"))).
+					WithArgs("public").
 					WillReturnRows(sqltest.Rows(`
 +-------------+----------------------------+------------------------+
 | SCHEMA_NAME | DEFAULT_CHARACTER_SET_NAME | DEFAULT_COLLATION_NAME |
@@ -767,7 +771,7 @@ func TestDriver_InspectSchema(t *testing.T) {
 			tt.before(mock{m})
 			drv, err := Open(db)
 			require.NoError(t, err)
-			tables, err := drv.InspectSchema(context.Background(), "public", tt.opts)
+			tables, err := drv.InspectSchema(context.Background(), tt.schema, tt.opts)
 			tt.expect(require.New(t), tables, err)
 		})
 	}
@@ -778,7 +782,7 @@ func TestDriver_Realm(t *testing.T) {
 	require.NoError(t, err)
 	mk := mock{m}
 	mk.version("8.0.13")
-	mk.ExpectQuery(sqltest.Escape(schemasQuery + " WHERE `SCHEMA_NAME` NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')")).
+	mk.ExpectQuery(sqltest.Escape(schemasQuery)).
 		WillReturnRows(sqltest.Rows(`
 +-------------+----------------------------+------------------------+
 | SCHEMA_NAME | DEFAULT_CHARACTER_SET_NAME | DEFAULT_COLLATION_NAME |
@@ -816,7 +820,7 @@ func TestDriver_Realm(t *testing.T) {
 		return r
 	}(), realm)
 
-	mk.ExpectQuery(sqltest.Escape(schemasQuery+" WHERE `SCHEMA_NAME` IN (?, ?)")).
+	mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "IN (?, ?)"))).
 		WithArgs("test", "public").
 		WillReturnRows(sqltest.Rows(`
 +-------------+----------------------------+------------------------+

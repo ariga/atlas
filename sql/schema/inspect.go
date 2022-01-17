@@ -58,8 +58,9 @@ type (
 	// Inspector is the interface implemented by the different database
 	// drivers for inspecting multiple tables.
 	Inspector interface {
-		// InspectSchema returns the schema description by its name. A NotExistError
-		// error is returned if the schema does not exists in the database.
+		// InspectSchema returns the schema description by its name. An empty name means the
+		// "attached schema" (e.g. SCHEMA() in MySQL or CURRENT_SCHEMA() in PostgreSQL).
+		// A NotExistError error is returned if the schema does not exists in the database.
 		InspectSchema(ctx context.Context, name string, opts *InspectOptions) (*Schema, error)
 
 		// InspectTable returns the table description by its name. A NotExistError
