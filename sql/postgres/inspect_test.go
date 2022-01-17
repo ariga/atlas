@@ -6,6 +6,7 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"ariga.io/atlas/sql/internal/sqltest"
@@ -309,7 +310,7 @@ func TestDriver_Realm(t *testing.T) {
 	mk.version("130000")
 	drv, err := Open(db)
 	require.NoError(t, err)
-	mk.ExpectQuery(sqltest.Escape(schemasQuery + " WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast')")).
+	mk.ExpectQuery(sqltest.Escape(schemasQuery)).
 		WillReturnRows(sqltest.Rows(`
     schema_name
 --------------------
@@ -345,7 +346,7 @@ func TestDriver_Realm(t *testing.T) {
 		return r
 	}(), realm)
 
-	mk.ExpectQuery(sqltest.Escape(schemasQuery+" WHERE schema_name IN ($1, $2)")).
+	mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "IN ($1, $2)"))).
 		WithArgs("test", "public").
 		WillReturnRows(sqltest.Rows(`
     schema_name
@@ -379,6 +380,37 @@ func TestDriver_Realm(t *testing.T) {
 		}
 		r.Schemas[0].Realm = r
 		r.Schemas[1].Realm = r
+		return r
+	}(), realm)
+
+	mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= $1"))).
+		WithArgs("test").
+		WillReturnRows(sqltest.Rows(`
+    schema_name
+--------------------
+ test
+`))
+	mk.tables("test")
+	realm, err = drv.InspectRealm(context.Background(), &schema.InspectRealmOption{Schemas: []string{"test"}})
+	require.NoError(t, err)
+	require.EqualValues(t, func() *schema.Realm {
+		r := &schema.Realm{
+			Schemas: []*schema.Schema{
+				{
+					Name: "test",
+				},
+			},
+			// Server default configuration.
+			Attrs: []schema.Attr{
+				&schema.Collation{
+					V: "en_US.utf8",
+				},
+				&CType{
+					V: "en_US.utf8",
+				},
+			},
+		}
+		r.Schemas[0].Realm = r
 		return r
 	}(), realm)
 }

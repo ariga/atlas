@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"ariga.io/atlas/sql/internal/sqlx"
@@ -456,12 +457,10 @@ func (i *inspect) addChecks(t *schema.Table, rows *sql.Rows) error {
 func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) ([]*schema.Schema, error) {
 	var (
 		args  []interface{}
-		query = schemasQuery + " WHERE schema_name "
+		query = schemasQuery
 	)
 	if opts != nil && len(opts.Schemas) > 0 {
-		query, args = inStrings(opts.Schemas, query, args)
-	} else {
-		query += "NOT IN ('information_schema', 'pg_catalog', 'pg_toast')"
+		query, args = inStrings(opts.Schemas, schemasQueryArgs, args)
 	}
 	rows, err := i.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -485,8 +484,7 @@ func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) 
 func (i *inspect) tableNames(ctx context.Context, schema string, opts *schema.InspectOptions) ([]string, error) {
 	query, args := tablesQuery, []interface{}{schema}
 	if opts != nil && len(opts.Tables) > 0 {
-		query += " AND table_name "
-		query, args = inStrings(opts.Tables, query, args)
+		query, args = inStrings(opts.Tables, tablesQueryArgs, args)
 	}
 	rows, err := i.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -500,16 +498,25 @@ func (i *inspect) tableNames(ctx context.Context, schema string, opts *schema.In
 }
 
 func inStrings(s []string, query string, args []interface{}) (string, []interface{}) {
-	query += "IN ("
-	for i := range s {
-		args = append(args, s[i])
-		if i > 0 {
-			query += ", "
+	var b strings.Builder
+	switch len(s) {
+	case 1:
+		args = append(args, s[0])
+		b.WriteString("= $")
+		b.WriteString(strconv.Itoa(len(args)))
+	default:
+		b.WriteString("IN (")
+		for i := range s {
+			args = append(args, s[i])
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteByte('$')
+			b.WriteString(strconv.Itoa(len(args)))
 		}
-		query += fmt.Sprintf("$%d", len(args))
+		b.WriteByte(')')
 	}
-	query += ")"
-	return query, args
+	return fmt.Sprintf(query, b.String()), args
 }
 
 func defaultExpr(c *schema.Column, x string) schema.Expr {
@@ -684,10 +691,16 @@ const (
 	paramsQuery = `SELECT setting FROM pg_settings WHERE name IN ('lc_collate', 'lc_ctype', 'server_version_num') ORDER BY name`
 
 	// Query to list database schemas.
-	schemasQuery = "SELECT schema_name FROM information_schema.schemata"
+	schemasQuery = "SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast') ORDER BY schema_name"
+
+	// Query to list specific database schemas.
+	schemasQueryArgs = "SELECT schema_name FROM information_schema.schemata WHERE schema_name %s ORDER BY schema_name"
 
 	// Query to list schema tables.
 	tablesQuery = "SELECT table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE' AND table_schema = $1 ORDER BY table_name"
+
+	// Query to list specific schema tables.
+	tablesQueryArgs = "SELECT table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE' AND table_schema = $1 AND table_name %s ORDER BY table_name"
 
 	// Query to list table information.
 	tableQuery = `
