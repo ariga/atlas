@@ -51,8 +51,12 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 	return realm, nil
 }
 
-// InspectSchema returns schema descriptions of all tables in the given schema.
+// InspectSchema returns schema descriptions of the tables in the given schema.
+// If the schema name is empty, the "main" database is used.
 func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.InspectOptions) (*schema.Schema, error) {
+	if name == "" {
+		name = mainFile
+	}
 	schemas, err := i.databases(ctx, &schema.InspectRealmOption{
 		Schemas: []string{name},
 	})
@@ -84,10 +88,10 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 
 // InspectTable returns the schema description of the given table.
 func (i *inspect) InspectTable(ctx context.Context, name string, opts *schema.InspectTableOptions) (*schema.Table, error) {
-	if opts != nil && opts.Schema != "main" {
+	if opts != nil && opts.Schema != mainFile {
 		return nil, fmt.Errorf("sqlite: querying attached database is not supported. got: %q", opts.Schema)
 	}
-	s, err := i.InspectSchema(ctx, "main", &schema.InspectOptions{
+	s, err := i.InspectSchema(ctx, mainFile, &schema.InspectOptions{
 		Tables: []string{name},
 	})
 	if err != nil {
@@ -648,6 +652,8 @@ func fillChecks(t *schema.Table) error {
 }
 
 const (
+	// Name of main database file.
+	mainFile = "main"
 	// Query to list attached database files.
 	databasesQuery = "SELECT `name`, `file` FROM pragma_database_list()"
 	// Query to list database tables.
