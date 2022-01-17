@@ -175,6 +175,7 @@ func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 	return col, nil
 }
 
+// checkSpec converts from a concrete MySQL schema.Check into a sqlspec.Check.
 func checkSpec(s *schema.Check) *sqlspec.Check {
 	c := specutil.FromCheck(s)
 	if e := (Enforced{}); sqlx.Has(s.Attrs, &e) {
