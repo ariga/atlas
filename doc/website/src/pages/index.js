@@ -56,19 +56,9 @@ function AtlasButton({ link, text, type, style }) {
 }
 
 export default function () {
-
     return <LayoutProviders>
-        <BrowserOnly>
-            {() => {
-                const slide1 = document.getElementById("slide1");
-                 if (slide1) {
-                     slide1.style.backgroundImage = 'url(https://atlasgo.io/uploads/landing/background.png)'
-                 }
-            }}
-        </BrowserOnly>
-
         {/* first slide */}
-        <div id="slide1" className={index.slide1}>
+        <div id="slide1" className={index.slide1} style={{backgroundImage:'url(https://atlasgo.io/uploads/landing/background.png)'}}>
             <Header />
             <div className={index.rowContainer}>
                 <div className={index.slide1LeftSide}>
