@@ -46,11 +46,10 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 	return realm, nil
 }
 
-// InspectSchema returns schema descriptions of all tables in the given schema.
+// InspectSchema returns schema descriptions of the tables in the given schema.
+// If the schema name is empty, the result will be the attached schema.
 func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.InspectOptions) (*schema.Schema, error) {
-	schemas, err := i.schemas(ctx, &schema.InspectRealmOption{
-		Schemas: []string{name},
-	})
+	schemas, err := i.schemas(ctx, &schema.InspectRealmOption{Schemas: []string{name}})
 	if err != nil {
 		return nil, err
 	}
@@ -59,11 +58,11 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 			Err: fmt.Errorf("mysql: schema %q was not found", name),
 		}
 	}
-	names, err := i.tableNames(ctx, name, opts)
+	s := schemas[0]
+	names, err := i.tableNames(ctx, s.Name, opts)
 	if err != nil {
 		return nil, err
 	}
-	s := schemas[0]
 	for _, name := range names {
 		t, err := i.inspectTable(ctx, name, &schema.InspectTableOptions{Schema: s.Name}, s)
 		if err != nil {
@@ -111,13 +110,19 @@ func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) 
 		args  []interface{}
 		query = schemasQuery
 	)
-	if opts != nil && len(opts.Schemas) > 0 {
-		query += " WHERE `SCHEMA_NAME` IN (" + strings.Repeat("?, ", len(opts.Schemas)-1) + "?)"
-		for _, s := range opts.Schemas {
-			args = append(args, s)
+	if opts != nil {
+		switch n := len(opts.Schemas); {
+		case n == 1 && opts.Schemas[0] == "":
+			query = fmt.Sprintf(schemasQueryArgs, "= SCHEMA()")
+		case n == 1 && opts.Schemas[0] != "":
+			query = fmt.Sprintf(schemasQueryArgs, "= ?")
+			args = append(args, opts.Schemas[0])
+		case n > 0:
+			query = fmt.Sprintf(schemasQueryArgs, "IN ("+strings.Repeat("?, ", len(opts.Schemas)-1)+"?)")
+			for _, s := range opts.Schemas {
+				args = append(args, s)
+			}
 		}
-	} else {
-		query += " WHERE `SCHEMA_NAME` NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')"
 	}
 	rows, err := i.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -583,7 +588,10 @@ const (
 	variablesQuery = "SELECT @@version, @@collation_server, @@character_set_server"
 
 	// Query to list database schemas.
-	schemasQuery = "SELECT `SCHEMA_NAME`, `DEFAULT_CHARACTER_SET_NAME`, `DEFAULT_COLLATION_NAME` from `INFORMATION_SCHEMA`.`SCHEMATA`"
+	schemasQuery = "SELECT `SCHEMA_NAME`, `DEFAULT_CHARACTER_SET_NAME`, `DEFAULT_COLLATION_NAME` from `INFORMATION_SCHEMA`.`SCHEMATA` WHERE `SCHEMA_NAME` NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys') ORDER BY `SCHEMA_NAME`"
+
+	// Query to list specific database schemas.
+	schemasQueryArgs = "SELECT `SCHEMA_NAME`, `DEFAULT_CHARACTER_SET_NAME`, `DEFAULT_COLLATION_NAME` from `INFORMATION_SCHEMA`.`SCHEMATA` WHERE `SCHEMA_NAME` %s ORDER BY `SCHEMA_NAME`"
 
 	// Query to list schema tables.
 	tablesQuery = "SELECT `TABLE_NAME` FROM `INFORMATION_SCHEMA`.`TABLES` WHERE `TABLE_TYPE` = 'BASE TABLE' AND `TABLE_SCHEMA` = ? ORDER BY `TABLE_NAME`"
