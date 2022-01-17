@@ -45,24 +45,31 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 	return realm, nil
 }
 
-// InspectSchema returns schema descriptions of all tables in the given schema.
-func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.InspectOptions) (*schema.Schema, error) {
-	schemas, err := i.schemas(ctx, &schema.InspectRealmOption{
-		Schemas: []string{name},
-	})
-	if err != nil {
-		return nil, err
-	}
-	if len(schemas) == 0 {
-		return nil, &schema.NotExistError{
-			Err: fmt.Errorf("postgres: schema %q was not found", name),
+// InspectSchema returns schema descriptions of the tables in the given schema.
+// If the schema name is empty, the result will be the attached schema.
+func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.InspectOptions) (s *schema.Schema, err error) {
+	var schemas []*schema.Schema
+	switch name {
+	case "":
+		if err := i.QueryRowContext(ctx, "SELECT CURRENT_SCHEMA()").Scan(&name); err != nil {
+			return nil, fmt.Errorf("postgres: failed querying attached schema: %w", err)
+		}
+		schemas = append(schemas, &schema.Schema{Name: name})
+	default:
+		if schemas, err = i.schemas(ctx, &schema.InspectRealmOption{Schemas: []string{name}}); err != nil {
+			return nil, err
+		}
+		if len(schemas) == 0 {
+			return nil, &schema.NotExistError{
+				Err: fmt.Errorf("postgres: schema %q was not found", name),
+			}
 		}
 	}
 	names, err := i.tableNames(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	s := schemas[0]
+	s = schemas[0]
 	for _, name := range names {
 		t, err := i.inspectTable(ctx, name, &schema.InspectTableOptions{Schema: s.Name}, s)
 		if err != nil {

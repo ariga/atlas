@@ -303,6 +303,44 @@ func TestDriver_InspectTable(t *testing.T) {
 	}
 }
 
+func TestDriver_InspectSchema(t *testing.T) {
+	db, m, err := sqlmock.New()
+	require.NoError(t, err)
+	mk := mock{m}
+	mk.version("130000")
+	drv, err := Open(db)
+	require.NoError(t, err)
+	mk.ExpectQuery(sqltest.Escape("SELECT CURRENT_SCHEMA()")).
+		WillReturnRows(sqltest.Rows(`
+    schema_name
+--------------------
+ test
+`))
+	mk.tables("test")
+	s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{})
+	require.NoError(t, err)
+	require.EqualValues(t, func() *schema.Schema {
+		r := &schema.Realm{
+			Schemas: []*schema.Schema{
+				{
+					Name: "test",
+				},
+			},
+			// Server default configuration.
+			Attrs: []schema.Attr{
+				&schema.Collation{
+					V: "en_US.utf8",
+				},
+				&CType{
+					V: "en_US.utf8",
+				},
+			},
+		}
+		r.Schemas[0].Realm = r
+		return r.Schemas[0]
+	}(), s)
+}
+
 func TestDriver_Realm(t *testing.T) {
 	db, m, err := sqlmock.New()
 	require.NoError(t, err)
