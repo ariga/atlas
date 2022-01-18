@@ -31,18 +31,13 @@ module.exports = {
             ]
         },
         {
-            type: 'category',
-            label: 'CLI Reference',
-            items: [
-                'CLI/atlas',
-                'CLI/atlas_env',
-                'CLI/atlas_schema',
-                'CLI/atlas_schema_apply',
-                'CLI/atlas_schema_inspect',
-                'CLI/atlas_version',
-                'ui/atlas-ui-intro',
-            ]
-        }
+            type: 'doc',
+            id: 'cli-reference',
+        },
+        {
+            type: 'doc',
+            id: 'ui/atlas-ui-intro',
+        },
     ],
 
     // But you can create a sidebar manually
