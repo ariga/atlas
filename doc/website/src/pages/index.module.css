@@ -83,16 +83,19 @@ img {
   line-height: 32px;
   font-weight: 900;
   margin: 15px 0;
+  color: #000939;
 }
 
 .subtitle {
   font-size: 22px;
   line-height: 25px;
   text-align: center;
+  color: #000939;
 }
 
 .subtitleMargin {
   margin-bottom: 10px;
+  color: #000939;
 }
 
 .subtitleWithChipWrapper {
@@ -487,5 +490,15 @@ and (min-width: 1100px) {
   }
 }
 
-
-
+html[data-theme='dark'] .titleSecondary {
+  color: white;
+}
+html[data-theme='dark'] .subtitle {
+  color: white;
+}
+html[data-theme='dark'] .subtitle2 {
+  color: white;
+}
+html[data-theme='dark'] .subtitleMargin {
+  color: white;
+}
