@@ -102,7 +102,7 @@ export default function () {
                 <BrowserOnly>
                     {() => {
                         const mobile = window.innerWidth < 768;
-                        const erdImage = mobile ? "https://atlasgo.io/uploads/images/erd_2.png" : "https://atlasgo.io/uploads/images/erd_1.png";
+                        const erdImage = mobile ? "https://atlasgo.io/uploads/images/erd_2.png" : "https://atlasgo.io/uploads/erd-180122.png";
                         return <img style={{margin: "20px 0" }} src={erdImage} alt="erd"/>
                     }}
                 </BrowserOnly>
@@ -118,7 +118,7 @@ export default function () {
                </section>
                 <AtlasButton text="Get Started" link="/ui/intro" type="secondaryButton"/>
 
-                <img style={{ maxWidth: "65%", maxHeight: "70%", marginTop: "20px" }} src="https://atlasgo.io/uploads/images/schema_screen.png" alt="ent"/>
+                <img  className={index.dashboardImage} src="https://atlasgo.io/uploads/atlas-ui-180122.png" alt="ent"/>
             </div>
         </div>
 
@@ -132,7 +132,7 @@ export default function () {
 
                 <section className={index.section}>
                     <h2 style={{color: "#000939"}} className={index.subtitle}>Declarative Migrations</h2>
-                    <p className={index.paragraphSecondary}>Declarative migrations are migrations in which the user provides the desired <br /> state, and Atlas gets your schema there instantly.</p>
+                    <p className={index.paragraphSecondary}>Declarative migrations are migrations in which the user provides the desired state, and Atlas gets your schema there instantly.</p>
                 </section>
 
                 <section className={index.section}>
@@ -140,8 +140,8 @@ export default function () {
                         <h2 style={{color: "#000939", marginRight: "10px"}} className={index.subtitleMargin}>Versioned Migrations</h2>
                         <Chip text="Coming soon" />
                     </div>
-                    <p className={index.paragraphSecondary}>Atlas offers you an alternative workflow, in which migrations are explicitly defined and <br/>
-                        assigned a version. Atlas can then bring a schema to the desired version by following <br/>
+                    <p className={index.paragraphSecondary}>Atlas offers you an alternative workflow, in which migrations are explicitly defined and
+                        assigned a version. Atlas can then bring a schema to the desired version by following
                         the migrations between the current version and the specified one.</p>
                 </section>
             </div>
