@@ -13,6 +13,11 @@
   height: 65px;
 }
 
+.navbar__logo {
+  display: flex;
+  align-items: center;
+}
+
 .footer__title {
   font-size: 22px;
 }
