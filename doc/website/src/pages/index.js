@@ -16,15 +16,21 @@ function Chip({ text }) {
 function Nav() {
     return  <ul className={index.nav}>
         <li className={index.linkItem}>
-            <Link to="/CLI/atlas">
-                Docs
-            </Link>
-        </li>
-        <li className={index.linkItem}>
             <Link to={"/cli/getting-started/setting-up"}>
                 Getting Started
             </Link>
         </li>
+        <li className={index.linkItem}>
+            <Link to="/cli/reference">
+                Reference
+            </Link>
+        </li>
+        <li className={index.linkItem}>
+            <Link to="https://pkg.go.dev/ariga.io/atlas">
+                GoDoc
+            </Link>
+        </li>
+
     </ul>
 }
 

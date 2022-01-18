@@ -13,7 +13,7 @@ var version string
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Show atlas CLI version",
+	Short: "Prints this Atlas CLI version information.",
 	Run: func(cmd *cobra.Command, args []string) {
 		v, u := parse(version)
 		RootCmd.Println(fmt.Sprintf("atlas CLI version %s\n%s", v, u))

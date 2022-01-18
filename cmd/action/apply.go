@@ -22,8 +22,11 @@ var (
 	// ApplyCmd represents the apply command.
 	ApplyCmd = &cobra.Command{
 		Use:   "apply",
-		Short: "Apply an atlas schema to a data source",
-		Run:   CmdApplyRun,
+		Short: "Apply an atlas schema to a target database.",
+		Long: "`atlas schema apply`" + ` plans and executes a database migration to be bring a given database
+to the state described in the Atlas schema file. Before running the migration, Atlas will print the migration
+plan and prompt the user for approval.`,
+		Run: CmdApplyRun,
 		Example: `
 atlas schema apply -d "mysql://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
 atlas schema apply -d "mariadb://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl

@@ -10,13 +10,15 @@ import (
 
 var envCmd = &cobra.Command{
 	Use:   "env",
-	Short: "Print atlas env params",
-	Long: `Env prints atlas environment information.
-Every set environment param will print in the form of NAME=VALUE.
+	Short: "Print atlas environment variables.",
+	Long: "`atlas env`" + `prints atlas environment information.
+
+Every set environment param will be printed in the form of NAME=VALUE.
 
 List of supported environment parameters:
-"ATLAS_NO_UPDATE_NOTIFIER": On any command, the CLI will check for updates with the GitHub public API once every 24 hours.
-To cancel this behavior, set the environment parameter "ATLAS_NO_UPDATE_NOTIFIER".`,
+* *ATLAS_NO_UPDATE_NOTIFIER*: On any command, the CLI will check for new releases using the GitHub API.
+  This check will happen at most once every 24 hours. To cancel this behavior, set the environment 
+  variable "ATLAS_NO_UPDATE_NOTIFIER".`,
 	Run: func(cmd *cobra.Command, args []string) {
 		keys := []string{update.AtlasNoUpdateNotifier}
 		for _, k := range keys {
