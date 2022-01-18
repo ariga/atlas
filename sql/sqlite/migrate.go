@@ -6,8 +6,6 @@ package sqlite
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -398,22 +396,22 @@ func (s *state) tableSeq(ctx context.Context, add *schema.AddTable) error {
 		return nil
 	}
 	// SQLite tracks the AUTOINCREMENT in the "sqlite_sequence" table that is created and initialized automatically
-	// whenever such table is created. However, the rows are populated after the first insertion, and therefore, we
-	// check if the sequence row exists, and we either created it for non zero sequence, or update it if it is 0 and
-	// the configured sequence is > 0.
-	var seq int64
-	switch err := s.QueryRowContext(ctx, "SELECT seq FROM sqlite_sequence WHERE name = ?", add.T.Name).Scan(&seq); {
-	case errors.Is(err, sql.ErrNoRows):
+	// whenever the first "PRIMARY KEY AUTOINCREMENT" is created. However, rows in this table are populated after the
+	// first insertion to the associated table (name, seq). Therefore, we check if the sequence table and the row exist,
+	// and in case they are not, we insert a new non zero sequence to it.
+	rows, err := s.QueryContext(ctx, "SELECT seq FROM sqlite_sequence WHERE name = ?", add.T.Name)
+	if err != nil || !rows.Next() {
 		s.append(&migrate.Change{
 			Cmd:     fmt.Sprintf("INSERT INTO sqlite_sequence (name, seq) VALUES (%q, %d)", add.T.Name, inc.Seq),
 			Source:  add,
 			Reverse: fmt.Sprintf("UPDATE sqlite_sequence SET seq = 0 WHERE name = %q", add.T.Name),
 			Comment: fmt.Sprintf("set sequence for %q table", add.T.Name),
 		})
-	case err != nil:
-		return fmt.Errorf("query sequence value for table %q: %w", add.T.Name, err)
 	}
-	return nil
+	if rows != nil {
+		err = rows.Close()
+	}
+	return err
 }
 
 func (s *state) append(c *migrate.Change) {

@@ -51,8 +51,12 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 	var schemas []*schema.Schema
 	switch name {
 	case "":
-		if err := i.QueryRowContext(ctx, "SELECT CURRENT_SCHEMA()").Scan(&name); err != nil {
-			return nil, fmt.Errorf("postgres: failed querying attached schema: %w", err)
+		rows, err := i.QueryContext(ctx, "SELECT CURRENT_SCHEMA()")
+		if err != nil {
+			return nil, fmt.Errorf("postgres: query attached schema: %w", err)
+		}
+		if err := sqlx.ScanOne(rows, &name); err != nil {
+			return nil, fmt.Errorf("postgres: scan attached schema: %w", err)
 		}
 		schemas = append(schemas, &schema.Schema{Name: name})
 	default:
@@ -121,9 +125,14 @@ func (i *inspect) table(ctx context.Context, name string, opts *schema.InspectTa
 		query = tableSchemaQuery
 		args = append(args, opts.Schema)
 	}
-	row := i.QueryRowContext(ctx, query, args...)
-	var tSchema, comment sql.NullString
-	if err := row.Scan(&tSchema, &comment); err != nil {
+	var (
+		tSchema, comment sql.NullString
+		rows, err        = i.QueryContext(ctx, query, args...)
+	)
+	if err != nil {
+		return nil, err
+	}
+	if err := sqlx.ScanOne(rows, &tSchema, &comment); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, &schema.NotExistError{
 				Err: fmt.Errorf("postgres: table %q was not found", name),

@@ -424,17 +424,11 @@ type mock struct {
 }
 
 func (m mock) systemVars(version string) {
-	m.ExpectQuery(sqltest.Escape("SELECT sqlite_version()")).
+	m.ExpectQuery(sqltest.Escape("SELECT sqlite_version(), foreign_keys from pragma_foreign_keys")).
 		WillReturnRows(sqltest.Rows(`
-  version   
-------------
- ` + version + `
-`))
-	m.ExpectQuery(sqltest.Escape("PRAGMA foreign_keys")).
-		WillReturnRows(sqltest.Rows(`
-  foreign_keys   
-------------
-    1
+     version    |   foreign_keys    
+----------------+-----------------
+ ` + version + `|       1
 `))
 	m.ExpectQuery(sqltest.Escape("SELECT name FROM pragma_collation_list()")).
 		WillReturnRows(sqltest.Rows(`

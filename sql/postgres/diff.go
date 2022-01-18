@@ -5,6 +5,7 @@
 package postgres
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -267,7 +268,11 @@ func (d *diff) valuesEqual(x, y string) (bool, error) {
 	var b bool
 	// The DEFAULT expressions are safe to be inlined in the SELECT
 	// statement same as we inline them in the CREATE TABLE statement.
-	if err := d.QueryRow(fmt.Sprintf("SELECT %s = %s", x, y)).Scan(&b); err != nil {
+	rows, err := d.QueryContext(context.Background(), fmt.Sprintf("SELECT %s = %s", x, y))
+	if err != nil {
+		return false, err
+	}
+	if err := sqlx.ScanOne(rows, &b); err != nil {
 		return false, err
 	}
 	return b, nil
@@ -279,7 +284,11 @@ func (d *diff) typesEqual(x, y string) (bool, error) {
 	var b bool
 	// The datatype are safe to be inlined in the SELECT statement
 	// same as we inline them in the CREATE TABLE statement.
-	if err := d.QueryRow(fmt.Sprintf("SELECT '%s'::regtype = '%s'::regtype", x, y)).Scan(&b); err != nil {
+	rows, err := d.QueryContext(context.Background(), fmt.Sprintf("SELECT '%s'::regtype = '%s'::regtype", x, y))
+	if err != nil {
+		return false, err
+	}
+	if err := sqlx.ScanOne(rows, &b); err != nil {
 		return false, err
 	}
 	return b, nil

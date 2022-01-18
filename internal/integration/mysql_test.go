@@ -891,6 +891,7 @@ create table atlas_types_sanity
 					},
 				},
 			}
+			rmCreateStmt(ts)
 			require.EqualValues(t, &expected, ts)
 			t.hclDriftTest(n, realm, expected)
 		})
@@ -947,6 +948,7 @@ create table atlas_types_sanity
 					}(),
 				},
 			}
+			rmCreateStmt(ts)
 			require.EqualValues(t, &expected, ts)
 		})
 	})
@@ -1166,5 +1168,15 @@ func (t *myTest) hclDriftTest(n string, realm *schema.Realm, expected schema.Tab
 	require.Len(t, realm.Schemas, 1)
 	ts, ok := realm.Schemas[0].Table(n)
 	require.True(t, ok)
+	rmCreateStmt(ts)
 	require.EqualValues(t, &expected, ts)
+}
+
+func rmCreateStmt(t *schema.Table) {
+	for i := range t.Attrs {
+		if _, ok := t.Attrs[i].(*mysql.CreateStmt); ok {
+			t.Attrs = append(t.Attrs[:i], t.Attrs[i+1:]...)
+			return
+		}
+	}
 }
