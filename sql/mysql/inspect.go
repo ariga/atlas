@@ -160,12 +160,15 @@ func (i *inspect) table(ctx context.Context, name string, opts *schema.InspectTa
 		query = tableSchemaQuery
 		args = append(args, opts.Schema)
 	}
-	row := i.QueryRowContext(ctx, query, args...)
+	rows, err := i.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
 	var (
 		autoinc                                       sql.NullInt64
 		tSchema, charset, collation, comment, options sql.NullString
 	)
-	if err := row.Scan(&tSchema, &charset, &collation, &autoinc, &comment, &options); err != nil {
+	if err := sqlx.ScanOne(rows, &tSchema, &charset, &collation, &autoinc, &comment, &options); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, &schema.NotExistError{
 				Err: fmt.Errorf("mysql: table %q was not found", name),
@@ -199,6 +202,9 @@ func (i *inspect) table(ctx context.Context, name string, opts *schema.InspectTa
 			V: autoinc.Int64,
 		})
 	}
+	if err := i.createStmt(ctx, t); err != nil {
+		return nil, err
+	}
 	return t, nil
 }
 
@@ -210,7 +216,7 @@ func (i *inspect) columns(ctx context.Context, t *schema.Table) error {
 	}
 	defer rows.Close()
 	for rows.Next() {
-		if err := i.addColumn(ctx, t, rows); err != nil {
+		if err := i.addColumn(t, rows); err != nil {
 			return fmt.Errorf("mysql: %w", err)
 		}
 	}
@@ -218,7 +224,7 @@ func (i *inspect) columns(ctx context.Context, t *schema.Table) error {
 }
 
 // addColumn scans the current row and adds a new column from it to the table.
-func (i *inspect) addColumn(ctx context.Context, t *schema.Table, rows *sql.Rows) error {
+func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 	var name, typ, comment, nullable, key, defaults, extra, charset, collation sql.NullString
 	if err := rows.Scan(&name, &typ, &comment, &nullable, &key, &defaults, &extra, &charset, &collation); err != nil {
 		return err
@@ -235,7 +241,7 @@ func (i *inspect) addColumn(ctx context.Context, t *schema.Table, rows *sql.Rows
 		return err
 	}
 	c.Type.Type = ct
-	if err := i.extraAttr(ctx, t, c, extra.String); err != nil {
+	if err := i.extraAttr(t, c, extra.String); err != nil {
 		return err
 	}
 	if sqlx.ValidString(defaults) {
@@ -436,7 +442,7 @@ func (i *inspect) tableNames(ctx context.Context, schema string, opts *schema.In
 
 // extraAttr parses the EXTRA column from the INFORMATION_SCHEMA.COLUMNS table
 // and appends its parsed representation to the column.
-func (i *inspect) extraAttr(ctx context.Context, t *schema.Table, c *schema.Column, extra string) error {
+func (i *inspect) extraAttr(t *schema.Table, c *schema.Column, extra string) error {
 	switch extra := strings.ToLower(extra); extra {
 	case "", "null": // ignore.
 	case defaultGen:
@@ -448,7 +454,7 @@ func (i *inspect) extraAttr(ctx context.Context, t *schema.Table, c *schema.Colu
 		// from INFORMATION_SCHEMA, it is due to information_schema_stats_expiry and we
 		// need to extract it from the 'CREATE TABLE' command.
 		if !sqlx.Has(t.Attrs, a) {
-			inc, err := i.loadAutoinc(ctx, t)
+			inc, err := i.autoinc(t)
 			if err != nil {
 				return err
 			}
@@ -467,11 +473,11 @@ func (i *inspect) extraAttr(ctx context.Context, t *schema.Table, c *schema.Colu
 
 var reAutoinc = regexp.MustCompile(`(?i)\s+AUTO_INCREMENT\s*=\s*(\d+)\s+`)
 
-// loadAutoinc loads the updated AUTO_INCREMENT from CREATE TABLE.
-func (i *inspect) loadAutoinc(ctx context.Context, t *schema.Table) (*AutoIncrement, error) {
-	c, err := i.createStmt(ctx, t)
-	if err != nil {
-		return nil, err
+// autoinc extracts the updated AUTO_INCREMENT from CREATE TABLE.
+func (i *inspect) autoinc(t *schema.Table) (*AutoIncrement, error) {
+	var c CreateStmt
+	if !sqlx.Has(t.Attrs, &c) {
+		return nil, fmt.Errorf("missing CREATE TABLE statment in attribuets for %q", t.Name)
 	}
 	matches := reAutoinc.FindStringSubmatch(c.S)
 	if len(matches) != 2 {
@@ -485,16 +491,17 @@ func (i *inspect) loadAutoinc(ctx context.Context, t *schema.Table) (*AutoIncrem
 }
 
 // createStmt loads the CREATE TABLE statement for the table.
-func (i *inspect) createStmt(ctx context.Context, t *schema.Table) (*CreateStmt, error) {
+func (i *inspect) createStmt(ctx context.Context, t *schema.Table) error {
 	c := &CreateStmt{}
-	if sqlx.Has(t.Attrs, c) {
-		return c, nil
+	rows, err := i.QueryContext(ctx, Build("SHOW CREATE TABLE").Table(t).String())
+	if err != nil {
+		return fmt.Errorf("query CREATE TABLE %q: %w", t.Name, err)
 	}
-	if err := i.QueryRowContext(ctx, Build("SHOW CREATE TABLE").Table(t).String()).Scan(&sql.NullString{}, &c.S); err != nil {
-		return nil, fmt.Errorf("query CREATE TABLE %q: %w", t.Name, err)
+	if err := sqlx.ScanOne(rows, &sql.NullString{}, &c.S); err != nil {
+		return fmt.Errorf("scan CREATE TABLE %q: %w", t.Name, err)
 	}
 	t.Attrs = append(t.Attrs, c)
-	return c, nil
+	return nil
 }
 
 // myDefaultExpr returns the correct schema.Expr based on the column attributes for MySQL.

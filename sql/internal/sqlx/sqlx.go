@@ -20,6 +20,18 @@ func ValidString(s sql.NullString) bool {
 	return s.Valid && s.String != "" && strings.ToLower(s.String) != "null"
 }
 
+// ScanOne scans one record and closes the rows at the end.
+func ScanOne(rows *sql.Rows, dest ...interface{}) error {
+	defer rows.Close()
+	if !rows.Next() {
+		return sql.ErrNoRows
+	}
+	if err := rows.Scan(dest...); err != nil {
+		return err
+	}
+	return rows.Close()
+}
+
 // ScanFKs scans the rows and adds the foreign-key to the table.
 // Reference elements are added as stubs and should be linked
 // manually by the caller.

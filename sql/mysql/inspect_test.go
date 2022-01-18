@@ -64,6 +64,14 @@ func TestDriver_InspectTable(t *testing.T) {
 | test         | utf8mb4            | utf8mb4_0900_ai_ci | nil            | Comment       | COMPRESSION="ZLIB" |
 +--------------+--------------------+--------------------+----------------+---------------+--------------------+
 `))
+				m.ExpectQuery(sqltest.Escape("SHOW CREATE TABLE `test`.`users`")).
+					WillReturnRows(sqltest.Rows(`
++-------+---------------------------------------------------------------------------------------------------------------------------------------------+
+| Table | Create Table                                                                                                                                |
++-------+---------------------------------------------------------------------------------------------------------------------------------------------+
+| users | CREATE TABLE users (id bigint NOT NULL AUTO_INCREMENT) ENGINE=InnoDB AUTO_INCREMENT=55834574848 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin |
++-------+---------------------------------------------------------------------------------------------------------------------------------------------+
+`))
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("test", "users").
 					WillReturnRows(sqltest.Rows(`
@@ -72,14 +80,6 @@ func TestDriver_InspectTable(t *testing.T) {
 +--------------------+----------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
 | id                 | bigint(20)           |                      | NO          | PRI        | NULL           | auto_increment | NULL               | NULL           |
 +--------------------+----------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
-`))
-				m.ExpectQuery(sqltest.Escape("SHOW CREATE TABLE `test`.`users`")).
-					WillReturnRows(sqltest.Rows(`
-+-------+---------------------------------------------------------------------------------------------------------------------------------------------+
-| Table | Create Table                                                                                                                                |
-+-------+---------------------------------------------------------------------------------------------------------------------------------------------+
-| users | CREATE TABLE users (id bigint NOT NULL AUTO_INCREMENT) ENGINE=InnoDB AUTO_INCREMENT=55834574848 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin |
-+-------+---------------------------------------------------------------------------------------------------------------------------------------------+
 `))
 				m.noIndexes()
 				m.noFKs()
@@ -606,7 +606,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c1", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
 				}
 				require.EqualValues(columns, t.Columns)
-				require.EqualValues([]schema.Attr{&schema.Check{Name: "users_chk_1", Expr: "(`c6` <>_latin1\\'foo\\'s\\')", Attrs: []schema.Attr{&Enforced{}}}}, t.Attrs)
+				require.EqualValues([]schema.Attr{&CreateStmt{S: "CREATE TABLE users()"}, &schema.Check{Name: "users_chk_1", Expr: "(`c6` <>_latin1\\'foo\\'s\\')", Attrs: []schema.Attr{&Enforced{}}}}, t.Attrs)
 			},
 		},
 	}
@@ -911,6 +911,14 @@ func (m mock) tableExists(schema, table string, exists bool) {
 	m.ExpectQuery(sqltest.Escape(tableQuery)).
 		WithArgs(table).
 		WillReturnRows(rows)
+	m.ExpectQuery(sqltest.Escape(fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`", schema, table))).
+		WillReturnRows(sqltest.Rows(`
++-------------+--------------------------------------+
+|    Table    | Create Table                         |
++-------------+--------------------------------------+
+|` + table + `| CREATE TABLE ` + table + `()         |
++-------------+--------------------------------------+
+`))
 }
 
 func (m mock) tableExistsInSchema(schema, table string, exists bool) {
@@ -921,4 +929,12 @@ func (m mock) tableExistsInSchema(schema, table string, exists bool) {
 	m.ExpectQuery(sqltest.Escape(tableSchemaQuery)).
 		WithArgs(table, schema).
 		WillReturnRows(rows)
+	m.ExpectQuery(sqltest.Escape(fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`", schema, table))).
+		WillReturnRows(sqltest.Rows(`
++-------------+--------------------------------------+
+|    Table    | Create Table                         |
++-------------+--------------------------------------+
+|` + table + `| CREATE TABLE ` + table + `()         |
++-------------+--------------------------------------+
+`))
 }

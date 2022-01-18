@@ -5,6 +5,7 @@
 package sqlite
 
 import (
+	"context"
 	"fmt"
 
 	"ariga.io/atlas/sql/internal/sqlx"
@@ -34,16 +35,19 @@ type (
 
 // Open opens a new SQLite driver.
 func Open(db schema.ExecQuerier) (*Driver, error) {
-	c := conn{ExecQuerier: db}
-	if err := db.QueryRow("SELECT sqlite_version()").Scan(&c.version); err != nil {
-		return nil, fmt.Errorf("sqlite: scanning database version: %w", err)
-	}
-	if err := db.QueryRow("PRAGMA foreign_keys").Scan(&c.fkEnabled); err != nil {
-		return nil, fmt.Errorf("sqlite: check foreign_keys pragma: %w", err)
-	}
-	rows, err := db.Query("SELECT name FROM pragma_collation_list()")
+	var (
+		c   = conn{ExecQuerier: db}
+		ctx = context.Background()
+	)
+	rows, err := db.QueryContext(ctx, "SELECT sqlite_version(), foreign_keys from pragma_foreign_keys")
 	if err != nil {
-		return nil, fmt.Errorf("sqlite: check collation_list pragma: %w", err)
+		return nil, fmt.Errorf("sqlite: query version and foreign_keys pragma: %w", err)
+	}
+	if err := sqlx.ScanOne(rows, &c.version, &c.fkEnabled); err != nil {
+		return nil, fmt.Errorf("sqlite: scan version and foreign_keys pragma: %w", err)
+	}
+	if rows, err = db.QueryContext(ctx, "SELECT name FROM pragma_collation_list()"); err != nil {
+		return nil, fmt.Errorf("sqlite: query foreign_keys pragma: %w", err)
 	}
 	if c.collations, err = sqlx.ScanStrings(rows); err != nil {
 		return nil, fmt.Errorf("sqlite: scanning database collations: %w", err)

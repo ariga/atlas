@@ -5,6 +5,7 @@
 package mysql
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -38,8 +39,12 @@ type (
 // Open opens a new MySQL driver.
 func Open(db schema.ExecQuerier) (*Driver, error) {
 	c := conn{ExecQuerier: db}
-	if err := db.QueryRow(variablesQuery).Scan(&c.version, &c.collate, &c.charset); err != nil {
-		return nil, fmt.Errorf("mysql: scanning system variables: %w", err)
+	rows, err := db.QueryContext(context.Background(), variablesQuery)
+	if err != nil {
+		return nil, fmt.Errorf("mysql: query system variables: %w", err)
+	}
+	if err := sqlx.ScanOne(rows, &c.version, &c.collate, &c.charset); err != nil {
+		return nil, fmt.Errorf("mysql: scan system variables: %w", err)
 	}
 	return &Driver{
 		conn:        c,

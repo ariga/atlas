@@ -5,6 +5,7 @@
 package postgres
 
 import (
+	"context"
 	"fmt"
 
 	"ariga.io/atlas/sql/internal/sqlx"
@@ -37,18 +38,13 @@ type (
 // Open opens a new PostgreSQL driver.
 func Open(db schema.ExecQuerier) (*Driver, error) {
 	c := conn{ExecQuerier: db}
-	rows, err := db.Query(paramsQuery)
+	rows, err := db.QueryContext(context.Background(), paramsQuery)
 	if err != nil {
 		return nil, fmt.Errorf("postgres: scanning system variables: %w", err)
 	}
-	defer rows.Close()
-	params := make([]string, 0, 3)
-	for rows.Next() {
-		var v string
-		if err := rows.Scan(&v); err != nil {
-			return nil, fmt.Errorf("postgres: failed scanning row value: %w", err)
-		}
-		params = append(params, v)
+	params, err := sqlx.ScanStrings(rows)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: failed scanning row value: %w", err)
 	}
 	if len(params) != 3 {
 		return nil, fmt.Errorf("postgres: unexpected number of rows: %d", len(params))
