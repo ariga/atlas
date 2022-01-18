@@ -257,6 +257,12 @@ img {
   transform: unset;
 }
 
+.dashboardImage {
+  max-width: 75%;
+  max-height: 70%;
+  margin-top: 20px;
+}
+
 /*TABLET*/
 @media only screen
   and (min-width: 525px) {
@@ -362,7 +368,6 @@ img {
     align-self: flex-end;
     width: 100%;
     position: relative;
-    left: -20px;
     transition: unset;
   }
 
@@ -375,6 +380,10 @@ img {
     width: 55%;
   }
   /*end containers*/
+
+  .dashboardImage {
+    max-width: 50%;
+  }
 }
 
 /*DESKTOP*/
