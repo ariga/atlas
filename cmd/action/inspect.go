@@ -16,8 +16,17 @@ var (
 	// InspectCmd represents the inspect command.
 	InspectCmd = &cobra.Command{
 		Use:   "inspect",
-		Short: "Inspect an atlas schema",
-		Run:   CmdInspectRun,
+		Short: "Inspect an a database's and print its schema in Atlas DDL syntax.",
+		Long: "`atlas schema inspect`" + ` connects to the given database and inspects its schema.
+It then prints to the screen the schema of that database in Atlas DDL syntax. This output can be 
+saved to a file, commonly by redirecting the output to a file named with a ".hcl" suffix:
+
+	atlas schema inspect -d "mysql://user:pass@tcp(localhost:3306)/dbname" > atlas.hcl
+
+This file can then be edited and used with the` + " `atlas schema apply` " + `command to plan
+and execute schema migrations against the given database. 
+	`,
+		Run: CmdInspectRun,
 		Example: `
 atlas schema inspect -d "mysql://user:pass@tcp(localhost:3306)/dbname"
 atlas schema inspect -d "mariadb://user:pass@tcp(localhost:3306)/dbname"

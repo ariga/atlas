@@ -15,20 +15,21 @@ flags.
 For a more detailed introduction to the CLI capabilities, head over to the
 [Getting Started](/cli/getting-started/setting-up) page.
 
-{{ range .Blocks }}
+{{- range .Blocks }}
 {{ header .Depth }} {{ .CommandPath }}
 
 {{ .Short }}
-
-{{ if .Long }}
-{{ .Long }}
-{{ end }}
 
 {{ if .UseLine }}
 #### Usage
 ```
 {{ .UseLine }}
 ```
+{{ end }}
+
+{{ if .Long }}
+#### Details
+{{ .Long }}
 {{ end }}
 
 {{ if .Example }}
@@ -44,9 +45,6 @@ For a more detailed introduction to the CLI capabilities, head over to the
 ```
 {{ $flags.FlagUsages }}
 ```
-{{ end }}
-{{ if eq .Depth 1 }}
----
 {{ end }}
 {{ end }}
 {{ end }}

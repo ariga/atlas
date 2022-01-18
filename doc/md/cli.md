@@ -11,20 +11,9 @@ flags.
 
 For a more detailed introduction to the CLI capabilities, head over to the
 [Getting Started](/cli/getting-started/setting-up) page.
-
-
 ## atlas env
 
-Print atlas env params
-
-
-Env prints atlas environment information.
-Every set environment param will print in the form of NAME=VALUE.
-
-List of supported environment parameters:
-"ATLAS_NO_UPDATE_NOTIFIER": On any command, the CLI will check for updates with the GitHub public API once every 24 hours.
-To cancel this behavior, set the environment parameter "ATLAS_NO_UPDATE_NOTIFIER".
-
+Print atlas environment variables.
 
 
 #### Usage
@@ -34,20 +23,25 @@ atlas env
 
 
 
+#### Details
+`atlas env`prints atlas environment information.
+
+Every set environment param will be printed in the form of NAME=VALUE.
+
+List of supported environment parameters:
+* *ATLAS_NO_UPDATE_NOTIFIER*: On any command, the CLI will check for new releases using the GitHub API.
+  This check will happen at most once every 24 hours. To cancel this behavior, set the environment 
+  variable "ATLAS_NO_UPDATE_NOTIFIER".
 
 
 
 
----
+
 
 
 ## atlas schema
 
-Work with atlas schemas
-
-
-Interact with the schema and data source
-
+Work with atlas schemas.
 
 
 #### Usage
@@ -57,24 +51,31 @@ atlas schema
 
 
 
+#### Details
+The `atlas schema` subcommand groups commands for working with Atlas schemas.
 
 
 
 
----
+
 
 
 ### atlas schema apply
 
-Apply an atlas schema to a data source
-
-
+Apply an atlas schema to a target database.
 
 
 #### Usage
 ```
 atlas schema apply [flags]
 ```
+
+
+
+#### Details
+`atlas schema apply` plans and executes a database migration to be bring a given database
+to the state described in the Atlas schema file. Before running the migration, Atlas will print the migration
+plan and prompt the user for approval.
 
 
 
@@ -100,18 +101,28 @@ atlas schema apply -d "sqlite://file:ex1.db?_fk=1" -f atlas.hcl
 ```
 
 
-
 ### atlas schema inspect
 
-Inspect an atlas schema
-
-
+Inspect an a database's and print its schema in Atlas DDL syntax.
 
 
 #### Usage
 ```
 atlas schema inspect [flags]
 ```
+
+
+
+#### Details
+`atlas schema inspect` connects to the given database and inspects its schema.
+It then prints to the screen the schema of that database in Atlas DDL syntax. This output can be 
+saved to a file, commonly by redirecting the output to a file named with a ".hcl" suffix:
+
+	atlas schema inspect -d "mysql://user:pass@tcp(localhost:3306)/dbname" > atlas.hcl
+
+This file can then be edited and used with the `atlas schema apply` command to plan
+and execute schema migrations against the given database. 
+	
 
 
 
@@ -136,12 +147,9 @@ atlas schema inspect -d "sqlite://file:ex1.db?_fk=1"
 ```
 
 
-
 ## atlas version
 
-Show atlas CLI version
-
-
+Prints this Atlas CLI version information.
 
 
 #### Usage
@@ -155,6 +163,5 @@ atlas version
 
 
 
----
 
 
