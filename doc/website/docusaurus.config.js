@@ -38,7 +38,7 @@ module.exports = {
           "items": [
             {"label": "Getting Started", "to": "cli/getting-started/setting-up"},
             {"label": "Data Definition Language ", "to": "ddl/intro"},
-            {"label": "CLI Reference", "to": "CLI/atlas"},
+            {"label": "CLI Reference", "to": "cli/reference"},
           ]
         },
         {
