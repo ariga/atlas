@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
 
@@ -12,14 +13,105 @@ import (
 	"ariga.io/atlas/sql/sqlspec"
 )
 
+type (
+	doc struct {
+		Tables  []*sqlspec.Table  `spec:"table"`
+		Schemas []*sqlspec.Schema `spec:"schema"`
+		Enums   []*Enum           `spec:"enum"`
+	}
+	// Enum holds a specification for an enum, that can be referenced as a column type.
+	Enum struct {
+		Name   string          `spec:",name"`
+		Schema *schemaspec.Ref `spec:"schema"`
+		Values []string        `spec:"values"`
+		schemaspec.DefaultExtension
+	}
+)
+
+func init() {
+	schemaspec.Register("enum", &Enum{})
+}
+
 // UnmarshalSpec unmarshals an Atlas DDL document using an unmarshaler into v.
 func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}) error {
-	return specutil.Unmarshal(data, unmarshaler, v, convertTable)
+	var d doc
+	if err := unmarshaler.UnmarshalSpec(data, &d); err != nil {
+		return err
+	}
+	switch v := v.(type) {
+	case *schema.Realm:
+		realm, err := Realm(d.Schemas, d.Tables)
+		if err != nil {
+			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
+		}
+		*v = *realm
+	case *schema.Schema:
+		if len(d.Schemas) != 1 {
+			return fmt.Errorf("specutil: expecting document to contain a single schema, got %d", len(d.Schemas))
+		}
+		conv, err := Schema(d.Schemas[0], d.Tables)
+		if err != nil {
+			return fmt.Errorf("specutil: failed converting to *schema.Schema: %w", err)
+		}
+		*v = *conv
+	default:
+		return fmt.Errorf("specutil: failed unmarshaling spec. %T is not supported", v)
+	}
+	return nil
 }
 
 // MarshalSpec marshals v into an Atlas DDL document using a schemaspec.Marshaler.
 func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) {
 	return specutil.Marshal(v, marshaler, schemaSpec)
+}
+
+// Realm converts the schemas and tables into a schema.Realm.
+func Realm(schemas []*sqlspec.Schema, tables []*sqlspec.Table) (*schema.Realm, error) {
+	r := &schema.Realm{}
+	for _, schemaSpec := range schemas {
+		var schemaTables []*sqlspec.Table
+		for _, tableSpec := range tables {
+			name, err := specutil.SchemaName(tableSpec.Schema)
+			if err != nil {
+				return nil, fmt.Errorf("specutil: cannot extract schema name for table %q: %w", tableSpec.Name, err)
+			}
+			if name == schemaSpec.Name {
+				schemaTables = append(schemaTables, tableSpec)
+			}
+		}
+		sch, err := Schema(schemaSpec, schemaTables)
+		if err != nil {
+			return nil, err
+		}
+		r.Schemas = append(r.Schemas, sch)
+	}
+	return r, nil
+}
+
+// Schema converts a sqlspec.Schema with its relevant []sqlspec.Tables
+// into a schema.Schema.
+func Schema(spec *sqlspec.Schema, tables []*sqlspec.Table) (*schema.Schema, error) {
+	sch := &schema.Schema{
+		Name: spec.Name,
+	}
+	m := make(map[*schema.Table]*sqlspec.Table)
+	for _, ts := range tables {
+		table, err := convertTable(ts, sch)
+		if err != nil {
+			return nil, err
+		}
+		sch.Tables = append(sch.Tables, table)
+		m[table] = ts
+	}
+	for _, tbl := range sch.Tables {
+		if err := specutil.LinkForeignKeys(tbl, sch, m[tbl]); err != nil {
+			return nil, err
+		}
+	}
+	if err := convertEnums(tables, sch); err != nil {
+		return nil, err
+	}
+	return sch, nil
 }
 
 // convertTable converts a sqlspec.Table to a schema.Table. Table conversion is done without converting
@@ -57,6 +149,13 @@ func fixDefaultQuotes(value schemaspec.Value) error {
 // convertColumnType converts a sqlspec.Column into a concrete Postgres schema.Type.
 func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 	return TypeRegistry.Type(spec.Type, spec.Extra.Attrs)
+}
+
+// convertEnums converts possibly referenced column types (like enums) to
+// an actual schema.Type and sets it on the correct schema.Column.
+func convertEnums(tbls []*sqlspec.Table, sch *schema.Schema) error {
+	// TODO(masseelch): implement
+	return nil
 }
 
 // schemaSpec converts from a concrete Postgres schema to Atlas specification.

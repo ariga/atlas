@@ -79,7 +79,8 @@ func Marshal(v interface{}, marshaler schemaspec.Marshaler, schemaSpec func(sche
 
 // Unmarshal unmarshals an Atlas DDL document using an unmarshaler into v. Unmarshal uses the
 // given convertTable function to convert a *sqlspec.Table into a *schema.Table.
-func Unmarshal(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}, convertTable func(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, error)) error {
+func Unmarshal(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{},
+	convertTable ConvertTableFunc) error {
 	var d doc
 	if err := unmarshaler.UnmarshalSpec(data, &d); err != nil {
 		return err

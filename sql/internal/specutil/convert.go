@@ -39,7 +39,7 @@ func Realm(schemas []*sqlspec.Schema, tables []*sqlspec.Table, convertTable Conv
 	for _, schemaSpec := range schemas {
 		var schemaTables []*sqlspec.Table
 		for _, tableSpec := range tables {
-			name, err := schemaName(tableSpec.Schema)
+			name, err := SchemaName(tableSpec.Schema)
 			if err != nil {
 				return nil, fmt.Errorf("specutil: cannot extract schema name for table %q: %w", tableSpec.Name, err)
 			}
@@ -72,7 +72,7 @@ func Schema(spec *sqlspec.Schema, tables []*sqlspec.Table, convertTable ConvertT
 		m[table] = ts
 	}
 	for _, tbl := range sch.Tables {
-		if err := linkForeignKeys(tbl, sch, m[tbl]); err != nil {
+		if err := LinkForeignKeys(tbl, sch, m[tbl]); err != nil {
 			return nil, err
 		}
 	}
@@ -211,10 +211,10 @@ func PrimaryKey(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, 
 	}, nil
 }
 
-// linkForeignKeys creates the foreign keys defined in the Table's spec by creating references
+// LinkForeignKeys creates the foreign keys defined in the Table's spec by creating references
 // to column in the provided Schema. It is assumed that the schema contains all of the tables
 // referenced by the FK definitions in the spec.
-func linkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *sqlspec.Table) error {
+func LinkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *sqlspec.Table) error {
 	for _, spec := range table.ForeignKeys {
 		fk := &schema.ForeignKey{
 			Symbol:   spec.Symbol,
@@ -464,7 +464,8 @@ func FromCheck(s *schema.Check) *sqlspec.Check {
 	}
 }
 
-func schemaName(ref *schemaspec.Ref) (string, error) {
+// SchemaName returns the name from a ref to a schema.
+func SchemaName(ref *schemaspec.Ref) (string, error) {
 	parts := strings.Split(ref.V, ".")
 	if len(parts) < 2 || parts[0] != "$schema" {
 		return "", fmt.Errorf("expected ref format of $schema.name")

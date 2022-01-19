@@ -96,6 +96,7 @@ type (
 	Type struct {
 		T     string
 		Attrs []*Attr
+		IsRef bool
 	}
 )
 
