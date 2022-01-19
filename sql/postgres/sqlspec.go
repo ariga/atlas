@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
@@ -170,11 +171,49 @@ func convertEnums(tbls []*sqlspec.Table, enums []*Enum, sch *schema.Schema) erro
 	for _, tbl := range tbls {
 		for _, col := range tbl.Columns {
 			if col.Type.IsRef {
-
+				e, err := resolveEnum(col.Type, enums)
+				if err != nil {
+					return err
+				}
+				t, ok := sch.Table(tbl.Name)
+				if !ok {
+					return fmt.Errorf("postgrs: table %q not found in schema %q", tbl.Name, sch.Name)
+				}
+				c, ok := t.Column(col.Name)
+				if !ok {
+					return fmt.Errorf("postgrs: column %q not found in table %q", col.Name, t.Name)
+				}
+				c.Type.Type = &EnumType{
+					T:      e.Name,
+					Values: e.Values,
+				}
 			}
 		}
 	}
 	return nil
+}
+
+// resolveEnum returns the first Enum that matches the name referenced by the given column type.
+func resolveEnum(ref *schemaspec.Type, enums []*Enum) (*Enum, error) {
+	n, err := enumName(ref)
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range enums {
+		if e.Name == n {
+			return e, err
+		}
+	}
+	return nil, fmt.Errorf("postgres: enum %q not found", n)
+}
+
+// enumName extracts the name of the referenced Enum from the reference string.
+func enumName(ref *schemaspec.Type) (string, error) {
+	s := strings.Split(ref.T, "$enum.")
+	if len(s) != 2 {
+		return "", fmt.Errorf("postgres: failed to extract enum name from %q", ref.T)
+	}
+	return s[1], nil
 }
 
 // schemaSpec converts from a concrete Postgres schema to Atlas specification.
