@@ -50,9 +50,25 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 	if _, ok := d.supportsCheck(); !ok && sqlx.Has(to.Attrs, &schema.Check{}) {
 		return nil, fmt.Errorf("version %q does not support CHECK constraints", d.version)
 	}
-	return append(changes, sqlx.CheckDiff(from, to, func(c1, c2 *schema.Check) bool {
+	// For MariaDB, we skip JSON CHECK constraints that were created by the databases,
+	// or by Atlas for older versions. These CHECK constraints (inlined on the columns)
+	// also cannot be dropped using "DROP CONSTRAINTS", but can be modified and dropped
+	// using "MODIFY COLUMN".
+	var checks []schema.Change
+	for _, c := range sqlx.CheckDiff(from, to, func(c1, c2 *schema.Check) bool {
 		return c1.Expr != c2.Expr || sqlx.Has(c1.Attrs, &Enforced{}) != sqlx.Has(c2.Attrs, &Enforced{})
-	})...), nil
+	}) {
+		drop, ok := c.(*schema.DropCheck)
+		if !ok || !strings.HasPrefix(drop.C.Expr, "json_valid") {
+			checks = append(checks, c)
+			continue
+		}
+		// Generated CHECK have the form of "json_valid(`<column>`)" named as the column.
+		if _, ok := to.Column(drop.C.Name); !ok {
+			checks = append(checks, c)
+		}
+	}
+	return append(changes, checks...), nil
 }
 
 // ColumnChange returns the schema changes (if any) for migrating one column to the other.
@@ -136,7 +152,7 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 }
 
 // Normalize implements the sqlx.Normalizer interface.
-func (*diff) Normalize(from, to *schema.Table) {
+func (d *diff) Normalize(from, to *schema.Table) {
 	indexes := make([]*schema.Index, 0, len(from.Indexes))
 	for _, idx := range from.Indexes {
 		// MySQL requires that foreign key columns be indexed; Therefore, if the child

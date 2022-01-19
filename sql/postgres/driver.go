@@ -44,7 +44,7 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 	}
 	params, err := sqlx.ScanStrings(rows)
 	if err != nil {
-		return nil, fmt.Errorf("postgres: failed scanning row value: %w", err)
+		return nil, fmt.Errorf("postgres: failed scanning rows: %w", err)
 	}
 	if len(params) != 3 {
 		return nil, fmt.Errorf("postgres: unexpected number of rows: %d", len(params))
