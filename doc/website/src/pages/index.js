@@ -68,20 +68,22 @@ export default function () {
             <Header />
             <div className={index.rowContainer}>
                 <div className={index.slide1LeftSide}>
-                    <h2 className={index.title}
-                        style={{ color: "#82C7FF" }}>Manage your <br /> database schemas with <span style={{ color: "white" }}>Atlas CLI</span></h2>
+                    <div className={index.fullWidthSection}>
+                        <h2 className={index.title}
+                            style={{ color: "#82C7FF" }}>Manage your <br /> database schemas with <span style={{ color: "white" }}>Atlas CLI</span></h2>
 
-                    <p className={index.paragraph} style={{ color: "#DFF1FF", textAlign: "left", width: "90%" }}>
-                        Atlas CLI is an open source tool that helps developers
-                        manage their database schemas by applying modern
-                        DevOps principles. Contrary to existing tools, Atlas
-                        intelligently plans schema migrations for you, based
-                        on your desired state.
-                    </p>
+                        <p className={index.paragraph} style={{ color: "#DFF1FF", textAlign: "left", width: "90%" }}>
+                            Atlas CLI is an open source tool that helps developers
+                            manage their database schemas by applying modern
+                            DevOps principles. Contrary to existing tools, Atlas
+                            intelligently plans schema migrations for you, based
+                            on your desired state.
+                        </p>
+                    </div>
                     <AtlasButton style={{"marginTop": "5%"}} text="Get Started"  link="/cli/getting-started/setting-up" type="primaryButton"/>
                 </div>
                 <div className={index.imageContainer}>
-                    <img src="https://atlasgo.io/uploads/images/help_cmd.png" alt=""/>
+                    <img src="https://atlasgo.io/uploads/hero2.png" alt="hero"/>
                 </div>
             </div>
         </div>
@@ -108,7 +110,7 @@ export default function () {
                 <BrowserOnly>
                     {() => {
                         const mobile = window.innerWidth < 768;
-                        const erdImage = mobile ? "https://atlasgo.io/uploads/images/erd_2.png" : "https://atlasgo.io/uploads/erd-180122.png";
+                        const erdImage = mobile ? "https://atlasgo.io/uploads/images/erd-mobile.png" : "https://atlasgo.io/uploads/erd-180122.png";
                         return <img style={{margin: "20px 0" }} src={erdImage} alt="erd"/>
                     }}
                 </BrowserOnly>
