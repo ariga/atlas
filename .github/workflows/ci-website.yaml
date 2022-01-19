@@ -1,0 +1,28 @@
+name: Docsite CI
+on:
+  push:
+    branches-ignore:
+      - master
+jobs:
+  docsite_ci:
+    name: verify build doesn't crash
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./doc/website
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2.1.5
+        with:
+          node-version: 16
+      - name: Cache dependecies
+        uses: actions/cache@v2.1.6
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      - name: Install Dependencies
+        run: npm install
+      - name: Build website
+        run: npm run build
