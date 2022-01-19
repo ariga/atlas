@@ -25,7 +25,16 @@ module.exports = {
       items: [
         {
           href: 'https://github.com/ariga/atlas',
-          label: 'GitHub',
+          className: 'header-github-link',
+          position: 'right',
+        },
+        {
+          href: 'https://github.com/ariga/atlas',
+          className: 'header-discord-link',
+          position: 'right',
+        },{
+          href: 'https://twitter.com/ariga_io',
+          className: 'header-twitter-link',
           position: 'right',
         },
       ],
