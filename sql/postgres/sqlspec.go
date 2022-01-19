@@ -129,7 +129,6 @@ var TypeRegistry = specutil.NewRegistry(
 		specutil.TypeSpec(TypeTimestamp),
 		specutil.AliasTypeSpec("timestamp_with_time_zone", TypeTimestampWTZ),
 		specutil.AliasTypeSpec("timestamp_without_time_zone", TypeTimestampWOTZ),
-		specutil.TypeSpec("enum", &schemaspec.TypeAttr{Name: "values", Kind: reflect.Slice, Required: true}),
 		specutil.AliasTypeSpec("double_precision", TypeDouble),
 		specutil.TypeSpec(TypeReal),
 		specutil.TypeSpec(TypeFloat8),
