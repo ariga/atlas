@@ -378,10 +378,10 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			// Reverse operation is supported if
 			// the constraint name is not generated.
 			if reversible = change.C.Name != ""; reversible {
-				reverse.Comma().P("DROP CHECK").Ident(change.C.Name)
+				reverse.Comma().P("DROP CONSTRAINT").Ident(change.C.Name)
 			}
 		case *schema.DropCheck:
-			b.P("DROP CHECK").Ident(change.C.Name)
+			b.P("DROP CONSTRAINT").Ident(change.C.Name)
 			s.check(reverse.Comma().P("ADD"), change.C)
 		case *schema.ModifyCheck:
 			switch {
