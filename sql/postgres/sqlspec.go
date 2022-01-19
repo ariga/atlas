@@ -40,7 +40,7 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 	}
 	switch v := v.(type) {
 	case *schema.Realm:
-		realm, err := Realm(d.Schemas, d.Tables)
+		realm, err := Realm(d)
 		if err != nil {
 			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
 		}
@@ -49,7 +49,7 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 		if len(d.Schemas) != 1 {
 			return fmt.Errorf("specutil: expecting document to contain a single schema, got %d", len(d.Schemas))
 		}
-		conv, err := Schema(d.Schemas[0], d.Tables)
+		conv, err := Schema(d.Schemas[0], d.Tables, d.Enums)
 		if err != nil {
 			return fmt.Errorf("specutil: failed converting to *schema.Schema: %w", err)
 		}
@@ -65,12 +65,15 @@ func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) 
 	return specutil.Marshal(v, marshaler, schemaSpec)
 }
 
-// Realm converts the schemas and tables into a schema.Realm.
-func Realm(schemas []*sqlspec.Schema, tables []*sqlspec.Table) (*schema.Realm, error) {
+// Realm converts the schemas and tables of the doc into a schema.Realm.
+func Realm(d doc) (*schema.Realm, error) {
 	r := &schema.Realm{}
-	for _, schemaSpec := range schemas {
-		var schemaTables []*sqlspec.Table
-		for _, tableSpec := range tables {
+	for _, schemaSpec := range d.Schemas {
+		var (
+			schemaTables []*sqlspec.Table
+			schemaEnums  []*Enum
+		)
+		for _, tableSpec := range d.Tables {
 			name, err := specutil.SchemaName(tableSpec.Schema)
 			if err != nil {
 				return nil, fmt.Errorf("specutil: cannot extract schema name for table %q: %w", tableSpec.Name, err)
@@ -79,7 +82,16 @@ func Realm(schemas []*sqlspec.Schema, tables []*sqlspec.Table) (*schema.Realm, e
 				schemaTables = append(schemaTables, tableSpec)
 			}
 		}
-		sch, err := Schema(schemaSpec, schemaTables)
+		for _, enum := range d.Enums {
+			name, err := specutil.SchemaName(enum.Schema)
+			if err != nil {
+				return nil, fmt.Errorf("specutil: cannot extract schema name for table %q: %w", enum.Name, err)
+			}
+			if name == schemaSpec.Name {
+				schemaEnums = append(schemaEnums, enum)
+			}
+		}
+		sch, err := Schema(schemaSpec, schemaTables, schemaEnums)
 		if err != nil {
 			return nil, err
 		}
@@ -88,9 +100,8 @@ func Realm(schemas []*sqlspec.Schema, tables []*sqlspec.Table) (*schema.Realm, e
 	return r, nil
 }
 
-// Schema converts a sqlspec.Schema with its relevant []sqlspec.Tables
-// into a schema.Schema.
-func Schema(spec *sqlspec.Schema, tables []*sqlspec.Table) (*schema.Schema, error) {
+// Schema converts a sqlspec.Schema with its relevant []sqlspec.Tables and []Enum into a schema.Schema.
+func Schema(spec *sqlspec.Schema, tables []*sqlspec.Table, enums []*Enum) (*schema.Schema, error) {
 	sch := &schema.Schema{
 		Name: spec.Name,
 	}
@@ -108,8 +119,10 @@ func Schema(spec *sqlspec.Schema, tables []*sqlspec.Table) (*schema.Schema, erro
 			return nil, err
 		}
 	}
-	if err := convertEnums(tables, sch); err != nil {
-		return nil, err
+	if len(enums) > 0 {
+		if err := convertEnums(tables, enums, sch); err != nil {
+			return nil, err
+		}
 	}
 	return sch, nil
 }
@@ -153,8 +166,14 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 
 // convertEnums converts possibly referenced column types (like enums) to
 // an actual schema.Type and sets it on the correct schema.Column.
-func convertEnums(tbls []*sqlspec.Table, sch *schema.Schema) error {
-	// TODO(masseelch): implement
+func convertEnums(tbls []*sqlspec.Table, enums []*Enum, sch *schema.Schema) error {
+	for _, tbl := range tbls {
+		for _, col := range tbl.Columns {
+			if col.Type.IsRef {
+
+			}
+		}
+	}
 	return nil
 }
 
