@@ -63,7 +63,8 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 			checks = append(checks, c)
 			continue
 		}
-		// Generated CHECK have the form of "json_valid(`<column>`)" named as the column.
+		// Generated CHECK have the form of "json_valid(`<column>`)"
+		// and named as the column.
 		if _, ok := to.Column(drop.C.Name); !ok {
 			checks = append(checks, c)
 		}
@@ -152,7 +153,7 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 }
 
 // Normalize implements the sqlx.Normalizer interface.
-func (d *diff) Normalize(from, to *schema.Table) {
+func (*diff) Normalize(from, to *schema.Table) {
 	indexes := make([]*schema.Index, 0, len(from.Indexes))
 	for _, idx := range from.Indexes {
 		// MySQL requires that foreign key columns be indexed; Therefore, if the child
