@@ -277,10 +277,17 @@ func setPtr(field reflect.Value, val Value) error {
 		field.Set(reflect.ValueOf(val))
 		return nil
 	}
-	if x, ok := val.(*RawExpr); ok {
-		i := field.Interface()
-		if _, ok := i.(*Type); ok {
-			field.Set(reflect.ValueOf(&Type{T: x.X}))
+	// If we are setting a Type field handle RawExpr and Ref specifically.
+	if _, ok := field.Interface().(*Type); ok {
+		switch t := val.(type) {
+		case *RawExpr:
+			field.Set(reflect.ValueOf(&Type{T: t.X}))
+			return nil
+		case *Ref:
+			field.Set(reflect.ValueOf(&Type{
+				T:     t.V,
+				IsRef: true,
+			}))
 			return nil
 		}
 	}
