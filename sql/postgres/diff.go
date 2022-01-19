@@ -177,7 +177,7 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 		*schema.IntegerType, *schema.JSONType, *schema.SpatialType, *schema.StringType,
 		*schema.TimeType, *BitType, *NetworkType, *UserDefinedType:
 		changed = mustFormat(toT) != mustFormat(fromT)
-	case *EnumType:
+	case *enumType:
 		toT := toT.(*schema.EnumType)
 		changed = fromT.T != toT.T || !sqlx.ValuesEqual(fromT.Values, toT.Values)
 	case *schema.EnumType:
@@ -250,7 +250,7 @@ func (d *diff) normalize(table *schema.Table) {
 				// is equivalent to character(1).
 				t.Size = 1
 			}
-		case *EnumType:
+		case *enumType:
 			c.Type.Type = &schema.EnumType{T: t.T, Values: t.Values}
 		case *SerialType:
 			// The definition of "<column> <serial type>" is equivalent to specifying:
