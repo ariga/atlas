@@ -383,7 +383,7 @@ func Has(elements, target interface{}) bool {
 		panic("target must be a non-nil pointer")
 	}
 	for i := 0; i < ev.Len(); i++ {
-		if e := ev.Index(i).Elem(); e.Type().AssignableTo(tv.Type()) {
+		if e := ev.Index(i).Elem(); !e.IsNil() && e.Type().AssignableTo(tv.Type()) {
 			tv.Elem().Set(e.Elem())
 			return true
 		}
