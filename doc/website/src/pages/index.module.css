@@ -22,7 +22,7 @@ img {
   display: flex;
   justify-content: space-between;
   align-content: center;
-  padding: 15px 0;
+  padding: 25px 0;
   margin-bottom: 20px;
 }
 
@@ -74,7 +74,7 @@ img {
   text-align: left;
   font-weight: 900;
   font-size: 34px;
-  line-height: 50px;
+  line-height: 44px;
 }
 
 .titleSecondary {
@@ -125,6 +125,7 @@ img {
 .primaryButton, .secondaryButton {
   border-radius: 24px;
   text-transform: uppercase;
+  max-width: 242px;
   height: 35px;
   border: none;
   padding: 5px 25px;
@@ -364,7 +365,7 @@ img {
     padding-bottom: 40px;
   }
 
-  .slide1 .imageContainer {
+  .imageContainer {
     align-self: flex-end;
     width: 100%;
     position: relative;
@@ -428,8 +429,8 @@ and (min-width: 1100px) {
   /*end navbar */
 
   .title {
-    font-size: 50px;
-    line-height: 60px;
+    font-size: 40px;
+    line-height: 50px;
     text-align: left;
   }
 
@@ -457,6 +458,8 @@ and (min-width: 1100px) {
   .paragraph, .paragraphSecondary {
     color: #757889;
     text-align: center;
+    font-size: 20px;
+    line-height: 30px;
   }
 
   .primaryButton, .secondaryButton {
@@ -478,10 +481,6 @@ and (min-width: 1100px) {
     margin: 0 auto;
   }
 
-  .rowContainer {
-    flex-flow: row;
-  }
-
   .section {
     margin-bottom: 35px;
     width: 55%;
@@ -494,8 +493,45 @@ and (min-width: 1100px) {
     overflow: hidden;
   }
 
+  .slide1LeftSide {
+    padding-bottom: 30px;
+    display: flex;
+    flex-flow: column;
+  }
+
+  .slide1LeftSide .fullWidthSection {
+    width: 100%;
+  }
+
+  .rowContainer {
+    flex-flow: row;
+    align-items: flex-end;
+  }
+
   .imageContainer {
-    transform: translate(-10%, 0%);
+    align-self: center;
+    width: 100%;
+    position: relative;
+    transition: unset;
+    max-height: 550px;
+  }
+
+  .imageContainer img {
+    max-height: 550px;
+  }
+}
+
+@media only screen
+and (min-width: 1440px) {
+  .title {
+    font-size: 62px;
+    line-height: 70px;
+    text-align: left;
+  }
+
+  .imageContainer {
+    align-self: flex-end;
+    display: flex;
   }
 }
 
