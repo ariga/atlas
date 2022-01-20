@@ -38,6 +38,7 @@ func (p *planApply) PlanChanges(_ context.Context, name string, changes []schema
 	for _, c := range s.Changes {
 		if c.Reverse == "" {
 			s.Reversible = false
+			break
 		}
 	}
 	return &s.Plan, nil
@@ -358,7 +359,14 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			reverse.Comma().P("DROP INDEX").Ident(change.I.Name)
 		case *schema.DropIndex:
 			b.P("DROP INDEX").Ident(change.I.Name)
-			reversible = false
+			reverse.Comma().P("ADD")
+			if change.I.Unique {
+				reverse.P("UNIQUE")
+			}
+			reverse.P("INDEX").Ident(change.I.Name)
+			s.indexParts(reverse, change.I.Parts)
+			s.attr(reverse, change.I.Attrs...)
+			reversible = true
 		case *schema.AddForeignKey:
 			b.P("ADD")
 			s.fks(b, change.F)
