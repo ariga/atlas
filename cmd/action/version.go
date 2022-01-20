@@ -27,13 +27,13 @@ func init() {
 
 // parse returns a user facing version and release notes url
 func parse(version string) (string, string) {
+	u := "https://github.com/ariga/atlas/releases/tag/latest"
 	if ok := semver.IsValid(version); !ok {
-		v := "- development"
-		s := strings.Split(version, "_")
-		if len(s) != 0 && s[len(s)-1] == "canary" {
-			v = version
-		}
-		return v, "https://github.com/ariga/atlas/releases/tag/latest"
+		return "- development", u
 	}
-	return version, fmt.Sprintf("https://github.com/ariga/atlas/releases/tag/%s", version)
+	s := strings.Split(version, "-")
+	if len(s) != 0 && s[len(s)-1] != "canary" {
+		u = fmt.Sprintf("https://github.com/ariga/atlas/releases/tag/%s", version)
+	}
+	return version, u
 }
