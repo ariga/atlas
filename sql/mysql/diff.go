@@ -56,7 +56,7 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 	// using "MODIFY COLUMN".
 	var checks []schema.Change
 	for _, c := range sqlx.CheckDiff(from, to, func(c1, c2 *schema.Check) bool {
-		return c1.Expr != c2.Expr || sqlx.Has(c1.Attrs, &Enforced{}) != sqlx.Has(c2.Attrs, &Enforced{})
+		return c1.Expr != c2.Expr || enforced(c1.Attrs) != enforced(c2.Attrs)
 	}) {
 		drop, ok := c.(*schema.DropCheck)
 		if !ok || !strings.HasPrefix(drop.C.Expr, "json_valid") {
@@ -261,6 +261,15 @@ func indexType(attr []schema.Attr) *IndexType {
 		t.T = strings.ToUpper(t.T)
 	}
 	return t
+}
+
+// enforced returns the ENFORCED attribute for the CHECK
+// constraint. A CHECK is ENFORCED if not state otherwise.
+func enforced(attr []schema.Attr) bool {
+	if e := (Enforced{}); sqlx.Has(attr, &e) {
+		return e.V
+	}
+	return true
 }
 
 // noChange describes a zero change.

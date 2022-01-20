@@ -99,9 +99,7 @@ func convertCheck(spec *sqlspec.Check) (*schema.Check, error) {
 		if err != nil {
 			return nil, err
 		}
-		if b {
-			c.AddAttrs(&Enforced{})
-		}
+		c.AddAttrs(&Enforced{V: b})
 	}
 	return c, nil
 }
