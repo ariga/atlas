@@ -48,6 +48,7 @@ module.exports = {
             {"label": "Getting Started", "to": "cli/getting-started/setting-up"},
             {"label": "Data Definition Language ", "to": "ddl/intro"},
             {"label": "CLI Reference", "to": "cli/reference"},
+            {"label": "About", "to": "about"},
           ]
         },
         {

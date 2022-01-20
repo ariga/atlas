@@ -10,7 +10,21 @@ Similar information can be obtained by running any atlas command with the `-h` o
 flags.
 
 For a more detailed introduction to the CLI capabilities, head over to the
-[Getting Started](/cli/getting-started/setting-up) page.
+[Getting Started](getting-started/01-introduction.mdx) page.
+
+## Distributed Binaries
+
+Starting [v0.3.0](https://github.com/ariga/atlas/releases/tag/v0.3.0),
+ֿthe distributed binaries include code for a [Management UI](ui/intro.md) wrapping the
+core Atlas engine that is not currently released publicly. The binaries
+themselves are still released under the same [Apache License 2.0](https://github.com/ariga/atlas/blob/master/LICENSE).
+
+### Buliding from Source
+
+If you would like to build Atlas from source without the UI code run:
+```shell
+go get ariga.io/atlas/cmd/atlas
+```
 ## atlas env
 
 Print atlas environment variables.
