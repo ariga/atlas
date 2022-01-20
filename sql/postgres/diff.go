@@ -32,7 +32,7 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 		changes = append(changes, change)
 	}
 	return append(changes, sqlx.CheckDiff(from, to, func(c1, c2 *schema.Check) bool {
-		return c1.Expr != c2.Expr || sqlx.Has(c1.Attrs, &NoInherit{}) != sqlx.Has(c2.Attrs, &NoInherit{})
+		return sqlx.Has(c1.Attrs, &NoInherit{}) == sqlx.Has(c2.Attrs, &NoInherit{})
 	})...), nil
 }
 

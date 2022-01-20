@@ -439,7 +439,7 @@ func CommentDiff(from, to []schema.Attr) schema.Change {
 
 // CheckDiff computes the change diff between the 2 tables. A compare
 // function is provided to check if a Check object was modified.
-func CheckDiff(from, to *schema.Table, compare func(c1, c2 *schema.Check) bool) []schema.Change {
+func CheckDiff(from, to *schema.Table, compare ...func(c1, c2 *schema.Check) bool) []schema.Change {
 	var changes []schema.Change
 	// Drop or modify checks.
 	for _, c1 := range checks(from.Attrs) {
@@ -448,7 +448,7 @@ func CheckDiff(from, to *schema.Table, compare func(c1, c2 *schema.Check) bool) 
 			changes = append(changes, &schema.DropCheck{
 				C: c1,
 			})
-		case compare(c1, c2):
+		case len(compare) == 1 && !compare[0](c1, c2):
 			changes = append(changes, &schema.ModifyCheck{
 				From: c1,
 				To:   c2,
