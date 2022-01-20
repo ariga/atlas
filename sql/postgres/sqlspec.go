@@ -63,30 +63,31 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 
 // MarshalSpec marshals v into an Atlas DDL document using a schemaspec.Marshaler.
 func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) {
-	d := &doc{}
+	var d doc
 	switch s := v.(type) {
 	case *schema.Schema:
-		spec, tables, enums, err := schemaSpec(s)
+		var err error
+		doc, err := schemaSpec(s)
 		if err != nil {
 			return nil, fmt.Errorf("specutil: failed converting schema to spec: %w", err)
 		}
-		d.Tables = tables
-		d.Schemas = []*sqlspec.Schema{spec}
-		d.Enums = enums
+		d.Tables = doc.Tables
+		d.Schemas = doc.Schemas
+		d.Enums = doc.Enums
 	case *schema.Realm:
 		for _, s := range s.Schemas {
-			spec, tables, enums, err := schemaSpec(s)
+			doc, err := schemaSpec(s)
 			if err != nil {
 				return nil, fmt.Errorf("specutil: failed converting schema to spec: %w", err)
 			}
-			d.Tables = append(d.Tables, tables...)
-			d.Schemas = append(d.Schemas, spec)
-			d.Enums = append(d.Enums, enums...)
+			d.Tables = append(d.Tables, doc.Tables...)
+			d.Schemas = append(d.Schemas, doc.Schemas...)
+			d.Enums = append(d.Enums, doc.Enums...)
 		}
 	default:
 		return nil, fmt.Errorf("specutil: failed marshaling spec. %T is not supported", v)
 	}
-	return marshaler.MarshalSpec(d)
+	return marshaler.MarshalSpec(&d)
 }
 
 // Realm converts the schemas and tables of the doc into a schema.Realm.
@@ -247,16 +248,18 @@ func enumRef(n string) *schemaspec.Ref {
 }
 
 // schemaSpec converts from a concrete Postgres schema to Atlas specification.
-func schemaSpec(schem *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, []*Enum, error) {
+func schemaSpec(schem *schema.Schema) (*doc, error) {
+	var d doc
 	s, tbls, err := specutil.FromSchema(schem, tableSpec)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
-	var enums []*Enum
+	d.Schemas = []*sqlspec.Schema{s}
+	d.Tables = tbls
 	for _, t := range schem.Tables {
 		for _, c := range t.Columns {
 			if t, ok := c.Type.Type.(*schema.EnumType); ok {
-				enums = append(enums, &Enum{
+				d.Enums = append(d.Enums, &Enum{
 					Name:   t.T,
 					Schema: specutil.SchemaRef(s.Name),
 					Values: t.Values,
@@ -264,7 +267,7 @@ func schemaSpec(schem *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, []*Enu
 			}
 		}
 	}
-	return s, tbls, enums, nil
+	return &d, nil
 }
 
 // tableSpec converts from a concrete Postgres sqlspec.Table to a schema.Table.
