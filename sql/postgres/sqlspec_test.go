@@ -153,7 +153,7 @@ enum "account_type" {
 				{
 					Name: "type",
 					Type: &schema.ColumnType{
-						Type: &EnumType{
+						Type: &schema.EnumType{
 							T:      "account_type",
 							Values: []string{"private", "business"},
 						},

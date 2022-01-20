@@ -183,7 +183,7 @@ func convertEnums(tbls []*sqlspec.Table, enums []*Enum, sch *schema.Schema) erro
 				if !ok {
 					return fmt.Errorf("postgrs: column %q not found in table %q", col.Name, t.Name)
 				}
-				c.Type.Type = &EnumType{
+				c.Type.Type = &schema.EnumType{
 					T:      e.Name,
 					Values: e.Values,
 				}

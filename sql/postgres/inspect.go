@@ -277,7 +277,7 @@ func columnType(c *columnDesc) schema.Type {
 		// values are filled in batch after the rows above is closed.
 		// https://www.postgresql.org/docs/current/catalog-pg-type.html
 		if c.typtype == "e" {
-			typ = &EnumType{T: c.udt, ID: c.typid}
+			typ = &enumType{T: c.udt, ID: c.typid}
 		}
 	default:
 		typ = &schema.UnsupportedType{T: t}
@@ -293,7 +293,7 @@ func (i *inspect) enumValues(ctx context.Context, columns []*schema.Column) erro
 		query = "SELECT enumtypid, enumlabel FROM pg_enum WHERE enumtypid IN ("
 	)
 	for _, c := range columns {
-		if enum, ok := c.Type.Type.(*EnumType); ok {
+		if enum, ok := c.Type.Type.(*enumType); ok {
 			if _, ok := ids[enum.ID]; !ok {
 				if len(args) > 0 {
 					query += ", "
@@ -301,7 +301,7 @@ func (i *inspect) enumValues(ctx context.Context, columns []*schema.Column) erro
 				args = append(args, enum.ID)
 				query += fmt.Sprintf("$%d", len(args))
 			}
-			// Convert the intermediate type to the standard schema.EnumType.
+			// Convert the intermediate type to the standard schema.enumType.
 			e := &schema.EnumType{T: enum.T}
 			c.Type.Type = e
 			c.Type.Raw = enum.T
@@ -587,8 +587,9 @@ type (
 		T string
 	}
 
-	// EnumType represents an enum type.
-	EnumType struct {
+	// enumType represents an enum type. It serves aa intermediate representation of a Postgres enum type,
+	// to temporary save TypeID and TypeName of an enum column until the enum values can be extracted.
+	enumType struct {
 		schema.Type
 		T      string // Type name.
 		ID     int64  // Type id.
