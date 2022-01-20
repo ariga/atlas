@@ -225,6 +225,16 @@ func TestCLI_Version(t *testing.T) {
 			),
 			expected: "atlas CLI version v1.2.3\nhttps://github.com/ariga/atlas/releases/tag/v1.2.3\n",
 		},
+		{
+			name: "canary",
+			cmd: exec.Command("go", "run",
+				"-ldflags",
+				"-X ariga.io/atlas/cmd/action.version=v0.3.0_6539f2704b5d_canary",
+				"ariga.io/atlas/cmd/atlas",
+				"version",
+			),
+			expected: "atlas CLI version v0.3.0_6539f2704b5d_canary\nhttps://github.com/ariga/atlas/releases/tag/latest\n",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
