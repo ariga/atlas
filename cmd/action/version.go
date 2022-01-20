@@ -2,6 +2,7 @@ package action
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/mod/semver"
@@ -27,7 +28,12 @@ func init() {
 // parse returns a user facing version and release notes url
 func parse(version string) (string, string) {
 	if ok := semver.IsValid(version); !ok {
-		return "- development", "https://github.com/ariga/atlas/releases/tag/latest"
+		v := "- development"
+		s := strings.Split(version, "_")
+		if len(s) != 0 && s[len(s)-1] == "canary" {
+			v = version
+		}
+		return v, "https://github.com/ariga/atlas/releases/tag/latest"
 	}
 	return version, fmt.Sprintf("https://github.com/ariga/atlas/releases/tag/%s", version)
 }
