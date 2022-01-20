@@ -41,7 +41,7 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 	}
 	switch v := v.(type) {
 	case *schema.Realm:
-		realm, err := Realm(d)
+		realm, err := Realm(d.Schemas, d.Tables, d.Enums)
 		if err != nil {
 			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
 		}
@@ -67,14 +67,14 @@ func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) 
 }
 
 // Realm converts the schemas and tables of the doc into a schema.Realm.
-func Realm(d doc) (*schema.Realm, error) {
+func Realm(schemas []*sqlspec.Schema, tables []*sqlspec.Table, enums []*Enum) (*schema.Realm, error) {
 	r := &schema.Realm{}
-	for _, schemaSpec := range d.Schemas {
+	for _, schemaSpec := range schemas {
 		var (
 			schemaTables []*sqlspec.Table
 			schemaEnums  []*Enum
 		)
-		for _, tableSpec := range d.Tables {
+		for _, tableSpec := range tables {
 			name, err := specutil.SchemaName(tableSpec.Schema)
 			if err != nil {
 				return nil, fmt.Errorf("specutil: cannot extract schema name for table %q: %w", tableSpec.Name, err)
@@ -83,7 +83,7 @@ func Realm(d doc) (*schema.Realm, error) {
 				schemaTables = append(schemaTables, tableSpec)
 			}
 		}
-		for _, enum := range d.Enums {
+		for _, enum := range enums {
 			name, err := specutil.SchemaName(enum.Schema)
 			if err != nil {
 				return nil, fmt.Errorf("specutil: cannot extract schema name for table %q: %w", enum.Name, err)
