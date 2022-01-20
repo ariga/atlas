@@ -61,9 +61,16 @@ table "accounts" {
 	column "name" {
 		type = varchar(32)
 	}
+	column "type" {
+		type = enum.account_type
+	}
 	primary_key {
 		columns = [table.accounts.column.name]
 	}
+}
+
+enum "account_type" {
+	values = ["private", "business"]
 }
 `
 	var s schema.Schema
@@ -140,6 +147,15 @@ table "accounts" {
 						Type: &schema.StringType{
 							T:    "varchar",
 							Size: 32,
+						},
+					},
+				},
+				{
+					Name: "type",
+					Type: &schema.ColumnType{
+						Type: &EnumType{
+							T:      "account_type",
+							Values: []string{"private", "business"},
 						},
 					},
 				},
