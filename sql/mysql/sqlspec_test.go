@@ -57,6 +57,10 @@ table "table" {
 		expr     = "price1 <> price2"
 		enforced = true
 	}
+	check {
+		expr     = "price2 <> price1"
+		enforced = false
+	}
 	comment = "table comment"
 }
 
@@ -133,7 +137,11 @@ table "accounts" {
 				},
 				&schema.Check{
 					Expr:  "price1 <> price2",
-					Attrs: []schema.Attr{&Enforced{}},
+					Attrs: []schema.Attr{&Enforced{V: true}},
+				},
+				&schema.Check{
+					Expr:  "price2 <> price1",
+					Attrs: []schema.Attr{&Enforced{V: false}},
 				},
 				&schema.Comment{Text: "table comment"},
 			},

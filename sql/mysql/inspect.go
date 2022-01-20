@@ -398,14 +398,10 @@ func (i *inspect) checks(ctx context.Context, t *schema.Table) error {
 			Name: name.String,
 			Expr: unescape(clause.String),
 		}
-		if enforced.String != "NO" {
-			check.Attrs = append(check.Attrs, &Enforced{})
-		}
-		t.Attrs = append(t.Attrs, check)
-		// In MariaDB, JSON is an alias to LONGTEXT. For versions >= 10.4.3, the CHARSET and COLLATE set to utf8mb4
-		// and a CHECK constraint is automatically created for the column as well (i.e. JSON_VALID(`<C>`)). However,
-		// we expect tools like Atlas and Ent to manually add this CHECK for older versions of MariaDB.
 		if i.mariadb() {
+			// In MariaDB, JSON is an alias to LONGTEXT. For versions >= 10.4.3, the CHARSET and COLLATE set to utf8mb4
+			// and a CHECK constraint is automatically created for the column as well (i.e. JSON_VALID(`<C>`)). However,
+			// we expect tools like Atlas and Ent to manually add this CHECK for older versions of MariaDB.
 			c, ok := t.Column(check.Name)
 			if ok && c.Type.Raw == TypeLongText && check.Expr == fmt.Sprintf("json_valid(`%s`)", c.Name) {
 				c.Type.Raw = TypeJSON
@@ -414,8 +410,13 @@ func (i *inspect) checks(ctx context.Context, t *schema.Table) error {
 				// as they are valid only for character types.
 				c.UnsetCharset().UnsetCollation()
 			}
+		} else if enforced.String == "NO" {
+			// The ENFORCED attribute is not supported by MariaDB.
+			// Also, skip adding it in case the CHECK is ENFORCED,
+			// as the default is ENFORCED if not state otherwise.
+			check.Attrs = append(check.Attrs, &Enforced{V: false})
 		}
-
+		t.Attrs = append(t.Attrs, check)
 	}
 	return rows.Err()
 }
@@ -725,9 +726,9 @@ type (
 	}
 
 	// Enforced attribute defines the ENFORCED flag for CHECK constraint.
-	// Similar to AUTO_INCREMENT, checks with this attributes are enforced.
 	Enforced struct {
 		schema.Attr
+		V bool // V indicates if the CHECK is enforced or not.
 	}
 
 	// The DisplayWidth represents a display width of an integer type.
