@@ -37,9 +37,15 @@ module.exports = {
         {
             type: 'doc',
             id: 'ui/atlas-ui-intro',
-        },
+        }
     ],
-
+    aboutSidebar: [
+        {
+            type: 'doc',
+            label: 'About',
+            id: 'about',
+        }
+    ]
     // But you can create a sidebar manually
     /*
     tutorialSidebar: [
