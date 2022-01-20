@@ -302,7 +302,7 @@ func FromSchema(s *schema.Schema, fn TableSpecFunc) (*sqlspec.Schema, []*sqlspec
 			return nil, nil, err
 		}
 		if s.Name != "" {
-			table.Schema = schemaRef(s.Name)
+			table.Schema = SchemaRef(s.Name)
 		}
 		tables = append(tables, table)
 	}
@@ -501,7 +501,8 @@ func colRef(cName string, tName string) *schemaspec.Ref {
 	}
 }
 
-func schemaRef(n string) *schemaspec.Ref {
+// SchemaRef returns the schemaspec.Ref to the schema with the given name.
+func SchemaRef(n string) *schemaspec.Ref {
 	return &schemaspec.Ref{V: "$schema." + n}
 }
 

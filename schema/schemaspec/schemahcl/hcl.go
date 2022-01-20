@@ -255,6 +255,11 @@ func (s *state) writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 		expr := strings.ReplaceAll(v.V, "$", "")
 		body.SetAttributeRaw(attr.K, hclRawTokens(expr))
 	case *schemaspec.Type:
+		if v.IsRef {
+			expr := strings.ReplaceAll(v.T, "$", "")
+			body.SetAttributeRaw(attr.K, hclRawTokens(expr))
+			break
+		}
 		spec, ok := s.findTypeSpec(v.T)
 		if !ok {
 			v := fmt.Sprintf("sql(%q)", v.T)

@@ -201,6 +201,36 @@ enum "account_type" {
 	require.EqualValues(t, exp, &s)
 }
 
+func TestMarshalSpec_Enum(t *testing.T) {
+	s := schema.New("test").
+		AddTables(
+			schema.NewTable("account").
+				AddColumns(
+					schema.NewEnumColumn("account_type",
+						schema.EnumName("account_type"),
+						schema.EnumValues("private", "business"),
+					),
+				),
+		)
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "account" {
+  schema = schema.test
+  column "account_type" {
+    null = false
+    type = enum.account_type
+  }
+}
+schema "test" {
+}
+enum "account_type" {
+  schema = schema.test
+  values = ["private", "business", ]
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
 func TestTypes(t *testing.T) {
 	// TODO(rotemtam): enum, timestamptz, interval
 	for _, tt := range []struct {
