@@ -229,11 +229,11 @@ func TestCLI_Version(t *testing.T) {
 			name: "canary",
 			cmd: exec.Command("go", "run",
 				"-ldflags",
-				"-X ariga.io/atlas/cmd/action.version=v0.3.0_6539f2704b5d_canary",
+				"-X ariga.io/atlas/cmd/action.version=v0.3.0-6539f2704b5d-canary",
 				"ariga.io/atlas/cmd/atlas",
 				"version",
 			),
-			expected: "atlas CLI version v0.3.0_6539f2704b5d_canary\nhttps://github.com/ariga/atlas/releases/tag/latest\n",
+			expected: "atlas CLI version v0.3.0-6539f2704b5d-canary\nhttps://github.com/ariga/atlas/releases/tag/latest\n",
 		},
 	}
 	for _, tt := range tests {

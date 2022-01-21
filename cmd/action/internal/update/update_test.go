@@ -61,6 +61,14 @@ func TestCheckForUpdate(t *testing.T) {
 			shouldNotify:   true,
 			message:        fmt.Sprintf("A new version of Atlas is available (v2.2.3):\n%s", url),
 		},
+		{
+			name:           "no store fetch and update newer patch version - canary",
+			currentVersion: "v1.2.3-6539f2704b5d-canary",
+			latestVersion:  "v1.2.4",
+			latestRelease:  &LatestRelease{Version: "v2.2.3", URL: url},
+			shouldNotify:   true,
+			message:        fmt.Sprintf("A new version of Atlas is available (v2.2.3):\n%s", url),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
