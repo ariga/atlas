@@ -1,0 +1,96 @@
+# Each test runs on a clean database.
+
+# Apply schema "1.hcl" on fresh database.
+apply 1.hcl
+
+# Ensures tables exist in the database.
+exist users
+
+# Compare the result of "SHOW TABLE users" with the content of a file named '1.sql'.
+# The "cmpshow" command searches first a file named '<version>/1.sql' (version, defines
+# the database version), and in case it was found, it will use it instead.
+cmpshow users 1.sql
+
+# Apply schema "2.hcl" on the updated database.
+apply 2.hcl
+
+# Compare database with 2.sql.
+cmpshow users 2.sql
+
+# Apply schema "1.hcl" should migrate database to previous state.
+apply 1.hcl
+cmpshow users 1.sql
+
+# Drop table.
+apply 0.hcl
+! exist users
+
+
+# Below files represent HCL and SQL. File names defined their index in
+# execution order. 1.hcl is executed first, 2.hcl executed second, etc.
+-- 1.hcl --
+schema "$db" {
+    charset = "$charset"
+    collation = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "id" {
+        type = int
+    }
+    primary_key {
+        columns = [table.users.column.id]
+    }
+}
+
+-- 1.sql --
+CREATE TABLE `users` (
+  `id` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+)
+
+-- 8/1.sql --
+CREATE TABLE `users` (
+  `id` int NOT NULL,
+  PRIMARY KEY (`id`)
+)
+
+-- 2.hcl --
+schema "$db" {
+    charset = "$charset"
+    collation = "$collate"
+}
+
+table "users" {
+    schema =  schema.$db
+    column "id" {
+        type = int
+    }
+    column "name" {
+        type = text
+    }
+    primary_key {
+        columns = [table.users.column.id]
+    }
+}
+
+-- 2.sql --
+CREATE TABLE `users` (
+  `id` int(11) NOT NULL,
+  `name` text NOT NULL,
+  PRIMARY KEY (`id`)
+)
+
+-- 8/2.sql --
+CREATE TABLE `users` (
+  `id` int NOT NULL,
+  `name` text NOT NULL,
+  PRIMARY KEY (`id`)
+)
+
+-- 0.hcl --
+schema "$db" {
+    charset = "$charset"
+    collation = "$collate"
+}

@@ -81,7 +81,15 @@ func TestDriver_InspectTable(t *testing.T) {
 | id                 | bigint(20)           |                      | NO          | PRI        | NULL           | auto_increment | NULL               | NULL           |
 +--------------------+----------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
 `))
-				m.noIndexes()
+				m.ExpectQuery(sqltest.Escape(indexesExprQuery)).
+					WithArgs("test", "users").
+					WillReturnRows(sqltest.Rows(`
++--------------+-------------+------------+--------------+--------------+--------------+--------------+------------+------------------+
+| INDEX_NAME   | COLUMN_NAME | NON_UNIQUE | SEQ_IN_INDEX | INDEX_TYPE   | COLLATION    | COMMENT      | SUB_PART   | EXPRESSION       |
++--------------+-------------+------------+--------------+--------------+--------------+--------------+------------+------------------+
+| PRIMARY      | id          |          0 |            1 | BTREE        | A            |              |       NULL |      NULL        |
++--------------+-------------+------------+--------------+--------------+--------------+--------------+------------+------------------+
+`))
 				m.noFKs()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
@@ -135,8 +143,6 @@ func TestDriver_InspectTable(t *testing.T) {
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
 				require.Equal("users", t.Name)
-				require.Len(t.PrimaryKey.Parts, 1)
-				require.True(t.PrimaryKey.Parts[0].C == t.Columns[0])
 				require.EqualValues([]*schema.Column{
 					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint"}}},
 					{Name: "v57_tiny", Type: &schema.ColumnType{Raw: "tinyint(1)", Type: &schema.BoolType{T: "tinyint"}}},
@@ -188,8 +194,6 @@ func TestDriver_InspectTable(t *testing.T) {
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
 				require.Equal("users", t.Name)
-				require.Len(t.PrimaryKey.Parts, 1)
-				require.True(t.PrimaryKey.Parts[0].C == t.Columns[0])
 				require.EqualValues([]*schema.Column{
 					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint"}}},
 					{Name: "tiny_int", Type: &schema.ColumnType{Raw: "tinyint(1)", Type: &schema.BoolType{T: "tinyint"}}},

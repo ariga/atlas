@@ -267,6 +267,8 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 		})
 	}
 	t.Columns = append(t.Columns, c)
+	// From MySQL doc: A UNIQUE index may be displayed as "PRI" if it is NOT NULL
+	// and there is no PRIMARY KEY in the table. We detect this in `addIndexes`.
 	if key.String == "PRI" {
 		if t.PrimaryKey == nil {
 			t.PrimaryKey = &schema.Index{Table: t, Name: key.String}
@@ -298,7 +300,10 @@ func (i *inspect) indexes(ctx context.Context, t *schema.Table) error {
 
 // addIndexes scans the rows and adds the indexes to the table.
 func (i *inspect) addIndexes(t *schema.Table, rows *sql.Rows) error {
-	names := make(map[string]*schema.Index)
+	var (
+		hasPK bool
+		names = make(map[string]*schema.Index)
+	)
 	for rows.Next() {
 		var (
 			nonuniq                                 bool
@@ -311,6 +316,7 @@ func (i *inspect) addIndexes(t *schema.Table, rows *sql.Rows) error {
 		}
 		// Ignore primary keys.
 		if name == "PRIMARY" {
+			hasPK = true
 			continue
 		}
 		idx, ok := names[name]
@@ -361,6 +367,9 @@ func (i *inspect) addIndexes(t *schema.Table, rows *sql.Rows) error {
 			return fmt.Errorf("mysql: invalid part for index %q", idx.Name)
 		}
 		idx.Parts = append(idx.Parts, part)
+	}
+	if !hasPK && t.PrimaryKey != nil {
+		t.PrimaryKey = nil
 	}
 	return nil
 }

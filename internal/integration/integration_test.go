@@ -4,17 +4,24 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
+
 	entsql "entgo.io/ent/dialect/sql"
 	"entgo.io/ent/entc/integration/ent"
+	"github.com/pkg/diff"
+	"github.com/rogpeppe/go-internal/testscript"
 	"github.com/stretchr/testify/require"
 )
 
@@ -313,4 +320,98 @@ func sanity(c *ent.Client) {
 		AddUsers(u).
 		SetInfo(c.GroupInfo.Create().SetDesc("desc").SaveX(ctx)).
 		SaveX(ctx)
+}
+
+func TestMySQLScript(t *testing.T) {
+	myRun(t, func(t *myTest) {
+		var (
+			attrs            = t.defaultAttrs()
+			charset, collate = attrs[0].(*schema.Charset).V, attrs[1].(*schema.Collation).V
+		)
+		testscript.Run(t.T, testscript.Params{
+			Dir: "testdata/mysql",
+			Setup: func(env *testscript.Env) error {
+				ctx := context.Background()
+				conn, err := t.db.Conn(ctx)
+				if err != nil {
+					return err
+				}
+				name := strings.ReplaceAll(filepath.Base(env.WorkDir), "-", "_")
+				env.Setenv("db", name)
+				if _, err := conn.ExecContext(ctx, fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", name)); err != nil {
+					return err
+				}
+				if _, err := conn.ExecContext(ctx, fmt.Sprintf("USE `%s`", name)); err != nil {
+					return err
+				}
+				env.Defer(func() {
+					if _, err := conn.ExecContext(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", name)); err != nil {
+						t.Fatal(err)
+					}
+					if _, err := conn.ExecContext(ctx, "USE test"); err != nil {
+						t.Fatal(err)
+					}
+					if err := conn.Close(); err != nil {
+						t.Fatal(err)
+					}
+				})
+				return nil
+			},
+			Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
+				"apply": func(ts *testscript.TestScript, neg bool, args []string) {
+					var (
+						desired schema.Schema
+						f       = ts.ReadFile(args[0])
+						r       = strings.NewReplacer("$charset", charset, "$collate", collate, "$db", ts.Getenv("db"))
+					)
+					ts.Check(mysql.UnmarshalHCL([]byte(r.Replace(f)), &desired))
+					current, err := t.drv.InspectSchema(context.Background(), desired.Name, nil)
+					ts.Check(err)
+					changes, err := t.drv.SchemaDiff(current, &desired)
+					ts.Check(err)
+					ts.Check(t.drv.ApplyChanges(context.Background(), changes))
+				},
+				"exist": func(ts *testscript.TestScript, neg bool, args []string) {
+					for _, name := range args {
+						var b bool
+						if err := t.db.QueryRow("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?", ts.Getenv("db"), name).Scan(&b); err != nil {
+							ts.Fatalf("failed query table existence %q: %v", name, err)
+						}
+						if !b != neg {
+							ts.Fatalf("table %q existence failed", name)
+						}
+					}
+				},
+				"cmpshow": func(ts *testscript.TestScript, neg bool, args []string) {
+					if len(args) < 2 {
+						ts.Fatalf("invalid number of args to 'cmpshow': %d", len(args))
+					}
+					var (
+						fname = args[len(args)-1]
+						stmts = make([]string, 0, len(args)-1)
+					)
+					for _, name := range args[:len(args)-1] {
+						var create string
+						if err := t.db.QueryRow(fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`", ts.Getenv("db"), name)).Scan(&name, &create); err != nil {
+							ts.Fatalf("show table %q: %v", name, err)
+						}
+						// Trim the "table_options" if it was not requested explicitly.
+						stmts = append(stmts, create[:strings.LastIndexByte(create, ')')+1])
+					}
+
+					// Check if there is a file prefixed by database version (1.sql and <version>/1.sql).
+					if _, err := os.Stat(ts.MkAbs(filepath.Join(t.version, fname))); err == nil {
+						fname = filepath.Join(t.version, fname)
+					}
+					t1, t2 := strings.Join(stmts, "\n"), ts.ReadFile(fname)
+					if strings.TrimSpace(t1) == strings.TrimSpace(t2) {
+						return
+					}
+					var sb strings.Builder
+					ts.Check(diff.Text("show", fname, t1, t2, &sb))
+					ts.Fatalf(sb.String())
+				},
+			},
+		})
+	})
 }
