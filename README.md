@@ -55,7 +55,7 @@ atlas schema inspect -d "mysql://root:pass@tcp(localhost:3306)/example" >> atlas
 atlas schema apply -d "mysql://root:pass@tcp(localhost:3306)/example" -f atlas.hcl
 ```
 
-Full [CLI documentation](https://atlasgo.io/CLI/atlas). 
+Full [CLI documentation](https://atlasgo.io/cli/reference). 
 
 ### About the Project
 Read more about the motivation of the project [Here](https://blog.ariga.io/meet-atlas-cli/).
