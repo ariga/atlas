@@ -200,6 +200,41 @@ func testCLISchemaApply(t T, h string, dsn string) {
 	require.NotNil(t, u)
 }
 
+func testCLISchemaApplyDry(t T, h string, dsn string) {
+	// Required to have a clean "stderr" while running first time.
+	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	require.NoError(t, err)
+	t.dropTables("users")
+	f := "atlas.hcl"
+	err = ioutil.WriteFile(f, []byte(h), 0644)
+	require.NoError(t, err)
+	defer os.Remove(f)
+	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+		"schema",
+		"apply",
+		"-d",
+		dsn,
+		"-f",
+		f,
+		"--dry-run",
+	)
+	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	stdin, err := cmd.StdinPipe()
+	require.NoError(t, err)
+	defer stdin.Close()
+	_, err = io.WriteString(stdin, "\n")
+	require.NoError(t, err)
+	require.NoError(t, cmd.Run(), stderr.String(), stdout.String())
+	require.Empty(t, stderr.String(), stderr.String())
+	require.Contains(t, stdout.String(), "-- Planned")
+	require.NotContains(t, stdout.String(), "Are you sure?", "dry run should not prompt")
+	realm := t.loadRealm()
+	_, ok := realm.Schemas[0].Table("users")
+	require.False(t, ok, "expected users table not to be created")
+}
+
 func TestCLI_Version(t *testing.T) {
 	// Required to have a clean "stderr" while running first time.
 	require.NoError(t, exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run())

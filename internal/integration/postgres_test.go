@@ -468,6 +468,11 @@ func TestPostgres_CLI(t *testing.T) {
 			testCLISchemaApply(t, h, t.dsn())
 		})
 	})
+	t.Run("SchemaApplyDryRun", func(t *testing.T) {
+		pgRun(t, func(t *pgTest) {
+			testCLISchemaApplyDry(t, h, t.dsn())
+		})
+	})
 }
 
 func TestPostgres_DefaultsHCL(t *testing.T) {
