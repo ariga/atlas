@@ -77,6 +77,13 @@ img {
   line-height: 44px;
 }
 
+.slide3__title {
+  font-size: 56px;
+  line-height: 64px;
+  text-align: center;
+  margin-bottom: 50px;
+}
+
 .titleSecondary {
   text-align: center;
   font-size: 28px;
@@ -165,7 +172,7 @@ img {
   color: white;
 }
 
-.textButton {
+.textButton, .slide3__TextButton {
   color: #2064E9;
   -webkit-text-decoration: none;
   text-decoration: none;
@@ -189,16 +196,25 @@ img {
   -webkit-appearance: none;
   margin-top: 10px;
 }
+
+.slide3__TextButton {
+  font-size: 20px;
+  line-height: 36px;
+}
 /*end buttons*/
 
 /*containers*/
-.container, .rowContainer {
+.container, .rowContainer, .slide3__container {
   display: flex;
   flex-flow: column;
   justify-content: center;
   align-items: center;
   width: 85%;
   margin: 0 auto;
+}
+
+.slide3__container {
+  width: 100%;
 }
 
 .slide1 {
@@ -211,11 +227,13 @@ img {
 }
 
 .slide2 {
+  padding: 20px;
   background-color: rgba(0, 9, 57, 0.1);
 }
 
 .slide3 {
   background-color: #000939;
+  padding: 30px;
 }
 
 .slide4 {
@@ -233,8 +251,9 @@ img {
 
 /*images*/
 .linux {
-  width: 10%;
-  margin: 10px 0;
+  height: 50%;
+  width: 50%;
+  margin-bottom: 40px;
 }
 
 .chip {
@@ -264,6 +283,9 @@ img {
   margin-top: 20px;
 }
 
+.entImage {
+  margin-bottom: 40px;
+}
 /*TABLET*/
 @media only screen
   and (min-width: 525px) {
@@ -291,11 +313,17 @@ img {
   /*end navbar*/
 
   /*titels*/
-  .title {
+  .title, .slide3__title {
     margin-bottom: 10px;
     text-align: left;
     font-size: 48px;
     line-height: 55px;
+  }
+
+  .slide3__title {
+    margin-bottom: 30px;
+    font-size: 70px;
+    line-height: 80px;
   }
 
   .titleSecondary {
@@ -344,7 +372,7 @@ img {
     line-height: 27px;
   }
 
-  .textButton {
+  .textButton, .slide3__TextButton {
     font-size: 20px;
     line-height: 36px;
 
@@ -361,8 +389,16 @@ img {
     width: 90%;
   }
 
+  .slide3__container {
+    width: 75%;
+  }
+
   .slide1 {
     padding-bottom: 40px;
+  }
+  
+  .slide3 {
+    padding: 50px;
   }
 
   .imageContainer {
@@ -384,6 +420,12 @@ img {
 
   .dashboardImage {
     max-width: 50%;
+  }
+
+  .linux {
+    width: 165px;
+    height: 54px;
+    margin-bottom: 15px;
   }
 }
 
@@ -532,6 +574,11 @@ and (min-width: 1440px) {
   .imageContainer {
     align-self: flex-end;
     display: flex;
+  }
+
+  .entImage {
+    width: 945px;
+    height: 367px;
   }
 }
 

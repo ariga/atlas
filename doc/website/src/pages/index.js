@@ -130,6 +130,22 @@ export default function () {
             </div>
         </div>
 
+        {/* 3rd slide*/}
+        <div className={index.slide3} >
+            <div className={index.slide3__container}>
+                <h1 style={{ color: "#82C7FF" }} className={index.slide3__title}>Powering <span style={{color: "white"}}>Ent</span></h1>
+                <img className={index.linux} src="https://atlasgo.io/uploads/landing/linux.png" alt="linux"/>
+
+                <img className={index.entImage} src="https://atlasgo.io/uploads/entGopher.png" alt="ent"/>
+                <p style={{ color: "#FFFFFF" }} className={index.paragraph}>
+                    Atlas powers Ent, an entity framework for Go, is a Linux foundation backed project, originally developed and open sourced by Facebook in 2019. Ent uses Atlas as its migration engine, allowing Ent users to unlock safe and robust migration workflows for their applications.
+                </p>
+                <button className={index.slide3__TextButton}>
+                    <Link to="https://entgo.io">Read More <span>&#8594;</span></Link>
+                </button>
+            </div>
+        </div>
+
         {/* 4th slide   */}
         <div className={index.slide4}>
             <div className={index.container}>
