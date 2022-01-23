@@ -974,6 +974,7 @@ func (t *myTest) applyHcl(spec string) {
 	err := mysql.UnmarshalHCL([]byte(spec), &desired)
 	require.NoError(t, err)
 	existing := realm.Schemas[0]
+	require.NoError(t, err)
 	diff, err := t.drv.SchemaDiff(existing, &desired)
 	require.NoError(t, err)
 	err = t.drv.ApplyChanges(context.Background(), diff)

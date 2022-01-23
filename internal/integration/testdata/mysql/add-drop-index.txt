@@ -1,0 +1,100 @@
+# Each test runs on a clean database.
+
+# Apply schema "1.hcl" on fresh database.
+apply 1.hcl
+cmpshow users 1.sql
+
+# Add index to table "users".
+apply 2.hcl
+cmpshow users 2.sql
+
+# Drop uniqueness from index.
+apply 3.hcl
+cmpshow users 3.sql
+
+# Drop index.
+apply 1.hcl
+cmpshow users 1.sql
+
+# Below files represent HCL and SQL. File names defined their index in
+# execution order. 1.hcl is executed first, 2.hcl executed second, etc.
+-- 1.hcl --
+schema "$db" {
+    charset = "$charset"
+    collation = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "rank" {
+        type = bigint
+    }
+}
+
+-- 1.sql --
+CREATE TABLE `users` (
+  `rank` bigint(20) NOT NULL
+)
+
+-- 8/1.sql --
+CREATE TABLE `users` (
+  `rank` bigint NOT NULL
+)
+
+-- 2.hcl --
+schema "$db" {
+    charset = "$charset"
+    collation = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "rank" {
+        type = bigint
+    }
+    index "rank_idx" {
+        unique  = true
+        columns = [table.users.column.rank]
+    }
+}
+
+-- 2.sql --
+CREATE TABLE `users` (
+  `rank` bigint(20) NOT NULL,
+  UNIQUE KEY `rank_idx` (`rank`)
+)
+
+-- 8/2.sql --
+CREATE TABLE `users` (
+  `rank` bigint NOT NULL,
+  UNIQUE KEY `rank_idx` (`rank`)
+)
+
+
+-- 3.hcl --
+schema "$db" {
+    charset = "$charset"
+    collation = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "rank" {
+        type = bigint
+    }
+    index "rank_idx" {
+        columns = [table.users.column.rank]
+    }
+}
+
+-- 3.sql --
+CREATE TABLE `users` (
+  `rank` bigint(20) NOT NULL,
+  KEY `rank_idx` (`rank`)
+)
+
+-- 8/3.sql --
+CREATE TABLE `users` (
+  `rank` bigint NOT NULL,
+  KEY `rank_idx` (`rank`)
+)
