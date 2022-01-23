@@ -134,6 +134,10 @@ func Test_PostgresSchemaDSN(t *testing.T) {
 			dsn:      "postgres://(bad:host)?search_path=foo",
 			expected: "public",
 		},
+		{
+			dsn:      "postgres://localhost:5432/dbname?search_path=",
+			expected: "public",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.dsn, func(t *testing.T) {
