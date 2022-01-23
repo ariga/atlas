@@ -5,7 +5,11 @@ apply 1.hcl
 # Check that users exists in the database.
 exist users
 
-# Apply schema "2.hcl".
+# The negate version indicates that this command is expected to fail and the
+# second argument is an optional pattern for matching on the returned error.
+! apply invalid-on-delete-action.hcl 'foreign key constraint was "author_id" SET NULL, but column "author_id" is NOT NULL'
+! apply invalid-on-update-action.hcl 'foreign key constraint was "author_id" SET NULL, but column "author_id" is NOT NULL'
+
 apply 2.hcl
 exist users posts
 cmpshow users posts 2.sql
@@ -26,6 +30,74 @@ table "users" {
     }
     primary_key {
         columns = [table.users.column.id]
+    }
+}
+
+-- invalid-on-delete-action.hcl --
+schema "$db" {
+    charset = "$charset"
+    collation = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "id" {
+        type = int
+    }
+    primary_key {
+        columns = [table.users.column.id]
+    }
+}
+
+table "posts" {
+    schema = schema.$db
+    column "id" {
+        type = int
+    }
+    column "author_id" {
+        type = int
+    }
+    primary_key {
+        columns = [table.posts.column.id]
+    }
+    foreign_key "owner_id" {
+        columns = [table.posts.column.author_id]
+        ref_columns = [table.users.column.id]
+        on_delete = "SET NULL"
+    }
+}
+
+-- invalid-on-update-action.hcl --
+schema "$db" {
+    charset = "$charset"
+    collation = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "id" {
+        type = int
+    }
+    primary_key {
+        columns = [table.users.column.id]
+    }
+}
+
+table "posts" {
+    schema = schema.$db
+    column "id" {
+        type = int
+    }
+    column "author_id" {
+        type = int
+    }
+    primary_key {
+        columns = [table.posts.column.id]
+    }
+    foreign_key "owner_id" {
+    	columns = [table.posts.column.author_id]
+    	ref_columns = [table.users.column.id]
+    	on_update = "SET NULL"
     }
 }
 
@@ -57,11 +129,11 @@ table "posts" {
     primary_key {
         columns = [table.posts.column.id]
     }
-	foreign_key "owner_id" {
-		columns = [table.posts.column.author_id]
-		ref_columns = [table.users.column.id]
-		on_delete = "SET NULL"
-	}
+    foreign_key "owner_id" {
+    	columns = [table.posts.column.author_id]
+    	ref_columns = [table.users.column.id]
+    	on_delete = "SET NULL"
+    }
 }
 
 -- 2.sql --

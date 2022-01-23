@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -334,7 +335,19 @@ func TestMySQLScript(t *testing.T) {
 					ts.Check(err)
 					changes, err := t.drv.SchemaDiff(current, &desired)
 					ts.Check(err)
-					ts.Check(t.drv.ApplyChanges(context.Background(), changes))
+					switch err := t.drv.ApplyChanges(context.Background(), changes); {
+					case err != nil && !neg:
+						ts.Fatalf("apply changes: %v", err)
+					case err == nil && neg:
+						ts.Fatalf("unexpected apply success")
+					// If we expect to fail, and there's a specific error to compare.
+					case err != nil && len(args) == 2:
+						re, rerr := regexp.Compile(`(?m)` + args[1])
+						ts.Check(rerr)
+						if !re.MatchString(err.Error()) {
+							t.Fatalf("mismatched errors: %v != %s", err, args[1])
+						}
+					}
 				},
 				"exist": func(ts *testscript.TestScript, neg bool, args []string) {
 					for _, name := range args {
