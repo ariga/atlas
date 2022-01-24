@@ -361,16 +361,17 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+-------------+-------------+-------------------+-------------+------------+-------------------+-----------------------------+--------------------+----------------+
-| column_name | column_type | column_comment    | is_nullable | column_key | column_default    | extra                       | character_set_name | collation_name |
-+-------------+-------------+-------------------+-------------+------------+-------------------+-----------------------------+--------------------+----------------+
-| c1          | date        |                   | NO          |            | NULL              |                             | NULL               | NULL           |
-| c2          | datetime    |                   | NO          |            | NULL              |                             | NULL               | NULL           |
-| c3          | time        |                   | NO          |            | NULL              |                             | NULL               | NULL           |
-| c4          | timestamp   |                   | NO          |            | CURRENT_TIMESTAMP | on update CURRENT_TIMESTAMP | NULL               | NULL           |
-| c5          | year(4)     |                   | NO          |            | NULL              |                             | NULL               | NULL           |
-| c6          | year        |                   | NO          |            | NULL              |                             | NULL               | NULL           |
-+-------------+-------------+-------------------+-------------+------------+-------------------+-----------------------------+--------------------+----------------+
++-------------+--------------+-------------------+-------------+------------+----------------------+--------------------------------+--------------------+----------------+
+| column_name | column_type  | column_comment    | is_nullable | column_key | column_default       | extra                          | character_set_name | collation_name |
++-------------+--------------+-------------------+-------------+------------+----------------------+--------------------------------+--------------------+----------------+
+| c1          | date         |                   | NO          |            | NULL                 |                                | NULL               | NULL           |
+| c2          | datetime     |                   | NO          |            | NULL                 |                                | NULL               | NULL           |
+| c3          | time         |                   | NO          |            | NULL                 |                                | NULL               | NULL           |
+| c4          | timestamp    |                   | NO          |            | CURRENT_TIMESTAMP    | on update CURRENT_TIMESTAMP    | NULL               | NULL           |
+| c5          | year(4)      |                   | NO          |            | NULL                 |                                | NULL               | NULL           |
+| c6          | year         |                   | NO          |            | NULL                 |                                | NULL               | NULL           |
+| c7          | timestamp(6) |                   | NO          |            | CURRENT_TIMESTAMP(6) | on update CURRENT_TIMESTAMP(6) | NULL               | NULL           |
++-------------+--------------+-------------------+-------------+------------+----------------------+--------------------------------+--------------------+----------------+
 `))
 				m.noIndexes()
 				m.noFKs()
@@ -383,8 +384,9 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c2", Type: &schema.ColumnType{Raw: "datetime", Type: &schema.TimeType{T: "datetime"}}},
 					{Name: "c3", Type: &schema.ColumnType{Raw: "time", Type: &schema.TimeType{T: "time"}}},
 					{Name: "c4", Type: &schema.ColumnType{Raw: "timestamp", Type: &schema.TimeType{T: "timestamp"}}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP"}, Attrs: []schema.Attr{&OnUpdate{A: "on update current_timestamp"}}},
-					{Name: "c5", Type: &schema.ColumnType{Raw: "year(4)", Type: &schema.TimeType{T: "year"}}},
+					{Name: "c5", Type: &schema.ColumnType{Raw: "year(4)", Type: &schema.TimeType{T: "year", Precision: 4}}},
 					{Name: "c6", Type: &schema.ColumnType{Raw: "year", Type: &schema.TimeType{T: "year"}}},
+					{Name: "c7", Type: &schema.ColumnType{Raw: "timestamp(6)", Type: &schema.TimeType{T: "timestamp", Precision: 6}}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP(6)"}, Attrs: []schema.Attr{&OnUpdate{A: "on update current_timestamp(6)"}}},
 				}, t.Columns)
 			},
 		},

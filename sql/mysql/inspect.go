@@ -450,15 +450,18 @@ func (i *inspect) tableNames(ctx context.Context, schema string, opts *schema.In
 	return names, nil
 }
 
+var reTimeOnUpdate = regexp.MustCompile(`^(?:default_generated )?on update current_timestamp(?:\(\d?\))?$`)
+
 // extraAttr parses the EXTRA column from the INFORMATION_SCHEMA.COLUMNS table
 // and appends its parsed representation to the column.
 func (i *inspect) extraAttr(t *schema.Table, c *schema.Column, extra string) error {
-	switch extra := strings.ToLower(extra); extra {
-	case "", "null": // ignore.
-	case defaultGen:
+	extra = strings.ToLower(extra)
+	switch {
+	case extra == "", extra == "null": // ignore.
+	case extra == defaultGen:
 		// The column has an expression default value
 		// and it is handled in Driver.addColumn.
-	case autoIncrement:
+	case extra == autoIncrement:
 		a := &AutoIncrement{}
 		// A table can have only one AUTO_INCREMENT column. If it was returned as NULL
 		// from INFORMATION_SCHEMA, it is due to information_schema_stats_expiry and we
@@ -472,8 +475,7 @@ func (i *inspect) extraAttr(t *schema.Table, c *schema.Column, extra string) err
 			t.Attrs = append(t.Attrs, a)
 		}
 		c.Attrs = append(c.Attrs, a)
-	case "default_generated on update current_timestamp", "on update current_timestamp",
-		"on update current_timestamp()" /* MariaDB format. */ :
+	case reTimeOnUpdate.MatchString(extra):
 		c.Attrs = append(c.Attrs, &OnUpdate{A: extra})
 	default:
 		return fmt.Errorf("unknown attribute %q", extra)
@@ -514,6 +516,8 @@ func (i *inspect) createStmt(ctx context.Context, t *schema.Table) error {
 	return nil
 }
 
+var reCurrTimestamp = regexp.MustCompile(`(?i)^current_timestamp(?:\(\d?\))?$`)
+
 // myDefaultExpr returns the correct schema.Expr based on the column attributes for MySQL.
 func (i *inspect) myDefaultExpr(c *schema.Column, x, extra string) schema.Expr {
 	// In MySQL, the DEFAULT_GENERATED indicates the column has an expression default value.
@@ -531,7 +535,7 @@ func (i *inspect) myDefaultExpr(c *schema.Column, x, extra string) schema.Expr {
 	case *schema.TimeType:
 		// "current_timestamp" is exceptional in old versions
 		// of MySQL for timestamp and datetime data types.
-		if strings.ToLower(x) == currentTS {
+		if reCurrTimestamp.MatchString(x) {
 			return &schema.RawExpr{X: x}
 		}
 	}

@@ -225,7 +225,8 @@ type (
 
 	// TimeType represents a date/time type.
 	TimeType struct {
-		T string
+		T         string
+		Precision int
 	}
 
 	// JSONType represents a JSON type.

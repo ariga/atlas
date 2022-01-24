@@ -201,9 +201,17 @@ func ParseType(raw string) (schema.Type, error) {
 			Values: values,
 		}, nil
 	case TypeDate, TypeDateTime, TypeTime, TypeTimestamp, TypeYear:
-		return &schema.TimeType{
+		tt := &schema.TimeType{
 			T: t,
-		}, nil
+		}
+		if len(parts) > 1 {
+			p, err := strconv.ParseInt(parts[1], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("parse precision %q", parts[1])
+			}
+			tt.Precision = int(p)
+		}
+		return tt, nil
 	case TypeJSON:
 		return &schema.JSONType{
 			T: t,
