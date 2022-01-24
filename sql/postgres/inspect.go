@@ -232,7 +232,7 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 
 func columnType(c *columnDesc) schema.Type {
 	var typ schema.Type
-	switch t := strings.Split(c.typ, "(")[0]; strings.ToLower(t) {
+	switch t := c.typ; strings.ToLower(t) {
 	case TypeBigInt, TypeInt8, TypeInt, TypeInteger, TypeInt4, TypeSmallInt, TypeInt2:
 		typ = &schema.IntegerType{T: t}
 	case TypeBit, TypeBitVar:
