@@ -21,18 +21,37 @@ import (
 //go:embed output.tmpl
 var tmpl string
 
-type Driver struct {
-	Name      string
-	Types     []*schemaspec.TypeSpec
-	Marshaler schemaspec.Marshaler
-}
+type (
+	Driver struct {
+		Name  string
+		Types []Type
+	}
+	Type struct {
+		*schemaspec.TypeSpec
+		Info            string
+		MarshalOverride string
+	}
+)
 
 //go:generate go run main.go
 func main() {
 	drivers := []*Driver{
-		{Name: "MySQL/MariaDB", Types: mysql.TypeRegistry.Specs(), Marshaler: mysql.MarshalHCL},
-		{Name: "Postgres", Types: postgres.TypeRegistry.Specs(), Marshaler: postgres.MarshalHCL},
-		{Name: "SQLite", Types: sqlite.TypeRegistry.Specs(), Marshaler: sqlite.MarshalHCL},
+		{Name: "MySQL/MariaDB", Types: wrap(mysql.TypeRegistry.Specs())},
+		{Name: "Postgres", Types: append(wrap(postgres.TypeRegistry.Specs()), Type{
+			TypeSpec: &schemaspec.TypeSpec{
+				Name: "enum",
+				T:    "my_enum",
+			},
+			Info: `In Postgres an enum type is created as a custom type and can then be referenced in a column 
+definition. Therefore, you have to add an enum block to your HCL schema like below:
+<pre>
+enum "my_enum" &#123;
+	values = ["on", "off"]
+&#125;
+</pre>`,
+			MarshalOverride: "enum = enum.my_enum",
+		})},
+		{Name: "SQLite", Types: wrap(sqlite.TypeRegistry.Specs())},
 	}
 	parse, err := template.New("tmp").Funcs(template.FuncMap{
 		"col_hcl": colHcl,
@@ -45,7 +64,7 @@ func main() {
 			return drv.Types[i].Name < drv.Types[j].Name
 		})
 	}
-	f, err := os.Create("../../../doc/md/sql_types.md")
+	f, err := os.Create("../../../doc/md/ddl/sql_types.md")
 	if err != nil {
 		log.Fatalf("error: %s", err)
 	}
@@ -55,24 +74,28 @@ func main() {
 	}
 }
 
-func colHcl(ts *schemaspec.TypeSpec, t []*schemaspec.TypeSpec) []string {
-	dt := dummyType(ts)
-	col := &sqlspec.Column{
-		Name: "column",
-		Type: dt,
+func colHcl(ts *Type, d *Driver) []string {
+	td := ts.MarshalOverride
+	if ts.MarshalOverride == "" {
+		dt := dummyType(ts.TypeSpec)
+		col := &sqlspec.Column{
+			Name: "column",
+			Type: dt,
+		}
+		spec, err := schemahcl.New(schemahcl.WithTypes(unwrap(d.Types))).MarshalSpec(col)
+		if err != nil {
+			log.Fatalf("failed: %s", err)
+		}
+		split := strings.Split(string(spec), "\n")
+		td = split[1]
 	}
-	spec, err := schemahcl.New(schemahcl.WithTypes(t)).MarshalSpec(col)
-	if err != nil {
-		log.Fatalf("failed: %s", err)
-	}
-	split := strings.Split(string(spec), "\n")
-	td := []string{split[2]}
+	res := []string{td}
 	for _, attr := range ts.Attributes {
 		if attr.Name == "unsigned" {
-			td = append(td, "unisgned = true")
+			res = append(res, "unsigned = true")
 		}
 	}
-	return td
+	return res
 }
 
 func dummyType(ts *schemaspec.TypeSpec) *schemaspec.Type {
@@ -129,4 +152,22 @@ func ListAttr(k string, litValues ...string) *schemaspec.Attr {
 		K: k,
 		V: lv,
 	}
+}
+
+// wrap iterates over the given slice of schemaspec.TypeSpec and wraps them with Type.
+func wrap(tss []*schemaspec.TypeSpec) []Type {
+	res := make([]Type, len(tss))
+	for i, ts := range tss {
+		res[i] = Type{TypeSpec: ts}
+	}
+	return res
+}
+
+// unwrap undoes wrap.
+func unwrap(tss []Type) []*schemaspec.TypeSpec {
+	res := make([]*schemaspec.TypeSpec, len(tss))
+	for i, ts := range tss {
+		res[i] = ts.TypeSpec
+	}
+	return res
 }
