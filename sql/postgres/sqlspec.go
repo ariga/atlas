@@ -339,6 +339,7 @@ var TypeRegistry = specutil.NewRegistry(
 		specutil.TypeSpec(TypeTime),
 		specutil.AliasTypeSpec("time_with_time_zone", TypeTimeWTZ),
 		specutil.AliasTypeSpec("time_without_time_zone", TypeTimeWOTZ),
+		specutil.TypeSpec(TypeTimestampTZ),
 		specutil.TypeSpec(TypeTimestamp),
 		specutil.AliasTypeSpec("timestamp_with_time_zone", TypeTimestampWTZ),
 		specutil.AliasTypeSpec("timestamp_without_time_zone", TypeTimestampWOTZ),
