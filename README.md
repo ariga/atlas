@@ -23,17 +23,17 @@ be used individually but are designed to work very well together.
 
 Download latest release.
 ```shell
-curl -LO https://release.ariga.io/atlas/atlas-darwin-amd64-v0.3.1
+curl -LO https://release.ariga.io/atlas/atlas-darwin-amd64-latest
 ```
 
 Make the atlas binary executable.
 ```shell
-chmod +x ./atlas-darwin-amd64-v0.3.1
+chmod +x ./atlas-darwin-amd64-latest
 ```
 
 Move the atlas binary to a file location on your system PATH.
 ```shell
-sudo mv ./atlas-darwin-amd64-v0.3.1 /usr/local/bin/atlas
+sudo mv ./atlas-darwin-amd64-latest /usr/local/bin/atlas
 ```
 ```shell
 sudo chown root: /usr/local/bin/atlas
