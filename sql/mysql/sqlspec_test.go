@@ -450,6 +450,8 @@ func TestMarshalSpec_TimePrecision(t *testing.T) {
 					schema.NewTimeColumn("tTime", TypeTime, schema.TimePrecision(1)),
 					schema.NewTimeColumn("tDatetime", TypeDateTime, schema.TimePrecision(2)),
 					schema.NewTimeColumn("tTimestamp", TypeTimestamp, schema.TimePrecision(3)),
+					schema.NewTimeColumn("tDate", TypeDate, schema.TimePrecision(2)),
+					schema.NewTimeColumn("tYear", TypeYear, schema.TimePrecision(2)),
 				),
 		)
 	buf, err := MarshalSpec(s, hclState)
@@ -471,6 +473,14 @@ func TestMarshalSpec_TimePrecision(t *testing.T) {
   column "tTimestamp" {
     null = false
     type = timestamp(3)
+  }
+  column "tDate" {
+    null = false
+    type = date(2)
+  }
+  column "tYear" {
+    null = false
+    type = year(2)
   }
 }
 schema "test" {
@@ -647,6 +657,10 @@ func TestTypes(t *testing.T) {
 			expected: &schema.TimeType{T: TypeDate},
 		},
 		{
+			typeExpr: "date(2)",
+			expected: &schema.TimeType{T: TypeDate, Precision: 2},
+		},
+		{
 			typeExpr: "time",
 			expected: &schema.TimeType{T: TypeTime},
 		},
@@ -665,6 +679,10 @@ func TestTypes(t *testing.T) {
 		{
 			typeExpr: "year",
 			expected: &schema.TimeType{T: TypeYear},
+		},
+		{
+			typeExpr: "year(2)",
+			expected: &schema.TimeType{T: TypeYear, Precision: 2},
 		},
 		{
 			typeExpr: "varchar(10)",
