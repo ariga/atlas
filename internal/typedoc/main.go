@@ -64,7 +64,7 @@ enum "my_enum" &#123;
 			return drv.Types[i].Name < drv.Types[j].Name
 		})
 	}
-	f, err := os.Create("../../../doc/md/ddl/sql_types.md")
+	f, err := os.Create("../../doc/md/ddl/sql_types.md")
 	if err != nil {
 		log.Fatalf("error: %s", err)
 	}
