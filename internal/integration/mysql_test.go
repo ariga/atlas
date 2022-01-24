@@ -14,6 +14,7 @@ import (
 
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
+
 	"entgo.io/ent/dialect"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
@@ -536,6 +537,11 @@ func TestMySQL_CLI(t *testing.T) {
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
 			testCLISchemaApplyDry(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn())
+		})
+	})
+	t.Run("SchemaDiffRun", func(t *testing.T) {
+		myRun(t, func(t *myTest) {
+			testCLISchemaDiff(t, t.dsn())
 		})
 	})
 }

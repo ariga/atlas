@@ -11,6 +11,7 @@ import (
 	"text/template"
 
 	"ariga.io/atlas/cmd/action"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
 )
