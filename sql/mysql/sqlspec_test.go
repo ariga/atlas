@@ -772,6 +772,14 @@ func TestTypes(t *testing.T) {
 			typeExpr: "geometrycollection",
 			expected: &schema.SpatialType{T: TypeGeometryCollection},
 		},
+		{
+			typeExpr: "bool",
+			expected: &schema.BoolType{T: TypeBool},
+		},
+		{
+			typeExpr: "boolean",
+			expected: &schema.BoolType{T: TypeBool},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.typeExpr, func(t *testing.T) {
