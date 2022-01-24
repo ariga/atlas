@@ -232,6 +232,59 @@ enum "account_type" {
 	require.EqualValues(t, expected, string(buf))
 }
 
+func TestMarshalSpec_TimePrecision(t *testing.T) {
+	s := schema.New("test").
+		AddTables(
+			schema.NewTable("times").
+				AddColumns(
+					schema.NewTimeColumn("t_time_def", TypeTime),
+					schema.NewTimeColumn("t_time_with_time_zone", TypeTimeWTZ, schema.TimePrecision(2)),
+					schema.NewTimeColumn("t_time_without_time_zone", TypeTimeWOTZ, schema.TimePrecision(2)),
+					schema.NewTimeColumn("t_timestamp", TypeTimestamp, schema.TimePrecision(2)),
+					schema.NewTimeColumn("t_timestamptz", TypeTimestampTZ, schema.TimePrecision(2)),
+					schema.NewTimeColumn("t_timestamp_with_time_zone", TypeTimestampWTZ, schema.TimePrecision(2)),
+					schema.NewTimeColumn("t_timestamp_without_time_zone", TypeTimestampWOTZ, schema.TimePrecision(2)),
+				),
+		)
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "times" {
+  schema = schema.test
+  column "t_time_def" {
+    null = false
+    type = time
+  }
+  column "t_time_with_time_zone" {
+    null = false
+    type = time_with_time_zone(2)
+  }
+  column "t_time_without_time_zone" {
+    null = false
+    type = time_without_time_zone(2)
+  }
+  column "t_timestamp" {
+    null = false
+    type = timestamp(2)
+  }
+  column "t_timestamptz" {
+    null = false
+    type = timestamptz(2)
+  }
+  column "t_timestamp_with_time_zone" {
+    null = false
+    type = timestamp_with_time_zone(2)
+  }
+  column "t_timestamp_without_time_zone" {
+    null = false
+    type = timestamp_without_time_zone(2)
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
 func TestTypes(t *testing.T) {
 	// TODO(rotemtam) interval
 	for _, tt := range []struct {
