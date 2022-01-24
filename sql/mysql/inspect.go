@@ -450,7 +450,7 @@ func (i *inspect) tableNames(ctx context.Context, schema string, opts *schema.In
 	return names, nil
 }
 
-var crrTsReg = regexp.MustCompile(`^(?:default_generated )?on update current_timestamp(?:\(\d?\))?$`)
+var reTimeOnUpdate = regexp.MustCompile(`^(?:default_generated )?on update current_timestamp(?:\(\d?\))?$`)
 
 // extraAttr parses the EXTRA column from the INFORMATION_SCHEMA.COLUMNS table
 // and appends its parsed representation to the column.
@@ -475,7 +475,7 @@ func (i *inspect) extraAttr(t *schema.Table, c *schema.Column, extra string) err
 			t.Attrs = append(t.Attrs, a)
 		}
 		c.Attrs = append(c.Attrs, a)
-	case crrTsReg.MatchString(extra):
+	case reTimeOnUpdate.MatchString(extra):
 		c.Attrs = append(c.Attrs, &OnUpdate{A: extra})
 	default:
 		return fmt.Errorf("unknown attribute %q", extra)
