@@ -86,7 +86,7 @@ func TestDriver_InspectTable(t *testing.T) {
  c22         | ARRAY               | YES         |                                 |                          |                   |                    |               |                    |                | _int4       | NO          |                |                    |                     |         | b       |  1007
  c23         | USER-DEFINED        | YES         |                                 |                          |                   |                    |               |                    |                | ltree       | NO          |                |                    |                     |         | b       | 16535
  c24         | USER-DEFINED        | NO          |                                 |                          |                   |                    |               |                    |                | state       | NO          |                |                    |                     |         | e       | 16774
- c25         | timestamp(4)        | NO          |                                 |                          |                   |                  4 |               |                    |                | timestamp   | NO          |                |                    |                     |         | b       |  1114
+ c25         | timestamp(4)        | NO          |            now()                |                          |                   |                  4 |               |                    |                | timestamp   | NO          |                |                    |                     |         | b       |  1114
  c26         | timestamptz(6)      | NO          |                                 |                          |                   |                  6 |               |                    |                | timestamptz | NO          |                |                    |                     |         | b       |  1184
  c27         | time(6)             | NO          |                                 |                          |                   |                  6 |               |                    |                | time        | NO          |                |                    |                     |         | b       |  1266
 `))
@@ -132,7 +132,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c22", Type: &schema.ColumnType{Raw: "ARRAY", Null: true, Type: &ArrayType{T: "int4[]"}}},
 					{Name: "c23", Type: &schema.ColumnType{Raw: "USER-DEFINED", Null: true, Type: &UserDefinedType{T: "ltree"}}},
 					{Name: "c24", Type: &schema.ColumnType{Raw: "state", Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}},
-					{Name: "c25", Type: &schema.ColumnType{Raw: "timestamp(4)", Type: &schema.TimeType{T: "timestamp", Precision: 4}}},
+					{Name: "c25", Type: &schema.ColumnType{Raw: "timestamp(4)", Type: &schema.TimeType{T: "timestamp", Precision: 4}}, Default: &schema.RawExpr{X: "now()"}},
 					{Name: "c26", Type: &schema.ColumnType{Raw: "timestamptz(6)", Type: &schema.TimeType{T: "timestamptz", Precision: 6}}},
 					{Name: "c27", Type: &schema.ColumnType{Raw: "time(6)", Type: &schema.TimeType{T: "time", Precision: 6}}},
 				}, t.Columns)

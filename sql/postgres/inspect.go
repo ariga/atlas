@@ -8,7 +8,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -230,8 +229,6 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 	t.Columns = append(t.Columns, c)
 	return nil
 }
-
-var reTimestamp = regexp.MustCompile(`(?i)^time(?:stamp)?(:?tz)?(?:\(\d?\))?(?:with(?:out)? time zone)?$`)
 
 func columnType(c *columnDesc) schema.Type {
 	var typ schema.Type
