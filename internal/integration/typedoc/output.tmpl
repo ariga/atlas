@@ -1,7 +1,7 @@
 ---
+id: ddl-sql-types
 title: SQL Column Types
-id: sql-column-types
-slug: /sql/column_types
+slug: /ddl/sql-types
 ---
 
 {{ range . }}
@@ -12,10 +12,12 @@ slug: /sql/column_types
 
 <table>
     <thead>
+    <tr>
         <th>HCL</th>
         <th>SQL</th>
         <th>Attributes</th>
         <th>Example</th>
+    </tr>
     </thead>
     <tbody>
         {{ range .Types }}
@@ -30,11 +32,12 @@ slug: /sql/column_types
                 </ul>
             </td>
             <td>
-                {{ range col_hcl . $d.Types }}
+                {{ range col_hcl . $d }}
                 <pre>
                     {{ . }}
                 </pre>
                 {{end }}
+                {{ with .Info }}{{ . }}{{ end }}
             </td>
         </tr>
         {{ end }}
