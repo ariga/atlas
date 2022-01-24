@@ -1,4 +1,4 @@
-module ariga.io/atlas/integration
+module ariga.io/atlas/internal/integration
 
 go 1.17
 
