@@ -516,7 +516,7 @@ func (i *inspect) createStmt(ctx context.Context, t *schema.Table) error {
 	return nil
 }
 
-var crrTsDefReg = regexp.MustCompile(`(?i)^current_timestamp(?:\(\d?\))?$`)
+var reCurrTimestamp = regexp.MustCompile(`(?i)^current_timestamp(?:\(\d?\))?$`)
 
 // myDefaultExpr returns the correct schema.Expr based on the column attributes for MySQL.
 func (i *inspect) myDefaultExpr(c *schema.Column, x, extra string) schema.Expr {
@@ -535,7 +535,7 @@ func (i *inspect) myDefaultExpr(c *schema.Column, x, extra string) schema.Expr {
 	case *schema.TimeType:
 		// "current_timestamp" is exceptional in old versions
 		// of MySQL for timestamp and datetime data types.
-		if crrTsDefReg.MatchString(x) {
+		if reCurrTimestamp.MatchString(x) {
 			return &schema.RawExpr{X: x}
 		}
 	}
