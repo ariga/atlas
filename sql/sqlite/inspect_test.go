@@ -105,17 +105,17 @@ func TestDriver_InspectTable(t *testing.T) {
 `))
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(indexColumnsQuery, "c1u"))).
 					WillReturnRows(sqltest.Rows(`
- name 
-------
- c1   
- c2
+ name  |   desc |
+-------+--------+
+ c1   |  1      |
+ c2   |  0      |
 `))
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(indexColumnsQuery, "c1_c2"))).
 					WillReturnRows(sqltest.Rows(`
- name 
-------
- c1   
- nil
+ name  |   desc |     
+-------+--------+     
+ c1    |  0     |     
+ nil   |  0     |     
 `))
 				m.noFKs("users")
 			},
@@ -131,7 +131,7 @@ func TestDriver_InspectTable(t *testing.T) {
 						Unique: true,
 						Table:  t,
 						Parts: []*schema.IndexPart{
-							{SeqNo: 1, C: columns[0]},
+							{SeqNo: 1, C: columns[0], Attrs: []schema.Attr{&IndexOrder{Desc: true}}},
 							{SeqNo: 2, C: columns[1]},
 						},
 						Attrs: []schema.Attr{
