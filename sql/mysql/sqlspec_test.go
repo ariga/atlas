@@ -441,6 +441,44 @@ schema "test" {
 	require.EqualValues(t, expected, string(buf))
 }
 
+func TestMarshalSpec_TimePrecision(t *testing.T) {
+	s := schema.New("test").
+		AddTables(
+			schema.NewTable("times").
+				AddColumns(
+					schema.NewTimeColumn("tTimeDef", TypeTime),
+					schema.NewTimeColumn("tTime", TypeTime, schema.TimePrecision(1)),
+					schema.NewTimeColumn("tDatetime", TypeDateTime, schema.TimePrecision(2)),
+					schema.NewTimeColumn("tTimestamp", TypeTimestamp, schema.TimePrecision(3)),
+				),
+		)
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "times" {
+  schema = schema.test
+  column "tTimeDef" {
+    null = false
+    type = time
+  }
+  column "tTime" {
+    null = false
+    type = time(1)
+  }
+  column "tDatetime" {
+    null = false
+    type = datetime(2)
+  }
+  column "tTimestamp" {
+    null = false
+    type = timestamp(3)
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
 func TestTypes(t *testing.T) {
 	tests := []struct {
 		typeExpr  string
@@ -601,6 +639,10 @@ func TestTypes(t *testing.T) {
 			expected: &schema.TimeType{T: TypeTimestamp},
 		},
 		{
+			typeExpr: "timestamp(6)",
+			expected: &schema.TimeType{T: TypeTimestamp, Precision: 6},
+		},
+		{
 			typeExpr: "date",
 			expected: &schema.TimeType{T: TypeDate},
 		},
@@ -609,8 +651,16 @@ func TestTypes(t *testing.T) {
 			expected: &schema.TimeType{T: TypeTime},
 		},
 		{
+			typeExpr: "time(6)",
+			expected: &schema.TimeType{T: TypeTime, Precision: 6},
+		},
+		{
 			typeExpr: "datetime",
 			expected: &schema.TimeType{T: TypeDateTime},
+		},
+		{
+			typeExpr: "datetime(6)",
+			expected: &schema.TimeType{T: TypeDateTime, Precision: 6},
 		},
 		{
 			typeExpr: "year",
