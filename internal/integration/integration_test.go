@@ -382,6 +382,15 @@ func TestMySQLScript(t *testing.T) {
 						if !re.MatchString(err.Error()) {
 							t.Fatalf("mismatched errors: %v != %s", err, args[1])
 						}
+					// Apply passed. Make sure there is no drift.
+					case !neg:
+						current, err := t.drv.InspectSchema(context.Background(), desired.Name, nil)
+						ts.Check(err)
+						changes, err := t.drv.SchemaDiff(current, &desired)
+						ts.Check(err)
+						if len(changes) > 0 {
+							ts.Fatalf("unexpected schema drift: %v", changes)
+						}
 					}
 				},
 				"exist": func(ts *testscript.TestScript, neg bool, args []string) {
