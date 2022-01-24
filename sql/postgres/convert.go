@@ -184,14 +184,15 @@ func arrayType(t string) (string, bool) {
 
 // columnDesc represents a column descriptor.
 type columnDesc struct {
-	typ       string
-	size      int64
-	udt       string
-	precision int64
-	scale     int64
-	typtype   string
-	typid     int64
-	parts     []string
+	typ           string
+	size          int64
+	udt           string
+	precision     int64
+	timePrecision int64
+	scale         int64
+	typtype       string
+	typid         int64
+	parts         []string
 }
 
 func parseColumn(s string) (*columnDesc, error) {
