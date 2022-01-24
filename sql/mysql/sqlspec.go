@@ -261,6 +261,8 @@ var TypeRegistry = specutil.NewRegistry(
 			},
 			RType: reflect.TypeOf(SetType{}),
 		},
+		specutil.TypeSpec(TypeBool),
+		specutil.TypeSpec(TypeBoolean),
 		specutil.TypeSpec(TypeBit, specutil.SizeTypeAttr(false)),
 		specutil.TypeSpec(TypeInt, unsignedTypeAttr(), specutil.SizeTypeAttr(false)),
 		specutil.TypeSpec(TypeTinyInt, unsignedTypeAttr(), specutil.SizeTypeAttr(false)),

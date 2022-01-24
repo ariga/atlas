@@ -134,7 +134,11 @@ func unescape(s string) string {
 // https://github.com/mysql/mysql-server/blob/8.0/sql/dd/types/column.h
 // https://github.com/mysql/mysql-server/blob/8.0/sql/sql_show.cc
 // https://github.com/mysql/mysql-server/blob/8.0/sql/gis/geometries.cc
+// https://dev.mysql.com/doc/refman/8.0/en/other-vendor-data-types.html
 const (
+	TypeBool    = "bool"
+	TypeBoolean = "boolean"
+
 	TypeBit       = "bit"       // MYSQL_TYPE_BIT
 	TypeInt       = "int"       // MYSQL_TYPE_LONG
 	TypeTinyInt   = "tinyint"   // MYSQL_TYPE_TINY
