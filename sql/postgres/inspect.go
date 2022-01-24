@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -173,10 +174,13 @@ func (i *inspect) columns(ctx context.Context, t *schema.Table) error {
 // addColumn scans the current row and adds a new column from it to the table.
 func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 	var (
-		typid, maxlen, precision, scale, seqstart, seqinc                                              sql.NullInt64
+		typid, maxlen, precision, timeprecision, scale, seqstart, seqinc                               sql.NullInt64
 		name, typ, nullable, defaults, udt, identity, generation, charset, collation, comment, typtype sql.NullString
 	)
-	if err := rows.Scan(&name, &typ, &nullable, &defaults, &maxlen, &precision, &scale, &charset, &collation, &udt, &identity, &seqstart, &seqinc, &generation, &comment, &typtype, &typid); err != nil {
+	if err := rows.Scan(
+		&name, &typ, &nullable, &defaults, &maxlen, &precision, &timeprecision, &scale, &charset,
+		&collation, &udt, &identity, &seqstart, &seqinc, &generation, &comment, &typtype, &typid,
+	); err != nil {
 		return err
 	}
 	c := &schema.Column{
@@ -187,13 +191,14 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 		},
 	}
 	c.Type.Type = columnType(&columnDesc{
-		typ:       typ.String,
-		size:      maxlen.Int64,
-		udt:       udt.String,
-		precision: precision.Int64,
-		scale:     scale.Int64,
-		typtype:   typtype.String,
-		typid:     typid.Int64,
+		typ:           typ.String,
+		size:          maxlen.Int64,
+		udt:           udt.String,
+		precision:     precision.Int64,
+		timePrecision: timeprecision.Int64,
+		scale:         scale.Int64,
+		typtype:       typtype.String,
+		typid:         typid.Int64,
 	})
 	if sqlx.ValidString(defaults) {
 		c.Default = defaultExpr(c, defaults.String)
@@ -226,9 +231,11 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 	return nil
 }
 
+var reTimestamp = regexp.MustCompile(`(?i)^time(?:stamp)?(:?tz)?(?:\(\d?\))?(?:with(?:out)? time zone)?$`)
+
 func columnType(c *columnDesc) schema.Type {
 	var typ schema.Type
-	switch t := c.typ; strings.ToLower(t) {
+	switch t := strings.Split(c.typ, "(")[0]; strings.ToLower(t) {
 	case TypeBigInt, TypeInt8, TypeInt, TypeInteger, TypeInt4, TypeSmallInt, TypeInt2:
 		typ = &schema.IntegerType{T: t}
 	case TypeBit, TypeBitVar:
@@ -247,7 +254,7 @@ func columnType(c *columnDesc) schema.Type {
 		typ = &schema.SpatialType{T: t}
 	case TypeDate, TypeTime, TypeTimeWTZ, TypeTimeWOTZ,
 		TypeTimestamp, TypeTimestampTZ, TypeTimestampWTZ, TypeTimestampWOTZ:
-		typ = &schema.TimeType{T: t}
+		typ = &schema.TimeType{T: t, Precision: int(c.timePrecision)}
 	case TypeInterval:
 		// TODO: get 'interval_type' from query above before implementing.
 		typ = &schema.UnsupportedType{T: t}
@@ -755,6 +762,7 @@ SELECT
 	t1.column_default,
 	t1.character_maximum_length,
 	t1.numeric_precision,
+	t1.datetime_precision,
 	t1.numeric_scale,
 	t1.character_set_name,
 	t1.collation_name,
