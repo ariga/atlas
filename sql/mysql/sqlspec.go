@@ -116,7 +116,7 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 	if attr, ok := spec.Attr("on_update"); ok {
 		exp, ok := attr.V.(*schemaspec.RawExpr)
 		if !ok {
-			return nil, fmt.Errorf("unexpected type %T for atrribute \"on_update\"", attr.V)
+			return nil, fmt.Errorf(`unexpected type %T for atrribute "on_update"`, attr.V)
 		}
 		c.AddAttrs(&OnUpdate{A: exp.X})
 	}

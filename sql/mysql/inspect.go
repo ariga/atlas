@@ -455,13 +455,13 @@ var reTimeOnUpdate = regexp.MustCompile(`(?i)^(?:default_generated )?on update (
 // extraAttr parses the EXTRA column from the INFORMATION_SCHEMA.COLUMNS table
 // and appends its parsed representation to the column.
 func (i *inspect) extraAttr(t *schema.Table, c *schema.Column, extra string) error {
-	canon := strings.ToLower(extra)
+	el := strings.ToLower(extra)
 	switch {
-	case canon == "", canon == "null": // ignore.
-	case canon == defaultGen:
+	case el == "", el == "null": // ignore.
+	case el == defaultGen:
 		// The column has an expression default value
 		// and it is handled in Driver.addColumn.
-	case canon == autoIncrement:
+	case el == autoIncrement:
 		a := &AutoIncrement{}
 		// A table can have only one AUTO_INCREMENT column. If it was returned as NULL
 		// from INFORMATION_SCHEMA, it is due to information_schema_stats_expiry and we
