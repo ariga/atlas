@@ -306,13 +306,13 @@ func (i *inspect) addIndexes(t *schema.Table, rows *sql.Rows) error {
 	)
 	for rows.Next() {
 		var (
-			nonuniq, desc                  bool
 			seqno                          int
 			name, indexType                string
+			nonuniq, desc                  sql.NullBool
 			column, subPart, expr, comment sql.NullString
 		)
 		if err := rows.Scan(&name, &column, &nonuniq, &seqno, &indexType, &desc, &comment, &subPart, &expr); err != nil {
-			return fmt.Errorf("mysql: scanning index: %w", err)
+			return fmt.Errorf("mysql: scanning indexes for table %q: %w", t.Name, err)
 		}
 		// Ignore primary keys.
 		if name == "PRIMARY" {
@@ -323,7 +323,7 @@ func (i *inspect) addIndexes(t *schema.Table, rows *sql.Rows) error {
 		if !ok {
 			idx = &schema.Index{
 				Name:   name,
-				Unique: !nonuniq,
+				Unique: !nonuniq.Bool,
 				Table:  t,
 				Attrs: []schema.Attr{
 					&IndexType{T: indexType},
@@ -339,7 +339,7 @@ func (i *inspect) addIndexes(t *schema.Table, rows *sql.Rows) error {
 		}
 		// Rows are ordered by SEQ_IN_INDEX that specifies the
 		// position of the column in the index definition.
-		part := &schema.IndexPart{SeqNo: seqno, Desc: desc}
+		part := &schema.IndexPart{SeqNo: seqno, Desc: desc.Bool}
 		switch {
 		case sqlx.ValidString(expr):
 			part.X = &schema.RawExpr{
