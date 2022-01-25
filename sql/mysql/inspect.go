@@ -450,18 +450,18 @@ func (i *inspect) tableNames(ctx context.Context, schema string, opts *schema.In
 	return names, nil
 }
 
-var reTimeOnUpdate = regexp.MustCompile(`^(?:default_generated )?on update current_timestamp(?:\(\d?\))?$`)
+var reTimeOnUpdate = regexp.MustCompile(`(?i)^(?:default_generated )?on update (current_timestamp(?:\(\d?\))?)$`)
 
 // extraAttr parses the EXTRA column from the INFORMATION_SCHEMA.COLUMNS table
 // and appends its parsed representation to the column.
 func (i *inspect) extraAttr(t *schema.Table, c *schema.Column, extra string) error {
-	extra = strings.ToLower(extra)
+	canon := strings.ToLower(extra)
 	switch {
-	case extra == "", extra == "null": // ignore.
-	case extra == defaultGen:
+	case canon == "", canon == "null": // ignore.
+	case canon == defaultGen:
 		// The column has an expression default value
 		// and it is handled in Driver.addColumn.
-	case extra == autoIncrement:
+	case canon == autoIncrement:
 		a := &AutoIncrement{}
 		// A table can have only one AUTO_INCREMENT column. If it was returned as NULL
 		// from INFORMATION_SCHEMA, it is due to information_schema_stats_expiry and we
@@ -476,7 +476,7 @@ func (i *inspect) extraAttr(t *schema.Table, c *schema.Column, extra string) err
 		}
 		c.Attrs = append(c.Attrs, a)
 	case reTimeOnUpdate.MatchString(extra):
-		c.Attrs = append(c.Attrs, &OnUpdate{A: extra})
+		c.Attrs = append(c.Attrs, &OnUpdate{A: reTimeOnUpdate.FindStringSubmatch(extra)[1]})
 	default:
 		return fmt.Errorf("unknown attribute %q", extra)
 	}
