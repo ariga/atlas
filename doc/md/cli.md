@@ -95,6 +95,47 @@ atlas schema apply -d "sqlite://file:ex1.db?_fk=1" -f atlas.hcl
 ```
 
 
+### atlas schema diff
+
+Calculate and print the diff between two schemas.
+
+#### Usage
+```
+atlas schema diff [flags]
+```
+
+#### Details
+`atlas schema diff` connects to two given databases, inspects
+them, calculates the difference in their schemas, and prints a plan of
+SQL queries to bring the "from" database to the schema of the "to" database.
+
+#### Flags
+```
+      --from string   [driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format
+      --to string     [driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format
+
+```
+
+
+### atlas schema fmt
+
+Formats Atlas HCL files
+
+#### Usage
+```
+atlas schema fmt [path]
+```
+
+#### Details
+`atlas schema fmt` formats all ".hcl" files under the given path using
+cannonical HCL layout style as defined by the github.com/hashicorp/hcl/v2/hclwrite package. 
+Unless stated otherwise, the fmt command will use the current directory.
+
+After running, the command will print the names of the files it has formatted. If all
+files in the directory are formatted, no input will be printed out.
+
+
+
 ### atlas schema inspect
 
 Inspect an a database's and print its schema in Atlas DDL syntax.

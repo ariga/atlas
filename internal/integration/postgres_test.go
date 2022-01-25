@@ -437,7 +437,7 @@ schema "second" {
 func (t *pgTest) applyRealmHcl(spec string) {
 	realm := t.loadRealm()
 	var desired schema.Realm
-	err := mysql.UnmarshalHCL([]byte(spec), &desired)
+	err := postgres.UnmarshalHCL([]byte(spec), &desired)
 	require.NoError(t, err)
 	diff, err := t.drv.RealmDiff(realm, &desired)
 	require.NoError(t, err)
@@ -476,6 +476,39 @@ func TestPostgres_CLI(t *testing.T) {
 	t.Run("SchemaDiffRun", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
 			testCLISchemaDiff(t, t.dsn())
+		})
+	})
+}
+
+func TestPostgres_CLI_MultiSchema(t *testing.T) {
+	t.Run("SchemaInspect", func(t *testing.T) {
+		h := `
+			schema "public" {	
+			}
+			table "users" {
+				schema = schema.public
+				column "id" {
+					type = integer
+				}
+				primary_key {
+					columns = [table.users.column.id]
+				}
+			}
+			schema "test2" {	
+			}
+			table "users" {
+				schema = schema.test2
+				column "id" {
+					type = integer
+				}
+				primary_key {
+					columns = [table.users.column.id]
+				}
+			}`
+		pgRun(t, func(t *pgTest) {
+			t.dropSchemas("test2")
+			t.dropTables("users")
+			testCLIMultiSchemaInspect(t, h, t.dsn(), []string{"public", "test2"}, postgres.UnmarshalHCL)
 		})
 	})
 }
@@ -1042,14 +1075,7 @@ func (t *pgTest) dropTables(names ...string) {
 
 func (t *pgTest) dropSchemas(names ...string) {
 	t.Cleanup(func() {
-		_, err := t.db.Exec("DROP SCHEMA IF EXISTS " + strings.Join(names, ", "))
+		_, err := t.db.Exec("DROP SCHEMA IF EXISTS " + strings.Join(names, ", ") + " CASCADE")
 		require.NoError(t.T, err, "drop schema %q", names)
-	})
-}
-
-func (t *pgTest) dropDB(names ...string) {
-	t.Cleanup(func() {
-		_, err := t.db.Exec("DROP DATABASE IF EXISTS " + strings.Join(names, ", "))
-		require.NoError(t.T, err, "drop db %q", names)
 	})
 }
