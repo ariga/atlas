@@ -254,6 +254,9 @@ func (s *state) indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {
 			case part.X != nil:
 				b.WriteString(part.X.(*schema.RawExpr).X)
 			}
+			if parts[i].Desc {
+				b.P("DESC")
+			}
 		})
 	})
 }
