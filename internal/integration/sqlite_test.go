@@ -452,6 +452,11 @@ func TestSQLite_CLI(t *testing.T) {
 			testCLISchemaApplyDry(t, h, t.dsn())
 		})
 	})
+	t.Run("SchemaDiffRun", func(t *testing.T) {
+		liteRun(t, func(t *liteTest) {
+			testCLISchemaDiff(t, t.dsn())
+		})
+	})
 }
 
 func TestSQLite_Sanity(t *testing.T) {

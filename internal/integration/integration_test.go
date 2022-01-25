@@ -236,6 +236,28 @@ func testCLISchemaApplyDry(t T, h string, dsn string) {
 	require.False(t, ok, "expected users table not to be created")
 }
 
+func testCLISchemaDiff(t T, dsn string) {
+	// Required to have a clean "stderr" while running first time.
+	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+
+	require.NoError(t, err)
+	t.dropTables("users")
+	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+		"schema",
+		"diff",
+		"--from",
+		dsn,
+		"--to",
+		dsn,
+	)
+	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	require.NoError(t, cmd.Run(), stderr.String(), stdout.String())
+	require.Empty(t, stderr.String(), stderr.String())
+	require.Contains(t, stdout.String(), "Schemas are synced, no changes to be made.")
+}
+
 func TestCLI_Version(t *testing.T) {
 	// Required to have a clean "stderr" while running first time.
 	require.NoError(t, exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run())

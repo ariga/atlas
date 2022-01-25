@@ -544,6 +544,11 @@ func TestMySQL_CLI(t *testing.T) {
 			testCLISchemaApplyDry(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn())
 		})
 	})
+	t.Run("SchemaDiffRun", func(t *testing.T) {
+		myRun(t, func(t *myTest) {
+			testCLISchemaDiff(t, t.dsn())
+		})
+	})
 }
 
 func TestMySQL_HCL_Realm(t *testing.T) {
