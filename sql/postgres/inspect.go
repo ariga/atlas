@@ -360,7 +360,7 @@ func (i *inspect) addIndexes(t *schema.Table, rows *sql.Rows) error {
 			column, contype, pred, expr, comment sql.NullString
 		)
 		if err := rows.Scan(&name, &typ, &column, &primary, &uniq, &contype, &pred, &expr, &desc, &nullsfirst, &nullslast, &comment); err != nil {
-			return fmt.Errorf("postgres: scanning index: %w", err)
+			return fmt.Errorf("postgres: scanning indexes for table %q: %w", t.Name, err)
 		}
 		idx, ok := names[name]
 		if !ok {

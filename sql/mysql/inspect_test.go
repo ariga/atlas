@@ -479,7 +479,7 @@ func TestDriver_InspectTable(t *testing.T) {
 +--------------+-------------+------------+--------------+--------------+---------+--------------+------------+------------------+
 | INDEX_NAME   | COLUMN_NAME | NON_UNIQUE | SEQ_IN_INDEX | INDEX_TYPE   | DESC    | COMMENT      | SUB_PART   | EXPRESSION       |
 +--------------+-------------+------------+--------------+--------------+---------+--------------+------------+------------------+
-| nickname     | nickname    |          0 |            1 | BTREE        | 0       |              |        255 |      NULL        |
+| nickname     | nickname    |          0 |            1 | BTREE        | nil     |              |        255 |      NULL        |
 | lower_nick   | NULL        |          1 |            1 | HASH         | 0       |              |       NULL | lower(nickname)  |
 | non_unique   | oid         |          1 |            1 | BTREE        | 0       |              |       NULL |      NULL        |
 | non_unique   | uid         |          1 |            2 | BTREE        | 0       |              |       NULL |      NULL        |
