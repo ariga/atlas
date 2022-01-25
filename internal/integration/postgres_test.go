@@ -896,7 +896,7 @@ create table atlas_types_sanity
 }
 
 func (t *pgTest) dsn() string {
-	return fmt.Sprintf("postgres://postgres:pass@localhost:%d/test?sslmode=disable&search_path=public", t.port)
+	return fmt.Sprintf("postgres://postgres:pass@localhost:%d/test?sslmode=disable", t.port)
 }
 
 func (t *pgTest) applyHcl(spec string) {

@@ -102,8 +102,6 @@ func SchemaNameFromDSN(url string) (string, error) {
 func postgresSchema(dsn string) (string, error) {
 	url, err := url.Parse(dsn)
 	if err != nil {
-		// For backwards compatibility, we default to "public" when failing to
-		// parse.
 		return "", nil
 	}
 	// lib/pq supports setting default schemas via the `search_path` parameter
@@ -113,7 +111,6 @@ func postgresSchema(dsn string) (string, error) {
 	if schema := url.Query().Get("search_path"); schema != "" {
 		return schema, nil
 	}
-
 	return "", nil
 }
 
