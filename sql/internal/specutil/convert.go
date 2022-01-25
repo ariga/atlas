@@ -466,9 +466,12 @@ func FromCheck(s *schema.Check) *sqlspec.Check {
 
 // SchemaName returns the name from a ref to a schema.
 func SchemaName(ref *schemaspec.Ref) (string, error) {
+	if ref == nil {
+		return "", errors.New("unexpected nil reference")
+	}
 	parts := strings.Split(ref.V, ".")
 	if len(parts) < 2 || parts[0] != "$schema" {
-		return "", fmt.Errorf("expected ref format of $schema.name")
+		return "", errors.New("expected ref format of $schema.name")
 	}
 	return parts[1], nil
 }

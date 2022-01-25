@@ -84,11 +84,11 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(sqltest.Escape(indexesExprQuery)).
 					WithArgs("test", "users").
 					WillReturnRows(sqltest.Rows(`
-+--------------+-------------+------------+--------------+--------------+--------------+--------------+------------+------------------+
-| INDEX_NAME   | COLUMN_NAME | NON_UNIQUE | SEQ_IN_INDEX | INDEX_TYPE   | COLLATION    | COMMENT      | SUB_PART   | EXPRESSION       |
-+--------------+-------------+------------+--------------+--------------+--------------+--------------+------------+------------------+
-| PRIMARY      | id          |          0 |            1 | BTREE        | A            |              |       NULL |      NULL        |
-+--------------+-------------+------------+--------------+--------------+--------------+--------------+------------+------------------+
++--------------+-------------+------------+--------------+--------------+----------+--------------+------------+------------------+
+| INDEX_NAME   | COLUMN_NAME | NON_UNIQUE | SEQ_IN_INDEX | INDEX_TYPE   | DESC     | COMMENT      | SUB_PART   | EXPRESSION       |
++--------------+-------------+------------+--------------+--------------+----------+--------------+------------+------------------+
+| PRIMARY      | id          |          0 |            1 | BTREE        | 0        |              |       NULL |      NULL        |
++--------------+-------------+------------+--------------+--------------+----------+--------------+------------+------------------+
 `))
 				m.noFKs()
 			},
@@ -383,10 +383,10 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c1", Type: &schema.ColumnType{Raw: "date", Type: &schema.TimeType{T: "date"}}},
 					{Name: "c2", Type: &schema.ColumnType{Raw: "datetime", Type: &schema.TimeType{T: "datetime"}}},
 					{Name: "c3", Type: &schema.ColumnType{Raw: "time", Type: &schema.TimeType{T: "time"}}},
-					{Name: "c4", Type: &schema.ColumnType{Raw: "timestamp", Type: &schema.TimeType{T: "timestamp"}}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP"}, Attrs: []schema.Attr{&OnUpdate{A: "on update current_timestamp"}}},
+					{Name: "c4", Type: &schema.ColumnType{Raw: "timestamp", Type: &schema.TimeType{T: "timestamp"}}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP"}, Attrs: []schema.Attr{&OnUpdate{A: "CURRENT_TIMESTAMP"}}},
 					{Name: "c5", Type: &schema.ColumnType{Raw: "year(4)", Type: &schema.TimeType{T: "year", Precision: 4}}},
 					{Name: "c6", Type: &schema.ColumnType{Raw: "year", Type: &schema.TimeType{T: "year"}}},
-					{Name: "c7", Type: &schema.ColumnType{Raw: "timestamp(6)", Type: &schema.TimeType{T: "timestamp", Precision: 6}}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP(6)"}, Attrs: []schema.Attr{&OnUpdate{A: "on update current_timestamp(6)"}}},
+					{Name: "c7", Type: &schema.ColumnType{Raw: "timestamp(6)", Type: &schema.TimeType{T: "timestamp", Precision: 6}}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP(6)"}, Attrs: []schema.Attr{&OnUpdate{A: "CURRENT_TIMESTAMP(6)"}}},
 				}, t.Columns)
 			},
 		},
@@ -476,17 +476,17 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(sqltest.Escape(indexesExprQuery)).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+--------------+-------------+------------+--------------+--------------+--------------+--------------+------------+------------------+
-| INDEX_NAME   | COLUMN_NAME | NON_UNIQUE | SEQ_IN_INDEX | INDEX_TYPE   | COLLATION    | COMMENT      | SUB_PART   | EXPRESSION       |
-+--------------+-------------+------------+--------------+--------------+--------------+--------------+------------+------------------+
-| nickname     | nickname    |          0 |            1 | BTREE        | A            |              |        255 |      NULL        |
-| lower_nick   | NULL        |          1 |            1 | HASH         | A            |              |       NULL | lower(nickname)  |
-| non_unique   | oid         |          1 |            1 | BTREE        | A            |              |       NULL |      NULL        |
-| non_unique   | uid         |          1 |            2 | BTREE        | A            |              |       NULL |      NULL        |
-| PRIMARY      | id          |          0 |            1 | BTREE        | A            |              |       NULL |      NULL        |
-| unique_index | uid         |          0 |            1 | BTREE        | A            |              |       NULL |      NULL        |
-| unique_index | oid         |          0 |            2 | BTREE        | A            |              |       NULL |      NULL        |
-+--------------+-------------+------------+--------------+--------------+--------------+--------------+------------+------------------+
++--------------+-------------+------------+--------------+--------------+---------+--------------+------------+------------------+
+| INDEX_NAME   | COLUMN_NAME | NON_UNIQUE | SEQ_IN_INDEX | INDEX_TYPE   | DESC    | COMMENT      | SUB_PART   | EXPRESSION       |
++--------------+-------------+------------+--------------+--------------+---------+--------------+------------+------------------+
+| nickname     | nickname    |          0 |            1 | BTREE        | nil     |              |        255 |      NULL        |
+| lower_nick   | NULL        |          1 |            1 | HASH         | 0       |              |       NULL | lower(nickname)  |
+| non_unique   | oid         |          1 |            1 | BTREE        | 0       |              |       NULL |      NULL        |
+| non_unique   | uid         |          1 |            2 | BTREE        | 0       |              |       NULL |      NULL        |
+| PRIMARY      | id          |          0 |            1 | BTREE        | 0       |              |       NULL |      NULL        |
+| unique_index | uid         |          0 |            1 | BTREE        | 1       |              |       NULL |      NULL        |
+| unique_index | oid         |          0 |            2 | BTREE        | 1       |              |       NULL |      NULL        |
++--------------+-------------+------------+--------------+--------------+---------+--------------+------------+------------------+
 `))
 				m.noFKs()
 			},
@@ -507,21 +507,21 @@ func TestDriver_InspectTable(t *testing.T) {
 				}
 				// nickname
 				indexes[0].Parts = []*schema.IndexPart{
-					{SeqNo: 1, C: columns[1], Attrs: []schema.Attr{&schema.Collation{V: "A"}, &SubPart{Len: 255}}},
+					{SeqNo: 1, C: columns[1], Attrs: []schema.Attr{&SubPart{Len: 255}}},
 				}
 				// lower(nickname)
 				indexes[1].Parts = []*schema.IndexPart{
-					{SeqNo: 1, X: &schema.RawExpr{X: "lower(nickname)"}, Attrs: []schema.Attr{&schema.Collation{V: "A"}}},
+					{SeqNo: 1, X: &schema.RawExpr{X: "lower(nickname)"}},
 				}
 				// oid, uid
 				indexes[2].Parts = []*schema.IndexPart{
-					{SeqNo: 1, C: columns[2], Attrs: []schema.Attr{&schema.Collation{V: "A"}}},
-					{SeqNo: 2, C: columns[3], Attrs: []schema.Attr{&schema.Collation{V: "A"}}},
+					{SeqNo: 1, C: columns[2]},
+					{SeqNo: 2, C: columns[3]},
 				}
 				// uid, oid
 				indexes[3].Parts = []*schema.IndexPart{
-					{SeqNo: 1, C: columns[3], Attrs: []schema.Attr{&schema.Collation{V: "A"}}},
-					{SeqNo: 2, C: columns[2], Attrs: []schema.Attr{&schema.Collation{V: "A"}}},
+					{SeqNo: 1, C: columns[3], Desc: true},
+					{SeqNo: 2, C: columns[2], Desc: true},
 				}
 				require.EqualValues(columns, t.Columns)
 				require.EqualValues(indexes, t.Indexes)

@@ -10,6 +10,7 @@ import (
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/internal/specutil"
+
 	"github.com/stretchr/testify/require"
 )
 

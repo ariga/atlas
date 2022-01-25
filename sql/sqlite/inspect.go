@@ -247,7 +247,10 @@ func (i *inspect) indexInfo(ctx context.Context, t *schema.Table, idx *schema.In
 		if err := rows.Scan(&name, &desc); err != nil {
 			return fmt.Errorf("sqlite: scanning index names: %w", err)
 		}
-		part := &schema.IndexPart{SeqNo: len(idx.Parts) + 1}
+		part := &schema.IndexPart{
+			SeqNo: len(idx.Parts) + 1,
+			Desc:  desc.Bool,
+		}
 		switch c, ok := t.Column(name.String); {
 		case ok:
 			part.C = c
@@ -257,10 +260,6 @@ func (i *inspect) indexInfo(ctx context.Context, t *schema.Table, idx *schema.In
 			part.X = &schema.RawExpr{X: "<unsupported>"}
 		default:
 			return fmt.Errorf("sqlite: column %q was not found for index %q", name.String, idx.Name)
-		}
-		if desc.Bool {
-			// The default sort order is "ASC".
-			part.Attrs = append(part.Attrs, &IndexOrder{Desc: desc.Bool})
 		}
 		idx.Parts = append(idx.Parts, part)
 	}
@@ -442,13 +441,6 @@ type (
 	IndexPredicate struct {
 		schema.Attr
 		P string
-	}
-
-	// IndexOrder describes the sort order of an index.
-	// See: https://www.sqlite.org/lang_createindex.html#descending_indexes
-	IndexOrder struct {
-		schema.Attr
-		Desc bool
 	}
 
 	// IndexOrigin describes how the index was created.

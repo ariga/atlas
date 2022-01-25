@@ -131,7 +131,7 @@ func TestDriver_InspectTable(t *testing.T) {
 						Unique: true,
 						Table:  t,
 						Parts: []*schema.IndexPart{
-							{SeqNo: 1, C: columns[0], Attrs: []schema.Attr{&IndexOrder{Desc: true}}},
+							{SeqNo: 1, C: columns[0], Desc: true},
 							{SeqNo: 2, C: columns[1]},
 						},
 						Attrs: []schema.Attr{

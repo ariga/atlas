@@ -7,6 +7,7 @@ import (
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/sqlspec"
+
 	"github.com/stretchr/testify/require"
 )
 

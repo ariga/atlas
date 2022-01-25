@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"ariga.io/atlas/cmd/action/internal/update"
+
 	"github.com/spf13/cobra"
 )
 

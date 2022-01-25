@@ -356,11 +356,11 @@ func (i *inspect) addIndexes(t *schema.Table, rows *sql.Rows) error {
 		var (
 			name, typ                            string
 			uniq, primary                        bool
-			asc, desc, nullsfirst, nullslast     sql.NullBool
+			desc, nullsfirst, nullslast          sql.NullBool
 			column, contype, pred, expr, comment sql.NullString
 		)
-		if err := rows.Scan(&name, &typ, &column, &primary, &uniq, &contype, &pred, &expr, &asc, &desc, &nullsfirst, &nullslast, &comment); err != nil {
-			return fmt.Errorf("postgres: scanning index: %w", err)
+		if err := rows.Scan(&name, &typ, &column, &primary, &uniq, &contype, &pred, &expr, &desc, &nullsfirst, &nullslast, &comment); err != nil {
+			return fmt.Errorf("postgres: scanning indexes for table %q: %w", t.Name, err)
 		}
 		idx, ok := names[name]
 		if !ok {
@@ -388,16 +388,12 @@ func (i *inspect) addIndexes(t *schema.Table, rows *sql.Rows) error {
 				t.Indexes = append(t.Indexes, idx)
 			}
 		}
-		part := &schema.IndexPart{
-			SeqNo: len(idx.Parts) + 1,
-			Attrs: []schema.Attr{
-				&IndexColumnProperty{
-					Asc:        asc.Bool,
-					Desc:       desc.Bool,
-					NullsFirst: nullsfirst.Bool,
-					NullsLast:  nullslast.Bool,
-				},
-			},
+		part := &schema.IndexPart{SeqNo: len(idx.Parts) + 1, Desc: desc.Bool}
+		if nullsfirst.Bool || nullslast.Bool {
+			part.Attrs = append(part.Attrs, &IndexColumnProperty{
+				NullsFirst: nullsfirst.Bool,
+				NullsLast:  nullslast.Bool,
+			})
 		}
 		switch {
 		case sqlx.ValidString(expr):
@@ -686,8 +682,6 @@ type (
 	// https://www.postgresql.org/docs/current/functions-info.html#FUNCTIONS-INFO-INDEX-COLUMN-PROPS
 	IndexColumnProperty struct {
 		schema.Attr
-		Asc        bool
-		Desc       bool
 		NullsFirst bool
 		NullsLast  bool
 	}
@@ -790,7 +784,6 @@ SELECT
 	c.contype AS constraint_type,
 	pg_get_expr(idx.indpred, idx.indrelid) AS predicate,
 	pg_get_expr(idx.indexprs, idx.indrelid) AS expression,
-	pg_index_column_has_property(idx.indexrelid, a.attnum, 'asc') AS asc,
 	pg_index_column_has_property(idx.indexrelid, a.attnum, 'desc') AS desc,
 	pg_index_column_has_property(idx.indexrelid, a.attnum, 'nulls_first') AS nulls_first,
 	pg_index_column_has_property(idx.indexrelid, a.attnum, 'nulls_last') AS nulls_last,
