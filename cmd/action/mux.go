@@ -104,7 +104,7 @@ func postgresSchema(dsn string) (string, error) {
 	if err != nil {
 		// For backwards compatibility, we default to "public" when failing to
 		// parse.
-		return "public", nil
+		return "", nil
 	}
 	// lib/pq supports setting default schemas via the `search_path` parameter
 	// in a dsn.
@@ -114,7 +114,7 @@ func postgresSchema(dsn string) (string, error) {
 		return schema, nil
 	}
 
-	return "public", nil
+	return "", nil
 }
 
 func schemaName(dsn string) (string, error) {

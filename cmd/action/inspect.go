@@ -47,7 +47,7 @@ func init() {
 		"[driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format",
 	)
 	InspectCmd.Flags().BoolVarP(&InspectFlags.Web, "web", "w", false, "Open in a local Atlas UI")
-	InspectCmd.Flags().StringVarP(&InspectFlags.Addr, "addr", "", "127.0.0.1:5800", "used with -w, local address to bind the server to")
+	InspectCmd.Flags().StringVarP(&InspectFlags.Addr, "addr", "", "127.0.0.1:5800", "Used with -w, local address to bind the server to")
 	InspectCmd.Flags().StringSliceVarP(&InspectFlags.Schema, "schema", "s", nil, "Set schema name")
 	cobra.CheckErr(InspectCmd.MarkFlagRequired("dsn"))
 }

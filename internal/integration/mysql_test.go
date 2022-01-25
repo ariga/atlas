@@ -527,21 +527,28 @@ func TestMySQL_CLI(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
-			testCLISchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn(), mysql.UnmarshalHCL)
+			testCLISchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"), mysql.UnmarshalHCL)
+		})
+	})
+	t.Run("SchemaInspectMultiSchema", func(t *testing.T) {
+		myRun(t, func(t *myTest) {
+			attrs := t.defaultAttrs()
+			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
+			testCLISchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn(""), mysql.UnmarshalHCL)
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
-			testCLISchemaApply(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn())
+			testCLISchemaApply(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"))
 		})
 	})
 	t.Run("SchemaApplyDryRun", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
-			testCLISchemaApplyDry(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn())
+			testCLISchemaApplyDry(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"))
 		})
 	})
 }
@@ -987,12 +994,12 @@ create table atlas_types_sanity
 	})
 }
 
-func (t *myTest) dsn() string {
+func (t *myTest) dsn(dbname string) string {
 	d := "mysql"
 	if t.mariadb() {
 		d = "mariadb"
 	}
-	return fmt.Sprintf("%s://root:pass@tcp(localhost:%d)/test", d, t.port)
+	return fmt.Sprintf("%s://root:pass@tcp(localhost:%d)/%s", d, t.port, dbname)
 }
 
 func (t *myTest) applyHcl(spec string) {
