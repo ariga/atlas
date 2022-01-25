@@ -500,7 +500,7 @@ func (s *state) indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {
 				b.WriteString(fmt.Sprintf("(%d)", s.Len))
 			}
 			// Ignore default collation (i.e. "ASC")
-			if c := (&schema.Collation{}); sqlx.Has(parts[i].Attrs, c) && c.V == "D" {
+			if parts[i].Desc {
 				b.P("DESC")
 			}
 		})

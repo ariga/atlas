@@ -62,10 +62,15 @@ type (
 	// An IndexPart represents an index part that
 	// can be either an expression or a column.
 	IndexPart struct {
+		// SeqNo represents the sequence number of the key part
+		// in the index.
 		SeqNo int
-		Attrs []Attr
+		// Desc indicates if the key part is stored in descending
+		// order. All databases use ascending order as default.
+		Desc  bool
 		X     Expr
 		C     *Column
+		Attrs []Attr
 	}
 
 	// A ForeignKey represents an index definition.

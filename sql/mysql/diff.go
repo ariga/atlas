@@ -131,10 +131,7 @@ func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 // IndexPartAttrChanged reports if the index-part attributes (collation or prefix) were changed.
 func (*diff) IndexPartAttrChanged(from, to []schema.Attr) bool {
 	var s1, s2 SubPart
-	if sqlx.Has(from, &s1) != sqlx.Has(to, &s2) || s1.Len != s2.Len {
-		return true
-	}
-	return indexCollation(from).V != indexCollation(to).V
+	return sqlx.Has(from, &s1) != sqlx.Has(to, &s2) || s1.Len != s2.Len
 }
 
 // ReferenceChanged reports if the foreign key referential action was changed.
@@ -241,16 +238,6 @@ func (*diff) autoIncChange(from, to []schema.Attr) schema.Change {
 		}
 	}
 	return noChange
-}
-
-// indexCollation returns the index collation from its attribute.
-// The default collation is ascending if no order was specified.
-func indexCollation(attr []schema.Attr) *schema.Collation {
-	c := &schema.Collation{V: "A"}
-	if sqlx.Has(attr, c) {
-		c.V = strings.ToUpper(c.V)
-	}
-	return c
 }
 
 // indexType returns the index type from its attribute.
