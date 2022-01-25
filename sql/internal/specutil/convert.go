@@ -33,8 +33,6 @@ type (
 	CheckSpecFunc         func(*schema.Check) *sqlspec.Check
 )
 
-var errMissingRef = errors.New("expected ref format of $schema.name")
-
 // Realm converts the schemas and tables into a schema.Realm.
 func Realm(schemas []*sqlspec.Schema, tables []*sqlspec.Table, convertTable ConvertTableFunc) (*schema.Realm, error) {
 	r := &schema.Realm{}
@@ -469,11 +467,11 @@ func FromCheck(s *schema.Check) *sqlspec.Check {
 // SchemaName returns the name from a ref to a schema.
 func SchemaName(ref *schemaspec.Ref) (string, error) {
 	if ref == nil {
-		return "", errMissingRef
+		return "", errors.New("unexpected nil reference")
 	}
 	parts := strings.Split(ref.V, ".")
 	if len(parts) < 2 || parts[0] != "$schema" {
-		return "", errMissingRef
+		return "", errors.New("expected ref format of $schema.name")
 	}
 	return parts[1], nil
 }
