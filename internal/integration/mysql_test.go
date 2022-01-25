@@ -605,45 +605,47 @@ func TestMySQL_Sanity(t *testing.T) {
 		ddl := `
 create table atlas_types_sanity
 (
-    tBit                 bit(10)              default b'100'               null,
-    tInt                 int(10)              default 4                not null,
-    tTinyInt             tinyint(10)          default 8                    null,
-    tSmallInt            smallint(10)         default 2                    null,
-    tMediumInt           mediumint(10)        default 11                   null,
-    tBigInt              bigint(10)           default 4                    null,
-    tDecimal             decimal              default 4                    null,
-    tNumeric             numeric              default 4                not null,
-    tFloat               float(10, 0)         default 4                    null,
-    tDouble              double(10, 0)        default 4                    null,
-    tReal                double(10, 0)        default 4                    null,
-    tTimestamp           timestamp            default CURRENT_TIMESTAMP    null,
-    tTimestampFraction   timestamp(6)         default CURRENT_TIMESTAMP(6) null,
-    tDate                date                                              null,
-    tTime                time                                              null,
-    tDateTime            datetime                                          null,
-    tYear                year                                              null,
-    tVarchar             varchar(10)          default 'Titan'              null,
-    tChar                char(25)             default 'Olimpia'        not null,
-    tVarBinary           varbinary(30)        default 'Titan'              null,
-    tBinary              binary(5)            default 'Titan'              null,
-    tBlob                blob(5)              default                      null,
-    tTinyBlob            tinyblob                                          null,
-    tMediumBlob          mediumblob           default                      null,
-    tLongBlob            longblob             default                      null,
-    tText                text(13)             default                      null,
-    tTinyText            tinytext             default                      null,
-    tMediumText          mediumtext           default                      null,
-    tLongText            longtext             default                      null,
-    tEnum                enum('a','b')        default                      null,
-    tSet                 set('a','b')         default                      null,
-    tGeometry            geometry             default                      null,
-    tPoint               point                default                      null,
-    tMultiPoint          multipoint           default                      null,
-    tLineString          linestring           default                      null,
-    tMultiLineString     multilinestring      default                      null,
-    tPolygon             polygon              default                      null,
-    tMultiPolygon        multipolygon         default                      null,
-    tGeometryCollection  geometrycollection   default                      null
+    tBit                        bit(10)              default b'100'                                              null,
+    tInt                        int(10)              default 4                                               not null,
+    tTinyInt                    tinyint(10)          default 8                                                   null,
+    tSmallInt                   smallint(10)         default 2                                                   null,
+    tMediumInt                  mediumint(10)        default 11                                                  null,
+    tBigInt                     bigint(10)           default 4                                                   null,
+    tDecimal                    decimal              default 4                                                   null,
+    tNumeric                    numeric              default 4                                               not null,
+    tFloat                      float(10, 0)         default 4                                                   null,
+    tDouble                     double(10, 0)        default 4                                                   null,
+    tReal                       double(10, 0)        default 4                                                   null,
+    tTimestamp                  timestamp            default CURRENT_TIMESTAMP                                   null,
+    tTimestampFraction          timestamp(6)         default CURRENT_TIMESTAMP(6)                                null,
+    tTimestampOnUpdate          timestamp            default CURRENT_TIMESTAMP    ON UPDATE CURRENT_TIMESTAMP    null,
+    tTimestampFractionOnUpdate  timestamp(6)         default CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) null,
+    tDate                       date                                                                             null,
+    tTime                       time                                                                             null,
+    tDateTime                   datetime                                                                         null,
+    tYear                       year                                                                             null,
+    tVarchar                    varchar(10)          default 'Titan'                                             null,
+    tChar                       char(25)             default 'Olimpia'                                       not null,
+    tVarBinary                  varbinary(30)        default 'Titan'                                             null,
+    tBinary                     binary(5)            default 'Titan'                                             null,
+    tBlob                       blob(5)              default                                                     null,
+    tTinyBlob                   tinyblob                                                                         null,
+    tMediumBlob                 mediumblob           default                                                     null,
+    tLongBlob                   longblob             default                                                     null,
+    tText                       text(13)             default                                                     null,
+    tTinyText                   tinytext             default                                                     null,
+    tMediumText                 mediumtext           default                                                     null,
+    tLongText                   longtext             default                                                     null,
+    tEnum                       enum('a','b')        default                                                     null,
+    tSet                        set('a','b')         default                                                     null,
+    tGeometry                   geometry             default                                                     null,
+    tPoint                      point                default                                                     null,
+    tMultiPoint                 multipoint           default                                                     null,
+    tLineString                 linestring           default                                                     null,
+    tMultiLineString            multilinestring      default                                                     null,
+    tPolygon                    polygon              default                                                     null,
+    tMultiPolygon               multipolygon         default                                                     null,
+    tGeometryCollection         geometrycollection   default                                                     null
 ) CHARSET = latin1 COLLATE latin1_swedish_ci;
 `
 		myRun(t, func(t *myTest) {
@@ -751,6 +753,52 @@ create table atlas_types_sanity
 								}
 								return "CURRENT_TIMESTAMP(6)"
 							}(),
+						},
+					},
+					{
+						Name: "tTimestampOnUpdate",
+						Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp"},
+							Raw: "timestamp", Null: true},
+						Default: &schema.RawExpr{
+							X: func() string {
+								if t.mariadb() {
+									return "current_timestamp()"
+								}
+								return "CURRENT_TIMESTAMP"
+							}(),
+						},
+						Attrs: []schema.Attr{
+							&mysql.OnUpdate{
+								A: func() string {
+									if t.mariadb() {
+										return "current_timestamp()"
+									}
+									return "CURRENT_TIMESTAMP"
+								}(),
+							},
+						},
+					},
+					{
+						Name: "tTimestampFractionOnUpdate",
+						Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp", Precision: 6},
+							Raw: "timestamp(6)", Null: true},
+						Default: &schema.RawExpr{
+							X: func() string {
+								if t.mariadb() {
+									return "current_timestamp(6)"
+								}
+								return "CURRENT_TIMESTAMP(6)"
+							}(),
+						},
+						Attrs: []schema.Attr{
+							&mysql.OnUpdate{
+								A: func() string {
+									if t.mariadb() {
+										return "current_timestamp(6)"
+									}
+									return "CURRENT_TIMESTAMP(6)"
+								}(),
+							},
 						},
 					},
 					{

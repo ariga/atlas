@@ -30,6 +30,15 @@ table "table" {
 	column "account_name" {
 		type = varchar(32)
 	}
+	column "created_at" {
+		type    = datetime(4)
+		default = sql("now(4)")
+	}
+	column "updated_at" {
+		type      = timestamp(6)
+		default   = sql("current_timestamp(6)")
+		on_update = sql("current_timestamp(6)")
+	}
 	primary_key {
 		columns = [table.table.column.col]
 	}
@@ -128,6 +137,27 @@ table "accounts" {
 							Size: 32,
 						},
 					},
+				},
+				{
+					Name: "created_at",
+					Type: &schema.ColumnType{
+						Type: &schema.TimeType{
+							T:         TypeDateTime,
+							Precision: 4,
+						},
+					},
+					Default: &schema.RawExpr{X: "now(4)"},
+				},
+				{
+					Name: "updated_at",
+					Type: &schema.ColumnType{
+						Type: &schema.TimeType{
+							T:         TypeTimestamp,
+							Precision: 6,
+						},
+					},
+					Default: &schema.RawExpr{X: "current_timestamp(6)"},
+					Attrs:   []schema.Attr{&OnUpdate{A: "current_timestamp(6)"}},
 				},
 			},
 			Attrs: []schema.Attr{

@@ -383,10 +383,10 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c1", Type: &schema.ColumnType{Raw: "date", Type: &schema.TimeType{T: "date"}}},
 					{Name: "c2", Type: &schema.ColumnType{Raw: "datetime", Type: &schema.TimeType{T: "datetime"}}},
 					{Name: "c3", Type: &schema.ColumnType{Raw: "time", Type: &schema.TimeType{T: "time"}}},
-					{Name: "c4", Type: &schema.ColumnType{Raw: "timestamp", Type: &schema.TimeType{T: "timestamp"}}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP"}, Attrs: []schema.Attr{&OnUpdate{A: "on update current_timestamp"}}},
+					{Name: "c4", Type: &schema.ColumnType{Raw: "timestamp", Type: &schema.TimeType{T: "timestamp"}}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP"}, Attrs: []schema.Attr{&OnUpdate{A: "CURRENT_TIMESTAMP"}}},
 					{Name: "c5", Type: &schema.ColumnType{Raw: "year(4)", Type: &schema.TimeType{T: "year", Precision: 4}}},
 					{Name: "c6", Type: &schema.ColumnType{Raw: "year", Type: &schema.TimeType{T: "year"}}},
-					{Name: "c7", Type: &schema.ColumnType{Raw: "timestamp(6)", Type: &schema.TimeType{T: "timestamp", Precision: 6}}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP(6)"}, Attrs: []schema.Attr{&OnUpdate{A: "on update current_timestamp(6)"}}},
+					{Name: "c7", Type: &schema.ColumnType{Raw: "timestamp(6)", Type: &schema.TimeType{T: "timestamp", Precision: 6}}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP(6)"}, Attrs: []schema.Attr{&OnUpdate{A: "CURRENT_TIMESTAMP(6)"}}},
 				}, t.Columns)
 			},
 		},
