@@ -591,33 +591,33 @@ func (s *state) indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {
 			case part.X != nil:
 				b.WriteString(part.X.(*schema.RawExpr).X)
 			}
-			for _, attr := range parts[i].Attrs {
-				s.partAttr(b, attr)
-			}
+			s.partAttrs(b, parts[i])
 		})
 	})
 }
 
-func (s *state) partAttr(b *sqlx.Builder, attr schema.Attr) {
-	switch attr := attr.(type) {
-	case *IndexColumnProperty:
-		switch {
-		case attr.Desc && attr.NullsLast:
-			b.P("DESC NULL LAST")
-		case attr.Desc:
-			// Rows in descending order are stored
-			// with nulls first by default.
-			b.P("DESC")
-		case attr.Asc && attr.NullsFirst:
-			b.P("NULL FIRST")
-		case attr.Asc && attr.NullsLast:
-			// Do nothing, since B-tree indexes store
-			// rows in ascending order with nulls last.
+func (s *state) partAttrs(b *sqlx.Builder, p *schema.IndexPart) {
+	if p.Desc {
+		b.P("DESC")
+	}
+	for _, attr := range p.Attrs {
+		switch attr := attr.(type) {
+		case *IndexColumnProperty:
+			switch {
+			// Defaults when DESC is specified.
+			case p.Desc && attr.NullsFirst:
+			case p.Desc && attr.NullsLast:
+				b.P("NULL LAST")
+			// Defaults when DESC is not specified.
+			case !p.Desc && attr.NullsLast:
+			case !p.Desc && attr.NullsFirst:
+				b.P("NULL FIRST")
+			}
+		case *schema.Collation:
+			b.P("COLLATE").Ident(attr.V)
+		default:
+			panic(fmt.Sprintf("unexpected index part attribute: %T", attr))
 		}
-	case *schema.Collation:
-		b.P("COLLATE").Ident(attr.V)
-	default:
-		panic(fmt.Sprintf("unexpected index part attribute: %T", attr))
 	}
 }
 

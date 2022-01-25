@@ -123,13 +123,11 @@ func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 
 // IndexPartAttrChanged reports if the index-part attributes were changed.
 func (*diff) IndexPartAttrChanged(from, to []schema.Attr) bool {
-	// By default, B-tree indexes store rows
-	// in ascending order with nulls last.
-	p1 := &IndexColumnProperty{Asc: true, NullsLast: true}
+	p1 := &IndexColumnProperty{NullsLast: true}
 	sqlx.Has(from, p1)
-	p2 := &IndexColumnProperty{Asc: true, NullsLast: true}
+	p2 := &IndexColumnProperty{NullsLast: true}
 	sqlx.Has(to, p2)
-	return p1.Asc != p2.Asc || p1.Desc != p2.Desc || p1.NullsFirst != p2.NullsFirst || p1.NullsLast != p2.NullsLast
+	return p1.NullsFirst != p2.NullsFirst || p1.NullsLast != p2.NullsLast
 }
 
 // ReferenceChanged reports if the foreign key referential action was changed.

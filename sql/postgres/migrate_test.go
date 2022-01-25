@@ -145,7 +145,7 @@ func TestPlanChanges(t *testing.T) {
 								I: &schema.Index{
 									Name: "id_key",
 									Parts: []*schema.IndexPart{
-										{C: users.Columns[0]},
+										{C: users.Columns[0], Desc: true},
 									},
 									Attrs: []schema.Attr{
 										&schema.Comment{Text: "comment"},
@@ -175,7 +175,7 @@ func TestPlanChanges(t *testing.T) {
 						Reverse: `ALTER TABLE "users" DROP COLUMN "name", DROP CONSTRAINT "name_not_empty", ADD CONSTRAINT "id_nonzero" CHECK ("id" <> 0), DROP CONSTRAINT "id_iseven", ADD CONSTRAINT "id_iseven" CHECK ("id" % 2 = 0)`,
 					},
 					{
-						Cmd:     `CREATE INDEX "id_key" ON "users" ("id")`,
+						Cmd:     `CREATE INDEX "id_key" ON "users" ("id" DESC)`,
 						Reverse: `DROP INDEX "id_key"`,
 					},
 					{
