@@ -32,6 +32,10 @@ table "table" {
 	column "tags" {
 		type = hstore
 	}
+	column "created_at" {
+		type    = timestamp(4)
+		default = sql("current_timestamp(4)")
+	}
 	primary_key {
 		columns = [table.table.column.col]
 	}
@@ -128,6 +132,16 @@ enum "account_type" {
 							T: "hstore",
 						},
 					},
+				},
+				{
+					Name: "created_at",
+					Type: &schema.ColumnType{
+						Type: &schema.TimeType{
+							T:         TypeTimestamp,
+							Precision: 4,
+						},
+					},
+					Default: &schema.RawExpr{X: "current_timestamp(4)"},
 				},
 			},
 			Attrs: []schema.Attr{

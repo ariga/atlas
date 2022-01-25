@@ -233,7 +233,22 @@ func parseColumn(s string) (*columnDesc, error) {
 	case TypeReal, TypeFloat4:
 		c.precision = 24
 	default:
-		c.typ = s
+		parts = strings.FieldsFunc(s, func(r rune) bool {
+			return r == '(' || r == ')'
+		})
+		switch parts[0] {
+		// Handle time types.
+		case TypeTime, TypeTimeWTZ, TypeTimeWOTZ, TypeTimestamp, TypeTimestampTZ, TypeTimestampWTZ, TypeTimestampWOTZ:
+			c.typ = parts[0]
+			if len(parts) > 1 {
+				c.timePrecision, err = strconv.ParseInt(parts[1], 10, 64)
+				if err != nil {
+					return nil, fmt.Errorf("postgres: parse timePrecision %q: %w", parts[1], err)
+				}
+			}
+		default:
+			c.typ = s
+		}
 	}
 	return c, nil
 }
