@@ -23,8 +23,8 @@ func FormatType(t schema.Type) (string, error) {
 	case *schema.BoolType:
 		// Map all flavors to a single form.
 		switch f = strings.ToLower(t.T); f {
-		case "bool", "boolean", "tinyint", "tinyint(1)":
-			f = "bool"
+		case TypeBool, TypeBoolean, TypeTinyInt, "tinyint(1)":
+			f = TypeBool
 		}
 	case *schema.BinaryType:
 		f = strings.ToLower(t.T)
@@ -115,7 +115,7 @@ func ParseType(raw string) (schema.Type, error) {
 	case TypeTinyInt, TypeSmallInt, TypeMediumInt, TypeInt, TypeBigInt:
 		if size == 1 {
 			return &schema.BoolType{
-				T: t,
+				T: TypeBool,
 			}, nil
 		}
 		// For integer types, the size represents the display width and does not

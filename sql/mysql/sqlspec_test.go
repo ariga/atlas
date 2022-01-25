@@ -807,6 +807,10 @@ func TestTypes(t *testing.T) {
 			expected: &schema.SpatialType{T: TypeGeometryCollection},
 		},
 		{
+			typeExpr: "tinyint(1)",
+			expected: &schema.BoolType{T: TypeBool},
+		},
+		{
 			typeExpr: "bool",
 			expected: &schema.BoolType{T: TypeBool},
 		},
