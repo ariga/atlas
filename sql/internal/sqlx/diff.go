@@ -291,7 +291,7 @@ func (d *Diff) partsChange(from, to []*schema.IndexPart) schema.ChangeKind {
 	sort.Slice(from, func(i, j int) bool { return from[i].SeqNo < from[j].SeqNo })
 	for i := range from {
 		switch {
-		case d.IndexPartAttrChanged(from[i].Attrs, to[i].Attrs):
+		case from[i].Desc != to[i].Desc || d.IndexPartAttrChanged(from[i].Attrs, to[i].Attrs):
 			return schema.ChangeParts
 		case from[i].C != nil && to[i].C != nil:
 			if from[i].C.Name != to[i].C.Name {
