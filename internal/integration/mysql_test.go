@@ -553,7 +553,7 @@ func TestMySQL_CLI(t *testing.T) {
 	})
 	t.Run("SchemaDiffRun", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
-			testCLISchemaDiff(t, t.dsn())
+			testCLISchemaDiff(t, t.dsn("test"))
 		})
 	})
 }
