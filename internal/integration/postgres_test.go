@@ -1046,3 +1046,10 @@ func (t *pgTest) dropSchemas(names ...string) {
 		require.NoError(t.T, err, "drop schema %q", names)
 	})
 }
+
+func (t *pgTest) dropDB(names ...string) {
+	t.Cleanup(func() {
+		_, err := t.db.Exec("DROP DATABASE IF EXISTS " + strings.Join(names, ", "))
+		require.NoError(t.T, err, "drop db %q", names)
+	})
+}

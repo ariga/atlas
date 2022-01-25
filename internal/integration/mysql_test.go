@@ -509,7 +509,8 @@ schema "test" {
 }
 
 func TestMySQL_CLI(t *testing.T) {
-	h := `
+	t.Run("SchemaInspect", func(t *testing.T) {
+		h := `
 			schema "test" {
 				charset   = "%s"
 				collation = "%s"
@@ -523,7 +524,6 @@ func TestMySQL_CLI(t *testing.T) {
 					columns = [table.users.column.id]
 				}
 			}`
-	t.Run("SchemaInspect", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
@@ -531,20 +531,54 @@ func TestMySQL_CLI(t *testing.T) {
 		})
 	})
 	t.Run("SchemaInspectMultiSchema", func(t *testing.T) {
+		h := `
+			schema "test1" {
+				charset   = "%s"
+				collation = "%s"
+			}
+			table "users" {
+				schema = schema.test1
+				column "id" {
+					type = int
+				}
+				primary_key {
+					columns = [table.users.column.id]
+				}
+			}
+			schema "test2" {
+				charset   = "%s"
+				collation = "%s"
+			}
+			table "users" {
+				schema = schema.test2
+				column "id" {
+					type = int
+				}
+				primary_key {
+					columns = [table.users.column.id]
+				}
+			}`
 		myRun(t, func(t *myTest) {
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
-			testCLISchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn(""), mysql.UnmarshalHCL)
-		})
-	})
-	t.Run("SchemaInspectWrongSchema", func(t *testing.T) {
-		myRun(t, func(t *myTest) {
-			attrs := t.defaultAttrs()
-			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
-			testCLISchemaInspectWrongSchema(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn(""), mysql.UnmarshalHCL)
+			testCLISchemaInspectMultiSchema(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn(""), []string{"test1", "test2"}, mysql.UnmarshalHCL)
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
+		h := `
+			schema "test" {
+				charset   = "%s"
+				collation = "%s"
+			}
+			table "users" {
+				schema = schema.test
+				column "id" {
+					type = int
+				}
+				primary_key {
+					columns = [table.users.column.id]
+				}
+			}`
 		myRun(t, func(t *myTest) {
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
@@ -552,6 +586,20 @@ func TestMySQL_CLI(t *testing.T) {
 		})
 	})
 	t.Run("SchemaApplyDryRun", func(t *testing.T) {
+		h := `
+			schema "test" {
+				charset   = "%s"
+				collation = "%s"
+			}
+			table "users" {
+				schema = schema.test
+				column "id" {
+					type = int
+				}
+				primary_key {
+					columns = [table.users.column.id]
+				}
+			}`
 		myRun(t, func(t *myTest) {
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)

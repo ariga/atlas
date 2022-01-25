@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -30,9 +31,11 @@ type T interface {
 	loadPosts() *schema.Table
 	loadTable(string) *schema.Table
 	dropTables(...string)
+	dropDB(names ...string)
 	migrate(...schema.Change)
 	diff(*schema.Table, *schema.Table) []schema.Change
 	applyHcl(spec string)
+	applyRealmHcl(spec string)
 }
 
 func testAddDrop(t T) {
@@ -169,27 +172,34 @@ func testCLISchemaInspect(t T, h string, dsn string, unmarshaler schemaspec.Unma
 	require.Equal(t, expected, actual)
 }
 
-func testCLISchemaInspectWrongSchema(t T, h string, dsn string, unmarshaler schemaspec.Unmarshaler) {
+func testCLISchemaInspectMultiSchema(t T, h string, dsn string, schemas []string, unmarshaler schemaspec.Unmarshaler) {
 	// Required to have a clean "stderr" while running first time.
 	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
 	require.NoError(t, err)
-	t.dropTables("users")
+	for _, s := range schemas {
+		t.dropDB(s)
+	}
 	var expected schema.Schema
 	err = unmarshaler.UnmarshalSpec([]byte(h), &expected)
 	require.NoError(t, err)
-	t.applyHcl(h)
+	t.applyRealmHcl(h)
 	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
 		"schema",
 		"inspect",
 		"-d",
 		dsn,
-		"-s wrong-schema",
+		"-s",
+		strings.Join(schemas, ","),
 	)
 	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
 	cmd.Stderr = stderr
 	cmd.Stdout = stdout
 	require.NoError(t, cmd.Run(), stderr.String())
-	require.Len(t, stdout.Bytes(), 0)
+	var actual schema.Schema
+	err = unmarshaler.UnmarshalSpec(stdout.Bytes(), &actual)
+	require.NoError(t, err)
+	require.Empty(t, stderr.String())
+	require.Equal(t, expected, actual)
 }
 
 func testCLISchemaApply(t T, h string, dsn string) {

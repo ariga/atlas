@@ -839,3 +839,9 @@ func (t *liteTest) dropTables(names ...string) {
 func (t *liteTest) dsn() string {
 	return fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", t.file)
 }
+
+func (t *liteTest) dropDB(names ...string) {}
+
+func (t *liteTest) applyRealmHcl(spec string) {
+	t.applyHcl(spec)
+}
