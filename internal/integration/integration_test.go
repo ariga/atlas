@@ -169,6 +169,29 @@ func testCLISchemaInspect(t T, h string, dsn string, unmarshaler schemaspec.Unma
 	require.Equal(t, expected, actual)
 }
 
+func testCLISchemaInspectWrongSchema(t T, h string, dsn string, unmarshaler schemaspec.Unmarshaler) {
+	// Required to have a clean "stderr" while running first time.
+	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	require.NoError(t, err)
+	t.dropTables("users")
+	var expected schema.Schema
+	err = unmarshaler.UnmarshalSpec([]byte(h), &expected)
+	require.NoError(t, err)
+	t.applyHcl(h)
+	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+		"schema",
+		"inspect",
+		"-d",
+		dsn,
+		"-s wrong-schema",
+	)
+	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	require.NoError(t, cmd.Run(), stderr.String())
+	require.Len(t, stdout.Bytes(), 0)
+}
+
 func testCLISchemaApply(t T, h string, dsn string) {
 	// Required to have a clean "stderr" while running first time.
 	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()

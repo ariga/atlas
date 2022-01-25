@@ -537,6 +537,13 @@ func TestMySQL_CLI(t *testing.T) {
 			testCLISchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn(""), mysql.UnmarshalHCL)
 		})
 	})
+	t.Run("SchemaInspectWrongSchema", func(t *testing.T) {
+		myRun(t, func(t *myTest) {
+			attrs := t.defaultAttrs()
+			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
+			testCLISchemaInspectWrongSchema(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn(""), mysql.UnmarshalHCL)
+		})
+	})
 	t.Run("SchemaApply", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			attrs := t.defaultAttrs()
