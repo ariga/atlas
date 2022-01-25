@@ -449,7 +449,9 @@ func TestMarshalSpec_TimePrecision(t *testing.T) {
 					schema.NewTimeColumn("tTimeDef", TypeTime),
 					schema.NewTimeColumn("tTime", TypeTime, schema.TimePrecision(1)),
 					schema.NewTimeColumn("tDatetime", TypeDateTime, schema.TimePrecision(2)),
-					schema.NewTimeColumn("tTimestamp", TypeTimestamp, schema.TimePrecision(3)),
+					schema.NewTimeColumn("tTimestamp", TypeTimestamp, schema.TimePrecision(3)).
+						SetDefault(&schema.RawExpr{X: "current_timestamp(3)"}).
+						AddAttrs(&OnUpdate{A: "current_timestamp(3)"}),
 					schema.NewTimeColumn("tDate", TypeDate, schema.TimePrecision(2)),
 					schema.NewTimeColumn("tYear", TypeYear, schema.TimePrecision(2)),
 				),
@@ -471,8 +473,10 @@ func TestMarshalSpec_TimePrecision(t *testing.T) {
     type = datetime(2)
   }
   column "tTimestamp" {
-    null = false
-    type = timestamp(3)
+    null      = false
+    type      = timestamp(3)
+    default   = sql("current_timestamp(3)")
+    on_update = sql("current_timestamp(3)")
   }
   column "tDate" {
     null = false

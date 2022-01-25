@@ -113,6 +113,13 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 	if err := convertCharset(spec, &c.Attrs); err != nil {
 		return nil, err
 	}
+	if attr, ok := spec.Attr("on_update"); ok {
+		s, err := attr.String()
+		if err != nil {
+			return nil, err
+		}
+		c.AddAttrs(&OnUpdate{A: s})
+	}
 	return c, err
 }
 
@@ -169,6 +176,9 @@ func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 	}
 	if c, ok := hasCollate(c.Attrs, t.Attrs); ok {
 		col.Extra.Attrs = append(col.Extra.Attrs, specutil.StrAttr("collation", c))
+	}
+	if o := (OnUpdate{}); sqlx.Has(c.Attrs, &o) {
+		col.Extra.Attrs = append(col.Extra.Attrs, specutil.RawAttr("on_update", o.A))
 	}
 	return col, nil
 }

@@ -33,6 +33,14 @@ func LitAttr(k, v string) *schemaspec.Attr {
 	}
 }
 
+// RawAttr is a helper method for constructing *schemaspec.Attr instances that contain sql expressions.
+func RawAttr(k, v string) *schemaspec.Attr {
+	return &schemaspec.Attr{
+		K: k,
+		V: &schemaspec.RawExpr{X: v},
+	}
+}
+
 // ListAttr is a helper method for constructing *schemaspec.Attr instances that contain list values.
 func ListAttr(k string, litValues ...string) *schemaspec.Attr {
 	lv := &schemaspec.ListValue{}
