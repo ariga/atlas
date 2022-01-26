@@ -1345,9 +1345,13 @@ func TestMySQL_Script(t *testing.T) {
 						t.Fatal(err)
 					}
 				})
+				// Store the testscript.T for later use.
+				// See "only" function below.
+				env.Values[keyT] = env.T()
 				return nil
 			},
 			Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
+				"only":    t.cmdOnly,
 				"apply":   t.cmdApply,
 				"exist":   t.cmdExist,
 				"synced":  t.cmdSynced,
@@ -1357,7 +1361,27 @@ func TestMySQL_Script(t *testing.T) {
 	})
 }
 
-func (t *myTest) cmdCmpShow(ts *testscript.TestScript, neg bool, args []string) {
+var keyT struct{}
+
+// cmdOnly executes only tests that their driver version matches the given pattern.
+// For example, "only 8" or "only 8 maria*"
+func (t *myTest) cmdOnly(ts *testscript.TestScript, neg bool, args []string) {
+	if neg {
+		ts.Fatalf("unsupported: ! only")
+	}
+	for i := range args {
+		re, rerr := regexp.Compile(`(?mi)` + args[i])
+		ts.Check(rerr)
+		if re.MatchString(t.version) {
+			return
+		}
+	}
+	// This is not an elegant way to get the created testing.T for the script,
+	// but we need some workaround to get it in order to skip specific tests.
+	ts.Value(keyT).(testscript.T).Skip("skip version", t.version)
+}
+
+func (t *myTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {
 	if len(args) < 2 {
 		ts.Fatalf("invalid number of args to 'cmpshow': %d", len(args))
 	}
