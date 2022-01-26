@@ -291,7 +291,26 @@ func setPtr(field reflect.Value, val Value) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("unhandled pointer type %T", val)
+	if field.IsNil() {
+		field.Set(reflect.New(field.Type().Elem()))
+	}
+	switch e := field.Elem(); e.Kind() {
+	case reflect.Bool:
+		b, err := BoolVal(val)
+		if err != nil {
+			return err
+		}
+		e.SetBool(b)
+	case reflect.String:
+		s, err := StrVal(val)
+		if err != nil {
+			return err
+		}
+		e.SetString(s)
+	default:
+		return fmt.Errorf("unhandled pointer type %T", val)
+	}
+	return nil
 }
 
 // setSliceAttr sets the value of attr to the slice field. This function expects both the target field
@@ -398,14 +417,17 @@ func (r *Resource) Scan(ext interface{}) error {
 
 func scanPtr(key string, r *Resource, field reflect.Value) error {
 	attr := &Attr{K: key}
-	switch e := field.Elem(); e.Type() {
-	case reflect.TypeOf(LiteralValue{}):
-		attr.V = &LiteralValue{V: e.FieldByName("V").String()}
-	case reflect.TypeOf(Ref{}):
-		attr.V = &Ref{V: e.FieldByName("V").String()}
-	case reflect.TypeOf(Type{}):
-		t := e.Interface().(Type)
-		attr.V = &t
+	switch e := field.Interface().(type) {
+	case *LiteralValue:
+		attr.V = e
+	case *Ref:
+		attr.V = e
+	case *Type:
+		attr.V = e
+	case *bool:
+		attr.V = &LiteralValue{V: strconv.FormatBool(*e)}
+	case *string:
+		attr.V = &LiteralValue{V: strconv.Quote(*e)}
 	default:
 		return fmt.Errorf("schemaspec: unsupported pointer to %s", e)
 	}

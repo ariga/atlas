@@ -51,9 +51,9 @@ type (
 
 	// IndexPart holds a specification for the index key part.
 	IndexPart struct {
-		Desc   bool            `spec:"desc"`
+		Desc   *bool           `spec:"desc"`
 		Column *schemaspec.Ref `spec:"column"`
-		Expr   string          `spec:"expr"`
+		Expr   *string         `spec:"expr"`
 		schemaspec.DefaultExtension
 	}
 
