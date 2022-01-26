@@ -161,15 +161,16 @@ and execute schema migrations against the given database.
 ```
 
 atlas schema inspect -d "mysql://user:pass@tcp(localhost:3306)/dbname"
-atlas schema inspect -d "mariadb://user:pass@tcp(localhost:3306)/dbname"
+atlas schema inspect -d "mariadb://user:pass@tcp(localhost:3306)/" --schema=schemaA,schemaB -s schemaC
 atlas schema inspect --dsn "postgres://user:pass@host:port/dbname"
 atlas schema inspect -d "sqlite://file:ex1.db?_fk=1"
 ```
 #### Flags
 ```
-      --addr string   used with -w, local address to bind the server to (default "127.0.0.1:5800")
-  -d, --dsn string    [driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format
-  -w, --web           Open in a local Atlas UI
+      --addr string      Used with -w, local address to bind the server to (default "127.0.0.1:5800")
+  -d, --dsn string       [driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format
+  -s, --schema strings   Set schema name
+  -w, --web              Open in a local Atlas UI
 
 ```
 

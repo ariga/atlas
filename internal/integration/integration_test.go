@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -33,6 +34,7 @@ type T interface {
 	migrate(...schema.Change)
 	diff(*schema.Table, *schema.Table) []schema.Change
 	applyHcl(spec string)
+	applyRealmHcl(spec string)
 }
 
 func testAddDrop(t T) {
@@ -163,6 +165,33 @@ func testCLISchemaInspect(t T, h string, dsn string, unmarshaler schemaspec.Unma
 	cmd.Stdout = stdout
 	require.NoError(t, cmd.Run(), stderr.String())
 	var actual schema.Schema
+	err = unmarshaler.UnmarshalSpec(stdout.Bytes(), &actual)
+	require.NoError(t, err)
+	require.Empty(t, stderr.String())
+	require.Equal(t, expected, actual)
+}
+
+func testCLIMultiSchemaInspect(t T, h string, dsn string, schemas []string, unmarshaler schemaspec.Unmarshaler) {
+	// Required to have a clean "stderr" while running first time.
+	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	require.NoError(t, err)
+	var expected schema.Realm
+	err = unmarshaler.UnmarshalSpec([]byte(h), &expected)
+	require.NoError(t, err)
+	t.applyRealmHcl(h)
+	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+		"schema",
+		"inspect",
+		"-d",
+		dsn,
+		"-s",
+		strings.Join(schemas, ","),
+	)
+	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	require.NoError(t, cmd.Run(), stderr.String())
+	var actual schema.Realm
 	err = unmarshaler.UnmarshalSpec(stdout.Bytes(), &actual)
 	require.NoError(t, err)
 	require.Empty(t, stderr.String())

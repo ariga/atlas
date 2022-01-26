@@ -527,26 +527,65 @@ func TestMySQL_CLI(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
-			testCLISchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn(), mysql.UnmarshalHCL)
+			testCLISchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"), mysql.UnmarshalHCL)
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
-			testCLISchemaApply(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn())
+			testCLISchemaApply(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"))
 		})
 	})
 	t.Run("SchemaApplyDryRun", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
-			testCLISchemaApplyDry(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn())
+			testCLISchemaApplyDry(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"))
 		})
 	})
 	t.Run("SchemaDiffRun", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
-			testCLISchemaDiff(t, t.dsn())
+			testCLISchemaDiff(t, t.dsn("test"))
+		})
+	})
+}
+
+func TestMySQL_CLI_MultiSchema(t *testing.T) {
+	t.Run("SchemaInspect", func(t *testing.T) {
+		h := `	
+			schema "test" {
+				charset   = "%s"
+				collation = "%s"
+			}
+			table "users" {
+				schema = schema.test
+				column "id" {
+					type = int
+				}
+				primary_key {
+					columns = [table.users.column.id]
+				}
+			}
+			schema "test2" {
+				charset   = "%s"
+				collation = "%s"
+			}
+			table "users" {
+				schema = schema.test2
+				column "id" {
+					type = int
+				}
+				primary_key {
+					columns = [table.users.column.id]
+				}
+			}`
+		myRun(t, func(t *myTest) {
+			t.dropDB("test2")
+			t.dropTables("users")
+			attrs := t.defaultAttrs()
+			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
+			testCLIMultiSchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V, charset.V, collate.V), t.dsn(""), []string{"test", "test2"}, mysql.UnmarshalHCL)
 		})
 	})
 }
@@ -1040,12 +1079,12 @@ create table atlas_types_sanity
 	})
 }
 
-func (t *myTest) dsn() string {
+func (t *myTest) dsn(dbname string) string {
 	d := "mysql"
 	if t.mariadb() {
 		d = "mariadb"
 	}
-	return fmt.Sprintf("%s://root:pass@tcp(localhost:%d)/test", d, t.port)
+	return fmt.Sprintf("%s://root:pass@tcp(localhost:%d)/%s", d, t.port, dbname)
 }
 
 func (t *myTest) applyHcl(spec string) {
@@ -1092,8 +1131,10 @@ func (t *myTest) dropTables(names ...string) {
 
 func (t *myTest) dropDB(names ...string) {
 	t.Cleanup(func() {
-		_, err := t.db.Exec("DROP DATABASE IF EXISTS " + strings.Join(names, ", "))
-		require.NoError(t.T, err, "drop db %q", names)
+		for _, n := range names {
+			_, err := t.db.Exec("DROP DATABASE IF EXISTS " + n)
+			require.NoError(t.T, err, "drop db %q", names)
+		}
 	})
 }
 
