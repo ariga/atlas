@@ -178,6 +178,47 @@ func TestPlanChanges(t *testing.T) {
 	}{
 		{
 			input: []schema.Change{
+				func() schema.Change {
+					users := &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+							{
+								Name: "name",
+								Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}},
+								Indexes: []*schema.Index{
+									schema.NewIndex("name_index").
+										AddParts(schema.NewIndexPart(0).SetColumn(
+											schema.NewColumn("name"),
+										)),
+								},
+							}},
+					}
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.DropIndex{
+								I: schema.NewIndex("name_index").
+									AddParts(schema.NewIndexPart(0).SetColumn(
+										schema.NewColumn("name"),
+									)),
+							},
+						},
+					}
+				}(),
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `users` DROP INDEX `name_index`",
+						Reverse: "ALTER TABLE `users` ADD INDEX `name_index` (`name`)",
+					},
+				},
+			},
+		},
+		{
+			input: []schema.Change{
 				&schema.AddSchema{S: &schema.Schema{Name: "test", Attrs: []schema.Attr{&schema.Charset{V: "latin"}}}},
 			},
 			wantPlan: &migrate.Plan{
@@ -502,6 +543,7 @@ func TestPlanChanges(t *testing.T) {
 		require.NotNil(t, plan)
 		require.Equal(t, tt.wantPlan.Reversible, plan.Reversible)
 		require.Equal(t, tt.wantPlan.Transactional, plan.Transactional)
+		require.Equal(t, len(tt.wantPlan.Changes), len(plan.Changes))
 		for i, c := range plan.Changes {
 			require.Equal(t, tt.wantPlan.Changes[i].Cmd, c.Cmd)
 			require.Equal(t, tt.wantPlan.Changes[i].Reverse, c.Reverse)
