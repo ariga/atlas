@@ -471,6 +471,47 @@ schema "test" {
 	require.EqualValues(t, expected, string(buf))
 }
 
+func TestUnmarshalSpec_IndexParts(t *testing.T) {
+	var (
+		s schema.Schema
+		f = `
+schema "test" {}
+table "users" {
+	schema = schema.test
+	column "name" {
+		type = text
+	}
+	index "idx" {
+		on {
+			column = table.users.column.name
+			desc = true
+		}
+		on {
+			expr = "lower(name)"
+		}
+	}
+}
+`
+	)
+	err := UnmarshalHCL([]byte(f), &s)
+	require.NoError(t, err)
+	c := schema.NewStringColumn("name", "text")
+	exp := schema.New("test").
+		AddTables(
+			schema.NewTable("users").
+				AddColumns(c).
+				AddIndexes(
+					schema.NewIndex("idx").
+						AddParts(
+							schema.NewColumnPart(c).SetDesc(true),
+							schema.NewExprPart(&schema.RawExpr{X: "lower(name)"}),
+						),
+				),
+		)
+	exp.Tables[0].Columns[0].Indexes = nil
+	require.EqualValues(t, exp, &s)
+}
+
 func TestMarshalSpec_TimePrecision(t *testing.T) {
 	s := schema.New("test").
 		AddTables(
@@ -805,6 +846,10 @@ func TestTypes(t *testing.T) {
 		{
 			typeExpr: "geometrycollection",
 			expected: &schema.SpatialType{T: TypeGeometryCollection},
+		},
+		{
+			typeExpr: "tinyint(1)",
+			expected: &schema.BoolType{T: TypeBool},
 		},
 		{
 			typeExpr: "bool",
