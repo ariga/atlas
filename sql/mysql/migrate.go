@@ -381,7 +381,6 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			if err := s.fks(reverse, change.F); err != nil {
 				errors = append(errors, err.Error())
 			}
-			reversible = true
 		case *schema.AddAttr:
 			s.tableAttr(b, change, change.A)
 			// Unsupported reverse operation.
