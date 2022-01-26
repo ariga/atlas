@@ -377,7 +377,10 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			reverse.Comma().P("DROP FOREIGN KEY").Ident(change.F.Symbol)
 		case *schema.DropForeignKey:
 			b.P("DROP FOREIGN KEY").Ident(change.F.Symbol)
-			reversible = false
+			reverse.Comma().P("ADD")
+			if err := s.fks(reverse, change.F); err != nil {
+				errors = append(errors, err.Error())
+			}
 		case *schema.AddAttr:
 			s.tableAttr(b, change, change.A)
 			// Unsupported reverse operation.
