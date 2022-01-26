@@ -308,12 +308,12 @@ var TypeRegistry = specutil.NewRegistry(
 	specutil.WithFormatter(FormatType),
 	specutil.WithParser(ParseType),
 	specutil.WithSpecs(
-		specutil.TypeSpec(TypeBit, &schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64}),
-		specutil.AliasTypeSpec("bit_varying", TypeBitVar, &schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64}),
-		specutil.TypeSpec(TypeVarChar, specutil.SizeTypeAttr(true)),
-		specutil.AliasTypeSpec("character_varying", TypeCharVar, &schemaspec.TypeAttr{Name: "size", Kind: reflect.Int}),
-		specutil.TypeSpec(TypeChar, specutil.SizeTypeAttr(true)),
-		specutil.TypeSpec(TypeCharacter, specutil.SizeTypeAttr(true)),
+		specutil.TypeSpec(TypeBit, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64})),
+		specutil.AliasTypeSpec("bit_varying", TypeBitVar, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64})),
+		specutil.TypeSpec(TypeVarChar, specutil.WithAttributes(specutil.SizeTypeAttr(true))),
+		specutil.AliasTypeSpec("character_varying", TypeCharVar, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "size", Kind: reflect.Int})),
+		specutil.TypeSpec(TypeChar, specutil.WithAttributes(specutil.SizeTypeAttr(true))),
+		specutil.TypeSpec(TypeCharacter, specutil.WithAttributes(specutil.SizeTypeAttr(true))),
 		specutil.TypeSpec(TypeInt2),
 		specutil.TypeSpec(TypeInt4),
 		specutil.TypeSpec(TypeInt8),
@@ -361,7 +361,7 @@ var TypeRegistry = specutil.NewRegistry(
 		specutil.TypeSpec(TypeUUID),
 		specutil.TypeSpec(TypeMoney),
 		specutil.TypeSpec("hstore"),
-		specutil.TypeSpec("sql", &schemaspec.TypeAttr{Name: "def", Required: true, Kind: reflect.String}),
+		specutil.TypeSpec("sql", specutil.WithAttributes(&schemaspec.TypeAttr{Name: "def", Required: true, Kind: reflect.String})),
 	),
 )
 
