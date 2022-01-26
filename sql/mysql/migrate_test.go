@@ -258,7 +258,7 @@ func TestPlanChanges(t *testing.T) {
 				Changes: []*migrate.Change{
 					{
 						Cmd:     "ALTER TABLE `pets` DROP FOREIGN KEY `user_id`",
-						Reverse: "ALTER TABLE `pets` ADD CONSTRAINT `user_id` FOREIGN KEY () REFERENCES `users` () ON UPDATE NO ACTION ON DELETE CASCADE",
+						Reverse: "ALTER TABLE `pets` ADD CONSTRAINT `user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON UPDATE NO ACTION ON DELETE CASCADE",
 					},
 				},
 			},
