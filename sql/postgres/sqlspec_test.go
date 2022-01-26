@@ -427,42 +427,65 @@ func TestTypes(t *testing.T) {
 			typeExpr: "point",
 			expected: &schema.SpatialType{T: TypePoint},
 		},
-
 		{
 			typeExpr: "date",
 			expected: &schema.TimeType{T: TypeDate},
 		},
 		{
 			typeExpr: "time",
-			expected: &schema.TimeType{T: TypeTime},
+			expected: &schema.TimeType{T: TypeTime, Precision: 6},
+		},
+		{
+			typeExpr: "time(4)",
+			expected: &schema.TimeType{T: TypeTime, Precision: 4},
 		},
 		{
 			typeExpr: "time_with_time_zone",
-			expected: &schema.TimeType{T: TypeTimeWTZ},
+			expected: &schema.TimeType{T: TypeTimeWTZ, Precision: 6},
+		},
+		{
+			typeExpr: "time_with_time_zone(4)",
+			expected: &schema.TimeType{T: TypeTimeWTZ, Precision: 4},
 		},
 		{
 			typeExpr: "time_without_time_zone",
-			expected: &schema.TimeType{T: TypeTimeWOTZ},
+			expected: &schema.TimeType{T: TypeTimeWOTZ, Precision: 6},
+		},
+		{
+			typeExpr: "time_without_time_zone(4)",
+			expected: &schema.TimeType{T: TypeTimeWOTZ, Precision: 4},
 		},
 		{
 			typeExpr: "timestamp",
-			expected: &schema.TimeType{T: TypeTimestamp},
+			expected: &schema.TimeType{T: TypeTimestamp, Precision: 6},
+		},
+		{
+			typeExpr: "timestamp(4)",
+			expected: &schema.TimeType{T: TypeTimestamp, Precision: 4},
 		},
 		{
 			typeExpr: "timestamptz",
-			expected: &schema.TimeType{T: TypeTimestampTZ},
+			expected: &schema.TimeType{T: TypeTimestampTZ, Precision: 6},
+		},
+		{
+			typeExpr: "timestamptz(4)",
+			expected: &schema.TimeType{T: TypeTimestampTZ, Precision: 4},
 		},
 		{
 			typeExpr: "timestamp_with_time_zone",
-			expected: &schema.TimeType{T: TypeTimestampWTZ},
+			expected: &schema.TimeType{T: TypeTimestampWTZ, Precision: 6},
+		},
+		{
+			typeExpr: "timestamp_with_time_zone(4)",
+			expected: &schema.TimeType{T: TypeTimestampWTZ, Precision: 4},
 		},
 		{
 			typeExpr: "timestamp_without_time_zone",
-			expected: &schema.TimeType{T: TypeTimestampWOTZ},
+			expected: &schema.TimeType{T: TypeTimestampWOTZ, Precision: 6},
 		},
 		{
-			typeExpr: "time",
-			expected: &schema.TimeType{T: TypeTime},
+			typeExpr: "timestamp_without_time_zone(4)",
+			expected: &schema.TimeType{T: TypeTimestampWOTZ, Precision: 4},
 		},
 		{
 			typeExpr: "real",

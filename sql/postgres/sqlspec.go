@@ -90,6 +90,18 @@ func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) 
 	return marshaler.MarshalSpec(&d)
 }
 
+var (
+	hclState = schemahcl.New(schemahcl.WithTypes(TypeRegistry.Specs()))
+	// UnmarshalHCL unmarshals an Atlas HCL DDL document into v.
+	UnmarshalHCL = schemaspec.UnmarshalerFunc(func(bytes []byte, i interface{}) error {
+		return UnmarshalSpec(bytes, hclState, i)
+	})
+	// MarshalHCL marshals v into an Atlas HCL DDL document.
+	MarshalHCL = schemaspec.MarshalerFunc(func(v interface{}) ([]byte, error) {
+		return MarshalSpec(v, hclState)
+	})
+)
+
 // Realm converts the schemas and tables of the doc into a schema.Realm.
 func Realm(schemas []*sqlspec.Schema, tables []*sqlspec.Table, enums []*Enum) (*schema.Realm, error) {
 	r := &schema.Realm{}
@@ -186,7 +198,18 @@ func fixDefaultQuotes(value schemaspec.Value) error {
 
 // convertColumnType converts a sqlspec.Column into a concrete Postgres schema.Type.
 func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
-	return TypeRegistry.Type(spec.Type, spec.Extra.Attrs)
+	typ, err := TypeRegistry.Type(spec.Type, spec.Extra.Attrs)
+	if err != nil {
+		return nil, err
+	}
+	// Handle default values for time precision types.
+	if t, ok := typ.(*schema.TimeType); ok && strings.HasPrefix(t.T, "time") {
+		a := attr(spec.Type, "precision")
+		if a == nil {
+			t.Precision = 6
+		}
+	}
+	return typ, nil
 }
 
 // convertEnums converts possibly referenced column types (like enums) to
@@ -300,86 +323,118 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Handle
 	return &sqlspec.Column{Type: st}, nil
 }
 
-var (
-	// TypeRegistry contains the supported TypeSpecs for the Postgres driver.
-	TypeRegistry = specutil.NewRegistry(
-		specutil.WithFormatter(FormatType),
-		specutil.WithParser(ParseType),
-		specutil.WithSpecs(
-			specutil.TypeSpec(TypeBit, &schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64}),
-			specutil.AliasTypeSpec("bit_varying", TypeBitVar, &schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64}),
-			specutil.TypeSpec(TypeVarChar, specutil.SizeTypeAttr(true)),
-			specutil.AliasTypeSpec("character_varying", TypeCharVar, &schemaspec.TypeAttr{Name: "size", Kind: reflect.Int}),
-			specutil.TypeSpec(TypeChar, specutil.SizeTypeAttr(true)),
-			specutil.TypeSpec(TypeCharacter, specutil.SizeTypeAttr(true)),
-			specutil.TypeSpec(TypeInt2),
-			specutil.TypeSpec(TypeInt4),
-			specutil.TypeSpec(TypeInt8),
-			specutil.TypeSpec(TypeInt),
-			specutil.TypeSpec(TypeInteger),
-			specutil.TypeSpec(TypeSmallInt),
-			specutil.TypeSpec(TypeBigInt),
-			specutil.TypeSpec(TypeText),
-			specutil.TypeSpec(TypeBoolean),
-			specutil.TypeSpec(TypeBool),
-			specutil.TypeSpec(TypeBytea),
-			specutil.TypeSpec(TypeCIDR),
-			specutil.TypeSpec(TypeInet),
-			specutil.TypeSpec(TypeMACAddr),
-			specutil.TypeSpec(TypeMACAddr8),
-			specutil.TypeSpec(TypeCircle),
-			specutil.TypeSpec(TypeLine),
-			specutil.TypeSpec(TypeLseg),
-			specutil.TypeSpec(TypeBox),
-			specutil.TypeSpec(TypePath),
-			specutil.TypeSpec(TypePoint),
-			specutil.TypeSpec(TypeDate),
-			specutil.TypeSpec(TypeTime, precAttr),
-			specutil.AliasTypeSpec("time_with_time_zone", TypeTimeWTZ, precAttr),
-			specutil.AliasTypeSpec("time_without_time_zone", TypeTimeWOTZ, precAttr),
-			specutil.TypeSpec(TypeTimestampTZ, precAttr),
-			specutil.TypeSpec(TypeTimestamp, precAttr),
-			specutil.AliasTypeSpec("timestamp_with_time_zone", TypeTimestampWTZ, precAttr),
-			specutil.AliasTypeSpec("timestamp_without_time_zone", TypeTimestampWOTZ, precAttr),
-			specutil.AliasTypeSpec("double_precision", TypeDouble),
-			specutil.TypeSpec(TypeReal),
-			specutil.TypeSpec(TypeFloat8),
-			specutil.TypeSpec(TypeFloat4),
-			specutil.TypeSpec(TypeNumeric),
-			specutil.TypeSpec(TypeDecimal),
-			specutil.TypeSpec(TypeSmallSerial),
-			specutil.TypeSpec(TypeSerial),
-			specutil.TypeSpec(TypeBigSerial),
-			specutil.TypeSpec(TypeSerial2),
-			specutil.TypeSpec(TypeSerial4),
-			specutil.TypeSpec(TypeSerial8),
-			specutil.TypeSpec(TypeXML),
-			specutil.TypeSpec(TypeJSON),
-			specutil.TypeSpec(TypeJSONB),
-			specutil.TypeSpec(TypeUUID),
-			specutil.TypeSpec(TypeMoney),
-			specutil.TypeSpec("hstore"),
-			specutil.TypeSpec("sql", &schemaspec.TypeAttr{Name: "def", Required: true, Kind: reflect.String}),
+// TypeRegistry contains the supported TypeSpecs for the Postgres driver.
+var TypeRegistry = specutil.NewRegistry(
+	specutil.WithFormatter(FormatType),
+	specutil.WithParser(ParseType),
+	specutil.WithSpecs(
+		specutil.TypeSpec(TypeBit, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64})),
+		specutil.AliasTypeSpec("bit_varying", TypeBitVar, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64})),
+		specutil.TypeSpec(TypeVarChar, specutil.WithAttributes(specutil.SizeTypeAttr(true))),
+		specutil.AliasTypeSpec("character_varying", TypeCharVar, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "size", Kind: reflect.Int})),
+		specutil.TypeSpec(TypeChar, specutil.WithAttributes(specutil.SizeTypeAttr(true))),
+		specutil.TypeSpec(TypeCharacter, specutil.WithAttributes(specutil.SizeTypeAttr(true))),
+		specutil.TypeSpec(TypeInt2),
+		specutil.TypeSpec(TypeInt4),
+		specutil.TypeSpec(TypeInt8),
+		specutil.TypeSpec(TypeInt),
+		specutil.TypeSpec(TypeInteger),
+		specutil.TypeSpec(TypeSmallInt),
+		specutil.TypeSpec(TypeBigInt),
+		specutil.TypeSpec(TypeText),
+		specutil.TypeSpec(TypeBoolean),
+		specutil.TypeSpec(TypeBool),
+		specutil.TypeSpec(TypeBytea),
+		specutil.TypeSpec(TypeCIDR),
+		specutil.TypeSpec(TypeInet),
+		specutil.TypeSpec(TypeMACAddr),
+		specutil.TypeSpec(TypeMACAddr8),
+		specutil.TypeSpec(TypeCircle),
+		specutil.TypeSpec(TypeLine),
+		specutil.TypeSpec(TypeLseg),
+		specutil.TypeSpec(TypeBox),
+		specutil.TypeSpec(TypePath),
+		specutil.TypeSpec(TypePoint),
+		specutil.TypeSpec(TypeDate),
+		specutil.TypeSpec(TypeTime, specutil.WithAttributes(precisionTypeAttr())),
+		specutil.AliasTypeSpec(
+			"time_with_time_zone",
+			TypeTimeWTZ,
+			specutil.WithAttributes(precisionTypeAttr()),
+			specutil.WithPrinter(timePrinter),
 		),
-	)
-	precAttr = &schemaspec.TypeAttr{
+		specutil.AliasTypeSpec(
+			"time_without_time_zone",
+			TypeTimeWOTZ,
+			specutil.WithAttributes(precisionTypeAttr()),
+			specutil.WithPrinter(timePrinter),
+		),
+		specutil.TypeSpec(TypeTimestampTZ, specutil.WithAttributes(precisionTypeAttr())),
+		specutil.TypeSpec(TypeTimestamp, specutil.WithAttributes(precisionTypeAttr())),
+		specutil.AliasTypeSpec(
+			"timestamp_with_time_zone",
+			TypeTimestampWTZ,
+			specutil.WithAttributes(precisionTypeAttr()),
+			specutil.WithPrinter(timePrinter),
+		),
+		specutil.AliasTypeSpec(
+			"timestamp_without_time_zone",
+			TypeTimestampWOTZ,
+			specutil.WithAttributes(precisionTypeAttr()),
+			specutil.WithPrinter(timePrinter),
+		),
+		specutil.AliasTypeSpec("double_precision", TypeDouble),
+		specutil.TypeSpec(TypeReal),
+		specutil.TypeSpec(TypeFloat8),
+		specutil.TypeSpec(TypeFloat4),
+		specutil.TypeSpec(TypeNumeric),
+		specutil.TypeSpec(TypeDecimal),
+		specutil.TypeSpec(TypeSmallSerial),
+		specutil.TypeSpec(TypeSerial),
+		specutil.TypeSpec(TypeBigSerial),
+		specutil.TypeSpec(TypeSerial2),
+		specutil.TypeSpec(TypeSerial4),
+		specutil.TypeSpec(TypeSerial8),
+		specutil.TypeSpec(TypeXML),
+		specutil.TypeSpec(TypeJSON),
+		specutil.TypeSpec(TypeJSONB),
+		specutil.TypeSpec(TypeUUID),
+		specutil.TypeSpec(TypeMoney),
+		specutil.TypeSpec("hstore"),
+		specutil.TypeSpec("sql", specutil.WithAttributes(&schemaspec.TypeAttr{Name: "def", Required: true, Kind: reflect.String})),
+	),
+)
+
+func precisionTypeAttr() *schemaspec.TypeAttr {
+	return &schemaspec.TypeAttr{
 		Name:     "precision",
 		Kind:     reflect.Int,
 		Required: false,
 	}
-)
+}
 
-var (
-	hclState = schemahcl.New(schemahcl.WithTypes(TypeRegistry.Specs()))
-	// UnmarshalHCL unmarshals an Atlas HCL DDL document into v.
-	UnmarshalHCL = schemaspec.UnmarshalerFunc(func(bytes []byte, i interface{}) error {
-		return UnmarshalSpec(bytes, hclState, i)
-	})
-	// MarshalHCL marshals v into an Atlas HCL DDL document.
-	MarshalHCL = schemaspec.MarshalerFunc(func(v interface{}) ([]byte, error) {
-		return MarshalSpec(v, hclState)
-	})
-)
+func timePrinter(typ *schemaspec.Type) (string, error) {
+	a := attr(typ, "precision")
+	if a == nil {
+		return typ.T, nil
+	}
+	p, err := a.Int()
+	if err != nil {
+		return "", fmt.Errorf(`postgres: parsing attribute "precision": %w`, err)
+	}
+	parts := strings.Split(typ.T, " ")
+	return fmt.Sprintf("%s(%d)%s", parts[0], p, strings.Join(parts[1:], " ")), nil
+}
+
+func attr(typ *schemaspec.Type, key string) *schemaspec.Attr {
+	for _, a := range typ.Attrs {
+		if a.K == key {
+			return a
+		}
+	}
+	return nil
+}
