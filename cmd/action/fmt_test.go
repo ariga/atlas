@@ -137,7 +137,7 @@ func setupFmtTest(t *testing.T, inputDir map[string]string) string {
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		os.RemoveAll(dir)
-		os.Chdir(wd)
+		os.Chdir(wd) //nolint:errcheck
 	})
 	for name, contents := range inputDir {
 		file := path.Join(dir, name)
