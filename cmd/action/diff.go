@@ -52,6 +52,13 @@ func CmdDiffRun(cmd *cobra.Command, args []string) {
 	cobra.CheckErr(err)
 	toSchema, err := toDriver.InspectSchema(ctx, toName, nil)
 	cobra.CheckErr(err)
+	// SchemaDiff checks for name equality which is irrelevant in the case
+	// the user wants to compare their contents, if the names are different
+	// we reset them to allow the comparison.
+	if fromName != toName {
+		toSchema.Name = ""
+		fromSchema.Name = ""
+	}
 	diff, err := toDriver.SchemaDiff(fromSchema, toSchema)
 	cobra.CheckErr(err)
 	p, err := toDriver.PlanChanges(ctx, "plan", diff)
