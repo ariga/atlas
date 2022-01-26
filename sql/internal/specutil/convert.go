@@ -153,20 +153,42 @@ func Column(spec *sqlspec.Column, conv ConvertTypeFunc) (*schema.Column, error) 
 
 // Index converts a sqlspec.Index to a schema.Index.
 func Index(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
-	parts := make([]*schema.IndexPart, 0, len(spec.Columns))
-	for seqno, c := range spec.Columns {
-		cn, err := columnName(c)
-		if err != nil {
-			return nil, fmt.Errorf("specutil: failed converting column to index: %w", err)
+	parts := make([]*schema.IndexPart, 0, len(spec.Columns)+len(spec.Parts))
+	switch n, m := len(spec.Columns), len(spec.Parts); {
+	case n == 0 && m == 0:
+		return nil, fmt.Errorf("missing definition for index %q", spec.Name)
+	case n > 0 && m > 0:
+		return nil, fmt.Errorf(`multiple definitions for index %q, use "columns" or "on"`, spec.Name)
+	case n > 0:
+		for i, c := range spec.Columns {
+			c, err := column(parent, c)
+			if err != nil {
+				return nil, err
+			}
+			parts = append(parts, &schema.IndexPart{
+				SeqNo: i,
+				C:     c,
+			})
 		}
-		col, ok := parent.Column(cn)
-		if !ok {
-			return nil, fmt.Errorf("specutil: unknown column %q in table %q", cn, parent.Name)
+	case m > 0:
+		for i, p := range spec.Parts {
+			part := &schema.IndexPart{SeqNo: i, Desc: p.Desc}
+			switch {
+			case p.Column == nil && p.Expr == "":
+				return nil, fmt.Errorf(`"column" or "expr" are required for index %q at position %d`, spec.Name, i)
+			case p.Column != nil && p.Expr != "":
+				return nil, fmt.Errorf(`cannot use both "column" and "expr" in index %q at position %d`, spec.Name, i)
+			case p.Expr != "":
+				part.X = &schema.RawExpr{X: p.Expr}
+			case p.Column != nil:
+				c, err := column(parent, p.Column)
+				if err != nil {
+					return nil, err
+				}
+				part.C = c
+			}
+			parts = append(parts, part)
 		}
-		parts = append(parts, &schema.IndexPart{
-			SeqNo: seqno,
-			C:     col,
-		})
 	}
 	i := &schema.Index{
 		Name:   spec.Name,
@@ -192,17 +214,13 @@ func Check(spec *sqlspec.Check) (*schema.Check, error) {
 func PrimaryKey(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, error) {
 	parts := make([]*schema.IndexPart, 0, len(spec.Columns))
 	for seqno, c := range spec.Columns {
-		n, err := columnName(c)
+		c, err := column(parent, c)
 		if err != nil {
-			return nil, fmt.Errorf("sqlspec: cannot get column name %q as primary key for table %q", c.V, parent.Name)
-		}
-		pkc, ok := parent.Column(n)
-		if !ok {
-			return nil, fmt.Errorf("sqlspec: cannot set column %q as primary key for table %q", n, parent.Name)
+			return nil, nil
 		}
 		parts = append(parts, &schema.IndexPart{
 			SeqNo: seqno,
-			C:     pkc,
+			C:     c,
 		})
 	}
 	return &schema.Index{
@@ -262,15 +280,7 @@ func resolveCol(ref *schemaspec.Ref, sch *schema.Schema) (*schema.Column, error)
 	if !ok {
 		return nil, fmt.Errorf("sqlspec: table %q not found", t)
 	}
-	c, err := columnName(ref)
-	if err != nil {
-		return nil, fmt.Errorf("sqlspec: column %q not found", ref.V)
-	}
-	col, ok := tbl.Column(c)
-	if !ok {
-		return nil, fmt.Errorf("sqlspec: column %q not found in table %q", c, t)
-	}
-	return col, nil
+	return column(tbl, ref)
 }
 
 // FromRealm converts a schema.Realm into []sqlspec.Schema and []sqlspec.Table.
@@ -476,12 +486,16 @@ func SchemaName(ref *schemaspec.Ref) (string, error) {
 	return parts[1], nil
 }
 
-func columnName(ref *schemaspec.Ref) (string, error) {
+func column(t *schema.Table, ref *schemaspec.Ref) (*schema.Column, error) {
 	s := strings.Split(ref.V, "$column.")
 	if len(s) != 2 {
-		return "", fmt.Errorf("sqlspec: failed to extract column name from %q", ref)
+		return nil, fmt.Errorf("specutil: failed to extract column name from %q", ref)
 	}
-	return s[1], nil
+	c, ok := t.Column(s[1])
+	if !ok {
+		return nil, fmt.Errorf("specutil: unknown column %q in table %q", s[1], t.Name)
+	}
+	return c, nil
 }
 
 func tableName(ref *schemaspec.Ref) (string, error) {

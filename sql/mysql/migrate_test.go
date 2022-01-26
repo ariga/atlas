@@ -188,9 +188,7 @@ func TestPlanChanges(t *testing.T) {
 								Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}},
 								Indexes: []*schema.Index{
 									schema.NewIndex("name_index").
-										AddParts(schema.NewIndexPart(0).SetColumn(
-											schema.NewColumn("name"),
-										)),
+										AddParts(schema.NewColumnPart(schema.NewColumn("name"))),
 								},
 							}},
 					}
@@ -199,9 +197,7 @@ func TestPlanChanges(t *testing.T) {
 						Changes: []schema.Change{
 							&schema.DropIndex{
 								I: schema.NewIndex("name_index").
-									AddParts(schema.NewIndexPart(0).SetColumn(
-										schema.NewColumn("name"),
-									)),
+									AddParts(schema.NewColumnPart(schema.NewColumn("name"))),
 							},
 						},
 					}
