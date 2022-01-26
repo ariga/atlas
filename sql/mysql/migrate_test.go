@@ -543,9 +543,10 @@ func TestPlanChanges(t *testing.T) {
 		require.NotNil(t, plan)
 		require.Equal(t, tt.wantPlan.Reversible, plan.Reversible)
 		require.Equal(t, tt.wantPlan.Transactional, plan.Transactional)
-		for i, c := range tt.wantPlan.Changes {
-			require.Equal(t, c.Cmd, plan.Changes[i].Cmd)
-			require.Equal(t, c.Reverse, plan.Changes[i].Reverse)
+		require.Equal(t, len(tt.wantPlan.Changes), len(plan.Changes))
+		for i, c := range plan.Changes {
+			require.Equal(t, tt.wantPlan.Changes[i].Cmd, c.Cmd)
+			require.Equal(t, tt.wantPlan.Changes[i].Reverse, c.Reverse)
 		}
 	}
 }
