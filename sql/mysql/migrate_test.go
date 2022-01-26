@@ -233,7 +233,15 @@ func TestPlanChanges(t *testing.T) {
 							},
 						},
 					}
-					fk := &schema.ForeignKey{Symbol: "user_id", Table: pets, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: users}
+					fk := &schema.ForeignKey{
+						Symbol:     "user_id",
+						Table:      pets,
+						OnUpdate:   schema.NoAction,
+						OnDelete:   schema.Cascade,
+						RefTable:   users,
+						Columns:    []*schema.Column{pets.Columns[1]},
+						RefColumns: []*schema.Column{users.Columns[0]},
+					}
 					pets.ForeignKeys = []*schema.ForeignKey{fk}
 					return &schema.ModifyTable{
 						T: pets,
