@@ -26,7 +26,11 @@ saved to a file, commonly by redirecting the output to a file named with a ".hcl
 	atlas schema inspect -d "mysql://user:pass@tcp(localhost:3306)/dbname" > atlas.hcl
 
 This file can then be edited and used with the` + " `atlas schema apply` " + `command to plan
-and execute schema migrations against the given database. 
+and execute schema migrations against the given database. In cases where users wish to inspect
+all multiple schemas in a given database (for instance a MySQL server may contain multiple named
+databases), omit the relevant part from the dsn, e.g. "mysql://user:pass@tcp(localhost:3306)/".
+To select specific schemas from the databases, users may use the "--schema" (or "-s" shorthand)
+flag.
 	`,
 		Run: CmdInspectRun,
 		Example: `

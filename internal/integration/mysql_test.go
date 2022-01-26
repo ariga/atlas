@@ -552,8 +552,7 @@ func TestMySQL_CLI(t *testing.T) {
 }
 
 func TestMySQL_CLI_MultiSchema(t *testing.T) {
-	t.Run("SchemaInspect", func(t *testing.T) {
-		h := `	
+	h := `	
 			schema "test" {
 				charset   = "%s"
 				collation = "%s"
@@ -580,12 +579,22 @@ func TestMySQL_CLI_MultiSchema(t *testing.T) {
 					columns = [table.users.column.id]
 				}
 			}`
+	t.Run("SchemaInspect", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			t.dropDB("test2")
 			t.dropTables("users")
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
 			testCLIMultiSchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V, charset.V, collate.V), t.dsn(""), []string{"test", "test2"}, mysql.UnmarshalHCL)
+		})
+	})
+	t.Run("SchemaApply", func(t *testing.T) {
+		myRun(t, func(t *myTest) {
+			t.dropDB("test2")
+			t.dropTables("users")
+			attrs := t.defaultAttrs()
+			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
+			testCLIMultiSchemaApply(t, fmt.Sprintf(h, charset.V, collate.V, charset.V, collate.V), t.dsn(""), []string{"test", "test2"}, mysql.UnmarshalHCL)
 		})
 	})
 }

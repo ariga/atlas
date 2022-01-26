@@ -481,8 +481,7 @@ func TestPostgres_CLI(t *testing.T) {
 }
 
 func TestPostgres_CLI_MultiSchema(t *testing.T) {
-	t.Run("SchemaInspect", func(t *testing.T) {
-		h := `
+	h := `
 			schema "public" {	
 			}
 			table "users" {
@@ -505,10 +504,18 @@ func TestPostgres_CLI_MultiSchema(t *testing.T) {
 					columns = [table.users.column.id]
 				}
 			}`
+	t.Run("SchemaInspect", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
 			t.dropSchemas("test2")
 			t.dropTables("users")
 			testCLIMultiSchemaInspect(t, h, t.dsn(), []string{"public", "test2"}, postgres.UnmarshalHCL)
+		})
+	})
+	t.Run("SchemaApply", func(t *testing.T) {
+		pgRun(t, func(t *pgTest) {
+			t.dropSchemas("test2")
+			t.dropTables("users")
+			testCLIMultiSchemaApply(t, h, t.dsn(), []string{"public", "test2"}, postgres.UnmarshalHCL)
 		})
 	})
 }
