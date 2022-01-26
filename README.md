@@ -1,6 +1,8 @@
 
 # Atlas -  A Database Toolkit
 
+[![Go Reference](https://pkg.go.dev/badge/ariga.io/atlas.svg)](https://pkg.go.dev/ariga.io/atlas)
+
 <img width="50%" align="right" style="display: block; margin:40px auto;"
      src="https://atlasgo.io/uploads/images/gopher.png"/>
 
