@@ -52,9 +52,9 @@ func TestTypePrint(t *testing.T) {
 				Attributes: []*schemaspec.TypeAttr{
 					{Name: "customAttr", Kind: reflect.Int, Required: true},
 				},
-				Printer: func(typ *schemaspec.Type) string {
+				Printer: func(typ *schemaspec.Type) (string, error) {
 					v, _ := typ.Attrs[0].Int()
-					return fmt.Sprintf("%s(%d) and stuff", typ.T, v)
+					return fmt.Sprintf("%s(%d) and stuff", typ.T, v), nil
 				},
 			},
 			typ:      &schemaspec.Type{T: "custom", Attrs: []*schemaspec.Attr{LitAttr("customAttr", "3")}},

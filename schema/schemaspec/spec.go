@@ -83,7 +83,7 @@ type (
 		RType reflect.Type
 		// Printer is an optional function used by the drivers to get a string representation of the
 		// represented Type, that can be parsed by the driver into a schema.Type.
-		Printer func(*Type) string
+		Printer func(*Type) (string, error)
 	}
 
 	// TypeAttr describes an attribute of a TypeSpec, for example `varchar` fields

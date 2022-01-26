@@ -22,7 +22,7 @@ func (r *TypeRegistry) PrintType(typ *schemaspec.Type) (string, error) {
 		return "", fmt.Errorf("specutil: type %q not found in registry", typ.T)
 	}
 	if spec.Printer != nil {
-		return spec.Printer(typ), nil
+		return spec.Printer(typ)
 	}
 	if len(spec.Attributes) == 0 {
 		return typ.T, nil
@@ -294,7 +294,7 @@ func WithAttributes(attrs ...*schemaspec.TypeAttr) TypeSpecOption {
 }
 
 // WithPrinter returns a printer TypeSpecOption.
-func WithPrinter(p func(*schemaspec.Type) string) TypeSpecOption {
+func WithPrinter(p func(*schemaspec.Type) (string, error)) TypeSpecOption {
 	return func(spec *schemaspec.TypeSpec) {
 		spec.Printer = p
 	}
