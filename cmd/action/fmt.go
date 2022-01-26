@@ -6,7 +6,6 @@ package action
 
 import (
 	"bytes"
-	"fmt"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -52,7 +51,6 @@ func handlePath(cmd *cobra.Command, path string) {
 	tasks, err := tasks(path)
 	cobra.CheckErr(err)
 	for _, task := range tasks {
-		fmt.Println(task.path)
 		changed, err := fmtFile(task)
 		cobra.CheckErr(err)
 		if changed {
