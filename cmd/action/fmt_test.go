@@ -6,6 +6,7 @@ package action
 
 import (
 	"bytes"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -30,49 +31,118 @@ const (
 func TestFmt(t *testing.T) {
 	for _, tt := range []struct {
 		name          string
-		input         string
+		inputDir      map[string]string
+		expectedDir   map[string]string
 		expectedFile  string
+		expectedOut   string
+		args          []string
 		expectedPrint bool
 	}{
 		{
-			name:          "unformatted",
-			input:         unformatted,
-			expectedFile:  formatted,
-			expectedPrint: true,
+			name: "specific file",
+			inputDir: map[string]string{
+				"test.hcl": unformatted,
+			},
+			expectedDir: map[string]string{
+				"test.hcl": formatted,
+			},
+			args:        []string{"test.hcl"},
+			expectedOut: "test.hcl\n",
 		},
 		{
-			name:          "formatted",
-			input:         formatted,
-			expectedFile:  formatted,
-			expectedPrint: false,
+			name: "current dir",
+			inputDir: map[string]string{
+				"test.hcl": unformatted,
+			},
+			expectedDir: map[string]string{
+				"test.hcl": formatted,
+			},
+			expectedOut: "test.hcl\n",
+		},
+		{
+			name: "multi path implicit",
+			inputDir: map[string]string{
+				"test.hcl":  unformatted,
+				"test2.hcl": unformatted,
+			},
+			expectedDir: map[string]string{
+				"test.hcl":  formatted,
+				"test2.hcl": formatted,
+			},
+			expectedOut: "test.hcl\ntest2.hcl\n",
+		},
+		{
+			name: "multi path explicit",
+			inputDir: map[string]string{
+				"test.hcl":  unformatted,
+				"test2.hcl": unformatted,
+			},
+			expectedDir: map[string]string{
+				"test.hcl":  formatted,
+				"test2.hcl": formatted,
+			},
+			args:        []string{"test.hcl", "test2.hcl"},
+			expectedOut: "test.hcl\ntest2.hcl\n",
+		},
+		{
+			name: "formatted",
+			inputDir: map[string]string{
+				"test.hcl": formatted,
+			},
+			expectedDir: map[string]string{
+				"test.hcl": formatted,
+			},
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			var out bytes.Buffer
-			filename := "test.hcl"
-			dir := setupFmtTest(t, filename, tt.input)
-			FmtCmd.ResetCommands() // Detach from sub-commands and parents, needed to skip input validation done by them.
-			FmtCmd.SetOut(&out)
-			FmtCmd.SetArgs([]string{dir})
-			err := FmtCmd.Execute()
-			require.NoError(t, err)
-			require.Equal(t, tt.expectedPrint, out.Len() > 0)
-			rf, err := os.ReadFile(filepath.Join(dir, filename))
-			require.NoError(t, err)
-			require.Equal(t, tt.expectedFile, string(rf))
+			dir := setupFmtTest(t, tt.inputDir)
+			out := runFmt(t, tt.args)
+			assertDir(t, dir, tt.expectedDir)
+			require.EqualValues(t, tt.expectedOut, out)
 		})
 	}
 }
 
-func setupFmtTest(t *testing.T, filename, contents string) string {
+func runFmt(t *testing.T, args []string) string {
+	var out bytes.Buffer
+	FmtCmd.ResetCommands() // Detach from sub-commands and parents, needed to skip input validation done by them.
+	FmtCmd.SetOut(&out)
+	FmtCmd.SetArgs(args)
+	err := FmtCmd.Execute()
+	require.NoError(t, err)
+	return out.String()
+}
+
+func assertDir(t *testing.T, dir string, expected map[string]string) {
+	act := make(map[string]string)
+	files, err := ioutil.ReadDir(dir)
+	require.NoError(t, err)
+	for _, f := range files {
+		if f.IsDir() {
+			continue
+		}
+		contents, err := os.ReadFile(filepath.Join(dir, f.Name()))
+		require.NoError(t, err)
+		act[f.Name()] = string(contents)
+	}
+	require.EqualValues(t, expected, act)
+}
+
+func setupFmtTest(t *testing.T, inputDir map[string]string) string {
+	wd, err := os.Getwd()
+	require.NoError(t, err)
 	dir, err := os.MkdirTemp(os.TempDir(), "fmt-test-")
+	require.NoError(t, err)
+	err = os.Chdir(dir)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		os.RemoveAll(dir)
+		os.Chdir(wd)
 	})
-
-	file := path.Join(dir, filename)
-	err = os.WriteFile(file, []byte(contents), 0644)
+	for name, contents := range inputDir {
+		file := path.Join(dir, name)
+		err = os.WriteFile(file, []byte(contents), 0644)
+	}
 	require.NoError(t, err)
 	return dir
 }

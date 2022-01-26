@@ -6,6 +6,7 @@ package action
 
 import (
 	"bytes"
+	"fmt"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -28,8 +29,7 @@ Unless stated otherwise, the fmt command will use the current directory.
 After running, the command will print the names of the files it has formatted. If all
 files in the directory are formatted, no input will be printed out.
 `,
-		Run:  CmdFmtRun,
-		Args: cobra.MaximumNArgs(1),
+		Run: CmdFmtRun,
 	}
 )
 
@@ -40,13 +40,19 @@ func init() {
 // CmdFmtRun formats all HCL files in a given directory using canonical HCL formatting
 // rules.
 func CmdFmtRun(cmd *cobra.Command, args []string) {
-	path := "./"
-	if len(args) > 0 {
-		path = args[0]
+	if len(args) == 0 {
+		args = append(args, "./")
 	}
+	for _, path := range args {
+		handlePath(cmd, path)
+	}
+}
+
+func handlePath(cmd *cobra.Command, path string) {
 	tasks, err := tasks(path)
 	cobra.CheckErr(err)
 	for _, task := range tasks {
+		fmt.Println(task.path)
 		changed, err := fmtFile(task)
 		cobra.CheckErr(err)
 		if changed {
