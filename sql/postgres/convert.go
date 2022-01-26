@@ -195,6 +195,8 @@ type columnDesc struct {
 	parts         []string
 }
 
+var reDigits = regexp.MustCompile(`\d`)
+
 func parseColumn(s string) (*columnDesc, error) {
 	parts := strings.FieldsFunc(s, func(r rune) bool {
 		return r == '(' || r == ')' || r == ' ' || r == ','

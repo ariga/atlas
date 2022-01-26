@@ -36,6 +36,10 @@ table "table" {
 		type    = timestamp(4)
 		default = sql("current_timestamp(4)")
 	}
+	column "updated_at" {
+		type    = time
+		default = sql("current_time")
+	}
 	primary_key {
 		columns = [table.table.column.col]
 	}
@@ -142,6 +146,16 @@ enum "account_type" {
 						},
 					},
 					Default: &schema.RawExpr{X: "current_timestamp(4)"},
+				},
+				{
+					Name: "updated_at",
+					Type: &schema.ColumnType{
+						Type: &schema.TimeType{
+							T:         TypeTime,
+							Precision: 6,
+						},
+					},
+					Default: &schema.RawExpr{X: "current_time"},
 				},
 			},
 			Attrs: []schema.Attr{
