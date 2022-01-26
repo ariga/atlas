@@ -116,3 +116,34 @@ func Test_SQLiteInMemory(t *testing.T) {
 	_, err := action.SchemaNameFromDSN("sqlite://file:test.db?cache=shared&mode=memory")
 	r.NoError(err)
 }
+
+func Test_PostgresSchemaDSN(t *testing.T) {
+	var tests = []struct {
+		dsn      string
+		expected string
+	}{
+		{
+			dsn:      "postgres://localhost:5432/dbname?search_path=foo",
+			expected: "foo",
+		},
+		{
+			dsn:      "postgres://localhost:5432/dbname",
+			expected: "public",
+		},
+		{
+			dsn:      "postgres://(bad:host)?search_path=foo",
+			expected: "public",
+		},
+		{
+			dsn:      "postgres://localhost:5432/dbname?search_path=",
+			expected: "public",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.dsn, func(t *testing.T) {
+			schema, err := action.SchemaNameFromDSN(tt.dsn)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, schema)
+		})
+	}
+}

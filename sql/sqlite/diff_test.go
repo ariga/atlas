@@ -95,17 +95,6 @@ func TestDiff_TableDiff(t *testing.T) {
 				},
 			},
 		},
-		{
-			name: "modify check",
-			from: &schema.Table{Name: "t1", Attrs: []schema.Attr{&schema.Check{Name: "t1_c1_check", Expr: "(c1 > 1)"}}},
-			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&schema.Check{Name: "t1_c1_check", Expr: "(c1 > 2)"}}},
-			wantChanges: []schema.Change{
-				&schema.ModifyCheck{
-					From: &schema.Check{Name: "t1_c1_check", Expr: "(c1 > 1)"},
-					To:   &schema.Check{Name: "t1_c1_check", Expr: "(c1 > 2)"},
-				},
-			},
-		},
 		func() testcase {
 			var (
 				from = &schema.Table{
@@ -175,11 +164,13 @@ func TestDiff_TableDiff(t *testing.T) {
 				{Name: "c1_index", Unique: true, Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[0]}}},
 				{Name: "c2_unique", Unique: true, Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}},
 				{Name: "c3_predicate", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}},
+				{Name: "c3_desc", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: to.Columns[1]}}},
 			}
 			to.Indexes = []*schema.Index{
 				{Name: "c1_index", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[0]}}},
 				{Name: "c3_unique", Unique: true, Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: to.Columns[1]}}},
 				{Name: "c3_predicate", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}, Attrs: []schema.Attr{&IndexPredicate{P: "c3 <> NULL"}}},
+				{Name: "c3_desc", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, Desc: true, C: to.Columns[1]}}},
 			}
 			return testcase{
 				name: "indexes",
@@ -189,6 +180,7 @@ func TestDiff_TableDiff(t *testing.T) {
 					&schema.ModifyIndex{From: from.Indexes[0], To: to.Indexes[0], Change: schema.ChangeUnique},
 					&schema.DropIndex{I: from.Indexes[1]},
 					&schema.ModifyIndex{From: from.Indexes[2], To: to.Indexes[2], Change: schema.ChangeAttr},
+					&schema.ModifyIndex{From: from.Indexes[3], To: to.Indexes[3], Change: schema.ChangeParts},
 					&schema.AddIndex{I: to.Indexes[1]},
 				},
 			}

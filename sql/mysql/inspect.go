@@ -267,6 +267,8 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 		})
 	}
 	t.Columns = append(t.Columns, c)
+	// From MySQL doc: A UNIQUE index may be displayed as "PRI" if it is NOT NULL
+	// and there is no PRIMARY KEY in the table. We detect this in `addIndexes`.
 	if key.String == "PRI" {
 		if t.PrimaryKey == nil {
 			t.PrimaryKey = &schema.Index{Table: t, Name: key.String}
@@ -298,26 +300,30 @@ func (i *inspect) indexes(ctx context.Context, t *schema.Table) error {
 
 // addIndexes scans the rows and adds the indexes to the table.
 func (i *inspect) addIndexes(t *schema.Table, rows *sql.Rows) error {
-	names := make(map[string]*schema.Index)
+	var (
+		hasPK bool
+		names = make(map[string]*schema.Index)
+	)
 	for rows.Next() {
 		var (
-			nonuniq                                 bool
-			seqno                                   int
-			name, indexType                         string
-			column, subPart, expr, comment, collate sql.NullString
+			seqno                          int
+			name, indexType                string
+			nonuniq, desc                  sql.NullBool
+			column, subPart, expr, comment sql.NullString
 		)
-		if err := rows.Scan(&name, &column, &nonuniq, &seqno, &indexType, &collate, &comment, &subPart, &expr); err != nil {
-			return fmt.Errorf("mysql: scanning index: %w", err)
+		if err := rows.Scan(&name, &column, &nonuniq, &seqno, &indexType, &desc, &comment, &subPart, &expr); err != nil {
+			return fmt.Errorf("mysql: scanning indexes for table %q: %w", t.Name, err)
 		}
 		// Ignore primary keys.
 		if name == "PRIMARY" {
+			hasPK = true
 			continue
 		}
 		idx, ok := names[name]
 		if !ok {
 			idx = &schema.Index{
 				Name:   name,
-				Unique: !nonuniq,
+				Unique: !nonuniq.Bool,
 				Table:  t,
 				Attrs: []schema.Attr{
 					&IndexType{T: indexType},
@@ -333,10 +339,7 @@ func (i *inspect) addIndexes(t *schema.Table, rows *sql.Rows) error {
 		}
 		// Rows are ordered by SEQ_IN_INDEX that specifies the
 		// position of the column in the index definition.
-		part := &schema.IndexPart{
-			SeqNo: seqno,
-			Attrs: []schema.Attr{&schema.Collation{V: collate.String}},
-		}
+		part := &schema.IndexPart{SeqNo: seqno, Desc: desc.Bool}
 		switch {
 		case sqlx.ValidString(expr):
 			part.X = &schema.RawExpr{
@@ -361,6 +364,9 @@ func (i *inspect) addIndexes(t *schema.Table, rows *sql.Rows) error {
 			return fmt.Errorf("mysql: invalid part for index %q", idx.Name)
 		}
 		idx.Parts = append(idx.Parts, part)
+	}
+	if !hasPK && t.PrimaryKey != nil {
+		t.PrimaryKey = nil
 	}
 	return nil
 }
@@ -398,14 +404,10 @@ func (i *inspect) checks(ctx context.Context, t *schema.Table) error {
 			Name: name.String,
 			Expr: unescape(clause.String),
 		}
-		if enforced.String != "NO" {
-			check.Attrs = append(check.Attrs, &Enforced{})
-		}
-		t.Attrs = append(t.Attrs, check)
-		// In MariaDB, JSON is an alias to LONGTEXT. For versions >= 10.4.3, the CHARSET and COLLATE set to utf8mb4
-		// and a CHECK constraint is automatically created for the column as well (i.e. JSON_VALID(`<C>`)). However,
-		// we expect tools like Atlas and Ent to manually add this CHECK for older versions of MariaDB.
 		if i.mariadb() {
+			// In MariaDB, JSON is an alias to LONGTEXT. For versions >= 10.4.3, the CHARSET and COLLATE set to utf8mb4
+			// and a CHECK constraint is automatically created for the column as well (i.e. JSON_VALID(`<C>`)). However,
+			// we expect tools like Atlas and Ent to manually add this CHECK for older versions of MariaDB.
 			c, ok := t.Column(check.Name)
 			if ok && c.Type.Raw == TypeLongText && check.Expr == fmt.Sprintf("json_valid(`%s`)", c.Name) {
 				c.Type.Raw = TypeJSON
@@ -414,8 +416,13 @@ func (i *inspect) checks(ctx context.Context, t *schema.Table) error {
 				// as they are valid only for character types.
 				c.UnsetCharset().UnsetCollation()
 			}
+		} else if enforced.String == "NO" {
+			// The ENFORCED attribute is not supported by MariaDB.
+			// Also, skip adding it in case the CHECK is ENFORCED,
+			// as the default is ENFORCED if not state otherwise.
+			check.Attrs = append(check.Attrs, &Enforced{V: false})
 		}
-
+		t.Attrs = append(t.Attrs, check)
 	}
 	return rows.Err()
 }
@@ -440,15 +447,18 @@ func (i *inspect) tableNames(ctx context.Context, schema string, opts *schema.In
 	return names, nil
 }
 
+var reTimeOnUpdate = regexp.MustCompile(`(?i)^(?:default_generated )?on update (current_timestamp(?:\(\d?\))?)$`)
+
 // extraAttr parses the EXTRA column from the INFORMATION_SCHEMA.COLUMNS table
 // and appends its parsed representation to the column.
 func (i *inspect) extraAttr(t *schema.Table, c *schema.Column, extra string) error {
-	switch extra := strings.ToLower(extra); extra {
-	case "", "null": // ignore.
-	case defaultGen:
+	el := strings.ToLower(extra)
+	switch {
+	case el == "", el == "null": // ignore.
+	case el == defaultGen:
 		// The column has an expression default value
 		// and it is handled in Driver.addColumn.
-	case autoIncrement:
+	case el == autoIncrement:
 		a := &AutoIncrement{}
 		// A table can have only one AUTO_INCREMENT column. If it was returned as NULL
 		// from INFORMATION_SCHEMA, it is due to information_schema_stats_expiry and we
@@ -462,9 +472,8 @@ func (i *inspect) extraAttr(t *schema.Table, c *schema.Column, extra string) err
 			t.Attrs = append(t.Attrs, a)
 		}
 		c.Attrs = append(c.Attrs, a)
-	case "default_generated on update current_timestamp", "on update current_timestamp",
-		"on update current_timestamp()" /* MariaDB format. */ :
-		c.Attrs = append(c.Attrs, &OnUpdate{A: extra})
+	case reTimeOnUpdate.MatchString(extra):
+		c.Attrs = append(c.Attrs, &OnUpdate{A: reTimeOnUpdate.FindStringSubmatch(extra)[1]})
 	default:
 		return fmt.Errorf("unknown attribute %q", extra)
 	}
@@ -504,6 +513,8 @@ func (i *inspect) createStmt(ctx context.Context, t *schema.Table) error {
 	return nil
 }
 
+var reCurrTimestamp = regexp.MustCompile(`(?i)^current_timestamp(?:\(\d?\))?$`)
+
 // myDefaultExpr returns the correct schema.Expr based on the column attributes for MySQL.
 func (i *inspect) myDefaultExpr(c *schema.Column, x, extra string) schema.Expr {
 	// In MySQL, the DEFAULT_GENERATED indicates the column has an expression default value.
@@ -521,7 +532,7 @@ func (i *inspect) myDefaultExpr(c *schema.Column, x, extra string) schema.Expr {
 	case *schema.TimeType:
 		// "current_timestamp" is exceptional in old versions
 		// of MySQL for timestamp and datetime data types.
-		if strings.ToLower(x) == currentTS {
+		if reCurrTimestamp.MatchString(x) {
 			return &schema.RawExpr{X: x}
 		}
 	}
@@ -610,8 +621,8 @@ const (
 	columnsQuery = "SELECT `COLUMN_NAME`, `COLUMN_TYPE`, `COLUMN_COMMENT`, `IS_NULLABLE`, `COLUMN_KEY`, `COLUMN_DEFAULT`, `EXTRA`, `CHARACTER_SET_NAME`, `COLLATION_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `ORDINAL_POSITION`"
 
 	// Query to list table indexes.
-	indexesQuery     = "SELECT `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `INDEX_TYPE`, `COLLATION`, `INDEX_COMMENT`, `SUB_PART`, NULL AS `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
-	indexesExprQuery = "SELECT `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `INDEX_TYPE`, `COLLATION`, `INDEX_COMMENT`, `SUB_PART`, `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
+	indexesQuery     = "SELECT `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `INDEX_TYPE`, UPPER(`COLLATION`) = 'D' AS `DESC`, `INDEX_COMMENT`, `SUB_PART`, NULL AS `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
+	indexesExprQuery = "SELECT `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `INDEX_TYPE`, UPPER(`COLLATION`) = 'D' AS `DESC`, `INDEX_COMMENT`, `SUB_PART`, `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? ORDER BY `index_name`, `seq_in_index`"
 
 	// Query to list table information.
 	tableQuery = `
@@ -725,9 +736,9 @@ type (
 	}
 
 	// Enforced attribute defines the ENFORCED flag for CHECK constraint.
-	// Similar to AUTO_INCREMENT, checks with this attributes are enforced.
 	Enforced struct {
 		schema.Attr
+		V bool // V indicates if the CHECK is enforced or not.
 	}
 
 	// The DisplayWidth represents a display width of an integer type.

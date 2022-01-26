@@ -355,10 +355,23 @@ func NewNullFloatColumn(name, typ string, opts ...FloatOption) *Column {
 		SetNull(true)
 }
 
+// TimeOption allows configuring TimeType using functional options.
+type TimeOption func(*TimeType)
+
+// TimePrecision configures the precision of the time type.
+func TimePrecision(precision int) TimeOption {
+	return func(b *TimeType) {
+		b.Precision = precision
+	}
+}
+
 // NewTimeColumn creates a new TimeType column.
-func NewTimeColumn(name, typ string) *Column {
-	return NewColumn(name).
-		SetType(&TimeType{T: typ})
+func NewTimeColumn(name, typ string, opts ...TimeOption) *Column {
+	t := &TimeType{T: typ}
+	for _, opt := range opts {
+		opt(t)
+	}
+	return NewColumn(name).SetType(t)
 }
 
 // NewNullTimeColumn creates a new nullable TimeType column.

@@ -116,7 +116,7 @@ func TestMigrate_ApplyChanges(t *testing.T) {
 							Name: "id_spouse_id",
 							Parts: []*schema.IndexPart{
 								{C: users.Columns[1]},
-								{C: users.Columns[0], Attrs: []schema.Attr{&schema.Collation{V: "D"}}},
+								{C: users.Columns[0], Desc: true},
 							},
 							Attrs: []schema.Attr{
 								&schema.Comment{Text: "comment"},
@@ -329,7 +329,7 @@ func TestPlanChanges(t *testing.T) {
 							{
 								Name: "text_prefix",
 								Parts: []*schema.IndexPart{
-									{Attrs: []schema.Attr{&SubPart{Len: 100}, &schema.Collation{V: "D"}}},
+									{Desc: true, Attrs: []schema.Attr{&SubPart{Len: 100}}},
 								},
 							},
 						},

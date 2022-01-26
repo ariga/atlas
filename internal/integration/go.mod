@@ -1,4 +1,4 @@
-module ariga.io/atlas/integration
+module ariga.io/atlas/internal/integration
 
 go 1.17
 
@@ -16,6 +16,11 @@ require (
 )
 
 require (
+	github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e
+	github.com/rogpeppe/go-internal v1.8.2-0.20220112175052-f3cb5c2c6412
+)
+
+require (
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -28,5 +33,6 @@ require (
 	golang.org/x/mod v0.5.0 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
+	gopkg.in/errgo.v2 v2.1.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )

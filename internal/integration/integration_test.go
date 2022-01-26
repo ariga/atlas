@@ -13,6 +13,7 @@ import (
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/schema"
+
 	entsql "entgo.io/ent/dialect/sql"
 	"entgo.io/ent/entc/integration/ent"
 	"github.com/stretchr/testify/require"
@@ -200,6 +201,63 @@ func testCLISchemaApply(t T, h string, dsn string) {
 	require.NotNil(t, u)
 }
 
+func testCLISchemaApplyDry(t T, h string, dsn string) {
+	// Required to have a clean "stderr" while running first time.
+	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	require.NoError(t, err)
+	t.dropTables("users")
+	f := "atlas.hcl"
+	err = ioutil.WriteFile(f, []byte(h), 0644)
+	require.NoError(t, err)
+	defer os.Remove(f)
+	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+		"schema",
+		"apply",
+		"-d",
+		dsn,
+		"-f",
+		f,
+		"--dry-run",
+	)
+	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	stdin, err := cmd.StdinPipe()
+	require.NoError(t, err)
+	defer stdin.Close()
+	_, err = io.WriteString(stdin, "\n")
+	require.NoError(t, err)
+	require.NoError(t, cmd.Run(), stderr.String(), stdout.String())
+	require.Empty(t, stderr.String(), stderr.String())
+	require.Contains(t, stdout.String(), "-- Planned")
+	require.NotContains(t, stdout.String(), "Are you sure?", "dry run should not prompt")
+	realm := t.loadRealm()
+	_, ok := realm.Schemas[0].Table("users")
+	require.False(t, ok, "expected users table not to be created")
+}
+
+func testCLISchemaDiff(t T, dsn string) {
+	// Required to have a clean "stderr" while running first time.
+	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+
+	require.NoError(t, err)
+	t.dropTables("users")
+	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+		"schema",
+		"diff",
+		"--from",
+		dsn,
+		"--to",
+		dsn,
+	)
+	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	require.NoError(t, cmd.Run(), stderr.String(), stdout.String())
+	require.Empty(t, stderr.String(), stderr.String())
+	require.Contains(t, stdout.String(), "Schemas are synced, no changes to be made.")
+}
+
 func TestCLI_Version(t *testing.T) {
 	// Required to have a clean "stderr" while running first time.
 	require.NoError(t, exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run())
@@ -229,11 +287,11 @@ func TestCLI_Version(t *testing.T) {
 			name: "canary",
 			cmd: exec.Command("go", "run",
 				"-ldflags",
-				"-X ariga.io/atlas/cmd/action.version=v0.3.0_6539f2704b5d_canary",
+				"-X ariga.io/atlas/cmd/action.version=v0.3.0-6539f2704b5d-canary",
 				"ariga.io/atlas/cmd/atlas",
 				"version",
 			),
-			expected: "atlas CLI version v0.3.0_6539f2704b5d_canary\nhttps://github.com/ariga/atlas/releases/tag/latest\n",
+			expected: "atlas CLI version v0.3.0-6539f2704b5d-canary\nhttps://github.com/ariga/atlas/releases/tag/latest\n",
 		},
 	}
 	for _, tt := range tests {

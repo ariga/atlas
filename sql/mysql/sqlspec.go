@@ -99,9 +99,7 @@ func convertCheck(spec *sqlspec.Check) (*schema.Check, error) {
 		if err != nil {
 			return nil, err
 		}
-		if b {
-			c.AddAttrs(&Enforced{})
-		}
+		c.AddAttrs(&Enforced{V: b})
 	}
 	return c, nil
 }
@@ -114,6 +112,13 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 	}
 	if err := convertCharset(spec, &c.Attrs); err != nil {
 		return nil, err
+	}
+	if attr, ok := spec.Attr("on_update"); ok {
+		exp, ok := attr.V.(*schemaspec.RawExpr)
+		if !ok {
+			return nil, fmt.Errorf(`unexpected type %T for atrribute "on_update"`, attr.V)
+		}
+		c.AddAttrs(&OnUpdate{A: exp.X})
 	}
 	return c, err
 }
@@ -171,6 +176,9 @@ func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 	}
 	if c, ok := hasCollate(c.Attrs, t.Attrs); ok {
 		col.Extra.Attrs = append(col.Extra.Attrs, specutil.StrAttr("collation", c))
+	}
+	if o := (OnUpdate{}); sqlx.Has(c.Attrs, &o) {
+		col.Extra.Attrs = append(col.Extra.Attrs, specutil.RawAttr("on_update", o.A))
 	}
 	return col, nil
 }
@@ -263,6 +271,8 @@ var TypeRegistry = specutil.NewRegistry(
 			},
 			RType: reflect.TypeOf(SetType{}),
 		},
+		specutil.TypeSpec(TypeBool),
+		specutil.TypeSpec(TypeBoolean),
 		specutil.TypeSpec(TypeBit, specutil.SizeTypeAttr(false)),
 		specutil.TypeSpec(TypeInt, unsignedTypeAttr(), specutil.SizeTypeAttr(false)),
 		specutil.TypeSpec(TypeTinyInt, unsignedTypeAttr(), specutil.SizeTypeAttr(false)),
@@ -274,11 +284,11 @@ var TypeRegistry = specutil.NewRegistry(
 		specutil.TypeSpec(TypeFloat, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
 		specutil.TypeSpec(TypeDouble, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
 		specutil.TypeSpec(TypeReal, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
-		specutil.TypeSpec(TypeTimestamp),
-		specutil.TypeSpec(TypeDate),
-		specutil.TypeSpec(TypeTime),
-		specutil.TypeSpec(TypeDateTime),
-		specutil.TypeSpec(TypeYear),
+		specutil.TypeSpec(TypeTimestamp, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}),
+		specutil.TypeSpec(TypeDate, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}),
+		specutil.TypeSpec(TypeTime, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}),
+		specutil.TypeSpec(TypeDateTime, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}),
+		specutil.TypeSpec(TypeYear, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}),
 		specutil.TypeSpec(TypeVarchar, specutil.SizeTypeAttr(true)),
 		specutil.TypeSpec(TypeChar, specutil.SizeTypeAttr(false)),
 		specutil.TypeSpec(TypeVarBinary, specutil.SizeTypeAttr(false)),

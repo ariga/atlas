@@ -173,10 +173,13 @@ func (i *inspect) columns(ctx context.Context, t *schema.Table) error {
 // addColumn scans the current row and adds a new column from it to the table.
 func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 	var (
-		typid, maxlen, precision, scale, seqstart, seqinc                                              sql.NullInt64
+		typid, maxlen, precision, timeprecision, scale, seqstart, seqinc                               sql.NullInt64
 		name, typ, nullable, defaults, udt, identity, generation, charset, collation, comment, typtype sql.NullString
 	)
-	if err := rows.Scan(&name, &typ, &nullable, &defaults, &maxlen, &precision, &scale, &charset, &collation, &udt, &identity, &seqstart, &seqinc, &generation, &comment, &typtype, &typid); err != nil {
+	if err := rows.Scan(
+		&name, &typ, &nullable, &defaults, &maxlen, &precision, &timeprecision, &scale, &charset,
+		&collation, &udt, &identity, &seqstart, &seqinc, &generation, &comment, &typtype, &typid,
+	); err != nil {
 		return err
 	}
 	c := &schema.Column{
@@ -187,13 +190,14 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 		},
 	}
 	c.Type.Type = columnType(&columnDesc{
-		typ:       typ.String,
-		size:      maxlen.Int64,
-		udt:       udt.String,
-		precision: precision.Int64,
-		scale:     scale.Int64,
-		typtype:   typtype.String,
-		typid:     typid.Int64,
+		typ:           typ.String,
+		size:          maxlen.Int64,
+		udt:           udt.String,
+		precision:     precision.Int64,
+		timePrecision: timeprecision.Int64,
+		scale:         scale.Int64,
+		typtype:       typtype.String,
+		typid:         typid.Int64,
 	})
 	if sqlx.ValidString(defaults) {
 		c.Default = defaultExpr(c, defaults.String)
@@ -247,7 +251,7 @@ func columnType(c *columnDesc) schema.Type {
 		typ = &schema.SpatialType{T: t}
 	case TypeDate, TypeTime, TypeTimeWTZ, TypeTimeWOTZ,
 		TypeTimestamp, TypeTimestampTZ, TypeTimestampWTZ, TypeTimestampWOTZ:
-		typ = &schema.TimeType{T: t}
+		typ = &schema.TimeType{T: t, Precision: int(c.timePrecision)}
 	case TypeInterval:
 		// TODO: get 'interval_type' from query above before implementing.
 		typ = &schema.UnsupportedType{T: t}
@@ -352,11 +356,11 @@ func (i *inspect) addIndexes(t *schema.Table, rows *sql.Rows) error {
 		var (
 			name, typ                            string
 			uniq, primary                        bool
-			asc, desc, nullsfirst, nullslast     sql.NullBool
+			desc, nullsfirst, nullslast          sql.NullBool
 			column, contype, pred, expr, comment sql.NullString
 		)
-		if err := rows.Scan(&name, &typ, &column, &primary, &uniq, &contype, &pred, &expr, &asc, &desc, &nullsfirst, &nullslast, &comment); err != nil {
-			return fmt.Errorf("postgres: scanning index: %w", err)
+		if err := rows.Scan(&name, &typ, &column, &primary, &uniq, &contype, &pred, &expr, &desc, &nullsfirst, &nullslast, &comment); err != nil {
+			return fmt.Errorf("postgres: scanning indexes for table %q: %w", t.Name, err)
 		}
 		idx, ok := names[name]
 		if !ok {
@@ -384,16 +388,12 @@ func (i *inspect) addIndexes(t *schema.Table, rows *sql.Rows) error {
 				t.Indexes = append(t.Indexes, idx)
 			}
 		}
-		part := &schema.IndexPart{
-			SeqNo: len(idx.Parts) + 1,
-			Attrs: []schema.Attr{
-				&IndexColumnProperty{
-					Asc:        asc.Bool,
-					Desc:       desc.Bool,
-					NullsFirst: nullsfirst.Bool,
-					NullsLast:  nullslast.Bool,
-				},
-			},
+		part := &schema.IndexPart{SeqNo: len(idx.Parts) + 1, Desc: desc.Bool}
+		if nullsfirst.Bool || nullslast.Bool {
+			part.Attrs = append(part.Attrs, &IndexColumnProperty{
+				NullsFirst: nullsfirst.Bool,
+				NullsLast:  nullslast.Bool,
+			})
 		}
 		switch {
 		case sqlx.ValidString(expr):
@@ -682,8 +682,6 @@ type (
 	// https://www.postgresql.org/docs/current/functions-info.html#FUNCTIONS-INFO-INDEX-COLUMN-PROPS
 	IndexColumnProperty struct {
 		schema.Attr
-		Asc        bool
-		Desc       bool
 		NullsFirst bool
 		NullsLast  bool
 	}
@@ -755,6 +753,7 @@ SELECT
 	t1.column_default,
 	t1.character_maximum_length,
 	t1.numeric_precision,
+	t1.datetime_precision,
 	t1.numeric_scale,
 	t1.character_set_name,
 	t1.collation_name,
@@ -785,7 +784,6 @@ SELECT
 	c.contype AS constraint_type,
 	pg_get_expr(idx.indpred, idx.indrelid) AS predicate,
 	pg_get_expr(idx.indexprs, idx.indrelid) AS expression,
-	pg_index_column_has_property(idx.indexrelid, a.attnum, 'asc') AS asc,
 	pg_index_column_has_property(idx.indexrelid, a.attnum, 'desc') AS desc,
 	pg_index_column_has_property(idx.indexrelid, a.attnum, 'nulls_first') AS nulls_first,
 	pg_index_column_has_property(idx.indexrelid, a.attnum, 'nulls_last') AS nulls_last,

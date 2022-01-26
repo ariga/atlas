@@ -3,6 +3,7 @@ id: ddl-sql
 title: SQL Syntax
 slug: /ddl/sql
 ---
+
 The [sqlspec](https://pkg.go.dev/ariga.io/atlas@master/sql/sqlspec) package defines
 the resource types used to describe an SQL database schema. Used with the
 [Atlas HCL](intro.md#hcl) syntax, it is easy to compose documents describing the desired
@@ -22,7 +23,8 @@ schema "default" {
 
 A `table` describes a table in a SQL database. 
 
-#### Full Example:
+#### Example
+
 ```hcl
 table "users" {
   schema = schema.default
@@ -72,7 +74,6 @@ A column is a child resource of a `table`.
 #### Examples
 
 ```hcl
-
 column "name" {
   type = text
   null = false
@@ -100,17 +101,17 @@ column "active" {
 ### Column Types
 
 The SQL dialects supported by Atlas (Postgres, MySQL, MariaDB, and SQLite) vary in
-the types they support. At this point, the Atlas DDL does not attempt to abstract the
-away the differences between various databases. This means, that the schema documents
+the types they support. At this point, the Atlas DDL does not attempt to abstract 
+away the differences between various databases. This means that the schema documents
 are tied to a specific database engine and version. This may change in a future version
-of Atlas as we plan to add support for "Virtual Types". This section lists the various
+of Atlas as we plan to add "Virtual Types" support. This section lists the various
 types that are supported in each database.
 
 For a full list of supported column types, [click here](sql_types.md).
 
 ### Primary Key
 
-A `primary_key` is a child resource of a `table`, it defines the table's
+A `primary_key` is a child resource of a `table`, and it defines the table's
 primary key. 
 
 #### Example 
@@ -129,7 +130,7 @@ primary_key {
 
 ### Foreign Key
 
-Foreign keys are child resources of a `table`, they define some columns in the table
+Foreign keys are child resources of a `table`, and it defines some columns in the table
 as references to columns in other tables. 
 
 #### Example
@@ -154,7 +155,9 @@ foreign_key "manager_fk" {
 
 ### Index
 
-Indexes are child resources of a `table`, they define an index on the table.
+Indexes are child resources of a `table`, and it defines an index on the table.
+
+#### Example
 
 ```hcl
 index "idx_name" {
@@ -164,6 +167,8 @@ index "idx_name" {
     unique = true
 }
 ```
+
+#### Properties
 
 | Name      | Kind      | Type                   | Description                                                  |
 |-----------|-----------|------------------------|--------------------------------------------------------------|

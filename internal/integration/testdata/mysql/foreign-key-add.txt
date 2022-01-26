@@ -1,0 +1,163 @@
+# Each test runs on a clean database.
+
+# Apply schema "1.hcl" on fresh database.
+apply 1.hcl
+# Check that users exists in the database.
+exist users
+
+# The negate version indicates that this command is expected to fail and the
+# second argument is an optional pattern for matching on the returned error.
+! apply invalid-on-delete-action.hcl 'foreign key constraint was "author_id" SET NULL, but column "author_id" is NOT NULL'
+! apply invalid-on-update-action.hcl 'foreign key constraint was "author_id" SET NULL, but column "author_id" is NOT NULL'
+
+apply 2.hcl
+exist users posts
+cmpshow users posts 2.sql
+
+
+# Below files represent HCL and SQL. File names defined their index in
+# execution order. 1.hcl is executed first, 2.hcl executed second, etc.
+-- 1.hcl --
+schema "$db" {
+    charset = "$charset"
+    collation = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "id" {
+        type = int
+    }
+    primary_key {
+        columns = [table.users.column.id]
+    }
+}
+
+-- invalid-on-delete-action.hcl --
+schema "$db" {
+    charset = "$charset"
+    collation = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "id" {
+        type = int
+    }
+    primary_key {
+        columns = [table.users.column.id]
+    }
+}
+
+table "posts" {
+    schema = schema.$db
+    column "id" {
+        type = int
+    }
+    column "author_id" {
+        type = int
+    }
+    primary_key {
+        columns = [table.posts.column.id]
+    }
+    foreign_key "owner_id" {
+        columns = [table.posts.column.author_id]
+        ref_columns = [table.users.column.id]
+        on_delete = "SET NULL"
+    }
+}
+
+-- invalid-on-update-action.hcl --
+schema "$db" {
+    charset = "$charset"
+    collation = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "id" {
+        type = int
+    }
+    primary_key {
+        columns = [table.users.column.id]
+    }
+}
+
+table "posts" {
+    schema = schema.$db
+    column "id" {
+        type = int
+    }
+    column "author_id" {
+        type = int
+    }
+    primary_key {
+        columns = [table.posts.column.id]
+    }
+    foreign_key "owner_id" {
+    	columns = [table.posts.column.author_id]
+    	ref_columns = [table.users.column.id]
+    	on_update = "SET NULL"
+    }
+}
+
+-- 2.hcl --
+schema "$db" {
+    charset = "$charset"
+    collation = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "id" {
+        type = int
+    }
+    primary_key {
+        columns = [table.users.column.id]
+    }
+}
+
+table "posts" {
+    schema = schema.$db
+    column "id" {
+        type = int
+    }
+    column "author_id" {
+        type = int
+        null = true
+    }
+    primary_key {
+        columns = [table.posts.column.id]
+    }
+    foreign_key "owner_id" {
+    	columns = [table.posts.column.author_id]
+    	ref_columns = [table.users.column.id]
+    	on_delete = "SET NULL"
+    }
+}
+
+-- 2.sql --
+CREATE TABLE `users` (
+  `id` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+)
+CREATE TABLE `posts` (
+  `id` int(11) NOT NULL,
+  `author_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `owner_id` (`author_id`),
+  CONSTRAINT `owner_id` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+)
+
+-- 8/2.sql --
+CREATE TABLE `users` (
+  `id` int NOT NULL,
+  PRIMARY KEY (`id`)
+)
+CREATE TABLE `posts` (
+  `id` int NOT NULL,
+  `author_id` int DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `owner_id` (`author_id`),
+  CONSTRAINT `owner_id` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+)

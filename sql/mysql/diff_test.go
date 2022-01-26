@@ -146,12 +146,12 @@ func TestDiff_TableDiff(t *testing.T) {
 		},
 		{
 			name: "modify check",
-			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Check{Name: "users_chk1_c1", Expr: "(`c1` <>_latin1\\'foo\\')"}}},
-			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&schema.Check{Name: "users_chk1_c1", Expr: "(`c1` <>_latin1\\'foo\\')", Attrs: []schema.Attr{&Enforced{}}}}},
+			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Check{Name: "users_chk1_c1", Expr: "(`c1` <>_latin1\\'foo\\')", Attrs: []schema.Attr{&Enforced{V: false}}}}},
+			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&schema.Check{Name: "users_chk1_c1", Expr: "(`c1` <>_latin1\\'foo\\')", Attrs: []schema.Attr{&Enforced{V: true}}}}},
 			wantChanges: []schema.Change{
 				&schema.ModifyCheck{
-					From: &schema.Check{Name: "users_chk1_c1", Expr: "(`c1` <>_latin1\\'foo\\')"},
-					To:   &schema.Check{Name: "users_chk1_c1", Expr: "(`c1` <>_latin1\\'foo\\')", Attrs: []schema.Attr{&Enforced{}}},
+					From: &schema.Check{Name: "users_chk1_c1", Expr: "(`c1` <>_latin1\\'foo\\')", Attrs: []schema.Attr{&Enforced{V: false}}},
+					To:   &schema.Check{Name: "users_chk1_c1", Expr: "(`c1` <>_latin1\\'foo\\')", Attrs: []schema.Attr{&Enforced{V: true}}},
 				},
 			},
 		},
@@ -256,11 +256,13 @@ func TestDiff_TableDiff(t *testing.T) {
 				{Name: "c1_index", Unique: true, Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[0]}}},
 				{Name: "c2_unique", Unique: true, Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}},
 				{Name: "c1_prefix", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1], Attrs: []schema.Attr{&SubPart{Len: 50}}}}},
+				{Name: "c1_desc", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}},
 			}
 			to.Indexes = []*schema.Index{
 				{Name: "c1_index", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[0]}}},
 				{Name: "c3_unique", Unique: true, Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: to.Columns[1]}}},
 				{Name: "c1_prefix", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[0], Attrs: []schema.Attr{&SubPart{Len: 100}}}}},
+				{Name: "c1_desc", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1], Desc: true}}},
 			}
 			return testcase{
 				name: "indexes",
@@ -270,6 +272,7 @@ func TestDiff_TableDiff(t *testing.T) {
 					&schema.ModifyIndex{From: from.Indexes[0], To: to.Indexes[0], Change: schema.ChangeUnique},
 					&schema.DropIndex{I: from.Indexes[1]},
 					&schema.ModifyIndex{From: from.Indexes[2], To: to.Indexes[2], Change: schema.ChangeParts},
+					&schema.ModifyIndex{From: from.Indexes[3], To: to.Indexes[3], Change: schema.ChangeParts},
 					&schema.AddIndex{I: to.Indexes[1]},
 				},
 			}

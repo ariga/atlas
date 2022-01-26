@@ -8,14 +8,20 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
 
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
+
 	"entgo.io/ent/dialect"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/pkg/diff"
+	"github.com/rogpeppe/go-internal/testscript"
 	"github.com/stretchr/testify/require"
 )
 
@@ -531,6 +537,18 @@ func TestMySQL_CLI(t *testing.T) {
 			testCLISchemaApply(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn())
 		})
 	})
+	t.Run("SchemaApplyDryRun", func(t *testing.T) {
+		myRun(t, func(t *myTest) {
+			attrs := t.defaultAttrs()
+			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
+			testCLISchemaApplyDry(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn())
+		})
+	})
+	t.Run("SchemaDiffRun", func(t *testing.T) {
+		myRun(t, func(t *myTest) {
+			testCLISchemaDiff(t, t.dsn())
+		})
+	})
 }
 
 func TestMySQL_HCL_Realm(t *testing.T) {
@@ -587,44 +605,47 @@ func TestMySQL_Sanity(t *testing.T) {
 		ddl := `
 create table atlas_types_sanity
 (
-    tBit                 bit(10)              default b'100'            null,
-    tInt                 int(10)              default 4             not null,
-    tTinyInt             tinyint(10)          default 8                 null,
-    tSmallInt            smallint(10)         default 2                 null,
-    tMediumInt           mediumint(10)        default 11                null,
-    tBigInt              bigint(10)           default 4                 null,
-    tDecimal             decimal              default 4                 null,
-    tNumeric             numeric              default 4             not null,
-    tFloat               float(10, 0)         default 4                 null,
-    tDouble              double(10, 0)        default 4                 null,
-    tReal                double(10, 0)        default 4                 null,
-    tTimestamp           timestamp            default CURRENT_TIMESTAMP null,
-    tDate                date                                           null,
-    tTime                time                                           null,
-    tDateTime            datetime                                       null,
-    tYear                year                                           null,
-    tVarchar             varchar(10)          default 'Titan'           null,
-    tChar                char(25)             default 'Olimpia'     not null,
-    tVarBinary           varbinary(30)        default 'Titan'           null,
-    tBinary              binary(5)            default 'Titan'           null,
-    tBlob                blob(5)              default                   null,
-    tTinyBlob            tinyblob                                       null,
-    tMediumBlob          mediumblob           default                   null,
-    tLongBlob            longblob             default                   null,
-    tText                text(13)             default                   null,
-    tTinyText            tinytext             default                   null,
-    tMediumText          mediumtext           default                   null,
-    tLongText            longtext             default                   null,
-    tEnum                enum('a','b')        default                   null,
-    tSet                 set('a','b')         default                   null,
-    tGeometry            geometry             default                   null,
-    tPoint               point                default                   null,
-    tMultiPoint          multipoint           default                   null,
-    tLineString          linestring           default                   null,
-    tMultiLineString     multilinestring      default                   null,
-    tPolygon             polygon              default                   null,
-    tMultiPolygon        multipolygon         default                   null,
-    tGeometryCollection  geometrycollection   default                   null
+    tBit                        bit(10)              default b'100'                                              null,
+    tInt                        int(10)              default 4                                               not null,
+    tTinyInt                    tinyint(10)          default 8                                                   null,
+    tSmallInt                   smallint(10)         default 2                                                   null,
+    tMediumInt                  mediumint(10)        default 11                                                  null,
+    tBigInt                     bigint(10)           default 4                                                   null,
+    tDecimal                    decimal              default 4                                                   null,
+    tNumeric                    numeric              default 4                                               not null,
+    tFloat                      float(10, 0)         default 4                                                   null,
+    tDouble                     double(10, 0)        default 4                                                   null,
+    tReal                       double(10, 0)        default 4                                                   null,
+    tTimestamp                  timestamp            default CURRENT_TIMESTAMP                                   null,
+    tTimestampFraction          timestamp(6)         default CURRENT_TIMESTAMP(6)                                null,
+    tTimestampOnUpdate          timestamp            default CURRENT_TIMESTAMP    ON UPDATE CURRENT_TIMESTAMP    null,
+    tTimestampFractionOnUpdate  timestamp(6)         default CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) null,
+    tDate                       date                                                                             null,
+    tTime                       time                                                                             null,
+    tDateTime                   datetime                                                                         null,
+    tYear                       year                                                                             null,
+    tVarchar                    varchar(10)          default 'Titan'                                             null,
+    tChar                       char(25)             default 'Olimpia'                                       not null,
+    tVarBinary                  varbinary(30)        default 'Titan'                                             null,
+    tBinary                     binary(5)            default 'Titan'                                             null,
+    tBlob                       blob(5)              default                                                     null,
+    tTinyBlob                   tinyblob                                                                         null,
+    tMediumBlob                 mediumblob           default                                                     null,
+    tLongBlob                   longblob             default                                                     null,
+    tText                       text(13)             default                                                     null,
+    tTinyText                   tinytext             default                                                     null,
+    tMediumText                 mediumtext           default                                                     null,
+    tLongText                   longtext             default                                                     null,
+    tEnum                       enum('a','b')        default                                                     null,
+    tSet                        set('a','b')         default                                                     null,
+    tGeometry                   geometry             default                                                     null,
+    tPoint                      point                default                                                     null,
+    tMultiPoint                 multipoint           default                                                     null,
+    tLineString                 linestring           default                                                     null,
+    tMultiLineString            multilinestring      default                                                     null,
+    tPolygon                    polygon              default                                                     null,
+    tMultiPolygon               multipolygon         default                                                     null,
+    tGeometryCollection         geometrycollection   default                                                     null
 ) CHARSET = latin1 COLLATE latin1_swedish_ci;
 `
 		myRun(t, func(t *myTest) {
@@ -722,6 +743,65 @@ create table atlas_types_sanity
 						},
 					},
 					{
+						Name: "tTimestampFraction",
+						Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp", Precision: 6},
+							Raw: "timestamp(6)", Null: true},
+						Default: &schema.RawExpr{
+							X: func() string {
+								if t.mariadb() {
+									return "current_timestamp(6)"
+								}
+								return "CURRENT_TIMESTAMP(6)"
+							}(),
+						},
+					},
+					{
+						Name: "tTimestampOnUpdate",
+						Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp"},
+							Raw: "timestamp", Null: true},
+						Default: &schema.RawExpr{
+							X: func() string {
+								if t.mariadb() {
+									return "current_timestamp()"
+								}
+								return "CURRENT_TIMESTAMP"
+							}(),
+						},
+						Attrs: []schema.Attr{
+							&mysql.OnUpdate{
+								A: func() string {
+									if t.mariadb() {
+										return "current_timestamp()"
+									}
+									return "CURRENT_TIMESTAMP"
+								}(),
+							},
+						},
+					},
+					{
+						Name: "tTimestampFractionOnUpdate",
+						Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp", Precision: 6},
+							Raw: "timestamp(6)", Null: true},
+						Default: &schema.RawExpr{
+							X: func() string {
+								if t.mariadb() {
+									return "current_timestamp(6)"
+								}
+								return "CURRENT_TIMESTAMP(6)"
+							}(),
+						},
+						Attrs: []schema.Attr{
+							&mysql.OnUpdate{
+								A: func() string {
+									if t.mariadb() {
+										return "current_timestamp(6)"
+									}
+									return "CURRENT_TIMESTAMP(6)"
+								}(),
+							},
+						},
+					},
+					{
 						Name: "tDate",
 						Type: &schema.ColumnType{Type: &schema.TimeType{T: "date"},
 							Raw: "date", Null: true},
@@ -738,7 +818,7 @@ create table atlas_types_sanity
 					},
 					{
 						Name: "tYear",
-						Type: &schema.ColumnType{Type: &schema.TimeType{T: "year"},
+						Type: &schema.ColumnType{Type: &schema.TimeType{T: "year", Precision: t.intByVersion(map[string]int{"8": 0}, 4)},
 							Raw: t.valueByVersion(map[string]string{"8": "year"}, "year(4)"), Null: true},
 					},
 					{
@@ -921,7 +1001,7 @@ create table atlas_types_sanity
 						return []schema.Attr{
 							&schema.Charset{V: "latin1"},
 							&schema.Collation{V: "latin1_swedish_ci"},
-							&schema.Check{Name: "tJSON", Expr: "json_valid(`tJSON`)", Attrs: []schema.Attr{&mysql.Enforced{}}},
+							&schema.Check{Name: "tJSON", Expr: "json_valid(`tJSON`)"},
 						}
 					}
 					return []schema.Attr{
@@ -974,6 +1054,7 @@ func (t *myTest) applyHcl(spec string) {
 	err := mysql.UnmarshalHCL([]byte(spec), &desired)
 	require.NoError(t, err)
 	existing := realm.Schemas[0]
+	require.NoError(t, err)
 	diff, err := t.drv.SchemaDiff(existing, &desired)
 	require.NoError(t, err)
 	err = t.drv.ApplyChanges(context.Background(), diff)
@@ -1100,6 +1181,13 @@ func (t *myTest) valueByVersion(values map[string]string, defaults string) strin
 	return defaults
 }
 
+func (t *myTest) intByVersion(values map[string]int, defaults int) int {
+	if v, ok := values[t.version]; ok {
+		return v
+	}
+	return defaults
+}
+
 func (t *myTest) quoted(s string) string {
 	c := "\""
 	if t.mariadb() {
@@ -1179,4 +1267,138 @@ func rmCreateStmt(t *schema.Table) {
 			return
 		}
 	}
+}
+
+func TestMySQL_Script(t *testing.T) {
+	myRun(t, func(t *myTest) {
+		var (
+			attrs            = t.defaultAttrs()
+			charset, collate = attrs[0].(*schema.Charset).V, attrs[1].(*schema.Collation).V
+		)
+		testscript.Run(t.T, testscript.Params{
+			Dir: "testdata/mysql",
+			Setup: func(env *testscript.Env) error {
+				ctx := context.Background()
+				conn, err := t.db.Conn(ctx)
+				if err != nil {
+					return err
+				}
+				name := strings.ReplaceAll(filepath.Base(env.WorkDir), "-", "_")
+				env.Setenv("db", name)
+				env.Setenv("charset", charset)
+				env.Setenv("collate", collate)
+				if _, err := conn.ExecContext(ctx, fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", name)); err != nil {
+					return err
+				}
+				if _, err := conn.ExecContext(ctx, fmt.Sprintf("USE `%s`", name)); err != nil {
+					return err
+				}
+				env.Defer(func() {
+					if _, err := conn.ExecContext(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", name)); err != nil {
+						t.Fatal(err)
+					}
+					if _, err := conn.ExecContext(ctx, "USE test"); err != nil {
+						t.Fatal(err)
+					}
+					if err := conn.Close(); err != nil {
+						t.Fatal(err)
+					}
+				})
+				return nil
+			},
+			Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
+				"apply":   t.cmdApply,
+				"exist":   t.cmdExist,
+				"synced":  t.cmdSynced,
+				"cmpshow": t.cmdCmpShow,
+			},
+		})
+	})
+}
+
+func (t *myTest) cmdCmpShow(ts *testscript.TestScript, neg bool, args []string) {
+	if len(args) < 2 {
+		ts.Fatalf("invalid number of args to 'cmpshow': %d", len(args))
+	}
+	var (
+		fname = args[len(args)-1]
+		stmts = make([]string, 0, len(args)-1)
+	)
+	for _, name := range args[:len(args)-1] {
+		var create string
+		if err := t.db.QueryRow(fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`", ts.Getenv("db"), name)).Scan(&name, &create); err != nil {
+			ts.Fatalf("show table %q: %v", name, err)
+		}
+		// Trim the "table_options" if it was not requested explicitly.
+		stmts = append(stmts, create[:strings.LastIndexByte(create, ')')+1])
+	}
+
+	// Check if there is a file prefixed by database version (1.sql and <version>/1.sql).
+	if _, err := os.Stat(ts.MkAbs(filepath.Join(t.version, fname))); err == nil {
+		fname = filepath.Join(t.version, fname)
+	}
+	t1, t2 := strings.Join(stmts, "\n"), ts.ReadFile(fname)
+	if strings.TrimSpace(t1) == strings.TrimSpace(t2) {
+		return
+	}
+	var sb strings.Builder
+	ts.Check(diff.Text("show", fname, t1, t2, &sb))
+	ts.Fatalf(sb.String())
+}
+
+func (t *myTest) cmdExist(ts *testscript.TestScript, neg bool, args []string) {
+	for _, name := range args {
+		var b bool
+		if err := t.db.QueryRow("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?", ts.Getenv("db"), name).Scan(&b); err != nil {
+			ts.Fatalf("failed query table existence %q: %v", name, err)
+		}
+		if !b != neg {
+			ts.Fatalf("table %q existence failed", name)
+		}
+	}
+}
+
+func (t *myTest) cmdSynced(ts *testscript.TestScript, neg bool, args []string) {
+	switch changes := t.hclDiff(ts, args[0]); {
+	case len(changes) > 0 && !neg:
+		ts.Fatalf("expect no schema changes, but got: %d", len(changes))
+	case len(changes) == 0 && neg:
+		ts.Fatalf("expect schema changes, but there are none")
+	}
+}
+
+func (t *myTest) cmdApply(ts *testscript.TestScript, neg bool, args []string) {
+	changes := t.hclDiff(ts, args[0])
+	switch err := t.drv.ApplyChanges(context.Background(), changes); {
+	case err != nil && !neg:
+		ts.Fatalf("apply changes: %v", err)
+	case err == nil && neg:
+		ts.Fatalf("unexpected apply success")
+	// If we expect to fail, and there's a specific error to compare.
+	case err != nil && len(args) == 2:
+		re, rerr := regexp.Compile(`(?m)` + args[1])
+		ts.Check(rerr)
+		if !re.MatchString(err.Error()) {
+			t.Fatalf("mismatched errors: %v != %s", err, args[1])
+		}
+	// Apply passed. Make sure there is no drift.
+	case !neg:
+		if changes := t.hclDiff(ts, args[0]); len(changes) > 0 {
+			ts.Fatalf("unexpected schema changes: %d", len(changes))
+		}
+	}
+}
+
+func (t *myTest) hclDiff(ts *testscript.TestScript, name string) []schema.Change {
+	var (
+		desired schema.Schema
+		f       = ts.ReadFile(name)
+		r       = strings.NewReplacer("$charset", ts.Getenv("charset"), "$collate", ts.Getenv("collate"), "$db", ts.Getenv("db"))
+	)
+	ts.Check(mysql.UnmarshalHCL([]byte(r.Replace(f)), &desired))
+	current, err := t.drv.InspectSchema(context.Background(), desired.Name, nil)
+	ts.Check(err)
+	changes, err := t.drv.SchemaDiff(current, &desired)
+	ts.Check(err)
+	return changes
 }

@@ -189,7 +189,7 @@ func (i *inspect) indexes(ctx context.Context, t *schema.Table) error {
 		return fmt.Errorf("sqlite: scan %q indexes: %w", t.Name, err)
 	}
 	for _, idx := range t.Indexes {
-		if err := i.indexColumns(ctx, t, idx); err != nil {
+		if err := i.indexInfo(ctx, t, idx); err != nil {
 			return err
 		}
 	}
@@ -233,33 +233,35 @@ func (i *inspect) addIndexes(t *schema.Table, rows *sql.Rows) error {
 	return nil
 }
 
-func (i *inspect) indexColumns(ctx context.Context, t *schema.Table, idx *schema.Index) error {
+func (i *inspect) indexInfo(ctx context.Context, t *schema.Table, idx *schema.Index) error {
 	rows, err := i.QueryContext(ctx, fmt.Sprintf(indexColumnsQuery, idx.Name))
 	if err != nil {
 		return fmt.Errorf("sqlite: querying %q indexes: %w", t.Name, err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var name sql.NullString
-		if err := rows.Scan(&name); err != nil {
+		var (
+			desc sql.NullBool
+			name sql.NullString
+		)
+		if err := rows.Scan(&name, &desc); err != nil {
 			return fmt.Errorf("sqlite: scanning index names: %w", err)
+		}
+		part := &schema.IndexPart{
+			SeqNo: len(idx.Parts) + 1,
+			Desc:  desc.Bool,
 		}
 		switch c, ok := t.Column(name.String); {
 		case ok:
-			idx.Parts = append(idx.Parts, &schema.IndexPart{
-				SeqNo: len(idx.Parts) + 1,
-				C:     c,
-			})
+			part.C = c
 		// NULL name indicates that the index-part is an expression and we
 		// should extract it from the `CREATE INDEX` statement (not supported atm).
 		case !sqlx.ValidString(name):
-			idx.Parts = append(idx.Parts, &schema.IndexPart{
-				SeqNo: len(idx.Parts) + 1,
-				X:     &schema.RawExpr{X: "<unsupported>"},
-			})
+			part.X = &schema.RawExpr{X: "<unsupported>"}
 		default:
 			return fmt.Errorf("sqlite: column %q was not found for index %q", name.String, idx.Name)
 		}
+		idx.Parts = append(idx.Parts, part)
 	}
 	return nil
 }
@@ -663,7 +665,7 @@ const (
 	// Query to list table indexes.
 	indexesQuery = "SELECT `il`.`name`, `il`.`unique`, `il`.`origin`, `il`.`partial`, `m`.`sql` FROM pragma_index_list('%s') AS il JOIN sqlite_master AS m ON il.name = m.name"
 	// Query to list index columns.
-	indexColumnsQuery = "SELECT name FROM pragma_index_info('%s') ORDER BY seqno"
+	indexColumnsQuery = "SELECT name, desc FROM pragma_index_xinfo('%s') WHERE key = 1 ORDER BY seqno"
 	// Query to list table foreign-keys.
 	fksQuery = "SELECT `id`, `from`, `to`, `table`, `on_update`, `on_delete` FROM pragma_foreign_key_list('%s') ORDER BY id, seq"
 )

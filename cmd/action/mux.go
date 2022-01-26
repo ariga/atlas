@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -90,12 +91,30 @@ func SchemaNameFromDSN(url string) (string, error) {
 		}
 		return cfg.DBName, err
 	case "postgres":
-		return "public", nil
+		return postgresSchema(dsn)
 	case "sqlite":
 		return schemaName(dsn)
 	default:
 		return "", fmt.Errorf("unknown database type: %q", key)
 	}
+}
+
+func postgresSchema(dsn string) (string, error) {
+	url, err := url.Parse(dsn)
+	if err != nil {
+		// For backwards compatibility, we default to "public" when failing to
+		// parse.
+		return "public", nil
+	}
+	// lib/pq supports setting default schemas via the `search_path` parameter
+	// in a dsn.
+	//
+	// See: https://github.com/lib/pq/blob/8446d16b8935fdf2b5c0fe333538ac395e3e1e4b/conn.go#L1155-L1165
+	if schema := url.Query().Get("search_path"); schema != "" {
+		return schema, nil
+	}
+
+	return "public", nil
 }
 
 func schemaName(dsn string) (string, error) {

@@ -468,6 +468,16 @@ func TestPostgres_CLI(t *testing.T) {
 			testCLISchemaApply(t, h, t.dsn())
 		})
 	})
+	t.Run("SchemaApplyDryRun", func(t *testing.T) {
+		pgRun(t, func(t *pgTest) {
+			testCLISchemaApplyDry(t, h, t.dsn())
+		})
+	})
+	t.Run("SchemaDiffRun", func(t *testing.T) {
+		pgRun(t, func(t *pgTest) {
+			testCLISchemaDiff(t, t.dsn())
+		})
+	})
 }
 
 func TestPostgres_DefaultsHCL(t *testing.T) {
@@ -541,6 +551,7 @@ create table atlas_types_sanity
     "tTimestampTZ"         timestamptz                 default now()                                    null,
     "tTimestampWTZ"        timestamp with time zone    default now()                                    null,
     "tTimestampWOTZ"       timestamp without time zone default now()                                    null,
+    "tTimestampPrec"       timestamp(4)                default now()                                    null,
     "tDouble"              double precision            default 0                                        null,
     "tReal"                real                        default 0                                        null,
     "tFloat8"              float8                      default 0                                        null,
@@ -711,37 +722,42 @@ create table atlas_types_sanity
 				},
 				{
 					Name:    "tTime",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time without time zone"}, Raw: "time without time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time without time zone", Precision: 6}, Raw: "time without time zone", Null: true},
 					Default: &schema.RawExpr{X: "CURRENT_TIME"},
 				},
 				{
 					Name:    "tTimeWTZ",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time with time zone"}, Raw: "time with time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time with time zone", Precision: 6}, Raw: "time with time zone", Null: true},
 					Default: &schema.RawExpr{X: "CURRENT_TIME"},
 				},
 				{
 					Name:    "tTimeWOTZ",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time without time zone"}, Raw: "time without time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time without time zone", Precision: 6}, Raw: "time without time zone", Null: true},
 					Default: &schema.RawExpr{X: "CURRENT_TIME"},
 				},
 				{
 					Name:    "tTimestamp",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone"}, Raw: "timestamp without time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone", Precision: 6}, Raw: "timestamp without time zone", Null: true},
 					Default: &schema.RawExpr{X: "now()"},
 				},
 				{
 					Name:    "tTimestampTZ",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone"}, Raw: "timestamp with time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone", Precision: 6}, Raw: "timestamp with time zone", Null: true},
 					Default: &schema.RawExpr{X: "now()"},
 				},
 				{
 					Name:    "tTimestampWTZ",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone"}, Raw: "timestamp with time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone", Precision: 6}, Raw: "timestamp with time zone", Null: true},
 					Default: &schema.RawExpr{X: "now()"},
 				},
 				{
 					Name:    "tTimestampWOTZ",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone"}, Raw: "timestamp without time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone", Precision: 6}, Raw: "timestamp without time zone", Null: true},
+					Default: &schema.RawExpr{X: "now()"},
+				},
+				{
+					Name:    "tTimestampPrec",
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone", Precision: 4}, Raw: "timestamp without time zone", Null: true},
 					Default: &schema.RawExpr{X: "now()"},
 				},
 				{

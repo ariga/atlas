@@ -56,7 +56,7 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 	// using "MODIFY COLUMN".
 	var checks []schema.Change
 	for _, c := range sqlx.CheckDiff(from, to, func(c1, c2 *schema.Check) bool {
-		return c1.Expr != c2.Expr || sqlx.Has(c1.Attrs, &Enforced{}) != sqlx.Has(c2.Attrs, &Enforced{})
+		return enforced(c1.Attrs) == enforced(c2.Attrs)
 	}) {
 		drop, ok := c.(*schema.DropCheck)
 		if !ok || !strings.HasPrefix(drop.C.Expr, "json_valid") {
@@ -131,10 +131,7 @@ func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 // IndexPartAttrChanged reports if the index-part attributes (collation or prefix) were changed.
 func (*diff) IndexPartAttrChanged(from, to []schema.Attr) bool {
 	var s1, s2 SubPart
-	if sqlx.Has(from, &s1) != sqlx.Has(to, &s2) || s1.Len != s2.Len {
-		return true
-	}
-	return indexCollation(from).V != indexCollation(to).V
+	return sqlx.Has(from, &s1) != sqlx.Has(to, &s2) || s1.Len != s2.Len
 }
 
 // ReferenceChanged reports if the foreign key referential action was changed.
@@ -243,16 +240,6 @@ func (*diff) autoIncChange(from, to []schema.Attr) schema.Change {
 	return noChange
 }
 
-// indexCollation returns the index collation from its attribute.
-// The default collation is ascending if no order was specified.
-func indexCollation(attr []schema.Attr) *schema.Collation {
-	c := &schema.Collation{V: "A"}
-	if sqlx.Has(attr, c) {
-		c.V = strings.ToUpper(c.V)
-	}
-	return c
-}
-
 // indexType returns the index type from its attribute.
 // The default type is BTREE if no type was specified.
 func indexType(attr []schema.Attr) *IndexType {
@@ -261,6 +248,15 @@ func indexType(attr []schema.Attr) *IndexType {
 		t.T = strings.ToUpper(t.T)
 	}
 	return t
+}
+
+// enforced returns the ENFORCED attribute for the CHECK
+// constraint. A CHECK is ENFORCED if not state otherwise.
+func enforced(attr []schema.Attr) bool {
+	if e := (Enforced{}); sqlx.Has(attr, &e) {
+		return e.V
+	}
+	return true
 }
 
 // noChange describes a zero change.

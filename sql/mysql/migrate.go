@@ -230,7 +230,9 @@ func (s *state) addTable(add *schema.AddTable) error {
 		})
 		if len(add.T.ForeignKeys) > 0 {
 			b.Comma()
-			s.fks(b, add.T.ForeignKeys...)
+			if err := s.fks(b, add.T.ForeignKeys...); err != nil {
+				errors = append(errors, err.Error())
+			}
 		}
 		for _, attr := range add.T.Attrs {
 			if c, ok := attr.(*schema.Check); ok {
@@ -369,7 +371,9 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			reversible = true
 		case *schema.AddForeignKey:
 			b.P("ADD")
-			s.fks(b, change.F)
+			if err := s.fks(b, change.F); err != nil {
+				errors = append(errors, err.Error())
+			}
 			reverse.Comma().P("DROP FOREIGN KEY").Ident(change.F.Symbol)
 		case *schema.DropForeignKey:
 			b.P("DROP FOREIGN KEY").Ident(change.F.Symbol)
@@ -504,15 +508,15 @@ func (s *state) indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {
 				b.WriteString(fmt.Sprintf("(%d)", s.Len))
 			}
 			// Ignore default collation (i.e. "ASC")
-			if c := (&schema.Collation{}); sqlx.Has(parts[i].Attrs, c) && c.V == "D" {
+			if parts[i].Desc {
 				b.P("DESC")
 			}
 		})
 	})
 }
 
-func (s *state) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
-	b.MapComma(fks, func(i int, b *sqlx.Builder) {
+func (s *state) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) error {
+	return b.MapCommaErr(fks, func(i int, b *sqlx.Builder) error {
 		fk := fks[i]
 		if fk.Symbol != "" {
 			b.P("CONSTRAINT").Ident(fk.Symbol)
@@ -535,6 +539,14 @@ func (s *state) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
 		if fk.OnDelete != "" {
 			b.P("ON DELETE", string(fk.OnDelete))
 		}
+		if fk.OnUpdate == schema.SetNull || fk.OnDelete == schema.SetNull {
+			for _, c := range fk.Columns {
+				if !c.Type.Null {
+					return fmt.Errorf("foreign key constraint was %[1]q SET NULL, but column %[1]q is NOT NULL", c.Name)
+				}
+			}
+		}
+		return nil
 	})
 }
 

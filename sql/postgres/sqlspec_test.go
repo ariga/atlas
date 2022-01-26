@@ -6,6 +6,7 @@ import (
 
 	"ariga.io/atlas/sql/internal/spectest"
 	"ariga.io/atlas/sql/schema"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -232,7 +233,7 @@ enum "account_type" {
 }
 
 func TestTypes(t *testing.T) {
-	// TODO(rotemtam): enum, timestamptz, interval
+	// TODO(rotemtam) interval
 	for _, tt := range []struct {
 		typeExpr string
 		expected schema.Type
@@ -365,6 +366,10 @@ func TestTypes(t *testing.T) {
 		{
 			typeExpr: "timestamp",
 			expected: &schema.TimeType{T: TypeTimestamp},
+		},
+		{
+			typeExpr: "timestamptz",
+			expected: &schema.TimeType{T: TypeTimestampTZ},
 		},
 		{
 			typeExpr: "timestamp_with_time_zone",
