@@ -571,14 +571,25 @@ func (i *Index) AddParts(parts ...*IndexPart) *Index {
 		if p.C != nil && !p.C.hasIndex(i) {
 			p.C.Indexes = append(p.C.Indexes, i)
 		}
+		p.SeqNo = len(i.Parts)
 		i.Parts = append(i.Parts, p)
 	}
 	return i
 }
 
 // NewIndexPart creates a new index part.
-func NewIndexPart(seqno int) *IndexPart {
-	return &IndexPart{SeqNo: seqno}
+func NewIndexPart() *IndexPart { return &IndexPart{} }
+
+// NewColumnPart creates a new index part with the given column.
+func NewColumnPart(c *Column) *IndexPart { return &IndexPart{C: c} }
+
+// NewExprPart creates a new index part with the given expression.
+func NewExprPart(x Expr) *IndexPart { return &IndexPart{X: x} }
+
+// SetDesc configures the "DESC" attribute of the key part.
+func (p *IndexPart) SetDesc(b bool) *IndexPart {
+	p.Desc = b
+	return p
 }
 
 // AddAttrs adds and additional attributes to the index-part.

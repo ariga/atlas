@@ -44,7 +44,16 @@ type (
 	Index struct {
 		Name    string            `spec:",name"`
 		Unique  bool              `spec:"unique"`
+		Parts   []*IndexPart      `spec:"on"`
 		Columns []*schemaspec.Ref `spec:"columns"`
+		schemaspec.DefaultExtension
+	}
+
+	// IndexPart holds a specification for the index key part.
+	IndexPart struct {
+		Desc   bool            `spec:"desc"`
+		Column *schemaspec.Ref `spec:"column"`
+		Expr   string          `spec:"expr"`
 		schemaspec.DefaultExtension
 	}
 
@@ -67,26 +76,6 @@ type (
 
 	// Type represents a database agnostic column type.
 	Type string
-)
-
-// Type<X> are Types that represent database agnostic column types to be used
-// in Atlas DDL documents.
-const (
-	TypeInt     Type = "int"
-	TypeInt8    Type = "int8"
-	TypeInt16   Type = "int16"
-	TypeInt64   Type = "int64"
-	TypeUint    Type = "uint"
-	TypeUint8   Type = "uint8"
-	TypeUint16  Type = "uint16"
-	TypeUint64  Type = "uint64"
-	TypeString  Type = "string"
-	TypeBinary  Type = "binary"
-	TypeEnum    Type = "enum"
-	TypeBoolean Type = "boolean"
-	TypeDecimal Type = "decimal"
-	TypeFloat   Type = "float"
-	TypeTime    Type = "time"
 )
 
 func init() {
