@@ -15,6 +15,7 @@ type OwnerBlock struct {
 	FirstName string                   `spec:"first_name"`
 	Born      int                      `spec:"born"`
 	Active    bool                     `spec:"active"`
+	BoolPtr   *bool                    `spec:"bool_ptr"`
 	Lit       *schemaspec.LiteralValue `spec:"lit"`
 }
 
@@ -45,6 +46,7 @@ func TestExtension(t *testing.T) {
 			schemautil.StrLitAttr("first_name", "tzuri"),
 			schemautil.LitAttr("born", "2019"),
 			schemautil.LitAttr("active", "true"),
+			schemautil.LitAttr("bool_ptr", "true"),
 			schemautil.LitAttr("lit", "1000"),
 			schemautil.LitAttr("extra", "true"),
 		},
@@ -62,6 +64,8 @@ func TestExtension(t *testing.T) {
 	require.EqualValues(t, "name", owner.ID)
 	require.EqualValues(t, 2019, owner.Born)
 	require.EqualValues(t, true, owner.Active)
+	require.NotNil(t, owner.BoolPtr)
+	require.EqualValues(t, true, *owner.BoolPtr)
 	require.EqualValues(t, schemautil.LitAttr("lit", "1000").V, owner.Lit)
 	attr, ok := owner.Remain().Attr("extra")
 	require.True(t, ok)

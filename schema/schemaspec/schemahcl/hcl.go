@@ -278,6 +278,11 @@ func (s *state) writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 		fnc := fmt.Sprintf("sql(%q)", v.X)
 		body.SetAttributeRaw(attr.K, hclRawTokens(fnc))
 	case *schemaspec.ListValue:
+		// Skip scanning nil slices ([]T(nil)) by default. Users that
+		// want to print empty lists, should use make([]T, 0) instead.
+		if v.V == nil {
+			return nil
+		}
 		lst := make([]string, 0, len(v.V))
 		for _, item := range v.V {
 			switch v := item.(type) {

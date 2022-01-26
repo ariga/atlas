@@ -172,14 +172,17 @@ func Index(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
 		}
 	case m > 0:
 		for i, p := range spec.Parts {
-			part := &schema.IndexPart{SeqNo: i, Desc: p.Desc}
+			part := &schema.IndexPart{SeqNo: i}
+			if p.Desc != nil {
+				part.Desc = *p.Desc
+			}
 			switch {
-			case p.Column == nil && p.Expr == "":
+			case p.Column == nil && p.Expr == nil:
 				return nil, fmt.Errorf(`"column" or "expr" are required for index %q at position %d`, spec.Name, i)
-			case p.Column != nil && p.Expr != "":
+			case p.Column != nil && p.Expr != nil:
 				return nil, fmt.Errorf(`cannot use both "column" and "expr" in index %q at position %d`, spec.Name, i)
-			case p.Expr != "":
-				part.X = &schema.RawExpr{X: p.Expr}
+			case p.Expr != nil:
+				part.X = &schema.RawExpr{X: *p.Expr}
 			case p.Column != nil:
 				c, err := column(parent, p.Column)
 				if err != nil {
@@ -431,20 +434,43 @@ func normalizeQuotes(s string) (string, error) {
 
 // FromIndex converts schema.Index to sqlspec.Index.
 func FromIndex(idx *schema.Index) (*sqlspec.Index, error) {
-	c := make([]*schemaspec.Ref, 0, len(idx.Parts))
-	for _, p := range idx.Parts {
-		if p.C == nil {
-			return nil, errors.New("index expression is not supported")
+	spec := &sqlspec.Index{Name: idx.Name, Unique: idx.Unique}
+	convertCommentFromSchema(idx.Attrs, &spec.Extra.Attrs)
+	if parts, ok := columnsOnly(idx); ok {
+		spec.Columns = parts
+		return spec, nil
+	}
+	spec.Parts = make([]*sqlspec.IndexPart, len(idx.Parts))
+	for i, p := range idx.Parts {
+		part := &sqlspec.IndexPart{Desc: &p.Desc}
+		switch {
+		case p.C == nil && p.X == nil:
+			return nil, fmt.Errorf("missing column or expression for key part of index %q", idx.Name)
+		case p.C != nil && p.X != nil:
+			return nil, fmt.Errorf("multiple key part definitions for index %q", idx.Name)
+		case p.C != nil:
+			part.Column = colRef(p.C.Name, idx.Table.Name)
+		case p.X != nil:
+			x, ok := p.X.(*schema.RawExpr)
+			if !ok {
+				return nil, fmt.Errorf("unexpected expression %T for index %q", p.X, idx.Name)
+			}
+			part.Expr = &x.X
 		}
-		c = append(c, colRef(p.C.Name, idx.Table.Name))
+		spec.Parts[i] = part
 	}
-	i := &sqlspec.Index{
-		Name:    idx.Name,
-		Unique:  idx.Unique,
-		Columns: c,
+	return spec, nil
+}
+
+func columnsOnly(idx *schema.Index) ([]*schemaspec.Ref, bool) {
+	parts := make([]*schemaspec.Ref, len(idx.Parts))
+	for i, p := range idx.Parts {
+		if p.C == nil || p.Desc || len(p.Attrs) > 0 {
+			return nil, false
+		}
+		parts[i] = colRef(p.C.Name, idx.Table.Name)
 	}
-	convertCommentFromSchema(idx.Attrs, &i.Extra.Attrs)
-	return i, nil
+	return parts, true
 }
 
 // FromForeignKey converts schema.ForeignKey to sqlspec.ForeignKey.
