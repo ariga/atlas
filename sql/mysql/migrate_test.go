@@ -215,6 +215,48 @@ func TestPlanChanges(t *testing.T) {
 		},
 		{
 			input: []schema.Change{
+				func() schema.Change {
+					users := &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+						},
+					}
+					pets := &schema.Table{
+						Name: "pets",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+							{Name: "user_id",
+								Type: &schema.ColumnType{
+									Type: &schema.IntegerType{T: "bigint"},
+								},
+							},
+						},
+					}
+					fk := &schema.ForeignKey{Symbol: "user_id", Table: pets, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: users}
+					pets.ForeignKeys = []*schema.ForeignKey{fk}
+					return &schema.ModifyTable{
+						T: pets,
+						Changes: []schema.Change{
+							&schema.DropForeignKey{
+								F: fk,
+							},
+						},
+					}
+				}(),
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `pets` DROP FOREIGN KEY `user_id`",
+						Reverse: "ALTER TABLE `pets` ADD CONSTRAINT `user_id` FOREIGN KEY () REFERENCES `users` () ON UPDATE NO ACTION ON DELETE CASCADE",
+					},
+				},
+			},
+		},
+		{
+			input: []schema.Change{
 				&schema.AddSchema{S: &schema.Schema{Name: "test", Attrs: []schema.Attr{&schema.Charset{V: "latin"}}}},
 			},
 			wantPlan: &migrate.Plan{
