@@ -242,7 +242,7 @@ func parseColumn(s string) (*columnDesc, error) {
 			offset = 2
 			c.timePrecision, err = strconv.ParseInt(parts[1], 10, 64)
 			if err != nil {
-				return nil, fmt.Errorf("postgres: parse timePrecision %q: %w", parts[1], err)
+				return nil, fmt.Errorf("postgres: parse time precision %q: %w", parts[1], err)
 			}
 		}
 		// Append time zone part (if present).

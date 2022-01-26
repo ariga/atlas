@@ -204,8 +204,7 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 	}
 	// Handle default values for time precision types.
 	if t, ok := typ.(*schema.TimeType); ok && strings.HasPrefix(t.T, "time") {
-		a := attr(spec.Type, "precision")
-		if a == nil {
+		if _, ok := attr(spec.Type, "precision"); !ok {
 			t.Precision = 6
 		}
 	}
@@ -323,7 +322,6 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Handle
 	return &sqlspec.Column{Type: st}, nil
 }
 
@@ -418,8 +416,8 @@ func precisionTypeAttr() *schemaspec.TypeAttr {
 }
 
 func timePrinter(typ *schemaspec.Type) (string, error) {
-	a := attr(typ, "precision")
-	if a == nil {
+	a, ok := attr(typ, "precision")
+	if !ok {
 		return typ.T, nil
 	}
 	p, err := a.Int()
@@ -430,11 +428,11 @@ func timePrinter(typ *schemaspec.Type) (string, error) {
 	return fmt.Sprintf("%s(%d)%s", parts[0], p, strings.Join(parts[1:], " ")), nil
 }
 
-func attr(typ *schemaspec.Type, key string) *schemaspec.Attr {
+func attr(typ *schemaspec.Type, key string) (*schemaspec.Attr, bool) {
 	for _, a := range typ.Attrs {
 		if a.K == key {
-			return a
+			return a, true
 		}
 	}
-	return nil
+	return nil, false
 }
