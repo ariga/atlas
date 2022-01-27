@@ -535,13 +535,11 @@ func TestMarshalSpec_IndexParts(t *testing.T) {
     type = text
   }
   index "idx" {
-    unique = false
     on {
       desc   = true
       column = table.users.column.name
     }
     on {
-      desc = false
       expr = "lower(name)"
     }
   }
