@@ -55,7 +55,7 @@ func TestPlanChanges(t *testing.T) {
 				Changes: []*migrate.Change{
 					{
 						Cmd:     `DROP INDEX "name_index"`,
-						Reverse: "CREATE INDEX \"name_index\" ON \"users\" (\"name\")",
+						Reverse: `CREATE INDEX "name_index" ON "users" ("name")`,
 					},
 				},
 			},
