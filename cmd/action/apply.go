@@ -90,7 +90,7 @@ func applyRun(d *Driver, dsn string, file string, dryRun bool) {
 			sm[s] = true
 		}
 		for _, s := range desired.Schemas {
-			if _, ok := sm[s.Name]; !ok {
+			if !sm[s.Name] {
 				schemaCmd.Printf("schema %q from file %q was not selected %q, all schemas defined in file must be selected\n", s.Name, file, schemas)
 				return
 			}
