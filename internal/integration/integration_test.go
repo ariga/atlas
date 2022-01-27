@@ -171,6 +171,40 @@ func testCLISchemaInspect(t T, h string, dsn string, unmarshaler schemaspec.Unma
 	require.Equal(t, expected, actual)
 }
 
+func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, unmarshaler schemaspec.Unmarshaler) {
+	// Required to have a clean "stderr" while running first time.
+	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	f := "atlas.hcl"
+	err = ioutil.WriteFile(f, []byte(h), 0644)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		os.Remove("atlas.hcl")
+	})
+	require.NoError(t, err)
+	var expected schema.Realm
+	err = unmarshaler.UnmarshalSpec([]byte(h), &expected)
+	require.NoError(t, err)
+	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+		"schema",
+		"apply",
+		"-f",
+		"atlas.hcl",
+		"-d",
+		dsn,
+		"-s",
+		strings.Join(schemas, ","),
+	)
+	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	stdin, err := cmd.StdinPipe()
+	require.NoError(t, err)
+	defer stdin.Close()
+	_, err = io.WriteString(stdin, "\n")
+	require.NoError(t, cmd.Run(), stderr.String())
+	require.Contains(t, stdout.String(), `-- Add new schema named "test2"`)
+}
+
 func testCLIMultiSchemaInspect(t T, h string, dsn string, schemas []string, unmarshaler schemaspec.Unmarshaler) {
 	// Required to have a clean "stderr" while running first time.
 	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
