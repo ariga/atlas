@@ -84,7 +84,7 @@ func applyRun(d *Driver, dsn string, file string, dryRun bool) {
 	var desired schema.Realm
 	err = d.UnmarshalSpec(f, &desired)
 	if len(schemas) > 0 {
-		// Validate all required schemas are in file
+		// Validate all required schemas are in file.
 		sm := make(map[string]*schema.Schema, len(desired.Schemas))
 		for _, s := range desired.Schemas {
 			sm[s.Name] = s
