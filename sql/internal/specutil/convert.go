@@ -465,7 +465,7 @@ func FromIndex(idx *schema.Index) (*sqlspec.Index, error) {
 func columnsOnly(idx *schema.Index) ([]*schemaspec.Ref, bool) {
 	parts := make([]*schemaspec.Ref, len(idx.Parts))
 	for i, p := range idx.Parts {
-		if p.C == nil || p.Desc || len(p.Attrs) > 0 {
+		if p.C == nil || p.Desc {
 			return nil, false
 		}
 		parts[i] = colRef(p.C.Name, idx.Table.Name)
