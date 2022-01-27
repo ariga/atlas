@@ -563,7 +563,7 @@ func (s *state) alterColumn(b *sqlx.Builder, k schema.ChangeKind, c *schema.Colu
 		case k.Is(schema.ChangeAttr):
 			id, ok := identity(c.Attrs)
 			if !ok {
-				return fmt.Errorf("unexpected attribute change: %v", c.Attrs)
+				return fmt.Errorf("unexpected attribute change (expect IDENTITY): %v", c.Attrs)
 			}
 			// The syntax for altering identity columns is identical to sequence_options.
 			// https://www.postgresql.org/docs/current/sql-altersequence.html
