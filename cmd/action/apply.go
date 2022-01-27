@@ -83,6 +83,19 @@ func applyRun(d *Driver, dsn string, file string, dryRun bool) {
 	cobra.CheckErr(err)
 	var desired schema.Realm
 	err = d.UnmarshalSpec(f, &desired)
+	if len(schemas) > 0 {
+		// Validate all required schemas are in file
+		sm := make(map[string]*schema.Schema, len(desired.Schemas))
+		for _, s := range desired.Schemas {
+			sm[s.Name] = s
+		}
+		for _, s := range schemas {
+			if _, ok := sm[s]; !ok {
+				schemaCmd.Printf("schema %q not found in %q, all required schemas must contain in file\n", s, file)
+				return
+			}
+		}
+	}
 	cobra.CheckErr(err)
 	changes, err := d.RealmDiff(realm, &desired)
 	cobra.CheckErr(err)
