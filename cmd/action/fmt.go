@@ -19,7 +19,7 @@ import (
 var (
 	// FmtCmd represents the fmt command.
 	FmtCmd = &cobra.Command{
-		Use:   "fmt [path]",
+		Use:   "fmt [path ...]",
 		Short: "Formats Atlas HCL files",
 		Long: "`atlas schema fmt`" + ` formats all ".hcl" files under the given path using
 cannonical HCL layout style as defined by the github.com/hashicorp/hcl/v2/hclwrite package. 
