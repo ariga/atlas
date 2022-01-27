@@ -323,10 +323,10 @@ func TestSchemaRefParse(t *testing.T) {
 	require.NoError(t, err)
 	expected :=
 		`point {
-  z = [a, ]
+  z = [a]
 }
 point {
-  z = [b, ]
+  z = [b]
 }
 `
 	require.Equal(t, expected, string(b))

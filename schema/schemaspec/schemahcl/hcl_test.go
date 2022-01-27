@@ -14,8 +14,8 @@ func TestAttributes(t *testing.T) {
 	f := `i  = 1
 b  = true
 s  = "hello, world"
-sl = ["hello", "world", ]
-bl = [true, false, ]
+sl = ["hello", "world"]
+bl = [true, false]
 `
 	var test struct {
 		Int        int      `spec:"i"`

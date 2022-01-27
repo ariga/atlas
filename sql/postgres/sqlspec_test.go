@@ -226,7 +226,7 @@ schema "test" {
 }
 enum "account_type" {
   schema = schema.test
-  values = ["private", "business", ]
+  values = ["private", "business"]
 }
 `
 	require.EqualValues(t, expected, string(buf))
