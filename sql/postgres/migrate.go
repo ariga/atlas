@@ -482,8 +482,22 @@ func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) {
 		s.indexAttrs(b, idx.Attrs)
 		s.append(&migrate.Change{
 			Cmd:     b.String(),
-			Reverse: Build("DROP INDEX").Ident(idx.Name).String(),
 			Comment: fmt.Sprintf("Create index %q to table: %q", idx.Name, t.Name),
+			Reverse: func() string {
+				b := Build("DROP INDEX")
+				// Unlike MySQL, the DROP command is not attached to ALTER TABLE.
+				// Therefore, we print indexes with their qualified name, because
+				// the connection that executes the statements may not be attached
+				// to the this schema.
+				if t.Schema != nil {
+					b.WriteByte(b.QuoteChar)
+					b.WriteString(t.Schema.Name)
+					b.WriteByte(b.QuoteChar)
+					b.WriteByte('.')
+				}
+				b.Ident(idx.Name)
+				return b.String()
+			}(),
 		})
 	}
 }

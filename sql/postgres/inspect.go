@@ -682,8 +682,10 @@ type (
 	// https://www.postgresql.org/docs/current/functions-info.html#FUNCTIONS-INFO-INDEX-COLUMN-PROPS
 	IndexColumnProperty struct {
 		schema.Attr
+		// NullsFirst defaults to true for DESC indexes.
 		NullsFirst bool
-		NullsLast  bool
+		// NullsLast defaults to true for ASC indexes.
+		NullsLast bool
 	}
 
 	// NoInherit attribute defines the NO INHERIT flag for CHECK constraint.

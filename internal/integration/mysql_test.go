@@ -8,9 +8,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
-	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -20,8 +17,6 @@ import (
 
 	"entgo.io/ent/dialect"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/pkg/diff"
-	"github.com/rogpeppe/go-internal/testscript"
 	"github.com/stretchr/testify/require"
 )
 
@@ -1317,162 +1312,4 @@ func rmCreateStmt(t *schema.Table) {
 			return
 		}
 	}
-}
-
-func TestMySQL_Script(t *testing.T) {
-	myRun(t, func(t *myTest) {
-		var (
-			attrs            = t.defaultAttrs()
-			charset, collate = attrs[0].(*schema.Charset).V, attrs[1].(*schema.Collation).V
-		)
-		testscript.Run(t.T, testscript.Params{
-			Dir: "testdata/mysql",
-			Setup: func(env *testscript.Env) error {
-				ctx := context.Background()
-				conn, err := t.db.Conn(ctx)
-				if err != nil {
-					return err
-				}
-				name := strings.ReplaceAll(filepath.Base(env.WorkDir), "-", "_")
-				env.Setenv("db", name)
-				env.Setenv("charset", charset)
-				env.Setenv("collate", collate)
-				if _, err := conn.ExecContext(ctx, fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", name)); err != nil {
-					return err
-				}
-				if _, err := conn.ExecContext(ctx, fmt.Sprintf("USE `%s`", name)); err != nil {
-					return err
-				}
-				env.Defer(func() {
-					if _, err := conn.ExecContext(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", name)); err != nil {
-						t.Fatal(err)
-					}
-					if _, err := conn.ExecContext(ctx, "USE test"); err != nil {
-						t.Fatal(err)
-					}
-					if err := conn.Close(); err != nil {
-						t.Fatal(err)
-					}
-				})
-				// Store the testscript.T for later use.
-				// See "only" function below.
-				env.Values[keyT] = env.T()
-				return nil
-			},
-			Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
-				"only":    t.cmdOnly,
-				"apply":   t.cmdApply,
-				"exist":   t.cmdExist,
-				"synced":  t.cmdSynced,
-				"cmpshow": t.cmdCmpShow,
-			},
-		})
-	})
-}
-
-var keyT struct{}
-
-// cmdOnly executes only tests that their driver version matches the given pattern.
-// For example, "only 8" or "only 8 maria*"
-func (t *myTest) cmdOnly(ts *testscript.TestScript, neg bool, args []string) {
-	if neg {
-		ts.Fatalf("unsupported: ! only")
-	}
-	for i := range args {
-		re, rerr := regexp.Compile(`(?mi)` + args[i])
-		ts.Check(rerr)
-		if re.MatchString(t.version) {
-			return
-		}
-	}
-	// This is not an elegant way to get the created testing.T for the script,
-	// but we need some workaround to get it in order to skip specific tests.
-	ts.Value(keyT).(testscript.T).Skip("skip version", t.version)
-}
-
-func (t *myTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {
-	if len(args) < 2 {
-		ts.Fatalf("invalid number of args to 'cmpshow': %d", len(args))
-	}
-	var (
-		fname = args[len(args)-1]
-		stmts = make([]string, 0, len(args)-1)
-	)
-	for _, name := range args[:len(args)-1] {
-		var create string
-		if err := t.db.QueryRow(fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`", ts.Getenv("db"), name)).Scan(&name, &create); err != nil {
-			ts.Fatalf("show table %q: %v", name, err)
-		}
-		// Trim the "table_options" if it was not requested explicitly.
-		stmts = append(stmts, create[:strings.LastIndexByte(create, ')')+1])
-	}
-
-	// Check if there is a file prefixed by database version (1.sql and <version>/1.sql).
-	if _, err := os.Stat(ts.MkAbs(filepath.Join(t.version, fname))); err == nil {
-		fname = filepath.Join(t.version, fname)
-	}
-	t1, t2 := strings.Join(stmts, "\n"), ts.ReadFile(fname)
-	if strings.TrimSpace(t1) == strings.TrimSpace(t2) {
-		return
-	}
-	var sb strings.Builder
-	ts.Check(diff.Text("show", fname, t1, t2, &sb))
-	ts.Fatalf(sb.String())
-}
-
-func (t *myTest) cmdExist(ts *testscript.TestScript, neg bool, args []string) {
-	for _, name := range args {
-		var b bool
-		if err := t.db.QueryRow("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?", ts.Getenv("db"), name).Scan(&b); err != nil {
-			ts.Fatalf("failed query table existence %q: %v", name, err)
-		}
-		if !b != neg {
-			ts.Fatalf("table %q existence failed", name)
-		}
-	}
-}
-
-func (t *myTest) cmdSynced(ts *testscript.TestScript, neg bool, args []string) {
-	switch changes := t.hclDiff(ts, args[0]); {
-	case len(changes) > 0 && !neg:
-		ts.Fatalf("expect no schema changes, but got: %d", len(changes))
-	case len(changes) == 0 && neg:
-		ts.Fatalf("expect schema changes, but there are none")
-	}
-}
-
-func (t *myTest) cmdApply(ts *testscript.TestScript, neg bool, args []string) {
-	changes := t.hclDiff(ts, args[0])
-	switch err := t.drv.ApplyChanges(context.Background(), changes); {
-	case err != nil && !neg:
-		ts.Fatalf("apply changes: %v", err)
-	case err == nil && neg:
-		ts.Fatalf("unexpected apply success")
-	// If we expect to fail, and there's a specific error to compare.
-	case err != nil && len(args) == 2:
-		re, rerr := regexp.Compile(`(?m)` + args[1])
-		ts.Check(rerr)
-		if !re.MatchString(err.Error()) {
-			t.Fatalf("mismatched errors: %v != %s", err, args[1])
-		}
-	// Apply passed. Make sure there is no drift.
-	case !neg:
-		if changes := t.hclDiff(ts, args[0]); len(changes) > 0 {
-			ts.Fatalf("unexpected schema changes: %d", len(changes))
-		}
-	}
-}
-
-func (t *myTest) hclDiff(ts *testscript.TestScript, name string) []schema.Change {
-	var (
-		desired schema.Schema
-		f       = ts.ReadFile(name)
-		r       = strings.NewReplacer("$charset", ts.Getenv("charset"), "$collate", ts.Getenv("collate"), "$db", ts.Getenv("db"))
-	)
-	ts.Check(mysql.UnmarshalHCL([]byte(r.Replace(f)), &desired))
-	current, err := t.drv.InspectSchema(context.Background(), desired.Name, nil)
-	ts.Check(err)
-	changes, err := t.drv.SchemaDiff(current, &desired)
-	ts.Check(err)
-	return changes
 }
