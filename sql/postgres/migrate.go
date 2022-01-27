@@ -398,10 +398,13 @@ func (*state) indexComment(t *schema.Table, idx *schema.Index, to, from string) 
 }
 
 func (s *state) dropIndexes(t *schema.Table, indexes ...*schema.Index) {
-	for _, idx := range indexes {
+	rs := &state{conn: s.conn}
+	rs.addIndexes(t, indexes...)
+	for i, idx := range indexes {
 		s.append(&migrate.Change{
-			Cmd:     Build("DROP INDEX").Ident(idx.Name).String(),
-			Comment: fmt.Sprintf("Drop index %q to table: %q", idx.Name, t.Name),
+			Cmd:     rs.Changes[i].Reverse,
+			Comment: fmt.Sprintf("Drop index %q from table: %q", idx.Name, t.Name),
+			Reverse: rs.Changes[i].Cmd,
 		})
 	}
 }
