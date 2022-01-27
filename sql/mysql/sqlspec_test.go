@@ -415,7 +415,7 @@ func TestMarshalSpec_Comment(t *testing.T) {
   }
   index "index" {
     unique  = true
-    columns = [table.users.column.a, ]
+    columns = [table.users.column.a]
     comment = "index comment"
   }
 }

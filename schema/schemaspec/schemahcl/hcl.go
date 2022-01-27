@@ -379,14 +379,11 @@ func hclRawList(items []string) hclwrite.Tokens {
 		Type:  hclsyntax.TokenOBrack,
 		Bytes: []byte("["),
 	}}
-	for _, item := range items {
-		t = append(t, &hclwrite.Token{
-			Type:  hclsyntax.TokenIdent,
-			Bytes: []byte(item),
-		}, &hclwrite.Token{
-			Type:  hclsyntax.TokenComma,
-			Bytes: []byte(","),
-		})
+	for i, item := range items {
+		if i > 0 {
+			t = append(t, &hclwrite.Token{Type: hclsyntax.TokenComma, Bytes: []byte(",")})
+		}
+		t = append(t, &hclwrite.Token{Type: hclsyntax.TokenIdent, Bytes: []byte(item)})
 	}
 	t = append(t, &hclwrite.Token{
 		Type:  hclsyntax.TokenCBrack,
