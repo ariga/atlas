@@ -24,6 +24,44 @@ func TestPlanChanges(t *testing.T) {
 	}{
 		{
 			changes: []schema.Change{
+				func() schema.Change {
+					users := &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+							{
+								Name: "name",
+								Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}},
+								Indexes: []*schema.Index{
+									schema.NewIndex("name_index").
+										AddParts(schema.NewColumnPart(schema.NewColumn("name"))),
+								},
+							}},
+					}
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.DropIndex{
+								I: schema.NewIndex("name_index").
+									AddParts(schema.NewColumnPart(schema.NewColumn("name"))),
+							},
+						},
+					}
+				}(),
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "DROP INDEX \"name_index\"",
+						Reverse: "CREATE INDEX \"name_index\" ON \"users\" (\"name\")",
+					},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
 				&schema.AddSchema{S: &schema.Schema{Name: "test"}},
 			},
 			plan: &migrate.Plan{
