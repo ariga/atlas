@@ -84,14 +84,14 @@ func applyRun(d *Driver, dsn string, file string, dryRun bool) {
 	var desired schema.Realm
 	err = d.UnmarshalSpec(f, &desired)
 	if len(schemas) > 0 {
-		// Validate all required schemas are in file.
-		sm := make(map[string]*schema.Schema, len(desired.Schemas))
-		for _, s := range desired.Schemas {
-			sm[s.Name] = s
-		}
+		// Validate all schemas in file were selected by user.
+		sm := make(map[string]bool, len(schemas))
 		for _, s := range schemas {
-			if _, ok := sm[s]; !ok {
-				schemaCmd.Printf("schema %q not found in %q, all required schemas must contain in file\n", s, file)
+			sm[s] = true
+		}
+		for _, s := range desired.Schemas {
+			if _, ok := sm[s.Name]; !ok {
+				schemaCmd.Printf("schema %q from file %q was not selected %q, all schemas defined in file must be selected\n", s.Name, file, schemas)
 				return
 			}
 		}
