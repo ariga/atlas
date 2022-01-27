@@ -6,7 +6,7 @@ module.exports = {
   baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
-  favicon: 'https://atlasgo.io/uploads/favicon.ico',
+  favicon: 'https://atlasgo.io/uploads/favicon.svg',
   organizationName: 'ariga',
   projectName: 'atlas',
   themeConfig: {
