@@ -125,7 +125,7 @@ Formats Atlas HCL files
 
 #### Usage
 ```
-atlas schema fmt [path]
+atlas schema fmt [path ...]
 ```
 
 #### Details
