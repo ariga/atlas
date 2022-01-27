@@ -83,6 +83,19 @@ func applyRun(d *Driver, dsn string, file string, dryRun bool) {
 	cobra.CheckErr(err)
 	var desired schema.Realm
 	err = d.UnmarshalSpec(f, &desired)
+	if len(schemas) > 0 {
+		// Validate all schemas in file were selected by user.
+		sm := make(map[string]bool, len(schemas))
+		for _, s := range schemas {
+			sm[s] = true
+		}
+		for _, s := range desired.Schemas {
+			if !sm[s.Name] {
+				schemaCmd.Printf("schema %q from file %q was not selected %q, all schemas defined in file must be selected\n", s.Name, file, schemas)
+				return
+			}
+		}
+	}
 	cobra.CheckErr(err)
 	changes, err := d.RealmDiff(realm, &desired)
 	cobra.CheckErr(err)
