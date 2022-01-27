@@ -300,7 +300,8 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			reverse.Comma().P("DROP CONSTRAINT").Ident(change.F.Symbol)
 		case *schema.DropForeignKey:
 			b.P("DROP CONSTRAINT").Ident(change.F.Symbol)
-			reversible = false
+			reverse.P("ADD")
+			s.fks(reverse, change.F)
 		case *schema.AddCheck:
 			check(b.P("ADD"), change.C)
 			// Reverse operation is supported if
