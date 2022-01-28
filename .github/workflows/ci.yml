@@ -37,6 +37,9 @@ jobs:
       - name: Run schema tests
         run: go test -race ./...
         working-directory: schema
+      - name: Run cli tests
+        run: go test -race ./...
+        working-directory: cmd
 
   integration:
     runs-on: ubuntu-latest
