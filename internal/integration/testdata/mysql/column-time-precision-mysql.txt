@@ -17,6 +17,12 @@ table "foo" {
     null = false
     type = char(36)
   }
+  column "precision_default" {
+    null      = false
+    type      = timestamp
+    default   = sql("CURRENT_TIMESTAMP")
+    on_update = sql("CURRENT_TIMESTAMP")
+  }
   column "create_time" {
     null    = false
     type    = timestamp(6)
@@ -36,6 +42,7 @@ table "foo" {
 -- 1.sql --
 CREATE TABLE `foo` (
   `id` char(36) NOT NULL,
+  `precision_default` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `create_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `update_time` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`id`)
