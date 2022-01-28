@@ -11,12 +11,10 @@ cmpshow foo 1.sql
 # Below files represent HCL and SQL. File names defined their index in
 # execution order. 1.hcl is executed first, 2.hcl executed second, etc.
 -- 1.hcl --
-schema "default" {}
+schema "$db" {}
 
 table "foo" {
-  schema    = schema.default
-  charset   = "utf8"
-  collation = "utf8_general_ci"
+  schema    = schema.$db
   column "id" {
     null = false
     type = char(36)
@@ -44,5 +42,4 @@ CREATE TABLE `default`.`foo`
     `create_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     `update_time` datetime  NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     PRIMARY KEY (`id`)
-) CHARSET utf8
-  COLLATE utf8_general_ci
+)
