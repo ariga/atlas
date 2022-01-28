@@ -1390,6 +1390,8 @@ func (t *myTest) cmdOnly(ts *testscript.TestScript, neg bool, args []string) {
 	ts.Value(keyT).(testscript.T).Skip("skip version", t.version)
 }
 
+var reSpace = regexp.MustCompile(`[^\S\r\n]+`)
+
 func (t *myTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {
 	if len(args) < 2 {
 		ts.Fatalf("invalid number of args to 'cmpshow': %d", len(args))
@@ -1406,12 +1408,12 @@ func (t *myTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {
 		// Trim the "table_options" if it was not requested explicitly.
 		stmts = append(stmts, create[:strings.LastIndexByte(create, ')')+1])
 	}
-
 	// Check if there is a file prefixed by database version (1.sql and <version>/1.sql).
 	if _, err := os.Stat(ts.MkAbs(filepath.Join(t.version, fname))); err == nil {
 		fname = filepath.Join(t.version, fname)
 	}
 	t1, t2 := strings.Join(stmts, "\n"), ts.ReadFile(fname)
+	t1, t2 = reSpace.ReplaceAllString(t1, " "), reSpace.ReplaceAllString(t2, " ")
 	if strings.TrimSpace(t1) == strings.TrimSpace(t2) {
 		return
 	}
