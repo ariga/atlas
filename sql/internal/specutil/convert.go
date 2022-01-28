@@ -172,17 +172,14 @@ func Index(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
 		}
 	case m > 0:
 		for i, p := range spec.Parts {
-			part := &schema.IndexPart{SeqNo: i}
-			if p.Desc != nil {
-				part.Desc = *p.Desc
-			}
+			part := &schema.IndexPart{SeqNo: i, Desc: p.Desc}
 			switch {
-			case p.Column == nil && p.Expr == nil:
+			case p.Column == nil && p.Expr == "":
 				return nil, fmt.Errorf(`"column" or "expr" are required for index %q at position %d`, spec.Name, i)
-			case p.Column != nil && p.Expr != nil:
+			case p.Column != nil && p.Expr != "":
 				return nil, fmt.Errorf(`cannot use both "column" and "expr" in index %q at position %d`, spec.Name, i)
-			case p.Expr != nil:
-				part.X = &schema.RawExpr{X: *p.Expr}
+			case p.Expr != "":
+				part.X = &schema.RawExpr{X: p.Expr}
 			case p.Column != nil:
 				c, err := column(parent, p.Column)
 				if err != nil {
@@ -442,7 +439,7 @@ func FromIndex(idx *schema.Index) (*sqlspec.Index, error) {
 	}
 	spec.Parts = make([]*sqlspec.IndexPart, len(idx.Parts))
 	for i, p := range idx.Parts {
-		part := &sqlspec.IndexPart{Desc: &p.Desc}
+		part := &sqlspec.IndexPart{Desc: p.Desc}
 		switch {
 		case p.C == nil && p.X == nil:
 			return nil, fmt.Errorf("missing column or expression for key part of index %q", idx.Name)
@@ -455,7 +452,7 @@ func FromIndex(idx *schema.Index) (*sqlspec.Index, error) {
 			if !ok {
 				return nil, fmt.Errorf("unexpected expression %T for index %q", p.X, idx.Name)
 			}
-			part.Expr = &x.X
+			part.Expr = x.X
 		}
 		spec.Parts[i] = part
 	}

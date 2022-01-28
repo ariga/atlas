@@ -364,6 +364,7 @@ func (r *Resource) Scan(ext interface{}) error {
 	for _, ft := range specFields(ext) {
 		field := v.FieldByName(ft.Name)
 		switch {
+		case ft.omitempty() && isEmpty(field):
 		case ft.isName():
 			if field.Kind() != reflect.String {
 				return errors.New("schemaspec: extension name field must be string")
@@ -512,29 +513,54 @@ func specFields(ext interface{}) []fieldDesc {
 	var fields []fieldDesc
 	for i := 0; i < t.Elem().NumField(); i++ {
 		f := t.Elem().Field(i)
-		lookup, ok := f.Tag.Lookup("spec")
+		tag, ok := f.Tag.Lookup("spec")
 		if !ok {
 			continue
 		}
-		fields = append(fields, fieldDesc{
-			tag:         lookup,
-			StructField: f,
-		})
+		d := fieldDesc{tag: tag, StructField: f}
+		if idx := strings.IndexByte(tag, ','); idx != -1 {
+			d.tag, d.options = tag[:idx], tag[idx+1:]
+		}
+		fields = append(fields, d)
 	}
 	return fields
 }
 
+func isEmpty(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
+		return v.Len() == 0
+	case reflect.Bool:
+		return !v.Bool()
+	case reflect.Interface, reflect.Ptr:
+		return v.IsNil()
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return v.Int() == 0
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return v.Uint() == 0
+	case reflect.Float32, reflect.Float64:
+		return v.Float() == 0
+	}
+	return false
+}
+
 type fieldDesc struct {
-	tag string
+	tag     string // tag name.
+	options string // rest of the options.
 	reflect.StructField
 }
 
-func (f fieldDesc) isName() bool {
-	if f.tag == "" {
-		return false
+func (f fieldDesc) isName() bool { return f.is("name") }
+
+func (f fieldDesc) omitempty() bool { return f.is("omitempty") }
+
+func (f fieldDesc) is(t string) bool {
+	for _, opt := range strings.Split(f.options, ",") {
+		if opt == t {
+			return true
+		}
 	}
-	parts := strings.Split(f.tag, ",")
-	return len(parts) > 1 && parts[1] == "name"
+	return false
 }
 
 func (f fieldDesc) isInterfaceSlice() bool {

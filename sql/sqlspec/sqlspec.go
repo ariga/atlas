@@ -43,7 +43,7 @@ type (
 	// Index holds a specification for the index key of a table.
 	Index struct {
 		Name    string            `spec:",name"`
-		Unique  bool              `spec:"unique"`
+		Unique  bool              `spec:"unique,omitempty"`
 		Parts   []*IndexPart      `spec:"on"`
 		Columns []*schemaspec.Ref `spec:"columns"`
 		schemaspec.DefaultExtension
@@ -51,9 +51,9 @@ type (
 
 	// IndexPart holds a specification for the index key part.
 	IndexPart struct {
-		Desc   *bool           `spec:"desc"`
+		Desc   bool            `spec:"desc,omitempty"`
 		Column *schemaspec.Ref `spec:"column"`
-		Expr   *string         `spec:"expr"`
+		Expr   string          `spec:"expr,omitempty"`
 		schemaspec.DefaultExtension
 	}
 
