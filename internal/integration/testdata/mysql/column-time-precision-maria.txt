@@ -1,16 +1,13 @@
 # Each test runs on a clean database.
-only maria
+only maria*
 
 # Apply schema "1.hcl" on fresh database.
 apply 1.hcl
 
 # Compare the result of "SHOW TABLE users" with the content of a file named '1.sql'.
-# The "cmpshow" command searches first a file named '<version>/1.sql' (version, defines
-# the database version), and in case it was found, it will use it instead.
 cmpshow foo 1.sql
 
-# Below files represent HCL and SQL. File names defined their index in
-# execution order. 1.hcl is executed first, 2.hcl executed second, etc.
+# Files
 -- 1.hcl --
 schema "$db" {}
 
