@@ -195,6 +195,8 @@ type columnDesc struct {
 	parts         []string
 }
 
+var reDigits = regexp.MustCompile(`\d`)
+
 func parseColumn(s string) (*columnDesc, error) {
 	parts := strings.FieldsFunc(s, func(r rune) bool {
 		return r == '(' || r == ')' || r == ' ' || r == ','
@@ -232,6 +234,21 @@ func parseColumn(s string) (*columnDesc, error) {
 		c.precision = 53
 	case TypeReal, TypeFloat4:
 		c.precision = 24
+	case TypeTime, TypeTimestamp, TypeTimestampTZ:
+		// If the second part is only one digit it is the precision argument.
+		// For cases like "timestamp(4) with time zone" make sure to not drop the rest of the type definition.
+		offset := 1
+		if len(parts) > 1 && reDigits.MatchString(parts[1]) {
+			offset = 2
+			c.timePrecision, err = strconv.ParseInt(parts[1], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("postgres: parse time precision %q: %w", parts[1], err)
+			}
+		}
+		// Append time zone part (if present).
+		if len(parts) > offset {
+			c.typ = fmt.Sprintf("%s %s", c.typ, strings.Join(parts[offset:], " "))
+		}
 	default:
 		c.typ = s
 	}

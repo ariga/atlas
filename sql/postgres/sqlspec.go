@@ -90,6 +90,18 @@ func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) 
 	return marshaler.MarshalSpec(&d)
 }
 
+var (
+	hclState = schemahcl.New(schemahcl.WithTypes(TypeRegistry.Specs()))
+	// UnmarshalHCL unmarshals an Atlas HCL DDL document into v.
+	UnmarshalHCL = schemaspec.UnmarshalerFunc(func(bytes []byte, i interface{}) error {
+		return UnmarshalSpec(bytes, hclState, i)
+	})
+	// MarshalHCL marshals v into an Atlas HCL DDL document.
+	MarshalHCL = schemaspec.MarshalerFunc(func(v interface{}) ([]byte, error) {
+		return MarshalSpec(v, hclState)
+	})
+)
+
 // Realm converts the schemas and tables of the doc into a schema.Realm.
 func Realm(schemas []*sqlspec.Schema, tables []*sqlspec.Table, enums []*Enum) (*schema.Realm, error) {
 	r := &schema.Realm{}
@@ -186,7 +198,17 @@ func fixDefaultQuotes(value schemaspec.Value) error {
 
 // convertColumnType converts a sqlspec.Column into a concrete Postgres schema.Type.
 func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
-	return TypeRegistry.Type(spec.Type, spec.Extra.Attrs)
+	typ, err := TypeRegistry.Type(spec.Type, spec.Extra.Attrs)
+	if err != nil {
+		return nil, err
+	}
+	// Handle default values for time precision types.
+	if t, ok := typ.(*schema.TimeType); ok && strings.HasPrefix(t.T, "time") {
+		if _, ok := attr(spec.Type, "precision"); !ok {
+			t.Precision = 6
+		}
+	}
+	return typ, nil
 }
 
 // convertEnums converts possibly referenced column types (like enums) to
@@ -336,13 +358,33 @@ var TypeRegistry = specutil.NewRegistry(
 		specutil.TypeSpec(TypePath),
 		specutil.TypeSpec(TypePoint),
 		specutil.TypeSpec(TypeDate),
-		specutil.TypeSpec(TypeTime),
-		specutil.AliasTypeSpec("time_with_time_zone", TypeTimeWTZ),
-		specutil.AliasTypeSpec("time_without_time_zone", TypeTimeWOTZ),
-		specutil.TypeSpec(TypeTimestampTZ),
-		specutil.TypeSpec(TypeTimestamp),
-		specutil.AliasTypeSpec("timestamp_with_time_zone", TypeTimestampWTZ),
-		specutil.AliasTypeSpec("timestamp_without_time_zone", TypeTimestampWOTZ),
+		specutil.TypeSpec(TypeTime, specutil.WithAttributes(precisionTypeAttr())),
+		specutil.AliasTypeSpec(
+			"time_with_time_zone",
+			TypeTimeWTZ,
+			specutil.WithAttributes(precisionTypeAttr()),
+			specutil.WithPrinter(timePrinter),
+		),
+		specutil.AliasTypeSpec(
+			"time_without_time_zone",
+			TypeTimeWOTZ,
+			specutil.WithAttributes(precisionTypeAttr()),
+			specutil.WithPrinter(timePrinter),
+		),
+		specutil.TypeSpec(TypeTimestampTZ, specutil.WithAttributes(precisionTypeAttr())),
+		specutil.TypeSpec(TypeTimestamp, specutil.WithAttributes(precisionTypeAttr())),
+		specutil.AliasTypeSpec(
+			"timestamp_with_time_zone",
+			TypeTimestampWTZ,
+			specutil.WithAttributes(precisionTypeAttr()),
+			specutil.WithPrinter(timePrinter),
+		),
+		specutil.AliasTypeSpec(
+			"timestamp_without_time_zone",
+			TypeTimestampWOTZ,
+			specutil.WithAttributes(precisionTypeAttr()),
+			specutil.WithPrinter(timePrinter),
+		),
 		specutil.AliasTypeSpec("double_precision", TypeDouble),
 		specutil.TypeSpec(TypeReal),
 		specutil.TypeSpec(TypeFloat8),
@@ -365,14 +407,32 @@ var TypeRegistry = specutil.NewRegistry(
 	),
 )
 
-var (
-	hclState = schemahcl.New(schemahcl.WithTypes(TypeRegistry.Specs()))
-	// UnmarshalHCL unmarshals an Atlas HCL DDL document into v.
-	UnmarshalHCL = schemaspec.UnmarshalerFunc(func(bytes []byte, i interface{}) error {
-		return UnmarshalSpec(bytes, hclState, i)
-	})
-	// MarshalHCL marshals v into an Atlas HCL DDL document.
-	MarshalHCL = schemaspec.MarshalerFunc(func(v interface{}) ([]byte, error) {
-		return MarshalSpec(v, hclState)
-	})
-)
+func precisionTypeAttr() *schemaspec.TypeAttr {
+	return &schemaspec.TypeAttr{
+		Name:     "precision",
+		Kind:     reflect.Int,
+		Required: false,
+	}
+}
+
+func timePrinter(typ *schemaspec.Type) (string, error) {
+	a, ok := attr(typ, "precision")
+	if !ok {
+		return typ.T, nil
+	}
+	p, err := a.Int()
+	if err != nil {
+		return "", fmt.Errorf(`postgres: parsing attribute "precision": %w`, err)
+	}
+	parts := strings.Split(typ.T, " ")
+	return fmt.Sprintf("%s(%d)%s", parts[0], p, strings.Join(parts[1:], " ")), nil
+}
+
+func attr(typ *schemaspec.Type, key string) (*schemaspec.Attr, bool) {
+	for _, a := range typ.Attrs {
+		if a.K == key {
+			return a, true
+		}
+	}
+	return nil, false
+}
