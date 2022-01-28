@@ -85,6 +85,9 @@ func FormatType(t schema.Type) (string, error) {
 		f = strings.ToLower(t.T)
 	case *schema.TimeType:
 		f = strings.ToLower(t.T)
+		if t.Precision > 0 {
+			f = fmt.Sprintf("%s(%d)", f, t.Precision)
+		}
 	case *schema.UnsupportedType:
 		// Do not accept unsupported types as we should cover all cases.
 		return "", fmt.Errorf("unsupported type %q", t.T)
