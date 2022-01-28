@@ -1,4 +1,5 @@
 # Each test runs on a clean database.
+only mysql
 
 # Apply schema "1.hcl" on fresh database.
 apply 1.hcl
@@ -36,10 +37,9 @@ table "foo" {
 }
 
 -- 1.sql --
-CREATE TABLE `default`.`foo`
-(
-    `id`          char(36)  NOT NULL,
-    `create_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    `update_time` datetime  NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
-    PRIMARY KEY (`id`)
+CREATE TABLE `foo` (
+  `id` char(36) NOT NULL,
+  `create_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `update_time` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`)
 )

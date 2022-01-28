@@ -1,0 +1,45 @@
+# Each test runs on a clean database.
+only maria
+
+# Apply schema "1.hcl" on fresh database.
+apply 1.hcl
+
+# Compare the result of "SHOW TABLE users" with the content of a file named '1.sql'.
+# The "cmpshow" command searches first a file named '<version>/1.sql' (version, defines
+# the database version), and in case it was found, it will use it instead.
+cmpshow foo 1.sql
+
+# Below files represent HCL and SQL. File names defined their index in
+# execution order. 1.hcl is executed first, 2.hcl executed second, etc.
+-- 1.hcl --
+schema "$db" {}
+
+table "foo" {
+  schema    = schema.$db
+  column "id" {
+    null = false
+    type = char(36)
+  }
+  column "create_time" {
+    null    = false
+    type    = timestamp(6)
+    default = sql("CURRENT_TIMESTAMP(6)")
+  }
+  column "update_time" {
+    null    = false
+    type    = datetime(6)
+    default = sql("CURRENT_TIMESTAMP(6)")
+    on_update = sql("CURRENT_TIMESTAMP(6)")
+  }
+  primary_key {
+    columns = [table.foo.column.id, ]
+  }
+}
+
+-- 1.sql --
+CREATE TABLE `foo` (
+  `id` char(36) NOT NULL,
+  `create_time` timestamp(6) NOT NULL DEFAULT current_timestamp(6),
+  `update_time` datetime(6) NOT NULL DEFAULT current_timestamp(6) ON UPDATE current_timestamp(6),
+  PRIMARY KEY (`id`)
+)
