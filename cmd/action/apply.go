@@ -58,7 +58,7 @@ func init() {
 	ApplyCmd.Flags().BoolVarP(&ApplyFlags.DryRun, "dry-run", "", false, "Dry-run. Print SQL plan without prompting for execution")
 	ApplyCmd.Flags().StringVarP(&ApplyFlags.Addr, "addr", "", "127.0.0.1:5800", "used with -w, local address to bind the server to")
 	ApplyCmd.Flags().StringSliceVarP(&ApplyFlags.Schema, "schema", "s", nil, "Set schema name")
-	ApplyCmd.Flags().BoolVarP(&ApplyFlags.AutoApprove, "approve", "", false, "Auto approve. Apply the schema changes without prompting for approval")
+	ApplyCmd.Flags().BoolVarP(&ApplyFlags.AutoApprove, "auto-approve", "", false, "Auto approve. Apply the schema changes without prompting for approval")
 	cobra.CheckErr(ApplyCmd.MarkFlagRequired("dsn"))
 	cobra.CheckErr(ApplyCmd.MarkFlagRequired("file"))
 }
@@ -121,20 +121,17 @@ func applyRun(d *Driver, dsn string, file string, dryRun bool, autoApprove bool)
 	if dryRun {
 		return
 	}
-	if autoApprove {
-		schemaCmd.Println("Applying changes (automatically approved with --approve flag)")
-		err = d.ApplyChanges(ctx, changes)
-		cobra.CheckErr(err)
-		return
+	if autoApprove || promptUser() {
+		cobra.CheckErr(d.ApplyChanges(ctx, changes))
 	}
+}
+
+func promptUser() bool {
 	prompt := promptui.Select{
 		Label: "Are you sure?",
 		Items: []string{answerApply, answerAbort},
 	}
 	_, result, err := prompt.Run()
 	cobra.CheckErr(err)
-	if result == answerApply {
-		err = d.ApplyChanges(ctx, changes)
-		cobra.CheckErr(err)
-	}
+	return result == answerApply
 }
