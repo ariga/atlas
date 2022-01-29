@@ -37,6 +37,10 @@ module.exports = {
         {
             type: 'doc',
             id: 'ui/atlas-ui-intro',
+        },
+        {
+            type: 'doc',
+            id: 'contributing',
         }
     ],
     aboutSidebar: [
