@@ -23,6 +23,15 @@ As we are still starting out, we don't have an official code-style or guidelines
 code. As general advice, read through the area of the code that you are modifying and try to keep your code
 similar to what others have written in the same place.  
 
+#### Code-generation
+
+Some of the code in the Atlas repository is generated. The CI process verifies that
+all generated files are checked in by running `go generate ./...` and then running
+`git status --porcelain`. Therefore, before committing changes to Atlas, please run:
+```shell
+go generate ./...
+```
+
 #### Linting
 
 Your code will be linted using `golangci-lint` during CI. To install in locally,
