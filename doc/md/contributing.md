@@ -10,22 +10,24 @@ Here are some ways in which you can help:
 * Tweet about your experience with Atlas on [Twitter](https://twitter.com), don't forget to mention
   [@ariga_io](https://twitter.com/ariga_io) and link to [atlasgo.io](https://atlasgo.io) if you do.
 * Write educational content on your personal blog or websites such as [dev.to](https://dev.to) or 
-  [Medium](https://medium.com). If you do, don't hesitate to reach out to us via our
-  [Discord Server](https://discord.com/invite/QhsmBAWzrC) for help proof-reading your text and 
+  [Medium](https://medium.com). If you do, don't hesitate to reach out to us via Discord (link below)
+  for help proof-reading your text and 
   using our social-media channels for distributing it to readers.
 * Join our [Discord Server](https://discord.com/invite/QhsmBAWzrC) to answer questions of other users
   and find out other ways in which you can contribute by talking to the community there!
 * Contribute bug-fixes or new features to the [codebase](https://github.com/ariga/atlas).
 
-### Contributing Code to Atlas
+### Contributing code to Atlas
 
 As we are still starting out, we don't have an official code-style or guidelines on composing your
-code. As general advice, give the area of the code that you are modifying and try to keep your code
+code. As general advice, read through the area of the code that you are modifying and try to keep your code
 similar to what others have written in the same place.  
 
 #### Linting
+
 Your code will be linted using `golangci-lint` during CI. To install in locally,
 [follow this guide](https://golangci-lint.run/usage/install/#local-installation). 
+
 To run it locally:
 ```shell
 golangci-lint run
