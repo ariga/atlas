@@ -102,7 +102,7 @@ func SchemaNameFromDSN(url string) (string, error) {
 func postgresSchema(dsn string) (string, error) {
 	url, err := url.Parse(dsn)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	// lib/pq supports setting default schemas via the `search_path` parameter
 	// in a dsn.

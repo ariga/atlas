@@ -121,6 +121,7 @@ func Test_PostgresSchemaDSN(t *testing.T) {
 	var tests = []struct {
 		dsn      string
 		expected string
+		err      bool
 	}{
 		{
 			dsn:      "postgres://localhost:5432/dbname?search_path=foo",
@@ -128,21 +129,26 @@ func Test_PostgresSchemaDSN(t *testing.T) {
 		},
 		{
 			dsn:      "postgres://localhost:5432/dbname",
-			expected: "public",
+			expected: "",
 		},
 		{
 			dsn:      "postgres://(bad:host)?search_path=foo",
-			expected: "public",
+			expected: "",
+			err:      true,
 		},
 		{
 			dsn:      "postgres://localhost:5432/dbname?search_path=",
-			expected: "public",
+			expected: "",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.dsn, func(t *testing.T) {
 			schema, err := action.SchemaNameFromDSN(tt.dsn)
-			require.NoError(t, err)
+			if tt.err {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
 			require.Equal(t, tt.expected, schema)
 		})
 	}
