@@ -299,6 +299,35 @@ func testCLISchemaApplyDry(t T, h string, dsn string) {
 	require.False(t, ok, "expected users table not to be created")
 }
 
+func testCLISchemaApplyAutoApprove(t T, h string, dsn string) {
+	// Required to have a clean "stderr" while running first time.
+	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	require.NoError(t, err)
+	t.dropTables("users")
+	f := "atlas.hcl"
+	err = ioutil.WriteFile(f, []byte(h), 0644)
+	require.NoError(t, err)
+	defer os.Remove(f)
+	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+		"schema",
+		"apply",
+		"-d",
+		dsn,
+		"-f",
+		f,
+		"--auto-approve",
+	)
+	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	require.NoError(t, err)
+	require.NoError(t, cmd.Run(), stderr.String(), stdout.String())
+	require.Empty(t, stderr.String(), stderr.String())
+	require.Contains(t, stdout.String(), "-- Planned")
+	u := t.loadUsers()
+	require.NotNil(t, u)
+}
+
 func testCLISchemaDiff(t T, dsn string) {
 	// Required to have a clean "stderr" while running first time.
 	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
