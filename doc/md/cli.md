@@ -88,6 +88,7 @@ atlas schema apply -d "sqlite://file:ex1.db?_fk=1" -f atlas.hcl
 #### Flags
 ```
       --addr string      used with -w, local address to bind the server to (default "127.0.0.1:5800")
+      --auto-approve     Auto approve. Apply the schema changes without prompting for approval
       --dry-run          Dry-run. Print SQL plan without prompting for execution
   -d, --dsn string       [driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format
   -f, --file string      [/path/to/file] file containing schema
