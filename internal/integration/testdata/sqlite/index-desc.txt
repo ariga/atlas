@@ -1,0 +1,22 @@
+apply 1.hcl
+cmpshow users 1.sql
+
+-- 1.hcl --
+schema "main" {}
+
+table "users" {
+    schema = schema.main
+    column "rank" {
+        type = int
+    }
+    index "rank_idx" {
+        on {
+            desc   = true
+            column = table.users.column.rank
+        }
+    }
+}
+
+-- 1.sql --
+CREATE TABLE `users` (`rank` int NOT NULL)
+CREATE INDEX `rank_idx` ON `users` (`rank` DESC)

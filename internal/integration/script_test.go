@@ -20,9 +20,11 @@ import (
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlite"
 
 	"github.com/pkg/diff"
 	"github.com/rogpeppe/go-internal/testscript"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMySQL_Script(t *testing.T) {
@@ -41,7 +43,7 @@ func TestMySQL_Script(t *testing.T) {
 	})
 }
 
-func TestPostgresScript(t *testing.T) {
+func TestPostgres_Script(t *testing.T) {
 	pgRun(t, func(t *pgTest) {
 		testscript.Run(t.T, testscript.Params{
 			Dir:   "testdata/postgres",
@@ -54,6 +56,20 @@ func TestPostgresScript(t *testing.T) {
 				"cmpshow": t.cmdCmpShow,
 			},
 		})
+	})
+}
+
+func TestSQLite_Script(t *testing.T) {
+	tt := &liteTest{T: t}
+	testscript.Run(t, testscript.Params{
+		Dir:   "testdata/sqlite",
+		Setup: tt.setupScript,
+		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
+			"apply":   tt.cmdApply,
+			"exist":   tt.cmdExist,
+			"synced":  tt.cmdSynced,
+			"cmpshow": tt.cmdCmpShow,
+		},
 	})
 }
 
@@ -94,6 +110,22 @@ func setupScript(t *testing.T, env *testscript.Env, db *sql.DB, dropCmd string) 
 	// Store the testscript.T for later use.
 	// See "only" function below.
 	env.Values[keyT] = env.T()
+	return nil
+}
+
+func (t *liteTest) setupScript(env *testscript.Env) error {
+	db, err := sql.Open("sqlite3", "file:atlas?mode=memory&cache=shared&_fk=1")
+	require.NoError(t, err)
+	t.db = db
+	env.Setenv("db", "main")
+	env.Defer(func() {
+		require.NoError(t, db.Close())
+	})
+	t.Cleanup(func() {
+		require.NoError(t, db.Close())
+	})
+	t.drv, err = sqlite.Open(db)
+	require.NoError(t, err)
 	return nil
 }
 
@@ -147,6 +179,25 @@ func (t *pgTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {
 	})
 }
 
+func (t *liteTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {
+	cmdCmpShow(ts, args, func(_, name string) (string, error) {
+		var stmts []string
+		rows, err := t.db.Query("SELECT sql FROM sqlite_schema where tbl_name = ?", name)
+		if err != nil {
+			return "", fmt.Errorf("querying schema")
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var s string
+			if err := rows.Scan(&s); err != nil {
+				return "", err
+			}
+			stmts = append(stmts, s)
+		}
+		return strings.Join(stmts, "\n"), nil
+	})
+}
+
 func cmdCmpShow(ts *testscript.TestScript, args []string, show func(schema, name string) (string, error)) {
 	if len(args) < 2 {
 		ts.Fatalf("invalid number of args to 'cmpshow': %d", len(args))
@@ -191,6 +242,16 @@ func (t *pgTest) cmdExist(ts *testscript.TestScript, neg bool, args []string) {
 	cmdExist(ts, neg, args, func(schema, name string) (bool, error) {
 		var b bool
 		if err := t.db.QueryRow("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = $1 AND TABLE_NAME = $2", schema, name).Scan(&b); err != nil {
+			return false, err
+		}
+		return b, nil
+	})
+}
+
+func (t *liteTest) cmdExist(ts *testscript.TestScript, neg bool, args []string) {
+	cmdExist(ts, neg, args, func(_, name string) (bool, error) {
+		var b bool
+		if err := t.db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE `type`='table' AND `name` = ?", name).Scan(&b); err != nil {
 			return false, err
 		}
 		return b, nil
@@ -245,6 +306,27 @@ func (t *pgTest) hclDiff(ts *testscript.TestScript, name string) []schema.Change
 		f       = strings.ReplaceAll(ts.ReadFile(name), "$db", ts.Getenv("db"))
 	)
 	ts.Check(postgres.UnmarshalHCL([]byte(f), &desired))
+	current, err := t.drv.InspectSchema(context.Background(), desired.Name, nil)
+	ts.Check(err)
+	changes, err := t.drv.SchemaDiff(current, &desired)
+	ts.Check(err)
+	return changes
+}
+
+func (t *liteTest) cmdSynced(ts *testscript.TestScript, neg bool, args []string) {
+	cmdSynced(ts, neg, args, t.hclDiff)
+}
+
+func (t *liteTest) cmdApply(ts *testscript.TestScript, neg bool, args []string) {
+	cmdApply(ts, neg, args, t.drv.ApplyChanges, t.hclDiff)
+}
+
+func (t *liteTest) hclDiff(ts *testscript.TestScript, name string) []schema.Change {
+	var (
+		desired schema.Schema
+		f       = ts.ReadFile(name)
+	)
+	ts.Check(sqlite.UnmarshalHCL([]byte(f), &desired))
 	current, err := t.drv.InspectSchema(context.Background(), desired.Name, nil)
 	ts.Check(err)
 	changes, err := t.drv.SchemaDiff(current, &desired)
