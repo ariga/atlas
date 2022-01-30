@@ -11,41 +11,46 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	// DiffFlags are the flags used in the Diff command.
-	DiffFlags struct {
-		FromDSN string
-		ToDSN   string
-	}
-	// DiffCmd represents the diff command.
-	DiffCmd = &cobra.Command{
+type diffCmdOpts struct {
+	fromDSN string
+	toDSN   string
+}
+
+// newDiffCmd returns a new *cobra.Command that runs cmdDiffRun with the given flags and mux.
+func newDiffCmd() *cobra.Command {
+	var opts diffCmdOpts
+	cmd := &cobra.Command{
 		Use:   "diff",
 		Short: "Calculate and print the diff between two schemas.",
 		Long: "`atlas schema diff`" + ` connects to two given databases, inspects
 them, calculates the difference in their schemas, and prints a plan of
 SQL queries to bring the "from" database to the schema of the "to" database.`,
-		Run: CmdDiffRun,
+		Run: func(cmd *cobra.Command, args []string) {
+			cmdDiffRun(cmd, &opts)
+		},
 	}
-)
-
-func init() {
-	schemaCmd.AddCommand(DiffCmd)
-	DiffCmd.Flags().StringVarP(&DiffFlags.FromDSN, "from", "", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format")
-	DiffCmd.Flags().StringVarP(&DiffFlags.ToDSN, "to", "", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format")
-	cobra.CheckErr(DiffCmd.MarkFlagRequired("from"))
-	cobra.CheckErr(DiffCmd.MarkFlagRequired("to"))
+	cmd.Flags().StringVarP(&opts.fromDSN, "from", "", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format")
+	cmd.Flags().StringVarP(&opts.toDSN, "to", "", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format")
+	cobra.CheckErr(cmd.MarkFlagRequired("from"))
+	cobra.CheckErr(cmd.MarkFlagRequired("to"))
+	return cmd
 }
 
-// CmdDiffRun connects to the given databases, and prints an SQL plan to get from
+func init() {
+	diffCmd := newDiffCmd()
+	schemaCmd.AddCommand(diffCmd)
+}
+
+// cmdDiffRun connects to the given databases, and prints an SQL plan to get from
 // the "from" schema to the "to" schema.
-func CmdDiffRun(cmd *cobra.Command, args []string) {
-	fromDriver, err := defaultMux.OpenAtlas(DiffFlags.FromDSN)
+func cmdDiffRun(cmd *cobra.Command, flags *diffCmdOpts) {
+	fromDriver, err := defaultMux.OpenAtlas(flags.fromDSN)
 	cobra.CheckErr(err)
-	toDriver, err := defaultMux.OpenAtlas(DiffFlags.ToDSN)
+	toDriver, err := defaultMux.OpenAtlas(flags.toDSN)
 	cobra.CheckErr(err)
-	fromName, err := SchemaNameFromDSN(DiffFlags.FromDSN)
+	fromName, err := SchemaNameFromDSN(flags.fromDSN)
 	cobra.CheckErr(err)
-	toName, err := SchemaNameFromDSN(DiffFlags.ToDSN)
+	toName, err := SchemaNameFromDSN(flags.toDSN)
 	cobra.CheckErr(err)
 	ctx := context.Background()
 	fromSchema, err := fromDriver.InspectSchema(ctx, fromName, nil)
@@ -64,7 +69,7 @@ func CmdDiffRun(cmd *cobra.Command, args []string) {
 	p, err := toDriver.PlanChanges(ctx, "plan", diff)
 	cobra.CheckErr(err)
 	if len(p.Changes) == 0 {
-		schemaCmd.Println("Schemas are synced, no changes to be made.")
+		cmd.Println("Schemas are synced, no changes to be made.")
 		return
 	}
 	for _, c := range p.Changes {
