@@ -122,11 +122,11 @@ func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 }
 
 // IndexPartAttrChanged reports if the index-part attributes were changed.
-func (*diff) IndexPartAttrChanged(from, to []schema.Attr) bool {
-	p1 := &IndexColumnProperty{NullsLast: true}
-	sqlx.Has(from, p1)
-	p2 := &IndexColumnProperty{NullsLast: true}
-	sqlx.Has(to, p2)
+func (*diff) IndexPartAttrChanged(from, to *schema.IndexPart) bool {
+	p1 := &IndexColumnProperty{NullsFirst: from.Desc, NullsLast: !from.Desc}
+	sqlx.Has(from.Attrs, p1)
+	p2 := &IndexColumnProperty{NullsFirst: to.Desc, NullsLast: !to.Desc}
+	sqlx.Has(to.Attrs, p2)
 	return p1.NullsFirst != p2.NullsFirst || p1.NullsLast != p2.NullsLast
 }
 

@@ -105,7 +105,7 @@ func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 }
 
 // IndexPartAttrChanged reports if the index-part attributes were changed.
-func (*diff) IndexPartAttrChanged(_, _ []schema.Attr) bool {
+func (*diff) IndexPartAttrChanged(_, _ *schema.IndexPart) bool {
 	return false
 }
 
