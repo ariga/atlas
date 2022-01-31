@@ -196,6 +196,8 @@ func fixDefaultQuotes(value schemaspec.Value) error {
 	return nil
 }
 
+const defaultTimePrecision = 6
+
 // convertColumnType converts a sqlspec.Column into a concrete Postgres schema.Type.
 func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 	typ, err := TypeRegistry.Type(spec.Type, spec.Extra.Attrs)
@@ -205,7 +207,7 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 	// Handle default values for time precision types.
 	if t, ok := typ.(*schema.TimeType); ok && strings.HasPrefix(t.T, "time") {
 		if _, ok := attr(spec.Type, "precision"); !ok {
-			t.Precision = 6
+			t.Precision = defaultTimePrecision
 		}
 	}
 	return typ, nil

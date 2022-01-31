@@ -2,7 +2,7 @@
 apply 1.hcl
 
 # Compare the result of "\d tbl" with the content of a file named '1.sql'.
-cmpshow foo 1.sql
+cmpshow tbl 1.sql
 
 # Files
 -- 1.hcl --
@@ -29,8 +29,8 @@ table "tbl" {
 
 -- 1.sql --
                            Table "script_column_time_precision.tbl"
-      Column       |            Type             | Collation | Nullable |       Default
--------------------+-----------------------------+-----------+----------+----------------------
- precision_default | timestamp without time zone |           | not null | CURRENT_TIMESTAMP
- timestamp_4       | timestamp without time zone |           | not null | CURRENT_TIMESTAMP(4)
- timestamptz_4     | timestamp with time zone    |           | not null | CURRENT_TIMESTAMP(4)
+      Column       |              Type              | Collation | Nullable |       Default
+-------------------+--------------------------------+-----------+----------+----------------------
+ precision_default | timestamp without time zone    |           | not null | CURRENT_TIMESTAMP
+ timestamp_4       | timestamp(4) without time zone |           | not null | CURRENT_TIMESTAMP(4)
+ timestamptz_4     | timestamp(4) with time zone    |           | not null | CURRENT_TIMESTAMP(4)
