@@ -1,14 +1,14 @@
 # Apply schema "1.hcl" on fresh database.
 apply 1.hcl
 
-# Compare the result of "SHOW TABLE users" with the content of a file named '1.sql'.
+# Compare the result of "\d tbl" with the content of a file named '1.sql'.
 cmpshow foo 1.sql
 
 # Files
 -- 1.hcl --
 schema "$db" {}
 
-table "foo" {
+table "tbl" {
   schema    = schema.$db
   column "precision_default" {
     null      = false
@@ -28,7 +28,7 @@ table "foo" {
 }
 
 -- 1.sql --
-                           Table "script_column_time_precision.foo"
+                           Table "script_column_time_precision.tbl"
       Column       |            Type             | Collation | Nullable |       Default
 -------------------+-----------------------------+-----------+----------+----------------------
  precision_default | timestamp without time zone |           | not null | CURRENT_TIMESTAMP
