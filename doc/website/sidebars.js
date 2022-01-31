@@ -43,6 +43,7 @@ module.exports = {
             label: 'Go API',
             items: [
                 {type: 'doc', id: 'go-api/intro', label: 'Introduction'},
+                {type: 'doc', id: 'go-api/inspect', label: 'Inspecting Schemas'},
             ]
         },
         {
