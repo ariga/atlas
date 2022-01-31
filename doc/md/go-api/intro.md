@@ -60,7 +60,7 @@ func Test(t *testing.T) {
 	if err != nil {
 		log.Fatalf("failed opening db: %s", err)
 	}
-	// Open an Atlas driver.
+	// Open an atlas driver.
 	driver, err := sqlite.Open(db)
 	if err != nil {
 		log.Fatalf("failed opening atlas driver: %s", err)
