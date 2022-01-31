@@ -39,6 +39,13 @@ module.exports = {
             id: 'ui/atlas-ui-intro',
         },
         {
+            type: 'category',
+            label: 'Go API',
+            items: [
+                {type: 'doc', id: 'go-api/intro', label: 'Introduction'},
+            ]
+        },
+        {
             type: 'doc',
             id: 'contributing',
         }
