@@ -24,21 +24,8 @@ func TestDriver_InspectTable(t *testing.T) {
 		expect func(*require.Assertions, *schema.Table, error)
 	}{
 		{
-			name: "table does not exist",
-			before: func(m mock) {
-				m.systemVars("3.36.0")
-				m.tableExists("users", false)
-			},
-			expect: func(require *require.Assertions, t *schema.Table, err error) {
-				require.Nil(t)
-				require.Error(err)
-				require.True(schema.IsNotExistError(err), "expect not exists error: %v", err)
-			},
-		},
-		{
 			name: "table columns",
 			before: func(m mock) {
-				m.systemVars("3.36.0")
 				m.tableExists("users", true, "CREATE TABLE users(id INTEGER PRIMARY KEY AUTOINCREMENT)")
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, "users"))).
 					WillReturnRows(sqltest.Rows(`
@@ -87,7 +74,6 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "table indexes",
 			before: func(m mock) {
-				m.systemVars("3.36.0")
 				m.tableExists("users", true, "CREATE TABLE users(id INTEGER PRIMARY KEY)")
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, "users"))).
 					WillReturnRows(sqltest.Rows(`
@@ -160,7 +146,6 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "table constraints",
 			before: func(m mock) {
-				m.systemVars("3.36.0")
 				m.tableExists("users", true, `
 CREATE TABLE users(
 	id INTEGER PRIMARY KEY,
@@ -218,11 +203,16 @@ CREATE TABLE users(
 		t.Run(tt.name, func(t *testing.T) {
 			db, m, err := sqlmock.New()
 			require.NoError(t, err)
-			tt.before(mock{m})
+			mk := mock{m}
+			mk.systemVars("3.36.0")
 			drv, err := Open(db)
 			require.NoError(t, err)
-			table, err := drv.InspectTable(context.Background(), "users", tt.opts)
-			tt.expect(require.New(t), table, err)
+			tt.before(mk)
+			s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{
+				Tables: []string{"users"},
+			})
+			require.NoError(t, err)
+			tt.expect(require.New(t), s.Tables[0], err)
 		})
 	}
 }
@@ -410,8 +400,11 @@ func TestRegex_Checks(t *testing.T) {
 		mk.noFKs(name)
 		drv, err := Open(db)
 		require.NoError(t, err)
-		table, err := drv.InspectTable(context.Background(), name, nil)
+		s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{
+			Tables: []string{"users"},
+		})
 		require.NoError(t, err)
+		table := s.Tables[0]
 		require.Equal(t, len(table.Attrs[1:]), len(tt.checks))
 		for i := range tt.checks {
 			require.Equal(t, tt.checks[i], table.Attrs[i+1])

@@ -86,25 +86,6 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 	return s, nil
 }
 
-// InspectTable returns the schema description of the given table.
-func (i *inspect) InspectTable(ctx context.Context, name string, opts *schema.InspectTableOptions) (*schema.Table, error) {
-	if opts != nil && opts.Schema != mainFile {
-		return nil, fmt.Errorf("sqlite: querying attached database is not supported. got: %q", opts.Schema)
-	}
-	s, err := i.InspectSchema(ctx, mainFile, &schema.InspectOptions{
-		Tables: []string{name},
-	})
-	if err != nil {
-		return nil, err
-	}
-	if len(s.Tables) == 0 {
-		return nil, &schema.NotExistError{
-			Err: fmt.Errorf("sqlite: table %q was not found", name),
-		}
-	}
-	return s.Tables[0], nil
-}
-
 func (i *inspect) inspectTable(ctx context.Context, t *schema.Table) (*schema.Table, error) {
 	if err := i.columns(ctx, t); err != nil {
 		return nil, err
@@ -659,7 +640,7 @@ const (
 	// Query to list attached database files.
 	databasesQuery = "SELECT `name`, `file` FROM pragma_database_list()"
 	// Query to list database tables.
-	tablesQuery = "SELECT `name`, `sql` FROM sqlite_master WHERE `type`='table' AND `name` NOT LIKE 'sqlite_%'"
+	tablesQuery = "SELECT `name`, `sql` FROM sqlite_master WHERE `type` = 'table' AND `name` NOT LIKE 'sqlite_%'"
 	// Query to list table information.
 	columnsQuery = "SELECT `name`, `type`, (not `notnull`) AS `nullable`, `dflt_value`, (`pk` <> 0) AS `pk`  FROM pragma_table_info('%s') ORDER BY `pk`, `cid`"
 	// Query to list table indexes.
