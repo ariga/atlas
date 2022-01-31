@@ -81,6 +81,10 @@ func FormatType(t schema.Type) (string, error) {
 		case TypeTimestamp:
 			f = TypeTimestampWOTZ
 		}
+		if t.Precision != defaultTimePrecision && strings.HasPrefix(f, "time") {
+			p := strings.Split(f, " ")
+			f = fmt.Sprintf("%s(%d)%s", p[0], t.Precision, strings.Join(p[1:], " "))
+		}
 	case *schema.FloatType:
 		switch f = strings.ToLower(t.T); f {
 		case TypeFloat4:
