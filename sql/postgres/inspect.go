@@ -86,11 +86,6 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 	return s, nil
 }
 
-// InspectTable returns the schema description of the given table.
-func (i *inspect) InspectTable(ctx context.Context, name string, opts *schema.InspectTableOptions) (*schema.Table, error) {
-	return i.inspectTable(ctx, name, opts, nil)
-}
-
 func (i *inspect) inspectTable(ctx context.Context, name string, opts *schema.InspectTableOptions, top *schema.Schema) (*schema.Table, error) {
 	t, err := i.table(ctx, name, opts)
 	if err != nil {

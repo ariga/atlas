@@ -24,36 +24,8 @@ func TestDriver_InspectTable(t *testing.T) {
 		expect func(*require.Assertions, *schema.Table, error)
 	}{
 		{
-			name: "table does not exist",
-			before: func(m mock) {
-				m.version("100000")
-				m.tableExists("public", "users", false)
-			},
-			expect: func(require *require.Assertions, t *schema.Table, err error) {
-				require.Nil(t)
-				require.Error(err)
-				require.True(schema.IsNotExistError(err), "expect not exists error")
-			},
-		},
-		{
-			name: "table does not exist in schema",
-			opts: &schema.InspectTableOptions{
-				Schema: "postgres",
-			},
-			before: func(m mock) {
-				m.version("100000")
-				m.tableExistsInSchema("postgres", "users", false)
-			},
-			expect: func(require *require.Assertions, t *schema.Table, err error) {
-				require.Nil(t)
-				require.Error(err)
-				require.True(schema.IsNotExistError(err), "expect not exists error")
-			},
-		},
-		{
 			name: "column types",
 			before: func(m mock) {
-				m.version("130000")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -141,7 +113,6 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "table indexes",
 			before: func(m mock) {
-				m.version("130000")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -197,10 +168,8 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "fks",
 			before: func(m mock) {
-				m.version("130000")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
-					WithArgs("public", "users").
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
  column_name |      data_type      | is_nullable |         column_default          | character_maximum_length | numeric_precision | datetime_precision | numeric_scale | character_set_name | collation_name | udt_name | is_identity | identity_start | identity_increment | identity_generation | comment | typtype |  oid
@@ -247,7 +216,6 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "check",
 			before: func(m mock) {
-				m.version("130000")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -300,11 +268,22 @@ func TestDriver_InspectTable(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			db, m, err := sqlmock.New()
 			require.NoError(t, err)
-			tt.before(mock{m})
+			mk := mock{m}
+			mk.version("130000")
 			drv, err := Open(db)
 			require.NoError(t, err)
-			table, err := drv.InspectTable(context.Background(), "users", tt.opts)
-			tt.expect(require.New(t), table, err)
+			mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= $1"))).
+				WithArgs("public").
+				WillReturnRows(sqltest.Rows(`
+    schema_name
+--------------------
+ public
+`))
+			mk.tables("public", "users")
+			tt.before(mk)
+			s, err := drv.InspectSchema(context.Background(), "public", nil)
+			require.NoError(t, err)
+			tt.expect(require.New(t), s.Tables[0], err)
 		})
 	}
 }
@@ -479,8 +458,8 @@ func (m mock) tableExists(schema, table string, exists bool) {
 	if exists {
 		rows.AddRow(schema, nil)
 	}
-	m.ExpectQuery(sqltest.Escape(tableQuery)).
-		WithArgs(table).
+	m.ExpectQuery(sqltest.Escape(tableSchemaQuery)).
+		WithArgs(table, schema).
 		WillReturnRows(rows)
 }
 
