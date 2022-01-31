@@ -166,11 +166,23 @@ index "idx_name" {
     ]
     unique = true
 }
+
+index "idx_name" {
+    on {
+        column = table.users.column.rank
+    }
+    on {
+        column = table.users.column.score
+        desc = true
+    }
+    unique = true
+}
 ```
 
 #### Properties
 
-| Name      | Kind      | Type                   | Description                                                  |
-|-----------|-----------|------------------------|--------------------------------------------------------------|
-| columns   | attribute | reference (list)       | The columns that comprise the index.                         |
-| unique    | attribute | boolean                | Defines whether a uniqueness constraint is set on the index. |
+| Name      | Kind      | Type                    | Description                                                  |
+|-----------|-----------|-------------------------|--------------------------------------------------------------|
+| unique    | attribute | boolean                 | Defines whether a uniqueness constraint is set on the index. |
+| columns   | attribute | reference (list)        | The columns that comprise the index.                         |
+| on        | attribute | schema.IndexPart (list) | The index parts that comprise the index.                     |
