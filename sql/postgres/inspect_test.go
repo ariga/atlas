@@ -463,16 +463,6 @@ func (m mock) tableExists(schema, table string, exists bool) {
 		WillReturnRows(rows)
 }
 
-func (m mock) tableExistsInSchema(schema, table string, exists bool) {
-	rows := sqlmock.NewRows([]string{"table_schema", "table_comment"})
-	if exists {
-		rows.AddRow(schema, nil)
-	}
-	m.ExpectQuery(sqltest.Escape(tableSchemaQuery)).
-		WithArgs(table, schema).
-		WillReturnRows(rows)
-}
-
 func (m mock) noIndexes() {
 	m.ExpectQuery(sqltest.Escape(indexesQuery)).
 		WillReturnRows(sqlmock.NewRows([]string{"index_name", "column_name", "primary", "unique", "constraint_type", "predicate", "expression"}))
