@@ -23,7 +23,7 @@ Examples:
 
 atlas schema inspect -d "mysql://user:pass@tcp(localhost:3306)/dbname"
 atlas schema inspect -d "mariadb://user:pass@tcp(localhost:3306)/dbname"
-atlas schema inspect --dsn "postgres://user:pass@host:port/dbname"
+atlas schema inspect --dsn "postgres://user:pass@host:port/dbname?sslmode=disable"
 atlas schema inspect -d "sqlite://file:ex1.db?_fk=1"
 
 Flags:
@@ -161,3 +161,7 @@ read the [SQL Syntax](../ddl/sql.md) documentation.
 
 In the next section, we will see how we can modify our database's schema by 
 applying a modified Atlas HCL file using the Atlas CLI.
+
+## SSL Mode
+
+The default SSL mode for Postgres is `required`. Please follow the [Postgres documentation](https://www.postgresql.org/docs/current/libpq-ssl.html) for configuring your SSL connection for your database, or set SSL mode to `disable` with the search parameter `?sslmode=disable`. For local databases, disabling SSL is appropriate when inspecting and applying schema changes.

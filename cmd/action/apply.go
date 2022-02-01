@@ -40,7 +40,7 @@ If run with the "--dry-run" flag, atlas will exit after printing out the planned
 atlas schema apply -d "mysql://user:pass@tcp(localhost:3306)/" -f atlas.hcl --schema prod --schema staging
 atlas schema apply -d "mysql://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl --dry-run 
 atlas schema apply -d "mariadb://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
-atlas schema apply --dsn "postgres://user:pass@host:port/dbname" -f atlas.hcl
+atlas schema apply --dsn "postgres://user:pass@host:port/dbname?sslmode=disable" -f atlas.hcl
 atlas schema apply -d "sqlite://file:ex1.db?_fk=1" -f atlas.hcl`,
 	}
 )
