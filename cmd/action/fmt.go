@@ -22,7 +22,7 @@ var (
 		Use:   "fmt [path ...]",
 		Short: "Formats Atlas HCL files",
 		Long: "`atlas schema fmt`" + ` formats all ".hcl" files under the given path using
-cannonical HCL layout style as defined by the github.com/hashicorp/hcl/v2/hclwrite package. 
+canonical HCL layout style as defined by the github.com/hashicorp/hcl/v2/hclwrite package.
 Unless stated otherwise, the fmt command will use the current directory.
 
 After running, the command will print the names of the files it has formatted. If all

@@ -461,7 +461,7 @@ func (s *state) alterType(from, to *schema.EnumType) error {
 func (s *state) enumExists(ctx context.Context, name string) (bool, error) {
 	rows, err := s.QueryContext(ctx, "SELECT * FROM pg_type WHERE typname = $1 AND typtype = 'e'", name)
 	if err != nil {
-		return false, fmt.Errorf("check index existance: %w", err)
+		return false, fmt.Errorf("check index existence: %w", err)
 	}
 	defer rows.Close()
 	return rows.Next(), rows.Err()

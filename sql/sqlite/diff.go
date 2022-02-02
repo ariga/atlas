@@ -62,7 +62,7 @@ func (d *diff) ColumnChange(from, to *schema.Column) (schema.ChangeKind, error) 
 func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	fromT, toT := from.Type.Type, to.Type.Type
 	if fromT == nil || toT == nil {
-		return false, fmt.Errorf("sqlite: missing type infromation for column %q", from.Name)
+		return false, fmt.Errorf("sqlite: missing type information for column %q", from.Name)
 	}
 	// Types are mismatched if they do not have the same "type affinity".
 	return reflect.TypeOf(fromT) != reflect.TypeOf(toT), nil

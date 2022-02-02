@@ -493,7 +493,7 @@ var reAutoinc = regexp.MustCompile("(?i)(?:[(,]\\s*)[\"`]?(\\w+)[\"`]?\\s+INTEGE
 func autoinc(t *schema.Table) error {
 	var c CreateStmt
 	if !sqlx.Has(t.Attrs, &c) {
-		return fmt.Errorf("missing CREATE statment for table: %q", t.Name)
+		return fmt.Errorf("missing CREATE statement for table: %q", t.Name)
 	}
 	if t.PrimaryKey == nil || len(t.PrimaryKey.Parts) != 1 || t.PrimaryKey.Parts[0].C == nil {
 		return nil
@@ -528,7 +528,7 @@ var (
 func fillConstName(t *schema.Table) error {
 	var c CreateStmt
 	if !sqlx.Has(t.Attrs, &c) {
-		return fmt.Errorf("missing CREATE statment for table: %q", t.Name)
+		return fmt.Errorf("missing CREATE statement for table: %q", t.Name)
 	}
 	// Loop over table constraints.
 	for _, m := range reFKT.FindAllStringSubmatch(c.S, -1) {
@@ -593,7 +593,7 @@ func matchFK(fk *schema.ForeignKey, columns []string, refTable string, refColumn
 func fillChecks(t *schema.Table) error {
 	var c CreateStmt
 	if !sqlx.Has(t.Attrs, &c) {
-		return fmt.Errorf("missing CREATE statment for table: %q", t.Name)
+		return fmt.Errorf("missing CREATE statement for table: %q", t.Name)
 	}
 	for i := 0; i < len(c.S); {
 		idx := reCheck.FindStringSubmatchIndex(c.S[i:])
