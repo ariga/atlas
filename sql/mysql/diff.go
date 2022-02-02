@@ -265,7 +265,7 @@ var noChange struct{ schema.Change }
 func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	fromT, toT := from.Type.Type, to.Type.Type
 	if fromT == nil || toT == nil {
-		return false, fmt.Errorf("mysql: missing type infromation for column %q", from.Name)
+		return false, fmt.Errorf("mysql: missing type information for column %q", from.Name)
 	}
 	if reflect.TypeOf(fromT) != reflect.TypeOf(toT) {
 		return true, nil

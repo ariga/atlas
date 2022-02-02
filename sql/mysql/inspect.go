@@ -481,7 +481,7 @@ var reAutoinc = regexp.MustCompile(`(?i)\s+AUTO_INCREMENT\s*=\s*(\d+)\s+`)
 func (i *inspect) autoinc(t *schema.Table) (*AutoIncrement, error) {
 	var c CreateStmt
 	if !sqlx.Has(t.Attrs, &c) {
-		return nil, fmt.Errorf("missing CREATE TABLE statment in attribuets for %q", t.Name)
+		return nil, fmt.Errorf("missing CREATE TABLE statement in attribuets for %q", t.Name)
 	}
 	matches := reAutoinc.FindStringSubmatch(c.S)
 	if len(matches) != 2 {

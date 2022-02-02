@@ -146,7 +146,7 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	fromT, toT := from.Type.Type, to.Type.Type
 	if fromT == nil || toT == nil {
-		return false, fmt.Errorf("postgres: missing type infromation for column %q", from.Name)
+		return false, fmt.Errorf("postgres: missing type information for column %q", from.Name)
 	}
 	// Skip checking SERIAL types as they are not real types in the database, but more
 	// like a convenience way for creating integers types with AUTO_INCREMENT property.
