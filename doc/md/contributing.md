@@ -83,7 +83,7 @@ Follow this short guide to contribute documentation improvements and additions:
 
 #### Setting Up
 
-1. [Fork and clone locally](https://docs.github.com/en/github/getting-started-with-github/quickstart/fork-a-repo) the
+1. [Locally fork and clone](https://docs.github.com/en/github/getting-started-with-github/quickstart/fork-a-repo) the
   [repository](https://github.com/ariga/atlas).
 2. The documentation site uses [Docusaurus](https://docusaurus.io/). To run it you will need [Node.js installed](https://nodejs.org/en/).
 3. Install the dependencies:
@@ -119,7 +119,7 @@ doc/md: adding a guide on contribution of docs to atlas
   ---
   ...
   ```
-  Where `id` should be a unique identifier for the document, should be the same as the filename without the `.md` suffix,
+  Where `id` should be a unique identifier for the document,  and should be the same as the filename without the `.md` suffix,
   and `title` is the title of the document as it will appear in the page itself and any navigation element on the site.
 3. If you want the page to appear in the documentation website's sidebar, add a `doc` block to `website/sidebars.js`, for example:
 ```diff
