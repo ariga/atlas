@@ -1,0 +1,133 @@
+# Each test runs on a clean database.
+
+# Apply schema "1.hcl" on fresh database.
+apply 1.hcl
+cmpshow users posts 1.sql
+
+apply 2.hcl
+cmpshow users posts 2.sql
+
+# Below files represent HCL and SQL. File names defined their index in
+# execution order. 1.hcl is executed first, 2.hcl executed second, etc.
+-- 1.hcl --
+schema "$db" {
+    charset = "$charset"
+    collation = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "id" {
+        type = int
+    }
+    primary_key {
+        columns = [table.users.column.id]
+    }
+}
+
+table "posts" {
+    schema = schema.$db
+    column "id" {
+        type = int
+    }
+    column "author_id" {
+        type = int
+        null = true
+    }
+    primary_key {
+        columns = [table.posts.column.id]
+    }
+    foreign_key "owner_id" {
+    	columns = [table.posts.column.author_id]
+    	ref_columns = [table.users.column.id]
+    	on_update = "SET NULL"
+    }
+}
+
+-- 1.sql --
+CREATE TABLE `users` (
+  `id` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+)
+CREATE TABLE `posts` (
+  `id` int(11) NOT NULL,
+  `author_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `owner_id` (`author_id`),
+  CONSTRAINT `owner_id` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON UPDATE SET NULL
+)
+
+-- 8/1.sql --
+CREATE TABLE `users` (
+  `id` int NOT NULL,
+  PRIMARY KEY (`id`)
+)
+CREATE TABLE `posts` (
+  `id` int NOT NULL,
+  `author_id` int DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `owner_id` (`author_id`),
+  CONSTRAINT `owner_id` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON UPDATE SET NULL
+)
+
+-- 2.hcl --
+schema "$db" {
+    charset = "$charset"
+    collation = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "id" {
+        type = int
+    }
+    primary_key {
+        columns = [table.users.column.id]
+    }
+}
+
+table "posts" {
+    schema = schema.$db
+    column "id" {
+        type = int
+    }
+    column "author_id" {
+        type = int
+        null = true
+    }
+    primary_key {
+        columns = [table.posts.column.id]
+    }
+    foreign_key "owner_id" {
+    	columns = [table.posts.column.author_id]
+    	ref_columns = [table.users.column.id]
+    	on_update = "NO ACTION"
+    	on_delete = "CASCADE"
+    }
+}
+
+-- 2.sql --
+CREATE TABLE `users` (
+  `id` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+)
+CREATE TABLE `posts` (
+  `id` int(11) NOT NULL,
+  `author_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `owner_id` (`author_id`),
+  CONSTRAINT `owner_id` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
+)
+
+-- 8/2.sql --
+CREATE TABLE `users` (
+  `id` int NOT NULL,
+  PRIMARY KEY (`id`)
+)
+CREATE TABLE `posts` (
+  `id` int NOT NULL,
+  `author_id` int DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `owner_id` (`author_id`),
+  CONSTRAINT `owner_id` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+)

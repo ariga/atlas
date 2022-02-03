@@ -32,7 +32,7 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 		changes = append(changes, change)
 	}
 	return append(changes, sqlx.CheckDiff(from, to, func(c1, c2 *schema.Check) bool {
-		return c1.Expr != c2.Expr || sqlx.Has(c1.Attrs, &NoInherit{}) != sqlx.Has(c2.Attrs, &NoInherit{})
+		return sqlx.Has(c1.Attrs, &NoInherit{}) == sqlx.Has(c2.Attrs, &NoInherit{})
 	})...), nil
 }
 
@@ -122,14 +122,12 @@ func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 }
 
 // IndexPartAttrChanged reports if the index-part attributes were changed.
-func (*diff) IndexPartAttrChanged(from, to []schema.Attr) bool {
-	// By default, B-tree indexes store rows
-	// in ascending order with nulls last.
-	p1 := &IndexColumnProperty{Asc: true, NullsLast: true}
-	sqlx.Has(from, p1)
-	p2 := &IndexColumnProperty{Asc: true, NullsLast: true}
-	sqlx.Has(to, p2)
-	return p1.Asc != p2.Asc || p1.Desc != p2.Desc || p1.NullsFirst != p2.NullsFirst || p1.NullsLast != p2.NullsLast
+func (*diff) IndexPartAttrChanged(from, to *schema.IndexPart) bool {
+	p1 := &IndexColumnProperty{NullsFirst: from.Desc, NullsLast: !from.Desc}
+	sqlx.Has(from.Attrs, p1)
+	p2 := &IndexColumnProperty{NullsFirst: to.Desc, NullsLast: !to.Desc}
+	sqlx.Has(to.Attrs, p2)
+	return p1.NullsFirst != p2.NullsFirst || p1.NullsLast != p2.NullsLast
 }
 
 // ReferenceChanged reports if the foreign key referential action was changed.
@@ -148,7 +146,7 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	fromT, toT := from.Type.Type, to.Type.Type
 	if fromT == nil || toT == nil {
-		return false, fmt.Errorf("postgres: missing type infromation for column %q", from.Name)
+		return false, fmt.Errorf("postgres: missing type information for column %q", from.Name)
 	}
 	// Skip checking SERIAL types as they are not real types in the database, but more
 	// like a convenience way for creating integers types with AUTO_INCREMENT property.
@@ -177,7 +175,7 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 		*schema.IntegerType, *schema.JSONType, *schema.SpatialType, *schema.StringType,
 		*schema.TimeType, *BitType, *NetworkType, *UserDefinedType:
 		changed = mustFormat(toT) != mustFormat(fromT)
-	case *EnumType:
+	case *enumType:
 		toT := toT.(*schema.EnumType)
 		changed = fromT.T != toT.T || !sqlx.ValuesEqual(fromT.Values, toT.Values)
 	case *schema.EnumType:
@@ -250,7 +248,7 @@ func (d *diff) normalize(table *schema.Table) {
 				// is equivalent to character(1).
 				t.Size = 1
 			}
-		case *EnumType:
+		case *enumType:
 			c.Type.Type = &schema.EnumType{T: t.T, Values: t.Values}
 		case *SerialType:
 			// The definition of "<column> <serial type>" is equivalent to specifying:

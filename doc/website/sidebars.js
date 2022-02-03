@@ -38,8 +38,26 @@ module.exports = {
             type: 'doc',
             id: 'ui/atlas-ui-intro',
         },
+        {
+            type: 'category',
+            label: 'Go API',
+            items: [
+                {type: 'doc', id: 'go-api/intro', label: 'Introduction'},
+                {type: 'doc', id: 'go-api/inspect', label: 'Inspecting Schemas'},
+            ]
+        },
+        {
+            type: 'doc',
+            id: 'contributing',
+        }
     ],
-
+    aboutSidebar: [
+        {
+            type: 'doc',
+            label: 'About',
+            id: 'about',
+        }
+    ]
     // But you can create a sidebar manually
     /*
     tutorialSidebar: [

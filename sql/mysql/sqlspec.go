@@ -99,9 +99,7 @@ func convertCheck(spec *sqlspec.Check) (*schema.Check, error) {
 		if err != nil {
 			return nil, err
 		}
-		if b {
-			c.AddAttrs(&Enforced{})
-		}
+		c.AddAttrs(&Enforced{V: b})
 	}
 	return c, nil
 }
@@ -114,6 +112,13 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 	}
 	if err := convertCharset(spec, &c.Attrs); err != nil {
 		return nil, err
+	}
+	if attr, ok := spec.Attr("on_update"); ok {
+		exp, ok := attr.V.(*schemaspec.RawExpr)
+		if !ok {
+			return nil, fmt.Errorf(`unexpected type %T for atrribute "on_update"`, attr.V)
+		}
+		c.AddAttrs(&OnUpdate{A: exp.X})
 	}
 	return c, err
 }
@@ -172,9 +177,13 @@ func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 	if c, ok := hasCollate(c.Attrs, t.Attrs); ok {
 		col.Extra.Attrs = append(col.Extra.Attrs, specutil.StrAttr("collation", c))
 	}
+	if o := (OnUpdate{}); sqlx.Has(c.Attrs, &o) {
+		col.Extra.Attrs = append(col.Extra.Attrs, specutil.RawAttr("on_update", o.A))
+	}
 	return col, nil
 }
 
+// checkSpec converts from a concrete MySQL schema.Check into a sqlspec.Check.
 func checkSpec(s *schema.Check) *sqlspec.Check {
 	c := specutil.FromCheck(s)
 	if e := (Enforced{}); sqlx.Has(s.Attrs, &e) {
@@ -262,32 +271,34 @@ var TypeRegistry = specutil.NewRegistry(
 			},
 			RType: reflect.TypeOf(SetType{}),
 		},
-		specutil.TypeSpec(TypeBit, specutil.SizeTypeAttr(false)),
-		specutil.TypeSpec(TypeInt, unsignedTypeAttr(), specutil.SizeTypeAttr(false)),
-		specutil.TypeSpec(TypeTinyInt, unsignedTypeAttr(), specutil.SizeTypeAttr(false)),
-		specutil.TypeSpec(TypeSmallInt, unsignedTypeAttr(), specutil.SizeTypeAttr(false)),
-		specutil.TypeSpec(TypeMediumInt, unsignedTypeAttr(), specutil.SizeTypeAttr(false)),
-		specutil.TypeSpec(TypeBigInt, unsignedTypeAttr(), specutil.SizeTypeAttr(false)),
-		specutil.TypeSpec(TypeDecimal, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
-		specutil.TypeSpec(TypeNumeric, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
-		specutil.TypeSpec(TypeFloat, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
-		specutil.TypeSpec(TypeDouble, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
-		specutil.TypeSpec(TypeReal, &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false}),
-		specutil.TypeSpec(TypeTimestamp),
-		specutil.TypeSpec(TypeDate),
-		specutil.TypeSpec(TypeTime),
-		specutil.TypeSpec(TypeDateTime),
-		specutil.TypeSpec(TypeYear),
-		specutil.TypeSpec(TypeVarchar, specutil.SizeTypeAttr(true)),
-		specutil.TypeSpec(TypeChar, specutil.SizeTypeAttr(false)),
-		specutil.TypeSpec(TypeVarBinary, specutil.SizeTypeAttr(false)),
-		specutil.TypeSpec(TypeBinary, specutil.SizeTypeAttr(false)),
-		specutil.TypeSpec(TypeBlob, specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec(TypeBool),
+		specutil.TypeSpec(TypeBoolean),
+		specutil.TypeSpec(TypeBit, specutil.WithAttributes(specutil.SizeTypeAttr(false))),
+		specutil.TypeSpec(TypeInt, specutil.WithAttributes(unsignedTypeAttr(), specutil.SizeTypeAttr(false))),
+		specutil.TypeSpec(TypeTinyInt, specutil.WithAttributes(unsignedTypeAttr(), specutil.SizeTypeAttr(false))),
+		specutil.TypeSpec(TypeSmallInt, specutil.WithAttributes(unsignedTypeAttr(), specutil.SizeTypeAttr(false))),
+		specutil.TypeSpec(TypeMediumInt, specutil.WithAttributes(unsignedTypeAttr(), specutil.SizeTypeAttr(false))),
+		specutil.TypeSpec(TypeBigInt, specutil.WithAttributes(unsignedTypeAttr(), specutil.SizeTypeAttr(false))),
+		specutil.TypeSpec(TypeDecimal, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		specutil.TypeSpec(TypeNumeric, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		specutil.TypeSpec(TypeFloat, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		specutil.TypeSpec(TypeDouble, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		specutil.TypeSpec(TypeReal, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		specutil.TypeSpec(TypeTimestamp, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false})),
+		specutil.TypeSpec(TypeDate, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false})),
+		specutil.TypeSpec(TypeTime, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false})),
+		specutil.TypeSpec(TypeDateTime, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false})),
+		specutil.TypeSpec(TypeYear, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false})),
+		specutil.TypeSpec(TypeVarchar, specutil.WithAttributes(specutil.SizeTypeAttr(true))),
+		specutil.TypeSpec(TypeChar, specutil.WithAttributes(specutil.SizeTypeAttr(false))),
+		specutil.TypeSpec(TypeVarBinary, specutil.WithAttributes(specutil.SizeTypeAttr(false))),
+		specutil.TypeSpec(TypeBinary, specutil.WithAttributes(specutil.SizeTypeAttr(false))),
+		specutil.TypeSpec(TypeBlob, specutil.WithAttributes(specutil.SizeTypeAttr(false))),
 		specutil.TypeSpec(TypeTinyBlob),
 		specutil.TypeSpec(TypeMediumBlob),
 		specutil.TypeSpec(TypeLongBlob),
 		specutil.TypeSpec(TypeJSON),
-		specutil.TypeSpec(TypeText, specutil.SizeTypeAttr(false)),
+		specutil.TypeSpec(TypeText, specutil.WithAttributes(specutil.SizeTypeAttr(false))),
 		specutil.TypeSpec(TypeTinyText),
 		specutil.TypeSpec(TypeMediumText),
 		specutil.TypeSpec(TypeLongText),

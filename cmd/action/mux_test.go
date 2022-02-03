@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package action_test
 
 import (
@@ -115,4 +119,37 @@ func Test_SQLiteInMemory(t *testing.T) {
 	r := require.New(t)
 	_, err := action.SchemaNameFromDSN("sqlite://file:test.db?cache=shared&mode=memory")
 	r.NoError(err)
+}
+
+func Test_PostgresSchemaDSN(t *testing.T) {
+	var tests = []struct {
+		dsn      string
+		expected string
+		wantErr  bool
+	}{
+		{
+			dsn:      "postgres://localhost:5432/dbname?search_path=foo",
+			expected: "foo",
+		},
+		{
+			dsn:      "postgres://localhost:5432/dbname",
+			expected: "",
+		},
+		{
+			dsn:      "postgres://(bad:host)?search_path=foo",
+			expected: "",
+			wantErr:  true,
+		},
+		{
+			dsn:      "postgres://localhost:5432/dbname?search_path=",
+			expected: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.dsn, func(t *testing.T) {
+			schema, err := action.SchemaNameFromDSN(tt.dsn)
+			require.Equal(t, tt.wantErr, err != nil)
+			require.Equal(t, tt.expected, schema)
+		})
+	}
 }

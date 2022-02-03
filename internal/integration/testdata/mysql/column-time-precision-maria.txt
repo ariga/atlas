@@ -1,0 +1,49 @@
+# Each test runs on a clean database.
+only maria*
+
+# Apply schema "1.hcl" on fresh database.
+apply 1.hcl
+
+# Compare the result of "SHOW TABLE users" with the content of a file named '1.sql'.
+cmpshow foo 1.sql
+
+# Files
+-- 1.hcl --
+schema "$db" {}
+
+table "foo" {
+  schema    = schema.$db
+  column "id" {
+    null = false
+    type = char(36)
+  }
+  column "precision_default" {
+    null      = false
+    type      = timestamp
+    default   = sql("CURRENT_TIMESTAMP")
+    on_update = sql("CURRENT_TIMESTAMP")
+  }
+  column "create_time" {
+    null    = false
+    type    = timestamp(6)
+    default = sql("CURRENT_TIMESTAMP(6)")
+  }
+  column "update_time" {
+    null    = false
+    type    = datetime(6)
+    default = sql("CURRENT_TIMESTAMP(6)")
+    on_update = sql("CURRENT_TIMESTAMP(6)")
+  }
+  primary_key {
+    columns = [table.foo.column.id, ]
+  }
+}
+
+-- 1.sql --
+CREATE TABLE `foo` (
+  `id` char(36) NOT NULL,
+  `precision_default` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `create_time` timestamp(6) NOT NULL DEFAULT current_timestamp(6),
+  `update_time` datetime(6) NOT NULL DEFAULT current_timestamp(6) ON UPDATE current_timestamp(6),
+  PRIMARY KEY (`id`)
+)

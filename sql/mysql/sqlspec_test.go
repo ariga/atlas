@@ -30,6 +30,15 @@ table "table" {
 	column "account_name" {
 		type = varchar(32)
 	}
+	column "created_at" {
+		type    = datetime(4)
+		default = sql("now(4)")
+	}
+	column "updated_at" {
+		type      = timestamp(6)
+		default   = sql("current_timestamp(6)")
+		on_update = sql("current_timestamp(6)")
+	}
 	primary_key {
 		columns = [table.table.column.col]
 	}
@@ -56,6 +65,10 @@ table "table" {
 	check {
 		expr     = "price1 <> price2"
 		enforced = true
+	}
+	check {
+		expr     = "price2 <> price1"
+		enforced = false
 	}
 	comment = "table comment"
 }
@@ -125,6 +138,27 @@ table "accounts" {
 						},
 					},
 				},
+				{
+					Name: "created_at",
+					Type: &schema.ColumnType{
+						Type: &schema.TimeType{
+							T:         TypeDateTime,
+							Precision: 4,
+						},
+					},
+					Default: &schema.RawExpr{X: "now(4)"},
+				},
+				{
+					Name: "updated_at",
+					Type: &schema.ColumnType{
+						Type: &schema.TimeType{
+							T:         TypeTimestamp,
+							Precision: 6,
+						},
+					},
+					Default: &schema.RawExpr{X: "current_timestamp(6)"},
+					Attrs:   []schema.Attr{&OnUpdate{A: "current_timestamp(6)"}},
+				},
 			},
 			Attrs: []schema.Attr{
 				&schema.Check{
@@ -133,7 +167,11 @@ table "accounts" {
 				},
 				&schema.Check{
 					Expr:  "price1 <> price2",
-					Attrs: []schema.Attr{&Enforced{}},
+					Attrs: []schema.Attr{&Enforced{V: true}},
+				},
+				&schema.Check{
+					Expr:  "price2 <> price1",
+					Attrs: []schema.Attr{&Enforced{V: false}},
 				},
 				&schema.Comment{Text: "table comment"},
 			},
@@ -377,7 +415,7 @@ func TestMarshalSpec_Comment(t *testing.T) {
   }
   index "index" {
     unique  = true
-    columns = [table.users.column.a, ]
+    columns = [table.users.column.a]
     comment = "index comment"
   }
 }
@@ -425,6 +463,137 @@ func TestMarshalSpec_Check(t *testing.T) {
   check {
     expr     = "price1 <> price2"
     enforced = true
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestUnmarshalSpec_IndexParts(t *testing.T) {
+	var (
+		s schema.Schema
+		f = `
+schema "test" {}
+table "users" {
+	schema = schema.test
+	column "name" {
+		type = text
+	}
+	index "idx" {
+		on {
+			column = table.users.column.name
+			desc = true
+		}
+		on {
+			expr = "lower(name)"
+		}
+	}
+}
+`
+	)
+	err := UnmarshalHCL([]byte(f), &s)
+	require.NoError(t, err)
+	c := schema.NewStringColumn("name", "text")
+	exp := schema.New("test").
+		AddTables(
+			schema.NewTable("users").
+				AddColumns(c).
+				AddIndexes(
+					schema.NewIndex("idx").
+						AddParts(
+							schema.NewColumnPart(c).SetDesc(true),
+							schema.NewExprPart(&schema.RawExpr{X: "lower(name)"}),
+						),
+				),
+		)
+	exp.Tables[0].Columns[0].Indexes = nil
+	require.EqualValues(t, exp, &s)
+}
+
+func TestMarshalSpec_IndexParts(t *testing.T) {
+	c := schema.NewStringColumn("name", "text")
+	s := schema.New("test").
+		AddTables(
+			schema.NewTable("users").
+				AddColumns(c).
+				AddIndexes(
+					schema.NewIndex("idx").
+						AddParts(
+							schema.NewColumnPart(c).SetDesc(true),
+							schema.NewExprPart(&schema.RawExpr{X: "lower(name)"}),
+						),
+				),
+		)
+	buf, err := MarshalHCL(s)
+	require.NoError(t, err)
+	exp := `table "users" {
+  schema = schema.test
+  column "name" {
+    null = false
+    type = text
+  }
+  index "idx" {
+    on {
+      desc   = true
+      column = table.users.column.name
+    }
+    on {
+      expr = "lower(name)"
+    }
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, exp, buf)
+}
+
+func TestMarshalSpec_TimePrecision(t *testing.T) {
+	s := schema.New("test").
+		AddTables(
+			schema.NewTable("times").
+				AddColumns(
+					schema.NewTimeColumn("tTimeDef", TypeTime),
+					schema.NewTimeColumn("tTime", TypeTime, schema.TimePrecision(1)),
+					schema.NewTimeColumn("tDatetime", TypeDateTime, schema.TimePrecision(2)),
+					schema.NewTimeColumn("tTimestamp", TypeTimestamp, schema.TimePrecision(3)).
+						SetDefault(&schema.RawExpr{X: "current_timestamp(3)"}).
+						AddAttrs(&OnUpdate{A: "current_timestamp(3)"}),
+					schema.NewTimeColumn("tDate", TypeDate, schema.TimePrecision(2)),
+					schema.NewTimeColumn("tYear", TypeYear, schema.TimePrecision(2)),
+				),
+		)
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "times" {
+  schema = schema.test
+  column "tTimeDef" {
+    null = false
+    type = time
+  }
+  column "tTime" {
+    null = false
+    type = time(1)
+  }
+  column "tDatetime" {
+    null = false
+    type = datetime(2)
+  }
+  column "tTimestamp" {
+    null      = false
+    type      = timestamp(3)
+    default   = sql("current_timestamp(3)")
+    on_update = sql("current_timestamp(3)")
+  }
+  column "tDate" {
+    null = false
+    type = date(2)
+  }
+  column "tYear" {
+    null = false
+    type = year(2)
   }
 }
 schema "test" {
@@ -593,20 +762,40 @@ func TestTypes(t *testing.T) {
 			expected: &schema.TimeType{T: TypeTimestamp},
 		},
 		{
+			typeExpr: "timestamp(6)",
+			expected: &schema.TimeType{T: TypeTimestamp, Precision: 6},
+		},
+		{
 			typeExpr: "date",
 			expected: &schema.TimeType{T: TypeDate},
+		},
+		{
+			typeExpr: "date(2)",
+			expected: &schema.TimeType{T: TypeDate, Precision: 2},
 		},
 		{
 			typeExpr: "time",
 			expected: &schema.TimeType{T: TypeTime},
 		},
 		{
+			typeExpr: "time(6)",
+			expected: &schema.TimeType{T: TypeTime, Precision: 6},
+		},
+		{
 			typeExpr: "datetime",
 			expected: &schema.TimeType{T: TypeDateTime},
 		},
 		{
+			typeExpr: "datetime(6)",
+			expected: &schema.TimeType{T: TypeDateTime, Precision: 6},
+		},
+		{
 			typeExpr: "year",
 			expected: &schema.TimeType{T: TypeYear},
+		},
+		{
+			typeExpr: "year(2)",
+			expected: &schema.TimeType{T: TypeYear, Precision: 2},
 		},
 		{
 			typeExpr: "varchar(10)",
@@ -661,10 +850,6 @@ func TestTypes(t *testing.T) {
 			expected: &schema.StringType{T: TypeLongText},
 		},
 		{
-			typeExpr: `enum("a","b")`,
-			expected: &schema.EnumType{T: "enum", Values: []string{"a", "b"}},
-		},
-		{
 			typeExpr: `set("a","b")`,
 			expected: &SetType{Values: []string{"a", "b"}},
 		},
@@ -699,6 +884,18 @@ func TestTypes(t *testing.T) {
 		{
 			typeExpr: "geometrycollection",
 			expected: &schema.SpatialType{T: TypeGeometryCollection},
+		},
+		{
+			typeExpr: "tinyint(1)",
+			expected: &schema.BoolType{T: TypeBool},
+		},
+		{
+			typeExpr: "bool",
+			expected: &schema.BoolType{T: TypeBool},
+		},
+		{
+			typeExpr: "boolean",
+			expected: &schema.BoolType{T: TypeBool},
 		},
 	}
 	for _, tt := range tests {

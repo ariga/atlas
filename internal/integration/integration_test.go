@@ -8,11 +8,13 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/schema"
+
 	entsql "entgo.io/ent/dialect/sql"
 	"entgo.io/ent/entc/integration/ent"
 	"github.com/stretchr/testify/require"
@@ -32,6 +34,7 @@ type T interface {
 	migrate(...schema.Change)
 	diff(*schema.Table, *schema.Table) []schema.Change
 	applyHcl(spec string)
+	applyRealmHcl(spec string)
 }
 
 func testAddDrop(t T) {
@@ -168,6 +171,67 @@ func testCLISchemaInspect(t T, h string, dsn string, unmarshaler schemaspec.Unma
 	require.Equal(t, expected, actual)
 }
 
+func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, unmarshaler schemaspec.Unmarshaler) {
+	// Required to have a clean "stderr" while running first time.
+	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	f := "atlas.hcl"
+	err = ioutil.WriteFile(f, []byte(h), 0644)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		os.Remove("atlas.hcl")
+	})
+	require.NoError(t, err)
+	var expected schema.Realm
+	err = unmarshaler.UnmarshalSpec([]byte(h), &expected)
+	require.NoError(t, err)
+	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+		"schema",
+		"apply",
+		"-f",
+		"atlas.hcl",
+		"-d",
+		dsn,
+		"-s",
+		strings.Join(schemas, ","),
+	)
+	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	stdin, err := cmd.StdinPipe()
+	require.NoError(t, err)
+	defer stdin.Close()
+	_, err = io.WriteString(stdin, "\n")
+	require.NoError(t, cmd.Run(), stderr.String())
+	require.Contains(t, stdout.String(), `-- Add new schema named "test2"`)
+}
+
+func testCLIMultiSchemaInspect(t T, h string, dsn string, schemas []string, unmarshaler schemaspec.Unmarshaler) {
+	// Required to have a clean "stderr" while running first time.
+	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	require.NoError(t, err)
+	var expected schema.Realm
+	err = unmarshaler.UnmarshalSpec([]byte(h), &expected)
+	require.NoError(t, err)
+	t.applyRealmHcl(h)
+	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+		"schema",
+		"inspect",
+		"-d",
+		dsn,
+		"-s",
+		strings.Join(schemas, ","),
+	)
+	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	require.NoError(t, cmd.Run(), stderr.String())
+	var actual schema.Realm
+	err = unmarshaler.UnmarshalSpec(stdout.Bytes(), &actual)
+	require.NoError(t, err)
+	require.Empty(t, stderr.String())
+	require.Equal(t, expected, actual)
+}
+
 func testCLISchemaApply(t T, h string, dsn string) {
 	// Required to have a clean "stderr" while running first time.
 	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
@@ -200,6 +264,92 @@ func testCLISchemaApply(t T, h string, dsn string) {
 	require.NotNil(t, u)
 }
 
+func testCLISchemaApplyDry(t T, h string, dsn string) {
+	// Required to have a clean "stderr" while running first time.
+	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	require.NoError(t, err)
+	t.dropTables("users")
+	f := "atlas.hcl"
+	err = ioutil.WriteFile(f, []byte(h), 0644)
+	require.NoError(t, err)
+	defer os.Remove(f)
+	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+		"schema",
+		"apply",
+		"-d",
+		dsn,
+		"-f",
+		f,
+		"--dry-run",
+	)
+	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	stdin, err := cmd.StdinPipe()
+	require.NoError(t, err)
+	defer stdin.Close()
+	_, err = io.WriteString(stdin, "\n")
+	require.NoError(t, err)
+	require.NoError(t, cmd.Run(), stderr.String(), stdout.String())
+	require.Empty(t, stderr.String(), stderr.String())
+	require.Contains(t, stdout.String(), "-- Planned")
+	require.NotContains(t, stdout.String(), "Are you sure?", "dry run should not prompt")
+	realm := t.loadRealm()
+	_, ok := realm.Schemas[0].Table("users")
+	require.False(t, ok, "expected users table not to be created")
+}
+
+func testCLISchemaApplyAutoApprove(t T, h string, dsn string) {
+	// Required to have a clean "stderr" while running first time.
+	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	require.NoError(t, err)
+	t.dropTables("users")
+	f := "atlas.hcl"
+	err = ioutil.WriteFile(f, []byte(h), 0644)
+	require.NoError(t, err)
+	defer os.Remove(f)
+	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+		"schema",
+		"apply",
+		"-d",
+		dsn,
+		"-f",
+		f,
+		"--auto-approve",
+	)
+	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	require.NoError(t, err)
+	require.NoError(t, cmd.Run(), stderr.String(), stdout.String())
+	require.Empty(t, stderr.String(), stderr.String())
+	require.Contains(t, stdout.String(), "-- Planned")
+	u := t.loadUsers()
+	require.NotNil(t, u)
+}
+
+func testCLISchemaDiff(t T, dsn string) {
+	// Required to have a clean "stderr" while running first time.
+	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+
+	require.NoError(t, err)
+	t.dropTables("users")
+	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+		"schema",
+		"diff",
+		"--from",
+		dsn,
+		"--to",
+		dsn,
+	)
+	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	require.NoError(t, cmd.Run(), stderr.String(), stdout.String())
+	require.Empty(t, stderr.String(), stderr.String())
+	require.Contains(t, stdout.String(), "Schemas are synced, no changes to be made.")
+}
+
 func TestCLI_Version(t *testing.T) {
 	// Required to have a clean "stderr" while running first time.
 	require.NoError(t, exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run())
@@ -224,6 +374,16 @@ func TestCLI_Version(t *testing.T) {
 				"version",
 			),
 			expected: "atlas CLI version v1.2.3\nhttps://github.com/ariga/atlas/releases/tag/v1.2.3\n",
+		},
+		{
+			name: "canary",
+			cmd: exec.Command("go", "run",
+				"-ldflags",
+				"-X ariga.io/atlas/cmd/action.version=v0.3.0-6539f2704b5d-canary",
+				"ariga.io/atlas/cmd/atlas",
+				"version",
+			),
+			expected: "atlas CLI version v0.3.0-6539f2704b5d-canary\nhttps://github.com/ariga/atlas/releases/tag/latest\n",
 		},
 	}
 	for _, tt := range tests {

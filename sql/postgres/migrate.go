@@ -300,7 +300,8 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			reverse.Comma().P("DROP CONSTRAINT").Ident(change.F.Symbol)
 		case *schema.DropForeignKey:
 			b.P("DROP CONSTRAINT").Ident(change.F.Symbol)
-			reversible = false
+			reverse.P("ADD")
+			s.fks(reverse, change.F)
 		case *schema.AddCheck:
 			check(b.P("ADD"), change.C)
 			// Reverse operation is supported if
@@ -398,10 +399,13 @@ func (*state) indexComment(t *schema.Table, idx *schema.Index, to, from string) 
 }
 
 func (s *state) dropIndexes(t *schema.Table, indexes ...*schema.Index) {
-	for _, idx := range indexes {
+	rs := &state{conn: s.conn}
+	rs.addIndexes(t, indexes...)
+	for i, idx := range indexes {
 		s.append(&migrate.Change{
-			Cmd:     Build("DROP INDEX").Ident(idx.Name).String(),
-			Comment: fmt.Sprintf("Drop index %q to table: %q", idx.Name, t.Name),
+			Cmd:     rs.Changes[i].Reverse,
+			Comment: fmt.Sprintf("Drop index %q from table: %q", idx.Name, t.Name),
+			Reverse: rs.Changes[i].Cmd,
 		})
 	}
 }
@@ -457,7 +461,7 @@ func (s *state) alterType(from, to *schema.EnumType) error {
 func (s *state) enumExists(ctx context.Context, name string) (bool, error) {
 	rows, err := s.QueryContext(ctx, "SELECT * FROM pg_type WHERE typname = $1 AND typtype = 'e'", name)
 	if err != nil {
-		return false, fmt.Errorf("check index existance: %w", err)
+		return false, fmt.Errorf("check index existence: %w", err)
 	}
 	defer rows.Close()
 	return rows.Next(), rows.Err()
@@ -478,8 +482,22 @@ func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) {
 		s.indexAttrs(b, idx.Attrs)
 		s.append(&migrate.Change{
 			Cmd:     b.String(),
-			Reverse: Build("DROP INDEX").Ident(idx.Name).String(),
 			Comment: fmt.Sprintf("Create index %q to table: %q", idx.Name, t.Name),
+			Reverse: func() string {
+				b := Build("DROP INDEX")
+				// Unlike MySQL, the DROP command is not attached to ALTER TABLE.
+				// Therefore, we print indexes with their qualified name, because
+				// the connection that executes the statements may not be attached
+				// to the this schema.
+				if t.Schema != nil {
+					b.WriteByte(b.QuoteChar)
+					b.WriteString(t.Schema.Name)
+					b.WriteByte(b.QuoteChar)
+					b.WriteByte('.')
+				}
+				b.Ident(idx.Name)
+				return b.String()
+			}(),
 		})
 	}
 }
@@ -563,7 +581,7 @@ func (s *state) alterColumn(b *sqlx.Builder, k schema.ChangeKind, c *schema.Colu
 		case k.Is(schema.ChangeAttr):
 			id, ok := identity(c.Attrs)
 			if !ok {
-				return fmt.Errorf("unexpected attribute change: %v", c.Attrs)
+				return fmt.Errorf("unexpected attribute change (expect IDENTITY): %v", c.Attrs)
 			}
 			// The syntax for altering identity columns is identical to sequence_options.
 			// https://www.postgresql.org/docs/current/sql-altersequence.html
@@ -591,33 +609,33 @@ func (s *state) indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {
 			case part.X != nil:
 				b.WriteString(part.X.(*schema.RawExpr).X)
 			}
-			for _, attr := range parts[i].Attrs {
-				s.partAttr(b, attr)
-			}
+			s.partAttrs(b, parts[i])
 		})
 	})
 }
 
-func (s *state) partAttr(b *sqlx.Builder, attr schema.Attr) {
-	switch attr := attr.(type) {
-	case *IndexColumnProperty:
-		switch {
-		case attr.Desc && attr.NullsLast:
-			b.P("DESC NULL LAST")
-		case attr.Desc:
-			// Rows in descending order are stored
-			// with nulls first by default.
-			b.P("DESC")
-		case attr.Asc && attr.NullsFirst:
-			b.P("NULL FIRST")
-		case attr.Asc && attr.NullsLast:
-			// Do nothing, since B-tree indexes store
-			// rows in ascending order with nulls last.
+func (s *state) partAttrs(b *sqlx.Builder, p *schema.IndexPart) {
+	if p.Desc {
+		b.P("DESC")
+	}
+	for _, attr := range p.Attrs {
+		switch attr := attr.(type) {
+		case *IndexColumnProperty:
+			switch {
+			// Defaults when DESC is specified.
+			case p.Desc && attr.NullsFirst:
+			case p.Desc && attr.NullsLast:
+				b.P("NULL LAST")
+			// Defaults when DESC is not specified.
+			case !p.Desc && attr.NullsLast:
+			case !p.Desc && attr.NullsFirst:
+				b.P("NULL FIRST")
+			}
+		case *schema.Collation:
+			b.P("COLLATE").Ident(attr.V)
+		default:
+			panic(fmt.Sprintf("unexpected index part attribute: %T", attr))
 		}
-	case *schema.Collation:
-		b.P("COLLATE").Ident(attr.V)
-	default:
-		panic(fmt.Sprintf("unexpected index part attribute: %T", attr))
 	}
 }
 

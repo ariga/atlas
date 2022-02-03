@@ -50,9 +50,26 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 	if _, ok := d.supportsCheck(); !ok && sqlx.Has(to.Attrs, &schema.Check{}) {
 		return nil, fmt.Errorf("version %q does not support CHECK constraints", d.version)
 	}
-	return append(changes, sqlx.CheckDiff(from, to, func(c1, c2 *schema.Check) bool {
-		return c1.Expr != c2.Expr || sqlx.Has(c1.Attrs, &Enforced{}) != sqlx.Has(c2.Attrs, &Enforced{})
-	})...), nil
+	// For MariaDB, we skip JSON CHECK constraints that were created by the databases,
+	// or by Atlas for older versions. These CHECK constraints (inlined on the columns)
+	// also cannot be dropped using "DROP CONSTRAINTS", but can be modified and dropped
+	// using "MODIFY COLUMN".
+	var checks []schema.Change
+	for _, c := range sqlx.CheckDiff(from, to, func(c1, c2 *schema.Check) bool {
+		return enforced(c1.Attrs) == enforced(c2.Attrs)
+	}) {
+		drop, ok := c.(*schema.DropCheck)
+		if !ok || !strings.HasPrefix(drop.C.Expr, "json_valid") {
+			checks = append(checks, c)
+			continue
+		}
+		// Generated CHECK have the form of "json_valid(`<column>`)"
+		// and named as the column.
+		if _, ok := to.Column(drop.C.Name); !ok {
+			checks = append(checks, c)
+		}
+	}
+	return append(changes, checks...), nil
 }
 
 // ColumnChange returns the schema changes (if any) for migrating one column to the other.
@@ -112,12 +129,9 @@ func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 }
 
 // IndexPartAttrChanged reports if the index-part attributes (collation or prefix) were changed.
-func (*diff) IndexPartAttrChanged(from, to []schema.Attr) bool {
+func (*diff) IndexPartAttrChanged(from, to *schema.IndexPart) bool {
 	var s1, s2 SubPart
-	if sqlx.Has(from, &s1) != sqlx.Has(to, &s2) || s1.Len != s2.Len {
-		return true
-	}
-	return indexCollation(from).V != indexCollation(to).V
+	return sqlx.Has(from.Attrs, &s1) != sqlx.Has(to.Attrs, &s2) || s1.Len != s2.Len
 }
 
 // ReferenceChanged reports if the foreign key referential action was changed.
@@ -226,16 +240,6 @@ func (*diff) autoIncChange(from, to []schema.Attr) schema.Change {
 	return noChange
 }
 
-// indexCollation returns the index collation from its attribute.
-// The default collation is ascending if no order was specified.
-func indexCollation(attr []schema.Attr) *schema.Collation {
-	c := &schema.Collation{V: "A"}
-	if sqlx.Has(attr, c) {
-		c.V = strings.ToUpper(c.V)
-	}
-	return c
-}
-
 // indexType returns the index type from its attribute.
 // The default type is BTREE if no type was specified.
 func indexType(attr []schema.Attr) *IndexType {
@@ -246,13 +250,22 @@ func indexType(attr []schema.Attr) *IndexType {
 	return t
 }
 
+// enforced returns the ENFORCED attribute for the CHECK
+// constraint. A CHECK is ENFORCED if not state otherwise.
+func enforced(attr []schema.Attr) bool {
+	if e := (Enforced{}); sqlx.Has(attr, &e) {
+		return e.V
+	}
+	return true
+}
+
 // noChange describes a zero change.
 var noChange struct{ schema.Change }
 
 func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	fromT, toT := from.Type.Type, to.Type.Type
 	if fromT == nil || toT == nil {
-		return false, fmt.Errorf("mysql: missing type infromation for column %q", from.Name)
+		return false, fmt.Errorf("mysql: missing type information for column %q", from.Name)
 	}
 	if reflect.TypeOf(fromT) != reflect.TypeOf(toT) {
 		return true, nil

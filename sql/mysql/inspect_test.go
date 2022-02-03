@@ -19,52 +19,24 @@ import (
 
 func TestDriver_InspectTable(t *testing.T) {
 	tests := []struct {
-		name   string
-		opts   *schema.InspectTableOptions
-		before func(mock)
-		expect func(*require.Assertions, *schema.Table, error)
+		name    string
+		version string
+		before  func(mock)
+		expect  func(*require.Assertions, *schema.Table, error)
 	}{
-		{
-			name: "table does not exist",
-			before: func(m mock) {
-				m.version("5.7.23")
-				m.tableExists("public", "users", false)
-			},
-			expect: func(require *require.Assertions, t *schema.Table, err error) {
-				require.Nil(t)
-				require.Error(err)
-				require.True(schema.IsNotExistError(err), "expect not exists error")
-			},
-		},
-		{
-			name: "table does not exist in schema",
-			opts: &schema.InspectTableOptions{
-				Schema: "public",
-			},
-			before: func(m mock) {
-				m.version("5.7.23")
-				m.tableExistsInSchema("public", "users", false)
-			},
-			expect: func(require *require.Assertions, t *schema.Table, err error) {
-				require.Nil(t)
-				require.Error(err)
-				require.True(schema.IsNotExistError(err), "expect not exists error")
-			},
-		},
 		{
 			name: "table collation",
 			before: func(m mock) {
-				m.version("8.0.13")
-				m.ExpectQuery(sqltest.Escape(tableQuery)).
-					WithArgs("users").
+				m.ExpectQuery(sqltest.Escape(tableSchemaQuery)).
+					WithArgs("users", "public").
 					WillReturnRows(sqltest.Rows(`
 +--------------+--------------------+--------------------+----------------+---------------+--------------------+
 | TABLE_SCHEMA | CHARACTER_SET_NAME | TABLE_COLLATION    | AUTO_INCREMENT | TABLE_COMMENT | CREATE_OPTIONS     |
 +--------------+--------------------+--------------------+----------------+---------------+--------------------+
-| test         | utf8mb4            | utf8mb4_0900_ai_ci | nil            | Comment       | COMPRESSION="ZLIB" |
+| public       | utf8mb4            | utf8mb4_0900_ai_ci | nil            | Comment       | COMPRESSION="ZLIB" |
 +--------------+--------------------+--------------------+----------------+---------------+--------------------+
 `))
-				m.ExpectQuery(sqltest.Escape("SHOW CREATE TABLE `test`.`users`")).
+				m.ExpectQuery(sqltest.Escape("SHOW CREATE TABLE `public`.`users`")).
 					WillReturnRows(sqltest.Rows(`
 +-------+---------------------------------------------------------------------------------------------------------------------------------------------+
 | Table | Create Table                                                                                                                                |
@@ -73,7 +45,7 @@ func TestDriver_InspectTable(t *testing.T) {
 +-------+---------------------------------------------------------------------------------------------------------------------------------------------+
 `))
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
-					WithArgs("test", "users").
+					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
 +--------------------+----------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
 | column_name        | column_type          | column_comment       | is_nullable | column_key | column_default | extra          | character_set_name | collation_name |
@@ -81,7 +53,15 @@ func TestDriver_InspectTable(t *testing.T) {
 | id                 | bigint(20)           |                      | NO          | PRI        | NULL           | auto_increment | NULL               | NULL           |
 +--------------------+----------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
 `))
-				m.noIndexes()
+				m.ExpectQuery(sqltest.Escape(indexesExprQuery)).
+					WithArgs("public", "users").
+					WillReturnRows(sqltest.Rows(`
++--------------+-------------+------------+--------------+--------------+----------+--------------+------------+------------------+
+| INDEX_NAME   | COLUMN_NAME | NON_UNIQUE | SEQ_IN_INDEX | INDEX_TYPE   | DESC     | COMMENT      | SUB_PART   | EXPRESSION       |
++--------------+-------------+------------+--------------+--------------+----------+--------------+------------+------------------+
+| PRIMARY      | id          |          0 |            1 | BTREE        | 0        |              |       NULL |      NULL        |
++--------------+-------------+------------+--------------+--------------+----------+--------------+------------+------------------+
+`))
 				m.noFKs()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
@@ -105,7 +85,6 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "int types",
 			before: func(m mock) {
-				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -135,11 +114,9 @@ func TestDriver_InspectTable(t *testing.T) {
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
 				require.Equal("users", t.Name)
-				require.Len(t.PrimaryKey.Parts, 1)
-				require.True(t.PrimaryKey.Parts[0].C == t.Columns[0])
 				require.EqualValues([]*schema.Column{
 					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint"}}},
-					{Name: "v57_tiny", Type: &schema.ColumnType{Raw: "tinyint(1)", Type: &schema.BoolType{T: "tinyint"}}},
+					{Name: "v57_tiny", Type: &schema.ColumnType{Raw: "tinyint(1)", Type: &schema.BoolType{T: "bool"}}},
 					{Name: "v57_tiny_unsigned", Type: &schema.ColumnType{Raw: "tinyint(4) unsigned", Type: &schema.IntegerType{T: "tinyint", Unsigned: true}}},
 					{Name: "v57_small", Type: &schema.ColumnType{Raw: "smallint(6)", Type: &schema.IntegerType{T: "smallint"}}},
 					{Name: "v57_small_unsigned", Type: &schema.ColumnType{Raw: "smallint(6) unsigned", Type: &schema.IntegerType{T: "smallint", Unsigned: true}}},
@@ -156,9 +133,9 @@ func TestDriver_InspectTable(t *testing.T) {
 			},
 		},
 		{
-			name: "maria/types",
+			name:    "maria/types",
+			version: "10.7.1-MariaDB",
 			before: func(m mock) {
-				m.version("10.7.1-MariaDB")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -188,11 +165,9 @@ func TestDriver_InspectTable(t *testing.T) {
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
 				require.Equal("users", t.Name)
-				require.Len(t.PrimaryKey.Parts, 1)
-				require.True(t.PrimaryKey.Parts[0].C == t.Columns[0])
 				require.EqualValues([]*schema.Column{
 					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint"}}},
-					{Name: "tiny_int", Type: &schema.ColumnType{Raw: "tinyint(1)", Type: &schema.BoolType{T: "tinyint"}}},
+					{Name: "tiny_int", Type: &schema.ColumnType{Raw: "tinyint(1)", Type: &schema.BoolType{T: "bool"}}},
 					{Name: "longtext", Type: &schema.ColumnType{Raw: "longtext", Type: &schema.StringType{T: "longtext"}}},
 					{Name: "jsonc", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}},
 				}, t.Columns)
@@ -201,7 +176,6 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "decimal types",
 			before: func(m mock) {
-				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -228,7 +202,6 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "float types",
 			before: func(m mock) {
-				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -255,7 +228,6 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "binary types",
 			before: func(m mock) {
-				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -290,7 +262,6 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "string types",
 			before: func(m mock) {
-				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -325,7 +296,6 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "enum type",
 			before: func(m mock) {
-				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -352,21 +322,21 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "time type",
 			before: func(m mock) {
-				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+-------------+-------------+-------------------+-------------+------------+-------------------+-----------------------------+--------------------+----------------+
-| column_name | column_type | column_comment    | is_nullable | column_key | column_default    | extra                       | character_set_name | collation_name |
-+-------------+-------------+-------------------+-------------+------------+-------------------+-----------------------------+--------------------+----------------+
-| c1          | date        |                   | NO          |            | NULL              |                             | NULL               | NULL           |
-| c2          | datetime    |                   | NO          |            | NULL              |                             | NULL               | NULL           |
-| c3          | time        |                   | NO          |            | NULL              |                             | NULL               | NULL           |
-| c4          | timestamp   |                   | NO          |            | CURRENT_TIMESTAMP | on update CURRENT_TIMESTAMP | NULL               | NULL           |
-| c5          | year(4)     |                   | NO          |            | NULL              |                             | NULL               | NULL           |
-| c6          | year        |                   | NO          |            | NULL              |                             | NULL               | NULL           |
-+-------------+-------------+-------------------+-------------+------------+-------------------+-----------------------------+--------------------+----------------+
++-------------+--------------+-------------------+-------------+------------+----------------------+--------------------------------+--------------------+----------------+
+| column_name | column_type  | column_comment    | is_nullable | column_key | column_default       | extra                          | character_set_name | collation_name |
++-------------+--------------+-------------------+-------------+------------+----------------------+--------------------------------+--------------------+----------------+
+| c1          | date         |                   | NO          |            | NULL                 |                                | NULL               | NULL           |
+| c2          | datetime     |                   | NO          |            | NULL                 |                                | NULL               | NULL           |
+| c3          | time         |                   | NO          |            | NULL                 |                                | NULL               | NULL           |
+| c4          | timestamp    |                   | NO          |            | CURRENT_TIMESTAMP    | on update CURRENT_TIMESTAMP    | NULL               | NULL           |
+| c5          | year(4)      |                   | NO          |            | NULL                 |                                | NULL               | NULL           |
+| c6          | year         |                   | NO          |            | NULL                 |                                | NULL               | NULL           |
+| c7          | timestamp(6) |                   | NO          |            | CURRENT_TIMESTAMP(6) | on update CURRENT_TIMESTAMP(6) | NULL               | NULL           |
++-------------+--------------+-------------------+-------------+------------+----------------------+--------------------------------+--------------------+----------------+
 `))
 				m.noIndexes()
 				m.noFKs()
@@ -378,16 +348,16 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c1", Type: &schema.ColumnType{Raw: "date", Type: &schema.TimeType{T: "date"}}},
 					{Name: "c2", Type: &schema.ColumnType{Raw: "datetime", Type: &schema.TimeType{T: "datetime"}}},
 					{Name: "c3", Type: &schema.ColumnType{Raw: "time", Type: &schema.TimeType{T: "time"}}},
-					{Name: "c4", Type: &schema.ColumnType{Raw: "timestamp", Type: &schema.TimeType{T: "timestamp"}}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP"}, Attrs: []schema.Attr{&OnUpdate{A: "on update current_timestamp"}}},
-					{Name: "c5", Type: &schema.ColumnType{Raw: "year(4)", Type: &schema.TimeType{T: "year"}}},
+					{Name: "c4", Type: &schema.ColumnType{Raw: "timestamp", Type: &schema.TimeType{T: "timestamp"}}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP"}, Attrs: []schema.Attr{&OnUpdate{A: "CURRENT_TIMESTAMP"}}},
+					{Name: "c5", Type: &schema.ColumnType{Raw: "year(4)", Type: &schema.TimeType{T: "year", Precision: 4}}},
 					{Name: "c6", Type: &schema.ColumnType{Raw: "year", Type: &schema.TimeType{T: "year"}}},
+					{Name: "c7", Type: &schema.ColumnType{Raw: "timestamp(6)", Type: &schema.TimeType{T: "timestamp", Precision: 6}}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP(6)"}, Attrs: []schema.Attr{&OnUpdate{A: "CURRENT_TIMESTAMP(6)"}}},
 				}, t.Columns)
 			},
 		},
 		{
 			name: "json type",
 			before: func(m mock) {
-				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -412,7 +382,6 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "spatial type",
 			before: func(m mock) {
-				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -453,7 +422,6 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "indexes",
 			before: func(m mock) {
-				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -470,17 +438,17 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(sqltest.Escape(indexesExprQuery)).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+--------------+-------------+------------+--------------+--------------+--------------+--------------+------------+------------------+
-| INDEX_NAME   | COLUMN_NAME | NON_UNIQUE | SEQ_IN_INDEX | INDEX_TYPE   | COLLATION    | COMMENT      | SUB_PART   | EXPRESSION       |
-+--------------+-------------+------------+--------------+--------------+--------------+--------------+------------+------------------+
-| nickname     | nickname    |          0 |            1 | BTREE        | A            |              |        255 |      NULL        |
-| lower_nick   | NULL        |          1 |            1 | HASH         | A            |              |       NULL | lower(nickname)  |
-| non_unique   | oid         |          1 |            1 | BTREE        | A            |              |       NULL |      NULL        |
-| non_unique   | uid         |          1 |            2 | BTREE        | A            |              |       NULL |      NULL        |
-| PRIMARY      | id          |          0 |            1 | BTREE        | A            |              |       NULL |      NULL        |
-| unique_index | uid         |          0 |            1 | BTREE        | A            |              |       NULL |      NULL        |
-| unique_index | oid         |          0 |            2 | BTREE        | A            |              |       NULL |      NULL        |
-+--------------+-------------+------------+--------------+--------------+--------------+--------------+------------+------------------+
++--------------+-------------+------------+--------------+--------------+---------+--------------+------------+------------------+
+| INDEX_NAME   | COLUMN_NAME | NON_UNIQUE | SEQ_IN_INDEX | INDEX_TYPE   | DESC    | COMMENT      | SUB_PART   | EXPRESSION       |
++--------------+-------------+------------+--------------+--------------+---------+--------------+------------+------------------+
+| nickname     | nickname    |          0 |            1 | BTREE        | nil     |              |        255 |      NULL        |
+| lower_nick   | NULL        |          1 |            1 | HASH         | 0       |              |       NULL | lower(nickname)  |
+| non_unique   | oid         |          1 |            1 | BTREE        | 0       |              |       NULL |      NULL        |
+| non_unique   | uid         |          1 |            2 | BTREE        | 0       |              |       NULL |      NULL        |
+| PRIMARY      | id          |          0 |            1 | BTREE        | 0       |              |       NULL |      NULL        |
+| unique_index | uid         |          0 |            1 | BTREE        | 1       |              |       NULL |      NULL        |
+| unique_index | oid         |          0 |            2 | BTREE        | 1       |              |       NULL |      NULL        |
++--------------+-------------+------------+--------------+--------------+---------+--------------+------------+------------------+
 `))
 				m.noFKs()
 			},
@@ -501,21 +469,21 @@ func TestDriver_InspectTable(t *testing.T) {
 				}
 				// nickname
 				indexes[0].Parts = []*schema.IndexPart{
-					{SeqNo: 1, C: columns[1], Attrs: []schema.Attr{&schema.Collation{V: "A"}, &SubPart{Len: 255}}},
+					{SeqNo: 1, C: columns[1], Attrs: []schema.Attr{&SubPart{Len: 255}}},
 				}
 				// lower(nickname)
 				indexes[1].Parts = []*schema.IndexPart{
-					{SeqNo: 1, X: &schema.RawExpr{X: "lower(nickname)"}, Attrs: []schema.Attr{&schema.Collation{V: "A"}}},
+					{SeqNo: 1, X: &schema.RawExpr{X: "lower(nickname)"}},
 				}
 				// oid, uid
 				indexes[2].Parts = []*schema.IndexPart{
-					{SeqNo: 1, C: columns[2], Attrs: []schema.Attr{&schema.Collation{V: "A"}}},
-					{SeqNo: 2, C: columns[3], Attrs: []schema.Attr{&schema.Collation{V: "A"}}},
+					{SeqNo: 1, C: columns[2]},
+					{SeqNo: 2, C: columns[3]},
 				}
 				// uid, oid
 				indexes[3].Parts = []*schema.IndexPart{
-					{SeqNo: 1, C: columns[3], Attrs: []schema.Attr{&schema.Collation{V: "A"}}},
-					{SeqNo: 2, C: columns[2], Attrs: []schema.Attr{&schema.Collation{V: "A"}}},
+					{SeqNo: 1, C: columns[3], Desc: true},
+					{SeqNo: 2, C: columns[2], Desc: true},
 				}
 				require.EqualValues(columns, t.Columns)
 				require.EqualValues(indexes, t.Indexes)
@@ -524,7 +492,6 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "fks",
 			before: func(m mock) {
-				m.version("8.0.13")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -571,9 +538,9 @@ func TestDriver_InspectTable(t *testing.T) {
 			},
 		},
 		{
-			name: "checks",
+			name:    "checks",
+			version: "8.0.16",
 			before: func(m mock) {
-				m.version("8.0.16")
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("public", "users").
@@ -606,7 +573,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c1", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
 				}
 				require.EqualValues(columns, t.Columns)
-				require.EqualValues([]schema.Attr{&CreateStmt{S: "CREATE TABLE users()"}, &schema.Check{Name: "users_chk_1", Expr: "(`c6` <>_latin1\\'foo\\'s\\')", Attrs: []schema.Attr{&Enforced{}}}}, t.Attrs)
+				require.EqualValues([]schema.Attr{&CreateStmt{S: "CREATE TABLE users()"}, &schema.Check{Name: "users_chk_1", Expr: "(`c6` <>_latin1\\'foo\\'s\\')"}}, t.Attrs)
 			},
 		},
 	}
@@ -614,11 +581,28 @@ func TestDriver_InspectTable(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			db, m, err := sqlmock.New()
 			require.NoError(t, err)
-			tt.before(mock{m})
+			mk := mock{m}
+			if tt.version == "" {
+				tt.version = "8.0.13"
+			}
+			mk.version(tt.version)
+			mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= ?"))).
+				WithArgs("public").
+				WillReturnRows(sqltest.Rows(`
++-------------+----------------------------+------------------------+
+| SCHEMA_NAME | DEFAULT_CHARACTER_SET_NAME | DEFAULT_COLLATION_NAME |
++-------------+----------------------------+------------------------+
+| public      | utf8mb4                    | utf8mb4_unicode_ci     |
++-------------+----------------------------+------------------------+
+				`))
+			mk.tables("public", "users")
+			tt.before(mk)
 			drv, err := Open(db)
 			require.NoError(t, err)
-			table, err := drv.InspectTable(context.Background(), "users", tt.opts)
-			tt.expect(require.New(t), table, err)
+			s, err := drv.InspectSchema(context.Background(), "public", nil)
+			require.NoError(t, err)
+			require.NotNil(t, s)
+			tt.expect(require.New(t), s.Tables[0], err)
 		})
 	}
 }
@@ -908,8 +892,8 @@ func (m mock) tableExists(schema, table string, exists bool) {
 	if exists {
 		rows.AddRow(schema, nil, nil, nil, nil, nil)
 	}
-	m.ExpectQuery(sqltest.Escape(tableQuery)).
-		WithArgs(table).
+	m.ExpectQuery(sqltest.Escape(tableSchemaQuery)).
+		WithArgs(table, schema).
 		WillReturnRows(rows)
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`", schema, table))).
 		WillReturnRows(sqltest.Rows(`

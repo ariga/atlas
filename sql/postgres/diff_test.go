@@ -90,17 +90,6 @@ func TestDiff_TableDiff(t *testing.T) {
 			},
 		},
 		{
-			name: "modify check",
-			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Check{Name: "t1_c1_check", Expr: "(c1 > 1)"}}},
-			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&schema.Check{Name: "t1_c1_check", Expr: "(c1 > 1)", Attrs: []schema.Attr{&NoInherit{}}}}},
-			wantChanges: []schema.Change{
-				&schema.ModifyCheck{
-					From: &schema.Check{Name: "t1_c1_check", Expr: "(c1 > 1)"},
-					To:   &schema.Check{Name: "t1_c1_check", Expr: "(c1 > 1)", Attrs: []schema.Attr{&NoInherit{}}},
-				},
-			},
-		},
-		{
 			name: "add comment",
 			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}},
 			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&schema.Comment{Text: "t1"}}},

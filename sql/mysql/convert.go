@@ -23,8 +23,8 @@ func FormatType(t schema.Type) (string, error) {
 	case *schema.BoolType:
 		// Map all flavors to a single form.
 		switch f = strings.ToLower(t.T); f {
-		case "bool", "boolean", "tinyint", "tinyint(1)":
-			f = "bool"
+		case TypeBool, TypeBoolean, TypeTinyInt, "tinyint(1)":
+			f = TypeBool
 		}
 	case *schema.BinaryType:
 		f = strings.ToLower(t.T)
@@ -85,6 +85,9 @@ func FormatType(t schema.Type) (string, error) {
 		f = strings.ToLower(t.T)
 	case *schema.TimeType:
 		f = strings.ToLower(t.T)
+		if t.Precision > 0 {
+			f = fmt.Sprintf("%s(%d)", f, t.Precision)
+		}
 	case *schema.UnsupportedType:
 		// Do not accept unsupported types as we should cover all cases.
 		return "", fmt.Errorf("unsupported type %q", t.T)
@@ -106,10 +109,16 @@ func ParseType(raw string) (schema.Type, error) {
 		return &BitType{
 			T: t,
 		}, nil
+	// bool and booleans are synonyms for
+	// tinyint with display-width set to 1.
+	case TypeBool, TypeBoolean:
+		return &schema.BoolType{
+			T: TypeBool,
+		}, nil
 	case TypeTinyInt, TypeSmallInt, TypeMediumInt, TypeInt, TypeBigInt:
 		if size == 1 {
 			return &schema.BoolType{
-				T: t,
+				T: TypeBool,
 			}, nil
 		}
 		// For integer types, the size represents the display width and does not
@@ -201,9 +210,17 @@ func ParseType(raw string) (schema.Type, error) {
 			Values: values,
 		}, nil
 	case TypeDate, TypeDateTime, TypeTime, TypeTimestamp, TypeYear:
-		return &schema.TimeType{
+		tt := &schema.TimeType{
 			T: t,
-		}, nil
+		}
+		if len(parts) > 1 {
+			p, err := strconv.ParseInt(parts[1], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("parse precision %q", parts[1])
+			}
+			tt.Precision = int(p)
+		}
+		return tt, nil
 	case TypeJSON:
 		return &schema.JSONType{
 			T: t,

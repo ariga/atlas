@@ -447,6 +447,16 @@ func TestSQLite_CLI(t *testing.T) {
 			testCLISchemaApply(t, h, t.dsn())
 		})
 	})
+	t.Run("SchemaApplyDryRun", func(t *testing.T) {
+		liteRun(t, func(t *liteTest) {
+			testCLISchemaApplyDry(t, h, t.dsn())
+		})
+	})
+	t.Run("SchemaDiffRun", func(t *testing.T) {
+		liteRun(t, func(t *liteTest) {
+			testCLISchemaDiff(t, t.dsn())
+		})
+	})
 }
 
 func TestSQLite_Sanity(t *testing.T) {
@@ -828,4 +838,8 @@ func (t *liteTest) dropTables(names ...string) {
 
 func (t *liteTest) dsn() string {
 	return fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", t.file)
+}
+
+func (t *liteTest) applyRealmHcl(spec string) {
+	t.applyHcl(spec)
 }

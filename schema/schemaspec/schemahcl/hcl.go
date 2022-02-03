@@ -255,6 +255,11 @@ func (s *state) writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 		expr := strings.ReplaceAll(v.V, "$", "")
 		body.SetAttributeRaw(attr.K, hclRawTokens(expr))
 	case *schemaspec.Type:
+		if v.IsRef {
+			expr := strings.ReplaceAll(v.T, "$", "")
+			body.SetAttributeRaw(attr.K, hclRawTokens(expr))
+			break
+		}
 		spec, ok := s.findTypeSpec(v.T)
 		if !ok {
 			v := fmt.Sprintf("sql(%q)", v.T)
@@ -273,6 +278,11 @@ func (s *state) writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 		fnc := fmt.Sprintf("sql(%q)", v.X)
 		body.SetAttributeRaw(attr.K, hclRawTokens(fnc))
 	case *schemaspec.ListValue:
+		// Skip scanning nil slices ([]T(nil)) by default. Users that
+		// want to print empty lists, should use make([]T, 0) instead.
+		if v.V == nil {
+			return nil
+		}
 		lst := make([]string, 0, len(v.V))
 		for _, item := range v.V {
 			switch v := item.(type) {
@@ -369,14 +379,11 @@ func hclRawList(items []string) hclwrite.Tokens {
 		Type:  hclsyntax.TokenOBrack,
 		Bytes: []byte("["),
 	}}
-	for _, item := range items {
-		t = append(t, &hclwrite.Token{
-			Type:  hclsyntax.TokenIdent,
-			Bytes: []byte(item),
-		}, &hclwrite.Token{
-			Type:  hclsyntax.TokenComma,
-			Bytes: []byte(","),
-		})
+	for i, item := range items {
+		if i > 0 {
+			t = append(t, &hclwrite.Token{Type: hclsyntax.TokenComma, Bytes: []byte(",")})
+		}
+		t = append(t, &hclwrite.Token{Type: hclsyntax.TokenIdent, Bytes: []byte(item)})
 	}
 	t = append(t, &hclwrite.Token{
 		Type:  hclsyntax.TokenCBrack,

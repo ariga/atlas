@@ -6,13 +6,9 @@ module.exports = {
   baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
-  favicon: 'https://atlasgo.io/uploads/favicon.ico',
   organizationName: 'ariga',
   projectName: 'atlas',
   themeConfig: {
-    gtag: {
-      trackingID: 'G-Z88N4TF03R'
-    },
     prism: {
       additionalLanguages: ['hcl'],
     },
@@ -48,6 +44,7 @@ module.exports = {
             {"label": "Getting Started", "to": "cli/getting-started/setting-up"},
             {"label": "Data Definition Language ", "to": "ddl/intro"},
             {"label": "CLI Reference", "to": "cli/reference"},
+            {"label": "About", "to": "about"},
           ]
         },
         {
@@ -78,6 +75,9 @@ module.exports = {
           path: "../md",
           showLastUpdateAuthor: false,
           showLastUpdateTime: false,
+        },
+        gtag: {
+          trackingID: 'G-Z88N4TF03R'
         },
         blog: {
           showReadingTime: true,

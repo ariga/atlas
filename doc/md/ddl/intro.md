@@ -9,7 +9,7 @@ title: Data Definition Language
 In the core of the Atlas project resides the Atlas Data Definition Language (DDL). The DDL is designed to capture an
 organization's data topologies and other aspects of its data infrastructure.
 
-In the design of the DDL we took two important considerations:
+In the design of the DDL, we took two important considerations:
 
 * Extensible - As data topologies can contain a set of diverse data technologies, the language is designed to be modular
   with different extensions extending the types of resources and relationships that can be described using it.
@@ -73,7 +73,7 @@ user "rotemtam" {
 ### References
 
 Attributes can hold references to other resources. The address of any resource is
-`<type>.<name>`, recursively. Suppose we have this block describing some http service:
+`<type>.<name>`, recursively. Suppose we have this block describing some HTTP service:
 
 ```hcl
 service "todolist" {
@@ -153,11 +153,10 @@ show "seinfeld" {
   fmt.Printf("the show %q has %d writers.", seinfeld.Name, len(seinfeld.Writers))
   // Output: the show "seinfeld" has 2 writers.
 }
-
 ```
 
 Observe that similar to the standard-library's `json.Unmarshal` function, this function
-takes as arguments a byte-slice and an empty interface.  The empty interface should be a
+takes a byte-slice and an empty interface as arguments. The empty interface should be a
 pointer to a struct into which the `Unmarshal` function will read the values. The struct
 fields must be annotated with `spec` tags that define the mapping from HCL to the Go type.
 This mapping is discussed in the section about [Extensions](#Extensions).
@@ -208,6 +207,7 @@ defining their own type structs that objects can be handled in a type-safe way.
 The mapping between the extension struct fields and the configuration syntax is done by placing tags on the
 extension struct field using the `spec` key in the tag. To specify that a field should be mapped to
 the corresponding resource's name specify ",name" to the tag value. For example,
+
 ```go
 type Point struct {
     ID string `spec:",name"`

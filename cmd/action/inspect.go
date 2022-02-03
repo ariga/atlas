@@ -1,17 +1,23 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package action
 
 import (
 	"context"
 
+	"ariga.io/atlas/sql/schema"
 	"github.com/spf13/cobra"
 )
 
 var (
 	// InspectFlags are the flags used in Inspect command.
 	InspectFlags struct {
-		DSN  string
-		Web  bool
-		Addr string
+		DSN    string
+		Web    bool
+		Addr   string
+		Schema []string
 	}
 	// InspectCmd represents the inspect command.
 	InspectCmd = &cobra.Command{
@@ -24,12 +30,16 @@ saved to a file, commonly by redirecting the output to a file named with a ".hcl
 	atlas schema inspect -d "mysql://user:pass@tcp(localhost:3306)/dbname" > atlas.hcl
 
 This file can then be edited and used with the` + " `atlas schema apply` " + `command to plan
-and execute schema migrations against the given database. 
+and execute schema migrations against the given database. In cases where users wish to inspect
+all multiple schemas in a given database (for instance a MySQL server may contain multiple named
+databases), omit the relevant part from the dsn, e.g. "mysql://user:pass@tcp(localhost:3306)/".
+To select specific schemas from the databases, users may use the "--schema" (or "-s" shorthand)
+flag.
 	`,
 		Run: CmdInspectRun,
 		Example: `
 atlas schema inspect -d "mysql://user:pass@tcp(localhost:3306)/dbname"
-atlas schema inspect -d "mariadb://user:pass@tcp(localhost:3306)/dbname"
+atlas schema inspect -d "mariadb://user:pass@tcp(localhost:3306)/" --schema=schemaA,schemaB -s schemaC
 atlas schema inspect --dsn "postgres://user:pass@host:port/dbname"
 atlas schema inspect -d "sqlite://file:ex1.db?_fk=1"`,
 	}
@@ -45,7 +55,8 @@ func init() {
 		"[driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format",
 	)
 	InspectCmd.Flags().BoolVarP(&InspectFlags.Web, "web", "w", false, "Open in a local Atlas UI")
-	InspectCmd.Flags().StringVarP(&InspectFlags.Addr, "addr", "", "127.0.0.1:5800", "used with -w, local address to bind the server to")
+	InspectCmd.Flags().StringVarP(&InspectFlags.Addr, "addr", "", "127.0.0.1:5800", "Used with -w, local address to bind the server to")
+	InspectCmd.Flags().StringSliceVarP(&InspectFlags.Schema, "schema", "s", nil, "Set schema name")
 	cobra.CheckErr(InspectCmd.MarkFlagRequired("dsn"))
 }
 
@@ -62,9 +73,14 @@ func CmdInspectRun(_ *cobra.Command, _ []string) {
 
 func inspectRun(d *Driver, dsn string) {
 	ctx := context.Background()
-	name, err := SchemaNameFromDSN(dsn)
-	cobra.CheckErr(err)
-	s, err := d.InspectSchema(ctx, name, nil)
+	schemas := InspectFlags.Schema
+	if n, err := SchemaNameFromDSN(dsn); n != "" {
+		cobra.CheckErr(err)
+		schemas = append(schemas, n)
+	}
+	s, err := d.InspectRealm(ctx, &schema.InspectRealmOption{
+		Schemas: schemas,
+	})
 	cobra.CheckErr(err)
 	ddl, err := d.MarshalSpec(s)
 	cobra.CheckErr(err)

@@ -1,7 +1,12 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package action
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/mod/semver"
@@ -26,8 +31,13 @@ func init() {
 
 // parse returns a user facing version and release notes url
 func parse(version string) (string, string) {
+	u := "https://github.com/ariga/atlas/releases/tag/latest"
 	if ok := semver.IsValid(version); !ok {
-		return "- development", "https://github.com/ariga/atlas/releases/tag/latest"
+		return "- development", u
 	}
-	return version, fmt.Sprintf("https://github.com/ariga/atlas/releases/tag/%s", version)
+	s := strings.Split(version, "-")
+	if len(s) != 0 && s[len(s)-1] != "canary" {
+		u = fmt.Sprintf("https://github.com/ariga/atlas/releases/tag/%s", version)
+	}
+	return version, u
 }

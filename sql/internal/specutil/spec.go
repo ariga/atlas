@@ -33,6 +33,14 @@ func LitAttr(k, v string) *schemaspec.Attr {
 	}
 }
 
+// RawAttr is a helper method for constructing *schemaspec.Attr instances that contain sql expressions.
+func RawAttr(k, v string) *schemaspec.Attr {
+	return &schemaspec.Attr{
+		K: k,
+		V: &schemaspec.RawExpr{X: v},
+	}
+}
+
 // ListAttr is a helper method for constructing *schemaspec.Attr instances that contain list values.
 func ListAttr(k string, litValues ...string) *schemaspec.Attr {
 	lv := &schemaspec.ListValue{}
@@ -79,7 +87,8 @@ func Marshal(v interface{}, marshaler schemaspec.Marshaler, schemaSpec func(sche
 
 // Unmarshal unmarshals an Atlas DDL document using an unmarshaler into v. Unmarshal uses the
 // given convertTable function to convert a *sqlspec.Table into a *schema.Table.
-func Unmarshal(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}, convertTable func(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, error)) error {
+func Unmarshal(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{},
+	convertTable ConvertTableFunc) error {
 	var d doc
 	if err := unmarshaler.UnmarshalSpec(data, &d); err != nil {
 		return err

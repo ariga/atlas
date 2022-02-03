@@ -39,7 +39,7 @@ func Realm(schemas []*sqlspec.Schema, tables []*sqlspec.Table, convertTable Conv
 	for _, schemaSpec := range schemas {
 		var schemaTables []*sqlspec.Table
 		for _, tableSpec := range tables {
-			name, err := schemaName(tableSpec.Schema)
+			name, err := SchemaName(tableSpec.Schema)
 			if err != nil {
 				return nil, fmt.Errorf("specutil: cannot extract schema name for table %q: %w", tableSpec.Name, err)
 			}
@@ -72,7 +72,7 @@ func Schema(spec *sqlspec.Schema, tables []*sqlspec.Table, convertTable ConvertT
 		m[table] = ts
 	}
 	for _, tbl := range sch.Tables {
-		if err := linkForeignKeys(tbl, sch, m[tbl]); err != nil {
+		if err := LinkForeignKeys(tbl, sch, m[tbl]); err != nil {
 			return nil, err
 		}
 	}
@@ -153,20 +153,42 @@ func Column(spec *sqlspec.Column, conv ConvertTypeFunc) (*schema.Column, error) 
 
 // Index converts a sqlspec.Index to a schema.Index.
 func Index(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
-	parts := make([]*schema.IndexPart, 0, len(spec.Columns))
-	for seqno, c := range spec.Columns {
-		cn, err := columnName(c)
-		if err != nil {
-			return nil, fmt.Errorf("specutil: failed converting column to index: %w", err)
+	parts := make([]*schema.IndexPart, 0, len(spec.Columns)+len(spec.Parts))
+	switch n, m := len(spec.Columns), len(spec.Parts); {
+	case n == 0 && m == 0:
+		return nil, fmt.Errorf("missing definition for index %q", spec.Name)
+	case n > 0 && m > 0:
+		return nil, fmt.Errorf(`multiple definitions for index %q, use "columns" or "on"`, spec.Name)
+	case n > 0:
+		for i, c := range spec.Columns {
+			c, err := column(parent, c)
+			if err != nil {
+				return nil, err
+			}
+			parts = append(parts, &schema.IndexPart{
+				SeqNo: i,
+				C:     c,
+			})
 		}
-		col, ok := parent.Column(cn)
-		if !ok {
-			return nil, fmt.Errorf("specutil: unknown column %q in table %q", cn, parent.Name)
+	case m > 0:
+		for i, p := range spec.Parts {
+			part := &schema.IndexPart{SeqNo: i, Desc: p.Desc}
+			switch {
+			case p.Column == nil && p.Expr == "":
+				return nil, fmt.Errorf(`"column" or "expr" are required for index %q at position %d`, spec.Name, i)
+			case p.Column != nil && p.Expr != "":
+				return nil, fmt.Errorf(`cannot use both "column" and "expr" in index %q at position %d`, spec.Name, i)
+			case p.Expr != "":
+				part.X = &schema.RawExpr{X: p.Expr}
+			case p.Column != nil:
+				c, err := column(parent, p.Column)
+				if err != nil {
+					return nil, err
+				}
+				part.C = c
+			}
+			parts = append(parts, part)
 		}
-		parts = append(parts, &schema.IndexPart{
-			SeqNo: seqno,
-			C:     col,
-		})
 	}
 	i := &schema.Index{
 		Name:   spec.Name,
@@ -192,17 +214,13 @@ func Check(spec *sqlspec.Check) (*schema.Check, error) {
 func PrimaryKey(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, error) {
 	parts := make([]*schema.IndexPart, 0, len(spec.Columns))
 	for seqno, c := range spec.Columns {
-		n, err := columnName(c)
+		c, err := column(parent, c)
 		if err != nil {
-			return nil, fmt.Errorf("sqlspec: cannot get column name %q as primary key for table %q", c.V, parent.Name)
-		}
-		pkc, ok := parent.Column(n)
-		if !ok {
-			return nil, fmt.Errorf("sqlspec: cannot set column %q as primary key for table %q", n, parent.Name)
+			return nil, nil
 		}
 		parts = append(parts, &schema.IndexPart{
 			SeqNo: seqno,
-			C:     pkc,
+			C:     c,
 		})
 	}
 	return &schema.Index{
@@ -211,10 +229,10 @@ func PrimaryKey(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, 
 	}, nil
 }
 
-// linkForeignKeys creates the foreign keys defined in the Table's spec by creating references
+// LinkForeignKeys creates the foreign keys defined in the Table's spec by creating references
 // to column in the provided Schema. It is assumed that the schema contains all of the tables
 // referenced by the FK definitions in the spec.
-func linkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *sqlspec.Table) error {
+func LinkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *sqlspec.Table) error {
 	for _, spec := range table.ForeignKeys {
 		fk := &schema.ForeignKey{
 			Symbol:   spec.Symbol,
@@ -262,15 +280,7 @@ func resolveCol(ref *schemaspec.Ref, sch *schema.Schema) (*schema.Column, error)
 	if !ok {
 		return nil, fmt.Errorf("sqlspec: table %q not found", t)
 	}
-	c, err := columnName(ref)
-	if err != nil {
-		return nil, fmt.Errorf("sqlspec: column %q not found", ref.V)
-	}
-	col, ok := tbl.Column(c)
-	if !ok {
-		return nil, fmt.Errorf("sqlspec: column %q not found in table %q", c, t)
-	}
-	return col, nil
+	return column(tbl, ref)
 }
 
 // FromRealm converts a schema.Realm into []sqlspec.Schema and []sqlspec.Table.
@@ -302,7 +312,7 @@ func FromSchema(s *schema.Schema, fn TableSpecFunc) (*sqlspec.Schema, []*sqlspec
 			return nil, nil, err
 		}
 		if s.Name != "" {
-			table.Schema = schemaRef(s.Name)
+			table.Schema = SchemaRef(s.Name)
 		}
 		tables = append(tables, table)
 	}
@@ -421,20 +431,43 @@ func normalizeQuotes(s string) (string, error) {
 
 // FromIndex converts schema.Index to sqlspec.Index.
 func FromIndex(idx *schema.Index) (*sqlspec.Index, error) {
-	c := make([]*schemaspec.Ref, 0, len(idx.Parts))
-	for _, p := range idx.Parts {
-		if p.C == nil {
-			return nil, errors.New("index expression is not supported")
+	spec := &sqlspec.Index{Name: idx.Name, Unique: idx.Unique}
+	convertCommentFromSchema(idx.Attrs, &spec.Extra.Attrs)
+	if parts, ok := columnsOnly(idx); ok {
+		spec.Columns = parts
+		return spec, nil
+	}
+	spec.Parts = make([]*sqlspec.IndexPart, len(idx.Parts))
+	for i, p := range idx.Parts {
+		part := &sqlspec.IndexPart{Desc: p.Desc}
+		switch {
+		case p.C == nil && p.X == nil:
+			return nil, fmt.Errorf("missing column or expression for key part of index %q", idx.Name)
+		case p.C != nil && p.X != nil:
+			return nil, fmt.Errorf("multiple key part definitions for index %q", idx.Name)
+		case p.C != nil:
+			part.Column = colRef(p.C.Name, idx.Table.Name)
+		case p.X != nil:
+			x, ok := p.X.(*schema.RawExpr)
+			if !ok {
+				return nil, fmt.Errorf("unexpected expression %T for index %q", p.X, idx.Name)
+			}
+			part.Expr = x.X
 		}
-		c = append(c, colRef(p.C.Name, idx.Table.Name))
+		spec.Parts[i] = part
 	}
-	i := &sqlspec.Index{
-		Name:    idx.Name,
-		Unique:  idx.Unique,
-		Columns: c,
+	return spec, nil
+}
+
+func columnsOnly(idx *schema.Index) ([]*schemaspec.Ref, bool) {
+	parts := make([]*schemaspec.Ref, len(idx.Parts))
+	for i, p := range idx.Parts {
+		if p.C == nil || p.Desc {
+			return nil, false
+		}
+		parts[i] = colRef(p.C.Name, idx.Table.Name)
 	}
-	convertCommentFromSchema(idx.Attrs, &i.Extra.Attrs)
-	return i, nil
+	return parts, true
 }
 
 // FromForeignKey converts schema.ForeignKey to sqlspec.ForeignKey.
@@ -464,20 +497,28 @@ func FromCheck(s *schema.Check) *sqlspec.Check {
 	}
 }
 
-func schemaName(ref *schemaspec.Ref) (string, error) {
+// SchemaName returns the name from a ref to a schema.
+func SchemaName(ref *schemaspec.Ref) (string, error) {
+	if ref == nil {
+		return "", errors.New("unexpected nil reference")
+	}
 	parts := strings.Split(ref.V, ".")
 	if len(parts) < 2 || parts[0] != "$schema" {
-		return "", fmt.Errorf("expected ref format of $schema.name")
+		return "", errors.New("expected ref format of $schema.name")
 	}
 	return parts[1], nil
 }
 
-func columnName(ref *schemaspec.Ref) (string, error) {
+func column(t *schema.Table, ref *schemaspec.Ref) (*schema.Column, error) {
 	s := strings.Split(ref.V, "$column.")
 	if len(s) != 2 {
-		return "", fmt.Errorf("sqlspec: failed to extract column name from %q", ref)
+		return nil, fmt.Errorf("specutil: failed to extract column name from %q", ref)
 	}
-	return s[1], nil
+	c, ok := t.Column(s[1])
+	if !ok {
+		return nil, fmt.Errorf("specutil: unknown column %q in table %q", s[1], t.Name)
+	}
+	return c, nil
 }
 
 func tableName(ref *schemaspec.Ref) (string, error) {
@@ -500,7 +541,8 @@ func colRef(cName string, tName string) *schemaspec.Ref {
 	}
 }
 
-func schemaRef(n string) *schemaspec.Ref {
+// SchemaRef returns the schemaspec.Ref to the schema with the given name.
+func SchemaRef(n string) *schemaspec.Ref {
 	return &schemaspec.Ref{V: "$schema." + n}
 }
 

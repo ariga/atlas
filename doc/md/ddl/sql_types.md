@@ -3,14 +3,17 @@ id: ddl-sql-types
 title: SQL Column Types
 slug: /ddl/sql-types
 ---
+
 ### MySQL/MariaDB
 
 <table>
     <thead>
+    <tr>
         <th>HCL</th>
         <th>SQL</th>
         <th>Attributes</th>
         <th>Example</th>
+    </tr>
     </thead>
     <tbody>
         
@@ -26,12 +29,13 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = bigint(255)
+                    type = bigint(255)
                 </pre>
                 
                 <pre>
-                    unisgned = true
+                    unsigned = true
                 </pre>
+                
                 
             </td>
         </tr>
@@ -47,8 +51,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = binary(255)
+                    type = binary(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -64,8 +69,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = bit(255)
+                    type = bit(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -81,8 +87,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = blob(255)
+                    type = blob(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -98,8 +105,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = char(255)
+                    type = char(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -114,8 +122,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = date
+                    type = date
                 </pre>
+                
                 
             </td>
         </tr>
@@ -130,8 +139,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = datetime
+                    type = datetime
                 </pre>
+                
                 
             </td>
         </tr>
@@ -141,13 +151,16 @@ slug: /ddl/sql-types
             <td>decimal</td>
             <td>
                 <ul>
+                        <li>precision (int)</li>
+                        <li>scale (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                      type = decimal
+                    type = decimal(10,2)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -164,8 +177,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = double(10,2)
+                    type = double(10,2)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -181,8 +195,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = enum("a","b")
+                    type = enum("a","b")
                 </pre>
+                
                 
             </td>
         </tr>
@@ -199,8 +214,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = float(10,2)
+                    type = float(10,2)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -215,8 +231,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = geometry
+                    type = geometry
                 </pre>
+                
                 
             </td>
         </tr>
@@ -231,8 +248,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = geometrycollection
+                    type = geometrycollection
                 </pre>
+                
                 
             </td>
         </tr>
@@ -249,12 +267,30 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = int(255)
+                    type = int(255)
                 </pre>
                 
                 <pre>
-                    unisgned = true
+                    unsigned = true
                 </pre>
+                
+                
+            </td>
+        </tr>
+        
+        <tr>
+            <td>json</td>
+            <td>json</td>
+            <td>
+                <ul>
+                </ul>
+            </td>
+            <td>
+                
+                <pre>
+                    type = json
+                </pre>
+                
                 
             </td>
         </tr>
@@ -269,8 +305,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = linestring
+                    type = linestring
                 </pre>
+                
                 
             </td>
         </tr>
@@ -285,8 +322,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = longblob
+                    type = longblob
                 </pre>
+                
                 
             </td>
         </tr>
@@ -301,8 +339,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = longtext
+                    type = longtext
                 </pre>
+                
                 
             </td>
         </tr>
@@ -317,8 +356,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = mediumblob
+                    type = mediumblob
                 </pre>
+                
                 
             </td>
         </tr>
@@ -335,12 +375,13 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = mediumint(255)
+                    type = mediumint(255)
                 </pre>
                 
                 <pre>
-                    unisgned = true
+                    unsigned = true
                 </pre>
+                
                 
             </td>
         </tr>
@@ -355,8 +396,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = mediumtext
+                    type = mediumtext
                 </pre>
+                
                 
             </td>
         </tr>
@@ -371,8 +413,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = multilinestring
+                    type = multilinestring
                 </pre>
+                
                 
             </td>
         </tr>
@@ -387,8 +430,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = multipoint
+                    type = multipoint
                 </pre>
+                
                 
             </td>
         </tr>
@@ -403,8 +447,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = multipolygon
+                    type = multipolygon
                 </pre>
+                
                 
             </td>
         </tr>
@@ -414,13 +459,16 @@ slug: /ddl/sql-types
             <td>numeric</td>
             <td>
                 <ul>
+                        <li>precision (int)</li>
+                        <li>scale (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                      type = numeric
+                    type = numeric(10,2)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -435,8 +483,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = point
+                    type = point
                 </pre>
+                
                 
             </td>
         </tr>
@@ -451,8 +500,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = polygon
+                    type = polygon
                 </pre>
+                
                 
             </td>
         </tr>
@@ -469,8 +519,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = real(10,2)
+                    type = real(10,2)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -486,8 +537,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = set("a","b")
+                    type = set("a","b")
                 </pre>
+                
                 
             </td>
         </tr>
@@ -504,12 +556,13 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = smallint(255)
+                    type = smallint(255)
                 </pre>
                 
                 <pre>
-                    unisgned = true
+                    unsigned = true
                 </pre>
+                
                 
             </td>
         </tr>
@@ -525,8 +578,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = text(255)
+                    type = text(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -541,8 +595,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = time
+                    type = time
                 </pre>
+                
                 
             </td>
         </tr>
@@ -557,8 +612,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = timestamp
+                    type = timestamp
                 </pre>
+                
                 
             </td>
         </tr>
@@ -573,8 +629,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = tinyblob
+                    type = tinyblob
                 </pre>
+                
                 
             </td>
         </tr>
@@ -591,12 +648,13 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = tinyint(255)
+                    type = tinyint(255)
                 </pre>
                 
                 <pre>
-                    unisgned = true
+                    unsigned = true
                 </pre>
+                
                 
             </td>
         </tr>
@@ -611,8 +669,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = tinytext
+                    type = tinytext
                 </pre>
+                
                 
             </td>
         </tr>
@@ -628,8 +687,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = varbinary(255)
+                    type = varbinary(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -645,8 +705,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = varchar(255)
+                    type = varchar(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -661,8 +722,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = year
+                    type = year
                 </pre>
+                
                 
             </td>
         </tr>
@@ -674,10 +736,12 @@ slug: /ddl/sql-types
 
 <table>
     <thead>
+    <tr>
         <th>HCL</th>
         <th>SQL</th>
         <th>Attributes</th>
         <th>Example</th>
+    </tr>
     </thead>
     <tbody>
         
@@ -691,8 +755,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = bigint
+                    type = bigint
                 </pre>
+                
                 
             </td>
         </tr>
@@ -707,8 +772,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = bigserial
+                    type = bigserial
                 </pre>
+                
                 
             </td>
         </tr>
@@ -724,8 +790,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = bit(255)
+                    type = bit(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -741,8 +808,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = bit_varying(255)
+                    type = bit_varying(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -757,8 +825,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = bool
+                    type = bool
                 </pre>
+                
                 
             </td>
         </tr>
@@ -773,8 +842,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = boolean
+                    type = boolean
                 </pre>
+                
                 
             </td>
         </tr>
@@ -789,8 +859,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = box
+                    type = box
                 </pre>
+                
                 
             </td>
         </tr>
@@ -805,8 +876,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = bytea
+                    type = bytea
                 </pre>
+                
                 
             </td>
         </tr>
@@ -822,8 +894,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = char(255)
+                    type = char(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -839,8 +912,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = character(255)
+                    type = character(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -856,8 +930,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = character_varying(255)
+                    type = character_varying(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -872,8 +947,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = cidr
+                    type = cidr
                 </pre>
+                
                 
             </td>
         </tr>
@@ -888,8 +964,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = circle
+                    type = circle
                 </pre>
+                
                 
             </td>
         </tr>
@@ -904,8 +981,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = date
+                    type = date
                 </pre>
+                
                 
             </td>
         </tr>
@@ -920,8 +998,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = decimal
+                    type = decimal
                 </pre>
+                
                 
             </td>
         </tr>
@@ -936,26 +1015,33 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = double_precision
+                    type = double_precision
                 </pre>
+                
                 
             </td>
         </tr>
         
         <tr>
             <td>enum</td>
-            <td>enum</td>
+            <td>my_enum</td>
             <td>
                 <ul>
-                        <li>values (slice)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                      type = enum("a","b")
+                    enum = enum.my_enum
                 </pre>
                 
+                In Postgres an enum type is created as a custom type and can then be referenced in a column 
+definition. Therefore, you have to add an enum block to your HCL schema like below:
+<pre>
+enum "my_enum" &#123;
+	values = ["on", "off"]
+&#125;
+</pre>
             </td>
         </tr>
         
@@ -969,8 +1055,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = float4
+                    type = float4
                 </pre>
+                
                 
             </td>
         </tr>
@@ -985,8 +1072,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = float8
+                    type = float8
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1001,8 +1089,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = hstore
+                    type = hstore
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1017,8 +1106,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = inet
+                    type = inet
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1033,8 +1123,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = int
+                    type = int
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1049,8 +1140,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = int2
+                    type = int2
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1065,8 +1157,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = int4
+                    type = int4
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1081,8 +1174,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = int8
+                    type = int8
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1097,8 +1191,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = integer
+                    type = integer
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1113,8 +1208,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = json
+                    type = json
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1129,8 +1225,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = jsonb
+                    type = jsonb
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1145,8 +1242,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = line
+                    type = line
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1161,8 +1259,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = lseg
+                    type = lseg
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1177,8 +1276,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = macaddr
+                    type = macaddr
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1193,8 +1293,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = macaddr8
+                    type = macaddr8
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1209,8 +1310,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = money
+                    type = money
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1225,8 +1327,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = numeric
+                    type = numeric
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1241,8 +1344,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = path
+                    type = path
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1257,8 +1361,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = point
+                    type = point
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1273,8 +1378,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = real
+                    type = real
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1289,8 +1395,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = serial
+                    type = serial
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1305,8 +1412,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = serial2
+                    type = serial2
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1321,8 +1429,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = serial4
+                    type = serial4
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1337,8 +1446,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = serial8
+                    type = serial8
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1353,8 +1463,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = smallint
+                    type = smallint
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1369,8 +1480,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = smallserial
+                    type = smallserial
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1386,8 +1498,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = sql("a")
+                    type = sql("a")
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1402,8 +1515,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = text
+                    type = text
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1418,8 +1532,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = time
+                    type = time
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1434,8 +1549,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = time_with_time_zone
+                    type = time_with_time_zone
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1450,8 +1566,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = time_without_time_zone
+                    type = time_without_time_zone
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1466,8 +1583,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = timestamp
+                    type = timestamp
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1482,8 +1600,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = timestamp_with_time_zone
+                    type = timestamp_with_time_zone
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1498,8 +1617,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = timestamp_without_time_zone
+                    type = timestamp_without_time_zone
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1514,8 +1634,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = uuid
+                    type = uuid
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1531,8 +1652,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = varchar(255)
+                    type = varchar(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1547,8 +1669,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = xml
+                    type = xml
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1560,10 +1683,12 @@ slug: /ddl/sql-types
 
 <table>
     <thead>
+    <tr>
         <th>HCL</th>
         <th>SQL</th>
         <th>Attributes</th>
         <th>Example</th>
+    </tr>
     </thead>
     <tbody>
         
@@ -1578,8 +1703,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = bigint(255)
+                    type = bigint(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1595,8 +1721,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = blob(255)
+                    type = blob(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1611,8 +1738,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = boolean
+                    type = boolean
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1628,8 +1756,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = character(255)
+                    type = character(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1645,8 +1774,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = clob(255)
+                    type = clob(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1661,8 +1791,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = date
+                    type = date
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1677,8 +1808,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = datetime
+                    type = datetime
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1695,8 +1827,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = decimal(10,2)
+                    type = decimal(10,2)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1712,8 +1845,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = double(255)
+                    type = double(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1729,8 +1863,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = double_precision(255)
+                    type = double_precision(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1746,8 +1881,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = float(255)
+                    type = float(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1763,8 +1899,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = int(255)
+                    type = int(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1780,8 +1917,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = int2(255)
+                    type = int2(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1797,8 +1935,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = int8(255)
+                    type = int8(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1814,8 +1953,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = integer(255)
+                    type = integer(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1830,8 +1970,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = json
+                    type = json
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1847,8 +1988,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = mediumint(255)
+                    type = mediumint(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1864,8 +2006,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = native_character(255)
+                    type = native_character(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1881,8 +2024,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = nchar(255)
+                    type = nchar(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1899,8 +2043,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = numeric(10,2)
+                    type = numeric(10,2)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1916,8 +2061,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = nvarchar(255)
+                    type = nvarchar(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1934,8 +2080,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = real(10,2)
+                    type = real(10,2)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1951,8 +2098,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = smallint(255)
+                    type = smallint(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1968,8 +2116,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = text(255)
+                    type = text(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -1985,8 +2134,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = tinyint(255)
+                    type = tinyint(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -2002,8 +2152,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = unsigned_big_int(255)
+                    type = unsigned_big_int(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -2018,8 +2169,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = uuid
+                    type = uuid
                 </pre>
+                
                 
             </td>
         </tr>
@@ -2035,8 +2187,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = varchar(255)
+                    type = varchar(255)
                 </pre>
+                
                 
             </td>
         </tr>
@@ -2052,8 +2205,9 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                      type = varying_character(255)
+                    type = varying_character(255)
                 </pre>
+                
                 
             </td>
         </tr>

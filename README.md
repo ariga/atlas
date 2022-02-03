@@ -23,17 +23,17 @@ be used individually but are designed to work very well together.
 
 Download latest release.
 ```shell
-curl -LO https://release.ariga.io/atlas/atlas-darwin-amd64-v0.1.1
+curl -LO https://release.ariga.io/atlas/atlas-darwin-amd64-latest
 ```
 
 Make the atlas binary executable.
 ```shell
-chmod +x ./atlas-darwin-amd64-v0.1.1
+chmod +x ./atlas-darwin-amd64-latest
 ```
 
 Move the atlas binary to a file location on your system PATH.
 ```shell
-sudo mv ./atlas-darwin-amd64-v0.1.1 /usr/local/bin/atlas
+sudo mv ./atlas-darwin-amd64-latest /usr/local/bin/atlas
 ```
 ```shell
 sudo chown root: /usr/local/bin/atlas
@@ -46,7 +46,7 @@ Instructions for other platforms and databases: [Getting Started](https://atlasg
 
 Inspect and save output to a schema file.
 ```shell
-atlas schema inspect -d "mysql://root:pass@tcp(localhost:3306)/example" >> atlas.hcl
+atlas schema inspect -d "mysql://root:pass@tcp(localhost:3306)/example" > atlas.hcl
 ```
 
 ## Apply change to Schema
@@ -55,7 +55,7 @@ atlas schema inspect -d "mysql://root:pass@tcp(localhost:3306)/example" >> atlas
 atlas schema apply -d "mysql://root:pass@tcp(localhost:3306)/example" -f atlas.hcl
 ```
 
-Full [CLI documentation](https://atlasgo.io/CLI/atlas). 
+Full [CLI documentation](https://atlasgo.io/cli/reference). 
 
 ### About the Project
 Read more about the motivation of the project [Here](https://blog.ariga.io/meet-atlas-cli/).

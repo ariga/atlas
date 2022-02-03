@@ -1,11 +1,13 @@
 package specutil
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/schema"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,6 +44,21 @@ func TestTypePrint(t *testing.T) {
 			},
 			typ:      &schemaspec.Type{T: "varchar", Attrs: []*schemaspec.Attr{LitAttr("size", "255")}},
 			expected: "varchar(255)",
+		},
+		{
+			spec: &schemaspec.TypeSpec{
+				T:    "custom",
+				Name: "custom",
+				Attributes: []*schemaspec.TypeAttr{
+					{Name: "customAttr", Kind: reflect.Int, Required: true},
+				},
+				Printer: func(typ *schemaspec.Type) (string, error) {
+					v, _ := typ.Attrs[0].Int()
+					return fmt.Sprintf("%s(%d) and stuff", typ.T, v), nil
+				},
+			},
+			typ:      &schemaspec.Type{T: "custom", Attrs: []*schemaspec.Attr{LitAttr("customAttr", "3")}},
+			expected: "custom(3) and stuff",
 		},
 	} {
 		t.Run(tt.expected, func(t *testing.T) {
@@ -127,26 +144,28 @@ func TestValidSpec(t *testing.T) {
 func TestRegistryConvert(t *testing.T) {
 	r := &TypeRegistry{}
 	err := r.Register(
-		TypeSpec("varchar", SizeTypeAttr(true)),
-		TypeSpec("int", unsignedTypeAttr()),
+		TypeSpec("varchar", WithAttributes(SizeTypeAttr(true))),
+		TypeSpec("int", WithAttributes(unsignedTypeAttr())),
 		TypeSpec(
 			"decimal",
-			&schemaspec.TypeAttr{
-				Name:     "precision",
-				Kind:     reflect.Int,
-				Required: false,
-			},
-			&schemaspec.TypeAttr{
-				Name:     "scale",
-				Kind:     reflect.Int,
-				Required: false,
-			},
+			WithAttributes(
+				&schemaspec.TypeAttr{
+					Name:     "precision",
+					Kind:     reflect.Int,
+					Required: false,
+				},
+				&schemaspec.TypeAttr{
+					Name:     "scale",
+					Kind:     reflect.Int,
+					Required: false,
+				},
+			),
 		),
-		TypeSpec("enum", &schemaspec.TypeAttr{
+		TypeSpec("enum", WithAttributes(&schemaspec.TypeAttr{
 			Name:     "values",
 			Kind:     reflect.Slice,
 			Required: true,
-		}),
+		})),
 	)
 	require.NoError(t, err)
 	for _, tt := range []struct {

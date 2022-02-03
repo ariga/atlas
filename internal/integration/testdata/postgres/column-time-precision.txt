@@ -1,0 +1,36 @@
+# Apply schema "1.hcl" on fresh database.
+apply 1.hcl
+
+# Compare the result of "\d tbl" with the content of a file named '1.sql'.
+cmpshow tbl 1.sql
+
+# Files
+-- 1.hcl --
+schema "$db" {}
+
+table "tbl" {
+  schema    = schema.$db
+  column "precision_default" {
+    null      = false
+    type      = timestamp
+    default   = sql("CURRENT_TIMESTAMP")
+  }
+  column "timestamp_4" {
+    null    = false
+    type    = timestamp(4)
+    default = sql("CURRENT_TIMESTAMP(4)")
+  }
+  column "timestamptz_4" {
+    null    = false
+    type    = timestamp_with_time_zone(4)
+    default = sql("CURRENT_TIMESTAMP(4)")
+  }
+}
+
+-- 1.sql --
+                           Table "script_column_time_precision.tbl"
+      Column       |              Type              | Collation | Nullable |       Default
+-------------------+--------------------------------+-----------+----------+----------------------
+ precision_default | timestamp without time zone    |           | not null | CURRENT_TIMESTAMP
+ timestamp_4       | timestamp(4) without time zone |           | not null | CURRENT_TIMESTAMP(4)
+ timestamptz_4     | timestamp(4) with time zone    |           | not null | CURRENT_TIMESTAMP(4)
