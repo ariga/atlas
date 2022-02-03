@@ -31,8 +31,12 @@ module.exports = {
             ]
         },
         {
-            type: 'doc',
-            id: 'cli-reference',
+            type: 'category',
+            label: 'CLI',
+            items: [
+                {type: 'doc', id: 'cli/cli-reference', label: 'Reference'},
+                {type: 'doc', id: 'cli/cli-dsn', label: 'DSN'},
+            ]
         },
         {
             type: 'doc',
