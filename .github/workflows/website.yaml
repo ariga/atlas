@@ -17,10 +17,17 @@ jobs:
       - uses: actions/setup-node@v2.1.5
         with:
           node-version: 16
+      - name: Cache dependecies
+        uses: actions/cache@v2.1.6
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
       - name: Install Dependencies
-        run: yarn install
+        run: npm install
       - name: Build website
-        run: yarn build
+        run: npm run build
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -28,6 +35,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
       - name: Deploy Website
-        run: yarn upload
+        run: npm run upload
       - name: Invalidate Cache
-        run: yarn invalidate-cdn
+        run: npm run invalidate-cdn
