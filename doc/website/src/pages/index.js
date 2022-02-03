@@ -141,7 +141,7 @@ export default function () {
                     Atlas powers Ent, an entity framework for Go, is a Linux foundation backed project, originally developed and open sourced by Facebook in 2019. Ent uses Atlas as its migration engine, allowing Ent users to unlock safe and robust migration workflows for their applications.
                 </p>
                 <button className={index.slide3__TextButton}>
-                    <Link to="https://entgo.io">Read More <span>&#8594;</span></Link>
+                    <Link to="https://entgo.io/blog/2022/01/20/announcing-new-migration-engine">Read More <span>&#8594;</span></Link>
                 </button>
             </div>
         </div>
