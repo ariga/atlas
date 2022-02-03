@@ -30,32 +30,32 @@ atlas schema apply -d "mysql://root:pass@tcp(localhost:3306)/example" -f atlas.h
 ### Manage your schema
 ![Atlas Schema Synced](https://atlasgo.io/uploads/images/docs/synced-atlas-schema.png)
 
-When opening the UI from the inspect command, you can view your schema and manage it. On the bottom-right, the current schema is
-described using the Atlas DDL. On the top-right, the “Activity & History” panel that holds an audit history for all changes to your schema. 
-Each log is clickable, and you can view the diff between the schema and its previous state.
+When opening the UI from the inspect command, the schema is presented. On the bottom-right, the current schema is
+described using the Atlas DDL. On the top-right, the “Activity & History” panel holds an audit history for all changes made to the schema. 
+Each log is clickable, allowing to view the diff between the schema and its previous state.
 On the bottom-left part of the screen, the UI displays an ERD (Entity-relation Diagram) showing the different tables and the connections
-between them (via foreign-keys). When opening the ERD to a fullscreen view, you will be able to see a more in depth view of each table.  
+between them (via foreign-keys). Opening the ERD to a fullscreen view offers a more in depth view of each table.  
 
 ![Schema ERD open](https://atlasgo.io/uploads/images/docs/schema-erd-open.png)
 
 ####Editing your schema
 ![Edit Schema](https://atlasgo.io/uploads/images/docs/edit-schema.png)  
-By clicking the 'edit schema' button, an editor opens up where you can make changes to your schema.
+The edit schema screen is where you can make changes to your schema. To learn more about the Atlas DDL syntax, click 
+[here](https://atlasgo.io/ddl/intro#hcl).  
 
 ####Desired Schema vs. Inspected Schema
 ![Atlas Schema Not Synced Split](https://atlasgo.io/uploads/images/docs/schema-out-of-sync-split.png)
-After editing your schema (in this case we added the table `likes`, which you can see in green in the ERD) the schema will be out of sync.
-When a schema is out of sync, you will see two separate schemas: desired and inspected.
-The desired schema is the one you are making changes to and editing in the UI. The inspected schema is the
-true, current state of your database. 
-By clicking the toggle and changing the view to "unified", you can view the schema as one and see the diff.  
+After editing a schema (in this case after adding the table `likes`, which is shown in green in the ERD) the schema will be out of sync.
+When a schema is out of sync, two separate schemas appear: desired and inspected.
+The desired schema is the one being edited in the UI. The inspected schema is the
+true, current state of the database. 
+By clicking the toggle and changing the view to "unified", the schema is shown as one with a highlighted diff.  
 
 ![Atlas Schema Not Synced Unified](https://atlasgo.io/uploads/images/docs/schema-out-of-sync-unified.png)
 
-Once you run a migration, the desired and inspected schemas become one - you have applied the changes
-that you made in Atlas to your database. 
+After running a migration, the desired and inspected schemas become one -  the changes have been applied to the database.
 
-Here we can see that `likes` became a part of our schema after running a migration:
+For example, `likes` became a part of the schema after running a migration:
 
 ![Synced Schema After Migration](https://atlasgo.io/uploads/images/docs/synced-schema-after-migration.png)
 
