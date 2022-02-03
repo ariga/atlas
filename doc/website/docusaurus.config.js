@@ -6,13 +6,10 @@ module.exports = {
   baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
-  favicon: 'https://atlasgo.io/uploads/favicon.ico',
+  // favicon: 'https://atlasgo.io/uploads/favicon.ico',
   organizationName: 'ariga',
   projectName: 'atlas',
   themeConfig: {
-    gtag: {
-      trackingID: 'G-Z88N4TF03R'
-    },
     prism: {
       additionalLanguages: ['hcl'],
     },
@@ -79,6 +76,9 @@ module.exports = {
           path: "../md",
           showLastUpdateAuthor: false,
           showLastUpdateTime: false,
+        },
+        gtag: {
+          trackingID: 'G-Z88N4TF03R'
         },
         blog: {
           showReadingTime: true,
