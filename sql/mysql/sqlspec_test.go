@@ -77,6 +77,14 @@ table "accounts" {
 	column "name" {
 		type = varchar(32)
 	}
+	column "unsigned_float" {
+		type     = float(10)
+		unsigned = true
+	}
+	column "unsigned_decimal" {
+		type     = decimal(10,2)
+		unsigned = true
+	}
 	primary_key {
 		columns = [table.accounts.column.name]
 	}
@@ -186,6 +194,27 @@ table "accounts" {
 						Type: &schema.StringType{
 							T:    TypeVarchar,
 							Size: 32,
+						},
+					},
+				},
+				{
+					Name: "unsigned_float",
+					Type: &schema.ColumnType{
+						Type: &schema.FloatType{
+							T:         TypeFloat,
+							Precision: 10,
+							Unsigned:  true,
+						},
+					},
+				},
+				{
+					Name: "unsigned_decimal",
+					Type: &schema.ColumnType{
+						Type: &schema.DecimalType{
+							T:         TypeDecimal,
+							Precision: 10,
+							Scale:     2,
+							Unsigned:  true,
 						},
 					},
 				},
@@ -602,6 +631,47 @@ schema "test" {
 	require.EqualValues(t, expected, string(buf))
 }
 
+func TestMarshalSpec_FloatUnsigned(t *testing.T) {
+	s := schema.New("test").
+		AddTables(
+			schema.NewTable("test").
+				AddColumns(
+					schema.NewFloatColumn(
+						"float_col",
+						TypeFloat,
+						schema.FloatPrecision(10),
+						schema.FloatUnsigned(true),
+					),
+					schema.NewDecimalColumn(
+						"decimal_col",
+						TypeDecimal,
+						schema.DecimalPrecision(10),
+						schema.DecimalScale(2),
+						schema.DecimalUnsigned(true),
+					),
+				),
+		)
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "test" {
+  schema = schema.test
+  column "float_col" {
+    null     = false
+    type     = float(10)
+    unsigned = true
+  }
+  column "decimal_col" {
+    null     = false
+    type     = decimal(10,2)
+    unsigned = true
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
 func TestTypes(t *testing.T) {
 	tests := []struct {
 		typeExpr  string
@@ -734,8 +804,18 @@ func TestTypes(t *testing.T) {
 			expected: &schema.DecimalType{T: TypeDecimal, Precision: 10, Scale: 2},
 		},
 		{
+			typeExpr:  "decimal(10,2)",
+			extraAttr: "unsigned=true",
+			expected:  &schema.DecimalType{T: TypeDecimal, Precision: 10, Scale: 2, Unsigned: true},
+		},
+		{
 			typeExpr: "numeric",
 			expected: &schema.DecimalType{T: TypeNumeric},
+		},
+		{
+			typeExpr:  "numeric",
+			extraAttr: "unsigned=true",
+			expected:  &schema.DecimalType{T: TypeNumeric, Unsigned: true},
 		},
 		{
 			typeExpr: "numeric(10)",
@@ -750,12 +830,22 @@ func TestTypes(t *testing.T) {
 			expected: &schema.FloatType{T: TypeFloat, Precision: 10},
 		},
 		{
+			typeExpr:  "float(10)",
+			extraAttr: "unsigned=true",
+			expected:  &schema.FloatType{T: TypeFloat, Precision: 10, Unsigned: true},
+		},
+		{
 			typeExpr: "double(10,0)",
 			expected: &schema.FloatType{T: TypeDouble, Precision: 10},
 		},
 		{
 			typeExpr: "real",
 			expected: &schema.FloatType{T: TypeReal},
+		},
+		{
+			typeExpr:  "real",
+			extraAttr: "unsigned=true",
+			expected:  &schema.FloatType{T: TypeReal, Unsigned: true},
 		},
 		{
 			typeExpr: "timestamp",

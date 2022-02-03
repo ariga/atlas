@@ -552,7 +552,8 @@ func parseColumn(typ string) (parts []string, size int64, unsigned bool, err err
 	switch parts = strings.FieldsFunc(typ, func(r rune) bool {
 		return r == '(' || r == ')' || r == ' ' || r == ','
 	}); parts[0] {
-	case TypeTinyInt, TypeSmallInt, TypeMediumInt, TypeInt, TypeBigInt:
+	case TypeTinyInt, TypeSmallInt, TypeMediumInt, TypeInt, TypeBigInt,
+		TypeDecimal, TypeNumeric, TypeFloat, TypeDouble, TypeReal:
 		if attr := parts[len(parts)-1]; attr == "unsigned" || attr == "zerofill" {
 			unsigned = true
 		}

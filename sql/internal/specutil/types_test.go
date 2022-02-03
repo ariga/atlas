@@ -36,6 +36,15 @@ func TestTypePrint(t *testing.T) {
 		},
 		{
 			spec: &schemaspec.TypeSpec{
+				Name:       "float",
+				T:          "float",
+				Attributes: []*schemaspec.TypeAttr{unsignedTypeAttr()},
+			},
+			typ:      &schemaspec.Type{T: "float", Attrs: []*schemaspec.Attr{LitAttr("unsigned", "true")}},
+			expected: "float unsigned",
+		},
+		{
+			spec: &schemaspec.TypeSpec{
 				T:    "varchar",
 				Name: "varchar",
 				Attributes: []*schemaspec.TypeAttr{

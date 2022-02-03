@@ -350,6 +350,13 @@ func DecimalScale(scale int) DecimalOption {
 	}
 }
 
+// DecimalUnsigned configures the unsigned of the float type.
+func DecimalUnsigned(unsigned bool) DecimalOption {
+	return func(b *DecimalType) {
+		b.Unsigned = unsigned
+	}
+}
+
 // NewDecimalColumn creates a new DecimalType column.
 func NewDecimalColumn(name, typ string, opts ...DecimalOption) *Column {
 	t := &DecimalType{T: typ}
@@ -372,6 +379,13 @@ type FloatOption func(*FloatType)
 func FloatPrecision(precision int) FloatOption {
 	return func(b *FloatType) {
 		b.Precision = precision
+	}
+}
+
+// FloatUnsigned configures the unsigned of the float type.
+func FloatUnsigned(unsigned bool) FloatOption {
+	return func(b *FloatType) {
+		b.Unsigned = unsigned
 	}
 }
 
