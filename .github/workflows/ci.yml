@@ -30,6 +30,9 @@ jobs:
             ${{ runner.os }}-go-
       - name: run "go generate ./..."
         run: go generate ./...
+      - name: run "go generate internal/typedoc"
+        working-directory: internal/typedoc 
+        run: go generate ./...
       - name: Verify generated files are checked in properly
         run: |
           status=$(git status --porcelain)
