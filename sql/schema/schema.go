@@ -220,11 +220,13 @@ type (
 		T         string
 		Precision int
 		Scale     int
+		Unsigned  bool
 	}
 
 	// FloatType represents a floating-point type that stores approximate numeric values.
 	FloatType struct {
 		T         string
+		Unsigned  bool
 		Precision int
 	}
 
