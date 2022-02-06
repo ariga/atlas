@@ -191,10 +191,7 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 			})
 		}
 	}
-	if err := rows.Close(); err != nil {
-		return err
-	}
-	return nil
+	return rows.Close()
 }
 
 // columns queries and appends the columns of the given table.
