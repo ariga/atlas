@@ -16,6 +16,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Single table queries used by the different tests.
+var (
+	queryFKs     = sqltest.Escape(fmt.Sprintf(fksQuery, "$2"))
+	queryTables  = sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))
+	queryChecks  = sqltest.Escape(fmt.Sprintf(checksQuery, "$2"))
+	queryColumns = sqltest.Escape(fmt.Sprintf(columnsQuery, "$2"))
+	queryIndexes = sqltest.Escape(fmt.Sprintf(indexesQuery, "$2"))
+)
+
 func TestDriver_InspectTable(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -27,40 +36,40 @@ func TestDriver_InspectTable(t *testing.T) {
 			name: "column types",
 			before: func(m mock) {
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(sqltest.Escape(columnsQuery)).
+				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
- column_name |          data_type          | is_nullable |         column_default          | character_maximum_length | numeric_precision | datetime_precision | numeric_scale | character_set_name | collation_name |  udt_name   | is_identity | identity_start | identity_increment | identity_generation | comment | typtype |  oid  
--------------+-----------------------------+-------------+---------------------------------+--------------------------+-------------------+--------------------+---------------+--------------------+----------------+-------------+-------------+----------------+--------------------+---------------------+---------+---------+-------
- id          | bigint                      | NO          |                                 |                          |                64 |                    |             0 |                    |                | int8        | YES         |      100       |          1         |    BY DEFAULT       |         | b       |    20
- rank        | integer                     | YES         |                                 |                          |                32 |                    |             0 |                    |                | int4        | NO          |                |                    |                     | rank    | b       |    23
- c1          | smallint                    | NO          |           1000                  |                          |                16 |                    |             0 |                    |                | int2        | NO          |                |                    |                     |         | b       |    21
- c2          | bit                         | NO          |                                 |                        1 |                   |                    |               |                    |                | bit         | NO          |                |                    |                     |         | b       |  1560
- c3          | bit varying                 | NO          |                                 |                       10 |                   |                    |               |                    |                | varbit      | NO          |                |                    |                     |         | b       |  1562
- c4          | boolean                     | NO          |                                 |                          |                   |                    |               |                    |                | bool        | NO          |                |                    |                     |         | b       |    16
- c5          | bytea                       | NO          |                                 |                          |                   |                    |               |                    |                | bytea       | NO          |                |                    |                     |         | b       |    17
- c6          | character                   | NO          |                                 |                      100 |                   |                    |               |                    |                | bpchar      | NO          |                |                    |                     |         | b       |  1042
- c7          | character varying           | NO          |                                 |                          |                   |                    |               |                    |                | varchar     | NO          |                |                    |                     |         | b       |  1043
- c8          | cidr                        | NO          |                                 |                          |                   |                    |               |                    |                | cidr        | NO          |                |                    |                     |         | b       |   650
- c9          | circle                      | NO          |                                 |                          |                   |                    |               |                    |                | circle      | NO          |                |                    |                     |         | b       |   718
- c10         | date                        | NO          |                                 |                          |                   |                    |               |                    |                | date        | NO          |                |                    |                     |         | b       |  1082
- c11         | time with time zone         | NO          |                                 |                          |                   |                    |               |                    |                | timetz      | NO          |                |                    |                     |         | b       |  1266
- c12         | double precision            | NO          |                                 |                          |                53 |                    |               |                    |                | float8      | NO          |                |                    |                     |         | b       |   701
- c13         | real                        | NO          |           random()              |                          |                24 |                    |               |                    |                | float4      | NO          |                |                    |                     |         | b       |   700
- c14         | json                        | NO          |           '{}'::json            |                          |                   |                    |               |                    |                | json        | NO          |                |                    |                     |         | b       |   114
- c15         | jsonb                       | NO          |           '{}'::jsonb           |                          |                   |                    |               |                    |                | jsonb       | NO          |                |                    |                     |         | b       |  3802
- c16         | money                       | NO          |                                 |                          |                   |                    |               |                    |                | money       | NO          |                |                    |                     |         | b       |   790
- c17         | numeric                     | NO          |                                 |                          |                   |                    |               |                    |                | numeric     | NO          |                |                    |                     |         | b       |  1700
- c18         | numeric                     | NO          |                                 |                          |                 4 |                    |             4 |                    |                | numeric     | NO          |                |                    |                     |         | b       |  1700
- c19         | integer                     | NO          | nextval('t1_c19_seq'::regclass) |                          |                32 |                    |             0 |                    |                | int4        | NO          |                |                    |                     |         | b       |    23
- c20         | uuid                        | NO          |                                 |                          |                   |                    |               |                    |                | uuid        | NO          |                |                    |                     |         | b       |  2950
- c21         | xml                         | NO          |                                 |                          |                   |                    |               |                    |                | xml         | NO          |                |                    |                     |         | b       |   142
- c22         | ARRAY                       | YES         |                                 |                          |                   |                    |               |                    |                | _int4       | NO          |                |                    |                     |         | b       |  1007
- c23         | USER-DEFINED                | YES         |                                 |                          |                   |                    |               |                    |                | ltree       | NO          |                |                    |                     |         | b       | 16535
- c24         | USER-DEFINED                | NO          |                                 |                          |                   |                    |               |                    |                | state       | NO          |                |                    |                     |         | e       | 16774
- c25         | timestamp without time zone | NO          |            now()                |                          |                   |                  4 |               |                    |                | timestamp   | NO          |                |                    |                     |         | b       |  1114
- c26         | timestamp with time zone    | NO          |                                 |                          |                   |                  6 |               |                    |                | timestamptz | NO          |                |                    |                     |         | b       |  1184
- c27         | time without time zone      | NO          |                                 |                          |                   |                  6 |               |                    |                | time        | NO          |                |                    |                     |         | b       |  1266
+ table_name  |  column_name |          data_type          | is_nullable |         column_default          | character_maximum_length | numeric_precision | datetime_precision | numeric_scale | character_set_name | collation_name |  udt_name   | is_identity | identity_start | identity_increment | identity_generation | comment | typtype |  oid  
+-------------+--------------+-----------------------------+-------------+---------------------------------+--------------------------+-------------------+--------------------+---------------+--------------------+----------------+-------------+-------------+----------------+--------------------+---------------------+---------+---------+-------
+ users       |  id          | bigint                      | NO          |                                 |                          |                64 |                    |             0 |                    |                | int8        | YES         |      100       |          1         |    BY DEFAULT       |         | b       |    20
+ users       |  rank        | integer                     | YES         |                                 |                          |                32 |                    |             0 |                    |                | int4        | NO          |                |                    |                     | rank    | b       |    23
+ users       |  c1          | smallint                    | NO          |           1000                  |                          |                16 |                    |             0 |                    |                | int2        | NO          |                |                    |                     |         | b       |    21
+ users       |  c2          | bit                         | NO          |                                 |                        1 |                   |                    |               |                    |                | bit         | NO          |                |                    |                     |         | b       |  1560
+ users       |  c3          | bit varying                 | NO          |                                 |                       10 |                   |                    |               |                    |                | varbit      | NO          |                |                    |                     |         | b       |  1562
+ users       |  c4          | boolean                     | NO          |                                 |                          |                   |                    |               |                    |                | bool        | NO          |                |                    |                     |         | b       |    16
+ users       |  c5          | bytea                       | NO          |                                 |                          |                   |                    |               |                    |                | bytea       | NO          |                |                    |                     |         | b       |    17
+ users       |  c6          | character                   | NO          |                                 |                      100 |                   |                    |               |                    |                | bpchar      | NO          |                |                    |                     |         | b       |  1042
+ users       |  c7          | character varying           | NO          |                                 |                          |                   |                    |               |                    |                | varchar     | NO          |                |                    |                     |         | b       |  1043
+ users       |  c8          | cidr                        | NO          |                                 |                          |                   |                    |               |                    |                | cidr        | NO          |                |                    |                     |         | b       |   650
+ users       |  c9          | circle                      | NO          |                                 |                          |                   |                    |               |                    |                | circle      | NO          |                |                    |                     |         | b       |   718
+ users       |  c10         | date                        | NO          |                                 |                          |                   |                    |               |                    |                | date        | NO          |                |                    |                     |         | b       |  1082
+ users       |  c11         | time with time zone         | NO          |                                 |                          |                   |                    |               |                    |                | timetz      | NO          |                |                    |                     |         | b       |  1266
+ users       |  c12         | double precision            | NO          |                                 |                          |                53 |                    |               |                    |                | float8      | NO          |                |                    |                     |         | b       |   701
+ users       |  c13         | real                        | NO          |           random()              |                          |                24 |                    |               |                    |                | float4      | NO          |                |                    |                     |         | b       |   700
+ users       |  c14         | json                        | NO          |           '{}'::json            |                          |                   |                    |               |                    |                | json        | NO          |                |                    |                     |         | b       |   114
+ users       |  c15         | jsonb                       | NO          |           '{}'::jsonb           |                          |                   |                    |               |                    |                | jsonb       | NO          |                |                    |                     |         | b       |  3802
+ users       |  c16         | money                       | NO          |                                 |                          |                   |                    |               |                    |                | money       | NO          |                |                    |                     |         | b       |   790
+ users       |  c17         | numeric                     | NO          |                                 |                          |                   |                    |               |                    |                | numeric     | NO          |                |                    |                     |         | b       |  1700
+ users       |  c18         | numeric                     | NO          |                                 |                          |                 4 |                    |             4 |                    |                | numeric     | NO          |                |                    |                     |         | b       |  1700
+ users       |  c19         | integer                     | NO          | nextval('t1_c19_seq'::regclass) |                          |                32 |                    |             0 |                    |                | int4        | NO          |                |                    |                     |         | b       |    23
+ users       |  c20         | uuid                        | NO          |                                 |                          |                   |                    |               |                    |                | uuid        | NO          |                |                    |                     |         | b       |  2950
+ users       |  c21         | xml                         | NO          |                                 |                          |                   |                    |               |                    |                | xml         | NO          |                |                    |                     |         | b       |   142
+ users       |  c22         | ARRAY                       | YES         |                                 |                          |                   |                    |               |                    |                | _int4       | NO          |                |                    |                     |         | b       |  1007
+ users       |  c23         | USER-DEFINED                | YES         |                                 |                          |                   |                    |               |                    |                | ltree       | NO          |                |                    |                     |         | b       | 16535
+ users       |  c24         | USER-DEFINED                | NO          |                                 |                          |                   |                    |               |                    |                | state       | NO          |                |                    |                     |         | e       | 16774
+ users       |  c25         | timestamp without time zone | NO          |            now()                |                          |                   |                  4 |               |                    |                | timestamp   | NO          |                |                    |                     |         | b       |  1114
+ users       |  c26         | timestamp with time zone    | NO          |                                 |                          |                   |                  6 |               |                    |                | timestamptz | NO          |                |                    |                     |         | b       |  1184
+ users       |  c27         | time without time zone      | NO          |                                 |                          |                   |                  6 |               |                    |                | time        | NO          |                |                    |                     |         | b       |  1266
 `))
 				m.ExpectQuery(sqltest.Escape(`SELECT enumtypid, enumlabel FROM pg_enum WHERE enumtypid IN ($1)`)).
 					WithArgs(16774).
@@ -114,26 +123,25 @@ func TestDriver_InspectTable(t *testing.T) {
 			name: "table indexes",
 			before: func(m mock) {
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(sqltest.Escape(columnsQuery)).
+				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
- column_name |      data_type      | is_nullable |         column_default          | character_maximum_length | numeric_precision | datetime_precision | numeric_scale | character_set_name | collation_name | udt_name | is_identity | identity_start | identity_increment | identity_generation | comment | typtype |  oid
--------------+---------------------+-------------+---------------------------------+--------------------------+-------------------+--------------------+---------------+--------------------+----------------+----------+-------------+----------------+--------------------+---------------------+---------+---------+-------
- id          | bigint              | NO          |                                 |                          |                64 |                    |             0 |                    |                | int8     | NO          |                |                    |                     |         | b       |    20
- c1          | smallint            | NO          |                                 |                          |                16 |                    |             0 |                    |                | int2     | NO          |                |                    |                     |         | b       |    21
+table_name | column_name |      data_type      | is_nullable |         column_default          | character_maximum_length | numeric_precision | datetime_precision | numeric_scale | character_set_name | collation_name | udt_name | is_identity | identity_start | identity_increment | identity_generation | comment | typtype |  oid
+-----------+-------------+---------------------+-------------+---------------------------------+--------------------------+-------------------+--------------------+---------------+--------------------+----------------+----------+-------------+----------------+--------------------+---------------------+---------+---------+-------
+users      | id          | bigint              | NO          |                                 |                          |                64 |                    |             0 |                    |                | int8     | NO          |                |                    |                     |         | b       |    20
+users      | c1          | smallint            | NO          |                                 |                          |                16 |                    |             0 |                    |                | int2     | NO          |                |                    |                     |         | b       |    21
 `))
-				m.ExpectQuery(sqltest.Escape(indexesQuery)).
+				m.ExpectQuery(queryIndexes).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-    index_name   | index_type  | column_name | primary | unique | constraint_type | predicate             |   expression              | desc | nulls_first | nulls_last | comment
------------------+-------------+-------------+---------+--------+-----------------+-----------------------+---------------------------+------+-------------+------------+-----------
- idx             | hash        | left        | f       | f      |                 |                       | "left"((c11)::text, 100)  | t    | t           | f          | boring
- idx1            | btree       | left        | f       | f      |                 | (id <> NULL::integer) | "left"((c11)::text, 100)  | t    | t           | f          |
- t1_c1_key       | btree       | c1          | f       | t      | u               |                       |                           | t    | t           | f          |
- t1_pkey         | btree       | id          | t       | t      | p               |                       |                           | t    | f           | f          |
- idx4            | btree       | c1          | f       | t      |                 |                       |                           | f    | f           | f          |
- idx4            | btree       | id          | f       | t      |                 |                       |                           | f    | f           | t          |
-
+   table_name   |    index_name   | index_type  | column_name | primary | unique | constraint_type | predicate             |   expression              | desc | nulls_first | nulls_last | comment
+----------------+-----------------+-------------+-------------+---------+--------+-----------------+-----------------------+---------------------------+------+-------------+------------+-----------
+users           | idx             | hash        | left        | f       | f      |                 |                       | "left"((c11)::text, 100)  | t    | t           | f          | boring
+users           | idx1            | btree       | left        | f       | f      |                 | (id <> NULL::integer) | "left"((c11)::text, 100)  | t    | t           | f          |
+users           | t1_c1_key       | btree       | c1          | f       | t      | u               |                       |                           | t    | t           | f          |
+users           | t1_pkey         | btree       | id          | t       | t      | p               |                       |                           | t    | f           | f          |
+users           | idx4            | btree       | c1          | f       | t      |                 |                       |                           | f    | f           | f          |
+users           | idx4            | btree       | id          | f       | t      |                 |                       |                           | f    | f           | t          |	
 `))
 				m.noFKs()
 				m.noChecks()
@@ -169,27 +177,26 @@ func TestDriver_InspectTable(t *testing.T) {
 			name: "fks",
 			before: func(m mock) {
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(sqltest.Escape(columnsQuery)).
+				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
- column_name |      data_type      | is_nullable |         column_default          | character_maximum_length | numeric_precision | datetime_precision | numeric_scale | character_set_name | collation_name | udt_name | is_identity | identity_start | identity_increment | identity_generation | comment | typtype |  oid
--------------+---------------------+-------------+---------------------------------+--------------------------+-------------------+--------------------+---------------+--------------------+----------------+----------+-------------+----------------+--------------------+---------------------+---------+---------+-------
- id          | integer             | NO          |                                 |                          |                32 |                    |             0 |                    |                | int      | NO          |                |                    |                     |         | b       |    20
- oid         | integer             | NO          |                                 |                          |                32 |                    |             0 |                    |                | int      | NO          |                |                    |                     |         | b       |    21
- uid         | integer             | NO          |                                 |                          |                32 |                    |             0 |                    |                | int      | NO          |                |                    |                     |         | b       |    21
+table_name | column_name |      data_type      | is_nullable |         column_default          | character_maximum_length | numeric_precision | datetime_precision | numeric_scale | character_set_name | collation_name | udt_name | is_identity | identity_start | identity_increment | identity_generation | comment | typtype |  oid
+-----------+-------------+---------------------+-------------+---------------------------------+--------------------------+-------------------+--------------------+---------------+--------------------+----------------+----------+-------------+----------------+--------------------+---------------------+---------+---------+-------
+users      | id          | integer             | NO          |                                 |                          |                32 |                    |             0 |                    |                | int      | NO          |                |                    |                     |         | b       |    20
+users      | oid         | integer             | NO          |                                 |                          |                32 |                    |             0 |                    |                | int      | NO          |                |                    |                     |         | b       |    21
+users      | uid         | integer             | NO          |                                 |                          |                32 |                    |             0 |                    |                | int      | NO          |                |                    |                     |         | b       |    21
 `))
 				m.noIndexes()
-				m.ExpectQuery(sqltest.Escape(fksQuery)).
+				m.ExpectQuery(queryFKs).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
- constraint_name | table_name | column_name | table_schema | referenced_table_name | referenced_column_name | referenced_schema_name | update_rule | delete_rule
+constraint_name | table_name | column_name | table_schema | referenced_table_name | referenced_column_name | referenced_schema_name | update_rule | delete_rule
 -----------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------
- multi_column    | users      | id          | public       | t1                    | gid                    | public                 | NO ACTION   | CASCADE
- multi_column    | users      | id          | public       | t1                    | xid                    | public                 | NO ACTION   | CASCADE
- multi_column    | users      | oid         | public       | t1                    | gid                    | public                 | NO ACTION   | CASCADE
- multi_column    | users      | oid         | public       | t1                    | xid                    | public                 | NO ACTION   | CASCADE
- self_reference  | users      | uid         | public       | users                 | id                     | public                 | NO ACTION   | CASCADE
-
+multi_column    | users      | id          | public       | t1                    | gid                    | public                 | NO ACTION   | CASCADE
+multi_column    | users      | id          | public       | t1                    | xid                    | public                 | NO ACTION   | CASCADE
+multi_column    | users      | oid         | public       | t1                    | gid                    | public                 | NO ACTION   | CASCADE
+multi_column    | users      | oid         | public       | t1                    | xid                    | public                 | NO ACTION   | CASCADE
+self_reference  | users      | uid         | public       | users                 | id                     | public                 | NO ACTION   | CASCADE
 `))
 				m.noChecks()
 			},
@@ -198,7 +205,7 @@ func TestDriver_InspectTable(t *testing.T) {
 				require.Equal("users", t.Name)
 				require.Equal("public", t.Schema.Name)
 				fks := []*schema.ForeignKey{
-					{Symbol: "multi_column", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}}, RefColumns: []*schema.Column{{Name: "gid"}, {Name: "xid"}}},
+					{Symbol: "multi_column", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: &schema.Table{Name: "t1", Schema: t.Schema}, RefColumns: []*schema.Column{{Name: "gid"}, {Name: "xid"}}},
 					{Symbol: "self_reference", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: t},
 				}
 				columns := []*schema.Column{
@@ -217,31 +224,30 @@ func TestDriver_InspectTable(t *testing.T) {
 			name: "check",
 			before: func(m mock) {
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(sqltest.Escape(columnsQuery)).
-					WithArgs("public", "users").
+				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
- column_name | data_type | is_nullable | column_default | character_maximum_length | numeric_precision | datetime_precision | numeric_scale | character_set_name | collation_name | udt_name | is_identity | identity_start | identity_increment | identity_generation | comment | typtype | oid
--------------+-----------+-------------+----------------+--------------------------+-------------------+--------------------+---------------+--------------------+----------------+----------+-------------+----------------+--------------------+---------------------+---------+---------+-----
- c1          | integer   | NO          |                |                          |                32 |                    |             0 |                    |                | int4     | NO          |                |                    |                     |         | b       |  23
- c2          | integer   | NO          |                |                          |                32 |                    |             0 |                    |                | int4     | NO          |                |                    |                     |         | b       |  23
- c3          | integer   | NO          |                |                          |                32 |                    |             0 |                    |                | int4     | NO          |                |                    |                     |         | b       |  23
+table_name |column_name | data_type | is_nullable | column_default | character_maximum_length | numeric_precision | datetime_precision | numeric_scale | character_set_name | collation_name | udt_name | is_identity | identity_start | identity_increment | identity_generation | comment | typtype | oid
+-----------+------------+-----------+-------------+----------------+--------------------------+-------------------+--------------------+---------------+--------------------+----------------+----------+-------------+----------------+--------------------+---------------------+---------+---------+-----
+users      | c1         | integer   | NO          |                |                          |                32 |                    |             0 |                    |                | int4     | NO          |                |                    |                     |         | b       |  23
+users      | c2         | integer   | NO          |                |                          |                32 |                    |             0 |                    |                | int4     | NO          |                |                    |                     |         | b       |  23
+users      | c3         | integer   | NO          |                |                          |                32 |                    |             0 |                    |                | int4     | NO          |                |                    |                     |         | b       |  23
 `))
 				m.noIndexes()
 				m.noFKs()
-				m.ExpectQuery(sqltest.Escape(checksQuery)).
+				m.ExpectQuery(queryChecks).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
- constraint_name    |       expression        | column_name | column_indexes | no_inherit
---------------------+-------------------------+-------------+----------------+----------------
- boring             | (c1 > 1)                | c1          | {1}            | t
- users_c2_check     | (c2 > 0)                | c2          | {2}            | f
- users_c2_check1    | (c2 > 0)                | c2          | {2}            | f
- users_check        | ((c2 + c1) > 2)         | c2          | {2,1}          | f
- users_check        | ((c2 + c1) > 2)         | c1          | {2,1}          | f
- users_check1       | (((c2 + c1) + c3) > 10) | c2          | {2,1,3}        | f
- users_check1       | (((c2 + c1) + c3) > 10) | c1          | {2,1,3}        | f
- users_check1       | (((c2 + c1) + c3) > 10) | c3          | {2,1,3}        | f
+table_name   | constraint_name    |       expression        | column_name | column_indexes | no_inherit
+-------------+--------------------+-------------------------+-------------+----------------+----------------
+users        | boring             | (c1 > 1)                | c1          | {1}            | t
+users        | users_c2_check     | (c2 > 0)                | c2          | {2}            | f
+users        | users_c2_check1    | (c2 > 0)                | c2          | {2}            | f
+users        | users_check        | ((c2 + c1) > 2)         | c2          | {2,1}          | f
+users        | users_check        | ((c2 + c1) > 2)         | c1          | {2,1}          | f
+users        | users_check1       | (((c2 + c1) + c3) > 10) | c2          | {2,1,3}        | f
+users        | users_check1       | (((c2 + c1) + c3) > 10) | c1          | {2,1,3}        | f
+users        | users_check1       | (((c2 + c1) + c3) > 10) | c3          | {2,1,3}        | f
 `))
 				m.noChecks()
 			},
@@ -279,7 +285,6 @@ func TestDriver_InspectTable(t *testing.T) {
 --------------------
  public
 `))
-			mk.tables("public", "users")
 			tt.before(mk)
 			s, err := drv.InspectSchema(context.Background(), "public", nil)
 			require.NoError(t, err)
@@ -295,13 +300,15 @@ func TestDriver_InspectSchema(t *testing.T) {
 	mk.version("130000")
 	drv, err := Open(db)
 	require.NoError(t, err)
-	mk.ExpectQuery(sqltest.Escape("SELECT CURRENT_SCHEMA()")).
+	mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= CURRENT_SCHEMA()"))).
 		WillReturnRows(sqltest.Rows(`
-    schema_name
+   schema_name
 --------------------
- test
+test
 `))
-	mk.tables("test")
+	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))).
+		WithArgs("test").
+		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment"}))
 	s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Schema {
@@ -335,13 +342,14 @@ func TestDriver_Realm(t *testing.T) {
 	require.NoError(t, err)
 	mk.ExpectQuery(sqltest.Escape(schemasQuery)).
 		WillReturnRows(sqltest.Rows(`
-    schema_name
+   schema_name
 --------------------
- test
- public
+test
+public
 `))
-	mk.tables("test")
-	mk.tables("public")
+	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1, $2"))).
+		WithArgs("test", "public").
+		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment"}))
 	realm, err := drv.InspectRealm(context.Background(), &schema.InspectRealmOption{})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Realm {
@@ -372,13 +380,14 @@ func TestDriver_Realm(t *testing.T) {
 	mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "IN ($1, $2)"))).
 		WithArgs("test", "public").
 		WillReturnRows(sqltest.Rows(`
-    schema_name
+   schema_name
 --------------------
- test
- public
+  test
+  public
 `))
-	mk.tables("test")
-	mk.tables("public")
+	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1, $2"))).
+		WithArgs("test", "public").
+		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment"}))
 	realm, err = drv.InspectRealm(context.Background(), &schema.InspectRealmOption{Schemas: []string{"test", "public"}})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Realm {
@@ -409,11 +418,13 @@ func TestDriver_Realm(t *testing.T) {
 	mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= $1"))).
 		WithArgs("test").
 		WillReturnRows(sqltest.Rows(`
-    schema_name
+ schema_name
 --------------------
  test
 `))
-	mk.tables("test")
+	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))).
+		WithArgs("test").
+		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment"}))
 	realm, err = drv.InspectRealm(context.Background(), &schema.InspectRealmOption{Schemas: []string{"test"}})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Realm {
@@ -454,36 +465,26 @@ func (m mock) version(version string) {
 }
 
 func (m mock) tableExists(schema, table string, exists bool) {
-	rows := sqlmock.NewRows([]string{"table_schema", "table_comment"})
+	rows := sqlmock.NewRows([]string{"table_schema", "table_name", "table_comment"})
 	if exists {
-		rows.AddRow(schema, nil)
+		rows.AddRow(schema, table, nil)
 	}
-	m.ExpectQuery(sqltest.Escape(tableSchemaQuery)).
-		WithArgs(table, schema).
+	m.ExpectQuery(queryTables).
+		WithArgs(schema).
 		WillReturnRows(rows)
 }
 
 func (m mock) noIndexes() {
-	m.ExpectQuery(sqltest.Escape(indexesQuery)).
-		WillReturnRows(sqlmock.NewRows([]string{"index_name", "column_name", "primary", "unique", "constraint_type", "predicate", "expression"}))
+	m.ExpectQuery(queryIndexes).
+		WillReturnRows(sqlmock.NewRows([]string{"table_name", "index_name", "column_name", "primary", "unique", "constraint_type", "predicate", "expression"}))
 }
 
 func (m mock) noFKs() {
-	m.ExpectQuery(sqltest.Escape(fksQuery)).
+	m.ExpectQuery(queryFKs).
 		WillReturnRows(sqlmock.NewRows([]string{"constraint_name", "table_name", "column_name", "referenced_table_name", "referenced_column_name", "referenced_table_schema", "update_rule", "delete_rule"}))
 }
 
 func (m mock) noChecks() {
-	m.ExpectQuery(sqltest.Escape(checksQuery)).
-		WillReturnRows(sqlmock.NewRows([]string{"constraint_name", "expression", "column_name", "column_indexes"}))
-}
-
-func (m mock) tables(schema string, names ...string) {
-	rows := sqlmock.NewRows([]string{"table_name"})
-	for i := range names {
-		rows.AddRow(names[i])
-	}
-	m.ExpectQuery(sqltest.Escape(tablesQuery)).
-		WithArgs(schema).
-		WillReturnRows(rows)
+	m.ExpectQuery(queryChecks).
+		WillReturnRows(sqlmock.NewRows([]string{"table_name", "constraint_name", "expression", "column_name", "column_indexes"}))
 }

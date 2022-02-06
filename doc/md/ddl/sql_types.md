@@ -187,6 +187,7 @@ slug: /ddl/sql-types
             <td>decimal</td>
             <td>
                 <ul>
+                        <li>unsigned (bool)</li>
                         <li>precision (int)</li>
                         <li>scale (int)</li>
                 </ul>
@@ -195,6 +196,10 @@ slug: /ddl/sql-types
                 
                 <pre>
                     type = decimal(10,2)
+                </pre>
+                
+                <pre>
+                    unsigned = true
                 </pre>
                 
                 
@@ -206,6 +211,7 @@ slug: /ddl/sql-types
             <td>double</td>
             <td>
                 <ul>
+                        <li>unsigned (bool)</li>
                         <li>precision (int)</li>
                         <li>scale (int)</li>
                 </ul>
@@ -214,6 +220,10 @@ slug: /ddl/sql-types
                 
                 <pre>
                     type = double(10,2)
+                </pre>
+                
+                <pre>
+                    unsigned = true
                 </pre>
                 
                 
@@ -243,6 +253,7 @@ slug: /ddl/sql-types
             <td>float</td>
             <td>
                 <ul>
+                        <li>unsigned (bool)</li>
                         <li>precision (int)</li>
                         <li>scale (int)</li>
                 </ul>
@@ -251,6 +262,10 @@ slug: /ddl/sql-types
                 
                 <pre>
                     type = float(10,2)
+                </pre>
+                
+                <pre>
+                    unsigned = true
                 </pre>
                 
                 
@@ -495,6 +510,7 @@ slug: /ddl/sql-types
             <td>numeric</td>
             <td>
                 <ul>
+                        <li>unsigned (bool)</li>
                         <li>precision (int)</li>
                         <li>scale (int)</li>
                 </ul>
@@ -503,6 +519,10 @@ slug: /ddl/sql-types
                 
                 <pre>
                     type = numeric(10,2)
+                </pre>
+                
+                <pre>
+                    unsigned = true
                 </pre>
                 
                 
@@ -548,6 +568,7 @@ slug: /ddl/sql-types
             <td>real</td>
             <td>
                 <ul>
+                        <li>unsigned (bool)</li>
                         <li>precision (int)</li>
                         <li>scale (int)</li>
                 </ul>
@@ -556,6 +577,10 @@ slug: /ddl/sql-types
                 
                 <pre>
                     type = real(10,2)
+                </pre>
+                
+                <pre>
+                    unsigned = true
                 </pre>
                 
                 
