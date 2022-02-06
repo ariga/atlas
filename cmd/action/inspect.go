@@ -40,7 +40,7 @@ flag.
 		Example: `
 atlas schema inspect -d "mysql://user:pass@tcp(localhost:3306)/dbname"
 atlas schema inspect -d "mariadb://user:pass@tcp(localhost:3306)/" --schema=schemaA,schemaB -s schemaC
-atlas schema inspect --dsn "postgres://user:pass@host:port/dbname"
+atlas schema inspect --dsn "postgres://user:pass@host:port/dbname?sslmode=disable"
 atlas schema inspect -d "sqlite://file:ex1.db?_fk=1"`,
 	}
 )

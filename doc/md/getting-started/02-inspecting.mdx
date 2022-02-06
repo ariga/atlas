@@ -23,7 +23,7 @@ Examples:
 
 atlas schema inspect -d "mysql://user:pass@tcp(localhost:3306)/dbname"
 atlas schema inspect -d "mariadb://user:pass@tcp(localhost:3306)/dbname"
-atlas schema inspect --dsn "postgres://user:pass@host:port/dbname"
+atlas schema inspect --dsn "postgres://user:pass@host:port/dbname?sslmode=disable"
 atlas schema inspect -d "sqlite://file:ex1.db?_fk=1"
 
 Flags:
@@ -31,6 +31,12 @@ Flags:
   -h, --help         help for inspect
   -w, --web          open in UI server
 ```
+
+:::info
+
+If you're using PostgreSQL, there is [additional documentation about building the connection string](../dsn#ssltls-mode)
+
+:::
 
 ### Inspecting our database
 
