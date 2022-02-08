@@ -14,9 +14,7 @@ state of a SQL database.
 ### Schema
 
 ```hcl
-schema "default" {
-  
-}
+schema "default" {}
 ```
 
 ### Table
@@ -39,18 +37,18 @@ table "users" {
   }
   primary_key {
     columns = [
-        table.users.column.id
+      column.id
     ]
   }
   index "idx_name" {
     columns = [
-      table.users.column.name
+      column.name
     ]
     unique = true
   }
   foreign_key "manager_fk" {
-    columns = [table.users.column.manager_id]
-    ref_columns = [table.users.column.id]
+    columns = [column.manager_id]
+    ref_columns = [column.id]
     on_delete = "CASCADE"
     on_update = "NO ACTION"
   }
@@ -118,7 +116,7 @@ primary key.
 
 ```hcl
 primary_key {
-  columns = [table.users.column.id]
+  columns = [column.id]
 }
 ```
 
@@ -137,8 +135,8 @@ as references to columns in other tables.
 
 ```hcl
 foreign_key "manager_fk" {
-  columns = [table.users.column.manager_id]
-  ref_columns = [table.users.column.id]
+  columns = [column.manager_id]
+  ref_columns = [column.id]
   on_delete = "CASCADE"
   on_update = "NO ACTION"
 }
@@ -162,17 +160,17 @@ Indexes are child resources of a `table`, and it defines an index on the table.
 ```hcl
 index "idx_name" {
     columns = [
-      table.users.column.name
+      column.name
     ]
     unique = true
 }
 
 index "idx_name" {
     on {
-        column = table.users.column.rank
+        column = column.rank
     }
     on {
-        column = table.users.column.score
+        column = column.score
         desc = true
     }
     unique = true
