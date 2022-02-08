@@ -67,7 +67,7 @@ table "categories" {
     type = varchar(100)
   }
   primary_key {
-    columns = [table.categories.column.id, ]
+    columns = [column.id]
   }
 }
 ```
@@ -119,12 +119,12 @@ table "post_categories" {
         type = int
     }
     foreign_key "post_category_post" {
-        columns     = [table.post_categories.column.post_id, ]
-        ref_columns = [table.blog_posts.column.id, ]
+        columns     = [column.post_id]
+        ref_columns = [table.blog_posts.column.id]
     }
     foreign_key "post_category_category" {
-        columns     = [table.post_categories.column.category_id, ]
-        ref_columns = [table.categories.column.id, ]
+        columns     = [column.category_id]
+        ref_columns = [table.categories.column.id]
     }
 }
 ```
