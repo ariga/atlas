@@ -444,7 +444,7 @@ func TestMarshalSpec_Comment(t *testing.T) {
   }
   index "index" {
     unique  = true
-    columns = [table.users.column.a]
+    columns = [column.a]
     comment = "index comment"
   }
 }
@@ -566,7 +566,7 @@ func TestMarshalSpec_IndexParts(t *testing.T) {
   index "idx" {
     on {
       desc   = true
-      column = table.users.column.name
+      column = column.name
     }
     on {
       expr = "lower(name)"

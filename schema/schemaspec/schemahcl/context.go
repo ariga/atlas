@@ -37,10 +37,17 @@ func evalCtx(ctx *hcl.EvalContext, f *hcl.File) (*hcl.EvalContext, error) {
 	if !ok {
 		return nil, fmt.Errorf("schemahcl: expected an hcl body")
 	}
+	return setBlockVars(ctx, b)
+}
+
+func setBlockVars(ctx *hcl.EvalContext, b *hclsyntax.Body) (*hcl.EvalContext, error) {
 	defs := defRegistry(b)
 	vars, err := blockVars(b, "", defs)
 	if err != nil {
 		return nil, err
+	}
+	if ctx.Variables == nil {
+		ctx.Variables = make(map[string]cty.Value)
 	}
 	for k, v := range vars {
 		ctx.Variables[k] = v

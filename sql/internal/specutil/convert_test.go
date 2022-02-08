@@ -67,10 +67,10 @@ func TestFromForeignKey(t *testing.T) {
 	require.EqualValues(t, &sqlspec.ForeignKey{
 		Symbol: "fk",
 		Columns: []*schemaspec.Ref{
-			{V: "$table.users.$column.parent_id"},
+			{V: "$column.parent_id"},
 		},
 		RefColumns: []*schemaspec.Ref{
-			{V: "$table.users.$column.id"},
+			{V: "$column.id"},
 		},
 	}, key)
 }
