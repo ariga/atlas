@@ -96,6 +96,10 @@ func extract(ctx *hcl.EvalContext, remain hcl.Body) (*schemaspec.Resource, error
 		Attrs: attrs,
 	}
 	for _, blk := range body.Blocks {
+		ctx, err := setBlockVars(ctx.NewChild(), blk.Body)
+		if err != nil {
+			return nil, err
+		}
 		resource, err := toResource(ctx, blk)
 		if err != nil {
 			return nil, err

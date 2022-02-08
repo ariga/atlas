@@ -240,47 +240,34 @@ func LinkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *sqlspec.Table
 			OnUpdate: spec.OnUpdate,
 			OnDelete: spec.OnDelete,
 		}
+		if n, m := len(spec.Columns), len(spec.RefColumns); n != m {
+			return fmt.Errorf("sqlspec: number of referencing and referenced columns do not match for foreign-key %q", fk.Symbol)
+		}
 		for _, ref := range spec.Columns {
-			col, err := resolveCol(ref, sch)
+			c, err := column(tbl, ref)
 			if err != nil {
 				return err
 			}
-			fk.Columns = append(fk.Columns, col)
+			fk.Columns = append(fk.Columns, c)
 		}
-		if len(spec.RefColumns) == 0 {
-			return fmt.Errorf("sqlspec: missing reference (parent) columns for foreign key: %q", spec.Symbol)
-		}
-		name, err := tableName(spec.RefColumns[0])
-		if err != nil {
-			return err
-		}
-		t, ok := sch.Table(name)
-		if !ok {
-			return fmt.Errorf("sqlspec: undefined table %q for foreign key: %q", name, spec.Symbol)
-		}
-		fk.RefTable = t
-		for _, ref := range spec.RefColumns {
-			col, err := resolveCol(ref, sch)
+		for i, ref := range spec.RefColumns {
+			t, c, err := externalRef(ref, sch)
+			if isLocalRef(ref) {
+				t = fk.Table
+				c, err = column(fk.Table, ref)
+			}
 			if err != nil {
 				return err
 			}
-			fk.RefColumns = append(fk.RefColumns, col)
+			if i > 0 && fk.RefTable != t {
+				return fmt.Errorf("sqlspec: more than 1 table was referenced for foreign-key %q", fk.Symbol)
+			}
+			fk.RefTable = t
+			fk.RefColumns = append(fk.RefColumns, c)
 		}
 		tbl.ForeignKeys = append(tbl.ForeignKeys, fk)
 	}
 	return nil
-}
-
-func resolveCol(ref *schemaspec.Ref, sch *schema.Schema) (*schema.Column, error) {
-	t, err := tableName(ref)
-	if err != nil {
-		return nil, fmt.Errorf("sqlspec: table %q not found", ref.V)
-	}
-	tbl, ok := sch.Table(t)
-	if !ok {
-		return nil, fmt.Errorf("sqlspec: table %q not found", t)
-	}
-	return column(tbl, ref)
 }
 
 // FromRealm converts a schema.Realm into []sqlspec.Schema and []sqlspec.Table.
@@ -366,7 +353,7 @@ func FromTable(t *schema.Table, colFn ColumnSpecFunc, pkFn PrimaryKeySpecFunc, i
 func FromPrimaryKey(s *schema.Index) (*sqlspec.PrimaryKey, error) {
 	c := make([]*schemaspec.Ref, 0, len(s.Parts))
 	for _, v := range s.Parts {
-		c = append(c, colRef(v.C.Name, s.Table.Name))
+		c = append(c, colRef(v.C.Name))
 	}
 	return &sqlspec.PrimaryKey{
 		Columns: c,
@@ -446,7 +433,7 @@ func FromIndex(idx *schema.Index) (*sqlspec.Index, error) {
 		case p.C != nil && p.X != nil:
 			return nil, fmt.Errorf("multiple key part definitions for index %q", idx.Name)
 		case p.C != nil:
-			part.Column = colRef(p.C.Name, idx.Table.Name)
+			part.Column = colRef(p.C.Name)
 		case p.X != nil:
 			x, ok := p.X.(*schema.RawExpr)
 			if !ok {
@@ -465,7 +452,7 @@ func columnsOnly(idx *schema.Index) ([]*schemaspec.Ref, bool) {
 		if p.C == nil || p.Desc {
 			return nil, false
 		}
-		parts[i] = colRef(p.C.Name, idx.Table.Name)
+		parts[i] = colRef(p.C.Name)
 	}
 	return parts, true
 }
@@ -474,11 +461,15 @@ func columnsOnly(idx *schema.Index) ([]*schemaspec.Ref, bool) {
 func FromForeignKey(s *schema.ForeignKey) (*sqlspec.ForeignKey, error) {
 	c := make([]*schemaspec.Ref, 0, len(s.Columns))
 	for _, v := range s.Columns {
-		c = append(c, colRef(v.Name, s.Table.Name))
+		c = append(c, colRef(v.Name))
 	}
 	r := make([]*schemaspec.Ref, 0, len(s.RefColumns))
 	for _, v := range s.RefColumns {
-		r = append(r, colRef(v.Name, s.RefTable.Name))
+		ref := colRef(v.Name)
+		if s.Table != s.RefTable {
+			ref = externalColRef(v.Name, s.RefTable.Name)
+		}
+		r = append(r, ref)
 	}
 	return &sqlspec.ForeignKey{
 		Symbol:     s.Symbol,
@@ -521,6 +512,22 @@ func column(t *schema.Table, ref *schemaspec.Ref) (*schema.Column, error) {
 	return c, nil
 }
 
+func externalRef(ref *schemaspec.Ref, sch *schema.Schema) (*schema.Table, *schema.Column, error) {
+	t, err := tableName(ref)
+	if err != nil {
+		return nil, nil, fmt.Errorf("sqlspec: table %q not found", ref.V)
+	}
+	tbl, ok := sch.Table(t)
+	if !ok {
+		return nil, nil, fmt.Errorf("sqlspec: table %q not found", t)
+	}
+	c, err := column(tbl, ref)
+	if err != nil {
+		return nil, nil, err
+	}
+	return tbl, c, nil
+}
+
 func tableName(ref *schemaspec.Ref) (string, error) {
 	s := strings.Split(ref.V, "$column.")
 	if len(s) != 2 {
@@ -534,11 +541,16 @@ func tableName(ref *schemaspec.Ref) (string, error) {
 	return s[1], nil
 }
 
-func colRef(cName string, tName string) *schemaspec.Ref {
-	v := "$table." + tName + ".$column." + cName
-	return &schemaspec.Ref{
-		V: v,
-	}
+func isLocalRef(r *schemaspec.Ref) bool {
+	return strings.HasPrefix(r.V, "$column")
+}
+
+func colRef(cName string) *schemaspec.Ref {
+	return &schemaspec.Ref{V: "$column." + cName}
+}
+
+func externalColRef(cName string, tName string) *schemaspec.Ref {
+	return &schemaspec.Ref{V: "$table." + tName + ".$column." + cName}
 }
 
 // SchemaRef returns the schemaspec.Ref to the schema with the given name.
