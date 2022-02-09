@@ -166,30 +166,34 @@ func New(drv Driver, fs FS, pr Printer) *Planner {
 	}
 }
 
-// localFS implements FS for a local path.
-type localFS struct {
+// LocalFS implements FS for a local path.
+type LocalFS struct {
 	dir  string
 	glob string
 }
 
-func (fs *localFS) List() ([]string, error) {
+// List returns a list of all migration files in this FS.
+func (fs *LocalFS) List() ([]string, error) {
 	return filepath.Glob(filepath.Join(fs.dir, fs.glob))
 }
 
-func (fs *localFS) Read(name string) ([]byte, error) {
+// Read reads the contents of a file by name.
+func (fs *LocalFS) Read(name string) ([]byte, error) {
 	return ioutil.ReadFile(filepath.Join(fs.dir, name))
 }
 
-func (fs *localFS) Write(name string, data []byte, perm fs.FileMode) error {
+// Write writes the given contents to a file by name.
+func (fs *LocalFS) Write(name string, data []byte, perm fs.FileMode) error {
 	return ioutil.WriteFile(filepath.Join(fs.dir, name), data, perm)
 }
 
-func (fs *localFS) Remove(name string) error {
+// Remove removes a file by name.
+func (fs *LocalFS) Remove(name string) error {
 	return os.Remove(filepath.Join(fs.dir, name))
 }
 
 // NewLocalFS returns a new the FS used by a Planner to work on the given local path.
-func NewLocalFS(path, glob string) (*localFS, error) {
+func NewLocalFS(path, glob string) (*LocalFS, error) {
 	fi, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -197,12 +201,13 @@ func NewLocalFS(path, glob string) (*localFS, error) {
 	if !fi.IsDir() {
 		return nil, fmt.Errorf("sql/migrate: %q is not a dir", path)
 	}
-	return &localFS{dir: path, glob: glob}, nil
+	return &LocalFS{dir: path, glob: glob}, nil
 }
 
 // GoMigratePrinter implements Printer for a golang-migrate/migrate compatible migration files.
 type GoMigratePrinter struct{}
 
+// Print implements the Printer interface.
 func (GoMigratePrinter) Print(plan *Plan) ([]string, [][]byte, error) {
 	var up, down bytes.Buffer
 	for _, change := range plan.Changes {
