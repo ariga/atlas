@@ -5,6 +5,7 @@
 package migrate
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -12,6 +13,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
 
 	"ariga.io/atlas/sql/schema"
 )
@@ -150,16 +154,15 @@ type (
 		drv Driver
 		fs  FS
 		pr  Printer
-		// // templates holds the filename and content templates to use when dumping a migration.
-		// templates []struct{ N, C *template.Template }
 	}
 )
 
 // New creates a new Planner.
-func New(drv Driver, fs FS) *Planner {
+func New(drv Driver, fs FS, pr Printer) *Planner {
 	return &Planner{
 		drv: drv,
 		fs:  fs,
+		pr:  pr,
 	}
 }
 
@@ -185,7 +188,7 @@ func (fs *localFS) Remove(name string) error {
 	return os.Remove(filepath.Join(fs.dir, name))
 }
 
-// NewLocalFS configures the FS used by a Planner to work on the given local path.
+// NewLocalFS returns a new the FS used by a Planner to work on the given local path.
 func NewLocalFS(path, glob string) (*localFS, error) {
 	fi, err := os.Stat(path)
 	if err != nil {
@@ -197,11 +200,26 @@ func NewLocalFS(path, glob string) (*localFS, error) {
 	return &localFS{dir: path, glob: glob}, nil
 }
 
-// localFS implements Printer for a golang-migrate/migrate compatible migration files.
-type goMigratePrinter struct{}
+// GoMigratePrinter implements Printer for a golang-migrate/migrate compatible migration files.
+type GoMigratePrinter struct{}
 
-func (goMigratePrinter) Print(plan *Plan) ([]string, [][]byte, error) {
-	return nil, nil, nil
+func (GoMigratePrinter) Print(plan *Plan) ([]string, [][]byte, error) {
+	var up, down bytes.Buffer
+	for _, change := range plan.Changes {
+		up.WriteString(change.Cmd)
+		if !strings.HasSuffix(change.Cmd, ";") {
+			up.WriteRune(';')
+		}
+		if change.Reverse != "" {
+			down.WriteString(change.Reverse)
+		}
+	}
+	v := strconv.FormatInt(time.Now().Unix(), 10)
+	names := []string{v + "_up.sql"}
+	if down.Len() > 0 {
+		names = append(names, v+"_down.sql")
+	}
+	return names, [][]byte{up.Bytes(), down.Bytes()}, nil
 }
 
 // Plan calculates the migration Plan required for moving the current state (from) state to
@@ -219,4 +237,26 @@ func (p *Planner) Plan(ctx context.Context, from StateReader, to StateReader) (*
 	if err != nil {
 		return nil, err
 	}
+	if len(changes) == 0 {
+		return nil, ErrNoPlan
+	}
+	return p.drv.PlanChanges(ctx, changes)
+}
+
+// WritePlan writes the given plan to the directory
+// based on the given Write configuration.
+func (p *Planner) WritePlan(plan *Plan) error {
+	names, contents, err := p.pr.Print(plan)
+	if err != nil {
+		return err
+	}
+	if len(names) != len(contents) {
+		return errors.New("printer: filename and content count do not match")
+	}
+	for i, fn := range names {
+		if err := p.fs.Write(fn, contents[i], 0644); err != nil {
+			return err
+		}
+	}
+	return nil
 }
