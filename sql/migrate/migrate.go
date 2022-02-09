@@ -21,9 +21,6 @@ type (
 	// drivers to indicate if the changeset is transactional (can be rolled-back) and
 	// reversible (a down file can be generated to it).
 	Plan struct {
-		// Name of the plan. Provided by the user or auto-generated.
-		Name string
-
 		// Reversible describes if the changeset is reversible.
 		Reversible bool
 
@@ -71,7 +68,7 @@ type (
 	// on the database.
 	PlanApplier interface {
 		// PlanChanges returns a migration plan for applying the given changeset.
-		PlanChanges(context.Context, string, []schema.Change) (*Plan, error)
+		PlanChanges(context.Context, []schema.Change) (*Plan, error)
 
 		// ApplyChanges is responsible for applying the given changeset.
 		// An error may return from ApplyChanges if the driver is unable

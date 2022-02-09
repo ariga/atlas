@@ -66,7 +66,7 @@ func cmdDiffRun(cmd *cobra.Command, flags *diffCmdOpts) {
 	}
 	diff, err := toDriver.SchemaDiff(fromSchema, toSchema)
 	cobra.CheckErr(err)
-	p, err := toDriver.PlanChanges(ctx, "plan", diff)
+	p, err := toDriver.PlanChanges(ctx, diff)
 	cobra.CheckErr(err)
 	if len(p.Changes) == 0 {
 		cmd.Println("Schemas are synced, no changes to be made.")

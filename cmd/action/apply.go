@@ -18,12 +18,12 @@ import (
 var (
 	// ApplyFlags are the flags used in Apply command.
 	ApplyFlags struct {
-		DSN    string
-		File   string
-		Web    bool
-		Addr   string
-		DryRun bool
-		Schema []string
+		DSN         string
+		File        string
+		Web         bool
+		Addr        string
+		DryRun      bool
+		Schema      []string
 		AutoApprove bool
 	}
 	// ApplyCmd represents the apply command.
@@ -109,7 +109,7 @@ func applyRun(d *Driver, dsn string, file string, dryRun bool, autoApprove bool)
 		schemaCmd.Println("Schema is synced, no changes to be made")
 		return
 	}
-	p, err := d.PlanChanges(ctx, "plan", changes)
+	p, err := d.PlanChanges(ctx, changes)
 	cobra.CheckErr(err)
 	schemaCmd.Println("-- Planned Changes:")
 	for _, c := range p.Changes {

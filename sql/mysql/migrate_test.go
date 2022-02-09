@@ -580,7 +580,7 @@ func TestPlanChanges(t *testing.T) {
 	for _, tt := range tests {
 		db, _, err := newMigrate("8.0.16")
 		require.NoError(t, err)
-		plan, err := db.PlanChanges(context.Background(), "wantPlan", tt.input)
+		plan, err := db.PlanChanges(context.Background(), tt.input)
 		if tt.wantErr {
 			require.Error(t, err, "expect plan to fail")
 			return
