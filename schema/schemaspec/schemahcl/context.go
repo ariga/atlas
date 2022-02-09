@@ -91,7 +91,7 @@ func blockVars(b *hclsyntax.Body, parentAddr string, defs *blockDef) (map[string
 			v[blkName] = cty.ObjectVal(attrs)
 		}
 		if len(v) > 0 {
-			vars[name] = cty.MapVal(v)
+			vars[name] = cty.ObjectVal(v)
 		}
 	}
 	return vars, nil
