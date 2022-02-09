@@ -33,7 +33,7 @@ table "table" {
 		type = varchar
 	}
 	column "character_varying_length_is_not_required" {
-		type = character_varying()
+		type = character_varying
 	}
 	column "tags" {
 		type = hstore
