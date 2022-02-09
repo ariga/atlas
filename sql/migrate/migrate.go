@@ -6,6 +6,7 @@ package migrate
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"io/ioutil"
@@ -75,77 +76,147 @@ type (
 		// to execute a change.
 		ApplyChanges(context.Context, []schema.Change) error
 	}
+
+	// StateReader wraps the method for reading a database/schema state.
+	// The types below provides a few builtin options for reading a state
+	// from a migration directory, a static object (e.g. a parsed file).
+	//
+	// In next Go version, the State will be replaced with the following
+	// union type `interface { Realm | Schema }`.
+	StateReader interface {
+		ReadState(ctx context.Context) (*schema.Realm, error)
+	}
+
+	// The StateReaderFunc type is an adapter to allow the use of
+	// ordinary functions as state readers.
+	StateReaderFunc func(ctx context.Context) (*schema.Realm, error)
 )
 
+// ReadState calls f(ctx).
+func (f StateReaderFunc) ReadState(ctx context.Context) (*schema.Realm, error) {
+	return f(ctx)
+}
+
+// ErrNoPlan is returned by Plan when there is no change between the two states.
+var ErrNoPlan = errors.New("sql/migrate: no plan for matched states")
+
+// Realm returns a state reader for the static Realm object.
+func Realm(r *schema.Realm) StateReader {
+	return StateReaderFunc(func(context.Context) (*schema.Realm, error) {
+		return r, nil
+	})
+}
+
+// Schema returns a state reader for the static Schema object.
+func Schema(s *schema.Schema) StateReader {
+	return StateReaderFunc(func(context.Context) (*schema.Realm, error) {
+		r := &schema.Realm{Schemas: []*schema.Schema{s}}
+		if s.Realm != nil {
+			r.Attrs = s.Realm.Attrs
+		}
+		s.Realm = r
+		return r, nil
+	})
+}
+
 type (
-	// FS describes the methods needed to work with the Dir.
+	// FS describes the methods needed to work with the Planner.
 	FS interface {
-		List() ([]fs.FileInfo, error)
+		// List all present migration files. Usually *.sql files.
+		List() ([]string, error)
+
+		// Read the contents of a file by name.
 		Read(name string) ([]byte, error)
+
+		// Write the contents to the file by name.
 		Write(name string, data []byte, perm fs.FileMode) error
+
+		// Remove a file by name.
 		Remove(name string) error
 	}
 
-	// Dir represents a versioned  migration directory. Aka the place where all versioned migration files are stored.
-	Dir struct {
-		fs FS
+	// Printer wraps the methods for naming and dumping a migration plan to one or more files.
+	Printer interface {
+		// Print prints the given Plan.
+		// The first return argument contains a slice of filenames.
+		// The second return argument is meant to hold the contents for each filename.
+		// The length of the filenames-slice and contents-slice must be equal.
+		Print(*Plan) ([]string, [][]byte, error)
 	}
 
-	// DirOption allows for configuring the Dir using functional arguments.
-	DirOption func(*Dir) error
+	// Planner can plan the steps to take to migrate from one state to another. It uses the enclosed FS to write
+	// those changes to versioned migration files.
+	Planner struct {
+		drv Driver
+		fs  FS
+		pr  Printer
+		// // templates holds the filename and content templates to use when dumping a migration.
+		// templates []struct{ N, C *template.Template }
+	}
 )
 
-// NewDir creates a new Dir.
-func NewDir(opts ...DirOption) (*Dir, error) {
-	d := new(Dir)
-	for _, opt := range opts {
-		if err := opt(d); err != nil {
-			return nil, err
-		}
-	}
-	return d, nil
-}
-
-// WithFS sets the fs.FS used by the Dir.
-func WithFS(fs FS) DirOption {
-	return func(dir *Dir) error {
-		dir.fs = fs
-		return nil
+// New creates a new Planner.
+func New(drv Driver, fs FS) *Planner {
+	return &Planner{
+		drv: drv,
+		fs:  fs,
 	}
 }
 
-// Local implements FS for a local path.
+// localFS implements FS for a local path.
 type localFS struct {
-	dir string
+	dir  string
+	glob string
 }
 
-func (fs localFS) List() ([]fs.FileInfo, error) {
-	return ioutil.ReadDir(fs.dir)
+func (fs *localFS) List() ([]string, error) {
+	return filepath.Glob(filepath.Join(fs.dir, fs.glob))
 }
 
-func (fs localFS) Read(name string) ([]byte, error) {
+func (fs *localFS) Read(name string) ([]byte, error) {
 	return ioutil.ReadFile(filepath.Join(fs.dir, name))
 }
 
-func (fs localFS) Write(name string, data []byte, perm fs.FileMode) error {
+func (fs *localFS) Write(name string, data []byte, perm fs.FileMode) error {
 	return ioutil.WriteFile(filepath.Join(fs.dir, name), data, perm)
 }
 
-func (fs localFS) Remove(name string) error {
+func (fs *localFS) Remove(name string) error {
 	return os.Remove(filepath.Join(fs.dir, name))
 }
 
-// WithLocal configures the FS used by the Dir to work on the given local path.
-func WithLocal(path string) DirOption {
-	return func(d *Dir) error {
-		fi, err := os.Stat(path)
-		if err != nil {
-			return err
-		}
-		if !fi.IsDir() {
-			return fmt.Errorf("sql/migrate: %q is not a dir", path)
-		}
-		d.fs = localFS{dir: path}
-		return nil
+// NewLocalFS configures the FS used by a Planner to work on the given local path.
+func NewLocalFS(path, glob string) (*localFS, error) {
+	fi, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !fi.IsDir() {
+		return nil, fmt.Errorf("sql/migrate: %q is not a dir", path)
+	}
+	return &localFS{dir: path, glob: glob}, nil
+}
+
+// localFS implements Printer for a golang-migrate/migrate compatible migration files.
+type goMigratePrinter struct{}
+
+func (goMigratePrinter) Print(plan *Plan) ([]string, [][]byte, error) {
+	return nil, nil, nil
+}
+
+// Plan calculates the migration Plan required for moving the current state (from) state to
+// the next state (to). A StateReader can be a directory, static schema elements or a Driver connection.
+func (p *Planner) Plan(ctx context.Context, from StateReader, to StateReader) (*Plan, error) {
+	current, err := from.ReadState(ctx)
+	if err != nil {
+		return nil, err
+	}
+	desired, err := to.ReadState(ctx)
+	if err != nil {
+		return nil, err
+	}
+	changes, err := p.drv.RealmDiff(current, desired)
+	if err != nil {
+		return nil, err
 	}
 }
