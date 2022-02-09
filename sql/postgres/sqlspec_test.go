@@ -29,6 +29,12 @@ table "table" {
 	column "account_name" {
 		type = varchar(32)
 	}
+	column "varchar_length_is_not_required" {
+		type = varchar
+	}
+	column "character_varying_length_is_not_required" {
+		type = character_varying
+	}
 	column "tags" {
 		type = hstore
 	}
@@ -126,6 +132,24 @@ enum "account_type" {
 						Type: &schema.StringType{
 							T:    "varchar",
 							Size: 32,
+						},
+					},
+				},
+				{
+					Name: "varchar_length_is_not_required",
+					Type: &schema.ColumnType{
+						Type: &schema.StringType{
+							T:    "varchar",
+							Size: 0,
+						},
+					},
+				},
+				{
+					Name: "character_varying_length_is_not_required",
+					Type: &schema.ColumnType{
+						Type: &schema.StringType{
+							T:    "character varying",
+							Size: 0,
 						},
 					},
 				},

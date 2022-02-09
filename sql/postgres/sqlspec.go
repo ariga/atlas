@@ -334,8 +334,8 @@ var TypeRegistry = specutil.NewRegistry(
 	specutil.WithSpecs(
 		specutil.TypeSpec(TypeBit, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64})),
 		specutil.AliasTypeSpec("bit_varying", TypeBitVar, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64})),
-		specutil.TypeSpec(TypeVarChar, specutil.WithAttributes(specutil.SizeTypeAttr(true))),
-		specutil.AliasTypeSpec("character_varying", TypeCharVar, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "size", Kind: reflect.Int})),
+		specutil.TypeSpec(TypeVarChar, specutil.WithAttributes(specutil.SizeTypeAttr(false))),
+		specutil.AliasTypeSpec("character_varying", TypeCharVar, specutil.WithAttributes(specutil.SizeTypeAttr(false))),
 		specutil.TypeSpec(TypeChar, specutil.WithAttributes(specutil.SizeTypeAttr(true))),
 		specutil.TypeSpec(TypeCharacter, specutil.WithAttributes(specutil.SizeTypeAttr(true))),
 		specutil.TypeSpec(TypeInt2),
