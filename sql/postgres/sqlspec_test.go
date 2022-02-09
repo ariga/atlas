@@ -30,7 +30,7 @@ table "table" {
 		type = varchar(32)
 	}
 	column "varchar_length_is_not_required" {
-		type = varchar()
+		type = varchar
 	}
 	column "character_varying_length_is_not_required" {
 		type = character_varying()
