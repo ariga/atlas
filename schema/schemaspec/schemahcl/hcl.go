@@ -201,6 +201,7 @@ func (s *state) toResource(ctx *hcl.EvalContext, block *hclsyntax.Block, scope [
 	if len(block.Labels) > 0 {
 		spec.Name = block.Labels[0]
 	}
+	ctx = s.mayExtendVars(ctx, scope)
 	attrs, err := s.toAttrs(ctx, block.Body.Attributes, scope)
 	if err != nil {
 		return nil, err

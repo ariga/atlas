@@ -41,6 +41,14 @@ func RawAttr(k, v string) *schemaspec.Attr {
 	}
 }
 
+// VarAttr is a helper method for constructing *schemaspec.Attr instances that contain a variable reference.
+func VarAttr(k, v string) *schemaspec.Attr {
+	return &schemaspec.Attr{
+		K: k,
+		V: &schemaspec.Ref{V: v},
+	}
+}
+
 // ListAttr is a helper method for constructing *schemaspec.Attr instances that contain list values.
 func ListAttr(k string, litValues ...string) *schemaspec.Attr {
 	lv := &schemaspec.ListValue{}
