@@ -19,11 +19,11 @@ table "users" {
     type = jsonb
   }
   index "users_name" {
-    using = HASH
+    type = HASH
     columns = [column.name]
   }
   index "users_data" {
-    using = GIN
+    type = GIN
     columns = [column.data]
   }
 }
@@ -56,7 +56,7 @@ table "users" {
     # Index without "using" defaults to BTREE.
   }
   index "users_data" {
-    using = BTREE
+    type = BTREE
     columns = [column.data]
   }
 }
