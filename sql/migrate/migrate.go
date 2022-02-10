@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -142,10 +141,8 @@ type (
 	// Printer wraps the methods for naming and dumping a migration plan to one or more files.
 	Printer interface {
 		// Print prints the given Plan.
-		// The first return argument contains a slice of filenames.
-		// The second return argument is meant to hold the contents for each filename.
-		// The length of the filenames-slice and contents-slice must be equal.
-		Print(*Plan) ([]string, [][]byte, error)
+		// The returned map contains the contents for each file to dump.
+		Print(*Plan) (map[string][]byte, error)
 	}
 
 	// Planner can plan the steps to take to migrate from one state to another. It uses the enclosed FS to write
@@ -179,12 +176,12 @@ func (fs *LocalFS) List() ([]string, error) {
 
 // Read reads the contents of a file by name.
 func (fs *LocalFS) Read(name string) ([]byte, error) {
-	return ioutil.ReadFile(filepath.Join(fs.dir, name))
+	return os.ReadFile(filepath.Join(fs.dir, name))
 }
 
 // Write writes the given contents to a file by name.
 func (fs *LocalFS) Write(name string, data []byte, perm fs.FileMode) error {
-	return ioutil.WriteFile(filepath.Join(fs.dir, name), data, perm)
+	return os.WriteFile(filepath.Join(fs.dir, name), data, perm)
 }
 
 // Remove removes a file by name.
@@ -204,11 +201,11 @@ func NewLocalFS(path, glob string) (*LocalFS, error) {
 	return &LocalFS{dir: path, glob: glob}, nil
 }
 
-// GoMigratePrinter implements Printer for a golang-migrate/migrate compatible migration files.
+// GoMigratePrinter implements Printer for golang-migrate/migrate compatible migration files.
 type GoMigratePrinter struct{}
 
 // Print implements the Printer interface.
-func (GoMigratePrinter) Print(plan *Plan) ([]string, [][]byte, error) {
+func (GoMigratePrinter) Print(plan *Plan) (map[string][]byte, error) {
 	var up, down bytes.Buffer
 	for _, change := range plan.Changes {
 		up.WriteString(change.Cmd)
@@ -220,11 +217,12 @@ func (GoMigratePrinter) Print(plan *Plan) ([]string, [][]byte, error) {
 		}
 	}
 	v := strconv.FormatInt(time.Now().Unix(), 10)
-	names := []string{v + "_up.sql"}
+	m := make(map[string][]byte)
+	m[v+"_up.sql"] = up.Bytes()
 	if down.Len() > 0 {
-		names = append(names, v+"_down.sql")
+		m[v+"_down.sql"] = down.Bytes()
 	}
-	return names, [][]byte{up.Bytes(), down.Bytes()}, nil
+	return m, nil
 }
 
 // Plan calculates the migration Plan required for moving the current state (from) state to
@@ -251,15 +249,12 @@ func (p *Planner) Plan(ctx context.Context, from StateReader, to StateReader) (*
 // WritePlan writes the given plan to the directory
 // based on the given Write configuration.
 func (p *Planner) WritePlan(plan *Plan) error {
-	names, contents, err := p.pr.Print(plan)
+	fs, err := p.pr.Print(plan)
 	if err != nil {
 		return err
 	}
-	if len(names) != len(contents) {
-		return errors.New("printer: filename and content count do not match")
-	}
-	for i, fn := range names {
-		if err := p.fs.Write(fn, contents[i], 0644); err != nil {
+	for n, c := range fs {
+		if err := p.fs.Write(n, c, 0644); err != nil {
 			return err
 		}
 	}
