@@ -17,12 +17,12 @@ import (
 
 type execPlanner interface {
 	ExecContext(context.Context, string, ...interface{}) (sql.Result, error)
-	PlanChanges(context.Context, []schema.Change) (*migrate.Plan, error)
+	PlanChanges(context.Context, string, []schema.Change) (*migrate.Plan, error)
 }
 
 // ApplyChanges is a helper used by the different drivers to apply changes.
 func ApplyChanges(ctx context.Context, changes []schema.Change, p execPlanner) error {
-	plan, err := p.PlanChanges(ctx, changes)
+	plan, err := p.PlanChanges(ctx, "apply", changes)
 	if err != nil {
 		return err
 	}
