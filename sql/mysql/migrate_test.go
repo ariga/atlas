@@ -441,6 +441,7 @@ func TestPlanChanges(t *testing.T) {
 									},
 									Attrs: []schema.Attr{
 										&schema.Comment{Text: "comment"},
+										&IndexType{T: IndexTypeHash},
 									},
 								},
 							},
@@ -463,7 +464,7 @@ func TestPlanChanges(t *testing.T) {
 				Reversible: true,
 				Changes: []*migrate.Change{
 					{
-						Cmd:     "ALTER TABLE `users` ADD COLUMN `name` varchar(255) NOT NULL, ADD INDEX `id_key` (`id`) COMMENT \"comment\", ADD CONSTRAINT `id_nonzero` CHECK (id > 0) ENFORCED, AUTO_INCREMENT 1000",
+						Cmd:     "ALTER TABLE `users` ADD COLUMN `name` varchar(255) NOT NULL, ADD INDEX `id_key` USING HASH (`id`) COMMENT \"comment\", ADD CONSTRAINT `id_nonzero` CHECK (id > 0) ENFORCED, AUTO_INCREMENT 1000",
 						Reverse: "ALTER TABLE `users` DROP COLUMN `name`, DROP INDEX `id_key`, DROP CONSTRAINT `id_nonzero`, AUTO_INCREMENT 1",
 					},
 				},

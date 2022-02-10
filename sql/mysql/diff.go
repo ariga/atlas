@@ -243,7 +243,7 @@ func (*diff) autoIncChange(from, to []schema.Attr) schema.Change {
 // indexType returns the index type from its attribute.
 // The default type is BTREE if no type was specified.
 func indexType(attr []schema.Attr) *IndexType {
-	t := &IndexType{T: "BTREE"}
+	t := &IndexType{T: IndexTypeBTree}
 	if sqlx.Has(attr, t) {
 		t.T = strings.ToUpper(t.T)
 	}

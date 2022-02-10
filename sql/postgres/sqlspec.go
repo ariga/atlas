@@ -205,7 +205,7 @@ func convertIndex(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, err
 	if err != nil {
 		return nil, err
 	}
-	if attr, ok := spec.Attr(IndexPartAttrChanged(from, to []*schema.IndexPart); ok {
+	if attr, ok := spec.Attr("type"); ok {
 		t, err := attr.String()
 		if err != nil {
 			return nil, err

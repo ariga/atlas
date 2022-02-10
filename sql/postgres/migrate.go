@@ -641,7 +641,7 @@ func (s *state) partAttrs(b *sqlx.Builder, p *schema.IndexPart) {
 func (s *state) index(b *sqlx.Builder, idx *schema.Index) {
 	// Avoid appending the default method.
 	if t := (IndexType{}); sqlx.Has(idx.Attrs, &t) && strings.ToUpper(t.T) != IndexTypeBTree {
-		b.P("USING").P(t.T)
+		b.P("USING", t.T)
 	}
 	s.indexParts(b, idx.Parts)
 	if p := (IndexPredicate{}); sqlx.Has(idx.Attrs, &p) {
