@@ -69,7 +69,7 @@ atlas schema apply [flags]
 ```
 
 #### Details
-`atlas schema apply` plans and executes a database migration to be bring a given database
+`atlas schema apply` plans and executes a database migration to bring a given database
 to the state described in the Atlas schema file. Before running the migration, Atlas will print the migration
 plan and prompt the user for approval.
 

@@ -18,19 +18,19 @@ import (
 var (
 	// ApplyFlags are the flags used in Apply command.
 	ApplyFlags struct {
-		DSN    string
-		File   string
-		Web    bool
-		Addr   string
-		DryRun bool
-		Schema []string
+		DSN         string
+		File        string
+		Web         bool
+		Addr        string
+		DryRun      bool
+		Schema      []string
 		AutoApprove bool
 	}
 	// ApplyCmd represents the apply command.
 	ApplyCmd = &cobra.Command{
 		Use:   "apply",
 		Short: "Apply an atlas schema to a target database.",
-		Long: "`atlas schema apply`" + ` plans and executes a database migration to be bring a given database
+		Long: "`atlas schema apply`" + ` plans and executes a database migration to bring a given database
 to the state described in the Atlas schema file. Before running the migration, Atlas will print the migration
 plan and prompt the user for approval.
 
