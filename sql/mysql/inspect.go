@@ -28,6 +28,9 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 		return nil, err
 	}
 	r := schema.NewRealm(schemas...).SetCharset(i.charset).SetCollation(i.collate)
+	if len(schemas) == 0 {
+		return r, nil
+	}
 	if err := i.inspectTables(ctx, r, nil); err != nil {
 		return nil, err
 	}
