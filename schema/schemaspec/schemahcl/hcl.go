@@ -52,7 +52,7 @@ func (s *state) MarshalSpec(v interface{}) ([]byte, error) {
 // UnmarshalSpec implements schemaspec.Unmarshaler.
 func (s *state) UnmarshalSpec(data []byte, v interface{}) error {
 	ctx := s.config.newCtx()
-	spec, err := decode(ctx, data)
+	spec, err := s.decode(ctx, data)
 	if err != nil {
 		return fmt.Errorf("schemahcl: failed decoding: %w", err)
 	}
@@ -63,7 +63,7 @@ func (s *state) UnmarshalSpec(data []byte, v interface{}) error {
 }
 
 // decode decodes the input Atlas HCL document and returns a *schemaspec.Resource representing it.
-func decode(ctx *hcl.EvalContext, body []byte) (*schemaspec.Resource, error) {
+func (s *state) decode(ctx *hcl.EvalContext, body []byte) (*schemaspec.Resource, error) {
 	parser := hclparse.NewParser()
 	srcHCL, diag := parser.ParseHCL(body, "")
 	if diag.HasErrors() {
@@ -80,15 +80,15 @@ func decode(ctx *hcl.EvalContext, body []byte) (*schemaspec.Resource, error) {
 	if diag := gohcl.DecodeBody(srcHCL.Body, ctx, c); diag.HasErrors() {
 		return nil, diag
 	}
-	return extract(ctx, c.Body)
+	return s.extract(ctx, c.Body)
 }
 
-func extract(ctx *hcl.EvalContext, remain hcl.Body) (*schemaspec.Resource, error) {
+func (s *state) extract(ctx *hcl.EvalContext, remain hcl.Body) (*schemaspec.Resource, error) {
 	body, ok := remain.(*hclsyntax.Body)
 	if !ok {
 		return nil, fmt.Errorf("schemahcl: expected remainder to be of type *hclsyntax.Body")
 	}
-	attrs, err := toAttrs(ctx, body.Attributes)
+	attrs, err := s.toAttrs(ctx, body.Attributes, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func extract(ctx *hcl.EvalContext, remain hcl.Body) (*schemaspec.Resource, error
 		if err != nil {
 			return nil, err
 		}
-		resource, err := toResource(ctx, blk)
+		resource, err := s.toResource(ctx, blk, []string{blk.Type})
 		if err != nil {
 			return nil, err
 		}
@@ -109,9 +109,22 @@ func extract(ctx *hcl.EvalContext, remain hcl.Body) (*schemaspec.Resource, error
 	return res, nil
 }
 
-func toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes) ([]*schemaspec.Attr, error) {
+// mayExtendVars gets the current scope context, and extend it with additional
+// variables if it was configured this way using WithScopedEnums.
+func (s *state) mayExtendVars(ctx *hcl.EvalContext, scope []string) *hcl.EvalContext {
+	vars, ok := s.config.pathVars[strings.Join(scope, ".")]
+	if !ok {
+		return ctx
+	}
+	ctx = ctx.NewChild()
+	ctx.Variables = vars
+	return ctx
+}
+
+func (s *state) toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes, scope []string) ([]*schemaspec.Attr, error) {
 	var attrs []*schemaspec.Attr
 	for _, hclAttr := range hclAttrs {
+		ctx := s.mayExtendVars(ctx, append(scope, hclAttr.Name))
 		at := &schemaspec.Attr{K: hclAttr.Name}
 		value, diag := hclAttr.Expr.Value(ctx)
 		if diag.HasErrors() {
@@ -181,20 +194,20 @@ func extractLiteralValue(value cty.Value) (*schemaspec.LiteralValue, error) {
 	}
 }
 
-func toResource(ctx *hcl.EvalContext, block *hclsyntax.Block) (*schemaspec.Resource, error) {
+func (s *state) toResource(ctx *hcl.EvalContext, block *hclsyntax.Block, scope []string) (*schemaspec.Resource, error) {
 	spec := &schemaspec.Resource{
 		Type: block.Type,
 	}
 	if len(block.Labels) > 0 {
 		spec.Name = block.Labels[0]
 	}
-	attrs, err := toAttrs(ctx, block.Body.Attributes)
+	attrs, err := s.toAttrs(ctx, block.Body.Attributes, scope)
 	if err != nil {
 		return nil, err
 	}
 	spec.Attrs = attrs
 	for _, blk := range block.Body.Blocks {
-		res, err := toResource(ctx, blk)
+		res, err := s.toResource(ctx, blk, append(scope, blk.Type))
 		if err != nil {
 			return nil, err
 		}
