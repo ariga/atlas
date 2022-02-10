@@ -50,7 +50,7 @@ table "table" {
 		columns = [table.table.column.col]
 	}
 	index "index" {
-		using = HASH
+		type = HASH
 		unique = true
 		columns = [
 			table.table.column.col,
@@ -265,7 +265,7 @@ table "t" {
 		type = int
 	}
 	index "i" {
-		using = %s
+		type = %s
 		columns = [column.c]
 	}
 }

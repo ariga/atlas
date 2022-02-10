@@ -93,7 +93,7 @@ func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) 
 var (
 	hclState = schemahcl.New(
 		schemahcl.WithTypes(TypeRegistry.Specs()),
-		schemahcl.WithScopedEnums("table.index.using", IndexTypeBTree, IndexTypeHash, IndexTypeGIN, IndexTypeGiST),
+		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeGIN, IndexTypeGiST),
 	)
 	// UnmarshalHCL unmarshals an Atlas HCL DDL document into v.
 	UnmarshalHCL = schemaspec.UnmarshalerFunc(func(bytes []byte, i interface{}) error {
@@ -205,7 +205,7 @@ func convertIndex(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, err
 	if err != nil {
 		return nil, err
 	}
-	if attr, ok := spec.Attr("using"); ok {
+	if attr, ok := spec.Attr(IndexPartAttrChanged(from, to []*schema.IndexPart); ok {
 		t, err := attr.String()
 		if err != nil {
 			return nil, err
@@ -331,7 +331,7 @@ func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 		return nil, err
 	}
 	if i := (IndexType{}); sqlx.Has(idx.Attrs, &i) {
-		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("using", strings.ToUpper(i.T)))
+		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("type", strings.ToUpper(i.T)))
 	}
 	return spec, nil
 }

@@ -45,13 +45,13 @@ func New(opts ...Option) *state {
 // option allows setting HASH or BTREE to the "using" attribute in
 // "index" block.
 //
-//	WithScopedEnums("table.index.using", "HASH", "BTREE")
+//	WithScopedEnums("table.index.type", "HASH", "BTREE")
 //
 //	table "t" {
 //		...
 //		index "i" {
-//			using = HASH	// Allowed.
-//			using = INVALID	// Not Allowed.
+//			type = HASH		// Allowed.
+//			type = INVALID	// Not Allowed.
 //		}
 //	}
 //
