@@ -192,7 +192,8 @@ const (
 	IndexTypeHash     = "HASH"
 	IndexTypeFullText = "FULLTEXT"
 	IndexTypeSpatial  = "SPATIAL"
-	currentTS         = "current_timestamp"
-	defaultGen        = "default_generated"
-	autoIncrement     = "auto_increment"
+
+	currentTS     = "current_timestamp"
+	defaultGen    = "default_generated"
+	autoIncrement = "auto_increment"
 )
