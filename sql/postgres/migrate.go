@@ -478,8 +478,7 @@ func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) {
 			b.Ident(idx.Name)
 		}
 		b.P("ON").Table(t)
-		s.indexParts(b, idx.Parts)
-		s.indexAttrs(b, idx.Attrs)
+		s.index(b, idx)
 		s.append(&migrate.Change{
 			Cmd:     b.String(),
 			Comment: fmt.Sprintf("Create index %q to table: %q", idx.Name, t.Name),
@@ -639,15 +638,16 @@ func (s *state) partAttrs(b *sqlx.Builder, p *schema.IndexPart) {
 	}
 }
 
-func (s *state) indexAttrs(b *sqlx.Builder, attrs []schema.Attr) {
+func (s *state) index(b *sqlx.Builder, idx *schema.Index) {
 	// Avoid appending the default method.
-	if t := (IndexType{}); sqlx.Has(attrs, &t) && strings.ToLower(t.T) != "btree" {
+	if t := (IndexType{}); sqlx.Has(idx.Attrs, &t) && strings.ToUpper(t.T) != IndexTypeBTree {
 		b.P("USING").P(t.T)
 	}
-	if p := (IndexPredicate{}); sqlx.Has(attrs, &p) {
+	s.indexParts(b, idx.Parts)
+	if p := (IndexPredicate{}); sqlx.Has(idx.Attrs, &p) {
 		b.P("WHERE").P(p.P)
 	}
-	for _, attr := range attrs {
+	for _, attr := range idx.Attrs {
 		switch attr.(type) {
 		case *schema.Comment, *ConType, *IndexType, *IndexPredicate:
 		default:

@@ -91,7 +91,10 @@ func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) 
 }
 
 var (
-	hclState = schemahcl.New(schemahcl.WithTypes(TypeRegistry.Specs()))
+	hclState = schemahcl.New(
+		schemahcl.WithTypes(TypeRegistry.Specs()),
+		schemahcl.WithScopedEnums("table.index.using", IndexTypeBTree, IndexTypeHash, IndexTypeGIN, IndexTypeGiST),
+	)
 	// UnmarshalHCL unmarshals an Atlas HCL DDL document into v.
 	UnmarshalHCL = schemaspec.UnmarshalerFunc(func(bytes []byte, i interface{}) error {
 		return UnmarshalSpec(bytes, hclState, i)
@@ -168,7 +171,7 @@ func Schema(spec *sqlspec.Schema, tables []*sqlspec.Table, enums []*Enum) (*sche
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the convertSchema function.
 func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, error) {
-	return specutil.Table(spec, parent, convertColumn, specutil.PrimaryKey, specutil.Index, specutil.Check)
+	return specutil.Table(spec, parent, convertColumn, specutil.PrimaryKey, convertIndex, specutil.Check)
 }
 
 // convertColumn converts a sqlspec.Column into a schema.Column.
@@ -194,6 +197,22 @@ func fixDefaultQuotes(value schemaspec.Value) error {
 		lv.V = "'" + uq + "'"
 	}
 	return nil
+}
+
+// convertIndex converts a sqlspec.Index into a schema.Index.
+func convertIndex(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
+	idx, err := specutil.Index(spec, parent)
+	if err != nil {
+		return nil, err
+	}
+	if attr, ok := spec.Attr("using"); ok {
+		t, err := attr.String()
+		if err != nil {
+			return nil, err
+		}
+		idx.Attrs = append(idx.Attrs, &IndexType{T: t})
+	}
+	return idx, nil
 }
 
 const defaultTimePrecision = 6
@@ -300,10 +319,21 @@ func tableSpec(tab *schema.Table) (*sqlspec.Table, error) {
 		tab,
 		columnSpec,
 		specutil.FromPrimaryKey,
-		specutil.FromIndex,
+		indexSpec,
 		specutil.FromForeignKey,
 		specutil.FromCheck,
 	)
+}
+
+func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
+	spec, err := specutil.FromIndex(idx)
+	if err != nil {
+		return nil, err
+	}
+	if i := (IndexType{}); sqlx.Has(idx.Attrs, &i) {
+		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("using", strings.ToUpper(i.T)))
+	}
+	return spec, nil
 }
 
 // columnSpec converts from a concrete Postgres schema.Column into a sqlspec.Column.

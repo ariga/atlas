@@ -103,11 +103,11 @@ func (d *diff) IsGeneratedIndexName(t *schema.Table, idx *schema.Index) bool {
 // IndexAttrChanged reports if the index attributes were changed.
 // The default type is BTREE if no type was specified.
 func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
-	t1 := &IndexType{T: "BTREE"}
+	t1 := &IndexType{T: IndexTypeBTree}
 	if sqlx.Has(from, t1) {
 		t1.T = strings.ToUpper(t1.T)
 	}
-	t2 := &IndexType{T: "BTREE"}
+	t2 := &IndexType{T: IndexTypeBTree}
 	if sqlx.Has(to, t2) {
 		t2.T = strings.ToUpper(t2.T)
 	}
