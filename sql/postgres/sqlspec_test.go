@@ -44,6 +44,7 @@ table "table" {
 		columns = [table.table.column.col]
 	}
 	index "index" {
+		using = HASH
 		unique = true
 		columns = [
 			table.table.column.col,
@@ -208,6 +209,7 @@ enum "account_type" {
 			},
 			Attrs: []schema.Attr{
 				&schema.Comment{Text: "index comment"},
+				&IndexType{T: IndexTypeHash},
 			},
 		},
 	}
@@ -228,6 +230,37 @@ enum "account_type" {
 		},
 	}
 	require.EqualValues(t, exp, &s)
+}
+
+func TestUnmarshalSpec_IndexType(t *testing.T) {
+	f := `
+schema "s" {}
+table "t" {
+	schema = schema.s
+	column "c" {
+		type = int
+	}
+	index "i" {
+		using = %s
+		columns = [column.c]
+	}
+}
+`
+	t.Run("Invalid", func(t *testing.T) {
+		f := fmt.Sprintf(f, "UNK")
+		err := UnmarshalHCL([]byte(f), &schema.Schema{})
+		require.Error(t, err)
+	})
+	t.Run("Valid", func(t *testing.T) {
+		var (
+			s schema.Schema
+			f = fmt.Sprintf(f, "HASH")
+		)
+		err := UnmarshalHCL([]byte(f), &s)
+		require.NoError(t, err)
+		idx := s.Tables[0].Indexes[0]
+		require.Equal(t, IndexTypeHash, idx.Attrs[0].(*IndexType).T)
+	})
 }
 
 func TestMarshalSpec_Enum(t *testing.T) {
