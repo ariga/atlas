@@ -772,7 +772,7 @@ type (
 	// IndexType represents an index type.
 	IndexType struct {
 		schema.Attr
-		T string // BTREE, FULLTEXT, HASH, RTREE
+		T string // BTREE, HASH, FULLTEXT, SPATIAL, RTREE
 	}
 
 	// BitType represents a bit type.

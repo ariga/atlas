@@ -188,7 +188,11 @@ const (
 
 // Additional common constants in MySQL.
 const (
-	currentTS     = "current_timestamp"
-	defaultGen    = "default_generated"
-	autoIncrement = "auto_increment"
+	IndexTypeBTree    = "BTREE"
+	IndexTypeHash     = "HASH"
+	IndexTypeFullText = "FULLTEXT"
+	IndexTypeSpatial  = "SPATIAL"
+	currentTS         = "current_timestamp"
+	defaultGen        = "default_generated"
+	autoIncrement     = "auto_increment"
 )

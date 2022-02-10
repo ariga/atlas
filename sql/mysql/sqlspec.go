@@ -3,6 +3,7 @@ package mysql
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
@@ -63,7 +64,10 @@ func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) 
 }
 
 var (
-	hclState = schemahcl.New(schemahcl.WithTypes(TypeRegistry.Specs()))
+	hclState = schemahcl.New(
+		schemahcl.WithTypes(TypeRegistry.Specs()),
+		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash),
+	)
 	// UnmarshalHCL unmarshals an Atlas HCL DDL document into v.
 	UnmarshalHCL = schemaspec.UnmarshalerFunc(func(bytes []byte, i interface{}) error {
 		return UnmarshalSpec(bytes, hclState, i)
@@ -78,7 +82,7 @@ var (
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the convertSchema function.
 func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, error) {
-	t, err := specutil.Table(spec, parent, convertColumn, specutil.PrimaryKey, specutil.Index, convertCheck)
+	t, err := specutil.Table(spec, parent, convertColumn, specutil.PrimaryKey, convertIndex, convertCheck)
 	if err != nil {
 		return nil, err
 	}
@@ -86,6 +90,22 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 		return nil, err
 	}
 	return t, err
+}
+
+// convertIndex converts a sqlspec.Index into a schema.Index.
+func convertIndex(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
+	idx, err := specutil.Index(spec, parent)
+	if err != nil {
+		return nil, err
+	}
+	if attr, ok := spec.Attr("type"); ok {
+		t, err := attr.String()
+		if err != nil {
+			return nil, err
+		}
+		idx.Attrs = append(idx.Attrs, &IndexType{T: t})
+	}
+	return idx, nil
 }
 
 // convertCheck converts a sqlspec.Check into a schema.Check.
@@ -149,7 +169,7 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 		t,
 		columnSpec,
 		specutil.FromPrimaryKey,
-		specutil.FromIndex,
+		indexSpec,
 		specutil.FromForeignKey,
 		checkSpec,
 	)
@@ -163,6 +183,17 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 		ts.Extra.Attrs = append(ts.Extra.Attrs, specutil.StrAttr("collation", c))
 	}
 	return ts, nil
+}
+
+func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
+	spec, err := specutil.FromIndex(idx)
+	if err != nil {
+		return nil, err
+	}
+	if i := (IndexType{}); sqlx.Has(idx.Attrs, &i) {
+		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("type", strings.ToUpper(i.T)))
+	}
+	return spec, nil
 }
 
 // columnSpec converts from a concrete MySQL schema.Column into a sqlspec.Column.
