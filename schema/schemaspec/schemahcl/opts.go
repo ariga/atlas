@@ -50,8 +50,8 @@ func New(opts ...Option) *state {
 //	table "t" {
 //		...
 //		index "i" {
-//			type = HASH		// Allowed.
-//			type = INVALID	// Not Allowed.
+//			type = HASH     // Allowed.
+//			type = INVALID  // Not Allowed.
 //		}
 //	}
 //
