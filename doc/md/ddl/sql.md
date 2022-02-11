@@ -14,18 +14,23 @@ state of a SQL database.
 ### Schema
 
 ```hcl
-schema "default" {}
+# Empty schema.
+schema "public" {}
+
+# Schema with attributes.
+schema "main" {
+  charset   = "utf8mb4"
+  collation = "utf8mb4_0900_ai_ci"
+}
 ```
 
 ### Table
 
-A `table` describes a table in a SQL database. 
-
-#### Example
+A `table` describes a table in a SQL database.
 
 ```hcl
 table "users" {
-  schema = schema.default
+  schema = schema.public
   column "id" {
     type = int
   }
@@ -175,12 +180,18 @@ index "idx_name" {
     }
     unique = true
 }
+
+index "idx_name" {
+  type = GIN
+  columns = [column.data]
+}
 ```
 
 #### Properties
 
-| Name      | Kind      | Type                    | Description                                                  |
-|-----------|-----------|-------------------------|--------------------------------------------------------------|
-| unique    | attribute | boolean                 | Defines whether a uniqueness constraint is set on the index. |
-| columns   | attribute | reference (list)        | The columns that comprise the index.                         |
-| on        | attribute | schema.IndexPart (list) | The index parts that comprise the index.                     |
+| Name      | Kind      | Type                    | Description                                                    |
+|-----------|-----------|-------------------------|----------------------------------------------------------------|
+| unique    | attribute | boolean                 | Defines whether a uniqueness constraint is set on the index.   |
+| type      | attribute | IndexType (enum)        | Defines the index type. e.g. `HASH`, `GIN`, `FULLTEXT`.        |
+| columns   | attribute | reference (list)        | The columns that comprise the index.                           |
+| on        | resource  | schema.IndexPart (list) | The index parts that comprise the index.                       |
