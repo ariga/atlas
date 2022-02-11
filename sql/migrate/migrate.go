@@ -210,8 +210,8 @@ type LocalDir struct {
 }
 
 // Open implements Dir.Open.
-func (dir *LocalDir) Open(name string) (File, error) {
-	return os.Create(filepath.Join(dir.dir, name))
+func (d *LocalDir) Open(name string) (File, error) {
+	return os.Create(filepath.Join(d.dir, name))
 }
 
 // NewLocalDir returns a new the Dir used by a Planner to work on the given local path.
@@ -264,8 +264,8 @@ var (
 // NewTemplateFormatter creates a new Formatter working with the given templates.
 //
 //	migrate.NewTemplateFormatter(
-//		template.Must(template.New("").Parse("{{now.Unix}}{{.Name}}.sql")),					// name template
-//		template.Must(template.New("").Parse("{{range .Changes}}{{println .Cmd}}{{end}}")),	// content template
+//		template.Must(template.New("").Parse("{{now.Unix}}{{.Name}}.sql")),                 // name template
+//		template.Must(template.New("").Parse("{{range .Changes}}{{println .Cmd}}{{end}}")), // content template
 //	)
 //
 func NewTemplateFormatter(templates ...*template.Template) (*TemplateFormatter, error) {
@@ -281,7 +281,7 @@ func NewTemplateFormatter(templates ...*template.Template) (*TemplateFormatter, 
 
 // Format implements the Formatter interface.
 func (t *TemplateFormatter) Format(plan *Plan) ([]File, error) {
-	var fs []File
+	fs := make([]File, 0, len(t.templates))
 	for _, tpl := range t.templates {
 		var n, c bytes.Buffer
 		if err := tpl.N.Execute(&n, plan); err != nil {
