@@ -5,12 +5,16 @@
 package migrate
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
+	"text/template"
+	"time"
 
 	"ariga.io/atlas/sql/schema"
 )
@@ -159,6 +163,47 @@ func New(drv Driver, dir Dir, fmt Formatter) *Planner {
 	}
 }
 
+// Plan calculates the migration Plan required for moving the current state (from) state to
+// the next state (to). A StateReader can be a directory, static schema elements or a Driver connection.
+func (p *Planner) Plan(ctx context.Context, name string, from StateReader, to StateReader) (*Plan, error) {
+	current, err := from.ReadState(ctx)
+	if err != nil {
+		return nil, err
+	}
+	desired, err := to.ReadState(ctx)
+	if err != nil {
+		return nil, err
+	}
+	changes, err := p.drv.RealmDiff(current, desired)
+	if err != nil {
+		return nil, err
+	}
+	if len(changes) == 0 {
+		return nil, ErrNoPlan
+	}
+	return p.drv.PlanChanges(ctx, name, changes)
+}
+
+// WritePlan writes the given plan to the Dir based on the given Formatter.
+func (p *Planner) WritePlan(plan *Plan) error {
+	fs, err := p.fmt.Format(plan)
+	if err != nil {
+		return err
+	}
+	for _, f := range fs {
+		fh, err := p.dir.Open(f.Name())
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(fh, f)
+		fh.Close()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // LocalDir implements Dir for a local path.
 type LocalDir struct {
 	dir string
@@ -181,44 +226,99 @@ func NewLocalDir(path string) (*LocalDir, error) {
 	return &LocalDir{dir: path}, nil
 }
 
-// Plan calculates the migration Plan required for moving the current state (from) state to
-// the next state (to). A StateReader can be a directory, static schema elements or a Driver connection.
-func (p *Planner) Plan(ctx context.Context, name string, from StateReader, to StateReader) (*Plan, error) {
-	current, err := from.ReadState(ctx)
-	if err != nil {
-		return nil, err
-	}
-	desired, err := to.ReadState(ctx)
-	if err != nil {
-		return nil, err
-	}
-	changes, err := p.drv.RealmDiff(current, desired)
-	if err != nil {
-		return nil, err
-	}
-	if len(changes) == 0 {
-		return nil, ErrNoPlan
-	}
-	return p.drv.PlanChanges(ctx, name, changes)
+// TemplateFormatter implements Formatter by using templates.
+type TemplateFormatter struct {
+	templates []struct{ N, C *template.Template }
 }
 
-// WritePlan writes the given plan to the directory
-// based on the given Write configuration.
-func (p *Planner) WritePlan(plan *Plan) error {
-	fs, err := p.fmt.Format(plan)
-	if err != nil {
-		return err
+var (
+	// templateFuncs contains the template.FuncMap for the DefaultFormatter.
+	templateFuncs = template.FuncMap{
+		"now": time.Now,
+		"sem": ensureSemicolonSuffix,
+		"rev": reverse,
 	}
-	for _, f := range fs {
-		fh, err := p.dir.Open(f.Name())
-		if err != nil {
-			return err
-		}
-		_, err = io.Copy(fh, f)
-		fh.Close()
-		if err != nil {
-			return err
-		}
+	// DefaultFormatter is a default implementation for Formatter. Compatible with golang-migrate/migrate.
+	DefaultFormatter = &TemplateFormatter{
+		templates: []struct{ N, C *template.Template }{
+			{
+				N: template.Must(template.New("").Funcs(templateFuncs).Parse(
+					"{{ now.Unix }}{{ with .Name }}_{{ . }}{{ end }}.up.sql",
+				)),
+				C: template.Must(template.New("").Funcs(templateFuncs).Parse(
+					"{{ range .Changes }}{{ println (sem .Cmd) }}{{ end }}",
+				)),
+			},
+			{
+				N: template.Must(template.New("").Funcs(templateFuncs).Parse(
+					"{{ now.Unix }}{{ with .Name }}_{{ . }}{{ end }}.down.sql",
+				)),
+				C: template.Must(template.New("").Funcs(templateFuncs).Parse(
+					"{{ range rev .Changes }}{{ println (sem .Reverse) }}{{ end }}",
+				)),
+			},
+		},
 	}
-	return nil
+)
+
+// NewTemplateFormatter creates a new Formatter working with the given templates.
+//
+//	migrate.NewTemplateFormatter(
+//		template.Must(template.New("").Parse("{{now.Unix}}{{.Name}}.sql")),					// name template
+//		template.Must(template.New("").Parse("{{range .Changes}}{{println .Cmd}}{{end}}")),	// content template
+//	)
+//
+func NewTemplateFormatter(templates ...*template.Template) (*TemplateFormatter, error) {
+	if n := len(templates); n == 0 || n%2 == 1 {
+		return nil, fmt.Errorf("zero or odd number of templates given")
+	}
+	t := new(TemplateFormatter)
+	for i := 0; i < len(templates); i += 2 {
+		t.templates = append(t.templates, struct{ N, C *template.Template }{templates[i], templates[i+1]})
+	}
+	return t, nil
+}
+
+// Format implements the Formatter interface.
+func (t *TemplateFormatter) Format(plan *Plan) ([]File, error) {
+	var fs []File
+	for _, tpl := range t.templates {
+		var n, c bytes.Buffer
+		if err := tpl.N.Execute(&n, plan); err != nil {
+			return nil, err
+		}
+		if err := tpl.C.Execute(&c, plan); err != nil {
+			return nil, err
+		}
+		fs = append(fs, &templateFile{
+			Buffer: &c,
+			n:      n.String(),
+		})
+	}
+	return fs, nil
+}
+
+type templateFile struct {
+	*bytes.Buffer
+	n string
+}
+
+// Name implements the File interface.
+func (f *templateFile) Name() string { return f.n }
+
+// reverse changes for the down migration.
+func reverse(changes []*Change) []*Change {
+	rev := make([]*Change, len(changes))
+	for i, j := 0, len(changes)-1; i < j; i, j = i+1, j-1 {
+		rev[i], rev[j] = changes[j], changes[i]
+	}
+	return rev
+}
+
+// ensure an SQL statement has a trailing ";".
+func ensureSemicolonSuffix(s string) string {
+	if !strings.HasSuffix(s, ";") {
+		return s + ";"
+	}
+	return s
 }
