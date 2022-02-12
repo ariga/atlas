@@ -73,6 +73,7 @@ table "table" {
 		enforced = false
 	}
 	comment = "table comment"
+	auto_increment = 1000
 }
 
 table "accounts" {
@@ -185,6 +186,7 @@ table "accounts" {
 					Attrs: []schema.Attr{&Enforced{V: false}},
 				},
 				&schema.Comment{Text: "table comment"},
+				&AutoIncrement{V: 1000},
 			},
 		},
 		{
