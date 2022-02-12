@@ -112,7 +112,7 @@ func (a *Attr) Int() (int, error) {
 	}
 	s, err := strconv.Atoi(lit.V)
 	if err != nil {
-		return 0, fmt.Errorf("schema: cannot read attribute %q as integer", a.K)
+		return 0, fmt.Errorf("schema: cannot read attribute %q as int: %w", a.K, err)
 	}
 	return s, nil
 }
@@ -131,7 +131,11 @@ func (a *Attr) Bool() (bool, error) {
 	if !ok {
 		return false, fmt.Errorf("schema: cannot read attribute %q as literal", a.K)
 	}
-	return strconv.ParseBool(lit.V)
+	b, err := strconv.ParseBool(lit.V)
+	if err != nil {
+		return false, fmt.Errorf("schema: cannot read attribute %q as bool: %w", a.K, err)
+	}
+	return b, nil
 }
 
 // Ref returns the string representation of the Attr. If the value is not a Ref or the value
