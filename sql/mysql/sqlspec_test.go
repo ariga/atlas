@@ -23,9 +23,11 @@ table "table" {
 	}
 	column "price1" {
 		type = int
+		auto_increment = false
 	}
 	column "price2" {
 		type = int
+		auto_increment = true
 	}
 	column "account_name" {
 		type = varchar(32)
@@ -136,6 +138,7 @@ table "accounts" {
 							T: TypeInt,
 						},
 					},
+					Attrs: []schema.Attr{&AutoIncrement{}},
 				},
 				{
 					Name: "account_name",

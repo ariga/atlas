@@ -140,6 +140,15 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 		}
 		c.AddAttrs(&OnUpdate{A: exp.X})
 	}
+	if attr, ok := spec.Attr("auto_increment"); ok {
+		b, err := attr.Bool()
+		if err != nil {
+			return nil, err
+		}
+		if b {
+			c.AddAttrs(&AutoIncrement{})
+		}
+	}
 	return c, err
 }
 
