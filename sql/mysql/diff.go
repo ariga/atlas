@@ -228,10 +228,16 @@ func (*diff) charsetChange(from, top, to []schema.Attr) schema.Change {
 // attribute in case it is not the default.
 func (*diff) autoIncChange(from, to []schema.Attr) schema.Change {
 	var fromA, toA AutoIncrement
-	// The table is empty and AUTO_INCREMENT was not configured. This can happen
-	// because older versions of MySQL (< 8.0) stored the AUTO_INCREMENT counter
-	// in main memory (not persistent), and the value is reset on process restart.
-	if sqlx.Has(from, &fromA) && sqlx.Has(to, &toA) && fromA.V <= 1 && toA.V > 1 {
+	switch fromHas, toHas := sqlx.Has(from, &fromA), sqlx.Has(to, &toA); {
+	// Ignore if the AUTO_INCREMENT attribute was dropped from the desired schema.
+	case fromHas && !toHas:
+	// The AUTO_INCREMENT exists in the desired schema, and may not exists in the inspected one.
+	// This can happen because older versions of MySQL (< 8.0) stored the AUTO_INCREMENT counter
+	// in main memory (not persistent), and the value is reset on process restart for empty tables.
+	case toA.V > 1 && toA.V > fromA.V:
+		// Suggest a diff only if the desired value is greater than the inspected one,
+		// because this attribute cannot be maintained in users schema and used to set
+		// up only the initial value.
 		return &schema.ModifyAttr{
 			From: &fromA,
 			To:   &toA,
