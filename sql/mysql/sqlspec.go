@@ -92,11 +92,11 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 	// MySQL allows setting the initial AUTO_INCREMENT value
 	// on the table definition.
 	if attr, ok := spec.Attr("auto_increment"); ok {
-		b, err := attr.Int64()
+		v, err := attr.Int64()
 		if err != nil {
 			return nil, err
 		}
-		t.AddAttrs(&AutoIncrement{V: b})
+		t.AddAttrs(&AutoIncrement{V: v})
 	}
 	return t, err
 }

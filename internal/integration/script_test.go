@@ -154,8 +154,16 @@ func (t *myTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {
 		if err := t.db.QueryRow(fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`", schema, name)).Scan(&name, &create); err != nil {
 			return "", err
 		}
-		// Trim the "table_options" if it was not requested explicitly.
-		return create[:strings.LastIndexByte(create, ')')+1], nil
+		i := strings.LastIndexByte(create, ')')
+		create, opts := create[:i+1], strings.Fields(create[i+1:])
+		for _, opt := range opts {
+			switch strings.Split(opt, "=")[0] {
+			// Keep only options that are relevant for the tests.
+			case "AUTO_INCREMENT", "COMMENT":
+				create += " " + opt
+			}
+		}
+		return create, nil
 	})
 }
 
