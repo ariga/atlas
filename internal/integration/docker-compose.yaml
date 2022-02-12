@@ -121,3 +121,12 @@ services:
       test: mysqladmin ping -ppass
     ports:
       - 4308:3306
+
+# Default DB test, No Password
+  tidb:
+    platform: linux/amd64
+    image: pingcap/tidb:latest
+    healthcheck:
+      test: mysqladmin ping -ppass
+    ports:
+      - 4309:4000
