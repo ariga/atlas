@@ -89,6 +89,15 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 	if err := convertCharset(spec, &t.Attrs); err != nil {
 		return nil, err
 	}
+	// MySQL allows setting the initial AUTO_INCREMENT value
+	// on the table definition.
+	if attr, ok := spec.Attr("auto_increment"); ok {
+		b, err := attr.Int64()
+		if err != nil {
+			return nil, err
+		}
+		t.AddAttrs(&AutoIncrement{V: b})
+	}
 	return t, err
 }
 

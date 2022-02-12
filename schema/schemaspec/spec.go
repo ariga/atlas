@@ -103,18 +103,28 @@ type (
 	}
 )
 
-// Int returns an integer from the Value of the Attr. If The value is not a LiteralValue or the value
+// Int returns an int from the Value of the Attr. If The value is not a LiteralValue or the value
 // cannot be converted to an integer an error is returned.
 func (a *Attr) Int() (int, error) {
+	i, err := a.Int64()
+	if err != nil {
+		return 0, err
+	}
+	return int(i), nil
+}
+
+// Int64 returns an int64 from the Value of the Attr. If The value is not a LiteralValue or the value
+// cannot be converted to an integer an error is returned.
+func (a *Attr) Int64() (int64, error) {
 	lit, ok := a.V.(*LiteralValue)
 	if !ok {
 		return 0, fmt.Errorf("schema: cannot read attribute %q as literal", a.K)
 	}
-	s, err := strconv.Atoi(lit.V)
+	i, err := strconv.ParseInt(lit.V, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("schema: cannot read attribute %q as int: %w", a.K, err)
+		return 0, fmt.Errorf("schema: cannot read attribute %q as integer: %w", a.K, err)
 	}
-	return s, nil
+	return i, nil
 }
 
 // String returns a string from the Value of the Attr. If The value is not a LiteralValue
