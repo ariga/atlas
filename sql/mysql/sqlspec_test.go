@@ -466,6 +466,41 @@ schema "test" {
 	require.EqualValues(t, expected, string(buf))
 }
 
+func TestMarshalSpec_AutoIncrement(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "id",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
+						Attrs: []schema.Attr{
+							&AutoIncrement{V: 1000},
+						},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "id" {
+    null           = false
+    type           = bigint
+    auto_increment = true
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
 func TestMarshalSpec_Check(t *testing.T) {
 	s := schema.New("test").
 		AddTables(
