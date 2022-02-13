@@ -229,6 +229,9 @@ func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 	if o := (OnUpdate{}); sqlx.Has(c.Attrs, &o) {
 		col.Extra.Attrs = append(col.Extra.Attrs, specutil.RawAttr("on_update", o.A))
 	}
+	if sqlx.Has(c.Attrs, &AutoIncrement{}) {
+		col.Extra.Attrs = append(col.Extra.Attrs, specutil.BoolAttr("auto_increment", true))
+	}
 	return col, nil
 }
 
