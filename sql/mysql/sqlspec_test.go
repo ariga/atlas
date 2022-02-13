@@ -477,7 +477,7 @@ func TestMarshalSpec_AutoIncrement(t *testing.T) {
 						Name: "id",
 						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
 						Attrs: []schema.Attr{
-							&AutoIncrement{V: 1000},
+							&AutoIncrement{},
 						},
 					},
 				},

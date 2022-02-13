@@ -19,8 +19,9 @@ schema "schema" {
 }
 
 table "table" {
-	column "col" {
+	column "id" {
 		type = integer
+		auto_increment = true
 	}
 	column "age" {
 		type = integer
@@ -32,12 +33,12 @@ table "table" {
 		type = varchar(32)
 	}
 	primary_key {
-		columns = [table.table.column.col]
+		columns = [table.table.column.id]
 	}
 	index "index" {
 		unique = true
 		columns = [
-			table.table.column.col,
+			table.table.column.id,
 			table.table.column.age,
 		]
 	}
@@ -73,11 +74,14 @@ table "accounts" {
 			Schema: exp,
 			Columns: []*schema.Column{
 				{
-					Name: "col",
+					Name: "id",
 					Type: &schema.ColumnType{
 						Type: &schema.IntegerType{
 							T: "integer",
 						},
+					},
+					Attrs: []schema.Attr{
+						&AutoIncrement{},
 					},
 				},
 				{
@@ -167,6 +171,41 @@ table "accounts" {
 	err := UnmarshalSpec([]byte(f), hclState, &s)
 	require.NoError(t, err)
 	require.EqualValues(t, exp, &s)
+}
+
+func TestMarshalSpec_AutoIncrement(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "id",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}},
+						Attrs: []schema.Attr{
+							&AutoIncrement{},
+						},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "id" {
+    null           = false
+    type           = int
+    auto_increment = true
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
 }
 
 func TestTypes(t *testing.T) {
