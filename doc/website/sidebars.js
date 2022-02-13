@@ -18,7 +18,8 @@ module.exports = {
             items: [
                 'getting-started/getting-started-installation',
                 'getting-started/getting-started-inspection',
-                'getting-started/getting-started-apply'
+                'getting-started/getting-started-apply',
+                'getting-started/using-the-management-ui',
             ]
         },
         {
