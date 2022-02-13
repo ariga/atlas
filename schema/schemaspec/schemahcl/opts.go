@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"ariga.io/atlas/schema/schemaspec"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
@@ -13,8 +14,9 @@ import (
 type (
 	// Config configures an unmarshaling.
 	Config struct {
-		types  []*schemaspec.TypeSpec
-		newCtx func() *hcl.EvalContext
+		types    []*schemaspec.TypeSpec
+		newCtx   func() *hcl.EvalContext
+		pathVars map[string]map[string]cty.Value
 	}
 
 	// Option configures a Config.
@@ -24,6 +26,7 @@ type (
 // New returns a state configured with options.
 func New(opts ...Option) *state {
 	cfg := &Config{
+		pathVars: make(map[string]map[string]cty.Value),
 		newCtx: func() *hcl.EvalContext {
 			return &hcl.EvalContext{
 				Variables: make(map[string]cty.Value),
@@ -35,6 +38,32 @@ func New(opts ...Option) *state {
 		opt(cfg)
 	}
 	return &state{config: cfg}
+}
+
+// WithScopedEnums configured a list of allowed ENUMs to be used in
+// the given context, block or attribute. For example, the following
+// option allows setting HASH or BTREE to the "using" attribute in
+// "index" block.
+//
+//	WithScopedEnums("table.index.type", "HASH", "BTREE")
+//
+//	table "t" {
+//		...
+//		index "i" {
+//			type = HASH     // Allowed.
+//			type = INVALID  // Not Allowed.
+//		}
+//	}
+//
+//
+func WithScopedEnums(path string, enums ...string) Option {
+	return func(c *Config) {
+		vars := make(map[string]cty.Value, len(enums))
+		for i := range enums {
+			vars[enums[i]] = cty.StringVal(enums[i])
+		}
+		c.pathVars[path] = vars
+	}
 }
 
 // WithTypes configures the list of given types as identifiers in the unmarshaling context.

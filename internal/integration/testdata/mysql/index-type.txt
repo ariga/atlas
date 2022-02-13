@@ -1,0 +1,44 @@
+apply 1.hcl
+cmpshow users 1.sql
+
+# Drop an index.
+apply 2.hcl
+cmpshow users 2.sql
+
+-- 1.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "text" {
+    null = false
+    type = text
+  }
+  index "users_text" {
+    type = FULLTEXT
+    columns = [column.text]
+  }
+}
+
+-- 1.sql --
+CREATE TABLE `users` (
+  `text` text NOT NULL,
+  FULLTEXT KEY `users_text` (`text`)
+)
+
+-- 2.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "text" {
+    null = false
+    type = text
+  }
+}
+
+-- 2.sql --
+CREATE TABLE `users` (
+  `text` text NOT NULL
+)
+

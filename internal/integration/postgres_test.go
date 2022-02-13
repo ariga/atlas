@@ -437,7 +437,7 @@ schema "second" {
 func (t *pgTest) applyRealmHcl(spec string) {
 	realm := t.loadRealm()
 	var desired schema.Realm
-	err := mysql.UnmarshalHCL([]byte(spec), &desired)
+	err := postgres.UnmarshalHCL([]byte(spec), &desired)
 	require.NoError(t, err)
 	diff, err := t.drv.RealmDiff(realm, &desired)
 	require.NoError(t, err)
@@ -471,6 +471,51 @@ func TestPostgres_CLI(t *testing.T) {
 	t.Run("SchemaApplyDryRun", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
 			testCLISchemaApplyDry(t, h, t.dsn())
+		})
+	})
+	t.Run("SchemaDiffRun", func(t *testing.T) {
+		pgRun(t, func(t *pgTest) {
+			testCLISchemaDiff(t, t.dsn())
+		})
+	})
+}
+
+func TestPostgres_CLI_MultiSchema(t *testing.T) {
+	h := `
+			schema "public" {	
+			}
+			table "users" {
+				schema = schema.public
+				column "id" {
+					type = integer
+				}
+				primary_key {
+					columns = [table.users.column.id]
+				}
+			}
+			schema "test2" {	
+			}
+			table "users" {
+				schema = schema.test2
+				column "id" {
+					type = integer
+				}
+				primary_key {
+					columns = [table.users.column.id]
+				}
+			}`
+	t.Run("SchemaInspect", func(t *testing.T) {
+		pgRun(t, func(t *pgTest) {
+			t.dropSchemas("test2")
+			t.dropTables("users")
+			testCLIMultiSchemaInspect(t, h, t.dsn(), []string{"public", "test2"}, postgres.UnmarshalHCL)
+		})
+	})
+	t.Run("SchemaApply", func(t *testing.T) {
+		pgRun(t, func(t *pgTest) {
+			t.dropSchemas("test2")
+			t.dropTables("users")
+			testCLIMultiSchemaApply(t, h, t.dsn(), []string{"public", "test2"}, postgres.UnmarshalHCL)
 		})
 	})
 }
@@ -546,6 +591,7 @@ create table atlas_types_sanity
     "tTimestampTZ"         timestamptz                 default now()                                    null,
     "tTimestampWTZ"        timestamp with time zone    default now()                                    null,
     "tTimestampWOTZ"       timestamp without time zone default now()                                    null,
+    "tTimestampPrec"       timestamp(4)                default now()                                    null,
     "tDouble"              double precision            default 0                                        null,
     "tReal"                real                        default 0                                        null,
     "tFloat8"              float8                      default 0                                        null,
@@ -716,37 +762,42 @@ create table atlas_types_sanity
 				},
 				{
 					Name:    "tTime",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time without time zone"}, Raw: "time without time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time without time zone", Precision: 6}, Raw: "time without time zone", Null: true},
 					Default: &schema.RawExpr{X: "CURRENT_TIME"},
 				},
 				{
 					Name:    "tTimeWTZ",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time with time zone"}, Raw: "time with time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time with time zone", Precision: 6}, Raw: "time with time zone", Null: true},
 					Default: &schema.RawExpr{X: "CURRENT_TIME"},
 				},
 				{
 					Name:    "tTimeWOTZ",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time without time zone"}, Raw: "time without time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time without time zone", Precision: 6}, Raw: "time without time zone", Null: true},
 					Default: &schema.RawExpr{X: "CURRENT_TIME"},
 				},
 				{
 					Name:    "tTimestamp",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone"}, Raw: "timestamp without time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone", Precision: 6}, Raw: "timestamp without time zone", Null: true},
 					Default: &schema.RawExpr{X: "now()"},
 				},
 				{
 					Name:    "tTimestampTZ",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone"}, Raw: "timestamp with time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone", Precision: 6}, Raw: "timestamp with time zone", Null: true},
 					Default: &schema.RawExpr{X: "now()"},
 				},
 				{
 					Name:    "tTimestampWTZ",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone"}, Raw: "timestamp with time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone", Precision: 6}, Raw: "timestamp with time zone", Null: true},
 					Default: &schema.RawExpr{X: "now()"},
 				},
 				{
 					Name:    "tTimestampWOTZ",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone"}, Raw: "timestamp without time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone", Precision: 6}, Raw: "timestamp without time zone", Null: true},
+					Default: &schema.RawExpr{X: "now()"},
+				},
+				{
+					Name:    "tTimestampPrec",
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone", Precision: 4}, Raw: "timestamp without time zone", Null: true},
 					Default: &schema.RawExpr{X: "now()"},
 				},
 				{
@@ -1031,7 +1082,7 @@ func (t *pgTest) dropTables(names ...string) {
 
 func (t *pgTest) dropSchemas(names ...string) {
 	t.Cleanup(func() {
-		_, err := t.db.Exec("DROP SCHEMA IF EXISTS " + strings.Join(names, ", "))
+		_, err := t.db.Exec("DROP SCHEMA IF EXISTS " + strings.Join(names, ", ") + " CASCADE")
 		require.NoError(t.T, err, "drop schema %q", names)
 	})
 }

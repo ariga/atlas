@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package action
 
 import (
@@ -102,9 +106,7 @@ func SchemaNameFromDSN(url string) (string, error) {
 func postgresSchema(dsn string) (string, error) {
 	url, err := url.Parse(dsn)
 	if err != nil {
-		// For backwards compatibility, we default to "public" when failing to
-		// parse.
-		return "public", nil
+		return "", err
 	}
 	// lib/pq supports setting default schemas via the `search_path` parameter
 	// in a dsn.
@@ -113,8 +115,7 @@ func postgresSchema(dsn string) (string, error) {
 	if schema := url.Query().Get("search_path"); schema != "" {
 		return schema, nil
 	}
-
-	return "public", nil
+	return "", nil
 }
 
 func schemaName(dsn string) (string, error) {

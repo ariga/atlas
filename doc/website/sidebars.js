@@ -32,12 +32,28 @@ module.exports = {
             ]
         },
         {
-            type: 'doc',
-            id: 'cli-reference',
+            type: 'category',
+            label: 'CLI',
+            items: [
+                {type: 'doc', id: 'cli/cli-reference', label: 'Reference'},
+                {type: 'doc', id: 'cli/cli-dsn', label: 'DSN'},
+            ]
         },
         {
             type: 'doc',
             id: 'ui/atlas-ui-intro',
+        },
+        {
+            type: 'category',
+            label: 'Go API',
+            items: [
+                {type: 'doc', id: 'go-api/intro', label: 'Introduction'},
+                {type: 'doc', id: 'go-api/inspect', label: 'Inspecting Schemas'},
+            ]
+        },
+        {
+            type: 'doc',
+            id: 'contributing',
         }
     ],
     aboutSidebar: [

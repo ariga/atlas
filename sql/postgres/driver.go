@@ -134,3 +134,11 @@ const (
 	TypeInterval    = "interval"
 	TypeUserDefined = "user-defined"
 )
+
+// List of supported index types.
+const (
+	IndexTypeBTree = "BTREE"
+	IndexTypeHash  = "HASH"
+	IndexTypeGIN   = "GIN"
+	IndexTypeGiST  = "GIST"
+)

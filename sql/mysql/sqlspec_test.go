@@ -23,12 +23,23 @@ table "table" {
 	}
 	column "price1" {
 		type = int
+		auto_increment = false
 	}
 	column "price2" {
 		type = int
+		auto_increment = true
 	}
 	column "account_name" {
 		type = varchar(32)
+	}
+	column "created_at" {
+		type    = datetime(4)
+		default = sql("now(4)")
+	}
+	column "updated_at" {
+		type      = timestamp(6)
+		default   = sql("current_timestamp(6)")
+		on_update = sql("current_timestamp(6)")
 	}
 	primary_key {
 		columns = [table.table.column.col]
@@ -62,11 +73,20 @@ table "table" {
 		enforced = false
 	}
 	comment = "table comment"
+	auto_increment = 1000
 }
 
 table "accounts" {
 	column "name" {
 		type = varchar(32)
+	}
+	column "unsigned_float" {
+		type     = float(10)
+		unsigned = true
+	}
+	column "unsigned_decimal" {
+		type     = decimal(10,2)
+		unsigned = true
 	}
 	primary_key {
 		columns = [table.accounts.column.name]
@@ -119,6 +139,7 @@ table "accounts" {
 							T: TypeInt,
 						},
 					},
+					Attrs: []schema.Attr{&AutoIncrement{}},
 				},
 				{
 					Name: "account_name",
@@ -128,6 +149,27 @@ table "accounts" {
 							Size: 32,
 						},
 					},
+				},
+				{
+					Name: "created_at",
+					Type: &schema.ColumnType{
+						Type: &schema.TimeType{
+							T:         TypeDateTime,
+							Precision: 4,
+						},
+					},
+					Default: &schema.RawExpr{X: "now(4)"},
+				},
+				{
+					Name: "updated_at",
+					Type: &schema.ColumnType{
+						Type: &schema.TimeType{
+							T:         TypeTimestamp,
+							Precision: 6,
+						},
+					},
+					Default: &schema.RawExpr{X: "current_timestamp(6)"},
+					Attrs:   []schema.Attr{&OnUpdate{A: "current_timestamp(6)"}},
 				},
 			},
 			Attrs: []schema.Attr{
@@ -144,6 +186,7 @@ table "accounts" {
 					Attrs: []schema.Attr{&Enforced{V: false}},
 				},
 				&schema.Comment{Text: "table comment"},
+				&AutoIncrement{V: 1000},
 			},
 		},
 		{
@@ -156,6 +199,27 @@ table "accounts" {
 						Type: &schema.StringType{
 							T:    TypeVarchar,
 							Size: 32,
+						},
+					},
+				},
+				{
+					Name: "unsigned_float",
+					Type: &schema.ColumnType{
+						Type: &schema.FloatType{
+							T:         TypeFloat,
+							Precision: 10,
+							Unsigned:  true,
+						},
+					},
+				},
+				{
+					Name: "unsigned_decimal",
+					Type: &schema.ColumnType{
+						Type: &schema.DecimalType{
+							T:         TypeDecimal,
+							Precision: 10,
+							Scale:     2,
+							Unsigned:  true,
 						},
 					},
 				},
@@ -385,7 +449,7 @@ func TestMarshalSpec_Comment(t *testing.T) {
   }
   index "index" {
     unique  = true
-    columns = [table.users.column.a, ]
+    columns = [column.a]
     comment = "index comment"
   }
 }
@@ -394,6 +458,41 @@ table "posts" {
   column "a" {
     null = false
     type = text
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestMarshalSpec_AutoIncrement(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "id",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
+						Attrs: []schema.Attr{
+							&AutoIncrement{V: 1000},
+						},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "id" {
+    null           = false
+    type           = bigint
+    auto_increment = true
   }
 }
 schema "test" {
@@ -433,6 +532,178 @@ func TestMarshalSpec_Check(t *testing.T) {
   check {
     expr     = "price1 <> price2"
     enforced = true
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestUnmarshalSpec_IndexParts(t *testing.T) {
+	var (
+		s schema.Schema
+		f = `
+schema "test" {}
+table "users" {
+	schema = schema.test
+	column "name" {
+		type = text
+	}
+	index "idx" {
+		on {
+			column = table.users.column.name
+			desc = true
+		}
+		on {
+			expr = "lower(name)"
+		}
+	}
+}
+`
+	)
+	err := UnmarshalHCL([]byte(f), &s)
+	require.NoError(t, err)
+	c := schema.NewStringColumn("name", "text")
+	exp := schema.New("test").
+		AddTables(
+			schema.NewTable("users").
+				AddColumns(c).
+				AddIndexes(
+					schema.NewIndex("idx").
+						AddParts(
+							schema.NewColumnPart(c).SetDesc(true),
+							schema.NewExprPart(&schema.RawExpr{X: "lower(name)"}),
+						),
+				),
+		)
+	exp.Tables[0].Columns[0].Indexes = nil
+	require.EqualValues(t, exp, &s)
+}
+
+func TestMarshalSpec_IndexParts(t *testing.T) {
+	c := schema.NewStringColumn("name", "text")
+	s := schema.New("test").
+		AddTables(
+			schema.NewTable("users").
+				AddColumns(c).
+				AddIndexes(
+					schema.NewIndex("idx").
+						AddParts(
+							schema.NewColumnPart(c).SetDesc(true),
+							schema.NewExprPart(&schema.RawExpr{X: "lower(name)"}),
+						),
+				),
+		)
+	buf, err := MarshalHCL(s)
+	require.NoError(t, err)
+	exp := `table "users" {
+  schema = schema.test
+  column "name" {
+    null = false
+    type = text
+  }
+  index "idx" {
+    on {
+      desc   = true
+      column = column.name
+    }
+    on {
+      expr = "lower(name)"
+    }
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, exp, buf)
+}
+
+func TestMarshalSpec_TimePrecision(t *testing.T) {
+	s := schema.New("test").
+		AddTables(
+			schema.NewTable("times").
+				AddColumns(
+					schema.NewTimeColumn("tTimeDef", TypeTime),
+					schema.NewTimeColumn("tTime", TypeTime, schema.TimePrecision(1)),
+					schema.NewTimeColumn("tDatetime", TypeDateTime, schema.TimePrecision(2)),
+					schema.NewTimeColumn("tTimestamp", TypeTimestamp, schema.TimePrecision(3)).
+						SetDefault(&schema.RawExpr{X: "current_timestamp(3)"}).
+						AddAttrs(&OnUpdate{A: "current_timestamp(3)"}),
+					schema.NewTimeColumn("tDate", TypeDate, schema.TimePrecision(2)),
+					schema.NewTimeColumn("tYear", TypeYear, schema.TimePrecision(2)),
+				),
+		)
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "times" {
+  schema = schema.test
+  column "tTimeDef" {
+    null = false
+    type = time
+  }
+  column "tTime" {
+    null = false
+    type = time(1)
+  }
+  column "tDatetime" {
+    null = false
+    type = datetime(2)
+  }
+  column "tTimestamp" {
+    null      = false
+    type      = timestamp(3)
+    default   = sql("current_timestamp(3)")
+    on_update = sql("current_timestamp(3)")
+  }
+  column "tDate" {
+    null = false
+    type = date(2)
+  }
+  column "tYear" {
+    null = false
+    type = year(2)
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestMarshalSpec_FloatUnsigned(t *testing.T) {
+	s := schema.New("test").
+		AddTables(
+			schema.NewTable("test").
+				AddColumns(
+					schema.NewFloatColumn(
+						"float_col",
+						TypeFloat,
+						schema.FloatPrecision(10),
+						schema.FloatUnsigned(true),
+					),
+					schema.NewDecimalColumn(
+						"decimal_col",
+						TypeDecimal,
+						schema.DecimalPrecision(10),
+						schema.DecimalScale(2),
+						schema.DecimalUnsigned(true),
+					),
+				),
+		)
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "test" {
+  schema = schema.test
+  column "float_col" {
+    null     = false
+    type     = float(10)
+    unsigned = true
+  }
+  column "decimal_col" {
+    null     = false
+    type     = decimal(10,2)
+    unsigned = true
   }
 }
 schema "test" {
@@ -573,8 +844,18 @@ func TestTypes(t *testing.T) {
 			expected: &schema.DecimalType{T: TypeDecimal, Precision: 10, Scale: 2},
 		},
 		{
+			typeExpr:  "decimal(10,2)",
+			extraAttr: "unsigned=true",
+			expected:  &schema.DecimalType{T: TypeDecimal, Precision: 10, Scale: 2, Unsigned: true},
+		},
+		{
 			typeExpr: "numeric",
 			expected: &schema.DecimalType{T: TypeNumeric},
+		},
+		{
+			typeExpr:  "numeric",
+			extraAttr: "unsigned=true",
+			expected:  &schema.DecimalType{T: TypeNumeric, Unsigned: true},
 		},
 		{
 			typeExpr: "numeric(10)",
@@ -589,6 +870,11 @@ func TestTypes(t *testing.T) {
 			expected: &schema.FloatType{T: TypeFloat, Precision: 10},
 		},
 		{
+			typeExpr:  "float(10)",
+			extraAttr: "unsigned=true",
+			expected:  &schema.FloatType{T: TypeFloat, Precision: 10, Unsigned: true},
+		},
+		{
 			typeExpr: "double(10,0)",
 			expected: &schema.FloatType{T: TypeDouble, Precision: 10},
 		},
@@ -597,24 +883,49 @@ func TestTypes(t *testing.T) {
 			expected: &schema.FloatType{T: TypeReal},
 		},
 		{
+			typeExpr:  "real",
+			extraAttr: "unsigned=true",
+			expected:  &schema.FloatType{T: TypeReal, Unsigned: true},
+		},
+		{
 			typeExpr: "timestamp",
 			expected: &schema.TimeType{T: TypeTimestamp},
+		},
+		{
+			typeExpr: "timestamp(6)",
+			expected: &schema.TimeType{T: TypeTimestamp, Precision: 6},
 		},
 		{
 			typeExpr: "date",
 			expected: &schema.TimeType{T: TypeDate},
 		},
 		{
+			typeExpr: "date(2)",
+			expected: &schema.TimeType{T: TypeDate, Precision: 2},
+		},
+		{
 			typeExpr: "time",
 			expected: &schema.TimeType{T: TypeTime},
+		},
+		{
+			typeExpr: "time(6)",
+			expected: &schema.TimeType{T: TypeTime, Precision: 6},
 		},
 		{
 			typeExpr: "datetime",
 			expected: &schema.TimeType{T: TypeDateTime},
 		},
 		{
+			typeExpr: "datetime(6)",
+			expected: &schema.TimeType{T: TypeDateTime, Precision: 6},
+		},
+		{
 			typeExpr: "year",
 			expected: &schema.TimeType{T: TypeYear},
+		},
+		{
+			typeExpr: "year(2)",
+			expected: &schema.TimeType{T: TypeYear, Precision: 2},
 		},
 		{
 			typeExpr: "varchar(10)",
@@ -703,6 +1014,18 @@ func TestTypes(t *testing.T) {
 		{
 			typeExpr: "geometrycollection",
 			expected: &schema.SpatialType{T: TypeGeometryCollection},
+		},
+		{
+			typeExpr: "tinyint(1)",
+			expected: &schema.BoolType{T: TypeBool},
+		},
+		{
+			typeExpr: "bool",
+			expected: &schema.BoolType{T: TypeBool},
+		},
+		{
+			typeExpr: "boolean",
+			expected: &schema.BoolType{T: TypeBool},
 		},
 	}
 	for _, tt := range tests {

@@ -103,11 +103,11 @@ func (d *diff) IsGeneratedIndexName(t *schema.Table, idx *schema.Index) bool {
 // IndexAttrChanged reports if the index attributes were changed.
 // The default type is BTREE if no type was specified.
 func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
-	t1 := &IndexType{T: "BTREE"}
+	t1 := &IndexType{T: IndexTypeBTree}
 	if sqlx.Has(from, t1) {
 		t1.T = strings.ToUpper(t1.T)
 	}
-	t2 := &IndexType{T: "BTREE"}
+	t2 := &IndexType{T: IndexTypeBTree}
 	if sqlx.Has(to, t2) {
 		t2.T = strings.ToUpper(t2.T)
 	}
@@ -122,14 +122,12 @@ func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 }
 
 // IndexPartAttrChanged reports if the index-part attributes were changed.
-func (*diff) IndexPartAttrChanged(from, to []schema.Attr) bool {
-	// By default, B-tree indexes store rows
-	// in ascending order with nulls last.
-	p1 := &IndexColumnProperty{Asc: true, NullsLast: true}
-	sqlx.Has(from, p1)
-	p2 := &IndexColumnProperty{Asc: true, NullsLast: true}
-	sqlx.Has(to, p2)
-	return p1.Asc != p2.Asc || p1.Desc != p2.Desc || p1.NullsFirst != p2.NullsFirst || p1.NullsLast != p2.NullsLast
+func (*diff) IndexPartAttrChanged(from, to *schema.IndexPart) bool {
+	p1 := &IndexColumnProperty{NullsFirst: from.Desc, NullsLast: !from.Desc}
+	sqlx.Has(from.Attrs, p1)
+	p2 := &IndexColumnProperty{NullsFirst: to.Desc, NullsLast: !to.Desc}
+	sqlx.Has(to.Attrs, p2)
+	return p1.NullsFirst != p2.NullsFirst || p1.NullsLast != p2.NullsLast
 }
 
 // ReferenceChanged reports if the foreign key referential action was changed.
@@ -148,7 +146,7 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	fromT, toT := from.Type.Type, to.Type.Type
 	if fromT == nil || toT == nil {
-		return false, fmt.Errorf("postgres: missing type infromation for column %q", from.Name)
+		return false, fmt.Errorf("postgres: missing type information for column %q", from.Name)
 	}
 	// Skip checking SERIAL types as they are not real types in the database, but more
 	// like a convenience way for creating integers types with AUTO_INCREMENT property.

@@ -1,0 +1,119 @@
+# Each test runs on a clean database.
+
+# Run this test only on MySQL 8 as it is not supported by other versions.
+only 8
+
+# Apply schema "1.hcl" on fresh database.
+apply 1.hcl
+cmpshow users 1.sql
+
+# Drop the "DESC" option from the key part.
+apply 2.hcl
+cmpshow users 2.sql
+# Use of "columns" instead of "on" should not trigger a change.
+synced 2-no-change.hcl
+
+apply 3.hcl
+cmpshow users 3.sql
+
+# Below files represent HCL and SQL. File names defined their index in
+# execution order. 1.hcl is executed first, 2.hcl executed second, etc.
+-- 1.hcl --
+schema "$db" {
+    charset = "$charset"
+    collation = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "rank" {
+        type = bigint
+    }
+    index "rank_idx" {
+        on {
+            desc   = true
+            column = table.users.column.rank
+        }
+    }
+}
+
+-- 1.sql --
+CREATE TABLE `users` (
+  `rank` bigint NOT NULL,
+  KEY `rank_idx` (`rank` DESC)
+)
+
+-- 2.hcl --
+schema "$db" {
+    charset = "$charset"
+    collation = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "rank" {
+        type = bigint
+    }
+    index "rank_idx" {
+        on {
+            column = table.users.column.rank
+        }
+    }
+}
+
+-- 2.sql --
+CREATE TABLE `users` (
+  `rank` bigint NOT NULL,
+  KEY `rank_idx` (`rank`)
+)
+
+
+-- 2-no-change.hcl --
+schema "$db" {
+    charset = "$charset"
+    collation = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "rank" {
+        type = bigint
+    }
+    index "rank_idx" {
+        columns = [
+            table.users.column.rank,
+        ]
+    }
+}
+
+-- 3.hcl --
+schema "$db" {
+    charset = "$charset"
+    collation = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "rank" {
+        type = bigint
+    }
+    column "score" {
+        type = int
+    }
+    index "rank_score_idx" {
+        on {
+            column = table.users.column.rank
+        }
+        on {
+            column = table.users.column.score
+            desc = true
+        }
+    }
+}
+
+-- 3.sql --
+CREATE TABLE `users` (
+  `rank` bigint NOT NULL,
+  `score` int NOT NULL,
+  KEY `rank_score_idx` (`rank`,`score` DESC)
+)

@@ -1,0 +1,90 @@
+# Each test runs on a clean database.
+
+apply 1.hcl
+cmpshow users 1.sql
+
+# "bool", "boolean" and "tinyint(1)" are equal.
+synced 2.hcl
+
+# Changing "tinyint(1)" to "tinyint" should cause a schema change.
+apply 3.hcl
+cmpshow users 3.sql
+synced 3.hcl
+
+-- 1.hcl --
+schema "$db" {
+    charset = "$charset"
+    collation = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "a" {
+        type = bool
+    }
+    column "b" {
+        type = boolean
+    }
+    column "c" {
+        type = tinyint(1)
+    }
+}
+
+-- 1.sql --
+CREATE TABLE `users` (
+  `a` tinyint(1) NOT NULL,
+  `b` tinyint(1) NOT NULL,
+  `c` tinyint(1) NOT NULL
+)
+
+-- 2.hcl --
+schema "$db" {
+    charset = "$charset"
+    collation = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "a" {
+        type = boolean
+    }
+    column "b" {
+        type = tinyint(1)
+    }
+    column "c" {
+        type = bool
+    }
+}
+
+-- 3.hcl --
+schema "$db" {
+    charset = "$charset"
+    collation = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "a" {
+        type = boolean
+    }
+    column "b" {
+        type = tinyint
+    }
+    column "c" {
+        type = bool
+    }
+}
+
+-- 3.sql --
+CREATE TABLE `users` (
+  `a` tinyint(1) NOT NULL,
+  `b` tinyint(4) NOT NULL,
+  `c` tinyint(1) NOT NULL
+)
+
+-- 8/3.sql --
+CREATE TABLE `users` (
+  `a` tinyint(1) NOT NULL,
+  `b` tinyint NOT NULL,
+  `c` tinyint(1) NOT NULL
+)

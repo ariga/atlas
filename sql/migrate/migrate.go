@@ -9,10 +9,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
+	"io"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"text/template"
 	"time"
@@ -127,182 +126,47 @@ func Schema(s *schema.Schema) StateReader {
 }
 
 type (
-	// Dir represents a versioned migration directory.
-	Dir struct {
-		fs        fs.FS
-		conn      Driver
-		pattern   string
-		templates []struct{ N, T *template.Template }
+	// Dir describes the methods needed to work with the Planner.
+	Dir interface {
+		// Open opens the named file.
+		Open(name string) (io.ReadWriteCloser, error)
 	}
 
-	// DirOption allows configuring the Dir
-	// using functional options.
-	DirOption func(*Dir) error
-)
+	// Formatter wraps the Format method for naming and dumping a migration plan to one or more Files.
+	Formatter interface {
+		// Format formats the given Plan.
+		// The returned map contains the contents for each file to dump.
+		Format(*Plan) ([]File, error)
+	}
 
-// NewDir creates a new workspace directory based
-// on the given configuration options.
-func NewDir(opts ...DirOption) (*Dir, error) {
-	d := &Dir{
-		fs: dirFS{
-			dir: "migrations",
-			FS:  os.DirFS("migrations"),
-		},
-		pattern: "*.sql",
+	// File represents a migration file.
+	File interface {
+		io.Reader
+		Name() string
 	}
-	for _, opt := range opts {
-		if err := opt(d); err != nil {
-			return nil, err
-		}
-	}
-	if len(d.templates) == 0 {
-		d.templates = []struct{ N, T *template.Template }{defaultTemplate}
-	}
-	return d, nil
-}
 
-type (
-	// dirFS wraps the os.DirFS with additional writing capabilities.
-	dirFS struct {
-		fs.FS
-		dir string
-	}
-	// FileRemoveWriter wraps the WriteFile and RemoveFile methods
-	// to allow editing the migration directory on development.
-	FileRemoveWriter interface {
-		RemoveFile(name string) error
-		WriteFile(name string, data []byte, perm fs.FileMode) error
+	// Planner can plan the steps to take to migrate from one state to another. It uses the enclosed FS to write
+	// those changes to versioned migration files.
+	Planner struct {
+		drv Driver
+		dir Dir
+		fmt Formatter
 	}
 )
 
-// WriteFile implements the FileWriter interface.
-func (d *dirFS) WriteFile(name string, data []byte, perm fs.FileMode) error {
-	return os.WriteFile(filepath.Join(d.dir, name), data, perm)
-}
-
-// RemoveFile implements the FileWriter interface.
-func (d *dirFS) RemoveFile(name string) error {
-	return os.Remove(filepath.Join(d.dir, name))
-}
-
-// DirFS configures the FS used by the migration directory.
-func DirFS(fs fs.FS) DirOption {
-	return func(d *Dir) error {
-		d.fs = fs
-		return nil
+// New creates a new Planner.
+func New(drv Driver, dir Dir, fmt Formatter) *Planner {
+	return &Planner{
+		drv: drv,
+		dir: dir,
+		fmt: fmt,
 	}
 }
 
-// DirPath configures the FS used by the migration directory
-// to point the given OS directory.
-func DirPath(path string) DirOption {
-	return func(d *Dir) error {
-		fi, err := os.Stat(path)
-		if err != nil {
-			return err
-		}
-		if !fi.IsDir() {
-			return fmt.Errorf("sql/migrate: %q not a dir", path)
-		}
-		d.fs = &dirFS{FS: os.DirFS(path), dir: path}
-		return nil
-	}
-}
-
-// DirGlob configures the glob/pattern for reading
-// migration files from the directory. For example:
-//
-//	migrate.NewDir(
-//		migrate.DirPath("migrations"),
-//		migrate.DirGlob("*.up.sql"),
-//	)
-//
-func DirGlob(pattern string) DirOption {
-	return func(d *Dir) error {
-		d.pattern = pattern
-		return nil
-	}
-}
-
-// DirConn provides a Driver connection to a database. It is usually connected to
-// an ephemeral database for emulating migration changes on it and calculating the
-// "current state" to be compared with the "desired state".
-func DirConn(conn Driver) DirOption {
-	return func(d *Dir) error {
-		d.conn = conn
-		return nil
-	}
-}
-
-var (
-	// TemplateFuncs defines the global functions available for the templates.
-	TemplateFuncs = template.FuncMap{
-		"hasSuffix": strings.HasSuffix,
-		"timestamp": func() int64 {
-			return time.Now().Unix()
-		},
-	}
-	defaultTemplate = struct {
-		N, T *template.Template
-	}{
-		N: template.Must(template.New("name").
-			Funcs(TemplateFuncs).
-			Parse("{{timestamp}}_{{.Name}}.sql")),
-		T: template.Must(template.New("name").
-			Funcs(TemplateFuncs).
-			Parse(`
-{{- range $c := .Changes }}
-	{{- $cmd := $c.Cmd }}
-	{{- if not (hasSuffix $c.Cmd ";") }}
-		{{- $cmd = print $cmd ";" }}
-	{{- end }}
-	{{- println $cmd }}
-{{- end }}`)),
-	}
-)
-
-// DirTemplates configures template files for writing
-// the Plan object to the migration directory.
-//
-//	migrate.NewDir(
-//		migrate.DirPath("migrations"),
-//		migrate.DirTemplates("{{timestamp}}{{.Name}}.up.sql", "{{range c := .Changes}}{{println c.Cmd}}{{end}}"),
-//	)
-//
-//	migrate.NewDir(
-//		migrate.DirPath("migrations"),
-//		migrate.DirTemplates(
-//			"{{timestamp}}{{.Name}}.up.sql", "{{range $c := .Changes}}{{println $c.Cmd}}{{end}}",
-//			"{{timestamp}}{{.Name}}.down.sql", "{{range $c := .Changes}}{{println $c.Reverse}}{{end}}",
-//		),
-//	)
-//
-func DirTemplates(nameFileTmpl ...string) DirOption {
-	return func(d *Dir) error {
-		if n := len(nameFileTmpl); n == 0 || n%2 == 1 {
-			return fmt.Errorf("odd or zero argument count")
-		}
-		for i := 0; i < len(nameFileTmpl); i += 2 {
-			if err := d.addTemplate(nameFileTmpl[i], nameFileTmpl[i+1]); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-}
-
-// ReadState reads the current database/realm state that is stored in the migration directory.
-// The given emulator driver is used for playing all migration files against to it.
-func (d *Dir) ReadState(ctx context.Context) (*schema.Realm, error) {
-	realm, _, err := d.readStateOf(ctx, -1)
-	return realm, err
-}
-
-// Plan calculates the migration Plan required for moving from the directory state to
-// the next state (to). A StateReader, can be another directory, static schema elements
-// or a Driver connection.
-func (d *Dir) Plan(ctx context.Context, name string, to StateReader) (*Plan, error) {
-	current, err := d.ReadState(ctx)
+// Plan calculates the migration Plan required for moving the current state (from) state to
+// the next state (to). A StateReader can be a directory, static schema elements or a Driver connection.
+func (p *Planner) Plan(ctx context.Context, name string, from StateReader, to StateReader) (*Plan, error) {
+	current, err := from.ReadState(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -310,120 +174,151 @@ func (d *Dir) Plan(ctx context.Context, name string, to StateReader) (*Plan, err
 	if err != nil {
 		return nil, err
 	}
-	changes, err := d.conn.RealmDiff(current, desired)
+	changes, err := p.drv.RealmDiff(current, desired)
 	if err != nil {
 		return nil, err
 	}
 	if len(changes) == 0 {
 		return nil, ErrNoPlan
 	}
-	return d.conn.PlanChanges(ctx, name, changes)
+	return p.drv.PlanChanges(ctx, name, changes)
 }
 
-// WritePlan writes the given plan to the directory
-// based on the given Write configuration.
-func (d *Dir) WritePlan(p *Plan) error {
-	rw, ok := d.fs.(FileRemoveWriter)
-	if !ok {
-		return fmt.Errorf("fs.FS does not support editing: %T", d.fs)
-	}
-	for _, t := range d.templates {
-		var b bytes.Buffer
-		if err := t.N.Execute(&b, p); err != nil {
-			return err
-		}
-		if b.String() == "" {
-			return errors.New("file name cannot be empty")
-		}
-		name := b.String()
-		b.Reset()
-		if err := t.T.Execute(&b, p); err != nil {
-			return err
-		}
-		if err := rw.WriteFile(name, b.Bytes(), 0644); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Compact compacts the first n migration files into one. If n < 0, all files are selected.
-func (d *Dir) Compact(ctx context.Context, name string, n int) error {
-	rw, ok := d.fs.(FileRemoveWriter)
-	if !ok {
-		return fmt.Errorf("fs.FS does not support editing: %T", d.fs)
-	}
-	desired, files, err := d.readStateOf(ctx, n)
+// WritePlan writes the given plan to the Dir based on the given Formatter.
+func (p *Planner) WritePlan(plan *Plan) error {
+	fs, err := p.fmt.Format(plan)
 	if err != nil {
 		return err
 	}
-	changes, err := d.conn.RealmDiff(&schema.Realm{}, desired)
-	if err != nil {
-		return err
-	}
-	if len(changes) == 0 {
-		return nil
-	}
-	for _, c := range changes {
-		// Add the "IF NOT EXISTS" clause to the schema
-		// creation as it is usually created manually.
-		if c, ok := c.(*schema.AddSchema); ok {
-			c.Extra = append(c.Extra, &schema.IfNotExists{})
-		}
-	}
-	plan, err := d.conn.PlanChanges(ctx, name, changes)
-	if err != nil {
-		return err
-	}
-	for _, f := range files {
-		if err := rw.RemoveFile(f); err != nil {
-			return fmt.Errorf("remove file: %q: %w", f, err)
-		}
-	}
-	return d.WritePlan(plan)
-}
-
-// readStateOf of first n files. If n < 0, all files are selected.
-func (d *Dir) readStateOf(ctx context.Context, n int) (*schema.Realm, []string, error) {
-	files, err := fs.Glob(d.fs, d.pattern)
-	if err != nil {
-		return nil, nil, err
-	}
-	switch {
-	case n == 0 || n >= len(files):
-		return nil, nil, fmt.Errorf("sql/migrate: invalid number for selected files: %d", n)
-	case n > 0:
-		files = files[:n]
-	}
-	// Files are expected to be sorted lexicographically.
-	sort.Slice(files, func(i, j int) bool {
-		return files[i] < files[j]
-	})
-	for _, f := range files {
-		buf, err := fs.ReadFile(d.fs, f)
+	for _, f := range fs {
+		fh, err := p.dir.Open(f.Name())
 		if err != nil {
-			return nil, nil, fmt.Errorf("sql/migrate: scan migration script %q: %w", f, err)
+			return err
 		}
-		if _, err := d.conn.ExecContext(ctx, string(buf)); err != nil {
-			return nil, nil, fmt.Errorf("sql/migrate: execute migration script %q: %w", f, err)
+		_, err = io.Copy(fh, f)
+		fh.Close()
+		if err != nil {
+			return err
 		}
 	}
-	realm, err := d.conn.InspectRealm(ctx, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-	return realm, files, nil
+	return nil
 }
 
-func (d *Dir) addTemplate(nameTmpl, fileTmpl string) error {
-	nameT, err := template.New("name").Funcs(TemplateFuncs).Parse(nameTmpl)
+// LocalDir implements Dir for a local path.
+type LocalDir struct {
+	dir string
+}
+
+// Open implements Dir.Open.
+func (d *LocalDir) Open(name string) (File, error) {
+	return os.Create(filepath.Join(d.dir, name))
+}
+
+// NewLocalDir returns a new the Dir used by a Planner to work on the given local path.
+func NewLocalDir(path string) (*LocalDir, error) {
+	fi, err := os.Stat(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	fileT, err := template.New("file").Funcs(TemplateFuncs).Parse(fileTmpl)
-	if err != nil {
-		return err
+	if !fi.IsDir() {
+		return nil, fmt.Errorf("sql/migrate: %q is not a dir", path)
 	}
-	d.templates = append(d.templates, struct{ N, T *template.Template }{N: nameT, T: fileT})
-	return nil
+	return &LocalDir{dir: path}, nil
+}
+
+// TemplateFormatter implements Formatter by using templates.
+type TemplateFormatter struct {
+	templates []struct{ N, C *template.Template }
+}
+
+var (
+	// templateFuncs contains the template.FuncMap for the DefaultFormatter.
+	templateFuncs = template.FuncMap{
+		"now": time.Now,
+		"sem": ensureSemicolonSuffix,
+		"rev": reverse,
+	}
+	// DefaultFormatter is a default implementation for Formatter. Compatible with golang-migrate/migrate.
+	DefaultFormatter = &TemplateFormatter{
+		templates: []struct{ N, C *template.Template }{
+			{
+				N: template.Must(template.New("").Funcs(templateFuncs).Parse(
+					"{{ now.Unix }}{{ with .Name }}_{{ . }}{{ end }}.up.sql",
+				)),
+				C: template.Must(template.New("").Funcs(templateFuncs).Parse(
+					"{{ range .Changes }}{{ println (sem .Cmd) }}{{ end }}",
+				)),
+			},
+			{
+				N: template.Must(template.New("").Funcs(templateFuncs).Parse(
+					"{{ now.Unix }}{{ with .Name }}_{{ . }}{{ end }}.down.sql",
+				)),
+				C: template.Must(template.New("").Funcs(templateFuncs).Parse(
+					"{{ range rev .Changes }}{{ println (sem .Reverse) }}{{ end }}",
+				)),
+			},
+		},
+	}
+)
+
+// NewTemplateFormatter creates a new Formatter working with the given templates.
+//
+//	migrate.NewTemplateFormatter(
+//		template.Must(template.New("").Parse("{{now.Unix}}{{.Name}}.sql")),                 // name template
+//		template.Must(template.New("").Parse("{{range .Changes}}{{println .Cmd}}{{end}}")), // content template
+//	)
+//
+func NewTemplateFormatter(templates ...*template.Template) (*TemplateFormatter, error) {
+	if n := len(templates); n == 0 || n%2 == 1 {
+		return nil, fmt.Errorf("zero or odd number of templates given")
+	}
+	t := new(TemplateFormatter)
+	for i := 0; i < len(templates); i += 2 {
+		t.templates = append(t.templates, struct{ N, C *template.Template }{templates[i], templates[i+1]})
+	}
+	return t, nil
+}
+
+// Format implements the Formatter interface.
+func (t *TemplateFormatter) Format(plan *Plan) ([]File, error) {
+	fs := make([]File, 0, len(t.templates))
+	for _, tpl := range t.templates {
+		var n, c bytes.Buffer
+		if err := tpl.N.Execute(&n, plan); err != nil {
+			return nil, err
+		}
+		if err := tpl.C.Execute(&c, plan); err != nil {
+			return nil, err
+		}
+		fs = append(fs, &templateFile{
+			Buffer: &c,
+			n:      n.String(),
+		})
+	}
+	return fs, nil
+}
+
+type templateFile struct {
+	*bytes.Buffer
+	n string
+}
+
+// Name implements the File interface.
+func (f *templateFile) Name() string { return f.n }
+
+// reverse changes for the down migration.
+func reverse(changes []*Change) []*Change {
+	rev := make([]*Change, len(changes))
+	for i, j := 0, len(changes)-1; i < j; i, j = i+1, j-1 {
+		rev[i], rev[j] = changes[j], changes[i]
+	}
+	return rev
+}
+
+// ensure an SQL statement has a trailing ";".
+func ensureSemicolonSuffix(s string) string {
+	if !strings.HasSuffix(s, ";") {
+		return s + ";"
+	}
+	return s
 }

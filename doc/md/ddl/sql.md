@@ -14,20 +14,23 @@ state of a SQL database.
 ### Schema
 
 ```hcl
-schema "default" {
-  
+# Empty schema.
+schema "public" {}
+
+# Schema with attributes.
+schema "main" {
+  charset   = "utf8mb4"
+  collation = "utf8mb4_0900_ai_ci"
 }
 ```
 
 ### Table
 
-A `table` describes a table in a SQL database. 
-
-#### Example
+A `table` describes a table in a SQL database.
 
 ```hcl
 table "users" {
-  schema = schema.default
+  schema = schema.public
   column "id" {
     type = int
   }
@@ -39,18 +42,18 @@ table "users" {
   }
   primary_key {
     columns = [
-        table.users.column.id
+      column.id
     ]
   }
   index "idx_name" {
     columns = [
-      table.users.column.name
+      column.name
     ]
     unique = true
   }
   foreign_key "manager_fk" {
-    columns = [table.users.column.manager_id]
-    ref_columns = [table.users.column.id]
+    columns = [column.manager_id]
+    ref_columns = [column.id]
     on_delete = "CASCADE"
     on_update = "NO ACTION"
   }
@@ -118,7 +121,7 @@ primary key.
 
 ```hcl
 primary_key {
-  columns = [table.users.column.id]
+  columns = [column.id]
 }
 ```
 
@@ -137,8 +140,8 @@ as references to columns in other tables.
 
 ```hcl
 foreign_key "manager_fk" {
-  columns = [table.users.column.manager_id]
-  ref_columns = [table.users.column.id]
+  columns = [column.manager_id]
+  ref_columns = [column.id]
   on_delete = "CASCADE"
   on_update = "NO ACTION"
 }
@@ -162,15 +165,33 @@ Indexes are child resources of a `table`, and it defines an index on the table.
 ```hcl
 index "idx_name" {
     columns = [
-      table.users.column.name
+      column.name
     ]
     unique = true
+}
+
+index "idx_name" {
+    on {
+        column = column.rank
+    }
+    on {
+        column = column.score
+        desc = true
+    }
+    unique = true
+}
+
+index "idx_name" {
+  type = GIN
+  columns = [column.data]
 }
 ```
 
 #### Properties
 
-| Name      | Kind      | Type                   | Description                                                  |
-|-----------|-----------|------------------------|--------------------------------------------------------------|
-| columns   | attribute | reference (list)       | The columns that comprise the index.                         |
-| unique    | attribute | boolean                | Defines whether a uniqueness constraint is set on the index. |
+| Name      | Kind      | Type                    | Description                                                    |
+|-----------|-----------|-------------------------|----------------------------------------------------------------|
+| unique    | attribute | boolean                 | Defines whether a uniqueness constraint is set on the index.   |
+| type      | attribute | IndexType (enum)        | Defines the index type. e.g. `HASH`, `GIN`, `FULLTEXT`.        |
+| columns   | attribute | reference (list)        | The columns that comprise the index.                           |
+| on        | resource  | schema.IndexPart (list) | The index parts that comprise the index.                       |

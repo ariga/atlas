@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package action
 
 import (
@@ -14,26 +18,29 @@ import (
 var (
 	// ApplyFlags are the flags used in Apply command.
 	ApplyFlags struct {
-		DSN    string
-		File   string
-		Web    bool
-		Addr   string
-		DryRun bool
+		DSN         string
+		File        string
+		Web         bool
+		Addr        string
+		DryRun      bool
+		Schema      []string
+		AutoApprove bool
 	}
 	// ApplyCmd represents the apply command.
 	ApplyCmd = &cobra.Command{
 		Use:   "apply",
 		Short: "Apply an atlas schema to a target database.",
-		Long: "`atlas schema apply`" + ` plans and executes a database migration to be bring a given database
+		Long: "`atlas schema apply`" + ` plans and executes a database migration to bring a given database
 to the state described in the Atlas schema file. Before running the migration, Atlas will print the migration
 plan and prompt the user for approval.
 
 If run with the "--dry-run" flag, atlas will exit after printing out the planned migration.`,
 		Run: CmdApplyRun,
 		Example: `atlas schema apply -d "mysql://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
+atlas schema apply -d "mysql://user:pass@tcp(localhost:3306)/" -f atlas.hcl --schema prod --schema staging
 atlas schema apply -d "mysql://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl --dry-run 
 atlas schema apply -d "mariadb://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
-atlas schema apply --dsn "postgres://user:pass@host:port/dbname" -f atlas.hcl
+atlas schema apply --dsn "postgres://user:pass@host:port/dbname?sslmode=disable" -f atlas.hcl
 atlas schema apply -d "sqlite://file:ex1.db?_fk=1" -f atlas.hcl`,
 	}
 )
@@ -50,6 +57,8 @@ func init() {
 	ApplyCmd.Flags().BoolVarP(&ApplyFlags.Web, "web", "w", false, "Open in a local Atlas UI")
 	ApplyCmd.Flags().BoolVarP(&ApplyFlags.DryRun, "dry-run", "", false, "Dry-run. Print SQL plan without prompting for execution")
 	ApplyCmd.Flags().StringVarP(&ApplyFlags.Addr, "addr", "", "127.0.0.1:5800", "used with -w, local address to bind the server to")
+	ApplyCmd.Flags().StringSliceVarP(&ApplyFlags.Schema, "schema", "s", nil, "Set schema name")
+	ApplyCmd.Flags().BoolVarP(&ApplyFlags.AutoApprove, "auto-approve", "", false, "Auto approve. Apply the schema changes without prompting for approval")
 	cobra.CheckErr(ApplyCmd.MarkFlagRequired("dsn"))
 	cobra.CheckErr(ApplyCmd.MarkFlagRequired("file"))
 }
@@ -62,21 +71,39 @@ func CmdApplyRun(cmd *cobra.Command, args []string) {
 	}
 	d, err := defaultMux.OpenAtlas(ApplyFlags.DSN)
 	cobra.CheckErr(err)
-	applyRun(d, ApplyFlags.DSN, ApplyFlags.File, ApplyFlags.DryRun)
+	applyRun(d, ApplyFlags.DSN, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove)
 }
 
-func applyRun(d *Driver, dsn string, file string, dryRun bool) {
+func applyRun(d *Driver, dsn string, file string, dryRun bool, autoApprove bool) {
 	ctx := context.Background()
-	name, err := SchemaNameFromDSN(dsn)
-	cobra.CheckErr(err)
-	s, err := d.InspectSchema(ctx, name, nil)
+	schemas := ApplyFlags.Schema
+	if n, err := SchemaNameFromDSN(dsn); n != "" {
+		cobra.CheckErr(err)
+		schemas = append(schemas, n)
+	}
+	realm, err := d.InspectRealm(ctx, &schema.InspectRealmOption{
+		Schemas: schemas,
+	})
 	cobra.CheckErr(err)
 	f, err := ioutil.ReadFile(file)
 	cobra.CheckErr(err)
-	var desired schema.Schema
+	var desired schema.Realm
 	err = d.UnmarshalSpec(f, &desired)
+	if len(schemas) > 0 {
+		// Validate all schemas in file were selected by user.
+		sm := make(map[string]bool, len(schemas))
+		for _, s := range schemas {
+			sm[s] = true
+		}
+		for _, s := range desired.Schemas {
+			if !sm[s.Name] {
+				schemaCmd.Printf("schema %q from file %q was not selected %q, all schemas defined in file must be selected\n", s.Name, file, schemas)
+				return
+			}
+		}
+	}
 	cobra.CheckErr(err)
-	changes, err := d.SchemaDiff(s, &desired)
+	changes, err := d.RealmDiff(realm, &desired)
 	cobra.CheckErr(err)
 	if len(changes) == 0 {
 		schemaCmd.Println("Schema is synced, no changes to be made")
@@ -94,14 +121,17 @@ func applyRun(d *Driver, dsn string, file string, dryRun bool) {
 	if dryRun {
 		return
 	}
+	if autoApprove || promptUser() {
+		cobra.CheckErr(d.ApplyChanges(ctx, changes))
+	}
+}
+
+func promptUser() bool {
 	prompt := promptui.Select{
 		Label: "Are you sure?",
 		Items: []string{answerApply, answerAbort},
 	}
 	_, result, err := prompt.Run()
 	cobra.CheckErr(err)
-	if result == answerApply {
-		err = d.ApplyChanges(ctx, changes)
-		cobra.CheckErr(err)
-	}
+	return result == answerApply
 }

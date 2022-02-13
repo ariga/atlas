@@ -6,15 +6,9 @@ import (
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
+
 	"github.com/stretchr/testify/require"
 )
-
-func TestRef_ColumnName(t *testing.T) {
-	ref := &schemaspec.Ref{V: "$table.accounts.$column.user_active"}
-	c, err := columnName(ref)
-	require.NoError(t, err)
-	require.Equal(t, "user_active", c)
-}
 
 func TestRef_TableName(t *testing.T) {
 	ref := &schemaspec.Ref{V: "$table.accounts.$column.user_active"}
@@ -73,10 +67,10 @@ func TestFromForeignKey(t *testing.T) {
 	require.EqualValues(t, &sqlspec.ForeignKey{
 		Symbol: "fk",
 		Columns: []*schemaspec.Ref{
-			{V: "$table.users.$column.parent_id"},
+			{V: "$column.parent_id"},
 		},
 		RefColumns: []*schemaspec.Ref{
-			{V: "$table.users.$column.id"},
+			{V: "$column.id"},
 		},
 	}, key)
 }

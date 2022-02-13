@@ -29,7 +29,7 @@ Examples:
 
 atlas schema apply -d "mysql://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
 atlas schema apply -d "mariadb://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
-atlas schema apply --dsn "postgres://user:pass@host:port/dbname" -f atlas.hcl
+atlas schema apply --dsn "postgres://user:pass@host:port/dbname?sslmode=disable" -f atlas.hcl
 atlas schema apply -d "sqlite://file:ex1.db?_fk=1" -f atlas.hcl
 
 Flags:
@@ -67,7 +67,7 @@ table "categories" {
     type = varchar(100)
   }
   primary_key {
-    columns = [table.categories.column.id, ]
+    columns = [column.id]
   }
 }
 ```
@@ -119,12 +119,12 @@ table "post_categories" {
         type = int
     }
     foreign_key "post_category_post" {
-        columns     = [table.post_categories.column.post_id, ]
-        ref_columns = [table.blog_posts.column.id, ]
+        columns     = [column.post_id]
+        ref_columns = [table.blog_posts.column.id]
     }
     foreign_key "post_category_category" {
-        columns     = [table.post_categories.column.category_id, ]
-        ref_columns = [table.categories.column.id, ]
+        columns     = [column.category_id]
+        ref_columns = [table.categories.column.id]
     }
 }
 ```

@@ -17,54 +17,56 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Single table queries used by the different tests.
+var (
+	queryFKs         = sqltest.Escape(fmt.Sprintf(fksQuery, "?"))
+	queryTable       = sqltest.Escape(fmt.Sprintf(tablesQuery, "?"))
+	queryColumns     = sqltest.Escape(fmt.Sprintf(columnsQuery, "?"))
+	queryIndexes     = sqltest.Escape(fmt.Sprintf(indexesQuery, "?"))
+	queryIndexesExpr = sqltest.Escape(fmt.Sprintf(indexesExprQuery, "?"))
+	queryMyChecks    = sqltest.Escape(fmt.Sprintf(myChecksQuery, "?"))
+	queryMarChecks   = sqltest.Escape(fmt.Sprintf(marChecksQuery, "?"))
+)
+
 func TestDriver_InspectTable(t *testing.T) {
 	tests := []struct {
-		name   string
-		opts   *schema.InspectTableOptions
-		before func(mock)
-		expect func(*require.Assertions, *schema.Table, error)
+		name    string
+		version string
+		before  func(mock)
+		expect  func(*require.Assertions, *schema.Table, error)
 	}{
-		{
-			name: "table does not exist",
-			before: func(m mock) {
-				m.version("5.7.23")
-				m.tableExists("public", "users", false)
-			},
-			expect: func(require *require.Assertions, t *schema.Table, err error) {
-				require.Nil(t)
-				require.Error(err)
-				require.True(schema.IsNotExistError(err), "expect not exists error")
-			},
-		},
-		{
-			name: "table does not exist in schema",
-			opts: &schema.InspectTableOptions{
-				Schema: "public",
-			},
-			before: func(m mock) {
-				m.version("5.7.23")
-				m.tableExistsInSchema("public", "users", false)
-			},
-			expect: func(require *require.Assertions, t *schema.Table, err error) {
-				require.Nil(t)
-				require.Error(err)
-				require.True(schema.IsNotExistError(err), "expect not exists error")
-			},
-		},
 		{
 			name: "table collation",
 			before: func(m mock) {
-				m.version("8.0.13")
-				m.ExpectQuery(sqltest.Escape(tableQuery)).
-					WithArgs("users").
+				m.ExpectQuery(queryTable).
+					WithArgs("public").
 					WillReturnRows(sqltest.Rows(`
-+--------------+--------------------+--------------------+----------------+---------------+--------------------+
-| TABLE_SCHEMA | CHARACTER_SET_NAME | TABLE_COLLATION    | AUTO_INCREMENT | TABLE_COMMENT | CREATE_OPTIONS     |
-+--------------+--------------------+--------------------+----------------+---------------+--------------------+
-| test         | utf8mb4            | utf8mb4_0900_ai_ci | nil            | Comment       | COMPRESSION="ZLIB" |
-+--------------+--------------------+--------------------+----------------+---------------+--------------------+
++--------------+--------------+--------------------+--------------------+----------------+---------------+--------------------+
+| TABLE_SCHEMA | TABLE_NAME   | CHARACTER_SET_NAME | TABLE_COLLATION    | AUTO_INCREMENT | TABLE_COMMENT | CREATE_OPTIONS     |
++--------------+--------------+--------------------+--------------------+----------------+---------------+--------------------+
+| public       | users        | utf8mb4            | utf8mb4_0900_ai_ci | nil            | Comment       | COMPRESSION="ZLIB" |
++--------------+--------------+--------------------+--------------------+----------------+---------------+--------------------+
 `))
-				m.ExpectQuery(sqltest.Escape("SHOW CREATE TABLE `test`.`users`")).
+				m.ExpectQuery(queryColumns).
+					WithArgs("public", "users").
+					WillReturnRows(sqltest.Rows(`
++--------------------+--------------------+----------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
+| table_name         | column_name        | column_type          | column_comment       | is_nullable | column_key | column_default | extra          | character_set_name | collation_name |
++--------------------+--------------------+----------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
+| users              | id                 | bigint(20)           |                      | NO          | PRI        | NULL           | auto_increment | NULL               | NULL           |
++--------------------+--------------------+----------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
+`))
+				m.ExpectQuery(queryIndexesExpr).
+					WithArgs("public", "users").
+					WillReturnRows(sqltest.Rows(`
++--------------------+--------------+-------------+------------+--------------+--------------+----------+--------------+------------+------------------+
+| TABLE_NAME         | INDEX_NAME   | COLUMN_NAME | NON_UNIQUE | SEQ_IN_INDEX | INDEX_TYPE   | DESC     | COMMENT      | SUB_PART   | EXPRESSION       |
++--------------------+--------------+-------------+------------+--------------+--------------+----------+--------------+------------+------------------+
+| users              | PRIMARY      | id          |          0 |            1 | BTREE        | 0        |              |       NULL |      NULL        |
++--------------------+--------------+-------------+------------+--------------+--------------+----------+--------------+------------+------------------+
+`))
+				m.noFKs()
+				m.ExpectQuery(sqltest.Escape("SHOW CREATE TABLE `public`.`users`")).
 					WillReturnRows(sqltest.Rows(`
 +-------+---------------------------------------------------------------------------------------------------------------------------------------------+
 | Table | Create Table                                                                                                                                |
@@ -72,25 +74,6 @@ func TestDriver_InspectTable(t *testing.T) {
 | users | CREATE TABLE users (id bigint NOT NULL AUTO_INCREMENT) ENGINE=InnoDB AUTO_INCREMENT=55834574848 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin |
 +-------+---------------------------------------------------------------------------------------------------------------------------------------------+
 `))
-				m.ExpectQuery(sqltest.Escape(columnsQuery)).
-					WithArgs("test", "users").
-					WillReturnRows(sqltest.Rows(`
-+--------------------+----------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
-| column_name        | column_type          | column_comment       | is_nullable | column_key | column_default | extra          | character_set_name | collation_name |
-+--------------------+----------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
-| id                 | bigint(20)           |                      | NO          | PRI        | NULL           | auto_increment | NULL               | NULL           |
-+--------------------+----------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
-`))
-				m.ExpectQuery(sqltest.Escape(indexesExprQuery)).
-					WithArgs("test", "users").
-					WillReturnRows(sqltest.Rows(`
-+--------------+-------------+------------+--------------+--------------+--------------+--------------+------------+------------------+
-| INDEX_NAME   | COLUMN_NAME | NON_UNIQUE | SEQ_IN_INDEX | INDEX_TYPE   | COLLATION    | COMMENT      | SUB_PART   | EXPRESSION       |
-+--------------+-------------+------------+--------------+--------------+--------------+--------------+------------+------------------+
-| PRIMARY      | id          |          0 |            1 | BTREE        | A            |              |       NULL |      NULL        |
-+--------------+-------------+------------+--------------+--------------+--------------+--------------+------------+------------------+
-`))
-				m.noFKs()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -113,29 +96,36 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "int types",
 			before: func(m mock) {
-				m.version("8.0.13")
-				m.tableExists("public", "users", true)
-				m.ExpectQuery(sqltest.Escape(columnsQuery)).
+				m.ExpectQuery(queryTable).
+					WithArgs("public").
+					WillReturnRows(sqltest.Rows(`
++--------------+--------------+--------------------+--------------------+----------------+---------------+--------------------+
+| TABLE_SCHEMA | TABLE_NAME   | CHARACTER_SET_NAME | TABLE_COLLATION    | AUTO_INCREMENT | TABLE_COMMENT | CREATE_OPTIONS     |
++--------------+--------------+--------------------+--------------------+----------------+---------------+--------------------+
+| public       | users        | utf8mb4            | utf8mb4_0900_ai_ci | nil            | Comment       | COMPRESSION="ZLIB" |
++--------------+--------------+--------------------+--------------------+----------------+---------------+--------------------+
+`))
+				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+--------------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
-| column_name        | column_type                  | column_comment       | is_nullable | column_key | column_default | extra          | character_set_name | collation_name |
-+--------------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
-| id                 | bigint(20)                   |                      | NO          | PRI        | NULL           |                | NULL               | NULL           |
-| v57_tiny           | tinyint(1)                   |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| v57_tiny_unsigned  | tinyint(4) unsigned          |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| v57_small          | smallint(6)                  |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| v57_small_unsigned | smallint(6) unsigned         |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| v57_int            | bigint(11)                   |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| v57_int_unsigned   | bigint(11) unsigned          |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| v8_tiny            | tinyint                      |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| v8_tiny_unsigned   | tinyint unsigned             |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| v8_small           | smallint                     |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| v8_small_unsigned  | smallint unsigned            |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| v8_big             | bigint                       |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| v8_big_unsigned    | bigint unsigned              | comment              | NO          |            | NULL           |                | NULL               | NULL           |
-| v8_big_zerofill    | bigint(20) unsigned zerofill | comment              | NO          |            | NULL           |                | NULL               | NULL           |
-+--------------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
++------------+--------------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
+| table_name | column_name        | column_type                  | column_comment       | is_nullable | column_key | column_default | extra          | character_set_name | collation_name |
++----------- +--------------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
+| users      | id                 | bigint(20)                   |                      | NO          | PRI        | NULL           |                | NULL               | NULL           |
+| users      | v57_tiny           | tinyint(1)                   |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| users      | v57_tiny_unsigned  | tinyint(4) unsigned          |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| users      | v57_small          | smallint(6)                  |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| users      | v57_small_unsigned | smallint(6) unsigned         |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| users      | v57_int            | bigint(11)                   |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| users      | v57_int_unsigned   | bigint(11) unsigned          |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| users      | v8_tiny            | tinyint                      |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| users      | v8_tiny_unsigned   | tinyint unsigned             |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| users      | v8_small           | smallint                     |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| users      | v8_small_unsigned  | smallint unsigned            |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| users      | v8_big             | bigint                       |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| users      | v8_big_unsigned    | bigint unsigned              | comment              | NO          |            | NULL           |                | NULL               | NULL           |
+| users      | v8_big_zerofill    | bigint(20) unsigned zerofill | comment              | NO          |            | NULL           |                | NULL               | NULL           |
++------------+--------------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
 `))
 				m.noIndexes()
 				m.noFKs()
@@ -145,7 +135,7 @@ func TestDriver_InspectTable(t *testing.T) {
 				require.Equal("users", t.Name)
 				require.EqualValues([]*schema.Column{
 					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint"}}},
-					{Name: "v57_tiny", Type: &schema.ColumnType{Raw: "tinyint(1)", Type: &schema.BoolType{T: "tinyint"}}},
+					{Name: "v57_tiny", Type: &schema.ColumnType{Raw: "tinyint(1)", Type: &schema.BoolType{T: "bool"}}},
 					{Name: "v57_tiny_unsigned", Type: &schema.ColumnType{Raw: "tinyint(4) unsigned", Type: &schema.IntegerType{T: "tinyint", Unsigned: true}}},
 					{Name: "v57_small", Type: &schema.ColumnType{Raw: "smallint(6)", Type: &schema.IntegerType{T: "smallint"}}},
 					{Name: "v57_small_unsigned", Type: &schema.ColumnType{Raw: "smallint(6) unsigned", Type: &schema.IntegerType{T: "smallint", Unsigned: true}}},
@@ -162,33 +152,41 @@ func TestDriver_InspectTable(t *testing.T) {
 			},
 		},
 		{
-			name: "maria/types",
+			name:    "maria/types",
+			version: "10.7.1-MariaDB",
 			before: func(m mock) {
-				m.version("10.7.1-MariaDB")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(sqltest.Escape(columnsQuery)).
+				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+---------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
-| column_name   | column_type                  | column_comment       | is_nullable | column_key | column_default | extra          | character_set_name | collation_name |
-+---------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
-| id            | bigint(20)                   |                      | NO          | PRI        | NULL           |                | NULL               | NULL           |
-| tiny_int      | tinyint(1)                   |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| longtext      | longtext                     |                      | NO          |            | NULL           |                | NULL               | NULL           |
-| jsonc         | longtext                     |                      | NO          |            | NULL           |                | NULL               | NULL           |
-+---------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
++------------+----------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
+| table_name |  column_name   | column_type                  | column_comment       | is_nullable | column_key | column_default | extra          | character_set_name | collation_name |
++------------+----------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
+| users      |  id            | bigint(20)                   |                      | NO          | PRI        | NULL           |                | NULL               | NULL           |
+| users      |  tiny_int      | tinyint(1)                   |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| users      |  longtext      | longtext                     |                      | NO          |            | NULL           |                | NULL               | NULL           |
+| users      |  jsonc         | longtext                     |                      | NO          |            | NULL           |                | NULL               | NULL           |
++------------+----------------+------------------------------+----------------------+-------------+------------+----------------+----------------+--------------------+----------------+
 `))
-				m.ExpectQuery(sqltest.Escape(indexesQuery)).
-					WillReturnRows(sqlmock.NewRows([]string{"index_name", "column_name", "non_unique", "key_part", "expression"}))
+				m.ExpectQuery(queryIndexes).
+					WillReturnRows(sqlmock.NewRows([]string{"table_name", "index_name", "column_name", "non_unique", "key_part", "expression"}))
 				m.noFKs()
-				m.ExpectQuery(sqltest.Escape(marChecksQuery)).
+				m.ExpectQuery(queryMarChecks).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+-------------------+-------------------------------------------+------------+
-| CONSTRAINT_NAME   | CHECK_CLAUSE                              |  ENFORCED  |
-+-------------------+-------------------------------------------+------------+
-| jsonc             | json_valid(` + "`jsonc`" + `)             |  YES       |
-+-------------------+-------------------------------------------+------------+
++--------+------------------+-------------------------------------------+------------+
+| table  | CONSTRAINT_NAME  | CHECK_CLAUSE                              |  ENFORCED  |
++--------+------------------+-------------------------------------------+------------+
+| users  | jsonc            | json_valid(` + "`jsonc`" + `)             |  YES       |
++--------+------------------+-------------------------------------------+------------+
+`))
+				m.ExpectQuery(sqltest.Escape("SHOW CREATE TABLE `public`.`users`")).
+					WillReturnRows(sqltest.Rows(`
++-------+---------------------------------------------------------------------------------------------------------------------------------------------+
+| Table | Create Table                                                                                                                                |
++-------+---------------------------------------------------------------------------------------------------------------------------------------------+
+| users | CREATE TABLE users (id bigint NOT NULL AUTO_INCREMENT) ENGINE=InnoDB AUTO_INCREMENT=55834574848 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin |
++-------+---------------------------------------------------------------------------------------------------------------------------------------------+
 `))
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
@@ -196,7 +194,7 @@ func TestDriver_InspectTable(t *testing.T) {
 				require.Equal("users", t.Name)
 				require.EqualValues([]*schema.Column{
 					{Name: "id", Type: &schema.ColumnType{Raw: "bigint(20)", Type: &schema.IntegerType{T: "bigint"}}},
-					{Name: "tiny_int", Type: &schema.ColumnType{Raw: "tinyint(1)", Type: &schema.BoolType{T: "tinyint"}}},
+					{Name: "tiny_int", Type: &schema.ColumnType{Raw: "tinyint(1)", Type: &schema.BoolType{T: "bool"}}},
 					{Name: "longtext", Type: &schema.ColumnType{Raw: "longtext", Type: &schema.StringType{T: "longtext"}}},
 					{Name: "jsonc", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}},
 				}, t.Columns)
@@ -205,17 +203,18 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "decimal types",
 			before: func(m mock) {
-				m.version("8.0.13")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(sqltest.Escape(columnsQuery)).
+				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
-| column_name | column_type   | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name |
-+-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
-| d1          | decimal(10,2) |                | NO          |            | 10.20          |       | NULL               | NULL           |
-| d2          | decimal(10,0) |                | NO          |            | 10             |       | NULL               | NULL           |
-+-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
++------------+--------------+------------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
+| table_name |  column_name |      column_type       | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name |
++------------+--------------+------------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
+| users      |  d1          | decimal(10,2)          |                | NO          |            | 10.20          |       | NULL               | NULL           |
+| users      |  d2          | decimal(10,0)          |                | NO          |            | 10             |       | NULL               | NULL           |
+| users      |  d3          | decimal(10,2) unsigned |                | NO          |            | 10.20          |       | NULL               | NULL           |
+| users      |  d4          | decimal(10,0) unsigned |                | NO          |            | 10             |       | NULL               | NULL           |
++------------+-------------+-------------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
 `))
 				m.noIndexes()
 				m.noFKs()
@@ -226,23 +225,27 @@ func TestDriver_InspectTable(t *testing.T) {
 				require.EqualValues([]*schema.Column{
 					{Name: "d1", Type: &schema.ColumnType{Raw: "decimal(10,2)", Type: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2}}, Default: &schema.Literal{V: "10.20"}},
 					{Name: "d2", Type: &schema.ColumnType{Raw: "decimal(10,0)", Type: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 0}}, Default: &schema.Literal{V: "10"}},
+					{Name: "d3", Type: &schema.ColumnType{Raw: "decimal(10,2) unsigned", Type: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2, Unsigned: true}}, Default: &schema.Literal{V: "10.20"}},
+					{Name: "d4", Type: &schema.ColumnType{Raw: "decimal(10,0) unsigned", Type: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 0, Unsigned: true}}, Default: &schema.Literal{V: "10"}},
 				}, t.Columns)
 			},
 		},
 		{
 			name: "float types",
 			before: func(m mock) {
-				m.version("8.0.13")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(sqltest.Escape(columnsQuery)).
+				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+-------------+--------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
-| column_name | column_type  | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name |
-+-------------+--------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
-| float       | float        |                | NO          |            |                |       | NULL               | NULL           |
-| double      | double       |                | NO          |            |                |       | NULL               | NULL           |
-+-------------+--------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
++------------+-------------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
+| table_name |    column_name    | column_type        | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name |
++------------+-------------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
+| users      |  float            | float              |                | NO          |            |                |       | NULL               | NULL           |
+| users      |  double           | double             |                | NO          |            |                |       | NULL               | NULL           |
+| users      |  float_unsigned   | float unsigned     |                | NO          |            |                |       | NULL               | NULL           |
+| users      |  double_unsigned  | double unsigned    |                | NO          |            |                |       | NULL               | NULL           |
+| users      |  float_unsigned_p | float(10) unsigned |                | NO          |            |                |       | NULL               | NULL           |
++------------+-------------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
 `))
 				m.noIndexes()
 				m.noFKs()
@@ -253,27 +256,29 @@ func TestDriver_InspectTable(t *testing.T) {
 				require.EqualValues([]*schema.Column{
 					{Name: "float", Type: &schema.ColumnType{Raw: "float", Type: &schema.FloatType{T: "float"}}},
 					{Name: "double", Type: &schema.ColumnType{Raw: "double", Type: &schema.FloatType{T: "double"}}},
+					{Name: "float_unsigned", Type: &schema.ColumnType{Raw: "float unsigned", Type: &schema.FloatType{T: "float", Unsigned: true}}},
+					{Name: "double_unsigned", Type: &schema.ColumnType{Raw: "double unsigned", Type: &schema.FloatType{T: "double", Unsigned: true}}},
+					{Name: "float_unsigned_p", Type: &schema.ColumnType{Raw: "float(10) unsigned", Type: &schema.FloatType{T: "float", Precision: 10, Unsigned: true}}},
 				}, t.Columns)
 			},
 		},
 		{
 			name: "binary types",
 			before: func(m mock) {
-				m.version("8.0.13")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(sqltest.Escape(columnsQuery)).
+				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
-| column_name | column_type   | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name |
-+-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
-| c1          | binary(20)    |                | NO          |            | NULL           |       | NULL               | NULL           |
-| c2          | varbinary(30) |                | NO          |            | NULL           |       | NULL               | NULL           |
-| c3          | tinyblob      |                | NO          |            | NULL           |       | NULL               | NULL           |
-| c4          | mediumblob    |                | NO          |            | NULL           |       | NULL               | NULL           |
-| c5          | blob          |                | NO          |            | NULL           |       | NULL               | NULL           |
-| c6          | longblob      |                | NO          |            | NULL           |       | NULL               | NULL           |
-+-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
++------------+--------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
+| table_name |  column_name | column_type   | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name |
++------------+--------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
+| users      |  c1          | binary(20)    |                | NO          |            | NULL           |       | NULL               | NULL           |
+| users      |  c2          | varbinary(30) |                | NO          |            | NULL           |       | NULL               | NULL           |
+| users      |  c3          | tinyblob      |                | NO          |            | NULL           |       | NULL               | NULL           |
+| users      |  c4          | mediumblob    |                | NO          |            | NULL           |       | NULL               | NULL           |
+| users      |  c5          | blob          |                | NO          |            | NULL           |       | NULL               | NULL           |
+| users      |  c6          | longblob      |                | NO          |            | NULL           |       | NULL               | NULL           |
++------------+--------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
 `))
 				m.noIndexes()
 				m.noFKs()
@@ -294,21 +299,20 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "string types",
 			before: func(m mock) {
-				m.version("8.0.13")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(sqltest.Escape(columnsQuery)).
+				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
-| column_name | column_type   | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name |
-+-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
-| c1          | char(20)      |                | NO          |            | char           |       | NULL               | NULL           |
-| c2          | varchar(30)   |                | NO          |            | NULL           |       | NULL               | NULL           |
-| c3          | tinytext      |                | NO          |            | NULL           |       | NULL               | NULL           |
-| c4          | mediumtext    |                | NO          |            | NULL           |       | NULL               | NULL           |
-| c5          | text          |                | NO          |            | NULL           |       | NULL               | NULL           |
-| c6          | longtext      |                | NO          |            | NULL           |       | NULL               | NULL           |
-+-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
++------------+-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
+| table_name | column_name | column_type   | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name |
++------------+-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
+| users      | c1          | char(20)      |                | NO          |            | char           |       | NULL               | NULL           |
+| users      | c2          | varchar(30)   |                | NO          |            | NULL           |       | NULL               | NULL           |
+| users      | c3          | tinytext      |                | NO          |            | NULL           |       | NULL               | NULL           |
+| users      | c4          | mediumtext    |                | NO          |            | NULL           |       | NULL               | NULL           |
+| users      | c5          | text          |                | NO          |            | NULL           |       | NULL               | NULL           |
+| users      | c6          | longtext      |                | NO          |            | NULL           |       | NULL               | NULL           |
++------------+-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
 `))
 				m.noIndexes()
 				m.noFKs()
@@ -329,17 +333,16 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "enum type",
 			before: func(m mock) {
-				m.version("8.0.13")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(sqltest.Escape(columnsQuery)).
+				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+-------------------+
-| column_name | column_type   | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name    |
-+-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+-------------------+
-| c1          | enum('a','b') |                | NO          |            | NULL           |       | latin1             | latin1_swedish_ci |
-| c2          | enum('c','d') |                | NO          |            | d              |       | latin1             | latin1_swedish_ci |
-+-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+-------------------+
++------------+-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+-------------------+
+| table_name | column_name | column_type   | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name    |
++------------+-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+-------------------+
+| users      | c1          | enum('a','b') |                | NO          |            | NULL           |       | latin1             | latin1_swedish_ci |
+| users      | c2          | enum('c','d') |                | NO          |            | d              |       | latin1             | latin1_swedish_ci |
++------------+-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+-------------------+
 `))
 				m.noIndexes()
 				m.noFKs()
@@ -356,22 +359,21 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "time type",
 			before: func(m mock) {
-				m.version("8.0.13")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(sqltest.Escape(columnsQuery)).
+				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+-------------+--------------+-------------------+-------------+------------+----------------------+--------------------------------+--------------------+----------------+
-| column_name | column_type  | column_comment    | is_nullable | column_key | column_default       | extra                          | character_set_name | collation_name |
-+-------------+--------------+-------------------+-------------+------------+----------------------+--------------------------------+--------------------+----------------+
-| c1          | date         |                   | NO          |            | NULL                 |                                | NULL               | NULL           |
-| c2          | datetime     |                   | NO          |            | NULL                 |                                | NULL               | NULL           |
-| c3          | time         |                   | NO          |            | NULL                 |                                | NULL               | NULL           |
-| c4          | timestamp    |                   | NO          |            | CURRENT_TIMESTAMP    | on update CURRENT_TIMESTAMP    | NULL               | NULL           |
-| c5          | year(4)      |                   | NO          |            | NULL                 |                                | NULL               | NULL           |
-| c6          | year         |                   | NO          |            | NULL                 |                                | NULL               | NULL           |
-| c7          | timestamp(6) |                   | NO          |            | CURRENT_TIMESTAMP(6) | on update CURRENT_TIMESTAMP(6) | NULL               | NULL           |
-+-------------+--------------+-------------------+-------------+------------+----------------------+--------------------------------+--------------------+----------------+
++------------+-------------+--------------+-------------------+-------------+------------+----------------------+--------------------------------+--------------------+----------------+
+| table_name | column_name | column_type  | column_comment    | is_nullable | column_key | column_default       | extra                          | character_set_name | collation_name |
++------------+-------------+--------------+-------------------+-------------+------------+----------------------+--------------------------------+--------------------+----------------+
+| users      | c1          | date         |                   | NO          |            | NULL                 |                                | NULL               | NULL           |
+| users      | c2          | datetime     |                   | NO          |            | NULL                 |                                | NULL               | NULL           |
+| users      | c3          | time         |                   | NO          |            | NULL                 |                                | NULL               | NULL           |
+| users      | c4          | timestamp    |                   | NO          |            | CURRENT_TIMESTAMP    | on update CURRENT_TIMESTAMP    | NULL               | NULL           |
+| users      | c5          | year(4)      |                   | NO          |            | NULL                 |                                | NULL               | NULL           |
+| users      | c6          | year         |                   | NO          |            | NULL                 |                                | NULL               | NULL           |
+| users      | c7          | timestamp(6) |                   | NO          |            | CURRENT_TIMESTAMP(6) | on update CURRENT_TIMESTAMP(6) | NULL               | NULL           |
++------------+--------------+-------------------+-------------+------------+----------------------+--------------------------------+--------------------+----------------+
 `))
 				m.noIndexes()
 				m.noFKs()
@@ -383,26 +385,25 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c1", Type: &schema.ColumnType{Raw: "date", Type: &schema.TimeType{T: "date"}}},
 					{Name: "c2", Type: &schema.ColumnType{Raw: "datetime", Type: &schema.TimeType{T: "datetime"}}},
 					{Name: "c3", Type: &schema.ColumnType{Raw: "time", Type: &schema.TimeType{T: "time"}}},
-					{Name: "c4", Type: &schema.ColumnType{Raw: "timestamp", Type: &schema.TimeType{T: "timestamp"}}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP"}, Attrs: []schema.Attr{&OnUpdate{A: "on update current_timestamp"}}},
+					{Name: "c4", Type: &schema.ColumnType{Raw: "timestamp", Type: &schema.TimeType{T: "timestamp"}}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP"}, Attrs: []schema.Attr{&OnUpdate{A: "CURRENT_TIMESTAMP"}}},
 					{Name: "c5", Type: &schema.ColumnType{Raw: "year(4)", Type: &schema.TimeType{T: "year", Precision: 4}}},
 					{Name: "c6", Type: &schema.ColumnType{Raw: "year", Type: &schema.TimeType{T: "year"}}},
-					{Name: "c7", Type: &schema.ColumnType{Raw: "timestamp(6)", Type: &schema.TimeType{T: "timestamp", Precision: 6}}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP(6)"}, Attrs: []schema.Attr{&OnUpdate{A: "on update current_timestamp(6)"}}},
+					{Name: "c7", Type: &schema.ColumnType{Raw: "timestamp(6)", Type: &schema.TimeType{T: "timestamp", Precision: 6}}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP(6)"}, Attrs: []schema.Attr{&OnUpdate{A: "CURRENT_TIMESTAMP(6)"}}},
 				}, t.Columns)
 			},
 		},
 		{
 			name: "json type",
 			before: func(m mock) {
-				m.version("8.0.13")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(sqltest.Escape(columnsQuery)).
+				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+-------------+-------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
-| COLUMN_NAME | COLUMN_TYPE | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA | CHARACTER_SET_NAME | COLLATION_NAME |
-+-------------+-------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
-| c1          | json        |                | NO          |            | NULL           |       | NULL               | NULL           |
-+-------------+-------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
++------------+------------+-------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
+| TABLE_NAME |COLUMN_NAME | COLUMN_TYPE | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA | CHARACTER_SET_NAME | COLLATION_NAME |
++------------+------------+-------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
+| users      |c1          | json        |                | NO          |            | NULL           |       | NULL               | NULL           |
++------------+------------+-------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
 `))
 				m.noIndexes()
 				m.noFKs()
@@ -418,24 +419,23 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "spatial type",
 			before: func(m mock) {
-				m.version("8.0.13")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(sqltest.Escape(columnsQuery)).
+				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+-------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
-| column_name | column_type        | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name |
-+-------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
-| c1          | point              |                | NO          |            | NULL           |       | NULL               | NULL           |
-| c2          | multipoint         |                | NO          |            | NULL           |       | NULL               | NULL           |
-| c3          | linestring         |                | NO          |            | NULL           |       | NULL               | NULL           |
-| c4          | multilinestring    |                | NO          |            | NULL           |       | NULL               | NULL           |
-| c5          | polygon            |                | NO          |            | NULL           |       | NULL               | NULL           |
-| c6          | multipolygon       |                | NO          |            | NULL           |       | NULL               | NULL           |
-| c7          | geometry           |                | NO          |            | NULL           |       | NULL               | NULL           |
-| c8          | geometrycollection |                | NO          |            | NULL           |       | NULL               | NULL           |
-| c9          | geomcollection     |                | NO          |            | NULL           |       | NULL               | NULL           |
-+-------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
++------------+-------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
+| table_name | column_name | column_type        | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name |
++------------+-------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
+| users      | c1          | point              |                | NO          |            | NULL           |       | NULL               | NULL           |
+| users      | c2          | multipoint         |                | NO          |            | NULL           |       | NULL               | NULL           |
+| users      | c3          | linestring         |                | NO          |            | NULL           |       | NULL               | NULL           |
+| users      | c4          | multilinestring    |                | NO          |            | NULL           |       | NULL               | NULL           |
+| users      | c5          | polygon            |                | NO          |            | NULL           |       | NULL               | NULL           |
+| users      | c6          | multipolygon       |                | NO          |            | NULL           |       | NULL               | NULL           |
+| users      | c7          | geometry           |                | NO          |            | NULL           |       | NULL               | NULL           |
+| users      | c8          | geometrycollection |                | NO          |            | NULL           |       | NULL               | NULL           |
+| users      | c9          | geomcollection     |                | NO          |            | NULL           |       | NULL               | NULL           |
++------------+-------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+
 `))
 				m.noIndexes()
 				m.noFKs()
@@ -459,36 +459,43 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "indexes",
 			before: func(m mock) {
-				m.version("8.0.13")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(sqltest.Escape(columnsQuery)).
+				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
-| COLUMN_NAME | COLUMN_TYPE  | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
-+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
-| id          | int          |                | NO          | PRI        | NULL           |                | NULL               | NULL               |
-| nickname    | varchar(255) |                | NO          | UNI        | NULL           |                | utf8mb4            | utf8mb4_0900_ai_ci |
-| oid         | int          |                | NO          | MUL        | NULL           |                | NULL               | NULL               |
-| uid         | int          |                | NO          | MUL        | NULL           |                | NULL               | NULL               |
-+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
++------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+| TABLE_NAME | COLUMN_NAME | COLUMN_TYPE  | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
++------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+| users      | id          | int          |                | NO          | PRI        | NULL           |                | NULL               | NULL               |
+| users      | nickname    | varchar(255) |                | NO          | UNI        | NULL           |                | utf8mb4            | utf8mb4_0900_ai_ci |
+| users      | oid         | int          |                | NO          | MUL        | NULL           |                | NULL               | NULL               |
+| users      | uid         | int          |                | NO          | MUL        | NULL           |                | NULL               | NULL               |
++------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
 `))
-				m.ExpectQuery(sqltest.Escape(indexesExprQuery)).
+				m.ExpectQuery(queryIndexesExpr).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+--------------+-------------+------------+--------------+--------------+--------------+--------------+------------+------------------+
-| INDEX_NAME   | COLUMN_NAME | NON_UNIQUE | SEQ_IN_INDEX | INDEX_TYPE   | COLLATION    | COMMENT      | SUB_PART   | EXPRESSION       |
-+--------------+-------------+------------+--------------+--------------+--------------+--------------+------------+------------------+
-| nickname     | nickname    |          0 |            1 | BTREE        | A            |              |        255 |      NULL        |
-| lower_nick   | NULL        |          1 |            1 | HASH         | A            |              |       NULL | lower(nickname)  |
-| non_unique   | oid         |          1 |            1 | BTREE        | A            |              |       NULL |      NULL        |
-| non_unique   | uid         |          1 |            2 | BTREE        | A            |              |       NULL |      NULL        |
-| PRIMARY      | id          |          0 |            1 | BTREE        | A            |              |       NULL |      NULL        |
-| unique_index | uid         |          0 |            1 | BTREE        | A            |              |       NULL |      NULL        |
-| unique_index | oid         |          0 |            2 | BTREE        | A            |              |       NULL |      NULL        |
-+--------------+-------------+------------+--------------+--------------+--------------+--------------+------------+------------------+
++--------------+--------------+-------------+------------+--------------+--------------+---------+--------------+------------+------------------+
+| TABLE_NAME   | INDEX_NAME   | COLUMN_NAME | NON_UNIQUE | SEQ_IN_INDEX | INDEX_TYPE   | DESC    | COMMENT      | SUB_PART   | EXPRESSION       |
++--------------+--------------+-------------+------------+--------------+--------------+---------+--------------+------------+------------------+
+| users        | nickname     | nickname    |          0 |            1 | BTREE        | nil     |              |        255 |      NULL        |
+| users        | lower_nick   | NULL        |          1 |            1 | HASH         | 0       |              |       NULL | lower(nickname)  |
+| users        | non_unique   | oid         |          1 |            1 | BTREE        | 0       |              |       NULL |      NULL        |
+| users        | non_unique   | uid         |          1 |            2 | BTREE        | 0       |              |       NULL |      NULL        |
+| users        | PRIMARY      | id          |          0 |            1 | BTREE        | 0       |              |       NULL |      NULL        |
+| users        | unique_index | uid         |          0 |            1 | BTREE        | 1       |              |       NULL |      NULL        |
+| users        | unique_index | oid         |          0 |            2 | BTREE        | 1       |              |       NULL |      NULL        |
++--------------+--------------+-------------+------------+--------------+--------------+---------+--------------+------------+------------------+
 `))
 				m.noFKs()
+				m.ExpectQuery(sqltest.Escape("SHOW CREATE TABLE `public`.`users`")).
+					WillReturnRows(sqltest.Rows(`
++-------+---------------------------------------------------------------------------------------------------------------------------------------------+
+| Table | Create Table                                                                                                                                |
++-------+---------------------------------------------------------------------------------------------------------------------------------------------+
+| users | CREATE TABLE users (id bigint NOT NULL AUTO_INCREMENT) ENGINE=InnoDB AUTO_INCREMENT=55834574848 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin |
++-------+---------------------------------------------------------------------------------------------------------------------------------------------+
+`))
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
 				require.NoError(err)
@@ -507,21 +514,21 @@ func TestDriver_InspectTable(t *testing.T) {
 				}
 				// nickname
 				indexes[0].Parts = []*schema.IndexPart{
-					{SeqNo: 1, C: columns[1], Attrs: []schema.Attr{&schema.Collation{V: "A"}, &SubPart{Len: 255}}},
+					{SeqNo: 1, C: columns[1], Attrs: []schema.Attr{&SubPart{Len: 255}}},
 				}
 				// lower(nickname)
 				indexes[1].Parts = []*schema.IndexPart{
-					{SeqNo: 1, X: &schema.RawExpr{X: "lower(nickname)"}, Attrs: []schema.Attr{&schema.Collation{V: "A"}}},
+					{SeqNo: 1, X: &schema.RawExpr{X: "lower(nickname)"}},
 				}
 				// oid, uid
 				indexes[2].Parts = []*schema.IndexPart{
-					{SeqNo: 1, C: columns[2], Attrs: []schema.Attr{&schema.Collation{V: "A"}}},
-					{SeqNo: 2, C: columns[3], Attrs: []schema.Attr{&schema.Collation{V: "A"}}},
+					{SeqNo: 1, C: columns[2]},
+					{SeqNo: 2, C: columns[3]},
 				}
 				// uid, oid
 				indexes[3].Parts = []*schema.IndexPart{
-					{SeqNo: 1, C: columns[3], Attrs: []schema.Attr{&schema.Collation{V: "A"}}},
-					{SeqNo: 2, C: columns[2], Attrs: []schema.Attr{&schema.Collation{V: "A"}}},
+					{SeqNo: 1, C: columns[3], Desc: true},
+					{SeqNo: 2, C: columns[2], Desc: true},
 				}
 				require.EqualValues(columns, t.Columns)
 				require.EqualValues(indexes, t.Indexes)
@@ -530,21 +537,20 @@ func TestDriver_InspectTable(t *testing.T) {
 		{
 			name: "fks",
 			before: func(m mock) {
-				m.version("8.0.13")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(sqltest.Escape(columnsQuery)).
+				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
-| COLUMN_NAME | COLUMN_TYPE  | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
-+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
-| id          | int          |                | NO          | PRI        | NULL           |                | NULL               | NULL               |
-| oid         | int          |                | NO          | MUL        | NULL           |                | NULL               | NULL               |
-| uid         | int          |                | NO          | MUL        | NULL           |                | NULL               | NULL               |
-+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
++------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+| TABLE_NAME | COLUMN_NAME | COLUMN_TYPE  | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
++------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+| users      | id          | int          |                | NO          | PRI        | NULL           |                | NULL               | NULL               |
+| users      | oid         | int          |                | NO          | MUL        | NULL           |                | NULL               | NULL               |
+| users      | uid         | int          |                | NO          | MUL        | NULL           |                | NULL               | NULL               |
++------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
 `))
 				m.noIndexes()
-				m.ExpectQuery(sqltest.Escape(fksQuery)).
+				m.ExpectQuery(queryFKs).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
 +------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
@@ -561,7 +567,7 @@ func TestDriver_InspectTable(t *testing.T) {
 				require.Equal("users", t.Name)
 				require.Equal("public", t.Schema.Name)
 				fks := []*schema.ForeignKey{
-					{Symbol: "multi_column", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}}, RefColumns: []*schema.Column{{Name: "gid"}, {Name: "xid"}}},
+					{Symbol: "multi_column", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: &schema.Table{Name: "t1", Schema: t.Schema}, RefColumns: []*schema.Column{{Name: "gid"}, {Name: "xid"}}},
 					{Symbol: "self_reference", Table: t, OnUpdate: schema.NoAction, OnDelete: schema.Cascade, RefTable: t},
 				}
 				columns := []*schema.Column{
@@ -577,30 +583,38 @@ func TestDriver_InspectTable(t *testing.T) {
 			},
 		},
 		{
-			name: "checks",
+			name:    "checks",
+			version: "8.0.16",
 			before: func(m mock) {
-				m.version("8.0.16")
 				m.tableExists("public", "users", true)
-				m.ExpectQuery(sqltest.Escape(columnsQuery)).
+				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
-| COLUMN_NAME | COLUMN_TYPE  | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
-+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
-| id          | int          |                | NO          | PRI        | NULL           |                | NULL               | NULL               |
-| c1          | int          |                | NO          | MUL        | NULL           |                | NULL               | NULL               |
-+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
++-------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+| TABLE_NAME  | COLUMN_NAME | COLUMN_TYPE  | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
++-------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+| users       | id          | int          |                | NO          | PRI        | NULL           |                | NULL               | NULL               |
+| users       | c1          | int          |                | NO          | MUL        | NULL           |                | NULL               | NULL               |
++-------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
 `))
 				m.noIndexes()
 				m.noFKs()
-				m.ExpectQuery(sqltest.Escape(myChecksQuery)).
+				m.ExpectQuery(queryMyChecks).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+-------------------+-------------------------------------------+------------+
-| CONSTRAINT_NAME   | CHECK_CLAUSE                              |  ENFORCED  |
-+-------------------+-------------------------------------------+------------+
-| users_chk_1       | (` + "`c6`" + ` <>_latin1\'foo\\\'s\')    |  YES       |
-+-------------------+-------------------------------------------+------------+
++-------------------+-------------------+-------------------------------------------+------------+
+| TABLE_NAME        | CONSTRAINT_NAME   | CHECK_CLAUSE                              |  ENFORCED  |
++-------------------+-------------------+-------------------------------------------+------------+
+| users             | users_chk_1       | (` + "`c6`" + ` <>_latin1\'foo\\\'s\')    |  YES       |
++-------------------+-------------------+-------------------------------------------+------------+
+`))
+				m.ExpectQuery(sqltest.Escape("SHOW CREATE TABLE `public`.`users`")).
+					WillReturnRows(sqltest.Rows(`
++-------+------------------------+
+| Table | Create Table           |
++-------+------------------------+
+| users | CREATE TABLE users()   |
++-------+------------------------+
 `))
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
@@ -612,7 +626,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c1", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
 				}
 				require.EqualValues(columns, t.Columns)
-				require.EqualValues([]schema.Attr{&CreateStmt{S: "CREATE TABLE users()"}, &schema.Check{Name: "users_chk_1", Expr: "(`c6` <>_latin1\\'foo\\'s\\')"}}, t.Attrs)
+				require.EqualValues([]schema.Attr{&schema.Check{Name: "users_chk_1", Expr: "(`c6` <>_latin1\\'foo\\'s\\')"}, &CreateStmt{S: "CREATE TABLE users()"}}, t.Attrs)
 			},
 		},
 	}
@@ -620,11 +634,27 @@ func TestDriver_InspectTable(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			db, m, err := sqlmock.New()
 			require.NoError(t, err)
-			tt.before(mock{m})
+			mk := mock{m}
+			if tt.version == "" {
+				tt.version = "8.0.13"
+			}
+			mk.version(tt.version)
+			mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= ?"))).
+				WithArgs("public").
+				WillReturnRows(sqltest.Rows(`
++-------------+----------------------------+------------------------+
+| SCHEMA_NAME | DEFAULT_CHARACTER_SET_NAME | DEFAULT_COLLATION_NAME |
++-------------+----------------------------+------------------------+
+| public      | utf8mb4                    | utf8mb4_unicode_ci     |
++-------------+----------------------------+------------------------+
+				`))
+			tt.before(mk)
 			drv, err := Open(db)
 			require.NoError(t, err)
-			table, err := drv.InspectTable(context.Background(), "users", tt.opts)
-			tt.expect(require.New(t), table, err)
+			s, err := drv.InspectSchema(context.Background(), "public", nil)
+			require.NoError(t, err)
+			require.NotNil(t, s)
+			tt.expect(require.New(t), s.Tables[0], err)
 		})
 	}
 }
@@ -691,51 +721,32 @@ func TestDriver_InspectSchema(t *testing.T) {
 +-------------+----------------------------+------------------------+
 | public      | utf8mb4                    | utf8mb4_unicode_ci     |
 +-------------+----------------------------+------------------------+
-				`))
+`))
 				m.tables("public", "users", "pets")
-				m.tableExistsInSchema("public", "users", true)
-				m.ExpectQuery(sqltest.Escape(columnsQuery)).
-					WithArgs("public", "users").
+				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, "?, ?"))).
+					WithArgs("public", "users", "pets").
 					WillReturnRows(sqltest.Rows(`
-+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
-| COLUMN_NAME | COLUMN_TYPE  | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
-+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
-| id          | int          |                | NO          | PRI        | NULL           |                | NULL               | NULL               |
-| spouse_id   | int          |                | YES         | NULL       | NULL           |                | NULL               | NULL               |
-+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
-		`))
-				m.noIndexes()
-				m.ExpectQuery(sqltest.Escape(fksQuery)).
-					WithArgs("public", "users").
++-------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+| TABLE_NAME  | COLUMN_NAME | COLUMN_TYPE  | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
++-------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+| users       | id          | int          |                | NO          | PRI        | NULL           |                | NULL               | NULL               |
+| users       | spouse_id   | int          |                | YES         | NULL       | NULL           |                | NULL               | NULL               |
+| pets        | id          | int          |                | NO          | PRI        | NULL           |                | NULL               | NULL               |  
+| pets        | owner_id    | int          |                | YES         | NULL       | NULL           |                | NULL               | NULL               |  
++-------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
+				`))
+				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(indexesExprQuery, "?, ?"))).
+					WillReturnRows(sqlmock.NewRows([]string{"table_name", "index_name", "column_name", "non_unique", "key_part", "expression"}))
+				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(fksQuery, "?, ?"))).
+					WithArgs("public", "users", "pets").
 					WillReturnRows(sqltest.Rows(`
 +------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
 | CONSTRAINT_NAME  | TABLE_NAME | COLUMN_NAME | TABLE_SCHEMA | REFERENCED_TABLE_NAME | REFERENCED_COLUMN_NAME | REFERENCED_SCHEMA_NAME | UPDATE_RULE | DELETE_RULE |
 +------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
 | spouse_id        | users      | spouse_id   | public       | users                 | id                     | public                 | NO ACTION   | CASCADE     |
-+------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
-		`))
-
-				m.tableExistsInSchema("public", "pets", true)
-				m.ExpectQuery(sqltest.Escape(columnsQuery)).
-					WithArgs("public", "pets").
-					WillReturnRows(sqltest.Rows(`
-+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
-| COLUMN_NAME | COLUMN_TYPE  | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     |
-+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
-| id          | int          |                | NO          | PRI        | NULL           |                | NULL               | NULL               |
-| owner_id    | int          |                | YES         | NULL       | NULL           |                | NULL               | NULL               |
-+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+
-		`))
-				m.noIndexes()
-				m.ExpectQuery(sqltest.Escape(fksQuery)).
-					WithArgs("public", "pets").
-					WillReturnRows(sqltest.Rows(`
-+------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
-| CONSTRAINT_NAME  | TABLE_NAME | COLUMN_NAME | TABLE_SCHEMA | REFERENCED_TABLE_NAME | REFERENCED_COLUMN_NAME | REFERENCED_SCHEMA_NAME | UPDATE_RULE | DELETE_RULE |
-+------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
 | owner_id         | pets       | owner_id    | public       | users                 | id                     | public                 | NO ACTION   | CASCADE     |
 +------------------+------------+-------------+--------------+-----------------------+------------------------+------------------------+-------------+-------------+
-		`))
+				`))
 			},
 			expect: func(require *require.Assertions, s *schema.Schema, err error) {
 				require.NoError(err)
@@ -836,8 +847,9 @@ func TestDriver_Realm(t *testing.T) {
 | public      | utf8                       | utf8_general_ci        |
 +-------------+----------------------------+------------------------+
 `))
-	mk.tables("test")
-	mk.tables("public")
+	mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "?, ?"))).
+		WithArgs("test", "public").
+		WillReturnRows(sqlmock.NewRows([]string{"schema", "table", "charset", "collate", "inc", "comment", "options"}))
 	realm, err = drv.InspectRealm(context.Background(), &schema.InspectRealmOption{Schemas: []string{"test", "public"}})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Realm {
@@ -890,57 +902,31 @@ func (m mock) version(version string) {
 }
 
 func (m mock) noIndexes() {
-	m.ExpectQuery(sqltest.Escape(indexesExprQuery)).
-		WillReturnRows(sqlmock.NewRows([]string{"index_name", "column_name", "non_unique", "key_part", "expression"}))
+	m.ExpectQuery(queryIndexesExpr).
+		WillReturnRows(sqlmock.NewRows([]string{"table_name", "index_name", "column_name", "non_unique", "key_part", "expression"}))
 }
 
 func (m mock) noFKs() {
-	m.ExpectQuery(sqltest.Escape(fksQuery)).
-		WillReturnRows(sqlmock.NewRows([]string{"CONSTRAINT_NAME", "TABLE_NAME", "COLUMN_NAME", "REFERENCED_TABLE_NAME", "REFERENCED_COLUMN_NAME", "REFERENCED_TABLE_SCHEMA", "UPDATE_RULE", "DELETE_RULE"}))
+	m.ExpectQuery(queryFKs).
+		WillReturnRows(sqlmock.NewRows([]string{"TABLE_NAME", "CONSTRAINT_NAME", "TABLE_NAME", "COLUMN_NAME", "REFERENCED_TABLE_NAME", "REFERENCED_COLUMN_NAME", "REFERENCED_TABLE_SCHEMA", "UPDATE_RULE", "DELETE_RULE"}))
 }
 
-func (m mock) tables(schema string, names ...string) {
-	rows := sqlmock.NewRows([]string{"table_name"})
-	for i := range names {
-		rows.AddRow(names[i])
+func (m mock) tableExists(schema, table string, exists bool) {
+	rows := sqlmock.NewRows([]string{"table_schema", "table_name", "table_collation", "character_set", "auto_increment", "table_comment", "create_options"})
+	if exists {
+		rows.AddRow(schema, table, nil, nil, nil, nil, nil)
 	}
-	m.ExpectQuery(sqltest.Escape(tablesQuery)).
+	m.ExpectQuery(queryTable).
 		WithArgs(schema).
 		WillReturnRows(rows)
 }
 
-func (m mock) tableExists(schema, table string, exists bool) {
-	rows := sqlmock.NewRows([]string{"table_schema", "table_collation", "character_set", "auto_increment", "table_comment", "create_options"})
-	if exists {
-		rows.AddRow(schema, nil, nil, nil, nil, nil)
+func (m mock) tables(schema string, tables ...string) {
+	rows := sqlmock.NewRows([]string{"schema", "table", "charset", "collate", "inc", "comment", "options"})
+	for _, t := range tables {
+		rows.AddRow(schema, t, nil, nil, nil, nil, nil)
 	}
-	m.ExpectQuery(sqltest.Escape(tableQuery)).
-		WithArgs(table).
+	m.ExpectQuery(queryTable).
+		WithArgs(schema).
 		WillReturnRows(rows)
-	m.ExpectQuery(sqltest.Escape(fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`", schema, table))).
-		WillReturnRows(sqltest.Rows(`
-+-------------+--------------------------------------+
-|    Table    | Create Table                         |
-+-------------+--------------------------------------+
-|` + table + `| CREATE TABLE ` + table + `()         |
-+-------------+--------------------------------------+
-`))
-}
-
-func (m mock) tableExistsInSchema(schema, table string, exists bool) {
-	rows := sqlmock.NewRows([]string{"table_schema", "table_collation", "character_set", "auto_increment", "table_comment", "create_options"})
-	if exists {
-		rows.AddRow(schema, nil, nil, nil, nil, nil)
-	}
-	m.ExpectQuery(sqltest.Escape(tableSchemaQuery)).
-		WithArgs(table, schema).
-		WillReturnRows(rows)
-	m.ExpectQuery(sqltest.Escape(fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`", schema, table))).
-		WillReturnRows(sqltest.Rows(`
-+-------------+--------------------------------------+
-|    Table    | Create Table                         |
-+-------------+--------------------------------------+
-|` + table + `| CREATE TABLE ` + table + `()         |
-+-------------+--------------------------------------+
-`))
 }

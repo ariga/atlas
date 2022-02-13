@@ -38,6 +38,7 @@ func (p *planApply) PlanChanges(_ context.Context, name string, changes []schema
 	for _, c := range s.Changes {
 		if c.Reverse == "" {
 			s.Reversible = false
+			break
 		}
 	}
 	return &s.Plan, nil
@@ -212,20 +213,14 @@ func (s *state) addTable(add *schema.AddTable) error {
 		})
 		if pk := add.T.PrimaryKey; pk != nil {
 			b.Comma().P("PRIMARY KEY")
-			s.indexParts(b, pk.Parts)
-			s.attr(b, pk.Attrs...)
+			indexParts(b, pk.Parts)
 		}
 		if len(add.T.Indexes) > 0 {
 			b.Comma()
 		}
 		b.MapComma(add.T.Indexes, func(i int, b *sqlx.Builder) {
 			idx := add.T.Indexes[i]
-			if idx.Unique {
-				b.P("UNIQUE")
-			}
-			b.P("INDEX").Ident(idx.Name)
-			s.indexParts(b, idx.Parts)
-			s.attr(b, idx.Attrs...)
+			index(b, idx)
 		})
 		if len(add.T.ForeignKeys) > 0 {
 			b.Comma()
@@ -351,16 +346,13 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			reversible = false
 		case *schema.AddIndex:
 			b.P("ADD")
-			if change.I.Unique {
-				b.P("UNIQUE")
-			}
-			b.P("INDEX").Ident(change.I.Name)
-			s.indexParts(b, change.I.Parts)
-			s.attr(b, change.I.Attrs...)
+			index(b, change.I)
 			reverse.Comma().P("DROP INDEX").Ident(change.I.Name)
 		case *schema.DropIndex:
 			b.P("DROP INDEX").Ident(change.I.Name)
-			reversible = false
+			reverse.Comma().P("ADD")
+			index(reverse, change.I)
+			reversible = true
 		case *schema.AddForeignKey:
 			b.P("ADD")
 			if err := s.fks(b, change.F); err != nil {
@@ -369,7 +361,10 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			reverse.Comma().P("DROP FOREIGN KEY").Ident(change.F.Symbol)
 		case *schema.DropForeignKey:
 			b.P("DROP FOREIGN KEY").Ident(change.F.Symbol)
-			reversible = false
+			reverse.Comma().P("ADD")
+			if err := s.fks(reverse, change.F); err != nil {
+				errors = append(errors, err.Error())
+			}
 		case *schema.AddAttr:
 			s.tableAttr(b, change, change.A)
 			// Unsupported reverse operation.
@@ -487,7 +482,29 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 	return nil
 }
 
-func (s *state) indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {
+func index(b *sqlx.Builder, idx *schema.Index) {
+	var t IndexType
+	if sqlx.Has(idx.Attrs, &t) {
+		t.T = strings.ToUpper(t.T)
+	}
+	switch {
+	case idx.Unique:
+		b.P("UNIQUE")
+	case t.T == IndexTypeFullText || t.T == IndexTypeSpatial:
+		b.P(t.T)
+	}
+	b.P("INDEX").Ident(idx.Name)
+	// Skip BTREE as it is the default type.
+	if t.T == IndexTypeHash {
+		b.P("USING", t.T)
+	}
+	indexParts(b, idx.Parts)
+	if c := (schema.Comment{}); sqlx.Has(idx.Attrs, &c) {
+		b.P("COMMENT", quote(c.Text))
+	}
+}
+
+func indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {
 	b.Wrap(func(b *sqlx.Builder) {
 		b.MapComma(parts, func(i int, b *sqlx.Builder) {
 			switch part := parts[i]; {
@@ -500,7 +517,7 @@ func (s *state) indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {
 				b.WriteString(fmt.Sprintf("(%d)", s.Len))
 			}
 			// Ignore default collation (i.e. "ASC")
-			if c := (&schema.Collation{}); sqlx.Has(parts[i].Attrs, c) && c.V == "D" {
+			if parts[i].Desc {
 				b.P("DESC")
 			}
 		})

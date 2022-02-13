@@ -1,0 +1,91 @@
+apply 1.hcl
+cmpshow users 1.sql
+
+# Drop the "DESC" option from the key part.
+apply 2.hcl
+cmpshow users 2.sql
+# Use of "columns" instead of "on" should not trigger a change.
+synced 2-no-change.hcl
+
+apply 3.hcl
+cmpshow users 3.sql
+
+-- 1.hcl --
+schema "main" {}
+
+table "users" {
+    schema = schema.main
+    column "rank" {
+        type = int
+    }
+    index "rank_idx" {
+        on {
+            desc   = true
+            column = table.users.column.rank
+        }
+    }
+}
+
+-- 1.sql --
+CREATE TABLE `users` (`rank` int NOT NULL)
+CREATE INDEX `rank_idx` ON `users` (`rank` DESC)
+
+-- 2.hcl --
+schema "main" {}
+
+table "users" {
+    schema = schema.main
+    column "rank" {
+        type = int
+    }
+    index "rank_idx" {
+        on {
+            column = table.users.column.rank
+        }
+    }
+}
+
+-- 2.sql --
+CREATE TABLE "users" (`rank` int NOT NULL)
+CREATE INDEX `rank_idx` ON `users` (`rank`)
+
+-- 2-no-change.hcl --
+schema "main" {}
+
+table "users" {
+    schema = schema.main
+    column "rank" {
+        type = int
+    }
+    index "rank_idx" {
+        columns = [
+            table.users.column.rank,
+        ]
+    }
+}
+
+-- 3.hcl --
+schema "main" {}
+
+table "users" {
+    schema = schema.main
+    column "rank" {
+        type = int
+    }
+    column "score" {
+        type = int
+    }
+    index "rank_score_idx" {
+        on {
+            column = table.users.column.rank
+        }
+        on {
+            column = table.users.column.score
+            desc = true
+        }
+    }
+}
+
+-- 3.sql --
+CREATE TABLE "users" (`rank` int NOT NULL, `score` int NOT NULL)
+CREATE INDEX `rank_score_idx` ON `users` (`rank`, `score` DESC)

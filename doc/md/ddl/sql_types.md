@@ -95,6 +95,40 @@ slug: /ddl/sql-types
         </tr>
         
         <tr>
+            <td>bool</td>
+            <td>bool</td>
+            <td>
+                <ul>
+                </ul>
+            </td>
+            <td>
+                
+                <pre>
+                    type = bool
+                </pre>
+                
+                
+            </td>
+        </tr>
+        
+        <tr>
+            <td>boolean</td>
+            <td>boolean</td>
+            <td>
+                <ul>
+                </ul>
+            </td>
+            <td>
+                
+                <pre>
+                    type = boolean
+                </pre>
+                
+                
+            </td>
+        </tr>
+        
+        <tr>
             <td>char</td>
             <td>char</td>
             <td>
@@ -117,12 +151,13 @@ slug: /ddl/sql-types
             <td>date</td>
             <td>
                 <ul>
+                        <li>precision (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                    type = date
+                    type = date(10)
                 </pre>
                 
                 
@@ -134,12 +169,13 @@ slug: /ddl/sql-types
             <td>datetime</td>
             <td>
                 <ul>
+                        <li>precision (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                    type = datetime
+                    type = datetime(10)
                 </pre>
                 
                 
@@ -151,6 +187,7 @@ slug: /ddl/sql-types
             <td>decimal</td>
             <td>
                 <ul>
+                        <li>unsigned (bool)</li>
                         <li>precision (int)</li>
                         <li>scale (int)</li>
                 </ul>
@@ -161,6 +198,10 @@ slug: /ddl/sql-types
                     type = decimal(10,2)
                 </pre>
                 
+                <pre>
+                    unsigned = true
+                </pre>
+                
                 
             </td>
         </tr>
@@ -170,6 +211,7 @@ slug: /ddl/sql-types
             <td>double</td>
             <td>
                 <ul>
+                        <li>unsigned (bool)</li>
                         <li>precision (int)</li>
                         <li>scale (int)</li>
                 </ul>
@@ -178,6 +220,10 @@ slug: /ddl/sql-types
                 
                 <pre>
                     type = double(10,2)
+                </pre>
+                
+                <pre>
+                    unsigned = true
                 </pre>
                 
                 
@@ -207,6 +253,7 @@ slug: /ddl/sql-types
             <td>float</td>
             <td>
                 <ul>
+                        <li>unsigned (bool)</li>
                         <li>precision (int)</li>
                         <li>scale (int)</li>
                 </ul>
@@ -215,6 +262,10 @@ slug: /ddl/sql-types
                 
                 <pre>
                     type = float(10,2)
+                </pre>
+                
+                <pre>
+                    unsigned = true
                 </pre>
                 
                 
@@ -459,6 +510,7 @@ slug: /ddl/sql-types
             <td>numeric</td>
             <td>
                 <ul>
+                        <li>unsigned (bool)</li>
                         <li>precision (int)</li>
                         <li>scale (int)</li>
                 </ul>
@@ -467,6 +519,10 @@ slug: /ddl/sql-types
                 
                 <pre>
                     type = numeric(10,2)
+                </pre>
+                
+                <pre>
+                    unsigned = true
                 </pre>
                 
                 
@@ -512,6 +568,7 @@ slug: /ddl/sql-types
             <td>real</td>
             <td>
                 <ul>
+                        <li>unsigned (bool)</li>
                         <li>precision (int)</li>
                         <li>scale (int)</li>
                 </ul>
@@ -520,6 +577,10 @@ slug: /ddl/sql-types
                 
                 <pre>
                     type = real(10,2)
+                </pre>
+                
+                <pre>
+                    unsigned = true
                 </pre>
                 
                 
@@ -590,12 +651,13 @@ slug: /ddl/sql-types
             <td>time</td>
             <td>
                 <ul>
+                        <li>precision (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                    type = time
+                    type = time(10)
                 </pre>
                 
                 
@@ -607,12 +669,13 @@ slug: /ddl/sql-types
             <td>timestamp</td>
             <td>
                 <ul>
+                        <li>precision (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                    type = timestamp
+                    type = timestamp(10)
                 </pre>
                 
                 
@@ -717,12 +780,13 @@ slug: /ddl/sql-types
             <td>year</td>
             <td>
                 <ul>
+                        <li>precision (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                    type = year
+                    type = year(10)
                 </pre>
                 
                 
@@ -1527,12 +1591,13 @@ enum "my_enum" &#123;
             <td>time</td>
             <td>
                 <ul>
+                        <li>precision (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                    type = time
+                    type = time(10)
                 </pre>
                 
                 
@@ -1544,12 +1609,13 @@ enum "my_enum" &#123;
             <td>time with time zone</td>
             <td>
                 <ul>
+                        <li>precision (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                    type = time_with_time_zone
+                    type = time_with_time_zone(10)
                 </pre>
                 
                 
@@ -1561,12 +1627,13 @@ enum "my_enum" &#123;
             <td>time without time zone</td>
             <td>
                 <ul>
+                        <li>precision (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                    type = time_without_time_zone
+                    type = time_without_time_zone(10)
                 </pre>
                 
                 
@@ -1578,12 +1645,13 @@ enum "my_enum" &#123;
             <td>timestamp</td>
             <td>
                 <ul>
+                        <li>precision (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                    type = timestamp
+                    type = timestamp(10)
                 </pre>
                 
                 
@@ -1595,12 +1663,13 @@ enum "my_enum" &#123;
             <td>timestamp with time zone</td>
             <td>
                 <ul>
+                        <li>precision (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                    type = timestamp_with_time_zone
+                    type = timestamp_with_time_zone(10)
                 </pre>
                 
                 
@@ -1612,12 +1681,31 @@ enum "my_enum" &#123;
             <td>timestamp without time zone</td>
             <td>
                 <ul>
+                        <li>precision (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                    type = timestamp_without_time_zone
+                    type = timestamp_without_time_zone(10)
+                </pre>
+                
+                
+            </td>
+        </tr>
+        
+        <tr>
+            <td>timestamptz</td>
+            <td>timestamptz</td>
+            <td>
+                <ul>
+                        <li>precision (int)</li>
+                </ul>
+            </td>
+            <td>
+                
+                <pre>
+                    type = timestamptz(10)
                 </pre>
                 
                 

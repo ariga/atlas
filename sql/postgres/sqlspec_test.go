@@ -6,6 +6,7 @@ import (
 
 	"ariga.io/atlas/sql/internal/spectest"
 	"ariga.io/atlas/sql/schema"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,13 +29,28 @@ table "table" {
 	column "account_name" {
 		type = varchar(32)
 	}
+	column "varchar_length_is_not_required" {
+		type = varchar
+	}
+	column "character_varying_length_is_not_required" {
+		type = character_varying
+	}
 	column "tags" {
 		type = hstore
+	}
+	column "created_at" {
+		type    = timestamp(4)
+		default = sql("current_timestamp(4)")
+	}
+	column "updated_at" {
+		type    = time
+		default = sql("current_time")
 	}
 	primary_key {
 		columns = [table.table.column.col]
 	}
 	index "index" {
+		type = HASH
 		unique = true
 		columns = [
 			table.table.column.col,
@@ -121,12 +137,50 @@ enum "account_type" {
 					},
 				},
 				{
+					Name: "varchar_length_is_not_required",
+					Type: &schema.ColumnType{
+						Type: &schema.StringType{
+							T:    "varchar",
+							Size: 0,
+						},
+					},
+				},
+				{
+					Name: "character_varying_length_is_not_required",
+					Type: &schema.ColumnType{
+						Type: &schema.StringType{
+							T:    "character varying",
+							Size: 0,
+						},
+					},
+				},
+				{
 					Name: "tags",
 					Type: &schema.ColumnType{
 						Type: &UserDefinedType{
 							T: "hstore",
 						},
 					},
+				},
+				{
+					Name: "created_at",
+					Type: &schema.ColumnType{
+						Type: &schema.TimeType{
+							T:         TypeTimestamp,
+							Precision: 4,
+						},
+					},
+					Default: &schema.RawExpr{X: "current_timestamp(4)"},
+				},
+				{
+					Name: "updated_at",
+					Type: &schema.ColumnType{
+						Type: &schema.TimeType{
+							T:         TypeTime,
+							Precision: 6,
+						},
+					},
+					Default: &schema.RawExpr{X: "current_time"},
 				},
 			},
 			Attrs: []schema.Attr{
@@ -179,6 +233,7 @@ enum "account_type" {
 			},
 			Attrs: []schema.Attr{
 				&schema.Comment{Text: "index comment"},
+				&IndexType{T: IndexTypeHash},
 			},
 		},
 	}
@@ -199,6 +254,37 @@ enum "account_type" {
 		},
 	}
 	require.EqualValues(t, exp, &s)
+}
+
+func TestUnmarshalSpec_IndexType(t *testing.T) {
+	f := `
+schema "s" {}
+table "t" {
+	schema = schema.s
+	column "c" {
+		type = int
+	}
+	index "i" {
+		type = %s
+		columns = [column.c]
+	}
+}
+`
+	t.Run("Invalid", func(t *testing.T) {
+		f := fmt.Sprintf(f, "UNK")
+		err := UnmarshalHCL([]byte(f), &schema.Schema{})
+		require.Error(t, err)
+	})
+	t.Run("Valid", func(t *testing.T) {
+		var (
+			s schema.Schema
+			f = fmt.Sprintf(f, "HASH")
+		)
+		err := UnmarshalHCL([]byte(f), &s)
+		require.NoError(t, err)
+		idx := s.Tables[0].Indexes[0]
+		require.Equal(t, IndexTypeHash, idx.Attrs[0].(*IndexType).T)
+	})
 }
 
 func TestMarshalSpec_Enum(t *testing.T) {
@@ -225,14 +311,67 @@ schema "test" {
 }
 enum "account_type" {
   schema = schema.test
-  values = ["private", "business", ]
+  values = ["private", "business"]
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestMarshalSpec_TimePrecision(t *testing.T) {
+	s := schema.New("test").
+		AddTables(
+			schema.NewTable("times").
+				AddColumns(
+					schema.NewTimeColumn("t_time_def", TypeTime),
+					schema.NewTimeColumn("t_time_with_time_zone", TypeTimeWTZ, schema.TimePrecision(2)),
+					schema.NewTimeColumn("t_time_without_time_zone", TypeTimeWOTZ, schema.TimePrecision(2)),
+					schema.NewTimeColumn("t_timestamp", TypeTimestamp, schema.TimePrecision(2)),
+					schema.NewTimeColumn("t_timestamptz", TypeTimestampTZ, schema.TimePrecision(2)),
+					schema.NewTimeColumn("t_timestamp_with_time_zone", TypeTimestampWTZ, schema.TimePrecision(2)),
+					schema.NewTimeColumn("t_timestamp_without_time_zone", TypeTimestampWOTZ, schema.TimePrecision(2)),
+				),
+		)
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "times" {
+  schema = schema.test
+  column "t_time_def" {
+    null = false
+    type = time
+  }
+  column "t_time_with_time_zone" {
+    null = false
+    type = time_with_time_zone(2)
+  }
+  column "t_time_without_time_zone" {
+    null = false
+    type = time_without_time_zone(2)
+  }
+  column "t_timestamp" {
+    null = false
+    type = timestamp(2)
+  }
+  column "t_timestamptz" {
+    null = false
+    type = timestamptz(2)
+  }
+  column "t_timestamp_with_time_zone" {
+    null = false
+    type = timestamp_with_time_zone(2)
+  }
+  column "t_timestamp_without_time_zone" {
+    null = false
+    type = timestamp_without_time_zone(2)
+  }
+}
+schema "test" {
 }
 `
 	require.EqualValues(t, expected, string(buf))
 }
 
 func TestTypes(t *testing.T) {
-	// TODO(rotemtam): enum, timestamptz, interval
+	// TODO(rotemtam) interval
 	for _, tt := range []struct {
 		typeExpr string
 		expected schema.Type
@@ -345,38 +484,65 @@ func TestTypes(t *testing.T) {
 			typeExpr: "point",
 			expected: &schema.SpatialType{T: TypePoint},
 		},
-
 		{
 			typeExpr: "date",
 			expected: &schema.TimeType{T: TypeDate},
 		},
 		{
 			typeExpr: "time",
-			expected: &schema.TimeType{T: TypeTime},
+			expected: &schema.TimeType{T: TypeTime, Precision: 6},
+		},
+		{
+			typeExpr: "time(4)",
+			expected: &schema.TimeType{T: TypeTime, Precision: 4},
 		},
 		{
 			typeExpr: "time_with_time_zone",
-			expected: &schema.TimeType{T: TypeTimeWTZ},
+			expected: &schema.TimeType{T: TypeTimeWTZ, Precision: 6},
+		},
+		{
+			typeExpr: "time_with_time_zone(4)",
+			expected: &schema.TimeType{T: TypeTimeWTZ, Precision: 4},
 		},
 		{
 			typeExpr: "time_without_time_zone",
-			expected: &schema.TimeType{T: TypeTimeWOTZ},
+			expected: &schema.TimeType{T: TypeTimeWOTZ, Precision: 6},
+		},
+		{
+			typeExpr: "time_without_time_zone(4)",
+			expected: &schema.TimeType{T: TypeTimeWOTZ, Precision: 4},
 		},
 		{
 			typeExpr: "timestamp",
-			expected: &schema.TimeType{T: TypeTimestamp},
+			expected: &schema.TimeType{T: TypeTimestamp, Precision: 6},
+		},
+		{
+			typeExpr: "timestamp(4)",
+			expected: &schema.TimeType{T: TypeTimestamp, Precision: 4},
+		},
+		{
+			typeExpr: "timestamptz",
+			expected: &schema.TimeType{T: TypeTimestampTZ, Precision: 6},
+		},
+		{
+			typeExpr: "timestamptz(4)",
+			expected: &schema.TimeType{T: TypeTimestampTZ, Precision: 4},
 		},
 		{
 			typeExpr: "timestamp_with_time_zone",
-			expected: &schema.TimeType{T: TypeTimestampWTZ},
+			expected: &schema.TimeType{T: TypeTimestampWTZ, Precision: 6},
+		},
+		{
+			typeExpr: "timestamp_with_time_zone(4)",
+			expected: &schema.TimeType{T: TypeTimestampWTZ, Precision: 4},
 		},
 		{
 			typeExpr: "timestamp_without_time_zone",
-			expected: &schema.TimeType{T: TypeTimestampWOTZ},
+			expected: &schema.TimeType{T: TypeTimestampWOTZ, Precision: 6},
 		},
 		{
-			typeExpr: "time",
-			expected: &schema.TimeType{T: TypeTime},
+			typeExpr: "timestamp_without_time_zone(4)",
+			expected: &schema.TimeType{T: TypeTimestampWOTZ, Precision: 4},
 		},
 		{
 			typeExpr: "real",

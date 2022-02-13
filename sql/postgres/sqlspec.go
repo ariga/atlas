@@ -90,6 +90,21 @@ func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) 
 	return marshaler.MarshalSpec(&d)
 }
 
+var (
+	hclState = schemahcl.New(
+		schemahcl.WithTypes(TypeRegistry.Specs()),
+		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeGIN, IndexTypeGiST),
+	)
+	// UnmarshalHCL unmarshals an Atlas HCL DDL document into v.
+	UnmarshalHCL = schemaspec.UnmarshalerFunc(func(bytes []byte, i interface{}) error {
+		return UnmarshalSpec(bytes, hclState, i)
+	})
+	// MarshalHCL marshals v into an Atlas HCL DDL document.
+	MarshalHCL = schemaspec.MarshalerFunc(func(v interface{}) ([]byte, error) {
+		return MarshalSpec(v, hclState)
+	})
+)
+
 // Realm converts the schemas and tables of the doc into a schema.Realm.
 func Realm(schemas []*sqlspec.Schema, tables []*sqlspec.Table, enums []*Enum) (*schema.Realm, error) {
 	r := &schema.Realm{}
@@ -156,7 +171,7 @@ func Schema(spec *sqlspec.Schema, tables []*sqlspec.Table, enums []*Enum) (*sche
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the convertSchema function.
 func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, error) {
-	return specutil.Table(spec, parent, convertColumn, specutil.PrimaryKey, specutil.Index, specutil.Check)
+	return specutil.Table(spec, parent, convertColumn, specutil.PrimaryKey, convertIndex, specutil.Check)
 }
 
 // convertColumn converts a sqlspec.Column into a schema.Column.
@@ -184,9 +199,37 @@ func fixDefaultQuotes(value schemaspec.Value) error {
 	return nil
 }
 
+// convertIndex converts a sqlspec.Index into a schema.Index.
+func convertIndex(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
+	idx, err := specutil.Index(spec, parent)
+	if err != nil {
+		return nil, err
+	}
+	if attr, ok := spec.Attr("type"); ok {
+		t, err := attr.String()
+		if err != nil {
+			return nil, err
+		}
+		idx.Attrs = append(idx.Attrs, &IndexType{T: t})
+	}
+	return idx, nil
+}
+
+const defaultTimePrecision = 6
+
 // convertColumnType converts a sqlspec.Column into a concrete Postgres schema.Type.
 func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
-	return TypeRegistry.Type(spec.Type, spec.Extra.Attrs)
+	typ, err := TypeRegistry.Type(spec.Type, spec.Extra.Attrs)
+	if err != nil {
+		return nil, err
+	}
+	// Handle default values for time precision types.
+	if t, ok := typ.(*schema.TimeType); ok && strings.HasPrefix(t.T, "time") {
+		if _, ok := attr(spec.Type, "precision"); !ok {
+			t.Precision = defaultTimePrecision
+		}
+	}
+	return typ, nil
 }
 
 // convertEnums converts possibly referenced column types (like enums) to
@@ -276,10 +319,21 @@ func tableSpec(tab *schema.Table) (*sqlspec.Table, error) {
 		tab,
 		columnSpec,
 		specutil.FromPrimaryKey,
-		specutil.FromIndex,
+		indexSpec,
 		specutil.FromForeignKey,
 		specutil.FromCheck,
 	)
+}
+
+func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
+	spec, err := specutil.FromIndex(idx)
+	if err != nil {
+		return nil, err
+	}
+	if i := (IndexType{}); sqlx.Has(idx.Attrs, &i) {
+		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("type", strings.ToUpper(i.T)))
+	}
+	return spec, nil
 }
 
 // columnSpec converts from a concrete Postgres schema.Column into a sqlspec.Column.
@@ -308,12 +362,12 @@ var TypeRegistry = specutil.NewRegistry(
 	specutil.WithFormatter(FormatType),
 	specutil.WithParser(ParseType),
 	specutil.WithSpecs(
-		specutil.TypeSpec(TypeBit, &schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64}),
-		specutil.AliasTypeSpec("bit_varying", TypeBitVar, &schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64}),
-		specutil.TypeSpec(TypeVarChar, specutil.SizeTypeAttr(true)),
-		specutil.AliasTypeSpec("character_varying", TypeCharVar, &schemaspec.TypeAttr{Name: "size", Kind: reflect.Int}),
-		specutil.TypeSpec(TypeChar, specutil.SizeTypeAttr(true)),
-		specutil.TypeSpec(TypeCharacter, specutil.SizeTypeAttr(true)),
+		specutil.TypeSpec(TypeBit, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64})),
+		specutil.AliasTypeSpec("bit_varying", TypeBitVar, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64})),
+		specutil.TypeSpec(TypeVarChar, specutil.WithAttributes(specutil.SizeTypeAttr(false))),
+		specutil.AliasTypeSpec("character_varying", TypeCharVar, specutil.WithAttributes(specutil.SizeTypeAttr(false))),
+		specutil.TypeSpec(TypeChar, specutil.WithAttributes(specutil.SizeTypeAttr(true))),
+		specutil.TypeSpec(TypeCharacter, specutil.WithAttributes(specutil.SizeTypeAttr(true))),
 		specutil.TypeSpec(TypeInt2),
 		specutil.TypeSpec(TypeInt4),
 		specutil.TypeSpec(TypeInt8),
@@ -336,12 +390,33 @@ var TypeRegistry = specutil.NewRegistry(
 		specutil.TypeSpec(TypePath),
 		specutil.TypeSpec(TypePoint),
 		specutil.TypeSpec(TypeDate),
-		specutil.TypeSpec(TypeTime),
-		specutil.AliasTypeSpec("time_with_time_zone", TypeTimeWTZ),
-		specutil.AliasTypeSpec("time_without_time_zone", TypeTimeWOTZ),
-		specutil.TypeSpec(TypeTimestamp),
-		specutil.AliasTypeSpec("timestamp_with_time_zone", TypeTimestampWTZ),
-		specutil.AliasTypeSpec("timestamp_without_time_zone", TypeTimestampWOTZ),
+		specutil.TypeSpec(TypeTime, specutil.WithAttributes(precisionTypeAttr())),
+		specutil.AliasTypeSpec(
+			"time_with_time_zone",
+			TypeTimeWTZ,
+			specutil.WithAttributes(precisionTypeAttr()),
+			specutil.WithPrinter(timePrinter),
+		),
+		specutil.AliasTypeSpec(
+			"time_without_time_zone",
+			TypeTimeWOTZ,
+			specutil.WithAttributes(precisionTypeAttr()),
+			specutil.WithPrinter(timePrinter),
+		),
+		specutil.TypeSpec(TypeTimestampTZ, specutil.WithAttributes(precisionTypeAttr())),
+		specutil.TypeSpec(TypeTimestamp, specutil.WithAttributes(precisionTypeAttr())),
+		specutil.AliasTypeSpec(
+			"timestamp_with_time_zone",
+			TypeTimestampWTZ,
+			specutil.WithAttributes(precisionTypeAttr()),
+			specutil.WithPrinter(timePrinter),
+		),
+		specutil.AliasTypeSpec(
+			"timestamp_without_time_zone",
+			TypeTimestampWOTZ,
+			specutil.WithAttributes(precisionTypeAttr()),
+			specutil.WithPrinter(timePrinter),
+		),
 		specutil.AliasTypeSpec("double_precision", TypeDouble),
 		specutil.TypeSpec(TypeReal),
 		specutil.TypeSpec(TypeFloat8),
@@ -360,18 +435,36 @@ var TypeRegistry = specutil.NewRegistry(
 		specutil.TypeSpec(TypeUUID),
 		specutil.TypeSpec(TypeMoney),
 		specutil.TypeSpec("hstore"),
-		specutil.TypeSpec("sql", &schemaspec.TypeAttr{Name: "def", Required: true, Kind: reflect.String}),
+		specutil.TypeSpec("sql", specutil.WithAttributes(&schemaspec.TypeAttr{Name: "def", Required: true, Kind: reflect.String})),
 	),
 )
 
-var (
-	hclState = schemahcl.New(schemahcl.WithTypes(TypeRegistry.Specs()))
-	// UnmarshalHCL unmarshals an Atlas HCL DDL document into v.
-	UnmarshalHCL = schemaspec.UnmarshalerFunc(func(bytes []byte, i interface{}) error {
-		return UnmarshalSpec(bytes, hclState, i)
-	})
-	// MarshalHCL marshals v into an Atlas HCL DDL document.
-	MarshalHCL = schemaspec.MarshalerFunc(func(v interface{}) ([]byte, error) {
-		return MarshalSpec(v, hclState)
-	})
-)
+func precisionTypeAttr() *schemaspec.TypeAttr {
+	return &schemaspec.TypeAttr{
+		Name:     "precision",
+		Kind:     reflect.Int,
+		Required: false,
+	}
+}
+
+func timePrinter(typ *schemaspec.Type) (string, error) {
+	a, ok := attr(typ, "precision")
+	if !ok {
+		return typ.T, nil
+	}
+	p, err := a.Int()
+	if err != nil {
+		return "", fmt.Errorf(`postgres: parsing attribute "precision": %w`, err)
+	}
+	parts := strings.Split(typ.T, " ")
+	return fmt.Sprintf("%s(%d)%s", parts[0], p, strings.Join(parts[1:], " ")), nil
+}
+
+func attr(typ *schemaspec.Type, key string) (*schemaspec.Attr, bool) {
+	for _, a := range typ.Attrs {
+		if a.K == key {
+			return a, true
+		}
+	}
+	return nil, false
+}

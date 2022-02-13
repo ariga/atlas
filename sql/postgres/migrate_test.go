@@ -24,6 +24,95 @@ func TestPlanChanges(t *testing.T) {
 	}{
 		{
 			changes: []schema.Change{
+				func() schema.Change {
+					users := &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+						},
+					}
+					pets := &schema.Table{
+						Name: "pets",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+							{Name: "user_id",
+								Type: &schema.ColumnType{
+									Type: &schema.IntegerType{T: "bigint"},
+								},
+							},
+						},
+					}
+					fk := &schema.ForeignKey{
+						Symbol:     "pets_user_id_fkey",
+						Table:      pets,
+						OnUpdate:   schema.NoAction,
+						OnDelete:   schema.Cascade,
+						RefTable:   users,
+						Columns:    []*schema.Column{pets.Columns[1]},
+						RefColumns: []*schema.Column{users.Columns[0]},
+					}
+					pets.ForeignKeys = []*schema.ForeignKey{fk}
+					return &schema.ModifyTable{
+						T: pets,
+						Changes: []schema.Change{
+							&schema.DropForeignKey{
+								F: fk,
+							},
+						},
+					}
+				}(),
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `ALTER TABLE "pets" DROP CONSTRAINT "pets_user_id_fkey"`,
+						Reverse: `ALTER TABLE "pets" ADD CONSTRAINT "pets_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON UPDATE NO ACTION ON DELETE CASCADE`,
+					},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+							{
+								Name: "name",
+								Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}},
+								Indexes: []*schema.Index{
+									schema.NewIndex("name_index").
+										AddParts(schema.NewColumnPart(schema.NewColumn("name"))),
+								},
+							}},
+					}
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.DropIndex{
+								I: schema.NewIndex("name_index").
+									AddParts(schema.NewColumnPart(schema.NewColumn("name"))),
+							},
+						},
+					}
+				}(),
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `DROP INDEX "name_index"`,
+						Reverse: `CREATE INDEX "name_index" ON "users" ("name")`,
+					},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
 				&schema.AddSchema{S: &schema.Schema{Name: "test"}},
 			},
 			plan: &migrate.Plan{
@@ -145,7 +234,7 @@ func TestPlanChanges(t *testing.T) {
 								I: &schema.Index{
 									Name: "id_key",
 									Parts: []*schema.IndexPart{
-										{C: users.Columns[0]},
+										{C: users.Columns[0], Desc: true},
 									},
 									Attrs: []schema.Attr{
 										&schema.Comment{Text: "comment"},
@@ -175,7 +264,7 @@ func TestPlanChanges(t *testing.T) {
 						Reverse: `ALTER TABLE "users" DROP COLUMN "name", DROP CONSTRAINT "name_not_empty", ADD CONSTRAINT "id_nonzero" CHECK ("id" <> 0), DROP CONSTRAINT "id_iseven", ADD CONSTRAINT "id_iseven" CHECK ("id" % 2 = 0)`,
 					},
 					{
-						Cmd:     `CREATE INDEX "id_key" ON "users" ("id")`,
+						Cmd:     `CREATE INDEX "id_key" ON "users" ("id" DESC)`,
 						Reverse: `DROP INDEX "id_key"`,
 					},
 					{

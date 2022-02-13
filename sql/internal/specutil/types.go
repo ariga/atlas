@@ -10,6 +10,7 @@ import (
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/schema"
+
 	"github.com/go-openapi/inflect"
 )
 
@@ -19,6 +20,9 @@ func (r *TypeRegistry) PrintType(typ *schemaspec.Type) (string, error) {
 	spec, ok := r.findT(typ.T)
 	if !ok {
 		return "", fmt.Errorf("specutil: type %q not found in registry", typ.T)
+	}
+	if spec.Printer != nil {
+		return spec.Printer(typ)
 	}
 	if len(spec.Attributes) == 0 {
 		return typ.T, nil
@@ -279,18 +283,38 @@ func (r *TypeRegistry) Type(typ *schemaspec.Type, extra []*schemaspec.Attr) (sch
 	return r.parser(printType)
 }
 
+// TypeSpecOption configures a schemaspec.TypeSpec.
+type TypeSpecOption func(*schemaspec.TypeSpec)
+
+// WithAttributes returns an attributes TypeSpecOption.
+func WithAttributes(attrs ...*schemaspec.TypeAttr) TypeSpecOption {
+	return func(spec *schemaspec.TypeSpec) {
+		spec.Attributes = attrs
+	}
+}
+
+// WithPrinter returns a printer TypeSpecOption.
+func WithPrinter(p func(*schemaspec.Type) (string, error)) TypeSpecOption {
+	return func(spec *schemaspec.TypeSpec) {
+		spec.Printer = p
+	}
+}
+
 // TypeSpec returns a TypeSpec with the provided name.
-func TypeSpec(name string, attrs ...*schemaspec.TypeAttr) *schemaspec.TypeSpec {
-	return AliasTypeSpec(name, name, attrs...)
+func TypeSpec(name string, opts ...TypeSpecOption) *schemaspec.TypeSpec {
+	return AliasTypeSpec(name, name, opts...)
 }
 
 // AliasTypeSpec returns a TypeSpec with the provided name.
-func AliasTypeSpec(name, dbType string, attrs ...*schemaspec.TypeAttr) *schemaspec.TypeSpec {
-	return &schemaspec.TypeSpec{
-		Name:       name,
-		T:          dbType,
-		Attributes: attrs,
+func AliasTypeSpec(name, dbType string, opts ...TypeSpecOption) *schemaspec.TypeSpec {
+	ts := &schemaspec.TypeSpec{
+		Name: name,
+		T:    dbType,
 	}
+	for _, opt := range opts {
+		opt(ts)
+	}
+	return ts
 }
 
 // SizeTypeAttr returns a TypeAttr for a size attribute.

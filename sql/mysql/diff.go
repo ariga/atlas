@@ -129,12 +129,9 @@ func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 }
 
 // IndexPartAttrChanged reports if the index-part attributes (collation or prefix) were changed.
-func (*diff) IndexPartAttrChanged(from, to []schema.Attr) bool {
+func (*diff) IndexPartAttrChanged(from, to *schema.IndexPart) bool {
 	var s1, s2 SubPart
-	if sqlx.Has(from, &s1) != sqlx.Has(to, &s2) || s1.Len != s2.Len {
-		return true
-	}
-	return indexCollation(from).V != indexCollation(to).V
+	return sqlx.Has(from.Attrs, &s1) != sqlx.Has(to.Attrs, &s2) || s1.Len != s2.Len
 }
 
 // ReferenceChanged reports if the foreign key referential action was changed.
@@ -231,10 +228,16 @@ func (*diff) charsetChange(from, top, to []schema.Attr) schema.Change {
 // attribute in case it is not the default.
 func (*diff) autoIncChange(from, to []schema.Attr) schema.Change {
 	var fromA, toA AutoIncrement
-	// The table is empty and AUTO_INCREMENT was not configured. This can happen
-	// because older versions of MySQL (< 8.0) stored the AUTO_INCREMENT counter
-	// in main memory (not persistent), and the value is reset on process restart.
-	if sqlx.Has(from, &fromA) && sqlx.Has(to, &toA) && fromA.V <= 1 && toA.V > 1 {
+	switch fromHas, toHas := sqlx.Has(from, &fromA), sqlx.Has(to, &toA); {
+	// Ignore if the AUTO_INCREMENT attribute was dropped from the desired schema.
+	case fromHas && !toHas:
+	// The AUTO_INCREMENT exists in the desired schema, and may not exists in the inspected one.
+	// This can happen because older versions of MySQL (< 8.0) stored the AUTO_INCREMENT counter
+	// in main memory (not persistent), and the value is reset on process restart for empty tables.
+	case toA.V > 1 && toA.V > fromA.V:
+		// Suggest a diff only if the desired value is greater than the inspected one,
+		// because this attribute cannot be maintained in users schema and used to set
+		// up only the initial value.
 		return &schema.ModifyAttr{
 			From: &fromA,
 			To:   &toA,
@@ -243,20 +246,10 @@ func (*diff) autoIncChange(from, to []schema.Attr) schema.Change {
 	return noChange
 }
 
-// indexCollation returns the index collation from its attribute.
-// The default collation is ascending if no order was specified.
-func indexCollation(attr []schema.Attr) *schema.Collation {
-	c := &schema.Collation{V: "A"}
-	if sqlx.Has(attr, c) {
-		c.V = strings.ToUpper(c.V)
-	}
-	return c
-}
-
 // indexType returns the index type from its attribute.
 // The default type is BTREE if no type was specified.
 func indexType(attr []schema.Attr) *IndexType {
-	t := &IndexType{T: "BTREE"}
+	t := &IndexType{T: IndexTypeBTree}
 	if sqlx.Has(attr, t) {
 		t.T = strings.ToUpper(t.T)
 	}
@@ -278,7 +271,7 @@ var noChange struct{ schema.Change }
 func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	fromT, toT := from.Type.Type, to.Type.Type
 	if fromT == nil || toT == nil {
-		return false, fmt.Errorf("mysql: missing type infromation for column %q", from.Name)
+		return false, fmt.Errorf("mysql: missing type information for column %q", from.Name)
 	}
 	if reflect.TypeOf(fromT) != reflect.TypeOf(toT) {
 		return true, nil

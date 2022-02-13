@@ -11,12 +11,13 @@ import (
 	"text/template"
 
 	"ariga.io/atlas/cmd/action"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
 )
 
 func main() {
-	f, err := os.Create("../../doc/md/cli.md")
+	f, err := os.Create("../../doc/md/cli/reference.md")
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -5,180 +5,89 @@
 package migrate_test
 
 import (
-	"context"
-	"database/sql"
-	"io/fs"
-	"os"
-	"path/filepath"
+	"bytes"
+	"io"
+	"strconv"
 	"testing"
+	"text/template"
+	"time"
 
 	"ariga.io/atlas/sql/migrate"
-	"ariga.io/atlas/sql/schema"
-
 	"github.com/stretchr/testify/require"
 )
 
-func TestDir_Plan(t *testing.T) {
-	var (
-		m   = &mockDriver{}
-		ctx = context.Background()
-	)
-	dir, err := migrate.NewDir(
-		migrate.DirPath("testdata"),
-		migrate.DirGlob("*.up.sql"),
-		migrate.DirConn(m),
-	)
-	require.NoError(t, err)
-	plan, err := dir.Plan(ctx, "plan_name", migrate.Realm(nil))
-	require.Equal(t, migrate.ErrNoPlan, err)
-	require.Nil(t, plan)
-	require.Equal(t, []string{"CREATE TABLE t(c int);"}, m.executed)
-
-	m.executed = nil
-	dir, err = migrate.NewDir(
-		migrate.DirPath("testdata"),
-		migrate.DirGlob("*.sql"),
-		migrate.DirConn(m),
-	)
-	require.NoError(t, err)
-	plan, err = dir.Plan(ctx, "plan_name", migrate.Realm(nil))
-	require.Equal(t, migrate.ErrNoPlan, err)
-	require.Nil(t, plan)
-	require.Equal(t, []string{"DROP TABLE IF EXISTS t;", "CREATE TABLE t(c int);", "CREATE TABLE t(c int);"}, m.executed)
-
-	m.changes = append(m.changes, &schema.AddTable{T: &schema.Table{Name: "t1"}}, &schema.AddTable{T: &schema.Table{Name: "t2"}})
-	m.plan = &migrate.Plan{
-		Name: "add_t1_t2",
+func TestPlanner_WritePlan(t *testing.T) {
+	var mfs = &mockFS{}
+	plan := &migrate.Plan{
+		Name: "add_t1_and_t2",
 		Changes: []*migrate.Change{
-			{Cmd: "CREATE TABLE t1(c int);"},
-			{Cmd: "CREATE TABLE t2(c int);"},
+			{Cmd: "CREATE TABLE t1(c int);", Reverse: "DROP TABLE t1 IF EXISTS"},
+			{Cmd: "CREATE TABLE t2(c int)", Reverse: "DROP TABLE t2"},
 		},
 	}
-	plan, err = dir.Plan(ctx, "plan_name", migrate.Realm(nil))
-	require.NoError(t, err)
-	require.NotNil(t, plan)
-}
 
-func TestDir_WritePlan_Compact(t *testing.T) {
-	var (
-		f   = &mockFS{}
-		m   = &mockDriver{}
-		ctx = context.Background()
-	)
-	dir, err := migrate.NewDir(
-		migrate.DirFS(f),
-		migrate.DirConn(m),
-	)
-	require.NoError(t, err)
-	err = dir.WritePlan(&migrate.Plan{
-		Name: "add_t1_t2",
-		Changes: []*migrate.Change{
-			{Cmd: "CREATE TABLE t1 (c int)"},
-			{Cmd: "CREATE TABLE t2 (c int);"},
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, "CREATE TABLE t1 (c int);\nCREATE TABLE t2 (c int);\n", f.files[0].F)
+	// DefaultFormatter
+	pl := migrate.New(nil, mfs, migrate.DefaultFormatter)
+	require.NotNil(t, pl)
+	require.NoError(t, pl.WritePlan(plan))
+	v := strconv.FormatInt(time.Now().Unix(), 10)
+	require.Len(t, mfs.files, 2)
+	require.Equal(t, &file{
+		n: v + "_add_t1_and_t2.up.sql",
+		b: bytes.NewBufferString("CREATE TABLE t1(c int);\nCREATE TABLE t2(c int);\n"),
+	}, mfs.files[0])
+	require.Equal(t, &file{
+		n: v + "_add_t1_and_t2.down.sql",
+		b: bytes.NewBufferString("DROP TABLE t2;\nDROP TABLE t1 IF EXISTS;\n"),
+	}, mfs.files[1])
 
-	f.files = nil
-	dir, err = migrate.NewDir(
-		migrate.DirFS(f),
-		migrate.DirConn(m),
-		migrate.DirTemplates("{{.Name}}.sql", `{{range $c := .Changes}}{{printf "--%s\n%s;\n" $c.Comment $c.Cmd}}{{end}}`),
+	// Custom formatter (creates only "up" migration files).
+	fmt, err := migrate.NewTemplateFormatter(
+		template.Must(template.New("").Parse("{{.Name}}.sql")),
+		template.Must(template.New("").Parse("{{range .Changes}}{{println .Cmd}}{{end}}")),
 	)
 	require.NoError(t, err)
-	err = dir.WritePlan(&migrate.Plan{
-		Name: "add_t1_t2",
-		Changes: []*migrate.Change{
-			{Cmd: "CREATE TABLE t1 (c int)", Comment: "Create a new table named t1."},
-			{Cmd: "CREATE TABLE t2 (c int)", Comment: "Create a new table named t2."},
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, "add_t1_t2.sql", f.files[0].N)
-	require.Equal(t, "--Create a new table named t1.\nCREATE TABLE t1 (c int);\n--Create a new table named t2.\nCREATE TABLE t2 (c int);\n", f.files[0].F)
-
-	err = dir.WritePlan(&migrate.Plan{
-		Name: "add_t3",
-		Changes: []*migrate.Change{
-			{Cmd: "CREATE TABLE t3 (c int)", Comment: "Create a new table named t3."},
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, "add_t3.sql", f.files[1].N)
-	require.Equal(t, "--Create a new table named t3.\nCREATE TABLE t3 (c int);\n", f.files[1].F)
-
-	m.changes = append(m.changes, &schema.AddTable{T: &schema.Table{Name: "t1"}}, &schema.AddTable{T: &schema.Table{Name: "t2"}})
-	m.plan = &migrate.Plan{Name: "schema", Changes: []*migrate.Change{{Cmd: "CREATE TABLE t1 (c int)"}, {Cmd: "CREATE TABLE t2 (c int)"}, {Cmd: "CREATE TABLE t3 (c int)"}}}
-	err = dir.Compact(ctx, "schema", -1)
-	require.NoError(t, err)
-	require.Len(t, f.files, 1)
-	require.Equal(t, "schema.sql", f.files[0].N)
-	require.Equal(t, "--\nCREATE TABLE t1 (c int);\n--\nCREATE TABLE t2 (c int);\n--\nCREATE TABLE t3 (c int);\n", f.files[0].F)
-
+	pl = migrate.New(nil, mfs, fmt)
+	require.NotNil(t, pl)
+	require.NoError(t, pl.WritePlan(plan))
+	require.Len(t, mfs.files, 3)
+	require.Equal(t, &file{
+		n: "add_t1_and_t2.sql",
+		b: bytes.NewBufferString("CREATE TABLE t1(c int);\nCREATE TABLE t2(c int)\n"),
+	}, mfs.files[2])
 }
 
-type mockFS struct {
-	fs.GlobFS
-	files []struct{ N, F string }
+type (
+	mockFS struct {
+		files []*file
+	}
+	file struct {
+		n string
+		b *bytes.Buffer
+	}
+)
+
+func (f *file) Read(b []byte) (int, error) {
+	return f.b.Read(b)
 }
 
-func (f *mockFS) Glob(pattern string) ([]string, error) {
-	var matches []string
-	for i := range f.files {
-		match, err := filepath.Match(pattern, f.files[i].N)
-		if err != nil {
-			return nil, err
-		}
-		if match {
-			matches = append(matches, f.files[i].N)
+func (f *file) Write(b []byte) (int, error) {
+	return f.b.Write(b)
+}
+
+func (f *file) Close() error { return nil }
+
+func (f *file) Name() string { return f.n }
+
+func (fs *mockFS) Open(name string) (io.ReadWriteCloser, error) {
+	for _, f := range fs.files {
+		if f.n == name {
+			return f, nil
 		}
 	}
-	return matches, nil
+	f := &file{n: name, b: new(bytes.Buffer)}
+	fs.files = append(fs.files, f)
+	return f, nil
 }
 
-func (f *mockFS) ReadFile(name string) ([]byte, error) {
-	for i := range f.files {
-		if f.files[i].N == name {
-			return []byte(f.files[i].F), nil
-		}
-	}
-	return nil, os.ErrNotExist
-}
-
-func (f *mockFS) WriteFile(name string, data []byte, _ fs.FileMode) error {
-	f.files = append(f.files, struct{ N, F string }{N: name, F: string(data)})
-	return nil
-}
-
-func (f *mockFS) RemoveFile(name string) error {
-	for i := range f.files {
-		if f.files[i].N == name {
-			f.files = append(f.files[:i], f.files[i+1:]...)
-			return nil
-		}
-	}
-	return os.ErrNotExist
-}
-
-type mockDriver struct {
-	migrate.Driver
-	plan     *migrate.Plan
-	changes  []schema.Change
-	executed []string
-}
-
-func (m *mockDriver) ExecContext(_ context.Context, query string, _ ...interface{}) (sql.Result, error) {
-	m.executed = append(m.executed, query)
-	return nil, nil
-}
-
-func (m mockDriver) InspectRealm(context.Context, *schema.InspectRealmOption) (*schema.Realm, error) {
-	return &schema.Realm{}, nil
-}
-func (m mockDriver) RealmDiff(_, _ *schema.Realm) ([]schema.Change, error) {
-	return m.changes, nil
-}
-func (m mockDriver) PlanChanges(context.Context, string, []schema.Change) (*migrate.Plan, error) {
-	return m.plan, nil
-}
+var _ io.ReadWriteCloser = (*file)(nil)

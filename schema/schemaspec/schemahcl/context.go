@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"ariga.io/atlas/schema/schemaspec"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -36,10 +37,17 @@ func evalCtx(ctx *hcl.EvalContext, f *hcl.File) (*hcl.EvalContext, error) {
 	if !ok {
 		return nil, fmt.Errorf("schemahcl: expected an hcl body")
 	}
+	return setBlockVars(ctx, b)
+}
+
+func setBlockVars(ctx *hcl.EvalContext, b *hclsyntax.Body) (*hcl.EvalContext, error) {
 	defs := defRegistry(b)
 	vars, err := blockVars(b, "", defs)
 	if err != nil {
 		return nil, err
+	}
+	if ctx.Variables == nil {
+		ctx.Variables = make(map[string]cty.Value)
 	}
 	for k, v := range vars {
 		ctx.Variables[k] = v
@@ -83,7 +91,7 @@ func blockVars(b *hclsyntax.Body, parentAddr string, defs *blockDef) (map[string
 			v[blkName] = cty.ObjectVal(attrs)
 		}
 		if len(v) > 0 {
-			vars[name] = cty.MapVal(v)
+			vars[name] = cty.ObjectVal(v)
 		}
 	}
 	return vars, nil

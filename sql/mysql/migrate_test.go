@@ -116,7 +116,7 @@ func TestMigrate_ApplyChanges(t *testing.T) {
 							Name: "id_spouse_id",
 							Parts: []*schema.IndexPart{
 								{C: users.Columns[1]},
-								{C: users.Columns[0], Attrs: []schema.Attr{&schema.Collation{V: "D"}}},
+								{C: users.Columns[0], Desc: true},
 							},
 							Attrs: []schema.Attr{
 								&schema.Comment{Text: "comment"},
@@ -176,6 +176,93 @@ func TestPlanChanges(t *testing.T) {
 		wantPlan *migrate.Plan
 		wantErr  bool
 	}{
+		{
+			input: []schema.Change{
+				func() schema.Change {
+					users := &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+							{
+								Name: "name",
+								Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}},
+								Indexes: []*schema.Index{
+									schema.NewIndex("name_index").
+										AddParts(schema.NewColumnPart(schema.NewColumn("name"))),
+								},
+							}},
+					}
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.DropIndex{
+								I: schema.NewIndex("name_index").
+									AddParts(schema.NewColumnPart(schema.NewColumn("name"))),
+							},
+						},
+					}
+				}(),
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `users` DROP INDEX `name_index`",
+						Reverse: "ALTER TABLE `users` ADD INDEX `name_index` (`name`)",
+					},
+				},
+			},
+		},
+		{
+			input: []schema.Change{
+				func() schema.Change {
+					users := &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+						},
+					}
+					pets := &schema.Table{
+						Name: "pets",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+							{Name: "user_id",
+								Type: &schema.ColumnType{
+									Type: &schema.IntegerType{T: "bigint"},
+								},
+							},
+						},
+					}
+					fk := &schema.ForeignKey{
+						Symbol:     "user_id",
+						Table:      pets,
+						OnUpdate:   schema.NoAction,
+						OnDelete:   schema.Cascade,
+						RefTable:   users,
+						Columns:    []*schema.Column{pets.Columns[1]},
+						RefColumns: []*schema.Column{users.Columns[0]},
+					}
+					pets.ForeignKeys = []*schema.ForeignKey{fk}
+					return &schema.ModifyTable{
+						T: pets,
+						Changes: []schema.Change{
+							&schema.DropForeignKey{
+								F: fk,
+							},
+						},
+					}
+				}(),
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `pets` DROP FOREIGN KEY `user_id`",
+						Reverse: "ALTER TABLE `pets` ADD CONSTRAINT `user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON UPDATE NO ACTION ON DELETE CASCADE",
+					},
+				},
+			},
+		},
 		{
 			input: []schema.Change{
 				&schema.AddSchema{S: &schema.Schema{Name: "test", Attrs: []schema.Attr{&schema.Charset{V: "latin"}}}},
@@ -288,7 +375,7 @@ func TestPlanChanges(t *testing.T) {
 							{
 								Name: "text_prefix",
 								Parts: []*schema.IndexPart{
-									{Attrs: []schema.Attr{&SubPart{Len: 100}, &schema.Collation{V: "D"}}},
+									{Desc: true, Attrs: []schema.Attr{&SubPart{Len: 100}}},
 								},
 							},
 						},
@@ -354,6 +441,7 @@ func TestPlanChanges(t *testing.T) {
 									},
 									Attrs: []schema.Attr{
 										&schema.Comment{Text: "comment"},
+										&IndexType{T: IndexTypeHash},
 									},
 								},
 							},
@@ -376,7 +464,7 @@ func TestPlanChanges(t *testing.T) {
 				Reversible: true,
 				Changes: []*migrate.Change{
 					{
-						Cmd:     "ALTER TABLE `users` ADD COLUMN `name` varchar(255) NOT NULL, ADD INDEX `id_key` (`id`) COMMENT \"comment\", ADD CONSTRAINT `id_nonzero` CHECK (id > 0) ENFORCED, AUTO_INCREMENT 1000",
+						Cmd:     "ALTER TABLE `users` ADD COLUMN `name` varchar(255) NOT NULL, ADD INDEX `id_key` USING HASH (`id`) COMMENT \"comment\", ADD CONSTRAINT `id_nonzero` CHECK (id > 0) ENFORCED, AUTO_INCREMENT 1000",
 						Reverse: "ALTER TABLE `users` DROP COLUMN `name`, DROP INDEX `id_key`, DROP CONSTRAINT `id_nonzero`, AUTO_INCREMENT 1",
 					},
 				},
@@ -502,6 +590,7 @@ func TestPlanChanges(t *testing.T) {
 		require.NotNil(t, plan)
 		require.Equal(t, tt.wantPlan.Reversible, plan.Reversible)
 		require.Equal(t, tt.wantPlan.Transactional, plan.Transactional)
+		require.Equal(t, len(tt.wantPlan.Changes), len(plan.Changes))
 		for i, c := range plan.Changes {
 			require.Equal(t, tt.wantPlan.Changes[i].Cmd, c.Cmd)
 			require.Equal(t, tt.wantPlan.Changes[i].Reverse, c.Reverse)

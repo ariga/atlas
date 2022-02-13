@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -13,8 +14,8 @@ func TestAttributes(t *testing.T) {
 	f := `i  = 1
 b  = true
 s  = "hello, world"
-sl = ["hello", "world", ]
-bl = [true, false, ]
+sl = ["hello", "world"]
+bl = [true, false]
 `
 	var test struct {
 		Int        int      `spec:"i"`
@@ -83,6 +84,7 @@ func TestResource(t *testing.T) {
 func ExampleUnmarshal() {
 	f := `
 show "seinfeld" {
+	day = SUN
 	writer "jerry" {
 		full_name = "Jerry Seinfeld"	
 	}
@@ -98,19 +100,25 @@ show "seinfeld" {
 		}
 		Show struct {
 			Name    string    `spec:",name"`
+			Day     string    `spec:"day"`
 			Writers []*Writer `spec:"writer"`
 		}
 	)
-	var test struct {
-		Shows []*Show `spec:"show"`
-	}
-	err := Unmarshal([]byte(f), &test)
+	var (
+		test struct {
+			Shows []*Show `spec:"show"`
+		}
+		opts = []Option{
+			WithScopedEnums("show.day", "SUN", "MON", "TUE"),
+		}
+	)
+	err := New(opts...).UnmarshalSpec([]byte(f), &test)
 	if err != nil {
 		panic(err)
 	}
 	seinfeld := test.Shows[0]
-	fmt.Printf("the show %q has %d writers.", seinfeld.Name, len(seinfeld.Writers))
-	// Output: the show "seinfeld" has 2 writers.
+	fmt.Printf("the show %q at day %s has %d writers.", seinfeld.Name, seinfeld.Day, len(seinfeld.Writers))
+	// Output: the show "seinfeld" at day SUN has 2 writers.
 }
 
 func ExampleMarshal() {
