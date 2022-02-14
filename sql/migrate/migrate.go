@@ -223,14 +223,44 @@ func NewLocalDir(path string) (*LocalDir, error) {
 	return &LocalDir{dir: path}, nil
 }
 
+// GlobStateReader creates a StateReader that loads all files from Dir matching
+// glob in lexicographic order and uses the Driver to create a migration state.
+func (d *LocalDir) GlobStateReader(drv Driver, glob string) StateReaderFunc {
+	return func(ctx context.Context) (*schema.Realm, error) {
+		names, err := fs.Glob(d, glob)
+		if err != nil {
+			return nil, err
+		}
+		// Sort files lexicographically.
+		sort.Slice(names, func(i, j int) bool {
+			return names[i] < names[j]
+		})
+		for _, n := range names {
+			f, err := d.Open(n)
+			if err != nil {
+				return nil, err
+			}
+			b, err := io.ReadAll(f)
+			f.Close()
+			if err != nil {
+				return nil, err
+			}
+			if _, err := drv.ExecContext(ctx, string(b)); err != nil {
+				return nil, err
+			}
+		}
+		return drv.InspectRealm(ctx, nil)
+	}
+}
+
 // Open implements fs.FS.
-func (dir *LocalDir) Open(name string) (fs.File, error) {
-	return os.Open(filepath.Join(dir.dir, name))
+func (d *LocalDir) Open(name string) (fs.File, error) {
+	return os.Open(filepath.Join(d.dir, name))
 }
 
 // WriteFile implements Dir.WriteFile.
-func (dir *LocalDir) WriteFile(name string, d []byte) error {
-	return os.WriteFile(name, d, 0644)
+func (d *LocalDir) WriteFile(name string, b []byte) error {
+	return os.WriteFile(name, b, 0644)
 }
 
 var (
@@ -303,36 +333,6 @@ func (t *TemplateFormatter) Format(plan *Plan) ([]File, error) {
 		})
 	}
 	return fs, nil
-}
-
-// GlobStateReader creates a StateReader that loads all files from Dir matching
-// glob in lexicographic order and uses the Driver to create a migration state.
-func GlobStateReader(drv Driver, dir Dir, glob string) StateReaderFunc {
-	return func(ctx context.Context) (*schema.Realm, error) {
-		names, err := fs.Glob(dir, glob)
-		if err != nil {
-			return nil, err
-		}
-		// Sort files lexicographically.
-		sort.Slice(names, func(i, j int) bool {
-			return names[i] < names[j]
-		})
-		for _, n := range names {
-			f, err := dir.Open(n)
-			if err != nil {
-				return nil, err
-			}
-			b, err := io.ReadAll(f)
-			f.Close()
-			if err != nil {
-				return nil, err
-			}
-			if _, err := drv.ExecContext(ctx, string(b)); err != nil {
-				return nil, err
-			}
-		}
-		return drv.InspectRealm(ctx, nil)
-	}
 }
 
 type templateFile struct {

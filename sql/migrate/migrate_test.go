@@ -98,11 +98,11 @@ func TestGlobStateReader(t *testing.T) {
 	localFS, err := migrate.NewLocalDir("testdata")
 	require.NoError(t, err)
 
-	_, err = migrate.GlobStateReader(drv, localFS, "*.up.sql").ReadState(ctx)
+	_, err = localFS.GlobStateReader(drv, "*.up.sql").ReadState(ctx)
 	require.NoError(t, err)
 	require.Equal(t, drv.executed, []string{"CREATE TABLE t(c int);"})
 
-	_, err = migrate.GlobStateReader(drv, localFS, "*.down.sql").ReadState(ctx)
+	_, err = localFS.GlobStateReader(drv, "*.down.sql").ReadState(ctx)
 	require.NoError(t, err)
 	require.Equal(t, drv.executed, []string{"CREATE TABLE t(c int);", "DROP TABLE IF EXISTS t;"})
 }
