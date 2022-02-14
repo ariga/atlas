@@ -247,7 +247,7 @@ func setField(field reflect.Value, attr *Attr) error {
 			return fmt.Errorf("schemaspec: value of attr %q cannot be read as string: %w", attr.K, err)
 		}
 		field.SetString(s)
-	case reflect.Int:
+	case reflect.Int, reflect.Int64:
 		i, err := attr.Int()
 		if err != nil {
 			return fmt.Errorf("schemaspec: value of attr %q cannot be read as integer: %w", attr.K, err)

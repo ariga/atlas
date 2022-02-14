@@ -287,6 +287,39 @@ table "t" {
 	})
 }
 
+func TestUnmarshalSpec_Identity(t *testing.T) {
+	f := `
+schema "s" {}
+table "t" {
+	schema = schema.s
+	column "c" {
+		type = int
+		identity {
+			generated = %s
+			start = 10
+		}
+	}
+}
+`
+	t.Run("Invalid", func(t *testing.T) {
+		f := fmt.Sprintf(f, "UNK")
+		err := UnmarshalHCL([]byte(f), &schema.Schema{})
+		require.Error(t, err)
+	})
+	t.Run("Valid", func(t *testing.T) {
+		var (
+			s schema.Schema
+			f = fmt.Sprintf(f, "ALWAYS")
+		)
+		err := UnmarshalHCL([]byte(f), &s)
+		require.NoError(t, err)
+		id := s.Tables[0].Columns[0].Attrs[0].(*Identity)
+		require.Equal(t, GeneratedTypeAlways, id.Generation)
+		require.EqualValues(t, 10, id.Sequence.Start)
+		require.Zero(t, id.Sequence.Increment)
+	})
+}
+
 func TestMarshalSpec_Enum(t *testing.T) {
 	s := schema.New("test").
 		AddTables(
