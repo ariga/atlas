@@ -286,7 +286,7 @@ var (
 					"{{ now.Unix }}{{ with .Name }}_{{ . }}{{ end }}.down.sql",
 				)),
 				C: template.Must(template.New("").Funcs(templateFuncs).Parse(
-					"{{ range rev .Changes }}{{ println (sem .Reverse) }}{{ end }}",
+					"{{ range rev .Changes }}{{ with .Reverse }}{{ println (sem .) }}{{ end }}{{ end }}",
 				)),
 			},
 		},
@@ -345,8 +345,12 @@ func (f *templateFile) Name() string { return f.n }
 
 // reverse changes for the down migration.
 func reverse(changes []*Change) []*Change {
-	rev := make([]*Change, len(changes))
-	for i, j := 0, len(changes)-1; i < j; i, j = i+1, j-1 {
+	n := len(changes)
+	rev := make([]*Change, n)
+	if n%2 == 1 {
+		rev[n/2] = changes[n/2]
+	}
+	for i, j := 0, n-1; i < j; i, j = i+1, j-1 {
 		rev[i], rev[j] = changes[j], changes[i]
 	}
 	return rev
