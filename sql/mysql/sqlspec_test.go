@@ -23,9 +23,11 @@ table "table" {
 	}
 	column "price1" {
 		type = int
+		auto_increment = false
 	}
 	column "price2" {
 		type = int
+		auto_increment = true
 	}
 	column "account_name" {
 		type = varchar(32)
@@ -71,6 +73,7 @@ table "table" {
 		enforced = false
 	}
 	comment = "table comment"
+	auto_increment = 1000
 }
 
 table "accounts" {
@@ -136,6 +139,7 @@ table "accounts" {
 							T: TypeInt,
 						},
 					},
+					Attrs: []schema.Attr{&AutoIncrement{}},
 				},
 				{
 					Name: "account_name",
@@ -182,6 +186,7 @@ table "accounts" {
 					Attrs: []schema.Attr{&Enforced{V: false}},
 				},
 				&schema.Comment{Text: "table comment"},
+				&AutoIncrement{V: 1000},
 			},
 		},
 		{
@@ -453,6 +458,41 @@ table "posts" {
   column "a" {
     null = false
     type = text
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestMarshalSpec_AutoIncrement(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "id",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
+						Attrs: []schema.Attr{
+							&AutoIncrement{},
+						},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "id" {
+    null           = false
+    type           = bigint
+    auto_increment = true
   }
 }
 schema "test" {

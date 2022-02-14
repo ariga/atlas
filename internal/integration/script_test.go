@@ -113,19 +113,24 @@ func setupScript(t *testing.T, env *testscript.Env, db *sql.DB, dropCmd string) 
 	return nil
 }
 
+var (
+	keyDB  *sql.DB
+	keyDrv *sqlite.Driver
+)
+
 func (t *liteTest) setupScript(env *testscript.Env) error {
-	db, err := sql.Open("sqlite3", "file:atlas?mode=memory&cache=shared&_fk=1")
+	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?mode=memory&cache=shared&_fk=1", filepath.Base(env.WorkDir)))
 	require.NoError(t, err)
-	t.db = db
-	env.Setenv("db", "main")
 	env.Defer(func() {
 		require.NoError(t, db.Close())
 	})
-	t.Cleanup(func() {
-		require.NoError(t, db.Close())
-	})
-	t.drv, err = sqlite.Open(db)
+	drv, err := sqlite.Open(db)
 	require.NoError(t, err)
+	env.Setenv("db", "main")
+	// Attach connection and driver to the
+	// environment as tests run in parallel.
+	env.Values[keyDB] = db
+	env.Values[keyDrv] = drv
 	return nil
 }
 
@@ -154,8 +159,16 @@ func (t *myTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {
 		if err := t.db.QueryRow(fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`", schema, name)).Scan(&name, &create); err != nil {
 			return "", err
 		}
-		// Trim the "table_options" if it was not requested explicitly.
-		return create[:strings.LastIndexByte(create, ')')+1], nil
+		i := strings.LastIndexByte(create, ')')
+		create, opts := create[:i+1], strings.Fields(create[i+1:])
+		for _, opt := range opts {
+			switch strings.Split(opt, "=")[0] {
+			// Keep only options that are relevant for the tests.
+			case "AUTO_INCREMENT", "COMMENT":
+				create += " " + opt
+			}
+		}
+		return create, nil
 	})
 }
 
@@ -181,8 +194,11 @@ func (t *pgTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {
 
 func (t *liteTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {
 	cmdCmpShow(ts, args, func(_, name string) (string, error) {
-		var stmts []string
-		rows, err := t.db.Query("SELECT sql FROM sqlite_schema where tbl_name = ?", name)
+		var (
+			stmts []string
+			db    = ts.Value(keyDB).(*sql.DB)
+		)
+		rows, err := db.Query("SELECT sql FROM sqlite_schema where tbl_name = ?", name)
 		if err != nil {
 			return "", fmt.Errorf("querying schema")
 		}
@@ -250,8 +266,11 @@ func (t *pgTest) cmdExist(ts *testscript.TestScript, neg bool, args []string) {
 
 func (t *liteTest) cmdExist(ts *testscript.TestScript, neg bool, args []string) {
 	cmdExist(ts, neg, args, func(_, name string) (bool, error) {
-		var b bool
-		if err := t.db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE `type`='table' AND `name` = ?", name).Scan(&b); err != nil {
+		var (
+			b  bool
+			db = ts.Value(keyDB).(*sql.DB)
+		)
+		if err := db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE `type`='table' AND `name` = ?", name).Scan(&b); err != nil {
 			return false, err
 		}
 		return b, nil
@@ -318,18 +337,19 @@ func (t *liteTest) cmdSynced(ts *testscript.TestScript, neg bool, args []string)
 }
 
 func (t *liteTest) cmdApply(ts *testscript.TestScript, neg bool, args []string) {
-	cmdApply(ts, neg, args, t.drv.ApplyChanges, t.hclDiff)
+	cmdApply(ts, neg, args, ts.Value(keyDrv).(*sqlite.Driver).ApplyChanges, t.hclDiff)
 }
 
 func (t *liteTest) hclDiff(ts *testscript.TestScript, name string) []schema.Change {
 	var (
 		desired schema.Schema
 		f       = ts.ReadFile(name)
+		drv     = ts.Value(keyDrv).(*sqlite.Driver)
 	)
 	ts.Check(sqlite.UnmarshalHCL([]byte(f), &desired))
-	current, err := t.drv.InspectSchema(context.Background(), desired.Name, nil)
+	current, err := drv.InspectSchema(context.Background(), desired.Name, nil)
 	ts.Check(err)
-	changes, err := t.drv.SchemaDiff(current, &desired)
+	changes, err := drv.SchemaDiff(current, &desired)
 	ts.Check(err)
 	return changes
 }

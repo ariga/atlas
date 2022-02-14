@@ -89,6 +89,15 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 	if err := convertCharset(spec, &t.Attrs); err != nil {
 		return nil, err
 	}
+	// MySQL allows setting the initial AUTO_INCREMENT value
+	// on the table definition.
+	if attr, ok := spec.Attr("auto_increment"); ok {
+		v, err := attr.Int64()
+		if err != nil {
+			return nil, err
+		}
+		t.AddAttrs(&AutoIncrement{V: v})
+	}
 	return t, err
 }
 
@@ -139,6 +148,15 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 			return nil, fmt.Errorf(`unexpected type %T for atrribute "on_update"`, attr.V)
 		}
 		c.AddAttrs(&OnUpdate{A: exp.X})
+	}
+	if attr, ok := spec.Attr("auto_increment"); ok {
+		b, err := attr.Bool()
+		if err != nil {
+			return nil, err
+		}
+		if b {
+			c.AddAttrs(&AutoIncrement{})
+		}
 	}
 	return c, err
 }
@@ -210,6 +228,9 @@ func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 	}
 	if o := (OnUpdate{}); sqlx.Has(c.Attrs, &o) {
 		col.Extra.Attrs = append(col.Extra.Attrs, specutil.RawAttr("on_update", o.A))
+	}
+	if sqlx.Has(c.Attrs, &AutoIncrement{}) {
+		col.Extra.Attrs = append(col.Extra.Attrs, specutil.BoolAttr("auto_increment", true))
 	}
 	return col, nil
 }

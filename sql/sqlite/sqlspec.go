@@ -6,6 +6,7 @@ import (
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
+	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
 )
@@ -29,7 +30,20 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 
 // convertColumn converts a sqlspec.Column into a schema.Column.
 func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error) {
-	return specutil.Column(spec, convertColumnType)
+	c, err := specutil.Column(spec, convertColumnType)
+	if err != nil {
+		return nil, err
+	}
+	if attr, ok := spec.Attr("auto_increment"); ok {
+		b, err := attr.Bool()
+		if err != nil {
+			return nil, err
+		}
+		if b {
+			c.AddAttrs(&AutoIncrement{})
+		}
+	}
+	return c, nil
 }
 
 // convertColumnType converts a sqlspec.Column into a concrete SQLite schema.Type.
@@ -55,8 +69,15 @@ func tableSpec(tab *schema.Table) (*sqlspec.Table, error) {
 }
 
 // columnSpec converts from a concrete SQLite schema.Column into a sqlspec.Column.
-func columnSpec(col *schema.Column, _ *schema.Table) (*sqlspec.Column, error) {
-	return specutil.FromColumn(col, columnTypeSpec)
+func columnSpec(c *schema.Column, _ *schema.Table) (*sqlspec.Column, error) {
+	s, err := specutil.FromColumn(c, columnTypeSpec)
+	if err != nil {
+		return nil, err
+	}
+	if sqlx.Has(c.Attrs, &AutoIncrement{}) {
+		s.Extra.Attrs = append(s.Extra.Attrs, specutil.BoolAttr("auto_increment", true))
+	}
+	return s, nil
 }
 
 // columnTypeSpec converts from a concrete MySQL schema.Type into sqlspec.Column Type.
