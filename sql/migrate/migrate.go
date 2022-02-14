@@ -10,8 +10,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/template"
 	"time"
@@ -128,20 +130,22 @@ func Schema(s *schema.Schema) StateReader {
 type (
 	// Dir describes the methods needed to work with the Planner.
 	Dir interface {
-		// Open opens the named file.
-		Open(name string) (io.ReadWriteCloser, error)
+		fs.FS
+
+		// WriteFile writes the data to the named file.
+		WriteFile(string, []byte) error
 	}
 
-	// Formatter wraps the Format method for naming and dumping a migration plan to one or more Files.
+	// Formatter wraps the Format method.
 	Formatter interface {
-		// Format formats the given Plan.
-		// The returned map contains the contents for each file to dump.
+		// Format formats the given Plan into one or more migration files.
 		Format(*Plan) ([]File, error)
 	}
 
-	// File represents a migration file.
+	// File represents a single migration file.
 	File interface {
 		io.Reader
+		// Name returns the name of the FormattedFile.
 		Name() string
 	}
 
@@ -184,20 +188,18 @@ func (p *Planner) Plan(ctx context.Context, name string, from StateReader, to St
 	return p.drv.PlanChanges(ctx, name, changes)
 }
 
-// WritePlan writes the given plan to the Dir based on the given Formatter.
+// WritePlan writes the given Plan to the Dir based on the configured Formatter.
 func (p *Planner) WritePlan(plan *Plan) error {
-	fs, err := p.fmt.Format(plan)
+	files, err := p.fmt.Format(plan)
 	if err != nil {
 		return err
 	}
-	for _, f := range fs {
-		fh, err := p.dir.Open(f.Name())
+	for _, f := range files {
+		d, err := io.ReadAll(f)
 		if err != nil {
 			return err
 		}
-		_, err = io.Copy(fh, f)
-		fh.Close()
-		if err != nil {
+		if err := p.dir.WriteFile(f.Name(), d); err != nil {
 			return err
 		}
 	}
@@ -207,11 +209,6 @@ func (p *Planner) WritePlan(plan *Plan) error {
 // LocalDir implements Dir for a local path.
 type LocalDir struct {
 	dir string
-}
-
-// Open implements Dir.Open.
-func (d *LocalDir) Open(name string) (File, error) {
-	return os.Create(filepath.Join(d.dir, name))
 }
 
 // NewLocalDir returns a new the Dir used by a Planner to work on the given local path.
@@ -226,9 +223,44 @@ func NewLocalDir(path string) (*LocalDir, error) {
 	return &LocalDir{dir: path}, nil
 }
 
-// TemplateFormatter implements Formatter by using templates.
-type TemplateFormatter struct {
-	templates []struct{ N, C *template.Template }
+// GlobStateReader creates a StateReader that loads all files from Dir matching
+// glob in lexicographic order and uses the Driver to create a migration state.
+func (d *LocalDir) GlobStateReader(drv Driver, glob string) StateReaderFunc {
+	return func(ctx context.Context) (*schema.Realm, error) {
+		names, err := fs.Glob(d, glob)
+		if err != nil {
+			return nil, err
+		}
+		// Sort files lexicographically.
+		sort.Slice(names, func(i, j int) bool {
+			return names[i] < names[j]
+		})
+		for _, n := range names {
+			f, err := d.Open(n)
+			if err != nil {
+				return nil, err
+			}
+			b, err := io.ReadAll(f)
+			f.Close()
+			if err != nil {
+				return nil, err
+			}
+			if _, err := drv.ExecContext(ctx, string(b)); err != nil {
+				return nil, err
+			}
+		}
+		return drv.InspectRealm(ctx, nil)
+	}
+}
+
+// Open implements fs.FS.
+func (d *LocalDir) Open(name string) (fs.File, error) {
+	return os.Open(filepath.Join(d.dir, name))
+}
+
+// WriteFile implements Dir.WriteFile.
+func (d *LocalDir) WriteFile(name string, b []byte) error {
+	return os.WriteFile(name, b, 0644)
 }
 
 var (
@@ -260,6 +292,11 @@ var (
 		},
 	}
 )
+
+// TemplateFormatter implements Formatter by using templates.
+type TemplateFormatter struct {
+	templates []struct{ N, C *template.Template }
+}
 
 // NewTemplateFormatter creates a new Formatter working with the given templates.
 //
