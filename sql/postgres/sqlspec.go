@@ -94,6 +94,7 @@ var (
 	hclState = schemahcl.New(
 		schemahcl.WithTypes(TypeRegistry.Specs()),
 		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeGIN, IndexTypeGiST),
+		schemahcl.WithScopedEnums("table.column.identity.generated", GeneratedTypeAlways, GeneratedTypeByDefault),
 	)
 	// UnmarshalHCL unmarshals an Atlas HCL DDL document into v.
 	UnmarshalHCL = schemaspec.UnmarshalerFunc(func(bytes []byte, i interface{}) error {
@@ -179,7 +180,37 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 	if err := fixDefaultQuotes(spec.Default); err != nil {
 		return nil, err
 	}
-	return specutil.Column(spec, convertColumnType)
+	c, err := specutil.Column(spec, convertColumnType)
+	if err != nil {
+		return nil, err
+	}
+	if r, ok := spec.Extra.Resource("identity"); ok {
+		id, err := convertIdentity(r)
+		if err != nil {
+			return nil, err
+		}
+		c.Attrs = append(c.Attrs, id)
+	}
+	return c, nil
+}
+
+func convertIdentity(r *schemaspec.Resource) (*Identity, error) {
+	var spec struct {
+		Generation string `spec:"generated"`
+		Start      int64  `spec:"start"`
+		Increment  int64  `spec:"increment"`
+	}
+	if err := r.As(&spec); err != nil {
+		return nil, err
+	}
+	id := &Identity{Generation: fromVar(spec.Generation), Sequence: &Sequence{}}
+	if spec.Start != 0 {
+		id.Sequence.Start = spec.Start
+	}
+	if spec.Increment != 0 {
+		id.Sequence.Increment = spec.Increment
+	}
+	return id, nil
 }
 
 // fixDefaultQuotes fixes the quotes on the Default field to be single quotes
@@ -337,8 +368,34 @@ func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 }
 
 // columnSpec converts from a concrete Postgres schema.Column into a sqlspec.Column.
-func columnSpec(col *schema.Column, _ *schema.Table) (*sqlspec.Column, error) {
-	return specutil.FromColumn(col, columnTypeSpec)
+func columnSpec(c *schema.Column, _ *schema.Table) (*sqlspec.Column, error) {
+	s, err := specutil.FromColumn(c, columnTypeSpec)
+	if err != nil {
+		return nil, err
+	}
+	if i := (&Identity{}); sqlx.Has(c.Attrs, i) {
+		s.Extra.Children = append(s.Extra.Children, fromIdentity(i))
+	}
+	return s, nil
+}
+
+// fromIdentity returns the resource spec for representing the identity attributes.
+func fromIdentity(i *Identity) *schemaspec.Resource {
+	id := &schemaspec.Resource{
+		Type: "identity",
+		Attrs: []*schemaspec.Attr{
+			specutil.VarAttr("generated", strings.ToUpper(asVar(i.Generation))),
+		},
+	}
+	if s := i.Sequence; s != nil {
+		if s.Start != 1 {
+			id.Attrs = append(id.Attrs, specutil.Int64Attr("start", s.Start))
+		}
+		if s.Increment != 1 {
+			id.Attrs = append(id.Attrs, specutil.Int64Attr("increment", s.Increment))
+		}
+	}
+	return id
 }
 
 // columnTypeSpec converts from a concrete Postgres schema.Type into sqlspec.Column Type.
@@ -468,3 +525,8 @@ func attr(typ *schemaspec.Type, key string) (*schemaspec.Attr, bool) {
 	}
 	return nil, false
 }
+
+// asVar and fromVar formats a string as variable to make it HCL compatible.
+// The result is simple, replace each space with underscore.
+func asVar(s string) string   { return strings.ReplaceAll(s, " ", "_") }
+func fromVar(s string) string { return strings.ReplaceAll(s, "_", " ") }

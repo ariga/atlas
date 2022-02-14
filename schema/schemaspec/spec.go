@@ -194,6 +194,16 @@ func (a *Attr) Bools() ([]bool, error) {
 	return out, nil
 }
 
+// Resource returns the first child Resource by its type and reports whether it was found.
+func (r *Resource) Resource(t string) (*Resource, bool) {
+	for i := range r.Children {
+		if r.Children[i].Type == t {
+			return r.Children[i], true
+		}
+	}
+	return nil, false
+}
+
 // Attr returns the Attr by the provided name and reports whether it was found.
 func (r *Resource) Attr(name string) (*Attr, bool) {
 	return attrVal(r.Attrs, name)

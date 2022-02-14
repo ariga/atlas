@@ -584,7 +584,7 @@ func (s *state) alterColumn(b *sqlx.Builder, k schema.ChangeKind, c *schema.Colu
 			}
 			// The syntax for altering identity columns is identical to sequence_options.
 			// https://www.postgresql.org/docs/current/sql-altersequence.html
-			b.P("SET START WITH", strconv.FormatInt(id.Sequence.Start, 10), "SET INCREMENT BY", strconv.FormatInt(id.Sequence.Increment, 10), "RESTART")
+			b.P("SET GENERATED", id.Generation, "SET START WITH", strconv.FormatInt(id.Sequence.Start, 10), "SET INCREMENT BY", strconv.FormatInt(id.Sequence.Increment, 10), "RESTART")
 			k &= ^schema.ChangeAttr
 		case k.Is(schema.ChangeComment):
 			// Handled separately on modifyTable.

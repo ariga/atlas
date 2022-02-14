@@ -25,6 +25,14 @@ func BoolAttr(k string, v bool) *schemaspec.Attr {
 	}
 }
 
+// Int64Attr is a helper method for constructing *schemaspec.Attr of type int64.
+func Int64Attr(k string, v int64) *schemaspec.Attr {
+	return &schemaspec.Attr{
+		K: k,
+		V: &schemaspec.LiteralValue{V: strconv.FormatInt(v, 10)},
+	}
+}
+
 // LitAttr is a helper method for constructing *schemaspec.Attr instances that contain literal values.
 func LitAttr(k, v string) *schemaspec.Attr {
 	return &schemaspec.Attr{

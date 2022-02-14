@@ -142,3 +142,9 @@ const (
 	IndexTypeGIN   = "GIN"
 	IndexTypeGiST  = "GIST"
 )
+
+// List of "GENERATED" TYPES.
+const (
+	GeneratedTypeAlways    = "ALWAYS"
+	GeneratedTypeByDefault = "BY_DEFAULT" // BY DEFAULT.
+)
