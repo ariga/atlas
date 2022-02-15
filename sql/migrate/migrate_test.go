@@ -110,10 +110,11 @@ func TestGlobStateReader(t *testing.T) {
 }
 
 func TestLocalDir(t *testing.T) {
-	_, err := migrate.NewLocalDir("does_not_exist")
-	require.Error(t, os.ErrNotExist)
+	d, err := migrate.NewLocalDir("does_not_exist")
+	require.ErrorIs(t, err, os.ErrNotExist)
+	require.Nil(t, d)
 
-	d, err := migrate.NewLocalDir(t.TempDir())
+	d, err = migrate.NewLocalDir(t.TempDir())
 	require.NoError(t, err)
 	require.NotNil(t, d)
 	require.NoError(t, d.WriteFile("name", []byte("content")))
