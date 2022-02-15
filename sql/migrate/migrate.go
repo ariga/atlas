@@ -260,7 +260,7 @@ func (d *LocalDir) Open(name string) (fs.File, error) {
 
 // WriteFile implements Dir.WriteFile.
 func (d *LocalDir) WriteFile(name string, b []byte) error {
-	return os.WriteFile(name, b, 0644)
+	return os.WriteFile(filepath.Join(d.dir, name), b, 0644)
 }
 
 var (
