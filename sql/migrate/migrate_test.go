@@ -11,7 +11,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"path/filepath"
 	"strconv"
 	"testing"
 	"text/template"
@@ -111,20 +110,10 @@ func TestGlobStateReader(t *testing.T) {
 }
 
 func TestLocalDir(t *testing.T) {
-	d, err := migrate.NewLocalDir("does_not_exist")
+	_, err := migrate.NewLocalDir("does_not_exist")
 	require.Error(t, os.ErrNotExist)
-	require.Nil(t, d)
 
-	wd, err := os.Getwd()
-	require.NoError(t, err)
-
-	path := filepath.Join(wd, "migrations")
-	require.NoError(t, os.MkdirAll(path, 0750))
-	t.Cleanup(func() {
-		require.NoError(t, os.RemoveAll(path))
-	})
-
-	d, err = migrate.NewLocalDir(path)
+	d, err := migrate.NewLocalDir(t.TempDir())
 	require.NoError(t, err)
 	require.NotNil(t, d)
 	require.NoError(t, d.WriteFile("name", []byte("content")))
