@@ -8,7 +8,9 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"io"
 	"io/fs"
+	"os"
 	"strconv"
 	"testing"
 	"text/template"
@@ -105,6 +107,25 @@ func TestGlobStateReader(t *testing.T) {
 	_, err = localFS.GlobStateReader(drv, "*.down.sql").ReadState(ctx)
 	require.NoError(t, err)
 	require.Equal(t, drv.executed, []string{"CREATE TABLE t(c int);", "DROP TABLE IF EXISTS t;"})
+}
+
+func TestLocalDir(t *testing.T) {
+	d, err := migrate.NewLocalDir("does_not_exist")
+	require.ErrorIs(t, err, os.ErrNotExist)
+	require.Nil(t, d)
+
+	d, err = migrate.NewLocalDir(t.TempDir())
+	require.NoError(t, err)
+	require.NotNil(t, d)
+	require.NoError(t, d.WriteFile("name", []byte("content")))
+	f, err := d.Open("name")
+	require.NoError(t, err)
+	i, err := f.Stat()
+	require.NoError(t, err)
+	require.Equal(t, i.Name(), "name")
+	c, err := io.ReadAll(f)
+	require.NoError(t, err)
+	require.Equal(t, "content", string(c))
 }
 
 type (
