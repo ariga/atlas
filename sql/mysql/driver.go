@@ -99,6 +99,11 @@ func (d *conn) mariadb() bool {
 	return strings.Index(d.version, "MariaDB") > 0
 }
 
+// tidb reports if the Driver is connected to TiDC database.
+func (d *conn) tidb() bool {
+	return strings.Index(d.version, "TiDB") > 0
+}
+
 // compareV returns an integer comparing two versions according to
 // semantic version precedence.
 func (d *conn) compareV(w string) int {
