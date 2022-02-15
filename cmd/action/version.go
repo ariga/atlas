@@ -31,7 +31,7 @@ func init() {
 
 // parse returns a user facing version and release notes url
 func parse(version string) (string, string) {
-	u := "https://github.com/ariga/atlas/releases/tag/latest"
+	u := "https://github.com/ariga/atlas/releases/latest"
 	if ok := semver.IsValid(version); !ok {
 		return "- development", u
 	}
