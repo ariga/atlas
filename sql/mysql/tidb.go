@@ -11,12 +11,11 @@ import (
 )
 
 type tinspect struct {
-	conn
-	mysqlI *inspect
+	*inspect
 }
 
 func (i *tinspect) InspectSchema(ctx context.Context, name string, opts *schema.InspectOptions) (*schema.Schema, error) {
-	s, err := i.mysqlI.InspectSchema(ctx, name, opts)
+	s, err := i.inspect.InspectSchema(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -24,7 +23,7 @@ func (i *tinspect) InspectSchema(ctx context.Context, name string, opts *schema.
 }
 
 func (i *tinspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOption) (*schema.Realm, error) {
-	r, err := i.mysqlI.InspectRealm(ctx, opts)
+	r, err := i.inspect.InspectRealm(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +38,7 @@ func (i *tinspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOp
 
 func (i *tinspect) patchSchema(ctx context.Context, s *schema.Schema) (*schema.Schema, error) {
 	for _, t := range s.Tables {
-		if err := i.mysqlI.createStmt(ctx, t); err != nil {
+		if err := i.createStmt(ctx, t); err != nil {
 			return nil, err
 		}
 		if err := i.setCollation(t); err != nil {
