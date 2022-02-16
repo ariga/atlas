@@ -46,6 +46,17 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 	if err := sqlx.ScanOne(rows, &c.version, &c.collate, &c.charset); err != nil {
 		return nil, fmt.Errorf("mysql: scan system variables: %w", err)
 	}
+	if c.tidb() {
+		return &Driver{
+			conn:   c,
+			Differ: &sqlx.Diff{DiffDriver: &diff{c}},
+			Inspector: &tinspect{
+				c,
+				&inspect{c},
+			},
+			PlanApplier: &planApply{c},
+		}, nil
+	}
 	return &Driver{
 		conn:        c,
 		Differ:      &sqlx.Diff{DiffDriver: &diff{c}},

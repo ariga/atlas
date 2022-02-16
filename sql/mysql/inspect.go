@@ -469,20 +469,15 @@ func (i *inspect) extraAttr(t *schema.Table, c *schema.Column, extra string) err
 // the 'SHOW CREATE' command.
 func (i *inspect) showCreate(ctx context.Context, s *schema.Schema) error {
 	for _, t := range s.Tables {
-		s, ok := popShow(t)
+		st, ok := popShow(t)
 		if !ok {
 			continue
 		}
 		if err := i.createStmt(ctx, t); err != nil {
 			return err
 		}
-		if err := i.setAutoInc(s, t); err != nil {
+		if err := i.setAutoInc(st, t); err != nil {
 			return err
-		}
-		if i.tidb() {
-			if err := i.setCollation(s, t); err != nil {
-				return err
-			}
 		}
 		// TODO(a8m): setChecks, setIndexExpr from CREATE statement.
 	}
@@ -513,23 +508,6 @@ func (i *inspect) setAutoInc(s *showTable, t *schema.Table) error {
 	}
 	s.auto.V = v
 	t.Attrs = append(t.Attrs, s.auto)
-	return nil
-}
-
-var reColl = regexp.MustCompile("(?i)CHARSET\\s*=\\s*[\"`]*(\\w+).*?COLLATE\\s*=\\s*[\"`]*(\\w+)[\"`]*")
-
-// setCollation extracts the updated Collation from CREATE TABLE statement.
-func (i *inspect) setCollation(s *showTable, t *schema.Table) error {
-	var c CreateStmt
-	if !sqlx.Has(t.Attrs, &c) {
-		return fmt.Errorf("missing CREATE TABLE statment in attribuets for %q", t.Name)
-	}
-	matches := reColl.FindStringSubmatch(c.S)
-	if len(matches) != 3 {
-		return fmt.Errorf("missing COLLATE and/or CHARSET information on CREATE TABLE statment for %q", t.Name)
-	}
-	schema.ReplaceOrAppend(&t.Attrs, &schema.Charset{V: matches[1]})
-	schema.ReplaceOrAppend(&t.Attrs, &schema.Collation{V: matches[2]})
 	return nil
 }
 
@@ -674,7 +652,7 @@ SELECT
 	t1.CREATE_OPTIONS
 FROM
 	INFORMATION_SCHEMA.TABLES AS t1
-	LEFT OUTER JOIN INFORMATION_SCHEMA.COLLATIONS AS t2
+	LEFT JOIN INFORMATION_SCHEMA.COLLATIONS AS t2
 	ON t1.TABLE_COLLATION = t2.COLLATION_NAME
 WHERE
 	TABLE_SCHEMA IN (%s)
