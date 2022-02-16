@@ -21,7 +21,7 @@ cmpshow users 1.sql
 -- 1.hcl --
 schema "$db" {
     charset = "$charset"
-    collation = "$collate"
+    collate = "$collate"
 }
 
 table "users" {
@@ -44,7 +44,7 @@ CREATE TABLE `users` (
 -- 2.hcl --
 schema "$db" {
     charset = "$charset"
-    collation = "$collate"
+    collate = "$collate"
 }
 
 table "users" {
@@ -74,7 +74,7 @@ CREATE TABLE `users` (
 -- 3.hcl --
 schema "$db" {
     charset = "$charset"
-    collation = "$collate"
+    collate = "$collate"
 }
 
 table "users" {

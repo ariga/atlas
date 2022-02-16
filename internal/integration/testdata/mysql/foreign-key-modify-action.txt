@@ -12,7 +12,7 @@ cmpshow users posts 2.sql
 -- 1.hcl --
 schema "$db" {
     charset = "$charset"
-    collation = "$collate"
+    collate = "$collate"
 }
 
 table "users" {
@@ -73,7 +73,7 @@ CREATE TABLE `posts` (
 -- 2.hcl --
 schema "$db" {
     charset = "$charset"
-    collation = "$collate"
+    collate = "$collate"
 }
 
 table "users" {

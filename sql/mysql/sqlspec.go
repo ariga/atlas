@@ -176,7 +176,7 @@ func schemaSpec(s *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error) {
 		sc.Extra.Attrs = append(sc.Extra.Attrs, specutil.StrAttr("charset", c))
 	}
 	if c, ok := hasCollate(s.Attrs, nil); ok {
-		sc.Extra.Attrs = append(sc.Extra.Attrs, specutil.StrAttr("collation", c))
+		sc.Extra.Attrs = append(sc.Extra.Attrs, specutil.StrAttr("collate", c))
 	}
 	return sc, t, nil
 }
@@ -198,7 +198,7 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 		ts.Extra.Attrs = append(ts.Extra.Attrs, specutil.StrAttr("charset", c))
 	}
 	if c, ok := hasCollate(t.Attrs, t.Schema.Attrs); ok {
-		ts.Extra.Attrs = append(ts.Extra.Attrs, specutil.StrAttr("collation", c))
+		ts.Extra.Attrs = append(ts.Extra.Attrs, specutil.StrAttr("collate", c))
 	}
 	return ts, nil
 }
@@ -224,7 +224,7 @@ func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 		col.Extra.Attrs = append(col.Extra.Attrs, specutil.StrAttr("charset", c))
 	}
 	if c, ok := hasCollate(c.Attrs, t.Attrs); ok {
-		col.Extra.Attrs = append(col.Extra.Attrs, specutil.StrAttr("collation", c))
+		col.Extra.Attrs = append(col.Extra.Attrs, specutil.StrAttr("collate", c))
 	}
 	if o := (OnUpdate{}); sqlx.Has(c.Attrs, &o) {
 		col.Extra.Attrs = append(col.Extra.Attrs, specutil.RawAttr("on_update", o.A))
@@ -270,7 +270,12 @@ func convertCharset(spec specutil.Attrer, attrs *[]schema.Attr) error {
 		}
 		*attrs = append(*attrs, &schema.Charset{V: s})
 	}
-	if attr, ok := spec.Attr("collation"); ok {
+	// For backwards compatibility, accepts both "collate" and "collation".
+	attr, ok := spec.Attr("collate")
+	if !ok {
+		attr, ok = spec.Attr("collation")
+	}
+	if ok {
 		s, err := attr.String()
 		if err != nil {
 			return err
@@ -291,7 +296,7 @@ func hasCharset(attr []schema.Attr, parent []schema.Attr) (string, bool) {
 	return "", false
 }
 
-// hasCollate reports if the attribute contains the "collation" attribute,
+// hasCollate reports if the attribute contains the "collation"/"collate" attribute,
 // and it needs to be defined explicitly on the schema. This is true, in
 // case the element collation is different from its parent collation.
 func hasCollate(attr []schema.Attr, parent []schema.Attr) (string, bool) {

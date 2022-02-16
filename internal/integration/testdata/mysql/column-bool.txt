@@ -14,7 +14,7 @@ synced 3.hcl
 -- 1.hcl --
 schema "$db" {
     charset = "$charset"
-    collation = "$collate"
+    collate = "$collate"
 }
 
 table "users" {
@@ -40,7 +40,7 @@ CREATE TABLE `users` (
 -- 2.hcl --
 schema "$db" {
     charset = "$charset"
-    collation = "$collate"
+    collate = "$collate"
 }
 
 table "users" {
@@ -59,7 +59,7 @@ table "users" {
 -- 3.hcl --
 schema "$db" {
     charset = "$charset"
-    collation = "$collate"
+    collate = "$collate"
 }
 
 table "users" {

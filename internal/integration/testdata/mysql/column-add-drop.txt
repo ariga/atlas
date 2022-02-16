@@ -31,7 +31,7 @@ apply 0.hcl
 -- 1.hcl --
 schema "$db" {
     charset = "$charset"
-    collation = "$collate"
+    collate = "$collate"
 }
 
 table "users" {
@@ -59,7 +59,7 @@ CREATE TABLE `users` (
 -- 2.hcl --
 schema "$db" {
     charset = "$charset"
-    collation = "$collate"
+    collate = "$collate"
 }
 
 table "users" {
@@ -92,5 +92,5 @@ CREATE TABLE `users` (
 -- 0.hcl --
 schema "$db" {
     charset = "$charset"
-    collation = "$collate"
+    collate = "$collate"
 }
