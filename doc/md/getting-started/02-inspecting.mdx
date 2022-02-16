@@ -57,7 +57,7 @@ schema "example" {
 }
 ```
 As you can see, Atlas inspected our (empty) database and wrote an Atlas HCL document 
-containing only a [Schema](../ddl/sql.md#schema) resource.
+containing only a [Schema](../ddl/sql.mdx#schema) resource.
 
 Next, let's create some tables in our SQL database and see how they are reflected
 in the inspected Atlas HCL document. 
@@ -112,7 +112,7 @@ table "users" {
   }
 }
 ```
-This block represents a [Table](../ddl/sql.md#table) resource with an `id`, and `name`
+This block represents a [Table](../ddl/sql.mdx#table) resource with an `id`, and `name`
 columns. The `schema` field references the `example` schema that is defined elsewhere
 in this document. In addition, the `primary_key` sub-block defines the `id` column as 
 the primary key for the table. In SQL databases, columns usually have a type attribute
@@ -158,12 +158,12 @@ table "blog_posts" {
 }
 ```
 This block represents the `blog_posts` table. In addition to the elements
-we saw in the `users` table, here we can find a [Foreign Key](../ddl/sql.md#foreign-key)
+we saw in the `users` table, here we can find a [Foreign Key](../ddl/sql.mdx#foreign-key)
 block, declaring that the `author_id` column references the `id` column on the
 `users` table.
 
 To learn more about the resource types that are available to describe SQL schemas,
-read the [SQL Syntax](../ddl/sql.md) documentation.
+read the [SQL Syntax](../ddl/sql.mdx) documentation.
 
 In the next section, we will see how we can modify our database's schema by 
 applying a modified Atlas HCL file using the Atlas CLI.
