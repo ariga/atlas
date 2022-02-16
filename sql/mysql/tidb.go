@@ -105,7 +105,7 @@ func columns(schema *schema.Schema, s string) []string {
 }
 
 // e.g CHARSET=utf8mb4 COLLATE=utf8mb4_bin
-var reColl = regexp.MustCompile(`(?i)CHARSET\\s*=\\s*(\\w+)\\s*COLLATE\\s*=\\s*(\\w+)`)
+var reColl = regexp.MustCompile(`(?i)CHARSET\s*=\s*(\w+)\s*COLLATE\s*=\s*(\w+)`)
 
 // setCollation extracts the updated Collation from CREATE TABLE statement.
 func (i *tinspect) setCollation(t *schema.Table) error {
