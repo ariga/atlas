@@ -334,10 +334,10 @@ func TestMarshalSpec_Charset(t *testing.T) {
 	const expected = `table "users" {
   schema = schema.test
   column "a" {
-    null      = false
-    type      = text
-    charset   = "latin1"
-    collation = "latin1_swedish_ci"
+    null    = false
+    type    = text
+    charset = "latin1"
+    collate = "latin1_swedish_ci"
   }
   column "b" {
     null = false
@@ -345,23 +345,23 @@ func TestMarshalSpec_Charset(t *testing.T) {
   }
 }
 table "posts" {
-  schema    = schema.test
-  charset   = "latin1"
-  collation = "latin1_swedish_ci"
+  schema  = schema.test
+  charset = "latin1"
+  collate = "latin1_swedish_ci"
   column "a" {
     null = false
     type = text
   }
   column "b" {
-    null      = false
-    type      = text
-    charset   = "utf8mb4"
-    collation = "utf8mb4_0900_ai_ci"
+    null    = false
+    type    = text
+    charset = "utf8mb4"
+    collate = "utf8mb4_0900_ai_ci"
   }
 }
 schema "test" {
-  charset   = "utf8mb4"
-  collation = "utf8mb4_0900_ai_ci"
+  charset = "utf8mb4"
+  collate = "utf8mb4_0900_ai_ci"
 }
 `
 	require.EqualValues(t, expected, string(buf))

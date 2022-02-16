@@ -26,7 +26,7 @@ values={[
 ]}>
 <TabItem value="mysql">
 
-In MySQL and MariaDB, the `schema` resource can contain the `charset` and `collation` attributes. Read more about them
+In MySQL and MariaDB, the `schema` resource can contain the `charset` and `collate` attributes. Read more about them
 in [MySQL](https://dev.mysql.com/doc/refman/8.0/en/charset.html) or
 [MariaDB](https://mariadb.com/kb/en/setting-character-sets-and-collations/) websites.
 <br/>
@@ -34,9 +34,9 @@ in [MySQL](https://dev.mysql.com/doc/refman/8.0/en/charset.html) or
 ```hcl
 # Schema with attributes.
 schema "market" {
-  charset   = "utf8mb4"
-  collation = "utf8mb4_0900_ai_ci"
-  comment   = "A schema comment"
+  charset = "utf8mb4"
+  collate = "utf8mb4_0900_ai_ci"
+  comment = "A schema comment"
 }
 
 # Schema without attributes.
@@ -268,7 +268,7 @@ table "users" {
 
 ## Charset and Collation
 
-The `charset` and `collation` are attributes of `schema`, `table` and `column` and supported by MySQL, MariaDB and PostgreSQL.
+The `charset` and `collate` are attributes of `schema`, `table` and `column` and supported by MySQL, MariaDB and PostgreSQL.
 Read more about them in [MySQL](https://dev.mysql.com/doc/refman/8.0/en/charset.html),
 [MariaDB](https://mariadb.com/kb/en/setting-character-sets-and-collations/) and
 [PostgreSQL](https://www.postgresql.org/docs/current/collation.html) websites.
@@ -283,16 +283,16 @@ values={[
 
 ```hcl
 schema "public" {
-    charset   = "utf8mb4"
-    collation = "utf8mb4_0900_ai_ci"
+    charset = "utf8mb4"
+    collate = "utf8mb4_0900_ai_ci"
 }
 
 table "products" {
     column "name" {
-        type = text
-        collation = "binary"
+        type    = text
+        collate = "binary"
     }
-    collation = "utf8_general_ci"
+    collate = "utf8_general_ci"
 }
 ```
 
@@ -304,8 +304,8 @@ schema "public" {}
 
 table "products" {
     column "name" {
-        type = text
-        collation = "es_ES"
+        type    = text
+        collate = "es_ES"
     }
 }
 ```
