@@ -15,6 +15,7 @@ module.exports = {
         {
             type: 'category',
             label: 'Getting Started',
+            collapsed: false,
             items: [
                 'getting-started/getting-started-installation',
                 'getting-started/getting-started-inspection',
@@ -25,11 +26,12 @@ module.exports = {
         {
             type: 'category',
             label: 'Data Definition Language',
+            collapsed: false,
             items: [
-                {type: 'doc', id: 'ddl/ddl-intro', label: 'Introduction'},
-                {type: 'doc', id: 'ddl/ddl-sql', label: 'SQL'},
-                {type: 'doc', id: 'ddl/ddl-sql-types', label: 'SQL Types'},
-            ]
+                'ddl/ddl-sql',
+                'ddl/ddl-sql-types',
+                'ddl/ddl-intro',
+            ],
         },
         {
             type: 'category',
