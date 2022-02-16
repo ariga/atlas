@@ -168,10 +168,6 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 		}
 		t := &schema.Table{Name: name.String}
 		s.AddTables(t)
-		// add SHOW TABLE information needed for collation information.
-		if i.tidb() {
-			putShow(t)
-		}
 		if sqlx.ValidString(charset) {
 			t.Attrs = append(t.Attrs, &schema.Charset{
 				V: charset.String,
