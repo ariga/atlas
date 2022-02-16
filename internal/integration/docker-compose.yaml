@@ -125,7 +125,7 @@ services:
 # Default DB test, No Password
   tidb:
     platform: linux/amd64
-    image: pingcap/tidb:latest
+    image: pingcap/tidb:v5.4.0
     healthcheck:
       test: mysqladmin ping -ppass
     ports:
