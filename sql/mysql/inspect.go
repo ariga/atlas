@@ -465,14 +465,14 @@ func (i *inspect) extraAttr(t *schema.Table, c *schema.Column, extra string) err
 // the 'SHOW CREATE' command.
 func (i *inspect) showCreate(ctx context.Context, s *schema.Schema) error {
 	for _, t := range s.Tables {
-		s, ok := popShow(t)
+		st, ok := popShow(t)
 		if !ok {
 			continue
 		}
 		if err := i.createStmt(ctx, t); err != nil {
 			return err
 		}
-		if err := i.setAutoInc(s, t); err != nil {
+		if err := i.setAutoInc(st, t); err != nil {
 			return err
 		}
 		// TODO(a8m): setChecks, setIndexExpr from CREATE statement.
@@ -648,7 +648,7 @@ SELECT
 	t1.CREATE_OPTIONS
 FROM
 	INFORMATION_SCHEMA.TABLES AS t1
-	JOIN INFORMATION_SCHEMA.COLLATIONS AS t2
+	LEFT JOIN INFORMATION_SCHEMA.COLLATIONS AS t2
 	ON t1.TABLE_COLLATION = t2.COLLATION_NAME
 WHERE
 	TABLE_SCHEMA IN (%s)

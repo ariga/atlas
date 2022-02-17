@@ -46,6 +46,14 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 	if err := sqlx.ScanOne(rows, &c.version, &c.collate, &c.charset); err != nil {
 		return nil, fmt.Errorf("mysql: scan system variables: %w", err)
 	}
+	if c.tidb() {
+		return &Driver{
+			conn:        c,
+			Differ:      &sqlx.Diff{DiffDriver: &diff{c}},
+			Inspector:   &tinspect{inspect{c}},
+			PlanApplier: &planApply{c},
+		}, nil
+	}
 	return &Driver{
 		conn:        c,
 		Differ:      &sqlx.Diff{DiffDriver: &diff{c}},
@@ -97,6 +105,11 @@ func (d *conn) supportsEnforceCheck() bool {
 // mariadb reports if the Driver is connected to a MariaDB database.
 func (d *conn) mariadb() bool {
 	return strings.Index(d.version, "MariaDB") > 0
+}
+
+// tidb reports if the Driver is connected to a TiDB database.
+func (d *conn) tidb() bool {
+	return strings.Index(d.version, "TiDB") > 0
 }
 
 // compareV returns an integer comparing two versions according to
