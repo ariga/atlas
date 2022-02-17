@@ -123,8 +123,14 @@ services:
       - 4308:3306
 
 # Default DB test, No Password
-  tidb:
+  tidb5:
     platform: linux/amd64
     image: pingcap/tidb:v5.4.0
     ports:
       - 4309:4000
+
+  tidb_latest:
+    platform: linux/amd64
+    image: pingcap/tidb:latest
+    ports:
+      - 4310:4000

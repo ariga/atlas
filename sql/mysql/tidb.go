@@ -41,10 +41,13 @@ func (i *tinspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOp
 
 func (i *tinspect) patchSchema(ctx context.Context, s *schema.Schema) (*schema.Schema, error) {
 	for _, t := range s.Tables {
-		if err := i.createStmt(ctx, t); err != nil {
-			return nil, err
+		var createStmt CreateStmt
+		if ok := sqlx.Has(t.Attrs, &createStmt); !ok {
+			if err := i.createStmt(ctx, t); err != nil {
+				return nil, err
+			}
 		}
-		if err := i.setCollation(t); err != nil {
+		if err := i.setCollate(t); err != nil {
 			return nil, err
 		}
 		if err := i.setFKs(s, t); err != nil {
@@ -110,8 +113,8 @@ func columns(schema *schema.Schema, s string) []string {
 // e.g CHARSET=utf8mb4 COLLATE=utf8mb4_bin
 var reColl = regexp.MustCompile(`(?i)CHARSET\s*=\s*(\w+)\s*COLLATE\s*=\s*(\w+)`)
 
-// setCollation extracts the updated Collation from CREATE TABLE statement.
-func (i *tinspect) setCollation(t *schema.Table) error {
+// setCollate extracts the updated Collation from CREATE TABLE statement.
+func (i *tinspect) setCollate(t *schema.Table) error {
 	var c CreateStmt
 	if !sqlx.Has(t.Attrs, &c) {
 		return fmt.Errorf("missing CREATE TABLE statment in attribuets for %q", t.Name)
