@@ -40,7 +40,7 @@ table "posts" {
     foreign_key "owner_id" {
     	columns = [table.posts.column.author_id]
     	ref_columns = [table.users.column.id]
-    	on_update = "SET NULL"
+    	on_update = SET_NULL
     }
 }
 
@@ -101,8 +101,8 @@ table "posts" {
     foreign_key "owner_id" {
     	columns = [table.posts.column.author_id]
     	ref_columns = [table.users.column.id]
-    	on_update = "NO ACTION"
-    	on_delete = "CASCADE"
+    	on_update = NO_ACTION
+    	on_delete = CASCADE
     }
 }
 
