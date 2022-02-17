@@ -126,7 +126,5 @@ services:
   tidb:
     platform: linux/amd64
     image: pingcap/tidb:v5.4.0
-    healthcheck:
-      test: mysqladmin ping -ppass
     ports:
       - 4309:4000

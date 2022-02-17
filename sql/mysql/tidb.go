@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package mysql
 
 import (
@@ -11,7 +15,7 @@ import (
 )
 
 type tinspect struct {
-	*inspect
+	inspect
 }
 
 func (i *tinspect) InspectSchema(ctx context.Context, name string, opts *schema.InspectOptions) (*schema.Schema, error) {
