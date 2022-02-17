@@ -107,7 +107,7 @@ func (d *conn) mariadb() bool {
 	return strings.Index(d.version, "MariaDB") > 0
 }
 
-// tidb reports if the Driver is connected to a TiDC database.
+// tidb reports if the Driver is connected to a TiDB database.
 func (d *conn) tidb() bool {
 	return strings.Index(d.version, "TiDB") > 0
 }
