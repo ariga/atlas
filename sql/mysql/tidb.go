@@ -116,7 +116,7 @@ func (i *tinspect) setCollation(t *schema.Table) error {
 	if len(matches) != 3 {
 		return fmt.Errorf("missing COLLATE and/or CHARSET information on CREATE TABLE statment for %q", t.Name)
 	}
-	schema.ReplaceOrAppend(&t.Attrs, &schema.Charset{V: matches[1]})
-	schema.ReplaceOrAppend(&t.Attrs, &schema.Collation{V: matches[2]})
+	t.SetCharset(matches[1])
+	t.SetCollation(matches[2])
 	return nil
 }
