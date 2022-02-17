@@ -28,8 +28,7 @@ func (i *tinspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOp
 		return nil, err
 	}
 	for _, s := range r.Schemas {
-		_, err := i.patchSchema(ctx, s)
-		if err != nil {
+		if _, err := i.patchSchema(ctx, s); err != nil {
 			return nil, err
 		}
 	}
