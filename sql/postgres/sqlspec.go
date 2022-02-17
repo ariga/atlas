@@ -95,6 +95,8 @@ var (
 		schemahcl.WithTypes(TypeRegistry.Specs()),
 		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeGIN, IndexTypeGiST),
 		schemahcl.WithScopedEnums("table.column.identity.generated", GeneratedTypeAlways, GeneratedTypeByDefault),
+		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
+		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
 	)
 	// UnmarshalHCL unmarshals an Atlas HCL DDL document into v.
 	UnmarshalHCL = schemaspec.UnmarshalerFunc(func(bytes []byte, i interface{}) error {
@@ -203,7 +205,7 @@ func convertIdentity(r *schemaspec.Resource) (*Identity, error) {
 	if err := r.As(&spec); err != nil {
 		return nil, err
 	}
-	id := &Identity{Generation: fromVar(spec.Generation), Sequence: &Sequence{}}
+	id := &Identity{Generation: specutil.FromVar(spec.Generation), Sequence: &Sequence{}}
 	if spec.Start != 0 {
 		id.Sequence.Start = spec.Start
 	}
@@ -361,7 +363,8 @@ func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 	if err != nil {
 		return nil, err
 	}
-	if i := (IndexType{}); sqlx.Has(idx.Attrs, &i) {
+	// Avoid printing the index type if it is the default.
+	if i := (IndexType{}); sqlx.Has(idx.Attrs, &i) && i.T != IndexTypeBTree {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("type", strings.ToUpper(i.T)))
 	}
 	return spec, nil
@@ -384,7 +387,7 @@ func fromIdentity(i *Identity) *schemaspec.Resource {
 	id := &schemaspec.Resource{
 		Type: "identity",
 		Attrs: []*schemaspec.Attr{
-			specutil.VarAttr("generated", strings.ToUpper(asVar(i.Generation))),
+			specutil.VarAttr("generated", strings.ToUpper(specutil.Var(i.Generation))),
 		},
 	}
 	if s := i.Sequence; s != nil {
@@ -525,8 +528,3 @@ func attr(typ *schemaspec.Type, key string) (*schemaspec.Attr, bool) {
 	}
 	return nil, false
 }
-
-// asVar and fromVar formats a string as variable to make it HCL compatible.
-// The result is simple, replace each space with underscore.
-func asVar(s string) string   { return strings.ReplaceAll(s, " ", "_") }
-func fromVar(s string) string { return strings.ReplaceAll(s, "_", " ") }

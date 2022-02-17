@@ -294,19 +294,31 @@ func setPtr(field reflect.Value, val Value) error {
 	if field.IsNil() {
 		field.Set(reflect.New(field.Type().Elem()))
 	}
-	switch e := field.Elem(); e.Kind() {
-	case reflect.Bool:
+	switch e := field.Interface().(type) {
+	case *bool:
 		b, err := BoolVal(val)
 		if err != nil {
 			return err
 		}
-		e.SetBool(b)
-	case reflect.String:
+		*e = b
+	case *string:
 		s, err := StrVal(val)
 		if err != nil {
 			return err
 		}
-		e.SetString(s)
+		*e = s
+	case *LiteralValue:
+		s, err := StrVal(val)
+		if err != nil {
+			return err
+		}
+		e.V = s
+	case *Ref:
+		s, err := StrVal(val)
+		if err != nil {
+			return err
+		}
+		e.V = s
 	default:
 		return fmt.Errorf("unhandled pointer type %T", val)
 	}

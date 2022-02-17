@@ -99,8 +99,8 @@ table "users" {
   foreign_key "manager_fk" {
     columns = [column.manager_id]
     ref_columns = [column.id]
-    on_delete = "CASCADE"
-    on_update = "NO ACTION"
+    on_delete = CASCADE
+    on_update = NO_ACTION
   }
 }
 ```
@@ -190,8 +190,8 @@ as references to columns in other tables.
 foreign_key "manager_fk" {
   columns = [column.manager_id]
   ref_columns = [column.id]
-  on_delete = "CASCADE"
-  on_update = "NO ACTION"
+  on_delete = CASCADE
+  on_update = NO_ACTION
 }
 ```
 
