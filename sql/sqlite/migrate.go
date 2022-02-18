@@ -344,7 +344,32 @@ func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.
 			fromC = append(fromC, column.Name)
 		}
 	}
-	stmt := fmt.Sprintf("INSERT INTO `%s` (`%s`) SELECT `%s` FROM `%s`", to.Name, strings.Join(toC, "`, `"), strings.Join(fromC, "`, `"), from.Name)
+
+	var toCols string
+	for i, cc := range toC {
+		if strings.Contains(cc, "`") {
+			toCols += cc
+		} else {
+			toCols += "`" + cc + "`"
+		}
+		if i+1 < len(toC) {
+			toCols += ", "
+		}
+	}
+
+	var fromCols string
+	for i, cc := range fromC {
+		if strings.Contains(cc, "`") {
+			fromCols += cc
+		} else {
+			fromCols += "`" + cc + "`"
+		}
+		if i+1 < len(fromC) {
+			fromCols += ", "
+		}
+	}
+
+	stmt := fmt.Sprintf("INSERT INTO `%s` (%s) SELECT %s FROM `%s`", to.Name, toCols, fromCols, from.Name)
 	s.append(&migrate.Change{
 		Cmd:     stmt,
 		Args:    args,
