@@ -345,31 +345,7 @@ func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.
 		}
 	}
 
-	var toCols string
-	for i, cc := range toC {
-		if strings.Contains(cc, "`") {
-			toCols += cc
-		} else {
-			toCols += "`" + cc + "`"
-		}
-		if i+1 < len(toC) {
-			toCols += ", "
-		}
-	}
-
-	var fromCols string
-	for i, cc := range fromC {
-		if strings.Contains(cc, "`") {
-			fromCols += cc
-		} else {
-			fromCols += "`" + cc + "`"
-		}
-		if i+1 < len(fromC) {
-			fromCols += ", "
-		}
-	}
-
-	stmt := fmt.Sprintf("INSERT INTO `%s` (%s) SELECT %s FROM `%s`", to.Name, toCols, fromCols, from.Name)
+	stmt := fmt.Sprintf("INSERT INTO `%s` (%s) SELECT %s FROM `%s`", to.Name, identComma(toC), identComma(fromC), from.Name)
 	s.append(&migrate.Change{
 		Cmd:     stmt,
 		Args:    args,
@@ -494,4 +470,16 @@ func defaultValue(c *schema.Column) (string, error) {
 	default:
 		return "", fmt.Errorf("unexpected default value type: %T", x)
 	}
+}
+
+func identComma(c []string) string {
+	b := &sqlx.Builder{QuoteChar: '`'}
+	b.MapComma(c, func(i int, b *sqlx.Builder) {
+		if strings.ContainsRune(c[i], '`') {
+			b.WriteString(c[i])
+		} else {
+			b.Ident(c[i])
+		}
+	})
+	return b.String()
 }
