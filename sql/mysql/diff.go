@@ -285,8 +285,8 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 		changed = !sqlx.ValuesEqual(fromT.Values, toT.Values)
 	case *schema.IntegerType:
 		toT := toT.(*schema.IntegerType)
-		// MySQL v8.0.19 dropped the display width
-		// information from the information schema.
+		// MySQL v8.0.19 dropped both display-width
+		// and zerofill from the information schema.
 		if d.supportsDisplayWidth() {
 			ft, _, _, err := parseColumn(fromT.T)
 			if err != nil {
@@ -298,9 +298,7 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 			}
 			fromT.T, toT.T = ft[0], tt[0]
 		}
-		fromW, toW := displayWidth(fromT.Attrs), displayWidth(toT.Attrs)
-		changed = fromT.T != toT.T || fromT.Unsigned != toT.Unsigned ||
-			(fromW != nil) != (toW != nil) || (fromW != nil && fromW.N != toW.N)
+		changed = fromT.T != toT.T || fromT.Unsigned != toT.Unsigned
 	case *schema.JSONType:
 		toT := toT.(*schema.JSONType)
 		changed = fromT.T != toT.T
@@ -351,7 +349,9 @@ func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
 		}
 		return false, nil
 	case *schema.IntegerType:
-		return !d.equalsIntValues(d1, d2), nil
+		return !d.equalIntValues(d1, d2), nil
+	case *schema.FloatType, *schema.DecimalType:
+		return !d.equalFloatValues(d1, d2), nil
 	case *schema.EnumType, *SetType, *schema.StringType:
 		return !equalsStringValues(d1, d2), nil
 	case *schema.TimeType:
@@ -365,9 +365,9 @@ func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
 	}
 }
 
-// equalsIntValues report if the 2 int default values are ~equal.
+// equalIntValues report if the 2 int default values are ~equal.
 // Note that default expression are not supported atm.
-func (d *diff) equalsIntValues(x1, x2 string) bool {
+func (d *diff) equalIntValues(x1, x2 string) bool {
 	x1 = strings.ToLower(strings.Trim(x1, "' "))
 	x2 = strings.ToLower(strings.Trim(x2, "' "))
 	if x1 == x2 {
@@ -390,6 +390,25 @@ func (d *diff) equalsIntValues(x1, x2 string) bool {
 			return false
 		}
 		d2 = int64(f)
+	}
+	return d1 == d2
+}
+
+// equalFloatValues report if the 2 float default values are ~equal.
+// Note that default expression are not supported atm.
+func (d *diff) equalFloatValues(x1, x2 string) bool {
+	x1 = strings.ToLower(strings.Trim(x1, "' "))
+	x2 = strings.ToLower(strings.Trim(x2, "' "))
+	if x1 == x2 {
+		return true
+	}
+	d1, err := strconv.ParseFloat(x1, 64)
+	if err != nil {
+		return false
+	}
+	d2, err := strconv.ParseFloat(x2, 64)
+	if err != nil {
+		return false
 	}
 	return d1 == d2
 }
@@ -424,27 +443,6 @@ func binValue(x string) (string, error) {
 		return x, err
 	}
 	return string(d), nil
-}
-
-func displayWidth(attr []schema.Attr) *DisplayWidth {
-	var (
-		z *ZeroFill
-		d *DisplayWidth
-	)
-	for i := range attr {
-		switch at := attr[i].(type) {
-		case *ZeroFill:
-			z = at
-		case *DisplayWidth:
-			d = at
-		}
-	}
-	// Accept the display width only if
-	// the zerofill attribute is defined.
-	if z == nil || d == nil {
-		return nil
-	}
-	return d
 }
 
 // keySupportsFK reports if the index key was created automatically by MySQL
