@@ -157,7 +157,7 @@ func TestPlanChanges(t *testing.T) {
 				Changes: []*migrate.Change{
 					{Cmd: "PRAGMA foreign_keys = off"},
 					{Cmd: "CREATE TABLE `new_users` (`id` bigint NOT NULL, CHECK (id <> 0))", Reverse: "DROP TABLE `new_users`"},
-					{Cmd: "INSERT INTO new_users (id) SELECT id FROM users"},
+					{Cmd: "INSERT INTO `new_users` (`id`) SELECT `id` FROM `users`"},
 					{Cmd: "DROP TABLE `users`"},
 					{Cmd: "ALTER TABLE `new_users` RENAME TO `users`"},
 					{Cmd: "PRAGMA foreign_keys = on"},

@@ -344,7 +344,7 @@ func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.
 			fromC = append(fromC, column.Name)
 		}
 	}
-	stmt := fmt.Sprintf("INSERT INTO %s (%s) SELECT %s FROM %s", to.Name, strings.Join(toC, ", "), strings.Join(fromC, ", "), from.Name)
+	stmt := fmt.Sprintf("INSERT INTO `%s` (%s) SELECT %s FROM `%s`", to.Name, identComma(toC), identComma(fromC), from.Name)
 	s.append(&migrate.Change{
 		Cmd:     stmt,
 		Args:    args,
@@ -469,4 +469,16 @@ func defaultValue(c *schema.Column) (string, error) {
 	default:
 		return "", fmt.Errorf("unexpected default value type: %T", x)
 	}
+}
+
+func identComma(c []string) string {
+	b := &sqlx.Builder{QuoteChar: '`'}
+	b.MapComma(c, func(i int, b *sqlx.Builder) {
+		if strings.ContainsRune(c[i], '`') {
+			b.WriteString(c[i])
+		} else {
+			b.Ident(c[i])
+		}
+	})
+	return b.String()
 }
