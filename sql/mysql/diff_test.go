@@ -197,6 +197,7 @@ func TestDiff_TableDiff(t *testing.T) {
 					Columns: []*schema.Column{
 						{Name: "c1", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}},
 						{Name: "c2", Type: &schema.ColumnType{Raw: "tinyint", Type: &schema.IntegerType{T: "tinyint"}}},
+						{Name: "c4", Type: &schema.ColumnType{Type: &schema.FloatType{T: "float"}}, Default: &schema.Literal{V: "0.00"}},
 					},
 				}
 				to = &schema.Table{
@@ -209,6 +210,7 @@ func TestDiff_TableDiff(t *testing.T) {
 							Attrs:   []schema.Attr{&schema.Comment{Text: "json comment"}},
 						},
 						{Name: "c3", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
+						{Name: "c4", Type: &schema.ColumnType{Type: &schema.FloatType{T: "float"}}, Default: &schema.Literal{V: "0.00"}},
 					},
 				}
 			)
