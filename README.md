@@ -21,23 +21,12 @@ be used individually but are designed to work very well together.
 
 ## Quick Installation
 
-Download latest release.
+On macOS:
+
 ```shell
-curl -LO https://release.ariga.io/atlas/atlas-darwin-amd64-latest
+brew install ariga/tap/atlas
 ```
 
-Make the atlas binary executable.
-```shell
-chmod +x ./atlas-darwin-amd64-latest
-```
-
-Move the atlas binary to a file location on your system PATH.
-```shell
-sudo mv ./atlas-darwin-amd64-latest /usr/local/bin/atlas
-```
-```shell
-sudo chown root: /usr/local/bin/atlas
-```
 Instructions for other platforms and databases: [Getting Started](https://atlasgo.io/).
 
 ## Getting Started

@@ -20,13 +20,23 @@ the schema of a local database that we will run inside a Docker container.
 ### Install the CLI
 
 <Tabs
-defaultValue="apple-intel"
+defaultValue="apple-intel-brew"
 values={[
-{label: 'MacOS', value: 'apple-intel'},
+{label: 'macOS (Homebrew)', value: 'apple-intel-brew'},
+{label: 'macOS (Plain)', value: 'apple-intel-plain'},
 {label: 'Linux', value: 'linux'},
 {label: 'Windows', value: 'windows'},
 ]}>
-<TabItem value="apple-intel">
+<TabItem value="apple-intel-brew">
+
+Get the latest release with [Homebrew](https://brew.sh/):
+
+```shell
+brew install ariga/tap/atlas
+```
+
+</TabItem>
+<TabItem value="apple-intel-plain">
 
 Download latest release.
 ```shell
