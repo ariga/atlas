@@ -21,12 +21,16 @@ type diff struct{ conn }
 // SchemaAttrDiff returns a changeset for migrating schema attributes from one state to the other.
 func (d *diff) SchemaAttrDiff(from, to *schema.Schema) []schema.Change {
 	var changes []schema.Change
+	var ra []schema.Attr
+	if from.Realm != nil {
+		ra = from.Realm.Attrs
+	}
 	// Charset change.
-	if change := d.charsetChange(from.Attrs, from.Realm.Attrs, to.Attrs); change != noChange {
+	if change := d.charsetChange(from.Attrs, ra, to.Attrs); change != noChange {
 		changes = append(changes, change)
 	}
 	// Collation change.
-	if change := d.collationChange(from.Attrs, from.Realm.Attrs, to.Attrs); change != noChange {
+	if change := d.collationChange(from.Attrs, ra, to.Attrs); change != noChange {
 		changes = append(changes, change)
 	}
 	return changes
