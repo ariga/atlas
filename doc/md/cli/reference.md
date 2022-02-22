@@ -56,7 +56,7 @@ atlas schema
 ```
 
 #### Details
-The `atlas schema` subcommand groups commands for working with Atlas schemas.
+The `atlas schema` command groups subcommands for working with Atlas schemas.
 
 
 ### atlas schema apply
@@ -110,7 +110,7 @@ atlas schema diff [flags]
 #### Details
 `atlas schema diff` connects to two given databases, inspects
 them, calculates the difference in their schemas, and prints a plan of
-SQL queries to bring the "from" database to the schema of the "to" database.
+SQL statements to migrate the "from" database to the schema of the "to" database.
 
 #### Flags
 ```

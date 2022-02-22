@@ -12,7 +12,7 @@ import (
 var schemaCmd = &cobra.Command{
 	Use:   "schema",
 	Short: "Work with atlas schemas.",
-	Long:  "The `atlas schema` subcommand groups commands for working with Atlas schemas.",
+	Long:  "The `atlas schema` command groups subcommands for working with Atlas schemas.",
 }
 
 func init() {
