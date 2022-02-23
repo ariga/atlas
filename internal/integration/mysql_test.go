@@ -102,7 +102,7 @@ func TestMySQL_AddIndexedColumns(t *testing.T) {
 
 		// In MySQL, dropping a column should remove it from the key.
 		// However, on MariaDB an explicit DROP/ADD INDEX is required.
-		if t.mariadb() {
+		if t.mariadb() || t.tidb() {
 			idx, ok := usersT.Index("a_b_c_unique")
 			require.True(t, ok)
 			idx.Parts = idx.Parts[:len(idx.Parts)-1]
@@ -131,8 +131,16 @@ func TestMySQL_AddIndexedColumns(t *testing.T) {
 		require.True(t, ok)
 		require.Len(t, idx.Parts, 1)
 		usersT.Columns = usersT.Columns[:len(usersT.Columns)-1]
+
+		numChanges := 1
+		// In MySQL, dropping a column should remove its index.
+		// However, on TiDB an explicit DROP INDEX is required.
+		if t.tidb() {
+			usersT.Indexes = nil
+			numChanges = 2
+		}
 		changes = t.diff(t.loadUsers(), usersT)
-		require.Len(t, changes, 1)
+		require.Len(t, changes, numChanges)
 		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
 		ensureNoChange(t, t.loadUsers())
 		idx, ok = t.loadUsers().Index("a_b_c_unique")
@@ -174,11 +182,16 @@ func TestMySQL_AddColumns(t *testing.T) {
 			&schema.Column{Name: "u", Type: &schema.ColumnType{Type: &schema.EnumType{T: "enum", Values: []string{"a", "b", "c"}}}},
 			&schema.Column{Name: "v", Type: &schema.ColumnType{Type: &schema.StringType{T: "char(36)"}}},
 			&schema.Column{Name: "x", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "line"}}},
-			&schema.Column{Name: "y", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "point"}}},
 			&schema.Column{Name: "z", Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp"}}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP"}},
 		)
+		numChanges := 27
+		// tidb does not support spatials
+		if !t.tidb() {
+			numChanges = 28
+			usersT.Columns = append(usersT.Columns, &schema.Column{Name: "y", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "point"}}})
+		}
 		changes := t.diff(t.loadUsers(), usersT)
-		require.Len(t, changes, 28)
+		require.Len(t, changes, numChanges)
 		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
 		ensureNoChange(t, usersT)
 	})
@@ -1270,6 +1283,7 @@ func (t *myTest) loadTable(name string) *schema.Table {
 }
 
 func (t *myTest) mariadb() bool { return strings.HasPrefix(t.version, "Maria") }
+func (t *myTest) tidb() bool    { return strings.HasPrefix(t.version, "TiDB") }
 
 // defaultConfig returns the default charset and
 // collation configuration based on the MySQL version.

@@ -58,7 +58,8 @@ func (i *tinspect) patchSchema(ctx context.Context, s *schema.Schema) (*schema.S
 }
 
 // e.g CONSTRAINT "" FOREIGN KEY ("foo_id") REFERENCES "foo" ("id")
-var reFK = regexp.MustCompile("(?i)CONSTRAINT\\s+[\"`]*(\\w+)[\"`]*\\s+FOREIGN\\s+KEY\\s*\\(([,\"` \\w]+)\\)\\s+REFERENCES\\s+[\"`]*(\\w+)[\"`]*\\s*\\(([,\"` \\w]+)\\)")
+var reFK = regexp.MustCompile("(?i)CONSTRAINT\\s+[\"`]*(\\w+)[\"`]*\\s+FOREIGN\\s+KEY\\s*\\(([,\"` \\w]+)\\)\\s+REFERENCES\\s+[\"`]*(\\w+)[\"`]*\\s*\\(([,\"` \\w]+)\\).*")
+var reActions = regexp.MustCompile(fmt.Sprintf("(?i)(ON)\\s+(UPDATE|DELETE)\\s+(%s|%s|%s|%s|%s)", schema.NoAction, schema.Restrict, schema.SetNull, schema.SetDefault, schema.Cascade))
 
 func (i *tinspect) setFKs(s *schema.Schema, t *schema.Table) error {
 	var c CreateStmt
@@ -69,13 +70,22 @@ func (i *tinspect) setFKs(s *schema.Schema, t *schema.Table) error {
 		if len(m) != 5 {
 			return fmt.Errorf("unexpected number of matches for a table constraint: %q", m)
 		}
-		ctName, clmns, refTableName, refClmns := m[1], m[2], m[3], m[4]
+		statement, ctName, clmns, refTableName, refClmns := m[0], m[1], m[2], m[3], m[4]
 		fk := &schema.ForeignKey{
 			Symbol: ctName,
 			Table:  t,
-			// There is no support in TiDB for FKs so inherently there are no actions on update/delete.
-			OnUpdate: schema.NoAction,
-			OnDelete: schema.NoAction,
+		}
+		actions := reActions.FindAllStringSubmatch(statement, 2)
+		for _, actionMatches := range actions {
+			actionType, actionOp := actionMatches[2], actionMatches[3]
+			switch actionType {
+			case "UPDATE":
+				fk.OnUpdate = schema.ReferenceOption(actionOp)
+			case "DELETE":
+				fk.OnDelete = schema.ReferenceOption(actionOp)
+			default:
+				return fmt.Errorf("action type %s is none of 'UPDATE'/'DELETE'", actionType)
+			}
 		}
 		refTable, ok := s.Table(refTableName)
 		if !ok {
