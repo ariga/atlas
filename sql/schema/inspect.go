@@ -64,3 +64,15 @@ type (
 		InspectRealm(ctx context.Context, opts *InspectRealmOption) (*Realm, error)
 	}
 )
+
+// Normalizer is the interface implemented by the different database drivers for
+// "normalizing" schema objects. i.e. converting schema objects defined in natural
+// form to their representation in the database. Thus, two schema objects are equal
+// if their normal forms are equal.
+type Normalizer interface {
+	// NormalizeSchema returns the normal representation of a schema.
+	NormalizeSchema(context.Context, *Schema) (*Schema, error)
+
+	// NormalizeRealm returns the normal representation of a database.
+	NormalizeRealm(context.Context, *Realm) (*Realm, error)
+}
