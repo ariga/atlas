@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"ariga.io/atlas/sql/schema"
+
 	"github.com/spf13/cobra"
 )
 
@@ -22,7 +23,7 @@ var (
 	// InspectCmd represents the inspect command.
 	InspectCmd = &cobra.Command{
 		Use:   "inspect",
-		Short: "Inspect an a database's and print its schema in Atlas DDL syntax.",
+		Short: "Inspect a database and print its schema in Atlas DDL syntax.",
 		Long: "`atlas schema inspect`" + ` connects to the given database and inspects its schema.
 It then prints to the screen the schema of that database in Atlas DDL syntax. This output can be 
 saved to a file, commonly by redirecting the output to a file named with a ".hcl" suffix:
