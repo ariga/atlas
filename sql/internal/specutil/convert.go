@@ -234,11 +234,12 @@ func PrimaryKey(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, 
 // referenced by the FK definitions in the spec.
 func LinkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *sqlspec.Table) error {
 	for _, spec := range table.ForeignKeys {
-		fk := &schema.ForeignKey{
-			Symbol:   spec.Symbol,
-			Table:    tbl,
-			OnUpdate: spec.OnUpdate,
-			OnDelete: spec.OnDelete,
+		fk := &schema.ForeignKey{Symbol: spec.Symbol, Table: tbl}
+		if spec.OnUpdate != nil {
+			fk.OnUpdate = schema.ReferenceOption(FromVar(spec.OnUpdate.V))
+		}
+		if spec.OnDelete != nil {
+			fk.OnDelete = schema.ReferenceOption(FromVar(spec.OnDelete.V))
 		}
 		if n, m := len(spec.Columns), len(spec.RefColumns); n != m {
 			return fmt.Errorf("sqlspec: number of referencing and referenced columns do not match for foreign-key %q", fk.Symbol)
@@ -475,8 +476,8 @@ func FromForeignKey(s *schema.ForeignKey) (*sqlspec.ForeignKey, error) {
 		Symbol:     s.Symbol,
 		Columns:    c,
 		RefColumns: r,
-		OnDelete:   s.OnDelete,
-		OnUpdate:   s.OnUpdate,
+		OnUpdate:   &schemaspec.Ref{V: Var(string(s.OnUpdate))},
+		OnDelete:   &schemaspec.Ref{V: Var(string(s.OnDelete))},
 	}, nil
 }
 
@@ -582,3 +583,20 @@ func convertCommentFromSchema(src []schema.Attr, trgt *[]*schemaspec.Attr) {
 		*trgt = append(*trgt, StrAttr("comment", c.Text))
 	}
 }
+
+// ReferenceVars holds the HCL variables
+// for foreign keys' referential-actions.
+var ReferenceVars = []string{
+	Var(string(schema.NoAction)),
+	Var(string(schema.Restrict)),
+	Var(string(schema.Cascade)),
+	Var(string(schema.SetNull)),
+	Var(string(schema.SetDefault)),
+}
+
+// Var formats a string as variable to make it HCL compatible.
+// The result is simple, replace each space with underscore.
+func Var(s string) string { return strings.ReplaceAll(s, " ", "_") }
+
+// FromVar is the inverse function of Var.
+func FromVar(s string) string { return strings.ReplaceAll(s, "_", " ") }

@@ -63,7 +63,7 @@ table "posts" {
     foreign_key "owner_id" {
         columns = [table.posts.column.author_id]
         ref_columns = [table.users.column.id]
-        on_delete = "SET NULL"
+        on_delete = SET_NULL
     }
 }
 
@@ -97,7 +97,7 @@ table "posts" {
     foreign_key "owner_id" {
     	columns = [table.posts.column.author_id]
     	ref_columns = [table.users.column.id]
-    	on_update = "SET NULL"
+    	on_update = SET_NULL
     }
 }
 
@@ -132,7 +132,7 @@ table "posts" {
     foreign_key "owner_id" {
     	columns = [table.posts.column.author_id]
     	ref_columns = [table.users.column.id]
-    	on_delete = "SET NULL"
+    	on_delete = SET_NULL
     }
 }
 

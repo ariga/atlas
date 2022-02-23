@@ -24,7 +24,7 @@ func newDiffCmd() *cobra.Command {
 		Short: "Calculate and print the diff between two schemas.",
 		Long: "`atlas schema diff`" + ` connects to two given databases, inspects
 them, calculates the difference in their schemas, and prints a plan of
-SQL queries to bring the "from" database to the schema of the "to" database.`,
+SQL statements to migrate the "from" database to the schema of the "to" database.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdDiffRun(cmd, &opts)
 		},

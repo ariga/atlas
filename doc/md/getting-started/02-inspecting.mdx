@@ -148,8 +148,8 @@ table "blog_posts" {
   foreign_key "blog_posts_ibfk_1" {
     columns     = [column.author_id]
     ref_columns = [table.users.column.id]
-    on_update   = "NO ACTION"
-    on_delete   = "NO ACTION"
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
   }
   index "author_id" {
     unique  = false
