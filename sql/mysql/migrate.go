@@ -95,10 +95,11 @@ func (s *state) topLevel(changes []schema.Change) ([]schema.Change, error) {
 	for _, c := range changes {
 		switch c := c.(type) {
 		case *schema.AddSchema:
-			b := Build("CREATE DATABASE").Ident(c.S.Name)
+			b := Build("CREATE DATABASE")
 			if sqlx.Has(c.Extra, &schema.IfNotExists{}) {
 				b.P("IF NOT EXISTS")
 			}
+			b.Ident(c.S.Name)
 			// Schema was created with CHARSET and it is not the default database character set.
 			if a := (schema.Charset{}); sqlx.Has(c.S.Attrs, &a) && a.V != "" && a.V != s.charset {
 				b.P("CHARSET", a.V)
@@ -114,10 +115,11 @@ func (s *state) topLevel(changes []schema.Change) ([]schema.Change, error) {
 				Comment: fmt.Sprintf("add new schema named %q", c.S.Name),
 			})
 		case *schema.DropSchema:
-			b := Build("DROP DATABASE").Ident(c.S.Name)
+			b := Build("DROP DATABASE")
 			if sqlx.Has(c.Extra, &schema.IfExists{}) {
 				b.P("IF EXISTS")
 			}
+			b.Ident(c.S.Name)
 			s.append(&migrate.Change{
 				Cmd:     b.String(),
 				Source:  c,
@@ -200,11 +202,12 @@ func (s *state) modifySchema(modify *schema.ModifySchema) error {
 func (s *state) addTable(add *schema.AddTable) error {
 	var (
 		errors []string
-		b      = Build("CREATE TABLE").Table(add.T)
+		b      = Build("CREATE TABLE")
 	)
 	if sqlx.Has(add.Extra, &schema.IfNotExists{}) {
 		b.P("IF NOT EXISTS")
 	}
+	b.Table(add.T)
 	b.Wrap(func(b *sqlx.Builder) {
 		b.MapComma(add.T.Columns, func(i int, b *sqlx.Builder) {
 			if err := s.column(b, add.T, add.T.Columns[i]); err != nil {
@@ -251,10 +254,11 @@ func (s *state) addTable(add *schema.AddTable) error {
 // dropTable builds and appends the migrate.Change
 // for dropping a table from a schema.
 func (s *state) dropTable(drop *schema.DropTable) {
-	b := Build("DROP TABLE").Table(drop.T)
+	b := Build("DROP TABLE")
 	if sqlx.Has(drop.Extra, &schema.IfExists{}) {
 		b.P("IF EXISTS")
 	}
+	b.Table(drop.T)
 	s.append(&migrate.Change{
 		Cmd:     b.String(),
 		Source:  drop,
