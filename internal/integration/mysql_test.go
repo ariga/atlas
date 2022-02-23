@@ -131,7 +131,6 @@ func TestMySQL_AddIndexedColumns(t *testing.T) {
 		require.True(t, ok)
 		require.Len(t, idx.Parts, 1)
 		usersT.Columns = usersT.Columns[:len(usersT.Columns)-1]
-
 		numChanges := 1
 		// In MySQL, dropping a column should remove its index.
 		// However, on TiDB an explicit DROP INDEX is required.
@@ -185,7 +184,7 @@ func TestMySQL_AddColumns(t *testing.T) {
 			&schema.Column{Name: "z", Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp"}}, Default: &schema.RawExpr{X: "CURRENT_TIMESTAMP"}},
 		)
 		numChanges := 27
-		// tidb does not support spatials
+		// TiDB does not support `point`
 		if !t.tidb() {
 			numChanges = 28
 			usersT.Columns = append(usersT.Columns, &schema.Column{Name: "y", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "point"}}})
