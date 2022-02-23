@@ -711,7 +711,7 @@ SELECT
 	pg_catalog.obj_description(t2.oid, 'pg_class') AS COMMENT
 FROM
 	INFORMATION_SCHEMA.TABLES AS t1
-	JOIN pg_catalog.pg_class AS t2 ON t2.oid = to_regclass(t1.table_schema || '.' || t1.table_name)::oid
+	JOIN pg_catalog.pg_class AS t2 ON t2.oid = to_regclass(t1.table_schema || '.' || quote_ident(t1.table_name))::oid
 WHERE
 	t1.table_type = 'BASE TABLE'
 	AND t1.table_schema IN (%s)
@@ -725,7 +725,7 @@ SELECT
 	pg_catalog.obj_description(t2.oid, 'pg_class') AS COMMENT
 FROM
 	INFORMATION_SCHEMA.TABLES AS t1
-	JOIN pg_catalog.pg_class AS t2 ON t2.oid = to_regclass(t1.table_schema || '.' || t1.table_name)::oid
+	JOIN pg_catalog.pg_class AS t2 ON t2.oid = to_regclass(t1.table_schema || '.' || quote_ident(t1.table_name))::oid
 WHERE
 	t1.table_type = 'BASE TABLE'
 	AND t1.table_schema IN (%s)
