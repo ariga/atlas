@@ -86,10 +86,11 @@ func (s *state) topLevel(changes []schema.Change) []schema.Change {
 	for _, c := range changes {
 		switch c := c.(type) {
 		case *schema.AddSchema:
-			b := Build("CREATE SCHEMA").Ident(c.S.Name)
+			b := Build("CREATE SCHEMA")
 			if sqlx.Has(c.Extra, &schema.IfNotExists{}) {
 				b.P("IF NOT EXISTS")
 			}
+			b.Ident(c.S.Name)
 			s.append(&migrate.Change{
 				Cmd:     b.String(),
 				Source:  c,
@@ -97,9 +98,13 @@ func (s *state) topLevel(changes []schema.Change) []schema.Change {
 				Comment: fmt.Sprintf("Add new schema named %q", c.S.Name),
 			})
 		case *schema.DropSchema:
-			b := Build("DROP SCHEMA").Ident(c.S.Name)
+			b := Build("DROP SCHEMA")
 			if sqlx.Has(c.Extra, &schema.IfExists{}) {
-				b.P("IF NOT EXISTS")
+				b.P("IF EXISTS")
+			}
+			b.Ident(c.S.Name)
+			if sqlx.Has(c.Extra, &Cascade{}) {
+				b.P("CASCADE")
 			}
 			s.append(&migrate.Change{
 				Cmd:     b.String(),
@@ -119,10 +124,11 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 	if err := s.addTypes(ctx, add.T.Columns...); err != nil {
 		return err
 	}
-	b := Build("CREATE TABLE").Table(add.T)
+	b := Build("CREATE TABLE")
 	if sqlx.Has(add.Extra, &schema.IfNotExists{}) {
 		b.P("IF NOT EXISTS")
 	}
+	b.Table(add.T)
 	b.Wrap(func(b *sqlx.Builder) {
 		b.MapComma(add.T.Columns, func(i int, b *sqlx.Builder) {
 			s.column(b, add.T.Columns[i])
@@ -155,10 +161,11 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 
 // dropTable builds and executes the query for dropping a table from a schema.
 func (s *state) dropTable(drop *schema.DropTable) {
-	b := Build("DROP TABLE").Table(drop.T)
+	b := Build("DROP TABLE")
 	if sqlx.Has(drop.Extra, &schema.IfExists{}) {
 		b.P("IF EXISTS")
 	}
+	b.Table(drop.T)
 	s.append(&migrate.Change{
 		Cmd:     b.String(),
 		Source:  drop,

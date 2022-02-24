@@ -681,6 +681,16 @@ type (
 		schema.Attr
 		Columns []string
 	}
+
+	// Cascade clause for appending to the different DROP changes.
+	// For example, A schema.DropSchema with this clause will be
+	// applied as follows:
+	//
+	//	DROP SCHEMA <name> CASCADE
+	//
+	Cascade struct {
+		schema.Clause
+	}
 )
 
 const (
