@@ -5,7 +5,6 @@
 package integration
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -14,7 +13,6 @@ import (
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
 
-	"entgo.io/ent/dialect"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 )
@@ -124,7 +122,7 @@ func TestTiDB_AddIndexedColumns(t *testing.T) {
 		require.Len(t, changes, numChanges)
 		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
 		ensureNoChange(t, t.loadUsers())
-		idx, ok = t.loadUsers().Index("a_b_c_unique")
+		_, ok = t.loadUsers().Index("a_b_c_unique")
 		require.False(t, ok)
 	})
 }
