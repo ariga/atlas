@@ -266,14 +266,12 @@ func (s *state) dropTable(drop *schema.DropTable) {
 // the table into its modified state.
 func (s *state) modifyTable(modify *schema.ModifyTable) error {
 	var changes [2][]schema.Change
-	for _, change := range s.skipAutoChanges(modify.Changes) {
+	for _, change := range skipAutoChanges(modify.Changes) {
 		switch change := change.(type) {
 		// Constraints should be dropped before dropping columns, because if a column
 		// is a part of multi-column constraints (like, unique index), ALTER TABLE
 		// might fail if the intermediate state violates the constraints.
 		case *schema.DropIndex:
-			changes[0] = append(changes[0], change)
-		case *schema.DropForeignKey:
 			changes[0] = append(changes[0], change)
 		case *schema.ModifyForeignKey:
 			// Foreign-key modification is translated into 2 steps.
@@ -309,17 +307,8 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 	}
 	for i := range changes {
 		if len(changes[i]) > 0 {
-			// for TiDB - break down each alter table statement because it doesn't support multischema see: https://github.com/pingcap/tidb/issues/14766
-			if strings.Contains(s.version, "TiDB") {
-				for _, c := range changes[i] {
-					if err := s.alterTable(modify.T, []schema.Change{c}); err != nil {
-						return err
-					}
-				}
-			} else {
-				if err := s.alterTable(modify.T, changes[i]); err != nil {
-					return err
-				}
+			if err := s.alterTable(modify.T, changes[i]); err != nil {
+				return err
 			}
 		}
 	}
@@ -662,11 +651,7 @@ func Build(phrase string) *sqlx.Builder {
 
 // skipAutoChanges filters unnecessary changes that are automatically
 // happened by the database when ALTER TABLE is executed.
-func (s *state) skipAutoChanges(changes []schema.Change) []schema.Change {
-	// TiDB does not support any of the following optimizations ATM.
-	if s.tidb() {
-		return changes
-	}
+func skipAutoChanges(changes []schema.Change) []schema.Change {
 	var (
 		dropC   = make(map[string]bool)
 		planned = make([]schema.Change, 0, len(changes))
