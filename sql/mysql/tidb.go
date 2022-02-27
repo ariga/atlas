@@ -30,7 +30,7 @@ type (
 // TiDB does not support multischema ALTERs (i.e. multiple changes in a single ALTER statement).
 // Therefore, we have to break down each alter. This function helps order the ALTERs so they work.
 // e.g. priority gives precedence to DropForeignKey over DropColumn, because a column cannot be
-// dropped if its foreign key was not dropped before.  
+// dropped if its foreign key was not dropped before.
 func priority(change schema.Change) int {
 	switch c := change.(type) {
 	case *schema.ModifyTable:
@@ -48,8 +48,9 @@ func priority(change schema.Change) int {
 	}
 }
 
-// flat takes a list of changes and breaks them down to single atomic changes (e.g: no modify table with multiple AddColumn inside it).
-// note that the only "changes" that include sub-changes are `ModifyTable` and `ModifySchema`.
+// flat takes a list of changes and breaks them down to single atomic changes (e.g: no ModifyTable
+// with multiple AddColumn inside it). Note that, the only "changes" that include sub-changes are
+// `ModifyTable` and `ModifySchema`.
 func flat(changes []schema.Change) []schema.Change {
 	var flat []schema.Change
 	for _, change := range changes {
@@ -91,7 +92,6 @@ func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []sch
 			Transactional: false,
 		},
 	}
-
 	for _, c := range fc {
 		// Use the planner of MySQL with each "atomic" chanage.
 		plan, err := p.planApply.PlanChanges(ctx, name, []schema.Change{c})
@@ -174,12 +174,12 @@ func (i *tinspect) setFKs(s *schema.Schema, t *schema.Table) error {
 		if len(m) != 5 {
 			return fmt.Errorf("unexpected number of matches for a table constraint: %q", m)
 		}
-		statement, ctName, clmns, refTableName, refClmns := m[0], m[1], m[2], m[3], m[4]
+		stmt, ctName, clmns, refTableName, refClmns := m[0], m[1], m[2], m[3], m[4]
 		fk := &schema.ForeignKey{
 			Symbol: ctName,
 			Table:  t,
 		}
-		actions := reActions.FindAllStringSubmatch(statement, 2)
+		actions := reActions.FindAllStringSubmatch(stmt, 2)
 		for _, actionMatches := range actions {
 			actionType, actionOp := actionMatches[2], actionMatches[3]
 			switch actionType {
