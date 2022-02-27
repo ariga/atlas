@@ -26,9 +26,11 @@ type (
 )
 
 // priority computes the priority of each change.
-// TiDB does not support multischema alters (no multiple changes in a single alter statement) and therefore
-// we have to break down each alter. priority helps order the alters so they work.
-// for example - we can't drop a column if it is a foreign key - we have to drop the fk first. this is why DropForeignKey gets a different priority
+//
+// TiDB does not support multischema ALTERs (i.e. multiple changes in a single ALTER statement).
+// Therefore, we have to break down each alter. This function helps order the ALTERs so they work.
+// e.g. priority gives precedence to DropForeignKey over DropColumn, because a column cannot be
+// dropped if its foreign key was not dropped before.  
 func priority(change schema.Change) int {
 	switch c := change.(type) {
 	case *schema.ModifyTable:
