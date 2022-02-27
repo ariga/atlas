@@ -62,6 +62,20 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 	}, nil
 }
 
+func (d *Driver) twin() *sqlx.TwinDriver {
+	return &sqlx.TwinDriver{Driver: d, MaxNameLen: 64}
+}
+
+// NormalizeRealm returns the normal representation of the given database.
+func (d *Driver) NormalizeRealm(ctx context.Context, r *schema.Realm) (*schema.Realm, error) {
+	return d.twin().NormalizeRealm(ctx, r)
+}
+
+// NormalizeSchema returns the normal representation of the given database.
+func (d *Driver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*schema.Schema, error) {
+	return d.twin().NormalizeSchema(ctx, s)
+}
+
 // supportsCheck reports if the connected database supports
 // the CHECK clause, and return the querying for getting them.
 func (d *conn) supportsCheck() (string, bool) {
