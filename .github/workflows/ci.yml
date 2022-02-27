@@ -209,6 +209,10 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      tidb5:
+        image: pingcap/tidb:v5.4.0
+        ports:
+          - 4309:4000
     steps:
       - uses: actions/checkout@v2.3.4
       - uses: actions/setup-go@v2
