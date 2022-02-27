@@ -49,9 +49,9 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 	if c.tidb() {
 		return &Driver{
 			conn:        c,
-			Differ:      &sqlx.Diff{DiffDriver: &diff{c}},
+			Differ:      &sqlx.Diff{DiffDriver: &tdiff{diff{c}}},
 			Inspector:   &tinspect{inspect{c}},
-			PlanApplier: &planApply{c},
+			PlanApplier: &tplanApply{planApply{c}},
 		}, nil
 	}
 	return &Driver{

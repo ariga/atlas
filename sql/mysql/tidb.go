@@ -8,14 +8,118 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	"ariga.io/atlas/sql/internal/sqlx"
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 )
 
-type tinspect struct {
-	inspect
+type (
+	// tplanApply decorates MySQL planApply.
+	tplanApply struct{ planApply }
+	// tdiff decorates MySQL diff.
+	tdiff struct{ diff }
+	// tinspect decorates MySQL inspect.
+	tinspect struct{ inspect }
+)
+
+// priority computes the priority of each change.
+//
+// TiDB does not support multischema ALTERs (i.e. multiple changes in a single ALTER statement).
+// Therefore, we have to break down each alter. This function helps order the ALTERs so they work.
+// e.g. priority gives precedence to DropForeignKey over DropColumn, because a column cannot be
+// dropped if its foreign key was not dropped before.
+func priority(change schema.Change) int {
+	switch c := change.(type) {
+	case *schema.ModifyTable:
+		// each modifyTable should have a single change since we apply `flat` before we sort.
+		return priority(c.Changes[0])
+	case *schema.ModifySchema:
+		// each modifyTable should have a single change since we apply `flat` before we sort.
+		return priority(c.Changes[0])
+	case *schema.DropIndex, *schema.DropForeignKey, *schema.DropAttr, *schema.DropCheck:
+		return 1
+	case *schema.ModifyIndex, *schema.ModifyForeignKey:
+		return 2
+	default:
+		return 3
+	}
+}
+
+// flat takes a list of changes and breaks them down to single atomic changes (e.g: no ModifyTable
+// with multiple AddColumn inside it). Note that, the only "changes" that include sub-changes are
+// `ModifyTable` and `ModifySchema`.
+func flat(changes []schema.Change) []schema.Change {
+	var flat []schema.Change
+	for _, change := range changes {
+		switch m := change.(type) {
+		case *schema.ModifyTable:
+			for _, c := range m.Changes {
+				flat = append(flat, &schema.ModifyTable{
+					T:       m.T,
+					Changes: []schema.Change{c},
+				})
+			}
+		case *schema.ModifySchema:
+			for _, c := range m.Changes {
+				flat = append(flat, &schema.ModifySchema{
+					S:       m.S,
+					Changes: []schema.Change{c},
+				})
+			}
+		default:
+			flat = append(flat, change)
+		}
+	}
+	return flat
+}
+
+// PlanChanges returns a migration plan for the given schema changes.
+func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []schema.Change) (*migrate.Plan, error) {
+	fc := flat(changes)
+	sort.SliceStable(fc, func(i, j int) bool {
+		return priority(fc[i]) < priority(fc[j])
+	})
+	s := &state{
+		conn: p.conn,
+		Plan: migrate.Plan{
+			Name: name,
+			// A plan is reversible, if all
+			// its changes are reversible.
+			Reversible:    true,
+			Transactional: false,
+		},
+	}
+	for _, c := range fc {
+		// Use the planner of MySQL with each "atomic" chanage.
+		plan, err := p.planApply.PlanChanges(ctx, name, []schema.Change{c})
+		if err != nil {
+			return nil, err
+		}
+		if !plan.Reversible {
+			s.Plan.Reversible = false
+		}
+		s.Plan.Changes = append(s.Plan.Changes, plan.Changes...)
+	}
+	return &s.Plan, nil
+}
+
+func (p *tplanApply) ApplyChanges(ctx context.Context, changes []schema.Change) error {
+	plan, err := p.PlanChanges(ctx, "apply", changes)
+	if err != nil {
+		return err
+	}
+	for _, c := range plan.Changes {
+		if _, err := p.ExecContext(ctx, c.Cmd, c.Args...); err != nil {
+			if c.Comment != "" {
+				err = fmt.Errorf("%s: %w", c.Comment, err)
+			}
+			return err
+		}
+	}
+	return nil
 }
 
 func (i *tinspect) InspectSchema(ctx context.Context, name string, opts *schema.InspectOptions) (*schema.Schema, error) {
@@ -58,7 +162,8 @@ func (i *tinspect) patchSchema(ctx context.Context, s *schema.Schema) (*schema.S
 }
 
 // e.g CONSTRAINT "" FOREIGN KEY ("foo_id") REFERENCES "foo" ("id")
-var reFK = regexp.MustCompile("(?i)CONSTRAINT\\s+[\"`]*(\\w+)[\"`]*\\s+FOREIGN\\s+KEY\\s*\\(([,\"` \\w]+)\\)\\s+REFERENCES\\s+[\"`]*(\\w+)[\"`]*\\s*\\(([,\"` \\w]+)\\)")
+var reFK = regexp.MustCompile("(?i)CONSTRAINT\\s+[\"`]*(\\w+)[\"`]*\\s+FOREIGN\\s+KEY\\s*\\(([,\"` \\w]+)\\)\\s+REFERENCES\\s+[\"`]*(\\w+)[\"`]*\\s*\\(([,\"` \\w]+)\\).*")
+var reActions = regexp.MustCompile(fmt.Sprintf("(?i)(ON)\\s+(UPDATE|DELETE)\\s+(%s|%s|%s|%s|%s)", schema.NoAction, schema.Restrict, schema.SetNull, schema.SetDefault, schema.Cascade))
 
 func (i *tinspect) setFKs(s *schema.Schema, t *schema.Table) error {
 	var c CreateStmt
@@ -69,13 +174,22 @@ func (i *tinspect) setFKs(s *schema.Schema, t *schema.Table) error {
 		if len(m) != 5 {
 			return fmt.Errorf("unexpected number of matches for a table constraint: %q", m)
 		}
-		ctName, clmns, refTableName, refClmns := m[1], m[2], m[3], m[4]
+		stmt, ctName, clmns, refTableName, refClmns := m[0], m[1], m[2], m[3], m[4]
 		fk := &schema.ForeignKey{
 			Symbol: ctName,
 			Table:  t,
-			// There is no support in TiDB for FKs so inherently there are no actions on update/delete.
-			OnUpdate: schema.NoAction,
-			OnDelete: schema.NoAction,
+		}
+		actions := reActions.FindAllStringSubmatch(stmt, 2)
+		for _, actionMatches := range actions {
+			actionType, actionOp := actionMatches[2], actionMatches[3]
+			switch actionType {
+			case "UPDATE":
+				fk.OnUpdate = schema.ReferenceOption(actionOp)
+			case "DELETE":
+				fk.OnDelete = schema.ReferenceOption(actionOp)
+			default:
+				return fmt.Errorf("action type %s is none of 'UPDATE'/'DELETE'", actionType)
+			}
 		}
 		refTable, ok := s.Table(refTableName)
 		if !ok {

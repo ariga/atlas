@@ -37,11 +37,7 @@ func myRun(t *testing.T, fn func(*myTest)) {
 	myTests.Do(func() {
 		myTests.drivers = make(map[string]*myTest)
 		for version, port := range map[string]int{"56": 3306, "57": 3307, "8": 3308, "Maria107": 4306, "Maria102": 4307, "Maria103": 4308} {
-			password := ":pass"
-			if version == "TiDB" {
-				password = ""
-			}
-			db, err := sql.Open("mysql", fmt.Sprintf("root%s@tcp(localhost:%d)/test?parseTime=True", password, port))
+			db, err := sql.Open("mysql", fmt.Sprintf("root:pass@tcp(localhost:%d)/test?parseTime=True", port))
 			require.NoError(t, err)
 			drv, err := mysql.Open(db)
 			require.NoError(t, err)
@@ -1279,7 +1275,7 @@ func (t *myTest) defaultAttrs() []schema.Attr {
 		collation = "latin1_swedish_ci"
 	)
 	switch {
-	case t.version == "TiDB":
+	case strings.Contains(t.version, "TiDB"):
 		charset = "utf8mb4"
 		collation = "utf8mb4_bin"
 	case t.version == "8":

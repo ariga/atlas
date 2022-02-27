@@ -404,7 +404,7 @@ func ensureNoChange(t T, tables ...*schema.Table) {
 		tt, ok := realm.Schemas[0].Table(tables[i].Name)
 		require.True(t, ok)
 		changes := t.diff(tt, tables[i])
-		require.Empty(t, changes)
+		require.Emptyf(t, changes, "changes should be empty for table %s, but instead was %#v", tt.Name , changes)
 	}
 }
 
