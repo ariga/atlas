@@ -31,30 +31,18 @@ type (
 // for example - we can't drop a column if it is a foreign key - we have to drop the fk first. this is why DropForeignKey gets a different priority
 func priority(change schema.Change) int {
 	switch c := change.(type) {
-	case *schema.DropIndex:
-		return 0
-	case *schema.DropForeignKey:
-		return 1
-	case *schema.DropAttr:
-		return 2
-	case *schema.DropCheck:
-		return 3
-	case *schema.ModifyIndex:
-		return 4
-	case *schema.ModifyForeignKey:
-		return 5
-	case *schema.DropColumn:
-		return 6
-	case *schema.AddColumn:
-		return 7
 	case *schema.ModifyTable:
 		// each modifyTable should have a single change since we apply `flat` before we sort.
 		return priority(c.Changes[0])
 	case *schema.ModifySchema:
 		// each modifyTable should have a single change since we apply `flat` before we sort.
 		return priority(c.Changes[0])
+	case *schema.DropIndex, *schema.DropForeignKey, *schema.DropAttr, *schema.DropCheck:
+		return 1
+	case *schema.ModifyIndex, *schema.ModifyForeignKey:
+		return 2
 	default:
-		return 8
+		return 3
 	}
 }
 
@@ -87,9 +75,7 @@ func flat(changes []schema.Change) []schema.Change {
 
 // PlanChanges returns a migration plan for the given schema changes.
 func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []schema.Change) (*migrate.Plan, error) {
-	// break down changes to atomic operations (tidb does not support multiple changes in each alter)
 	fc := flat(changes)
-	// sort the changes according to the right order of execution.
 	sort.SliceStable(fc, func(i, j int) bool {
 		return priority(fc[i]) < priority(fc[j])
 	})
@@ -105,7 +91,7 @@ func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []sch
 	}
 
 	for _, c := range fc {
-		// use the planner of MySQL with each "atomic" chanage.
+		// Use the planner of MySQL with each "atomic" chanage.
 		plan, err := p.planApply.PlanChanges(ctx, name, []schema.Change{c})
 		if err != nil {
 			return nil, err
@@ -132,34 +118,6 @@ func (p *tplanApply) ApplyChanges(ctx context.Context, changes []schema.Change) 
 		}
 	}
 	return nil
-}
-
-func (t tdiff) SchemaAttrDiff(from, to *schema.Schema) []schema.Change {
-	return t.diff.SchemaAttrDiff(from, to)
-}
-
-func (t tdiff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
-	return t.diff.TableAttrDiff(from, to)
-}
-
-func (t tdiff) ColumnChange(from, to *schema.Column) (schema.ChangeKind, error) {
-	return t.diff.ColumnChange(from, to)
-}
-
-func (t tdiff) IndexAttrChanged(from, to []schema.Attr) bool {
-	return t.diff.IndexAttrChanged(from, to)
-}
-
-func (t tdiff) IndexPartAttrChanged(from, to *schema.IndexPart) bool {
-	return t.diff.IndexPartAttrChanged(from, to)
-}
-
-func (t tdiff) IsGeneratedIndexName(table *schema.Table, s *schema.Index) bool {
-	return t.diff.IsGeneratedIndexName(table, s)
-}
-
-func (t tdiff) ReferenceChanged(from, to schema.ReferenceOption) bool {
-	return t.diff.ReferenceChanged(from, to)
 }
 
 func (i *tinspect) InspectSchema(ctx context.Context, name string, opts *schema.InspectOptions) (*schema.Schema, error) {
