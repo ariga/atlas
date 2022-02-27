@@ -485,7 +485,7 @@ func TestTiDB_Sanity(t *testing.T) {
 		ddl := `
 create table atlas_types_sanity
 (
-    tBit                        bit(10)              default b'100'                                              null,
+    tBit                        bit(10)              default b'1000000001'                                       null,
 		tInt                        int(10)              default 4                                               not null,
 		tTinyInt                    tinyint(10)          default 8                                                   null,
 		tSmallInt                   smallint(10)         default 2                                                   null,
@@ -539,7 +539,7 @@ create table atlas_types_sanity
 					{
 						Name:    "tBit",
 						Type:    &schema.ColumnType{Type: &mysql.BitType{T: "bit"}, Raw: "bit(10) unsigned", Null: true},
-						Default: &schema.Literal{V: "b'100'"},
+						Default: &schema.Literal{V: "b'1000000001'"},
 					},
 					{
 						Name: "tInt",
@@ -804,21 +804,7 @@ create table atlas_types_sanity
 				}(),
 				Schema: realm.Schemas[0],
 				Columns: []*schema.Column{
-					func() *schema.Column {
-						c := &schema.Column{Name: "tJSON", Type: &schema.ColumnType{Type: &schema.JSONType{T: "json"}, Raw: "json", Null: true}}
-						switch t.version {
-						case "Maria107":
-							c.Attrs = []schema.Attr{}
-						case "Maria102", "Maria103":
-							c.Type.Raw = "longtext"
-							c.Type.Type = &schema.StringType{T: "longtext"}
-							c.Attrs = []schema.Attr{
-								&schema.Charset{V: "utf8mb4"},
-								&schema.Collation{V: "utf8mb4_bin"},
-							}
-						}
-						return c
-					}(),
+					&schema.Column{Name: "tJSON", Type: &schema.ColumnType{Type: &schema.JSONType{T: "json"}, Raw: "json", Null: true}},
 				},
 			}
 			rmCreateStmt(ts)
