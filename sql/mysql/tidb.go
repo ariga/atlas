@@ -182,8 +182,15 @@ func (i *tinspect) patchColumn(ctx context.Context, c *schema.Column) {
 func bufferToBitLiteral(b []byte) string {
 	builder := strings.Builder{}
 	builder.WriteString("b'")
-	for _, digit := range b {
-		builder.WriteString(strconv.FormatInt(int64(digit), 2))
+	for i, digit := range b {
+		if i != 0 {
+			bits := strconv.FormatInt(int64(digit), 2)
+			pads := 8 - len(bits)
+			builder.WriteString(strings.Repeat("0", pads))
+			builder.WriteString(bits)
+		} else {
+			builder.WriteString(strconv.FormatInt(int64(digit), 2))
+		}
 	}
 	builder.WriteString("'")
 	return builder.String()
