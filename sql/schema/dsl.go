@@ -728,6 +728,8 @@ func replaceOrAppend(attrs *[]Attr, v Attr) {
 	*attrs = append(*attrs, v)
 }
 
+// ReplaceOrAppend searches an attribute of the same type as v in
+// the list and replaces it. Otherwise, v is appended to the list.
 func ReplaceOrAppend(attrs *[]Attr, v Attr) {
 	replaceOrAppend(attrs, v)
 }
