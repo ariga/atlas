@@ -14,8 +14,6 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
-var hasher = fnv.New128()
-
 // TwinDriver is a driver that provides additional functionality
 // to interact with the twin/dev database.
 type TwinDriver struct {
@@ -112,5 +110,6 @@ func (t *TwinDriver) formatName(name string) string {
 	if t.MaxNameLen == 0 || len(twin) <= t.MaxNameLen {
 		return twin
 	}
+	hasher := fnv.New128()
 	return fmt.Sprintf("%s_%x", twin[:t.MaxNameLen-1-hasher.Size()*2], hasher.Sum([]byte(twin)))
 }
