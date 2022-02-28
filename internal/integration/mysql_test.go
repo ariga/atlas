@@ -1085,10 +1085,14 @@ create table atlas_types_sanity
 
 func (t *myTest) dsn(dbname string) string {
 	d := "mysql"
+	pass := ":pass"
+	if t.tidb() {
+		pass = ""
+	}
 	if t.mariadb() {
 		d = "mariadb"
 	}
-	return fmt.Sprintf("%s://root:pass@tcp(localhost:%d)/%s", d, t.port, dbname)
+	return fmt.Sprintf("%s://root%s@tcp(localhost:%d)/%s", d, pass, t.port, dbname)
 }
 
 func (t *myTest) applyHcl(spec string) {
@@ -1266,6 +1270,7 @@ func (t *myTest) loadTable(name string) *schema.Table {
 }
 
 func (t *myTest) mariadb() bool { return strings.HasPrefix(t.version, "Maria") }
+func (t *myTest) tidb() bool    { return strings.HasPrefix(t.version, "TiDB") }
 
 // defaultConfig returns the default charset and
 // collation configuration based on the MySQL version.
