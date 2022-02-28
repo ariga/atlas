@@ -21,20 +21,20 @@ Usage:
 
 Examples:
 
-atlas schema inspect -d "mysql://user:pass@tcp(localhost:3306)/dbname"
-atlas schema inspect -d "mariadb://user:pass@tcp(localhost:3306)/dbname"
-atlas schema inspect --dsn "postgres://user:pass@host:port/dbname?sslmode=disable"
-atlas schema inspect -d "sqlite://file:ex1.db?_fk=1"
+atlas schema inspect -u "mysql://user:pass@tcp(localhost:3306)/dbname"
+atlas schema inspect -u "mariadb://user:pass@tcp(localhost:3306)/dbname"
+atlas schema inspect --url "postgres://user:pass@host:port/dbname?sslmode=disable"
+atlas schema inspect -u "sqlite://file:ex1.db?_fk=1"
 
 Flags:
-  -d, --dsn string   [driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format
+  -u, --url string   [driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format
   -h, --help         help for inspect
   -w, --web          open in UI server
 ```
 
 :::info
 
-If you're using PostgreSQL, there is [additional documentation about building the connection string](../dsn#ssltls-mode)
+If you're using PostgreSQL, there is [additional documentation about building the connection string](../url#ssltls-mode)
 
 :::
 

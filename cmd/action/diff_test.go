@@ -36,7 +36,7 @@ func TestDiffCmd_Synced(t *testing.T) {
 	require.EqualValues(t, "Schemas are synced, no changes to be made.\n", s)
 }
 
-// openSQLite creates a sqlite db, seeds it with the seed query and returns the dsn to it.
+// openSQLite creates a sqlite db, seeds it with the seed query and returns the url to it.
 func openSQLite(t *testing.T, seed string) string {
 	f, err := ioutil.TempFile("", "sqlite.db")
 	require.NoError(t, err)
@@ -58,7 +58,7 @@ func openSQLite(t *testing.T, seed string) string {
 	return fmt.Sprintf("sqlite://%s", dsn)
 }
 
-func runCmd(cmd *cobra.Command, args... string) (string, error) {
+func runCmd(cmd *cobra.Command, args ...string) (string, error) {
 	var out bytes.Buffer
 	cmd.SetOut(&out)
 	cmd.SetArgs(args)

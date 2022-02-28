@@ -35,13 +35,13 @@ Instructions for other platforms and databases: [Getting Started](https://atlasg
 
 Inspect and save output to a schema file.
 ```shell
-atlas schema inspect -d "mysql://root:pass@tcp(localhost:3306)/example" > atlas.hcl
+atlas schema inspect -u "mysql://root:pass@tcp(localhost:3306)/example" > atlas.hcl
 ```
 
 ## Apply change to Schema
 
 ```shell
-atlas schema apply -d "mysql://root:pass@tcp(localhost:3306)/example" -f atlas.hcl
+atlas schema apply -u "mysql://root:pass@tcp(localhost:3306)/example" -f atlas.hcl
 ```
 
 Full [CLI documentation](https://atlasgo.io/cli/reference). 
