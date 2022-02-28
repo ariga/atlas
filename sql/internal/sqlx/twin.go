@@ -6,13 +6,15 @@ package sqlx
 
 import (
 	"context"
-	"crypto/md5"
 	"fmt"
+	"hash/fnv"
 	"time"
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 )
+
+var hasher = fnv.New128()
 
 // TwinDriver is a driver that provides additional functionality
 // to interact with the twin/dev database.
@@ -110,5 +112,5 @@ func (t *TwinDriver) formatName(name string) string {
 	if t.MaxNameLen == 0 || len(twin) <= t.MaxNameLen {
 		return twin
 	}
-	return fmt.Sprintf("%s_%x", twin[:t.MaxNameLen-1-md5.Size*2], md5.Sum([]byte(twin)))
+	return fmt.Sprintf("%s_%x", twin[:t.MaxNameLen-1-hasher.Size()*2], hasher.Sum([]byte(twin)))
 }
