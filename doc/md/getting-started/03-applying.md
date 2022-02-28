@@ -27,18 +27,18 @@ Usage:
 
 Examples:
 
-atlas schema apply -d "mysql://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
-atlas schema apply -d "mariadb://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
-atlas schema apply --dsn "postgres://user:pass@host:port/dbname?sslmode=disable" -f atlas.hcl
-atlas schema apply -d "sqlite://file:ex1.db?_fk=1" -f atlas.hcl
+atlas schema apply -u "mysql://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
+atlas schema apply -u "mariadb://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
+atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -f atlas.hcl
+atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f atlas.hcl
 
 Flags:
-  -d, --dsn string    [driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format
+  -u, --url string    [driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format
   -f, --file string   [/path/to/file] file containing schema
   -h, --help          help for apply
 ```
 As you can see, similar to the `inspect` command, the `-d` flag is used to define the
-DSN to connect to the database, and an additional flag `-f` specifies the path to
+URL to connect to the database, and an additional flag `-f` specifies the path to
 the file containing the desired schema. 
 
 ### Adding new tables to our database

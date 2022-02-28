@@ -6,6 +6,7 @@ package action
 
 import (
 	"context"
+	"errors"
 	"io/ioutil"
 	"strings"
 
@@ -18,7 +19,7 @@ import (
 var (
 	// ApplyFlags are the flags used in Apply command.
 	ApplyFlags struct {
-		DSN         string
+		URL         string
 		File        string
 		Web         bool
 		Addr        string
@@ -36,12 +37,12 @@ plan and prompt the user for approval.
 
 If run with the "--dry-run" flag, atlas will exit after printing out the planned migration.`,
 		Run: CmdApplyRun,
-		Example: `atlas schema apply -d "mysql://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
-atlas schema apply -d "mysql://user:pass@tcp(localhost:3306)/" -f atlas.hcl --schema prod --schema staging
-atlas schema apply -d "mysql://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl --dry-run 
-atlas schema apply -d "mariadb://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
-atlas schema apply --dsn "postgres://user:pass@host:port/dbname?sslmode=disable" -f atlas.hcl
-atlas schema apply -d "sqlite://file:ex1.db?_fk=1" -f atlas.hcl`,
+		Example: `  atlas schema apply -u "mysql://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
+  atlas schema apply -u "mysql://user:pass@tcp(localhost:3306)/" -f atlas.hcl --schema prod --schema staging
+  atlas schema apply -u "mysql://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl --dry-run
+  atlas schema apply -u "mariadb://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
+  atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -f atlas.hcl
+  atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f atlas.hcl`,
 	}
 )
 
@@ -52,15 +53,16 @@ const (
 
 func init() {
 	schemaCmd.AddCommand(ApplyCmd)
-	ApplyCmd.Flags().StringVarP(&ApplyFlags.DSN, "dsn", "d", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format")
+	ApplyCmd.Flags().StringVarP(&ApplyFlags.URL, "url", "u", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format")
 	ApplyCmd.Flags().StringVarP(&ApplyFlags.File, "file", "f", "", "[/path/to/file] file containing schema")
 	ApplyCmd.Flags().BoolVarP(&ApplyFlags.Web, "web", "w", false, "Open in a local Atlas UI")
 	ApplyCmd.Flags().BoolVarP(&ApplyFlags.DryRun, "dry-run", "", false, "Dry-run. Print SQL plan without prompting for execution")
 	ApplyCmd.Flags().StringVarP(&ApplyFlags.Addr, "addr", "", "127.0.0.1:5800", "used with -w, local address to bind the server to")
 	ApplyCmd.Flags().StringSliceVarP(&ApplyFlags.Schema, "schema", "s", nil, "Set schema name")
 	ApplyCmd.Flags().BoolVarP(&ApplyFlags.AutoApprove, "auto-approve", "", false, "Auto approve. Apply the schema changes without prompting for approval")
-	cobra.CheckErr(ApplyCmd.MarkFlagRequired("dsn"))
+	cobra.CheckErr(ApplyCmd.MarkFlagRequired("url"))
 	cobra.CheckErr(ApplyCmd.MarkFlagRequired("file"))
+	dsn2url(ApplyCmd, &ApplyFlags.URL)
 }
 
 // CmdApplyRun is the command used when running CLI.
@@ -69,15 +71,15 @@ func CmdApplyRun(cmd *cobra.Command, args []string) {
 		schemaCmd.PrintErrln("The Atlas UI is not available in this release.")
 		return
 	}
-	d, err := defaultMux.OpenAtlas(ApplyFlags.DSN)
+	d, err := defaultMux.OpenAtlas(ApplyFlags.URL)
 	cobra.CheckErr(err)
-	applyRun(d, ApplyFlags.DSN, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove)
+	applyRun(d, ApplyFlags.URL, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove)
 }
 
-func applyRun(d *Driver, dsn string, file string, dryRun bool, autoApprove bool) {
+func applyRun(d *Driver, url string, file string, dryRun bool, autoApprove bool) {
 	ctx := context.Background()
 	schemas := ApplyFlags.Schema
-	if n, err := SchemaNameFromDSN(dsn); n != "" {
+	if n, err := SchemaNameFromURL(url); n != "" {
 		cobra.CheckErr(err)
 		schemas = append(schemas, n)
 	}
@@ -134,4 +136,22 @@ func promptUser() bool {
 	_, result, err := prompt.Run()
 	cobra.CheckErr(err)
 	return result == answerApply
+}
+
+func dsn2url(cmd *cobra.Command, p *string) {
+	cmd.Flags().StringVarP(p, "dsn", "d", "", "")
+	cobra.CheckErr(cmd.Flags().MarkHidden("dsn"))
+	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
+		dsnF, urlF := cmd.Flag("dsn"), cmd.Flag("url")
+		switch {
+		case !dsnF.Changed && !urlF.Changed:
+			return errors.New(`required flag "url" was not set`)
+		case dsnF.Changed && urlF.Changed:
+			return errors.New(`both flags "url" and "dsn" were set`)
+		case dsnF.Changed && !urlF.Changed:
+			urlF.Changed = true
+			urlF.Value = dsnF.Value
+		}
+		return nil
+	}
 }

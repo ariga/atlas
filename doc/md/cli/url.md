@@ -1,12 +1,12 @@
 ---
-title: DSNs
-id: cli-dsn
-slug: /cli/dsn
+title: URLs
+id: cli-url
+slug: /cli/url
 ---
-## What is a DSN?
+## What is a URL?
 
-Data Source Names, or DSNs, are a standardized method for specifying a database connection.
-All the component parts of a DSN are shown below:
+A Uniform Resource Locators, or URLs are a standardized method for specifying a location to a resource.
+All the component parts of a URL are shown below:
 
 ```
 driver://[username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN]

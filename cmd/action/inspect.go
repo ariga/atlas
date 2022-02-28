@@ -14,7 +14,7 @@ import (
 var (
 	// InspectFlags are the flags used in Inspect command.
 	InspectFlags struct {
-		DSN    string
+		URL    string
 		Web    bool
 		Addr   string
 		Schema []string
@@ -27,37 +27,31 @@ var (
 It then prints to the screen the schema of that database in Atlas DDL syntax. This output can be 
 saved to a file, commonly by redirecting the output to a file named with a ".hcl" suffix:
 
-	atlas schema inspect -d "mysql://user:pass@tcp(localhost:3306)/dbname" > atlas.hcl
+  atlas schema inspect -u "mysql://user:pass@tcp(localhost:3306)/dbname" > atlas.hcl
 
 This file can then be edited and used with the` + " `atlas schema apply` " + `command to plan
 and execute schema migrations against the given database. In cases where users wish to inspect
 all multiple schemas in a given database (for instance a MySQL server may contain multiple named
-databases), omit the relevant part from the dsn, e.g. "mysql://user:pass@tcp(localhost:3306)/".
+databases), omit the relevant part from the url, e.g. "mysql://user:pass@tcp(localhost:3306)/".
 To select specific schemas from the databases, users may use the "--schema" (or "-s" shorthand)
 flag.
 	`,
 		Run: CmdInspectRun,
-		Example: `
-atlas schema inspect -d "mysql://user:pass@tcp(localhost:3306)/dbname"
-atlas schema inspect -d "mariadb://user:pass@tcp(localhost:3306)/" --schema=schemaA,schemaB -s schemaC
-atlas schema inspect --dsn "postgres://user:pass@host:port/dbname?sslmode=disable"
-atlas schema inspect -d "sqlite://file:ex1.db?_fk=1"`,
+		Example: `  atlas schema inspect -u "mysql://user:pass@tcp(localhost:3306)/dbname"
+  atlas schema inspect -u "mariadb://user:pass@tcp(localhost:3306)/" --schema=schemaA,schemaB -s schemaC
+  atlas schema inspect --url "postgres://user:pass@host:port/dbname?sslmode=disable"
+  atlas schema inspect -u "sqlite://file:ex1.db?_fk=1"`,
 	}
 )
 
 func init() {
 	schemaCmd.AddCommand(InspectCmd)
-	InspectCmd.Flags().StringVarP(
-		&InspectFlags.DSN,
-		"dsn",
-		"d",
-		"",
-		"[driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format",
-	)
+	InspectCmd.Flags().StringVarP(&InspectFlags.URL, "url", "u", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format")
 	InspectCmd.Flags().BoolVarP(&InspectFlags.Web, "web", "w", false, "Open in a local Atlas UI")
 	InspectCmd.Flags().StringVarP(&InspectFlags.Addr, "addr", "", "127.0.0.1:5800", "Used with -w, local address to bind the server to")
 	InspectCmd.Flags().StringSliceVarP(&InspectFlags.Schema, "schema", "s", nil, "Set schema name")
-	cobra.CheckErr(InspectCmd.MarkFlagRequired("dsn"))
+	cobra.CheckErr(InspectCmd.MarkFlagRequired("url"))
+	dsn2url(InspectCmd, &InspectFlags.URL)
 }
 
 // CmdInspectRun is the command used when running CLI.
@@ -66,15 +60,15 @@ func CmdInspectRun(_ *cobra.Command, _ []string) {
 		schemaCmd.PrintErrln("The Atlas UI is not available in this release.")
 		return
 	}
-	d, err := defaultMux.OpenAtlas(InspectFlags.DSN)
+	d, err := defaultMux.OpenAtlas(InspectFlags.URL)
 	cobra.CheckErr(err)
-	inspectRun(d, InspectFlags.DSN)
+	inspectRun(d, InspectFlags.URL)
 }
 
-func inspectRun(d *Driver, dsn string) {
+func inspectRun(d *Driver, url string) {
 	ctx := context.Background()
 	schemas := InspectFlags.Schema
-	if n, err := SchemaNameFromDSN(dsn); n != "" {
+	if n, err := SchemaNameFromURL(url); n != "" {
 		cobra.CheckErr(err)
 		schemas = append(schemas, n)
 	}

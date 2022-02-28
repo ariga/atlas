@@ -12,8 +12,8 @@ import (
 )
 
 type diffCmdOpts struct {
-	fromDSN string
-	toDSN   string
+	fromURL string
+	toURL   string
 }
 
 // newDiffCmd returns a new *cobra.Command that runs cmdDiffRun with the given flags and mux.
@@ -29,8 +29,8 @@ SQL statements to migrate the "from" database to the schema of the "to" database
 			cmdDiffRun(cmd, &opts)
 		},
 	}
-	cmd.Flags().StringVarP(&opts.fromDSN, "from", "", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format")
-	cmd.Flags().StringVarP(&opts.toDSN, "to", "", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format")
+	cmd.Flags().StringVarP(&opts.fromURL, "from", "", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format")
+	cmd.Flags().StringVarP(&opts.toURL, "to", "", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format")
 	cobra.CheckErr(cmd.MarkFlagRequired("from"))
 	cobra.CheckErr(cmd.MarkFlagRequired("to"))
 	return cmd
@@ -44,13 +44,13 @@ func init() {
 // cmdDiffRun connects to the given databases, and prints an SQL plan to get from
 // the "from" schema to the "to" schema.
 func cmdDiffRun(cmd *cobra.Command, flags *diffCmdOpts) {
-	fromDriver, err := defaultMux.OpenAtlas(flags.fromDSN)
+	fromDriver, err := defaultMux.OpenAtlas(flags.fromURL)
 	cobra.CheckErr(err)
-	toDriver, err := defaultMux.OpenAtlas(flags.toDSN)
+	toDriver, err := defaultMux.OpenAtlas(flags.toURL)
 	cobra.CheckErr(err)
-	fromName, err := SchemaNameFromDSN(flags.fromDSN)
+	fromName, err := SchemaNameFromURL(flags.fromURL)
 	cobra.CheckErr(err)
-	toName, err := SchemaNameFromDSN(flags.toDSN)
+	toName, err := SchemaNameFromURL(flags.toURL)
 	cobra.CheckErr(err)
 	ctx := context.Background()
 	fromSchema, err := fromDriver.InspectSchema(ctx, fromName, nil)
