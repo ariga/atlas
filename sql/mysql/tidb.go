@@ -170,7 +170,7 @@ func (i *tinspect) patchSchema(ctx context.Context, s *schema.Schema) (*schema.S
 }
 
 func (i *tinspect) patchColumn(ctx context.Context, c *schema.Column) {
-	b, ok := c.Type.Type.(*BitType)
+	_, ok := c.Type.Type.(*BitType)
 	if !ok {
 		return
 	}
