@@ -15,6 +15,7 @@ import (
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/schema"
 
+
 	entsql "entgo.io/ent/dialect/sql"
 	"entgo.io/ent/entc/integration/ent"
 	"github.com/stretchr/testify/require"
@@ -73,7 +74,7 @@ func testRelation(t T) {
 func testEntIntegration(t T, dialect string, db *sql.DB) {
 	ctx := context.Background()
 	drv := entsql.OpenDB(dialect, db)
-	client := ent.NewClient(ent.Driver(drv))
+	client := ent.NewClient(ent.Driver(drv), ent.Debug())
 	require.NoError(t, client.Schema.Create(ctx))
 	sanity(client)
 	realm := t.loadRealm()
@@ -404,7 +405,7 @@ func ensureNoChange(t T, tables ...*schema.Table) {
 		tt, ok := realm.Schemas[0].Table(tables[i].Name)
 		require.True(t, ok)
 		changes := t.diff(tt, tables[i])
-		require.Emptyf(t, changes, "changes should be empty for table %s, but instead was %#v", tt.Name , changes)
+		require.Emptyf(t, changes, "changes should be empty for table %s, but instead was %#v", tt.Name, changes)
 	}
 }
 
