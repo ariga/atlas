@@ -482,6 +482,92 @@ create table atlas_defaults
 	})
 }
 
+func TestTiDB_CLI(t *testing.T) {
+	h := `
+			schema "test" {
+				charset   = "%s"
+				collation = "%s"
+			}
+			table "users" {
+				schema = schema.test
+				column "id" {
+					type = int
+				}
+				primary_key {
+					columns = [table.users.column.id]
+				}
+			}`
+	t.Run("SchemaInspect", func(t *testing.T) {
+		tidbRun(t, func(t *myTest) {
+			attrs := t.defaultAttrs()
+			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
+			testCLISchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"), mysql.UnmarshalHCL)
+		})
+	})
+	// t.Run("SchemaApply", func(t *testing.T) {
+	// 	tidbRun(t, func(t *myTest) {
+	// 		attrs := t.defaultAttrs()
+	// 		charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
+	// 		testCLISchemaApply(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"))
+	// 	})
+	// })
+	// t.Run("SchemaApplyDryRun", func(t *testing.T) {
+	// 	tidbRun(t, func(t *myTest) {
+	// 		attrs := t.defaultAttrs()
+	// 		charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
+	// 		testCLISchemaApplyDry(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"))
+	// 	})
+	// })
+	// t.Run("SchemaDiffRun", func(t *testing.T) {
+	// 	tidbRun(t, func(t *myTest) {
+	// 		testCLISchemaDiff(t, t.dsn("test"))
+	// 	})
+	// })
+}
+
+func TestTiDB_HCL(t *testing.T) {
+	full := `
+schema "test" {
+}
+table "users" {
+	schema = schema.test
+	column "id" {
+		type = int
+	}
+	primary_key {
+		columns = [table.users.column.id]
+	}
+}
+table "posts" {
+	schema = schema.test
+	column "id" {
+		type = int
+	}
+	column "author_id" {
+		type = int
+	}
+	foreign_key "author" {
+		columns = [
+			table.posts.column.author_id,
+		]
+		ref_columns = [
+			table.users.column.id,
+		]
+	}
+	primary_key {
+		columns = [table.users.column.id]
+	}
+}
+`
+	empty := `
+schema "test" {
+}
+`
+	tidbRun(t, func(t *myTest) {
+		testHCLIntegration(t, full, empty)
+	})
+}
+
 func TestTiDB_Ent(t *testing.T) {
 	tidbRun(t, func(t *myTest) {
 		ctx := context.Background()
