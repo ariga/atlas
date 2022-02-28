@@ -5,6 +5,7 @@
 package integration
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"testing"
@@ -426,6 +427,394 @@ func TestTiDB_ForeignKey(t *testing.T) {
 			require.Len(t, changes, 2)
 			t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
 			ensureNoChange(t, usersT)
+		})
+	})
+}
+
+func TestTiDB_HCL_Realm(t *testing.T) {
+	tidbRun(t, func(t *myTest) {
+		t.dropDB("second")
+		realm := t.loadRealm()
+		hcl, err := mysql.MarshalHCL(realm)
+		require.NoError(t, err)
+		wa := string(hcl) + `
+schema "second" {
+}
+`
+		t.applyRealmHcl(wa)
+		realm, err = t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{})
+		require.NoError(t, err)
+		_, ok := realm.Schema("test")
+		require.True(t, ok)
+		_, ok = realm.Schema("second")
+		require.True(t, ok)
+	})
+}
+
+func TestTiDB_DefaultsHCL(t *testing.T) {
+	n := "atlas_defaults"
+	tidbRun(t, func(t *myTest) {
+		ddl := `
+create table atlas_defaults
+(
+	string varchar(255) default "hello_world",
+	quoted varchar(100) default 'never say "never"',
+	tBit bit(10) default b'10101',
+	ts timestamp default CURRENT_TIMESTAMP,
+	number int default 42
+)
+`
+		t.dropTables(n)
+		_, err := t.db.Exec(ddl)
+		require.NoError(t, err)
+		realm := t.loadRealm()
+		spec, err := mysql.MarshalHCL(realm.Schemas[0])
+		require.NoError(t, err)
+		var s schema.Realm
+		err = mysql.UnmarshalHCL(spec, &s)
+		require.NoError(t, err)
+		t.dropTables(n)
+		t.applyHcl(string(spec))
+		ensureNoChange(t, realm.Schemas[0].Tables[0])
+	})
+}
+
+func TestTiDB_Sanity(t *testing.T) {
+	n := "atlas_types_sanity"
+	t.Run("Common", func(t *testing.T) {
+		ddl := `
+create table atlas_types_sanity
+(
+    tBit                        bit(10)              default b'1000000001'                                       null,
+		tInt                        int(10)              default 4                                               not null,
+		tTinyInt                    tinyint(10)          default 8                                                   null,
+		tSmallInt                   smallint(10)         default 2                                                   null,
+		tMediumInt                  mediumint(10)        default 11                                                  null,
+		tBigInt                     bigint(10)           default 4                                                   null,
+		tDecimal                    decimal              default 4                                                   null,
+		tNumeric                    numeric              default 4                                               not null,
+		tFloat                      float         			 default 4                                                   null,
+		tDouble                     double(10, 0)        default 4                                                   null,
+		tReal                       double(10, 0)        default 4                                                   null,
+		tTimestamp                  timestamp            default CURRENT_TIMESTAMP                                   null,
+		tTimestampFraction          timestamp(6)         default CURRENT_TIMESTAMP(6)                                null,
+		tTimestampOnUpdate          timestamp            default CURRENT_TIMESTAMP    ON UPDATE CURRENT_TIMESTAMP    null,
+		tTimestampFractionOnUpdate  timestamp(6)         default CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) null,
+		tDate                       date                                                                             null,
+		tTime                       time                                                                             null,
+		tDateTime                   datetime                                                                         null,
+		tYear                       year                                                                             null,
+		tVarchar                    varchar(10)          default 'Titan'                                             null,
+		tChar                       char(25)             default 'Olimpia'                                       not null,
+		tVarBinary                  varbinary(30)        default 'Titan'                                             null,
+		tBinary                     binary(5)            default 'Titan'                                             null,
+		tBlob                       blob(5)              default                                                     null,
+		tTinyBlob                   tinyblob                                                                         null,
+		tMediumBlob                 mediumblob           default                                                     null,
+		tLongBlob                   longblob             default                                                     null,
+		tText                       text(13)             default                                                     null,
+		tTinyText                   tinytext             default                                                     null,
+		tMediumText                 mediumtext           default                                                     null,
+		tLongText                   longtext             default                                                     null,
+		tEnum                       enum('a','b')        default                                                     null,
+		tSet                        set('a','b')         default                                                     null
+) CHARSET = latin1 COLLATE = latin1_swedish_ci;
+`
+		tidbRun(t, func(t *myTest) {
+			t.dropTables(n)
+			_, err := t.db.Exec(ddl)
+			require.NoError(t, err)
+			realm := t.loadRealm()
+			require.Len(t, realm.Schemas, 1)
+			ts, ok := realm.Schemas[0].Table(n)
+			require.True(t, ok)
+			expected := schema.Table{
+				Name: n,
+				Attrs: []schema.Attr{
+					&schema.Collation{V: "latin1_swedish_ci"},
+					&schema.Charset{V: "latin1"},
+				},
+				Schema: realm.Schemas[0],
+				Columns: []*schema.Column{
+					{
+						Name:    "tBit",
+						Type:    &schema.ColumnType{Type: &mysql.BitType{T: "bit"}, Raw: "bit(10) unsigned", Null: true},
+						Default: &schema.Literal{V: "b'1000000001'"},
+					},
+					{
+						Name: "tInt",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int", Unsigned: false},
+							Raw: t.valueByVersion(map[string]string{"8": "int"}, "int(10)"), Null: false},
+						Default: &schema.Literal{V: "4"},
+					},
+					{
+						Name: "tTinyInt",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "tinyint", Unsigned: false},
+							Raw: t.valueByVersion(map[string]string{"8": "tinyint"}, "tinyint(10)"), Null: true},
+						Default: &schema.Literal{V: "8"},
+					},
+					{
+						Name: "tSmallInt",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "smallint", Unsigned: false},
+							Raw: t.valueByVersion(map[string]string{"8": "smallint"}, "smallint(10)"), Null: true},
+						Default: &schema.Literal{V: "2"},
+					},
+					{
+						Name: "tMediumInt",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "mediumint", Unsigned: false},
+							Raw: t.valueByVersion(map[string]string{"8": "mediumint"}, "mediumint(10)"), Null: true},
+						Default: &schema.Literal{V: "11"},
+					},
+					{
+						Name: "tBigInt",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false},
+							Raw: t.valueByVersion(map[string]string{"8": "bigint"}, "bigint(10)"), Null: true},
+						Default: &schema.Literal{V: "4"},
+					},
+					{
+						Name: "tDecimal",
+						Type: &schema.ColumnType{Type: &schema.DecimalType{T: "decimal", Precision: 10},
+							Raw: "decimal(10,0)", Null: true},
+						Default: &schema.Literal{V: "4"},
+					},
+					{
+						Name: "tNumeric",
+						Type: &schema.ColumnType{Type: &schema.DecimalType{T: "decimal", Precision: 10},
+							Raw: "decimal(10,0)", Null: false},
+						Default: &schema.Literal{V: "4"},
+					},
+					{
+						Name: "tFloat",
+						Type: &schema.ColumnType{Type: &schema.FloatType{T: "float"},
+							Raw: "float", Null: true},
+						Default: &schema.Literal{V: "4"},
+					},
+					{
+						Name: "tDouble",
+						Type: &schema.ColumnType{Type: &schema.FloatType{T: "double"},
+							Raw: "double", Null: true},
+						Default: &schema.Literal{V: "4"},
+					},
+					{
+						Name: "tReal",
+						Type: &schema.ColumnType{Type: &schema.FloatType{T: "double"},
+							Raw: "double", Null: true},
+						Default: &schema.Literal{V: "4"},
+					},
+					{
+						Name: "tTimestamp",
+						Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp"},
+							Raw: "timestamp", Null: true},
+						Default: &schema.RawExpr{
+							X: "CURRENT_TIMESTAMP",
+						},
+					},
+					{
+						Name: "tTimestampFraction",
+						Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp", Precision: 6},
+							Raw: "timestamp(6)", Null: true},
+						Default: &schema.RawExpr{
+							X: "CURRENT_TIMESTAMP(6)",
+						},
+					},
+					{
+						Name: "tTimestampOnUpdate",
+						Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp"},
+							Raw: "timestamp", Null: true},
+						Default: &schema.RawExpr{
+							X: "CURRENT_TIMESTAMP",
+						},
+						Attrs: []schema.Attr{
+							&mysql.OnUpdate{
+								A: "CURRENT_TIMESTAMP",
+							},
+						},
+					},
+					{
+						Name: "tTimestampFractionOnUpdate",
+						Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp", Precision: 6},
+							Raw: "timestamp(6)", Null: true},
+						Default: &schema.RawExpr{
+							X: "CURRENT_TIMESTAMP(6)",
+						},
+						Attrs: []schema.Attr{
+							&mysql.OnUpdate{
+								A: "CURRENT_TIMESTAMP(6)",
+							},
+						},
+					},
+					{
+						Name: "tDate",
+						Type: &schema.ColumnType{Type: &schema.TimeType{T: "date"},
+							Raw: "date", Null: true},
+					},
+					{
+						Name: "tTime",
+						Type: &schema.ColumnType{Type: &schema.TimeType{T: "time"},
+							Raw: "time", Null: true},
+					},
+					{
+						Name: "tDateTime",
+						Type: &schema.ColumnType{Type: &schema.TimeType{T: "datetime"},
+							Raw: "datetime", Null: true},
+					},
+					{
+						Name: "tYear",
+						Type: &schema.ColumnType{Type: &schema.TimeType{T: "year", Precision: t.intByVersion(map[string]int{"8": 0}, 4)},
+							Raw: t.valueByVersion(map[string]string{"8": "year"}, "year(4) unsigned"), Null: true},
+					},
+					{
+						Name: "tVarchar",
+						Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar", Size: 10},
+							Raw: "varchar(10)", Null: true},
+						Default: &schema.Literal{V: t.quoted("Titan")},
+						Attrs: []schema.Attr{
+							&schema.Charset{V: "latin1"},
+							&schema.Collation{V: "latin1_swedish_ci"},
+						},
+					},
+					{
+						Name: "tChar",
+						Type: &schema.ColumnType{Type: &schema.StringType{T: "char", Size: 25},
+							Raw: "char(25)", Null: false},
+						Default: &schema.Literal{V: t.quoted("Olimpia")},
+						Attrs: []schema.Attr{
+							&schema.Charset{V: "latin1"},
+							&schema.Collation{V: "latin1_swedish_ci"},
+						},
+					},
+					{
+						Name: "tVarBinary",
+						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "varbinary", Size: 30},
+							Raw: "varbinary(30)", Null: true},
+						Default: &schema.Literal{V: t.valueByVersion(map[string]string{"8": "0x546974616E"}, t.quoted("Titan"))},
+					},
+					{
+						Name: "tBinary",
+						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "binary", Size: 5},
+							Raw: "binary(5)", Null: true},
+						Default: &schema.Literal{V: t.valueByVersion(map[string]string{"8": "0x546974616E"}, t.quoted("Titan"))},
+					},
+					{
+						Name: "tBlob",
+						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "tinyblob", Size: 0},
+							Raw: "tinyblob", Null: true},
+					},
+					{
+						Name: "tTinyBlob",
+						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "tinyblob", Size: 0},
+							Raw: "tinyblob", Null: true},
+					},
+					{
+						Name: "tMediumBlob",
+						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "mediumblob", Size: 0},
+							Raw: "mediumblob", Null: true},
+					},
+					{
+						Name: "tLongBlob",
+						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "longblob", Size: 0},
+							Raw: "longblob", Null: true},
+					},
+					{
+						Name: "tText",
+						Type: &schema.ColumnType{Type: &schema.StringType{T: "tinytext", Size: 0},
+							Raw: "tinytext", Null: true},
+						Attrs: []schema.Attr{
+							&schema.Charset{V: "latin1"},
+							&schema.Collation{V: "latin1_swedish_ci"},
+						},
+					},
+					{
+						Name: "tTinyText",
+						Type: &schema.ColumnType{Type: &schema.StringType{T: "tinytext", Size: 0},
+							Raw: "tinytext", Null: true},
+						Attrs: []schema.Attr{
+							&schema.Charset{V: "latin1"},
+							&schema.Collation{V: "latin1_swedish_ci"},
+						},
+					},
+					{
+						Name: "tMediumText",
+						Type: &schema.ColumnType{Type: &schema.StringType{T: "mediumtext", Size: 0},
+							Raw: "mediumtext", Null: true},
+						Attrs: []schema.Attr{
+							&schema.Charset{V: "latin1"},
+							&schema.Collation{V: "latin1_swedish_ci"},
+						},
+					},
+					{
+						Name: "tLongText",
+						Type: &schema.ColumnType{Type: &schema.StringType{T: "longtext", Size: 0},
+							Raw: "longtext", Null: true},
+						Attrs: []schema.Attr{
+							&schema.Charset{V: "latin1"},
+							&schema.Collation{V: "latin1_swedish_ci"},
+						},
+					},
+					{
+						Name: "tEnum",
+						Type: &schema.ColumnType{Type: &schema.EnumType{T: "enum", Values: []string{"a", "b"}},
+							Raw: "enum('a','b')", Null: true},
+						Attrs: []schema.Attr{
+							&schema.Charset{V: "latin1"},
+							&schema.Collation{V: "latin1_swedish_ci"},
+						},
+					},
+					{
+						Name: "tSet",
+						Type: &schema.ColumnType{Type: &mysql.SetType{Values: []string{"a", "b"}},
+							Raw: "set('a','b')", Null: true},
+						Attrs: []schema.Attr{
+							&schema.Charset{V: "latin1"},
+							&schema.Collation{V: "latin1_swedish_ci"},
+						},
+					},
+				},
+			}
+			rmCreateStmt(ts)
+			require.EqualValues(t, &expected, ts)
+			t.hclDriftTest(n, realm, expected)
+		})
+	})
+	t.Run("JSON", func(t *testing.T) {
+		ddl := `
+	create table atlas_types_sanity
+	(
+	    tJSON         json          default                   null
+	) CHARSET = latin1 COLLATE latin1_swedish_ci;
+	`
+		tidbRun(t, func(t *myTest) {
+			if t.version == "56" {
+				return
+			}
+			t.dropTables(n)
+			_, err := t.db.Exec(ddl)
+			require.NoError(t, err)
+			realm := t.loadRealm()
+			require.Len(t, realm.Schemas, 1)
+			ts, ok := realm.Schemas[0].Table(n)
+			require.True(t, ok)
+			expected := schema.Table{
+				Name: n,
+				Attrs: func() []schema.Attr {
+					return []schema.Attr{
+						&schema.Collation{V: "latin1_swedish_ci"},
+						&schema.Charset{V: "latin1"},
+					}
+				}(),
+				Schema: realm.Schemas[0],
+				Columns: []*schema.Column{
+					&schema.Column{Name: "tJSON", Type: &schema.ColumnType{Type: &schema.JSONType{T: "json"}, Raw: "json", Null: true}},
+				},
+			}
+			rmCreateStmt(ts)
+			require.EqualValues(t, &expected, ts)
+		})
+	})
+
+	t.Run("ImplicitIndexes", func(t *testing.T) {
+		tidbRun(t, func(t *myTest) {
+			testImplicitIndexes(t, t.db)
 		})
 	})
 }

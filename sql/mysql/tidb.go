@@ -6,6 +6,7 @@ package mysql
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"regexp"
 	"sort"
@@ -157,11 +158,37 @@ func (i *tinspect) patchSchema(ctx context.Context, s *schema.Schema) (*schema.S
 		if err := i.setFKs(s, t); err != nil {
 			return nil, err
 		}
+		for _, c := range t.Columns {
+			i.patchColumn(ctx, c)
+		}
 	}
 	return s, nil
 }
 
-// e.g CONSTRAINT "" FOREIGN KEY ("foo_id") REFERENCES "foo" ("id")
+func (i *tinspect) patchColumn(ctx context.Context, c *schema.Column) {
+	_, ok := c.Type.Type.(*BitType)
+	if !ok {
+		return
+	}
+	// TiDB has a bug where it does not format bit default value correctly.
+	if lit, ok := c.Default.(*schema.Literal); ok {
+		lit.V = bytesToBitLiteral([]byte(lit.V))
+	}
+}
+
+// bytesToBitLiteral converts a bytes to MySQL bit literal.
+// e.g. []byte{4} -> b'100', []byte{2,1} -> b'1000000001'.
+// See: https://github.com/pingcap/tidb/issues/32655.
+func bytesToBitLiteral(b []byte) string {
+	bytes := make([]byte, 8)
+	for i := 0; i < len(b); i++ {
+		bytes[8-len(b)+i] = b[i]
+	}
+	val := binary.BigEndian.Uint64(bytes)
+	return fmt.Sprintf("b'%b'", val)
+}
+
+// e.g. CONSTRAINT "" FOREIGN KEY ("foo_id") REFERENCES "foo" ("id").
 var reFK = regexp.MustCompile("(?i)CONSTRAINT\\s+[\"`]*(\\w+)[\"`]*\\s+FOREIGN\\s+KEY\\s*\\(([,\"` \\w]+)\\)\\s+REFERENCES\\s+[\"`]*(\\w+)[\"`]*\\s*\\(([,\"` \\w]+)\\).*")
 var reActions = regexp.MustCompile(fmt.Sprintf("(?i)(ON)\\s+(UPDATE|DELETE)\\s+(%s|%s|%s|%s|%s)", schema.NoAction, schema.Restrict, schema.SetNull, schema.SetDefault, schema.Cascade))
 
