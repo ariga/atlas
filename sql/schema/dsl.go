@@ -728,6 +728,10 @@ func replaceOrAppend(attrs *[]Attr, v Attr) {
 	*attrs = append(*attrs, v)
 }
 
+func ReplaceOrAppend(attrs *[]Attr, v Attr) {
+	replaceOrAppend(attrs, v)
+}
+
 // del searches an attribute of the same type as v in
 // the list and delete it.
 func del(attrs *[]Attr, v Attr) {
