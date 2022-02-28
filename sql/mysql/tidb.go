@@ -180,7 +180,7 @@ func (i *tinspect) patchColumn(ctx context.Context, c *schema.Column) {
 // e.g. []byte{4} -> b'100', []byte{2,1} -> b'1000000001'.
 // See: https://github.com/pingcap/tidb/issues/32655.
 func bytesToBitLiteral(b []byte) string {
-	bytes := []byte{0, 0, 0, 0, 0, 0, 0, 0}
+	bytes := make([]byte, 8)
 	for i := 0; i < len(b); i++ {
 		bytes[8-len(b)+i] = b[i]
 	}
