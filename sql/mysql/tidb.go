@@ -6,10 +6,10 @@ package mysql
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 
 	"ariga.io/atlas/sql/internal/sqlx"
@@ -176,20 +176,16 @@ func (i *tinspect) patchColumn(ctx context.Context, c *schema.Column) {
 	}
 }
 
-// bufferToBitLiteral converts a buffer to MySQL bit literal (e.g: []byte{4} -> b'100')
+// bufferToBitLiteral converts a bytes to MySQL bit literal (e.g: []byte{4} -> b'100')
 func bufferToBitLiteral(b []byte) string {
 	builder := strings.Builder{}
 	builder.WriteString("b'")
-	for i, digit := range b {
-		if i != 0 {
-			bits := strconv.FormatInt(int64(digit), 2)
-			pads := 8 - len(bits)
-			builder.WriteString(strings.Repeat("0", pads))
-			builder.WriteString(bits)
-		} else {
-			builder.WriteString(strconv.FormatInt(int64(digit), 2))
-		}
+	bytes := []byte{0, 0, 0, 0, 0, 0, 0, 0}
+	for i := 0; i < len(b); i++ {
+		bytes[8-len(b)+i] = b[i]
 	}
+	val := binary.BigEndian.Uint64(bytes)
+	fmt.Fprintf(&builder, "%b", val)
 	builder.WriteString("'")
 	return builder.String()
 }
