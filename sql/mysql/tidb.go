@@ -161,8 +161,39 @@ func (i *tinspect) patchSchema(ctx context.Context, s *schema.Schema) (*schema.S
 		if err := i.setAutoIncrement(t); err != nil {
 			return nil, err
 		}
+		for _, c := range t.Columns {
+			i.patchColumn(ctx, c)
+		}
 	}
 	return s, nil
+}
+
+func (i *tinspect) patchColumn(ctx context.Context, c *schema.Column) {
+	switch c.Type.Type.(type) {
+	case *BitType:
+		// TiDB has a bug where it does not format bit default value correctly. see: https://github.com/pingcap/tidb/issues/32655.
+		if lit, ok := c.Default.(*schema.Literal); ok {
+			lit.V = bufferToBitLiteral([]byte(lit.V))
+		}
+	}
+}
+
+// bufferToBitLiteral converts a buffer to MySQL bit literal (e.g: []byte{4} -> b'100')
+func bufferToBitLiteral(b []byte) string {
+	builder := strings.Builder{}
+	builder.WriteString("b'")
+	for i, digit := range b {
+		if i != 0 {
+			bits := strconv.FormatInt(int64(digit), 2)
+			pads := 8 - len(bits)
+			builder.WriteString(strings.Repeat("0", pads))
+			builder.WriteString(bits)
+		} else {
+			builder.WriteString(strconv.FormatInt(int64(digit), 2))
+		}
+	}
+	builder.WriteString("'")
+	return builder.String()
 }
 
 // e.g CONSTRAINT "" FOREIGN KEY ("foo_id") REFERENCES "foo" ("id")
