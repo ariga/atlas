@@ -482,6 +482,54 @@ create table atlas_defaults
 	})
 }
 
+func TestTiDB_CLI_MultiSchema(t *testing.T) {
+	h := `
+			schema "test" {
+				charset   = "%s"
+				collation = "%s"
+			}
+			table "users" {
+				schema = schema.test
+				column "id" {
+					type = int
+				}
+				primary_key {
+					columns = [table.users.column.id]
+				}
+			}
+			schema "test2" {
+				charset   = "%s"
+				collation = "%s"
+			}
+			table "users" {
+				schema = schema.test2
+				column "id" {
+					type = int
+				}
+				primary_key {
+					columns = [table.users.column.id]
+				}
+			}`
+	t.Run("SchemaInspect", func(t *testing.T) {
+		tidbRun(t, func(t *myTest) {
+			t.dropDB("test2")
+			t.dropTables("users")
+			attrs := t.defaultAttrs()
+			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
+			testCLIMultiSchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V, charset.V, collate.V), t.dsn(""), []string{"test", "test2"}, mysql.UnmarshalHCL)
+		})
+	})
+	t.Run("SchemaApply", func(t *testing.T) {
+		tidbRun(t, func(t *myTest) {
+			t.dropDB("test2")
+			t.dropTables("users")
+			attrs := t.defaultAttrs()
+			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
+			testCLIMultiSchemaApply(t, fmt.Sprintf(h, charset.V, collate.V, charset.V, collate.V), t.dsn(""), []string{"test", "test2"}, mysql.UnmarshalHCL)
+		})
+	})
+}
+
 func TestTiDB_CLI(t *testing.T) {
 	h := `
 			schema "test" {
@@ -504,25 +552,25 @@ func TestTiDB_CLI(t *testing.T) {
 			testCLISchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"), mysql.UnmarshalHCL)
 		})
 	})
-	// t.Run("SchemaApply", func(t *testing.T) {
-	// 	tidbRun(t, func(t *myTest) {
-	// 		attrs := t.defaultAttrs()
-	// 		charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
-	// 		testCLISchemaApply(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"))
-	// 	})
-	// })
-	// t.Run("SchemaApplyDryRun", func(t *testing.T) {
-	// 	tidbRun(t, func(t *myTest) {
-	// 		attrs := t.defaultAttrs()
-	// 		charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
-	// 		testCLISchemaApplyDry(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"))
-	// 	})
-	// })
-	// t.Run("SchemaDiffRun", func(t *testing.T) {
-	// 	tidbRun(t, func(t *myTest) {
-	// 		testCLISchemaDiff(t, t.dsn("test"))
-	// 	})
-	// })
+	t.Run("SchemaApply", func(t *testing.T) {
+		tidbRun(t, func(t *myTest) {
+			attrs := t.defaultAttrs()
+			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
+			testCLISchemaApply(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"))
+		})
+	})
+	t.Run("SchemaApplyDryRun", func(t *testing.T) {
+		tidbRun(t, func(t *myTest) {
+			attrs := t.defaultAttrs()
+			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
+			testCLISchemaApplyDry(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"))
+		})
+	})
+	t.Run("SchemaDiffRun", func(t *testing.T) {
+		tidbRun(t, func(t *myTest) {
+			testCLISchemaDiff(t, t.dsn("test"))
+		})
+	})
 }
 
 func TestTiDB_HCL(t *testing.T) {
