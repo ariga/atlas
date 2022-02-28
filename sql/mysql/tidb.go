@@ -166,12 +166,13 @@ func (i *tinspect) patchSchema(ctx context.Context, s *schema.Schema) (*schema.S
 }
 
 func (i *tinspect) patchColumn(ctx context.Context, c *schema.Column) {
-	switch c.Type.Type.(type) {
-	case *BitType:
-		// TiDB has a bug where it does not format bit default value correctly.
-		if lit, ok := c.Default.(*schema.Literal); ok {
-			lit.V = bytesToBitLiteral([]byte(lit.V))
-		}
+	b, ok := c.Type.Type.(*BitType)
+	if !ok {
+		return
+	}
+	// TiDB has a bug where it does not format bit default value correctly.
+	if lit, ok := c.Default.(*schema.Literal); ok {
+		lit.V = bytesToBitLiteral([]byte(lit.V))
 	}
 }
 
