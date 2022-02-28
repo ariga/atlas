@@ -173,28 +173,25 @@ func (i *tinspect) patchColumn(ctx context.Context, c *schema.Column) {
 	switch c.Type.Type.(type) {
 	case *BitType:
 		// TiDB has a bug where it does not format bit default value correctly.
-		// See: https://github.com/pingcap/tidb/issues/32655.
 		if lit, ok := c.Default.(*schema.Literal); ok {
-			lit.V = bufferToBitLiteral([]byte(lit.V))
+			lit.V = bytesToBitLiteral([]byte(lit.V))
 		}
 	}
 }
 
-// bufferToBitLiteral converts a bytes to MySQL bit literal (e.g: []byte{4} -> b'100')
-func bufferToBitLiteral(b []byte) string {
-	builder := strings.Builder{}
-	builder.WriteString("b'")
+// bytesToBitLiteral converts a bytes to MySQL bit literal.
+// e.g. []byte{4} -> b'100', []byte{2,1} -> b'1000000001'.
+// See: https://github.com/pingcap/tidb/issues/32655.
+func bytesToBitLiteral(b []byte) string {
 	bytes := []byte{0, 0, 0, 0, 0, 0, 0, 0}
 	for i := 0; i < len(b); i++ {
 		bytes[8-len(b)+i] = b[i]
 	}
 	val := binary.BigEndian.Uint64(bytes)
-	fmt.Fprintf(&builder, "%b", val)
-	builder.WriteString("'")
-	return builder.String()
+	return fmt.Sprintf("b'%b'", val)
 }
 
-// e.g CONSTRAINT "" FOREIGN KEY ("foo_id") REFERENCES "foo" ("id")
+// e.g. CONSTRAINT "" FOREIGN KEY ("foo_id") REFERENCES "foo" ("id").
 var reFK = regexp.MustCompile("(?i)CONSTRAINT\\s+[\"`]*(\\w+)[\"`]*\\s+FOREIGN\\s+KEY\\s*\\(([,\"` \\w]+)\\)\\s+REFERENCES\\s+[\"`]*(\\w+)[\"`]*\\s*\\(([,\"` \\w]+)\\).*")
 var reActions = regexp.MustCompile(fmt.Sprintf("(?i)(ON)\\s+(UPDATE|DELETE)\\s+(%s|%s|%s|%s|%s)", schema.NoAction, schema.Restrict, schema.SetNull, schema.SetDefault, schema.Cascade))
 
