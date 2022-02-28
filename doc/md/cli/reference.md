@@ -78,21 +78,21 @@ If run with the "--dry-run" flag, atlas will exit after printing out the planned
 #### Example
 
 ```
-atlas schema apply -d "mysql://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
-atlas schema apply -d "mysql://user:pass@tcp(localhost:3306)/" -f atlas.hcl --schema prod --schema staging
-atlas schema apply -d "mysql://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl --dry-run 
-atlas schema apply -d "mariadb://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
-atlas schema apply --dsn "postgres://user:pass@host:port/dbname?sslmode=disable" -f atlas.hcl
-atlas schema apply -d "sqlite://file:ex1.db?_fk=1" -f atlas.hcl
+  atlas schema apply -u "mysql://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
+  atlas schema apply -u "mysql://user:pass@tcp(localhost:3306)/" -f atlas.hcl --schema prod --schema staging
+  atlas schema apply -u "mysql://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl --dry-run
+  atlas schema apply -u "mariadb://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
+  atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -f atlas.hcl
+  atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f atlas.hcl
 ```
 #### Flags
 ```
       --addr string      used with -w, local address to bind the server to (default "127.0.0.1:5800")
       --auto-approve     Auto approve. Apply the schema changes without prompting for approval
       --dry-run          Dry-run. Print SQL plan without prompting for execution
-  -d, --dsn string       [driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format
   -f, --file string      [/path/to/file] file containing schema
   -s, --schema strings   Set schema name
+  -u, --url string       [driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format
   -w, --web              Open in a local Atlas UI
 
 ```
@@ -114,8 +114,8 @@ SQL statements to migrate the "from" database to the schema of the "to" database
 
 #### Flags
 ```
-      --from string   [driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format
-      --to string     [driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format
+      --from string   [driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format
+      --to string     [driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format
 
 ```
 
@@ -153,12 +153,12 @@ atlas schema inspect [flags]
 It then prints to the screen the schema of that database in Atlas DDL syntax. This output can be 
 saved to a file, commonly by redirecting the output to a file named with a ".hcl" suffix:
 
-	atlas schema inspect -d "mysql://user:pass@tcp(localhost:3306)/dbname" > atlas.hcl
+  atlas schema inspect -u "mysql://user:pass@tcp(localhost:3306)/dbname" > atlas.hcl
 
 This file can then be edited and used with the `atlas schema apply` command to plan
 and execute schema migrations against the given database. In cases where users wish to inspect
 all multiple schemas in a given database (for instance a MySQL server may contain multiple named
-databases), omit the relevant part from the dsn, e.g. "mysql://user:pass@tcp(localhost:3306)/".
+databases), omit the relevant part from the url, e.g. "mysql://user:pass@tcp(localhost:3306)/".
 To select specific schemas from the databases, users may use the "--schema" (or "-s" shorthand)
 flag.
 	
@@ -166,17 +166,16 @@ flag.
 #### Example
 
 ```
-
-atlas schema inspect -d "mysql://user:pass@tcp(localhost:3306)/dbname"
-atlas schema inspect -d "mariadb://user:pass@tcp(localhost:3306)/" --schema=schemaA,schemaB -s schemaC
-atlas schema inspect --dsn "postgres://user:pass@host:port/dbname?sslmode=disable"
-atlas schema inspect -d "sqlite://file:ex1.db?_fk=1"
+  atlas schema inspect -u "mysql://user:pass@tcp(localhost:3306)/dbname"
+  atlas schema inspect -u "mariadb://user:pass@tcp(localhost:3306)/" --schema=schemaA,schemaB -s schemaC
+  atlas schema inspect --url "postgres://user:pass@host:port/dbname?sslmode=disable"
+  atlas schema inspect -u "sqlite://file:ex1.db?_fk=1"
 ```
 #### Flags
 ```
       --addr string      Used with -w, local address to bind the server to (default "127.0.0.1:5800")
-  -d, --dsn string       [driver://username:password@protocol(address)/dbname?param=value] Select data source using the dsn format
   -s, --schema strings   Set schema name
+  -u, --url string       [driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format
   -w, --web              Open in a local Atlas UI
 
 ```
