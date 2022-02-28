@@ -110,6 +110,6 @@ func (t *TwinDriver) formatName(name string) string {
 	if t.MaxNameLen == 0 || len(twin) <= t.MaxNameLen {
 		return twin
 	}
-	hasher := fnv.New128()
-	return fmt.Sprintf("%s_%x", twin[:t.MaxNameLen-1-hasher.Size()*2], hasher.Sum([]byte(twin)))
+	h := fnv.New128()
+	return fmt.Sprintf("%s_%x", twin[:t.MaxNameLen-1-h.Size()*2], h.Sum([]byte(twin)))
 }
