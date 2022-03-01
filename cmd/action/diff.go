@@ -44,9 +44,9 @@ func init() {
 // cmdDiffRun connects to the given databases, and prints an SQL plan to get from
 // the "from" schema to the "to" schema.
 func cmdDiffRun(cmd *cobra.Command, flags *diffCmdOpts) {
-	fromDriver, err := defaultMux.OpenAtlas(flags.fromURL)
+	fromDriver, err := DefaultMux.OpenAtlas(flags.fromURL)
 	cobra.CheckErr(err)
-	toDriver, err := defaultMux.OpenAtlas(flags.toURL)
+	toDriver, err := DefaultMux.OpenAtlas(flags.toURL)
 	cobra.CheckErr(err)
 	fromName, err := SchemaNameFromURL(flags.fromURL)
 	cobra.CheckErr(err)
