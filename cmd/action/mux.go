@@ -89,7 +89,7 @@ func SchemaNameFromURL(url string) (string, error) {
 		return "", err
 	}
 	switch key {
-	case "mysql", "mariadb":
+	case "mysql", "maria", "mariadb":
 		cfg, err := mysql.ParseDSN(dsn)
 		if err != nil {
 			return "", err
