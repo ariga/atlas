@@ -45,7 +45,7 @@ func NewMux() *Mux {
 var (
 	// DefaultMux is the default Mux that is used by the different commands.
 	DefaultMux = NewMux()
-	reMemMode  = regexp.MustCompile("^file:.*:memory:$|:memory:|^file:.*mode=memory.*")
+	reMemMode  = regexp.MustCompile(":memory:|^file:.*mode=memory.*")
 )
 
 // RegisterProvider is used to register a Driver provider by key.
