@@ -5,7 +5,7 @@ go 1.17
 replace ariga.io/atlas => ../../
 
 require (
-	ariga.io/atlas v0.3.5-0.20220215131223-8043663b4223
+	ariga.io/atlas v0.0.0
 	entgo.io/ent v0.10.1-0.20220225071220-4213c72699ad
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/hashicorp/hcl/v2 v2.10.1 // indirect
