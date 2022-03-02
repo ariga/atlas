@@ -13,16 +13,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newEnvCmd() *cobra.Command {
+var (
+	EnvCmd *cobra.Command
+)
+
+func NewEnvCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "env",
 		Short: "Print atlas environment variables.",
-		Long: "`atlas env`" + `prints atlas environment information.
+		Long: "`atlas env` " + `prints atlas environment information.
 
 Every set environment param will be printed in the form of NAME=VALUE.
 
 List of supported environment parameters:
-* *ATLAS_NO_UPDATE_NOTIFIER*: On any command, the CLI will check for new releases using the GitHub API.
+- *ATLAS_NO_UPDATE_NOTIFIER*: On any command, the CLI will check for new releases using the GitHub API.
   This check will happen at most once every 24 hours. To cancel this behavior, set the environment 
   variable "ATLAS_NO_UPDATE_NOTIFIER".`,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -37,5 +41,6 @@ List of supported environment parameters:
 }
 
 func init() {
-	RootCmd.AddCommand(newEnvCmd())
+	EnvCmd = NewEnvCmd()
+	RootCmd.AddCommand(EnvCmd)
 }
