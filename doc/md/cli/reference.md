@@ -36,12 +36,12 @@ atlas env
 ```
 
 #### Details
-`atlas env` prints atlas environment information.
+'atlas env' prints atlas environment information.
 
 Every set environment param will be printed in the form of NAME=VALUE.
 
 List of supported environment parameters:
-- *ATLAS_NO_UPDATE_NOTIFIER*: On any command, the CLI will check for new releases using the GitHub API.
+* ATLAS_NO_UPDATE_NOTIFIER: On any command, the CLI will check for new releases using the GitHub API.
   This check will happen at most once every 24 hours. To cancel this behavior, set the environment 
   variable "ATLAS_NO_UPDATE_NOTIFIER".
 
