@@ -301,10 +301,13 @@ func (t *myTest) hclDiff(ts *testscript.TestScript, name string) []schema.Change
 	var (
 		desired schema.Schema
 		f       = ts.ReadFile(name)
+		ctx     = context.Background()
 		r       = strings.NewReplacer("$charset", ts.Getenv("charset"), "$collate", ts.Getenv("collate"), "$db", ts.Getenv("db"))
 	)
 	ts.Check(mysql.UnmarshalHCL([]byte(r.Replace(f)), &desired))
-	current, err := t.drv.InspectSchema(context.Background(), desired.Name, nil)
+	current, err := t.drv.InspectSchema(ctx, desired.Name, nil)
+	ts.Check(err)
+	current, err = t.drv.NormalizeSchema(ctx, current)
 	ts.Check(err)
 	changes, err := t.drv.SchemaDiff(current, &desired)
 	ts.Check(err)
@@ -322,10 +325,13 @@ func (t *pgTest) cmdApply(ts *testscript.TestScript, neg bool, args []string) {
 func (t *pgTest) hclDiff(ts *testscript.TestScript, name string) []schema.Change {
 	var (
 		desired schema.Schema
+		ctx     = context.Background()
 		f       = strings.ReplaceAll(ts.ReadFile(name), "$db", ts.Getenv("db"))
 	)
 	ts.Check(postgres.UnmarshalHCL([]byte(f), &desired))
-	current, err := t.drv.InspectSchema(context.Background(), desired.Name, nil)
+	current, err := t.drv.InspectSchema(ctx, desired.Name, nil)
+	ts.Check(err)
+	current, err = t.drv.NormalizeSchema(ctx, current)
 	ts.Check(err)
 	changes, err := t.drv.SchemaDiff(current, &desired)
 	ts.Check(err)
