@@ -13,15 +13,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	EnvCmd *cobra.Command
-)
-
 func init() {
-	EnvCmd = NewEnvCmd()
-	RootCmd.AddCommand(EnvCmd)
+	RootCmd.AddCommand(NewEnvCmd())
 }
 
+// NewEnvCmd returns a new *cobra.Command that runs the env command.
 func NewEnvCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "env",
