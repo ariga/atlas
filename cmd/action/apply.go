@@ -20,6 +20,7 @@ var (
 	// ApplyFlags are the flags used in Apply command.
 	ApplyFlags struct {
 		URL         string
+		DevURL      string
 		File        string
 		Web         bool
 		Addr        string
@@ -31,16 +32,18 @@ var (
 	ApplyCmd = &cobra.Command{
 		Use:   "apply",
 		Short: "Apply an atlas schema to a target database.",
-		Long: "`atlas schema apply`" + ` plans and executes a database migration to bring a given database
-to the state described in the Atlas schema file. Before running the migration, Atlas will print the migration
-plan and prompt the user for approval.
+		// Use 80-columns as max width.
+		Long: `'atlas schema apply' plans and executes a database migration to bring a given
+database to the state described in the Atlas schema file. Before running the
+migration, Atlas will print the migration plan and prompt the user for approval.
 
-If run with the "--dry-run" flag, atlas will exit after printing out the planned migration.`,
+If run with the "--dry-run" flag, atlas will exit after printing out the planned
+migration.`,
 		Run: CmdApplyRun,
-		Example: `  atlas schema apply -u "mysql://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
-  atlas schema apply -u "mysql://user:pass@tcp(localhost:3306)/" -f atlas.hcl --schema prod --schema staging
-  atlas schema apply -u "mysql://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl --dry-run
-  atlas schema apply -u "mariadb://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
+		Example: `  atlas schema apply -u "mysql://user:pass@localhost/dbname" -f atlas.hcl
+  atlas schema apply -u "mysql://localhost" -f atlas.hcl --schema prod --schema staging
+  atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" -f atlas.hcl --dry-run
+  atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" -f atlas.hcl
   atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -f atlas.hcl
   atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f atlas.hcl`,
 	}
@@ -53,20 +56,22 @@ const (
 
 func init() {
 	schemaCmd.AddCommand(ApplyCmd)
-	ApplyCmd.Flags().StringVarP(&ApplyFlags.URL, "url", "u", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format")
-	ApplyCmd.Flags().StringVarP(&ApplyFlags.File, "file", "f", "", "[/path/to/file] file containing schema")
-	ApplyCmd.Flags().BoolVarP(&ApplyFlags.Web, "web", "w", false, "Open in a local Atlas UI")
-	ApplyCmd.Flags().BoolVarP(&ApplyFlags.DryRun, "dry-run", "", false, "Dry-run. Print SQL plan without prompting for execution")
-	ApplyCmd.Flags().StringVarP(&ApplyFlags.Addr, "addr", "", "127.0.0.1:5800", "used with -w, local address to bind the server to")
-	ApplyCmd.Flags().StringSliceVarP(&ApplyFlags.Schema, "schema", "s", nil, "Set schema name")
-	ApplyCmd.Flags().BoolVarP(&ApplyFlags.AutoApprove, "auto-approve", "", false, "Auto approve. Apply the schema changes without prompting for approval")
+	ApplyCmd.Flags().SortFlags = false
+	ApplyCmd.Flags().StringVarP(&ApplyFlags.File, "file", "f", "", "[/path/to/file] file containing the HCL schema.")
+	ApplyCmd.Flags().StringVarP(&ApplyFlags.URL, "url", "u", "", "URL to the database using the format:\n[driver://username:password@address/dbname?param=value]")
+	ApplyCmd.Flags().StringSliceVarP(&ApplyFlags.Schema, "schema", "s", nil, "Set schema names.")
+	ApplyCmd.Flags().StringVarP(&ApplyFlags.URL, "dev-url", "", "", "URL for the dev database. Used to validate schemas and calculate diffs\nbefore running migration.")
+	ApplyCmd.Flags().BoolVarP(&ApplyFlags.DryRun, "dry-run", "", false, "Dry-run. Print SQL plan without prompting for execution.")
+	ApplyCmd.Flags().BoolVarP(&ApplyFlags.AutoApprove, "auto-approve", "", false, "Auto approve. Apply the schema changes without prompting for approval.")
+	ApplyCmd.Flags().BoolVarP(&ApplyFlags.Web, "web", "w", false, "Open in a local Atlas UI.")
+	ApplyCmd.Flags().StringVarP(&ApplyFlags.Addr, "addr", "", "127.0.0.1:5800", "used with -w, local address to bind the server to.")
 	cobra.CheckErr(ApplyCmd.MarkFlagRequired("url"))
 	cobra.CheckErr(ApplyCmd.MarkFlagRequired("file"))
 	dsn2url(ApplyCmd, &ApplyFlags.URL)
 }
 
 // CmdApplyRun is the command used when running CLI.
-func CmdApplyRun(cmd *cobra.Command, args []string) {
+func CmdApplyRun(*cobra.Command, []string) {
 	if ApplyFlags.Web {
 		schemaCmd.PrintErrln("The Atlas UI is not available in this release.")
 		return
@@ -89,8 +94,8 @@ func applyRun(d *Driver, url string, file string, dryRun bool, autoApprove bool)
 	cobra.CheckErr(err)
 	f, err := ioutil.ReadFile(file)
 	cobra.CheckErr(err)
-	var desired schema.Realm
-	err = d.UnmarshalSpec(f, &desired)
+	desired := &schema.Realm{}
+	cobra.CheckErr(d.UnmarshalSpec(f, desired))
 	if len(schemas) > 0 {
 		// Validate all schemas in file were selected by user.
 		sm := make(map[string]bool, len(schemas))
@@ -104,8 +109,13 @@ func applyRun(d *Driver, url string, file string, dryRun bool, autoApprove bool)
 			}
 		}
 	}
-	cobra.CheckErr(err)
-	changes, err := d.RealmDiff(realm, &desired)
+	if _, ok := d.Driver.(schema.Normalizer); ok && ApplyFlags.DevURL != "" {
+		dev, err := DefaultMux.OpenAtlas(ApplyFlags.DevURL)
+		cobra.CheckErr(err)
+		desired, err = dev.Driver.(schema.Normalizer).NormalizeRealm(ctx, desired)
+		cobra.CheckErr(err)
+	}
+	changes, err := d.RealmDiff(realm, desired)
 	cobra.CheckErr(err)
 	if len(changes) == 0 {
 		schemaCmd.Println("Schema is synced, no changes to be made")

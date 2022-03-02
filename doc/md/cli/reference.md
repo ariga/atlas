@@ -69,31 +69,35 @@ atlas schema apply [flags]
 ```
 
 #### Details
-`atlas schema apply` plans and executes a database migration to bring a given database
-to the state described in the Atlas schema file. Before running the migration, Atlas will print the migration
-plan and prompt the user for approval.
+'atlas schema apply' plans and executes a database migration to bring a given
+database to the state described in the Atlas schema file. Before running the
+migration, Atlas will print the migration plan and prompt the user for approval.
 
-If run with the "--dry-run" flag, atlas will exit after printing out the planned migration.
+If run with the "--dry-run" flag, atlas will exit after printing out the planned
+migration.
 
 #### Example
 
 ```
-  atlas schema apply -u "mysql://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
-  atlas schema apply -u "mysql://user:pass@tcp(localhost:3306)/" -f atlas.hcl --schema prod --schema staging
-  atlas schema apply -u "mysql://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl --dry-run
-  atlas schema apply -u "mariadb://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
+  atlas schema apply -u "mysql://user:pass@localhost/dbname" -f atlas.hcl
+  atlas schema apply -u "mysql://localhost" -f atlas.hcl --schema prod --schema staging
+  atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" -f atlas.hcl --dry-run
+  atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" -f atlas.hcl
   atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -f atlas.hcl
   atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f atlas.hcl
 ```
 #### Flags
 ```
-      --addr string      used with -w, local address to bind the server to (default "127.0.0.1:5800")
-      --auto-approve     Auto approve. Apply the schema changes without prompting for approval
-      --dry-run          Dry-run. Print SQL plan without prompting for execution
-  -f, --file string      [/path/to/file] file containing schema
-  -s, --schema strings   Set schema name
-  -u, --url string       [driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format
-  -w, --web              Open in a local Atlas UI
+  -f, --file string      [/path/to/file] file containing the HCL schema.
+  -u, --url string       URL to the database using the format:
+                         [driver://username:password@address/dbname?param=value]
+  -s, --schema strings   Set schema names.
+      --dev-url string   URL for the dev database. Used to validate schemas and calculate diffs
+                         before running migration.
+      --dry-run          Dry-run. Print SQL plan without prompting for execution.
+      --auto-approve     Auto approve. Apply the schema changes without prompting for approval.
+  -w, --web              Open in a local Atlas UI.
+      --addr string      used with -w, local address to bind the server to. (default "127.0.0.1:5800")
 
 ```
 
