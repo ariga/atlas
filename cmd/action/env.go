@@ -17,6 +17,11 @@ var (
 	EnvCmd *cobra.Command
 )
 
+func init() {
+	EnvCmd = NewEnvCmd()
+	RootCmd.AddCommand(EnvCmd)
+}
+
 func NewEnvCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "env",
@@ -38,9 +43,4 @@ List of supported environment parameters:
 			}
 		},
 	}
-}
-
-func init() {
-	EnvCmd = NewEnvCmd()
-	RootCmd.AddCommand(EnvCmd)
 }
