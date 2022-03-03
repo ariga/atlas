@@ -33,7 +33,7 @@ func TestPlanner_WritePlan(t *testing.T) {
 	}
 
 	// DefaultFormatter
-	pl := migrate.New(nil, mfs, migrate.DefaultFormatter)
+	pl := migrate.NewPlanner(nil, mfs, migrate.DefaultFormatter)
 	require.NotNil(t, pl)
 	require.NoError(t, pl.WritePlan(plan))
 	v := strconv.FormatInt(time.Now().Unix(), 10)
@@ -53,7 +53,7 @@ func TestPlanner_WritePlan(t *testing.T) {
 		template.Must(template.New("").Parse("{{range .Changes}}{{println .Cmd}}{{end}}")),
 	)
 	require.NoError(t, err)
-	pl = migrate.New(nil, mfs, fmt)
+	pl = migrate.NewPlanner(nil, mfs, fmt)
 	require.NotNil(t, pl)
 	require.NoError(t, pl.WritePlan(plan))
 	require.Len(t, mfs.files, 3)
@@ -71,7 +71,7 @@ func TestPlanner_Plan(t *testing.T) {
 	)
 
 	// nothing to do
-	pl := migrate.New(drv, mfs, migrate.DefaultFormatter)
+	pl := migrate.NewPlanner(drv, mfs, migrate.DefaultFormatter)
 	plan, err := pl.Plan(ctx, "empty", migrate.Realm(nil), migrate.Realm(nil))
 	require.ErrorIs(t, err, migrate.ErrNoPlan)
 	require.Nil(t, plan)

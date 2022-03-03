@@ -158,8 +158,8 @@ type (
 	}
 )
 
-// New creates a new Planner.
-func New(drv Driver, dir Dir, fmt Formatter) *Planner {
+// NewPlanner creates a new Planner.
+func NewPlanner(drv Driver, dir Dir, fmt Formatter) *Planner {
 	return &Planner{
 		drv: drv,
 		dir: dir,
@@ -214,7 +214,11 @@ type LocalDir struct {
 // NewLocalDir returns a new the Dir used by a Planner to work on the given local path.
 func NewLocalDir(path string) (*LocalDir, error) {
 	fi, err := os.Stat(path)
-	if err != nil {
+	if err == os.ErrNotExist {
+		if err := os.MkdirAll(path, 0755); err != nil {
+			return nil, err
+		}
+	} else if err != nil {
 		return nil, err
 	}
 	if !fi.IsDir() {
