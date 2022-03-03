@@ -142,13 +142,17 @@ func (d *conn) gteV(w string) bool { return d.compareV(w) >= 0 }
 // ltV reports if the connection version is < w.
 func (d *conn) ltV(w string) bool { return d.compareV(w) == -1 }
 
-// MySQL standard unescape field function from its codebase:
-// https://github.com/mysql/mysql-server/blob/8.0/sql/dd/impl/utils.cc
+// unescape strings with backslashes returned
+// for SQL expressions from information schema.
 func unescape(s string) string {
 	var b strings.Builder
-	for i, c := range s {
-		if c != '\\' || i+1 < len(s) && s[i+1] != '\\' && s[i+1] != '=' && s[i+1] != ';' {
-			b.WriteRune(c)
+	for i := 0; i < len(s); i++ {
+		switch c := s[i]; {
+		case c != '\\' || i == len(s)-1:
+			b.WriteByte(c)
+		case s[i+1] == '\'', s[i+1] == '\\':
+			b.WriteByte(s[i+1])
+			i++
 		}
 	}
 	return b.String()
