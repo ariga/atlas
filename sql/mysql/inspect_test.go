@@ -178,15 +178,8 @@ func TestDriver_InspectTable(t *testing.T) {
 | table  | CONSTRAINT_NAME  | CHECK_CLAUSE                              |  ENFORCED  |
 +--------+------------------+-------------------------------------------+------------+
 | users  | jsonc            | json_valid(` + "`jsonc`" + `)             |  YES       |
+| users  | users_chk_1      | longtext <> '\'\'""'                      |  YES       |
 +--------+------------------+-------------------------------------------+------------+
-`))
-				m.ExpectQuery(sqltest.Escape("SHOW CREATE TABLE `public`.`users`")).
-					WillReturnRows(sqltest.Rows(`
-+-------+---------------------------------------------------------------------------------------------------------------------------------------------+
-| Table | Create Table                                                                                                                                |
-+-------+---------------------------------------------------------------------------------------------------------------------------------------------+
-| users | CREATE TABLE users (id bigint NOT NULL AUTO_INCREMENT) ENGINE=InnoDB AUTO_INCREMENT=55834574848 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin |
-+-------+---------------------------------------------------------------------------------------------------------------------------------------------+
 `))
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
@@ -198,6 +191,10 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "longtext", Type: &schema.ColumnType{Raw: "longtext", Type: &schema.StringType{T: "longtext"}}},
 					{Name: "jsonc", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}},
 				}, t.Columns)
+				require.EqualValues([]schema.Attr{
+					&schema.Check{Name: "jsonc", Expr: "json_valid(`jsonc`)"},
+					&schema.Check{Name: "users_chk_1", Expr: `longtext <> '\'\'""'`},
+				}, t.Attrs)
 			},
 		},
 		{
@@ -605,7 +602,11 @@ func TestDriver_InspectTable(t *testing.T) {
 +-------------------+-------------------+-------------------------------------------+------------+
 | TABLE_NAME        | CONSTRAINT_NAME   | CHECK_CLAUSE                              |  ENFORCED  |
 +-------------------+-------------------+-------------------------------------------+------------+
-| users             | users_chk_1       | (` + "`c6`" + ` <>_latin1\'foo\\\'s\')    |  YES       |
+| users             | users_chk_1       | (` + "`c6`" + ` <> _latin1\'foo\\\'s\')   |  YES       |
+| users             | users_chk_2       | (c1 <> _latin1\'dev/atlas\')              |  YES       |
+| users             | users_chk_3       | (c1 <> _latin1\'a\\\'b""\')               |  YES       |
+| users             | users_chk_4       | (c1 <> in (_latin1\'usa\',_latin1\'uk\')) |  YES       |
+| users             | users_chk_5       | (c1 <> _latin1\'\\\\\\\\\\\'\\\'\')       |  YES       |
 +-------------------+-------------------+-------------------------------------------+------------+
 `))
 				m.ExpectQuery(sqltest.Escape("SHOW CREATE TABLE `public`.`users`")).
@@ -626,7 +627,13 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c1", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
 				}
 				require.EqualValues(columns, t.Columns)
-				require.EqualValues([]schema.Attr{&schema.Check{Name: "users_chk_1", Expr: "(`c6` <>_latin1\\'foo\\'s\\')"}, &CreateStmt{S: "CREATE TABLE users()"}}, t.Attrs)
+				require.EqualValues([]schema.Attr{
+					&schema.Check{Name: "users_chk_1", Expr: "(`c6` <> _latin1'foo\\'s')"},
+					&schema.Check{Name: "users_chk_2", Expr: "(c1 <> _latin1'dev/atlas')"},
+					&schema.Check{Name: "users_chk_3", Expr: `(c1 <> _latin1'a\'b""')`},
+					&schema.Check{Name: "users_chk_4", Expr: `(c1 <> in (_latin1'usa',_latin1'uk'))`},
+					&schema.Check{Name: "users_chk_5", Expr: `(c1 <> _latin1'\\\\\'\'')`},
+				}, t.Attrs)
 			},
 		},
 	}
