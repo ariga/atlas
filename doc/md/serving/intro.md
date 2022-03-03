@@ -6,7 +6,7 @@ title: Serving
 
 ## Introduction
 
-Usually as a team using Atlas, you would like to deploy it as a service in your cloud data center and enjoy a centralized 
+When working as a team, it is ideal to deploy Atlas as a service in your cloud data center, allowing you to enjoy a  centralized 
 instance.
 When using Atlas in such cases we recommend using persistent storage.
 Atlas encrypts all sensitive information using [AEAD](https://developers.google.com/tink/aead?hl=en) encryption with
