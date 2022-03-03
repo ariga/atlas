@@ -402,7 +402,7 @@ func (i *inspect) fks(ctx context.Context, s *schema.Schema) error {
 		return fmt.Errorf("postgres: querying schema %q foreign keys: %w", s.Name, err)
 	}
 	defer rows.Close()
-	if err := sqlx.ScanSchemaFKs(s, rows); err != nil {
+	if err := sqlx.SchemaFKs(s, rows); err != nil {
 		return fmt.Errorf("postgres: %w", err)
 	}
 	return rows.Err()
