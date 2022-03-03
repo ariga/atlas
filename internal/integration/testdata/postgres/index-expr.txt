@@ -1,0 +1,64 @@
+apply 1.hcl
+cmpshow users 1.sql
+
+apply 2.hcl
+cmpshow users 2.sql
+
+-- 1.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "first_name" {
+    null = false
+    type = varchar(128)
+  }
+  column "last_name" {
+    null = false
+    type = varchar(128)
+  }
+  index "full_name" {
+    on {
+        expr = "first_name || ' ' || last_name"
+    }
+  }
+}
+
+-- 1.sql --
+                   Table "script_index_expr.users"
+   Column   |          Type          | Collation | Nullable | Default
+------------+------------------------+-----------+----------+---------
+ first_name | character varying(128) |           | not null |
+ last_name  | character varying(128) |           | not null |
+Indexes:
+    "full_name" btree (((first_name::text || ' '::text) || last_name::text))
+
+
+-- 2.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "first_name" {
+    null = false
+    type = varchar(128)
+  }
+  column "last_name" {
+    null = false
+    type = varchar(128)
+  }
+  index "full_name" {
+    on {
+        expr = "first_name || '''s first name'"
+    }
+  }
+}
+
+-- 2.sql --
+                   Table "script_index_expr.users"
+   Column   |          Type          | Collation | Nullable | Default
+------------+------------------------+-----------+----------+---------
+ first_name | character varying(128) |           | not null |
+ last_name  | character varying(128) |           | not null |
+Indexes:
+    "full_name" btree ((first_name::text || '''s first name'::text))
