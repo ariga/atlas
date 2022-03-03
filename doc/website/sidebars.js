@@ -47,7 +47,7 @@ module.exports = {
         },
         {
             type: 'doc',
-            id: 'serving/atlas-serving',
+            id: 'deployment/deployment',
         },
         {
             type: 'category',
