@@ -1,5 +1,5 @@
 ---
-id: atlas-serving
+id: deployment
 slug: /serving/intro
 title: Serving
 ---
