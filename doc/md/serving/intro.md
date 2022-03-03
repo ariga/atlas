@@ -20,7 +20,7 @@ In this section we will review two deployment and usage options:
 ### Persistent Storage
 
 When serving Atlas on a VM/EC2 you'll need to decide which persistent storage you would like Atlas to store all the
-configuration data at.
+configuration data.
 For now, you can choose any of the supported databases:
 1. SQLite (file) (in-memory is also supported but does not require encryption)
 2. MySQL
