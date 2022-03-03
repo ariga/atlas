@@ -20,17 +20,17 @@ func TestDriver_NormalizeRealm(t *testing.T) {
 		drv = &mockDriver{
 			realm: schema.NewRealm(schema.New("test").SetCharset("utf8mb4")),
 		}
-		twin = &TwinDriver{
+		dev = &DevDriver{
 			Driver:     drv,
 			MaxNameLen: 64,
 		}
 	)
-	normal, err := twin.NormalizeRealm(context.Background(), schema.NewRealm(schema.New("test")))
+	normal, err := dev.NormalizeRealm(context.Background(), schema.NewRealm(schema.New("test")))
 	require.NoError(t, err)
 	require.Equal(t, normal, drv.realm)
 
 	require.Len(t, drv.schemas, 1)
-	require.True(t, strings.HasPrefix(drv.schemas[0], "atlas_twin_test_"))
+	require.True(t, strings.HasPrefix(drv.schemas[0], "atlas_dev_test_"))
 
 	require.Len(t, drv.changes, 2, "expect 2 calls (create and drop)")
 	require.Len(t, drv.changes[0], 1)
