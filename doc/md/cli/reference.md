@@ -195,3 +195,25 @@ atlas version
 ```
 
 
+## atlas serve
+
+Run Atlas web UI in a standalone mode
+
+#### Usage
+```
+atlas serve [flags]
+```
+
+#### Details
+'atlas serve' runs the Atlas web UI in a standalone mode with optional persistent storage.
+If you do not specify the storage, it will be stored in-memory.
+Atlas encrypts sensitive data such as passwords using the generated keyset.json.
+
+#### Flags
+```
+--addr string       listen address for atlas serve (default ":8080")
+--storage string    data store url using the dsn format:
+                    [driver://username:password@protocol(address)/dbname?param=value] (default "in-memory")
+-h, --help          help for serve
+```
+
