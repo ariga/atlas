@@ -8,7 +8,7 @@ title: Serving
 
 When working as a team, it is ideal to deploy Atlas as a service in your cloud data center, allowing you to enjoy a  centralized 
 instance.
-When using Atlas in such cases we recommend using persistent storage.
+In these cases, we recommend using persistent storage.
 Atlas encrypts all sensitive information using [AEAD](https://developers.google.com/tink/aead?hl=en) encryption with
 *AES128_GCM* Key type. Following recommendations from [tink](https://developers.google.com/tink) library that Atlas uses
 (and many other companies as well).
