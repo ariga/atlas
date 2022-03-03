@@ -128,7 +128,7 @@ func Schema(s *schema.Schema) StateReader {
 }
 
 type (
-	// Dir describes the methods needed to work with the Planner.
+	// Dir describes the methods needed for a Planner to manage migration files.
 	Dir interface {
 		fs.FS
 
@@ -152,25 +152,42 @@ type (
 	// Planner can plan the steps to take to migrate from one state to another. It uses the enclosed FS to write
 	// those changes to versioned migration files.
 	Planner struct {
-		drv Driver
-		dir Dir
-		fmt Formatter
+		drv Driver      // driver to use
+		dir Dir         // where migration files are stored and read from
+		fmt Formatter   // how to format a plan to migration files
+		dsr StateReader // how to read a state from the migration directory
 	}
+
+	// PlannerOption allows managing a Planner using functional arguments.
+	PlannerOption func(*Planner)
 )
 
 // NewPlanner creates a new Planner.
-func NewPlanner(drv Driver, dir Dir, fmt Formatter) *Planner {
-	return &Planner{
-		drv: drv,
-		dir: dir,
-		fmt: fmt,
+func NewPlanner(drv Driver, dir Dir, opts ...PlannerOption) *Planner {
+	p := &Planner{drv: drv, dir: dir}
+	for _, opt := range opts {
+		opt(p)
+	}
+	if p.fmt == nil {
+		p.fmt = DefaultFormatter
+	}
+	if p.dsr == nil {
+		p.dsr = GlobStateReader(p.dir, p.drv, "*.sql")
+	}
+	return p
+}
+
+// WithFormatter sets the Formatter of a Planner.
+func WithFormatter(fmt Formatter) PlannerOption {
+	return func(p *Planner) {
+		p.fmt = fmt
 	}
 }
 
 // Plan calculates the migration Plan required for moving the current state (from) state to
 // the next state (to). A StateReader can be a directory, static schema elements or a Driver connection.
-func (p *Planner) Plan(ctx context.Context, name string, from StateReader, to StateReader) (*Plan, error) {
-	current, err := from.ReadState(ctx)
+func (p *Planner) Plan(ctx context.Context, name string, to StateReader) (*Plan, error) {
+	current, err := p.dsr.ReadState(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -229,9 +246,9 @@ func NewLocalDir(path string) (*LocalDir, error) {
 
 // GlobStateReader creates a StateReader that loads all files from Dir matching
 // glob in lexicographic order and uses the Driver to create a migration state.
-func (d *LocalDir) GlobStateReader(drv Driver, glob string) StateReaderFunc {
+func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
 	return func(ctx context.Context) (*schema.Realm, error) {
-		names, err := fs.Glob(d, glob)
+		names, err := fs.Glob(dir, glob)
 		if err != nil {
 			return nil, err
 		}
@@ -240,7 +257,7 @@ func (d *LocalDir) GlobStateReader(drv Driver, glob string) StateReaderFunc {
 			return names[i] < names[j]
 		})
 		for _, n := range names {
-			f, err := d.Open(n)
+			f, err := dir.Open(n)
 			if err != nil {
 				return nil, err
 			}
@@ -266,6 +283,8 @@ func (d *LocalDir) Open(name string) (fs.File, error) {
 func (d *LocalDir) WriteFile(name string, b []byte) error {
 	return os.WriteFile(filepath.Join(d.dir, name), b, 0600)
 }
+
+var _ Dir = (*LocalDir)(nil)
 
 var (
 	// templateFuncs contains the template.FuncMap for the DefaultFormatter.
