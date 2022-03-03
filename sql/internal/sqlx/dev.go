@@ -71,11 +71,12 @@ func (d *DevDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *sc
 	// the source realm to its initial state.
 	defer func() {
 		patch(r)
-		uerr := d.ApplyChanges(ctx, reverse)
-		if err != nil {
-			err = fmt.Errorf("%w: %v", err, uerr)
+		if rerr := d.ApplyChanges(ctx, reverse); rerr != nil {
+			if err != nil {
+				rerr = fmt.Errorf("%w: %v", err, rerr)
+			}
+			err = rerr
 		}
-		err = uerr
 	}()
 	if err := d.ApplyChanges(ctx, changes); err != nil {
 		return nil, err
