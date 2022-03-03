@@ -184,6 +184,13 @@ func WithFormatter(fmt Formatter) PlannerOption {
 	}
 }
 
+// WithStateReader sets the StateReader of a Planner.
+func WithStateReader(dsr StateReader) PlannerOption {
+	return func(p *Planner) {
+		p.dsr = dsr
+	}
+}
+
 // Plan calculates the migration Plan required for moving the current state (from) state to
 // the next state (to). A StateReader can be a directory, static schema elements or a Driver connection.
 func (p *Planner) Plan(ctx context.Context, name string, to StateReader) (*Plan, error) {
