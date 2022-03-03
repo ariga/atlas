@@ -33,7 +33,7 @@ func TestPlanner_WritePlan(t *testing.T) {
 	}
 
 	// DefaultFormatter
-	pl := migrate.New(nil, mfs, migrate.DefaultFormatter)
+	pl := migrate.NewPlanner(nil, mfs)
 	require.NotNil(t, pl)
 	require.NoError(t, pl.WritePlan(plan))
 	v := strconv.FormatInt(time.Now().Unix(), 10)
@@ -53,7 +53,7 @@ func TestPlanner_WritePlan(t *testing.T) {
 		template.Must(template.New("").Parse("{{range .Changes}}{{println .Cmd}}{{end}}")),
 	)
 	require.NoError(t, err)
-	pl = migrate.New(nil, mfs, fmt)
+	pl = migrate.NewPlanner(nil, mfs, migrate.WithFormatter(fmt))
 	require.NotNil(t, pl)
 	require.NoError(t, pl.WritePlan(plan))
 	require.Len(t, mfs.files, 3)
@@ -71,8 +71,8 @@ func TestPlanner_Plan(t *testing.T) {
 	)
 
 	// nothing to do
-	pl := migrate.New(drv, mfs, migrate.DefaultFormatter)
-	plan, err := pl.Plan(ctx, "empty", migrate.Realm(nil), migrate.Realm(nil))
+	pl := migrate.NewPlanner(drv, mfs)
+	plan, err := pl.Plan(ctx, "empty", migrate.Realm(nil))
 	require.ErrorIs(t, err, migrate.ErrNoPlan)
 	require.Nil(t, plan)
 
@@ -87,7 +87,7 @@ func TestPlanner_Plan(t *testing.T) {
 			{Cmd: "CREATE TABLE t2(c int);"},
 		},
 	}
-	plan, err = pl.Plan(ctx, "", migrate.Realm(nil), migrate.Realm(nil))
+	plan, err = pl.Plan(ctx, "", migrate.Realm(nil))
 	require.NoError(t, err)
 	require.Equal(t, drv.plan, plan)
 }
@@ -100,11 +100,11 @@ func TestGlobStateReader(t *testing.T) {
 	localFS, err := migrate.NewLocalDir("testdata")
 	require.NoError(t, err)
 
-	_, err = localFS.GlobStateReader(drv, "*.up.sql").ReadState(ctx)
+	_, err = migrate.GlobStateReader(localFS, drv, "*.up.sql").ReadState(ctx)
 	require.NoError(t, err)
 	require.Equal(t, drv.executed, []string{"CREATE TABLE t(c int);"})
 
-	_, err = localFS.GlobStateReader(drv, "*.down.sql").ReadState(ctx)
+	_, err = migrate.GlobStateReader(localFS, drv, "*.down.sql").ReadState(ctx)
 	require.NoError(t, err)
 	require.Equal(t, drv.executed, []string{"CREATE TABLE t(c int);", "DROP TABLE IF EXISTS t;"})
 }
