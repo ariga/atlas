@@ -56,6 +56,35 @@ func TestPlanner_WritePlan(t *testing.T) {
 	requireFileEqual(t, filepath.Join(p, "add_t1_and_t2.sql"), "CREATE TABLE t1(c int);\nCREATE TABLE t2(c int)\n")
 }
 
+func TestPlanner_Hash(t *testing.T) {
+	// Default migrate.HashFS in migration dir named ".integrity"
+	p := t.TempDir()
+	d, err := migrate.NewLocalDir(p)
+	require.NoError(t, err)
+	plan := &migrate.Plan{Name: "plan", Changes: []*migrate.Change{{Cmd: "cmd", Reverse: "rev"}}}
+	pl := migrate.NewPlanner(nil, d)
+	require.NotNil(t, pl)
+	require.NoError(t, pl.WritePlan(plan))
+	v := strconv.FormatInt(time.Now().Unix(), 10)
+	require.Equal(t, countFiles(t, d), 3)
+	requireFileEqual(t, filepath.Join(p, v+"_plan.up.sql"), "cmd;\n")
+	requireFileEqual(t, filepath.Join(p, v+"_plan.down.sql"), "rev;\n")
+	requireFileEqual(t, filepath.Join(p, ".integrity"), "\xac\x13\xe1\v\n\x18\xa3k\x82\n\x82\xcf7\xaeq\xf4")
+
+	// Custom migrate.HashFS.
+	p = t.TempDir()
+	h := &mockHashFS{}
+	d, err = migrate.NewLocalDir(p, migrate.WithHashFS(h))
+	require.NoError(t, err)
+	pl = migrate.NewPlanner(nil, d)
+	require.NotNil(t, pl)
+	require.NoError(t, pl.WritePlan(plan))
+	require.Equal(t, countFiles(t, d), 2)
+	requireFileEqual(t, filepath.Join(p, v+"_plan.up.sql"), "cmd;\n")
+	requireFileEqual(t, filepath.Join(p, v+"_plan.down.sql"), "rev;\n")
+	require.Equal(t, string(h.hash), "\xac\x13\xe1\v\n\x18\xa3k\x82\n\x82\xcf7\xaeq\xf4")
+}
+
 func TestPlanner_Plan(t *testing.T) {
 	var (
 		drv = &mockDriver{}
@@ -120,6 +149,17 @@ func TestLocalDir(t *testing.T) {
 	c, err := io.ReadAll(f)
 	require.NoError(t, err)
 	require.Equal(t, "content", string(c))
+}
+
+type mockHashFS struct{ hash []byte }
+
+func (h *mockHashFS) WriteHash(b []byte) error {
+	h.hash = b
+	return nil
+}
+
+func (h *mockHashFS) ReadHash() ([]byte, error) {
+	return h.hash, nil
 }
 
 type mockDriver struct {
