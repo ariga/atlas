@@ -137,14 +137,14 @@ type (
 		WriteFile(string, []byte) error
 	}
 
-	// Hash describes how to read / write the migration integrity hash file.
+	// HashFS describes how to read / write the migration integrity hash file.
 	//
 	// The hash is computed everytime a new migration file is created. It is meant to be checked into version control
 	// and to raise merge conflicts if multiple new migration files have been created to ensure the integrity of the
 	// migration directory.
-	Hash interface {
-		ReadHash() ([]byte, error)
+	HashFS interface {
 		WriteHash([]byte) error
+		ReadHash() ([]byte, error)
 	}
 
 	// Formatter wraps the Format method.
@@ -229,7 +229,6 @@ func (p *Planner) WritePlan(plan *Plan) error {
 	if err != nil {
 		return err
 	}
-	fnv := fnv.New128()
 	for _, f := range files {
 		d, err := io.ReadAll(f)
 		if err != nil {
@@ -238,15 +237,33 @@ func (p *Planner) WritePlan(plan *Plan) error {
 		if err := p.dir.WriteFile(f.Name(), d); err != nil {
 			return err
 		}
-		if _, err := fnv.Write(d); err != nil {
-			return err
-		}
 	}
-	h, err := p.readHash()
+	hash, err := p.Hash()
 	if err != nil {
 		return err
 	}
-	return p.writeHash(fnv.Sum(h))
+	return p.writeHash(hash)
+}
+
+// HashFS reads the whole dir, sorts the files by name and creates a hash from its contents.
+func (p *Planner) Hash() ([]byte, error) {
+	h := fnv.New128a()
+	err := fs.WalkDir(p.dir, "", func(path string, d fs.DirEntry, err error) error {
+		if !d.IsDir() {
+			f, err := p.dir.Open(path)
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+			_, err = io.Copy(h, f)
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return h.Sum(nil), nil
 }
 
 const hashFile = ".integrity"
@@ -254,8 +271,8 @@ const hashFile = ".integrity"
 // readHash reads the last migration hash from the hash file.
 // Returns nil if no hash file exists.
 func (p *Planner) readHash() ([]byte, error) {
-	// If the dir implements the Hash interface use ReadHash to read the current hash.
-	if h, ok := p.dir.(Hash); ok {
+	// If the dir implements the HashFS interface use ReadHash to read the current hash.
+	if h, ok := p.dir.(HashFS); ok {
 		return h.ReadHash()
 	}
 	// Otherwise, just read from it from the migration directory.
@@ -275,8 +292,8 @@ func (p *Planner) readHash() ([]byte, error) {
 
 // writeHash writes the given hash to the hash file.
 func (p *Planner) writeHash(b []byte) error {
-	// If the dir implements the Hash interface use WriteHash to write the new hash.
-	if h, ok := p.dir.(Hash); ok {
+	// If the dir implements the HashFS interface use WriteHash to write the new hash.
+	if h, ok := p.dir.(HashFS); ok {
 		return h.WriteHash(b)
 	}
 	// Otherwise, just save it to the migration directory.
@@ -286,8 +303,8 @@ func (p *Planner) writeHash(b []byte) error {
 type (
 	// LocalDir implements Dir for a local path.
 	LocalDir struct {
-		dir  string
-		hash Hash
+		dir string
+		hw  HashFS
 	}
 	// LocalDirOption enables configuring a LocalDir by functional arguments.
 	LocalDirOption func(*LocalDir) error
@@ -317,23 +334,20 @@ func NewLocalDir(path string, opts ...LocalDirOption) (*LocalDir, error) {
 
 // DisableHash disables the hash functionality for the migration directory.
 func DisableHash() LocalDirOption {
+	return WithHashFS(NoopHash{})
+}
+
+// WithHashFS sets the HashFS of the LocalDir.
+func WithHashFS(h HashFS) LocalDirOption {
 	return func(d *LocalDir) error {
-		d.hash = NoopHash{}
+		d.hw = h
 		return nil
 	}
 }
 
-// ReadHash implements the Hash interface.
-func (d *LocalDir) ReadHash() ([]byte, error) {
-	if d.hash != nil {
-		return d.ReadHash()
-	}
-	return os.ReadFile(hashFile)
-}
-
-// WriteHash implements the Hash interface.
+// WriteHash implements the HashFS interface.
 func (d *LocalDir) WriteHash(b []byte) error {
-	if d.hash != nil {
+	if d.hw != nil {
 		return d.WriteHash(b)
 	}
 	return d.WriteFile(hashFile, b)
@@ -461,16 +475,16 @@ type templateFile struct {
 // Name implements the File interface.
 func (f *templateFile) Name() string { return f.n }
 
-// NoopHash disabled the Hash creation of the Planner.
+// NoopHash disabled the HashFS creation of the Planner.
 type NoopHash struct{}
 
 // ReadHash implements the Hash interface.
 func (NoopHash) ReadHash() ([]byte, error) { return nil, nil }
 
-// WriteHash implements the Hash interface.
+// WriteHash implements the HashFS interface.
 func (NoopHash) WriteHash([]byte) error { return nil }
 
-var _ Hash = (*NoopHash)(nil)
+var _ HashFS = (*NoopHash)(nil)
 
 // reverse changes for the down migration.
 func reverse(changes []*Change) []*Change {

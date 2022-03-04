@@ -131,6 +131,7 @@ func TestLocalDir(t *testing.T) {
 type (
 	mockFS struct {
 		files []*file
+		hash  []byte
 	}
 	file struct {
 		n string
@@ -165,6 +166,11 @@ func (fs *mockFS) Open(name string) (fs.File, error) {
 
 func (fs *mockFS) WriteFile(name string, d []byte) error {
 	fs.files = append(fs.files, &file{n: name, b: bytes.NewBuffer(d)})
+	return nil
+}
+
+func (fs *mockFS) WriteHash(b []byte) error {
+	fs.hash = b
 	return nil
 }
 
