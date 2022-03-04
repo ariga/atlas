@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"io/fs"
 	"os"
@@ -136,6 +137,16 @@ type (
 		WriteFile(string, []byte) error
 	}
 
+	// Hash describes how to read / write the migration integrity hash file.
+	//
+	// The hash is computed everytime a new migration file is created. It is meant to be checked into version control
+	// and to raise merge conflicts if multiple new migration files have been created to ensure the integrity of the
+	// migration directory.
+	Hash interface {
+		ReadHash() ([]byte, error)
+		WriteHash([]byte) error
+	}
+
 	// Formatter wraps the Format method.
 	Formatter interface {
 		// Format formats the given Plan into one or more migration files.
@@ -218,6 +229,7 @@ func (p *Planner) WritePlan(plan *Plan) error {
 	if err != nil {
 		return err
 	}
+	fnv := fnv.New128()
 	for _, f := range files {
 		d, err := io.ReadAll(f)
 		if err != nil {
@@ -226,17 +238,63 @@ func (p *Planner) WritePlan(plan *Plan) error {
 		if err := p.dir.WriteFile(f.Name(), d); err != nil {
 			return err
 		}
+		if _, err := fnv.Write(d); err != nil {
+			return err
+		}
 	}
-	return nil
+	h, err := p.readHash()
+	if err != nil {
+		return err
+	}
+	return p.writeHash(fnv.Sum(h))
 }
 
-// LocalDir implements Dir for a local path.
-type LocalDir struct {
-	dir string
+const hashFile = ".integrity"
+
+// readHash reads the last migration hash from the hash file.
+// Returns nil if no hash file exists.
+func (p *Planner) readHash() ([]byte, error) {
+	// If the dir implements the Hash interface use ReadHash to read the current hash.
+	if h, ok := p.dir.(Hash); ok {
+		return h.ReadHash()
+	}
+	// Otherwise, just read from it from the migration directory.
+	f, err := p.dir.Open(hashFile)
+	if err == os.ErrNotExist {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	h, err := io.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+	return h, err
 }
+
+// writeHash writes the given hash to the hash file.
+func (p *Planner) writeHash(b []byte) error {
+	// If the dir implements the Hash interface use WriteHash to write the new hash.
+	if h, ok := p.dir.(Hash); ok {
+		return h.WriteHash(b)
+	}
+	// Otherwise, just save it to the migration directory.
+	return p.dir.WriteFile(hashFile, b)
+}
+
+type (
+	// LocalDir implements Dir for a local path.
+	LocalDir struct {
+		dir  string
+		hash Hash
+	}
+	// LocalDirOption enables configuring a LocalDir by functional arguments.
+	LocalDirOption func(*LocalDir) error
+)
 
 // NewLocalDir returns a new the Dir used by a Planner to work on the given local path.
-func NewLocalDir(path string) (*LocalDir, error) {
+func NewLocalDir(path string, opts ...LocalDirOption) (*LocalDir, error) {
 	fi, err := os.Stat(path)
 	if err == os.ErrNotExist {
 		if err := os.MkdirAll(path, 0755); err != nil {
@@ -248,7 +306,37 @@ func NewLocalDir(path string) (*LocalDir, error) {
 	if !fi.IsDir() {
 		return nil, fmt.Errorf("sql/migrate: %q is not a dir", path)
 	}
-	return &LocalDir{dir: path}, nil
+	d := &LocalDir{dir: path}
+	for _, opt := range opts {
+		if err := opt(d); err != nil {
+			return nil, err
+		}
+	}
+	return d, nil
+}
+
+// DisableHash disables the hash functionality for the migration directory.
+func DisableHash() LocalDirOption {
+	return func(d *LocalDir) error {
+		d.hash = NoopHash{}
+		return nil
+	}
+}
+
+// ReadHash implements the Hash interface.
+func (d *LocalDir) ReadHash() ([]byte, error) {
+	if d.hash != nil {
+		return d.ReadHash()
+	}
+	return os.ReadFile(hashFile)
+}
+
+// WriteHash implements the Hash interface.
+func (d *LocalDir) WriteHash(b []byte) error {
+	if d.hash != nil {
+		return d.WriteHash(b)
+	}
+	return d.WriteFile(hashFile, b)
 }
 
 // GlobStateReader creates a StateReader that loads all files from Dir matching
@@ -348,7 +436,7 @@ func NewTemplateFormatter(templates ...*template.Template) (*TemplateFormatter, 
 
 // Format implements the Formatter interface.
 func (t *TemplateFormatter) Format(plan *Plan) ([]File, error) {
-	fs := make([]File, 0, len(t.templates))
+	files := make([]File, 0, len(t.templates))
 	for _, tpl := range t.templates {
 		var n, c bytes.Buffer
 		if err := tpl.N.Execute(&n, plan); err != nil {
@@ -357,12 +445,12 @@ func (t *TemplateFormatter) Format(plan *Plan) ([]File, error) {
 		if err := tpl.C.Execute(&c, plan); err != nil {
 			return nil, err
 		}
-		fs = append(fs, &templateFile{
+		files = append(files, &templateFile{
 			Buffer: &c,
 			n:      n.String(),
 		})
 	}
-	return fs, nil
+	return files, nil
 }
 
 type templateFile struct {
@@ -372,6 +460,14 @@ type templateFile struct {
 
 // Name implements the File interface.
 func (f *templateFile) Name() string { return f.n }
+
+// NoopHash disabled the Hash creation of the Planner.
+type NoopHash struct{}
+
+func (NoopHash) ReadHash() ([]byte, error) { return nil, nil }
+func (NoopHash) WriteHash([]byte) error    { return nil }
+
+var _ Hash = (*NoopHash)(nil)
 
 // reverse changes for the down migration.
 func reverse(changes []*Change) []*Change {
