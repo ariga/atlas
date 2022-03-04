@@ -249,6 +249,9 @@ func (p *Planner) WritePlan(plan *Plan) error {
 func (p *Planner) Hash() ([]byte, error) {
 	h := fnv.New128a()
 	err := fs.WalkDir(p.dir, "", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 		if !d.IsDir() {
 			f, err := p.dir.Open(path)
 			if err != nil {
@@ -313,7 +316,7 @@ type (
 // NewLocalDir returns a new the Dir used by a Planner to work on the given local path.
 func NewLocalDir(path string, opts ...LocalDirOption) (*LocalDir, error) {
 	fi, err := os.Stat(path)
-	if err == os.ErrNotExist {
+	if os.IsNotExist(err) {
 		if err := os.MkdirAll(path, 0755); err != nil {
 			return nil, err
 		}
@@ -345,10 +348,18 @@ func WithHashFS(h HashFS) LocalDirOption {
 	}
 }
 
+// ReadHash implements the HashFS interface.
+func (d *LocalDir) ReadHash() ([]byte, error) {
+	if d.hw != nil {
+		return d.hw.ReadHash()
+	}
+	return d.ReadHash()
+}
+
 // WriteHash implements the HashFS interface.
 func (d *LocalDir) WriteHash(b []byte) error {
 	if d.hw != nil {
-		return d.WriteHash(b)
+		return d.hw.WriteHash(b)
 	}
 	return d.WriteFile(hashFile, b)
 }
