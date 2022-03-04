@@ -464,8 +464,11 @@ func (f *templateFile) Name() string { return f.n }
 // NoopHash disabled the Hash creation of the Planner.
 type NoopHash struct{}
 
+// ReadHash implements the Hash interface.
 func (NoopHash) ReadHash() ([]byte, error) { return nil, nil }
-func (NoopHash) WriteHash([]byte) error    { return nil }
+
+// WriteHash implements the Hash interface.
+func (NoopHash) WriteHash([]byte) error { return nil }
 
 var _ Hash = (*NoopHash)(nil)
 
