@@ -245,7 +245,7 @@ func (p *Planner) WritePlan(plan *Plan) error {
 	return p.writeHash(hash)
 }
 
-// HashFS reads the whole dir, sorts the files by name and creates a hash from its contents.
+// Hash reads the whole dir, sorts the files by name and creates a hash from its contents.
 func (p *Planner) Hash() ([]byte, error) {
 	h := fnv.New128a()
 	err := fs.WalkDir(p.dir, "", func(path string, d fs.DirEntry, err error) error {
