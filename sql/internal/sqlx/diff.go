@@ -298,7 +298,8 @@ func (d *Diff) partsChange(from, to []*schema.IndexPart) schema.ChangeKind {
 				return schema.ChangeParts
 			}
 		case from[i].X != nil && to[i].X != nil:
-			if from[i].X.(*schema.RawExpr).X != to[i].X.(*schema.RawExpr).X {
+			x1, x2 := from[i].X.(*schema.RawExpr).X, to[i].X.(*schema.RawExpr).X
+			if x1 != x2 && x1 != MayWrap(x2) {
 				return schema.ChangeParts
 			}
 		default: // (C1 != nil) != (C2 != nil) || (X1 != nil) != (X2 != nil).
