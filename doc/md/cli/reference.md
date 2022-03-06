@@ -97,7 +97,7 @@ migration.
       --dry-run          Dry-run. Print SQL plan without prompting for execution.
       --auto-approve     Auto approve. Apply the schema changes without prompting for approval.
   -w, --web              Open in a local Atlas UI.
-      --addr string      used with -w, local address to bind the server to. (default "127.0.0.1:5800")
+      --addr string      used with -w, local address to bind the server to. (default ":5800")
 
 ```
 
@@ -177,7 +177,7 @@ flag.
 ```
 #### Flags
 ```
-      --addr string      Used with -w, local address to bind the server to (default "127.0.0.1:5800")
+      --addr string      Used with -w, local address to bind the server to (default ":5800")
   -s, --schema strings   Set schema name
   -u, --url string       [driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format
   -w, --web              Open in a local Atlas UI
