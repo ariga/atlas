@@ -1,0 +1,49 @@
+apply 1.hcl
+cmpshow users 1.sql
+
+apply 2.hcl
+cmpshow users 2.sql
+
+-- 1.hcl --
+schema "main" {}
+
+table "users" {
+  schema = schema.main
+  column "first_name" {
+    null = false
+    type = text
+  }
+  column "last_name" {
+    null = false
+    type = text
+  }
+  index "full_name" {
+    on {
+        expr = "first_name || ' ' || last_name"
+    }
+  }
+}
+
+-- 1.sql --
+CREATE TABLE `users` (`first_name` text NOT NULL, `last_name` text NOT NULL)
+CREATE INDEX `full_name` ON `users` ((first_name || ' ' || last_name))
+
+-- 2.hcl --
+schema "main" {}
+
+table "users" {
+  schema = schema.main
+  column "first_name" {
+    null = false
+    type = text
+  }
+  index "full_name" {
+    on {
+        expr = "first_name || '''s first name'"
+    }
+  }
+}
+
+-- 2.sql --
+CREATE TABLE "users" (`first_name` text NOT NULL)
+CREATE INDEX `full_name` ON `users` ((first_name || '''s first name'))
