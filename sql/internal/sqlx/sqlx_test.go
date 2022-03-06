@@ -5,6 +5,7 @@
 package sqlx
 
 import (
+	"strconv"
 	"testing"
 
 	"ariga.io/atlas/sql/schema"
@@ -38,4 +39,39 @@ func TestBuilder(t *testing.T) {
 			})
 		})
 	require.Equal(t, `CREATE TABLE "users" ("a" int NOT NULL, "b" int NOT NULL, "c" int NOT NULL, PRIMARY KEY ("a", "b", "c"))`, b.String())
+}
+
+func TestMayWrap(t *testing.T) {
+	tests := []struct {
+		input   string
+		wrapped bool
+	}{
+		{"", true},
+		{"()", false},
+		{"('text')", false},
+		{"('(')", false},
+		{`('(\\')`, false},
+		{`('\')(')`, false},
+		{`(a) in (b)`, true},
+		{`a in (b)`, true},
+		{`("\\\\(((('")`, false},
+		{`('(')||(')')`, true},
+		// Test examples from SQLite.
+		{"b || 'x'", true},
+		{"a+1", true},
+		{"substr(x, 2)", true},
+		{"(json_extract(x, '$.a'), json_extract(x, '$.b'))", false},
+		{"(substr(a, 2) COLLATE NOCASE, b)", false},
+		{"(a,b+random())", false},
+	}
+	for i, tt := range tests {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			expect := tt.input
+			if tt.wrapped {
+				expect = "(" + expect + ")"
+			}
+			require.Equal(t, expect, MayWrap(tt.input))
+
+		})
+	}
 }
