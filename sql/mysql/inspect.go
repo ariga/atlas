@@ -237,7 +237,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	if err := i.extraAttr(t, c, extra.String); err != nil {
 		return err
 	}
-	if sqlx.ValidString(defaults) {
+	if defaults.Valid {
 		if i.mariadb() {
 			c.Default = i.marDefaultExpr(c, defaults.String)
 		} else {

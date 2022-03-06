@@ -138,7 +138,7 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 	if err != nil {
 		return err
 	}
-	if sqlx.ValidString(defaults) {
+	if defaults.Valid {
 		c.Default = defaultExpr(defaults.String)
 	}
 	// TODO(a8m): extract collation from 'CREATE TABLE' statement.
