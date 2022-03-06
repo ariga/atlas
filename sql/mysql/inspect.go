@@ -573,6 +573,10 @@ func isHex(x string) bool { return len(x) > 2 && strings.ToLower(x[:2]) == "0x" 
 
 // marDefaultExpr returns the correct schema.Expr based on the column attributes for MariaDB.
 func (i *inspect) marDefaultExpr(c *schema.Column, x string) schema.Expr {
+	// Unlike MySQL, NULL means default to NULL or no default.
+	if x == "NULL" {
+		return nil
+	}
 	// From MariaDB 10.2.7, string-based literals are quoted to distinguish them from expressions.
 	if i.gteV("10.2.7") && sqlx.IsQuoted(x, '\'') {
 		return &schema.Literal{V: x}
