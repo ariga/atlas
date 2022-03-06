@@ -14,7 +14,8 @@ import (
 )
 
 // Rows converts MySQL/PostgreSQL table output to sql.Rows.
-// All row values are parsed as text except the "nil" keyword. For example:
+// All row values are parsed as text except the "nil" and NULL keywords.
+// For example:
 //
 // 		+-------------+-------------+-------------+----------------+
 //		| column_name | column_type | is_nullable | column_default |
@@ -48,7 +49,9 @@ func Rows(table string) *sqlmock.Rows {
 		} else {
 			values := make([]driver.Value, nc)
 			for i, c := range columns {
-				if c != "" && c != "nil" {
+				switch c {
+				case "", "nil", "NULL":
+				default:
 					values[i] = c
 				}
 			}
