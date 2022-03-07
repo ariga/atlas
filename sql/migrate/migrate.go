@@ -195,8 +195,8 @@ func WithStateReader(dsr StateReader) PlannerOption {
 	}
 }
 
-// DisableHashSum disables the hash-sum functionality for the migration directory.
-func DisableHashSum() PlannerOption {
+// DisableChecksum disables the hash-sum functionality for the migration directory.
+func DisableChecksum() PlannerOption {
 	return func(p *Planner) {
 		p.sum = false
 	}
@@ -279,7 +279,6 @@ func (p *Planner) WritePlan(plan *Plan) error {
 		}
 		return p.dir.WriteFile(hashFile, b)
 	}
-
 	return nil
 }
 
@@ -405,8 +404,10 @@ type HashFile []struct{ N, H string }
 
 // HashSum reads the whole dir, sorts the files by name and creates a HashSum from its contents.
 func HashSum(dir Dir) (HashFile, error) {
-	var hs HashFile
-	h := sha256.New()
+	var (
+		hs HashFile
+		h  = sha256.New()
+	)
 	err := fs.WalkDir(dir, "", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -425,7 +426,6 @@ func HashSum(dir Dir) (HashFile, error) {
 				return err
 			}
 			hs = append(hs, struct{ N, H string }{path, base64.StdEncoding.EncodeToString(h.Sum(nil))})
-			h.Reset()
 		}
 		return nil
 	})
@@ -458,54 +458,42 @@ func Validate(dir Dir) error {
 	if err != nil {
 		return err
 	}
-	if !fh.equals(mh) {
+	if fh.Sum() != mh.Sum() {
 		return ErrChecksumMismatch
 	}
 	return nil
 }
 
+// Sum returns the checksum of the represented hash file.
+func (s HashFile) Sum() string {
+	sha := sha256.New()
+	for _, f := range s {
+		sha.Write([]byte(f.H))
+	}
+	return base64.StdEncoding.EncodeToString(sha.Sum(nil))
+}
+
 // MarshalText implements encoding.TextMarshaler.
 func (s HashFile) MarshalText() ([]byte, error) {
 	buf := new(bytes.Buffer)
-	sha := sha256.New()
 	for _, f := range s {
-		buf.WriteString(fmt.Sprintf("%s h:%s\n", f.N, f.H))
-		sha.Write([]byte(f.H))
+		fmt.Fprintf(buf, "%s h1:%s\n", f.N, f.H)
 	}
-	ret := new(bytes.Buffer)
-	ret.WriteString(fmt.Sprintf("sum h:%s\n", base64.StdEncoding.EncodeToString(sha.Sum(nil))))
-	ret.Write(buf.Bytes())
-	return ret.Bytes(), nil
+	return []byte(fmt.Sprintf("sum h1:%s\n%s", s.Sum(), buf)), nil
 }
 
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (s *HashFile) UnmarshalText(b []byte) error {
 	sc := bufio.NewScanner(bytes.NewReader(b))
-	sc.Scan() // skip first line
+	sc.Scan() // skip sum
 	for sc.Scan() {
-		li := strings.SplitN(sc.Text(), "h:", 2)
+		li := strings.SplitN(sc.Text(), "h1:", 2)
 		if len(li) != 2 {
 			return errors.New("invalid sum file")
 		}
 		*s = append(*s, struct{ N, H string }{strings.TrimSpace(li[0]), li[1]})
 	}
-	if err := sc.Err(); err != nil {
-		return err
-	}
-	return nil
-}
-
-// equals checks if the o is equal to s.
-func (s HashFile) equals(o HashFile) bool {
-	if len(s) != len(o) {
-		return false
-	}
-	for i := range s {
-		if s[i].N != o[i].N || s[i].H != o[i].H {
-			return false
-		}
-	}
-	return true
+	return sc.Err()
 }
 
 // reverse changes for the down migration.

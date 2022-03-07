@@ -8,7 +8,6 @@ import (
 	"context"
 	"database/sql"
 	_ "embed"
-	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -37,7 +36,7 @@ func TestPlanner_WritePlan(t *testing.T) {
 	}
 
 	// DefaultFormatter
-	pl := migrate.NewPlanner(nil, d, migrate.DisableHashSum())
+	pl := migrate.NewPlanner(nil, d, migrate.DisableChecksum())
 	require.NotNil(t, pl)
 	require.NoError(t, pl.WritePlan(plan))
 	v := strconv.FormatInt(time.Now().Unix(), 10)
@@ -51,7 +50,7 @@ func TestPlanner_WritePlan(t *testing.T) {
 		template.Must(template.New("").Parse("{{range .Changes}}{{println .Cmd}}{{end}}")),
 	)
 	require.NoError(t, err)
-	pl = migrate.NewPlanner(nil, d, migrate.WithFormatter(fmt), migrate.DisableHashSum())
+	pl = migrate.NewPlanner(nil, d, migrate.WithFormatter(fmt), migrate.DisableChecksum())
 	require.NotNil(t, pl)
 	require.NoError(t, pl.WritePlan(plan))
 	require.Equal(t, countFiles(t, d), 3)
@@ -105,7 +104,7 @@ func TestHash(t *testing.T) {
 	p = t.TempDir()
 	d, err = migrate.NewLocalDir(p)
 	require.NoError(t, err)
-	pl = migrate.NewPlanner(nil, d, migrate.DisableHashSum())
+	pl = migrate.NewPlanner(nil, d, migrate.DisableChecksum())
 	require.NotNil(t, pl)
 	require.NoError(t, pl.WritePlan(plan))
 	require.Equal(t, countFiles(t, d), 2)
@@ -134,7 +133,6 @@ func TestHash_MarshalText(t *testing.T) {
 	h, err := migrate.HashSum(d)
 	require.NoError(t, err)
 	ac, err := h.MarshalText()
-	fmt.Println(string(ac))
 	require.Equal(t, hash, ac)
 }
 
