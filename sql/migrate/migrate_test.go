@@ -7,6 +7,8 @@ package migrate_test
 import (
 	"context"
 	"database/sql"
+	_ "embed"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -24,7 +26,7 @@ import (
 
 func TestPlanner_WritePlan(t *testing.T) {
 	p := t.TempDir()
-	d, err := migrate.NewLocalDir(p, migrate.DisableHash())
+	d, err := migrate.NewLocalDir(p)
 	require.NoError(t, err)
 	plan := &migrate.Plan{
 		Name: "add_t1_and_t2",
@@ -35,7 +37,7 @@ func TestPlanner_WritePlan(t *testing.T) {
 	}
 
 	// DefaultFormatter
-	pl := migrate.NewPlanner(nil, d)
+	pl := migrate.NewPlanner(nil, d, migrate.DisableHashSum())
 	require.NotNil(t, pl)
 	require.NoError(t, pl.WritePlan(plan))
 	v := strconv.FormatInt(time.Now().Unix(), 10)
@@ -49,7 +51,7 @@ func TestPlanner_WritePlan(t *testing.T) {
 		template.Must(template.New("").Parse("{{range .Changes}}{{println .Cmd}}{{end}}")),
 	)
 	require.NoError(t, err)
-	pl = migrate.NewPlanner(nil, d, migrate.WithFormatter(fmt))
+	pl = migrate.NewPlanner(nil, d, migrate.WithFormatter(fmt), migrate.DisableHashSum())
 	require.NotNil(t, pl)
 	require.NoError(t, pl.WritePlan(plan))
 	require.Equal(t, countFiles(t, d), 3)
@@ -57,7 +59,6 @@ func TestPlanner_WritePlan(t *testing.T) {
 }
 
 func TestPlanner_Hash(t *testing.T) {
-	// Default migrate.HashFS in migration dir named ".integrity"
 	p := t.TempDir()
 	d, err := migrate.NewLocalDir(p)
 	require.NoError(t, err)
@@ -69,20 +70,17 @@ func TestPlanner_Hash(t *testing.T) {
 	require.Equal(t, countFiles(t, d), 3)
 	requireFileEqual(t, filepath.Join(p, v+"_plan.up.sql"), "cmd;\n")
 	requireFileEqual(t, filepath.Join(p, v+"_plan.down.sql"), "rev;\n")
-	requireFileEqual(t, filepath.Join(p, ".integrity"), "\xac\x13\xe1\v\n\x18\xa3k\x82\n\x82\xcf7\xaeq\xf4")
+	require.FileExists(t, filepath.Join(p, "atlas.sum"))
 
-	// Custom migrate.HashFS.
 	p = t.TempDir()
-	h := &mockHashFS{}
-	d, err = migrate.NewLocalDir(p, migrate.WithHashFS(h))
+	d, err = migrate.NewLocalDir(p)
 	require.NoError(t, err)
-	pl = migrate.NewPlanner(nil, d)
+	pl = migrate.NewPlanner(nil, d, migrate.DisableHashSum())
 	require.NotNil(t, pl)
 	require.NoError(t, pl.WritePlan(plan))
 	require.Equal(t, countFiles(t, d), 2)
 	requireFileEqual(t, filepath.Join(p, v+"_plan.up.sql"), "cmd;\n")
 	requireFileEqual(t, filepath.Join(p, v+"_plan.down.sql"), "rev;\n")
-	require.Equal(t, string(h.hash), "\xac\x13\xe1\v\n\x18\xa3k\x82\n\x82\xcf7\xaeq\xf4")
 }
 
 func TestPlanner_Plan(t *testing.T) {
@@ -113,6 +111,29 @@ func TestPlanner_Plan(t *testing.T) {
 	plan, err = pl.Plan(ctx, "", migrate.Realm(nil))
 	require.NoError(t, err)
 	require.Equal(t, drv.plan, plan)
+}
+
+//go:embed testdata/atlas.sum
+var hash []byte
+
+func TestHash_MarshalText(t *testing.T) {
+	d, err := migrate.NewLocalDir("testdata")
+	require.NoError(t, err)
+	h, err := migrate.HashSum(d)
+	require.NoError(t, err)
+	ac, err := h.MarshalText()
+	fmt.Println(string(ac))
+	require.Equal(t, hash, ac)
+}
+
+func TestHash_UnmarshalText(t *testing.T) {
+	d, err := migrate.NewLocalDir("testdata")
+	require.NoError(t, err)
+	h, err := migrate.HashSum(d)
+	require.NoError(t, err)
+	var ac migrate.HashFile
+	require.NoError(t, ac.UnmarshalText(hash))
+	require.Equal(t, h, ac)
 }
 
 func TestGlobStateReader(t *testing.T) {
