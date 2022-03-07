@@ -1,0 +1,1 @@
+CREATE TABLE t_sub(c int);

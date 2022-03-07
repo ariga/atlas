@@ -5,12 +5,13 @@
 package migrate_test
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
+	_ "embed"
 	"io"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 	"text/template"
@@ -23,7 +24,9 @@ import (
 )
 
 func TestPlanner_WritePlan(t *testing.T) {
-	mfs := &mockFS{}
+	p := t.TempDir()
+	d, err := migrate.NewLocalDir(p)
+	require.NoError(t, err)
 	plan := &migrate.Plan{
 		Name: "add_t1_and_t2",
 		Changes: []*migrate.Change{
@@ -33,19 +36,13 @@ func TestPlanner_WritePlan(t *testing.T) {
 	}
 
 	// DefaultFormatter
-	pl := migrate.NewPlanner(nil, mfs)
+	pl := migrate.NewPlanner(nil, d, migrate.DisableChecksum())
 	require.NotNil(t, pl)
 	require.NoError(t, pl.WritePlan(plan))
 	v := strconv.FormatInt(time.Now().Unix(), 10)
-	require.Len(t, mfs.files, 2)
-	require.Equal(t, &file{
-		n: v + "_add_t1_and_t2.up.sql",
-		b: bytes.NewBufferString("CREATE TABLE t1(c int);\nCREATE TABLE t2(c int);\n"),
-	}, mfs.files[0])
-	require.Equal(t, &file{
-		n: v + "_add_t1_and_t2.down.sql",
-		b: bytes.NewBufferString("DROP TABLE t2;\nDROP TABLE t1 IF EXISTS;\n"),
-	}, mfs.files[1])
+	require.Equal(t, countFiles(t, d), 2)
+	requireFileEqual(t, filepath.Join(p, v+"_add_t1_and_t2.up.sql"), "CREATE TABLE t1(c int);\nCREATE TABLE t2(c int);\n")
+	requireFileEqual(t, filepath.Join(p, v+"_add_t1_and_t2.down.sql"), "DROP TABLE t2;\nDROP TABLE t1 IF EXISTS;\n")
 
 	// Custom formatter (creates only "up" migration files).
 	fmt, err := migrate.NewTemplateFormatter(
@@ -53,25 +50,23 @@ func TestPlanner_WritePlan(t *testing.T) {
 		template.Must(template.New("").Parse("{{range .Changes}}{{println .Cmd}}{{end}}")),
 	)
 	require.NoError(t, err)
-	pl = migrate.NewPlanner(nil, mfs, migrate.WithFormatter(fmt))
+	pl = migrate.NewPlanner(nil, d, migrate.WithFormatter(fmt), migrate.DisableChecksum())
 	require.NotNil(t, pl)
 	require.NoError(t, pl.WritePlan(plan))
-	require.Len(t, mfs.files, 3)
-	require.Equal(t, &file{
-		n: "add_t1_and_t2.sql",
-		b: bytes.NewBufferString("CREATE TABLE t1(c int);\nCREATE TABLE t2(c int)\n"),
-	}, mfs.files[2])
+	require.Equal(t, countFiles(t, d), 3)
+	requireFileEqual(t, filepath.Join(p, "add_t1_and_t2.sql"), "CREATE TABLE t1(c int);\nCREATE TABLE t2(c int)\n")
 }
 
 func TestPlanner_Plan(t *testing.T) {
 	var (
-		mfs = &mockFS{}
 		drv = &mockDriver{}
 		ctx = context.Background()
 	)
+	d, err := migrate.NewLocalDir(t.TempDir())
+	require.NoError(t, err)
 
 	// nothing to do
-	pl := migrate.NewPlanner(drv, mfs)
+	pl := migrate.NewPlanner(drv, d)
 	plan, err := pl.Plan(ctx, "empty", migrate.Realm(nil))
 	require.ErrorIs(t, err, migrate.ErrNoPlan)
 	require.Nil(t, plan)
@@ -92,6 +87,65 @@ func TestPlanner_Plan(t *testing.T) {
 	require.Equal(t, drv.plan, plan)
 }
 
+func TestHash(t *testing.T) {
+	p := t.TempDir()
+	d, err := migrate.NewLocalDir(p)
+	require.NoError(t, err)
+	plan := &migrate.Plan{Name: "plan", Changes: []*migrate.Change{{Cmd: "cmd", Reverse: "rev"}}}
+	pl := migrate.NewPlanner(nil, d)
+	require.NotNil(t, pl)
+	require.NoError(t, pl.WritePlan(plan))
+	v := strconv.FormatInt(time.Now().Unix(), 10)
+	require.Equal(t, countFiles(t, d), 3)
+	requireFileEqual(t, filepath.Join(p, v+"_plan.up.sql"), "cmd;\n")
+	requireFileEqual(t, filepath.Join(p, v+"_plan.down.sql"), "rev;\n")
+	require.FileExists(t, filepath.Join(p, "atlas.sum"))
+
+	p = t.TempDir()
+	d, err = migrate.NewLocalDir(p)
+	require.NoError(t, err)
+	pl = migrate.NewPlanner(nil, d, migrate.DisableChecksum())
+	require.NotNil(t, pl)
+	require.NoError(t, pl.WritePlan(plan))
+	require.Equal(t, countFiles(t, d), 2)
+	requireFileEqual(t, filepath.Join(p, v+"_plan.up.sql"), "cmd;\n")
+	requireFileEqual(t, filepath.Join(p, v+"_plan.down.sql"), "rev;\n")
+}
+
+func TestValidate(t *testing.T) {
+	d, err := migrate.NewLocalDir("testdata")
+	require.NoError(t, err)
+	require.Nil(t, migrate.Validate(d))
+
+	p := t.TempDir()
+	d, err = migrate.NewLocalDir(p)
+	require.NoError(t, err)
+	require.NoError(t, d.WriteFile("atlas.sum", hash))
+	require.Equal(t, migrate.ErrChecksumMismatch, migrate.Validate(d))
+}
+
+//go:embed testdata/atlas.sum
+var hash []byte
+
+func TestHash_MarshalText(t *testing.T) {
+	d, err := migrate.NewLocalDir("testdata")
+	require.NoError(t, err)
+	h, err := migrate.HashSum(d)
+	require.NoError(t, err)
+	ac, err := h.MarshalText()
+	require.Equal(t, hash, ac)
+}
+
+func TestHash_UnmarshalText(t *testing.T) {
+	d, err := migrate.NewLocalDir("testdata")
+	require.NoError(t, err)
+	h, err := migrate.HashSum(d)
+	require.NoError(t, err)
+	var ac migrate.HashFile
+	require.NoError(t, ac.UnmarshalText(hash))
+	require.Equal(t, h, ac)
+}
+
 func TestGlobStateReader(t *testing.T) {
 	var (
 		drv = &mockDriver{}
@@ -110,8 +164,8 @@ func TestGlobStateReader(t *testing.T) {
 }
 
 func TestLocalDir(t *testing.T) {
-	d, err := migrate.NewLocalDir("does_not_exist")
-	require.ErrorIs(t, err, os.ErrNotExist)
+	d, err := migrate.NewLocalDir("migrate.go")
+	require.ErrorContains(t, err, "sql/migrate: \"migrate.go\" is not a dir")
 	require.Nil(t, d)
 
 	d, err = migrate.NewLocalDir(t.TempDir())
@@ -128,44 +182,15 @@ func TestLocalDir(t *testing.T) {
 	require.Equal(t, "content", string(c))
 }
 
-type (
-	mockFS struct {
-		files []*file
-	}
-	file struct {
-		n string
-		b *bytes.Buffer
-	}
-	fileInfo struct {
-		n string
-	}
-)
+type mockHashFS struct{ hash []byte }
 
-func (f *file) Read(b []byte) (int, error) { return f.b.Read(b) }
-func (f *file) Close() error               { return nil }
-func (f *file) Stat() (fs.FileInfo, error) { return fileInfo{f.n}, nil }
-
-func (i fileInfo) Name() string       { return i.n }
-func (i fileInfo) Size() int64        { return 0 }
-func (i fileInfo) Mode() fs.FileMode  { return 0 }
-func (i fileInfo) ModTime() time.Time { return time.Time{} }
-func (i fileInfo) IsDir() bool        { return false }
-func (i fileInfo) Sys() interface{}   { return nil }
-
-func (fs *mockFS) Open(name string) (fs.File, error) {
-	for _, f := range fs.files {
-		if f.n == name {
-			return f, nil
-		}
-	}
-	f := &file{n: name, b: new(bytes.Buffer)}
-	fs.files = append(fs.files, f)
-	return f, nil
+func (h *mockHashFS) WriteHash(b []byte) error {
+	h.hash = b
+	return nil
 }
 
-func (fs *mockFS) WriteFile(name string, d []byte) error {
-	fs.files = append(fs.files, &file{n: name, b: bytes.NewBuffer(d)})
-	return nil
+func (h *mockHashFS) ReadHash() ([]byte, error) {
+	return h.hash, nil
 }
 
 type mockDriver struct {
@@ -188,4 +213,16 @@ func (m mockDriver) RealmDiff(_, _ *schema.Realm) ([]schema.Change, error) {
 }
 func (m mockDriver) PlanChanges(context.Context, string, []schema.Change) (*migrate.Plan, error) {
 	return m.plan, nil
+}
+
+func countFiles(t *testing.T, d migrate.Dir) int {
+	files, err := fs.ReadDir(d, "")
+	require.NoError(t, err)
+	return len(files)
+}
+
+func requireFileEqual(t *testing.T, name, contents string) {
+	c, err := os.ReadFile(name)
+	require.NoError(t, err)
+	require.Equal(t, contents, string(c))
 }
