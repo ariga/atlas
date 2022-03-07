@@ -58,31 +58,6 @@ func TestPlanner_WritePlan(t *testing.T) {
 	requireFileEqual(t, filepath.Join(p, "add_t1_and_t2.sql"), "CREATE TABLE t1(c int);\nCREATE TABLE t2(c int)\n")
 }
 
-func TestPlanner_Hash(t *testing.T) {
-	p := t.TempDir()
-	d, err := migrate.NewLocalDir(p)
-	require.NoError(t, err)
-	plan := &migrate.Plan{Name: "plan", Changes: []*migrate.Change{{Cmd: "cmd", Reverse: "rev"}}}
-	pl := migrate.NewPlanner(nil, d)
-	require.NotNil(t, pl)
-	require.NoError(t, pl.WritePlan(plan))
-	v := strconv.FormatInt(time.Now().Unix(), 10)
-	require.Equal(t, countFiles(t, d), 3)
-	requireFileEqual(t, filepath.Join(p, v+"_plan.up.sql"), "cmd;\n")
-	requireFileEqual(t, filepath.Join(p, v+"_plan.down.sql"), "rev;\n")
-	require.FileExists(t, filepath.Join(p, "atlas.sum"))
-
-	p = t.TempDir()
-	d, err = migrate.NewLocalDir(p)
-	require.NoError(t, err)
-	pl = migrate.NewPlanner(nil, d, migrate.DisableHashSum())
-	require.NotNil(t, pl)
-	require.NoError(t, pl.WritePlan(plan))
-	require.Equal(t, countFiles(t, d), 2)
-	requireFileEqual(t, filepath.Join(p, v+"_plan.up.sql"), "cmd;\n")
-	requireFileEqual(t, filepath.Join(p, v+"_plan.down.sql"), "rev;\n")
-}
-
 func TestPlanner_Plan(t *testing.T) {
 	var (
 		drv = &mockDriver{}
@@ -111,6 +86,43 @@ func TestPlanner_Plan(t *testing.T) {
 	plan, err = pl.Plan(ctx, "", migrate.Realm(nil))
 	require.NoError(t, err)
 	require.Equal(t, drv.plan, plan)
+}
+
+func TestHash(t *testing.T) {
+	p := t.TempDir()
+	d, err := migrate.NewLocalDir(p)
+	require.NoError(t, err)
+	plan := &migrate.Plan{Name: "plan", Changes: []*migrate.Change{{Cmd: "cmd", Reverse: "rev"}}}
+	pl := migrate.NewPlanner(nil, d)
+	require.NotNil(t, pl)
+	require.NoError(t, pl.WritePlan(plan))
+	v := strconv.FormatInt(time.Now().Unix(), 10)
+	require.Equal(t, countFiles(t, d), 3)
+	requireFileEqual(t, filepath.Join(p, v+"_plan.up.sql"), "cmd;\n")
+	requireFileEqual(t, filepath.Join(p, v+"_plan.down.sql"), "rev;\n")
+	require.FileExists(t, filepath.Join(p, "atlas.sum"))
+
+	p = t.TempDir()
+	d, err = migrate.NewLocalDir(p)
+	require.NoError(t, err)
+	pl = migrate.NewPlanner(nil, d, migrate.DisableHashSum())
+	require.NotNil(t, pl)
+	require.NoError(t, pl.WritePlan(plan))
+	require.Equal(t, countFiles(t, d), 2)
+	requireFileEqual(t, filepath.Join(p, v+"_plan.up.sql"), "cmd;\n")
+	requireFileEqual(t, filepath.Join(p, v+"_plan.down.sql"), "rev;\n")
+}
+
+func TestValidate(t *testing.T) {
+	d, err := migrate.NewLocalDir("testdata")
+	require.NoError(t, err)
+	require.Nil(t, migrate.Validate(d))
+
+	p := t.TempDir()
+	d, err = migrate.NewLocalDir(p)
+	require.NoError(t, err)
+	require.NoError(t, d.WriteFile("atlas.sum", hash))
+	require.Equal(t, migrate.ErrChecksumMismatch, migrate.Validate(d))
 }
 
 //go:embed testdata/atlas.sum
