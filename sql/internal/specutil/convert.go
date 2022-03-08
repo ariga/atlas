@@ -472,13 +472,18 @@ func FromForeignKey(s *schema.ForeignKey) (*sqlspec.ForeignKey, error) {
 		}
 		r = append(r, ref)
 	}
-	return &sqlspec.ForeignKey{
+	fk := &sqlspec.ForeignKey{
 		Symbol:     s.Symbol,
 		Columns:    c,
 		RefColumns: r,
-		OnUpdate:   &schemaspec.Ref{V: Var(string(s.OnUpdate))},
-		OnDelete:   &schemaspec.Ref{V: Var(string(s.OnDelete))},
-	}, nil
+	}
+	if s.OnUpdate != "" {
+		fk.OnUpdate = &schemaspec.Ref{V: Var(string(s.OnUpdate))}
+	}
+	if s.OnDelete != "" {
+		fk.OnDelete = &schemaspec.Ref{V: Var(string(s.OnDelete))}
+	}
+	return fk, nil
 }
 
 // FromCheck converts schema.Check to sqlspec.Check.
