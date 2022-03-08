@@ -77,4 +77,18 @@ func TestFromForeignKey(t *testing.T) {
 		OnUpdate: &schemaspec.Ref{V: "NO_ACTION"},
 		OnDelete: &schemaspec.Ref{V: "CASCADE"},
 	}, key)
+
+	fk.OnDelete = ""
+	fk.OnUpdate = ""
+	key, err = FromForeignKey(fk)
+	require.NoError(t, err)
+	require.EqualValues(t, &sqlspec.ForeignKey{
+		Symbol: "fk",
+		Columns: []*schemaspec.Ref{
+			{V: "$column.parent_id"},
+		},
+		RefColumns: []*schemaspec.Ref{
+			{V: "$column.id"},
+		},
+	}, key)
 }
