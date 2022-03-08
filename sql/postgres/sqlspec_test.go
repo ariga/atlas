@@ -56,6 +56,7 @@ table "table" {
 			table.table.column.col,
 			table.table.column.age,
 		]
+		where = "active"
 		comment = "index comment"
 	}
 	foreign_key "accounts" {
@@ -234,6 +235,7 @@ enum "account_type" {
 			Attrs: []schema.Attr{
 				&schema.Comment{Text: "index comment"},
 				&IndexType{T: IndexTypeHash},
+				&IndexPredicate{P: "active"},
 			},
 		},
 	}
