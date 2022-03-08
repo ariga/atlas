@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package action
 
 import (
@@ -34,7 +38,7 @@ var (
 	MigrateCmd = &cobra.Command{
 		Use:   "migrate",
 		Short: "Manage versioned migration files",
-		Long:  "`atlas migrate`" + ` wraps several sub-commands for migration management.`,
+		Long:  "'atlas migrate' wraps several sub-commands for migration management.",
 		PersistentPreRun: func(*cobra.Command, []string) {
 			// Migrate commands will not run on a broken migration directory, unless the force flag is given.
 			if !MigrateFlags.Force {
@@ -48,7 +52,7 @@ var (
 	MigrateDiffCmd = &cobra.Command{
 		Use:   "diff",
 		Short: "Compute the diff between the migration directory and a connected database and create a new migration file.",
-		Long: "`atlas migrate diff`" + ` uses the dev-database to re-run all migration files in the migration
+		Long: `'atlas migrate diff' uses the dev-database to re-run all migration files in the migration
 directory and compares it to a given desired state and create a new migration file containing SQL statements to migrate 
 the migration directory state to the desired schema. The desired state can be another connected database or an HCL file.`,
 		Example: `  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname
@@ -71,6 +75,7 @@ func init() {
 	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateDiffFlagTo))
 }
 
+// CmdMigrateDiffRun is the command executed when running the CLI with 'migrate diff' args.
 func CmdMigrateDiffRun(cmd *cobra.Command, args []string) {
 	// Open a dev driver.
 	dev, err := DefaultMux.OpenAtlas(MigrateFlags.DevURL)
@@ -82,26 +87,26 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) {
 	desired, err := to(cmd.Context(), dev)
 	cobra.CheckErr(err)
 	// Only create one file per plan.
-	tfmt, err := migrate.NewTemplateFormatter(nameTmpl, contentTmpl)
+	tf, err := migrate.NewTemplateFormatter(nameTmpl, contentTmpl)
 	cobra.CheckErr(err)
 	// Plan the changes and create a new migration file.
-	pl := migrate.NewPlanner(dev, dir, migrate.WithFormatter(tfmt))
-	var n string
+	pl := migrate.NewPlanner(dev, dir, migrate.WithFormatter(tf))
+	var name string
 	if len(args) > 0 {
-		n = args[0]
+		name = args[0]
 	}
-	plan, err := pl.Plan(cmd.Context(), n, desired)
+	plan, err := pl.Plan(cmd.Context(), name, desired)
 	cobra.CheckErr(err)
-	return
 	// Write the plan to a new file.
 	cobra.CheckErr(pl.WritePlan(plan))
+	// TODO(masseelch): clean up dev after reading the state from migration dir.
 }
 
 // dir returns a migrate.Dir to use as migration directory. For now only local directories are supported.
 func dir() (migrate.Dir, error) {
 	parts := strings.SplitN(MigrateFlags.DirURL, "://", 2)
 	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid dsn %q", MigrateFlags.DirURL)
+		return nil, fmt.Errorf("invalid dir url %q", MigrateFlags.DirURL)
 	}
 	switch parts[0] {
 	case "file":
@@ -115,9 +120,9 @@ func dir() (migrate.Dir, error) {
 func to(ctx context.Context, d *Driver) (migrate.StateReader, error) {
 	parts := strings.SplitN(MigrateFlags.ToURL, "://", 2)
 	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid dsn %q", MigrateFlags.ToURL)
+		return nil, fmt.Errorf("invalid driver url %q", MigrateFlags.ToURL)
 	}
-	schemas := ApplyFlags.Schema
+	schemas := MigrateFlags.Schemas
 	if n, err := SchemaNameFromURL(ctx, parts[0]); n != "" {
 		cobra.CheckErr(err)
 		schemas = append(schemas, n)
@@ -128,7 +133,7 @@ func to(ctx context.Context, d *Driver) (migrate.StateReader, error) {
 		if err != nil {
 			return nil, err
 		}
-		realm := new(schema.Realm)
+		realm := &schema.Realm{}
 		if err := d.UnmarshalSpec(f, realm); err != nil {
 			return nil, err
 		}
@@ -144,8 +149,8 @@ func to(ctx context.Context, d *Driver) (migrate.StateReader, error) {
 				}
 			}
 		}
-		if n, ok := d.Driver.(schema.Normalizer); ok {
-			realm, err = n.NormalizeRealm(ctx, realm)
+		if norm, ok := d.Driver.(schema.Normalizer); ok {
+			realm, err = norm.NormalizeRealm(ctx, realm)
 			if err != nil {
 				return nil, err
 			}
@@ -174,6 +179,6 @@ var (
 		"{{ now }}{{ with .Name }}_{{ . }}{{ end }}.sql",
 	))
 	contentTmpl = template.Must(template.New("content").Funcs(funcMap).Parse(
-		"{{ range .Changes }}{{ println (sem .Cmd) }}{{ end }}",
+		"{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ println (sem .Cmd) }}{{ end }}",
 	))
 )
