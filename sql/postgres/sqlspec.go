@@ -233,8 +233,8 @@ func fixDefaultQuotes(value schemaspec.Value) error {
 }
 
 // convertIndex converts a sqlspec.Index into a schema.Index.
-func convertIndex(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
-	idx, err := specutil.Index(spec, parent)
+func convertIndex(spec *sqlspec.Index, t *schema.Table) (*schema.Index, error) {
+	idx, err := specutil.Index(spec, t)
 	if err != nil {
 		return nil, err
 	}
@@ -375,7 +375,7 @@ func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("type", strings.ToUpper(i.T)))
 	}
 	if i := (IndexPredicate{}); sqlx.Has(idx.Attrs, &i) && i.P != "" {
-		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("where", i.P))
+		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("where", strconv.Quote(i.P)))
 	}
 	return spec, nil
 }

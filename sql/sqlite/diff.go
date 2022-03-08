@@ -98,10 +98,7 @@ func (d *diff) IsGeneratedIndexName(t *schema.Table, idx *schema.Index) bool {
 // IndexAttrChanged reports if the index attributes were changed.
 func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 	var p1, p2 IndexPredicate
-	if sqlx.Has(from, &p1) != sqlx.Has(to, &p2) || p1.P != p2.P {
-		return true
-	}
-	return false
+	return sqlx.Has(from, &p1) != sqlx.Has(to, &p2) || (p1.P != p2.P && p1.P != sqlx.MayWrap(p2.P))
 }
 
 // IndexPartAttrChanged reports if the index-part attributes were changed.
