@@ -46,6 +46,55 @@ List of supported environment parameters:
   variable "ATLAS_NO_UPDATE_NOTIFIER".
 
 
+## atlas migrate
+
+Manage versioned migration files
+
+#### Usage
+```
+atlas migrate
+```
+
+#### Details
+'atlas migrate' wraps several sub-commands for migration management.
+
+#### Flags
+```
+      --dir string       select migration directory using DSN format (default "file://migrations")
+      --force            force a command to run on a broken migration directory state
+      --schema strings   set schema names
+
+```
+
+
+### atlas migrate diff
+
+Compute the diff between the migration directory and a connected database and create a new migration file.
+
+#### Usage
+```
+atlas migrate diff [flags]
+```
+
+#### Details
+'atlas migrate diff' uses the dev-database to re-run all migration files in the migration
+directory and compares it to a given desired state and create a new migration file containing SQL statements to migrate 
+the migration directory state to the desired schema. The desired state can be another connected database or an HCL file.
+
+#### Example
+
+```
+  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname
+  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl
+```
+#### Flags
+```
+      --dev-url string   [driver://username:password@address/dbname?param=value] select a data source using the DSN format
+      --to string        [driver://username:password@address/dbname?param=value] select a data source using the DSN format
+
+```
+
+
 ## atlas schema
 
 Work with atlas schemas.

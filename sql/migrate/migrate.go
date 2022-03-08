@@ -111,14 +111,14 @@ func (f StateReaderFunc) ReadState(ctx context.Context) (*schema.Realm, error) {
 // ErrNoPlan is returned by Plan when there is no change between the two states.
 var ErrNoPlan = errors.New("sql/migrate: no plan for matched states")
 
-// Realm returns a state reader for the static Realm object.
+// Realm returns a StateReader for the static Realm object.
 func Realm(r *schema.Realm) StateReader {
 	return StateReaderFunc(func(context.Context) (*schema.Realm, error) {
 		return r, nil
 	})
 }
 
-// Schema returns a state reader for the static Schema object.
+// Schema returns a StateReader for the static Schema object.
 func Schema(s *schema.Schema) StateReader {
 	return StateReaderFunc(func(context.Context) (*schema.Realm, error) {
 		r := &schema.Realm{Schemas: []*schema.Schema{s}}
@@ -127,6 +127,13 @@ func Schema(s *schema.Schema) StateReader {
 		}
 		s.Realm = r
 		return r, nil
+	})
+}
+
+// Conn returns a StateReader for a Driver.
+func Conn(drv Driver, opts *schema.InspectRealmOption) StateReader {
+	return StateReaderFunc(func(ctx context.Context) (*schema.Realm, error) {
+		return drv.InspectRealm(ctx, opts)
 	})
 }
 
@@ -176,7 +183,7 @@ func NewPlanner(drv Driver, dir Dir, opts ...PlannerOption) *Planner {
 		p.fmt = DefaultFormatter
 	}
 	if p.dsr == nil {
-		p.dsr = GlobStateReader(p.dir, p.drv, "*.sql")
+		p.dsr = GlobStateReader(p.dir, p.drv, "**/*.sql")
 	}
 	return p
 }
@@ -219,12 +226,18 @@ func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
 			if err != nil {
 				return nil, err
 			}
-			b, err := io.ReadAll(f)
-			f.Close()
-			if err != nil {
-				return nil, err
+			sc := bufio.NewScanner(f)
+			for sc.Scan() {
+				t := sc.Text()
+				if !strings.HasPrefix(strings.TrimSpace(t), "--") {
+					if _, err := drv.ExecContext(ctx, t); err != nil {
+						f.Close()
+						return nil, err
+					}
+				}
 			}
-			if _, err := drv.ExecContext(ctx, string(b)); err != nil {
+			f.Close()
+			if err := sc.Err(); err != nil {
 				return nil, err
 			}
 		}
@@ -435,13 +448,28 @@ func HashSum(dir Dir) (HashFile, error) {
 	return hs, nil
 }
 
-// ErrChecksumMismatch is returned from Validate if the hash sums don't match.
-var ErrChecksumMismatch = errors.New("checksum mismatch")
+var (
+	// ErrChecksumMismatch is returned from Validate if the hash sums don't match.
+	ErrChecksumMismatch = errors.New("checksum mismatch")
+	// ErrChecksumNotFound is returned from Validate if the hash file does not exist.
+	ErrChecksumNotFound = errors.New("checksum file not found")
+)
 
 // Validate checks if the migration dir is in sync with its sum file.
 // If they don't match ErrChecksumMismatch is returned.
 func Validate(dir Dir) error {
 	f, err := dir.Open(hashFile)
+	if os.IsNotExist(err) {
+		// If there are no migration files yet this is okay.
+		files, err := fs.ReadDir(dir, "/")
+		if err != nil {
+			return err
+		}
+		if len(files) == 0 {
+			return nil
+		}
+		return ErrChecksumNotFound
+	}
 	if err != nil {
 		return err
 	}
