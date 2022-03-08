@@ -56,20 +56,19 @@ func init() {
 }
 
 // CmdInspectRun is the command used when running CLI.
-func CmdInspectRun(_ *cobra.Command, _ []string) {
+func CmdInspectRun(cmd *cobra.Command, _ []string) {
 	if InspectFlags.Web {
 		schemaCmd.PrintErrln("The Atlas UI is not available in this release.")
 		return
 	}
 	d, err := DefaultMux.OpenAtlas(InspectFlags.URL)
 	cobra.CheckErr(err)
-	inspectRun(d, InspectFlags.URL)
+	inspectRun(cmd.Context(), d, InspectFlags.URL)
 }
 
-func inspectRun(d *Driver, url string) {
-	ctx := context.Background()
+func inspectRun(ctx context.Context, d *Driver, url string) {
 	schemas := InspectFlags.Schema
-	if n, err := SchemaNameFromURL(url); n != "" {
+	if n, err := SchemaNameFromURL(ctx, url); n != "" {
 		cobra.CheckErr(err)
 		schemas = append(schemas, n)
 	}

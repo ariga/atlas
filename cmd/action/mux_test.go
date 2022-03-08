@@ -5,6 +5,7 @@
 package action_test
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -100,7 +101,7 @@ func Test_SQLiteFileDoestNotExist(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.url, func(t *testing.T) {
-			_, err := action.SchemaNameFromURL(tt.url)
+			_, err := action.SchemaNameFromURL(context.Background(), tt.url)
 			require.EqualError(t, err, tt.expected)
 		})
 	}
@@ -115,13 +116,13 @@ func Test_SQLiteFileExist(t *testing.T) {
 		r.NoError(err)
 	})
 	dsn := "sqlite://file://" + file.Name()
-	_, err = action.SchemaNameFromURL(dsn)
+	_, err = action.SchemaNameFromURL(context.Background(), dsn)
 	r.NoError(err)
 }
 
 func Test_SQLiteInMemory(t *testing.T) {
 	r := require.New(t)
-	_, err := action.SchemaNameFromURL("sqlite://file:test.db?cache=shared&mode=memory")
+	_, err := action.SchemaNameFromURL(context.Background(), "sqlite://file:test.db?cache=shared&mode=memory")
 	r.NoError(err)
 }
 
@@ -151,7 +152,7 @@ func Test_PostgresSchemaDSN(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.url, func(t *testing.T) {
-			schema, err := action.SchemaNameFromURL(tt.url)
+			schema, err := action.SchemaNameFromURL(context.Background(), tt.url)
 			require.Equal(t, tt.wantErr, err != nil)
 			require.Equal(t, tt.expected, schema)
 		})

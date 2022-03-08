@@ -5,7 +5,6 @@
 package action
 
 import (
-	"context"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -44,15 +43,15 @@ func init() {
 // cmdDiffRun connects to the given databases, and prints an SQL plan to get from
 // the "from" schema to the "to" schema.
 func cmdDiffRun(cmd *cobra.Command, flags *diffCmdOpts) {
+	ctx := cmd.Context()
 	fromDriver, err := DefaultMux.OpenAtlas(flags.fromURL)
 	cobra.CheckErr(err)
 	toDriver, err := DefaultMux.OpenAtlas(flags.toURL)
 	cobra.CheckErr(err)
-	fromName, err := SchemaNameFromURL(flags.fromURL)
+	fromName, err := SchemaNameFromURL(ctx, flags.fromURL)
 	cobra.CheckErr(err)
-	toName, err := SchemaNameFromURL(flags.toURL)
+	toName, err := SchemaNameFromURL(ctx, flags.toURL)
 	cobra.CheckErr(err)
-	ctx := context.Background()
 	fromSchema, err := fromDriver.InspectSchema(ctx, fromName, nil)
 	cobra.CheckErr(err)
 	toSchema, err := toDriver.InspectSchema(ctx, toName, nil)
