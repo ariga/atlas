@@ -77,7 +77,7 @@ func init() {
 }
 
 // CmdMigrateDiffRun is the command executed when running the CLI with 'migrate diff' args.
-func CmdMigrateDiffRun(cmd *cobra.Command, args []string) {
+func CmdMigrateDiffRun(cmd *cobra.Command, args []string) { // TODO(masseelch): tests
 	// Open a dev driver.
 	dev, err := DefaultMux.OpenAtlas(MigrateFlags.DevURL)
 	cobra.CheckErr(err)
