@@ -211,7 +211,7 @@ Atlas encrypts sensitive data such as passwords using the generated keyset.json.
 
 #### Flags
 ```
---addr string       listen address for atlas serve (default ":8080")
+--addr string       listen address for atlas serve (default ":5800")
 --storage string    data store url using the dsn format:
                     [driver://username:password@protocol(address)/dbname?param=value] (default "in-memory")
 -h, --help          help for serve
