@@ -48,14 +48,14 @@ You can use this image to run the CLI and to serve the Atlas UI.
 
 To run Atlas in served and persisted mode inside a container:
 ```
-docker run -v $HOME/.atlas/keyset.json:/root/.atlas/keyset.json -p 8080:8080 arigaio/atlas:latest serve --addr 0.0.0.0:8080 --storage "mysql://root:pass@tcp(host.docker.internal:3306)/atlas"
+docker run -v $HOME/.atlas/keyset.json:/root/.atlas/keyset.json -p 5800:5800 arigaio/atlas:latest serve --addr :5800 --storage "mysql://root:pass@tcp(host.docker.internal:3306)/atlas"
 ```
 
 Let's review this command step by step:
 1. ```docker run``` - running a command.
 2. ```-v $HOME/.atlas/keyset.json:/root/.atlas/keyset.json``` binds a secret key from a persisted host into the docker container. If you don't have a key, use an empty file and Atlas will generate one for you.
-3. ``` -p 8080:8080``` binds an exposed serving port for connecting with a web client.
-4. ```8080:8080 arigaio/atlas:latest``` use the latest atlas image, for a versioned release use a specific tag such as ```arigaio/atlas:0.3.6```.
-5. ```serve --addr 0.0.0.0:8080 --storage "mysql://root:pass@tcp(host.docker.internal:3306)/atlas"``` serve Atlas on port 8080 with a persistent MySQL Database.  
+3. ``` -p 5800:5800``` binds an exposed serving port for connecting with a web client.
+4. ```5800:5800 arigaio/atlas:latest``` use the latest atlas image, for a versioned release use a specific tag such as ```arigaio/atlas:0.3.6```.
+5. ```serve --addr :5800 --storage "mysql://root:pass@tcp(host.docker.internal:3306)/atlas"``` serve Atlas on port 5800 with a persistent MySQL Database.  
 
 
