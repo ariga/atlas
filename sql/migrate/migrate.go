@@ -183,7 +183,7 @@ func NewPlanner(drv Driver, dir Dir, opts ...PlannerOption) *Planner {
 		p.fmt = DefaultFormatter
 	}
 	if p.dsr == nil {
-		p.dsr = GlobStateReader(p.dir, p.drv, "*.sql")
+		p.dsr = GlobStateReader(p.dir, p.drv, "**/*.sql")
 	}
 	return p
 }
@@ -226,16 +226,19 @@ func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
 			if err != nil {
 				return nil, err
 			}
-			b, err := io.ReadAll(f)
-			f.Close()
-			if err != nil {
-				return nil, err
-			}
-			bs := bytes.Split(b, []byte("\n"))
-			for _, b := range bs {
-				if _, err := drv.ExecContext(ctx, string(b)); err != nil {
-					return nil, err
+			sc := bufio.NewScanner(f)
+			for sc.Scan() {
+				t := sc.Text()
+				if !strings.HasPrefix(strings.TrimSpace(t), "--") {
+					if _, err := drv.ExecContext(ctx, t); err != nil {
+						f.Close()
+						return nil, err
+					}
 				}
+			}
+			f.Close()
+			if err := sc.Err(); err != nil {
+				return nil, err
 			}
 		}
 		return drv.InspectRealm(ctx, nil)
