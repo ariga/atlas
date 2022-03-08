@@ -71,20 +71,19 @@ func init() {
 }
 
 // CmdApplyRun is the command used when running CLI.
-func CmdApplyRun(*cobra.Command, []string) {
+func CmdApplyRun(cmd *cobra.Command, _ []string) {
 	if ApplyFlags.Web {
 		schemaCmd.PrintErrln("The Atlas UI is not available in this release.")
 		return
 	}
 	d, err := DefaultMux.OpenAtlas(ApplyFlags.URL)
 	cobra.CheckErr(err)
-	applyRun(d, ApplyFlags.URL, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove)
+	applyRun(cmd.Context(), d, ApplyFlags.URL, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove)
 }
 
-func applyRun(d *Driver, url string, file string, dryRun bool, autoApprove bool) {
-	ctx := context.Background()
+func applyRun(ctx context.Context, d *Driver, url string, file string, dryRun bool, autoApprove bool) {
 	schemas := ApplyFlags.Schema
-	if n, err := SchemaNameFromURL(url); n != "" {
+	if n, err := SchemaNameFromURL(ctx, url); n != "" {
 		cobra.CheckErr(err)
 		schemas = append(schemas, n)
 	}
