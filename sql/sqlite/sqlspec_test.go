@@ -41,6 +41,7 @@ table "table" {
 			table.table.column.id,
 			table.table.column.age,
 		]
+		where = "age <> 0"
 	}
 	foreign_key "accounts" {
 		columns = [
@@ -148,6 +149,9 @@ table "accounts" {
 				{SeqNo: 0, C: exp.Tables[0].Columns[0]},
 				{SeqNo: 1, C: exp.Tables[0].Columns[1]},
 			},
+			Attrs: []schema.Attr{
+				&IndexPredicate{P: "age <> 0"},
+			},
 		},
 	}
 	exp.Tables[0].ForeignKeys = []*schema.ForeignKey{
@@ -200,6 +204,60 @@ func TestMarshalSpec_AutoIncrement(t *testing.T) {
     null           = false
     type           = int
     auto_increment = true
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestMarshalSpec_IndexPredicate(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "id",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}},
+						Attrs: []schema.Attr{
+							&AutoIncrement{},
+						},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	s.Tables[0].Schema = s
+	s.Tables[0].Indexes = []*schema.Index{
+		{
+			Name:   "index",
+			Table:  s.Tables[0],
+			Unique: true,
+			Parts: []*schema.IndexPart{
+				{SeqNo: 0, C: s.Tables[0].Columns[0]},
+			},
+			Attrs: []schema.Attr{
+				&IndexPredicate{P: "id <> 0"},
+			},
+		},
+	}
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "id" {
+    null           = false
+    type           = int
+    auto_increment = true
+  }
+  index "index" {
+    unique  = true
+    columns = [column.id]
+    where   = "id <> 0"
   }
 }
 schema "test" {
