@@ -245,6 +245,13 @@ func convertIndex(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, err
 		}
 		idx.Attrs = append(idx.Attrs, &IndexType{T: t})
 	}
+	if attr, ok := spec.Attr("where"); ok {
+		p, err := attr.String()
+		if err != nil {
+			return nil, err
+		}
+		idx.Attrs = append(idx.Attrs, &IndexPredicate{P: p})
+	}
 	return idx, nil
 }
 
@@ -366,6 +373,9 @@ func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 	// Avoid printing the index type if it is the default.
 	if i := (IndexType{}); sqlx.Has(idx.Attrs, &i) && i.T != IndexTypeBTree {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("type", strings.ToUpper(i.T)))
+	}
+	if i := (IndexPredicate{}); sqlx.Has(idx.Attrs, &i) && i.P != "" {
+		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("where", i.P))
 	}
 	return spec, nil
 }
