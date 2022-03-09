@@ -117,14 +117,14 @@ Use "atlas [command] --help" for more information about a command.
 For the purpose of this guide, we will start a local Docker container running MySQL.
 
 ```shell
-docker run --name atlas-db  -p 3306:3306  -e MYSQL_ROOT_PASSWORD=pass -e MYSQL_DATABASE=example   mysql:8.0.27
+docker run --name atlas-db -p 3306:3306 -e MYSQL_ROOT_PASSWORD=pass -e MYSQL_DATABASE=example mysql
 ```
 
 To verify the local database is running, run the MySQL command-line interface
 from within the container:
 
 ```shell
-docker  exec -it  atlas-db  mysql --password='pass' example
+docker exec -it atlas-db mysql --password='pass' example
 ```
 Run `show tables;` to verify that the database is empty:
 ```text

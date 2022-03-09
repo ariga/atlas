@@ -60,7 +60,7 @@ func init() {
 	ApplyCmd.Flags().StringVarP(&ApplyFlags.File, "file", "f", "", "[/path/to/file] file containing the HCL schema.")
 	ApplyCmd.Flags().StringVarP(&ApplyFlags.URL, "url", "u", "", "URL to the database using the format:\n[driver://username:password@address/dbname?param=value]")
 	ApplyCmd.Flags().StringSliceVarP(&ApplyFlags.Schema, "schema", "s", nil, "Set schema names.")
-	ApplyCmd.Flags().StringVarP(&ApplyFlags.URL, "dev-url", "", "", "URL for the dev database. Used to validate schemas and calculate diffs\nbefore running migration.")
+	ApplyCmd.Flags().StringVarP(&ApplyFlags.DevURL, "dev-url", "", "", "URL for the dev database. Used to validate schemas and calculate diffs\nbefore running migration.")
 	ApplyCmd.Flags().BoolVarP(&ApplyFlags.DryRun, "dry-run", "", false, "Dry-run. Print SQL plan without prompting for execution.")
 	ApplyCmd.Flags().BoolVarP(&ApplyFlags.AutoApprove, "auto-approve", "", false, "Auto approve. Apply the schema changes without prompting for approval.")
 	ApplyCmd.Flags().BoolVarP(&ApplyFlags.Web, "web", "w", false, "Open in a local Atlas UI.")
