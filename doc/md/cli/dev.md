@@ -64,7 +64,7 @@ exit status 1
 Atlas adopts the declarative approach for maintaining the schemas desired state, but provides two ways to manage and
 apply changes on the database: `schema apply` and `migrate diff`. In both commands, Atlas compares the "current", and the
 "desired" states and suggests a migration plan to migrate the "current" state to the "desired" state. For example, the
-"current" state can be an inspected database or a migration directory, and the "desired state" can be an inspected
+"current" state can be an inspected database or a migration directory, and the "desired" state can be an inspected
 database, or an HCL file.
 
 Schemas that are written in HCL files are defined in natural form by humans. However, databases store schemas in 
