@@ -151,8 +151,9 @@ func Column(spec *sqlspec.Column, conv ConvertTypeFunc) (*schema.Column, error) 
 	return out, err
 }
 
-// Index converts a sqlspec.Index to a schema.Index.
-func Index(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
+// Index converts a sqlspec.Index to a schema.Index. The optional arguments allow
+// passing functions for mutating the created index-part (e.g. add attributes).
+func Index(spec *sqlspec.Index, parent *schema.Table, partFns ...func(*sqlspec.IndexPart, *schema.IndexPart) error) (*schema.Index, error) {
 	parts := make([]*schema.IndexPart, 0, len(spec.Columns)+len(spec.Parts))
 	switch n, m := len(spec.Columns), len(spec.Parts); {
 	case n == 0 && m == 0:
@@ -186,6 +187,11 @@ func Index(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
 					return nil, err
 				}
 				part.C = c
+			}
+			for _, f := range partFns {
+				if err := f(p, part); err != nil {
+					return nil, err
+				}
 			}
 			parts = append(parts, part)
 		}
@@ -418,7 +424,7 @@ func normalizeQuotes(s string) (string, error) {
 }
 
 // FromIndex converts schema.Index to sqlspec.Index.
-func FromIndex(idx *schema.Index) (*sqlspec.Index, error) {
+func FromIndex(idx *schema.Index, partFns ...func(*schema.IndexPart, *sqlspec.IndexPart)) (*sqlspec.Index, error) {
 	spec := &sqlspec.Index{Name: idx.Name, Unique: idx.Unique}
 	convertCommentFromSchema(idx.Attrs, &spec.Extra.Attrs)
 	if parts, ok := columnsOnly(idx); ok {
@@ -441,6 +447,9 @@ func FromIndex(idx *schema.Index) (*sqlspec.Index, error) {
 				return nil, fmt.Errorf("unexpected expression %T for index %q", p.X, idx.Name)
 			}
 			part.Expr = x.X
+		}
+		for _, f := range partFns {
+			f(p, part)
 		}
 		spec.Parts[i] = part
 	}
