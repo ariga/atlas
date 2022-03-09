@@ -46,7 +46,7 @@ and compiling SQL expressions, traverse their AST and validate them. This is alr
 
 Migration failures can leave the database in a broken state. Some databases, like MySQL, do not support transactional
 migrations due to [implicit COMMIT](https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html). However, this can be
-avoided using the `--dev-url` option. Passing this it to `schema apply` will first create and validate the desired state
+avoided using the `--dev-url` option. Passing this to `schema apply` will first create and validate the desired state
 (the HCL schema file) on temporary named-databases (schemas), and only then continue to `apply` the changes if it passed
 successfully.
 
