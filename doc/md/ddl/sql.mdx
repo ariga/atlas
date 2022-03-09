@@ -244,6 +244,61 @@ index "idx_name" {
 | columns   | attribute | reference (list)        | The columns that comprise the index.                           |
 | on        | resource  | schema.IndexPart (list) | The index parts that comprise the index.                       |
 
+### Index Expressions
+
+Index expressions allow setting indexes over functions or computed expressions. Supported by PostgreSQL, SQLite and
+MySQL8.
+
+```hcl {9-16}
+table "t" {
+  schema = schema.test
+  column "c1" {
+    type = int
+  }
+  column "c2" {
+    type = int
+  }
+  index "i" {
+    on {
+      expr = "c1 - c2"
+    }
+    on {
+      expr = "c2 - c1"
+    }
+  }
+}
+```
+
+:::info
+Note, it is recommended to use the [`--dev-url`](../cli/dev-database) option when index expressions are used.
+:::
+
+### Partial Indexes
+
+[Partial indexes](https://www.postgresql.org/docs/current/indexes-partial.html) allow setting indexes over subset of
+the table. Supported by PostgreSQL and SQLite.
+
+```hcl {11}
+table "t" {
+  schema = schema.public
+  column "b" {
+    type = bool
+  }
+  column "c" {
+    type = int
+  }
+  index "i" {
+    columns = [column.c]
+    where = "b AND c > 0"
+  }
+}
+```
+
+:::info
+Note, it is recommended to use the [`--dev-url`](../cli/dev-database) option when partial indexes are used.
+:::
+
+
 ## Comment
 
 The `comment` attribute is an attribute of `schema`, `table`, `column`, and `index`.
