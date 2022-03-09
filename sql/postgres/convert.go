@@ -28,7 +28,10 @@ func FormatType(t schema.Type) (string, error) {
 			f = fmt.Sprintf("%s(1)", f)
 		}
 	case *schema.BoolType:
-		f = strings.ToLower(t.T)
+		// BOOLEAN can be abbreviated as BOOL.
+		if f = strings.ToLower(t.T); f == TypeBool {
+			f = TypeBoolean
+		}
 	case *schema.BinaryType:
 		f = strings.ToLower(t.T)
 	case *CurrencyType:
