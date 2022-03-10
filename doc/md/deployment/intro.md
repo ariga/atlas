@@ -61,10 +61,10 @@ Let's review this command step by step:
 ### Encryption
 
 Atlas uses [tink](https://github.com/google/tink), a battle-tested encryption library created at Google, to 
-encrypt all sensitive information.  Following recommendations from the developers of tink, Atlas
+encrypt all sensitive information. Following recommendations from the developers of tink, Atlas
 uses [AEAD](https://developers.google.com/tink/aead?hl=en) encryption with an AES256_GCM type key.
 
-On its first run, Atlas will generate a keyset.json file under `$HOME/.atlas/`  containing 
+On its first run, Atlas generates a keyset.json file under `$HOME/.atlas/` containing 
 an encryption keyset for you. Do not lose this file! Without this file you cannot later decrypt
 any database credentials that save to Atlas. 
 
