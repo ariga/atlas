@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -105,7 +106,7 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 
 // convertIndex converts a sqlspec.Index into a schema.Index.
 func convertIndex(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
-	idx, err := specutil.Index(spec, parent)
+	idx, err := specutil.Index(spec, parent, convertPart)
 	if err != nil {
 		return nil, err
 	}
@@ -114,9 +115,23 @@ func convertIndex(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, err
 		if err != nil {
 			return nil, err
 		}
-		idx.Attrs = append(idx.Attrs, &IndexType{T: t})
+		idx.AddAttrs(&IndexType{T: t})
 	}
 	return idx, nil
+}
+
+func convertPart(spec *sqlspec.IndexPart, part *schema.IndexPart) error {
+	if attr, ok := spec.Attr("prefix"); ok {
+		if part.X != nil {
+			return errors.New("attribute 'on.prefix' cannot be used in functional part")
+		}
+		p, err := attr.Int()
+		if err != nil {
+			return err
+		}
+		part.AddAttrs(&SubPart{Len: p})
+	}
+	return nil
 }
 
 // convertCheck converts a sqlspec.Check into a schema.Check.
@@ -206,7 +221,7 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 }
 
 func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
-	spec, err := specutil.FromIndex(idx)
+	spec, err := specutil.FromIndex(idx, partAttr)
 	if err != nil {
 		return nil, err
 	}
@@ -215,6 +230,12 @@ func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("type", strings.ToUpper(i.T)))
 	}
 	return spec, nil
+}
+
+func partAttr(part *schema.IndexPart, spec *sqlspec.IndexPart) {
+	if p := (SubPart{}); sqlx.Has(part.Attrs, &p) && p.Len > 0 {
+		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.IntAttr("prefix", p.Len))
+	}
 }
 
 // columnSpec converts from a concrete MySQL schema.Column into a sqlspec.Column.
