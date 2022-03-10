@@ -58,4 +58,29 @@ Let's review this command step by step:
 4. ```5800:5800 arigaio/atlas:latest``` use the latest atlas image, for a versioned release use a specific tag such as ```arigaio/atlas:0.3.6```.
 5. ```serve --addr :5800 --storage "mysql://root:pass@tcp(host.docker.internal:3306)/atlas"``` serve Atlas on port 5800 with a persistent MySQL Database.  
 
+### Encryption
 
+Atlas uses [tink](https://github.com/google/tink), a battle-tested encryption library created at Google, to 
+encrypt all sensitive information. Following recommendations from the developers of tink, Atlas
+uses [AEAD](https://developers.google.com/tink/aead?hl=en) encryption with an AES256_GCM type key.
+
+On its first run, Atlas generates a keyset.json file under `$HOME/.atlas/` containing 
+an encryption keyset for you. Do not lose this file! Without this file you cannot later decrypt
+any database credentials that save to Atlas. 
+
+If you want to generate this key yourself, you can
+[install Tinkey](https://developers.google.com/tink/install-tinkey), Tink's official CLI,
+and use it to generate a keyset:
+
+```shell
+brew tap google/tink https://github.com/google/tink
+brew install tinkey
+tinkey create-keyset --key-template AES256_GCM --out ~/.atlas/keyset.json
+```
+
+Alternatively, you can use [rotemtam/tinkey](https://hub.docker.com/r/rotemtam/tinkey), an unofficial Docker image that
+wraps the official binary distribution:
+
+```shell
+docker run --rm rotemtam/tinkey create-keyset --key-template AES256_GCM > ~/.atlas/keyset.json
+```
