@@ -83,11 +83,11 @@ func (d *Driver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*schema
 func (d *Driver) Lock(ctx context.Context, name string, timeout time.Duration) (unlock func() error, err error) {
 	var (
 		closer io.Closer
-		conn   = d.conn.ExecQuerier
+		conn   = d.ExecQuerier
 	)
 	// If the connection is sql.DB (a connection-pool),
 	// acquire a connection and use it to obtain the lock.
-	if opener, ok := d.ExecQuerier.(interface {
+	if opener, ok := conn.(interface {
 		Conn(context.Context) (*sql.Conn, error)
 	}); ok {
 		c, err := opener.Conn(ctx)
@@ -98,7 +98,7 @@ func (d *Driver) Lock(ctx context.Context, name string, timeout time.Duration) (
 			if err != nil {
 				// Return the connection to the pool,
 				// if we failed to obtain the lock.
-				_ = closer.Close()
+				closer.Close()
 			}
 		}()
 		conn, closer = c, c
