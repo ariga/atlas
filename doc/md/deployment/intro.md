@@ -12,11 +12,11 @@ as provide an intuitive interface for planning and running database migrations u
 In addition, the Management UI automatically tracks and audits all changes using the "Activity & History" feature.
 
 The Atlas Management UI is designed to be a long-running process.
-It is therefore recommended to run it against a persistent database that will make sure your team's schemas,
+It is therefore recommended running it against a persistent database that will make sure your team's schemas,
 database credentials, migration history and more are not lost in case you need to restart the service.
 Atlas uses [tink](https://developers.google.com/tink), a battle-tested encryption library created at Google, to encrypt all sensitive information.
 Following recommendations from the developers of tink, Atlas uses [AEAD](https://developers.google.com/tink/aead?hl=en)
-encryption with an AES128_GCM type key.
+encryption with an AES256_GCM type key. 
 
 In this section we will review two deployment and usage options:
 1. Deploying on a VM/EC2 instance with persistent storage.
@@ -39,7 +39,6 @@ atlas serve --storage "mysql://root:pass@tcp(localhost:3306)/atlas"
 On your first run, Atlas will generate an encryption key and store it under ```$HOME/.atlas/keyset.json```.
 This (private) file should not be deleted, otherwise Atlas will not be able to restore your configuration data. 
 
-
 ### Docker
 
 Atlas has an official docker that is updated with the latest and tagged versions, 
@@ -60,12 +59,8 @@ Let's review this command step by step:
 
 ### Encryption
 
-Atlas uses [tink](https://github.com/google/tink), a battle-tested encryption library created at Google, to 
-encrypt all sensitive information. Following recommendations from the developers of tink, Atlas
-uses [AEAD](https://developers.google.com/tink/aead?hl=en) encryption with an AES256_GCM type key.
-
 On its first run, Atlas generates a keyset.json file under `$HOME/.atlas/` containing 
-an encryption keyset for you. Do not lose this file! Without this file you cannot later decrypt
+an encryption keyset for you. Do not lose this file! Without this file you cannot later use
 any database credentials that save to Atlas. 
 
 If you want to generate this key yourself, you can
