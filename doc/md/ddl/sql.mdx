@@ -298,6 +298,25 @@ table "t" {
 Note, it is recommended to use the [`--dev-url`](../cli/dev-database) option when partial indexes are used.
 :::
 
+### Index Prefixes
+
+[Index prefixes](https://dev.mysql.com/doc/refman/8.0/en/column-indexes.html#column-indexes-prefix) allow setting index
+on the first `N` characters of string columns. Supported by MySQL and MariaDB.
+
+```hcl {9}
+table "users" {
+  schema = schema.test
+  column "name" {
+    type = varchar(255)
+  }
+  index "user_name" {
+    on {
+      column = column.name
+      prefix = 128
+    }
+  }
+}
+```
 
 ## Comment
 
