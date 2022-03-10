@@ -4,6 +4,12 @@
 
 package schema
 
+import (
+	"context"
+	"errors"
+	"time"
+)
+
 type (
 	// A Change represents a schema change. The types below implement this
 	// interface and can be used for describing schema changes.
@@ -238,6 +244,19 @@ type Differ interface {
 	// from state "from" to state "to". An error is returned
 	// if such step is not possible.
 	TableDiff(from, to *Table) ([]Change, error)
+}
+
+// ErrLockTimeout is returned on Lock calls which have timed out.
+var ErrLockTimeout = errors.New("sql/schema: lock timeout")
+
+// Locker is an interface that is optionally implemented by the different drivers
+// for obtaining an "advisory lock" with the given name.
+type Locker interface {
+	// Lock acquires a named "advisory lock", using the timeout. Negative value means no timeout.
+	// The returned unlock function is used to release the advisory lock acquired by the session.
+	//
+	// An ErrLockTimeout is returned if the operation timed out before obtaining the lock.
+	Lock(ctx context.Context, name string, timeout time.Duration) (unlock func() error, err error)
 }
 
 // changes.
