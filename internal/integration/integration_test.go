@@ -431,3 +431,24 @@ func sanity(c *ent.Client) {
 		SetInfo(c.GroupInfo.Create().SetDesc("desc").SaveX(ctx)).
 		SaveX(ctx)
 }
+
+func testAdvisoryLock(t *testing.T, l schema.Locker) {
+	t.Run("One", func(t *testing.T) {
+		unlock, err := l.Lock(context.Background(), "migrate", 0)
+		require.NoError(t, err)
+		_, err = l.Lock(context.Background(), "migrate", 0)
+		require.Equal(t, schema.ErrLocked, err)
+		require.NoError(t, unlock())
+	})
+	t.Run("Multi", func(t *testing.T) {
+		var unlocks []schema.UnlockFunc
+		for _, name := range []string{"a", "b", "c"} {
+			unlock, err := l.Lock(context.Background(), name, 0)
+			require.NoError(t, err)
+			unlocks = append(unlocks, unlock)
+		}
+		for _, unlock := range unlocks {
+			require.NoError(t, unlock())
+		}
+	})
+}

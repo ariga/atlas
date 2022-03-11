@@ -6,7 +6,10 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"hash/fnv"
+	"time"
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
@@ -77,6 +80,70 @@ func (d *Driver) NormalizeRealm(ctx context.Context, r *schema.Realm) (*schema.R
 // NormalizeSchema returns the normal representation of the given database.
 func (d *Driver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*schema.Schema, error) {
 	return d.dev().NormalizeSchema(ctx, s)
+}
+
+// Lock implements the schema.Locker interface.
+func (d *Driver) Lock(ctx context.Context, name string, timeout time.Duration) (schema.UnlockFunc, error) {
+	conn, err := sqlx.SingleConn(ctx, d.ExecQuerier)
+	if err != nil {
+		return nil, err
+	}
+	h := fnv.New32()
+	h.Write([]byte(name))
+	id := h.Sum32()
+	if err := acquire(ctx, conn, id, timeout); err != nil {
+		conn.Close()
+		return nil, err
+	}
+	return func() error {
+		defer conn.Close()
+		rows, err := conn.QueryContext(ctx, "SELECT pg_advisory_unlock($1)", id)
+		if err != nil {
+			return err
+		}
+		switch released, err := sqlx.ScanNullBool(rows); {
+		case err != nil:
+			return err
+		case !released.Valid || !released.Bool:
+			return fmt.Errorf("sql/postgres: failed releasing lock %d", id)
+		}
+		return nil
+	}, nil
+}
+
+func acquire(ctx context.Context, conn schema.ExecQuerier, id uint32, timeout time.Duration) error {
+	switch {
+	// With timeout (context-based).
+	case timeout > 0:
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+		fallthrough
+	// Infinite timeout.
+	case timeout < 0:
+		rows, err := conn.QueryContext(ctx, "SELECT pg_advisory_lock($1)", id)
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			err = schema.ErrLocked
+		}
+		if err != nil {
+			return err
+		}
+		return rows.Close()
+	// No timeout.
+	default:
+		rows, err := conn.QueryContext(ctx, "SELECT pg_try_advisory_lock($1)", id)
+		if err != nil {
+			return err
+		}
+		acquired, err := sqlx.ScanNullBool(rows)
+		if err != nil {
+			return err
+		}
+		if !acquired.Bool {
+			return schema.ErrLocked
+		}
+		return nil
+	}
 }
 
 // Standard column types (and their aliases) as defined in

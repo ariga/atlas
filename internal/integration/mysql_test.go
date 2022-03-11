@@ -460,6 +460,12 @@ func TestMySQL_Ent(t *testing.T) {
 	})
 }
 
+func TestMySQL_AdvisoryLock(t *testing.T) {
+	myRun(t, func(t *myTest) {
+		testAdvisoryLock(t.T, t.drv)
+	})
+}
+
 func TestMySQL_HCL(t *testing.T) {
 	full := `
 schema "test" {

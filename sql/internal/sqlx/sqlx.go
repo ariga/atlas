@@ -6,14 +6,52 @@ package sqlx
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
+	"io"
 	"reflect"
 	"strconv"
 	"strings"
 
 	"ariga.io/atlas/sql/schema"
 )
+
+type (
+	// ExecQueryCloser is the interface that groups
+	// Close with the schema.ExecQuerier methods.
+	ExecQueryCloser interface {
+		schema.ExecQuerier
+		io.Closer
+	}
+	nopCloser struct {
+		schema.ExecQuerier
+	}
+)
+
+// Close implements the io.Closer interface.
+func (nopCloser) Close() error { return nil }
+
+// SingleConn returns a closable single connection from the given ExecQuerier.
+// If the ExecQuerier is already bound to a single connection (e.g. Tx, Conn),
+// the connection will return as-is with a NopCloser.
+func SingleConn(ctx context.Context, conn schema.ExecQuerier) (ExecQueryCloser, error) {
+	// A standard sql.DB or a wrapper of it.
+	if opener, ok := conn.(interface {
+		Conn(context.Context) (*sql.Conn, error)
+	}); ok {
+		return opener.Conn(ctx)
+	}
+	// Tx and Conn are bounded to a single connection.
+	// We use sql/driver.Tx to cover also custom Tx structs.
+	_, ok1 := conn.(driver.Tx)
+	_, ok2 := conn.(*sql.Conn)
+	if ok1 || ok2 {
+		return nopCloser{ExecQuerier: conn}, nil
+	}
+	return nil, fmt.Errorf("cannot obtain a single connection from %T", conn)
+}
 
 // ValidString reports if the given string is not null and valid.
 func ValidString(s sql.NullString) bool {
@@ -30,6 +68,12 @@ func ScanOne(rows *sql.Rows, dest ...interface{}) error {
 		return err
 	}
 	return rows.Close()
+}
+
+// ScanNullBool scans one sql.NullBool record and closes the rows at the end.
+func ScanNullBool(rows *sql.Rows) (sql.NullBool, error) {
+	var b sql.NullBool
+	return b, ScanOne(rows, &b)
 }
 
 // SchemaFKs scans the rows and adds the foreign-key to the schema table.

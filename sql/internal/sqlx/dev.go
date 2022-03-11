@@ -112,5 +112,6 @@ func (d *DevDriver) formatName(name string) string {
 		return dev
 	}
 	h := fnv.New128()
-	return fmt.Sprintf("%s_%x", dev[:d.MaxNameLen-1-h.Size()*2], h.Sum([]byte(dev)))
+	h.Write([]byte(dev))
+	return fmt.Sprintf("%s_%x", dev[:d.MaxNameLen-1-h.Size()*2], h.Sum(nil))
 }

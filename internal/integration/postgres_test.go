@@ -368,6 +368,12 @@ func TestPostgres_Ent(t *testing.T) {
 	})
 }
 
+func TestPostgres_AdvisoryLock(t *testing.T) {
+	pgRun(t, func(t *pgTest) {
+		testAdvisoryLock(t.T, t.drv)
+	})
+}
+
 func TestPostgres_HCL(t *testing.T) {
 	full := `
 schema "public" {
