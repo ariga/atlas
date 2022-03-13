@@ -74,7 +74,7 @@ func TestDriver_LockError(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"acquired"}).AddRow(0)).
 			RowsWillBeClosed()
 		unlock, err := d.Lock(context.Background(), name, time.Second)
-		require.Equal(t, schema.ErrLockTimeout, err)
+		require.Equal(t, schema.ErrLocked, err)
 		require.Nil(t, unlock)
 	})
 

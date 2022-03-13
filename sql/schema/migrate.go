@@ -246,18 +246,25 @@ type Differ interface {
 	TableDiff(from, to *Table) ([]Change, error)
 }
 
-// ErrLockTimeout is returned on Lock calls which have timed out.
-var ErrLockTimeout = errors.New("sql/schema: lock timeout")
+// ErrLocked is returned on Lock calls which have failed to obtain the lock.
+var ErrLocked = errors.New("sql/schema: lock is held by other session")
 
-// Locker is an interface that is optionally implemented by the different drivers
-// for obtaining an "advisory lock" with the given name.
-type Locker interface {
-	// Lock acquires a named "advisory lock", using the timeout. Negative value means no timeout.
-	// The returned unlock function is used to release the advisory lock acquired by the session.
-	//
-	// An ErrLockTimeout is returned if the operation timed out before obtaining the lock.
-	Lock(ctx context.Context, name string, timeout time.Duration) (unlock func() error, err error)
-}
+type (
+	// UnlockFunc is returned by the Locker to explicitly
+	// release the named "advisory lock".
+	UnlockFunc func() error
+
+	// Locker is an interface that is optionally implemented by the different drivers
+	// for obtaining an "advisory lock" with the given name.
+	Locker interface {
+		// Lock acquires a named "advisory lock", using the given timeout. Negative value means no timeout,
+		// and the zero value means a "try lock" mode. i.e. return immediately if the lock is already taken.
+		// The returned unlock function is used to release the advisory lock acquired by the session.
+		//
+		// An ErrLocked is returned if the operation failed to obtain the lock in all different timeout modes.
+		Lock(ctx context.Context, name string, timeout time.Duration) (UnlockFunc, error)
+	}
+)
 
 // changes.
 func (*AddAttr) change()          {}

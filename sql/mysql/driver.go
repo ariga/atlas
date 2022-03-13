@@ -6,9 +6,7 @@ package mysql
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
@@ -80,62 +78,46 @@ func (d *Driver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*schema
 }
 
 // Lock implements the schema.Locker interface.
-func (d *Driver) Lock(ctx context.Context, name string, timeout time.Duration) (unlock func() error, err error) {
-	var (
-		closer io.Closer
-		conn   = d.ExecQuerier
-	)
-	// If the connection is sql.DB (a connection-pool),
-	// acquire a connection and use it to obtain the lock.
-	if opener, ok := conn.(interface {
-		Conn(context.Context) (*sql.Conn, error)
-	}); ok {
-		c, err := opener.Conn(ctx)
-		if err != nil {
-			return nil, err
-		}
-		defer func() {
-			if err != nil {
-				// Return the connection to the pool,
-				// if we failed to obtain the lock.
-				closer.Close()
-			}
-		}()
-		conn, closer = c, c
-	}
-	rows, err := conn.QueryContext(ctx, "SELECT GET_LOCK(?, ?)", name, int(timeout.Seconds()))
+func (d *Driver) Lock(ctx context.Context, name string, timeout time.Duration) (schema.UnlockFunc, error) {
+	conn, err := sqlx.SingleConn(ctx, d.ExecQuerier)
 	if err != nil {
 		return nil, err
 	}
-	var acquired sql.NullBool
-	switch err := sqlx.ScanOne(rows, &acquired); {
-	case err != nil:
+	if err := acquire(ctx, conn, name, timeout); err != nil {
+		conn.Close()
 		return nil, err
-	case !acquired.Valid:
-		// NULL is returned in case of an unexpected internal error.
-		return nil, fmt.Errorf("sql/mysql: unexpected internal error on Lock(%q, %s)", name, timeout)
-	case !acquired.Bool:
-		return nil, schema.ErrLockTimeout
 	}
-	// Acquired.
 	return func() error {
-		if closer != nil {
-			defer closer.Close()
-		}
-		rows, err = conn.QueryContext(ctx, "SELECT RELEASE_LOCK(?)", name)
+		defer conn.Close()
+		rows, err := conn.QueryContext(ctx, "SELECT RELEASE_LOCK(?)", name)
 		if err != nil {
 			return err
 		}
-		var released sql.NullBool
-		switch err := sqlx.ScanOne(rows, &released); {
+		switch released, err := sqlx.ScanNullBool(rows); {
 		case err != nil:
 			return err
 		case !released.Valid || !released.Bool:
 			return fmt.Errorf("sql/mysql: failed releasing a named lock %q", name)
-		default: // Released.
-			return nil
 		}
+		return nil
 	}, nil
+}
+
+func acquire(ctx context.Context, conn schema.ExecQuerier, name string, timeout time.Duration) error {
+	rows, err := conn.QueryContext(ctx, "SELECT GET_LOCK(?, ?)", name, int(timeout.Seconds()))
+	if err != nil {
+		return err
+	}
+	switch acquired, err := sqlx.ScanNullBool(rows); {
+	case err != nil:
+		return err
+	case !acquired.Valid:
+		// NULL is returned in case of an unexpected internal error.
+		return fmt.Errorf("sql/mysql: unexpected internal error on Lock(%q, %s)", name, timeout)
+	case !acquired.Bool:
+		return schema.ErrLocked
+	}
+	return nil
 }
 
 // supportsCheck reports if the connected database supports
