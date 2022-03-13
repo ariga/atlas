@@ -5,12 +5,13 @@
 package integration
 
 import (
-	"ariga.io/atlas/sql/mysql"
-	"ariga.io/atlas/sql/schema"
 	"context"
 	"database/sql"
 	"fmt"
 	"testing"
+
+	"ariga.io/atlas/sql/mysql"
+	"ariga.io/atlas/sql/schema"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
