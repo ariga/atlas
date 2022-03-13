@@ -7,6 +7,7 @@ package integration
 import (
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
+
 	"context"
 	"database/sql"
 	"entgo.io/ent/dialect"

@@ -5,12 +5,16 @@
 package action_test
 
 import (
+	"fmt"
 	"io/ioutil"
+	"log"
+	"net"
 	"os"
 	"testing"
 
 	"ariga.io/atlas/cmd/action"
 
+	mysqld "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
@@ -152,4 +156,42 @@ func Test_PostgresSchemaDSN(t *testing.T) {
 			require.Equal(t, tt.expected, schema)
 		})
 	}
+}
+
+func TestMux_OpenAtlas(t *testing.T) {
+	t.Run("MySQL", func(t *testing.T) {
+		for _, u := range []string{
+			"mysql://root:pass@tcp(%s)/",
+			"mysql://root:pass@tcp(%s)/test",
+			"mysql://root:pass@%s",
+			"mysql://root:pass@%s/",
+			"mysql://root:pass@%s/test",
+			"mysql://%s/test",
+		} {
+			calls, l := mockServer(t)
+			require.NoError(t, mysqld.SetLogger(log.New(ioutil.Discard, "", 1)))
+			_, err := action.DefaultMux.OpenAtlas(fmt.Sprintf(u, l.Addr()))
+			require.Error(t, err, "mock server rejects all incoming connections")
+			require.NotZero(t, *calls)
+		}
+	})
+}
+
+func mockServer(t *testing.T) (*int, net.Listener) {
+	var (
+		calls  int
+		l, err = net.Listen("tcp", "localhost:")
+	)
+	require.NoError(t, err)
+	go func() {
+		for {
+			conn, err := l.Accept()
+			if err != nil {
+				return
+			}
+			calls++
+			require.NoError(t, conn.Close())
+		}
+	}()
+	return &calls, l
 }

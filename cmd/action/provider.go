@@ -13,14 +13,18 @@ import (
 )
 
 func init() {
-	defaultMux.RegisterProvider("mysql", mysqlProvider)
-	defaultMux.RegisterProvider("mariadb", mysqlProvider)
-	defaultMux.RegisterProvider("postgres", postgresProvider)
-	defaultMux.RegisterProvider("sqlite", sqliteProvider)
+	DefaultMux.RegisterProvider("mysql", mysqlProvider)
+	DefaultMux.RegisterProvider("mariadb", mysqlProvider)
+	DefaultMux.RegisterProvider("postgres", postgresProvider)
+	DefaultMux.RegisterProvider("sqlite", sqliteProvider)
 }
 
 func mysqlProvider(dsn string) (*Driver, error) {
-	db, err := sql.Open("mysql", dsn)
+	d, err := mysqlDSN(dsn)
+	if err != nil {
+		return nil, err
+	}
+	db, err := sql.Open("mysql", d)
 	if err != nil {
 		return nil, err
 	}
@@ -34,9 +38,10 @@ func mysqlProvider(dsn string) (*Driver, error) {
 		Unmarshaler: mysql.UnmarshalHCL,
 	}, nil
 }
+
 func postgresProvider(dsn string) (*Driver, error) {
-	url := "postgres://" + dsn
-	db, err := sql.Open("postgres", url)
+	u := "postgres://" + dsn
+	db, err := sql.Open("postgres", u)
 	if err != nil {
 		return nil, err
 	}

@@ -43,8 +43,9 @@ func NewMux() *Mux {
 }
 
 var (
-	defaultMux = NewMux()
-	inMemory   = regexp.MustCompile("^file:.*:memory:$|:memory:|^file:.*mode=memory.*")
+	// DefaultMux is the default Mux that is used by the different commands.
+	DefaultMux = NewMux()
+	reMemMode  = regexp.MustCompile(":memory:|^file:.*mode=memory.*")
 )
 
 // RegisterProvider is used to register a Driver provider by key.
@@ -142,7 +143,7 @@ func schemaName(dsn string) (string, error) {
 }
 
 func sqliteFileExists(dsn string) error {
-	if !inMemory.MatchString(dsn) {
+	if !reMemMode.MatchString(dsn) {
 		return fileExists(dsn)
 	}
 	return nil
@@ -162,4 +163,33 @@ func fileExists(dsn string) error {
 		return fmt.Errorf("failed opening %q: %w", f, err)
 	}
 	return nil
+}
+
+func mysqlDSN(d string) (string, error) {
+	cfg, err := mysql.ParseDSN(d)
+	// A standard MySQL DSN.
+	if err == nil {
+		return d, nil
+	}
+	u, err := url.Parse("mysql://" + d)
+	if err != nil {
+		return "", nil
+	}
+	schema := strings.TrimPrefix(u.Path, "/")
+	// In case of a URL (non-standard DSN),
+	// parse the options from query string.
+	if u.RawQuery != "" {
+		cfg, err = mysql.ParseDSN(fmt.Sprintf("/%s?%s", schema, u.RawQuery))
+		if err != nil {
+			return "", err
+		}
+	} else {
+		cfg = mysql.NewConfig()
+	}
+	cfg.Net = "tcp"
+	cfg.Addr = u.Host
+	cfg.User = u.User.Username()
+	cfg.Passwd, _ = u.User.Password()
+	cfg.DBName = schema
+	return cfg.FormatDSN(), nil
 }

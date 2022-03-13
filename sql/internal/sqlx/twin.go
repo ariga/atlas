@@ -6,8 +6,8 @@ package sqlx
 
 import (
 	"context"
-	"crypto/md5"
 	"fmt"
+	"hash/fnv"
 	"time"
 
 	"ariga.io/atlas/sql/migrate"
@@ -110,5 +110,6 @@ func (t *TwinDriver) formatName(name string) string {
 	if t.MaxNameLen == 0 || len(twin) <= t.MaxNameLen {
 		return twin
 	}
-	return fmt.Sprintf("%s_%x", twin[:t.MaxNameLen-1-md5.Size*2], md5.Sum([]byte(twin)))
+	h := fnv.New128()
+	return fmt.Sprintf("%s_%x", twin[:t.MaxNameLen-1-h.Size()*2], h.Sum([]byte(twin)))
 }

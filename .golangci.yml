@@ -4,3 +4,9 @@ run:
 issues:
   include:
     - EXC0012
+
+linters:
+  disable-all: true
+  enable:
+    - gosec
+    - revive

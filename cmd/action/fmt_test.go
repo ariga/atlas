@@ -141,7 +141,7 @@ func setupFmtTest(t *testing.T, inputDir map[string]string) string {
 	})
 	for name, contents := range inputDir {
 		file := path.Join(dir, name)
-		err = os.WriteFile(file, []byte(contents), 0644)
+		err = os.WriteFile(file, []byte(contents), 0600)
 	}
 	require.NoError(t, err)
 	return dir
