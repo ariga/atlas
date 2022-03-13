@@ -9,12 +9,12 @@ import (
 	"ariga.io/atlas/sql/schema"
 	"context"
 	"database/sql"
-	entschema "entgo.io/ent/dialect/sql/schema"
 	"fmt"
 	"testing"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
+	entschema "entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/entc/integration/ent"
 	"entgo.io/ent/entc/integration/ent/migrate"
 
