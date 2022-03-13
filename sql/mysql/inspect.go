@@ -471,7 +471,7 @@ func (i *inspect) showCreate(ctx context.Context, s *schema.Schema) error {
 	return nil
 }
 
-var reAutoinc = regexp.MustCompile(`(?i)\s+AUTO_INCREMENT\s*=\s*(\d+)\s+`)
+var reAutoinc = regexp.MustCompile(`(?i)\s*AUTO_INCREMENT\s*=\s*(\d+)\s*`)
 
 // setAutoInc extracts the updated AUTO_INCREMENT from CREATE TABLE.
 func (i *inspect) setAutoInc(s *showTable, t *schema.Table) error {
@@ -480,7 +480,7 @@ func (i *inspect) setAutoInc(s *showTable, t *schema.Table) error {
 	}
 	var c CreateStmt
 	if !sqlx.Has(t.Attrs, &c) {
-		return fmt.Errorf("missing CREATE TABLE statment in attribuets for %q", t.Name)
+		return fmt.Errorf("missing CREATE TABLE statement in attributes for %q", t.Name)
 	}
 	if sqlx.Has(t.Attrs, &AutoIncrement{}) {
 		return fmt.Errorf("unexpected AUTO_INCREMENT attributes for table: %q", t.Name)

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"ariga.io/atlas/sql/schema"
+
 	"github.com/stretchr/testify/require"
 )
 

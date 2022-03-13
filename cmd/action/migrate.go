@@ -14,6 +14,7 @@ import (
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
+
 	"github.com/spf13/cobra"
 )
 

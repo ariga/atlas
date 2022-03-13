@@ -16,6 +16,7 @@ import (
 	"ariga.io/atlas/sql/schema"
 
 	entsql "entgo.io/ent/dialect/sql"
+	entschema "entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/entc/integration/ent"
 	"github.com/stretchr/testify/require"
 )
@@ -70,11 +71,11 @@ func testRelation(t T) {
 	ensureNoChange(t, postsT, usersT)
 }
 
-func testEntIntegration(t T, dialect string, db *sql.DB) {
+func testEntIntegration(t T, dialect string, db *sql.DB, opts ...entschema.MigrateOption) {
 	ctx := context.Background()
 	drv := entsql.OpenDB(dialect, db)
 	client := ent.NewClient(ent.Driver(drv))
-	require.NoError(t, client.Schema.Create(ctx))
+	require.NoError(t, client.Schema.Create(ctx, opts...))
 	sanity(client)
 	realm := t.loadRealm()
 	ensureNoChange(t, realm.Schemas[0].Tables...)

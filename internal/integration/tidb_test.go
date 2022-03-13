@@ -13,6 +13,12 @@ import (
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
 
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
+	entschema "entgo.io/ent/dialect/sql/schema"
+	"entgo.io/ent/entc/integration/ent"
+	"entgo.io/ent/entc/integration/ent/migrate"
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 )
@@ -479,6 +485,179 @@ create table atlas_defaults
 	})
 }
 
+func TestTiDB_CLI_MultiSchema(t *testing.T) {
+	h := `
+			schema "test" {
+				charset   = "%s"
+				collation = "%s"
+			}
+			table "users" {
+				schema = schema.test
+				column "id" {
+					type = int
+				}
+				primary_key {
+					columns = [table.users.column.id]
+				}
+			}
+			schema "test2" {
+				charset   = "%s"
+				collation = "%s"
+			}
+			table "users" {
+				schema = schema.test2
+				column "id" {
+					type = int
+				}
+				primary_key {
+					columns = [table.users.column.id]
+				}
+			}`
+	t.Run("SchemaInspect", func(t *testing.T) {
+		tidbRun(t, func(t *myTest) {
+			t.dropDB("test2")
+			t.dropTables("users")
+			attrs := t.defaultAttrs()
+			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
+			testCLIMultiSchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V, charset.V, collate.V), t.dsn(""), []string{"test", "test2"}, mysql.UnmarshalHCL)
+		})
+	})
+	t.Run("SchemaApply", func(t *testing.T) {
+		tidbRun(t, func(t *myTest) {
+			t.dropDB("test2")
+			t.dropTables("users")
+			attrs := t.defaultAttrs()
+			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
+			testCLIMultiSchemaApply(t, fmt.Sprintf(h, charset.V, collate.V, charset.V, collate.V), t.dsn(""), []string{"test", "test2"}, mysql.UnmarshalHCL)
+		})
+	})
+}
+
+func TestTiDB_CLI(t *testing.T) {
+	h := `
+			schema "test" {
+				charset   = "%s"
+				collation = "%s"
+			}
+			table "users" {
+				schema = schema.test
+				column "id" {
+					type = int
+				}
+				primary_key {
+					columns = [table.users.column.id]
+				}
+			}`
+	t.Run("SchemaInspect", func(t *testing.T) {
+		tidbRun(t, func(t *myTest) {
+			attrs := t.defaultAttrs()
+			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
+			testCLISchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"), mysql.UnmarshalHCL)
+		})
+	})
+	t.Run("SchemaApply", func(t *testing.T) {
+		tidbRun(t, func(t *myTest) {
+			attrs := t.defaultAttrs()
+			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
+			testCLISchemaApply(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"))
+		})
+	})
+	t.Run("SchemaApplyDryRun", func(t *testing.T) {
+		tidbRun(t, func(t *myTest) {
+			attrs := t.defaultAttrs()
+			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
+			testCLISchemaApplyDry(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"))
+		})
+	})
+	t.Run("SchemaDiffRun", func(t *testing.T) {
+		tidbRun(t, func(t *myTest) {
+			testCLISchemaDiff(t, t.dsn("test"))
+		})
+	})
+}
+
+func TestTiDB_HCL(t *testing.T) {
+	full := `
+schema "test" {
+}
+table "users" {
+	schema = schema.test
+	column "id" {
+		type = int
+	}
+	primary_key {
+		columns = [table.users.column.id]
+	}
+}
+table "posts" {
+	schema = schema.test
+	column "id" {
+		type = int
+	}
+	column "author_id" {
+		type = int
+	}
+	foreign_key "author" {
+		columns = [
+			table.posts.column.author_id,
+		]
+		ref_columns = [
+			table.users.column.id,
+		]
+	}
+	primary_key {
+		columns = [table.users.column.id]
+	}
+}
+`
+	empty := `
+schema "test" {
+}
+`
+	tidbRun(t, func(t *myTest) {
+		testHCLIntegration(t, full, empty)
+	})
+}
+
+func TestTiDB_Ent_EntEngine(t *testing.T) {
+	tidbRun(t, func(t *myTest) {
+		testEntIntegration(t, dialect.MySQL, t.db, migrate.WithForeignKeys(false))
+	})
+}
+
+func TestTiDB_Ent_AtlasEngine(t *testing.T) {
+	tidbRun(t, func(t *myTest) {
+		ctx := context.Background()
+		drv := entsql.OpenDB(dialect.MySQL, t.db)
+		client := ent.NewClient(ent.Driver(drv))
+		require.NoError(t, client.Schema.Create(ctx, entschema.WithAtlas(true)))
+		sanity(client)
+		realm := t.loadRealm()
+		ensureNoChange(t, realm.Schemas[0].Tables...)
+
+		// Drop tables.
+		changes := make([]schema.Change, len(realm.Schemas[0].Tables))
+		for i, t := range realm.Schemas[0].Tables {
+			changes[i] = &schema.DropTable{T: t}
+		}
+		t.migrate(changes...)
+
+		// Add tables.
+		for i, t := range realm.Schemas[0].Tables {
+			changes[i] = &schema.AddTable{T: t}
+		}
+		t.migrate(changes...)
+		ensureNoChange(t, realm.Schemas[0].Tables...)
+		sanity(client)
+
+		// Drop tables.
+		for i, t := range realm.Schemas[0].Tables {
+			changes[i] = &schema.DropTable{T: t}
+		}
+		t.migrate(changes...)
+	})
+}
+
 func TestTiDB_Sanity(t *testing.T) {
 	n := "atlas_types_sanity"
 	t.Run("Common", func(t *testing.T) {
@@ -784,9 +963,6 @@ create table atlas_types_sanity
 	) CHARSET = latin1 COLLATE latin1_swedish_ci;
 	`
 		tidbRun(t, func(t *myTest) {
-			if t.version == "56" {
-				return
-			}
 			t.dropTables(n)
 			_, err := t.db.Exec(ddl)
 			require.NoError(t, err)
@@ -815,6 +991,52 @@ create table atlas_types_sanity
 	t.Run("ImplicitIndexes", func(t *testing.T) {
 		tidbRun(t, func(t *myTest) {
 			testImplicitIndexes(t, t.db)
+		})
+	})
+
+	t.Run("AltersOrder", func(t *testing.T) {
+		ddl := `
+		create table tidb_alter_order(
+			tBigInt bigint(10) default 4 null,
+			INDEX   i  (tBigInt)
+		);
+	`
+		tidbRun(t, func(t *myTest) {
+			t.dropTables("tidb_alter_order")
+			_, err := t.db.Exec(ddl)
+			require.NoError(t, err)
+			tbl := t.loadTable("tidb_alter_order")
+			require.NotNil(t, tbl)
+			to := schema.Table{
+				Name: "tidb_alter_order",
+				Attrs: func() []schema.Attr {
+					return []schema.Attr{
+						&schema.Collation{V: "utf8mb4_bin"},
+						&schema.Charset{V: "utf8mb4"},
+					}
+				}(),
+				Columns: []*schema.Column{
+					&schema.Column{
+						Name: "tBigInt2",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false},
+							Raw: t.valueByVersion(map[string]string{"8": "bigint"}, "bigint(10)"), Null: true},
+						Default: &schema.Literal{V: "4"},
+					},
+				},
+			}
+			to.AddIndexes(
+				&schema.Index{Name: "i2", Parts: []*schema.IndexPart{
+					&schema.IndexPart{
+						C:    to.Columns[0],
+						Desc: true,
+					},
+				}})
+			changes, err := t.drv.SchemaDiff(schema.New("test").AddTables(tbl), schema.New("test").AddTables(&to))
+			require.NoError(t, err)
+			err = t.drv.ApplyChanges(context.Background(), changes)
+			require.NoError(t, err)
+			t.migrate()
+			rmCreateStmt(tbl)
 		})
 	})
 }
