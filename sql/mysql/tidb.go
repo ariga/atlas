@@ -275,9 +275,6 @@ func (i *tinspect) setCollate(t *schema.Table) error {
 	return nil
 }
 
-// e.g AUTO_INCREMENT=1234
-var reAI = regexp.MustCompile(`(?i)\s*AUTO_INCREMENT\s*=\s*(\d+)\s*`)
-
 // setCollate extracts the updated Collation from CREATE TABLE statement.
 func (i *tinspect) setAutoIncrement(t *schema.Table) error {
 	// patch only it is set (set falsely to '1' due to this bug:https://github.com/pingcap/tidb/issues/24702).
@@ -289,7 +286,7 @@ func (i *tinspect) setAutoIncrement(t *schema.Table) error {
 	if !sqlx.Has(t.Attrs, &c) {
 		return fmt.Errorf("missing CREATE TABLE statement in attributes for %q", t.Name)
 	}
-	matches := reAI.FindStringSubmatch(c.S)
+	matches := reAutoinc.FindStringSubmatch(c.S)
 	if len(matches) != 2 {
 		return nil
 	}
