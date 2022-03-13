@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"ariga.io/atlas/sql/sqlite"
+
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )

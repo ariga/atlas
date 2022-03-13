@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"ariga.io/atlas/sql/schema"
+
 	"github.com/spf13/cobra"
 )
 

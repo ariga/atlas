@@ -10,12 +10,13 @@ import (
 
 	"context"
 	"database/sql"
+	"fmt"
+	"testing"
+
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 	entschema "entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/entc/integration/ent"
-	"fmt"
-	"testing"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
