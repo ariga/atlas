@@ -7,16 +7,16 @@ package integration
 import (
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
-
 	"context"
 	"database/sql"
+	entschema "entgo.io/ent/dialect/sql/schema"
 	"fmt"
 	"testing"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
-	entschema "entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/entc/integration/ent"
+	"entgo.io/ent/entc/integration/ent/migrate"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
@@ -618,7 +618,13 @@ schema "test" {
 	})
 }
 
-func TestTiDB_Ent(t *testing.T) {
+func TestTiDB_Ent_EntEngine(t *testing.T) {
+	tidbRun(t, func(t *myTest) {
+		testEntIntegration(t, dialect.MySQL, t.db, migrate.WithForeignKeys(false))
+	})
+}
+
+func TestTiDB_Ent_AtlasEngine(t *testing.T) {
 	tidbRun(t, func(t *myTest) {
 		ctx := context.Background()
 		drv := entsql.OpenDB(dialect.MySQL, t.db)
