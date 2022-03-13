@@ -1,0 +1,51 @@
+apply 1.hcl
+cmpshow users 1.sql
+
+apply 2.hcl
+cmpshow users 2.sql
+
+-- 1.hcl --
+schema "main" {}
+
+table "users" {
+  schema = schema.main
+  column "name" {
+    null = false
+    type = text
+  }
+  column "active" {
+    null = true
+    type = boolean
+  }
+  index "users_name" {
+    columns = [column.name]
+    where = "active"
+  }
+}
+
+-- 1.sql --
+CREATE TABLE `users` (`name` text NOT NULL, `active` boolean NULL)
+CREATE INDEX `users_name` ON `users` (`name`) WHERE active
+
+-- 2.hcl --
+schema "main" {}
+
+table "users" {
+  schema = schema.main
+  column "name" {
+    null = false
+    type = text
+  }
+  column "active" {
+    null = true
+    type = boolean
+  }
+  index "users_name" {
+    columns = [column.name]
+    where = "active AND name <> ''"
+  }
+}
+
+-- 2.sql --
+CREATE TABLE "users" (`name` text NOT NULL, `active` boolean NULL)
+CREATE INDEX `users_name` ON `users` (`name`) WHERE active AND name <> ''

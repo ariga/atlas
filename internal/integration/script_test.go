@@ -297,18 +297,27 @@ func (t *myTest) cmdApply(ts *testscript.TestScript, neg bool, args []string) {
 	cmdApply(ts, neg, args, t.drv.ApplyChanges, t.hclDiff)
 }
 
-func (t *myTest) hclDiff(ts *testscript.TestScript, name string) []schema.Change {
+func (t *myTest) hclDiff(ts *testscript.TestScript, name string) ([]schema.Change, error) {
 	var (
-		desired schema.Schema
+		desired = &schema.Schema{}
 		f       = ts.ReadFile(name)
+		ctx     = context.Background()
 		r       = strings.NewReplacer("$charset", ts.Getenv("charset"), "$collate", ts.Getenv("collate"), "$db", ts.Getenv("db"))
 	)
-	ts.Check(mysql.UnmarshalHCL([]byte(r.Replace(f)), &desired))
-	current, err := t.drv.InspectSchema(context.Background(), desired.Name, nil)
+	ts.Check(mysql.UnmarshalHCL([]byte(r.Replace(f)), desired))
+	current, err := t.drv.InspectSchema(ctx, desired.Name, nil)
 	ts.Check(err)
-	changes, err := t.drv.SchemaDiff(current, &desired)
-	ts.Check(err)
-	return changes
+	desired, err = t.drv.NormalizeSchema(ctx, desired)
+	// Normalization and diffing errors should
+	// returned back to the caller.
+	if err != nil {
+		return nil, err
+	}
+	changes, err := t.drv.SchemaDiff(current, desired)
+	if err != nil {
+		return nil, err
+	}
+	return changes, nil
 }
 
 func (t *pgTest) cmdSynced(ts *testscript.TestScript, neg bool, args []string) {
@@ -319,17 +328,26 @@ func (t *pgTest) cmdApply(ts *testscript.TestScript, neg bool, args []string) {
 	cmdApply(ts, neg, args, t.drv.ApplyChanges, t.hclDiff)
 }
 
-func (t *pgTest) hclDiff(ts *testscript.TestScript, name string) []schema.Change {
+func (t *pgTest) hclDiff(ts *testscript.TestScript, name string) ([]schema.Change, error) {
 	var (
-		desired schema.Schema
+		desired = &schema.Schema{}
+		ctx     = context.Background()
 		f       = strings.ReplaceAll(ts.ReadFile(name), "$db", ts.Getenv("db"))
 	)
-	ts.Check(postgres.UnmarshalHCL([]byte(f), &desired))
-	current, err := t.drv.InspectSchema(context.Background(), desired.Name, nil)
+	ts.Check(postgres.UnmarshalHCL([]byte(f), desired))
+	current, err := t.drv.InspectSchema(ctx, desired.Name, nil)
 	ts.Check(err)
-	changes, err := t.drv.SchemaDiff(current, &desired)
-	ts.Check(err)
-	return changes
+	desired, err = t.drv.NormalizeSchema(ctx, desired)
+	// Normalization and diffing errors should
+	// returned back to the caller.
+	if err != nil {
+		return nil, err
+	}
+	changes, err := t.drv.SchemaDiff(current, desired)
+	if err != nil {
+		return nil, err
+	}
+	return changes, nil
 }
 
 func (t *liteTest) cmdSynced(ts *testscript.TestScript, neg bool, args []string) {
@@ -340,25 +358,30 @@ func (t *liteTest) cmdApply(ts *testscript.TestScript, neg bool, args []string) 
 	cmdApply(ts, neg, args, ts.Value(keyDrv).(*sqlite.Driver).ApplyChanges, t.hclDiff)
 }
 
-func (t *liteTest) hclDiff(ts *testscript.TestScript, name string) []schema.Change {
+func (t *liteTest) hclDiff(ts *testscript.TestScript, name string) ([]schema.Change, error) {
 	var (
-		desired schema.Schema
+		desired = &schema.Schema{}
 		f       = ts.ReadFile(name)
 		drv     = ts.Value(keyDrv).(*sqlite.Driver)
 	)
-	ts.Check(sqlite.UnmarshalHCL([]byte(f), &desired))
+	ts.Check(sqlite.UnmarshalHCL([]byte(f), desired))
 	current, err := drv.InspectSchema(context.Background(), desired.Name, nil)
 	ts.Check(err)
-	changes, err := drv.SchemaDiff(current, &desired)
-	ts.Check(err)
-	return changes
+	changes, err := drv.SchemaDiff(current, desired)
+	// Diff errors should returned back to the caller.
+	if err != nil {
+		return nil, err
+	}
+	return changes, nil
 }
 
-func cmdSynced(ts *testscript.TestScript, neg bool, args []string, diff func(*testscript.TestScript, string) []schema.Change) {
+func cmdSynced(ts *testscript.TestScript, neg bool, args []string, diff func(*testscript.TestScript, string) ([]schema.Change, error)) {
 	if len(args) != 1 {
 		ts.Fatalf("unexpected number of args to synced command: %d", len(args))
 	}
-	switch changes := diff(ts, args[0]); {
+	switch changes, err := diff(ts, args[0]); {
+	case err != nil:
+		ts.Fatalf("unexpected diff failure on synced: %v", err)
 	case len(changes) > 0 && !neg:
 		ts.Fatalf("expect no schema changes, but got: %d", len(changes))
 	case len(changes) == 0 && neg:
@@ -366,8 +389,16 @@ func cmdSynced(ts *testscript.TestScript, neg bool, args []string, diff func(*te
 	}
 }
 
-func cmdApply(ts *testscript.TestScript, neg bool, args []string, apply func(context.Context, []schema.Change) error, diff func(*testscript.TestScript, string) []schema.Change) {
-	changes := diff(ts, args[0])
+func cmdApply(ts *testscript.TestScript, neg bool, args []string, apply func(context.Context, []schema.Change) error, diff func(*testscript.TestScript, string) ([]schema.Change, error)) {
+	changes, err := diff(ts, args[0])
+	switch {
+	case err != nil && !neg:
+		ts.Fatalf("diff states: %v", err)
+	// If we expect to fail, and there's a specific error to compare.
+	case err != nil && len(args) == 2:
+		matchErr(ts, err, args[1])
+		return
+	}
 	switch err := apply(context.Background(), changes); {
 	case err != nil && !neg:
 		ts.Fatalf("apply changes: %v", err)
@@ -375,15 +406,21 @@ func cmdApply(ts *testscript.TestScript, neg bool, args []string, apply func(con
 		ts.Fatalf("unexpected apply success")
 	// If we expect to fail, and there's a specific error to compare.
 	case err != nil && len(args) == 2:
-		re, rerr := regexp.Compile(`(?m)` + args[1])
-		ts.Check(rerr)
-		if !re.MatchString(err.Error()) {
-			ts.Fatalf("mismatched errors: %v != %s", err, args[1])
-		}
+		matchErr(ts, err, args[1])
 	// Apply passed. Make sure there is no drift.
 	case !neg:
-		if changes := diff(ts, args[0]); len(changes) > 0 {
+		changes, err := diff(ts, args[0])
+		ts.Check(err)
+		if len(changes) > 0 {
 			ts.Fatalf("unexpected schema changes: %d", len(changes))
 		}
+	}
+}
+
+func matchErr(ts *testscript.TestScript, err error, p string) {
+	re, rerr := regexp.Compile(`(?m)` + p)
+	ts.Check(rerr)
+	if !re.MatchString(err.Error()) {
+		ts.Fatalf("mismatched errors: %v != %s", err, p)
 	}
 }

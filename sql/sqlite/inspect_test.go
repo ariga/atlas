@@ -88,6 +88,7 @@ func TestDriver_InspectTable(t *testing.T) {
 -------+--------------+--------+----------+-------------------------------------------------------
  c1u   |  1           |  c     |  0       | CREATE UNIQUE INDEX c1u on users(c1, c2)
  c1_c2 |  0           |  c     |  1       | CREATE INDEX c1_c2 on users(c1, c2*2) WHERE c1 <> NULL
+ c1_x  |  0           |  c     |  0       | CREATE INDEX c1_x ON users (f(c1))
 `))
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(indexColumnsQuery, "c1u"))).
 					WillReturnRows(sqltest.Rows(`
@@ -102,6 +103,12 @@ func TestDriver_InspectTable(t *testing.T) {
 -------+--------+     
  c1    |  0     |     
  nil   |  0     |     
+`))
+				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(indexColumnsQuery, "c1_x"))).
+					WillReturnRows(sqltest.Rows(`
+ name  |   desc |
+-------+--------+
+ nil   |  0     |
 `))
 				m.noFKs("users")
 			},
@@ -130,12 +137,23 @@ func TestDriver_InspectTable(t *testing.T) {
 						Table: t,
 						Parts: []*schema.IndexPart{
 							{SeqNo: 1, C: columns[0]},
-							{SeqNo: 2, X: &schema.RawExpr{X: "<unsupported>"}},
+							{SeqNo: 2, X: &schema.RawExpr{X: "c2*2"}},
 						},
 						Attrs: []schema.Attr{
 							&CreateStmt{S: "CREATE INDEX c1_c2 on users(c1, c2*2) WHERE c1 <> NULL"},
 							&IndexOrigin{O: "c"},
 							&IndexPredicate{P: "c1 <> NULL"},
+						},
+					},
+					{
+						Name:  "c1_x",
+						Table: t,
+						Parts: []*schema.IndexPart{
+							{SeqNo: 1, X: &schema.RawExpr{X: "f(c1)"}},
+						},
+						Attrs: []schema.Attr{
+							&CreateStmt{S: "CREATE INDEX c1_x ON users (f(c1))"},
+							&IndexOrigin{O: "c"},
 						},
 					},
 				}

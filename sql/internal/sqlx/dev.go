@@ -14,10 +14,10 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
-// TwinDriver is a driver that provides additional functionality
-// to interact with the twin/dev database.
-type TwinDriver struct {
-	// A Driver connected to the twin database.
+// DevDriver is a driver that provides additional functionality
+// to interact with the development database.
+type DevDriver struct {
+	// A Driver connected to the dev database.
 	migrate.Driver
 
 	// MaxNameLen configures the max length of object names in
@@ -34,10 +34,10 @@ type TwinDriver struct {
 //
 // The implementation converts schema objects in "natural form" (e.g. HCL or DSL)
 // to their "normal presentation" in the database, by creating them temporarily in
-// a "twin database", and then inspects them from there.
-func (t *TwinDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *schema.Realm, err error) {
+// a "dev database", and then inspects them from there.
+func (d *DevDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *schema.Realm, err error) {
 	var (
-		twins   = make(map[string]string)
+		names   = make(map[string]string)
 		changes = make([]schema.Change, 0, len(r.Schemas))
 		reverse = make([]schema.Change, 0, len(r.Schemas))
 		opts    = &schema.InspectRealmOption{
@@ -45,15 +45,15 @@ func (t *TwinDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *s
 		}
 	)
 	for _, s := range r.Schemas {
-		twin := t.formatName(s.Name)
-		twins[twin] = s.Name
-		s.Name = twin
+		dev := d.formatName(s.Name)
+		names[dev] = s.Name
+		s.Name = dev
 		opts.Schemas = append(opts.Schemas, s.Name)
 		// Skip adding the schema.IfNotExists clause
 		// to fail if the schema exists.
-		st := schema.New(twin).AddAttrs(s.Attrs...)
+		st := schema.New(dev).AddAttrs(s.Attrs...)
 		changes = append(changes, &schema.AddSchema{S: st})
-		reverse = append(reverse, &schema.DropSchema{S: st, Extra: append(t.DropClause, &schema.IfExists{})})
+		reverse = append(reverse, &schema.DropSchema{S: st, Extra: append(d.DropClause, &schema.IfExists{})})
 		for _, t := range s.Tables {
 			// If objects are not strongly connected.
 			if t.Schema != s {
@@ -64,23 +64,24 @@ func (t *TwinDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *s
 	}
 	patch := func(r *schema.Realm) {
 		for _, s := range r.Schemas {
-			s.Name = twins[s.Name]
+			s.Name = names[s.Name]
 		}
 	}
-	// Delete the twin resources, and return
+	// Delete the dev resources, and return
 	// the source realm to its initial state.
 	defer func() {
 		patch(r)
-		uerr := t.ApplyChanges(ctx, reverse)
-		if err != nil {
-			err = fmt.Errorf("%w: %v", err, uerr)
+		if rerr := d.ApplyChanges(ctx, reverse); rerr != nil {
+			if err != nil {
+				rerr = fmt.Errorf("%w: %v", err, rerr)
+			}
+			err = rerr
 		}
-		err = uerr
 	}()
-	if err := t.ApplyChanges(ctx, changes); err != nil {
+	if err := d.ApplyChanges(ctx, changes); err != nil {
 		return nil, err
 	}
-	if nr, err = t.InspectRealm(ctx, opts); err != nil {
+	if nr, err = d.InspectRealm(ctx, opts); err != nil {
 		return nil, err
 	}
 	patch(nr)
@@ -88,13 +89,13 @@ func (t *TwinDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *s
 }
 
 // NormalizeSchema returns the normal representation of the given database. See NormalizeRealm for more info.
-func (t *TwinDriver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*schema.Schema, error) {
+func (d *DevDriver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*schema.Schema, error) {
 	r := &schema.Realm{}
 	if s.Realm != nil {
 		r.Attrs = s.Realm.Attrs
 	}
 	r.Schemas = append(r.Schemas, s)
-	nr, err := t.NormalizeRealm(ctx, r)
+	nr, err := d.NormalizeRealm(ctx, r)
 	if err != nil {
 		return nil, err
 	}
@@ -105,11 +106,11 @@ func (t *TwinDriver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*sc
 	return ns, nil
 }
 
-func (t *TwinDriver) formatName(name string) string {
-	twin := fmt.Sprintf("atlas_twin_%s_%d", name, time.Now().Unix())
-	if t.MaxNameLen == 0 || len(twin) <= t.MaxNameLen {
-		return twin
+func (d *DevDriver) formatName(name string) string {
+	dev := fmt.Sprintf("atlas_dev_%s_%d", name, time.Now().Unix())
+	if d.MaxNameLen == 0 || len(dev) <= d.MaxNameLen {
+		return dev
 	}
 	h := fnv.New128()
-	return fmt.Sprintf("%s_%x", twin[:t.MaxNameLen-1-h.Size()*2], h.Sum([]byte(twin)))
+	return fmt.Sprintf("%s_%x", dev[:d.MaxNameLen-1-h.Size()*2], h.Sum([]byte(dev)))
 }

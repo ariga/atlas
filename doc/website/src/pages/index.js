@@ -40,7 +40,7 @@ function SocialLinks() {
             <GithubIcon />
         </a>
 
-        <a href="https://discord.com/invite/QhsmBAWzrC" target="_blank">
+        <a href="https://discord.gg/zZ6sWVg6NT" target="_blank">
             <DiscordIcon />
         </a>
     </div>

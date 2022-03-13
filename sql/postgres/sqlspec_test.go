@@ -56,6 +56,7 @@ table "table" {
 			table.table.column.col,
 			table.table.column.age,
 		]
+		where = "active"
 		comment = "index comment"
 	}
 	foreign_key "accounts" {
@@ -234,6 +235,7 @@ enum "account_type" {
 			Attrs: []schema.Attr{
 				&schema.Comment{Text: "index comment"},
 				&IndexType{T: IndexTypeHash},
+				&IndexPredicate{P: "active"},
 			},
 		},
 	}
@@ -285,6 +287,56 @@ table "t" {
 		idx := s.Tables[0].Indexes[0]
 		require.Equal(t, IndexTypeHash, idx.Attrs[0].(*IndexType).T)
 	})
+}
+
+func TestMarshalSpec_IndexPredicate(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "id",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	s.Tables[0].Schema = s
+	s.Tables[0].Indexes = []*schema.Index{
+		{
+			Name:   "index",
+			Table:  s.Tables[0],
+			Unique: true,
+			Parts: []*schema.IndexPart{
+				{SeqNo: 0, C: s.Tables[0].Columns[0]},
+			},
+			Attrs: []schema.Attr{
+				&IndexPredicate{P: "id <> 0"},
+			},
+		},
+	}
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "id" {
+    null = false
+    type = int
+  }
+  index "index" {
+    unique  = true
+    columns = [column.id]
+    where   = "id <> 0"
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
 }
 
 func TestUnmarshalSpec_Identity(t *testing.T) {

@@ -1,0 +1,84 @@
+---
+title: URLs
+id: cli-url
+slug: /cli/url
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## What is a URL?
+
+Uniform Resource Locators, or URLs are a standardized method for specifying a location of a resource.
+All the component parts of a URL are shown below:
+
+```
+driver://[username[:password]@]address/[schema|database][?param1=value1&...&paramN=valueN]
+```
+
+An example might look like:
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+]}>
+<TabItem value="mysql">
+
+```
+mysql://localhost
+
+mysql://user:pass@localhost
+
+mysql://user:pass@localhost:3306/database
+```
+
+</TabItem>
+<TabItem value="maria">
+
+```
+maria://localhost
+
+maria://user:pass@localhost
+
+maria://user:pass@localhost:3306/database
+
+maria://user:pass@tcp(localhost:3306)/database
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```
+postgres://localhost:5432/database
+
+postgres://localhost:5432/database?search_path=schema
+
+postgres://postgres:pass@0.0.0.0:5432/database?sslmode=disable
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```
+sqlite://file.db
+
+sqlite://file?cache=shared&mode=memory
+```
+
+</TabItem>
+</Tabs>
+
+## SSL/TLS Mode
+
+The default SSL mode for Postgres is `required`. Please follow the 
+[Postgres documentation](https://www.postgresql.org/docs/current/libpq-ssl.html)
+for configuring your SSL connection for your database, or set SSL mode to `disable`
+with the search parameter `?sslmode=disable`. For local databases,
+disabling SSL is appropriate when inspecting and applying schema changes.
+
+MySQL does not require TLS by default. However, you can require TLS
+with the `?tls=true` search parameter.

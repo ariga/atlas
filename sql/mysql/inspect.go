@@ -237,7 +237,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	if err := i.extraAttr(t, c, extra.String); err != nil {
 		return err
 	}
-	if sqlx.ValidString(defaults) {
+	if defaults.Valid {
 		if i.mariadb() {
 			c.Default = i.marDefaultExpr(c, defaults.String)
 		} else {
@@ -335,12 +335,7 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 		part := &schema.IndexPart{SeqNo: seqno, Desc: desc.Bool}
 		switch {
 		case sqlx.ValidString(expr):
-			part.X = &schema.RawExpr{X: expr.String}
-			// Functional indexes may need to be extracted from 'SHOW CREATE',
-			// because INFORMATION_SCHEMA returns them escaped and they cannot
-			// be inlined this way.
-			s := putShow(t)
-			s.indexes[idx] = append(s.indexes[idx], len(idx.Parts))
+			part.X = &schema.RawExpr{X: unescape(expr.String)}
 		case sqlx.ValidString(column):
 			part.C, ok = t.Column(column.String)
 			if !ok {
@@ -376,7 +371,7 @@ func (i *inspect) fks(ctx context.Context, s *schema.Schema) error {
 		return fmt.Errorf("mysql: querying %q foreign keys: %w", s.Name, err)
 	}
 	defer rows.Close()
-	if err := sqlx.ScanSchemaFKs(s, rows); err != nil {
+	if err := sqlx.SchemaFKs(s, rows); err != nil {
 		return fmt.Errorf("mysql: %w", err)
 	}
 	return rows.Err()
@@ -407,6 +402,7 @@ func (i *inspect) checks(ctx context.Context, s *schema.Schema) error {
 			Expr: unescape(clause.String),
 		}
 		if i.mariadb() {
+			check.Expr = clause.String
 			// In MariaDB, JSON is an alias to LONGTEXT. For versions >= 10.4.3, the CHARSET and COLLATE set to utf8mb4
 			// and a CHECK constraint is automatically created for the column as well (i.e. JSON_VALID(`<C>`)). However,
 			// we expect tools like Atlas and Ent to manually add this CHECK for older versions of MariaDB.
@@ -425,10 +421,6 @@ func (i *inspect) checks(ctx context.Context, s *schema.Schema) error {
 			check.Attrs = append(check.Attrs, &Enforced{V: false})
 		}
 		t.Attrs = append(t.Attrs, check)
-		// CHECK constraints need to be extracted from 'SHOW CREATE', because
-		// INFORMATION_SCHEMA returns them escaped and they cannot be used on
-		// 'CREATE' this way.
-		putShow(t).checks = true
 	}
 	return rows.Err()
 }
@@ -475,7 +467,6 @@ func (i *inspect) showCreate(ctx context.Context, s *schema.Schema) error {
 		if err := i.setAutoInc(st, t); err != nil {
 			return err
 		}
-		// TODO(a8m): setChecks, setIndexExpr from CREATE statement.
 	}
 	return nil
 }
@@ -582,6 +573,10 @@ func isHex(x string) bool { return len(x) > 2 && strings.ToLower(x[:2]) == "0x" 
 
 // marDefaultExpr returns the correct schema.Expr based on the column attributes for MariaDB.
 func (i *inspect) marDefaultExpr(c *schema.Column, x string) schema.Expr {
+	// Unlike MySQL, NULL means default to NULL or no default.
+	if x == "NULL" {
+		return nil
+	}
 	// From MariaDB 10.2.7, string-based literals are quoted to distinguish them from expressions.
 	if i.gteV("10.2.7") && sqlx.IsQuoted(x, '\'') {
 		return &schema.Literal{V: x}
@@ -797,10 +792,6 @@ type (
 		schema.Attr
 		// AUTO_INCREMENT value to due missing value in information_schema.
 		auto *AutoIncrement
-		// checks expressions formatted differently from exist in 'SHOW CREATE'.
-		checks bool
-		// indexes that contain expressions.
-		indexes map[*schema.Index][]int
 	}
 )
 
@@ -810,7 +801,7 @@ func putShow(t *schema.Table) *showTable {
 			return s
 		}
 	}
-	s := &showTable{indexes: make(map[*schema.Index][]int)}
+	s := &showTable{}
 	t.Attrs = append(t.Attrs, s)
 	return s
 }

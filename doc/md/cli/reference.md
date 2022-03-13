@@ -36,14 +36,63 @@ atlas env
 ```
 
 #### Details
-`atlas env`prints atlas environment information.
+'atlas env' prints atlas environment information.
 
 Every set environment param will be printed in the form of NAME=VALUE.
 
 List of supported environment parameters:
-* *ATLAS_NO_UPDATE_NOTIFIER*: On any command, the CLI will check for new releases using the GitHub API.
+* ATLAS_NO_UPDATE_NOTIFIER: On any command, the CLI will check for new releases using the GitHub API.
   This check will happen at most once every 24 hours. To cancel this behavior, set the environment 
   variable "ATLAS_NO_UPDATE_NOTIFIER".
+
+
+## atlas migrate
+
+Manage versioned migration files
+
+#### Usage
+```
+atlas migrate
+```
+
+#### Details
+'atlas migrate' wraps several sub-commands for migration management.
+
+#### Flags
+```
+      --dir string       select migration directory using DSN format (default "file://migrations")
+      --force            force a command to run on a broken migration directory state
+      --schema strings   set schema names
+
+```
+
+
+### atlas migrate diff
+
+Compute the diff between the migration directory and a connected database and create a new migration file.
+
+#### Usage
+```
+atlas migrate diff [flags]
+```
+
+#### Details
+'atlas migrate diff' uses the dev-database to re-run all migration files in the migration
+directory and compares it to a given desired state and create a new migration file containing SQL statements to migrate 
+the migration directory state to the desired schema. The desired state can be another connected database or an HCL file.
+
+#### Example
+
+```
+  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname
+  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl
+```
+#### Flags
+```
+      --dev-url string   [driver://username:password@address/dbname?param=value] select a data source using the DSN format
+      --to string        [driver://username:password@address/dbname?param=value] select a data source using the DSN format
+
+```
 
 
 ## atlas schema
@@ -69,31 +118,35 @@ atlas schema apply [flags]
 ```
 
 #### Details
-`atlas schema apply` plans and executes a database migration to bring a given database
-to the state described in the Atlas schema file. Before running the migration, Atlas will print the migration
-plan and prompt the user for approval.
+'atlas schema apply' plans and executes a database migration to bring a given
+database to the state described in the Atlas schema file. Before running the
+migration, Atlas will print the migration plan and prompt the user for approval.
 
-If run with the "--dry-run" flag, atlas will exit after printing out the planned migration.
+If run with the "--dry-run" flag, atlas will exit after printing out the planned
+migration.
 
 #### Example
 
 ```
-  atlas schema apply -u "mysql://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
-  atlas schema apply -u "mysql://user:pass@tcp(localhost:3306)/" -f atlas.hcl --schema prod --schema staging
-  atlas schema apply -u "mysql://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl --dry-run
-  atlas schema apply -u "mariadb://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
+  atlas schema apply -u "mysql://user:pass@localhost/dbname" -f atlas.hcl
+  atlas schema apply -u "mysql://localhost" -f atlas.hcl --schema prod --schema staging
+  atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" -f atlas.hcl --dry-run
+  atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" -f atlas.hcl
   atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -f atlas.hcl
   atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f atlas.hcl
 ```
 #### Flags
 ```
-      --addr string      used with -w, local address to bind the server to (default "127.0.0.1:5800")
-      --auto-approve     Auto approve. Apply the schema changes without prompting for approval
-      --dry-run          Dry-run. Print SQL plan without prompting for execution
-  -f, --file string      [/path/to/file] file containing schema
-  -s, --schema strings   Set schema name
-  -u, --url string       [driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format
-  -w, --web              Open in a local Atlas UI
+  -f, --file string      [/path/to/file] file containing the HCL schema.
+  -u, --url string       URL to the database using the format:
+                         [driver://username:password@address/dbname?param=value]
+  -s, --schema strings   Set schema names.
+      --dev-url string   URL for the dev database. Used to validate schemas and calculate diffs
+                         before running migration.
+      --dry-run          Dry-run. Print SQL plan without prompting for execution.
+      --auto-approve     Auto approve. Apply the schema changes without prompting for approval.
+  -w, --web              Open in a local Atlas UI.
+      --addr string      used with -w, local address to bind the server to. (default ":5800")
 
 ```
 
@@ -173,7 +226,7 @@ flag.
 ```
 #### Flags
 ```
-      --addr string      Used with -w, local address to bind the server to (default "127.0.0.1:5800")
+      --addr string      Used with -w, local address to bind the server to (default ":5800")
   -s, --schema strings   Set schema name
   -u, --url string       [driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format
   -w, --web              Open in a local Atlas UI
@@ -190,4 +243,26 @@ Prints this Atlas CLI version information.
 atlas version
 ```
 
+
+## atlas serve
+
+Run Atlas web UI in a standalone mode
+
+#### Usage
+```
+atlas serve [flags]
+```
+
+#### Details
+'atlas serve' runs the Atlas web UI in a standalone mode with optional persistent storage.
+If you do not specify the storage, it will be stored in-memory.
+Atlas encrypts sensitive data such as passwords using the generated keyset.json.
+
+#### Flags
+```
+--addr string       listen address for atlas serve (default ":5800")
+--storage string    data store url using the dsn format:
+                    [driver://username:password@protocol(address)/dbname?param=value] (default "in-memory")
+-h, --help          help for serve
+```
 

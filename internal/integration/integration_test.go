@@ -244,10 +244,12 @@ func testCLISchemaApply(t T, h string, dsn string) {
 	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
 		"schema",
 		"apply",
-		"-d",
+		"-u",
 		dsn,
 		"-f",
 		f,
+		"--dev-url",
+		dsn,
 	)
 	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
 	cmd.Stderr = stderr

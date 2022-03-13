@@ -138,7 +138,7 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 	if err != nil {
 		return err
 	}
-	if sqlx.ValidString(defaults) {
+	if defaults.Valid {
 		c.Default = defaultExpr(defaults.String)
 	}
 	// TODO(a8m): extract collation from 'CREATE TABLE' statement.
@@ -214,8 +214,14 @@ func (i *inspect) addIndexes(t *schema.Table, rows *sql.Rows) error {
 	return nil
 }
 
+// A regexp to extract index parts.
+var reIdxParts = regexp.MustCompile("(?i)ON\\s+[\"`]*(?:\\w+)[\"`]*\\s*\\((.+)\\)")
+
 func (i *inspect) indexInfo(ctx context.Context, t *schema.Table, idx *schema.Index) error {
-	rows, err := i.QueryContext(ctx, fmt.Sprintf(indexColumnsQuery, idx.Name))
+	var (
+		hasExpr   bool
+		rows, err = i.QueryContext(ctx, fmt.Sprintf(indexColumnsQuery, idx.Name))
+	)
 	if err != nil {
 		return fmt.Errorf("sqlite: querying %q indexes: %w", t.Name, err)
 	}
@@ -238,11 +244,29 @@ func (i *inspect) indexInfo(ctx context.Context, t *schema.Table, idx *schema.In
 		// NULL name indicates that the index-part is an expression and we
 		// should extract it from the `CREATE INDEX` statement (not supported atm).
 		case !sqlx.ValidString(name):
+			hasExpr = true
 			part.X = &schema.RawExpr{X: "<unsupported>"}
 		default:
 			return fmt.Errorf("sqlite: column %q was not found for index %q", name.String, idx.Name)
 		}
 		idx.Parts = append(idx.Parts, part)
+	}
+	if !hasExpr {
+		return nil
+	}
+	var c CreateStmt
+	if !sqlx.Has(idx.Attrs, &c) || !reIdxParts.MatchString(c.S) {
+		return nil
+	}
+	parts := strings.Split(reIdxParts.FindStringSubmatch(c.S)[1], ",")
+	// Unable to parse index parts correctly.
+	if len(parts) != len(idx.Parts) {
+		return nil
+	}
+	for i, p := range idx.Parts {
+		if p.X != nil {
+			p.X.(*schema.RawExpr).X = strings.TrimSpace(parts[i])
+		}
 	}
 	return nil
 }

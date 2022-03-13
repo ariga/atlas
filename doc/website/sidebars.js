@@ -39,11 +39,16 @@ module.exports = {
             items: [
                 {type: 'doc', id: 'cli/cli-reference', label: 'Reference'},
                 {type: 'doc', id: 'cli/cli-url', label: 'URLs'},
+                {type: 'doc', id: 'cli/dev-database', label: 'Dev Database'},
             ]
         },
         {
             type: 'doc',
             id: 'ui/atlas-ui-intro',
+        },
+        {
+            type: 'doc',
+            id: 'deployment/deployment',
         },
         {
             type: 'category',

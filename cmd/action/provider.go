@@ -14,6 +14,7 @@ import (
 
 func init() {
 	DefaultMux.RegisterProvider("mysql", mysqlProvider)
+	DefaultMux.RegisterProvider("maria", mysqlProvider)
 	DefaultMux.RegisterProvider("mariadb", mysqlProvider)
 	DefaultMux.RegisterProvider("postgres", postgresProvider)
 	DefaultMux.RegisterProvider("sqlite", sqliteProvider)

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"os"
+	"os/signal"
 
 	"ariga.io/atlas/cmd/action"
 
@@ -11,8 +13,9 @@ import (
 )
 
 func main() {
+	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	action.RootCmd.SetOut(os.Stdout)
-	err := action.RootCmd.Execute()
+	err := action.RootCmd.ExecuteContext(ctx)
 	// Print error from command
 	if err != nil {
 		action.RootCmd.PrintErrln("Error:", err)
@@ -23,5 +26,4 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
-
 }

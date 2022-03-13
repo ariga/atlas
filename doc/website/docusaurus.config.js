@@ -25,7 +25,7 @@ module.exports = {
           position: 'right',
         },
         {
-          href: 'https://github.com/ariga/atlas',
+          href: 'https://discord.gg/zZ6sWVg6NT',
           className: 'header-discord-link',
           position: 'right',
         },{
@@ -51,7 +51,7 @@ module.exports = {
           "title": "Community",
           "items": [
             {"label": "GitHub", "to": "https://github.com/ariga/atlas"},
-            {"label": "Discord", "to": "https://discord.com/invite/QhsmBAWzrC"},
+            {"label": "Discord", "to": "https://discord.gg/zZ6sWVg6NT"},
           ]
         },
       ],

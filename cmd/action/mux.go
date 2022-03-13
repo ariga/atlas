@@ -83,13 +83,13 @@ func urlParts(url string) (string, string, error) {
 }
 
 // SchemaNameFromURL parses the url the returns schema name
-func SchemaNameFromURL(url string) (string, error) {
+func SchemaNameFromURL(ctx context.Context, url string) (string, error) {
 	key, dsn, err := urlParts(url)
 	if err != nil {
 		return "", err
 	}
 	switch key {
-	case "mysql", "mariadb":
+	case "mysql", "maria", "mariadb":
 		cfg, err := mysql.ParseDSN(dsn)
 		if err != nil {
 			return "", err
@@ -98,7 +98,7 @@ func SchemaNameFromURL(url string) (string, error) {
 	case "postgres":
 		return postgresSchema(dsn)
 	case "sqlite":
-		return schemaName(dsn)
+		return schemaName(ctx, dsn)
 	default:
 		return "", fmt.Errorf("unknown database type: %q", key)
 	}
@@ -119,7 +119,7 @@ func postgresSchema(dsn string) (string, error) {
 	return "", nil
 }
 
-func schemaName(dsn string) (string, error) {
+func schemaName(ctx context.Context, dsn string) (string, error) {
 	err := sqliteFileExists(dsn)
 	if err != nil {
 		return "", err
@@ -132,7 +132,7 @@ func schemaName(dsn string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	r, err := drv.InspectRealm(context.Background(), nil)
+	r, err := drv.InspectRealm(ctx, nil)
 	if err != nil {
 		return "", err
 	}

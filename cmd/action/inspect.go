@@ -49,27 +49,26 @@ func init() {
 	schemaCmd.AddCommand(InspectCmd)
 	InspectCmd.Flags().StringVarP(&InspectFlags.URL, "url", "u", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format")
 	InspectCmd.Flags().BoolVarP(&InspectFlags.Web, "web", "w", false, "Open in a local Atlas UI")
-	InspectCmd.Flags().StringVarP(&InspectFlags.Addr, "addr", "", "127.0.0.1:5800", "Used with -w, local address to bind the server to")
+	InspectCmd.Flags().StringVarP(&InspectFlags.Addr, "addr", "", ":5800", "Used with -w, local address to bind the server to")
 	InspectCmd.Flags().StringSliceVarP(&InspectFlags.Schema, "schema", "s", nil, "Set schema name")
 	cobra.CheckErr(InspectCmd.MarkFlagRequired("url"))
 	dsn2url(InspectCmd, &InspectFlags.URL)
 }
 
 // CmdInspectRun is the command used when running CLI.
-func CmdInspectRun(_ *cobra.Command, _ []string) {
+func CmdInspectRun(cmd *cobra.Command, _ []string) {
 	if InspectFlags.Web {
 		schemaCmd.PrintErrln("The Atlas UI is not available in this release.")
 		return
 	}
 	d, err := DefaultMux.OpenAtlas(InspectFlags.URL)
 	cobra.CheckErr(err)
-	inspectRun(d, InspectFlags.URL)
+	inspectRun(cmd.Context(), d, InspectFlags.URL)
 }
 
-func inspectRun(d *Driver, url string) {
-	ctx := context.Background()
+func inspectRun(ctx context.Context, d *Driver, url string) {
 	schemas := InspectFlags.Schema
-	if n, err := SchemaNameFromURL(url); n != "" {
+	if n, err := SchemaNameFromURL(ctx, url); n != "" {
 		cobra.CheckErr(err)
 		schemas = append(schemas, n)
 	}

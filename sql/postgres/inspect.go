@@ -178,7 +178,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 		typtype:       typtype.String,
 		typid:         typid.Int64,
 	})
-	if sqlx.ValidString(defaults) {
+	if defaults.Valid {
 		c.Default = defaultExpr(c, defaults.String)
 	}
 	if identity.String == "YES" {
@@ -402,7 +402,7 @@ func (i *inspect) fks(ctx context.Context, s *schema.Schema) error {
 		return fmt.Errorf("postgres: querying schema %q foreign keys: %w", s.Name, err)
 	}
 	defer rows.Close()
-	if err := sqlx.ScanSchemaFKs(s, rows); err != nil {
+	if err := sqlx.SchemaFKs(s, rows); err != nil {
 		return fmt.Errorf("postgres: %w", err)
 	}
 	return rows.Err()
@@ -711,7 +711,7 @@ SELECT
 	pg_catalog.obj_description(t2.oid, 'pg_class') AS COMMENT
 FROM
 	INFORMATION_SCHEMA.TABLES AS t1
-	JOIN pg_catalog.pg_class AS t2 ON t2.oid = to_regclass(t1.table_schema || '.' || quote_ident(t1.table_name))::oid
+	JOIN pg_catalog.pg_class AS t2 ON t2.oid = to_regclass(quote_ident(t1.table_schema) || '.' || quote_ident(t1.table_name))::oid
 WHERE
 	t1.table_type = 'BASE TABLE'
 	AND t1.table_schema IN (%s)
@@ -725,7 +725,7 @@ SELECT
 	pg_catalog.obj_description(t2.oid, 'pg_class') AS COMMENT
 FROM
 	INFORMATION_SCHEMA.TABLES AS t1
-	JOIN pg_catalog.pg_class AS t2 ON t2.oid = to_regclass(t1.table_schema || '.' || quote_ident(t1.table_name))::oid
+	JOIN pg_catalog.pg_class AS t2 ON t2.oid = to_regclass(quote_ident(t1.table_schema) || '.' || quote_ident(t1.table_name))::oid
 WHERE
 	t1.table_type = 'BASE TABLE'
 	AND t1.table_schema IN (%s)
@@ -752,7 +752,7 @@ SELECT
 	t1.identity_start,
 	t1.identity_increment,
 	t1.identity_generation,
-	col_description(to_regclass("table_schema" || '.' || "table_name")::oid, "ordinal_position") AS comment,
+	col_description(to_regclass(quote_ident("table_schema") || '.' || quote_ident("table_name"))::oid, "ordinal_position") AS comment,
 	t2.typtype,
 	t2.oid
 FROM
@@ -832,7 +832,7 @@ ORDER BY
 SELECT
 	rel.relname AS table_name,
 	t1.conname AS constraint_name,
-	pg_get_expr(t1.conbin, to_regclass(nsp.nspname || '.' || rel.relname)::oid) as expression,
+	pg_get_expr(t1.conbin, to_regclass(quote_ident(nsp.nspname) || '.' || quote_ident(rel.relname))::oid) as expression,
 	t2.attname as column_name,
 	t1.conkey as column_indexes,
 	t1.connoinherit as no_inherit

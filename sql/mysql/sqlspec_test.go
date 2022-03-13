@@ -555,6 +555,7 @@ table "users" {
 		on {
 			column = table.users.column.name
 			desc = true
+			prefix = 10
 		}
 		on {
 			expr = "lower(name)"
@@ -573,7 +574,7 @@ table "users" {
 				AddIndexes(
 					schema.NewIndex("idx").
 						AddParts(
-							schema.NewColumnPart(c).SetDesc(true),
+							schema.NewColumnPart(c).SetDesc(true).AddAttrs(&SubPart{Len: 10}),
 							schema.NewExprPart(&schema.RawExpr{X: "lower(name)"}),
 						),
 				),
@@ -591,7 +592,7 @@ func TestMarshalSpec_IndexParts(t *testing.T) {
 				AddIndexes(
 					schema.NewIndex("idx").
 						AddParts(
-							schema.NewColumnPart(c).SetDesc(true),
+							schema.NewColumnPart(c).SetDesc(true).AddAttrs(&SubPart{Len: 10}),
 							schema.NewExprPart(&schema.RawExpr{X: "lower(name)"}),
 						),
 				),
@@ -608,6 +609,7 @@ func TestMarshalSpec_IndexParts(t *testing.T) {
     on {
       desc   = true
       column = column.name
+      prefix = 10
     }
     on {
       expr = "lower(name)"

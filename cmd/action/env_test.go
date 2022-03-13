@@ -10,17 +10,15 @@ import (
 )
 
 func TestEnv(t *testing.T) {
-	cmd := newEnvCmd()
-	out, err := runCmd(cmd)
+	out, err := runCmd(RootCmd, "env")
 	require.NoError(t, err)
 	require.Empty(t, out)
 }
 
 func TestEnv_Set(t *testing.T) {
-	cmd := newEnvCmd()
 	err := os.Setenv(update.AtlasNoUpdateNotifier, "test")
 	require.NoError(t, err)
-	out, err := runCmd(cmd)
+	out, err := runCmd(RootCmd, "env")
 	require.NoError(t, err)
 	require.Equal(t, "ATLAS_NO_UPDATE_NOTIFIER=test\n", out)
 }
