@@ -956,9 +956,6 @@ create table atlas_types_sanity
 	) CHARSET = latin1 COLLATE latin1_swedish_ci;
 	`
 		tidbRun(t, func(t *myTest) {
-			if t.version == "56" {
-				return
-			}
 			t.dropTables(n)
 			_, err := t.db.Exec(ddl)
 			require.NoError(t, err)
@@ -987,6 +984,52 @@ create table atlas_types_sanity
 	t.Run("ImplicitIndexes", func(t *testing.T) {
 		tidbRun(t, func(t *myTest) {
 			testImplicitIndexes(t, t.db)
+		})
+	})
+
+	t.Run("AltersOrder", func(t *testing.T) {
+		ddl := `
+		create table tidb_alter_order(
+			tBigInt bigint(10) default 4 null,
+			INDEX   i  (tBigInt)
+		);
+	`
+		tidbRun(t, func(t *myTest) {
+			t.dropTables("tidb_alter_order")
+			_, err := t.db.Exec(ddl)
+			require.NoError(t, err)
+			tbl := t.loadTable("tidb_alter_order")
+			require.NotNil(t, tbl)
+			to := schema.Table{
+				Name: "tidb_alter_order",
+				Attrs: func() []schema.Attr {
+					return []schema.Attr{
+						&schema.Collation{V: "utf8mb4_bin"},
+						&schema.Charset{V: "utf8mb4"},
+					}
+				}(),
+				Columns: []*schema.Column{
+					&schema.Column{
+						Name: "tBigInt2",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false},
+							Raw: t.valueByVersion(map[string]string{"8": "bigint"}, "bigint(10)"), Null: true},
+						Default: &schema.Literal{V: "4"},
+					},
+				},
+			}
+			to.AddIndexes(
+				&schema.Index{Name: "i2", Parts: []*schema.IndexPart{
+					&schema.IndexPart{
+						C:    to.Columns[0],
+						Desc: true,
+					},
+				}})
+			changes, err := t.drv.SchemaDiff(schema.New("test").AddTables(tbl), schema.New("test").AddTables(&to))
+			require.NoError(t, err)
+			err = t.drv.ApplyChanges(context.Background(), changes)
+			require.NoError(t, err)
+			t.migrate()
+			rmCreateStmt(tbl)
 		})
 	})
 }

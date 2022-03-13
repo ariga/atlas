@@ -41,12 +41,14 @@ func priority(change schema.Change) int {
 	case *schema.ModifySchema:
 		// each modifyTable should have a single change since we apply `flat` before we sort.
 		return priority(c.Changes[0])
-	case *schema.DropIndex, *schema.DropForeignKey, *schema.DropAttr, *schema.DropCheck:
+	case *schema.AddColumn:
 		return 1
-	case *schema.ModifyIndex, *schema.ModifyForeignKey:
+	case *schema.DropIndex, *schema.DropForeignKey, *schema.DropAttr, *schema.DropCheck:
 		return 2
-	default:
+	case *schema.ModifyIndex, *schema.ModifyForeignKey:
 		return 3
+	default:
+		return 4
 	}
 }
 
@@ -95,7 +97,7 @@ func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []sch
 		},
 	}
 	for _, c := range fc {
-		// Use the planner of MySQL with each "atomic" chanage.
+		// Use the planner of MySQL with each "atomic" change.
 		plan, err := p.planApply.PlanChanges(ctx, name, []schema.Change{c})
 		if err != nil {
 			return nil, err
