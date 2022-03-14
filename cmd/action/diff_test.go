@@ -61,6 +61,7 @@ func openSQLite(t *testing.T, seed string) string {
 func runCmd(cmd *cobra.Command, args ...string) (string, error) {
 	var out bytes.Buffer
 	cmd.SetOut(&out)
+	cmd.SetErr(&out)
 	cmd.SetArgs(args)
 	err := cmd.Execute()
 	return out.String(), err

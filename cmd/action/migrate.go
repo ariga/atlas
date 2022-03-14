@@ -6,6 +6,7 @@ package action
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -39,13 +40,16 @@ var (
 		Use:   "migrate",
 		Short: "Manage versioned migration files",
 		Long:  "'atlas migrate' wraps several sub-commands for migration management.",
-		PersistentPreRun: func(*cobra.Command, []string) {
+		PersistentPreRunE: func(*cobra.Command, []string) error {
 			// Migrate commands will not run on a broken migration directory, unless the force flag is given.
 			if !MigrateFlags.Force {
 				dir, err := dir()
-				cobra.CheckErr(err)
-				cobra.CheckErr(migrate.Validate(dir)) // TODO(masseelch): tell the user what's wrong
+				if err != nil {
+					return err
+				}
+				return migrate.Validate(dir) // TODO(masseelch): tell the user what's wrong
 			}
+			return nil
 		},
 	}
 	// MigrateDiffCmd represents the migrate diff command.
@@ -58,7 +62,7 @@ the migration directory state to the desired schema. The desired state can be an
 		Example: `  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname
   atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl`,
 		Args: cobra.MaximumNArgs(1),
-		Run:  CmdMigrateDiffRun,
+		RunE: CmdMigrateDiffRun,
 	}
 )
 
@@ -77,19 +81,30 @@ func init() {
 }
 
 // CmdMigrateDiffRun is the command executed when running the CLI with 'migrate diff' args.
-func CmdMigrateDiffRun(cmd *cobra.Command, args []string) { // TODO(masseelch): tests
+func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	// Open a dev driver.
 	dev, err := DefaultMux.OpenAtlas(MigrateFlags.DevURL)
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
+	if err := checkClean(cmd.Context(), dev); err != nil {
+		return err
+	}
 	// Open the migration directory. For now only local directories are supported.
 	dir, err := dir()
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 	// Get a state reader for the desired state.
 	desired, err := to(cmd.Context(), dev)
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 	// Only create one file per plan.
 	tf, err := migrate.NewTemplateFormatter(nameTmpl, contentTmpl)
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 	// Plan the changes and create a new migration file.
 	pl := migrate.NewPlanner(dev, dir, migrate.WithFormatter(tf))
 	var name string
@@ -97,9 +112,11 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) { // TODO(masseelch): 
 		name = args[0]
 	}
 	plan, err := pl.Plan(cmd.Context(), name, desired)
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 	// Write the plan to a new file.
-	cobra.CheckErr(pl.WritePlan(plan))
+	return pl.WritePlan(plan)
 	// TODO(masseelch): clean up dev after reading the state from migration dir.
 }
 
@@ -125,7 +142,9 @@ func to(ctx context.Context, d *Driver) (migrate.StateReader, error) {
 	}
 	schemas := MigrateFlags.Schemas
 	if n, err := SchemaNameFromURL(ctx, parts[0]); n != "" {
-		cobra.CheckErr(err)
+		if err != nil {
+			return nil, err
+		}
 		schemas = append(schemas, n)
 	}
 	switch parts[0] {
@@ -164,6 +183,21 @@ func to(ctx context.Context, d *Driver) (migrate.StateReader, error) {
 		}
 		return migrate.Conn(drv, &schema.InspectRealmOption{Schemas: schemas}), nil
 	}
+}
+
+func checkClean(ctx context.Context, drv *Driver) error {
+	realm, err := drv.InspectRealm(ctx, nil)
+	if err != nil {
+		return err
+	}
+	if len(realm.Schemas) == 0 {
+		return nil
+	}
+	// If this is an SQLite database it is considered clean if the "main" schema has no tables.
+	if strings.HasPrefix(MigrateFlags.DevURL, "sqlite") && realm.Schemas[0].Name == "main" && len(realm.Schemas[0].Tables) == 0 {
+		return nil
+	}
+	return errors.New("dev database must be clean")
 }
 
 var (
