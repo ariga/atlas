@@ -33,7 +33,7 @@ Atlas currently supports three core capabilities for working with SQL schemas.
 The implementation details for these capabilities vary greatly between the different SQL databases. Atlas currently has
 three supported drivers:
 
-* MySQL (+MariaDB)
+* MySQL (+MariaDB, TiDB)
 * PostgreSQL
 * SQLite
 

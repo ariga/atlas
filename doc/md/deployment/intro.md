@@ -29,8 +29,9 @@ configuration data.
 For now, you can choose any of the supported databases:
 1. SQLite (file) (in-memory is also supported but does not require encryption)
 2. MySQL
-3. MariaDB
-4. PostgresDB
+3. TiDB
+4. MariaDB
+5. PostgresDB
 
 An example for serving Atlas with MySQL persistent storage:
 ```
