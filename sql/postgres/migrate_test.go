@@ -252,7 +252,10 @@ func TestPlanChanges(t *testing.T) {
 						T: users,
 						Changes: []schema.Change{
 							&schema.AddColumn{
-								C: &schema.Column{Name: "name", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar", Size: 255}}, Attrs: []schema.Attr{&schema.Comment{Text: "foo"}}},
+								C: &schema.Column{Name: "name", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar", Size: 255}}, Attrs: []schema.Attr{&schema.Comment{Text: "foo"}}, Default: &schema.Literal{V: "'logged_in'"}},
+							},
+							&schema.AddColumn{
+								C: &schema.Column{Name: "last", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar", Size: 255}}, Attrs: []schema.Attr{&schema.Comment{Text: "bar"}}, Default: &schema.RawExpr{X: "'logged_in'"}},
 							},
 							&schema.AddIndex{
 								I: &schema.Index{
@@ -285,8 +288,8 @@ func TestPlanChanges(t *testing.T) {
 				Transactional: true,
 				Changes: []*migrate.Change{
 					{
-						Cmd:     `ALTER TABLE "users" ADD COLUMN "name" character varying(255) NOT NULL, ADD CONSTRAINT "name_not_empty" CHECK ("name" <> ''), DROP CONSTRAINT "id_nonzero", DROP CONSTRAINT "id_iseven", ADD CONSTRAINT "id_iseven" CHECK (("id") % 2 = 0)`,
-						Reverse: `ALTER TABLE "users" DROP COLUMN "name", DROP CONSTRAINT "name_not_empty", ADD CONSTRAINT "id_nonzero" CHECK ("id" <> 0), DROP CONSTRAINT "id_iseven", ADD CONSTRAINT "id_iseven" CHECK ("id" % 2 = 0)`,
+						Cmd:     `ALTER TABLE "users" ADD COLUMN "name" character varying(255) NOT NULL DEFAULT 'logged_in', ADD COLUMN "last" character varying(255) NOT NULL DEFAULT 'logged_in', ADD CONSTRAINT "name_not_empty" CHECK ("name" <> ''), DROP CONSTRAINT "id_nonzero", DROP CONSTRAINT "id_iseven", ADD CONSTRAINT "id_iseven" CHECK (("id") % 2 = 0)`,
+						Reverse: `ALTER TABLE "users" DROP COLUMN "name", DROP COLUMN "last", DROP CONSTRAINT "name_not_empty", ADD CONSTRAINT "id_nonzero" CHECK ("id" <> 0), DROP CONSTRAINT "id_iseven", ADD CONSTRAINT "id_iseven" CHECK ("id" % 2 = 0)`,
 					},
 					{
 						Cmd:     `CREATE INDEX "id_key" ON "users" ("id" DESC) WHERE success`,
@@ -295,6 +298,10 @@ func TestPlanChanges(t *testing.T) {
 					{
 						Cmd:     `COMMENT ON COLUMN "users" ."name" IS 'foo'`,
 						Reverse: `COMMENT ON COLUMN "users" ."name" IS ''`,
+					},
+					{
+						Cmd:     `COMMENT ON COLUMN "users" ."last" IS 'bar'`,
+						Reverse: `COMMENT ON COLUMN "users" ."last" IS ''`,
 					},
 					{
 						Cmd:     `COMMENT ON INDEX "id_key" IS 'comment'`,

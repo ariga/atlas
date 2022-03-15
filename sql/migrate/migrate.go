@@ -183,7 +183,7 @@ func NewPlanner(drv Driver, dir Dir, opts ...PlannerOption) *Planner {
 		p.fmt = DefaultFormatter
 	}
 	if p.dsr == nil {
-		p.dsr = GlobStateReader(p.dir, p.drv, "**/*.sql")
+		p.dsr = GlobStateReader(p.dir, p.drv, "*.sql")
 	}
 	return p
 }
