@@ -131,7 +131,7 @@ func (c *DockerConfig) Run(ctx context.Context) (*Container, error) {
 		return nil, err
 	}
 	// Make sure the image is up-to-date.
-	cmd := exec.CommandContext(ctx, "docker", "pull", c.Image)
+	cmd := exec.CommandContext(ctx, "docker", "pull", c.Image) //nolint:gosec
 	cmd.Stdout = c.Out
 	if err := cmd.Run(); err != nil {
 		return nil, err
@@ -142,7 +142,7 @@ func (c *DockerConfig) Run(ctx context.Context) (*Container, error) {
 		args = append(args, "-e", e)
 	}
 	args = append(args, "-p", fmt.Sprintf("%s:%s", p, c.Port), c.Image)
-	cmd = exec.CommandContext(ctx, args[0], args[1:]...)
+	cmd = exec.CommandContext(ctx, args[0], args[1:]...) //nolint:gosec
 	out := &bytes.Buffer{}
 	cmd.Stdout = io.MultiWriter(c.Out, out)
 	if err := cmd.Run(); err != nil {
@@ -158,7 +158,7 @@ func (c *DockerConfig) Run(ctx context.Context) (*Container, error) {
 
 // Down stops and removes this container.
 func (c *Container) Down(ctx context.Context) error {
-	return exec.CommandContext(ctx, "docker", "stop", c.ID).Run()
+	return exec.CommandContext(ctx, "docker", "stop", c.ID).Run() //nolint:gosec
 }
 
 // Wait waits for this container to be ready.
