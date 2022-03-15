@@ -1,0 +1,62 @@
+apply 1.hcl
+cmpshow users 1.sql
+
+# Change column default.
+apply 2.hcl
+cmpshow users 2.sql
+
+-- 1.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "name" {
+    type = character_varying
+    default = "unknown"
+  }
+  column "age" {
+    type = int
+    default = 1
+  }
+  column "active" {
+    type = boolean
+    default = true
+  }
+}
+
+-- 1.sql --
+                       Table "script_column_default.users"
+ Column |       Type        | Collation | Nullable |           Default
+--------+-------------------+-----------+----------+------------------------------
+ name   | character varying |           | not null | 'unknown'::character varying
+ age    | integer           |           | not null | 1
+ active | boolean           |           | not null | true
+
+
+-- 2.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "name" {
+    type = character_varying
+    default = "anonymous"
+  }
+  column "age" {
+    type = int
+    default = 0
+  }
+  column "active" {
+    type = boolean
+    default = false
+  }
+}
+
+-- 2.sql --
+                        Table "script_column_default.users"
+ Column |       Type        | Collation | Nullable |            Default
+--------+-------------------+-----------+----------+--------------------------------
+ name   | character varying |           | not null | 'anonymous'::character varying
+ age    | integer           |           | not null | 0
+ active | boolean           |           | not null | false
+

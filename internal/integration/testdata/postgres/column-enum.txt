@@ -32,8 +32,8 @@ table "users" {
 schema "$db" {}
 
 enum "status" {
-    schema = schema.$db
-    values = ["active", "inactive"]
+  schema = schema.$db
+  values = ["active", "inactive"]
 }
 
 table "users" {
@@ -49,4 +49,3 @@ table "users" {
  Column |  Type  | Collation | Nullable |      Default
 --------+--------+-----------+----------+--------------------
  type   | status |           | not null | 'inactive'::status
- 
