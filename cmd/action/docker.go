@@ -71,11 +71,11 @@ func MySQL(version string, opts ...ConfigOption) (*DockerConfig, error) {
 	)
 }
 
-// Image sets the docker image to use.
+// Image sets the docker image to use. For example:
 //
-// Example:
-//   - Image("mysql")
-//   - Image("postgres:13")
+//	Image("mysql")
+//	Image("postgres:13")
+//
 func Image(i string) ConfigOption {
 	return func(c *DockerConfig) error {
 		c.Image = i
@@ -95,11 +95,11 @@ func Port(p string) ConfigOption {
 	}
 }
 
-// Env sets the environment variables to pass to the container.
+// Env sets the environment variables to pass to the container. For example:
 //
-// Example:
-//   - mysql: Env("MYSQL_ROOT_PASSWORD=password")
-//   - pg:    Env("POSTGRES_PASSWORD=password")
+// 	Config(Image("mysql"), Env("MYSQL_ROOT_PASSWORD=password"))
+// 	Config(Image("postgres"), Env("MYSQL_ROOT_PASSWORD=password"))
+//
 func Env(env ...string) ConfigOption {
 	return func(c *DockerConfig) error {
 		c.Env = env
