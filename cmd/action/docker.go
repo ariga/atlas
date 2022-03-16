@@ -43,12 +43,12 @@ type (
 		// Port on the host this containers service is bound to.
 		Port string
 	}
-	// ConfigOption allows configuring DockerConfig with functional arguments.
-	ConfigOption func(*DockerConfig) error
+	// DockerConfigOption allows configuring DockerConfig with functional arguments.
+	DockerConfigOption func(*DockerConfig) error
 )
 
 // NewConfig returns a new config with the given options applied.
-func NewConfig(opts ...ConfigOption) (*DockerConfig, error) {
+func NewConfig(opts ...DockerConfigOption) (*DockerConfig, error) {
 	c := &DockerConfig{Out: os.Stdout}
 	for _, opt := range opts {
 		if err := opt(c); err != nil {
@@ -59,9 +59,9 @@ func NewConfig(opts ...ConfigOption) (*DockerConfig, error) {
 }
 
 // MySQL returns a new DockerConfig for a MySQL image.
-func MySQL(version string, opts ...ConfigOption) (*DockerConfig, error) {
+func MySQL(version string, opts ...DockerConfigOption) (*DockerConfig, error) {
 	return NewConfig(append(
-		[]ConfigOption{
+		[]DockerConfigOption{
 			Image("mysql:" + version),
 			Port("3306"),
 			Env("MYSQL_ROOT_PASSWORD=" + pass),
@@ -76,7 +76,7 @@ func MySQL(version string, opts ...ConfigOption) (*DockerConfig, error) {
 //	Image("mysql")
 //	Image("postgres:13")
 //
-func Image(i string) ConfigOption {
+func Image(i string) DockerConfigOption {
 	return func(c *DockerConfig) error {
 		c.Image = i
 		return nil
@@ -88,7 +88,7 @@ func Image(i string) ConfigOption {
 // Common configuration include:
 //   - mysql: Port("3306")
 //   - pg:    Port("5432")
-func Port(p string) ConfigOption {
+func Port(p string) DockerConfigOption {
 	return func(c *DockerConfig) error {
 		c.Port = p
 		return nil
@@ -100,7 +100,7 @@ func Port(p string) ConfigOption {
 // 	Config(Image("mysql"), Env("MYSQL_ROOT_PASSWORD=password"))
 // 	Config(Image("postgres"), Env("MYSQL_ROOT_PASSWORD=password"))
 //
-func Env(env ...string) ConfigOption {
+func Env(env ...string) DockerConfigOption {
 	return func(c *DockerConfig) error {
 		c.Env = env
 		return nil
@@ -112,7 +112,7 @@ func Env(env ...string) ConfigOption {
 // Example:
 //   buf := new(bytes.Buffer)
 //   NewConfig(Out(buf))
-func Out(w io.Writer) ConfigOption {
+func Out(w io.Writer) DockerConfigOption {
 	return func(c *DockerConfig) error {
 		c.Out = w
 		return nil
