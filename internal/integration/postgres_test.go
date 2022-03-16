@@ -11,7 +11,6 @@ import (
 	"io"
 	"log"
 	"strings"
-	"sync"
 	"testing"
 
 	"ariga.io/atlas/sql/mysql"
@@ -32,7 +31,6 @@ type pgTest struct {
 }
 
 var pgTests struct {
-	sync.Once
 	drivers map[string]*pgTest
 }
 

@@ -40,7 +40,7 @@ func tidbInit() []io.Closer {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	tidbTests.drivers["TiDB5"] = &myTest{db: db, drv: drv, version: "TiDB5", port: port}
+	tidbTests.drivers["5"] = &myTest{db: db, drv: drv, version: "5", port: port}
 	return []io.Closer{db}
 }
 

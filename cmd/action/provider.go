@@ -18,6 +18,7 @@ func init() {
 	DefaultMux.RegisterProvider("mariadb", mysqlProvider)
 	DefaultMux.RegisterProvider("postgres", postgresProvider)
 	DefaultMux.RegisterProvider("sqlite", sqliteProvider)
+	DefaultMux.RegisterProvider("docker", dockerProvider)
 }
 
 func mysqlProvider(dsn string) (*Driver, error) {
@@ -74,4 +75,8 @@ func sqliteProvider(dsn string) (*Driver, error) {
 		Unmarshaler: sqlite.UnmarshalHCL,
 		Closer:      db,
 	}, nil
+}
+
+func dockerProvider(dsn string) (*Driver, error) {
+	return nil, nil
 }
