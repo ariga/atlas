@@ -63,6 +63,7 @@ func CmdInspectRun(cmd *cobra.Command, _ []string) {
 	}
 	d, err := DefaultMux.OpenAtlas(InspectFlags.URL)
 	cobra.CheckErr(err)
+	defer d.Close()
 	inspectRun(cmd.Context(), d, InspectFlags.URL)
 }
 

@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"strings"
 	"text/template"
@@ -88,6 +89,7 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	defer dev.Close()
 	if err := checkClean(cmd.Context(), dev); err != nil {
 		return err
 	}
@@ -98,6 +100,9 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	}
 	// Get a state reader for the desired state.
 	desired, err := to(cmd.Context(), dev)
+	if src, ok := desired.(io.Closer); ok {
+		defer src.Close()
+	}
 	if err != nil {
 		return err
 	}
@@ -182,7 +187,10 @@ func to(ctx context.Context, d *Driver) (migrate.StateReader, error) {
 		if err != nil {
 			return nil, err
 		}
-		return migrate.Conn(drv, &schema.InspectRealmOption{Schemas: schemas}), nil
+		return &stateReadCloser{
+			StateReader: migrate.Conn(drv, &schema.InspectRealmOption{Schemas: schemas}),
+			drv:         drv,
+		}, nil
 	}
 }
 
@@ -218,3 +226,12 @@ var (
 		"{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ println (sem .Cmd) }}{{ end }}",
 	))
 )
+
+type stateReadCloser struct {
+	migrate.StateReader
+	drv *Driver
+}
+
+func (s *stateReadCloser) Close() error {
+	return s.drv.Close()
+}
