@@ -83,11 +83,11 @@ func Image(i string) DockerConfigOption {
 	}
 }
 
-// Port sets the port the container services exposes.
+// Port sets the port the container services exposes. For example:
 //
-// Common configuration include:
-//   - mysql: Port("3306")
-//   - pg:    Port("5432")
+//	Port("3306")
+//	Port("5432")
+//
 func Port(p string) DockerConfigOption {
 	return func(c *DockerConfig) error {
 		c.Port = p
@@ -107,11 +107,11 @@ func Env(env ...string) DockerConfigOption {
 	}
 }
 
-// Out sets an io.Writer to use when running docker commands.
+// Out sets an io.Writer to use when running docker commands. For example:
 //
-// Example:
-//   buf := new(bytes.Buffer)
-//   NewConfig(Out(buf))
+// 	buf := new(bytes.Buffer)
+// 	NewConfig(Out(buf))
+//
 func Out(w io.Writer) DockerConfigOption {
 	return func(c *DockerConfig) error {
 		c.Out = w
