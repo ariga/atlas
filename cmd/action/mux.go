@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -32,6 +33,7 @@ type (
 		migrate.Driver
 		schemaspec.Marshaler
 		schemaspec.Unmarshaler
+		io.Closer
 	}
 )
 
