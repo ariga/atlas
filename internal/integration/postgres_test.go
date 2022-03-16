@@ -8,6 +8,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
+	"log"
 	"strings"
 	"sync"
 	"testing"
@@ -35,22 +37,30 @@ var pgTests struct {
 }
 
 func pgRun(t *testing.T, fn func(*pgTest)) {
-	pgTests.Do(func() {
-		pgTests.drivers = make(map[string]*pgTest)
-		for version, port := range map[string]int{"10": 5430, "11": 5431, "12": 5432, "13": 5433, "14": 5434} {
-			db, err := sql.Open("postgres", fmt.Sprintf("host=localhost port=%d user=postgres dbname=test password=pass sslmode=disable", port))
-			require.NoError(t, err)
-			drv, err := postgres.Open(db)
-			require.NoError(t, err)
-			pgTests.drivers[version] = &pgTest{db: db, drv: drv, version: version, port: port}
-		}
-	})
 	for version, tt := range pgTests.drivers {
 		t.Run(version, func(t *testing.T) {
 			tt := &pgTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port}
 			fn(tt)
 		})
 	}
+}
+
+func pgInit() []io.Closer {
+	var cs []io.Closer
+	pgTests.drivers = make(map[string]*pgTest)
+	for version, port := range map[string]int{"10": 5430, "11": 5431, "12": 5432, "13": 5433, "14": 5434} {
+		db, err := sql.Open("postgres", fmt.Sprintf("host=localhost port=%d user=postgres dbname=test password=pass sslmode=disable", port))
+		if err != nil {
+			log.Fatalln(err)
+		}
+		cs = append(cs, db)
+		drv, err := postgres.Open(db)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		pgTests.drivers[version] = &pgTest{db: db, drv: drv, version: version, port: port}
+	}
+	return cs
 }
 
 func TestPostgres_AddDropTable(t *testing.T) {
@@ -482,6 +492,11 @@ func TestPostgres_CLI(t *testing.T) {
 	t.Run("SchemaDiffRun", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
 			testCLISchemaDiff(t, t.dsn())
+		})
+	})
+	t.Run("SchemaApplyAutoApprove", func(t *testing.T) {
+		pgRun(t, func(t *pgTest) {
+			testCLISchemaApplyAutoApprove(t, h, t.dsn())
 		})
 	})
 }

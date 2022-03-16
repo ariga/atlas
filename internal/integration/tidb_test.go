@@ -8,6 +8,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
+	"log"
 	"testing"
 
 	"ariga.io/atlas/sql/mysql"
@@ -23,16 +25,32 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func tidbRun(t *testing.T, fn func(*myTest)) {
+var tidbTests struct {
+	drivers map[string]*myTest
+}
+
+func tidbInit() []io.Closer {
+	tidbTests.drivers = make(map[string]*myTest)
 	port := 4309
 	db, err := sql.Open("mysql", fmt.Sprintf("root@tcp(localhost:%d)/test?parseTime=True", port))
-	require.NoError(t, err)
+	if err != nil {
+		log.Fatalln(err)
+	}
 	drv, err := mysql.Open(db)
-	require.NoError(t, err)
-	t.Run("TiDB5", func(t *testing.T) {
-		tt := &myTest{T: t, db: db, drv: drv, version: "TiDB5", port: port}
-		fn(tt)
-	})
+	if err != nil {
+		log.Fatalln(err)
+	}
+	tidbTests.drivers["TiDB5"] = &myTest{db: db, drv: drv, version: "TiDB5", port: port}
+	return []io.Closer{db}
+}
+
+func tidbRun(t *testing.T, fn func(*myTest)) {
+	for version, tt := range tidbTests.drivers {
+		t.Run(version, func(t *testing.T) {
+			tt := &myTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port}
+			fn(tt)
+		})
+	}
 }
 
 func TestTiDB_AddDropTable(t *testing.T) {

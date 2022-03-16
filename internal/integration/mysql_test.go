@@ -8,8 +8,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
+	"log"
 	"strings"
-	"sync"
 	"testing"
 
 	"ariga.io/atlas/sql/mysql"
@@ -29,27 +30,34 @@ type myTest struct {
 }
 
 var myTests struct {
-	sync.Once
 	drivers map[string]*myTest
 }
 
 func myRun(t *testing.T, fn func(*myTest)) {
-	myTests.Do(func() {
-		myTests.drivers = make(map[string]*myTest)
-		for version, port := range map[string]int{"56": 3306, "57": 3307, "8": 3308, "Maria107": 4306, "Maria102": 4307, "Maria103": 4308} {
-			db, err := sql.Open("mysql", fmt.Sprintf("root:pass@tcp(localhost:%d)/test?parseTime=True", port))
-			require.NoError(t, err)
-			drv, err := mysql.Open(db)
-			require.NoError(t, err)
-			myTests.drivers[version] = &myTest{db: db, drv: drv, version: version, port: port}
-		}
-	})
 	for version, tt := range myTests.drivers {
 		t.Run(version, func(t *testing.T) {
 			tt := &myTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port}
 			fn(tt)
 		})
 	}
+}
+
+func myInit() []io.Closer {
+	var cs []io.Closer
+	myTests.drivers = make(map[string]*myTest)
+	for version, port := range map[string]int{"56": 3306, "57": 3307, "8": 3308, "Maria107": 4306, "Maria102": 4307, "Maria103": 4308} {
+		db, err := sql.Open("mysql", fmt.Sprintf("root:pass@tcp(localhost:%d)/test?parseTime=True", port))
+		if err != nil {
+			log.Fatalln(err)
+		}
+		cs = append(cs, db)
+		drv, err := mysql.Open(db)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		myTests.drivers[version] = &myTest{db: db, drv: drv, version: version, port: port}
+	}
+	return cs
 }
 
 func TestMySQL_AddDropTable(t *testing.T) {
@@ -548,6 +556,13 @@ func TestMySQL_CLI(t *testing.T) {
 	t.Run("SchemaDiffRun", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			testCLISchemaDiff(t, t.dsn("test"))
+		})
+	})
+	t.Run("SchemaApplyAutoApprove", func(t *testing.T) {
+		myRun(t, func(t *myTest) {
+			attrs := t.defaultAttrs()
+			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
+			testCLISchemaApplyAutoApprove(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"))
 		})
 	})
 }
