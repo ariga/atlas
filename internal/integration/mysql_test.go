@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"strings"
 	"testing"
 
@@ -53,14 +52,13 @@ func myRun(t *testing.T, fn func(*myTest)) {
 	}
 }
 
-func myInit() []io.Closer {
+func myInit(service string) []io.Closer {
 	var cs []io.Closer
 	myTests.drivers = make(map[string]*myTest)
-	// If the env var GO_TEST_ONLY_VERSION set only run test for that service.
-	if v, ok := os.LookupEnv("GO_TEST_ONLY_VERSION"); ok {
-		p, ok := myPorts[v]
+	if service != "" {
+		p, ok := myPorts[service]
 		if ok {
-			myPorts = map[string]int{v: p}
+			myPorts = map[string]int{service: p}
 		} else {
 			myPorts = make(map[string]int)
 		}

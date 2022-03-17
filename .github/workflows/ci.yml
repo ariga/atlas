@@ -101,7 +101,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for mysql56
         working-directory: internal/integration
-        run: GO_TEST_ONLY_VERSION=mysql56 go test -race -count=2 -v -run="MySQL.*/mysql56" ./...
+        run: go test -race -count=2 -v -run="MySQL.*/mysql56" -service=mysql56 ./...
   
   integration-mysql57:
     runs-on: ubuntu-latest
@@ -132,7 +132,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for mysql57
         working-directory: internal/integration
-        run: GO_TEST_ONLY_VERSION=mysql57 go test -race -count=2 -v -run="MySQL.*/mysql57" ./...
+        run: go test -race -count=2 -v -run="MySQL.*/mysql57" -service=mysql57 ./...
   
   integration-mysql8:
     runs-on: ubuntu-latest
@@ -163,7 +163,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for mysql8
         working-directory: internal/integration
-        run: GO_TEST_ONLY_VERSION=mysql8 go test -race -count=2 -v -run="MySQL.*/mysql8" ./...
+        run: go test -race -count=2 -v -run="MySQL.*/mysql8" -service=mysql8 ./...
   
   integration-maria107:
     runs-on: ubuntu-latest
@@ -194,7 +194,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for maria107
         working-directory: internal/integration
-        run: GO_TEST_ONLY_VERSION=maria107 go test -race -count=2 -v -run="MySQL.*/maria107" ./...
+        run: go test -race -count=2 -v -run="MySQL.*/maria107" -service=maria107 ./...
   
   integration-maria102:
     runs-on: ubuntu-latest
@@ -225,7 +225,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for maria102
         working-directory: internal/integration
-        run: GO_TEST_ONLY_VERSION=maria102 go test -race -count=2 -v -run="MySQL.*/maria102" ./...
+        run: go test -race -count=2 -v -run="MySQL.*/maria102" -service=maria102 ./...
   
   integration-maria103:
     runs-on: ubuntu-latest
@@ -256,7 +256,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for maria103
         working-directory: internal/integration
-        run: GO_TEST_ONLY_VERSION=maria103 go test -race -count=2 -v -run="MySQL.*/maria103" ./...
+        run: go test -race -count=2 -v -run="MySQL.*/maria103" -service=maria103 ./...
   
   integration-postgres10:
     runs-on: ubuntu-latest
@@ -286,7 +286,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for postgres10
         working-directory: internal/integration
-        run: GO_TEST_ONLY_VERSION=postgres10 go test -race -count=2 -v -run="Postgres.*/postgres10" ./...
+        run: go test -race -count=2 -v -run="Postgres.*/postgres10" -service=postgres10 ./...
   
   integration-postgres11:
     runs-on: ubuntu-latest
@@ -316,7 +316,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for postgres11
         working-directory: internal/integration
-        run: GO_TEST_ONLY_VERSION=postgres11 go test -race -count=2 -v -run="Postgres.*/postgres11" ./...
+        run: go test -race -count=2 -v -run="Postgres.*/postgres11" -service=postgres11 ./...
   
   integration-postgres12:
     runs-on: ubuntu-latest
@@ -346,7 +346,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for postgres12
         working-directory: internal/integration
-        run: GO_TEST_ONLY_VERSION=postgres12 go test -race -count=2 -v -run="Postgres.*/postgres12" ./...
+        run: go test -race -count=2 -v -run="Postgres.*/postgres12" -service=postgres12 ./...
   
   integration-postgres13:
     runs-on: ubuntu-latest
@@ -376,7 +376,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for postgres13
         working-directory: internal/integration
-        run: GO_TEST_ONLY_VERSION=postgres13 go test -race -count=2 -v -run="Postgres.*/postgres13" ./...
+        run: go test -race -count=2 -v -run="Postgres.*/postgres13" -service=postgres13 ./...
   
   integration-postgres14:
     runs-on: ubuntu-latest
@@ -406,7 +406,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for postgres14
         working-directory: internal/integration
-        run: GO_TEST_ONLY_VERSION=postgres14 go test -race -count=2 -v -run="Postgres.*/postgres14" ./...
+        run: go test -race -count=2 -v -run="Postgres.*/postgres14" -service=postgres14 ./...
   
   integration-tidb5:
     runs-on: ubuntu-latest
@@ -430,7 +430,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for tidb5
         working-directory: internal/integration
-        run: GO_TEST_ONLY_VERSION=tidb5 go test -race -count=2 -v -run="TiDB.*/tidb5" ./...
+        run: go test -race -count=2 -v -run="TiDB.*/tidb5" -service=tidb5 ./...
   
   integration-sqlite:
     runs-on: ubuntu-latest
@@ -448,5 +448,5 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for sqlite
         working-directory: internal/integration
-        run: GO_TEST_ONLY_VERSION=sqlite go test -race -count=2 -v -run="SQLite.*" ./...
+        run: go test -race -count=2 -v -run="SQLite.*" -service=sqlite ./...
   

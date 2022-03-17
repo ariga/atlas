@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"strings"
 	"testing"
 
@@ -53,14 +52,13 @@ func pgRun(t *testing.T, fn func(*pgTest)) {
 	}
 }
 
-func pgInit() []io.Closer {
+func pgInit(service string) []io.Closer {
 	var cs []io.Closer
 	pgTests.drivers = make(map[string]*pgTest)
-	// If the env var GO_TEST_ONLY_VERSION set only run test for that service.
-	if v, ok := os.LookupEnv("GO_TEST_ONLY_VERSION"); ok {
-		p, ok := pgPorts[v]
+	if service != "" {
+		p, ok := pgPorts[service]
 		if ok {
-			pgPorts = map[string]int{v: p}
+			pgPorts = map[string]int{service: p}
 		} else {
 			pgPorts = make(map[string]int)
 		}

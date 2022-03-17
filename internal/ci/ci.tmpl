@@ -99,5 +99,5 @@ jobs:
             {{ "${{ runner.os }}-go-" }}
       - name: Run integration tests for {{ .Version }}
         working-directory: internal/integration
-        run: GO_TEST_ONLY_VERSION={{ .Version }} go test -race -count=2 -v -run="{{ .Regex }}" ./...
+        run: go test -race -count=2 -v -run="{{ .Regex }}" -service={{ .Version }} ./...
   {{ end }}

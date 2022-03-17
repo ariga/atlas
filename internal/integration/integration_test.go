@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"flag"
 	"io"
 	"io/ioutil"
 	"os"
@@ -23,10 +24,13 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	var service string
+	flag.StringVar(&service, "service", "", "[mysql56, postgres10, tidb5, ...] what version to test")
+	flag.Parse()
 	var dbs []io.Closer
-	dbs = append(dbs, myInit()...)
-	dbs = append(dbs, pgInit()...)
-	dbs = append(dbs, tidbInit()...)
+	dbs = append(dbs, myInit(service)...)
+	dbs = append(dbs, pgInit(service)...)
+	dbs = append(dbs, tidbInit(service)...)
 	defer func() {
 		for _, db := range dbs {
 			db.Close()

@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"testing"
 
 	"ariga.io/atlas/sql/mysql"
@@ -35,14 +34,13 @@ var (
 	}
 )
 
-func tidbInit() []io.Closer {
+func tidbInit(service string) []io.Closer {
 	var cs []io.Closer
 	tidbTests.drivers = make(map[string]*myTest)
-	// If the env var GO_TEST_ONLY_VERSION set only run test for that service.
-	if v, ok := os.LookupEnv("GO_TEST_ONLY_VERSION"); ok {
-		p, ok := tidbPorts[v]
+	if service != "" {
+		p, ok := tidbPorts[service]
 		if ok {
-			tidbPorts = map[string]int{v: p}
+			tidbPorts = map[string]int{service: p}
 		} else {
 			tidbPorts = make(map[string]int)
 		}
