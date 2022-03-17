@@ -72,7 +72,7 @@ jobs:
         working-directory: cmd
 
   {{ range $ }}
-  integration_{{ .Version }}:
+  integration-{{ .Version }}:
     runs-on: ubuntu-latest
     {{ if .Image }}services:
       {{ .Version }}:
