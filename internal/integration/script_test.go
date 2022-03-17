@@ -174,11 +174,15 @@ func (t *myTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {
 
 func (t *pgTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {
 	cmdCmpShow(ts, args, func(schema, name string) (string, error) {
-		buf, err := exec.Command("docker", "ps", "-qa", "-f", fmt.Sprintf("name=postgres%s", t.version)).CombinedOutput()
+		buf, err := exec.Command("docker", "ps", "-qa", "-f", fmt.Sprintf("publish=%d", t.port)).CombinedOutput()
 		if err != nil {
 			return "", fmt.Errorf("get container id %q: %v", buf, err)
 		}
-		cmd := exec.Command("docker", "exec", string(bytes.TrimSpace(buf)), "psql", "-U", "postgres", "-d", "test", "-c", fmt.Sprintf(`\d %s.%s`, schema, name))
+		buf = bytes.TrimSpace(buf)
+		if len(bytes.Split(buf, []byte("\n"))) > 1 {
+			return "", fmt.Errorf("multiple container ids found: %q", buf)
+		}
+		cmd := exec.Command("docker", "exec", string(buf), "psql", "-U", "postgres", "-d", "test", "-c", fmt.Sprintf(`\d %s.%s`, schema, name))
 		// Use "cmd.String" to debug command.
 		buf, err = cmd.CombinedOutput()
 		if err != nil {

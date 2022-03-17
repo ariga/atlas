@@ -57,7 +57,7 @@ CREATE TABLE `posts` (
   CONSTRAINT `owner_id` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON UPDATE SET NULL
 )
 
--- 8/1.sql --
+-- mysql8/1.sql --
 CREATE TABLE `users` (
   `id` int NOT NULL,
   PRIMARY KEY (`id`)
@@ -119,7 +119,7 @@ CREATE TABLE `posts` (
   CONSTRAINT `owner_id` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
 )
 
--- 8/2.sql --
+-- mysql8/2.sql --
 CREATE TABLE `users` (
   `id` int NOT NULL,
   PRIMARY KEY (`id`)

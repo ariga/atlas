@@ -220,7 +220,7 @@ var (
 		},
 	}
 	nameTmpl = template.Must(template.New("name").Funcs(funcMap).Parse(
-		"{{ now }}{{ with .Version }}_{{ . }}{{ end }}.sql",
+		"{{ now }}{{ with .Name }}_{{ . }}{{ end }}.sql",
 	))
 	contentTmpl = template.Must(template.New("content").Funcs(funcMap).Parse(
 		"{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ println (sem .Cmd) }}{{ end }}",

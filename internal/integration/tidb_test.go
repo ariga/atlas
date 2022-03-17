@@ -759,31 +759,31 @@ create table atlas_types_sanity
 					{
 						Name: "tInt",
 						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int", Unsigned: false},
-							Raw: t.valueByVersion(map[string]string{"8": "int"}, "int(10)"), Null: false},
+							Raw: t.valueByVersion(map[string]string{"mysql8": "int"}, "int(10)"), Null: false},
 						Default: &schema.Literal{V: "4"},
 					},
 					{
 						Name: "tTinyInt",
 						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "tinyint", Unsigned: false},
-							Raw: t.valueByVersion(map[string]string{"8": "tinyint"}, "tinyint(10)"), Null: true},
+							Raw: t.valueByVersion(map[string]string{"mysql8": "tinyint"}, "tinyint(10)"), Null: true},
 						Default: &schema.Literal{V: "8"},
 					},
 					{
 						Name: "tSmallInt",
 						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "smallint", Unsigned: false},
-							Raw: t.valueByVersion(map[string]string{"8": "smallint"}, "smallint(10)"), Null: true},
+							Raw: t.valueByVersion(map[string]string{"mysql8": "smallint"}, "smallint(10)"), Null: true},
 						Default: &schema.Literal{V: "2"},
 					},
 					{
 						Name: "tMediumInt",
 						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "mediumint", Unsigned: false},
-							Raw: t.valueByVersion(map[string]string{"8": "mediumint"}, "mediumint(10)"), Null: true},
+							Raw: t.valueByVersion(map[string]string{"mysql8": "mediumint"}, "mediumint(10)"), Null: true},
 						Default: &schema.Literal{V: "11"},
 					},
 					{
 						Name: "tBigInt",
 						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false},
-							Raw: t.valueByVersion(map[string]string{"8": "bigint"}, "bigint(10)"), Null: true},
+							Raw: t.valueByVersion(map[string]string{"mysql8": "bigint"}, "bigint(10)"), Null: true},
 						Default: &schema.Literal{V: "4"},
 					},
 					{
@@ -875,8 +875,8 @@ create table atlas_types_sanity
 					},
 					{
 						Name: "tYear",
-						Type: &schema.ColumnType{Type: &schema.TimeType{T: "year", Precision: t.intByVersion(map[string]int{"8": 0}, 4)},
-							Raw: t.valueByVersion(map[string]string{"8": "year"}, "year(4) unsigned"), Null: true},
+						Type: &schema.ColumnType{Type: &schema.TimeType{T: "year", Precision: t.intByVersion(map[string]int{"mysql8": 0}, 4)},
+							Raw: t.valueByVersion(map[string]string{"mysql8": "year"}, "year(4) unsigned"), Null: true},
 					},
 					{
 						Name: "tVarchar",
@@ -902,13 +902,13 @@ create table atlas_types_sanity
 						Name: "tVarBinary",
 						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "varbinary", Size: 30},
 							Raw: "varbinary(30)", Null: true},
-						Default: &schema.Literal{V: t.valueByVersion(map[string]string{"8": "0x546974616E"}, t.quoted("Titan"))},
+						Default: &schema.Literal{V: t.valueByVersion(map[string]string{"mysql8": "0x546974616E"}, t.quoted("Titan"))},
 					},
 					{
 						Name: "tBinary",
 						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "binary", Size: 5},
 							Raw: "binary(5)", Null: true},
-						Default: &schema.Literal{V: t.valueByVersion(map[string]string{"8": "0x546974616E"}, t.quoted("Titan"))},
+						Default: &schema.Literal{V: t.valueByVersion(map[string]string{"mysql8": "0x546974616E"}, t.quoted("Titan"))},
 					},
 					{
 						Name: "tBlob",
@@ -1055,7 +1055,7 @@ create table atlas_types_sanity
 					&schema.Column{
 						Name: "tBigInt2",
 						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false},
-							Raw: t.valueByVersion(map[string]string{"8": "bigint"}, "bigint(10)"), Null: true},
+							Raw: t.valueByVersion(map[string]string{"mysql8": "bigint"}, "bigint(10)"), Null: true},
 						Default: &schema.Literal{V: "4"},
 					},
 				},

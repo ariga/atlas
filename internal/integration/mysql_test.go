@@ -756,31 +756,31 @@ create table atlas_types_sanity
 					{
 						Name: "tInt",
 						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int", Unsigned: false},
-							Raw: t.valueByVersion(map[string]string{"8": "int"}, "int(10)"), Null: false},
+							Raw: t.valueByVersion(map[string]string{"mysql8": "int"}, "int(10)"), Null: false},
 						Default: &schema.Literal{V: "4"},
 					},
 					{
 						Name: "tTinyInt",
 						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "tinyint", Unsigned: false},
-							Raw: t.valueByVersion(map[string]string{"8": "tinyint"}, "tinyint(10)"), Null: true},
+							Raw: t.valueByVersion(map[string]string{"mysql8": "tinyint"}, "tinyint(10)"), Null: true},
 						Default: &schema.Literal{V: "8"},
 					},
 					{
 						Name: "tSmallInt",
 						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "smallint", Unsigned: false},
-							Raw: t.valueByVersion(map[string]string{"8": "smallint"}, "smallint(10)"), Null: true},
+							Raw: t.valueByVersion(map[string]string{"mysql8": "smallint"}, "smallint(10)"), Null: true},
 						Default: &schema.Literal{V: "2"},
 					},
 					{
 						Name: "tMediumInt",
 						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "mediumint", Unsigned: false},
-							Raw: t.valueByVersion(map[string]string{"8": "mediumint"}, "mediumint(10)"), Null: true},
+							Raw: t.valueByVersion(map[string]string{"mysql8": "mediumint"}, "mediumint(10)"), Null: true},
 						Default: &schema.Literal{V: "11"},
 					},
 					{
 						Name: "tBigInt",
 						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false},
-							Raw: t.valueByVersion(map[string]string{"8": "bigint"}, "bigint(10)"), Null: true},
+							Raw: t.valueByVersion(map[string]string{"mysql8": "bigint"}, "bigint(10)"), Null: true},
 						Default: &schema.Literal{V: "4"},
 					},
 					{
@@ -902,8 +902,8 @@ create table atlas_types_sanity
 					},
 					{
 						Name: "tYear",
-						Type: &schema.ColumnType{Type: &schema.TimeType{T: "year", Precision: t.intByVersion(map[string]int{"8": 0}, 4)},
-							Raw: t.valueByVersion(map[string]string{"8": "year"}, "year(4)"), Null: true},
+						Type: &schema.ColumnType{Type: &schema.TimeType{T: "year", Precision: t.intByVersion(map[string]int{"mysql8": 0}, 4)},
+							Raw: t.valueByVersion(map[string]string{"mysql8": "year"}, "year(4)"), Null: true},
 					},
 					{
 						Name: "tVarchar",
@@ -929,13 +929,13 @@ create table atlas_types_sanity
 						Name: "tVarBinary",
 						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "varbinary", Size: 30},
 							Raw: "varbinary(30)", Null: true},
-						Default: &schema.Literal{V: t.valueByVersion(map[string]string{"8": "0x546974616E"}, t.quoted("Titan"))},
+						Default: &schema.Literal{V: t.valueByVersion(map[string]string{"mysql8": "0x546974616E"}, t.quoted("Titan"))},
 					},
 					{
 						Name: "tBinary",
 						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "binary", Size: 5},
 							Raw: "binary(5)", Null: true},
-						Default: &schema.Literal{V: t.valueByVersion(map[string]string{"8": "0x546974616E"}, t.quoted("Titan"))},
+						Default: &schema.Literal{V: t.valueByVersion(map[string]string{"mysql8": "0x546974616E"}, t.quoted("Titan"))},
 					},
 					{
 						Name: "tBlob",
@@ -1049,8 +1049,8 @@ create table atlas_types_sanity
 					{
 						Name: "tGeometryCollection",
 						Type: &schema.ColumnType{Type: &schema.SpatialType{T: t.valueByVersion(
-							map[string]string{"8": "geomcollection"}, "geometrycollection")},
-							Raw: t.valueByVersion(map[string]string{"8": "geomcollection"},
+							map[string]string{"mysql8": "geomcollection"}, "geometrycollection")},
+							Raw: t.valueByVersion(map[string]string{"mysql8": "geomcollection"},
 								"geometrycollection"), Null: true},
 					},
 				},
@@ -1068,7 +1068,7 @@ create table atlas_types_sanity
 ) CHARSET = latin1 COLLATE latin1_swedish_ci;
 `
 		myRun(t, func(t *myTest) {
-			if t.version == "56" {
+			if t.version == "mysql56" {
 				return
 			}
 			t.dropTables(n)
@@ -1081,7 +1081,7 @@ create table atlas_types_sanity
 			expected := schema.Table{
 				Name: n,
 				Attrs: func() []schema.Attr {
-					if t.version == "Maria107" {
+					if t.version == "maria107" {
 						return []schema.Attr{
 							&schema.Charset{V: "latin1"},
 							&schema.Collation{V: "latin1_swedish_ci"},
@@ -1098,9 +1098,9 @@ create table atlas_types_sanity
 					func() *schema.Column {
 						c := &schema.Column{Name: "tJSON", Type: &schema.ColumnType{Type: &schema.JSONType{T: "json"}, Raw: "json", Null: true}}
 						switch t.version {
-						case "Maria107":
+						case "maria107":
 							c.Attrs = []schema.Attr{}
-						case "Maria102", "Maria103":
+						case "maria102", "maria103":
 							c.Type.Raw = "longtext"
 							c.Type.Type = &schema.StringType{T: "longtext"}
 							c.Attrs = []schema.Attr{
@@ -1310,8 +1310,8 @@ func (t *myTest) loadTable(name string) *schema.Table {
 	return table
 }
 
-func (t *myTest) mariadb() bool { return strings.HasPrefix(t.version, "Maria") }
-func (t *myTest) tidb() bool    { return strings.HasPrefix(t.version, "TiDB") }
+func (t *myTest) mariadb() bool { return strings.HasPrefix(t.version, "maria") }
+func (t *myTest) tidb() bool    { return strings.HasPrefix(t.version, "tidb") }
 
 // defaultConfig returns the default charset and
 // collation configuration based on the MySQL version.
@@ -1321,13 +1321,13 @@ func (t *myTest) defaultAttrs() []schema.Attr {
 		collation = "latin1_swedish_ci"
 	)
 	switch {
-	case strings.Contains(t.version, "TiDB"):
+	case strings.Contains(t.version, "tidb"):
 		charset = "utf8mb4"
 		collation = "utf8mb4_bin"
-	case t.version == "8":
+	case t.version == "mysql8":
 		charset = "utf8mb4"
 		collation = "utf8mb4_0900_ai_ci"
-	case t.version == "Maria107":
+	case t.version == "maria107":
 		charset = "utf8mb4"
 		collation = "utf8mb4_general_ci"
 	}

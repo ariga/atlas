@@ -667,12 +667,12 @@ create table atlas_types_sanity
 				{
 					Name:    "tBit",
 					Type:    &schema.ColumnType{Type: &postgres.BitType{T: "bit", Len: 10}, Raw: "bit", Null: true},
-					Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"10": "B'100'::\"bit\""}, "'100'::\"bit\"")},
+					Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"postgres10": "B'100'::\"bit\""}, "'100'::\"bit\"")},
 				},
 				{
 					Name:    "tBitVar",
 					Type:    &schema.ColumnType{Type: &postgres.BitType{T: "bit varying", Len: 10}, Raw: "bit varying", Null: true},
-					Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"10": "B'100'::\"bit\""}, "'100'::\"bit\"")},
+					Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"postgres10": "B'100'::\"bit\""}, "'100'::\"bit\"")},
 				},
 				{
 					Name:    "tBoolean",

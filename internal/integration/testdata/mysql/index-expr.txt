@@ -1,5 +1,5 @@
 # Run this test only on MySQL 8 as it is not supported by other versions.
-only 8
+only mysql8
 
 apply 1.hcl
 cmpshow users 1.sql

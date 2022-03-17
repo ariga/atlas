@@ -1,7 +1,7 @@
 # Each test runs on a clean database.
 
 # Run this test only on MySQL 8 as it is not supported by other versions.
-only 8
+only mysql8
 
 # Apply schema "1.hcl" on fresh database.
 apply 1.hcl

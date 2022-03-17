@@ -49,7 +49,7 @@ var (
 		{
 			Version: "mysql56",
 			Image:   "mysql:5.6.35",
-			Regex:   "MySQL.*/56",
+			Regex:   "MySQL.*/mysql56",
 			Env:     mysqlEnv,
 			Ports:   []string{"3306:3306"},
 			Options: mysqlOptions,
@@ -57,7 +57,7 @@ var (
 		{
 			Version: "mysql57",
 			Image:   "mysql:5.7.26",
-			Regex:   "MySQL.*/57",
+			Regex:   "MySQL.*/mysql57",
 			Env:     mysqlEnv,
 			Ports:   []string{"3307:3306"},
 			Options: mysqlOptions,
@@ -65,7 +65,7 @@ var (
 		{
 			Version: "mysql8",
 			Image:   "mysql:8",
-			Regex:   "MySQL.*/8",
+			Regex:   "MySQL.*/mysql8",
 			Env:     mysqlEnv,
 			Ports:   []string{"3308:3306"},
 			Options: mysqlOptions,
@@ -73,7 +73,7 @@ var (
 		{
 			Version: "maria107",
 			Image:   "mariadb:10.7",
-			Regex:   "MySQL.*/Maria107",
+			Regex:   "MySQL.*/maria107",
 			Env:     mysqlEnv,
 			Ports:   []string{"4306:3306"},
 			Options: mysqlOptions,
@@ -81,7 +81,7 @@ var (
 		{
 			Version: "maria102",
 			Image:   "mariadb:10.2.32",
-			Regex:   "MySQL.*/Maria102",
+			Regex:   "MySQL.*/maria102",
 			Env:     mysqlEnv,
 			Ports:   []string{"4307:3306"},
 			Options: mysqlOptions,
@@ -89,7 +89,7 @@ var (
 		{
 			Version: "maria103",
 			Image:   "mariadb:10.3.13",
-			Regex:   "MySQL.*/Maria103",
+			Regex:   "MySQL.*/maria103",
 			Env:     mysqlEnv,
 			Ports:   []string{"4308:3306"},
 			Options: mysqlOptions,
@@ -97,7 +97,7 @@ var (
 		{
 			Version: "postgres10",
 			Image:   "postgres:10",
-			Regex:   "Postgres.*/10",
+			Regex:   "Postgres.*/postgres10",
 			Env:     pgEnv,
 			Ports:   []string{"5430:5432"},
 			Options: pgOptions,
@@ -105,7 +105,7 @@ var (
 		{
 			Version: "postgres11",
 			Image:   "postgres:11",
-			Regex:   "Postgres.*/11",
+			Regex:   "Postgres.*/postgres11",
 			Env:     pgEnv,
 			Ports:   []string{"5431:5432"},
 			Options: pgOptions,
@@ -113,7 +113,7 @@ var (
 		{
 			Version: "postgres12",
 			Image:   "postgres:12.3",
-			Regex:   "Postgres.*/12",
+			Regex:   "Postgres.*/postgres12",
 			Env:     pgEnv,
 			Ports:   []string{"5432:5432"},
 			Options: pgOptions,
@@ -121,7 +121,7 @@ var (
 		{
 			Version: "postgres13",
 			Image:   "postgres:13.1",
-			Regex:   "Postgres.*/13",
+			Regex:   "Postgres.*/postgres13",
 			Env:     pgEnv,
 			Ports:   []string{"5433:5432"},
 			Options: pgOptions,
@@ -129,7 +129,7 @@ var (
 		{
 			Version: "postgres14",
 			Image:   "postgres:14",
-			Regex:   "Postgres.*/14",
+			Regex:   "Postgres.*/postgres14",
 			Env:     pgEnv,
 			Ports:   []string{"5434:5432"},
 			Options: pgOptions,
@@ -137,7 +137,7 @@ var (
 		{
 			Version: "tidb5",
 			Image:   "pingcap/tidb:v5.4.0",
-			Regex:   "TiDB.*/5",
+			Regex:   "TiDB.*/tidb5",
 			Ports:   []string{"4309:4000"},
 		},
 		{
