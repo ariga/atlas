@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"strings"
 	"testing"
 
@@ -30,9 +31,18 @@ type pgTest struct {
 	port    int
 }
 
-var pgTests struct {
-	drivers map[string]*pgTest
-}
+var (
+	pgTests struct {
+		drivers map[string]*pgTest
+	}
+	pgPorts = map[string]int{
+		"postgres10": 5430,
+		"postgres11": 5431,
+		"postgres12": 5432,
+		"postgres13": 5433,
+		"postgres14": 5434,
+	}
+)
 
 func pgRun(t *testing.T, fn func(*pgTest)) {
 	for version, tt := range pgTests.drivers {
@@ -46,7 +56,16 @@ func pgRun(t *testing.T, fn func(*pgTest)) {
 func pgInit() []io.Closer {
 	var cs []io.Closer
 	pgTests.drivers = make(map[string]*pgTest)
-	for version, port := range map[string]int{"10": 5430, "11": 5431, "12": 5432, "13": 5433, "14": 5434} {
+	// If the env var GO_TEST_ONLY_VERSION set only run test for that service.
+	if v, ok := os.LookupEnv("GO_TEST_ONLY_VERSION"); ok {
+		p, ok := pgPorts[v]
+		if ok {
+			pgPorts = map[string]int{v: p}
+		} else {
+			pgPorts = make(map[string]int)
+		}
+	}
+	for version, port := range pgPorts {
 		db, err := sql.Open("postgres", fmt.Sprintf("host=localhost port=%d user=postgres dbname=test password=pass sslmode=disable", port))
 		if err != nil {
 			log.Fatalln(err)

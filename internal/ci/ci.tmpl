@@ -72,10 +72,10 @@ jobs:
         working-directory: cmd
 
   {{ range $ }}
-  integration_{{ .Name }}:
+  integration_{{ .Version }}:
     runs-on: ubuntu-latest
     {{ if .Image }}services:
-      {{ .Name }}:
+      {{ .Version }}:
         image: {{ .Image }}
         {{ with .Env }}env:{{ range . }}
           {{ . }}{{ end }}
@@ -97,7 +97,7 @@ jobs:
           key: {{ "${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}" }}
           restore-keys: |
             {{ "${{ runner.os }}-go-" }}
-      - name: Run integration tests for {{ .Name }}
+      - name: Run integration tests for {{ .Version }}
         working-directory: internal/integration
-        run: go test -race -count=2 -v -run="{{ .Regex }}" ./...
+        run: GO_TEST_ONLY_VERSION={{ .Version }} go test -race -count=2 -v -run="{{ .Regex }}" ./...
   {{ end }}

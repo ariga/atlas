@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"strings"
 	"testing"
 
@@ -29,9 +30,19 @@ type myTest struct {
 	port    int
 }
 
-var myTests struct {
-	drivers map[string]*myTest
-}
+var (
+	myTests struct {
+		drivers map[string]*myTest
+	}
+	myPorts = map[string]int{
+		"mysql56":  3306,
+		"mysql57":  3307,
+		"mysql8":   3308,
+		"maria107": 4306,
+		"maria102": 4307,
+		"maria103": 4308,
+	}
+)
 
 func myRun(t *testing.T, fn func(*myTest)) {
 	for version, tt := range myTests.drivers {
@@ -45,7 +56,16 @@ func myRun(t *testing.T, fn func(*myTest)) {
 func myInit() []io.Closer {
 	var cs []io.Closer
 	myTests.drivers = make(map[string]*myTest)
-	for version, port := range map[string]int{"56": 3306, "57": 3307, "8": 3308, "Maria107": 4306, "Maria102": 4307, "Maria103": 4308} {
+	// If the env var GO_TEST_ONLY_VERSION set only run test for that service.
+	if v, ok := os.LookupEnv("GO_TEST_ONLY_VERSION"); ok {
+		p, ok := myPorts[v]
+		if ok {
+			myPorts = map[string]int{v: p}
+		} else {
+			myPorts = make(map[string]int)
+		}
+	}
+	for version, port := range myPorts {
 		db, err := sql.Open("mysql", fmt.Sprintf("root:pass@tcp(localhost:%d)/test?parseTime=True", port))
 		if err != nil {
 			log.Fatalln(err)

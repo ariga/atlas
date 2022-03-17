@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"testing"
 
 	"ariga.io/atlas/sql/mysql"
@@ -25,23 +26,40 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var tidbTests struct {
-	drivers map[string]*myTest
-}
+var (
+	tidbTests struct {
+		drivers map[string]*myTest
+	}
+	tidbPorts = map[string]int{
+		"tidb5": 4309,
+	}
+)
 
 func tidbInit() []io.Closer {
+	var cs []io.Closer
 	tidbTests.drivers = make(map[string]*myTest)
-	port := 4309
-	db, err := sql.Open("mysql", fmt.Sprintf("root@tcp(localhost:%d)/test?parseTime=True", port))
-	if err != nil {
-		log.Fatalln(err)
+	// If the env var GO_TEST_ONLY_VERSION set only run test for that service.
+	if v, ok := os.LookupEnv("GO_TEST_ONLY_VERSION"); ok {
+		p, ok := tidbPorts[v]
+		if ok {
+			tidbPorts = map[string]int{v: p}
+		} else {
+			tidbPorts = make(map[string]int)
+		}
 	}
-	drv, err := mysql.Open(db)
-	if err != nil {
-		log.Fatalln(err)
+	for version, port := range tidbPorts {
+		db, err := sql.Open("mysql", fmt.Sprintf("root@tcp(localhost:%d)/test?parseTime=True", port))
+		if err != nil {
+			log.Fatalln(err)
+		}
+		cs = append(cs, db)
+		drv, err := mysql.Open(db)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		tidbTests.drivers[version] = &myTest{db: db, drv: drv, version: version, port: port}
 	}
-	tidbTests.drivers["5"] = &myTest{db: db, drv: drv, version: "5", port: port}
-	return []io.Closer{db}
+	return cs
 }
 
 func tidbRun(t *testing.T, fn func(*myTest)) {

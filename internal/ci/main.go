@@ -12,7 +12,7 @@ import (
 
 // Job defines an integration job to run.
 type Job struct {
-	Name    string   // name of job
+	Version string   // version to test (used as GO_TEST_ONLY_VERSION env)
 	Image   string   // name of service
 	Regex   string   // run regex
 	Env     []string // env of service
@@ -47,7 +47,7 @@ var (
 	}
 	jobs = []Job{
 		{
-			Name:    "mysql56",
+			Version: "mysql56",
 			Image:   "mysql:5.6.35",
 			Regex:   "MySQL.*/56",
 			Env:     mysqlEnv,
@@ -55,7 +55,7 @@ var (
 			Options: mysqlOptions,
 		},
 		{
-			Name:    "mysql57",
+			Version: "mysql57",
 			Image:   "mysql:5.7.26",
 			Regex:   "MySQL.*/57",
 			Env:     mysqlEnv,
@@ -63,7 +63,7 @@ var (
 			Options: mysqlOptions,
 		},
 		{
-			Name:    "mysql8",
+			Version: "mysql8",
 			Image:   "mysql:8",
 			Regex:   "MySQL.*/8",
 			Env:     mysqlEnv,
@@ -71,7 +71,7 @@ var (
 			Options: mysqlOptions,
 		},
 		{
-			Name:    "maria107",
+			Version: "maria107",
 			Image:   "mariadb:10.7",
 			Regex:   "MySQL.*/Maria107",
 			Env:     mysqlEnv,
@@ -79,7 +79,7 @@ var (
 			Options: mysqlOptions,
 		},
 		{
-			Name:    "maria102",
+			Version: "maria102",
 			Image:   "mariadb:10.2.32",
 			Regex:   "MySQL.*/Maria102",
 			Env:     mysqlEnv,
@@ -87,7 +87,7 @@ var (
 			Options: mysqlOptions,
 		},
 		{
-			Name:    "maria103",
+			Version: "maria103",
 			Image:   "mariadb:10.3.13",
 			Regex:   "MySQL.*/Maria103",
 			Env:     mysqlEnv,
@@ -95,7 +95,7 @@ var (
 			Options: mysqlOptions,
 		},
 		{
-			Name:    "postgres10",
+			Version: "postgres10",
 			Image:   "postgres:10",
 			Regex:   "Postgres.*/10",
 			Env:     pgEnv,
@@ -103,7 +103,7 @@ var (
 			Options: pgOptions,
 		},
 		{
-			Name:    "postgres11",
+			Version: "postgres11",
 			Image:   "postgres:11",
 			Regex:   "Postgres.*/11",
 			Env:     pgEnv,
@@ -111,7 +111,7 @@ var (
 			Options: pgOptions,
 		},
 		{
-			Name:    "postgres12",
+			Version: "postgres12",
 			Image:   "postgres:12.3",
 			Regex:   "Postgres.*/12",
 			Env:     pgEnv,
@@ -119,7 +119,7 @@ var (
 			Options: pgOptions,
 		},
 		{
-			Name:    "postgres13",
+			Version: "postgres13",
 			Image:   "postgres:13.1",
 			Regex:   "Postgres.*/13",
 			Env:     pgEnv,
@@ -127,7 +127,7 @@ var (
 			Options: pgOptions,
 		},
 		{
-			Name:    "postgres14",
+			Version: "postgres14",
 			Image:   "postgres:14",
 			Regex:   "Postgres.*/14",
 			Env:     pgEnv,
@@ -135,14 +135,14 @@ var (
 			Options: pgOptions,
 		},
 		{
-			Name:  "tidb5",
-			Image: "pingcap/tidb:v5.4.0",
-			Regex: "TiDB.*/5",
-			Ports: []string{"4309:4000"},
+			Version: "tidb5",
+			Image:   "pingcap/tidb:v5.4.0",
+			Regex:   "TiDB.*/5",
+			Ports:   []string{"4309:4000"},
 		},
 		{
-			Name:  "sqlite",
-			Regex: "SQLite.*",
+			Version: "sqlite",
+			Regex:   "SQLite.*",
 		},
 	}
 )
