@@ -37,6 +37,7 @@ func mysqlProvider(dsn string) (*Driver, error) {
 		Driver:      drv,
 		Marshaler:   mysql.MarshalHCL,
 		Unmarshaler: mysql.UnmarshalHCL,
+		Closer:      db,
 	}, nil
 }
 
@@ -54,8 +55,10 @@ func postgresProvider(dsn string) (*Driver, error) {
 		Driver:      drv,
 		Marshaler:   postgres.MarshalHCL,
 		Unmarshaler: postgres.UnmarshalHCL,
+		Closer:      db,
 	}, nil
 }
+
 func sqliteProvider(dsn string) (*Driver, error) {
 	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
@@ -69,5 +72,6 @@ func sqliteProvider(dsn string) (*Driver, error) {
 		Driver:      drv,
 		Marshaler:   sqlite.MarshalHCL,
 		Unmarshaler: sqlite.UnmarshalHCL,
+		Closer:      db,
 	}, nil
 }
