@@ -12,7 +12,7 @@ import (
 
 // Job defines an integration job to run.
 type Job struct {
-	Version string   // version to test (used as GO_TEST_ONLY_VERSION env)
+	Version string   // version to test (passed to go test as flag which database dialect/version)
 	Image   string   // name of service
 	Regex   string   // run regex
 	Env     []string // env of service

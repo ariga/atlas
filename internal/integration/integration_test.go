@@ -24,13 +24,13 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	var service string
-	flag.StringVar(&service, "service", "", "[mysql56, postgres10, tidb5, ...] what version to test")
+	var dialect string
+	flag.StringVar(&dialect, "dialect", "", "[mysql56, postgres10, tidb5, ...] what dialect (version) to test")
 	flag.Parse()
 	var dbs []io.Closer
-	dbs = append(dbs, myInit(service)...)
-	dbs = append(dbs, pgInit(service)...)
-	dbs = append(dbs, tidbInit(service)...)
+	dbs = append(dbs, myInit(dialect)...)
+	dbs = append(dbs, pgInit(dialect)...)
+	dbs = append(dbs, tidbInit(dialect)...)
 	defer func() {
 		for _, db := range dbs {
 			db.Close()

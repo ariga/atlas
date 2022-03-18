@@ -30,18 +30,19 @@ type pgTest struct {
 	port    int
 }
 
-var (
-	pgTests struct {
-		drivers map[string]*pgTest
-	}
-	pgPorts = map[string]int{
+var pgTests = struct {
+	drivers map[string]*pgTest
+	ports   map[string]int
+}{
+	drivers: make(map[string]*pgTest),
+	ports: map[string]int{
 		"postgres10": 5430,
 		"postgres11": 5431,
 		"postgres12": 5432,
 		"postgres13": 5433,
 		"postgres14": 5434,
-	}
-)
+	},
+}
 
 func pgRun(t *testing.T, fn func(*pgTest)) {
 	for version, tt := range pgTests.drivers {
@@ -52,18 +53,17 @@ func pgRun(t *testing.T, fn func(*pgTest)) {
 	}
 }
 
-func pgInit(service string) []io.Closer {
+func pgInit(dialect string) []io.Closer {
 	var cs []io.Closer
-	pgTests.drivers = make(map[string]*pgTest)
-	if service != "" {
-		p, ok := pgPorts[service]
+	if dialect != "" {
+		p, ok := pgTests.ports[dialect]
 		if ok {
-			pgPorts = map[string]int{service: p}
+			pgTests.ports = map[string]int{dialect: p}
 		} else {
-			pgPorts = make(map[string]int)
+			pgTests.ports = make(map[string]int)
 		}
 	}
-	for version, port := range pgPorts {
+	for version, port := range pgTests.ports {
 		db, err := sql.Open("postgres", fmt.Sprintf("host=localhost port=%d user=postgres dbname=test password=pass sslmode=disable", port))
 		if err != nil {
 			log.Fatalln(err)

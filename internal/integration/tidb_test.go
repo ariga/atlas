@@ -25,27 +25,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	tidbTests struct {
-		drivers map[string]*myTest
-	}
-	tidbPorts = map[string]int{
-		"tidb5": 4309,
-	}
-)
+var tidbTests = struct {
+	drivers map[string]*myTest
+	ports   map[string]int
+}{
+	drivers: make(map[string]*myTest),
+	ports:   map[string]int{"tidb5": 4309},
+}
 
-func tidbInit(service string) []io.Closer {
+func tidbInit(dialect string) []io.Closer {
 	var cs []io.Closer
-	tidbTests.drivers = make(map[string]*myTest)
-	if service != "" {
-		p, ok := tidbPorts[service]
+	if dialect != "" {
+		p, ok := tidbTests.ports[dialect]
 		if ok {
-			tidbPorts = map[string]int{service: p}
+			tidbTests.ports = map[string]int{dialect: p}
 		} else {
-			tidbPorts = make(map[string]int)
+			tidbTests.ports = make(map[string]int)
 		}
 	}
-	for version, port := range tidbPorts {
+	for version, port := range tidbTests.ports {
 		db, err := sql.Open("mysql", fmt.Sprintf("root@tcp(localhost:%d)/test?parseTime=True", port))
 		if err != nil {
 			log.Fatalln(err)

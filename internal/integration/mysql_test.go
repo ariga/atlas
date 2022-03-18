@@ -29,19 +29,19 @@ type myTest struct {
 	port    int
 }
 
-var (
-	myTests struct {
-		drivers map[string]*myTest
-	}
-	myPorts = map[string]int{
-		"mysql56":  3306,
+var myTests = struct {
+	drivers map[string]*myTest
+	ports   map[string]int
+}{
+	drivers: make(map[string]*myTest),
+	ports: map[string]int{"mysql56": 3306,
 		"mysql57":  3307,
 		"mysql8":   3308,
 		"maria107": 4306,
 		"maria102": 4307,
 		"maria103": 4308,
-	}
-)
+	},
+}
 
 func myRun(t *testing.T, fn func(*myTest)) {
 	for version, tt := range myTests.drivers {
@@ -52,18 +52,17 @@ func myRun(t *testing.T, fn func(*myTest)) {
 	}
 }
 
-func myInit(service string) []io.Closer {
+func myInit(dialect string) []io.Closer {
 	var cs []io.Closer
-	myTests.drivers = make(map[string]*myTest)
-	if service != "" {
-		p, ok := myPorts[service]
+	if dialect != "" {
+		p, ok := myTests.ports[dialect]
 		if ok {
-			myPorts = map[string]int{service: p}
+			myTests.ports = map[string]int{dialect: p}
 		} else {
-			myPorts = make(map[string]int)
+			myTests.ports = make(map[string]int)
 		}
 	}
-	for version, port := range myPorts {
+	for version, port := range myTests.ports {
 		db, err := sql.Open("mysql", fmt.Sprintf("root:pass@tcp(localhost:%d)/test?parseTime=True", port))
 		if err != nil {
 			log.Fatalln(err)
