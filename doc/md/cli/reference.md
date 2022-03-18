@@ -95,6 +95,26 @@ the migration directory state to the desired schema. The desired state can be an
 ```
 
 
+### atlas migrate hash
+
+Hash creates an integrity hash file for the migration directories.
+
+#### Usage
+```
+atlas migrate hash
+```
+
+#### Details
+'atlas migrate hash' computes the integrity hash sum of the migration directory andstores it in the atlas.sum file.
+This command should be used whenever a manual change in the migration directory was made.
+
+#### Example
+
+```
+  atlas migrate validate
+  atlas migrate validate --dir /path/to/migration/directory
+```
+
 ### atlas migrate validate
 
 Validates the migration directories checksum.

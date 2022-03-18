@@ -87,7 +87,7 @@ func TestPlanner_Plan(t *testing.T) {
 	require.Equal(t, drv.plan, plan)
 }
 
-func TestHash(t *testing.T) {
+func TestHashSum(t *testing.T) {
 	p := t.TempDir()
 	d, err := migrate.NewLocalDir(p)
 	require.NoError(t, err)

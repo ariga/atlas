@@ -6,6 +6,8 @@ package action
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"ariga.io/atlas/sql/migrate"
 	"github.com/stretchr/testify/require"
 )
 
@@ -60,11 +63,53 @@ func TestMigrate_ValidateError(t *testing.T) {
 		runCmd(RootCmd, "migrate", "validate", "--dir", "file://migrations")
 		return
 	}
-	require.NoError(t, os.WriteFile("migrations/new.sql", []byte("contents"), 0600))
-	defer os.Remove("migrations/new.sql")
+	f := filepath.Join("migrations", "new.sql")
+	require.NoError(t, os.WriteFile(f, []byte("contents"), 0600))
+	defer os.Remove(f)
 	cmd := exec.Command(os.Args[0], "-test.run=TestMigrate_ValidateError") //nolint:gosec
 	cmd.Env = append(os.Environ(), "DO_VALIDATE=1")
 	err := cmd.Run()
+	if err, ok := err.(*exec.ExitError); ok && !err.Success() {
+		return
+	}
+	t.Fatalf("process ran with err %v, want exist status 1", err)
+}
+
+func TestMigrate_Hash(t *testing.T) {
+	s, err := runCmd(RootCmd, "migrate", "hash", "--dir", "file://migrations")
+	require.Zero(t, s)
+	require.NoError(t, err)
+
+	p := t.TempDir()
+	err = copyFile(filepath.Join("migrations", "20220318104614_initial.sql"), filepath.Join(p, "20220318104614_initial.sql"))
+	require.NoError(t, err)
+
+	s, err = runCmd(RootCmd, "migrate", "hash", "--dir", "file://"+p, "--force")
+	require.Zero(t, s)
+	require.NoError(t, err)
+	require.FileExists(t, filepath.Join(p, "atlas.sum"))
+	d, err := ioutil.ReadFile(filepath.Join(p, "atlas.sum"))
+	require.NoError(t, err)
+	dir, err := migrate.NewLocalDir(p)
+	require.NoError(t, err)
+	sum, err := migrate.HashSum(dir)
+	require.NoError(t, err)
+	b, err := sum.MarshalText()
+	require.NoError(t, err)
+	require.Equal(t, d, b)
+}
+
+func TestMigrate_HashError(t *testing.T) {
+	if os.Getenv("DO_HASH") == "1" {
+		runCmd(RootCmd, "migrate", "hash", "--dir", "file://"+os.Getenv("MIGRATION_DIR"))
+		return
+	}
+	p := t.TempDir()
+	err := copyFile(filepath.Join("migrations", "20220318104614_initial.sql"), filepath.Join(p, "20220318104614_initial.sql"))
+	require.NoError(t, err)
+	cmd := exec.Command(os.Args[0], "-test.run=TestMigrate_HashError") //nolint:gosec
+	cmd.Env = append(os.Environ(), "DO_HASH=1", "MIGRATION_DIR="+p)
+	err = cmd.Run()
 	if err, ok := err.(*exec.ExitError); ok && !err.Success() {
 		return
 	}
@@ -155,4 +200,19 @@ func hclURL(t *testing.T) string {
 	p := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(p, "atlas.hcl"), []byte(hcl), 0600))
 	return "file://" + filepath.Join(p, "atlas.hcl")
+}
+
+func copyFile(src, dst string) error {
+	sf, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sf.Close()
+	df, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer df.Close()
+	_, err = io.Copy(df, sf)
+	return err
 }
