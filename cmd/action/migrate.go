@@ -151,11 +151,6 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	// TODO(masseelch): clean up dev after reading the state from migration dir.
 }
 
-// CmdMigrateValidateRun is the command executed when running the CLI with 'migrate validate' args.
-func CmdMigrateValidateRun(command *cobra.Command, args []string) error {
-	return nil
-}
-
 // dir returns a migrate.Dir to use as migration directory. For now only local directories are supported.
 func dir() (migrate.Dir, error) {
 	parts := strings.SplitN(MigrateFlags.DirURL, "://", 2)
