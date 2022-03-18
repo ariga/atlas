@@ -54,7 +54,7 @@ var (
 					fmt.Fprintf(
 						os.Stderr,
 						"Error: %s\n\nYou have a checksum error in your migration directory.\n"+
-							"This usually happens if you manually create or edit a migration file.\n"+
+							"This happens if you manually create or edit a migration file.\n"+
 							"Please check your migration files and run\n\n"+
 							"'atlas migrate hash --force'\n\nto re-hash the contents and resolve the error.\n\n",
 						err,
