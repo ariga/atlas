@@ -60,9 +60,9 @@ func TestMigrate_ValidateError(t *testing.T) {
 		runCmd(RootCmd, "migrate", "validate", "--dir", "file://migrations")
 		return
 	}
-	require.NoError(t, os.WriteFile("migrations/new.sql", []byte("contents"), 0644))
+	require.NoError(t, os.WriteFile("migrations/new.sql", []byte("contents"), 0600))
 	defer os.Remove("migrations/new.sql")
-	cmd := exec.Command(os.Args[0], "-test.run=TestMigrate_ValidateError")
+	cmd := exec.Command(os.Args[0], "-test.run=TestMigrate_ValidateError") //nolint:gosec
 	cmd.Env = append(os.Environ(), "DO_VALIDATE=1")
 	err := cmd.Run()
 	if err, ok := err.(*exec.ExitError); ok && !err.Success() {
