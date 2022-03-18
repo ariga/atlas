@@ -11,6 +11,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"sync/atomic"
 	"testing"
 
 	"ariga.io/atlas/cmd/action"
@@ -178,9 +179,9 @@ func TestMux_OpenAtlas(t *testing.T) {
 	})
 }
 
-func mockServer(t *testing.T) (*int, net.Listener) {
+func mockServer(t *testing.T) (*int64, net.Listener) {
 	var (
-		calls  int
+		calls  int64
 		l, err = net.Listen("tcp", "localhost:")
 	)
 	require.NoError(t, err)
@@ -190,7 +191,7 @@ func mockServer(t *testing.T) (*int, net.Listener) {
 			if err != nil {
 				return
 			}
-			calls++
+			atomic.AddInt64(&calls, 1)
 			require.NoError(t, conn.Close())
 		}
 	}()
