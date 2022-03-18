@@ -82,7 +82,7 @@ CREATE TABLE `users` (
   `c` tinyint(1) NOT NULL
 )
 
--- 8/3.sql --
+-- mysql8/3.sql --
 CREATE TABLE `users` (
   `a` tinyint(1) NOT NULL,
   `b` tinyint NOT NULL,

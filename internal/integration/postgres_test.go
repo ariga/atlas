@@ -8,8 +8,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
+	"log"
 	"strings"
-	"sync"
 	"testing"
 
 	"ariga.io/atlas/sql/mysql"
@@ -29,28 +30,52 @@ type pgTest struct {
 	port    int
 }
 
-var pgTests struct {
-	sync.Once
+var pgTests = struct {
 	drivers map[string]*pgTest
+	ports   map[string]int
+}{
+	drivers: make(map[string]*pgTest),
+	ports: map[string]int{
+		"postgres10": 5430,
+		"postgres11": 5431,
+		"postgres12": 5432,
+		"postgres13": 5433,
+		"postgres14": 5434,
+	},
 }
 
 func pgRun(t *testing.T, fn func(*pgTest)) {
-	pgTests.Do(func() {
-		pgTests.drivers = make(map[string]*pgTest)
-		for version, port := range map[string]int{"10": 5430, "11": 5431, "12": 5432, "13": 5433, "14": 5434} {
-			db, err := sql.Open("postgres", fmt.Sprintf("host=localhost port=%d user=postgres dbname=test password=pass sslmode=disable", port))
-			require.NoError(t, err)
-			drv, err := postgres.Open(db)
-			require.NoError(t, err)
-			pgTests.drivers[version] = &pgTest{db: db, drv: drv, version: version, port: port}
-		}
-	})
 	for version, tt := range pgTests.drivers {
 		t.Run(version, func(t *testing.T) {
 			tt := &pgTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port}
 			fn(tt)
 		})
 	}
+}
+
+func pgInit(dialect string) []io.Closer {
+	var cs []io.Closer
+	if dialect != "" {
+		p, ok := pgTests.ports[dialect]
+		if ok {
+			pgTests.ports = map[string]int{dialect: p}
+		} else {
+			pgTests.ports = make(map[string]int)
+		}
+	}
+	for version, port := range pgTests.ports {
+		db, err := sql.Open("postgres", fmt.Sprintf("host=localhost port=%d user=postgres dbname=test password=pass sslmode=disable", port))
+		if err != nil {
+			log.Fatalln(err)
+		}
+		cs = append(cs, db)
+		drv, err := postgres.Open(db)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		pgTests.drivers[version] = &pgTest{db: db, drv: drv, version: version, port: port}
+	}
+	return cs
 }
 
 func TestPostgres_AddDropTable(t *testing.T) {
@@ -484,6 +509,11 @@ func TestPostgres_CLI(t *testing.T) {
 			testCLISchemaDiff(t, t.dsn())
 		})
 	})
+	t.Run("SchemaApplyAutoApprove", func(t *testing.T) {
+		pgRun(t, func(t *pgTest) {
+			testCLISchemaApplyAutoApprove(t, h, t.dsn())
+		})
+	})
 }
 
 func TestPostgres_CLI_MultiSchema(t *testing.T) {
@@ -635,12 +665,12 @@ create table atlas_types_sanity
 				{
 					Name:    "tBit",
 					Type:    &schema.ColumnType{Type: &postgres.BitType{T: "bit", Len: 10}, Raw: "bit", Null: true},
-					Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"10": "B'100'::\"bit\""}, "'100'::\"bit\"")},
+					Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"postgres10": "B'100'::\"bit\""}, "'100'::\"bit\"")},
 				},
 				{
 					Name:    "tBitVar",
 					Type:    &schema.ColumnType{Type: &postgres.BitType{T: "bit varying", Len: 10}, Raw: "bit varying", Null: true},
-					Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"10": "B'100'::\"bit\""}, "'100'::\"bit\"")},
+					Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"postgres10": "B'100'::\"bit\""}, "'100'::\"bit\"")},
 				},
 				{
 					Name:    "tBoolean",

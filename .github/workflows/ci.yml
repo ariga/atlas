@@ -1,10 +1,13 @@
+# # # # # # # # # # # # # # # #
+# CODE GENERATED - DO NOT EDIT
+# # # # # # # # # # # # # # # #
 name: Continuous Integration
 on:
   pull_request:
   push:
     branches:
       - master
-      
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -21,7 +24,7 @@ jobs:
       - uses: actions/checkout@v2.4.0
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.17'
+          go-version: '1.18'
       - uses: actions/cache@v2.1.5
         with:
           path: ~/go/pkg/mod
@@ -31,7 +34,7 @@ jobs:
       - name: run "go generate ./..."
         run: go generate ./...
       - name: run "go generate internal/typedoc"
-        working-directory: internal/typedoc 
+        working-directory: internal/typedoc
         run: go generate ./...
       - name: Verify generated files are checked in properly
         run: |
@@ -46,7 +49,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: ['1.17', '1.16']
+        go: [ '1.17', '1.18' ]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
@@ -68,7 +71,8 @@ jobs:
         run: go test -race ./...
         working-directory: cmd
 
-  integration:
+  
+  integration-mysql56:
     runs-on: ubuntu-latest
     services:
       mysql56:
@@ -84,6 +88,24 @@ jobs:
           --health-start-period 10s
           --health-timeout 5s
           --health-retries 10
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+      - uses: actions/cache@v2.1.6
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Run integration tests for mysql56
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="MySQL.*/mysql56" -dialect=mysql56 ./...
+  
+  integration-mysql57:
+    runs-on: ubuntu-latest
+    services:
       mysql57:
         image: mysql:5.7.26
         env:
@@ -97,6 +119,24 @@ jobs:
           --health-start-period 10s
           --health-timeout 5s
           --health-retries 10
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+      - uses: actions/cache@v2.1.6
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Run integration tests for mysql57
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="MySQL.*/mysql57" -dialect=mysql57 ./...
+  
+  integration-mysql8:
+    runs-on: ubuntu-latest
+    services:
       mysql8:
         image: mysql:8
         env:
@@ -110,8 +150,26 @@ jobs:
           --health-start-period 10s
           --health-timeout 5s
           --health-retries 10
-      maria:
-        image: mariadb
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+      - uses: actions/cache@v2.1.6
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Run integration tests for mysql8
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="MySQL.*/mysql8" -dialect=mysql8 ./...
+  
+  integration-maria107:
+    runs-on: ubuntu-latest
+    services:
+      maria107:
+        image: mariadb:10.7
         env:
           MYSQL_DATABASE: test
           MYSQL_ROOT_PASSWORD: pass
@@ -123,6 +181,24 @@ jobs:
           --health-start-period 10s
           --health-timeout 5s
           --health-retries 10
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+      - uses: actions/cache@v2.1.6
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Run integration tests for maria107
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="MySQL.*/maria107" -dialect=maria107 ./...
+  
+  integration-maria102:
+    runs-on: ubuntu-latest
+    services:
       maria102:
         image: mariadb:10.2.32
         env:
@@ -136,6 +212,24 @@ jobs:
           --health-start-period 10s
           --health-timeout 5s
           --health-retries 10
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+      - uses: actions/cache@v2.1.6
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Run integration tests for maria102
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="MySQL.*/maria102" -dialect=maria102 ./...
+  
+  integration-maria103:
+    runs-on: ubuntu-latest
+    services:
       maria103:
         image: mariadb:10.3.13
         env:
@@ -149,6 +243,24 @@ jobs:
           --health-start-period 10s
           --health-timeout 5s
           --health-retries 10
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+      - uses: actions/cache@v2.1.6
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Run integration tests for maria103
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="MySQL.*/maria103" -dialect=maria103 ./...
+  
+  integration-postgres10:
+    runs-on: ubuntu-latest
+    services:
       postgres10:
         image: postgres:10
         env:
@@ -161,6 +273,24 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+      - uses: actions/cache@v2.1.6
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Run integration tests for postgres10
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="Postgres.*/postgres10" -dialect=postgres10 ./...
+  
+  integration-postgres11:
+    runs-on: ubuntu-latest
+    services:
       postgres11:
         image: postgres:11
         env:
@@ -173,6 +303,24 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+      - uses: actions/cache@v2.1.6
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Run integration tests for postgres11
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="Postgres.*/postgres11" -dialect=postgres11 ./...
+  
+  integration-postgres12:
+    runs-on: ubuntu-latest
+    services:
       postgres12:
         image: postgres:12.3
         env:
@@ -185,6 +333,24 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+      - uses: actions/cache@v2.1.6
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Run integration tests for postgres12
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="Postgres.*/postgres12" -dialect=postgres12 ./...
+  
+  integration-postgres13:
+    runs-on: ubuntu-latest
+    services:
       postgres13:
         image: postgres:13.1
         env:
@@ -197,6 +363,24 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+      - uses: actions/cache@v2.1.6
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Run integration tests for postgres13
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="Postgres.*/postgres13" -dialect=postgres13 ./...
+  
+  integration-postgres14:
+    runs-on: ubuntu-latest
+    services:
       postgres14:
         image: postgres:14
         env:
@@ -209,21 +393,60 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      tidb5:
-        image: pingcap/tidb:v5.4.0
-        ports:
-          - 4309:4000
     steps:
       - uses: actions/checkout@v2.3.4
       - uses: actions/setup-go@v2
         with:
-          go-version: 1.17
+          go-version: 1.18
       - uses: actions/cache@v2.1.6
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-      - name: Run integration tests
+      - name: Run integration tests for postgres14
         working-directory: internal/integration
-        run: go test -race -count=2 -timeout=15m ./...
+        run: go test -race -count=2 -v -run="Postgres.*/postgres14" -dialect=postgres14 ./...
+  
+  integration-tidb5:
+    runs-on: ubuntu-latest
+    services:
+      tidb5:
+        image: pingcap/tidb:v5.4.0
+        
+        ports:
+          - 4309:4000
+        
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+      - uses: actions/cache@v2.1.6
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Run integration tests for tidb5
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="TiDB.*/tidb5" -dialect=tidb5 ./...
+  
+  integration-sqlite:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+      - uses: actions/cache@v2.1.6
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Run integration tests for sqlite
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="SQLite.*" -dialect=sqlite ./...
+  

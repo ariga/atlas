@@ -30,6 +30,7 @@ type liteTest struct {
 }
 
 func liteRun(t *testing.T, fn func(test *liteTest)) {
+	t.Parallel()
 	f := path.Join(t.TempDir(), strings.ReplaceAll(t.Name(), "/", "_"))
 	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&_fk=1", f))
 	require.NoError(t, err)
@@ -455,6 +456,11 @@ func TestSQLite_CLI(t *testing.T) {
 	t.Run("SchemaDiffRun", func(t *testing.T) {
 		liteRun(t, func(t *liteTest) {
 			testCLISchemaDiff(t, t.dsn())
+		})
+	})
+	t.Run("SchemaApplyAutoApprove", func(t *testing.T) {
+		liteRun(t, func(t *liteTest) {
+			testCLISchemaApplyAutoApprove(t, h, t.dsn())
 		})
 	})
 }

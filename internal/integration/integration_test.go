@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"flag"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -20,6 +22,22 @@ import (
 	"entgo.io/ent/entc/integration/ent"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMain(m *testing.M) {
+	var dialect string
+	flag.StringVar(&dialect, "dialect", "", "[mysql56, postgres10, tidb5, ...] what dialect (version) to test")
+	flag.Parse()
+	var dbs []io.Closer
+	dbs = append(dbs, myInit(dialect)...)
+	dbs = append(dbs, pgInit(dialect)...)
+	dbs = append(dbs, tidbInit(dialect)...)
+	defer func() {
+		for _, db := range dbs {
+			db.Close()
+		}
+	}()
+	os.Exit(m.Run())
+}
 
 // T holds the elements common between dialect tests.
 type T interface {
@@ -175,12 +193,9 @@ func testCLISchemaInspect(t T, h string, dsn string, unmarshaler schemaspec.Unma
 func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, unmarshaler schemaspec.Unmarshaler) {
 	// Required to have a clean "stderr" while running first time.
 	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
-	f := "atlas.hcl"
+	f := filepath.Join(t.TempDir(), "atlas.hcl")
 	err = ioutil.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		os.Remove("atlas.hcl")
-	})
 	require.NoError(t, err)
 	var expected schema.Realm
 	err = unmarshaler.UnmarshalSpec([]byte(h), &expected)
@@ -189,7 +204,7 @@ func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, unmars
 		"schema",
 		"apply",
 		"-f",
-		"atlas.hcl",
+		f,
 		"-d",
 		dsn,
 		"-s",
@@ -238,10 +253,9 @@ func testCLISchemaApply(t T, h string, dsn string) {
 	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
 	require.NoError(t, err)
 	t.dropTables("users")
-	f := "atlas.hcl"
+	f := filepath.Join(t.TempDir(), "atlas.hcl")
 	err = ioutil.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
-	defer os.Remove(f)
 	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
 		"schema",
 		"apply",
@@ -272,10 +286,9 @@ func testCLISchemaApplyDry(t T, h string, dsn string) {
 	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
 	require.NoError(t, err)
 	t.dropTables("users")
-	f := "atlas.hcl"
+	f := filepath.Join(t.TempDir(), "atlas.hcl")
 	err = ioutil.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
-	defer os.Remove(f)
 	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
 		"schema",
 		"apply",
@@ -307,10 +320,9 @@ func testCLISchemaApplyAutoApprove(t T, h string, dsn string) {
 	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
 	require.NoError(t, err)
 	t.dropTables("users")
-	f := "atlas.hcl"
+	f := filepath.Join(t.TempDir(), "atlas.hcl")
 	err = ioutil.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
-	defer os.Remove(f)
 	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
 		"schema",
 		"apply",
