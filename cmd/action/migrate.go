@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"strings"
 	"text/template"
 	"time"
@@ -49,7 +50,17 @@ var (
 				if err != nil {
 					return err
 				}
-				return migrate.Validate(dir) // TODO(masseelch): tell the user what's wrong
+				if err := migrate.Validate(dir); err != nil {
+					fmt.Fprintf(
+						os.Stderr,
+						"Error: %s\n\nYou have a checksum error in your migration directory.\n"+
+							"This usually happens if you manually create or edit a migration file.\n"+
+							"Please check your migration files and run\n\n"+
+							"'atlas migrate hash --force'\n\nto re-hash the contents and resolve the error.\n\n",
+						err,
+					)
+					os.Exit(1)
+				}
 			}
 			return nil
 		},
