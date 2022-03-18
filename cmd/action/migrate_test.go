@@ -7,6 +7,7 @@ package action
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -15,9 +16,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMigrate_Diff(t *testing.T) {
+func TestMigrate(t *testing.T) {
 	_, err := runCmd(RootCmd, "migrate")
 	require.NoError(t, err)
+}
+
+func TestMigrate_Diff(t *testing.T) {
 	p := t.TempDir()
 
 	// Expect no clean dev error.
@@ -43,6 +47,28 @@ func TestMigrate_Diff(t *testing.T) {
 	require.NoError(t, err)
 	require.FileExists(t, filepath.Join(p, fmt.Sprintf("%s_name.sql", time.Now().Format("20060102150405"))))
 	require.FileExists(t, filepath.Join(p, "atlas.sum"))
+}
+
+func TestMigrate_Validate(t *testing.T) {
+	s, err := runCmd(RootCmd, "migrate", "validate", "--dir", "file://migrations")
+	require.Zero(t, s)
+	require.NoError(t, err)
+}
+
+func TestMigrate_ValidateError(t *testing.T) {
+	if os.Getenv("DO_VALIDATE") == "1" {
+		runCmd(RootCmd, "migrate", "validate", "--dir", "file://migrations")
+		return
+	}
+	require.NoError(t, os.WriteFile("migrations/new.sql", []byte("contents"), 0644))
+	defer os.Remove("migrations/new.sql")
+	cmd := exec.Command(os.Args[0], "-test.run=TestMigrate_ValidateError")
+	cmd.Env = append(os.Environ(), "DO_VALIDATE=1")
+	err := cmd.Run()
+	if err, ok := err.(*exec.ExitError); ok && !err.Success() {
+		return
+	}
+	t.Fatalf("process ran with err %v, want exist status 1", err)
 }
 
 const hcl = `

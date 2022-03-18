@@ -43,7 +43,7 @@ var (
 		Use:   "migrate",
 		Short: "Manage versioned migration files",
 		Long:  "'atlas migrate' wraps several sub-commands for migration management.",
-		PersistentPreRunE: func(*cobra.Command, []string) error {
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			// Migrate commands will not run on a broken migration directory, unless the force flag is given.
 			if !MigrateFlags.Force {
 				dir, err := dir()
@@ -52,7 +52,7 @@ var (
 				}
 				if err := migrate.Validate(dir); err != nil {
 					fmt.Fprintf(
-						os.Stderr,
+						cmd.ErrOrStderr(),
 						"Error: %s\n\nYou have a checksum error in your migration directory.\n"+
 							"This happens if you manually create or edit a migration file.\n"+
 							"Please check your migration files and run\n\n"+
