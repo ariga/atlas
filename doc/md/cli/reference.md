@@ -95,6 +95,26 @@ the migration directory state to the desired schema. The desired state can be an
 ```
 
 
+### atlas migrate validate
+
+Validates the migration directories checksum.
+
+#### Usage
+```
+atlas migrate validate
+```
+
+#### Details
+'atlas migrate validate' computes the integrity hash sum of the migration directory and compares it to 
+the atlas.sum file. If there is a mismatch it will be reported.
+
+#### Example
+
+```
+  atlas migrate validate
+  atlas migrate validate --dir /path/to/migration/directory
+```
+
 ## atlas schema
 
 Work with atlas schemas.
