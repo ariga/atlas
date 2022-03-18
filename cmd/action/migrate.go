@@ -77,15 +77,29 @@ the migration directory state to the desired schema. The desired state can be an
 		Args: cobra.MaximumNArgs(1),
 		RunE: CmdMigrateDiffRun,
 	}
+	// MigrateValidateCmd represents the migrate validate command.
+	MigrateValidateCmd = &cobra.Command{
+		Use:   "validate",
+		Short: "Validates the migration directories checksum.",
+		Long: `'atlas migrate validate' computes the integrity hash sum of the migration directory and compares it to 
+the atlas.sum file. If there is a mismatch it will be reported.`,
+		Example: `  atlas migrate validate
+  atlas migrate validate --dir /path/to/migration/directory`,
+		Run: func(*cobra.Command, []string) {},
+	}
 )
 
 func init() {
+	// Add sub-commands.
 	RootCmd.AddCommand(MigrateCmd)
 	MigrateCmd.AddCommand(MigrateDiffCmd)
+	MigrateCmd.AddCommand(MigrateValidateCmd)
+	// Global flags.
 	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.DirURL, migrateFlagDir, "", "file://migrations", "select migration directory using DSN format")
 	MigrateCmd.PersistentFlags().StringSliceVarP(&MigrateFlags.Schemas, migrateFlagSchema, "", nil, "set schema names")
 	MigrateCmd.PersistentFlags().BoolVarP(&MigrateFlags.Force, migrateFlagForce, "", false, "force a command to run on a broken migration directory state")
 	MigrateCmd.PersistentFlags().SortFlags = false
+	// Diff flags.
 	MigrateDiffCmd.Flags().StringVarP(&MigrateFlags.DevURL, migrateDiffFlagDevURL, "", "", "[driver://username:password@address/dbname?param=value] select a data source using the DSN format")
 	MigrateDiffCmd.Flags().StringVarP(&MigrateFlags.ToURL, migrateDiffFlagTo, "", "", "[driver://username:password@address/dbname?param=value] select a data source using the DSN format")
 	MigrateDiffCmd.Flags().SortFlags = false
