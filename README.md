@@ -12,6 +12,7 @@ be used individually but are designed to work very well together.
 * MariaDB
 * PostgresSQL
 * SQLite
+* TiDB
 
 ### Runs on all platforms:
 * Mac
