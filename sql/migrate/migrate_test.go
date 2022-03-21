@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	_ "embed"
+	"errors"
 	"io"
 	"io/fs"
 	"os"
@@ -151,16 +152,50 @@ func TestGlobStateReader(t *testing.T) {
 		drv = &mockDriver{}
 		ctx = context.Background()
 	)
-	localFS, err := migrate.NewLocalDir("testdata")
+	d, err := migrate.NewLocalDir("testdata")
 	require.NoError(t, err)
 
-	_, err = migrate.GlobStateReader(localFS, drv, "*.up.sql").ReadState(ctx)
-	require.NoError(t, err)
-	require.Equal(t, drv.executed, []string{"CREATE TABLE t(c int);"})
+	_, err = migrate.GlobStateReader(d, drv, "invalid").ReadState(ctx)
+	require.EqualError(t, err, "sql/migrate: no migration files found")
+	require.Equal(t, 0, drv.lockCounter)
+	require.Equal(t, 0, drv.unlockCounter)
 
-	_, err = migrate.GlobStateReader(localFS, drv, "*.down.sql").ReadState(ctx)
+	_, err = migrate.GlobStateReader(d, drv, "*.up.sql").ReadState(ctx)
 	require.NoError(t, err)
-	require.Equal(t, drv.executed, []string{"CREATE TABLE t(c int);", "DROP TABLE IF EXISTS t;"})
+	require.Equal(t, []string{"CREATE TABLE t(c int);"}, drv.executed)
+	require.Equal(t, 1, drv.lockCounter)
+	require.Equal(t, 1, drv.unlockCounter)
+
+	_, err = migrate.GlobStateReader(d, drv, "*.down.sql").ReadState(ctx)
+	require.NoError(t, err)
+	require.Equal(t, []string{"CREATE TABLE t(c int);", "DROP TABLE IF EXISTS t;"}, drv.executed)
+	require.Equal(t, 2, drv.lockCounter)
+	require.Equal(t, 2, drv.unlockCounter)
+
+	drv.locked = true
+	_, err = migrate.GlobStateReader(d, drv, "").ReadState(ctx)
+	require.EqualError(t, err, "sql/migrate: acquiring database lock: lockErr")
+	require.Equal(t, 2, drv.lockCounter)
+	require.Equal(t, 2, drv.unlockCounter)
+	drv.locked = false
+
+	drv.realm = schema.Realm{Schemas: []*schema.Schema{{Name: "schema"}}}
+	_, err = migrate.GlobStateReader(d, drv, "*.up.sql").ReadState(ctx)
+	require.EqualError(t, err, "sql/migrate: connected database is not empty")
+	require.Equal(t, 2, drv.lockCounter)
+	require.Equal(t, 2, drv.unlockCounter)
+
+	edrv := &emptyMockDriver{drv}
+	_, err = migrate.GlobStateReader(d, edrv, "*.up.sql").ReadState(ctx)
+	require.NoError(t, err)
+	require.Equal(t, []schema.Change{
+		&schema.DropSchema{
+			S:     &schema.Schema{Name: "schema"},
+			Extra: []schema.Clause{&schema.IfExists{}},
+		},
+	}, edrv.changes)
+	require.Equal(t, 3, drv.lockCounter)
+	require.Equal(t, 3, drv.unlockCounter)
 }
 
 func TestLocalDir(t *testing.T) {
@@ -182,38 +217,49 @@ func TestLocalDir(t *testing.T) {
 	require.Equal(t, "content", string(c))
 }
 
-type mockHashFS struct{ hash []byte }
-
-func (h *mockHashFS) WriteHash(b []byte) error {
-	h.hash = b
-	return nil
-}
-
-func (h *mockHashFS) ReadHash() ([]byte, error) {
-	return h.hash, nil
-}
-
-type mockDriver struct {
-	migrate.Driver
-	plan     *migrate.Plan
-	changes  []schema.Change
-	executed []string
-}
+type (
+	mockDriver struct {
+		migrate.Driver
+		plan          *migrate.Plan
+		changes       []schema.Change
+		realm         schema.Realm
+		executed      []string
+		locked        bool
+		lockCounter   int
+		unlockCounter int
+	}
+	emptyMockDriver struct{ *mockDriver }
+)
 
 func (m *mockDriver) ExecContext(_ context.Context, query string, _ ...interface{}) (sql.Result, error) {
 	m.executed = append(m.executed, query)
 	return nil, nil
 }
 
-func (m mockDriver) InspectRealm(context.Context, *schema.InspectRealmOption) (*schema.Realm, error) {
-	return &schema.Realm{}, nil
+func (m *mockDriver) InspectRealm(context.Context, *schema.InspectRealmOption) (*schema.Realm, error) {
+	return &m.realm, nil
 }
-func (m mockDriver) RealmDiff(_, _ *schema.Realm) ([]schema.Change, error) {
-	return m.changes, nil
-}
-func (m mockDriver) PlanChanges(context.Context, string, []schema.Change) (*migrate.Plan, error) {
+func (m *mockDriver) PlanChanges(context.Context, string, []schema.Change) (*migrate.Plan, error) {
 	return m.plan, nil
 }
+func (m *mockDriver) ApplyChanges(_ context.Context, changes []schema.Change) error {
+	m.changes = changes
+	return nil
+}
+func (m *mockDriver) Lock(context.Context, string, time.Duration) (schema.UnlockFunc, error) {
+	if m.locked {
+		return nil, errors.New("lockErr")
+	}
+	m.lockCounter++
+	m.locked = true
+	return func() error {
+		m.unlockCounter++
+		m.locked = false
+		return nil
+	}, nil
+}
+
+func (m *emptyMockDriver) Empty(*schema.Realm) bool { return true }
 
 func countFiles(t *testing.T, d migrate.Dir) int {
 	files, err := fs.ReadDir(d, "")

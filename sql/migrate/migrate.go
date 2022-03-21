@@ -211,16 +211,56 @@ func DisableChecksum() PlannerOption {
 
 // GlobStateReader creates a StateReader that loads all files from Dir matching
 // glob in lexicographic order and uses the Driver to create a migration state.
+//
+// If the given Driver has a method "Empty(*schema.Realm) bool" it will be used to determine if the Driver is connected
+// to a "clean" database. This behavior was added to support SQLite flavors.
 func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
 	return func(ctx context.Context) (*schema.Realm, error) {
+		// Collect the migration files.
 		names, err := fs.Glob(dir, glob)
 		if err != nil {
 			return nil, err
+		}
+		if len(names) == 0 {
+			return nil, errors.New("sql/migrate: no migration files found")
+		}
+		// We need an empty database state to reliably replay the migration directory.
+		realm, err := drv.InspectRealm(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+		// A Driver can implement the following interface to override what to consider an empty database.
+		emptier, ok := drv.(interface{ Empty(*schema.Realm) bool })
+		// Do not operate on a not-empty database.
+		if (ok && !emptier.Empty(realm)) || (!ok && len(realm.Schemas) > 0) {
+			return nil, errors.New("sql/migrate: connected database is not empty")
 		}
 		// Sort files lexicographically.
 		sort.Slice(names, func(i, j int) bool {
 			return names[i] < names[j]
 		})
+		// If the driver supports it, acquire a lock while replaying the migration changes.
+		if l, ok := drv.(schema.Locker); ok {
+			unlock, err := l.Lock(ctx, "atlas_migration_directory_state", 0)
+			if err != nil {
+				return nil, fmt.Errorf("sql/migrate: acquiring database lock: %w", err)
+			}
+			defer unlock()
+		}
+		// Clean up after ourselves.
+		defer func() {
+			realm, err := drv.InspectRealm(ctx, nil)
+			if err != nil {
+				panic(err) // TODO(masseelch): ??
+			}
+			del := make([]schema.Change, len(realm.Schemas))
+			for i, s := range realm.Schemas {
+				del[i] = &schema.DropSchema{S: s, Extra: []schema.Clause{&schema.IfExists{}}}
+			}
+			if err := drv.ApplyChanges(ctx, del); err != nil {
+				panic(err) // TODO(masseelch): ??
+			}
+		}()
 		for _, n := range names {
 			f, err := dir.Open(n)
 			if err != nil {
