@@ -77,6 +77,15 @@ the migration directory state to the desired schema. The desired state can be an
 		Args: cobra.MaximumNArgs(1),
 		RunE: CmdMigrateDiffRun,
 	}
+	// MigrateHashCmd represents the migrate hash command.
+	MigrateHashCmd = &cobra.Command{
+		Use:   "hash",
+		Short: "Hash creates an integrity hash file for the migration directories.",
+		Long: `'atlas migrate hash' computes the integrity hash sum of the migration directory and stores it in the atlas.sum file.
+This command should be used whenever a manual change in the migration directory was made.`,
+		Example: `  atlas migrate hash --force`,
+		RunE:    CmdMigrateHashRun,
+	}
 	// MigrateValidateCmd represents the migrate validate command.
 	MigrateValidateCmd = &cobra.Command{
 		Use:   "validate",
@@ -94,6 +103,7 @@ func init() {
 	RootCmd.AddCommand(MigrateCmd)
 	MigrateCmd.AddCommand(MigrateDiffCmd)
 	MigrateCmd.AddCommand(MigrateValidateCmd)
+	MigrateCmd.AddCommand(MigrateHashCmd)
 	// Global flags.
 	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.DirURL, migrateFlagDir, "", "file://migrations", "select migration directory using DSN format")
 	MigrateCmd.PersistentFlags().StringSliceVarP(&MigrateFlags.Schemas, migrateFlagSchema, "", nil, "set schema names")
@@ -118,7 +128,7 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	if err := checkClean(cmd.Context(), dev); err != nil {
 		return err
 	}
-	// Open the migration directory. For now only local directories are supported.
+	// Open the migration directory.
 	dir, err := dir()
 	if err != nil {
 		return err
@@ -149,6 +159,20 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	// Write the plan to a new file.
 	return pl.WritePlan(plan)
 	// TODO(masseelch): clean up dev after reading the state from migration dir.
+}
+
+// CmdMigrateHashRun is the command executed when running the CLI with 'migrate hash' args.
+func CmdMigrateHashRun(*cobra.Command, []string) error {
+	// Open the migration directory.
+	dir, err := dir()
+	if err != nil {
+		return err
+	}
+	sum, err := migrate.HashSum(dir)
+	if err != nil {
+		return err
+	}
+	return migrate.WriteSumFile(dir, sum)
 }
 
 // dir returns a migrate.Dir to use as migration directory. For now only local directories are supported.

@@ -286,11 +286,7 @@ func (p *Planner) WritePlan(plan *Plan) error {
 		if err != nil {
 			return err
 		}
-		b, err := sum.MarshalText()
-		if err != nil {
-			return err
-		}
-		return p.dir.WriteFile(hashFile, b)
+		return WriteSumFile(p.dir, sum)
 	}
 	return nil
 }
@@ -490,6 +486,15 @@ func Validate(dir Dir) error {
 		return ErrChecksumMismatch
 	}
 	return nil
+}
+
+// WriteSumFile writes the given HashFile to the Dir. If the file does not exist, it is created.
+func WriteSumFile(dir Dir, sum HashFile) error {
+	b, err := sum.MarshalText()
+	if err != nil {
+		return err
+	}
+	return dir.WriteFile(hashFile, b)
 }
 
 // Sum returns the checksum of the represented hash file.
