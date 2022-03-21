@@ -81,11 +81,10 @@ the migration directory state to the desired schema. The desired state can be an
 	MigrateHashCmd = &cobra.Command{
 		Use:   "hash",
 		Short: "Hash creates an integrity hash file for the migration directories.",
-		Long: `'atlas migrate hash' computes the integrity hash sum of the migration directory andstores it in the atlas.sum file.
+		Long: `'atlas migrate hash' computes the integrity hash sum of the migration directory and stores it in the atlas.sum file.
 This command should be used whenever a manual change in the migration directory was made.`,
-		Example: `  atlas migrate validate
-  atlas migrate validate --dir /path/to/migration/directory`,
-		RunE: CmdMigrateHashRun,
+		Example: `  atlas migrate hash --force`,
+		RunE:    CmdMigrateHashRun,
 	}
 	// MigrateValidateCmd represents the migrate validate command.
 	MigrateValidateCmd = &cobra.Command{
@@ -162,7 +161,7 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	// TODO(masseelch): clean up dev after reading the state from migration dir.
 }
 
-// CmdMigrateHashRun is the command executed when running the CLI with 'migrate diff' args.
+// CmdMigrateHashRun is the command executed when running the CLI with 'migrate hash' args.
 func CmdMigrateHashRun(*cobra.Command, []string) error {
 	// Open the migration directory.
 	dir, err := dir()

@@ -105,14 +105,13 @@ atlas migrate hash
 ```
 
 #### Details
-'atlas migrate hash' computes the integrity hash sum of the migration directory andstores it in the atlas.sum file.
+'atlas migrate hash' computes the integrity hash sum of the migration directory and stores it in the atlas.sum file.
 This command should be used whenever a manual change in the migration directory was made.
 
 #### Example
 
 ```
-  atlas migrate validate
-  atlas migrate validate --dir /path/to/migration/directory
+  atlas migrate hash --force
 ```
 
 ### atlas migrate validate
