@@ -9,7 +9,6 @@ import (
 	"database/sql"
 	_ "embed"
 	"errors"
-	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -135,7 +134,6 @@ func TestHash_MarshalText(t *testing.T) {
 	h, err := migrate.HashSum(d)
 	require.NoError(t, err)
 	ac, err := h.MarshalText()
-	fmt.Println(string(ac))
 	require.Equal(t, hash, ac)
 }
 
