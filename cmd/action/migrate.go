@@ -6,7 +6,6 @@ package action
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -125,8 +124,14 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	defer dev.Close()
-	if err := checkClean(cmd.Context(), dev); err != nil {
-		return err
+	// Acquire a lock.
+	if l, ok := dev.Driver.(schema.Locker); ok {
+		unlock, err := l.Lock(cmd.Context(), "atlas_migrate_diff", 0)
+		if err != nil {
+			return err
+		}
+		// If unlocking fails notify the user about it.
+		defer cobra.CheckErr(unlock())
 	}
 	// Open the migration directory.
 	dir, err := dir()
@@ -147,7 +152,7 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	// Plan the changes and create a new migration file.
-	pl := migrate.NewPlanner(dev, dir, migrate.WithFormatter(tf))
+	pl := migrate.NewPlanner(dev.Driver, dir, migrate.WithFormatter(tf))
 	var name string
 	if len(args) > 0 {
 		name = args[0]
@@ -158,7 +163,6 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	}
 	// Write the plan to a new file.
 	return pl.WritePlan(plan)
-	// TODO(masseelch): clean up dev after reading the state from migration dir.
 }
 
 // CmdMigrateHashRun is the command executed when running the CLI with 'migrate hash' args.
@@ -241,21 +245,6 @@ func to(ctx context.Context, d *Driver) (migrate.StateReader, error) {
 			drv:         drv,
 		}, nil
 	}
-}
-
-func checkClean(ctx context.Context, drv *Driver) error {
-	realm, err := drv.InspectRealm(ctx, nil)
-	if err != nil {
-		return err
-	}
-	if len(realm.Schemas) == 0 {
-		return nil
-	}
-	// If this is an SQLite database it is considered clean if the "main" schema has no tables.
-	if strings.HasPrefix(MigrateFlags.DevURL, "sqlite") && realm.Schemas[0].Name == "main" && len(realm.Schemas[0].Tables) == 0 {
-		return nil
-	}
-	return errors.New("dev database must be clean")
 }
 
 var (
