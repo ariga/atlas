@@ -83,6 +83,23 @@ func sqliteProvider(_ context.Context, dsn string) (*Driver, error) {
 
 var reDockerConfig = regexp.MustCompile("(mysql|mariadb)(?::([0-9a-zA-Z.-]+)?(\\?.*)?)?")
 
+type dockerCloser struct {
+	c   *Container
+	drv *Driver
+	ctx context.Context
+}
+
+func (dc *dockerCloser) Close() (err error) {
+	derr, cerr := dc.drv.Close(), dc.c.Down(dc.ctx)
+	if derr != nil {
+		err = derr
+	}
+	if cerr != nil {
+		err = fmt.Errorf("%w: %v", derr, cerr)
+	}
+	return
+}
+
 func dockerProvider(ctx context.Context, dsn string) (*Driver, error) {
 	// The DSN has the driver part (docker:// removed already.
 	// Get rid of the query arguments, and we have the image name.
@@ -111,5 +128,14 @@ func dockerProvider(ctx context.Context, dsn string) (*Driver, error) {
 		_ = c.Down(ctx)
 		return nil, err
 	}
-	return DefaultMux.OpenAtlas(ctx, fmt.Sprintf("%s://%s", img, d))
+	drv, err := DefaultMux.OpenAtlas(ctx, fmt.Sprintf("%s://%s", img, d))
+	if err != nil {
+		return nil, err
+	}
+	return &Driver{
+		Driver:      drv.Driver,
+		Marshaler:   drv.Marshaler,
+		Unmarshaler: drv.Unmarshaler,
+		Closer:      &dockerCloser{c, drv, ctx},
+	}, nil
 }
