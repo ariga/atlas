@@ -221,9 +221,6 @@ func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
 		if err != nil {
 			return nil, err
 		}
-		if len(names) == 0 {
-			return nil, errors.New("sql/migrate: no migration files found")
-		}
 		// We need an empty database state to reliably replay the migration directory.
 		realm, err := drv.InspectRealm(ctx, nil)
 		if err != nil {

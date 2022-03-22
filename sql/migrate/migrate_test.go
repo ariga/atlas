@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	_ "embed"
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -134,6 +135,7 @@ func TestHash_MarshalText(t *testing.T) {
 	h, err := migrate.HashSum(d)
 	require.NoError(t, err)
 	ac, err := h.MarshalText()
+	fmt.Println(string(ac))
 	require.Equal(t, hash, ac)
 }
 
@@ -154,11 +156,6 @@ func TestGlobStateReader(t *testing.T) {
 	)
 	d, err := migrate.NewLocalDir("testdata")
 	require.NoError(t, err)
-
-	_, err = migrate.GlobStateReader(d, drv, "invalid").ReadState(ctx)
-	require.EqualError(t, err, "sql/migrate: no migration files found")
-	require.Equal(t, 0, drv.lockCounter)
-	require.Equal(t, 0, drv.unlockCounter)
 
 	_, err = migrate.GlobStateReader(d, drv, "*.up.sql").ReadState(ctx)
 	require.NoError(t, err)
@@ -193,7 +190,7 @@ func TestGlobStateReader(t *testing.T) {
 			S:     &schema.Schema{Name: "schema"},
 			Extra: []schema.Clause{&schema.IfExists{}},
 		},
-	}, edrv.changes)
+	}, edrv.applied)
 	require.Equal(t, 3, drv.lockCounter)
 	require.Equal(t, 3, drv.unlockCounter)
 }
@@ -222,6 +219,7 @@ type (
 		migrate.Driver
 		plan          *migrate.Plan
 		changes       []schema.Change
+		applied       []schema.Change
 		realm         schema.Realm
 		executed      []string
 		locked        bool
@@ -239,11 +237,14 @@ func (m *mockDriver) ExecContext(_ context.Context, query string, _ ...interface
 func (m *mockDriver) InspectRealm(context.Context, *schema.InspectRealmOption) (*schema.Realm, error) {
 	return &m.realm, nil
 }
+func (m *mockDriver) RealmDiff(_, _ *schema.Realm) ([]schema.Change, error) {
+	return m.changes, nil
+}
 func (m *mockDriver) PlanChanges(context.Context, string, []schema.Change) (*migrate.Plan, error) {
 	return m.plan, nil
 }
 func (m *mockDriver) ApplyChanges(_ context.Context, changes []schema.Change) error {
-	m.changes = changes
+	m.applied = changes
 	return nil
 }
 func (m *mockDriver) Lock(context.Context, string, time.Duration) (schema.UnlockFunc, error) {
