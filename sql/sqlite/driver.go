@@ -60,8 +60,8 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 	}, nil
 }
 
-// IsEmpty implements the migrate.Emptier to override what to consider an "empty" database.
-func (d *Driver) IsEmpty(ctx context.Context) (bool, error) {
+// IsClean implements the inlined IsClean interface to override what to consider a clean database.
+func (d *Driver) IsClean(ctx context.Context) (bool, error) {
 	r, err := d.InspectRealm(ctx, nil)
 	if err != nil {
 		return false, err
@@ -69,8 +69,8 @@ func (d *Driver) IsEmpty(ctx context.Context) (bool, error) {
 	return r == nil || len(r.Schemas) == 1 && r.Schemas[0].Name == "main" && len(r.Schemas[0].Tables) == 0, nil
 }
 
-// Empty implements the migrate.Emptier to override the "emptying" behavior.
-func (d *Driver) Empty(ctx context.Context) error {
+// Clean implements the inlined migrate.Clean interface to override the "emptying" behavior.
+func (d *Driver) Clean(ctx context.Context) error {
 	for _, stmt := range []string{
 		"PRAGMA writable_schema = 1;",
 		"DELETE FROM sqlite_master WHERE type IN ('table', 'index', 'trigger');",

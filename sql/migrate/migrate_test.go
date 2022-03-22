@@ -178,7 +178,7 @@ func TestGlobStateReader(t *testing.T) {
 
 	drv.realm = schema.Realm{Schemas: []*schema.Schema{{Name: "schema"}}}
 	_, err = migrate.GlobStateReader(d, drv, "*.up.sql").ReadState(ctx)
-	require.EqualError(t, err, "sql/migrate: connected database is not empty")
+	require.EqualError(t, err, "sql/migrate: connected database is not clean")
 	require.Equal(t, 2, drv.lockCounter)
 	require.Equal(t, 2, drv.unlockCounter)
 
@@ -259,7 +259,7 @@ func (m *mockDriver) Lock(context.Context, string, time.Duration) (schema.Unlock
 		return nil
 	}, nil
 }
-func (m *emptyMockDriver) IsEmpty(context.Context) (bool, error) {
+func (m *emptyMockDriver) IsClean(context.Context) (bool, error) {
 	return true, nil
 }
 

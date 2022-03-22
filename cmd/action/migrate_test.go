@@ -38,8 +38,8 @@ func TestMigrate_Diff(t *testing.T) {
 		"--dev-url", openSQLite(t, "create table t (c int);"),
 		"--to", hclURL(t),
 	)
-	require.True(t, strings.HasPrefix(s, "Error: sql/migrate: connected database is not empty"))
-	require.EqualError(t, err, "sql/migrate: connected database is not empty")
+	require.True(t, strings.HasPrefix(s, "Error: sql/migrate: connected database is not clean"))
+	require.EqualError(t, err, "sql/migrate: connected database is not clean")
 
 	// Works.
 	s, err = runCmd(

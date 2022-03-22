@@ -209,25 +209,13 @@ func DisableChecksum() PlannerOption {
 	}
 }
 
-type (
-	// IsEmptier wraps IsEmpty methods to determine if a connected database is empty.
-	// This interface exists only to support SQLite favors.
-	IsEmptier interface {
-		IsEmpty(context.Context) (bool, error)
-	}
-	// Emptier wraps Empty methods to empty a database.
-	// This interface exists only to support SQLite favors.
-	Emptier interface {
-		Empty(context.Context) error
-	}
-)
-
 // GlobStateReader creates a StateReader that loads all files from Dir matching
 // glob in lexicographic order and uses the Driver to create a migration state.
 //
 // If the given Driver implements the Emptier interface the IsEmpty method will be used to determine if the Driver is
 // connected to an "empty" database. This behavior was added to support SQLite flavors.
 func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
+	var errNotClean = errors.New("sql/migrate: connected database is not clean")
 	return func(ctx context.Context) (realm *schema.Realm, err error) {
 		// Collect the migration files.
 		names, err := fs.Glob(dir, glob)
@@ -235,13 +223,18 @@ func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
 			return nil, err
 		}
 		// We need an empty database state to reliably replay the migration directory.
-		if ie, ok := drv.(IsEmptier); ok {
-			e, err := ie.IsEmpty(ctx)
+		if c, ok := drv.(interface {
+			// The IsClean method can be added to a Driver to override how to
+			// determine if a connected database is in a clean state.
+			// This interface exists only to support SQLite favors.
+			IsClean(context.Context) (bool, error)
+		}); ok {
+			e, err := c.IsClean(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("sql/migrate: checking database state: %w", err)
 			}
 			if !e {
-				return nil, errors.New("sql/migrate: connected database is not empty")
+				return nil, errNotClean
 			}
 		} else {
 			realm, err = drv.InspectRealm(ctx, nil)
@@ -249,7 +242,7 @@ func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
 				return nil, err
 			}
 			if len(realm.Schemas) > 0 {
-				return nil, errors.New("sql/migrate: connected database is not empty")
+				return nil, errNotClean
 			}
 		}
 		// Sort files lexicographically.
@@ -266,8 +259,12 @@ func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
 		}
 		// Clean up after ourselves.
 		defer func() {
-			if e, ok := drv.(Emptier); ok {
-				if derr := e.Empty(ctx); derr != nil {
+			if e, ok := drv.(interface {
+				// The Clean method can be added to a Driver to change how to clean a database.
+				// This interface exists only to support SQLite favors.
+				Clean(context.Context) error
+			}); ok {
+				if derr := e.Clean(ctx); derr != nil {
 					err = wrap(derr, err)
 				}
 				return
