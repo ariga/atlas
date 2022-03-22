@@ -211,16 +211,76 @@ func DisableChecksum() PlannerOption {
 
 // GlobStateReader creates a StateReader that loads all files from Dir matching
 // glob in lexicographic order and uses the Driver to create a migration state.
+//
+// If the given Driver implements the Emptier interface the IsEmpty method will be used to determine if the Driver is
+// connected to an "empty" database. This behavior was added to support SQLite flavors.
 func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
-	return func(ctx context.Context) (*schema.Realm, error) {
+	var errNotClean = errors.New("sql/migrate: connected database is not clean")
+	return func(ctx context.Context) (realm *schema.Realm, err error) {
+		// Collect the migration files.
 		names, err := fs.Glob(dir, glob)
 		if err != nil {
 			return nil, err
+		}
+		// We need an empty database state to reliably replay the migration directory.
+		if c, ok := drv.(interface {
+			// The IsClean method can be added to a Driver to override how to
+			// determine if a connected database is in a clean state.
+			// This interface exists only to support SQLite favors.
+			IsClean(context.Context) (bool, error)
+		}); ok {
+			e, err := c.IsClean(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("sql/migrate: checking database state: %w", err)
+			}
+			if !e {
+				return nil, errNotClean
+			}
+		} else {
+			realm, err = drv.InspectRealm(ctx, nil)
+			if err != nil {
+				return nil, err
+			}
+			if len(realm.Schemas) > 0 {
+				return nil, errNotClean
+			}
 		}
 		// Sort files lexicographically.
 		sort.Slice(names, func(i, j int) bool {
 			return names[i] < names[j]
 		})
+		// If the driver supports it, acquire a lock while replaying the migration changes.
+		if l, ok := drv.(schema.Locker); ok {
+			unlock, err := l.Lock(ctx, "atlas_migration_directory_state", 0)
+			if err != nil {
+				return nil, fmt.Errorf("sql/migrate: acquiring database lock: %w", err)
+			}
+			defer unlock()
+		}
+		// Clean up after ourselves.
+		defer func() {
+			if e, ok := drv.(interface {
+				// The Clean method can be added to a Driver to change how to clean a database.
+				// This interface exists only to support SQLite favors.
+				Clean(context.Context) error
+			}); ok {
+				if derr := e.Clean(ctx); derr != nil {
+					err = wrap(derr, err)
+				}
+				return
+			}
+			realm, derr := drv.InspectRealm(ctx, nil)
+			if derr != nil {
+				err = wrap(derr, err)
+			}
+			del := make([]schema.Change, len(realm.Schemas))
+			for i, s := range realm.Schemas {
+				del[i] = &schema.DropSchema{S: s, Extra: []schema.Clause{&schema.IfExists{}}}
+			}
+			if derr := drv.ApplyChanges(ctx, del); derr != nil {
+				err = wrap(derr, err)
+			}
+		}()
 		for _, n := range names {
 			f, err := dir.Open(n)
 			if err != nil {
@@ -241,7 +301,8 @@ func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
 				return nil, err
 			}
 		}
-		return drv.InspectRealm(ctx, nil)
+		realm, err = drv.InspectRealm(ctx, nil)
+		return
 	}
 }
 
@@ -548,4 +609,11 @@ func ensureSemicolonSuffix(s string) string {
 		return s + ";"
 	}
 	return s
+}
+
+func wrap(err1, err2 error) error {
+	if err2 != nil {
+		return fmt.Errorf("sql/migrate: %w: %v", err2, err1)
+	}
+	return err1
 }

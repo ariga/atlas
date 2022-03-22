@@ -69,7 +69,7 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 }
 
 func (d *Driver) dev() *sqlx.DevDriver {
-	return &sqlx.DevDriver{Driver: d, MaxNameLen: 63, DropClause: []schema.Clause{&Cascade{}}}
+	return &sqlx.DevDriver{Driver: d, MaxNameLen: 63}
 }
 
 // NormalizeRealm returns the normal representation of the given database.

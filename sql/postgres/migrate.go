@@ -94,7 +94,7 @@ func (s *state) topLevel(changes []schema.Change) []schema.Change {
 			s.append(&migrate.Change{
 				Cmd:     b.String(),
 				Source:  c,
-				Reverse: Build("DROP SCHEMA").Ident(c.S.Name).String(),
+				Reverse: Build("DROP SCHEMA").Ident(c.S.Name).P("CASCADE").String(),
 				Comment: fmt.Sprintf("Add new schema named %q", c.S.Name),
 			})
 		case *schema.DropSchema:
@@ -102,10 +102,7 @@ func (s *state) topLevel(changes []schema.Change) []schema.Change {
 			if sqlx.Has(c.Extra, &schema.IfExists{}) {
 				b.P("IF EXISTS")
 			}
-			b.Ident(c.S.Name)
-			if sqlx.Has(c.Extra, &Cascade{}) {
-				b.P("CASCADE")
-			}
+			b.Ident(c.S.Name).P("CASCADE")
 			s.append(&migrate.Change{
 				Cmd:     b.String(),
 				Source:  c,

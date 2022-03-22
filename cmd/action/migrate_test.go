@@ -5,6 +5,8 @@
 package action
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -16,6 +18,7 @@ import (
 	"time"
 
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/schema"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,8 +38,8 @@ func TestMigrate_Diff(t *testing.T) {
 		"--dev-url", openSQLite(t, "create table t (c int);"),
 		"--to", hclURL(t),
 	)
-	require.True(t, strings.HasPrefix(s, "Error: dev database must be clean"))
-	require.EqualError(t, err, "dev database must be clean")
+	require.True(t, strings.HasPrefix(s, "Error: sql/migrate: connected database is not clean"))
+	require.EqualError(t, err, "sql/migrate: connected database is not clean")
 
 	// Works.
 	s, err = runCmd(
@@ -50,6 +53,28 @@ func TestMigrate_Diff(t *testing.T) {
 	require.NoError(t, err)
 	require.FileExists(t, filepath.Join(p, fmt.Sprintf("%s_name.sql", time.Now().Format("20060102150405"))))
 	require.FileExists(t, filepath.Join(p, "atlas.sum"))
+
+	// A lock will prevent diffing.
+	DefaultMux.RegisterProvider("sqlitelock", func(s string) (*Driver, error) {
+		drv, err := sqliteProvider(s)
+		if err != nil {
+			return nil, err
+		}
+		drv.Driver = &sqliteLockerDriver{Driver: drv.Driver}
+		return drv, nil
+	})
+	f, err := os.Create(filepath.Join(p, "test.db"))
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	s, err = runCmd(
+		RootCmd, "migrate", "diff",
+		"name",
+		"--dir", "file://"+t.TempDir(),
+		"--dev-url", fmt.Sprintf("sqlitelock://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
+		"--to", hclURL(t),
+	)
+	require.True(t, strings.HasPrefix(s, "Error: "+lockErr))
+	require.EqualError(t, err, lockErr)
 }
 
 func TestMigrate_Validate(t *testing.T) {
@@ -215,4 +240,12 @@ func copyFile(src, dst string) error {
 	defer df.Close()
 	_, err = io.Copy(df, sf)
 	return err
+}
+
+type sqliteLockerDriver struct{ migrate.Driver }
+
+const lockErr = "lockErr"
+
+func (d *sqliteLockerDriver) Lock(context.Context, string, time.Duration) (schema.UnlockFunc, error) {
+	return func() error { return nil }, errors.New(lockErr)
 }

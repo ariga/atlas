@@ -60,6 +60,30 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 	}, nil
 }
 
+// IsClean implements the inlined IsClean interface to override what to consider a clean database.
+func (d *Driver) IsClean(ctx context.Context) (bool, error) {
+	r, err := d.InspectRealm(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	return r == nil || len(r.Schemas) == 1 && r.Schemas[0].Name == "main" && len(r.Schemas[0].Tables) == 0, nil
+}
+
+// Clean implements the inlined migrate.Clean interface to override the "emptying" behavior.
+func (d *Driver) Clean(ctx context.Context) error {
+	for _, stmt := range []string{
+		"PRAGMA writable_schema = 1;",
+		"DELETE FROM sqlite_master WHERE type IN ('table', 'index', 'trigger');",
+		"PRAGMA writable_schema = 0;",
+		"VACUUM;",
+	} {
+		if _, err := d.ExecContext(ctx, stmt); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // SQLite standard data types as defined in its codebase and documentation.
 // https://www.sqlite.org/datatype3.html
 // https://github.com/sqlite/sqlite/blob/master/src/global.c
