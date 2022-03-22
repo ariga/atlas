@@ -40,6 +40,23 @@ atlas serve --storage "mysql://root:pass@tcp(localhost:3306)/atlas"
 On your first run, Atlas will generate an encryption key and store it under ```$HOME/.atlas/keyset.json```.
 This (private) file should not be deleted, otherwise Atlas will not be able to restore your configuration data. 
 
+### Login
+
+When running the Atlas Management UI in `serve` mode, it is often desired to protect access to it using
+a password. To run with the login feature enabled, use the `--require-login` flag:
+
+```shell
+atlas serve --require-login
+```
+When run for the first time, Atlas will create a user named `admin` and set its password to `admin` as
+well. It is recommended to change the password using the Settings Page after your first login. To change
+your password: 
+
+1. Click on the Atlas gopher on the top-right corner of the screen. 
+2. Click on "Settings".
+3. In the Settings Page, enter your current password and then the new password twice. 
+4. Click the "Change Password" button on the bottom-right corner of the screen. 
+
 ### Docker
 
 Atlas has an official docker that is updated with the latest and tagged versions, 
