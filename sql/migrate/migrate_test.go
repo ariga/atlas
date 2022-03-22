@@ -259,8 +259,9 @@ func (m *mockDriver) Lock(context.Context, string, time.Duration) (schema.Unlock
 		return nil
 	}, nil
 }
-
-func (m *emptyMockDriver) Empty(*schema.Realm) bool { return true }
+func (m *emptyMockDriver) IsEmpty(context.Context) (bool, error) {
+	return true, nil
+}
 
 func countFiles(t *testing.T, d migrate.Dir) int {
 	files, err := fs.ReadDir(d, "")

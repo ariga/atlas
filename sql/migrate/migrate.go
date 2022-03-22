@@ -209,28 +209,48 @@ func DisableChecksum() PlannerOption {
 	}
 }
 
+type (
+	// IsEmptier wraps IsEmpty methods to determine if a connected database is empty.
+	// This interface exists only to support SQLite favors.
+	IsEmptier interface {
+		IsEmpty(context.Context) (bool, error)
+	}
+	// Emptier wraps Empty methods to empty a database.
+	// This interface exists only to support SQLite favors.
+	Emptier interface {
+		Empty(context.Context) error
+	}
+)
+
 // GlobStateReader creates a StateReader that loads all files from Dir matching
 // glob in lexicographic order and uses the Driver to create a migration state.
 //
-// If the given Driver has a method "Empty(*schema.Realm) bool" it will be used to determine if the Driver is connected
-// to a "clean" database. This behavior was added to support SQLite flavors.
+// If the given Driver implements the Emptier interface the IsEmpty method will be used to determine if the Driver is
+// connected to an "empty" database. This behavior was added to support SQLite flavors.
 func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
-	return func(ctx context.Context) (*schema.Realm, error) {
+	return func(ctx context.Context) (realm *schema.Realm, err error) {
 		// Collect the migration files.
 		names, err := fs.Glob(dir, glob)
 		if err != nil {
 			return nil, err
 		}
 		// We need an empty database state to reliably replay the migration directory.
-		realm, err := drv.InspectRealm(ctx, nil)
-		if err != nil {
-			return nil, err
-		}
-		// A Driver can implement the following interface to override what to consider an empty database.
-		emptier, ok := drv.(interface{ Empty(*schema.Realm) bool })
-		// Do not operate on a not-empty database.
-		if (ok && !emptier.Empty(realm)) || (!ok && len(realm.Schemas) > 0) {
-			return nil, errors.New("sql/migrate: connected database is not empty")
+		if ie, ok := drv.(IsEmptier); ok {
+			e, err := ie.IsEmpty(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("sql/migrate: checking database state: %w", err)
+			}
+			if !e {
+				return nil, errors.New("sql/migrate: connected database is not empty")
+			}
+		} else {
+			realm, err = drv.InspectRealm(ctx, nil)
+			if err != nil {
+				return nil, err
+			}
+			if len(realm.Schemas) > 0 {
+				return nil, errors.New("sql/migrate: connected database is not empty")
+			}
 		}
 		// Sort files lexicographically.
 		sort.Slice(names, func(i, j int) bool {
@@ -246,16 +266,22 @@ func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
 		}
 		// Clean up after ourselves.
 		defer func() {
-			realm, err := drv.InspectRealm(ctx, nil)
-			if err != nil {
-				panic(err) // TODO(masseelch): ??
+			if e, ok := drv.(Emptier); ok {
+				if derr := e.Empty(ctx); derr != nil {
+					err = wrap(derr, err)
+				}
+				return
+			}
+			realm, derr := drv.InspectRealm(ctx, nil)
+			if derr != nil {
+				err = wrap(derr, err)
 			}
 			del := make([]schema.Change, len(realm.Schemas))
 			for i, s := range realm.Schemas {
 				del[i] = &schema.DropSchema{S: s, Extra: []schema.Clause{&schema.IfExists{}}}
 			}
-			if err := drv.ApplyChanges(ctx, del); err != nil {
-				panic(err) // TODO(masseelch): ??
+			if derr := drv.ApplyChanges(ctx, del); derr != nil {
+				err = wrap(derr, err)
 			}
 		}()
 		for _, n := range names {
@@ -278,7 +304,8 @@ func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
 				return nil, err
 			}
 		}
-		return drv.InspectRealm(ctx, nil)
+		realm, err = drv.InspectRealm(ctx, nil)
+		return
 	}
 }
 
@@ -585,4 +612,11 @@ func ensureSemicolonSuffix(s string) string {
 		return s + ";"
 	}
 	return s
+}
+
+func wrap(err1, err2 error) error {
+	if err2 != nil {
+		return fmt.Errorf("sql/migrate: %w: %v", err2, err1)
+	}
+	return err1
 }

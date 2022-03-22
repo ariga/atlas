@@ -60,6 +60,30 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 	}, nil
 }
 
+// IsEmpty implements the migrate.Emptier to override what to consider an "empty" database.
+func (d *Driver) IsEmpty(ctx context.Context) (bool, error) {
+	r, err := d.InspectRealm(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	return r == nil || len(r.Schemas) == 1 && r.Schemas[0].Name == "main" && len(r.Schemas[0].Tables) == 0, nil
+}
+
+// Empty implements the migrate.Emptier to override the "emptying" behavior.
+func (d *Driver) Empty(ctx context.Context) error {
+	for _, stmt := range []string{
+		"PRAGMA writable_schema = 1;",
+		"DELETE FROM sqlite_master WHERE type IN ('table', 'index', 'trigger');",
+		"PRAGMA writable_schema = 0;",
+		"VACUUM;",
+	} {
+		if _, err := d.ExecContext(ctx, stmt); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // SQLite standard data types as defined in its codebase and documentation.
 // https://www.sqlite.org/datatype3.html
 // https://github.com/sqlite/sqlite/blob/master/src/global.c
