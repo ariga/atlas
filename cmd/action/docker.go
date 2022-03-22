@@ -203,7 +203,7 @@ func (c *Container) Driver() string {
 // DSN returns a DSN to connect to the Container.
 func (c *Container) DSN() (string, error) {
 	switch drv := c.Driver(); drv {
-	case "mysql", "maria", "mariadb":
+	case "mysql", "mariadb":
 		return fmt.Sprintf("root:%s@tcp(localhost:%s)/", c.Passphrase, c.Port), nil
 	default:
 		return "", fmt.Errorf("unknown driver: %q", drv)

@@ -23,34 +23,34 @@ import (
 
 func Test_ProviderNotSupported(t *testing.T) {
 	u := action.NewMux()
-	_, err := u.OpenAtlas("fake://open")
+	_, err := u.OpenAtlas(context.Background(), "fake://open")
 	require.Error(t, err)
 }
 
 func Test_RegisterProvider(t *testing.T) {
 	u := action.NewMux()
-	p := func(s string) (*action.Driver, error) { return nil, nil }
+	p := func(context.Context, string) (*action.Driver, error) { return nil, nil }
 	require.NotPanics(t, func() { u.RegisterProvider("key", p) })
 }
 
 func Test_RegisterTwiceSameKeyFails(t *testing.T) {
 	u := action.NewMux()
-	p := func(s string) (*action.Driver, error) { return nil, nil }
+	p := func(context.Context, string) (*action.Driver, error) { return nil, nil }
 	require.NotPanics(t, func() { u.RegisterProvider("key", p) })
 	require.Panics(t, func() { u.RegisterProvider("key", p) })
 }
 
 func Test_GetDriverFails(t *testing.T) {
 	u := action.NewMux()
-	_, err := u.OpenAtlas("key://open")
+	_, err := u.OpenAtlas(context.Background(), "key://open")
 	require.Error(t, err)
 }
 
 func Test_GetDriverSuccess(t *testing.T) {
 	u := action.NewMux()
-	p := func(s string) (*action.Driver, error) { return nil, nil }
+	p := func(context.Context, string) (*action.Driver, error) { return nil, nil }
 	u.RegisterProvider("key", p)
-	_, err := u.OpenAtlas("key://open")
+	_, err := u.OpenAtlas(context.Background(), "key://open")
 	require.NoError(t, err)
 }
 
@@ -172,7 +172,7 @@ func TestMux_OpenAtlas(t *testing.T) {
 		} {
 			calls, l := mockServer(t)
 			require.NoError(t, mysqld.SetLogger(log.New(ioutil.Discard, "", 1)))
-			_, err := action.DefaultMux.OpenAtlas(fmt.Sprintf(u, l.Addr()))
+			_, err := action.DefaultMux.OpenAtlas(context.Background(), fmt.Sprintf(u, l.Addr()))
 			require.Error(t, err, "mock server rejects all incoming connections")
 			require.NotZero(t, *calls)
 		}

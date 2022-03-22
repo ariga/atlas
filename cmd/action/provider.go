@@ -5,7 +5,11 @@
 package action
 
 import (
+	"context"
 	"database/sql"
+	"fmt"
+	"regexp"
+	"time"
 
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
@@ -18,9 +22,10 @@ func init() {
 	DefaultMux.RegisterProvider("mariadb", mysqlProvider)
 	DefaultMux.RegisterProvider("postgres", postgresProvider)
 	DefaultMux.RegisterProvider("sqlite", sqliteProvider)
+	DefaultMux.RegisterProvider("docker", dockerProvider)
 }
 
-func mysqlProvider(dsn string) (*Driver, error) {
+func mysqlProvider(_ context.Context, dsn string) (*Driver, error) {
 	d, err := mysqlDSN(dsn)
 	if err != nil {
 		return nil, err
@@ -41,7 +46,7 @@ func mysqlProvider(dsn string) (*Driver, error) {
 	}, nil
 }
 
-func postgresProvider(dsn string) (*Driver, error) {
+func postgresProvider(_ context.Context, dsn string) (*Driver, error) {
 	u := "postgres://" + dsn
 	db, err := sql.Open("postgres", u)
 	if err != nil {
@@ -59,7 +64,7 @@ func postgresProvider(dsn string) (*Driver, error) {
 	}, nil
 }
 
-func sqliteProvider(dsn string) (*Driver, error) {
+func sqliteProvider(_ context.Context, dsn string) (*Driver, error) {
 	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, err
@@ -74,4 +79,37 @@ func sqliteProvider(dsn string) (*Driver, error) {
 		Unmarshaler: sqlite.UnmarshalHCL,
 		Closer:      db,
 	}, nil
+}
+
+var reDockerConfig = regexp.MustCompile("(mysql|mariadb)(?::([0-9a-zA-Z.-]+)?(\\?.*)?)?")
+
+func dockerProvider(ctx context.Context, dsn string) (*Driver, error) {
+	// The DSN has the driver part (docker:// removed already.
+	// Get rid of the query arguments, and we have the image name.
+	m := reDockerConfig.FindStringSubmatch(dsn)
+	img, v := m[1], m[2]
+	var (
+		cfg *DockerConfig
+		err error
+	)
+	switch img {
+	case "mysql", "mariadb":
+		cfg, err = MySQL(v)
+	}
+	if err != nil {
+		return nil, err
+	}
+	c, err := cfg.Run(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.Wait(ctx, time.Minute); err != nil {
+		return nil, err
+	}
+	d, err := c.DSN()
+	if err != nil {
+		_ = c.Down(ctx)
+		return nil, err
+	}
+	return DefaultMux.OpenAtlas(ctx, fmt.Sprintf("%s://%s", img, d))
 }

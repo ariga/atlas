@@ -25,7 +25,7 @@ import (
 type (
 	// Mux is used for routing URLs to their correct provider.
 	Mux struct {
-		providers map[string]func(string) (*Driver, error)
+		providers map[string]func(context.Context, string) (*Driver, error)
 	}
 
 	// Driver implements the Atlas interface.
@@ -40,7 +40,7 @@ type (
 // NewMux returns a new Mux.
 func NewMux() *Mux {
 	return &Mux{
-		providers: make(map[string]func(string) (*Driver, error)),
+		providers: make(map[string]func(context.Context, string) (*Driver, error)),
 	}
 }
 
@@ -51,7 +51,7 @@ var (
 )
 
 // RegisterProvider is used to register a Driver provider by key.
-func (u *Mux) RegisterProvider(key string, p func(string) (*Driver, error)) {
+func (u *Mux) RegisterProvider(key string, p func(context.Context, string) (*Driver, error)) {
 	if _, ok := u.providers[key]; ok {
 		panic("provider is already initialized")
 	}
@@ -59,7 +59,7 @@ func (u *Mux) RegisterProvider(key string, p func(string) (*Driver, error)) {
 }
 
 // OpenAtlas is used for opening an atlas driver on a specific data source.
-func (u *Mux) OpenAtlas(url string) (*Driver, error) {
+func (u *Mux) OpenAtlas(ctx context.Context, url string) (*Driver, error) {
 	key, dsn, err := urlParts(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init atlas driver, %s", err)
@@ -73,7 +73,7 @@ func (u *Mux) OpenAtlas(url string) (*Driver, error) {
 			return nil, err
 		}
 	}
-	return p(dsn)
+	return p(ctx, dsn)
 }
 
 func urlParts(url string) (string, string, error) {

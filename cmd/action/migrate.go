@@ -119,7 +119,7 @@ func init() {
 // CmdMigrateDiffRun is the command executed when running the CLI with 'migrate diff' args.
 func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	// Open a dev driver.
-	dev, err := DefaultMux.OpenAtlas(MigrateFlags.DevURL)
+	dev, err := DefaultMux.OpenAtlas(cmd.Context(), MigrateFlags.DevURL)
 	if err != nil {
 		return err
 	}
@@ -236,7 +236,7 @@ func to(ctx context.Context, d *Driver) (migrate.StateReader, error) {
 		}
 		return migrate.Realm(realm), nil
 	default: // database connection
-		drv, err := DefaultMux.OpenAtlas(MigrateFlags.ToURL)
+		drv, err := DefaultMux.OpenAtlas(ctx, MigrateFlags.ToURL)
 		if err != nil {
 			return nil, err
 		}

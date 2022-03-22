@@ -76,7 +76,7 @@ func CmdApplyRun(cmd *cobra.Command, _ []string) {
 		schemaCmd.PrintErrln("The Atlas UI is not available in this release.")
 		return
 	}
-	d, err := DefaultMux.OpenAtlas(ApplyFlags.URL)
+	d, err := DefaultMux.OpenAtlas(cmd.Context(), ApplyFlags.URL)
 	cobra.CheckErr(err)
 	defer d.Close()
 	applyRun(cmd.Context(), d, ApplyFlags.URL, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove)
@@ -110,7 +110,7 @@ func applyRun(ctx context.Context, d *Driver, url string, file string, dryRun bo
 		}
 	}
 	if _, ok := d.Driver.(schema.Normalizer); ok && ApplyFlags.DevURL != "" {
-		dev, err := DefaultMux.OpenAtlas(ApplyFlags.DevURL)
+		dev, err := DefaultMux.OpenAtlas(ctx, ApplyFlags.DevURL)
 		cobra.CheckErr(err)
 		defer d.Close()
 		desired, err = dev.Driver.(schema.Normalizer).NormalizeRealm(ctx, desired)
