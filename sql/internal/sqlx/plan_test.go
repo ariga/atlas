@@ -28,7 +28,7 @@ func TestDetachCycles(t *testing.T) {
 		},
 	}
 	users.ForeignKeys = []*schema.ForeignKey{
-		{Symbol: "workplace", Table: users, Columns: users.Columns[1:], RefTable: workplaces, RefColumns: workplaces.Columns[:1]},
+		{Symbol: "workplace", Table: users, Columns: users.Columns[1:2], RefTable: workplaces, RefColumns: workplaces.Columns[:1]},
 	}
 	changes := []schema.Change{&schema.AddTable{T: workplaces}, &schema.AddTable{T: users}}
 	planned, err := DetachCycles(changes)
@@ -44,11 +44,15 @@ func TestDetachCycles(t *testing.T) {
 	workplaces.ForeignKeys = []*schema.ForeignKey{
 		{Symbol: "owner", Table: workplaces, Columns: workplaces.Columns[1:], RefTable: users, RefColumns: users.Columns[:1]},
 	}
+	// Add a self-ref foreign-key.
+	users.Columns = append(users.Columns, &schema.Column{Name: "spouse_id", Type: &schema.ColumnType{Raw: "bigint", Null: true}})
+	users.ForeignKeys = append(users.ForeignKeys, &schema.ForeignKey{Symbol: "spouse", Table: users, Columns: users.Columns[2:], RefTable: users, RefColumns: users.Columns[:1]})
+
 	planned, err = DetachCycles(changes)
 	require.NoError(t, err)
 	require.Len(t, planned, 4)
 	require.Empty(t, planned[0].(*schema.AddTable).T.ForeignKeys)
-	require.Empty(t, planned[1].(*schema.AddTable).T.ForeignKeys)
+	require.NotEmpty(t, planned[1].(*schema.AddTable).T.ForeignKeys)
 	require.Equal(t, &schema.ModifyTable{
 		T: workplaces,
 		Changes: []schema.Change{
@@ -61,7 +65,7 @@ func TestDetachCycles(t *testing.T) {
 		T: users,
 		Changes: []schema.Change{
 			&schema.AddForeignKey{
-				F: &schema.ForeignKey{Symbol: "workplace", Table: users, Columns: users.Columns[1:], RefTable: workplaces, RefColumns: workplaces.Columns[:1]},
+				F: &schema.ForeignKey{Symbol: "workplace", Table: users, Columns: users.Columns[1:2], RefTable: workplaces, RefColumns: workplaces.Columns[:1]},
 			},
 		},
 	}, planned[3])
@@ -72,7 +76,7 @@ func TestDetachCycles(t *testing.T) {
 		T: users,
 		Changes: []schema.Change{
 			&schema.DropForeignKey{
-				F: &schema.ForeignKey{Symbol: "workplace", Table: users, Columns: users.Columns[1:], RefTable: workplaces, RefColumns: workplaces.Columns[:1]},
+				F: &schema.ForeignKey{Symbol: "workplace", Table: users, Columns: users.Columns[1:2], RefTable: workplaces, RefColumns: workplaces.Columns[:1]},
 			},
 		},
 	}, planned[0])

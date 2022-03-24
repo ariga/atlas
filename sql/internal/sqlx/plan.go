@@ -63,16 +63,21 @@ func detachReferences(changes []schema.Change) []schema.Change {
 	for _, change := range changes {
 		switch change := change.(type) {
 		case *schema.AddTable:
-			var fks []schema.Change
+			var (
+				ext  []schema.Change
+				self []*schema.ForeignKey
+			)
 			for _, fk := range change.T.ForeignKeys {
-				if fk.RefTable != change.T {
-					fks = append(fks, &schema.AddForeignKey{F: fk})
+				if fk.RefTable == change.T {
+					self = append(self, fk)
+				} else {
+					ext = append(ext, &schema.AddForeignKey{F: fk})
 				}
 			}
-			if len(fks) > 0 {
-				deferred = append(deferred, &schema.ModifyTable{T: change.T, Changes: fks})
+			if len(ext) > 0 {
+				deferred = append(deferred, &schema.ModifyTable{T: change.T, Changes: ext})
 				t := *change.T
-				t.ForeignKeys = nil
+				t.ForeignKeys = self
 				change = &schema.AddTable{T: &t, Extra: change.Extra}
 			}
 			planned = append(planned, change)
