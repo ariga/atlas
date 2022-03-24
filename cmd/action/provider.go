@@ -130,6 +130,7 @@ func dockerProvider(ctx context.Context, dsn string) (*Driver, error) {
 	}
 	drv, err := DefaultMux.OpenAtlas(ctx, fmt.Sprintf("%s://%s", img, d))
 	if err != nil {
+		_ = c.Down(ctx)
 		return nil, err
 	}
 	return &Driver{
