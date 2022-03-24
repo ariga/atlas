@@ -163,6 +163,7 @@ func (c *Container) Down(ctx context.Context) error {
 
 // Wait waits for this container to be ready.
 func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
+	fmt.Println("Waiting for service to be ready ... ")
 	mysqld.SetLogger(log.New(ioutil.Discard, "", 1))
 	defer mysqld.SetLogger(log.New(os.Stderr, "[mysql] ", log.Ldate|log.Ltime|log.Lshortfile))
 	if timeout > time.Minute {
@@ -186,6 +187,7 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 			if err := db.PingContext(ctx); err != nil {
 				continue
 			}
+			fmt.Println("Service is ready to connect!")
 			return nil
 		case <-ctx.Done():
 			return ctx.Err()
