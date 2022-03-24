@@ -295,7 +295,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			if err := s.alterColumn(b, change.Change, change.To); err != nil {
 				errors = append(errors, err.Error())
 			}
-			if err := s.alterColumn(reverse, change.Change, change.From); err != nil {
+			if err := s.alterColumn(reverse.Comma(), change.Change, change.From); err != nil {
 				errors = append(errors, err.Error())
 			}
 		case *schema.AddForeignKey:
