@@ -28,15 +28,19 @@ const pass = "pass"
 type (
 	// DockerConfig is used to configure container creation.
 	DockerConfig struct {
+		// Image is the name of the image to pull and run.
 		Image string
-		Env   []string  // env vars to pass to the container
-		Port  string    // internal port to expose and connect to
-		Out   io.Writer // custom writer to send docker cli output to
+		// Env vars to pass to the docker container.
+		Env []string
+		// Internal Port to expose anc connect to.
+		Port string
+		// Out is a custom writer to send docker cli output to.
+		Out io.Writer
 	}
 	// A Container is an instance of a created container.
 	Container struct {
 		cfg DockerConfig // DockerConfig used to create this container
-		Out io.Writer    // custom write to log status messages to
+		out io.Writer    // custom write to log status messages to
 		// ID of the container.
 		ID string
 		// Passphrase of the root user.
@@ -154,7 +158,7 @@ func (c *DockerConfig) Run(ctx context.Context) (*Container, error) {
 		ID:         strings.TrimSpace(out.String()),
 		Passphrase: pass,
 		Port:       p,
-		Out:        c.Out,
+		out:        c.Out,
 	}, nil
 }
 
@@ -165,7 +169,7 @@ func (c *Container) Down(ctx context.Context) error {
 
 // Wait waits for this container to be ready.
 func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
-	fmt.Fprintln(c.Out, "Waiting for service to be ready ... ")
+	fmt.Fprintln(c.out, "Waiting for service to be ready ... ")
 	mysqld.SetLogger(log.New(ioutil.Discard, "", 1))
 	defer mysqld.SetLogger(log.New(os.Stderr, "[mysql] ", log.Ldate|log.Ltime|log.Lshortfile))
 	if timeout > time.Minute {
@@ -189,7 +193,7 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 			if err := db.PingContext(ctx); err != nil {
 				continue
 			}
-			fmt.Fprintln(c.Out, "Service is ready to connect!")
+			fmt.Fprintln(c.out, "Service is ready to connect!")
 			return nil
 		case <-ctx.Done():
 			return ctx.Err()

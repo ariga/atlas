@@ -82,6 +82,7 @@ func (u *Mux) OpenAtlas(ctx context.Context, url string, opts ...ProviderOption)
 	return p(ctx, dsn, opts...)
 }
 
+// VerboseLogging is a ProviderOption passed to the different providers to enable more verbose logging.
 type VerboseLogging struct{}
 
 func (VerboseLogging) providerOption() {}
