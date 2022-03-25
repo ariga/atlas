@@ -91,6 +91,7 @@ the migration directory state to the desired schema. The desired state can be an
 ```
       --dev-url string   [driver://username:password@address/dbname?param=value] select a data source using the DSN format
       --to string        [driver://username:password@address/dbname?param=value] select a data source using the DSN format
+      --verbose          enable verbose logging
 
 ```
 
