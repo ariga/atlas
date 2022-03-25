@@ -222,8 +222,6 @@ func (c *DockerConfig) validate() error {
 	return nil
 }
 
-func (DockerConfigOption) providerOption() {}
-
 func freePort() (string, error) {
 	a, err := net.ResolveTCPAddr("tcp", ":0")
 	if err != nil {
