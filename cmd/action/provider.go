@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"regexp"
 	"time"
 
@@ -25,7 +26,7 @@ func init() {
 	DefaultMux.RegisterProvider("docker", dockerProvider)
 }
 
-func mysqlProvider(_ context.Context, dsn string) (*Driver, error) {
+func mysqlProvider(_ context.Context, dsn string, _ ...ProviderOption) (*Driver, error) {
 	d, err := mysqlDSN(dsn)
 	if err != nil {
 		return nil, err
@@ -46,7 +47,7 @@ func mysqlProvider(_ context.Context, dsn string) (*Driver, error) {
 	}, nil
 }
 
-func postgresProvider(_ context.Context, dsn string) (*Driver, error) {
+func postgresProvider(_ context.Context, dsn string, _ ...ProviderOption) (*Driver, error) {
 	u := "postgres://" + dsn
 	db, err := sql.Open("postgres", u)
 	if err != nil {
@@ -64,7 +65,7 @@ func postgresProvider(_ context.Context, dsn string) (*Driver, error) {
 	}, nil
 }
 
-func sqliteProvider(_ context.Context, dsn string) (*Driver, error) {
+func sqliteProvider(_ context.Context, dsn string, _ ...ProviderOption) (*Driver, error) {
 	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, err
@@ -100,7 +101,7 @@ func (dc *dockerCloser) Close() (err error) {
 	return
 }
 
-func dockerProvider(ctx context.Context, dsn string) (*Driver, error) {
+func dockerProvider(ctx context.Context, dsn string, opts ...ProviderOption) (*Driver, error) {
 	// The DSN has the driver part (docker:// removed already.
 	// Get rid of the query arguments, and we have the image name.
 	m := reDockerConfig.FindStringSubmatch(dsn)
@@ -115,6 +116,15 @@ func dockerProvider(ctx context.Context, dsn string) (*Driver, error) {
 	}
 	if err != nil {
 		return nil, err
+	}
+	for _, opt := range opts {
+		switch opt.(type) {
+		case VerboseLogging, *VerboseLogging:
+			err = Out(os.Stdout)(cfg)
+		}
+		if err != nil {
+			return nil, err
+		}
 	}
 	c, err := cfg.Run(ctx)
 	if err != nil {

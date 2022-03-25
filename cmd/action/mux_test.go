@@ -29,13 +29,13 @@ func Test_ProviderNotSupported(t *testing.T) {
 
 func Test_RegisterProvider(t *testing.T) {
 	u := action.NewMux()
-	p := func(context.Context, string) (*action.Driver, error) { return nil, nil }
+	p := func(context.Context, string, ...action.ProviderOption) (*action.Driver, error) { return nil, nil }
 	require.NotPanics(t, func() { u.RegisterProvider("key", p) })
 }
 
 func Test_RegisterTwiceSameKeyFails(t *testing.T) {
 	u := action.NewMux()
-	p := func(context.Context, string) (*action.Driver, error) { return nil, nil }
+	p := func(context.Context, string, ...action.ProviderOption) (*action.Driver, error) { return nil, nil }
 	require.NotPanics(t, func() { u.RegisterProvider("key", p) })
 	require.Panics(t, func() { u.RegisterProvider("key", p) })
 }
@@ -48,7 +48,7 @@ func Test_GetDriverFails(t *testing.T) {
 
 func Test_GetDriverSuccess(t *testing.T) {
 	u := action.NewMux()
-	p := func(context.Context, string) (*action.Driver, error) { return nil, nil }
+	p := func(context.Context, string, ...action.ProviderOption) (*action.Driver, error) { return nil, nil }
 	u.RegisterProvider("key", p)
 	_, err := u.OpenAtlas(context.Background(), "key://open")
 	require.NoError(t, err)

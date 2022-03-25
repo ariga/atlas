@@ -36,6 +36,7 @@ type (
 	// A Container is an instance of a created container.
 	Container struct {
 		cfg DockerConfig // DockerConfig used to create this container
+		Out io.Writer    // custom write to log status messages to
 		// ID of the container.
 		ID string
 		// Passphrase of the root user.
@@ -49,7 +50,7 @@ type (
 
 // NewConfig returns a new config with the given options applied.
 func NewConfig(opts ...DockerConfigOption) (*DockerConfig, error) {
-	c := &DockerConfig{Out: os.Stdout}
+	c := &DockerConfig{Out: ioutil.Discard}
 	for _, opt := range opts {
 		if err := opt(c); err != nil {
 			return nil, err
@@ -153,6 +154,7 @@ func (c *DockerConfig) Run(ctx context.Context) (*Container, error) {
 		ID:         strings.TrimSpace(out.String()),
 		Passphrase: pass,
 		Port:       p,
+		Out:        c.Out,
 	}, nil
 }
 
@@ -163,7 +165,7 @@ func (c *Container) Down(ctx context.Context) error {
 
 // Wait waits for this container to be ready.
 func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
-	fmt.Println("Waiting for service to be ready ... ")
+	fmt.Fprintln(c.Out, "Waiting for service to be ready ... ")
 	mysqld.SetLogger(log.New(ioutil.Discard, "", 1))
 	defer mysqld.SetLogger(log.New(os.Stderr, "[mysql] ", log.Ldate|log.Ltime|log.Lshortfile))
 	if timeout > time.Minute {
@@ -187,7 +189,7 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 			if err := db.PingContext(ctx); err != nil {
 				continue
 			}
-			fmt.Println("Service is ready to connect!")
+			fmt.Fprintln(c.Out, "Service is ready to connect!")
 			return nil
 		case <-ctx.Done():
 			return ctx.Err()
@@ -219,6 +221,8 @@ func (c *DockerConfig) validate() error {
 	}
 	return nil
 }
+
+func (DockerConfigOption) providerOption() {}
 
 func freePort() (string, error) {
 	a, err := net.ResolveTCPAddr("tcp", ":0")

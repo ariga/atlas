@@ -55,7 +55,7 @@ func TestMigrate_Diff(t *testing.T) {
 	require.FileExists(t, filepath.Join(p, "atlas.sum"))
 
 	// A lock will prevent diffing.
-	DefaultMux.RegisterProvider("sqlitelock", func(ctx context.Context, s string) (*Driver, error) {
+	DefaultMux.RegisterProvider("sqlitelock", func(ctx context.Context, s string, _ ...ProviderOption) (*Driver, error) {
 		drv, err := sqliteProvider(ctx, s)
 		if err != nil {
 			return nil, err
