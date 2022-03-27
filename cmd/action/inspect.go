@@ -28,18 +28,18 @@ var (
 It then prints to the screen the schema of that database in Atlas DDL syntax. This output can be 
 saved to a file, commonly by redirecting the output to a file named with a ".hcl" suffix:
 
-  atlas schema inspect -u "mysql://user:pass@tcp(localhost:3306)/dbname" > atlas.hcl
+  atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname" > atlas.hcl
 
 This file can then be edited and used with the` + " `atlas schema apply` " + `command to plan
 and execute schema migrations against the given database. In cases where users wish to inspect
 all multiple schemas in a given database (for instance a MySQL server may contain multiple named
-databases), omit the relevant part from the url, e.g. "mysql://user:pass@tcp(localhost:3306)/".
+databases), omit the relevant part from the url, e.g. "mysql://user:pass@localhost:3306/".
 To select specific schemas from the databases, users may use the "--schema" (or "-s" shorthand)
 flag.
 	`,
 		Run: CmdInspectRun,
-		Example: `  atlas schema inspect -u "mysql://user:pass@tcp(localhost:3306)/dbname"
-  atlas schema inspect -u "mariadb://user:pass@tcp(localhost:3306)/" --schema=schemaA,schemaB -s schemaC
+		Example: `  atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname"
+  atlas schema inspect -u "mariadb://user:pass@localhost:3306/" --schema=schemaA,schemaB -s schemaC
   atlas schema inspect --url "postgres://user:pass@host:port/dbname?sslmode=disable"
   atlas schema inspect -u "sqlite://file:ex1.db?_fk=1"`,
 	}

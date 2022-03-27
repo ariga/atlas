@@ -14,22 +14,34 @@ atlas schema inspect --help
 ```
 View the output:
 ```text
-Inspect an atlas schema
+`atlas schema inspect` connects to the given database and inspects its schema.
+It then prints to the screen the schema of that database in Atlas DDL syntax. This output can be
+saved to a file, commonly by redirecting the output to a file named with a ".hcl" suffix:
+
+  atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname" > atlas.hcl
+
+This file can then be edited and used with the `atlas schema apply` command to plan
+and execute schema migrations against the given database. In cases where users wish to inspect
+all multiple schemas in a given database (for instance a MySQL server may contain multiple named
+databases), omit the relevant part from the url, e.g. "mysql://user:pass@localhost:3306/".
+To select specific schemas from the databases, users may use the "--schema" (or "-s" shorthand)
+flag.
 
 Usage:
   atlas schema inspect [flags]
 
 Examples:
-
-atlas schema inspect -u "mysql://user:pass@tcp(localhost:3306)/dbname"
-atlas schema inspect -u "mariadb://user:pass@tcp(localhost:3306)/dbname"
-atlas schema inspect --url "postgres://user:pass@host:port/dbname?sslmode=disable"
-atlas schema inspect -u "sqlite://file:ex1.db?_fk=1"
+  atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname"
+  atlas schema inspect -u "mariadb://user:pass@localhost:3306/" --schema=schemaA,schemaB -s schemaC
+  atlas schema inspect --url "postgres://user:pass@host:port/dbname?sslmode=disable"
+  atlas schema inspect -u "sqlite://file:ex1.db?_fk=1"
 
 Flags:
-  -u, --url string   [driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format
-  -h, --help         help for inspect
-  -w, --web          open in UI server
+      --addr string      Used with -w, local address to bind the server to (default ":5800")
+  -h, --help             help for inspect
+  -s, --schema strings   Set schema name
+  -u, --url string       [driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format
+  -w, --web              Open in a local Atlas UI
 ```
 
 :::info
@@ -43,7 +55,7 @@ If you're using PostgreSQL, there is [additional documentation about building th
 To inspect our locally-running MySQL instance from the [previous](01-introduction.mdx) section,
 use the `-d` flag and write output to a file named `atlas.hcl`:
 ```shell
-atlas schema inspect -d "mysql://root:pass@tcp(localhost:3306)/example" > atlas.hcl
+atlas schema inspect -d "mysql://root:pass@localhost:3306/example" > atlas.hcl
 ```
 To view the contents of the created file:
 ```shell
@@ -91,7 +103,7 @@ table for the authors and a blog_posts table for the contents:
 
 Next, let's re-run our inspection command:
 ```shell
-atlas schema inspect -d "mysql://root:pass@tcp(localhost:3306)/example" > atlas.hcl
+atlas schema inspect -d "mysql://root:pass@localhost:3306/example" > atlas.hcl
 ```
 Browse through the updated contents of the file, it contains 3 blocks representing
 our schema as before, and two new blocks representing the `users` and `blog_posts` tables.
