@@ -14,7 +14,11 @@ we believe that a visual, integrated environment can be beneficial in many use-c
 
 ### Usage
 
-To launch the Atlas UI, run either `schema inspect` or `schema apply` commands with the `-w` command-line
+Get started with the UI by running the command `atlas serve`.
+To ensure that your team's schemas, database credentials, migration history and more are not lost, save the data
+in the UI by running the command with [persistent storage](https://atlasgo.io/deployment/intro#persistent-storage).
+
+Alternatively, you can run either `schema inspect` or `schema apply` commands with the `-w` command-line
 flag:
 
 #### Inspect
@@ -26,7 +30,3 @@ atlas schema inspect -d "mysql://root:pass@tcp(localhost:3306)/example" -w
 ```
 atlas schema apply -d "mysql://root:pass@tcp(localhost:3306)/example" -f atlas.hcl -w
 ```
-
-## Features
-
-### 
