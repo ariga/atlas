@@ -20,22 +20,36 @@ atlas schema apply --help
 ```
 The documentation is printed out:
 ```text
-Apply an atlas schema to a data source
+'atlas schema apply' plans and executes a database migration to bring a given
+database to the state described in the Atlas schema file. Before running the
+migration, Atlas will print the migration plan and prompt the user for approval.
+
+If run with the "--dry-run" flag, atlas will exit after printing out the planned
+migration.
 
 Usage:
   atlas schema apply [flags]
 
 Examples:
-
-atlas schema apply -u "mysql://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
-atlas schema apply -u "mariadb://user:pass@tcp(localhost:3306)/dbname" -f atlas.hcl
-atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -f atlas.hcl
-atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f atlas.hcl
+  atlas schema apply -u "mysql://user:pass@localhost/dbname" -f atlas.hcl
+  atlas schema apply -u "mysql://localhost" -f atlas.hcl --schema prod --schema staging
+  atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" -f atlas.hcl --dry-run
+  atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" -f atlas.hcl
+  atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -f atlas.hcl
+  atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f atlas.hcl
 
 Flags:
-  -u, --url string    [driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format
-  -f, --file string   [/path/to/file] file containing schema
-  -h, --help          help for apply
+  -f, --file string      [/path/to/file] file containing the HCL schema.
+  -u, --url string       URL to the database using the format:
+                         [driver://username:password@address/dbname?param=value]
+  -s, --schema strings   Set schema names.
+      --dev-url string   URL for the dev database. Used to validate schemas and calculate diffs
+                         before running migration.
+      --dry-run          Dry-run. Print SQL plan without prompting for execution.
+      --auto-approve     Auto approve. Apply the schema changes without prompting for approval.
+  -w, --web              Open in a local Atlas UI.
+      --addr string      used with -w, local address to bind the server to. (default ":5800")
+  -h, --help             help for apply
 ```
 As you can see, similar to the `inspect` command, the `-d` flag is used to define the
 URL to connect to the database, and an additional flag `-f` specifies the path to
@@ -52,7 +66,7 @@ relationship between blog posts and categories:
 
 First, let's store the existing schema in a file named `atlas.hcl`:
 ```shell
-atlas schema inspect -d "mysql://root:pass@tcp(localhost:3306)/example" > atlas.hcl
+atlas schema inspect -d "mysql://root:pass@localhost:3306/example" > atlas.hcl
 ```
 Next, add the following table definition to the file:
 ```hcl
@@ -74,7 +88,7 @@ table "categories" {
 
 To add this table to our database, let's use the `atlas schema apply` command:
 ```shell
-atlas schema apply -d "mysql://root:pass@tcp(localhost:3306)/example" -f atlas.hcl 
+atlas schema apply -d "mysql://root:pass@localhost:3306/example" -f atlas.hcl 
 ```
 Atlas plans a migration (schema change) for us and prompts us to approve it:
 ```text
@@ -134,7 +148,7 @@ and `categories` tables.
 
 Let's try to apply the schema again, this time with the updated schema:
 ```text
-atlas schema apply -d "mysql://root:pass@tcp(localhost:3306)/example" -f atlas.hcl
+atlas schema apply -d "mysql://root:pass@localhost:3306/example" -f atlas.hcl
 -- Planned Changes:
 -- Create "post_categories" table
 CREATE TABLE `example`.`post_categories` (`post_id` int NOT NULL, `category_id` int NOT NULL, CONSTRAINT `post_category_post` FOREIGN KEY (`post_id`) REFERENCES `example`.`blog_posts` (`id`), CONSTRAINT `post_category_category` FOREIGN KEY (`category_id`) REFERENCES `example`.`categories` (`id`))
