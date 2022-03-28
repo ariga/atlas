@@ -44,10 +44,10 @@ func init() {
 // the "from" schema to the "to" schema.
 func cmdDiffRun(cmd *cobra.Command, flags *diffCmdOpts) {
 	ctx := cmd.Context()
-	fromDriver, err := DefaultMux.OpenAtlas(flags.fromURL)
+	fromDriver, err := DefaultMux.OpenAtlas(cmd.Context(), flags.fromURL)
 	cobra.CheckErr(err)
 	defer fromDriver.Close()
-	toDriver, err := DefaultMux.OpenAtlas(flags.toURL)
+	toDriver, err := DefaultMux.OpenAtlas(cmd.Context(), flags.toURL)
 	cobra.CheckErr(err)
 	defer toDriver.Close()
 	fromName, err := SchemaNameFromURL(ctx, flags.fromURL)

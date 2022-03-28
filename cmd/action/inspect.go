@@ -61,7 +61,7 @@ func CmdInspectRun(cmd *cobra.Command, _ []string) {
 		schemaCmd.PrintErrln("The Atlas UI is not available in this release.")
 		return
 	}
-	d, err := DefaultMux.OpenAtlas(InspectFlags.URL)
+	d, err := DefaultMux.OpenAtlas(cmd.Context(), InspectFlags.URL)
 	cobra.CheckErr(err)
 	defer d.Close()
 	inspectRun(cmd.Context(), d, InspectFlags.URL)

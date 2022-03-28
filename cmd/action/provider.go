@@ -5,7 +5,12 @@
 package action
 
 import (
+	"context"
 	"database/sql"
+	"fmt"
+	"os"
+	"regexp"
+	"time"
 
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
@@ -18,9 +23,10 @@ func init() {
 	DefaultMux.RegisterProvider("mariadb", mysqlProvider)
 	DefaultMux.RegisterProvider("postgres", postgresProvider)
 	DefaultMux.RegisterProvider("sqlite", sqliteProvider)
+	DefaultMux.RegisterProvider("docker", dockerProvider)
 }
 
-func mysqlProvider(dsn string) (*Driver, error) {
+func mysqlProvider(_ context.Context, dsn string, _ ...ProviderOption) (*Driver, error) {
 	d, err := mysqlDSN(dsn)
 	if err != nil {
 		return nil, err
@@ -41,7 +47,7 @@ func mysqlProvider(dsn string) (*Driver, error) {
 	}, nil
 }
 
-func postgresProvider(dsn string) (*Driver, error) {
+func postgresProvider(_ context.Context, dsn string, _ ...ProviderOption) (*Driver, error) {
 	u := "postgres://" + dsn
 	db, err := sql.Open("postgres", u)
 	if err != nil {
@@ -59,7 +65,7 @@ func postgresProvider(dsn string) (*Driver, error) {
 	}, nil
 }
 
-func sqliteProvider(dsn string) (*Driver, error) {
+func sqliteProvider(_ context.Context, dsn string, _ ...ProviderOption) (*Driver, error) {
 	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, err
@@ -73,5 +79,74 @@ func sqliteProvider(dsn string) (*Driver, error) {
 		Marshaler:   sqlite.MarshalHCL,
 		Unmarshaler: sqlite.UnmarshalHCL,
 		Closer:      db,
+	}, nil
+}
+
+var reDockerConfig = regexp.MustCompile("(mysql|mariadb)(?::([0-9a-zA-Z.-]+)?(\\?.*)?)?")
+
+type dockerCloser struct {
+	c   *Container
+	drv *Driver
+	ctx context.Context
+}
+
+func (dc *dockerCloser) Close() (err error) {
+	derr, cerr := dc.drv.Close(), dc.c.Down(dc.ctx)
+	if derr != nil {
+		err = derr
+	}
+	if cerr != nil {
+		err = fmt.Errorf("%w: %v", derr, cerr)
+	}
+	return
+}
+
+func dockerProvider(ctx context.Context, dsn string, opts ...ProviderOption) (*Driver, error) {
+	// The DSN has the driver part (docker:// removed already.
+	// Get rid of the query arguments, and we have the image name.
+	m := reDockerConfig.FindStringSubmatch(dsn)
+	img, v := m[1], m[2]
+	var (
+		cfg *DockerConfig
+		err error
+	)
+	switch img {
+	case "mysql", "mariadb":
+		cfg, err = MySQL(v)
+	}
+	if err != nil {
+		return nil, err
+	}
+	for _, opt := range opts {
+		switch opt.(type) {
+		case VerboseLogging, *VerboseLogging:
+			err = Out(os.Stdout)(cfg)
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	c, err := cfg.Run(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.Wait(ctx, time.Minute); err != nil {
+		return nil, err
+	}
+	d, err := c.DSN()
+	if err != nil {
+		_ = c.Down(ctx)
+		return nil, err
+	}
+	drv, err := DefaultMux.OpenAtlas(ctx, fmt.Sprintf("%s://%s", img, d))
+	if err != nil {
+		_ = c.Down(ctx)
+		return nil, err
+	}
+	return &Driver{
+		Driver:      drv.Driver,
+		Marshaler:   drv.Marshaler,
+		Unmarshaler: drv.Unmarshaler,
+		Closer:      &dockerCloser{c, drv, ctx},
 	}, nil
 }

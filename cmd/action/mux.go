@@ -25,7 +25,7 @@ import (
 type (
 	// Mux is used for routing URLs to their correct provider.
 	Mux struct {
-		providers map[string]func(string) (*Driver, error)
+		providers map[string]Provider
 	}
 
 	// Driver implements the Atlas interface.
@@ -35,12 +35,18 @@ type (
 		schemaspec.Unmarshaler
 		io.Closer
 	}
+
+	// Provider creates a Driver from a given URL and a set of options.
+	Provider func(context.Context, string, ...ProviderOption) (*Driver, error)
+
+	// ProviderOption is an interface to mark custom provider configuration.
+	ProviderOption interface{ providerOption() }
 )
 
 // NewMux returns a new Mux.
 func NewMux() *Mux {
 	return &Mux{
-		providers: make(map[string]func(string) (*Driver, error)),
+		providers: make(map[string]Provider),
 	}
 }
 
@@ -51,7 +57,7 @@ var (
 )
 
 // RegisterProvider is used to register a Driver provider by key.
-func (u *Mux) RegisterProvider(key string, p func(string) (*Driver, error)) {
+func (u *Mux) RegisterProvider(key string, p Provider) {
 	if _, ok := u.providers[key]; ok {
 		panic("provider is already initialized")
 	}
@@ -59,7 +65,7 @@ func (u *Mux) RegisterProvider(key string, p func(string) (*Driver, error)) {
 }
 
 // OpenAtlas is used for opening an atlas driver on a specific data source.
-func (u *Mux) OpenAtlas(url string) (*Driver, error) {
+func (u *Mux) OpenAtlas(ctx context.Context, url string, opts ...ProviderOption) (*Driver, error) {
 	key, dsn, err := urlParts(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init atlas driver, %s", err)
@@ -73,8 +79,13 @@ func (u *Mux) OpenAtlas(url string) (*Driver, error) {
 			return nil, err
 		}
 	}
-	return p(dsn)
+	return p(ctx, dsn, opts...)
 }
+
+// VerboseLogging is a ProviderOption passed to the different providers to enable more verbose logging.
+type VerboseLogging struct{}
+
+func (VerboseLogging) providerOption() {}
 
 func urlParts(url string) (string, string, error) {
 	a := strings.SplitN(url, "://", 2)

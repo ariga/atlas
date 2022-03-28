@@ -21,11 +21,12 @@ import (
 )
 
 const (
-	migrateFlagDir        = "dir"
-	migrateFlagSchema     = "schema"
-	migrateFlagForce      = "force"
-	migrateDiffFlagDevURL = "dev-url"
-	migrateDiffFlagTo     = "to"
+	migrateFlagDir         = "dir"
+	migrateFlagSchema      = "schema"
+	migrateFlagForce       = "force"
+	migrateDiffFlagDevURL  = "dev-url"
+	migrateDiffFlagTo      = "to"
+	migrateDiffFlagVerbose = "verbose"
 )
 
 var (
@@ -36,6 +37,7 @@ var (
 		ToURL   string
 		Schemas []string
 		Force   bool
+		Verbose bool
 	}
 	// MigrateCmd represents the migrate command. It wraps several other sub-commands.
 	MigrateCmd = &cobra.Command{
@@ -111,6 +113,7 @@ func init() {
 	// Diff flags.
 	MigrateDiffCmd.Flags().StringVarP(&MigrateFlags.DevURL, migrateDiffFlagDevURL, "", "", "[driver://username:password@address/dbname?param=value] select a data source using the DSN format")
 	MigrateDiffCmd.Flags().StringVarP(&MigrateFlags.ToURL, migrateDiffFlagTo, "", "", "[driver://username:password@address/dbname?param=value] select a data source using the DSN format")
+	MigrateDiffCmd.Flags().BoolVarP(&MigrateFlags.Verbose, migrateDiffFlagVerbose, "", false, "enable verbose logging")
 	MigrateDiffCmd.Flags().SortFlags = false
 	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateDiffFlagDevURL))
 	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateDiffFlagTo))
@@ -118,8 +121,12 @@ func init() {
 
 // CmdMigrateDiffRun is the command executed when running the CLI with 'migrate diff' args.
 func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
+	var opts []ProviderOption
+	if MigrateFlags.Verbose {
+		opts = append(opts, &VerboseLogging{})
+	}
 	// Open a dev driver.
-	dev, err := DefaultMux.OpenAtlas(MigrateFlags.DevURL)
+	dev, err := DefaultMux.OpenAtlas(cmd.Context(), MigrateFlags.DevURL, opts...)
 	if err != nil {
 		return err
 	}
@@ -236,7 +243,7 @@ func to(ctx context.Context, d *Driver) (migrate.StateReader, error) {
 		}
 		return migrate.Realm(realm), nil
 	default: // database connection
-		drv, err := DefaultMux.OpenAtlas(MigrateFlags.ToURL)
+		drv, err := DefaultMux.OpenAtlas(ctx, MigrateFlags.ToURL)
 		if err != nil {
 			return nil, err
 		}
