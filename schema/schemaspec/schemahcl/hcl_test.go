@@ -226,5 +226,25 @@ zoo "ramat_gan" {
 			},
 		}, test.Zoo)
 	})
+}
 
+func TestQualified(t *testing.T) {
+	type Person struct {
+		Name  string `spec:",name"`
+		Title string `spec:",qualifier"`
+	}
+	var test struct {
+		Person *Person `spec:"person"`
+	}
+	h := `
+person "dr" "jekyll" {
+  
+}
+`
+	err := Unmarshal([]byte(h), &test)
+	require.NoError(t, err)
+	require.EqualValues(t, test.Person, &Person{
+		Title: "dr",
+		Name:  "jekyll",
+	})
 }

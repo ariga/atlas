@@ -88,7 +88,7 @@ func (r *Resource) As(target interface{}) error {
 		return err
 	}
 	existingAttrs, existingChildren := existingElements(r)
-	var seenName bool
+	var seenName, seenQualifier bool
 	v := reflect.ValueOf(target).Elem()
 	for _, ft := range specFields(target) {
 		field := v.FieldByName(ft.Name)
@@ -102,6 +102,12 @@ func (r *Resource) As(target interface{}) error {
 				return errors.New("schemaspec: extension isName field must be of type string")
 			}
 			field.SetString(r.Name)
+		case ft.isQualifier():
+			if seenQualifier {
+				return errors.New("schemaspec: extension must have only one qualifier field")
+			}
+			seenQualifier = true
+			field.SetString(r.Qualifier)
 		case hasAttr(r, ft.tag):
 			attr, _ := r.Attr(ft.tag)
 			if err := setField(field, attr); err != nil {
@@ -563,6 +569,8 @@ type fieldDesc struct {
 }
 
 func (f fieldDesc) isName() bool { return f.is("name") }
+
+func (f fieldDesc) isQualifier() bool { return f.is("qualifier") }
 
 func (f fieldDesc) omitempty() bool { return f.is("omitempty") }
 
