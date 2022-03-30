@@ -267,6 +267,9 @@ func (s *state) writeResource(b *schemaspec.Resource, body *hclwrite.Body) error
 
 func labels(r *schemaspec.Resource) []string {
 	var l []string
+	if r.Qualifier != "" {
+		l = append(l, r.Qualifier)
+	}
 	if r.Name != "" {
 		l = append(l, r.Name)
 	}
