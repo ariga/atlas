@@ -236,9 +236,7 @@ func TestQualified(t *testing.T) {
 	var test struct {
 		Person *Person `spec:"person"`
 	}
-	h := `
-person "dr" "jekyll" {
-  
+	h := `person "dr" "jekyll" {
 }
 `
 	err := Unmarshal([]byte(h), &test)
@@ -247,4 +245,7 @@ person "dr" "jekyll" {
 		Title: "dr",
 		Name:  "jekyll",
 	})
+	out, err := Marshal(&test)
+	require.NoError(t, err)
+	require.EqualValues(t, h, string(out))
 }

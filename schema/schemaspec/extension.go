@@ -388,6 +388,11 @@ func (r *Resource) Scan(ext interface{}) error {
 				return errors.New("schemaspec: extension name field must be string")
 			}
 			r.Name = field.String()
+		case ft.isQualifier():
+			if field.Kind() != reflect.String {
+				return errors.New("schemaspec: extension qualifer field must be string")
+			}
+			r.Qualifier = field.String()
 		case isResourceSlice(field.Type()):
 			for i := 0; i < field.Len(); i++ {
 				ext := field.Index(i).Interface()
