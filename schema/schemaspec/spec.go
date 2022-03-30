@@ -9,10 +9,11 @@ import (
 type (
 	// Resource is a generic container for resources described in configurations.
 	Resource struct {
-		Name     string
-		Type     string
-		Attrs    []*Attr
-		Children []*Resource
+		Name      string
+		Qualifier string
+		Type      string
+		Attrs     []*Attr
+		Children  []*Resource
 	}
 
 	// Attr is an attribute of a Resource.

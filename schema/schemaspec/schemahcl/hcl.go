@@ -198,8 +198,15 @@ func (s *state) toResource(ctx *hcl.EvalContext, block *hclsyntax.Block, scope [
 	spec := &schemaspec.Resource{
 		Type: block.Type,
 	}
-	if len(block.Labels) > 0 {
+	switch len(block.Labels) {
+	case 0:
+	case 1:
 		spec.Name = block.Labels[0]
+	case 2:
+		spec.Qualifier = block.Labels[0]
+		spec.Name = block.Labels[1]
+	default:
+		return nil, fmt.Errorf("too many labels for block: %s", block.Labels)
 	}
 	ctx = s.mayExtendVars(ctx, scope)
 	attrs, err := s.toAttrs(ctx, block.Body.Attributes, scope)
