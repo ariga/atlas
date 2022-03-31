@@ -27,6 +27,7 @@ var (
 		DryRun      bool
 		Schema      []string
 		AutoApprove bool
+		Verbose     bool
 	}
 	// ApplyCmd represents the apply command.
 	ApplyCmd = &cobra.Command{
@@ -65,6 +66,7 @@ func init() {
 	ApplyCmd.Flags().BoolVarP(&ApplyFlags.AutoApprove, "auto-approve", "", false, "Auto approve. Apply the schema changes without prompting for approval.")
 	ApplyCmd.Flags().BoolVarP(&ApplyFlags.Web, "web", "w", false, "Open in a local Atlas UI.")
 	ApplyCmd.Flags().StringVarP(&ApplyFlags.Addr, "addr", "", ":5800", "used with -w, local address to bind the server to.")
+	ApplyCmd.Flags().BoolVarP(&ApplyFlags.Verbose, migrateDiffFlagVerbose, "", false, "enable verbose logging")
 	cobra.CheckErr(ApplyCmd.MarkFlagRequired("url"))
 	cobra.CheckErr(ApplyCmd.MarkFlagRequired("file"))
 	dsn2url(ApplyCmd, &ApplyFlags.URL)
@@ -79,10 +81,10 @@ func CmdApplyRun(cmd *cobra.Command, _ []string) {
 	d, err := DefaultMux.OpenAtlas(cmd.Context(), ApplyFlags.URL)
 	cobra.CheckErr(err)
 	defer d.Close()
-	applyRun(cmd.Context(), d, ApplyFlags.URL, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove)
+	applyRun(cmd.Context(), d, ApplyFlags.URL, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove, ApplyFlags.Verbose)
 }
 
-func applyRun(ctx context.Context, d *Driver, url string, file string, dryRun bool, autoApprove bool) {
+func applyRun(ctx context.Context, d *Driver, url string, file string, dryRun bool, autoApprove bool, verbose bool) {
 	schemas := ApplyFlags.Schema
 	if n, err := SchemaNameFromURL(ctx, url); n != "" {
 		cobra.CheckErr(err)
@@ -110,7 +112,11 @@ func applyRun(ctx context.Context, d *Driver, url string, file string, dryRun bo
 		}
 	}
 	if _, ok := d.Driver.(schema.Normalizer); ok && ApplyFlags.DevURL != "" {
-		dev, err := DefaultMux.OpenAtlas(ctx, ApplyFlags.DevURL)
+		var opts []ProviderOption
+		if verbose {
+			opts = append(opts, &VerboseLogging{})
+		}
+		dev, err := DefaultMux.OpenAtlas(ctx, ApplyFlags.DevURL, opts...)
 		cobra.CheckErr(err)
 		defer d.Close()
 		desired, err = dev.Driver.(schema.Normalizer).NormalizeRealm(ctx, desired)

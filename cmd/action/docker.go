@@ -166,13 +166,13 @@ func (c *DockerConfig) Run(ctx context.Context) (*Container, error) {
 	// Get a free host TCP port the container can bind its exposed service port on.
 	p, err := freePort()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("getting open port: %w", err)
 	}
 	// Make sure the image is up-to-date.
 	cmd := exec.CommandContext(ctx, "docker", "pull", c.Image) //nolint:gosec
 	cmd.Stdout = c.Out
 	if err := cmd.Run(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("pulling image: %w", err)
 	}
 	// Run the container.
 	args := []string{"docker", "run", "--rm", "--detach"}
