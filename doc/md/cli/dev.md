@@ -7,8 +7,9 @@ slug: /cli/dev-database
 
 Various Atlas commands accept the `--dev-url` flag. This option uses the [URL](url.mdx) format, and allows passing
 a development database (a twin environment) to validate schemas, simulate migrations and calculate the state of the
-migration directory by replaying the historical changes. Let's go over a few examples to explain the benefits of using
-a dev/twin database.
+migration directory by replaying the historical changes. Let's go over a few examples to explain the benefits of using a
+dev/twin database. For a one-time use Atlas can spin up an ephemeral local docker container for you with a special
+[docker driver](url.mdx).
 
 ## Validation
 

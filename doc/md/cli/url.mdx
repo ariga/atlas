@@ -25,6 +25,7 @@ values={[
 {label: 'MariaDB', value: 'maria'},
 {label: 'PostgreSQL', value: 'postgres'},
 {label: 'SQLite', value: 'sqlite'},
+{label: 'Docker', value: 'docker'},
 ]}>
 <TabItem value="mysql">
 
@@ -67,6 +68,22 @@ postgres://postgres:pass@0.0.0.0:5432/database?sslmode=disable
 sqlite://file.db
 
 sqlite://file?cache=shared&mode=memory
+```
+
+</TabItem>
+<TabItem value="docker">
+
+Atlas can spin up an ephemeral local docker container for you by specifying a special URL like below. This can be useful
+if you need a [dev database](dev.md) for schema validation or diffing. However, some images like `mysql` /
+`mariadb` take quite some time to "boot", before they are ready to be used. For a smoother developing experience
+consider spinning up a longer lived container by yourself.
+
+```
+docker://postgres
+
+docker://mysql:8
+
+docker://mariadb:10.8.2-rc-focal
 ```
 
 </TabItem>
