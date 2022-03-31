@@ -90,6 +90,20 @@ func TestPostgres_Relation(t *testing.T) {
 	})
 }
 
+func TestPostgres_NoSchema(t *testing.T) {
+	pgRun(t, func(t *pgTest) {
+		t.Cleanup(func() {
+			_, err := t.db.Exec("CREATE SCHEMA IF NOT EXISTS public")
+			require.NoError(t, err)
+		})
+		_, err := t.db.Exec("DROP SCHEMA IF EXISTS public CASCADE")
+		require.NoError(t, err)
+		r, err := t.drv.InspectRealm(context.Background(), nil)
+		require.NoError(t, err)
+		require.Nil(t, r.Schemas)
+	})
+}
+
 func TestPostgres_AddIndexedColumns(t *testing.T) {
 	pgRun(t, func(t *pgTest) {
 		usersT := &schema.Table{
