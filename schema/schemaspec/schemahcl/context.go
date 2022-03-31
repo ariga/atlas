@@ -65,7 +65,7 @@ func blockVars(b *hclsyntax.Body, parentAddr string, defs *blockDef) (map[string
 		}
 		var unlabeled int
 		for _, blk := range blocks {
-			blkName := blockName(blk)
+			qualifier, blkName := blockName(blk)
 			if blkName == "" {
 				blkName = strconv.Itoa(unlabeled)
 				unlabeled++
@@ -77,7 +77,7 @@ func blockVars(b *hclsyntax.Body, parentAddr string, defs *blockDef) (map[string
 					attrs[n] = cty.NullVal(ctySchemaLit)
 				}
 			}
-			self := addr(parentAddr, name, blkName)
+			self := addr(parentAddr, name, blkName, qualifier)
 			attrs["__ref"] = cty.StringVal(self)
 			varMap, err := blockVars(blk.Body, self, def)
 			if err != nil {
@@ -87,8 +87,16 @@ func blockVars(b *hclsyntax.Body, parentAddr string, defs *blockDef) (map[string
 			for k, v := range varMap {
 				attrs[k] = v
 			}
-
-			v[blkName] = cty.ObjectVal(attrs)
+			key, obj := blkName, cty.ObjectVal(attrs)
+			if qualifier != "" {
+				obj = cty.ObjectVal(
+					map[string]cty.Value{
+						blkName: obj,
+					},
+				)
+				key = qualifier
+			}
+			v[key] = obj
 		}
 		if len(v) > 0 {
 			vars[name] = cty.ObjectVal(v)
@@ -97,19 +105,28 @@ func blockVars(b *hclsyntax.Body, parentAddr string, defs *blockDef) (map[string
 	return vars, nil
 }
 
-func addr(parentAddr, typeName, blkName string) string {
+func addr(parentAddr, typeName, blkName, qualifier string) string {
 	var prefixDot string
 	if len(parentAddr) > 0 {
 		prefixDot = "."
 	}
-	return fmt.Sprintf("%s%s$%s.%s", parentAddr, prefixDot, typeName, blkName)
+	suffix := blkName
+	if qualifier != "" {
+		suffix = qualifier + "." + blkName
+	}
+	return fmt.Sprintf("%s%s$%s.%s", parentAddr, prefixDot, typeName, suffix)
 }
 
-func blockName(blk *hclsyntax.Block) string {
-	if len(blk.Labels) == 0 {
-		return ""
+func blockName(blk *hclsyntax.Block) (qualifier string, name string) {
+	switch len(blk.Labels) {
+	case 0:
+	case 1:
+		name = blk.Labels[0]
+	default:
+		qualifier = blk.Labels[0]
+		name = blk.Labels[1]
 	}
-	return blk.Labels[0]
+	return
 }
 
 func blocksOfType(blocks hclsyntax.Blocks, typeName string) []*hclsyntax.Block {

@@ -444,3 +444,20 @@ arg_2 = float(10,2)
 		schemautil.LitAttr("scale", "2"),
 	}, test.Arg2.Attrs)
 }
+
+func TestQualifiedRefs(t *testing.T) {
+	h := `user "atlas" "cli" {
+	version = "v0.3.9"
+}
+v = user.atlas.cli.version
+r = user.atlas.cli
+`
+	var test struct {
+		V string          `spec:"v"`
+		R *schemaspec.Ref `spec:"r"`
+	}
+	err := Unmarshal([]byte(h), &test)
+	require.NoError(t, err)
+	require.EqualValues(t, "v0.3.9", test.V)
+	require.EqualValues(t, "$user.atlas.cli", test.R.V)
+}
