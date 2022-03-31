@@ -416,6 +416,44 @@ schema "test" {
 	require.EqualValues(t, &schema.IntegerType{T: "bigint", Unsigned: false}, tbl.Columns[1].Type.Type)
 }
 
+func TestTableCollision(t *testing.T) {
+	h := `
+schema "a" {}
+schema "b" {}
+
+table "a" "users" {
+	schema = schema.a
+	column "id" {
+		type = int
+	}
+	column "friend_id" {
+		type = int
+	}
+	foreign_key "friend_b" {
+		columns = [column.friend_id]
+		ref_columns = [table.b.users.column.id]
+	}
+}
+
+table "b" "users" {
+	schema = schema.b
+	column "id" {
+		type = int
+	}
+	column "friend_id" {
+		type = int
+	}
+	foreign_key "friend_a" {
+		columns = [column.friend_id]
+		ref_columns = [table.a.users.column.id]
+	}
+}
+`
+	var r schema.Realm
+	err := mysql.UnmarshalHCL([]byte(h), &r)
+	require.NoError(t, err)
+}
+
 func decode(f string) (*db, error) {
 	d := &db{}
 	if err := hcl.UnmarshalSpec([]byte(f), d); err != nil {

@@ -10,13 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRef_TableName(t *testing.T) {
-	ref := &schemaspec.Ref{V: "$table.accounts.$column.user_active"}
-	c, err := tableName(ref)
-	require.NoError(t, err)
-	require.Equal(t, "accounts", c)
-}
-
 func TestFromSpec_SchemaName(t *testing.T) {
 	sc := &schema.Schema{
 		Name: "schema",

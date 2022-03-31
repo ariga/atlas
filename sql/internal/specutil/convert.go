@@ -530,7 +530,7 @@ func column(t *schema.Table, ref *schemaspec.Ref) (*schema.Column, error) {
 func externalRef(ref *schemaspec.Ref, sch *schema.Schema) (*schema.Table, *schema.Column, error) {
 	t, err := tableName(ref)
 	if err != nil {
-		return nil, nil, fmt.Errorf("sqlspec: table %q not found", ref.V)
+		return nil, nil, err
 	}
 	tbl, ok := sch.Table(t)
 	if !ok {
@@ -547,13 +547,13 @@ func tableName(ref *schemaspec.Ref) (string, error) {
 	s := strings.Split(ref.V, "$column.")
 	if len(s) != 2 {
 		return "", fmt.Errorf("sqlspec: failed to split by column name from %q", ref)
-
 	}
-	s = strings.Split(s[0], ".")
-	if len(s) != 3 {
+	table := strings.TrimSuffix(s[0], ".")
+	s = strings.Split(table, ".")
+	if len(s) < 2 {
 		return "", fmt.Errorf("sqlspec: failed to extract table name from %q", s)
 	}
-	return s[1], nil
+	return s[len(s)-1], nil
 }
 
 func isLocalRef(r *schemaspec.Ref) bool {
