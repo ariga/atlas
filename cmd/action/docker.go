@@ -28,6 +28,7 @@ const pass = "pass"
 type (
 	// DockerConfig is used to configure container creation.
 	DockerConfig struct {
+		setup []string // contains statements to execute once the service is up
 		// Image is the name of the image to pull and run.
 		Image string
 		// Env vars to pass to the docker container.
@@ -65,14 +66,35 @@ func NewConfig(opts ...DockerConfigOption) (*DockerConfig, error) {
 
 // MySQL returns a new DockerConfig for a MySQL image.
 func MySQL(version string, opts ...DockerConfigOption) (*DockerConfig, error) {
-	return NewConfig(append(
-		[]DockerConfigOption{
-			Image("mysql:" + version),
-			Port("3306"),
-			Env("MYSQL_ROOT_PASSWORD=" + pass),
-		},
-		opts...,
-	)...,
+	return NewConfig(
+		append(
+			[]DockerConfigOption{
+				Image("mysql:" + version),
+				Port("3306"),
+				Env("MYSQL_ROOT_PASSWORD=" + pass),
+			},
+			opts...,
+		)...,
+	)
+}
+
+// MariaDB returns a new DockerConfig for a MariaDB image.
+func MariaDB(version string, opts ...DockerConfigOption) (*DockerConfig, error) {
+	return MySQL(version, append([]DockerConfigOption{Image("mariadb:" + version)}, opts...)...)
+}
+
+// PostgreSQL returns a new DockerConfig for a PostgreSQL image.
+func PostgreSQL(version string, opts ...DockerConfigOption) (*DockerConfig, error) {
+	return NewConfig(
+		append(
+			[]DockerConfigOption{
+				Image("postgres:" + version),
+				Port("5432"),
+				Env("POSTGRES_PASSWORD=" + pass),
+				setup("DROP SCHEMA IF EXISTS public CASCADE;"),
+			},
+			opts...,
+		)...,
 	)
 }
 
@@ -83,7 +105,7 @@ func MySQL(version string, opts ...DockerConfigOption) (*DockerConfig, error) {
 //
 func Image(i string) DockerConfigOption {
 	return func(c *DockerConfig) error {
-		c.Image = i
+		c.Image = strings.TrimSuffix(i, ":")
 		return nil
 	}
 }
@@ -120,6 +142,17 @@ func Env(env ...string) DockerConfigOption {
 func Out(w io.Writer) DockerConfigOption {
 	return func(c *DockerConfig) error {
 		c.Out = w
+		return nil
+	}
+}
+
+// setup adds statements to execute once the service is ready. For example:
+//
+//  setup("DROP SCHEMA IF EXISTS public CASCADE;")
+//
+func setup(s ...string) DockerConfigOption {
+	return func(c *DockerConfig) error {
+		c.setup = s
 		return nil
 	}
 }
@@ -163,8 +196,8 @@ func (c *DockerConfig) Run(ctx context.Context) (*Container, error) {
 }
 
 // Down stops and removes this container.
-func (c *Container) Down(ctx context.Context) error {
-	return exec.CommandContext(ctx, "docker", "stop", c.ID).Run() //nolint:gosec
+func (c *Container) Down() error {
+	return exec.Command("docker", "stop", c.ID).Run() //nolint:gosec
 }
 
 // Wait waits for this container to be ready.
@@ -188,11 +221,18 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 		case <-time.After(100 * time.Millisecond):
 			db, err := sql.Open(drv, dsn)
 			if err != nil {
-				continue
+				return err
 			}
 			if err := db.PingContext(ctx); err != nil {
 				continue
 			}
+			for _, s := range c.cfg.setup {
+				if _, err := db.ExecContext(ctx, s); err != nil {
+					_ = db.Close()
+					return fmt.Errorf("%q: %w", s, err)
+				}
+			}
+			_ = db.Close()
 			fmt.Fprintln(c.out, "Service is ready to connect!")
 			return nil
 		case <-ctx.Done():
@@ -205,16 +245,37 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 
 // Driver returns the database/sql driver name.
 func (c *Container) Driver() string {
-	return strings.SplitN(c.cfg.Image, ":", 2)[0]
+	switch img := strings.SplitN(c.cfg.Image, ":", 2)[0]; img {
+	case "mysql", "mariadb":
+		return "mysql"
+	default:
+		return img
+	}
 }
 
 // DSN returns a DSN to connect to the Container.
 func (c *Container) DSN() (string, error) {
-	switch drv := c.Driver(); drv {
+	switch img := strings.SplitN(c.cfg.Image, ":", 2)[0]; img {
 	case "mysql", "mariadb":
 		return fmt.Sprintf("root:%s@tcp(localhost:%s)/", c.Passphrase, c.Port), nil
+	case "postgres":
+		return fmt.Sprintf("host=localhost port=%s dbname=postgres user=postgres password=%s sslmode=disable", c.Port, c.Passphrase), nil
 	default:
-		return "", fmt.Errorf("unknown driver: %q", drv)
+		return "", fmt.Errorf("unsupported image: %q", c.cfg.Image)
+	}
+}
+
+// URL returns a URL to connect to the Container.
+func (c *Container) URL() (string, error) {
+	switch img := strings.SplitN(c.cfg.Image, ":", 2)[0]; img {
+	case "postgres":
+		return fmt.Sprintf("postgres://postgres:%s@localhost:%s/postgres?sslmode=disable", c.Passphrase, c.Port), nil
+	default:
+		dsn, err := c.DSN()
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%s://%s", strings.SplitN(c.cfg.Image, ":", 2)[0], dsn), nil
 	}
 }
 

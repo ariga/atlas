@@ -82,16 +82,15 @@ func sqliteProvider(_ context.Context, dsn string, _ ...ProviderOption) (*Driver
 	}, nil
 }
 
-var reDockerConfig = regexp.MustCompile("(mysql|mariadb)(?::([0-9a-zA-Z.-]+)?(\\?.*)?)?")
+var reDockerConfig = regexp.MustCompile("(mysql|mariadb|tidb|postgres)(?::([0-9a-zA-Z.-]+)?(\\?.*)?)?")
 
 type dockerCloser struct {
 	c   *Container
 	drv *Driver
-	ctx context.Context
 }
 
 func (dc *dockerCloser) Close() (err error) {
-	derr, cerr := dc.drv.Close(), dc.c.Down(dc.ctx)
+	derr, cerr := dc.drv.Close(), dc.c.Down()
 	if derr != nil {
 		err = derr
 	}
@@ -105,14 +104,23 @@ func dockerProvider(ctx context.Context, dsn string, opts ...ProviderOption) (*D
 	// The DSN has the driver part (docker:// removed already.
 	// Get rid of the query arguments, and we have the image name.
 	m := reDockerConfig.FindStringSubmatch(dsn)
+	if len(m) != 4 {
+		return nil, fmt.Errorf("invalid docker url %q", dsn)
+	}
 	img, v := m[1], m[2]
 	var (
 		cfg *DockerConfig
 		err error
 	)
 	switch img {
-	case "mysql", "mariadb":
+	case "mysql":
 		cfg, err = MySQL(v)
+	case "mariadb":
+		cfg, err = MariaDB(v)
+	case "postgres":
+		cfg, err = PostgreSQL(v)
+	default:
+		return nil, fmt.Errorf("unsupported docker image %q", img)
 	}
 	if err != nil {
 		return nil, err
@@ -131,22 +139,23 @@ func dockerProvider(ctx context.Context, dsn string, opts ...ProviderOption) (*D
 		return nil, err
 	}
 	if err := c.Wait(ctx, time.Minute); err != nil {
+		_ = c.Down()
 		return nil, err
 	}
-	d, err := c.DSN()
+	u, err := c.URL()
 	if err != nil {
-		_ = c.Down(ctx)
+		_ = c.Down()
 		return nil, err
 	}
-	drv, err := DefaultMux.OpenAtlas(ctx, fmt.Sprintf("%s://%s", img, d))
+	drv, err := DefaultMux.OpenAtlas(ctx, u)
 	if err != nil {
-		_ = c.Down(ctx)
+		_ = c.Down()
 		return nil, err
 	}
 	return &Driver{
 		Driver:      drv.Driver,
 		Marshaler:   drv.Marshaler,
 		Unmarshaler: drv.Unmarshaler,
-		Closer:      &dockerCloser{c, drv, ctx},
+		Closer:      &dockerCloser{c, drv},
 	}, nil
 }
