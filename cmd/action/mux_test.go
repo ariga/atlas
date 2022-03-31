@@ -174,7 +174,7 @@ func TestMux_OpenAtlas(t *testing.T) {
 			require.NoError(t, mysqld.SetLogger(log.New(ioutil.Discard, "", 1)))
 			_, err := action.DefaultMux.OpenAtlas(context.Background(), fmt.Sprintf(u, l.Addr()))
 			require.Error(t, err, "mock server rejects all incoming connections")
-			require.NotZero(t, *calls)
+			require.NotZero(t, atomic.LoadInt64(calls))
 		}
 	})
 }
