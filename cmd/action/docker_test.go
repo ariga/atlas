@@ -2,14 +2,13 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package action_test
+package action
 
 import (
 	"context"
 	"io/ioutil"
 	"testing"
 
-	"ariga.io/atlas/cmd/action"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,13 +16,13 @@ func TestDockerConfig(t *testing.T) {
 	ctx := context.Background()
 
 	// invalid config
-	_, err := (&action.DockerConfig{}).Run(ctx)
+	_, err := (&DockerConfig{}).Run(ctx)
 	require.Error(t, err)
 
 	// MySQL
-	cfg, err := action.MySQL("latest", action.Out(ioutil.Discard))
+	cfg, err := MySQL("latest", Out(ioutil.Discard))
 	require.NoError(t, err)
-	require.Equal(t, &action.DockerConfig{
+	require.Equal(t, &DockerConfig{
 		Image: "mysql:latest",
 		Env:   []string{"MYSQL_ROOT_PASSWORD=pass"},
 		Port:  "3306",
@@ -31,9 +30,9 @@ func TestDockerConfig(t *testing.T) {
 	}, cfg)
 
 	// MariaDB
-	cfg, err = action.MariaDB("latest", action.Out(ioutil.Discard))
+	cfg, err = MariaDB("latest", Out(ioutil.Discard))
 	require.NoError(t, err)
-	require.Equal(t, &action.DockerConfig{
+	require.Equal(t, &DockerConfig{
 		Image: "mariadb:latest",
 		Env:   []string{"MYSQL_ROOT_PASSWORD=pass"},
 		Port:  "3306",
@@ -41,13 +40,13 @@ func TestDockerConfig(t *testing.T) {
 	}, cfg)
 
 	// PostgreSQL
-	cfg, err = action.PostgreSQL("latest", action.Out(ioutil.Discard))
+	cfg, err = PostgreSQL("latest", Out(ioutil.Discard))
 	require.NoError(t, err)
-	require.Equal(t, &action.DockerConfig{
+	require.Equal(t, &DockerConfig{
 		Image: "postgres:latest",
 		Env:   []string{"POSTGRES_PASSWORD=pass"},
 		Port:  "5432",
 		Out:   ioutil.Discard,
-		Setup: []string{"DROP SCHEMA IF EXISTS public CASCADE;"},
+		setup: []string{"DROP SCHEMA IF EXISTS public CASCADE;"},
 	}, cfg)
 }
