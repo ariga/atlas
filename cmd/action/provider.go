@@ -152,11 +152,6 @@ func dockerProvider(ctx context.Context, dsn string, opts ...ProviderOption) (*D
 		_ = c.Down()
 		return nil, err
 	}
-	for _, s := range c.cfg.Setup {
-		if _, err := drv.ExecContext(ctx, s); err != nil {
-			return nil, fmt.Errorf("%q: %w", s, err)
-		}
-	}
 	return &Driver{
 		Driver:      drv.Driver,
 		Marshaler:   drv.Marshaler,

@@ -227,6 +227,13 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 			if err := db.PingContext(ctx); err != nil {
 				continue
 			}
+			for _, s := range c.cfg.Setup {
+				if _, err := db.ExecContext(ctx, s); err != nil {
+					_ = db.Close()
+					return fmt.Errorf("%q: %w", s, err)
+				}
+			}
+			_ = db.Close()
 			fmt.Fprintln(c.out, "Service is ready to connect!")
 			return nil
 		case <-ctx.Done():
