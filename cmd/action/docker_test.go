@@ -29,4 +29,25 @@ func TestDockerConfig(t *testing.T) {
 		Port:  "3306",
 		Out:   ioutil.Discard,
 	}, cfg)
+
+	// MariaDB
+	cfg, err = action.MariaDB("latest", action.Out(ioutil.Discard))
+	require.NoError(t, err)
+	require.Equal(t, &action.DockerConfig{
+		Image: "mariadb:latest",
+		Env:   []string{"MYSQL_ROOT_PASSWORD=pass"},
+		Port:  "3306",
+		Out:   ioutil.Discard,
+	}, cfg)
+
+	// PostgreSQL
+	cfg, err = action.PostgreSQL("latest", action.Out(ioutil.Discard))
+	require.NoError(t, err)
+	require.Equal(t, &action.DockerConfig{
+		Image: "postgres:latest",
+		Env:   []string{"POSTGRES_PASSWORD=pass"},
+		Port:  "5432",
+		Out:   ioutil.Discard,
+		Setup: []string{"DROP SCHEMA IF EXISTS public CASCADE;"},
+	}, cfg)
 }
