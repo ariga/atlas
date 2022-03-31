@@ -87,13 +87,16 @@ func blockVars(b *hclsyntax.Body, parentAddr string, defs *blockDef) (map[string
 			for k, v := range varMap {
 				attrs[k] = v
 			}
+			key, obj := blkName, cty.ObjectVal(attrs)
 			if qualifier != "" {
-				v[qualifier] = cty.ObjectVal(map[string]cty.Value{
-					blkName: cty.ObjectVal(attrs),
-				})
-			} else {
-				v[blkName] = cty.ObjectVal(attrs)
+				obj = cty.ObjectVal(
+					map[string]cty.Value{
+						blkName: obj,
+					},
+				)
+				key = qualifier
 			}
+			v[key] = obj
 		}
 		if len(v) > 0 {
 			vars[name] = cty.ObjectVal(v)
