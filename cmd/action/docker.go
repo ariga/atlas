@@ -28,6 +28,7 @@ const pass = "pass"
 type (
 	// DockerConfig is used to configure container creation.
 	DockerConfig struct {
+		setup []string // contains statements to execute once the service is up
 		// Image is the name of the image to pull and run.
 		Image string
 		// Env vars to pass to the docker container.
@@ -36,8 +37,6 @@ type (
 		Port string
 		// Out is a custom writer to send docker cli output to.
 		Out io.Writer
-		// Setup contains statements to execute once the service is up.
-		Setup []string
 	}
 	// A Container is an instance of a created container.
 	Container struct {
@@ -92,7 +91,7 @@ func PostgreSQL(version string, opts ...DockerConfigOption) (*DockerConfig, erro
 				Image("postgres:" + version),
 				Port("5432"),
 				Env("POSTGRES_PASSWORD=" + pass),
-				Setup("DROP SCHEMA IF EXISTS public CASCADE;"),
+				setup("DROP SCHEMA IF EXISTS public CASCADE;"),
 			},
 			opts...,
 		)...,
@@ -147,13 +146,13 @@ func Out(w io.Writer) DockerConfigOption {
 	}
 }
 
-// Setup adds statements to execute once the serviceis ready. For example:
+// setup adds statements to execute once the service is ready. For example:
 //
-//  Setup("DROP SCHEMA IF EXISTS public CASCADE;")
+//  setup("DROP SCHEMA IF EXISTS public CASCADE;")
 //
-func Setup(s ...string) DockerConfigOption {
+func setup(s ...string) DockerConfigOption {
 	return func(c *DockerConfig) error {
-		c.Setup = s
+		c.setup = s
 		return nil
 	}
 }
@@ -227,7 +226,7 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 			if err := db.PingContext(ctx); err != nil {
 				continue
 			}
-			for _, s := range c.cfg.Setup {
+			for _, s := range c.cfg.setup {
 				if _, err := db.ExecContext(ctx, s); err != nil {
 					_ = db.Close()
 					return fmt.Errorf("%q: %w", s, err)
