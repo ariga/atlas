@@ -47,7 +47,7 @@ func Realm(r *schema.Realm, schemas []*sqlspec.Schema, tables []*sqlspec.Table, 
 			}
 		}
 		sch := &schema.Schema{Name: schemaSpec.Name, Realm: r}
-		if err := Schema(sch, schemaTables, convertTable); err != nil {
+		if err := convertSchema(sch, schemaTables, convertTable); err != nil {
 			return err
 		}
 		r.Schemas = append(r.Schemas, sch)
@@ -80,9 +80,9 @@ func findTableSpec(tableSpecs []*sqlspec.Table, schemaName, tableName string) (*
 	return nil, fmt.Errorf("table %s.%s not found", schemaName, tableName)
 }
 
-// Schema converts a sqlspec.Schema with its relevant []sqlspec.Tables
+// convertSchema converts a sqlspec.Schema with its relevant []sqlspec.Tables
 // into a schema.Schema.
-func Schema(sch *schema.Schema, tables []*sqlspec.Table, convertTable ConvertTableFunc) error {
+func convertSchema(sch *schema.Schema, tables []*sqlspec.Table, convertTable ConvertTableFunc) error {
 	m := make(map[*schema.Table]*sqlspec.Table)
 	for _, ts := range tables {
 		table, err := convertTable(ts, sch)
@@ -91,11 +91,6 @@ func Schema(sch *schema.Schema, tables []*sqlspec.Table, convertTable ConvertTab
 		}
 		sch.Tables = append(sch.Tables, table)
 		m[table] = ts
-	}
-	// If this is part of a realm, linking will be done on the Realm building since FKs can exist
-	// between different schemas in the same realm.
-	if sch.Realm != nil {
-		return nil
 	}
 	for _, tbl := range sch.Tables {
 		if err := LinkForeignKeys(tbl, sch, m[tbl]); err != nil {

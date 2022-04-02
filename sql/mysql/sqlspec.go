@@ -44,14 +44,15 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 		if len(d.Schemas) != 1 {
 			return fmt.Errorf("mysql: expecting document to contain a single schema, got %d", len(d.Schemas))
 		}
-		v.Name = d.Schemas[0].Name
-		err := specutil.Schema(v, d.Tables, convertTable)
-		if err != nil {
-			return fmt.Errorf("mysql: failed converting to *schema.Schema: %w", err)
-		}
-		if err := convertCharset(d.Schemas[0], &v.Attrs); err != nil {
+		var r schema.Realm
+		if err := specutil.Realm(&r, d.Schemas, d.Tables, convertTable); err != nil {
 			return err
 		}
+		if err := convertCharset(d.Schemas[0], &r.Schemas[0].Attrs); err != nil {
+			return err
+		}
+		r.Schemas[0].Realm = nil
+		*v = *r.Schemas[0]
 	default:
 		return fmt.Errorf("mysql: failed unmarshaling spec. %T is not supported", v)
 	}

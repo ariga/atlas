@@ -55,13 +55,15 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 		if len(d.Schemas) != 1 {
 			return fmt.Errorf("specutil: expecting document to contain a single schema, got %d", len(d.Schemas))
 		}
-		v.Name = d.Schemas[0].Name
-		if err := specutil.Schema(v, d.Tables, convertTable); err != nil {
-			return fmt.Errorf("specutil: failed converting to *schema.Schema: %w", err)
+		var r schema.Realm
+		if err := specutil.Realm(&r, d.Schemas, d.Tables, convertTable); err != nil {
+			return err
 		}
 		if err := convertEnums(d.Tables, d.Enums, v); err != nil {
 			return err
 		}
+		r.Schemas[0].Realm = nil
+		*v = *r.Schemas[0]
 	default:
 		return fmt.Errorf("specutil: failed unmarshaling spec. %T is not supported", v)
 	}

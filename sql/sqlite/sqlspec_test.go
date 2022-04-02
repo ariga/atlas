@@ -19,6 +19,7 @@ schema "schema" {
 }
 
 table "table" {
+	schema = schema.schema
 	column "id" {
 		type = integer
 		auto_increment = true
@@ -58,6 +59,7 @@ table "table" {
 }
 
 table "accounts" {
+	schema = schema.schema
 	column "name" {
 		type = varchar(32)
 	}
