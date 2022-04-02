@@ -1,7 +1,6 @@
 package hclsqlspec
 
 import (
-	"strconv"
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec"
@@ -370,13 +369,15 @@ table "t2" {
 			exp := &schema.Realm{
 				Schemas: []*schema.Schema{
 					{
-						Name: "account_a",
+						Name:  "account_a",
+						Realm: &r,
 						Tables: []*schema.Table{
 							{Name: "t1"},
 						},
 					},
 					{
-						Name: "account_b",
+						Name:  "account_b",
+						Realm: &r,
 						Tables: []*schema.Table{
 							{Name: "t2"},
 						},
@@ -452,6 +453,9 @@ table "b" "users" {
 	var r schema.Realm
 	err := mysql.UnmarshalHCL([]byte(h), &r)
 	require.NoError(t, err)
+
+	require.EqualValues(t, r.Schemas[0].Tables[0].Columns[0], r.Schemas[1].Tables[0].ForeignKeys[0].RefColumns[0])
+	require.EqualValues(t, "b", r.Schemas[0].Tables[0].ForeignKeys[0].RefTable.Schema.Name)
 }
 
 func decode(f string) (*db, error) {
@@ -465,22 +469,4 @@ func decode(f string) (*db, error) {
 type db struct {
 	Schemas []*sqlspec.Schema `spec:"schema"`
 	Tables  []*sqlspec.Table  `spec:"table"`
-}
-
-func attrs(attrs ...*schemaspec.Attr) []*schemaspec.Attr {
-	return attrs
-}
-
-func size(n int) *schemaspec.Attr {
-	return &schemaspec.Attr{
-		K: "size",
-		V: &schemaspec.LiteralValue{V: strconv.Itoa(n)},
-	}
-}
-
-func unsigned(b bool) *schemaspec.Attr {
-	return &schemaspec.Attr{
-		K: "unsigned",
-		V: &schemaspec.LiteralValue{V: strconv.FormatBool(b)},
-	}
 }

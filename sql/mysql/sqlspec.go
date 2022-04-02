@@ -27,12 +27,12 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 	}
 	switch v := v.(type) {
 	case *schema.Realm:
-		realm, err := specutil.Realm(d.Schemas, d.Tables, convertTable)
+		err := specutil.Realm(v, d.Schemas, d.Tables, convertTable)
 		if err != nil {
 			return fmt.Errorf("mysql: failed converting to *schema.Realm: %w", err)
 		}
 		for _, schemaSpec := range d.Schemas {
-			schm, ok := realm.Schema(schemaSpec.Name)
+			schm, ok := v.Schema(schemaSpec.Name)
 			if !ok {
 				return fmt.Errorf("could not find schema: %q", schemaSpec.Name)
 			}
@@ -40,19 +40,18 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 				return err
 			}
 		}
-		*v = *realm
 	case *schema.Schema:
 		if len(d.Schemas) != 1 {
 			return fmt.Errorf("mysql: expecting document to contain a single schema, got %d", len(d.Schemas))
 		}
-		conv, err := specutil.Schema(d.Schemas[0], d.Tables, convertTable)
+		v.Name = d.Schemas[0].Name
+		err := specutil.Schema(v, d.Tables, convertTable)
 		if err != nil {
 			return fmt.Errorf("mysql: failed converting to *schema.Schema: %w", err)
 		}
-		if err := convertCharset(d.Schemas[0], &conv.Attrs); err != nil {
+		if err := convertCharset(d.Schemas[0], &v.Attrs); err != nil {
 			return err
 		}
-		*v = *conv
 	default:
 		return fmt.Errorf("mysql: failed unmarshaling spec. %T is not supported", v)
 	}
