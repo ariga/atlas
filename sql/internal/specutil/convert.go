@@ -542,8 +542,9 @@ func externalRef(ref *schemaspec.Ref, sch *schema.Schema) (*schema.Table, *schem
 	return tbl, c, nil
 }
 
-// findTable finds the table referenced by ref in the provided schema. If the table is not in the provided
-// other schemas in the connected Populate are searched as well.
+// findTable finds the table referenced by ref in the provided schema. If the table
+// is not in the provided schema.Schema other schemas in the connected schema.Realm
+// are searched as well.
 func findTable(ref *schemaspec.Ref, sch *schema.Schema) (*schema.Table, error) {
 	qualifier, tblName, err := tableName(ref)
 	if err != nil {
