@@ -27,7 +27,7 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 	}
 	switch v := v.(type) {
 	case *schema.Realm:
-		err := specutil.Realm(v, d.Schemas, d.Tables, convertTable)
+		err := specutil.Populate(v, d.Schemas, d.Tables, convertTable)
 		if err != nil {
 			return fmt.Errorf("mysql: failed converting to *schema.Realm: %w", err)
 		}
@@ -45,7 +45,7 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 			return fmt.Errorf("mysql: expecting document to contain a single schema, got %d", len(d.Schemas))
 		}
 		var r schema.Realm
-		if err := specutil.Realm(&r, d.Schemas, d.Tables, convertTable); err != nil {
+		if err := specutil.Populate(&r, d.Schemas, d.Tables, convertTable); err != nil {
 			return err
 		}
 		if err := convertCharset(d.Schemas[0], &r.Schemas[0].Attrs); err != nil {

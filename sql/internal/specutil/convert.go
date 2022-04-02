@@ -33,8 +33,8 @@ type (
 	CheckSpecFunc         func(*schema.Check) *sqlspec.Check
 )
 
-// Realm reads the schemas and table specs into a schema.Realm.
-func Realm(r *schema.Realm, schemas []*sqlspec.Schema, tables []*sqlspec.Table, convertTable ConvertTableFunc) error {
+// Populate populates the Realm from the schemas and table specs.
+func Populate(r *schema.Realm, schemas []*sqlspec.Schema, tables []*sqlspec.Table, convertTable ConvertTableFunc) error {
 	// Build the schemas.
 	for _, schemaSpec := range schemas {
 		sch := &schema.Schema{Name: schemaSpec.Name, Realm: r}
@@ -60,7 +60,7 @@ func Realm(r *schema.Realm, schemas []*sqlspec.Schema, tables []*sqlspec.Table, 
 			if err != nil {
 				return err
 			}
-			if err := LinkForeignKeys(tbl, sch, tableSpec); err != nil {
+			if err := linkForeignKeys(tbl, sch, tableSpec); err != nil {
 				return err
 			}
 		}
@@ -238,10 +238,10 @@ func PrimaryKey(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, 
 	}, nil
 }
 
-// LinkForeignKeys creates the foreign keys defined in the Table's spec by creating references
+// linkForeignKeys creates the foreign keys defined in the Table's spec by creating references
 // to column in the provided Schema. It is assumed that all tables referenced FK definitions in the spec
 // are reachable from the provided schema or its connected realm.
-func LinkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *sqlspec.Table) error {
+func linkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *sqlspec.Table) error {
 	for _, spec := range table.ForeignKeys {
 		fk := &schema.ForeignKey{Symbol: spec.Symbol, Table: tbl}
 		if spec.OnUpdate != nil {
@@ -543,7 +543,7 @@ func externalRef(ref *schemaspec.Ref, sch *schema.Schema) (*schema.Table, *schem
 }
 
 // findTable finds the table referenced by ref in the provided schema. If the table is not in the provided
-// other schemas in the connected Realm are searched as well.
+// other schemas in the connected Populate are searched as well.
 func findTable(ref *schemaspec.Ref, sch *schema.Schema) (*schema.Table, error) {
 	qualifier, tblName, err := tableName(ref)
 	if err != nil {
