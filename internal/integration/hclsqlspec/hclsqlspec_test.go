@@ -399,6 +399,7 @@ table "t2" {
 
 func TestUnsignedImmutability(t *testing.T) {
 	f := `table "users" {
+	schema = schema.test
 	column "id" {
 		type = bigint
 		unsigned = true
@@ -417,7 +418,7 @@ schema "test" {
 	require.EqualValues(t, &schema.IntegerType{T: "bigint", Unsigned: false}, tbl.Columns[1].Type.Type)
 }
 
-func TestTableCollision(t *testing.T) {
+func TestTablesWithQualifiers(t *testing.T) {
 	h := `
 schema "a" {}
 schema "b" {}

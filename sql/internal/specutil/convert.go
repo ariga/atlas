@@ -33,25 +33,27 @@ type (
 	CheckSpecFunc         func(*schema.Check) *sqlspec.Check
 )
 
-// Realm converts the schemas and tables into a schema.Realm.
+// Realm reads the schemas and table specs into a schema.Realm.
 func Realm(r *schema.Realm, schemas []*sqlspec.Schema, tables []*sqlspec.Table, convertTable ConvertTableFunc) error {
+	// Build the schemas.
 	for _, schemaSpec := range schemas {
-		var schemaTables []*sqlspec.Table
+		sch := &schema.Schema{Name: schemaSpec.Name, Realm: r}
 		for _, tableSpec := range tables {
 			name, err := SchemaName(tableSpec.Schema)
 			if err != nil {
 				return fmt.Errorf("specutil: cannot extract schema name for table %q: %w", tableSpec.Name, err)
 			}
 			if name == schemaSpec.Name {
-				schemaTables = append(schemaTables, tableSpec)
+				tbl, err := convertTable(tableSpec, sch)
+				if err != nil {
+					return err
+				}
+				sch.Tables = append(sch.Tables, tbl)
 			}
-		}
-		sch := &schema.Schema{Name: schemaSpec.Name, Realm: r}
-		if err := convertSchema(sch, schemaTables, convertTable); err != nil {
-			return err
 		}
 		r.Schemas = append(r.Schemas, sch)
 	}
+	// Link the foreign keys.
 	for _, sch := range r.Schemas {
 		for _, tbl := range sch.Tables {
 			tableSpec, err := findTableSpec(tables, sch.Name, tbl.Name)
@@ -78,26 +80,6 @@ func findTableSpec(tableSpecs []*sqlspec.Table, schemaName, tableName string) (*
 		}
 	}
 	return nil, fmt.Errorf("table %s.%s not found", schemaName, tableName)
-}
-
-// convertSchema converts a sqlspec.Schema with its relevant []sqlspec.Tables
-// into a schema.Schema.
-func convertSchema(sch *schema.Schema, tables []*sqlspec.Table, convertTable ConvertTableFunc) error {
-	m := make(map[*schema.Table]*sqlspec.Table)
-	for _, ts := range tables {
-		table, err := convertTable(ts, sch)
-		if err != nil {
-			return err
-		}
-		sch.Tables = append(sch.Tables, table)
-		m[table] = ts
-	}
-	for _, tbl := range sch.Tables {
-		if err := LinkForeignKeys(tbl, sch, m[tbl]); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // Table converts a sqlspec.Table to a schema.Table. Table conversion is done without converting

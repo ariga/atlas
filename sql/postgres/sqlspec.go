@@ -59,7 +59,7 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 		if err := specutil.Realm(&r, d.Schemas, d.Tables, convertTable); err != nil {
 			return err
 		}
-		if err := convertEnums(d.Tables, d.Enums, v); err != nil {
+		if err := convertEnums(d.Tables, d.Enums, r.Schemas[0]); err != nil {
 			return err
 		}
 		r.Schemas[0].Realm = nil
@@ -231,7 +231,7 @@ func convertEnums(tbls []*sqlspec.Table, enums []*Enum, sch *schema.Schema) erro
 				}
 				t, ok := sch.Table(tbl.Name)
 				if !ok {
-					return fmt.Errorf("postgrs: table %q not found in schema %q", tbl.Name, sch.Name)
+					return fmt.Errorf("postgres: table %q not found in schema %q", tbl.Name, sch.Name)
 				}
 				c, ok := t.Column(col.Name)
 				if !ok {
