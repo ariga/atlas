@@ -103,6 +103,23 @@ func Marshal(v interface{}, marshaler schemaspec.Marshaler, schemaSpec func(sche
 	default:
 		return nil, fmt.Errorf("specutil: failed marshaling spec. %T is not supported", v)
 	}
+	// Qualify any tables with duplicate names.
+	seen := make(map[string]*sqlspec.Table, len(d.Tables))
+	for _, tbl := range d.Tables {
+		if s, ok := seen[tbl.Name]; ok {
+			schemaName, err := SchemaName(s.Schema)
+			if err != nil {
+				return nil, err
+			}
+			s.Qualifier = schemaName
+			schemaName, err = SchemaName(tbl.Schema)
+			if err != nil {
+				return nil, err
+			}
+			tbl.Qualifier = schemaName
+		}
+		seen[tbl.Name] = tbl
+	}
 	return marshaler.MarshalSpec(d)
 }
 
