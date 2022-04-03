@@ -103,24 +103,32 @@ func Marshal(v interface{}, marshaler schemaspec.Marshaler, schemaSpec func(sche
 	default:
 		return nil, fmt.Errorf("specutil: failed marshaling spec. %T is not supported", v)
 	}
-	// Qualify any tables with duplicate names.
-	seen := make(map[string]*sqlspec.Table, len(d.Tables))
-	for _, tbl := range d.Tables {
+	if err := QualifyDuplicates(d.Tables); err != nil {
+		return nil, err
+	}
+	return marshaler.MarshalSpec(d)
+}
+
+// QualifyDuplicates sets the Qualified field equal to the schema name in any tables
+// with duplicate names in the provided table specs.
+func QualifyDuplicates(tableSpecs []*sqlspec.Table) error {
+	seen := make(map[string]*sqlspec.Table, len(tableSpecs))
+	for _, tbl := range tableSpecs {
 		if s, ok := seen[tbl.Name]; ok {
 			schemaName, err := SchemaName(s.Schema)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			s.Qualifier = schemaName
 			schemaName, err = SchemaName(tbl.Schema)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			tbl.Qualifier = schemaName
 		}
 		seen[tbl.Name] = tbl
 	}
-	return marshaler.MarshalSpec(d)
+	return nil
 }
 
 // Unmarshal unmarshals an Atlas DDL document using an unmarshaler into v. Unmarshal uses the
