@@ -116,20 +116,20 @@ func Unmarshal(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{},
 	}
 	switch v := v.(type) {
 	case *schema.Realm:
-		realm, err := Realm(d.Schemas, d.Tables, convertTable)
+		err := Scan(v, d.Schemas, d.Tables, convertTable)
 		if err != nil {
 			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
 		}
-		*v = *realm
 	case *schema.Schema:
 		if len(d.Schemas) != 1 {
 			return fmt.Errorf("specutil: expecting document to contain a single schema, got %d", len(d.Schemas))
 		}
-		conv, err := Schema(d.Schemas[0], d.Tables, convertTable)
-		if err != nil {
-			return fmt.Errorf("specutil: failed converting to *schema.Schema: %w", err)
+		var r schema.Realm
+		if err := Scan(&r, d.Schemas, d.Tables, convertTable); err != nil {
+			return err
 		}
-		*v = *conv
+		r.Schemas[0].Realm = nil
+		*v = *r.Schemas[0]
 	default:
 		return fmt.Errorf("specutil: failed unmarshaling spec. %T is not supported", v)
 	}

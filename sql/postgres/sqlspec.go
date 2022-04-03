@@ -41,20 +41,29 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 	}
 	switch v := v.(type) {
 	case *schema.Realm:
-		realm, err := Realm(d.Schemas, d.Tables, d.Enums)
-		if err != nil {
+		if err := specutil.Scan(v, d.Schemas, d.Tables, convertTable); err != nil {
 			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
 		}
-		*v = *realm
+		if len(d.Enums) > 0 {
+			for _, sch := range v.Schemas {
+				if err := convertEnums(d.Tables, d.Enums, sch); err != nil {
+					return err
+				}
+			}
+		}
 	case *schema.Schema:
 		if len(d.Schemas) != 1 {
 			return fmt.Errorf("specutil: expecting document to contain a single schema, got %d", len(d.Schemas))
 		}
-		conv, err := Schema(d.Schemas[0], d.Tables, d.Enums)
-		if err != nil {
-			return fmt.Errorf("specutil: failed converting to *schema.Schema: %w", err)
+		var r schema.Realm
+		if err := specutil.Scan(&r, d.Schemas, d.Tables, convertTable); err != nil {
+			return err
 		}
-		*v = *conv
+		if err := convertEnums(d.Tables, d.Enums, r.Schemas[0]); err != nil {
+			return err
+		}
+		r.Schemas[0].Realm = nil
+		*v = *r.Schemas[0]
 	default:
 		return fmt.Errorf("specutil: failed unmarshaling spec. %T is not supported", v)
 	}
@@ -107,68 +116,6 @@ var (
 		return MarshalSpec(v, hclState)
 	})
 )
-
-// Realm converts the schemas and tables of the doc into a schema.Realm.
-func Realm(schemas []*sqlspec.Schema, tables []*sqlspec.Table, enums []*Enum) (*schema.Realm, error) {
-	r := &schema.Realm{}
-	for _, schemaSpec := range schemas {
-		var (
-			schemaTables []*sqlspec.Table
-			schemaEnums  []*Enum
-		)
-		for _, tableSpec := range tables {
-			name, err := specutil.SchemaName(tableSpec.Schema)
-			if err != nil {
-				return nil, fmt.Errorf("specutil: cannot extract schema name for table %q: %w", tableSpec.Name, err)
-			}
-			if name == schemaSpec.Name {
-				schemaTables = append(schemaTables, tableSpec)
-			}
-		}
-		for _, enum := range enums {
-			name, err := specutil.SchemaName(enum.Schema)
-			if err != nil {
-				return nil, fmt.Errorf("specutil: cannot extract schema name for table %q: %w", enum.Name, err)
-			}
-			if name == schemaSpec.Name {
-				schemaEnums = append(schemaEnums, enum)
-			}
-		}
-		sch, err := Schema(schemaSpec, schemaTables, schemaEnums)
-		if err != nil {
-			return nil, err
-		}
-		r.Schemas = append(r.Schemas, sch)
-	}
-	return r, nil
-}
-
-// Schema converts a sqlspec.Schema with its relevant []sqlspec.Tables and []Enum into a schema.Schema.
-func Schema(spec *sqlspec.Schema, tables []*sqlspec.Table, enums []*Enum) (*schema.Schema, error) {
-	sch := &schema.Schema{
-		Name: spec.Name,
-	}
-	m := make(map[*schema.Table]*sqlspec.Table)
-	for _, ts := range tables {
-		table, err := convertTable(ts, sch)
-		if err != nil {
-			return nil, err
-		}
-		sch.Tables = append(sch.Tables, table)
-		m[table] = ts
-	}
-	for _, tbl := range sch.Tables {
-		if err := specutil.LinkForeignKeys(tbl, sch, m[tbl]); err != nil {
-			return nil, err
-		}
-	}
-	if len(enums) > 0 {
-		if err := convertEnums(tables, enums, sch); err != nil {
-			return nil, err
-		}
-	}
-	return sch, nil
-}
 
 // convertTable converts a sqlspec.Table to a schema.Table. Table conversion is done without converting
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
@@ -284,7 +231,7 @@ func convertEnums(tbls []*sqlspec.Table, enums []*Enum, sch *schema.Schema) erro
 				}
 				t, ok := sch.Table(tbl.Name)
 				if !ok {
-					return fmt.Errorf("postgrs: table %q not found in schema %q", tbl.Name, sch.Name)
+					return fmt.Errorf("postgres: table %q not found in schema %q", tbl.Name, sch.Name)
 				}
 				c, ok := t.Column(col.Name)
 				if !ok {

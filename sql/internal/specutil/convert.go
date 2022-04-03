@@ -33,50 +33,53 @@ type (
 	CheckSpecFunc         func(*schema.Check) *sqlspec.Check
 )
 
-// Realm converts the schemas and tables into a schema.Realm.
-func Realm(schemas []*sqlspec.Schema, tables []*sqlspec.Table, convertTable ConvertTableFunc) (*schema.Realm, error) {
-	r := &schema.Realm{}
+// Scan populates the Realm from the schemas and table specs.
+func Scan(r *schema.Realm, schemas []*sqlspec.Schema, tables []*sqlspec.Table, convertTable ConvertTableFunc) error {
+	// Build the schemas.
 	for _, schemaSpec := range schemas {
-		var schemaTables []*sqlspec.Table
+		sch := &schema.Schema{Name: schemaSpec.Name, Realm: r}
 		for _, tableSpec := range tables {
 			name, err := SchemaName(tableSpec.Schema)
 			if err != nil {
-				return nil, fmt.Errorf("specutil: cannot extract schema name for table %q: %w", tableSpec.Name, err)
+				return fmt.Errorf("specutil: cannot extract schema name for table %q: %w", tableSpec.Name, err)
 			}
 			if name == schemaSpec.Name {
-				schemaTables = append(schemaTables, tableSpec)
+				tbl, err := convertTable(tableSpec, sch)
+				if err != nil {
+					return err
+				}
+				sch.Tables = append(sch.Tables, tbl)
 			}
-		}
-		sch, err := Schema(schemaSpec, schemaTables, convertTable)
-		if err != nil {
-			return nil, err
 		}
 		r.Schemas = append(r.Schemas, sch)
 	}
-	return r, nil
+	// Link the foreign keys.
+	for _, sch := range r.Schemas {
+		for _, tbl := range sch.Tables {
+			tableSpec, err := findTableSpec(tables, sch.Name, tbl.Name)
+			if err != nil {
+				return err
+			}
+			if err := linkForeignKeys(tbl, sch, tableSpec); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
-// Schema converts a sqlspec.Schema with its relevant []sqlspec.Tables
-// into a schema.Schema.
-func Schema(spec *sqlspec.Schema, tables []*sqlspec.Table, convertTable ConvertTableFunc) (*schema.Schema, error) {
-	sch := &schema.Schema{
-		Name: spec.Name,
-	}
-	m := make(map[*schema.Table]*sqlspec.Table)
-	for _, ts := range tables {
-		table, err := convertTable(ts, sch)
+// findTableSpec searches tableSpecs for a spec of a table named tableName in a schema named schemaName.
+func findTableSpec(tableSpecs []*sqlspec.Table, schemaName, tableName string) (*sqlspec.Table, error) {
+	for _, tbl := range tableSpecs {
+		n, err := SchemaName(tbl.Schema)
 		if err != nil {
 			return nil, err
 		}
-		sch.Tables = append(sch.Tables, table)
-		m[table] = ts
-	}
-	for _, tbl := range sch.Tables {
-		if err := LinkForeignKeys(tbl, sch, m[tbl]); err != nil {
-			return nil, err
+		if n == schemaName && tbl.Name == tableName {
+			return tbl, nil
 		}
 	}
-	return sch, nil
+	return nil, fmt.Errorf("table %s.%s not found", schemaName, tableName)
 }
 
 // Table converts a sqlspec.Table to a schema.Table. Table conversion is done without converting
@@ -235,10 +238,10 @@ func PrimaryKey(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, 
 	}, nil
 }
 
-// LinkForeignKeys creates the foreign keys defined in the Table's spec by creating references
-// to column in the provided Schema. It is assumed that the schema contains all of the tables
-// referenced by the FK definitions in the spec.
-func LinkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *sqlspec.Table) error {
+// linkForeignKeys creates the foreign keys defined in the Table's spec by creating references
+// to column in the provided Schema. It is assumed that all tables referenced FK definitions in the spec
+// are reachable from the provided schema or its connected realm.
+func linkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *sqlspec.Table) error {
 	for _, spec := range table.ForeignKeys {
 		fk := &schema.ForeignKey{Symbol: spec.Symbol, Table: tbl}
 		if spec.OnUpdate != nil {
@@ -528,13 +531,9 @@ func column(t *schema.Table, ref *schemaspec.Ref) (*schema.Column, error) {
 }
 
 func externalRef(ref *schemaspec.Ref, sch *schema.Schema) (*schema.Table, *schema.Column, error) {
-	t, err := tableName(ref)
+	tbl, err := findTable(ref, sch)
 	if err != nil {
-		return nil, nil, fmt.Errorf("sqlspec: table %q not found", ref.V)
-	}
-	tbl, ok := sch.Table(t)
-	if !ok {
-		return nil, nil, fmt.Errorf("sqlspec: table %q not found", t)
+		return nil, nil, err
 	}
 	c, err := column(tbl, ref)
 	if err != nil {
@@ -543,17 +542,53 @@ func externalRef(ref *schemaspec.Ref, sch *schema.Schema) (*schema.Table, *schem
 	return tbl, c, nil
 }
 
-func tableName(ref *schemaspec.Ref) (string, error) {
+// findTable finds the table referenced by ref in the provided schema. If the table
+// is not in the provided schema.Schema other schemas in the connected schema.Realm
+// are searched as well.
+func findTable(ref *schemaspec.Ref, sch *schema.Schema) (*schema.Table, error) {
+	qualifier, tblName, err := tableName(ref)
+	if err != nil {
+		return nil, err
+	}
+	// Search the same schema.
+	if qualifier == "" || qualifier == sch.Name {
+		tbl, ok := sch.Table(tblName)
+		if !ok {
+			return tbl, fmt.Errorf("sqlspec: table %q not found", tblName)
+		}
+		return tbl, nil
+	}
+	if sch.Realm == nil {
+		return nil, fmt.Errorf("sqlspec: table %s.%s not found", qualifier, tblName)
+	}
+	// Search for the table in another schemas in the realm.
+	sch, ok := sch.Realm.Schema(qualifier)
+	if !ok {
+		return nil, fmt.Errorf("sqlspec: schema %q not found", qualifier)
+	}
+	tbl, ok := sch.Table(tblName)
+	if !ok {
+		return tbl, fmt.Errorf("sqlspec: table %q not found", tblName)
+	}
+	return tbl, nil
+}
+
+func tableName(ref *schemaspec.Ref) (qualifier, name string, err error) {
 	s := strings.Split(ref.V, "$column.")
 	if len(s) != 2 {
-		return "", fmt.Errorf("sqlspec: failed to split by column name from %q", ref)
-
+		return "", "", fmt.Errorf("sqlspec: failed to split by column name from %q", ref)
 	}
-	s = strings.Split(s[0], ".")
-	if len(s) != 3 {
-		return "", fmt.Errorf("sqlspec: failed to extract table name from %q", s)
+	table := strings.TrimSuffix(s[0], ".")
+	s = strings.Split(table, ".")
+	switch len(s) {
+	case 2:
+		name = s[1]
+	case 3:
+		qualifier, name = s[1], s[2]
+	default:
+		return "", "", fmt.Errorf("sqlspec: failed to extract table name from %q", s)
 	}
-	return s[1], nil
+	return
 }
 
 func isLocalRef(r *schemaspec.Ref) bool {

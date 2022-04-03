@@ -16,6 +16,7 @@ schema "schema" {
 }
 
 table "table" {
+	schema = schema.schema
 	column "col" {
 		type = integer
 		comment = "column comment"
@@ -75,6 +76,7 @@ table "table" {
 }
 
 table "accounts" {
+	schema = schema.schema
 	column "name" {
 		type = varchar(32)
 	}

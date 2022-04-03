@@ -15,6 +15,7 @@ type (
 	// Table holds a specification for an SQL table.
 	Table struct {
 		Name        string          `spec:",name"`
+		Qualifier   string          `spec:",qualifier"`
 		Schema      *schemaspec.Ref `spec:"schema"`
 		Columns     []*Column       `spec:"column"`
 		PrimaryKey  *PrimaryKey     `spec:"primary_key"`
