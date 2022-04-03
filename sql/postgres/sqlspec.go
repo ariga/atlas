@@ -41,7 +41,7 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 	}
 	switch v := v.(type) {
 	case *schema.Realm:
-		if err := specutil.Populate(v, d.Schemas, d.Tables, convertTable); err != nil {
+		if err := specutil.Scan(v, d.Schemas, d.Tables, convertTable); err != nil {
 			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
 		}
 		if len(d.Enums) > 0 {
@@ -56,7 +56,7 @@ func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{
 			return fmt.Errorf("specutil: expecting document to contain a single schema, got %d", len(d.Schemas))
 		}
 		var r schema.Realm
-		if err := specutil.Populate(&r, d.Schemas, d.Tables, convertTable); err != nil {
+		if err := specutil.Scan(&r, d.Schemas, d.Tables, convertTable); err != nil {
 			return err
 		}
 		if err := convertEnums(d.Tables, d.Enums, r.Schemas[0]); err != nil {

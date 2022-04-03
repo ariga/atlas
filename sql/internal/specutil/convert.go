@@ -33,8 +33,8 @@ type (
 	CheckSpecFunc         func(*schema.Check) *sqlspec.Check
 )
 
-// Populate populates the Realm from the schemas and table specs.
-func Populate(r *schema.Realm, schemas []*sqlspec.Schema, tables []*sqlspec.Table, convertTable ConvertTableFunc) error {
+// Scan populates the Realm from the schemas and table specs.
+func Scan(r *schema.Realm, schemas []*sqlspec.Schema, tables []*sqlspec.Table, convertTable ConvertTableFunc) error {
 	// Build the schemas.
 	for _, schemaSpec := range schemas {
 		sch := &schema.Schema{Name: schemaSpec.Name, Realm: r}
