@@ -23,8 +23,8 @@ type (
 	Option func(*Config)
 )
 
-// New returns a state configured with options.
-func New(opts ...Option) *state {
+// New returns a State configured with options.
+func New(opts ...Option) *State {
 	cfg := &Config{
 		pathVars: make(map[string]map[string]cty.Value),
 		newCtx: func() *hcl.EvalContext {
@@ -37,7 +37,7 @@ func New(opts ...Option) *state {
 	for _, opt := range opts {
 		opt(cfg)
 	}
-	return &state{config: cfg}
+	return &State{config: cfg}
 }
 
 // WithScopedEnums configured a list of allowed ENUMs to be used in
