@@ -114,19 +114,61 @@ func TestHashSum(t *testing.T) {
 }
 
 func TestValidate(t *testing.T) {
-	d, err := migrate.NewLocalDir("testdata")
-	require.NoError(t, err)
-	require.Nil(t, migrate.Validate(d))
-
+	// Add the sum file form the testdata dir without any files in it - should fail.
 	p := t.TempDir()
-	d, err = migrate.NewLocalDir(p)
+	d, err := migrate.NewLocalDir(p)
 	require.NoError(t, err)
 	require.NoError(t, d.WriteFile("atlas.sum", hash))
 	require.Equal(t, migrate.ErrChecksumMismatch, migrate.Validate(d))
+
+	td := "testdata"
+	d, err = migrate.NewLocalDir(td)
+	t.Cleanup(func() {
+		os.WriteFile(filepath.Join(td, "1_initial.up.sql"), upFile, 0644) //nolint:gosec
+	})
+
+	// Testdata is valid.
+	require.NoError(t, err)
+	require.Nil(t, migrate.Validate(d))
+	require.NoError(t, err)
+
+	// Making a manual change to the sum file should raise validation error.
+	f, err := os.OpenFile(filepath.Join(td, "atlas.sum"), os.O_RDWR, os.ModeAppend)
+	require.NoError(t, err)
+	_, err = f.WriteString("foo")
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	t.Cleanup(func() {
+		os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644) //nolint:gosec
+	})
+	require.Equal(t, migrate.ErrChecksumMismatch, migrate.Validate(d))
+	os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644) //nolint:gosec
+	f, err = os.OpenFile(filepath.Join(td, "atlas.sum"), os.O_APPEND|os.O_WRONLY, os.ModeAppend)
+	require.NoError(t, err)
+	_, err = f.WriteString("foo")
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	require.Equal(t, migrate.ErrChecksumFormat, migrate.Validate(d))
+	os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644) //nolint:gosec
+
+	// Changing the filename should raise validation error.
+	require.NoError(t, os.Rename(filepath.Join(td, "1_initial.up.sql"), filepath.Join(td, "1_first.up.sql")))
+	t.Cleanup(func() {
+		os.Remove(filepath.Join(td, "1_first.up.sql")) //nolint:gosec
+	})
+	require.Equal(t, migrate.ErrChecksumMismatch, migrate.Validate(d))
+
+	// Removing it as well (move it out of the dir).
+	require.NoError(t, os.Remove(filepath.Join(td, "1_first.up.sql")))
+	require.Equal(t, migrate.ErrChecksumMismatch, migrate.Validate(d))
 }
 
-//go:embed testdata/atlas.sum
-var hash []byte
+var (
+	//go:embed testdata/atlas.sum
+	hash []byte
+	//go:embed testdata/1_initial.up.sql
+	upFile []byte
+)
 
 func TestHash_MarshalText(t *testing.T) {
 	d, err := migrate.NewLocalDir("testdata")

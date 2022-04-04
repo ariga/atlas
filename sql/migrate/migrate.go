@@ -492,6 +492,9 @@ func HashSum(dir Dir) (HashFile, error) {
 				return err
 			}
 			defer f.Close()
+			if _, err := h.Write([]byte(path)); err != nil {
+				return err
+			}
 			if _, err = io.Copy(h, f); err != nil {
 				return err
 			}
@@ -506,6 +509,8 @@ func HashSum(dir Dir) (HashFile, error) {
 }
 
 var (
+	// ErrChecksumFormat is returned from Validate if the sum files format is invalid.
+	ErrChecksumFormat = errors.New("checksum file format invalid")
 	// ErrChecksumMismatch is returned from Validate if the hash sums don't match.
 	ErrChecksumMismatch = errors.New("checksum mismatch")
 	// ErrChecksumNotFound is returned from Validate if the hash file does not exist.
@@ -537,7 +542,7 @@ func Validate(dir Dir) error {
 	}
 	var fh HashFile
 	if err := fh.UnmarshalText(b); err != nil {
-		return nil
+		return err
 	}
 	mh, err := HashSum(dir)
 	if err != nil {
@@ -562,6 +567,7 @@ func WriteSumFile(dir Dir, sum HashFile) error {
 func (s HashFile) Sum() string {
 	sha := sha256.New()
 	for _, f := range s {
+		sha.Write([]byte(f.N))
 		sha.Write([]byte(f.H))
 	}
 	return base64.StdEncoding.EncodeToString(sha.Sum(nil))
@@ -573,19 +579,24 @@ func (s HashFile) MarshalText() ([]byte, error) {
 	for _, f := range s {
 		fmt.Fprintf(buf, "%s h1:%s\n", f.N, f.H)
 	}
-	return []byte(fmt.Sprintf("sum h1:%s\n%s", s.Sum(), buf)), nil
+	return []byte(fmt.Sprintf("h1:%s\n%s", s.Sum(), buf)), nil
 }
 
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (s *HashFile) UnmarshalText(b []byte) error {
 	sc := bufio.NewScanner(bytes.NewReader(b))
-	sc.Scan() // skip sum
+	// The first line contains the sum.
+	sc.Scan()
+	sum := strings.TrimPrefix(sc.Text(), "h1:")
 	for sc.Scan() {
 		li := strings.SplitN(sc.Text(), "h1:", 2)
 		if len(li) != 2 {
-			return errors.New("invalid sum file")
+			return ErrChecksumFormat
 		}
 		*s = append(*s, struct{ N, H string }{strings.TrimSpace(li[0]), li[1]})
+	}
+	if sum != s.Sum() {
+		return ErrChecksumMismatch
 	}
 	return sc.Err()
 }
