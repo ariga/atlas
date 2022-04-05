@@ -96,6 +96,9 @@ func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) 
 	default:
 		return nil, fmt.Errorf("specutil: failed marshaling spec. %T is not supported", v)
 	}
+	if err := specutil.QualifyDuplicates(d.Tables); err != nil {
+		return nil, err
+	}
 	return marshaler.MarshalSpec(&d)
 }
 

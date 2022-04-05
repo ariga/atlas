@@ -13,6 +13,28 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var dialects = []struct {
+	name string
+	schemaspec.Marshaler
+	schemaspec.Unmarshaler
+}{
+	{
+		name:        "mysql",
+		Marshaler:   mysql.MarshalHCL,
+		Unmarshaler: mysql.UnmarshalHCL,
+	},
+	{
+		name:        "postgres",
+		Marshaler:   postgres.MarshalHCL,
+		Unmarshaler: postgres.UnmarshalHCL,
+	},
+	{
+		name:        "sqlite",
+		Marshaler:   sqlite.MarshalHCL,
+		Unmarshaler: sqlite.UnmarshalHCL,
+	},
+}
+
 func TestHCL_SQL(t *testing.T) {
 	file, err := decode(`
 schema "hi" {
@@ -341,27 +363,8 @@ table "t2" {
 	schema = schema.account_b
 }
 `
-	for _, tt := range []struct {
-		name string
-		schemaspec.Marshaler
-		schemaspec.Unmarshaler
-	}{
-		{
-			name:        "mysql",
-			Marshaler:   mysql.MarshalHCL,
-			Unmarshaler: mysql.UnmarshalHCL,
-		},
-		{
-			name:        "postgres",
-			Marshaler:   postgres.MarshalHCL,
-			Unmarshaler: postgres.UnmarshalHCL,
-		},
-		{
-			name:        "sqlite",
-			Marshaler:   sqlite.MarshalHCL,
-			Unmarshaler: sqlite.UnmarshalHCL,
-		},
-	} {
+
+	for _, tt := range dialects {
 		t.Run(tt.name, func(t *testing.T) {
 			var r schema.Realm
 			err := tt.UnmarshalSpec([]byte(f), &r)
@@ -457,6 +460,59 @@ table "b" "users" {
 
 	require.EqualValues(t, r.Schemas[0].Tables[0].Columns[0], r.Schemas[1].Tables[0].ForeignKeys[0].RefColumns[0])
 	require.EqualValues(t, "b", r.Schemas[0].Tables[0].ForeignKeys[0].RefTable.Schema.Name)
+}
+
+func TestQualifyMarshal(t *testing.T) {
+	for _, tt := range dialects {
+		t.Run(tt.name, func(t *testing.T) {
+			r := schema.NewRealm(
+				schema.New("a").
+					AddTables(
+						schema.NewTable("users"),
+						schema.NewTable("tbl_a"),
+					),
+				schema.New("b").
+					AddTables(
+						schema.NewTable("users"),
+						schema.NewTable("tbl_b"),
+					),
+				schema.New("c").
+					AddTables(
+						schema.NewTable("users"),
+						schema.NewTable("tbl_c"),
+					),
+			)
+			h, err := tt.Marshaler.MarshalSpec(r)
+			require.NoError(t, err)
+			expected := `table "a" "users" {
+  schema = schema.a
+}
+table "tbl_a" {
+  schema = schema.a
+}
+table "b" "users" {
+  schema = schema.b
+}
+table "tbl_b" {
+  schema = schema.b
+}
+table "c" "users" {
+  schema = schema.c
+}
+table "tbl_c" {
+  schema = schema.c
+}
+schema "a" {
+}
+schema "b" {
+}
+schema "c" {
+}
+`
+			require.EqualValues(t, expected, string(h))
+		})
+	}
+
 }
 
 func decode(f string) (*db, error) {
