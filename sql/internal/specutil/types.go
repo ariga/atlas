@@ -21,9 +21,6 @@ func (r *TypeRegistry) PrintType(typ *schemaspec.Type) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("specutil: type %q not found in registry", typ.T)
 	}
-	if spec.Printer != nil {
-		return spec.Printer(typ)
-	}
 	if len(spec.Attributes) == 0 {
 		return typ.T, nil
 	}
@@ -70,16 +67,31 @@ func (r *TypeRegistry) PrintType(typ *schemaspec.Type) (string, error) {
 
 // TypeRegistry is a collection of *schemaspec.TypeSpec.
 type TypeRegistry struct {
-	r         []*schemaspec.TypeSpec
-	formatter func(schema.Type) (string, error)
-	parser    func(string) (schema.Type, error)
+	r      []*schemaspec.TypeSpec
+	spec   func(schema.Type) (*schemaspec.Type, error)
+	parser func(string) (schema.Type, error)
 }
 
 // WithFormatter configures the registry to use a formatting function for printing
 // schema.Type as string.
-func WithFormatter(formatter func(schema.Type) (string, error)) RegistryOption {
+func WithFormatter(f func(schema.Type) (string, error)) RegistryOption {
 	return func(registry *TypeRegistry) error {
-		registry.formatter = formatter
+		registry.spec = func(t schema.Type) (*schemaspec.Type, error) {
+			s, err := f(t)
+			if err != nil {
+				return nil, fmt.Errorf("specutil: cannot format type %T: %w", t, err)
+			}
+			return &schemaspec.Type{T: s}, nil
+		}
+		return nil
+	}
+}
+
+// WithSpecFunc configures the registry to use the given function for converting
+// a schema.Type to schemaspec.Type
+func WithSpecFunc(spec func(schema.Type) (*schemaspec.Type, error)) RegistryOption {
+	return func(registry *TypeRegistry) error {
+		registry.spec = spec
 		return nil
 	}
 }
@@ -185,11 +197,7 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 	}
 	typeSpec, ok := r.findType(rv)
 	if !ok {
-		t, err := r.formatter(typ)
-		if err != nil {
-			return nil, fmt.Errorf("specutil: cannot format type %T: %w", typ, err)
-		}
-		return &schemaspec.Type{T: t}, nil
+		return r.spec(typ)
 	}
 	s := &schemaspec.Type{T: typeSpec.T}
 	// Iterate the attributes in reverse order, so we can skip zero value and optional attrs.
@@ -293,10 +301,10 @@ func WithAttributes(attrs ...*schemaspec.TypeAttr) TypeSpecOption {
 	}
 }
 
-// WithPrinter returns a printer TypeSpecOption.
-func WithPrinter(p func(*schemaspec.Type) (string, error)) TypeSpecOption {
+// WithTypeFormatter allows overriding the Format function for the Type.
+func WithTypeFormatter(f func(*schemaspec.Type) (string, error)) TypeSpecOption {
 	return func(spec *schemaspec.TypeSpec) {
-		spec.Printer = p
+		spec.Format = f
 	}
 }
 

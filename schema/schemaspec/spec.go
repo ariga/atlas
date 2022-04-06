@@ -75,16 +75,19 @@ type (
 	TypeSpec struct {
 		// Name is the identifier for the type in an Atlas DDL document.
 		Name string
+
 		// T is the database identifier for the type.
 		T          string
 		Attributes []*TypeAttr
+
 		// RType is the reflect.Type of the schema.Type used to describe the TypeSpec.
 		// This field is optional and used to determine the TypeSpec in cases where the
 		// schema.Type does not have a `T` field.
 		RType reflect.Type
-		// Printer is an optional function used by the drivers to get a string representation of the
-		// represented Type, that can be parsed by the driver into a schema.Type.
-		Printer func(*Type) (string, error)
+
+		// Format is an optional formatting function.
+		// If exists, it will be used instead the registry one.
+		Format func(*Type) (string, error)
 	}
 
 	// TypeAttr describes an attribute of a TypeSpec, for example `varchar` fields

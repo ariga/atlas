@@ -1,7 +1,6 @@
 package specutil
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -53,21 +52,6 @@ func TestTypePrint(t *testing.T) {
 			},
 			typ:      &schemaspec.Type{T: "varchar", Attrs: []*schemaspec.Attr{LitAttr("size", "255")}},
 			expected: "varchar(255)",
-		},
-		{
-			spec: &schemaspec.TypeSpec{
-				T:    "custom",
-				Name: "custom",
-				Attributes: []*schemaspec.TypeAttr{
-					{Name: "customAttr", Kind: reflect.Int, Required: true},
-				},
-				Printer: func(typ *schemaspec.Type) (string, error) {
-					v, _ := typ.Attrs[0].Int()
-					return fmt.Sprintf("%s(%d) and stuff", typ.T, v), nil
-				},
-			},
-			typ:      &schemaspec.Type{T: "custom", Attrs: []*schemaspec.Attr{LitAttr("customAttr", "3")}},
-			expected: "custom(3) and stuff",
 		},
 	} {
 		t.Run(tt.expected, func(t *testing.T) {

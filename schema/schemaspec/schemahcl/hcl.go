@@ -355,6 +355,9 @@ func (s *State) findTypeSpec(t string) (*schemaspec.TypeSpec, bool) {
 }
 
 func hclType(spec *schemaspec.TypeSpec, typ *schemaspec.Type) (string, error) {
+	if spec.Format != nil {
+		return spec.Format(typ)
+	}
 	if len(typeFuncArgs(spec)) == 0 {
 		return spec.Name, nil
 	}

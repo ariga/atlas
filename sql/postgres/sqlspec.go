@@ -379,7 +379,7 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 
 // TypeRegistry contains the supported TypeSpecs for the Postgres driver.
 var TypeRegistry = specutil.NewRegistry(
-	specutil.WithFormatter(FormatType),
+	specutil.WithSpecFunc(typeSpec),
 	specutil.WithParser(ParseType),
 	specutil.WithSpecs(
 		specutil.TypeSpec(TypeBit, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64})),
@@ -410,33 +410,10 @@ var TypeRegistry = specutil.NewRegistry(
 		specutil.TypeSpec(TypePath),
 		specutil.TypeSpec(TypePoint),
 		specutil.TypeSpec(TypeDate),
-		specutil.TypeSpec(TypeTime, specutil.WithAttributes(precisionTypeAttr())),
-		specutil.AliasTypeSpec(
-			"time_with_time_zone",
-			TypeTimeWTZ,
-			specutil.WithAttributes(precisionTypeAttr()),
-			specutil.WithPrinter(timePrinter),
-		),
-		specutil.AliasTypeSpec(
-			"time_without_time_zone",
-			TypeTimeWOTZ,
-			specutil.WithAttributes(precisionTypeAttr()),
-			specutil.WithPrinter(timePrinter),
-		),
-		specutil.TypeSpec(TypeTimestampTZ, specutil.WithAttributes(precisionTypeAttr())),
-		specutil.TypeSpec(TypeTimestamp, specutil.WithAttributes(precisionTypeAttr())),
-		specutil.AliasTypeSpec(
-			"timestamp_with_time_zone",
-			TypeTimestampWTZ,
-			specutil.WithAttributes(precisionTypeAttr()),
-			specutil.WithPrinter(timePrinter),
-		),
-		specutil.AliasTypeSpec(
-			"timestamp_without_time_zone",
-			TypeTimestampWOTZ,
-			specutil.WithAttributes(precisionTypeAttr()),
-			specutil.WithPrinter(timePrinter),
-		),
+		specutil.TypeSpec(TypeTime, specutil.WithAttributes(precisionTypeAttr()), formatTime()),
+		specutil.TypeSpec(TypeTimeTZ, specutil.WithAttributes(precisionTypeAttr()), formatTime()),
+		specutil.TypeSpec(TypeTimestampTZ, specutil.WithAttributes(precisionTypeAttr()), formatTime()),
+		specutil.TypeSpec(TypeTimestamp, specutil.WithAttributes(precisionTypeAttr()), formatTime()),
 		specutil.AliasTypeSpec("double_precision", TypeDouble),
 		specutil.TypeSpec(TypeReal),
 		specutil.TypeSpec(TypeFloat8),
@@ -467,19 +444,6 @@ func precisionTypeAttr() *schemaspec.TypeAttr {
 	}
 }
 
-func timePrinter(typ *schemaspec.Type) (string, error) {
-	a, ok := attr(typ, "precision")
-	if !ok {
-		return typ.T, nil
-	}
-	p, err := a.Int()
-	if err != nil {
-		return "", fmt.Errorf(`postgres: parsing attribute "precision": %w`, err)
-	}
-	parts := strings.Split(typ.T, " ")
-	return fmt.Sprintf("%s(%d)%s", parts[0], p, strings.Join(parts[1:], " ")), nil
-}
-
 func attr(typ *schemaspec.Type, key string) (*schemaspec.Attr, bool) {
 	for _, a := range typ.Attrs {
 		if a.K == key {
@@ -487,4 +451,34 @@ func attr(typ *schemaspec.Type, key string) (*schemaspec.Attr, bool) {
 		}
 	}
 	return nil, false
+}
+
+func typeSpec(t schema.Type) (*schemaspec.Type, error) {
+	if t, ok := t.(*schema.TimeType); ok && t.T != TypeDate {
+		spec := &schemaspec.Type{T: timeAlias(t.T)}
+		if t.Precision != defaultTimePrecision {
+			spec.Attrs = []*schemaspec.Attr{specutil.LitAttr("precision", strconv.Itoa(t.Precision))}
+		}
+		return spec, nil
+	}
+	s, err := FormatType(t)
+	if err != nil {
+		return nil, err
+	}
+	return &schemaspec.Type{T: s}, nil
+}
+
+// formatTime overrides the default printing logic done by schemahcl.hclType.
+func formatTime() specutil.TypeSpecOption {
+	return specutil.WithTypeFormatter(func(t *schemaspec.Type) (string, error) {
+		a, ok := attr(t, "precision")
+		if !ok {
+			return t.T, nil
+		}
+		p, err := a.Int()
+		if err != nil {
+			return "", fmt.Errorf(`postgres: parsing attribute "precision": %w`, err)
+		}
+		return FormatType(&schema.TimeType{T: t.T, Precision: p})
+	})
 }
