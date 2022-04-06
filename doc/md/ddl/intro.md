@@ -34,6 +34,21 @@ user "rotemtam" {
 
 This block describes a resource of type `user` with a name of `rotemtam`.
 
+### Qualifiers 
+
+In some cases, a document may contain multiple resources with the same name. To differentiate between
+the different resources, the Atlas DDL supports _qualifiers_, an additional label preceding the resource
+name:
+
+```hcl
+person "dr" "jekyll" {
+  
+}
+```
+
+This block describes a resource of type `person`, with a name of "jekyll" which is qualified by
+"dr".
+
 ### Attributes
 
 Resources can have named attributes with primitive types (string, boolean, integer or float)
@@ -159,7 +174,7 @@ Observe that similar to the standard-library's `json.Unmarshal` function, this f
 takes a byte-slice and an empty interface as arguments. The empty interface should be a
 pointer to a struct into which the `Unmarshal` function will read the values. The struct
 fields must be annotated with `spec` tags that define the mapping from HCL to the Go type.
-This mapping is discussed in the section about [Extensions](#Extensions).
+This mapping is discussed in the section about [Extensions](#extensions).
 
 ### Writing with Go
 
@@ -236,3 +251,23 @@ Extension structs may implement the [Remainer](https://pkg.go.dev/ariga.io/atlas
 interface if they wish to store any attributes and children that are not matched by their
 tagged fields. As a convenience the `schemaspec` package exports a `DefaultExtension` type that
 can be embedded to support this behavior.
+
+### Qualifiers
+
+In cases where resources may need to be qualified, a field of the target struct can be annotated
+with the `,qualifier` tag. For instance this struct:
+
+```go
+type Person struct {
+  Name  string `spec:",name"`
+  Title string `spec:",qualifier"`
+}
+```
+
+Can capture a qualified HCL resource such as:
+
+```hcl
+person "dr" "jekyll" {
+  
+}
+```

@@ -120,6 +120,27 @@ table "products" {
 }
 ```
 
+### Table Qualification
+
+In some cases, an Atlas DDL document may contain multiple tables of the same name. This usually happens
+when the same table name appears in two different schemas. In these cases, the table names must be
+disambiguated by using resource [qualifers](intro.md#qualifiers). The following document describes a
+database that contains two schemas named `a` and `b`, and both of them contain a table named `users`.
+
+```hcl
+schema "a" {}
+schema "b" {}
+
+table "a" "users" {
+  schema = schema.a
+  // .. columns
+}
+table "b" "users" {
+  schema = schema.b
+  // .. columns
+}
+```
+
 ## Column
 
 A `column` is a child resource of a `table`.
@@ -190,6 +211,20 @@ as references to columns in other tables.
 foreign_key "manager_fk" {
   columns = [column.manager_id]
   ref_columns = [column.id]
+  on_delete = CASCADE
+  on_update = NO_ACTION
+}
+```
+
+#### Referencing Qualified Tables
+
+If a foreign key references a column in a [qualified](#table-qualification) table, it is referenced
+using `table.<qualifier>.<table_name>.column.<column_name>`:
+
+```hcl {3}
+foreign_key "manager_fk" {
+  columns = [column.manager_id]
+  ref_columns = [table.other_schema.users.column.id]
   on_delete = CASCADE
   on_update = NO_ACTION
 }
