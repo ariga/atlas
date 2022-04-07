@@ -151,7 +151,7 @@ func ParseType(typ string) (schema.Type, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Normalize PostgresSQL array data types from "CREATE TABLE" format to
+	// Normalize PostgreSQL array data types from "CREATE TABLE" format to
 	// "INFORMATION_SCHEMA" format (i.e. as it is inspected from the database).
 	if t, ok := arrayType(typ); ok {
 		d = &columnDesc{typ: TypeArray, udt: t}
