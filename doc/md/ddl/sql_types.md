@@ -1605,42 +1605,6 @@ enum "my_enum" &#123;
         </tr>
         
         <tr>
-            <td>time_with_time_zone</td>
-            <td>time with time zone</td>
-            <td>
-                <ul>
-                        <li>precision (int)</li>
-                </ul>
-            </td>
-            <td>
-                
-                <pre>
-                    type = time_with_time_zone(10)
-                </pre>
-                
-                
-            </td>
-        </tr>
-        
-        <tr>
-            <td>time_without_time_zone</td>
-            <td>time without time zone</td>
-            <td>
-                <ul>
-                        <li>precision (int)</li>
-                </ul>
-            </td>
-            <td>
-                
-                <pre>
-                    type = time_without_time_zone(10)
-                </pre>
-                
-                
-            </td>
-        </tr>
-        
-        <tr>
             <td>timestamp</td>
             <td>timestamp</td>
             <td>
@@ -1659,42 +1623,6 @@ enum "my_enum" &#123;
         </tr>
         
         <tr>
-            <td>timestamp_with_time_zone</td>
-            <td>timestamp with time zone</td>
-            <td>
-                <ul>
-                        <li>precision (int)</li>
-                </ul>
-            </td>
-            <td>
-                
-                <pre>
-                    type = timestamp_with_time_zone(10)
-                </pre>
-                
-                
-            </td>
-        </tr>
-        
-        <tr>
-            <td>timestamp_without_time_zone</td>
-            <td>timestamp without time zone</td>
-            <td>
-                <ul>
-                        <li>precision (int)</li>
-                </ul>
-            </td>
-            <td>
-                
-                <pre>
-                    type = timestamp_without_time_zone(10)
-                </pre>
-                
-                
-            </td>
-        </tr>
-        
-        <tr>
             <td>timestamptz</td>
             <td>timestamptz</td>
             <td>
@@ -1706,6 +1634,24 @@ enum "my_enum" &#123;
                 
                 <pre>
                     type = timestamptz(10)
+                </pre>
+                
+                
+            </td>
+        </tr>
+        
+        <tr>
+            <td>timetz</td>
+            <td>timetz</td>
+            <td>
+                <ul>
+                        <li>precision (int)</li>
+                </ul>
+            </td>
+            <td>
+                
+                <pre>
+                    type = timetz(10)
                 </pre>
                 
                 

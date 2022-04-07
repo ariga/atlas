@@ -73,20 +73,9 @@ func FormatType(t schema.Type) (string, error) {
 			return "", fmt.Errorf("postgres: unexpected string type: %q", t.T)
 		}
 	case *schema.TimeType:
-		switch f = strings.ToLower(t.T); f {
-		// TIMESTAMPTZ is accepted as an abbreviation for TIMESTAMP WITH TIME ZONE.
-		case TypeTimestampTZ:
-			f = TypeTimestampWTZ
-		// TIME be equivalent to TIME WITHOUT TIME ZONE.
-		case TypeTime:
-			f = TypeTimeWOTZ
-		// TIMESTAMP be equivalent to TIMESTAMP WITHOUT TIME ZONE.
-		case TypeTimestamp:
-			f = TypeTimestampWOTZ
-		}
+		f = timeAlias(t.T)
 		if t.Precision != defaultTimePrecision && strings.HasPrefix(f, "time") {
-			p := strings.Split(f, " ")
-			f = fmt.Sprintf("%s(%d)%s", p[0], t.Precision, strings.Join(p[1:], " "))
+			f += fmt.Sprintf("(%d)", t.Precision)
 		}
 	case *schema.FloatType:
 		switch f = strings.ToLower(t.T); f {
@@ -168,7 +157,7 @@ func ParseType(typ string) (schema.Type, error) {
 		d = &columnDesc{typ: TypeArray, udt: t}
 	}
 	t := columnType(d)
-	// If the type is unknown (to us), we fallback to user-defined but expect
+	// If the type is unknown (to us), we fall back to user-defined but expect
 	// to improve this in future versions by ensuring this against the database.
 	if ut, ok := t.(*schema.UnsupportedType); ok {
 		t = &UserDefinedType{T: ut.T}
@@ -195,7 +184,7 @@ type columnDesc struct {
 	size          int64
 	udt           string
 	precision     int64
-	timePrecision int64
+	timePrecision *int64
 	scale         int64
 	typtype       string
 	typid         int64
@@ -241,21 +230,20 @@ func parseColumn(s string) (*columnDesc, error) {
 		c.precision = 53
 	case TypeReal, TypeFloat4:
 		c.precision = 24
-	case TypeTime, TypeTimestamp, TypeTimestampTZ:
+	case TypeTime, TypeTimeWOTZ, TypeTimeTZ, TypeTimeWTZ, TypeTimestamp, TypeTimestampWOTZ, TypeTimestampTZ, TypeTimestampWTZ:
+		t, p := timeAlias(c.parts[0]), int64(defaultTimePrecision)
 		// If the second part is only one digit it is the precision argument.
-		// For cases like "timestamp(4) with time zone" make sure to not drop the rest of the type definition.
-		offset := 1
+		// For cases like "timestamp(4) with time zone" make sure to not drop
+		// the rest of the type definition.
 		if len(parts) > 1 && reDigits.MatchString(parts[1]) {
-			offset = 2
-			c.timePrecision, err = strconv.ParseInt(parts[1], 10, 64)
+			i, err := strconv.ParseInt(parts[1], 10, 64)
 			if err != nil {
 				return nil, fmt.Errorf("postgres: parse time precision %q: %w", parts[1], err)
 			}
+			p = i
 		}
-		// Append time zone part (if present).
-		if len(parts) > offset {
-			c.typ = fmt.Sprintf("%s %s", c.typ, strings.Join(parts[offset:], " "))
-		}
+		c.typ = t
+		c.timePrecision = &p
 	default:
 		c.typ = s
 	}
@@ -304,4 +292,23 @@ func parseBitParts(parts []string, c *columnDesc) error {
 	}
 	c.size = size
 	return nil
+}
+
+// timeAlias returns the abbreviation for the given time type.
+func timeAlias(t string) string {
+	switch t = strings.ToLower(t); t {
+	// TIMESTAMPTZ be equivalent to TIMESTAMP WITH TIME ZONE.
+	case TypeTimestampWTZ:
+		t = TypeTimestampTZ
+	// TIMESTAMP be equivalent to TIMESTAMP WITHOUT TIME ZONE.
+	case TypeTimestampWOTZ:
+		t = TypeTimestamp
+	// TIME be equivalent to TIME WITHOUT TIME ZONE.
+	case TypeTimeWOTZ:
+		t = TypeTime
+	// TIMETZ be equivalent to TIME WITH TIME ZONE.
+	case TypeTimeWTZ:
+		t = TypeTimeTZ
+	}
+	return t
 }

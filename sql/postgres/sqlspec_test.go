@@ -410,12 +410,10 @@ func TestMarshalSpec_TimePrecision(t *testing.T) {
 			schema.NewTable("times").
 				AddColumns(
 					schema.NewTimeColumn("t_time_def", TypeTime),
-					schema.NewTimeColumn("t_time_with_time_zone", TypeTimeWTZ, schema.TimePrecision(2)),
-					schema.NewTimeColumn("t_time_without_time_zone", TypeTimeWOTZ, schema.TimePrecision(2)),
+					schema.NewTimeColumn("t_time_with_time_zone", TypeTimeTZ, schema.TimePrecision(2)),
+					schema.NewTimeColumn("t_time_without_time_zone", TypeTime, schema.TimePrecision(2)),
 					schema.NewTimeColumn("t_timestamp", TypeTimestamp, schema.TimePrecision(2)),
 					schema.NewTimeColumn("t_timestamptz", TypeTimestampTZ, schema.TimePrecision(2)),
-					schema.NewTimeColumn("t_timestamp_with_time_zone", TypeTimestampWTZ, schema.TimePrecision(2)),
-					schema.NewTimeColumn("t_timestamp_without_time_zone", TypeTimestampWOTZ, schema.TimePrecision(2)),
 				),
 		)
 	buf, err := MarshalSpec(s, hclState)
@@ -428,11 +426,11 @@ func TestMarshalSpec_TimePrecision(t *testing.T) {
   }
   column "t_time_with_time_zone" {
     null = false
-    type = time_with_time_zone(2)
+    type = timetz(2)
   }
   column "t_time_without_time_zone" {
     null = false
-    type = time_without_time_zone(2)
+    type = time(2)
   }
   column "t_timestamp" {
     null = false
@@ -441,14 +439,6 @@ func TestMarshalSpec_TimePrecision(t *testing.T) {
   column "t_timestamptz" {
     null = false
     type = timestamptz(2)
-  }
-  column "t_timestamp_with_time_zone" {
-    null = false
-    type = timestamp_with_time_zone(2)
-  }
-  column "t_timestamp_without_time_zone" {
-    null = false
-    type = timestamp_without_time_zone(2)
   }
 }
 schema "test" {
@@ -584,20 +574,8 @@ func TestTypes(t *testing.T) {
 			expected: &schema.TimeType{T: TypeTime, Precision: 4},
 		},
 		{
-			typeExpr: "time_with_time_zone",
-			expected: &schema.TimeType{T: TypeTimeWTZ, Precision: 6},
-		},
-		{
-			typeExpr: "time_with_time_zone(4)",
-			expected: &schema.TimeType{T: TypeTimeWTZ, Precision: 4},
-		},
-		{
-			typeExpr: "time_without_time_zone",
-			expected: &schema.TimeType{T: TypeTimeWOTZ, Precision: 6},
-		},
-		{
-			typeExpr: "time_without_time_zone(4)",
-			expected: &schema.TimeType{T: TypeTimeWOTZ, Precision: 4},
+			typeExpr: "timetz",
+			expected: &schema.TimeType{T: TypeTimeTZ, Precision: 6},
 		},
 		{
 			typeExpr: "timestamp",
@@ -614,22 +592,6 @@ func TestTypes(t *testing.T) {
 		{
 			typeExpr: "timestamptz(4)",
 			expected: &schema.TimeType{T: TypeTimestampTZ, Precision: 4},
-		},
-		{
-			typeExpr: "timestamp_with_time_zone",
-			expected: &schema.TimeType{T: TypeTimestampWTZ, Precision: 6},
-		},
-		{
-			typeExpr: "timestamp_with_time_zone(4)",
-			expected: &schema.TimeType{T: TypeTimestampWTZ, Precision: 4},
-		},
-		{
-			typeExpr: "timestamp_without_time_zone",
-			expected: &schema.TimeType{T: TypeTimestampWOTZ, Precision: 6},
-		},
-		{
-			typeExpr: "timestamp_without_time_zone(4)",
-			expected: &schema.TimeType{T: TypeTimestampWOTZ, Precision: 4},
 		},
 		{
 			typeExpr: "real",
@@ -675,7 +637,6 @@ func TestTypes(t *testing.T) {
 			typeExpr: "serial8",
 			expected: &SerialType{T: TypeSerial8},
 		},
-
 		{
 			typeExpr: "xml",
 			expected: &XMLType{T: TypeXML},
@@ -687,6 +648,10 @@ func TestTypes(t *testing.T) {
 		{
 			typeExpr: "jsonb",
 			expected: &schema.JSONType{T: TypeJSONB},
+		},
+		{
+			typeExpr: "timestamptz(3)",
+			expected: &schema.TimeType{T: TypeTimestampTZ, Precision: 3},
 		},
 		{
 			typeExpr: "uuid",

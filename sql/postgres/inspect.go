@@ -175,11 +175,11 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 		typ:           typ.String,
 		size:          maxlen.Int64,
 		udt:           udt.String,
-		precision:     precision.Int64,
-		timePrecision: timeprecision.Int64,
 		scale:         scale.Int64,
 		typtype:       typtype.String,
 		typid:         typid.Int64,
+		precision:     precision.Int64,
+		timePrecision: &timeprecision.Int64,
 	})
 	if defaults.Valid {
 		c.Default = defaultExpr(c, defaults.String)
@@ -231,9 +231,15 @@ func columnType(c *columnDesc) schema.Type {
 		typ = &NetworkType{T: t}
 	case TypeCircle, TypeLine, TypeLseg, TypeBox, TypePath, TypePolygon, TypePoint:
 		typ = &schema.SpatialType{T: t}
-	case TypeDate, TypeTime, TypeTimeWTZ, TypeTimeWOTZ,
-		TypeTimestamp, TypeTimestampTZ, TypeTimestampWTZ, TypeTimestampWOTZ:
-		typ = &schema.TimeType{T: t, Precision: int(c.timePrecision)}
+	case TypeDate:
+		typ = &schema.TimeType{T: t}
+	case TypeTime, TypeTimeWOTZ, TypeTimeTZ, TypeTimeWTZ, TypeTimestamp,
+		TypeTimestampTZ, TypeTimestampWTZ, TypeTimestampWOTZ:
+		t := &schema.TimeType{T: t, Precision: defaultTimePrecision}
+		if c.timePrecision != nil {
+			t.Precision = int(*c.timePrecision)
+		}
+		typ = t
 	case TypeInterval:
 		// TODO: get 'interval_type' from query above before implementing.
 		typ = &schema.UnsupportedType{T: t}

@@ -12,7 +12,7 @@ table "t1" {
   }
   column "b" {
     null = true
-    type = timestamp_without_time_zone(6)
+    type = timestamp(6)
   }
   index "t1_a_b" {
     on {

@@ -183,7 +183,8 @@ const (
 	TypePoint   = "point"
 
 	TypeDate          = "date"
-	TypeTime          = "time" // time without time zone
+	TypeTime          = "time"   // time without time zone
+	TypeTimeTZ        = "timetz" // time with time zone
 	TypeTimeWTZ       = "time with time zone"
 	TypeTimeWOTZ      = "time without time zone"
 	TypeTimestamp     = "timestamp" // timestamp without time zone
