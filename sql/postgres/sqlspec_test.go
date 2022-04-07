@@ -712,6 +712,92 @@ schema "test" {
 	}
 }
 
+func TestParseType_Time(t *testing.T) {
+	for _, tt := range []struct {
+		typ      string
+		expected schema.Type
+	}{
+		{
+			typ:      "timestamptz",
+			expected: &schema.TimeType{T: TypeTimestampTZ, Precision: 6},
+		},
+		{
+			typ:      "timestamptz(0)",
+			expected: &schema.TimeType{T: TypeTimestampTZ, Precision: 0},
+		},
+		{
+			typ:      "timestamptz(6)",
+			expected: &schema.TimeType{T: TypeTimestampTZ, Precision: 6},
+		},
+		{
+			typ:      "timestamp with time zone",
+			expected: &schema.TimeType{T: TypeTimestampTZ, Precision: 6},
+		},
+		{
+			typ:      "timestamp(1) with time zone",
+			expected: &schema.TimeType{T: TypeTimestampTZ, Precision: 1},
+		},
+		{
+			typ:      "timestamp",
+			expected: &schema.TimeType{T: TypeTimestamp, Precision: 6},
+		},
+		{
+			typ:      "timestamp(0)",
+			expected: &schema.TimeType{T: TypeTimestamp, Precision: 0},
+		},
+		{
+			typ:      "timestamp(6)",
+			expected: &schema.TimeType{T: TypeTimestamp, Precision: 6},
+		},
+		{
+			typ:      "timestamp without time zone",
+			expected: &schema.TimeType{T: TypeTimestamp, Precision: 6},
+		},
+		{
+			typ:      "timestamp(1) without time zone",
+			expected: &schema.TimeType{T: TypeTimestamp, Precision: 1},
+		},
+		{
+			typ:      "time",
+			expected: &schema.TimeType{T: TypeTime, Precision: 6},
+		},
+		{
+			typ:      "time(3)",
+			expected: &schema.TimeType{T: TypeTime, Precision: 3},
+		},
+		{
+			typ:      "time without time zone",
+			expected: &schema.TimeType{T: TypeTime, Precision: 6},
+		},
+		{
+			typ:      "time(3) without time zone",
+			expected: &schema.TimeType{T: TypeTime, Precision: 3},
+		},
+		{
+			typ:      "timetz",
+			expected: &schema.TimeType{T: TypeTimeTZ, Precision: 6},
+		},
+		{
+			typ:      "timetz(4)",
+			expected: &schema.TimeType{T: TypeTimeTZ, Precision: 4},
+		},
+		{
+			typ:      "time with time zone",
+			expected: &schema.TimeType{T: TypeTimeTZ, Precision: 6},
+		},
+		{
+			typ:      "time(4) with time zone",
+			expected: &schema.TimeType{T: TypeTimeTZ, Precision: 4},
+		},
+	} {
+		t.Run(tt.typ, func(t *testing.T) {
+			typ, err := ParseType(tt.typ)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, typ)
+		})
+	}
+}
+
 func TestRegistrySanity(t *testing.T) {
 	spectest.RegistrySanityTest(t, TypeRegistry, []string{"enum"})
 }

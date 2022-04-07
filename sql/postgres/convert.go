@@ -230,8 +230,8 @@ func parseColumn(s string) (*columnDesc, error) {
 		c.precision = 53
 	case TypeReal, TypeFloat4:
 		c.precision = 24
-	case TypeTime, TypeTimeWOTZ, TypeTimeTZ, TypeTimeWTZ, TypeTimestamp, TypeTimestampWOTZ, TypeTimestampTZ, TypeTimestampWTZ:
-		t, p := timeAlias(c.parts[0]), int64(defaultTimePrecision)
+	case TypeTime, TypeTimeTZ, TypeTimestamp, TypeTimestampTZ:
+		t, p := s, int64(defaultTimePrecision)
 		// If the second part is only one digit it is the precision argument.
 		// For cases like "timestamp(4) with time zone" make sure to not drop
 		// the rest of the type definition.
@@ -241,8 +241,9 @@ func parseColumn(s string) (*columnDesc, error) {
 				return nil, fmt.Errorf("postgres: parse time precision %q: %w", parts[1], err)
 			}
 			p = i
+			t = strings.Join(append(c.parts[:1], c.parts[2:]...), " ")
 		}
-		c.typ = t
+		c.typ = timeAlias(t)
 		c.timePrecision = &p
 	default:
 		c.typ = s
