@@ -74,8 +74,8 @@ func FormatType(t schema.Type) (string, error) {
 		}
 	case *schema.TimeType:
 		f = timeAlias(t.T)
-		if t.Precision != defaultTimePrecision && strings.HasPrefix(f, "time") {
-			f += fmt.Sprintf("(%d)", t.Precision)
+		if p := t.Precision; p != nil && *p != defaultTimePrecision && strings.HasPrefix(f, "time") {
+			f += fmt.Sprintf("(%d)", *p)
 		}
 	case *schema.FloatType:
 		switch f = strings.ToLower(t.T); f {

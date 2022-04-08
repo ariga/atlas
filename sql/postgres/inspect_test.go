@@ -84,6 +84,7 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.noChecks()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
+				p := func(i int) *int { return &i }
 				require.NoError(err)
 				require.Equal("users", t.Name)
 				require.EqualValues([]*schema.Column{
@@ -99,7 +100,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c8", Type: &schema.ColumnType{Raw: "cidr", Type: &NetworkType{T: "cidr"}}},
 					{Name: "c9", Type: &schema.ColumnType{Raw: "circle", Type: &schema.SpatialType{T: "circle"}}},
 					{Name: "c10", Type: &schema.ColumnType{Raw: "date", Type: &schema.TimeType{T: "date"}}},
-					{Name: "c11", Type: &schema.ColumnType{Raw: "time with time zone", Type: &schema.TimeType{T: "time with time zone"}}},
+					{Name: "c11", Type: &schema.ColumnType{Raw: "time with time zone", Type: &schema.TimeType{T: "time with time zone", Precision: p(0)}}},
 					{Name: "c12", Type: &schema.ColumnType{Raw: "double precision", Type: &schema.FloatType{T: "double precision", Precision: 53}}},
 					{Name: "c13", Type: &schema.ColumnType{Raw: "real", Type: &schema.FloatType{T: "real", Precision: 24}}, Default: &schema.RawExpr{X: "random()"}},
 					{Name: "c14", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}, Default: &schema.Literal{V: "'{}'"}},
@@ -113,9 +114,9 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c22", Type: &schema.ColumnType{Raw: "ARRAY", Null: true, Type: &ArrayType{T: "int4[]"}}},
 					{Name: "c23", Type: &schema.ColumnType{Raw: "USER-DEFINED", Null: true, Type: &UserDefinedType{T: "ltree"}}},
 					{Name: "c24", Type: &schema.ColumnType{Raw: "state", Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}},
-					{Name: "c25", Type: &schema.ColumnType{Raw: "timestamp without time zone", Type: &schema.TimeType{T: "timestamp without time zone", Precision: 4}}, Default: &schema.RawExpr{X: "now()"}},
-					{Name: "c26", Type: &schema.ColumnType{Raw: "timestamp with time zone", Type: &schema.TimeType{T: "timestamp with time zone", Precision: 6}}},
-					{Name: "c27", Type: &schema.ColumnType{Raw: "time without time zone", Type: &schema.TimeType{T: "time without time zone", Precision: 6}}},
+					{Name: "c25", Type: &schema.ColumnType{Raw: "timestamp without time zone", Type: &schema.TimeType{T: "timestamp without time zone", Precision: p(4)}}, Default: &schema.RawExpr{X: "now()"}},
+					{Name: "c26", Type: &schema.ColumnType{Raw: "timestamp with time zone", Type: &schema.TimeType{T: "timestamp with time zone", Precision: p(6)}}},
+					{Name: "c27", Type: &schema.ColumnType{Raw: "time without time zone", Type: &schema.TimeType{T: "time without time zone", Precision: p(6)}}},
 				}, t.Columns)
 			},
 		},

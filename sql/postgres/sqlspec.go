@@ -216,7 +216,8 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 	// Handle default values for time precision types.
 	if t, ok := typ.(*schema.TimeType); ok && strings.HasPrefix(t.T, "time") {
 		if _, ok := attr(spec.Type, "precision"); !ok {
-			t.Precision = defaultTimePrecision
+			p := defaultTimePrecision
+			t.Precision = &p
 		}
 	}
 	return typ, nil
@@ -456,8 +457,8 @@ func attr(typ *schemaspec.Type, key string) (*schemaspec.Attr, bool) {
 func typeSpec(t schema.Type) (*schemaspec.Type, error) {
 	if t, ok := t.(*schema.TimeType); ok && t.T != TypeDate {
 		spec := &schemaspec.Type{T: timeAlias(t.T)}
-		if t.Precision != defaultTimePrecision {
-			spec.Attrs = []*schemaspec.Attr{specutil.LitAttr("precision", strconv.Itoa(t.Precision))}
+		if p := t.Precision; p != nil && *p != defaultTimePrecision {
+			spec.Attrs = []*schemaspec.Attr{specutil.IntAttr("precision", *p)}
 		}
 		return spec, nil
 	}
@@ -479,6 +480,6 @@ func formatTime() specutil.TypeSpecOption {
 		if err != nil {
 			return "", fmt.Errorf(`postgres: parsing attribute "precision": %w`, err)
 		}
-		return FormatType(&schema.TimeType{T: t.T, Precision: p})
+		return FormatType(&schema.TimeType{T: t.T, Precision: &p})
 	})
 }

@@ -825,7 +825,7 @@ create table atlas_types_sanity
 					},
 					{
 						Name: "tTimestampFraction",
-						Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp", Precision: 6},
+						Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp", Precision: intp(6)},
 							Raw: "timestamp(6)", Null: true},
 						Default: &schema.RawExpr{
 							X: func() string {
@@ -861,8 +861,7 @@ create table atlas_types_sanity
 					},
 					{
 						Name: "tTimestampFractionOnUpdate",
-						Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp", Precision: 6},
-							Raw: "timestamp(6)", Null: true},
+						Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp", Precision: intp(6)}, Raw: "timestamp(6)", Null: true},
 						Default: &schema.RawExpr{
 							X: func() string {
 								if t.mariadb() {
@@ -899,7 +898,7 @@ create table atlas_types_sanity
 					},
 					{
 						Name: "tYear",
-						Type: &schema.ColumnType{Type: &schema.TimeType{T: "year", Precision: t.intByVersion(map[string]int{"mysql8": 0}, 4)},
+						Type: &schema.ColumnType{Type: &schema.TimeType{T: "year", Precision: intp(t.intByVersion(map[string]int{"mysql8": 0}, 4))},
 							Raw: t.valueByVersion(map[string]string{"mysql8": "year"}, "year(4)"), Null: true},
 					},
 					{
@@ -1359,3 +1358,5 @@ func rmCreateStmt(t *schema.Table) {
 		}
 	}
 }
+
+func intp(i int) *int { return &i }

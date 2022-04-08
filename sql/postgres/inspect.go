@@ -235,11 +235,11 @@ func columnType(c *columnDesc) schema.Type {
 		typ = &schema.TimeType{T: t}
 	case TypeTime, TypeTimeWOTZ, TypeTimeTZ, TypeTimeWTZ, TypeTimestamp,
 		TypeTimestampTZ, TypeTimestampWTZ, TypeTimestampWOTZ:
-		t := &schema.TimeType{T: t, Precision: defaultTimePrecision}
+		p := defaultTimePrecision
 		if c.timePrecision != nil {
-			t.Precision = int(*c.timePrecision)
+			p = int(*c.timePrecision)
 		}
-		typ = t
+		typ = &schema.TimeType{T: t, Precision: &p}
 	case TypeInterval:
 		// TODO: get 'interval_type' from query above before implementing.
 		typ = &schema.UnsupportedType{T: t}

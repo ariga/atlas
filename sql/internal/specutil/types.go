@@ -206,10 +206,10 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 		n := inflect.Camelize(attr.Name)
 		field := rv.FieldByName(n)
 		// If TypeSpec has an attribute that isn't mapped to a field on the schema.Type skip it.
-		if !field.IsValid() {
+		if !field.IsValid() || field.Kind() == reflect.Ptr && field.IsNil() {
 			continue
 		}
-		if field.Kind() != attr.Kind {
+		if field = reflect.Indirect(field); field.Kind() != attr.Kind {
 			return nil, errors.New("incompatible kinds on typespec attr and typefield")
 		}
 		switch attr.Kind {
