@@ -73,6 +73,7 @@ func TestSchema_AddTables(t *testing.T) {
 	require.Equal(
 		t,
 		func() *schema.Schema {
+			p := 6
 			s := &schema.Schema{Name: "public"}
 			users := &schema.Table{
 				Name:   "users",
@@ -84,7 +85,7 @@ func TestSchema_AddTables(t *testing.T) {
 					{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
 					{Name: "active", Type: &schema.ColumnType{Type: &schema.BoolType{T: "boolean"}}},
 					{Name: "name", Type: &schema.ColumnType{Null: true, Type: &schema.StringType{T: "varchar", Size: 255}}},
-					{Name: "registered_at", Type: &schema.ColumnType{Null: false, Type: &schema.TimeType{T: "timestamp", Precision: 6}}},
+					{Name: "registered_at", Type: &schema.ColumnType{Null: false, Type: &schema.TimeType{T: "timestamp", Precision: &p}}},
 				},
 			}
 			s.Tables = append(s.Tables, users)

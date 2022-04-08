@@ -410,7 +410,7 @@ type TimeOption func(*TimeType)
 // TimePrecision configures the precision of the time type.
 func TimePrecision(precision int) TimeOption {
 	return func(b *TimeType) {
-		b.Precision = precision
+		b.Precision = &precision
 	}
 }
 

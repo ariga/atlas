@@ -812,42 +812,42 @@ create table atlas_types_sanity
 				},
 				{
 					Name:    "tTime",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time without time zone", Precision: 6}, Raw: "time without time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time without time zone", Precision: intp(6)}, Raw: "time without time zone", Null: true},
 					Default: &schema.RawExpr{X: "CURRENT_TIME"},
 				},
 				{
 					Name:    "tTimeWTZ",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time with time zone", Precision: 6}, Raw: "time with time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time with time zone", Precision: intp(6)}, Raw: "time with time zone", Null: true},
 					Default: &schema.RawExpr{X: "CURRENT_TIME"},
 				},
 				{
 					Name:    "tTimeWOTZ",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time without time zone", Precision: 6}, Raw: "time without time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time without time zone", Precision: intp(6)}, Raw: "time without time zone", Null: true},
 					Default: &schema.RawExpr{X: "CURRENT_TIME"},
 				},
 				{
 					Name:    "tTimestamp",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone", Precision: 6}, Raw: "timestamp without time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone", Precision: intp(6)}, Raw: "timestamp without time zone", Null: true},
 					Default: &schema.RawExpr{X: "now()"},
 				},
 				{
 					Name:    "tTimestampTZ",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone", Precision: 6}, Raw: "timestamp with time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone", Precision: intp(6)}, Raw: "timestamp with time zone", Null: true},
 					Default: &schema.RawExpr{X: "now()"},
 				},
 				{
 					Name:    "tTimestampWTZ",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone", Precision: 6}, Raw: "timestamp with time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone", Precision: intp(6)}, Raw: "timestamp with time zone", Null: true},
 					Default: &schema.RawExpr{X: "now()"},
 				},
 				{
 					Name:    "tTimestampWOTZ",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone", Precision: 6}, Raw: "timestamp without time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone", Precision: intp(6)}, Raw: "timestamp without time zone", Null: true},
 					Default: &schema.RawExpr{X: "now()"},
 				},
 				{
 					Name:    "tTimestampPrec",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone", Precision: 4}, Raw: "timestamp without time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone", Precision: intp(4)}, Raw: "timestamp without time zone", Null: true},
 					Default: &schema.RawExpr{X: "now()"},
 				},
 				{

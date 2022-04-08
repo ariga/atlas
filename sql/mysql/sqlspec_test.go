@@ -156,20 +156,14 @@ table "accounts" {
 				{
 					Name: "created_at",
 					Type: &schema.ColumnType{
-						Type: &schema.TimeType{
-							T:         TypeDateTime,
-							Precision: 4,
-						},
+						Type: typeTime(TypeDateTime, 4),
 					},
 					Default: &schema.RawExpr{X: "now(4)"},
 				},
 				{
 					Name: "updated_at",
 					Type: &schema.ColumnType{
-						Type: &schema.TimeType{
-							T:         TypeTimestamp,
-							Precision: 6,
-						},
+						Type: typeTime(TypeTimestamp, 6),
 					},
 					Default: &schema.RawExpr{X: "current_timestamp(6)"},
 					Attrs:   []schema.Attr{&OnUpdate{A: "current_timestamp(6)"}},
@@ -898,7 +892,7 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			typeExpr: "timestamp(6)",
-			expected: &schema.TimeType{T: TypeTimestamp, Precision: 6},
+			expected: typeTime(TypeTimestamp, 6),
 		},
 		{
 			typeExpr: "date",
@@ -906,7 +900,7 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			typeExpr: "date(2)",
-			expected: &schema.TimeType{T: TypeDate, Precision: 2},
+			expected: typeTime(TypeDate, 2),
 		},
 		{
 			typeExpr: "time",
@@ -914,7 +908,7 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			typeExpr: "time(6)",
-			expected: &schema.TimeType{T: TypeTime, Precision: 6},
+			expected: typeTime(TypeTime, 6),
 		},
 		{
 			typeExpr: "datetime",
@@ -922,7 +916,7 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			typeExpr: "datetime(6)",
-			expected: &schema.TimeType{T: TypeDateTime, Precision: 6},
+			expected: typeTime(TypeDateTime, 6),
 		},
 		{
 			typeExpr: "year",
@@ -930,7 +924,7 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			typeExpr: "year(2)",
-			expected: &schema.TimeType{T: TypeYear, Precision: 2},
+			expected: typeTime(TypeYear, 2),
 		},
 		{
 			typeExpr: "varchar(10)",
@@ -1058,6 +1052,10 @@ schema "test" {
 			require.EqualValues(t, tt.expected, after.Tables[0].Columns[0].Type.Type)
 		})
 	}
+}
+
+func typeTime(t string, p int) schema.Type {
+	return &schema.TimeType{T: t, Precision: &p}
 }
 
 func lineIfSet(s string) string {

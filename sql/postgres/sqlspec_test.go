@@ -168,20 +168,14 @@ enum "account_type" {
 				{
 					Name: "created_at",
 					Type: &schema.ColumnType{
-						Type: &schema.TimeType{
-							T:         TypeTimestamp,
-							Precision: 4,
-						},
+						Type: typeTime(TypeTimestamp, 4),
 					},
 					Default: &schema.RawExpr{X: "current_timestamp(4)"},
 				},
 				{
 					Name: "updated_at",
 					Type: &schema.ColumnType{
-						Type: &schema.TimeType{
-							T:         TypeTime,
-							Precision: 6,
-						},
+						Type: typeTime(TypeTime, 6),
 					},
 					Default: &schema.RawExpr{X: "current_time"},
 				},
@@ -567,31 +561,31 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			typeExpr: "time",
-			expected: &schema.TimeType{T: TypeTime, Precision: 6},
+			expected: typeTime(TypeTime, 6),
 		},
 		{
 			typeExpr: "time(4)",
-			expected: &schema.TimeType{T: TypeTime, Precision: 4},
+			expected: typeTime(TypeTime, 4),
 		},
 		{
 			typeExpr: "timetz",
-			expected: &schema.TimeType{T: TypeTimeTZ, Precision: 6},
+			expected: typeTime(TypeTimeTZ, 6),
 		},
 		{
 			typeExpr: "timestamp",
-			expected: &schema.TimeType{T: TypeTimestamp, Precision: 6},
+			expected: typeTime(TypeTimestamp, 6),
 		},
 		{
 			typeExpr: "timestamp(4)",
-			expected: &schema.TimeType{T: TypeTimestamp, Precision: 4},
+			expected: typeTime(TypeTimestamp, 4),
 		},
 		{
 			typeExpr: "timestamptz",
-			expected: &schema.TimeType{T: TypeTimestampTZ, Precision: 6},
+			expected: typeTime(TypeTimestampTZ, 6),
 		},
 		{
 			typeExpr: "timestamptz(4)",
-			expected: &schema.TimeType{T: TypeTimestampTZ, Precision: 4},
+			expected: typeTime(TypeTimestampTZ, 4),
 		},
 		{
 			typeExpr: "real",
@@ -648,10 +642,6 @@ func TestTypes(t *testing.T) {
 		{
 			typeExpr: "jsonb",
 			expected: &schema.JSONType{T: TypeJSONB},
-		},
-		{
-			typeExpr: "timestamptz(3)",
-			expected: &schema.TimeType{T: TypeTimestampTZ, Precision: 3},
 		},
 		{
 			typeExpr: "uuid",
@@ -712,6 +702,10 @@ schema "test" {
 	}
 }
 
+func typeTime(t string, p int) schema.Type {
+	return &schema.TimeType{T: t, Precision: &p}
+}
+
 func TestParseType_Time(t *testing.T) {
 	for _, tt := range []struct {
 		typ      string
@@ -719,75 +713,75 @@ func TestParseType_Time(t *testing.T) {
 	}{
 		{
 			typ:      "timestamptz",
-			expected: &schema.TimeType{T: TypeTimestampTZ, Precision: 6},
+			expected: typeTime(TypeTimestampTZ, 6),
 		},
 		{
 			typ:      "timestamptz(0)",
-			expected: &schema.TimeType{T: TypeTimestampTZ, Precision: 0},
+			expected: typeTime(TypeTimestampTZ, 0),
 		},
 		{
 			typ:      "timestamptz(6)",
-			expected: &schema.TimeType{T: TypeTimestampTZ, Precision: 6},
+			expected: typeTime(TypeTimestampTZ, 6),
 		},
 		{
 			typ:      "timestamp with time zone",
-			expected: &schema.TimeType{T: TypeTimestampTZ, Precision: 6},
+			expected: typeTime(TypeTimestampTZ, 6),
 		},
 		{
 			typ:      "timestamp(1) with time zone",
-			expected: &schema.TimeType{T: TypeTimestampTZ, Precision: 1},
+			expected: typeTime(TypeTimestampTZ, 1),
 		},
 		{
 			typ:      "timestamp",
-			expected: &schema.TimeType{T: TypeTimestamp, Precision: 6},
+			expected: typeTime(TypeTimestamp, 6),
 		},
 		{
 			typ:      "timestamp(0)",
-			expected: &schema.TimeType{T: TypeTimestamp, Precision: 0},
+			expected: typeTime(TypeTimestamp, 0),
 		},
 		{
 			typ:      "timestamp(6)",
-			expected: &schema.TimeType{T: TypeTimestamp, Precision: 6},
+			expected: typeTime(TypeTimestamp, 6),
 		},
 		{
 			typ:      "timestamp without time zone",
-			expected: &schema.TimeType{T: TypeTimestamp, Precision: 6},
+			expected: typeTime(TypeTimestamp, 6),
 		},
 		{
 			typ:      "timestamp(1) without time zone",
-			expected: &schema.TimeType{T: TypeTimestamp, Precision: 1},
+			expected: typeTime(TypeTimestamp, 1),
 		},
 		{
 			typ:      "time",
-			expected: &schema.TimeType{T: TypeTime, Precision: 6},
+			expected: typeTime(TypeTime, 6),
 		},
 		{
 			typ:      "time(3)",
-			expected: &schema.TimeType{T: TypeTime, Precision: 3},
+			expected: typeTime(TypeTime, 3),
 		},
 		{
 			typ:      "time without time zone",
-			expected: &schema.TimeType{T: TypeTime, Precision: 6},
+			expected: typeTime(TypeTime, 6),
 		},
 		{
 			typ:      "time(3) without time zone",
-			expected: &schema.TimeType{T: TypeTime, Precision: 3},
+			expected: typeTime(TypeTime, 3),
 		},
 		{
 			typ:      "timetz",
-			expected: &schema.TimeType{T: TypeTimeTZ, Precision: 6},
+			expected: typeTime(TypeTimeTZ, 6),
 		},
 		{
 			typ:      "timetz(4)",
-			expected: &schema.TimeType{T: TypeTimeTZ, Precision: 4},
+			expected: typeTime(TypeTimeTZ, 4),
 		},
 		{
 			typ:      "time with time zone",
-			expected: &schema.TimeType{T: TypeTimeTZ, Precision: 6},
+			expected: typeTime(TypeTimeTZ, 6),
 		},
 		{
 			typ:      "time(4) with time zone",
-			expected: &schema.TimeType{T: TypeTimeTZ, Precision: 4},
+			expected: typeTime(TypeTimeTZ, 4),
 		},
 	} {
 		t.Run(tt.typ, func(t *testing.T) {

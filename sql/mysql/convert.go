@@ -91,8 +91,8 @@ func FormatType(t schema.Type) (string, error) {
 		f = strings.ToLower(t.T)
 	case *schema.TimeType:
 		f = strings.ToLower(t.T)
-		if t.Precision > 0 {
-			f = fmt.Sprintf("%s(%d)", f, t.Precision)
+		if p := t.Precision; p != nil && *p > 0 {
+			f = fmt.Sprintf("%s(%d)", f, *p)
 		}
 	case *schema.UnsupportedType:
 		// Do not accept unsupported types as we should cover all cases.
@@ -222,11 +222,11 @@ func ParseType(raw string) (schema.Type, error) {
 			T: t,
 		}
 		if len(parts) > 1 {
-			p, err := strconv.ParseInt(parts[1], 10, 64)
+			p, err := strconv.Atoi(parts[1])
 			if err != nil {
 				return nil, fmt.Errorf("parse precision %q", parts[1])
 			}
-			tt.Precision = int(p)
+			tt.Precision = &p
 		}
 		return tt, nil
 	case TypeJSON:

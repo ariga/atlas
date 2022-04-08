@@ -233,7 +233,7 @@ type (
 	// TimeType represents a date/time type.
 	TimeType struct {
 		T         string
-		Precision int
+		Precision *int
 	}
 
 	// JSONType represents a JSON type.
