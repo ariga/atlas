@@ -76,6 +76,20 @@ func ScanNullBool(rows *sql.Rows) (sql.NullBool, error) {
 	return b, ScanOne(rows, &b)
 }
 
+// ScanStrings scans sql.Rows into a slice of strings and closes it at the end.
+func ScanStrings(rows *sql.Rows) ([]string, error) {
+	defer rows.Close()
+	var vs []string
+	for rows.Next() {
+		var v string
+		if err := rows.Scan(&v); err != nil {
+			return nil, err
+		}
+		vs = append(vs, v)
+	}
+	return vs, nil
+}
+
 // SchemaFKs scans the rows and adds the foreign-key to the schema table.
 // Reference elements are added as stubs and should be linked manually by the
 // caller.
@@ -168,20 +182,6 @@ func LinkSchemaTables(schemas []*schema.Schema) {
 	}
 }
 
-// ScanStrings scans sql.Rows into a slice of strings and closes it at the end.
-func ScanStrings(rows *sql.Rows) ([]string, error) {
-	defer rows.Close()
-	var vs []string
-	for rows.Next() {
-		var v string
-		if err := rows.Scan(&v); err != nil {
-			return nil, err
-		}
-		vs = append(vs, v)
-	}
-	return vs, nil
-}
-
 // ValuesEqual checks if the 2 string slices are equal (including their order).
 func ValuesEqual(v1, v2 []string) bool {
 	if len(v1) != len(v2) {
@@ -195,24 +195,20 @@ func ValuesEqual(v1, v2 []string) bool {
 	return true
 }
 
-// VersionPermutations returns permutations of the dialect version sorted
-// from coarse to fine grained. For example:
-//
-//   VersionPermutations("mysql", "1.2.3") => ["mysql", "mysql 1", "mysql 1.2", "mysql 1.2.3"]
-//
-// VersionPermutations will split the version number by ".", " ", "-" or "_", and rejoin them
-// with ".". The output slice can be used by drivers to generate a list of permutations
-// for searching for relevant overrides in schema element specs.
-func VersionPermutations(dialect, version string) []string {
-	parts := strings.FieldsFunc(version, func(r rune) bool {
-		return r == '.' || r == ' ' || r == '-' || r == '_'
-	})
-	names := []string{dialect}
-	for i := range parts {
-		version := strings.Join(parts[0:i+1], ".")
-		names = append(names, dialect+" "+version)
+// ModeInspectSchema returns the InspectMode or its default.
+func ModeInspectSchema(o *schema.InspectOptions) schema.InspectMode {
+	if o == nil || o.Mode == 0 {
+		return schema.InspectSchemas | schema.InspectTables
 	}
-	return names
+	return o.Mode
+}
+
+// ModeInspectRealm returns the InspectMode or its default.
+func ModeInspectRealm(o *schema.InspectRealmOption) schema.InspectMode {
+	if o == nil || o.Mode == 0 {
+		return schema.InspectSchemas | schema.InspectTables
+	}
+	return o.Mode
 }
 
 // A Builder provides a syntactic sugar API for writing SQL statements.

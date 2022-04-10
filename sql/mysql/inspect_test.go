@@ -894,6 +894,49 @@ func TestDriver_Realm(t *testing.T) {
 	}(), realm)
 }
 
+func TestInspectMode_InspectRealm(t *testing.T) {
+	db, m, err := sqlmock.New()
+	require.NoError(t, err)
+	mk := mock{m}
+	mk.version("8.0.13")
+	mk.ExpectQuery(sqltest.Escape(schemasQuery)).
+		WillReturnRows(sqltest.Rows(`
++-------------+----------------------------+------------------------+
+| SCHEMA_NAME | DEFAULT_CHARACTER_SET_NAME | DEFAULT_COLLATION_NAME |
++-------------+----------------------------+------------------------+
+| test        | latin1                     | lain1_ci               |
++-------------+----------------------------+------------------------+
+`))
+	drv, err := Open(db)
+	require.NoError(t, err)
+	realm, err := drv.InspectRealm(context.Background(), &schema.InspectRealmOption{Mode: schema.InspectSchemas})
+	require.NoError(t, err)
+	require.EqualValues(t, func() *schema.Realm {
+		r := &schema.Realm{
+			Schemas: []*schema.Schema{
+				{
+					Name: "test",
+					Attrs: []schema.Attr{
+						&schema.Charset{V: "latin1"},
+						&schema.Collation{V: "lain1_ci"},
+					},
+				},
+			},
+			// Server default configuration.
+			Attrs: []schema.Attr{
+				&schema.Charset{
+					V: "utf8",
+				},
+				&schema.Collation{
+					V: "utf8_general_ci",
+				},
+			},
+		}
+		r.Schemas[0].Realm = r
+		return r
+	}(), realm)
+}
+
 type mock struct {
 	sqlmock.Sqlmock
 }

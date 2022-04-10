@@ -28,7 +28,7 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 		return nil, err
 	}
 	r := schema.NewRealm(schemas...).SetCharset(i.charset).SetCollation(i.collate)
-	if len(schemas) == 0 {
+	if len(schemas) == 0 || !sqlx.ModeInspectRealm(opts).Is(schema.InspectTables) {
 		return r, nil
 	}
 	if err := i.inspectTables(ctx, r, nil); err != nil {
@@ -52,10 +52,12 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 		return nil, fmt.Errorf("mysql: %d schemas were found for %q", n, name)
 	}
 	r := schema.NewRealm(schemas...).SetCharset(i.charset).SetCollation(i.collate)
-	if err := i.inspectTables(ctx, r, opts); err != nil {
-		return nil, err
+	if sqlx.ModeInspectSchema(opts).Is(schema.InspectTables) {
+		if err := i.inspectTables(ctx, r, opts); err != nil {
+			return nil, err
+		}
+		sqlx.LinkSchemaTables(schemas)
 	}
-	sqlx.LinkSchemaTables(schemas)
 	return r.Schemas[0], nil
 }
 
