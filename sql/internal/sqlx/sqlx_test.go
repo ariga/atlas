@@ -13,12 +13,32 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestVersionNames(t *testing.T) {
-	names := VersionPermutations("mysql", "1.2.3")
-	require.EqualValues(t, []string{"mysql", "mysql 1", "mysql 1.2", "mysql 1.2.3"}, names)
+func TestModeInspectRealm(t *testing.T) {
+	m := ModeInspectRealm(nil)
+	require.True(t, m.Is(schema.InspectSchemas))
+	require.True(t, m.Is(schema.InspectTables))
 
-	names = VersionPermutations("postgres", "11.3 nightly")
-	require.EqualValues(t, []string{"postgres", "postgres 11", "postgres 11.3", "postgres 11.3.nightly"}, names)
+	m = ModeInspectRealm(&schema.InspectRealmOption{})
+	require.True(t, m.Is(schema.InspectSchemas))
+	require.True(t, m.Is(schema.InspectTables))
+
+	m = ModeInspectRealm(&schema.InspectRealmOption{Mode: schema.InspectSchemas})
+	require.True(t, m.Is(schema.InspectSchemas))
+	require.False(t, m.Is(schema.InspectTables))
+}
+
+func TestModeInspectSchema(t *testing.T) {
+	m := ModeInspectSchema(nil)
+	require.True(t, m.Is(schema.InspectSchemas))
+	require.True(t, m.Is(schema.InspectTables))
+
+	m = ModeInspectSchema(&schema.InspectOptions{})
+	require.True(t, m.Is(schema.InspectSchemas))
+	require.True(t, m.Is(schema.InspectTables))
+
+	m = ModeInspectSchema(&schema.InspectOptions{Mode: schema.InspectSchemas})
+	require.True(t, m.Is(schema.InspectSchemas))
+	require.False(t, m.Is(schema.InspectTables))
 }
 
 func TestBuilder(t *testing.T) {

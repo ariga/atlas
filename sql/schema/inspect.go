@@ -33,21 +33,38 @@ type ExecQuerier interface {
 	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 }
 
+// An InspectMode controls the amount and depth of information returned on inspection.
+type InspectMode uint
+
+const (
+	// InspectSchemas enables schema inspection.
+	InspectSchemas InspectMode = 1 << iota
+
+	// InspectTables enables schema tables inspection including
+	// all its child resources (e.g. columns or indexes).
+	InspectTables
+)
+
+// Is reports whether the given mode is enabled.
+func (m InspectMode) Is(i InspectMode) bool { return m&i != 0 }
+
 type (
 	// InspectOptions describes options for Inspector.
 	InspectOptions struct {
+		// Mode defines the amount of information returned by InspectSchema.
+		// If zero, InspectSchema inspects whole resources in the schema.
+		Mode InspectMode
+
 		// Tables to inspect. Empty means all tables in the schema.
 		Tables []string
 	}
 
-	// InspectTableOptions describes options for TableInspector.
-	InspectTableOptions struct {
-		// Schema defines an optional schema to inspect.
-		Schema string
-	}
-
 	// InspectRealmOption describes options for RealmInspector.
 	InspectRealmOption struct {
+		// Mode defines the amount of information returned by InspectRealm.
+		// If zero, InspectRealm inspects all schemas and their child resources.
+		Mode InspectMode
+
 		// Schemas to inspect. Empty means all tables in the schema.
 		Schemas []string
 	}
@@ -57,7 +74,7 @@ type (
 	Inspector interface {
 		// InspectSchema returns the schema description by its name. An empty name means the
 		// "attached schema" (e.g. SCHEMA() in MySQL or CURRENT_SCHEMA() in PostgreSQL).
-		// A NotExistError error is returned if the schema does not exists in the database.
+		// A NotExistError error is returned if the schema does not exist in the database.
 		InspectSchema(ctx context.Context, name string, opts *InspectOptions) (*Schema, error)
 
 		// InspectRealm returns the description of the connected database.

@@ -28,7 +28,6 @@ var (
 func TestDriver_InspectTable(t *testing.T) {
 	tests := []struct {
 		name   string
-		opts   *schema.InspectTableOptions
 		before func(mock)
 		expect func(*require.Assertions, *schema.Table, error)
 	}{
@@ -446,6 +445,47 @@ public
 			},
 		}
 		r.Schemas[0].Realm = r
+		return r
+	}(), realm)
+}
+
+func TestInspectMode_InspectRealm(t *testing.T) {
+	db, m, err := sqlmock.New()
+	require.NoError(t, err)
+	mk := mock{m}
+	mk.version("130000")
+	mk.ExpectQuery(sqltest.Escape(schemasQuery)).
+		WillReturnRows(sqltest.Rows(`
+   schema_name
+--------------------
+test
+public
+`))
+	drv, err := Open(db)
+	realm, err := drv.InspectRealm(context.Background(), &schema.InspectRealmOption{Mode: schema.InspectSchemas})
+	require.NoError(t, err)
+	require.EqualValues(t, func() *schema.Realm {
+		r := &schema.Realm{
+			Schemas: []*schema.Schema{
+				{
+					Name: "test",
+				},
+				{
+					Name: "public",
+				},
+			},
+			// Server default configuration.
+			Attrs: []schema.Attr{
+				&schema.Collation{
+					V: "en_US.utf8",
+				},
+				&CType{
+					V: "en_US.utf8",
+				},
+			},
+		}
+		r.Schemas[0].Realm = r
+		r.Schemas[1].Realm = r
 		return r
 	}(), realm)
 }

@@ -28,7 +28,7 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 	}
 	r := schema.NewRealm(schemas...).SetCollation(i.collate)
 	r.Attrs = append(r.Attrs, &CType{V: i.ctype})
-	if len(schemas) == 0 {
+	if len(schemas) == 0 || !sqlx.ModeInspectRealm(opts).Is(schema.InspectTables) {
 		return r, nil
 	}
 	if err := i.inspectTables(ctx, r, nil); err != nil {
@@ -53,10 +53,12 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 	}
 	r := schema.NewRealm(schemas...).SetCollation(i.collate)
 	r.Attrs = append(r.Attrs, &CType{V: i.ctype})
-	if err := i.inspectTables(ctx, r, opts); err != nil {
-		return nil, err
+	if sqlx.ModeInspectSchema(opts).Is(schema.InspectTables) {
+		if err := i.inspectTables(ctx, r, opts); err != nil {
+			return nil, err
+		}
+		sqlx.LinkSchemaTables(schemas)
 	}
-	sqlx.LinkSchemaTables(schemas)
 	return r.Schemas[0], nil
 }
 

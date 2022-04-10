@@ -17,7 +17,7 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
-// A diff provides a PostgreSQL implementation for schema.Inspector.
+// A diff provides an SQLite implementation for schema.Inspector.
 type inspect struct{ conn }
 
 var _ schema.Inspector = (*inspect)(nil)
@@ -32,6 +32,9 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 		return nil, fmt.Errorf("sqlite: multiple database files are not supported by the driver. got: %d", len(schemas))
 	}
 	realm := &schema.Realm{Schemas: schemas}
+	if !sqlx.ModeInspectRealm(opts).Is(schema.InspectTables) {
+		return realm, nil
+	}
 	for _, s := range schemas {
 		tables, err := i.tables(ctx, nil)
 		if err != nil {
@@ -68,11 +71,15 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 			Err: fmt.Errorf("sqlite: schema %q was not found", name),
 		}
 	}
+	s := schemas[0]
+	s.Realm = schema.NewRealm(schemas...)
+	if !sqlx.ModeInspectSchema(opts).Is(schema.InspectTables) {
+		return s, nil
+	}
 	tables, err := i.tables(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	s := schemas[0]
 	for _, t := range tables {
 		t.Schema = s
 		t, err := i.inspectTable(ctx, t)
@@ -82,7 +89,6 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 		s.Tables = append(s.Tables, t)
 	}
 	sqlx.LinkSchemaTables(schemas)
-	s.Realm = &schema.Realm{Schemas: schemas}
 	return s, nil
 }
 

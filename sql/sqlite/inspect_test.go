@@ -19,7 +19,6 @@ import (
 func TestDriver_InspectTable(t *testing.T) {
 	tests := []struct {
 		name   string
-		opts   *schema.InspectTableOptions
 		before func(mock)
 		expect func(*require.Assertions, *schema.Table, error)
 	}{
