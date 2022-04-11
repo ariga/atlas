@@ -5,6 +5,7 @@
 package tool_test
 
 import (
+	"fmt"
 	"io/fs"
 	"testing"
 	"time"
@@ -78,6 +79,23 @@ DROP TABLE t2;
 -- reverse: create table t1
 DROP TABLE t1 IF EXISTS;
 `,
+			},
+		},
+		{
+			"liquibase",
+			tool.NewLiquibaseFormatter,
+			map[string]string{
+				v + "_tooling-plan.sql": fmt.Sprintf(`--liquibase formatted sql
+--changeset atlas:%s-1
+--comment: create table t1
+CREATE TABLE t1(c int);
+--rollback: DROP TABLE t1 IF EXISTS;
+
+--changeset atlas:%s-2
+--comment: create table t2
+CREATE TABLE t2(c int);
+--rollback: DROP TABLE t2;
+`, v, v),
 			},
 		},
 	} {
