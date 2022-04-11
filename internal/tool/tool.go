@@ -14,6 +14,7 @@ import (
 var (
 	// funcs contains the template.FuncMap for the different formatters.
 	funcs = template.FuncMap{
+		"inc": func(x int) int { return x + 1 },
 		// now format the current time in a lexicographically ascending order while maintaining human readability.
 		"now": func() string { return time.Now().Format("20060102150405") },
 		"rev": reverse,
@@ -48,6 +49,22 @@ func NewFlywayFormatter() (migrate.Formatter, error) {
 		`{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}`,
 		"U{{ now }}{{ with .Name }}__{{ . }}{{ end }}.sql",
 		`{{ range rev .Changes }}{{ if .Reverse }}{{ with .Comment }}-- reverse: {{ println . }}{{ end }}{{ printf "%s;\n" .Reverse }}{{ end }}{{ end }}`,
+	)
+}
+
+// NewLiquibaseFormatter returns a migrate.Formatter computable with Liquibase.
+func NewLiquibaseFormatter() (migrate.Formatter, error) { // TODO(masseelch): add dbms property (meta data needed)
+	return templateFormatter(
+		"{{ now }}{{ with .Name }}_{{ . }}{{ end }}.sql",
+		`{{- $now := now -}}
+--liquibase formatted sql
+
+{{- range $index, $change := .Changes }}
+--changeset atlas:{{ $now }}-{{ inc $index }}
+{{ with $change.Comment }}--comment: {{ . }}{{ end }}
+{{ $change.Cmd }};
+{{ with $change.Reverse }}--rollback: {{ . }};{{ end }}
+{{ end }}`,
 	)
 }
 
