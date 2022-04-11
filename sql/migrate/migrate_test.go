@@ -13,7 +13,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strconv"
 	"testing"
 	"text/template"
 	"time"
@@ -31,7 +30,7 @@ func TestPlanner_WritePlan(t *testing.T) {
 	plan := &migrate.Plan{
 		Name: "add_t1_and_t2",
 		Changes: []*migrate.Change{
-			{Cmd: "CREATE TABLE t1(c int);", Reverse: "DROP TABLE t1 IF EXISTS"},
+			{Cmd: "CREATE TABLE t1(c int)", Reverse: "DROP TABLE t1 IF EXISTS"},
 			{Cmd: "CREATE TABLE t2(c int)", Reverse: "DROP TABLE t2"},
 		},
 	}
@@ -40,22 +39,24 @@ func TestPlanner_WritePlan(t *testing.T) {
 	pl := migrate.NewPlanner(nil, d, migrate.DisableChecksum())
 	require.NotNil(t, pl)
 	require.NoError(t, pl.WritePlan(plan))
-	v := strconv.FormatInt(time.Now().Unix(), 10)
-	require.Equal(t, countFiles(t, d), 2)
-	requireFileEqual(t, filepath.Join(p, v+"_add_t1_and_t2.up.sql"), "CREATE TABLE t1(c int);\nCREATE TABLE t2(c int);\n")
-	requireFileEqual(t, filepath.Join(p, v+"_add_t1_and_t2.down.sql"), "DROP TABLE t2;\nDROP TABLE t1 IF EXISTS;\n")
+	v := time.Now().Format("20060102150405")
+	require.Equal(t, countFiles(t, d), 1)
+	requireFileEqual(t, d, v+"_add_t1_and_t2.sql", "CREATE TABLE t1(c int);\nCREATE TABLE t2(c int);\n")
 
-	// Custom formatter (creates only "up" migration files).
+	// Custom formatter (creates "up" and "down" migration files).
 	fmt, err := migrate.NewTemplateFormatter(
-		template.Must(template.New("").Parse("{{.Name}}.sql")),
-		template.Must(template.New("").Parse("{{range .Changes}}{{println .Cmd}}{{end}}")),
+		template.Must(template.New("").Parse("{{ .Name }}.up.sql")),
+		template.Must(template.New("").Parse("{{ range .Changes }}{{ println .Cmd }}{{ end }}")),
+		template.Must(template.New("").Parse("{{ .Name }}.down.sql")),
+		template.Must(template.New("").Parse("{{ range .Changes }}{{ println .Reverse }}{{ end }}")),
 	)
 	require.NoError(t, err)
 	pl = migrate.NewPlanner(nil, d, migrate.WithFormatter(fmt), migrate.DisableChecksum())
 	require.NotNil(t, pl)
 	require.NoError(t, pl.WritePlan(plan))
 	require.Equal(t, countFiles(t, d), 3)
-	requireFileEqual(t, filepath.Join(p, "add_t1_and_t2.sql"), "CREATE TABLE t1(c int);\nCREATE TABLE t2(c int)\n")
+	requireFileEqual(t, d, "add_t1_and_t2.up.sql", "CREATE TABLE t1(c int)\nCREATE TABLE t2(c int)\n")
+	requireFileEqual(t, d, "add_t1_and_t2.down.sql", "DROP TABLE t1 IF EXISTS\nDROP TABLE t2\n")
 }
 
 func TestPlanner_Plan(t *testing.T) {
@@ -92,14 +93,13 @@ func TestHashSum(t *testing.T) {
 	p := t.TempDir()
 	d, err := migrate.NewLocalDir(p)
 	require.NoError(t, err)
-	plan := &migrate.Plan{Name: "plan", Changes: []*migrate.Change{{Cmd: "cmd", Reverse: "rev"}}}
+	plan := &migrate.Plan{Name: "plan", Changes: []*migrate.Change{{Cmd: "cmd"}}}
 	pl := migrate.NewPlanner(nil, d)
 	require.NotNil(t, pl)
 	require.NoError(t, pl.WritePlan(plan))
-	v := strconv.FormatInt(time.Now().Unix(), 10)
-	require.Equal(t, countFiles(t, d), 3)
-	requireFileEqual(t, filepath.Join(p, v+"_plan.up.sql"), "cmd;\n")
-	requireFileEqual(t, filepath.Join(p, v+"_plan.down.sql"), "rev;\n")
+	v := time.Now().Format("20060102150405")
+	require.Equal(t, 2, countFiles(t, d))
+	requireFileEqual(t, d, v+"_plan.sql", "cmd;\n")
 	require.FileExists(t, filepath.Join(p, "atlas.sum"))
 
 	p = t.TempDir()
@@ -108,9 +108,8 @@ func TestHashSum(t *testing.T) {
 	pl = migrate.NewPlanner(nil, d, migrate.DisableChecksum())
 	require.NotNil(t, pl)
 	require.NoError(t, pl.WritePlan(plan))
-	require.Equal(t, countFiles(t, d), 2)
-	requireFileEqual(t, filepath.Join(p, v+"_plan.up.sql"), "cmd;\n")
-	requireFileEqual(t, filepath.Join(p, v+"_plan.down.sql"), "rev;\n")
+	require.Equal(t, 1, countFiles(t, d))
+	requireFileEqual(t, d, v+"_plan.sql", "cmd;\n")
 }
 
 func TestValidate(t *testing.T) {
@@ -309,8 +308,8 @@ func countFiles(t *testing.T, d migrate.Dir) int {
 	return len(files)
 }
 
-func requireFileEqual(t *testing.T, name, contents string) {
-	c, err := os.ReadFile(name)
+func requireFileEqual(t *testing.T, d migrate.Dir, name, contents string) {
+	c, err := fs.ReadFile(d, name)
 	require.NoError(t, err)
 	require.Equal(t, contents, string(c))
 }

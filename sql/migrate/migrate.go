@@ -389,27 +389,18 @@ var _ Dir = (*LocalDir)(nil)
 var (
 	// templateFuncs contains the template.FuncMap for the DefaultFormatter.
 	templateFuncs = template.FuncMap{
-		"now": time.Now,
-		"sem": ensureSemicolonSuffix,
+		"now": func() string { return time.Now().Format("20060102150405") },
 		"rev": reverse,
 	}
-	// DefaultFormatter is a default implementation for Formatter. Compatible with golang-migrate/migrate.
+	// DefaultFormatter is a default implementation for Formatter.
 	DefaultFormatter = &TemplateFormatter{
 		templates: []struct{ N, C *template.Template }{
 			{
 				N: template.Must(template.New("").Funcs(templateFuncs).Parse(
-					"{{ now.Unix }}{{ with .Name }}_{{ . }}{{ end }}.up.sql",
+					"{{ now }}{{ with .Name }}_{{ . }}{{ end }}.sql",
 				)),
 				C: template.Must(template.New("").Funcs(templateFuncs).Parse(
-					"{{ range .Changes }}{{ println (sem .Cmd) }}{{ end }}",
-				)),
-			},
-			{
-				N: template.Must(template.New("").Funcs(templateFuncs).Parse(
-					"{{ now.Unix }}{{ with .Name }}_{{ . }}{{ end }}.down.sql",
-				)),
-				C: template.Must(template.New("").Funcs(templateFuncs).Parse(
-					"{{ range rev .Changes }}{{ with .Reverse }}{{ println (sem .) }}{{ end }}{{ end }}",
+					`{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}`,
 				)),
 			},
 		},
@@ -612,14 +603,6 @@ func reverse(changes []*Change) []*Change {
 		rev[i], rev[j] = changes[j], changes[i]
 	}
 	return rev
-}
-
-// ensure an SQL statement has a trailing ";".
-func ensureSemicolonSuffix(s string) string {
-	if !strings.HasSuffix(s, ";") {
-		return s + ";"
-	}
-	return s
 }
 
 func wrap(err1, err2 error) error {
