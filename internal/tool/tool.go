@@ -41,6 +41,16 @@ func NewGooseFormatter() (migrate.Formatter, error) {
 	)
 }
 
+// NewFlywayFormatter returns a migrate.Formatter computable with Flyway.
+func NewFlywayFormatter() (migrate.Formatter, error) {
+	return templateFormatter(
+		"V{{ now }}{{ with .Name }}__{{ . }}{{ end }}.sql",
+		`{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}`,
+		"U{{ now }}{{ with .Name }}__{{ . }}{{ end }}.sql",
+		`{{ range rev .Changes }}{{ if .Reverse }}{{ with .Comment }}-- reverse: {{ println . }}{{ end }}{{ printf "%s;\n" .Reverse }}{{ end }}{{ end }}`,
+	)
+}
+
 // templateFormatter parses the given templates and passes them on to the migrate.NewTemplateFormatter.
 func templateFormatter(templates ...string) (fmt migrate.Formatter, err error) {
 	tpls := make([]*template.Template, len(templates))

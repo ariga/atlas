@@ -34,7 +34,8 @@ var myTests = struct {
 	ports   map[string]int
 }{
 	drivers: make(map[string]*myTest),
-	ports: map[string]int{"mysql56": 3306,
+	ports: map[string]int{
+		"mysql56":  3306,
 		"mysql57":  3307,
 		"mysql8":   3308,
 		"maria107": 4306,

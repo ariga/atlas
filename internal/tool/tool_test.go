@@ -47,7 +47,7 @@ DROP TABLE t1 IF EXISTS;
 			},
 		},
 		{
-			"golang-migrate/migrate",
+			"pressly/goose",
 			tool.NewGooseFormatter,
 			map[string]string{
 				v + "_tooling-plan.sql": `-- +goose Up
@@ -58,6 +58,22 @@ CREATE TABLE t2(c int);
 
 -- +goose Down
 -- reverse: create table t2
+DROP TABLE t2;
+-- reverse: create table t1
+DROP TABLE t1 IF EXISTS;
+`,
+			},
+		},
+		{
+			"flyway",
+			tool.NewFlywayFormatter,
+			map[string]string{
+				"V" + v + "__tooling-plan.sql": `-- create table t1
+CREATE TABLE t1(c int);
+-- create table t2
+CREATE TABLE t2(c int);
+`,
+				"U" + v + "__tooling-plan.sql": `-- reverse: create table t2
 DROP TABLE t2;
 -- reverse: create table t1
 DROP TABLE t1 IF EXISTS;
