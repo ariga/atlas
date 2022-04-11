@@ -2,23 +2,26 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package migrate
+package tool
 
 import (
 	"text/template"
 	"time"
+
+	"ariga.io/atlas/sql/migrate"
 )
 
 var (
 	// funcs contains the template.FuncMap for the different formatters.
 	funcs = template.FuncMap{
+		// now format the current time in a lexicographically ascending order while maintaining human readability.
 		"now": func() string { return time.Now().Format("20060102150405") },
 		"rev": reverse,
 	}
 )
 
 // NewGolangMigrateFormatter returns a migrate.Formatter computable with golang-migrate/migrate.
-func NewGolangMigrateFormatter() (Formatter, error) {
+func NewGolangMigrateFormatter() (migrate.Formatter, error) {
 	return templateFormatter(
 		"{{ now }}{{ with .Name }}_{{ . }}{{ end }}.up.sql",
 		`{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}`,
@@ -28,7 +31,7 @@ func NewGolangMigrateFormatter() (Formatter, error) {
 }
 
 // NewGooseFormatter returns a migrate.Formatter computable with pressly/goose.
-func NewGooseFormatter() (Formatter, error) {
+func NewGooseFormatter() (migrate.Formatter, error) {
 	return templateFormatter(
 		"{{ now }}{{ with .Name }}_{{ . }}{{ end }}.sql",
 		`-- +goose Up
@@ -39,7 +42,7 @@ func NewGooseFormatter() (Formatter, error) {
 }
 
 // templateFormatter parses the given templates and passes them on to the migrate.NewTemplateFormatter.
-func templateFormatter(templates ...string) (fmt Formatter, err error) {
+func templateFormatter(templates ...string) (fmt migrate.Formatter, err error) {
 	tpls := make([]*template.Template, len(templates))
 	for i, t := range templates {
 		tpls[i], err = template.New("").Funcs(funcs).Parse(t)
@@ -47,5 +50,18 @@ func templateFormatter(templates ...string) (fmt Formatter, err error) {
 			return nil, err
 		}
 	}
-	return NewTemplateFormatter(tpls...)
+	return migrate.NewTemplateFormatter(tpls...)
+}
+
+// reverse changes for the down migration.
+func reverse(changes []*migrate.Change) []*migrate.Change {
+	n := len(changes)
+	rev := make([]*migrate.Change, n)
+	if n%2 == 1 {
+		rev[n/2] = changes[n/2]
+	}
+	for i, j := 0, n-1; i < j; i, j = i+1, j-1 {
+		rev[i], rev[j] = changes[j], changes[i]
+	}
+	return rev
 }

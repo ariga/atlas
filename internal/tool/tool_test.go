@@ -2,12 +2,14 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package migrate_test
+package tool_test
 
 import (
+	"io/fs"
 	"testing"
 	"time"
 
+	"ariga.io/atlas/internal/tool"
 	"ariga.io/atlas/sql/migrate"
 	"github.com/stretchr/testify/require"
 )
@@ -30,7 +32,7 @@ func TestFormatters(t *testing.T) {
 	}{
 		{
 			"golang-migrate/migrate",
-			migrate.NewGolangMigrateFormatter,
+			tool.NewGolangMigrateFormatter,
 			map[string]string{
 				v + "_tooling-plan.up.sql": `-- create table t1
 CREATE TABLE t1(c int);
@@ -46,7 +48,7 @@ DROP TABLE t1 IF EXISTS;
 		},
 		{
 			"golang-migrate/migrate",
-			migrate.NewGooseFormatter,
+			tool.NewGooseFormatter,
 			map[string]string{
 				v + "_tooling-plan.sql": `-- +goose Up
 -- create table t1
@@ -83,4 +85,16 @@ func dir(t *testing.T) migrate.Dir {
 	d, err := migrate.NewLocalDir(p)
 	require.NoError(t, err)
 	return d
+}
+
+func countFiles(t *testing.T, d migrate.Dir) int {
+	files, err := fs.ReadDir(d, "")
+	require.NoError(t, err)
+	return len(files)
+}
+
+func requireFileEqual(t *testing.T, d migrate.Dir, name, contents string) {
+	c, err := fs.ReadFile(d, name)
+	require.NoError(t, err)
+	require.Equal(t, contents, string(c))
 }
