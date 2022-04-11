@@ -28,12 +28,12 @@ func TestFormatters(t *testing.T) {
 	v := time.Now().Format("20060102150405")
 	for _, tt := range []struct {
 		name     string
-		fmt      func() (migrate.Formatter, error)
+		fmt      migrate.Formatter
 		expected map[string]string
 	}{
 		{
 			"golang-migrate/migrate",
-			tool.NewGolangMigrateFormatter,
+			tool.GolangMigrateFormatter,
 			map[string]string{
 				v + "_tooling-plan.up.sql": `-- create table t1
 CREATE TABLE t1(c int);
@@ -49,7 +49,7 @@ DROP TABLE t1 IF EXISTS;
 		},
 		{
 			"pressly/goose",
-			tool.NewGooseFormatter,
+			tool.GooseFormatter,
 			map[string]string{
 				v + "_tooling-plan.sql": `-- +goose Up
 -- create table t1
@@ -67,7 +67,7 @@ DROP TABLE t1 IF EXISTS;
 		},
 		{
 			"flyway",
-			tool.NewFlywayFormatter,
+			tool.FlywayFormatter,
 			map[string]string{
 				"V" + v + "__tooling-plan.sql": `-- create table t1
 CREATE TABLE t1(c int);
@@ -83,7 +83,7 @@ DROP TABLE t1 IF EXISTS;
 		},
 		{
 			"liquibase",
-			tool.NewLiquibaseFormatter,
+			tool.LiquibaseFormatter,
 			map[string]string{
 				v + "_tooling-plan.sql": fmt.Sprintf(`--liquibase formatted sql
 --changeset atlas:%s-1
@@ -101,9 +101,7 @@ CREATE TABLE t2(c int);
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			d := dir(t)
-			fmt, err := tt.fmt()
-			require.NoError(t, err)
-			pl := migrate.NewPlanner(nil, d, migrate.WithFormatter(fmt), migrate.DisableChecksum())
+			pl := migrate.NewPlanner(nil, d, migrate.WithFormatter(tt.fmt), migrate.DisableChecksum())
 			require.NotNil(t, pl)
 			require.NoError(t, pl.WritePlan(plan))
 			require.Equal(t, len(tt.expected), countFiles(t, d))

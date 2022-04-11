@@ -12,49 +12,30 @@ import (
 )
 
 var (
-	// funcs contains the template.FuncMap for the different formatters.
-	funcs = template.FuncMap{
-		"inc": func(x int) int { return x + 1 },
-		// now format the current time in a lexicographically ascending order while maintaining human readability.
-		"now": func() string { return time.Now().Format("20060102150405") },
-		"rev": reverse,
-	}
-)
-
-// NewGolangMigrateFormatter returns a migrate.Formatter computable with golang-migrate/migrate.
-func NewGolangMigrateFormatter() (migrate.Formatter, error) {
-	return templateFormatter(
+	// GolangMigrateFormatter is a migrate.Formatter compatible with golang-migrate/migrate.
+	GolangMigrateFormatter = templateFormatter(
 		"{{ now }}{{ with .Name }}_{{ . }}{{ end }}.up.sql",
 		`{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}`,
 		"{{ now }}{{ with .Name }}_{{ . }}{{ end }}.down.sql",
 		`{{ range rev .Changes }}{{ if .Reverse }}{{ with .Comment }}-- reverse: {{ println . }}{{ end }}{{ printf "%s;\n" .Reverse }}{{ end }}{{ end }}`,
 	)
-}
-
-// NewGooseFormatter returns a migrate.Formatter computable with pressly/goose.
-func NewGooseFormatter() (migrate.Formatter, error) {
-	return templateFormatter(
+	// GooseFormatter returns a migrate.Formatter compatible with pressly/goose.
+	GooseFormatter = templateFormatter(
 		"{{ now }}{{ with .Name }}_{{ . }}{{ end }}.sql",
 		`-- +goose Up
 {{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}
 -- +goose Down
 {{ range rev .Changes }}{{ if .Reverse }}{{ with .Comment }}-- reverse: {{ println . }}{{ end }}{{ printf "%s;\n" .Reverse }}{{ end }}{{ end }}`,
 	)
-}
-
-// NewFlywayFormatter returns a migrate.Formatter computable with Flyway.
-func NewFlywayFormatter() (migrate.Formatter, error) {
-	return templateFormatter(
+	// FlywayFormatter returns a migrate.Formatter compatible with Flyway.
+	FlywayFormatter = templateFormatter(
 		"V{{ now }}{{ with .Name }}__{{ . }}{{ end }}.sql",
 		`{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}`,
 		"U{{ now }}{{ with .Name }}__{{ . }}{{ end }}.sql",
 		`{{ range rev .Changes }}{{ if .Reverse }}{{ with .Comment }}-- reverse: {{ println . }}{{ end }}{{ printf "%s;\n" .Reverse }}{{ end }}{{ end }}`,
 	)
-}
-
-// NewLiquibaseFormatter returns a migrate.Formatter computable with Liquibase.
-func NewLiquibaseFormatter() (migrate.Formatter, error) { // TODO(masseelch): add dbms property (meta data needed)
-	return templateFormatter(
+	// LiquibaseFormatter returns a migrate.Formatter compatible with Liquibase.
+	LiquibaseFormatter = templateFormatter(
 		"{{ now }}{{ with .Name }}_{{ . }}{{ end }}.sql",
 		`{{- $now := now -}}
 --liquibase formatted sql
@@ -66,18 +47,26 @@ func NewLiquibaseFormatter() (migrate.Formatter, error) { // TODO(masseelch): ad
 {{ with $change.Reverse }}--rollback: {{ . }};{{ end }}
 {{ end }}`,
 	)
-}
+	// funcs contains the template.FuncMap for the different formatters.
+	funcs = template.FuncMap{
+		"inc": func(x int) int { return x + 1 },
+		// now format the current time in a lexicographically ascending order while maintaining human readability.
+		"now": func() string { return time.Now().Format("20060102150405") },
+		"rev": reverse,
+	}
+)
 
 // templateFormatter parses the given templates and passes them on to the migrate.NewTemplateFormatter.
-func templateFormatter(templates ...string) (fmt migrate.Formatter, err error) {
+func templateFormatter(templates ...string) migrate.Formatter {
 	tpls := make([]*template.Template, len(templates))
 	for i, t := range templates {
-		tpls[i], err = template.New("").Funcs(funcs).Parse(t)
-		if err != nil {
-			return nil, err
-		}
+		tpls[i] = template.Must(template.New("").Funcs(funcs).Parse(t))
 	}
-	return migrate.NewTemplateFormatter(tpls...)
+	fmt, err := migrate.NewTemplateFormatter(tpls...)
+	if err != nil {
+		panic(err)
+	}
+	return fmt
 }
 
 // reverse changes for the down migration.
