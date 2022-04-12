@@ -163,7 +163,7 @@ func (*diff) Normalize(from, to *schema.Table) {
 		// table is defined on non-indexed columns, an index is automatically created
 		// to satisfy the constraint.
 		// Therefore, if no such key was defined on the desired state, the diff will
-		// recommend to drop it on migration. Therefore, we fix it by dropping it from
+		// recommend dropping it on migration. Therefore, we fix it by dropping it from
 		// the current state manually.
 		if _, ok := to.Index(idx.Name); ok || !keySupportsFK(from, idx) {
 			indexes = append(indexes, idx)
@@ -183,7 +183,7 @@ func (*diff) collationChange(from, top, to []schema.Attr) schema.Change {
 			A: &toC,
 		}
 	case !toHas:
-		// There is no way to DROP a COLLATE that was configured on the table
+		// There is no way to DROP a COLLATE that was configured on the table,
 		// and it is not the default. Therefore, we use ModifyAttr and give it
 		// the inherited (and default) collation from schema or server.
 		if topHas && fromC.V != topC.V {
@@ -202,7 +202,7 @@ func (*diff) collationChange(from, top, to []schema.Attr) schema.Change {
 }
 
 // charsetChange returns the schema change for migrating the collation if
-// it was changed and its not the default attribute inherited from its parent.
+// it was changed, and it is not the default attribute inherited from its parent.
 func (*diff) charsetChange(from, top, to []schema.Attr) schema.Change {
 	var fromC, topC, toC schema.Charset
 	switch fromHas, topHas, toHas := sqlx.Has(from, &fromC), sqlx.Has(top, &topC), sqlx.Has(to, &toC); {
@@ -212,7 +212,7 @@ func (*diff) charsetChange(from, top, to []schema.Attr) schema.Change {
 			A: &toC,
 		}
 	case !toHas:
-		// There is no way to DROP a CHARSET that was configured on the table
+		// There is no way to DROP a CHARSET that was configured on the table,
 		// and it is not the default. Therefore, we use ModifyAttr and give it
 		// the inherited (and default) collation from schema or server.
 		if topHas && fromC.V != topC.V {
@@ -237,7 +237,7 @@ func (*diff) autoIncChange(from, to []schema.Attr) schema.Change {
 	switch fromHas, toHas := sqlx.Has(from, &fromA), sqlx.Has(to, &toA); {
 	// Ignore if the AUTO_INCREMENT attribute was dropped from the desired schema.
 	case fromHas && !toHas:
-	// The AUTO_INCREMENT exists in the desired schema, and may not exists in the inspected one.
+	// The AUTO_INCREMENT exists in the desired schema, and may not exist in the inspected one.
 	// This can happen because older versions of MySQL (< 8.0) stored the AUTO_INCREMENT counter
 	// in main memory (not persistent), and the value is reset on process restart for empty tables.
 	case toA.V > 1 && toA.V > fromA.V:
