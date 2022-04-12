@@ -170,6 +170,14 @@ func TestSchema_SetComment(t *testing.T) {
 	require.Equal(t, &schema.Comment{Text: "2"}, s.Attrs[0])
 }
 
+func TestSchema_SetGeneratedExpr(t *testing.T) {
+	c := schema.NewIntColumn("c", "int")
+	require.Empty(t, c.Attrs)
+	x := &schema.GeneratedExpr{Expr: "d*2", Type: "VIRTUAL"}
+	c.SetGeneratedExpr(x)
+	require.Equal(t, []schema.Attr{x}, c.Attrs)
+}
+
 func TestCheck(t *testing.T) {
 	enforced := &struct{ schema.Attr }{}
 	tbl := schema.NewTable("table").

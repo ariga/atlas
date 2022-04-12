@@ -510,6 +510,12 @@ func (c *Column) SetComment(v string) *Column {
 	return c
 }
 
+// SetGeneratedExpr sets or appends the GeneratedExpr attribute.
+func (c *Column) SetGeneratedExpr(x *GeneratedExpr) *Column {
+	replaceOrAppend(&c.Attrs, x)
+	return c
+}
+
 // AddAttrs adds additional attributes to the column.
 func (c *Column) AddAttrs(attrs ...Attr) *Column {
 	c.Attrs = append(c.Attrs, attrs...)

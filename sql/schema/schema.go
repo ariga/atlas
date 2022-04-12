@@ -298,6 +298,13 @@ type (
 		Expr  string // Actual CHECK.
 		Attrs []Attr // Additional attributes (e.g. ENFORCED).
 	}
+
+	// GeneratedExpr describes the expression used for generating
+	// the value of a generated/virtual column.
+	GeneratedExpr struct {
+		Expr string
+		Type string // Optional type. e.g. STORED or VIRTUAL.
+	}
 )
 
 // expressions.
@@ -318,7 +325,8 @@ func (*DecimalType) typ()     {}
 func (*UnsupportedType) typ() {}
 
 // attributes.
-func (*Check) attr()     {}
-func (*Comment) attr()   {}
-func (*Charset) attr()   {}
-func (*Collation) attr() {}
+func (*Check) attr()         {}
+func (*Comment) attr()       {}
+func (*Charset) attr()       {}
+func (*Collation) attr()     {}
+func (*GeneratedExpr) attr() {}

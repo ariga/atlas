@@ -160,6 +160,16 @@ func (d *conn) supportsEnforceCheck() bool {
 	return !d.mariadb() && d.gteV("8.0.16")
 }
 
+// supportsGeneratedColumns reports if the connected database
+// supports the generated columns in information schema.
+func (d *conn) supportsGeneratedColumns() bool {
+	v := "5.7"
+	if d.mariadb() {
+		v = "10.2"
+	}
+	return d.gteV(v)
+}
+
 // mariadb reports if the Driver is connected to a MariaDB database.
 func (d *conn) mariadb() bool {
 	return strings.Index(d.version, "MariaDB") > 0
