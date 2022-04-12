@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"ariga.io/atlas/internal/tool"
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/tool"
 	"github.com/stretchr/testify/require"
 )
 
