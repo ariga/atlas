@@ -439,6 +439,9 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 		return fmt.Errorf("format type for column %q: %w", c.Name, err)
 	}
 	b.Ident(c.Name).P(typ)
+	if x := (schema.GeneratedExpr{}); sqlx.Has(c.Attrs, &x) {
+		b.P("AS", sqlx.MayWrap(x.Expr), x.Type)
+	}
 	if !c.Type.Null {
 		b.P("NOT")
 	}

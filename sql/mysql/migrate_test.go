@@ -491,6 +491,34 @@ func TestPlanChanges(t *testing.T) {
 		{
 			input: []schema.Change{
 				func() schema.Change {
+					users := schema.NewTable("users").
+						AddColumns(schema.NewIntColumn("c1", "int"))
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.AddColumn{
+								C: schema.NewIntColumn("c2", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "c1*2"}),
+							},
+							&schema.AddColumn{
+								C: schema.NewIntColumn("c3", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "c1*c2", Type: "STORED"}),
+							},
+						},
+					}
+				}(),
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `users` ADD COLUMN `c2` int AS (c1*2) NOT NULL, ADD COLUMN `c3` int AS (c1*c2) STORED NOT NULL",
+						Reverse: "ALTER TABLE `users` DROP COLUMN `c2`, DROP COLUMN `c3`",
+					},
+				},
+			},
+		},
+		{
+			input: []schema.Change{
+				func() schema.Change {
 					users := &schema.Table{
 						Name: "users",
 						Columns: []*schema.Column{
