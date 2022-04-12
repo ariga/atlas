@@ -2,7 +2,7 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package tool_test
+package sqltool_test
 
 import (
 	"fmt"
@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"ariga.io/atlas/internal/tool"
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/sqltool"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,7 +33,7 @@ func TestFormatters(t *testing.T) {
 	}{
 		{
 			"golang-migrate/migrate",
-			tool.GolangMigrateFormatter,
+			sqltool.GolangMigrateFormatter,
 			map[string]string{
 				v + "_tooling-plan.up.sql": `-- create table t1
 CREATE TABLE t1(c int);
@@ -49,7 +49,7 @@ DROP TABLE t1 IF EXISTS;
 		},
 		{
 			"pressly/goose",
-			tool.GooseFormatter,
+			sqltool.GooseFormatter,
 			map[string]string{
 				v + "_tooling-plan.sql": `-- +goose Up
 -- create table t1
@@ -67,7 +67,7 @@ DROP TABLE t1 IF EXISTS;
 		},
 		{
 			"flyway",
-			tool.FlywayFormatter,
+			sqltool.FlywayFormatter,
 			map[string]string{
 				"V" + v + "__tooling-plan.sql": `-- create table t1
 CREATE TABLE t1(c int);
@@ -83,7 +83,7 @@ DROP TABLE t1 IF EXISTS;
 		},
 		{
 			"liquibase",
-			tool.LiquibaseFormatter,
+			sqltool.LiquibaseFormatter,
 			map[string]string{
 				v + "_tooling-plan.sql": fmt.Sprintf(`--liquibase formatted sql
 --changeset atlas:%s-1
