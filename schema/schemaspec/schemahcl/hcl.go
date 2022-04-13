@@ -330,7 +330,7 @@ func (s *State) writeAttr(attr *schemaspec.Attr, body *hclwrite.Body) error {
 	return nil
 }
 
-// normalizeLiterals transforms attriburtes with LiteralValue that cannot be
+// normalizeLiterals transforms attributes with LiteralValue that cannot be
 // written as correct HCL into RawExpr.
 func normalizeLiterals(attr *schemaspec.Attr) *schemaspec.Attr {
 	lv, ok := attr.V.(*schemaspec.LiteralValue)
