@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/schema/schemaspec/internal/schemautil"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/stretchr/testify/require"
@@ -30,7 +31,7 @@ func TestTypePrint(t *testing.T) {
 		},
 		{
 			spec:     intSpec,
-			typ:      &schemaspec.Type{T: "int", Attrs: []*schemaspec.Attr{litAttr("unsigned", "true")}},
+			typ:      &schemaspec.Type{T: "int", Attrs: []*schemaspec.Attr{schemautil.LitAttr("unsigned", "true")}},
 			expected: "int unsigned",
 		},
 		{
@@ -39,7 +40,7 @@ func TestTypePrint(t *testing.T) {
 				T:          "float",
 				Attributes: []*schemaspec.TypeAttr{unsignedTypeAttr()},
 			},
-			typ:      &schemaspec.Type{T: "float", Attrs: []*schemaspec.Attr{litAttr("unsigned", "true")}},
+			typ:      &schemaspec.Type{T: "float", Attrs: []*schemaspec.Attr{schemautil.LitAttr("unsigned", "true")}},
 			expected: "float unsigned",
 		},
 		{
@@ -50,7 +51,7 @@ func TestTypePrint(t *testing.T) {
 					{Name: "size", Kind: reflect.Int, Required: true},
 				},
 			},
-			typ:      &schemaspec.Type{T: "varchar", Attrs: []*schemaspec.Attr{litAttr("size", "255")}},
+			typ:      &schemaspec.Type{T: "varchar", Attrs: []*schemaspec.Attr{schemautil.LitAttr("size", "255")}},
 			expected: "varchar(255)",
 		},
 	} {
@@ -168,34 +169,34 @@ func TestRegistryConvert(t *testing.T) {
 	}{
 		{
 			typ:      &schema.StringType{T: "varchar", Size: 255},
-			expected: &schemaspec.Type{T: "varchar", Attrs: []*schemaspec.Attr{litAttr("size", "255")}},
+			expected: &schemaspec.Type{T: "varchar", Attrs: []*schemaspec.Attr{schemautil.LitAttr("size", "255")}},
 		},
 		{
 			typ:      &schema.IntegerType{T: "int", Unsigned: true},
-			expected: &schemaspec.Type{T: "int", Attrs: []*schemaspec.Attr{litAttr("unsigned", "true")}},
+			expected: &schemaspec.Type{T: "int", Attrs: []*schemaspec.Attr{schemautil.LitAttr("unsigned", "true")}},
 		},
 		{
 			typ:      &schema.IntegerType{T: "int", Unsigned: true},
-			expected: &schemaspec.Type{T: "int", Attrs: []*schemaspec.Attr{litAttr("unsigned", "true")}},
+			expected: &schemaspec.Type{T: "int", Attrs: []*schemaspec.Attr{schemautil.LitAttr("unsigned", "true")}},
 		},
 		{
 			typ: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2}, // decimal(10,2)
 			expected: &schemaspec.Type{T: "decimal", Attrs: []*schemaspec.Attr{
-				litAttr("precision", "10"),
-				litAttr("scale", "2"),
+				schemautil.LitAttr("precision", "10"),
+				schemautil.LitAttr("scale", "2"),
 			}},
 		},
 		{
 			typ: &schema.DecimalType{T: "decimal", Precision: 10}, // decimal(10)
 			expected: &schemaspec.Type{T: "decimal", Attrs: []*schemaspec.Attr{
-				litAttr("precision", "10"),
+				schemautil.LitAttr("precision", "10"),
 			}},
 		},
 		{
 			typ: &schema.DecimalType{T: "decimal", Scale: 2}, // decimal(0,2)
 			expected: &schemaspec.Type{T: "decimal", Attrs: []*schemaspec.Attr{
-				litAttr("precision", "0"),
-				litAttr("scale", "2"),
+				schemautil.LitAttr("precision", "0"),
+				schemautil.LitAttr("scale", "2"),
 			}},
 		},
 		{
@@ -205,7 +206,7 @@ func TestRegistryConvert(t *testing.T) {
 		{
 			typ: &schema.EnumType{T: "enum", Values: []string{"on", "off"}},
 			expected: &schemaspec.Type{T: "enum", Attrs: []*schemaspec.Attr{
-				listAttr("values", `"on"`, `"off"`),
+				schemautil.ListAttr("values", `"on"`, `"off"`),
 			}},
 		},
 		{
