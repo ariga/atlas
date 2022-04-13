@@ -68,6 +68,7 @@ var (
 	hclState = schemahcl.New(
 		schemahcl.WithTypes(TypeRegistry.Specs()),
 		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial),
+		schemahcl.WithScopedEnums("table.column.as.type", stored, persistent, virtual),
 		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
 		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
 	)
@@ -175,6 +176,9 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 			c.AddAttrs(&AutoIncrement{})
 		}
 	}
+	if err := convertGenExpr(spec.Remain(), c); err != nil {
+		return nil, err
+	}
 	return c, err
 }
 
@@ -275,6 +279,40 @@ func fromGenExpr(x schema.GeneratedExpr) *schemaspec.Resource {
 			specutil.VarAttr("type", t),
 		},
 	}
+}
+
+func convertGenExpr(r *schemaspec.Resource, c *schema.Column) error {
+	asA, okA := r.Attr("as")
+	asR, okR := r.Resource("as")
+	switch {
+	case okA && okR:
+		return fmt.Errorf("multiple as definitions for column %q", c.Name)
+	case okA:
+		expr, err := asA.String()
+		if err != nil {
+			return err
+		}
+		c.Attrs = append(c.Attrs, &schema.GeneratedExpr{
+			Type: virtual,
+			Expr: expr,
+		})
+	case okR:
+		var spec struct {
+			Expr string `spec:"expr"`
+			Type string `spec:"type"`
+		}
+		if err := asR.As(&spec); err != nil {
+			return err
+		}
+		if spec.Type == "" {
+			spec.Type = virtual
+		}
+		c.Attrs = append(c.Attrs, &schema.GeneratedExpr{
+			Type: spec.Type,
+			Expr: spec.Expr,
+		})
+	}
+	return nil
 }
 
 // checkSpec converts from a concrete MySQL schema.Check into a sqlspec.Check.
