@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	"ariga.io/atlas/internal/types"
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/internal/specutil"
 
@@ -16,7 +17,7 @@ import (
 
 // RegistrySanityTest runs a sanity for a TypeRegistry, generated a dummy *schemaspec.Type
 // then converting it to a schema.Type and back to a *schemaspec.Type.
-func RegistrySanityTest(t *testing.T, registry *specutil.TypeRegistry, skip []string) {
+func RegistrySanityTest(t *testing.T, registry *types.TypeRegistry, skip []string) {
 	for _, ts := range registry.Specs() {
 		if contains(ts.Name, skip) {
 			continue

@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strconv"
 
+	"ariga.io/atlas/internal/types"
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
@@ -118,39 +119,39 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 }
 
 // TypeRegistry contains the supported TypeSpecs for the sqlite driver.
-var TypeRegistry = specutil.NewRegistry(
-	specutil.WithFormatter(FormatType),
-	specutil.WithParser(ParseType),
-	specutil.WithSpecs(
-		specutil.TypeSpec(TypeReal, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		specutil.TypeSpec(TypeBlob, specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec(TypeText, specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec(TypeInteger, specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("int", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("tinyint", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("smallint", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("mediumint", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("bigint", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.AliasTypeSpec("unsigned_big_int", "unsigned big int", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("int2", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("int8", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("double", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.AliasTypeSpec("double_precision", "double precision", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("float", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("character", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("varchar", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.AliasTypeSpec("varying_character", "varying character", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("nchar", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.AliasTypeSpec("native_character", "native character", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("nvarchar", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("clob", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("numeric", specutil.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		specutil.TypeSpec("decimal", specutil.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		specutil.TypeSpec("boolean"),
-		specutil.TypeSpec("date"),
-		specutil.TypeSpec("datetime"),
-		specutil.TypeSpec("json"),
-		specutil.TypeSpec("uuid"),
+var TypeRegistry = types.NewRegistry(
+	types.WithFormatter(FormatType),
+	types.WithParser(ParseType),
+	types.WithSpecs(
+		types.TypeSpec(TypeReal, types.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		types.TypeSpec(TypeBlob, types.WithAttributes(types.SizeTypeAttr(false))),
+		types.TypeSpec(TypeText, types.WithAttributes(types.SizeTypeAttr(false))),
+		types.TypeSpec(TypeInteger, types.WithAttributes(types.SizeTypeAttr(false))),
+		types.TypeSpec("int", types.WithAttributes(types.SizeTypeAttr(false))),
+		types.TypeSpec("tinyint", types.WithAttributes(types.SizeTypeAttr(false))),
+		types.TypeSpec("smallint", types.WithAttributes(types.SizeTypeAttr(false))),
+		types.TypeSpec("mediumint", types.WithAttributes(types.SizeTypeAttr(false))),
+		types.TypeSpec("bigint", types.WithAttributes(types.SizeTypeAttr(false))),
+		types.AliasTypeSpec("unsigned_big_int", "unsigned big int", types.WithAttributes(types.SizeTypeAttr(false))),
+		types.TypeSpec("int2", types.WithAttributes(types.SizeTypeAttr(false))),
+		types.TypeSpec("int8", types.WithAttributes(types.SizeTypeAttr(false))),
+		types.TypeSpec("double", types.WithAttributes(types.SizeTypeAttr(false))),
+		types.AliasTypeSpec("double_precision", "double precision", types.WithAttributes(types.SizeTypeAttr(false))),
+		types.TypeSpec("float", types.WithAttributes(types.SizeTypeAttr(false))),
+		types.TypeSpec("character", types.WithAttributes(types.SizeTypeAttr(false))),
+		types.TypeSpec("varchar", types.WithAttributes(types.SizeTypeAttr(false))),
+		types.AliasTypeSpec("varying_character", "varying character", types.WithAttributes(types.SizeTypeAttr(false))),
+		types.TypeSpec("nchar", types.WithAttributes(types.SizeTypeAttr(false))),
+		types.AliasTypeSpec("native_character", "native character", types.WithAttributes(types.SizeTypeAttr(false))),
+		types.TypeSpec("nvarchar", types.WithAttributes(types.SizeTypeAttr(false))),
+		types.TypeSpec("clob", types.WithAttributes(types.SizeTypeAttr(false))),
+		types.TypeSpec("numeric", types.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		types.TypeSpec("decimal", types.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		types.TypeSpec("boolean"),
+		types.TypeSpec("date"),
+		types.TypeSpec("datetime"),
+		types.TypeSpec("json"),
+		types.TypeSpec("uuid"),
 	),
 )
 

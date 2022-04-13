@@ -1,4 +1,4 @@
-package specutil
+package types
 
 import (
 	"errors"
@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
+
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/go-openapi/inflect"
@@ -219,14 +220,14 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 				break
 			}
 			i := strconv.Itoa(v)
-			s.Attrs = append([]*schemaspec.Attr{LitAttr(attr.Name, i)}, s.Attrs...)
+			s.Attrs = append([]*schemaspec.Attr{litAttr(attr.Name, i)}, s.Attrs...)
 		case reflect.Bool:
 			v := field.Bool()
 			if !v && len(s.Attrs) == 0 {
 				break
 			}
 			b := strconv.FormatBool(v)
-			s.Attrs = append([]*schemaspec.Attr{LitAttr(attr.Name, b)}, s.Attrs...)
+			s.Attrs = append([]*schemaspec.Attr{litAttr(attr.Name, b)}, s.Attrs...)
 		case reflect.Slice:
 			lits := make([]string, 0, field.Len())
 			for i := 0; i < field.Len(); i++ {
@@ -236,7 +237,7 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 				}
 				lits = append(lits, strconv.Quote(fi.String()))
 			}
-			s.Attrs = append([]*schemaspec.Attr{ListAttr(attr.Name, lits...)}, s.Attrs...)
+			s.Attrs = append([]*schemaspec.Attr{listAttr(attr.Name, lits...)}, s.Attrs...)
 		default:
 			return nil, fmt.Errorf("specutil: unsupported attr kind %s for attribute %q of %q", attr.Kind, attr.Name, typeSpec.Name)
 		}
@@ -373,4 +374,24 @@ func appendIfNotExist(base []*schemaspec.Attr, additional []*schemaspec.Attr) []
 		}
 	}
 	return base
+}
+
+// litAttr is a helper method for constructing *schemaspec.Attr instances that contain literal values.
+func litAttr(k, v string) *schemaspec.Attr {
+	return &schemaspec.Attr{
+		K: k,
+		V: &schemaspec.LiteralValue{V: v},
+	}
+}
+
+// listAttr is a helper method for constructing *schemaspec.Attr instances that contain list values.
+func listAttr(k string, litValues ...string) *schemaspec.Attr {
+	lv := &schemaspec.ListValue{}
+	for _, v := range litValues {
+		lv.V = append(lv.V, &schemaspec.LiteralValue{V: v})
+	}
+	return &schemaspec.Attr{
+		K: k,
+		V: lv,
+	}
 }
