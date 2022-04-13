@@ -381,7 +381,7 @@ func (d *LocalDir) Open(name string) (fs.File, error) {
 
 // WriteFile implements Dir.WriteFile.
 func (d *LocalDir) WriteFile(name string, b []byte) error {
-	return os.WriteFile(filepath.Join(d.dir, name), b, 0644) // nolint: gosec
+	return os.WriteFile(filepath.Join(d.dir, name), b, 0644)
 }
 
 var _ Dir = (*LocalDir)(nil)

@@ -123,7 +123,7 @@ func TestValidate(t *testing.T) {
 	td := "testdata"
 	d, err = migrate.NewLocalDir(td)
 	t.Cleanup(func() {
-		os.WriteFile(filepath.Join(td, "1_initial.up.sql"), upFile, 0644) //nolint:gosec
+		os.WriteFile(filepath.Join(td, "1_initial.up.sql"), upFile, 0644)
 	})
 
 	// Testdata is valid.
@@ -138,22 +138,22 @@ func TestValidate(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	t.Cleanup(func() {
-		os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644) //nolint:gosec
+		os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644)
 	})
 	require.Equal(t, migrate.ErrChecksumMismatch, migrate.Validate(d))
-	os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644) //nolint:gosec
+	os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644)
 	f, err = os.OpenFile(filepath.Join(td, "atlas.sum"), os.O_APPEND|os.O_WRONLY, os.ModeAppend)
 	require.NoError(t, err)
 	_, err = f.WriteString("foo")
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	require.Equal(t, migrate.ErrChecksumFormat, migrate.Validate(d))
-	os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644) //nolint:gosec
+	os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644)
 
 	// Changing the filename should raise validation error.
 	require.NoError(t, os.Rename(filepath.Join(td, "1_initial.up.sql"), filepath.Join(td, "1_first.up.sql")))
 	t.Cleanup(func() {
-		os.Remove(filepath.Join(td, "1_first.up.sql")) //nolint:gosec
+		os.Remove(filepath.Join(td, "1_first.up.sql"))
 	})
 	require.Equal(t, migrate.ErrChecksumMismatch, migrate.Validate(d))
 
