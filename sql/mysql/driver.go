@@ -282,7 +282,7 @@ const (
 	defaultGen    = "default_generated"
 	autoIncrement = "auto_increment"
 
-	genVirtual    = "virtual"
-	genStored     = "stored"
-	genPersistent = "persistent"
+	virtual    = "VIRTUAL"
+	stored     = "STORED"
+	persistent = "PERSISTENT"
 )

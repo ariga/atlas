@@ -240,23 +240,41 @@ func partAttr(part *schema.IndexPart, spec *sqlspec.IndexPart) {
 
 // columnSpec converts from a concrete MySQL schema.Column into a sqlspec.Column.
 func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
-	col, err := specutil.FromColumn(c, columnTypeSpec)
+	spec, err := specutil.FromColumn(c, columnTypeSpec)
 	if err != nil {
 		return nil, err
 	}
 	if c, ok := hasCharset(c.Attrs, t.Attrs); ok {
-		col.Extra.Attrs = append(col.Extra.Attrs, specutil.StrAttr("charset", c))
+		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.StrAttr("charset", c))
 	}
 	if c, ok := hasCollate(c.Attrs, t.Attrs); ok {
-		col.Extra.Attrs = append(col.Extra.Attrs, specutil.StrAttr("collate", c))
+		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.StrAttr("collate", c))
 	}
 	if o := (OnUpdate{}); sqlx.Has(c.Attrs, &o) {
-		col.Extra.Attrs = append(col.Extra.Attrs, specutil.RawAttr("on_update", o.A))
+		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.RawAttr("on_update", o.A))
 	}
 	if sqlx.Has(c.Attrs, &AutoIncrement{}) {
-		col.Extra.Attrs = append(col.Extra.Attrs, specutil.BoolAttr("auto_increment", true))
+		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.BoolAttr("auto_increment", true))
 	}
-	return col, nil
+	if x := (schema.GeneratedExpr{}); sqlx.Has(c.Attrs, &x) {
+		spec.Extra.Children = append(spec.Extra.Children, fromGenExpr(x))
+	}
+	return spec, nil
+}
+
+// fromGenExpr returns the spec for a generated expression.
+func fromGenExpr(x schema.GeneratedExpr) *schemaspec.Resource {
+	t := strings.ToUpper(x.Type)
+	if t == "" {
+		t = virtual
+	}
+	return &schemaspec.Resource{
+		Type: "as",
+		Attrs: []*schemaspec.Attr{
+			specutil.StrAttr("expr", x.Expr),
+			specutil.VarAttr("type", t),
+		},
+	}
 }
 
 // checkSpec converts from a concrete MySQL schema.Check into a sqlspec.Check.
