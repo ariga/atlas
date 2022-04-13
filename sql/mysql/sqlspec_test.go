@@ -723,6 +723,51 @@ schema "test" {
 	require.EqualValues(t, expected, string(buf))
 }
 
+func TestUnmarshalSpec_GeneratedColumns(t *testing.T) {
+	var (
+		s schema.Schema
+		f = `
+schema "test" {}
+table "users" {
+	schema = schema.test
+	column "c1" {
+		type = int
+	}
+	column "c2" {
+		type = int
+		as = "c1 * 2"
+	}
+	column "c3" {
+		type = int
+		as {
+			expr = "c2 * 2"
+		}
+	}
+	column "c4" {
+		type = int
+		as {
+			expr = "c3 * 2"
+			type = STORED
+		}
+	}
+}
+`
+	)
+	err := UnmarshalHCL([]byte(f), &s)
+	require.NoError(t, err)
+	exp := schema.New("test").
+		AddTables(
+			schema.NewTable("users").
+				AddColumns(
+					schema.NewIntColumn("c1", "int"),
+					schema.NewIntColumn("c2", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "c1 * 2", Type: "VIRTUAL"}),
+					schema.NewIntColumn("c3", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "c2 * 2", Type: "VIRTUAL"}),
+					schema.NewIntColumn("c4", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "c3 * 2", Type: "STORED"}),
+				),
+		)
+	require.EqualValues(t, exp, &s)
+}
+
 func TestMarshalSpec_FloatUnsigned(t *testing.T) {
 	s := schema.New("test").
 		AddTables(
