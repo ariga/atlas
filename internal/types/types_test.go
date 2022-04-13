@@ -55,7 +55,7 @@ func TestTypePrint(t *testing.T) {
 		},
 	} {
 		t.Run(tt.expected, func(t *testing.T) {
-			r := &TypeRegistry{}
+			r := &Registry{}
 			err := r.Register(tt.spec)
 			require.NoError(t, err)
 			s, err := r.PrintType(tt.typ)
@@ -66,7 +66,7 @@ func TestTypePrint(t *testing.T) {
 }
 
 func TestRegistry(t *testing.T) {
-	r := &TypeRegistry{}
+	r := &Registry{}
 	text := &schemaspec.TypeSpec{Name: "text", T: "text"}
 	err := r.Register(text)
 	require.NoError(t, err)
@@ -78,7 +78,7 @@ func TestRegistry(t *testing.T) {
 }
 
 func TestValidSpec(t *testing.T) {
-	registry := &TypeRegistry{}
+	registry := &Registry{}
 	err := registry.Register(&schemaspec.TypeSpec{
 		Name: "X",
 		T:    "X",
@@ -135,7 +135,7 @@ func TestValidSpec(t *testing.T) {
 }
 
 func TestRegistryConvert(t *testing.T) {
-	r := &TypeRegistry{}
+	r := &Registry{}
 	err := r.Register(
 		TypeSpec("varchar", WithAttributes(SizeTypeAttr(true))),
 		TypeSpec("int", WithAttributes(unsignedTypeAttr())),

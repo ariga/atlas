@@ -365,7 +365,7 @@ func fromIdentity(i *Identity) *schemaspec.Resource {
 
 // columnTypeSpec converts from a concrete Postgres schema.Type into sqlspec.Column Type.
 func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
-	// Handle postgres enum types. They cannot be put into the TypeRegistry since their name is dynamic.
+	// Handle postgres enum types. They cannot be put into the Registry since their name is dynamic.
 	if e, ok := t.(*schema.EnumType); ok {
 		return &sqlspec.Column{Type: &schemaspec.Type{
 			T:     enumRef(e.T).V,

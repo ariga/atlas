@@ -16,7 +16,7 @@ import (
 
 // PrintType returns the string representation of a column type which can be parsed
 // by the driver into a schema.Type.
-func (r *TypeRegistry) PrintType(typ *schemaspec.Type) (string, error) {
+func (r *Registry) PrintType(typ *schemaspec.Type) (string, error) {
 	spec, ok := r.findT(typ.T)
 	if !ok {
 		return "", fmt.Errorf("specutil: type %q not found in registry", typ.T)
@@ -65,8 +65,8 @@ func (r *TypeRegistry) PrintType(typ *schemaspec.Type) (string, error) {
 	return typ.T + mid + suffix, nil
 }
 
-// TypeRegistry is a collection of *schemaspec.TypeSpec.
-type TypeRegistry struct {
+// Registry is a collection of *schemaspec.TypeSpec.
+type Registry struct {
 	r      []*schemaspec.TypeSpec
 	spec   func(schema.Type) (*schemaspec.Type, error)
 	parser func(string) (schema.Type, error)
@@ -75,7 +75,7 @@ type TypeRegistry struct {
 // WithFormatter configures the registry to use a formatting function for printing
 // schema.Type as string.
 func WithFormatter(f func(schema.Type) (string, error)) RegistryOption {
-	return func(registry *TypeRegistry) error {
+	return func(registry *Registry) error {
 		registry.spec = func(t schema.Type) (*schemaspec.Type, error) {
 			s, err := f(t)
 			if err != nil {
@@ -90,7 +90,7 @@ func WithFormatter(f func(schema.Type) (string, error)) RegistryOption {
 // WithSpecFunc configures the registry to use the given function for converting
 // a schema.Type to schemaspec.Type
 func WithSpecFunc(spec func(schema.Type) (*schemaspec.Type, error)) RegistryOption {
-	return func(registry *TypeRegistry) error {
+	return func(registry *Registry) error {
 		registry.spec = spec
 		return nil
 	}
@@ -99,14 +99,14 @@ func WithSpecFunc(spec func(schema.Type) (*schemaspec.Type, error)) RegistryOpti
 // WithParser configures the registry to use a parsing function for converting
 // a string to a schema.Type.
 func WithParser(parser func(string) (schema.Type, error)) RegistryOption {
-	return func(registry *TypeRegistry) error {
+	return func(registry *Registry) error {
 		registry.parser = parser
 		return nil
 	}
 }
 
 // Register adds one or more TypeSpec to the registry.
-func (r *TypeRegistry) Register(specs ...*schemaspec.TypeSpec) error {
+func (r *Registry) Register(specs ...*schemaspec.TypeSpec) error {
 	for _, s := range specs {
 		if err := validSpec(s); err != nil {
 			return fmt.Errorf("specutil: invalid typespec %q: %w", s.Name, err)
@@ -136,12 +136,12 @@ func validSpec(typeSpec *schemaspec.TypeSpec) error {
 	return nil
 }
 
-// RegistryOption configures a TypeRegistry.
-type RegistryOption func(*TypeRegistry) error
+// RegistryOption configures a Registry.
+type RegistryOption func(*Registry) error
 
 // WithSpecs configures the registry to register the given list of type specs.
 func WithSpecs(specs ...*schemaspec.TypeSpec) RegistryOption {
-	return func(registry *TypeRegistry) error {
+	return func(registry *Registry) error {
 		if err := registry.Register(specs...); err != nil {
 			return fmt.Errorf("failed registering types: %s", err)
 		}
@@ -149,10 +149,10 @@ func WithSpecs(specs ...*schemaspec.TypeSpec) RegistryOption {
 	}
 }
 
-// NewRegistry creates a new *TypeRegistry, registers the provided types and panics
+// NewRegistry creates a new *Registry, registers the provided types and panics
 // if an error occurs.
-func NewRegistry(opts ...RegistryOption) *TypeRegistry {
-	r := &TypeRegistry{}
+func NewRegistry(opts ...RegistryOption) *Registry {
+	r := &Registry{}
 	for _, opt := range opts {
 		if err := opt(r); err != nil {
 			log.Fatalf("failed configuring registry: %s", err)
@@ -162,7 +162,7 @@ func NewRegistry(opts ...RegistryOption) *TypeRegistry {
 }
 
 // findName searches the registry for types that have the provided name.
-func (r *TypeRegistry) findName(name string) (*schemaspec.TypeSpec, bool) {
+func (r *Registry) findName(name string) (*schemaspec.TypeSpec, bool) {
 	for _, current := range r.r {
 		if current.Name == name {
 			return current, true
@@ -172,7 +172,7 @@ func (r *TypeRegistry) findName(name string) (*schemaspec.TypeSpec, bool) {
 }
 
 // findT searches the registry for types that have the provided T.
-func (r *TypeRegistry) findT(t string) (*schemaspec.TypeSpec, bool) {
+func (r *Registry) findT(t string) (*schemaspec.TypeSpec, bool) {
 	for _, current := range r.r {
 		if current.T == t {
 			return current, true
@@ -182,7 +182,7 @@ func (r *TypeRegistry) findT(t string) (*schemaspec.TypeSpec, bool) {
 }
 
 // Convert converts the schema.Type to a *schemaspec.Type.
-func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
+func (r *Registry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 	if ut, ok := typ.(*schema.UnsupportedType); ok {
 		return &schemaspec.Type{
 			T: ut.T,
@@ -244,7 +244,7 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 	return s, nil
 }
 
-func (r *TypeRegistry) findType(rv reflect.Value) (*schemaspec.TypeSpec, bool) {
+func (r *Registry) findType(rv reflect.Value) (*schemaspec.TypeSpec, bool) {
 	tf := rv.FieldByName("T")
 	if tf.IsValid() && tf.Kind() == reflect.String {
 		name := tf.String()
@@ -258,7 +258,7 @@ func (r *TypeRegistry) findType(rv reflect.Value) (*schemaspec.TypeSpec, bool) {
 	return nil, false
 }
 
-func (r *TypeRegistry) findRType(rt reflect.Type) (*schemaspec.TypeSpec, bool) {
+func (r *Registry) findRType(rt reflect.Type) (*schemaspec.TypeSpec, bool) {
 	for _, ts := range r.Specs() {
 		if ts.RType != nil && ts.RType == rt {
 			return ts, true
@@ -268,12 +268,12 @@ func (r *TypeRegistry) findRType(rt reflect.Type) (*schemaspec.TypeSpec, bool) {
 }
 
 // Specs returns the TypeSpecs in the registry.
-func (r *TypeRegistry) Specs() []*schemaspec.TypeSpec {
+func (r *Registry) Specs() []*schemaspec.TypeSpec {
 	return r.r
 }
 
 // Type converts a *schemaspec.Type into a schema.Type.
-func (r *TypeRegistry) Type(typ *schemaspec.Type, extra []*schemaspec.Attr) (schema.Type, error) {
+func (r *Registry) Type(typ *schemaspec.Type, extra []*schemaspec.Attr) (schema.Type, error) {
 	typeSpec, ok := r.findT(typ.T)
 	if !ok {
 		return r.parser(typ.T)
