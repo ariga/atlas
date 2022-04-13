@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"ariga.io/atlas/internal/types"
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
@@ -365,7 +364,7 @@ func fromIdentity(i *Identity) *schemaspec.Resource {
 
 // columnTypeSpec converts from a concrete Postgres schema.Type into sqlspec.Column Type.
 func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
-	// Handle postgres enum types. They cannot be put into the Registry since their name is dynamic.
+	// Handle postgres enum types. They cannot be put into the TypeRegistry since their name is dynamic.
 	if e, ok := t.(*schema.EnumType); ok {
 		return &sqlspec.Column{Type: &schemaspec.Type{
 			T:     enumRef(e.T).V,
@@ -380,61 +379,61 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 }
 
 // TypeRegistry contains the supported TypeSpecs for the Postgres driver.
-var TypeRegistry = types.NewRegistry(
-	types.WithSpecFunc(typeSpec),
-	types.WithParser(ParseType),
-	types.WithSpecs(
-		types.Spec(TypeBit, types.WithAttributes(&schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64})),
-		types.AliasSpec("bit_varying", TypeBitVar, types.WithAttributes(&schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64})),
-		types.Spec(TypeVarChar, types.WithAttributes(types.SizeTypeAttr(false))),
-		types.AliasSpec("character_varying", TypeCharVar, types.WithAttributes(types.SizeTypeAttr(false))),
-		types.Spec(TypeChar, types.WithAttributes(types.SizeTypeAttr(true))),
-		types.Spec(TypeCharacter, types.WithAttributes(types.SizeTypeAttr(true))),
-		types.Spec(TypeInt2),
-		types.Spec(TypeInt4),
-		types.Spec(TypeInt8),
-		types.Spec(TypeInt),
-		types.Spec(TypeInteger),
-		types.Spec(TypeSmallInt),
-		types.Spec(TypeBigInt),
-		types.Spec(TypeText),
-		types.Spec(TypeBoolean),
-		types.Spec(TypeBool),
-		types.Spec(TypeBytea),
-		types.Spec(TypeCIDR),
-		types.Spec(TypeInet),
-		types.Spec(TypeMACAddr),
-		types.Spec(TypeMACAddr8),
-		types.Spec(TypeCircle),
-		types.Spec(TypeLine),
-		types.Spec(TypeLseg),
-		types.Spec(TypeBox),
-		types.Spec(TypePath),
-		types.Spec(TypePoint),
-		types.Spec(TypeDate),
-		types.Spec(TypeTime, types.WithAttributes(precisionTypeAttr()), formatTime()),
-		types.Spec(TypeTimeTZ, types.WithAttributes(precisionTypeAttr()), formatTime()),
-		types.Spec(TypeTimestampTZ, types.WithAttributes(precisionTypeAttr()), formatTime()),
-		types.Spec(TypeTimestamp, types.WithAttributes(precisionTypeAttr()), formatTime()),
-		types.AliasSpec("double_precision", TypeDouble),
-		types.Spec(TypeReal),
-		types.Spec(TypeFloat8),
-		types.Spec(TypeFloat4),
-		types.Spec(TypeNumeric),
-		types.Spec(TypeDecimal),
-		types.Spec(TypeSmallSerial),
-		types.Spec(TypeSerial),
-		types.Spec(TypeBigSerial),
-		types.Spec(TypeSerial2),
-		types.Spec(TypeSerial4),
-		types.Spec(TypeSerial8),
-		types.Spec(TypeXML),
-		types.Spec(TypeJSON),
-		types.Spec(TypeJSONB),
-		types.Spec(TypeUUID),
-		types.Spec(TypeMoney),
-		types.Spec("hstore"),
-		types.Spec("sql", types.WithAttributes(&schemaspec.TypeAttr{Name: "def", Required: true, Kind: reflect.String})),
+var TypeRegistry = schemahcl.NewRegistry(
+	schemahcl.WithSpecFunc(typeSpec),
+	schemahcl.WithParser(ParseType),
+	schemahcl.WithSpecs(
+		schemahcl.Spec(TypeBit, schemahcl.WithAttributes(&schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64})),
+		schemahcl.AliasSpec("bit_varying", TypeBitVar, schemahcl.WithAttributes(&schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64})),
+		schemahcl.Spec(TypeVarChar, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.AliasSpec("character_varying", TypeCharVar, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.Spec(TypeChar, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(true))),
+		schemahcl.Spec(TypeCharacter, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(true))),
+		schemahcl.Spec(TypeInt2),
+		schemahcl.Spec(TypeInt4),
+		schemahcl.Spec(TypeInt8),
+		schemahcl.Spec(TypeInt),
+		schemahcl.Spec(TypeInteger),
+		schemahcl.Spec(TypeSmallInt),
+		schemahcl.Spec(TypeBigInt),
+		schemahcl.Spec(TypeText),
+		schemahcl.Spec(TypeBoolean),
+		schemahcl.Spec(TypeBool),
+		schemahcl.Spec(TypeBytea),
+		schemahcl.Spec(TypeCIDR),
+		schemahcl.Spec(TypeInet),
+		schemahcl.Spec(TypeMACAddr),
+		schemahcl.Spec(TypeMACAddr8),
+		schemahcl.Spec(TypeCircle),
+		schemahcl.Spec(TypeLine),
+		schemahcl.Spec(TypeLseg),
+		schemahcl.Spec(TypeBox),
+		schemahcl.Spec(TypePath),
+		schemahcl.Spec(TypePoint),
+		schemahcl.Spec(TypeDate),
+		schemahcl.Spec(TypeTime, schemahcl.WithAttributes(precisionTypeAttr()), formatTime()),
+		schemahcl.Spec(TypeTimeTZ, schemahcl.WithAttributes(precisionTypeAttr()), formatTime()),
+		schemahcl.Spec(TypeTimestampTZ, schemahcl.WithAttributes(precisionTypeAttr()), formatTime()),
+		schemahcl.Spec(TypeTimestamp, schemahcl.WithAttributes(precisionTypeAttr()), formatTime()),
+		schemahcl.AliasSpec("double_precision", TypeDouble),
+		schemahcl.Spec(TypeReal),
+		schemahcl.Spec(TypeFloat8),
+		schemahcl.Spec(TypeFloat4),
+		schemahcl.Spec(TypeNumeric),
+		schemahcl.Spec(TypeDecimal),
+		schemahcl.Spec(TypeSmallSerial),
+		schemahcl.Spec(TypeSerial),
+		schemahcl.Spec(TypeBigSerial),
+		schemahcl.Spec(TypeSerial2),
+		schemahcl.Spec(TypeSerial4),
+		schemahcl.Spec(TypeSerial8),
+		schemahcl.Spec(TypeXML),
+		schemahcl.Spec(TypeJSON),
+		schemahcl.Spec(TypeJSONB),
+		schemahcl.Spec(TypeUUID),
+		schemahcl.Spec(TypeMoney),
+		schemahcl.Spec("hstore"),
+		schemahcl.Spec("sql", schemahcl.WithAttributes(&schemaspec.TypeAttr{Name: "def", Required: true, Kind: reflect.String})),
 	),
 )
 
@@ -471,8 +470,8 @@ func typeSpec(t schema.Type) (*schemaspec.Type, error) {
 }
 
 // formatTime overrides the default printing logic done by schemahcl.hclType.
-func formatTime() types.TypeSpecOption {
-	return types.WithTypeFormatter(func(t *schemaspec.Type) (string, error) {
+func formatTime() schemahcl.TypeSpecOption {
+	return schemahcl.WithTypeFormatter(func(t *schemaspec.Type) (string, error) {
 		a, ok := attr(t, "precision")
 		if !ok {
 			return t.T, nil

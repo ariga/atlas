@@ -5,7 +5,6 @@
 package specutil
 
 import (
-	"ariga.io/atlas/internal/types"
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
 )
@@ -30,11 +29,11 @@ func ExtractVarsHCL(body []byte) ([]*InputVar, error) {
 
 var (
 	hclState = schemahcl.New(schemahcl.WithTypes(
-		types.NewRegistry(
-			types.WithSpecs(
-				types.Spec("int"),
-				types.Spec("bool"),
-				types.Spec("float"),
+		schemahcl.NewRegistry(
+			schemahcl.WithSpecs(
+				schemahcl.Spec("int"),
+				schemahcl.Spec("bool"),
+				schemahcl.Spec("float"),
 			),
 		).Specs(),
 	))
