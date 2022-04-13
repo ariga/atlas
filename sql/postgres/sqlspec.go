@@ -348,7 +348,7 @@ func fromIdentity(i *Identity) *schemaspec.Resource {
 	id := &schemaspec.Resource{
 		Type: "identity",
 		Attrs: []*schemaspec.Attr{
-			specutil.VarAttr("generated", strings.ToUpper(specutil.Var(i.Generation))),
+			specutil.VarAttr("generated", strings.ToUpper(specutil.InputVar(i.Generation))),
 		},
 	}
 	if s := i.Sequence; s != nil {
