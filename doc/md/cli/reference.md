@@ -98,7 +98,7 @@ the migration directory state to the desired schema. The desired state can be an
 
 ### atlas migrate hash
 
-Hash creates an integrity hash file for the migration directories.
+Hash (re-)creates an integrity hash file for the migration directory.
 
 #### Usage
 ```
