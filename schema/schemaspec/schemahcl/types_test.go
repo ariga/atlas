@@ -137,9 +137,9 @@ func TestValidSpec(t *testing.T) {
 func TestRegistryConvert(t *testing.T) {
 	r := &TypeRegistry{}
 	err := r.Register(
-		Spec("varchar", WithAttributes(SizeTypeAttr(true))),
-		Spec("int", WithAttributes(unsignedTypeAttr())),
-		Spec(
+		TypeSpec("varchar", WithAttributes(SizeTypeAttr(true))),
+		TypeSpec("int", WithAttributes(unsignedTypeAttr())),
+		TypeSpec(
 			"decimal",
 			WithAttributes(
 				&schemaspec.TypeAttr{
@@ -154,7 +154,7 @@ func TestRegistryConvert(t *testing.T) {
 				},
 			),
 		),
-		Spec("enum", WithAttributes(&schemaspec.TypeAttr{
+		TypeSpec("enum", WithAttributes(&schemaspec.TypeAttr{
 			Name:     "values",
 			Kind:     reflect.Slice,
 			Required: true,

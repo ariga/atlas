@@ -31,9 +31,9 @@ var (
 	hclState = schemahcl.New(schemahcl.WithTypes(
 		schemahcl.NewRegistry(
 			schemahcl.WithSpecs(
-				schemahcl.Spec("int"),
-				schemahcl.Spec("bool"),
-				schemahcl.Spec("float"),
+				schemahcl.TypeSpec("int"),
+				schemahcl.TypeSpec("bool"),
+				schemahcl.TypeSpec("float"),
 			),
 		).Specs(),
 	))
