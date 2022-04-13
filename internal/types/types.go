@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
-
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/go-openapi/inflect"
