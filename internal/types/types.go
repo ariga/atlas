@@ -29,7 +29,7 @@ func (r *Registry) PrintType(typ *schemaspec.Type) (string, error) {
 		mid, suffix string
 	)
 	for _, arg := range typ.Attrs {
-		// TODO(rotemtam): make this part of the TypeSpec
+		// TODO(rotemtam): make this part of the Spec
 		if arg.K == "unsigned" {
 			b, err := arg.Bool()
 			if err != nil {
@@ -105,7 +105,7 @@ func WithParser(parser func(string) (schema.Type, error)) RegistryOption {
 	}
 }
 
-// Register adds one or more TypeSpec to the registry.
+// Register adds one or more Spec to the registry.
 func (r *Registry) Register(specs ...*schemaspec.TypeSpec) error {
 	for _, s := range specs {
 		if err := validSpec(s); err != nil {
@@ -205,7 +205,7 @@ func (r *Registry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 		attr := typeSpec.Attributes[i]
 		n := inflect.Camelize(attr.Name)
 		field := rv.FieldByName(n)
-		// If TypeSpec has an attribute that isn't mapped to a field on the schema.Type skip it.
+		// If Spec has an attribute that isn't mapped to a field on the schema.Type skip it.
 		if !field.IsValid() || field.Kind() == reflect.Ptr && field.IsNil() {
 			continue
 		}
@@ -308,13 +308,13 @@ func WithTypeFormatter(f func(*schemaspec.Type) (string, error)) TypeSpecOption 
 	}
 }
 
-// TypeSpec returns a TypeSpec with the provided name.
-func TypeSpec(name string, opts ...TypeSpecOption) *schemaspec.TypeSpec {
-	return AliasTypeSpec(name, name, opts...)
+// Spec returns a Spec with the provided name.
+func Spec(name string, opts ...TypeSpecOption) *schemaspec.TypeSpec {
+	return AliasSpec(name, name, opts...)
 }
 
-// AliasTypeSpec returns a TypeSpec with the provided name.
-func AliasTypeSpec(name, dbType string, opts ...TypeSpecOption) *schemaspec.TypeSpec {
+// AliasSpec returns a Spec with the provided name.
+func AliasSpec(name, dbType string, opts ...TypeSpecOption) *schemaspec.TypeSpec {
 	ts := &schemaspec.TypeSpec{
 		Name: name,
 		T:    dbType,
@@ -339,7 +339,7 @@ func SizeTypeAttr(required bool) *schemaspec.TypeAttr {
 func typeNonFuncArgs(spec *schemaspec.TypeSpec) []*schemaspec.TypeAttr {
 	var args []*schemaspec.TypeAttr
 	for _, attr := range spec.Attributes {
-		// TODO(rotemtam): this should be defined on the TypeSpec.
+		// TODO(rotemtam): this should be defined on the Spec.
 		if attr.Name == "unsigned" {
 			args = append(args, attr)
 		}
