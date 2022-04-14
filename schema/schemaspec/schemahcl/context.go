@@ -225,6 +225,9 @@ var (
 	ctyRawExpr  = cty.Capsule("raw_expr", reflect.TypeOf(schemaspec.RawExpr{}))
 )
 
+// varBlock is the block type for variable declarations.
+const varBlock = "variable"
+
 // defRegistry returns a tree of blockDef structs representing the schema of the
 // blocks in the *hclsyntax.Body. The returned fields and children of each type
 // are an intersection of all existing blocks of the same type.
@@ -234,7 +237,8 @@ func defRegistry(b *hclsyntax.Body) *blockDef {
 		children: make(map[string]*blockDef),
 	}
 	for _, blk := range b.Blocks {
-		if blk.Type == "variable" {
+		// variable definition blocks are available in the HCL source but not reachable by reference.
+		if blk.Type == varBlock {
 			continue
 		}
 		reg.child(extractDef(blk, reg))

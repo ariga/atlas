@@ -17,7 +17,6 @@ type (
 		types       []*schemaspec.TypeSpec
 		newCtx      func() *hcl.EvalContext
 		pathVars    map[string]map[string]cty.Value
-		skipVars    bool
 		inputValues map[string]cty.Value
 	}
 

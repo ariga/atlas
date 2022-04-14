@@ -97,7 +97,7 @@ func (s *State) extract(ctx *hcl.EvalContext, remain hcl.Body) (*schemaspec.Reso
 	}
 	for _, blk := range body.Blocks {
 		// variable blocks may be included in the document but are skipped in unmarshaling.
-		if blk.Type == "variable" {
+		if blk.Type == varBlock {
 			continue
 		}
 		ctx, err := setBlockVars(ctx.NewChild(), blk.Body)
@@ -199,7 +199,6 @@ func extractLiteralValue(value cty.Value) (*schemaspec.LiteralValue, error) {
 }
 
 func (s *State) toResource(ctx *hcl.EvalContext, block *hclsyntax.Block, scope []string) (*schemaspec.Resource, error) {
-	fmt.Println(block.Type, block.Labels)
 	spec := &schemaspec.Resource{
 		Type: block.Type,
 	}
