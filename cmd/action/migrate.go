@@ -81,7 +81,7 @@ the migration directory state to the desired schema. The desired state can be an
 	// MigrateHashCmd represents the migrate hash command.
 	MigrateHashCmd = &cobra.Command{
 		Use:   "hash",
-		Short: "Hash creates an integrity hash file for the migration directories.",
+		Short: "Hash (re-)creates an integrity hash file for the migration directory.",
 		Long: `'atlas migrate hash' computes the integrity hash sum of the migration directory and stores it in the atlas.sum file.
 This command should be used whenever a manual change in the migration directory was made.`,
 		Example: `  atlas migrate hash --force`,

@@ -239,6 +239,10 @@ func TestLocalDir(t *testing.T) {
 	require.ErrorContains(t, err, "sql/migrate: \"migrate.go\" is not a dir")
 	require.Nil(t, d)
 
+	d, err = migrate.NewLocalDir("foo/bar")
+	require.EqualError(t, err, "sql/migrate: stat foo/bar: no such file or directory")
+	require.Nil(t, d)
+
 	d, err = migrate.NewLocalDir(t.TempDir())
 	require.NoError(t, err)
 	require.NotNil(t, d)
