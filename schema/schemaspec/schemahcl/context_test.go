@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package schemahcl
 
 import (
@@ -460,4 +464,50 @@ r = user.atlas.cli
 	require.NoError(t, err)
 	require.EqualValues(t, "v0.3.9", test.V)
 	require.EqualValues(t, "$user.atlas.cli", test.R.V)
+}
+
+func TestInputValues(t *testing.T) {
+	h := `
+variable "name" {
+  type = string
+}
+
+variable "default" {
+  type = string
+  default = "hello"
+}
+
+variable "int" {
+  type = int
+}
+
+variable "bool" {
+  type = bool
+}
+
+
+name = var.name
+default = var.default
+int = var.int
+bool = var.bool
+`
+	state := New(
+		WithInputValues(map[string]interface{}{
+			"name": "rotemtam",
+			"int":  42,
+			"bool": true,
+		}),
+	)
+	var test struct {
+		Name    string `spec:"name"`
+		Default string `spec:"default"`
+		Int     int    `spec:"int"`
+		Bool    bool   `spec:"bool"`
+	}
+	err := state.UnmarshalSpec([]byte(h), &test)
+	require.NoError(t, err)
+	require.EqualValues(t, "rotemtam", test.Name)
+	require.EqualValues(t, "hello", test.Default)
+	require.EqualValues(t, 42, test.Int)
+	require.EqualValues(t, true, test.Bool)
 }
