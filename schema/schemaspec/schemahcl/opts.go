@@ -14,9 +14,10 @@ import (
 type (
 	// Config configures an unmarshaling.
 	Config struct {
-		types    []*schemaspec.TypeSpec
-		newCtx   func() *hcl.EvalContext
-		pathVars map[string]map[string]cty.Value
+		types       []*schemaspec.TypeSpec
+		newCtx      func() *hcl.EvalContext
+		pathVars    map[string]map[string]cty.Value
+		inputValues map[string]cty.Value
 	}
 
 	// Option configures a Config.
@@ -91,6 +92,26 @@ func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
 	return func(config *Config) {
 		config.newCtx = newCtx
 		config.types = append(config.types, typeSpecs...)
+	}
+}
+
+// WithInputValues configures the input values available to the Unmarshaler.
+func WithInputValues(vals map[string]interface{}) Option {
+	inputs := make(map[string]cty.Value)
+	for k, v := range vals {
+		switch v := v.(type) {
+		case string:
+			inputs[k] = cty.StringVal(v)
+		case bool:
+			inputs[k] = cty.BoolVal(v)
+		case int:
+			inputs[k] = cty.NumberIntVal(int64(v))
+		default:
+			panic("unsupported type for input value " + k)
+		}
+	}
+	return func(config *Config) {
+		config.inputValues = inputs
 	}
 }
 

@@ -73,7 +73,7 @@ func (s *State) decode(ctx *hcl.EvalContext, body []byte) (*schemaspec.Resource,
 		return nil, fmt.Errorf("schemahcl: no HCL syntax found in body")
 	}
 	c := &container{}
-	ctx, err := evalCtx(ctx, srcHCL)
+	ctx, err := s.evalCtx(ctx, srcHCL)
 	if err != nil {
 		return nil, err
 	}
@@ -96,6 +96,10 @@ func (s *State) extract(ctx *hcl.EvalContext, remain hcl.Body) (*schemaspec.Reso
 		Attrs: attrs,
 	}
 	for _, blk := range body.Blocks {
+		// variable blocks may be included in the document but are skipped in unmarshaling.
+		if blk.Type == varBlock {
+			continue
+		}
 		ctx, err := setBlockVars(ctx.NewChild(), blk.Body)
 		if err != nil {
 			return nil, err

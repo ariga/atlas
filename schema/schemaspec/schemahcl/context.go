@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package schemahcl
 
 import (
@@ -6,7 +10,6 @@ import (
 	"strconv"
 
 	"ariga.io/atlas/schema/schemaspec"
-
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -28,7 +31,10 @@ import (
 //		title = "{greeting.hebrew.word}, world!"
 //	}
 //
-func evalCtx(ctx *hcl.EvalContext, f *hcl.File) (*hcl.EvalContext, error) {
+func (s *State) evalCtx(ctx *hcl.EvalContext, f *hcl.File) (*hcl.EvalContext, error) {
+	if err := s.setInputVals(ctx, f.Body); err != nil {
+		return nil, err
+	}
 	c := &container{}
 	if diag := gohcl.DecodeBody(f.Body, ctx, c); diag.HasErrors() {
 		return nil, diag
@@ -38,6 +44,62 @@ func evalCtx(ctx *hcl.EvalContext, f *hcl.File) (*hcl.EvalContext, error) {
 		return nil, fmt.Errorf("schemahcl: expected an hcl body")
 	}
 	return setBlockVars(ctx, b)
+}
+
+// setInputVals sets the input values into the evaluation context. HCL documents can define
+// input variables in the document body by defining "variable" blocks:
+//
+// 	variable "name" {
+// 	  type = string // also supported: int, bool
+// 	  default = "rotemtam"
+// 	}
+//
+// When unmarshaling a document, input values may be provided by using the WithInputValues
+// option upon building the State:
+//
+// 	state := New(
+// 		WithInputValues(map[string]interface{}{
+// 			"name": "rotemtam",
+// 			"int":  42,
+// 			"bool": true,
+// 		}),
+// 	)
+func (s *State) setInputVals(ctx *hcl.EvalContext, body hcl.Body) error {
+	var c struct {
+		Vars []struct {
+			Name    string    `hcl:",label"`
+			Type    cty.Value `hcl:"type"`
+			Default cty.Value `hcl:"default,optional"`
+		} `hcl:"variable,block"`
+		Remain hcl.Body `hcl:",remain"`
+	}
+	nctx := ctx.NewChild()
+	nctx.Variables = map[string]cty.Value{
+		"string": capsuleTypeVal("string"),
+		"int":    capsuleTypeVal("int"),
+		"bool":   capsuleTypeVal("bool"),
+	}
+	if diag := gohcl.DecodeBody(body, nctx, &c); diag.HasErrors() {
+		return diag
+	}
+	ctxVars := make(map[string]cty.Value)
+	for _, v := range c.Vars {
+		inputVal, ok := s.config.inputValues[v.Name]
+		if ok {
+			ctxVars[v.Name] = inputVal
+			continue
+		}
+		if v.Default == cty.NilVal {
+			return fmt.Errorf("input value %q expected but missing", v.Name)
+		}
+		ctxVars[v.Name] = v.Default
+	}
+	ctx.Variables["var"] = cty.ObjectVal(ctxVars)
+	return nil
+}
+
+func capsuleTypeVal(t string) cty.Value {
+	return cty.CapsuleVal(ctyTypeSpec, &schemaspec.Type{T: t})
 }
 
 func setBlockVars(ctx *hcl.EvalContext, b *hclsyntax.Body) (*hcl.EvalContext, error) {
@@ -181,6 +243,9 @@ var (
 	ctyRawExpr  = cty.Capsule("raw_expr", reflect.TypeOf(schemaspec.RawExpr{}))
 )
 
+// varBlock is the block type for variable declarations.
+const varBlock = "variable"
+
 // defRegistry returns a tree of blockDef structs representing the schema of the
 // blocks in the *hclsyntax.Body. The returned fields and children of each type
 // are an intersection of all existing blocks of the same type.
@@ -190,6 +255,10 @@ func defRegistry(b *hclsyntax.Body) *blockDef {
 		children: make(map[string]*blockDef),
 	}
 	for _, blk := range b.Blocks {
+		// variable definition blocks are available in the HCL source but not reachable by reference.
+		if blk.Type == varBlock {
+			continue
+		}
 		reg.child(extractDef(blk, reg))
 	}
 	return reg
