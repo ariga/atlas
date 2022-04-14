@@ -5,7 +5,6 @@ import (
 )
 
 type (
-
 	// Schema holds a specification for a Schema.
 	Schema struct {
 		Name string `spec:",name"`

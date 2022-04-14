@@ -360,13 +360,8 @@ type LocalDir struct {
 // NewLocalDir returns a new the Dir used by a Planner to work on the given local path.
 func NewLocalDir(path string) (*LocalDir, error) {
 	fi, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		if err := os.MkdirAll(path, 0755); err != nil {
-			return nil, err
-		}
-		return &LocalDir{dir: path}, nil
-	} else if err != nil {
-		return nil, err
+	if err != nil {
+		return nil, fmt.Errorf("sql/migrate: %w", err)
 	}
 	if !fi.IsDir() {
 		return nil, fmt.Errorf("sql/migrate: %q is not a dir", path)
@@ -381,7 +376,7 @@ func (d *LocalDir) Open(name string) (fs.File, error) {
 
 // WriteFile implements Dir.WriteFile.
 func (d *LocalDir) WriteFile(name string, b []byte) error {
-	return os.WriteFile(filepath.Join(d.dir, name), b, 0600)
+	return os.WriteFile(filepath.Join(d.dir, name), b, 0644)
 }
 
 var _ Dir = (*LocalDir)(nil)

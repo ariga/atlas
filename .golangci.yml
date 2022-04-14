@@ -4,6 +4,13 @@ run:
 issues:
   include:
     - EXC0012
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gosec
+    - path: sql/migrate/migrate.go
+      linters:
+        - gosec
 
 linters:
   disable-all: true
