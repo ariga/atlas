@@ -46,6 +46,22 @@ func (s *State) evalCtx(ctx *hcl.EvalContext, f *hcl.File) (*hcl.EvalContext, er
 	return setBlockVars(ctx, b)
 }
 
+// setInputVals sets the input values into the evaluation context. HCL documents can define
+// input variables in the document body by defining "variable" blocks:
+//   variable "name" {
+//     type = string // also supported: int, bool
+//     default = "rotemtam"
+//   }
+//
+// When unmarshaling a document, input values may be provided by using the WithInputValues option
+// upon building the State:
+// state := New(
+// 	 WithInputValues(map[string]interface{}{
+// 		"name": "rotemtam",
+// 		"int":  42,
+// 		"bool": true,
+// 	 }),
+// )
 func (s *State) setInputVals(ctx *hcl.EvalContext, body hcl.Body) error {
 	var c struct {
 		Vars []struct {
