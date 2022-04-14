@@ -37,6 +37,7 @@ func TestMySQL_Script(t *testing.T) {
 				"apply":   t.cmdApply,
 				"exist":   t.cmdExist,
 				"synced":  t.cmdSynced,
+				"cmphcl":  t.cmdCmpHCL,
 				"cmpshow": t.cmdCmpShow,
 			},
 		})
@@ -53,6 +54,7 @@ func TestPostgres_Script(t *testing.T) {
 				"apply":   t.cmdApply,
 				"exist":   t.cmdExist,
 				"synced":  t.cmdSynced,
+				"cmphcl":  t.cmdCmpHCL,
 				"cmpshow": t.cmdCmpShow,
 			},
 		})
@@ -245,6 +247,57 @@ func cmdCmpShow(ts *testscript.TestScript, args []string, show func(schema, name
 	ts.Fatalf(sb.String())
 }
 
+func (t *myTest) cmdCmpHCL(ts *testscript.TestScript, _ bool, args []string) {
+	r := strings.NewReplacer("$charset", ts.Getenv("charset"), "$collate", ts.Getenv("collate"), "$db", ts.Getenv("db"))
+	cmdCmpHCL(ts, args, func(name string) (string, error) {
+		s, err := t.drv.InspectSchema(context.Background(), name, nil)
+		ts.Check(err)
+		buf, err := mysql.MarshalHCL(s)
+		require.NoError(t, err)
+		return string(buf), nil
+	}, func(s string) string {
+		return r.Replace(ts.ReadFile(s))
+	})
+}
+
+func (t *pgTest) cmdCmpHCL(ts *testscript.TestScript, _ bool, args []string) {
+	cmdCmpHCL(ts, args, func(name string) (string, error) {
+		s, err := t.drv.InspectSchema(context.Background(), name, nil)
+		ts.Check(err)
+		buf, err := postgres.MarshalHCL(s)
+		require.NoError(t, err)
+		return string(buf), nil
+	})
+}
+
+func cmdCmpHCL(ts *testscript.TestScript, args []string, inspect func(schema string) (string, error), read ...func(string) string) {
+	if len(args) != 1 {
+		ts.Fatalf("invalid number of args to 'cmpinspect': %d", len(args))
+	}
+	if len(read) == 0 {
+		read = append(read, ts.ReadFile)
+	}
+	var (
+		fname = args[0]
+		ver   = ts.Getenv("version")
+	)
+	f1, err := inspect(ts.Getenv("db"))
+	if err != nil {
+		ts.Fatalf("inspect schema %q: %v", ts.Getenv("db"), err)
+	}
+	// Check if there is a file prefixed by database version (1.sql and <version>/1.sql).
+	if _, err := os.Stat(ts.MkAbs(filepath.Join(ver, fname))); err == nil {
+		fname = filepath.Join(ver, fname)
+	}
+	f2 := read[0](fname)
+	if strings.TrimSpace(f1) == strings.TrimSpace(f2) {
+		return
+	}
+	var sb strings.Builder
+	ts.Check(diff.Text("inspect", fname, f1, f2, &sb))
+	ts.Fatalf(sb.String())
+}
+
 func (t *myTest) cmdExist(ts *testscript.TestScript, neg bool, args []string) {
 	cmdExist(ts, neg, args, func(schema, name string) (bool, error) {
 		var b bool
@@ -310,7 +363,7 @@ func (t *myTest) hclDiff(ts *testscript.TestScript, name string) ([]schema.Chang
 	ts.Check(err)
 	desired, err = t.drv.NormalizeSchema(ctx, desired)
 	// Normalization and diffing errors should
-	// returned back to the caller.
+	// be returned to the caller.
 	if err != nil {
 		return nil, err
 	}
