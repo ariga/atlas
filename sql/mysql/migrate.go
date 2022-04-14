@@ -439,13 +439,21 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 		return fmt.Errorf("format type for column %q: %w", c.Name, err)
 	}
 	b.Ident(c.Name).P(typ)
-	if x := (schema.GeneratedExpr{}); sqlx.Has(c.Attrs, &x) {
+	var (
+		x   schema.GeneratedExpr
+		asX = sqlx.Has(c.Attrs, &x)
+	)
+	if asX {
 		b.P("AS", sqlx.MayWrap(x.Expr), x.Type)
 	}
-	if !c.Type.Null {
-		b.P("NOT")
+	// MariaDB does not accept [NOT NULL | NULL]
+	// as part of the generated columns' syntax.
+	if !asX || !s.mariadb() {
+		if !c.Type.Null {
+			b.P("NOT")
+		}
+		b.P("NULL")
 	}
-	b.P("NULL")
 	s.columnDefault(b, c)
 	// Add manually the JSON_VALID constraint for older
 	// versions < 10.4.3. See Driver.checks for full info.

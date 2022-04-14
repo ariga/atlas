@@ -137,14 +137,11 @@ func (t *liteTest) setupScript(env *testscript.Env) error {
 // cmdOnly executes only tests that their driver version matches the given pattern.
 // For example, "only 8" or "only 8 maria*"
 func cmdOnly(ts *testscript.TestScript, neg bool, args []string) {
-	if neg {
-		ts.Fatalf("unsupported: ! only")
-	}
 	ver := ts.Getenv("version")
 	for i := range args {
 		re, rerr := regexp.Compile(`(?mi)` + args[i])
 		ts.Check(rerr)
-		if re.MatchString(ver) {
+		if !neg == re.MatchString(ver) {
 			return
 		}
 	}
