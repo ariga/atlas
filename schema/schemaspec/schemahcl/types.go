@@ -1,4 +1,4 @@
-package specutil
+package schemahcl
 
 import (
 	"errors"
@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/schema/schemaspec/internal/schemautil"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/go-openapi/inflect"
@@ -74,7 +75,7 @@ type TypeRegistry struct {
 
 // WithFormatter configures the registry to use a formatting function for printing
 // schema.Type as string.
-func WithFormatter(f func(schema.Type) (string, error)) RegistryOption {
+func WithFormatter(f func(schema.Type) (string, error)) TypeRegistryOption {
 	return func(registry *TypeRegistry) error {
 		registry.spec = func(t schema.Type) (*schemaspec.Type, error) {
 			s, err := f(t)
@@ -89,7 +90,7 @@ func WithFormatter(f func(schema.Type) (string, error)) RegistryOption {
 
 // WithSpecFunc configures the registry to use the given function for converting
 // a schema.Type to schemaspec.Type
-func WithSpecFunc(spec func(schema.Type) (*schemaspec.Type, error)) RegistryOption {
+func WithSpecFunc(spec func(schema.Type) (*schemaspec.Type, error)) TypeRegistryOption {
 	return func(registry *TypeRegistry) error {
 		registry.spec = spec
 		return nil
@@ -98,7 +99,7 @@ func WithSpecFunc(spec func(schema.Type) (*schemaspec.Type, error)) RegistryOpti
 
 // WithParser configures the registry to use a parsing function for converting
 // a string to a schema.Type.
-func WithParser(parser func(string) (schema.Type, error)) RegistryOption {
+func WithParser(parser func(string) (schema.Type, error)) TypeRegistryOption {
 	return func(registry *TypeRegistry) error {
 		registry.parser = parser
 		return nil
@@ -136,11 +137,11 @@ func validSpec(typeSpec *schemaspec.TypeSpec) error {
 	return nil
 }
 
-// RegistryOption configures a TypeRegistry.
-type RegistryOption func(*TypeRegistry) error
+// TypeRegistryOption configures a TypeRegistry.
+type TypeRegistryOption func(*TypeRegistry) error
 
 // WithSpecs configures the registry to register the given list of type specs.
-func WithSpecs(specs ...*schemaspec.TypeSpec) RegistryOption {
+func WithSpecs(specs ...*schemaspec.TypeSpec) TypeRegistryOption {
 	return func(registry *TypeRegistry) error {
 		if err := registry.Register(specs...); err != nil {
 			return fmt.Errorf("failed registering types: %s", err)
@@ -151,7 +152,7 @@ func WithSpecs(specs ...*schemaspec.TypeSpec) RegistryOption {
 
 // NewRegistry creates a new *TypeRegistry, registers the provided types and panics
 // if an error occurs.
-func NewRegistry(opts ...RegistryOption) *TypeRegistry {
+func NewRegistry(opts ...TypeRegistryOption) *TypeRegistry {
 	r := &TypeRegistry{}
 	for _, opt := range opts {
 		if err := opt(r); err != nil {
@@ -219,14 +220,14 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 				break
 			}
 			i := strconv.Itoa(v)
-			s.Attrs = append([]*schemaspec.Attr{LitAttr(attr.Name, i)}, s.Attrs...)
+			s.Attrs = append([]*schemaspec.Attr{schemautil.LitAttr(attr.Name, i)}, s.Attrs...)
 		case reflect.Bool:
 			v := field.Bool()
 			if !v && len(s.Attrs) == 0 {
 				break
 			}
 			b := strconv.FormatBool(v)
-			s.Attrs = append([]*schemaspec.Attr{LitAttr(attr.Name, b)}, s.Attrs...)
+			s.Attrs = append([]*schemaspec.Attr{schemautil.LitAttr(attr.Name, b)}, s.Attrs...)
 		case reflect.Slice:
 			lits := make([]string, 0, field.Len())
 			for i := 0; i < field.Len(); i++ {
@@ -236,7 +237,7 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 				}
 				lits = append(lits, strconv.Quote(fi.String()))
 			}
-			s.Attrs = append([]*schemaspec.Attr{ListAttr(attr.Name, lits...)}, s.Attrs...)
+			s.Attrs = append([]*schemaspec.Attr{schemautil.ListAttr(attr.Name, lits...)}, s.Attrs...)
 		default:
 			return nil, fmt.Errorf("specutil: unsupported attr kind %s for attribute %q of %q", attr.Kind, attr.Name, typeSpec.Name)
 		}

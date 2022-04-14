@@ -29,11 +29,11 @@ func ExtractVarsHCL(body []byte) ([]*InputVar, error) {
 
 var (
 	hclState = schemahcl.New(schemahcl.WithTypes(
-		NewRegistry(
-			WithSpecs(
-				TypeSpec("int"),
-				TypeSpec("bool"),
-				TypeSpec("float"),
+		schemahcl.NewRegistry(
+			schemahcl.WithSpecs(
+				schemahcl.TypeSpec("int"),
+				schemahcl.TypeSpec("bool"),
+				schemahcl.TypeSpec("float"),
 			),
 		).Specs(),
 	))
