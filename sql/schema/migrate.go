@@ -197,6 +197,8 @@ const (
 	ChangeType
 	// ChangeDefault describe a column default change.
 	ChangeDefault
+	// ChangeGenerated describe a change to the generated expression.
+	ChangeGenerated
 
 	// Index specific changes.
 

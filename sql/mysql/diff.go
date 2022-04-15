@@ -98,6 +98,9 @@ func (d *diff) ColumnChange(from, to *schema.Column) (schema.ChangeKind, error) 
 	if changed {
 		change |= schema.ChangeDefault
 	}
+	if changed := d.generatedChanged(from, to); changed {
+		change |= schema.ChangeGenerated
+	}
 	return change, nil
 }
 
@@ -173,7 +176,7 @@ func (*diff) Normalize(from, to *schema.Table) {
 }
 
 // collationChange returns the schema change for migrating the collation if
-// it was changed and its not the default attribute inherited from its parent.
+// it was changed, and it is not the default attribute inherited from its parent.
 func (*diff) collationChange(from, top, to []schema.Attr) schema.Change {
 	var fromC, topC, toC schema.Collation
 	switch fromHas, topHas, toHas := sqlx.Has(from, &fromC), sqlx.Has(top, &topC), sqlx.Has(to, &toC); {
@@ -328,8 +331,7 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	return changed, nil
 }
 
-// defaultChanged reports if the a default value of a column
-// type was changed.
+// defaultChanged reports if the default value of a column was changed.
 func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
 	d1, ok1 := sqlx.DefaultValue(from)
 	d2, ok2 := sqlx.DefaultValue(to)
@@ -368,6 +370,30 @@ func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
 		x1 := strings.Trim(d1, "'")
 		x2 := strings.Trim(d2, "'")
 		return x1 != x2, nil
+	}
+}
+
+// generatedChanged reports if the generated expression of a column was changed.
+func (*diff) generatedChanged(from, to *schema.Column) bool {
+	var fromX, toX schema.GeneratedExpr
+	switch fromHas, toHas := sqlx.Has(from.Attrs, &fromX), sqlx.Has(to.Attrs, &toX); {
+	case fromHas != toHas:
+		return true
+	case fromHas && toHas:
+		t := func(s string) string {
+			switch s = strings.ToUpper(s); s {
+			// The default is VIRTUAL if no type is specified.
+			case "":
+				return virtual
+			// In MariaDB, PERSISTENT is synonyms for STORED.
+			case persistent:
+				return stored
+			}
+			return s
+		}
+		return t(fromX.Type) != t(toX.Type) || fromX.Expr != toX.Expr
+	default: // !fromHas && !toHas.
+		return false
 	}
 }
 
