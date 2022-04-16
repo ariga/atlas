@@ -1,0 +1,88 @@
+apply 1.hcl
+cmpshow t 1.sql
+
+# Insert a few records to the table, and cause the new desired change to fail.
+execsql 'INSERT INTO $db.t (c, d) VALUES (1, 1), (1, 2), (1, 3)'
+! apply 2.fail.hcl "Error 1062: Duplicate entry '1' for key 'c'"
+
+apply 2.hcl
+cmpshow t 2.sql
+
+-- 1.hcl --
+schema "$db" {
+    charset = "$charset"
+    collate = "$collate"
+}
+
+table "t" {
+    schema = schema.$db
+    column "c" {
+        type = bigint
+    }
+    column "d" {
+        type = bigint
+    }
+    index "c" {
+        unique = true
+        columns = [column.c, column.d]
+    }
+}
+
+-- 1.sql --
+CREATE TABLE `t` (
+  `c` bigint(20) NOT NULL,
+  `d` bigint(20) NOT NULL,
+  UNIQUE KEY `c` (`c`,`d`)
+)
+
+-- mysql8/1.sql --
+CREATE TABLE `t` (
+  `c` bigint NOT NULL,
+  `d` bigint NOT NULL,
+  UNIQUE KEY `c` (`c`,`d`)
+)
+
+-- 2.fail.hcl --
+schema "$db" {
+    charset = "$charset"
+    collate = "$collate"
+}
+
+table "t" {
+    schema = schema.$db
+    column "c" {
+        type = bigint
+    }
+    index "c" {
+        unique = true
+        columns = [column.c]
+    }
+}
+
+-- 2.hcl --
+schema "$db" {
+    charset = "$charset"
+    collate = "$collate"
+}
+
+table "t" {
+    schema = schema.$db
+    column "c" {
+        type = bigint
+    }
+    index "c" {
+        columns = [column.c]
+    }
+}
+
+-- 2.sql --
+CREATE TABLE `t` (
+  `c` bigint(20) NOT NULL,
+  KEY `c` (`c`)
+)
+
+-- mysql8/2.sql --
+CREATE TABLE `t` (
+  `c` bigint NOT NULL,
+  KEY `c` (`c`)
+)
