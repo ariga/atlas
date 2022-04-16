@@ -27,6 +27,7 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 			Reversible:    true,
 			Transactional: true,
 		},
+		enums: make(map[string]struct{}),
 	}
 	if err := s.plan(ctx, changes); err != nil {
 		return nil, err
@@ -52,6 +53,8 @@ func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change) e
 type state struct {
 	conn
 	migrate.Plan
+
+	enums map[string]struct{}
 }
 
 // Exec executes the changes on the database. An error is returned
@@ -118,7 +121,7 @@ func (s *state) topLevel(changes []schema.Change) []schema.Change {
 // addTable builds and executes the query for creating a table in a schema.
 func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 	// Create enum types before using them in the `CREATE TABLE` statement.
-	if err := s.addTypes(ctx, add.T.Columns...); err != nil {
+	if err := s.addTypes(ctx, add.T.Schema, add.T.Columns...); err != nil {
 		return err
 	}
 	b := Build("CREATE TABLE")
@@ -219,7 +222,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 				F: change.To,
 			})
 		case *schema.AddColumn:
-			if err := s.addTypes(ctx, change.C); err != nil {
+			if err := s.addTypes(ctx, modify.T.Schema, change.C); err != nil {
 				return err
 			}
 			if c := (schema.Comment{}); sqlx.Has(change.C.Attrs, &c) {
@@ -254,7 +257,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 				}
 			// Enum was added (and column type was changed).
 			case !ok1 && ok2:
-				if err := s.addTypes(ctx, change.To); err != nil {
+				if err := s.addTypes(ctx, modify.T.Schema, change.To); err != nil {
 					return err
 				}
 			}
@@ -414,7 +417,11 @@ func (s *state) dropIndexes(t *schema.Table, indexes ...*schema.Index) {
 	}
 }
 
-func (s *state) addTypes(ctx context.Context, columns ...*schema.Column) error {
+func (s *state) addTypes(ctx context.Context, ns *schema.Schema, columns ...*schema.Column) error {
+	schemaName := "public"
+	if ns != nil {
+		schemaName = ns.Name
+	}
 	for _, c := range columns {
 		e, ok := c.Type.Type.(*schema.EnumType)
 		if !ok {
@@ -424,12 +431,13 @@ func (s *state) addTypes(ctx context.Context, columns ...*schema.Column) error {
 			return fmt.Errorf("missing enum name for column %q", c.Name)
 		}
 		c.Type.Raw = e.T
-		if exists, err := s.enumExists(ctx, e.T); err != nil {
+		if exists, err := s.enumExists(ctx, schemaName, e.T); err != nil {
 			return err
 		} else if exists {
 			continue
 		}
-		b := Build("CREATE TYPE").Ident(e.T).P("AS ENUM")
+		s.enums[e.T] = struct{}{}
+		b := Build("CREATE TYPE").EnumType(e).P("AS ENUM")
 		b.Wrap(func(b *sqlx.Builder) {
 			b.MapComma(e.Values, func(i int, b *sqlx.Builder) {
 				b.WriteString("'" + e.Values[i] + "'")
@@ -438,7 +446,7 @@ func (s *state) addTypes(ctx context.Context, columns ...*schema.Column) error {
 		s.append(&migrate.Change{
 			Cmd:     b.String(),
 			Comment: fmt.Sprintf("create enum type %q", e.T),
-			Reverse: Build("DROP TYPE").Ident(e.T).String(),
+			Reverse: Build("DROP TYPE").EnumType(e).String(),
 		})
 	}
 	return nil
@@ -462,8 +470,12 @@ func (s *state) alterType(from, to *schema.EnumType) error {
 	return nil
 }
 
-func (s *state) enumExists(ctx context.Context, name string) (bool, error) {
-	rows, err := s.QueryContext(ctx, "SELECT * FROM pg_type WHERE typname = $1 AND typtype = 'e'", name)
+func (s *state) enumExists(ctx context.Context, schema, name string) (bool, error) {
+	if _, found := s.enums[name]; found {
+		return true, nil
+	}
+
+	rows, err := s.QueryContext(ctx, "SELECT ns.nspname, t.typname FROM pg_type t INNER JOIN pg_namespace ns ON ns.oid = t.typnamespace WHERE ns.nspname = $1 AND typname = $2 AND typtype = 'e'", schema, name)
 	if err != nil {
 		return false, fmt.Errorf("check index existence: %w", err)
 	}
@@ -553,7 +565,18 @@ func (s *state) columnDefault(b *sqlx.Builder, c *schema.Column) {
 		b.P("DEFAULT", v)
 	case *schema.RawExpr:
 		// Ignore identity functions added by the differ.
-		if _, ok := c.Type.Type.(*SerialType); !ok {
+		if t, ok := c.Type.Type.(*schema.EnumType); ok {
+			parts := strings.Split(x.X, "::")
+			if len(parts) == 2 {
+				var s string
+				if t.Schema != nil {
+					s += t.Schema.Name + "."
+				}
+				parts[1] = s + t.T
+			}
+
+			b.P("DEFAULT", strings.Join(parts, "::"))
+		} else if _, ok := c.Type.Type.(*SerialType); !ok {
 			b.P("DEFAULT", x.X)
 		}
 	}

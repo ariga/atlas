@@ -290,14 +290,22 @@ func schemaSpec(schem *schema.Schema) (*doc, error) {
 	}
 	d.Schemas = []*sqlspec.Schema{s}
 	d.Tables = tbls
+
+	// Keeps track of already added added in order to avoid
+	// duplicates when multiple columns uses the same enum type
+	added := make(map[string]struct{})
+
 	for _, t := range schem.Tables {
 		for _, c := range t.Columns {
 			if t, ok := c.Type.Type.(*schema.EnumType); ok {
-				d.Enums = append(d.Enums, &Enum{
-					Name:   t.T,
-					Schema: specutil.SchemaRef(s.Name),
-					Values: t.Values,
-				})
+				if _, ok := added[t.T]; !ok {
+					d.Enums = append(d.Enums, &Enum{
+						Name:   t.T,
+						Schema: specutil.SchemaRef(s.Name),
+						Values: t.Values,
+					})
+					added[t.T] = struct{}{}
+				}
 			}
 		}
 	}

@@ -257,6 +257,17 @@ func (b *Builder) Table(t *schema.Table) *Builder {
 	return b
 }
 
+// EnumType writes the enum identifier to the builder, prefixed
+// with the schema name if exists.
+func (b *Builder) EnumType(t *schema.EnumType) *Builder {
+	if t.Schema != nil {
+		b.Ident(t.Schema.Name)
+		b.rewriteLastByte('.')
+	}
+	b.Ident(t.T)
+	return b
+}
+
 // Comma writes a comma in case the buffer is not empty, or
 // replaces the last char if it is a whitespace.
 func (b *Builder) Comma() *Builder {

@@ -60,6 +60,16 @@ func (d *DevDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *sc
 				t.Schema = s
 			}
 			changes = append(changes, &schema.AddTable{T: t})
+
+			for _, c := range t.Columns {
+				e, ok := c.Type.Type.(*schema.EnumType)
+				if !ok {
+					continue
+				}
+				if e.Schema != s {
+					e.Schema = s
+				}
+			}
 		}
 	}
 	patch := func(r *schema.Realm) {

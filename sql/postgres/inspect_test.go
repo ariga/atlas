@@ -38,7 +38,7 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
- table_name  |  column_name |          data_type          | is_nullable |         column_default          | character_maximum_length | numeric_precision | datetime_precision | numeric_scale | character_set_name | collation_name |  udt_name   | is_identity | identity_start | identity_increment | identity_generation | comment | typtype |  oid  
+ table_name  |  column_name |          data_type          | is_nullable |         column_default          | character_maximum_length | numeric_precision | datetime_precision | numeric_scale | character_set_name | collation_name |  udt_name   | is_identity | identity_start | identity_increment | identity_generation | comment | typtype |  oid
 -------------+--------------+-----------------------------+-------------+---------------------------------+--------------------------+-------------------+--------------------+---------------+--------------------+----------------+-------------+-------------+----------------+--------------------+---------------------+---------+---------+-------
  users       |  id          | bigint                      | NO          |                                 |                          |                64 |                    |             0 |                    |                | int8        | YES         |      100       |          1         |    BY DEFAULT       |         | b       |    20
  users       |  rank        | integer                     | YES         |                                 |                          |                32 |                    |             0 |                    |                | int4        | NO          |                |                    |                     | rank    | b       |    23
@@ -112,7 +112,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c21", Type: &schema.ColumnType{Raw: "xml", Type: &XMLType{T: "xml"}}},
 					{Name: "c22", Type: &schema.ColumnType{Raw: "ARRAY", Null: true, Type: &ArrayType{T: "int4[]"}}},
 					{Name: "c23", Type: &schema.ColumnType{Raw: "USER-DEFINED", Null: true, Type: &UserDefinedType{T: "ltree"}}},
-					{Name: "c24", Type: &schema.ColumnType{Raw: "state", Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}},
+					{Name: "c24", Type: &schema.ColumnType{Raw: "state", Type: &schema.EnumType{T: "state", Schema: t.Schema, Values: []string{"on", "off"}}}},
 					{Name: "c25", Type: &schema.ColumnType{Raw: "timestamp without time zone", Type: &schema.TimeType{T: "timestamp without time zone", Precision: p(4)}}, Default: &schema.RawExpr{X: "now()"}},
 					{Name: "c26", Type: &schema.ColumnType{Raw: "timestamp with time zone", Type: &schema.TimeType{T: "timestamp with time zone", Precision: p(6)}}},
 					{Name: "c27", Type: &schema.ColumnType{Raw: "time without time zone", Type: &schema.TimeType{T: "time without time zone", Precision: p(6)}}},
@@ -130,18 +130,21 @@ table_name | column_name |      data_type      | is_nullable |         column_de
 -----------+-------------+---------------------+-------------+---------------------------------+--------------------------+-------------------+--------------------+---------------+--------------------+----------------+----------+-------------+----------------+--------------------+---------------------+---------+---------+-------
 users      | id          | bigint              | NO          |                                 |                          |                64 |                    |             0 |                    |                | int8     | NO          |                |                    |                     |         | b       |    20
 users      | c1          | smallint            | NO          |                                 |                          |                16 |                    |             0 |                    |                | int2     | NO          |                |                    |                     |         | b       |    21
+users      | parent_id   | bigint              | YES         |                                 |                          |                64 |                    |             0 |                    |                | int8     | NO          |                |                    |                     |         | b       |    22
 `))
 				m.ExpectQuery(queryIndexes).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
    table_name   |    index_name   | index_type  | column_name | primary | unique | constraint_type | predicate             |   expression              | desc | nulls_first | nulls_last | comment
 ----------------+-----------------+-------------+-------------+---------+--------+-----------------+-----------------------+---------------------------+------+-------------+------------+-----------
-users           | idx             | hash        | left        | f       | f      |                 |                       | "left"((c11)::text, 100)  | t    | t           | f          | boring
-users           | idx1            | btree       | left        | f       | f      |                 | (id <> NULL::integer) | "left"((c11)::text, 100)  | t    | t           | f          |
+users           | idx             | hash        |             | f       | f      |                 |                       | "left"((c11)::text, 100)  | t    | t           | f          | boring
+users           | idx1            | btree       |             | f       | f      |                 | (id <> NULL::integer) | "left"((c11)::text, 100)  | t    | t           | f          |
 users           | t1_c1_key       | btree       | c1          | f       | t      | u               |                       |                           | t    | t           | f          |
 users           | t1_pkey         | btree       | id          | t       | t      | p               |                       |                           | t    | f           | f          |
 users           | idx4            | btree       | c1          | f       | t      |                 |                       |                           | f    | f           | f          |
-users           | idx4            | btree       | id          | f       | t      |                 |                       |                           | f    | f           | t          |	
+users           | idx4            | btree       | id          | f       | t      |                 |                       |                           | f    | f           | t          |
+users           | idx5            | btree       | c1          | f       | t      |                 |                       | c1                        | f    | f           | f          |
+users           | idx5            | btree       |             | f       | t      |                 |                       | coalesce(parent_id, 0)    | f    | f           | f          |
 `))
 				m.noFKs()
 				m.noChecks()
@@ -152,12 +155,14 @@ users           | idx4            | btree       | id          | f       | t     
 				columns := []*schema.Column{
 					{Name: "id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
 					{Name: "c1", Type: &schema.ColumnType{Raw: "smallint", Type: &schema.IntegerType{T: "smallint"}}},
+					{Name: "parent_id", Type: &schema.ColumnType{Raw: "bigint", Null: true, Type: &schema.IntegerType{T: "bigint"}}},
 				}
 				indexes := []*schema.Index{
 					{Name: "idx", Table: t, Attrs: []schema.Attr{&IndexType{T: "hash"}, &schema.Comment{Text: "boring"}}, Parts: []*schema.IndexPart{{SeqNo: 1, X: &schema.RawExpr{X: `"left"((c11)::text, 100)`}, Desc: true, Attrs: []schema.Attr{&IndexColumnProperty{NullsFirst: true}}}}},
 					{Name: "idx1", Table: t, Attrs: []schema.Attr{&IndexType{T: "btree"}, &IndexPredicate{P: `(id <> NULL::integer)`}}, Parts: []*schema.IndexPart{{SeqNo: 1, X: &schema.RawExpr{X: `"left"((c11)::text, 100)`}, Desc: true, Attrs: []schema.Attr{&IndexColumnProperty{NullsFirst: true}}}}},
 					{Name: "t1_c1_key", Unique: true, Table: t, Attrs: []schema.Attr{&IndexType{T: "btree"}, &ConType{T: "u"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1], Desc: true, Attrs: []schema.Attr{&IndexColumnProperty{NullsFirst: true}}}}},
 					{Name: "idx4", Unique: true, Table: t, Attrs: []schema.Attr{&IndexType{T: "btree"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1]}, {SeqNo: 2, C: columns[0], Attrs: []schema.Attr{&IndexColumnProperty{NullsLast: true}}}}},
+					{Name: "idx5", Unique: true, Table: t, Attrs: []schema.Attr{&IndexType{T: "btree"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1]}, {SeqNo: 2, X: &schema.RawExpr{X: `coalesce(parent_id, 0)`}}}},
 				}
 				pk := &schema.Index{
 					Name:   "t1_pkey",
@@ -497,7 +502,7 @@ type mock struct {
 func (m mock) version(version string) {
 	m.ExpectQuery(sqltest.Escape(paramsQuery)).
 		WillReturnRows(sqltest.Rows(`
-  setting   
+  setting
 ------------
  en_US.utf8
  en_US.utf8
