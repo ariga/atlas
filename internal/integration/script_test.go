@@ -39,6 +39,7 @@ func TestMySQL_Script(t *testing.T) {
 				"synced":  t.cmdSynced,
 				"cmphcl":  t.cmdCmpHCL,
 				"cmpshow": t.cmdCmpShow,
+				"execsql": t.cmdExec,
 			},
 		})
 	})
@@ -296,6 +297,21 @@ func cmdCmpHCL(ts *testscript.TestScript, args []string, inspect func(schema str
 	var sb strings.Builder
 	ts.Check(diff.Text("inspect", fname, f1, f2, &sb))
 	ts.Fatalf(sb.String())
+}
+
+func (t *myTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
+	cmdExec(ts, args, t.db)
+}
+
+func cmdExec(ts *testscript.TestScript, args []string, db *sql.DB) {
+	if len(args) == 0 {
+		ts.Fatalf("missing statements for 'execsql'")
+	}
+	for i := range args {
+		s := strings.ReplaceAll(args[i], "$db", ts.Getenv("db"))
+		_, err := db.Exec(s)
+		ts.Check(err)
+	}
 }
 
 func (t *myTest) cmdExist(ts *testscript.TestScript, neg bool, args []string) {

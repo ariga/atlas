@@ -266,20 +266,17 @@ func (s *state) dropTable(drop *schema.DropTable) {
 	})
 }
 
-// modifyTable builds and appends the migrate.Changes for bringing
-// the table into its modified state.
+// modifyTable builds and appends the migration changes for
+// bringing the table into its modified state.
 func (s *state) modifyTable(modify *schema.ModifyTable) error {
 	var changes [2][]schema.Change
 	for _, change := range skipAutoChanges(modify.Changes) {
 		switch change := change.(type) {
-		// Constraints should be dropped before dropping columns, because if a column
-		// is a part of multi-column constraints (like, unique index), ALTER TABLE
-		// might fail if the intermediate state violates the constraints.
-		case *schema.DropIndex:
-			changes[0] = append(changes[0], change)
+		// Foreign-key modification is translated into 2 steps.
+		// Dropping the current foreign key and creating a new one.
 		case *schema.ModifyForeignKey:
-			// Foreign-key modification is translated into 2 steps.
-			// Dropping the current foreign key and creating a new one.
+			// DROP and ADD of the same constraint cannot be mixed
+			// on the ALTER TABLE command.
 			changes[0] = append(changes[0], &schema.DropForeignKey{
 				F: change.From,
 			})

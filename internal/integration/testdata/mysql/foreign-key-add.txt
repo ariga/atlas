@@ -14,7 +14,6 @@ apply 2.hcl
 exist users posts
 cmpshow users posts 2.sql
 
-
 # Below files represent HCL and SQL. File names defined their index in
 # execution order. 1.hcl is executed first, 2.hcl executed second, etc.
 -- 1.hcl --
