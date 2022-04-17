@@ -292,13 +292,6 @@ func (i *inspect) enumValues(ctx context.Context, s *schema.Schema) error {
 				e, ok := enums[enum.ID]
 				if !ok {
 					e = &schema.EnumType{T: enum.T, Schema: s}
-					if expr, ok := c.Default.(*schema.RawExpr); ok {
-						parts := strings.Split(expr.X, "::")
-						name := fmt.Sprintf("%s.%s", s.Name, e.T)
-						if len(parts) == 2 && parts[1] == name {
-							c.Default = &schema.Literal{V: parts[0]}
-						}
-					}
 					enums[enum.ID] = e
 					args = append(args, enum.ID)
 				}
@@ -307,6 +300,14 @@ func (i *inspect) enumValues(ctx context.Context, s *schema.Schema) error {
 				// standard schema.EnumType.
 				c.Type.Type = e
 				c.Type.Raw = enum.T
+
+				if expr, ok := c.Default.(*schema.RawExpr); ok {
+					parts := strings.Split(expr.X, "::")
+					schemaQualifiedName := fmt.Sprintf("%s.%s", s.Name, e.T)
+					if len(parts) == 2 && (parts[1] == e.T || parts[1] == schemaQualifiedName) {
+						c.Default = &schema.Literal{V: parts[0]}
+					}
+				}
 			}
 		}
 	}
