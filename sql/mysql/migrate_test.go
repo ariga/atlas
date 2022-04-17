@@ -6,6 +6,7 @@ package mysql
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
 	"ariga.io/atlas/sql/internal/sqltest"
@@ -623,24 +624,122 @@ func TestPlanChanges(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		// Changing a regular column to a VIRTUAL generated column is not allowed.
+		{
+			input: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("users"),
+					Changes: []schema.Change{
+						&schema.ModifyColumn{
+							Change: schema.ChangeGenerated,
+							From:   schema.NewColumn("c"),
+							To:     schema.NewColumn("c").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1"}),
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		// Changing a VIRTUAL generated column to a regular column is not allowed.
+		{
+			input: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("users"),
+					Changes: []schema.Change{
+						&schema.ModifyColumn{
+							Change: schema.ChangeGenerated,
+							From:   schema.NewColumn("c").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "VIRTUAL"}),
+							To:     schema.NewColumn("c"),
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		// Changing the storage type of generated column is not allowed.
+		{
+			input: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("users"),
+					Changes: []schema.Change{
+						&schema.ModifyColumn{
+							Change: schema.ChangeGenerated,
+							From:   schema.NewColumn("c").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "VIRTUAL"}),
+							To:     schema.NewColumn("c").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		// Changing a STORED generated column to a regular column.
+		{
+			input: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("users"),
+					Changes: []schema.Change{
+						&schema.ModifyColumn{
+							Change: schema.ChangeGenerated,
+							From:   schema.NewIntColumn("c", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
+							To:     schema.NewIntColumn("c", "int"),
+						},
+					},
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `users` MODIFY COLUMN `c` int NOT NULL",
+						Reverse: "ALTER TABLE `users` MODIFY COLUMN `c` int AS (1) STORED NOT NULL",
+					},
+				},
+			},
+		},
+		// Changing a regular column to a STORED generated column.
+		{
+			input: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("users"),
+					Changes: []schema.Change{
+						&schema.ModifyColumn{
+							Change: schema.ChangeGenerated,
+							From:   schema.NewIntColumn("c", "int"),
+							To:     schema.NewIntColumn("c", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
+						},
+					},
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `users` MODIFY COLUMN `c` int AS (1) STORED NOT NULL",
+						Reverse: "ALTER TABLE `users` MODIFY COLUMN `c` int NOT NULL",
+					},
+				},
+			},
+		},
 	}
-	for _, tt := range tests {
-		db, _, err := newMigrate("8.0.16")
-		require.NoError(t, err)
-		plan, err := db.PlanChanges(context.Background(), "wantPlan", tt.input)
-		if tt.wantErr {
-			require.Error(t, err, "expect plan to fail")
-			return
-		}
-		require.NoError(t, err)
-		require.NotNil(t, plan)
-		require.Equal(t, tt.wantPlan.Reversible, plan.Reversible)
-		require.Equal(t, tt.wantPlan.Transactional, plan.Transactional)
-		require.Equal(t, len(tt.wantPlan.Changes), len(plan.Changes))
-		for i, c := range plan.Changes {
-			require.Equal(t, tt.wantPlan.Changes[i].Cmd, c.Cmd)
-			require.Equal(t, tt.wantPlan.Changes[i].Reverse, c.Reverse)
-		}
+	for i, tt := range tests {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			db, _, err := newMigrate("8.0.16")
+			require.NoError(t, err)
+			plan, err := db.PlanChanges(context.Background(), "wantPlan", tt.input)
+			if tt.wantErr {
+				require.Error(t, err, "expect plan to fail")
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, plan)
+			require.Equal(t, tt.wantPlan.Reversible, plan.Reversible)
+			require.Equal(t, tt.wantPlan.Transactional, plan.Transactional)
+			require.Equal(t, len(tt.wantPlan.Changes), len(plan.Changes))
+			for i, c := range plan.Changes {
+				require.Equal(t, tt.wantPlan.Changes[i].Cmd, c.Cmd)
+				require.Equal(t, tt.wantPlan.Changes[i].Reverse, c.Reverse)
+			}
+		})
 	}
 }
 

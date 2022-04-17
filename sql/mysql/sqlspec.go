@@ -268,15 +268,11 @@ func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 
 // fromGenExpr returns the spec for a generated expression.
 func fromGenExpr(x schema.GeneratedExpr) *schemaspec.Resource {
-	t := strings.ToUpper(x.Type)
-	if t == "" {
-		t = virtual
-	}
 	return &schemaspec.Resource{
 		Type: "as",
 		Attrs: []*schemaspec.Attr{
 			specutil.StrAttr("expr", x.Expr),
-			specutil.VarAttr("type", t),
+			specutil.VarAttr("type", storedOrVirtual(x.Type)),
 		},
 	}
 }
@@ -304,15 +300,26 @@ func convertGenExpr(r *schemaspec.Resource, c *schema.Column) error {
 		if err := asR.As(&spec); err != nil {
 			return err
 		}
-		if spec.Type == "" {
-			spec.Type = virtual
-		}
 		c.Attrs = append(c.Attrs, &schema.GeneratedExpr{
-			Type: spec.Type,
 			Expr: spec.Expr,
+			Type: storedOrVirtual(spec.Type),
 		})
 	}
 	return nil
+}
+
+// storedOrVirtual returns a STORED or VIRTUAL
+// generated type option based on the given string.
+func storedOrVirtual(s string) string {
+	switch s = strings.ToUpper(s); s {
+	// The default is VIRTUAL if no type is specified.
+	case "":
+		return virtual
+	// In MariaDB, PERSISTENT is synonyms for STORED.
+	case persistent:
+		return stored
+	}
+	return s
 }
 
 // checkSpec converts from a concrete MySQL schema.Check into a sqlspec.Check.
