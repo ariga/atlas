@@ -23,9 +23,9 @@ table "users" {
 
 -- 1.sql --
              Table "script_column_enum.users"
- Column |  Type  | Collation | Nullable |     Default
---------+--------+-----------+----------+------------------
- type   | status |           | not null | 'active'::status
+ Column |           Type            | Collation | Nullable |               Default
+--------+---------------------------+-----------+----------+-------------------------------------
+ type   | script_column_enum.status |           | not null | 'active'::script_column_enum.status
 
 
 -- 2.hcl --
@@ -46,6 +46,6 @@ table "users" {
 
 -- 2.sql --
               Table "script_column_enum.users"
- Column |  Type  | Collation | Nullable |      Default
---------+--------+-----------+----------+--------------------
- type   | status |           | not null | 'inactive'::status
+ Column |           Type            | Collation | Nullable |                Default
+--------+---------------------------+-----------+----------+---------------------------------------
+ type   | script_column_enum.status |           | not null | 'inactive'::script_column_enum.status

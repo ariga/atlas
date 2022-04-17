@@ -121,7 +121,7 @@ func (s *state) topLevel(changes []schema.Change) []schema.Change {
 // addTable builds and executes the query for creating a table in a schema.
 func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 	// Create enum types before using them in the `CREATE TABLE` statement.
-	if err := s.addTypes(ctx, add.T.Schema, add.T.Columns...); err != nil {
+	if err := s.addTypes(ctx, add.T.Columns...); err != nil {
 		return err
 	}
 	b := Build("CREATE TABLE")
@@ -222,7 +222,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 				F: change.To,
 			})
 		case *schema.AddColumn:
-			if err := s.addTypes(ctx, modify.T.Schema, change.C); err != nil {
+			if err := s.addTypes(ctx, change.C); err != nil {
 				return err
 			}
 			if c := (schema.Comment{}); sqlx.Has(change.C.Attrs, &c) {
@@ -257,7 +257,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 				}
 			// Enum was added (and column type was changed).
 			case !ok1 && ok2:
-				if err := s.addTypes(ctx, modify.T.Schema, change.To); err != nil {
+				if err := s.addTypes(ctx, change.To); err != nil {
 					return err
 				}
 			}
@@ -417,11 +417,7 @@ func (s *state) dropIndexes(t *schema.Table, indexes ...*schema.Index) {
 	}
 }
 
-func (s *state) addTypes(ctx context.Context, ns *schema.Schema, columns ...*schema.Column) error {
-	schemaName := "public"
-	if ns != nil {
-		schemaName = ns.Name
-	}
+func (s *state) addTypes(ctx context.Context, columns ...*schema.Column) error {
 	for _, c := range columns {
 		e, ok := c.Type.Type.(*schema.EnumType)
 		if !ok {
@@ -429,6 +425,10 @@ func (s *state) addTypes(ctx context.Context, ns *schema.Schema, columns ...*sch
 		}
 		if e.T == "" {
 			return fmt.Errorf("missing enum name for column %q", c.Name)
+		}
+		schemaName := "public" // This should never happen! Enums should always have a schema
+		if e.Schema != nil {
+			schemaName = e.Schema.Name
 		}
 		c.Type.Raw = e.T
 		if exists, err := s.enumExists(ctx, schemaName, e.T); err != nil {
@@ -557,7 +557,9 @@ func (s *state) columnDefault(b *sqlx.Builder, c *schema.Column) {
 	switch x := c.Default.(type) {
 	case *schema.Literal:
 		v := x.V
-		switch c.Type.Type.(type) {
+		switch t := c.Type.Type.(type) {
+		case *schema.EnumType:
+			v = quote(v) + "::" + t.Schema.Name + "." + t.T
 		case *schema.BoolType, *schema.DecimalType, *schema.IntegerType, *schema.FloatType:
 		default:
 			v = quote(v)
@@ -565,18 +567,7 @@ func (s *state) columnDefault(b *sqlx.Builder, c *schema.Column) {
 		b.P("DEFAULT", v)
 	case *schema.RawExpr:
 		// Ignore identity functions added by the differ.
-		if t, ok := c.Type.Type.(*schema.EnumType); ok {
-			parts := strings.Split(x.X, "::")
-			if len(parts) == 2 {
-				var s string
-				if t.Schema != nil {
-					s += t.Schema.Name + "."
-				}
-				parts[1] = s + t.T
-			}
-
-			b.P("DEFAULT", strings.Join(parts, "::"))
-		} else if _, ok := c.Type.Type.(*SerialType); !ok {
+		if _, ok := c.Type.Type.(*SerialType); !ok {
 			b.P("DEFAULT", x.X)
 		}
 	}
