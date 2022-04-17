@@ -150,6 +150,10 @@ func Test_PostgresSchemaDSN(t *testing.T) {
 			url:      "postgres://localhost:5432/dbname?search_path=",
 			expected: "",
 		},
+		{
+			url:      "postgres://us_er:password@localhost:5432/dbname?sslmode=disable",
+			expected: "",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.url, func(t *testing.T) {

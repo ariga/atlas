@@ -283,25 +283,35 @@ func columnType(c *columnDesc) schema.Type {
 func (i *inspect) enumValues(ctx context.Context, s *schema.Schema) error {
 	var (
 		args  []interface{}
-		ids   = make(map[int64][]*schema.EnumType)
+		enums = make(map[int64]*schema.EnumType)
 		query = "SELECT enumtypid, enumlabel FROM pg_enum WHERE enumtypid IN (%s)"
 	)
 	for _, t := range s.Tables {
 		for _, c := range t.Columns {
 			if enum, ok := c.Type.Type.(*enumType); ok {
-				if _, ok := ids[enum.ID]; !ok {
+				e, ok := enums[enum.ID]
+				if !ok {
+					e = &schema.EnumType{T: enum.T, Schema: s}
+					enums[enum.ID] = e
 					args = append(args, enum.ID)
 				}
+
 				// Convert the intermediate type to the
 				// standard schema.EnumType.
-				e := &schema.EnumType{T: enum.T}
 				c.Type.Type = e
 				c.Type.Raw = enum.T
-				ids[enum.ID] = append(ids[enum.ID], e)
+
+				if expr, ok := c.Default.(*schema.RawExpr); ok {
+					parts := strings.Split(expr.X, "::")
+					schemaQualifiedName := fmt.Sprintf("%s.%s", s.Name, e.T)
+					if len(parts) == 2 && (parts[1] == e.T || parts[1] == schemaQualifiedName) {
+						c.Default = &schema.Literal{V: parts[0]}
+					}
+				}
 			}
 		}
 	}
-	if len(ids) == 0 {
+	if len(enums) == 0 {
 		return nil
 	}
 	rows, err := i.QueryContext(ctx, fmt.Sprintf(query, nArgs(0, len(args))), args...)
@@ -317,7 +327,7 @@ func (i *inspect) enumValues(ctx context.Context, s *schema.Schema) error {
 		if err := rows.Scan(&id, &v); err != nil {
 			return fmt.Errorf("postgres: scanning enum label: %w", err)
 		}
-		for _, enum := range ids[id] {
+		if enum, found := enums[id]; found {
 			enum.Values = append(enum.Values, v)
 		}
 	}
@@ -387,18 +397,17 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 				NullsLast:  nullslast.Bool,
 			})
 		}
-		switch {
-		case sqlx.ValidString(expr):
-			part.X = &schema.RawExpr{
-				X: expr.String,
-			}
-		case sqlx.ValidString(column):
+		if sqlx.ValidString(column) {
 			part.C, ok = t.Column(column.String)
 			if !ok {
 				return fmt.Errorf("postgres: column %q was not found for index %q", column.String, idx.Name)
 			}
 			part.C.Indexes = append(part.C.Indexes, idx)
-		default:
+		} else if sqlx.ValidString(expr) {
+			part.X = &schema.RawExpr{
+				X: expr.String,
+			}
+		} else {
 			return fmt.Errorf("postgres: invalid part for index %q", idx.Name)
 		}
 		idx.Parts = append(idx.Parts, part)
@@ -767,6 +776,7 @@ ORDER BY
 `
 
 	// Query to list table indexes.
+	// column name/expr ref.: https://gist.github.com/akki/6a64075ad3c50f3bcb4926dc49a06939
 	indexesQuery = `
 SELECT
 	t.relname AS table_name,
@@ -777,25 +787,31 @@ SELECT
 	idx.indisunique AS unique,
 	c.contype AS constraint_type,
 	pg_get_expr(idx.indpred, idx.indrelid) AS predicate,
-	pg_get_expr(idx.indexprs, idx.indrelid) AS expression,
+	pg_get_indexdef(idx.indexrelid, idx.ord, false) AS expression,
 	pg_index_column_has_property(idx.indexrelid, a.attnum, 'desc') AS desc,
 	pg_index_column_has_property(idx.indexrelid, a.attnum, 'nulls_first') AS nulls_first,
 	pg_index_column_has_property(idx.indexrelid, a.attnum, 'nulls_last') AS nulls_last,
 	obj_description(to_regclass($1 || i.relname)::oid) AS comment
 FROM
-	pg_index idx
+	(
+		select
+			*,
+			generate_series(1,array_length(i.indkey,1)) as ord,
+			unnest(i.indkey) AS key
+		from pg_index i
+	) idx
 	JOIN pg_class i ON i.oid = idx.indexrelid
 	JOIN pg_class t ON t.oid = idx.indrelid
 	JOIN pg_namespace n ON n.oid = t.relnamespace
 	LEFT JOIN pg_constraint c ON idx.indexrelid = c.conindid
-	LEFT JOIN pg_attribute a ON a.attrelid = idx.indexrelid
+	LEFT JOIN pg_attribute a ON (a.attrelid, a.attnum) = (idx.indrelid, idx.key)
 	JOIN pg_am am ON am.oid = i.relam
 WHERE
 	n.nspname = $1
 	AND t.relname IN (%s)
 	AND COALESCE(c.contype, '') <> 'f'
 ORDER BY
-	table_name, index_name, a.attnum
+	table_name, index_name, idx.ord
 `
 	fksQuery = `
 SELECT

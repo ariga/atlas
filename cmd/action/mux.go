@@ -109,7 +109,7 @@ func SchemaNameFromURL(ctx context.Context, url string) (string, error) {
 		}
 		return cfg.DBName, err
 	case "postgres":
-		return postgresSchema(dsn)
+		return postgresSchema(url)
 	case "sqlite":
 		return schemaName(ctx, dsn)
 	default:

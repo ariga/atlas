@@ -187,6 +187,7 @@ type (
 
 	// EnumType represents an enum type.
 	EnumType struct {
+		Schema *Schema
 		T      string   // Optional type.
 		Values []string // Enum values.
 	}

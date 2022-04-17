@@ -403,8 +403,8 @@ func TestPlanChanges(t *testing.T) {
 				}(),
 			},
 			mock: func(m mock) {
-				m.ExpectQuery(sqltest.Escape("SELECT * FROM pg_type WHERE typname = $1 AND typtype = 'e'")).
-					WithArgs("state").WillReturnRows(sqlmock.NewRows([]string{"name"}))
+				m.ExpectQuery(sqltest.Escape("SELECT ns.nspname, t.typname FROM pg_type t INNER JOIN pg_namespace ns ON ns.oid = t.typnamespace WHERE ns.nspname = $1 AND typname = $2 AND typtype = 'e'")).
+					WithArgs("public", "state").WillReturnRows(sqlmock.NewRows([]string{"name"}))
 			},
 			plan: &migrate.Plan{
 				Reversible:    true,
@@ -614,7 +614,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 		},
 	}
-	for _, tt := range tests {
+	for i, tt := range tests {
 		db, mk, err := sqlmock.New()
 		require.NoError(t, err)
 		m := mock{mk}
@@ -625,7 +625,7 @@ func TestPlanChanges(t *testing.T) {
 		drv, err := Open(db)
 		require.NoError(t, err)
 		plan, err := drv.PlanChanges(context.Background(), "plan", tt.changes)
-		require.NoError(t, err)
+		require.NoError(t, err, "test #%d", i+1)
 		require.Equal(t, tt.plan.Reversible, plan.Reversible)
 		require.Equal(t, tt.plan.Transactional, plan.Transactional)
 		for i, c := range plan.Changes {

@@ -40,7 +40,10 @@ func FormatType(t schema.Type) (string, error) {
 		if t.T == "" {
 			return "", errors.New("postgres: missing enum type name")
 		}
-		f = t.T
+		if t.Schema != nil {
+			f = t.Schema.Name + "."
+		}
+		f += t.T
 	case *schema.IntegerType:
 		switch f = strings.ToLower(t.T); f {
 		case TypeSmallInt, TypeInteger, TypeBigInt:

@@ -27,6 +27,7 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 			Reversible:    true,
 			Transactional: true,
 		},
+		enums: make(map[string]struct{}),
 	}
 	if err := s.plan(ctx, changes); err != nil {
 		return nil, err
@@ -52,6 +53,8 @@ func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change) e
 type state struct {
 	conn
 	migrate.Plan
+
+	enums map[string]struct{}
 }
 
 // Exec executes the changes on the database. An error is returned
@@ -423,13 +426,18 @@ func (s *state) addTypes(ctx context.Context, columns ...*schema.Column) error {
 		if e.T == "" {
 			return fmt.Errorf("missing enum name for column %q", c.Name)
 		}
+		schemaName := "public" // This should never happen! Enums should always have a schema
+		if e.Schema != nil {
+			schemaName = e.Schema.Name
+		}
 		c.Type.Raw = e.T
-		if exists, err := s.enumExists(ctx, e.T); err != nil {
+		if exists, err := s.enumExists(ctx, schemaName, e.T); err != nil {
 			return err
 		} else if exists {
 			continue
 		}
-		b := Build("CREATE TYPE").Ident(e.T).P("AS ENUM")
+		s.enums[e.T] = struct{}{}
+		b := Build("CREATE TYPE").EnumType(e).P("AS ENUM")
 		b.Wrap(func(b *sqlx.Builder) {
 			b.MapComma(e.Values, func(i int, b *sqlx.Builder) {
 				b.WriteString("'" + e.Values[i] + "'")
@@ -438,7 +446,7 @@ func (s *state) addTypes(ctx context.Context, columns ...*schema.Column) error {
 		s.append(&migrate.Change{
 			Cmd:     b.String(),
 			Comment: fmt.Sprintf("create enum type %q", e.T),
-			Reverse: Build("DROP TYPE").Ident(e.T).String(),
+			Reverse: Build("DROP TYPE").EnumType(e).String(),
 		})
 	}
 	return nil
@@ -462,8 +470,12 @@ func (s *state) alterType(from, to *schema.EnumType) error {
 	return nil
 }
 
-func (s *state) enumExists(ctx context.Context, name string) (bool, error) {
-	rows, err := s.QueryContext(ctx, "SELECT * FROM pg_type WHERE typname = $1 AND typtype = 'e'", name)
+func (s *state) enumExists(ctx context.Context, schema, name string) (bool, error) {
+	if _, found := s.enums[name]; found {
+		return true, nil
+	}
+
+	rows, err := s.QueryContext(ctx, "SELECT ns.nspname, t.typname FROM pg_type t INNER JOIN pg_namespace ns ON ns.oid = t.typnamespace WHERE ns.nspname = $1 AND typname = $2 AND typtype = 'e'", schema, name)
 	if err != nil {
 		return false, fmt.Errorf("check index existence: %w", err)
 	}
@@ -545,7 +557,9 @@ func (s *state) columnDefault(b *sqlx.Builder, c *schema.Column) {
 	switch x := c.Default.(type) {
 	case *schema.Literal:
 		v := x.V
-		switch c.Type.Type.(type) {
+		switch t := c.Type.Type.(type) {
+		case *schema.EnumType:
+			v = quote(v) + "::" + t.Schema.Name + "." + t.T
 		case *schema.BoolType, *schema.DecimalType, *schema.IntegerType, *schema.FloatType:
 		default:
 			v = quote(v)

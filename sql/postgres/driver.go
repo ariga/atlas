@@ -111,6 +111,25 @@ func (d *Driver) Lock(ctx context.Context, name string, timeout time.Duration) (
 	}, nil
 }
 
+// IsClean returns true if the realm is clean. A Postgres database
+// is considered clean if there are no tables in any existing schema.
+func (d *Driver) IsClean(ctx context.Context) (bool, error) {
+	realm, err := d.InspectRealm(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+
+	clean := true
+	for _, s := range realm.Schemas {
+		if len(s.Tables) > 0 {
+			clean = false
+			break
+		}
+	}
+
+	return clean, nil
+}
+
 func acquire(ctx context.Context, conn schema.ExecQuerier, id uint32, timeout time.Duration) error {
 	switch {
 	// With timeout (context-based).
