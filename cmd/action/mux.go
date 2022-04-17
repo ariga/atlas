@@ -109,7 +109,10 @@ func SchemaNameFromURL(ctx context.Context, url string) (string, error) {
 		}
 		return cfg.DBName, err
 	case "postgres":
-		return postgresSchema(dsn)
+		// Use `url` instead of `dsn` as dsn lacks the scheme part (postgres://).
+		// url.Parse pareses such URLs incorrectly or produce an
+		// error: first path segment in URL cannot contain colon
+		return postgresSchema(url)
 	case "sqlite":
 		return schemaName(ctx, dsn)
 	default:
