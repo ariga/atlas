@@ -6,6 +6,7 @@ package mysql
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -320,99 +321,104 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 // changes in one SQL statement.
 func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 	var (
-		errors     []string
-		b          = Build("ALTER TABLE").Table(t)
-		reverse    = Build("")
+		reverse    []schema.Change
 		reversible = true
 	)
-	b.MapComma(changes, func(i int, b *sqlx.Builder) {
-		switch change := changes[i].(type) {
-		case *schema.AddColumn:
-			b.P("ADD COLUMN")
-			if err := s.column(b, t, change.C); err != nil {
-				errors = append(errors, err.Error())
+	build := func(changes []schema.Change) (string, error) {
+		b := Build("ALTER TABLE").Table(t)
+		err := b.MapCommaErr(changes, func(i int, b *sqlx.Builder) error {
+			switch change := changes[i].(type) {
+			case *schema.AddColumn:
+				b.P("ADD COLUMN")
+				if err := s.column(b, t, change.C); err != nil {
+					return err
+				}
+				reverse = append(reverse, &schema.DropColumn{C: change.C})
+			case *schema.ModifyColumn:
+				b.P("MODIFY COLUMN")
+				if err := s.column(b, t, change.To); err != nil {
+					return err
+				}
+				reverse = append(reverse, &schema.ModifyColumn{
+					From: change.To,
+					To:   change.From,
+				})
+			case *schema.DropColumn:
+				b.P("DROP COLUMN").Ident(change.C.Name)
+				reverse = append(reverse, &schema.AddColumn{C: change.C})
+			case *schema.AddIndex:
+				b.P("ADD")
+				index(b, change.I)
+				reverse = append(reverse, &schema.DropIndex{I: change.I})
+			case *schema.DropIndex:
+				b.P("DROP INDEX").Ident(change.I.Name)
+				reverse = append(reverse, &schema.AddIndex{I: change.I})
+			case *schema.AddForeignKey:
+				b.P("ADD")
+				if err := s.fks(b, change.F); err != nil {
+					return err
+				}
+				reverse = append(reverse, &schema.DropForeignKey{F: change.F})
+			case *schema.DropForeignKey:
+				b.P("DROP FOREIGN KEY").Ident(change.F.Symbol)
+				reverse = append(reverse, &schema.AddForeignKey{F: change.F})
+			case *schema.AddAttr:
+				s.tableAttr(b, change, change.A)
+				// Unsupported reverse operation.
+				reversible = false
+			case *schema.ModifyAttr:
+				s.tableAttr(b, change, change.To)
+				reverse = append(reverse, &schema.ModifyAttr{
+					From: change.To,
+					To:   change.From,
+				})
+			case *schema.AddCheck:
+				s.check(b.P("ADD"), change.C)
+				// Reverse operation is supported if
+				// the constraint name is not generated.
+				if reversible = reversible && change.C.Name != ""; reversible {
+					reverse = append(reverse, &schema.DropCheck{C: change.C})
+				}
+			case *schema.DropCheck:
+				b.P("DROP CONSTRAINT").Ident(change.C.Name)
+				reverse = append(reverse, &schema.AddCheck{C: change.C})
+			case *schema.ModifyCheck:
+				switch {
+				case change.From.Name == "":
+					return errors.New("cannot modify unnamed check constraint")
+				case change.From.Name != change.To.Name:
+					return fmt.Errorf("mismatch check constraint names: %q != %q", change.From.Name, change.To.Name)
+				// Enforcement added.
+				case s.supportsEnforceCheck() && sqlx.Has(change.From.Attrs, &Enforced{}) && !sqlx.Has(change.To.Attrs, &Enforced{}):
+					b.P("ALTER CHECK").Ident(change.From.Name).P("ENFORCED")
+				// Enforcement dropped.
+				case s.supportsEnforceCheck() && !sqlx.Has(change.From.Attrs, &Enforced{}) && sqlx.Has(change.To.Attrs, &Enforced{}):
+					b.P("ALTER CHECK").Ident(change.From.Name).P("NOT ENFORCED")
+				// Expr was changed.
+				case change.From.Expr != change.To.Expr:
+					b.P("DROP CHECK").Ident(change.From.Name).Comma().P("ADD")
+					s.check(b, change.To)
+				default:
+					return errors.New("unknown check constraints change")
+				}
+				reverse = append(reverse, &schema.ModifyCheck{
+					From: change.To,
+					To:   change.From,
+				})
 			}
-			reverse.Comma().P("DROP COLUMN").Ident(change.C.Name)
-		case *schema.ModifyColumn:
-			b.P("MODIFY COLUMN")
-			if err := s.column(b, t, change.To); err != nil {
-				errors = append(errors, err.Error())
-			}
-			reverse.Comma().P("MODIFY COLUMN")
-			if err := s.column(reverse, t, change.From); err != nil {
-				errors = append(errors, err.Error())
-			}
-		case *schema.DropColumn:
-			b.P("DROP COLUMN").Ident(change.C.Name)
-			reversible = false
-		case *schema.AddIndex:
-			b.P("ADD")
-			index(b, change.I)
-			reverse.Comma().P("DROP INDEX").Ident(change.I.Name)
-		case *schema.DropIndex:
-			b.P("DROP INDEX").Ident(change.I.Name)
-			reverse.Comma().P("ADD")
-			index(reverse, change.I)
-			reversible = true
-		case *schema.AddForeignKey:
-			b.P("ADD")
-			if err := s.fks(b, change.F); err != nil {
-				errors = append(errors, err.Error())
-			}
-			reverse.Comma().P("DROP FOREIGN KEY").Ident(change.F.Symbol)
-		case *schema.DropForeignKey:
-			b.P("DROP FOREIGN KEY").Ident(change.F.Symbol)
-			reverse.Comma().P("ADD")
-			if err := s.fks(reverse, change.F); err != nil {
-				errors = append(errors, err.Error())
-			}
-		case *schema.AddAttr:
-			s.tableAttr(b, change, change.A)
-			// Unsupported reverse operation.
-			reversible = false
-		case *schema.ModifyAttr:
-			s.tableAttr(b, change, change.To)
-			s.tableAttr(reverse.Comma(), change, change.From)
-		case *schema.AddCheck:
-			s.check(b.P("ADD"), change.C)
-			// Reverse operation is supported if
-			// the constraint name is not generated.
-			if reversible = change.C.Name != ""; reversible {
-				reverse.Comma().P("DROP CONSTRAINT").Ident(change.C.Name)
-			}
-		case *schema.DropCheck:
-			b.P("DROP CONSTRAINT").Ident(change.C.Name)
-			s.check(reverse.Comma().P("ADD"), change.C)
-		case *schema.ModifyCheck:
-			switch {
-			case change.From.Name == "":
-				errors = append(errors, "cannot modify unnamed check constraint")
-			case change.From.Name != change.To.Name:
-				errors = append(errors, fmt.Sprintf("mismatch check constraint names: %q != %q", change.From.Name, change.To.Name))
-			// Enforcement added.
-			case s.supportsEnforceCheck() && sqlx.Has(change.From.Attrs, &Enforced{}) && !sqlx.Has(change.To.Attrs, &Enforced{}):
-				b.P("ALTER CHECK").Ident(change.From.Name).P("ENFORCED")
-				reverse.Comma().P("ALTER CHECK").Ident(change.From.Name).P("NOT ENFORCED")
-			// Enforcement dropped.
-			case s.supportsEnforceCheck() && !sqlx.Has(change.From.Attrs, &Enforced{}) && sqlx.Has(change.To.Attrs, &Enforced{}):
-				b.P("ALTER CHECK").Ident(change.From.Name).P("NOT ENFORCED")
-				reverse.Comma().P("ALTER CHECK").Ident(change.From.Name).P("ENFORCED")
-			// Expr was changed.
-			case change.From.Expr != change.To.Expr:
-				b.P("DROP CHECK").Ident(change.From.Name).Comma().P("ADD")
-				s.check(b, change.To)
-				reverse.Comma().P("DROP CHECK").Ident(change.To.Name).Comma().P("ADD")
-				s.check(reverse, change.From)
-			default:
-				errors = append(errors, "unknown check constraints change")
-			}
+			return nil
+		})
+		if err != nil {
+			return "", nil
 		}
-	})
-	if len(errors) > 0 {
-		return fmt.Errorf("alter table %q: %s", t.Name, strings.Join(errors, ", "))
+		return b.String(), nil
+	}
+	cmd, err := build(changes)
+	if err != nil {
+		return fmt.Errorf("alter table %q: %v", t.Name, err)
 	}
 	change := &migrate.Change{
-		Cmd: b.String(),
+		Cmd: cmd,
 		Source: &schema.ModifyTable{
 			T:       t,
 			Changes: changes,
@@ -420,11 +426,9 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 		Comment: fmt.Sprintf("modify %q table", t.Name),
 	}
 	if reversible {
-		b := Build("ALTER TABLE").Table(t)
-		if _, err := b.ReadFrom(reverse); err != nil {
-			return fmt.Errorf("unexpected buffer read: %w", err)
+		if change.Reverse, err = build(reverse); err != nil {
+			return fmt.Errorf("reversd alter table %q: %v", t.Name, err)
 		}
-		change.Reverse = b.String()
 	}
 	s.append(change)
 	return nil
