@@ -387,16 +387,16 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 			})
 		}
 		switch {
-		case sqlx.ValidString(expr):
-			part.X = &schema.RawExpr{
-				X: expr.String,
-			}
 		case sqlx.ValidString(column):
 			part.C, ok = t.Column(column.String)
 			if !ok {
 				return fmt.Errorf("postgres: column %q was not found for index %q", column.String, idx.Name)
 			}
 			part.C.Indexes = append(part.C.Indexes, idx)
+		case sqlx.ValidString(expr):
+			part.X = &schema.RawExpr{
+				X: expr.String,
+			}
 		default:
 			return fmt.Errorf("postgres: invalid part for index %q", idx.Name)
 		}
@@ -777,25 +777,31 @@ SELECT
 	idx.indisunique AS unique,
 	c.contype AS constraint_type,
 	pg_get_expr(idx.indpred, idx.indrelid) AS predicate,
-	pg_get_expr(idx.indexprs, idx.indrelid) AS expression,
+	pg_get_indexdef(idx.indexrelid, idx.ord, false) AS expression,
 	pg_index_column_has_property(idx.indexrelid, a.attnum, 'desc') AS desc,
 	pg_index_column_has_property(idx.indexrelid, a.attnum, 'nulls_first') AS nulls_first,
 	pg_index_column_has_property(idx.indexrelid, a.attnum, 'nulls_last') AS nulls_last,
 	obj_description(to_regclass($1 || i.relname)::oid) AS comment
 FROM
-	pg_index idx
+	(
+		select
+			*,
+			generate_series(1,array_length(i.indkey,1)) as ord,
+			unnest(i.indkey) AS key
+		from pg_index i
+	) idx
 	JOIN pg_class i ON i.oid = idx.indexrelid
 	JOIN pg_class t ON t.oid = idx.indrelid
 	JOIN pg_namespace n ON n.oid = t.relnamespace
 	LEFT JOIN pg_constraint c ON idx.indexrelid = c.conindid
-	LEFT JOIN pg_attribute a ON a.attrelid = idx.indexrelid
+	LEFT JOIN pg_attribute a ON (a.attrelid, a.attnum) = (idx.indrelid, idx.key)
 	JOIN pg_am am ON am.oid = i.relam
 WHERE
 	n.nspname = $1
 	AND t.relname IN (%s)
 	AND COALESCE(c.contype, '') <> 'f'
 ORDER BY
-	table_name, index_name, a.attnum
+	table_name, index_name, idx.ord
 `
 	fksQuery = `
 SELECT
