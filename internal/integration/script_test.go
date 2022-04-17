@@ -488,7 +488,7 @@ func cmdApply(ts *testscript.TestScript, neg bool, args []string, apply func(con
 }
 
 func matchErr(ts *testscript.TestScript, err error, p string) {
-	re, rerr := regexp.Compile(`(?m)` + p)
+	re, rerr := regexp.Compile(`(?m)` + regexp.QuoteMeta(p))
 	ts.Check(rerr)
 	if !re.MatchString(err.Error()) {
 		ts.Fatalf("mismatched errors: %v != %s", err, p)
