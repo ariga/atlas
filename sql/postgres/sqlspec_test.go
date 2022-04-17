@@ -378,10 +378,24 @@ func TestMarshalSpec_Enum(t *testing.T) {
 						schema.EnumValues("private", "business"),
 					),
 				),
+			schema.NewTable("table2").
+				AddColumns(
+					schema.NewEnumColumn("account_type",
+						schema.EnumName("account_type"),
+						schema.EnumValues("private", "business"),
+					),
+				),
 		)
 	buf, err := MarshalSpec(s, hclState)
 	require.NoError(t, err)
 	const expected = `table "account" {
+  schema = schema.test
+  column "account_type" {
+    null = false
+    type = enum.account_type
+  }
+}
+table "table2" {
   schema = schema.test
   column "account_type" {
     null = false
