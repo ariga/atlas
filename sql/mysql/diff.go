@@ -380,18 +380,7 @@ func (*diff) generatedChanged(from, to *schema.Column) bool {
 	case fromHas != toHas:
 		return true
 	case fromHas && toHas:
-		t := func(s string) string {
-			switch s = strings.ToUpper(s); s {
-			// The default is VIRTUAL if no type is specified.
-			case "":
-				return virtual
-			// In MariaDB, PERSISTENT is synonyms for STORED.
-			case persistent:
-				return stored
-			}
-			return s
-		}
-		return t(fromX.Type) != t(toX.Type) || fromX.Expr != toX.Expr
+		return storedOrVirtual(fromX.Type) != storedOrVirtual(toX.Type) || fromX.Expr != toX.Expr
 	default: // !fromHas && !toHas.
 		return false
 	}
