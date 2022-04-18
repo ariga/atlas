@@ -368,6 +368,85 @@ table "t" {
 	})
 }
 
+func TestMarshalSpec_GeneratedColumn(t *testing.T) {
+	s := schema.New("test").
+		AddTables(
+			schema.NewTable("users").
+				AddColumns(
+					schema.NewIntColumn("c1", "int").
+						SetGeneratedExpr(&schema.GeneratedExpr{Expr: "c1 * 2"}),
+					schema.NewIntColumn("c2", "int").
+						SetGeneratedExpr(&schema.GeneratedExpr{Expr: "c3 * c4", Type: "STORED"}),
+				),
+		)
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "c1" {
+    null = false
+    type = int
+    as {
+      expr = "c1 * 2"
+      type = STORED
+    }
+  }
+  column "c2" {
+    null = false
+    type = int
+    as {
+      expr = "c3 * c4"
+      type = STORED
+    }
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestUnmarshalSpec_GeneratedColumns(t *testing.T) {
+	var (
+		s schema.Schema
+		f = `
+schema "test" {}
+table "users" {
+	schema = schema.test
+	column "c1" {
+		type = int
+		as = "1"
+	}
+	column "c2" {
+		type = int
+		as {
+			expr = "2"
+		}
+	}
+	column "c3" {
+		type = int
+		as {
+			expr = "3"
+			type = STORED
+		}
+	}
+}
+`
+	)
+	err := UnmarshalHCL([]byte(f), &s)
+	require.NoError(t, err)
+	exp := schema.New("test").
+		AddTables(
+			schema.NewTable("users").
+				AddColumns(
+					schema.NewIntColumn("c1", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
+					schema.NewIntColumn("c2", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "2", Type: "STORED"}),
+					schema.NewIntColumn("c3", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "3", Type: "STORED"}),
+				),
+		)
+	require.EqualValues(t, exp, &s)
+}
+
 func TestMarshalSpec_Enum(t *testing.T) {
 	s := schema.New("test").
 		AddTables(

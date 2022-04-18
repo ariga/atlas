@@ -176,7 +176,7 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 			c.AddAttrs(&AutoIncrement{})
 		}
 	}
-	if err := convertGenExpr(spec.Remain(), c); err != nil {
+	if err := specutil.ConvertGenExpr(spec.Remain(), c, storedOrVirtual); err != nil {
 		return nil, err
 	}
 	return c, err
@@ -261,51 +261,9 @@ func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.BoolAttr("auto_increment", true))
 	}
 	if x := (schema.GeneratedExpr{}); sqlx.Has(c.Attrs, &x) {
-		spec.Extra.Children = append(spec.Extra.Children, fromGenExpr(x))
+		spec.Extra.Children = append(spec.Extra.Children, specutil.FromGenExpr(x, storedOrVirtual))
 	}
 	return spec, nil
-}
-
-// fromGenExpr returns the spec for a generated expression.
-func fromGenExpr(x schema.GeneratedExpr) *schemaspec.Resource {
-	return &schemaspec.Resource{
-		Type: "as",
-		Attrs: []*schemaspec.Attr{
-			specutil.StrAttr("expr", x.Expr),
-			specutil.VarAttr("type", storedOrVirtual(x.Type)),
-		},
-	}
-}
-
-func convertGenExpr(r *schemaspec.Resource, c *schema.Column) error {
-	asA, okA := r.Attr("as")
-	asR, okR := r.Resource("as")
-	switch {
-	case okA && okR:
-		return fmt.Errorf("multiple as definitions for column %q", c.Name)
-	case okA:
-		expr, err := asA.String()
-		if err != nil {
-			return err
-		}
-		c.Attrs = append(c.Attrs, &schema.GeneratedExpr{
-			Type: virtual,
-			Expr: expr,
-		})
-	case okR:
-		var spec struct {
-			Expr string `spec:"expr"`
-			Type string `spec:"type"`
-		}
-		if err := asR.As(&spec); err != nil {
-			return err
-		}
-		c.Attrs = append(c.Attrs, &schema.GeneratedExpr{
-			Expr: spec.Expr,
-			Type: storedOrVirtual(spec.Type),
-		})
-	}
-	return nil
 }
 
 // storedOrVirtual returns a STORED or VIRTUAL
