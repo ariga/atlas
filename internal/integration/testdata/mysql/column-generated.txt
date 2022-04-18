@@ -4,9 +4,9 @@
 apply 1.hcl
 cmpshow users 1.sql
 
-! apply 2.fail1.hcl 'alter table "users": changing VIRTUAL generated column "b" to non-generated column is not supported (drop and add is required)'
-! apply 2.fail2.hcl 'alter table "users": changing column "a" to VIRTUAL generated column is not supported (drop and add is required)'
-! apply 2.fail3.hcl 'alter table "users": changing the store type of generated column "c" from "STORED" to "VIRTUAL" is not supported'
+! apply 2.fail1.hcl 'changing VIRTUAL generated column "b" to non-generated column is not supported (drop and add is required)'
+! apply 2.fail2.hcl 'changing column "a" to VIRTUAL generated column is not supported (drop and add is required)'
+! apply 2.fail3.hcl 'changing the store type of generated column "c" from "STORED" to "VIRTUAL" is not supported'
 
 apply 3.hcl
 cmpshow users 3.sql

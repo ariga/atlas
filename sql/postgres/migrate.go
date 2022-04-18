@@ -306,10 +306,13 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 				if err := s.alterColumn(b, change.Change, change.To); err != nil {
 					return err
 				}
+				if change.Change.Is(schema.ChangeGenerated) {
+					reversible = false
+				}
 				reverse = append(reverse, &schema.ModifyColumn{
 					From:   change.To,
 					To:     change.From,
-					Change: change.Change,
+					Change: change.Change & ^schema.ChangeGenerated,
 				})
 			case *schema.AddForeignKey:
 				b.P("ADD")
@@ -624,6 +627,12 @@ func (s *state) alterColumn(b *sqlx.Builder, k schema.ChangeKind, c *schema.Colu
 			// https://www.postgresql.org/docs/current/sql-altersequence.html
 			b.P("SET GENERATED", id.Generation, "SET START WITH", strconv.FormatInt(id.Sequence.Start, 10), "SET INCREMENT BY", strconv.FormatInt(id.Sequence.Increment, 10), "RESTART")
 			k &= ^schema.ChangeAttr
+		case k.Is(schema.ChangeGenerated):
+			if sqlx.Has(c.Attrs, &schema.GeneratedExpr{}) {
+				return fmt.Errorf("unexpected generation expression change (expect DROP EXPRESSION): %v", c.Attrs)
+			}
+			b.P("DROP EXPRESSION")
+			k &= ^schema.ChangeGenerated
 		case k.Is(schema.ChangeComment):
 			// Handled separately on modifyTable.
 			k &= ^schema.ChangeComment

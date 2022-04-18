@@ -237,7 +237,7 @@ func TestDiff_TableDiff(t *testing.T) {
 					AddColumns(
 						schema.NewIntColumn("c1", "int"),
 						schema.NewIntColumn("c2", "int").
-							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1"}),
+							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
 						schema.NewIntColumn("c3", "int").
 							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1"}),
 						schema.NewIntColumn("c4", "int").
@@ -250,7 +250,7 @@ func TestDiff_TableDiff(t *testing.T) {
 					AddColumns(
 						// Add generated expression.
 						schema.NewIntColumn("c1", "int").
-							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1"}),
+							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
 						// Drop generated expression.
 						schema.NewIntColumn("c2", "int"),
 						// Modify generated expression.
@@ -383,7 +383,7 @@ func TestDiff_TableDiff(t *testing.T) {
 		require.NoError(t, err)
 		t.Run(tt.name, func(t *testing.T) {
 			changes, err := drv.TableDiff(tt.from, tt.to)
-			require.Equal(t, tt.wantErr, err != nil)
+			require.Equalf(t, tt.wantErr, err != nil, "error: %q", err)
 			require.EqualValues(t, tt.wantChanges, changes)
 		})
 	}

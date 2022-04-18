@@ -335,7 +335,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 				}
 				reverse = append(reverse, &schema.DropColumn{C: change.C})
 			case *schema.ModifyColumn:
-				if err := checkChangeGenerated(change); err != nil {
+				if err := checkChangeGenerated(change.From, change.To); err != nil {
 					return err
 				}
 				b.P("MODIFY COLUMN")
@@ -722,21 +722,17 @@ func supportsCharset(t schema.Type) bool {
 }
 
 // checkChangeGenerated checks if the change of a generated column is valid.
-func checkChangeGenerated(c *schema.ModifyColumn) error {
-	if !c.Change.Is(schema.ChangeGenerated) {
-		return nil
-	}
+func checkChangeGenerated(from, to *schema.Column) error {
 	var fromX, toX schema.GeneratedExpr
-	switch fromHas, toHas := sqlx.Has(c.From.Attrs, &fromX), sqlx.Has(c.To.Attrs, &toX); {
+	switch fromHas, toHas := sqlx.Has(from.Attrs, &fromX), sqlx.Has(to.Attrs, &toX); {
 	case !fromHas && toHas && storedOrVirtual(toX.Type) == virtual:
-		return fmt.Errorf("changing column %q to VIRTUAL generated column is not supported (drop and add is required)", c.From.Name)
+		return fmt.Errorf("changing column %q to VIRTUAL generated column is not supported (drop and add is required)", from.Name)
 	case fromHas && !toHas && storedOrVirtual(fromX.Type) == virtual:
-		return fmt.Errorf("changing VIRTUAL generated column %q to non-generated column is not supported (drop and add is required)", c.From.Name)
+		return fmt.Errorf("changing VIRTUAL generated column %q to non-generated column is not supported (drop and add is required)", from.Name)
 	case fromHas && toHas && storedOrVirtual(fromX.Type) != storedOrVirtual(toX.Type):
-		return fmt.Errorf("changing the store type of generated column %q from %q to %q is not supported", c.From.Name, storedOrVirtual(fromX.Type), storedOrVirtual(toX.Type))
-	default:
-		return nil
+		return fmt.Errorf("changing the store type of generated column %q from %q to %q is not supported", from.Name, storedOrVirtual(fromX.Type), storedOrVirtual(toX.Type))
 	}
+	return nil
 }
 
 func quote(s string) string {

@@ -219,6 +219,34 @@ func TestPlanChanges(t *testing.T) {
 		},
 		{
 			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("posts").
+						AddColumns(
+							schema.NewIntColumn("c1", "int").
+								SetGeneratedExpr(&schema.GeneratedExpr{Expr: "id+1"}),
+						),
+					Changes: []schema.Change{
+						&schema.ModifyColumn{
+							Change: schema.ChangeGenerated,
+							From: schema.NewIntColumn("c1", "int").
+								SetGeneratedExpr(&schema.GeneratedExpr{Expr: "id+1"}),
+							To: schema.NewIntColumn("c1", "int"),
+						},
+					},
+				},
+			},
+			plan: &migrate.Plan{
+				Reversible:    false,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd: `ALTER TABLE "posts" ALTER COLUMN "c1" DROP EXPRESSION`,
+					},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
 				&schema.AddTable{
 					T: &schema.Table{
 						Name: "posts",
