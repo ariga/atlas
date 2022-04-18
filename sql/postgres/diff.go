@@ -171,7 +171,15 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	case *schema.BinaryType, *schema.BoolType, *schema.DecimalType, *schema.FloatType,
 		*schema.IntegerType, *schema.JSONType, *schema.SpatialType, *schema.StringType,
 		*schema.TimeType, *BitType, *NetworkType, *UserDefinedType:
-		changed = mustFormat(toT) != mustFormat(fromT)
+		t1, err := FormatType(toT)
+		if err != nil {
+			return false, err
+		}
+		t2, err := FormatType(fromT)
+		if err != nil {
+			return false, err
+		}
+		changed = t1 != t2
 	case *enumType:
 		toT := toT.(*schema.EnumType)
 		changed = fromT.T != toT.T || !sqlx.ValuesEqual(fromT.Values, toT.Values)

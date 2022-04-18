@@ -202,8 +202,8 @@ func (s *state) modifySchema(modify *schema.ModifySchema) error {
 // for creating a table in a schema.
 func (s *state) addTable(add *schema.AddTable) error {
 	var (
-		errors []string
-		b      = Build("CREATE TABLE")
+		errs []string
+		b    = Build("CREATE TABLE")
 	)
 	if sqlx.Has(add.Extra, &schema.IfNotExists{}) {
 		b.P("IF NOT EXISTS")
@@ -212,7 +212,7 @@ func (s *state) addTable(add *schema.AddTable) error {
 	b.Wrap(func(b *sqlx.Builder) {
 		b.MapComma(add.T.Columns, func(i int, b *sqlx.Builder) {
 			if err := s.column(b, add.T, add.T.Columns[i]); err != nil {
-				errors = append(errors, err.Error())
+				errs = append(errs, err.Error())
 			}
 		})
 		if pk := add.T.PrimaryKey; pk != nil {
@@ -229,7 +229,7 @@ func (s *state) addTable(add *schema.AddTable) error {
 		if len(add.T.ForeignKeys) > 0 {
 			b.Comma()
 			if err := s.fks(b, add.T.ForeignKeys...); err != nil {
-				errors = append(errors, err.Error())
+				errs = append(errs, err.Error())
 			}
 		}
 		for _, attr := range add.T.Attrs {
@@ -239,8 +239,8 @@ func (s *state) addTable(add *schema.AddTable) error {
 			}
 		}
 	})
-	if len(errors) > 0 {
-		return fmt.Errorf("create table %q: %s", add.T.Name, strings.Join(errors, ", "))
+	if len(errs) > 0 {
+		return fmt.Errorf("create table %q: %s", add.T.Name, strings.Join(errs, ", "))
 	}
 	s.tableAttr(b, add, add.T.Attrs...)
 	s.append(&migrate.Change{
@@ -343,8 +343,9 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 					return err
 				}
 				reverse = append(reverse, &schema.ModifyColumn{
-					From: change.To,
-					To:   change.From,
+					From:   change.To,
+					To:     change.From,
+					Change: change.Change,
 				})
 			case *schema.DropColumn:
 				b.P("DROP COLUMN").Ident(change.C.Name)
@@ -402,7 +403,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 					b.P("DROP CHECK").Ident(change.From.Name).Comma().P("ADD")
 					s.check(b, change.To)
 				default:
-					return errors.New("unknown check constraints change")
+					return errors.New("unknown check constraint change")
 				}
 				reverse = append(reverse, &schema.ModifyCheck{
 					From: change.To,
