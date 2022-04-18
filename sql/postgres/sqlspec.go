@@ -290,14 +290,19 @@ func schemaSpec(schem *schema.Schema) (*doc, error) {
 	}
 	d.Schemas = []*sqlspec.Schema{s}
 	d.Tables = tbls
+
+	enums := make(map[string]struct{})
 	for _, t := range schem.Tables {
 		for _, c := range t.Columns {
 			if t, ok := c.Type.Type.(*schema.EnumType); ok {
-				d.Enums = append(d.Enums, &Enum{
-					Name:   t.T,
-					Schema: specutil.SchemaRef(s.Name),
-					Values: t.Values,
-				})
+				if _, ok := enums[t.T]; !ok {
+					d.Enums = append(d.Enums, &Enum{
+						Name:   t.T,
+						Schema: specutil.SchemaRef(s.Name),
+						Values: t.Values,
+					})
+					enums[t.T] = struct{}{}
+				}
 			}
 		}
 	}
