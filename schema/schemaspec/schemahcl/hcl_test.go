@@ -249,3 +249,25 @@ func TestQualified(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, h, string(out))
 }
+
+func TestNameAttr(t *testing.T) {
+	h := `
+named "block_id" {
+  name = "atlas"
+}
+ref = named.block_id.name
+`
+	type Named struct {
+		Name string `spec:"name,name"`
+	}
+	var test struct {
+		Named *Named `spec:"named"`
+		Ref   string `spec:"ref"`
+	}
+	err := Unmarshal([]byte(h), &test)
+	require.NoError(t, err)
+	require.EqualValues(t, &Named{
+		Name: "atlas",
+	}, test.Named)
+	require.EqualValues(t, "atlas", test.Ref)
+}

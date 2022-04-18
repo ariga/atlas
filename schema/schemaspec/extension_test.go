@@ -194,3 +194,20 @@ func TestListRef(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, resource, scan)
 }
+
+func TestNameAttr(t *testing.T) {
+	type Named struct {
+		Name string `spec:"name,name"`
+	}
+	schemaspec.Register("named", &Named{})
+	resource := &schemaspec.Resource{
+		Name: "id",
+		Attrs: []*schemaspec.Attr{
+			schemautil.StrLitAttr("name", "atlas"),
+		},
+	}
+	tgt := Named{}
+	err := resource.As(&tgt)
+	require.NoError(t, err)
+	require.EqualValues(t, "atlas", tgt.Name)
+}
