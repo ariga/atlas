@@ -107,6 +107,7 @@ var (
 		schemahcl.WithTypes(TypeRegistry.Specs()),
 		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeGIN, IndexTypeGiST),
 		schemahcl.WithScopedEnums("table.column.identity.generated", GeneratedTypeAlways, GeneratedTypeByDefault),
+		schemahcl.WithScopedEnums("table.column.as.type", "STORED"),
 		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
 		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
 	)
@@ -142,6 +143,9 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 			return nil, err
 		}
 		c.Attrs = append(c.Attrs, id)
+	}
+	if err := specutil.ConvertGenExpr(spec.Remain(), c, generatedType); err != nil {
+		return nil, err
 	}
 	return c, nil
 }
@@ -345,6 +349,9 @@ func columnSpec(c *schema.Column, _ *schema.Table) (*sqlspec.Column, error) {
 	if i := (&Identity{}); sqlx.Has(c.Attrs, i) {
 		s.Extra.Children = append(s.Extra.Children, fromIdentity(i))
 	}
+	if x := (schema.GeneratedExpr{}); sqlx.Has(c.Attrs, &x) {
+		s.Extra.Children = append(s.Extra.Children, specutil.FromGenExpr(x, generatedType))
+	}
 	return s, nil
 }
 
@@ -488,3 +495,6 @@ func formatTime() schemahcl.TypeSpecOption {
 		return FormatType(&schema.TimeType{T: t.T, Precision: &p})
 	})
 }
+
+// generatedType returns the default and only type for a generated column.
+func generatedType(string) string { return "STORED" }

@@ -280,23 +280,6 @@ func linkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *sqlspec.Table
 	return nil
 }
 
-// FromRealm converts a schema.Realm into []sqlspec.Schema and []sqlspec.Table.
-func FromRealm(r *schema.Realm, fn TableSpecFunc) ([]*sqlspec.Schema, []*sqlspec.Table, error) {
-	var (
-		schemas []*sqlspec.Schema
-		tables  []*sqlspec.Table
-	)
-	for _, sch := range r.Schemas {
-		schemaSpec, tableSpecs, err := FromSchema(sch, fn)
-		if err != nil {
-			return nil, nil, fmt.Errorf("specutil: cannot convert schema %q: %w", sch.Name, err)
-		}
-		schemas = append(schemas, schemaSpec)
-		tables = append(tables, tableSpecs...)
-	}
-	return schemas, tables, nil
-}
-
 // FromSchema converts a schema.Schema into sqlspec.Schema and []sqlspec.Table.
 func FromSchema(s *schema.Schema, fn TableSpecFunc) (*sqlspec.Schema, []*sqlspec.Table, error) {
 	spec := &sqlspec.Schema{
@@ -393,6 +376,49 @@ func FromColumn(col *schema.Column, columnTypeSpec ColumnTypeSpecFunc) (*sqlspec
 	}
 	convertCommentFromSchema(col.Attrs, &spec.Extra.Attrs)
 	return spec, nil
+}
+
+// FromGenExpr returns the spec for a generated expression.
+func FromGenExpr(x schema.GeneratedExpr, t func(string) string) *schemaspec.Resource {
+	return &schemaspec.Resource{
+		Type: "as",
+		Attrs: []*schemaspec.Attr{
+			StrAttr("expr", x.Expr),
+			VarAttr("type", t(x.Type)),
+		},
+	}
+}
+
+// ConvertGenExpr converts the "as" attribute or the block under the given resource.
+func ConvertGenExpr(r *schemaspec.Resource, c *schema.Column, t func(string) string) error {
+	asA, okA := r.Attr("as")
+	asR, okR := r.Resource("as")
+	switch {
+	case okA && okR:
+		return fmt.Errorf("multiple as definitions for column %q", c.Name)
+	case okA:
+		expr, err := asA.String()
+		if err != nil {
+			return err
+		}
+		c.Attrs = append(c.Attrs, &schema.GeneratedExpr{
+			Type: t(""), // default type.
+			Expr: expr,
+		})
+	case okR:
+		var spec struct {
+			Expr string `spec:"expr"`
+			Type string `spec:"type"`
+		}
+		if err := asR.As(&spec); err != nil {
+			return err
+		}
+		c.Attrs = append(c.Attrs, &schema.GeneratedExpr{
+			Expr: spec.Expr,
+			Type: t(spec.Type),
+		})
+	}
+	return nil
 }
 
 func toValue(expr schema.Expr) (schemaspec.Value, error) {
