@@ -153,12 +153,12 @@ func (i *inspect) columns(ctx context.Context, s *schema.Schema) error {
 // addColumn scans the current row and adds a new column from it to the table.
 func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	var (
-		typid, maxlen, precision, timeprecision, scale, seqstart, seqinc                                    sql.NullInt64
-		table, name, typ, nullable, defaults, udt, identity, generation, charset, collate, comment, typtype sql.NullString
+		typid, maxlen, precision, timeprecision, scale, seqstart, seqinc                                              sql.NullInt64
+		table, name, typ, nullable, defaults, udt, identity, genidentity, genexpr, charset, collate, comment, typtype sql.NullString
 	)
 	if err := rows.Scan(
-		&table, &name, &typ, &nullable, &defaults, &maxlen, &precision, &timeprecision, &scale,
-		&charset, &collate, &udt, &identity, &seqstart, &seqinc, &generation, &comment, &typtype, &typid,
+		&table, &name, &typ, &nullable, &defaults, &maxlen, &precision, &timeprecision, &scale, &charset,
+		&collate, &udt, &identity, &seqstart, &seqinc, &genidentity, &genexpr, &comment, &typtype, &typid,
 	); err != nil {
 		return err
 	}
@@ -188,27 +188,26 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	}
 	if identity.String == "YES" {
 		c.Attrs = append(c.Attrs, &Identity{
-			Generation: generation.String,
+			Generation: genidentity.String,
 			Sequence: &Sequence{
 				Start:     seqstart.Int64,
 				Increment: seqinc.Int64,
 			},
 		})
 	}
-	if sqlx.ValidString(comment) {
-		c.Attrs = append(c.Attrs, &schema.Comment{
-			Text: comment.String,
+	if sqlx.ValidString(genexpr) {
+		c.Attrs = append(c.Attrs, &schema.GeneratedExpr{
+			Expr: genexpr.String,
 		})
+	}
+	if sqlx.ValidString(comment) {
+		c.SetComment(comment.String)
 	}
 	if sqlx.ValidString(charset) {
-		c.Attrs = append(c.Attrs, &schema.Charset{
-			V: charset.String,
-		})
+		c.SetCharset(charset.String)
 	}
 	if sqlx.ValidString(collate) {
-		c.Attrs = append(c.Attrs, &schema.Collation{
-			V: collate.String,
-		})
+		c.SetCollation(collate.String)
 	}
 	t.Columns = append(t.Columns, c)
 	return nil
@@ -753,6 +752,7 @@ SELECT
 	t1.identity_start,
 	t1.identity_increment,
 	t1.identity_generation,
+	t1.generation_expression,
 	col_description(to_regclass(quote_ident("table_schema") || '.' || quote_ident("table_name"))::oid, "ordinal_position") AS comment,
 	t2.typtype,
 	t2.oid
