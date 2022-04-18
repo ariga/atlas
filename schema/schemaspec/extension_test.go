@@ -206,7 +206,7 @@ func TestNameAttr(t *testing.T) {
 			schemautil.StrLitAttr("name", "atlas"),
 		},
 	}
-	tgt := Named{}
+	var tgt Named
 	err := resource.As(&tgt)
 	require.NoError(t, err)
 	require.EqualValues(t, "atlas", tgt.Name)
