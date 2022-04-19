@@ -8,7 +8,6 @@ import (
 	"context"
 
 	"ariga.io/atlas"
-	"ariga.io/atlas/sql"
 
 	"github.com/spf13/cobra"
 )
@@ -62,14 +61,11 @@ func CmdInspectRun(cmd *cobra.Command, _ []string) {
 		schemaCmd.PrintErrln("The Atlas UI is not available in this release.")
 		return
 	}
-	d, err := sql.DefaultMux.OpenAtlas(cmd.Context(), InspectFlags.URL)
-	cobra.CheckErr(err)
-	defer d.Close()
-	inspectRun(cmd.Context(), d, InspectFlags.URL)
+	inspectRun(cmd.Context(), InspectFlags.URL)
 }
 
-func inspectRun(ctx context.Context, d *sql.Driver, url string) {
-	ddl, err := atlas.Inspect(ctx, d, url, InspectFlags.Schema...)
+func inspectRun(ctx context.Context, url string) {
+	ddl, err := atlas.Inspect(ctx, url, InspectFlags.Schema...)
 	cobra.CheckErr(err)
 	schemaCmd.Print(string(ddl))
 }

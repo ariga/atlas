@@ -9,7 +9,14 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
-func Inspect(ctx context.Context, d *sql.Driver, url string, schemas ...string) ([]byte, error) {
+// Inspect reads the state of the database from the provided url
+// and returns a ddl representing the state of the Database.
+func Inspect(ctx context.Context, url string, schemas ...string) ([]byte, error) {
+	d, err := sql.DefaultMux.OpenAtlas(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+	defer d.Close()
 	name, err := sql.SchemaNameFromURL(ctx, url)
 	if err != nil {
 		return nil, err
@@ -30,6 +37,7 @@ func Inspect(ctx context.Context, d *sql.Driver, url string, schemas ...string) 
 	return ddl, nil
 }
 
+// Plan computes the migration plan needed to change state of `from` Database to `to` Database.
 func Plan(ctx context.Context, fromURL, toURL string) (*migrate.Plan, error) {
 	toDriver, err := sql.DefaultMux.OpenAtlas(ctx, toURL)
 	if err != nil {
