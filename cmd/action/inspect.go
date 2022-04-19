@@ -7,7 +7,7 @@ package action
 import (
 	"context"
 
-	"ariga.io/atlas"
+	"ariga.io/atlas/sql"
 
 	"github.com/spf13/cobra"
 )
@@ -65,7 +65,7 @@ func CmdInspectRun(cmd *cobra.Command, _ []string) {
 }
 
 func inspectRun(ctx context.Context, url string) {
-	ddl, err := atlas.Inspect(ctx, url, InspectFlags.Schema...)
+	ddl, err := sql.Inspect(ctx, url, InspectFlags.Schema...)
 	cobra.CheckErr(err)
 	schemaCmd.Print(string(ddl))
 }

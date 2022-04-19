@@ -7,7 +7,7 @@ package action
 import (
 	"strings"
 
-	"ariga.io/atlas"
+	"ariga.io/atlas/sql"
 
 	"github.com/spf13/cobra"
 )
@@ -46,7 +46,7 @@ func init() {
 // the "from" schema to the "to" schema.
 func cmdDiffRun(cmd *cobra.Command, flags *diffCmdOpts) {
 	ctx := cmd.Context()
-	plan, err := atlas.Plan(ctx, flags.fromURL, flags.toURL)
+	plan, err := sql.Plan(ctx, flags.fromURL, flags.toURL)
 	cobra.CheckErr(err)
 	if len(plan.Changes) == 0 {
 		cmd.Println("Schemas are synced, no changes to be made.")
