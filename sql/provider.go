@@ -2,7 +2,7 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package provider
+package sql
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"regexp"
 	"time"
 
-	"ariga.io/atlas/pkg/docker"
+	"ariga.io/atlas/internal/docker"
 
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"

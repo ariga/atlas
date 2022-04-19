@@ -2,7 +2,7 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package provider_test
+package sql_test
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"ariga.io/atlas/pkg/provider"
+	"ariga.io/atlas/sql"
 
 	mysqld "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
@@ -22,33 +22,33 @@ import (
 )
 
 func Test_ProviderNotSupported(t *testing.T) {
-	u := provider.NewMux()
+	u := sql.NewMux()
 	_, err := u.OpenAtlas(context.Background(), "fake://open")
 	require.Error(t, err)
 }
 
 func Test_RegisterProvider(t *testing.T) {
-	u := provider.NewMux()
-	p := func(context.Context, string, ...provider.ProviderOption) (*provider.Driver, error) { return nil, nil }
+	u := sql.NewMux()
+	p := func(context.Context, string, ...sql.ProviderOption) (*sql.Driver, error) { return nil, nil }
 	require.NotPanics(t, func() { u.RegisterProvider("key", p) })
 }
 
 func Test_RegisterTwiceSameKeyFails(t *testing.T) {
-	u := provider.NewMux()
-	p := func(context.Context, string, ...provider.ProviderOption) (*provider.Driver, error) { return nil, nil }
+	u := sql.NewMux()
+	p := func(context.Context, string, ...sql.ProviderOption) (*sql.Driver, error) { return nil, nil }
 	require.NotPanics(t, func() { u.RegisterProvider("key", p) })
 	require.Panics(t, func() { u.RegisterProvider("key", p) })
 }
 
 func Test_GetDriverFails(t *testing.T) {
-	u := provider.NewMux()
+	u := sql.NewMux()
 	_, err := u.OpenAtlas(context.Background(), "key://open")
 	require.Error(t, err)
 }
 
 func Test_GetDriverSuccess(t *testing.T) {
-	u := provider.NewMux()
-	p := func(context.Context, string, ...provider.ProviderOption) (*provider.Driver, error) { return nil, nil }
+	u := sql.NewMux()
+	p := func(context.Context, string, ...sql.ProviderOption) (*sql.Driver, error) { return nil, nil }
 	u.RegisterProvider("key", p)
 	_, err := u.OpenAtlas(context.Background(), "key://open")
 	require.NoError(t, err)
@@ -102,7 +102,7 @@ func Test_SQLiteFileDoestNotExist(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.url, func(t *testing.T) {
-			_, err := provider.SchemaNameFromURL(context.Background(), tt.url)
+			_, err := sql.SchemaNameFromURL(context.Background(), tt.url)
 			require.EqualError(t, err, tt.expected)
 		})
 	}
@@ -117,13 +117,13 @@ func Test_SQLiteFileExist(t *testing.T) {
 		r.NoError(err)
 	})
 	dsn := "sqlite://file://" + file.Name()
-	_, err = provider.SchemaNameFromURL(context.Background(), dsn)
+	_, err = sql.SchemaNameFromURL(context.Background(), dsn)
 	r.NoError(err)
 }
 
 func Test_SQLiteInMemory(t *testing.T) {
 	r := require.New(t)
-	_, err := provider.SchemaNameFromURL(context.Background(), "sqlite://file:test.db?cache=shared&mode=memory")
+	_, err := sql.SchemaNameFromURL(context.Background(), "sqlite://file:test.db?cache=shared&mode=memory")
 	r.NoError(err)
 }
 
@@ -157,7 +157,7 @@ func Test_PostgresSchemaDSN(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.url, func(t *testing.T) {
-			schema, err := provider.SchemaNameFromURL(context.Background(), tt.url)
+			schema, err := sql.SchemaNameFromURL(context.Background(), tt.url)
 			require.Equal(t, tt.wantErr, err != nil)
 			require.Equal(t, tt.expected, schema)
 		})
@@ -176,7 +176,7 @@ func TestMux_OpenAtlas(t *testing.T) {
 		} {
 			calls, l := mockServer(t)
 			require.NoError(t, mysqld.SetLogger(log.New(ioutil.Discard, "", 1)))
-			_, err := provider.DefaultMux.OpenAtlas(context.Background(), fmt.Sprintf(u, l.Addr()))
+			_, err := sql.DefaultMux.OpenAtlas(context.Background(), fmt.Sprintf(u, l.Addr()))
 			require.Error(t, err, "mock server rejects all incoming connections")
 			require.NotZero(t, atomic.LoadInt64(calls))
 		}

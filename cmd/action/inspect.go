@@ -7,9 +7,8 @@ package action
 import (
 	"context"
 
-	"ariga.io/atlas/pkg/provider"
-
-	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas"
+	"ariga.io/atlas/sql"
 
 	"github.com/spf13/cobra"
 )
@@ -63,23 +62,14 @@ func CmdInspectRun(cmd *cobra.Command, _ []string) {
 		schemaCmd.PrintErrln("The Atlas UI is not available in this release.")
 		return
 	}
-	d, err := provider.DefaultMux.OpenAtlas(cmd.Context(), InspectFlags.URL)
+	d, err := sql.DefaultMux.OpenAtlas(cmd.Context(), InspectFlags.URL)
 	cobra.CheckErr(err)
 	defer d.Close()
 	inspectRun(cmd.Context(), d, InspectFlags.URL)
 }
 
-func inspectRun(ctx context.Context, d *provider.Driver, url string) {
-	schemas := InspectFlags.Schema
-	if n, err := provider.SchemaNameFromURL(ctx, url); n != "" {
-		cobra.CheckErr(err)
-		schemas = append(schemas, n)
-	}
-	s, err := d.InspectRealm(ctx, &schema.InspectRealmOption{
-		Schemas: schemas,
-	})
-	cobra.CheckErr(err)
-	ddl, err := d.MarshalSpec(s)
+func inspectRun(ctx context.Context, d *sql.Driver, url string) {
+	ddl, err := atlas.Inspect(ctx, d, url, InspectFlags.Schema...)
 	cobra.CheckErr(err)
 	schemaCmd.Print(string(ddl))
 }

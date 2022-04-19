@@ -14,7 +14,7 @@ import (
 	"text/template"
 	"time"
 
-	"ariga.io/atlas/pkg/provider"
+	"ariga.io/atlas/sql"
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
@@ -123,12 +123,12 @@ func init() {
 
 // CmdMigrateDiffRun is the command executed when running the CLI with 'migrate diff' args.
 func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
-	var opts []provider.ProviderOption
+	var opts []sql.ProviderOption
 	if MigrateFlags.Verbose {
-		opts = append(opts, &provider.VerboseLogging{})
+		opts = append(opts, &sql.VerboseLogging{})
 	}
 	// Open a dev driver.
-	dev, err := provider.DefaultMux.OpenAtlas(cmd.Context(), MigrateFlags.DevURL, opts...)
+	dev, err := sql.DefaultMux.OpenAtlas(cmd.Context(), MigrateFlags.DevURL, opts...)
 	if err != nil {
 		return err
 	}
@@ -203,13 +203,13 @@ func dir() (migrate.Dir, error) {
 }
 
 // to returns a migrate.StateReader for the given to flag.
-func to(ctx context.Context, d *provider.Driver) (migrate.StateReader, error) {
+func to(ctx context.Context, d *sql.Driver) (migrate.StateReader, error) {
 	parts := strings.SplitN(MigrateFlags.ToURL, "://", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid driver url %q", MigrateFlags.ToURL)
 	}
 	schemas := MigrateFlags.Schemas
-	if n, err := provider.SchemaNameFromURL(ctx, parts[0]); n != "" {
+	if n, err := sql.SchemaNameFromURL(ctx, parts[0]); n != "" {
 		if err != nil {
 			return nil, err
 		}
@@ -245,7 +245,7 @@ func to(ctx context.Context, d *provider.Driver) (migrate.StateReader, error) {
 		}
 		return migrate.Realm(realm), nil
 	default: // database connection
-		drv, err := provider.DefaultMux.OpenAtlas(ctx, MigrateFlags.ToURL)
+		drv, err := sql.DefaultMux.OpenAtlas(ctx, MigrateFlags.ToURL)
 		if err != nil {
 			return nil, err
 		}
@@ -276,7 +276,7 @@ var (
 
 type stateReadCloser struct {
 	migrate.StateReader
-	drv *provider.Driver
+	drv *sql.Driver
 }
 
 func (s *stateReadCloser) Close() error {

@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"ariga.io/atlas/pkg/provider"
+	"ariga.io/atlas/sql"
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
@@ -58,8 +58,8 @@ func TestMigrate_Diff(t *testing.T) {
 	require.FileExists(t, filepath.Join(p, "atlas.sum"))
 
 	// A lock will prevent diffing.
-	provider.DefaultMux.RegisterProvider("sqlitelock", func(ctx context.Context, s string, _ ...provider.ProviderOption) (*provider.Driver, error) {
-		drv, err := provider.SqliteProvider(ctx, s)
+	sql.DefaultMux.RegisterProvider("sqlitelock", func(ctx context.Context, s string, _ ...sql.ProviderOption) (*sql.Driver, error) {
+		drv, err := sql.SqliteProvider(ctx, s)
 		if err != nil {
 			return nil, err
 		}

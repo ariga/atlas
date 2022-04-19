@@ -7,7 +7,7 @@ package action
 import (
 	"strings"
 
-	"ariga.io/atlas/pkg/provider"
+	"ariga.io/atlas"
 
 	"github.com/spf13/cobra"
 )
@@ -46,36 +46,13 @@ func init() {
 // the "from" schema to the "to" schema.
 func cmdDiffRun(cmd *cobra.Command, flags *diffCmdOpts) {
 	ctx := cmd.Context()
-	fromDriver, err := provider.DefaultMux.OpenAtlas(cmd.Context(), flags.fromURL)
+	plan, err := atlas.Plan(ctx, flags.fromURL, flags.toURL)
 	cobra.CheckErr(err)
-	defer fromDriver.Close()
-	toDriver, err := provider.DefaultMux.OpenAtlas(cmd.Context(), flags.toURL)
-	cobra.CheckErr(err)
-	defer toDriver.Close()
-	fromName, err := provider.SchemaNameFromURL(ctx, flags.fromURL)
-	cobra.CheckErr(err)
-	toName, err := provider.SchemaNameFromURL(ctx, flags.toURL)
-	cobra.CheckErr(err)
-	fromSchema, err := fromDriver.InspectSchema(ctx, fromName, nil)
-	cobra.CheckErr(err)
-	toSchema, err := toDriver.InspectSchema(ctx, toName, nil)
-	cobra.CheckErr(err)
-	// SchemaDiff checks for name equality which is irrelevant in the case
-	// the user wants to compare their contents, if the names are different
-	// we reset them to allow the comparison.
-	if fromName != toName {
-		toSchema.Name = ""
-		fromSchema.Name = ""
-	}
-	diff, err := toDriver.SchemaDiff(fromSchema, toSchema)
-	cobra.CheckErr(err)
-	p, err := toDriver.PlanChanges(ctx, "plan", diff)
-	cobra.CheckErr(err)
-	if len(p.Changes) == 0 {
+	if len(plan.Changes) == 0 {
 		cmd.Println("Schemas are synced, no changes to be made.")
 		return
 	}
-	for _, c := range p.Changes {
+	for _, c := range plan.Changes {
 		if c.Comment != "" {
 			cmd.Println("--", strings.ToUpper(c.Comment[:1])+c.Comment[1:])
 		}
