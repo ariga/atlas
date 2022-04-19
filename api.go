@@ -50,6 +50,7 @@ func Plan(ctx context.Context, fromURL, toURL string) (*migrate.Plan, error) {
 	return toDriver.PlanChanges(ctx, "plan", changes)
 }
 
+// Diff computes the difference between `from` Database and `to` Database.
 func Diff(ctx context.Context, fromURL, toURL string) ([]schema.Change, error) {
 	fromDriver, err := sql.DefaultMux.OpenAtlas(ctx, fromURL)
 	if err != nil {

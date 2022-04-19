@@ -16,13 +16,13 @@ func TestDockerConfig(t *testing.T) {
 	ctx := context.Background()
 
 	// invalid config
-	_, err := (&DockerConfig{}).Run(ctx)
+	_, err := (&Config{}).Run(ctx)
 	require.Error(t, err)
 
 	// MySQL
 	cfg, err := MySQL("latest", Out(ioutil.Discard))
 	require.NoError(t, err)
-	require.Equal(t, &DockerConfig{
+	require.Equal(t, &Config{
 		Image: "mysql:latest",
 		Env:   []string{"MYSQL_ROOT_PASSWORD=pass"},
 		Port:  "3306",
@@ -32,7 +32,7 @@ func TestDockerConfig(t *testing.T) {
 	// MariaDB
 	cfg, err = MariaDB("latest", Out(ioutil.Discard))
 	require.NoError(t, err)
-	require.Equal(t, &DockerConfig{
+	require.Equal(t, &Config{
 		Image: "mariadb:latest",
 		Env:   []string{"MYSQL_ROOT_PASSWORD=pass"},
 		Port:  "3306",
@@ -42,7 +42,7 @@ func TestDockerConfig(t *testing.T) {
 	// PostgreSQL
 	cfg, err = PostgreSQL("latest", Out(ioutil.Discard))
 	require.NoError(t, err)
-	require.Equal(t, &DockerConfig{
+	require.Equal(t, &Config{
 		Image: "postgres:latest",
 		Env:   []string{"POSTGRES_PASSWORD=pass"},
 		Port:  "5432",

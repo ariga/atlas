@@ -116,7 +116,7 @@ func dockerProvider(ctx context.Context, dsn string, opts ...ProviderOption) (*D
 	}
 	img, v := m[1], m[2]
 	var (
-		cfg *docker.DockerConfig
+		cfg *docker.Config
 		err error
 	)
 	switch img {

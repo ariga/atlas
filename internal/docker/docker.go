@@ -26,8 +26,8 @@ import (
 const pass = "pass"
 
 type (
-	// DockerConfig is used to configure container creation.
-	DockerConfig struct {
+	// Config is used to configure container creation.
+	Config struct {
 		setup []string // contains statements to execute once the service is up
 		// Image is the name of the image to pull and run.
 		Image string
@@ -40,8 +40,8 @@ type (
 	}
 	// A Container is an instance of a created container.
 	Container struct {
-		cfg DockerConfig // DockerConfig used to create this container
-		out io.Writer    // custom write to log status messages to
+		cfg Config    // Config used to create this container
+		out io.Writer // custom write to log status messages to
 		// ID of the container.
 		ID string
 		// Passphrase of the root user.
@@ -49,13 +49,13 @@ type (
 		// Port on the host this containers service is bound to.
 		Port string
 	}
-	// DockerConfigOption allows configuring DockerConfig with functional arguments.
-	DockerConfigOption func(*DockerConfig) error
+	// ConfigOption allows configuring Config with functional arguments.
+	ConfigOption func(*Config) error
 )
 
 // NewConfig returns a new config with the given options applied.
-func NewConfig(opts ...DockerConfigOption) (*DockerConfig, error) {
-	c := &DockerConfig{Out: ioutil.Discard}
+func NewConfig(opts ...ConfigOption) (*Config, error) {
+	c := &Config{Out: ioutil.Discard}
 	for _, opt := range opts {
 		if err := opt(c); err != nil {
 			return nil, err
@@ -64,11 +64,11 @@ func NewConfig(opts ...DockerConfigOption) (*DockerConfig, error) {
 	return c, nil
 }
 
-// MySQL returns a new DockerConfig for a MySQL image.
-func MySQL(version string, opts ...DockerConfigOption) (*DockerConfig, error) {
+// MySQL returns a new Config for a MySQL image.
+func MySQL(version string, opts ...ConfigOption) (*Config, error) {
 	return NewConfig(
 		append(
-			[]DockerConfigOption{
+			[]ConfigOption{
 				Image("mysql:" + version),
 				Port("3306"),
 				Env("MYSQL_ROOT_PASSWORD=" + pass),
@@ -78,16 +78,16 @@ func MySQL(version string, opts ...DockerConfigOption) (*DockerConfig, error) {
 	)
 }
 
-// MariaDB returns a new DockerConfig for a MariaDB image.
-func MariaDB(version string, opts ...DockerConfigOption) (*DockerConfig, error) {
-	return MySQL(version, append([]DockerConfigOption{Image("mariadb:" + version)}, opts...)...)
+// MariaDB returns a new Config for a MariaDB image.
+func MariaDB(version string, opts ...ConfigOption) (*Config, error) {
+	return MySQL(version, append([]ConfigOption{Image("mariadb:" + version)}, opts...)...)
 }
 
-// PostgreSQL returns a new DockerConfig for a PostgreSQL image.
-func PostgreSQL(version string, opts ...DockerConfigOption) (*DockerConfig, error) {
+// PostgreSQL returns a new Config for a PostgreSQL image.
+func PostgreSQL(version string, opts ...ConfigOption) (*Config, error) {
 	return NewConfig(
 		append(
-			[]DockerConfigOption{
+			[]ConfigOption{
 				Image("postgres:" + version),
 				Port("5432"),
 				Env("POSTGRES_PASSWORD=" + pass),
@@ -103,8 +103,8 @@ func PostgreSQL(version string, opts ...DockerConfigOption) (*DockerConfig, erro
 //	Image("mysql")
 //	Image("postgres:13")
 //
-func Image(i string) DockerConfigOption {
-	return func(c *DockerConfig) error {
+func Image(i string) ConfigOption {
+	return func(c *Config) error {
 		c.Image = strings.TrimSuffix(i, ":")
 		return nil
 	}
@@ -115,8 +115,8 @@ func Image(i string) DockerConfigOption {
 //	Port("3306")
 //	Port("5432")
 //
-func Port(p string) DockerConfigOption {
-	return func(c *DockerConfig) error {
+func Port(p string) ConfigOption {
+	return func(c *Config) error {
 		c.Port = p
 		return nil
 	}
@@ -127,8 +127,8 @@ func Port(p string) DockerConfigOption {
 // 	Config(Image("mysql"), Env("MYSQL_ROOT_PASSWORD=password"))
 // 	Config(Image("postgres"), Env("MYSQL_ROOT_PASSWORD=password"))
 //
-func Env(env ...string) DockerConfigOption {
-	return func(c *DockerConfig) error {
+func Env(env ...string) ConfigOption {
+	return func(c *Config) error {
 		c.Env = env
 		return nil
 	}
@@ -139,8 +139,8 @@ func Env(env ...string) DockerConfigOption {
 // 	buf := new(bytes.Buffer)
 // 	NewConfig(Out(buf))
 //
-func Out(w io.Writer) DockerConfigOption {
-	return func(c *DockerConfig) error {
+func Out(w io.Writer) ConfigOption {
+	return func(c *Config) error {
 		c.Out = w
 		return nil
 	}
@@ -150,15 +150,15 @@ func Out(w io.Writer) DockerConfigOption {
 //
 //  setup("DROP SCHEMA IF EXISTS public CASCADE;")
 //
-func setup(s ...string) DockerConfigOption {
-	return func(c *DockerConfig) error {
+func setup(s ...string) ConfigOption {
+	return func(c *Config) error {
 		c.setup = s
 		return nil
 	}
 }
 
-// Run pulls and starts a new docker container from the DockerConfig.
-func (c *DockerConfig) Run(ctx context.Context) (*Container, error) {
+// Run pulls and starts a new docker container from the Config.
+func (c *Config) Run(ctx context.Context) (*Container, error) {
 	// Make sure the configuration is not missing critical values.
 	if err := c.validate(); err != nil {
 		return nil, err
@@ -280,7 +280,7 @@ func (c *Container) URL() (string, error) {
 }
 
 // validate that no empty values are given.
-func (c *DockerConfig) validate() error {
+func (c *Config) validate() error {
 	if c == nil || c.Image == "" || c.Port == "" || c.Out == nil {
 		return fmt.Errorf("invalid configuration %q", c)
 	}
