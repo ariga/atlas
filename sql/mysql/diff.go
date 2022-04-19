@@ -91,14 +91,16 @@ func (d *diff) ColumnChange(from, to *schema.Column) (schema.ChangeKind, error) 
 	if changed {
 		change |= schema.ChangeType
 	}
-	changed, err = d.defaultChanged(from, to)
-	if err != nil {
+	if changed, err = d.defaultChanged(from, to); err != nil {
 		return schema.NoChange, err
 	}
 	if changed {
 		change |= schema.ChangeDefault
 	}
-	if changed := d.generatedChanged(from, to); changed {
+	if changed, err = d.generatedChanged(from, to); err != nil {
+		return schema.NoChange, err
+	}
+	if changed {
 		change |= schema.ChangeGenerated
 	}
 	return change, nil
@@ -374,16 +376,15 @@ func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
 }
 
 // generatedChanged reports if the generated expression of a column was changed.
-func (*diff) generatedChanged(from, to *schema.Column) bool {
-	var fromX, toX schema.GeneratedExpr
-	switch fromHas, toHas := sqlx.Has(from.Attrs, &fromX), sqlx.Has(to.Attrs, &toX); {
-	case fromHas != toHas:
-		return true
-	case fromHas && toHas:
-		return storedOrVirtual(fromX.Type) != storedOrVirtual(toX.Type) || fromX.Expr != toX.Expr
-	default: // !fromHas && !toHas.
-		return false
+func (*diff) generatedChanged(from, to *schema.Column) (bool, error) {
+	var (
+		fromX, toX     schema.GeneratedExpr
+		fromHas, toHas = sqlx.Has(from.Attrs, &fromX), sqlx.Has(to.Attrs, &toX)
+	)
+	if !fromHas && !toHas || fromHas && toHas && fromX.Expr == toX.Expr && storedOrVirtual(fromX.Type) == storedOrVirtual(toX.Type) {
+		return false, nil
 	}
+	return true, checkChangeGenerated(from, to)
 }
 
 // equalIntValues report if the 2 int default values are ~equal.

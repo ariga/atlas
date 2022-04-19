@@ -123,6 +123,46 @@ func TestDiff_TableDiff(t *testing.T) {
 		},
 		func() testcase {
 			var (
+				s    = schema.New("public")
+				from = schema.NewTable("t1").
+					SetSchema(s).
+					AddColumns(
+						schema.NewIntColumn("c1", "int").
+							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
+					)
+				to = schema.NewTable("t1").
+					SetSchema(s).
+					AddColumns(
+						schema.NewIntColumn("c1", "int"),
+					)
+			)
+			return testcase{
+				name: "drop generation expression",
+				from: from,
+				to:   to,
+				wantChanges: []schema.Change{
+					&schema.ModifyColumn{From: from.Columns[0], To: to.Columns[0], Change: schema.ChangeGenerated},
+				},
+			}
+		}(),
+		{
+			name: "change generation expression",
+			from: schema.NewTable("t1").
+				SetSchema(schema.New("public")).
+				AddColumns(
+					schema.NewIntColumn("c1", "int").
+						SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
+				),
+			to: schema.NewTable("t1").
+				SetSchema(schema.New("public")).
+				AddColumns(
+					schema.NewIntColumn("c1", "int").
+						SetGeneratedExpr(&schema.GeneratedExpr{Expr: "2", Type: "STORED"}),
+				),
+			wantErr: true,
+		},
+		func() testcase {
+			var (
 				from = &schema.Table{
 					Name: "t1",
 					Schema: &schema.Schema{
