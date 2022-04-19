@@ -1,9 +1,7 @@
-package atlas
+package sql
 
 import (
 	"context"
-
-	"ariga.io/atlas/sql"
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
@@ -12,12 +10,12 @@ import (
 // Inspect reads the state of the database from the provided url
 // and returns a ddl representing the state of the Database.
 func Inspect(ctx context.Context, url string, schemas ...string) ([]byte, error) {
-	d, err := sql.DefaultMux.OpenAtlas(ctx, url)
+	d, err := DefaultMux.OpenAtlas(ctx, url)
 	if err != nil {
 		return nil, err
 	}
 	defer d.Close()
-	name, err := sql.SchemaNameFromURL(ctx, url)
+	name, err := SchemaNameFromURL(ctx, url)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +37,7 @@ func Inspect(ctx context.Context, url string, schemas ...string) ([]byte, error)
 
 // Plan computes the migration plan needed to change state of `from` Database to `to` Database.
 func Plan(ctx context.Context, fromURL, toURL string) (*migrate.Plan, error) {
-	toDriver, err := sql.DefaultMux.OpenAtlas(ctx, toURL)
+	toDriver, err := DefaultMux.OpenAtlas(ctx, toURL)
 	if err != nil {
 		return nil, err
 	}
@@ -52,21 +50,21 @@ func Plan(ctx context.Context, fromURL, toURL string) (*migrate.Plan, error) {
 
 // Diff computes the difference between `from` Database and `to` Database.
 func Diff(ctx context.Context, fromURL, toURL string) ([]schema.Change, error) {
-	fromDriver, err := sql.DefaultMux.OpenAtlas(ctx, fromURL)
+	fromDriver, err := DefaultMux.OpenAtlas(ctx, fromURL)
 	if err != nil {
 		return nil, err
 	}
 	defer fromDriver.Close()
-	toDriver, err := sql.DefaultMux.OpenAtlas(ctx, toURL)
+	toDriver, err := DefaultMux.OpenAtlas(ctx, toURL)
 	if err != nil {
 		return nil, err
 	}
 	defer toDriver.Close()
-	fromName, err := sql.SchemaNameFromURL(ctx, fromURL)
+	fromName, err := SchemaNameFromURL(ctx, fromURL)
 	if err != nil {
 		return nil, err
 	}
-	toName, err := sql.SchemaNameFromURL(ctx, toURL)
+	toName, err := SchemaNameFromURL(ctx, toURL)
 	if err != nil {
 		return nil, err
 	}
