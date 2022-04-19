@@ -12,7 +12,6 @@ import (
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqltool"
-
 	"github.com/stretchr/testify/require"
 )
 

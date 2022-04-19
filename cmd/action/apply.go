@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"ariga.io/atlas/sql"
-
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/manifoldco/promptui"
