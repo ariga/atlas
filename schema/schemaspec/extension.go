@@ -93,7 +93,7 @@ func (r *Resource) As(target interface{}) error {
 	for _, ft := range specFields(target) {
 		field := v.FieldByName(ft.Name)
 		switch {
-		case ft.isName():
+		case ft.isName() && !hasAttr(r, ft.tag):
 			if seenName {
 				return errors.New("schemaspec: extension must have only one isName field")
 			}
