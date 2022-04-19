@@ -7,6 +7,8 @@ package action
 import (
 	"strings"
 
+	"ariga.io/atlas/pkg/provider"
+
 	"github.com/spf13/cobra"
 )
 
@@ -44,15 +46,15 @@ func init() {
 // the "from" schema to the "to" schema.
 func cmdDiffRun(cmd *cobra.Command, flags *diffCmdOpts) {
 	ctx := cmd.Context()
-	fromDriver, err := DefaultMux.OpenAtlas(cmd.Context(), flags.fromURL)
+	fromDriver, err := provider.DefaultMux.OpenAtlas(cmd.Context(), flags.fromURL)
 	cobra.CheckErr(err)
 	defer fromDriver.Close()
-	toDriver, err := DefaultMux.OpenAtlas(cmd.Context(), flags.toURL)
+	toDriver, err := provider.DefaultMux.OpenAtlas(cmd.Context(), flags.toURL)
 	cobra.CheckErr(err)
 	defer toDriver.Close()
-	fromName, err := SchemaNameFromURL(ctx, flags.fromURL)
+	fromName, err := provider.SchemaNameFromURL(ctx, flags.fromURL)
 	cobra.CheckErr(err)
-	toName, err := SchemaNameFromURL(ctx, flags.toURL)
+	toName, err := provider.SchemaNameFromURL(ctx, flags.toURL)
 	cobra.CheckErr(err)
 	fromSchema, err := fromDriver.InspectSchema(ctx, fromName, nil)
 	cobra.CheckErr(err)

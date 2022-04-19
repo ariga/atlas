@@ -10,6 +10,8 @@ import (
 	"io/ioutil"
 	"strings"
 
+	"ariga.io/atlas/pkg/provider"
+
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/manifoldco/promptui"
@@ -78,15 +80,15 @@ func CmdApplyRun(cmd *cobra.Command, _ []string) {
 		schemaCmd.PrintErrln("The Atlas UI is not available in this release.")
 		return
 	}
-	d, err := DefaultMux.OpenAtlas(cmd.Context(), ApplyFlags.URL)
+	d, err := provider.DefaultMux.OpenAtlas(cmd.Context(), ApplyFlags.URL)
 	cobra.CheckErr(err)
 	defer d.Close()
 	applyRun(cmd.Context(), d, ApplyFlags.URL, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove, ApplyFlags.Verbose)
 }
 
-func applyRun(ctx context.Context, d *Driver, url string, file string, dryRun bool, autoApprove bool, verbose bool) {
+func applyRun(ctx context.Context, d *provider.Driver, url string, file string, dryRun bool, autoApprove bool, verbose bool) {
 	schemas := ApplyFlags.Schema
-	if n, err := SchemaNameFromURL(ctx, url); n != "" {
+	if n, err := provider.SchemaNameFromURL(ctx, url); n != "" {
 		cobra.CheckErr(err)
 		schemas = append(schemas, n)
 	}
@@ -112,11 +114,11 @@ func applyRun(ctx context.Context, d *Driver, url string, file string, dryRun bo
 		}
 	}
 	if _, ok := d.Driver.(schema.Normalizer); ok && ApplyFlags.DevURL != "" {
-		var opts []ProviderOption
+		var opts []provider.ProviderOption
 		if verbose {
-			opts = append(opts, &VerboseLogging{})
+			opts = append(opts, &provider.VerboseLogging{})
 		}
-		dev, err := DefaultMux.OpenAtlas(ctx, ApplyFlags.DevURL, opts...)
+		dev, err := provider.DefaultMux.OpenAtlas(ctx, ApplyFlags.DevURL, opts...)
 		cobra.CheckErr(err)
 		defer d.Close()
 		desired, err = dev.Driver.(schema.Normalizer).NormalizeRealm(ctx, desired)

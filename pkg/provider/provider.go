@@ -2,7 +2,7 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package action
+package provider
 
 import (
 	"context"
@@ -11,6 +11,8 @@ import (
 	"os"
 	"regexp"
 	"time"
+
+	"ariga.io/atlas/pkg/docker"
 
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
@@ -65,6 +67,11 @@ func postgresProvider(_ context.Context, dsn string, _ ...ProviderOption) (*Driv
 	}, nil
 }
 
+// TODO: temp, remove
+func SqliteProvider(ctx context.Context, dsn string, _ ...ProviderOption) (*Driver, error) {
+	return sqliteProvider(ctx, dsn)
+}
+
 func sqliteProvider(_ context.Context, dsn string, _ ...ProviderOption) (*Driver, error) {
 	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
@@ -85,7 +92,7 @@ func sqliteProvider(_ context.Context, dsn string, _ ...ProviderOption) (*Driver
 var reDockerConfig = regexp.MustCompile("(mysql|mariadb|tidb|postgres)(?::([0-9a-zA-Z.-]+)?(\\?.*)?)?")
 
 type dockerCloser struct {
-	c   *Container
+	c   *docker.Container
 	drv *Driver
 }
 
@@ -109,16 +116,16 @@ func dockerProvider(ctx context.Context, dsn string, opts ...ProviderOption) (*D
 	}
 	img, v := m[1], m[2]
 	var (
-		cfg *DockerConfig
+		cfg *docker.DockerConfig
 		err error
 	)
 	switch img {
 	case "mysql":
-		cfg, err = MySQL(v)
+		cfg, err = docker.MySQL(v)
 	case "mariadb":
-		cfg, err = MariaDB(v)
+		cfg, err = docker.MariaDB(v)
 	case "postgres":
-		cfg, err = PostgreSQL(v)
+		cfg, err = docker.PostgreSQL(v)
 	default:
 		return nil, fmt.Errorf("unsupported docker image %q", img)
 	}
@@ -128,7 +135,7 @@ func dockerProvider(ctx context.Context, dsn string, opts ...ProviderOption) (*D
 	for _, opt := range opts {
 		switch opt.(type) {
 		case VerboseLogging, *VerboseLogging:
-			err = Out(os.Stdout)(cfg)
+			err = docker.Out(os.Stdout)(cfg)
 		}
 		if err != nil {
 			return nil, err
