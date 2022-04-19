@@ -268,6 +268,8 @@ func (t *pgTest) cmdCmpHCL(ts *testscript.TestScript, _ bool, args []string) {
 		buf, err := postgres.MarshalHCL(s)
 		require.NoError(t, err)
 		return string(buf), nil
+	}, func(s string) string {
+		return strings.ReplaceAll(ts.ReadFile(s), "$db", ts.Getenv("db"))
 	})
 }
 
@@ -409,7 +411,7 @@ func (t *pgTest) hclDiff(ts *testscript.TestScript, name string) ([]schema.Chang
 	ts.Check(err)
 	desired, err = t.drv.NormalizeSchema(ctx, desired)
 	// Normalization and diffing errors should
-	// returned back to the caller.
+	// be returned to the caller.
 	if err != nil {
 		return nil, err
 	}

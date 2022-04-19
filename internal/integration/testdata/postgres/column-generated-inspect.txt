@@ -1,0 +1,53 @@
+# Skip PostgreSQL 10, 11 as they do not support generated columns.
+! only postgres10|postgres11
+
+apply 1.hcl
+cmphcl 1.inspect.hcl
+
+-- 1.hcl --
+schema "$db" {}
+
+table "users" {
+    schema = schema.$db
+    column "a" {
+        type = int
+    }
+    column "b" {
+        type = int
+        as = "1"
+    }
+    column "c" {
+        type = int
+        as {
+            expr = "2"
+            type = STORED
+        }
+    }
+}
+
+-- 1.inspect.hcl --
+table "users" {
+  schema = schema.$db
+  column "a" {
+    null = false
+    type = integer
+  }
+  column "b" {
+    null = false
+    type = integer
+    as {
+      expr = "1"
+      type = STORED
+    }
+  }
+  column "c" {
+    null = false
+    type = integer
+    as {
+      expr = "2"
+      type = STORED
+    }
+  }
+}
+schema "$db" {
+}
