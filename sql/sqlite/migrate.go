@@ -182,7 +182,11 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 }
 
 func (s *state) column(b *sqlx.Builder, c *schema.Column) error {
-	b.Ident(c.Name).P(mustFormat(c.Type.Type))
+	t, err := FormatType(c.Type.Type)
+	if err != nil {
+		return err
+	}
+	b.Ident(c.Name).P(t)
 	if !c.Type.Null {
 		b.P("NOT")
 	}
@@ -194,8 +198,15 @@ func (s *state) column(b *sqlx.Builder, c *schema.Column) error {
 		}
 		b.P("DEFAULT", x)
 	}
-	if sqlx.Has(c.Attrs, &AutoIncrement{}) {
+	switch hasA, hasX := sqlx.Has(c.Attrs, &AutoIncrement{}), sqlx.Has(c.Attrs, &schema.GeneratedExpr{}); {
+	case hasA && hasX:
+		return fmt.Errorf("both autoincrement and generation expression specified for column %q", c.Name)
+	case hasA:
 		b.P("PRIMARY KEY AUTOINCREMENT")
+	case hasX:
+		x := &schema.GeneratedExpr{}
+		sqlx.Has(c.Attrs, x)
+		b.P("AS", sqlx.MayWrap(x.Expr), x.Type)
 	}
 	return nil
 }
@@ -427,6 +438,10 @@ func alterable(modify *schema.ModifyTable) bool {
 		case *schema.DropIndex, *schema.AddIndex:
 		case *schema.AddColumn:
 			if len(change.C.Indexes) > 0 || len(change.C.ForeignKeys) > 0 || change.C.Default != nil {
+				return false
+			}
+			// Only VIRTUAL generated columns can be added using ALTER TABLE.
+			if x := (schema.GeneratedExpr{}); sqlx.Has(change.C.Attrs, &x) && storedOrVirtual(x.Type) == stored {
 				return false
 			}
 		default:
