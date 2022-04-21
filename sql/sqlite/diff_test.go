@@ -137,6 +137,47 @@ func TestDiff_TableDiff(t *testing.T) {
 		}(),
 		func() testcase {
 			var (
+				s    = schema.New("public")
+				from = schema.NewTable("t1").
+					SetSchema(s).
+					AddColumns(
+						schema.NewIntColumn("c1", "int"),
+						schema.NewIntColumn("c2", "int").
+							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
+						schema.NewIntColumn("c3", "int").
+							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1"}),
+						schema.NewIntColumn("c4", "int").
+							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "VIRTUAL"}),
+					)
+				to = schema.NewTable("t1").
+					SetSchema(s).
+					AddColumns(
+						// Add generated expression.
+						schema.NewIntColumn("c1", "int").
+							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
+						// Drop generated expression.
+						schema.NewIntColumn("c2", "int"),
+						// Modify generated expression.
+						schema.NewIntColumn("c3", "int").
+							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "2"}),
+						// No change.
+						schema.NewIntColumn("c4", "int").
+							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1"}),
+					)
+			)
+			return testcase{
+				name: "modify column generated",
+				from: from,
+				to:   to,
+				wantChanges: []schema.Change{
+					&schema.ModifyColumn{From: from.Columns[0], To: to.Columns[0], Change: schema.ChangeGenerated},
+					&schema.ModifyColumn{From: from.Columns[1], To: to.Columns[1], Change: schema.ChangeGenerated},
+					&schema.ModifyColumn{From: from.Columns[2], To: to.Columns[2], Change: schema.ChangeGenerated},
+				},
+			}
+		}(),
+		func() testcase {
+			var (
 				from = &schema.Table{
 					Name: "t1",
 					Schema: &schema.Schema{
