@@ -72,6 +72,7 @@ func TestSQLite_Script(t *testing.T) {
 			"exist":   tt.cmdExist,
 			"synced":  tt.cmdSynced,
 			"cmpshow": tt.cmdCmpShow,
+			"execsql": tt.cmdExec,
 		},
 	})
 }
@@ -303,6 +304,10 @@ func cmdCmpHCL(ts *testscript.TestScript, args []string, inspect func(schema str
 
 func (t *myTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
 	cmdExec(ts, args, t.db)
+}
+
+func (t *liteTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
+	cmdExec(ts, args, ts.Value(keyDB).(*sql.DB))
 }
 
 func cmdExec(ts *testscript.TestScript, args []string, db *sql.DB) {

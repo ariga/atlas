@@ -1,0 +1,120 @@
+apply 1.hcl
+cmpshow users 1.sql
+
+# Insert a few records to the table, and check the
+# migration process using a temporary table.
+execsql 'INSERT INTO users (a) VALUES (1), (2), (3)'
+
+apply 2.hcl
+cmpshow users 2.sql
+
+apply 3.hcl
+cmpshow users 3.sql
+
+# Appending a new VIRTUAL column should use ALTER command.
+apply 4.hcl
+cmpshow users 4.sql
+
+
+-- 1.hcl --
+schema "main" {}
+
+table "users" {
+    schema = schema.main
+    column "a" {
+        type = int
+    }
+    column "b" {
+        type = int
+        as = "1"
+    }
+    column "c" {
+        type = int
+        as {
+            expr = "2"
+            type = STORED
+        }
+    }
+}
+
+-- 1.sql --
+CREATE TABLE `users` (`a` int NOT NULL, `b` int NOT NULL AS (1) VIRTUAL, `c` int NOT NULL AS (2) STORED)
+
+-- 2.hcl --
+schema "main" {}
+
+table "users" {
+    schema = schema.main
+    column "a" {
+        type = int
+    }
+    column "b" {
+        type = int
+        as = "1"
+    }
+    column "c" {
+        type = int
+        as {
+            expr = "2"
+            type = VIRTUAL
+        }
+    }
+}
+
+-- 2.sql --
+CREATE TABLE "users" (`a` int NOT NULL, `b` int NOT NULL AS (1) VIRTUAL, `c` int NOT NULL AS (2) VIRTUAL)
+
+-- 3.hcl --
+schema "main" {}
+
+table "users" {
+    schema = schema.main
+    column "a" {
+        type = int
+    }
+    column "b" {
+        type = int
+        as = "2"
+    }
+    column "c" {
+        type = int
+        as {
+            expr = "3"
+            type = VIRTUAL
+        }
+    }
+}
+
+-- 3.sql --
+CREATE TABLE "users" (`a` int NOT NULL, `b` int NOT NULL AS (2) VIRTUAL, `c` int NOT NULL AS (3) VIRTUAL)
+
+-- 4.hcl --
+schema "main" {}
+
+table "users" {
+    schema = schema.main
+    column "a" {
+        type = int
+    }
+    column "b" {
+        type = int
+        as = "2"
+    }
+    column "c" {
+        type = int
+        as {
+            expr = "3"
+            type = VIRTUAL
+        }
+    }
+    column "d" {
+        type = int
+        as {
+            expr = "4"
+            type = VIRTUAL
+        }
+    }
+}
+
+-- 4.sql --
+CREATE TABLE "users" (`a` int NOT NULL, `b` int NOT NULL AS (2) VIRTUAL, `c` int NOT NULL AS (3) VIRTUAL, `d` int NOT NULL AS (4) VIRTUAL)

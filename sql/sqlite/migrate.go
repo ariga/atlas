@@ -305,6 +305,10 @@ func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.
 		fromC, toC []string
 	)
 	for _, column := range to.Columns {
+		// Skip generated columns in INSERT as they are computed.
+		if sqlx.Has(column.Attrs, &schema.GeneratedExpr{}) {
+			continue
+		}
 		// Find a change that associated with this column, if exists.
 		var change schema.Change
 		for i := range changes {
@@ -332,8 +336,8 @@ func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.
 			}
 		}
 		switch change := change.(type) {
-		// We expect that new columns are added with DEFAULT values,
-		// or defined as nullable if the table is not empty.
+		// We expect that new columns are added with DEFAULT/GENERATED
+		// values or defined as nullable if the table is not empty.
 		case *schema.AddColumn:
 		// Column modification requires special handling if it was
 		// converted from nullable to non-nullable with default value.
@@ -349,7 +353,7 @@ func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.
 			} else {
 				fromC = append(fromC, column.Name)
 			}
-		// Columns without changes, should transfer as-is.
+		// Columns without changes should be transferred as-is.
 		case nil:
 			toC = append(toC, column.Name)
 			fromC = append(fromC, column.Name)
