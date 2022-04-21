@@ -89,7 +89,7 @@ func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
 func (*diff) generatedChanged(from, to *schema.Column) (bool, error) {
 	var fromX, toX schema.GeneratedExpr
 	switch fromHas, toHas := sqlx.Has(from.Attrs, &fromX), sqlx.Has(to.Attrs, &toX); {
-	case fromHas && toHas && fromX.Expr != toX.Expr:
+	case fromHas && toHas && sqlx.MayWrap(fromX.Expr) != sqlx.MayWrap(toX.Expr):
 		return false, fmt.Errorf("changing the generation expression for a column %q is not supported", from.Name)
 	case !fromHas && toHas:
 		return false, fmt.Errorf("changing column %q to generated column is not supported (drop and add is required)", from.Name)
