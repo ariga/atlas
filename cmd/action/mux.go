@@ -103,7 +103,7 @@ func SchemaNameFromURL(ctx context.Context, url string) (string, error) {
 	}
 	switch key {
 	case "mysql", "maria", "mariadb":
-		cfg, err := mysql.ParseDSN(dsn)
+		cfg, err := mysqlConfig(dsn)
 		if err != nil {
 			return "", err
 		}
@@ -178,15 +178,15 @@ func fileExists(dsn string) error {
 	return nil
 }
 
-func mysqlDSN(d string) (string, error) {
+func mysqlConfig(d string) (*mysql.Config, error) {
 	cfg, err := mysql.ParseDSN(d)
 	// A standard MySQL DSN.
 	if err == nil {
-		return d, nil
+		return cfg, nil
 	}
 	u, err := url.Parse("mysql://" + d)
 	if err != nil {
-		return "", nil
+		return nil, err
 	}
 	schema := strings.TrimPrefix(u.Path, "/")
 	// In case of a URL (non-standard DSN),
@@ -194,7 +194,7 @@ func mysqlDSN(d string) (string, error) {
 	if u.RawQuery != "" {
 		cfg, err = mysql.ParseDSN(fmt.Sprintf("/%s?%s", schema, u.RawQuery))
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 	} else {
 		cfg = mysql.NewConfig()
@@ -204,5 +204,5 @@ func mysqlDSN(d string) (string, error) {
 	cfg.User = u.User.Username()
 	cfg.Passwd, _ = u.User.Password()
 	cfg.DBName = schema
-	return cfg.FormatDSN(), nil
+	return cfg, nil
 }

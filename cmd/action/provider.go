@@ -27,11 +27,11 @@ func init() {
 }
 
 func mysqlProvider(_ context.Context, dsn string, _ ...ProviderOption) (*Driver, error) {
-	d, err := mysqlDSN(dsn)
+	cfg, err := mysqlConfig(dsn)
 	if err != nil {
 		return nil, err
 	}
-	db, err := sql.Open("mysql", d)
+	db, err := sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
 		return nil, err
 	}

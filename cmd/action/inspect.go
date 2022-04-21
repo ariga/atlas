@@ -69,8 +69,9 @@ func CmdInspectRun(cmd *cobra.Command, _ []string) {
 
 func inspectRun(ctx context.Context, d *Driver, url string) {
 	schemas := InspectFlags.Schema
-	if n, err := SchemaNameFromURL(ctx, url); n != "" {
-		cobra.CheckErr(err)
+	n, err := SchemaNameFromURL(ctx, url)
+	cobra.CheckErr(err)
+	if n != "" {
 		schemas = append(schemas, n)
 	}
 	s, err := d.InspectRealm(ctx, &schema.InspectRealmOption{
