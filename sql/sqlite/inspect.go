@@ -560,7 +560,7 @@ func setGenExpr(t *schema.Table, c *schema.Column, f int64) error {
 	if !sqlx.Has(t.Attrs, &s) {
 		return fmt.Errorf("missing CREATE statement for table: %q", t.Name)
 	}
-	re, err := regexp.Compile(fmt.Sprintf("(?i)(?:[(,]\\s*)[\"`]*(%s)[\"`]*[^,]*(?:GENERATED\\s+ALWAYS)*\\s*AS\\s*\\(", c.Name))
+	re, err := regexp.Compile(fmt.Sprintf("(?:[(,]\\s*)[\"`]*(%s)[\"`]*[^,]*(?i:GENERATED\\s+ALWAYS)*\\s*(?i:AS){1}\\s*\\(", c.Name))
 	if err != nil {
 		return err
 	}

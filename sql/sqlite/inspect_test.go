@@ -424,7 +424,7 @@ func TestRegex_Checks(t *testing.T) {
 		drv, err := Open(db)
 		require.NoError(t, err)
 		s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{
-			Tables: []string{"users"},
+			Tables: []string{name},
 		})
 		require.NoError(t, err)
 		table := s.Tables[0]
@@ -432,6 +432,67 @@ func TestRegex_Checks(t *testing.T) {
 		for i := range tt.checks {
 			require.Equal(t, tt.checks[i], table.Attrs[i+1])
 		}
+	}
+}
+
+func TestRegex_GeneratedExpr(t *testing.T) {
+	tests := []struct {
+		input  string
+		column *schema.Column
+	}{
+		{
+			input: "CREATE TABLE t1( a NOT NULL DEFAULT 'aaa', b AS(c) NOT NULL, c NOT NULL DEFAULT 'ccc');",
+			column: schema.NewColumn("b").
+				SetGeneratedExpr(&schema.GeneratedExpr{Expr: "(c)", Type: "VIRTUAL"}),
+		},
+		{
+			input: "CREATE TABLE t4(a NOT NULL DEFAULT 123, b AS(a*10+4) STORED UNIQUE);",
+			column: schema.NewColumn("b").
+				SetGeneratedExpr(&schema.GeneratedExpr{Expr: "(a*10+4)", Type: "VIRTUAL"}),
+		},
+		{
+			input: "CREATE TABLE t1(aa , bb AS (17) UNIQUE);",
+			column: schema.NewColumn("bb").
+				SetGeneratedExpr(&schema.GeneratedExpr{Expr: "(17)", Type: "VIRTUAL"}),
+		},
+		{
+			input: "CREATE TABLE t1( a integer primary key, b int generated always as (a+5), c text GENERATED   ALWAYS as (printf('%08x',a)));",
+			column: schema.NewColumn("c").
+				SetGeneratedExpr(&schema.GeneratedExpr{Expr: "(printf('%08x',a))", Type: "VIRTUAL"}),
+		},
+		{
+			input: "CREATE TABLE t1( a integer primary key, b int generated always as (a+5), c text GENERATED   ALWAYS as (printf('%08x',a)), d Generated\nAlways\nAS\n('xy\\()zzy'));",
+			column: schema.NewColumn("d").
+				SetGeneratedExpr(&schema.GeneratedExpr{Expr: "('xy\\()zzy')", Type: "VIRTUAL"}),
+		},
+		{
+			input: "CREATE TABLE t0( c0 AS (('a', 9) < ('b', c1)), c1 AS (1), c2 CHECK (1 = c1) );",
+			column: schema.NewColumn("c0").
+				SetGeneratedExpr(&schema.GeneratedExpr{Expr: "(('a', 9) < ('b', c1))", Type: "VIRTUAL"}),
+		},
+	}
+	for _, tt := range tests {
+		const name = "users"
+		db, m, err := sqlmock.New()
+		require.NoError(t, err)
+		mk := mock{m}
+		mk.systemVars("3.36.0")
+		mk.tableExists(name, true, tt.input)
+		m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, name))).
+			WillReturnRows(sqltest.Rows(fmt.Sprintf(`
+ name |   type       | nullable | dflt_value  | primary  | hidden
+------+--------------+----------+ ------------+----------+----------
+ %s   | int           |  1      |     a       |  0       |  2
+`, tt.column.Name)))
+		mk.noIndexes(name)
+		mk.noFKs(name)
+		drv, err := Open(db)
+		require.NoError(t, err)
+		s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{
+			Tables: []string{name},
+		})
+		require.NoError(t, err)
+		require.Equal(t, tt.column.Attrs, s.Tables[0].Columns[0].Attrs)
 	}
 }
 
