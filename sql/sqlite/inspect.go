@@ -127,10 +127,11 @@ func (i *inspect) columns(ctx context.Context, t *schema.Table) error {
 func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 	var (
 		nullable, primary   bool
+		hidden              sql.NullInt64
 		name, typ, defaults sql.NullString
 		err                 error
 	)
-	if err = rows.Scan(&name, &typ, &nullable, &defaults, &primary); err != nil {
+	if err = rows.Scan(&name, &typ, &nullable, &defaults, &primary, &hidden); err != nil {
 		return err
 	}
 	c := &schema.Column{
@@ -147,7 +148,13 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 	if defaults.Valid {
 		c.Default = defaultExpr(defaults.String)
 	}
-	// TODO(a8m): extract collation from 'CREATE TABLE' statement.
+	// The hidden flag is set to 2 for VIRTUAL columns, and to
+	// 3 for STORED columns. See: sqlite/pragma.c#sqlite3Pragma.
+	if hidden.Int64 >= 2 {
+		if err := setGenExpr(t, c, hidden.Int64); err != nil {
+			return err
+		}
+	}
 	t.Columns = append(t.Columns, c)
 	if primary {
 		if t.PrimaryKey == nil {
@@ -546,6 +553,33 @@ func autoinc(t *schema.Table) error {
 	return nil
 }
 
+// setGenExpr extracts the generated expression from the CREATE statement
+// and appends it to the column.
+func setGenExpr(t *schema.Table, c *schema.Column, f int64) error {
+	var s CreateStmt
+	if !sqlx.Has(t.Attrs, &s) {
+		return fmt.Errorf("missing CREATE statement for table: %q", t.Name)
+	}
+	re, err := regexp.Compile(fmt.Sprintf("(?i)(?:[(,]\\s*)[\"`]*(%s)[\"`]*[^,]*(?:GENERATED\\s+ALWAYS)*\\s*AS\\s*\\(", c.Name))
+	if err != nil {
+		return err
+	}
+	idx := re.FindAllStringIndex(s.S, 1)
+	if len(idx) != 1 || len(idx[0]) != 2 {
+		return fmt.Errorf("sqlite: generation expression for column %q was not found in create statement", c.Name)
+	}
+	expr := scanExpr(s.S[idx[0][1]-1:])
+	if expr == "" {
+		return fmt.Errorf("sqlite: unexpected empty generation expression for column %q", c.Name)
+	}
+	typ := virtual
+	if f == 3 {
+		typ = stored
+	}
+	c.SetGeneratedExpr(&schema.GeneratedExpr{Expr: expr, Type: typ})
+	return nil
+}
+
 // The following regexes extract named FKs and CHECK constraints defined in table-constraints or inlined
 // as column-constraints. Note, we assume the SQL statements are valid as they are returned by SQLite.
 var (
@@ -631,37 +665,39 @@ func fillChecks(t *schema.Table) error {
 		if len(idx) != 4 {
 			break
 		}
-		var (
-			r, l int
-			expr = c.S[idx[1]-1:]
-		)
-		for i := 0; i < len(expr); i++ {
-			switch expr[i] {
-			case '(':
-				r++
-			case ')':
-				l++
-			case '\'', '"':
-				// Skip unescaped strings.
-				if j := strings.IndexByte(expr[i+1:], expr[i]); j != -1 {
-					i += j + 1
-				}
-			}
-			// Balanced parens.
-			if r == l {
-				check := &schema.Check{Expr: expr[:i+1]}
-				// Matching group for constraint name.
-				if idx[2] != -1 && idx[3] != -1 {
-					check.Name = c.S[idx[2]:idx[3]]
-				}
-				t.Attrs = append(t.Attrs, check)
-				idx[1] = idx[1] + i
-				break
-			}
+		check := &schema.Check{Expr: scanExpr(c.S[idx[1]-1:])}
+		// Matching group for constraint name.
+		if idx[2] != -1 && idx[3] != -1 {
+			check.Name = c.S[idx[2]:idx[3]]
 		}
-		c.S = c.S[idx[1]:]
+		t.Attrs = append(t.Attrs, check)
+		c.S = c.S[idx[1]+len(check.Expr)-1:]
 	}
 	return nil
+}
+
+// scanExpr scans the expression string (wrapped with parens)
+// until its end in the given string. e.g. "(a+1), c int ...".
+func scanExpr(expr string) string {
+	var r, l int
+	for i := 0; i < len(expr); i++ {
+		switch expr[i] {
+		case '(':
+			r++
+		case ')':
+			l++
+		case '\'', '"':
+			// Skip unescaped strings.
+			if j := strings.IndexByte(expr[i+1:], expr[i]); j != -1 {
+				i += j + 1
+			}
+		}
+		// Balanced parens.
+		if r == l {
+			return expr[:i+1]
+		}
+	}
+	return ""
 }
 
 const (
@@ -672,7 +708,7 @@ const (
 	// Query to list database tables.
 	tablesQuery = "SELECT `name`, `sql` FROM sqlite_master WHERE `type` = 'table' AND `name` NOT LIKE 'sqlite_%'"
 	// Query to list table information.
-	columnsQuery = "SELECT `name`, `type`, (not `notnull`) AS `nullable`, `dflt_value`, (`pk` <> 0) AS `pk`  FROM pragma_table_info('%s') ORDER BY `pk`, `cid`"
+	columnsQuery = "SELECT `name`, `type`, (not `notnull`) AS `nullable`, `dflt_value`, (`pk` <> 0) AS `pk`, `hidden` FROM pragma_table_xinfo('%s') ORDER BY `pk`, `cid`"
 	// Query to list table indexes.
 	indexesQuery = "SELECT `il`.`name`, `il`.`unique`, `il`.`origin`, `il`.`partial`, `m`.`sql` FROM pragma_index_list('%s') AS il JOIN sqlite_master AS m ON il.name = m.name"
 	// Query to list index columns.

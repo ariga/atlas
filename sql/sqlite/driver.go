@@ -93,3 +93,9 @@ const (
 	TypeText    = "text"    // SQLITE_TYPE_TEXT
 	TypeBlob    = "blob"    // SQLITE_TYPE_BLOB
 )
+
+// SQLite generated columns types.
+const (
+	virtual = "VIRTUAL"
+	stored  = "STORED"
+)
