@@ -3,6 +3,7 @@ package sqlite
 import (
 	"reflect"
 	"strconv"
+	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
@@ -60,6 +61,9 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 			c.AddAttrs(&AutoIncrement{})
 		}
 	}
+	if err := specutil.ConvertGenExpr(spec.Remain(), c, storedOrVirtual); err != nil {
+		return nil, err
+	}
 	return c, nil
 }
 
@@ -104,6 +108,9 @@ func columnSpec(c *schema.Column, _ *schema.Table) (*sqlspec.Column, error) {
 	}
 	if sqlx.Has(c.Attrs, &AutoIncrement{}) {
 		s.Extra.Attrs = append(s.Extra.Attrs, specutil.BoolAttr("auto_increment", true))
+	}
+	if x := (schema.GeneratedExpr{}); sqlx.Has(c.Attrs, &x) {
+		s.Extra.Children = append(s.Extra.Children, specutil.FromGenExpr(x, storedOrVirtual))
 	}
 	return s, nil
 }
@@ -169,3 +176,12 @@ var (
 		return MarshalSpec(v, hclState)
 	})
 )
+
+// storedOrVirtual returns a STORED or VIRTUAL
+// generated type option based on the given string.
+func storedOrVirtual(s string) string {
+	if s = strings.ToUpper(s); s == "" {
+		return virtual
+	}
+	return s
+}
