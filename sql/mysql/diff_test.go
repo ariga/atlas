@@ -244,6 +244,8 @@ func TestDiff_TableDiff(t *testing.T) {
 							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "VIRTUAL"}),
 						schema.NewIntColumn("c5", "int").
 							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "PERSISTENT"}),
+						schema.NewIntColumn("c6", "int").
+							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "PERSISTENT"}),
 					)
 				to = schema.NewTable("t1").
 					SetSchema(s).
@@ -261,6 +263,8 @@ func TestDiff_TableDiff(t *testing.T) {
 							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1"}),
 						schema.NewIntColumn("c5", "int").
 							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
+						schema.NewIntColumn("c6", "int").
+							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "(1)", Type: "PERSISTENT"}),
 					)
 			)
 			return testcase{

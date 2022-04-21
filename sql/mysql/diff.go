@@ -381,7 +381,7 @@ func (*diff) generatedChanged(from, to *schema.Column) (bool, error) {
 		fromX, toX     schema.GeneratedExpr
 		fromHas, toHas = sqlx.Has(from.Attrs, &fromX), sqlx.Has(to.Attrs, &toX)
 	)
-	if !fromHas && !toHas || fromHas && toHas && fromX.Expr == toX.Expr && storedOrVirtual(fromX.Type) == storedOrVirtual(toX.Type) {
+	if !fromHas && !toHas || fromHas && toHas && sqlx.MayWrap(fromX.Expr) == sqlx.MayWrap(toX.Expr) && storedOrVirtual(fromX.Type) == storedOrVirtual(toX.Type) {
 		return false, nil
 	}
 	return true, checkChangeGenerated(from, to)
