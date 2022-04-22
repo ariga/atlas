@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -92,7 +93,7 @@ type (
 	// The types below provides a few builtin options for reading a state
 	// from a migration directory, a static object (e.g. a parsed file).
 	//
-	// In next Go version, the State will be replaced with the following
+	// In next Go version, the Revisions will be replaced with the following
 	// union type `interface { Realm | Schema }`.
 	StateReader interface {
 		ReadState(ctx context.Context) (*schema.Realm, error)
@@ -170,10 +171,10 @@ type (
 		UnravelFile(File) []string
 	}
 
-	// A StateContainer reads and writes information about a State to a persistent storage.
-	StateContainer interface {
-		Read() (State, error)
-		Write(State) error
+	// A RevisionReadWriter reads and writes information about a Revisions to a persistent storage.
+	RevisionReadWriter interface { // TODO(masseelch): Initer interface?
+		ReadRevisions(context.Context) (Revisions, error)
+		WriteRevisions(context.Context, Revisions) error
 	}
 
 	// Planner can plan the steps to take to migrate from one state to another. It uses the enclosed FS to write
@@ -189,8 +190,8 @@ type (
 	// PlannerOption allows managing a Planner using functional arguments.
 	PlannerOption func(*Planner)
 
-	// A Migration denotes an applied migration in a deployment. Used to track migration executions state of a database.
-	Migration struct {
+	// A Revision denotes an applied migration in a deployment. Used to track migration executions state of a database.
+	Revision struct {
 		// Version of the migration.
 		Version string
 		// Description of this migration.
@@ -209,8 +210,16 @@ type (
 		Meta map[string]string
 	}
 
-	// State is an ordered set of Migration structs.
-	State []Migration
+	// Revisions is an ordered set of Revision structs.
+	Revisions []*Revision
+
+	// Executor is responsible to manage and execute a set of migration files against a database.
+	Executor struct {
+		drv   Driver
+		dir   Dir
+		durvl DirUnraveler
+		furvl FileUnraveler
+	}
 )
 
 // NewPlanner creates a new Planner.
@@ -627,16 +636,88 @@ func (s *HashFile) UnmarshalText(b []byte) error {
 	return sc.Err()
 }
 
-// A SQLStateContainer saves a database migration state by using an SQL table.
-type SQLStateContainer struct {
-	db      schema.ExecQuerier // access to the database
-	tblName string             // name of the table
+type (
+	// A SQLRevisions saves a database migration state by using an SQL table.
+	SQLRevisions struct {
+		db      *sql.DB // access to the database
+		tblName string  // name of the table
+	}
+
+	// SQLStateContainerOption allows managing a SQLStateContainer using functional arguments.
+	SQLRevisionsOption func(*SQLRevisions) error
+)
+
+// NewSQLStateContainer creates a new SQLStateContainer.
+func NewSQLStateContainer(db *sql.DB, opts ...SQLRevisionsOption) (*SQLRevisions, error) {
+	c := &SQLRevisions{db: db}
+	for _, opt := range opts {
+		if err := opt(c); err != nil {
+			return nil, err
+		}
+	}
+	return c, nil
 }
 
-func (c *SQLStateContainer) Read() (State, error) { panic("unimplemented") }
-func (c *SQLStateContainer) Write(s State) error  { panic("unimplemented") }
+// ReadRevisions implements the RevisionReadWriter.Read method.
+func (c *SQLRevisions) ReadRevisions(ctx context.Context) (Revisions, error) {
+	rs, err := c.db.QueryContext(
+		ctx,
+		"SELECT version, description, execution_state, executed_at, execution_time, hash, operator_version, meta FROM ?",
+		c.tblName,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rs.Close()
+	var s Revisions
+	for rs.Next() {
+		var m Revision
+		if err := rs.Scan(
+			&m.Version,
+			&m.Description,
+			&m.ExecutionState,
+			&m.ExecutedAt,
+			&m.ExecutionTime,
+			&m.Hash,
+			&m.OperatorVersion,
+			&m.Meta,
+		); err != nil {
+			return nil, err
+		}
+		s = append(s, &m)
+	}
+	if err := rs.Err(); err != nil {
+		return nil, err
+	}
+	return s, err
+}
 
-var _ StateContainer = (*SQLStateContainer)(nil)
+// WriteRevisions implements the RevisionReadWriter.Write method.
+func (c *SQLRevisions) WriteRevisions(ctx context.Context, s Revisions) error {
+	tx, err := c.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	// Use DELETE and INSERT since this is equal across all dialects.
+	if _, err = tx.ExecContext(ctx, "DELETE from ?", c.tblName); err != nil {
+		tx.Rollback()
+		return err
+	}
+	var (
+		sql  = "INSERT INTO ? (version, description, execution_state, executed_at, execution_time, hash, operator_version, meta) VALUES"
+		args = []interface{}{c.tblName}
+	)
+	for _, m := range s {
+		sql = fmt.Sprintf(", (?,?,?,?,?,?,?,?)")
+		args = append(args, m.Version, m.Description, m.ExecutionState, m.ExecutionTime, m.Hash, m.OperatorVersion, m.Meta)
+	}
+	if _, err := tx.ExecContext(ctx, sql, args...); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+var _ RevisionReadWriter = (*SQLRevisions)(nil)
 
 // reverse changes for the down migration.
 func reverse(changes []*Change) []*Change {
