@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -156,23 +155,30 @@ type (
 	// File represents a single migration file.
 	File interface {
 		io.Reader
-		// Name returns the name of the FormattedFile.
+		// Name returns the name of the migration file.
 		Name() string
 	}
 
-	// DirUnraveler wraps the UnravelDir method.
-	DirUnraveler interface {
-		// UnravelDir returns a set of files from the given Dir to be executed on a database.
-		UnravelDir(Dir) []File
+	// FileSelector wraps the SelectFiles method.
+	FileSelector interface {
+		// SelectFiles returns a set of files from the given Dir to be executed on a database.
+		SelectFiles(Dir) ([]File, error)
 	}
 
-	// FileUnraveler wraps the UnravelFile method.
-	FileUnraveler interface {
-		UnravelFile(File) []string
+	// FileDecoder wraps methods to retrieve key information from a File.
+	FileDecoder interface {
+		// SelectStatements returns a set of SQL statements from the given File to be executed on a database.
+		SelectStatements(File) ([]string, error)
+		// Version returns the version of the migration File.
+		Version(File) (string, error)
+		// Desc returns the description of the migration File.
+		Desc(File) (string, error)
 	}
 
 	// A RevisionReadWriter reads and writes information about a Revisions to a persistent storage.
-	RevisionReadWriter interface { // TODO(masseelch): Initer interface?
+	//
+	// Atlas drivers provide a sql based implementation of this interface by default.
+	RevisionReadWriter interface {
 		ReadRevisions(context.Context) (Revisions, error)
 		WriteRevisions(context.Context, Revisions) error
 	}
@@ -215,11 +221,15 @@ type (
 
 	// Executor is responsible to manage and execute a set of migration files against a database.
 	Executor struct {
-		drv   Driver
-		dir   Dir
-		durvl DirUnraveler
-		furvl FileUnraveler
+		drv Driver             // the Driver to access and manage the database
+		dir Dir                // the Dir with migration files to use
+		rrw RevisionReadWriter // a custom RevisionReadWriter to use if the default one of the Driver is not sufficient
+		fs  FileSelector       // a custom FileSelector to use if the default one of the Dir is not sufficient
+		fd  FileDecoder        // a custom FileDecoder to use if the default one of the Dir is not sufficient
 	}
+
+	// ExecutorOption allows managing an  Executor using functional arguments.
+	ExecutorOption func(*Executor) error
 )
 
 // NewPlanner creates a new Planner.
@@ -258,11 +268,144 @@ func DisableChecksum() PlannerOption {
 	}
 }
 
+// Plan calculates the migration Plan required for moving the current state (from) state to
+// the next state (to). A StateReader can be a directory, static schema elements or a Driver connection.
+func (p *Planner) Plan(ctx context.Context, name string, to StateReader) (*Plan, error) {
+	current, err := p.dsr.ReadState(ctx)
+	if err != nil {
+		return nil, err
+	}
+	desired, err := to.ReadState(ctx)
+	if err != nil {
+		return nil, err
+	}
+	changes, err := p.drv.RealmDiff(current, desired)
+	if err != nil {
+		return nil, err
+	}
+	if len(changes) == 0 {
+		return nil, ErrNoPlan
+	}
+	return p.drv.PlanChanges(ctx, name, changes)
+}
+
+// WritePlan writes the given Plan to the Dir based on the configured Formatter.
+func (p *Planner) WritePlan(plan *Plan) error {
+	files, err := p.fmt.Format(plan)
+	if err != nil {
+		return err
+	}
+	for _, f := range files {
+		d, err := io.ReadAll(f)
+		if err != nil {
+			return err
+		}
+		if err := p.dir.WriteFile(f.Name(), d); err != nil {
+			return err
+		}
+	}
+	if p.sum {
+		sum, err := HashSum(p.dir)
+		if err != nil {
+			return err
+		}
+		return WriteSumFile(p.dir, sum)
+	}
+	return nil
+}
+
+// NewExecutor creates a new Executor with default values.
+func NewExecutor(drv Driver, dir Dir, opts ...ExecutorOption) (*Executor, error) {
+	p := &Executor{drv: drv, dir: dir}
+	for _, opt := range opts {
+		if err := opt(p); err != nil {
+			return nil, err
+		}
+	}
+	return p, nil
+}
+
+// Execute executes n missing migration files on the database
+func (e *Executor) Execute(ctx context.Context, n int) error {
+	// Don't operate with a broken migration directory. TODO(maseeelch): do not check here but let the caller check it before? Or let caller decide if to skip this flag by using some flags.
+	if err := Validate(e.dir); err != nil {
+		return fmt.Errorf("sql/migrate: execute: validate migration directory: %w", err)
+	}
+	// Determine what RevisionReadWriter to use.
+	var rrw RevisionReadWriter
+	if e.rrw != nil {
+		rrw = e.rrw
+	} else if v, ok := e.drv.(RevisionReadWriter); ok {
+		rrw = v
+	} else {
+		return fmt.Errorf("sql/migrate: execute: no revisions reader available")
+	}
+	// Determine what FileSelector to use.
+	var fs FileSelector
+	if e.fs != nil {
+		fs = e.fs
+	} else if v, ok := e.dir.(FileSelector); ok {
+		fs = v
+	} else {
+		return fmt.Errorf("sql/migrate: execute: no file selector available")
+	}
+	// Determine what StatementSelector to use.
+	var fd FileDecoder
+	if e.fd != nil {
+		fd = e.fd
+	} else if v, ok := e.dir.(FileDecoder); ok {
+		fd = v
+	} else {
+		return fmt.Errorf("sql/migrate: execute: no statement selector available")
+	}
+	// Read all applied database revisions.
+	revisions, err := rrw.ReadRevisions(ctx)
+	if err != nil {
+		return fmt.Errorf("sql/migrate: execute: read revisions: %w", err)
+	}
+	// Select the correct migration files.
+	migrations, err := fs.SelectFiles(e.dir)
+	if err != nil {
+		return fmt.Errorf("sql/migrate: execute: select migration files: %w", err)
+	}
+	// Check if the existing revisions did come from the migration directory and not from somewhere else.
+	hf, err := readHashFile(e.dir)
+	if err != nil {
+		return fmt.Errorf("sql/migrate: execute: read atlas.sum file: %w", err)
+	}
+	// For up to len(revisions) revisions the migration files must both match in order and content.
+	if len(revisions) > len(migrations) {
+		return fmt.Errorf("sql/migrate: execute: revisions and migrations mismatch: more revisions than migrations")
+	}
+	for i := range revisions {
+		m := migrations[i]
+		v, err := fd.Version(m)
+		if err != nil {
+			return fmt.Errorf("sql/migrate: execute: decode version from %q: %w", m.Name(), err)
+		}
+		d, err := fd.Desc(m)
+		if err != nil {
+			return fmt.Errorf("sql/migrate: execute: decode description from %q: %w", m.Name(), err)
+		}
+		r := revisions[i]
+		if v != r.Version || d != r.Description || hf[i].H != r.Hash {
+			return fmt.Errorf("sql/migrate: execute: revisions and migrations mismatch: %q <> %q", r.Hash, hf[i].H)
+		}
+	}
+	// check revisions match the migration files to execute
+	// execute n files
+	// ...
+	// profit
+	panic("unimplemented")
+}
+
 // GlobStateReader creates a StateReader that loads all files from Dir matching
 // glob in lexicographic order and uses the Driver to create a migration state.
 //
 // If the given Driver implements the Emptier interface the IsEmpty method will be used to determine if the Driver is
 // connected to an "empty" database. This behavior was added to support SQLite flavors.
+//
+// Deprecated: GlobStateReader will be removed once the Executor is functional.
 func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
 	var errNotClean = errors.New("sql/migrate: connected database is not clean")
 	return func(ctx context.Context) (realm *schema.Realm, err error) {
@@ -353,52 +496,6 @@ func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
 		realm, err = drv.InspectRealm(ctx, nil)
 		return
 	}
-}
-
-// Plan calculates the migration Plan required for moving the current state (from) state to
-// the next state (to). A StateReader can be a directory, static schema elements or a Driver connection.
-func (p *Planner) Plan(ctx context.Context, name string, to StateReader) (*Plan, error) {
-	current, err := p.dsr.ReadState(ctx)
-	if err != nil {
-		return nil, err
-	}
-	desired, err := to.ReadState(ctx)
-	if err != nil {
-		return nil, err
-	}
-	changes, err := p.drv.RealmDiff(current, desired)
-	if err != nil {
-		return nil, err
-	}
-	if len(changes) == 0 {
-		return nil, ErrNoPlan
-	}
-	return p.drv.PlanChanges(ctx, name, changes)
-}
-
-// WritePlan writes the given Plan to the Dir based on the configured Formatter.
-func (p *Planner) WritePlan(plan *Plan) error {
-	files, err := p.fmt.Format(plan)
-	if err != nil {
-		return err
-	}
-	for _, f := range files {
-		d, err := io.ReadAll(f)
-		if err != nil {
-			return err
-		}
-		if err := p.dir.WriteFile(f.Name(), d); err != nil {
-			return err
-		}
-	}
-	if p.sum {
-		sum, err := HashSum(p.dir)
-		if err != nil {
-			return err
-		}
-		return WriteSumFile(p.dir, sum)
-	}
-	return nil
 }
 
 // LocalDir implements Dir for a local path.
@@ -543,6 +640,53 @@ func HashSum(dir Dir) (HashFile, error) {
 	return hs, nil
 }
 
+// WriteSumFile writes the given HashFile to the Dir. If the file does not exist, it is created.
+func WriteSumFile(dir Dir, sum HashFile) error {
+	b, err := sum.MarshalText()
+	if err != nil {
+		return err
+	}
+	return dir.WriteFile(hashFile, b)
+}
+
+// Sum returns the checksum of the represented hash file.
+func (f HashFile) Sum() string {
+	sha := sha256.New()
+	for _, f := range f {
+		sha.Write([]byte(f.N))
+		sha.Write([]byte(f.H))
+	}
+	return base64.StdEncoding.EncodeToString(sha.Sum(nil))
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (f HashFile) MarshalText() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	for _, f := range f {
+		fmt.Fprintf(buf, "%s h1:%s\n", f.N, f.H)
+	}
+	return []byte(fmt.Sprintf("h1:%s\n%s", f.Sum(), buf)), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (f *HashFile) UnmarshalText(b []byte) error {
+	sc := bufio.NewScanner(bytes.NewReader(b))
+	// The first line contains the sum.
+	sc.Scan()
+	sum := strings.TrimPrefix(sc.Text(), "h1:")
+	for sc.Scan() {
+		li := strings.SplitN(sc.Text(), "h1:", 2)
+		if len(li) != 2 {
+			return ErrChecksumFormat
+		}
+		*f = append(*f, struct{ N, H string }{strings.TrimSpace(li[0]), li[1]})
+	}
+	if sum != f.Sum() {
+		return ErrChecksumMismatch
+	}
+	return sc.Err()
+}
+
 var (
 	// ErrChecksumFormat is returned from Validate if the sum files format is invalid.
 	ErrChecksumFormat = errors.New("checksum file format invalid")
@@ -555,7 +699,7 @@ var (
 // Validate checks if the migration dir is in sync with its sum file.
 // If they don't match ErrChecksumMismatch is returned.
 func Validate(dir Dir) error {
-	f, err := dir.Open(hashFile)
+	fh, err := readHashFile(dir)
 	if os.IsNotExist(err) {
 		// If there are no migration files yet this is okay.
 		files, err := fs.ReadDir(dir, "/")
@@ -570,15 +714,6 @@ func Validate(dir Dir) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	b, err := io.ReadAll(f)
-	if err != nil {
-		return err
-	}
-	var fh HashFile
-	if err := fh.UnmarshalText(b); err != nil {
-		return err
-	}
 	mh, err := HashSum(dir)
 	if err != nil {
 		return err
@@ -589,135 +724,106 @@ func Validate(dir Dir) error {
 	return nil
 }
 
-// WriteSumFile writes the given HashFile to the Dir. If the file does not exist, it is created.
-func WriteSumFile(dir Dir, sum HashFile) error {
-	b, err := sum.MarshalText()
-	if err != nil {
-		return err
-	}
-	return dir.WriteFile(hashFile, b)
-}
+// type (
+// 	// A SQLRevisions saves a database migration state by using an SQL table.
+// 	SQLRevisions struct {
+// 		drv      *sql.DB // access to the database
+// 		tblName string  // name of the table
+// 	}
+//
+// 	// SQLRevisionsOption allows managing a SQLStateContainer using functional arguments.
+// 	SQLRevisionsOption func(*SQLRevisions) error
+// )
+//
+// // NewSQLRevisions creates a new SQLStateContainer.
+// func NewSQLRevisions(db *sql.DB, opts ...SQLRevisionsOption) (*SQLRevisions, error) {
+// 	c := &SQLRevisions{db: db}
+// 	for _, opt := range opts {
+// 		if err := opt(c); err != nil {
+// 			return nil, err
+// 		}
+// 	}
+// 	return c, nil
+// }
+//
+// // ReadRevisions implements the RevisionReadWriter.Read method.
+// func (c *SQLRevisions) ReadRevisions(ctx context.Context) (Revisions, error) {
+// 	rs, err := c.db.QueryContext(
+// 		ctx,
+// 		"SELECT version, description, execution_state, executed_at, execution_time, hash, operator_version, meta FROM ?",
+// 		c.tblName,
+// 	)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	defer rs.Close()
+// 	var s Revisions
+// 	for rs.Next() {
+// 		var m Revision
+// 		if err := rs.Scan(
+// 			&m.Version,
+// 			&m.Description,
+// 			&m.ExecutionState,
+// 			&m.ExecutedAt,
+// 			&m.ExecutionTime,
+// 			&m.Hash,
+// 			&m.OperatorVersion,
+// 			&m.Meta,
+// 		); err != nil {
+// 			return nil, err
+// 		}
+// 		s = append(s, &m)
+// 	}
+// 	if err := rs.Err(); err != nil {
+// 		return nil, err
+// 	}
+// 	return s, err
+// }
+//
+// // WriteRevisions implements the RevisionReadWriter.Write method.
+// func (c *SQLRevisions) WriteRevisions(ctx context.Context, s Revisions) error {
+// 	tx, err := c.db.BeginTx(ctx, nil)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	// Use DELETE and INSERT since this is equal across all dialects.
+// 	if _, err = tx.ExecContext(ctx, "DELETE from ?", c.tblName); err != nil {
+// 		tx.Rollback()
+// 		return err
+// 	}
+// 	var (
+// 		sql  = "INSERT INTO ? (version, description, execution_state, executed_at, execution_time, hash, operator_version, meta) VALUES"
+// 		args = []interface{}{c.tblName}
+// 	)
+// 	for _, m := range s {
+// 		sql = fmt.Sprintf(", (?,?,?,?,?,?,?,?)")
+// 		args = append(args, m.Version, m.Description, m.ExecutionState, m.ExecutionTime, m.Hash, m.OperatorVersion, m.Meta)
+// 	}
+// 	if _, err := tx.ExecContext(ctx, sql, args...); err != nil {
+// 		return err
+// 	}
+// 	return tx.Commit()
+// }
+//
+// var _ RevisionReadWriter = (*SQLRevisions)(nil)
 
-// Sum returns the checksum of the represented hash file.
-func (s HashFile) Sum() string {
-	sha := sha256.New()
-	for _, f := range s {
-		sha.Write([]byte(f.N))
-		sha.Write([]byte(f.H))
-	}
-	return base64.StdEncoding.EncodeToString(sha.Sum(nil))
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s HashFile) MarshalText() ([]byte, error) {
-	buf := new(bytes.Buffer)
-	for _, f := range s {
-		fmt.Fprintf(buf, "%s h1:%s\n", f.N, f.H)
-	}
-	return []byte(fmt.Sprintf("h1:%s\n%s", s.Sum(), buf)), nil
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *HashFile) UnmarshalText(b []byte) error {
-	sc := bufio.NewScanner(bytes.NewReader(b))
-	// The first line contains the sum.
-	sc.Scan()
-	sum := strings.TrimPrefix(sc.Text(), "h1:")
-	for sc.Scan() {
-		li := strings.SplitN(sc.Text(), "h1:", 2)
-		if len(li) != 2 {
-			return ErrChecksumFormat
-		}
-		*s = append(*s, struct{ N, H string }{strings.TrimSpace(li[0]), li[1]})
-	}
-	if sum != s.Sum() {
-		return ErrChecksumMismatch
-	}
-	return sc.Err()
-}
-
-type (
-	// A SQLRevisions saves a database migration state by using an SQL table.
-	SQLRevisions struct {
-		db      *sql.DB // access to the database
-		tblName string  // name of the table
-	}
-
-	// SQLStateContainerOption allows managing a SQLStateContainer using functional arguments.
-	SQLRevisionsOption func(*SQLRevisions) error
-)
-
-// NewSQLStateContainer creates a new SQLStateContainer.
-func NewSQLStateContainer(db *sql.DB, opts ...SQLRevisionsOption) (*SQLRevisions, error) {
-	c := &SQLRevisions{db: db}
-	for _, opt := range opts {
-		if err := opt(c); err != nil {
-			return nil, err
-		}
-	}
-	return c, nil
-}
-
-// ReadRevisions implements the RevisionReadWriter.Read method.
-func (c *SQLRevisions) ReadRevisions(ctx context.Context) (Revisions, error) {
-	rs, err := c.db.QueryContext(
-		ctx,
-		"SELECT version, description, execution_state, executed_at, execution_time, hash, operator_version, meta FROM ?",
-		c.tblName,
-	)
+// readHashFile reads the HashFile from the given Dir.
+func readHashFile(dir Dir) (HashFile, error) {
+	f, err := dir.Open(hashFile)
 	if err != nil {
 		return nil, err
 	}
-	defer rs.Close()
-	var s Revisions
-	for rs.Next() {
-		var m Revision
-		if err := rs.Scan(
-			&m.Version,
-			&m.Description,
-			&m.ExecutionState,
-			&m.ExecutedAt,
-			&m.ExecutionTime,
-			&m.Hash,
-			&m.OperatorVersion,
-			&m.Meta,
-		); err != nil {
-			return nil, err
-		}
-		s = append(s, &m)
-	}
-	if err := rs.Err(); err != nil {
+	defer f.Close()
+	b, err := io.ReadAll(f)
+	if err != nil {
 		return nil, err
 	}
-	return s, err
+	var fh HashFile
+	if err := fh.UnmarshalText(b); err != nil {
+		return nil, err
+	}
+	return fh, nil
 }
-
-// WriteRevisions implements the RevisionReadWriter.Write method.
-func (c *SQLRevisions) WriteRevisions(ctx context.Context, s Revisions) error {
-	tx, err := c.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	// Use DELETE and INSERT since this is equal across all dialects.
-	if _, err = tx.ExecContext(ctx, "DELETE from ?", c.tblName); err != nil {
-		tx.Rollback()
-		return err
-	}
-	var (
-		sql  = "INSERT INTO ? (version, description, execution_state, executed_at, execution_time, hash, operator_version, meta) VALUES"
-		args = []interface{}{c.tblName}
-	)
-	for _, m := range s {
-		sql = fmt.Sprintf(", (?,?,?,?,?,?,?,?)")
-		args = append(args, m.Version, m.Description, m.ExecutionState, m.ExecutionTime, m.Hash, m.OperatorVersion, m.Meta)
-	}
-	if _, err := tx.ExecContext(ctx, sql, args...); err != nil {
-		return err
-	}
-	return tx.Commit()
-}
-
-var _ RevisionReadWriter = (*SQLRevisions)(nil)
 
 // reverse changes for the down migration.
 func reverse(changes []*Change) []*Change {
