@@ -159,6 +159,23 @@ type (
 		Name() string
 	}
 
+	// DirUnraveler wraps the UnravelDir method.
+	DirUnraveler interface {
+		// UnravelDir returns a set of files from the given Dir to be executed on a database.
+		UnravelDir(Dir) []File
+	}
+
+	// FileUnraveler wraps the UnravelFile method.
+	FileUnraveler interface {
+		UnravelFile(File) []string
+	}
+
+	// A StateContainer reads and writes information about a State to a persistent storage.
+	StateContainer interface {
+		Read() (State, error)
+		Write(State) error
+	}
+
 	// Planner can plan the steps to take to migrate from one state to another. It uses the enclosed FS to write
 	// those changes to versioned migration files.
 	Planner struct {
@@ -171,6 +188,29 @@ type (
 
 	// PlannerOption allows managing a Planner using functional arguments.
 	PlannerOption func(*Planner)
+
+	// A Migration denotes an applied migration in a deployment. Used to track migration executions state of a database.
+	Migration struct {
+		// Version of the migration.
+		Version string
+		// Description of this migration.
+		Description string
+		// ExecutionState if this migration. One of ["ongoing", "ok", "error"].
+		ExecutionState string
+		// ExecutedAt denotes when this migration was started to be executed.
+		ExecutedAt time.Time
+		// ExecutionTime denotes the time it took for this migration to be applied on the database.
+		ExecutionTime time.Duration
+		// Hash is the check-sum of this migration as stated by the migration directories HashFile.
+		Hash string
+		// OperatorVersion holds a string representation of the Atlas operator managing this database migration.
+		OperatorVersion string
+		// Meta holds additional custom meta-data given for this migration.
+		Meta map[string]string
+	}
+
+	// State is an ordered set of Migration structs.
+	State []Migration
 )
 
 // NewPlanner creates a new Planner.
@@ -586,6 +626,17 @@ func (s *HashFile) UnmarshalText(b []byte) error {
 	}
 	return sc.Err()
 }
+
+// A SQLStateContainer saves a database migration state by using an SQL table.
+type SQLStateContainer struct {
+	db      schema.ExecQuerier // access to the database
+	tblName string             // name of the table
+}
+
+func (c *SQLStateContainer) Read() (State, error) { panic("unimplemented") }
+func (c *SQLStateContainer) Write(s State) error  { panic("unimplemented") }
+
+var _ StateContainer = (*SQLStateContainer)(nil)
 
 // reverse changes for the down migration.
 func reverse(changes []*Change) []*Change {
