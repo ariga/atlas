@@ -81,6 +81,11 @@ type (
 		Changes []Change
 	}
 
+	// RenameTable describes a table rename change.
+	RenameTable struct {
+		From, To *Table
+	}
+
 	// AddColumn describes a column creation change.
 	AddColumn struct {
 		C *Column
@@ -278,6 +283,7 @@ func (*ModifySchema) change()     {}
 func (*AddTable) change()         {}
 func (*DropTable) change()        {}
 func (*ModifyTable) change()      {}
+func (*RenameTable) change()      {}
 func (*AddIndex) change()         {}
 func (*DropIndex) change()        {}
 func (*ModifyIndex) change()      {}
