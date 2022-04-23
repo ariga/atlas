@@ -221,6 +221,13 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 			// Index modification requires rebuilding the index.
 			addI = append(addI, change.To)
 			dropI = append(dropI, change.From)
+		case *schema.RenameIndex:
+			s.append(&migrate.Change{
+				Source:  change,
+				Comment: fmt.Sprintf("rename an index from %q to %q", change.From.Name, change.To.Name),
+				Cmd:     Build("ALTER INDEX").Ident(change.From.Name).P("RENAME TO").Ident(change.To.Name).String(),
+				Reverse: Build("ALTER INDEX").Ident(change.To.Name).P("RENAME TO").Ident(change.From.Name).String(),
+			})
 		case *schema.ModifyForeignKey:
 			// Foreign-key modification is translated into 2 steps.
 			// Dropping the current foreign key and creating a new one.
