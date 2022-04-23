@@ -123,6 +123,11 @@ type (
 		Change   ChangeKind
 	}
 
+	// RenameIndex describes an index rename change.
+	RenameIndex struct {
+		From, To *Index
+	}
+
 	// AddForeignKey describes a foreign-key creation change.
 	AddForeignKey struct {
 		F *ForeignKey
@@ -292,6 +297,7 @@ func (*RenameTable) change()      {}
 func (*AddIndex) change()         {}
 func (*DropIndex) change()        {}
 func (*ModifyIndex) change()      {}
+func (*RenameIndex) change()      {}
 func (*AddCheck) change()         {}
 func (*DropCheck) change()        {}
 func (*ModifyCheck) change()      {}
