@@ -121,9 +121,10 @@ func TestPlanChanges(t *testing.T) {
 				}(),
 			},
 			plan: &migrate.Plan{
+				Reversible:    true,
 				Transactional: true,
 				Changes: []*migrate.Change{
-					{Cmd: "ALTER TABLE `users` ADD COLUMN `name` varchar(255) NOT NULL"},
+					{Cmd: "ALTER TABLE `users` ADD COLUMN `name` varchar(255) NOT NULL", Reverse: "ALTER TABLE `users` DROP COLUMN `name`"},
 					{Cmd: "CREATE INDEX `id_key` ON `users` (`id`)", Reverse: "DROP INDEX `id_key`"},
 				},
 			},
@@ -146,9 +147,10 @@ func TestPlanChanges(t *testing.T) {
 				}(),
 			},
 			plan: &migrate.Plan{
+				Reversible:    true,
 				Transactional: true,
 				Changes: []*migrate.Change{
-					{Cmd: "ALTER TABLE `users` ADD COLUMN `nid` bigint NOT NULL AS (1)"},
+					{Cmd: "ALTER TABLE `users` ADD COLUMN `nid` bigint NOT NULL AS (1)", Reverse: "ALTER TABLE `users` DROP COLUMN `nid`"},
 				},
 			},
 		},
@@ -235,6 +237,29 @@ func TestPlanChanges(t *testing.T) {
 					{
 						Cmd:     "ALTER TABLE `t1` RENAME TO `t2`",
 						Reverse: "ALTER TABLE `t2` RENAME TO `t1`",
+					},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("t1"),
+					Changes: []schema.Change{
+						&schema.RenameColumn{
+							From: schema.NewColumn("a"),
+							To:   schema.NewColumn("b"),
+						},
+					},
+				},
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `t1` RENAME COLUMN `a` TO `b`",
+						Reverse: "ALTER TABLE `t1` RENAME COLUMN`b` TO `a`",
 					},
 				},
 			},

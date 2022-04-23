@@ -395,15 +395,25 @@ func (s *state) alterTable(modify *schema.ModifyTable) error {
 				Comment: fmt.Sprintf("drop index %q to table: %q", change.I.Name, modify.T.Name),
 			})
 		case *schema.AddColumn:
-			b := Build("ALTER TABLE").Ident(modify.T.Name).P("ADD COLUMN")
-			if err := s.column(b, change.C); err != nil {
+			b := Build("ALTER TABLE").Ident(modify.T.Name)
+			r := b.Clone()
+			if err := s.column(b.P("ADD COLUMN"), change.C); err != nil {
 				return err
 			}
-			// Unsupported reverse operation (DROP COLUMN).
 			s.append(&migrate.Change{
-				Cmd:     b.String(),
 				Source:  change,
+				Cmd:     b.String(),
+				Reverse: r.P("DROP COLUMN").Ident(change.C.Name).String(),
 				Comment: fmt.Sprintf("add column %q to table: %q", change.C.Name, modify.T.Name),
+			})
+		case *schema.RenameColumn:
+			b := Build("ALTER TABLE").Ident(modify.T.Name).P("RENAME COLUMN")
+			r := b.Clone()
+			s.append(&migrate.Change{
+				Source:  change,
+				Cmd:     b.Ident(change.From.Name).P("TO").Ident(change.To.Name).String(),
+				Reverse: r.Ident(change.To.Name).P("TO").Ident(change.From.Name).String(),
+				Comment: fmt.Sprintf("rename a column from %q to %q", change.From.Name, change.To.Name),
 			})
 		default:
 			return fmt.Errorf("unexpected change in alter table: %T", change)
@@ -450,7 +460,7 @@ func (s *state) append(c *migrate.Change) {
 func alterable(modify *schema.ModifyTable) bool {
 	for _, change := range modify.Changes {
 		switch change := change.(type) {
-		case *schema.DropIndex, *schema.AddIndex:
+		case *schema.RenameColumn, *schema.DropIndex, *schema.AddIndex:
 		case *schema.AddColumn:
 			if len(change.C.Indexes) > 0 || len(change.C.ForeignKeys) > 0 || change.C.Default != nil {
 				return false
