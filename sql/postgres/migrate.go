@@ -301,9 +301,6 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 					return err
 				}
 				reverse = append(reverse, &schema.DropColumn{C: change.C})
-			case *schema.DropColumn:
-				b.P("DROP COLUMN").Ident(change.C.Name)
-				reverse = append(reverse, &schema.AddColumn{C: change.C})
 			case *schema.ModifyColumn:
 				if err := s.alterColumn(b, change.Change, change.To); err != nil {
 					return err
@@ -316,6 +313,12 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 					To:     change.From,
 					Change: change.Change & ^schema.ChangeGenerated,
 				})
+			case *schema.RenameColumn:
+				b.P("RENAME COLUMN").Ident(change.From.Name).P("TO").Ident(change.To.Name)
+				reverse = append(reverse, &schema.RenameColumn{From: change.To, To: change.From})
+			case *schema.DropColumn:
+				b.P("DROP COLUMN").Ident(change.C.Name)
+				reverse = append(reverse, &schema.AddColumn{C: change.C})
 			case *schema.AddForeignKey:
 				b.P("ADD")
 				s.fks(b, change.F)
