@@ -221,6 +221,24 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		{
+			changes: []schema.Change{
+				&schema.RenameTable{
+					From: schema.NewTable("t1"),
+					To:   schema.NewTable("t2"),
+				},
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `t1` RENAME TO `t2`",
+						Reverse: "ALTER TABLE `t2` RENAME TO `t1`",
+					},
+				},
+			},
+		},
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
