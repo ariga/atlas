@@ -358,6 +358,9 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 				b.P("ADD")
 				index(b, change.I)
 				reverse = append(reverse, &schema.DropIndex{I: change.I})
+			case *schema.RenameIndex:
+				b.P("RENAME INDEX").Ident(change.From.Name).P("TO").Ident(change.To.Name)
+				reverse = append(reverse, &schema.RenameIndex{From: change.To, To: change.From})
 			case *schema.DropIndex:
 				b.P("DROP INDEX").Ident(change.I.Name)
 				reverse = append(reverse, &schema.AddIndex{I: change.I})
