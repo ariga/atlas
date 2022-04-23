@@ -74,17 +74,18 @@ func (s *state) plan(changes []schema.Change) error {
 	for _, c := range planned {
 		switch c := c.(type) {
 		case *schema.AddTable:
-			if err := s.addTable(c); err != nil {
-				return err
-			}
+			err = s.addTable(c)
 		case *schema.DropTable:
 			s.dropTable(c)
 		case *schema.ModifyTable:
-			if err := s.modifyTable(c); err != nil {
-				return err
-			}
+			err = s.modifyTable(c)
+		case *schema.RenameTable:
+			s.renameTable(c)
 		default:
-			return fmt.Errorf("unsupported change %T", c)
+			err = fmt.Errorf("unsupported change %T", c)
+		}
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -436,6 +437,15 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 	}
 	s.append(change)
 	return nil
+}
+
+func (s *state) renameTable(c *schema.RenameTable) {
+	s.append(&migrate.Change{
+		Source:  c,
+		Comment: fmt.Sprintf("rename a table from %q to %q", c.From.Name, c.To.Name),
+		Cmd:     Build("RENAME TABLE").Table(c.From).P("TO").Table(c.To).String(),
+		Reverse: Build("RENAME TABLE").Table(c.To).P("TO").Table(c.From).String(),
+	})
 }
 
 func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error {
