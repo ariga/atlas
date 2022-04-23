@@ -102,6 +102,11 @@ type (
 		Change   ChangeKind
 	}
 
+	// RenameColumn describes a column rename change.
+	RenameColumn struct {
+		From, To *Column
+	}
+
 	// AddIndex describes an index creation change.
 	AddIndex struct {
 		I *Index
@@ -293,6 +298,7 @@ func (*ModifyCheck) change()      {}
 func (*AddColumn) change()        {}
 func (*DropColumn) change()       {}
 func (*ModifyColumn) change()     {}
+func (*RenameColumn) change()     {}
 func (*AddForeignKey) change()    {}
 func (*DropForeignKey) change()   {}
 func (*ModifyForeignKey) change() {}
