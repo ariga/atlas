@@ -709,6 +709,29 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		{
+			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("t1").SetSchema(schema.New("s1")),
+					Changes: []schema.Change{
+						&schema.RenameIndex{
+							From: schema.NewIndex("a"),
+							To:   schema.NewIndex("b"),
+						},
+					},
+				},
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `ALTER INDEX "a" RENAME TO "b"`,
+						Reverse: `ALTER INDEX "b" RENAME TO "a"`,
+					},
+				},
+			},
+		},
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
