@@ -65,6 +65,8 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) (err error) {
 			err = s.dropTable(c)
 		case *schema.ModifyTable:
 			err = s.modifyTable(ctx, c)
+		case *schema.RenameTable:
+			s.renameTable(c)
 		default:
 			err = fmt.Errorf("unsupported change %T", c)
 		}
@@ -179,6 +181,15 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 		Comment: fmt.Sprintf("rename temporary table %q to %q", newT.Name, modify.T.Name),
 	})
 	return s.addIndexes(modify.T, indexes...)
+}
+
+func (s *state) renameTable(c *schema.RenameTable) {
+	s.append(&migrate.Change{
+		Source:  c,
+		Comment: fmt.Sprintf("rename a table from %q to %q", c.From.Name, c.To.Name),
+		Cmd:     Build("ALTER TABLE").Table(c.From).P("RENAME TO").Table(c.To).String(),
+		Reverse: Build("ALTER TABLE").Table(c.To).P("RENAME TO").Table(c.From).String(),
+	})
 }
 
 func (s *state) column(b *sqlx.Builder, c *schema.Column) error {
