@@ -327,7 +327,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 			wantPlan: &migrate.Plan{
 				Reversible: true,
-				Changes:    []*migrate.Change{{Cmd: "ALTER DATABASE `test` CHARSET latin1", Reverse: "ALTER DATABASE `test`CHARSET utf8"}},
+				Changes:    []*migrate.Change{{Cmd: "ALTER DATABASE `test` CHARSET latin1", Reverse: "ALTER DATABASE `test` CHARSET utf8"}},
 			},
 		},
 		// Modify charset.
@@ -342,7 +342,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 			wantPlan: &migrate.Plan{
 				Reversible: true,
-				Changes:    []*migrate.Change{{Cmd: "ALTER DATABASE `test` CHARSET utf8", Reverse: "ALTER DATABASE `test`CHARSET latin1"}},
+				Changes:    []*migrate.Change{{Cmd: "ALTER DATABASE `test` CHARSET utf8", Reverse: "ALTER DATABASE `test` CHARSET latin1"}},
 			},
 		},
 		{

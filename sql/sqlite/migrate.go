@@ -222,6 +222,21 @@ func (s *state) column(b *sqlx.Builder, c *schema.Column) error {
 	return nil
 }
 
+func (s *state) dropIndexes(t *schema.Table, indexes ...*schema.Index) error {
+	rs := &state{conn: s.conn}
+	if err := rs.addIndexes(t, indexes...); err != nil {
+		return err
+	}
+	for i := range rs.Changes {
+		s.append(&migrate.Change{
+			Cmd:     rs.Changes[i].Reverse,
+			Reverse: rs.Changes[i].Cmd,
+			Comment: fmt.Sprintf("drop index %q from table: %q", indexes[i].Name, t.Name),
+		})
+	}
+	return nil
+}
+
 func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) error {
 	for _, idx := range indexes {
 		// PRIMARY KEY or UNIQUE columns automatically create indexes with the generated name.
@@ -388,12 +403,16 @@ func (s *state) alterTable(modify *schema.ModifyTable) error {
 				return err
 			}
 		case *schema.DropIndex:
-			b := Build("DROP INDEX").Ident(change.I.Name)
-			s.append(&migrate.Change{
-				Cmd:     b.String(),
-				Source:  change,
-				Comment: fmt.Sprintf("drop index %q to table: %q", change.I.Name, modify.T.Name),
-			})
+			if err := s.dropIndexes(modify.T, change.I); err != nil {
+				return err
+			}
+		case *schema.RenameIndex:
+			if err := s.addIndexes(modify.T, change.To); err != nil {
+				return err
+			}
+			if err := s.dropIndexes(modify.T, change.From); err != nil {
+				return err
+			}
 		case *schema.AddColumn:
 			b := Build("ALTER TABLE").Ident(modify.T.Name)
 			r := b.Clone()
@@ -460,7 +479,7 @@ func (s *state) append(c *migrate.Change) {
 func alterable(modify *schema.ModifyTable) bool {
 	for _, change := range modify.Changes {
 		switch change := change.(type) {
-		case *schema.RenameColumn, *schema.DropIndex, *schema.AddIndex:
+		case *schema.RenameColumn, *schema.RenameIndex, *schema.DropIndex, *schema.AddIndex:
 		case *schema.AddColumn:
 			if len(change.C.Indexes) > 0 || len(change.C.ForeignKeys) > 0 || change.C.Default != nil {
 				return false

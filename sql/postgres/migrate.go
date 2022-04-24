@@ -451,7 +451,7 @@ func (s *state) dropIndexes(t *schema.Table, indexes ...*schema.Index) {
 	for i, idx := range indexes {
 		s.append(&migrate.Change{
 			Cmd:     rs.Changes[i].Reverse,
-			Comment: fmt.Sprintf("Drop index %q from table: %q", idx.Name, t.Name),
+			Comment: fmt.Sprintf("drop index %q from table: %q", idx.Name, t.Name),
 			Reverse: rs.Changes[i].Cmd,
 		})
 	}
@@ -528,7 +528,7 @@ func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) {
 		s.index(b, idx)
 		s.append(&migrate.Change{
 			Cmd:     b.String(),
-			Comment: fmt.Sprintf("Create index %q to table: %q", idx.Name, t.Name),
+			Comment: fmt.Sprintf("create index %q to table: %q", idx.Name, t.Name),
 			Reverse: func() string {
 				b := Build("DROP INDEX")
 				// Unlike MySQL, the DROP command is not attached to ALTER TABLE.

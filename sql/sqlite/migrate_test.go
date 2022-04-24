@@ -259,7 +259,34 @@ func TestPlanChanges(t *testing.T) {
 				Changes: []*migrate.Change{
 					{
 						Cmd:     "ALTER TABLE `t1` RENAME COLUMN `a` TO `b`",
-						Reverse: "ALTER TABLE `t1` RENAME COLUMN`b` TO `a`",
+						Reverse: "ALTER TABLE `t1` RENAME COLUMN `b` TO `a`",
+					},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("t1"),
+					Changes: []schema.Change{
+						&schema.RenameIndex{
+							From: schema.NewIndex("a").AddColumns(schema.NewColumn("a")),
+							To:   schema.NewIndex("b").AddColumns(schema.NewColumn("a")),
+						},
+					},
+				},
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "CREATE INDEX `b` ON `t1` (`a`)",
+						Reverse: "DROP INDEX `b`",
+					},
+					{
+						Cmd:     "DROP INDEX `a`",
+						Reverse: "CREATE INDEX `a` ON `t1` (`a`)",
 					},
 				},
 			},
