@@ -283,6 +283,88 @@ type (
 	}
 )
 
+// Changes is a list of changes allow for searching and mutating changes.
+type Changes []Change
+
+// IndexAddTable returns the index of the first AddTable in the changes with
+// the given name, or -1 if there is no such change in the Changes.
+func (c Changes) IndexAddTable(name string) int {
+	return c.search(func(c Change) bool {
+		a, ok := c.(*AddTable)
+		return ok && a.T.Name == name
+	})
+}
+
+// IndexDropTable returns the index of the first DropTable in the changes with
+// the given name, or -1 if there is no such change in the Changes.
+func (c Changes) IndexDropTable(name string) int {
+	return c.search(func(c Change) bool {
+		a, ok := c.(*DropTable)
+		return ok && a.T.Name == name
+	})
+}
+
+// IndexAddColumn returns the index of the first AddColumn in the changes with
+// the given name, or -1 if there is no such change in the Changes.
+func (c Changes) IndexAddColumn(name string) int {
+	return c.search(func(c Change) bool {
+		a, ok := c.(*AddColumn)
+		return ok && a.C.Name == name
+	})
+}
+
+// IndexDropColumn returns the index of the first DropColumn in the changes with
+// the given name, or -1 if there is no such change in the Changes.
+func (c Changes) IndexDropColumn(name string) int {
+	return c.search(func(c Change) bool {
+		d, ok := c.(*DropColumn)
+		return ok && d.C.Name == name
+	})
+}
+
+// IndexAddIndex returns the index of the first AddIndex in the changes with
+// the given name, or -1 if there is no such change in the Changes.
+func (c Changes) IndexAddIndex(name string) int {
+	return c.search(func(c Change) bool {
+		a, ok := c.(*AddIndex)
+		return ok && a.I.Name == name
+	})
+}
+
+// IndexDropIndex returns the index of the first DropIndex in the changes with
+// the given name, or -1 if there is no such change in the Changes.
+func (c Changes) IndexDropIndex(name string) int {
+	return c.search(func(c Change) bool {
+		a, ok := c.(*DropIndex)
+		return ok && a.I.Name == name
+	})
+}
+
+// RemoveIndex removes elements in the given indexes from the Changes.
+func (c *Changes) RemoveIndex(indexes ...int) {
+	changes := make([]Change, 0, len(*c)-len(indexes))
+Loop:
+	for i := range *c {
+		for _, idx := range indexes {
+			if i == idx {
+				continue Loop
+			}
+		}
+		changes = append(changes, (*c)[i])
+	}
+	*c = changes
+}
+
+// search returns the index of the first call to f that returns true, or -1.
+func (c Changes) search(f func(Change) bool) int {
+	for i := range c {
+		if f(c[i]) {
+			return i
+		}
+	}
+	return -1
+}
+
 // changes.
 func (*AddAttr) change()          {}
 func (*DropAttr) change()         {}
