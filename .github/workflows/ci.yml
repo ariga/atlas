@@ -434,6 +434,30 @@ jobs:
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="TiDB.*/tidb5" -dialect=tidb5 ./...
   
+  integration-tidb6:
+    runs-on: ubuntu-latest
+    services:
+      tidb5:
+        image: pingcap/tidb:v6.0.0
+        
+        ports:
+          - 4310:4000
+        
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+      - uses: actions/cache@v2.1.6
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Run integration tests for tidb6
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="TiDB.*/tidb6" -dialect=tidb6 ./...
+  
   integration-sqlite:
     runs-on: ubuntu-latest
     
