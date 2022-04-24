@@ -714,6 +714,36 @@ func TestPlanChanges(t *testing.T) {
 				&schema.ModifyTable{
 					T: schema.NewTable("t1").SetSchema(schema.New("s1")),
 					Changes: []schema.Change{
+						&schema.RenameColumn{
+							From: schema.NewColumn("a"),
+							To:   schema.NewColumn("b"),
+						},
+						&schema.AddColumn{
+							C: schema.NewIntColumn("c", "int"),
+						},
+					},
+				},
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `ALTER TABLE "s1"."t1" ADD COLUMN "c" integer NOT NULL`,
+						Reverse: `ALTER TABLE "s1"."t1" DROP COLUMN "c"`,
+					},
+					{
+						Cmd:     `ALTER TABLE "s1"."t1" RENAME COLUMN "a" TO "b"`,
+						Reverse: `ALTER TABLE "s1"."t1" RENAME COLUMN "b" TO "a"`,
+					},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("t1").SetSchema(schema.New("s1")),
+					Changes: []schema.Change{
 						&schema.RenameIndex{
 							From: schema.NewIndex("a"),
 							To:   schema.NewIndex("b"),
