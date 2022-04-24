@@ -314,7 +314,7 @@ func (b *Builder) Wrap(f func(b *Builder)) *Builder {
 func (b *Builder) Clone() *Builder {
 	return &Builder{
 		QuoteChar: b.QuoteChar,
-		Buffer:    *bytes.NewBufferString(b.String()),
+		Buffer:    *bytes.NewBufferString(b.Buffer.String()),
 	}
 }
 
