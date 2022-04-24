@@ -349,7 +349,14 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 					Change: change.Change,
 				})
 			case *schema.RenameColumn:
-				b.P("RENAME COLUMN").Ident(change.From.Name).P("TO").Ident(change.To.Name)
+				if s.supportsRenameColumn() {
+					b.P("RENAME COLUMN").Ident(change.From.Name).P("TO").Ident(change.To.Name)
+				} else {
+					b.P("CHANGE COLUMN").Ident(change.From.Name)
+					if err := s.column(b, t, change.To); err != nil {
+						return err
+					}
+				}
 				reverse = append(reverse, &schema.RenameColumn{From: change.To, To: change.From})
 			case *schema.DropColumn:
 				b.P("DROP COLUMN").Ident(change.C.Name)

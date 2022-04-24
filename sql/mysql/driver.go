@@ -170,6 +170,16 @@ func (d *conn) supportsGeneratedColumns() bool {
 	return d.gteV(v)
 }
 
+// supportsRenameColumn reports if the connected database
+// supports the "RENAME COLUMN" clause.
+func (d *conn) supportsRenameColumn() bool {
+	v := "8"
+	if d.mariadb() {
+		v = "10.5.2"
+	}
+	return d.gteV(v)
+}
+
 // mariadb reports if the Driver is connected to a MariaDB database.
 func (d *conn) mariadb() bool {
 	return strings.Index(d.version, "MariaDB") > 0
