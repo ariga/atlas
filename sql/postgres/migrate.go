@@ -184,9 +184,9 @@ func (s *state) dropTable(drop *schema.DropTable) {
 // modifyTable builds the statements that bring the table into its modified state.
 func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) error {
 	var (
-		changes     []schema.Change
+		alter       []schema.Change
 		addI, dropI []*schema.Index
-		comments    []*migrate.Change
+		changes     []*migrate.Change
 	)
 	for _, change := range skipAutoChanges(modify.Changes) {
 		switch change := change.(type) {
@@ -195,12 +195,12 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 			if err != nil {
 				return err
 			}
-			comments = append(comments, s.tableComment(modify.T, to, from))
+			changes = append(changes, s.tableComment(modify.T, to, from))
 		case *schema.DropAttr:
 			return fmt.Errorf("unsupported change type: %T", change)
 		case *schema.AddIndex:
 			if c := (schema.Comment{}); sqlx.Has(change.I.Attrs, &c) {
-				comments = append(comments, s.indexComment(modify.T, change.I, c.Text, ""))
+				changes = append(changes, s.indexComment(modify.T, change.I, c.Text, ""))
 			}
 			addI = append(addI, change.I)
 		case *schema.DropIndex:
@@ -212,7 +212,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 				if err != nil {
 					return err
 				}
-				comments = append(comments, s.indexComment(modify.T, change.To, to, from))
+				changes = append(changes, s.indexComment(modify.T, change.To, to, from))
 				// If only the comment of the index was changed.
 				if k &= ^schema.ChangeComment; k.Is(schema.NoChange) {
 					continue
@@ -222,7 +222,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 			addI = append(addI, change.To)
 			dropI = append(dropI, change.From)
 		case *schema.RenameIndex:
-			s.append(&migrate.Change{
+			changes = append(changes, &migrate.Change{
 				Source:  change,
 				Comment: fmt.Sprintf("rename an index from %q to %q", change.From.Name, change.To.Name),
 				Cmd:     Build("ALTER INDEX").Ident(change.From.Name).P("RENAME TO").Ident(change.To.Name).String(),
@@ -231,7 +231,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 		case *schema.ModifyForeignKey:
 			// Foreign-key modification is translated into 2 steps.
 			// Dropping the current foreign key and creating a new one.
-			changes = append(changes, &schema.DropForeignKey{
+			alter = append(alter, &schema.DropForeignKey{
 				F: change.From,
 			}, &schema.AddForeignKey{
 				F: change.To,
@@ -241,9 +241,9 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 				return err
 			}
 			if c := (schema.Comment{}); sqlx.Has(change.C.Attrs, &c) {
-				comments = append(comments, s.columnComment(modify.T, change.C, c.Text, ""))
+				changes = append(changes, s.columnComment(modify.T, change.C, c.Text, ""))
 			}
-			changes = append(changes, change)
+			alter = append(alter, change)
 		case *schema.ModifyColumn:
 			k := change.Change
 			if change.Change.Is(schema.ChangeComment) {
@@ -251,7 +251,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 				if err != nil {
 					return err
 				}
-				comments = append(comments, s.columnComment(modify.T, change.To, to, from))
+				changes = append(changes, s.columnComment(modify.T, change.To, to, from))
 				// If only the comment of the column was changed.
 				if k &= ^schema.ChangeComment; k.Is(schema.NoChange) {
 					continue
@@ -276,19 +276,29 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 					return err
 				}
 			}
-			changes = append(changes, change)
+			alter = append(alter, change)
+		case *schema.RenameColumn:
+			// "RENAME COLUMN" cannot be combined with other alterations.
+			b := Build("ALTER TABLE").Table(modify.T).P("RENAME COLUMN")
+			r := b.Clone()
+			changes = append(changes, &migrate.Change{
+				Source:  change,
+				Comment: fmt.Sprintf("rename a column from %q to %q", change.From.Name, change.To.Name),
+				Cmd:     b.Ident(change.From.Name).P("TO").Ident(change.To.Name).String(),
+				Reverse: r.Ident(change.To.Name).P("TO").Ident(change.From.Name).String(),
+			})
 		default:
-			changes = append(changes, change)
+			alter = append(alter, change)
 		}
 	}
 	s.dropIndexes(modify.T, dropI...)
-	if len(changes) > 0 {
-		if err := s.alterTable(modify.T, changes); err != nil {
+	if len(alter) > 0 {
+		if err := s.alterTable(modify.T, alter); err != nil {
 			return err
 		}
 	}
 	s.addIndexes(modify.T, addI...)
-	s.append(comments...)
+	s.append(changes...)
 	return nil
 }
 
@@ -320,9 +330,6 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 					To:     change.From,
 					Change: change.Change & ^schema.ChangeGenerated,
 				})
-			case *schema.RenameColumn:
-				b.P("RENAME COLUMN").Ident(change.From.Name).P("TO").Ident(change.To.Name)
-				reverse = append(reverse, &schema.RenameColumn{From: change.To, To: change.From})
 			case *schema.DropColumn:
 				b.P("DROP COLUMN").Ident(change.C.Name)
 				reverse = append(reverse, &schema.AddColumn{C: change.C})
