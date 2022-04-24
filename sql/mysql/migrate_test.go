@@ -173,12 +173,13 @@ func TestMigrate_DetachCycles(t *testing.T) {
 
 func TestPlanChanges(t *testing.T) {
 	tests := []struct {
-		input    []schema.Change
+		version  string
+		changes  []schema.Change
 		wantPlan *migrate.Plan
 		wantErr  bool
 	}{
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				&schema.AddSchema{S: schema.New("test").SetCharset("utf8mb4"), Extra: []schema.Clause{&schema.IfNotExists{}}},
 				&schema.DropSchema{S: schema.New("test").SetCharset("utf8mb4"), Extra: []schema.Clause{&schema.IfExists{}}},
 			},
@@ -196,7 +197,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 		},
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				func() schema.Change {
 					users := &schema.Table{
 						Name: "users",
@@ -233,7 +234,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 		},
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				func() schema.Change {
 					users := &schema.Table{
 						Name: "users",
@@ -283,7 +284,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 		},
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				&schema.AddSchema{S: &schema.Schema{Name: "test", Attrs: []schema.Attr{&schema.Charset{V: "latin"}}}},
 			},
 			wantPlan: &migrate.Plan{
@@ -293,7 +294,7 @@ func TestPlanChanges(t *testing.T) {
 		},
 		// Default database charset can be omitted.
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				&schema.AddSchema{S: schema.New("test").SetCharset("utf8")},
 			},
 			wantPlan: &migrate.Plan{
@@ -303,7 +304,7 @@ func TestPlanChanges(t *testing.T) {
 		},
 		// Add the default database charset on modify can be omitted.
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				&schema.ModifySchema{
 					S: schema.New("test").SetCharset("utf8"),
 					Changes: []schema.Change{
@@ -317,7 +318,7 @@ func TestPlanChanges(t *testing.T) {
 		},
 		// Add custom charset.
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				&schema.ModifySchema{
 					S: schema.New("test").SetCharset("latin1"),
 					Changes: []schema.Change{
@@ -332,7 +333,7 @@ func TestPlanChanges(t *testing.T) {
 		},
 		// Modify charset.
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				&schema.ModifySchema{
 					S: schema.New("test").SetCharset("utf8"),
 					Changes: []schema.Change{
@@ -346,7 +347,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 		},
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				&schema.DropSchema{S: &schema.Schema{Name: "atlas", Attrs: []schema.Attr{&schema.Charset{V: "latin"}}}},
 			},
 			wantPlan: &migrate.Plan{
@@ -354,7 +355,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 		},
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				func() *schema.AddTable {
 					t := &schema.Table{
 						Name: "posts",
@@ -374,7 +375,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 		},
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				func() *schema.AddTable {
 					t := &schema.Table{
 						Name: "posts",
@@ -410,7 +411,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 		},
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				func() *schema.AddTable {
 					t := &schema.Table{
 						Name: "posts",
@@ -430,7 +431,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 		},
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				&schema.DropTable{T: &schema.Table{Name: "posts"}},
 			},
 			wantPlan: &migrate.Plan{
@@ -438,7 +439,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 		},
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				func() schema.Change {
 					users := &schema.Table{
 						Name: "users",
@@ -490,7 +491,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 		},
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				func() schema.Change {
 					users := schema.NewTable("users").
 						AddColumns(schema.NewIntColumn("c1", "int"))
@@ -518,7 +519,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 		},
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				func() schema.Change {
 					users := &schema.Table{
 						Name: "users",
@@ -551,7 +552,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 		},
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				func() schema.Change {
 					users := &schema.Table{
 						Name: "users",
@@ -609,7 +610,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 		},
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				&schema.AddTable{
 					T: schema.NewTable("users").AddColumns(schema.NewIntColumn("id", "bigint").SetCharset("utf8mb4")),
 				},
@@ -617,7 +618,7 @@ func TestPlanChanges(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				&schema.AddTable{
 					T: schema.NewTable("users").AddColumns(schema.NewIntColumn("id", "bigint").SetCollation("utf8mb4_general_ci")),
 				},
@@ -626,7 +627,7 @@ func TestPlanChanges(t *testing.T) {
 		},
 		// Changing a regular column to a VIRTUAL generated column is not allowed.
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				&schema.ModifyTable{
 					T: schema.NewTable("users"),
 					Changes: []schema.Change{
@@ -642,7 +643,7 @@ func TestPlanChanges(t *testing.T) {
 		},
 		// Changing a VIRTUAL generated column to a regular column is not allowed.
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				&schema.ModifyTable{
 					T: schema.NewTable("users"),
 					Changes: []schema.Change{
@@ -658,7 +659,7 @@ func TestPlanChanges(t *testing.T) {
 		},
 		// Changing the storage type of generated column is not allowed.
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				&schema.ModifyTable{
 					T: schema.NewTable("users"),
 					Changes: []schema.Change{
@@ -674,7 +675,7 @@ func TestPlanChanges(t *testing.T) {
 		},
 		// Changing a STORED generated column to a regular column.
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				&schema.ModifyTable{
 					T: schema.NewTable("users"),
 					Changes: []schema.Change{
@@ -698,7 +699,7 @@ func TestPlanChanges(t *testing.T) {
 		},
 		// Changing a regular column to a STORED generated column.
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				&schema.ModifyTable{
 					T: schema.NewTable("users"),
 					Changes: []schema.Change{
@@ -721,7 +722,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 		},
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				&schema.RenameTable{
 					From: schema.NewTable("t1"),
 					To:   schema.NewTable("t2"),
@@ -738,7 +739,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 		},
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				&schema.RenameTable{
 					From: schema.NewTable("t1").SetSchema(schema.New("s1")),
 					To:   schema.NewTable("t2").SetSchema(schema.New("s2")),
@@ -755,7 +756,7 @@ func TestPlanChanges(t *testing.T) {
 			},
 		},
 		{
-			input: []schema.Change{
+			changes: []schema.Change{
 				&schema.ModifyTable{
 					T: schema.NewTable("t1").SetSchema(schema.New("s1")),
 					Changes: []schema.Change{
@@ -777,7 +778,30 @@ func TestPlanChanges(t *testing.T) {
 			},
 		},
 		{
-			input: []schema.Change{
+			version: "5.6",
+			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("t1").SetSchema(schema.New("s1")),
+					Changes: []schema.Change{
+						&schema.RenameColumn{
+							From: schema.NewIntColumn("a", "int"),
+							To:   schema.NewIntColumn("b", "int"),
+						},
+					},
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `s1`.`t1` CHANGE COLUMN `a` `b` int NOT NULL",
+						Reverse: "ALTER TABLE `s1`.`t1` CHANGE COLUMN `b` `a` int NOT NULL",
+					},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
 				&schema.ModifyTable{
 					T: schema.NewTable("t1").SetSchema(schema.New("s1")),
 					Changes: []schema.Change{
@@ -801,9 +825,12 @@ func TestPlanChanges(t *testing.T) {
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			db, _, err := newMigrate("8.0.16")
+			if tt.version == "" {
+				tt.version = "8.0.16"
+			}
+			db, _, err := newMigrate(tt.version)
 			require.NoError(t, err)
-			plan, err := db.PlanChanges(context.Background(), "wantPlan", tt.input)
+			plan, err := db.PlanChanges(context.Background(), "wantPlan", tt.changes)
 			if tt.wantErr {
 				require.Error(t, err, "expect plan to fail")
 				return
