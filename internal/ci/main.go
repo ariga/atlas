@@ -141,6 +141,12 @@ var (
 			Ports:   []string{"4309:4000"},
 		},
 		{
+			Version: "tidb6",
+			Image:   "pingcap/tidb:v6.0.0",
+			Regex:   "TiDB.*/tidb6",
+			Ports:   []string{"4310:4000"},
+		},
+		{
 			Version: "sqlite",
 			Regex:   "SQLite.*",
 		},
