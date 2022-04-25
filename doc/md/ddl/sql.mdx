@@ -170,6 +170,95 @@ column "active" {
 | type    | attribute | *schemaspec.Type         | Defines the type of data that can be stored in the column. |
 | default | attribute | *schemaspec.LiteralValue | Defines the default value of the column.                   |
 
+### Generated Columns
+
+Generated columns are columns whose their values are computed using other columns or by deterministic expressions.
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+]}>
+<TabItem value="mysql">
+
+```hcl
+table "users" {
+  schema = schema.test
+  column "a" {
+    type = int
+  }
+  column "b" {
+    type = int
+    # In MySQL, generated columns are VIRTUAL by default.
+    as = "a * 2"
+  }
+  column "c" {
+    type = int
+    as {
+      expr = "a * b"
+      type = STORED
+    }
+  }
+}
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```hcl
+table "users" {
+  schema = schema.test
+  column "a" {
+    type = int
+  }
+  column "b" {
+    type = int
+    # In PostgreSQL, generated columns are STORED by default.
+    as = "a * 2"
+  }
+  column "c" {
+    type = int
+    as {
+      expr = "a * b"
+      type = STORED
+    }
+  }
+}
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```hcl
+table "users" {
+  schema = schema.test
+  column "a" {
+    type = int
+  }
+  column "b" {
+    type = int
+    # In SQLite, generated columns are VIRTUAL by default.
+    as = "a * 2"
+  }
+  column "c" {
+    type = int
+    as {
+      expr = "a * b"
+      type = STORED
+    }
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+:::info
+Note, it is recommended to use the [`--dev-url`](../cli/dev-database) option when generated columns are used.
+:::
+
 ## Column Types
 
 The SQL dialects supported by Atlas (Postgres, MySQL, MariaDB, and SQLite) vary in
