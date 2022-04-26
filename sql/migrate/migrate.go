@@ -311,6 +311,8 @@ func (p *Planner) WritePlan(plan *Plan) error {
 	return nil
 }
 
+var ErrInSync = errors.New("sql/migrate: execute: nothing to do")
+
 // NewExecutor creates a new Executor with default values. // TODO(masseelch): Operator Version and other Meta
 func NewExecutor(drv Driver, dir Dir, opts ...ExecutorOption) (*Executor, error) {
 	p := &Executor{drv: drv, dir: dir}
@@ -374,7 +376,7 @@ func (e *Executor) Execute(ctx context.Context, n int) error {
 		}
 	}
 	if len(migrations) == len(revisions) {
-		return fmt.Errorf("sql/migrate: execute: nothing to do")
+		return ErrInSync
 	}
 	defer rrw.WriteRevisions(ctx, revisions) // TODO:(masseelch): handle error
 	// TODO(masseelch): run in a transaction
@@ -551,7 +553,7 @@ func (d *LocalDir) WriteFile(name string, b []byte) error {
 	return os.WriteFile(filepath.Join(d.dir, name), b, 0644)
 }
 
-// Files implements Scanner.Files.
+// Files implements Scanner.Files. It looks for all files with .sql suffix and orders them by filename-
 func (d *LocalDir) Files() ([]File, error) {
 	names, err := fs.Glob(d, "*.sql")
 	if err != nil {

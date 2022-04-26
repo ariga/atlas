@@ -292,10 +292,6 @@ func TestLocalDir(t *testing.T) {
 	require.Equal(t, "description", desc)
 }
 
-func TestLocalDir_Scanner(t *testing.T) {
-
-}
-
 type (
 	mockDriver struct {
 		migrate.Driver
