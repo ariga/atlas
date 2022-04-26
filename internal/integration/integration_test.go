@@ -56,41 +56,6 @@ type T interface {
 	applyRealmHcl(spec string)
 }
 
-func testExecutor(t T) {
-	usersT := t.users()
-	postsT := t.posts()
-	commentsT := &schema.Table{
-		Name:   "comments",
-		Schema: usersT.Schema,
-		Columns: []*schema.Column{
-			{Name: "post_id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
-			{Name: "user_id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
-		},
-	}
-	commentsT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{
-		{C: commentsT.Columns[0]},
-		{C: commentsT.Columns[1]},
-	}}
-	commentsT.ForeignKeys = []*schema.ForeignKey{
-		{
-			Symbol:     "post_id",
-			Table:      commentsT,
-			Columns:    commentsT.Columns[:1],
-			RefTable:   usersT,
-			RefColumns: usersT.Columns[:1],
-		},
-		{
-			Symbol:     "user_id",
-			Table:      commentsT,
-			Columns:    commentsT.Columns[1:],
-			RefTable:   postsT,
-			RefColumns: postsT.Columns[:1],
-		},
-	}
-
-	t.dropTables(postsT.Name, usersT.Name, commentsT.Name)
-}
-
 func testAddDrop(t T) {
 	usersT := t.users()
 	postsT := t.posts()
