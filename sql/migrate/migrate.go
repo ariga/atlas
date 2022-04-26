@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -141,7 +142,6 @@ type (
 	// Dir describes the methods needed for a Planner to manage migration files.
 	Dir interface {
 		fs.FS
-
 		// WriteFile writes the data to the named file.
 		WriteFile(string, []byte) error
 	}
@@ -155,8 +155,28 @@ type (
 	// File represents a single migration file.
 	File interface {
 		io.Reader
-		// Name returns the name of the FormattedFile.
+		// Name returns the name of the migration file.
 		Name() string
+	}
+
+	// Scanner wraps several methods to interpret a migration Dir.
+	Scanner interface {
+		// Files returns a set of files from the given Dir to be executed on a database.
+		Files() ([]File, error)
+		// Stmts returns a set of SQL statements from the given File to be executed on a database.
+		Stmts(File) ([]string, error)
+		// Version returns the version of the migration File.
+		Version(File) (string, error)
+		// Desc returns the description of the migration File.
+		Desc(File) (string, error)
+	}
+
+	// A RevisionReadWriter reads and writes information about a Revisions to a persistent storage.
+	//
+	// Atlas drivers provide a sql based implementation of this interface by default.
+	RevisionReadWriter interface {
+		ReadRevisions(context.Context) (Revisions, error)
+		WriteRevisions(context.Context, Revisions) error
 	}
 
 	// Planner can plan the steps to take to migrate from one state to another. It uses the enclosed FS to write
@@ -171,6 +191,43 @@ type (
 
 	// PlannerOption allows managing a Planner using functional arguments.
 	PlannerOption func(*Planner)
+
+	// A Revision denotes an applied migration in a deployment. Used to track migration executions state of a database.
+	Revision struct {
+		// Version of the migration.
+		Version string
+		// Description of this migration.
+		Description string
+		// ExecutionState of this migration. One of ["ongoing", "ok", "error"].
+		ExecutionState string
+		// ExecutedAt denotes when this migration was started to be executed.
+		ExecutedAt time.Time
+		// ExecutionTime denotes the time it took for this migration to be applied on the database.
+		ExecutionTime time.Duration
+		// Error holds information about a migration error (if occurred).
+		// If the error is from the application level, it is prefixed with "Go:\n".
+		// If the error is raised from the database, Error contains both the failed statement and the database error
+		// following the "SQL:\n<sql>\n\nError:\n<err>" format.
+		Error string
+		// Hash is the check-sum of this migration as stated by the migration directories HashFile.
+		Hash string
+		// OperatorVersion holds a string representation of the Atlas operator managing this database migration.
+		OperatorVersion string
+		// Meta holds additional custom meta-data given for this migration.
+		Meta map[string]string
+	}
+
+	// Revisions is an ordered set of Revision structs.
+	Revisions []*Revision
+
+	// Executor is responsible to manage and execute a set of migration files against a database.
+	Executor struct {
+		drv Driver // The Driver to access and manage the database.
+		dir Dir    // The Dir with migration files to use.
+	}
+
+	// ExecutorOption allows configuring an Executor using functional arguments.
+	ExecutorOption func(*Executor) error
 )
 
 // NewPlanner creates a new Planner.
@@ -209,11 +266,157 @@ func DisableChecksum() PlannerOption {
 	}
 }
 
+// Plan calculates the migration Plan required for moving the current state (from) state to
+// the next state (to). A StateReader can be a directory, static schema elements or a Driver connection.
+func (p *Planner) Plan(ctx context.Context, name string, to StateReader) (*Plan, error) {
+	current, err := p.dsr.ReadState(ctx)
+	if err != nil {
+		return nil, err
+	}
+	desired, err := to.ReadState(ctx)
+	if err != nil {
+		return nil, err
+	}
+	changes, err := p.drv.RealmDiff(current, desired)
+	if err != nil {
+		return nil, err
+	}
+	if len(changes) == 0 {
+		return nil, ErrNoPlan
+	}
+	return p.drv.PlanChanges(ctx, name, changes)
+}
+
+// WritePlan writes the given Plan to the Dir based on the configured Formatter.
+func (p *Planner) WritePlan(plan *Plan) error {
+	files, err := p.fmt.Format(plan)
+	if err != nil {
+		return err
+	}
+	for _, f := range files {
+		d, err := io.ReadAll(f)
+		if err != nil {
+			return err
+		}
+		if err := p.dir.WriteFile(f.Name(), d); err != nil {
+			return err
+		}
+	}
+	if p.sum {
+		sum, err := HashSum(p.dir)
+		if err != nil {
+			return err
+		}
+		return WriteSumFile(p.dir, sum)
+	}
+	return nil
+}
+
+// NewExecutor creates a new Executor with default values. // TODO(masseelch): Operator Version and other Meta
+func NewExecutor(drv Driver, dir Dir, opts ...ExecutorOption) (*Executor, error) {
+	p := &Executor{drv: drv, dir: dir}
+	for _, opt := range opts {
+		if err := opt(p); err != nil {
+			return nil, err
+		}
+	}
+	return p, nil
+}
+
+// Execute executes n missing migration files on the database.
+func (e *Executor) Execute(ctx context.Context, n int) error {
+	// Don't operate with a broken migration directory.
+	// TODO(maseeelch): do not check here but let the caller check it before? Or let the caller decide if to skip this flag by using some flags.
+	if err := Validate(e.dir); err != nil {
+		return fmt.Errorf("sql/migrate: execute: validate migration directory: %w", err)
+	}
+	// Check if the Driver implements RevisionReadWriter interface.
+	rrw, ok := e.drv.(RevisionReadWriter)
+	if !ok {
+		return errors.New("sql/migrate: execute: no revisions reader available")
+	}
+	// Check if the Dir implements Scanner interface.
+	sc, ok := e.dir.(Scanner)
+	if !ok {
+		return errors.New("sql/migrate: execute: no scanner available")
+	}
+	// Read all applied database revisions.
+	revisions, err := rrw.ReadRevisions(ctx)
+	if err != nil {
+		return fmt.Errorf("sql/migrate: execute: read revisions: %w", err)
+	}
+	// Select the correct migration files.
+	migrations, err := sc.Files()
+	if err != nil {
+		return fmt.Errorf("sql/migrate: execute: select migration files: %w", err)
+	}
+	// Check if the existing revisions did come from the migration directory and not from somewhere else.
+	hf, err := readHashFile(e.dir)
+	if err != nil {
+		return fmt.Errorf("sql/migrate: execute: read atlas.sum file: %w", err)
+	}
+	// For up to len(revisions) revisions the migration files must both match in order and content.
+	if len(revisions) > len(migrations) { // TODO(masseelch): keep compaction in mind.
+		return errors.New("sql/migrate: execute: revisions and migrations mismatch: more revisions than migrations")
+	}
+	for i := range revisions {
+		m := migrations[i]
+		v, err := sc.Version(m)
+		if err != nil {
+			return fmt.Errorf("sql/migrate: execute: scan version from %q: %w", m.Name(), err)
+		}
+		d, err := sc.Desc(m)
+		if err != nil {
+			return fmt.Errorf("sql/migrate: execute: scan description from %q: %w", m.Name(), err)
+		}
+		r := revisions[i]
+		if v != r.Version || d != r.Description || hf[i].H != r.Hash { // TODO(masseelch): version / desc check necessary?
+			return fmt.Errorf("sql/migrate: execute: revisions and migrations mismatch: rev %q <> file %q", v, r.Version)
+		}
+	}
+	if len(migrations) == len(revisions) {
+		return fmt.Errorf("sql/migrate: execute: nothing to do")
+	}
+	defer rrw.WriteRevisions(ctx, revisions) // TODO:(masseelch): handle error
+	// TODO(masseelch): run in a transaction
+	for i := len(revisions); i < len(revisions)+n; i++ {
+		m := migrations[i]
+		stmts, err := sc.Stmts(m)
+		if err != nil {
+			return fmt.Errorf("sql/migrate: execute: scanning statements from file %q: %w", m, err)
+		}
+		for _, stmt := range stmts {
+			r := &Revision{ExecutedAt: time.Now(), Hash: hf[i].H}
+			revisions = append(revisions, r)
+			v, err := sc.Version(m)
+			if err != nil {
+				return r.setGoErr(fmt.Errorf("sql/migrate: execute: scan version from %q: %w", m.Name(), err))
+			}
+			r.Version = v
+			d, err := sc.Desc(m)
+			if err != nil {
+				return r.setGoErr(fmt.Errorf("sql/migrate: execute: scan description from %q: %w", m.Name(), err))
+			}
+			r.Description = d
+			if _, err := e.drv.ExecContext(ctx, stmt); err != nil {
+				return r.setSQLErr(
+					fmt.Errorf("sql/migrate: execute: executing statement %q from version %q: %w", v, stmt, err),
+					stmt,
+				)
+			}
+			r.done()
+		}
+	}
+	return nil
+}
+
 // GlobStateReader creates a StateReader that loads all files from Dir matching
 // glob in lexicographic order and uses the Driver to create a migration state.
 //
 // If the given Driver implements the Emptier interface the IsEmpty method will be used to determine if the Driver is
 // connected to an "empty" database. This behavior was added to support SQLite flavors.
+//
+// Deprecated: GlobStateReader will be removed once the Executor is functional.
 func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
 	var errNotClean = errors.New("sql/migrate: connected database is not clean")
 	return func(ctx context.Context) (realm *schema.Realm, err error) {
@@ -306,53 +509,23 @@ func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
 	}
 }
 
-// Plan calculates the migration Plan required for moving the current state (from) state to
-// the next state (to). A StateReader can be a directory, static schema elements or a Driver connection.
-func (p *Planner) Plan(ctx context.Context, name string, to StateReader) (*Plan, error) {
-	current, err := p.dsr.ReadState(ctx)
-	if err != nil {
-		return nil, err
-	}
-	desired, err := to.ReadState(ctx)
-	if err != nil {
-		return nil, err
-	}
-	changes, err := p.drv.RealmDiff(current, desired)
-	if err != nil {
-		return nil, err
-	}
-	if len(changes) == 0 {
-		return nil, ErrNoPlan
-	}
-	return p.drv.PlanChanges(ctx, name, changes)
+// done computes and sets the ExecutionTime.
+func (r *Revision) done() { r.ExecutionTime = time.Now().Sub(r.ExecutedAt) }
+
+func (r *Revision) setGoErr(err error) error {
+	r.done()
+	r.Error = fmt.Sprintf("Go:\n%s", err)
+	return err
 }
 
-// WritePlan writes the given Plan to the Dir based on the configured Formatter.
-func (p *Planner) WritePlan(plan *Plan) error {
-	files, err := p.fmt.Format(plan)
-	if err != nil {
-		return err
-	}
-	for _, f := range files {
-		d, err := io.ReadAll(f)
-		if err != nil {
-			return err
-		}
-		if err := p.dir.WriteFile(f.Name(), d); err != nil {
-			return err
-		}
-	}
-	if p.sum {
-		sum, err := HashSum(p.dir)
-		if err != nil {
-			return err
-		}
-		return WriteSumFile(p.dir, sum)
-	}
-	return nil
+func (r *Revision) setSQLErr(err error, stmt string) error {
+	r.done()
+	r.Error = fmt.Sprintf("Statement:\n%s\n\nError:\n%s", stmt, err)
+	return err
 }
 
-// LocalDir implements Dir for a local path.
+// LocalDir implements Dir for a local path. It implements the Scanner interface compatible with
+// migration files generated by the DefaultFormatter.
 type LocalDir struct {
 	dir string
 }
@@ -379,7 +552,81 @@ func (d *LocalDir) WriteFile(name string, b []byte) error {
 	return os.WriteFile(filepath.Join(d.dir, name), b, 0644)
 }
 
-var _ Dir = (*LocalDir)(nil)
+// Files implements Scanner.Files.
+func (d *LocalDir) Files() ([]File, error) {
+	names, err := fs.Glob(d, "*.sql")
+	if err != nil {
+		return nil, err
+	}
+	// Sort files lexicographically.
+	sort.Slice(names, func(i, j int) bool {
+		return names[i] < names[j]
+	})
+	ret := make([]File, len(names))
+	for _, n := range names {
+		b, err := ioutil.ReadFile(n)
+		if err != nil {
+			return nil, fmt.Errorf("sql/migrate: read file %q: %w", n, err)
+		}
+		ret = append(ret, &LocalFile{bytes.NewBuffer(b), n})
+	}
+	return ret, nil
+}
+
+// Stmts implements Scanner.Stmts. It reads migration file line-by-line and expects a statement to be one line only. // TODO(masseelch): add multi-line statement support
+func (d *LocalDir) Stmts(f File) ([]string, error) {
+	var (
+		stmts []string
+		sc    = bufio.NewScanner(f)
+	)
+	for sc.Scan() {
+		t := sc.Text()
+		if !strings.HasPrefix(strings.TrimSpace(t), "--") {
+			stmts = append(stmts, t)
+		}
+	}
+	if err := sc.Err(); err != nil {
+		return nil, err
+	}
+	return stmts, nil
+}
+
+// Version implements Scanner.Version.
+func (d *LocalDir) Version(f File) (string, error) {
+	return strings.SplitN(f.Name(), "_", 2)[0], nil
+}
+
+// Desc implements Scanner.Desc.
+func (d *LocalDir) Desc(f File) (string, error) {
+	split := strings.SplitN(f.Name(), "_", 2)
+	if len(split) == 1 {
+		return "", nil
+	}
+	return split[1], nil
+}
+
+var (
+	_ Dir     = (*LocalDir)(nil)
+	_ Scanner = (*LocalDir)(nil)
+)
+
+// LocalFile is used by LocalDir to implement the Scanner interface.
+type LocalFile struct {
+	c *bytes.Buffer
+	n string
+}
+
+// Name implements File.Name.
+func (f LocalFile) Name() string {
+	return f.n
+}
+
+// Read implements io.Reader.
+func (f LocalFile) Read(buf []byte) (int, error) {
+	return f.c.Read(buf)
+}
+
+var _ File = (*LocalFile)(nil)
 
 var (
 	// templateFuncs contains the template.FuncMap for the DefaultFormatter.
@@ -494,6 +741,53 @@ func HashSum(dir Dir) (HashFile, error) {
 	return hs, nil
 }
 
+// WriteSumFile writes the given HashFile to the Dir. If the file does not exist, it is created.
+func WriteSumFile(dir Dir, sum HashFile) error {
+	b, err := sum.MarshalText()
+	if err != nil {
+		return err
+	}
+	return dir.WriteFile(hashFile, b)
+}
+
+// Sum returns the checksum of the represented hash file.
+func (f HashFile) Sum() string {
+	sha := sha256.New()
+	for _, f := range f {
+		sha.Write([]byte(f.N))
+		sha.Write([]byte(f.H))
+	}
+	return base64.StdEncoding.EncodeToString(sha.Sum(nil))
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (f HashFile) MarshalText() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	for _, f := range f {
+		fmt.Fprintf(buf, "%s h1:%s\n", f.N, f.H)
+	}
+	return []byte(fmt.Sprintf("h1:%s\n%s", f.Sum(), buf)), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (f *HashFile) UnmarshalText(b []byte) error {
+	sc := bufio.NewScanner(bytes.NewReader(b))
+	// The first line contains the sum.
+	sc.Scan()
+	sum := strings.TrimPrefix(sc.Text(), "h1:")
+	for sc.Scan() {
+		li := strings.SplitN(sc.Text(), "h1:", 2)
+		if len(li) != 2 {
+			return ErrChecksumFormat
+		}
+		*f = append(*f, struct{ N, H string }{strings.TrimSpace(li[0]), li[1]})
+	}
+	if sum != f.Sum() {
+		return ErrChecksumMismatch
+	}
+	return sc.Err()
+}
+
 var (
 	// ErrChecksumFormat is returned from Validate if the sum files format is invalid.
 	ErrChecksumFormat = errors.New("checksum file format invalid")
@@ -506,7 +800,7 @@ var (
 // Validate checks if the migration dir is in sync with its sum file.
 // If they don't match ErrChecksumMismatch is returned.
 func Validate(dir Dir) error {
-	f, err := dir.Open(hashFile)
+	fh, err := readHashFile(dir)
 	if os.IsNotExist(err) {
 		// If there are no migration files yet this is okay.
 		files, err := fs.ReadDir(dir, "/")
@@ -521,15 +815,6 @@ func Validate(dir Dir) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	b, err := io.ReadAll(f)
-	if err != nil {
-		return err
-	}
-	var fh HashFile
-	if err := fh.UnmarshalText(b); err != nil {
-		return err
-	}
 	mh, err := HashSum(dir)
 	if err != nil {
 		return err
@@ -540,51 +825,22 @@ func Validate(dir Dir) error {
 	return nil
 }
 
-// WriteSumFile writes the given HashFile to the Dir. If the file does not exist, it is created.
-func WriteSumFile(dir Dir, sum HashFile) error {
-	b, err := sum.MarshalText()
+// readHashFile reads the HashFile from the given Dir.
+func readHashFile(dir Dir) (HashFile, error) {
+	f, err := dir.Open(hashFile)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return dir.WriteFile(hashFile, b)
-}
-
-// Sum returns the checksum of the represented hash file.
-func (s HashFile) Sum() string {
-	sha := sha256.New()
-	for _, f := range s {
-		sha.Write([]byte(f.N))
-		sha.Write([]byte(f.H))
+	defer f.Close()
+	b, err := io.ReadAll(f)
+	if err != nil {
+		return nil, err
 	}
-	return base64.StdEncoding.EncodeToString(sha.Sum(nil))
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s HashFile) MarshalText() ([]byte, error) {
-	buf := new(bytes.Buffer)
-	for _, f := range s {
-		fmt.Fprintf(buf, "%s h1:%s\n", f.N, f.H)
+	var fh HashFile
+	if err := fh.UnmarshalText(b); err != nil {
+		return nil, err
 	}
-	return []byte(fmt.Sprintf("h1:%s\n%s", s.Sum(), buf)), nil
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *HashFile) UnmarshalText(b []byte) error {
-	sc := bufio.NewScanner(bytes.NewReader(b))
-	// The first line contains the sum.
-	sc.Scan()
-	sum := strings.TrimPrefix(sc.Text(), "h1:")
-	for sc.Scan() {
-		li := strings.SplitN(sc.Text(), "h1:", 2)
-		if len(li) != 2 {
-			return ErrChecksumFormat
-		}
-		*s = append(*s, struct{ N, H string }{strings.TrimSpace(li[0]), li[1]})
-	}
-	if sum != s.Sum() {
-		return ErrChecksumMismatch
-	}
-	return sc.Err()
+	return fh, nil
 }
 
 // reverse changes for the down migration.
