@@ -141,7 +141,6 @@ type (
 	// Dir describes the methods needed for a Planner to manage migration files.
 	Dir interface {
 		fs.FS
-
 		// WriteFile writes the data to the named file.
 		WriteFile(string, []byte) error
 	}
@@ -159,16 +158,12 @@ type (
 		Name() string
 	}
 
-	// FileSelector wraps the SelectFiles method.
-	FileSelector interface {
-		// SelectFiles returns a set of files from the given Dir to be executed on a database.
-		SelectFiles(Dir) ([]File, error)
-	}
-
-	// FileDecoder wraps methods to retrieve key information from a File.
-	FileDecoder interface {
-		// SelectStatements returns a set of SQL statements from the given File to be executed on a database.
-		SelectStatements(File) ([]string, error)
+	// Scanner wraps several methods to interpret a migration Dir.
+	Scanner interface {
+		// Files returns a set of files from the given Dir to be executed on a database.
+		Files() ([]File, error)
+		// Statements returns a set of SQL statements from the given File to be executed on a database.
+		Statements(File) ([]string, error)
 		// Version returns the version of the migration File.
 		Version(File) (string, error)
 		// Desc returns the description of the migration File.
@@ -221,11 +216,8 @@ type (
 
 	// Executor is responsible to manage and execute a set of migration files against a database.
 	Executor struct {
-		drv Driver             // the Driver to access and manage the database
-		dir Dir                // the Dir with migration files to use
-		rrw RevisionReadWriter // a custom RevisionReadWriter to use if the default one of the Driver is not sufficient
-		fs  FileSelector       // a custom FileSelector to use if the default one of the Dir is not sufficient
-		fd  FileDecoder        // a custom FileDecoder to use if the default one of the Dir is not sufficient
+		drv Driver // the Driver to access and manage the database
+		dir Dir    // the Dir with migration files to use
 	}
 
 	// ExecutorOption allows managing an  Executor using functional arguments.
@@ -331,32 +323,15 @@ func (e *Executor) Execute(ctx context.Context, n int) error {
 	if err := Validate(e.dir); err != nil {
 		return fmt.Errorf("sql/migrate: execute: validate migration directory: %w", err)
 	}
-	// Determine what RevisionReadWriter to use.
-	var rrw RevisionReadWriter
-	if e.rrw != nil {
-		rrw = e.rrw
-	} else if v, ok := e.drv.(RevisionReadWriter); ok {
-		rrw = v
-	} else {
+	// Check if the Driver implements RevisionReadWriter interface.
+	rrw, ok := e.drv.(RevisionReadWriter)
+	if !ok {
 		return fmt.Errorf("sql/migrate: execute: no revisions reader available")
 	}
-	// Determine what FileSelector to use.
-	var fs FileSelector
-	if e.fs != nil {
-		fs = e.fs
-	} else if v, ok := e.dir.(FileSelector); ok {
-		fs = v
-	} else {
-		return fmt.Errorf("sql/migrate: execute: no file selector available")
-	}
-	// Determine what StatementSelector to use.
-	var fd FileDecoder
-	if e.fd != nil {
-		fd = e.fd
-	} else if v, ok := e.dir.(FileDecoder); ok {
-		fd = v
-	} else {
-		return fmt.Errorf("sql/migrate: execute: no statement selector available")
+	// Check if the Dir implements Scanner interface.
+	sc, ok := e.dir.(Scanner)
+	if !ok {
+		return fmt.Errorf("sql/migrate: execute: no scanner available")
 	}
 	// Read all applied database revisions.
 	revisions, err := rrw.ReadRevisions(ctx)
@@ -364,7 +339,7 @@ func (e *Executor) Execute(ctx context.Context, n int) error {
 		return fmt.Errorf("sql/migrate: execute: read revisions: %w", err)
 	}
 	// Select the correct migration files.
-	migrations, err := fs.SelectFiles(e.dir)
+	migrations, err := sc.Files()
 	if err != nil {
 		return fmt.Errorf("sql/migrate: execute: select migration files: %w", err)
 	}
@@ -379,11 +354,11 @@ func (e *Executor) Execute(ctx context.Context, n int) error {
 	}
 	for i := range revisions {
 		m := migrations[i]
-		v, err := fd.Version(m)
+		v, err := sc.Version(m)
 		if err != nil {
 			return fmt.Errorf("sql/migrate: execute: decode version from %q: %w", m.Name(), err)
 		}
-		d, err := fd.Desc(m)
+		d, err := sc.Desc(m)
 		if err != nil {
 			return fmt.Errorf("sql/migrate: execute: decode description from %q: %w", m.Name(), err)
 		}
