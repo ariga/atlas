@@ -485,26 +485,23 @@ variable "bool" {
   type = bool
 }
 
-
 name = var.name
 default = var.default
 int = var.int
 bool = var.bool
 `
-	state := New(
-		WithInputValues(map[string]interface{}{
-			"name": "rotemtam",
-			"int":  42,
-			"bool": true,
-		}),
-	)
+	state := New()
 	var test struct {
 		Name    string `spec:"name"`
 		Default string `spec:"default"`
 		Int     int    `spec:"int"`
 		Bool    bool   `spec:"bool"`
 	}
-	err := state.UnmarshalSpec([]byte(h), &test)
+	err := state.Eval([]byte(h), &test, map[string]string{
+		"name": "rotemtam",
+		"int":  "42",
+		"bool": "true",
+	})
 	require.NoError(t, err)
 	require.EqualValues(t, "rotemtam", test.Name)
 	require.EqualValues(t, "hello", test.Default)

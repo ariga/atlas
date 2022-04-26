@@ -32,9 +32,6 @@ import (
 //	}
 //
 func (s *State) evalCtx(ctx *hcl.EvalContext, f *hcl.File) (*hcl.EvalContext, error) {
-	if err := s.setInputVals(ctx, f.Body); err != nil {
-		return nil, err
-	}
 	c := &container{}
 	if diag := gohcl.DecodeBody(f.Body, ctx, c); diag.HasErrors() {
 		return nil, diag
@@ -46,6 +43,13 @@ func (s *State) evalCtx(ctx *hcl.EvalContext, f *hcl.File) (*hcl.EvalContext, er
 	return setBlockVars(ctx, b)
 }
 
+// varDef is an HCL resource that defines an input variable to the Atlas DDL document.
+type varDef struct {
+	Name    string    `hcl:",label"`
+	Type    cty.Value `hcl:"type"`
+	Default cty.Value `hcl:"default,optional"`
+}
+
 // setInputVals sets the input values into the evaluation context. HCL documents can define
 // input variables in the document body by defining "variable" blocks:
 //
@@ -53,25 +57,10 @@ func (s *State) evalCtx(ctx *hcl.EvalContext, f *hcl.File) (*hcl.EvalContext, er
 // 	  type = string // also supported: int, bool
 // 	  default = "rotemtam"
 // 	}
-//
-// When unmarshaling a document, input values may be provided by using the WithInputValues
-// option upon building the State:
-//
-// 	state := New(
-// 		WithInputValues(map[string]interface{}{
-// 			"name": "rotemtam",
-// 			"int":  42,
-// 			"bool": true,
-// 		}),
-// 	)
-func (s *State) setInputVals(ctx *hcl.EvalContext, body hcl.Body) error {
+func (s *State) setInputVals(ctx *hcl.EvalContext, body hcl.Body, input map[string]string) error {
 	var c struct {
-		Vars []struct {
-			Name    string    `hcl:",label"`
-			Type    cty.Value `hcl:"type"`
-			Default cty.Value `hcl:"default,optional"`
-		} `hcl:"variable,block"`
-		Remain hcl.Body `hcl:",remain"`
+		Vars   []*varDef `hcl:"variable,block"`
+		Remain hcl.Body  `hcl:",remain"`
 	}
 	nctx := ctx.NewChild()
 	nctx.Variables = map[string]cty.Value{
@@ -84,9 +73,13 @@ func (s *State) setInputVals(ctx *hcl.EvalContext, body hcl.Body) error {
 	}
 	ctxVars := make(map[string]cty.Value)
 	for _, v := range c.Vars {
-		inputVal, ok := s.config.inputValues[v.Name]
+		inputVal, ok := input[v.Name]
 		if ok {
-			ctxVars[v.Name] = inputVal
+			ctyVal, err := readVar(v, inputVal)
+			if err != nil {
+				return fmt.Errorf("failed reading var: %w", err)
+			}
+			ctxVars[v.Name] = ctyVal
 			continue
 		}
 		if v.Default == cty.NilVal {
@@ -96,6 +89,33 @@ func (s *State) setInputVals(ctx *hcl.EvalContext, body hcl.Body) error {
 	}
 	ctx.Variables["var"] = cty.ObjectVal(ctxVars)
 	return nil
+}
+
+// readVar reads the raw inputVal as a cty.Value using the type definition on v.
+func readVar(v *varDef, inputVal string) (cty.Value, error) {
+	et := v.Type.EncapsulatedValue()
+	typ, ok := et.(*schemaspec.Type)
+	if !ok {
+		return cty.NilVal, fmt.Errorf("expected schemaspec.Type got %T", et)
+	}
+	switch typ.T {
+	case "string":
+		return cty.StringVal(inputVal), nil
+	case "int":
+		i, err := strconv.Atoi(inputVal)
+		if err != nil {
+			return cty.NilVal, err
+		}
+		return cty.NumberIntVal(int64(i)), nil
+	case "bool":
+		b, err := strconv.ParseBool(inputVal)
+		if err != nil {
+			return cty.NilVal, err
+		}
+		return cty.BoolVal(b), nil
+	default:
+		return cty.NilVal, fmt.Errorf("unknown type: %q", typ.T)
+	}
 }
 
 func capsuleTypeVal(t string) cty.Value {

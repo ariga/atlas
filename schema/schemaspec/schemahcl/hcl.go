@@ -51,8 +51,13 @@ func (s *State) MarshalSpec(v interface{}) ([]byte, error) {
 
 // UnmarshalSpec implements schemaspec.Unmarshaler.
 func (s *State) UnmarshalSpec(data []byte, v interface{}) error {
-	ctx := s.config.newCtx()
-	spec, err := s.decode(ctx, data)
+	return s.Eval(data, v, nil)
+}
+
+// Eval evaluates the Atlas DDL document with the given input and stores it in
+// the provided object.
+func (s *State) Eval(data []byte, v interface{}, input map[string]string) error {
+	spec, err := s.eval(data, input)
 	if err != nil {
 		return fmt.Errorf("schemahcl: failed decoding: %w", err)
 	}
@@ -62,8 +67,10 @@ func (s *State) UnmarshalSpec(data []byte, v interface{}) error {
 	return nil
 }
 
-// decode decodes the input Atlas HCL document and returns a *schemaspec.Resource representing it.
-func (s *State) decode(ctx *hcl.EvalContext, body []byte) (*schemaspec.Resource, error) {
+// eval evaluates the input Atlas HCL document with the given input and returns a
+// *schemaspec.Resource representing it.
+func (s *State) eval(body []byte, input map[string]string) (*schemaspec.Resource, error) {
+	ctx := s.config.newCtx()
 	parser := hclparse.NewParser()
 	srcHCL, diag := parser.ParseHCL(body, "")
 	if diag.HasErrors() {
@@ -73,6 +80,9 @@ func (s *State) decode(ctx *hcl.EvalContext, body []byte) (*schemaspec.Resource,
 		return nil, fmt.Errorf("schemahcl: no HCL syntax found in body")
 	}
 	c := &container{}
+	if err := s.setInputVals(ctx, srcHCL.Body, input); err != nil {
+		return nil, err
+	}
 	ctx, err := s.evalCtx(ctx, srcHCL)
 	if err != nil {
 		return nil, err
