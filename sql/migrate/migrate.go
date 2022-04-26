@@ -311,7 +311,8 @@ func (p *Planner) WritePlan(plan *Plan) error {
 	return nil
 }
 
-var ErrInSync = errors.New("sql/migrate: execute: nothing to do")
+// ErrNoPendingFiles is returned when there are no pending migration files to execute on the managed database.
+var ErrNoPendingFiles = errors.New("sql/migrate: execute: nothing to do")
 
 // NewExecutor creates a new Executor with default values. // TODO(masseelch): Operator Version and other Meta
 func NewExecutor(drv Driver, dir Dir, opts ...ExecutorOption) (*Executor, error) {
@@ -376,7 +377,7 @@ func (e *Executor) Execute(ctx context.Context, n int) error {
 		}
 	}
 	if len(migrations) == len(revisions) {
-		return ErrInSync
+		return ErrNoPendingFiles
 	}
 	defer rrw.WriteRevisions(ctx, revisions) // TODO:(masseelch): handle error
 	// TODO(masseelch): run in a transaction
