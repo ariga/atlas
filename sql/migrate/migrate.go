@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -563,12 +562,12 @@ func (d *LocalDir) Files() ([]File, error) {
 		return names[i] < names[j]
 	})
 	ret := make([]File, len(names))
-	for _, n := range names {
-		b, err := ioutil.ReadFile(n)
+	for i, n := range names {
+		b, err := fs.ReadFile(d, n)
 		if err != nil {
 			return nil, fmt.Errorf("sql/migrate: read file %q: %w", n, err)
 		}
-		ret = append(ret, &LocalFile{bytes.NewBuffer(b), n})
+		ret[i] = &LocalFile{bytes.NewBuffer(b), n}
 	}
 	return ret, nil
 }
@@ -602,7 +601,7 @@ func (d *LocalDir) Desc(f File) (string, error) {
 	if len(split) == 1 {
 		return "", nil
 	}
-	return split[1], nil
+	return strings.TrimSuffix(split[1], ".sql"), nil
 }
 
 var (
