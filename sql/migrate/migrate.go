@@ -21,6 +21,7 @@ import (
 	"text/template"
 	"time"
 
+	"ariga.io/atlas/sql/internal/migrate/revision"
 	"ariga.io/atlas/sql/schema"
 )
 
@@ -325,8 +326,8 @@ func NewExecutor(drv Driver, dir Dir, opts ...ExecutorOption) (*Executor, error)
 	return p, nil
 }
 
-// Execute executes n missing migration files on the database.
-func (e *Executor) Execute(ctx context.Context, n int) error {
+// Execute executes n missing migration files on the database. Passing in n <= 0 means running all pending migrations.
+func (e *Executor) Execute(ctx context.Context, n int) (err error) {
 	// Don't operate with a broken migration directory.
 	// TODO(maseeelch): do not check here but let the caller check it before? Or let the caller decide if to skip this flag by using some flags.
 	if err := Validate(e.dir); err != nil {
@@ -379,17 +380,42 @@ func (e *Executor) Execute(ctx context.Context, n int) error {
 	if len(migrations) == len(revisions) {
 		return ErrNoPendingFiles
 	}
-	defer rrw.WriteRevisions(ctx, revisions) // TODO:(masseelch): handle error
+	defer func(rrw RevisionReadWriter, ctx context.Context, revisions *Revisions) {
+		if dErr := rrw.WriteRevisions(ctx, *revisions); dErr != nil {
+			if err != nil {
+				err = fmt.Errorf("sql/migrate: execute: write revisions: %w: %v", dErr, err)
+				return
+			}
+			err = dErr
+		}
+	}(rrw, ctx, &revisions)
+	// Determine what migrations to run.
+	var pending []File
+	if n <= 0 {
+		// If n<=0 run every pending migrations.
+		pending = migrations[len(revisions):]
+	} else {
+		// Else run n pending migrations.
+		pc := len(migrations) - len(revisions)
+		if n > pc {
+			n = pc
+		}
+		pending = migrations[len(revisions) : len(revisions)+n]
+	}
 	// TODO(masseelch): run in a transaction
-	for i := len(revisions); i < len(revisions)+n; i++ {
-		m := migrations[i]
+	for _, m := range pending {
+		r := &Revision{ExecutedAt: time.Now(), ExecutionState: string(revision.ExecutionStateOngoing)}
+		revisions = append(revisions, r)
+		h, err := hf.sumByName(m.Name())
+		if err != nil {
+			return r.setGoErr(fmt.Errorf("sql/migrate: execute: scanning checksum for file %q: %w", m.Name(), err))
+		}
+		r.Hash = h
 		stmts, err := sc.Stmts(m)
 		if err != nil {
-			return fmt.Errorf("sql/migrate: execute: scanning statements from file %q: %w", m, err)
+			return r.setGoErr(fmt.Errorf("sql/migrate: execute: scanning statements from file %q: %w", m.Name(), err))
 		}
 		for _, stmt := range stmts {
-			r := &Revision{ExecutedAt: time.Now(), Hash: hf[i].H}
-			revisions = append(revisions, r)
 			v, err := sc.Version(m)
 			if err != nil {
 				return r.setGoErr(fmt.Errorf("sql/migrate: execute: scan version from %q: %w", m.Name(), err))
@@ -402,14 +428,14 @@ func (e *Executor) Execute(ctx context.Context, n int) error {
 			r.Description = d
 			if _, err := e.drv.ExecContext(ctx, stmt); err != nil {
 				return r.setSQLErr(
-					fmt.Errorf("sql/migrate: execute: executing statement %q from version %q: %w", v, stmt, err),
+					fmt.Errorf("sql/migrate: execute: executing statement %q from version %q: %w", stmt, v, err),
 					stmt,
 				)
 			}
-			r.done()
+			r.done(true)
 		}
 	}
-	return nil
+	return
 }
 
 // GlobStateReader creates a StateReader that loads all files from Dir matching
@@ -512,16 +538,23 @@ func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
 }
 
 // done computes and sets the ExecutionTime.
-func (r *Revision) done() { r.ExecutionTime = time.Now().Sub(r.ExecutedAt) }
+func (r *Revision) done(ok bool) {
+	r.ExecutionTime = time.Now().Sub(r.ExecutedAt)
+	if ok {
+		r.ExecutionState = string(revision.ExecutionStateOk)
+	} else {
+		r.ExecutionState = string(revision.ExecutionStateError)
+	}
+}
 
 func (r *Revision) setGoErr(err error) error {
-	r.done()
+	r.done(false)
 	r.Error = fmt.Sprintf("Go:\n%s", err)
 	return err
 }
 
 func (r *Revision) setSQLErr(err error, stmt string) error {
-	r.done()
+	r.done(false)
 	r.Error = fmt.Sprintf("Statement:\n%s\n\nError:\n%s", stmt, err)
 	return err
 }
@@ -632,10 +665,7 @@ var _ File = (*LocalFile)(nil)
 
 var (
 	// templateFuncs contains the template.FuncMap for the DefaultFormatter.
-	templateFuncs = template.FuncMap{
-		"now": func() string { return time.Now().Format("20060102150405") },
-		"rev": reverse,
-	}
+	templateFuncs = template.FuncMap{"now": func() string { return time.Now().Format("20060102150405") }}
 	// DefaultFormatter is a default implementation for Formatter.
 	DefaultFormatter = &TemplateFormatter{
 		templates: []struct{ N, C *template.Template }{
@@ -788,6 +818,15 @@ func (f *HashFile) UnmarshalText(b []byte) error {
 		return ErrChecksumMismatch
 	}
 	return sc.Err()
+}
+
+func (f HashFile) sumByName(n string) (string, error) {
+	for _, f := range f {
+		if f.N == n {
+			return f.H, nil
+		}
+	}
+	return "", errors.New("checksum not found")
 }
 
 var (

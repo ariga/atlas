@@ -14,7 +14,6 @@ import (
 	"testing"
 
 	"ariga.io/atlas/sql/migrate"
-
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlite"
@@ -715,6 +714,10 @@ create table atlas_types_sanity
 	})
 }
 
+func (t *liteTest) driver() migrate.Driver {
+	return t.drv
+}
+
 func (t *liteTest) applyHcl(spec string) {
 	realm := t.loadRealm()
 	var desired schema.Schema
@@ -807,6 +810,24 @@ func (t *liteTest) posts() *schema.Table {
 		{Symbol: "author_id", Table: postsT, Columns: postsT.Columns[1:2], RefTable: usersT, RefColumns: usersT.Columns[:1], OnDelete: schema.NoAction},
 	}
 	return postsT
+}
+
+func (t *liteTest) revisions() *schema.Table {
+	versionsT := &schema.Table{
+		Name: "atlas_schema_revisions",
+		Columns: []*schema.Column{
+			{Name: "version", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
+			{Name: "description", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
+			{Name: "execution_state", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(7)"}}},
+			{Name: "executed_at", Type: &schema.ColumnType{Type: &schema.TimeType{T: "datetime"}}},
+			{Name: "execution_time", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+			{Name: "hash", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(44)"}}},
+			{Name: "operator_version", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
+			{Name: "meta", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
+		},
+	}
+	versionsT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: versionsT.Columns[0]}}}
+	return versionsT
 }
 
 func (t *liteTest) realm() *schema.Realm {
