@@ -30,7 +30,7 @@ var tidbTests = struct {
 	ports   map[string]int
 }{
 	drivers: make(map[string]*myTest),
-	ports:   map[string]int{"tidb5": 4309},
+	ports:   map[string]int{"tidb5": 4309, "tidb6": 4310},
 }
 
 func tidbInit(dialect string) []io.Closer {
