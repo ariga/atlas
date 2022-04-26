@@ -162,8 +162,8 @@ type (
 	Scanner interface {
 		// Files returns a set of files from the given Dir to be executed on a database.
 		Files() ([]File, error)
-		// Statements returns a set of SQL statements from the given File to be executed on a database.
-		Statements(File) ([]string, error)
+		// Stmts returns a set of SQL statements from the given File to be executed on a database.
+		Stmts(File) ([]string, error)
 		// Version returns the version of the migration File.
 		Version(File) (string, error)
 		// Desc returns the description of the migration File.
@@ -197,12 +197,14 @@ type (
 		Version string
 		// Description of this migration.
 		Description string
-		// ExecutionState if this migration. One of ["ongoing", "ok", "error"].
+		// ExecutionState of this migration. One of ["ongoing", "ok", "error"].
 		ExecutionState string
 		// ExecutedAt denotes when this migration was started to be executed.
 		ExecutedAt time.Time
 		// ExecutionTime denotes the time it took for this migration to be applied on the database.
 		ExecutionTime time.Duration
+		// Error holds information about a migration error (if occurred).
+		Error string
 		// Hash is the check-sum of this migration as stated by the migration directories HashFile.
 		Hash string
 		// OperatorVersion holds a string representation of the Atlas operator managing this database migration.
@@ -306,7 +308,7 @@ func (p *Planner) WritePlan(plan *Plan) error {
 	return nil
 }
 
-// NewExecutor creates a new Executor with default values.
+// NewExecutor creates a new Executor with default values. // TODO(masseelch): Operator Version and other Meta
 func NewExecutor(drv Driver, dir Dir, opts ...ExecutorOption) (*Executor, error) {
 	p := &Executor{drv: drv, dir: dir}
 	for _, opt := range opts {
@@ -356,22 +358,51 @@ func (e *Executor) Execute(ctx context.Context, n int) error {
 		m := migrations[i]
 		v, err := sc.Version(m)
 		if err != nil {
-			return fmt.Errorf("sql/migrate: execute: decode version from %q: %w", m.Name(), err)
+			return fmt.Errorf("sql/migrate: execute: scan version from %q: %w", m.Name(), err)
 		}
 		d, err := sc.Desc(m)
 		if err != nil {
-			return fmt.Errorf("sql/migrate: execute: decode description from %q: %w", m.Name(), err)
+			return fmt.Errorf("sql/migrate: execute: scan description from %q: %w", m.Name(), err)
 		}
 		r := revisions[i]
-		if v != r.Version || d != r.Description || hf[i].H != r.Hash {
-			return fmt.Errorf("sql/migrate: execute: revisions and migrations mismatch: %q <> %q", r.Hash, hf[i].H)
+		if v != r.Version || d != r.Description || hf[i].H != r.Hash { // TODO(masseelch): version / desc check necessary?
+			return fmt.Errorf("sql/migrate: execute: revisions and migrations mismatch: rev %q <> file %q", v, r.Version)
 		}
 	}
-	// check revisions match the migration files to execute
-	// execute n files
-	// ...
-	// profit
-	panic("unimplemented")
+	if len(migrations) == len(revisions) {
+		return fmt.Errorf("sql/migrate: execute: nothing to do")
+	}
+	defer rrw.WriteRevisions(ctx, revisions) // TODO:(masseelch): handle error
+	// TODO(masseelch): run in a transaction
+	for i := len(revisions); i < len(revisions)+n; i++ {
+		var m = migrations[i]
+		stmts, err := sc.Stmts(m)
+		if err != nil {
+			return fmt.Errorf("sql/migrate: execute: scanning statements from file %q: %w", m, err)
+		}
+		for _, stmt := range stmts {
+			r := &Revision{ExecutedAt: time.Now(), Hash: hf[i].H}
+			revisions = append(revisions, r)
+			v, err := sc.Version(m)
+			if err != nil {
+				return r.setGoErr(fmt.Errorf("sql/migrate: execute: scan version from %q: %w", m.Name(), err))
+			}
+			r.Version = v
+			d, err := sc.Desc(m)
+			if err != nil {
+				return r.setGoErr(fmt.Errorf("sql/migrate: execute: scan description from %q: %w", m.Name(), err))
+			}
+			r.Description = d
+			if _, err := e.drv.ExecContext(ctx, stmt); err != nil {
+				return r.setSQLErr(
+					fmt.Errorf("sql/migrate: execute: executing statement %q from version %q: %w", v, stmt, err),
+					stmt,
+				)
+			}
+			r.done()
+		}
+	}
+	return nil
 }
 
 // GlobStateReader creates a StateReader that loads all files from Dir matching
@@ -471,6 +502,21 @@ func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
 		realm, err = drv.InspectRealm(ctx, nil)
 		return
 	}
+}
+
+// done computes and sets the ExecutionTime.
+func (r *Revision) done() { r.ExecutionTime = time.Now().Sub(r.ExecutedAt) }
+
+func (r *Revision) setGoErr(err error) error {
+	r.done()
+	r.Error = fmt.Sprintf("Go:\n%s", err)
+	return err
+}
+
+func (r *Revision) setSQLErr(err error, stmt string) error {
+	r.done()
+	r.Error = fmt.Sprintf("Statement:\n%s\n\nError:\n%s", stmt, err)
+	return err
 }
 
 // LocalDir implements Dir for a local path.
@@ -698,89 +744,6 @@ func Validate(dir Dir) error {
 	}
 	return nil
 }
-
-// type (
-// 	// A SQLRevisions saves a database migration state by using an SQL table.
-// 	SQLRevisions struct {
-// 		drv      *sql.DB // access to the database
-// 		tblName string  // name of the table
-// 	}
-//
-// 	// SQLRevisionsOption allows managing a SQLStateContainer using functional arguments.
-// 	SQLRevisionsOption func(*SQLRevisions) error
-// )
-//
-// // NewSQLRevisions creates a new SQLStateContainer.
-// func NewSQLRevisions(db *sql.DB, opts ...SQLRevisionsOption) (*SQLRevisions, error) {
-// 	c := &SQLRevisions{db: db}
-// 	for _, opt := range opts {
-// 		if err := opt(c); err != nil {
-// 			return nil, err
-// 		}
-// 	}
-// 	return c, nil
-// }
-//
-// // ReadRevisions implements the RevisionReadWriter.Read method.
-// func (c *SQLRevisions) ReadRevisions(ctx context.Context) (Revisions, error) {
-// 	rs, err := c.db.QueryContext(
-// 		ctx,
-// 		"SELECT version, description, execution_state, executed_at, execution_time, hash, operator_version, meta FROM ?",
-// 		c.tblName,
-// 	)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer rs.Close()
-// 	var s Revisions
-// 	for rs.Next() {
-// 		var m Revision
-// 		if err := rs.Scan(
-// 			&m.Version,
-// 			&m.Description,
-// 			&m.ExecutionState,
-// 			&m.ExecutedAt,
-// 			&m.ExecutionTime,
-// 			&m.Hash,
-// 			&m.OperatorVersion,
-// 			&m.Meta,
-// 		); err != nil {
-// 			return nil, err
-// 		}
-// 		s = append(s, &m)
-// 	}
-// 	if err := rs.Err(); err != nil {
-// 		return nil, err
-// 	}
-// 	return s, err
-// }
-//
-// // WriteRevisions implements the RevisionReadWriter.Write method.
-// func (c *SQLRevisions) WriteRevisions(ctx context.Context, s Revisions) error {
-// 	tx, err := c.db.BeginTx(ctx, nil)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	// Use DELETE and INSERT since this is equal across all dialects.
-// 	if _, err = tx.ExecContext(ctx, "DELETE from ?", c.tblName); err != nil {
-// 		tx.Rollback()
-// 		return err
-// 	}
-// 	var (
-// 		sql  = "INSERT INTO ? (version, description, execution_state, executed_at, execution_time, hash, operator_version, meta) VALUES"
-// 		args = []interface{}{c.tblName}
-// 	)
-// 	for _, m := range s {
-// 		sql = fmt.Sprintf(", (?,?,?,?,?,?,?,?)")
-// 		args = append(args, m.Version, m.Description, m.ExecutionState, m.ExecutionTime, m.Hash, m.OperatorVersion, m.Meta)
-// 	}
-// 	if _, err := tx.ExecContext(ctx, sql, args...); err != nil {
-// 		return err
-// 	}
-// 	return tx.Commit()
-// }
-//
-// var _ RevisionReadWriter = (*SQLRevisions)(nil)
 
 // readHashFile reads the HashFile from the given Dir.
 func readHashFile(dir Dir) (HashFile, error) {
