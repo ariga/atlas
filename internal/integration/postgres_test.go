@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
@@ -992,6 +993,10 @@ create table atlas_types_sanity
 
 func (t *pgTest) dsn() string {
 	return fmt.Sprintf("postgres://postgres:pass@localhost:%d/test?sslmode=disable", t.port)
+}
+
+func (t *pgTest) driver() migrate.Driver {
+	return t.drv
 }
 
 func (t *pgTest) applyHcl(spec string) {

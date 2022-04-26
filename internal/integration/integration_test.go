@@ -12,9 +12,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"text/template"
 	"time"
 
 	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 
 	entsql "entgo.io/ent/dialect/sql"
@@ -42,6 +44,7 @@ func TestMain(m *testing.M) {
 // T holds the elements common between dialect tests.
 type T interface {
 	testing.TB
+	driver() migrate.Driver
 	realm() *schema.Realm
 	loadRealm() *schema.Realm
 	users() *schema.Table
@@ -464,4 +467,68 @@ func testAdvisoryLock(t *testing.T, l schema.Locker) {
 			require.NoError(t, unlock())
 		}
 	})
+}
+
+func testExecutor(t T) {
+	usersT, postsT := t.users(), t.posts()
+	petsT := &schema.Table{
+		Name:   "pets",
+		Schema: usersT.Schema,
+		Columns: []*schema.Column{
+			{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+			{Name: "owner_id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}, Null: true}},
+		},
+	}
+	petsT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: postsT.Columns[0]}}}
+	petsT.ForeignKeys = []*schema.ForeignKey{
+		{Symbol: "owner_id", Table: petsT, Columns: petsT.Columns[1:], RefTable: usersT, RefColumns: usersT.Columns[:1]},
+	}
+	versionsT := &schema.Table{
+		Name:   "atlas_schema_revisions",
+		Schema: usersT.Schema,
+		Columns: []*schema.Column{
+			{Name: "version", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(50)"}}},
+			{Name: "description", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
+			{Name: "execution_state", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(7)"}}},
+			{Name: "executed_at", Type: &schema.ColumnType{Type: &schema.TimeType{T: "datetime"}}},
+			{Name: "execution_time", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+			{Name: "hash", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(44)"}}},
+			{Name: "operator_version", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
+			{Name: "meta", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
+		},
+	}
+	versionsT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: versionsT.Columns[0]}}}
+
+	t.dropTables(petsT.Name, postsT.Name, usersT.Name, versionsT.Name)
+
+	dir, err := migrate.NewLocalDir(t.TempDir())
+	require.NoError(t, err)
+	f, err := migrate.NewTemplateFormatter(
+		template.Must(template.New("").Parse("{{ .Name }}.sql")),
+		template.Must(template.New("").Parse(
+			`{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}`,
+		)),
+	)
+	require.NoError(t, err)
+	pl := migrate.NewPlanner(t.driver(), dir, migrate.WithFormatter(f))
+	require.NoError(t, err)
+
+	require.NoError(t, pl.WritePlan(plan(t, "1_users", &schema.AddTable{T: usersT})))
+	require.NoError(t, pl.WritePlan(plan(t, "2_posts", &schema.AddTable{T: postsT})))
+	require.NoError(t, pl.WritePlan(plan(t, "3_pets", &schema.AddTable{T: petsT})))
+
+	ex, err := migrate.NewExecutor(t.driver(), dir)
+	require.NoError(t, err)
+	require.NoError(t, ex.Execute(context.Background(), 2)) // usersT and postsT
+	ensureNoChange(t, versionsT, postsT, usersT)
+	require.NoError(t, ex.Execute(context.Background(), 1)) // petsT
+	ensureNoChange(t, versionsT, petsT, postsT, usersT)
+
+	require.ErrorIs(t, ex.Execute(context.Background(), 1), migrate.ErrNoPendingFiles)
+}
+
+func plan(t T, name string, changes ...schema.Change) *migrate.Plan {
+	p, err := t.driver().PlanChanges(context.Background(), name, changes)
+	require.NoError(t, err)
+	return p
 }

@@ -25,6 +25,7 @@ type (
 		schema.Differ
 		schema.Inspector
 		migrate.PlanApplier
+		migrate.RevisionReadWriter
 	}
 
 	// database connection and its information.
@@ -56,10 +57,11 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 		}, nil
 	}
 	return &Driver{
-		conn:        c,
-		Differ:      &sqlx.Diff{DiffDriver: &diff{c}},
-		Inspector:   &inspect{c},
-		PlanApplier: &planApply{c},
+		conn:               c,
+		Differ:             &sqlx.Diff{DiffDriver: &diff{c}},
+		Inspector:          &inspect{c},
+		PlanApplier:        &planApply{c},
+		RevisionReadWriter: &revReadWrite{c},
 	}, nil
 }
 

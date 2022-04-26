@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
 
@@ -76,6 +77,12 @@ func myInit(dialect string) []io.Closer {
 		myTests.drivers[version] = &myTest{db: db, drv: drv, version: version, port: port}
 	}
 	return cs
+}
+
+func TestMySQL_Executor(t *testing.T) {
+	myRun(t, func(t *myTest) {
+		testExecutor(t)
+	})
 }
 
 func TestMySQL_AddDropTable(t *testing.T) {
@@ -1131,6 +1138,10 @@ func (t *myTest) dsn(dbname string) string {
 		d = "mariadb"
 	}
 	return fmt.Sprintf("%s://root%s@tcp(localhost:%d)/%s", d, pass, t.port, dbname)
+}
+
+func (t *myTest) driver() migrate.Driver {
+	return t.drv
 }
 
 func (t *myTest) applyHcl(spec string) {

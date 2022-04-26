@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlite"
@@ -711,6 +712,10 @@ create table atlas_types_sanity
 			testImplicitIndexes(t, t.db)
 		})
 	})
+}
+
+func (t *liteTest) driver() migrate.Driver {
+	return t.drv
 }
 
 func (t *liteTest) applyHcl(spec string) {

@@ -6,6 +6,8 @@ package mysql
 
 import (
 	"context"
+	"database/sql/driver"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -51,6 +53,136 @@ func (p *planApply) PlanChanges(_ context.Context, name string, changes []schema
 func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change) error {
 	return sqlx.ApplyChanges(ctx, changes, p)
 }
+
+const revTableName = "atlas_schema_revisions"
+
+var revCols = []string{
+	"version", "description", "execution_state", "executed_at", "execution_time", "hash", "operator_version", "meta",
+}
+
+type (
+	// A revReadWrite provides implementation for the migrate.RevisionReadWriter interface.
+	revReadWrite struct{ conn }
+	// meta adds a way to encode and decode a map from Go to SQL and vice versa.
+	meta map[string]string
+)
+
+// ReadRevisions read the revisions from the revisions table.
+func (r *revReadWrite) ReadRevisions(ctx context.Context) (migrate.Revisions, error) {
+	rs, err := r.QueryContext(ctx, fmt.Sprintf("SHOW TABLES LIKE '%s'", revTableName))
+	if err != nil {
+		return nil, err
+	}
+	if !rs.Next() {
+		// If there are no results the table does not exist and there are no revisions yet.
+		return migrate.Revisions{}, nil
+	}
+	if err := rs.Close(); err != nil {
+		return nil, err
+	}
+	cols := strings.Join(backTicked(revCols), ", ")
+	rs, err = r.QueryContext(ctx, fmt.Sprintf("SELECT %s FROM `%s`", cols, revTableName))
+	if err != nil {
+		return nil, err
+	}
+	defer rs.Close()
+	var revisions migrate.Revisions
+	for rs.Next() {
+		var (
+			r migrate.Revision
+			m = make(meta)
+		)
+		if err := rs.Scan(
+			&r.Version,
+			&r.Description,
+			&r.ExecutionState,
+			&r.ExecutedAt,
+			&r.ExecutionTime,
+			&r.Hash,
+			&r.OperatorVersion,
+			&m,
+		); err != nil {
+			return nil, err
+		}
+		r.Meta = m
+		revisions = append(revisions, &r)
+	}
+	if err := rs.Err(); err != nil {
+		return nil, err
+	}
+	return revisions, err
+}
+
+// WriteRevisions stores the revisions in the revisions table.
+func (r *revReadWrite) WriteRevisions(ctx context.Context, rs migrate.Revisions) error {
+	if err := r.ensureTableExists(ctx); err != nil {
+		return err
+	}
+	var (
+		cols = strings.Join(backTicked(revCols), ", ")
+		buf  = new(strings.Builder)
+		args []interface{}
+	)
+	fmt.Fprintf(buf, "REPLACE INTO `%s` (%s) VALUES ", revTableName, cols)
+	for i, r := range rs {
+		if i != 0 {
+			fmt.Fprintf(buf, ", ")
+		}
+		fmt.Fprintf(buf, "(%s)", strings.Join(strings.Split(strings.Repeat("?", len(revCols)), ""), ", "))
+		args = append(args,
+			r.Version,
+			r.Description,
+			r.ExecutionState,
+			r.ExecutedAt,
+			r.ExecutionTime,
+			r.Hash,
+			r.OperatorVersion,
+			meta(r.Meta),
+		)
+	}
+	_, err := r.ExecContext(ctx, buf.String(), args...)
+	return err
+}
+
+// TODO(masseelch): migrations of the table itself + schema / tablename
+func (r *revReadWrite) ensureTableExists(ctx context.Context) error {
+	sql := new(strings.Builder)
+	fmt.Fprintf(sql, "CREATE TABLE IF NOT EXISTS `%s` (", revTableName)
+	sql.WriteString("`version` VARCHAR(50) PRIMARY KEY")
+	sql.WriteString(", `description` VARCHAR(255) NOT NULL")
+	sql.WriteString(", `execution_state` VARCHAR(7) NOT NULL")
+	sql.WriteString(", `executed_at` DATETIME NOT NULL")
+	sql.WriteString(", `execution_time` INT NOT NULL")
+	sql.WriteString(", `hash` VARCHAR(44) NOT NULL")
+	sql.WriteString(", `operator_version` VARCHAR(255) NOT NULL")
+	sql.WriteString(", `meta` VARCHAR(255) NOT NULL")
+	sql.WriteString(")")
+	_, err := r.ExecContext(ctx, sql.String())
+	return err
+}
+
+func (m meta) Value() (driver.Value, error) {
+	return json.Marshal(m)
+}
+
+func (m *meta) Scan(src interface{}) error {
+	switch src := src.(type) {
+	case []byte:
+		return json.Unmarshal(src, m)
+	default:
+		return fmt.Errorf("unsupported type %q", src)
+	}
+}
+
+func backTicked(input []string) []string {
+	ret := make([]string, len(input))
+	for i := range input {
+		ret[i] = fmt.Sprintf("`%s`", input[i])
+	}
+	return ret
+}
+
+var _ migrate.RevisionReadWriter = (*revReadWrite)(nil)
 
 // state represents the state of a planning. It is not part of
 // planApply so that multiple planning/applying can be called
