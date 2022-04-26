@@ -188,6 +188,7 @@ func TestHash_UnmarshalText(t *testing.T) {
 	require.Equal(t, h, ac)
 }
 
+// Deprecated: GlobStateReader will be removed once the Executor is functional.
 func TestGlobStateReader(t *testing.T) {
 	var (
 		drv = &mockDriver{}
@@ -235,14 +236,17 @@ func TestGlobStateReader(t *testing.T) {
 }
 
 func TestLocalDir(t *testing.T) {
+	// Files don't work.
 	d, err := migrate.NewLocalDir("migrate.go")
 	require.ErrorContains(t, err, "sql/migrate: \"migrate.go\" is not a dir")
 	require.Nil(t, d)
 
+	// Does not create a dir for you.
 	d, err = migrate.NewLocalDir("foo/bar")
 	require.EqualError(t, err, "sql/migrate: stat foo/bar: no such file or directory")
 	require.Nil(t, d)
 
+	// Open and WriteFile work.
 	d, err = migrate.NewLocalDir(t.TempDir())
 	require.NoError(t, err)
 	require.NotNil(t, d)
@@ -255,6 +259,37 @@ func TestLocalDir(t *testing.T) {
 	c, err := io.ReadAll(f)
 	require.NoError(t, err)
 	require.Equal(t, "content", string(c))
+
+	// Default Scanner implementation.
+	d, err = migrate.NewLocalDir("testdata/sub")
+	require.NoError(t, err)
+	require.NotNil(t, d)
+
+	files, err := d.Files()
+	require.NoError(t, err)
+	require.Len(t, files, 2)
+	require.Equal(t, "1.a_sub.up.sql", files[0].Name())
+	require.Equal(t, "2.10.x-20_description.sql", files[1].Name())
+
+	stmts, err := d.Stmts(files[0])
+	require.NoError(t, err)
+	require.Equal(t, []string{"CREATE TABLE t_sub(c int);", "ALTER TABLE t_sub ADD c1 int;"}, stmts)
+	v, err := d.Version(files[0])
+	require.NoError(t, err)
+	require.Equal(t, "1.a", v)
+	desc, err := d.Desc(files[0])
+	require.NoError(t, err)
+	require.Equal(t, "sub.up", desc)
+
+	stmts, err = d.Stmts(files[1])
+	require.NoError(t, err)
+	require.Equal(t, []string{"ALTER TABLE t_sub ADD c2 int;"}, stmts)
+	v, err = d.Version(files[1])
+	require.NoError(t, err)
+	require.Equal(t, "2.10.x-20", v)
+	desc, err = d.Desc(files[1])
+	require.NoError(t, err)
+	require.Equal(t, "description", desc)
 }
 
 type (

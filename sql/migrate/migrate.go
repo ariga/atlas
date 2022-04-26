@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -312,6 +311,9 @@ func (p *Planner) WritePlan(plan *Plan) error {
 	return nil
 }
 
+// ErrNoPendingFiles is returned when there are no pending migration files to execute on the managed database.
+var ErrNoPendingFiles = errors.New("sql/migrate: execute: nothing to do")
+
 // NewExecutor creates a new Executor with default values. // TODO(masseelch): Operator Version and other Meta
 func NewExecutor(drv Driver, dir Dir, opts ...ExecutorOption) (*Executor, error) {
 	p := &Executor{drv: drv, dir: dir}
@@ -375,7 +377,7 @@ func (e *Executor) Execute(ctx context.Context, n int) error {
 		}
 	}
 	if len(migrations) == len(revisions) {
-		return fmt.Errorf("sql/migrate: execute: nothing to do")
+		return ErrNoPendingFiles
 	}
 	defer rrw.WriteRevisions(ctx, revisions) // TODO:(masseelch): handle error
 	// TODO(masseelch): run in a transaction
@@ -552,7 +554,7 @@ func (d *LocalDir) WriteFile(name string, b []byte) error {
 	return os.WriteFile(filepath.Join(d.dir, name), b, 0644)
 }
 
-// Files implements Scanner.Files.
+// Files implements Scanner.Files. It looks for all files with .sql suffix and orders them by filename-
 func (d *LocalDir) Files() ([]File, error) {
 	names, err := fs.Glob(d, "*.sql")
 	if err != nil {
@@ -563,12 +565,12 @@ func (d *LocalDir) Files() ([]File, error) {
 		return names[i] < names[j]
 	})
 	ret := make([]File, len(names))
-	for _, n := range names {
-		b, err := ioutil.ReadFile(n)
+	for i, n := range names {
+		b, err := fs.ReadFile(d, n)
 		if err != nil {
 			return nil, fmt.Errorf("sql/migrate: read file %q: %w", n, err)
 		}
-		ret = append(ret, &LocalFile{bytes.NewBuffer(b), n})
+		ret[i] = &LocalFile{bytes.NewBuffer(b), n}
 	}
 	return ret, nil
 }
@@ -602,7 +604,7 @@ func (d *LocalDir) Desc(f File) (string, error) {
 	if len(split) == 1 {
 		return "", nil
 	}
-	return split[1], nil
+	return strings.TrimSuffix(split[1], ".sql"), nil
 }
 
 var (
