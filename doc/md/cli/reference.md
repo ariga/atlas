@@ -188,6 +188,7 @@ migration.
   -w, --web              Open in a local Atlas UI.
       --addr string      used with -w, local address to bind the server to. (default ":5800")
       --verbose          enable verbose logging
+      --var strings      input variables
 
 ```
 
