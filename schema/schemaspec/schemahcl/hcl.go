@@ -38,7 +38,19 @@ type (
 	State struct {
 		config *Config
 	}
+	// Evaluator evaluates the Atlas DDL document with the given input and stores it in
+	// the provided object.
+	Evaluator interface {
+		Eval([]byte, interface{}, map[string]string) error
+	}
+	// EvalFunc is an adapter that allows the use of an ordinary function as an Evaluator.
+	EvalFunc func([]byte, interface{}, map[string]string) error
 )
+
+// Eval implements the Evaluator interface.
+func (f EvalFunc) Eval(data []byte, v interface{}, input map[string]string) error {
+	return f(data, v, input)
+}
 
 // MarshalSpec implements schemaspec.Marshaler for Atlas HCL documents.
 func (s *State) MarshalSpec(v interface{}) ([]byte, error) {
@@ -54,8 +66,7 @@ func (s *State) UnmarshalSpec(data []byte, v interface{}) error {
 	return s.Eval(data, v, nil)
 }
 
-// Eval evaluates the Atlas DDL document with the given input and stores it in
-// the provided object.
+// Eval implements the Evaluator interface.
 func (s *State) Eval(data []byte, v interface{}, input map[string]string) error {
 	spec, err := s.eval(data, input)
 	if err != nil {

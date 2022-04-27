@@ -11,6 +11,7 @@ import (
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
+	"ariga.io/atlas/sql/schema"
 
 	"github.com/stretchr/testify/require"
 )
@@ -34,6 +35,30 @@ func RegistrySanityTest(t *testing.T, registry *schemahcl.TypeRegistry, skip []s
 			require.EqualValues(t, styp, after)
 		})
 	}
+}
+
+// TestInputVars runs a test verifying that the driver's exposed Eval function uses
+// input variables properly.
+func TestInputVars(t *testing.T, evaluator schemahcl.Evaluator) {
+	h := `
+variable "tenant" {
+	type = string
+	default = "test"
+}
+schema "tenant" {
+	name = var.tenant
+}
+table "users" {
+	schema = schema.tenant
+	column "id" {
+		type = int
+	}
+}
+`
+	var test schema.Realm
+	err := evaluator.Eval([]byte(h), &test, map[string]string{"tenant": "rotemtam"})
+	require.NoError(t, err)
+	require.EqualValues(t, "rotemtam", test.Schemas[0].Name)
 }
 
 func contains(s string, l []string) bool {

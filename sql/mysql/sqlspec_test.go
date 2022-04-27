@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"ariga.io/atlas/sql/internal/spectest"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/stretchr/testify/require"
@@ -1150,6 +1151,10 @@ schema "test" {
 			require.EqualValues(t, tt.expected, after.Tables[0].Columns[0].Type.Type)
 		})
 	}
+}
+
+func TestInputVars(t *testing.T) {
+	spectest.TestInputVars(t, EvalHCL)
 }
 
 func typeTime(t string, p int) schema.Type {

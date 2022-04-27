@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 
+	"ariga.io/atlas/sql/internal/spectest"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/stretchr/testify/require"
@@ -174,7 +175,7 @@ table "accounts" {
 	}
 
 	var s schema.Schema
-	err := UnmarshalSpec([]byte(f), hclState, &s)
+	err := UnmarshalHCL([]byte(f), &s)
 	require.NoError(t, err)
 	require.EqualValues(t, exp, &s)
 }
@@ -406,16 +407,20 @@ func TestTypes(t *testing.T) {
 schema "test" {
 }
 `, tt.typeExpr)
-			err := UnmarshalSpec([]byte(doc), hclState, &test)
+			err := UnmarshalHCL([]byte(doc), &test)
 			require.NoError(t, err)
 			colspec := test.Tables[0].Columns[0]
 			require.EqualValues(t, tt.expected, colspec.Type.Type)
 			spec, err := MarshalSpec(&test, hclState)
 			require.NoError(t, err)
 			var after schema.Schema
-			err = UnmarshalSpec(spec, hclState, &after)
+			err = UnmarshalHCL(spec, &after)
 			require.NoError(t, err)
 			require.EqualValues(t, tt.expected, after.Tables[0].Columns[0].Type.Type)
 		})
 	}
+}
+
+func TestInputVars(t *testing.T) {
+	spectest.TestInputVars(t, EvalHCL)
 }
