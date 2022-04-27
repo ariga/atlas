@@ -729,7 +729,7 @@ create table atlas_types_sanity
 		tLongText                   longtext             default                                                     null,
 		tEnum                       enum('a','b')        default                                                     null,
 		tSet                        set('a','b')         default                                                     null
-) CHARSET = latin1 COLLATE = latin1_swedish_ci;
+) CHARSET = latin1;
 `
 		tidbRun(t, func(t *myTest) {
 			t.dropTables(n)
@@ -742,8 +742,10 @@ create table atlas_types_sanity
 			expected := schema.Table{
 				Name: n,
 				Attrs: []schema.Attr{
-					&schema.Collation{V: "latin1_swedish_ci"},
 					&schema.Charset{V: "latin1"},
+					&schema.Collation{
+						V: "latin1_bin",
+					},
 				},
 				Schema: realm.Schemas[0],
 				Columns: []*schema.Column{
@@ -881,7 +883,7 @@ create table atlas_types_sanity
 						Default: &schema.Literal{V: t.quoted("Titan")},
 						Attrs: []schema.Attr{
 							&schema.Charset{V: "latin1"},
-							&schema.Collation{V: "latin1_swedish_ci"},
+							&schema.Collation{V: "latin1_bin"},
 						},
 					},
 					{
@@ -891,7 +893,7 @@ create table atlas_types_sanity
 						Default: &schema.Literal{V: t.quoted("Olimpia")},
 						Attrs: []schema.Attr{
 							&schema.Charset{V: "latin1"},
-							&schema.Collation{V: "latin1_swedish_ci"},
+							&schema.Collation{V: "latin1_bin"},
 						},
 					},
 					{
@@ -932,7 +934,7 @@ create table atlas_types_sanity
 							Raw: "tinytext", Null: true},
 						Attrs: []schema.Attr{
 							&schema.Charset{V: "latin1"},
-							&schema.Collation{V: "latin1_swedish_ci"},
+							&schema.Collation{V: "latin1_bin"},
 						},
 					},
 					{
@@ -941,7 +943,7 @@ create table atlas_types_sanity
 							Raw: "tinytext", Null: true},
 						Attrs: []schema.Attr{
 							&schema.Charset{V: "latin1"},
-							&schema.Collation{V: "latin1_swedish_ci"},
+							&schema.Collation{V: "latin1_bin"},
 						},
 					},
 					{
@@ -950,7 +952,7 @@ create table atlas_types_sanity
 							Raw: "mediumtext", Null: true},
 						Attrs: []schema.Attr{
 							&schema.Charset{V: "latin1"},
-							&schema.Collation{V: "latin1_swedish_ci"},
+							&schema.Collation{V: "latin1_bin"},
 						},
 					},
 					{
@@ -959,7 +961,7 @@ create table atlas_types_sanity
 							Raw: "longtext", Null: true},
 						Attrs: []schema.Attr{
 							&schema.Charset{V: "latin1"},
-							&schema.Collation{V: "latin1_swedish_ci"},
+							&schema.Collation{V: "latin1_bin"},
 						},
 					},
 					{
@@ -968,7 +970,7 @@ create table atlas_types_sanity
 							Raw: "enum('a','b')", Null: true},
 						Attrs: []schema.Attr{
 							&schema.Charset{V: "latin1"},
-							&schema.Collation{V: "latin1_swedish_ci"},
+							&schema.Collation{V: "latin1_bin"},
 						},
 					},
 					{
@@ -977,7 +979,7 @@ create table atlas_types_sanity
 							Raw: "set('a','b')", Null: true},
 						Attrs: []schema.Attr{
 							&schema.Charset{V: "latin1"},
-							&schema.Collation{V: "latin1_swedish_ci"},
+							&schema.Collation{V: "latin1_bin"},
 						},
 					},
 				},
@@ -992,7 +994,7 @@ create table atlas_types_sanity
 	create table atlas_types_sanity
 	(
 	    tJSON         json          default                   null
-	) CHARSET = latin1 COLLATE latin1_swedish_ci;
+	) CHARSET = latin1;
 	`
 		tidbRun(t, func(t *myTest) {
 			t.dropTables(n)
@@ -1006,13 +1008,13 @@ create table atlas_types_sanity
 				Name: n,
 				Attrs: func() []schema.Attr {
 					return []schema.Attr{
-						&schema.Collation{V: "latin1_swedish_ci"},
 						&schema.Charset{V: "latin1"},
+						&schema.Collation{V: "latin1_bin"},
 					}
 				}(),
 				Schema: realm.Schemas[0],
 				Columns: []*schema.Column{
-					&schema.Column{Name: "tJSON", Type: &schema.ColumnType{Type: &schema.JSONType{T: "json"}, Raw: "json", Null: true}},
+					{Name: "tJSON", Type: &schema.ColumnType{Type: &schema.JSONType{T: "json"}, Raw: "json", Null: true}},
 				},
 			}
 			rmCreateStmt(ts)

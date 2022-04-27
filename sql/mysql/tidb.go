@@ -171,13 +171,13 @@ func (i *tinspect) patchSchema(ctx context.Context, s *schema.Schema) (*schema.S
 	return s, nil
 }
 
-func (i *tinspect) patchColumn(ctx context.Context, c *schema.Column) {
+func (i *tinspect) patchColumn(_ context.Context, c *schema.Column) {
 	_, ok := c.Type.Type.(*BitType)
 	if !ok {
 		return
 	}
 	// TiDB has a bug where it does not format bit default value correctly.
-	if lit, ok := c.Default.(*schema.Literal); ok {
+	if lit, ok := c.Default.(*schema.Literal); ok && !strings.HasPrefix(lit.V, "b'") {
 		lit.V = bytesToBitLiteral([]byte(lit.V))
 	}
 }

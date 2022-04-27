@@ -899,7 +899,18 @@ create table atlas_types_sanity
 					},
 					{
 						Name: "tYear",
-						Type: &schema.ColumnType{Type: &schema.TimeType{T: "year", Precision: intp(t.intByVersion(map[string]int{"mysql8": 0}, 4))},
+						Type: &schema.ColumnType{
+							Type: &schema.TimeType{
+								T: "year",
+								Precision: func() *int {
+									// From MySQL 8.0.19, display width is deprecated in YEAR types.
+									if t.version == "mysql8" {
+										return nil
+									}
+									p := 4
+									return &p
+								}(),
+							},
 							Raw: t.valueByVersion(map[string]string{"mysql8": "year"}, "year(4)"), Null: true},
 					},
 					{
