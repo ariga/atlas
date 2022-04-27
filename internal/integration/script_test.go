@@ -384,7 +384,7 @@ func (t *myTest) hclDiff(ts *testscript.TestScript, name string) ([]schema.Chang
 	ts.Check(mysql.UnmarshalHCL([]byte(r.Replace(f)), desired))
 	current, err := t.drv.InspectSchema(ctx, desired.Name, nil)
 	ts.Check(err)
-	desired, err = t.drv.NormalizeSchema(ctx, desired)
+	desired, err = t.drv.(schema.Normalizer).NormalizeSchema(ctx, desired)
 	// Normalization and diffing errors should
 	// be returned to the caller.
 	if err != nil {
@@ -414,7 +414,7 @@ func (t *pgTest) hclDiff(ts *testscript.TestScript, name string) ([]schema.Chang
 	ts.Check(postgres.UnmarshalHCL([]byte(f), desired))
 	current, err := t.drv.InspectSchema(ctx, desired.Name, nil)
 	ts.Check(err)
-	desired, err = t.drv.NormalizeSchema(ctx, desired)
+	desired, err = t.drv.(schema.Normalizer).NormalizeSchema(ctx, desired)
 	// Normalization and diffing errors should
 	// be returned to the caller.
 	if err != nil {

@@ -7,10 +7,13 @@ package sqlite
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"strings"
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlclient"
 )
 
 type (
@@ -33,8 +36,19 @@ type (
 	}
 )
 
+func init() {
+	sqlclient.Register(
+		"sqlite3",
+		sqlclient.DriverOpener(Open, func(u *url.URL) string {
+			return strings.TrimPrefix(u.String(), u.Scheme+"://")
+		}),
+		sqlclient.RegisterCodec(MarshalHCL, UnmarshalHCL),
+		sqlclient.RegisterFlavours("sqlite"),
+	)
+}
+
 // Open opens a new SQLite driver.
-func Open(db schema.ExecQuerier) (*Driver, error) {
+func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	var (
 		c   = conn{ExecQuerier: db}
 		ctx = context.Background()

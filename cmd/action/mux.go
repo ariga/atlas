@@ -8,84 +8,20 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"io"
 	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
-	"ariga.io/atlas/schema/schemaspec"
-	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlite"
 
 	"github.com/go-sql-driver/mysql"
 )
 
-type (
-	// Mux is used for routing URLs to their correct provider.
-	Mux struct {
-		providers map[string]Provider
-	}
-
-	// Driver implements the Atlas interface.
-	Driver struct {
-		migrate.Driver
-		schemaspec.Marshaler
-		schemaspec.Unmarshaler
-		io.Closer
-	}
-
-	// Provider creates a Driver from a given URL and a set of options.
-	Provider func(context.Context, string, ...ProviderOption) (*Driver, error)
-
-	// ProviderOption is an interface to mark custom provider configuration.
-	ProviderOption interface{ providerOption() }
-)
-
-// NewMux returns a new Mux.
-func NewMux() *Mux {
-	return &Mux{
-		providers: make(map[string]Provider),
-	}
-}
-
 var (
-	// DefaultMux is the default Mux that is used by the different commands.
-	DefaultMux = NewMux()
-	reMemMode  = regexp.MustCompile(":memory:|^file:.*mode=memory.*")
+	reMemMode = regexp.MustCompile(":memory:|^file:.*mode=memory.*")
 )
-
-// RegisterProvider is used to register a Driver provider by key.
-func (u *Mux) RegisterProvider(key string, p Provider) {
-	if _, ok := u.providers[key]; ok {
-		panic("provider is already initialized")
-	}
-	u.providers[key] = p
-}
-
-// OpenAtlas is used for opening an atlas driver on a specific data source.
-func (u *Mux) OpenAtlas(ctx context.Context, url string, opts ...ProviderOption) (*Driver, error) {
-	key, dsn, err := urlParts(url)
-	if err != nil {
-		return nil, fmt.Errorf("failed to init atlas driver, %s", err)
-	}
-	p, ok := u.providers[key]
-	if !ok {
-		return nil, fmt.Errorf("could not find provider: %s", key)
-	}
-	if key == "sqlite" {
-		if err := sqliteFileExists(dsn); err != nil {
-			return nil, err
-		}
-	}
-	return p(ctx, dsn, opts...)
-}
-
-// VerboseLogging is a ProviderOption passed to the different providers to enable more verbose logging.
-type VerboseLogging struct{}
-
-func (VerboseLogging) providerOption() {}
 
 func urlParts(url string) (string, string, error) {
 	a := strings.SplitN(url, "://", 2)

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlclient"
 
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
@@ -78,26 +79,26 @@ func CmdApplyRun(cmd *cobra.Command, _ []string) {
 		schemaCmd.PrintErrln("The Atlas UI is not available in this release.")
 		return
 	}
-	d, err := DefaultMux.OpenAtlas(cmd.Context(), ApplyFlags.URL)
+	c, err := sqlclient.Open(cmd.Context(), ApplyFlags.URL)
 	cobra.CheckErr(err)
-	defer d.Close()
-	applyRun(cmd.Context(), d, ApplyFlags.URL, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove, ApplyFlags.Verbose)
+	defer c.Close()
+	applyRun(cmd.Context(), c, ApplyFlags.URL, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove)
 }
 
-func applyRun(ctx context.Context, d *Driver, url string, file string, dryRun bool, autoApprove bool, verbose bool) {
+func applyRun(ctx context.Context, client *sqlclient.Client, url string, file string, dryRun bool, autoApprove bool) {
 	schemas := ApplyFlags.Schema
 	if n, err := SchemaNameFromURL(ctx, url); n != "" {
 		cobra.CheckErr(err)
 		schemas = append(schemas, n)
 	}
-	realm, err := d.InspectRealm(ctx, &schema.InspectRealmOption{
+	realm, err := client.InspectRealm(ctx, &schema.InspectRealmOption{
 		Schemas: schemas,
 	})
 	cobra.CheckErr(err)
 	f, err := ioutil.ReadFile(file)
 	cobra.CheckErr(err)
 	desired := &schema.Realm{}
-	cobra.CheckErr(d.UnmarshalSpec(f, desired))
+	cobra.CheckErr(client.UnmarshalSpec(f, desired))
 	if len(schemas) > 0 {
 		// Validate all schemas in file were selected by user.
 		sm := make(map[string]bool, len(schemas))
@@ -111,24 +112,20 @@ func applyRun(ctx context.Context, d *Driver, url string, file string, dryRun bo
 			}
 		}
 	}
-	if _, ok := d.Driver.(schema.Normalizer); ok && ApplyFlags.DevURL != "" {
-		var opts []ProviderOption
-		if verbose {
-			opts = append(opts, &VerboseLogging{})
-		}
-		dev, err := DefaultMux.OpenAtlas(ctx, ApplyFlags.DevURL, opts...)
+	if _, ok := client.Driver.(schema.Normalizer); ok && ApplyFlags.DevURL != "" {
+		dev, err := sqlclient.Open(ctx, ApplyFlags.DevURL)
 		cobra.CheckErr(err)
-		defer d.Close()
+		defer dev.Close()
 		desired, err = dev.Driver.(schema.Normalizer).NormalizeRealm(ctx, desired)
 		cobra.CheckErr(err)
 	}
-	changes, err := d.RealmDiff(realm, desired)
+	changes, err := client.RealmDiff(realm, desired)
 	cobra.CheckErr(err)
 	if len(changes) == 0 {
 		schemaCmd.Println("Schema is synced, no changes to be made")
 		return
 	}
-	p, err := d.PlanChanges(ctx, "plan", changes)
+	p, err := client.PlanChanges(ctx, "plan", changes)
 	cobra.CheckErr(err)
 	schemaCmd.Println("-- Planned Changes:")
 	for _, c := range p.Changes {
@@ -141,7 +138,7 @@ func applyRun(ctx context.Context, d *Driver, url string, file string, dryRun bo
 		return
 	}
 	if autoApprove || promptUser() {
-		cobra.CheckErr(d.ApplyChanges(ctx, changes))
+		cobra.CheckErr(client.ApplyChanges(ctx, changes))
 	}
 }
 

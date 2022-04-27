@@ -16,6 +16,7 @@ import (
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlclient"
 
 	"github.com/spf13/cobra"
 )
@@ -121,12 +122,8 @@ func init() {
 
 // CmdMigrateDiffRun is the command executed when running the CLI with 'migrate diff' args.
 func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
-	var opts []ProviderOption
-	if MigrateFlags.Verbose {
-		opts = append(opts, &VerboseLogging{})
-	}
 	// Open a dev driver.
-	dev, err := DefaultMux.OpenAtlas(cmd.Context(), MigrateFlags.DevURL, opts...)
+	dev, err := sqlclient.Open(cmd.Context(), MigrateFlags.DevURL)
 	if err != nil {
 		return err
 	}
@@ -201,7 +198,7 @@ func dir() (migrate.Dir, error) {
 }
 
 // to returns a migrate.StateReader for the given to flag.
-func to(ctx context.Context, d *Driver) (migrate.StateReader, error) {
+func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, error) {
 	parts := strings.SplitN(MigrateFlags.ToURL, "://", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid driver url %q", MigrateFlags.ToURL)
@@ -220,7 +217,7 @@ func to(ctx context.Context, d *Driver) (migrate.StateReader, error) {
 			return nil, err
 		}
 		realm := &schema.Realm{}
-		if err := d.UnmarshalSpec(f, realm); err != nil {
+		if err := client.UnmarshalSpec(f, realm); err != nil {
 			return nil, err
 		}
 		if len(schemas) > 0 {
@@ -235,7 +232,7 @@ func to(ctx context.Context, d *Driver) (migrate.StateReader, error) {
 				}
 			}
 		}
-		if norm, ok := d.Driver.(schema.Normalizer); ok {
+		if norm, ok := client.Driver.(schema.Normalizer); ok {
 			realm, err = norm.NormalizeRealm(ctx, realm)
 			if err != nil {
 				return nil, err
@@ -243,13 +240,16 @@ func to(ctx context.Context, d *Driver) (migrate.StateReader, error) {
 		}
 		return migrate.Realm(realm), nil
 	default: // database connection
-		drv, err := DefaultMux.OpenAtlas(ctx, MigrateFlags.ToURL)
+		client, err := sqlclient.Open(ctx, MigrateFlags.ToURL)
 		if err != nil {
 			return nil, err
 		}
-		return &stateReadCloser{
-			StateReader: migrate.Conn(drv, &schema.InspectRealmOption{Schemas: schemas}),
-			drv:         drv,
+		return struct {
+			migrate.StateReader
+			io.Closer
+		}{
+			Closer:      client,
+			StateReader: migrate.Conn(client, &schema.InspectRealmOption{Schemas: schemas}),
 		}, nil
 	}
 }
@@ -271,12 +271,3 @@ var (
 		"{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ println (sem .Cmd) }}{{ end }}",
 	))
 )
-
-type stateReadCloser struct {
-	migrate.StateReader
-	drv *Driver
-}
-
-func (s *stateReadCloser) Close() error {
-	return s.drv.Close()
-}

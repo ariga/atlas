@@ -7,12 +7,14 @@ package mysql
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlclient"
 
 	"golang.org/x/mod/semver"
 )
@@ -37,8 +39,17 @@ type (
 	}
 )
 
+func init() {
+	sqlclient.Register(
+		"mysql",
+		sqlclient.DriverOpener(Open, dsn),
+		sqlclient.RegisterCodec(MarshalHCL, UnmarshalHCL),
+		sqlclient.RegisterFlavours("maria", "mariadb"),
+	)
+}
+
 // Open opens a new MySQL driver.
-func Open(db schema.ExecQuerier) (*Driver, error) {
+func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	c := conn{ExecQuerier: db}
 	rows, err := db.QueryContext(context.Background(), variablesQuery)
 	if err != nil {
@@ -218,6 +229,35 @@ func unescape(s string) string {
 			b.WriteByte(s[i+1])
 			i++
 		}
+	}
+	return b.String()
+}
+
+// dsn returns the MySQL standard DSN for opening
+// the sql.DB from the user provided URL.
+func dsn(u *url.URL) string {
+	var b strings.Builder
+	b.WriteString(u.User.Username())
+	if p, ok := u.User.Password(); ok {
+		b.WriteByte(':')
+		b.WriteString(p)
+	}
+	if b.Len() > 0 {
+		b.WriteByte('@')
+	}
+	if u.Host != "" {
+		b.WriteString("tcp(")
+		b.WriteString(u.Host)
+		b.WriteByte(')')
+	}
+	if u.Path != "" {
+		b.WriteString(u.Path)
+	} else {
+		b.WriteByte('/')
+	}
+	if u.RawQuery != "" {
+		b.WriteByte('?')
+		b.WriteString(u.RawQuery)
 	}
 	return b.String()
 }
