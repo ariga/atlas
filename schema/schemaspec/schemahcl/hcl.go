@@ -43,7 +43,7 @@ type (
 	Evaluator interface {
 		Eval([]byte, interface{}, map[string]string) error
 	}
-	// EvalFunc is an adapter that allows the use of an ordinar function as an Evaluator.
+	// EvalFunc is an adapter that allows the use of an ordinary function as an Evaluator.
 	EvalFunc func([]byte, interface{}, map[string]string) error
 )
 
