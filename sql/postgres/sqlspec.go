@@ -33,7 +33,7 @@ func init() {
 	schemaspec.Register("enum", &Enum{})
 }
 
-// evalSpec evaluates an Atlas DDL document using an unmarshaler into v using the input.
+// evalSpec evaluates an Atlas DDL document into v using the input.
 func evalSpec(data []byte, v interface{}, input map[string]string) error {
 	var d doc
 	if err := hclState.Eval(data, &d, input); err != nil {

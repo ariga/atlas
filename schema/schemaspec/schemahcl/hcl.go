@@ -43,7 +43,7 @@ type (
 	Evaluator interface {
 		Eval([]byte, interface{}, map[string]string) error
 	}
-	// EvalFunc is the function type that is implemented by the Eval method of the Evaluator interface.
+	// EvalFunc is an adapter that allows the use of an ordinary function as an Evaluator.
 	EvalFunc func([]byte, interface{}, map[string]string) error
 )
 
