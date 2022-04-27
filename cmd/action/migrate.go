@@ -220,7 +220,7 @@ func to(ctx context.Context, d *Driver) (migrate.StateReader, error) {
 			return nil, err
 		}
 		realm := &schema.Realm{}
-		if err := d.UnmarshalSpec(f, realm); err != nil {
+		if err := d.Eval(f, realm, nil); err != nil {
 			return nil, err
 		}
 		if len(schemas) > 0 {

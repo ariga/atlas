@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlite"
 
@@ -32,7 +33,7 @@ type (
 	Driver struct {
 		migrate.Driver
 		schemaspec.Marshaler
-		schemaspec.Unmarshaler
+		schemahcl.Evaluator
 		io.Closer
 	}
 

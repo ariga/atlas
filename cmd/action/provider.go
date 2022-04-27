@@ -40,10 +40,10 @@ func mysqlProvider(_ context.Context, dsn string, _ ...ProviderOption) (*Driver,
 		return nil, err
 	}
 	return &Driver{
-		Driver:      drv,
-		Marshaler:   mysql.MarshalHCL,
-		Unmarshaler: mysql.UnmarshalHCL,
-		Closer:      db,
+		Driver:    drv,
+		Marshaler: mysql.MarshalHCL,
+		Evaluator: mysql.EvalHCL,
+		Closer:    db,
 	}, nil
 }
 
@@ -58,10 +58,10 @@ func postgresProvider(_ context.Context, dsn string, _ ...ProviderOption) (*Driv
 		return nil, err
 	}
 	return &Driver{
-		Driver:      drv,
-		Marshaler:   postgres.MarshalHCL,
-		Unmarshaler: postgres.UnmarshalHCL,
-		Closer:      db,
+		Driver:    drv,
+		Marshaler: postgres.MarshalHCL,
+		Evaluator: postgres.EvalHCL,
+		Closer:    db,
 	}, nil
 }
 
@@ -75,10 +75,10 @@ func sqliteProvider(_ context.Context, dsn string, _ ...ProviderOption) (*Driver
 		return nil, err
 	}
 	return &Driver{
-		Driver:      drv,
-		Marshaler:   sqlite.MarshalHCL,
-		Unmarshaler: sqlite.UnmarshalHCL,
-		Closer:      db,
+		Driver:    drv,
+		Marshaler: sqlite.MarshalHCL,
+		Evaluator: sqlite.EvalHCL,
+		Closer:    db,
 	}, nil
 }
 
@@ -153,9 +153,9 @@ func dockerProvider(ctx context.Context, dsn string, opts ...ProviderOption) (*D
 		return nil, err
 	}
 	return &Driver{
-		Driver:      drv.Driver,
-		Marshaler:   drv.Marshaler,
-		Unmarshaler: drv.Unmarshaler,
-		Closer:      &dockerCloser{c, drv},
+		Driver:    drv.Driver,
+		Marshaler: drv.Marshaler,
+		Evaluator: drv.Evaluator,
+		Closer:    &dockerCloser{c, drv},
 	}, nil
 }

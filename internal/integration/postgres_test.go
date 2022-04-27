@@ -513,6 +513,28 @@ func TestPostgres_CLI(t *testing.T) {
 			testCLISchemaApply(t, h, t.dsn())
 		})
 	})
+	t.Run("SchemaApplyWithVars", func(t *testing.T) {
+		pgRun(t, func(t *pgTest) {
+			h := `
+variable "tenant" {
+	type = string
+}
+schema "tenant" {
+	name = var.tenant
+}
+table "users" {
+	schema = schema.tenant
+	column "id" {
+		type = integer
+	}
+	primary_key {
+		columns = [table.users.column.id]
+	}
+}
+`
+			testCLISchemaApply(t, h, t.dsn(), "--var", "tenant=public")
+		})
+	})
 	t.Run("SchemaApplyDryRun", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
 			testCLISchemaApplyDry(t, h, t.dsn())

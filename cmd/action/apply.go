@@ -7,6 +7,7 @@ package action
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"strings"
 
@@ -28,6 +29,7 @@ var (
 		Schema      []string
 		AutoApprove bool
 		Verbose     bool
+		Vars        []string
 	}
 	// ApplyCmd represents the apply command.
 	ApplyCmd = &cobra.Command{
@@ -67,6 +69,7 @@ func init() {
 	ApplyCmd.Flags().BoolVarP(&ApplyFlags.Web, "web", "w", false, "Open in a local Atlas UI.")
 	ApplyCmd.Flags().StringVarP(&ApplyFlags.Addr, "addr", "", ":5800", "used with -w, local address to bind the server to.")
 	ApplyCmd.Flags().BoolVarP(&ApplyFlags.Verbose, migrateDiffFlagVerbose, "", false, "enable verbose logging")
+	ApplyCmd.Flags().StringSliceVarP(&ApplyFlags.Vars, "var", "", nil, "input variables")
 	cobra.CheckErr(ApplyCmd.MarkFlagRequired("url"))
 	cobra.CheckErr(ApplyCmd.MarkFlagRequired("file"))
 	dsn2url(ApplyCmd, &ApplyFlags.URL)
@@ -81,10 +84,10 @@ func CmdApplyRun(cmd *cobra.Command, _ []string) {
 	d, err := DefaultMux.OpenAtlas(cmd.Context(), ApplyFlags.URL)
 	cobra.CheckErr(err)
 	defer d.Close()
-	applyRun(cmd.Context(), d, ApplyFlags.URL, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove, ApplyFlags.Verbose)
+	applyRun(cmd.Context(), d, ApplyFlags.URL, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove, ApplyFlags.Verbose, ApplyFlags.Vars)
 }
 
-func applyRun(ctx context.Context, d *Driver, url string, file string, dryRun bool, autoApprove bool, verbose bool) {
+func applyRun(ctx context.Context, d *Driver, url string, file string, dryRun bool, autoApprove bool, verbose bool, vars []string) {
 	schemas := ApplyFlags.Schema
 	if n, err := SchemaNameFromURL(ctx, url); n != "" {
 		cobra.CheckErr(err)
@@ -94,10 +97,12 @@ func applyRun(ctx context.Context, d *Driver, url string, file string, dryRun bo
 		Schemas: schemas,
 	})
 	cobra.CheckErr(err)
+	args, err := argMap(vars)
+	cobra.CheckErr(err)
 	f, err := ioutil.ReadFile(file)
 	cobra.CheckErr(err)
 	desired := &schema.Realm{}
-	cobra.CheckErr(d.UnmarshalSpec(f, desired))
+	cobra.CheckErr(d.Eval(f, desired, args))
 	if len(schemas) > 0 {
 		// Validate all schemas in file were selected by user.
 		sm := make(map[string]bool, len(schemas))
@@ -143,6 +148,18 @@ func applyRun(ctx context.Context, d *Driver, url string, file string, dryRun bo
 	if autoApprove || promptUser() {
 		cobra.CheckErr(d.ApplyChanges(ctx, changes))
 	}
+}
+
+func argMap(s []string) (map[string]string, error) {
+	out := make(map[string]string, len(s))
+	for _, i := range s {
+		parts := strings.Split(i, "=")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("expected key=value for arg, got %q", i)
+		}
+		out[parts[0]] = parts[1]
+	}
+	return out, nil
 }
 
 func promptUser() bool {
