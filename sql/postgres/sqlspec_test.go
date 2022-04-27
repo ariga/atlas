@@ -888,3 +888,7 @@ func TestParseType_Time(t *testing.T) {
 func TestRegistrySanity(t *testing.T) {
 	spectest.RegistrySanityTest(t, TypeRegistry, []string{"enum"})
 }
+
+func TestInputVars(t *testing.T) {
+	spectest.TestInputVars(t, EvalHCL)
+}

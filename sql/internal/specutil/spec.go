@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
 )
@@ -133,10 +134,10 @@ func QualifyDuplicates(tableSpecs []*sqlspec.Table) error {
 
 // Unmarshal unmarshals an Atlas DDL document using an unmarshaler into v. Unmarshal uses the
 // given convertTable function to convert a *sqlspec.Table into a *schema.Table.
-func Unmarshal(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{},
+func Unmarshal(data []byte, evaluator schemahcl.Evaluator, v interface{}, input map[string]string,
 	convertTable ConvertTableFunc) error {
 	var d doc
-	if err := unmarshaler.UnmarshalSpec(data, &d); err != nil {
+	if err := evaluator.Eval(data, &d, input); err != nil {
 		return err
 	}
 	switch v := v.(type) {

@@ -13,9 +13,9 @@ import (
 	"ariga.io/atlas/sql/sqlspec"
 )
 
-// UnmarshalSpec unmarshals an Atlas DDL document using an unmarshaler into v.
-func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}) error {
-	return specutil.Unmarshal(data, unmarshaler, v, convertTable)
+// evalSpec evaluates an Atlas DDL document using an unmarshaler into v by using the input.
+func evalSpec(data []byte, v interface{}, input map[string]string) error {
+	return specutil.Unmarshal(data, hclState, v, input, convertTable)
 }
 
 // MarshalSpec marshals v into an Atlas DDL document using a schemaspec.Marshaler.
@@ -169,13 +169,15 @@ var (
 		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
 	)
 	// UnmarshalHCL unmarshals an Atlas HCL DDL document into v.
-	UnmarshalHCL = schemaspec.UnmarshalerFunc(func(bytes []byte, i interface{}) error {
-		return UnmarshalSpec(bytes, hclState, i)
+	UnmarshalHCL = schemaspec.UnmarshalerFunc(func(data []byte, v interface{}) error {
+		return evalSpec(data, v, nil)
 	})
 	// MarshalHCL marshals v into an Atlas HCL DDL document.
 	MarshalHCL = schemaspec.MarshalerFunc(func(v interface{}) ([]byte, error) {
 		return MarshalSpec(v, hclState)
 	})
+	// EvalHCL implements the schemahcl.Evaluator interface.
+	EvalHCL = schemahcl.EvalFunc(evalSpec)
 )
 
 // storedOrVirtual returns a STORED or VIRTUAL
