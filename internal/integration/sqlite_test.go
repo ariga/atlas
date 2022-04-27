@@ -13,6 +13,8 @@ import (
 	"strings"
 	"testing"
 
+	"ariga.io/atlas/sql/migrate"
+
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlite"
@@ -25,7 +27,7 @@ import (
 type liteTest struct {
 	*testing.T
 	db   *sql.DB
-	drv  *sqlite.Driver
+	drv  migrate.Driver
 	file string
 }
 

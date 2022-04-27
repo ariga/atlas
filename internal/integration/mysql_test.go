@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
 
@@ -24,7 +25,7 @@ import (
 type myTest struct {
 	*testing.T
 	db      *sql.DB
-	drv     *mysql.Driver
+	drv     migrate.Driver
 	version string
 	port    int
 }
@@ -488,7 +489,7 @@ func TestMySQL_Ent(t *testing.T) {
 
 func TestMySQL_AdvisoryLock(t *testing.T) {
 	myRun(t, func(t *myTest) {
-		testAdvisoryLock(t.T, t.drv)
+		testAdvisoryLock(t.T, t.drv.(schema.Locker))
 	})
 }
 
@@ -1141,7 +1142,7 @@ func (t *myTest) dsn(dbname string) string {
 	if t.mariadb() {
 		d = "mariadb"
 	}
-	return fmt.Sprintf("%s://root%s@tcp(localhost:%d)/%s", d, pass, t.port, dbname)
+	return fmt.Sprintf("%s://root%s@localhost:%d/%s", d, pass, t.port, dbname)
 }
 
 func (t *myTest) applyHcl(spec string) {

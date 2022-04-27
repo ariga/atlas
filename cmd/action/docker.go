@@ -14,11 +14,16 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+	"net/url"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/sqlclient"
 
 	mysqld "github.com/go-sql-driver/mysql"
 )
@@ -195,8 +200,8 @@ func (c *DockerConfig) Run(ctx context.Context) (*Container, error) {
 	}, nil
 }
 
-// Down stops and removes this container.
-func (c *Container) Down() error {
+// Close stops and removes this container.
+func (c *Container) Close() error {
 	return exec.Command("docker", "stop", c.ID).Run() //nolint:gosec
 }
 
@@ -296,6 +301,66 @@ func freePort() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	l.Close()
+	if err := l.Close(); err != nil {
+		return "", err
+	}
 	return strconv.Itoa(l.Addr().(*net.TCPAddr).Port), nil
+}
+
+var reDockerConfig = regexp.MustCompile("(mysql|mariadb|tidb|postgres)(?::([0-9a-zA-Z.-]+)?(\\?.*)?)?")
+
+func init() {
+	sqlclient.Register("docker", sqlclient.OpenerFunc(dockerClient))
+}
+
+func dockerClient(ctx context.Context, u *url.URL) (client *sqlclient.Client, err error) {
+	// The DSN has the driver part (docker:// removed already.
+	// Get rid of the query arguments, and we have the image name.
+	m := reDockerConfig.FindStringSubmatch(strings.TrimPrefix(u.String(), u.Scheme+"://"))
+	if len(m) != 4 {
+		return nil, fmt.Errorf("invalid docker url %q", u)
+	}
+	var cfg *DockerConfig
+	switch img, v := m[1], m[2]; img {
+	case "mysql":
+		cfg, err = MySQL(v)
+	case "mariadb":
+		cfg, err = MariaDB(v)
+	case "postgres":
+		cfg, err = PostgreSQL(v)
+	default:
+		return nil, fmt.Errorf("unsupported docker image %q", img)
+	}
+	if err != nil {
+		return nil, err
+	}
+	c, err := cfg.Run(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err != nil {
+			if cerr := c.Close(); err != nil {
+				err = fmt.Errorf("%w: %v", err, cerr)
+			}
+		}
+	}()
+	if err = c.Wait(ctx, time.Minute); err != nil {
+		return nil, err
+	}
+	u1, err := c.URL()
+	if err != nil {
+		return nil, err
+	}
+	if client, err = sqlclient.Open(ctx, u1); err != nil {
+		return nil, err
+	}
+	client.Driver = struct {
+		io.Closer
+		migrate.Driver
+	}{
+		Closer: c,
+		Driver: client.Driver,
+	}
+	return client, nil
 }

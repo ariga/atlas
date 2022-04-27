@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
@@ -25,7 +26,7 @@ import (
 type pgTest struct {
 	*testing.T
 	db      *sql.DB
-	drv     *postgres.Driver
+	drv     migrate.Driver
 	version string
 	port    int
 }
@@ -409,7 +410,7 @@ func TestPostgres_Ent(t *testing.T) {
 
 func TestPostgres_AdvisoryLock(t *testing.T) {
 	pgRun(t, func(t *pgTest) {
-		testAdvisoryLock(t.T, t.drv)
+		testAdvisoryLock(t.T, t.drv.(schema.Locker))
 	})
 }
 

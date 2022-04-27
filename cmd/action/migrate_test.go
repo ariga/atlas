@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,6 +20,10 @@ import (
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlclient"
+	_ "ariga.io/atlas/sql/sqlite"
+
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
 
@@ -55,14 +60,14 @@ func TestMigrate_Diff(t *testing.T) {
 	require.FileExists(t, filepath.Join(p, "atlas.sum"))
 
 	// A lock will prevent diffing.
-	DefaultMux.RegisterProvider("sqlitelock", func(ctx context.Context, s string, _ ...ProviderOption) (*Driver, error) {
-		drv, err := sqliteProvider(ctx, s)
+	sqlclient.Register("sqlitelock", sqlclient.OpenerFunc(func(ctx context.Context, u *url.URL) (*sqlclient.Client, error) {
+		client, err := sqlclient.Open(ctx, strings.Replace(u.String(), u.Scheme, "sqlite", 1))
 		if err != nil {
 			return nil, err
 		}
-		drv.Driver = &sqliteLockerDriver{Driver: drv.Driver}
-		return drv, nil
-	})
+		client.Driver = &sqliteLockerDriver{Driver: client.Driver}
+		return client, nil
+	}))
 	f, err := os.Create(filepath.Join(p, "test.db"))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())

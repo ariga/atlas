@@ -6,53 +6,15 @@ package action_test
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
-	"log"
-	"net"
 	"os"
-	"sync/atomic"
 	"testing"
 
 	"ariga.io/atlas/cmd/action"
 
-	mysqld "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
-
-func Test_ProviderNotSupported(t *testing.T) {
-	u := action.NewMux()
-	_, err := u.OpenAtlas(context.Background(), "fake://open")
-	require.Error(t, err)
-}
-
-func Test_RegisterProvider(t *testing.T) {
-	u := action.NewMux()
-	p := func(context.Context, string, ...action.ProviderOption) (*action.Driver, error) { return nil, nil }
-	require.NotPanics(t, func() { u.RegisterProvider("key", p) })
-}
-
-func Test_RegisterTwiceSameKeyFails(t *testing.T) {
-	u := action.NewMux()
-	p := func(context.Context, string, ...action.ProviderOption) (*action.Driver, error) { return nil, nil }
-	require.NotPanics(t, func() { u.RegisterProvider("key", p) })
-	require.Panics(t, func() { u.RegisterProvider("key", p) })
-}
-
-func Test_GetDriverFails(t *testing.T) {
-	u := action.NewMux()
-	_, err := u.OpenAtlas(context.Background(), "key://open")
-	require.Error(t, err)
-}
-
-func Test_GetDriverSuccess(t *testing.T) {
-	u := action.NewMux()
-	p := func(context.Context, string, ...action.ProviderOption) (*action.Driver, error) { return nil, nil }
-	u.RegisterProvider("key", p)
-	_, err := u.OpenAtlas(context.Background(), "key://open")
-	require.NoError(t, err)
-}
 
 func Test_SQLiteFileDoestNotExist(t *testing.T) {
 	var tests = []struct {
@@ -162,42 +124,4 @@ func Test_PostgresSchemaDSN(t *testing.T) {
 			require.Equal(t, tt.expected, schema)
 		})
 	}
-}
-
-func TestMux_OpenAtlas(t *testing.T) {
-	t.Run("MySQL", func(t *testing.T) {
-		for _, u := range []string{
-			"mysql://root:pass@tcp(%s)/",
-			"mysql://root:pass@tcp(%s)/test",
-			"mysql://root:pass@%s",
-			"mysql://root:pass@%s/",
-			"mysql://root:pass@%s/test",
-			"mysql://%s/test",
-		} {
-			calls, l := mockServer(t)
-			require.NoError(t, mysqld.SetLogger(log.New(ioutil.Discard, "", 1)))
-			_, err := action.DefaultMux.OpenAtlas(context.Background(), fmt.Sprintf(u, l.Addr()))
-			require.Error(t, err, "mock server rejects all incoming connections")
-			require.NotZero(t, atomic.LoadInt64(calls))
-		}
-	})
-}
-
-func mockServer(t *testing.T) (*int64, net.Listener) {
-	var (
-		calls  int64
-		l, err = net.Listen("tcp", "localhost:")
-	)
-	require.NoError(t, err)
-	go func() {
-		for {
-			conn, err := l.Accept()
-			if err != nil {
-				return
-			}
-			atomic.AddInt64(&calls, 1)
-			require.NoError(t, conn.Close())
-		}
-	}()
-	return &calls, l
 }

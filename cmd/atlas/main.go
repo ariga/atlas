@@ -6,6 +6,9 @@ import (
 	"os/signal"
 
 	"ariga.io/atlas/cmd/action"
+	_ "ariga.io/atlas/sql/mysql"
+	_ "ariga.io/atlas/sql/postgres"
+	_ "ariga.io/atlas/sql/sqlite"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"

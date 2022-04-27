@@ -9,11 +9,13 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"net/url"
 	"time"
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlclient"
 
 	"golang.org/x/mod/semver"
 )
@@ -38,8 +40,18 @@ type (
 	}
 )
 
+func init() {
+	sqlclient.Register(
+		"postgres",
+		sqlclient.DriverOpener(Open, func(u *url.URL) string {
+			return u.String()
+		}),
+		sqlclient.RegisterCodec(MarshalHCL, UnmarshalHCL),
+	)
+}
+
 // Open opens a new PostgreSQL driver.
-func Open(db schema.ExecQuerier) (*Driver, error) {
+func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	c := conn{ExecQuerier: db}
 	rows, err := db.QueryContext(context.Background(), paramsQuery)
 	if err != nil {
