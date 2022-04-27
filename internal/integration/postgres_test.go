@@ -515,6 +515,7 @@ func TestPostgres_CLI(t *testing.T) {
 	})
 	t.Run("SchemaApplyWithVars", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
+			t.Fatal("must fail")
 			h := `
 variable "tenant" {
 	type = string
