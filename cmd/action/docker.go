@@ -17,7 +17,6 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -307,27 +306,19 @@ func freePort() (string, error) {
 	return strconv.Itoa(l.Addr().(*net.TCPAddr).Port), nil
 }
 
-var reDockerConfig = regexp.MustCompile("(mysql|mariadb|tidb|postgres)(?::([0-9a-zA-Z.-]+)?(\\?.*)?)?")
-
 func init() {
 	sqlclient.Register("docker", sqlclient.OpenerFunc(dockerClient))
 }
 
 func dockerClient(ctx context.Context, u *url.URL) (client *sqlclient.Client, err error) {
-	// The DSN has the driver part (docker:// removed already.
-	// Get rid of the query arguments, and we have the image name.
-	m := reDockerConfig.FindStringSubmatch(strings.TrimPrefix(u.String(), u.Scheme+"://"))
-	if len(m) != 4 {
-		return nil, fmt.Errorf("invalid docker url %q", u)
-	}
 	var cfg *DockerConfig
-	switch img, v := m[1], m[2]; img {
-	case "mysql":
-		cfg, err = MySQL(v)
+	switch img, tag := u.Host, strings.TrimPrefix(u.Path, "/"); img {
+	case "mysql", "tidb":
+		cfg, err = MySQL(tag)
 	case "mariadb":
-		cfg, err = MariaDB(v)
+		cfg, err = MariaDB(tag)
 	case "postgres":
-		cfg, err = PostgreSQL(v)
+		cfg, err = PostgreSQL(tag)
 	default:
 		return nil, fmt.Errorf("unsupported docker image %q", img)
 	}
