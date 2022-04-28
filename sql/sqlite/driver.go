@@ -42,7 +42,7 @@ func init() {
 		sqlclient.DriverOpener(Open, func(u *url.URL) string {
 			return strings.TrimPrefix(u.String(), u.Scheme+"://")
 		}),
-		sqlclient.RegisterCodec(MarshalHCL, UnmarshalHCL),
+		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
 		sqlclient.RegisterFlavours("sqlite"),
 	)
 }

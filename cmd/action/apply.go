@@ -98,7 +98,7 @@ func applyRun(ctx context.Context, client *sqlclient.Client, url string, file st
 	f, err := ioutil.ReadFile(file)
 	cobra.CheckErr(err)
 	desired := &schema.Realm{}
-	cobra.CheckErr(client.UnmarshalSpec(f, desired))
+	cobra.CheckErr(client.Eval(f, desired, nil))
 	if len(schemas) > 0 {
 		// Validate all schemas in file were selected by user.
 		sm := make(map[string]bool, len(schemas))
