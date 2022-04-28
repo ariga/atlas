@@ -7,6 +7,7 @@ package action
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"strings"
 
@@ -29,6 +30,7 @@ var (
 		Schema      []string
 		AutoApprove bool
 		Verbose     bool
+		Vars        []string
 	}
 	// ApplyCmd represents the apply command.
 	ApplyCmd = &cobra.Command{
@@ -68,6 +70,8 @@ func init() {
 	ApplyCmd.Flags().BoolVarP(&ApplyFlags.Web, "web", "w", false, "Open in a local Atlas UI.")
 	ApplyCmd.Flags().StringVarP(&ApplyFlags.Addr, "addr", "", ":5800", "used with -w, local address to bind the server to.")
 	ApplyCmd.Flags().BoolVarP(&ApplyFlags.Verbose, migrateDiffFlagVerbose, "", false, "enable verbose logging")
+	ApplyCmd.Flags().StringSliceVarP(&ApplyFlags.Vars, "var", "", nil, "input variables")
+
 	cobra.CheckErr(ApplyCmd.MarkFlagRequired("url"))
 	cobra.CheckErr(ApplyCmd.MarkFlagRequired("file"))
 	dsn2url(ApplyCmd, &ApplyFlags.URL)
@@ -75,6 +79,8 @@ func init() {
 
 // CmdApplyRun is the command used when running CLI.
 func CmdApplyRun(cmd *cobra.Command, _ []string) {
+	args, err := argMap(ApplyFlags.Vars)
+	cobra.CheckErr(err)
 	if ApplyFlags.Web {
 		schemaCmd.PrintErrln("The Atlas UI is not available in this release.")
 		return
@@ -82,10 +88,22 @@ func CmdApplyRun(cmd *cobra.Command, _ []string) {
 	c, err := sqlclient.Open(cmd.Context(), ApplyFlags.URL)
 	cobra.CheckErr(err)
 	defer c.Close()
-	applyRun(cmd.Context(), c, ApplyFlags.URL, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove)
+	applyRun(cmd.Context(), c, ApplyFlags.URL, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove, args)
 }
 
-func applyRun(ctx context.Context, client *sqlclient.Client, url string, file string, dryRun bool, autoApprove bool) {
+func argMap(s []string) (map[string]string, error) {
+	out := make(map[string]string, len(s))
+	for _, i := range s {
+		parts := strings.Split(i, "=")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("expected key=value for arg, got %q", i)
+		}
+		out[parts[0]] = parts[1]
+	}
+	return out, nil
+}
+
+func applyRun(ctx context.Context, client *sqlclient.Client, url string, file string, dryRun bool, autoApprove bool, input map[string]string) {
 	schemas := ApplyFlags.Schema
 	if n, err := SchemaNameFromURL(ctx, url); n != "" {
 		cobra.CheckErr(err)
