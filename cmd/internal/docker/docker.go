@@ -2,12 +2,11 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package action
+package docker
 
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -21,7 +20,6 @@ import (
 	"strings"
 	"time"
 
-	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlclient"
 
 	mysqld "github.com/go-sql-driver/mysql"
@@ -30,8 +28,8 @@ import (
 const pass = "pass"
 
 type (
-	// DockerConfig is used to configure container creation.
-	DockerConfig struct {
+	// Config is used to configure container creation.
+	Config struct {
 		setup []string // contains statements to execute once the service is up
 		// Image is the name of the image to pull and run.
 		Image string
@@ -44,8 +42,8 @@ type (
 	}
 	// A Container is an instance of a created container.
 	Container struct {
-		cfg DockerConfig // DockerConfig used to create this container
-		out io.Writer    // custom write to log status messages to
+		cfg Config    // Config used to create this container
+		out io.Writer // custom write to log status messages to
 		// ID of the container.
 		ID string
 		// Passphrase of the root user.
@@ -53,13 +51,13 @@ type (
 		// Port on the host this containers service is bound to.
 		Port string
 	}
-	// DockerConfigOption allows configuring DockerConfig with functional arguments.
-	DockerConfigOption func(*DockerConfig) error
+	// ConfigOption allows configuring Config with functional arguments.
+	ConfigOption func(*Config) error
 )
 
 // NewConfig returns a new config with the given options applied.
-func NewConfig(opts ...DockerConfigOption) (*DockerConfig, error) {
-	c := &DockerConfig{Out: ioutil.Discard}
+func NewConfig(opts ...ConfigOption) (*Config, error) {
+	c := &Config{Out: ioutil.Discard}
 	for _, opt := range opts {
 		if err := opt(c); err != nil {
 			return nil, err
@@ -68,11 +66,11 @@ func NewConfig(opts ...DockerConfigOption) (*DockerConfig, error) {
 	return c, nil
 }
 
-// MySQL returns a new DockerConfig for a MySQL image.
-func MySQL(version string, opts ...DockerConfigOption) (*DockerConfig, error) {
+// MySQL returns a new Config for a MySQL image.
+func MySQL(version string, opts ...ConfigOption) (*Config, error) {
 	return NewConfig(
 		append(
-			[]DockerConfigOption{
+			[]ConfigOption{
 				Image("mysql:" + version),
 				Port("3306"),
 				Env("MYSQL_ROOT_PASSWORD=" + pass),
@@ -82,16 +80,16 @@ func MySQL(version string, opts ...DockerConfigOption) (*DockerConfig, error) {
 	)
 }
 
-// MariaDB returns a new DockerConfig for a MariaDB image.
-func MariaDB(version string, opts ...DockerConfigOption) (*DockerConfig, error) {
-	return MySQL(version, append([]DockerConfigOption{Image("mariadb:" + version)}, opts...)...)
+// MariaDB returns a new Config for a MariaDB image.
+func MariaDB(version string, opts ...ConfigOption) (*Config, error) {
+	return MySQL(version, append([]ConfigOption{Image("mariadb:" + version)}, opts...)...)
 }
 
-// PostgreSQL returns a new DockerConfig for a PostgreSQL image.
-func PostgreSQL(version string, opts ...DockerConfigOption) (*DockerConfig, error) {
+// PostgreSQL returns a new Config for a PostgreSQL image.
+func PostgreSQL(version string, opts ...ConfigOption) (*Config, error) {
 	return NewConfig(
 		append(
-			[]DockerConfigOption{
+			[]ConfigOption{
 				Image("postgres:" + version),
 				Port("5432"),
 				Env("POSTGRES_PASSWORD=" + pass),
@@ -107,8 +105,8 @@ func PostgreSQL(version string, opts ...DockerConfigOption) (*DockerConfig, erro
 //	Image("mysql")
 //	Image("postgres:13")
 //
-func Image(i string) DockerConfigOption {
-	return func(c *DockerConfig) error {
+func Image(i string) ConfigOption {
+	return func(c *Config) error {
 		c.Image = strings.TrimSuffix(i, ":")
 		return nil
 	}
@@ -119,8 +117,8 @@ func Image(i string) DockerConfigOption {
 //	Port("3306")
 //	Port("5432")
 //
-func Port(p string) DockerConfigOption {
-	return func(c *DockerConfig) error {
+func Port(p string) ConfigOption {
+	return func(c *Config) error {
 		c.Port = p
 		return nil
 	}
@@ -131,8 +129,8 @@ func Port(p string) DockerConfigOption {
 // 	Config(Image("mysql"), Env("MYSQL_ROOT_PASSWORD=password"))
 // 	Config(Image("postgres"), Env("MYSQL_ROOT_PASSWORD=password"))
 //
-func Env(env ...string) DockerConfigOption {
-	return func(c *DockerConfig) error {
+func Env(env ...string) ConfigOption {
+	return func(c *Config) error {
 		c.Env = env
 		return nil
 	}
@@ -143,8 +141,8 @@ func Env(env ...string) DockerConfigOption {
 // 	buf := new(bytes.Buffer)
 // 	NewConfig(Out(buf))
 //
-func Out(w io.Writer) DockerConfigOption {
-	return func(c *DockerConfig) error {
+func Out(w io.Writer) ConfigOption {
+	return func(c *Config) error {
 		c.Out = w
 		return nil
 	}
@@ -154,15 +152,15 @@ func Out(w io.Writer) DockerConfigOption {
 //
 //  setup("DROP SCHEMA IF EXISTS public CASCADE;")
 //
-func setup(s ...string) DockerConfigOption {
-	return func(c *DockerConfig) error {
+func setup(s ...string) ConfigOption {
+	return func(c *Config) error {
 		c.setup = s
 		return nil
 	}
 }
 
-// Run pulls and starts a new docker container from the DockerConfig.
-func (c *DockerConfig) Run(ctx context.Context) (*Container, error) {
+// Run pulls and starts a new docker container from the Config.
+func (c *Config) Run(ctx context.Context) (*Container, error) {
 	// Make sure the configuration is not missing critical values.
 	if err := c.validate(); err != nil {
 		return nil, err
@@ -213,9 +211,8 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 		timeout = time.Minute
 	}
 	var (
-		done     = time.After(timeout)
-		drv      = c.Driver()
-		dsn, err = c.DSN()
+		done   = time.After(timeout)
+		u, err = c.URL()
 	)
 	if err != nil {
 		return err
@@ -223,10 +220,11 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 	for {
 		select {
 		case <-time.After(100 * time.Millisecond):
-			db, err := sql.Open(drv, dsn)
+			client, err := sqlclient.Open(ctx, u)
 			if err != nil {
-				return err
+				continue
 			}
+			db := client.DB
 			if err := db.PingContext(ctx); err != nil {
 				continue
 			}
@@ -247,44 +245,20 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 	}
 }
 
-// Driver returns the database/sql driver name.
-func (c *Container) Driver() string {
-	switch img := strings.SplitN(c.cfg.Image, ":", 2)[0]; img {
-	case "mysql", "mariadb":
-		return "mysql"
-	default:
-		return img
-	}
-}
-
-// DSN returns a DSN to connect to the Container.
-func (c *Container) DSN() (string, error) {
-	switch img := strings.SplitN(c.cfg.Image, ":", 2)[0]; img {
-	case "mysql", "mariadb":
-		return fmt.Sprintf("root:%s@tcp(localhost:%s)/", c.Passphrase, c.Port), nil
-	case "postgres":
-		return fmt.Sprintf("host=localhost port=%s dbname=postgres user=postgres password=%s sslmode=disable", c.Port, c.Passphrase), nil
-	default:
-		return "", fmt.Errorf("unsupported image: %q", c.cfg.Image)
-	}
-}
-
 // URL returns a URL to connect to the Container.
 func (c *Container) URL() (string, error) {
 	switch img := strings.SplitN(c.cfg.Image, ":", 2)[0]; img {
 	case "postgres":
 		return fmt.Sprintf("postgres://postgres:%s@localhost:%s/postgres?sslmode=disable", c.Passphrase, c.Port), nil
+	case "mysql", "mariadb":
+		return fmt.Sprintf("%s://root:%s@localhost:%s/", img, c.Passphrase, c.Port), nil
 	default:
-		dsn, err := c.DSN()
-		if err != nil {
-			return "", err
-		}
-		return fmt.Sprintf("%s://%s", strings.SplitN(c.cfg.Image, ":", 2)[0], dsn), nil
+		return "", fmt.Errorf("unknown container image: %q", img)
 	}
 }
 
 // validate that no empty values are given.
-func (c *DockerConfig) validate() error {
+func (c *Config) validate() error {
 	if c == nil || c.Image == "" || c.Port == "" || c.Out == nil {
 		return fmt.Errorf("invalid configuration %q", c)
 	}
@@ -307,13 +281,13 @@ func freePort() (string, error) {
 }
 
 func init() {
-	sqlclient.Register("docker", sqlclient.OpenerFunc(dockerClient))
+	sqlclient.Register("docker", sqlclient.OpenerFunc(client))
 }
 
-func dockerClient(ctx context.Context, u *url.URL) (client *sqlclient.Client, err error) {
-	var cfg *DockerConfig
+func client(ctx context.Context, u *url.URL) (client *sqlclient.Client, err error) {
+	var cfg *Config
 	switch img, tag := u.Host, strings.TrimPrefix(u.Path, "/"); img {
-	case "mysql", "tidb":
+	case "mysql":
 		cfg, err = MySQL(tag)
 	case "mariadb":
 		cfg, err = MariaDB(tag)
@@ -324,6 +298,11 @@ func dockerClient(ctx context.Context, u *url.URL) (client *sqlclient.Client, er
 	}
 	if err != nil {
 		return nil, err
+	}
+	if u.Query().Has("v") || u.Query().Has("verbose") {
+		if err := Out(os.Stdout)(cfg); err != nil {
+			return nil, err
+		}
 	}
 	c, err := cfg.Run(ctx)
 	if err != nil {
@@ -346,12 +325,6 @@ func dockerClient(ctx context.Context, u *url.URL) (client *sqlclient.Client, er
 	if client, err = sqlclient.Open(ctx, u1); err != nil {
 		return nil, err
 	}
-	client.Driver = struct {
-		io.Closer
-		migrate.Driver
-	}{
-		Closer: c,
-		Driver: client.Driver,
-	}
+	client.AddClosers(c)
 	return client, nil
 }

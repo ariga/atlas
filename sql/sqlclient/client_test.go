@@ -6,6 +6,7 @@ package sqlclient_test
 
 import (
 	"context"
+	"database/sql"
 	"net/url"
 	"testing"
 
@@ -55,3 +56,18 @@ func TestRegisterOpen(t *testing.T) {
 	c1, err = sqlclient.Open(context.Background(), "postgres://:3306")
 	require.EqualError(t, err, `sql/sqlclient: no opener was register with name "postgres"`)
 }
+
+func TestClient_AddClosers(t *testing.T) {
+	var (
+		i int
+		c = &sqlclient.Client{DB: sql.OpenDB(nil)}
+		f = closerFunc(func() error { i++; return nil })
+	)
+	c.AddClosers(f, f, f)
+	require.NoError(t, c.Close())
+	require.Equal(t, 3, i)
+}
+
+type closerFunc func() error
+
+func (f closerFunc) Close() error { return f() }

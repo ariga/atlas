@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"ariga.io/atlas/cmd/action/internal/update"
+	"ariga.io/atlas/cmd/internal/update"
 
 	"github.com/stretchr/testify/require"
 )
