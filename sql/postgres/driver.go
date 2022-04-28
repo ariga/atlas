@@ -43,10 +43,11 @@ type (
 func init() {
 	sqlclient.Register(
 		"postgres",
-		sqlclient.DriverOpener(Open, func(u *url.URL) string {
-			return u.String()
-		}),
+		sqlclient.DriverOpener(Open),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
+		sqlclient.RegisterURLParser(func(u *url.URL) *sqlclient.URL {
+			return &sqlclient.URL{URL: u, DSN: u.String(), Schema: u.Query().Get("search_path")}
+		}),
 	)
 }
 

@@ -22,6 +22,9 @@ func TestRegisterOpen(t *testing.T) {
 			return c, nil
 		}),
 		sqlclient.RegisterFlavours("maria"),
+		sqlclient.RegisterURLParser(func(u *url.URL) *sqlclient.URL {
+			return &sqlclient.URL{URL: u, DSN: "dsn", Schema: "schema"}
+		}),
 	)
 	require.PanicsWithValue(
 		t,
@@ -40,9 +43,15 @@ func TestRegisterOpen(t *testing.T) {
 	c1, err := sqlclient.Open(context.Background(), "mysql://:3306")
 	require.NoError(t, err)
 	require.True(t, c == c1)
+	require.Equal(t, "dsn", c.URL.DSN)
+	require.Equal(t, "schema", c.URL.Schema)
+
 	c1, err = sqlclient.Open(context.Background(), "maria://:3306")
 	require.NoError(t, err)
 	require.True(t, c == c1)
+	require.Equal(t, "dsn", c.URL.DSN)
+	require.Equal(t, "schema", c.URL.Schema)
+
 	c1, err = sqlclient.Open(context.Background(), "postgres://:3306")
 	require.EqualError(t, err, `sql/sqlclient: no opener was register with name "postgres"`)
 }

@@ -42,9 +42,12 @@ type (
 func init() {
 	sqlclient.Register(
 		"mysql",
-		sqlclient.DriverOpener(Open, dsn),
+		sqlclient.DriverOpener(Open),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
 		sqlclient.RegisterFlavours("maria", "mariadb"),
+		sqlclient.RegisterURLParser(func(u *url.URL) *sqlclient.URL {
+			return &sqlclient.URL{URL: u, DSN: dsn(u), Schema: strings.TrimPrefix(u.Path, "/")}
+		}),
 	)
 }
 

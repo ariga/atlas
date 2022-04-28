@@ -5,8 +5,6 @@
 package action
 
 import (
-	"context"
-
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 
@@ -62,20 +60,14 @@ func CmdInspectRun(cmd *cobra.Command, _ []string) {
 		schemaCmd.PrintErrln("The Atlas UI is not available in this release.")
 		return
 	}
-	d, err := sqlclient.Open(cmd.Context(), InspectFlags.URL)
+	client, err := sqlclient.Open(cmd.Context(), InspectFlags.URL)
 	cobra.CheckErr(err)
-	defer d.Close()
-	inspectRun(cmd.Context(), d, InspectFlags.URL)
-}
-
-func inspectRun(ctx context.Context, client *sqlclient.Client, url string) {
+	defer client.Close()
 	schemas := InspectFlags.Schema
-	n, err := SchemaNameFromURL(ctx, url)
-	cobra.CheckErr(err)
-	if n != "" {
-		schemas = append(schemas, n)
+	if client.URL.Schema != "" {
+		schemas = append(schemas, client.URL.Schema)
 	}
-	s, err := client.InspectRealm(ctx, &schema.InspectRealmOption{
+	s, err := client.InspectRealm(cmd.Context(), &schema.InspectRealmOption{
 		Schemas: schemas,
 	})
 	cobra.CheckErr(err)
