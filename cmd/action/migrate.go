@@ -204,12 +204,6 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 		return nil, fmt.Errorf("invalid driver url %q", MigrateFlags.ToURL)
 	}
 	schemas := MigrateFlags.Schemas
-	if n, err := SchemaNameFromURL(ctx, parts[0]); n != "" {
-		if err != nil {
-			return nil, err
-		}
-		schemas = append(schemas, n)
-	}
 	switch parts[0] {
 	case "file": // hcl file
 		f, err := ioutil.ReadFile(parts[1])
@@ -243,6 +237,9 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 		client, err := sqlclient.Open(ctx, MigrateFlags.ToURL)
 		if err != nil {
 			return nil, err
+		}
+		if client.URL.Schema != "" {
+			schemas = append(schemas, client.URL.Schema)
 		}
 		return struct {
 			migrate.StateReader

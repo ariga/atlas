@@ -39,11 +39,12 @@ type (
 func init() {
 	sqlclient.Register(
 		"sqlite3",
-		sqlclient.DriverOpener(Open, func(u *url.URL) string {
-			return strings.TrimPrefix(u.String(), u.Scheme+"://")
-		}),
+		sqlclient.DriverOpener(Open),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
 		sqlclient.RegisterFlavours("sqlite"),
+		sqlclient.RegisterURLParser(func(u *url.URL) *sqlclient.URL {
+			return &sqlclient.URL{URL: u, DSN: strings.TrimPrefix(u.String(), u.Scheme+"://"), Schema: mainFile}
+		}),
 	)
 }
 
@@ -80,7 +81,7 @@ func (d *Driver) IsClean(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return r == nil || len(r.Schemas) == 1 && r.Schemas[0].Name == "main" && len(r.Schemas[0].Tables) == 0, nil
+	return r == nil || len(r.Schemas) == 1 && r.Schemas[0].Name == mainFile && len(r.Schemas[0].Tables) == 0, nil
 }
 
 // Clean implements the inlined migrate.Clean interface to override the "emptying" behavior.

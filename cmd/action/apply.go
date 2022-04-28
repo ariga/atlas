@@ -82,14 +82,13 @@ func CmdApplyRun(cmd *cobra.Command, _ []string) {
 	c, err := sqlclient.Open(cmd.Context(), ApplyFlags.URL)
 	cobra.CheckErr(err)
 	defer c.Close()
-	applyRun(cmd.Context(), c, ApplyFlags.URL, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove)
+	applyRun(cmd.Context(), c, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove)
 }
 
-func applyRun(ctx context.Context, client *sqlclient.Client, url string, file string, dryRun bool, autoApprove bool) {
+func applyRun(ctx context.Context, client *sqlclient.Client, file string, dryRun, autoApprove bool) {
 	schemas := ApplyFlags.Schema
-	if n, err := SchemaNameFromURL(ctx, url); n != "" {
-		cobra.CheckErr(err)
-		schemas = append(schemas, n)
+	if client.URL.Schema != "" {
+		schemas = append(schemas, client.URL.Schema)
 	}
 	realm, err := client.InspectRealm(ctx, &schema.InspectRealmOption{
 		Schemas: schemas,

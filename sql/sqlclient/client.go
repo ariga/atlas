@@ -19,21 +19,37 @@ import (
 	"ariga.io/atlas/sql/migrate"
 )
 
-// Client provides the common functionalities for working with Atlas from different
-// applications (e.g. CLI and TF). Note, the Client is dialect specific and should
-// be instantiated using a call to Open.
-type Client struct {
-	// DB used for creating the client.
-	DB *sql.DB
+type (
+	// Client provides the common functionalities for working with Atlas from different
+	// applications (e.g. CLI and TF). Note, the Client is dialect specific and should
+	// be instantiated using a call to Open.
+	Client struct {
+		// DB used for creating the client.
+		DB *sql.DB
+		// URL holds an enriched url.URL.
+		URL *URL
 
-	// A migration driver for the attached dialect.
-	migrate.Driver
+		// A migration driver for the attached dialect.
+		migrate.Driver
 
-	// Marshal and Unmarshal functions for decoding
-	// and encoding the schema documents.
-	schemaspec.Marshaler
-	schemahcl.Evaluator
-}
+		// Marshal and Evaluator functions for decoding
+		// and encoding the schema documents.
+		schemaspec.Marshaler
+		schemahcl.Evaluator
+	}
+
+	// URL extends the standard url.URL with additional
+	// connection information attached by the Opener (if any).
+	URL struct {
+		*url.URL
+
+		// The DSN used for opening the connection.
+		DSN string
+
+		// The Schema this client is connected to.
+		Schema string
+	}
+)
 
 // Close closes the underlying database connection and the migration
 // driver in case it implements the io.Closer interface.
@@ -59,9 +75,10 @@ type (
 	// OpenerFunc allows using a function as an Opener.
 	OpenerFunc func(context.Context, *url.URL) (*Client, error)
 
-	namedOpener struct {
+	driver struct {
 		Opener
-		name string
+		name  string
+		parse func(*url.URL) *URL
 	}
 )
 
@@ -82,11 +99,19 @@ func Open(ctx context.Context, s string) (*Client, error) {
 	if !ok {
 		return nil, fmt.Errorf("sql/sqlclient: no opener was register with name %q", u.Scheme)
 	}
-	return v.(namedOpener).Open(ctx, u)
+	client, err := v.(driver).Open(ctx, u)
+	if err != nil {
+		return nil, err
+	}
+	if client.URL == nil {
+		client.URL = v.(driver).parse(u)
+	}
+	return client, nil
 }
 
 type (
 	registerOptions struct {
+		parse    func(*url.URL) *URL
 		flavours []string
 		codec    interface {
 			schemaspec.Marshaler
@@ -106,6 +131,14 @@ func RegisterFlavours(flavours ...string) RegisterOption {
 	}
 }
 
+// RegisterURLParser allows registering a function for parsing
+// the url.URL and attach additional info to the extended URL.
+func RegisterURLParser(p func(*url.URL) *URL) RegisterOption {
+	return func(opts *registerOptions) {
+		opts.parse = p
+	}
+}
+
 // RegisterCodec registers static codec for attaching into
 // the client after it is opened.
 func RegisterCodec(m schemaspec.Marshaler, e schemahcl.Evaluator) RegisterOption {
@@ -121,13 +154,14 @@ func RegisterCodec(m schemaspec.Marshaler, e schemahcl.Evaluator) RegisterOption
 }
 
 // DriverOpener is a helper Opener creator for sharing between all drivers.
-func DriverOpener(open func(schema.ExecQuerier) (migrate.Driver, error), dsn func(*url.URL) string) Opener {
+func DriverOpener(open func(schema.ExecQuerier) (migrate.Driver, error)) Opener {
 	return OpenerFunc(func(ctx context.Context, u *url.URL) (*Client, error) {
 		v, ok := drivers.Load(u.Scheme)
 		if !ok {
 			return nil, fmt.Errorf("sql/sqlclient: unexpected missing opener %q", u.Scheme)
 		}
-		db, err := sql.Open(v.(namedOpener).name, dsn(u))
+		ur := v.(driver).parse(u)
+		db, err := sql.Open(v.(driver).name, ur.DSN)
 		if err != nil {
 			return nil, err
 		}
@@ -140,6 +174,7 @@ func DriverOpener(open func(schema.ExecQuerier) (migrate.Driver, error), dsn fun
 		}
 		return &Client{
 			DB:     db,
+			URL:    ur,
 			Driver: drv,
 		}, nil
 	})
@@ -150,7 +185,10 @@ func Register(name string, opener Opener, opts ...RegisterOption) {
 	if opener == nil {
 		panic("sql/sqlclient: Register opener is nil")
 	}
-	opt := &registerOptions{}
+	opt := &registerOptions{
+		// Default URL parser uses the URL as the DSN.
+		parse: func(u *url.URL) *URL { return &URL{URL: u, DSN: u.String()} },
+	}
 	for i := range opts {
 		opts[i](opt)
 	}
@@ -169,8 +207,9 @@ func Register(name string, opener Opener, opts ...RegisterOption) {
 		if _, ok := drivers.Load(f); ok {
 			panic("sql/sqlclient: Register called twice for " + f)
 		}
-		drivers.Store(f, namedOpener{
+		drivers.Store(f, driver{
 			name:   name,
+			parse:  opt.parse,
 			Opener: opener,
 		})
 	}

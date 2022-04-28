@@ -52,10 +52,8 @@ func cmdDiffRun(cmd *cobra.Command, flags *diffCmdOpts) {
 	toC, err := sqlclient.Open(cmd.Context(), flags.toURL)
 	cobra.CheckErr(err)
 	defer toC.Close()
-	fromName, err := SchemaNameFromURL(ctx, flags.fromURL)
-	cobra.CheckErr(err)
-	toName, err := SchemaNameFromURL(ctx, flags.toURL)
-	cobra.CheckErr(err)
+	fromName := fromC.URL.Schema
+	toName := toC.URL.Schema
 	fromSchema, err := fromC.InspectSchema(ctx, fromName, nil)
 	cobra.CheckErr(err)
 	toSchema, err := toC.InspectSchema(ctx, toName, nil)
