@@ -11,13 +11,10 @@ require (
 	github.com/hashicorp/hcl/v2 v2.10.1 // indirect
 	github.com/lib/pq v1.10.5
 	github.com/mattn/go-sqlite3 v1.14.10
-	github.com/stretchr/testify v1.7.1-0.20210427113832-6241f9ab9942
-	github.com/zclconf/go-cty v1.10.0 // indirect
-)
-
-require (
 	github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e
 	github.com/rogpeppe/go-internal v1.8.2-0.20220112175052-f3cb5c2c6412
+	github.com/stretchr/testify v1.7.1-0.20210427113832-6241f9ab9942
+	github.com/zclconf/go-cty v1.10.0 // indirect
 )
 
 require (

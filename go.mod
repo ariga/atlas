@@ -3,22 +3,19 @@ module ariga.io/atlas
 go 1.17
 
 require (
+	entgo.io/ent v0.10.2-0.20220428114225-0c8f9a977c99
 	github.com/DATA-DOG/go-sqlmock v1.5.0
+	github.com/go-openapi/inflect v0.19.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/hashicorp/hcl/v2 v2.10.0
 	github.com/lib/pq v1.10.5
 	github.com/manifoldco/promptui v0.9.0
+	github.com/mattn/go-sqlite3 v1.14.10
+	github.com/mitchellh/go-homedir v1.1.0
 	github.com/spf13/cobra v1.4.0
 	github.com/stretchr/testify v1.7.1-0.20210427113832-6241f9ab9942
 	github.com/zclconf/go-cty v1.8.0
 	golang.org/x/mod v0.5.1
-)
-
-require (
-	entgo.io/ent v0.10.2-0.20220428114225-0c8f9a977c99
-	github.com/go-openapi/inflect v0.19.0
-	github.com/mattn/go-sqlite3 v1.14.10
-	github.com/mitchellh/go-homedir v1.1.0
 )
 
 require (
