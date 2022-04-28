@@ -72,10 +72,69 @@ func (s *State) Eval(data []byte, v interface{}, input map[string]string) error 
 	if err != nil {
 		return fmt.Errorf("schemahcl: failed decoding: %w", err)
 	}
+	if err := patchRefs(spec); err != nil {
+		return err
+	}
 	if err := spec.As(v); err != nil {
 		return fmt.Errorf("schemahcl: failed reading spec as %T: %w", v, err)
 	}
 	return nil
+}
+
+// refMap maps addresses to their referenced resource.
+type refMap map[string]*schemaspec.Resource
+
+// patchRefs recursively searches for schemaspec.Ref under the provided schemaspec.Resource
+// and patches any variables with their concrete names.
+func patchRefs(spec *schemaspec.Resource) error {
+	m := make(refMap)
+	m.load(spec, "")
+	return m.patch(spec)
+}
+
+func (r refMap) patch(resource *schemaspec.Resource) error {
+	for _, attr := range resource.Attrs {
+		if ref, ok := attr.V.(*schemaspec.Ref); ok {
+			referenced, ok := r[ref.V]
+			if !ok {
+				return fmt.Errorf("broken reference to %q", ref.V)
+			}
+			if name, err := referenced.FinalName(); err == nil {
+				ref.V = strings.ReplaceAll(ref.V, referenced.Name, name)
+			}
+		}
+	}
+	for _, ch := range resource.Children {
+		if err := r.patch(ch); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// load loads the references from the children of the resource.
+func (r refMap) load(res *schemaspec.Resource, track string) {
+	unlabeled := 0
+	for _, ch := range res.Children {
+		current := rep(ch)
+		if ch.Name == "" {
+			current += strconv.Itoa(unlabeled)
+			unlabeled++
+		}
+		if track != "" {
+			current = track + "." + current
+		}
+		r[current] = ch
+		r.load(ch, current)
+	}
+}
+
+func rep(r *schemaspec.Resource) string {
+	n := r.Name
+	if r.Qualifier != "" {
+		n = r.Qualifier + "." + n
+	}
+	return fmt.Sprintf("$%s.%s", r.Type, n)
 }
 
 // eval evaluates the input Atlas HCL document with the given input and returns a

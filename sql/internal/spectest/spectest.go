@@ -59,6 +59,7 @@ table "users" {
 	err := evaluator.Eval([]byte(h), &test, map[string]string{"tenant": "rotemtam"})
 	require.NoError(t, err)
 	require.EqualValues(t, "rotemtam", test.Schemas[0].Name)
+	require.Len(t, test.Schemas[0].Tables, 1)
 }
 
 func contains(s string, l []string) bool {

@@ -131,6 +131,9 @@ func TestNested(t *testing.T) {
 	err = scan.Scan(&pb)
 	require.NoError(t, err)
 	require.EqualValues(t, pet, scan)
+	name, err := pet.FinalName()
+	require.NoError(t, err)
+	require.EqualValues(t, "donut", name)
 }
 
 func TestRef(t *testing.T) {
@@ -202,6 +205,7 @@ func TestNameAttr(t *testing.T) {
 	schemaspec.Register("named", &Named{})
 	resource := &schemaspec.Resource{
 		Name: "id",
+		Type: "named",
 		Attrs: []*schemaspec.Attr{
 			schemautil.StrLitAttr("name", "atlas"),
 		},
@@ -210,4 +214,7 @@ func TestNameAttr(t *testing.T) {
 	err := resource.As(&tgt)
 	require.NoError(t, err)
 	require.EqualValues(t, "atlas", tgt.Name)
+	name, err := resource.FinalName()
+	require.NoError(t, err)
+	require.EqualValues(t, name, "atlas")
 }
