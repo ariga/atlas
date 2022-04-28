@@ -43,7 +43,7 @@ func init() {
 	sqlclient.Register(
 		"mysql",
 		sqlclient.DriverOpener(Open, dsn),
-		sqlclient.RegisterCodec(MarshalHCL, UnmarshalHCL),
+		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
 		sqlclient.RegisterFlavours("maria", "mariadb"),
 	)
 }

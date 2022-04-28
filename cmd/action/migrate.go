@@ -217,7 +217,7 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 			return nil, err
 		}
 		realm := &schema.Realm{}
-		if err := client.UnmarshalSpec(f, realm); err != nil {
+		if err := client.Eval(f, realm, nil); err != nil {
 			return nil, err
 		}
 		if len(schemas) > 0 {

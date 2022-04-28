@@ -12,9 +12,10 @@ import (
 	"net/url"
 	"sync"
 
+	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/schema"
 
-	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/migrate"
 )
 
@@ -31,7 +32,7 @@ type Client struct {
 	// Marshal and Unmarshal functions for decoding
 	// and encoding the schema documents.
 	schemaspec.Marshaler
-	schemaspec.Unmarshaler
+	schemahcl.Evaluator
 }
 
 // Close closes the underlying database connection and the migration
@@ -89,7 +90,7 @@ type (
 		flavours []string
 		codec    interface {
 			schemaspec.Marshaler
-			schemaspec.Unmarshaler
+			schemahcl.Evaluator
 		}
 	}
 	// RegisterOption allows configuring the Opener
@@ -107,14 +108,14 @@ func RegisterFlavours(flavours ...string) RegisterOption {
 
 // RegisterCodec registers static codec for attaching into
 // the client after it is opened.
-func RegisterCodec(m schemaspec.Marshaler, u schemaspec.Unmarshaler) RegisterOption {
+func RegisterCodec(m schemaspec.Marshaler, e schemahcl.Evaluator) RegisterOption {
 	return func(opts *registerOptions) {
 		opts.codec = struct {
 			schemaspec.Marshaler
-			schemaspec.Unmarshaler
+			schemahcl.Evaluator
 		}{
-			Marshaler:   m,
-			Unmarshaler: u,
+			Marshaler: m,
+			Evaluator: e,
 		}
 	}
 }
@@ -160,7 +161,7 @@ func Register(name string, opener Opener, opts ...RegisterOption) {
 			if err != nil {
 				return nil, err
 			}
-			c.Marshaler, c.Unmarshaler = opt.codec, opt.codec
+			c.Marshaler, c.Evaluator = opt.codec, opt.codec
 			return c, nil
 		})
 	}

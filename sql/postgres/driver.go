@@ -46,7 +46,7 @@ func init() {
 		sqlclient.DriverOpener(Open, func(u *url.URL) string {
 			return u.String()
 		}),
-		sqlclient.RegisterCodec(MarshalHCL, UnmarshalHCL),
+		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
 	)
 }
 
