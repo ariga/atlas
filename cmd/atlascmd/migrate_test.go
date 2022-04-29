@@ -2,7 +2,7 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package action
+package atlascmd
 
 import (
 	"context"
@@ -28,7 +28,7 @@ import (
 )
 
 func TestMigrate(t *testing.T) {
-	_, err := runCmd(RootCmd, "migrate")
+	_, err := runCmd(Root, "migrate")
 	require.NoError(t, err)
 }
 
@@ -37,7 +37,7 @@ func TestMigrate_Diff(t *testing.T) {
 
 	// Expect no clean dev error.
 	s, err := runCmd(
-		RootCmd, "migrate", "diff",
+		Root, "migrate", "diff",
 		"name",
 		"--dir", "file://"+p,
 		"--dev-url", openSQLite(t, "create table t (c int);"),
@@ -48,7 +48,7 @@ func TestMigrate_Diff(t *testing.T) {
 
 	// Works.
 	s, err = runCmd(
-		RootCmd, "migrate", "diff",
+		Root, "migrate", "diff",
 		"name",
 		"--dir", "file://"+p,
 		"--dev-url", openSQLite(t, ""),
@@ -72,7 +72,7 @@ func TestMigrate_Diff(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	s, err = runCmd(
-		RootCmd, "migrate", "diff",
+		Root, "migrate", "diff",
 		"name",
 		"--dir", "file://"+t.TempDir(),
 		"--dev-url", fmt.Sprintf("sqlitelock://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
@@ -83,14 +83,14 @@ func TestMigrate_Diff(t *testing.T) {
 }
 
 func TestMigrate_Validate(t *testing.T) {
-	s, err := runCmd(RootCmd, "migrate", "validate", "--dir", "file://migrations")
+	s, err := runCmd(Root, "migrate", "validate", "--dir", "file://migrations")
 	require.Zero(t, s)
 	require.NoError(t, err)
 }
 
 func TestMigrate_ValidateError(t *testing.T) {
 	if os.Getenv("DO_VALIDATE") == "1" {
-		runCmd(RootCmd, "migrate", "validate", "--dir", "file://migrations")
+		runCmd(Root, "migrate", "validate", "--dir", "file://migrations")
 		return
 	}
 	f := filepath.Join("migrations", "new.sql")
@@ -106,7 +106,7 @@ func TestMigrate_ValidateError(t *testing.T) {
 }
 
 func TestMigrate_Hash(t *testing.T) {
-	s, err := runCmd(RootCmd, "migrate", "hash", "--dir", "file://migrations")
+	s, err := runCmd(Root, "migrate", "hash", "--dir", "file://migrations")
 	require.Zero(t, s)
 	require.NoError(t, err)
 
@@ -114,7 +114,7 @@ func TestMigrate_Hash(t *testing.T) {
 	err = copyFile(filepath.Join("migrations", "20220318104614_initial.sql"), filepath.Join(p, "20220318104614_initial.sql"))
 	require.NoError(t, err)
 
-	s, err = runCmd(RootCmd, "migrate", "hash", "--dir", "file://"+p, "--force")
+	s, err = runCmd(Root, "migrate", "hash", "--dir", "file://"+p, "--force")
 	require.Zero(t, s)
 	require.NoError(t, err)
 	require.FileExists(t, filepath.Join(p, "atlas.sum"))
@@ -131,7 +131,7 @@ func TestMigrate_Hash(t *testing.T) {
 
 func TestMigrate_HashError(t *testing.T) {
 	if os.Getenv("DO_HASH") == "1" {
-		runCmd(RootCmd, "migrate", "hash", "--dir", "file://"+os.Getenv("MIGRATION_DIR"))
+		runCmd(Root, "migrate", "hash", "--dir", "file://"+os.Getenv("MIGRATION_DIR"))
 		return
 	}
 	p := t.TempDir()

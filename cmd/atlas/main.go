@@ -5,8 +5,8 @@ import (
 	"os"
 	"os/signal"
 
-	"ariga.io/atlas/cmd/action"
-	_ "ariga.io/atlas/cmd/internal/docker"
+	"ariga.io/atlas/cmd/atlascmd"
+	_ "ariga.io/atlas/cmd/atlascmd/docker"
 	_ "ariga.io/atlas/sql/mysql"
 	_ "ariga.io/atlas/sql/postgres"
 	_ "ariga.io/atlas/sql/sqlite"
@@ -18,15 +18,15 @@ import (
 
 func main() {
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
-	action.RootCmd.SetOut(os.Stdout)
-	err := action.RootCmd.ExecuteContext(ctx)
+	atlascmd.Root.SetOut(os.Stdout)
+	err := atlascmd.Root.ExecuteContext(ctx)
 	// Print error from command
 	if err != nil {
-		action.RootCmd.PrintErrln("Error:", err)
+		atlascmd.Root.PrintErrln("Error:", err)
 	}
-	// Check for update
-	action.CheckForUpdate()
-	// Exit code according to command success
+	// Check for update.
+	atlascmd.CheckForUpdate()
+	// Exit code according to command success.
 	if err != nil {
 		os.Exit(1)
 	}

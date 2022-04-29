@@ -22,7 +22,7 @@ import (
 
 	"ariga.io/atlas/sql/sqlclient"
 
-	mysqld "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 )
 
 const pass = "pass"
@@ -205,8 +205,8 @@ func (c *Container) Close() error {
 // Wait waits for this container to be ready.
 func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 	fmt.Fprintln(c.out, "Waiting for service to be ready ... ")
-	mysqld.SetLogger(log.New(ioutil.Discard, "", 1))
-	defer mysqld.SetLogger(log.New(os.Stderr, "[mysql] ", log.Ldate|log.Ltime|log.Lshortfile))
+	mysql.SetLogger(log.New(ioutil.Discard, "", 1))
+	defer mysql.SetLogger(log.New(os.Stderr, "[mysql] ", log.Ldate|log.Ltime|log.Lshortfile))
 	if timeout > time.Minute {
 		timeout = time.Minute
 	}

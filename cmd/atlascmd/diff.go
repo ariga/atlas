@@ -2,7 +2,7 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package action
+package atlascmd
 
 import (
 	"strings"
@@ -23,7 +23,7 @@ func newDiffCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "diff",
 		Short: "Calculate and print the diff between two schemas.",
-		Long: "`atlas schema diff`" + ` connects to two given databases, inspects
+		Long: `'atlas schema diff' connects to two given databases, inspects
 them, calculates the difference in their schemas, and prints a plan of
 SQL statements to migrate the "from" database to the schema of the "to" database.`,
 		Run: func(cmd *cobra.Command, args []string) {
