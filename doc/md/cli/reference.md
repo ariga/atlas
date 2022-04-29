@@ -202,7 +202,7 @@ atlas schema diff [flags]
 ```
 
 #### Details
-`atlas schema diff` connects to two given databases, inspects
+'atlas schema diff' connects to two given databases, inspects
 them, calculates the difference in their schemas, and prints a plan of
 SQL statements to migrate the "from" database to the schema of the "to" database.
 
@@ -224,7 +224,7 @@ atlas schema fmt [path ...]
 ```
 
 #### Details
-`atlas schema fmt` formats all ".hcl" files under the given path using
+'atlas schema fmt' formats all ".hcl" files under the given path using
 canonical HCL layout style as defined by the github.com/hashicorp/hcl/v2/hclwrite package.
 Unless stated otherwise, the fmt command will use the current directory.
 
@@ -235,7 +235,7 @@ files in the directory are formatted, no input will be printed out.
 
 ### atlas schema inspect
 
-Inspect an a database's and print its schema in Atlas DDL syntax.
+Inspect a database's and print its schema in Atlas DDL syntax.
 
 #### Usage
 ```
@@ -243,8 +243,8 @@ atlas schema inspect [flags]
 ```
 
 #### Details
-`atlas schema inspect` connects to the given database and inspects its schema.
-It then prints to the screen the schema of that database in Atlas DDL syntax. This output can be 
+'atlas schema inspect' connects to the given database and inspects its schema.
+It then prints to the screen the schema of that database in Atlas DDL syntax. This output can be
 saved to a file, commonly by redirecting the output to a file named with a ".hcl" suffix:
 
   atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname" > atlas.hcl

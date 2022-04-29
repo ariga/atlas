@@ -2,7 +2,7 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package action
+package atlascmd
 
 import (
 	"context"
@@ -67,7 +67,7 @@ var (
 			return nil
 		},
 	}
-	// MigrateDiffCmd represents the migrate diff command.
+	// MigrateDiffCmd represents the 'atlas migrate diff' subcommand.
 	MigrateDiffCmd = &cobra.Command{
 		Use:   "diff",
 		Short: "Compute the diff between the migration directory and a connected database and create a new migration file.",
@@ -102,7 +102,7 @@ the atlas.sum file. If there is a mismatch it will be reported.`,
 
 func init() {
 	// Add sub-commands.
-	RootCmd.AddCommand(MigrateCmd)
+	Root.AddCommand(MigrateCmd)
 	MigrateCmd.AddCommand(MigrateDiffCmd)
 	MigrateCmd.AddCommand(MigrateValidateCmd)
 	MigrateCmd.AddCommand(MigrateHashCmd)

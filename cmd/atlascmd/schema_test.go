@@ -2,7 +2,7 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package action
+package atlascmd
 
 import (
 	"bytes"
@@ -105,10 +105,10 @@ func TestFmt(t *testing.T) {
 
 func runFmt(t *testing.T, args []string) string {
 	var out bytes.Buffer
-	FmtCmd.ResetCommands() // Detach from sub-commands and parents, needed to skip input validation done by them.
-	FmtCmd.SetOut(&out)
-	FmtCmd.SetArgs(args)
-	err := FmtCmd.Execute()
+	SchemaFmt.ResetCommands() // Detach from sub-commands and parents, needed to skip input validation done by them.
+	SchemaFmt.SetOut(&out)
+	SchemaFmt.SetArgs(args)
+	err := SchemaFmt.Execute()
 	require.NoError(t, err)
 	return out.String()
 }
