@@ -1050,7 +1050,7 @@ create table atlas_types_sanity
 					}
 				}(),
 				Columns: []*schema.Column{
-					&schema.Column{
+					{
 						Name: "tBigInt2",
 						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false},
 							Raw: t.valueByVersion(map[string]string{"mysql8": "bigint"}, "bigint(10)"), Null: true},
@@ -1060,7 +1060,7 @@ create table atlas_types_sanity
 			}
 			to.AddIndexes(
 				&schema.Index{Name: "i2", Parts: []*schema.IndexPart{
-					&schema.IndexPart{
+					{
 						C:    to.Columns[0],
 						Desc: true,
 					},

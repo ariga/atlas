@@ -13,8 +13,11 @@ import (
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/migrate/ent"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
+	"entgo.io/ent/dialect"
+	"entgo.io/ent/dialect/sql"
 
 	"golang.org/x/mod/semver"
 )
@@ -27,6 +30,7 @@ type (
 		schema.Differ
 		schema.Inspector
 		migrate.PlanApplier
+		migrate.RevisionReadWriter
 	}
 
 	// database connection and its information.
@@ -74,7 +78,16 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 		Differ:      &sqlx.Diff{DiffDriver: &diff{c}},
 		Inspector:   &inspect{c},
 		PlanApplier: &planApply{c},
+		RevisionReadWriter: &revReadWrite{
+			c: ent.NewClient(ent.Driver(sql.NewDriver(sql.Conn{ExecQuerier: db}, dialect.MySQL))),
+		},
 	}, nil
+}
+
+// InitSchemaMigrator stitches in the Ent migration engine to the mysql.Driver at runtime. This is necessary
+// because the Ent migration engine imports atlas and therefore would introduce a cyclic dependency.
+func (d *Driver) InitSchemaMigrator(sc func(context.Context) error) {
+	d.RevisionReadWriter.(*revReadWrite).sc = sc
 }
 
 func (d *Driver) dev() *sqlx.DevDriver {

@@ -5,19 +5,16 @@ go 1.17
 replace ariga.io/atlas => ../../
 
 require (
-	ariga.io/atlas v0.3.7-0.20220303204946-787354f533c3
-	entgo.io/ent v0.10.2-0.20220310154057-2853afc1dc2e
+	ariga.io/atlas v0.3.8-0.20220424181913-f64001131c0e
+	entgo.io/ent v0.10.2-0.20220428114225-0c8f9a977c99
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/hashicorp/hcl/v2 v2.10.1 // indirect
-	github.com/lib/pq v1.10.4
+	github.com/lib/pq v1.10.5
 	github.com/mattn/go-sqlite3 v1.14.10
-	github.com/stretchr/testify v1.7.1-0.20210427113832-6241f9ab9942
-	github.com/zclconf/go-cty v1.10.0 // indirect
-)
-
-require (
 	github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e
 	github.com/rogpeppe/go-internal v1.8.2-0.20220112175052-f3cb5c2c6412
+	github.com/stretchr/testify v1.7.1-0.20210427113832-6241f9ab9942
+	github.com/zclconf/go-cty v1.10.0 // indirect
 )
 
 require (

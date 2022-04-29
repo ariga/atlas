@@ -12,9 +12,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"text/template"
 	"time"
 
 	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 
 	entsql "entgo.io/ent/dialect/sql"
@@ -42,12 +44,14 @@ func TestMain(m *testing.M) {
 // T holds the elements common between dialect tests.
 type T interface {
 	testing.TB
+	driver() migrate.Driver
 	realm() *schema.Realm
 	loadRealm() *schema.Realm
 	users() *schema.Table
 	loadUsers() *schema.Table
 	posts() *schema.Table
 	loadPosts() *schema.Table
+	revisions() *schema.Table
 	loadTable(string) *schema.Table
 	dropTables(...string)
 	migrate(...schema.Change)
@@ -464,4 +468,53 @@ func testAdvisoryLock(t *testing.T, l schema.Locker) {
 			require.NoError(t, unlock())
 		}
 	})
+}
+
+func testExecutor(t T) {
+	usersT, postsT, revisionsT := t.users(), t.posts(), t.revisions()
+	petsT := &schema.Table{
+		Name:   "pets",
+		Schema: usersT.Schema,
+		Columns: []*schema.Column{
+			{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+			{Name: "owner_id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}, Null: true}},
+		},
+	}
+	petsT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: postsT.Columns[0]}}}
+	petsT.ForeignKeys = []*schema.ForeignKey{
+		{Symbol: "owner_id", Table: petsT, Columns: petsT.Columns[1:], RefTable: usersT, RefColumns: usersT.Columns[:1]},
+	}
+
+	t.dropTables(petsT.Name, postsT.Name, usersT.Name, revisionsT.Name)
+
+	dir, err := migrate.NewLocalDir(t.TempDir())
+	require.NoError(t, err)
+	f, err := migrate.NewTemplateFormatter(
+		template.Must(template.New("").Parse("{{ .Name }}.sql")),
+		template.Must(template.New("").Parse(
+			`{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}`,
+		)),
+	)
+	require.NoError(t, err)
+	pl := migrate.NewPlanner(t.driver(), dir, migrate.WithFormatter(f))
+	require.NoError(t, err)
+
+	require.NoError(t, pl.WritePlan(plan(t, "1_users", &schema.AddTable{T: usersT})))
+	require.NoError(t, pl.WritePlan(plan(t, "2_posts", &schema.AddTable{T: postsT})))
+	require.NoError(t, pl.WritePlan(plan(t, "3_pets", &schema.AddTable{T: petsT})))
+
+	ex, err := migrate.NewExecutor(t.driver(), dir)
+	require.NoError(t, err)
+	require.NoError(t, ex.Execute(context.Background(), 2)) // usersT and postsT
+	ensureNoChange(t, revisionsT, postsT, usersT)
+	require.NoError(t, ex.Execute(context.Background(), 1)) // petsT
+	ensureNoChange(t, revisionsT, petsT, postsT, usersT)
+
+	require.ErrorIs(t, ex.Execute(context.Background(), 1), migrate.ErrNoPendingFiles)
+}
+
+func plan(t T, name string, changes ...schema.Change) *migrate.Plan {
+	p, err := t.driver().PlanChanges(context.Background(), name, changes)
+	require.NoError(t, err)
+	return p
 }

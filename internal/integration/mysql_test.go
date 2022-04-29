@@ -14,9 +14,9 @@ import (
 	"testing"
 
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/migrate/ent/runtime"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
-
 	"entgo.io/ent/dialect"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
@@ -54,12 +54,12 @@ func myRun(t *testing.T, fn func(*myTest)) {
 	}
 }
 
-func myInit(dialect string) []io.Closer {
+func myInit(d string) []io.Closer {
 	var cs []io.Closer
-	if dialect != "" {
-		p, ok := myTests.ports[dialect]
+	if d != "" {
+		p, ok := myTests.ports[d]
 		if ok {
-			myTests.ports = map[string]int{dialect: p}
+			myTests.ports = map[string]int{d: p}
 		} else {
 			myTests.ports = make(map[string]int)
 		}
@@ -74,9 +74,16 @@ func myInit(dialect string) []io.Closer {
 		if err != nil {
 			log.Fatalln(err)
 		}
+		runtime.InitSchemaMigrator(drv.(*mysql.Driver), db, dialect.MySQL)
 		myTests.drivers[version] = &myTest{db: db, drv: drv, version: version, port: port}
 	}
 	return cs
+}
+
+func TestMySQL_Executor(t *testing.T) {
+	myRun(t, func(t *myTest) {
+		testExecutor(t)
+	})
 }
 
 func TestMySQL_AddDropTable(t *testing.T) {
@@ -1145,6 +1152,10 @@ func (t *myTest) dsn(dbname string) string {
 	return fmt.Sprintf("%s://root%s@localhost:%d/%s", d, pass, t.port, dbname)
 }
 
+func (t *myTest) driver() migrate.Driver {
+	return t.drv
+}
+
 func (t *myTest) applyHcl(spec string) {
 	realm := t.loadRealm()
 	var desired schema.Schema
@@ -1271,6 +1282,34 @@ func (t *myTest) posts() *schema.Table {
 		{Symbol: "author_id", Table: postsT, Columns: postsT.Columns[1:2], RefTable: usersT, RefColumns: usersT.Columns[:1], OnDelete: schema.NoAction},
 	}
 	return postsT
+}
+
+func (t *myTest) revisions() *schema.Table {
+	versionsT := &schema.Table{
+		Name: "atlas_schema_revisions",
+		Columns: []*schema.Column{
+			{Name: "version", Type: &schema.ColumnType{Type: &schema.StringType{T: t.valueByVersion(map[string]string{"mysql56": "varchar(191)"}, "varchar(255)")}}},
+			{Name: "description", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
+			{Name: "execution_state", Type: &schema.ColumnType{Type: &schema.EnumType{Values: []string{"ongoing", "ok", "error"}}}},
+			{Name: "executed_at", Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp"}, Raw: "timestamp", Null: t.version != "mysql8"}},
+			{Name: "execution_time", Type: &schema.ColumnType{Type: &schema.IntegerType{T: t.valueByVersion(map[string]string{"mysql56": "bigint(20)"}, "bigint")}}},
+			{Name: "hash", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
+			{Name: "operator_version", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
+		},
+		Attrs: []schema.Attr{
+			&schema.Charset{V: "utf8mb4"},       // because of Ent
+			&schema.Collation{V: "utf8mb4_bin"}, // because of Ent
+		},
+	}
+	versionsT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: versionsT.Columns[0]}}}
+	var metaType schema.ColumnType
+	if t.version == "mysql56" {
+		metaType = schema.ColumnType{Type: &schema.BinaryType{T: "longblob"}}
+	} else {
+		metaType = schema.ColumnType{Type: &schema.JSONType{T: "json"}}
+	}
+	versionsT.Columns = append(versionsT.Columns, &schema.Column{Name: "meta", Type: &metaType})
+	return versionsT
 }
 
 func (t *myTest) valueByVersion(values map[string]string, defaults string) string {
