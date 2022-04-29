@@ -84,7 +84,7 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	}, nil
 }
 
-// InitSchemaMigrator stitches in the Ent migration engine to the mysql.Driver at runtime. This is necessary
+// InitSchemaMigrator stitches in the Ent migration engine to the Driver at runtime. This is necessary
 // because the Ent migration engine imports atlas and therefore would introduce a cyclic dependency.
 func (d *Driver) InitSchemaMigrator(sc func(context.Context) error) {
 	d.RevisionReadWriter.(*sqlx.RevisionStorage).InitSchemaMigrator(sc)

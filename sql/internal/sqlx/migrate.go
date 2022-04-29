@@ -26,7 +26,7 @@ func NewRevisionStorage(c *ent.Client) *RevisionStorage {
 	return &RevisionStorage{c: c}
 }
 
-// InitSchemaMigrator stitches in the Ent migration engine to the mysql.Driver at runtime. This is necessary
+// InitSchemaMigrator stitches in the Ent migration engine to the RevisionStorage at runtime. This is necessary
 // because the Ent migration engine imports atlas and therefore would introduce a cyclic dependency.
 func (r *RevisionStorage) InitSchemaMigrator(sc func(context.Context) error) {
 	r.sc = sc
@@ -73,7 +73,12 @@ func (r *RevisionStorage) WriteRevisions(ctx context.Context, rs migrate.Revisio
 			SetOperatorVersion(rev.OperatorVersion).
 			SetMeta(rev.Meta)
 	}
-	return r.c.Revision.CreateBulk(bulk...).OnConflict().UpdateNewValues().Exec(ctx)
+	return r.c.Revision.CreateBulk(bulk...).
+		OnConflict(
+			sql.ConflictColumns(revision.FieldID),
+		).
+		UpdateNewValues().
+		Exec(ctx)
 }
 
 var _ migrate.RevisionReadWriter = (*RevisionStorage)(nil)
