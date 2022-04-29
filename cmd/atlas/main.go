@@ -6,6 +6,7 @@ import (
 	"os/signal"
 
 	"ariga.io/atlas/cmd/action"
+	_ "ariga.io/atlas/cmd/internal/docker"
 	_ "ariga.io/atlas/sql/mysql"
 	_ "ariga.io/atlas/sql/postgres"
 	_ "ariga.io/atlas/sql/sqlite"

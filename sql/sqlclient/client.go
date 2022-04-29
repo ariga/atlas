@@ -31,6 +31,9 @@ type (
 
 		// A migration driver for the attached dialect.
 		migrate.Driver
+		// Additional closers that can be closed at the
+		// end of the client lifetime.
+		closers []io.Closer
 
 		// Marshal and Evaluator functions for decoding
 		// and encoding the schema documents.
@@ -51,17 +54,21 @@ type (
 	}
 )
 
+// AddClosers adds list of closers to close at the end of the client lifetime.
+func (c *Client) AddClosers(closers ...io.Closer) {
+	c.closers = append(c.closers, closers...)
+}
+
 // Close closes the underlying database connection and the migration
 // driver in case it implements the io.Closer interface.
 func (c *Client) Close() (err error) {
-	if c, ok := c.Driver.(io.Closer); ok {
-		err = c.Close()
-	}
-	if cerr := c.DB.Close(); cerr != nil {
-		if err != nil {
-			cerr = fmt.Errorf("%w: %v", err, cerr)
+	for _, closer := range append(c.closers, c.DB) {
+		if cerr := closer.Close(); cerr != nil {
+			if err != nil {
+				cerr = fmt.Errorf("%v: %v", err, cerr)
+			}
+			err = cerr
 		}
-		err = cerr
 	}
 	return err
 }

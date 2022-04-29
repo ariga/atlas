@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 
-	"ariga.io/atlas/cmd/action/internal/update"
+	"ariga.io/atlas/cmd/internal/update"
 
 	"github.com/spf13/cobra"
 )
