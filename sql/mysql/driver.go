@@ -78,16 +78,16 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 		Differ:      &sqlx.Diff{DiffDriver: &diff{c}},
 		Inspector:   &inspect{c},
 		PlanApplier: &planApply{c},
-		RevisionReadWriter: &revReadWrite{
-			c: ent.NewClient(ent.Driver(sql.NewDriver(sql.Conn{ExecQuerier: db}, dialect.MySQL))),
-		},
+		RevisionReadWriter: sqlx.NewRevisionStorage(
+			ent.NewClient(ent.Driver(sql.NewDriver(sql.Conn{ExecQuerier: db}, dialect.MySQL))),
+		),
 	}, nil
 }
 
 // InitSchemaMigrator stitches in the Ent migration engine to the mysql.Driver at runtime. This is necessary
 // because the Ent migration engine imports atlas and therefore would introduce a cyclic dependency.
 func (d *Driver) InitSchemaMigrator(sc func(context.Context) error) {
-	d.RevisionReadWriter.(*revReadWrite).sc = sc
+	d.RevisionReadWriter.(*sqlx.RevisionStorage).InitSchemaMigrator(sc)
 }
 
 func (d *Driver) dev() *sqlx.DevDriver {

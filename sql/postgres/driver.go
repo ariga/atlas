@@ -28,6 +28,7 @@ type (
 		schema.Differ
 		schema.Inspector
 		migrate.PlanApplier
+		migrate.RevisionReadWriter
 	}
 
 	// database connection and its information.
