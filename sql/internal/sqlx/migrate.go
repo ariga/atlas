@@ -37,7 +37,7 @@ func (r *RevisionStorage) Init(ctx context.Context) error {
 	return r.sc(ctx)
 }
 
-// ReadRevisions read the revisions from the revisions table.
+// ReadRevisions reads the revisions from the revisions table.
 func (r *RevisionStorage) ReadRevisions(ctx context.Context) (migrate.Revisions, error) {
 	revs, err := r.c.Revision.Query().Order(ent.Asc(revision.FieldID)).All(ctx)
 	if err != nil {
@@ -59,7 +59,7 @@ func (r *RevisionStorage) ReadRevisions(ctx context.Context) (migrate.Revisions,
 	return ret, nil
 }
 
-// WriteRevisions stores the revisions in the revisions table.
+// WriteRevisions writes the revisions to the revisions table.
 func (r *RevisionStorage) WriteRevisions(ctx context.Context, rs migrate.Revisions) error {
 	bulk := make([]*ent.RevisionCreate, len(rs))
 	for i, rev := range rs {
