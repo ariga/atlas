@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	ent "ariga.io/atlas/sql/internal/migrate"
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/migrate/ent"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 	"entgo.io/ent/dialect"

@@ -11,10 +11,10 @@ import (
 	"strconv"
 	"strings"
 
-	ent "ariga.io/atlas/sql/internal/migrate"
-	"ariga.io/atlas/sql/internal/migrate/revision"
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/migrate/ent"
+	"ariga.io/atlas/sql/migrate/ent/revision"
 	"ariga.io/atlas/sql/schema"
 )
 

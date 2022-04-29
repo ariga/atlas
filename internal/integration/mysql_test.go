@@ -14,8 +14,8 @@ import (
 	"testing"
 
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/migrate/ent/runtime"
 	"ariga.io/atlas/sql/mysql"
-	"ariga.io/atlas/sql/mysql/runtime"
 	"ariga.io/atlas/sql/schema"
 	"entgo.io/ent/dialect"
 	_ "github.com/go-sql-driver/mysql"
@@ -74,7 +74,7 @@ func myInit(d string) []io.Closer {
 		if err != nil {
 			log.Fatalln(err)
 		}
-		runtime.InitEntSchemaMigrator(drv.(*mysql.Driver), db, dialect.MySQL)
+		runtime.InitSchemaMigrator(drv.(*mysql.Driver), db, dialect.MySQL)
 		myTests.drivers[version] = &myTest{db: db, drv: drv, version: version, port: port}
 	}
 	return cs

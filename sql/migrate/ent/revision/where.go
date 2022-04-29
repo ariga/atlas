@@ -9,7 +9,7 @@ package revision
 import (
 	"time"
 
-	"ariga.io/atlas/sql/internal/migrate/predicate"
+	"ariga.io/atlas/sql/migrate/ent/predicate"
 	"entgo.io/ent/dialect/sql"
 )
 

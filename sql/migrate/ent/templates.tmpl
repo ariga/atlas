@@ -1,0 +1,66 @@
+{{ define "client/init" }}
+	// Client is the client that holds all ent builders.
+	type Client struct {
+		config
+		{{- range $n := $.Nodes }}
+			// {{ $n.Name }} is the client for interacting with the {{ $n.Name }} builders.
+			{{ $n.Name }} *{{ $n.Name }}Client
+		{{- end }}
+		{{- template "client/fields/additional" $ }}
+		{{- with $tmpls := matchTemplate "client/fields/additional/*" }}
+			{{- range $tmpl := $tmpls }}
+				{{- xtemplate $tmpl $ }}
+			{{- end }}
+		{{- end }}
+	}
+
+	// NewClient creates a new client configured with the given options.
+	func NewClient(opts ...Option) *Client {
+		cfg := config{log: log.Println, hooks: &hooks{}}
+		cfg.options(opts...)
+		client := &Client{config: cfg}
+		client.init()
+		return client
+	}
+
+	func (c *Client) init() {
+		{{- range $n := $.Nodes }}
+			c.{{ $n.Name }} = New{{ $n.Name }}Client(c.config)
+		{{- end }}
+	}
+{{ end }}
+
+{{ define "enttest" }}
+	{{ with extend $ "Package" "enttest" -}}
+		{{ template "header" . }}
+	{{ end }}
+
+	// Overridden by a custom template because it is unused in this project.
+{{ end }}
+
+{{ define "runtime/migrate" }}
+	{{ $.Header }}
+	package {{ "runtime" }}
+
+	import(
+		"context"
+		"database/sql"
+
+		"ariga.io/atlas/sql/migrate/ent/migrate"
+		entsql "entgo.io/ent/dialect/sql"
+		"entgo.io/ent/dialect/sql/schema"
+	)
+
+	type initSchemaMigratorer interface {
+		InitSchemaMigrator(func(ctx context.Context) error)
+	}
+
+	// InitSchemaMigrator stitches in the Ent migration engine to the mysql.Driver at runtime. This is necessary
+	// because the Ent migration engine imports atlas and therefore would introduce a cyclic dependency.
+	func InitSchemaMigrator(drv initSchemaMigratorer, db *sql.DB, dialect string) {
+		mgr := migrate.NewSchema(entsql.NewDriver(entsql.Conn{ExecQuerier: db}, dialect))
+		drv.InitSchemaMigrator(func(ctx context.Context) error {
+			return mgr.Create(ctx, schema.WithAtlas(true))
+		})
+	}
+{{ end }}

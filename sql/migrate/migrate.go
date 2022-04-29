@@ -21,7 +21,7 @@ import (
 	"text/template"
 	"time"
 
-	"ariga.io/atlas/sql/internal/migrate/revision"
+	"ariga.io/atlas/sql/migrate/ent/revision"
 	"ariga.io/atlas/sql/schema"
 )
 
