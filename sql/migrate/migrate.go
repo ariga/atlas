@@ -172,11 +172,11 @@ type (
 	}
 
 	// A RevisionReadWriter reads and writes information about a Revisions to a persistent storage.
+	// If the implementation happens provide an "Init() error" method,
+	// it will be called once before attempting to read or write.
 	//
 	// Atlas drivers provide a sql based implementation of this interface by default.
 	RevisionReadWriter interface {
-		// Init is called once before executing the migration files.
-		Init(context.Context) error
 		ReadRevisions(context.Context) (Revisions, error)
 		WriteRevisions(context.Context, Revisions) error
 	}
@@ -340,8 +340,12 @@ func (e *Executor) Execute(ctx context.Context, n int) (err error) {
 	if !ok {
 		return errors.New("sql/migrate: execute: no revisions reader available")
 	}
-	if err := rrw.Init(ctx); err != nil {
-		return fmt.Errorf("sql/migrate: execute: init revision storage: %w", err)
+	if init, ok := rrw.(interface {
+		Init(context.Context) error
+	}); ok {
+		if err := init.Init(ctx); err != nil {
+			return fmt.Errorf("sql/migrate: execute: init revision storage: %w", err)
+		}
 	}
 	// Check if the Dir implements Scanner interface.
 	sc, ok := e.dir.(Scanner)
