@@ -75,7 +75,7 @@ func (r *revReadWrite) ReadRevisions(ctx context.Context) (migrate.Revisions, er
 	if err := rs.Close(); err != nil {
 		return nil, err
 	}
-	revs, err := r.c.Revision.Query().All(ctx)
+	revs, err := r.c.Revision.Query().Order(ent.Asc(revision.FieldID)).All(ctx)
 	if err != nil {
 		return nil, err
 	}
