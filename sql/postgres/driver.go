@@ -14,12 +14,9 @@ import (
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
-	"ariga.io/atlas/sql/migrate/ent"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 	"entgo.io/ent/dialect"
-	"entgo.io/ent/dialect/sql"
-
 	"golang.org/x/mod/semver"
 )
 
@@ -78,20 +75,18 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 		return nil, fmt.Errorf("postgres: unsupported postgres version: %s", c.version)
 	}
 	return &Driver{
-		conn:        c,
-		Differ:      &sqlx.Diff{DiffDriver: &diff{c}},
-		Inspector:   &inspect{c},
-		PlanApplier: &planApply{c},
-		RevisionReadWriter: sqlx.NewRevisionStorage(
-			ent.NewClient(ent.Driver(sql.NewDriver(sql.Conn{ExecQuerier: db}, dialect.Postgres))),
-		),
+		conn:               c,
+		Differ:             &sqlx.Diff{DiffDriver: &diff{c}},
+		Inspector:          &inspect{c},
+		PlanApplier:        &planApply{c},
+		RevisionReadWriter: sqlx.NewRevisionStorage(db, dialect.Postgres),
 	}, nil
 }
 
 // InitSchemaMigrator stitches in the Ent migration engine to the Driver at runtime. This is necessary
 // because the Ent migration engine imports atlas and therefore would introduce a cyclic dependency.
 func (d *Driver) InitSchemaMigrator(sc func(context.Context) error) {
-	d.RevisionReadWriter.(*sqlx.RevisionStorage).InitSchemaMigrator(sc)
+	d.RevisionReadWriter.(*sqlx.EntRevisions).InitSchemaMigrator(sc)
 }
 
 func (d *Driver) dev() *sqlx.DevDriver {

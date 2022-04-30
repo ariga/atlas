@@ -10,35 +10,36 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/migrate/ent"
 	"ariga.io/atlas/sql/migrate/ent/revision"
+	"ariga.io/atlas/sql/schema"
 	"entgo.io/ent/dialect/sql"
 )
 
-// A RevisionStorage provides implementation for the migrate.RevisionReadWriter interface.
-type RevisionStorage struct {
+// A EntRevisions provides implementation for the migrate.RevisionReadWriter interface.
+type EntRevisions struct {
 	c *ent.Client
 	// sc is the function signature of the Ent migration engine.
 	// Due to cyclic dependencies between Ent and Atlas, this value is stitched in at runtime.
 	sc func(context.Context) error
 }
 
-// NewRevisionStorage creates a new RevisionStorage with the given ent.Client.
-func NewRevisionStorage(c *ent.Client) *RevisionStorage {
-	return &RevisionStorage{c: c}
+// NewRevisionStorage creates a new EntRevisions with the given ent.Client.
+func NewRevisionStorage(db schema.ExecQuerier, dialect string) *EntRevisions {
+	return &EntRevisions{c: ent.NewClient(ent.Driver(sql.NewDriver(sql.Conn{ExecQuerier: db}, dialect)))}
 }
 
-// InitSchemaMigrator stitches in the Ent migration engine to the RevisionStorage at runtime. This is necessary
+// InitSchemaMigrator stitches in the Ent migration engine to the EntRevisions at runtime. This is necessary
 // because the Ent migration engine imports atlas and therefore would introduce a cyclic dependency.
-func (r *RevisionStorage) InitSchemaMigrator(sc func(context.Context) error) {
+func (r *EntRevisions) InitSchemaMigrator(sc func(context.Context) error) {
 	r.sc = sc
 }
 
 // Init makes sure the revisions table does exist in the connected database.
-func (r *RevisionStorage) Init(ctx context.Context) error {
+func (r *EntRevisions) Init(ctx context.Context) error {
 	return r.sc(ctx)
 }
 
 // ReadRevisions reads the revisions from the revisions table.
-func (r *RevisionStorage) ReadRevisions(ctx context.Context) (migrate.Revisions, error) {
+func (r *EntRevisions) ReadRevisions(ctx context.Context) (migrate.Revisions, error) {
 	revs, err := r.c.Revision.Query().Order(ent.Asc(revision.FieldID)).All(ctx)
 	if err != nil {
 		return nil, err
@@ -60,7 +61,7 @@ func (r *RevisionStorage) ReadRevisions(ctx context.Context) (migrate.Revisions,
 }
 
 // WriteRevisions writes the revisions to the revisions table.
-func (r *RevisionStorage) WriteRevisions(ctx context.Context, rs migrate.Revisions) error {
+func (r *EntRevisions) WriteRevisions(ctx context.Context, rs migrate.Revisions) error {
 	bulk := make([]*ent.RevisionCreate, len(rs))
 	for i, rev := range rs {
 		bulk[i] = r.c.Revision.Create().
@@ -81,4 +82,4 @@ func (r *RevisionStorage) WriteRevisions(ctx context.Context, rs migrate.Revisio
 		Exec(ctx)
 }
 
-var _ migrate.RevisionReadWriter = (*RevisionStorage)(nil)
+var _ migrate.RevisionReadWriter = (*EntRevisions)(nil)
