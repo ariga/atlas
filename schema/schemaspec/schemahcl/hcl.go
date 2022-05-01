@@ -81,18 +81,18 @@ func (s *State) Eval(data []byte, v interface{}, input map[string]string) error 
 	return nil
 }
 
-// refMap maps addresses to their referenced resource.
-type refMap map[string]*schemaspec.Resource
+// addrRef maps addresses to their referenced resource.
+type addrRef map[string]*schemaspec.Resource
 
 // patchRefs recursively searches for schemaspec.Ref under the provided schemaspec.Resource
 // and patches any variables with their concrete names.
 func patchRefs(spec *schemaspec.Resource) error {
-	m := make(refMap)
+	m := make(addrRef)
 	m.load(spec, "")
 	return m.patch(spec)
 }
 
-func (r refMap) patch(resource *schemaspec.Resource) error {
+func (r addrRef) patch(resource *schemaspec.Resource) error {
 	for _, attr := range resource.Attrs {
 		if ref, ok := attr.V.(*schemaspec.Ref); ok {
 			referenced, ok := r[ref.V]
@@ -113,7 +113,7 @@ func (r refMap) patch(resource *schemaspec.Resource) error {
 }
 
 // load loads the references from the children of the resource.
-func (r refMap) load(res *schemaspec.Resource, track string) {
+func (r addrRef) load(res *schemaspec.Resource, track string) {
 	unlabeled := 0
 	for _, ch := range res.Children {
 		current := rep(ch)

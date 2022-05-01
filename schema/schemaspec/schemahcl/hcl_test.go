@@ -271,3 +271,37 @@ ref = named.block_id.name
 	}, test.Named)
 	require.EqualValues(t, "atlas", test.Ref)
 }
+
+func TestRefPatch(t *testing.T) {
+	type (
+		Family struct {
+			Name string `spec:"name,name"`
+		}
+		Person struct {
+			Name   string          `spec:",name"`
+			Family *schemaspec.Ref `spec:"family"`
+		}
+	)
+	schemaspec.Register("family", &Family{})
+	schemaspec.Register("person", &Person{})
+	var test struct {
+		Families []*Family `spec:"family"`
+		People   []*Person `spec:"person"`
+	}
+	h := `
+variable "family_name" {
+  type = string
+}
+
+family "default" {
+	name = var.family_name
+}
+
+person "rotem" {
+	family = family.default
+}
+`
+	err := New().Eval([]byte(h), &test, map[string]string{"family_name": "tam"})
+	require.NoError(t, err)
+	require.EqualValues(t, "$family.tam", test.People[0].Family.V)
+}
