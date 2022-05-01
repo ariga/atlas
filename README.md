@@ -1,5 +1,6 @@
 
 # Atlas -  A Database Toolkit
+[![Discord](https://img.shields.io/discord/930720389120794674?label=discord&logo=discord&style=flat-square&logoColor=white)](https://discord.gg/zZ6sWVg6NT)
 
 <img width="50%" align="right" style="display: block; margin:40px auto;"
      src="https://atlasgo.io/uploads/images/gopher.png"/>
