@@ -1,15 +1,15 @@
 ---
 title: Dev Database
 id: dev-database
-slug: /cli/dev-database
+slug: /dev-database
 ---
 ## Introduction
 
-Various Atlas commands accept the `--dev-url` flag. This option uses the [URL](url.mdx) format, and allows passing
+Atlas uses the concept of "Dev Database" to provide extra safety and correctness to the migration process.
 a development database (a twin environment) to validate schemas, simulate migrations and calculate the state of the
 migration directory by replaying the historical changes. Let's go over a few examples to explain the benefits of using a
 dev/twin database. For a one-time use Atlas can spin up an ephemeral local docker container for you with a special
-[docker driver](url.mdx).
+[docker driver](cli/url.mdx).
 
 ## Validation
 
@@ -27,7 +27,7 @@ table "t" {
 }
 ```
 
-After running [`schema apply`](reference.md#atlas-schema-apply), we get the following error because the `CHECK`
+After running [`schema apply`](cli/reference.md#atlas-schema-apply), we get the following error because the `CHECK`
 constraint is invalid, as column `d` does not exist.
 
 ```shell
@@ -136,7 +136,7 @@ Similarly to the previous example, we will use the `--dev-url` option to solve t
 
 ```shell
 $ atlas schema apply --url "mysql://root:pass@:3308/test" -f test.hcl
-  --dev-url="mysql://root:pass@:3308/test"
+  --dev-url="mysql://root:pass@:3307/test"
 ```
 ```text
 Schema is synced, no changes to be made
