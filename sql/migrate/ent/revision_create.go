@@ -203,6 +203,7 @@ func (rc *RevisionCreate) createSpec() (*Revision, *sqlgraph.CreateSpec) {
 			},
 		}
 	)
+	_spec.Schema = rc.schemaConfig.Revision
 	_spec.OnConflict = rc.conflict
 	if id, ok := rc.mutation.ID(); ok {
 		_node.ID = id
