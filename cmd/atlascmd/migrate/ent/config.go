@@ -11,6 +11,7 @@ import (
 	stdsql "database/sql"
 	"fmt"
 
+	"ariga.io/atlas/cmd/atlascmd/migrate/ent/internal"
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
 )
@@ -28,6 +29,8 @@ type config struct {
 	log func(...interface{})
 	// hooks to execute on mutations.
 	hooks *hooks
+	// schemaConfig contains alternative names for all tables.
+	schemaConfig SchemaConfig
 }
 
 // hooks per client, for fast access.
@@ -63,6 +66,18 @@ func Log(fn func(...interface{})) Option {
 func Driver(driver dialect.Driver) Option {
 	return func(c *config) {
 		c.driver = driver
+	}
+}
+
+// SchemaConfig represents alternative schema names for all tables
+// that can be passed at runtime.
+type SchemaConfig = internal.SchemaConfig
+
+// AlternateSchemas allows alternate schema names to be
+// passed into ent operations.
+func AlternateSchema(schemaConfig SchemaConfig) Option {
+	return func(c *config) {
+		c.schemaConfig = schemaConfig
 	}
 }
 

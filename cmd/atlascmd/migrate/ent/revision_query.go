@@ -11,8 +11,9 @@ import (
 	"fmt"
 	"math"
 
-	"ariga.io/atlas/sql/migrate/ent/predicate"
-	"ariga.io/atlas/sql/migrate/ent/revision"
+	"ariga.io/atlas/cmd/atlascmd/migrate/ent/internal"
+	"ariga.io/atlas/cmd/atlascmd/migrate/ent/predicate"
+	"ariga.io/atlas/cmd/atlascmd/migrate/ent/revision"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -330,6 +331,8 @@ func (rq *RevisionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Rev
 		nodes = append(nodes, node)
 		return node.assignValues(columns, values)
 	}
+	_spec.Node.Schema = rq.schemaConfig.Revision
+	ctx = internal.NewSchemaConfigContext(ctx, rq.schemaConfig)
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -344,6 +347,8 @@ func (rq *RevisionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Rev
 
 func (rq *RevisionQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := rq.querySpec()
+	_spec.Node.Schema = rq.schemaConfig.Revision
+	ctx = internal.NewSchemaConfigContext(ctx, rq.schemaConfig)
 	_spec.Node.Columns = rq.fields
 	if len(rq.fields) > 0 {
 		_spec.Unique = rq.unique != nil && *rq.unique
@@ -422,6 +427,9 @@ func (rq *RevisionQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if rq.unique != nil && *rq.unique {
 		selector.Distinct()
 	}
+	t1.Schema(rq.schemaConfig.Revision)
+	ctx = internal.NewSchemaConfigContext(ctx, rq.schemaConfig)
+	selector.WithContext(ctx)
 	for _, p := range rq.predicates {
 		p(selector)
 	}

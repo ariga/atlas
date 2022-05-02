@@ -11,7 +11,9 @@ import (
 	"fmt"
 	"log"
 
-	"ariga.io/atlas/sql/migrate/ent/revision"
+	"ariga.io/atlas/cmd/atlascmd/migrate/ent/migrate"
+
+	"ariga.io/atlas/cmd/atlascmd/migrate/ent/revision"
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
@@ -20,6 +22,8 @@ import (
 // Client is the client that holds all ent builders.
 type Client struct {
 	config
+	// Schema is the client for creating, migrating and dropping schema.
+	Schema *migrate.Schema
 	// Revision is the client for interacting with the Revision builders.
 	Revision *RevisionClient
 }
@@ -34,6 +38,7 @@ func NewClient(opts ...Option) *Client {
 }
 
 func (c *Client) init() {
+	c.Schema = migrate.NewSchema(c.driver)
 	c.Revision = NewRevisionClient(c.config)
 }
 

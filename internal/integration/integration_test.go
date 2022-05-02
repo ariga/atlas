@@ -45,6 +45,7 @@ func TestMain(m *testing.M) {
 type T interface {
 	testing.TB
 	driver() migrate.Driver
+	revisionsStorage() migrate.RevisionReadWriter
 	realm() *schema.Realm
 	loadRealm() *schema.Realm
 	users() *schema.Table
@@ -471,7 +472,7 @@ func testAdvisoryLock(t *testing.T, l schema.Locker) {
 }
 
 func testExecutor(t T) {
-	usersT, postsT, revisionsT := t.users(), t.posts(), t.revisions()
+	usersT, postsT := t.users(), t.posts()
 	petsT := &schema.Table{
 		Name:   "pets",
 		Schema: usersT.Schema,
@@ -485,7 +486,10 @@ func testExecutor(t T) {
 		{Symbol: "owner_id", Table: petsT, Columns: petsT.Columns[1:], RefTable: usersT, RefColumns: usersT.Columns[:1]},
 	}
 
-	t.dropTables(petsT.Name, postsT.Name, usersT.Name, revisionsT.Name)
+	t.dropTables(petsT.Name, postsT.Name, usersT.Name)
+	t.Cleanup(func() {
+		t.revisionsStorage().(*rrw).clean()
+	})
 
 	dir, err := migrate.NewLocalDir(t.TempDir())
 	require.NoError(t, err)
@@ -503,12 +507,14 @@ func testExecutor(t T) {
 	require.NoError(t, pl.WritePlan(plan(t, "2_posts", &schema.AddTable{T: postsT})))
 	require.NoError(t, pl.WritePlan(plan(t, "3_pets", &schema.AddTable{T: petsT})))
 
-	ex, err := migrate.NewExecutor(t.driver(), dir)
+	ex, err := migrate.NewExecutor(t.driver(), dir, t.revisionsStorage())
 	require.NoError(t, err)
 	require.NoError(t, ex.Execute(context.Background(), 2)) // usersT and postsT
-	ensureNoChange(t, revisionsT, postsT, usersT)
+	require.Len(t, *t.revisionsStorage().(*rrw), 2)
+	ensureNoChange(t, postsT, usersT)
 	require.NoError(t, ex.Execute(context.Background(), 1)) // petsT
-	ensureNoChange(t, revisionsT, petsT, postsT, usersT)
+	require.Len(t, *t.revisionsStorage().(*rrw), 3)
+	ensureNoChange(t, petsT, postsT, usersT)
 
 	require.ErrorIs(t, ex.Execute(context.Background(), 1), migrate.ErrNoPendingFiles)
 }
@@ -517,4 +523,19 @@ func plan(t T, name string, changes ...schema.Change) *migrate.Plan {
 	p, err := t.driver().PlanChanges(context.Background(), name, changes)
 	require.NoError(t, err)
 	return p
+}
+
+type rrw migrate.Revisions
+
+func (r *rrw) WriteRevisions(ctx context.Context, revs migrate.Revisions) error {
+	*r = rrw(revs)
+	return nil
+}
+
+func (r *rrw) ReadRevisions(ctx context.Context) (migrate.Revisions, error) {
+	return migrate.Revisions(*r), nil
+}
+
+func (r *rrw) clean() {
+	*r = rrw(migrate.Revisions{})
 }

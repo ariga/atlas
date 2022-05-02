@@ -21,7 +21,6 @@ import (
 	"text/template"
 	"time"
 
-	"ariga.io/atlas/sql/migrate/ent/revision"
 	"ariga.io/atlas/sql/schema"
 )
 
@@ -224,8 +223,9 @@ type (
 
 	// Executor is responsible to manage and execute a set of migration files against a database.
 	Executor struct {
-		drv Driver // The Driver to access and manage the database.
-		dir Dir    // The Dir with migration files to use.
+		drv Driver             // The Driver to access and manage the database.
+		dir Dir                // The Dir with migration files to use.
+		rrw RevisionReadWriter // The RevisionReadWriter to read and write database revisions to.
 	}
 
 	// ExecutorOption allows configuring an Executor using functional arguments.
@@ -314,12 +314,30 @@ func (p *Planner) WritePlan(plan *Plan) error {
 	return nil
 }
 
+const (
+	// stateOngoing is set once a migration file has been started to be applied.
+	stateOngoing = "ongoing"
+	// stateOK is set once a migration file is applied without errors.
+	stateOK = "ok"
+	// stateError  is set once a migration file could not be applied due to an error.
+	stateError = "error"
+)
+
 // ErrNoPendingFiles is returned when there are no pending migration files to execute on the managed database.
 var ErrNoPendingFiles = errors.New("sql/migrate: execute: nothing to do")
 
 // NewExecutor creates a new Executor with default values. // TODO(masseelch): Operator Version and other Meta
-func NewExecutor(drv Driver, dir Dir, opts ...ExecutorOption) (*Executor, error) {
-	p := &Executor{drv: drv, dir: dir}
+func NewExecutor(drv Driver, dir Dir, rrw RevisionReadWriter, opts ...ExecutorOption) (*Executor, error) {
+	if drv == nil {
+		return nil, errors.New("sql/migrate: execute: drv cannot be nil")
+	}
+	if dir == nil {
+		return nil, errors.New("sql/migrate: execute: dir cannot be nil")
+	}
+	if rrw == nil {
+		return nil, errors.New("sql/migrate: execute: rrw cannot be nil")
+	}
+	p := &Executor{drv: drv, dir: dir, rrw: rrw}
 	for _, opt := range opts {
 		if err := opt(p); err != nil {
 			return nil, err
@@ -335,27 +353,13 @@ func (e *Executor) Execute(ctx context.Context, n int) (err error) {
 	if err := Validate(e.dir); err != nil {
 		return fmt.Errorf("sql/migrate: execute: validate migration directory: %w", err)
 	}
-	// Check if the Driver implements RevisionReadWriter interface.
-	rrw, ok := e.drv.(RevisionReadWriter)
-	if !ok {
-		return errors.New("sql/migrate: execute: no revisions reader available")
-	}
-	// Drivers might need to do some initialization before the storage is ready. They can implement the following
-	// inlined interface and the executor will call it once before doing the migration execution.
-	if init, ok := e.drv.(interface {
-		Init(context.Context) error
-	}); ok {
-		if err := init.Init(ctx); err != nil {
-			return fmt.Errorf("sql/migrate: execute: init revision storage: %w", err)
-		}
-	}
 	// Check if the Dir implements Scanner interface.
 	sc, ok := e.dir.(Scanner)
 	if !ok {
 		return errors.New("sql/migrate: execute: no scanner available")
 	}
 	// Read all applied database revisions.
-	revisions, err := rrw.ReadRevisions(ctx)
+	revisions, err := e.rrw.ReadRevisions(ctx)
 	if err != nil {
 		return fmt.Errorf("sql/migrate: execute: read revisions: %w", err)
 	}
@@ -399,7 +403,7 @@ func (e *Executor) Execute(ctx context.Context, n int) (err error) {
 			}
 			err = dErr
 		}
-	}(rrw, ctx, &revisions)
+	}(e.rrw, ctx, &revisions)
 	// Determine what migrations to run.
 	var pending []File
 	if n <= 0 {
@@ -415,7 +419,7 @@ func (e *Executor) Execute(ctx context.Context, n int) (err error) {
 	}
 	// TODO(masseelch): run in a transaction
 	for _, m := range pending {
-		r := &Revision{ExecutedAt: time.Now(), ExecutionState: string(revision.ExecutionStateOngoing)}
+		r := &Revision{ExecutedAt: time.Now(), ExecutionState: stateOngoing}
 		revisions = append(revisions, r)
 		h, err := hf.sumByName(m.Name())
 		if err != nil {
@@ -552,9 +556,9 @@ func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
 func (r *Revision) done(ok bool) {
 	r.ExecutionTime = time.Now().Sub(r.ExecutedAt)
 	if ok {
-		r.ExecutionState = string(revision.ExecutionStateOk)
+		r.ExecutionState = stateOK
 	} else {
-		r.ExecutionState = string(revision.ExecutionStateError)
+		r.ExecutionState = stateError
 	}
 }
 

@@ -14,7 +14,6 @@ import (
 	"testing"
 
 	"ariga.io/atlas/sql/migrate"
-	"ariga.io/atlas/sql/migrate/ent/runtime"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlite"
@@ -28,6 +27,7 @@ type liteTest struct {
 	*testing.T
 	db   *sql.DB
 	drv  migrate.Driver
+	rrw  migrate.RevisionReadWriter
 	file string
 }
 
@@ -41,8 +41,7 @@ func liteRun(t *testing.T, fn func(test *liteTest)) {
 	})
 	drv, err := sqlite.Open(db)
 	require.NoError(t, err)
-	runtime.InitSchemaMigrator(drv.(*sqlite.Driver), db, dialect.SQLite)
-	tt := &liteTest{T: t, db: db, drv: drv, file: f}
+	tt := &liteTest{T: t, db: db, drv: drv, file: f, rrw: &rrw{}}
 	fn(tt)
 }
 
@@ -724,6 +723,10 @@ create table atlas_types_sanity
 
 func (t *liteTest) driver() migrate.Driver {
 	return t.drv
+}
+
+func (t *liteTest) revisionsStorage() migrate.RevisionReadWriter {
+	return t.rrw
 }
 
 func (t *liteTest) applyHcl(spec string) {

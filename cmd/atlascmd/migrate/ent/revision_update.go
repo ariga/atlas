@@ -12,8 +12,9 @@ import (
 	"fmt"
 	"time"
 
-	"ariga.io/atlas/sql/migrate/ent/predicate"
-	"ariga.io/atlas/sql/migrate/ent/revision"
+	"ariga.io/atlas/cmd/atlascmd/migrate/ent/internal"
+	"ariga.io/atlas/cmd/atlascmd/migrate/ent/predicate"
+	"ariga.io/atlas/cmd/atlascmd/migrate/ent/revision"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -230,6 +231,8 @@ func (ru *RevisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: revision.FieldMeta,
 		})
 	}
+	_spec.Node.Schema = ru.schemaConfig.Revision
+	ctx = internal.NewSchemaConfigContext(ctx, ru.schemaConfig)
 	if n, err = sqlgraph.UpdateNodes(ctx, ru.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{revision.Label}
@@ -471,6 +474,8 @@ func (ruo *RevisionUpdateOne) sqlSave(ctx context.Context) (_node *Revision, err
 			Column: revision.FieldMeta,
 		})
 	}
+	_spec.Node.Schema = ruo.schemaConfig.Revision
+	ctx = internal.NewSchemaConfigContext(ctx, ruo.schemaConfig)
 	_node = &Revision{config: ruo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

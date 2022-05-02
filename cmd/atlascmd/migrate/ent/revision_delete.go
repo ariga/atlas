@@ -10,8 +10,9 @@ import (
 	"context"
 	"fmt"
 
-	"ariga.io/atlas/sql/migrate/ent/predicate"
-	"ariga.io/atlas/sql/migrate/ent/revision"
+	"ariga.io/atlas/cmd/atlascmd/migrate/ent/internal"
+	"ariga.io/atlas/cmd/atlascmd/migrate/ent/predicate"
+	"ariga.io/atlas/cmd/atlascmd/migrate/ent/revision"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -81,6 +82,8 @@ func (rd *RevisionDelete) sqlExec(ctx context.Context) (int, error) {
 			},
 		},
 	}
+	_spec.Node.Schema = rd.schemaConfig.Revision
+	ctx = internal.NewSchemaConfigContext(ctx, rd.schemaConfig)
 	if ps := rd.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {

@@ -83,17 +83,17 @@ func TestMigrate_Diff(t *testing.T) {
 }
 
 func TestMigrate_Validate(t *testing.T) {
-	s, err := runCmd(Root, "migrate", "validate", "--dir", "file://migrations")
+	s, err := runCmd(Root, "migrate", "validate", "--dir", "file://testdata")
 	require.Zero(t, s)
 	require.NoError(t, err)
 }
 
 func TestMigrate_ValidateError(t *testing.T) {
 	if os.Getenv("DO_VALIDATE") == "1" {
-		runCmd(Root, "migrate", "validate", "--dir", "file://migrations")
+		runCmd(Root, "migrate", "validate", "--dir", "file://testdata")
 		return
 	}
-	f := filepath.Join("migrations", "new.sql")
+	f := filepath.Join("testdata", "new.sql")
 	require.NoError(t, os.WriteFile(f, []byte("contents"), 0600))
 	defer os.Remove(f)
 	cmd := exec.Command(os.Args[0], "-test.run=TestMigrate_ValidateError") //nolint:gosec
@@ -106,12 +106,12 @@ func TestMigrate_ValidateError(t *testing.T) {
 }
 
 func TestMigrate_Hash(t *testing.T) {
-	s, err := runCmd(Root, "migrate", "hash", "--dir", "file://migrations")
+	s, err := runCmd(Root, "migrate", "hash", "--dir", "file://testdata")
 	require.Zero(t, s)
 	require.NoError(t, err)
 
 	p := t.TempDir()
-	err = copyFile(filepath.Join("migrations", "20220318104614_initial.sql"), filepath.Join(p, "20220318104614_initial.sql"))
+	err = copyFile(filepath.Join("testdata", "20220318104614_initial.sql"), filepath.Join(p, "20220318104614_initial.sql"))
 	require.NoError(t, err)
 
 	s, err = runCmd(Root, "migrate", "hash", "--dir", "file://"+p, "--force")
@@ -135,7 +135,7 @@ func TestMigrate_HashError(t *testing.T) {
 		return
 	}
 	p := t.TempDir()
-	err := copyFile(filepath.Join("migrations", "20220318104614_initial.sql"), filepath.Join(p, "20220318104614_initial.sql"))
+	err := copyFile(filepath.Join("testdata", "20220318104614_initial.sql"), filepath.Join(p, "20220318104614_initial.sql"))
 	require.NoError(t, err)
 	cmd := exec.Command(os.Args[0], "-test.run=TestMigrate_HashError") //nolint:gosec
 	cmd.Env = append(os.Environ(), "DO_HASH=1", "MIGRATION_DIR="+p)

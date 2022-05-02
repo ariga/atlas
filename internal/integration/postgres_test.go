@@ -14,7 +14,6 @@ import (
 	"testing"
 
 	"ariga.io/atlas/sql/migrate"
-	"ariga.io/atlas/sql/migrate/ent/runtime"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
@@ -28,6 +27,7 @@ type pgTest struct {
 	*testing.T
 	db      *sql.DB
 	drv     migrate.Driver
+	rrw     migrate.RevisionReadWriter
 	version string
 	port    int
 }
@@ -44,15 +44,6 @@ var pgTests = struct {
 		"postgres13": 5433,
 		"postgres14": 5434,
 	},
-}
-
-func pgRun(t *testing.T, fn func(*pgTest)) {
-	for version, tt := range pgTests.drivers {
-		t.Run(version, func(t *testing.T) {
-			tt := &pgTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port}
-			fn(tt)
-		})
-	}
 }
 
 func pgInit(d string) []io.Closer {
@@ -75,10 +66,18 @@ func pgInit(d string) []io.Closer {
 		if err != nil {
 			log.Fatalln(err)
 		}
-		runtime.InitSchemaMigrator(drv.(*postgres.Driver), db, dialect.Postgres)
-		pgTests.drivers[version] = &pgTest{db: db, drv: drv, version: version, port: port}
+		pgTests.drivers[version] = &pgTest{db: db, drv: drv, version: version, port: port, rrw: &rrw{}}
 	}
 	return cs
+}
+
+func pgRun(t *testing.T, fn func(*pgTest)) {
+	for version, tt := range pgTests.drivers {
+		t.Run(version, func(t *testing.T) {
+			tt := &pgTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port, rrw: tt.rrw}
+			fn(tt)
+		})
+	}
 }
 
 func TestPostgres_Executor(t *testing.T) {
@@ -1005,6 +1004,10 @@ func (t *pgTest) dsn() string {
 
 func (t *pgTest) driver() migrate.Driver {
 	return t.drv
+}
+
+func (t *pgTest) revisionsStorage() migrate.RevisionReadWriter {
+	return t.rrw
 }
 
 func (t *pgTest) applyHcl(spec string) {

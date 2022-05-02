@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"time"
 
-	"ariga.io/atlas/sql/migrate/ent/revision"
+	"ariga.io/atlas/cmd/atlascmd/migrate/ent/revision"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -203,6 +203,7 @@ func (rc *RevisionCreate) createSpec() (*Revision, *sqlgraph.CreateSpec) {
 			},
 		}
 	)
+	_spec.Schema = rc.schemaConfig.Revision
 	_spec.OnConflict = rc.conflict
 	if id, ok := rc.mutation.ID(); ok {
 		_node.ID = id
