@@ -54,6 +54,13 @@ module.exports = {
             {"label": "Discord", "to": "https://discord.gg/zZ6sWVg6NT"},
           ]
         },
+        {
+          "title": "Legal",
+          "items": [
+            {"label": "Privacy Policy", "to": "https://ariga.io/legal/privacy"},
+            {"label": "Terms of Service", "to": "https://ariga.io/legal/tos"},
+          ]
+        }
       ],
       copyright: `
       Copyright © ${new Date().getFullYear()} The Atlas Authors.
