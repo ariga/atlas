@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/migrate/ent/runtime"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlite"
@@ -40,8 +41,15 @@ func liteRun(t *testing.T, fn func(test *liteTest)) {
 	})
 	drv, err := sqlite.Open(db)
 	require.NoError(t, err)
+	runtime.InitSchemaMigrator(drv.(*sqlite.Driver), db, dialect.SQLite)
 	tt := &liteTest{T: t, db: db, drv: drv, file: f}
 	fn(tt)
+}
+
+func TestSQLite_Executor(t *testing.T) {
+	liteRun(t, func(t *liteTest) {
+		testExecutor(t)
+	})
 }
 
 func TestSQLite_AddDropTable(t *testing.T) {
@@ -823,7 +831,7 @@ func (t *liteTest) revisions() *schema.Table {
 			{Name: "execution_time", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
 			{Name: "hash", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(44)"}}},
 			{Name: "operator_version", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
-			{Name: "meta", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
+			{Name: "meta", Type: &schema.ColumnType{Type: &schema.JSONType{T: "json"}, Raw: "json"}},
 		},
 	}
 	versionsT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: versionsT.Columns[0]}}}

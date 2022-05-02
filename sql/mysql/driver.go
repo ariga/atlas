@@ -64,10 +64,11 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	}
 	if c.tidb() {
 		return &Driver{
-			conn:        c,
-			Differ:      &sqlx.Diff{DiffDriver: &tdiff{diff{c}}},
-			Inspector:   &tinspect{inspect{c}},
-			PlanApplier: &tplanApply{planApply{c}},
+			conn:               c,
+			Differ:             &sqlx.Diff{DiffDriver: &tdiff{diff{c}}},
+			Inspector:          &tinspect{inspect{c}},
+			PlanApplier:        &tplanApply{planApply{c}},
+			RevisionReadWriter: sqlx.NewRevisionStorage(db, dialect.MySQL),
 		}, nil
 	}
 	return &Driver{
