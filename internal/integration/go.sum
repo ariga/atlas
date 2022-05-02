@@ -1,5 +1,7 @@
 entgo.io/ent v0.10.2-0.20220428114225-0c8f9a977c99 h1:++Y53GODlpz4OZOJ4VjANc9OxKUR6NZRgXcFg+CEtOc=
 entgo.io/ent v0.10.2-0.20220428114225-0c8f9a977c99/go.mod h1:rUH4yiUVADR2XHnv0ZERDnwF/YjR42m3Qra6CZ4ZxBA=
+entgo.io/ent v0.10.2-0.20220502113020-4ac82f5bb3f0 h1:qHA4+ANAzDj6BcDLxNgZuzKxFre/RI9r5wwsI2O+1M4=
+entgo.io/ent v0.10.2-0.20220502113020-4ac82f5bb3f0/go.mod h1:Zh61BPvB+cL6VWEyN8f1YoDacrMjQf2KDlDeX26xq2k=
 github.com/DATA-DOG/go-sqlmock v1.5.0 h1:Shsta01QNfFxHCfpW6YH2STWB0MudeXXEWMr20OEh60=
 github.com/agext/levenshtein v1.2.1/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
 github.com/agext/levenshtein v1.2.3 h1:YB2fHEn0UJagG8T1rrWknE3ZQzWM06O8AMAatNn7lmo=

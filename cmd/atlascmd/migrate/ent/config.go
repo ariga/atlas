@@ -11,7 +11,7 @@ import (
 	stdsql "database/sql"
 	"fmt"
 
-	"ariga.io/atlas/sql/migrate/ent/internal"
+	"ariga.io/atlas/cmd/atlascmd/migrate/ent/internal"
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
 )

@@ -2,40 +2,31 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package sqlx
+package migrate
 
 import (
 	"context"
 
+	"ariga.io/atlas/cmd/atlascmd/migrate/ent"
+	"ariga.io/atlas/cmd/atlascmd/migrate/ent/revision"
 	"ariga.io/atlas/sql/migrate"
-	"ariga.io/atlas/sql/migrate/ent"
-	"ariga.io/atlas/sql/migrate/ent/revision"
 	"ariga.io/atlas/sql/schema"
 	"entgo.io/ent/dialect/sql"
+	entschema "entgo.io/ent/dialect/sql/schema"
 )
 
 // A EntRevisions provides implementation for the migrate.RevisionReadWriter interface.
-type EntRevisions struct {
-	c *ent.Client
-	// sc is the function signature of the Ent migration engine.
-	// Due to cyclic dependencies between Ent and Atlas, this value is stitched in at runtime.
-	sc func(context.Context) error
-}
+type EntRevisions struct{ c *ent.Client }
 
 // NewEntRevisions creates a new EntRevisions with the given ent.Client.
-func NewEntRevisions(db schema.ExecQuerier, dialect string) *EntRevisions {
-	return &EntRevisions{c: ent.NewClient(ent.Driver(sql.NewDriver(sql.Conn{ExecQuerier: db}, dialect)))}
-}
-
-// InitSchemaMigrator stitches in the Ent migration engine to the EntRevisions at runtime. This is necessary
-// because the Ent migration engine imports atlas and therefore would introduce a cyclic dependency.
-func (r *EntRevisions) InitSchemaMigrator(sc func(context.Context) error) {
-	r.sc = sc
+func NewEntRevisions(db schema.ExecQuerier, dialect string, opts ...ent.Option) *EntRevisions {
+	opts = append(opts, ent.Driver(sql.NewDriver(dialect, sql.Conn{ExecQuerier: db})))
+	return &EntRevisions{c: ent.NewClient(opts...)}
 }
 
 // Init makes sure the revisions table does exist in the connected database.
 func (r *EntRevisions) Init(ctx context.Context) error {
-	return r.sc(ctx)
+	return r.c.Schema.Create(ctx, entschema.WithAtlas(true))
 }
 
 // ReadRevisions reads the revisions from the revisions table.

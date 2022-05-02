@@ -12,7 +12,6 @@ import (
 	"log"
 	"testing"
 
-	"ariga.io/atlas/sql/migrate/ent/runtime"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
 
@@ -54,8 +53,7 @@ func tidbInit(d string) []io.Closer {
 		if err != nil {
 			log.Fatalln(err)
 		}
-		runtime.InitSchemaMigrator(drv.(*mysql.Driver), db, dialect.MySQL)
-		tidbTests.drivers[version] = &myTest{db: db, drv: drv, version: version, port: port}
+		tidbTests.drivers[version] = &myTest{db: db, drv: drv, version: version, port: port, rrw: &rrw{}}
 	}
 	return cs
 }
@@ -63,7 +61,7 @@ func tidbInit(d string) []io.Closer {
 func tidbRun(t *testing.T, fn func(*myTest)) {
 	for version, tt := range tidbTests.drivers {
 		t.Run(version, func(t *testing.T) {
-			tt := &myTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port}
+			tt := &myTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port, rrw: tt.rrw}
 			fn(tt)
 		})
 	}

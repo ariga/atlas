@@ -14,7 +14,6 @@ import (
 	"testing"
 
 	"ariga.io/atlas/sql/migrate"
-	"ariga.io/atlas/sql/migrate/ent/runtime"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
 	"entgo.io/ent/dialect"
@@ -26,6 +25,7 @@ type myTest struct {
 	*testing.T
 	db      *sql.DB
 	drv     migrate.Driver
+	rrw     migrate.RevisionReadWriter
 	version string
 	port    int
 }
@@ -43,15 +43,6 @@ var myTests = struct {
 		"maria102": 4307,
 		"maria103": 4308,
 	},
-}
-
-func myRun(t *testing.T, fn func(*myTest)) {
-	for version, tt := range myTests.drivers {
-		t.Run(version, func(t *testing.T) {
-			tt := &myTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port}
-			fn(tt)
-		})
-	}
 }
 
 func myInit(d string) []io.Closer {
@@ -74,10 +65,18 @@ func myInit(d string) []io.Closer {
 		if err != nil {
 			log.Fatalln(err)
 		}
-		runtime.InitSchemaMigrator(drv.(*mysql.Driver), db, dialect.MySQL)
-		myTests.drivers[version] = &myTest{db: db, drv: drv, version: version, port: port}
+		myTests.drivers[version] = &myTest{db: db, drv: drv, version: version, port: port, rrw: &rrw{}}
 	}
 	return cs
+}
+
+func myRun(t *testing.T, fn func(*myTest)) {
+	for version, tt := range myTests.drivers {
+		t.Run(version, func(t *testing.T) {
+			tt := &myTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port, rrw: tt.rrw}
+			fn(tt)
+		})
+	}
 }
 
 func TestMySQL_Executor(t *testing.T) {
@@ -1154,6 +1153,10 @@ func (t *myTest) dsn(dbname string) string {
 
 func (t *myTest) driver() migrate.Driver {
 	return t.drv
+}
+
+func (t *myTest) revisionsStorage() migrate.RevisionReadWriter {
+	return t.rrw
 }
 
 func (t *myTest) applyHcl(spec string) {

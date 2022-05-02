@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"ariga.io/atlas/sql/migrate/ent/revision"
+	"ariga.io/atlas/cmd/atlascmd/migrate/ent/revision"
 	"entgo.io/ent/dialect/sql"
 )
 
