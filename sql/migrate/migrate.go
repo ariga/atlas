@@ -340,7 +340,9 @@ func (e *Executor) Execute(ctx context.Context, n int) (err error) {
 	if !ok {
 		return errors.New("sql/migrate: execute: no revisions reader available")
 	}
-	if init, ok := rrw.(interface {
+	// Drivers might need to do some initialization before the storage is ready. They can implement the following
+	// inlined interface and the executor will call it once before doing the migration execution.
+	if init, ok := e.drv.(interface {
 		Init(context.Context) error
 	}); ok {
 		if err := init.Init(ctx); err != nil {

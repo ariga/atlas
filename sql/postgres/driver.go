@@ -89,6 +89,11 @@ func (d *Driver) InitSchemaMigrator(sc func(context.Context) error) {
 	d.RevisionReadWriter.(*sqlx.EntRevisions).InitSchemaMigrator(sc)
 }
 
+// Init is called by the migration executor and makes sure the revisions table does exist in the connected database.
+func (d *Driver) Init(ctx context.Context) error {
+	return d.RevisionReadWriter.(*sqlx.EntRevisions).Init(ctx)
+}
+
 func (d *Driver) dev() *sqlx.DevDriver {
 	return &sqlx.DevDriver{Driver: d, MaxNameLen: 63}
 }
