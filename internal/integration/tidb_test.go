@@ -12,6 +12,7 @@ import (
 	"log"
 	"testing"
 
+	"ariga.io/atlas/sql/migrate/ent/runtime"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
 
@@ -33,12 +34,12 @@ var tidbTests = struct {
 	ports:   map[string]int{"tidb5": 4309, "tidb6": 4310},
 }
 
-func tidbInit(dialect string) []io.Closer {
+func tidbInit(d string) []io.Closer {
 	var cs []io.Closer
-	if dialect != "" {
-		p, ok := tidbTests.ports[dialect]
+	if d != "" {
+		p, ok := tidbTests.ports[d]
 		if ok {
-			tidbTests.ports = map[string]int{dialect: p}
+			tidbTests.ports = map[string]int{d: p}
 		} else {
 			tidbTests.ports = make(map[string]int)
 		}
@@ -53,6 +54,7 @@ func tidbInit(dialect string) []io.Closer {
 		if err != nil {
 			log.Fatalln(err)
 		}
+		runtime.InitSchemaMigrator(drv.(*mysql.Driver), db, dialect.MySQL)
 		tidbTests.drivers[version] = &myTest{db: db, drv: drv, version: version, port: port}
 	}
 	return cs
@@ -65,6 +67,12 @@ func tidbRun(t *testing.T, fn func(*myTest)) {
 			fn(tt)
 		})
 	}
+}
+
+func TestTiDB_Executor(t *testing.T) {
+	tidbRun(t, func(t *myTest) {
+		testExecutor(t)
+	})
 }
 
 func TestTiDB_AddDropTable(t *testing.T) {

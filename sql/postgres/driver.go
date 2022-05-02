@@ -79,7 +79,7 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 		Differ:             &sqlx.Diff{DiffDriver: &diff{c}},
 		Inspector:          &inspect{c},
 		PlanApplier:        &planApply{c},
-		RevisionReadWriter: sqlx.NewRevisionStorage(db, dialect.Postgres),
+		RevisionReadWriter: sqlx.NewEntRevisions(db, dialect.Postgres),
 	}, nil
 }
 

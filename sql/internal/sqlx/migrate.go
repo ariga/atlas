@@ -22,8 +22,8 @@ type EntRevisions struct {
 	sc func(context.Context) error
 }
 
-// NewRevisionStorage creates a new EntRevisions with the given ent.Client.
-func NewRevisionStorage(db schema.ExecQuerier, dialect string) *EntRevisions {
+// NewEntRevisions creates a new EntRevisions with the given ent.Client.
+func NewEntRevisions(db schema.ExecQuerier, dialect string) *EntRevisions {
 	return &EntRevisions{c: ent.NewClient(ent.Driver(sql.NewDriver(sql.Conn{ExecQuerier: db}, dialect)))}
 }
 
