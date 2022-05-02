@@ -13,8 +13,6 @@ import (
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
-	"ariga.io/atlas/sql/migrate/ent"
-	"ariga.io/atlas/sql/migrate/ent/revision"
 	"ariga.io/atlas/sql/schema"
 )
 
@@ -53,69 +51,6 @@ func (p *planApply) PlanChanges(_ context.Context, name string, changes []schema
 func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change) error {
 	return sqlx.ApplyChanges(ctx, changes, p)
 }
-
-// A revReadWrite provides implementation for the migrate.RevisionReadWriter interface.
-type revReadWrite struct {
-	c *ent.Client
-	// sc is the function signature of the Ent migration engine.
-	// Due to cyclic dependencies between Ent and Atlas, this value is stitched in at runtime.
-	sc func(context.Context) error
-}
-
-// ReadRevisions read the revisions from the revisions table.
-func (r *revReadWrite) ReadRevisions(ctx context.Context) (migrate.Revisions, error) {
-	rs, err := r.c.QueryContext(ctx, fmt.Sprintf("SHOW TABLES LIKE '%s'", revision.Table))
-	if err != nil {
-		return nil, err
-	}
-	if !rs.Next() {
-		// If there are no results the table does not exist and there are no revisions yet.
-		return migrate.Revisions{}, nil
-	}
-	if err := rs.Close(); err != nil {
-		return nil, err
-	}
-	revs, err := r.c.Revision.Query().Order(ent.Asc(revision.FieldID)).All(ctx)
-	if err != nil {
-		return nil, err
-	}
-	ret := make(migrate.Revisions, len(revs))
-	for i, r := range revs {
-		ret[i] = &migrate.Revision{
-			Version:         r.ID,
-			Description:     r.Description,
-			ExecutionState:  string(r.ExecutionState),
-			ExecutedAt:      r.ExecutedAt,
-			ExecutionTime:   r.ExecutionTime,
-			Hash:            r.Hash,
-			OperatorVersion: r.OperatorVersion,
-			Meta:            r.Meta,
-		}
-	}
-	return ret, nil
-}
-
-// WriteRevisions stores the revisions in the revisions table.
-func (r *revReadWrite) WriteRevisions(ctx context.Context, rs migrate.Revisions) error {
-	if err := r.sc(ctx); err != nil {
-		return err
-	}
-	bulk := make([]*ent.RevisionCreate, len(rs))
-	for i, rev := range rs {
-		bulk[i] = r.c.Revision.Create().
-			SetID(rev.Version).
-			SetDescription(rev.Description).
-			SetExecutionState(revision.ExecutionState(rev.ExecutionState)).
-			SetExecutedAt(rev.ExecutedAt).
-			SetExecutionTime(rev.ExecutionTime).
-			SetHash(rev.Hash).
-			SetOperatorVersion(rev.OperatorVersion).
-			SetMeta(rev.Meta)
-	}
-	return r.c.Revision.CreateBulk(bulk...).OnConflict().UpdateNewValues().Exec(ctx)
-}
-
-var _ migrate.RevisionReadWriter = (*revReadWrite)(nil)
 
 // state represents the state of a planning. It is not part of
 // planApply so that multiple planning/applying can be called

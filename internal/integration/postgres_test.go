@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/migrate/ent/runtime"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
@@ -54,12 +55,12 @@ func pgRun(t *testing.T, fn func(*pgTest)) {
 	}
 }
 
-func pgInit(dialect string) []io.Closer {
+func pgInit(d string) []io.Closer {
 	var cs []io.Closer
-	if dialect != "" {
-		p, ok := pgTests.ports[dialect]
+	if d != "" {
+		p, ok := pgTests.ports[d]
 		if ok {
-			pgTests.ports = map[string]int{dialect: p}
+			pgTests.ports = map[string]int{d: p}
 		} else {
 			pgTests.ports = make(map[string]int)
 		}
@@ -74,9 +75,16 @@ func pgInit(dialect string) []io.Closer {
 		if err != nil {
 			log.Fatalln(err)
 		}
+		runtime.InitSchemaMigrator(drv.(*postgres.Driver), db, dialect.Postgres)
 		pgTests.drivers[version] = &pgTest{db: db, drv: drv, version: version, port: port}
 	}
 	return cs
+}
+
+func TestPostgres_Executor(t *testing.T) {
+	pgRun(t, func(t *pgTest) {
+		testExecutor(t)
+	})
 }
 
 func TestPostgres_AddDropTable(t *testing.T) {
@@ -1105,14 +1113,14 @@ func (t *pgTest) revisions() *schema.Table {
 	versionsT := &schema.Table{
 		Name: "atlas_schema_revisions",
 		Columns: []*schema.Column{
-			{Name: "version", Type: &schema.ColumnType{Type: &schema.StringType{T: t.valueByVersion(map[string]string{"mysql56": "varchar(191)"}, "varchar(255)")}}},
-			{Name: "description", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
-			{Name: "execution_state", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(7)"}}},
-			{Name: "executed_at", Type: &schema.ColumnType{Type: &schema.TimeType{T: "datetime"}}},
-			{Name: "execution_time", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
-			{Name: "hash", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(44)"}}},
-			{Name: "operator_version", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
-			{Name: "meta", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
+			{Name: "version", Type: &schema.ColumnType{Type: &schema.StringType{T: "character varying"}}},
+			{Name: "description", Type: &schema.ColumnType{Type: &schema.StringType{T: "character varying"}}},
+			{Name: "execution_state", Type: &schema.ColumnType{Type: &schema.StringType{T: "character varying"}}},
+			{Name: "executed_at", Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone"}}},
+			{Name: "execution_time", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+			{Name: "hash", Type: &schema.ColumnType{Type: &schema.StringType{T: "character varying"}}},
+			{Name: "operator_version", Type: &schema.ColumnType{Type: &schema.StringType{T: "character varying"}}},
+			{Name: "meta", Type: &schema.ColumnType{Type: &schema.JSONType{T: "jsonb"}, Raw: "jsonb"}},
 		},
 	}
 	versionsT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: versionsT.Columns[0]}}}

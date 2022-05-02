@@ -13,12 +13,9 @@ import (
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
-	"ariga.io/atlas/sql/migrate/ent"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 	"entgo.io/ent/dialect"
-	"entgo.io/ent/dialect/sql"
-
 	"golang.org/x/mod/semver"
 )
 
@@ -74,20 +71,23 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 		}, nil
 	}
 	return &Driver{
-		conn:        c,
-		Differ:      &sqlx.Diff{DiffDriver: &diff{c}},
-		Inspector:   &inspect{c},
-		PlanApplier: &planApply{c},
-		RevisionReadWriter: &revReadWrite{
-			c: ent.NewClient(ent.Driver(sql.NewDriver(sql.Conn{ExecQuerier: db}, dialect.MySQL))),
-		},
+		conn:               c,
+		Differ:             &sqlx.Diff{DiffDriver: &diff{c}},
+		Inspector:          &inspect{c},
+		PlanApplier:        &planApply{c},
+		RevisionReadWriter: sqlx.NewRevisionStorage(db, dialect.MySQL),
 	}, nil
 }
 
-// InitSchemaMigrator stitches in the Ent migration engine to the mysql.Driver at runtime. This is necessary
+// InitSchemaMigrator stitches in the Ent migration engine to the Driver at runtime. This is necessary
 // because the Ent migration engine imports atlas and therefore would introduce a cyclic dependency.
 func (d *Driver) InitSchemaMigrator(sc func(context.Context) error) {
-	d.RevisionReadWriter.(*revReadWrite).sc = sc
+	d.RevisionReadWriter.(*sqlx.EntRevisions).InitSchemaMigrator(sc)
+}
+
+// Init is called by the migration executor and makes sure the revisions table does exist in the connected database.
+func (d *Driver) Init(ctx context.Context) error {
+	return d.RevisionReadWriter.(*sqlx.EntRevisions).Init(ctx)
 }
 
 func (d *Driver) dev() *sqlx.DevDriver {
