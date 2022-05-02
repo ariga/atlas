@@ -315,9 +315,12 @@ func (p *Planner) WritePlan(plan *Plan) error {
 }
 
 const (
-	ExecutionStateOngoing = "ongoing"
-	ExecutionStateOK      = "ok"
-	ExecutionStateError   = "error"
+	// stateOngoing is set once a migration file has been started to be applied.
+	stateOngoing = "ongoing"
+	// stateOK is set once a migration file is applied without errors.
+	stateOK = "ok"
+	// stateError  is set once a migration file could not be applied due to an error.
+	stateError = "error"
 )
 
 // ErrNoPendingFiles is returned when there are no pending migration files to execute on the managed database.
@@ -416,7 +419,7 @@ func (e *Executor) Execute(ctx context.Context, n int) (err error) {
 	}
 	// TODO(masseelch): run in a transaction
 	for _, m := range pending {
-		r := &Revision{ExecutedAt: time.Now(), ExecutionState: ExecutionStateOngoing}
+		r := &Revision{ExecutedAt: time.Now(), ExecutionState: stateOngoing}
 		revisions = append(revisions, r)
 		h, err := hf.sumByName(m.Name())
 		if err != nil {
@@ -553,9 +556,9 @@ func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
 func (r *Revision) done(ok bool) {
 	r.ExecutionTime = time.Now().Sub(r.ExecutedAt)
 	if ok {
-		r.ExecutionState = ExecutionStateOK
+		r.ExecutionState = stateOK
 	} else {
-		r.ExecutionState = ExecutionStateError
+		r.ExecutionState = stateError
 	}
 }
 
