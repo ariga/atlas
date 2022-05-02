@@ -30,7 +30,11 @@ function Nav() {
                 GoDoc
             </Link>
         </li>
-
+        <li className={index.linkItem}>
+            <Link to="/blog">
+                Blog
+            </Link>
+        </li>
     </ul>
 }
 

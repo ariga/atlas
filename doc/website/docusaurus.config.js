@@ -33,6 +33,12 @@ module.exports = {
           className: 'header-twitter-link',
           position: 'right',
         },
+        {to: 'blog', label: 'Blog', position: 'left'},
+        {
+          to: 'https://pkg.go.dev/ariga.io/atlas',
+          label: 'GoDoc',
+          position: 'left',
+        },
       ],
     },
     //
