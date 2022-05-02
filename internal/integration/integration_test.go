@@ -487,6 +487,9 @@ func testExecutor(t T) {
 	}
 
 	t.dropTables(petsT.Name, postsT.Name, usersT.Name)
+	t.Cleanup(func() {
+		t.revisionsStorage().(*rrw).clean()
+	})
 
 	dir, err := migrate.NewLocalDir(t.TempDir())
 	require.NoError(t, err)
@@ -531,4 +534,8 @@ func (r *rrw) WriteRevisions(ctx context.Context, revs migrate.Revisions) error 
 
 func (r *rrw) ReadRevisions(ctx context.Context) (migrate.Revisions, error) {
 	return migrate.Revisions(*r), nil
+}
+
+func (r *rrw) clean() {
+	*r = rrw(migrate.Revisions{})
 }
