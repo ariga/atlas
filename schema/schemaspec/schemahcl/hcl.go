@@ -87,17 +87,16 @@ type addrRef map[string]*schemaspec.Resource
 // patchRefs recursively searches for schemaspec.Ref under the provided schemaspec.Resource
 // and patches any variables with their concrete names.
 func patchRefs(spec *schemaspec.Resource) error {
-	m := make(addrRef)
-	m.load(spec, "")
-	return m.patch(spec)
+	return make(addrRef).patch(spec)
 }
 
 func (r addrRef) patch(resource *schemaspec.Resource) error {
+	cp := r.copy().load(resource, "")
 	for _, attr := range resource.Attrs {
 		if ref, ok := attr.V.(*schemaspec.Ref); ok {
-			referenced, ok := r[ref.V]
+			referenced, ok := cp[ref.V]
 			if !ok {
-				fmt.Println(r)
+				fmt.Println(cp)
 				return fmt.Errorf("broken reference to %q", ref.V)
 			}
 			if name, err := referenced.FinalName(); err == nil {
@@ -106,15 +105,23 @@ func (r addrRef) patch(resource *schemaspec.Resource) error {
 		}
 	}
 	for _, ch := range resource.Children {
-		if err := r.patch(ch); err != nil {
+		if err := cp.patch(ch); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
+func (r addrRef) copy() addrRef {
+	n := make(addrRef)
+	for k, v := range r {
+		n[k] = v
+	}
+	return n
+}
+
 // load loads the references from the children of the resource.
-func (r addrRef) load(res *schemaspec.Resource, track string) {
+func (r addrRef) load(res *schemaspec.Resource, track string) addrRef {
 	unlabeled := 0
 	for _, ch := range res.Children {
 		current := rep(ch)
@@ -128,6 +135,7 @@ func (r addrRef) load(res *schemaspec.Resource, track string) {
 		r[current] = ch
 		r.load(ch, current)
 	}
+	return r
 }
 
 func rep(r *schemaspec.Resource) string {
