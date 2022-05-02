@@ -97,6 +97,7 @@ func (r addrRef) patch(resource *schemaspec.Resource) error {
 		if ref, ok := attr.V.(*schemaspec.Ref); ok {
 			referenced, ok := r[ref.V]
 			if !ok {
+				fmt.Println(r)
 				return fmt.Errorf("broken reference to %q", ref.V)
 			}
 			if name, err := referenced.FinalName(); err == nil {

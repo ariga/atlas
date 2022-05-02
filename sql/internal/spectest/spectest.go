@@ -53,6 +53,12 @@ table "users" {
 	column "id" {
 		type = int
 	}
+	index "user_name" {
+    on {
+      column = column.id
+      unique = true
+    }
+  }
 }
 `
 	var test schema.Realm
