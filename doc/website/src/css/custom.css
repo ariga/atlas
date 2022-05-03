@@ -124,3 +124,12 @@ and (max-width: 525px) {
     content: "Discord ";
   }
 }
+
+/* Make sql syntax highlight a bit better */
+span.token.keyword {
+  color: rgb(199, 146, 234);
+}
+
+span.token.punctuation {
+  color: rgb(191, 199, 213)!important;
+}
