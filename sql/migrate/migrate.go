@@ -335,7 +335,7 @@ func NewExecutor(drv Driver, dir Dir, rrw RevisionReadWriter, opts ...ExecutorOp
 		return nil, errors.New("sql/migrate: execute: dir cannot be nil")
 	}
 	if rrw == nil {
-		return nil, errors.New("sql/migrate: execute: rrw cannot be nil")
+		return nil, errors.New("sql/migrate: execute: mockRevisionReadWriter cannot be nil")
 	}
 	p := &Executor{drv: drv, dir: dir, rrw: rrw}
 	for _, opt := range opts {

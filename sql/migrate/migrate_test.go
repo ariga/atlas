@@ -112,6 +112,9 @@ func TestHashSum(t *testing.T) {
 	requireFileEqual(t, d, v+"_plan.sql", "cmd;\n")
 }
 
+//go:embed testdata/atlas.sum
+var hash []byte
+
 func TestValidate(t *testing.T) {
 	// Add the sum file form the testdata dir without any files in it - should fail.
 	p := t.TempDir()
@@ -122,14 +125,10 @@ func TestValidate(t *testing.T) {
 
 	td := "testdata"
 	d, err = migrate.NewLocalDir(td)
-	t.Cleanup(func() {
-		os.WriteFile(filepath.Join(td, "1_initial.up.sql"), upFile, 0644)
-	})
+	require.NoError(t, err)
 
 	// Testdata is valid.
-	require.NoError(t, err)
 	require.Nil(t, migrate.Validate(d))
-	require.NoError(t, err)
 
 	// Making a manual change to the sum file should raise validation error.
 	f, err := os.OpenFile(filepath.Join(td, "atlas.sum"), os.O_RDWR, os.ModeAppend)
@@ -138,36 +137,32 @@ func TestValidate(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	t.Cleanup(func() {
-		os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644)
+		require.NoError(t, os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644))
 	})
 	require.Equal(t, migrate.ErrChecksumMismatch, migrate.Validate(d))
-	os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644)
+	require.NoError(t, os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644))
 	f, err = os.OpenFile(filepath.Join(td, "atlas.sum"), os.O_APPEND|os.O_WRONLY, os.ModeAppend)
 	require.NoError(t, err)
 	_, err = f.WriteString("foo")
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	require.Equal(t, migrate.ErrChecksumFormat, migrate.Validate(d))
-	os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644)
+	require.NoError(t, os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644))
 
 	// Changing the filename should raise validation error.
 	require.NoError(t, os.Rename(filepath.Join(td, "1_initial.up.sql"), filepath.Join(td, "1_first.up.sql")))
 	t.Cleanup(func() {
-		os.Remove(filepath.Join(td, "1_first.up.sql"))
+		require.NoError(t, os.Rename(filepath.Join(td, "1_first.up.sql"), filepath.Join(td, "1_initial.up.sql")))
 	})
 	require.Equal(t, migrate.ErrChecksumMismatch, migrate.Validate(d))
 
 	// Removing it as well (move it out of the dir).
-	require.NoError(t, os.Remove(filepath.Join(td, "1_first.up.sql")))
+	require.NoError(t, os.Rename(filepath.Join(td, "1_first.up.sql"), filepath.Join(td, "..", "bak")))
+	t.Cleanup(func() {
+		require.NoError(t, os.Rename(filepath.Join(td, "..", "bak"), filepath.Join(td, "1_first.up.sql")))
+	})
 	require.Equal(t, migrate.ErrChecksumMismatch, migrate.Validate(d))
 }
-
-var (
-	//go:embed testdata/atlas.sum
-	hash []byte
-	//go:embed testdata/1_initial.up.sql
-	upFile []byte
-)
 
 func TestHash_MarshalText(t *testing.T) {
 	d, err := migrate.NewLocalDir("testdata")
@@ -292,6 +287,100 @@ func TestLocalDir(t *testing.T) {
 	require.Equal(t, "description", desc)
 }
 
+func TestExecutor(t *testing.T) {
+	// Passing nil raises error.
+	ex, err := migrate.NewExecutor(nil, nil, nil)
+	require.EqualError(t, err, "sql/migrate: execute: drv cannot be nil")
+	require.Nil(t, ex)
+
+	ex, err = migrate.NewExecutor(&mockDriver{}, nil, nil)
+	require.EqualError(t, err, "sql/migrate: execute: dir cannot be nil")
+	require.Nil(t, ex)
+
+	dir, err := migrate.NewLocalDir(t.TempDir())
+	require.NoError(t, err)
+	ex, err = migrate.NewExecutor(&mockDriver{}, dir, nil)
+	require.EqualError(t, err, "sql/migrate: execute: mockRevisionReadWriter cannot be nil")
+	require.Nil(t, ex)
+
+	// Does not operate on invalid migration dir.
+	dir, err = migrate.NewLocalDir(t.TempDir())
+	require.NoError(t, err)
+	require.NoError(t, dir.WriteFile("atlas.sum", hash))
+	ex, err = migrate.NewExecutor(&mockDriver{}, dir, &mockRevisionReadWriter{})
+	require.NoError(t, err)
+	require.NotNil(t, ex)
+	require.ErrorIs(t, ex.Execute(context.Background(), 0), migrate.ErrChecksumMismatch)
+
+	// Prerequisites.
+	var (
+		drv  = &mockDriver{}
+		rrw  = &mockRevisionReadWriter{}
+		rev1 = &migrate.Revision{
+			Version:        "1.a",
+			Description:    "sub.up",
+			ExecutionState: "ok",
+			Hash:           "nXyZR020M/mH7LxkoTkJr7BcQkipVg90imQ9I4595dw=",
+		}
+		rev2 = &migrate.Revision{
+			Version:        "2.10.x-20",
+			Description:    "description",
+			ExecutionState: "ok",
+			Hash:           "wQB3Vh3PHVXQg9OD3Gn7TBxbZN3r1Qb7TtAE1g3q9mQ=",
+		}
+	)
+	dir, err = migrate.NewLocalDir(filepath.Join("testdata", "sub"))
+	require.NoError(t, err)
+	ex, err = migrate.NewExecutor(drv, dir, rrw)
+	require.NoError(t, err)
+
+	// Applies all of them.
+	require.NoError(t, ex.Execute(context.Background(), 0))
+	require.Equal(t, drv.executed, []string{
+		"CREATE TABLE t_sub(c int);", "ALTER TABLE t_sub ADD c1 int;", "ALTER TABLE t_sub ADD c2 int;",
+	})
+	requireEqualRevisions(t, migrate.Revisions{rev1, rev2}, migrate.Revisions(*rrw))
+
+	// No pending files.
+	require.ErrorIs(t, ex.Execute(context.Background(), 0), migrate.ErrNoPendingFiles)
+
+	// Apply one by one.
+	*rrw = mockRevisionReadWriter{}
+	*drv = mockDriver{}
+
+	require.NoError(t, ex.Execute(context.Background(), 1))
+	require.Equal(t, drv.executed, []string{"CREATE TABLE t_sub(c int);", "ALTER TABLE t_sub ADD c1 int;"})
+	requireEqualRevisions(t, migrate.Revisions{rev1}, migrate.Revisions(*rrw))
+
+	require.NoError(t, ex.Execute(context.Background(), 1))
+	require.Equal(t, drv.executed, []string{
+		"CREATE TABLE t_sub(c int);", "ALTER TABLE t_sub ADD c1 int;", "ALTER TABLE t_sub ADD c2 int;",
+	})
+	requireEqualRevisions(t, migrate.Revisions{rev1, rev2}, migrate.Revisions(*rrw))
+	require.ErrorIs(t, ex.Execute(context.Background(), 0), migrate.ErrNoPendingFiles)
+
+	// Suppose first revision is already executed, only execute second migration file.
+	*rrw = mockRevisionReadWriter(migrate.Revisions{rev1})
+	*drv = mockDriver{}
+
+	require.NoError(t, ex.Execute(context.Background(), 0))
+	require.Equal(t, drv.executed, []string{"ALTER TABLE t_sub ADD c2 int;"})
+	requireEqualRevisions(t, migrate.Revisions{rev1, rev2}, migrate.Revisions(*rrw))
+	require.ErrorIs(t, ex.Execute(context.Background(), 0), migrate.ErrNoPendingFiles)
+
+	// Unknown revision present.
+	*rrw = mockRevisionReadWriter(migrate.Revisions{&migrate.Revision{Version: "unknown"}})
+	require.EqualError(t, ex.Execute(context.Background(), 0),
+		`sql/migrate: execute: revisions and migrations mismatch: rev "1.a" <> file "unknown"`,
+	)
+
+	// More revisions than migration files.
+	*rrw = mockRevisionReadWriter(migrate.Revisions{&migrate.Revision{Version: "unknown"}, rev1, rev2})
+	require.EqualError(t, ex.Execute(context.Background(), 0),
+		`sql/migrate: execute: revisions and migrations mismatch: more revisions than migrations`,
+	)
+}
+
 type (
 	mockDriver struct {
 		migrate.Driver
@@ -339,6 +428,38 @@ func (m *mockDriver) Lock(context.Context, string, time.Duration) (schema.Unlock
 }
 func (m *emptyMockDriver) IsClean(context.Context) (bool, error) {
 	return true, nil
+}
+
+type mockRevisionReadWriter migrate.Revisions
+
+func (r *mockRevisionReadWriter) WriteRevisions(ctx context.Context, revs migrate.Revisions) error {
+	*r = mockRevisionReadWriter(revs)
+	return nil
+}
+
+func (r *mockRevisionReadWriter) ReadRevisions(ctx context.Context) (migrate.Revisions, error) {
+	return migrate.Revisions(*r), nil
+}
+
+func (r *mockRevisionReadWriter) clean() {
+	*r = mockRevisionReadWriter(migrate.Revisions{})
+}
+
+func requireEqualRevisions(t *testing.T, expected, actual migrate.Revisions) {
+	require.Equal(t, len(expected), len(actual))
+	for i := range expected {
+		requireEqualRevision(t, expected[i], actual[i])
+	}
+}
+
+func requireEqualRevision(t *testing.T, expected, actual *migrate.Revision) {
+	require.Equal(t, expected.Version, actual.Version)
+	require.Equal(t, expected.Description, actual.Description)
+	require.Equal(t, expected.ExecutionState, actual.ExecutionState)
+	require.Equal(t, expected.Error, actual.Error)
+	require.Equal(t, expected.Hash, actual.Hash)
+	require.Equal(t, expected.OperatorVersion, actual.OperatorVersion)
+	require.Equal(t, expected.Meta, actual.Meta)
 }
 
 func countFiles(t *testing.T, d migrate.Dir) int {
