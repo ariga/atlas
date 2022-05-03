@@ -237,8 +237,15 @@ const (
 	IndexTypeGiST  = "GIST"
 )
 
-// List of "GENERATED" TYPES.
+// List of "GENERATED" types.
 const (
 	GeneratedTypeAlways    = "ALWAYS"
 	GeneratedTypeByDefault = "BY_DEFAULT" // BY DEFAULT.
+)
+
+// List of PARTITION KEY types.
+const (
+	PartitionTypeRange = "RANGE"
+	PartitionTypeList  = "LIST"
+	PartitionTypeHash  = "HASH"
 )

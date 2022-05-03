@@ -76,6 +76,9 @@ func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *sche
 		if err := i.indexes(ctx, s); err != nil {
 			return err
 		}
+		if err := i.partitions(s); err != nil {
+			return err
+		}
 		if err := i.fks(ctx, s); err != nil {
 			return err
 		}
@@ -107,8 +110,8 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var tSchema, name, comment sql.NullString
-		if err := rows.Scan(&tSchema, &name, &comment); err != nil {
+		var tSchema, name, comment, partattrs, partstart, partexprs sql.NullString
+		if err := rows.Scan(&tSchema, &name, &comment, &partattrs, &partstart, &partexprs); err != nil {
 			return fmt.Errorf("scan table information: %w", err)
 		}
 		if !sqlx.ValidString(tSchema) || !sqlx.ValidString(name) {
@@ -121,8 +124,13 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 		t := &schema.Table{Name: name.String}
 		s.AddTables(t)
 		if sqlx.ValidString(comment) {
-			t.Attrs = append(t.Attrs, &schema.Comment{
-				Text: comment.String,
+			t.SetComment(comment.String)
+		}
+		if sqlx.ValidString(partattrs) {
+			t.AddAttrs(&Partition{
+				start: partstart.String,
+				attrs: partattrs.String,
+				exprs: partexprs.String,
 			})
 		}
 	}
@@ -401,6 +409,56 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 			return fmt.Errorf("postgres: invalid part for index %q", idx.Name)
 		}
 		idx.Parts = append(idx.Parts, part)
+	}
+	return nil
+}
+
+// partitions builds the partition each table in the schema.
+func (i *inspect) partitions(s *schema.Schema) error {
+	for _, t := range s.Tables {
+		var d Partition
+		if !sqlx.Has(t.Attrs, &d) {
+			continue
+		}
+		switch s := strings.ToLower(d.start); s {
+		case "r":
+			d.T = PartitionTypeRange
+		case "l":
+			d.T = PartitionTypeList
+		case "h":
+			d.T = PartitionTypeHash
+		default:
+			return fmt.Errorf("postgres: unexpected partition strategy %q", s)
+		}
+		idxs := strings.Split(strings.TrimSpace(d.attrs), " ")
+		if len(idxs) == 0 {
+			return fmt.Errorf("postgres: no columns/expressions were found in partition key for column %q", t.Name)
+		}
+		for i := range idxs {
+			switch idx, err := strconv.Atoi(idxs[i]); {
+			case err != nil:
+				return fmt.Errorf("postgres: faild parsing partition key index %q", idxs[i])
+			// An expression.
+			case idx == 0:
+				j := sqlx.ExprLastIndex(d.exprs)
+				if j == -1 {
+					return fmt.Errorf("postgres: no expression found in partition key: %q", d.exprs)
+				}
+				d.Parts = append(d.Parts, &PartitionPart{
+					X: &schema.RawExpr{X: d.exprs[:j+1]},
+				})
+				d.exprs = strings.TrimPrefix(d.exprs[j+1:], ", ")
+			// A column at index idx-1.
+			default:
+				if idx > len(t.Columns) {
+					return fmt.Errorf("postgres: unexpected column index %d", idx)
+				}
+				d.Parts = append(d.Parts, &PartitionPart{
+					C: t.Columns[idx-1],
+				})
+			}
+		}
+		schema.ReplaceOrAppend(&t.Attrs, &d)
 	}
 	return nil
 }
@@ -691,6 +749,28 @@ type (
 		schema.Attr
 		Columns []string
 	}
+
+	// Partition defines the spec of a partitioned table.
+	Partition struct {
+		schema.Attr
+		// T defines the type/strategy of the partition.
+		// Can be one of: RANGE, LIST, HASH.
+		T string
+		// Partition parts. The additional attributes
+		// on each part can be used to control collation.
+		Parts []*PartitionPart
+
+		// Internal info returned from pg_partitioned_table.
+		start, attrs, exprs string
+	}
+
+	// An PartitionPart represents an index part that
+	// can be either an expression or a column.
+	PartitionPart struct {
+		X     schema.Expr
+		C     *schema.Column
+		Attrs []schema.Attr
+	}
 )
 
 const (
@@ -708,10 +788,14 @@ const (
 SELECT
 	t1.table_schema,
 	t1.table_name,
-	pg_catalog.obj_description(t2.oid, 'pg_class') AS COMMENT
+	pg_catalog.obj_description(t2.oid, 'pg_class') AS comment,
+	t3.partattrs AS partition_attrs,
+	t3.partstrat AS partition_strategy,
+	pg_get_expr(t3.partexprs, t3.partrelid) AS partition_exprs
 FROM
 	INFORMATION_SCHEMA.TABLES AS t1
 	JOIN pg_catalog.pg_class AS t2 ON t2.oid = to_regclass(quote_ident(t1.table_schema) || '.' || quote_ident(t1.table_name))::oid
+	LEFT JOIN pg_catalog.pg_partitioned_table AS t3 ON t3.partrelid = t2.oid
 WHERE
 	t1.table_type = 'BASE TABLE'
 	AND t1.table_schema IN (%s)
@@ -722,10 +806,14 @@ ORDER BY
 SELECT
 	t1.table_schema,
 	t1.table_name,
-	pg_catalog.obj_description(t2.oid, 'pg_class') AS COMMENT
+	pg_catalog.obj_description(t2.oid, 'pg_class') AS comment,
+	t3.partattrs AS partition_attrs,
+	t3.partstrat AS partition_strategy,
+	pg_get_expr(t3.partexprs, t3.partrelid) AS partition_exprs
 FROM
 	INFORMATION_SCHEMA.TABLES AS t1
 	JOIN pg_catalog.pg_class AS t2 ON t2.oid = to_regclass(quote_ident(t1.table_schema) || '.' || quote_ident(t1.table_name))::oid
+	LEFT JOIN pg_catalog.pg_partitioned_table AS t3 ON t3.partrelid = t2.oid
 WHERE
 	t1.table_type = 'BASE TABLE'
 	AND t1.table_schema IN (%s)
