@@ -16,13 +16,8 @@ function Chip({ text }) {
 function Nav() {
     return  <ul className={index.nav}>
         <li className={index.linkItem}>
-            <Link to={"/ddl/sql"}>
-               Documentation
-            </Link>
-        </li>
-        <li className={index.linkItem}>
-            <Link to="/cli/reference">
-                CLI
+            <Link to={"/cli/getting-started/setting-up"}>
+               Docs
             </Link>
         </li>
         <li className={index.linkItem}>

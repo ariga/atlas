@@ -33,6 +33,11 @@ module.exports = {
           className: 'header-twitter-link',
           position: 'right',
         },
+        {
+          to: 'cli/getting-started/setting-up',
+          label: 'Docs',
+          position: 'left',
+        },
         {to: 'blog', label: 'Blog', position: 'left'},
         {
           to: 'https://pkg.go.dev/ariga.io/atlas',
@@ -50,6 +55,7 @@ module.exports = {
             {"label": "Getting Started", "to": "cli/getting-started/setting-up"},
             {"label": "Data Definition Language ", "to": "ddl/intro"},
             {"label": "CLI Reference", "to": "cli/reference"},
+            {"label": "Blog", "to": "blog"},
             {"label": "About", "to": "about"},
           ]
         },
