@@ -87,7 +87,7 @@ terraform init
 ```
 And apply the schema to the database by executing:
 ```shell
-terraform apply -auto-approve
+terraform apply --auto-approve
 ```
 
 Awesome! Now your database should have a table named `orders`. To verify that we can connect to the database:
