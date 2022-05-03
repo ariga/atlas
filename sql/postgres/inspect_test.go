@@ -300,6 +300,74 @@ users        | users_check1       | (((c2 + c1) + c3) > 10) | c3          | {2,1
 	}
 }
 
+func TestDriver_InspectPartitionedTable(t *testing.T) {
+	db, m, err := sqlmock.New()
+	require.NoError(t, err)
+	mk := mock{m}
+	mk.version("130000")
+	drv, err := Open(db)
+	require.NoError(t, err)
+	mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= CURRENT_SCHEMA()"))).
+		WillReturnRows(sqltest.Rows(`
+   schema_name
+--------------------
+public
+`))
+	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))).
+		WithArgs("public").
+		WillReturnRows(sqltest.Rows(`
+ table_schema | table_name  | comment | partition_attrs | partition_strategy |                  partition_exprs                   
+--------------+-------------+---------+-----------------+--------------------+----------------------------------------------------
+ public       | logs1       |         |                 |                    | 
+ public       | logs2       |         | 1               | r                  | 
+ public       | logs3       |         | 2 0 0           | l                  | (a + b), (a + (b * 2))
+
+`))
+	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, "$2, $3, $4"))).
+		WithArgs("public", "logs1", "logs2", "logs3").
+		WillReturnRows(sqltest.Rows(`
+table_name |column_name | data_type | is_nullable | column_default | character_maximum_length | numeric_precision | datetime_precision | numeric_scale | character_set_name | collation_name | udt_name | is_identity | identity_start | identity_increment | identity_generation | generation_expression | comment | typtype | oid
+-----------+------------+-----------+-------------+----------------+--------------------------+-------------------+--------------------+---------------+--------------------+----------------+----------+-------------+----------------+--------------------+---------------------+-----------------------+---------+---------+-----
+logs1      | c1         | integer   | NO          |                |                          |                32 |                    |             0 |                    |                | int4     | NO          |                |                    |                     |                       |         | b       |  23
+logs2      | c2         | integer   | NO          |                |                          |                32 |                    |             0 |                    |                | int4     | NO          |                |                    |                     |                       |         | b       |  23
+logs2      | c3         | integer   | NO          |                |                          |                32 |                    |             0 |                    |                | int4     | NO          |                |                    |                     |                       |         | b       |  23
+logs3      | c4         | integer   | NO          |                |                          |                32 |                    |             0 |                    |                | int4     | NO          |                |                    |                     |                       |         | b       |  23
+logs3      | c5         | integer   | NO          |                |                          |                32 |                    |             0 |                    |                | int4     | NO          |                |                    |                     |                       |         | b       |  23
+`))
+	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(indexesQuery, "$2, $3, $4"))).
+		WillReturnRows(sqlmock.NewRows([]string{"table_name", "index_name", "column_name", "primary", "unique", "constraint_type", "predicate", "expression"}))
+	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(fksQuery, "$2, $3, $4"))).
+		WillReturnRows(sqlmock.NewRows([]string{"constraint_name", "table_name", "column_name", "referenced_table_name", "referenced_column_name", "referenced_table_schema", "update_rule", "delete_rule"}))
+	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(checksQuery, "$2, $3, $4"))).
+		WillReturnRows(sqlmock.NewRows([]string{"table_name", "constraint_name", "expression", "column_name", "column_indexes"}))
+	s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{})
+	require.NoError(t, err)
+
+	t1, ok := s.Table("logs1")
+	require.True(t, ok)
+	require.Empty(t, t1.Attrs)
+
+	t2, ok := s.Table("logs2")
+	require.True(t, ok)
+	require.Len(t, t2.Attrs, 1)
+	key := t2.Attrs[0].(*Partition)
+	require.Equal(t, PartitionTypeRange, key.T)
+	require.Equal(t, []*PartitionPart{
+		{C: &schema.Column{Name: "c2", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}}},
+	}, key.Parts)
+
+	t3, ok := s.Table("logs3")
+	require.True(t, ok)
+	require.Len(t, t3.Attrs, 1)
+	key = t3.Attrs[0].(*Partition)
+	require.Equal(t, PartitionTypeList, key.T)
+	require.Equal(t, []*PartitionPart{
+		{C: &schema.Column{Name: "c5", Type: &schema.ColumnType{Raw: "integer", Type: &schema.IntegerType{T: "integer"}}}},
+		{X: &schema.RawExpr{X: "(a + b)"}},
+		{X: &schema.RawExpr{X: "(a + (b * 2))"}},
+	}, key.Parts)
+}
+
 func TestDriver_InspectSchema(t *testing.T) {
 	db, m, err := sqlmock.New()
 	require.NoError(t, err)
@@ -315,7 +383,7 @@ test
 `))
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))).
 		WithArgs("test").
-		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment"}))
+		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
 	s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Schema {
@@ -356,7 +424,7 @@ public
 `))
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1, $2"))).
 		WithArgs("test", "public").
-		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment"}))
+		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
 	realm, err := drv.InspectRealm(context.Background(), &schema.InspectRealmOption{})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Realm {
@@ -394,7 +462,7 @@ public
 `))
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1, $2"))).
 		WithArgs("test", "public").
-		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment"}))
+		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
 	realm, err = drv.InspectRealm(context.Background(), &schema.InspectRealmOption{Schemas: []string{"test", "public"}})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Realm {
@@ -431,7 +499,7 @@ public
 `))
 	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))).
 		WithArgs("test").
-		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment"}))
+		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "comment", "partition_attrs", "partition_strategy", "partition_exprs"}))
 	realm, err = drv.InspectRealm(context.Background(), &schema.InspectRealmOption{Schemas: []string{"test"}})
 	require.NoError(t, err)
 	require.EqualValues(t, func() *schema.Realm {
@@ -513,9 +581,9 @@ func (m mock) version(version string) {
 }
 
 func (m mock) tableExists(schema, table string, exists bool) {
-	rows := sqlmock.NewRows([]string{"table_schema", "table_name", "table_comment"})
+	rows := sqlmock.NewRows([]string{"table_schema", "table_name", "table_comment", "partition_attrs", "partition_strategy", "partition_exprs"})
 	if exists {
-		rows.AddRow(schema, table, nil)
+		rows.AddRow(schema, table, nil, nil, nil, nil)
 	}
 	m.ExpectQuery(queryTables).
 		WithArgs(schema).

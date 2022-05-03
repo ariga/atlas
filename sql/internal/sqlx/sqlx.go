@@ -386,35 +386,45 @@ func DefaultValue(c *schema.Column) (string, bool) {
 // Used by the different drivers to turn strings valid expressions.
 func MayWrap(s string) string {
 	n := len(s) - 1
-	if len(s) < 2 || s[0] != '(' || s[n] != ')' || !balanced(s[1:n]) {
+	if len(s) < 2 || s[0] != '(' || s[n] != ')' || !balanced(s) {
 		return "(" + s + ")"
 	}
 	return s
 }
 
-func balanced(s string) bool {
-	var d int
-	for i := 0; i < len(s) && d >= 0; i++ {
+func balanced(expr string) bool {
+	return ExprLastIndex(expr) == len(expr)-1
+}
+
+// ExprLastIndex scans the expression string (wrapped with parens)
+// and returns its last. e.g. "(a+1), c int ...".
+func ExprLastIndex(expr string) int {
+	var r, l int
+	for i := 0; i < len(expr); i++ {
 	Top:
-		switch s[i] {
+		switch expr[i] {
 		case '(':
-			d++
+			r++
 		case ')':
-			d--
+			l++
 		// String or identifier.
 		case '\'', '"', '`':
-			for j := i + 1; j < len(s); j++ {
-				switch s[j] {
+			for j := i + 1; j < len(expr); j++ {
+				switch expr[j] {
 				case '\\':
 					j++
-				case s[i]:
+				case expr[i]:
 					i = j
 					break Top
 				}
 			}
 			// Unexpected EOS.
-			return false
+			return -1
+		}
+		// Balanced parens.
+		if r == l {
+			return i
 		}
 	}
-	return d == 0
+	return -1
 }
