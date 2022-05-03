@@ -72,10 +72,78 @@ func (s *State) Eval(data []byte, v interface{}, input map[string]string) error 
 	if err != nil {
 		return fmt.Errorf("schemahcl: failed decoding: %w", err)
 	}
+	if err := patchRefs(spec); err != nil {
+		return err
+	}
 	if err := spec.As(v); err != nil {
 		return fmt.Errorf("schemahcl: failed reading spec as %T: %w", v, err)
 	}
 	return nil
+}
+
+// addrRef maps addresses to their referenced resource.
+type addrRef map[string]*schemaspec.Resource
+
+// patchRefs recursively searches for schemaspec.Ref under the provided schemaspec.Resource
+// and patches any variables with their concrete names.
+func patchRefs(spec *schemaspec.Resource) error {
+	return make(addrRef).patch(spec)
+}
+
+func (r addrRef) patch(resource *schemaspec.Resource) error {
+	cp := r.copy().load(resource, "")
+	for _, attr := range resource.Attrs {
+		if ref, ok := attr.V.(*schemaspec.Ref); ok {
+			referenced, ok := cp[ref.V]
+			if !ok {
+				fmt.Println(cp)
+				return fmt.Errorf("broken reference to %q", ref.V)
+			}
+			if name, err := referenced.FinalName(); err == nil {
+				ref.V = strings.ReplaceAll(ref.V, referenced.Name, name)
+			}
+		}
+	}
+	for _, ch := range resource.Children {
+		if err := cp.patch(ch); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r addrRef) copy() addrRef {
+	n := make(addrRef)
+	for k, v := range r {
+		n[k] = v
+	}
+	return n
+}
+
+// load loads the references from the children of the resource.
+func (r addrRef) load(res *schemaspec.Resource, track string) addrRef {
+	unlabeled := 0
+	for _, ch := range res.Children {
+		current := rep(ch)
+		if ch.Name == "" {
+			current += strconv.Itoa(unlabeled)
+			unlabeled++
+		}
+		if track != "" {
+			current = track + "." + current
+		}
+		r[current] = ch
+		r.load(ch, current)
+	}
+	return r
+}
+
+func rep(r *schemaspec.Resource) string {
+	n := r.Name
+	if r.Qualifier != "" {
+		n = r.Qualifier + "." + n
+	}
+	return fmt.Sprintf("$%s.%s", r.Type, n)
 }
 
 // eval evaluates the input Atlas HCL document with the given input and returns a

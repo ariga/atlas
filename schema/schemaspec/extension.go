@@ -200,6 +200,30 @@ func (r *Resource) As(target interface{}) error {
 	return nil
 }
 
+// FinalName returns the final name for the resource by examining the struct tags for
+// the extension of the Resource's type. If no such extension is registered or the
+// extension struct does not have a name field, an error is returned.
+func (r *Resource) FinalName() (string, error) {
+	extensionsMu.RLock()
+	defer extensionsMu.RUnlock()
+	t, ok := extensions[r.Type]
+	if !ok {
+		return "", fmt.Errorf("no extension registered for %q", r.Type)
+	}
+	for _, fd := range specFields(t) {
+		if fd.isName() {
+			if fd.tag != "" {
+				name, ok := r.Attr(fd.tag)
+				if ok {
+					return name.String()
+				}
+			}
+			return r.Name, nil
+		}
+	}
+	return "", fmt.Errorf("extension %q has no name field", r.Type)
+}
+
 func validateStructPtr(target interface{}) error {
 	typeOf := reflect.TypeOf(target)
 	if typeOf.Kind() != reflect.Ptr {
