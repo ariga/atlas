@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -41,6 +42,7 @@ var (
 		Schema      []string
 		AutoApprove bool
 		Verbose     bool
+		Vars        []string
 	}
 	// SchemaApply represents the 'atlas schema apply' subcommand command.
 	SchemaApply = &cobra.Command{
@@ -126,6 +128,7 @@ func init() {
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.Web, "web", "w", false, "Open in a local Atlas UI.")
 	SchemaApply.Flags().StringVarP(&ApplyFlags.Addr, "addr", "", ":5800", "used with -w, local address to bind the server to.")
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.Verbose, migrateDiffFlagVerbose, "", false, "enable verbose logging")
+	SchemaApply.Flags().StringSliceVarP(&ApplyFlags.Vars, "var", "", nil, "input variables")
 	cobra.CheckErr(SchemaApply.MarkFlagRequired("url"))
 	cobra.CheckErr(SchemaApply.MarkFlagRequired("file"))
 	dsn2url(SchemaApply, &ApplyFlags.URL)
@@ -167,6 +170,8 @@ func CmdInspectRun(cmd *cobra.Command, _ []string) {
 
 // CmdApplyRun is the command used when running CLI.
 func CmdApplyRun(cmd *cobra.Command, _ []string) {
+	args, err := argMap(ApplyFlags.Vars)
+	cobra.CheckErr(err)
 	if ApplyFlags.Web {
 		schemaCmd.PrintErrln("The Atlas UI is not available in this release.")
 		return
@@ -174,7 +179,7 @@ func CmdApplyRun(cmd *cobra.Command, _ []string) {
 	c, err := sqlclient.Open(cmd.Context(), ApplyFlags.URL)
 	cobra.CheckErr(err)
 	defer c.Close()
-	applyRun(cmd.Context(), c, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove)
+	applyRun(cmd.Context(), c, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove, args)
 }
 
 // CmdFmtRun formats all HCL files in a given directory using canonical HCL formatting
@@ -188,7 +193,7 @@ func CmdFmtRun(cmd *cobra.Command, args []string) {
 	}
 }
 
-func applyRun(ctx context.Context, client *sqlclient.Client, file string, dryRun, autoApprove bool) {
+func applyRun(ctx context.Context, client *sqlclient.Client, file string, dryRun, autoApprove bool, input map[string]string) {
 	schemas := ApplyFlags.Schema
 	if client.URL.Schema != "" {
 		schemas = append(schemas, client.URL.Schema)
@@ -200,7 +205,7 @@ func applyRun(ctx context.Context, client *sqlclient.Client, file string, dryRun
 	f, err := ioutil.ReadFile(file)
 	cobra.CheckErr(err)
 	desired := &schema.Realm{}
-	cobra.CheckErr(client.Eval(f, desired, nil))
+	cobra.CheckErr(client.Eval(f, desired, input))
 	if len(schemas) > 0 {
 		// Validate all schemas in file were selected by user.
 		sm := make(map[string]bool, len(schemas))
@@ -333,4 +338,16 @@ func fmtFile(task fmttask) (bool, error) {
 		return true, os.WriteFile(task.path, formatted, task.info.Mode())
 	}
 	return false, nil
+}
+
+func argMap(s []string) (map[string]string, error) {
+	out := make(map[string]string, len(s))
+	for _, i := range s {
+		parts := strings.Split(i, "=")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("expected key=value for arg, got %q", i)
+		}
+		out[parts[0]] = parts[1]
+	}
+	return out, nil
 }
