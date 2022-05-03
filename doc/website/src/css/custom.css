@@ -133,3 +133,7 @@ span.token.keyword {
 span.token.punctuation {
   color: rgb(191, 199, 213)!important;
 }
+
+div.language-hcl * span.token.property {
+  color: #9CDCFE;
+}
