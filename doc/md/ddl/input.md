@@ -86,7 +86,7 @@ And again for George:
 ```text
 atlas schema apply -u mysql://user:pass@localhost:3306/ --schema george --var tenant=george
 ```
-The queries:
+The generated queries create the `george` schema:
 ```text
 -- Planned Changes:
 -- Add new schema named "george"
