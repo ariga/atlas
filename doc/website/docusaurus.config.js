@@ -38,11 +38,15 @@ module.exports = {
           label: 'Docs',
           position: 'left',
         },
-        {to: 'blog', label: 'Blog', position: 'left'},
         {
           to: 'https://pkg.go.dev/ariga.io/atlas',
           label: 'GoDoc',
           position: 'left',
+        },
+        {
+          to: 'blog',
+          label: 'Blog',
+          position: 'left'
         },
       ],
     },
