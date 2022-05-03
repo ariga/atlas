@@ -177,18 +177,18 @@ migration.
 ```
 #### Flags
 ```
-  -f, --file string      [/path/to/file] file containing the HCL schema.
-  -u, --url string       URL to the database using the format:
-                         [driver://username:password@address/dbname?param=value]
-  -s, --schema strings   Set schema names.
-      --dev-url string   URL for the dev database. Used to validate schemas and calculate diffs
-                         before running migration.
-      --dry-run          Dry-run. Print SQL plan without prompting for execution.
-      --auto-approve     Auto approve. Apply the schema changes without prompting for approval.
-  -w, --web              Open in a local Atlas UI.
-      --addr string      used with -w, local address to bind the server to. (default ":5800")
-      --verbose          enable verbose logging
-      --var strings      input variables
+  -f, --file string          [/path/to/file] file containing the HCL schema.
+  -u, --url string           URL to the database using the format:
+                             [driver://username:password@address/dbname?param=value]
+  -s, --schema strings       Set schema names.
+      --dev-url string       URL for the dev database. Used to validate schemas and calculate diffs
+                             before running migration.
+      --dry-run              Dry-run. Print SQL plan without prompting for execution.
+      --auto-approve         Auto approve. Apply the schema changes without prompting for approval.
+  -w, --web                  Open in a local Atlas UI.
+      --addr string          used with -w, local address to bind the server to. (default ":5800")
+      --verbose              enable verbose logging
+      --var stringToString   input variables (default [])
 
 ```
 
