@@ -110,7 +110,7 @@ files in the directory are formatted, no input will be printed out.
 )
 
 const (
-	answerApply = "SchemaApply"
+	answerApply = "Apply"
 	answerAbort = "Abort"
 )
 

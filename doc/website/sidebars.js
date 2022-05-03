@@ -30,6 +30,7 @@ module.exports = {
             items: [
                 'ddl/ddl-sql',
                 'ddl/ddl-sql-types',
+                'ddl/ddl-input-variables',
                 'ddl/ddl-intro',
             ],
         },
