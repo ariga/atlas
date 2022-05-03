@@ -253,7 +253,7 @@ func testCLIMultiSchemaInspect(t T, h string, dsn string, schemas []string, unma
 	require.Equal(t, expected, actual)
 }
 
-func testCLISchemaApply(t T, h string, dsn string) {
+func testCLISchemaApply(t T, h string, dsn string, args ...string) {
 	// Required to have a clean "stderr" while running first time.
 	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
 	require.NoError(t, err)
@@ -261,7 +261,8 @@ func testCLISchemaApply(t T, h string, dsn string) {
 	f := filepath.Join(t.TempDir(), "atlas.hcl")
 	err = ioutil.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
-	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+	runArgs := []string{
+		"run", "ariga.io/atlas/cmd/atlas",
 		"schema",
 		"apply",
 		"-u",
@@ -270,7 +271,9 @@ func testCLISchemaApply(t T, h string, dsn string) {
 		f,
 		"--dev-url",
 		dsn,
-	)
+	}
+	runArgs = append(runArgs, args...)
+	cmd := exec.Command("go", runArgs...)
 	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
 	cmd.Stderr = stderr
 	cmd.Stdout = stdout

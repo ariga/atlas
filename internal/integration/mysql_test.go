@@ -571,6 +571,25 @@ func TestMySQL_CLI(t *testing.T) {
 			testCLISchemaApply(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"))
 		})
 	})
+	t.Run("SchemaApplyWithVars", func(t *testing.T) {
+		h := `
+variable "tenant" {
+	type = string
+}
+schema "tenant" {
+	name = var.tenant
+}
+table "users" {
+	schema = schema.tenant
+	column "id" {
+		type = int
+	}
+}
+`
+		myRun(t, func(t *myTest) {
+			testCLISchemaApply(t, h, t.dsn("test"), "--var", "tenant=test")
+		})
+	})
 	t.Run("SchemaApplyDryRun", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			attrs := t.defaultAttrs()

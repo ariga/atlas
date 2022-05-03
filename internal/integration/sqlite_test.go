@@ -456,6 +456,25 @@ func TestSQLite_CLI(t *testing.T) {
 			testCLISchemaApply(t, h, t.dsn())
 		})
 	})
+	t.Run("SchemaApplyWithVars", func(t *testing.T) {
+		h := `
+variable "tenant" {
+	type = string
+}
+schema "tenant" {
+	name = var.tenant
+}
+table "users" {
+	schema = schema.tenant
+	column "id" {
+		type = int
+	}
+}
+`
+		liteRun(t, func(t *liteTest) {
+			testCLISchemaApply(t, h, t.dsn(), "--var", "tenant=main")
+		})
+	})
 	t.Run("SchemaApplyDryRun", func(t *testing.T) {
 		liteRun(t, func(t *liteTest) {
 			testCLISchemaApplyDry(t, h, t.dsn())

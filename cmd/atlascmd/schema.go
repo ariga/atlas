@@ -41,6 +41,7 @@ var (
 		Schema      []string
 		AutoApprove bool
 		Verbose     bool
+		Vars        map[string]string
 	}
 	// SchemaApply represents the 'atlas schema apply' subcommand command.
 	SchemaApply = &cobra.Command{
@@ -126,6 +127,7 @@ func init() {
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.Web, "web", "w", false, "Open in a local Atlas UI.")
 	SchemaApply.Flags().StringVarP(&ApplyFlags.Addr, "addr", "", ":5800", "used with -w, local address to bind the server to.")
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.Verbose, migrateDiffFlagVerbose, "", false, "enable verbose logging")
+	SchemaApply.Flags().StringToStringVarP(&ApplyFlags.Vars, "var", "", nil, "input variables")
 	cobra.CheckErr(SchemaApply.MarkFlagRequired("url"))
 	cobra.CheckErr(SchemaApply.MarkFlagRequired("file"))
 	dsn2url(SchemaApply, &ApplyFlags.URL)
@@ -174,7 +176,7 @@ func CmdApplyRun(cmd *cobra.Command, _ []string) {
 	c, err := sqlclient.Open(cmd.Context(), ApplyFlags.URL)
 	cobra.CheckErr(err)
 	defer c.Close()
-	applyRun(cmd.Context(), c, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove)
+	applyRun(cmd.Context(), c, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove, ApplyFlags.Vars)
 }
 
 // CmdFmtRun formats all HCL files in a given directory using canonical HCL formatting
@@ -188,7 +190,7 @@ func CmdFmtRun(cmd *cobra.Command, args []string) {
 	}
 }
 
-func applyRun(ctx context.Context, client *sqlclient.Client, file string, dryRun, autoApprove bool) {
+func applyRun(ctx context.Context, client *sqlclient.Client, file string, dryRun, autoApprove bool, input map[string]string) {
 	schemas := ApplyFlags.Schema
 	if client.URL.Schema != "" {
 		schemas = append(schemas, client.URL.Schema)
@@ -200,7 +202,7 @@ func applyRun(ctx context.Context, client *sqlclient.Client, file string, dryRun
 	f, err := ioutil.ReadFile(file)
 	cobra.CheckErr(err)
 	desired := &schema.Realm{}
-	cobra.CheckErr(client.Eval(f, desired, nil))
+	cobra.CheckErr(client.Eval(f, desired, input))
 	if len(schemas) > 0 {
 		// Validate all schemas in file were selected by user.
 		sm := make(map[string]bool, len(schemas))
