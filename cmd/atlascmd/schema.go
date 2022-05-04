@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -22,13 +23,24 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const projectFile = "atlas.hcl"
+
 var (
 	// schemaCmd represents the subcommand 'atlas schema'.
 	schemaCmd = &cobra.Command{
 		Use:   "schema",
 		Short: "Work with atlas schemas.",
 		Long:  "The `atlas schema` command groups subcommands for working with Atlas schemas.",
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return nil
+			}
+			return selectEnv(args[0])
+		},
 	}
+
+	// ActiveEnv represents the current active environment.
+	ActiveEnv *Env
 
 	// ApplyFlags are the flags used in SchemaApply command.
 	ApplyFlags struct {
@@ -146,7 +158,7 @@ func init() {
 }
 
 // CmdInspectRun is the command used when running CLI.
-func CmdInspectRun(cmd *cobra.Command, _ []string) {
+func CmdInspectRun(cmd *cobra.Command, args []string) {
 	if InspectFlags.Web {
 		schemaCmd.PrintErrln("The Alas UI is not available in this release.")
 		return
@@ -261,7 +273,19 @@ func dsn2url(cmd *cobra.Command, p *string) {
 	cobra.CheckErr(cmd.Flags().MarkHidden("dsn"))
 	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
 		dsnF, urlF := cmd.Flag("dsn"), cmd.Flag("url")
+		if len(args[0]) > 0 {
+			err := selectEnv(args[0])
+			if err != nil {
+				return err
+			}
+		}
+		if ActiveEnv.URL != "" {
+			urlF.Value.Set(ActiveEnv.URL)
+			urlF.Changed = true
+			return nil
+		}
 		switch {
+		case ActiveEnv.URL != "":
 		case !dsnF.Changed && !urlF.Changed:
 			return errors.New(`required flag "url" was not set`)
 		case dsnF.Changed && urlF.Changed:
@@ -272,6 +296,29 @@ func dsn2url(cmd *cobra.Command, p *string) {
 		}
 		return nil
 	}
+}
+
+// selectEnv looks for an env with the provided name in the project file in the current
+// working directory and sets ActiveEnv to it.
+func selectEnv(name string) error {
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("could not find current working directory: %w", err)
+	}
+	p := filepath.Join(wd, projectFile)
+	if _, err := os.Stat(projectFile); err != nil {
+		return fmt.Errorf("got env name %q but no file found at %q", name, projectFile)
+	}
+	envs, err := loadProject(p)
+	if err != nil {
+		return fmt.Errorf("loading project file: %w", err)
+	}
+	e, ok := envs[name]
+	if !ok {
+		return fmt.Errorf("env %q not defined in project file", name)
+	}
+	ActiveEnv = e
+	return nil
 }
 
 func handlePath(cmd *cobra.Command, path string) {

@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"text/template"
 	"time"
@@ -170,8 +171,7 @@ func testHCLIntegration(t T, full string, empty string) {
 }
 
 func testCLISchemaInspect(t T, h string, dsn string, unmarshaler schemaspec.Unmarshaler) {
-	// Required to have a clean "stderr" while running first time.
-	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
 	var expected schema.Schema
@@ -195,9 +195,43 @@ func testCLISchemaInspect(t T, h string, dsn string, unmarshaler schemaspec.Unma
 	require.Equal(t, expected, actual)
 }
 
+func testCLISchemaInspectEnv(t T, h string, env string, unmarshaler schemaspec.Unmarshaler) {
+	err := initCLI()
+	require.NoError(t, err)
+	t.dropTables("users")
+	var expected schema.Schema
+	err = unmarshaler.UnmarshalSpec([]byte(h), &expected)
+	require.NoError(t, err)
+	t.applyHcl(h)
+	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+		"schema",
+		"inspect",
+		env,
+	)
+	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	require.NoError(t, cmd.Run(), stderr.String())
+	var actual schema.Schema
+	err = unmarshaler.UnmarshalSpec(stdout.Bytes(), &actual)
+	require.NoError(t, err)
+	require.Empty(t, stderr.String())
+	require.Equal(t, expected, actual)
+}
+
+// initOnce controls that the cli will only be built once.
+var initOnce sync.Once
+
+func initCLI() error {
+	var err error
+	initOnce.Do(func() {
+		err = exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	})
+	return err
+}
+
 func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, unmarshaler schemaspec.Unmarshaler) {
-	// Required to have a clean "stderr" while running first time.
-	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	err := initCLI()
 	f := filepath.Join(t.TempDir(), "atlas.hcl")
 	err = ioutil.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
@@ -227,8 +261,8 @@ func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, unmars
 }
 
 func testCLIMultiSchemaInspect(t T, h string, dsn string, schemas []string, unmarshaler schemaspec.Unmarshaler) {
-	// Required to have a clean "stderr" while running first time.
-	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+
+	err := initCLI()
 	require.NoError(t, err)
 	var expected schema.Realm
 	err = unmarshaler.UnmarshalSpec([]byte(h), &expected)
@@ -254,8 +288,8 @@ func testCLIMultiSchemaInspect(t T, h string, dsn string, schemas []string, unma
 }
 
 func testCLISchemaApply(t T, h string, dsn string, args ...string) {
-	// Required to have a clean "stderr" while running first time.
-	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+
+	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
 	f := filepath.Join(t.TempDir(), "atlas.hcl")
@@ -290,8 +324,8 @@ func testCLISchemaApply(t T, h string, dsn string, args ...string) {
 }
 
 func testCLISchemaApplyDry(t T, h string, dsn string) {
-	// Required to have a clean "stderr" while running first time.
-	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+
+	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
 	f := filepath.Join(t.TempDir(), "atlas.hcl")
@@ -324,8 +358,8 @@ func testCLISchemaApplyDry(t T, h string, dsn string) {
 }
 
 func testCLISchemaApplyAutoApprove(t T, h string, dsn string) {
-	// Required to have a clean "stderr" while running first time.
-	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+
+	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
 	f := filepath.Join(t.TempDir(), "atlas.hcl")
@@ -352,8 +386,8 @@ func testCLISchemaApplyAutoApprove(t T, h string, dsn string) {
 }
 
 func testCLISchemaDiff(t T, dsn string) {
-	// Required to have a clean "stderr" while running first time.
-	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+
+	err := initCLI()
 
 	require.NoError(t, err)
 	t.dropTables("users")
@@ -374,7 +408,7 @@ func testCLISchemaDiff(t T, dsn string) {
 }
 
 func TestCLI_Version(t *testing.T) {
-	// Required to have a clean "stderr" while running first time.
+
 	require.NoError(t, exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run())
 	tests := []struct {
 		name     string
