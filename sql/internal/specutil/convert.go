@@ -165,7 +165,7 @@ func Index(spec *sqlspec.Index, parent *schema.Table, partFns ...func(*sqlspec.I
 		return nil, fmt.Errorf(`multiple definitions for index %q, use "columns" or "on"`, spec.Name)
 	case n > 0:
 		for i, c := range spec.Columns {
-			c, err := column(parent, c)
+			c, err := ColumnByRef(parent, c)
 			if err != nil {
 				return nil, err
 			}
@@ -185,7 +185,7 @@ func Index(spec *sqlspec.Index, parent *schema.Table, partFns ...func(*sqlspec.I
 			case p.Expr != "":
 				part.X = &schema.RawExpr{X: p.Expr}
 			case p.Column != nil:
-				c, err := column(parent, p.Column)
+				c, err := ColumnByRef(parent, p.Column)
 				if err != nil {
 					return nil, err
 				}
@@ -223,7 +223,7 @@ func Check(spec *sqlspec.Check) (*schema.Check, error) {
 func PrimaryKey(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, error) {
 	parts := make([]*schema.IndexPart, 0, len(spec.Columns))
 	for seqno, c := range spec.Columns {
-		c, err := column(parent, c)
+		c, err := ColumnByRef(parent, c)
 		if err != nil {
 			return nil, nil
 		}
@@ -254,7 +254,7 @@ func linkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *sqlspec.Table
 			return fmt.Errorf("sqlspec: number of referencing and referenced columns do not match for foreign-key %q", fk.Symbol)
 		}
 		for _, ref := range spec.Columns {
-			c, err := column(tbl, ref)
+			c, err := ColumnByRef(tbl, ref)
 			if err != nil {
 				return err
 			}
@@ -264,7 +264,7 @@ func linkForeignKeys(tbl *schema.Table, sch *schema.Schema, table *sqlspec.Table
 			t, c, err := externalRef(ref, sch)
 			if isLocalRef(ref) {
 				t = fk.Table
-				c, err = column(fk.Table, ref)
+				c, err = ColumnByRef(fk.Table, ref)
 			}
 			if err != nil {
 				return err
@@ -544,7 +544,8 @@ func SchemaName(ref *schemaspec.Ref) (string, error) {
 	return parts[1], nil
 }
 
-func column(t *schema.Table, ref *schemaspec.Ref) (*schema.Column, error) {
+// ColumnByRef returns a column from the table by its reference.
+func ColumnByRef(t *schema.Table, ref *schemaspec.Ref) (*schema.Column, error) {
 	s := strings.Split(ref.V, "$column.")
 	if len(s) != 2 {
 		return nil, fmt.Errorf("specutil: failed to extract column name from %q", ref)
@@ -561,7 +562,7 @@ func externalRef(ref *schemaspec.Ref, sch *schema.Schema) (*schema.Table, *schem
 	if err != nil {
 		return nil, nil, err
 	}
-	c, err := column(tbl, ref)
+	c, err := ColumnByRef(tbl, ref)
 	if err != nil {
 		return nil, nil, err
 	}

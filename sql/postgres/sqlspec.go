@@ -106,6 +106,7 @@ var (
 	hclState = schemahcl.New(
 		schemahcl.WithTypes(TypeRegistry.Specs()),
 		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeGIN, IndexTypeGiST),
+		schemahcl.WithScopedEnums("table.partition.type", PartitionTypeRange, PartitionTypeList, PartitionTypeHash),
 		schemahcl.WithScopedEnums("table.column.identity.generated", GeneratedTypeAlways, GeneratedTypeByDefault),
 		schemahcl.WithScopedEnums("table.column.as.type", "STORED"),
 		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
@@ -127,7 +128,70 @@ var (
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the convertSchema function.
 func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, error) {
-	return specutil.Table(spec, parent, convertColumn, specutil.PrimaryKey, convertIndex, specutil.Check)
+	t, err := specutil.Table(spec, parent, convertColumn, specutil.PrimaryKey, convertIndex, specutil.Check)
+	if err != nil {
+		return nil, err
+	}
+	if err := convertPartition(spec.Extra, t); err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
+// convertPartition converts and appends the partition block into the table attributes if exists.
+func convertPartition(spec schemaspec.Resource, table *schema.Table) error {
+	r, ok := spec.Resource("partition")
+	if !ok {
+		return nil
+	}
+	var p struct {
+		Type    string            `spec:"type"`
+		Columns []*schemaspec.Ref `spec:"columns"`
+		Parts   []*struct {
+			Expr   string          `spec:"expr"`
+			Column *schemaspec.Ref `spec:"column"`
+		} `spec:"by"`
+	}
+	if err := r.As(&p); err != nil {
+		return fmt.Errorf("parsing %s.partition: %w", table.Name, err)
+	}
+	if p.Type == "" {
+		return fmt.Errorf("missing attribute %s.partition.type", table.Name)
+	}
+	key := &Partition{T: p.Type}
+	switch n, m := len(p.Columns), len(p.Parts); {
+	case n == 0 && m == 0:
+		return fmt.Errorf("missing columns or expressions for %s.partition", table.Name)
+	case n > 0 && m > 0:
+		return fmt.Errorf(`multiple definitions for %s.partition, use "columns" or "by"`, table.Name)
+	case n > 0:
+		for _, r := range p.Columns {
+			c, err := specutil.ColumnByRef(table, r)
+			if err != nil {
+				return err
+			}
+			key.Parts = append(key.Parts, &PartitionPart{C: c})
+		}
+	case m > 0:
+		for i, p := range p.Parts {
+			switch {
+			case p.Column == nil && p.Expr == "":
+				return fmt.Errorf("missing column or expression for %s.partition.by at position %d", table.Name, i)
+			case p.Column != nil && p.Expr != "":
+				return fmt.Errorf("multiple definitions for  %s.partition.by at position %d", table.Name, i)
+			case p.Column != nil:
+				c, err := specutil.ColumnByRef(table, p.Column)
+				if err != nil {
+					return err
+				}
+				key.Parts = append(key.Parts, &PartitionPart{C: c})
+			case p.Expr != "":
+				key.Parts = append(key.Parts, &PartitionPart{X: &schema.RawExpr{X: p.Expr}})
+			}
+		}
+	}
+	table.AddAttrs(key)
+	return nil
 }
 
 // convertColumn converts a sqlspec.Column into a schema.Column.
