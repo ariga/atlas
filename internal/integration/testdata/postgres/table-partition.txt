@@ -1,0 +1,169 @@
+apply 1.hcl
+cmpshow logs 1.sql
+
+# Changing partitioned table is not allowed.
+! apply 2.hcl 'partition key of table "logs" cannot be changed from PARTITION BY LIST ("value") to PARTITION BY RANGE ("a", (b * (a % 2))) (drop and add is required)'
+
+# Drop all tables.
+apply drop.hcl
+
+# Recreate partitioned table.
+apply 2.hcl
+cmpshow logs 2.sql
+
+# Drop all tables.
+apply drop.hcl
+
+apply 3.hcl
+cmpshow measurement 3.sql
+
+-- 1.hcl --
+schema "$db" {}
+
+table "logs" {
+  schema = schema.$db
+  column "value" {
+    null = false
+    type = integer
+  }
+  partition {
+    type = LIST
+    columns = [column.value]
+  }
+}
+
+-- postgres10/1.sql --
+        Table "script_table_partition.logs"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ value  | integer |           | not null |
+Partition key: LIST (value)
+
+-- postgres11/1.sql --
+        Table "script_table_partition.logs"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ value  | integer |           | not null |
+Partition key: LIST (value)
+Number of partitions: 0
+
+-- 1.sql --
+  Partitioned table "script_table_partition.logs"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ value  | integer |           | not null |
+Partition key: LIST (value)
+Number of partitions: 0
+
+-- 2.hcl --
+schema "$db" {}
+
+table "logs" {
+  schema = schema.$db
+  column "a" {
+    null = false
+    type = integer
+  }
+  column "b" {
+    null = false
+    type = integer
+  }
+  partition {
+    type = RANGE
+    by {
+      column = column.a
+    }
+    by {
+      expr = "b * (a % 2)"
+    }
+  }
+}
+
+-- postgres10/2.sql --
+        Table "script_table_partition.logs"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ a      | integer |           | not null |
+ b      | integer |           | not null |
+Partition key: RANGE (a, ((b * (a % 2))))
+
+-- postgres11/2.sql --
+        Table "script_table_partition.logs"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ a      | integer |           | not null |
+ b      | integer |           | not null |
+Partition key: RANGE (a, ((b * (a % 2))))
+Number of partitions: 0
+
+-- 2.sql --
+  Partitioned table "script_table_partition.logs"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ a      | integer |           | not null |
+ b      | integer |           | not null |
+Partition key: RANGE (a, ((b * (a % 2))))
+Number of partitions: 0
+
+-- 3.hcl --
+schema "$db" {}
+
+# The partitioned table from the PostgreSQL doc.
+table "measurement" {
+  schema = schema.$db
+  column "city_id" {
+    null = false
+    type = integer
+  }
+  column "logdate" {
+    null = false
+    type = date
+  }
+  column "peaktemp" {
+    null = true
+    type = int
+  }
+  column "unitsales" {
+    null = true
+    type = int
+  }
+  partition {
+    type = RANGE
+    columns = [column.logdate]
+  }
+}
+
+-- postgres10/3.sql --
+      Table "script_table_partition.measurement"
+  Column   |  Type   | Collation | Nullable | Default
+-----------+---------+-----------+----------+---------
+ city_id   | integer |           | not null |
+ logdate   | date    |           | not null |
+ peaktemp  | integer |           |          |
+ unitsales | integer |           |          |
+Partition key: RANGE (logdate)
+
+-- postgres11/3.sql --
+      Table "script_table_partition.measurement"
+  Column   |  Type   | Collation | Nullable | Default
+-----------+---------+-----------+----------+---------
+ city_id   | integer |           | not null |
+ logdate   | date    |           | not null |
+ peaktemp  | integer |           |          |
+ unitsales | integer |           |          |
+Partition key: RANGE (logdate)
+Number of partitions: 0
+
+-- 3.sql --
+Partitioned table "script_table_partition.measurement"
+  Column   |  Type   | Collation | Nullable | Default
+-----------+---------+-----------+----------+---------
+ city_id   | integer |           | not null |
+ logdate   | date    |           | not null |
+ peaktemp  | integer |           |          |
+ unitsales | integer |           |          |
+Partition key: RANGE (logdate)
+Number of partitions: 0
+
+-- drop.hcl --
+schema "$db" {}
