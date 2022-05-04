@@ -56,7 +56,7 @@ func TestMigrate_Diff(t *testing.T) {
 	)
 	require.Zero(t, s)
 	require.NoError(t, err)
-	require.FileExists(t, filepath.Join(p, fmt.Sprintf("%s_name.sql", time.Now().Format("20060102150405"))))
+	require.FileExists(t, filepath.Join(p, fmt.Sprintf("%s_name.sql", time.Now().UTC().Format("20060102150405"))))
 	require.FileExists(t, filepath.Join(p, "atlas.sum"))
 
 	// A lock will prevent diffing.
@@ -80,6 +80,39 @@ func TestMigrate_Diff(t *testing.T) {
 	)
 	require.True(t, strings.HasPrefix(s, "Error: "+lockErr))
 	require.EqualError(t, err, lockErr)
+}
+
+func TestMigrate_New(t *testing.T) {
+	p := t.TempDir()
+
+	s, err := runCmd(Root, "migrate", "new", "--dir", "file://"+p)
+	require.Zero(t, s)
+	require.NoError(t, err)
+	require.FileExists(t, filepath.Join(p, fmt.Sprintf("%s.sql", time.Now().UTC().Format("20060102150405"))))
+	require.FileExists(t, filepath.Join(p, "atlas.sum"))
+
+	s, err = runCmd(Root, "migrate", "new", "my-migration-file", "--dir", "file://"+p)
+	require.Zero(t, s)
+	require.NoError(t, err)
+	require.FileExists(t, filepath.Join(p, fmt.Sprintf("%s_my-migration-file.sql", time.Now().UTC().Format("20060102150405"))))
+	require.FileExists(t, filepath.Join(p, "atlas.sum"))
+}
+
+func TestMigrate_NewError(t *testing.T) {
+	if os.Getenv("DO_NEW") == "1" {
+		runCmd(Root, "migrate", "new", "--dir", "file://testdata")
+		return
+	}
+	f := filepath.Join("testdata", "new.sql")
+	require.NoError(t, os.WriteFile(f, []byte("contents"), 0600))
+	defer os.Remove(f)
+	cmd := exec.Command(os.Args[0], "-test.run=TestMigrate_NewError") //nolint:gosec
+	cmd.Env = append(os.Environ(), "DO_NEW=1")
+	err := cmd.Run()
+	if err, ok := err.(*exec.ExitError); ok && !err.Success() {
+		return
+	}
+	t.Fatalf("process ran with err %v, want exist status 1", err)
 }
 
 func TestMigrate_Validate(t *testing.T) {

@@ -680,7 +680,7 @@ var _ File = (*LocalFile)(nil)
 
 var (
 	// templateFuncs contains the template.FuncMap for the DefaultFormatter.
-	templateFuncs = template.FuncMap{"now": func() string { return time.Now().Format("20060102150405") }}
+	templateFuncs = template.FuncMap{"now": func() string { return time.Now().UTC().Format("20060102150405") }}
 	// DefaultFormatter is a default implementation for Formatter.
 	DefaultFormatter = &TemplateFormatter{
 		templates: []struct{ N, C *template.Template }{
