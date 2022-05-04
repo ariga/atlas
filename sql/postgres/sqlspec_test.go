@@ -384,6 +384,57 @@ table "logs" {
 	})
 }
 
+func TestMarshalSpec_Partitioned(t *testing.T) {
+	t.Run("Columns", func(t *testing.T) {
+		c := schema.NewStringColumn("name", "text")
+		s := schema.New("test").
+			AddTables(schema.NewTable("logs").AddColumns(c).AddAttrs(&Partition{T: PartitionTypeHash, Parts: []*PartitionPart{{C: c}}}))
+		buf, err := MarshalHCL(s)
+		require.NoError(t, err)
+		require.Equal(t, `table "logs" {
+  schema = schema.test
+  column "name" {
+    null = false
+    type = text
+  }
+  partition {
+    type    = HASH
+    columns = [column.name]
+  }
+}
+schema "test" {
+}
+`, string(buf))
+	})
+
+	t.Run("Parts", func(t *testing.T) {
+		c := schema.NewStringColumn("name", "text")
+		s := schema.New("test").
+			AddTables(schema.NewTable("logs").AddColumns(c).AddAttrs(&Partition{T: PartitionTypeHash, Parts: []*PartitionPart{{C: c}, {X: &schema.RawExpr{X: "lower(name)"}}}}))
+		buf, err := MarshalHCL(s)
+		require.NoError(t, err)
+		require.Equal(t, `table "logs" {
+  schema = schema.test
+  column "name" {
+    null = false
+    type = text
+  }
+  partition {
+    type = HASH
+    by {
+      column = column.name
+    }
+    by {
+      expr = "lower(name)"
+    }
+  }
+}
+schema "test" {
+}
+`, string(buf))
+	})
+}
+
 func TestMarshalSpec_IndexPredicate(t *testing.T) {
 	s := &schema.Schema{
 		Name: "test",
