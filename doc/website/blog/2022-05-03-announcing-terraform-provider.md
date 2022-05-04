@@ -7,7 +7,7 @@ tags: [terraform]
 Today we are glad to announce the release of the official [Atlas Terraform Provider](https://registry.terraform.io/providers/ariga/atlas).
 
 ### What is Terraform
-[Terraform](https://terraform.io/) is a popular open-source tool created by [HashiCorp](https://www.hashicorp.com/) used to greatly simplify the task of provisioning and managing resources in the cloud. With Terraform, organizations can describe the desired state of their infrastructure in simple configuration language and let Terraform plan and apply these changes in an automated way. This way, Terraform allows teams to truly deliver infrastructure-as-code (IaC), which completely changed how teams and organizations manage their cloud infrastructure. 
+[Terraform](https://terraform.io/) is a popular open-source tool created by [HashiCorp](https://www.hashicorp.com/), used to greatly simplify the task of provisioning and managing resources in the cloud. With Terraform, organizations can describe the desired state of their infrastructure in simple configuration language and let Terraform plan and apply these changes in an automated way. This way, Terraform allows teams to truly deliver infrastructure-as-code (IaC), which completely changed how teams and organizations manage their cloud infrastructure. 
 
 ### Infrastructure-as-Code and database management
 Most cloud-native applications are backed by a database. The database is often the most critical part of many software systems, so making changes to its schema (structure and layout of the data inside) is a very risky business. However, schemas must evolve: as functionality changes over time, the backing tables are added, columns are dropped, indexes are created for performance reasons, and more.  
