@@ -70,6 +70,54 @@ func TestDiff_TableDiff(t *testing.T) {
 			},
 		},
 		{
+			name: "drop partition key",
+			from: schema.NewTable("logs").
+				AddAttrs(&Partition{
+					T:     PartitionTypeRange,
+					Parts: []*PartitionPart{{C: schema.NewColumn("c")}},
+				}),
+			to:      schema.NewTable("logs"),
+			wantErr: true,
+		},
+		{
+			name: "add partition key",
+			from: schema.NewTable("logs"),
+			to: schema.NewTable("logs").
+				AddAttrs(&Partition{
+					T:     PartitionTypeRange,
+					Parts: []*PartitionPart{{C: schema.NewColumn("c")}},
+				}),
+			wantErr: true,
+		},
+		{
+			name: "change partition key column",
+			from: schema.NewTable("logs").
+				AddAttrs(&Partition{
+					T:     PartitionTypeRange,
+					Parts: []*PartitionPart{{C: schema.NewColumn("c")}},
+				}),
+			to: schema.NewTable("logs").
+				AddAttrs(&Partition{
+					T:     PartitionTypeRange,
+					Parts: []*PartitionPart{{C: schema.NewColumn("d")}},
+				}),
+			wantErr: true,
+		},
+		{
+			name: "change partition key type",
+			from: schema.NewTable("logs").
+				AddAttrs(&Partition{
+					T:     PartitionTypeRange,
+					Parts: []*PartitionPart{{C: schema.NewColumn("c")}},
+				}),
+			to: schema.NewTable("logs").
+				AddAttrs(&Partition{
+					T:     PartitionTypeHash,
+					Parts: []*PartitionPart{{C: schema.NewColumn("c")}},
+				}),
+			wantErr: true,
+		},
+		{
 			name: "add check",
 			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}},
 			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&schema.Check{Name: "t1_c1_check", Expr: "(c1 > 1)"}}},
@@ -309,7 +357,7 @@ func TestDiff_TableDiff(t *testing.T) {
 		require.NoError(t, err)
 		t.Run(tt.name, func(t *testing.T) {
 			changes, err := drv.TableDiff(tt.from, tt.to)
-			require.Equal(t, tt.wantErr, err != nil)
+			require.Equalf(t, tt.wantErr, err != nil, "got: %v", err)
 			require.EqualValues(t, tt.wantChanges, changes)
 		})
 	}
