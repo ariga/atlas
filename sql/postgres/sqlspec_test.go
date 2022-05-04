@@ -285,6 +285,105 @@ table "t" {
 	})
 }
 
+func TestUnmarshalSpec_Partitioned(t *testing.T) {
+	t.Run("Columns", func(t *testing.T) {
+		var (
+			s = &schema.Schema{}
+			f = `
+schema "test" {}
+table "logs" {
+	schema = schema.test
+	column "name" {
+		type = text
+	}
+	partition {
+		type = HASH
+		columns = [
+			column.name
+		]
+	}
+}
+`
+		)
+		err := UnmarshalHCL([]byte(f), s)
+		require.NoError(t, err)
+		c := schema.NewStringColumn("name", "text")
+		expected := schema.New("test").
+			AddTables(schema.NewTable("logs").AddColumns(c).AddAttrs(&Partition{T: PartitionTypeHash, Parts: []*PartitionPart{{C: c}}}))
+		require.Equal(t, expected, s)
+	})
+
+	t.Run("Parts", func(t *testing.T) {
+		var (
+			s = &schema.Schema{}
+			f = `
+schema "test" {}
+table "logs" {
+	schema = schema.test
+	column "name" {
+		type = text
+	}
+	partition {
+		type = RANGE
+		by {
+			column = column.name
+		}
+		by {
+			expr = "lower(name)"
+		}
+	}
+}
+`
+		)
+		err := UnmarshalHCL([]byte(f), s)
+		require.NoError(t, err)
+		c := schema.NewStringColumn("name", "text")
+		expected := schema.New("test").
+			AddTables(schema.NewTable("logs").AddColumns(c).AddAttrs(&Partition{T: PartitionTypeRange, Parts: []*PartitionPart{{C: c}, {X: &schema.RawExpr{X: "lower(name)"}}}}))
+		require.Equal(t, expected, s)
+	})
+
+	t.Run("Invalid", func(t *testing.T) {
+		err := UnmarshalHCL([]byte(`
+			schema "test" {}
+			table "logs" {
+				schema = schema.test
+				column "name" { type = text }
+				partition {
+					columns = [column.name]
+				}
+			}
+		`), &schema.Schema{})
+		require.EqualError(t, err, "missing attribute logs.partition.type")
+
+		err = UnmarshalHCL([]byte(`
+			schema "test" {}
+			table "logs" {
+				schema = schema.test
+				column "name" { type = text }
+				partition {
+					type = HASH
+				}
+			}
+		`), &schema.Schema{})
+		require.EqualError(t, err, `missing columns or expressions for logs.partition`)
+
+		err = UnmarshalHCL([]byte(`
+			schema "test" {}
+			table "logs" {
+				schema = schema.test
+				column "name" { type = text }
+				partition {
+					type = HASH
+					columns = [column.name]
+					by { column = column.name }
+				}
+			}
+		`), &schema.Schema{})
+		require.EqualError(t, err, `multiple definitions for logs.partition, use "columns" or "by"`)
+	})
+}
+
 func TestMarshalSpec_IndexPredicate(t *testing.T) {
 	s := &schema.Schema{
 		Name: "test",
