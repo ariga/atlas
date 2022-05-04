@@ -31,7 +31,7 @@ Run a second instance of MySQL on another port, to serve as a dev-db:
 docker run -p 3307:3306 --name devdb-greatness -e MYSQL_ROOT_PASSWORD=pass -e MYSQL_DATABASE=market -d mysql:8
 ```
 
-Next, we need an HCL file describing the wanted state of our database. You can use [atlas cli](https://atlasgo.io/cli/getting-started/setting-up) to [inspect](https://atlasgo.io/cli/getting-started/inspection) the state of another database or you can use the following basic schema:
+Next, we need an HCL file describing the desired state of our database. You can use [atlas cli](https://atlasgo.io/cli/getting-started/setting-up) to [inspect](https://atlasgo.io/cli/getting-started/inspection) the state of another database or you can use the following basic schema:
 ```hcl title="schema.hcl"
 table "orders" {
   schema = schema.market
