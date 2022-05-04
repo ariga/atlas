@@ -1,24 +1,28 @@
 ---
 title: Terraform for databases: Announcing the official Terraform provider for Atlas
 authors: Hedwigz
-tags: [terraform]
+tags: [terraform, announcement]
 ---
 
 Today we are glad to announce the release of the official [Atlas Terraform Provider](https://registry.terraform.io/providers/ariga/atlas).
 
 ### What is Terraform
-[Terraform](https://terraform.io/) is a popular open-source tool created by [HashiCorp](https://www.hashicorp.com/), used to greatly simplify the task of provisioning and managing resources in the cloud. With Terraform, organizations can describe the desired state of their infrastructure in simple configuration language and let Terraform plan and apply these changes in an automated way. This way, Terraform allows teams to truly deliver infrastructure-as-code (IaC), which completely changed how teams and organizations manage their cloud infrastructure. 
+[Terraform](https://terraform.io/) is a popular open-source tool created by [HashiCorp](https://www.hashicorp.com/), used to greatly simplify the task of provisioning and managing resources in the cloud. With Terraform, organizations can describe the desired state of their infrastructure in a simple configuration language and let Terraform plan and apply these changes in an automated way. This way, Terraform allows teams to truly deliver infrastructure-as-code (IaC), which completely change how teams and organizations manage their cloud infrastructure. 
 
 ### Infrastructure-as-Code and database management
 Most cloud-native applications are backed by a database. The database is often the most critical part of many software systems, so making changes to its schema (structure and layout of the data inside) is a very risky business. However, schemas must evolve: as functionality changes over time, the backing tables are added, columns are dropped, indexes are created for performance reasons, and more.  
   
-It is therefore surprising that there is no established way of integrating the management of schema changes (commonly called schema "migrations") into popular Infrastructure-as-Code workflows. For this reason, many organizations are running migrations from within the application code or using solutions outside the ecosystem of Terraform, meaning that management of the production environment is fragmented and hard to synchronize. Atlas aims to change that.  
+Therefore it is surprising that there is no established way of integrating the management of schema changes (commonly called schema "migrations") into popular Infrastructure-as-Code workflows. For this reason, many organizations are running migrations from within the application code or using solutions outside the ecosystem of Terraform, meaning that management of the production environment is fragmented and hard to synchronize. Atlas aims to change that.  
   
 The Atlas Terraform provider allows you to synchronize your database with your desired schema, in a safe and stateful manner. By using Atlas’s core migration engine and embedding it in a Terraform provider, we are enabling teams to manage their database schemas as part of their full IaC workflow. This way, teams can use existing providers (such as AWS or GCP) to provision the database instance and use the Atlas provider to keep the schema in sync. Integrating Atlas with Terraform is especially useful because it couples the state of the infrastructure with the state of the database. It is also extremely neat when using a [dev database](https://atlasgo.io/dev-database), which is a feature that combines infrastructure and DB management to provide safety and correctness.
 
 ### Demo
-Let’s see an example of the provider in action.
-First, let’s spin a database using docker:
+#### Prerequisites
+Make sure you have installed:
+* [Docker](https://docs.docker.com/get-docker/)
+* [Terraform](https://www.terraform.io/downloads)
+
+Let’s see an example of the provider in action. First, spin a database using docker:
 ```bash
 docker run -p 3306:3306 --name iloveatlas -e MYSQL_ROOT_PASSWORD=pass -e MYSQL_DATABASE=market -d mysql:8
 ```
