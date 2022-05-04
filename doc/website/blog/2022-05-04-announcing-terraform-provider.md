@@ -2,6 +2,7 @@
 title: "Terraform for databases: Announcing the official Terraform provider for Atlas"
 authors: Hedwigz
 tags: [terraform, announcement]
+image: https://blog.ariga.io/uploads/images/posts/terraform-provider/terraform-provider.png
 ---
 
 Today we are glad to announce the release of the official [Atlas Terraform Provider](https://registry.terraform.io/providers/ariga/atlas).
