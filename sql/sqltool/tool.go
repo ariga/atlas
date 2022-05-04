@@ -51,7 +51,7 @@ var (
 	funcs = template.FuncMap{
 		"inc": func(x int) int { return x + 1 },
 		// now format the current time in a lexicographically ascending order while maintaining human readability.
-		"now": func() string { return time.Now().Format("20060102150405") },
+		"now": func() string { return time.Now().UTC().Format("20060102150405") },
 		"rev": reverse,
 	}
 )
