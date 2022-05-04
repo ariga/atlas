@@ -118,4 +118,9 @@ mysql> show create table orders;
 For more examples and documentation visit the official [GitHub repository](https://github.com/ariga/terraform-provider-atlas) or the [provider page](https://registry.terraform.io/providers/ariga/atlas/latest) on Terraform registry.
 
 ### What's next
-TODO
+
+In this post, we presented the [Atlas Terraform Provider](https://registry.terraform.io/providers/ariga/atlas/latest). The provider currently supports the basic, declarative migration workflow that is available in the Atlas engine. In upcoming versions, we will add support for an additional kind of workflow that is supported by the engine and is called [versioned migration authoring](https://entgo.io/blog/2022/03/14/announcing-versioned-migrations/). In addition, more advanced safety checks (such as simulation on database snapshots) and migration strategies are also being worked on.  
+
+While the Terraform provider has just been released, the [core engine](https://github.com/ariga/atlas) that it is driving, is well tested and widely used (especially as the migration engine backing the popular [Ent](https://github.com/ent/ent) framework.) If you, like me, have always wanted to manage your database schema as part of your team's infrastructure-as-code workflow, give the Atlas Terraform provider a try!
+
+Have questions? Feedback? Find our team [on our Discord server](https://discord.gg/zZ6sWVg6NT).
