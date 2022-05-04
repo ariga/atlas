@@ -115,6 +115,24 @@ This command should be used whenever a manual change in the migration directory 
   atlas migrate hash --force
 ```
 
+### atlas migrate new
+
+Creates a new empty migration file in the migration directory.
+
+#### Usage
+```
+atlas migrate new
+```
+
+#### Details
+'atlas migrate new' creates a new migration according to the configured formatter without any statements in it.
+
+#### Example
+
+```
+  atlas migrate new my-new-migration
+```
+
 ### atlas migrate validate
 
 Validates the migration directories checksum.
