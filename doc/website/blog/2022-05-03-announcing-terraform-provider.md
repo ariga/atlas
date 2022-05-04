@@ -1,5 +1,5 @@
 ---
-title: Announcing the official Terraform provider for Atlas
+title: Terraform for databases: Announcing the official Terraform provider for Atlas
 authors: Hedwigz
 tags: [terraform]
 ---
