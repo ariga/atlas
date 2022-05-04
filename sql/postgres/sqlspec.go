@@ -194,6 +194,41 @@ func convertPartition(spec schemaspec.Resource, table *schema.Table) error {
 	return nil
 }
 
+// fromPartition returns the resource spec for representing the partition block.
+func fromPartition(p Partition) *schemaspec.Resource {
+	key := &schemaspec.Resource{
+		Type: "partition",
+		Attrs: []*schemaspec.Attr{
+			specutil.VarAttr("type", strings.ToUpper(specutil.Var(p.T))),
+		},
+	}
+	columns, ok := func() (*schemaspec.ListValue, bool) {
+		parts := make([]schemaspec.Value, 0, len(p.Parts))
+		for _, p := range p.Parts {
+			if p.C == nil {
+				return nil, false
+			}
+			parts = append(parts, specutil.ColumnRef(p.C.Name))
+		}
+		return &schemaspec.ListValue{V: parts}, true
+	}()
+	if ok {
+		key.Attrs = append(key.Attrs, &schemaspec.Attr{K: "columns", V: columns})
+		return key
+	}
+	for _, p := range p.Parts {
+		part := &schemaspec.Resource{Type: "by"}
+		switch {
+		case p.C != nil:
+			part.Attrs = append(part.Attrs, specutil.RefAttr("column", specutil.ColumnRef(p.C.Name)))
+		case p.X != nil:
+			part.Attrs = append(part.Attrs, specutil.StrAttr("expr", p.X.(*schema.RawExpr).X))
+		}
+		key.Children = append(key.Children, part)
+	}
+	return key
+}
+
 // convertColumn converts a sqlspec.Column into a schema.Column.
 func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error) {
 	if err := fixDefaultQuotes(spec.Default); err != nil {
@@ -380,15 +415,22 @@ func schemaSpec(schem *schema.Schema) (*doc, error) {
 }
 
 // tableSpec converts from a concrete Postgres sqlspec.Table to a schema.Table.
-func tableSpec(tab *schema.Table) (*sqlspec.Table, error) {
-	return specutil.FromTable(
-		tab,
+func tableSpec(table *schema.Table) (*sqlspec.Table, error) {
+	spec, err := specutil.FromTable(
+		table,
 		columnSpec,
 		specutil.FromPrimaryKey,
 		indexSpec,
 		specutil.FromForeignKey,
 		specutil.FromCheck,
 	)
+	if err != nil {
+		return nil, err
+	}
+	if p := (Partition{}); sqlx.Has(table.Attrs, &p) {
+		spec.Extra.Children = append(spec.Extra.Children, fromPartition(p))
+	}
+	return spec, nil
 }
 
 func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {

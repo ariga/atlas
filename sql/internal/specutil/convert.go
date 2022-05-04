@@ -346,7 +346,7 @@ func FromTable(t *schema.Table, colFn ColumnSpecFunc, pkFn PrimaryKeySpecFunc, i
 func FromPrimaryKey(s *schema.Index) (*sqlspec.PrimaryKey, error) {
 	c := make([]*schemaspec.Ref, 0, len(s.Parts))
 	for _, v := range s.Parts {
-		c = append(c, colRef(v.C.Name))
+		c = append(c, ColumnRef(v.C.Name))
 	}
 	return &sqlspec.PrimaryKey{
 		Columns: c,
@@ -469,7 +469,7 @@ func FromIndex(idx *schema.Index, partFns ...func(*schema.IndexPart, *sqlspec.In
 		case p.C != nil && p.X != nil:
 			return nil, fmt.Errorf("multiple key part definitions for index %q", idx.Name)
 		case p.C != nil:
-			part.Column = colRef(p.C.Name)
+			part.Column = ColumnRef(p.C.Name)
 		case p.X != nil:
 			x, ok := p.X.(*schema.RawExpr)
 			if !ok {
@@ -491,7 +491,7 @@ func columnsOnly(idx *schema.Index) ([]*schemaspec.Ref, bool) {
 		if p.C == nil || p.Desc {
 			return nil, false
 		}
-		parts[i] = colRef(p.C.Name)
+		parts[i] = ColumnRef(p.C.Name)
 	}
 	return parts, true
 }
@@ -500,11 +500,11 @@ func columnsOnly(idx *schema.Index) ([]*schemaspec.Ref, bool) {
 func FromForeignKey(s *schema.ForeignKey) (*sqlspec.ForeignKey, error) {
 	c := make([]*schemaspec.Ref, 0, len(s.Columns))
 	for _, v := range s.Columns {
-		c = append(c, colRef(v.Name))
+		c = append(c, ColumnRef(v.Name))
 	}
 	r := make([]*schemaspec.Ref, 0, len(s.RefColumns))
 	for _, v := range s.RefColumns {
-		ref := colRef(v.Name)
+		ref := ColumnRef(v.Name)
 		if s.Table != s.RefTable {
 			ref = externalColRef(v.Name, s.RefTable.Name)
 		}
@@ -622,7 +622,8 @@ func isLocalRef(r *schemaspec.Ref) bool {
 	return strings.HasPrefix(r.V, "$column")
 }
 
-func colRef(cName string) *schemaspec.Ref {
+// ColumnRef returns the reference of a column by its name.
+func ColumnRef(cName string) *schemaspec.Ref {
 	return &schemaspec.Ref{V: "$column." + cName}
 }
 
