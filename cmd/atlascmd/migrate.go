@@ -15,15 +15,17 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
+	"ariga.io/atlas/sql/sqltool"
 
 	"github.com/spf13/cobra"
 )
 
 const (
-	migrateFlagDir         = "dir"
-	migrateFlagSchema      = "schema"
-	migrateFlagForce       = "force"
 	migrateDiffFlagDevURL  = "dev-url"
+	migrateFlagDir         = "dir"
+	migrateFlagForce       = "force"
+	migrateFlagFormat      = "format"
+	migrateFlagSchema      = "schema"
 	migrateDiffFlagTo      = "to"
 	migrateDiffFlagVerbose = "verbose"
 )
@@ -35,6 +37,7 @@ var (
 		DevURL  string
 		ToURL   string
 		Schemas []string
+		Format  string
 		Force   bool
 		Verbose bool
 	}
@@ -117,6 +120,7 @@ func init() {
 	// Global flags.
 	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.DirURL, migrateFlagDir, "", "file://migrations", "select migration directory using DSN format")
 	MigrateCmd.PersistentFlags().StringSliceVarP(&MigrateFlags.Schemas, migrateFlagSchema, "", nil, "set schema names")
+	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.Format, migrateFlagFormat, "", formatAtlas, "set migration file format")
 	MigrateCmd.PersistentFlags().BoolVarP(&MigrateFlags.Force, migrateFlagForce, "", false, "force a command to run on a broken migration directory state")
 	MigrateCmd.PersistentFlags().SortFlags = false
 	// Diff flags.
@@ -158,8 +162,12 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	f, err := formatter()
+	if err != nil {
+		return err
+	}
 	// Plan the changes and create a new migration file.
-	pl := migrate.NewPlanner(dev.Driver, dir)
+	pl := migrate.NewPlanner(dev.Driver, dir, migrate.WithFormatter(f))
 	var name string
 	if len(args) > 0 {
 		name = args[0]
@@ -178,11 +186,15 @@ func CmdMigrateNewRun(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	f, err := formatter()
+	if err != nil {
+		return err
+	}
 	var name string
 	if len(args) > 0 {
 		name = args[0]
 	}
-	return migrate.NewPlanner(nil, dir).WritePlan(&migrate.Plan{Name: name})
+	return migrate.NewPlanner(nil, dir, migrate.WithFormatter(f)).WritePlan(&migrate.Plan{Name: name})
 }
 
 // CmdMigrateHashRun is the command executed when running the CLI with 'migrate hash' args.
@@ -263,5 +275,30 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 			Closer:      client,
 			StateReader: migrate.Conn(client, &schema.InspectRealmOption{Schemas: schemas}),
 		}, nil
+	}
+}
+
+const (
+	formatAtlas         = "atlas"
+	formatGolangMigrate = "golang-migrate"
+	formatGoose         = "goose"
+	formatFlyway        = "flyway"
+	formatLiquibase     = "liquibase"
+)
+
+func formatter() (migrate.Formatter, error) {
+	switch MigrateFlags.Format {
+	case formatAtlas:
+		return migrate.DefaultFormatter, nil
+	case formatGolangMigrate:
+		return sqltool.GolangMigrateFormatter, nil
+	case formatGoose:
+		return sqltool.GooseFormatter, nil
+	case formatFlyway:
+		return sqltool.FlywayFormatter, nil
+	case formatLiquibase:
+		return sqltool.LiquibaseFormatter, nil
+	default:
+		return nil, fmt.Errorf("unknown format %q", MigrateFlags.Format)
 	}
 }

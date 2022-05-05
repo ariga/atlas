@@ -62,6 +62,7 @@ atlas migrate
 ```
       --dir string       select migration directory using DSN format (default "file://migrations")
       --force            force a command to run on a broken migration directory state
+      --format string    set migration file format (default "atlas")
       --schema strings   set schema names
 
 ```
