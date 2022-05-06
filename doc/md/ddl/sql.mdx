@@ -120,6 +120,46 @@ table "products" {
 }
 ```
 
+### Partitions
+
+Table partitioning refers to splitting logical large tables into smaller physical ones. Atlas currently supports
+partitioned tables only in PostgreSQL and the rest of the dialects will be added in future versions.
+
+```hcl
+table "logs" {
+  schema = schema.public
+  column "date" {
+    type = date
+  }
+  column "text" {
+    type = integer
+  }
+  partition {
+    type = RANGE
+    columns = [column.date]
+  }
+}
+
+table "metrics" {
+  schema = schema.public
+  column "x" {
+    type = integer
+  }
+  column "y" {
+    type = integer
+  }
+  partition {
+    type = RANGE
+    by {
+      column = column.x
+    }
+    by {
+      expr = "f(y)"
+    }
+  }
+}
+```
+
 ### Table Qualification
 
 In some cases, an Atlas DDL document may contain multiple tables of the same name. This usually happens
