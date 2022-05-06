@@ -122,8 +122,11 @@ table "products" {
 
 ### Partitions
 
-Table partitioning refers to splitting logical large tables into smaller physical ones. Atlas currently supports
-partitioned tables only in PostgreSQL and the rest of the dialects will be added in future versions.
+Table partitioning refers to splitting logical large tables into smaller physical ones. 
+
+:::note
+Atlas currently only supports PostgreSQL. Support for the remaining dialects will be added in future versions.
+:::
 
 ```hcl
 table "logs" {
