@@ -38,8 +38,8 @@ var (
 		},
 	}
 
-	// envCmd represents the subcommand 'atlas env'.
-	envCmd = &cobra.Command{
+	// Env represents the subcommand 'atlas env'.
+	Env = &cobra.Command{
 		Use:   "env",
 		Short: "Print atlas environment variables.",
 		Long: `'atlas env' prints atlas environment information.
@@ -61,13 +61,13 @@ List of supported environment parameters:
 	}
 )
 
-// CheckForUpdate exposes internal update logic to CLI
+// CheckForUpdate exposes internal update logic to CLI.
 func CheckForUpdate() {
-	update.CheckForUpdate(version, Root.PrintErrln)
+	update.Check(version, Root.PrintErrln)
 }
 
 func init() {
-	Root.AddCommand(envCmd)
+	Root.AddCommand(Env)
 	Root.AddCommand(schemaCmd)
 	Root.AddCommand(versionCmd)
 }

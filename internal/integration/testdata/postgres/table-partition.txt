@@ -16,6 +16,14 @@ apply drop.hcl
 
 apply 3.hcl
 cmpshow measurement 3.sql
+cmphcl 3.inspect.hcl
+
+# Drop all tables.
+apply drop.hcl
+
+apply 4.hcl
+cmpshow metrics 4.sql
+cmphcl 4.inspect.hcl
 
 -- 1.hcl --
 schema "$db" {}
@@ -164,6 +172,119 @@ Partitioned table "script_table_partition.measurement"
  unitsales | integer |           |          |
 Partition key: RANGE (logdate)
 Number of partitions: 0
+
+-- 3.inspect.hcl --
+table "measurement" {
+  schema = schema.script_table_partition
+  column "city_id" {
+    null = false
+    type = integer
+  }
+  column "logdate" {
+    null = false
+    type = date
+  }
+  column "peaktemp" {
+    null = true
+    type = integer
+  }
+  column "unitsales" {
+    null = true
+    type = integer
+  }
+  partition {
+    type    = RANGE
+    columns = [column.logdate]
+  }
+}
+schema "script_table_partition" {
+}
+
+-- 4.hcl --
+schema "$db" {}
+
+table "metrics" {
+  schema = schema.$db
+  column "x" {
+    null = false
+    type = integer
+  }
+  column "y" {
+    null = false
+    type = integer
+  }
+  partition {
+    type = RANGE
+    by {
+        column = column.x
+    }
+    by {
+        expr = "floor(x)"
+    }
+    by {
+        expr = "y * 2"
+    }
+    by {
+        expr = "floor(y)"
+    }
+  }
+}
+
+-- postgres10/4.sql --
+      Table "script_table_partition.metrics"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ x      | integer |           | not null |
+ y      | integer |           | not null |
+Partition key: RANGE (x, floor((x)::double precision), ((y * 2)), floor((y)::double precision))
+
+-- postgres11/4.sql --
+      Table "script_table_partition.metrics"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ x      | integer |           | not null |
+ y      | integer |           | not null |
+Partition key: RANGE (x, floor((x)::double precision), ((y * 2)), floor((y)::double precision))
+Number of partitions: 0
+
+-- 4.sql --
+Partitioned table "script_table_partition.metrics"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ x      | integer |           | not null |
+ y      | integer |           | not null |
+Partition key: RANGE (x, floor((x)::double precision), ((y * 2)), floor((y)::double precision))
+Number of partitions: 0
+
+-- 4.inspect.hcl --
+table "metrics" {
+  schema = schema.script_table_partition
+  column "x" {
+    null = false
+    type = integer
+  }
+  column "y" {
+    null = false
+    type = integer
+  }
+  partition {
+    type = RANGE
+    by {
+      column = column.x
+    }
+    by {
+      expr = "floor((x)::double precision)"
+    }
+    by {
+      expr = "(y * 2)"
+    }
+    by {
+      expr = "floor((y)::double precision)"
+    }
+  }
+}
+schema "script_table_partition" {
+}
 
 -- drop.hcl --
 schema "$db" {}
