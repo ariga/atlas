@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -23,24 +22,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const projectFile = "atlas.hcl"
-
 var (
 	// schemaCmd represents the subcommand 'atlas schema'.
 	schemaCmd = &cobra.Command{
 		Use:   "schema",
 		Short: "Work with atlas schemas.",
 		Long:  "The `atlas schema` command groups subcommands for working with Atlas schemas.",
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return nil
-			}
-			return selectEnv(args[0])
-		},
 	}
-
-	// ActiveEnv represents the current active environment.
-	ActiveEnv *Env
 
 	// ApplyFlags are the flags used in SchemaApply command.
 	ApplyFlags struct {
@@ -66,7 +54,8 @@ migration, Atlas will print the migration plan and prompt the user for approval.
 
 If run with the "--dry-run" flag, atlas will exit after printing out the planned
 migration.`,
-		Run: CmdApplyRun,
+		PersistentPreRunE: selectEnv,
+		Run:               CmdApplyRun,
 		Example: `  atlas schema apply -u "mysql://user:pass@localhost/dbname" -f atlas.hcl
   atlas schema apply -u "mysql://localhost" -f atlas.hcl --schema prod --schema staging
   atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" -f atlas.hcl --dry-run
@@ -99,7 +88,8 @@ databases), omit the relevant part from the url, e.g. "mysql://user:pass@localho
 To select specific schemas from the databases, users may use the "--schema" (or "-s" shorthand)
 flag.
 	`,
-		Run: CmdInspectRun,
+		PersistentPreRunE: selectEnv,
+		Run:               CmdInspectRun,
 		Example: `  atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname"
   atlas schema inspect -u "mariadb://user:pass@localhost:3306/" --schema=schemaA,schemaB -s schemaC
   atlas schema inspect --url "postgres://user:pass@host:port/dbname?sslmode=disable"
@@ -126,6 +116,20 @@ const (
 	answerAbort = "Abort"
 )
 
+// selectEnv is a pre-run hook for a cobra.Command that loads activeEnv with
+// the environment config from the current directory project file.
+func selectEnv(_ *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return nil
+	}
+	env, err := LoadEnv(projectFileName, args[0])
+	if err != nil {
+		return err
+	}
+	activeEnv = env
+	return nil
+}
+
 func init() {
 	// Schema apply flags.
 	schemaCmd.AddCommand(SchemaApply)
@@ -142,7 +146,7 @@ func init() {
 	SchemaApply.Flags().StringToStringVarP(&ApplyFlags.Vars, "var", "", nil, "input variables")
 	cobra.CheckErr(SchemaApply.MarkFlagRequired("url"))
 	cobra.CheckErr(SchemaApply.MarkFlagRequired("file"))
-	dsn2url(SchemaApply, &ApplyFlags.URL)
+	fixURLFlag(SchemaApply, &ApplyFlags.URL)
 
 	// Schema inspect flags.
 	schemaCmd.AddCommand(SchemaInspect)
@@ -151,7 +155,7 @@ func init() {
 	SchemaInspect.Flags().StringVarP(&InspectFlags.Addr, "addr", "", ":5800", "Used with -w, local address to bind the server to")
 	SchemaInspect.Flags().StringSliceVarP(&InspectFlags.Schema, "schema", "s", nil, "Set schema name")
 	cobra.CheckErr(SchemaInspect.MarkFlagRequired("url"))
-	dsn2url(SchemaInspect, &InspectFlags.URL)
+	fixURLFlag(SchemaInspect, &InspectFlags.URL)
 
 	// Schema fmt.
 	schemaCmd.AddCommand(SchemaFmt)
@@ -167,6 +171,9 @@ func CmdInspectRun(cmd *cobra.Command, args []string) {
 	cobra.CheckErr(err)
 	defer client.Close()
 	schemas := InspectFlags.Schema
+	if activeEnv != nil && len(activeEnv.Schemas) > 0 {
+		schemas = activeEnv.Schemas
+	}
 	if client.URL.Schema != "" {
 		schemas = append(schemas, client.URL.Schema)
 	}
@@ -188,7 +195,11 @@ func CmdApplyRun(cmd *cobra.Command, _ []string) {
 	c, err := sqlclient.Open(cmd.Context(), ApplyFlags.URL)
 	cobra.CheckErr(err)
 	defer c.Close()
-	applyRun(cmd.Context(), c, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove, ApplyFlags.Vars)
+	devURL := ApplyFlags.DevURL
+	if activeEnv != nil && activeEnv.DevURL != "" {
+		devURL = activeEnv.DevURL
+	}
+	applyRun(cmd.Context(), c, devURL, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove, ApplyFlags.Vars)
 }
 
 // CmdFmtRun formats all HCL files in a given directory using canonical HCL formatting
@@ -202,7 +213,7 @@ func CmdFmtRun(cmd *cobra.Command, args []string) {
 	}
 }
 
-func applyRun(ctx context.Context, client *sqlclient.Client, file string, dryRun, autoApprove bool, input map[string]string) {
+func applyRun(ctx context.Context, client *sqlclient.Client, devURL string, file string, dryRun, autoApprove bool, input map[string]string) {
 	schemas := ApplyFlags.Schema
 	if client.URL.Schema != "" {
 		schemas = append(schemas, client.URL.Schema)
@@ -228,7 +239,7 @@ func applyRun(ctx context.Context, client *sqlclient.Client, file string, dryRun
 			}
 		}
 	}
-	if _, ok := client.Driver.(schema.Normalizer); ok && ApplyFlags.DevURL != "" {
+	if _, ok := client.Driver.(schema.Normalizer); ok && devURL != "" {
 		dev, err := sqlclient.Open(ctx, ApplyFlags.DevURL)
 		cobra.CheckErr(err)
 		defer dev.Close()
@@ -268,24 +279,19 @@ func promptUser() bool {
 	return result == answerApply
 }
 
-func dsn2url(cmd *cobra.Command, p *string) {
+// fixURLFlag fixes the url flag by pulling its value either from the flag itself,
+// the (deprecated) dsn flag, or from the active environment.
+func fixURLFlag(cmd *cobra.Command, p *string) {
 	cmd.Flags().StringVarP(p, "dsn", "d", "", "")
 	cobra.CheckErr(cmd.Flags().MarkHidden("dsn"))
 	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
 		dsnF, urlF := cmd.Flag("dsn"), cmd.Flag("url")
-		if len(args[0]) > 0 {
-			err := selectEnv(args[0])
-			if err != nil {
-				return err
-			}
-		}
-		if ActiveEnv.URL != "" {
-			urlF.Value.Set(ActiveEnv.URL)
-			urlF.Changed = true
-			return nil
-		}
 		switch {
-		case ActiveEnv.URL != "":
+		case activeEnv != nil && activeEnv.URL != "":
+			urlF.Changed = true
+			if err := urlF.Value.Set(activeEnv.URL); err != nil {
+				panic(err)
+			}
 		case !dsnF.Changed && !urlF.Changed:
 			return errors.New(`required flag "url" was not set`)
 		case dsnF.Changed && urlF.Changed:
@@ -296,29 +302,6 @@ func dsn2url(cmd *cobra.Command, p *string) {
 		}
 		return nil
 	}
-}
-
-// selectEnv looks for an env with the provided name in the project file in the current
-// working directory and sets ActiveEnv to it.
-func selectEnv(name string) error {
-	wd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("could not find current working directory: %w", err)
-	}
-	p := filepath.Join(wd, projectFile)
-	if _, err := os.Stat(projectFile); err != nil {
-		return fmt.Errorf("got env name %q but no file found at %q", name, projectFile)
-	}
-	envs, err := loadProject(p)
-	if err != nil {
-		return fmt.Errorf("loading project file: %w", err)
-	}
-	e, ok := envs[name]
-	if !ok {
-		return fmt.Errorf("env %q not defined in project file", name)
-	}
-	ActiveEnv = e
-	return nil
 }
 
 func handlePath(cmd *cobra.Command, path string) {
