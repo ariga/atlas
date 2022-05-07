@@ -153,6 +153,13 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 			}
 		}
 	})
+	if p := (Partition{}); sqlx.Has(add.T.Attrs, &p) {
+		s, err := formatPartition(p)
+		if err != nil {
+			errs = append(errs, err.Error())
+		}
+		b.P(s)
+	}
 	if len(errs) > 0 {
 		return fmt.Errorf("create table %q: %s", add.T.Name, strings.Join(errs, ", "))
 	}

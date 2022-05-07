@@ -39,7 +39,7 @@ func TestPlanner_WritePlan(t *testing.T) {
 	pl := migrate.NewPlanner(nil, d, migrate.DisableChecksum())
 	require.NotNil(t, pl)
 	require.NoError(t, pl.WritePlan(plan))
-	v := time.Now().Format("20060102150405")
+	v := time.Now().UTC().Format("20060102150405")
 	require.Equal(t, countFiles(t, d), 1)
 	requireFileEqual(t, d, v+"_add_t1_and_t2.sql", "CREATE TABLE t1(c int);\nCREATE TABLE t2(c int);\n")
 
@@ -97,7 +97,7 @@ func TestHashSum(t *testing.T) {
 	pl := migrate.NewPlanner(nil, d)
 	require.NotNil(t, pl)
 	require.NoError(t, pl.WritePlan(plan))
-	v := time.Now().Format("20060102150405")
+	v := time.Now().UTC().Format("20060102150405")
 	require.Equal(t, 2, countFiles(t, d))
 	requireFileEqual(t, d, v+"_plan.sql", "cmd;\n")
 	require.FileExists(t, filepath.Join(p, "atlas.sum"))

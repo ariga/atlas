@@ -11,21 +11,21 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
-	"text/template"
-	"time"
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
+	"ariga.io/atlas/sql/sqltool"
 
 	"github.com/spf13/cobra"
 )
 
 const (
-	migrateFlagDir         = "dir"
-	migrateFlagSchema      = "schema"
-	migrateFlagForce       = "force"
 	migrateDiffFlagDevURL  = "dev-url"
+	migrateFlagDir         = "dir"
+	migrateFlagForce       = "force"
+	migrateFlagFormat      = "format"
+	migrateFlagSchema      = "schema"
 	migrateDiffFlagTo      = "to"
 	migrateDiffFlagVerbose = "verbose"
 )
@@ -37,6 +37,7 @@ var (
 		DevURL  string
 		ToURL   string
 		Schemas []string
+		Format  string
 		Force   bool
 		Verbose bool
 	}
@@ -88,6 +89,15 @@ This command should be used whenever a manual change in the migration directory 
 		Example: `  atlas migrate hash --force`,
 		RunE:    CmdMigrateHashRun,
 	}
+	// MigrateNewCmd represents the migrate new command.
+	MigrateNewCmd = &cobra.Command{
+		Use:     "new",
+		Short:   "Creates a new empty migration file in the migration directory.",
+		Long:    `'atlas migrate new' creates a new migration according to the configured formatter without any statements in it.`,
+		Example: `  atlas migrate new my-new-migration`,
+		Args:    cobra.MaximumNArgs(1),
+		RunE:    CmdMigrateNewRun,
+	}
 	// MigrateValidateCmd represents the migrate validate command.
 	MigrateValidateCmd = &cobra.Command{
 		Use:   "validate",
@@ -104,11 +114,13 @@ func init() {
 	// Add sub-commands.
 	Root.AddCommand(MigrateCmd)
 	MigrateCmd.AddCommand(MigrateDiffCmd)
-	MigrateCmd.AddCommand(MigrateValidateCmd)
 	MigrateCmd.AddCommand(MigrateHashCmd)
+	MigrateCmd.AddCommand(MigrateNewCmd)
+	MigrateCmd.AddCommand(MigrateValidateCmd)
 	// Global flags.
 	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.DirURL, migrateFlagDir, "", "file://migrations", "select migration directory using DSN format")
 	MigrateCmd.PersistentFlags().StringSliceVarP(&MigrateFlags.Schemas, migrateFlagSchema, "", nil, "set schema names")
+	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.Format, migrateFlagFormat, "", formatAtlas, "set migration file format")
 	MigrateCmd.PersistentFlags().BoolVarP(&MigrateFlags.Force, migrateFlagForce, "", false, "force a command to run on a broken migration directory state")
 	MigrateCmd.PersistentFlags().SortFlags = false
 	// Diff flags.
@@ -150,13 +162,12 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	// Only create one file per plan.
-	tf, err := migrate.NewTemplateFormatter(nameTmpl, contentTmpl)
+	f, err := formatter()
 	if err != nil {
 		return err
 	}
 	// Plan the changes and create a new migration file.
-	pl := migrate.NewPlanner(dev.Driver, dir, migrate.WithFormatter(tf))
+	pl := migrate.NewPlanner(dev.Driver, dir, migrate.WithFormatter(f))
 	var name string
 	if len(args) > 0 {
 		name = args[0]
@@ -169,9 +180,25 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	return pl.WritePlan(plan)
 }
 
+// CmdMigrateNewRun is the command executed when running the CLI with 'migrate new' args.
+func CmdMigrateNewRun(_ *cobra.Command, args []string) error {
+	dir, err := dir()
+	if err != nil {
+		return err
+	}
+	f, err := formatter()
+	if err != nil {
+		return err
+	}
+	var name string
+	if len(args) > 0 {
+		name = args[0]
+	}
+	return migrate.NewPlanner(nil, dir, migrate.WithFormatter(f)).WritePlan(&migrate.Plan{Name: name})
+}
+
 // CmdMigrateHashRun is the command executed when running the CLI with 'migrate hash' args.
 func CmdMigrateHashRun(*cobra.Command, []string) error {
-	// Open the migration directory.
 	dir, err := dir()
 	if err != nil {
 		return err
@@ -251,20 +278,27 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 	}
 }
 
-var (
-	funcMap = template.FuncMap{
-		"now": func() string { return time.Now().Format("20060102150405") },
-		"sem": func(s string) string {
-			if !strings.HasSuffix(s, ";") {
-				return s + ";"
-			}
-			return s
-		},
-	}
-	nameTmpl = template.Must(template.New("name").Funcs(funcMap).Parse(
-		"{{ now }}{{ with .Name }}_{{ . }}{{ end }}.sql",
-	))
-	contentTmpl = template.Must(template.New("content").Funcs(funcMap).Parse(
-		"{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ println (sem .Cmd) }}{{ end }}",
-	))
+const (
+	formatAtlas         = "atlas"
+	formatGolangMigrate = "golang-migrate"
+	formatGoose         = "goose"
+	formatFlyway        = "flyway"
+	formatLiquibase     = "liquibase"
 )
+
+func formatter() (migrate.Formatter, error) {
+	switch MigrateFlags.Format {
+	case formatAtlas:
+		return migrate.DefaultFormatter, nil
+	case formatGolangMigrate:
+		return sqltool.GolangMigrateFormatter, nil
+	case formatGoose:
+		return sqltool.GooseFormatter, nil
+	case formatFlyway:
+		return sqltool.FlywayFormatter, nil
+	case formatLiquibase:
+		return sqltool.LiquibaseFormatter, nil
+	default:
+		return nil, fmt.Errorf("unknown format %q", MigrateFlags.Format)
+	}
+}

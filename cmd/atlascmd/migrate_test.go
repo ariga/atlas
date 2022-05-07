@@ -56,7 +56,7 @@ func TestMigrate_Diff(t *testing.T) {
 	)
 	require.Zero(t, s)
 	require.NoError(t, err)
-	require.FileExists(t, filepath.Join(p, fmt.Sprintf("%s_name.sql", time.Now().Format("20060102150405"))))
+	require.FileExists(t, filepath.Join(p, fmt.Sprintf("%s_name.sql", time.Now().UTC().Format("20060102150405"))))
 	require.FileExists(t, filepath.Join(p, "atlas.sum"))
 
 	// A lock will prevent diffing.
@@ -82,6 +82,70 @@ func TestMigrate_Diff(t *testing.T) {
 	require.EqualError(t, err, lockErr)
 }
 
+func TestMigrate_New(t *testing.T) {
+	var (
+		p = t.TempDir()
+		v = time.Now().UTC().Format("20060102150405")
+	)
+
+	s, err := runCmd(Root, "migrate", "new", "--dir", "file://"+p)
+	require.Zero(t, s)
+	require.NoError(t, err)
+	require.FileExists(t, filepath.Join(p, v+".sql"))
+	require.FileExists(t, filepath.Join(p, "atlas.sum"))
+	require.Equal(t, 2, countFiles(t, p))
+
+	s, err = runCmd(Root, "migrate", "new", "my-migration-file", "--dir", "file://"+p)
+	require.Zero(t, s)
+	require.NoError(t, err)
+	require.FileExists(t, filepath.Join(p, v+"_my-migration-file.sql"))
+	require.FileExists(t, filepath.Join(p, "atlas.sum"))
+	require.Equal(t, 3, countFiles(t, p))
+
+	s, err = runCmd(Root, "migrate", "new", "golang-migrate", "--dir", "file://"+p, "--format", formatGolangMigrate)
+	require.Zero(t, s)
+	require.NoError(t, err)
+	require.FileExists(t, filepath.Join(p, v+"_golang-migrate.up.sql"))
+	require.FileExists(t, filepath.Join(p, v+"_golang-migrate.down.sql"))
+	require.Equal(t, 5, countFiles(t, p))
+
+	s, err = runCmd(Root, "migrate", "new", "goose", "--dir", "file://"+p, "--format", formatGoose)
+	require.Zero(t, s)
+	require.NoError(t, err)
+	require.FileExists(t, filepath.Join(p, v+"_goose.sql"))
+	require.Equal(t, 6, countFiles(t, p))
+
+	s, err = runCmd(Root, "migrate", "new", "flyway", "--dir", "file://"+p, "--format", formatFlyway)
+	require.Zero(t, s)
+	require.NoError(t, err)
+	require.FileExists(t, filepath.Join(p, fmt.Sprintf("V%s__%s.sql", v, formatFlyway)))
+	require.FileExists(t, filepath.Join(p, fmt.Sprintf("U%s__%s.sql", v, formatFlyway)))
+	require.Equal(t, 8, countFiles(t, p))
+
+	s, err = runCmd(Root, "migrate", "new", "liquibase", "--dir", "file://"+p, "--format", formatLiquibase)
+	require.Zero(t, s)
+	require.NoError(t, err)
+	require.FileExists(t, filepath.Join(p, v+"_liquibase.sql"))
+	require.Equal(t, 9, countFiles(t, p))
+}
+
+func TestMigrate_NewError(t *testing.T) {
+	if os.Getenv("DO_NEW") == "1" {
+		runCmd(Root, "migrate", "new", "--dir", "file://testdata")
+		return
+	}
+	f := filepath.Join("testdata", "new.sql")
+	require.NoError(t, os.WriteFile(f, []byte("contents"), 0600))
+	defer os.Remove(f)
+	cmd := exec.Command(os.Args[0], "-test.run=TestMigrate_NewError") //nolint:gosec
+	cmd.Env = append(os.Environ(), "DO_NEW=1")
+	err := cmd.Run()
+	if err, ok := err.(*exec.ExitError); ok && !err.Success() {
+		return
+	}
+	t.Fatalf("process ran with err %v, want exit status 1", err)
+}
+
 func TestMigrate_Validate(t *testing.T) {
 	s, err := runCmd(Root, "migrate", "validate", "--dir", "file://testdata")
 	require.Zero(t, s)
@@ -102,7 +166,7 @@ func TestMigrate_ValidateError(t *testing.T) {
 	if err, ok := err.(*exec.ExitError); ok && !err.Success() {
 		return
 	}
-	t.Fatalf("process ran with err %v, want exist status 1", err)
+	t.Fatalf("process ran with err %v, want exit status 1", err)
 }
 
 func TestMigrate_Hash(t *testing.T) {
@@ -143,7 +207,7 @@ func TestMigrate_HashError(t *testing.T) {
 	if err, ok := err.(*exec.ExitError); ok && !err.Success() {
 		return
 	}
-	t.Fatalf("process ran with err %v, want exist status 1", err)
+	t.Fatalf("process ran with err %v, want exit status 1", err)
 }
 
 const hcl = `
@@ -253,4 +317,10 @@ const lockErr = "lockErr"
 
 func (d *sqliteLockerDriver) Lock(context.Context, string, time.Duration) (schema.UnlockFunc, error) {
 	return func() error { return nil }, errors.New(lockErr)
+}
+
+func countFiles(t *testing.T, p string) int {
+	files, err := os.ReadDir(p)
+	require.NoError(t, err)
+	return len(files)
 }

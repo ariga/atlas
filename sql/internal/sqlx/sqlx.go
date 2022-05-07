@@ -386,7 +386,7 @@ func DefaultValue(c *schema.Column) (string, bool) {
 // Used by the different drivers to turn strings valid expressions.
 func MayWrap(s string) string {
 	n := len(s) - 1
-	if len(s) < 2 || s[0] != '(' || s[n] != ')' || !balanced(s) {
+	if len(s) < 2 || s[0] != '(' || s[n] != ')' || !balanced(s[1:n]) {
 		return "(" + s + ")"
 	}
 	return s
@@ -396,17 +396,17 @@ func balanced(expr string) bool {
 	return ExprLastIndex(expr) == len(expr)-1
 }
 
-// ExprLastIndex scans the expression string (wrapped with parens)
-// and returns its last. e.g. "(a+1), c int ...".
+// ExprLastIndex scans the first expression in the given string until
+// its end and returns its last index.
 func ExprLastIndex(expr string) int {
-	var r, l int
+	var l, r int
 	for i := 0; i < len(expr); i++ {
 	Top:
 		switch expr[i] {
 		case '(':
-			r++
-		case ')':
 			l++
+		case ')':
+			r++
 		// String or identifier.
 		case '\'', '"', '`':
 			for j := i + 1; j < len(expr); j++ {
@@ -421,9 +421,11 @@ func ExprLastIndex(expr string) int {
 			// Unexpected EOS.
 			return -1
 		}
-		// Balanced parens.
-		if r == l {
+		// Balanced parens and we reached EOS or a terminator.
+		if l == r && (i == len(expr)-1 || expr[i+1] == ',') {
 			return i
+		} else if r > l {
+			return -1
 		}
 	}
 	return -1
