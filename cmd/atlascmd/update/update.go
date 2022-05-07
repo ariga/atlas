@@ -37,12 +37,12 @@ const (
 	AtlasNoUpdateNotifier = "ATLAS_NO_UPDATE_NOTIFIER"
 )
 
-// CheckForUpdate implements a notification to the user when a later release is available
+// Check implements a notification to the user when a later release is available
 // 1. Check release file ~/.atlas/release.json for latest known release and poll time
 // 2. If last poll was more than 24h, poll GitHub public API https://docs.github.com/en/rest/reference/releases#get-the-latest-release
 // 3. Store the latest release metadata
 // 4. If current build Version, that is not development, is lower than the latest release, notify user
-func CheckForUpdate(version string, logF func(i ...interface{})) {
+func Check(version string, logF func(i ...interface{})) {
 	if !enabled(version) {
 		return
 	}
