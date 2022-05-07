@@ -26,10 +26,10 @@ env "local" {
 	require.NoError(t, err)
 	path := filepath.Join(d, projectFileName)
 	t.Run("ok", func(t *testing.T) {
-		env := &Env{}
+		env := &Environment{}
 		env, err = LoadEnv(path, "local")
 		require.NoError(t, err)
-		require.EqualValues(t, &Env{
+		require.EqualValues(t, &Environment{
 			Name:    "local",
 			URL:     "mysql://root:pass@localhost:3306/",
 			DevURL:  "docker://mysql/8",

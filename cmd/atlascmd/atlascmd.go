@@ -38,7 +38,7 @@ var (
 		},
 	}
 
-	// Env represents the subcommand 'atlas env'.
+	// Environment represents the subcommand 'atlas env'.
 	Env = &cobra.Command{
 		Use:   "env",
 		Short: "Print atlas environment variables.",
