@@ -54,6 +54,10 @@ module.exports = {
             id: 'deployment/deployment',
         },
         {
+            type: 'doc',
+            id: 'terraform-provider',
+        },
+        {
             type: 'category',
             label: 'Go API',
             items: [
