@@ -26,7 +26,7 @@ terraform {
 Currently, Atlas provider uses an [HCL file](http://localhost:3000/ddl/intro#hcl) describing the state of the database and performs migrations according to the state difference between the HCL file and the target database.
 ### Generate schema
 You can either:
-1. [inspect](cli/getting-started/inspection#inspecting-our-database) an existing database
+1. [Inspect](cli/getting-started/inspection#inspecting-our-database) an existing database
 2. Start with a basic schema
 ```hcl
 schema "example" {
