@@ -27,7 +27,7 @@ Currently, Atlas provider uses an [HCL file](http://localhost:3000/ddl/intro#hcl
 ### Generate schema
 You can either:
 1. [inspect](cli/getting-started/inspection#inspecting-our-database) an existing database
-1. start with a basic schema
+2. Start with a basic schema
 ```hcl
 schema "example" {
   charset = "utf8mb4"
