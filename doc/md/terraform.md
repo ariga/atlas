@@ -35,7 +35,7 @@ schema "example" {
 }
 ```
 ### Configure Terraform
-Use the following configuration to apply the HCL file `schema.hcl` onto a target MySQL database (but you can specify any of the [supported database](https://github.com/ariga/atlas#supported-databases)):
+Use the following configuration to apply the HCL file `schema.hcl` onto a target MySQL database (but you can specify any of the [supported databases](https://github.com/ariga/atlas#supported-databases)):
 ```hcl title="main.tf"
 provider "atlas" {}
 
