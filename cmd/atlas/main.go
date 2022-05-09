@@ -7,6 +7,7 @@ import (
 
 	"ariga.io/atlas/cmd/atlascmd"
 	_ "ariga.io/atlas/cmd/atlascmd/docker"
+	_ "ariga.io/atlas/sql/cockroach"
 	_ "ariga.io/atlas/sql/mysql"
 	_ "ariga.io/atlas/sql/postgres"
 	_ "ariga.io/atlas/sql/sqlite"

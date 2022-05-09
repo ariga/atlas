@@ -2,20 +2,18 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package postgres
+package cockroach
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"hash/fnv"
-	"net/url"
 	"time"
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
-	"ariga.io/atlas/sql/sqlclient"
 	"golang.org/x/mod/semver"
 )
 
@@ -39,39 +37,27 @@ type (
 	}
 )
 
-func init() {
-	sqlclient.Register(
-		"postgres",
-		sqlclient.DriverOpener(Open),
-		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
-		sqlclient.RegisterFlavours("cockroach"),
-		sqlclient.RegisterURLParser(func(u *url.URL) *sqlclient.URL {
-			return &sqlclient.URL{URL: u, DSN: u.String(), Schema: u.Query().Get("search_path")}
-		}),
-	)
-}
-
 // Open opens a new PostgreSQL driver.
 func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	c := conn{ExecQuerier: db}
 	rows, err := db.QueryContext(context.Background(), paramsQuery)
 	if err != nil {
-		return nil, fmt.Errorf("postgres: scanning system variables: %w", err)
+		return nil, fmt.Errorf("cockroach: scanning system variables: %w", err)
 	}
 	params, err := sqlx.ScanStrings(rows)
 	if err != nil {
-		return nil, fmt.Errorf("postgres: failed scanning rows: %w", err)
+		return nil, fmt.Errorf("cockroach: failed scanning rows: %w", err)
 	}
 	if len(params) != 3 {
-		return nil, fmt.Errorf("postgres: unexpected number of rows: %d", len(params))
+		return nil, fmt.Errorf("cockroach: unexpected number of rows: %d", len(params))
 	}
 	c.collate, c.ctype, c.version = params[0], params[1], params[2]
 	if len(c.version) != 6 {
-		return nil, fmt.Errorf("postgres: malformed version: %s", c.version)
+		return nil, fmt.Errorf("cockroach: malformed version: %s", c.version)
 	}
 	c.version = fmt.Sprintf("%s.%s.%s", c.version[:2], c.version[2:4], c.version[4:])
 	if semver.Compare("v"+c.version, "v10.0.0") != -1 {
-		return nil, fmt.Errorf("postgres: unsupported postgres version: %s", c.version)
+		return nil, fmt.Errorf("cockroach: unsupported postgres version: %s", c.version)
 	}
 	return &Driver{
 		conn:        c,
