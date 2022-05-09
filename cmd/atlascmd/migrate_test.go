@@ -12,7 +12,6 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -127,46 +126,47 @@ func TestMigrate_New(t *testing.T) {
 	require.NoError(t, err)
 	require.FileExists(t, filepath.Join(p, v+"_liquibase.sql"))
 	require.Equal(t, 9, countFiles(t, p))
-}
 
-func TestMigrate_NewError(t *testing.T) {
-	if os.Getenv("DO_NEW") == "1" {
-		runCmd(Root, "migrate", "new", "--dir", "file://testdata")
-		return
-	}
 	f := filepath.Join("testdata", "new.sql")
 	require.NoError(t, os.WriteFile(f, []byte("contents"), 0600))
-	defer os.Remove(f)
-	cmd := exec.Command(os.Args[0], "-test.run=TestMigrate_NewError") //nolint:gosec
-	cmd.Env = append(os.Environ(), "DO_NEW=1")
-	err := cmd.Run()
-	if err, ok := err.(*exec.ExitError); ok && !err.Success() {
-		return
-	}
-	t.Fatalf("process ran with err %v, want exit status 1", err)
+	t.Cleanup(func() { os.Remove(f) })
+	s, err = runCmd(Root, "migrate", "new", "--dir", "file://testdata")
+	require.NotZero(t, s)
+	require.Error(t, err)
 }
 
 func TestMigrate_Validate(t *testing.T) {
+	// Without re-playing.
+	MigrateFlags.DevURL = "" // global flags are set from other tests ...
 	s, err := runCmd(Root, "migrate", "validate", "--dir", "file://testdata")
 	require.Zero(t, s)
 	require.NoError(t, err)
-}
 
-func TestMigrate_ValidateError(t *testing.T) {
-	if os.Getenv("DO_VALIDATE") == "1" {
-		runCmd(Root, "migrate", "validate", "--dir", "file://testdata")
-		return
-	}
 	f := filepath.Join("testdata", "new.sql")
 	require.NoError(t, os.WriteFile(f, []byte("contents"), 0600))
-	defer os.Remove(f)
-	cmd := exec.Command(os.Args[0], "-test.run=TestMigrate_ValidateError") //nolint:gosec
-	cmd.Env = append(os.Environ(), "DO_VALIDATE=1")
-	err := cmd.Run()
-	if err, ok := err.(*exec.ExitError); ok && !err.Success() {
-		return
-	}
-	t.Fatalf("process ran with err %v, want exit status 1", err)
+	t.Cleanup(func() { os.Remove(f) })
+	s, err = runCmd(Root, "migrate", "validate", "--dir", "file://testdata")
+	require.NotZero(t, s)
+	require.Error(t, err)
+	require.NoError(t, os.Remove(f))
+
+	// Replay migration files if a dev-url is given.
+	p := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(p, "1_initial.sql"), []byte("create table t1 (c1 int)"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(p, "2_second.sql"), []byte("create table t2 (c2 int)"), 0644))
+	_, err = runCmd(Root, "migrate", "hash", "--force", "--dir", "file://"+p)
+	require.NoError(t, err)
+	s, err = runCmd(
+		Root, "migrate", "validate",
+		"--dir", "file://"+p,
+		"--dev-url", openSQLite(t, ""),
+	)
+	require.Zero(t, s)
+	require.NoError(t, err)
+
+	// Should fail since the files are not compatible with SQLite.
+	_, err = runCmd(Root, "migrate", "validate", "--dir", "file://testdata", "--dev-url", openSQLite(t, ""))
+	require.Error(t, err)
 }
 
 func TestMigrate_Hash(t *testing.T) {
@@ -191,23 +191,15 @@ func TestMigrate_Hash(t *testing.T) {
 	b, err := sum.MarshalText()
 	require.NoError(t, err)
 	require.Equal(t, d, b)
-}
 
-func TestMigrate_HashError(t *testing.T) {
-	if os.Getenv("DO_HASH") == "1" {
-		runCmd(Root, "migrate", "hash", "--dir", "file://"+os.Getenv("MIGRATION_DIR"))
-		return
-	}
-	p := t.TempDir()
-	err := copyFile(filepath.Join("testdata", "20220318104614_initial.sql"), filepath.Join(p, "20220318104614_initial.sql"))
-	require.NoError(t, err)
-	cmd := exec.Command(os.Args[0], "-test.run=TestMigrate_HashError") //nolint:gosec
-	cmd.Env = append(os.Environ(), "DO_HASH=1", "MIGRATION_DIR="+p)
-	err = cmd.Run()
-	if err, ok := err.(*exec.ExitError); ok && !err.Success() {
-		return
-	}
-	t.Fatalf("process ran with err %v, want exit status 1", err)
+	p = t.TempDir()
+	require.NoError(t, copyFile(
+		filepath.Join("testdata", "20220318104614_initial.sql"),
+		filepath.Join(p, "20220318104614_initial.sql"),
+	))
+	s, err = runCmd(Root, "migrate", "hash", "--dir", "file://"+os.Getenv("MIGRATION_DIR"))
+	require.NotZero(t, s)
+	require.Error(t, err)
 }
 
 const hcl = `

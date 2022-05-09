@@ -9,19 +9,19 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"strings"
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqltool"
+	"github.com/spf13/pflag"
 
 	"github.com/spf13/cobra"
 )
 
 const (
-	migrateDiffFlagDevURL  = "dev-url"
+	migrateFlagDevURL      = "dev-url"
 	migrateFlagDir         = "dir"
 	migrateFlagForce       = "force"
 	migrateFlagFormat      = "format"
@@ -54,15 +54,17 @@ var (
 					return err
 				}
 				if err := migrate.Validate(dir); err != nil {
-					fmt.Fprintf(
-						cmd.ErrOrStderr(),
-						"Error: %s\n\nYou have a checksum error in your migration directory.\n"+
-							"This happens if you manually create or edit a migration file.\n"+
-							"Please check your migration files and run\n\n"+
-							"'atlas migrate hash --force'\n\nto re-hash the contents and resolve the error.\n\n",
-						err,
-					)
-					os.Exit(1)
+					fmt.Fprintf(cmd.OutOrStderr(), `You have a checksum error in your migration directory.
+This happens if you manually create or edit a migration file.
+Please check your migration files and run
+
+'atlas migrate hash --force'
+
+to re-hash the contents and resolve the error
+
+`)
+					cmd.SilenceUsage = true
+					return err
 				}
 			}
 			return nil
@@ -106,7 +108,7 @@ This command should be used whenever a manual change in the migration directory 
 the atlas.sum file. If there is a mismatch it will be reported.`,
 		Example: `  atlas migrate validate
   atlas migrate validate --dir /path/to/migration/directory`,
-		Run: func(*cobra.Command, []string) {},
+		RunE: CmdMigrateValidateRun,
 	}
 )
 
@@ -117,19 +119,25 @@ func init() {
 	MigrateCmd.AddCommand(MigrateHashCmd)
 	MigrateCmd.AddCommand(MigrateNewCmd)
 	MigrateCmd.AddCommand(MigrateValidateCmd)
+	// Reusable flags.
+	devURL := func(set *pflag.FlagSet) {
+		set.StringVarP(&MigrateFlags.DevURL, migrateFlagDevURL, "", "", "[driver://username:password@address/dbname?param=value] select a data source using the URL format")
+	}
 	// Global flags.
-	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.DirURL, migrateFlagDir, "", "file://migrations", "select migration directory using DSN format")
+	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.DirURL, migrateFlagDir, "", "file://migrations", "select migration directory using URL format")
 	MigrateCmd.PersistentFlags().StringSliceVarP(&MigrateFlags.Schemas, migrateFlagSchema, "", nil, "set schema names")
 	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.Format, migrateFlagFormat, "", formatAtlas, "set migration file format")
 	MigrateCmd.PersistentFlags().BoolVarP(&MigrateFlags.Force, migrateFlagForce, "", false, "force a command to run on a broken migration directory state")
 	MigrateCmd.PersistentFlags().SortFlags = false
 	// Diff flags.
-	MigrateDiffCmd.Flags().StringVarP(&MigrateFlags.DevURL, migrateDiffFlagDevURL, "", "", "[driver://username:password@address/dbname?param=value] select a data source using the DSN format")
-	MigrateDiffCmd.Flags().StringVarP(&MigrateFlags.ToURL, migrateDiffFlagTo, "", "", "[driver://username:password@address/dbname?param=value] select a data source using the DSN format")
+	devURL(MigrateDiffCmd.Flags())
+	MigrateDiffCmd.Flags().StringVarP(&MigrateFlags.ToURL, migrateDiffFlagTo, "", "", "[driver://username:password@address/dbname?param=value] select a data source using the URL format")
 	MigrateDiffCmd.Flags().BoolVarP(&MigrateFlags.Verbose, migrateDiffFlagVerbose, "", false, "enable verbose logging")
 	MigrateDiffCmd.Flags().SortFlags = false
-	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateDiffFlagDevURL))
+	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateFlagDevURL))
 	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateDiffFlagTo))
+	// Validate flags.
+	devURL(MigrateValidateCmd.Flags())
 }
 
 // CmdMigrateDiffRun is the command executed when running the CLI with 'migrate diff' args.
@@ -180,6 +188,19 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	return pl.WritePlan(plan)
 }
 
+// CmdMigrateHashRun is the command executed when running the CLI with 'migrate hash' args.
+func CmdMigrateHashRun(*cobra.Command, []string) error {
+	dir, err := dir()
+	if err != nil {
+		return err
+	}
+	sum, err := migrate.HashSum(dir)
+	if err != nil {
+		return err
+	}
+	return migrate.WriteSumFile(dir, sum)
+}
+
 // CmdMigrateNewRun is the command executed when running the CLI with 'migrate new' args.
 func CmdMigrateNewRun(_ *cobra.Command, args []string) error {
 	dir, err := dir()
@@ -197,17 +218,28 @@ func CmdMigrateNewRun(_ *cobra.Command, args []string) error {
 	return migrate.NewPlanner(nil, dir, migrate.WithFormatter(f)).WritePlan(&migrate.Plan{Name: name})
 }
 
-// CmdMigrateHashRun is the command executed when running the CLI with 'migrate hash' args.
-func CmdMigrateHashRun(*cobra.Command, []string) error {
+// CmdMigrateValidateRun is the command executed when running the CLI with 'migrate validate' args.
+func CmdMigrateValidateRun(cmd *cobra.Command, _ []string) error {
+	// Validating the integrity is done by the PersistentPreRun already.
+	if MigrateFlags.DevURL == "" {
+		// If there is no --dev-url given do not attempt to replay the migration directory.
+		return nil
+	}
+	// Open a client for the dev-db.
+	dev, err := sqlclient.Open(cmd.Context(), MigrateFlags.DevURL)
+	if err != nil {
+		return err
+	}
+	defer dev.Close()
+	// We are using a migrate.GlobStateReader to replay the migration directory.
 	dir, err := dir()
 	if err != nil {
 		return err
 	}
-	sum, err := migrate.HashSum(dir)
-	if err != nil {
-		return err
+	if _, err := migrate.GlobStateReader(dir, dev.Driver, "*.sql").ReadState(cmd.Context()); err != nil {
+		return fmt.Errorf("replaying the migration directory: %w", err)
 	}
-	return migrate.WriteSumFile(dir, sum)
+	return nil
 }
 
 // dir returns a migrate.Dir to use as migration directory. For now only local directories are supported.

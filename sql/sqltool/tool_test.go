@@ -25,7 +25,7 @@ var plan = &migrate.Plan{
 }
 
 func TestFormatters(t *testing.T) {
-	v := time.Now().Format("20060102150405")
+	v := time.Now().UTC().Format("20060102150405")
 	for _, tt := range []struct {
 		name     string
 		fmt      migrate.Formatter
