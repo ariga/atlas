@@ -321,6 +321,7 @@ func TestExecutor(t *testing.T) {
 	var (
 		drv  = &lockMockDriver{&mockDriver{}}
 		rrw  = &mockRevisionReadWriter{}
+		log  = &mockLogger{}
 		rev1 = &migrate.Revision{
 			Version:        "1.a",
 			Description:    "sub.up",
@@ -336,7 +337,7 @@ func TestExecutor(t *testing.T) {
 	)
 	dir, err = migrate.NewLocalDir(filepath.Join("testdata", "sub"))
 	require.NoError(t, err)
-	ex, err = migrate.NewExecutor(drv, dir, rrw)
+	ex, err = migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(log))
 	require.NoError(t, err)
 
 	// Applies all of them.
@@ -345,6 +346,14 @@ func TestExecutor(t *testing.T) {
 		"CREATE TABLE t_sub(c int);", "ALTER TABLE t_sub ADD c1 int;", "ALTER TABLE t_sub ADD c2 int;",
 	})
 	requireEqualRevisions(t, migrate.Revisions{rev1, rev2}, migrate.Revisions(*rrw))
+	require.Equal(t, []migrate.LogEntry{
+		{Kind: migrate.KindExecuting, Pending: []string{"1.a_sub.up.sql", "2.10.x-20_description.sql"}},
+		{Kind: migrate.KindFile, Version: "1.a", Desc: "sub.up"},
+		{Kind: migrate.KindStmt, SQL: "CREATE TABLE t_sub(c int);"},
+		{Kind: migrate.KindStmt, SQL: "ALTER TABLE t_sub ADD c1 int;"},
+		{Kind: migrate.KindFile, Version: "2.10.x-20", Desc: "description"},
+		{Kind: migrate.KindStmt, SQL: "ALTER TABLE t_sub ADD c2 int;"},
+	}, []migrate.LogEntry(*log))
 
 	// No pending files.
 	require.ErrorIs(t, ex.Execute(context.Background(), 0), migrate.ErrNoPendingFiles)
@@ -450,6 +459,10 @@ func (r *mockRevisionReadWriter) ReadRevisions(_ context.Context) (migrate.Revis
 func (r *mockRevisionReadWriter) clean() {
 	*r = mockRevisionReadWriter(migrate.Revisions{})
 }
+
+type mockLogger []migrate.LogEntry
+
+func (m *mockLogger) Log(e migrate.LogEntry) { *m = append(*m, e) }
 
 func requireEqualRevisions(t *testing.T, expected, actual migrate.Revisions) {
 	require.Equal(t, len(expected), len(actual))
