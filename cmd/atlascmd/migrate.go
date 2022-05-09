@@ -54,9 +54,7 @@ var (
 					return err
 				}
 				if err := migrate.Validate(dir); err != nil {
-					return fmt.Errorf(`Error: %s
-
-You have a checksum error in your migration directory.
+					fmt.Fprintf(cmd.OutOrStderr(), `You have a checksum error in your migration directory.
 This happens if you manually create or edit a migration file.
 Please check your migration files and run
 
@@ -64,7 +62,9 @@ Please check your migration files and run
 
 to re-hash the contents and resolve the error
 
-`, err)
+`)
+					cmd.SilenceUsage = true
+					return err
 				}
 			}
 			return nil
@@ -121,17 +121,17 @@ func init() {
 	MigrateCmd.AddCommand(MigrateValidateCmd)
 	// Reusable flags.
 	devURL := func(set *pflag.FlagSet) {
-		set.StringVarP(&MigrateFlags.DevURL, migrateFlagDevURL, "", "", "[driver://username:password@address/dbname?param=value] select a data source using the DSN format")
+		set.StringVarP(&MigrateFlags.DevURL, migrateFlagDevURL, "", "", "[driver://username:password@address/dbname?param=value] select a data source using the URL format")
 	}
 	// Global flags.
-	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.DirURL, migrateFlagDir, "", "file://migrations", "select migration directory using DSN format")
+	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.DirURL, migrateFlagDir, "", "file://migrations", "select migration directory using URL format")
 	MigrateCmd.PersistentFlags().StringSliceVarP(&MigrateFlags.Schemas, migrateFlagSchema, "", nil, "set schema names")
 	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.Format, migrateFlagFormat, "", formatAtlas, "set migration file format")
 	MigrateCmd.PersistentFlags().BoolVarP(&MigrateFlags.Force, migrateFlagForce, "", false, "force a command to run on a broken migration directory state")
 	MigrateCmd.PersistentFlags().SortFlags = false
 	// Diff flags.
 	devURL(MigrateDiffCmd.Flags())
-	MigrateDiffCmd.Flags().StringVarP(&MigrateFlags.ToURL, migrateDiffFlagTo, "", "", "[driver://username:password@address/dbname?param=value] select a data source using the DSN format")
+	MigrateDiffCmd.Flags().StringVarP(&MigrateFlags.ToURL, migrateDiffFlagTo, "", "", "[driver://username:password@address/dbname?param=value] select a data source using the URL format")
 	MigrateDiffCmd.Flags().BoolVarP(&MigrateFlags.Verbose, migrateDiffFlagVerbose, "", false, "enable verbose logging")
 	MigrateDiffCmd.Flags().SortFlags = false
 	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateFlagDevURL))
@@ -231,12 +231,11 @@ func CmdMigrateValidateRun(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	defer dev.Close()
-	// The Glob
+	// We are using a migrate.GlobStateReader to replay the migration directory.
 	dir, err := dir()
 	if err != nil {
 		return err
 	}
-	// We are using a migrate.GlobStateReader to replay the migration directory.
 	if _, err := migrate.GlobStateReader(dir, dev.Driver, "*.sql").ReadState(cmd.Context()); err != nil {
 		return fmt.Errorf("replaying the migration directory: %w", err)
 	}
