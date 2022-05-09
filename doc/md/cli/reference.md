@@ -140,7 +140,7 @@ Validates the migration directories checksum.
 
 #### Usage
 ```
-atlas migrate validate
+atlas migrate validate [flags]
 ```
 
 #### Details
@@ -153,6 +153,12 @@ the atlas.sum file. If there is a mismatch it will be reported.
   atlas migrate validate
   atlas migrate validate --dir /path/to/migration/directory
 ```
+#### Flags
+```
+      --dev-url string   [driver://username:password@address/dbname?param=value] select a data source using the DSN format
+
+```
+
 
 ## atlas schema
 
