@@ -60,7 +60,7 @@ atlas migrate
 
 #### Flags
 ```
-      --dir string       select migration directory using DSN format (default "file://migrations")
+      --dir string       select migration directory using URL format (default "file://migrations")
       --force            force a command to run on a broken migration directory state
       --format string    set migration file format (default "atlas")
       --schema strings   set schema names
@@ -90,8 +90,8 @@ the migration directory state to the desired schema. The desired state can be an
 ```
 #### Flags
 ```
-      --dev-url string   [driver://username:password@address/dbname?param=value] select a data source using the DSN format
-      --to string        [driver://username:password@address/dbname?param=value] select a data source using the DSN format
+      --dev-url string   [driver://username:password@address/dbname?param=value] select a data source using the URL format
+      --to string        [driver://username:password@address/dbname?param=value] select a data source using the URL format
       --verbose          enable verbose logging
 
 ```
@@ -155,7 +155,7 @@ the atlas.sum file. If there is a mismatch it will be reported.
 ```
 #### Flags
 ```
-      --dev-url string   [driver://username:password@address/dbname?param=value] select a data source using the DSN format
+      --dev-url string   [driver://username:password@address/dbname?param=value] select a data source using the URL format
 
 ```
 
