@@ -103,11 +103,13 @@ This command should be used whenever a manual change in the migration directory 
 	// MigrateValidateCmd represents the migrate validate command.
 	MigrateValidateCmd = &cobra.Command{
 		Use:   "validate",
-		Short: "Validates the migration directories checksum.",
+		Short: "Validates the migration directories checksum and SQL statements.",
 		Long: `'atlas migrate validate' computes the integrity hash sum of the migration directory and compares it to 
-the atlas.sum file. If there is a mismatch it will be reported.`,
+the atlas.sum file. If there is a mismatch it will be reported. If the --dev-url flag is given, the migration files are 
+executed on the connected database in order to validate SQL semantics.`,
 		Example: `  atlas migrate validate
-  atlas migrate validate --dir /path/to/migration/directory`,
+  atlas migrate validate --dir /path/to/migration/directory
+  atlas migrate validate --dir /path/to/migration/directory --dev-url mysql://user:pass@localhost:3306/dev`,
 		RunE: CmdMigrateValidateRun,
 	}
 )
