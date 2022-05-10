@@ -101,6 +101,12 @@ module.exports = {
         ],
       },
     ],
+    [
+      require.resolve('docusaurus-gtm-plugin'),
+      {
+        id: 'GTM-T9GX8BR', // GTM Container ID
+      }
+    ],
   ],
   presets: [
     [
