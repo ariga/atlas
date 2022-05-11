@@ -729,9 +729,22 @@ func (s *state) index(b *sqlx.Builder, idx *schema.Index) {
 	if p := (IndexPredicate{}); sqlx.Has(idx.Attrs, &p) {
 		b.P("WHERE").P(p.P)
 	}
+	if p, ok := indexStorageParams(idx.Attrs); ok {
+		b.P("WITH")
+		b.Wrap(func(b *sqlx.Builder) {
+			var parts []string
+			if p.AutoSummarize {
+				parts = append(parts, "autosummarize = true")
+			}
+			if p.PagesPerRange != 0 && p.PagesPerRange != defaultPagePerRange {
+				parts = append(parts, fmt.Sprintf("pages_per_range = %d", p.PagesPerRange))
+			}
+			b.WriteString(strings.Join(parts, ", "))
+		})
+	}
 	for _, attr := range idx.Attrs {
 		switch attr.(type) {
-		case *schema.Comment, *ConType, *IndexType, *IndexPredicate:
+		case *schema.Comment, *ConType, *IndexType, *IndexPredicate, *IndexStorageParams:
 		default:
 			panic(fmt.Sprintf("unexpected index attribute: %T", attr))
 		}
