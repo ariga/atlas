@@ -319,7 +319,8 @@ func (t *liteTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
 
 func (t *liteTest) cmdCLI(ts *testscript.TestScript, _ bool, args []string) {
 	for i, arg := range args {
-		args[i] = strings.ReplaceAll(arg, "URL", t.dsn())
+		u := fmt.Sprintf("sqlite://file:%s/atlas.sqlite?cache=shared&_fk=1", ts.Getenv("WORK"))
+		args[i] = strings.ReplaceAll(arg, "URL", u)
 	}
 	switch l := len(args); {
 	// If command was run with a unix redirect-like suffix.
