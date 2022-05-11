@@ -393,7 +393,6 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 			} else {
 				t.Indexes = append(t.Indexes, idx)
 			}
-
 		}
 		part := &schema.IndexPart{SeqNo: len(idx.Parts) + 1, Desc: desc.Bool}
 		if nullsfirst.Bool || nullslast.Bool {
