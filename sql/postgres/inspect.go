@@ -349,12 +349,12 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 	names := make(map[string]*schema.Index)
 	for rows.Next() {
 		var (
-			uniq, primary                        bool
-			table, name, typ                     string
-			desc, nullsfirst, nullslast          sql.NullBool
-			column, contype, pred, expr, comment sql.NullString
+			uniq, primary                                 bool
+			table, name, typ                              string
+			desc, nullsfirst, nullslast                   sql.NullBool
+			column, contype, pred, expr, comment, options sql.NullString
 		)
-		if err := rows.Scan(&table, &name, &typ, &column, &primary, &uniq, &contype, &pred, &expr, &desc, &nullsfirst, &nullslast, &comment); err != nil {
+		if err := rows.Scan(&table, &name, &typ, &column, &primary, &uniq, &contype, &pred, &expr, &desc, &nullsfirst, &nullslast, &comment, &options); err != nil {
 			return fmt.Errorf("postgres: scanning indexes for schema %q: %w", s.Name, err)
 		}
 		t, ok := s.Table(table)
@@ -380,12 +380,20 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 			if sqlx.ValidString(pred) {
 				idx.Attrs = append(idx.Attrs, &IndexPredicate{P: pred.String})
 			}
+			if sqlx.ValidString(options) {
+				p, err := newIndexStorage(options.String)
+				if err != nil {
+					return err
+				}
+				idx.Attrs = append(idx.Attrs, p)
+			}
 			names[name] = idx
 			if primary {
 				t.PrimaryKey = idx
 			} else {
 				t.Indexes = append(t.Indexes, idx)
 			}
+
 		}
 		part := &schema.IndexPart{SeqNo: len(idx.Parts) + 1, Desc: desc.Bool}
 		if nullsfirst.Bool || nullslast.Bool {
@@ -736,6 +744,17 @@ type (
 		NullsLast bool
 	}
 
+	// IndexStorageParams describes index storage parameters add with the WITH clause.
+	// https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-STORAGE-PARAMETERS
+	IndexStorageParams struct {
+		schema.Attr
+		// AutoSummarize defines the authsummarize storage parameter.
+		AutoSummarize bool
+		// PagesPerRange defines pages_per_range storage
+		// parameter for BRIN indexes. Defaults to 128.
+		PagesPerRange int64
+	}
+
 	// NoInherit attribute defines the NO INHERIT flag for CHECK constraint.
 	// https://www.postgresql.org/docs/current/catalog-pg-constraint.html
 	NoInherit struct {
@@ -772,6 +791,32 @@ type (
 		Attrs []schema.Attr
 	}
 )
+
+// newIndexStorage parses and returns the index storage parameters.
+func newIndexStorage(opts string) (*IndexStorageParams, error) {
+	params := &IndexStorageParams{}
+	for _, p := range strings.Split(strings.Trim(opts, "{}"), ",") {
+		kv := strings.Split(p, "=")
+		if len(kv) != 2 {
+			return nil, fmt.Errorf("invalid index storage parameter: %s", p)
+		}
+		switch kv[0] {
+		case "autosummarize":
+			b, err := strconv.ParseBool(kv[1])
+			if err != nil {
+				return nil, fmt.Errorf("failed parsing autosummarize %q: %w", kv[1], err)
+			}
+			params.AutoSummarize = b
+		case "pages_per_range":
+			i, err := strconv.ParseInt(kv[1], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("failed parsing pages_per_range %q: %w", kv[1], err)
+			}
+			params.PagesPerRange = i
+		}
+	}
+	return params, nil
+}
 
 const (
 	// Query to list runtime parameters.
@@ -869,7 +914,8 @@ SELECT
 	pg_index_column_has_property(idx.indexrelid, a.attnum, 'desc') AS desc,
 	pg_index_column_has_property(idx.indexrelid, a.attnum, 'nulls_first') AS nulls_first,
 	pg_index_column_has_property(idx.indexrelid, a.attnum, 'nulls_last') AS nulls_last,
-	obj_description(to_regclass($1 || i.relname)::oid) AS comment
+	obj_description(to_regclass($1 || i.relname)::oid) AS comment,
+	i.reloptions AS options
 FROM
 	(
 		select
