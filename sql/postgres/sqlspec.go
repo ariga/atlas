@@ -105,7 +105,7 @@ func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) 
 var (
 	hclState = schemahcl.New(
 		schemahcl.WithTypes(TypeRegistry.Specs()),
-		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeGIN, IndexTypeGiST),
+		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeGIN, IndexTypeGiST, IndexTypeBRIN),
 		schemahcl.WithScopedEnums("table.partition.type", PartitionTypeRange, PartitionTypeList, PartitionTypeHash),
 		schemahcl.WithScopedEnums("table.column.identity.generated", GeneratedTypeAlways, GeneratedTypeByDefault),
 		schemahcl.WithScopedEnums("table.column.as.type", "STORED"),
