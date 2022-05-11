@@ -123,6 +123,8 @@ var (
 	keyDrv *sqlite.Driver
 )
 
+const cliPathKey = "cli"
+
 func (t *liteTest) setupScript(env *testscript.Env) error {
 	t.file = filepath.Join(env.WorkDir, "atlas.sqlite")
 	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&_fk=1", t.file))
@@ -141,7 +143,7 @@ func (t *liteTest) setupScript(env *testscript.Env) error {
 	if err != nil {
 		return err
 	}
-	env.Setenv("cli", cliPath)
+	env.Setenv(cliPathKey, cliPath)
 	return nil
 }
 
@@ -318,23 +320,23 @@ func (t *liteTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
 }
 
 func (t *liteTest) cmdCLI(ts *testscript.TestScript, _ bool, args []string) {
+	wd := ts.Getenv("WORK")
 	for i, arg := range args {
-		u := fmt.Sprintf("sqlite://file:%s/atlas.sqlite?cache=shared&_fk=1", ts.Getenv("WORK"))
+		u := fmt.Sprintf("sqlite://file:%s/atlas.sqlite?cache=shared&_fk=1", wd)
 		args[i] = strings.ReplaceAll(arg, "URL", u)
 	}
 	switch l := len(args); {
 	// If command was run with a unix redirect-like suffix.
 	case l > 1 && args[l-2] == ">":
-		wd := ts.Getenv("WORK")
 		path := filepath.Join(wd, args[l-1])
 		out, err := os.Create(path)
 		ts.Check(err)
 		defer out.Close()
-		cmd := exec.Command(ts.Getenv("cli"), args[0:l-2]...)
+		cmd := exec.Command(ts.Getenv(cliPathKey), args[0:l-2]...)
 		cmd.Stdout = out
 		ts.Check(cmd.Run())
 	default:
-		ts.Check(ts.Exec(ts.Getenv("cli"), args...))
+		ts.Check(ts.Exec(ts.Getenv(cliPathKey), args...))
 	}
 }
 
