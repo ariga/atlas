@@ -88,6 +88,11 @@ module.exports = {
       <br/>
       `,
     },
+    announcementBar: {
+      id: 'announcementBar-1', // Increment on change
+      content: `️🚀 Sign up for a user testing session and receive exclusive Atlas swag, register <a target="_blank" rel="noopener noreferrer" href="https://calendly.com/ariga-user-testing/atlas-user-testing">here!</a>`,
+      isCloseable: true,
+    },
   },
   plugins: [
     [
