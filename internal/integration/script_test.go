@@ -126,8 +126,9 @@ var (
 const cliPathKey = "cli"
 
 func (t *liteTest) setupScript(env *testscript.Env) error {
-	t.file = filepath.Join(env.WorkDir, "atlas.sqlite")
-	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&_fk=1", t.file))
+
+	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&_fk=1",
+		filepath.Join(env.WorkDir, "atlas.sqlite")))
 	require.NoError(t, err)
 	env.Defer(func() {
 		require.NoError(t, db.Close())
