@@ -542,7 +542,7 @@ func (r *rrw) clean() {
 	*r = rrw(migrate.Revisions{})
 }
 
-func compileCLI(t *testing.T) (string, error) {
+func buildCmd(t *testing.T) (string, error) {
 	td := t.TempDir()
 	if err := exec.Command("go", "build", "-o", td, "ariga.io/atlas/cmd/atlas").Run(); err != nil {
 		return "", err

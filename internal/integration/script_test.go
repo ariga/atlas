@@ -137,7 +137,7 @@ func (t *liteTest) setupScript(env *testscript.Env) error {
 	// environment as tests run in parallel.
 	env.Values[keyDB] = db
 	env.Values[keyDrv] = drv
-	cliPath, err := compileCLI(t.T)
+	cliPath, err := buildCmd(t.T)
 	if err != nil {
 		return err
 	}
@@ -321,22 +321,17 @@ func (t *liteTest) cmdCLI(ts *testscript.TestScript, _ bool, args []string) {
 	for i, arg := range args {
 		args[i] = strings.ReplaceAll(arg, "URL", t.dsn())
 	}
-	l := len(args)
-	switch {
+	switch l := len(args); {
 	// If command was run with a unix redirect-like suffix.
 	case l > 1 && args[l-2] == ">":
-		ts.Check(func() error {
-			wd := ts.Getenv("WORK")
-			path := filepath.Join(wd, args[l-1])
-			out, err := os.Create(path)
-			if err != nil {
-				return err
-			}
-			defer out.Close()
-			cmd := exec.Command(ts.Getenv("cli"), args[0:l-2]...)
-			cmd.Stdout = out
-			return cmd.Run()
-		}())
+		wd := ts.Getenv("WORK")
+		path := filepath.Join(wd, args[l-1])
+		out, err := os.Create(path)
+		ts.Check(err)
+		defer out.Close()
+		cmd := exec.Command(ts.Getenv("cli"), args[0:l-2]...)
+		cmd.Stdout = out
+		ts.Check(cmd.Run())
 	default:
 		ts.Check(ts.Exec(ts.Getenv("cli"), args...))
 	}
