@@ -161,7 +161,20 @@ func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 		return true
 	}
 	var p1, p2 IndexPredicate
-	return sqlx.Has(from, &p1) != sqlx.Has(to, &p2) || (p1.P != p2.P && p1.P != sqlx.MayWrap(p2.P))
+	if sqlx.Has(from, &p1) != sqlx.Has(to, &p2) || (p1.P != p2.P && p1.P != sqlx.MayWrap(p2.P)) {
+		return true
+	}
+	sp := func(attrs []schema.Attr) IndexStorageParams {
+		var s IndexStorageParams
+		sqlx.Has(attrs, &s)
+		if s.PagesPerRange == 0 {
+			// Default size is 128.
+			s.PagesPerRange = 128
+		}
+		return s
+	}
+	s1, s2 := sp(from), sp(to)
+	return s1.AutoSummarize != s2.AutoSummarize || s1.PagesPerRange != s2.PagesPerRange
 }
 
 // IndexPartAttrChanged reports if the index-part attributes were changed.

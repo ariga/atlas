@@ -235,6 +235,7 @@ const (
 	IndexTypeHash  = "HASH"
 	IndexTypeGIN   = "GIN"
 	IndexTypeGiST  = "GIST"
+	IndexTypeBRIN  = "BRIN"
 )
 
 // List of "GENERATED" types.
