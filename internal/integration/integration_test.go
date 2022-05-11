@@ -18,7 +18,6 @@ import (
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
-
 	entsql "entgo.io/ent/dialect/sql"
 	entschema "entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/entc/integration/ent"
@@ -541,4 +540,12 @@ func (r *rrw) ReadRevisions(ctx context.Context) (migrate.Revisions, error) {
 
 func (r *rrw) clean() {
 	*r = rrw(migrate.Revisions{})
+}
+
+func buildCmd(t *testing.T) (string, error) {
+	td := t.TempDir()
+	if err := exec.Command("go", "build", "-o", td, "ariga.io/atlas/cmd/atlas").Run(); err != nil {
+		return "", err
+	}
+	return filepath.Join(td, "atlas"), nil
 }

@@ -73,6 +73,7 @@ func TestSQLite_Script(t *testing.T) {
 			"synced":  tt.cmdSynced,
 			"cmpshow": tt.cmdCmpShow,
 			"execsql": tt.cmdExec,
+			"atlas":   tt.cmdCLI,
 		},
 	})
 }
@@ -122,8 +123,12 @@ var (
 	keyDrv *sqlite.Driver
 )
 
+const cliPathKey = "cli"
+
 func (t *liteTest) setupScript(env *testscript.Env) error {
-	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?mode=memory&cache=shared&_fk=1", filepath.Base(env.WorkDir)))
+
+	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&_fk=1",
+		filepath.Join(env.WorkDir, "atlas.sqlite")))
 	require.NoError(t, err)
 	env.Defer(func() {
 		require.NoError(t, db.Close())
@@ -135,6 +140,11 @@ func (t *liteTest) setupScript(env *testscript.Env) error {
 	// environment as tests run in parallel.
 	env.Values[keyDB] = db
 	env.Values[keyDrv] = drv
+	cliPath, err := buildCmd(t.T)
+	if err != nil {
+		return err
+	}
+	env.Setenv(cliPathKey, cliPath)
 	return nil
 }
 
@@ -308,6 +318,27 @@ func (t *myTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
 
 func (t *liteTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
 	cmdExec(ts, args, ts.Value(keyDB).(*sql.DB))
+}
+
+func (t *liteTest) cmdCLI(ts *testscript.TestScript, _ bool, args []string) {
+	wd := ts.Getenv("WORK")
+	for i, arg := range args {
+		u := fmt.Sprintf("sqlite://file:%s/atlas.sqlite?cache=shared&_fk=1", wd)
+		args[i] = strings.ReplaceAll(arg, "URL", u)
+	}
+	switch l := len(args); {
+	// If command was run with a unix redirect-like suffix.
+	case l > 1 && args[l-2] == ">":
+		path := filepath.Join(wd, args[l-1])
+		out, err := os.Create(path)
+		ts.Check(err)
+		defer out.Close()
+		cmd := exec.Command(ts.Getenv(cliPathKey), args[0:l-2]...)
+		cmd.Stdout = out
+		ts.Check(cmd.Run())
+	default:
+		ts.Check(ts.Exec(ts.Getenv(cliPathKey), args...))
+	}
 }
 
 func cmdExec(ts *testscript.TestScript, args []string, db *sql.DB) {
