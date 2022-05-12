@@ -6,9 +6,15 @@ package sqlite
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/url"
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
@@ -97,6 +103,43 @@ func (d *Driver) Clean(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+// Lock implements the schema.Locker interface.
+func (d *Driver) Lock(_ context.Context, name string, timeout time.Duration) (schema.UnlockFunc, error) {
+	dir, err := os.UserCacheDir()
+	if err != nil {
+		return nil, fmt.Errorf("sql/sqlite: determining lock dir: %w", err)
+	}
+	path := filepath.Join(dir, name+".lock")
+	c, err := ioutil.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return acquireLock(path, timeout)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("sql/sqlite: reading lock dir: %w", err)
+	}
+	expires, err := strconv.ParseInt(string(c), 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("sql/sqlite: invalid lock file format: parsing expiration date: %w", err)
+	}
+	if time.Unix(0, expires).After(time.Now()) {
+		// Lock is still valid.
+		return nil, fmt.Errorf("sql/sqlite: lock on %q already taken", name)
+	}
+	return acquireLock(path, timeout)
+}
+
+func acquireLock(path string, timeout time.Duration) (schema.UnlockFunc, error) {
+	lock, err := os.Create(path)
+	if err != nil {
+		return nil, fmt.Errorf("sql/sqlite: creating lockfile %q: %w", path, err)
+	}
+	if _, err := lock.Write([]byte(strconv.FormatInt(time.Now().Add(timeout).UnixNano(), 10))); err != nil {
+		return nil, fmt.Errorf("sql/sqlite: writing zo lockfile %q: %w", path, err)
+	}
+	defer lock.Close()
+	return func() error { return os.Remove(path) }, nil
 }
 
 // SQLite standard data types as defined in its codebase and documentation.
