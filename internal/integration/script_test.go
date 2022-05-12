@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"unicode"
@@ -72,6 +73,7 @@ func TestSQLite_Script(t *testing.T) {
 			"exist":   tt.cmdExist,
 			"synced":  tt.cmdSynced,
 			"cmpshow": tt.cmdCmpShow,
+			"cmpmig":  tt.cmdCmpMig,
 			"execsql": tt.cmdExec,
 			"atlas":   tt.cmdCLI,
 		},
@@ -234,6 +236,40 @@ func (t *liteTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) 
 		}
 		return strings.Join(stmts, "\n"), nil
 	})
+}
+
+// cmdCmpMig compares the nth migration file under migrations/ to the provided file.
+// Because migration are created with the execution timestamp, lexicographic order of
+// the files in the directory is used to access the file of interest.
+func (t *liteTest) cmdCmpMig(ts *testscript.TestScript, _ bool, args []string) {
+	if len(args) < 2 {
+		ts.Fatalf("invalid number of args to 'cmpmig': %d", len(args))
+	}
+	expected, err := os.ReadFile(filepath.Join(ts.Getenv("WORK"), args[1]))
+	ts.Check(err)
+	md := filepath.Join(ts.Getenv("WORK"), "migrations")
+	dir, err := os.ReadDir(md)
+	ts.Check(err)
+	idx, err := strconv.Atoi(args[0])
+	ts.Check(err)
+	current := 0
+	for _, f := range dir {
+		if f.IsDir() || !strings.HasSuffix(f.Name(), ".sql") {
+			continue
+		}
+		if current == idx {
+			actual, err := os.ReadFile(filepath.Join(md, f.Name()))
+			ts.Check(err)
+			var sb strings.Builder
+			if strings.TrimSpace(string(actual)) == strings.TrimSpace(string(expected)) {
+				return
+			}
+			ts.Check(diff.Text(f.Name(), args[1], expected, actual, &sb))
+			ts.Fatalf(sb.String())
+		}
+		current++
+	}
+	ts.Fatalf("could not find the #%d migration", idx)
 }
 
 func cmdCmpShow(ts *testscript.TestScript, args []string, show func(schema, name string) (string, error)) {
