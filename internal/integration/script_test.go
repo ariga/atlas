@@ -245,10 +245,8 @@ func (t *liteTest) cmdCmpMig(ts *testscript.TestScript, _ bool, args []string) {
 	if len(args) < 2 {
 		ts.Fatalf("invalid number of args to 'cmpmig': %d", len(args))
 	}
-	expected, err := os.ReadFile(filepath.Join(ts.Getenv("WORK"), args[1]))
-	ts.Check(err)
-	md := filepath.Join(ts.Getenv("WORK"), "migrations")
-	dir, err := os.ReadDir(md)
+	expected := ts.ReadFile(args[1])
+	dir, err := os.ReadDir(ts.MkAbs("migrations"))
 	ts.Check(err)
 	idx, err := strconv.Atoi(args[0])
 	ts.Check(err)
@@ -258,10 +256,9 @@ func (t *liteTest) cmdCmpMig(ts *testscript.TestScript, _ bool, args []string) {
 			continue
 		}
 		if current == idx {
-			actual, err := os.ReadFile(filepath.Join(md, f.Name()))
-			ts.Check(err)
+			actual := ts.ReadFile(filepath.Join("migrations", f.Name()))
 			var sb strings.Builder
-			if strings.TrimSpace(string(actual)) == strings.TrimSpace(string(expected)) {
+			if strings.TrimSpace(actual) == strings.TrimSpace(expected) {
 				return
 			}
 			ts.Check(diff.Text(f.Name(), args[1], expected, actual, &sb))

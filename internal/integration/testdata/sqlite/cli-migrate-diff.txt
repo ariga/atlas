@@ -1,6 +1,6 @@
 exec mkdir migrations
 atlas migrate diff --dev-url sqlite://devdb --to file://1.hcl --dir file://migrations
-cmpmig 1 diff.sql
+cmpmig 0 diff.sql
 -- 1.hcl --
 table "users" {
   schema = schema.main
