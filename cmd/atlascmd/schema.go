@@ -184,7 +184,8 @@ func CmdInspectRun(cmd *cobra.Command, args []string) {
 // CmdApplyRun is the command used when running CLI.
 func CmdApplyRun(cmd *cobra.Command, args []string) error {
 	if ApplyFlags.Web {
-		return errors.New("The Atlas UI is not available in this release.")
+		cmd.Println("The Atlas UI is not available in this release.")
+		return errors.New("unavailable")
 	}
 	c, err := sqlclient.Open(cmd.Context(), ApplyFlags.URL)
 	if err != nil {
