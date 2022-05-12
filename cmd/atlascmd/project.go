@@ -44,7 +44,6 @@ type Env struct {
 func LoadEnv(path string, name string) (*Env, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
-		fmt.Println("@###", path)
 		return nil, err
 	}
 	var project projectFile

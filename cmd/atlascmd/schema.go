@@ -295,7 +295,7 @@ func fixURLFlag(cmd *cobra.Command, p *string) {
 		case activeEnv != nil && activeEnv.URL != "":
 			urlF.Changed = true
 			if err := urlF.Value.Set(activeEnv.URL); err != nil {
-				panic(err)
+				return err
 			}
 		case !dsnF.Changed && !urlF.Changed:
 			return errors.New(`required flag "url" was not set`)
