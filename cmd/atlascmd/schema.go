@@ -115,8 +115,7 @@ const (
 	answerAbort = "Abort"
 )
 
-// selectEnv is a pre-run hook for a cobra.Command that loads activeEnv with
-// the environment config from the current directory project file.
+// selectEnv selects the environment config from the current directory project file.
 func selectEnv(args []string) (*Env, error) {
 	if len(args) == 0 {
 		return nil, nil
@@ -212,8 +211,7 @@ func CmdApplyRun(cmd *cobra.Command, args []string) error {
 	if activeEnv != nil && activeEnv.Source != "" {
 		file = activeEnv.Source
 	}
-	applyRun(cmd.Context(), c, devURL, file, ApplyFlags.DryRun, ApplyFlags.AutoApprove, ApplyFlags.Vars)
-	return nil
+	return applyRun(cmd.Context(), c, devURL, file, ApplyFlags.DryRun, ApplyFlags.AutoApprove, ApplyFlags.Vars)
 }
 
 // CmdFmtRun formats all HCL files in a given directory using canonical HCL formatting
