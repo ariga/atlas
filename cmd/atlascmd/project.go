@@ -70,9 +70,6 @@ func LoadEnv(path string, name string) (*Env, error) {
 	return selected, nil
 }
 
-// activeEnv represents the environment selected by the user if such one exists.
-var activeEnv *Env
-
 func init() {
 	schemaspec.Register("env", &Env{})
 }

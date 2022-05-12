@@ -54,8 +54,7 @@ migration, Atlas will print the migration plan and prompt the user for approval.
 
 If run with the "--dry-run" flag, atlas will exit after printing out the planned
 migration.`,
-		PersistentPreRunE: selectEnv,
-		Run:               CmdApplyRun,
+		Run: CmdApplyRun,
 		Example: `  atlas schema apply -u "mysql://user:pass@localhost/dbname" -f atlas.hcl
   atlas schema apply -u "mysql://localhost" -f atlas.hcl --schema prod --schema staging
   atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" -f atlas.hcl --dry-run
@@ -88,8 +87,7 @@ databases), omit the relevant part from the url, e.g. "mysql://user:pass@localho
 To select specific schemas from the databases, users may use the "--schema" (or "-s" shorthand)
 flag.
 	`,
-		PersistentPreRunE: selectEnv,
-		Run:               CmdInspectRun,
+		Run: CmdInspectRun,
 		Example: `  atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname"
   atlas schema inspect -u "mariadb://user:pass@localhost:3306/" --schema=schemaA,schemaB -s schemaC
   atlas schema inspect --url "postgres://user:pass@host:port/dbname?sslmode=disable"
@@ -118,16 +116,11 @@ const (
 
 // selectEnv is a pre-run hook for a cobra.Command that loads activeEnv with
 // the environment config from the current directory project file.
-func selectEnv(_ *cobra.Command, args []string) error {
+func selectEnv(args []string) (*Env, error) {
 	if len(args) == 0 {
-		return nil
+		return nil, nil
 	}
-	env, err := LoadEnv(projectFileName, args[0])
-	if err != nil {
-		return err
-	}
-	activeEnv = env
-	return nil
+	return LoadEnv(projectFileName, args[0])
 }
 
 func init() {
@@ -171,6 +164,8 @@ func CmdInspectRun(cmd *cobra.Command, args []string) {
 	cobra.CheckErr(err)
 	defer client.Close()
 	schemas := InspectFlags.Schema
+	activeEnv, err := selectEnv(args)
+	cobra.CheckErr(err)
 	if activeEnv != nil && len(activeEnv.Schemas) > 0 {
 		schemas = activeEnv.Schemas
 	}
@@ -187,7 +182,7 @@ func CmdInspectRun(cmd *cobra.Command, args []string) {
 }
 
 // CmdApplyRun is the command used when running CLI.
-func CmdApplyRun(cmd *cobra.Command, _ []string) {
+func CmdApplyRun(cmd *cobra.Command, args []string) {
 	if ApplyFlags.Web {
 		schemaCmd.PrintErrln("The Atlas UI is not available in this release.")
 		return
@@ -196,6 +191,8 @@ func CmdApplyRun(cmd *cobra.Command, _ []string) {
 	cobra.CheckErr(err)
 	defer c.Close()
 	devURL := ApplyFlags.DevURL
+	activeEnv, err := selectEnv(args)
+	cobra.CheckErr(err)
 	if activeEnv != nil && activeEnv.DevURL != "" {
 		devURL = activeEnv.DevURL
 	}
@@ -285,6 +282,10 @@ func fixURLFlag(cmd *cobra.Command, p *string) {
 	cmd.Flags().StringVarP(p, "dsn", "d", "", "")
 	cobra.CheckErr(cmd.Flags().MarkHidden("dsn"))
 	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
+		activeEnv, err := selectEnv(args)
+		if err != nil {
+			return err
+		}
 		dsnF, urlF := cmd.Flag("dsn"), cmd.Flag("url")
 		switch {
 		case activeEnv != nil && activeEnv.URL != "":
