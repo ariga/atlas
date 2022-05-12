@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -54,7 +55,7 @@ migration, Atlas will print the migration plan and prompt the user for approval.
 
 If run with the "--dry-run" flag, atlas will exit after printing out the planned
 migration.`,
-		Run: CmdApplyRun,
+		RunE: CmdApplyRun,
 		Example: `  atlas schema apply -u "mysql://user:pass@localhost/dbname" -f atlas.hcl
   atlas schema apply -u "mysql://localhost" -f atlas.hcl --schema prod --schema staging
   atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" -f atlas.hcl --dry-run
@@ -138,7 +139,6 @@ func init() {
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.Verbose, migrateDiffFlagVerbose, "", false, "enable verbose logging")
 	SchemaApply.Flags().StringToStringVarP(&ApplyFlags.Vars, "var", "", nil, "input variables")
 	cobra.CheckErr(SchemaApply.MarkFlagRequired("url"))
-	//cobra.CheckErr(SchemaApply.MarkFlagRequired("file"))
 	fixURLFlag(SchemaApply, &ApplyFlags.URL)
 
 	// Schema inspect flags.
@@ -182,21 +182,32 @@ func CmdInspectRun(cmd *cobra.Command, args []string) {
 }
 
 // CmdApplyRun is the command used when running CLI.
-func CmdApplyRun(cmd *cobra.Command, args []string) {
+func CmdApplyRun(cmd *cobra.Command, args []string) error {
 	if ApplyFlags.Web {
-		schemaCmd.PrintErrln("The Atlas UI is not available in this release.")
-		return
+		return errors.New("The Atlas UI is not available in this release.")
 	}
 	c, err := sqlclient.Open(cmd.Context(), ApplyFlags.URL)
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 	defer c.Close()
 	devURL := ApplyFlags.DevURL
 	activeEnv, err := selectEnv(args)
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 	if activeEnv != nil && activeEnv.DevURL != "" {
 		devURL = activeEnv.DevURL
 	}
-	file := ApplyFlags.File
+	var file string
+	switch {
+	case activeEnv != nil && activeEnv.Source != "":
+		file = activeEnv.Source
+	case ApplyFlags.File != "":
+		file = ApplyFlags.File
+	default:
+		return fmt.Errorf("source file must be set via -f or project file")
+	}
 	if activeEnv != nil && activeEnv.Source != "" {
 		file = activeEnv.Source
 	}
