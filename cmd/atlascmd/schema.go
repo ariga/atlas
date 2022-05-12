@@ -253,7 +253,7 @@ func applyRun(ctx context.Context, client *sqlclient.Client, devURL string, file
 		}
 		for _, s := range desired.Schemas {
 			if !sm[s.Name] {
-				return fmt.Errorf("schema %q from file %q was not selected %q, all schemas defined in file must be selected\n", s.Name, file, schemas)
+				return fmt.Errorf("schema %q from file %q was not selected %q, all schemas defined in file must be selected", s.Name, file, schemas)
 			}
 		}
 	}
