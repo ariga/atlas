@@ -38,8 +38,8 @@ var (
 		},
 	}
 
-	// Environment represents the subcommand 'atlas env'.
-	Env = &cobra.Command{
+	// EnvCmd represents the subcommand 'atlas env'.
+	EnvCmd = &cobra.Command{
 		Use:   "env",
 		Short: "Print atlas environment variables.",
 		Long: `'atlas env' prints atlas environment information.
@@ -67,7 +67,7 @@ func CheckForUpdate() {
 }
 
 func init() {
-	Root.AddCommand(Env)
+	Root.AddCommand(EnvCmd)
 	Root.AddCommand(schemaCmd)
 	Root.AddCommand(versionCmd)
 }
