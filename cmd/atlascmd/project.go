@@ -46,7 +46,7 @@ func LoadEnv(path string, name string) (*Env, error) {
 	if err != nil {
 		return nil, err
 	}
-	project := projectFile{}
+	var project projectFile
 	if err := schemahcl.New().Eval(b, &project, nil); err != nil {
 		return nil, fmt.Errorf("error reading project file: %w", err)
 	}
