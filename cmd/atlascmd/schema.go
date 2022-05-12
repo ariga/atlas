@@ -212,6 +212,7 @@ func CmdApplyRun(cmd *cobra.Command, args []string) error {
 		file = activeEnv.Source
 	}
 	applyRun(cmd.Context(), c, devURL, file, ApplyFlags.DryRun, ApplyFlags.AutoApprove, ApplyFlags.Vars)
+	return nil
 }
 
 // CmdFmtRun formats all HCL files in a given directory using canonical HCL formatting
@@ -225,7 +226,7 @@ func CmdFmtRun(cmd *cobra.Command, args []string) {
 	}
 }
 
-func applyRun(ctx context.Context, client *sqlclient.Client, devURL string, file string, dryRun, autoApprove bool, input map[string]string) {
+func applyRun(ctx context.Context, client *sqlclient.Client, devURL string, file string, dryRun, autoApprove bool, input map[string]string) error {
 	schemas := ApplyFlags.Schema
 	if client.URL.Schema != "" {
 		schemas = append(schemas, client.URL.Schema)
@@ -233,11 +234,17 @@ func applyRun(ctx context.Context, client *sqlclient.Client, devURL string, file
 	realm, err := client.InspectRealm(ctx, &schema.InspectRealmOption{
 		Schemas: schemas,
 	})
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 	f, err := ioutil.ReadFile(file)
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 	desired := &schema.Realm{}
-	cobra.CheckErr(client.Eval(f, desired, input))
+	if err := client.Eval(f, desired, input); err != nil {
+		return err
+	}
 	if len(schemas) > 0 {
 		// Validate all schemas in file were selected by user.
 		sm := make(map[string]bool, len(schemas))
@@ -246,26 +253,33 @@ func applyRun(ctx context.Context, client *sqlclient.Client, devURL string, file
 		}
 		for _, s := range desired.Schemas {
 			if !sm[s.Name] {
-				schemaCmd.Printf("schema %q from file %q was not selected %q, all schemas defined in file must be selected\n", s.Name, file, schemas)
-				return
+				return fmt.Errorf("schema %q from file %q was not selected %q, all schemas defined in file must be selected\n", s.Name, file, schemas)
 			}
 		}
 	}
 	if _, ok := client.Driver.(schema.Normalizer); ok && devURL != "" {
 		dev, err := sqlclient.Open(ctx, ApplyFlags.DevURL)
-		cobra.CheckErr(err)
+		if err != nil {
+			return err
+		}
 		defer dev.Close()
 		desired, err = dev.Driver.(schema.Normalizer).NormalizeRealm(ctx, desired)
-		cobra.CheckErr(err)
+		if err != nil {
+			return err
+		}
 	}
 	changes, err := client.RealmDiff(realm, desired)
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 	if len(changes) == 0 {
 		schemaCmd.Println("Schema is synced, no changes to be made")
-		return
+		return nil
 	}
 	p, err := client.PlanChanges(ctx, "plan", changes)
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 	schemaCmd.Println("-- Planned Changes:")
 	for _, c := range p.Changes {
 		if c.Comment != "" {
@@ -274,11 +288,14 @@ func applyRun(ctx context.Context, client *sqlclient.Client, devURL string, file
 		schemaCmd.Println(c.Cmd)
 	}
 	if dryRun {
-		return
+		return nil
 	}
 	if autoApprove || promptUser() {
-		cobra.CheckErr(client.ApplyChanges(ctx, changes))
+		if err := client.ApplyChanges(ctx, changes); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func promptUser() bool {
