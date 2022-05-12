@@ -138,7 +138,7 @@ func init() {
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.Verbose, migrateDiffFlagVerbose, "", false, "enable verbose logging")
 	SchemaApply.Flags().StringToStringVarP(&ApplyFlags.Vars, "var", "", nil, "input variables")
 	cobra.CheckErr(SchemaApply.MarkFlagRequired("url"))
-	cobra.CheckErr(SchemaApply.MarkFlagRequired("file"))
+	//cobra.CheckErr(SchemaApply.MarkFlagRequired("file"))
 	fixURLFlag(SchemaApply, &ApplyFlags.URL)
 
 	// Schema inspect flags.
@@ -196,7 +196,11 @@ func CmdApplyRun(cmd *cobra.Command, args []string) {
 	if activeEnv != nil && activeEnv.DevURL != "" {
 		devURL = activeEnv.DevURL
 	}
-	applyRun(cmd.Context(), c, devURL, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove, ApplyFlags.Vars)
+	file := ApplyFlags.File
+	if activeEnv != nil && activeEnv.Source != "" {
+		file = activeEnv.Source
+	}
+	applyRun(cmd.Context(), c, devURL, file, ApplyFlags.DryRun, ApplyFlags.AutoApprove, ApplyFlags.Vars)
 }
 
 // CmdFmtRun formats all HCL files in a given directory using canonical HCL formatting

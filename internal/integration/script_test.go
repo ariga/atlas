@@ -126,7 +126,6 @@ var (
 const cliPathKey = "cli"
 
 func (t *liteTest) setupScript(env *testscript.Env) error {
-
 	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&_fk=1",
 		filepath.Join(env.WorkDir, "atlas.sqlite")))
 	require.NoError(t, err)
@@ -145,6 +144,14 @@ func (t *liteTest) setupScript(env *testscript.Env) error {
 		return err
 	}
 	env.Setenv(cliPathKey, cliPath)
+
+	// Set the workdir in the test atlas.hcl file.
+	projectFile := filepath.Join(env.WorkDir, "atlas.hcl")
+	if b, err := os.ReadFile(projectFile); err == nil {
+		rep := strings.ReplaceAll(string(b), "URL",
+			fmt.Sprintf("sqlite://file:%s/atlas.sqlite?cache=shared&_fk=1", env.WorkDir))
+		return os.WriteFile(projectFile, []byte(rep), 0600)
+	}
 	return nil
 }
 
@@ -321,23 +328,27 @@ func (t *liteTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
 }
 
 func (t *liteTest) cmdCLI(ts *testscript.TestScript, _ bool, args []string) {
-	wd := ts.Getenv("WORK")
+	var (
+		workDir = ts.Getenv("WORK")
+		dbURL   = fmt.Sprintf("sqlite://file:%s/atlas.sqlite?cache=shared&_fk=1", workDir)
+		cliPath = ts.Getenv(cliPathKey)
+	)
 	for i, arg := range args {
-		u := fmt.Sprintf("sqlite://file:%s/atlas.sqlite?cache=shared&_fk=1", wd)
-		args[i] = strings.ReplaceAll(arg, "URL", u)
+		args[i] = strings.ReplaceAll(arg, "URL", dbURL)
 	}
 	switch l := len(args); {
 	// If command was run with a unix redirect-like suffix.
 	case l > 1 && args[l-2] == ">":
-		path := filepath.Join(wd, args[l-1])
-		out, err := os.Create(path)
+		outPath := filepath.Join(workDir, args[l-1])
+		f, err := os.Create(outPath)
 		ts.Check(err)
-		defer out.Close()
-		cmd := exec.Command(ts.Getenv(cliPathKey), args[0:l-2]...)
-		cmd.Stdout = out
+		defer f.Close()
+		cmd := exec.Command(cliPath, args[0:l-2]...)
+		cmd.Stdout = f
+		cmd.Dir = workDir
 		ts.Check(cmd.Run())
 	default:
-		ts.Check(ts.Exec(ts.Getenv(cliPathKey), args...))
+		ts.Check(ts.Exec(cliPath, args...))
 	}
 }
 
