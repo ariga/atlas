@@ -75,6 +75,7 @@ module.exports = {
           "items": [
             {"label": "Privacy Policy", "to": "https://ariga.io/legal/privacy"},
             {"label": "Terms of Service", "to": "https://ariga.io/legal/tos"},
+            {"label": "End User License", "to": "https://ariga.io/legal/atlas/eula"},
           ]
         }
       ],
@@ -86,6 +87,11 @@ module.exports = {
       <a href="https://blog.golang.org/gopher">article</a> for more details.
       <br/>
       `,
+    },
+    announcementBar: {
+      id: 'announcementBar-1', // Increment on change
+      content: `️🚀 Sign up for a user testing session and receive exclusive Atlas swag, register <a target="_blank" rel="noopener noreferrer" href="https://calendly.com/ariga-user-testing/atlas-user-testing">here!</a>`,
+      isCloseable: true,
     },
   },
   plugins: [
@@ -99,6 +105,12 @@ module.exports = {
           },
         ],
       },
+    ],
+    [
+      require.resolve('docusaurus-gtm-plugin'),
+      {
+        id: 'GTM-T9GX8BR', // GTM Container ID
+      }
     ],
   ],
   presets: [

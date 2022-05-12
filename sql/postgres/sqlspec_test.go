@@ -285,6 +285,29 @@ table "t" {
 	})
 }
 
+func TestUnmarshalSpec_BRINIndex(t *testing.T) {
+	f := `
+schema "s" {}
+table "t" {
+	schema = schema.s
+	column "c" {
+		type = int
+	}
+	index "i" {
+		type = BRIN
+		columns = [column.c]
+		page_per_range = 2
+	}
+}
+`
+	var s schema.Schema
+	err := UnmarshalHCL([]byte(f), &s)
+	require.NoError(t, err)
+	idx := s.Tables[0].Indexes[0]
+	require.Equal(t, IndexTypeBRIN, idx.Attrs[0].(*IndexType).T)
+	require.EqualValues(t, 2, idx.Attrs[1].(*IndexStorageParams).PagesPerRange)
+}
+
 func TestUnmarshalSpec_Partitioned(t *testing.T) {
 	t.Run("Columns", func(t *testing.T) {
 		var (
@@ -477,6 +500,58 @@ func TestMarshalSpec_IndexPredicate(t *testing.T) {
     unique  = true
     columns = [column.id]
     where   = "id <> 0"
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestMarshalSpec_BRINIndex(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "id",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	s.Tables[0].Schema = s
+	s.Tables[0].Indexes = []*schema.Index{
+		{
+			Name:   "index",
+			Table:  s.Tables[0],
+			Unique: true,
+			Parts: []*schema.IndexPart{
+				{SeqNo: 0, C: s.Tables[0].Columns[0]},
+			},
+			Attrs: []schema.Attr{
+				&IndexType{T: IndexTypeBRIN},
+				&IndexStorageParams{PagesPerRange: 2},
+			},
+		},
+	}
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "id" {
+    null = false
+    type = int
+  }
+  index "index" {
+    unique         = true
+    columns        = [column.id]
+    type           = BRIN
+    page_per_range = 2
   }
 }
 schema "test" {

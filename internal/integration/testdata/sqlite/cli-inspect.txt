@@ -1,0 +1,14 @@
+apply 1.hcl
+atlas schema inspect -u URL > inspected.hcl
+cmp inspected.hcl 1.hcl
+
+-- 1.hcl --
+table "users" {
+  schema = schema.main
+  column "id" {
+    null = false
+    type = int
+  }
+}
+schema "main" {
+}

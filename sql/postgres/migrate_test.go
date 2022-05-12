@@ -322,6 +322,18 @@ func TestPlanChanges(t *testing.T) {
 									},
 								},
 							},
+							&schema.AddIndex{
+								I: &schema.Index{
+									Name: "id_brin",
+									Parts: []*schema.IndexPart{
+										{C: users.Columns[0], Desc: true},
+									},
+									Attrs: []schema.Attr{
+										&IndexType{T: IndexTypeBRIN},
+										&IndexStorageParams{PagesPerRange: 2},
+									},
+								},
+							},
 							&schema.AddCheck{
 								C: &schema.Check{Name: "name_not_empty", Expr: `("name" <> '')`},
 							},
@@ -347,6 +359,10 @@ func TestPlanChanges(t *testing.T) {
 					{
 						Cmd:     `CREATE INDEX "id_key" ON "users" ("id" DESC) WHERE success`,
 						Reverse: `DROP INDEX "id_key"`,
+					},
+					{
+						Cmd:     `CREATE INDEX "id_brin" ON "users" USING BRIN ("id" DESC) WITH (pages_per_range = 2)`,
+						Reverse: `DROP INDEX "id_brin"`,
 					},
 					{
 						Cmd:     `COMMENT ON COLUMN "users" ."name" IS 'foo'`,

@@ -105,7 +105,7 @@ func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) 
 var (
 	hclState = schemahcl.New(
 		schemahcl.WithTypes(TypeRegistry.Specs()),
-		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeGIN, IndexTypeGiST),
+		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeGIN, IndexTypeGiST, IndexTypeBRIN),
 		schemahcl.WithScopedEnums("table.partition.type", PartitionTypeRange, PartitionTypeList, PartitionTypeHash),
 		schemahcl.WithScopedEnums("table.column.identity.generated", GeneratedTypeAlways, GeneratedTypeByDefault),
 		schemahcl.WithScopedEnums("table.column.as.type", "STORED"),
@@ -307,6 +307,13 @@ func convertIndex(spec *sqlspec.Index, t *schema.Table) (*schema.Index, error) {
 		}
 		idx.Attrs = append(idx.Attrs, &IndexPredicate{P: p})
 	}
+	if attr, ok := spec.Attr("page_per_range"); ok {
+		p, err := attr.Int64()
+		if err != nil {
+			return nil, err
+		}
+		idx.Attrs = append(idx.Attrs, &IndexStorageParams{PagesPerRange: p})
+	}
 	return idx, nil
 }
 
@@ -444,6 +451,9 @@ func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 	}
 	if i := (IndexPredicate{}); sqlx.Has(idx.Attrs, &i) && i.P != "" {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("where", strconv.Quote(i.P)))
+	}
+	if p, ok := indexStorageParams(idx.Attrs); ok {
+		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.Int64Attr("page_per_range", p.PagesPerRange))
 	}
 	return spec, nil
 }
