@@ -347,12 +347,12 @@ func TestExecutor(t *testing.T) {
 	})
 	requireEqualRevisions(t, migrate.Revisions{rev1, rev2}, migrate.Revisions(*rrw))
 	require.Equal(t, []migrate.LogEntry{
-		{Kind: migrate.KindExecuting, Pending: []string{"1.a_sub.up.sql", "2.10.x-20_description.sql"}},
-		{Kind: migrate.KindFile, Version: "1.a", Desc: "sub.up"},
-		{Kind: migrate.KindStmt, SQL: "CREATE TABLE t_sub(c int);"},
-		{Kind: migrate.KindStmt, SQL: "ALTER TABLE t_sub ADD c1 int;"},
-		{Kind: migrate.KindFile, Version: "2.10.x-20", Desc: "description"},
-		{Kind: migrate.KindStmt, SQL: "ALTER TABLE t_sub ADD c2 int;"},
+		migrate.LogExecution{"1.a_sub.up.sql", "2.10.x-20_description.sql"},
+		migrate.LogFile{Version: "1.a", Desc: "sub.up"},
+		migrate.LogStmt("CREATE TABLE t_sub(c int);"),
+		migrate.LogStmt("ALTER TABLE t_sub ADD c1 int;"),
+		migrate.LogFile{Version: "2.10.x-20", Desc: "description"},
+		migrate.LogStmt("ALTER TABLE t_sub ADD c2 int;"),
 	}, []migrate.LogEntry(*log))
 
 	// No pending files.
