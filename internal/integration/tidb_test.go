@@ -67,12 +67,6 @@ func tidbRun(t *testing.T, fn func(*myTest)) {
 	}
 }
 
-// func TestTiDB_Executor(t *testing.T) { // TODO(masseelch): re-enable once https://github.com/pingcap/tidb/pull/33947 is released
-// 	tidbRun(t, func(t *myTest) {
-// 		testExecutor(t)
-// 	})
-// }
-
 func TestTiDB_AddDropTable(t *testing.T) {
 	tidbRun(t, func(t *myTest) {
 		testAddDrop(t)
