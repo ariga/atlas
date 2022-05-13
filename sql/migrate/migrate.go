@@ -444,7 +444,7 @@ func (e *Executor) Execute(ctx context.Context, n int) (err error) {
 		for i := range pending {
 			names[i] = pending[i].Name()
 		}
-		e.log.Log(LogExecution(names))
+		e.log.Log(LogExecution{names})
 	}
 	// TODO(masseelch): run in a transaction
 	for _, m := range pending {
@@ -474,7 +474,7 @@ func (e *Executor) Execute(ctx context.Context, n int) (err error) {
 		}
 		for _, stmt := range stmts {
 			if e.log != nil {
-				e.log.Log(LogStmt(stmt))
+				e.log.Log(LogStmt{stmt})
 			}
 			if _, err := e.drv.ExecContext(ctx, stmt); err != nil {
 				return r.setSQLErr(
@@ -622,7 +622,9 @@ type (
 
 	// LogExecution is sent once when execution of the migration files has been started.
 	// It holds the filenames of the pending migration files.
-	LogExecution []string
+	LogExecution struct {
+		Files []string
+	}
 
 	// LogFile is sent if a new migration file is executed.
 	LogFile struct {
@@ -633,7 +635,9 @@ type (
 	}
 
 	// LogStmt is sent if a new SQL statement is executed.
-	LogStmt string
+	LogStmt struct {
+		SQL string
+	}
 )
 
 func (LogExecution) logEntry() {}
