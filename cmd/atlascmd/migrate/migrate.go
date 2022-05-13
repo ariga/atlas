@@ -21,10 +21,10 @@ type EntRevisions struct{ c *ent.Client }
 // NewEntRevisions creates a new EntRevisions with the given ent.Client.
 func NewEntRevisions(db schema.ExecQuerier, dialect string, opts ...ent.Option) *EntRevisions {
 	opts = append(opts, ent.Driver(sql.NewDriver(dialect, sql.Conn{ExecQuerier: db})))
-	return &EntRevisions{c: ent.NewClient(opts...)}
+	return &EntRevisions{ent.NewClient(opts...)}
 }
 
-// Init makes sure the revisions table does exist in the connected database.
+// Init makes sure the revision table does exist in the connected database.
 func (r *EntRevisions) Init(ctx context.Context) error {
 	return r.c.Schema.Create(ctx, entschema.WithAtlas(true))
 }

@@ -323,8 +323,12 @@ const (
 	stateError = "error"
 )
 
-// ErrNoPendingFiles is returned when there are no pending migration files to execute on the managed database.
-var ErrNoPendingFiles = errors.New("sql/migrate: execute: nothing to do")
+var (
+	// ErrNoPendingFiles is returned when there are no pending migration files to execute on the managed database.
+	ErrNoPendingFiles = errors.New("sql/migrate: execute: nothing to do")
+	// ErrLockUnsupported is returned when the given driver does not implement the schema.Locker interface.
+	ErrLockUnsupported = errors.New("sql/migrate: driver does not support locking")
+)
 
 // NewExecutor creates a new Executor with default values. // TODO(masseelch): Operator Version and other Meta
 func NewExecutor(drv Driver, dir Dir, rrw RevisionReadWriter, opts ...ExecutorOption) (*Executor, error) {
@@ -337,6 +341,10 @@ func NewExecutor(drv Driver, dir Dir, rrw RevisionReadWriter, opts ...ExecutorOp
 	if rrw == nil {
 		return nil, errors.New("sql/migrate: execute: mockRevisionReadWriter cannot be nil")
 	}
+	// If the driver does not support acquiring a lock, don't execute migrations as this can potentially be fatal.
+	if _, ok := drv.(schema.Locker); !ok {
+		return nil, ErrLockUnsupported
+	}
 	p := &Executor{drv: drv, dir: dir, rrw: rrw}
 	for _, opt := range opts {
 		if err := opt(p); err != nil {
@@ -348,6 +356,11 @@ func NewExecutor(drv Driver, dir Dir, rrw RevisionReadWriter, opts ...ExecutorOp
 
 // Execute executes n missing migration files on the database. Passing in n <= 0 means running all pending migrations.
 func (e *Executor) Execute(ctx context.Context, n int) (err error) {
+	unlock, err := e.drv.(schema.Locker).Lock(ctx, "atlas_migration_execute", 0)
+	if err != nil {
+		return fmt.Errorf("sql/migrate: acquiring database lock: %w", err)
+	}
+	defer unlock()
 	// Don't operate with a broken migration directory.
 	// TODO(maseeelch): do not check here but let the caller check it before? Or let the caller decide if to skip this flag by using some flags.
 	if err := Validate(e.dir); err != nil {

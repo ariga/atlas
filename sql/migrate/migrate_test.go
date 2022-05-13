@@ -186,7 +186,7 @@ func TestHash_UnmarshalText(t *testing.T) {
 // Deprecated: GlobStateReader will be removed once the Executor is functional.
 func TestGlobStateReader(t *testing.T) {
 	var (
-		drv = &mockDriver{}
+		drv = &lockMockDriver{&mockDriver{}}
 		ctx = context.Background()
 	)
 	d, err := migrate.NewLocalDir("testdata")
@@ -303,18 +303,23 @@ func TestExecutor(t *testing.T) {
 	require.EqualError(t, err, "sql/migrate: execute: mockRevisionReadWriter cannot be nil")
 	require.Nil(t, ex)
 
+	// Does not work if no locking mechanism is provided.
+	ex, err = migrate.NewExecutor(&mockDriver{}, dir, &mockRevisionReadWriter{})
+	require.ErrorIs(t, err, migrate.ErrLockUnsupported)
+	require.Nil(t, ex)
+
 	// Does not operate on invalid migration dir.
 	dir, err = migrate.NewLocalDir(t.TempDir())
 	require.NoError(t, err)
 	require.NoError(t, dir.WriteFile("atlas.sum", hash))
-	ex, err = migrate.NewExecutor(&mockDriver{}, dir, &mockRevisionReadWriter{})
+	ex, err = migrate.NewExecutor(&lockMockDriver{&mockDriver{}}, dir, &mockRevisionReadWriter{})
 	require.NoError(t, err)
 	require.NotNil(t, ex)
 	require.ErrorIs(t, ex.Execute(context.Background(), 0), migrate.ErrChecksumMismatch)
 
 	// Prerequisites.
 	var (
-		drv  = &mockDriver{}
+		drv  = &lockMockDriver{&mockDriver{}}
 		rrw  = &mockRevisionReadWriter{}
 		rev1 = &migrate.Revision{
 			Version:        "1.a",
@@ -346,7 +351,7 @@ func TestExecutor(t *testing.T) {
 
 	// Apply one by one.
 	*rrw = mockRevisionReadWriter{}
-	*drv = mockDriver{}
+	*drv = lockMockDriver{&mockDriver{}}
 
 	require.NoError(t, ex.Execute(context.Background(), 1))
 	require.Equal(t, drv.executed, []string{"CREATE TABLE t_sub(c int);", "ALTER TABLE t_sub ADD c1 int;"})
@@ -361,7 +366,7 @@ func TestExecutor(t *testing.T) {
 
 	// Suppose first revision is already executed, only execute second migration file.
 	*rrw = mockRevisionReadWriter(migrate.Revisions{rev1})
-	*drv = mockDriver{}
+	*drv = lockMockDriver{&mockDriver{}}
 
 	require.NoError(t, ex.Execute(context.Background(), 0))
 	require.Equal(t, drv.executed, []string{"ALTER TABLE t_sub ADD c2 int;"})
@@ -393,7 +398,8 @@ type (
 		lockCounter   int
 		unlockCounter int
 	}
-	emptyMockDriver struct{ *mockDriver }
+	lockMockDriver  struct{ *mockDriver }
+	emptyMockDriver struct{ *lockMockDriver }
 )
 
 func (m *mockDriver) ExecContext(_ context.Context, query string, _ ...interface{}) (sql.Result, error) {
@@ -414,7 +420,7 @@ func (m *mockDriver) ApplyChanges(_ context.Context, changes []schema.Change) er
 	m.applied = changes
 	return nil
 }
-func (m *mockDriver) Lock(context.Context, string, time.Duration) (schema.UnlockFunc, error) {
+func (m *lockMockDriver) Lock(context.Context, string, time.Duration) (schema.UnlockFunc, error) {
 	if m.locked {
 		return nil, errors.New("lockErr")
 	}
@@ -432,12 +438,12 @@ func (m *emptyMockDriver) IsClean(context.Context) (bool, error) {
 
 type mockRevisionReadWriter migrate.Revisions
 
-func (r *mockRevisionReadWriter) WriteRevisions(ctx context.Context, revs migrate.Revisions) error {
+func (r *mockRevisionReadWriter) WriteRevisions(_ context.Context, revs migrate.Revisions) error {
 	*r = mockRevisionReadWriter(revs)
 	return nil
 }
 
-func (r *mockRevisionReadWriter) ReadRevisions(ctx context.Context) (migrate.Revisions, error) {
+func (r *mockRevisionReadWriter) ReadRevisions(_ context.Context) (migrate.Revisions, error) {
 	return migrate.Revisions(*r), nil
 }
 
