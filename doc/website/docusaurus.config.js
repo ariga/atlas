@@ -12,6 +12,11 @@ module.exports = {
     prism: {
       additionalLanguages: ['hcl'],
     },
+    algolia: {
+      appId: 'D158RRDJO1',
+      apiKey: "383b9efbb1486f812c8c023556b15396",
+      indexName: "atlasgo",
+    },
     navbar: {
       title: 'Atlas',
       logo: {
