@@ -26,7 +26,7 @@ import (
 const (
 	urlFlag    = "url"
 	schemaFlag = "schema"
-	devUrlFlag = "dev-url"
+	devURLFlag = "dev-url"
 	fileFlag   = "file"
 )
 
@@ -132,7 +132,7 @@ func init() {
 	SchemaApply.Flags().StringVarP(&ApplyFlags.File, fileFlag, "f", "", "[/path/to/file] file containing the HCL schema.")
 	SchemaApply.Flags().StringVarP(&ApplyFlags.URL, urlFlag, "u", "", "URL to the database using the format:\n[driver://username:password@address/dbname?param=value]")
 	SchemaApply.Flags().StringSliceVarP(&ApplyFlags.Schema, schemaFlag, "s", nil, "Set schema names.")
-	SchemaApply.Flags().StringVarP(&ApplyFlags.DevURL, devUrlFlag, "", "", "URL for the dev database. Used to validate schemas and calculate diffs\nbefore running migration.")
+	SchemaApply.Flags().StringVarP(&ApplyFlags.DevURL, devURLFlag, "", "", "URL for the dev database. Used to validate schemas and calculate diffs\nbefore running migration.")
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.DryRun, "dry-run", "", false, "Dry-run. Print SQL plan without prompting for execution.")
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.AutoApprove, "auto-approve", "", false, "Auto approve. Apply the schema changes without prompting for approval.")
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.Web, "web", "w", false, "Open in a local Atlas UI.")
@@ -235,7 +235,7 @@ func CmdApplyRun(cmd *cobra.Command, _ []string) error {
 	}
 	defer c.Close()
 	devURL := activeEnv.DevURL
-	if fl := cmd.Flag(devUrlFlag); fl.Changed {
+	if fl := cmd.Flag(devURLFlag); fl.Changed {
 		devURL = ApplyFlags.DevURL
 	}
 	file := activeEnv.Source

@@ -174,6 +174,12 @@ atlas schema
 #### Details
 The `atlas schema` command groups subcommands for working with Atlas schemas.
 
+#### Flags
+```
+      --env string   set which env from the project file to use
+
+```
+
 
 ### atlas schema apply
 
