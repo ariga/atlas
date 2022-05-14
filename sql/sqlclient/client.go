@@ -24,6 +24,9 @@ type (
 	// applications (e.g. CLI and TF). Note, the Client is dialect specific and should
 	// be instantiated using a call to Open.
 	Client struct {
+		// Name used when creating the client.
+		Name string
+
 		// DB used for creating the client.
 		DB *sql.DB
 		// URL holds an enriched url.URL.
@@ -180,6 +183,7 @@ func DriverOpener(open func(schema.ExecQuerier) (migrate.Driver, error)) Opener 
 			return nil, err
 		}
 		return &Client{
+			Name:   v.(driver).name,
 			DB:     db,
 			URL:    ur,
 			Driver: drv,
