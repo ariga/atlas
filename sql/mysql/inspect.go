@@ -542,7 +542,7 @@ var reCurrTimestamp = regexp.MustCompile(`(?i)^current_timestamp(?:\(\d?\))?$`)
 func (i *inspect) myDefaultExpr(c *schema.Column, x string, attr *extraAttr) schema.Expr {
 	// In MySQL, the DEFAULT_GENERATED indicates the column has an expression default value.
 	if i.supportsExprDefault() && attr.defaultGenerated {
-		return &schema.RawExpr{X: x}
+		return &schema.RawExpr{X: sqlx.MayWrap(x)}
 	}
 	switch c.Type.Type.(type) {
 	case *schema.BinaryType:
@@ -556,7 +556,7 @@ func (i *inspect) myDefaultExpr(c *schema.Column, x string, attr *extraAttr) sch
 		// "current_timestamp" is exceptional in old versions
 		// of MySQL for timestamp and datetime data types.
 		if reCurrTimestamp.MatchString(x) {
-			return &schema.RawExpr{X: x}
+			return &schema.RawExpr{X: sqlx.MayWrap(x)}
 		}
 	}
 	return &schema.Literal{V: quote(x)}
