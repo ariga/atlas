@@ -158,7 +158,9 @@ func init() {
 // a zero-value Env is returned.
 func selectEnv(selected string) (*Env, error) {
 	if _, err := os.Stat(projectFileName); selected == "" || os.IsNotExist(err) {
-		return &Env{}, nil
+		return &Env{
+			MigrationDir: &MigrationDir{},
+		}, nil
 	}
 	return LoadEnv(projectFileName, selected)
 }

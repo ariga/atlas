@@ -1,4 +1,11 @@
 exec mkdir migrations
+
+! atlas migrate diff --to file://1.hcl --dir file://migrations
+stderr 'required flag "dev-url" not set'
+
+! atlas migrate diff --dev-url sqlite://devdb --dir file://migrations
+stderr 'required flag "to" not set'
+
 atlas migrate diff --dev-url sqlite://devdb --to file://1.hcl --dir file://migrations
 cmpmig 0 diff.sql
 -- 1.hcl --
