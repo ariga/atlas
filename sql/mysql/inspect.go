@@ -620,13 +620,13 @@ func (i *inspect) marDefaultExpr(c *schema.Column, x string) schema.Expr {
 		// "current_timestamp" is exceptional in old versions
 		// of MySQL (i.e. MariaDB in this case).
 		if strings.ToLower(x) == currentTS {
-			return &schema.RawExpr{X: x}
+			return &schema.RawExpr{X: sqlx.MayWrap(x)}
 		}
 	}
 	if !i.supportsExprDefault() {
 		return &schema.Literal{V: quote(x)}
 	}
-	return &schema.RawExpr{X: x}
+	return &schema.RawExpr{X: sqlx.MayWrap(x)}
 }
 
 func (i *inspect) querySchema(ctx context.Context, query string, s *schema.Schema) (*sql.Rows, error) {
