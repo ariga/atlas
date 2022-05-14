@@ -209,6 +209,7 @@ func testCLISchemaInspectEnv(t T, h string, env string, unmarshaler schemaspec.U
 	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
 		"schema",
 		"inspect",
+		"--env",
 		env,
 	)
 	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
