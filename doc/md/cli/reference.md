@@ -314,9 +314,6 @@ atlas version
 
 
 ## atlas serve
-:::info
-This command is not supported in the latest version of Atlas. To use the Management UI, download [v0.3.7](https://github.com/ariga/atlas/releases/tag/v0.3.7). Support for the Atlas UI will be brought back soon.
-:::
 
 Run Atlas web UI in a standalone mode
 
