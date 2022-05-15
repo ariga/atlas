@@ -35,7 +35,7 @@ atlas schema inspect -u "mysql://root:pass@localhost:3306/example" > atlas.hcl
 ```
 - **Applying a migration**: generate a migration plan to apply on the database by providing an HCL file with the desired Atlas schema.
 ```shell
-atlas schema apply -d "mysql://root:pass@localhost:3306/example" -f atlas.hcl
+atlas schema apply -u "mysql://root:pass@localhost:3306/example" -f atlas.hcl
 ```
 - **Declarative Migrations vs. Versioned Migrations**: Atlas offers two workflows. Declarative migrations allow the user to provide a desired state and Atlas gets the schema there instantly (simply using inspect and apply commands). Alternatively, declarative migrations are explicitly defined and assigned a version. Atlas can then bring a schema to the desired version by following the migrations between the current version and the specified one.
 
