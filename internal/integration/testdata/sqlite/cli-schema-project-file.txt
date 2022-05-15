@@ -1,11 +1,11 @@
 ! atlas schema inspect
-stderr 'required flag "url" not set'
+stderr '"url" not set'
 
 ! atlas schema apply -f 1.hcl
-stderr 'required flag "url" not set'
+stderr '"url" not set'
 
 ! atlas schema apply --url URL
-stderr 'required flag "file" not set'
+stderr '"file" not set'
 
 # Verify "url" and "src" attributes of the env are used.
 atlas schema apply --env local --auto-approve

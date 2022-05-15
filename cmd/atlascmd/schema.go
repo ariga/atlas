@@ -7,6 +7,7 @@ package atlascmd
 import (
 	"bytes"
 	"context"
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -17,7 +18,6 @@ import (
 
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
-
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
@@ -28,6 +28,7 @@ const (
 	schemaFlag = "schema"
 	devURLFlag = "dev-url"
 	fileFlag   = "file"
+	dsnFlag    = "dsn"
 )
 
 var (
@@ -38,15 +39,22 @@ var (
 		Long:  "The `atlas schema` command groups subcommands for working with Atlas schemas.",
 	}
 
+	// SchemaFlags are common flags used by schema commands.
+	SchemaFlags struct {
+		URL     string
+		Schemas []string
+
+		// Deprecated: DSN is an alias for URL.
+		DSN string
+	}
+
 	// ApplyFlags are the flags used in SchemaApply command.
 	ApplyFlags struct {
-		URL         string
 		DevURL      string
 		File        string
 		Web         bool
 		Addr        string
 		DryRun      bool
-		Schema      []string
 		AutoApprove bool
 		Verbose     bool
 		Vars        map[string]string
@@ -62,7 +70,8 @@ migration, Atlas will print the migration plan and prompt the user for approval.
 
 If run with the "--dry-run" flag, atlas will exit after printing out the planned
 migration.`,
-		RunE: CmdApplyRun,
+		PreRunE: flagsFromEnv,
+		RunE:    CmdApplyRun,
 		Example: `  atlas schema apply -u "mysql://user:pass@localhost/dbname" -f atlas.hcl
   atlas schema apply -u "mysql://localhost" -f atlas.hcl --schema prod --schema staging
   atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" -f atlas.hcl --dry-run
@@ -73,10 +82,8 @@ migration.`,
 
 	// InspectFlags are the flags used in SchemaInspect command.
 	InspectFlags struct {
-		URL    string
-		Web    bool
-		Addr   string
-		Schema []string
+		Web  bool
+		Addr string
 	}
 	// SchemaInspect represents the 'atlas schema inspect' subcommand.
 	SchemaInspect = &cobra.Command{
@@ -95,7 +102,8 @@ databases), omit the relevant part from the url, e.g. "mysql://user:pass@localho
 To select specific schemas from the databases, users may use the "--schema" (or "-s" shorthand)
 flag.
 	`,
-		RunE: CmdInspectRun,
+		PreRunE: flagsFromEnv,
+		RunE:    CmdInspectRun,
 		Example: `  atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname"
   atlas schema inspect -u "mariadb://user:pass@localhost:3306/" --schema=schemaA,schemaB -s schemaC
   atlas schema inspect --url "postgres://user:pass@host:port/dbname?sslmode=disable"
@@ -130,8 +138,8 @@ func init() {
 	schemaCmd.AddCommand(SchemaApply)
 	SchemaApply.Flags().SortFlags = false
 	SchemaApply.Flags().StringVarP(&ApplyFlags.File, fileFlag, "f", "", "[/path/to/file] file containing the HCL schema.")
-	SchemaApply.Flags().StringVarP(&ApplyFlags.URL, urlFlag, "u", "", "URL to the database using the format:\n[driver://username:password@address/dbname?param=value]")
-	SchemaApply.Flags().StringSliceVarP(&ApplyFlags.Schema, schemaFlag, "s", nil, "Set schema names.")
+	SchemaApply.Flags().StringVarP(&SchemaFlags.URL, urlFlag, "u", "", "URL to the database using the format:\n[driver://username:password@address/dbname?param=value]")
+	SchemaApply.Flags().StringSliceVarP(&SchemaFlags.Schemas, schemaFlag, "s", nil, "Set schema names.")
 	SchemaApply.Flags().StringVarP(&ApplyFlags.DevURL, devURLFlag, "", "", "URL for the dev database. Used to validate schemas and calculate diffs\nbefore running migration.")
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.DryRun, "dry-run", "", false, "Dry-run. Print SQL plan without prompting for execution.")
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.AutoApprove, "auto-approve", "", false, "Auto approve. Apply the schema changes without prompting for approval.")
@@ -139,15 +147,20 @@ func init() {
 	SchemaApply.Flags().StringVarP(&ApplyFlags.Addr, "addr", "", ":5800", "used with -w, local address to bind the server to.")
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.Verbose, migrateDiffFlagVerbose, "", false, "enable verbose logging")
 	SchemaApply.Flags().StringToStringVarP(&ApplyFlags.Vars, "var", "", nil, "input variables")
-	fixURLFlag(SchemaApply, &ApplyFlags.URL)
+	SchemaApply.Flags().StringVarP(&SchemaFlags.DSN, dsnFlag, "d", "", "")
+	cobra.CheckErr(SchemaApply.Flags().MarkHidden(dsnFlag))
+	cobra.CheckErr(SchemaApply.MarkFlagRequired(urlFlag))
+	cobra.CheckErr(SchemaApply.MarkFlagRequired(fileFlag))
 
 	// Schema inspect flags.
 	schemaCmd.AddCommand(SchemaInspect)
-	SchemaInspect.Flags().StringVarP(&InspectFlags.URL, "url", "u", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format")
+	SchemaInspect.Flags().StringVarP(&SchemaFlags.URL, urlFlag, "u", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format")
 	SchemaInspect.Flags().BoolVarP(&InspectFlags.Web, "web", "w", false, "Open in a local Atlas UI")
 	SchemaInspect.Flags().StringVarP(&InspectFlags.Addr, "addr", "", ":5800", "Used with -w, local address to bind the server to")
-	SchemaInspect.Flags().StringSliceVarP(&InspectFlags.Schema, schemaFlag, "s", nil, "Set schema name")
-	fixURLFlag(SchemaInspect, &InspectFlags.URL)
+	SchemaInspect.Flags().StringSliceVarP(&SchemaFlags.Schemas, schemaFlag, "s", nil, "Set schema name")
+	SchemaInspect.Flags().StringVarP(&SchemaFlags.DSN, dsnFlag, "d", "", "")
+	cobra.CheckErr(SchemaInspect.Flags().MarkHidden(dsnFlag))
+	cobra.CheckErr(SchemaInspect.MarkFlagRequired(urlFlag))
 
 	// Schema fmt.
 	schemaCmd.AddCommand(SchemaFmt)
@@ -169,34 +182,85 @@ func selectEnv(selected string) (*Env, error) {
 	return LoadEnv(projectFileName, selected)
 }
 
+func flagsFromEnv(cmd *cobra.Command, _ []string) error {
+	activeEnv, err := selectEnv(selectedEnv)
+	if err != nil {
+		return err
+	}
+	if err := dsn2url(cmd); err != nil {
+		return err
+	}
+	if fl := cmd.Flag(urlFlag); fl != nil && !fl.Changed {
+		if err := fl.Value.Set(activeEnv.URL); err != nil {
+			return err
+		}
+		if fl.Value.String() != "" {
+			fl.Changed = true
+		}
+	}
+	if fl := cmd.Flag(devURLFlag); fl != nil && !fl.Changed {
+		if err := fl.Value.Set(activeEnv.DevURL); err != nil {
+			return err
+		}
+	}
+	if fl := cmd.Flag(fileFlag); fl != nil && !fl.Changed {
+		if err := fl.Value.Set(activeEnv.Source); err != nil {
+			return err
+		}
+		if fl.Value.String() != "" {
+			fl.Changed = true
+		}
+	}
+	if fl := cmd.Flag(schemaFlag); fl != nil && !fl.Changed {
+		c, err := formatStrings(activeEnv.Schemas)
+		if err != nil {
+			return err
+		}
+		if err := fl.Value.Set(c); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func dsn2url(cmd *cobra.Command) error {
+	dsnF, urlF := cmd.Flag(dsnFlag), cmd.Flag(urlFlag)
+	switch {
+	case dsnF.Changed && urlF.Changed:
+		return errors.New(`both flags "url" and "dsn" were set`)
+	case dsnF.Changed && !urlF.Changed:
+		urlF.Changed = true
+		urlF.Value = dsnF.Value
+	}
+	return nil
+}
+
+// copied from https://github.com/spf13/pflag/blob/d5e0c0615acee7028e1e2740a11102313be88de1/string_slice.go#L31
+func formatStrings(vals []string) (string, error) {
+	b := &bytes.Buffer{}
+	w := csv.NewWriter(b)
+	err := w.Write(vals)
+	if err != nil {
+		return "", err
+	}
+	w.Flush()
+	return "[" + strings.TrimSuffix(b.String(), "\n") + "]", nil
+}
+
 // CmdInspectRun is the command used when running CLI.
 func CmdInspectRun(cmd *cobra.Command, _ []string) error {
 	if InspectFlags.Web {
 		schemaCmd.PrintErrln("The Alas UI is not available in this release.")
 		return errors.New("unsupported")
 	}
-	activeEnv, err := selectEnv(selectedEnv)
-	if err != nil {
-		return err
-	}
 	// Create the client.
-	dbURL := activeEnv.URL
-	if fl := cmd.Flag(urlFlag); fl.Changed {
-		dbURL = InspectFlags.URL
-	}
-	if dbURL == "" {
-		return errors.New(`required flag "url" not set`)
-	}
-	client, err := sqlclient.Open(cmd.Context(), dbURL)
+	client, err := sqlclient.Open(cmd.Context(), SchemaFlags.URL)
 	if err != nil {
 		return err
 	}
 	defer client.Close()
 	// Select the schemas.
-	schemas := activeEnv.Schemas
-	if fl := cmd.Flag(schemaFlag); fl.Changed {
-		schemas = InspectFlags.Schema
-	}
+	schemas := SchemaFlags.Schemas
 	if client.URL.Schema != "" {
 		schemas = append(schemas, client.URL.Schema)
 	}
@@ -221,18 +285,7 @@ func CmdApplyRun(cmd *cobra.Command, _ []string) error {
 		cmd.Println("The Atlas UI is not available in this release.")
 		return errors.New("unavailable")
 	}
-	activeEnv, err := selectEnv(selectedEnv)
-	if err != nil {
-		return err
-	}
-	dbURL := activeEnv.URL
-	if fl := cmd.Flag(urlFlag); fl.Changed {
-		dbURL = ApplyFlags.URL
-	}
-	if dbURL == "" {
-		return errors.New(`required flag "url" not set`)
-	}
-	c, err := sqlclient.Open(cmd.Context(), dbURL)
+	c, err := sqlclient.Open(cmd.Context(), SchemaFlags.URL)
 	if err != nil {
 		return err
 	}
@@ -240,18 +293,7 @@ func CmdApplyRun(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	defer c.Close()
-	devURL := activeEnv.DevURL
-	if fl := cmd.Flag(devURLFlag); fl.Changed {
-		devURL = ApplyFlags.DevURL
-	}
-	file := activeEnv.Source
-	if fl := cmd.Flag(fileFlag); fl.Changed {
-		file = ApplyFlags.File
-	}
-	if file == "" {
-		return errors.New(`required flag "file" not set"`)
-	}
-	return applyRun(cmd.Context(), c, devURL, file, ApplyFlags.DryRun, ApplyFlags.AutoApprove, ApplyFlags.Vars)
+	return applyRun(cmd.Context(), c, ApplyFlags.DevURL, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove, ApplyFlags.Vars)
 }
 
 // CmdFmtRun formats all HCL files in a given directory using canonical HCL formatting
@@ -266,7 +308,7 @@ func CmdFmtRun(cmd *cobra.Command, args []string) {
 }
 
 func applyRun(ctx context.Context, client *sqlclient.Client, devURL string, file string, dryRun, autoApprove bool, input map[string]string) error {
-	schemas := ApplyFlags.Schema
+	schemas := SchemaFlags.Schemas
 	if client.URL.Schema != "" {
 		schemas = append(schemas, client.URL.Schema)
 	}
@@ -345,24 +387,6 @@ func promptUser() bool {
 	_, result, err := prompt.Run()
 	cobra.CheckErr(err)
 	return result == answerApply
-}
-
-// fixURLFlag fixes the url flag by pulling its value either from the flag itself,
-// the (deprecated) dsn flag, or from the active environment.
-func fixURLFlag(cmd *cobra.Command, p *string) {
-	cmd.Flags().StringVarP(p, "dsn", "d", "", "")
-	cobra.CheckErr(cmd.Flags().MarkHidden("dsn"))
-	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
-		dsnF, urlF := cmd.Flag("dsn"), cmd.Flag("url")
-		switch {
-		case dsnF.Changed && urlF.Changed:
-			return errors.New(`both flags "url" and "dsn" were set`)
-		case dsnF.Changed && !urlF.Changed:
-			urlF.Changed = true
-			urlF.Value = dsnF.Value
-		}
-		return nil
-	}
 }
 
 func handlePath(cmd *cobra.Command, path string) {
