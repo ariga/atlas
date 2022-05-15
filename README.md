@@ -31,7 +31,7 @@ This tutorial teaches you how to inspect a database, generate a migration plan a
 ## Features
 - **Inspecting a database**: easily inspect your database schema by providing a database URL.  
 ```shell
-atlas schema inspect -d "mysql://root:pass@localhost:3306/example"
+atlas schema inspect -u "mysql://root:pass@localhost:3306/example" > atlas.hcl
 ```
 - **Applying a migration**: generate a migration plan to apply on the database by providing an HCL file with the desired Atlas schema.
 ```shell
