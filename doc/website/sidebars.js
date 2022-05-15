@@ -20,7 +20,6 @@ module.exports = {
                 'getting-started/getting-started-installation',
                 'getting-started/getting-started-inspection',
                 'getting-started/getting-started-apply',
-                'getting-started/getting-started-management-ui',
             ]
         },
         {
