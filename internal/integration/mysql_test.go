@@ -612,7 +612,7 @@ table "users" {
 }
 
 func TestMySQL_CLI_MultiSchema(t *testing.T) {
-	h := `	
+	h := `
 			schema "test" {
 				charset   = "%s"
 				collation = "%s"
@@ -844,7 +844,7 @@ create table atlas_types_sanity
 						Default: &schema.RawExpr{
 							X: func() string {
 								if t.mariadb() {
-									return "current_timestamp()"
+									return "(current_timestamp())"
 								}
 								return "CURRENT_TIMESTAMP"
 							}(),
@@ -857,7 +857,7 @@ create table atlas_types_sanity
 						Default: &schema.RawExpr{
 							X: func() string {
 								if t.mariadb() {
-									return "current_timestamp(6)"
+									return "(current_timestamp(6))"
 								}
 								return "CURRENT_TIMESTAMP(6)"
 							}(),
@@ -870,7 +870,7 @@ create table atlas_types_sanity
 						Default: &schema.RawExpr{
 							X: func() string {
 								if t.mariadb() {
-									return "current_timestamp()"
+									return "(current_timestamp())"
 								}
 								return "CURRENT_TIMESTAMP"
 							}(),
@@ -892,7 +892,7 @@ create table atlas_types_sanity
 						Default: &schema.RawExpr{
 							X: func() string {
 								if t.mariadb() {
-									return "current_timestamp(6)"
+									return "(current_timestamp(6))"
 								}
 								return "CURRENT_TIMESTAMP(6)"
 							}(),
