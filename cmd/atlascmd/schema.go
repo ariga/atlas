@@ -186,7 +186,6 @@ func CmdInspectRun(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	defer client.Close()
-	// Select the schemas.
 	schemas := activeEnv.Schemas
 	if fl := cmd.Flag(schemaFlag); fl.Changed {
 		schemas = InspectFlags.Schema
@@ -194,7 +193,6 @@ func CmdInspectRun(cmd *cobra.Command, _ []string) error {
 	if client.URL.Schema != "" {
 		schemas = append(schemas, client.URL.Schema)
 	}
-	// Inspect the realm.
 	s, err := client.InspectRealm(cmd.Context(), &schema.InspectRealmOption{
 		Schemas: schemas,
 	})
