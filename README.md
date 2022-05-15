@@ -5,8 +5,7 @@
 <img width="50%" align="right" style="display: block; margin:40px auto;"
      src="https://atlasgo.io/uploads/images/gopher.png"/>
 
-Atlas is a CLI designed to help companies better work with their data. It includes several components that can
-be used individually but are designed to work very well together.
+Atlas CLI is an open source tool that helps developers manage their database schemas by applying modern DevOps principles. Contrary to existing tools, Atlas intelligently plans schema migrations for you. Atlas users can use the [Atlas DDL](https://atlasgo.io/ddl/intro#hcl) (data definition language) to describe their desired database schema and use the command-line tool to plan and apply the migrations to their systems.
 
 ### Supported databases: 
 * MySQL
@@ -14,12 +13,6 @@ be used individually but are designed to work very well together.
 * PostgresSQL
 * SQLite
 * TiDB
-
-### Runs on all platforms:
-* Mac
-* Linux
-* Windows
-
 
 ## Quick Installation
 
@@ -29,24 +22,22 @@ On macOS:
 brew install ariga/tap/atlas
 ```
 
-Instructions for other platforms and databases: [Getting Started](https://atlasgo.io/).
+Click [here](https://atlasgo.io/cli/getting-started/setting-up) to read instructions for other platforms.
 
 ## Getting Started
+Get started with Atlas by following the [Getting Started](https://atlasgo.io/cli/getting-started/setting-up) docs. 
+This tutorial teaches you how to inspect a database, generate a migration plan and apply the migration to your database.
 
-### Schema Inspection
-
-Inspect and save output to a schema file.
+## Features
+- **Inspecting a database**: easily inspect your database schema by providing a database URL.  
 ```shell
-atlas schema inspect -u "mysql://root:pass@tcp(localhost:3306)/example" > atlas.hcl
+atlas schema inspect -d "mysql://root:pass@localhost:3306/example"
 ```
-
-## Apply change to Schema
-
+- **Applying a migration**: generate a migration plan to apply on the database by providing an HCL file with the desired Atlas schema.
 ```shell
-atlas schema apply -u "mysql://root:pass@tcp(localhost:3306)/example" -f atlas.hcl
+atlas schema apply -d "mysql://root:pass@localhost:3306/example" -f atlas.hcl
 ```
-
-Full [CLI documentation](https://atlasgo.io/cli/reference). 
+- **Declarative Migrations vs. Versioned Migrations**: Atlas offers two workflows. Declarative migrations allow the user to provide a desired state and Atlas gets the schema there instantly (simply using inspect and apply commands). Alternatively, declarative migrations are explicitly defined and assigned a version. Atlas can then bring a schema to the desired version by following the migrations between the current version and the specified one.
 
 ### About the Project
-Read more about the motivation of the project [Here](https://blog.ariga.io/meet-atlas-cli/).
+Read more about the motivation of the project [here](https://atlasgo.io/blog/2021/11/25/meet-atlas).
