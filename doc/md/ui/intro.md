@@ -4,7 +4,7 @@ slug: /ui/intro
 title: Management UI
 ---
 
-:::note
+:::info
 The Management UI is temporarily unavailable in the latest version of Atlas. The UI will be brought back soon, however if
 you wish to use the UI in the meantime, download [Atlas v0.3.7](https://github.com/ariga/atlas/releases/tag/v0.3.7).
 :::
