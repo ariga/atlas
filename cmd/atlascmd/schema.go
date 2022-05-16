@@ -70,7 +70,7 @@ migration, Atlas will print the migration plan and prompt the user for approval.
 
 If run with the "--dry-run" flag, atlas will exit after printing out the planned
 migration.`,
-		PreRunE: flagsFromEnv,
+		PreRunE: schemaFlagsFromEnv,
 		RunE:    CmdApplyRun,
 		Example: `  atlas schema apply -u "mysql://user:pass@localhost/dbname" -f atlas.hcl
   atlas schema apply -u "mysql://localhost" -f atlas.hcl --schema prod --schema staging
@@ -102,7 +102,7 @@ databases), omit the relevant part from the url, e.g. "mysql://user:pass@localho
 To select specific schemas from the databases, users may use the "--schema" (or "-s" shorthand)
 flag.
 	`,
-		PreRunE: flagsFromEnv,
+		PreRunE: schemaFlagsFromEnv,
 		RunE:    CmdInspectRun,
 		Example: `  atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname"
   atlas schema inspect -u "mariadb://user:pass@localhost:3306/" --schema=schemaA,schemaB -s schemaC
@@ -182,7 +182,7 @@ func selectEnv(selected string) (*Env, error) {
 	return LoadEnv(projectFileName, selected)
 }
 
-func flagsFromEnv(cmd *cobra.Command, _ []string) error {
+func schemaFlagsFromEnv(cmd *cobra.Command, _ []string) error {
 	activeEnv, err := selectEnv(selectedEnv)
 	if err != nil {
 		return err
@@ -190,37 +190,42 @@ func flagsFromEnv(cmd *cobra.Command, _ []string) error {
 	if err := dsn2url(cmd); err != nil {
 		return err
 	}
-	if fl := cmd.Flag(urlFlag); fl != nil && !fl.Changed {
-		if err := fl.Value.Set(activeEnv.URL); err != nil {
-			return err
-		}
-		if fl.Value.String() != "" {
-			fl.Changed = true
-		}
+	if err := maySetFlag(cmd, urlFlag, activeEnv.URL); err != nil {
+		return err
 	}
-	if fl := cmd.Flag(devURLFlag); fl != nil && !fl.Changed {
-		if err := fl.Value.Set(activeEnv.DevURL); err != nil {
-			return err
-		}
+	if err := maySetFlag(cmd, devURLFlag, activeEnv.DevURL); err != nil {
+		return err
 	}
-	if fl := cmd.Flag(fileFlag); fl != nil && !fl.Changed {
-		if err := fl.Value.Set(activeEnv.Source); err != nil {
-			return err
-		}
-		if fl.Value.String() != "" {
-			fl.Changed = true
-		}
+	if err := maySetFlag(cmd, fileFlag, activeEnv.Source); err != nil {
+		return err
 	}
-	if fl := cmd.Flag(schemaFlag); fl != nil && !fl.Changed {
+	if fl := cmd.Flag(schemaFlag); fl != nil && !fl.Changed && len(activeEnv.Schemas) > 0 {
 		c, err := formatStrings(activeEnv.Schemas)
 		if err != nil {
 			return err
 		}
-		if err := fl.Value.Set(c); err != nil {
+		if err := cmd.Flags().Set(schemaFlag, c); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// maySetFlag sets the flag with the provided name to envVal if such a flag exists
+// on the cmd, it was not set by the user via the command line and if envVal is not
+// an empty string.
+func maySetFlag(cmd *cobra.Command, name, envVal string) error {
+	fl := cmd.Flag(name)
+	if fl == nil {
+		return nil
+	}
+	if fl.Changed {
+		return nil
+	}
+	if envVal == "" {
+		return nil
+	}
+	return cmd.Flags().Set(name, envVal)
 }
 
 func dsn2url(cmd *cobra.Command) error {

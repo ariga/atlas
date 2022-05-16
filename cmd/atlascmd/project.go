@@ -75,6 +75,9 @@ func LoadEnv(path string, name string) (*Env, error) {
 		if e.URL == "" {
 			return nil, fmt.Errorf("no url set for env %q", e.Name)
 		}
+		if e.Source == "" {
+			return nil, fmt.Errorf("no src set for env %q", e.Name)
+		}
 		projEnvs[e.Name] = e
 	}
 	selected, ok := projEnvs[name]

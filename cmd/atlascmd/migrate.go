@@ -6,7 +6,6 @@ package atlascmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -49,20 +48,12 @@ var (
 		Short: "Manage versioned migration files",
 		Long:  "'atlas migrate' wraps several sub-commands for migration management.",
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			if err := migrateFlagsFromEnv(cmd, nil); err != nil {
+				return err
+			}
 			// Migrate commands will not run on a broken migration directory, unless the force flag is given.
 			if !MigrateFlags.Force {
-				activeEnv, err := selectEnv(selectedEnv)
-				if err != nil {
-					return err
-				}
-				dirURL := activeEnv.MigrationDir.URL
-				if fl := cmd.Flag(migrateFlagDir); fl.Changed {
-					dirURL = MigrateFlags.DirURL
-				}
-				if dirURL == "" {
-					dirURL = cmd.Flag(migrateFlagDir).DefValue
-				}
-				dir, err := dir(dirURL)
+				dir, err := dir(MigrateFlags.DirURL)
 				if err != nil {
 					return err
 				}
@@ -92,8 +83,9 @@ directory and compares it to a given desired state and create a new migration fi
 the migration directory state to the desired schema. The desired state can be another connected database or an HCL file.`,
 		Example: `  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname
   atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl`,
-		Args: cobra.MaximumNArgs(1),
-		RunE: CmdMigrateDiffRun,
+		Args:    cobra.MaximumNArgs(1),
+		PreRunE: migrateFlagsFromEnv,
+		RunE:    CmdMigrateDiffRun,
 	}
 	// MigrateHashCmd represents the migrate hash command.
 	MigrateHashCmd = &cobra.Command{
@@ -102,6 +94,7 @@ the migration directory state to the desired schema. The desired state can be an
 		Long: `'atlas migrate hash' computes the integrity hash sum of the migration directory and stores it in the atlas.sum file.
 This command should be used whenever a manual change in the migration directory was made.`,
 		Example: `  atlas migrate hash --force`,
+		PreRunE: migrateFlagsFromEnv,
 		RunE:    CmdMigrateHashRun,
 	}
 	// MigrateNewCmd represents the migrate new command.
@@ -111,6 +104,7 @@ This command should be used whenever a manual change in the migration directory 
 		Long:    `'atlas migrate new' creates a new migration according to the configured formatter without any statements in it.`,
 		Example: `  atlas migrate new my-new-migration`,
 		Args:    cobra.MaximumNArgs(1),
+		PreRunE: migrateFlagsFromEnv,
 		RunE:    CmdMigrateNewRun,
 	}
 	// MigrateValidateCmd represents the migrate validate command.
@@ -123,7 +117,8 @@ executed on the connected database in order to validate SQL semantics.`,
 		Example: `  atlas migrate validate
   atlas migrate validate --dir /path/to/migration/directory
   atlas migrate validate --dir /path/to/migration/directory --dev-url mysql://user:pass@localhost:3306/dev`,
-		RunE: CmdMigrateValidateRun,
+		PreRunE: migrateFlagsFromEnv,
+		RunE:    CmdMigrateValidateRun,
 	}
 )
 
@@ -149,6 +144,8 @@ func init() {
 	MigrateDiffCmd.Flags().StringVarP(&MigrateFlags.ToURL, migrateDiffFlagTo, "", "", "[driver://username:password@address/dbname?param=value] select a data source using the URL format")
 	MigrateDiffCmd.Flags().BoolVarP(&MigrateFlags.Verbose, migrateDiffFlagVerbose, "", false, "enable verbose logging")
 	MigrateDiffCmd.Flags().SortFlags = false
+	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateFlagDevURL))
+	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateDiffFlagTo))
 	// Validate flags.
 	devURL(MigrateValidateCmd.Flags())
 	receivesEnv(MigrateCmd)
@@ -156,19 +153,8 @@ func init() {
 
 // CmdMigrateDiffRun is the command executed when running the CLI with 'migrate diff' args.
 func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
-	activeEnv, err := selectEnv(selectedEnv)
-	if err != nil {
-		return err
-	}
 	// Open a dev driver.
-	devURL := activeEnv.DevURL
-	if fl := cmd.Flag(migrateFlagDevURL); fl.Changed {
-		devURL = MigrateFlags.DevURL
-	}
-	if devURL == "" {
-		return errors.New(`required flag "dev-url" not set`)
-	}
-	dev, err := sqlclient.Open(cmd.Context(), devURL)
+	dev, err := sqlclient.Open(cmd.Context(), MigrateFlags.DevURL)
 	if err != nil {
 		return err
 	}
@@ -183,51 +169,21 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 		defer cobra.CheckErr(unlock())
 	}
 	// Open the migration directory.
-	dirURL := activeEnv.MigrationDir.URL
-	if fl := cmd.Flag(migrateFlagDir); fl.Changed {
-		dirURL = MigrateFlags.DirURL
-	}
-	if dirURL == "" {
-		dirURL = cmd.Flag(migrateFlagDir).DefValue
-	}
-	dir, err := dir(dirURL)
+	dir, err := dir(MigrateFlags.DirURL)
 	if err != nil {
 		return err
 	}
+	fmt.Println("@@@ after dir", MigrateFlags.ToURL)
 	// Get a state reader for the desired state.
-	toURL := activeEnv.Source
-	if toURL != "" {
-		abs, err := filepath.Abs(toURL)
-		if err != nil {
-			return err
-		}
-		toURL = "file://" + abs
-	}
-	if fl := cmd.Flag(migrateDiffFlagTo); fl.Changed {
-		toURL = MigrateFlags.ToURL
-	}
-	if toURL == "" {
-		return errors.New(`required flag "to" not set`)
-	}
-	schemas := activeEnv.Schemas
-	if fl := cmd.Flag(migrateFlagSchema); fl.Changed {
-		schemas = MigrateFlags.Schemas
-	}
-	desired, err := to(cmd.Context(), dev, toURL, schemas)
+	desired, err := to(cmd.Context(), dev, MigrateFlags.ToURL, MigrateFlags.Schemas)
 	if src, ok := desired.(io.Closer); ok {
 		defer src.Close()
 	}
 	if err != nil {
 		return err
 	}
-	fmter := activeEnv.MigrationDir.Format
-	if fl := cmd.Flag(migrateFlagFormat); fl.Changed {
-		fmter = MigrateFlags.Format
-	}
-	if fmter == "" {
-		fmter = cmd.Flag(migrateFlagFormat).DefValue
-	}
-	f, err := formatter(fmter)
+	fmt.Println("@@@ after to")
+	f, err := formatter(MigrateFlags.Format)
 	if err != nil {
 		return err
 	}
@@ -424,4 +380,38 @@ func formatter(f string) (migrate.Formatter, error) {
 	default:
 		return nil, fmt.Errorf("unknown format %q", f)
 	}
+}
+
+func migrateFlagsFromEnv(cmd *cobra.Command, _ []string) error {
+	activeEnv, err := selectEnv(selectedEnv)
+	if err != nil {
+		return err
+	}
+	if err := maySetFlag(cmd, migrateFlagDevURL, activeEnv.DevURL); err != nil {
+		return err
+	}
+	if err := maySetFlag(cmd, migrateFlagFormat, activeEnv.MigrationDir.Format); err != nil {
+		return err
+	}
+	// Transform "src" to a URL.
+	toURL := activeEnv.Source
+	if toURL != "" {
+		if toURL, err = filepath.Abs(activeEnv.Source); err != nil {
+			return fmt.Errorf("finding abs path to source: %q: %w", activeEnv.Source, err)
+		}
+		toURL = "file://" + toURL
+	}
+	if err := maySetFlag(cmd, migrateDiffFlagTo, toURL); err != nil {
+		return err
+	}
+	c, err := formatStrings(activeEnv.Schemas)
+	if err != nil {
+		return err
+	}
+	if c != "[]" {
+		if err := maySetFlag(cmd, migrateFlagSchema, c); err != nil {
+			return err
+		}
+	}
+	return nil
 }
