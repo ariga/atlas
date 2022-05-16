@@ -285,7 +285,7 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 			return nil, err
 		}
 
-		if len(MigrateFlags.Schemas) > 0 {
+		if len(schemas) > 0 {
 			// Validate all schemas in file were selected by user.
 			sm := make(map[string]bool, len(schemas))
 			for _, s := range schemas {
