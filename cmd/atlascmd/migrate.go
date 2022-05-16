@@ -173,7 +173,6 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("@@@ after dir", MigrateFlags.ToURL)
 	// Get a state reader for the desired state.
 	desired, err := to(cmd.Context(), dev, MigrateFlags.ToURL, MigrateFlags.Schemas)
 	if src, ok := desired.(io.Closer); ok {
@@ -182,7 +181,6 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("@@@ after to")
 	f, err := formatter(MigrateFlags.Format)
 	if err != nil {
 		return err
