@@ -6,6 +6,10 @@ title: Deployment
 
 ## Introduction
 
+:::info
+As our team is working on completely rewriting The Management UI, support for it has been temporarily removed in the most recent version of Atlas. To explore the UI in previous versions, download [v0.3.7](https://github.com/ariga/atlas/releases/tag/v0.3.7) or earlier.
+:::
+
 Teams using Atlas to manage their databases can benefit from deploying the Atlas Management UI to their
 cloud environment. The Management UI can be used to gain visibility of your team's database schemas as well
 as provide an intuitive interface for planning and running database migrations using Atlas's core engine.
