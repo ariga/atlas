@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -344,30 +345,40 @@ func (i *inspect) indexes(ctx context.Context, s *schema.Schema) error {
 	return rows.Err()
 }
 
+var reIndexType = regexp.MustCompile("(?i)USING (BTREE|GIN|GIST)")
+
+// indexType extracts index type information from index create statement. see: https://www.cockroachlabs.com/docs/stable/create-index.html
+func indexType(createStmt string) *IndexType {
+	t := reIndexType.FindStringSubmatch(createStmt)
+	return &IndexType{T: t[1]}
+}
+
 // addIndexes scans the rows and adds the indexes to the table.
 func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
+	// cockroach index names aren't unique so as oppo
 	names := make(map[string]*schema.Index)
 	for rows.Next() {
 		var (
 			uniq, primary                        bool
-			table, name, typ, createStmt         string
+			table, name, createStmt              string
 			column, contype, pred, expr, comment sql.NullString
 		)
-		if err := rows.Scan(&table, &name, &typ, &column, &primary, &uniq, &contype, &createStmt, &pred, &expr, &comment); err != nil {
+		if err := rows.Scan(&table, &name, &column, &primary, &uniq, &contype, &createStmt, &pred, &expr, &comment); err != nil {
 			return fmt.Errorf("cockroach: scanning indexes for schema %q: %w", s.Name, err)
 		}
 		t, ok := s.Table(table)
 		if !ok {
 			return fmt.Errorf("table %q was not found in schema", table)
 		}
-		idx, ok := names[name]
+		uniqueName := fmt.Sprintf("%s.%s.%s", s.Name, table, name)
+		idx, ok := names[uniqueName]
 		if !ok {
 			idx = &schema.Index{
 				Name:   name,
 				Unique: uniq,
 				Table:  t,
 				Attrs: []schema.Attr{
-					&IndexType{T: typ},
+					indexType(createStmt),
 				},
 			}
 			if sqlx.ValidString(comment) {
@@ -379,7 +390,7 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 			if sqlx.ValidString(pred) {
 				idx.Attrs = append(idx.Attrs, &IndexPredicate{P: pred.String})
 			}
-			names[name] = idx
+			names[uniqueName] = idx
 			if primary {
 				t.PrimaryKey = idx
 			} else {
@@ -856,7 +867,6 @@ ORDER BY
 SELECT
 	t.relname AS table_name,
 	i.relname AS index_name,
-	am.amname AS index_type,
 	a.attname AS column_name,
 	idx.indisprimary AS primary,
 	idx.indisunique AS unique,
@@ -879,7 +889,6 @@ SELECT
 	LEFT JOIN pg_constraint c ON idx.indexrelid = c.conindid
 			LEFT JOIN pg_indexes pgi ON pgi.tablename = t.relname AND indexname = i.relname
 	LEFT JOIN pg_attribute a ON (a.attrelid, a.attnum) = (idx.indrelid, idx.key)
-	JOIN pg_am am ON am.oid = i.relam
 WHERE
 	n.nspname = $1
 	AND t.relname IN (%s)
