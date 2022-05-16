@@ -20,8 +20,9 @@ import (
 var (
 	// Root represents the root command when called without any subcommands.
 	Root = &cobra.Command{
-		Use:   "atlas",
-		Short: "A database toolkit.",
+		Use:          "atlas",
+		Short:        "A database toolkit.",
+		SilenceUsage: true,
 	}
 
 	// version is the atlas CLI build version

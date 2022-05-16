@@ -24,9 +24,6 @@ func main() {
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	atlascmd.Root.SetOut(os.Stdout)
 	err := atlascmd.Root.ExecuteContext(ctx)
-	if err != nil {
-		atlascmd.Root.PrintErrln("Error:", err)
-	}
 	atlascmd.CheckForUpdate()
 	if err != nil {
 		os.Exit(1)

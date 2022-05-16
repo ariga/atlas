@@ -88,7 +88,7 @@ databases), omit the relevant part from the url, e.g. "mysql://user:pass@localho
 To select specific schemas from the databases, users may use the "--schema" (or "-s" shorthand)
 flag.
 	`,
-		Run: CmdInspectRun,
+		RunE: CmdInspectRun,
 		Example: `  atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname"
   atlas schema inspect -u "mariadb://user:pass@localhost:3306/" --schema=schemaA,schemaB -s schemaC
   atlas schema inspect --url "postgres://user:pass@host:port/dbname?sslmode=disable"
@@ -154,17 +154,20 @@ func init() {
 }
 
 // CmdInspectRun is the command used when running CLI.
-func CmdInspectRun(cmd *cobra.Command, args []string) {
+func CmdInspectRun(cmd *cobra.Command, args []string) error {
 	if InspectFlags.Web {
-		schemaCmd.PrintErrln("The Alas UI is not available in this release.")
-		return
+		return errors.New("atlas UI is not available in this release")
 	}
 	client, err := sqlclient.Open(cmd.Context(), InspectFlags.URL)
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 	defer client.Close()
 	schemas := InspectFlags.Schema
 	activeEnv, err := selectEnv(args)
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 	if activeEnv != nil && len(activeEnv.Schemas) > 0 {
 		schemas = activeEnv.Schemas
 	}
@@ -174,17 +177,21 @@ func CmdInspectRun(cmd *cobra.Command, args []string) {
 	s, err := client.InspectRealm(cmd.Context(), &schema.InspectRealmOption{
 		Schemas: schemas,
 	})
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 	ddl, err := client.MarshalSpec(s)
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 	schemaCmd.Print(string(ddl))
+	return nil
 }
 
 // CmdApplyRun is the command used when running CLI.
 func CmdApplyRun(cmd *cobra.Command, args []string) error {
 	if ApplyFlags.Web {
-		cmd.Println("The Atlas UI is not available in this release.")
-		return errors.New("unavailable")
+		return errors.New("atlas UI is not available in this release")
 	}
 	c, err := sqlclient.Open(cmd.Context(), ApplyFlags.URL)
 	if err != nil {
