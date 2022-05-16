@@ -137,16 +137,17 @@ users      | parent_id   | bigint              | YES         |                  
 				m.ExpectQuery(queryIndexes).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-   table_name   |    index_name   | index_type  | column_name | primary | unique | constraint_type | predicate             |   expression              | desc | nulls_first | nulls_last | comment
-----------------+-----------------+-------------+-------------+---------+--------+-----------------+-----------------------+---------------------------+------+-------------+------------+-----------
-users           | idx             | hash        |             | f       | f      |                 |                       | "left"((c11)::text, 100)  | t    | t           | f          | boring
-users           | idx1            | btree       |             | f       | f      |                 | (id <> NULL::integer) | "left"((c11)::text, 100)  | t    | t           | f          |
-users           | t1_c1_key       | btree       | c1          | f       | t      | u               |                       | c1                        | t    | t           | f          |
-users           | t1_pkey         | btree       | id          | t       | t      | p               |                       | id                        | t    | f           | f          |
-users           | idx4            | btree       | c1          | f       | t      |                 |                       | c1                        | f    | f           | f          |
-users           | idx4            | btree       | id          | f       | t      |                 |                       | id                        | f    | f           | t          |
-users           | idx5            | btree       | c1          | f       | t      |                 |                       | c1                        | f    | f           | f          |
-users           | idx5            | btree       |             | f       | t      |                 |                       | coalesce(parent_id, 0)    | f    | f           | f          |
+   table_name   |    index_name   | index_type  | column_name | primary | unique | constraint_type | predicate             |   expression              | desc | nulls_first | nulls_last | comment   | options
+----------------+-----------------+-------------+-------------+---------+--------+-----------------+-----------------------+---------------------------+------+-------------+------------+-----------+-----------
+users           | idx             | hash        |             | f       | f      |                 |                       | "left"((c11)::text, 100)  | t    | t           | f          | boring    |
+users           | idx1            | btree       |             | f       | f      |                 | (id <> NULL::integer) | "left"((c11)::text, 100)  | t    | t           | f          |           |
+users           | t1_c1_key       | btree       | c1          | f       | t      | u               |                       | c1                        | t    | t           | f          |           |
+users           | t1_pkey         | btree       | id          | t       | t      | p               |                       | id                        | t    | f           | f          |           |
+users           | idx4            | btree       | c1          | f       | t      |                 |                       | c1                        | f    | f           | f          |           |
+users           | idx4            | btree       | id          | f       | t      |                 |                       | id                        | f    | f           | t          |           |
+users           | idx5            | btree       | c1          | f       | t      |                 |                       | c1                        | f    | f           | f          |           |
+users           | idx5            | btree       |             | f       | t      |                 |                       | coalesce(parent_id, 0)    | f    | f           | f          |           |
+users           | idx6            | brin        | c1          | f       | t      |                 |                       |                           | f    | f           | f          |           | {autosummarize=true,pages_per_range=2}
 `))
 				m.noFKs()
 				m.noChecks()
@@ -165,6 +166,7 @@ users           | idx5            | btree       |             | f       | t     
 					{Name: "t1_c1_key", Unique: true, Table: t, Attrs: []schema.Attr{&IndexType{T: "btree"}, &ConType{T: "u"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1], Desc: true, Attrs: []schema.Attr{&IndexColumnProperty{NullsFirst: true}}}}},
 					{Name: "idx4", Unique: true, Table: t, Attrs: []schema.Attr{&IndexType{T: "btree"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1]}, {SeqNo: 2, C: columns[0], Attrs: []schema.Attr{&IndexColumnProperty{NullsLast: true}}}}},
 					{Name: "idx5", Unique: true, Table: t, Attrs: []schema.Attr{&IndexType{T: "btree"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1]}, {SeqNo: 2, X: &schema.RawExpr{X: `coalesce(parent_id, 0)`}}}},
+					{Name: "idx6", Unique: true, Table: t, Attrs: []schema.Attr{&IndexType{T: "brin"}, &IndexStorageParams{AutoSummarize: true, PagesPerRange: 2}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1]}}},
 				}
 				pk := &schema.Index{
 					Name:   "t1_pkey",
@@ -592,7 +594,7 @@ func (m mock) tableExists(schema, table string, exists bool) {
 
 func (m mock) noIndexes() {
 	m.ExpectQuery(queryIndexes).
-		WillReturnRows(sqlmock.NewRows([]string{"table_name", "index_name", "column_name", "primary", "unique", "constraint_type", "predicate", "expression"}))
+		WillReturnRows(sqlmock.NewRows([]string{"table_name", "index_name", "column_name", "primary", "unique", "constraint_type", "predicate", "expression", "options"}))
 }
 
 func (m mock) noFKs() {

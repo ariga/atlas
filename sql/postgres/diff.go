@@ -161,7 +161,12 @@ func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 		return true
 	}
 	var p1, p2 IndexPredicate
-	return sqlx.Has(from, &p1) != sqlx.Has(to, &p2) || (p1.P != p2.P && p1.P != sqlx.MayWrap(p2.P))
+	if sqlx.Has(from, &p1) != sqlx.Has(to, &p2) || (p1.P != p2.P && p1.P != sqlx.MayWrap(p2.P)) {
+		return true
+	}
+	s1, ok1 := indexStorageParams(from)
+	s2, ok2 := indexStorageParams(to)
+	return ok1 != ok2 || ok1 && *s1 != *s2
 }
 
 // IndexPartAttrChanged reports if the index-part attributes were changed.
@@ -405,6 +410,19 @@ func formatPartition(p Partition) (string, error) {
 		})
 	})
 	return b.String(), nil
+}
+
+// indexStorageParams returns the index storage parameters from the attributes
+// in case it is there, and it is not the default.
+func indexStorageParams(attrs []schema.Attr) (*IndexStorageParams, bool) {
+	s := &IndexStorageParams{}
+	if !sqlx.Has(attrs, s) {
+		return nil, false
+	}
+	if !s.AutoSummarize && (s.PagesPerRange == 0 || s.PagesPerRange == defaultPagePerRange) {
+		return nil, false
+	}
+	return s, true
 }
 
 func trimCast(s string) string {

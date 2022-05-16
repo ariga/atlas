@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"unicode"
@@ -72,7 +73,9 @@ func TestSQLite_Script(t *testing.T) {
 			"exist":   tt.cmdExist,
 			"synced":  tt.cmdSynced,
 			"cmpshow": tt.cmdCmpShow,
+			"cmpmig":  tt.cmdCmpMig,
 			"execsql": tt.cmdExec,
+			"atlas":   tt.cmdCLI,
 		},
 	})
 }
@@ -122,8 +125,11 @@ var (
 	keyDrv *sqlite.Driver
 )
 
+const cliPathKey = "cli"
+
 func (t *liteTest) setupScript(env *testscript.Env) error {
-	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?mode=memory&cache=shared&_fk=1", filepath.Base(env.WorkDir)))
+	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&_fk=1",
+		filepath.Join(env.WorkDir, "atlas.sqlite")))
 	require.NoError(t, err)
 	env.Defer(func() {
 		require.NoError(t, db.Close())
@@ -135,6 +141,19 @@ func (t *liteTest) setupScript(env *testscript.Env) error {
 	// environment as tests run in parallel.
 	env.Values[keyDB] = db
 	env.Values[keyDrv] = drv
+	cliPath, err := buildCmd(t.T)
+	if err != nil {
+		return err
+	}
+	env.Setenv(cliPathKey, cliPath)
+
+	// Set the workdir in the test atlas.hcl file.
+	projectFile := filepath.Join(env.WorkDir, "atlas.hcl")
+	if b, err := os.ReadFile(projectFile); err == nil {
+		rep := strings.ReplaceAll(string(b), "URL",
+			fmt.Sprintf("sqlite://file:%s/atlas.sqlite?cache=shared&_fk=1", env.WorkDir))
+		return os.WriteFile(projectFile, []byte(rep), 0600)
+	}
 	return nil
 }
 
@@ -217,6 +236,37 @@ func (t *liteTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) 
 		}
 		return strings.Join(stmts, "\n"), nil
 	})
+}
+
+// cmdCmpMig compares the nth migration file under migrations/ to the provided file.
+// Because migration are created with the execution timestamp, lexicographic order of
+// the files in the directory is used to access the file of interest.
+func (t *liteTest) cmdCmpMig(ts *testscript.TestScript, _ bool, args []string) {
+	if len(args) < 2 {
+		ts.Fatalf("invalid number of args to 'cmpmig': %d", len(args))
+	}
+	expected := ts.ReadFile(args[1])
+	dir, err := os.ReadDir(ts.MkAbs("migrations"))
+	ts.Check(err)
+	idx, err := strconv.Atoi(args[0])
+	ts.Check(err)
+	current := 0
+	for _, f := range dir {
+		if f.IsDir() || !strings.HasSuffix(f.Name(), ".sql") {
+			continue
+		}
+		if current == idx {
+			actual := ts.ReadFile(filepath.Join("migrations", f.Name()))
+			var sb strings.Builder
+			if strings.TrimSpace(actual) == strings.TrimSpace(expected) {
+				return
+			}
+			ts.Check(diff.Text(f.Name(), args[1], expected, actual, &sb))
+			ts.Fatalf(sb.String())
+		}
+		current++
+	}
+	ts.Fatalf("could not find the #%d migration", idx)
 }
 
 func cmdCmpShow(ts *testscript.TestScript, args []string, show func(schema, name string) (string, error)) {
@@ -308,6 +358,31 @@ func (t *myTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
 
 func (t *liteTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
 	cmdExec(ts, args, ts.Value(keyDB).(*sql.DB))
+}
+
+func (t *liteTest) cmdCLI(ts *testscript.TestScript, _ bool, args []string) {
+	var (
+		workDir = ts.Getenv("WORK")
+		dbURL   = fmt.Sprintf("sqlite://file:%s/atlas.sqlite?cache=shared&_fk=1", workDir)
+		cliPath = ts.Getenv(cliPathKey)
+	)
+	for i, arg := range args {
+		args[i] = strings.ReplaceAll(arg, "URL", dbURL)
+	}
+	switch l := len(args); {
+	// If command was run with a unix redirect-like suffix.
+	case l > 1 && args[l-2] == ">":
+		outPath := filepath.Join(workDir, args[l-1])
+		f, err := os.Create(outPath)
+		ts.Check(err)
+		defer f.Close()
+		cmd := exec.Command(cliPath, args[0:l-2]...)
+		cmd.Stdout = f
+		cmd.Dir = workDir
+		ts.Check(cmd.Run())
+	default:
+		ts.Check(ts.Exec(cliPath, args...))
+	}
 }
 
 func cmdExec(ts *testscript.TestScript, args []string, db *sql.DB) {

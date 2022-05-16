@@ -1,0 +1,19 @@
+atlas schema apply local --auto-approve
+atlas schema inspect local > inspected.hcl
+cmp 1.hcl inspected.hcl
+
+-- atlas.hcl --
+env "local" {
+    url = "URL"
+    src = "./1.hcl"
+}
+-- 1.hcl --
+table "users" {
+  schema = schema.main
+  column "id" {
+    null = false
+    type = int
+  }
+}
+schema "main" {
+}

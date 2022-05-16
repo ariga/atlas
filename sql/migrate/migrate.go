@@ -226,6 +226,7 @@ type (
 		drv Driver             // The Driver to access and manage the database.
 		dir Dir                // The Dir with migration files to use.
 		rrw RevisionReadWriter // The RevisionReadWriter to read and write database revisions to.
+		log Logger             // The Logger to use.
 	}
 
 	// ExecutorOption allows configuring an Executor using functional arguments.
@@ -323,8 +324,12 @@ const (
 	stateError = "error"
 )
 
-// ErrNoPendingFiles is returned when there are no pending migration files to execute on the managed database.
-var ErrNoPendingFiles = errors.New("sql/migrate: execute: nothing to do")
+var (
+	// ErrNoPendingFiles is returned when there are no pending migration files to execute on the managed database.
+	ErrNoPendingFiles = errors.New("sql/migrate: execute: nothing to do")
+	// ErrLockUnsupported is returned when the given driver does not implement the schema.Locker interface.
+	ErrLockUnsupported = errors.New("sql/migrate: driver does not support locking")
+)
 
 // NewExecutor creates a new Executor with default values. // TODO(masseelch): Operator Version and other Meta
 func NewExecutor(drv Driver, dir Dir, rrw RevisionReadWriter, opts ...ExecutorOption) (*Executor, error) {
@@ -337,6 +342,10 @@ func NewExecutor(drv Driver, dir Dir, rrw RevisionReadWriter, opts ...ExecutorOp
 	if rrw == nil {
 		return nil, errors.New("sql/migrate: execute: mockRevisionReadWriter cannot be nil")
 	}
+	// If the driver does not support acquiring a lock, don't execute migrations as this can potentially be fatal.
+	if _, ok := drv.(schema.Locker); !ok {
+		return nil, ErrLockUnsupported
+	}
 	p := &Executor{drv: drv, dir: dir, rrw: rrw}
 	for _, opt := range opts {
 		if err := opt(p); err != nil {
@@ -346,8 +355,21 @@ func NewExecutor(drv Driver, dir Dir, rrw RevisionReadWriter, opts ...ExecutorOp
 	return p, nil
 }
 
+// WithLogger sets the Logger of an Executor.
+func WithLogger(log Logger) ExecutorOption {
+	return func(ex *Executor) error {
+		ex.log = log
+		return nil
+	}
+}
+
 // Execute executes n missing migration files on the database. Passing in n <= 0 means running all pending migrations.
 func (e *Executor) Execute(ctx context.Context, n int) (err error) {
+	unlock, err := e.drv.(schema.Locker).Lock(ctx, "atlas_migration_execute", 0)
+	if err != nil {
+		return fmt.Errorf("sql/migrate: acquiring database lock: %w", err)
+	}
+	defer unlock()
 	// Don't operate with a broken migration directory.
 	// TODO(maseeelch): do not check here but let the caller check it before? Or let the caller decide if to skip this flag by using some flags.
 	if err := Validate(e.dir); err != nil {
@@ -388,7 +410,7 @@ func (e *Executor) Execute(ctx context.Context, n int) (err error) {
 			return fmt.Errorf("sql/migrate: execute: scan description from %q: %w", m.Name(), err)
 		}
 		r := revisions[i]
-		if v != r.Version || d != r.Description || hf[i].H != r.Hash { // TODO(masseelch): version / desc check necessary?
+		if v != r.Version || d != r.Description || hf[i].H != r.Hash {
 			return fmt.Errorf("sql/migrate: execute: revisions and migrations mismatch: rev %q <> file %q", v, r.Version)
 		}
 	}
@@ -417,10 +439,30 @@ func (e *Executor) Execute(ctx context.Context, n int) (err error) {
 		}
 		pending = migrations[len(revisions) : len(revisions)+n]
 	}
+	if e.log != nil {
+		names := make([]string, len(pending))
+		for i := range pending {
+			names[i] = pending[i].Name()
+		}
+		e.log.Log(LogExecution{names})
+	}
 	// TODO(masseelch): run in a transaction
 	for _, m := range pending {
 		r := &Revision{ExecutedAt: time.Now(), ExecutionState: stateOngoing}
 		revisions = append(revisions, r)
+		v, err := sc.Version(m)
+		if err != nil {
+			return r.setGoErr(fmt.Errorf("sql/migrate: execute: scan version from %q: %w", m.Name(), err))
+		}
+		r.Version = v
+		d, err := sc.Desc(m)
+		if err != nil {
+			return r.setGoErr(fmt.Errorf("sql/migrate: execute: scan description from %q: %w", m.Name(), err))
+		}
+		r.Description = d
+		if e.log != nil {
+			e.log.Log(LogFile{v, d})
+		}
 		h, err := hf.sumByName(m.Name())
 		if err != nil {
 			return r.setGoErr(fmt.Errorf("sql/migrate: execute: scanning checksum for file %q: %w", m.Name(), err))
@@ -431,16 +473,9 @@ func (e *Executor) Execute(ctx context.Context, n int) (err error) {
 			return r.setGoErr(fmt.Errorf("sql/migrate: execute: scanning statements from file %q: %w", m.Name(), err))
 		}
 		for _, stmt := range stmts {
-			v, err := sc.Version(m)
-			if err != nil {
-				return r.setGoErr(fmt.Errorf("sql/migrate: execute: scan version from %q: %w", m.Name(), err))
+			if e.log != nil {
+				e.log.Log(LogStmt{stmt})
 			}
-			r.Version = v
-			d, err := sc.Desc(m)
-			if err != nil {
-				return r.setGoErr(fmt.Errorf("sql/migrate: execute: scan description from %q: %w", m.Name(), err))
-			}
-			r.Description = d
 			if _, err := e.drv.ExecContext(ctx, stmt); err != nil {
 				return r.setSQLErr(
 					fmt.Errorf("sql/migrate: execute: executing statement %q from version %q: %w", stmt, v, err),
@@ -573,6 +608,41 @@ func (r *Revision) setSQLErr(err error, stmt string) error {
 	r.Error = fmt.Sprintf("Statement:\n%s\n\nError:\n%s", stmt, err)
 	return err
 }
+
+type (
+	// A Logger logs migration execution.
+	Logger interface {
+		Log(LogEntry)
+	}
+
+	// LogEntry marks several types of logs to be passed to a Logger.
+	LogEntry interface {
+		logEntry()
+	}
+
+	// LogExecution is sent once when execution of the migration files has been started.
+	// It holds the filenames of the pending migration files.
+	LogExecution struct {
+		Files []string
+	}
+
+	// LogFile is sent if a new migration file is executed.
+	LogFile struct {
+		// Version executed.
+		Version string
+		// Desc of migration executed.
+		Desc string
+	}
+
+	// LogStmt is sent if a new SQL statement is executed.
+	LogStmt struct {
+		SQL string
+	}
+)
+
+func (LogExecution) logEntry() {}
+func (LogFile) logEntry()      {}
+func (LogStmt) logEntry()      {}
 
 // LocalDir implements Dir for a local path. It implements the Scanner interface compatible with
 // migration files generated by the DefaultFormatter.

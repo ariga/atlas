@@ -400,6 +400,12 @@ index "idx_name" {
   type = GIN
   columns = [column.data]
 }
+
+index "idx_range" {
+  type = BRIN
+  columns = [column.range]
+  page_per_range = 128
+}
 ```
 
 #### Properties
@@ -410,6 +416,7 @@ index "idx_name" {
 | type      | attribute | IndexType (enum)        | Defines the index type. e.g. `HASH`, `GIN`, `FULLTEXT`.        |
 | columns   | attribute | reference (list)        | The columns that comprise the index.                           |
 | on        | resource  | schema.IndexPart (list) | The index parts that comprise the index.                       |
+| options   | attribute | schema.Attr             | Additional driver specific attributes. e.g. `page_per_range`   |
 
 ### Index Expressions
 

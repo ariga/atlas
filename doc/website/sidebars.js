@@ -20,7 +20,6 @@ module.exports = {
                 'getting-started/getting-started-installation',
                 'getting-started/getting-started-inspection',
                 'getting-started/getting-started-apply',
-                'getting-started/getting-started-management-ui',
             ]
         },
         {
@@ -53,6 +52,10 @@ module.exports = {
         {
             type: 'doc',
             id: 'deployment/deployment',
+        },
+        {
+            type: 'doc',
+            id: 'terraform-provider',
         },
         {
             type: 'category',

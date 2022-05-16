@@ -9,7 +9,9 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -446,6 +448,24 @@ func TestSQLite_CLI(t *testing.T) {
 					type = int
 				}
 			}`
+	t.Run("InspectFromEnv", func(t *testing.T) {
+		liteRun(t, func(t *liteTest) {
+			env := fmt.Sprintf(`
+env "hello" {
+	url = "%s"
+}
+`, t.dsn())
+			wd, _ := os.Getwd()
+			envfile := filepath.Join(wd, "atlas.hcl")
+			err := os.WriteFile(envfile, []byte(env), 0600)
+			t.Cleanup(func() {
+				os.Remove(envfile)
+			})
+			require.NoError(t, err)
+
+			testCLISchemaInspectEnv(t, h, "hello", sqlite.UnmarshalHCL)
+		})
+	})
 	t.Run("SchemaInspect", func(t *testing.T) {
 		liteRun(t, func(t *liteTest) {
 			testCLISchemaInspect(t, h, t.dsn(), sqlite.UnmarshalHCL)

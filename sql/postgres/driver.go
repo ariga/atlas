@@ -232,10 +232,12 @@ const (
 
 // List of supported index types.
 const (
-	IndexTypeBTree = "BTREE"
-	IndexTypeHash  = "HASH"
-	IndexTypeGIN   = "GIN"
-	IndexTypeGiST  = "GIST"
+	IndexTypeBTree      = "BTREE"
+	IndexTypeHash       = "HASH"
+	IndexTypeGIN        = "GIN"
+	IndexTypeGiST       = "GIST"
+	IndexTypeBRIN       = "BRIN"
+	defaultPagePerRange = 128
 )
 
 // List of "GENERATED" types.

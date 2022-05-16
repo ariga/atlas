@@ -1,0 +1,82 @@
+apply 1.hcl
+cmpshow users 1.sql
+
+# Add the "page_per_range" storage parameter.
+apply 2.hcl
+cmpshow users 2.sql
+
+# Change the "page_per_range" storage parameter.
+apply 3.hcl
+cmpshow users 3.sql
+
+-- 1.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "c" {
+    null = false
+    type = int
+  }
+  index "users_c" {
+    type = BRIN
+    columns = [column.c]
+  }
+}
+
+-- 1.sql --
+       Table "script_index_type_brin.users"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ c      | integer |           | not null |
+Indexes:
+    "users_c" brin (c)
+
+-- 2.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "c" {
+    null = false
+    type = int
+  }
+  index "users_c" {
+    type = BRIN
+    columns = [column.c]
+    page_per_range = 2
+  }
+}
+
+-- 2.sql --
+       Table "script_index_type_brin.users"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ c      | integer |           | not null |
+Indexes:
+    "users_c" brin (c) WITH (pages_per_range='2')
+
+
+-- 3.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "c" {
+    null = false
+    type = int
+  }
+  index "users_c" {
+    type = BRIN
+    columns = [column.c]
+    page_per_range = 3
+  }
+}
+
+-- 3.sql --
+       Table "script_index_type_brin.users"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ c      | integer |           | not null |
+Indexes:
+    "users_c" brin (c) WITH (pages_per_range='3')

@@ -60,7 +60,7 @@ atlas migrate
 
 #### Flags
 ```
-      --dir string       select migration directory using DSN format (default "file://migrations")
+      --dir string       select migration directory using URL format (default "file://migrations")
       --force            force a command to run on a broken migration directory state
       --format string    set migration file format (default "atlas")
       --schema strings   set schema names
@@ -90,8 +90,8 @@ the migration directory state to the desired schema. The desired state can be an
 ```
 #### Flags
 ```
-      --dev-url string   [driver://username:password@address/dbname?param=value] select a data source using the DSN format
-      --to string        [driver://username:password@address/dbname?param=value] select a data source using the DSN format
+      --dev-url string   [driver://username:password@address/dbname?param=value] select a data source using the URL format
+      --to string        [driver://username:password@address/dbname?param=value] select a data source using the URL format
       --verbose          enable verbose logging
 
 ```
@@ -136,23 +136,31 @@ atlas migrate new
 
 ### atlas migrate validate
 
-Validates the migration directories checksum.
+Validates the migration directories checksum and SQL statements.
 
 #### Usage
 ```
-atlas migrate validate
+atlas migrate validate [flags]
 ```
 
 #### Details
 'atlas migrate validate' computes the integrity hash sum of the migration directory and compares it to 
-the atlas.sum file. If there is a mismatch it will be reported.
+the atlas.sum file. If there is a mismatch it will be reported. If the --dev-url flag is given, the migration files are 
+executed on the connected database in order to validate SQL semantics.
 
 #### Example
 
 ```
   atlas migrate validate
   atlas migrate validate --dir /path/to/migration/directory
+  atlas migrate validate --dir /path/to/migration/directory --dev-url mysql://user:pass@localhost:3306/dev
 ```
+#### Flags
+```
+      --dev-url string   [driver://username:password@address/dbname?param=value] select a data source using the URL format
+
+```
+
 
 ## atlas schema
 

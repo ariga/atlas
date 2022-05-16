@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package integration
 
 import (
@@ -11,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"text/template"
 	"time"
@@ -18,7 +23,6 @@ import (
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
-
 	entsql "entgo.io/ent/dialect/sql"
 	entschema "entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/entc/integration/ent"
@@ -171,8 +175,7 @@ func testHCLIntegration(t T, full string, empty string) {
 }
 
 func testCLISchemaInspect(t T, h string, dsn string, unmarshaler schemaspec.Unmarshaler) {
-	// Required to have a clean "stderr" while running first time.
-	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
 	var expected schema.Schema
@@ -196,9 +199,43 @@ func testCLISchemaInspect(t T, h string, dsn string, unmarshaler schemaspec.Unma
 	require.Equal(t, expected, actual)
 }
 
+func testCLISchemaInspectEnv(t T, h string, env string, unmarshaler schemaspec.Unmarshaler) {
+	err := initCLI()
+	require.NoError(t, err)
+	t.dropTables("users")
+	var expected schema.Schema
+	err = unmarshaler.UnmarshalSpec([]byte(h), &expected)
+	require.NoError(t, err)
+	t.applyHcl(h)
+	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+		"schema",
+		"inspect",
+		env,
+	)
+	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	require.NoError(t, cmd.Run(), stderr.String())
+	var actual schema.Schema
+	err = unmarshaler.UnmarshalSpec(stdout.Bytes(), &actual)
+	require.NoError(t, err)
+	require.Empty(t, stderr.String())
+	require.Equal(t, expected, actual)
+}
+
+// initOnce controls that the cli will only be built once.
+var initOnce sync.Once
+
+func initCLI() error {
+	var err error
+	initOnce.Do(func() {
+		err = exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	})
+	return err
+}
+
 func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, unmarshaler schemaspec.Unmarshaler) {
-	// Required to have a clean "stderr" while running first time.
-	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	err := initCLI()
 	f := filepath.Join(t.TempDir(), "atlas.hcl")
 	err = ioutil.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
@@ -228,8 +265,8 @@ func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, unmars
 }
 
 func testCLIMultiSchemaInspect(t T, h string, dsn string, schemas []string, unmarshaler schemaspec.Unmarshaler) {
-	// Required to have a clean "stderr" while running first time.
-	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+
+	err := initCLI()
 	require.NoError(t, err)
 	var expected schema.Realm
 	err = unmarshaler.UnmarshalSpec([]byte(h), &expected)
@@ -255,8 +292,8 @@ func testCLIMultiSchemaInspect(t T, h string, dsn string, schemas []string, unma
 }
 
 func testCLISchemaApply(t T, h string, dsn string, args ...string) {
-	// Required to have a clean "stderr" while running first time.
-	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+
+	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
 	f := filepath.Join(t.TempDir(), "atlas.hcl")
@@ -291,8 +328,8 @@ func testCLISchemaApply(t T, h string, dsn string, args ...string) {
 }
 
 func testCLISchemaApplyDry(t T, h string, dsn string) {
-	// Required to have a clean "stderr" while running first time.
-	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+
+	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
 	f := filepath.Join(t.TempDir(), "atlas.hcl")
@@ -325,8 +362,8 @@ func testCLISchemaApplyDry(t T, h string, dsn string) {
 }
 
 func testCLISchemaApplyAutoApprove(t T, h string, dsn string) {
-	// Required to have a clean "stderr" while running first time.
-	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+
+	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
 	f := filepath.Join(t.TempDir(), "atlas.hcl")
@@ -353,8 +390,8 @@ func testCLISchemaApplyAutoApprove(t T, h string, dsn string) {
 }
 
 func testCLISchemaDiff(t T, dsn string) {
-	// Required to have a clean "stderr" while running first time.
-	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+
+	err := initCLI()
 
 	require.NoError(t, err)
 	t.dropTables("users")
@@ -372,53 +409,6 @@ func testCLISchemaDiff(t T, dsn string) {
 	require.NoError(t, cmd.Run(), stderr.String(), stdout.String())
 	require.Empty(t, stderr.String(), stderr.String())
 	require.Contains(t, stdout.String(), "Schemas are synced, no changes to be made.")
-}
-
-func TestCLI_Version(t *testing.T) {
-	// Required to have a clean "stderr" while running first time.
-	require.NoError(t, exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run())
-	tests := []struct {
-		name     string
-		cmd      *exec.Cmd
-		expected string
-	}{
-		{
-			name: "dev mode",
-			cmd: exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
-				"version",
-			),
-			expected: "atlas CLI version - development\nhttps://github.com/ariga/atlas/releases/latest\n",
-		},
-		{
-			name: "release",
-			cmd: exec.Command("go", "run",
-				"-ldflags",
-				"-X ariga.io/atlas/cmd/action.version=v1.2.3",
-				"ariga.io/atlas/cmd/atlas",
-				"version",
-			),
-			expected: "atlas CLI version v1.2.3\nhttps://github.com/ariga/atlas/releases/tag/v1.2.3\n",
-		},
-		{
-			name: "canary",
-			cmd: exec.Command("go", "run",
-				"-ldflags",
-				"-X ariga.io/atlas/cmd/action.version=v0.3.0-6539f2704b5d-canary",
-				"ariga.io/atlas/cmd/atlas",
-				"version",
-			),
-			expected: "atlas CLI version v0.3.0-6539f2704b5d-canary\nhttps://github.com/ariga/atlas/releases/latest\n",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("ATLAS_NO_UPDATE_NOTIFIER", "true")
-			stdout := bytes.NewBuffer(nil)
-			tt.cmd.Stdout = stdout
-			require.NoError(t, tt.cmd.Run())
-			require.Equal(t, tt.expected, stdout.String())
-		})
-	}
 }
 
 func ensureNoChange(t T, tables ...*schema.Table) {
@@ -542,4 +532,12 @@ func (r *rrw) ReadRevisions(ctx context.Context) (migrate.Revisions, error) {
 
 func (r *rrw) clean() {
 	*r = rrw(migrate.Revisions{})
+}
+
+func buildCmd(t *testing.T) (string, error) {
+	td := t.TempDir()
+	if err := exec.Command("go", "build", "-o", td, "ariga.io/atlas/cmd/atlas").Run(); err != nil {
+		return "", err
+	}
+	return filepath.Join(td, "atlas"), nil
 }
