@@ -53,7 +53,7 @@ var (
 			}
 			// Migrate commands will not run on a broken migration directory, unless the force flag is given.
 			if !MigrateFlags.Force {
-				dir, err := dir(MigrateFlags.DirURL)
+				dir, err := dir()
 				if err != nil {
 					return err
 				}
@@ -169,19 +169,19 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 		defer cobra.CheckErr(unlock())
 	}
 	// Open the migration directory.
-	dir, err := dir(MigrateFlags.DirURL)
+	dir, err := dir()
 	if err != nil {
 		return err
 	}
 	// Get a state reader for the desired state.
-	desired, err := to(cmd.Context(), dev, MigrateFlags.ToURL, MigrateFlags.Schemas)
+	desired, err := to(cmd.Context(), dev)
 	if src, ok := desired.(io.Closer); ok {
 		defer src.Close()
 	}
 	if err != nil {
 		return err
 	}
-	f, err := formatter(MigrateFlags.Format)
+	f, err := formatter()
 	if err != nil {
 		return err
 	}
@@ -200,16 +200,8 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 }
 
 // CmdMigrateHashRun is the command executed when running the CLI with 'migrate hash' args.
-func CmdMigrateHashRun(cmd *cobra.Command, _ []string) error {
-	activeEnv, err := selectEnv(selectedEnv)
-	if err != nil {
-		return err
-	}
-	dirURL := activeEnv.MigrationDir.URL
-	if fl := cmd.Flag(migrateFlagDir); fl.Changed {
-		dirURL = MigrateFlags.DirURL
-	}
-	dir, err := dir(dirURL)
+func CmdMigrateHashRun(_ *cobra.Command, _ []string) error {
+	dir, err := dir()
 	if err != nil {
 		return err
 	}
@@ -221,27 +213,12 @@ func CmdMigrateHashRun(cmd *cobra.Command, _ []string) error {
 }
 
 // CmdMigrateNewRun is the command executed when running the CLI with 'migrate new' args.
-func CmdMigrateNewRun(cmd *cobra.Command, args []string) error {
-	activeEnv, err := selectEnv(selectedEnv)
+func CmdMigrateNewRun(_ *cobra.Command, args []string) error {
+	dir, err := dir()
 	if err != nil {
 		return err
 	}
-	dirURL := activeEnv.MigrationDir.URL
-	if fl := cmd.Flag(migrateFlagDir); fl.Changed {
-		dirURL = MigrateFlags.DirURL
-	}
-	dir, err := dir(dirURL)
-	if err != nil {
-		return err
-	}
-	fmter := activeEnv.MigrationDir.Format
-	if fl := cmd.Flag(migrateFlagFormat); fl.Changed {
-		fmter = MigrateFlags.Format
-	}
-	if fmter == "" {
-		fmter = cmd.Flag(migrateFlagFormat).DefValue
-	}
-	f, err := formatter(fmter)
+	f, err := formatter()
 	if err != nil {
 		return err
 	}
@@ -254,31 +231,19 @@ func CmdMigrateNewRun(cmd *cobra.Command, args []string) error {
 
 // CmdMigrateValidateRun is the command executed when running the CLI with 'migrate validate' args.
 func CmdMigrateValidateRun(cmd *cobra.Command, _ []string) error {
-	activeEnv, err := selectEnv(selectedEnv)
-	if err != nil {
-		return err
-	}
-	devURL := activeEnv.DevURL
-	if fl := cmd.Flag(migrateFlagDevURL); fl.Changed {
-		devURL = MigrateFlags.DevURL
-	}
 	// Validating the integrity is done by the PersistentPreRun already.
-	if devURL == "" {
+	if MigrateFlags.DevURL == "" {
 		// If there is no --dev-url given do not attempt to replay the migration directory.
 		return nil
 	}
 	// Open a client for the dev-db.
-	dev, err := sqlclient.Open(cmd.Context(), devURL)
+	dev, err := sqlclient.Open(cmd.Context(), MigrateFlags.DevURL)
 	if err != nil {
 		return err
 	}
 	defer dev.Close()
 	// We are using a migrate.GlobStateReader to replay the migration directory.
-	dirURL := activeEnv.MigrationDir.URL
-	if fl := cmd.Flag(migrateFlagDir); fl.Changed {
-		dirURL = MigrateFlags.DirURL
-	}
-	dir, err := dir(dirURL)
+	dir, err := dir()
 	if err != nil {
 		return err
 	}
@@ -289,8 +254,8 @@ func CmdMigrateValidateRun(cmd *cobra.Command, _ []string) error {
 }
 
 // dir returns a migrate.Dir to use as migration directory. For now only local directories are supported.
-func dir(dirURL string) (migrate.Dir, error) {
-	parts := strings.SplitN(dirURL, "://", 2)
+func dir() (migrate.Dir, error) {
+	parts := strings.SplitN(MigrateFlags.DirURL, "://", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid dir url %q", MigrateFlags.DirURL)
 	}
@@ -303,11 +268,12 @@ func dir(dirURL string) (migrate.Dir, error) {
 }
 
 // to returns a migrate.StateReader for the given to flag.
-func to(ctx context.Context, client *sqlclient.Client, toURL string, schemas []string) (migrate.StateReader, error) {
-	parts := strings.SplitN(toURL, "://", 2)
+func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, error) {
+	parts := strings.SplitN(MigrateFlags.ToURL, "://", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid driver url %q", MigrateFlags.ToURL)
 	}
+	schemas := MigrateFlags.Schemas
 	switch parts[0] {
 	case "file": // hcl file
 		f, err := ioutil.ReadFile(parts[1])
@@ -318,7 +284,8 @@ func to(ctx context.Context, client *sqlclient.Client, toURL string, schemas []s
 		if err := client.Eval(f, realm, nil); err != nil {
 			return nil, err
 		}
-		if len(schemas) > 0 {
+
+		if len(MigrateFlags.Schemas) > 0 {
 			// Validate all schemas in file were selected by user.
 			sm := make(map[string]bool, len(schemas))
 			for _, s := range schemas {
@@ -338,7 +305,7 @@ func to(ctx context.Context, client *sqlclient.Client, toURL string, schemas []s
 		}
 		return migrate.Realm(realm), nil
 	default: // database connection
-		client, err := sqlclient.Open(ctx, toURL)
+		client, err := sqlclient.Open(ctx, MigrateFlags.ToURL)
 		if err != nil {
 			return nil, err
 		}
@@ -363,8 +330,8 @@ const (
 	formatLiquibase     = "liquibase"
 )
 
-func formatter(f string) (migrate.Formatter, error) {
-	switch f {
+func formatter() (migrate.Formatter, error) {
+	switch MigrateFlags.Format {
 	case formatAtlas:
 		return migrate.DefaultFormatter, nil
 	case formatGolangMigrate:
@@ -376,7 +343,7 @@ func formatter(f string) (migrate.Formatter, error) {
 	case formatLiquibase:
 		return sqltool.LiquibaseFormatter, nil
 	default:
-		return nil, fmt.Errorf("unknown format %q", f)
+		return nil, fmt.Errorf("unknown format %q", MigrateFlags.Format)
 	}
 }
 
