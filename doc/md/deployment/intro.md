@@ -7,7 +7,7 @@ title: Deployment
 ## Introduction
 
 :::info
-The Management UI is not supported in the latest version of Atlas. To use the UI, download [v0.3.7](https://github.com/ariga/atlas/releases/tag/v0.3.7). Support for the Atlas UI will be brought back soon.
+As our team is working on completely rewriting The Management UI, support for it has been temporarily removed in the most recent version of Atlas. To explore the UI in previous versions, download [v0.3.7](https://github.com/ariga/atlas/releases/tag/v0.3.7) or earlier.
 :::
 
 Teams using Atlas to manage their databases can benefit from deploying the Atlas Management UI to their
