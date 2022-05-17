@@ -378,8 +378,12 @@ func (t *liteTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {
 		defer f.Close()
 		cmd := exec.Command(cliPath, args[0:l-2]...)
 		cmd.Stdout = f
+		stderr := &bytes.Buffer{}
+		cmd.Stderr = stderr
 		cmd.Dir = workDir
-		ts.Check(cmd.Run())
+		if err := cmd.Run(); err != nil {
+			ts.Fatalf("\n[stderr]\n%s", stderr)
+		}
 	default:
 		err := ts.Exec(cliPath, args...)
 		if !neg {

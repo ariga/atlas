@@ -234,8 +234,7 @@ func dsn2url(cmd *cobra.Command) error {
 	case dsnF.Changed && urlF.Changed:
 		return errors.New(`both flags "url" and "dsn" were set`)
 	case dsnF.Changed && !urlF.Changed:
-		urlF.Changed = true
-		urlF.Value = dsnF.Value
+		return cmd.Flags().Set(urlFlag, dsnF.Value.String())
 	}
 	return nil
 }
