@@ -29,6 +29,9 @@ var (
 	// Should be set by build script "-X 'ariga.io/atlas/cmd/action.version=${version}'"
 	version string
 
+	// selectedEnv stores the value for the global --env flag.
+	selectedEnv string
+
 	// schemaCmd represents the subcommand 'atlas version'.
 	versionCmd = &cobra.Command{
 		Use:   "version",
@@ -71,6 +74,11 @@ func init() {
 	Root.AddCommand(EnvCmd)
 	Root.AddCommand(schemaCmd)
 	Root.AddCommand(versionCmd)
+}
+
+// receivesEnv configures cmd to receive the common '--env' flag.
+func receivesEnv(cmd *cobra.Command) {
+	cmd.PersistentFlags().StringVarP(&selectedEnv, "env", "", "", "set which env from the project file to use")
 }
 
 // parse returns a user facing version and release notes url

@@ -20,6 +20,11 @@ env "local" {
 	dev = "docker://mysql/8"
 	src = "./app.hcl"
 	schemas = ["hello", "world"]
+	
+	migration_dir {
+		url = "file://migrations"
+		format = atlas
+	}
 }
 `
 	err := os.WriteFile(filepath.Join(d, projectFileName), []byte(h), 0600)
@@ -35,6 +40,10 @@ env "local" {
 			DevURL:  "docker://mysql/8",
 			Source:  "./app.hcl",
 			Schemas: []string{"hello", "world"},
+			MigrationDir: &MigrationDir{
+				URL:    "file://migrations",
+				Format: formatAtlas,
+			},
 		}, env)
 	})
 	t.Run("wrong env", func(t *testing.T) {

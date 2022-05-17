@@ -360,7 +360,7 @@ func (t *liteTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
 	cmdExec(ts, args, ts.Value(keyDB).(*sql.DB))
 }
 
-func (t *liteTest) cmdCLI(ts *testscript.TestScript, _ bool, args []string) {
+func (t *liteTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {
 	var (
 		workDir = ts.Getenv("WORK")
 		dbURL   = fmt.Sprintf("sqlite://file:%s/atlas.sqlite?cache=shared&_fk=1", workDir)
@@ -378,10 +378,20 @@ func (t *liteTest) cmdCLI(ts *testscript.TestScript, _ bool, args []string) {
 		defer f.Close()
 		cmd := exec.Command(cliPath, args[0:l-2]...)
 		cmd.Stdout = f
+		stderr := &bytes.Buffer{}
+		cmd.Stderr = stderr
 		cmd.Dir = workDir
-		ts.Check(cmd.Run())
+		if err := cmd.Run(); err != nil {
+			ts.Fatalf("\n[stderr]\n%s", stderr)
+		}
 	default:
-		ts.Check(ts.Exec(cliPath, args...))
+		err := ts.Exec(cliPath, args...)
+		if !neg {
+			ts.Check(err)
+		}
+		if neg && err == nil {
+			ts.Fatalf("expected fail")
+		}
 	}
 }
 

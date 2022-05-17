@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"path/filepath"
 	"strings"
 
 	"ariga.io/atlas/sql/migrate"
@@ -47,6 +48,9 @@ var (
 		Short: "Manage versioned migration files",
 		Long:  "'atlas migrate' wraps several sub-commands for migration management.",
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			if err := migrateFlagsFromEnv(cmd, nil); err != nil {
+				return err
+			}
 			// Migrate commands will not run on a broken migration directory, unless the force flag is given.
 			if !MigrateFlags.Force {
 				dir, err := dir()
@@ -79,8 +83,9 @@ directory and compares it to a given desired state and create a new migration fi
 the migration directory state to the desired schema. The desired state can be another connected database or an HCL file.`,
 		Example: `  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname
   atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl`,
-		Args: cobra.MaximumNArgs(1),
-		RunE: CmdMigrateDiffRun,
+		Args:    cobra.MaximumNArgs(1),
+		PreRunE: migrateFlagsFromEnv,
+		RunE:    CmdMigrateDiffRun,
 	}
 	// MigrateHashCmd represents the migrate hash command.
 	MigrateHashCmd = &cobra.Command{
@@ -89,6 +94,7 @@ the migration directory state to the desired schema. The desired state can be an
 		Long: `'atlas migrate hash' computes the integrity hash sum of the migration directory and stores it in the atlas.sum file.
 This command should be used whenever a manual change in the migration directory was made.`,
 		Example: `  atlas migrate hash --force`,
+		PreRunE: migrateFlagsFromEnv,
 		RunE:    CmdMigrateHashRun,
 	}
 	// MigrateNewCmd represents the migrate new command.
@@ -98,6 +104,7 @@ This command should be used whenever a manual change in the migration directory 
 		Long:    `'atlas migrate new' creates a new migration according to the configured formatter without any statements in it.`,
 		Example: `  atlas migrate new my-new-migration`,
 		Args:    cobra.MaximumNArgs(1),
+		PreRunE: migrateFlagsFromEnv,
 		RunE:    CmdMigrateNewRun,
 	}
 	// MigrateValidateCmd represents the migrate validate command.
@@ -110,7 +117,8 @@ executed on the connected database in order to validate SQL semantics.`,
 		Example: `  atlas migrate validate
   atlas migrate validate --dir /path/to/migration/directory
   atlas migrate validate --dir /path/to/migration/directory --dev-url mysql://user:pass@localhost:3306/dev`,
-		RunE: CmdMigrateValidateRun,
+		PreRunE: migrateFlagsFromEnv,
+		RunE:    CmdMigrateValidateRun,
 	}
 )
 
@@ -140,6 +148,7 @@ func init() {
 	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateDiffFlagTo))
 	// Validate flags.
 	devURL(MigrateValidateCmd.Flags())
+	receivesEnv(MigrateCmd)
 }
 
 // CmdMigrateDiffRun is the command executed when running the CLI with 'migrate diff' args.
@@ -191,7 +200,7 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 }
 
 // CmdMigrateHashRun is the command executed when running the CLI with 'migrate hash' args.
-func CmdMigrateHashRun(*cobra.Command, []string) error {
+func CmdMigrateHashRun(_ *cobra.Command, _ []string) error {
 	dir, err := dir()
 	if err != nil {
 		return err
@@ -335,4 +344,34 @@ func formatter() (migrate.Formatter, error) {
 	default:
 		return nil, fmt.Errorf("unknown format %q", MigrateFlags.Format)
 	}
+}
+
+func migrateFlagsFromEnv(cmd *cobra.Command, _ []string) error {
+	activeEnv, err := selectEnv(selectedEnv)
+	if err != nil {
+		return err
+	}
+	if err := maySetFlag(cmd, migrateFlagDevURL, activeEnv.DevURL); err != nil {
+		return err
+	}
+	if err := maySetFlag(cmd, migrateFlagFormat, activeEnv.MigrationDir.Format); err != nil {
+		return err
+	}
+	// Transform "src" to a URL.
+	toURL := activeEnv.Source
+	if toURL != "" {
+		if toURL, err = filepath.Abs(activeEnv.Source); err != nil {
+			return fmt.Errorf("finding abs path to source: %q: %w", activeEnv.Source, err)
+		}
+		toURL = "file://" + toURL
+	}
+	if err := maySetFlag(cmd, migrateDiffFlagTo, toURL); err != nil {
+		return err
+	}
+	if s := "[" + strings.Join(activeEnv.Schemas, "") + "]"; len(activeEnv.Schemas) > 0 {
+		if err := maySetFlag(cmd, migrateFlagSchema, s); err != nil {
+			return err
+		}
+	}
+	return nil
 }

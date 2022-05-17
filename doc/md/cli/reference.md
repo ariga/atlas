@@ -61,6 +61,7 @@ atlas migrate
 #### Flags
 ```
       --dir string       select migration directory using URL format (default "file://migrations")
+      --env string       set which env from the project file to use
       --force            force a command to run on a broken migration directory state
       --format string    set migration file format (default "atlas")
       --schema strings   set schema names
@@ -173,6 +174,12 @@ atlas schema
 
 #### Details
 The `atlas schema` command groups subcommands for working with Atlas schemas.
+
+#### Flags
+```
+      --env string   set which env from the project file to use
+
+```
 
 
 ### atlas schema apply
