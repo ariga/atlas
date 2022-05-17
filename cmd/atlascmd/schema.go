@@ -169,14 +169,14 @@ func init() {
 // argument. If selected is "", or no project file exists in the current directory
 // a zero-value Env is returned.
 func selectEnv(selected string) (*Env, error) {
-	zero := &Env{
+	env := &Env{
 		MigrationDir: &MigrationDir{},
 	}
 	if selected == "" {
-		return zero, nil
+		return env, nil
 	}
 	if _, err := os.Stat(projectFileName); os.IsNotExist(err) {
-		return zero, nil
+		return env, nil
 	}
 	return LoadEnv(projectFileName, selected)
 }
@@ -245,12 +245,10 @@ func CmdInspectRun(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	defer client.Close()
-	// Select the schemas.
 	schemas := SchemaFlags.Schemas
 	if client.URL.Schema != "" {
 		schemas = append(schemas, client.URL.Schema)
 	}
-	// Inspect the realm.
 	s, err := client.InspectRealm(cmd.Context(), &schema.InspectRealmOption{
 		Schemas: schemas,
 	})
