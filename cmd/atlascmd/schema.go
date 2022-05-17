@@ -255,8 +255,7 @@ func formatStrings(vals []string) (string, error) {
 // CmdInspectRun is the command used when running CLI.
 func CmdInspectRun(cmd *cobra.Command, _ []string) error {
 	if InspectFlags.Web {
-		schemaCmd.PrintErrln("The Alas UI is not available in this release.")
-		return errors.New("unsupported")
+		return errors.New("atlas UI is not available in this release")
 	}
 	// Create the client.
 	client, err := sqlclient.Open(cmd.Context(), SchemaFlags.URL)

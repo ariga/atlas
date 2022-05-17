@@ -284,7 +284,6 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 		if err := client.Eval(f, realm, nil); err != nil {
 			return nil, err
 		}
-
 		if len(schemas) > 0 {
 			// Validate all schemas in file were selected by user.
 			sm := make(map[string]bool, len(schemas))
