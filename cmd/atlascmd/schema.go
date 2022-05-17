@@ -7,7 +7,6 @@ package atlascmd
 import (
 	"bytes"
 	"context"
-	"encoding/csv"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -199,12 +198,8 @@ func schemaFlagsFromEnv(cmd *cobra.Command, _ []string) error {
 	if err := maySetFlag(cmd, fileFlag, activeEnv.Source); err != nil {
 		return err
 	}
-	if fl := cmd.Flag(schemaFlag); fl != nil && !fl.Changed && len(activeEnv.Schemas) > 0 {
-		c, err := formatStrings(activeEnv.Schemas)
-		if err != nil {
-			return err
-		}
-		if err := cmd.Flags().Set(schemaFlag, c); err != nil {
+	if s := "[" + strings.Join(activeEnv.Schemas, "") + "]"; len(activeEnv.Schemas) > 0 {
+		if err := maySetFlag(cmd, schemaFlag, s); err != nil {
 			return err
 		}
 	}
@@ -237,18 +232,6 @@ func dsn2url(cmd *cobra.Command) error {
 		return cmd.Flags().Set(urlFlag, dsnF.Value.String())
 	}
 	return nil
-}
-
-// copied from https://github.com/spf13/pflag/blob/d5e0c0615acee7028e1e2740a11102313be88de1/string_slice.go#L31
-func formatStrings(vals []string) (string, error) {
-	b := &bytes.Buffer{}
-	w := csv.NewWriter(b)
-	err := w.Write(vals)
-	if err != nil {
-		return "", err
-	}
-	w.Flush()
-	return "[" + strings.TrimSuffix(b.String(), "\n") + "]", nil
 }
 
 // CmdInspectRun is the command used when running CLI.

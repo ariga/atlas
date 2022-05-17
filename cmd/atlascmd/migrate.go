@@ -368,12 +368,8 @@ func migrateFlagsFromEnv(cmd *cobra.Command, _ []string) error {
 	if err := maySetFlag(cmd, migrateDiffFlagTo, toURL); err != nil {
 		return err
 	}
-	c, err := formatStrings(activeEnv.Schemas)
-	if err != nil {
-		return err
-	}
-	if c != "[]" {
-		if err := maySetFlag(cmd, migrateFlagSchema, c); err != nil {
+	if s := "[" + strings.Join(activeEnv.Schemas, "") + "]"; len(activeEnv.Schemas) > 0 {
+		if err := maySetFlag(cmd, migrateFlagSchema, s); err != nil {
 			return err
 		}
 	}
