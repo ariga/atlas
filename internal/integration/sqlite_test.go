@@ -453,6 +453,7 @@ func TestSQLite_CLI(t *testing.T) {
 			env := fmt.Sprintf(`
 env "hello" {
 	url = "%s"
+    src = "./schema.hcl"
 }
 `, t.dsn())
 			wd, _ := os.Getwd()
