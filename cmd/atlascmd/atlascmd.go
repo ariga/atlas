@@ -98,12 +98,15 @@ func inputValsFromEnv(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	if fl := cmd.Flag(varFlag); fl != nil {
+	if fl := cmd.Flag(varFlag); fl == nil {
 		return nil
 	}
 	values, err := activeEnv.asMap()
 	if err != nil {
 		return err
+	}
+	if len(values) == 0 {
+		return nil
 	}
 	pairs := make([]string, 0, len(values))
 	for k, v := range values {
