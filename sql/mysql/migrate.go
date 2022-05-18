@@ -467,6 +467,16 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 		return fmt.Errorf("format type for column %q: %w", c.Name, err)
 	}
 	b.Ident(c.Name).P(typ)
+	if cs := (schema.Charset{}); sqlx.Has(c.Attrs, &cs) {
+		if !supportsCharset(c.Type.Type) {
+			return fmt.Errorf("column %q of type %T does not support the CHARSET attribute", c.Name, c.Type.Type)
+		}
+		// Define the charset explicitly
+		// in case it is not the default.
+		if s.character(t) != cs.V {
+			b.P("CHARSET", cs.V)
+		}
+	}
 	var (
 		x   schema.GeneratedExpr
 		asX = sqlx.Has(c.Attrs, &x)
@@ -493,14 +503,7 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 	for _, a := range c.Attrs {
 		switch a := a.(type) {
 		case *schema.Charset:
-			if !supportsCharset(c.Type.Type) {
-				return fmt.Errorf("column %q of type %T does not support the CHARSE attribute", c.Name, c.Type.Type)
-			}
-			// Define the charset explicitly
-			// in case it is not the default.
-			if s.character(t) != a.V {
-				b.P("CHARSET", a.V)
-			}
+			// CHARSET is handled above in the "data_type" stage.
 		case *schema.Collation:
 			if !supportsCharset(c.Type.Type) {
 				return fmt.Errorf("column %q of type %T does not support the COLLATE attribute", c.Name, c.Type.Type)
