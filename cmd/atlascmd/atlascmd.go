@@ -89,7 +89,7 @@ func receivesEnv(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringToStringVarP(&GlobalFlags.Vars, varFlag, "", nil, "input variables")
 }
 
-// inputValsFromEnv populates  GlobalFlags.Vars from the active environment. If we are working
+// inputValsFromEnv populates GlobalFlags.Vars from the active environment. If we are working
 // inside a project, the "var" flag is not propagated to the schema definition. Instead, it
 // is used to evaluate the project file which can pass input values via the "values" block
 // to the schema.
