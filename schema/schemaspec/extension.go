@@ -649,7 +649,7 @@ func isSingleResource(t reflect.Type) bool {
 		if _, ok := f.Tag.Lookup("spec"); ok {
 			return true
 		}
-		if f.Type.String() == "schemaspec.DefaultExtension" {
+		if f.Type == reflect.TypeOf(DefaultExtension{}) {
 			return true
 		}
 	}

@@ -42,7 +42,7 @@ env "local" {
 	require.NoError(t, err)
 	path := filepath.Join(d, projectFileName)
 	t.Run("ok", func(t *testing.T) {
-		var env = &Env{}
+		var env *Env
 		env, err = LoadEnv(path, "local")
 		sort.Slice(env.Extra.Attrs, func(i, j int) bool {
 			return env.Extra.Attrs[i].K < env.Extra.Attrs[j].K
