@@ -60,11 +60,12 @@ atlas migrate
 
 #### Flags
 ```
-      --dir string       select migration directory using URL format (default "file://migrations")
-      --env string       set which env from the project file to use
-      --force            force a command to run on a broken migration directory state
-      --format string    set migration file format (default "atlas")
-      --schema strings   set schema names
+      --dir string           select migration directory using URL format (default "file://migrations")
+      --env string           set which env from the project file to use
+      --force                force a command to run on a broken migration directory state
+      --format string        set migration file format (default "atlas")
+      --schema strings       set schema names
+      --var stringToString   input variables (default [])
 
 ```
 
@@ -177,7 +178,8 @@ The `atlas schema` command groups subcommands for working with Atlas schemas.
 
 #### Flags
 ```
-      --env string   set which env from the project file to use
+      --env string           set which env from the project file to use
+      --var stringToString   input variables (default [])
 
 ```
 
@@ -211,18 +213,17 @@ migration.
 ```
 #### Flags
 ```
-  -f, --file string          [/path/to/file] file containing the HCL schema.
-  -u, --url string           URL to the database using the format:
-                             [driver://username:password@address/dbname?param=value]
-  -s, --schema strings       Set schema names.
-      --dev-url string       URL for the dev database. Used to validate schemas and calculate diffs
-                             before running migration.
-      --dry-run              Dry-run. Print SQL plan without prompting for execution.
-      --auto-approve         Auto approve. Apply the schema changes without prompting for approval.
-  -w, --web                  Open in a local Atlas UI.
-      --addr string          used with -w, local address to bind the server to. (default ":5800")
-      --verbose              enable verbose logging
-      --var stringToString   input variables (default [])
+  -f, --file string      [/path/to/file] file containing the HCL schema.
+  -u, --url string       URL to the database using the format:
+                         [driver://username:password@address/dbname?param=value]
+  -s, --schema strings   Set schema names.
+      --dev-url string   URL for the dev database. Used to validate schemas and calculate diffs
+                         before running migration.
+      --dry-run          Dry-run. Print SQL plan without prompting for execution.
+      --auto-approve     Auto approve. Apply the schema changes without prompting for approval.
+  -w, --web              Open in a local Atlas UI.
+      --addr string      used with -w, local address to bind the server to. (default ":5800")
+      --verbose          enable verbose logging
 
 ```
 

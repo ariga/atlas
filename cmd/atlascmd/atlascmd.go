@@ -99,7 +99,9 @@ func inputValsFromEnv(cmd *cobra.Command) error {
 		return err
 	}
 	if fl := cmd.Flag(varFlag); fl != nil {
-		cmd.Flags().Set(varFlag, "")
+		if err := cmd.Flags().Set(varFlag, ""); err != nil {
+			return err
+		}
 	}
 	if activeEnv.Values != nil {
 		mm, err := activeEnv.Values.asMap()
