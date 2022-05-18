@@ -29,8 +29,15 @@ var (
 	// Should be set by build script "-X 'ariga.io/atlas/cmd/action.version=${version}'"
 	version string
 
-	// selectedEnv stores the value for the global --env flag.
-	selectedEnv string
+	// GlobalFlags contains flags common to many Atlas sub-commands.
+	GlobalFlags struct {
+		// SelectedEnv contains the environment selected from the active
+		// project via the --env flag.
+		SelectedEnv string
+		// Vars contains the input variables passed from the CLI to
+		// Atlas DDL or project files.
+		Vars map[string]string
+	}
 
 	// schemaCmd represents the subcommand 'atlas version'.
 	versionCmd = &cobra.Command{
@@ -78,7 +85,37 @@ func init() {
 
 // receivesEnv configures cmd to receive the common '--env' flag.
 func receivesEnv(cmd *cobra.Command) {
-	cmd.PersistentFlags().StringVarP(&selectedEnv, "env", "", "", "set which env from the project file to use")
+	cmd.PersistentFlags().StringVarP(&GlobalFlags.SelectedEnv, "env", "", "", "set which env from the project file to use")
+	cmd.PersistentFlags().StringToStringVarP(&GlobalFlags.Vars, varFlag, "", nil, "input variables")
+}
+
+// inputValsFromEnv populates  GlobalFlags.Vars from the active environment. If we are working
+// inside a project, the "var" flag is not propagated to the schema definition. Instead, it
+// is used to evaluate the project file which can pass input values via the "values" block
+// to the schema.
+func inputValsFromEnv(cmd *cobra.Command) error {
+	activeEnv, err := selectEnv(GlobalFlags.SelectedEnv)
+	if err != nil {
+		return err
+	}
+	if fl := cmd.Flag(varFlag); fl != nil {
+		cmd.Flags().Set(varFlag, "")
+	}
+	if activeEnv.Values != nil {
+		mm, err := activeEnv.Values.asMap()
+		if err != nil {
+			return err
+		}
+		pairs := make([]string, 0, len(mm))
+		for k, v := range mm {
+			pairs = append(pairs, fmt.Sprintf("%s=%s", k, v))
+		}
+		vars := strings.Join(pairs, ",")
+		if err := cmd.Flags().Set(varFlag, vars); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // parse returns a user facing version and release notes url

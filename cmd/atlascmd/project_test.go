@@ -7,14 +7,21 @@ package atlascmd
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
+	"ariga.io/atlas/schema/schemaspec"
 	"github.com/stretchr/testify/require"
 )
 
 func TestLoadEnv(t *testing.T) {
 	d := t.TempDir()
 	h := `
+variable "name" {
+	type = string
+	default = "hello"
+}
+
 env "local" {
 	url = "mysql://root:pass@localhost:3306/"
 	dev = "docker://mysql/8"
@@ -25,6 +32,12 @@ env "local" {
 		url = "file://migrations"
 		format = atlas
 	}
+
+	values "hello" {
+		bool = true
+		integer = 42
+		str = var.name
+	}
 }
 `
 	err := os.WriteFile(filepath.Join(d, projectFileName), []byte(h), 0600)
@@ -33,6 +46,9 @@ env "local" {
 	t.Run("ok", func(t *testing.T) {
 		env := &Env{}
 		env, err = LoadEnv(path, "local")
+		sort.Slice(env.Values.Extra.Attrs, func(i, j int) bool {
+			return env.Values.Extra.Attrs[i].K < env.Values.Extra.Attrs[j].K
+		})
 		require.NoError(t, err)
 		require.EqualValues(t, &Env{
 			Name:    "local",
@@ -44,7 +60,29 @@ env "local" {
 				URL:    "file://migrations",
 				Format: formatAtlas,
 			},
+			Values: &Values{
+				DefaultExtension: schemaspec.DefaultExtension{
+					Extra: schemaspec.Resource{
+						Attrs: []*schemaspec.Attr{
+							{K: "bool", V: &schemaspec.LiteralValue{V: "true"}},
+							{K: "integer", V: &schemaspec.LiteralValue{V: "42"}},
+							{K: "str", V: &schemaspec.LiteralValue{V: `"hello"`}},
+						},
+					},
+				},
+			},
 		}, env)
+	})
+	t.Run("with input", func(t *testing.T) {
+		env, err := LoadEnv(path, "local", WithInput(map[string]string{
+			"name": "goodbye",
+		}))
+		require.NoError(t, err)
+		str, ok := env.Values.Attr("str")
+		require.True(t, ok)
+		val, err := str.String()
+		require.NoError(t, err)
+		require.EqualValues(t, "goodbye", val)
 	})
 	t.Run("wrong env", func(t *testing.T) {
 		_, err = LoadEnv(path, "home")
