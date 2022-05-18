@@ -12,9 +12,8 @@ env "local" {
 env "local_with_vals" {
     url = "URL"
     src = "./1.hcl"
-    values {
-        def_val = "hello"
-    }
+
+    def_val = "hello"
 }
 -- 1.hcl --
 variable "def_val" {

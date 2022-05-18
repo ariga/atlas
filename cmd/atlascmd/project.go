@@ -18,8 +18,10 @@ type loadConfig struct {
 	inputVals map[string]string
 }
 
+// LoadOption configures the LoadEnv function.
 type LoadOption func(*loadConfig)
 
+// WithInput is a LoadOption that sets the input values for the LoadEnv function.
 func WithInput(vals map[string]string) LoadOption {
 	return func(config *loadConfig) {
 		config.inputVals = vals
@@ -37,15 +39,10 @@ type MigrationDir struct {
 	Format string `spec:"format"`
 }
 
-// Values represents the values block of an Env.
-type Values struct {
-	schemaspec.DefaultExtension
-}
-
-// asMap returns the attributes stored in Values as a map[string]string.
-func (v *Values) asMap() (map[string]string, error) {
-	m := make(map[string]string, len(v.Extra.Attrs))
-	for _, attr := range v.Extra.Attrs {
+// asMap returns the extra attributes stored in the Env as a map[string]string.
+func (e *Env) asMap() (map[string]string, error) {
+	m := make(map[string]string, len(e.Extra.Attrs))
+	for _, attr := range e.Extra.Attrs {
 		if v, err := attr.String(); err == nil {
 			m[attr.K] = v
 			continue
@@ -78,9 +75,6 @@ type Env struct {
 
 	// Directory containing the migrations for the env.
 	MigrationDir *MigrationDir `spec:"migration_dir"`
-
-	// Values passed from the Env to the schema definition.
-	Values *Values `spec:"values"`
 
 	schemaspec.DefaultExtension
 }

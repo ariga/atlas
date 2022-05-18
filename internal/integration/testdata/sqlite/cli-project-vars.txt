@@ -11,9 +11,7 @@ variable "user_status_default" {
 env "local" {
     url = "URL"
     src = "./1.hcl"
-    values {
-        def_val = var.user_status_default
-    }
+    def_val = var.user_status_default
 }
 -- 1.hcl --
 variable "def_val" {

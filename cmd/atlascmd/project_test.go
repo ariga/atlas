@@ -32,22 +32,20 @@ env "local" {
 		url = "file://migrations"
 		format = atlas
 	}
-
-	values "hello" {
-		bool = true
-		integer = 42
-		str = var.name
-	}
+	
+	bool = true
+	integer = 42
+	str = var.name
 }
 `
 	err := os.WriteFile(filepath.Join(d, projectFileName), []byte(h), 0600)
 	require.NoError(t, err)
 	path := filepath.Join(d, projectFileName)
 	t.Run("ok", func(t *testing.T) {
-		env := &Env{}
+		var env = &Env{}
 		env, err = LoadEnv(path, "local")
-		sort.Slice(env.Values.Extra.Attrs, func(i, j int) bool {
-			return env.Values.Extra.Attrs[i].K < env.Values.Extra.Attrs[j].K
+		sort.Slice(env.Extra.Attrs, func(i, j int) bool {
+			return env.Extra.Attrs[i].K < env.Extra.Attrs[j].K
 		})
 		require.NoError(t, err)
 		require.EqualValues(t, &Env{
@@ -60,14 +58,12 @@ env "local" {
 				URL:    "file://migrations",
 				Format: formatAtlas,
 			},
-			Values: &Values{
-				DefaultExtension: schemaspec.DefaultExtension{
-					Extra: schemaspec.Resource{
-						Attrs: []*schemaspec.Attr{
-							{K: "bool", V: &schemaspec.LiteralValue{V: "true"}},
-							{K: "integer", V: &schemaspec.LiteralValue{V: "42"}},
-							{K: "str", V: &schemaspec.LiteralValue{V: `"hello"`}},
-						},
+			DefaultExtension: schemaspec.DefaultExtension{
+				Extra: schemaspec.Resource{
+					Attrs: []*schemaspec.Attr{
+						{K: "bool", V: &schemaspec.LiteralValue{V: "true"}},
+						{K: "integer", V: &schemaspec.LiteralValue{V: "42"}},
+						{K: "str", V: &schemaspec.LiteralValue{V: `"hello"`}},
 					},
 				},
 			},
@@ -78,7 +74,7 @@ env "local" {
 			"name": "goodbye",
 		}))
 		require.NoError(t, err)
-		str, ok := env.Values.Attr("str")
+		str, ok := env.Attr("str")
 		require.True(t, ok)
 		val, err := str.String()
 		require.NoError(t, err)

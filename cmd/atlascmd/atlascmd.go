@@ -99,23 +99,19 @@ func inputValsFromEnv(cmd *cobra.Command) error {
 		return err
 	}
 	if fl := cmd.Flag(varFlag); fl != nil {
-		if err := cmd.Flags().Set(varFlag, ""); err != nil {
-			return err
-		}
+		return nil
 	}
-	if activeEnv.Values != nil {
-		mm, err := activeEnv.Values.asMap()
-		if err != nil {
-			return err
-		}
-		pairs := make([]string, 0, len(mm))
-		for k, v := range mm {
-			pairs = append(pairs, fmt.Sprintf("%s=%s", k, v))
-		}
-		vars := strings.Join(pairs, ",")
-		if err := cmd.Flags().Set(varFlag, vars); err != nil {
-			return err
-		}
+	values, err := activeEnv.asMap()
+	if err != nil {
+		return err
+	}
+	pairs := make([]string, 0, len(values))
+	for k, v := range values {
+		pairs = append(pairs, fmt.Sprintf("%s=%s", k, v))
+	}
+	vars := strings.Join(pairs, ",")
+	if err := cmd.Flags().Set(varFlag, vars); err != nil {
+		return err
 	}
 	return nil
 }
