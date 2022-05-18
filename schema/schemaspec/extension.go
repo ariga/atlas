@@ -649,6 +649,9 @@ func isSingleResource(t reflect.Type) bool {
 		if _, ok := f.Tag.Lookup("spec"); ok {
 			return true
 		}
+		if f.Type == reflect.TypeOf(DefaultExtension{}) {
+			return true
+		}
 	}
 	return false
 }

@@ -347,8 +347,11 @@ func formatter() (migrate.Formatter, error) {
 }
 
 func migrateFlagsFromEnv(cmd *cobra.Command, _ []string) error {
-	activeEnv, err := selectEnv(selectedEnv)
+	activeEnv, err := selectEnv(GlobalFlags.SelectedEnv)
 	if err != nil {
+		return err
+	}
+	if err := inputValsFromEnv(cmd); err != nil {
 		return err
 	}
 	if err := maySetFlag(cmd, migrateFlagDevURL, activeEnv.DevURL); err != nil {

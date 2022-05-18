@@ -28,6 +28,7 @@ const (
 	devURLFlag = "dev-url"
 	fileFlag   = "file"
 	dsnFlag    = "dsn"
+	varFlag    = "var"
 )
 
 var (
@@ -56,7 +57,6 @@ var (
 		DryRun      bool
 		AutoApprove bool
 		Verbose     bool
-		Vars        map[string]string
 	}
 	// SchemaApply represents the 'atlas schema apply' subcommand command.
 	SchemaApply = &cobra.Command{
@@ -145,7 +145,6 @@ func init() {
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.Web, "web", "w", false, "Open in a local Atlas UI.")
 	SchemaApply.Flags().StringVarP(&ApplyFlags.Addr, "addr", "", ":5800", "used with -w, local address to bind the server to.")
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.Verbose, migrateDiffFlagVerbose, "", false, "enable verbose logging")
-	SchemaApply.Flags().StringToStringVarP(&ApplyFlags.Vars, "var", "", nil, "input variables")
 	SchemaApply.Flags().StringVarP(&SchemaFlags.DSN, dsnFlag, "d", "", "")
 	cobra.CheckErr(SchemaApply.Flags().MarkHidden(dsnFlag))
 	cobra.CheckErr(SchemaApply.MarkFlagRequired(urlFlag))
@@ -178,12 +177,15 @@ func selectEnv(selected string) (*Env, error) {
 	if _, err := os.Stat(projectFileName); os.IsNotExist(err) {
 		return env, nil
 	}
-	return LoadEnv(projectFileName, selected)
+	return LoadEnv(projectFileName, selected, WithInput(GlobalFlags.Vars))
 }
 
 func schemaFlagsFromEnv(cmd *cobra.Command, _ []string) error {
-	activeEnv, err := selectEnv(selectedEnv)
+	activeEnv, err := selectEnv(GlobalFlags.SelectedEnv)
 	if err != nil {
+		return err
+	}
+	if err := inputValsFromEnv(cmd); err != nil {
 		return err
 	}
 	if err := dsn2url(cmd); err != nil {
@@ -272,11 +274,8 @@ func CmdApplyRun(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	if err != nil {
-		return err
-	}
 	defer c.Close()
-	return applyRun(cmd.Context(), c, ApplyFlags.DevURL, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove, ApplyFlags.Vars)
+	return applyRun(cmd.Context(), c, ApplyFlags.DevURL, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove, GlobalFlags.Vars)
 }
 
 // CmdFmtRun formats all HCL files in a given directory using canonical HCL formatting
