@@ -183,11 +183,11 @@ type (
 	// Planner can plan the steps to take to migrate from one state to another. It uses the enclosed FS to write
 	// those changes to versioned migration files.
 	Planner struct {
-		drv Driver      // driver to use
-		dir Dir         // where migration files are stored and read from
-		fmt Formatter   // how to format a plan to migration files
-		dsr StateReader // how to read a state from the migration directory
-		sum bool        // whether to create a sum file for the migration directory
+		drv Driver    // driver to use
+		dir Dir       // where migration files are stored and read from
+		fmt Formatter // how to format a plan to migration files
+		sc  Scanner   // how to interpret a migration dir
+		sum bool      // whether to create a sum file for the migration directory
 	}
 
 	// PlannerOption allows managing a Planner using functional arguments.
@@ -242,9 +242,6 @@ func NewPlanner(drv Driver, dir Dir, opts ...PlannerOption) *Planner {
 	if p.fmt == nil {
 		p.fmt = DefaultFormatter
 	}
-	if p.dsr == nil {
-		p.dsr = GlobStateReader(p.dir, p.drv, "*.sql")
-	}
 	return p
 }
 
@@ -252,13 +249,6 @@ func NewPlanner(drv Driver, dir Dir, opts ...PlannerOption) *Planner {
 func WithFormatter(fmt Formatter) PlannerOption {
 	return func(p *Planner) {
 		p.fmt = fmt
-	}
-}
-
-// WithStateReader sets the StateReader of a Planner.
-func WithStateReader(dsr StateReader) PlannerOption {
-	return func(p *Planner) {
-		p.dsr = dsr
 	}
 }
 
@@ -272,7 +262,11 @@ func DisableChecksum() PlannerOption {
 // Plan calculates the migration Plan required for moving the current state (from) state to
 // the next state (to). A StateReader can be a directory, static schema elements or a Driver connection.
 func (p *Planner) Plan(ctx context.Context, name string, to StateReader) (*Plan, error) {
-	current, err := p.dsr.ReadState(ctx)
+	ex, err := NewExecutor(p.drv, p.dir, NoopRevisionReadWriter{})
+	if err != nil {
+		return nil, err
+	}
+	current, err := ex.ReadState(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -392,8 +386,12 @@ func (e *Executor) Execute(ctx context.Context, n int) (err error) {
 	}
 	// Check if the existing revisions did come from the migration directory and not from somewhere else.
 	hf, err := readHashFile(e.dir)
-	if err != nil {
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("sql/migrate: execute: read atlas.sum file: %w", err)
+	}
+	// If there is no atlas.sum file there are no migration files.
+	if errors.Is(err, os.ErrNotExist) {
+		return ErrNoPendingFiles
 	}
 	// For up to len(revisions) revisions the migration files must both match in order and content.
 	if len(revisions) > len(migrations) { // TODO(masseelch): keep compaction in mind.
@@ -488,103 +486,85 @@ func (e *Executor) Execute(ctx context.Context, n int) (err error) {
 	return
 }
 
-// GlobStateReader creates a StateReader that loads all files from Dir matching
-// glob in lexicographic order and uses the Driver to create a migration state.
+var ErrNotClean = errors.New("sql/migrate: connected database is not clean")
+
+// ReadState implements the StateReader interface.
 //
-// If the given Driver implements the Emptier interface the IsEmpty method will be used to determine if the Driver is
-// connected to an "empty" database. This behavior was added to support SQLite flavors.
-//
-// Deprecated: GlobStateReader will be removed once the Executor is functional.
-func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
-	var errNotClean = errors.New("sql/migrate: connected database is not clean")
-	return func(ctx context.Context) (realm *schema.Realm, err error) {
-		// Collect the migration files.
-		names, err := fs.Glob(dir, glob)
+// It does so by calling Execute and inspecting the database thereafter.
+func (e *Executor) ReadState(ctx context.Context) (realm *schema.Realm, err error) {
+	unlock, err := e.drv.(schema.Locker).Lock(ctx, "atlas_migration_directory_state", 0)
+	if err != nil {
+		return nil, fmt.Errorf("sql/migrate: acquiring database lock: %w", err)
+	}
+	defer unlock()
+	// We need an empty database state to reliably replay the migration directory.
+	if c, ok := e.drv.(interface {
+		// The IsClean method can be added to a Driver to override how to
+		// determine if a connected database is in a clean state.
+		// This interface exists only to support SQLite favors.
+		IsClean(context.Context) (bool, error)
+	}); ok {
+		e, err := c.IsClean(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("sql/migrate: checking database state: %w", err)
+		}
+		if !e {
+			return nil, ErrNotClean
+		}
+	} else {
+		realm, err = e.drv.InspectRealm(ctx, nil)
 		if err != nil {
 			return nil, err
 		}
-		// We need an empty database state to reliably replay the migration directory.
-		if c, ok := drv.(interface {
-			// The IsClean method can be added to a Driver to override how to
-			// determine if a connected database is in a clean state.
-			// This interface exists only to support SQLite favors.
-			IsClean(context.Context) (bool, error)
-		}); ok {
-			e, err := c.IsClean(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("sql/migrate: checking database state: %w", err)
-			}
-			if !e {
-				return nil, errNotClean
-			}
-		} else {
-			realm, err = drv.InspectRealm(ctx, nil)
-			if err != nil {
-				return nil, err
-			}
-			if len(realm.Schemas) > 0 {
-				return nil, errNotClean
-			}
+		if len(realm.Schemas) > 0 {
+			return nil, ErrNotClean
 		}
-		// Sort files lexicographically.
-		sort.Slice(names, func(i, j int) bool {
-			return names[i] < names[j]
-		})
-		// If the driver supports it, acquire a lock while replaying the migration changes.
-		if l, ok := drv.(schema.Locker); ok {
-			unlock, err := l.Lock(ctx, "atlas_migration_directory_state", 0)
-			if err != nil {
-				return nil, fmt.Errorf("sql/migrate: acquiring database lock: %w", err)
-			}
-			defer unlock()
-		}
-		// Clean up after ourselves.
-		defer func() {
-			if e, ok := drv.(interface {
-				// The Clean method can be added to a Driver to change how to clean a database.
-				// This interface exists only to support SQLite favors.
-				Clean(context.Context) error
-			}); ok {
-				if derr := e.Clean(ctx); derr != nil {
-					err = wrap(derr, err)
-				}
-				return
-			}
-			realm, derr := drv.InspectRealm(ctx, nil)
-			if derr != nil {
-				err = wrap(derr, err)
-			}
-			del := make([]schema.Change, len(realm.Schemas))
-			for i, s := range realm.Schemas {
-				del[i] = &schema.DropSchema{S: s, Extra: []schema.Clause{&schema.IfExists{}}}
-			}
-			if derr := drv.ApplyChanges(ctx, del); derr != nil {
-				err = wrap(derr, err)
-			}
-		}()
-		for _, n := range names {
-			f, err := dir.Open(n)
-			if err != nil {
-				return nil, err
-			}
-			sc := bufio.NewScanner(f)
-			for sc.Scan() {
-				t := sc.Text()
-				if !strings.HasPrefix(strings.TrimSpace(t), "--") {
-					if _, err := drv.ExecContext(ctx, t); err != nil {
-						f.Close()
-						return nil, err
-					}
-				}
-			}
-			f.Close()
-			if err := sc.Err(); err != nil {
-				return nil, err
-			}
-		}
-		realm, err = drv.InspectRealm(ctx, nil)
-		return
 	}
+	// Clean up after ourselves.
+	defer func() {
+		if e, ok := e.drv.(interface {
+			// The Clean method can be added to a Driver to change how to clean a database.
+			// This interface exists only to support SQLite favors.
+			Clean(context.Context) error
+		}); ok {
+			if derr := e.Clean(ctx); derr != nil {
+				err = wrap(derr, err)
+			}
+			return
+		}
+		realm, derr := e.drv.InspectRealm(ctx, nil)
+		if derr != nil {
+			err = wrap(derr, err)
+		}
+		del := make([]schema.Change, len(realm.Schemas))
+		for i, s := range realm.Schemas {
+			del[i] = &schema.DropSchema{S: s, Extra: []schema.Clause{&schema.IfExists{}}}
+		}
+		if derr := e.drv.ApplyChanges(ctx, del); derr != nil {
+			err = wrap(derr, err)
+		}
+	}()
+	// Replay the migration directory on the database.
+	if err := e.Execute(ctx, 0); err != nil && !errors.Is(err, ErrNoPendingFiles) {
+		return nil, fmt.Errorf("sql/migrate: read migration directory state: %w", err)
+	}
+	// Inspect the database back and return the result.
+	realm, err = e.drv.InspectRealm(ctx, nil)
+	return
+}
+
+// NoopRevisionReadWriter is a RevisionsReadWriter that does nothing.
+// It is useful for one-time replay of the migration directory.
+type NoopRevisionReadWriter struct{}
+
+// ReadRevisions implements RevisionsReadWriter.ReadRevisions,
+func (NoopRevisionReadWriter) ReadRevisions(context.Context) (Revisions, error) {
+	return nil, nil
+}
+
+// WriteRevisions implements RevisionsReadWriter.WriteRevisions,
+func (NoopRevisionReadWriter) WriteRevisions(context.Context, Revisions) error {
+	return nil
 }
 
 // done computes and sets the ExecutionTime.

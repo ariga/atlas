@@ -45,7 +45,7 @@ func TestMigrate_Diff(t *testing.T) {
 	require.True(t, strings.HasPrefix(s, "Error: sql/migrate: connected database is not clean"))
 	require.EqualError(t, err, "sql/migrate: connected database is not clean")
 
-	// Works.
+	// Works (on empty directory).
 	s, err = runCmd(
 		Root, "migrate", "diff",
 		"name",
@@ -53,8 +53,8 @@ func TestMigrate_Diff(t *testing.T) {
 		"--dev-url", openSQLite(t, ""),
 		"--to", hclURL(t),
 	)
-	require.Zero(t, s)
 	require.NoError(t, err)
+	require.Zero(t, s)
 	require.FileExists(t, filepath.Join(p, fmt.Sprintf("%s_name.sql", time.Now().UTC().Format("20060102150405"))))
 	require.FileExists(t, filepath.Join(p, "atlas.sum"))
 

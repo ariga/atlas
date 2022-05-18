@@ -61,7 +61,7 @@ func TestPlanner_WritePlan(t *testing.T) {
 
 func TestPlanner_Plan(t *testing.T) {
 	var (
-		drv = &mockDriver{}
+		drv = &lockMockDriver{&mockDriver{}}
 		ctx = context.Background()
 	)
 	d, err := migrate.NewLocalDir(t.TempDir())
@@ -184,41 +184,45 @@ func TestHash_UnmarshalText(t *testing.T) {
 }
 
 // Deprecated: GlobStateReader will be removed once the Executor is functional.
-func TestGlobStateReader(t *testing.T) {
-	var (
-		drv = &lockMockDriver{&mockDriver{}}
-		ctx = context.Background()
-	)
+func TestExecutor_ReadState(t *testing.T) {
+	ctx := context.Background()
 	d, err := migrate.NewLocalDir("testdata")
 	require.NoError(t, err)
 
-	_, err = migrate.GlobStateReader(d, drv, "*.up.sql").ReadState(ctx)
-	require.NoError(t, err)
-	require.Equal(t, []string{"CREATE TABLE t(c int);"}, drv.executed)
-	require.Equal(t, 1, drv.lockCounter)
-	require.Equal(t, 1, drv.unlockCounter)
+	// Locking not supported.
+	_, err = migrate.NewExecutor(&mockDriver{}, d, migrate.NoopRevisionReadWriter{})
+	require.ErrorIs(t, err, migrate.ErrLockUnsupported)
 
-	_, err = migrate.GlobStateReader(d, drv, "*.down.sql").ReadState(ctx)
+	drv := &lockMockDriver{&mockDriver{}}
+	ex, err := migrate.NewExecutor(drv, d, migrate.NoopRevisionReadWriter{})
 	require.NoError(t, err)
-	require.Equal(t, []string{"CREATE TABLE t(c int);", "DROP TABLE IF EXISTS t;"}, drv.executed)
+
+	_, err = ex.ReadState(ctx)
+	require.NoError(t, err)
+	require.Equal(t, []string{"DROP TABLE IF EXISTS t;", "CREATE TABLE t(c int);"}, drv.executed)
 	require.Equal(t, 2, drv.lockCounter)
 	require.Equal(t, 2, drv.unlockCounter)
 
-	drv.locked = true
-	_, err = migrate.GlobStateReader(d, drv, "").ReadState(ctx)
+	// Does not work if locked.
+	drv.locks = map[string]struct{}{"atlas_migration_directory_state": {}}
+	_, err = ex.ReadState(ctx)
 	require.EqualError(t, err, "sql/migrate: acquiring database lock: lockErr")
 	require.Equal(t, 2, drv.lockCounter)
 	require.Equal(t, 2, drv.unlockCounter)
-	drv.locked = false
+	drv.locks = make(map[string]struct{})
 
+	// Does not work if database is not clean.
 	drv.realm = schema.Realm{Schemas: []*schema.Schema{{Name: "schema"}}}
-	_, err = migrate.GlobStateReader(d, drv, "*.up.sql").ReadState(ctx)
+	_, err = ex.ReadState(ctx)
 	require.EqualError(t, err, "sql/migrate: connected database is not clean")
-	require.Equal(t, 2, drv.lockCounter)
-	require.Equal(t, 2, drv.unlockCounter)
+	require.Equal(t, 3, drv.lockCounter)
+	require.Equal(t, 3, drv.unlockCounter)
 
+	// Works.
 	edrv := &emptyMockDriver{drv}
-	_, err = migrate.GlobStateReader(d, edrv, "*.up.sql").ReadState(ctx)
+	ex, err = migrate.NewExecutor(edrv, d, migrate.NoopRevisionReadWriter{})
+	require.NoError(t, err)
+	_, err = ex.ReadState(ctx)
 	require.NoError(t, err)
 	require.Equal(t, []schema.Change{
 		&schema.DropSchema{
@@ -226,8 +230,8 @@ func TestGlobStateReader(t *testing.T) {
 			Extra: []schema.Clause{&schema.IfExists{}},
 		},
 	}, edrv.applied)
-	require.Equal(t, 3, drv.lockCounter)
-	require.Equal(t, 3, drv.unlockCounter)
+	require.Equal(t, 5, drv.lockCounter)
+	require.Equal(t, 5, drv.unlockCounter)
 }
 
 func TestLocalDir(t *testing.T) {
@@ -403,7 +407,7 @@ type (
 		applied       []schema.Change
 		realm         schema.Realm
 		executed      []string
-		locked        bool
+		locks         map[string]struct{}
 		lockCounter   int
 		unlockCounter int
 	}
@@ -429,15 +433,18 @@ func (m *mockDriver) ApplyChanges(_ context.Context, changes []schema.Change) er
 	m.applied = changes
 	return nil
 }
-func (m *lockMockDriver) Lock(context.Context, string, time.Duration) (schema.UnlockFunc, error) {
-	if m.locked {
+func (m *lockMockDriver) Lock(_ context.Context, name string, _ time.Duration) (schema.UnlockFunc, error) {
+	if _, ok := m.locks[name]; ok {
 		return nil, errors.New("lockErr")
 	}
 	m.lockCounter++
-	m.locked = true
+	if m.locks == nil {
+		m.locks = make(map[string]struct{})
+	}
+	m.locks[name] = struct{}{}
 	return func() error {
 		m.unlockCounter++
-		m.locked = false
+		delete(m.locks, name)
 		return nil
 	}, nil
 }
