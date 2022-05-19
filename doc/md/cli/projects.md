@@ -3,7 +3,7 @@ title: Project Structure
 id: projects
 slug: /cli/projects
 ---
-### Atlas Project Files
+### Project Files
 
 Project files provide a convenient way to describe and work with different
 environments which are managed using Atlas.  A project file is a file named
