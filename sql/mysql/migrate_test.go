@@ -485,7 +485,42 @@ func TestPlanChanges(t *testing.T) {
 				Changes: []*migrate.Change{
 					{
 						Cmd:     "ALTER TABLE `users` ADD COLUMN `name` varchar(255) NOT NULL, ADD INDEX `id_key` USING HASH (`id`) COMMENT \"comment\", ADD CONSTRAINT `id_nonzero` CHECK (id > 0) ENFORCED, AUTO_INCREMENT 1000",
-						Reverse: "ALTER TABLE `users` DROP COLUMN `name`, DROP INDEX `id_key`, DROP CONSTRAINT `id_nonzero`, AUTO_INCREMENT 1",
+						Reverse: "ALTER TABLE `users` AUTO_INCREMENT 1, DROP CONSTRAINT `id_nonzero`, DROP INDEX `id_key`, DROP COLUMN `name`",
+					},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := schema.NewTable("users").
+						AddColumns(schema.NewIntColumn("id", "int"))
+					posts := schema.NewTable("posts").
+						AddColumns(
+							schema.NewIntColumn("id", "int"),
+							schema.NewIntColumn("author_id", "int"),
+						)
+					posts.AddForeignKeys(
+						schema.NewForeignKey("author").
+							AddColumns(posts.Columns[1]).
+							SetRefTable(users).
+							AddRefColumns(users.Columns[0]),
+					)
+					return &schema.ModifyTable{
+						T: posts,
+						Changes: []schema.Change{
+							&schema.AddColumn{C: posts.Columns[1]},
+							&schema.AddForeignKey{F: posts.ForeignKeys[0]},
+						},
+					}
+				}(),
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `posts` ADD COLUMN `author_id` int NOT NULL, ADD CONSTRAINT `author` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`)",
+						Reverse: "ALTER TABLE `posts` DROP FOREIGN KEY `author`, DROP COLUMN `author_id`",
 					},
 				},
 			},
@@ -513,7 +548,7 @@ func TestPlanChanges(t *testing.T) {
 				Changes: []*migrate.Change{
 					{
 						Cmd:     "ALTER TABLE `users` ADD COLUMN `c2` int AS (c1*2) NOT NULL, ADD COLUMN `c3` int AS (c1*c2) STORED NOT NULL",
-						Reverse: "ALTER TABLE `users` DROP COLUMN `c2`, DROP COLUMN `c3`",
+						Reverse: "ALTER TABLE `users` DROP COLUMN `c3`, DROP COLUMN `c2`",
 					},
 				},
 			},
@@ -604,7 +639,7 @@ func TestPlanChanges(t *testing.T) {
 				Changes: []*migrate.Change{
 					{
 						Cmd:     "ALTER TABLE `users` ALTER CHECK `check1` ENFORCED, ALTER CHECK `check2` NOT ENFORCED, DROP CHECK `check3`, ADD CONSTRAINT `check3` CHECK (id >= 0)",
-						Reverse: "ALTER TABLE `users` ALTER CHECK `check1` NOT ENFORCED, ALTER CHECK `check2` ENFORCED, DROP CHECK `check3`, ADD CONSTRAINT `check3` CHECK (id > 0)",
+						Reverse: "ALTER TABLE `users` DROP CHECK `check3`, ADD CONSTRAINT `check3` CHECK (id > 0), ALTER CHECK `check2` ENFORCED, ALTER CHECK `check1` NOT ENFORCED",
 					},
 				},
 			},

@@ -122,3 +122,61 @@ func TestExprLastIndex(t *testing.T) {
 		})
 	}
 }
+
+func TestReverseChanges(t *testing.T) {
+	tests := []struct {
+		input  []schema.Change
+		expect []schema.Change
+	}{
+		{
+			input: []schema.Change{
+				(*schema.AddColumn)(nil),
+			},
+			expect: []schema.Change{
+				(*schema.AddColumn)(nil),
+			},
+		},
+		{
+			input: []schema.Change{
+				(*schema.AddColumn)(nil),
+				(*schema.DropColumn)(nil),
+			},
+			expect: []schema.Change{
+				(*schema.DropColumn)(nil),
+				(*schema.AddColumn)(nil),
+			},
+		},
+		{
+			input: []schema.Change{
+				(*schema.AddColumn)(nil),
+				(*schema.ModifyColumn)(nil),
+				(*schema.DropColumn)(nil),
+			},
+			expect: []schema.Change{
+				(*schema.DropColumn)(nil),
+				(*schema.ModifyColumn)(nil),
+				(*schema.AddColumn)(nil),
+			},
+		},
+		{
+			input: []schema.Change{
+				(*schema.AddColumn)(nil),
+				(*schema.ModifyColumn)(nil),
+				(*schema.DropColumn)(nil),
+				(*schema.ModifyColumn)(nil),
+			},
+			expect: []schema.Change{
+				(*schema.ModifyColumn)(nil),
+				(*schema.DropColumn)(nil),
+				(*schema.ModifyColumn)(nil),
+				(*schema.AddColumn)(nil),
+			},
+		},
+	}
+	for i, tt := range tests {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			ReverseChanges(tt.input)
+			require.Equal(t, tt.expect, tt.input)
+		})
+	}
+}
