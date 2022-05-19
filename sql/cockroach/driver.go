@@ -160,26 +160,33 @@ const (
 	TypeVarChar   = "varchar" // character varying
 	TypeText      = "text"
 
+	// INT
+	TypeInt     = "int"
+	TypeInteger = "integer"
+	TypeInt8    = "int8"
+	TypeInt64   = "int64"
+	TypeBigInt  = "bigint"
+
+	// INT2
+	TypeInt2     = "int2"
 	TypeSmallInt = "smallint"
-	TypeInteger  = "integer"
-	TypeBigInt   = "bigint"
-	TypeInt      = "int"  // integer.
-	TypeInt2     = "int2" // smallint.
-	TypeInt4     = "int4" // integer.
-	TypeInt8     = "int8" // bigint.
+
+	// INT4
+	TypeInt4 = "int4"
 
 	TypeCIDR     = "cidr"
 	TypeInet     = "inet"
 	TypeMACAddr  = "macaddr"
 	TypeMACAddr8 = "macaddr8"
 
-	TypeCircle  = "circle"
-	TypeLine    = "line"
-	TypeLseg    = "lseg"
-	TypeBox     = "box"
-	TypePath    = "path"
-	TypePolygon = "polygon"
-	TypePoint   = "point"
+	TypeGeometry = "geometry"
+	TypeCircle   = "circle"
+	TypeLine     = "line"
+	TypeLseg     = "lseg"
+	TypeBox      = "box"
+	TypePath     = "path"
+	TypePolygon  = "polygon"
+	TypePoint    = "point"
 
 	TypeDate          = "date"
 	TypeTime          = "time"   // time without time zone

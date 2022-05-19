@@ -225,7 +225,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 func columnType(c *columnDesc) schema.Type {
 	var typ schema.Type
 	switch t := c.typ; strings.ToLower(t) {
-	case TypeBigInt, TypeInt8, TypeInt, TypeInteger, TypeInt4, TypeSmallInt, TypeInt2:
+	case TypeInt, TypeBigInt, TypeInteger, TypeInt8, TypeInt64, TypeInt2, TypeSmallInt, TypeInt4:
 		typ = &schema.IntegerType{T: t}
 	case TypeBit, TypeBitVar:
 		typ = &BitType{T: t, Len: c.size}
@@ -237,9 +237,9 @@ func columnType(c *columnDesc) schema.Type {
 		// A `character` column without length specifier is equivalent to `character(1)`,
 		// but `varchar` without length accepts strings of any size (same as `text`).
 		typ = &schema.StringType{T: t, Size: int(c.size)}
-	case TypeCIDR, TypeInet, TypeMACAddr, TypeMACAddr8:
+	case TypeInet:
 		typ = &NetworkType{T: t}
-	case TypeCircle, TypeLine, TypeLseg, TypeBox, TypePath, TypePolygon, TypePoint:
+	case TypeCircle, TypeLine, TypeLseg, TypeBox, TypePath, TypePolygon, TypePoint, TypeGeometry:
 		typ = &schema.SpatialType{T: t}
 	case TypeDate:
 		typ = &schema.TimeType{T: t}
@@ -281,6 +281,7 @@ func columnType(c *columnDesc) schema.Type {
 		if c.typtype == "e" {
 			typ = &enumType{T: c.udt, ID: c.typid}
 		}
+
 	default:
 		typ = &schema.UnsupportedType{T: t}
 	}
@@ -620,7 +621,7 @@ func canConvert(t *schema.ColumnType, x string) (string, bool) {
 		if sqlx.IsLiteralNumber(x) {
 			return x, true
 		}
-	case *ArrayType, *schema.BinaryType, *schema.JSONType, *NetworkType, *schema.SpatialType, *schema.StringType, *schema.TimeType, *UUIDType, *XMLType:
+	case *ArrayType, *schema.BinaryType, *schema.JSONType, *NetworkType, *schema.SpatialType, *schema.StringType, *schema.TimeType, *UUIDType:
 		return q, true
 	}
 	return "", false
@@ -792,7 +793,7 @@ const (
 	SELECT
 	t1.table_schema,
 	t1.table_name,
-	pg_catalog.obj_description(t2.oid, 'pg_class') AS comment,
+	pg_catalog.obj_description(t3.oid, 'pg_class') AS comment,
 	t4.partattrs AS partition_attrs,
 	t4.partstrat AS partition_strategy,
 	pg_get_expr(t4.partexprs, t4.partrelid) AS partition_exprs
@@ -874,7 +875,7 @@ SELECT
 			 pgi.indexdef create_stmt,
 	pg_get_expr(idx.indpred, idx.indrelid) AS predicate,
 	pg_get_indexdef(idx.indexrelid, idx.ord, false) AS expression,
-	 pg_catalog.obj_description(t.oid, 'pg_class') AS comment
+	 pg_catalog.obj_description(i.oid, 'pg_class') AS comment
 	FROM
 	(
 		select

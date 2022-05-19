@@ -94,26 +94,17 @@ func TestCockroach_Relation(t *testing.T) {
 	})
 }
 
-func TestCockroach_NoSchema(t *testing.T) {
-	crdbRun(t, func(t *crdbTest) {
-		t.Cleanup(func() {
-			_, err := t.db.Exec("CREATE SCHEMA IF NOT EXISTS public")
-			require.NoError(t, err)
-		})
-		_, err := t.db.Exec("DROP SCHEMA IF EXISTS public CASCADE")
-		require.NoError(t, err)
-		r, err := t.drv.InspectRealm(context.Background(), nil)
-		require.NoError(t, err)
-		require.Nil(t, r.Schemas)
-	})
-}
-
 func TestCockroach_AddIndexedColumns(t *testing.T) {
 	crdbRun(t, func(t *crdbTest) {
+		s := &schema.Schema{
+			Name: "public",
+		}
 		usersT := &schema.Table{
 			Name:    "users",
-			Columns: []*schema.Column{{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}}},
+			Schema:  s,
+			Columns: []*schema.Column{{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&cockroach.Identity{}}}},
 		}
+		usersT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: usersT.Columns[0]}}}
 		t.migrate(&schema.AddTable{T: usersT})
 		t.dropTables(usersT.Name)
 		usersT.Columns = append(usersT.Columns, &schema.Column{
@@ -157,8 +148,6 @@ func TestCockroach_AddColumns(t *testing.T) {
 		usersT := t.users()
 		t.dropTables(usersT.Name)
 		t.migrate(&schema.AddTable{T: usersT})
-		_, err := t.db.Exec("CREATE EXTENSION IF NOT EXISTS hstore")
-		require.NoError(t, err)
 		usersT.Columns = append(
 			usersT.Columns,
 			&schema.Column{Name: "a", Type: &schema.ColumnType{Type: &schema.BinaryType{T: "bytea"}}},
@@ -171,16 +160,13 @@ func TestCockroach_AddColumns(t *testing.T) {
 			&schema.Column{Name: "h", Type: &schema.ColumnType{Type: &schema.FloatType{T: "float", Precision: 30}}, Default: &schema.Literal{V: "'1'"}},
 			&schema.Column{Name: "i", Type: &schema.ColumnType{Type: &schema.FloatType{T: "float", Precision: 53}}, Default: &schema.Literal{V: "1"}},
 			&schema.Column{Name: "j", Type: &schema.ColumnType{Type: &cockroach.SerialType{T: "serial"}}},
-			&schema.Column{Name: "k", Type: &schema.ColumnType{Type: &cockroach.CurrencyType{T: "money"}}, Default: &schema.Literal{V: "'100'"}},
-			&schema.Column{Name: "l", Type: &schema.ColumnType{Type: &cockroach.CurrencyType{T: "money"}, Null: true}, Default: &schema.RawExpr{X: "'52093.89'::money"}},
 			&schema.Column{Name: "m", Type: &schema.ColumnType{Type: &schema.BoolType{T: "boolean"}, Null: true}, Default: &schema.Literal{V: "false"}},
-			&schema.Column{Name: "n", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "point"}, Null: true}, Default: &schema.Literal{V: "'(1,2)'"}},
-			&schema.Column{Name: "o", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "line"}, Null: true}, Default: &schema.Literal{V: "'{1,2,3}'"}},
-			&schema.Column{Name: "p", Type: &schema.ColumnType{Type: &cockroach.UserDefinedType{T: "hstore"}, Null: true}, Default: &schema.RawExpr{X: "'a => 1'"}},
+			&schema.Column{Name: "n", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "geometry"}, Null: true}, Default: &schema.Literal{V: "'POINT(1 2)'"}},
+			&schema.Column{Name: "o", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "geometry"}, Null: true}, Default: &schema.Literal{V: "'LINESTRING(0 0, 1440 900)'"}},
 			&schema.Column{Name: "q", Type: &schema.ColumnType{Type: &cockroach.ArrayType{T: "text[]"}, Null: true}, Default: &schema.Literal{V: "'{}'"}},
 		)
 		changes := t.diff(t.loadUsers(), usersT)
-		require.Len(t, changes, 17)
+		require.Len(t, changes, 14)
 		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
 		ensureNoChange(t, usersT)
 	})
@@ -625,12 +611,10 @@ create table atlas_defaults
 func TestCockroach_Sanity(t *testing.T) {
 	n := "atlas_types_sanity"
 	ddl := `
-DROP TYPE IF EXISTS address;
-CREATE TYPE address AS (city VARCHAR(90), street VARCHAR(90));
 create table atlas_types_sanity
 (
-    "tBit"                 bit(10)                     default b'100'                                   null,
-    "tBitVar"              bit varying(10)             default b'100'                                   null,
+    "tBit"                 bit(10)                     default B'100'                                   null,
+    "tBitVar"              bit varying(10)             default B'100'                                   null,
     "tBoolean"             boolean                     default false                                not null,
     "tBool"                bool                        default false                                not null,
     "tBytea"               bytea                       default E'\\001'                             not null,
@@ -646,16 +630,8 @@ create table atlas_types_sanity
     "tInt2"                int2                        default '10'                                     null,
     "tInt4"                int4                        default '10'                                     null,
     "tInt8"                int8                        default '10'                                     null,
-    "tCIDR"                cidr                        default '127.0.0.1'                              null,
     "tInet"                inet                        default '127.0.0.1'                              null,
-    "tMACAddr"             macaddr                     default '08:00:2b:01:02:03'                      null,
-    "tMACAddr8"            macaddr8                    default '08:00:2b:01:02:03:04:05'                null,
-    "tCircle"              circle                      default                                          null,
-    "tLine"                line                        default                                          null,
-    "tLseg"                lseg                        default                                          null, 
-    "tBox"                 box                         default                                          null,
-    "tPath"                path                        default                                          null,
-    "tPoint"               point                       default                                          null,
+    "tGeom"                geometry                       default                                       null,
     "tDate"                date                        default current_date                             null,
     "tTime"                time                        default current_time                             null,
     "tTimeWTZ"             time with time zone         default current_time                             null,
@@ -677,14 +653,11 @@ create table atlas_types_sanity
     "tSerial2"             serial2                                                                          ,
     "tSerial4"             serial4                                                                          ,
     "tSerial8"             serial8                                                                          ,
-    "tArray"               text[10][10]                 default '{}'                                    null,
-    "tXML"                 xml                          default '<a>foo</a>'                            null,  
+    "tArray"               text[10]                     default '{}'                                    null,
     "tJSON"                json                         default '{"key":"value"}'                       null,
     "tJSONB"               jsonb                        default '{"key":"value"}'                       null,
     "tUUID"                uuid                         default  'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' null,
-    "tMoney"               money                        default  18                                     null,
-    "tInterval"            interval                     default '4 hours'                               null, 
-    "tUserDefined"         address                      default '("ab","cd")'                           null
+    "tInterval"            interval                     default '4 hours'                               null
 );
 `
 	crdbRun(t, func(t *crdbTest) {
@@ -702,12 +675,12 @@ create table atlas_types_sanity
 				{
 					Name:    "tBit",
 					Type:    &schema.ColumnType{Type: &cockroach.BitType{T: "bit", Len: 10}, Raw: "bit", Null: true},
-					Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"postgres10": "B'100'::\"bit\""}, "'100'::\"bit\"")},
+					Default: &schema.RawExpr{X: "B'100'"},
 				},
 				{
 					Name:    "tBitVar",
 					Type:    &schema.ColumnType{Type: &cockroach.BitType{T: "bit varying", Len: 10}, Raw: "bit varying", Null: true},
-					Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"postgres10": "B'100'::\"bit\""}, "'100'::\"bit\"")},
+					Default: &schema.RawExpr{X: "B'100'"},
 				},
 				{
 					Name:    "tBoolean",
@@ -722,287 +695,238 @@ create table atlas_types_sanity
 				{
 					Name:    "tBytea",
 					Type:    &schema.ColumnType{Type: &schema.BinaryType{T: "bytea"}, Raw: "bytea", Null: false},
-					Default: &schema.Literal{V: "'\\x01'"},
+					Default: &schema.RawExpr{X: "'\\x01':::BYTES"},
 				},
 				{
 					Name:    "tCharacter",
 					Type:    &schema.ColumnType{Type: &schema.StringType{T: "character", Size: 10}, Raw: "character", Null: true},
-					Default: &schema.RawExpr{X: "'atlas'::bpchar"},
+					Default: &schema.RawExpr{X: "'atlas':::STRING"},
 				},
 				{
 					Name:    "tChar",
 					Type:    &schema.ColumnType{Type: &schema.StringType{T: "character", Size: 10}, Raw: "character", Null: true},
-					Default: &schema.RawExpr{X: "'atlas'::bpchar"},
+					Default: &schema.RawExpr{X: "'atlas':::STRING"},
 				},
 				{
 					Name:    "tCharVar",
 					Type:    &schema.ColumnType{Type: &schema.StringType{T: "character varying", Size: 10}, Raw: "character varying", Null: true},
-					Default: &schema.Literal{V: "'atlas'"},
+					Default: &schema.RawExpr{X: "'atlas':::STRING"},
 				},
 				{
 					Name:    "tVarChar",
 					Type:    &schema.ColumnType{Type: &schema.StringType{T: "character varying", Size: 10}, Raw: "character varying", Null: true},
-					Default: &schema.Literal{V: "'atlas'"},
+					Default: &schema.RawExpr{X: "'atlas':::STRING"},
 				},
 				{
 					Name:    "tText",
 					Type:    &schema.ColumnType{Type: &schema.StringType{T: "text"}, Raw: "text", Null: true},
-					Default: &schema.Literal{V: "'atlas'"},
+					Default: &schema.RawExpr{X: "'atlas':::STRING"},
 				},
 				{
 					Name:    "tSmallInt",
 					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "smallint"}, Raw: "smallint", Null: true},
-					Default: &schema.Literal{V: "10"},
+					Default: &schema.RawExpr{X: "10:::INT8"},
 				},
 				{
 					Name:    "tInteger",
-					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer", Null: true},
-					Default: &schema.Literal{V: "10"},
+					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}, Raw: "bigint", Null: true},
+					Default: &schema.RawExpr{X: "10:::INT8"},
 				},
 				{
 					Name:    "tBigInt",
 					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}, Raw: "bigint", Null: true},
-					Default: &schema.Literal{V: "10"},
+					Default: &schema.RawExpr{X: "10:::INT8"},
 				},
 				{
 					Name:    "tInt",
-					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer", Null: true},
-					Default: &schema.Literal{V: "10"},
+					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}, Raw: "bigint", Null: true},
+					Default: &schema.RawExpr{X: "10:::INT8"},
 				},
 				{
 					Name:    "tInt2",
 					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "smallint"}, Raw: "smallint", Null: true},
-					Default: &schema.Literal{V: "10"},
+					Default: &schema.RawExpr{X: "10:::INT8"},
 				},
 				{
 					Name:    "tInt4",
 					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer", Null: true},
-					Default: &schema.Literal{V: "10"},
+					Default: &schema.RawExpr{X: "10:::INT8"},
 				},
 				{
 					Name:    "tInt8",
 					Type:    &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}, Raw: "bigint", Null: true},
-					Default: &schema.Literal{V: "10"},
-				},
-				{
-					Name:    "tCIDR",
-					Type:    &schema.ColumnType{Type: &cockroach.NetworkType{T: "cidr"}, Raw: "cidr", Null: true},
-					Default: &schema.Literal{V: "'127.0.0.1/32'"},
+					Default: &schema.RawExpr{X: "10:::INT8"},
 				},
 				{
 					Name:    "tInet",
 					Type:    &schema.ColumnType{Type: &cockroach.NetworkType{T: "inet"}, Raw: "inet", Null: true},
-					Default: &schema.Literal{V: "'127.0.0.1'"},
+					Default: &schema.RawExpr{X: "'127.0.0.1':::INET"},
 				},
 				{
-					Name:    "tMACAddr",
-					Type:    &schema.ColumnType{Type: &cockroach.NetworkType{T: "macaddr"}, Raw: "macaddr", Null: true},
-					Default: &schema.Literal{V: "'08:00:2b:01:02:03'"},
-				},
-				{
-					Name:    "tMACAddr8",
-					Type:    &schema.ColumnType{Type: &cockroach.NetworkType{T: "macaddr8"}, Raw: "macaddr8", Null: true},
-					Default: &schema.Literal{V: "'08:00:2b:01:02:03:04:05'"},
-				},
-				{
-					Name: "tCircle",
-					Type: &schema.ColumnType{Type: &schema.SpatialType{T: "circle"}, Raw: "circle", Null: true},
-				},
-				{
-					Name: "tLine",
-					Type: &schema.ColumnType{Type: &schema.SpatialType{T: "line"}, Raw: "line", Null: true},
-				},
-				{
-					Name: "tLseg",
-					Type: &schema.ColumnType{Type: &schema.SpatialType{T: "lseg"}, Raw: "lseg", Null: true},
-				},
-				{
-					Name: "tBox",
-					Type: &schema.ColumnType{Type: &schema.SpatialType{T: "box"}, Raw: "box", Null: true},
-				},
-				{
-					Name: "tPath",
-					Type: &schema.ColumnType{Type: &schema.SpatialType{T: "path"}, Raw: "path", Null: true},
-				},
-				{
-					Name: "tPoint",
-					Type: &schema.ColumnType{Type: &schema.SpatialType{T: "point"}, Raw: "point", Null: true},
+					Name: "tGeom",
+					Type: &schema.ColumnType{Type: &schema.SpatialType{T: "geometry"}, Raw: "geometry", Null: true},
 				},
 				{
 					Name:    "tDate",
 					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "date"}, Raw: "date", Null: true},
-					Default: &schema.RawExpr{X: "CURRENT_DATE"},
+					Default: &schema.RawExpr{X: "current_date()"},
 				},
 				{
 					Name:    "tTime",
 					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time without time zone", Precision: intp(6)}, Raw: "time without time zone", Null: true},
-					Default: &schema.RawExpr{X: "CURRENT_TIME"},
+					Default: &schema.RawExpr{X: "current_time():::TIME"},
 				},
 				{
 					Name:    "tTimeWTZ",
 					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time with time zone", Precision: intp(6)}, Raw: "time with time zone", Null: true},
-					Default: &schema.RawExpr{X: "CURRENT_TIME"},
+					Default: &schema.RawExpr{X: "current_time():::TIMETZ"},
 				},
 				{
 					Name:    "tTimeWOTZ",
 					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time without time zone", Precision: intp(6)}, Raw: "time without time zone", Null: true},
-					Default: &schema.RawExpr{X: "CURRENT_TIME"},
+					Default: &schema.RawExpr{X: "current_time():::TIME"},
 				},
 				{
 					Name:    "tTimestamp",
 					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone", Precision: intp(6)}, Raw: "timestamp without time zone", Null: true},
-					Default: &schema.RawExpr{X: "now()"},
+					Default: &schema.RawExpr{X: "now():::TIMESTAMP"},
 				},
 				{
 					Name:    "tTimestampTZ",
 					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone", Precision: intp(6)}, Raw: "timestamp with time zone", Null: true},
-					Default: &schema.RawExpr{X: "now()"},
+					Default: &schema.RawExpr{X: "now():::TIMESTAMPTZ"},
 				},
 				{
 					Name:    "tTimestampWTZ",
 					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone", Precision: intp(6)}, Raw: "timestamp with time zone", Null: true},
-					Default: &schema.RawExpr{X: "now()"},
+					Default: &schema.RawExpr{X: "now():::TIMESTAMPTZ"},
 				},
 				{
 					Name:    "tTimestampWOTZ",
 					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone", Precision: intp(6)}, Raw: "timestamp without time zone", Null: true},
-					Default: &schema.RawExpr{X: "now()"},
+					Default: &schema.RawExpr{X: "now():::TIMESTAMP"},
 				},
 				{
 					Name:    "tTimestampPrec",
 					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone", Precision: intp(4)}, Raw: "timestamp without time zone", Null: true},
-					Default: &schema.RawExpr{X: "now()"},
+					Default: &schema.RawExpr{X: "now():::TIMESTAMP"},
 				},
 				{
 					Name:    "tDouble",
 					Type:    &schema.ColumnType{Type: &schema.FloatType{T: "double precision", Precision: 53}, Raw: "double precision", Null: true},
-					Default: &schema.Literal{V: "0"},
+					Default: &schema.RawExpr{X: "0.0:::FLOAT8"},
 				},
 				{
 					Name:    "tReal",
 					Type:    &schema.ColumnType{Type: &schema.FloatType{T: "real", Precision: 24}, Raw: "real", Null: true},
-					Default: &schema.Literal{V: "0"},
+					Default: &schema.RawExpr{X: "0.0:::FLOAT8"},
 				},
 				{
 					Name:    "tFloat8",
 					Type:    &schema.ColumnType{Type: &schema.FloatType{T: "double precision", Precision: 53}, Raw: "double precision", Null: true},
-					Default: &schema.Literal{V: "0"},
+					Default: &schema.RawExpr{X: "0.0:::FLOAT8"},
 				},
 				{
 					Name:    "tFloat4",
 					Type:    &schema.ColumnType{Type: &schema.FloatType{T: "real", Precision: 24}, Raw: "real", Null: true},
-					Default: &schema.Literal{V: "0"},
+					Default: &schema.RawExpr{X: "0.0:::FLOAT8"},
 				},
 				{
 					Name:    "tNumeric",
 					Type:    &schema.ColumnType{Type: &schema.DecimalType{T: "numeric", Precision: 0}, Raw: "numeric", Null: true},
-					Default: &schema.Literal{V: "0"},
+					Default: &schema.RawExpr{X: "0:::DECIMAL"},
 				},
 				{
 					Name:    "tDecimal",
 					Type:    &schema.ColumnType{Type: &schema.DecimalType{T: "numeric", Precision: 0}, Raw: "numeric", Null: true},
-					Default: &schema.Literal{V: "0"},
+					Default: &schema.RawExpr{X: "0:::DECIMAL"},
 				},
+				// all serial types are the same in cockroach: https://www.cockroachlabs.com/docs/v21.2/serial.html#modes-of-operation
+				// https://github.com/cockroachdb/cockroach/issues/75927#issuecomment-1029163946
 				{
 					Name: "tSmallSerial",
-					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "smallint", Unsigned: false}, Raw: "smallint", Null: false},
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false}, Raw: "bigint", Null: false},
 					Default: &schema.RawExpr{
-						X: "nextval('\"atlas_types_sanity_tSmallSerial_seq\"'::regclass)",
+						X: "unique_rowid()",
 					},
 				},
 				{
 					Name: "tSerial",
-					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer", Unsigned: false}, Raw: "integer", Null: false},
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false}, Raw: "bigint", Null: false},
 					Default: &schema.RawExpr{
-						X: "nextval('\"atlas_types_sanity_tSerial_seq\"'::regclass)",
+						X: "unique_rowid()",
 					},
 				},
 				{
 					Name: "tBigSerial",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false}, Raw: "bigint", Null: false},
 					Default: &schema.RawExpr{
-						X: "nextval('\"atlas_types_sanity_tBigSerial_seq\"'::regclass)",
+						X: "unique_rowid()",
 					},
 				},
 				{
 					Name: "tSerial2",
-					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "smallint", Unsigned: false}, Raw: "smallint", Null: false},
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false}, Raw: "bigint", Null: false},
 					Default: &schema.RawExpr{
-						X: "nextval('\"atlas_types_sanity_tSerial2_seq\"'::regclass)",
+						X: "unique_rowid()",
 					},
 				},
 				{
 					Name: "tSerial4",
-					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer", Unsigned: false}, Raw: "integer", Null: false},
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false}, Raw: "bigint", Null: false},
 					Default: &schema.RawExpr{
-						X: "nextval('\"atlas_types_sanity_tSerial4_seq\"'::regclass)",
+						X: "unique_rowid()",
 					},
 				},
 				{
 					Name: "tSerial8",
 					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint", Unsigned: false}, Raw: "bigint", Null: false},
 					Default: &schema.RawExpr{
-						X: "nextval('\"atlas_types_sanity_tSerial8_seq\"'::regclass)",
+						X: "unique_rowid()",
 					},
 				},
 				{
 					Name: "tArray",
 					Type: &schema.ColumnType{Type: &cockroach.ArrayType{T: "text[]"}, Raw: "ARRAY", Null: true},
-					Default: &schema.Literal{
-						V: "'{}'",
+					Default: &schema.RawExpr{
+						X: "ARRAY[]:::STRING[]",
 					},
 				},
-				{
-					Name: "tXML",
-					Type: &schema.ColumnType{Type: &cockroach.XMLType{T: "xml"}, Raw: "xml", Null: true},
-					Default: &schema.Literal{
-						V: "'<a>foo</a>'",
-					},
-				},
+				// json is alias for jsonb see: https://www.cockroachlabs.com/docs/v21.2/jsonb.html
 				{
 					Name: "tJSON",
-					Type: &schema.ColumnType{Type: &schema.JSONType{T: "json"}, Raw: "json", Null: true},
-					Default: &schema.Literal{
-						V: "'{\"key\":\"value\"}'",
+					Type: &schema.ColumnType{Type: &schema.JSONType{T: "jsonb"}, Raw: "jsonb", Null: true},
+					Default: &schema.RawExpr{
+						X: "'{\"key\": \"value\"}':::JSONB",
 					},
 				},
 				{
 					Name: "tJSONB",
 					Type: &schema.ColumnType{Type: &schema.JSONType{T: "jsonb"}, Raw: "jsonb", Null: true},
-					Default: &schema.Literal{
-						V: "'{\"key\": \"value\"}'",
+					Default: &schema.RawExpr{
+						X: "'{\"key\": \"value\"}':::JSONB",
 					},
 				},
 				{
 					Name: "tUUID",
 					Type: &schema.ColumnType{Type: &cockroach.UUIDType{T: "uuid"}, Raw: "uuid", Null: true},
-					Default: &schema.Literal{
-						V: "'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'",
-					},
-				},
-				{
-					Name: "tMoney",
-					Type: &schema.ColumnType{Type: &cockroach.CurrencyType{T: "money"}, Raw: "money", Null: true},
-					Default: &schema.Literal{
-						V: "18",
+					Default: &schema.RawExpr{
+						X: "'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11':::UUID",
 					},
 				},
 				{
 					Name: "tInterval",
 					Type: &schema.ColumnType{Type: &schema.UnsupportedType{T: "interval"}, Raw: "interval", Null: true},
 					Default: &schema.RawExpr{
-						X: "'04:00:00'::interval",
-					},
-				},
-				{
-					Name: "tUserDefined",
-					Type: &schema.ColumnType{Type: &cockroach.UserDefinedType{T: "address"}, Raw: "USER-DEFINED", Null: true},
-					Default: &schema.RawExpr{
-						X: "'(ab,cd)'::address",
+						X: "'04:00:00':::INTERVAL",
 					},
 				},
 			},
 		}
+		// cockroach automatically adds another column and makes it the row_id, we ignore that for this test:
+		ts.PrimaryKey = nil
+		ts.Indexes = nil
+		ts.Columns = ts.Columns[:len(expected.Columns)]
 		require.EqualValues(t, &expected, ts)
 	})
 
@@ -1153,8 +1077,8 @@ func (t *crdbTest) realm() *schema.Realm {
 			},
 		},
 		Attrs: []schema.Attr{
-			&schema.Collation{V: "en_US.utf8"},
-			&cockroach.CType{V: "en_US.utf8"},
+			&schema.Collation{V: "C.UTF-8"},
+			&cockroach.CType{V: "C.UTF-8"},
 		},
 	}
 	r.Schemas[0].Realm = r
