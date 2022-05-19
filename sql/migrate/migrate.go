@@ -486,6 +486,8 @@ func (e *Executor) Execute(ctx context.Context, n int) (err error) {
 	return
 }
 
+// ErrNotClean is returned when the connected dev-db is not in a clean state (aka it has schemas and tables).
+// This check is done to ensure no data is lost by overriding it when working on the dev-dn.
 var ErrNotClean = errors.New("sql/migrate: connected database is not clean")
 
 // ReadState implements the StateReader interface.
