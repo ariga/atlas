@@ -36,7 +36,7 @@ Once defined, a project's environment can be worked against using the `--env` fl
 For example:
 
 ```shell
-$ atlas schema apply --env local
+atlas schema apply --env local
 ```
 
 Will run the `schema apply` command against the database that is defined for the `local`
