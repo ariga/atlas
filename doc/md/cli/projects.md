@@ -7,8 +7,7 @@ slug: /cli/projects
 
 Project files provide a convenient way to describe and interact with multiple
 environments when working with Atlas. A project file is a file named
-`atlas.hcl` which is located at the root of the project and contains one or 
-`env` blocks. For example:
+`atlas.hcl` and contains one or more `env` blocks. For example:
 
 ```hcl
 // Define an environment named "local"
