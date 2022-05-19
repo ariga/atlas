@@ -430,3 +430,10 @@ func ExprLastIndex(expr string) int {
 	}
 	return -1
 }
+
+// ReverseChanges reverses the order of the changes.
+func ReverseChanges(c []schema.Change) {
+	for i, n := 0, len(c); i < n/2; i++ {
+		c[i], c[n-i-1] = c[n-i-1], c[i]
+	}
+}

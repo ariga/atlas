@@ -444,6 +444,9 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 		Comment: fmt.Sprintf("modify %q table", t.Name),
 	}
 	if reversible {
+		// Changes should be reverted in
+		// a reversed order they were created.
+		sqlx.ReverseChanges(reverse)
 		if change.Reverse, err = build(reverse); err != nil {
 			return fmt.Errorf("reversd alter table %q: %v", t.Name, err)
 		}
