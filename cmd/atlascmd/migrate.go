@@ -6,6 +6,7 @@ package atlascmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -242,12 +243,16 @@ func CmdMigrateValidateRun(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	defer dev.Close()
-	// We are using a migrate.GlobStateReader to replay the migration directory.
+	// Currently, only our own migration file format is supported.
 	dir, err := dir()
 	if err != nil {
 		return err
 	}
-	if _, err := migrate.GlobStateReader(dir, dev.Driver, "*.sql").ReadState(cmd.Context()); err != nil {
+	ex, err := migrate.NewExecutor(dev.Driver, dir, migrate.NoopRevisionReadWriter{})
+	if err != nil {
+		return err
+	}
+	if _, err := ex.ReadState(cmd.Context()); err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
 		return fmt.Errorf("replaying the migration directory: %w", err)
 	}
 	return nil
