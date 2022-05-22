@@ -128,7 +128,7 @@ Input variables can be used for many other use cases by passing them as [input v
 
 In this post, I presented [Project Files](https://atlasgo.io/cli/projects), a new feature recently added to Atlas
 to help developers create more fluent workflows for managing changes to their database schemas.  In the coming weeks
-we will be adding a few more improvements to the dev flow such as support for marking a specific environment as
+we will be adding a few more improvements to the dev flow, such as support for marking a specific environment as
 the default one (alleviating the need to specify `--env` in many cases) and [multi-file schema definitions](https://github.com/ariga/atlas/issues/510).
 
 Have questions? Feedback? Find our team [on our Discord server](https://discord.gg/zZ6sWVg6NT).
