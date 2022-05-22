@@ -72,7 +72,7 @@ Without project files, you would use:
 ```
 atlas schema apply -u mysql://root:password@db.ariga.dev:3306 --dev-url mysql://root:password@localhost:3307 -f schema.hcl
 ```
-To do the same using a project file, define  another env named `staging`:
+To do the same using a project file, define another env named `staging`:
 
 ```hcl
 env "staging" {
