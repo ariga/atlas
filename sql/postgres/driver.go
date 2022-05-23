@@ -60,6 +60,7 @@ func init() {
 	)
 }
 
+// OpenCRDB opens a new CRDB driver.
 func OpenCRDB(db schema.ExecQuerier) (migrate.Driver, error) {
 	drv, err := open(db)
 	if err != nil {
@@ -69,6 +70,7 @@ func OpenCRDB(db schema.ExecQuerier) (migrate.Driver, error) {
 	return drv, nil
 }
 
+// Open opens a new PostgreSQL driver.
 func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	return open(db)
 }
