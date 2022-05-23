@@ -112,6 +112,11 @@ func (cd *crdbDiff) crdbNormalize(table *schema.Table) {
 			case TypeJSON:
 				t.T = TypeJSONB
 			}
+		case *SerialType:
+			// Default mode of operation for serial type: https://www.cockroachlabs.com/docs/stable/serial.html#modes-of-operation
+			c.Default = &schema.RawExpr{
+				X: "unique_rowid()",
+			}
 		}
 	}
 }

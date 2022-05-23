@@ -67,8 +67,14 @@ func OpenCRDB(db schema.ExecQuerier) (migrate.Driver, error) {
 	if err != nil {
 		return nil, err
 	}
-	drv.Differ = &sqlx.Diff{DiffDriver: &crdbDiff{diff{drv.conn}}}
-	return drv, nil
+	c := drv.conn
+	c.crdb = true
+	return &Driver{
+		conn:        c,
+		Differ:      &sqlx.Diff{DiffDriver: &crdbDiff{diff{c}}},
+		Inspector:   &inspect{c},
+		PlanApplier: &planApply{c},
+	}, nil
 }
 
 // Open opens a new PostgreSQL driver.
