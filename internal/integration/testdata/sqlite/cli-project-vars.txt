@@ -1,5 +1,5 @@
 ! atlas schema apply --env local --auto-approve
-stderr '"user_status_default" expected but missing'
+stderr 'Error: missing value for required variable "user_status_default"'
 
 atlas schema apply --env local --auto-approve --var user_status_default=hello
 cmpshow users expected.sql
