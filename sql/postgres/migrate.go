@@ -379,7 +379,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			return nil
 		})
 		if err != nil {
-			return "", nil
+			return "", err
 		}
 		return b.String(), nil
 	}
