@@ -83,7 +83,7 @@ func (s *State) setInputVals(ctx *hcl.EvalContext, body hcl.Body, input map[stri
 			continue
 		}
 		if v.Default == cty.NilVal {
-			return fmt.Errorf("input value %q expected but missing", v.Name)
+			return fmt.Errorf("mising value for required variable %q", v.Name)
 		}
 		ctxVars[v.Name] = v.Default
 	}
