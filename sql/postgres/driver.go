@@ -36,8 +36,6 @@ type (
 		collate string
 		ctype   string
 		version string
-		// is cockroachdb
-		crdb bool
 	}
 )
 
@@ -205,7 +203,6 @@ const (
 	TypeInt2     = "int2" // smallint.
 	TypeInt4     = "int4" // integer.
 	TypeInt8     = "int8" // bigint.
-	TypeInt64 = "int64" // cockroach bigint.
 
 	TypeCIDR     = "cidr"
 	TypeInet     = "inet"
@@ -219,7 +216,6 @@ const (
 	TypePath    = "path"
 	TypePolygon = "polygon"
 	TypePoint   = "point"
-	TypeGeometry = "geometry" // cockroach geometry.
 
 	TypeDate          = "date"
 	TypeTime          = "time"   // time without time zone
