@@ -44,6 +44,7 @@ func init() {
 		"postgres",
 		sqlclient.DriverOpener(Open),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
+		sqlclient.RegisterFlavours("cockroach", "crdb"),
 		sqlclient.RegisterURLParser(func(u *url.URL) *sqlclient.URL {
 			return &sqlclient.URL{URL: u, DSN: u.String(), Schema: u.Query().Get("search_path")}
 		}),
@@ -71,6 +72,18 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	c.version = fmt.Sprintf("%s.%s.%s", c.version[:2], c.version[2:4], c.version[4:])
 	if semver.Compare("v"+c.version, "v10.0.0") != -1 {
 		return nil, fmt.Errorf("postgres: unsupported postgres version: %s", c.version)
+	}
+	crdb, err := c.crdb()
+	if err != nil {
+		return nil, fmt.Errorf("postgres: scanning system variable: %w", err)
+	}
+	if crdb {
+		return &Driver{
+			conn:        c,
+			Differ:      &sqlx.Diff{DiffDriver: &crdbDiff{diff{c}}},
+			Inspector:   &inspect{c},
+			PlanApplier: &planApply{c},
+		}, nil
 	}
 	return &Driver{
 		conn:        c,
@@ -156,6 +169,19 @@ func acquire(ctx context.Context, conn schema.ExecQuerier, id uint32, timeout ti
 		}
 		return nil
 	}
+}
+
+// crdb reports if the Driver is connected to a CockroachDB database.
+func (d *conn) crdb() (bool, error) {
+	rows, err := d.QueryContext(context.Background(), crdbQuery)
+	if err != nil {
+		return false, fmt.Errorf("postgres: scanning system variables: %w", err)
+	}
+	crdbVer, err := sqlx.ScanStrings(rows)
+	if err != nil {
+		return false, err
+	}
+	return len(crdbVer) == 1, nil
 }
 
 // Standard column types (and their aliases) as defined in
