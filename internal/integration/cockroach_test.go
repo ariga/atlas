@@ -57,7 +57,7 @@ func crdbInit(d string) []io.Closer {
 		}
 		cs = append(cs, db)
 
-		drv, err := postgres.Open(db)
+		drv, err := postgres.OpenCRDB(db)
 		if err != nil {
 			log.Fatalln(err)
 		}
