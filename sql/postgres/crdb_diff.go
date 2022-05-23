@@ -4,14 +4,10 @@
 
 package postgres
 
-import (
-	"ariga.io/atlas/sql/schema"
-)
+import "ariga.io/atlas/sql/schema"
 
-type (
-	// crdbDiff decorates PostgreSQL diff.
-	crdbDiff struct{ diff }
-)
+// crdbDiff decorates PostgreSQL diff.
+type crdbDiff struct{ diff }
 
 // SchemaAttrDiff returns a changeset for migrating schema attributes from one state to the other.
 func (cd *crdbDiff) SchemaAttrDiff(from, to *schema.Schema) []schema.Change {
