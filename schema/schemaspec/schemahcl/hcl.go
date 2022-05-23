@@ -74,7 +74,7 @@ func (s *State) UnmarshalSpec(data []byte, v interface{}) error {
 func (s *State) Eval(data []byte, v interface{}, input map[string]string) error {
 	spec, err := s.eval(data, input)
 	if err != nil {
-		return fmt.Errorf("schemahcl: failed decoding: %w", err)
+		return err
 	}
 	if err := patchRefs(spec); err != nil {
 		return err

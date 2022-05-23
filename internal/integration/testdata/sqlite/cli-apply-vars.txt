@@ -1,5 +1,5 @@
 ! atlas schema apply --env local --auto-approve
-stderr 'input value "def_val" expected but missing'
+stderr 'missing value for required variable "def_val"'
 
 atlas schema apply --env local_with_vals --auto-approve
 cmpshow users expected.sql
