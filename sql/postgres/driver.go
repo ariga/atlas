@@ -44,7 +44,6 @@ func init() {
 		"postgres",
 		sqlclient.DriverOpener(Open),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
-		sqlclient.RegisterFlavours("cockroach", "crdb"),
 		sqlclient.RegisterURLParser(func(u *url.URL) *sqlclient.URL {
 			return &sqlclient.URL{URL: u, DSN: u.String(), Schema: u.Query().Get("search_path")}
 		}),
