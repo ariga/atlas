@@ -219,8 +219,7 @@ const (
 	TypePath    = "path"
 	TypePolygon = "polygon"
 	TypePoint   = "point"
-	// cockroach geometry
-	TypeGeometry = "geometry"
+	TypeGeometry = "geometry" // cockroach geometry.
 
 	TypeDate          = "date"
 	TypeTime          = "time"   // time without time zone
