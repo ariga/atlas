@@ -72,7 +72,7 @@ Without project files, you would use:
 ```
 atlas schema apply -u mysql://root:password@db.ariga.dev:3306 --dev-url mysql://root:password@localhost:3307 -f schema.hcl
 ```
-To do the same using a project file, define  another env named `staging`:
+To do the same using a project file, define another env named `staging`:
 
 ```hcl
 env "staging" {
@@ -126,9 +126,9 @@ Input variables can be used for many other use cases by passing them as [input v
 
 ### What's next
 
-In this post, I presented [Project Files](https://atlasgo.io/cli/projects) a new feature recently added to Atlas
+In this post, I presented [Project Files](https://atlasgo.io/cli/projects), a new feature recently added to Atlas
 to help developers create more fluent workflows for managing changes to their database schemas.  In the coming weeks
-we will be adding a few more improvements to the dev flow such as support for marking a specific environment as
+we will be adding a few more improvements to the dev flow, such as support for marking a specific environment as
 the default one (alleviating the need to specify `--env` in many cases) and [multi-file schema definitions](https://github.com/ariga/atlas/issues/510).
 
 Have questions? Feedback? Find our team [on our Discord server](https://discord.gg/zZ6sWVg6NT).
