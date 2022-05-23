@@ -580,9 +580,6 @@ func (m mock) version(version string) {
  en_US.utf8
  ` + version + `
 `))
-
-	m.ExpectQuery(sqltest.Escape(crdbQuery)).
-		WillReturnRows(sqltest.Rows("pg_settings"))
 }
 
 func (m mock) tableExists(schema, table string, exists bool) {
