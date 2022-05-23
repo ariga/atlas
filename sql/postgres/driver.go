@@ -205,8 +205,7 @@ const (
 	TypeInt2     = "int2" // smallint.
 	TypeInt4     = "int4" // integer.
 	TypeInt8     = "int8" // bigint.
-	// cockroach bigint
-	TypeInt64 = "int64"
+	TypeInt64 = "int64" // cockroach bigint.
 
 	TypeCIDR     = "cidr"
 	TypeInet     = "inet"
