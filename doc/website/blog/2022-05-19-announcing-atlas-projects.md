@@ -11,12 +11,12 @@ improvements and fixes, I'm happy to announce the release of a feature that we'v
 for a while: [Project Files](https://atlasgo.io/cli/projects).
 
 Project files provide a way to describe and interact with multiple environments while working 
-with Atlas. A project file is a file named `atlas.hcl` that contains multiple `env` blocks,
+with Atlas. A project file is a file named `atlas.hcl` that contains one or more `env` blocks,
 each describing an environment. Each environment has a reference to where the schema definition 
 file resides, a database URL and an array of the schemas in the database that are managed by Atlas:
 
 ```hcl
-// Define an environment named "local"
+// Define an environment named "local".
 env "local" {
   // Declare where the schema definition file resides.
   src = "./schema/project.hcl"
@@ -25,7 +25,7 @@ env "local" {
   // this environment.
   url = "mysql://localhost:3306"
   
-  // Define the URL of the Dev Database for this environment
+  // Define the URL of the Dev Database for this environment.
   // See: https://atlasgo.io/dev-database
   dev = "mysql://localhost:3307"
   
@@ -88,8 +88,8 @@ atlas schema apply --env staging
 
 ### Passing credentials as input values
 
-Simlar to [schema definition files](/ddl/sql), project files also support [Input Variables](/ddl/input-variables). This means
-that we can define `variable` blocks on the project file to declare which values should be provided when the file  is 
+Similar to [schema definition files](/ddl/sql), project files also support [Input Variables](/ddl/input-variables). This means
+that we can define `variable` blocks on the project file to declare which values should be provided when the file is 
 evaluated. This mechanism can (and should) be used to avoid committing to source control database credentials. 
 To do this, first define a variable named `db_password`: 
 
@@ -127,7 +127,7 @@ Input variables can be used for many other use cases by passing them as [input v
 ### What's next
 
 In this post, I presented [Project Files](https://atlasgo.io/cli/projects), a new feature recently added to Atlas
-to help developers create more fluent workflows for managing changes to their database schemas.  In the coming weeks
+to help developers create more fluent workflows for managing changes to their database schemas. In the coming weeks
 we will be adding a few more improvements to the dev flow, such as support for marking a specific environment as
 the default one (alleviating the need to specify `--env` in many cases) and [multi-file schema definitions](https://github.com/ariga/atlas/issues/510).
 
