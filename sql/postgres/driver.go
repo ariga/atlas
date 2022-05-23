@@ -36,6 +36,8 @@ type (
 		collate string
 		ctype   string
 		version string
+		// is cockroachdb
+		crdb bool
 	}
 )
 
@@ -73,11 +75,12 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	if semver.Compare("v"+c.version, "v10.0.0") != -1 {
 		return nil, fmt.Errorf("postgres: unsupported postgres version: %s", c.version)
 	}
-	crdb, err := c.crdb()
+	crdb, err := c.isCRDB()
 	if err != nil {
 		return nil, fmt.Errorf("postgres: scanning system variable: %w", err)
 	}
 	if crdb {
+		c.crdb = true
 		return &Driver{
 			conn:        c,
 			Differ:      &sqlx.Diff{DiffDriver: &crdbDiff{diff{c}}},
@@ -171,8 +174,8 @@ func acquire(ctx context.Context, conn schema.ExecQuerier, id uint32, timeout ti
 	}
 }
 
-// crdb reports if the Driver is connected to a CockroachDB database.
-func (d *conn) crdb() (bool, error) {
+// isCRDB reports if the Driver is connected to a CockroachDB database.
+func (d *conn) isCRDB() (bool, error) {
 	rows, err := d.QueryContext(context.Background(), crdbQuery)
 	if err != nil {
 		return false, fmt.Errorf("postgres: scanning system variables: %w", err)
@@ -206,6 +209,8 @@ const (
 	TypeInt2     = "int2" // smallint.
 	TypeInt4     = "int4" // integer.
 	TypeInt8     = "int8" // bigint.
+	// cockroach bigint
+	TypeInt64 = "int64"
 
 	TypeCIDR     = "cidr"
 	TypeInet     = "inet"
@@ -219,6 +224,8 @@ const (
 	TypePath    = "path"
 	TypePolygon = "polygon"
 	TypePoint   = "point"
+	// cockroach geometry
+	TypeGeometry = "geometry"
 
 	TypeDate          = "date"
 	TypeTime          = "time"   // time without time zone

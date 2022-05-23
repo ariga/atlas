@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -224,7 +225,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 func columnType(c *columnDesc) schema.Type {
 	var typ schema.Type
 	switch t := c.typ; strings.ToLower(t) {
-	case TypeBigInt, TypeInt8, TypeInt, TypeInteger, TypeInt4, TypeSmallInt, TypeInt2:
+	case TypeBigInt, TypeInt8, TypeInt, TypeInteger, TypeInt4, TypeSmallInt, TypeInt2, TypeInt64:
 		typ = &schema.IntegerType{T: t}
 	case TypeBit, TypeBitVar:
 		typ = &BitType{T: t, Len: c.size}
@@ -238,7 +239,7 @@ func columnType(c *columnDesc) schema.Type {
 		typ = &schema.StringType{T: t, Size: int(c.size)}
 	case TypeCIDR, TypeInet, TypeMACAddr, TypeMACAddr8:
 		typ = &NetworkType{T: t}
-	case TypeCircle, TypeLine, TypeLseg, TypeBox, TypePath, TypePolygon, TypePoint:
+	case TypeCircle, TypeLine, TypeLseg, TypeBox, TypePath, TypePolygon, TypePoint, TypeGeometry:
 		typ = &schema.SpatialType{T: t}
 	case TypeDate:
 		typ = &schema.TimeType{T: t}
@@ -331,8 +332,23 @@ func (i *inspect) enumValues(ctx context.Context, s *schema.Schema) error {
 	return nil
 }
 
+func (i *inspect) crdbIndexes(ctx context.Context, s *schema.Schema) error {
+	rows, err := i.querySchema(ctx, crdbIndexesQuery, s)
+	if err != nil {
+		return fmt.Errorf("postgres: querying schema %q indexes: %w", s.Name, err)
+	}
+	defer rows.Close()
+	if err := i.crdbAddIndexes(s, rows); err != nil {
+		return err
+	}
+	return rows.Err()
+}
+
 // indexes queries and appends the indexes of the given table.
 func (i *inspect) indexes(ctx context.Context, s *schema.Schema) error {
+	if i.conn.crdb {
+		return i.crdbIndexes(ctx, s)
+	}
 	rows, err := i.querySchema(ctx, indexesQuery, s)
 	if err != nil {
 		return fmt.Errorf("postgres: querying schema %q indexes: %w", s.Name, err)
@@ -342,6 +358,77 @@ func (i *inspect) indexes(ctx context.Context, s *schema.Schema) error {
 		return err
 	}
 	return rows.Err()
+}
+
+var reIndexType = regexp.MustCompile("(?i)USING (BTREE|GIN|GIST)")
+
+// indexType extracts index type information from index create statement. see: https://www.cockroachlabs.com/docs/stable/create-index.html
+func indexType(createStmt string) *IndexType {
+	t := reIndexType.FindStringSubmatch(createStmt)
+	return &IndexType{T: t[1]}
+}
+
+func (i *inspect) crdbAddIndexes(s *schema.Schema, rows *sql.Rows) error {
+	// NOTE: cockroach index names aren't unique
+	names := make(map[string]*schema.Index)
+	for rows.Next() {
+		var (
+			uniq, primary                        bool
+			table, name, createStmt              string
+			column, contype, pred, expr, comment sql.NullString
+		)
+		if err := rows.Scan(&table, &name, &column, &primary, &uniq, &contype, &createStmt, &pred, &expr, &comment); err != nil {
+			return fmt.Errorf("cockroach: scanning indexes for schema %q: %w", s.Name, err)
+		}
+		t, ok := s.Table(table)
+		if !ok {
+			return fmt.Errorf("table %q was not found in schema", table)
+		}
+		uniqueName := fmt.Sprintf("%s.%s.%s", s.Name, table, name)
+		idx, ok := names[uniqueName]
+		if !ok {
+			idx = &schema.Index{
+				Name:   name,
+				Unique: uniq,
+				Table:  t,
+				Attrs: []schema.Attr{
+					indexType(createStmt),
+				},
+			}
+			if sqlx.ValidString(comment) {
+				idx.Attrs = append(idx.Attrs, &schema.Comment{Text: comment.String})
+			}
+			if sqlx.ValidString(contype) {
+				idx.Attrs = append(idx.Attrs, &ConType{T: contype.String})
+			}
+			if sqlx.ValidString(pred) {
+				idx.Attrs = append(idx.Attrs, &IndexPredicate{P: pred.String})
+			}
+			names[uniqueName] = idx
+			if primary {
+				t.PrimaryKey = idx
+			} else {
+				t.Indexes = append(t.Indexes, idx)
+			}
+		}
+		part := &schema.IndexPart{SeqNo: len(idx.Parts) + 1, Desc: strings.Contains(createStmt, "DESC")}
+		switch {
+		case sqlx.ValidString(column):
+			part.C, ok = t.Column(column.String)
+			if !ok {
+				return fmt.Errorf("cockroach: column %q was not found for index %q", column.String, idx.Name)
+			}
+			part.C.Indexes = append(part.C.Indexes, idx)
+		case sqlx.ValidString(expr):
+			part.X = &schema.RawExpr{
+				X: expr.String,
+			}
+		default:
+			return fmt.Errorf("cockroach: invalid part for index %q", idx.Name)
+		}
+		idx.Parts = append(idx.Parts, part)
+	}
+	return nil
 }
 
 // addIndexes scans the rows and adds the indexes to the table.
@@ -835,14 +922,15 @@ const (
 SELECT
 	t1.table_schema,
 	t1.table_name,
-	pg_catalog.obj_description(t2.oid, 'pg_class') AS comment,
-	t3.partattrs AS partition_attrs,
-	t3.partstrat AS partition_strategy,
-	pg_get_expr(t3.partexprs, t3.partrelid) AS partition_exprs
+	pg_catalog.obj_description(t3.oid, 'pg_class') AS comment,
+	t4.partattrs AS partition_attrs,
+	t4.partstrat AS partition_strategy,
+	pg_get_expr(t4.partexprs, t4.partrelid) AS partition_exprs
 FROM
 	INFORMATION_SCHEMA.TABLES AS t1
-	JOIN pg_catalog.pg_class AS t2 ON t2.oid = to_regclass(quote_ident(t1.table_schema) || '.' || quote_ident(t1.table_name))::oid
-	LEFT JOIN pg_catalog.pg_partitioned_table AS t3 ON t3.partrelid = t2.oid
+	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
+	JOIN pg_catalog.pg_class AS t3 ON t3.relnamespace = t2.oid AND t3.relname = t1.table_name
+	LEFT JOIN pg_catalog.pg_partitioned_table AS t4 ON t4.partrelid = t3.oid
 WHERE
 	t1.table_type = 'BASE TABLE'
 	AND t1.table_schema IN (%s)
@@ -888,17 +976,53 @@ SELECT
 	t1.identity_increment,
 	t1.identity_generation,
 	t1.generation_expression,
-	col_description(to_regclass(quote_ident("table_schema") || '.' || quote_ident("table_name"))::oid, "ordinal_position") AS comment,
-	t2.typtype,
-	t2.oid
+	col_description(t3.oid, "ordinal_position") AS comment,
+	t4.typtype,
+	t4.oid
 FROM
 	"information_schema"."columns" AS t1
-	LEFT JOIN pg_catalog.pg_type AS t2
-	ON t1.udt_name = t2.typname
+	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
+	JOIN pg_catalog.pg_class AS t3 ON t3.relnamespace = t2.oid AND t3.relname = t1.table_name
+	LEFT JOIN pg_catalog.pg_type AS t4
+	ON t1.udt_name = t4.typname
 WHERE
 	table_schema = $1 AND table_name IN (%s)
 ORDER BY
 	t1.table_name, t1.ordinal_position
+`
+
+	crdbIndexesQuery = `
+SELECT
+	t.relname AS table_name,
+	i.relname AS index_name,
+	a.attname AS column_name,
+	idx.indisprimary AS primary,
+	idx.indisunique AS unique,
+	c.contype AS constraint_type,
+			 pgi.indexdef create_stmt,
+	pg_get_expr(idx.indpred, idx.indrelid) AS predicate,
+	pg_get_indexdef(idx.indexrelid, idx.ord, false) AS expression,
+	 pg_catalog.obj_description(i.oid, 'pg_class') AS comment
+	FROM
+	(
+		select
+			*,
+			generate_series(1,array_length(i.indkey,1)) as ord,
+			unnest(i.indkey) AS key
+		from pg_index i
+	) idx
+	JOIN pg_class i ON i.oid = idx.indexrelid
+	JOIN pg_class t ON t.oid = idx.indrelid
+	JOIN pg_namespace n ON n.oid = t.relnamespace
+	LEFT JOIN pg_constraint c ON idx.indexrelid = c.conindid
+			LEFT JOIN pg_indexes pgi ON pgi.tablename = t.relname AND indexname = i.relname
+	LEFT JOIN pg_attribute a ON (a.attrelid, a.attnum) = (idx.indrelid, idx.key)
+WHERE
+	n.nspname = $1
+	AND t.relname IN (%s)
+	AND COALESCE(c.contype, '') <> 'f'
+ORDER BY
+	table_name, index_name, idx.ord
 `
 
 	// Query to list table indexes.
@@ -975,7 +1099,7 @@ ORDER BY
 SELECT
 	rel.relname AS table_name,
 	t1.conname AS constraint_name,
-	pg_get_expr(t1.conbin, to_regclass(quote_ident(nsp.nspname) || '.' || quote_ident(rel.relname))::oid) as expression,
+	pg_get_expr(t1.conbin, nsp.oid) as expression,
 	t2.attname as column_name,
 	t1.conkey as column_indexes,
 	t1.connoinherit as no_inherit
