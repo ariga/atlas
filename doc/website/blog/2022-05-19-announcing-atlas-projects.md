@@ -113,7 +113,7 @@ If we run `schema apply` without providing the password input variable, we will 
 error message: 
 
 ```
-Error: error reading project file: schemahcl: failed decoding: input value "db_password" expected but missing
+Error: missing value for required variable "db_password"
 ```
 
 To provide the input variable run:
