@@ -369,7 +369,7 @@ func indexType(createStmt string) *IndexType {
 }
 
 func (i *inspect) crdbAddIndexes(s *schema.Schema, rows *sql.Rows) error {
-	// NOTE: cockroach index names aren't unique
+	// Cockroach index names aren't unique.
 	names := make(map[string]*schema.Index)
 	for rows.Next() {
 		var (
@@ -996,10 +996,10 @@ SELECT
 	idx.indisprimary AS primary,
 	idx.indisunique AS unique,
 	c.contype AS constraint_type,
-			 pgi.indexdef create_stmt,
+	pgi.indexdef create_stmt,
 	pg_get_expr(idx.indpred, idx.indrelid) AS predicate,
 	pg_get_indexdef(idx.indexrelid, idx.ord, false) AS expression,
-	 pg_catalog.obj_description(i.oid, 'pg_class') AS comment
+	pg_catalog.obj_description(i.oid, 'pg_class') AS comment
 	FROM
 	(
 		select
@@ -1012,7 +1012,7 @@ SELECT
 	JOIN pg_class t ON t.oid = idx.indrelid
 	JOIN pg_namespace n ON n.oid = t.relnamespace
 	LEFT JOIN pg_constraint c ON idx.indexrelid = c.conindid
-			LEFT JOIN pg_indexes pgi ON pgi.tablename = t.relname AND indexname = i.relname
+	LEFT JOIN pg_indexes pgi ON pgi.tablename = t.relname AND indexname = i.relname
 	LEFT JOIN pg_attribute a ON (a.attrelid, a.attnum) = (idx.indrelid, idx.key)
 WHERE
 	n.nspname = $1
