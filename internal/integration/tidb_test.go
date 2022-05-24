@@ -676,6 +676,22 @@ func TestTiDB_Ent_EntEngine(t *testing.T) {
 	})
 }
 
+func TestTiDB_ColumnCheck(t *testing.T) {
+	pgRun(t, func(t *pgTest) {
+		usersT := &schema.Table{
+			Name:  "users",
+			Attrs: []schema.Attr{schema.NewCheck().SetName("users_c_check").SetExpr("c > 5")},
+			Columns: []*schema.Column{
+				{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+				{Name: "c", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+			},
+		}
+		t.dropTables(usersT.Name)
+		t.migrate(&schema.AddTable{T: usersT})
+		ensureNoChange(t, usersT)
+	})
+}
+
 func TestTiDB_Ent_AtlasEngine(t *testing.T) {
 	tidbRun(t, func(t *myTest) {
 		ctx := context.Background()

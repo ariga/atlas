@@ -36,8 +36,7 @@ type (
 		collate string
 		ctype   string
 		version string
-		// is cockroachdb
-		crdb bool
+		crdb    bool
 	}
 )
 
