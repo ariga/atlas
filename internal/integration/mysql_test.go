@@ -388,7 +388,11 @@ func TestMySQL_ColumnBool(t *testing.T) {
 }
 
 func TestMySQL_ColumnCheck(t *testing.T) {
-	pgRun(t, func(t *pgTest) {
+	myRun(t, func(t *myTest) {
+		// Checks are not supported in all versions.
+		if t.version == "mysql56" || t.version == "mysql57" {
+			t.Skip()
+		}
 		usersT := &schema.Table{
 			Name:  "users",
 			Attrs: []schema.Attr{schema.NewCheck().SetName("users_c_check").SetExpr("c > 5")},
