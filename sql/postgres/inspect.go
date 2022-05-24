@@ -1096,7 +1096,7 @@ ORDER BY
 SELECT
 	rel.relname AS table_name,
 	t1.conname AS constraint_name,
-	pg_get_expr(t1.conbin, nsp.oid) as expression,
+	pg_get_expr(t1.conbin, t1.conrelid) as expression,
 	t2.attname as column_name,
 	t1.conkey as column_indexes,
 	t1.connoinherit as no_inherit
