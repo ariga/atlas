@@ -156,6 +156,22 @@ func TestPostgres_AddIndexedColumns(t *testing.T) {
 	})
 }
 
+func TestPostgres_ColumnCheck(t *testing.T) {
+	pgRun(t, func(t *pgTest) {
+		usersT := &schema.Table{
+			Name:  "users",
+			Attrs: []schema.Attr{schema.NewCheck().SetName("users_c_check").SetExpr("c > 5")},
+			Columns: []*schema.Column{
+				{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+				{Name: "c", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+			},
+		}
+		t.dropTables(usersT.Name)
+		t.migrate(&schema.AddTable{T: usersT})
+		ensureNoChange(t, usersT)
+	})
+}
+
 func TestPostgres_AddColumns(t *testing.T) {
 	pgRun(t, func(t *pgTest) {
 		usersT := t.users()

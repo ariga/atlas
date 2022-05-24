@@ -71,6 +71,22 @@ func TestSQLite_Ent(t *testing.T) {
 	})
 }
 
+func TestSQLite_ColumnCheck(t *testing.T) {
+	pgRun(t, func(t *pgTest) {
+		usersT := &schema.Table{
+			Name:  "users",
+			Attrs: []schema.Attr{schema.NewCheck().SetName("users_c_check").SetExpr("c > 5")},
+			Columns: []*schema.Column{
+				{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+				{Name: "c", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+			},
+		}
+		t.dropTables(usersT.Name)
+		t.migrate(&schema.AddTable{T: usersT})
+		ensureNoChange(t, usersT)
+	})
+}
+
 func TestSQLite_AddIndexedColumns(t *testing.T) {
 	liteRun(t, func(t *liteTest) {
 		usersT := &schema.Table{

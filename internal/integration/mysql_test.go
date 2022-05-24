@@ -387,6 +387,22 @@ func TestMySQL_ColumnBool(t *testing.T) {
 	})
 }
 
+func TestMySQL_ColumnCheck(t *testing.T) {
+	pgRun(t, func(t *pgTest) {
+		usersT := &schema.Table{
+			Name:  "users",
+			Attrs: []schema.Attr{schema.NewCheck().SetName("users_c_check").SetExpr("c > 5")},
+			Columns: []*schema.Column{
+				{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+				{Name: "c", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+			},
+		}
+		t.dropTables(usersT.Name)
+		t.migrate(&schema.AddTable{T: usersT})
+		ensureNoChange(t, usersT)
+	})
+}
+
 func TestMySQL_ForeignKey(t *testing.T) {
 	t.Run("ChangeAction", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
