@@ -36,6 +36,7 @@ type (
 		collate string
 		ctype   string
 		version string
+		crdb    bool
 	}
 )
 
@@ -65,8 +66,14 @@ func OpenCRDB(db schema.ExecQuerier) (migrate.Driver, error) {
 	if err != nil {
 		return nil, err
 	}
-	drv.Differ = &sqlx.Diff{DiffDriver: &crdbDiff{diff{drv.conn}}}
-	return drv, nil
+	c := drv.conn
+	c.crdb = true
+	return &Driver{
+		conn:        c,
+		Differ:      &sqlx.Diff{DiffDriver: &crdbDiff{diff{c}}},
+		Inspector:   &inspect{c},
+		PlanApplier: &planApply{c},
+	}, nil
 }
 
 // Open opens a new PostgreSQL driver.
@@ -199,23 +206,25 @@ const (
 	TypeSmallInt = "smallint"
 	TypeInteger  = "integer"
 	TypeBigInt   = "bigint"
-	TypeInt      = "int"  // integer.
-	TypeInt2     = "int2" // smallint.
-	TypeInt4     = "int4" // integer.
-	TypeInt8     = "int8" // bigint.
+	TypeInt      = "int"   // integer.
+	TypeInt2     = "int2"  // smallint.
+	TypeInt4     = "int4"  // integer.
+	TypeInt8     = "int8"  // bigint.
+	TypeInt64    = "int64" // cockroach bigint.
 
 	TypeCIDR     = "cidr"
 	TypeInet     = "inet"
 	TypeMACAddr  = "macaddr"
 	TypeMACAddr8 = "macaddr8"
 
-	TypeCircle  = "circle"
-	TypeLine    = "line"
-	TypeLseg    = "lseg"
-	TypeBox     = "box"
-	TypePath    = "path"
-	TypePolygon = "polygon"
-	TypePoint   = "point"
+	TypeCircle   = "circle"
+	TypeLine     = "line"
+	TypeLseg     = "lseg"
+	TypeBox      = "box"
+	TypePath     = "path"
+	TypePolygon  = "polygon"
+	TypePoint    = "point"
+	TypeGeometry = "geometry" // cockroach geometry.
 
 	TypeDate          = "date"
 	TypeTime          = "time"   // time without time zone
