@@ -369,7 +369,7 @@ func indexType(createStmt string) *IndexType {
 }
 
 func (i *inspect) crdbAddIndexes(s *schema.Schema, rows *sql.Rows) error {
-	// Cockroach index names aren't unique.
+	// Unlike Postgres, Cockroach may have duplicate index names.
 	names := make(map[string]*schema.Index)
 	for rows.Next() {
 		var (
