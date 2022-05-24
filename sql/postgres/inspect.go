@@ -384,7 +384,7 @@ func (i *inspect) crdbAddIndexes(s *schema.Schema, rows *sql.Rows) error {
 		if !ok {
 			return fmt.Errorf("table %q was not found in schema", table)
 		}
-		uniqueName := fmt.Sprintf("%s.%s.%s", s.Name, table, name)
+		uniqueName := fmt.Sprintf("%s.%s", table, name)
 		idx, ok := names[uniqueName]
 		if !ok {
 			idx = &schema.Index{
