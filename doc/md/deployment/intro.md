@@ -39,7 +39,7 @@ For now, you can choose any of the supported databases:
 
 An example for serving Atlas with MySQL persistent storage:
 ```
-atlas serve --storage "mysql://root:pass@tcp(localhost:3306)/atlas"
+atlas serve --storage "mysql://root:pass@localhost:3306/atlas"
 ```
 On your first run, Atlas will generate an encryption key and store it under ```$HOME/.atlas/keyset.json```.
 This (private) file should not be deleted, otherwise Atlas will not be able to restore your configuration data. 
