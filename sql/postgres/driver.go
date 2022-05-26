@@ -49,31 +49,6 @@ func init() {
 			return &sqlclient.URL{URL: u, DSN: u.String(), Schema: u.Query().Get("search_path")}
 		}),
 	)
-	sqlclient.Register(
-		"cockroach",
-		sqlclient.DriverOpener(OpenCRDB),
-		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
-		sqlclient.RegisterFlavours("crdb"),
-		sqlclient.RegisterURLParser(func(u *url.URL) *sqlclient.URL {
-			return &sqlclient.URL{URL: u, DSN: u.String(), Schema: u.Query().Get("search_path")}
-		}),
-	)
-}
-
-// OpenCRDB opens a new CRDB driver.
-func OpenCRDB(db schema.ExecQuerier) (migrate.Driver, error) {
-	drv, err := open(db)
-	if err != nil {
-		return nil, err
-	}
-	c := drv.conn
-	c.crdb = true
-	return &Driver{
-		conn:        c,
-		Differ:      &sqlx.Diff{DiffDriver: &crdbDiff{diff{c}}},
-		Inspector:   &inspect{c},
-		PlanApplier: &planApply{c},
-	}, nil
 }
 
 // Open opens a new PostgreSQL driver.
@@ -206,25 +181,23 @@ const (
 	TypeSmallInt = "smallint"
 	TypeInteger  = "integer"
 	TypeBigInt   = "bigint"
-	TypeInt      = "int"   // integer.
-	TypeInt2     = "int2"  // smallint.
-	TypeInt4     = "int4"  // integer.
-	TypeInt8     = "int8"  // bigint.
-	TypeInt64    = "int64" // cockroach bigint.
+	TypeInt      = "int"  // integer.
+	TypeInt2     = "int2" // smallint.
+	TypeInt4     = "int4" // integer.
+	TypeInt8     = "int8" // bigint.
 
 	TypeCIDR     = "cidr"
 	TypeInet     = "inet"
 	TypeMACAddr  = "macaddr"
 	TypeMACAddr8 = "macaddr8"
 
-	TypeCircle   = "circle"
-	TypeLine     = "line"
-	TypeLseg     = "lseg"
-	TypeBox      = "box"
-	TypePath     = "path"
-	TypePolygon  = "polygon"
-	TypePoint    = "point"
-	TypeGeometry = "geometry" // cockroach geometry.
+	TypeCircle  = "circle"
+	TypeLine    = "line"
+	TypeLseg    = "lseg"
+	TypeBox     = "box"
+	TypePath    = "path"
+	TypePolygon = "polygon"
+	TypePoint   = "point"
 
 	TypeDate          = "date"
 	TypeTime          = "time"   // time without time zone
