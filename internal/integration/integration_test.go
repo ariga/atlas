@@ -37,6 +37,7 @@ func TestMain(m *testing.M) {
 	dbs = append(dbs, myInit(dialect)...)
 	dbs = append(dbs, pgInit(dialect)...)
 	dbs = append(dbs, tidbInit(dialect)...)
+	dbs = append(dbs, crdbInit(dialect)...)
 	defer func() {
 		for _, db := range dbs {
 			db.Close()
