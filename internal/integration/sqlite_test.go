@@ -72,7 +72,7 @@ func TestSQLite_Ent(t *testing.T) {
 }
 
 func TestSQLite_ColumnCheck(t *testing.T) {
-	pgRun(t, func(t *pgTest) {
+	liteRun(t, func(t *liteTest) {
 		usersT := &schema.Table{
 			Name:  "users",
 			Attrs: []schema.Attr{schema.NewCheck().SetName("users_c_check").SetExpr("c > 5")},

@@ -369,7 +369,7 @@ func indexType(createStmt string) *IndexType {
 }
 
 func (i *inspect) crdbAddIndexes(s *schema.Schema, rows *sql.Rows) error {
-	// Cockroach index names aren't unique.
+	// Unlike Postgres, Cockroach may have duplicate index names.
 	names := make(map[string]*schema.Index)
 	for rows.Next() {
 		var (
@@ -384,7 +384,7 @@ func (i *inspect) crdbAddIndexes(s *schema.Schema, rows *sql.Rows) error {
 		if !ok {
 			return fmt.Errorf("table %q was not found in schema", table)
 		}
-		uniqueName := fmt.Sprintf("%s.%s.%s", s.Name, table, name)
+		uniqueName := fmt.Sprintf("%s.%s", table, name)
 		idx, ok := names[uniqueName]
 		if !ok {
 			idx = &schema.Index{
