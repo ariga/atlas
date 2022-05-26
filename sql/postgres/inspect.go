@@ -8,7 +8,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -332,18 +331,6 @@ func (i *inspect) enumValues(ctx context.Context, s *schema.Schema) error {
 	return nil
 }
 
-func (i *inspect) crdbIndexes(ctx context.Context, s *schema.Schema) error {
-	rows, err := i.querySchema(ctx, crdbIndexesQuery, s)
-	if err != nil {
-		return fmt.Errorf("postgres: querying schema %q indexes: %w", s.Name, err)
-	}
-	defer rows.Close()
-	if err := i.crdbAddIndexes(s, rows); err != nil {
-		return err
-	}
-	return rows.Err()
-}
-
 // indexes queries and appends the indexes of the given table.
 func (i *inspect) indexes(ctx context.Context, s *schema.Schema) error {
 	if i.conn.crdb {
@@ -358,77 +345,6 @@ func (i *inspect) indexes(ctx context.Context, s *schema.Schema) error {
 		return err
 	}
 	return rows.Err()
-}
-
-var reIndexType = regexp.MustCompile("(?i)USING (BTREE|GIN|GIST)")
-
-// indexType extracts index type information from index create statement. see: https://www.cockroachlabs.com/docs/stable/create-index.html
-func indexType(createStmt string) *IndexType {
-	t := reIndexType.FindStringSubmatch(createStmt)
-	return &IndexType{T: t[1]}
-}
-
-func (i *inspect) crdbAddIndexes(s *schema.Schema, rows *sql.Rows) error {
-	// Unlike Postgres, Cockroach may have duplicate index names.
-	names := make(map[string]*schema.Index)
-	for rows.Next() {
-		var (
-			uniq, primary                        bool
-			table, name, createStmt              string
-			column, contype, pred, expr, comment sql.NullString
-		)
-		if err := rows.Scan(&table, &name, &column, &primary, &uniq, &contype, &createStmt, &pred, &expr, &comment); err != nil {
-			return fmt.Errorf("cockroach: scanning indexes for schema %q: %w", s.Name, err)
-		}
-		t, ok := s.Table(table)
-		if !ok {
-			return fmt.Errorf("table %q was not found in schema", table)
-		}
-		uniqueName := fmt.Sprintf("%s.%s", table, name)
-		idx, ok := names[uniqueName]
-		if !ok {
-			idx = &schema.Index{
-				Name:   name,
-				Unique: uniq,
-				Table:  t,
-				Attrs: []schema.Attr{
-					indexType(createStmt),
-				},
-			}
-			if sqlx.ValidString(comment) {
-				idx.Attrs = append(idx.Attrs, &schema.Comment{Text: comment.String})
-			}
-			if sqlx.ValidString(contype) {
-				idx.Attrs = append(idx.Attrs, &ConType{T: contype.String})
-			}
-			if sqlx.ValidString(pred) {
-				idx.Attrs = append(idx.Attrs, &IndexPredicate{P: pred.String})
-			}
-			names[uniqueName] = idx
-			if primary {
-				t.PrimaryKey = idx
-			} else {
-				t.Indexes = append(t.Indexes, idx)
-			}
-		}
-		part := &schema.IndexPart{SeqNo: len(idx.Parts) + 1, Desc: strings.Contains(createStmt, "DESC")}
-		switch {
-		case sqlx.ValidString(column):
-			part.C, ok = t.Column(column.String)
-			if !ok {
-				return fmt.Errorf("cockroach: column %q was not found for index %q", column.String, idx.Name)
-			}
-			part.C.Indexes = append(part.C.Indexes, idx)
-		case sqlx.ValidString(expr):
-			part.X = &schema.RawExpr{
-				X: expr.String,
-			}
-		default:
-			return fmt.Errorf("cockroach: invalid part for index %q", idx.Name)
-		}
-		idx.Parts = append(idx.Parts, part)
-	}
-	return nil
 }
 
 // addIndexes scans the rows and adds the indexes to the table.
@@ -986,40 +902,6 @@ WHERE
 	table_schema = $1 AND table_name IN (%s)
 ORDER BY
 	t1.table_name, t1.ordinal_position
-`
-
-	crdbIndexesQuery = `
-SELECT
-	t.relname AS table_name,
-	i.relname AS index_name,
-	a.attname AS column_name,
-	idx.indisprimary AS primary,
-	idx.indisunique AS unique,
-	c.contype AS constraint_type,
-	pgi.indexdef create_stmt,
-	pg_get_expr(idx.indpred, idx.indrelid) AS predicate,
-	pg_get_indexdef(idx.indexrelid, idx.ord, false) AS expression,
-	pg_catalog.obj_description(i.oid, 'pg_class') AS comment
-	FROM
-	(
-		select
-			*,
-			generate_series(1,array_length(i.indkey,1)) as ord,
-			unnest(i.indkey) AS key
-		from pg_index i
-	) idx
-	JOIN pg_class i ON i.oid = idx.indexrelid
-	JOIN pg_class t ON t.oid = idx.indrelid
-	JOIN pg_namespace n ON n.oid = t.relnamespace
-	LEFT JOIN pg_constraint c ON idx.indexrelid = c.conindid
-	LEFT JOIN pg_indexes pgi ON pgi.tablename = t.relname AND indexname = i.relname
-	LEFT JOIN pg_attribute a ON (a.attrelid, a.attnum) = (idx.indrelid, idx.key)
-WHERE
-	n.nspname = $1
-	AND t.relname IN (%s)
-	AND COALESCE(c.contype, '') <> 'f'
-ORDER BY
-	table_name, index_name, idx.ord
 `
 
 	// Query to list table indexes.
