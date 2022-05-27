@@ -8,8 +8,8 @@ import (
 	"context"
 	"testing"
 
-	"ariga.io/atlas/internal/ci"
 	"ariga.io/atlas/sql/migrate"
+	"arigo.io/atlasci/internal/ci"
 	"github.com/stretchr/testify/require"
 )
 
