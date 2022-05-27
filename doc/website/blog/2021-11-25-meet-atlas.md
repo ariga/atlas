@@ -109,7 +109,7 @@ mysql>
 Let's see how Atlas inspects it:
 
 ```shell
-atlas schema inspect -d "mysql://root:pass@tcp(localhost:3306)/example" > atlas.hcl
+atlas schema inspect -u "mysql://root:pass@localhost:3306/example" > atlas.hcl
 ```
 
 As expected, an empty schema:
@@ -162,7 +162,7 @@ schema "example" {
 ```
 And apply our changes!
 ```shell
-atlas schema apply -d "mysql://root:pass@tcp(localhost:3306)/example" -f atlas.hcl
+atlas schema apply -u "mysql://root:pass@localhost:3306/example" -f atlas.hcl
 
 
 
@@ -217,7 +217,7 @@ mysql>
 Now let's see that Atlas inspects this correctly:
 
 ```shell
-atlas schema inspect -d "mysql://root:pass@tcp(localhost:3306)/example" > atlas.hcl
+atlas schema inspect -u "mysql://root:pass@localhost:3306/example" > atlas.hcl
 ```
 
 ```hcl
@@ -263,7 +263,7 @@ schema "example" {
 Let's see what happens when we try to reapply the same change:
 
 ```shell
-atlas schema apply -d "mysql://root:pass@tcp(localhost:3306)/example" -f atlas.hcl
+atlas schema apply -u "mysql://root:pass@localhost:3306/example" -f atlas.hcl
 Schema is synced, no changes to be made
 ```
 
