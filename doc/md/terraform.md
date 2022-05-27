@@ -7,7 +7,7 @@ slug: /terraform-provider
 
 The official [Atlas Terraform provider](https://registry.terraform.io/providers/ariga/atlas/latest) 
 allows you to use Atlas with Terraform to manage your database schemas as part of you Infrastructure-as-Code (Iac)
-workflow . Read about the release announcement [here](https://atlasgo.io/blog/2022-05-03-announcing-terraform-provider).
+workflow . Read about the release announcement [here](https://atlasgo.io/blog/2022/05/04/announcing-terraform-provider).
 * [Documentation](https://registry.terraform.io/providers/ariga/atlas/latest/docs)
 * [GitHub Repository](https://github.com/ariga/terraform-provider-atlas)
 
