@@ -347,12 +347,6 @@ func (i *inspect) indexes(ctx context.Context, s *schema.Schema) error {
 	return rows.Err()
 }
 
-// indexType extracts index type information from index create statement. see: https://www.cockroachlabs.com/docs/stable/create-index.html
-func indexType(createStmt string) *IndexType {
-	t := reIndexType.FindStringSubmatch(createStmt)
-	return &IndexType{T: t[1]}
-}
-
 // addIndexes scans the rows and adds the indexes to the table.
 func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 	names := make(map[string]*schema.Index)
