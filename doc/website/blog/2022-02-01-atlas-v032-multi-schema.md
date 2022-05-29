@@ -192,12 +192,12 @@ By passing `example` in the `MYSQL_DATABASE` environment variable a new schema n
 versions of Atlas, users had to specify the schema name as part of the DSN for connecting to the
 database, for example:
 ```shell
-atlas schema inspect -d "mysql://root:pass@tcp(localhost:3306)/example" 
+atlas schema inspect -u "mysql://root:pass@localhost:3306/example" 
 ```
 Starting with `v0.3.2`, users can omit the schema name from the DSN to instruct Atlas to inspect
 the entire database. Let's try this:
 ```shell
-$ atlas schema inspect -d "mysql://root:pass@tcp(localhost:3306)/" > atlas.hcl
+$ atlas schema inspect -u "mysql://root:pass@localhost:3306/" > atlas.hcl
 cat atlas.hcl
 schema "example" {
   charset   = "utf8mb4"
@@ -220,7 +220,7 @@ schema "example_2" {
 Next, we will use the `schema apply` command to apply our changes to the database:
 
 ```shell
-atlas schema apply -d "mysql://root:pass@tcp(localhost:3306)/" -f atlas.hcl
+atlas schema apply -u "mysql://root:pass@localhost:3306/" -f atlas.hcl
 ```
 Atlas plans a migration to add the new `DATABASE` (recall that in MySQL `DATABASE` and 
 `SCHEMA` are synonymous) to the server, when prompted to approve the migration we choose "Apply":
@@ -233,7 +233,7 @@ CREATE DATABASE `example_2`
 
 To verify that `schema inspect` works properly with multiple schemas, lets re-run:
 ```shell
-atlas schema inspect -d "mysql://root:pass@tcp(localhost:3306)/"
+atlas schema inspect -u "mysql://root:pass@localhost:3306/"
 ```
 Observe that both schemas are inspected:
 ```hcl

@@ -66,7 +66,7 @@ relationship between blog posts and categories:
 
 First, let's store the existing schema in a file named `atlas.hcl`:
 ```shell
-atlas schema inspect -d "mysql://root:pass@localhost:3306/example" > atlas.hcl
+atlas schema inspect -u "mysql://root:pass@localhost:3306/example" > atlas.hcl
 ```
 Next, add the following table definition to the file:
 ```hcl
@@ -88,7 +88,7 @@ table "categories" {
 
 To add this table to our database, let's use the `atlas schema apply` command:
 ```shell
-atlas schema apply -d "mysql://root:pass@localhost:3306/example" -f atlas.hcl 
+atlas schema apply -u "mysql://root:pass@localhost:3306/example" -f atlas.hcl 
 ```
 Atlas plans a migration (schema change) for us and prompts us to approve it:
 ```text
@@ -148,7 +148,7 @@ and `categories` tables.
 
 Let's try to apply the schema again, this time with the updated schema:
 ```text
-atlas schema apply -d "mysql://root:pass@localhost:3306/example" -f atlas.hcl
+atlas schema apply -u "mysql://root:pass@localhost:3306/example" -f atlas.hcl
 -- Planned Changes:
 -- Create "post_categories" table
 CREATE TABLE `example`.`post_categories` (`post_id` int NOT NULL, `category_id` int NOT NULL, CONSTRAINT `post_category_post` FOREIGN KEY (`post_id`) REFERENCES `example`.`blog_posts` (`id`), CONSTRAINT `post_category_category` FOREIGN KEY (`category_id`) REFERENCES `example`.`categories` (`id`))

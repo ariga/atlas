@@ -21,7 +21,7 @@ Get started with the UI by running the command `atlas serve`.
 To ensure that your team's schemas, database credentials, migration history and more are not lost, save the data
 in the UI by running the command with [persistent storage](https://atlasgo.io/deployment/intro#persistent-storage):
 ```
-atlas serve --storage mysql://root:pass@tcp(localhost:3306)/storage_db
+atlas serve --storage mysql://root:pass@localhost:3306/storage_db
 ```
 
 Alternatively, you can run the commands `schema inspect` or `schema apply` with the `-w` command-line
@@ -29,12 +29,12 @@ flag:
 
 #### Inspect
 ```
-atlas schema inspect -d "mysql://root:pass@tcp(localhost:3306)/example" -w
+atlas schema inspect -u "mysql://root:pass@localhost:3306/example" -w
 ```
 
 #### Apply
 ```
-atlas schema apply -d "mysql://root:pass@tcp(localhost:3306)/example" -f atlas.hcl -w
+atlas schema apply -u "mysql://root:pass@localhost:3306/example" -f atlas.hcl -w
 ```
 
 ### Usage

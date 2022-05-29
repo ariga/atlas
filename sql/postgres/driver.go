@@ -49,31 +49,6 @@ func init() {
 			return &sqlclient.URL{URL: u, DSN: u.String(), Schema: u.Query().Get("search_path")}
 		}),
 	)
-	sqlclient.Register(
-		"cockroach",
-		sqlclient.DriverOpener(OpenCRDB),
-		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
-		sqlclient.RegisterFlavours("crdb"),
-		sqlclient.RegisterURLParser(func(u *url.URL) *sqlclient.URL {
-			return &sqlclient.URL{URL: u, DSN: u.String(), Schema: u.Query().Get("search_path")}
-		}),
-	)
-}
-
-// OpenCRDB opens a new CRDB driver.
-func OpenCRDB(db schema.ExecQuerier) (migrate.Driver, error) {
-	drv, err := open(db)
-	if err != nil {
-		return nil, err
-	}
-	c := drv.conn
-	c.crdb = true
-	return &Driver{
-		conn:        c,
-		Differ:      &sqlx.Diff{DiffDriver: &crdbDiff{diff{c}}},
-		Inspector:   &inspect{c},
-		PlanApplier: &planApply{c},
-	}, nil
 }
 
 // Open opens a new PostgreSQL driver.

@@ -53,9 +53,9 @@ If you're using PostgreSQL, there is [additional documentation about building th
 ### Inspecting our database
 
 To inspect our locally-running MySQL instance from the [previous](01-introduction.mdx) section,
-use the `-d` flag and write output to a file named `atlas.hcl`:
+use the `-u` flag and write output to a file named `atlas.hcl`:
 ```shell
-atlas schema inspect -d "mysql://root:pass@localhost:3306/example" > atlas.hcl
+atlas schema inspect -u "mysql://root:pass@localhost:3306/example" > atlas.hcl
 ```
 To view the contents of the created file:
 ```shell
@@ -103,7 +103,7 @@ table for the authors and a blog_posts table for the contents:
 
 Next, let's re-run our inspection command:
 ```shell
-atlas schema inspect -d "mysql://root:pass@localhost:3306/example" > atlas.hcl
+atlas schema inspect -u "mysql://root:pass@localhost:3306/example" > atlas.hcl
 ```
 Browse through the updated contents of the file, it contains 3 blocks representing
 our schema as before, and two new blocks representing the `users` and `blog_posts` tables.
