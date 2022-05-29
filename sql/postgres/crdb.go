@@ -51,23 +51,6 @@ type crdbDiff struct{ diff }
 
 var _ sqlx.DiffDriver = (*crdbDiff)(nil)
 
-// IndexAttrChanged reports if the index attributes were changed.
-func (cd *crdbDiff) IndexAttrChanged(from, to []schema.Attr) bool {
-	t1 := &IndexType{T: IndexTypeBTree}
-	if sqlx.Has(from, t1) {
-		t1.T = strings.ToUpper(t1.T)
-	}
-	t2 := &IndexType{T: IndexTypeBTree}
-	if sqlx.Has(to, t2) {
-		t2.T = strings.ToUpper(t2.T)
-	}
-	if t1.T != t2.T {
-		return true
-	}
-	var p1, p2 IndexPredicate
-	return sqlx.Has(from, &p1) != sqlx.Has(to, &p2) || (p1.P != p2.P && p1.P != sqlx.MayWrap(p2.P))
-}
-
 // Normalize implements the sqlx.Normalizer.
 func (cd *crdbDiff) Normalize(from, to *schema.Table) {
 	cd.normalize(from)
@@ -82,7 +65,8 @@ func (cd *crdbDiff) normalize(table *schema.Table) {
 		if !ok {
 			prim = schema.NewColumn("rowid").
 				AddAttrs(Identity{}).
-				SetType(&schema.IntegerType{})
+				SetType(&schema.IntegerType{T: TypeBigInt}).
+				SetDefault(&schema.RawExpr{X: "unique_rowid()"})
 			table.AddColumns(prim)
 		}
 		table.PrimaryKey = &schema.Index{
@@ -124,6 +108,10 @@ func (cd *crdbDiff) normalize(table *schema.Table) {
 			// Type json is aliased to jsonb.
 			case TypeJSON:
 				t.T = TypeJSONB
+			}
+		case *SerialType:
+			c.Default = &schema.RawExpr{
+				X: "unique_rowid()",
 			}
 		}
 	}
