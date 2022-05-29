@@ -203,6 +203,87 @@ func TestCockroach_ColumnInt(t *testing.T) {
 	})
 }
 
+func TestCockroach_ColumnArray(t *testing.T) {
+	crdbRun(t, func(t *crdbTest) {
+		usersT := t.users()
+		t.dropTables(usersT.Name)
+		t.migrate(&schema.AddTable{T: usersT})
+
+		// Add column.
+		usersT.Columns = append(
+			usersT.Columns,
+			&schema.Column{Name: "a", Type: &schema.ColumnType{Raw: "int[]", Type: &postgres.ArrayType{T: "int[]"}}, Default: &schema.Literal{V: "'{1}'"}},
+		)
+		changes := t.diff(t.loadUsers(), usersT)
+		require.Len(t, changes, 1)
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, usersT)
+
+		// Check default.
+		usersT.Columns[2].Default = &schema.RawExpr{X: "ARRAY[1]"}
+		ensureNoChange(t, usersT)
+
+		// Change default.
+		usersT.Columns[2].Default = &schema.RawExpr{X: "ARRAY[1,2]"}
+		changes = t.diff(t.loadUsers(), usersT)
+		require.Len(t, changes, 1)
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, usersT)
+	})
+}
+
+func TestCockroach_Enums(t *testing.T) {
+	crdbRun(t, func(t *crdbTest) {
+		ctx := context.Background()
+		usersT := &schema.Table{
+			Name:   "users",
+			Schema: t.realm().Schemas[0],
+			Columns: []*schema.Column{
+				{Name: "state", Type: &schema.ColumnType{Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}},
+			},
+		}
+		t.Cleanup(func() {
+			_, err := t.drv.ExecContext(ctx, "DROP TYPE IF EXISTS state, day")
+			require.NoError(t, err)
+		})
+
+		// Create table with an enum column.
+		err := t.drv.ApplyChanges(ctx, []schema.Change{&schema.AddTable{T: usersT}})
+		require.NoError(t, err, "create a new table with an enum column")
+		t.dropTables(usersT.Name)
+		ensureNoChange(t, usersT)
+
+		// Add another enum column.
+		usersT.Columns = append(
+			usersT.Columns,
+			&schema.Column{Name: "day", Type: &schema.ColumnType{Type: &schema.EnumType{T: "day", Values: []string{"sunday", "monday"}}}},
+		)
+		changes := t.diff(t.loadUsers(), usersT)
+		require.Len(t, changes, 1)
+		err = t.drv.ApplyChanges(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+		require.NoError(t, err, "add a new enum column to existing table")
+		ensureNoChange(t, usersT)
+
+		// Add a new value to an existing enum.
+		e := usersT.Columns[2].Type.Type.(*schema.EnumType)
+		e.Values = append(e.Values, "tuesday")
+		changes = t.diff(t.loadUsers(), usersT)
+		require.Len(t, changes, 1)
+		err = t.drv.ApplyChanges(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+		require.NoError(t, err, "append a value to existing enum")
+		ensureNoChange(t, usersT)
+
+		// Add multiple new values to an existing enum.
+		e = usersT.Columns[2].Type.Type.(*schema.EnumType)
+		e.Values = append(e.Values, "wednesday", "thursday", "friday", "saturday")
+		changes = t.diff(t.loadUsers(), usersT)
+		require.Len(t, changes, 1)
+		err = t.drv.ApplyChanges(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+		require.NoError(t, err, "append multiple values to existing enum")
+		ensureNoChange(t, usersT)
+	})
+}
+
 func (t *crdbTest) dsn() string {
 	return fmt.Sprintf("postgres://postgres:pass@localhost:%d/test?sslmode=disable", t.port)
 }
