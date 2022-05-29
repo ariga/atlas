@@ -181,25 +181,23 @@ const (
 	TypeSmallInt = "smallint"
 	TypeInteger  = "integer"
 	TypeBigInt   = "bigint"
-	TypeInt      = "int"   // integer.
-	TypeInt2     = "int2"  // smallint.
-	TypeInt4     = "int4"  // integer.
-	TypeInt8     = "int8"  // bigint.
-	TypeInt64    = "int64" // cockroach bigint.
+	TypeInt      = "int"  // integer.
+	TypeInt2     = "int2" // smallint.
+	TypeInt4     = "int4" // integer.
+	TypeInt8     = "int8" // bigint.
 
 	TypeCIDR     = "cidr"
 	TypeInet     = "inet"
 	TypeMACAddr  = "macaddr"
 	TypeMACAddr8 = "macaddr8"
 
-	TypeCircle   = "circle"
-	TypeLine     = "line"
-	TypeLseg     = "lseg"
-	TypeBox      = "box"
-	TypePath     = "path"
-	TypePolygon  = "polygon"
-	TypePoint    = "point"
-	TypeGeometry = "geometry" // cockroach geometry.
+	TypeCircle  = "circle"
+	TypeLine    = "line"
+	TypeLseg    = "lseg"
+	TypeBox     = "box"
+	TypePath    = "path"
+	TypePolygon = "polygon"
+	TypePoint   = "point"
 
 	TypeDate          = "date"
 	TypeTime          = "time"   // time without time zone
