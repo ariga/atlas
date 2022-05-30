@@ -51,6 +51,10 @@ var (
 		"POSTGRES_DB: test",
 		"POSTGRES_PASSWORD: pass",
 	}
+	crdbOptions = []string{
+		"start-single-node",
+		"--insecure",
+	}
 	jobs = []Job{
 		{
 			Version: "mysql56",
@@ -155,6 +159,13 @@ var (
 		{
 			Version: "sqlite",
 			Regex:   "SQLite.*",
+		},
+		{
+			Version: "cockroach",
+			Image:   "cockroach/cockroach:v21.2.11",
+			Regex:   re("Cockroach.*/%sCockroach"),
+			Ports:   []string{"26257:26257"},
+			Options: crdbOptions,
 		},
 	}
 )
