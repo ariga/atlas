@@ -162,7 +162,7 @@ var (
 		},
 		{
 			Version: "cockroach",
-			Image:   "cockroach/cockroach:v21.2.11",
+			Image:   "cockroachdb/cockroach:v21.2.11",
 			Regex:   re("Cockroach.*/%sCockroach"),
 			Ports:   []string{"26257:26257"},
 			Options: crdbOptions,
