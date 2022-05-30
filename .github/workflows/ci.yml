@@ -480,13 +480,11 @@ jobs:
     runs-on: ubuntu-latest
     services:
       cockroach:
-        image: cockroachdb/cockroach:v21.2.11
+        image: timveil/cockroachdb-single-node:latest
         
         ports:
           - 26257:26257
-        options: >-
-          start-single-node
-          --insecure
+        
     steps:
       - uses: actions/checkout@v2.3.4
       - uses: actions/setup-go@v2
