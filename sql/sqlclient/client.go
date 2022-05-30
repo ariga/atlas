@@ -42,6 +42,9 @@ type (
 		// and encoding the schema documents.
 		schemaspec.Marshaler
 		schemahcl.Evaluator
+
+		// The urlParser used to construct the URL for this client.
+		parse urlParser
 	}
 
 	// URL extends the standard url.URL with additional
@@ -76,6 +79,10 @@ func (c *Client) Close() (err error) {
 	return err
 }
 
+func (c *Client) ParseURL(u *url.URL) *URL {
+	return c.parse(u)
+}
+
 type (
 	// Opener opens a migration driver by the given URL.
 	Opener interface {
@@ -85,10 +92,12 @@ type (
 	// OpenerFunc allows using a function as an Opener.
 	OpenerFunc func(context.Context, *url.URL) (*Client, error)
 
+	urlParser func(*url.URL) *URL
+
 	driver struct {
 		Opener
 		name  string
-		parse func(*url.URL) *URL
+		parse urlParser
 	}
 )
 
@@ -143,7 +152,7 @@ func RegisterFlavours(flavours ...string) RegisterOption {
 
 // RegisterURLParser allows registering a function for parsing
 // the url.URL and attach additional info to the extended URL.
-func RegisterURLParser(p func(*url.URL) *URL) RegisterOption {
+func RegisterURLParser(p urlParser) RegisterOption {
 	return func(opts *registerOptions) {
 		opts.parse = p
 	}
@@ -187,6 +196,7 @@ func DriverOpener(open func(schema.ExecQuerier) (migrate.Driver, error)) Opener 
 			DB:     db,
 			URL:    ur,
 			Driver: drv,
+			parse:  v.(driver).parse,
 		}, nil
 	})
 }
@@ -198,7 +208,7 @@ func Register(name string, opener Opener, opts ...RegisterOption) {
 	}
 	opt := &registerOptions{
 		// Default URL parser uses the URL as the DSN.
-		parse: func(u *url.URL) *URL { return &URL{URL: u, DSN: u.String()} },
+		parse: func(u *url.URL) *URL { return &URL{URL: u} },
 	}
 	for i := range opts {
 		opts[i](opt)
