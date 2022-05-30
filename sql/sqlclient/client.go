@@ -79,6 +79,7 @@ func (c *Client) Close() (err error) {
 	return err
 }
 
+// ParseURL uses the originally registered urlParser to parse a new URL into a URL.
 func (c *Client) ParseURL(u *url.URL) *URL {
 	return c.parse(u)
 }
