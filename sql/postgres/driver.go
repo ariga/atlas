@@ -53,10 +53,6 @@ func init() {
 
 // Open opens a new PostgreSQL driver.
 func Open(db schema.ExecQuerier) (migrate.Driver, error) {
-	return open(db)
-}
-
-func open(db schema.ExecQuerier) (*Driver, error) {
 	c := conn{ExecQuerier: db}
 	rows, err := db.QueryContext(context.Background(), paramsQuery)
 	if err != nil {
@@ -66,16 +62,26 @@ func open(db schema.ExecQuerier) (*Driver, error) {
 	if err != nil {
 		return nil, fmt.Errorf("postgres: failed scanning rows: %w", err)
 	}
-	if len(params) != 3 {
+	if len(params) != 3 && len(params) != 4 {
 		return nil, fmt.Errorf("postgres: unexpected number of rows: %d", len(params))
 	}
-	c.collate, c.ctype, c.version = params[0], params[1], params[2]
+	c.version, c.ctype, c.collate = params[0], params[1], params[2]
 	if len(c.version) != 6 {
 		return nil, fmt.Errorf("postgres: malformed version: %s", c.version)
 	}
 	c.version = fmt.Sprintf("%s.%s.%s", c.version[:2], c.version[2:4], c.version[4:])
 	if semver.Compare("v"+c.version, "v10.0.0") != -1 {
 		return nil, fmt.Errorf("postgres: unsupported postgres version: %s", c.version)
+	}
+	// Means we are connected to CockroachDB because we have a result for name='crdb_version'. see `paramsQuery`.
+	if len(params) == 4 {
+		c.crdb = true
+		return &Driver{
+			conn:        c,
+			Differ:      &sqlx.Diff{DiffDriver: &crdbDiff{diff{c}}},
+			Inspector:   &crdbInspect{inspect{c}},
+			PlanApplier: &planApply{c},
+		}, nil
 	}
 	return &Driver{
 		conn:        c,

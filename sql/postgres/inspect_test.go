@@ -344,11 +344,7 @@ users        | users_check1       | (((c2 + c1) + c3) > 10) | c3          | {2,1
 			mk := mock{m}
 			mk.version("130000")
 			var drv migrate.Driver
-			if tt.crdb {
-				drv, err = OpenCRDB(db)
-			} else {
-				drv, err = Open(db)
-			}
+			drv, err = Open(db)
 			require.NoError(t, err)
 			mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= $1"))).
 				WithArgs("public").

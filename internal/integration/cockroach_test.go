@@ -16,6 +16,9 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
+	"entgo.io/ent/dialect"
+	entschema "entgo.io/ent/dialect/sql/schema"
+	entmigrate "entgo.io/ent/entc/integration/ent/migrate"
 
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/require"
@@ -57,7 +60,7 @@ func crdbInit(d string) []io.Closer {
 		}
 		cs = append(cs, db)
 
-		drv, err := postgres.OpenCRDB(db)
+		drv, err := postgres.Open(db)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -281,6 +284,25 @@ func TestCockroach_Enums(t *testing.T) {
 		err = t.drv.ApplyChanges(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
 		require.NoError(t, err, "append multiple values to existing enum")
 		ensureNoChange(t, usersT)
+	})
+}
+
+func TestCockroach_Ent(t *testing.T) {
+	crdbRun(t, func(t *crdbTest) {
+		// Cockroach doesn't support macaddr but its in the integration tests of ent
+		macClmn := entmigrate.FieldTypesColumns[0]
+		var schemaType map[string]string
+		for _, ff := range entmigrate.FieldTypesColumns {
+			if ff.Name == "mac" {
+				macClmn = ff
+				schemaType = ff.SchemaType
+				ff.SchemaType = nil
+			}
+		}
+		t.Cleanup(func() {
+			macClmn.SchemaType = schemaType
+		})
+		testEntIntegration(t, dialect.Postgres, t.db, entschema.WithAtlas(true))
 	})
 }
 

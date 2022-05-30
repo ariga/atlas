@@ -400,7 +400,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 		// a reversed order they were created.
 		sqlx.ReverseChanges(reverse)
 		if change.Reverse, err = build(reverse); err != nil {
-			return fmt.Errorf("reversd alter table %q: %v", t.Name, err)
+			return fmt.Errorf("reverse alter table %q: %v", t.Name, err)
 		}
 	}
 	s.append(change)

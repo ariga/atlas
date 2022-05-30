@@ -139,7 +139,11 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 
 // columns queries and appends the columns of the given table.
 func (i *inspect) columns(ctx context.Context, s *schema.Schema) error {
-	rows, err := i.querySchema(ctx, columnsQuery, s)
+	query := columnsQuery
+	if i.crdb {
+		query = crdbColumnsQuery
+	}
+	rows, err := i.querySchema(ctx, query, s)
 	if err != nil {
 		return fmt.Errorf("postgres: querying schema %q columns: %w", s.Name, err)
 	}
@@ -822,7 +826,7 @@ func newIndexStorage(opts string) (*IndexStorageParams, error) {
 
 const (
 	// Query to list runtime parameters.
-	paramsQuery = `SELECT setting FROM pg_settings WHERE name IN ('lc_collate', 'lc_ctype', 'server_version_num') ORDER BY name`
+	paramsQuery = `SELECT setting FROM pg_settings WHERE name IN ('lc_collate', 'lc_ctype', 'server_version_num', 'crdb_version') ORDER BY name DESC`
 
 	// Query to list database schemas.
 	schemasQuery = "SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast') AND schema_name NOT LIKE 'pg_%temp_%' ORDER BY schema_name"
@@ -851,17 +855,18 @@ ORDER BY
 	t1.table_schema, t1.table_name
 `
 	tablesQueryArgs = `
-SELECT
+	SELECT
 	t1.table_schema,
 	t1.table_name,
-	pg_catalog.obj_description(t2.oid, 'pg_class') AS comment,
-	t3.partattrs AS partition_attrs,
-	t3.partstrat AS partition_strategy,
-	pg_get_expr(t3.partexprs, t3.partrelid) AS partition_exprs
+	pg_catalog.obj_description(t3.oid, 'pg_class') AS comment,
+	t4.partattrs AS partition_attrs,
+	t4.partstrat AS partition_strategy,
+	pg_get_expr(t4.partexprs, t4.partrelid) AS partition_exprs
 FROM
 	INFORMATION_SCHEMA.TABLES AS t1
-	JOIN pg_catalog.pg_class AS t2 ON t2.oid = to_regclass(quote_ident(t1.table_schema) || '.' || quote_ident(t1.table_name))::oid
-	LEFT JOIN pg_catalog.pg_partitioned_table AS t3 ON t3.partrelid = t2.oid
+	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
+	JOIN pg_catalog.pg_class AS t3 ON t3.relnamespace = t2.oid AND t3.relname = t1.table_name
+	LEFT JOIN pg_catalog.pg_partitioned_table AS t4 ON t4.partrelid = t3.oid
 WHERE
 	t1.table_type = 'BASE TABLE'
 	AND t1.table_schema IN (%s)
