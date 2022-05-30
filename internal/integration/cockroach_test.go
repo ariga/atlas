@@ -306,8 +306,202 @@ func TestCockroach_Ent(t *testing.T) {
 	})
 }
 
+func TestCockroach_HCL(t *testing.T) {
+	full := `
+schema "public" {
+}
+table "users" {
+	schema = schema.public
+	column "id" {
+		type = int
+	}
+	primary_key {
+		columns = [table.users.column.id]
+	}
+}
+table "posts" {
+	schema = schema.public
+	column "id" {
+		type = int
+	}
+	column "tags" {
+		type = sql("text[]")
+	}
+	column "author_id" {
+		type = int
+	}
+	foreign_key "author" {
+		columns = [
+			table.posts.column.author_id,
+		]
+		ref_columns = [
+			table.users.column.id,
+		]
+	}
+	primary_key {
+		columns = [table.users.column.id]
+	}
+}
+`
+	empty := `
+schema "public" {
+}
+`
+	crdbRun(t, func(t *crdbTest) {
+		testHCLIntegration(t, full, empty)
+	})
+}
+
+func TestCockroach_HCL_Realm(t *testing.T) {
+	crdbRun(t, func(t *crdbTest) {
+		t.dropSchemas("second")
+		realm := t.loadRealm()
+		hcl, err := postgres.MarshalHCL(realm)
+		require.NoError(t, err)
+		wa := string(hcl) + `
+schema "second" {
+}
+`
+		t.applyRealmHcl(wa)
+		realm, err = t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{})
+		require.NoError(t, err)
+		_, ok := realm.Schema("public")
+		require.True(t, ok)
+		_, ok = realm.Schema("second")
+		require.True(t, ok)
+	})
+}
+
+func TestCockroach_CLI(t *testing.T) {
+	h := `
+			schema "public" {
+			}
+			table "users" {
+				schema = schema.public
+				column "id" {
+					type = bigint
+				}
+				primary_key {
+					columns = [table.users.column.id]
+				}
+			}`
+	t.Run("SchemaInspect", func(t *testing.T) {
+		crdbRun(t, func(t *crdbTest) {
+			testCLISchemaInspect(t, h, t.dsn(), postgres.UnmarshalHCL, "-s", "public")
+		})
+	})
+	t.Run("SchemaApply", func(t *testing.T) {
+		crdbRun(t, func(t *crdbTest) {
+			testCLISchemaApply(t, h, t.dsn(), "-s", "public")
+		})
+	})
+	t.Run("SchemaApplyDryRun", func(t *testing.T) {
+		crdbRun(t, func(t *crdbTest) {
+			testCLISchemaApplyDry(t, h, t.dsn())
+		})
+	})
+	t.Run("SchemaApplyWithVars", func(t *testing.T) {
+		h := `
+variable "tenant" {
+	type = string
+}
+schema "tenant" {
+	name = var.tenant
+}
+table "users" {
+	schema = schema.tenant
+	column "id" {
+		type = int
+	}
+}
+`
+		crdbRun(t, func(t *crdbTest) {
+			testCLISchemaApply(t, h, t.dsn(), "--var", "tenant=public", "-s", "public")
+		})
+	})
+	t.Run("SchemaDiffRun", func(t *testing.T) {
+		crdbRun(t, func(t *crdbTest) {
+			testCLISchemaDiff(t, t.dsn())
+		})
+	})
+	t.Run("SchemaApplyAutoApprove", func(t *testing.T) {
+		crdbRun(t, func(t *crdbTest) {
+			testCLISchemaApplyAutoApprove(t, h, t.dsn(), "-s", "public")
+		})
+	})
+}
+
+func TestCockroach_CLI_MultiSchema(t *testing.T) {
+	h := `
+			schema "public" {	
+			}
+			table "users" {
+				schema = schema.public
+				column "id" {
+					type = bigint
+				}
+				primary_key {
+					columns = [table.users.column.id]
+				}
+			}
+			schema "test2" {	
+			}
+			table "users" {
+				schema = schema.test2
+				column "id" {
+					type = bigint
+				}
+				primary_key {
+					columns = [table.users.column.id]
+				}
+			}`
+	t.Run("SchemaInspect", func(t *testing.T) {
+		crdbRun(t, func(t *crdbTest) {
+			t.dropSchemas("test2")
+			t.dropTables("users")
+			testCLIMultiSchemaInspect(t, h, t.dsn(), []string{"public", "test2"}, postgres.UnmarshalHCL)
+		})
+	})
+	t.Run("SchemaApply", func(t *testing.T) {
+		crdbRun(t, func(t *crdbTest) {
+			t.dropSchemas("test2")
+			t.dropTables("users")
+			testCLIMultiSchemaApply(t, h, t.dsn(), []string{"public", "test2"}, postgres.UnmarshalHCL)
+		})
+	})
+}
+
+func TestCockroach_DefaultsHCL(t *testing.T) {
+	n := "atlas_defaults"
+	crdbRun(t, func(t *crdbTest) {
+		ddl := `
+create table atlas_defaults
+(
+	string varchar(255) default 'hello_world',
+	quoted varchar(100) default 'never say "never"',
+	tBit bit(10) default B'10101',
+	ts timestamp default CURRENT_TIMESTAMP,
+	tstz timestamp with time zone default CURRENT_TIMESTAMP,
+	number int default 42
+)
+`
+		t.dropTables(n)
+		_, err := t.db.Exec(ddl)
+		require.NoError(t, err)
+		realm := t.loadRealm()
+		spec, err := postgres.MarshalHCL(realm.Schemas[0])
+		require.NoError(t, err)
+		var s schema.Schema
+		err = postgres.UnmarshalHCL(spec, &s)
+		require.NoError(t, err)
+		t.dropTables(n)
+		t.applyHcl(string(spec))
+		ensureNoChange(t, realm.Schemas[0].Tables[0])
+	})
+}
+
 func (t *crdbTest) dsn() string {
-	return fmt.Sprintf("postgres://postgres:pass@localhost:%d/test?sslmode=disable", t.port)
+	return fmt.Sprintf("postgres://root:pass@localhost:%d/defaultdb?sslmode=disable", t.port)
 }
 
 func (t *crdbTest) driver() migrate.Driver {

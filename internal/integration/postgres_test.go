@@ -14,7 +14,6 @@ import (
 	"testing"
 
 	"ariga.io/atlas/sql/migrate"
-	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
 
@@ -487,7 +486,7 @@ func TestPostgres_HCL_Realm(t *testing.T) {
 	pgRun(t, func(t *pgTest) {
 		t.dropSchemas("second")
 		realm := t.loadRealm()
-		hcl, err := mysql.MarshalHCL(realm)
+		hcl, err := postgres.MarshalHCL(realm)
 		require.NoError(t, err)
 		wa := string(hcl) + `
 schema "second" {
