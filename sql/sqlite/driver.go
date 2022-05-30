@@ -48,9 +48,9 @@ func init() {
 		sqlclient.DriverOpener(Open),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
 		sqlclient.RegisterFlavours("sqlite"),
-		sqlclient.RegisterURLParser(func(u *url.URL) *sqlclient.URL {
+		sqlclient.RegisterURLParser(sqlclient.URLParserFunc(func(u *url.URL) *sqlclient.URL {
 			return &sqlclient.URL{URL: u, DSN: strings.TrimPrefix(u.String(), u.Scheme+"://"), Schema: mainFile}
-		}),
+		})),
 	)
 }
 

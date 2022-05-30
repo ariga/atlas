@@ -6,26 +6,28 @@ package migrate
 
 import (
 	"context"
-	"database/sql"
+	"fmt"
+	"path/filepath"
 	"testing"
 
 	"ariga.io/atlas/cmd/atlascmd/migrate/ent/revision"
-	"ariga.io/atlas/sql/sqlite"
-	"entgo.io/ent/dialect"
+	"ariga.io/atlas/sql/sqlclient"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
 
 func TestEntRevisions_Init(t *testing.T) {
-	db, err := sql.Open(dialect.SQLite, "file:revisions?cache=shared&mode=memory&_fk=true")
+	c, err := sqlclient.Open(
+		context.Background(),
+		fmt.Sprintf("sqlite://%s?cache=shared&mode=memory&_fk=true", filepath.Join(t.TempDir(), "revision")),
+	)
 	require.NoError(t, err)
-	r := NewEntRevisions(db, dialect.SQLite)
+	r, err := NewEntRevisions(c)
+	require.NoError(t, err)
 
 	require.NoError(t, r.Init(context.Background()))
 
-	drv, err := sqlite.Open(db)
-	require.NoError(t, err)
-	s, err := drv.InspectSchema(context.Background(), "main", nil)
+	s, err := c.Driver.InspectSchema(context.Background(), "", nil)
 	require.NoError(t, err)
 	require.Len(t, s.Tables, 1)
 	_, ok := s.Table(revision.Table)

@@ -6,32 +6,79 @@ package migrate
 
 import (
 	"context"
+	"errors"
 
 	"ariga.io/atlas/cmd/atlascmd/migrate/ent"
 	"ariga.io/atlas/cmd/atlascmd/migrate/ent/revision"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlclient"
 	"entgo.io/ent/dialect/sql"
 	entschema "entgo.io/ent/dialect/sql/schema"
 )
 
-// A EntRevisions provides implementation for the migrate.RevisionReadWriter interface.
-type EntRevisions struct{ c *ent.Client }
+type (
+	// A EntRevisions provides implementation for the migrate.RevisionReadWriter interface.
+	EntRevisions struct {
+		ac     *sqlclient.Client // underlying Atlas client
+		ec     *ent.Client       // underlying Ent client
+		schema string            // name of the schema the revision table resides in
+	}
 
-// NewEntRevisions creates a new EntRevisions with the given ent.Client.
-func NewEntRevisions(db schema.ExecQuerier, dialect string, opts ...ent.Option) *EntRevisions {
-	opts = append(opts, ent.Driver(sql.NewDriver(dialect, sql.Conn{ExecQuerier: db})))
-	return &EntRevisions{ent.NewClient(opts...)}
+	// Option allows to configure EntRevisions by using functional arguments.
+	Option func(*EntRevisions) error
+)
+
+// NewEntRevisions creates a new EntRevisions with the given sqlclient.Client. It is important to call
+// EntRevisions.Init to initialize the underlying Ent client.
+func NewEntRevisions(ac *sqlclient.Client, opts ...Option) (*EntRevisions, error) {
+	r := &EntRevisions{ac: ac}
+	for _, opt := range opts {
+		if err := opt(r); err != nil {
+			return nil, err
+		}
+	}
+	if r.schema == "" {
+		r.schema = "atlas_schema_revisions"
+	}
+	return r, nil
+}
+
+// WithSchema configures the schema to use for the revision table.
+func WithSchema(s string) Option {
+	return func(r *EntRevisions) error {
+		r.schema = s
+		return nil
+	}
 }
 
 // Init makes sure the revision table does exist in the connected database.
 func (r *EntRevisions) Init(ctx context.Context) error {
-	return r.c.Schema.Create(ctx, entschema.WithAtlas(true))
+	// Try to open a connection to the schema we are storing the revision table in.
+	_, err := sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
+	// If the driver does not support changing the schema (most likely SQLite) use the existing connection.
+	if err != nil && errors.Is(err, sqlclient.ErrUnsupported) {
+		r.ec = ent.NewClient(ent.Driver(sql.OpenDB(r.ac.Name, r.ac.DB)))
+		return r.ec.Schema.Create(ctx, entschema.WithAtlas(true))
+	}
+	// The driver supports connecting to a named schema. Make sure it does exist.
+	if err := r.ac.ApplyChanges(ctx, []schema.Change{
+		&schema.AddSchema{S: &schema.Schema{Name: r.schema}, Extra: []schema.Clause{&schema.IfNotExists{}}},
+	}); err != nil {
+		return err
+	}
+	// Create a connection to the schema.
+	sc, err := sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
+	if err != nil {
+		return err
+	}
+	r.ec = ent.NewClient(ent.Driver(sql.OpenDB(sc.Name, sc.DB)))
+	return r.ec.Schema.Create(ctx, entschema.WithAtlas(true))
 }
 
 // ReadRevisions reads the revisions from the revisions table.
 func (r *EntRevisions) ReadRevisions(ctx context.Context) (migrate.Revisions, error) {
-	revs, err := r.c.Revision.Query().Order(ent.Asc(revision.FieldID)).All(ctx)
+	revs, err := r.ec.Revision.Query().Order(ent.Asc(revision.FieldID)).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +102,7 @@ func (r *EntRevisions) ReadRevisions(ctx context.Context) (migrate.Revisions, er
 func (r *EntRevisions) WriteRevisions(ctx context.Context, rs migrate.Revisions) error {
 	bulk := make([]*ent.RevisionCreate, len(rs))
 	for i, rev := range rs {
-		bulk[i] = r.c.Revision.Create().
+		bulk[i] = r.ec.Revision.Create().
 			SetID(rev.Version).
 			SetDescription(rev.Description).
 			SetExecutionState(revision.ExecutionState(rev.ExecutionState)).
@@ -65,7 +112,7 @@ func (r *EntRevisions) WriteRevisions(ctx context.Context, rs migrate.Revisions)
 			SetOperatorVersion(rev.OperatorVersion).
 			SetMeta(rev.Meta)
 	}
-	return r.c.Revision.CreateBulk(bulk...).
+	return r.ec.Revision.CreateBulk(bulk...).
 		OnConflict(
 			sql.ConflictColumns(revision.FieldID),
 		).

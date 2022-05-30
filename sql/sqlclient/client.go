@@ -7,6 +7,7 @@ package sqlclient
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -85,10 +86,23 @@ type (
 	// OpenerFunc allows using a function as an Opener.
 	OpenerFunc func(context.Context, *url.URL) (*Client, error)
 
+	// URLParser parses an url.URL into an enriched URL and attaches additional info to it.
+	URLParser interface {
+		ParseURL(*url.URL) *URL
+	}
+
+	// URLParserFunc allows using a function as an URLParser.
+	URLParserFunc func(*url.URL) *URL
+
+	// SchemaChanger is implemented by a driver if it how to change the connection URL to represent another schema.
+	SchemaChanger interface {
+		ChangeSchema(*url.URL, string) *url.URL
+	}
+
 	driver struct {
 		Opener
-		name  string
-		parse func(*url.URL) *URL
+		name   string
+		parser URLParser
 	}
 )
 
@@ -97,31 +111,76 @@ func (f OpenerFunc) Open(ctx context.Context, u *url.URL) (*Client, error) {
 	return f(ctx, u)
 }
 
+// ParseURL calls f(u).
+func (f URLParserFunc) ParseURL(u *url.URL) *URL {
+	return f(u)
+}
+
 var drivers sync.Map
 
+type (
+	// config holds additional configuration values for opening a Client.
+	config struct {
+		schema string
+	}
+
+	// OpenOption allows to configure a config using functional arguments.
+	OpenOption func(*config) error
+)
+
+var ErrUnsupported = errors.New("sql/sqlclient: driver does not support changing connected schema")
+
 // Open opens an Atlas client by its provided url string.
-func Open(ctx context.Context, s string) (*Client, error) {
+func Open(ctx context.Context, s string, opts ...OpenOption) (*Client, error) {
 	u, err := url.Parse(s)
 	if err != nil {
 		return nil, fmt.Errorf("sql/sqlclient: parse open url: %w", err)
 	}
+	return OpenURL(ctx, u, opts...)
+}
+
+// OpenURL opens an Atlas client by its provided url.URL.
+func OpenURL(ctx context.Context, u *url.URL, opts ...OpenOption) (*Client, error) {
+	cfg := &config{}
+	for _, opt := range opts {
+		if err := opt(cfg); err != nil {
+			return nil, err
+		}
+	}
 	v, ok := drivers.Load(u.Scheme)
 	if !ok {
 		return nil, fmt.Errorf("sql/sqlclient: no opener was register with name %q", u.Scheme)
+	}
+	// If there is a schema given and the driver allows to change the schema for the url, do it.
+	if cfg.schema != "" {
+		sc, ok := v.(driver).parser.(SchemaChanger)
+		if !ok {
+			return nil, ErrUnsupported
+		}
+		u = sc.ChangeSchema(u, cfg.schema)
 	}
 	client, err := v.(driver).Open(ctx, u)
 	if err != nil {
 		return nil, err
 	}
 	if client.URL == nil {
-		client.URL = v.(driver).parse(u)
+		client.URL = v.(driver).parser.ParseURL(u)
 	}
 	return client, nil
 }
 
+// OpenSchema opens the connection to the given schema.
+// If the registered driver does not support this, ErrUnsupported is returned instead.
+func OpenSchema(s string) OpenOption {
+	return func(c *config) error {
+		c.schema = s
+		return nil
+	}
+}
+
 type (
 	registerOptions struct {
-		parse    func(*url.URL) *URL
+		parser   URLParser
 		flavours []string
 		codec    interface {
 			schemaspec.Marshaler
@@ -143,9 +202,9 @@ func RegisterFlavours(flavours ...string) RegisterOption {
 
 // RegisterURLParser allows registering a function for parsing
 // the url.URL and attach additional info to the extended URL.
-func RegisterURLParser(p func(*url.URL) *URL) RegisterOption {
+func RegisterURLParser(p URLParser) RegisterOption {
 	return func(opts *registerOptions) {
-		opts.parse = p
+		opts.parser = p
 	}
 }
 
@@ -170,7 +229,7 @@ func DriverOpener(open func(schema.ExecQuerier) (migrate.Driver, error)) Opener 
 		if !ok {
 			return nil, fmt.Errorf("sql/sqlclient: unexpected missing opener %q", u.Scheme)
 		}
-		ur := v.(driver).parse(u)
+		ur := v.(driver).parser.ParseURL(u)
 		db, err := sql.Open(v.(driver).name, ur.DSN)
 		if err != nil {
 			return nil, err
@@ -198,7 +257,7 @@ func Register(name string, opener Opener, opts ...RegisterOption) {
 	}
 	opt := &registerOptions{
 		// Default URL parser uses the URL as the DSN.
-		parse: func(u *url.URL) *URL { return &URL{URL: u, DSN: u.String()} },
+		parser: URLParserFunc(func(u *url.URL) *URL { return &URL{URL: u, DSN: u.String()} }),
 	}
 	for i := range opts {
 		opts[i](opt)
@@ -220,7 +279,7 @@ func Register(name string, opener Opener, opts ...RegisterOption) {
 		}
 		drivers.Store(f, driver{
 			name:   name,
-			parse:  opt.parse,
+			parser: opt.parser,
 			Opener: opener,
 		})
 	}
