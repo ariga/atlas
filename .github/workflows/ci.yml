@@ -480,7 +480,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       cockroach:
-        image: cockroach/cockroach:v21.2.11
+        image: cockroachdb/cockroach:v21.2.11
         
         ports:
           - 26257:26257
