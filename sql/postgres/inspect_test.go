@@ -23,6 +23,7 @@ var (
 	queryTables      = sqltest.Escape(fmt.Sprintf(tablesQuery, "$1"))
 	queryChecks      = sqltest.Escape(fmt.Sprintf(checksQuery, "$2"))
 	queryColumns     = sqltest.Escape(fmt.Sprintf(columnsQuery, "$2"))
+	queryCrdbColumns = sqltest.Escape(fmt.Sprintf(crdbColumnsQuery, "$2"))
 	queryIndexes     = sqltest.Escape(fmt.Sprintf(indexesQuery, "$2"))
 	queryCrdbIndexes = sqltest.Escape(fmt.Sprintf(crdbIndexesQuery, "$2"))
 )
@@ -30,7 +31,6 @@ var (
 func TestDriver_InspectTable(t *testing.T) {
 	tests := []struct {
 		name   string
-		crdb   bool
 		before func(mock)
 		expect func(*require.Assertions, *schema.Table, error)
 	}{
@@ -186,61 +186,6 @@ users           | idx6            | brin        | c1          | f       | t     
 			},
 		},
 		{
-			name: "crdb table indexes",
-			crdb: true,
-			before: func(m mock) {
-				m.tableExists("public", "users", true)
-				m.ExpectQuery(queryColumns).
-					WithArgs("public", "users").
-					WillReturnRows(sqltest.Rows(`
-table_name  | column_name | data_type | is_nullable |              column_default               | character_maximum_length | numeric_precision | datetime_precision | numeric_scale | character_set_name | collation_name | udt_name | is_identity | identity_start | identity_increment |       identity_generation        | generation_expression | comment | typtype | oid 
-------------+-------------+-----------+-------------+-------------------------------------------+--------------------------+-------------------+--------------------+---------------+--------------------+----------------+----------+-------------+----------------+--------------------+----------------------------------+-----------------------+---------+---------+-----
-users       | a           | bigint    | NO          |                                           |                          |                64 |                    |             0 |                    |                | int8     | NO          |                |                    |                                  |                       |         | b       | 20 
-users       | b           | bigint    | NO          |                                           |                          |                64 |                    |             0 |                    |                | int8     | NO          |                |                    |                                  |                       |         | b       | 20 
-users       | c           | bigint    | NO          |                                           |                          |                64 |                    |             0 |                    |                | int8     | NO          |                |                    |                                  |                       |         | b       | 20 
-users       | d           | bigint    | NO          |                                           |                          |                64 |                    |             0 |                    |                | int8     | NO          |                |                    |                                  |                       |         | b       | 20 
-`))
-				m.ExpectQuery(queryCrdbIndexes).
-					WithArgs("public", "users").
-					WillReturnRows(sqltest.Rows(`
-table_name  | index_name | column_name | primary | unique | constraint_type |                                   create_stmt                                   | predicate | expression | comment 
-------------+------------+-------------+---------+--------+-----------------+---------------------------------------------------------------------------------+-----------+------------+---------
-users       | idx1       | a           | false   | false  |                 | CREATE INDEX idx1 ON defaultdb.public.serial USING btree (a ASC)                |           | a          |  
-users       | idx2       | b           | false   | true   | u               | CREATE UNIQUE INDEX idx2 ON defaultdb.public.serial USING btree (b ASC)         |           | b          |  
-users       | idx3       | c           | false   | false  |                 | CREATE INDEX idx3 ON defaultdb.public.serial USING btree (c DESC)               |           | c          | boring 
-users       | idx4       | d           | false   | false  |                 | CREATE INDEX idx5 ON defaultdb.public.serial USING btree (d ASC) WHERE (d < 10) | d < 10    | d          |  
-users       | idx5       | a           | false   | false  |                 | CREATE INDEX idx5 ON defaultdb.public.serial USING btree (a ASC, b ASC, c ASC)  |           | a          |  
-users       | idx5       | b           | false   | false  |                 | CREATE INDEX idx5 ON defaultdb.public.serial USING btree (a ASC, b ASC, c ASC)  |           | b          |  
-users       | idx5       | c           | false   | false  |                 | CREATE INDEX idx5 ON defaultdb.public.serial USING btree (a ASC, b ASC, c ASC)  |           | c          |  
-`))
-				m.noFKs()
-				m.noChecks()
-			},
-			expect: func(require *require.Assertions, t *schema.Table, err error) {
-				require.NoError(err)
-				require.Equal("users", t.Name)
-				columns := []*schema.Column{
-					{Name: "a", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
-					{Name: "b", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
-					{Name: "c", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
-					{Name: "d", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
-				}
-				indexes := []*schema.Index{
-					{Name: "idx1", Table: t, Attrs: []schema.Attr{&IndexType{T: "btree"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[0]}}},
-					{Name: "idx2", Unique: true, Table: t, Attrs: []schema.Attr{&IndexType{T: "btree"}, &ConType{T: "u"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1]}}},
-					{Name: "idx3", Table: t, Attrs: []schema.Attr{&IndexType{T: "btree"}, &schema.Comment{Text: "boring"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[2], Desc: true}}},
-					{Name: "idx4", Table: t, Attrs: []schema.Attr{&IndexType{T: "btree"}, &IndexPredicate{P: `d < 10`}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[3]}}},
-					{Name: "idx5", Table: t, Attrs: []schema.Attr{&IndexType{T: "btree"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[0]}, {SeqNo: 2, C: columns[1]}, {SeqNo: 3, C: columns[2]}}},
-				}
-				columns[0].Indexes = []*schema.Index{indexes[0], indexes[4]}
-				columns[1].Indexes = []*schema.Index{indexes[1], indexes[4]}
-				columns[2].Indexes = []*schema.Index{indexes[2], indexes[4]}
-				columns[3].Indexes = []*schema.Index{indexes[3]}
-				require.EqualValues(columns, t.Columns)
-				require.EqualValues(indexes, t.Indexes)
-			},
-		},
-		{
 			name: "fks",
 			before: func(m mock) {
 				m.tableExists("public", "users", true)
@@ -344,11 +289,7 @@ users        | users_check1       | (((c2 + c1) + c3) > 10) | c3          | {2,1
 			mk := mock{m}
 			mk.version("130000")
 			var drv migrate.Driver
-			if tt.crdb {
-				drv, err = OpenCRDB(db)
-			} else {
-				drv, err = Open(db)
-			}
+			drv, err = Open(db)
 			require.NoError(t, err)
 			mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= $1"))).
 				WithArgs("public").
@@ -431,6 +372,79 @@ logs3      | c5         | integer   | NO          |                |            
 		{X: &schema.RawExpr{X: "(a + b)"}},
 		{X: &schema.RawExpr{X: "(a + (b * 2))"}},
 	}, key.Parts)
+}
+
+func TestDriver_InspectCRDBSchema(t *testing.T) {
+	db, m, err := sqlmock.New()
+	require.NoError(t, err)
+	mk := mock{m}
+	mk.ExpectQuery(sqltest.Escape(paramsQuery)).
+		WillReturnRows(sqltest.Rows(`
+					setting
+				------------
+				130000
+				en_US.utf8
+				en_US.utf8
+				cockroach
+				`))
+	drv, err := Open(db)
+	require.NoError(t, err)
+	mk.ExpectQuery(sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "= $1"))).
+		WithArgs("public").
+		WillReturnRows(sqltest.Rows(`
+schema_name
+--------------------
+public
+`))
+	mk.tableExists("public", "users", true)
+	mk.ExpectQuery(queryCrdbColumns).
+		WithArgs("public", "users").
+		WillReturnRows(sqltest.Rows(`
+table_name  | column_name | data_type | is_nullable |              column_default               | character_maximum_length | numeric_precision | datetime_precision | numeric_scale | character_set_name | collation_name | udt_name | is_identity | identity_start | identity_increment |       identity_generation        | generation_expression | comment | typtype | oid 
+------------+-------------+-----------+-------------+-------------------------------------------+--------------------------+-------------------+--------------------+---------------+--------------------+----------------+----------+-------------+----------------+--------------------+----------------------------------+-----------------------+---------+---------+-----
+users       | a           | bigint    | NO          |                                           |                          |                64 |                    |             0 |                    |                | int8     | NO          |                |                    |                                  |                       |         | b       | 20 
+users       | b           | bigint    | NO          |                                           |                          |                64 |                    |             0 |                    |                | int8     | NO          |                |                    |                                  |                       |         | b       | 20 
+users       | c           | bigint    | NO          |                                           |                          |                64 |                    |             0 |                    |                | int8     | NO          |                |                    |                                  |                       |         | b       | 20 
+users       | d           | bigint    | NO          |                                           |                          |                64 |                    |             0 |                    |                | int8     | NO          |                |                    |                                  |                       |         | b       | 20 
+`))
+	mk.ExpectQuery(queryCrdbIndexes).
+		WithArgs("public", "users").
+		WillReturnRows(sqltest.Rows(`
+table_name  | index_name | column_name | primary | unique | constraint_type |                                   create_stmt                                   | predicate | expression | comment 
+------------+------------+-------------+---------+--------+-----------------+---------------------------------------------------------------------------------+-----------+------------+---------
+users       | idx1       | a           | false   | false  |                 | CREATE INDEX idx1 ON defaultdb.public.serial USING btree (a ASC)                |           | a          |  
+users       | idx2       | b           | false   | true   | u               | CREATE UNIQUE INDEX idx2 ON defaultdb.public.serial USING btree (b ASC)         |           | b          |  
+users       | idx3       | c           | false   | false  |                 | CREATE INDEX idx3 ON defaultdb.public.serial USING btree (c DESC)               |           | c          | boring 
+users       | idx4       | d           | false   | false  |                 | CREATE INDEX idx5 ON defaultdb.public.serial USING btree (d ASC) WHERE (d < 10) | d < 10    | d          |  
+users       | idx5       | a           | false   | false  |                 | CREATE INDEX idx5 ON defaultdb.public.serial USING btree (a ASC, b ASC, c ASC)  |           | a          |  
+users       | idx5       | b           | false   | false  |                 | CREATE INDEX idx5 ON defaultdb.public.serial USING btree (a ASC, b ASC, c ASC)  |           | b          |  
+users       | idx5       | c           | false   | false  |                 | CREATE INDEX idx5 ON defaultdb.public.serial USING btree (a ASC, b ASC, c ASC)  |           | c          |  
+`))
+	mk.noFKs()
+	mk.noChecks()
+	s, err := drv.InspectSchema(context.Background(), "public", nil)
+	require.NoError(t, err)
+	tbl := s.Tables[0]
+	require.Equal(t, "users", tbl.Name)
+	columns := []*schema.Column{
+		{Name: "a", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
+		{Name: "b", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
+		{Name: "c", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
+		{Name: "d", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
+	}
+	indexes := []*schema.Index{
+		{Name: "idx1", Table: tbl, Attrs: []schema.Attr{&IndexType{T: "btree"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[0]}}},
+		{Name: "idx2", Unique: true, Table: tbl, Attrs: []schema.Attr{&IndexType{T: "btree"}, &ConType{T: "u"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1]}}},
+		{Name: "idx3", Table: tbl, Attrs: []schema.Attr{&IndexType{T: "btree"}, &schema.Comment{Text: "boring"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[2], Desc: true}}},
+		{Name: "idx4", Table: tbl, Attrs: []schema.Attr{&IndexType{T: "btree"}, &IndexPredicate{P: `d < 10`}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[3]}}},
+		{Name: "idx5", Table: tbl, Attrs: []schema.Attr{&IndexType{T: "btree"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[0]}, {SeqNo: 2, C: columns[1]}, {SeqNo: 3, C: columns[2]}}},
+	}
+	columns[0].Indexes = []*schema.Index{indexes[0], indexes[4]}
+	columns[1].Indexes = []*schema.Index{indexes[1], indexes[4]}
+	columns[2].Indexes = []*schema.Index{indexes[2], indexes[4]}
+	columns[3].Indexes = []*schema.Index{indexes[3]}
+	require.EqualValues(t, columns, tbl.Columns)
+	require.EqualValues(t, indexes, tbl.Indexes)
 }
 
 func TestDriver_InspectSchema(t *testing.T) {
@@ -639,9 +653,9 @@ func (m mock) version(version string) {
 		WillReturnRows(sqltest.Rows(`
   setting
 ------------
- en_US.utf8
- en_US.utf8
  ` + version + `
+ en_US.utf8
+ en_US.utf8
 `))
 }
 
