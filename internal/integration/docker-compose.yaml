@@ -134,3 +134,10 @@ services:
     image: pingcap/tidb:v6.0.0
     ports:
       - "4310:4000"
+  
+  cockroach21.2.11:
+    platform: linux/amd64
+    image: cockroachdb/cockroach:v21.2.11
+    ports:
+      - "26257:26257"
+    command: "start-single-node --insecure"
