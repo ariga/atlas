@@ -62,23 +62,23 @@ func (r *EntRevisions) Init(ctx context.Context) error {
 		r.ec = ent.NewClient(ent.Driver(sql.OpenDB(r.ac.Name, r.ac.DB)))
 		return r.ec.Schema.Create(ctx, entschema.WithAtlas(true))
 	}
-	// If the connection attempt was successful, use it.
-	if err == nil {
-		r.sc = sc
-		r.ec = ent.NewClient(ent.Driver(sql.OpenDB(sc.Name, sc.DB)))
-		return r.ec.Schema.Create(ctx, entschema.WithAtlas(true))
+	// Driver does support changing schemas. Make sure the schema does exist before proceeding.
+	_, err2 := r.ac.InspectSchema(ctx, r.schema, &schema.InspectOptions{Mode: schema.InspectSchemas})
+	if err2 != nil && !schema.IsNotExistError(err2) {
+		return err2
 	}
-	// If the revision schema does not exist yet, attempt to create it.
-	_, err = r.ac.InspectSchema(ctx, r.schema, &schema.InspectOptions{Mode: schema.InspectSchemas})
-	if err != nil && !schema.IsNotExistError(err) {
-		return err
-	}
-	if schema.IsNotExistError(err) {
+	if schema.IsNotExistError(err2) {
 		if err := r.ac.ApplyChanges(ctx, []schema.Change{
 			&schema.AddSchema{S: &schema.Schema{Name: r.schema}},
 		}); err != nil {
 			return err
 		}
+	}
+	// If the previous connection attempt was successful, use it.
+	if err == nil {
+		r.sc = sc
+		r.ec = ent.NewClient(ent.Driver(sql.OpenDB(sc.Name, sc.DB)))
+		return r.ec.Schema.Create(ctx, entschema.WithAtlas(true))
 	}
 	// Create a connection to the schema.
 	r.sc, err = sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
