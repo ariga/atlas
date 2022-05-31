@@ -85,7 +85,7 @@ func (r *EntRevisions) Init(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	r.ec = ent.NewClient(ent.Driver(sql.OpenDB(sc.Name, sc.DB)))
+	r.ec = ent.NewClient(ent.Driver(sql.OpenDB(r.sc.Name, r.sc.DB)))
 	return r.ec.Schema.Create(ctx, entschema.WithAtlas(true))
 }
 
