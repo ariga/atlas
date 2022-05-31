@@ -56,7 +56,8 @@ func WithSchema(s string) Option {
 // Init makes sure the revision table does exist in the connected database.
 func (r *EntRevisions) Init(ctx context.Context) error {
 	// Try to open a connection to the schema we are storing the revision table in.
-	sc, err := sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
+	var err error
+	r.sc, err = sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
 	// If the driver does not support changing the schema (most likely SQLite) use the existing connection.
 	if err != nil && errors.Is(err, sqlclient.ErrUnsupported) {
 		r.ec = ent.NewClient(ent.Driver(sql.OpenDB(r.ac.Name, r.ac.DB)))
@@ -74,16 +75,12 @@ func (r *EntRevisions) Init(ctx context.Context) error {
 			return err
 		}
 	}
-	// If the previous connection attempt was successful, use it.
-	if err == nil {
-		r.sc = sc
-		r.ec = ent.NewClient(ent.Driver(sql.OpenDB(sc.Name, sc.DB)))
-		return r.ec.Schema.Create(ctx, entschema.WithAtlas(true))
-	}
-	// Create a connection to the schema.
-	r.sc, err = sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
-	if err != nil {
-		return err
+	// If the previous connection attempt was unsuccessful, re-try with the schema present.
+	if r.sc == nil {
+		r.sc, err = sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
+		if err != nil {
+			return err
+		}
 	}
 	r.ec = ent.NewClient(ent.Driver(sql.OpenDB(r.sc.Name, r.sc.DB)))
 	return r.ec.Schema.Create(ctx, entschema.WithAtlas(true))
