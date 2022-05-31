@@ -119,13 +119,13 @@ func (f URLParserFunc) ParseURL(u *url.URL) *URL {
 var drivers sync.Map
 
 type (
-	// config holds additional configuration values for opening a Client.
-	config struct {
+	// openOptions holds additional configuration values for opening a Client.
+	openOptions struct {
 		schema string
 	}
 
-	// OpenOption allows to configure a config using functional arguments.
-	OpenOption func(*config) error
+	// OpenOption allows to configure a openOptions using functional arguments.
+	OpenOption func(*openOptions) error
 )
 
 // ErrUnsupported is returned if a registered driver does not support changing the schema.
@@ -142,7 +142,7 @@ func Open(ctx context.Context, s string, opts ...OpenOption) (*Client, error) {
 
 // OpenURL opens an Atlas client by its provided url.URL.
 func OpenURL(ctx context.Context, u *url.URL, opts ...OpenOption) (*Client, error) {
-	cfg := &config{}
+	cfg := &openOptions{}
 	for _, opt := range opts {
 		if err := opt(cfg); err != nil {
 			return nil, err
@@ -173,7 +173,7 @@ func OpenURL(ctx context.Context, u *url.URL, opts ...OpenOption) (*Client, erro
 // OpenSchema opens the connection to the given schema.
 // If the registered driver does not support this, ErrUnsupported is returned instead.
 func OpenSchema(s string) OpenOption {
-	return func(c *config) error {
+	return func(c *openOptions) error {
 		c.schema = s
 		return nil
 	}

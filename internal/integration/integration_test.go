@@ -475,6 +475,9 @@ func testEntRevisions(t T) {
 
 	r, err := entmigrate.NewEntRevisions(c, entmigrate.WithSchema(name))
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		r.Close()
+	})
 
 	require.NoError(t, r.Init(context.Background()))
 	t.dropSchemas(name)

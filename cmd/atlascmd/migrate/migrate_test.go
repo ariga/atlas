@@ -23,6 +23,9 @@ func TestEntRevisions_Init(t *testing.T) {
 	)
 	require.NoError(t, err)
 	r, err := NewEntRevisions(c)
+	t.Cleanup(func() {
+		r.Close()
+	})
 	require.NoError(t, err)
 
 	require.NoError(t, r.Init(context.Background()))

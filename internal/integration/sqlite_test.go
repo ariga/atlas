@@ -57,6 +57,9 @@ func TestSQLite_EntRevisions(t *testing.T) {
 
 		r, err := entmigrate.NewEntRevisions(c)
 		require.NoError(t, err)
+		t.Cleanup(func() {
+			r.Close()
+		})
 
 		require.NoError(t, r.Init(context.Background()))
 

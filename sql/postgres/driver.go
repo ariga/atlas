@@ -177,11 +177,6 @@ func (parser) ChangeSchema(u *url.URL, s string) *url.URL {
 	return &nu
 }
 
-// parse returns an enriched sqlclient.URL from a url.URL.
-func parse(u *url.URL) *sqlclient.URL {
-	return &sqlclient.URL{URL: u, DSN: u.String(), Schema: u.Query().Get("search_path")}
-}
-
 // Standard column types (and their aliases) as defined in
 // PostgreSQL codebase/website.
 const (

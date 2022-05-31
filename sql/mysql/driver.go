@@ -247,11 +247,6 @@ func (parser) ChangeSchema(u *url.URL, s string) *url.URL {
 	return &nu
 }
 
-// parse returns an enriched sqlclient.URL from a url.URL.
-func parse(u *url.URL) *sqlclient.URL {
-	return &sqlclient.URL{URL: u, DSN: dsn(u), Schema: strings.TrimPrefix(u.Path, "/")}
-}
-
 // dsn returns the MySQL standard DSN for opening
 // the sql.DB from the user provided URL.
 func dsn(u *url.URL) string {

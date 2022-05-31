@@ -21,6 +21,7 @@ type (
 	// A EntRevisions provides implementation for the migrate.RevisionReadWriter interface.
 	EntRevisions struct {
 		ac     *sqlclient.Client // underlying Atlas client
+		sc     *sqlclient.Client // underlying Atlas client connected to the named schema
 		ec     *ent.Client       // underlying Ent client
 		schema string            // name of the schema the revision table resides in
 	}
@@ -55,20 +56,32 @@ func WithSchema(s string) Option {
 // Init makes sure the revision table does exist in the connected database.
 func (r *EntRevisions) Init(ctx context.Context) error {
 	// Try to open a connection to the schema we are storing the revision table in.
-	_, err := sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
+	sc, err := sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
 	// If the driver does not support changing the schema (most likely SQLite) use the existing connection.
 	if err != nil && errors.Is(err, sqlclient.ErrUnsupported) {
 		r.ec = ent.NewClient(ent.Driver(sql.OpenDB(r.ac.Name, r.ac.DB)))
 		return r.ec.Schema.Create(ctx, entschema.WithAtlas(true))
 	}
-	// The driver supports connecting to a named schema. Make sure it does exist.
-	if err := r.ac.ApplyChanges(ctx, []schema.Change{
-		&schema.AddSchema{S: &schema.Schema{Name: r.schema}, Extra: []schema.Clause{&schema.IfNotExists{}}},
-	}); err != nil {
+	// If the connection attempt was successful, use it.
+	if err == nil {
+		r.sc = sc
+		r.ec = ent.NewClient(ent.Driver(sql.OpenDB(sc.Name, sc.DB)))
+		return r.ec.Schema.Create(ctx, entschema.WithAtlas(true))
+	}
+	// If the revision schema does not exist yet, attempt to create it.
+	_, err = r.ac.InspectSchema(ctx, r.schema, &schema.InspectOptions{Mode: schema.InspectSchemas})
+	if err != nil && !schema.IsNotExistError(err) {
 		return err
 	}
+	if schema.IsNotExistError(err) {
+		if err := r.ac.ApplyChanges(ctx, []schema.Change{
+			&schema.AddSchema{S: &schema.Schema{Name: r.schema}},
+		}); err != nil {
+			return err
+		}
+	}
 	// Create a connection to the schema.
-	sc, err := sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
+	r.sc, err = sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
 	if err != nil {
 		return err
 	}
@@ -118,6 +131,13 @@ func (r *EntRevisions) WriteRevisions(ctx context.Context, rs migrate.Revisions)
 		).
 		UpdateNewValues().
 		Exec(ctx)
+}
+
+// Close closes the Atlas client connected to the revision schema (if any).
+func (r *EntRevisions) Close() {
+	if r.sc != nil {
+		r.sc.Close()
+	}
 }
 
 var _ migrate.RevisionReadWriter = (*EntRevisions)(nil)
