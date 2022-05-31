@@ -855,7 +855,7 @@ ORDER BY
 	t1.table_schema, t1.table_name
 `
 	tablesQueryArgs = `
-	SELECT
+SELECT
 	t1.table_schema,
 	t1.table_name,
 	pg_catalog.obj_description(t3.oid, 'pg_class') AS comment,

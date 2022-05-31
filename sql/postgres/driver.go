@@ -74,8 +74,7 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 		return nil, fmt.Errorf("postgres: unsupported postgres version: %s", c.version)
 	}
 	// Means we are connected to CockroachDB because we have a result for name='crdb_version'. see `paramsQuery`.
-	if len(params) == 4 {
-		c.crdb = true
+	if c.crdb = len(params) == 4; c.crdb {
 		return &Driver{
 			conn:        c,
 			Differ:      &sqlx.Diff{DiffDriver: &crdbDiff{diff{c}}},
