@@ -51,29 +51,23 @@ type crdbDiff struct{ diff }
 
 var _ sqlx.DiffDriver = (*crdbDiff)(nil)
 
-// IndexAttrChanged reports if the index attributes were changed.
-func (cd *crdbDiff) IndexAttrChanged(from, to []schema.Attr) bool {
-	t1 := &IndexType{T: IndexTypeBTree}
-	if sqlx.Has(from, t1) {
-		t1.T = strings.ToUpper(t1.T)
-	}
-	t2 := &IndexType{T: IndexTypeBTree}
-	if sqlx.Has(to, t2) {
-		t2.T = strings.ToUpper(t2.T)
-	}
-	if t1.T != t2.T {
-		return true
-	}
-	var p1, p2 IndexPredicate
-	return sqlx.Has(from, &p1) != sqlx.Has(to, &p2) || (p1.P != p2.P && p1.P != sqlx.MayWrap(p2.P))
-}
-
 // Normalize implements the sqlx.Normalizer.
 func (cd *crdbDiff) Normalize(from, to *schema.Table) {
 	cd.normalize(from)
 	cd.normalize(to)
-	cd.diff.normalize(from)
-	cd.diff.normalize(to)
+}
+
+func (cd *crdbDiff) ColumnChange(from, to *schema.Column) (schema.ChangeKind, error) {
+	// All serial types in crdb become bigints under the hood, see: https://www.cockroachlabs.com/docs/stable/serial.html#generated-values-for-mode-sql_sequence-and-sql_sequence_cached.
+	if s, ok := to.Type.Type.(*SerialType); ok {
+		to.Type.Type = &schema.IntegerType{
+			T: TypeBigInt,
+		}
+		defer func() {
+			to.Type.Type = s
+		}()
+	}
+	return cd.diff.ColumnChange(from, to)
 }
 
 func (cd *crdbDiff) normalize(table *schema.Table) {
@@ -82,7 +76,8 @@ func (cd *crdbDiff) normalize(table *schema.Table) {
 		if !ok {
 			prim = schema.NewColumn("rowid").
 				AddAttrs(Identity{}).
-				SetType(&schema.IntegerType{})
+				SetType(&schema.IntegerType{T: TypeBigInt}).
+				SetDefault(&schema.RawExpr{X: "unique_rowid()"})
 			table.AddColumns(prim)
 		}
 		table.PrimaryKey = &schema.Index{
@@ -125,6 +120,45 @@ func (cd *crdbDiff) normalize(table *schema.Table) {
 			case TypeJSON:
 				t.T = TypeJSONB
 			}
+		case *SerialType:
+			c.Default = &schema.RawExpr{
+				X: "unique_rowid()",
+			}
+		case *schema.TimeType:
+			// "timestamp" and "timestamptz" are accepted as
+			// abbreviations for timestamp with(out) time zone.
+			switch t.T {
+			case "timestamp with time zone":
+				t.T = "timestamptz"
+			case "timestamp without time zone":
+				t.T = "timestamp"
+			}
+		case *schema.FloatType:
+			// The same numeric precision is used in all platform.
+			// See: https://www.postgresql.org/docs/current/datatype-numeric.html
+			switch {
+			case t.T == "float" && t.Precision < 25:
+				// float(1) to float(24) are selected as "real" type.
+				t.T = "real"
+				fallthrough
+			case t.T == "real":
+				t.Precision = 24
+			case t.T == "float" && t.Precision >= 25:
+				// float(25) to float(53) are selected as "double precision" type.
+				t.T = "double precision"
+				fallthrough
+			case t.T == "double precision":
+				t.Precision = 53
+			}
+		case *schema.StringType:
+			switch t.T {
+			case "character", "char":
+				// Character without length specifier
+				// is equivalent to character(1).
+				t.Size = 1
+			}
+		case *enumType:
+			c.Type.Type = &schema.EnumType{T: t.T, Values: t.Values}
 		}
 	}
 }

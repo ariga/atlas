@@ -75,9 +75,212 @@ func crdbRun(t *testing.T, fn func(*crdbTest)) {
 	}
 }
 
+func TestCockroach_Executor(t *testing.T) {
+	crdbRun(t, func(t *crdbTest) {
+		testExecutor(t)
+	})
+}
+
 func TestCockroach_AddDropTable(t *testing.T) {
 	crdbRun(t, func(t *crdbTest) {
 		testAddDrop(t)
+	})
+}
+
+func TestCockroach_Relation(t *testing.T) {
+	crdbRun(t, func(t *crdbTest) {
+		testRelation(t)
+	})
+}
+
+func TestCockroach_AddIndexedColumns(t *testing.T) {
+	crdbRun(t, func(t *crdbTest) {
+		s := &schema.Schema{
+			Name: "public",
+		}
+		usersT := &schema.Table{
+			Name:    "users",
+			Schema:  s,
+			Columns: []*schema.Column{{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&postgres.Identity{}}}},
+		}
+		usersT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: usersT.Columns[0]}}}
+		t.migrate(&schema.AddTable{T: usersT})
+		t.dropTables(usersT.Name)
+		usersT.Columns = append(usersT.Columns, &schema.Column{
+			Name:    "a",
+			Type:    &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true},
+			Default: &schema.Literal{V: "10"},
+		}, &schema.Column{
+			Name:    "b",
+			Type:    &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true},
+			Default: &schema.Literal{V: "10"},
+		}, &schema.Column{
+			Name:    "c",
+			Type:    &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}, Null: true},
+			Default: &schema.Literal{V: "10"},
+		})
+		parts := usersT.Columns[len(usersT.Columns)-3:]
+		usersT.Indexes = append(usersT.Indexes, &schema.Index{
+			Unique: true,
+			Name:   "a_b_c_unique",
+			Parts:  []*schema.IndexPart{{C: parts[0]}, {C: parts[1]}, {C: parts[2]}},
+		})
+		changes := t.diff(t.loadUsers(), usersT)
+		require.NotEmpty(t, changes, "usersT contains 3 new columns and 1 new index")
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, usersT)
+
+		// Dropping a column involves in a multi-column
+		// index causes the index to be dropped as well.
+		usersT.Columns = usersT.Columns[:len(usersT.Columns)-1]
+		changes = t.diff(t.loadUsers(), usersT)
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, t.loadUsers())
+		usersT = t.loadUsers()
+		_, ok := usersT.Index("a_b_c_unique")
+		require.False(t, ok)
+	})
+}
+
+func TestCockroach_AddColumns(t *testing.T) {
+	crdbRun(t, func(t *crdbTest) {
+		usersT := t.users()
+		t.dropTables(usersT.Name)
+		t.migrate(&schema.AddTable{T: usersT})
+		usersT.Columns = append(
+			usersT.Columns,
+			&schema.Column{Name: "a", Type: &schema.ColumnType{Type: &schema.BinaryType{T: "bytea"}}},
+			&schema.Column{Name: "b", Type: &schema.ColumnType{Type: &schema.FloatType{T: "double precision", Precision: 10}}, Default: &schema.Literal{V: "10.1"}},
+			&schema.Column{Name: "c", Type: &schema.ColumnType{Type: &schema.StringType{T: "character"}}, Default: &schema.Literal{V: "'y'"}},
+			&schema.Column{Name: "d", Type: &schema.ColumnType{Type: &schema.DecimalType{T: "numeric", Precision: 10, Scale: 2}}, Default: &schema.Literal{V: "0.99"}},
+			&schema.Column{Name: "e", Type: &schema.ColumnType{Type: &schema.JSONType{T: "json"}}, Default: &schema.Literal{V: "'{}'"}},
+			&schema.Column{Name: "f", Type: &schema.ColumnType{Type: &schema.JSONType{T: "jsonb"}}, Default: &schema.Literal{V: "'1'"}},
+			&schema.Column{Name: "g", Type: &schema.ColumnType{Type: &schema.FloatType{T: "float", Precision: 10}}, Default: &schema.Literal{V: "'1'"}},
+			&schema.Column{Name: "h", Type: &schema.ColumnType{Type: &schema.FloatType{T: "float", Precision: 30}}, Default: &schema.Literal{V: "'1'"}},
+			&schema.Column{Name: "i", Type: &schema.ColumnType{Type: &schema.FloatType{T: "float", Precision: 53}}, Default: &schema.Literal{V: "1"}},
+			&schema.Column{Name: "j", Type: &schema.ColumnType{Type: &postgres.SerialType{T: "serial"}}},
+			&schema.Column{Name: "m", Type: &schema.ColumnType{Type: &schema.BoolType{T: "boolean"}, Null: true}, Default: &schema.Literal{V: "false"}},
+			&schema.Column{Name: "n", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "geometry"}, Null: true}, Default: &schema.Literal{V: "'POINT(1 2)'"}},
+			&schema.Column{Name: "o", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "geometry"}, Null: true}, Default: &schema.Literal{V: "'LINESTRING(0 0, 1440 900)'"}},
+			&schema.Column{Name: "q", Type: &schema.ColumnType{Type: &postgres.ArrayType{T: "text[]"}, Null: true}, Default: &schema.Literal{V: "'{}'"}},
+		)
+		changes := t.diff(t.loadUsers(), usersT)
+		require.Len(t, changes, 14)
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, usersT)
+	})
+}
+
+func TestCockroach_ColumnInt(t *testing.T) {
+	ctx := context.Background()
+	run := func(t *testing.T, change func(*schema.Column)) {
+		crdbRun(t, func(t *crdbTest) {
+			usersT := &schema.Table{
+				Name:    "users",
+				Columns: []*schema.Column{{Name: "a", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}}},
+			}
+			err := t.drv.ApplyChanges(ctx, []schema.Change{&schema.AddTable{T: usersT}})
+			require.NoError(t, err)
+			t.dropTables(usersT.Name)
+			change(usersT.Columns[0])
+			changes := t.diff(t.loadUsers(), usersT)
+			require.Len(t, changes, 1)
+			t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+			ensureNoChange(t, usersT)
+		})
+	}
+
+	t.Run("ChangeNull", func(t *testing.T) {
+		run(t, func(c *schema.Column) {
+			c.Type.Null = true
+		})
+	})
+
+	t.Run("ChangeDefault", func(t *testing.T) {
+		run(t, func(c *schema.Column) {
+			c.Default = &schema.RawExpr{X: "0"}
+		})
+	})
+}
+
+func TestCockroach_ColumnArray(t *testing.T) {
+	crdbRun(t, func(t *crdbTest) {
+		usersT := t.users()
+		t.dropTables(usersT.Name)
+		t.migrate(&schema.AddTable{T: usersT})
+
+		// Add column.
+		usersT.Columns = append(
+			usersT.Columns,
+			&schema.Column{Name: "a", Type: &schema.ColumnType{Raw: "int[]", Type: &postgres.ArrayType{T: "int[]"}}, Default: &schema.Literal{V: "'{1}'"}},
+		)
+		changes := t.diff(t.loadUsers(), usersT)
+		require.Len(t, changes, 1)
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, usersT)
+
+		// Check default.
+		usersT.Columns[2].Default = &schema.RawExpr{X: "ARRAY[1]"}
+		ensureNoChange(t, usersT)
+
+		// Change default.
+		usersT.Columns[2].Default = &schema.RawExpr{X: "ARRAY[1,2]"}
+		changes = t.diff(t.loadUsers(), usersT)
+		require.Len(t, changes, 1)
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, usersT)
+	})
+}
+
+func TestCockroach_Enums(t *testing.T) {
+	crdbRun(t, func(t *crdbTest) {
+		ctx := context.Background()
+		usersT := &schema.Table{
+			Name:   "users",
+			Schema: t.realm().Schemas[0],
+			Columns: []*schema.Column{
+				{Name: "state", Type: &schema.ColumnType{Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}},
+			},
+		}
+		t.Cleanup(func() {
+			_, err := t.drv.ExecContext(ctx, "DROP TYPE IF EXISTS state, day")
+			require.NoError(t, err)
+		})
+
+		// Create table with an enum column.
+		err := t.drv.ApplyChanges(ctx, []schema.Change{&schema.AddTable{T: usersT}})
+		require.NoError(t, err, "create a new table with an enum column")
+		t.dropTables(usersT.Name)
+		ensureNoChange(t, usersT)
+
+		// Add another enum column.
+		usersT.Columns = append(
+			usersT.Columns,
+			&schema.Column{Name: "day", Type: &schema.ColumnType{Type: &schema.EnumType{T: "day", Values: []string{"sunday", "monday"}}}},
+		)
+		changes := t.diff(t.loadUsers(), usersT)
+		require.Len(t, changes, 1)
+		err = t.drv.ApplyChanges(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+		require.NoError(t, err, "add a new enum column to existing table")
+		ensureNoChange(t, usersT)
+
+		// Add a new value to an existing enum.
+		e := usersT.Columns[2].Type.Type.(*schema.EnumType)
+		e.Values = append(e.Values, "tuesday")
+		changes = t.diff(t.loadUsers(), usersT)
+		require.Len(t, changes, 1)
+		err = t.drv.ApplyChanges(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+		require.NoError(t, err, "append a value to existing enum")
+		ensureNoChange(t, usersT)
+
+		// Add multiple new values to an existing enum.
+		e = usersT.Columns[2].Type.Type.(*schema.EnumType)
+		e.Values = append(e.Values, "wednesday", "thursday", "friday", "saturday")
+		changes = t.diff(t.loadUsers(), usersT)
+		require.Len(t, changes, 1)
+		err = t.drv.ApplyChanges(ctx, []schema.Change{&schema.ModifyTable{T: usersT, Changes: changes}})
+		require.NoError(t, err, "append multiple values to existing enum")
+		ensureNoChange(t, usersT)
 	})
 }
 

@@ -156,6 +156,12 @@ var (
 			Version: "sqlite",
 			Regex:   "SQLite.*",
 		},
+		{
+			Version: "cockroach",
+			Image:   "timveil/cockroachdb-single-node:latest",
+			Regex:   re("Cockroach.*/%sCockroach"),
+			Ports:   []string{"26257:26257"},
+		},
 	}
 )
 
