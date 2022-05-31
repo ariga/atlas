@@ -303,6 +303,10 @@ func TestCockroach_Ent(t *testing.T) {
 	})
 }
 
+func (t *crdbTest) url() string {
+	return t.dsn()
+}
+
 func (t *crdbTest) dsn() string {
 	return fmt.Sprintf("postgres://postgres:pass@localhost:%d/test?sslmode=disable", t.port)
 }

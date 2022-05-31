@@ -44,9 +44,7 @@ func init() {
 		sqlclient.DriverOpener(Open),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
 		sqlclient.RegisterFlavours("maria", "mariadb"),
-		sqlclient.RegisterURLParser(func(u *url.URL) *sqlclient.URL {
-			return &sqlclient.URL{URL: u, DSN: dsn(u), Schema: strings.TrimPrefix(u.Path, "/")}
-		}),
+		sqlclient.RegisterURLParser(parser{}),
 	)
 }
 
@@ -233,6 +231,20 @@ func unescape(s string) string {
 		}
 	}
 	return b.String()
+}
+
+type parser struct{}
+
+// ParseURL implements the sqlclient.URLParser interface.
+func (parser) ParseURL(u *url.URL) *sqlclient.URL {
+	return &sqlclient.URL{URL: u, DSN: dsn(u), Schema: strings.TrimPrefix(u.Path, "/")}
+}
+
+// ChangeSchema implements the sqlclient.SchemaChanger interface.
+func (parser) ChangeSchema(u *url.URL, s string) *url.URL {
+	nu := *u
+	nu.Path = "/" + s
+	return &nu
 }
 
 // dsn returns the MySQL standard DSN for opening
