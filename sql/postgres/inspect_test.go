@@ -635,9 +635,9 @@ func (m mock) version(version string) {
 		WillReturnRows(sqltest.Rows(`
   setting
 ------------
- en_US.utf8
- en_US.utf8
  ` + version + `
+ en_US.utf8
+ en_US.utf8
 `))
 }
 
