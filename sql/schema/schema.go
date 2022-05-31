@@ -282,7 +282,7 @@ type (
 		Text string
 	}
 
-	// Charset describes a column or a table character set setting.
+	// Charset describes a column or a table character-set setting.
 	Charset struct {
 		V string
 	}

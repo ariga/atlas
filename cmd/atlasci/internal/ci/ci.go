@@ -14,7 +14,7 @@ import (
 	"sort"
 
 	"ariga.io/atlas/sql/migrate"
-	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"
 
 	"github.com/go-git/go-git/v5"
@@ -34,27 +34,13 @@ type (
 	// It will also label migration files as either "generated" or "handcrafted".
 	ChangeLoader interface {
 		// LoadChanges converts each of the given migration files into one Changes.
-		LoadChanges(context.Context, []migrate.File) ([]*File, error)
+		LoadChanges(context.Context, []migrate.File) ([]*sqlcheck.File, error)
 	}
 
 	// DirScanner stitches migrate.Dir and migrate.Scanner into one interface.
 	DirScanner interface {
 		migrate.Dir
 		migrate.Scanner
-	}
-
-	// File represents a parsed version of a migration file.
-	File struct {
-		migrate.File
-		// Changes is the list of changes this file represents.
-		Changes []*Change
-	}
-
-	// A Change in a migration file.
-	Change struct {
-		schema.Changes        // The actual changes.
-		Stmt           string // The SQL statement generated this change.
-		Pos            int    // The position of the statement in the file.
 	}
 )
 
@@ -201,14 +187,14 @@ type DevLoader struct {
 }
 
 // LoadChanges implements the ChangesLoader interface.
-func (d *DevLoader) LoadChanges(ctx context.Context, files []migrate.File) ([]*File, error) {
-	diff := make([]*File, len(files))
+func (d *DevLoader) LoadChanges(ctx context.Context, files []migrate.File) ([]*sqlcheck.File, error) {
+	diff := make([]*sqlcheck.File, len(files))
 	current, err := d.Dev.InspectRealm(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
 	for i, f := range files {
-		diff[i] = &File{
+		diff[i] = &sqlcheck.File{
 			File: f,
 		}
 		stmts, err := d.Scan.Stmts(f)
@@ -234,7 +220,7 @@ func (d *DevLoader) LoadChanges(ctx context.Context, files []migrate.File) ([]*F
 				if err != nil {
 					return nil, err
 				}
-				diff[i].Changes = append(diff[i].Changes, &Change{
+				diff[i].Changes = append(diff[i].Changes, &sqlcheck.Change{
 					Pos:     p,
 					Stmt:    s,
 					Changes: changes,
