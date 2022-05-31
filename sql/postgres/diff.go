@@ -203,10 +203,6 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 		if !ok {
 			return true, nil
 		}
-		// All serial types in crdb become bigints under the hood, see: https://www.cockroachlabs.com/docs/stable/serial.html#generated-values-for-mode-sql_sequence-and-sql_sequence_cached.
-		if d.crdb {
-			return i.T != TypeBigInt, nil
-		}
 		var it string
 		switch s.T {
 		case TypeSmallSerial:
@@ -311,10 +307,6 @@ func (d *diff) normalize(table *schema.Table) {
 		case *enumType:
 			c.Type.Type = &schema.EnumType{T: t.T, Values: t.Values}
 		case *SerialType:
-			// crdb has its own handling for serial
-			if d.crdb {
-				continue
-			}
 			// The definition of "<column> <serial type>" is equivalent to specifying:
 			// "<column> <int type> NOT NULL DEFAULT nextval('<table>_<column>_seq')".
 			c.Default = &schema.RawExpr{
