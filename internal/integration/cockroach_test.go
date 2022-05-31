@@ -290,10 +290,9 @@ func TestCockroach_Enums(t *testing.T) {
 func TestCockroach_Ent(t *testing.T) {
 	crdbRun(t, func(t *crdbTest) {
 		// Cockroach doesn't support macaddr but its in the integration tests of ent
-		macClmn := entmigrate.FieldTypesColumns[0]
-		var schemaType map[string]string
+		var st map[string]string
 		for _, ff := range entmigrate.FieldTypesColumns {
-			if st := ff.SchemaType; st[dialect.Postgres] == "macaddr" {
+			if st = ff.SchemaType; st[dialect.Postgres] == "macaddr" {
 				c := ff
 				t.Cleanup(func() {
 					c.SchemaType = st
