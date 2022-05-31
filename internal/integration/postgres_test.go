@@ -80,6 +80,12 @@ func pgRun(t *testing.T, fn func(*pgTest)) {
 	}
 }
 
+func TestPostgres_EntRevisions(t *testing.T) {
+	pgRun(t, func(t *pgTest) {
+		testEntRevisions(t)
+	})
+}
+
 func TestPostgres_Executor(t *testing.T) {
 	pgRun(t, func(t *pgTest) {
 		testExecutor(t)
@@ -1031,6 +1037,10 @@ create table atlas_types_sanity
 			testImplicitIndexes(t, t.db)
 		})
 	})
+}
+
+func (t *pgTest) url() string {
+	return t.dsn()
 }
 
 func (t *pgTest) dsn() string {

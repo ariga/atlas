@@ -45,9 +45,7 @@ func init() {
 		"postgres",
 		sqlclient.DriverOpener(Open),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
-		sqlclient.RegisterURLParser(func(u *url.URL) *sqlclient.URL {
-			return &sqlclient.URL{URL: u, DSN: u.String(), Schema: u.Query().Get("search_path")}
-		}),
+		sqlclient.RegisterURLParser(parser{}),
 	)
 }
 
@@ -161,6 +159,22 @@ func acquire(ctx context.Context, conn schema.ExecQuerier, id uint32, timeout ti
 		}
 		return nil
 	}
+}
+
+type parser struct{}
+
+// ParseURL implements the sqlclient.URLParser interface.
+func (parser) ParseURL(u *url.URL) *sqlclient.URL {
+	return &sqlclient.URL{URL: u, DSN: u.String(), Schema: u.Query().Get("search_path")}
+}
+
+// ChangeSchema implements the sqlclient.SchemaChanger interface.
+func (parser) ChangeSchema(u *url.URL, s string) *url.URL {
+	nu := *u
+	q := nu.Query()
+	q.Set("search_path", s)
+	nu.RawQuery = q.Encode()
+	return &nu
 }
 
 // Standard column types (and their aliases) as defined in

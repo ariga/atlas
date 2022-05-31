@@ -8,7 +8,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"net/url"
 	"regexp"
 	"strings"
 
@@ -40,9 +39,7 @@ func init() {
 		sqlclient.DriverOpener(OpenCRDB),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
 		sqlclient.RegisterFlavours("crdb"),
-		sqlclient.RegisterURLParser(func(u *url.URL) *sqlclient.URL {
-			return &sqlclient.URL{URL: u, DSN: u.String(), Schema: u.Query().Get("search_path")}
-		}),
+		sqlclient.RegisterURLParser(parser{}),
 	)
 }
 

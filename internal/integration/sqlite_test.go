@@ -15,9 +15,12 @@ import (
 	"strings"
 	"testing"
 
+	entmigrate "ariga.io/atlas/cmd/atlascmd/migrate"
+	"ariga.io/atlas/cmd/atlascmd/migrate/ent/revision"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqlite"
 
 	"entgo.io/ent/dialect"
@@ -45,6 +48,26 @@ func liteRun(t *testing.T, fn func(test *liteTest)) {
 	require.NoError(t, err)
 	tt := &liteTest{T: t, db: db, drv: drv, file: f, rrw: &rrw{}}
 	fn(tt)
+}
+
+func TestSQLite_EntRevisions(t *testing.T) {
+	liteRun(t, func(t *liteTest) {
+		c, err := sqlclient.Open(context.Background(), t.url())
+		require.NoError(t, err)
+
+		r, err := entmigrate.NewEntRevisions(c)
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			r.Close()
+		})
+
+		require.NoError(t, r.Init(context.Background()))
+
+		s, err := c.InspectSchema(context.Background(), "", nil)
+		require.NoError(t, err)
+		_, ok := s.Table(revision.Table)
+		require.True(t, ok)
+	})
 }
 
 func TestSQLite_Executor(t *testing.T) {
@@ -785,6 +808,8 @@ func (t *liteTest) revisionsStorage() migrate.RevisionReadWriter {
 	return t.rrw
 }
 
+func (t *liteTest) dropSchemas(...string) {}
+
 func (t *liteTest) applyHcl(spec string) {
 	realm := t.loadRealm()
 	var desired schema.Schema
@@ -934,6 +959,10 @@ func (t *liteTest) dropTables(names ...string) {
 
 func (t *liteTest) dsn() string {
 	return fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", t.file)
+}
+
+func (t *liteTest) url() string {
+	return t.dsn()
 }
 
 func (t *liteTest) applyRealmHcl(spec string) {
