@@ -8,10 +8,10 @@ slug: /cli/getting-started/applying-schemas
 
 In the previous section, we learned how to inspect an existing database and write
 its schema as an Atlas DDL HCL file. In this section, we will learn how to use
-the Atlas CLI to modify a database's schema. To do this, we will use Atlas's 
+the Atlas CLI to modify a database's schema. To do this, we will use Atlas's
 `atlas schema apply` command which takes a _declarative_ approach, that is,
 we define the _desired_ end schema, and Atlas figures out a safe-way to alter
-the database to get there. 
+the database to get there.
 
 Let's start by viewing the help text for the `apply` command:
 
@@ -51,9 +51,9 @@ Flags:
       --addr string      used with -w, local address to bind the server to. (default ":5800")
   -h, --help             help for apply
 ```
-As you can see, similar to the `inspect` command, the `-d` flag is used to define the
+As you can see, similar to the `inspect` command, the `-u` flag is used to define the
 URL to connect to the database, and an additional flag `-f` specifies the path to
-the file containing the desired schema. 
+the file containing the desired schema.
 
 ### Adding new tables to our database
 
@@ -88,7 +88,7 @@ table "categories" {
 
 To add this table to our database, let's use the `atlas schema apply` command:
 ```shell
-atlas schema apply -u "mysql://root:pass@localhost:3306/example" -f atlas.hcl 
+atlas schema apply -u "mysql://root:pass@localhost:3306/example" -f atlas.hcl
 ```
 Atlas plans a migration (schema change) for us and prompts us to approve it:
 ```text
@@ -105,7 +105,7 @@ To apply the migration, press `ENTER`, and voila!
 ✔ Apply
 ```
 
-To verify that our new table was created, in our open `mysql` command-line from the 
+To verify that our new table was created, in our open `mysql` command-line from the
 previous step run:
 ```text
 mysql> show create table categories;
@@ -142,9 +142,9 @@ table "post_categories" {
     }
 }
 ```
-This block defines the `post_categories` table with two columns `post_id` and `category_id`. 
+This block defines the `post_categories` table with two columns `post_id` and `category_id`.
 In addition, two foreign-keys are created referencing the respective columns on the `blog_posts`
-and `categories` tables. 
+and `categories` tables.
 
 Let's try to apply the schema again, this time with the updated schema:
 ```text
@@ -155,7 +155,7 @@ CREATE TABLE `example`.`post_categories` (`post_id` int NOT NULL, `category_id` 
 ✔ Apply
 ```
 
-### Conclusion 
+### Conclusion
 
 In this section, we've seen how to use the `atlas schema apply` command to migrate
 the schema of an existing database to our desired state.
