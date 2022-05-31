@@ -43,13 +43,13 @@ func (i *crdbInspect) patchSchema(s *schema.Schema) {
 		for _, c := range t.Columns {
 			id, ok := identity(c.Attrs)
 			if !ok {
-				continue	
+				continue
 			}
 			if g := strings.ToUpper(id.Generation); strings.Contains(g, "ALWAYS") {
-				id.Generation = g
+				id.Generation = "ALWAYS"
 				c.Default = nil
 			} else if strings.Contains(g, "BY DEFAULT") {
-				id.Generation = g
+				id.Generation = "BY DEFAULT"
 				c.Default = nil
 			}
 			schema.ReplaceOrAppend(&c.Attrs, id)
