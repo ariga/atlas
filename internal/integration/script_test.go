@@ -58,6 +58,7 @@ func TestPostgres_Script(t *testing.T) {
 				"synced":  t.cmdSynced,
 				"cmphcl":  t.cmdCmpHCL,
 				"cmpshow": t.cmdCmpShow,
+				"execsql": t.cmdExec,
 			},
 		})
 	})
@@ -353,6 +354,10 @@ func cmdCmpHCL(ts *testscript.TestScript, args []string, inspect func(schema str
 }
 
 func (t *myTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
+	cmdExec(ts, args, t.db)
+}
+
+func (t *pgTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
 	cmdExec(ts, args, t.db)
 }
 

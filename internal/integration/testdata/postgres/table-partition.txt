@@ -17,6 +17,8 @@ apply drop.hcl
 apply 3.hcl
 cmpshow measurement 3.sql
 cmphcl 3.inspect.hcl
+execsql 'CREATE TABLE measurement_y2006m02 PARTITION OF $db.measurement FOR VALUES FROM (''2006-02-01'') TO (''2006-03-01'')'
+cmpshow measurement 3.partition.sql
 
 # Drop all tables.
 apply drop.hcl
@@ -172,6 +174,40 @@ Partitioned table "script_table_partition.measurement"
  unitsales | integer |           |          |
 Partition key: RANGE (logdate)
 Number of partitions: 0
+
+
+-- postgres10/3.partition.sql --
+      Table "script_table_partition.measurement"
+  Column   |  Type   | Collation | Nullable | Default
+-----------+---------+-----------+----------+---------
+ city_id   | integer |           | not null |
+ logdate   | date    |           | not null |
+ peaktemp  | integer |           |          |
+ unitsales | integer |           |          |
+Partition key: RANGE (logdate)
+Number of partitions: 1 (Use \d+ to list them.)
+
+-- postgres11/3.partition.sql --
+      Table "script_table_partition.measurement"
+  Column   |  Type   | Collation | Nullable | Default
+-----------+---------+-----------+----------+---------
+ city_id   | integer |           | not null |
+ logdate   | date    |           | not null |
+ peaktemp  | integer |           |          |
+ unitsales | integer |           |          |
+Partition key: RANGE (logdate)
+Number of partitions: 1 (Use \d+ to list them.)
+
+-- 3.partition.sql --
+Partitioned table "script_table_partition.measurement"
+  Column   |  Type   | Collation | Nullable | Default
+-----------+---------+-----------+----------+---------
+ city_id   | integer |           | not null |
+ logdate   | date    |           | not null |
+ peaktemp  | integer |           |          |
+ unitsales | integer |           |          |
+Partition key: RANGE (logdate)
+Number of partitions: 1 (Use \d+ to list them.)
 
 -- 3.inspect.hcl --
 table "measurement" {
