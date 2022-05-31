@@ -55,8 +55,19 @@ var _ sqlx.DiffDriver = (*crdbDiff)(nil)
 func (cd *crdbDiff) Normalize(from, to *schema.Table) {
 	cd.normalize(from)
 	cd.normalize(to)
-	cd.diff.normalize(from)
-	cd.diff.normalize(to)
+}
+
+func (cd *crdbDiff) ColumnChange(from, to *schema.Column) (schema.ChangeKind, error) {
+	// All serial types in crdb become bigints under the hood, see: https://www.cockroachlabs.com/docs/stable/serial.html#generated-values-for-mode-sql_sequence-and-sql_sequence_cached.
+	if s, ok := to.Type.Type.(*SerialType); ok {
+		to.Type.Type = &schema.IntegerType{
+			T: TypeBigInt,
+		}
+		defer func() {
+			to.Type.Type = s
+		}()
+	}
+	return cd.diff.ColumnChange(from, to)
 }
 
 func (cd *crdbDiff) normalize(table *schema.Table) {
@@ -113,6 +124,41 @@ func (cd *crdbDiff) normalize(table *schema.Table) {
 			c.Default = &schema.RawExpr{
 				X: "unique_rowid()",
 			}
+		case *schema.TimeType:
+			// "timestamp" and "timestamptz" are accepted as
+			// abbreviations for timestamp with(out) time zone.
+			switch t.T {
+			case "timestamp with time zone":
+				t.T = "timestamptz"
+			case "timestamp without time zone":
+				t.T = "timestamp"
+			}
+		case *schema.FloatType:
+			// The same numeric precision is used in all platform.
+			// See: https://www.postgresql.org/docs/current/datatype-numeric.html
+			switch {
+			case t.T == "float" && t.Precision < 25:
+				// float(1) to float(24) are selected as "real" type.
+				t.T = "real"
+				fallthrough
+			case t.T == "real":
+				t.Precision = 24
+			case t.T == "float" && t.Precision >= 25:
+				// float(25) to float(53) are selected as "double precision" type.
+				t.T = "double precision"
+				fallthrough
+			case t.T == "double precision":
+				t.Precision = 53
+			}
+		case *schema.StringType:
+			switch t.T {
+			case "character", "char":
+				// Character without length specifier
+				// is equivalent to character(1).
+				t.Size = 1
+			}
+		case *enumType:
+			c.Type.Type = &schema.EnumType{T: t.T, Values: t.Values}
 		}
 	}
 }
