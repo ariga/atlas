@@ -41,22 +41,18 @@ var _ sqlx.DiffDriver = (*crdbDiff)(nil)
 func (i *crdbInspect) patchSchema(s *schema.Schema) {
 	for _, t := range s.Tables {
 		for _, c := range t.Columns {
-			if i, ok := identity(c.Attrs); ok {
-				g := strings.ToLower(i.Generation)
-				if strings.Contains(g, "always") {
-					i.Generation = "ALWAYS"
-					c.Default = nil
-				} else if strings.Contains(g, "by default") {
-					i.Generation = "BY DEFAULT"
-					c.Default = nil
-				}
-				for j := 0; j < len(c.Attrs); j++ {
-					switch c.Attrs[j].(type) {
-					case *Identity:
-						c.Attrs[j] = i
-					}
-				}
+			id, ok := identity(c.Attrs)
+			if !ok {
+				continue	
 			}
+			if g := strings.ToUpper(id.Generation); strings.Contains(g, "ALWAYS") {
+				id.Generation = g
+				c.Default = nil
+			} else if strings.Contains(g, "BY DEFAULT") {
+				id.Generation = g
+				c.Default = nil
+			}
+			schema.ReplaceOrAppend(&c.Attrs, id)
 		}
 	}
 }
