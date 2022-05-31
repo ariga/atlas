@@ -293,15 +293,14 @@ func TestCockroach_Ent(t *testing.T) {
 		macClmn := entmigrate.FieldTypesColumns[0]
 		var schemaType map[string]string
 		for _, ff := range entmigrate.FieldTypesColumns {
-			if ff.Name == "mac" {
-				macClmn = ff
-				schemaType = ff.SchemaType
-				ff.SchemaType = nil
+			if st := ff.SchemaType; st[dialect.Postgres] == "macaddr" {
+				c := ff
+				t.Cleanup(func() {
+					c.SchemaType = st
+				})
+				c.SchemaType = nil
 			}
 		}
-		t.Cleanup(func() {
-			macClmn.SchemaType = schemaType
-		})
 		testEntIntegration(t, dialect.Postgres, t.db, entschema.WithAtlas(true))
 	})
 }
