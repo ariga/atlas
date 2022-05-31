@@ -290,9 +290,8 @@ func TestCockroach_Enums(t *testing.T) {
 func TestCockroach_Ent(t *testing.T) {
 	crdbRun(t, func(t *crdbTest) {
 		// Cockroach doesn't support macaddr but its in the integration tests of ent
-		var st map[string]string
 		for _, ff := range entmigrate.FieldTypesColumns {
-			if st = ff.SchemaType; st[dialect.Postgres] == "macaddr" {
+			if st := ff.SchemaType; st[dialect.Postgres] == "macaddr" {
 				c := ff
 				t.Cleanup(func() {
 					c.SchemaType = st
@@ -820,6 +819,10 @@ create table atlas_types_sanity
 			testImplicitIndexes(t, t.db)
 		})
 	})
+}
+
+func (t *crdbTest) url() string {
+	return t.dsn()
 }
 
 func (t *crdbTest) dsn() string {

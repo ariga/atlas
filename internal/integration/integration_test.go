@@ -20,9 +20,12 @@ import (
 	"text/template"
 	"time"
 
+	entmigrate "ariga.io/atlas/cmd/atlascmd/migrate"
+	"ariga.io/atlas/cmd/atlascmd/migrate/ent/revision"
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlclient"
 	entsql "entgo.io/ent/dialect/sql"
 	entschema "entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/entc/integration/ent"
@@ -49,6 +52,7 @@ func TestMain(m *testing.M) {
 // T holds the elements common between dialect tests.
 type T interface {
 	testing.TB
+	url() string
 	driver() migrate.Driver
 	revisionsStorage() migrate.RevisionReadWriter
 	realm() *schema.Realm
@@ -60,6 +64,7 @@ type T interface {
 	revisions() *schema.Table
 	loadTable(string) *schema.Table
 	dropTables(...string)
+	dropSchemas(...string)
 	migrate(...schema.Change)
 	diff(*schema.Table, *schema.Table) []schema.Change
 	applyHcl(spec string)
@@ -269,7 +274,6 @@ func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, unmars
 }
 
 func testCLIMultiSchemaInspect(t T, h string, dsn string, schemas []string, unmarshaler schemaspec.Unmarshaler) {
-
 	err := initCLI()
 	require.NoError(t, err)
 	var expected schema.Realm
@@ -296,7 +300,6 @@ func testCLIMultiSchemaInspect(t T, h string, dsn string, schemas []string, unma
 }
 
 func testCLISchemaApply(t T, h string, dsn string, args ...string) {
-
 	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
@@ -332,7 +335,6 @@ func testCLISchemaApply(t T, h string, dsn string, args ...string) {
 }
 
 func testCLISchemaApplyDry(t T, h string, dsn string) {
-
 	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
@@ -366,7 +368,6 @@ func testCLISchemaApplyDry(t T, h string, dsn string) {
 }
 
 func testCLISchemaApplyAutoApprove(t T, h string, dsn string, args ...string) {
-
 	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
@@ -397,7 +398,6 @@ func testCLISchemaApplyAutoApprove(t T, h string, dsn string, args ...string) {
 }
 
 func testCLISchemaDiff(t T, dsn string) {
-
 	err := initCLI()
 
 	require.NoError(t, err)
@@ -470,6 +470,28 @@ func testAdvisoryLock(t *testing.T, l schema.Locker) {
 			require.NoError(t, unlock())
 		}
 	})
+}
+
+// testEntRevisions will not be run for SQLite. It has its own version of this test.
+func testEntRevisions(t T) {
+	const name = "my_revisions_schema"
+
+	c, err := sqlclient.Open(context.Background(), t.url())
+	require.NoError(t, err)
+
+	r, err := entmigrate.NewEntRevisions(c, entmigrate.WithSchema(name))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		r.Close()
+	})
+
+	require.NoError(t, r.Init(context.Background()))
+	t.dropSchemas(name)
+
+	s, err := c.InspectSchema(context.Background(), name, nil)
+	require.NoError(t, err)
+	_, ok := s.Table(revision.Table)
+	require.True(t, ok)
 }
 
 func testExecutor(t T) {

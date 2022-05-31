@@ -79,6 +79,12 @@ func myRun(t *testing.T, fn func(*myTest)) {
 	}
 }
 
+func TestMySQL_EntRevisions(t *testing.T) {
+	myRun(t, func(t *myTest) {
+		testEntRevisions(t)
+	})
+}
+
 func TestMySQL_Executor(t *testing.T) {
 	myRun(t, func(t *myTest) {
 		testExecutor(t)
@@ -661,7 +667,7 @@ func TestMySQL_CLI_MultiSchema(t *testing.T) {
 			}`
 	t.Run("SchemaInspect", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
-			t.dropDB("test2")
+			t.dropSchemas("test2")
 			t.dropTables("users")
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
@@ -670,7 +676,7 @@ func TestMySQL_CLI_MultiSchema(t *testing.T) {
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
-			t.dropDB("test2")
+			t.dropSchemas("test2")
 			t.dropTables("users")
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
@@ -681,7 +687,7 @@ func TestMySQL_CLI_MultiSchema(t *testing.T) {
 
 func TestMySQL_HCL_Realm(t *testing.T) {
 	myRun(t, func(t *myTest) {
-		t.dropDB("second")
+		t.dropSchemas("second")
 		realm := t.loadRealm()
 		hcl, err := mysql.MarshalHCL(realm)
 		require.NoError(t, err)
@@ -1178,6 +1184,10 @@ create table atlas_types_sanity
 	})
 }
 
+func (t *myTest) url() string {
+	return t.dsn("")
+}
+
 func (t *myTest) dsn(dbname string) string {
 	d := "mysql"
 	pass := ":pass"
@@ -1240,7 +1250,7 @@ func (t *myTest) dropTables(names ...string) {
 	})
 }
 
-func (t *myTest) dropDB(names ...string) {
+func (t *myTest) dropSchemas(names ...string) {
 	t.Cleanup(func() {
 		for _, n := range names {
 			_, err := t.db.Exec("DROP DATABASE IF EXISTS " + n)

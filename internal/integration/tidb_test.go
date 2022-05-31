@@ -67,6 +67,12 @@ func tidbRun(t *testing.T, fn func(*myTest)) {
 	}
 }
 
+func TestTiDB_EntRevisions(t *testing.T) {
+	tidbRun(t, func(t *myTest) {
+		testEntRevisions(t)
+	})
+}
+
 func TestTiDB_AddDropTable(t *testing.T) {
 	tidbRun(t, func(t *myTest) {
 		testAddDrop(t)
@@ -471,7 +477,7 @@ func TestTiDB_ForeignKey(t *testing.T) {
 
 func TestTiDB_HCL_Realm(t *testing.T) {
 	tidbRun(t, func(t *myTest) {
-		t.dropDB("second")
+		t.dropSchemas("second")
 		realm := t.loadRealm()
 		hcl, err := mysql.MarshalHCL(realm)
 		require.NoError(t, err)
@@ -547,7 +553,7 @@ func TestTiDB_CLI_MultiSchema(t *testing.T) {
 			}`
 	t.Run("SchemaInspect", func(t *testing.T) {
 		tidbRun(t, func(t *myTest) {
-			t.dropDB("test2")
+			t.dropSchemas("test2")
 			t.dropTables("users")
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
@@ -556,7 +562,7 @@ func TestTiDB_CLI_MultiSchema(t *testing.T) {
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
 		tidbRun(t, func(t *myTest) {
-			t.dropDB("test2")
+			t.dropSchemas("test2")
 			t.dropTables("users")
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)

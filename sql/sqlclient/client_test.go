@@ -23,9 +23,9 @@ func TestRegisterOpen(t *testing.T) {
 			return c, nil
 		}),
 		sqlclient.RegisterFlavours("maria"),
-		sqlclient.RegisterURLParser(func(u *url.URL) *sqlclient.URL {
+		sqlclient.RegisterURLParser(sqlclient.URLParserFunc(func(u *url.URL) *sqlclient.URL {
 			return &sqlclient.URL{URL: u, DSN: "dsn", Schema: "schema"}
-		}),
+		})),
 	)
 	require.PanicsWithValue(
 		t,
