@@ -850,6 +850,7 @@ FROM
 	LEFT JOIN pg_catalog.pg_partitioned_table AS t4 ON t4.partrelid = t3.oid
 WHERE
 	t1.table_type = 'BASE TABLE'
+	AND NOT COALESCE(t3.relispartition, false)
 	AND t1.table_schema IN (%s)
 ORDER BY
 	t1.table_schema, t1.table_name
@@ -869,6 +870,7 @@ FROM
 	LEFT JOIN pg_catalog.pg_partitioned_table AS t4 ON t4.partrelid = t3.oid
 WHERE
 	t1.table_type = 'BASE TABLE'
+	AND NOT COALESCE(t3.relispartition, false)
 	AND t1.table_schema IN (%s)
 	AND t1.table_name IN (%s)
 ORDER BY
