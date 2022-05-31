@@ -128,6 +128,7 @@ type (
 	OpenOption func(*config) error
 )
 
+// ErrUnsupported is returned if a registered driver does not support changing the schema.
 var ErrUnsupported = errors.New("sql/sqlclient: driver does not support changing connected schema")
 
 // Open opens an Atlas client by its provided url string.
