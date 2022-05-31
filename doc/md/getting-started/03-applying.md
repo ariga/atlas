@@ -51,7 +51,7 @@ Flags:
       --addr string      used with -w, local address to bind the server to. (default ":5800")
   -h, --help             help for apply
 ```
-As you can see, similar to the `inspect` command, the `-d` flag is used to define the
+As you can see, similar to the `inspect` command, the `-u` flag is used to define the
 URL to connect to the database, and an additional flag `-f` specifies the path to
 the file containing the desired schema. 
 
