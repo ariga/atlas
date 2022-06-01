@@ -365,6 +365,7 @@ func (e *Executor) Execute(ctx context.Context, n int) (err error) {
 	}
 	defer unlock()
 	// Don't operate with a broken migration directory.
+	// TODO(maseeelch): do not check here but let the caller check it before? Or let the caller decide if to skip this flag by using some flags.
 	if err := Validate(e.dir); err != nil {
 		return fmt.Errorf("sql/migrate: execute: validate migration directory: %w", err)
 	}
@@ -416,7 +417,11 @@ func (e *Executor) Execute(ctx context.Context, n int) (err error) {
 	}
 	defer func(rrw RevisionReadWriter, ctx context.Context, revisions *Revisions) {
 		if dErr := rrw.WriteRevisions(ctx, *revisions); dErr != nil {
-			err = wrap(dErr, err, "execute: write revisions")
+			if err != nil {
+				err = fmt.Errorf("sql/migrate: execute: write revisions: %w: %v", dErr, err)
+				return
+			}
+			err = dErr
 		}
 	}(e.rrw, ctx, &revisions)
 	// Determine what migrations to run.
@@ -439,6 +444,7 @@ func (e *Executor) Execute(ctx context.Context, n int) (err error) {
 		}
 		e.log.Log(LogExecution{names})
 	}
+	// TODO(masseelch): run in a transaction
 	for _, m := range pending {
 		r := &Revision{ExecutedAt: time.Now(), ExecutionState: stateOngoing}
 		revisions = append(revisions, r)
@@ -524,20 +530,20 @@ func (e *Executor) ReadState(ctx context.Context) (realm *schema.Realm, err erro
 			Clean(context.Context) error
 		}); ok {
 			if derr := e.Clean(ctx); derr != nil {
-				err = wrap(derr, err, "cleaning database")
+				err = wrap(derr, err)
 			}
 			return
 		}
 		realm, derr := e.drv.InspectRealm(ctx, nil)
 		if derr != nil {
-			err = wrap(derr, err, "inspecting realm")
+			err = wrap(derr, err)
 		}
 		del := make([]schema.Change, len(realm.Schemas))
 		for i, s := range realm.Schemas {
 			del[i] = &schema.DropSchema{S: s, Extra: []schema.Clause{&schema.IfExists{}}}
 		}
 		if derr := e.drv.ApplyChanges(ctx, del); derr != nil {
-			err = wrap(derr, err, "cleaning database")
+			err = wrap(derr, err)
 		}
 	}()
 	// Replay the migration directory on the database.
@@ -945,12 +951,22 @@ func readHashFile(dir Dir) (HashFile, error) {
 	return fh, nil
 }
 
-func wrap(err1, err2 error, msg string) error {
-	if msg != "" {
-		msg = " " + strings.TrimSpace(msg)
+// reverse changes for the down migration.
+func reverse(changes []*Change) []*Change {
+	n := len(changes)
+	rev := make([]*Change, n)
+	if n%2 == 1 {
+		rev[n/2] = changes[n/2]
 	}
+	for i, j := 0, n-1; i < j; i, j = i+1, j-1 {
+		rev[i], rev[j] = changes[j], changes[i]
+	}
+	return rev
+}
+
+func wrap(err1, err2 error) error {
 	if err2 != nil {
-		return fmt.Errorf("sql/migrate:%s: %w: %v", msg, err2, err1)
+		return fmt.Errorf("sql/migrate: %w: %v", err2, err1)
 	}
 	return err1
 }
