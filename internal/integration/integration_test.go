@@ -179,7 +179,7 @@ func testHCLIntegration(t T, full string, empty string) {
 	require.Empty(t, t.realm().Schemas[0].Tables)
 }
 
-func testCLISchemaInspect(t T, h string, dsn string, unmarshaler schemaspec.Unmarshaler) {
+func testCLISchemaInspect(t T, h string, dsn string, unmarshaler schemaspec.Unmarshaler, args ...string) {
 	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
@@ -187,12 +187,15 @@ func testCLISchemaInspect(t T, h string, dsn string, unmarshaler schemaspec.Unma
 	err = unmarshaler.UnmarshalSpec([]byte(h), &expected)
 	require.NoError(t, err)
 	t.applyHcl(h)
-	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+	runArgs := []string{
+		"run", "ariga.io/atlas/cmd/atlas",
 		"schema",
 		"inspect",
 		"-d",
 		dsn,
-	)
+	}
+	runArgs = append(runArgs, args...)
+	cmd := exec.Command("go", runArgs...)
 	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
 	cmd.Stderr = stderr
 	cmd.Stdout = stdout
@@ -364,14 +367,15 @@ func testCLISchemaApplyDry(t T, h string, dsn string) {
 	require.False(t, ok, "expected users table not to be created")
 }
 
-func testCLISchemaApplyAutoApprove(t T, h string, dsn string) {
+func testCLISchemaApplyAutoApprove(t T, h string, dsn string, args ...string) {
 	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
 	f := filepath.Join(t.TempDir(), "atlas.hcl")
 	err = ioutil.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
-	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+	runArgs := []string{
+		"run", "ariga.io/atlas/cmd/atlas",
 		"schema",
 		"apply",
 		"-d",
@@ -379,7 +383,9 @@ func testCLISchemaApplyAutoApprove(t T, h string, dsn string) {
 		"-f",
 		f,
 		"--auto-approve",
-	)
+	}
+	runArgs = append(runArgs, args...)
+	cmd := exec.Command("go", runArgs...)
 	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
 	cmd.Stderr = stderr
 	cmd.Stdout = stdout
