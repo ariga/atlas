@@ -101,8 +101,9 @@ type (
 
 	driver struct {
 		Opener
-		name   string
-		parser URLParser
+		name       string
+		parser     URLParser
+		openDriver func(schema.ExecQuerier) (migrate.Driver, error)
 	}
 )
 
@@ -154,18 +155,18 @@ func OpenURL(ctx context.Context, u *url.URL, opts ...OpenOption) (*Client, erro
 	}
 	// If there is a schema given and the driver allows to change the schema for the url, do it.
 	if cfg.schema != "" {
-		sc, ok := v.(driver).parser.(SchemaChanger)
+		sc, ok := v.(*driver).parser.(SchemaChanger)
 		if !ok {
 			return nil, ErrUnsupported
 		}
 		u = sc.ChangeSchema(u, cfg.schema)
 	}
-	client, err := v.(driver).Open(ctx, u)
+	client, err := v.(*driver).Open(ctx, u)
 	if err != nil {
 		return nil, err
 	}
 	if client.URL == nil {
-		client.URL = v.(driver).parser.ParseURL(u)
+		client.URL = v.(*driver).parser.ParseURL(u)
 	}
 	return client, nil
 }
@@ -230,8 +231,9 @@ func DriverOpener(open func(schema.ExecQuerier) (migrate.Driver, error)) Opener 
 		if !ok {
 			return nil, fmt.Errorf("sql/sqlclient: unexpected missing opener %q", u.Scheme)
 		}
-		ur := v.(driver).parser.ParseURL(u)
-		db, err := sql.Open(v.(driver).name, ur.DSN)
+		v.(*driver).openDriver = open
+		ur := v.(*driver).parser.ParseURL(u)
+		db, err := sql.Open(v.(*driver).name, ur.DSN)
 		if err != nil {
 			return nil, err
 		}
@@ -243,7 +245,7 @@ func DriverOpener(open func(schema.ExecQuerier) (migrate.Driver, error)) Opener 
 			return nil, err
 		}
 		return &Client{
-			Name:   v.(driver).name,
+			Name:   v.(*driver).name,
 			DB:     db,
 			URL:    ur,
 			Driver: drv,
@@ -278,7 +280,7 @@ func Register(name string, opener Opener, opts ...RegisterOption) {
 		if _, ok := drivers.Load(f); ok {
 			panic("sql/sqlclient: Register called twice for " + f)
 		}
-		drivers.Store(f, driver{
+		drivers.Store(f, &driver{
 			name:   name,
 			parser: opt.parser,
 			Opener: opener,
