@@ -480,7 +480,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       cockroach:
-        image: timveil/cockroachdb-single-node:latest
+        image: hedwigz/cockroachdb-single-node:v21.2.11
         
         ports:
           - 26257:26257

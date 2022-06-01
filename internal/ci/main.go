@@ -158,7 +158,7 @@ var (
 		},
 		{
 			Version: "cockroach",
-			Image:   "timveil/cockroachdb-single-node:latest",
+			Image:   "hedwigz/cockroachdb-single-node:v21.2.11",
 			Regex:   re("Cockroach.*/%sCockroach"),
 			Ports:   []string{"26257:26257"},
 		},
