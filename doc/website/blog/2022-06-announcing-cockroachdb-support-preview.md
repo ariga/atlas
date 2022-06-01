@@ -20,7 +20,29 @@ While CockroachDB aims to be PostgreSQL compatible, it still has some incompatib
   
 With the latest release of Atlas, the postgres dialect automatically detects when it is connected to CRDB and uses a custom Driver to handle that.
 
-### Preview support
+# How to use
+## Atlas CLI
+Make sure you are using the latest version of Atlas, then connect to your CRDB as if it was Postgres, for example:
+```bash
+# to save the state of 'public' schema to `schema.hcl` run:
+atlas schema inspect -u "postgres://root:pass@localhost:26257/defaultdb?sslmode=disable" -s "public" > schema.hcl
+```
+## Ent
+If you use Ent, make sure you use the latest version, then connect to your CRDB as if it was Postgres, for example:
+```go
+client, err := ent.Open(dialect.Postgres, "host=localhost port=26257 user=root dbname=defaultdb password=pass sslmode=disable")
+if err != nil {
+  log.Fatal("opening ent client", err)
+}
+if err := client.Schema.Create(
+  context.Background(),
+  schema.WithAtlas(true),
+); err != nil {
+  log.Fatal("opening ent client", err)
+}
+```
+
+# Preview support
 The integration of Atlas with CRDB is well tested with CRDB version `v21.2.11` (at the time of writing, `latest`) and we will extend that in the future.
 If you're using other versions of CRDB or looking for help, don't hesitate to [file an issue](https://github.com/ariga/atlas/issues) or join our [Discord channel](https://discord.gg/zZ6sWVg6NT).
 
