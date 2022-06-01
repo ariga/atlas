@@ -82,6 +82,7 @@ func (r *EntRevisions) Init(ctx context.Context) error {
 			return err
 		}
 	}
+	r.ac.AddClosers(r.sc)
 	r.ec = ent.NewClient(ent.Driver(sql.OpenDB(r.sc.Name, r.sc.DB)))
 	return r.ec.Schema.Create(ctx, entschema.WithAtlas(true))
 }
@@ -128,13 +129,6 @@ func (r *EntRevisions) WriteRevisions(ctx context.Context, rs migrate.Revisions)
 		).
 		UpdateNewValues().
 		Exec(ctx)
-}
-
-// Close closes the Atlas client connected to the revision schema (if any).
-func (r *EntRevisions) Close() {
-	if r.sc != nil {
-		r.sc.Close()
-	}
 }
 
 var _ migrate.RevisionReadWriter = (*EntRevisions)(nil)
