@@ -1,18 +1,25 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package sqlite
 
 import (
 	"reflect"
+	"strconv"
+	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
+	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
 )
 
-// UnmarshalSpec unmarshals an Atlas DDL document using an unmarshaler into v.
-func UnmarshalSpec(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{}) error {
-	return specutil.Unmarshal(data, unmarshaler, v, convertTable)
+// evalSpec evaluates an Atlas DDL document using an unmarshaler into v by using the input.
+func evalSpec(data []byte, v interface{}, input map[string]string) error {
+	return specutil.Unmarshal(data, hclState, v, input, convertTable)
 }
 
 // MarshalSpec marshals v into an Atlas DDL document using a schemaspec.Marshaler.
@@ -24,12 +31,44 @@ func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) 
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the convertSchema function.
 func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, error) {
-	return specutil.Table(spec, parent, convertColumn, specutil.PrimaryKey, specutil.Index, specutil.Check)
+	return specutil.Table(spec, parent, convertColumn, specutil.PrimaryKey, convertIndex, specutil.Check)
+}
+
+// convertIndex converts a sqlspec.Index into a schema.Index.
+func convertIndex(spec *sqlspec.Index, t *schema.Table) (*schema.Index, error) {
+	idx, err := specutil.Index(spec, t)
+	if err != nil {
+		return nil, err
+	}
+	if attr, ok := spec.Attr("where"); ok {
+		p, err := attr.String()
+		if err != nil {
+			return nil, err
+		}
+		idx.Attrs = append(idx.Attrs, &IndexPredicate{P: p})
+	}
+	return idx, nil
 }
 
 // convertColumn converts a sqlspec.Column into a schema.Column.
 func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error) {
-	return specutil.Column(spec, convertColumnType)
+	c, err := specutil.Column(spec, convertColumnType)
+	if err != nil {
+		return nil, err
+	}
+	if attr, ok := spec.Attr("auto_increment"); ok {
+		b, err := attr.Bool()
+		if err != nil {
+			return nil, err
+		}
+		if b {
+			c.AddAttrs(&AutoIncrement{})
+		}
+	}
+	if err := specutil.ConvertGenExpr(spec.Remain(), c, storedOrVirtual); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 // convertColumnType converts a sqlspec.Column into a concrete SQLite schema.Type.
@@ -48,15 +87,36 @@ func tableSpec(tab *schema.Table) (*sqlspec.Table, error) {
 		tab,
 		columnSpec,
 		specutil.FromPrimaryKey,
-		specutil.FromIndex,
+		indexSpec,
 		specutil.FromForeignKey,
 		specutil.FromCheck,
 	)
 }
 
+func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
+	spec, err := specutil.FromIndex(idx)
+	if err != nil {
+		return nil, err
+	}
+	if i := (IndexPredicate{}); sqlx.Has(idx.Attrs, &i) && i.P != "" {
+		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("where", strconv.Quote(i.P)))
+	}
+	return spec, nil
+}
+
 // columnSpec converts from a concrete SQLite schema.Column into a sqlspec.Column.
-func columnSpec(col *schema.Column, _ *schema.Table) (*sqlspec.Column, error) {
-	return specutil.FromColumn(col, columnTypeSpec)
+func columnSpec(c *schema.Column, _ *schema.Table) (*sqlspec.Column, error) {
+	s, err := specutil.FromColumn(c, columnTypeSpec)
+	if err != nil {
+		return nil, err
+	}
+	if sqlx.Has(c.Attrs, &AutoIncrement{}) {
+		s.Extra.Attrs = append(s.Extra.Attrs, specutil.BoolAttr("auto_increment", true))
+	}
+	if x := (schema.GeneratedExpr{}); sqlx.Has(c.Attrs, &x) {
+		s.Extra.Children = append(s.Extra.Children, specutil.FromGenExpr(x, storedOrVirtual))
+	}
+	return s, nil
 }
 
 // columnTypeSpec converts from a concrete MySQL schema.Type into sqlspec.Column Type.
@@ -69,50 +129,66 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 }
 
 // TypeRegistry contains the supported TypeSpecs for the sqlite driver.
-var TypeRegistry = specutil.NewRegistry(
-	specutil.WithFormatter(FormatType),
-	specutil.WithParser(ParseType),
-	specutil.WithSpecs(
-		specutil.TypeSpec(TypeReal, specutil.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		specutil.TypeSpec(TypeBlob, specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec(TypeText, specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec(TypeInteger, specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("int", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("tinyint", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("smallint", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("mediumint", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("bigint", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.AliasTypeSpec("unsigned_big_int", "unsigned big int", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("int2", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("int8", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("double", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.AliasTypeSpec("double_precision", "double precision", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("float", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("character", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("varchar", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.AliasTypeSpec("varying_character", "varying character", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("nchar", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.AliasTypeSpec("native_character", "native character", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("nvarchar", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("clob", specutil.WithAttributes(specutil.SizeTypeAttr(false))),
-		specutil.TypeSpec("numeric", specutil.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		specutil.TypeSpec("decimal", specutil.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		specutil.TypeSpec("boolean"),
-		specutil.TypeSpec("date"),
-		specutil.TypeSpec("datetime"),
-		specutil.TypeSpec("json"),
-		specutil.TypeSpec("uuid"),
+var TypeRegistry = schemahcl.NewRegistry(
+	schemahcl.WithFormatter(FormatType),
+	schemahcl.WithParser(ParseType),
+	schemahcl.WithSpecs(
+		schemahcl.TypeSpec(TypeReal, schemahcl.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		schemahcl.TypeSpec(TypeBlob, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.TypeSpec(TypeText, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.TypeSpec(TypeInteger, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.TypeSpec("int", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.TypeSpec("tinyint", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.TypeSpec("smallint", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.TypeSpec("mediumint", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.TypeSpec("bigint", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.AliasTypeSpec("unsigned_big_int", "unsigned big int", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.TypeSpec("int2", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.TypeSpec("int8", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.TypeSpec("double", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.AliasTypeSpec("double_precision", "double precision", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.TypeSpec("float", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.TypeSpec("character", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.TypeSpec("varchar", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.AliasTypeSpec("varying_character", "varying character", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.TypeSpec("nchar", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.AliasTypeSpec("native_character", "native character", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.TypeSpec("nvarchar", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.TypeSpec("clob", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.TypeSpec("numeric", schemahcl.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		schemahcl.TypeSpec("decimal", schemahcl.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		schemahcl.TypeSpec("boolean"),
+		schemahcl.TypeSpec("date"),
+		schemahcl.TypeSpec("datetime"),
+		schemahcl.TypeSpec("json"),
+		schemahcl.TypeSpec("uuid"),
 	),
 )
 
 var (
-	hclState = schemahcl.New(schemahcl.WithTypes(TypeRegistry.Specs()))
+	hclState = schemahcl.New(
+		schemahcl.WithTypes(TypeRegistry.Specs()),
+		schemahcl.WithScopedEnums("table.column.as.type", stored, virtual),
+		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
+		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
+	)
 	// UnmarshalHCL unmarshals an Atlas HCL DDL document into v.
-	UnmarshalHCL = schemaspec.UnmarshalerFunc(func(bytes []byte, i interface{}) error {
-		return UnmarshalSpec(bytes, hclState, i)
+	UnmarshalHCL = schemaspec.UnmarshalerFunc(func(data []byte, v interface{}) error {
+		return evalSpec(data, v, nil)
 	})
 	// MarshalHCL marshals v into an Atlas HCL DDL document.
 	MarshalHCL = schemaspec.MarshalerFunc(func(v interface{}) ([]byte, error) {
 		return MarshalSpec(v, hclState)
 	})
+	// EvalHCL implements the schemahcl.Evaluator interface.
+	EvalHCL = schemahcl.EvalFunc(evalSpec)
 )
+
+// storedOrVirtual returns a STORED or VIRTUAL
+// generated type option based on the given string.
+func storedOrVirtual(s string) string {
+	if s = strings.ToUpper(s); s == "" {
+		return virtual
+	}
+	return s
+}

@@ -1,0 +1,29 @@
+apply 1.hcl
+cmpshow users 1.sql
+
+-- 1.hcl --
+schema "$db" {
+    charset = "$charset"
+    collate = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "name" {
+        type = varchar(255)
+        charset = "hebrew"
+        collate = "hebrew_general_ci"
+    }
+    charset = "$charset"
+    collate = "$collate"
+}
+
+-- 1.sql --
+CREATE TABLE `users` (
+  `name` varchar(255) CHARACTER SET hebrew NOT NULL
+)
+
+-- mysql8/1.sql --
+CREATE TABLE `users` (
+  `name` varchar(255) CHARACTER SET hebrew COLLATE hebrew_general_ci NOT NULL
+)

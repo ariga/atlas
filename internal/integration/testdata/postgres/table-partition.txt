@@ -1,0 +1,326 @@
+apply 1.hcl
+cmpshow logs 1.sql
+
+# Changing partitioned table is not allowed.
+! apply 2.hcl 'partition key of table "logs" cannot be changed from PARTITION BY LIST ("value") to PARTITION BY RANGE ("a", (b * (a % 2))) (drop and add is required)'
+
+# Drop all tables.
+apply drop.hcl
+
+# Recreate partitioned table.
+apply 2.hcl
+cmpshow logs 2.sql
+
+# Drop all tables.
+apply drop.hcl
+
+apply 3.hcl
+cmpshow measurement 3.sql
+cmphcl 3.inspect.hcl
+execsql 'CREATE TABLE measurement_y2006m02 PARTITION OF $db.measurement FOR VALUES FROM (''2006-02-01'') TO (''2006-03-01'')'
+cmpshow measurement 3.partition.sql
+
+# Drop all tables.
+apply drop.hcl
+
+apply 4.hcl
+cmpshow metrics 4.sql
+cmphcl 4.inspect.hcl
+
+-- 1.hcl --
+schema "$db" {}
+
+table "logs" {
+  schema = schema.$db
+  column "value" {
+    null = false
+    type = integer
+  }
+  partition {
+    type = LIST
+    columns = [column.value]
+  }
+}
+
+-- postgres10/1.sql --
+        Table "script_table_partition.logs"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ value  | integer |           | not null |
+Partition key: LIST (value)
+
+-- postgres11/1.sql --
+        Table "script_table_partition.logs"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ value  | integer |           | not null |
+Partition key: LIST (value)
+Number of partitions: 0
+
+-- 1.sql --
+  Partitioned table "script_table_partition.logs"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ value  | integer |           | not null |
+Partition key: LIST (value)
+Number of partitions: 0
+
+-- 2.hcl --
+schema "$db" {}
+
+table "logs" {
+  schema = schema.$db
+  column "a" {
+    null = false
+    type = integer
+  }
+  column "b" {
+    null = false
+    type = integer
+  }
+  partition {
+    type = RANGE
+    by {
+      column = column.a
+    }
+    by {
+      expr = "b * (a % 2)"
+    }
+  }
+}
+
+-- postgres10/2.sql --
+        Table "script_table_partition.logs"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ a      | integer |           | not null |
+ b      | integer |           | not null |
+Partition key: RANGE (a, ((b * (a % 2))))
+
+-- postgres11/2.sql --
+        Table "script_table_partition.logs"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ a      | integer |           | not null |
+ b      | integer |           | not null |
+Partition key: RANGE (a, ((b * (a % 2))))
+Number of partitions: 0
+
+-- 2.sql --
+  Partitioned table "script_table_partition.logs"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ a      | integer |           | not null |
+ b      | integer |           | not null |
+Partition key: RANGE (a, ((b * (a % 2))))
+Number of partitions: 0
+
+-- 3.hcl --
+schema "$db" {}
+
+# The partitioned table from the PostgreSQL doc.
+table "measurement" {
+  schema = schema.$db
+  column "city_id" {
+    null = false
+    type = integer
+  }
+  column "logdate" {
+    null = false
+    type = date
+  }
+  column "peaktemp" {
+    null = true
+    type = int
+  }
+  column "unitsales" {
+    null = true
+    type = int
+  }
+  partition {
+    type = RANGE
+    columns = [column.logdate]
+  }
+}
+
+-- postgres10/3.sql --
+      Table "script_table_partition.measurement"
+  Column   |  Type   | Collation | Nullable | Default
+-----------+---------+-----------+----------+---------
+ city_id   | integer |           | not null |
+ logdate   | date    |           | not null |
+ peaktemp  | integer |           |          |
+ unitsales | integer |           |          |
+Partition key: RANGE (logdate)
+
+-- postgres11/3.sql --
+      Table "script_table_partition.measurement"
+  Column   |  Type   | Collation | Nullable | Default
+-----------+---------+-----------+----------+---------
+ city_id   | integer |           | not null |
+ logdate   | date    |           | not null |
+ peaktemp  | integer |           |          |
+ unitsales | integer |           |          |
+Partition key: RANGE (logdate)
+Number of partitions: 0
+
+-- 3.sql --
+Partitioned table "script_table_partition.measurement"
+  Column   |  Type   | Collation | Nullable | Default
+-----------+---------+-----------+----------+---------
+ city_id   | integer |           | not null |
+ logdate   | date    |           | not null |
+ peaktemp  | integer |           |          |
+ unitsales | integer |           |          |
+Partition key: RANGE (logdate)
+Number of partitions: 0
+
+
+-- postgres10/3.partition.sql --
+      Table "script_table_partition.measurement"
+  Column   |  Type   | Collation | Nullable | Default
+-----------+---------+-----------+----------+---------
+ city_id   | integer |           | not null |
+ logdate   | date    |           | not null |
+ peaktemp  | integer |           |          |
+ unitsales | integer |           |          |
+Partition key: RANGE (logdate)
+Number of partitions: 1 (Use \d+ to list them.)
+
+-- postgres11/3.partition.sql --
+      Table "script_table_partition.measurement"
+  Column   |  Type   | Collation | Nullable | Default
+-----------+---------+-----------+----------+---------
+ city_id   | integer |           | not null |
+ logdate   | date    |           | not null |
+ peaktemp  | integer |           |          |
+ unitsales | integer |           |          |
+Partition key: RANGE (logdate)
+Number of partitions: 1 (Use \d+ to list them.)
+
+-- 3.partition.sql --
+Partitioned table "script_table_partition.measurement"
+  Column   |  Type   | Collation | Nullable | Default
+-----------+---------+-----------+----------+---------
+ city_id   | integer |           | not null |
+ logdate   | date    |           | not null |
+ peaktemp  | integer |           |          |
+ unitsales | integer |           |          |
+Partition key: RANGE (logdate)
+Number of partitions: 1 (Use \d+ to list them.)
+
+-- 3.inspect.hcl --
+table "measurement" {
+  schema = schema.script_table_partition
+  column "city_id" {
+    null = false
+    type = integer
+  }
+  column "logdate" {
+    null = false
+    type = date
+  }
+  column "peaktemp" {
+    null = true
+    type = integer
+  }
+  column "unitsales" {
+    null = true
+    type = integer
+  }
+  partition {
+    type    = RANGE
+    columns = [column.logdate]
+  }
+}
+schema "script_table_partition" {
+}
+
+-- 4.hcl --
+schema "$db" {}
+
+table "metrics" {
+  schema = schema.$db
+  column "x" {
+    null = false
+    type = integer
+  }
+  column "y" {
+    null = false
+    type = integer
+  }
+  partition {
+    type = RANGE
+    by {
+        column = column.x
+    }
+    by {
+        expr = "floor(x)"
+    }
+    by {
+        expr = "y * 2"
+    }
+    by {
+        expr = "floor(y)"
+    }
+  }
+}
+
+-- postgres10/4.sql --
+      Table "script_table_partition.metrics"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ x      | integer |           | not null |
+ y      | integer |           | not null |
+Partition key: RANGE (x, floor((x)::double precision), ((y * 2)), floor((y)::double precision))
+
+-- postgres11/4.sql --
+      Table "script_table_partition.metrics"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ x      | integer |           | not null |
+ y      | integer |           | not null |
+Partition key: RANGE (x, floor((x)::double precision), ((y * 2)), floor((y)::double precision))
+Number of partitions: 0
+
+-- 4.sql --
+Partitioned table "script_table_partition.metrics"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ x      | integer |           | not null |
+ y      | integer |           | not null |
+Partition key: RANGE (x, floor((x)::double precision), ((y * 2)), floor((y)::double precision))
+Number of partitions: 0
+
+-- 4.inspect.hcl --
+table "metrics" {
+  schema = schema.script_table_partition
+  column "x" {
+    null = false
+    type = integer
+  }
+  column "y" {
+    null = false
+    type = integer
+  }
+  partition {
+    type = RANGE
+    by {
+      column = column.x
+    }
+    by {
+      expr = "floor((x)::double precision)"
+    }
+    by {
+      expr = "(y * 2)"
+    }
+    by {
+      expr = "floor((y)::double precision)"
+    }
+  }
+}
+schema "script_table_partition" {
+}
+
+-- drop.hcl --
+schema "$db" {}

@@ -1,7 +1,10 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package hclsqlspec
 
 import (
-	"strconv"
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec"
@@ -13,6 +16,28 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
+
+var dialects = []struct {
+	name string
+	schemaspec.Marshaler
+	schemaspec.Unmarshaler
+}{
+	{
+		name:        "mysql",
+		Marshaler:   mysql.MarshalHCL,
+		Unmarshaler: mysql.UnmarshalHCL,
+	},
+	{
+		name:        "postgres",
+		Marshaler:   postgres.MarshalHCL,
+		Unmarshaler: postgres.UnmarshalHCL,
+	},
+	{
+		name:        "sqlite",
+		Marshaler:   sqlite.MarshalHCL,
+		Unmarshaler: sqlite.UnmarshalHCL,
+	},
+}
 
 func TestHCL_SQL(t *testing.T) {
 	file, err := decode(`
@@ -185,7 +210,7 @@ table "accounts" {
 								V: "$table.accounts.$column.active",
 							},
 						},
-						OnDelete: schema.SetNull,
+						OnDelete: &schemaspec.Ref{V: string(schema.SetNull)},
 					},
 				},
 			},
@@ -258,7 +283,7 @@ table "accounts" {
 								V: "$table.users.$column.active",
 							},
 						},
-						OnDelete: schema.SetNull,
+						OnDelete: &schemaspec.Ref{V: string(schema.SetNull)},
 					},
 				},
 			},
@@ -342,27 +367,8 @@ table "t2" {
 	schema = schema.account_b
 }
 `
-	for _, tt := range []struct {
-		name string
-		schemaspec.Marshaler
-		schemaspec.Unmarshaler
-	}{
-		{
-			name:        "mysql",
-			Marshaler:   mysql.MarshalHCL,
-			Unmarshaler: mysql.UnmarshalHCL,
-		},
-		{
-			name:        "postgres",
-			Marshaler:   postgres.MarshalHCL,
-			Unmarshaler: postgres.UnmarshalHCL,
-		},
-		{
-			name:        "sqlite",
-			Marshaler:   sqlite.MarshalHCL,
-			Unmarshaler: sqlite.UnmarshalHCL,
-		},
-	} {
+
+	for _, tt := range dialects {
 		t.Run(tt.name, func(t *testing.T) {
 			var r schema.Realm
 			err := tt.UnmarshalSpec([]byte(f), &r)
@@ -370,13 +376,15 @@ table "t2" {
 			exp := &schema.Realm{
 				Schemas: []*schema.Schema{
 					{
-						Name: "account_a",
+						Name:  "account_a",
+						Realm: &r,
 						Tables: []*schema.Table{
 							{Name: "t1"},
 						},
 					},
 					{
-						Name: "account_b",
+						Name:  "account_b",
+						Realm: &r,
 						Tables: []*schema.Table{
 							{Name: "t2"},
 						},
@@ -398,6 +406,7 @@ table "t2" {
 
 func TestUnsignedImmutability(t *testing.T) {
 	f := `table "users" {
+	schema = schema.test
 	column "id" {
 		type = bigint
 		unsigned = true
@@ -416,6 +425,100 @@ schema "test" {
 	require.EqualValues(t, &schema.IntegerType{T: "bigint", Unsigned: false}, tbl.Columns[1].Type.Type)
 }
 
+func TestTablesWithQualifiers(t *testing.T) {
+	h := `
+schema "a" {}
+schema "b" {}
+
+table "a" "users" {
+	schema = schema.a
+	column "id" {
+		type = int
+	}
+	column "friend_id" {
+		type = int
+	}
+	foreign_key "friend_b" {
+		columns = [column.friend_id]
+		ref_columns = [table.b.users.column.id]
+	}
+}
+
+table "b" "users" {
+	schema = schema.b
+	column "id" {
+		type = int
+	}
+	column "friend_id" {
+		type = int
+	}
+	foreign_key "friend_a" {
+		columns = [column.friend_id]
+		ref_columns = [table.a.users.column.id]
+	}
+}
+`
+	var r schema.Realm
+	err := mysql.UnmarshalHCL([]byte(h), &r)
+	require.NoError(t, err)
+
+	require.EqualValues(t, r.Schemas[0].Tables[0].Columns[0], r.Schemas[1].Tables[0].ForeignKeys[0].RefColumns[0])
+	require.EqualValues(t, "b", r.Schemas[0].Tables[0].ForeignKeys[0].RefTable.Schema.Name)
+}
+
+func TestQualifyMarshal(t *testing.T) {
+	for _, tt := range dialects {
+		t.Run(tt.name, func(t *testing.T) {
+			r := schema.NewRealm(
+				schema.New("a").
+					AddTables(
+						schema.NewTable("users"),
+						schema.NewTable("tbl_a"),
+					),
+				schema.New("b").
+					AddTables(
+						schema.NewTable("users"),
+						schema.NewTable("tbl_b"),
+					),
+				schema.New("c").
+					AddTables(
+						schema.NewTable("users"),
+						schema.NewTable("tbl_c"),
+					),
+			)
+			h, err := tt.Marshaler.MarshalSpec(r)
+			require.NoError(t, err)
+			expected := `table "a" "users" {
+  schema = schema.a
+}
+table "tbl_a" {
+  schema = schema.a
+}
+table "b" "users" {
+  schema = schema.b
+}
+table "tbl_b" {
+  schema = schema.b
+}
+table "c" "users" {
+  schema = schema.c
+}
+table "tbl_c" {
+  schema = schema.c
+}
+schema "a" {
+}
+schema "b" {
+}
+schema "c" {
+}
+`
+			require.EqualValues(t, expected, string(h))
+		})
+	}
+
+}
+
 func decode(f string) (*db, error) {
 	d := &db{}
 	if err := hcl.UnmarshalSpec([]byte(f), d); err != nil {
@@ -427,22 +530,4 @@ func decode(f string) (*db, error) {
 type db struct {
 	Schemas []*sqlspec.Schema `spec:"schema"`
 	Tables  []*sqlspec.Table  `spec:"table"`
-}
-
-func attrs(attrs ...*schemaspec.Attr) []*schemaspec.Attr {
-	return attrs
-}
-
-func size(n int) *schemaspec.Attr {
-	return &schemaspec.Attr{
-		K: "size",
-		V: &schemaspec.LiteralValue{V: strconv.Itoa(n)},
-	}
-}
-
-func unsigned(b bool) *schemaspec.Attr {
-	return &schemaspec.Attr{
-		K: "unsigned",
-		V: &schemaspec.LiteralValue{V: strconv.FormatBool(b)},
-	}
 }

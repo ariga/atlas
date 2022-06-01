@@ -21,7 +21,7 @@ cmpshow users 1.sql
 -- 1.hcl --
 schema "$db" {
     charset = "$charset"
-    collation = "$collate"
+    collate = "$collate"
 }
 
 table "users" {
@@ -36,7 +36,7 @@ CREATE TABLE `users` (
   `rank` bigint(20) NOT NULL
 )
 
--- 8/1.sql --
+-- mysql8/1.sql --
 CREATE TABLE `users` (
   `rank` bigint NOT NULL
 )
@@ -44,7 +44,7 @@ CREATE TABLE `users` (
 -- 2.hcl --
 schema "$db" {
     charset = "$charset"
-    collation = "$collate"
+    collate = "$collate"
 }
 
 table "users" {
@@ -64,7 +64,7 @@ CREATE TABLE `users` (
   UNIQUE KEY `rank_idx` (`rank`)
 )
 
--- 8/2.sql --
+-- mysql8/2.sql --
 CREATE TABLE `users` (
   `rank` bigint NOT NULL,
   UNIQUE KEY `rank_idx` (`rank`)
@@ -74,7 +74,7 @@ CREATE TABLE `users` (
 -- 3.hcl --
 schema "$db" {
     charset = "$charset"
-    collation = "$collate"
+    collate = "$collate"
 }
 
 table "users" {
@@ -93,7 +93,7 @@ CREATE TABLE `users` (
   KEY `rank_idx` (`rank`)
 )
 
--- 8/3.sql --
+-- mysql8/3.sql --
 CREATE TABLE `users` (
   `rank` bigint NOT NULL,
   KEY `rank_idx` (`rank`)

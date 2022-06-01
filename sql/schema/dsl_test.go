@@ -73,6 +73,7 @@ func TestSchema_AddTables(t *testing.T) {
 	require.Equal(
 		t,
 		func() *schema.Schema {
+			p := 6
 			s := &schema.Schema{Name: "public"}
 			users := &schema.Table{
 				Name:   "users",
@@ -84,7 +85,7 @@ func TestSchema_AddTables(t *testing.T) {
 					{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
 					{Name: "active", Type: &schema.ColumnType{Type: &schema.BoolType{T: "boolean"}}},
 					{Name: "name", Type: &schema.ColumnType{Null: true, Type: &schema.StringType{T: "varchar", Size: 255}}},
-					{Name: "registered_at", Type: &schema.ColumnType{Null: false, Type: &schema.TimeType{T: "timestamp", Precision: 6}}},
+					{Name: "registered_at", Type: &schema.ColumnType{Null: false, Type: &schema.TimeType{T: "timestamp", Precision: &p}}},
 				},
 			}
 			s.Tables = append(s.Tables, users)
@@ -167,6 +168,14 @@ func TestSchema_SetComment(t *testing.T) {
 	s.SetComment("2")
 	require.Len(t, s.Attrs, 1)
 	require.Equal(t, &schema.Comment{Text: "2"}, s.Attrs[0])
+}
+
+func TestSchema_SetGeneratedExpr(t *testing.T) {
+	c := schema.NewIntColumn("c", "int")
+	require.Empty(t, c.Attrs)
+	x := &schema.GeneratedExpr{Expr: "d*2", Type: "VIRTUAL"}
+	c.SetGeneratedExpr(x)
+	require.Equal(t, []schema.Attr{x}, c.Attrs)
 }
 
 func TestCheck(t *testing.T) {

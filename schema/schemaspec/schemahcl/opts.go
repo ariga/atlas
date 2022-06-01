@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package schemahcl
 
 import (
@@ -14,17 +18,19 @@ import (
 type (
 	// Config configures an unmarshaling.
 	Config struct {
-		types  []*schemaspec.TypeSpec
-		newCtx func() *hcl.EvalContext
+		types    []*schemaspec.TypeSpec
+		newCtx   func() *hcl.EvalContext
+		pathVars map[string]map[string]cty.Value
 	}
 
 	// Option configures a Config.
 	Option func(*Config)
 )
 
-// New returns a state configured with options.
-func New(opts ...Option) *state {
+// New returns a State configured with options.
+func New(opts ...Option) *State {
 	cfg := &Config{
+		pathVars: make(map[string]map[string]cty.Value),
 		newCtx: func() *hcl.EvalContext {
 			return &hcl.EvalContext{
 				Variables: make(map[string]cty.Value),
@@ -35,7 +41,33 @@ func New(opts ...Option) *state {
 	for _, opt := range opts {
 		opt(cfg)
 	}
-	return &state{config: cfg}
+	return &State{config: cfg}
+}
+
+// WithScopedEnums configured a list of allowed ENUMs to be used in
+// the given context, block or attribute. For example, the following
+// option allows setting HASH or BTREE to the "using" attribute in
+// "index" block.
+//
+//	WithScopedEnums("table.index.type", "HASH", "BTREE")
+//
+//	table "t" {
+//		...
+//		index "i" {
+//			type = HASH     // Allowed.
+//			type = INVALID  // Not Allowed.
+//		}
+//	}
+//
+//
+func WithScopedEnums(path string, enums ...string) Option {
+	return func(c *Config) {
+		vars := make(map[string]cty.Value, len(enums))
+		for i := range enums {
+			vars[enums[i]] = cty.StringVal(enums[i])
+		}
+		c.pathVars[path] = vars
+	}
 }
 
 // WithTypes configures the list of given types as identifiers in the unmarshaling context.

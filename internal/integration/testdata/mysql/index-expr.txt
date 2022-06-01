@@ -1,0 +1,62 @@
+# Run this test only on MySQL 8 as it is not supported by other versions.
+only mysql8
+
+apply 1.hcl
+cmpshow users 1.sql
+
+apply 2.hcl
+cmpshow users 2.sql
+
+-- 1.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "first_name" {
+    null = false
+    type = varchar(128)
+  }
+  column "last_name" {
+    null = false
+    type = varchar(128)
+  }
+  index "full_name" {
+    on {
+        expr = "concat(`first_name`, `last_name`)"
+    }
+  }
+}
+
+-- 1.sql --
+CREATE TABLE `users` (
+  `first_name` varchar(128) NOT NULL,
+  `last_name` varchar(128) NOT NULL,
+  KEY `full_name` ((concat(`first_name`,`last_name`)))
+)
+
+-- 2.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "first_name" {
+    null = false
+    type = varchar(128)
+  }
+  column "last_name" {
+    null = false
+    type = varchar(128)
+  }
+  index "full_name" {
+    on {
+      expr = "concat(`first_name`, '\\'s first name')"
+    }
+  }
+}
+
+-- 2.sql --
+CREATE TABLE `users` (
+  `first_name` varchar(128) NOT NULL,
+  `last_name` varchar(128) NOT NULL,
+  KEY `full_name` ((concat(`first_name`,_utf8mb4'\'s first name')))
+)

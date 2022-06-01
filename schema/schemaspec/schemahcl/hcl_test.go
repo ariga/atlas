@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package schemahcl
 
 import (
@@ -84,6 +88,7 @@ func TestResource(t *testing.T) {
 func ExampleUnmarshal() {
 	f := `
 show "seinfeld" {
+	day = SUN
 	writer "jerry" {
 		full_name = "Jerry Seinfeld"	
 	}
@@ -99,19 +104,25 @@ show "seinfeld" {
 		}
 		Show struct {
 			Name    string    `spec:",name"`
+			Day     string    `spec:"day"`
 			Writers []*Writer `spec:"writer"`
 		}
 	)
-	var test struct {
-		Shows []*Show `spec:"show"`
-	}
-	err := Unmarshal([]byte(f), &test)
+	var (
+		test struct {
+			Shows []*Show `spec:"show"`
+		}
+		opts = []Option{
+			WithScopedEnums("show.day", "SUN", "MON", "TUE"),
+		}
+	)
+	err := New(opts...).UnmarshalSpec([]byte(f), &test)
 	if err != nil {
 		panic(err)
 	}
 	seinfeld := test.Shows[0]
-	fmt.Printf("the show %q has %d writers.", seinfeld.Name, len(seinfeld.Writers))
-	// Output: the show "seinfeld" has 2 writers.
+	fmt.Printf("the show %q at day %s has %d writers.", seinfeld.Name, seinfeld.Day, len(seinfeld.Writers))
+	// Output: the show "seinfeld" at day SUN has 2 writers.
 }
 
 func ExampleMarshal() {
@@ -219,5 +230,82 @@ zoo "ramat_gan" {
 			},
 		}, test.Zoo)
 	})
+}
 
+func TestQualified(t *testing.T) {
+	type Person struct {
+		Name  string `spec:",name"`
+		Title string `spec:",qualifier"`
+	}
+	var test struct {
+		Person *Person `spec:"person"`
+	}
+	h := `person "dr" "jekyll" {
+}
+`
+	err := Unmarshal([]byte(h), &test)
+	require.NoError(t, err)
+	require.EqualValues(t, test.Person, &Person{
+		Title: "dr",
+		Name:  "jekyll",
+	})
+	out, err := Marshal(&test)
+	require.NoError(t, err)
+	require.EqualValues(t, h, string(out))
+}
+
+func TestNameAttr(t *testing.T) {
+	h := `
+named "block_id" {
+  name = "atlas"
+}
+ref = named.block_id.name
+`
+	type Named struct {
+		Name string `spec:"name,name"`
+	}
+	var test struct {
+		Named *Named `spec:"named"`
+		Ref   string `spec:"ref"`
+	}
+	err := Unmarshal([]byte(h), &test)
+	require.NoError(t, err)
+	require.EqualValues(t, &Named{
+		Name: "atlas",
+	}, test.Named)
+	require.EqualValues(t, "atlas", test.Ref)
+}
+
+func TestRefPatch(t *testing.T) {
+	type (
+		Family struct {
+			Name string `spec:"name,name"`
+		}
+		Person struct {
+			Name   string          `spec:",name"`
+			Family *schemaspec.Ref `spec:"family"`
+		}
+	)
+	schemaspec.Register("family", &Family{})
+	schemaspec.Register("person", &Person{})
+	var test struct {
+		Families []*Family `spec:"family"`
+		People   []*Person `spec:"person"`
+	}
+	h := `
+variable "family_name" {
+  type = string
+}
+
+family "default" {
+	name = var.family_name
+}
+
+person "rotem" {
+	family = family.default
+}
+`
+	err := New().Eval([]byte(h), &test, map[string]string{"family_name": "tam"})
+	require.NoError(t, err)
+	require.EqualValues(t, "$family.tam", test.People[0].Family.V)
 }

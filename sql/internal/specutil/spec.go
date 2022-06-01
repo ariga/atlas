@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package specutil
 
 import (
@@ -5,6 +9,7 @@ import (
 	"strconv"
 
 	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
 )
@@ -25,6 +30,19 @@ func BoolAttr(k string, v bool) *schemaspec.Attr {
 	}
 }
 
+// IntAttr is a helper method for constructing *schemaspec.Attr with the numeric value of v.
+func IntAttr(k string, v int) *schemaspec.Attr {
+	return Int64Attr(k, int64(v))
+}
+
+// Int64Attr is a helper method for constructing *schemaspec.Attr with the numeric value of v.
+func Int64Attr(k string, v int64) *schemaspec.Attr {
+	return &schemaspec.Attr{
+		K: k,
+		V: &schemaspec.LiteralValue{V: strconv.FormatInt(v, 10)},
+	}
+}
+
 // LitAttr is a helper method for constructing *schemaspec.Attr instances that contain literal values.
 func LitAttr(k, v string) *schemaspec.Attr {
 	return &schemaspec.Attr{
@@ -38,6 +56,22 @@ func RawAttr(k, v string) *schemaspec.Attr {
 	return &schemaspec.Attr{
 		K: k,
 		V: &schemaspec.RawExpr{X: v},
+	}
+}
+
+// VarAttr is a helper method for constructing *schemaspec.Attr instances that contain a variable reference.
+func VarAttr(k, v string) *schemaspec.Attr {
+	return &schemaspec.Attr{
+		K: k,
+		V: &schemaspec.Ref{V: v},
+	}
+}
+
+// RefAttr is a helper method for constructing *schemaspec.Attr instances that contain a reference.
+func RefAttr(k string, r *schemaspec.Ref) *schemaspec.Attr {
+	return &schemaspec.Attr{
+		K: k,
+		V: r,
 	}
 }
 
@@ -82,33 +116,58 @@ func Marshal(v interface{}, marshaler schemaspec.Marshaler, schemaSpec func(sche
 	default:
 		return nil, fmt.Errorf("specutil: failed marshaling spec. %T is not supported", v)
 	}
+	if err := QualifyDuplicates(d.Tables); err != nil {
+		return nil, err
+	}
 	return marshaler.MarshalSpec(d)
+}
+
+// QualifyDuplicates sets the Qualified field equal to the schema name in any tables
+// with duplicate names in the provided table specs.
+func QualifyDuplicates(tableSpecs []*sqlspec.Table) error {
+	seen := make(map[string]*sqlspec.Table, len(tableSpecs))
+	for _, tbl := range tableSpecs {
+		if s, ok := seen[tbl.Name]; ok {
+			schemaName, err := SchemaName(s.Schema)
+			if err != nil {
+				return err
+			}
+			s.Qualifier = schemaName
+			schemaName, err = SchemaName(tbl.Schema)
+			if err != nil {
+				return err
+			}
+			tbl.Qualifier = schemaName
+		}
+		seen[tbl.Name] = tbl
+	}
+	return nil
 }
 
 // Unmarshal unmarshals an Atlas DDL document using an unmarshaler into v. Unmarshal uses the
 // given convertTable function to convert a *sqlspec.Table into a *schema.Table.
-func Unmarshal(data []byte, unmarshaler schemaspec.Unmarshaler, v interface{},
+func Unmarshal(data []byte, evaluator schemahcl.Evaluator, v interface{}, input map[string]string,
 	convertTable ConvertTableFunc) error {
 	var d doc
-	if err := unmarshaler.UnmarshalSpec(data, &d); err != nil {
+	if err := evaluator.Eval(data, &d, input); err != nil {
 		return err
 	}
 	switch v := v.(type) {
 	case *schema.Realm:
-		realm, err := Realm(d.Schemas, d.Tables, convertTable)
+		err := Scan(v, d.Schemas, d.Tables, convertTable)
 		if err != nil {
 			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
 		}
-		*v = *realm
 	case *schema.Schema:
 		if len(d.Schemas) != 1 {
 			return fmt.Errorf("specutil: expecting document to contain a single schema, got %d", len(d.Schemas))
 		}
-		conv, err := Schema(d.Schemas[0], d.Tables, convertTable)
-		if err != nil {
-			return fmt.Errorf("specutil: failed converting to *schema.Schema: %w", err)
+		var r schema.Realm
+		if err := Scan(&r, d.Schemas, d.Tables, convertTable); err != nil {
+			return err
 		}
-		*v = *conv
+		r.Schemas[0].Realm = nil
+		*v = *r.Schemas[0]
 	default:
 		return fmt.Errorf("specutil: failed unmarshaling spec. %T is not supported", v)
 	}

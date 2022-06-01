@@ -10,7 +10,7 @@ services:
     healthcheck:
       test: mysqladmin ping -ppass
     ports:
-      - 3306:3306
+      - "3306:3306"
 
   mysql57:
     platform: linux/amd64
@@ -21,7 +21,7 @@ services:
     healthcheck:
       test: mysqladmin ping -ppass
     ports:
-      - 3307:3306
+      - "3307:3306"
 
   mysql8:
     platform: linux/amd64
@@ -32,7 +32,7 @@ services:
     healthcheck:
       test: mysqladmin ping -ppass
     ports:
-      - 3308:3306
+      - "3308:3306"
 
   postgres10:
     platform: linux/amd64
@@ -43,7 +43,7 @@ services:
     healthcheck:
       test: pg_isready -U postgres
     ports:
-      - 5430:5432
+      - "5430:5432"
 
   postgres11:
     platform: linux/amd64
@@ -54,7 +54,7 @@ services:
     healthcheck:
       test: pg_isready -U postgres
     ports:
-      - 5431:5432
+      - "5431:5432"
 
   postgres12:
     platform: linux/amd64
@@ -65,7 +65,7 @@ services:
     healthcheck:
       test: pg_isready -U postgres
     ports:
-      - 5432:5432
+      - "5432:5432"
 
   postgres13:
     platform: linux/amd64
@@ -76,7 +76,7 @@ services:
     healthcheck:
       test: pg_isready -U postgres
     ports:
-      - 5433:5432
+      - "5433:5432"
 
   postgres14:
     platform: linux/amd64
@@ -87,7 +87,7 @@ services:
     healthcheck:
       test: pg_isready -U postgres
     ports:
-      - 5434:5432
+      - "5434:5432"
 
   mariadb:
     platform: linux/amd64
@@ -98,7 +98,7 @@ services:
     healthcheck:
       test: mysqladmin ping -ppass
     ports:
-      - 4306:3306
+      - "4306:3306"
 
   mariadb102:
     platform: linux/amd64
@@ -109,7 +109,7 @@ services:
     healthcheck:
       test: mysqladmin ping -ppass
     ports:
-      - 4307:3306
+      - "4307:3306"
 
   mariadb103:
     platform: linux/amd64
@@ -120,4 +120,24 @@ services:
     healthcheck:
       test: mysqladmin ping -ppass
     ports:
-      - 4308:3306
+      - "4308:3306"
+
+  # Default DB test, No Password
+  tidb5:
+    platform: linux/amd64
+    image: pingcap/tidb:v5.4.0
+    ports:
+      - "4309:4000"
+
+  tidb6:
+    platform: linux/amd64
+    image: pingcap/tidb:v6.0.0
+    ports:
+      - "4310:4000"
+  
+  cockroach21.2.11:
+    platform: linux/amd64
+    image: cockroachdb/cockroach:v21.2.11
+    ports:
+      - "26257:26257"
+    command: "start-single-node --insecure"

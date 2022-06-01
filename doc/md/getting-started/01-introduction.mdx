@@ -20,13 +20,23 @@ the schema of a local database that we will run inside a Docker container.
 ### Install the CLI
 
 <Tabs
-defaultValue="apple-intel"
+defaultValue="apple-intel-brew"
 values={[
-{label: 'MacOS', value: 'apple-intel'},
+{label: 'macOS (Homebrew)', value: 'apple-intel-brew'},
+{label: 'macOS (Plain)', value: 'apple-intel-plain'},
 {label: 'Linux', value: 'linux'},
 {label: 'Windows', value: 'windows'},
 ]}>
-<TabItem value="apple-intel">
+<TabItem value="apple-intel-brew">
+
+Get the latest release with [Homebrew](https://brew.sh/):
+
+```shell
+brew install ariga/tap/atlas
+```
+
+</TabItem>
+<TabItem value="apple-intel-plain">
 
 Download latest release.
 ```shell
@@ -69,10 +79,13 @@ move the atlas binary to a file location on your system PATH.
 </TabItem>
 </Tabs>
 
-Starting with release [v0.3.0](https://github.com/ariga/atlas/releases/tag/v0.3.0),
-ֿthe distributed binaries include code for a [Management UI](../ui/intro.md) wrapping the
+:::info
+Latest release is updated twice a day and is based on the most recent tagged release.
+:::
+
+The distributed binaries include code for a [Management UI](../ui/intro.md) wrapping the
 core Atlas engine that is not currently released publicly. The binaries
-themselves are still released under the same [Apache License 2.0](https://github.com/ariga/atlas/blob/master/LICENSE).
+themselves are released under the [Ariga End User License](https://ariga.io/legal/atlas/eula).
 If you would like to build Atlas from source without the UI follow the instructions [here](../cli/reference.md#building-from-source).
 
 To verify that the CLI is installed correctly run:
@@ -103,14 +116,14 @@ Use "atlas [command] --help" for more information about a command.
 For the purpose of this guide, we will start a local Docker container running MySQL.
 
 ```shell
-docker run --name atlas-db  -p 3306:3306  -e MYSQL_ROOT_PASSWORD=pass -e MYSQL_DATABASE=example   mysql:8.0.27
+docker run --name atlas-db -p 3306:3306 -e MYSQL_ROOT_PASSWORD=pass -e MYSQL_DATABASE=example mysql
 ```
 
 To verify the local database is running, run the MySQL command-line interface
 from within the container:
 
 ```shell
-docker  exec -it  atlas-db  mysql --password='pass' example
+docker exec -it atlas-db mysql --password='pass' example
 ```
 Run `show tables;` to verify that the database is empty:
 ```text

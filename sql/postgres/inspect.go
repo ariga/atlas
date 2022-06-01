@@ -28,6 +28,9 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 	}
 	r := schema.NewRealm(schemas...).SetCollation(i.collate)
 	r.Attrs = append(r.Attrs, &CType{V: i.ctype})
+	if len(schemas) == 0 || !sqlx.ModeInspectRealm(opts).Is(schema.InspectTables) {
+		return r, nil
+	}
 	if err := i.inspectTables(ctx, r, nil); err != nil {
 		return nil, err
 	}
@@ -50,10 +53,12 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 	}
 	r := schema.NewRealm(schemas...).SetCollation(i.collate)
 	r.Attrs = append(r.Attrs, &CType{V: i.ctype})
-	if err := i.inspectTables(ctx, r, opts); err != nil {
-		return nil, err
+	if sqlx.ModeInspectSchema(opts).Is(schema.InspectTables) {
+		if err := i.inspectTables(ctx, r, opts); err != nil {
+			return nil, err
+		}
+		sqlx.LinkSchemaTables(schemas)
 	}
-	sqlx.LinkSchemaTables(schemas)
 	return r.Schemas[0], nil
 }
 
@@ -69,6 +74,9 @@ func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *sche
 			return err
 		}
 		if err := i.indexes(ctx, s); err != nil {
+			return err
+		}
+		if err := i.partitions(s); err != nil {
 			return err
 		}
 		if err := i.fks(ctx, s); err != nil {
@@ -102,8 +110,8 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var tSchema, name, comment sql.NullString
-		if err := rows.Scan(&tSchema, &name, &comment); err != nil {
+		var tSchema, name, comment, partattrs, partstart, partexprs sql.NullString
+		if err := rows.Scan(&tSchema, &name, &comment, &partattrs, &partstart, &partexprs); err != nil {
 			return fmt.Errorf("scan table information: %w", err)
 		}
 		if !sqlx.ValidString(tSchema) || !sqlx.ValidString(name) {
@@ -116,8 +124,13 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 		t := &schema.Table{Name: name.String}
 		s.AddTables(t)
 		if sqlx.ValidString(comment) {
-			t.Attrs = append(t.Attrs, &schema.Comment{
-				Text: comment.String,
+			t.SetComment(comment.String)
+		}
+		if sqlx.ValidString(partattrs) {
+			t.AddAttrs(&Partition{
+				start: partstart.String,
+				attrs: partattrs.String,
+				exprs: partexprs.String,
 			})
 		}
 	}
@@ -126,7 +139,11 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 
 // columns queries and appends the columns of the given table.
 func (i *inspect) columns(ctx context.Context, s *schema.Schema) error {
-	rows, err := i.querySchema(ctx, columnsQuery, s)
+	query := columnsQuery
+	if i.crdb {
+		query = crdbColumnsQuery
+	}
+	rows, err := i.querySchema(ctx, query, s)
 	if err != nil {
 		return fmt.Errorf("postgres: querying schema %q columns: %w", s.Name, err)
 	}
@@ -148,12 +165,12 @@ func (i *inspect) columns(ctx context.Context, s *schema.Schema) error {
 // addColumn scans the current row and adds a new column from it to the table.
 func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	var (
-		typid, maxlen, precision, timeprecision, scale, seqstart, seqinc                                    sql.NullInt64
-		table, name, typ, nullable, defaults, udt, identity, generation, charset, collate, comment, typtype sql.NullString
+		typid, maxlen, precision, timeprecision, scale, seqstart, seqinc                                              sql.NullInt64
+		table, name, typ, nullable, defaults, udt, identity, genidentity, genexpr, charset, collate, comment, typtype sql.NullString
 	)
 	if err := rows.Scan(
-		&table, &name, &typ, &nullable, &defaults, &maxlen, &precision, &timeprecision, &scale,
-		&charset, &collate, &udt, &identity, &seqstart, &seqinc, &generation, &comment, &typtype, &typid,
+		&table, &name, &typ, &nullable, &defaults, &maxlen, &precision, &timeprecision, &scale, &charset,
+		&collate, &udt, &identity, &seqstart, &seqinc, &genidentity, &genexpr, &comment, &typtype, &typid,
 	); err != nil {
 		return err
 	}
@@ -172,38 +189,37 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 		typ:           typ.String,
 		size:          maxlen.Int64,
 		udt:           udt.String,
-		precision:     precision.Int64,
-		timePrecision: timeprecision.Int64,
 		scale:         scale.Int64,
 		typtype:       typtype.String,
 		typid:         typid.Int64,
+		precision:     precision.Int64,
+		timePrecision: &timeprecision.Int64,
 	})
-	if sqlx.ValidString(defaults) {
+	if defaults.Valid {
 		c.Default = defaultExpr(c, defaults.String)
 	}
 	if identity.String == "YES" {
 		c.Attrs = append(c.Attrs, &Identity{
-			Generation: generation.String,
+			Generation: genidentity.String,
 			Sequence: &Sequence{
 				Start:     seqstart.Int64,
 				Increment: seqinc.Int64,
 			},
 		})
 	}
-	if sqlx.ValidString(comment) {
-		c.Attrs = append(c.Attrs, &schema.Comment{
-			Text: comment.String,
+	if sqlx.ValidString(genexpr) {
+		c.Attrs = append(c.Attrs, &schema.GeneratedExpr{
+			Expr: genexpr.String,
 		})
+	}
+	if sqlx.ValidString(comment) {
+		c.SetComment(comment.String)
 	}
 	if sqlx.ValidString(charset) {
-		c.Attrs = append(c.Attrs, &schema.Charset{
-			V: charset.String,
-		})
+		c.SetCharset(charset.String)
 	}
 	if sqlx.ValidString(collate) {
-		c.Attrs = append(c.Attrs, &schema.Collation{
-			V: collate.String,
-		})
+		c.SetCollation(collate.String)
 	}
 	t.Columns = append(t.Columns, c)
 	return nil
@@ -212,7 +228,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 func columnType(c *columnDesc) schema.Type {
 	var typ schema.Type
 	switch t := c.typ; strings.ToLower(t) {
-	case TypeBigInt, TypeInt8, TypeInt, TypeInteger, TypeInt4, TypeSmallInt, TypeInt2:
+	case TypeBigInt, TypeInt8, TypeInt, TypeInteger, TypeInt4, TypeSmallInt, TypeInt2, TypeInt64:
 		typ = &schema.IntegerType{T: t}
 	case TypeBit, TypeBitVar:
 		typ = &BitType{T: t, Len: c.size}
@@ -226,11 +242,17 @@ func columnType(c *columnDesc) schema.Type {
 		typ = &schema.StringType{T: t, Size: int(c.size)}
 	case TypeCIDR, TypeInet, TypeMACAddr, TypeMACAddr8:
 		typ = &NetworkType{T: t}
-	case TypeCircle, TypeLine, TypeLseg, TypeBox, TypePath, TypePolygon, TypePoint:
+	case TypeCircle, TypeLine, TypeLseg, TypeBox, TypePath, TypePolygon, TypePoint, TypeGeometry:
 		typ = &schema.SpatialType{T: t}
-	case TypeDate, TypeTime, TypeTimeWTZ, TypeTimeWOTZ,
-		TypeTimestamp, TypeTimestampTZ, TypeTimestampWTZ, TypeTimestampWOTZ:
-		typ = &schema.TimeType{T: t, Precision: int(c.timePrecision)}
+	case TypeDate:
+		typ = &schema.TimeType{T: t}
+	case TypeTime, TypeTimeWOTZ, TypeTimeTZ, TypeTimeWTZ, TypeTimestamp,
+		TypeTimestampTZ, TypeTimestampWTZ, TypeTimestampWOTZ:
+		p := defaultTimePrecision
+		if c.timePrecision != nil {
+			p = int(*c.timePrecision)
+		}
+		typ = &schema.TimeType{T: t, Precision: &p}
 	case TypeInterval:
 		// TODO: get 'interval_type' from query above before implementing.
 		typ = &schema.UnsupportedType{T: t}
@@ -315,6 +337,9 @@ func (i *inspect) enumValues(ctx context.Context, s *schema.Schema) error {
 
 // indexes queries and appends the indexes of the given table.
 func (i *inspect) indexes(ctx context.Context, s *schema.Schema) error {
+	if i.conn.crdb {
+		return i.crdbIndexes(ctx, s)
+	}
 	rows, err := i.querySchema(ctx, indexesQuery, s)
 	if err != nil {
 		return fmt.Errorf("postgres: querying schema %q indexes: %w", s.Name, err)
@@ -331,12 +356,12 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 	names := make(map[string]*schema.Index)
 	for rows.Next() {
 		var (
-			uniq, primary                        bool
-			table, name, typ                     string
-			desc, nullsfirst, nullslast          sql.NullBool
-			column, contype, pred, expr, comment sql.NullString
+			uniq, primary                                 bool
+			table, name, typ                              string
+			desc, nullsfirst, nullslast                   sql.NullBool
+			column, contype, pred, expr, comment, options sql.NullString
 		)
-		if err := rows.Scan(&table, &name, &typ, &column, &primary, &uniq, &contype, &pred, &expr, &desc, &nullsfirst, &nullslast, &comment); err != nil {
+		if err := rows.Scan(&table, &name, &typ, &column, &primary, &uniq, &contype, &pred, &expr, &desc, &nullsfirst, &nullslast, &comment, &options); err != nil {
 			return fmt.Errorf("postgres: scanning indexes for schema %q: %w", s.Name, err)
 		}
 		t, ok := s.Table(table)
@@ -362,6 +387,13 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 			if sqlx.ValidString(pred) {
 				idx.Attrs = append(idx.Attrs, &IndexPredicate{P: pred.String})
 			}
+			if sqlx.ValidString(options) {
+				p, err := newIndexStorage(options.String)
+				if err != nil {
+					return err
+				}
+				idx.Attrs = append(idx.Attrs, p)
+			}
 			names[name] = idx
 			if primary {
 				t.PrimaryKey = idx
@@ -377,20 +409,70 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 			})
 		}
 		switch {
-		case sqlx.ValidString(expr):
-			part.X = &schema.RawExpr{
-				X: expr.String,
-			}
 		case sqlx.ValidString(column):
 			part.C, ok = t.Column(column.String)
 			if !ok {
 				return fmt.Errorf("postgres: column %q was not found for index %q", column.String, idx.Name)
 			}
 			part.C.Indexes = append(part.C.Indexes, idx)
+		case sqlx.ValidString(expr):
+			part.X = &schema.RawExpr{
+				X: expr.String,
+			}
 		default:
 			return fmt.Errorf("postgres: invalid part for index %q", idx.Name)
 		}
 		idx.Parts = append(idx.Parts, part)
+	}
+	return nil
+}
+
+// partitions builds the partition each table in the schema.
+func (i *inspect) partitions(s *schema.Schema) error {
+	for _, t := range s.Tables {
+		var d Partition
+		if !sqlx.Has(t.Attrs, &d) {
+			continue
+		}
+		switch s := strings.ToLower(d.start); s {
+		case "r":
+			d.T = PartitionTypeRange
+		case "l":
+			d.T = PartitionTypeList
+		case "h":
+			d.T = PartitionTypeHash
+		default:
+			return fmt.Errorf("postgres: unexpected partition strategy %q", s)
+		}
+		idxs := strings.Split(strings.TrimSpace(d.attrs), " ")
+		if len(idxs) == 0 {
+			return fmt.Errorf("postgres: no columns/expressions were found in partition key for column %q", t.Name)
+		}
+		for i := range idxs {
+			switch idx, err := strconv.Atoi(idxs[i]); {
+			case err != nil:
+				return fmt.Errorf("postgres: faild parsing partition key index %q", idxs[i])
+			// An expression.
+			case idx == 0:
+				j := sqlx.ExprLastIndex(d.exprs)
+				if j == -1 {
+					return fmt.Errorf("postgres: no expression found in partition key: %q", d.exprs)
+				}
+				d.Parts = append(d.Parts, &PartitionPart{
+					X: &schema.RawExpr{X: d.exprs[:j+1]},
+				})
+				d.exprs = strings.TrimPrefix(d.exprs[j+1:], ", ")
+			// A column at index idx-1.
+			default:
+				if idx > len(t.Columns) {
+					return fmt.Errorf("postgres: unexpected column index %d", idx)
+				}
+				d.Parts = append(d.Parts, &PartitionPart{
+					C: t.Columns[idx-1],
+				})
+			}
+		}
+		schema.ReplaceOrAppend(&t.Attrs, &d)
 	}
 	return nil
 }
@@ -402,7 +484,7 @@ func (i *inspect) fks(ctx context.Context, s *schema.Schema) error {
 		return fmt.Errorf("postgres: querying schema %q foreign keys: %w", s.Name, err)
 	}
 	defer rows.Close()
-	if err := sqlx.ScanSchemaFKs(s, rows); err != nil {
+	if err := sqlx.SchemaFKs(s, rows); err != nil {
 		return fmt.Errorf("postgres: %w", err)
 	}
 	return rows.Err()
@@ -668,6 +750,17 @@ type (
 		NullsLast bool
 	}
 
+	// IndexStorageParams describes index storage parameters add with the WITH clause.
+	// https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-STORAGE-PARAMETERS
+	IndexStorageParams struct {
+		schema.Attr
+		// AutoSummarize defines the authsummarize storage parameter.
+		AutoSummarize bool
+		// PagesPerRange defines pages_per_range storage
+		// parameter for BRIN indexes. Defaults to 128.
+		PagesPerRange int64
+	}
+
 	// NoInherit attribute defines the NO INHERIT flag for CHECK constraint.
 	// https://www.postgresql.org/docs/current/catalog-pg-constraint.html
 	NoInherit struct {
@@ -681,11 +774,59 @@ type (
 		schema.Attr
 		Columns []string
 	}
+
+	// Partition defines the spec of a partitioned table.
+	Partition struct {
+		schema.Attr
+		// T defines the type/strategy of the partition.
+		// Can be one of: RANGE, LIST, HASH.
+		T string
+		// Partition parts. The additional attributes
+		// on each part can be used to control collation.
+		Parts []*PartitionPart
+
+		// Internal info returned from pg_partitioned_table.
+		start, attrs, exprs string
+	}
+
+	// An PartitionPart represents an index part that
+	// can be either an expression or a column.
+	PartitionPart struct {
+		X     schema.Expr
+		C     *schema.Column
+		Attrs []schema.Attr
+	}
 )
+
+// newIndexStorage parses and returns the index storage parameters.
+func newIndexStorage(opts string) (*IndexStorageParams, error) {
+	params := &IndexStorageParams{}
+	for _, p := range strings.Split(strings.Trim(opts, "{}"), ",") {
+		kv := strings.Split(p, "=")
+		if len(kv) != 2 {
+			return nil, fmt.Errorf("invalid index storage parameter: %s", p)
+		}
+		switch kv[0] {
+		case "autosummarize":
+			b, err := strconv.ParseBool(kv[1])
+			if err != nil {
+				return nil, fmt.Errorf("failed parsing autosummarize %q: %w", kv[1], err)
+			}
+			params.AutoSummarize = b
+		case "pages_per_range":
+			i, err := strconv.ParseInt(kv[1], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("failed parsing pages_per_range %q: %w", kv[1], err)
+			}
+			params.PagesPerRange = i
+		}
+	}
+	return params, nil
+}
 
 const (
 	// Query to list runtime parameters.
-	paramsQuery = `SELECT setting FROM pg_settings WHERE name IN ('lc_collate', 'lc_ctype', 'server_version_num') ORDER BY name`
+	paramsQuery = `SELECT setting FROM pg_settings WHERE name IN ('lc_collate', 'lc_ctype', 'server_version_num', 'crdb_version') ORDER BY name DESC`
 
 	// Query to list database schemas.
 	schemasQuery = "SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast') AND schema_name NOT LIKE 'pg_%temp_%' ORDER BY schema_name"
@@ -698,12 +839,18 @@ const (
 SELECT
 	t1.table_schema,
 	t1.table_name,
-	pg_catalog.obj_description(t2.oid, 'pg_class') AS COMMENT
+	pg_catalog.obj_description(t3.oid, 'pg_class') AS comment,
+	t4.partattrs AS partition_attrs,
+	t4.partstrat AS partition_strategy,
+	pg_get_expr(t4.partexprs, t4.partrelid) AS partition_exprs
 FROM
 	INFORMATION_SCHEMA.TABLES AS t1
-	JOIN pg_catalog.pg_class AS t2 ON t2.oid = to_regclass(t1.table_schema || '.' || t1.table_name)::oid
+	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
+	JOIN pg_catalog.pg_class AS t3 ON t3.relnamespace = t2.oid AND t3.relname = t1.table_name
+	LEFT JOIN pg_catalog.pg_partitioned_table AS t4 ON t4.partrelid = t3.oid
 WHERE
 	t1.table_type = 'BASE TABLE'
+	AND NOT COALESCE(t3.relispartition, false)
 	AND t1.table_schema IN (%s)
 ORDER BY
 	t1.table_schema, t1.table_name
@@ -712,12 +859,18 @@ ORDER BY
 SELECT
 	t1.table_schema,
 	t1.table_name,
-	pg_catalog.obj_description(t2.oid, 'pg_class') AS COMMENT
+	pg_catalog.obj_description(t3.oid, 'pg_class') AS comment,
+	t4.partattrs AS partition_attrs,
+	t4.partstrat AS partition_strategy,
+	pg_get_expr(t4.partexprs, t4.partrelid) AS partition_exprs
 FROM
 	INFORMATION_SCHEMA.TABLES AS t1
-	JOIN pg_catalog.pg_class AS t2 ON t2.oid = to_regclass(t1.table_schema || '.' || t1.table_name)::oid
+	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
+	JOIN pg_catalog.pg_class AS t3 ON t3.relnamespace = t2.oid AND t3.relname = t1.table_name
+	LEFT JOIN pg_catalog.pg_partitioned_table AS t4 ON t4.partrelid = t3.oid
 WHERE
 	t1.table_type = 'BASE TABLE'
+	AND NOT COALESCE(t3.relispartition, false)
 	AND t1.table_schema IN (%s)
 	AND t1.table_name IN (%s)
 ORDER BY
@@ -742,13 +895,16 @@ SELECT
 	t1.identity_start,
 	t1.identity_increment,
 	t1.identity_generation,
-	col_description(to_regclass("table_schema" || '.' || "table_name")::oid, "ordinal_position") AS comment,
-	t2.typtype,
-	t2.oid
+	t1.generation_expression,
+	col_description(t3.oid, "ordinal_position") AS comment,
+	t4.typtype,
+	t4.oid
 FROM
 	"information_schema"."columns" AS t1
-	LEFT JOIN pg_catalog.pg_type AS t2
-	ON t1.udt_name = t2.typname
+	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
+	JOIN pg_catalog.pg_class AS t3 ON t3.relnamespace = t2.oid AND t3.relname = t1.table_name
+	LEFT JOIN pg_catalog.pg_type AS t4
+	ON t1.udt_name = t4.typname
 WHERE
 	table_schema = $1 AND table_name IN (%s)
 ORDER BY
@@ -766,25 +922,32 @@ SELECT
 	idx.indisunique AS unique,
 	c.contype AS constraint_type,
 	pg_get_expr(idx.indpred, idx.indrelid) AS predicate,
-	pg_get_expr(idx.indexprs, idx.indrelid) AS expression,
-	pg_index_column_has_property(idx.indexrelid, a.attnum, 'desc') AS desc,
-	pg_index_column_has_property(idx.indexrelid, a.attnum, 'nulls_first') AS nulls_first,
-	pg_index_column_has_property(idx.indexrelid, a.attnum, 'nulls_last') AS nulls_last,
-	obj_description(to_regclass($1 || i.relname)::oid) AS comment
+	pg_get_indexdef(idx.indexrelid, idx.ord, false) AS expression,
+	pg_index_column_has_property(idx.indexrelid, idx.ord, 'desc') AS desc,
+	pg_index_column_has_property(idx.indexrelid, idx.ord, 'nulls_first') AS nulls_first,
+	pg_index_column_has_property(idx.indexrelid, idx.ord, 'nulls_last') AS nulls_last,
+	obj_description(to_regclass($1 || i.relname)::oid) AS comment,
+	i.reloptions AS options
 FROM
-	pg_index idx
+	(
+		select
+			*,
+			generate_series(1,array_length(i.indkey,1)) as ord,
+			unnest(i.indkey) AS key
+		from pg_index i
+	) idx
 	JOIN pg_class i ON i.oid = idx.indexrelid
 	JOIN pg_class t ON t.oid = idx.indrelid
 	JOIN pg_namespace n ON n.oid = t.relnamespace
 	LEFT JOIN pg_constraint c ON idx.indexrelid = c.conindid
-	LEFT JOIN pg_attribute a ON a.attrelid = idx.indexrelid
+	LEFT JOIN pg_attribute a ON (a.attrelid, a.attnum) = (idx.indrelid, idx.key)
 	JOIN pg_am am ON am.oid = i.relam
 WHERE
 	n.nspname = $1
 	AND t.relname IN (%s)
 	AND COALESCE(c.contype, '') <> 'f'
 ORDER BY
-	table_name, index_name, a.attnum
+	table_name, index_name, idx.ord
 `
 	fksQuery = `
 SELECT
@@ -822,7 +985,7 @@ ORDER BY
 SELECT
 	rel.relname AS table_name,
 	t1.conname AS constraint_name,
-	pg_get_expr(t1.conbin, to_regclass(nsp.nspname || '.' || rel.relname)::oid) as expression,
+	pg_get_expr(t1.conbin, t1.conrelid) as expression,
 	t2.attname as column_name,
 	t1.conkey as column_indexes,
 	t1.connoinherit as no_inherit

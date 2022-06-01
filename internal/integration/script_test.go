@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"unicode"
@@ -37,7 +38,9 @@ func TestMySQL_Script(t *testing.T) {
 				"apply":   t.cmdApply,
 				"exist":   t.cmdExist,
 				"synced":  t.cmdSynced,
+				"cmphcl":  t.cmdCmpHCL,
 				"cmpshow": t.cmdCmpShow,
+				"execsql": t.cmdExec,
 			},
 		})
 	})
@@ -53,7 +56,9 @@ func TestPostgres_Script(t *testing.T) {
 				"apply":   t.cmdApply,
 				"exist":   t.cmdExist,
 				"synced":  t.cmdSynced,
+				"cmphcl":  t.cmdCmpHCL,
 				"cmpshow": t.cmdCmpShow,
+				"execsql": t.cmdExec,
 			},
 		})
 	})
@@ -69,6 +74,9 @@ func TestSQLite_Script(t *testing.T) {
 			"exist":   tt.cmdExist,
 			"synced":  tt.cmdSynced,
 			"cmpshow": tt.cmdCmpShow,
+			"cmpmig":  tt.cmdCmpMig,
+			"execsql": tt.cmdExec,
+			"atlas":   tt.cmdCLI,
 		},
 	})
 }
@@ -113,33 +121,51 @@ func setupScript(t *testing.T, env *testscript.Env, db *sql.DB, dropCmd string) 
 	return nil
 }
 
+var (
+	keyDB  *sql.DB
+	keyDrv *sqlite.Driver
+)
+
+const cliPathKey = "cli"
+
 func (t *liteTest) setupScript(env *testscript.Env) error {
-	db, err := sql.Open("sqlite3", "file:atlas?mode=memory&cache=shared&_fk=1")
+	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&_fk=1",
+		filepath.Join(env.WorkDir, "atlas.sqlite")))
 	require.NoError(t, err)
-	t.db = db
-	env.Setenv("db", "main")
 	env.Defer(func() {
 		require.NoError(t, db.Close())
 	})
-	t.Cleanup(func() {
-		require.NoError(t, db.Close())
-	})
-	t.drv, err = sqlite.Open(db)
+	drv, err := sqlite.Open(db)
 	require.NoError(t, err)
+	env.Setenv("db", "main")
+	// Attach connection and driver to the
+	// environment as tests run in parallel.
+	env.Values[keyDB] = db
+	env.Values[keyDrv] = drv
+	cliPath, err := buildCmd(t.T)
+	if err != nil {
+		return err
+	}
+	env.Setenv(cliPathKey, cliPath)
+
+	// Set the workdir in the test atlas.hcl file.
+	projectFile := filepath.Join(env.WorkDir, "atlas.hcl")
+	if b, err := os.ReadFile(projectFile); err == nil {
+		rep := strings.ReplaceAll(string(b), "URL",
+			fmt.Sprintf("sqlite://file:%s/atlas.sqlite?cache=shared&_fk=1", env.WorkDir))
+		return os.WriteFile(projectFile, []byte(rep), 0600)
+	}
 	return nil
 }
 
 // cmdOnly executes only tests that their driver version matches the given pattern.
 // For example, "only 8" or "only 8 maria*"
 func cmdOnly(ts *testscript.TestScript, neg bool, args []string) {
-	if neg {
-		ts.Fatalf("unsupported: ! only")
-	}
 	ver := ts.Getenv("version")
 	for i := range args {
 		re, rerr := regexp.Compile(`(?mi)` + args[i])
 		ts.Check(rerr)
-		if re.MatchString(ver) {
+		if !neg == re.MatchString(ver) {
 			return
 		}
 	}
@@ -154,18 +180,30 @@ func (t *myTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {
 		if err := t.db.QueryRow(fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`", schema, name)).Scan(&name, &create); err != nil {
 			return "", err
 		}
-		// Trim the "table_options" if it was not requested explicitly.
-		return create[:strings.LastIndexByte(create, ')')+1], nil
+		i := strings.LastIndexByte(create, ')')
+		create, opts := create[:i+1], strings.Fields(create[i+1:])
+		for _, opt := range opts {
+			switch strings.Split(opt, "=")[0] {
+			// Keep only options that are relevant for the tests.
+			case "AUTO_INCREMENT", "COMMENT":
+				create += " " + opt
+			}
+		}
+		return create, nil
 	})
 }
 
 func (t *pgTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {
 	cmdCmpShow(ts, args, func(schema, name string) (string, error) {
-		buf, err := exec.Command("docker", "ps", "-qa", "-f", fmt.Sprintf("name=postgres%s", t.version)).CombinedOutput()
+		buf, err := exec.Command("docker", "ps", "-qa", "-f", fmt.Sprintf("publish=%d", t.port)).CombinedOutput()
 		if err != nil {
 			return "", fmt.Errorf("get container id %q: %v", buf, err)
 		}
-		cmd := exec.Command("docker", "exec", string(bytes.TrimSpace(buf)), "psql", "-U", "postgres", "-d", "test", "-c", fmt.Sprintf(`\d %s.%s`, schema, name))
+		buf = bytes.TrimSpace(buf)
+		if len(bytes.Split(buf, []byte("\n"))) > 1 {
+			return "", fmt.Errorf("multiple container ids found: %q", buf)
+		}
+		cmd := exec.Command("docker", "exec", string(buf), "psql", "-U", "postgres", "-d", "test", "-c", fmt.Sprintf(`\d %s.%s`, schema, name))
 		// Use "cmd.String" to debug command.
 		buf, err = cmd.CombinedOutput()
 		if err != nil {
@@ -181,8 +219,11 @@ func (t *pgTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {
 
 func (t *liteTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {
 	cmdCmpShow(ts, args, func(_, name string) (string, error) {
-		var stmts []string
-		rows, err := t.db.Query("SELECT sql FROM sqlite_schema where tbl_name = ?", name)
+		var (
+			stmts []string
+			db    = ts.Value(keyDB).(*sql.DB)
+		)
+		rows, err := db.Query("SELECT sql FROM sqlite_schema where tbl_name = ?", name)
 		if err != nil {
 			return "", fmt.Errorf("querying schema")
 		}
@@ -196,6 +237,37 @@ func (t *liteTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) 
 		}
 		return strings.Join(stmts, "\n"), nil
 	})
+}
+
+// cmdCmpMig compares the nth migration file under migrations/ to the provided file.
+// Because migration are created with the execution timestamp, lexicographic order of
+// the files in the directory is used to access the file of interest.
+func (t *liteTest) cmdCmpMig(ts *testscript.TestScript, _ bool, args []string) {
+	if len(args) < 2 {
+		ts.Fatalf("invalid number of args to 'cmpmig': %d", len(args))
+	}
+	expected := ts.ReadFile(args[1])
+	dir, err := os.ReadDir(ts.MkAbs("migrations"))
+	ts.Check(err)
+	idx, err := strconv.Atoi(args[0])
+	ts.Check(err)
+	current := 0
+	for _, f := range dir {
+		if f.IsDir() || !strings.HasSuffix(f.Name(), ".sql") {
+			continue
+		}
+		if current == idx {
+			actual := ts.ReadFile(filepath.Join("migrations", f.Name()))
+			var sb strings.Builder
+			if strings.TrimSpace(actual) == strings.TrimSpace(expected) {
+				return
+			}
+			ts.Check(diff.Text(f.Name(), args[1], expected, actual, &sb))
+			ts.Fatalf(sb.String())
+		}
+		current++
+	}
+	ts.Fatalf("could not find the #%d migration", idx)
 }
 
 func cmdCmpShow(ts *testscript.TestScript, args []string, show func(schema, name string) (string, error)) {
@@ -228,6 +300,117 @@ func cmdCmpShow(ts *testscript.TestScript, args []string, show func(schema, name
 	ts.Fatalf(sb.String())
 }
 
+func (t *myTest) cmdCmpHCL(ts *testscript.TestScript, _ bool, args []string) {
+	r := strings.NewReplacer("$charset", ts.Getenv("charset"), "$collate", ts.Getenv("collate"), "$db", ts.Getenv("db"))
+	cmdCmpHCL(ts, args, func(name string) (string, error) {
+		s, err := t.drv.InspectSchema(context.Background(), name, nil)
+		ts.Check(err)
+		buf, err := mysql.MarshalHCL(s)
+		require.NoError(t, err)
+		return string(buf), nil
+	}, func(s string) string {
+		return r.Replace(ts.ReadFile(s))
+	})
+}
+
+func (t *pgTest) cmdCmpHCL(ts *testscript.TestScript, _ bool, args []string) {
+	cmdCmpHCL(ts, args, func(name string) (string, error) {
+		s, err := t.drv.InspectSchema(context.Background(), name, nil)
+		ts.Check(err)
+		buf, err := postgres.MarshalHCL(s)
+		require.NoError(t, err)
+		return string(buf), nil
+	}, func(s string) string {
+		return strings.ReplaceAll(ts.ReadFile(s), "$db", ts.Getenv("db"))
+	})
+}
+
+func cmdCmpHCL(ts *testscript.TestScript, args []string, inspect func(schema string) (string, error), read ...func(string) string) {
+	if len(args) != 1 {
+		ts.Fatalf("invalid number of args to 'cmpinspect': %d", len(args))
+	}
+	if len(read) == 0 {
+		read = append(read, ts.ReadFile)
+	}
+	var (
+		fname = args[0]
+		ver   = ts.Getenv("version")
+	)
+	f1, err := inspect(ts.Getenv("db"))
+	if err != nil {
+		ts.Fatalf("inspect schema %q: %v", ts.Getenv("db"), err)
+	}
+	// Check if there is a file prefixed by database version (1.sql and <version>/1.sql).
+	if _, err := os.Stat(ts.MkAbs(filepath.Join(ver, fname))); err == nil {
+		fname = filepath.Join(ver, fname)
+	}
+	f2 := read[0](fname)
+	if strings.TrimSpace(f1) == strings.TrimSpace(f2) {
+		return
+	}
+	var sb strings.Builder
+	ts.Check(diff.Text("inspect", fname, f1, f2, &sb))
+	ts.Fatalf(sb.String())
+}
+
+func (t *myTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
+	cmdExec(ts, args, t.db)
+}
+
+func (t *pgTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
+	cmdExec(ts, args, t.db)
+}
+
+func (t *liteTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
+	cmdExec(ts, args, ts.Value(keyDB).(*sql.DB))
+}
+
+func (t *liteTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {
+	var (
+		workDir = ts.Getenv("WORK")
+		dbURL   = fmt.Sprintf("sqlite://file:%s/atlas.sqlite?cache=shared&_fk=1", workDir)
+		cliPath = ts.Getenv(cliPathKey)
+	)
+	for i, arg := range args {
+		args[i] = strings.ReplaceAll(arg, "URL", dbURL)
+	}
+	switch l := len(args); {
+	// If command was run with a unix redirect-like suffix.
+	case l > 1 && args[l-2] == ">":
+		outPath := filepath.Join(workDir, args[l-1])
+		f, err := os.Create(outPath)
+		ts.Check(err)
+		defer f.Close()
+		cmd := exec.Command(cliPath, args[0:l-2]...)
+		cmd.Stdout = f
+		stderr := &bytes.Buffer{}
+		cmd.Stderr = stderr
+		cmd.Dir = workDir
+		if err := cmd.Run(); err != nil {
+			ts.Fatalf("\n[stderr]\n%s", stderr)
+		}
+	default:
+		err := ts.Exec(cliPath, args...)
+		if !neg {
+			ts.Check(err)
+		}
+		if neg && err == nil {
+			ts.Fatalf("expected fail")
+		}
+	}
+}
+
+func cmdExec(ts *testscript.TestScript, args []string, db *sql.DB) {
+	if len(args) == 0 {
+		ts.Fatalf("missing statements for 'execsql'")
+	}
+	for i := range args {
+		s := strings.ReplaceAll(args[i], "$db", ts.Getenv("db"))
+		_, err := db.Exec(s)
+		ts.Check(err)
+	}
+}
+
 func (t *myTest) cmdExist(ts *testscript.TestScript, neg bool, args []string) {
 	cmdExist(ts, neg, args, func(schema, name string) (bool, error) {
 		var b bool
@@ -250,8 +433,11 @@ func (t *pgTest) cmdExist(ts *testscript.TestScript, neg bool, args []string) {
 
 func (t *liteTest) cmdExist(ts *testscript.TestScript, neg bool, args []string) {
 	cmdExist(ts, neg, args, func(_, name string) (bool, error) {
-		var b bool
-		if err := t.db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE `type`='table' AND `name` = ?", name).Scan(&b); err != nil {
+		var (
+			b  bool
+			db = ts.Value(keyDB).(*sql.DB)
+		)
+		if err := db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE `type`='table' AND `name` = ?", name).Scan(&b); err != nil {
 			return false, err
 		}
 		return b, nil
@@ -278,18 +464,27 @@ func (t *myTest) cmdApply(ts *testscript.TestScript, neg bool, args []string) {
 	cmdApply(ts, neg, args, t.drv.ApplyChanges, t.hclDiff)
 }
 
-func (t *myTest) hclDiff(ts *testscript.TestScript, name string) []schema.Change {
+func (t *myTest) hclDiff(ts *testscript.TestScript, name string) ([]schema.Change, error) {
 	var (
-		desired schema.Schema
+		desired = &schema.Schema{}
 		f       = ts.ReadFile(name)
+		ctx     = context.Background()
 		r       = strings.NewReplacer("$charset", ts.Getenv("charset"), "$collate", ts.Getenv("collate"), "$db", ts.Getenv("db"))
 	)
-	ts.Check(mysql.UnmarshalHCL([]byte(r.Replace(f)), &desired))
-	current, err := t.drv.InspectSchema(context.Background(), desired.Name, nil)
+	ts.Check(mysql.UnmarshalHCL([]byte(r.Replace(f)), desired))
+	current, err := t.drv.InspectSchema(ctx, desired.Name, nil)
 	ts.Check(err)
-	changes, err := t.drv.SchemaDiff(current, &desired)
-	ts.Check(err)
-	return changes
+	desired, err = t.drv.(schema.Normalizer).NormalizeSchema(ctx, desired)
+	// Normalization and diffing errors should
+	// be returned to the caller.
+	if err != nil {
+		return nil, err
+	}
+	changes, err := t.drv.SchemaDiff(current, desired)
+	if err != nil {
+		return nil, err
+	}
+	return changes, nil
 }
 
 func (t *pgTest) cmdSynced(ts *testscript.TestScript, neg bool, args []string) {
@@ -300,17 +495,26 @@ func (t *pgTest) cmdApply(ts *testscript.TestScript, neg bool, args []string) {
 	cmdApply(ts, neg, args, t.drv.ApplyChanges, t.hclDiff)
 }
 
-func (t *pgTest) hclDiff(ts *testscript.TestScript, name string) []schema.Change {
+func (t *pgTest) hclDiff(ts *testscript.TestScript, name string) ([]schema.Change, error) {
 	var (
-		desired schema.Schema
+		desired = &schema.Schema{}
+		ctx     = context.Background()
 		f       = strings.ReplaceAll(ts.ReadFile(name), "$db", ts.Getenv("db"))
 	)
-	ts.Check(postgres.UnmarshalHCL([]byte(f), &desired))
-	current, err := t.drv.InspectSchema(context.Background(), desired.Name, nil)
+	ts.Check(postgres.UnmarshalHCL([]byte(f), desired))
+	current, err := t.drv.InspectSchema(ctx, desired.Name, nil)
 	ts.Check(err)
-	changes, err := t.drv.SchemaDiff(current, &desired)
-	ts.Check(err)
-	return changes
+	desired, err = t.drv.(schema.Normalizer).NormalizeSchema(ctx, desired)
+	// Normalization and diffing errors should
+	// be returned to the caller.
+	if err != nil {
+		return nil, err
+	}
+	changes, err := t.drv.SchemaDiff(current, desired)
+	if err != nil {
+		return nil, err
+	}
+	return changes, nil
 }
 
 func (t *liteTest) cmdSynced(ts *testscript.TestScript, neg bool, args []string) {
@@ -318,27 +522,33 @@ func (t *liteTest) cmdSynced(ts *testscript.TestScript, neg bool, args []string)
 }
 
 func (t *liteTest) cmdApply(ts *testscript.TestScript, neg bool, args []string) {
-	cmdApply(ts, neg, args, t.drv.ApplyChanges, t.hclDiff)
+	cmdApply(ts, neg, args, ts.Value(keyDrv).(*sqlite.Driver).ApplyChanges, t.hclDiff)
 }
 
-func (t *liteTest) hclDiff(ts *testscript.TestScript, name string) []schema.Change {
+func (t *liteTest) hclDiff(ts *testscript.TestScript, name string) ([]schema.Change, error) {
 	var (
-		desired schema.Schema
+		desired = &schema.Schema{}
 		f       = ts.ReadFile(name)
+		drv     = ts.Value(keyDrv).(*sqlite.Driver)
 	)
-	ts.Check(sqlite.UnmarshalHCL([]byte(f), &desired))
-	current, err := t.drv.InspectSchema(context.Background(), desired.Name, nil)
+	ts.Check(sqlite.UnmarshalHCL([]byte(f), desired))
+	current, err := drv.InspectSchema(context.Background(), desired.Name, nil)
 	ts.Check(err)
-	changes, err := t.drv.SchemaDiff(current, &desired)
-	ts.Check(err)
-	return changes
+	changes, err := drv.SchemaDiff(current, desired)
+	// Diff errors should returned back to the caller.
+	if err != nil {
+		return nil, err
+	}
+	return changes, nil
 }
 
-func cmdSynced(ts *testscript.TestScript, neg bool, args []string, diff func(*testscript.TestScript, string) []schema.Change) {
+func cmdSynced(ts *testscript.TestScript, neg bool, args []string, diff func(*testscript.TestScript, string) ([]schema.Change, error)) {
 	if len(args) != 1 {
 		ts.Fatalf("unexpected number of args to synced command: %d", len(args))
 	}
-	switch changes := diff(ts, args[0]); {
+	switch changes, err := diff(ts, args[0]); {
+	case err != nil:
+		ts.Fatalf("unexpected diff failure on synced: %v", err)
 	case len(changes) > 0 && !neg:
 		ts.Fatalf("expect no schema changes, but got: %d", len(changes))
 	case len(changes) == 0 && neg:
@@ -346,8 +556,16 @@ func cmdSynced(ts *testscript.TestScript, neg bool, args []string, diff func(*te
 	}
 }
 
-func cmdApply(ts *testscript.TestScript, neg bool, args []string, apply func(context.Context, []schema.Change) error, diff func(*testscript.TestScript, string) []schema.Change) {
-	changes := diff(ts, args[0])
+func cmdApply(ts *testscript.TestScript, neg bool, args []string, apply func(context.Context, []schema.Change) error, diff func(*testscript.TestScript, string) ([]schema.Change, error)) {
+	changes, err := diff(ts, args[0])
+	switch {
+	case err != nil && !neg:
+		ts.Fatalf("diff states: %v", err)
+	// If we expect to fail, and there's a specific error to compare.
+	case err != nil && len(args) == 2:
+		matchErr(ts, err, args[1])
+		return
+	}
 	switch err := apply(context.Background(), changes); {
 	case err != nil && !neg:
 		ts.Fatalf("apply changes: %v", err)
@@ -355,15 +573,21 @@ func cmdApply(ts *testscript.TestScript, neg bool, args []string, apply func(con
 		ts.Fatalf("unexpected apply success")
 	// If we expect to fail, and there's a specific error to compare.
 	case err != nil && len(args) == 2:
-		re, rerr := regexp.Compile(`(?m)` + args[1])
-		ts.Check(rerr)
-		if !re.MatchString(err.Error()) {
-			ts.Fatalf("mismatched errors: %v != %s", err, args[1])
-		}
+		matchErr(ts, err, args[1])
 	// Apply passed. Make sure there is no drift.
 	case !neg:
-		if changes := diff(ts, args[0]); len(changes) > 0 {
+		changes, err := diff(ts, args[0])
+		ts.Check(err)
+		if len(changes) > 0 {
 			ts.Fatalf("unexpected schema changes: %d", len(changes))
 		}
+	}
+}
+
+func matchErr(ts *testscript.TestScript, err error, p string) {
+	re, rerr := regexp.Compile(`(?m)` + regexp.QuoteMeta(p))
+	ts.Check(rerr)
+	if !re.MatchString(err.Error()) {
+		ts.Fatalf("mismatched errors: %v != %s", err, p)
 	}
 }

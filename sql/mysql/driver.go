@@ -7,12 +7,14 @@ package mysql
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
+	"time"
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
-
+	"ariga.io/atlas/sql/sqlclient"
 	"golang.org/x/mod/semver"
 )
 
@@ -36,8 +38,18 @@ type (
 	}
 )
 
+func init() {
+	sqlclient.Register(
+		"mysql",
+		sqlclient.DriverOpener(Open),
+		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
+		sqlclient.RegisterFlavours("maria", "mariadb"),
+		sqlclient.RegisterURLParser(parser{}),
+	)
+}
+
 // Open opens a new MySQL driver.
-func Open(db schema.ExecQuerier) (*Driver, error) {
+func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	c := conn{ExecQuerier: db}
 	rows, err := db.QueryContext(context.Background(), variablesQuery)
 	if err != nil {
@@ -46,12 +58,77 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 	if err := sqlx.ScanOne(rows, &c.version, &c.collate, &c.charset); err != nil {
 		return nil, fmt.Errorf("mysql: scan system variables: %w", err)
 	}
+	if c.tidb() {
+		return &Driver{
+			conn:        c,
+			Differ:      &sqlx.Diff{DiffDriver: &tdiff{diff{c}}},
+			Inspector:   &tinspect{inspect{c}},
+			PlanApplier: &tplanApply{planApply{c}},
+		}, nil
+	}
 	return &Driver{
 		conn:        c,
 		Differ:      &sqlx.Diff{DiffDriver: &diff{c}},
 		Inspector:   &inspect{c},
 		PlanApplier: &planApply{c},
 	}, nil
+}
+
+func (d *Driver) dev() *sqlx.DevDriver {
+	return &sqlx.DevDriver{Driver: d, MaxNameLen: 64}
+}
+
+// NormalizeRealm returns the normal representation of the given database.
+func (d *Driver) NormalizeRealm(ctx context.Context, r *schema.Realm) (*schema.Realm, error) {
+	return d.dev().NormalizeRealm(ctx, r)
+}
+
+// NormalizeSchema returns the normal representation of the given database.
+func (d *Driver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*schema.Schema, error) {
+	return d.dev().NormalizeSchema(ctx, s)
+}
+
+// Lock implements the schema.Locker interface.
+func (d *Driver) Lock(ctx context.Context, name string, timeout time.Duration) (schema.UnlockFunc, error) {
+	conn, err := sqlx.SingleConn(ctx, d.ExecQuerier)
+	if err != nil {
+		return nil, err
+	}
+	if err := acquire(ctx, conn, name, timeout); err != nil {
+		conn.Close()
+		return nil, err
+	}
+	return func() error {
+		defer conn.Close()
+		rows, err := conn.QueryContext(ctx, "SELECT RELEASE_LOCK(?)", name)
+		if err != nil {
+			return err
+		}
+		switch released, err := sqlx.ScanNullBool(rows); {
+		case err != nil:
+			return err
+		case !released.Valid || !released.Bool:
+			return fmt.Errorf("sql/mysql: failed releasing a named lock %q", name)
+		}
+		return nil
+	}, nil
+}
+
+func acquire(ctx context.Context, conn schema.ExecQuerier, name string, timeout time.Duration) error {
+	rows, err := conn.QueryContext(ctx, "SELECT GET_LOCK(?, ?)", name, int(timeout.Seconds()))
+	if err != nil {
+		return err
+	}
+	switch acquired, err := sqlx.ScanNullBool(rows); {
+	case err != nil:
+		return err
+	case !acquired.Valid:
+		// NULL is returned in case of an unexpected internal error.
+		return fmt.Errorf("sql/mysql: unexpected internal error on Lock(%q, %s)", name, timeout)
+	case !acquired.Bool:
+		return schema.ErrLocked
+	}
+	return nil
 }
 
 // supportsCheck reports if the connected database supports
@@ -94,9 +171,34 @@ func (d *conn) supportsEnforceCheck() bool {
 	return !d.mariadb() && d.gteV("8.0.16")
 }
 
+// supportsGeneratedColumns reports if the connected database
+// supports the generated columns in information schema.
+func (d *conn) supportsGeneratedColumns() bool {
+	v := "5.7"
+	if d.mariadb() {
+		v = "10.2"
+	}
+	return d.gteV(v)
+}
+
+// supportsRenameColumn reports if the connected database
+// supports the "RENAME COLUMN" clause.
+func (d *conn) supportsRenameColumn() bool {
+	v := "8"
+	if d.mariadb() {
+		v = "10.5.2"
+	}
+	return d.gteV(v)
+}
+
 // mariadb reports if the Driver is connected to a MariaDB database.
 func (d *conn) mariadb() bool {
 	return strings.Index(d.version, "MariaDB") > 0
+}
+
+// tidb reports if the Driver is connected to a TiDB database.
+func (d *conn) tidb() bool {
+	return strings.Index(d.version, "TiDB") > 0
 }
 
 // compareV returns an integer comparing two versions according to
@@ -115,14 +217,61 @@ func (d *conn) gteV(w string) bool { return d.compareV(w) >= 0 }
 // ltV reports if the connection version is < w.
 func (d *conn) ltV(w string) bool { return d.compareV(w) == -1 }
 
-// MySQL standard unescape field function from its codebase:
-// https://github.com/mysql/mysql-server/blob/8.0/sql/dd/impl/utils.cc
+// unescape strings with backslashes returned
+// for SQL expressions from information schema.
 func unescape(s string) string {
 	var b strings.Builder
-	for i, c := range s {
-		if c != '\\' || i+1 < len(s) && s[i+1] != '\\' && s[i+1] != '=' && s[i+1] != ';' {
-			b.WriteRune(c)
+	for i := 0; i < len(s); i++ {
+		switch c := s[i]; {
+		case c != '\\' || i == len(s)-1:
+			b.WriteByte(c)
+		case s[i+1] == '\'', s[i+1] == '\\':
+			b.WriteByte(s[i+1])
+			i++
 		}
+	}
+	return b.String()
+}
+
+type parser struct{}
+
+// ParseURL implements the sqlclient.URLParser interface.
+func (parser) ParseURL(u *url.URL) *sqlclient.URL {
+	return &sqlclient.URL{URL: u, DSN: dsn(u), Schema: strings.TrimPrefix(u.Path, "/")}
+}
+
+// ChangeSchema implements the sqlclient.SchemaChanger interface.
+func (parser) ChangeSchema(u *url.URL, s string) *url.URL {
+	nu := *u
+	nu.Path = "/" + s
+	return &nu
+}
+
+// dsn returns the MySQL standard DSN for opening
+// the sql.DB from the user provided URL.
+func dsn(u *url.URL) string {
+	var b strings.Builder
+	b.WriteString(u.User.Username())
+	if p, ok := u.User.Password(); ok {
+		b.WriteByte(':')
+		b.WriteString(p)
+	}
+	if b.Len() > 0 {
+		b.WriteByte('@')
+	}
+	if u.Host != "" {
+		b.WriteString("tcp(")
+		b.WriteString(u.Host)
+		b.WriteByte(')')
+	}
+	if u.Path != "" {
+		b.WriteString(u.Path)
+	} else {
+		b.WriteByte('/')
+	}
+	if u.RawQuery != "" {
+		b.WriteByte('?')
+		b.WriteString(u.RawQuery)
 	}
 	return b.String()
 }
@@ -188,7 +337,16 @@ const (
 
 // Additional common constants in MySQL.
 const (
+	IndexTypeBTree    = "BTREE"
+	IndexTypeHash     = "HASH"
+	IndexTypeFullText = "FULLTEXT"
+	IndexTypeSpatial  = "SPATIAL"
+
 	currentTS     = "current_timestamp"
 	defaultGen    = "default_generated"
 	autoIncrement = "auto_increment"
+
+	virtual    = "VIRTUAL"
+	stored     = "STORED"
+	persistent = "PERSISTENT"
 )

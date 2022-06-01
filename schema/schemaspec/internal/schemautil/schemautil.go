@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package schemautil
 
 import (
@@ -21,13 +25,13 @@ func StrLitAttr(k, v string) *schemaspec.Attr {
 }
 
 // ListAttr is a helper method for constructing *schemaspec.Attr instances that contain list values.
-func ListAttr(k string, values ...string) *schemaspec.Attr {
-	lst := &schemaspec.ListValue{}
-	for _, v := range values {
-		lst.V = append(lst.V, &schemaspec.LiteralValue{V: strconv.Quote(v)})
+func ListAttr(k string, litValues ...string) *schemaspec.Attr {
+	lv := &schemaspec.ListValue{}
+	for _, v := range litValues {
+		lv.V = append(lv.V, &schemaspec.LiteralValue{V: v})
 	}
 	return &schemaspec.Attr{
 		K: k,
-		V: lst,
+		V: lv,
 	}
 }

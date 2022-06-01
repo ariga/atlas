@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package postgres
 
 import (
@@ -16,6 +20,7 @@ schema "schema" {
 }
 
 table "table" {
+	schema = schema.schema
 	column "col" {
 		type = integer
 		comment = "column comment"
@@ -28,6 +33,12 @@ table "table" {
 	}
 	column "account_name" {
 		type = varchar(32)
+	}
+	column "varchar_length_is_not_required" {
+		type = varchar
+	}
+	column "character_varying_length_is_not_required" {
+		type = character_varying
 	}
 	column "tags" {
 		type = hstore
@@ -44,11 +55,13 @@ table "table" {
 		columns = [table.table.column.col]
 	}
 	index "index" {
+		type = HASH
 		unique = true
 		columns = [
 			table.table.column.col,
 			table.table.column.age,
 		]
+		where = "active"
 		comment = "index comment"
 	}
 	foreign_key "accounts" {
@@ -58,7 +71,7 @@ table "table" {
 		ref_columns = [
 			table.accounts.column.name,
 		]
-		on_delete = "SET NULL"
+		on_delete = SET_NULL
 	}
 	check "positive price" {
 		expr = "price > 0"
@@ -67,6 +80,7 @@ table "table" {
 }
 
 table "accounts" {
+	schema = schema.schema
 	column "name" {
 		type = varchar(32)
 	}
@@ -130,6 +144,24 @@ enum "account_type" {
 					},
 				},
 				{
+					Name: "varchar_length_is_not_required",
+					Type: &schema.ColumnType{
+						Type: &schema.StringType{
+							T:    "varchar",
+							Size: 0,
+						},
+					},
+				},
+				{
+					Name: "character_varying_length_is_not_required",
+					Type: &schema.ColumnType{
+						Type: &schema.StringType{
+							T:    "character varying",
+							Size: 0,
+						},
+					},
+				},
+				{
 					Name: "tags",
 					Type: &schema.ColumnType{
 						Type: &UserDefinedType{
@@ -140,20 +172,14 @@ enum "account_type" {
 				{
 					Name: "created_at",
 					Type: &schema.ColumnType{
-						Type: &schema.TimeType{
-							T:         TypeTimestamp,
-							Precision: 4,
-						},
+						Type: typeTime(TypeTimestamp, 4),
 					},
 					Default: &schema.RawExpr{X: "current_timestamp(4)"},
 				},
 				{
 					Name: "updated_at",
 					Type: &schema.ColumnType{
-						Type: &schema.TimeType{
-							T:         TypeTime,
-							Precision: 6,
-						},
+						Type: typeTime(TypeTime, 6),
 					},
 					Default: &schema.RawExpr{X: "current_time"},
 				},
@@ -208,6 +234,8 @@ enum "account_type" {
 			},
 			Attrs: []schema.Attr{
 				&schema.Comment{Text: "index comment"},
+				&IndexType{T: IndexTypeHash},
+				&IndexPredicate{P: "active"},
 			},
 		},
 	}
@@ -230,6 +258,424 @@ enum "account_type" {
 	require.EqualValues(t, exp, &s)
 }
 
+func TestUnmarshalSpec_IndexType(t *testing.T) {
+	f := `
+schema "s" {}
+table "t" {
+	schema = schema.s
+	column "c" {
+		type = int
+	}
+	index "i" {
+		type = %s
+		columns = [column.c]
+	}
+}
+`
+	t.Run("Invalid", func(t *testing.T) {
+		f := fmt.Sprintf(f, "UNK")
+		err := UnmarshalHCL([]byte(f), &schema.Schema{})
+		require.Error(t, err)
+	})
+	t.Run("Valid", func(t *testing.T) {
+		var (
+			s schema.Schema
+			f = fmt.Sprintf(f, "HASH")
+		)
+		err := UnmarshalHCL([]byte(f), &s)
+		require.NoError(t, err)
+		idx := s.Tables[0].Indexes[0]
+		require.Equal(t, IndexTypeHash, idx.Attrs[0].(*IndexType).T)
+	})
+}
+
+func TestUnmarshalSpec_BRINIndex(t *testing.T) {
+	f := `
+schema "s" {}
+table "t" {
+	schema = schema.s
+	column "c" {
+		type = int
+	}
+	index "i" {
+		type = BRIN
+		columns = [column.c]
+		page_per_range = 2
+	}
+}
+`
+	var s schema.Schema
+	err := UnmarshalHCL([]byte(f), &s)
+	require.NoError(t, err)
+	idx := s.Tables[0].Indexes[0]
+	require.Equal(t, IndexTypeBRIN, idx.Attrs[0].(*IndexType).T)
+	require.EqualValues(t, 2, idx.Attrs[1].(*IndexStorageParams).PagesPerRange)
+}
+
+func TestUnmarshalSpec_Partitioned(t *testing.T) {
+	t.Run("Columns", func(t *testing.T) {
+		var (
+			s = &schema.Schema{}
+			f = `
+schema "test" {}
+table "logs" {
+	schema = schema.test
+	column "name" {
+		type = text
+	}
+	partition {
+		type = HASH
+		columns = [
+			column.name
+		]
+	}
+}
+`
+		)
+		err := UnmarshalHCL([]byte(f), s)
+		require.NoError(t, err)
+		c := schema.NewStringColumn("name", "text")
+		expected := schema.New("test").
+			AddTables(schema.NewTable("logs").AddColumns(c).AddAttrs(&Partition{T: PartitionTypeHash, Parts: []*PartitionPart{{C: c}}}))
+		require.Equal(t, expected, s)
+	})
+
+	t.Run("Parts", func(t *testing.T) {
+		var (
+			s = &schema.Schema{}
+			f = `
+schema "test" {}
+table "logs" {
+	schema = schema.test
+	column "name" {
+		type = text
+	}
+	partition {
+		type = RANGE
+		by {
+			column = column.name
+		}
+		by {
+			expr = "lower(name)"
+		}
+	}
+}
+`
+		)
+		err := UnmarshalHCL([]byte(f), s)
+		require.NoError(t, err)
+		c := schema.NewStringColumn("name", "text")
+		expected := schema.New("test").
+			AddTables(schema.NewTable("logs").AddColumns(c).AddAttrs(&Partition{T: PartitionTypeRange, Parts: []*PartitionPart{{C: c}, {X: &schema.RawExpr{X: "lower(name)"}}}}))
+		require.Equal(t, expected, s)
+	})
+
+	t.Run("Invalid", func(t *testing.T) {
+		err := UnmarshalHCL([]byte(`
+			schema "test" {}
+			table "logs" {
+				schema = schema.test
+				column "name" { type = text }
+				partition {
+					columns = [column.name]
+				}
+			}
+		`), &schema.Schema{})
+		require.EqualError(t, err, "missing attribute logs.partition.type")
+
+		err = UnmarshalHCL([]byte(`
+			schema "test" {}
+			table "logs" {
+				schema = schema.test
+				column "name" { type = text }
+				partition {
+					type = HASH
+				}
+			}
+		`), &schema.Schema{})
+		require.EqualError(t, err, `missing columns or expressions for logs.partition`)
+
+		err = UnmarshalHCL([]byte(`
+			schema "test" {}
+			table "logs" {
+				schema = schema.test
+				column "name" { type = text }
+				partition {
+					type = HASH
+					columns = [column.name]
+					by { column = column.name }
+				}
+			}
+		`), &schema.Schema{})
+		require.EqualError(t, err, `multiple definitions for logs.partition, use "columns" or "by"`)
+	})
+}
+
+func TestMarshalSpec_Partitioned(t *testing.T) {
+	t.Run("Columns", func(t *testing.T) {
+		c := schema.NewStringColumn("name", "text")
+		s := schema.New("test").
+			AddTables(schema.NewTable("logs").AddColumns(c).AddAttrs(&Partition{T: PartitionTypeHash, Parts: []*PartitionPart{{C: c}}}))
+		buf, err := MarshalHCL(s)
+		require.NoError(t, err)
+		require.Equal(t, `table "logs" {
+  schema = schema.test
+  column "name" {
+    null = false
+    type = text
+  }
+  partition {
+    type    = HASH
+    columns = [column.name]
+  }
+}
+schema "test" {
+}
+`, string(buf))
+	})
+
+	t.Run("Parts", func(t *testing.T) {
+		c := schema.NewStringColumn("name", "text")
+		s := schema.New("test").
+			AddTables(schema.NewTable("logs").AddColumns(c).AddAttrs(&Partition{T: PartitionTypeHash, Parts: []*PartitionPart{{C: c}, {X: &schema.RawExpr{X: "lower(name)"}}}}))
+		buf, err := MarshalHCL(s)
+		require.NoError(t, err)
+		require.Equal(t, `table "logs" {
+  schema = schema.test
+  column "name" {
+    null = false
+    type = text
+  }
+  partition {
+    type = HASH
+    by {
+      column = column.name
+    }
+    by {
+      expr = "lower(name)"
+    }
+  }
+}
+schema "test" {
+}
+`, string(buf))
+	})
+}
+
+func TestMarshalSpec_IndexPredicate(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "id",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	s.Tables[0].Schema = s
+	s.Tables[0].Indexes = []*schema.Index{
+		{
+			Name:   "index",
+			Table:  s.Tables[0],
+			Unique: true,
+			Parts: []*schema.IndexPart{
+				{SeqNo: 0, C: s.Tables[0].Columns[0]},
+			},
+			Attrs: []schema.Attr{
+				&IndexPredicate{P: "id <> 0"},
+			},
+		},
+	}
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "id" {
+    null = false
+    type = int
+  }
+  index "index" {
+    unique  = true
+    columns = [column.id]
+    where   = "id <> 0"
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestMarshalSpec_BRINIndex(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "id",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	s.Tables[0].Schema = s
+	s.Tables[0].Indexes = []*schema.Index{
+		{
+			Name:   "index",
+			Table:  s.Tables[0],
+			Unique: true,
+			Parts: []*schema.IndexPart{
+				{SeqNo: 0, C: s.Tables[0].Columns[0]},
+			},
+			Attrs: []schema.Attr{
+				&IndexType{T: IndexTypeBRIN},
+				&IndexStorageParams{PagesPerRange: 2},
+			},
+		},
+	}
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "id" {
+    null = false
+    type = int
+  }
+  index "index" {
+    unique         = true
+    columns        = [column.id]
+    type           = BRIN
+    page_per_range = 2
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestUnmarshalSpec_Identity(t *testing.T) {
+	f := `
+schema "s" {}
+table "t" {
+	schema = schema.s
+	column "c" {
+		type = int
+		identity {
+			generated = %s
+			start = 10
+		}
+	}
+}
+`
+	t.Run("Invalid", func(t *testing.T) {
+		f := fmt.Sprintf(f, "UNK")
+		err := UnmarshalHCL([]byte(f), &schema.Schema{})
+		require.Error(t, err)
+	})
+	t.Run("Valid", func(t *testing.T) {
+		var (
+			s schema.Schema
+			f = fmt.Sprintf(f, "ALWAYS")
+		)
+		err := UnmarshalHCL([]byte(f), &s)
+		require.NoError(t, err)
+		id := s.Tables[0].Columns[0].Attrs[0].(*Identity)
+		require.Equal(t, GeneratedTypeAlways, id.Generation)
+		require.EqualValues(t, 10, id.Sequence.Start)
+		require.Zero(t, id.Sequence.Increment)
+	})
+}
+
+func TestMarshalSpec_GeneratedColumn(t *testing.T) {
+	s := schema.New("test").
+		AddTables(
+			schema.NewTable("users").
+				AddColumns(
+					schema.NewIntColumn("c1", "int").
+						SetGeneratedExpr(&schema.GeneratedExpr{Expr: "c1 * 2"}),
+					schema.NewIntColumn("c2", "int").
+						SetGeneratedExpr(&schema.GeneratedExpr{Expr: "c3 * c4", Type: "STORED"}),
+				),
+		)
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "c1" {
+    null = false
+    type = int
+    as {
+      expr = "c1 * 2"
+      type = STORED
+    }
+  }
+  column "c2" {
+    null = false
+    type = int
+    as {
+      expr = "c3 * c4"
+      type = STORED
+    }
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestUnmarshalSpec_GeneratedColumns(t *testing.T) {
+	var (
+		s schema.Schema
+		f = `
+schema "test" {}
+table "users" {
+	schema = schema.test
+	column "c1" {
+		type = int
+		as = "1"
+	}
+	column "c2" {
+		type = int
+		as {
+			expr = "2"
+		}
+	}
+	column "c3" {
+		type = int
+		as {
+			expr = "3"
+			type = STORED
+		}
+	}
+}
+`
+	)
+	err := UnmarshalHCL([]byte(f), &s)
+	require.NoError(t, err)
+	exp := schema.New("test").
+		AddTables(
+			schema.NewTable("users").
+				AddColumns(
+					schema.NewIntColumn("c1", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
+					schema.NewIntColumn("c2", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "2", Type: "STORED"}),
+					schema.NewIntColumn("c3", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "3", Type: "STORED"}),
+				),
+		)
+	require.EqualValues(t, exp, &s)
+}
+
 func TestMarshalSpec_Enum(t *testing.T) {
 	s := schema.New("test").
 		AddTables(
@@ -240,10 +686,24 @@ func TestMarshalSpec_Enum(t *testing.T) {
 						schema.EnumValues("private", "business"),
 					),
 				),
+			schema.NewTable("table2").
+				AddColumns(
+					schema.NewEnumColumn("account_type",
+						schema.EnumName("account_type"),
+						schema.EnumValues("private", "business"),
+					),
+				),
 		)
 	buf, err := MarshalSpec(s, hclState)
 	require.NoError(t, err)
 	const expected = `table "account" {
+  schema = schema.test
+  column "account_type" {
+    null = false
+    type = enum.account_type
+  }
+}
+table "table2" {
   schema = schema.test
   column "account_type" {
     null = false
@@ -266,12 +726,10 @@ func TestMarshalSpec_TimePrecision(t *testing.T) {
 			schema.NewTable("times").
 				AddColumns(
 					schema.NewTimeColumn("t_time_def", TypeTime),
-					schema.NewTimeColumn("t_time_with_time_zone", TypeTimeWTZ, schema.TimePrecision(2)),
-					schema.NewTimeColumn("t_time_without_time_zone", TypeTimeWOTZ, schema.TimePrecision(2)),
+					schema.NewTimeColumn("t_time_with_time_zone", TypeTimeTZ, schema.TimePrecision(2)),
+					schema.NewTimeColumn("t_time_without_time_zone", TypeTime, schema.TimePrecision(2)),
 					schema.NewTimeColumn("t_timestamp", TypeTimestamp, schema.TimePrecision(2)),
 					schema.NewTimeColumn("t_timestamptz", TypeTimestampTZ, schema.TimePrecision(2)),
-					schema.NewTimeColumn("t_timestamp_with_time_zone", TypeTimestampWTZ, schema.TimePrecision(2)),
-					schema.NewTimeColumn("t_timestamp_without_time_zone", TypeTimestampWOTZ, schema.TimePrecision(2)),
 				),
 		)
 	buf, err := MarshalSpec(s, hclState)
@@ -284,11 +742,11 @@ func TestMarshalSpec_TimePrecision(t *testing.T) {
   }
   column "t_time_with_time_zone" {
     null = false
-    type = time_with_time_zone(2)
+    type = timetz(2)
   }
   column "t_time_without_time_zone" {
     null = false
-    type = time_without_time_zone(2)
+    type = time(2)
   }
   column "t_timestamp" {
     null = false
@@ -297,14 +755,6 @@ func TestMarshalSpec_TimePrecision(t *testing.T) {
   column "t_timestamptz" {
     null = false
     type = timestamptz(2)
-  }
-  column "t_timestamp_with_time_zone" {
-    null = false
-    type = timestamp_with_time_zone(2)
-  }
-  column "t_timestamp_without_time_zone" {
-    null = false
-    type = timestamp_without_time_zone(2)
   }
 }
 schema "test" {
@@ -433,59 +883,31 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			typeExpr: "time",
-			expected: &schema.TimeType{T: TypeTime, Precision: 6},
+			expected: typeTime(TypeTime, 6),
 		},
 		{
 			typeExpr: "time(4)",
-			expected: &schema.TimeType{T: TypeTime, Precision: 4},
+			expected: typeTime(TypeTime, 4),
 		},
 		{
-			typeExpr: "time_with_time_zone",
-			expected: &schema.TimeType{T: TypeTimeWTZ, Precision: 6},
-		},
-		{
-			typeExpr: "time_with_time_zone(4)",
-			expected: &schema.TimeType{T: TypeTimeWTZ, Precision: 4},
-		},
-		{
-			typeExpr: "time_without_time_zone",
-			expected: &schema.TimeType{T: TypeTimeWOTZ, Precision: 6},
-		},
-		{
-			typeExpr: "time_without_time_zone(4)",
-			expected: &schema.TimeType{T: TypeTimeWOTZ, Precision: 4},
+			typeExpr: "timetz",
+			expected: typeTime(TypeTimeTZ, 6),
 		},
 		{
 			typeExpr: "timestamp",
-			expected: &schema.TimeType{T: TypeTimestamp, Precision: 6},
+			expected: typeTime(TypeTimestamp, 6),
 		},
 		{
 			typeExpr: "timestamp(4)",
-			expected: &schema.TimeType{T: TypeTimestamp, Precision: 4},
+			expected: typeTime(TypeTimestamp, 4),
 		},
 		{
 			typeExpr: "timestamptz",
-			expected: &schema.TimeType{T: TypeTimestampTZ, Precision: 6},
+			expected: typeTime(TypeTimestampTZ, 6),
 		},
 		{
 			typeExpr: "timestamptz(4)",
-			expected: &schema.TimeType{T: TypeTimestampTZ, Precision: 4},
-		},
-		{
-			typeExpr: "timestamp_with_time_zone",
-			expected: &schema.TimeType{T: TypeTimestampWTZ, Precision: 6},
-		},
-		{
-			typeExpr: "timestamp_with_time_zone(4)",
-			expected: &schema.TimeType{T: TypeTimestampWTZ, Precision: 4},
-		},
-		{
-			typeExpr: "timestamp_without_time_zone",
-			expected: &schema.TimeType{T: TypeTimestampWOTZ, Precision: 6},
-		},
-		{
-			typeExpr: "timestamp_without_time_zone(4)",
-			expected: &schema.TimeType{T: TypeTimestampWOTZ, Precision: 4},
+			expected: typeTime(TypeTimestampTZ, 4),
 		},
 		{
 			typeExpr: "real",
@@ -531,7 +953,6 @@ func TestTypes(t *testing.T) {
 			typeExpr: "serial8",
 			expected: &SerialType{T: TypeSerial8},
 		},
-
 		{
 			typeExpr: "xml",
 			expected: &XMLType{T: TypeXML},
@@ -603,6 +1024,100 @@ schema "test" {
 	}
 }
 
+func typeTime(t string, p int) schema.Type {
+	return &schema.TimeType{T: t, Precision: &p}
+}
+
+func TestParseType_Time(t *testing.T) {
+	for _, tt := range []struct {
+		typ      string
+		expected schema.Type
+	}{
+		{
+			typ:      "timestamptz",
+			expected: typeTime(TypeTimestampTZ, 6),
+		},
+		{
+			typ:      "timestamptz(0)",
+			expected: typeTime(TypeTimestampTZ, 0),
+		},
+		{
+			typ:      "timestamptz(6)",
+			expected: typeTime(TypeTimestampTZ, 6),
+		},
+		{
+			typ:      "timestamp with time zone",
+			expected: typeTime(TypeTimestampTZ, 6),
+		},
+		{
+			typ:      "timestamp(1) with time zone",
+			expected: typeTime(TypeTimestampTZ, 1),
+		},
+		{
+			typ:      "timestamp",
+			expected: typeTime(TypeTimestamp, 6),
+		},
+		{
+			typ:      "timestamp(0)",
+			expected: typeTime(TypeTimestamp, 0),
+		},
+		{
+			typ:      "timestamp(6)",
+			expected: typeTime(TypeTimestamp, 6),
+		},
+		{
+			typ:      "timestamp without time zone",
+			expected: typeTime(TypeTimestamp, 6),
+		},
+		{
+			typ:      "timestamp(1) without time zone",
+			expected: typeTime(TypeTimestamp, 1),
+		},
+		{
+			typ:      "time",
+			expected: typeTime(TypeTime, 6),
+		},
+		{
+			typ:      "time(3)",
+			expected: typeTime(TypeTime, 3),
+		},
+		{
+			typ:      "time without time zone",
+			expected: typeTime(TypeTime, 6),
+		},
+		{
+			typ:      "time(3) without time zone",
+			expected: typeTime(TypeTime, 3),
+		},
+		{
+			typ:      "timetz",
+			expected: typeTime(TypeTimeTZ, 6),
+		},
+		{
+			typ:      "timetz(4)",
+			expected: typeTime(TypeTimeTZ, 4),
+		},
+		{
+			typ:      "time with time zone",
+			expected: typeTime(TypeTimeTZ, 6),
+		},
+		{
+			typ:      "time(4) with time zone",
+			expected: typeTime(TypeTimeTZ, 4),
+		},
+	} {
+		t.Run(tt.typ, func(t *testing.T) {
+			typ, err := ParseType(tt.typ)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, typ)
+		})
+	}
+}
+
 func TestRegistrySanity(t *testing.T) {
 	spectest.RegistrySanityTest(t, TypeRegistry, []string{"enum"})
+}
+
+func TestInputVars(t *testing.T) {
+	spectest.TestInputVars(t, EvalHCL)
 }

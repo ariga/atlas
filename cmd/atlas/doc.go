@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 //go:build ignore
 // +build ignore
 
@@ -10,7 +14,7 @@ import (
 	"strings"
 	"text/template"
 
-	"ariga.io/atlas/cmd/action"
+	"ariga.io/atlas/cmd/atlascmd"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
@@ -37,7 +41,7 @@ func main() {
 	if err := t.ExecuteTemplate(f, "header", nil); err != nil {
 		log.Fatal(err)
 	}
-	blocks := prepare(action.RootCmd, make([]*block, 0), 0)
+	blocks := prepare(atlascmd.Root, make([]*block, 0), 0)
 	if err := t.ExecuteTemplate(f, "body", struct {
 		Blocks []*block
 	}{Blocks: blocks}); err != nil {

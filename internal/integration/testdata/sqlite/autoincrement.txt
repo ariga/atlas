@@ -1,0 +1,20 @@
+apply 1.hcl
+cmpshow users 1.sql
+
+-- 1.hcl --
+schema "main" {}
+
+table "users" {
+  schema = schema.main
+  column "id" {
+    null = false
+    type = integer
+    auto_increment = true
+  }
+  primary_key  {
+    columns = [column.id]
+  }
+}
+
+-- 1.sql --
+CREATE TABLE `users` (`id` integer NOT NULL PRIMARY KEY AUTOINCREMENT)

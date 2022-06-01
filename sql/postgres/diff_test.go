@@ -70,6 +70,54 @@ func TestDiff_TableDiff(t *testing.T) {
 			},
 		},
 		{
+			name: "drop partition key",
+			from: schema.NewTable("logs").
+				AddAttrs(&Partition{
+					T:     PartitionTypeRange,
+					Parts: []*PartitionPart{{C: schema.NewColumn("c")}},
+				}),
+			to:      schema.NewTable("logs"),
+			wantErr: true,
+		},
+		{
+			name: "add partition key",
+			from: schema.NewTable("logs"),
+			to: schema.NewTable("logs").
+				AddAttrs(&Partition{
+					T:     PartitionTypeRange,
+					Parts: []*PartitionPart{{C: schema.NewColumn("c")}},
+				}),
+			wantErr: true,
+		},
+		{
+			name: "change partition key column",
+			from: schema.NewTable("logs").
+				AddAttrs(&Partition{
+					T:     PartitionTypeRange,
+					Parts: []*PartitionPart{{C: schema.NewColumn("c")}},
+				}),
+			to: schema.NewTable("logs").
+				AddAttrs(&Partition{
+					T:     PartitionTypeRange,
+					Parts: []*PartitionPart{{C: schema.NewColumn("d")}},
+				}),
+			wantErr: true,
+		},
+		{
+			name: "change partition key type",
+			from: schema.NewTable("logs").
+				AddAttrs(&Partition{
+					T:     PartitionTypeRange,
+					Parts: []*PartitionPart{{C: schema.NewColumn("c")}},
+				}),
+			to: schema.NewTable("logs").
+				AddAttrs(&Partition{
+					T:     PartitionTypeHash,
+					Parts: []*PartitionPart{{C: schema.NewColumn("c")}},
+				}),
+			wantErr: true,
+		},
+		{
 			name: "add check",
 			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}},
 			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&schema.Check{Name: "t1_c1_check", Expr: "(c1 > 1)"}}},
@@ -120,6 +168,46 @@ func TestDiff_TableDiff(t *testing.T) {
 					To:   &schema.Comment{Text: "t1!"},
 				},
 			},
+		},
+		func() testcase {
+			var (
+				s    = schema.New("public")
+				from = schema.NewTable("t1").
+					SetSchema(s).
+					AddColumns(
+						schema.NewIntColumn("c1", "int").
+							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
+					)
+				to = schema.NewTable("t1").
+					SetSchema(s).
+					AddColumns(
+						schema.NewIntColumn("c1", "int"),
+					)
+			)
+			return testcase{
+				name: "drop generation expression",
+				from: from,
+				to:   to,
+				wantChanges: []schema.Change{
+					&schema.ModifyColumn{From: from.Columns[0], To: to.Columns[0], Change: schema.ChangeGenerated},
+				},
+			}
+		}(),
+		{
+			name: "change generation expression",
+			from: schema.NewTable("t1").
+				SetSchema(schema.New("public")).
+				AddColumns(
+					schema.NewIntColumn("c1", "int").
+						SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
+				),
+			to: schema.NewTable("t1").
+				SetSchema(schema.New("public")).
+				AddColumns(
+					schema.NewIntColumn("c1", "int").
+						SetGeneratedExpr(&schema.GeneratedExpr{Expr: "2", Type: "STORED"}),
+				),
+			wantErr: true,
 		},
 		func() testcase {
 			var (
@@ -190,11 +278,15 @@ func TestDiff_TableDiff(t *testing.T) {
 				{Name: "c1_index", Unique: true, Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[0]}}},
 				{Name: "c2_unique", Unique: true, Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}},
 				{Name: "c3_predicate", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}},
+				{Name: "c4_predicate", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}, Attrs: []schema.Attr{&IndexPredicate{P: "(c4 <> NULL)"}}},
+				{Name: "c4_storage_params", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}, Attrs: []schema.Attr{&IndexStorageParams{PagesPerRange: 4}}},
 			}
 			to.Indexes = []*schema.Index{
 				{Name: "c1_index", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[0]}}},
 				{Name: "c3_unique", Unique: true, Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: to.Columns[1]}}},
 				{Name: "c3_predicate", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}, Attrs: []schema.Attr{&IndexPredicate{P: "c3 <> NULL"}}},
+				{Name: "c4_predicate", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}, Attrs: []schema.Attr{&IndexPredicate{P: "c4 <> NULL"}}},
+				{Name: "c4_storage_params", Table: from, Parts: []*schema.IndexPart{{SeqNo: 1, C: from.Columns[1]}}, Attrs: []schema.Attr{&IndexStorageParams{PagesPerRange: 2}}},
 			}
 			return testcase{
 				name: "indexes",
@@ -204,6 +296,7 @@ func TestDiff_TableDiff(t *testing.T) {
 					&schema.ModifyIndex{From: from.Indexes[0], To: to.Indexes[0], Change: schema.ChangeUnique},
 					&schema.DropIndex{I: from.Indexes[1]},
 					&schema.ModifyIndex{From: from.Indexes[2], To: to.Indexes[2], Change: schema.ChangeAttr},
+					&schema.ModifyIndex{From: from.Indexes[4], To: to.Indexes[4], Change: schema.ChangeAttr},
 					&schema.AddIndex{I: to.Indexes[1]},
 				},
 			}
@@ -267,7 +360,7 @@ func TestDiff_TableDiff(t *testing.T) {
 		require.NoError(t, err)
 		t.Run(tt.name, func(t *testing.T) {
 			changes, err := drv.TableDiff(tt.from, tt.to)
-			require.Equal(t, tt.wantErr, err != nil)
+			require.Equalf(t, tt.wantErr, err != nil, "got: %v", err)
 			require.EqualValues(t, tt.wantChanges, changes)
 		})
 	}

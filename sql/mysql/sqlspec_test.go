@@ -1,10 +1,16 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package mysql
 
 import (
 	"fmt"
 	"testing"
 
+	"ariga.io/atlas/sql/internal/spectest"
 	"ariga.io/atlas/sql/schema"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,6 +20,7 @@ schema "schema" {
 }
 
 table "table" {
+	schema = schema.schema
 	column "col" {
 		type = int
 		comment = "column comment"
@@ -23,9 +30,11 @@ table "table" {
 	}
 	column "price1" {
 		type = int
+		auto_increment = false
 	}
 	column "price2" {
 		type = int
+		auto_increment = true
 	}
 	column "account_name" {
 		type = varchar(32)
@@ -57,7 +66,7 @@ table "table" {
 		ref_columns = [
 			table.accounts.column.name,
 		]
-		on_delete = "SET NULL"
+		on_delete = SET_NULL
 	}
 	check "positive price" {
 		expr = "price1 > 0"
@@ -71,9 +80,11 @@ table "table" {
 		enforced = false
 	}
 	comment = "table comment"
+	auto_increment = 1000
 }
 
 table "accounts" {
+	schema = schema.schema
 	column "name" {
 		type = varchar(32)
 	}
@@ -136,6 +147,7 @@ table "accounts" {
 							T: TypeInt,
 						},
 					},
+					Attrs: []schema.Attr{&AutoIncrement{}},
 				},
 				{
 					Name: "account_name",
@@ -149,20 +161,14 @@ table "accounts" {
 				{
 					Name: "created_at",
 					Type: &schema.ColumnType{
-						Type: &schema.TimeType{
-							T:         TypeDateTime,
-							Precision: 4,
-						},
+						Type: typeTime(TypeDateTime, 4),
 					},
 					Default: &schema.RawExpr{X: "now(4)"},
 				},
 				{
 					Name: "updated_at",
 					Type: &schema.ColumnType{
-						Type: &schema.TimeType{
-							T:         TypeTimestamp,
-							Precision: 6,
-						},
+						Type: typeTime(TypeTimestamp, 6),
 					},
 					Default: &schema.RawExpr{X: "current_timestamp(6)"},
 					Attrs:   []schema.Attr{&OnUpdate{A: "current_timestamp(6)"}},
@@ -182,6 +188,7 @@ table "accounts" {
 					Attrs: []schema.Attr{&Enforced{V: false}},
 				},
 				&schema.Comment{Text: "table comment"},
+				&AutoIncrement{V: 1000},
 			},
 		},
 		{
@@ -329,10 +336,10 @@ func TestMarshalSpec_Charset(t *testing.T) {
 	const expected = `table "users" {
   schema = schema.test
   column "a" {
-    null      = false
-    type      = text
-    charset   = "latin1"
-    collation = "latin1_swedish_ci"
+    null    = false
+    type    = text
+    charset = "latin1"
+    collate = "latin1_swedish_ci"
   }
   column "b" {
     null = false
@@ -340,23 +347,23 @@ func TestMarshalSpec_Charset(t *testing.T) {
   }
 }
 table "posts" {
-  schema    = schema.test
-  charset   = "latin1"
-  collation = "latin1_swedish_ci"
+  schema  = schema.test
+  charset = "latin1"
+  collate = "latin1_swedish_ci"
   column "a" {
     null = false
     type = text
   }
   column "b" {
-    null      = false
-    type      = text
-    charset   = "utf8mb4"
-    collation = "utf8mb4_0900_ai_ci"
+    null    = false
+    type    = text
+    charset = "utf8mb4"
+    collate = "utf8mb4_0900_ai_ci"
   }
 }
 schema "test" {
-  charset   = "utf8mb4"
-  collation = "utf8mb4_0900_ai_ci"
+  charset = "utf8mb4"
+  collate = "utf8mb4_0900_ai_ci"
 }
 `
 	require.EqualValues(t, expected, string(buf))
@@ -444,7 +451,7 @@ func TestMarshalSpec_Comment(t *testing.T) {
   }
   index "index" {
     unique  = true
-    columns = [table.users.column.a]
+    columns = [column.a]
     comment = "index comment"
   }
 }
@@ -453,6 +460,41 @@ table "posts" {
   column "a" {
     null = false
     type = text
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestMarshalSpec_AutoIncrement(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "id",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}},
+						Attrs: []schema.Attr{
+							&AutoIncrement{},
+						},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "id" {
+    null           = false
+    type           = bigint
+    auto_increment = true
   }
 }
 schema "test" {
@@ -514,6 +556,7 @@ table "users" {
 		on {
 			column = table.users.column.name
 			desc = true
+			prefix = 10
 		}
 		on {
 			expr = "lower(name)"
@@ -532,7 +575,7 @@ table "users" {
 				AddIndexes(
 					schema.NewIndex("idx").
 						AddParts(
-							schema.NewColumnPart(c).SetDesc(true),
+							schema.NewColumnPart(c).SetDesc(true).AddAttrs(&SubPart{Len: 10}),
 							schema.NewExprPart(&schema.RawExpr{X: "lower(name)"}),
 						),
 				),
@@ -550,7 +593,7 @@ func TestMarshalSpec_IndexParts(t *testing.T) {
 				AddIndexes(
 					schema.NewIndex("idx").
 						AddParts(
-							schema.NewColumnPart(c).SetDesc(true),
+							schema.NewColumnPart(c).SetDesc(true).AddAttrs(&SubPart{Len: 10}),
 							schema.NewExprPart(&schema.RawExpr{X: "lower(name)"}),
 						),
 				),
@@ -566,7 +609,8 @@ func TestMarshalSpec_IndexParts(t *testing.T) {
   index "idx" {
     on {
       desc   = true
-      column = table.users.column.name
+      column = column.name
+      prefix = 10
     }
     on {
       expr = "lower(name)"
@@ -629,6 +673,104 @@ schema "test" {
 }
 `
 	require.EqualValues(t, expected, string(buf))
+}
+
+func TestMarshalSpec_GeneratedColumn(t *testing.T) {
+	s := schema.New("test").
+		AddTables(
+			schema.NewTable("users").
+				AddColumns(
+					schema.NewIntColumn("c1", "int"),
+					schema.NewIntColumn("c2", "int").
+						SetGeneratedExpr(&schema.GeneratedExpr{Expr: "c1 * 2"}),
+					schema.NewIntColumn("c3", "int").
+						SetGeneratedExpr(&schema.GeneratedExpr{Expr: "c2 * c3", Type: "VIRTUAL"}),
+					schema.NewIntColumn("c4", "int").
+						SetGeneratedExpr(&schema.GeneratedExpr{Expr: "c3 * c4", Type: "STORED"}),
+				),
+		)
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "c1" {
+    null = false
+    type = int
+  }
+  column "c2" {
+    null = false
+    type = int
+    as {
+      expr = "c1 * 2"
+      type = VIRTUAL
+    }
+  }
+  column "c3" {
+    null = false
+    type = int
+    as {
+      expr = "c2 * c3"
+      type = VIRTUAL
+    }
+  }
+  column "c4" {
+    null = false
+    type = int
+    as {
+      expr = "c3 * c4"
+      type = STORED
+    }
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestUnmarshalSpec_GeneratedColumns(t *testing.T) {
+	var (
+		s schema.Schema
+		f = `
+schema "test" {}
+table "users" {
+	schema = schema.test
+	column "c1" {
+		type = int
+	}
+	column "c2" {
+		type = int
+		as = "c1 * 2"
+	}
+	column "c3" {
+		type = int
+		as {
+			expr = "c2 * 2"
+		}
+	}
+	column "c4" {
+		type = int
+		as {
+			expr = "c3 * 2"
+			type = STORED
+		}
+	}
+}
+`
+	)
+	err := UnmarshalHCL([]byte(f), &s)
+	require.NoError(t, err)
+	exp := schema.New("test").
+		AddTables(
+			schema.NewTable("users").
+				AddColumns(
+					schema.NewIntColumn("c1", "int"),
+					schema.NewIntColumn("c2", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "c1 * 2", Type: "VIRTUAL"}),
+					schema.NewIntColumn("c3", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "c2 * 2", Type: "VIRTUAL"}),
+					schema.NewIntColumn("c4", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "c3 * 2", Type: "STORED"}),
+				),
+		)
+	require.EqualValues(t, exp, &s)
 }
 
 func TestMarshalSpec_FloatUnsigned(t *testing.T) {
@@ -853,7 +995,7 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			typeExpr: "timestamp(6)",
-			expected: &schema.TimeType{T: TypeTimestamp, Precision: 6},
+			expected: typeTime(TypeTimestamp, 6),
 		},
 		{
 			typeExpr: "date",
@@ -861,7 +1003,7 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			typeExpr: "date(2)",
-			expected: &schema.TimeType{T: TypeDate, Precision: 2},
+			expected: typeTime(TypeDate, 2),
 		},
 		{
 			typeExpr: "time",
@@ -869,7 +1011,7 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			typeExpr: "time(6)",
-			expected: &schema.TimeType{T: TypeTime, Precision: 6},
+			expected: typeTime(TypeTime, 6),
 		},
 		{
 			typeExpr: "datetime",
@@ -877,7 +1019,7 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			typeExpr: "datetime(6)",
-			expected: &schema.TimeType{T: TypeDateTime, Precision: 6},
+			expected: typeTime(TypeDateTime, 6),
 		},
 		{
 			typeExpr: "year",
@@ -885,7 +1027,7 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			typeExpr: "year(2)",
-			expected: &schema.TimeType{T: TypeYear, Precision: 2},
+			expected: typeTime(TypeYear, 2),
 		},
 		{
 			typeExpr: "varchar(10)",
@@ -1013,6 +1155,14 @@ schema "test" {
 			require.EqualValues(t, tt.expected, after.Tables[0].Columns[0].Type.Type)
 		})
 	}
+}
+
+func TestInputVars(t *testing.T) {
+	spectest.TestInputVars(t, EvalHCL)
+}
+
+func typeTime(t string, p int) schema.Type {
+	return &schema.TimeType{T: t, Precision: &p}
 }
 
 func lineIfSet(s string) string {

@@ -17,12 +17,7 @@ function Nav() {
     return  <ul className={index.nav}>
         <li className={index.linkItem}>
             <Link to={"/cli/getting-started/setting-up"}>
-                Getting Started
-            </Link>
-        </li>
-        <li className={index.linkItem}>
-            <Link to="/cli/reference">
-                Reference
+               Docs
             </Link>
         </li>
         <li className={index.linkItem}>
@@ -30,7 +25,11 @@ function Nav() {
                 GoDoc
             </Link>
         </li>
-
+        <li className={index.linkItem}>
+            <Link to="/blog">
+                Blog
+            </Link>
+        </li>
     </ul>
 }
 
@@ -40,7 +39,7 @@ function SocialLinks() {
             <GithubIcon />
         </a>
 
-        <a href="https://discord.com/invite/QhsmBAWzrC" target="_blank">
+        <a href="https://discord.gg/zZ6sWVg6NT" target="_blank">
             <DiscordIcon />
         </a>
     </div>
@@ -162,7 +161,6 @@ export default function () {
                 <section className={index.section}>
                     <div className={index.subtitleWithChipWrapper}>
                         <h2 style={{ marginRight: "10px" }} className={index.subtitleMargin}>Versioned Migrations</h2>
-                        <Chip text="Coming soon" />
                     </div>
                     <p className={index.paragraphSecondary}>Atlas offers you an alternative workflow, in which migrations are explicitly defined and
                         assigned a version. Atlas can then bring a schema to the desired version by following

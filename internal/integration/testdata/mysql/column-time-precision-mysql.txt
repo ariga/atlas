@@ -1,5 +1,5 @@
 # Each test runs on a clean database.
-only 56 57 8
+only mysql56 mysql57 mysql8
 
 # Apply schema "1.hcl" on fresh database.
 apply 1.hcl

@@ -6,6 +6,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -70,6 +71,8 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) error {
 			s.dropTable(c)
 		case *schema.ModifyTable:
 			err = s.modifyTable(ctx, c)
+		case *schema.RenameTable:
+			s.renameTable(c)
 		default:
 			err = fmt.Errorf("unsupported change %T", c)
 		}
@@ -86,21 +89,23 @@ func (s *state) topLevel(changes []schema.Change) []schema.Change {
 	for _, c := range changes {
 		switch c := c.(type) {
 		case *schema.AddSchema:
-			b := Build("CREATE SCHEMA").Ident(c.S.Name)
+			b := Build("CREATE SCHEMA")
 			if sqlx.Has(c.Extra, &schema.IfNotExists{}) {
 				b.P("IF NOT EXISTS")
 			}
+			b.Ident(c.S.Name)
 			s.append(&migrate.Change{
 				Cmd:     b.String(),
 				Source:  c,
-				Reverse: Build("DROP SCHEMA").Ident(c.S.Name).String(),
+				Reverse: Build("DROP SCHEMA").Ident(c.S.Name).P("CASCADE").String(),
 				Comment: fmt.Sprintf("Add new schema named %q", c.S.Name),
 			})
 		case *schema.DropSchema:
-			b := Build("DROP SCHEMA").Ident(c.S.Name)
+			b := Build("DROP SCHEMA")
 			if sqlx.Has(c.Extra, &schema.IfExists{}) {
-				b.P("IF NOT EXISTS")
+				b.P("IF EXISTS")
 			}
+			b.Ident(c.S.Name).P("CASCADE")
 			s.append(&migrate.Change{
 				Cmd:     b.String(),
 				Source:  c,
@@ -119,13 +124,19 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 	if err := s.addTypes(ctx, add.T.Columns...); err != nil {
 		return err
 	}
-	b := Build("CREATE TABLE").Table(add.T)
+	var (
+		errs []string
+		b    = Build("CREATE TABLE")
+	)
 	if sqlx.Has(add.Extra, &schema.IfNotExists{}) {
 		b.P("IF NOT EXISTS")
 	}
+	b.Table(add.T)
 	b.Wrap(func(b *sqlx.Builder) {
 		b.MapComma(add.T.Columns, func(i int, b *sqlx.Builder) {
-			s.column(b, add.T.Columns[i])
+			if err := s.column(b, add.T.Columns[i]); err != nil {
+				errs = append(errs, err.Error())
+			}
 		})
 		if pk := add.T.PrimaryKey; pk != nil {
 			b.Comma().P("PRIMARY KEY")
@@ -142,6 +153,16 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 			}
 		}
 	})
+	if p := (Partition{}); sqlx.Has(add.T.Attrs, &p) {
+		s, err := formatPartition(p)
+		if err != nil {
+			errs = append(errs, err.Error())
+		}
+		b.P(s)
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("create table %q: %s", add.T.Name, strings.Join(errs, ", "))
+	}
 	s.append(&migrate.Change{
 		Cmd:     b.String(),
 		Source:  add,
@@ -155,10 +176,11 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 
 // dropTable builds and executes the query for dropping a table from a schema.
 func (s *state) dropTable(drop *schema.DropTable) {
-	b := Build("DROP TABLE").Table(drop.T)
+	b := Build("DROP TABLE")
 	if sqlx.Has(drop.Extra, &schema.IfExists{}) {
 		b.P("IF EXISTS")
 	}
+	b.Table(drop.T)
 	s.append(&migrate.Change{
 		Cmd:     b.String(),
 		Source:  drop,
@@ -169,9 +191,9 @@ func (s *state) dropTable(drop *schema.DropTable) {
 // modifyTable builds the statements that bring the table into its modified state.
 func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) error {
 	var (
-		changes     []schema.Change
+		alter       []schema.Change
 		addI, dropI []*schema.Index
-		comments    []*migrate.Change
+		changes     []*migrate.Change
 	)
 	for _, change := range skipAutoChanges(modify.Changes) {
 		switch change := change.(type) {
@@ -180,12 +202,12 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 			if err != nil {
 				return err
 			}
-			comments = append(comments, s.tableComment(modify.T, to, from))
+			changes = append(changes, s.tableComment(modify.T, to, from))
 		case *schema.DropAttr:
 			return fmt.Errorf("unsupported change type: %T", change)
 		case *schema.AddIndex:
 			if c := (schema.Comment{}); sqlx.Has(change.I.Attrs, &c) {
-				comments = append(comments, s.indexComment(modify.T, change.I, c.Text, ""))
+				changes = append(changes, s.indexComment(modify.T, change.I, c.Text, ""))
 			}
 			addI = append(addI, change.I)
 		case *schema.DropIndex:
@@ -197,7 +219,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 				if err != nil {
 					return err
 				}
-				comments = append(comments, s.indexComment(modify.T, change.To, to, from))
+				changes = append(changes, s.indexComment(modify.T, change.To, to, from))
 				// If only the comment of the index was changed.
 				if k &= ^schema.ChangeComment; k.Is(schema.NoChange) {
 					continue
@@ -206,10 +228,17 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 			// Index modification requires rebuilding the index.
 			addI = append(addI, change.To)
 			dropI = append(dropI, change.From)
+		case *schema.RenameIndex:
+			changes = append(changes, &migrate.Change{
+				Source:  change,
+				Comment: fmt.Sprintf("rename an index from %q to %q", change.From.Name, change.To.Name),
+				Cmd:     Build("ALTER INDEX").Ident(change.From.Name).P("RENAME TO").Ident(change.To.Name).String(),
+				Reverse: Build("ALTER INDEX").Ident(change.To.Name).P("RENAME TO").Ident(change.From.Name).String(),
+			})
 		case *schema.ModifyForeignKey:
 			// Foreign-key modification is translated into 2 steps.
 			// Dropping the current foreign key and creating a new one.
-			changes = append(changes, &schema.DropForeignKey{
+			alter = append(alter, &schema.DropForeignKey{
 				F: change.From,
 			}, &schema.AddForeignKey{
 				F: change.To,
@@ -219,9 +248,9 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 				return err
 			}
 			if c := (schema.Comment{}); sqlx.Has(change.C.Attrs, &c) {
-				comments = append(comments, s.columnComment(modify.T, change.C, c.Text, ""))
+				changes = append(changes, s.columnComment(modify.T, change.C, c.Text, ""))
 			}
-			changes = append(changes, change)
+			alter = append(alter, change)
 		case *schema.ModifyColumn:
 			k := change.Change
 			if change.Change.Is(schema.ChangeComment) {
@@ -229,7 +258,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 				if err != nil {
 					return err
 				}
-				comments = append(comments, s.columnComment(modify.T, change.To, to, from))
+				changes = append(changes, s.columnComment(modify.T, change.To, to, from))
 				// If only the comment of the column was changed.
 				if k &= ^schema.ChangeComment; k.Is(schema.NoChange) {
 					continue
@@ -254,102 +283,137 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 					return err
 				}
 			}
-			changes = append(changes, change)
+			alter = append(alter, change)
+		case *schema.RenameColumn:
+			// "RENAME COLUMN" cannot be combined with other alterations.
+			b := Build("ALTER TABLE").Table(modify.T).P("RENAME COLUMN")
+			r := b.Clone()
+			changes = append(changes, &migrate.Change{
+				Source:  change,
+				Comment: fmt.Sprintf("rename a column from %q to %q", change.From.Name, change.To.Name),
+				Cmd:     b.Ident(change.From.Name).P("TO").Ident(change.To.Name).String(),
+				Reverse: r.Ident(change.To.Name).P("TO").Ident(change.From.Name).String(),
+			})
 		default:
-			changes = append(changes, change)
+			alter = append(alter, change)
 		}
 	}
 	s.dropIndexes(modify.T, dropI...)
-	if len(changes) > 0 {
-		if err := s.alterTable(modify.T, changes); err != nil {
+	if len(alter) > 0 {
+		if err := s.alterTable(modify.T, alter); err != nil {
 			return err
 		}
 	}
 	s.addIndexes(modify.T, addI...)
-	s.append(comments...)
+	s.append(changes...)
 	return nil
 }
 
 // alterTable modifies the given table by executing on it a list of changes in one SQL statement.
 func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 	var (
-		errors     []string
-		b          = Build("ALTER TABLE").Table(t)
-		reverse    = Build("")
+		reverse    []schema.Change
 		reversible = true
 	)
-	b.MapComma(changes, func(i int, b *sqlx.Builder) {
-		switch change := changes[i].(type) {
-		case *schema.AddColumn:
-			b.P("ADD COLUMN")
-			s.column(b, change.C)
-			reverse.Comma().P("DROP COLUMN").Ident(change.C.Name)
-		case *schema.DropColumn:
-			b.P("DROP COLUMN").Ident(change.C.Name)
-			reversible = false
-		case *schema.ModifyColumn:
-			if err := s.alterColumn(b, change.Change, change.To); err != nil {
-				errors = append(errors, err.Error())
+	build := func(changes []schema.Change) (string, error) {
+		b := Build("ALTER TABLE").Table(t)
+		err := b.MapCommaErr(changes, func(i int, b *sqlx.Builder) error {
+			switch change := changes[i].(type) {
+			case *schema.AddColumn:
+				b.P("ADD COLUMN")
+				if err := s.column(b, change.C); err != nil {
+					return err
+				}
+				reverse = append(reverse, &schema.DropColumn{C: change.C})
+			case *schema.ModifyColumn:
+				if err := s.alterColumn(b, change.Change, change.To); err != nil {
+					return err
+				}
+				if change.Change.Is(schema.ChangeGenerated) {
+					reversible = false
+				}
+				reverse = append(reverse, &schema.ModifyColumn{
+					From:   change.To,
+					To:     change.From,
+					Change: change.Change & ^schema.ChangeGenerated,
+				})
+			case *schema.DropColumn:
+				b.P("DROP COLUMN").Ident(change.C.Name)
+				reverse = append(reverse, &schema.AddColumn{C: change.C})
+			case *schema.AddForeignKey:
+				b.P("ADD")
+				s.fks(b, change.F)
+				reverse = append(reverse, &schema.DropForeignKey{F: change.F})
+			case *schema.DropForeignKey:
+				b.P("DROP CONSTRAINT").Ident(change.F.Symbol)
+				reverse = append(reverse, &schema.AddForeignKey{F: change.F})
+			case *schema.AddCheck:
+				check(b.P("ADD"), change.C)
+				// Reverse operation is supported if
+				// the constraint name is not generated.
+				if reversible = reversible && change.C.Name != ""; reversible {
+					reverse = append(reverse, &schema.DropCheck{C: change.C})
+				}
+			case *schema.DropCheck:
+				b.P("DROP CONSTRAINT").Ident(change.C.Name)
+				reverse = append(reverse, &schema.AddCheck{C: change.C})
+			case *schema.ModifyCheck:
+				switch {
+				case change.From.Name == "":
+					return errors.New("cannot modify unnamed check constraint")
+				case change.From.Name != change.To.Name:
+					return fmt.Errorf("mismatch check constraint names: %q != %q", change.From.Name, change.To.Name)
+				case change.From.Expr != change.To.Expr,
+					sqlx.Has(change.From.Attrs, &NoInherit{}) && !sqlx.Has(change.To.Attrs, &NoInherit{}),
+					!sqlx.Has(change.From.Attrs, &NoInherit{}) && sqlx.Has(change.To.Attrs, &NoInherit{}):
+					b.P("DROP CONSTRAINT").Ident(change.From.Name).Comma().P("ADD")
+					check(b, change.To)
+				default:
+					return errors.New("unknown check constraint change")
+				}
+				reverse = append(reverse, &schema.ModifyCheck{
+					From: change.To,
+					To:   change.From,
+				})
 			}
-			if err := s.alterColumn(reverse, change.Change, change.From); err != nil {
-				errors = append(errors, err.Error())
-			}
-		case *schema.AddForeignKey:
-			b.P("ADD")
-			s.fks(b, change.F)
-			reverse.Comma().P("DROP CONSTRAINT").Ident(change.F.Symbol)
-		case *schema.DropForeignKey:
-			b.P("DROP CONSTRAINT").Ident(change.F.Symbol)
-			reverse.P("ADD")
-			s.fks(reverse, change.F)
-		case *schema.AddCheck:
-			check(b.P("ADD"), change.C)
-			// Reverse operation is supported if
-			// the constraint name is not generated.
-			if reversible = change.C.Name != ""; reversible {
-				reverse.Comma().P("DROP CONSTRAINT").Ident(change.C.Name)
-			}
-		case *schema.DropCheck:
-			b.P("DROP CONSTRAINT").Ident(change.C.Name)
-			check(reverse.Comma().P("ADD"), change.C)
-		case *schema.ModifyCheck:
-			switch {
-			case change.From.Name == "":
-				errors = append(errors, "cannot modify unnamed check constraint")
-			case change.From.Name != change.To.Name:
-				errors = append(errors, fmt.Sprintf("mismatch check constraint names: %q != %q", change.From.Name, change.To.Name))
-			case change.From.Expr != change.To.Expr,
-				sqlx.Has(change.From.Attrs, &NoInherit{}) && !sqlx.Has(change.To.Attrs, &NoInherit{}),
-				!sqlx.Has(change.From.Attrs, &NoInherit{}) && sqlx.Has(change.To.Attrs, &NoInherit{}):
-				b.P("DROP CONSTRAINT").Ident(change.From.Name).Comma().P("ADD")
-				check(b, change.To)
-				reverse.Comma().P("DROP CONSTRAINT").Ident(change.To.Name).Comma().P("ADD")
-				check(reverse, change.From)
-			default:
-				errors = append(errors, "unknown check constraints change")
-			}
+			return nil
+		})
+		if err != nil {
+			return "", err
 		}
-	})
-	if len(errors) > 0 {
-		return fmt.Errorf("alter table: %s", strings.Join(errors, ", "))
+		return b.String(), nil
+	}
+	cmd, err := build(changes)
+	if err != nil {
+		return fmt.Errorf("alter table %q: %v", t.Name, err)
 	}
 	change := &migrate.Change{
-		Cmd: b.String(),
+		Cmd: cmd,
 		Source: &schema.ModifyTable{
 			T:       t,
 			Changes: changes,
 		},
-		Comment: fmt.Sprintf("Modify %q table", t.Name),
+		Comment: fmt.Sprintf("modify %q table", t.Name),
 	}
 	if reversible {
-		b := Build("ALTER TABLE").Table(t)
-		if _, err := b.ReadFrom(reverse); err != nil {
-			return fmt.Errorf("unexpected buffer read: %w", err)
+		// Changes should be reverted in
+		// a reversed order they were created.
+		sqlx.ReverseChanges(reverse)
+		if change.Reverse, err = build(reverse); err != nil {
+			return fmt.Errorf("reverse alter table %q: %v", t.Name, err)
 		}
-		change.Reverse = b.String()
 	}
 	s.append(change)
 	return nil
+}
+
+func (s *state) renameTable(c *schema.RenameTable) {
+	s.append(&migrate.Change{
+		Source:  c,
+		Comment: fmt.Sprintf("rename a table from %q to %q", c.From.Name, c.To.Name),
+		Cmd:     Build("ALTER TABLE").Table(c.From).P("RENAME TO").Table(c.To).String(),
+		Reverse: Build("ALTER TABLE").Table(c.To).P("RENAME TO").Table(c.From).String(),
+	})
 }
 
 func (s *state) addComments(t *schema.Table) {
@@ -404,7 +468,7 @@ func (s *state) dropIndexes(t *schema.Table, indexes ...*schema.Index) {
 	for i, idx := range indexes {
 		s.append(&migrate.Change{
 			Cmd:     rs.Changes[i].Reverse,
-			Comment: fmt.Sprintf("Drop index %q from table: %q", idx.Name, t.Name),
+			Comment: fmt.Sprintf("drop index %q from table: %q", idx.Name, t.Name),
 			Reverse: rs.Changes[i].Cmd,
 		})
 	}
@@ -478,17 +542,16 @@ func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) {
 			b.Ident(idx.Name)
 		}
 		b.P("ON").Table(t)
-		s.indexParts(b, idx.Parts)
-		s.indexAttrs(b, idx.Attrs)
+		s.index(b, idx)
 		s.append(&migrate.Change{
 			Cmd:     b.String(),
-			Comment: fmt.Sprintf("Create index %q to table: %q", idx.Name, t.Name),
+			Comment: fmt.Sprintf("create index %q to table: %q", idx.Name, t.Name),
 			Reverse: func() string {
 				b := Build("DROP INDEX")
 				// Unlike MySQL, the DROP command is not attached to ALTER TABLE.
 				// Therefore, we print indexes with their qualified name, because
 				// the connection that executes the statements may not be attached
-				// to the this schema.
+				// to this schema.
 				if t.Schema != nil {
 					b.WriteByte(b.QuoteChar)
 					b.WriteString(t.Schema.Name)
@@ -502,8 +565,12 @@ func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) {
 	}
 }
 
-func (s *state) column(b *sqlx.Builder, c *schema.Column) {
-	b.Ident(c.Name).P(mustFormat(c.Type.Type))
+func (s *state) column(b *sqlx.Builder, c *schema.Column) error {
+	t, err := FormatType(c.Type.Type)
+	if err != nil {
+		return err
+	}
+	b.Ident(c.Name).P(t)
 	if !c.Type.Null {
 		b.P("NOT")
 	}
@@ -514,27 +581,34 @@ func (s *state) column(b *sqlx.Builder, c *schema.Column) {
 		case *schema.Comment:
 		case *schema.Collation:
 			b.P("COLLATE").Ident(a.V)
-		case *Identity:
+		case *Identity, *schema.GeneratedExpr:
 			// Handled below.
 		default:
-			panic(fmt.Sprintf("unexpected column attribute: %T", attr))
+			return fmt.Errorf("unexpected column attribute: %T", attr)
 		}
 	}
-	id, ok := identity(c.Attrs)
-	if !ok {
-		return
+	switch hasI, hasX := sqlx.Has(c.Attrs, &Identity{}), sqlx.Has(c.Attrs, &schema.GeneratedExpr{}); {
+	case hasI && hasX:
+		return fmt.Errorf("both identity and generation expression specified for column %q", c.Name)
+	case hasI:
+		id, _ := identity(c.Attrs)
+		b.P("GENERATED", id.Generation, "AS IDENTITY")
+		if id.Sequence.Start != defaultSeqStart || id.Sequence.Increment != defaultSeqIncrement {
+			b.Wrap(func(b *sqlx.Builder) {
+				if id.Sequence.Start != defaultSeqStart {
+					b.P("START WITH", strconv.FormatInt(id.Sequence.Start, 10))
+				}
+				if id.Sequence.Increment != defaultSeqIncrement {
+					b.P("INCREMENT BY", strconv.FormatInt(id.Sequence.Increment, 10))
+				}
+			})
+		}
+	case hasX:
+		x := &schema.GeneratedExpr{}
+		sqlx.Has(c.Attrs, x)
+		b.P("GENERATED ALWAYS AS", sqlx.MayWrap(x.Expr), "STORED")
 	}
-	b.P("GENERATED", id.Generation, "AS IDENTITY")
-	if id.Sequence.Start != defaultSeqStart || id.Sequence.Increment != defaultSeqIncrement {
-		b.Wrap(func(b *sqlx.Builder) {
-			if id.Sequence.Start != defaultSeqStart {
-				b.P("START WITH", strconv.FormatInt(id.Sequence.Start, 10))
-			}
-			if id.Sequence.Increment != defaultSeqIncrement {
-				b.P("INCREMENT BY", strconv.FormatInt(id.Sequence.Increment, 10))
-			}
-		})
-	}
+	return nil
 }
 
 // columnDefault writes the default value of column to the builder.
@@ -561,7 +635,11 @@ func (s *state) alterColumn(b *sqlx.Builder, k schema.ChangeKind, c *schema.Colu
 		b.P("ALTER COLUMN").Ident(c.Name)
 		switch {
 		case k.Is(schema.ChangeType):
-			b.P("TYPE").P(mustFormat(c.Type.Type))
+			t, err := FormatType(c.Type.Type)
+			if err != nil {
+				return err
+			}
+			b.P("TYPE", t)
 			if collate := (schema.Collation{}); sqlx.Has(c.Attrs, &collate) {
 				b.P("COLLATE", collate.V)
 			}
@@ -585,8 +663,14 @@ func (s *state) alterColumn(b *sqlx.Builder, k schema.ChangeKind, c *schema.Colu
 			}
 			// The syntax for altering identity columns is identical to sequence_options.
 			// https://www.postgresql.org/docs/current/sql-altersequence.html
-			b.P("SET START WITH", strconv.FormatInt(id.Sequence.Start, 10), "SET INCREMENT BY", strconv.FormatInt(id.Sequence.Increment, 10), "RESTART")
+			b.P("SET GENERATED", id.Generation, "SET START WITH", strconv.FormatInt(id.Sequence.Start, 10), "SET INCREMENT BY", strconv.FormatInt(id.Sequence.Increment, 10), "RESTART")
 			k &= ^schema.ChangeAttr
+		case k.Is(schema.ChangeGenerated):
+			if sqlx.Has(c.Attrs, &schema.GeneratedExpr{}) {
+				return fmt.Errorf("unexpected generation expression change (expect DROP EXPRESSION): %v", c.Attrs)
+			}
+			b.P("DROP EXPRESSION")
+			k &= ^schema.ChangeGenerated
 		case k.Is(schema.ChangeComment):
 			// Handled separately on modifyTable.
 			k &= ^schema.ChangeComment
@@ -607,7 +691,7 @@ func (s *state) indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {
 			case part.C != nil:
 				b.Ident(part.C.Name)
 			case part.X != nil:
-				b.WriteString(part.X.(*schema.RawExpr).X)
+				b.WriteString(sqlx.MayWrap(part.X.(*schema.RawExpr).X))
 			}
 			s.partAttrs(b, parts[i])
 		})
@@ -639,17 +723,31 @@ func (s *state) partAttrs(b *sqlx.Builder, p *schema.IndexPart) {
 	}
 }
 
-func (s *state) indexAttrs(b *sqlx.Builder, attrs []schema.Attr) {
+func (s *state) index(b *sqlx.Builder, idx *schema.Index) {
 	// Avoid appending the default method.
-	if t := (IndexType{}); sqlx.Has(attrs, &t) && strings.ToLower(t.T) != "btree" {
-		b.P("USING").P(t.T)
+	if t := (IndexType{}); sqlx.Has(idx.Attrs, &t) && strings.ToUpper(t.T) != IndexTypeBTree {
+		b.P("USING", t.T)
 	}
-	if p := (IndexPredicate{}); sqlx.Has(attrs, &p) {
+	s.indexParts(b, idx.Parts)
+	if p := (IndexPredicate{}); sqlx.Has(idx.Attrs, &p) {
 		b.P("WHERE").P(p.P)
 	}
-	for _, attr := range attrs {
+	if p, ok := indexStorageParams(idx.Attrs); ok {
+		b.P("WITH")
+		b.Wrap(func(b *sqlx.Builder) {
+			var parts []string
+			if p.AutoSummarize {
+				parts = append(parts, "autosummarize = true")
+			}
+			if p.PagesPerRange != 0 && p.PagesPerRange != defaultPagePerRange {
+				parts = append(parts, fmt.Sprintf("pages_per_range = %d", p.PagesPerRange))
+			}
+			b.WriteString(strings.Join(parts, ", "))
+		})
+	}
+	for _, attr := range idx.Attrs {
 		switch attr.(type) {
-		case *schema.Comment, *ConType, *IndexType, *IndexPredicate:
+		case *schema.Comment, *ConType, *IndexType, *IndexPredicate, *IndexStorageParams:
 		default:
 			panic(fmt.Sprintf("unexpected index attribute: %T", attr))
 		}
@@ -757,15 +855,10 @@ func commentChange(c schema.Change) (from, to string, err error) {
 
 // checks writes the CHECK constraint to the builder.
 func check(b *sqlx.Builder, c *schema.Check) {
-	expr := c.Expr
-	// Expressions should be wrapped with parens.
-	if t := strings.TrimSpace(expr); !strings.HasPrefix(t, "(") || !strings.HasSuffix(t, ")") {
-		expr = "(" + t + ")"
-	}
 	if c.Name != "" {
 		b.P("CONSTRAINT").Ident(c.Name)
 	}
-	b.P("CHECK", expr)
+	b.P("CHECK", sqlx.MayWrap(c.Expr))
 	if sqlx.Has(c.Attrs, &NoInherit{}) {
 		b.P("NO INHERIT")
 	}

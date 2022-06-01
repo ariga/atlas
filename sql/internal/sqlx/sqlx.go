@@ -6,14 +6,52 @@ package sqlx
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
+	"io"
 	"reflect"
 	"strconv"
 	"strings"
 
 	"ariga.io/atlas/sql/schema"
 )
+
+type (
+	// ExecQueryCloser is the interface that groups
+	// Close with the schema.ExecQuerier methods.
+	ExecQueryCloser interface {
+		schema.ExecQuerier
+		io.Closer
+	}
+	nopCloser struct {
+		schema.ExecQuerier
+	}
+)
+
+// Close implements the io.Closer interface.
+func (nopCloser) Close() error { return nil }
+
+// SingleConn returns a closable single connection from the given ExecQuerier.
+// If the ExecQuerier is already bound to a single connection (e.g. Tx, Conn),
+// the connection will return as-is with a NopCloser.
+func SingleConn(ctx context.Context, conn schema.ExecQuerier) (ExecQueryCloser, error) {
+	// A standard sql.DB or a wrapper of it.
+	if opener, ok := conn.(interface {
+		Conn(context.Context) (*sql.Conn, error)
+	}); ok {
+		return opener.Conn(ctx)
+	}
+	// Tx and Conn are bounded to a single connection.
+	// We use sql/driver.Tx to cover also custom Tx structs.
+	_, ok1 := conn.(driver.Tx)
+	_, ok2 := conn.(*sql.Conn)
+	if ok1 || ok2 {
+		return nopCloser{ExecQuerier: conn}, nil
+	}
+	return nil, fmt.Errorf("cannot obtain a single connection from %T", conn)
+}
 
 // ValidString reports if the given string is not null and valid.
 func ValidString(s sql.NullString) bool {
@@ -32,62 +70,30 @@ func ScanOne(rows *sql.Rows, dest ...interface{}) error {
 	return rows.Close()
 }
 
-// ScanFKs scans the rows and adds the foreign-key to the table.
-// Reference elements are added as stubs and should be linked
-// manually by the caller.
-func ScanFKs(t *schema.Table, rows *sql.Rows) error {
-	names := make(map[string]*schema.ForeignKey)
-	for rows.Next() {
-		var name, table, column, tSchema, refTable, refColumn, refSchema, updateRule, deleteRule string
-		if err := rows.Scan(&name, &table, &column, &tSchema, &refTable, &refColumn, &refSchema, &updateRule, &deleteRule); err != nil {
-			return err
-		}
-		fk, ok := names[name]
-		if !ok {
-			fk = &schema.ForeignKey{
-				Symbol:   name,
-				Table:    t,
-				RefTable: t,
-				OnDelete: schema.ReferenceOption(deleteRule),
-				OnUpdate: schema.ReferenceOption(updateRule),
-			}
-			if refTable != t.Name || tSchema != refSchema {
-				fk.RefTable = &schema.Table{Name: refTable, Schema: &schema.Schema{Name: refSchema}}
-			}
-			names[name] = fk
-			t.ForeignKeys = append(t.ForeignKeys, fk)
-		}
-		c, ok := t.Column(column)
-		if !ok {
-			return fmt.Errorf("column %q was not found for fk %q", column, fk.Symbol)
-		}
-		// Rows are ordered by ORDINAL_POSITION that specifies
-		// the position of the column in the FK definition.
-		if _, ok := fk.Column(c.Name); !ok {
-			fk.Columns = append(fk.Columns, c)
-			c.ForeignKeys = append(c.ForeignKeys, fk)
-		}
-
-		// Stub referenced columns or link if it's a self-reference.
-		var rc *schema.Column
-		if fk.Table != fk.RefTable {
-			rc = &schema.Column{Name: refColumn}
-		} else if c, ok := t.Column(refColumn); ok {
-			rc = c
-		} else {
-			return fmt.Errorf("referenced column %q was not found for fk %q", refColumn, fk.Symbol)
-		}
-		if _, ok := fk.RefColumn(rc.Name); !ok {
-			fk.RefColumns = append(fk.RefColumns, rc)
-		}
-	}
-	return nil
+// ScanNullBool scans one sql.NullBool record and closes the rows at the end.
+func ScanNullBool(rows *sql.Rows) (sql.NullBool, error) {
+	var b sql.NullBool
+	return b, ScanOne(rows, &b)
 }
 
-// ScanSchemaFKs scans the rows and adds the foreign-key to the schema table.
+// ScanStrings scans sql.Rows into a slice of strings and closes it at the end.
+func ScanStrings(rows *sql.Rows) ([]string, error) {
+	defer rows.Close()
+	var vs []string
+	for rows.Next() {
+		var v string
+		if err := rows.Scan(&v); err != nil {
+			return nil, err
+		}
+		vs = append(vs, v)
+	}
+	return vs, nil
+}
+
+// SchemaFKs scans the rows and adds the foreign-key to the schema table.
 // Reference elements are added as stubs and should be linked manually by the
 // caller.
-func ScanSchemaFKs(s *schema.Schema, rows *sql.Rows) error {
+func SchemaFKs(s *schema.Schema, rows *sql.Rows) error {
 	for rows.Next() {
 		var name, table, column, tSchema, refTable, refColumn, refSchema, updateRule, deleteRule string
 		if err := rows.Scan(&name, &table, &column, &tSchema, &refTable, &refColumn, &refSchema, &updateRule, &deleteRule); err != nil {
@@ -176,20 +182,6 @@ func LinkSchemaTables(schemas []*schema.Schema) {
 	}
 }
 
-// ScanStrings scans sql.Rows into a slice of strings and closes it at the end.
-func ScanStrings(rows *sql.Rows) ([]string, error) {
-	defer rows.Close()
-	var vs []string
-	for rows.Next() {
-		var v string
-		if err := rows.Scan(&v); err != nil {
-			return nil, err
-		}
-		vs = append(vs, v)
-	}
-	return vs, nil
-}
-
 // ValuesEqual checks if the 2 string slices are equal (including their order).
 func ValuesEqual(v1, v2 []string) bool {
 	if len(v1) != len(v2) {
@@ -203,24 +195,20 @@ func ValuesEqual(v1, v2 []string) bool {
 	return true
 }
 
-// VersionPermutations returns permutations of the dialect version sorted
-// from coarse to fine grained. For example:
-//
-//   VersionPermutations("mysql", "1.2.3") => ["mysql", "mysql 1", "mysql 1.2", "mysql 1.2.3"]
-//
-// VersionPermutations will split the version number by ".", " ", "-" or "_", and rejoin them
-// with ".". The output slice can be used by drivers to generate a list of permutations
-// for searching for relevant overrides in schema element specs.
-func VersionPermutations(dialect, version string) []string {
-	parts := strings.FieldsFunc(version, func(r rune) bool {
-		return r == '.' || r == ' ' || r == '-' || r == '_'
-	})
-	names := []string{dialect}
-	for i := range parts {
-		version := strings.Join(parts[0:i+1], ".")
-		names = append(names, dialect+" "+version)
+// ModeInspectSchema returns the InspectMode or its default.
+func ModeInspectSchema(o *schema.InspectOptions) schema.InspectMode {
+	if o == nil || o.Mode == 0 {
+		return schema.InspectSchemas | schema.InspectTables
 	}
-	return names
+	return o.Mode
+}
+
+// ModeInspectRealm returns the InspectMode or its default.
+func ModeInspectRealm(o *schema.InspectRealmOption) schema.InspectMode {
+	if o == nil || o.Mode == 0 {
+		return schema.InspectSchemas | schema.InspectTables
+	}
+	return o.Mode
 }
 
 // A Builder provides a syntactic sugar API for writing SQL statements.
@@ -326,7 +314,7 @@ func (b *Builder) Wrap(f func(b *Builder)) *Builder {
 func (b *Builder) Clone() *Builder {
 	return &Builder{
 		QuoteChar: b.QuoteChar,
-		Buffer:    *bytes.NewBufferString(b.String()),
+		Buffer:    *bytes.NewBufferString(b.Buffer.String()),
 	}
 }
 
@@ -391,5 +379,61 @@ func DefaultValue(c *schema.Column) (string, bool) {
 		return x.X, true
 	default:
 		panic(fmt.Sprintf("unexpected default value type: %T", x))
+	}
+}
+
+// MayWrap ensures the given string is wrapped with parentheses.
+// Used by the different drivers to turn strings valid expressions.
+func MayWrap(s string) string {
+	n := len(s) - 1
+	if len(s) < 2 || s[0] != '(' || s[n] != ')' || !balanced(s[1:n]) {
+		return "(" + s + ")"
+	}
+	return s
+}
+
+func balanced(expr string) bool {
+	return ExprLastIndex(expr) == len(expr)-1
+}
+
+// ExprLastIndex scans the first expression in the given string until
+// its end and returns its last index.
+func ExprLastIndex(expr string) int {
+	var l, r int
+	for i := 0; i < len(expr); i++ {
+	Top:
+		switch expr[i] {
+		case '(':
+			l++
+		case ')':
+			r++
+		// String or identifier.
+		case '\'', '"', '`':
+			for j := i + 1; j < len(expr); j++ {
+				switch expr[j] {
+				case '\\':
+					j++
+				case expr[i]:
+					i = j
+					break Top
+				}
+			}
+			// Unexpected EOS.
+			return -1
+		}
+		// Balanced parens and we reached EOS or a terminator.
+		if l == r && (i == len(expr)-1 || expr[i+1] == ',') {
+			return i
+		} else if r > l {
+			return -1
+		}
+	}
+	return -1
+}
+
+// ReverseChanges reverses the order of the changes.
+func ReverseChanges(c []schema.Change) {
+	for i, n := 0, len(c); i < n/2; i++ {
+		c[i], c[n-i-1] = c[n-i-1], c[i]
 	}
 }

@@ -6,12 +6,16 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"hash/fnv"
+	"net/url"
+	"time"
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
-
+	"ariga.io/atlas/sql/sqlclient"
 	"golang.org/x/mod/semver"
 )
 
@@ -32,11 +36,21 @@ type (
 		collate string
 		ctype   string
 		version string
+		crdb    bool
 	}
 )
 
+func init() {
+	sqlclient.Register(
+		"postgres",
+		sqlclient.DriverOpener(Open),
+		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
+		sqlclient.RegisterURLParser(parser{}),
+	)
+}
+
 // Open opens a new PostgreSQL driver.
-func Open(db schema.ExecQuerier) (*Driver, error) {
+func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	c := conn{ExecQuerier: db}
 	rows, err := db.QueryContext(context.Background(), paramsQuery)
 	if err != nil {
@@ -46,10 +60,10 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 	if err != nil {
 		return nil, fmt.Errorf("postgres: failed scanning rows: %w", err)
 	}
-	if len(params) != 3 {
+	if len(params) != 3 && len(params) != 4 {
 		return nil, fmt.Errorf("postgres: unexpected number of rows: %d", len(params))
 	}
-	c.collate, c.ctype, c.version = params[0], params[1], params[2]
+	c.version, c.ctype, c.collate = params[0], params[1], params[2]
 	if len(c.version) != 6 {
 		return nil, fmt.Errorf("postgres: malformed version: %s", c.version)
 	}
@@ -57,12 +71,115 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 	if semver.Compare("v"+c.version, "v10.0.0") != -1 {
 		return nil, fmt.Errorf("postgres: unsupported postgres version: %s", c.version)
 	}
+	// Means we are connected to CockroachDB because we have a result for name='crdb_version'. see `paramsQuery`.
+	if c.crdb = len(params) == 4; c.crdb {
+		return &Driver{
+			conn:        c,
+			Differ:      &sqlx.Diff{DiffDriver: &crdbDiff{diff{c}}},
+			Inspector:   &crdbInspect{inspect{c}},
+			PlanApplier: &planApply{c},
+		}, nil
+	}
 	return &Driver{
 		conn:        c,
 		Differ:      &sqlx.Diff{DiffDriver: &diff{c}},
 		Inspector:   &inspect{c},
 		PlanApplier: &planApply{c},
 	}, nil
+}
+
+func (d *Driver) dev() *sqlx.DevDriver {
+	return &sqlx.DevDriver{Driver: d, MaxNameLen: 63}
+}
+
+// NormalizeRealm returns the normal representation of the given database.
+func (d *Driver) NormalizeRealm(ctx context.Context, r *schema.Realm) (*schema.Realm, error) {
+	return d.dev().NormalizeRealm(ctx, r)
+}
+
+// NormalizeSchema returns the normal representation of the given database.
+func (d *Driver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*schema.Schema, error) {
+	return d.dev().NormalizeSchema(ctx, s)
+}
+
+// Lock implements the schema.Locker interface.
+func (d *Driver) Lock(ctx context.Context, name string, timeout time.Duration) (schema.UnlockFunc, error) {
+	conn, err := sqlx.SingleConn(ctx, d.ExecQuerier)
+	if err != nil {
+		return nil, err
+	}
+	h := fnv.New32()
+	h.Write([]byte(name))
+	id := h.Sum32()
+	if err := acquire(ctx, conn, id, timeout); err != nil {
+		conn.Close()
+		return nil, err
+	}
+	return func() error {
+		defer conn.Close()
+		rows, err := conn.QueryContext(ctx, "SELECT pg_advisory_unlock($1)", id)
+		if err != nil {
+			return err
+		}
+		switch released, err := sqlx.ScanNullBool(rows); {
+		case err != nil:
+			return err
+		case !released.Valid || !released.Bool:
+			return fmt.Errorf("sql/postgres: failed releasing lock %d", id)
+		}
+		return nil
+	}, nil
+}
+
+func acquire(ctx context.Context, conn schema.ExecQuerier, id uint32, timeout time.Duration) error {
+	switch {
+	// With timeout (context-based).
+	case timeout > 0:
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+		fallthrough
+	// Infinite timeout.
+	case timeout < 0:
+		rows, err := conn.QueryContext(ctx, "SELECT pg_advisory_lock($1)", id)
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			err = schema.ErrLocked
+		}
+		if err != nil {
+			return err
+		}
+		return rows.Close()
+	// No timeout.
+	default:
+		rows, err := conn.QueryContext(ctx, "SELECT pg_try_advisory_lock($1)", id)
+		if err != nil {
+			return err
+		}
+		acquired, err := sqlx.ScanNullBool(rows)
+		if err != nil {
+			return err
+		}
+		if !acquired.Bool {
+			return schema.ErrLocked
+		}
+		return nil
+	}
+}
+
+type parser struct{}
+
+// ParseURL implements the sqlclient.URLParser interface.
+func (parser) ParseURL(u *url.URL) *sqlclient.URL {
+	return &sqlclient.URL{URL: u, DSN: u.String(), Schema: u.Query().Get("search_path")}
+}
+
+// ChangeSchema implements the sqlclient.SchemaChanger interface.
+func (parser) ChangeSchema(u *url.URL, s string) *url.URL {
+	nu := *u
+	q := nu.Query()
+	q.Set("search_path", s)
+	nu.RawQuery = q.Encode()
+	return &nu
 }
 
 // Standard column types (and their aliases) as defined in
@@ -102,7 +219,8 @@ const (
 	TypePoint   = "point"
 
 	TypeDate          = "date"
-	TypeTime          = "time" // time without time zone
+	TypeTime          = "time"   // time without time zone
+	TypeTimeTZ        = "timetz" // time with time zone
 	TypeTimeWTZ       = "time with time zone"
 	TypeTimeWOTZ      = "time without time zone"
 	TypeTimestamp     = "timestamp" // timestamp without time zone
@@ -133,4 +251,27 @@ const (
 	TypeMoney       = "money"
 	TypeInterval    = "interval"
 	TypeUserDefined = "user-defined"
+)
+
+// List of supported index types.
+const (
+	IndexTypeBTree      = "BTREE"
+	IndexTypeHash       = "HASH"
+	IndexTypeGIN        = "GIN"
+	IndexTypeGiST       = "GIST"
+	IndexTypeBRIN       = "BRIN"
+	defaultPagePerRange = 128
+)
+
+// List of "GENERATED" types.
+const (
+	GeneratedTypeAlways    = "ALWAYS"
+	GeneratedTypeByDefault = "BY_DEFAULT" // BY DEFAULT.
+)
+
+// List of PARTITION KEY types.
+const (
+	PartitionTypeRange = "RANGE"
+	PartitionTypeList  = "LIST"
+	PartitionTypeHash  = "HASH"
 )

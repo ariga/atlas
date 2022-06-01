@@ -1,0 +1,51 @@
+apply 1.hcl
+cmpshow users 1.sql
+
+# Change enum default.
+apply 2.hcl
+cmpshow users 2.sql
+
+-- 1.hcl --
+schema "$db" {}
+
+enum "status" {
+    schema = schema.$db
+    values = ["active", "inactive"]
+}
+
+table "users" {
+  schema = schema.$db
+  column "type" {
+    type = enum.status
+    default = "active"
+  }
+}
+
+-- 1.sql --
+             Table "script_column_enum.users"
+ Column |  Type  | Collation | Nullable |     Default
+--------+--------+-----------+----------+------------------
+ type   | status |           | not null | 'active'::status
+
+
+-- 2.hcl --
+schema "$db" {}
+
+enum "status" {
+  schema = schema.$db
+  values = ["active", "inactive"]
+}
+
+table "users" {
+  schema = schema.$db
+  column "type" {
+    type = enum.status
+    default = "inactive"
+  }
+}
+
+-- 2.sql --
+              Table "script_column_enum.users"
+ Column |  Type  | Collation | Nullable |      Default
+--------+--------+-----------+----------+--------------------
+ type   | status |           | not null | 'inactive'::status

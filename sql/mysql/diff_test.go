@@ -197,6 +197,7 @@ func TestDiff_TableDiff(t *testing.T) {
 					Columns: []*schema.Column{
 						{Name: "c1", Type: &schema.ColumnType{Raw: "json", Type: &schema.JSONType{T: "json"}}},
 						{Name: "c2", Type: &schema.ColumnType{Raw: "tinyint", Type: &schema.IntegerType{T: "tinyint"}}},
+						{Name: "c4", Type: &schema.ColumnType{Type: &schema.FloatType{T: "float"}}, Default: &schema.Literal{V: "0.00"}},
 					},
 				}
 				to = &schema.Table{
@@ -209,6 +210,7 @@ func TestDiff_TableDiff(t *testing.T) {
 							Attrs:   []schema.Attr{&schema.Comment{Text: "json comment"}},
 						},
 						{Name: "c3", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
+						{Name: "c4", Type: &schema.ColumnType{Type: &schema.FloatType{T: "float"}}, Default: &schema.Literal{V: "0.00"}},
 					},
 				}
 			)
@@ -224,6 +226,55 @@ func TestDiff_TableDiff(t *testing.T) {
 					},
 					&schema.DropColumn{C: from.Columns[1]},
 					&schema.AddColumn{C: to.Columns[1]},
+				},
+			}
+		}(),
+		func() testcase {
+			var (
+				s    = schema.New("public")
+				from = schema.NewTable("t1").
+					SetSchema(s).
+					AddColumns(
+						schema.NewIntColumn("c1", "int"),
+						schema.NewIntColumn("c2", "int").
+							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
+						schema.NewIntColumn("c3", "int").
+							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1"}),
+						schema.NewIntColumn("c4", "int").
+							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "VIRTUAL"}),
+						schema.NewIntColumn("c5", "int").
+							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "PERSISTENT"}),
+						schema.NewIntColumn("c6", "int").
+							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "PERSISTENT"}),
+					)
+				to = schema.NewTable("t1").
+					SetSchema(s).
+					AddColumns(
+						// Add generated expression.
+						schema.NewIntColumn("c1", "int").
+							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
+						// Drop generated expression.
+						schema.NewIntColumn("c2", "int"),
+						// Modify generated expression.
+						schema.NewIntColumn("c3", "int").
+							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "2"}),
+						// No change.
+						schema.NewIntColumn("c4", "int").
+							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1"}),
+						schema.NewIntColumn("c5", "int").
+							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
+						schema.NewIntColumn("c6", "int").
+							SetGeneratedExpr(&schema.GeneratedExpr{Expr: "(1)", Type: "PERSISTENT"}),
+					)
+			)
+			return testcase{
+				name: "modify column generated",
+				from: from,
+				to:   to,
+				wantChanges: []schema.Change{
+					&schema.ModifyColumn{From: from.Columns[0], To: to.Columns[0], Change: schema.ChangeGenerated},
+					&schema.ModifyColumn{From: from.Columns[1], To: to.Columns[1], Change: schema.ChangeGenerated},
+					&schema.ModifyColumn{From: from.Columns[2], To: to.Columns[2], Change: schema.ChangeGenerated},
 				},
 			}
 		}(),
@@ -336,7 +387,7 @@ func TestDiff_TableDiff(t *testing.T) {
 		require.NoError(t, err)
 		t.Run(tt.name, func(t *testing.T) {
 			changes, err := drv.TableDiff(tt.from, tt.to)
-			require.Equal(t, tt.wantErr, err != nil)
+			require.Equalf(t, tt.wantErr, err != nil, "error: %q", err)
 			require.EqualValues(t, tt.wantChanges, changes)
 		})
 	}

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 
+	"ariga.io/atlas/sql/internal/spectest"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/stretchr/testify/require"
@@ -19,8 +20,10 @@ schema "schema" {
 }
 
 table "table" {
-	column "col" {
+	schema = schema.schema
+	column "id" {
 		type = integer
+		auto_increment = true
 	}
 	column "age" {
 		type = integer
@@ -32,14 +35,15 @@ table "table" {
 		type = varchar(32)
 	}
 	primary_key {
-		columns = [table.table.column.col]
+		columns = [table.table.column.id]
 	}
 	index "index" {
 		unique = true
 		columns = [
-			table.table.column.col,
+			table.table.column.id,
 			table.table.column.age,
 		]
+		where = "age <> 0"
 	}
 	foreign_key "accounts" {
 		columns = [
@@ -48,7 +52,7 @@ table "table" {
 		ref_columns = [
 			table.accounts.column.name,
 		]
-		on_delete = "SET NULL"
+		on_delete = SET_NULL
 	}
 	check "positive price" {
 		expr = "price > 0"
@@ -56,6 +60,7 @@ table "table" {
 }
 
 table "accounts" {
+	schema = schema.schema
 	column "name" {
 		type = varchar(32)
 	}
@@ -73,11 +78,14 @@ table "accounts" {
 			Schema: exp,
 			Columns: []*schema.Column{
 				{
-					Name: "col",
+					Name: "id",
 					Type: &schema.ColumnType{
 						Type: &schema.IntegerType{
 							T: "integer",
 						},
+					},
+					Attrs: []schema.Attr{
+						&AutoIncrement{},
 					},
 				},
 				{
@@ -144,6 +152,9 @@ table "accounts" {
 				{SeqNo: 0, C: exp.Tables[0].Columns[0]},
 				{SeqNo: 1, C: exp.Tables[0].Columns[1]},
 			},
+			Attrs: []schema.Attr{
+				&IndexPredicate{P: "age <> 0"},
+			},
 		},
 	}
 	exp.Tables[0].ForeignKeys = []*schema.ForeignKey{
@@ -164,9 +175,98 @@ table "accounts" {
 	}
 
 	var s schema.Schema
-	err := UnmarshalSpec([]byte(f), hclState, &s)
+	err := UnmarshalHCL([]byte(f), &s)
 	require.NoError(t, err)
 	require.EqualValues(t, exp, &s)
+}
+
+func TestMarshalSpec_AutoIncrement(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "id",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}},
+						Attrs: []schema.Attr{
+							&AutoIncrement{},
+						},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "id" {
+    null           = false
+    type           = int
+    auto_increment = true
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestMarshalSpec_IndexPredicate(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "id",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}},
+						Attrs: []schema.Attr{
+							&AutoIncrement{},
+						},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	s.Tables[0].Schema = s
+	s.Tables[0].Indexes = []*schema.Index{
+		{
+			Name:   "index",
+			Table:  s.Tables[0],
+			Unique: true,
+			Parts: []*schema.IndexPart{
+				{SeqNo: 0, C: s.Tables[0].Columns[0]},
+			},
+			Attrs: []schema.Attr{
+				&IndexPredicate{P: "id <> 0"},
+			},
+		},
+	}
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "id" {
+    null           = false
+    type           = int
+    auto_increment = true
+  }
+  index "index" {
+    unique  = true
+    columns = [column.id]
+    where   = "id <> 0"
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
 }
 
 func TestTypes(t *testing.T) {
@@ -307,16 +407,20 @@ func TestTypes(t *testing.T) {
 schema "test" {
 }
 `, tt.typeExpr)
-			err := UnmarshalSpec([]byte(doc), hclState, &test)
+			err := UnmarshalHCL([]byte(doc), &test)
 			require.NoError(t, err)
 			colspec := test.Tables[0].Columns[0]
 			require.EqualValues(t, tt.expected, colspec.Type.Type)
 			spec, err := MarshalSpec(&test, hclState)
 			require.NoError(t, err)
 			var after schema.Schema
-			err = UnmarshalSpec(spec, hclState, &after)
+			err = UnmarshalHCL(spec, &after)
 			require.NoError(t, err)
 			require.EqualValues(t, tt.expected, after.Tables[0].Columns[0].Type.Type)
 		})
 	}
+}
+
+func TestInputVars(t *testing.T) {
+	spectest.TestInputVars(t, EvalHCL)
 }

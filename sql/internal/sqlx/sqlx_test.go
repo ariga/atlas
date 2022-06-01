@@ -5,6 +5,7 @@
 package sqlx
 
 import (
+	"strconv"
 	"testing"
 
 	"ariga.io/atlas/sql/schema"
@@ -12,12 +13,32 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestVersionNames(t *testing.T) {
-	names := VersionPermutations("mysql", "1.2.3")
-	require.EqualValues(t, []string{"mysql", "mysql 1", "mysql 1.2", "mysql 1.2.3"}, names)
+func TestModeInspectRealm(t *testing.T) {
+	m := ModeInspectRealm(nil)
+	require.True(t, m.Is(schema.InspectSchemas))
+	require.True(t, m.Is(schema.InspectTables))
 
-	names = VersionPermutations("postgres", "11.3 nightly")
-	require.EqualValues(t, []string{"postgres", "postgres 11", "postgres 11.3", "postgres 11.3.nightly"}, names)
+	m = ModeInspectRealm(&schema.InspectRealmOption{})
+	require.True(t, m.Is(schema.InspectSchemas))
+	require.True(t, m.Is(schema.InspectTables))
+
+	m = ModeInspectRealm(&schema.InspectRealmOption{Mode: schema.InspectSchemas})
+	require.True(t, m.Is(schema.InspectSchemas))
+	require.False(t, m.Is(schema.InspectTables))
+}
+
+func TestModeInspectSchema(t *testing.T) {
+	m := ModeInspectSchema(nil)
+	require.True(t, m.Is(schema.InspectSchemas))
+	require.True(t, m.Is(schema.InspectTables))
+
+	m = ModeInspectSchema(&schema.InspectOptions{})
+	require.True(t, m.Is(schema.InspectSchemas))
+	require.True(t, m.Is(schema.InspectTables))
+
+	m = ModeInspectSchema(&schema.InspectOptions{Mode: schema.InspectSchemas})
+	require.True(t, m.Is(schema.InspectSchemas))
+	require.False(t, m.Is(schema.InspectTables))
 }
 
 func TestBuilder(t *testing.T) {
@@ -38,4 +59,124 @@ func TestBuilder(t *testing.T) {
 			})
 		})
 	require.Equal(t, `CREATE TABLE "users" ("a" int NOT NULL, "b" int NOT NULL, "c" int NOT NULL, PRIMARY KEY ("a", "b", "c"))`, b.String())
+}
+
+func TestMayWrap(t *testing.T) {
+	tests := []struct {
+		input   string
+		wrapped bool
+	}{
+		{"", true},
+		{"()", false},
+		{"('text')", false},
+		{"('(')", false},
+		{`('(\\')`, false},
+		{`('\')(')`, false},
+		{`(a) in (b)`, true},
+		{`a in (b)`, true},
+		{`("\\\\(((('")`, false},
+		{`('(')||(')')`, true},
+		// Test examples from SQLite.
+		{"b || 'x'", true},
+		{"a+1", true},
+		{"substr(x, 2)", true},
+		{"(json_extract(x, '$.a'))", false},
+		{"(substr(a, 2) COLLATE NOCASE)", false},
+		{"(b+random())", false},
+	}
+	for i, tt := range tests {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			expect := tt.input
+			if tt.wrapped {
+				expect = "(" + expect + ")"
+			}
+			require.Equal(t, expect, MayWrap(tt.input))
+
+		})
+	}
+}
+
+func TestExprLastIndex(t *testing.T) {
+	tests := []struct {
+		input   string
+		wantIdx int
+	}{
+		{"", -1},
+		{"()", 1},
+		{"'('", 2},
+		{"('(')", 4},
+		{"('text')", 7},
+		{"floor(x), y", 7},
+		{"f(floor(x), y)", 13},
+		{"f(floor(x), y, (z))", 18},
+		{"f(x, (x*2)), y, (z)", 10},
+		{"(a || ' ' || b)", 14},
+		{"(a || ', ' || b)", 15},
+		{"a || ', ' || b, x", 13},
+		{"(a || ', ' || b), x", 15},
+	}
+	for i, tt := range tests {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			idx := ExprLastIndex(tt.input)
+			require.Equal(t, tt.wantIdx, idx)
+		})
+	}
+}
+
+func TestReverseChanges(t *testing.T) {
+	tests := []struct {
+		input  []schema.Change
+		expect []schema.Change
+	}{
+		{
+			input: []schema.Change{
+				(*schema.AddColumn)(nil),
+			},
+			expect: []schema.Change{
+				(*schema.AddColumn)(nil),
+			},
+		},
+		{
+			input: []schema.Change{
+				(*schema.AddColumn)(nil),
+				(*schema.DropColumn)(nil),
+			},
+			expect: []schema.Change{
+				(*schema.DropColumn)(nil),
+				(*schema.AddColumn)(nil),
+			},
+		},
+		{
+			input: []schema.Change{
+				(*schema.AddColumn)(nil),
+				(*schema.ModifyColumn)(nil),
+				(*schema.DropColumn)(nil),
+			},
+			expect: []schema.Change{
+				(*schema.DropColumn)(nil),
+				(*schema.ModifyColumn)(nil),
+				(*schema.AddColumn)(nil),
+			},
+		},
+		{
+			input: []schema.Change{
+				(*schema.AddColumn)(nil),
+				(*schema.ModifyColumn)(nil),
+				(*schema.DropColumn)(nil),
+				(*schema.ModifyColumn)(nil),
+			},
+			expect: []schema.Change{
+				(*schema.ModifyColumn)(nil),
+				(*schema.DropColumn)(nil),
+				(*schema.ModifyColumn)(nil),
+				(*schema.AddColumn)(nil),
+			},
+		},
+	}
+	for i, tt := range tests {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			ReverseChanges(tt.input)
+			require.Equal(t, tt.expect, tt.input)
+		})
+	}
 }

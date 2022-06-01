@@ -1,7 +1,7 @@
 # Each test runs on a clean database.
 
 # Run this test only on MySQL 8 as it is not supported by other versions.
-only 8
+only mysql8
 
 # Apply schema "1.hcl" on fresh database.
 apply 1.hcl
@@ -21,7 +21,7 @@ cmpshow users 3.sql
 -- 1.hcl --
 schema "$db" {
     charset = "$charset"
-    collation = "$collate"
+    collate = "$collate"
 }
 
 table "users" {
@@ -46,7 +46,7 @@ CREATE TABLE `users` (
 -- 2.hcl --
 schema "$db" {
     charset = "$charset"
-    collation = "$collate"
+    collate = "$collate"
 }
 
 table "users" {
@@ -71,7 +71,7 @@ CREATE TABLE `users` (
 -- 2-no-change.hcl --
 schema "$db" {
     charset = "$charset"
-    collation = "$collate"
+    collate = "$collate"
 }
 
 table "users" {
@@ -89,7 +89,7 @@ table "users" {
 -- 3.hcl --
 schema "$db" {
     charset = "$charset"
-    collation = "$collate"
+    collate = "$collate"
 }
 
 table "users" {

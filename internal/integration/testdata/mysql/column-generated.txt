@@ -1,0 +1,179 @@
+# Skip MySQL 5.6 as it does not support generated columns.
+! only mysql56
+
+apply 1.hcl
+cmpshow users 1.sql
+
+! apply 2.fail1.hcl 'changing VIRTUAL generated column "b" to non-generated column is not supported (drop and add is required)'
+! apply 2.fail2.hcl 'changing column "a" to VIRTUAL generated column is not supported (drop and add is required)'
+! apply 2.fail3.hcl 'changing the store type of generated column "c" from "STORED" to "VIRTUAL" is not supported'
+
+apply 3.hcl
+cmpshow users 3.sql
+
+-- 1.hcl --
+schema "$db" {
+    charset = "$charset"
+    collate = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "a" {
+        type = int
+    }
+    column "b" {
+        type = int
+        as = "a * 2"
+    }
+    column "c" {
+        type = int
+        as {
+            expr = "a * b"
+            type = STORED
+        }
+    }
+}
+
+-- 1.sql --
+CREATE TABLE `users` (
+  `a` int(11) NOT NULL,
+  `b` int(11) GENERATED ALWAYS AS (`a` * 2) VIRTUAL,
+  `c` int(11) GENERATED ALWAYS AS (`a` * `b`) STORED
+)
+
+-- mysql57/1.sql --
+CREATE TABLE `users` (
+  `a` int(11) NOT NULL,
+  `b` int(11) GENERATED ALWAYS AS ((`a` * 2)) VIRTUAL NOT NULL,
+  `c` int(11) GENERATED ALWAYS AS ((`a` * `b`)) STORED NOT NULL
+)
+
+-- mysql8/1.sql --
+CREATE TABLE `users` (
+  `a` int NOT NULL,
+  `b` int GENERATED ALWAYS AS ((`a` * 2)) VIRTUAL NOT NULL,
+  `c` int GENERATED ALWAYS AS ((`a` * `b`)) STORED NOT NULL
+)
+
+-- 2.fail1.hcl --
+schema "$db" {
+    charset = "$charset"
+    collate = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "a" {
+        type = int
+    }
+    column "b" {
+        type = int
+    }
+    column "c" {
+        type = int
+        as {
+            expr = "a * b"
+            type = STORED
+        }
+    }
+}
+
+-- 2.fail2.hcl --
+schema "$db" {
+    charset = "$charset"
+    collate = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "a" {
+        type = int
+        as = "1"
+    }
+    column "b" {
+        type = int
+        as = "a * 2"
+    }
+    column "c" {
+        type = int
+        as {
+            expr = "a * b"
+            type = VIRTUAL
+        }
+    }
+}
+
+-- 2.fail3.hcl --
+schema "$db" {
+    charset = "$charset"
+    collate = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "a" {
+        type = int
+    }
+    column "b" {
+        type = int
+        as = "a * 2"
+    }
+    column "c" {
+        type = int
+        as {
+            expr = "a * b"
+            type = VIRTUAL
+        }
+    }
+}
+
+
+-- 3.hcl --
+schema "$db" {
+    charset = "$charset"
+    collate = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "a" {
+        type = int
+        as {
+            expr = "1"
+            type = STORED
+        }
+    }
+    column "b" {
+        type = int
+        as = "a * 3"
+    }
+    column "c" {
+        type = int
+        as {
+            expr = "a * b"
+            type = STORED
+        }
+    }
+}
+
+-- 3.sql --
+CREATE TABLE `users` (
+  `a` int(11) GENERATED ALWAYS AS (1) STORED,
+  `b` int(11) GENERATED ALWAYS AS (`a` * 3) VIRTUAL,
+  `c` int(11) GENERATED ALWAYS AS (`a` * `b`) STORED
+)
+
+-- mysql57/3.sql --
+CREATE TABLE `users` (
+  `a` int(11) GENERATED ALWAYS AS (1) STORED NOT NULL,
+  `b` int(11) GENERATED ALWAYS AS ((`a` * 3)) VIRTUAL NOT NULL,
+  `c` int(11) GENERATED ALWAYS AS ((`a` * `b`)) STORED NOT NULL
+)
+
+-- mysql8/3.sql --
+CREATE TABLE `users` (
+  `a` int GENERATED ALWAYS AS (1) STORED NOT NULL,
+  `b` int GENERATED ALWAYS AS ((`a` * 3)) VIRTUAL NOT NULL,
+  `c` int GENERATED ALWAYS AS ((`a` * `b`)) STORED NOT NULL
+)

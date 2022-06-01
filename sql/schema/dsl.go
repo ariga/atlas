@@ -410,7 +410,7 @@ type TimeOption func(*TimeType)
 // TimePrecision configures the precision of the time type.
 func TimePrecision(precision int) TimeOption {
 	return func(b *TimeType) {
-		b.Precision = precision
+		b.Precision = &precision
 	}
 }
 
@@ -507,6 +507,12 @@ func (c *Column) UnsetCollation() *Column {
 // to the column with the given value.
 func (c *Column) SetComment(v string) *Column {
 	replaceOrAppend(&c.Attrs, &Comment{Text: v})
+	return c
+}
+
+// SetGeneratedExpr sets or appends the GeneratedExpr attribute.
+func (c *Column) SetGeneratedExpr(x *GeneratedExpr) *Column {
+	replaceOrAppend(&c.Attrs, x)
 	return c
 }
 
@@ -726,6 +732,12 @@ func replaceOrAppend(attrs *[]Attr, v Attr) {
 		}
 	}
 	*attrs = append(*attrs, v)
+}
+
+// ReplaceOrAppend searches an attribute of the same type as v in
+// the list and replaces it. Otherwise, v is appended to the list.
+func ReplaceOrAppend(attrs *[]Attr, v Attr) {
+	replaceOrAppend(attrs, v)
 }
 
 // del searches an attribute of the same type as v in

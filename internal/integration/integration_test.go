@@ -1,36 +1,70 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package integration
 
 import (
 	"bytes"
 	"context"
 	"database/sql"
+	"flag"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"text/template"
 	"time"
 
+	entmigrate "ariga.io/atlas/cmd/atlascmd/migrate"
+	"ariga.io/atlas/cmd/atlascmd/migrate/ent/revision"
 	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
-
+	"ariga.io/atlas/sql/sqlclient"
 	entsql "entgo.io/ent/dialect/sql"
+	entschema "entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/entc/integration/ent"
 	"github.com/stretchr/testify/require"
 )
 
+func TestMain(m *testing.M) {
+	var dialect string
+	flag.StringVar(&dialect, "dialect", "", "[mysql56, postgres10, tidb5, ...] what dialect (version) to test")
+	flag.Parse()
+	var dbs []io.Closer
+	dbs = append(dbs, myInit(dialect)...)
+	dbs = append(dbs, pgInit(dialect)...)
+	dbs = append(dbs, tidbInit(dialect)...)
+	dbs = append(dbs, crdbInit(dialect)...)
+	defer func() {
+		for _, db := range dbs {
+			db.Close()
+		}
+	}()
+	os.Exit(m.Run())
+}
+
 // T holds the elements common between dialect tests.
 type T interface {
 	testing.TB
+	url() string
+	driver() migrate.Driver
+	revisionsStorage() migrate.RevisionReadWriter
 	realm() *schema.Realm
 	loadRealm() *schema.Realm
 	users() *schema.Table
 	loadUsers() *schema.Table
 	posts() *schema.Table
 	loadPosts() *schema.Table
+	revisions() *schema.Table
 	loadTable(string) *schema.Table
 	dropTables(...string)
+	dropSchemas(...string)
 	migrate(...schema.Change)
 	diff(*schema.Table, *schema.Table) []schema.Change
 	applyHcl(spec string)
@@ -70,11 +104,11 @@ func testRelation(t T) {
 	ensureNoChange(t, postsT, usersT)
 }
 
-func testEntIntegration(t T, dialect string, db *sql.DB) {
+func testEntIntegration(t T, dialect string, db *sql.DB, opts ...entschema.MigrateOption) {
 	ctx := context.Background()
 	drv := entsql.OpenDB(dialect, db)
 	client := ent.NewClient(ent.Driver(drv))
-	require.NoError(t, client.Schema.Create(ctx))
+	require.NoError(t, client.Schema.Create(ctx, opts...))
 	sanity(client)
 	realm := t.loadRealm()
 	ensureNoChange(t, realm.Schemas[0].Tables...)
@@ -145,9 +179,36 @@ func testHCLIntegration(t T, full string, empty string) {
 	require.Empty(t, t.realm().Schemas[0].Tables)
 }
 
-func testCLISchemaInspect(t T, h string, dsn string, unmarshaler schemaspec.Unmarshaler) {
-	// Required to have a clean "stderr" while running first time.
-	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+func testCLISchemaInspect(t T, h string, dsn string, unmarshaler schemaspec.Unmarshaler, args ...string) {
+	err := initCLI()
+	require.NoError(t, err)
+	t.dropTables("users")
+	var expected schema.Schema
+	err = unmarshaler.UnmarshalSpec([]byte(h), &expected)
+	require.NoError(t, err)
+	t.applyHcl(h)
+	runArgs := []string{
+		"run", "ariga.io/atlas/cmd/atlas",
+		"schema",
+		"inspect",
+		"-d",
+		dsn,
+	}
+	runArgs = append(runArgs, args...)
+	cmd := exec.Command("go", runArgs...)
+	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	require.NoError(t, cmd.Run(), stderr.String())
+	var actual schema.Schema
+	err = unmarshaler.UnmarshalSpec(stdout.Bytes(), &actual)
+	require.NoError(t, err)
+	require.Empty(t, stderr.String())
+	require.Equal(t, expected, actual)
+}
+
+func testCLISchemaInspectEnv(t T, h string, env string, unmarshaler schemaspec.Unmarshaler) {
+	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
 	var expected schema.Schema
@@ -157,8 +218,8 @@ func testCLISchemaInspect(t T, h string, dsn string, unmarshaler schemaspec.Unma
 	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
 		"schema",
 		"inspect",
-		"-d",
-		dsn,
+		"--env",
+		env,
 	)
 	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
 	cmd.Stderr = stderr
@@ -171,15 +232,22 @@ func testCLISchemaInspect(t T, h string, dsn string, unmarshaler schemaspec.Unma
 	require.Equal(t, expected, actual)
 }
 
+// initOnce controls that the cli will only be built once.
+var initOnce sync.Once
+
+func initCLI() error {
+	var err error
+	initOnce.Do(func() {
+		err = exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	})
+	return err
+}
+
 func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, unmarshaler schemaspec.Unmarshaler) {
-	// Required to have a clean "stderr" while running first time.
-	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
-	f := "atlas.hcl"
+	err := initCLI()
+	f := filepath.Join(t.TempDir(), "atlas.hcl")
 	err = ioutil.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		os.Remove("atlas.hcl")
-	})
 	require.NoError(t, err)
 	var expected schema.Realm
 	err = unmarshaler.UnmarshalSpec([]byte(h), &expected)
@@ -188,7 +256,7 @@ func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, unmars
 		"schema",
 		"apply",
 		"-f",
-		"atlas.hcl",
+		f,
 		"-d",
 		dsn,
 		"-s",
@@ -206,8 +274,7 @@ func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, unmars
 }
 
 func testCLIMultiSchemaInspect(t T, h string, dsn string, schemas []string, unmarshaler schemaspec.Unmarshaler) {
-	// Required to have a clean "stderr" while running first time.
-	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	err := initCLI()
 	require.NoError(t, err)
 	var expected schema.Realm
 	err = unmarshaler.UnmarshalSpec([]byte(h), &expected)
@@ -232,23 +299,26 @@ func testCLIMultiSchemaInspect(t T, h string, dsn string, schemas []string, unma
 	require.Equal(t, expected, actual)
 }
 
-func testCLISchemaApply(t T, h string, dsn string) {
-	// Required to have a clean "stderr" while running first time.
-	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+func testCLISchemaApply(t T, h string, dsn string, args ...string) {
+	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
-	f := "atlas.hcl"
+	f := filepath.Join(t.TempDir(), "atlas.hcl")
 	err = ioutil.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
-	defer os.Remove(f)
-	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+	runArgs := []string{
+		"run", "ariga.io/atlas/cmd/atlas",
 		"schema",
 		"apply",
-		"-d",
+		"-u",
 		dsn,
 		"-f",
 		f,
-	)
+		"--dev-url",
+		dsn,
+	}
+	runArgs = append(runArgs, args...)
+	cmd := exec.Command("go", runArgs...)
 	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
 	cmd.Stderr = stderr
 	cmd.Stdout = stdout
@@ -265,14 +335,12 @@ func testCLISchemaApply(t T, h string, dsn string) {
 }
 
 func testCLISchemaApplyDry(t T, h string, dsn string) {
-	// Required to have a clean "stderr" while running first time.
-	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
-	f := "atlas.hcl"
+	f := filepath.Join(t.TempDir(), "atlas.hcl")
 	err = ioutil.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
-	defer os.Remove(f)
 	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
 		"schema",
 		"apply",
@@ -299,16 +367,15 @@ func testCLISchemaApplyDry(t T, h string, dsn string) {
 	require.False(t, ok, "expected users table not to be created")
 }
 
-func testCLISchemaApplyAutoApprove(t T, h string, dsn string) {
-	// Required to have a clean "stderr" while running first time.
-	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+func testCLISchemaApplyAutoApprove(t T, h string, dsn string, args ...string) {
+	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
-	f := "atlas.hcl"
+	f := filepath.Join(t.TempDir(), "atlas.hcl")
 	err = ioutil.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
-	defer os.Remove(f)
-	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
+	runArgs := []string{
+		"run", "ariga.io/atlas/cmd/atlas",
 		"schema",
 		"apply",
 		"-d",
@@ -316,7 +383,9 @@ func testCLISchemaApplyAutoApprove(t T, h string, dsn string) {
 		"-f",
 		f,
 		"--auto-approve",
-	)
+	}
+	runArgs = append(runArgs, args...)
+	cmd := exec.Command("go", runArgs...)
 	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
 	cmd.Stderr = stderr
 	cmd.Stdout = stdout
@@ -329,8 +398,7 @@ func testCLISchemaApplyAutoApprove(t T, h string, dsn string) {
 }
 
 func testCLISchemaDiff(t T, dsn string) {
-	// Required to have a clean "stderr" while running first time.
-	err := exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run()
+	err := initCLI()
 
 	require.NoError(t, err)
 	t.dropTables("users")
@@ -350,53 +418,6 @@ func testCLISchemaDiff(t T, dsn string) {
 	require.Contains(t, stdout.String(), "Schemas are synced, no changes to be made.")
 }
 
-func TestCLI_Version(t *testing.T) {
-	// Required to have a clean "stderr" while running first time.
-	require.NoError(t, exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run())
-	tests := []struct {
-		name     string
-		cmd      *exec.Cmd
-		expected string
-	}{
-		{
-			name: "dev mode",
-			cmd: exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
-				"version",
-			),
-			expected: "atlas CLI version - development\nhttps://github.com/ariga/atlas/releases/tag/latest\n",
-		},
-		{
-			name: "release",
-			cmd: exec.Command("go", "run",
-				"-ldflags",
-				"-X ariga.io/atlas/cmd/action.version=v1.2.3",
-				"ariga.io/atlas/cmd/atlas",
-				"version",
-			),
-			expected: "atlas CLI version v1.2.3\nhttps://github.com/ariga/atlas/releases/tag/v1.2.3\n",
-		},
-		{
-			name: "canary",
-			cmd: exec.Command("go", "run",
-				"-ldflags",
-				"-X ariga.io/atlas/cmd/action.version=v0.3.0-6539f2704b5d-canary",
-				"ariga.io/atlas/cmd/atlas",
-				"version",
-			),
-			expected: "atlas CLI version v0.3.0-6539f2704b5d-canary\nhttps://github.com/ariga/atlas/releases/tag/latest\n",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("ATLAS_NO_UPDATE_NOTIFIER", "true")
-			stdout := bytes.NewBuffer(nil)
-			tt.cmd.Stdout = stdout
-			require.NoError(t, tt.cmd.Run())
-			require.Equal(t, tt.expected, stdout.String())
-		})
-	}
-}
-
 func ensureNoChange(t T, tables ...*schema.Table) {
 	realm := t.loadRealm()
 	require.Equal(t, len(realm.Schemas[0].Tables), len(tables))
@@ -404,7 +425,7 @@ func ensureNoChange(t T, tables ...*schema.Table) {
 		tt, ok := realm.Schemas[0].Table(tables[i].Name)
 		require.True(t, ok)
 		changes := t.diff(tt, tables[i])
-		require.Empty(t, changes)
+		require.Emptyf(t, changes, "changes should be empty for table %s, but instead was %#v", tt.Name, changes)
 	}
 }
 
@@ -428,4 +449,124 @@ func sanity(c *ent.Client) {
 		AddUsers(u).
 		SetInfo(c.GroupInfo.Create().SetDesc("desc").SaveX(ctx)).
 		SaveX(ctx)
+}
+
+func testAdvisoryLock(t *testing.T, l schema.Locker) {
+	t.Run("One", func(t *testing.T) {
+		unlock, err := l.Lock(context.Background(), "migrate", 0)
+		require.NoError(t, err)
+		_, err = l.Lock(context.Background(), "migrate", 0)
+		require.Equal(t, schema.ErrLocked, err)
+		require.NoError(t, unlock())
+	})
+	t.Run("Multi", func(t *testing.T) {
+		var unlocks []schema.UnlockFunc
+		for _, name := range []string{"a", "b", "c"} {
+			unlock, err := l.Lock(context.Background(), name, 0)
+			require.NoError(t, err)
+			unlocks = append(unlocks, unlock)
+		}
+		for _, unlock := range unlocks {
+			require.NoError(t, unlock())
+		}
+	})
+}
+
+// testEntRevisions will not be run for SQLite. It has its own version of this test.
+func testEntRevisions(t T) {
+	const name = "my_revisions_schema"
+
+	c, err := sqlclient.Open(context.Background(), t.url())
+	require.NoError(t, err)
+
+	r, err := entmigrate.NewEntRevisions(c, entmigrate.WithSchema(name))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		r.Close()
+	})
+
+	require.NoError(t, r.Init(context.Background()))
+	t.dropSchemas(name)
+
+	s, err := c.InspectSchema(context.Background(), name, nil)
+	require.NoError(t, err)
+	_, ok := s.Table(revision.Table)
+	require.True(t, ok)
+}
+
+func testExecutor(t T) {
+	usersT, postsT := t.users(), t.posts()
+	petsT := &schema.Table{
+		Name:   "pets",
+		Schema: usersT.Schema,
+		Columns: []*schema.Column{
+			{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+			{Name: "owner_id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}, Null: true}},
+		},
+	}
+	petsT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: postsT.Columns[0]}}}
+	petsT.ForeignKeys = []*schema.ForeignKey{
+		{Symbol: "owner_id", Table: petsT, Columns: petsT.Columns[1:], RefTable: usersT, RefColumns: usersT.Columns[:1]},
+	}
+
+	t.dropTables(petsT.Name, postsT.Name, usersT.Name)
+	t.Cleanup(func() {
+		t.revisionsStorage().(*rrw).clean()
+	})
+
+	dir, err := migrate.NewLocalDir(t.TempDir())
+	require.NoError(t, err)
+	f, err := migrate.NewTemplateFormatter(
+		template.Must(template.New("").Parse("{{ .Name }}.sql")),
+		template.Must(template.New("").Parse(
+			`{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}`,
+		)),
+	)
+	require.NoError(t, err)
+	pl := migrate.NewPlanner(t.driver(), dir, migrate.WithFormatter(f))
+	require.NoError(t, err)
+
+	require.NoError(t, pl.WritePlan(plan(t, "1_users", &schema.AddTable{T: usersT})))
+	require.NoError(t, pl.WritePlan(plan(t, "2_posts", &schema.AddTable{T: postsT})))
+	require.NoError(t, pl.WritePlan(plan(t, "3_pets", &schema.AddTable{T: petsT})))
+
+	ex, err := migrate.NewExecutor(t.driver(), dir, t.revisionsStorage())
+	require.NoError(t, err)
+	require.NoError(t, ex.Execute(context.Background(), 2)) // usersT and postsT
+	require.Len(t, *t.revisionsStorage().(*rrw), 2)
+	ensureNoChange(t, postsT, usersT)
+	require.NoError(t, ex.Execute(context.Background(), 1)) // petsT
+	require.Len(t, *t.revisionsStorage().(*rrw), 3)
+	ensureNoChange(t, petsT, postsT, usersT)
+
+	require.ErrorIs(t, ex.Execute(context.Background(), 1), migrate.ErrNoPendingFiles)
+}
+
+func plan(t T, name string, changes ...schema.Change) *migrate.Plan {
+	p, err := t.driver().PlanChanges(context.Background(), name, changes)
+	require.NoError(t, err)
+	return p
+}
+
+type rrw migrate.Revisions
+
+func (r *rrw) WriteRevisions(ctx context.Context, revs migrate.Revisions) error {
+	*r = rrw(revs)
+	return nil
+}
+
+func (r *rrw) ReadRevisions(ctx context.Context) (migrate.Revisions, error) {
+	return migrate.Revisions(*r), nil
+}
+
+func (r *rrw) clean() {
+	*r = rrw(migrate.Revisions{})
+}
+
+func buildCmd(t *testing.T) (string, error) {
+	td := t.TempDir()
+	if err := exec.Command("go", "build", "-o", td, "ariga.io/atlas/cmd/atlas").Run(); err != nil {
+		return "", err
+	}
+	return filepath.Join(td, "atlas"), nil
 }

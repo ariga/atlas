@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package schemaspec
 
 import (
@@ -88,12 +92,12 @@ func (r *Resource) As(target interface{}) error {
 		return err
 	}
 	existingAttrs, existingChildren := existingElements(r)
-	var seenName bool
+	var seenName, seenQualifier bool
 	v := reflect.ValueOf(target).Elem()
 	for _, ft := range specFields(target) {
 		field := v.FieldByName(ft.Name)
 		switch {
-		case ft.isName():
+		case ft.isName() && !hasAttr(r, ft.tag):
 			if seenName {
 				return errors.New("schemaspec: extension must have only one isName field")
 			}
@@ -102,6 +106,12 @@ func (r *Resource) As(target interface{}) error {
 				return errors.New("schemaspec: extension isName field must be of type string")
 			}
 			field.SetString(r.Name)
+		case ft.isQualifier():
+			if seenQualifier {
+				return errors.New("schemaspec: extension must have only one qualifier field")
+			}
+			seenQualifier = true
+			field.SetString(r.Qualifier)
 		case hasAttr(r, ft.tag):
 			attr, _ := r.Attr(ft.tag)
 			if err := setField(field, attr); err != nil {
@@ -194,6 +204,30 @@ func (r *Resource) As(target interface{}) error {
 	return nil
 }
 
+// FinalName returns the final name for the resource by examining the struct tags for
+// the extension of the Resource's type. If no such extension is registered or the
+// extension struct does not have a name field, an error is returned.
+func (r *Resource) FinalName() (string, error) {
+	extensionsMu.RLock()
+	defer extensionsMu.RUnlock()
+	t, ok := extensions[r.Type]
+	if !ok {
+		return "", fmt.Errorf("no extension registered for %q", r.Type)
+	}
+	for _, fd := range specFields(t) {
+		if fd.isName() {
+			if fd.tag != "" {
+				name, ok := r.Attr(fd.tag)
+				if ok {
+					return name.String()
+				}
+			}
+			return r.Name, nil
+		}
+	}
+	return "", fmt.Errorf("extension %q has no name field", r.Type)
+}
+
 func validateStructPtr(target interface{}) error {
 	typeOf := reflect.TypeOf(target)
 	if typeOf.Kind() != reflect.Ptr {
@@ -247,7 +281,7 @@ func setField(field reflect.Value, attr *Attr) error {
 			return fmt.Errorf("schemaspec: value of attr %q cannot be read as string: %w", attr.K, err)
 		}
 		field.SetString(s)
-	case reflect.Int:
+	case reflect.Int, reflect.Int64:
 		i, err := attr.Int()
 		if err != nil {
 			return fmt.Errorf("schemaspec: value of attr %q cannot be read as integer: %w", attr.K, err)
@@ -294,19 +328,31 @@ func setPtr(field reflect.Value, val Value) error {
 	if field.IsNil() {
 		field.Set(reflect.New(field.Type().Elem()))
 	}
-	switch e := field.Elem(); e.Kind() {
-	case reflect.Bool:
+	switch e := field.Interface().(type) {
+	case *bool:
 		b, err := BoolVal(val)
 		if err != nil {
 			return err
 		}
-		e.SetBool(b)
-	case reflect.String:
+		*e = b
+	case *string:
 		s, err := StrVal(val)
 		if err != nil {
 			return err
 		}
-		e.SetString(s)
+		*e = s
+	case *LiteralValue:
+		s, err := StrVal(val)
+		if err != nil {
+			return err
+		}
+		e.V = s
+	case *Ref:
+		s, err := StrVal(val)
+		if err != nil {
+			return err
+		}
+		e.V = s
 	default:
 		return fmt.Errorf("unhandled pointer type %T", val)
 	}
@@ -370,6 +416,11 @@ func (r *Resource) Scan(ext interface{}) error {
 				return errors.New("schemaspec: extension name field must be string")
 			}
 			r.Name = field.String()
+		case ft.isQualifier():
+			if field.Kind() != reflect.String {
+				return errors.New("schemaspec: extension qualifer field must be string")
+			}
+			r.Qualifier = field.String()
 		case isResourceSlice(field.Type()):
 			for i := 0; i < field.Len(); i++ {
 				ext := field.Index(i).Interface()
@@ -552,6 +603,8 @@ type fieldDesc struct {
 
 func (f fieldDesc) isName() bool { return f.is("name") }
 
+func (f fieldDesc) isQualifier() bool { return f.is("qualifier") }
+
 func (f fieldDesc) omitempty() bool { return f.is("omitempty") }
 
 func (f fieldDesc) is(t string) bool {
@@ -594,6 +647,9 @@ func isSingleResource(t reflect.Type) bool {
 	for i := 0; i < elem.NumField(); i++ {
 		f := elem.Field(i)
 		if _, ok := f.Tag.Lookup("spec"); ok {
+			return true
+		}
+		if f.Type == reflect.TypeOf(DefaultExtension{}) {
 			return true
 		}
 	}

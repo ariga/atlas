@@ -1,33 +1,31 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package main
 
 import (
+	"context"
 	"os"
+	"os/signal"
 
-	"ariga.io/atlas/cmd/action"
+	"ariga.io/atlas/cmd/atlascmd"
+	_ "ariga.io/atlas/cmd/atlascmd/docker"
+	_ "ariga.io/atlas/sql/mysql"
+	_ "ariga.io/atlas/sql/postgres"
+	_ "ariga.io/atlas/sql/sqlite"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/spf13/cobra"
 )
 
 func main() {
-	cobra.OnInitialize(initConfig)
-	err := action.RootCmd.Execute()
-	// Print error from command
-	if err != nil {
-		action.RootCmd.PrintErrln("Error:", err)
-	}
-	// Check for update
-	action.CheckForUpdate()
-	// Exit code according to command success
+	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+	atlascmd.Root.SetOut(os.Stdout)
+	err := atlascmd.Root.ExecuteContext(ctx)
+	atlascmd.CheckForUpdate()
 	if err != nil {
 		os.Exit(1)
 	}
-
-}
-
-// initConfig reads in config file and ENV variables if set.
-func initConfig() {
-	action.RootCmd.SetOut(os.Stdout)
 }

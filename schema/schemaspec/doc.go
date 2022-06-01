@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 // Package schemaspec provides types designed to capture atlas schema elements, and create
 // type-safe extensions to the configuration language. This package is designed to provide
 // an intermediate representation between a serialized configuration language representation

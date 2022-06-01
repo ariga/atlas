@@ -1,0 +1,37 @@
+! atlas schema apply --env local --auto-approve
+stderr 'missing value for required variable "def_val"'
+
+atlas schema apply --env local_with_vals --auto-approve
+cmpshow users expected.sql
+
+-- atlas.hcl --
+env "local" {
+    url = "URL"
+    src = "./1.hcl"
+}
+env "local_with_vals" {
+    url = "URL"
+    src = "./1.hcl"
+
+    def_val = "hello"
+}
+-- 1.hcl --
+variable "def_val" {
+    type = string
+}
+table "users" {
+  schema = schema.main
+  column "id" {
+    null = false
+    type = int
+  }
+  column "status" {
+    null = true
+    type = text
+    default = var.def_val
+  }
+}
+schema "main" {
+}
+-- expected.sql --
+CREATE TABLE `users` (`id` int NOT NULL, `status` text NULL DEFAULT 'hello')

@@ -1,0 +1,20 @@
+apply 1.hcl
+
+# test deprecated -d flag
+atlas schema inspect -d URL > inspected.hcl
+cmp inspected.hcl 1.hcl
+
+# test url flag
+atlas schema inspect -u URL > inspected.hcl
+cmp inspected.hcl 1.hcl
+
+-- 1.hcl --
+table "users" {
+  schema = schema.main
+  column "id" {
+    null = false
+    type = int
+  }
+}
+schema "main" {
+}

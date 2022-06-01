@@ -4,6 +4,9 @@ apply 1.hcl
 # Compare the result of "\d tbl" with the content of a file named '1.sql'.
 cmpshow tbl 1.sql
 
+apply 2.hcl
+cmpshow tbl 2.sql
+
 # Files
 -- 1.hcl --
 schema "$db" {}
@@ -22,7 +25,7 @@ table "tbl" {
   }
   column "timestamptz_4" {
     null    = false
-    type    = timestamp_with_time_zone(4)
+    type    = timestamptz(4)
     default = sql("CURRENT_TIMESTAMP(4)")
   }
 }
@@ -34,3 +37,55 @@ table "tbl" {
  precision_default | timestamp without time zone    |           | not null | CURRENT_TIMESTAMP
  timestamp_4       | timestamp(4) without time zone |           | not null | CURRENT_TIMESTAMP(4)
  timestamptz_4     | timestamp(4) with time zone    |           | not null | CURRENT_TIMESTAMP(4)
+
+-- 2.hcl --
+schema "$db" {}
+
+table "tbl" {
+  schema = schema.$db
+  column "c1" {
+    type = timestamptz(1)
+  }
+  column "c2" {
+    type = timestamptz
+  }
+  column "c3" {
+    type = timestamptz(0)
+  }
+  column "c4" {
+    type = time
+  }
+  column "c5" {
+    type = time(1)
+  }
+  column "c6" {
+    type = timestamp
+  }
+  column "c7" {
+    type = timestamp(5)
+  }
+  column "c8" {
+    type = timetz(0)
+  }
+  column "c9" {
+    type = timetz
+  }
+  column "c10" {
+    type = timetz(6)
+  }
+}
+
+-- 2.sql --
+                 Table "script_column_time_precision.tbl"
+ Column |              Type              | Collation | Nullable | Default
+--------+--------------------------------+-----------+----------+---------
+ c1     | timestamp(1) with time zone    |           | not null |
+ c2     | timestamp with time zone       |           | not null |
+ c3     | timestamp(0) with time zone    |           | not null |
+ c4     | time without time zone         |           | not null |
+ c5     | time(1) without time zone      |           | not null |
+ c6     | timestamp without time zone    |           | not null |
+ c7     | timestamp(5) without time zone |           | not null |
+ c8     | time(0) with time zone         |           | not null |
+ c9     | time with time zone            |           | not null |
+ c10    | time with time zone            |           | not null |

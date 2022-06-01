@@ -1,0 +1,44 @@
+! atlas schema inspect
+stderr '"url" not set'
+
+! atlas schema apply -f 1.hcl
+stderr '"url" not set'
+
+! atlas schema apply --url URL
+stderr '"file" not set'
+
+# Verify "url" and "src" attributes of the env are used.
+atlas schema apply --env local --auto-approve
+atlas schema inspect --env local > inspected.hcl
+cmp 1.hcl inspected.hcl
+
+# Verify the precedence of flag over project file.
+atlas schema apply --env local --auto-approve -f 2.hcl
+atlas schema inspect --env local > inspected.hcl
+cmp 2.hcl inspected.hcl
+
+-- atlas.hcl --
+env "local" {
+    url = "URL"
+    src = "./1.hcl"
+}
+-- 1.hcl --
+table "users" {
+  schema = schema.main
+  column "id" {
+    null = false
+    type = int
+  }
+}
+schema "main" {
+}
+-- 2.hcl --
+table "other" {
+  schema = schema.main
+  column "id" {
+    null = false
+    type = int
+  }
+}
+schema "main" {
+}

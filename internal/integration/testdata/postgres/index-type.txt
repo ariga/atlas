@@ -1,0 +1,73 @@
+apply 1.hcl
+cmpshow users 1.sql
+
+# Change index type.
+apply 2.hcl
+cmpshow users 2.sql
+
+-- 1.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "name" {
+    null = false
+    type = text
+  }
+  column "data" {
+    null = true
+    type = jsonb
+  }
+  index "users_name" {
+    type = HASH
+    columns = [column.name]
+  }
+  index "users_data" {
+    type = GIN
+    columns = [column.data]
+  }
+}
+
+-- 1.sql --
+         Table "script_index_type.users"
+ Column | Type  | Collation | Nullable | Default
+--------+-------+-----------+----------+---------
+ name   | text  |           | not null |
+ data   | jsonb |           |          |
+Indexes:
+    "users_data" gin (data)
+    "users_name" hash (name)
+
+-- 2.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "name" {
+    null = false
+    type = text
+  }
+  column "data" {
+    null = true
+    type = jsonb
+  }
+  index "users_name" {
+    columns = [column.name]
+    # Index without "using" defaults to BTREE.
+  }
+  index "users_data" {
+    type = BTREE
+    columns = [column.data]
+  }
+}
+
+-- 2.sql --
+         Table "script_index_type.users"
+ Column | Type  | Collation | Nullable | Default
+--------+-------+-----------+----------+---------
+ name   | text  |           | not null |
+ data   | jsonb |           |          |
+Indexes:
+    "users_data" btree (data)
+    "users_name" btree (name)
+

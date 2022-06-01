@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package schemaspec_test
 
 import (
@@ -131,6 +135,9 @@ func TestNested(t *testing.T) {
 	err = scan.Scan(&pb)
 	require.NoError(t, err)
 	require.EqualValues(t, pet, scan)
+	name, err := pet.FinalName()
+	require.NoError(t, err)
+	require.EqualValues(t, "donut", name)
 }
 
 func TestRef(t *testing.T) {
@@ -193,4 +200,25 @@ func TestListRef(t *testing.T) {
 	err = scan.Scan(&b)
 	require.NoError(t, err)
 	require.EqualValues(t, resource, scan)
+}
+
+func TestNameAttr(t *testing.T) {
+	type Named struct {
+		Name string `spec:"name,name"`
+	}
+	schemaspec.Register("named", &Named{})
+	resource := &schemaspec.Resource{
+		Name: "id",
+		Type: "named",
+		Attrs: []*schemaspec.Attr{
+			schemautil.StrLitAttr("name", "atlas"),
+		},
+	}
+	var tgt Named
+	err := resource.As(&tgt)
+	require.NoError(t, err)
+	require.EqualValues(t, "atlas", tgt.Name)
+	name, err := resource.FinalName()
+	require.NoError(t, err)
+	require.EqualValues(t, name, "atlas")
 }

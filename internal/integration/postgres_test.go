@@ -8,11 +8,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
+	"log"
 	"strings"
-	"sync"
 	"testing"
 
-	"ariga.io/atlas/sql/mysql"
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
 
@@ -24,33 +25,70 @@ import (
 type pgTest struct {
 	*testing.T
 	db      *sql.DB
-	drv     *postgres.Driver
+	drv     migrate.Driver
+	rrw     migrate.RevisionReadWriter
 	version string
 	port    int
 }
 
-var pgTests struct {
-	sync.Once
+var pgTests = struct {
 	drivers map[string]*pgTest
+	ports   map[string]int
+}{
+	drivers: make(map[string]*pgTest),
+	ports: map[string]int{
+		"postgres10": 5430,
+		"postgres11": 5431,
+		"postgres12": 5432,
+		"postgres13": 5433,
+		"postgres14": 5434,
+	},
+}
+
+func pgInit(d string) []io.Closer {
+	var cs []io.Closer
+	if d != "" {
+		p, ok := pgTests.ports[d]
+		if ok {
+			pgTests.ports = map[string]int{d: p}
+		} else {
+			pgTests.ports = make(map[string]int)
+		}
+	}
+	for version, port := range pgTests.ports {
+		db, err := sql.Open("postgres", fmt.Sprintf("host=localhost port=%d user=postgres dbname=test password=pass sslmode=disable", port))
+		if err != nil {
+			log.Fatalln(err)
+		}
+		cs = append(cs, db)
+		drv, err := postgres.Open(db)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		pgTests.drivers[version] = &pgTest{db: db, drv: drv, version: version, port: port, rrw: &rrw{}}
+	}
+	return cs
 }
 
 func pgRun(t *testing.T, fn func(*pgTest)) {
-	pgTests.Do(func() {
-		pgTests.drivers = make(map[string]*pgTest)
-		for version, port := range map[string]int{"10": 5430, "11": 5431, "12": 5432, "13": 5433, "14": 5434} {
-			db, err := sql.Open("postgres", fmt.Sprintf("host=localhost port=%d user=postgres dbname=test password=pass sslmode=disable", port))
-			require.NoError(t, err)
-			drv, err := postgres.Open(db)
-			require.NoError(t, err)
-			pgTests.drivers[version] = &pgTest{db: db, drv: drv, version: version, port: port}
-		}
-	})
 	for version, tt := range pgTests.drivers {
 		t.Run(version, func(t *testing.T) {
-			tt := &pgTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port}
+			tt := &pgTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port, rrw: tt.rrw}
 			fn(tt)
 		})
 	}
+}
+
+func TestPostgres_EntRevisions(t *testing.T) {
+	pgRun(t, func(t *pgTest) {
+		testEntRevisions(t)
+	})
+}
+
+func TestPostgres_Executor(t *testing.T) {
+	pgRun(t, func(t *pgTest) {
+		testExecutor(t)
+	})
 }
 
 func TestPostgres_AddDropTable(t *testing.T) {
@@ -62,6 +100,20 @@ func TestPostgres_AddDropTable(t *testing.T) {
 func TestPostgres_Relation(t *testing.T) {
 	pgRun(t, func(t *pgTest) {
 		testRelation(t)
+	})
+}
+
+func TestPostgres_NoSchema(t *testing.T) {
+	pgRun(t, func(t *pgTest) {
+		t.Cleanup(func() {
+			_, err := t.db.Exec("CREATE SCHEMA IF NOT EXISTS public")
+			require.NoError(t, err)
+		})
+		_, err := t.db.Exec("DROP SCHEMA IF EXISTS public CASCADE")
+		require.NoError(t, err)
+		r, err := t.drv.InspectRealm(context.Background(), nil)
+		require.NoError(t, err)
+		require.Nil(t, r.Schemas)
 	})
 }
 
@@ -106,6 +158,22 @@ func TestPostgres_AddIndexedColumns(t *testing.T) {
 		usersT = t.loadUsers()
 		_, ok := usersT.Index("a_b_c_unique")
 		require.False(t, ok)
+	})
+}
+
+func TestPostgres_ColumnCheck(t *testing.T) {
+	pgRun(t, func(t *pgTest) {
+		usersT := &schema.Table{
+			Name:  "users",
+			Attrs: []schema.Attr{schema.NewCheck().SetName("users_c_check").SetExpr("c > 5")},
+			Columns: []*schema.Column{
+				{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+				{Name: "c", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+			},
+		}
+		t.dropTables(usersT.Name)
+		t.migrate(&schema.AddTable{T: usersT})
+		ensureNoChange(t, usersT)
 	})
 }
 
@@ -368,6 +436,12 @@ func TestPostgres_Ent(t *testing.T) {
 	})
 }
 
+func TestPostgres_AdvisoryLock(t *testing.T) {
+	pgRun(t, func(t *pgTest) {
+		testAdvisoryLock(t.T, t.drv.(schema.Locker))
+	})
+}
+
 func TestPostgres_HCL(t *testing.T) {
 	full := `
 schema "public" {
@@ -418,7 +492,7 @@ func TestPostgres_HCL_Realm(t *testing.T) {
 	pgRun(t, func(t *pgTest) {
 		t.dropSchemas("second")
 		realm := t.loadRealm()
-		hcl, err := mysql.MarshalHCL(realm)
+		hcl, err := postgres.MarshalHCL(realm)
 		require.NoError(t, err)
 		wa := string(hcl) + `
 schema "second" {
@@ -473,9 +547,33 @@ func TestPostgres_CLI(t *testing.T) {
 			testCLISchemaApplyDry(t, h, t.dsn())
 		})
 	})
+	t.Run("SchemaApplyWithVars", func(t *testing.T) {
+		h := `
+variable "tenant" {
+	type = string
+}
+schema "tenant" {
+	name = var.tenant
+}
+table "users" {
+	schema = schema.tenant
+	column "id" {
+		type = int
+	}
+}
+`
+		pgRun(t, func(t *pgTest) {
+			testCLISchemaApply(t, h, t.dsn(), "--var", "tenant=public")
+		})
+	})
 	t.Run("SchemaDiffRun", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
 			testCLISchemaDiff(t, t.dsn())
+		})
+	})
+	t.Run("SchemaApplyAutoApprove", func(t *testing.T) {
+		pgRun(t, func(t *pgTest) {
+			testCLISchemaApplyAutoApprove(t, h, t.dsn())
 		})
 	})
 }
@@ -629,12 +727,12 @@ create table atlas_types_sanity
 				{
 					Name:    "tBit",
 					Type:    &schema.ColumnType{Type: &postgres.BitType{T: "bit", Len: 10}, Raw: "bit", Null: true},
-					Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"10": "B'100'::\"bit\""}, "'100'::\"bit\"")},
+					Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"postgres10": "B'100'::\"bit\""}, "'100'::\"bit\"")},
 				},
 				{
 					Name:    "tBitVar",
 					Type:    &schema.ColumnType{Type: &postgres.BitType{T: "bit varying", Len: 10}, Raw: "bit varying", Null: true},
-					Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"10": "B'100'::\"bit\""}, "'100'::\"bit\"")},
+					Default: &schema.RawExpr{X: t.valueByVersion(map[string]string{"postgres10": "B'100'::\"bit\""}, "'100'::\"bit\"")},
 				},
 				{
 					Name:    "tBoolean",
@@ -762,42 +860,42 @@ create table atlas_types_sanity
 				},
 				{
 					Name:    "tTime",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time without time zone", Precision: 6}, Raw: "time without time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time without time zone", Precision: intp(6)}, Raw: "time without time zone", Null: true},
 					Default: &schema.RawExpr{X: "CURRENT_TIME"},
 				},
 				{
 					Name:    "tTimeWTZ",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time with time zone", Precision: 6}, Raw: "time with time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time with time zone", Precision: intp(6)}, Raw: "time with time zone", Null: true},
 					Default: &schema.RawExpr{X: "CURRENT_TIME"},
 				},
 				{
 					Name:    "tTimeWOTZ",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time without time zone", Precision: 6}, Raw: "time without time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "time without time zone", Precision: intp(6)}, Raw: "time without time zone", Null: true},
 					Default: &schema.RawExpr{X: "CURRENT_TIME"},
 				},
 				{
 					Name:    "tTimestamp",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone", Precision: 6}, Raw: "timestamp without time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone", Precision: intp(6)}, Raw: "timestamp without time zone", Null: true},
 					Default: &schema.RawExpr{X: "now()"},
 				},
 				{
 					Name:    "tTimestampTZ",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone", Precision: 6}, Raw: "timestamp with time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone", Precision: intp(6)}, Raw: "timestamp with time zone", Null: true},
 					Default: &schema.RawExpr{X: "now()"},
 				},
 				{
 					Name:    "tTimestampWTZ",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone", Precision: 6}, Raw: "timestamp with time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone", Precision: intp(6)}, Raw: "timestamp with time zone", Null: true},
 					Default: &schema.RawExpr{X: "now()"},
 				},
 				{
 					Name:    "tTimestampWOTZ",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone", Precision: 6}, Raw: "timestamp without time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone", Precision: intp(6)}, Raw: "timestamp without time zone", Null: true},
 					Default: &schema.RawExpr{X: "now()"},
 				},
 				{
 					Name:    "tTimestampPrec",
-					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone", Precision: 4}, Raw: "timestamp without time zone", Null: true},
+					Type:    &schema.ColumnType{Type: &schema.TimeType{T: "timestamp without time zone", Precision: intp(4)}, Raw: "timestamp without time zone", Null: true},
 					Default: &schema.RawExpr{X: "now()"},
 				},
 				{
@@ -940,8 +1038,20 @@ create table atlas_types_sanity
 	})
 }
 
+func (t *pgTest) url() string {
+	return t.dsn()
+}
+
 func (t *pgTest) dsn() string {
 	return fmt.Sprintf("postgres://postgres:pass@localhost:%d/test?sslmode=disable", t.port)
+}
+
+func (t *pgTest) driver() migrate.Driver {
+	return t.drv
+}
+
+func (t *pgTest) revisionsStorage() migrate.RevisionReadWriter {
+	return t.rrw
 }
 
 func (t *pgTest) applyHcl(spec string) {
@@ -1044,6 +1154,24 @@ func (t *pgTest) posts() *schema.Table {
 		{Symbol: "author_id", Table: postsT, Columns: postsT.Columns[1:2], RefTable: usersT, RefColumns: usersT.Columns[:1], OnDelete: schema.NoAction},
 	}
 	return postsT
+}
+
+func (t *pgTest) revisions() *schema.Table {
+	versionsT := &schema.Table{
+		Name: "atlas_schema_revisions",
+		Columns: []*schema.Column{
+			{Name: "version", Type: &schema.ColumnType{Type: &schema.StringType{T: "character varying"}}},
+			{Name: "description", Type: &schema.ColumnType{Type: &schema.StringType{T: "character varying"}}},
+			{Name: "execution_state", Type: &schema.ColumnType{Type: &schema.StringType{T: "character varying"}}},
+			{Name: "executed_at", Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone"}}},
+			{Name: "execution_time", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+			{Name: "hash", Type: &schema.ColumnType{Type: &schema.StringType{T: "character varying"}}},
+			{Name: "operator_version", Type: &schema.ColumnType{Type: &schema.StringType{T: "character varying"}}},
+			{Name: "meta", Type: &schema.ColumnType{Type: &schema.JSONType{T: "jsonb"}, Raw: "jsonb"}},
+		},
+	}
+	versionsT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: versionsT.Columns[0]}}}
+	return versionsT
 }
 
 func (t *pgTest) realm() *schema.Realm {

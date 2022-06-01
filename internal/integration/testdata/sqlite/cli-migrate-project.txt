@@ -1,0 +1,40 @@
+exec mkdir migrations
+atlas migrate diff --env local
+cmpmig 0 diff.sql
+
+atlas migrate validate --env local
+
+atlas migrate new 1 --env local
+cmpmig 1 empty.sql
+
+exec touch migrations/2.sql
+! atlas migrate validate --env local
+stderr 'Error: checksum mismatch'
+
+atlas migrate hash --force --env local
+atlas migrate validate --env local
+
+-- atlas.hcl --
+env "local" {
+    url = "URL"
+    dev = "sqlite://test?mode=memory&_fk=1"
+    src = "./1.hcl"
+    migration_dir {
+        url = "file://migrations"
+        format = atlas
+    }
+}
+-- 1.hcl --
+table "users" {
+  schema = schema.main
+  column "id" {
+    null = false
+    type = int
+  }
+}
+schema "main" {
+}
+-- diff.sql --
+-- create "users" table
+CREATE TABLE `users` (`id` int NOT NULL);
+-- empty.sql --

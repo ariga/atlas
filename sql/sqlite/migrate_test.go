@@ -7,6 +7,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"strconv"
 	"testing"
 
 	"ariga.io/atlas/sql/internal/sqltest"
@@ -120,10 +121,68 @@ func TestPlanChanges(t *testing.T) {
 				}(),
 			},
 			plan: &migrate.Plan{
+				Reversible:    true,
 				Transactional: true,
 				Changes: []*migrate.Change{
-					{Cmd: "ALTER TABLE `users` ADD COLUMN `name` varchar(255) NOT NULL"},
+					{Cmd: "ALTER TABLE `users` ADD COLUMN `name` varchar(255) NOT NULL", Reverse: "ALTER TABLE `users` DROP COLUMN `name`"},
 					{Cmd: "CREATE INDEX `id_key` ON `users` (`id`)", Reverse: "DROP INDEX `id_key`"},
+				},
+			},
+		},
+		// Add VIRTUAL column.
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := schema.NewTable("users").
+						AddColumns(schema.NewIntColumn("id", "bigint"))
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.AddColumn{
+								C: schema.NewIntColumn("nid", "bigint").
+									SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1"}),
+							},
+						},
+					}
+				}(),
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{Cmd: "ALTER TABLE `users` ADD COLUMN `nid` bigint NOT NULL AS (1)", Reverse: "ALTER TABLE `users` DROP COLUMN `nid`"},
+				},
+			},
+		},
+		// Add STORED column.
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := schema.NewTable("users").
+						AddColumns(
+							schema.NewIntColumn("id", "bigint"),
+							schema.NewIntColumn("nid", "bigint").
+								SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"}),
+						)
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.AddColumn{
+								C: users.Columns[1],
+							},
+						},
+					}
+				}(),
+			},
+			plan: &migrate.Plan{
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{Cmd: "PRAGMA foreign_keys = off"},
+					{Cmd: "CREATE TABLE `new_users` (`id` bigint NOT NULL, `nid` bigint NOT NULL AS (1) STORED)", Reverse: "DROP TABLE `new_users`"},
+					{Cmd: "INSERT INTO `new_users` (`id`) SELECT `id` FROM `users`"},
+					{Cmd: "DROP TABLE `users`"},
+					{Cmd: "ALTER TABLE `new_users` RENAME TO `users`"},
+					{Cmd: "PRAGMA foreign_keys = on"},
 				},
 			},
 		},
@@ -157,31 +216,101 @@ func TestPlanChanges(t *testing.T) {
 				Changes: []*migrate.Change{
 					{Cmd: "PRAGMA foreign_keys = off"},
 					{Cmd: "CREATE TABLE `new_users` (`id` bigint NOT NULL, CHECK (id <> 0))", Reverse: "DROP TABLE `new_users`"},
-					{Cmd: "INSERT INTO new_users (id) SELECT id FROM users"},
+					{Cmd: "INSERT INTO `new_users` (`id`) SELECT `id` FROM `users`"},
 					{Cmd: "DROP TABLE `users`"},
 					{Cmd: "ALTER TABLE `new_users` RENAME TO `users`"},
 					{Cmd: "PRAGMA foreign_keys = on"},
 				},
 			},
 		},
+		{
+			changes: []schema.Change{
+				&schema.RenameTable{
+					From: schema.NewTable("t1"),
+					To:   schema.NewTable("t2"),
+				},
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `t1` RENAME TO `t2`",
+						Reverse: "ALTER TABLE `t2` RENAME TO `t1`",
+					},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("t1"),
+					Changes: []schema.Change{
+						&schema.RenameColumn{
+							From: schema.NewColumn("a"),
+							To:   schema.NewColumn("b"),
+						},
+					},
+				},
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `t1` RENAME COLUMN `a` TO `b`",
+						Reverse: "ALTER TABLE `t1` RENAME COLUMN `b` TO `a`",
+					},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("t1"),
+					Changes: []schema.Change{
+						&schema.RenameIndex{
+							From: schema.NewIndex("a").AddColumns(schema.NewColumn("a")),
+							To:   schema.NewIndex("b").AddColumns(schema.NewColumn("a")),
+						},
+					},
+				},
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "CREATE INDEX `b` ON `t1` (`a`)",
+						Reverse: "DROP INDEX `b`",
+					},
+					{
+						Cmd:     "DROP INDEX `a`",
+						Reverse: "CREATE INDEX `a` ON `t1` (`a`)",
+					},
+				},
+			},
+		},
 	}
-	for _, tt := range tests {
-		db, mk, err := sqlmock.New()
-		require.NoError(t, err)
-		m := mock{mk}
-		m.systemVars("3.36.0")
-		if tt.mock != nil {
-			tt.mock(m)
-		}
-		drv, err := Open(db)
-		require.NoError(t, err)
-		plan, err := drv.PlanChanges(context.Background(), "plan", tt.changes)
-		require.NoError(t, err)
-		require.Equal(t, tt.plan.Reversible, plan.Reversible)
-		require.Equal(t, tt.plan.Transactional, plan.Transactional)
-		for i, c := range plan.Changes {
-			require.Equal(t, tt.plan.Changes[i].Cmd, c.Cmd)
-			require.Equal(t, tt.plan.Changes[i].Reverse, c.Reverse)
-		}
+	for i, tt := range tests {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			db, mk, err := sqlmock.New()
+			require.NoError(t, err)
+			m := mock{mk}
+			m.systemVars("3.36.0")
+			if tt.mock != nil {
+				tt.mock(m)
+			}
+			drv, err := Open(db)
+			require.NoError(t, err)
+			plan, err := drv.PlanChanges(context.Background(), "plan", tt.changes)
+			require.NoError(t, err)
+			require.Equal(t, tt.plan.Reversible, plan.Reversible)
+			require.Equal(t, tt.plan.Transactional, plan.Transactional)
+			for i, c := range plan.Changes {
+				require.Equal(t, tt.plan.Changes[i].Cmd, c.Cmd)
+				require.Equal(t, tt.plan.Changes[i].Reverse, c.Reverse)
+			}
+		})
 	}
 }

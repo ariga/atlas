@@ -20,13 +20,19 @@ type diff struct{ conn }
 
 // SchemaAttrDiff returns a changeset for migrating schema attributes from one state to the other.
 func (d *diff) SchemaAttrDiff(from, to *schema.Schema) []schema.Change {
-	var changes []schema.Change
+	var (
+		topAttr []schema.Attr
+		changes []schema.Change
+	)
+	if from.Realm != nil {
+		topAttr = from.Realm.Attrs
+	}
 	// Charset change.
-	if change := d.charsetChange(from.Attrs, from.Realm.Attrs, to.Attrs); change != noChange {
+	if change := d.charsetChange(from.Attrs, topAttr, to.Attrs); change != noChange {
 		changes = append(changes, change)
 	}
 	// Collation change.
-	if change := d.collationChange(from.Attrs, from.Realm.Attrs, to.Attrs); change != noChange {
+	if change := d.collationChange(from.Attrs, topAttr, to.Attrs); change != noChange {
 		changes = append(changes, change)
 	}
 	return changes
@@ -85,12 +91,17 @@ func (d *diff) ColumnChange(from, to *schema.Column) (schema.ChangeKind, error) 
 	if changed {
 		change |= schema.ChangeType
 	}
-	changed, err = d.defaultChanged(from, to)
-	if err != nil {
+	if changed, err = d.defaultChanged(from, to); err != nil {
 		return schema.NoChange, err
 	}
 	if changed {
 		change |= schema.ChangeDefault
+	}
+	if changed, err = d.generatedChanged(from, to); err != nil {
+		return schema.NoChange, err
+	}
+	if changed {
+		change |= schema.ChangeGenerated
 	}
 	return change, nil
 }
@@ -157,7 +168,7 @@ func (*diff) Normalize(from, to *schema.Table) {
 		// table is defined on non-indexed columns, an index is automatically created
 		// to satisfy the constraint.
 		// Therefore, if no such key was defined on the desired state, the diff will
-		// recommend to drop it on migration. Therefore, we fix it by dropping it from
+		// recommend dropping it on migration. Therefore, we fix it by dropping it from
 		// the current state manually.
 		if _, ok := to.Index(idx.Name); ok || !keySupportsFK(from, idx) {
 			indexes = append(indexes, idx)
@@ -167,7 +178,7 @@ func (*diff) Normalize(from, to *schema.Table) {
 }
 
 // collationChange returns the schema change for migrating the collation if
-// it was changed and its not the default attribute inherited from its parent.
+// it was changed, and it is not the default attribute inherited from its parent.
 func (*diff) collationChange(from, top, to []schema.Attr) schema.Change {
 	var fromC, topC, toC schema.Collation
 	switch fromHas, topHas, toHas := sqlx.Has(from, &fromC), sqlx.Has(top, &topC), sqlx.Has(to, &toC); {
@@ -177,7 +188,7 @@ func (*diff) collationChange(from, top, to []schema.Attr) schema.Change {
 			A: &toC,
 		}
 	case !toHas:
-		// There is no way to DROP a COLLATE that was configured on the table
+		// There is no way to DROP a COLLATE that was configured on the table,
 		// and it is not the default. Therefore, we use ModifyAttr and give it
 		// the inherited (and default) collation from schema or server.
 		if topHas && fromC.V != topC.V {
@@ -196,7 +207,7 @@ func (*diff) collationChange(from, top, to []schema.Attr) schema.Change {
 }
 
 // charsetChange returns the schema change for migrating the collation if
-// it was changed and its not the default attribute inherited from its parent.
+// it was changed, and it is not the default attribute inherited from its parent.
 func (*diff) charsetChange(from, top, to []schema.Attr) schema.Change {
 	var fromC, topC, toC schema.Charset
 	switch fromHas, topHas, toHas := sqlx.Has(from, &fromC), sqlx.Has(top, &topC), sqlx.Has(to, &toC); {
@@ -206,7 +217,7 @@ func (*diff) charsetChange(from, top, to []schema.Attr) schema.Change {
 			A: &toC,
 		}
 	case !toHas:
-		// There is no way to DROP a CHARSET that was configured on the table
+		// There is no way to DROP a CHARSET that was configured on the table,
 		// and it is not the default. Therefore, we use ModifyAttr and give it
 		// the inherited (and default) collation from schema or server.
 		if topHas && fromC.V != topC.V {
@@ -228,10 +239,16 @@ func (*diff) charsetChange(from, top, to []schema.Attr) schema.Change {
 // attribute in case it is not the default.
 func (*diff) autoIncChange(from, to []schema.Attr) schema.Change {
 	var fromA, toA AutoIncrement
-	// The table is empty and AUTO_INCREMENT was not configured. This can happen
-	// because older versions of MySQL (< 8.0) stored the AUTO_INCREMENT counter
-	// in main memory (not persistent), and the value is reset on process restart.
-	if sqlx.Has(from, &fromA) && sqlx.Has(to, &toA) && fromA.V <= 1 && toA.V > 1 {
+	switch fromHas, toHas := sqlx.Has(from, &fromA), sqlx.Has(to, &toA); {
+	// Ignore if the AUTO_INCREMENT attribute was dropped from the desired schema.
+	case fromHas && !toHas:
+	// The AUTO_INCREMENT exists in the desired schema, and may not exist in the inspected one.
+	// This can happen because older versions of MySQL (< 8.0) stored the AUTO_INCREMENT counter
+	// in main memory (not persistent), and the value is reset on process restart for empty tables.
+	case toA.V > 1 && toA.V > fromA.V:
+		// Suggest a diff only if the desired value is greater than the inspected one,
+		// because this attribute cannot be maintained in users schema and used to set
+		// up only the initial value.
 		return &schema.ModifyAttr{
 			From: &fromA,
 			To:   &toA,
@@ -243,7 +260,7 @@ func (*diff) autoIncChange(from, to []schema.Attr) schema.Change {
 // indexType returns the index type from its attribute.
 // The default type is BTREE if no type was specified.
 func indexType(attr []schema.Attr) *IndexType {
-	t := &IndexType{T: "BTREE"}
+	t := &IndexType{T: IndexTypeBTree}
 	if sqlx.Has(attr, t) {
 		t.T = strings.ToUpper(t.T)
 	}
@@ -279,8 +296,8 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 		changed = !sqlx.ValuesEqual(fromT.Values, toT.Values)
 	case *schema.IntegerType:
 		toT := toT.(*schema.IntegerType)
-		// MySQL v8.0.19 dropped the display width
-		// information from the information schema.
+		// MySQL v8.0.19 dropped both display-width
+		// and zerofill from the information schema.
 		if d.supportsDisplayWidth() {
 			ft, _, _, err := parseColumn(fromT.T)
 			if err != nil {
@@ -292,9 +309,7 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 			}
 			fromT.T, toT.T = ft[0], tt[0]
 		}
-		fromW, toW := displayWidth(fromT.Attrs), displayWidth(toT.Attrs)
-		changed = fromT.T != toT.T || fromT.Unsigned != toT.Unsigned ||
-			(fromW != nil) != (toW != nil) || (fromW != nil && fromW.N != toW.N)
+		changed = fromT.T != toT.T || fromT.Unsigned != toT.Unsigned
 	case *schema.JSONType:
 		toT := toT.(*schema.JSONType)
 		changed = fromT.T != toT.T
@@ -318,8 +333,7 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	return changed, nil
 }
 
-// defaultChanged reports if the a default value of a column
-// type was changed.
+// defaultChanged reports if the default value of a column was changed.
 func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
 	d1, ok1 := sqlx.DefaultValue(from)
 	d2, ok2 := sqlx.DefaultValue(to)
@@ -345,7 +359,9 @@ func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
 		}
 		return false, nil
 	case *schema.IntegerType:
-		return !d.equalsIntValues(d1, d2), nil
+		return !d.equalIntValues(d1, d2), nil
+	case *schema.FloatType, *schema.DecimalType:
+		return !d.equalFloatValues(d1, d2), nil
 	case *schema.EnumType, *SetType, *schema.StringType:
 		return !equalsStringValues(d1, d2), nil
 	case *schema.TimeType:
@@ -359,9 +375,21 @@ func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
 	}
 }
 
-// equalsIntValues report if the 2 int default values are ~equal.
+// generatedChanged reports if the generated expression of a column was changed.
+func (*diff) generatedChanged(from, to *schema.Column) (bool, error) {
+	var (
+		fromX, toX     schema.GeneratedExpr
+		fromHas, toHas = sqlx.Has(from.Attrs, &fromX), sqlx.Has(to.Attrs, &toX)
+	)
+	if !fromHas && !toHas || fromHas && toHas && sqlx.MayWrap(fromX.Expr) == sqlx.MayWrap(toX.Expr) && storedOrVirtual(fromX.Type) == storedOrVirtual(toX.Type) {
+		return false, nil
+	}
+	return true, checkChangeGenerated(from, to)
+}
+
+// equalIntValues report if the 2 int default values are ~equal.
 // Note that default expression are not supported atm.
-func (d *diff) equalsIntValues(x1, x2 string) bool {
+func (d *diff) equalIntValues(x1, x2 string) bool {
 	x1 = strings.ToLower(strings.Trim(x1, "' "))
 	x2 = strings.ToLower(strings.Trim(x2, "' "))
 	if x1 == x2 {
@@ -384,6 +412,25 @@ func (d *diff) equalsIntValues(x1, x2 string) bool {
 			return false
 		}
 		d2 = int64(f)
+	}
+	return d1 == d2
+}
+
+// equalFloatValues report if the 2 float default values are ~equal.
+// Note that default expression are not supported atm.
+func (d *diff) equalFloatValues(x1, x2 string) bool {
+	x1 = strings.ToLower(strings.Trim(x1, "' "))
+	x2 = strings.ToLower(strings.Trim(x2, "' "))
+	if x1 == x2 {
+		return true
+	}
+	d1, err := strconv.ParseFloat(x1, 64)
+	if err != nil {
+		return false
+	}
+	d2, err := strconv.ParseFloat(x2, 64)
+	if err != nil {
+		return false
 	}
 	return d1 == d2
 }
@@ -418,27 +465,6 @@ func binValue(x string) (string, error) {
 		return x, err
 	}
 	return string(d), nil
-}
-
-func displayWidth(attr []schema.Attr) *DisplayWidth {
-	var (
-		z *ZeroFill
-		d *DisplayWidth
-	)
-	for i := range attr {
-		switch at := attr[i].(type) {
-		case *ZeroFill:
-			z = at
-		case *DisplayWidth:
-			d = at
-		}
-	}
-	// Accept the display width only if
-	// the zerofill attribute is defined.
-	if z == nil || d == nil {
-		return nil
-	}
-	return d
 }
 
 // keySupportsFK reports if the index key was created automatically by MySQL

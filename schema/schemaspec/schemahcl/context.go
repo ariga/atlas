@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package schemahcl
 
 import (
@@ -6,7 +10,6 @@ import (
 	"strconv"
 
 	"ariga.io/atlas/schema/schemaspec"
-
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -28,7 +31,7 @@ import (
 //		title = "{greeting.hebrew.word}, world!"
 //	}
 //
-func evalCtx(ctx *hcl.EvalContext, f *hcl.File) (*hcl.EvalContext, error) {
+func (s *State) evalCtx(ctx *hcl.EvalContext, f *hcl.File) (*hcl.EvalContext, error) {
 	c := &container{}
 	if diag := gohcl.DecodeBody(f.Body, ctx, c); diag.HasErrors() {
 		return nil, diag
@@ -37,10 +40,96 @@ func evalCtx(ctx *hcl.EvalContext, f *hcl.File) (*hcl.EvalContext, error) {
 	if !ok {
 		return nil, fmt.Errorf("schemahcl: expected an hcl body")
 	}
+	return setBlockVars(ctx, b)
+}
+
+// varDef is an HCL resource that defines an input variable to the Atlas DDL document.
+type varDef struct {
+	Name    string    `hcl:",label"`
+	Type    cty.Value `hcl:"type"`
+	Default cty.Value `hcl:"default,optional"`
+}
+
+// setInputVals sets the input values into the evaluation context. HCL documents can define
+// input variables in the document body by defining "variable" blocks:
+//
+// 	variable "name" {
+// 	  type = string // also supported: int, bool
+// 	  default = "rotemtam"
+// 	}
+func (s *State) setInputVals(ctx *hcl.EvalContext, body hcl.Body, input map[string]string) error {
+	var c struct {
+		Vars   []*varDef `hcl:"variable,block"`
+		Remain hcl.Body  `hcl:",remain"`
+	}
+	nctx := ctx.NewChild()
+	nctx.Variables = map[string]cty.Value{
+		"string": capsuleTypeVal("string"),
+		"int":    capsuleTypeVal("int"),
+		"bool":   capsuleTypeVal("bool"),
+	}
+	if diag := gohcl.DecodeBody(body, nctx, &c); diag.HasErrors() {
+		return diag
+	}
+	ctxVars := make(map[string]cty.Value)
+	for _, v := range c.Vars {
+		inputVal, ok := input[v.Name]
+		if ok {
+			ctyVal, err := readVar(v, inputVal)
+			if err != nil {
+				return fmt.Errorf("failed reading var: %w", err)
+			}
+			ctxVars[v.Name] = ctyVal
+			continue
+		}
+		if v.Default == cty.NilVal {
+			return fmt.Errorf("missing value for required variable %q", v.Name)
+		}
+		ctxVars[v.Name] = v.Default
+	}
+	ctx.Variables["var"] = cty.ObjectVal(ctxVars)
+	return nil
+}
+
+// readVar reads the raw inputVal as a cty.Value using the type definition on v.
+func readVar(v *varDef, inputVal string) (cty.Value, error) {
+	et := v.Type.EncapsulatedValue()
+	typ, ok := et.(*schemaspec.Type)
+	if !ok {
+		return cty.NilVal, fmt.Errorf("expected schemaspec.Type got %T", et)
+	}
+	switch typ.T {
+	case "string":
+		return cty.StringVal(inputVal), nil
+	case "int":
+		i, err := strconv.Atoi(inputVal)
+		if err != nil {
+			return cty.NilVal, err
+		}
+		return cty.NumberIntVal(int64(i)), nil
+	case "bool":
+		b, err := strconv.ParseBool(inputVal)
+		if err != nil {
+			return cty.NilVal, err
+		}
+		return cty.BoolVal(b), nil
+	default:
+		return cty.NilVal, fmt.Errorf("unknown type: %q", typ.T)
+	}
+}
+
+func capsuleTypeVal(t string) cty.Value {
+	return cty.CapsuleVal(ctyTypeSpec, &schemaspec.Type{T: t})
+}
+
+func setBlockVars(ctx *hcl.EvalContext, b *hclsyntax.Body) (*hcl.EvalContext, error) {
 	defs := defRegistry(b)
 	vars, err := blockVars(b, "", defs)
 	if err != nil {
 		return nil, err
+	}
+	if ctx.Variables == nil {
+		ctx.Variables = make(map[string]cty.Value)
 	}
 	for k, v := range vars {
 		ctx.Variables[k] = v
@@ -58,7 +147,7 @@ func blockVars(b *hclsyntax.Body, parentAddr string, defs *blockDef) (map[string
 		}
 		var unlabeled int
 		for _, blk := range blocks {
-			blkName := blockName(blk)
+			qualifier, blkName := blockName(blk)
 			if blkName == "" {
 				blkName = strconv.Itoa(unlabeled)
 				unlabeled++
@@ -70,7 +159,7 @@ func blockVars(b *hclsyntax.Body, parentAddr string, defs *blockDef) (map[string
 					attrs[n] = cty.NullVal(ctySchemaLit)
 				}
 			}
-			self := addr(parentAddr, name, blkName)
+			self := addr(parentAddr, name, blkName, qualifier)
 			attrs["__ref"] = cty.StringVal(self)
 			varMap, err := blockVars(blk.Body, self, def)
 			if err != nil {
@@ -80,29 +169,46 @@ func blockVars(b *hclsyntax.Body, parentAddr string, defs *blockDef) (map[string
 			for k, v := range varMap {
 				attrs[k] = v
 			}
-
-			v[blkName] = cty.ObjectVal(attrs)
+			key, obj := blkName, cty.ObjectVal(attrs)
+			if qualifier != "" {
+				obj = cty.ObjectVal(
+					map[string]cty.Value{
+						blkName: obj,
+					},
+				)
+				key = qualifier
+			}
+			v[key] = obj
 		}
 		if len(v) > 0 {
-			vars[name] = cty.MapVal(v)
+			vars[name] = cty.ObjectVal(v)
 		}
 	}
 	return vars, nil
 }
 
-func addr(parentAddr, typeName, blkName string) string {
+func addr(parentAddr, typeName, blkName, qualifier string) string {
 	var prefixDot string
 	if len(parentAddr) > 0 {
 		prefixDot = "."
 	}
-	return fmt.Sprintf("%s%s$%s.%s", parentAddr, prefixDot, typeName, blkName)
+	suffix := blkName
+	if qualifier != "" {
+		suffix = qualifier + "." + blkName
+	}
+	return fmt.Sprintf("%s%s$%s.%s", parentAddr, prefixDot, typeName, suffix)
 }
 
-func blockName(blk *hclsyntax.Block) string {
-	if len(blk.Labels) == 0 {
-		return ""
+func blockName(blk *hclsyntax.Block) (qualifier string, name string) {
+	switch len(blk.Labels) {
+	case 0:
+	case 1:
+		name = blk.Labels[0]
+	default:
+		qualifier = blk.Labels[0]
+		name = blk.Labels[1]
 	}
-	return blk.Labels[0]
+	return
 }
 
 func blocksOfType(blocks hclsyntax.Blocks, typeName string) []*hclsyntax.Block {
@@ -157,6 +263,9 @@ var (
 	ctyRawExpr  = cty.Capsule("raw_expr", reflect.TypeOf(schemaspec.RawExpr{}))
 )
 
+// varBlock is the block type for variable declarations.
+const varBlock = "variable"
+
 // defRegistry returns a tree of blockDef structs representing the schema of the
 // blocks in the *hclsyntax.Body. The returned fields and children of each type
 // are an intersection of all existing blocks of the same type.
@@ -166,6 +275,10 @@ func defRegistry(b *hclsyntax.Body) *blockDef {
 		children: make(map[string]*blockDef),
 	}
 	for _, blk := range b.Blocks {
+		// variable definition blocks are available in the HCL source but not reachable by reference.
+		if blk.Type == varBlock {
+			continue
+		}
 		reg.child(extractDef(blk, reg))
 	}
 	return reg

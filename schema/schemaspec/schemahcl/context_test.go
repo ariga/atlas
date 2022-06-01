@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package schemahcl
 
 import (
@@ -443,4 +447,64 @@ arg_2 = float(10,2)
 		schemautil.LitAttr("precision", "10"),
 		schemautil.LitAttr("scale", "2"),
 	}, test.Arg2.Attrs)
+}
+
+func TestQualifiedRefs(t *testing.T) {
+	h := `user "atlas" "cli" {
+	version = "v0.3.9"
+}
+v = user.atlas.cli.version
+r = user.atlas.cli
+`
+	var test struct {
+		V string          `spec:"v"`
+		R *schemaspec.Ref `spec:"r"`
+	}
+	err := Unmarshal([]byte(h), &test)
+	require.NoError(t, err)
+	require.EqualValues(t, "v0.3.9", test.V)
+	require.EqualValues(t, "$user.atlas.cli", test.R.V)
+}
+
+func TestInputValues(t *testing.T) {
+	h := `
+variable "name" {
+  type = string
+}
+
+variable "default" {
+  type = string
+  default = "hello"
+}
+
+variable "int" {
+  type = int
+}
+
+variable "bool" {
+  type = bool
+}
+
+name = var.name
+default = var.default
+int = var.int
+bool = var.bool
+`
+	state := New()
+	var test struct {
+		Name    string `spec:"name"`
+		Default string `spec:"default"`
+		Int     int    `spec:"int"`
+		Bool    bool   `spec:"bool"`
+	}
+	err := state.Eval([]byte(h), &test, map[string]string{
+		"name": "rotemtam",
+		"int":  "42",
+		"bool": "true",
+	})
+	require.NoError(t, err)
+	require.EqualValues(t, "rotemtam", test.Name)
+	require.EqualValues(t, "hello", test.Default)
+	require.EqualValues(t, 42, test.Int)
+	require.EqualValues(t, true, test.Bool)
 }

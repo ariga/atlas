@@ -1,21 +1,24 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package sqlspec
 
 import (
 	"ariga.io/atlas/schema/schemaspec"
-	"ariga.io/atlas/sql/schema"
 )
 
 type (
-
 	// Schema holds a specification for a Schema.
 	Schema struct {
-		Name string `spec:",name"`
+		Name string `spec:"name,name"`
 		schemaspec.DefaultExtension
 	}
 
 	// Table holds a specification for an SQL table.
 	Table struct {
 		Name        string          `spec:",name"`
+		Qualifier   string          `spec:",qualifier"`
 		Schema      *schemaspec.Ref `spec:"schema"`
 		Columns     []*Column       `spec:"column"`
 		PrimaryKey  *PrimaryKey     `spec:"primary_key"`
@@ -66,11 +69,11 @@ type (
 
 	// ForeignKey holds a specification for the Foreign key of a table.
 	ForeignKey struct {
-		Symbol     string                 `spec:",name"`
-		Columns    []*schemaspec.Ref      `spec:"columns"`
-		RefColumns []*schemaspec.Ref      `spec:"ref_columns"`
-		OnUpdate   schema.ReferenceOption `spec:"on_update"`
-		OnDelete   schema.ReferenceOption `spec:"on_delete"`
+		Symbol     string            `spec:",name"`
+		Columns    []*schemaspec.Ref `spec:"columns"`
+		RefColumns []*schemaspec.Ref `spec:"ref_columns"`
+		OnUpdate   *schemaspec.Ref   `spec:"on_update"`
+		OnDelete   *schemaspec.Ref   `spec:"on_delete"`
 		schemaspec.DefaultExtension
 	}
 

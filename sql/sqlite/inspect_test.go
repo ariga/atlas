@@ -19,29 +19,31 @@ import (
 func TestDriver_InspectTable(t *testing.T) {
 	tests := []struct {
 		name   string
-		opts   *schema.InspectTableOptions
 		before func(mock)
 		expect func(*require.Assertions, *schema.Table, error)
 	}{
 		{
 			name: "table columns",
 			before: func(m mock) {
-				m.tableExists("users", true, "CREATE TABLE users(id INTEGER PRIMARY KEY AUTOINCREMENT)")
+				m.tableExists("users", true, "CREATE TABLE users(id INTEGER PRIMARY KEY AUTOINCREMENT, w INT GENERATED ALWAYS AS (a*10), x TEXT AS (typeof(c)) STORED, y TEXT AS (substr(b,a,a+2)))")
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, "users"))).
 					WillReturnRows(sqltest.Rows(`
- name |   type       | nullable | dflt_value  | primary 
-------+--------------+----------+ ------------+----------
- c1   | int           |  1      |     a       |  0
- c2   | integer       |  0      |     97      |  0
- c3   | varchar(100)  |  1      |    'A'      |  0
- c4   | boolean       |  0      |             |  0
- c5   | json          |  0      |             |  0
- c6   | datetime      |  0      |             |  0
- c7   | blob          |  0      |    x'a'     |  0
- c8   | text          |  0      |             |  0
- c9   | numeric(10,2) |  0      |             |  0
- c10  | real          |  0      |             |  0
- id   | integer       |  0      |     0x1     |  1
+ name |   type       | nullable | dflt_value  | primary  | hidden
+------+--------------+----------+ ------------+----------+----------
+ c1   | int           |  1      |     a       |  0       |  0
+ c2   | integer       |  0      |     97      |  0       |  0
+ c3   | varchar(100)  |  1      |    'A'      |  0       |  0
+ c4   | boolean       |  0      |             |  0       |  0
+ c5   | json          |  0      |             |  0       |  0
+ c6   | datetime      |  0      |             |  0       |  0
+ c7   | blob          |  0      |    x'a'     |  0       |  0
+ c8   | text          |  0      |             |  0       |  0
+ c9   | numeric(10,2) |  0      |             |  0       |  0
+ c10  | real          |  0      |             |  0       |  0
+ w    | int           |  0      |             |  0       |  2
+ x    | text          |  0      |             |  0       |  3
+ y    | text          |  0      |             |  0       |  2
+ id   | integer       |  0      |     0x1     |  1       |  0
 `))
 				m.noIndexes("users")
 				m.noFKs("users")
@@ -59,6 +61,9 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c8", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Raw: "text"}},
 					{Name: "c9", Type: &schema.ColumnType{Type: &schema.DecimalType{T: "numeric", Precision: 10, Scale: 2}, Raw: "numeric(10,2)"}},
 					{Name: "c10", Type: &schema.ColumnType{Type: &schema.FloatType{T: "real"}, Raw: "real"}},
+					{Name: "w", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}, Raw: "int"}, Attrs: []schema.Attr{&schema.GeneratedExpr{Type: "VIRTUAL", Expr: "(a*10)"}}},
+					{Name: "x", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Raw: "text"}, Attrs: []schema.Attr{&schema.GeneratedExpr{Type: "STORED", Expr: "(typeof(c))"}}},
+					{Name: "y", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Raw: "text"}, Attrs: []schema.Attr{&schema.GeneratedExpr{Type: "VIRTUAL", Expr: "(substr(b,a,a+2))"}}},
 					{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}, Raw: "integer"}, Attrs: []schema.Attr{&AutoIncrement{}}, Default: &schema.Literal{V: "0x1"}},
 				}
 				require.Equal(t.Columns, columns)
@@ -77,10 +82,10 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.tableExists("users", true, "CREATE TABLE users(id INTEGER PRIMARY KEY)")
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, "users"))).
 					WillReturnRows(sqltest.Rows(`
- name |   type       | nullable | dflt_value  | primary 
-------+--------------+----------+ ------------+----------
- c1   | int           |  1      |             |  0
- c2   | integer       |  0      |             |  0
+ name |   type       | nullable | dflt_value  | primary  | hidden
+------+--------------+----------+ ------------+----------+----------
+ c1   | int           |  1      |             |  0       |  0
+ c2   | integer       |  0      |             |  0       |  0
 `))
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(indexesQuery, "users"))).
 					WillReturnRows(sqltest.Rows(`
@@ -88,6 +93,7 @@ func TestDriver_InspectTable(t *testing.T) {
 -------+--------------+--------+----------+-------------------------------------------------------
  c1u   |  1           |  c     |  0       | CREATE UNIQUE INDEX c1u on users(c1, c2)
  c1_c2 |  0           |  c     |  1       | CREATE INDEX c1_c2 on users(c1, c2*2) WHERE c1 <> NULL
+ c1_x  |  0           |  c     |  0       | CREATE INDEX c1_x ON users (f(c1))
 `))
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(indexColumnsQuery, "c1u"))).
 					WillReturnRows(sqltest.Rows(`
@@ -102,6 +108,12 @@ func TestDriver_InspectTable(t *testing.T) {
 -------+--------+     
  c1    |  0     |     
  nil   |  0     |     
+`))
+				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(indexColumnsQuery, "c1_x"))).
+					WillReturnRows(sqltest.Rows(`
+ name  |   desc |
+-------+--------+
+ nil   |  0     |
 `))
 				m.noFKs("users")
 			},
@@ -130,12 +142,23 @@ func TestDriver_InspectTable(t *testing.T) {
 						Table: t,
 						Parts: []*schema.IndexPart{
 							{SeqNo: 1, C: columns[0]},
-							{SeqNo: 2, X: &schema.RawExpr{X: "<unsupported>"}},
+							{SeqNo: 2, X: &schema.RawExpr{X: "c2*2"}},
 						},
 						Attrs: []schema.Attr{
 							&CreateStmt{S: "CREATE INDEX c1_c2 on users(c1, c2*2) WHERE c1 <> NULL"},
 							&IndexOrigin{O: "c"},
 							&IndexPredicate{P: "c1 <> NULL"},
+						},
+					},
+					{
+						Name:  "c1_x",
+						Table: t,
+						Parts: []*schema.IndexPart{
+							{SeqNo: 1, X: &schema.RawExpr{X: "f(c1)"}},
+						},
+						Attrs: []schema.Attr{
+							&CreateStmt{S: "CREATE INDEX c1_x ON users (f(c1))"},
+							&IndexOrigin{O: "c"},
 						},
 					},
 				}
@@ -158,11 +181,11 @@ CREATE TABLE users(
 `)
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, "users"))).
 					WillReturnRows(sqltest.Rows(`
- name |   type       | nullable | dflt_value  | primary 
-------+--------------+----------+ ------------+----------
- c1   | int           |  1      |             |  0
- c2   | integer       |  0      |             |  0
- c3   | integer       |  0      |             |  0
+ name |   type       | nullable | dflt_value  | primary  | hidden
+------+--------------+----------+ ------------+----------+----------
+ c1   | int           |  1      |             |  0       |  0
+ c2   | integer       |  0      |             |  0       |  0
+ c3   | integer       |  0      |             |  0       |  0
 `))
 				m.noIndexes("users")
 				m.ExpectQuery(sqltest.Escape(fmt.Sprintf(fksQuery, "users"))).
@@ -401,7 +424,7 @@ func TestRegex_Checks(t *testing.T) {
 		drv, err := Open(db)
 		require.NoError(t, err)
 		s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{
-			Tables: []string{"users"},
+			Tables: []string{name},
 		})
 		require.NoError(t, err)
 		table := s.Tables[0]
@@ -409,6 +432,67 @@ func TestRegex_Checks(t *testing.T) {
 		for i := range tt.checks {
 			require.Equal(t, tt.checks[i], table.Attrs[i+1])
 		}
+	}
+}
+
+func TestRegex_GeneratedExpr(t *testing.T) {
+	tests := []struct {
+		input  string
+		column *schema.Column
+	}{
+		{
+			input: "CREATE TABLE t1( a NOT NULL DEFAULT 'aaa', b AS(c) NOT NULL, c NOT NULL DEFAULT 'ccc');",
+			column: schema.NewColumn("b").
+				SetGeneratedExpr(&schema.GeneratedExpr{Expr: "(c)", Type: "VIRTUAL"}),
+		},
+		{
+			input: "CREATE TABLE t4(a NOT NULL DEFAULT 123, b AS(a*10+4) STORED UNIQUE);",
+			column: schema.NewColumn("b").
+				SetGeneratedExpr(&schema.GeneratedExpr{Expr: "(a*10+4)", Type: "VIRTUAL"}),
+		},
+		{
+			input: "CREATE TABLE t1(aa , bb AS (17) UNIQUE);",
+			column: schema.NewColumn("bb").
+				SetGeneratedExpr(&schema.GeneratedExpr{Expr: "(17)", Type: "VIRTUAL"}),
+		},
+		{
+			input: "CREATE TABLE t1( a integer primary key, b int generated always as (a+5), c text GENERATED   ALWAYS as (printf('%08x',a)));",
+			column: schema.NewColumn("c").
+				SetGeneratedExpr(&schema.GeneratedExpr{Expr: "(printf('%08x',a))", Type: "VIRTUAL"}),
+		},
+		{
+			input: "CREATE TABLE t1( a integer primary key, b int generated always as (a+5), c text GENERATED   ALWAYS as (printf('%08x',a)), d Generated\nAlways\nAS\n('xy\\()zzy'));",
+			column: schema.NewColumn("d").
+				SetGeneratedExpr(&schema.GeneratedExpr{Expr: "('xy\\()zzy')", Type: "VIRTUAL"}),
+		},
+		{
+			input: "CREATE TABLE t0( c0 AS (('a', 9) < ('b', c1)), c1 AS (1), c2 CHECK (1 = c1) );",
+			column: schema.NewColumn("c0").
+				SetGeneratedExpr(&schema.GeneratedExpr{Expr: "(('a', 9) < ('b', c1))", Type: "VIRTUAL"}),
+		},
+	}
+	for _, tt := range tests {
+		const name = "users"
+		db, m, err := sqlmock.New()
+		require.NoError(t, err)
+		mk := mock{m}
+		mk.systemVars("3.36.0")
+		mk.tableExists(name, true, tt.input)
+		m.ExpectQuery(sqltest.Escape(fmt.Sprintf(columnsQuery, name))).
+			WillReturnRows(sqltest.Rows(fmt.Sprintf(`
+ name |   type       | nullable | dflt_value  | primary  | hidden
+------+--------------+----------+ ------------+----------+----------
+ %s   | int           |  1      |     a       |  0       |  2
+`, tt.column.Name)))
+		mk.noIndexes(name)
+		mk.noFKs(name)
+		drv, err := Open(db)
+		require.NoError(t, err)
+		s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{
+			Tables: []string{name},
+		})
+		require.NoError(t, err)
+		require.Equal(t, tt.column.Attrs, s.Tables[0].Columns[0].Attrs)
 	}
 }
 

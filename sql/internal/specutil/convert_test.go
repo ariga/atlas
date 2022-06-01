@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package specutil
 
 import (
@@ -9,13 +13,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
-
-func TestRef_TableName(t *testing.T) {
-	ref := &schemaspec.Ref{V: "$table.accounts.$column.user_active"}
-	c, err := tableName(ref)
-	require.NoError(t, err)
-	require.Equal(t, "accounts", c)
-}
 
 func TestFromSpec_SchemaName(t *testing.T) {
 	sc := &schema.Schema{
@@ -61,16 +58,34 @@ func TestFromForeignKey(t *testing.T) {
 		Columns:    tbl.Columns[1:],
 		RefTable:   tbl,
 		RefColumns: tbl.Columns[:1],
+		OnUpdate:   schema.NoAction,
+		OnDelete:   schema.Cascade,
 	}
 	key, err := FromForeignKey(fk)
 	require.NoError(t, err)
 	require.EqualValues(t, &sqlspec.ForeignKey{
 		Symbol: "fk",
 		Columns: []*schemaspec.Ref{
-			{V: "$table.users.$column.parent_id"},
+			{V: "$column.parent_id"},
 		},
 		RefColumns: []*schemaspec.Ref{
-			{V: "$table.users.$column.id"},
+			{V: "$column.id"},
+		},
+		OnUpdate: &schemaspec.Ref{V: "NO_ACTION"},
+		OnDelete: &schemaspec.Ref{V: "CASCADE"},
+	}, key)
+
+	fk.OnDelete = ""
+	fk.OnUpdate = ""
+	key, err = FromForeignKey(fk)
+	require.NoError(t, err)
+	require.EqualValues(t, &sqlspec.ForeignKey{
+		Symbol: "fk",
+		Columns: []*schemaspec.Ref{
+			{V: "$column.parent_id"},
+		},
+		RefColumns: []*schemaspec.Ref{
+			{V: "$column.id"},
 		},
 	}, key)
 }

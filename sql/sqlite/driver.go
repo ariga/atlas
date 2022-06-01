@@ -6,11 +6,20 @@ package sqlite
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlclient"
 )
 
 type (
@@ -33,8 +42,20 @@ type (
 	}
 )
 
+func init() {
+	sqlclient.Register(
+		"sqlite3",
+		sqlclient.DriverOpener(Open),
+		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
+		sqlclient.RegisterFlavours("sqlite"),
+		sqlclient.RegisterURLParser(sqlclient.URLParserFunc(func(u *url.URL) *sqlclient.URL {
+			return &sqlclient.URL{URL: u, DSN: strings.TrimPrefix(u.String(), u.Scheme+"://"), Schema: mainFile}
+		})),
+	)
+}
+
 // Open opens a new SQLite driver.
-func Open(db schema.ExecQuerier) (*Driver, error) {
+func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	var (
 		c   = conn{ExecQuerier: db}
 		ctx = context.Background()
@@ -60,6 +81,63 @@ func Open(db schema.ExecQuerier) (*Driver, error) {
 	}, nil
 }
 
+// IsClean implements the inlined IsClean interface to override what to consider a clean database.
+func (d *Driver) IsClean(ctx context.Context) (bool, error) {
+	r, err := d.InspectRealm(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	return r == nil || len(r.Schemas) == 1 && r.Schemas[0].Name == mainFile && len(r.Schemas[0].Tables) == 0, nil
+}
+
+// Clean implements the inlined migrate.Clean interface to override the "emptying" behavior.
+func (d *Driver) Clean(ctx context.Context) error {
+	for _, stmt := range []string{
+		"PRAGMA writable_schema = 1;",
+		"DELETE FROM sqlite_master WHERE type IN ('table', 'index', 'trigger');",
+		"PRAGMA writable_schema = 0;",
+		"VACUUM;",
+	} {
+		if _, err := d.ExecContext(ctx, stmt); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Lock implements the schema.Locker interface.
+func (d *Driver) Lock(_ context.Context, name string, timeout time.Duration) (schema.UnlockFunc, error) {
+	path := filepath.Join(os.TempDir(), name+".lock")
+	c, err := ioutil.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return acquireLock(path, timeout)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("sql/sqlite: reading lock dir: %w", err)
+	}
+	expires, err := strconv.ParseInt(string(c), 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("sql/sqlite: invalid lock file format: parsing expiration date: %w", err)
+	}
+	if time.Unix(0, expires).After(time.Now()) {
+		// Lock is still valid.
+		return nil, fmt.Errorf("sql/sqlite: lock on %q already taken", name)
+	}
+	return acquireLock(path, timeout)
+}
+
+func acquireLock(path string, timeout time.Duration) (schema.UnlockFunc, error) {
+	lock, err := os.Create(path)
+	if err != nil {
+		return nil, fmt.Errorf("sql/sqlite: creating lockfile %q: %w", path, err)
+	}
+	if _, err := lock.Write([]byte(strconv.FormatInt(time.Now().Add(timeout).UnixNano(), 10))); err != nil {
+		return nil, fmt.Errorf("sql/sqlite: writing to lockfile %q: %w", path, err)
+	}
+	defer lock.Close()
+	return func() error { return os.Remove(path) }, nil
+}
+
 // SQLite standard data types as defined in its codebase and documentation.
 // https://www.sqlite.org/datatype3.html
 // https://github.com/sqlite/sqlite/blob/master/src/global.c
@@ -68,4 +146,10 @@ const (
 	TypeReal    = "real"    // SQLITE_TYPE_REAL
 	TypeText    = "text"    // SQLITE_TYPE_TEXT
 	TypeBlob    = "blob"    // SQLITE_TYPE_BLOB
+)
+
+// SQLite generated columns types.
+const (
+	virtual = "VIRTUAL"
+	stored  = "STORED"
 )

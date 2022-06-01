@@ -9,12 +9,18 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	entmigrate "ariga.io/atlas/cmd/atlascmd/migrate"
+	"ariga.io/atlas/cmd/atlascmd/migrate/ent/revision"
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqlite"
 
 	"entgo.io/ent/dialect"
@@ -25,11 +31,13 @@ import (
 type liteTest struct {
 	*testing.T
 	db   *sql.DB
-	drv  *sqlite.Driver
+	drv  migrate.Driver
+	rrw  migrate.RevisionReadWriter
 	file string
 }
 
 func liteRun(t *testing.T, fn func(test *liteTest)) {
+	t.Parallel()
 	f := path.Join(t.TempDir(), strings.ReplaceAll(t.Name(), "/", "_"))
 	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&_fk=1", f))
 	require.NoError(t, err)
@@ -38,8 +46,34 @@ func liteRun(t *testing.T, fn func(test *liteTest)) {
 	})
 	drv, err := sqlite.Open(db)
 	require.NoError(t, err)
-	tt := &liteTest{T: t, db: db, drv: drv, file: f}
+	tt := &liteTest{T: t, db: db, drv: drv, file: f, rrw: &rrw{}}
 	fn(tt)
+}
+
+func TestSQLite_EntRevisions(t *testing.T) {
+	liteRun(t, func(t *liteTest) {
+		c, err := sqlclient.Open(context.Background(), t.url())
+		require.NoError(t, err)
+
+		r, err := entmigrate.NewEntRevisions(c)
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			r.Close()
+		})
+
+		require.NoError(t, r.Init(context.Background()))
+
+		s, err := c.InspectSchema(context.Background(), "", nil)
+		require.NoError(t, err)
+		_, ok := s.Table(revision.Table)
+		require.True(t, ok)
+	})
+}
+
+func TestSQLite_Executor(t *testing.T) {
+	liteRun(t, func(t *liteTest) {
+		testExecutor(t)
+	})
 }
 
 func TestSQLite_AddDropTable(t *testing.T) {
@@ -57,6 +91,22 @@ func TestSQLite_Relation(t *testing.T) {
 func TestSQLite_Ent(t *testing.T) {
 	liteRun(t, func(t *liteTest) {
 		testEntIntegration(t, dialect.SQLite, t.db)
+	})
+}
+
+func TestSQLite_ColumnCheck(t *testing.T) {
+	liteRun(t, func(t *liteTest) {
+		usersT := &schema.Table{
+			Name:  "users",
+			Attrs: []schema.Attr{schema.NewCheck().SetName("users_c_check").SetExpr("c > 5")},
+			Columns: []*schema.Column{
+				{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+				{Name: "c", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+			},
+		}
+		t.dropTables(usersT.Name)
+		t.migrate(&schema.AddTable{T: usersT})
+		ensureNoChange(t, usersT)
 	})
 }
 
@@ -437,6 +487,25 @@ func TestSQLite_CLI(t *testing.T) {
 					type = int
 				}
 			}`
+	t.Run("InspectFromEnv", func(t *testing.T) {
+		liteRun(t, func(t *liteTest) {
+			env := fmt.Sprintf(`
+env "hello" {
+	url = "%s"
+	src = "./schema.hcl"
+}
+`, t.dsn())
+			wd, _ := os.Getwd()
+			envfile := filepath.Join(wd, "atlas.hcl")
+			err := os.WriteFile(envfile, []byte(env), 0600)
+			t.Cleanup(func() {
+				os.Remove(envfile)
+			})
+			require.NoError(t, err)
+
+			testCLISchemaInspectEnv(t, h, "hello", sqlite.UnmarshalHCL)
+		})
+	})
 	t.Run("SchemaInspect", func(t *testing.T) {
 		liteRun(t, func(t *liteTest) {
 			testCLISchemaInspect(t, h, t.dsn(), sqlite.UnmarshalHCL)
@@ -447,6 +516,25 @@ func TestSQLite_CLI(t *testing.T) {
 			testCLISchemaApply(t, h, t.dsn())
 		})
 	})
+	t.Run("SchemaApplyWithVars", func(t *testing.T) {
+		h := `
+variable "tenant" {
+	type = string
+}
+schema "tenant" {
+	name = var.tenant
+}
+table "users" {
+	schema = schema.tenant
+	column "id" {
+		type = int
+	}
+}
+`
+		liteRun(t, func(t *liteTest) {
+			testCLISchemaApply(t, h, t.dsn(), "--var", "tenant=main")
+		})
+	})
 	t.Run("SchemaApplyDryRun", func(t *testing.T) {
 		liteRun(t, func(t *liteTest) {
 			testCLISchemaApplyDry(t, h, t.dsn())
@@ -455,6 +543,11 @@ func TestSQLite_CLI(t *testing.T) {
 	t.Run("SchemaDiffRun", func(t *testing.T) {
 		liteRun(t, func(t *liteTest) {
 			testCLISchemaDiff(t, t.dsn())
+		})
+	})
+	t.Run("SchemaApplyAutoApprove", func(t *testing.T) {
+		liteRun(t, func(t *liteTest) {
+			testCLISchemaApplyAutoApprove(t, h, t.dsn())
 		})
 	})
 }
@@ -707,6 +800,16 @@ create table atlas_types_sanity
 	})
 }
 
+func (t *liteTest) driver() migrate.Driver {
+	return t.drv
+}
+
+func (t *liteTest) revisionsStorage() migrate.RevisionReadWriter {
+	return t.rrw
+}
+
+func (t *liteTest) dropSchemas(...string) {}
+
 func (t *liteTest) applyHcl(spec string) {
 	realm := t.loadRealm()
 	var desired schema.Schema
@@ -801,6 +904,24 @@ func (t *liteTest) posts() *schema.Table {
 	return postsT
 }
 
+func (t *liteTest) revisions() *schema.Table {
+	versionsT := &schema.Table{
+		Name: "atlas_schema_revisions",
+		Columns: []*schema.Column{
+			{Name: "version", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
+			{Name: "description", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
+			{Name: "execution_state", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(7)"}}},
+			{Name: "executed_at", Type: &schema.ColumnType{Type: &schema.TimeType{T: "datetime"}}},
+			{Name: "execution_time", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
+			{Name: "hash", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(44)"}}},
+			{Name: "operator_version", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
+			{Name: "meta", Type: &schema.ColumnType{Type: &schema.JSONType{T: "json"}, Raw: "json"}},
+		},
+	}
+	versionsT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: versionsT.Columns[0]}}}
+	return versionsT
+}
+
 func (t *liteTest) realm() *schema.Realm {
 	r := &schema.Realm{
 		Schemas: []*schema.Schema{
@@ -838,6 +959,10 @@ func (t *liteTest) dropTables(names ...string) {
 
 func (t *liteTest) dsn() string {
 	return fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", t.file)
+}
+
+func (t *liteTest) url() string {
+	return t.dsn()
 }
 
 func (t *liteTest) applyRealmHcl(spec string) {

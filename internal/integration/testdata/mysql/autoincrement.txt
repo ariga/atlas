@@ -1,0 +1,93 @@
+apply 1.hcl
+cmpshow users 1.sql
+
+# Setup a custom AUTO_INCREMENT initial value.
+apply 2.hcl
+cmpshow users 2.sql
+
+# Increase the AUTO_INCREMENT value.
+apply 3.hcl
+cmpshow users 3.sql
+
+-- 1.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "id" {
+    null = false
+    type = bigint
+    auto_increment = true
+  }
+  primary_key  {
+    columns = [column.id]
+  }
+}
+
+-- 1.sql --
+CREATE TABLE `users` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (`id`)
+)
+
+-- mysql8/1.sql --
+CREATE TABLE `users` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (`id`)
+)
+
+-- 2.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "id" {
+    null = false
+    type = bigint
+    auto_increment = true
+  }
+  primary_key  {
+    columns = [column.id]
+  }
+  auto_increment = 1000
+}
+
+-- 2.sql --
+CREATE TABLE `users` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (`id`)
+) AUTO_INCREMENT=1000
+
+-- mysql8/2.sql --
+CREATE TABLE `users` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (`id`)
+) AUTO_INCREMENT=1000
+
+-- 3.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "id" {
+    null = false
+    type = bigint
+    auto_increment = true
+  }
+  primary_key  {
+    columns = [column.id]
+  }
+  auto_increment = 2000
+}
+
+-- 3.sql --
+CREATE TABLE `users` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (`id`)
+) AUTO_INCREMENT=2000
+
+-- mysql8/3.sql --
+CREATE TABLE `users` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (`id`)
+) AUTO_INCREMENT=2000

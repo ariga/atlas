@@ -1,0 +1,75 @@
+apply 1.hcl
+cmpshow users 1.sql
+
+# Change prefix.
+apply 2.hcl
+cmpshow users 2.sql
+
+# Drop prefix.
+apply 3.hcl
+cmpshow users 3.sql
+
+-- 1.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "name" {
+    type = varchar(255)
+  }
+  index "user_name" {
+    on {
+      column = column.name
+      prefix = 64
+    }
+  }
+}
+
+-- 1.sql --
+CREATE TABLE `users` (
+  `name` varchar(255) NOT NULL,
+  KEY `user_name` (`name`(64))
+)
+
+-- 2.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "name" {
+    type = varchar(255)
+  }
+  index "user_name" {
+    on {
+      column = column.name
+      prefix = 128
+    }
+  }
+}
+
+-- 2.sql --
+CREATE TABLE `users` (
+  `name` varchar(255) NOT NULL,
+  KEY `user_name` (`name`(128))
+)
+
+-- 3.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "name" {
+    type = varchar(128)
+  }
+  index "user_name" {
+    on {
+      column = column.name
+    }
+  }
+}
+
+-- 3.sql --
+CREATE TABLE `users` (
+  `name` varchar(128) NOT NULL,
+  KEY `user_name` (`name`)
+)

@@ -1,0 +1,55 @@
+apply 1.hcl
+cmpshow t1 t2 1.sql
+
+-- 1.hcl --
+schema "$db" {}
+
+table "t1" {
+  schema = schema.$db
+  column "a" {
+    null = false
+    type = uuid
+  }
+  column "b" {
+    null = true
+    type = timestamp(6)
+  }
+  index "t1_a_b" {
+    on {
+      column = column.a
+    }
+    on {
+      desc   = true
+      column = column.b
+    }
+    unique = true
+  }
+}
+
+table "t2" {
+  schema = schema.$db
+  column "a" {
+    null = false
+    type = uuid
+  }
+  primary_key {
+    columns = [column.a]
+  }
+}
+
+-- 1.sql --
+                   Table "script_index_issue_557.t1"
+ Column |            Type             | Collation | Nullable | Default
+--------+-----------------------------+-----------+----------+---------
+ a      | uuid                        |           | not null |
+ b      | timestamp without time zone |           |          |
+Indexes:
+    "t1_a_b" UNIQUE, btree (a, b DESC)
+
+
+       Table "script_index_issue_557.t2"
+ Column | Type | Collation | Nullable | Default
+--------+------+-----------+----------+---------
+ a      | uuid |           | not null |
+Indexes:
+    "t2_pkey" PRIMARY KEY, btree (a)

@@ -1,0 +1,62 @@
+apply 1.hcl
+cmpshow users 1.sql
+
+apply 2.hcl
+cmpshow users 2.sql
+
+-- 1.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "name" {
+    null = false
+    type = text
+  }
+  column "active" {
+    null = true
+    type = boolean
+  }
+  index "users_name" {
+    columns = [column.name]
+    where = "active"
+  }
+}
+
+-- 1.sql --
+        Table "script_index_partial.users"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ name   | text    |           | not null |
+ active | boolean |           |          |
+Indexes:
+    "users_name" btree (name) WHERE active
+
+
+-- 2.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "name" {
+    null = false
+    type = text
+  }
+  column "active" {
+    null = true
+    type = boolean
+  }
+  index "users_name" {
+    columns = [column.name]
+    where = "active AND name <> ''"
+  }
+}
+
+-- 2.sql --
+        Table "script_index_partial.users"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ name   | text    |           | not null |
+ active | boolean |           |          |
+Indexes:
+    "users_name" btree (name) WHERE active AND name <> ''::text

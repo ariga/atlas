@@ -9,14 +9,16 @@ import (
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
+	"ariga.io/atlas/sql/schema"
 
 	"github.com/stretchr/testify/require"
 )
 
 // RegistrySanityTest runs a sanity for a TypeRegistry, generated a dummy *schemaspec.Type
 // then converting it to a schema.Type and back to a *schemaspec.Type.
-func RegistrySanityTest(t *testing.T, registry *specutil.TypeRegistry, skip []string) {
+func RegistrySanityTest(t *testing.T, registry *schemahcl.TypeRegistry, skip []string) {
 	for _, ts := range registry.Specs() {
 		if contains(ts.Name, skip) {
 			continue
@@ -33,6 +35,37 @@ func RegistrySanityTest(t *testing.T, registry *specutil.TypeRegistry, skip []st
 			require.EqualValues(t, styp, after)
 		})
 	}
+}
+
+// TestInputVars runs a test verifying that the driver's exposed Eval function uses
+// input variables properly.
+func TestInputVars(t *testing.T, evaluator schemahcl.Evaluator) {
+	h := `
+variable "tenant" {
+	type = string
+	default = "test"
+}
+schema "tenant" {
+	name = var.tenant
+}
+table "users" {
+	schema = schema.tenant
+	column "id" {
+		type = int
+	}
+	index "user_name" {
+    on {
+      column = column.id
+      unique = true
+    }
+  }
+}
+`
+	var test schema.Realm
+	err := evaluator.Eval([]byte(h), &test, map[string]string{"tenant": "rotemtam"})
+	require.NoError(t, err)
+	require.EqualValues(t, "rotemtam", test.Schemas[0].Name)
+	require.Len(t, test.Schemas[0].Tables, 1)
 }
 
 func contains(s string, l []string) bool {

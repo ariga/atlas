@@ -1,0 +1,61 @@
+# Skip MySQL 5.6 as it does not support generated columns.
+! only mysql56
+
+apply 1.hcl
+cmphcl 1.inspect.hcl
+
+-- 1.hcl --
+schema "$db" {
+    charset = "$charset"
+    collate = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "a" {
+        type = bool
+        null = true
+    }
+    column "b" {
+        type = bool
+        null = true
+        as = "a"
+    }
+    column "c" {
+        type = bool
+        null = true
+        as {
+            type = STORED
+            expr = "b"
+        }
+    }
+}
+
+-- 1.inspect.hcl --
+table "users" {
+  schema = schema.$db
+  column "a" {
+    null = true
+    type = bool
+  }
+  column "b" {
+    null = true
+    type = bool
+    as {
+      expr = "`a`"
+      type = VIRTUAL
+    }
+  }
+  column "c" {
+    null = true
+    type = bool
+    as {
+      expr = "`b`"
+      type = STORED
+    }
+  }
+}
+schema "$db" {
+  charset = "$charset"
+  collate = "$collate"
+}
