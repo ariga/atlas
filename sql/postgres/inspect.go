@@ -850,6 +850,7 @@ FROM
 	LEFT JOIN pg_catalog.pg_partitioned_table AS t4 ON t4.partrelid = t3.oid
 WHERE
 	t1.table_type = 'BASE TABLE'
+	AND NOT COALESCE(t3.relispartition, false)
 	AND t1.table_schema IN (%s)
 ORDER BY
 	t1.table_schema, t1.table_name
@@ -869,6 +870,7 @@ FROM
 	LEFT JOIN pg_catalog.pg_partitioned_table AS t4 ON t4.partrelid = t3.oid
 WHERE
 	t1.table_type = 'BASE TABLE'
+	AND NOT COALESCE(t3.relispartition, false)
 	AND t1.table_schema IN (%s)
 	AND t1.table_name IN (%s)
 ORDER BY
@@ -921,9 +923,9 @@ SELECT
 	c.contype AS constraint_type,
 	pg_get_expr(idx.indpred, idx.indrelid) AS predicate,
 	pg_get_indexdef(idx.indexrelid, idx.ord, false) AS expression,
-	pg_index_column_has_property(idx.indexrelid, a.attnum, 'desc') AS desc,
-	pg_index_column_has_property(idx.indexrelid, a.attnum, 'nulls_first') AS nulls_first,
-	pg_index_column_has_property(idx.indexrelid, a.attnum, 'nulls_last') AS nulls_last,
+	pg_index_column_has_property(idx.indexrelid, idx.ord, 'desc') AS desc,
+	pg_index_column_has_property(idx.indexrelid, idx.ord, 'nulls_first') AS nulls_first,
+	pg_index_column_has_property(idx.indexrelid, idx.ord, 'nulls_last') AS nulls_last,
 	obj_description(to_regclass($1 || i.relname)::oid) AS comment,
 	i.reloptions AS options
 FROM

@@ -10,6 +10,9 @@ synced 2-no-change.hcl
 apply 3.hcl
 cmpshow users 3.sql
 
+apply 4.hcl
+cmpshow users 4.sql
+
 -- 1.hcl --
 schema "$db" {}
 
@@ -21,7 +24,7 @@ table "users" {
     index "rank_idx" {
         on {
             desc   = true
-            column = table.users.column.rank
+            column = column.rank
         }
     }
 }
@@ -73,7 +76,6 @@ table "users" {
     }
 }
 
-
 -- 3.hcl --
 schema "$db" {}
 
@@ -104,3 +106,53 @@ table "users" {
  score  | integer |           | not null |
 Indexes:
     "rank_score_idx" btree (rank, score DESC)
+
+
+-- 4.hcl --
+schema "$db" {}
+
+table "users" {
+    schema = schema.$db
+    column "rank" {
+        type = int
+    }
+    column "score" {
+        type = int
+    }
+    index "double_rank_desc_idx" {
+        on {
+            expr = "rank * 2"
+            desc = true
+        }
+    }
+    index "double_score_desc_idx" {
+        on {
+            expr = "score * 2"
+            desc = true
+        }
+    }
+    index "double_rank_idx" {
+        on {
+            expr = "rank * 2"
+            desc = false
+        }
+    }
+    index "double_score_idx" {
+        on {
+            expr = "score * 2"
+            desc = false
+        }
+    }
+}
+
+-- 4.sql --
+      Table "script_index_desc.users"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ rank   | integer |           | not null |
+ score  | integer |           | not null |
+Indexes:
+    "double_rank_desc_idx" btree ((rank * 2) DESC)
+    "double_rank_idx" btree ((rank * 2))
+    "double_score_desc_idx" btree ((score * 2) DESC)
+    "double_score_idx" btree ((score * 2))
