@@ -177,7 +177,7 @@ type (
 	// Atlas drivers provide a sql based implementation of this interface by default.
 	RevisionReadWriter interface {
 		ReadRevisions(context.Context) (Revisions, error)
-		WriteRevisions(context.Context, Revisions) error
+		WriteRevision(context.Context, *Revision) error
 	}
 
 	// Planner can plan the steps to take to migrate from one state to another. It uses the enclosed FS to write
@@ -340,6 +340,10 @@ func NewExecutor(drv Driver, dir Dir, rrw RevisionReadWriter, opts ...ExecutorOp
 	if _, ok := drv.(schema.Locker); !ok {
 		return nil, ErrLockUnsupported
 	}
+	// Check if the Dir implements Scanner interface.
+	if _, ok := dir.(Scanner); !ok {
+		return nil, errors.New("sql/migrate: execute: no scanner available")
+	}
 	p := &Executor{drv: drv, dir: dir, rrw: rrw}
 	for _, opt := range opts {
 		if err := opt(p); err != nil {
@@ -357,85 +361,138 @@ func WithLogger(log Logger) ExecutorOption {
 	}
 }
 
-// Execute executes n missing migration files on the database. Passing in n <= 0 means running all pending migrations.
-func (e *Executor) Execute(ctx context.Context, n int) (err error) {
+// Lock acquires a lock for the executor.
+// It is considered a user error to not call Lock before the Pending and Execute methods.
+func (e *Executor) Lock(ctx context.Context) (schema.UnlockFunc, error) {
 	unlock, err := e.drv.(schema.Locker).Lock(ctx, "atlas_migration_execute", 0)
 	if err != nil {
-		return fmt.Errorf("sql/migrate: acquiring database lock: %w", err)
+		return nil, fmt.Errorf("sql/migrate: acquiring database lock: %w", err)
 	}
-	defer unlock()
+	return unlock, nil
+}
+
+// Pending returns all pending (not applied) migration files in the migration directory.
+func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 	// Don't operate with a broken migration directory.
-	// TODO(maseeelch): do not check here but let the caller check it before? Or let the caller decide if to skip this flag by using some flags.
 	if err := Validate(e.dir); err != nil {
-		return fmt.Errorf("sql/migrate: execute: validate migration directory: %w", err)
-	}
-	// Check if the Dir implements Scanner interface.
-	sc, ok := e.dir.(Scanner)
-	if !ok {
-		return errors.New("sql/migrate: execute: no scanner available")
+		return nil, fmt.Errorf("sql/migrate: execute: validate migration directory: %w", err)
 	}
 	// Read all applied database revisions.
-	revisions, err := e.rrw.ReadRevisions(ctx)
+	revs, err := e.rrw.ReadRevisions(ctx)
 	if err != nil {
-		return fmt.Errorf("sql/migrate: execute: read revisions: %w", err)
+		return nil, fmt.Errorf("sql/migrate: execute: read revisions: %w", err)
 	}
 	// Select the correct migration files.
+	sc := e.dir.(Scanner)
 	migrations, err := sc.Files()
 	if err != nil {
-		return fmt.Errorf("sql/migrate: execute: select migration files: %w", err)
+		return nil, fmt.Errorf("sql/migrate: execute: select migration files: %w", err)
 	}
 	// Check if the existing revisions did come from the migration directory and not from somewhere else.
 	hf, err := readHashFile(e.dir)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("sql/migrate: execute: read atlas.sum file: %w", err)
+		return nil, fmt.Errorf("sql/migrate: execute: read atlas.sum file: %w", err)
 	}
 	// If there is no atlas.sum file there are no migration files.
 	if errors.Is(err, os.ErrNotExist) {
-		return ErrNoPendingFiles
+		return nil, ErrNoPendingFiles
 	}
 	// For up to len(revisions) revisions the migration files must both match in order and content.
-	if len(revisions) > len(migrations) { // TODO(masseelch): keep compaction in mind.
-		return errors.New("sql/migrate: execute: revisions and migrations mismatch: more revisions than migrations")
+	if len(revs) > len(migrations) { // TODO(masseelch): keep compaction in mind.
+		return nil, errors.New("sql/migrate: execute: revisions and migrations mismatch: more revisions than migrations")
 	}
-	for i := range revisions {
+	for i := range revs {
 		m := migrations[i]
 		v, err := sc.Version(m)
 		if err != nil {
-			return fmt.Errorf("sql/migrate: execute: scan version from %q: %w", m.Name(), err)
+			return nil, fmt.Errorf("sql/migrate: execute: scan version from %q: %w", m.Name(), err)
 		}
 		d, err := sc.Desc(m)
 		if err != nil {
-			return fmt.Errorf("sql/migrate: execute: scan description from %q: %w", m.Name(), err)
+			return nil, fmt.Errorf("sql/migrate: execute: scan description from %q: %w", m.Name(), err)
 		}
-		r := revisions[i]
+		r := revs[i]
 		if v != r.Version || d != r.Description || hf[i].H != r.Hash {
-			return fmt.Errorf("sql/migrate: execute: revisions and migrations mismatch: rev %q <> file %q", v, r.Version)
+			return nil, fmt.Errorf("sql/migrate: execute: revisions and migrations mismatch: rev %q <> file %q", v, r.Version)
 		}
 	}
-	if len(migrations) == len(revisions) {
-		return ErrNoPendingFiles
+	if len(migrations) == len(revs) {
+		return nil, ErrNoPendingFiles
 	}
-	defer func(rrw RevisionReadWriter, ctx context.Context, revisions *Revisions) {
-		if dErr := rrw.WriteRevisions(ctx, *revisions); dErr != nil {
-			if err != nil {
-				err = fmt.Errorf("sql/migrate: execute: write revisions: %w: %v", dErr, err)
-				return
-			}
-			err = dErr
+	return migrations[len(revs):], nil
+}
+
+// Execute executes the given migration file on the database.
+func (e *Executor) Execute(ctx context.Context, m File) (err error) {
+	r := &Revision{ExecutedAt: time.Now(), ExecutionState: stateOngoing}
+	if err := e.rrw.WriteRevision(ctx, r); err != nil {
+		return fmt.Errorf("sql/migrate: execute: storing revision: %w", err)
+	}
+	// Make sure to store the Revision information.
+	defer func(ctx context.Context, rrw RevisionReadWriter, r *Revision) {
+		if err2 := e.rrw.WriteRevision(ctx, r); err2 != nil {
+			err = wrap(fmt.Errorf("execute: write revision: %w", err2), err)
 		}
-	}(e.rrw, ctx, &revisions)
-	// Determine what migrations to run.
-	var pending []File
-	if n <= 0 {
-		// If n<=0 run every pending migrations.
-		pending = migrations[len(revisions):]
-	} else {
-		// Else run n pending migrations.
-		pc := len(migrations) - len(revisions)
-		if n > pc {
-			n = pc
+	}(ctx, e.rrw, r)
+	sc := e.dir.(Scanner)
+	v, err := sc.Version(m)
+	if err != nil {
+		return r.setGoErr(fmt.Errorf("sql/migrate: execute: scan version from %q: %w", m.Name(), err))
+	}
+	r.Version = v
+	d, err := sc.Desc(m)
+	if err != nil {
+		return r.setGoErr(fmt.Errorf("sql/migrate: execute: scan description from %q: %w", m.Name(), err))
+
+	}
+	r.Description = d
+	if e.log != nil {
+		e.log.Log(LogFile{v, d})
+	}
+	hf, err := readHashFile(e.dir)
+	if err != nil {
+		return fmt.Errorf("sql/migrate: execute: read atlas.sum file: %w", err)
+	}
+	h, err := hf.sumByName(m.Name())
+	if err != nil {
+		return r.setGoErr(fmt.Errorf("sql/migrate: execute: scanning checksum for file %q: %w", m.Name(), err))
+	}
+	r.Hash = h
+	stmts, err := sc.Stmts(m)
+	if err != nil {
+		return r.setGoErr(fmt.Errorf("sql/migrate: execute: scanning statements from file %q: %w", m.Name(), err))
+	}
+	for _, stmt := range stmts {
+		if e.log != nil {
+			e.log.Log(LogStmt{stmt})
 		}
-		pending = migrations[len(revisions) : len(revisions)+n]
+		if _, err := e.drv.ExecContext(ctx, stmt); err != nil {
+			return r.setSQLErr(
+				fmt.Errorf("sql/migrate: execute: executing statement %q from version %q: %w", stmt, v, err),
+				stmt,
+			)
+		}
+		r.done(true)
+	}
+	return
+}
+
+// ExecuteN executes n pending migration files. If n<=0 all pending migration files are executed.
+func (e *Executor) ExecuteN(ctx context.Context, n int) error {
+	unlock, err := e.Lock(ctx)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	pending, err := e.Pending(ctx)
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		if n >= len(pending) {
+			n = len(pending)
+		}
+		pending = pending[:n]
 	}
 	if e.log != nil {
 		names := make([]string, len(pending))
@@ -444,46 +501,12 @@ func (e *Executor) Execute(ctx context.Context, n int) (err error) {
 		}
 		e.log.Log(LogExecution{names})
 	}
-	// TODO(masseelch): run in a transaction
 	for _, m := range pending {
-		r := &Revision{ExecutedAt: time.Now(), ExecutionState: stateOngoing}
-		revisions = append(revisions, r)
-		v, err := sc.Version(m)
-		if err != nil {
-			return r.setGoErr(fmt.Errorf("sql/migrate: execute: scan version from %q: %w", m.Name(), err))
-		}
-		r.Version = v
-		d, err := sc.Desc(m)
-		if err != nil {
-			return r.setGoErr(fmt.Errorf("sql/migrate: execute: scan description from %q: %w", m.Name(), err))
-		}
-		r.Description = d
-		if e.log != nil {
-			e.log.Log(LogFile{v, d})
-		}
-		h, err := hf.sumByName(m.Name())
-		if err != nil {
-			return r.setGoErr(fmt.Errorf("sql/migrate: execute: scanning checksum for file %q: %w", m.Name(), err))
-		}
-		r.Hash = h
-		stmts, err := sc.Stmts(m)
-		if err != nil {
-			return r.setGoErr(fmt.Errorf("sql/migrate: execute: scanning statements from file %q: %w", m.Name(), err))
-		}
-		for _, stmt := range stmts {
-			if e.log != nil {
-				e.log.Log(LogStmt{stmt})
-			}
-			if _, err := e.drv.ExecContext(ctx, stmt); err != nil {
-				return r.setSQLErr(
-					fmt.Errorf("sql/migrate: execute: executing statement %q from version %q: %w", stmt, v, err),
-					stmt,
-				)
-			}
-			r.done(true)
+		if err := e.Execute(ctx, m); err != nil {
+			return err
 		}
 	}
-	return
+	return nil
 }
 
 // ErrNotClean is returned when the connected dev-db is not in a clean state (aka it has schemas and tables).
@@ -542,12 +565,12 @@ func (e *Executor) ReadState(ctx context.Context) (realm *schema.Realm, err erro
 		for i, s := range realm.Schemas {
 			del[i] = &schema.DropSchema{S: s, Extra: []schema.Clause{&schema.IfExists{}}}
 		}
-		if derr := e.drv.ApplyChanges(ctx, del); derr != nil {
-			err = wrap(derr, err)
+		if err2 := e.drv.ApplyChanges(ctx, del); err2 != nil {
+			err = wrap(err2, err)
 		}
 	}()
 	// Replay the migration directory on the database.
-	if err := e.Execute(ctx, 0); err != nil && !errors.Is(err, ErrNoPendingFiles) {
+	if err := e.ExecuteN(ctx, 0); err != nil && !errors.Is(err, ErrNoPendingFiles) {
 		return nil, fmt.Errorf("sql/migrate: read migration directory state: %w", err)
 	}
 	// Inspect the database back and return the result.
@@ -564,10 +587,12 @@ func (NoopRevisionReadWriter) ReadRevisions(context.Context) (Revisions, error) 
 	return nil, nil
 }
 
-// WriteRevisions implements RevisionsReadWriter.WriteRevisions,
-func (NoopRevisionReadWriter) WriteRevisions(context.Context, Revisions) error {
+// WriteRevision implements RevisionsReadWriter.WriteRevision,
+func (NoopRevisionReadWriter) WriteRevision(context.Context, *Revision) error {
 	return nil
 }
+
+var _ RevisionReadWriter = (*NoopRevisionReadWriter)(nil)
 
 // done computes and sets the ExecutionTime.
 func (r *Revision) done(ok bool) {
@@ -602,7 +627,7 @@ type (
 		logEntry()
 	}
 
-	// LogExecution is sent once when execution of the migration files has been started.
+	// LogExecution is sent once when execution of multiple migration files has been started.
 	// It holds the filenames of the pending migration files.
 	LogExecution struct {
 		Files []string
@@ -949,19 +974,6 @@ func readHashFile(dir Dir) (HashFile, error) {
 		return nil, err
 	}
 	return fh, nil
-}
-
-// reverse changes for the down migration.
-func reverse(changes []*Change) []*Change {
-	n := len(changes)
-	rev := make([]*Change, n)
-	if n%2 == 1 {
-		rev[n/2] = changes[n/2]
-	}
-	for i, j := 0, n-1; i < j; i, j = i+1, j-1 {
-		rev[i], rev[j] = changes[j], changes[i]
-	}
-	return rev
 }
 
 func wrap(err1, err2 error) error {

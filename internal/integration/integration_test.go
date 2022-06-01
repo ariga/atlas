@@ -529,14 +529,14 @@ func testExecutor(t T) {
 
 	ex, err := migrate.NewExecutor(t.driver(), dir, t.revisionsStorage())
 	require.NoError(t, err)
-	require.NoError(t, ex.Execute(context.Background(), 2)) // usersT and postsT
+	require.NoError(t, ex.ExecuteN(context.Background(), 2)) // usersT and postsT
 	require.Len(t, *t.revisionsStorage().(*rrw), 2)
 	ensureNoChange(t, postsT, usersT)
-	require.NoError(t, ex.Execute(context.Background(), 1)) // petsT
+	require.NoError(t, ex.ExecuteN(context.Background(), 1)) // petsT
 	require.Len(t, *t.revisionsStorage().(*rrw), 3)
 	ensureNoChange(t, petsT, postsT, usersT)
 
-	require.ErrorIs(t, ex.Execute(context.Background(), 1), migrate.ErrNoPendingFiles)
+	require.ErrorIs(t, ex.ExecuteN(context.Background(), 1), migrate.ErrNoPendingFiles)
 }
 
 func plan(t T, name string, changes ...schema.Change) *migrate.Plan {
@@ -547,12 +547,18 @@ func plan(t T, name string, changes ...schema.Change) *migrate.Plan {
 
 type rrw migrate.Revisions
 
-func (r *rrw) WriteRevisions(ctx context.Context, revs migrate.Revisions) error {
-	*r = rrw(revs)
+func (r *rrw) WriteRevision(_ context.Context, rev *migrate.Revision) error {
+	for i, rev2 := range *r {
+		if rev2.Version == rev.Version {
+			(*r)[i] = rev
+			return nil
+		}
+	}
+	*r = append(*r, rev)
 	return nil
 }
 
-func (r *rrw) ReadRevisions(ctx context.Context) (migrate.Revisions, error) {
+func (r *rrw) ReadRevisions(context.Context) (migrate.Revisions, error) {
 	return migrate.Revisions(*r), nil
 }
 

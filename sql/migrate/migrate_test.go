@@ -202,6 +202,7 @@ func TestExecutor_ReadState(t *testing.T) {
 	require.Equal(t, []string{"DROP TABLE IF EXISTS t;", "CREATE TABLE t(c int);"}, drv.executed)
 	require.Equal(t, 2, drv.lockCounter)
 	require.Equal(t, 2, drv.unlockCounter)
+	require.True(t, drv.released())
 
 	// Does not work if locked.
 	drv.locks = map[string]struct{}{"atlas_migration_directory_state": {}}
@@ -209,6 +210,7 @@ func TestExecutor_ReadState(t *testing.T) {
 	require.EqualError(t, err, "sql/migrate: acquiring database lock: lockErr")
 	require.Equal(t, 2, drv.lockCounter)
 	require.Equal(t, 2, drv.unlockCounter)
+	require.False(t, drv.released())
 	drv.locks = make(map[string]struct{})
 
 	// Does not work if database is not clean.
@@ -217,6 +219,7 @@ func TestExecutor_ReadState(t *testing.T) {
 	require.EqualError(t, err, "sql/migrate: connected database is not clean")
 	require.Equal(t, 3, drv.lockCounter)
 	require.Equal(t, 3, drv.unlockCounter)
+	require.True(t, drv.released())
 
 	// Works.
 	edrv := &emptyMockDriver{drv}
@@ -232,6 +235,7 @@ func TestExecutor_ReadState(t *testing.T) {
 	}, edrv.applied)
 	require.Equal(t, 5, drv.lockCounter)
 	require.Equal(t, 5, drv.unlockCounter)
+	require.True(t, drv.released())
 }
 
 func TestLocalDir(t *testing.T) {
@@ -319,7 +323,7 @@ func TestExecutor(t *testing.T) {
 	ex, err = migrate.NewExecutor(&lockMockDriver{&mockDriver{}}, dir, &mockRevisionReadWriter{})
 	require.NoError(t, err)
 	require.NotNil(t, ex)
-	require.ErrorIs(t, ex.Execute(context.Background(), 0), migrate.ErrChecksumMismatch)
+	require.ErrorIs(t, ex.ExecuteN(context.Background(), 0), migrate.ErrChecksumMismatch)
 
 	// Prerequisites.
 	var (
@@ -345,7 +349,7 @@ func TestExecutor(t *testing.T) {
 	require.NoError(t, err)
 
 	// Applies all of them.
-	require.NoError(t, ex.Execute(context.Background(), 0))
+	require.NoError(t, ex.ExecuteN(context.Background(), 0))
 	require.Equal(t, drv.executed, []string{
 		"CREATE TABLE t_sub(c int);", "ALTER TABLE t_sub ADD c1 int;", "ALTER TABLE t_sub ADD c2 int;",
 	})
@@ -358,45 +362,66 @@ func TestExecutor(t *testing.T) {
 		migrate.LogFile{Version: "2.10.x-20", Desc: "description"},
 		migrate.LogStmt{SQL: "ALTER TABLE t_sub ADD c2 int;"},
 	}, []migrate.LogEntry(*log))
+	require.Equal(t, drv.lockCounter, 1)
+	require.Equal(t, drv.unlockCounter, 1)
+	require.True(t, drv.released())
 
 	// No pending files.
-	require.ErrorIs(t, ex.Execute(context.Background(), 0), migrate.ErrNoPendingFiles)
+	require.ErrorIs(t, ex.ExecuteN(context.Background(), 0), migrate.ErrNoPendingFiles)
 
 	// Apply one by one.
 	*rrw = mockRevisionReadWriter{}
 	*drv = lockMockDriver{&mockDriver{}}
 
-	require.NoError(t, ex.Execute(context.Background(), 1))
+	require.NoError(t, ex.ExecuteN(context.Background(), 1))
 	require.Equal(t, drv.executed, []string{"CREATE TABLE t_sub(c int);", "ALTER TABLE t_sub ADD c1 int;"})
 	requireEqualRevisions(t, migrate.Revisions{rev1}, migrate.Revisions(*rrw))
 
-	require.NoError(t, ex.Execute(context.Background(), 1))
+	require.NoError(t, ex.ExecuteN(context.Background(), 1))
 	require.Equal(t, drv.executed, []string{
 		"CREATE TABLE t_sub(c int);", "ALTER TABLE t_sub ADD c1 int;", "ALTER TABLE t_sub ADD c2 int;",
 	})
 	requireEqualRevisions(t, migrate.Revisions{rev1, rev2}, migrate.Revisions(*rrw))
-	require.ErrorIs(t, ex.Execute(context.Background(), 0), migrate.ErrNoPendingFiles)
+	require.ErrorIs(t, ex.ExecuteN(context.Background(), 0), migrate.ErrNoPendingFiles)
+
+	require.Equal(t, drv.lockCounter, 3)
+	require.Equal(t, drv.unlockCounter, 3)
+	require.True(t, drv.released())
 
 	// Suppose first revision is already executed, only execute second migration file.
 	*rrw = mockRevisionReadWriter(migrate.Revisions{rev1})
 	*drv = lockMockDriver{&mockDriver{}}
 
-	require.NoError(t, ex.Execute(context.Background(), 0))
+	require.NoError(t, ex.ExecuteN(context.Background(), 0))
 	require.Equal(t, drv.executed, []string{"ALTER TABLE t_sub ADD c2 int;"})
 	requireEqualRevisions(t, migrate.Revisions{rev1, rev2}, migrate.Revisions(*rrw))
-	require.ErrorIs(t, ex.Execute(context.Background(), 0), migrate.ErrNoPendingFiles)
+	require.ErrorIs(t, ex.ExecuteN(context.Background(), 0), migrate.ErrNoPendingFiles)
+
+	require.Equal(t, drv.lockCounter, 2)
+	require.Equal(t, drv.unlockCounter, 2)
+	require.True(t, drv.released())
 
 	// Unknown revision present.
 	*rrw = mockRevisionReadWriter(migrate.Revisions{&migrate.Revision{Version: "unknown"}})
-	require.EqualError(t, ex.Execute(context.Background(), 0),
+	*drv = lockMockDriver{&mockDriver{}}
+	require.EqualError(t, ex.ExecuteN(context.Background(), 0),
 		`sql/migrate: execute: revisions and migrations mismatch: rev "1.a" <> file "unknown"`,
 	)
 
+	require.Equal(t, drv.lockCounter, 1)
+	require.Equal(t, drv.unlockCounter, 1)
+	require.True(t, drv.released())
+
 	// More revisions than migration files.
 	*rrw = mockRevisionReadWriter(migrate.Revisions{&migrate.Revision{Version: "unknown"}, rev1, rev2})
-	require.EqualError(t, ex.Execute(context.Background(), 0),
+	*drv = lockMockDriver{&mockDriver{}}
+	require.EqualError(t, ex.ExecuteN(context.Background(), 0),
 		`sql/migrate: execute: revisions and migrations mismatch: more revisions than migrations`,
 	)
+
+	require.Equal(t, drv.lockCounter, 1)
+	require.Equal(t, drv.unlockCounter, 1)
+	require.True(t, drv.released())
 }
 
 type (
@@ -448,23 +473,32 @@ func (m *lockMockDriver) Lock(_ context.Context, name string, _ time.Duration) (
 		return nil
 	}, nil
 }
+func (m *lockMockDriver) released() bool {
+	return len(m.locks) == 0
+}
 func (m *emptyMockDriver) IsClean(context.Context) (bool, error) {
 	return true, nil
 }
 
 type mockRevisionReadWriter migrate.Revisions
 
-func (r *mockRevisionReadWriter) WriteRevisions(_ context.Context, revs migrate.Revisions) error {
-	*r = mockRevisionReadWriter(revs)
+func (rrw *mockRevisionReadWriter) WriteRevision(_ context.Context, r *migrate.Revision) error {
+	for i, rev := range *rrw {
+		if rev.Version == r.Version {
+			(*rrw)[i] = r
+			return nil
+		}
+	}
+	*rrw = append(*rrw, r)
 	return nil
 }
 
-func (r *mockRevisionReadWriter) ReadRevisions(_ context.Context) (migrate.Revisions, error) {
-	return migrate.Revisions(*r), nil
+func (rrw *mockRevisionReadWriter) ReadRevisions(_ context.Context) (migrate.Revisions, error) {
+	return migrate.Revisions(*rrw), nil
 }
 
-func (r *mockRevisionReadWriter) clean() {
-	*r = mockRevisionReadWriter(migrate.Revisions{})
+func (rrw *mockRevisionReadWriter) clean() {
+	*rrw = mockRevisionReadWriter(migrate.Revisions{})
 }
 
 type mockLogger []migrate.LogEntry
