@@ -50,22 +50,8 @@ type (
 	TxClient struct {
 		*Client
 
-		// Tx is the *sql.Tx for creating the TxClient.
+		// The transaction this Client wraps.
 		Tx *sql.Tx
-
-		// The ctx used to create the TxClient.
-		ctx context.Context
-	}
-
-	// TxDriver is a migrate.Driver within a transaction.
-	TxDriver interface {
-		migrate.Driver
-
-		// Commit the transaction.
-		Commit() error
-
-		// Rollback the transaction.
-		Rollback() error
 	}
 
 	// URL extends the standard url.URL with additional
@@ -83,9 +69,6 @@ type (
 
 // Tx returns a transactional client.
 func (c *Client) Tx(ctx context.Context, opts *sql.TxOptions) (*TxClient, error) {
-	if _, ok := c.Driver.(TxDriver); ok {
-		return nil, fmt.Errorf("sql/sqlclient: cannot start a transaction within a transaction")
-	}
 	tx, err := c.DB.BeginTx(ctx, opts)
 	if err != nil {
 		return nil, fmt.Errorf("sql/sqlclient: starting transaction: %w", err)
@@ -99,12 +82,18 @@ func (c *Client) Tx(ctx context.Context, opts *sql.TxOptions) (*TxClient, error)
 		return nil, fmt.Errorf("sql/sqlclient: opengin atlas driver: %w", err)
 	}
 	ic := *c
-	c.Driver = &txDriver{Driver: drv, tx: tx}
-	return &TxClient{
-		Client: &ic,
-		Tx:     tx,
-		ctx:    ctx,
-	}, nil
+	ic.Driver = drv
+	return &TxClient{Client: &ic, Tx: tx}, nil
+}
+
+// Commit the transaction.
+func (c *TxClient) Commit() error {
+	return c.Tx.Commit()
+}
+
+// Rollback the transaction.
+func (c *TxClient) Rollback() error {
+	return c.Tx.Rollback()
 }
 
 // AddClosers adds list of closers to close at the end of the client lifetime.
@@ -231,9 +220,10 @@ func OpenSchema(s string) OpenOption {
 
 type (
 	registerOptions struct {
-		parser   URLParser
-		flavours []string
-		codec    interface {
+		openDriver func(schema.ExecQuerier) (migrate.Driver, error)
+		parser     URLParser
+		flavours   []string
+		codec      interface {
 			schemaspec.Marshaler
 			schemahcl.Evaluator
 		}
@@ -273,6 +263,14 @@ func RegisterCodec(m schemaspec.Marshaler, e schemahcl.Evaluator) RegisterOption
 	}
 }
 
+// RegisterDriverOpener registers a func to create a migrate.Driver from a schema.ExecQuerier.
+// Registering this function is implicitly done when using DriverOpener.
+func RegisterDriverOpener(open func(schema.ExecQuerier) (migrate.Driver, error)) RegisterOption {
+	return func(opts *registerOptions) {
+		opts.openDriver = open
+	}
+}
+
 // DriverOpener is a helper Opener creator for sharing between all drivers.
 func DriverOpener(open func(schema.ExecQuerier) (migrate.Driver, error)) Opener {
 	return OpenerFunc(func(ctx context.Context, u *url.URL) (*Client, error) {
@@ -280,7 +278,9 @@ func DriverOpener(open func(schema.ExecQuerier) (migrate.Driver, error)) Opener 
 		if !ok {
 			return nil, fmt.Errorf("sql/sqlclient: unexpected missing opener %q", u.Scheme)
 		}
-		v.(*driver).openDriver = open
+		if v.(*driver).openDriver == nil {
+			v.(*driver).openDriver = open
+		}
 		ur := v.(*driver).parser.ParseURL(u)
 		db, err := sql.Open(v.(*driver).name, ur.DSN)
 		if err != nil {
@@ -330,27 +330,10 @@ func Register(name string, opener Opener, opts ...RegisterOption) {
 			panic("sql/sqlclient: Register called twice for " + f)
 		}
 		drivers.Store(f, &driver{
-			name:   name,
-			parser: opt.parser,
-			Opener: opener,
+			name:       name,
+			parser:     opt.parser,
+			openDriver: opt.openDriver,
+			Opener:     opener,
 		})
 	}
 }
-
-// txDriver wraps a migrate.Driver and adds methods to implement TxDriver.
-type txDriver struct {
-	migrate.Driver         // The migrate.Driver wrapping the transaction.
-	tx             *sql.Tx // The same transaction to be able to call Commit and Rollback.
-}
-
-// Commit the transaction.
-func (d *txDriver) Commit() error {
-	return d.tx.Commit()
-}
-
-// Rollback the transaction.
-func (d *txDriver) Rollback() error {
-	return d.tx.Rollback()
-}
-
-var _ TxDriver = (*txDriver)(nil)

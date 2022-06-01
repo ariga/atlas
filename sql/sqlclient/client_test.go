@@ -10,6 +10,9 @@ import (
 	"net/url"
 	"testing"
 
+	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/schema"
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 
 	"ariga.io/atlas/sql/sqlclient"
@@ -71,3 +74,55 @@ func TestClient_AddClosers(t *testing.T) {
 type closerFunc func() error
 
 func (f closerFunc) Close() error { return f() }
+
+func TestClient_Tx(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	const stmt = "create database `test`"
+	mock.ExpectBegin()
+	mock.ExpectExec(stmt).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+	mock.ExpectBegin()
+	mock.ExpectExec(stmt).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectRollback()
+
+	sqlclient.Register(
+		"tx",
+		sqlclient.OpenerFunc(func(context.Context, *url.URL) (*sqlclient.Client, error) {
+			return &sqlclient.Client{Name: "tx", DB: db, Driver: &mockDriver{db: db}}, nil
+		}),
+		sqlclient.RegisterDriverOpener(func(db schema.ExecQuerier) (migrate.Driver, error) {
+			return &mockDriver{db: db}, nil
+		}),
+	)
+
+	c, err := sqlclient.Open(context.Background(), "tx://")
+	require.NoError(t, err)
+
+	// Commit works.
+	tx, err := c.Tx(context.Background(), nil)
+	require.NoError(t, err)
+	_, err = tx.ExecContext(context.Background(), stmt)
+	require.NoError(t, err)
+	require.NoError(t, tx.Commit())
+
+	// Rollback works as well.
+	tx, err = c.Tx(context.Background(), nil)
+	require.NoError(t, err)
+	_, err = tx.ExecContext(context.Background(), stmt)
+	require.NoError(t, err)
+	require.NoError(t, tx.Rollback())
+
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+type mockDriver struct {
+	migrate.Driver
+	db schema.ExecQuerier
+}
+
+func (m *mockDriver) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	return m.db.ExecContext(ctx, query, args...)
+}
