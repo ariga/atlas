@@ -45,6 +45,29 @@ type (
 		schemahcl.Evaluator
 	}
 
+	// TxClient is returned by calling Client.Tx. It behaves the same as Client,
+	// but wraps all operations within a transaction.
+	TxClient struct {
+		*Client
+
+		// Tx is the *sql.Tx for creating the TxClient.
+		Tx *sql.Tx
+
+		// The ctx used to create the TxClient.
+		ctx context.Context
+	}
+
+	// TxDriver is a migrate.Driver within a transaction.
+	TxDriver interface {
+		migrate.Driver
+
+		// Commit the transaction.
+		Commit() error
+
+		// Rollback the transaction.
+		Rollback() error
+	}
+
 	// URL extends the standard url.URL with additional
 	// connection information attached by the Opener (if any).
 	URL struct {
@@ -57,6 +80,32 @@ type (
 		Schema string
 	}
 )
+
+// Tx returns a transactional client.
+func (c *Client) Tx(ctx context.Context, opts *sql.TxOptions) (*TxClient, error) {
+	if _, ok := c.Driver.(TxDriver); ok {
+		return nil, fmt.Errorf("sql/sqlclient: cannot start a transaction within a transaction")
+	}
+	tx, err := c.DB.BeginTx(ctx, opts)
+	if err != nil {
+		return nil, fmt.Errorf("sql/sqlclient: starting transaction: %w", err)
+	}
+	v, ok := drivers.Load(c.Name)
+	if !ok {
+		return nil, fmt.Errorf("sql/sqlclient: unexpected missing opener %q", c.Name)
+	}
+	drv, err := v.(*driver).openDriver(tx)
+	if err != nil {
+		return nil, fmt.Errorf("sql/sqlclient: opengin atlas driver: %w", err)
+	}
+	ic := *c
+	c.Driver = &txDriver{Driver: drv, tx: tx}
+	return &TxClient{
+		Client: &ic,
+		Tx:     tx,
+		ctx:    ctx,
+	}, nil
+}
 
 // AddClosers adds list of closers to close at the end of the client lifetime.
 func (c *Client) AddClosers(closers ...io.Closer) {
@@ -287,3 +336,21 @@ func Register(name string, opener Opener, opts ...RegisterOption) {
 		})
 	}
 }
+
+// txDriver wraps a migrate.Driver and adds methods to implement TxDriver.
+type txDriver struct {
+	migrate.Driver         // The migrate.Driver wrapping the transaction.
+	tx             *sql.Tx // The same transaction to be able to call Commit and Rollback.
+}
+
+// Commit the transaction.
+func (d *txDriver) Commit() error {
+	return d.tx.Commit()
+}
+
+// Rollback the transaction.
+func (d *txDriver) Rollback() error {
+	return d.tx.Rollback()
+}
+
+var _ TxDriver = (*txDriver)(nil)
