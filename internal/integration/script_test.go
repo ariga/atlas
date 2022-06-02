@@ -41,6 +41,7 @@ func TestMySQL_Script(t *testing.T) {
 				"cmphcl":  t.cmdCmpHCL,
 				"cmpshow": t.cmdCmpShow,
 				"execsql": t.cmdExec,
+				"atlas":   t.cmdCLI,
 			},
 		})
 	})
@@ -88,11 +89,28 @@ func (t *myTest) setupScript(env *testscript.Env) error {
 	env.Setenv("version", t.version)
 	env.Setenv("charset", attrs[0].(*schema.Charset).V)
 	env.Setenv("collate", attrs[1].(*schema.Collation).V)
+	if err := replaceDBURL(env, t.dsn("")); err != nil {
+		return err
+	}
 	return setupScript(t.T, env, t.db, "DROP SCHEMA IF EXISTS %s")
+}
+
+func replaceDBURL(env *testscript.Env, url string) error {
+	// Set the workdir in the test atlas.hcl file.
+	projectFile := filepath.Join(env.WorkDir, "atlas.hcl")
+	if b, err := os.ReadFile(projectFile); err == nil {
+		rep := strings.ReplaceAll(string(b), "URL", url)
+		return os.WriteFile(projectFile, []byte(rep), 0600)
+	}
+	return nil
 }
 
 func (t *pgTest) setupScript(env *testscript.Env) error {
 	env.Setenv("version", t.version)
+	u := strings.ReplaceAll(t.dsn(), "/test", "/")
+	if err := replaceDBURL(env, u); err != nil {
+		return err
+	}
 	return setupScript(t.T, env, t.db, "DROP SCHEMA IF EXISTS %s CASCADE")
 }
 
@@ -118,6 +136,9 @@ func setupScript(t *testing.T, env *testscript.Env, db *sql.DB, dropCmd string) 
 	// Store the testscript.T for later use.
 	// See "only" function below.
 	env.Values[keyT] = env.T()
+	if err := setupCLITest(t, env); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -142,12 +163,9 @@ func (t *liteTest) setupScript(env *testscript.Env) error {
 	// environment as tests run in parallel.
 	env.Values[keyDB] = db
 	env.Values[keyDrv] = drv
-	cliPath, err := buildCmd(t.T)
-	if err != nil {
+	if err := setupCLITest(t.T, env); err != nil {
 		return err
 	}
-	env.Setenv(cliPathKey, cliPath)
-
 	// Set the workdir in the test atlas.hcl file.
 	projectFile := filepath.Join(env.WorkDir, "atlas.hcl")
 	if b, err := os.ReadFile(projectFile); err == nil {
@@ -155,6 +173,15 @@ func (t *liteTest) setupScript(env *testscript.Env) error {
 			fmt.Sprintf("sqlite://file:%s/atlas.sqlite?cache=shared&_fk=1", env.WorkDir))
 		return os.WriteFile(projectFile, []byte(rep), 0600)
 	}
+	return nil
+}
+
+func setupCLITest(t *testing.T, env *testscript.Env) error {
+	cliPath, err := buildCmd(t)
+	if err != nil {
+		return err
+	}
+	env.Setenv(cliPathKey, cliPath)
 	return nil
 }
 
@@ -191,6 +218,10 @@ func (t *myTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {
 		}
 		return create, nil
 	})
+}
+
+func (t *myTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {
+	cmdCLI(ts, neg, args, t.dsn("test"))
 }
 
 func (t *pgTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {
@@ -366,10 +397,14 @@ func (t *liteTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
 }
 
 func (t *liteTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {
+	dbURL := fmt.Sprintf("sqlite://file:%s/atlas.sqlite?cache=shared&_fk=1", ts.Getenv("WORK"))
+	cmdCLI(ts, neg, args, dbURL)
+}
+
+func cmdCLI(ts *testscript.TestScript, neg bool, args []string, dbURL string) {
 	var (
-		workDir = ts.Getenv("WORK")
-		dbURL   = fmt.Sprintf("sqlite://file:%s/atlas.sqlite?cache=shared&_fk=1", workDir)
 		cliPath = ts.Getenv(cliPathKey)
+		workDir = ts.Getenv("WORK")
 	)
 	for i, arg := range args {
 		args[i] = strings.ReplaceAll(arg, "URL", dbURL)

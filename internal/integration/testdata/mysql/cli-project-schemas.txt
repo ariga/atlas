@@ -1,0 +1,29 @@
+atlas schema apply --env local --auto-approve > out.txt
+exec cat out.txt
+stdout 'CREATE TABLE `script_cli_project_schemas`'
+
+-- 1.hcl --
+schema "script_cli_project_schemas" {
+}
+table "users" {
+   schema = schema.script_cli_project_schemas
+   column "id" {
+     type = bigint
+     null = false
+   }
+}
+-- atlas.hcl --
+env "local" {
+    url = "URL"
+    src = "./1.hcl"
+    schemas = ["script_cli_project_schemas"]
+}
+-- expected.sql --
+CREATE TABLE `users` (
+  `id` bigint NOT NULL
+)
+-- 0.hcl --
+schema "$db" {
+    charset = "$charset"
+    collate = "$collate"
+}
