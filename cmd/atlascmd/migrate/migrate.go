@@ -109,24 +109,18 @@ func (r *EntRevisions) ReadRevisions(ctx context.Context) (migrate.Revisions, er
 	return ret, nil
 }
 
-// WriteRevisions writes the revisions to the revisions table.
-func (r *EntRevisions) WriteRevisions(ctx context.Context, rs migrate.Revisions) error {
-	bulk := make([]*ent.RevisionCreate, len(rs))
-	for i, rev := range rs {
-		bulk[i] = r.ec.Revision.Create().
-			SetID(rev.Version).
-			SetDescription(rev.Description).
-			SetExecutionState(revision.ExecutionState(rev.ExecutionState)).
-			SetExecutedAt(rev.ExecutedAt).
-			SetExecutionTime(rev.ExecutionTime).
-			SetHash(rev.Hash).
-			SetOperatorVersion(rev.OperatorVersion).
-			SetMeta(rev.Meta)
-	}
-	return r.ec.Revision.CreateBulk(bulk...).
-		OnConflict(
-			sql.ConflictColumns(revision.FieldID),
-		).
+// WriteRevision writes a revision to the revisions table.
+func (r *EntRevisions) WriteRevision(ctx context.Context, rev *migrate.Revision) error {
+	return r.ec.Revision.Create().
+		SetID(rev.Version).
+		SetDescription(rev.Description).
+		SetExecutionState(revision.ExecutionState(rev.ExecutionState)).
+		SetExecutedAt(rev.ExecutedAt).
+		SetExecutionTime(rev.ExecutionTime).
+		SetHash(rev.Hash).
+		SetOperatorVersion(rev.OperatorVersion).
+		SetMeta(rev.Meta).
+		OnConflict(sql.ConflictColumns(revision.FieldID)).
 		UpdateNewValues().
 		Exec(ctx)
 }
