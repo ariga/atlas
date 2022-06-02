@@ -325,15 +325,11 @@ func Register(name string, opener Opener, opts ...RegisterOption) {
 			return c, nil
 		})
 	}
+	drv := &driver{opener, name, opt.parser, opt.openDriver}
 	for _, f := range append(opt.flavours, name) {
 		if _, ok := drivers.Load(f); ok {
 			panic("sql/sqlclient: Register called twice for " + f)
 		}
-		drivers.Store(f, &driver{
-			name:       name,
-			parser:     opt.parser,
-			openDriver: opt.openDriver,
-			Opener:     opener,
-		})
+		drivers.Store(f, drv)
 	}
 }
