@@ -3,11 +3,10 @@
 # # # # # # # # # # # # # # # #
 name: Continuous Integration
 on:
-  workflow_run:
-    workflows:
-      - "Build Docker"
-    types: 
-      - completed
+  pull_request:
+  push:
+    branches:
+      - master
 
 jobs:
   lint:
