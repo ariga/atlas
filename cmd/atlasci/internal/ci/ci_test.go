@@ -17,6 +17,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/cache"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/storage/filesystem"
 	"github.com/stretchr/testify/require"
 )
@@ -43,7 +44,9 @@ func TestGitChangeDetector(t *testing.T) {
 	require.NoError(t, err)
 	_, err = w.Add("migrations/1_applied.sql")
 	require.NoError(t, err)
-	commit, err := w.Commit("first migration file", &git.CommitOptions{})
+	commit, err := w.Commit("first migration file", &git.CommitOptions{
+		Author: &object.Signature{Name: "a8m"},
+	})
 	require.NoError(t, err)
 	_, err = r.CommitObject(commit)
 	require.NoError(t, err)
@@ -77,7 +80,9 @@ func TestGitChangeDetector(t *testing.T) {
 	require.NoError(t, err)
 	_, err = w.Add("migrations/3_new_the_second.sql")
 	require.NoError(t, err)
-	commit, err = w.Commit("second and third migration files", &git.CommitOptions{})
+	commit, err = w.Commit("second and third migration files", &git.CommitOptions{
+		Author: &object.Signature{Name: "a8m"},
+	})
 	require.NoError(t, err)
 	_, err = r.CommitObject(commit)
 	require.NoError(t, err)

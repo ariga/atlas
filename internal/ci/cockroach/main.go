@@ -1,3 +1,7 @@
+// Copyright 2021-present The Atlas Authors. All rights reserved.
+// This source code is licensed under the Apache 2.0 license found
+// in the LICENSE file in the root directory of this source tree.
+
 package main
 
 import (
@@ -7,7 +11,7 @@ import (
 	"text/template"
 )
 
-type Params struct {
+type params struct {
 	Version string
 }
 
@@ -20,7 +24,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	p := Params{
+	p := params{
 		Version: os.Args[1],
 	}
 	t, err := template.New("docker").Parse(dockerTmpl)

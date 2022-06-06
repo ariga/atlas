@@ -24,7 +24,11 @@ jobs:
           for i in $VER
           do
             :
-            go run internal/ci/cockroach/main.go $i > internal/ci/cockroach/Dockerfile
-            docker build -t ghcr.io/ariga/cockroachdb-single-node:$i internal/ci/cockroach/
-            docker push ghcr.io/ariga/cockroachdb-single-node:$i
+            if ! docker manifest inspect ghcr.io/ariga/cockroachdb-single-node:$i; then
+              go run internal/ci/cockroach/main.go $i > internal/ci/cockroach/Dockerfile
+              docker build -t ghcr.io/ariga/cockroachdb-single-node:$i internal/ci/cockroach/
+              docker push ghcr.io/ariga/cockroachdb-single-node:$i
+            else
+              echo image already exists
+            fi
           done
