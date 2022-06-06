@@ -308,7 +308,7 @@ func TestExecutor(t *testing.T) {
 	dir, err := migrate.NewLocalDir(t.TempDir())
 	require.NoError(t, err)
 	ex, err = migrate.NewExecutor(&mockDriver{}, dir, nil)
-	require.EqualError(t, err, "sql/migrate: execute: mockRevisionReadWriter cannot be nil")
+	require.EqualError(t, err, "sql/migrate: execute: rrw cannot be nil")
 	require.Nil(t, ex)
 
 	// Does not work if no locking mechanism is provided.
@@ -355,12 +355,13 @@ func TestExecutor(t *testing.T) {
 	})
 	requireEqualRevisions(t, migrate.Revisions{rev1, rev2}, migrate.Revisions(*rrw))
 	require.Equal(t, []migrate.LogEntry{
-		migrate.LogExecution{Files: []string{"1.a_sub.up.sql", "2.10.x-20_description.sql"}},
+		migrate.LogExecution{To: "2.10.x-20", Files: []string{"1.a_sub.up.sql", "2.10.x-20_description.sql"}},
 		migrate.LogFile{Version: "1.a", Desc: "sub.up"},
 		migrate.LogStmt{SQL: "CREATE TABLE t_sub(c int);"},
 		migrate.LogStmt{SQL: "ALTER TABLE t_sub ADD c1 int;"},
 		migrate.LogFile{Version: "2.10.x-20", Desc: "description"},
 		migrate.LogStmt{SQL: "ALTER TABLE t_sub ADD c2 int;"},
+		migrate.LogDone{},
 	}, []migrate.LogEntry(*log))
 	require.Equal(t, drv.lockCounter, 1)
 	require.Equal(t, drv.unlockCounter, 1)
