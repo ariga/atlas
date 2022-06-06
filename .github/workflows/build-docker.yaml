@@ -21,7 +21,7 @@ jobs:
       - name: "build cockroach image"
         run: |
           VER="${{ env.CRDB_VERSIONS }}"
-          for i in $VER:
+          for i in $VER
           do
             :
             go run internal/ci/cockroach/main.go $i > internal/ci/cockroach/Dockerfile
