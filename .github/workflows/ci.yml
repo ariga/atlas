@@ -72,7 +72,10 @@ jobs:
         working-directory: schema
       - name: Run cli tests
         run: go test -race ./...
-        working-directory: cmd
+        working-directory: cmd/atlascmd
+      - name: Run atlasci tests
+        run: go test -race ./internal/ci/...
+        working-directory: cmd/atlasci
 
   
   integration-mysql56:
