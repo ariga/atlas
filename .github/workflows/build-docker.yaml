@@ -12,6 +12,10 @@ jobs:
   build-services:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2.4.0
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.18'
       - name: "build cockroach image"
         run: |
           VER="${{ env.CRDB_VERSIONS }}"
