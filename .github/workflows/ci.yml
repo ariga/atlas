@@ -3,10 +3,11 @@
 # # # # # # # # # # # # # # # #
 name: Continuous Integration
 on:
-  pull_request:
-  push:
-    branches:
-      - master
+  workflow_run:
+    workflows:
+      - "Build Docker"
+    types: 
+      - completed
 
 jobs:
   lint:
@@ -480,7 +481,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       cockroach:
-        image: timveil/cockroachdb-single-node:latest
+        image: ghcr.io/atlas/cockroachdb-single-node:v21.2.11
         
         ports:
           - 26257:26257
