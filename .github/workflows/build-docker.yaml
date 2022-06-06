@@ -23,6 +23,6 @@ jobs:
           do
             :
             go run internal/ci/cockroach/main.go $i > internal/ci/cockroach/Dockerfile
-            docker build -t atlas/cockroachdb-single-node:$i internal/ci/cockroach/
-            docker push ghcr.io/ariga/atlas/cockroachdb-single-node:$i
+            docker build -t ghcr.io/ariga/cockroachdb-single-node:$i internal/ci/cockroach/
+            docker push ghcr.io/ariga/cockroachdb-single-node:$i
           done
