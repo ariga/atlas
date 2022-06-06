@@ -1,0 +1,24 @@
+name: Build Docker
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+env:
+  CRDB_VERSIONS: v21.2.11 v22.1.0
+
+jobs:
+  build-services:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "build cockroach image"
+        run: |
+          VER=${{ env.CRDB_VERSIONS }}
+          for i in $VER:
+          do
+            :
+            go run internal/ci/cockroach/main.go $i > internal/ci/cockroach/Dockerfile.$i
+            docker build -t atlas/cockroachdb-single-node:$i internal/ci/cockroach/Dockerfile.$i
+            docker push ghcr.io/atlas/cockroachdb-single-node:$i
+          done
