@@ -22,7 +22,6 @@ jobs:
           for i in $VER:
           do
             :
-            echo about to build cockroach version $i
             go run internal/ci/cockroach/main.go $i > internal/ci/cockroach/Dockerfile
             docker build -t atlas/cockroachdb-single-node:$i internal/ci/cockroach/
             docker push ghcr.io/atlas/cockroachdb-single-node:$i
