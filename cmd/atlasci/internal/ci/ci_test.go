@@ -6,11 +6,16 @@ package ci_test
 
 import (
 	"context"
+	"io"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"ariga.io/atlas/cmd/atlasci/internal/ci"
 	"ariga.io/atlas/sql/migrate"
-	"arigo.io/atlasci/internal/ci"
+	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlclient"
+	_ "ariga.io/atlas/sql/sqlite"
 
 	"github.com/go-git/go-billy/v5/osfs"
 	"github.com/go-git/go-billy/v5/util"
@@ -19,17 +24,18 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/cache"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/storage/filesystem"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGitChangeDetector(t *testing.T) {
 	cs, err := ci.NewGitChangeDetector("", nil)
 	require.Nil(t, cs)
-	require.EqualError(t, err, "internal/ci: root cannot be \"\"")
+	require.EqualError(t, err, "internal/ci: root cannot be empty")
 
 	cs, err = ci.NewGitChangeDetector("testdata", nil)
 	require.Nil(t, cs)
-	require.EqualError(t, err, "internal/ci: dir cannot be <nil>")
+	require.EqualError(t, err, "internal/ci: dir cannot be nil")
 
 	tmp, err := util.TempDir(osfs.Default, "", "testdata")
 	require.NoError(t, err)
@@ -94,4 +100,66 @@ func TestGitChangeDetector(t *testing.T) {
 	require.Equal(t, "1_applied.sql", base[0].Name())
 	require.Equal(t, "2_new.sql", feat[0].Name())
 	require.Equal(t, "3_new_the_second.sql", feat[1].Name())
+}
+
+func TestDevLoader_LoadChanges(t *testing.T) {
+	ctx := context.Background()
+	c, err := sqlclient.Open(ctx, "sqlite://ci?mode=memory&cache=shared&_fk=1")
+	require.NoError(t, err)
+	defer c.Close()
+	err = c.ApplyChanges(ctx, []schema.Change{
+		&schema.AddTable{
+			T: schema.NewTable("users").AddColumns(schema.NewIntColumn("id", "int")),
+		},
+	})
+	require.NoError(t, err)
+	l := &ci.DevLoader{Dev: c, Scan: testDir{}}
+	diff, err := l.LoadChanges(ctx, nil)
+	require.NoError(t, err)
+	require.Empty(t, diff)
+
+	files := []migrate.File{
+		testFile{name: "1.sql", content: "CREATE TABLE t1 (id INT)"},
+		testFile{name: "2.sql", content: "CREATE TABLE t2 (id INT)\nDROP TABLE users"},
+	}
+	diff, err = l.LoadChanges(ctx, files)
+	require.NoError(t, err)
+	require.Equal(t, files[0], diff[0].File)
+	require.Len(t, diff[0].Changes, 1)
+	require.Zero(t, diff[0].Changes[0].Pos)
+	require.Equal(t, "CREATE TABLE t1 (id INT)", diff[0].Changes[0].Stmt)
+	require.IsType(t, (*schema.AddTable)(nil), diff[0].Changes[0].Changes[0])
+
+	require.Equal(t, files[1], diff[1].File)
+	require.Len(t, diff[1].Changes, 2)
+	require.Zero(t, diff[1].Changes[0].Pos)
+	require.Equal(t, "CREATE TABLE t2 (id INT)", diff[1].Changes[0].Stmt)
+	require.IsType(t, (*schema.AddTable)(nil), diff[1].Changes[0].Changes[0])
+	require.Zero(t, diff[1].Changes[0].Pos)
+	require.Equal(t, "DROP TABLE users", diff[1].Changes[1].Stmt)
+	require.IsType(t, (*schema.DropTable)(nil), diff[1].Changes[1].Changes[0])
+}
+
+type testDir struct {
+	migrate.Scanner
+}
+
+func (testDir) Stmts(f migrate.File) ([]string, error) {
+	buf, err := io.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+	return strings.Split(string(buf), "\n"), nil
+}
+
+type testFile struct {
+	name, content string
+}
+
+func (f testFile) Name() string {
+	return f.name
+}
+
+func (f testFile) Read(p []byte) (n int, err error) {
+	return copy(p, f.content), io.EOF
 }

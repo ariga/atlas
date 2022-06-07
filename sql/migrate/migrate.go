@@ -732,10 +732,10 @@ func (d *LocalDir) Desc(f File) (string, error) {
 	return strings.TrimSuffix(split[1], ".sql"), nil
 }
 
-var (
-	_ Dir     = (*LocalDir)(nil)
-	_ Scanner = (*LocalDir)(nil)
-)
+var _ interface {
+	Dir
+	Scanner
+} = (*LocalDir)(nil)
 
 // LocalFile is used by LocalDir to implement the Scanner interface.
 type LocalFile struct {
