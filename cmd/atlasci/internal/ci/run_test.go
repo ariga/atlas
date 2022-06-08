@@ -32,7 +32,7 @@ func TestRunner_Run(t *testing.T) {
 			},
 		},
 		Analyzer: &testAnalyzer{},
-		Reporter: sqlcheck.NopReporter,
+		Reporter: sqlcheck.NopReportWriter,
 	}
 	require.NoError(t, r.Run(ctx))
 

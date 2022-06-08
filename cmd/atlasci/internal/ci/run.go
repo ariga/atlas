@@ -29,7 +29,7 @@ type Runner struct {
 	Analyzer sqlcheck.Analyzer
 
 	// Reporter is used to report diagnostics in the CI.
-	Reporter sqlcheck.Reporter
+	Reporter sqlcheck.ReportWriter
 }
 
 // Run executes the CI job.
@@ -56,7 +56,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 	for _, f := range files {
-		if err := r.Analyzer.Analyze(ctx, &sqlcheck.Pass{File: f, Dev: r.Dev, Report: r.Reporter}); err != nil {
+		if err := r.Analyzer.Analyze(ctx, &sqlcheck.Pass{File: f, Dev: r.Dev, Reporter: r.Reporter}); err != nil {
 			return err
 		}
 	}
