@@ -190,11 +190,11 @@ func TestExecutor_ReadState(t *testing.T) {
 	require.NoError(t, err)
 
 	// Locking not supported.
-	_, err = migrate.NewExecutor(&mockDriver{}, d, migrate.NoopRevisionReadWriter{})
+	_, err = migrate.NewExecutor(&mockDriver{}, d, migrate.NopRevisionReadWriter{})
 	require.ErrorIs(t, err, migrate.ErrLockUnsupported)
 
 	drv := &lockMockDriver{&mockDriver{}}
-	ex, err := migrate.NewExecutor(drv, d, migrate.NoopRevisionReadWriter{})
+	ex, err := migrate.NewExecutor(drv, d, migrate.NopRevisionReadWriter{})
 	require.NoError(t, err)
 
 	_, err = ex.ReadState(ctx)
@@ -223,7 +223,7 @@ func TestExecutor_ReadState(t *testing.T) {
 
 	// Works.
 	edrv := &emptyMockDriver{drv}
-	ex, err = migrate.NewExecutor(edrv, d, migrate.NoopRevisionReadWriter{})
+	ex, err = migrate.NewExecutor(edrv, d, migrate.NopRevisionReadWriter{})
 	require.NoError(t, err)
 	_, err = ex.ReadState(ctx)
 	require.NoError(t, err)

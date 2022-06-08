@@ -262,7 +262,7 @@ func DisableChecksum() PlannerOption {
 // Plan calculates the migration Plan required for moving the current state (from) state to
 // the next state (to). A StateReader can be a directory, static schema elements or a Driver connection.
 func (p *Planner) Plan(ctx context.Context, name string, to StateReader) (*Plan, error) {
-	ex, err := NewExecutor(p.drv, p.dir, NoopRevisionReadWriter{})
+	ex, err := NewExecutor(p.drv, p.dir, NopRevisionReadWriter{})
 	if err != nil {
 		return nil, err
 	}
@@ -578,21 +578,21 @@ func (e *Executor) ReadState(ctx context.Context) (realm *schema.Realm, err erro
 	return
 }
 
-// NoopRevisionReadWriter is a RevisionsReadWriter that does nothing.
+// NopRevisionReadWriter is a RevisionsReadWriter that does nothing.
 // It is useful for one-time replay of the migration directory.
-type NoopRevisionReadWriter struct{}
+type NopRevisionReadWriter struct{}
 
 // ReadRevisions implements RevisionsReadWriter.ReadRevisions,
-func (NoopRevisionReadWriter) ReadRevisions(context.Context) (Revisions, error) {
+func (NopRevisionReadWriter) ReadRevisions(context.Context) (Revisions, error) {
 	return nil, nil
 }
 
 // WriteRevision implements RevisionsReadWriter.WriteRevision,
-func (NoopRevisionReadWriter) WriteRevision(context.Context, *Revision) error {
+func (NopRevisionReadWriter) WriteRevision(context.Context, *Revision) error {
 	return nil
 }
 
-var _ RevisionReadWriter = (*NoopRevisionReadWriter)(nil)
+var _ RevisionReadWriter = (*NopRevisionReadWriter)(nil)
 
 // done computes and sets the ExecutionTime.
 func (r *Revision) done(ok bool) {
