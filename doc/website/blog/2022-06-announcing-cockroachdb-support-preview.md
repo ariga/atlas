@@ -6,11 +6,11 @@ image: https://blog.ariga.io/uploads/images/posts/cockroachdb/cockroachdb.png
 ---
 
 Today, I'm happy to announce the release of [v0.4.2](https://github.com/ariga/atlas/releases/tag/v0.4.2) of the Atlas CLI. 
-This version includes many improvements and fixes, but I wanted to share with you  exciting news about something I
+This version includes many improvements and fixes, but I wanted to share with you exciting news about something I
 personally worked on. As of v0.4.2, Atlas includes preview support for CockroachDB 🎉 
 
 ## Atlas
-[Atlas](https://atlasgo.io) is an open-source project that helps developers better manage their database
+[Atlas](https://atlasgo.io) is an open-source project that helps developers to better manage their database
 schemas. It has a [CLI tool](https://atlasgo.io/cli/reference) and a
 [Terraform integration](https://atlasgo.io/blog/2022/05/04/announcing-terraform-provider). By using Atlas's
 Data Definition Language (with a syntax similar to Terraform), users can plan, verify and apply changes
@@ -35,7 +35,7 @@ While CockroachDB aims to be PostgreSQL compatible, it still has some incompatib
 [2](https://github.com/cockroachdb/cockroach/issues/82064),[3](https://github.com/cockroachdb/cockroach/issues/81659))
 which prevented Atlas users from using the existing Postgres dialect from working with it.  
   
-With the latest release of Atlas, the Postgres driver automatically detects when it is connected to a CockroachDB
+With the latest release of Atlas, the Postgres driver automatically detects if it is connected to a CockroachDB
 database and uses a custom driver which provides compatability with CockroachDB.
 
 ### Getting started with Atlas and CockroachDB
@@ -47,10 +47,10 @@ brew install ariga/tap/atlas
 ```
 For installation instructions on other platforms, see [the docs](https://atlasgo.io/cli/getting-started/setting-up#install-the-cli).
 
-For the purpose of this example, let's spin up a local, [single-node CockroachDB cluster](https://github.com/cockroachlabs-field/cockroachdb-single-node)
+For the purpose of this example, let's spin up a local, [single-node CockroachDB cluster](https://www.cockroachlabs.com/docs/stable/cockroach-start-single-node.html)
 in a container by running:
 ```
-docker run -it -p 8080:8080 -p 26257:26257 -e "DATABASE_NAME=test" -e "MEMORY_SIZE=.5" timveil/cockroachdb-single-node:latest
+docker run -it -p 8080:8080 -p 26257:26257 -e "DATABASE_NAME=test" -e "MEMORY_SIZE=.5" cockroachdb/cockroach:v21.2.11 start-single-node --insecure
 ```
 
 Next, use Atlas's `schema inspect` command to read the schema of our local database and save the result to a file:
@@ -92,7 +92,7 @@ Use the arrow keys to navigate: ↓ ↑ → ←
   ▸ Apply
     Abort
 ```
-After hitting "Apply", Atlas connects applies our desired schema to the database:
+After hitting "Apply", Atlas applies the desired schema to the database:
 ```
 ✔ Apply
 ```
