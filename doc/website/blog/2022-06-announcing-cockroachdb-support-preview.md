@@ -1,5 +1,5 @@
 ---
-title: Announcing Atlas CLI v0.4.2 with preview support for CockroachDB 🪳
+title: Announcing v0.4.2 with preview support for CockroachDB
 authors: Hedwigz
 tags: [cockroachdb, integration, announcement]
 image: https://blog.ariga.io/uploads/images/posts/cockroachdb/cockroachdb.png
