@@ -6,11 +6,11 @@ image: https://blog.ariga.io/uploads/images/posts/cockroachdb/cockroachdb.png
 ---
 
 Today, I'm happy to announce the release of [v0.4.2](https://github.com/ariga/atlas/releases/tag/v0.4.2) of the Atlas CLI. 
-This version includes many improvements and fixes, but I wanted to share with you  exciting news about something I
+This version includes many improvements and fixes, but I wanted to share with you exciting news about something I
 personally worked on. As of v0.4.2, Atlas includes preview support for CockroachDB 🎉 
 
 ## Atlas
-[Atlas](https://atlasgo.io) is an open-source project that helps developers better manage their database
+[Atlas](https://atlasgo.io) is an open-source project that helps developers to better manage their database
 schemas. It has a [CLI tool](https://atlasgo.io/cli/reference) and a
 [Terraform integration](https://atlasgo.io/blog/2022/05/04/announcing-terraform-provider). By using Atlas's
 Data Definition Language (with a syntax similar to Terraform), users can plan, verify and apply changes
@@ -33,7 +33,7 @@ for Atlas to support it.
 While CockroachDB aims to be PostgreSQL compatible, it still has some incompatibilities 
 (e.g. [1](https://github.com/cockroachdb/cockroach/issues/20296#issuecomment-1066140651), 
 [2](https://github.com/cockroachdb/cockroach/issues/82064),[3](https://github.com/cockroachdb/cockroach/issues/81659))
-which prevented Atlas users from using the existing Postgres dialect from working with it.  
+which prevented Atlas users using the existing Postgres dialect from working with it.  
   
 With the latest release of Atlas, the Postgres driver automatically detects if it is connected to a CockroachDB
 database and uses a custom driver which provides compatability with CockroachDB.
@@ -58,7 +58,7 @@ Next, let's seed the database with a simple table:
 docker exec crdb cockroach sql --insecure -e 'CREATE TABLE users (id int primary key);'
 ```
 
-Next, use Atlas's `schema inspect` command to read the schema of our local database and save the result to a file:
+After creating the `users` table, use Atlas's `schema inspect` command to read the schema of our local database and save the result to a file:
 ```
 atlas schema inspect -u 'postgres://root:pass@localhost:26257/?sslmode=disable' --schema public > schema.hcl
 ```
