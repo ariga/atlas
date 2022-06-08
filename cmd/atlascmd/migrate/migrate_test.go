@@ -43,9 +43,9 @@ func TestEntRevisions_Flush(t *testing.T) {
 		fmt.Sprintf("sqlite://%s?cache=shared&mode=memory&_fk=true", filepath.Join(t.TempDir(), "revision")),
 	)
 	require.NoError(t, err)
-	r, err := NewEntRevisions(c, WithCache())
+	r, err := NewEntRevisions(c)
 	require.NoError(t, err)
-	require.True(t, r.cacheEnabled)
+	require.True(t, r.useCache())
 	require.NoError(t, r.Init(ctx))
 
 	// Writing will only fill the cache.

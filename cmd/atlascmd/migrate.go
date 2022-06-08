@@ -212,11 +212,6 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 	}
 	// Currently, only in DB revisions are supported.
 	opts := []entmigrate.Option{entmigrate.WithSchema(MigrateFlags.RevisionSchema)}
-	// For SQLite dialect and flavors we have to enable the revision write cache to postpone writing to
-	// the database until the transaction wrapping the migration execution has been committed.
-	if target.Name == "sqlite3" {
-		opts = append(opts, entmigrate.WithCache())
-	}
 	rrw, err := entmigrate.NewEntRevisions(target, opts...)
 	if err != nil {
 		return err
