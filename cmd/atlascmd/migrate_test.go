@@ -20,6 +20,7 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
+	"ariga.io/atlas/sql/sqlite"
 	_ "ariga.io/atlas/sql/sqlite"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -29,6 +30,81 @@ import (
 func TestMigrate(t *testing.T) {
 	_, err := runCmd(Root, "migrate")
 	require.NoError(t, err)
+}
+
+func TestMigrate_Apply(t *testing.T) {
+	p := t.TempDir()
+
+	// Fails on empty directory.
+	_, err := runCmd(
+		Root, "migrate", "apply",
+		"--dir", "file://"+p,
+		"--to", openSQLite(t, ""),
+	)
+	require.ErrorIs(t, err, migrate.ErrNoPendingFiles)
+
+	// Fails on directory without sum file.
+	require.NoError(t, os.Rename(
+		filepath.FromSlash("testdata/sqlite/atlas.sum"),
+		filepath.FromSlash("testdata/sqlite/atlas.sum.bak"),
+	))
+	t.Cleanup(func() {
+		os.Rename(filepath.FromSlash("testdata/sqlite/atlas.sum.bak"), filepath.FromSlash("testdata/sqlite/atlas.sum"))
+	})
+
+	_, err = runCmd(
+		Root, "migrate", "apply",
+		"--dir", "file://testdata/sqlite",
+		"--to", openSQLite(t, ""),
+	)
+	require.ErrorIs(t, err, migrate.ErrChecksumNotFound)
+	require.NoError(t, os.Rename(
+		filepath.FromSlash("testdata/sqlite/atlas.sum.bak"),
+		filepath.FromSlash("testdata/sqlite/atlas.sum"),
+	))
+
+	// A lock will prevent execution.
+	sqlclient.Register(
+		"sqlitelockapply",
+		sqlclient.OpenerFunc(func(ctx context.Context, u *url.URL) (*sqlclient.Client, error) {
+			client, err := sqlclient.Open(ctx, strings.Replace(u.String(), u.Scheme, "sqlite", 1))
+			if err != nil {
+				return nil, err
+			}
+			client.Driver = &sqliteLockerDriver{client.Driver}
+			return client, nil
+		}),
+		sqlclient.RegisterDriverOpener(func(db schema.ExecQuerier) (migrate.Driver, error) {
+			drv, err := sqlite.Open(db)
+			if err != nil {
+				return nil, err
+			}
+			return &sqliteLockerDriver{drv}, nil
+		}),
+	)
+	f, err := os.Create(filepath.Join(p, "test.db"))
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+
+	s, err := runCmd(
+		Root, "migrate", "apply",
+		"--dir", "file://testdata/sqlite",
+		"--to", fmt.Sprintf("sqlitelockapply://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
+	)
+	require.ErrorIs(t, err, errLock)
+	require.True(t, strings.HasPrefix(s, "Error: sql/migrate: acquiring database lock: "+errLock.Error()))
+
+	// Will work and print stuff to the console.
+	s, err = runCmd(
+		Root, "migrate", "apply",
+		"--dir", "file://testdata/sqlite",
+		"--to", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
+	)
+	require.NoError(t, err)
+	require.Contains(t, s, "20220318104614")                         // log to version
+	require.Contains(t, s, "CREATE TABLE tbl (`col` int NOT NULL);") // logs statement
+	require.Contains(t, s, "1 migrations")                           // logs amount of migrations
+	require.Contains(t, s, "1 sql statements")                       // logs amount of statement
 }
 
 func TestMigrate_Diff(t *testing.T) {
@@ -59,7 +135,7 @@ func TestMigrate_Diff(t *testing.T) {
 	require.FileExists(t, filepath.Join(p, "atlas.sum"))
 
 	// A lock will prevent diffing.
-	sqlclient.Register("sqlitelock", sqlclient.OpenerFunc(func(ctx context.Context, u *url.URL) (*sqlclient.Client, error) {
+	sqlclient.Register("sqlitelockdiff", sqlclient.OpenerFunc(func(ctx context.Context, u *url.URL) (*sqlclient.Client, error) {
 		client, err := sqlclient.Open(ctx, strings.Replace(u.String(), u.Scheme, "sqlite", 1))
 		if err != nil {
 			return nil, err
@@ -74,11 +150,11 @@ func TestMigrate_Diff(t *testing.T) {
 		Root, "migrate", "diff",
 		"name",
 		"--dir", "file://"+t.TempDir(),
-		"--dev-url", fmt.Sprintf("sqlitelock://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
+		"--dev-url", fmt.Sprintf("sqlitelockdiff://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
 		"--to", hclURL(t),
 	)
-	require.True(t, strings.HasPrefix(s, "Error: "+lockErr))
-	require.EqualError(t, err, lockErr)
+	require.True(t, strings.HasPrefix(s, "Error: "+errLock.Error()))
+	require.ErrorIs(t, err, errLock)
 }
 
 func TestMigrate_New(t *testing.T) {
@@ -127,10 +203,10 @@ func TestMigrate_New(t *testing.T) {
 	require.FileExists(t, filepath.Join(p, v+"_liquibase.sql"))
 	require.Equal(t, 9, countFiles(t, p))
 
-	f := filepath.Join("testdata", "new.sql")
+	f := filepath.Join("testdata", "mysql", "new.sql")
 	require.NoError(t, os.WriteFile(f, []byte("contents"), 0600))
 	t.Cleanup(func() { os.Remove(f) })
-	s, err = runCmd(Root, "migrate", "new", "--dir", "file://testdata")
+	s, err = runCmd(Root, "migrate", "new", "--dir", "file://testdata/mysql")
 	require.NotZero(t, s)
 	require.Error(t, err)
 }
@@ -138,14 +214,14 @@ func TestMigrate_New(t *testing.T) {
 func TestMigrate_Validate(t *testing.T) {
 	// Without re-playing.
 	MigrateFlags.DevURL = "" // global flags are set from other tests ...
-	s, err := runCmd(Root, "migrate", "validate", "--dir", "file://testdata")
+	s, err := runCmd(Root, "migrate", "validate", "--dir", "file://testdata/mysql")
 	require.Zero(t, s)
 	require.NoError(t, err)
 
-	f := filepath.Join("testdata", "new.sql")
+	f := filepath.Join("testdata", "mysql", "new.sql")
 	require.NoError(t, os.WriteFile(f, []byte("contents"), 0600))
 	t.Cleanup(func() { os.Remove(f) })
-	s, err = runCmd(Root, "migrate", "validate", "--dir", "file://testdata")
+	s, err = runCmd(Root, "migrate", "validate", "--dir", "file://testdata/mysql")
 	require.NotZero(t, s)
 	require.Error(t, err)
 	require.NoError(t, os.Remove(f))
@@ -165,17 +241,17 @@ func TestMigrate_Validate(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should fail since the files are not compatible with SQLite.
-	_, err = runCmd(Root, "migrate", "validate", "--dir", "file://testdata", "--dev-url", openSQLite(t, ""))
+	_, err = runCmd(Root, "migrate", "validate", "--dir", "file://testdata/mysql", "--dev-url", openSQLite(t, ""))
 	require.Error(t, err)
 }
 
 func TestMigrate_Hash(t *testing.T) {
-	s, err := runCmd(Root, "migrate", "hash", "--dir", "file://testdata")
+	s, err := runCmd(Root, "migrate", "hash", "--dir", "file://testdata/mysql")
 	require.Zero(t, s)
 	require.NoError(t, err)
 
 	p := t.TempDir()
-	err = copyFile(filepath.Join("testdata", "20220318104614_initial.sql"), filepath.Join(p, "20220318104614_initial.sql"))
+	err = copyFile(filepath.Join("testdata", "mysql", "20220318104614_initial.sql"), filepath.Join(p, "20220318104614_initial.sql"))
 	require.NoError(t, err)
 
 	s, err = runCmd(Root, "migrate", "hash", "--dir", "file://"+p, "--force")
@@ -194,7 +270,7 @@ func TestMigrate_Hash(t *testing.T) {
 
 	p = t.TempDir()
 	require.NoError(t, copyFile(
-		filepath.Join("testdata", "20220318104614_initial.sql"),
+		filepath.Join("testdata", "mysql", "20220318104614_initial.sql"),
 		filepath.Join(p, "20220318104614_initial.sql"),
 	))
 	s, err = runCmd(Root, "migrate", "hash", "--dir", "file://"+os.Getenv("MIGRATION_DIR"))
@@ -305,10 +381,10 @@ func copyFile(src, dst string) error {
 
 type sqliteLockerDriver struct{ migrate.Driver }
 
-const lockErr = "lockErr"
+var errLock = errors.New("lockErr")
 
 func (d *sqliteLockerDriver) Lock(context.Context, string, time.Duration) (schema.UnlockFunc, error) {
-	return func() error { return nil }, errors.New(lockErr)
+	return func() error { return nil }, errLock
 }
 
 func countFiles(t *testing.T, p string) int {

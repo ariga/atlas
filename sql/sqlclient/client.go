@@ -43,6 +43,9 @@ type (
 		// and encoding the schema documents.
 		schemaspec.Marshaler
 		schemahcl.Evaluator
+
+		// A func to open a migrate.Driver with a given schema.ExecQuerier. Used when creating a TxClient.
+		openDriver func(schema.ExecQuerier) (migrate.Driver, error)
 	}
 
 	// TxClient is returned by calling Client.Tx. It behaves the same as Client,
@@ -69,17 +72,16 @@ type (
 
 // Tx returns a transactional client.
 func (c *Client) Tx(ctx context.Context, opts *sql.TxOptions) (*TxClient, error) {
+	if c.openDriver == nil {
+		return nil, errors.New("sql/sqlclient: unexpected driver opener: <nil>")
+	}
 	tx, err := c.DB.BeginTx(ctx, opts)
 	if err != nil {
 		return nil, fmt.Errorf("sql/sqlclient: starting transaction: %w", err)
 	}
-	v, ok := drivers.Load(c.Name)
-	if !ok {
-		return nil, fmt.Errorf("sql/sqlclient: unexpected missing opener %q", c.Name)
-	}
-	drv, err := v.(*driver).openDriver(tx)
+	drv, err := c.openDriver(tx)
 	if err != nil {
-		return nil, fmt.Errorf("sql/sqlclient: opengin atlas driver: %w", err)
+		return nil, fmt.Errorf("sql/sqlclient: opening atlas driver: %w", err)
 	}
 	ic := *c
 	ic.Driver = drv
@@ -139,9 +141,8 @@ type (
 
 	driver struct {
 		Opener
-		name       string
-		parser     URLParser
-		openDriver func(schema.ExecQuerier) (migrate.Driver, error)
+		name   string
+		parser URLParser
 	}
 )
 
@@ -265,6 +266,7 @@ func RegisterCodec(m schemaspec.Marshaler, e schemahcl.Evaluator) RegisterOption
 
 // RegisterDriverOpener registers a func to create a migrate.Driver from a schema.ExecQuerier.
 // Registering this function is implicitly done when using DriverOpener.
+// The passed opener is used when creating a TxClient.
 func RegisterDriverOpener(open func(schema.ExecQuerier) (migrate.Driver, error)) RegisterOption {
 	return func(opts *registerOptions) {
 		opts.openDriver = open
@@ -277,9 +279,6 @@ func DriverOpener(open func(schema.ExecQuerier) (migrate.Driver, error)) Opener 
 		v, ok := drivers.Load(u.Scheme)
 		if !ok {
 			return nil, fmt.Errorf("sql/sqlclient: unexpected missing opener %q", u.Scheme)
-		}
-		if v.(*driver).openDriver == nil {
-			v.(*driver).openDriver = open
 		}
 		ur := v.(*driver).parser.ParseURL(u)
 		db, err := sql.Open(v.(*driver).name, ur.DSN)
@@ -294,10 +293,11 @@ func DriverOpener(open func(schema.ExecQuerier) (migrate.Driver, error)) Opener 
 			return nil, err
 		}
 		return &Client{
-			Name:   v.(*driver).name,
-			DB:     db,
-			URL:    ur,
-			Driver: drv,
+			Name:       v.(*driver).name,
+			DB:         db,
+			URL:        ur,
+			Driver:     drv,
+			openDriver: open,
 		}, nil
 	})
 }
@@ -325,7 +325,19 @@ func Register(name string, opener Opener, opts ...RegisterOption) {
 			return c, nil
 		})
 	}
-	drv := &driver{opener, name, opt.parser, opt.openDriver}
+	// If there was a driver opener registered by a call to RegisterDriverOpener, it has precedence.
+	if opt.openDriver != nil {
+		f := opener
+		opener = OpenerFunc(func(ctx context.Context, u *url.URL) (*Client, error) {
+			c, err := f.Open(ctx, u)
+			if err != nil {
+				return nil, err
+			}
+			c.openDriver = opt.openDriver
+			return c, err
+		})
+	}
+	drv := &driver{opener, name, opt.parser}
 	for _, f := range append(opt.flavours, name) {
 		if _, ok := drivers.Load(f); ok {
 			panic("sql/sqlclient: Register called twice for " + f)

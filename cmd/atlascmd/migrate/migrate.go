@@ -13,6 +13,7 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
+	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	entschema "entgo.io/ent/dialect/sql/schema"
 )
@@ -20,10 +21,11 @@ import (
 type (
 	// A EntRevisions provides implementation for the migrate.RevisionReadWriter interface.
 	EntRevisions struct {
-		ac     *sqlclient.Client // underlying Atlas client
-		sc     *sqlclient.Client // underlying Atlas client connected to the named schema
-		ec     *ent.Client       // underlying Ent client
-		schema string            // name of the schema the revision table resides in
+		ac     *sqlclient.Client  // underlying Atlas client
+		sc     *sqlclient.Client  // underlying Atlas client connected to the named schema
+		ec     *ent.Client        // underlying Ent client
+		schema string             // name of the schema the revision table resides in
+		cache  []migrate.Revision // cache stores writes to Ent for blocked connections (like in SQLite).
 	}
 
 	// Option allows to configure EntRevisions by using functional arguments.
@@ -88,6 +90,8 @@ func (r *EntRevisions) Init(ctx context.Context) error {
 }
 
 // ReadRevisions reads the revisions from the revisions table.
+//
+// ReadRevisions will not return results only saved to cache.
 func (r *EntRevisions) ReadRevisions(ctx context.Context) (migrate.Revisions, error) {
 	revs, err := r.ec.Revision.Query().Order(ent.Asc(revision.FieldID)).All(ctx)
 	if err != nil {
@@ -111,6 +115,32 @@ func (r *EntRevisions) ReadRevisions(ctx context.Context) (migrate.Revisions, er
 
 // WriteRevision writes a revision to the revisions table.
 func (r *EntRevisions) WriteRevision(ctx context.Context, rev *migrate.Revision) error {
+	if r.useCache() {
+		// Do not store the pointer since we want to maintain the order for writes to the database.
+		r.cache = append(r.cache, *rev)
+		return nil
+	}
+	return r.write(ctx, rev)
+}
+
+// Flush writes the changes saved in memory to the database.
+//
+// This method exists to support both execution of migration in a transaction and saving revision for SQLite flavors,
+// since attempting to write to the database while in a transaction will fail there.
+func (r *EntRevisions) Flush(ctx context.Context) error {
+	if !r.useCache() {
+		return nil
+	}
+	for i := range r.cache {
+		if err := r.write(ctx, &r.cache[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// write attempts to write the given revision to the database.
+func (r *EntRevisions) write(ctx context.Context, rev *migrate.Revision) error {
 	return r.ec.Revision.Create().
 		SetID(rev.Version).
 		SetDescription(rev.Description).
@@ -123,6 +153,12 @@ func (r *EntRevisions) WriteRevision(ctx context.Context, rev *migrate.Revision)
 		OnConflict(sql.ConflictColumns(revision.FieldID)).
 		UpdateNewValues().
 		Exec(ctx)
+}
+
+func (r *EntRevisions) useCache() bool {
+	// For SQLite dialect and flavors we have to enable the revision write cache to postpone writing to
+	// the database until the transaction wrapping the migration execution has been committed.
+	return r.ac.Name == dialect.SQLite
 }
 
 var _ migrate.RevisionReadWriter = (*EntRevisions)(nil)

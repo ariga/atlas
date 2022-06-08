@@ -68,6 +68,38 @@ atlas migrate
 ```
 
 
+### atlas migrate apply
+
+Applies pending migration files on the connected database.
+
+#### Usage
+```
+atlas migrate apply [flags]
+```
+
+#### Details
+'atlas migrate apply' reads the migration state of the connected database and computes what migrations are pending.
+It then attempts to apply the pending migration files in the correct order onto the database. 
+The first argument denotes the maximum number of migration files to apply.
+As a safety measure 'atlas migrate apply' will abort with an error, if:
+  - the migration directory is not in sync with the 'atlas.sum' file
+  - the migration and database history do not match each other
+
+#### Example
+
+```
+  atlas migrate apply --to mysql://user:pass@localhost:3306/dbname
+  atlas migrate apply 1 --dir file:///path/to/migration/directory --to mysql://user:pass@localhost:3306/dbname
+```
+#### Flags
+```
+      --log string                log format to use (default "tty")
+      --revisions-schema string   schema name where the revisions table is to be created
+      --to string                 [driver://username:password@address/dbname?param=value] select a data source using the URL format
+
+```
+
+
 ### atlas migrate diff
 
 Compute the diff between the migration directory and a connected database and create a new migration file.
@@ -152,8 +184,8 @@ executed on the connected database in order to validate SQL semantics.
 
 ```
   atlas migrate validate
-  atlas migrate validate --dir /path/to/migration/directory
-  atlas migrate validate --dir /path/to/migration/directory --dev-url mysql://user:pass@localhost:3306/dev
+  atlas migrate validate --dir file:///path/to/migration/directory
+  atlas migrate validate --dir file:///path/to/migration/directory --dev-url mysql://user:pass@localhost:3306/dev
 ```
 #### Flags
 ```
