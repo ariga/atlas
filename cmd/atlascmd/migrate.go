@@ -248,7 +248,7 @@ func CmdMigrateValidateRun(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	ex, err := migrate.NewExecutor(dev.Driver, dir, migrate.NoopRevisionReadWriter{})
+	ex, err := migrate.NewExecutor(dev.Driver, dir, migrate.NopRevisionReadWriter{})
 	if err != nil {
 		return err
 	}
