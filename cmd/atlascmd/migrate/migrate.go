@@ -139,8 +139,8 @@ func (r *EntRevisions) Flush(ctx context.Context) error {
 	if !r.cacheEnabled {
 		return nil
 	}
-	for _, rev := range r.cache {
-		if err := r.write(ctx, &rev); err != nil {
+	for i := range r.cache {
+		if err := r.write(ctx, &r.cache[i]); err != nil {
 			return err
 		}
 	}

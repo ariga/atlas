@@ -458,6 +458,8 @@ const (
 	logFormatTTY = "tty"
 )
 
+// LogTTY is a migrate.Logger that pretty prints execution progress.
+// If the connected out is not a tty, it will fall back to a non-colorful output.
 type LogTTY struct {
 	out         io.Writer
 	start       time.Time
@@ -475,6 +477,7 @@ var (
 	indent4 = strings.Repeat(indent2, 2)
 )
 
+// Log implements the migrate.Logger interface.
 func (l *LogTTY) Log(e migrate.LogEntry) {
 	switch e := e.(type) {
 	case migrate.LogExecution:
