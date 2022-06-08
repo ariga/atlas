@@ -6,11 +6,11 @@ image: https://blog.ariga.io/uploads/images/posts/cockroachdb/cockroachdb.png
 ---
 
 Today, I'm happy to announce the release of [v0.4.2](https://github.com/ariga/atlas/releases/tag/v0.4.2) of the Atlas CLI. 
-This version includes many improvements and fixes, but I wanted to share with you exciting news about something I
+This version includes many improvements and fixes, but I wanted to share with you  exciting news about something I
 personally worked on. As of v0.4.2, Atlas includes preview support for CockroachDB 🎉 
 
 ## Atlas
-[Atlas](https://atlasgo.io) is an open-source project that helps developers to better manage their database
+[Atlas](https://atlasgo.io) is an open-source project that helps developers better manage their database
 schemas. It has a [CLI tool](https://atlasgo.io/cli/reference) and a
 [Terraform integration](https://atlasgo.io/blog/2022/05/04/announcing-terraform-provider). By using Atlas's
 Data Definition Language (with a syntax similar to Terraform), users can plan, verify and apply changes
@@ -50,32 +50,51 @@ For installation instructions on other platforms, see [the docs](https://atlasgo
 For the purpose of this example, let's spin up a local, [single-node CockroachDB cluster](https://www.cockroachlabs.com/docs/stable/cockroach-start-single-node.html)
 in a container by running:
 ```
-docker run -it -p 8080:8080 -p 26257:26257 -e "DATABASE_NAME=test" -e "MEMORY_SIZE=.5" cockroachdb/cockroach:v21.2.11 start-single-node --insecure
+docker run --rm -d -p 26257:26257 --name crdb cockroachdb/cockroach start-single-node --insecure
+```
+
+Next, let's seed the database with a simple table:
+```
+docker exec crdb cockroach sql --insecure -e 'CREATE TABLE users (id int primary key);'
 ```
 
 Next, use Atlas's `schema inspect` command to read the schema of our local database and save the result to a file:
 ```
 atlas schema inspect -u 'postgres://root:pass@localhost:26257/?sslmode=disable' --schema public > schema.hcl
 ```
-Observe the current HCL representation of the `public` schema, empty with no tables:
+Observe the current HCL representation of the `public` schema, which contains our newly created table, `users`:
 ```hcl
+table "users" {
+  schema = schema.public
+  column "id" {
+    null = false
+    type = bigint
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
 schema "public" {
 }
 ```
 
-Next, edit `schema.hcl` to add a table: 
+Next, edit `schema.hcl` to add a column to the `users` table: 
 
-```hcl title="schema.hcl"
-schema "public" {
+```hcl title="schema.hcl" {7-9}
+table "users" {
+  schema = schema.public
+  column "id" {
+    null = false
+    type = bigint
+  }
+  column "name" {
+    type = varchar(100)
+  }
+  primary_key {
+    columns = [column.id]
+  }
 }
-
-table "test" {
-    column "id" {
-        type = int
-    }
-    primary_key {
-        columns = [column.id]
-    }
+schema "public" {
 }
 ```
 Now apply the schema using the `schema apply` command:
@@ -86,8 +105,7 @@ Atlas prints out the planned changes and asks for your confirmation:
 ```
 -- Planned Changes:
 -- Create "test" table
-CREATE TABLE "public"."test" ("id" integer NOT NULL, PRIMARY KEY ("id"))
-Use the arrow keys to navigate: ↓ ↑ → ←
+ALTER TABLE "public"."users" ADD COLUMN "name" character varying(100) NOT NULL
 ? Are you sure?:
   ▸ Apply
     Abort
@@ -99,11 +117,17 @@ After hitting "Apply", Atlas applies the desired schema to the database:
 
 We have successfully applied our schema to our database. 
 
+To stop the container running CockroachDB run:
+
+```
+docker stop crdb
+```
+
 ### Learn more about Atlas
 
 In this short example, we demonstrated two of Atlas's basic features: database inspection
 and declarative schema migration (applying a desired schema on a database). Here are some topics
-you might want to explore when getting started with Atlas:
+you may want to explore when getting started with Atlas:
 * [Learn the DDL](/ddl/sql) - learn how to define any SQL resource in Atlas's data definition
   language.
 * [Try the Terraform Provider](https://atlasgo.io/blog/2022/05/04/announcing-terraform-provider) - see how you can use 
