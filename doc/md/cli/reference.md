@@ -82,7 +82,7 @@ atlas migrate apply [flags]
 It then attempts to apply the pending migration files in the correct order onto the database. 
 The first argument denotes the maximum number of migration files to apply.
 As a safety measure 'atlas migrate apply' will abort with an error, if:
-  - the migration directory is not integer according to the 'atlas.sum' file
+  - the migration directory is not in sync with the 'atlas.sum' file
   - the migration and database history do not match each other
 
 #### Example

@@ -91,7 +91,7 @@ to re-hash the contents and resolve the error
 It then attempts to apply the pending migration files in the correct order onto the database. 
 The first argument denotes the maximum number of migration files to apply.
 As a safety measure 'atlas migrate apply' will abort with an error, if:
-  - the migration directory is not integer according to the 'atlas.sum' file
+  - the migration directory is not in sync with the 'atlas.sum' file
   - the migration and database history do not match each other`,
 		Example: `  atlas migrate apply --to mysql://user:pass@localhost:3306/dbname
   atlas migrate apply 1 --dir file:///path/to/migration/directory --to mysql://user:pass@localhost:3306/dbname`,
