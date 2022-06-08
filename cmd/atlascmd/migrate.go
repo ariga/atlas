@@ -481,20 +481,20 @@ func (l *LogTTY) Log(e migrate.LogEntry) {
 		if e.From != "" {
 			fmt.Fprintf(l.out, " from %v", cyan(e.From))
 		}
-		fmt.Fprintf(l.out, " (%d migrations in total):\n\n", len(e.Files))
+		fmt.Fprintf(l.out, " (%d migrations in total):\n", len(e.Files))
 	case migrate.LogFile:
 		l.fileCounter++
 		if !l.fileStart.IsZero() {
 			l.reportFileEnd()
 		}
 		l.fileStart = time.Now()
-		fmt.Fprintf(l.out, "%s%v migrating version %v\n\n", indent2, dash, cyan(e.Version))
+		fmt.Fprintf(l.out, "\n%s%v migrating version %v\n", indent2, dash, cyan(e.Version))
 	case migrate.LogStmt:
 		l.stmtCounter++
 		fmt.Fprintf(l.out, "%s%v %s\n", indent4, arr, e.SQL)
 	case migrate.LogDone:
 		l.reportFileEnd()
-		fmt.Fprintf(l.out, "%s%v\n\n", indent2, cyan(strings.Repeat("-", 25)))
+		fmt.Fprintf(l.out, "\n%s%v\n", indent2, cyan(strings.Repeat("-", 25)))
 		fmt.Fprintf(l.out, "%s%v %v\n", indent2, dash, time.Since(l.start))
 		fmt.Fprintf(l.out, "%s%v %v migrations\n", indent2, dash, l.fileCounter)
 		fmt.Fprintf(l.out, "%s%v %v sql statements\n", indent2, dash, l.stmtCounter)
@@ -504,7 +504,7 @@ func (l *LogTTY) Log(e migrate.LogEntry) {
 }
 
 func (l *LogTTY) reportFileEnd() {
-	fmt.Fprintf(l.out, "\n%s%v ok (%v)\n\n", indent2, dash, yellow("%s", time.Since(l.fileStart)))
+	fmt.Fprintf(l.out, "%s%v ok (%v)\n", indent2, dash, yellow("%s", time.Since(l.fileStart)))
 }
 
 func logFormat(out io.Writer) (migrate.Logger, error) {
