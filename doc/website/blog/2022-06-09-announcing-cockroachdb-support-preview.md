@@ -2,14 +2,13 @@
 title: Announcing v0.4.2 with preview support for CockroachDB
 authors: Hedwigz
 tags: [cockroachdb, integration, announcement]
-image: https://blog.ariga.io/uploads/images/posts/cockroachdb/cockroachdb.png
+image: https://blog.ariga.io/uploads/images/posts/cockroachdb/atlas_n_crdb.png
 ---
 
 Today, I'm happy to announce the release of [v0.4.2](https://github.com/ariga/atlas/releases/tag/v0.4.2) of the Atlas CLI. 
 This version includes many improvements and fixes, but I wanted to share with you exciting news about something I
 personally worked on. As of v0.4.2, Atlas includes preview support for CockroachDB 🎉 
 
-## Atlas
 [Atlas](https://atlasgo.io) is an open-source project that helps developers to better manage their database
 schemas. It has a [CLI tool](https://atlasgo.io/cli/reference) and a
 [Terraform integration](https://atlasgo.io/blog/2022/05/04/announcing-terraform-provider). By using Atlas's
@@ -18,7 +17,6 @@ to their databases in a simple, declarative workflow.
 Earlier this year, Atlas became the [migration engine for Ent](https://entgo.io/blog/2022/01/20/announcing-new-migration-engine),
 a widely popular, Linux Foundation backed entity framework for Go.
 
-## CockroachDB
 [CockroachDB](https://www.cockroachlabs.com/) is an [open-source](https://github.com/cockroachdb/cockroach) NewSQL 
 database. From their README:
 > CockroachDB is a distributed SQL database built on a transactional and strongly-consistent 
@@ -135,7 +133,7 @@ you may want to explore when getting started with Atlas:
 * [Use the `migrate` command to author migrations](/cli/reference#atlas-migrate) - In addition to the Terraform-like
  declarative workflow, Atlas can manage a migration script directory for you based on your desired schema.
 
-# Preview support
+### Preview support
 The integration of Atlas with CockroachDB is well tested with version `v21.2.11` (at the time of writing, 
 `latest`) and will be extended in the future. If you're using other versions of CockroachDB or looking 
 for help, don't hesitate to [file an issue](https://github.com/ariga/atlas/issues) or join our
