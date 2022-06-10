@@ -207,6 +207,30 @@ func TestSQLite_AutoIncrement(t *testing.T) {
 	})
 }
 
+func TestSQLite_AutoIncrementSequence(t *testing.T) {
+	// This test shows a bug detected in Ent when working with pre-defined auto-increment start values.
+	// If there is a change somewhere to create an auto-increment with a start value, Atlas must make sure to create
+	// an entry in the 'sqlite_sequence' table (and also ensure the table exists before attempting to create the entry).
+	liteRun(t, func(t *liteTest) {
+		t1 := &schema.Table{
+			Name: "users",
+			Columns: []*schema.Column{
+				{
+					Name:  "id",
+					Type:  &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}},
+					Attrs: []schema.Attr{&sqlite.AutoIncrement{Seq: 10}},
+				},
+			},
+			Attrs: []schema.Attr{&sqlite.AutoIncrement{}},
+		}
+		t1.PrimaryKey = &schema.Index{Table: t1, Parts: []*schema.IndexPart{{C: t1.Columns[0]}}}
+		t1.Columns[0].Indexes = append(t1.Columns[0].Indexes, t1.PrimaryKey)
+
+		// Planning the changes should not result in an error.
+		_ = plan(t, "col_seq", &schema.AddTable{T: t1})
+	})
+}
+
 func TestSQLite_AddColumns(t *testing.T) {
 	liteRun(t, func(t *liteTest) {
 		usersT := &schema.Table{

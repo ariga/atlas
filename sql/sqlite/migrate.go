@@ -456,7 +456,7 @@ func (s *state) tableSeq(ctx context.Context, add *schema.AddTable) error {
 	// SQLite tracks the AUTOINCREMENT in the "sqlite_sequence" table that is created and initialized automatically
 	// whenever the first "PRIMARY KEY AUTOINCREMENT" is created. However, rows in this table are populated after the
 	// first insertion to the associated table (name, seq). Therefore, we check if the sequence table and the row exist,
-	// and in case they are not, we insert a new non zero sequence to it.
+	// and in case they are not, we insert a new non-zero sequence to it.
 	rows, err := s.QueryContext(ctx, "SELECT seq FROM sqlite_sequence WHERE name = ?", add.T.Name)
 	if err != nil || !rows.Next() {
 		s.append(&migrate.Change{
@@ -467,9 +467,9 @@ func (s *state) tableSeq(ctx context.Context, add *schema.AddTable) error {
 		})
 	}
 	if rows != nil {
-		err = rows.Close()
+		return rows.Close()
 	}
-	return err
+	return nil
 }
 
 func (s *state) append(c *migrate.Change) {
