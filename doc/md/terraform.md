@@ -30,17 +30,19 @@ Currently, the Atlas Terraform provider uses an [HCL file](/ddl/sql) to describe
 desired state of the database, and performs migrations according to the state difference 
 between the HCL file and the target database.
 
-To use the Terraform provider, you will need such a file. To quickly get started, either:
+To use the Terraform provider, you will need such a file. If you are working against a fresh,
+empty database, start by creating a file named `schema.hcl` that only contains a single [`schema`](/ddl/sql/#schema)
+resource. If your database contains a schema (named database) is named `example`, use something like:
 
-1. Use the Atlas CLI to [inspect](cli/getting-started/inspection#inspecting-our-database) an existing database  
-2. Start with an empty, basic schema:
- 
 ```hcl
 schema "example" {
+  // Basic charset and collation for MySQL.
   charset = "utf8mb4"
   collate = "utf8mb4_0900_ai_ci"
 }
 ```
+
+For instructions on using a database with an existing schema, [see below](#working-with-an-existing-database)
 
 ### Configure Terraform
 
@@ -65,3 +67,22 @@ resource "atlas_schema" "market" {
 ```
 
 For the full documentation and examples of the provider visit the [registry page](https://registry.terraform.io/providers/ariga/atlas/latest/docs).
+
+## Working with an existing database
+
+When you first run the Atlas Terraform Provider on a database, the database's state isn't yet present
+in Terraform's representation of the world (described in the [Terraform State](https://www.terraform.io/language/state)).
+To prevent a situation where Terraform accidentally creates a plan that includes the deletion of resources (such as tables or
+schemas) that exist in your database on this initial run, make sure that the HCL file that you pass to the `atlas_schema`
+resources is up-to-date.
+
+Luckily, you do not need to write this file by hand. The Atlas CLI's [`schema inspect` command](http://localhost:3000/cli/reference#atlas-schema-inspect)
+can do this for you. To inspect an existing database and write its HCL representation to a file simply run:
+```
+atlas schema inspect -u <database url> > <target file>
+```
+Replacing `<database url>` with the [URL](http://localhost:3000/cli/url) for your database, and `<target file>`
+with the name of the file you want to write the output to. For example:
+```
+atlas schema inspect -u mysql://user:pass@localhost:3306 > schema.hcl
+```
