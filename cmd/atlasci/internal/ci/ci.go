@@ -98,7 +98,7 @@ func WithMigrationsPath(path string) GitChangeDetectorOption {
 }
 
 // DetectChanges implements the ChangeDetector interface.
-func (d *GitChangeDetector) DetectChanges(_ context.Context) ([]migrate.File, []migrate.File, error) {
+func (d *GitChangeDetector) DetectChanges(context.Context) ([]migrate.File, []migrate.File, error) {
 	// Fetch all the files of the migration directory.
 	files, err := d.dir.Files()
 	if err != nil {
@@ -178,6 +178,33 @@ func treeObject(r *git.Repository, n plumbing.ReferenceName) (*object.Tree, erro
 		return nil, fmt.Errorf("get tree for commit %q: %w", c.Hash, err)
 	}
 	return t, nil
+}
+
+// latestChange implements the ChangeDetector by selecting the latest N files.
+type latestChange struct {
+	n   int        // number of (latest) files considered new.
+	dir DirScanner // migration directory to load migration files from.
+}
+
+// LatestChanges implements the ChangeDetector interface by selecting the latest N files as new.
+// It is useful for executing analysis on files in development before they are committed or on
+// all files in a directory.
+func LatestChanges(dir DirScanner, n int) ChangeDetector {
+	return &latestChange{n: n, dir: dir}
+}
+
+// DetectChanges implements the ChangeDetector interface.
+func (d *latestChange) DetectChanges(context.Context) ([]migrate.File, []migrate.File, error) {
+	files, err := d.dir.Files()
+	if err != nil {
+		return nil, nil, fmt.Errorf("internal/ci: reading migration directory: %w", err)
+	}
+	// In case n is -1 or greater than the
+	// number of files, return all files.
+	if len(files) <= d.n || d.n < 0 {
+		return nil, files, nil
+	}
+	return files[:len(files)-d.n], files[len(files)-d.n:], nil
 }
 
 // DevLoader implements the ChangesLoader interface using a dev-driver.

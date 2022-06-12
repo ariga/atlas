@@ -102,6 +102,32 @@ func TestGitChangeDetector(t *testing.T) {
 	require.Equal(t, "3_new_the_second.sql", feat[1].Name())
 }
 
+func TestLatestChanges(t *testing.T) {
+	files := []migrate.File{
+		testFile{name: "1.sql", content: "CREATE TABLE t1 (id INT)"},
+		testFile{name: "2.sql", content: "CREATE TABLE t2 (id INT)\nDROP TABLE users"},
+	}
+	base, feat, err := ci.LatestChanges(testDir{files: files}, 0).DetectChanges(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, files, base)
+	require.Empty(t, feat)
+
+	base, feat, err = ci.LatestChanges(testDir{files: files}, 2).DetectChanges(context.Background())
+	require.NoError(t, err)
+	require.Empty(t, base)
+	require.Equal(t, files, feat)
+
+	base, feat, err = ci.LatestChanges(testDir{files: files}, -1).DetectChanges(context.Background())
+	require.NoError(t, err)
+	require.Empty(t, base)
+	require.Equal(t, files, feat)
+
+	base, feat, err = ci.LatestChanges(testDir{files: files}, 1).DetectChanges(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, files[:1], base)
+	require.Equal(t, files[1:], feat)
+}
+
 func TestDevLoader_LoadChanges(t *testing.T) {
 	ctx := context.Background()
 	c, err := sqlclient.Open(ctx, "sqlite://ci?mode=memory&cache=shared&_fk=1")
@@ -141,7 +167,12 @@ func TestDevLoader_LoadChanges(t *testing.T) {
 }
 
 type testDir struct {
-	migrate.Scanner
+	ci.DirScanner
+	files []migrate.File
+}
+
+func (t testDir) Files() ([]migrate.File, error) {
+	return t.files, nil
 }
 
 func (testDir) Stmts(f migrate.File) ([]string, error) {
