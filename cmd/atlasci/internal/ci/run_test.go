@@ -5,7 +5,9 @@
 package ci_test
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"testing"
 
 	"ariga.io/atlas/cmd/atlasci/internal/ci"
@@ -18,6 +20,7 @@ import (
 
 func TestRunner_Run(t *testing.T) {
 	ctx := context.Background()
+	b := &bytes.Buffer{}
 	c, err := sqlclient.Open(ctx, "sqlite://run?mode=memory&cache=shared&_fk=1")
 	require.NoError(t, err)
 	r := &ci.Runner{
@@ -32,7 +35,10 @@ func TestRunner_Run(t *testing.T) {
 			},
 		},
 		Analyzer: &testAnalyzer{},
-		Reporter: sqlcheck.NopReportWriter,
+		ReportWriter: &ci.TemplateWriter{
+			T: ci.DefaultTemplate,
+			W: b,
+		},
 	}
 	require.NoError(t, r.Run(ctx))
 
@@ -42,6 +48,11 @@ func TestRunner_Run(t *testing.T) {
 	require.Len(t, changes, 2)
 	require.Equal(t, "CREATE TABLE pets (id INT)", changes[0].Stmt)
 	require.Equal(t, "DROP TABLE users", changes[1].Stmt)
+	require.Equal(t, `Report 1. File "2.sql":
+
+	L1: Diagnostic 1
+
+`, b.String())
 }
 
 type testAnalyzer struct {
@@ -50,6 +61,16 @@ type testAnalyzer struct {
 
 func (t *testAnalyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
 	t.passes = append(t.passes, p)
+	r := sqlcheck.Report{
+		Text: fmt.Sprintf("Report %d. File %q", len(t.passes), p.File.Name()),
+	}
+	for i := 1; i <= len(t.passes); i++ {
+		r.Diagnostics = append(r.Diagnostics, sqlcheck.Diagnostic{
+			Pos:  i,
+			Text: fmt.Sprintf("Diagnostic %d", i),
+		})
+	}
+	p.Reporter.WriteReport(r)
 	return nil
 }
 
