@@ -5,7 +5,11 @@
 package ci
 
 import (
+	"bytes"
 	"context"
+	"io"
+	"sync"
+	"text/template"
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlcheck"
@@ -28,8 +32,8 @@ type Runner struct {
 	// Analyzer defines the analysis to be run in the CI job.
 	Analyzer sqlcheck.Analyzer
 
-	// Reporter is used to report diagnostics in the CI.
-	Reporter sqlcheck.ReportWriter
+	// ReportWriter writes the summary report.
+	ReportWriter ReportWriter
 }
 
 // Run executes the CI job.
@@ -55,10 +59,96 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	var sum SummaryReport
 	for _, f := range files {
-		if err := r.Analyzer.Analyze(ctx, &sqlcheck.Pass{File: f, Dev: r.Dev, Reporter: r.Reporter}); err != nil {
+		fr := NewFileReport(f)
+		if err := r.Analyzer.Analyze(ctx, &sqlcheck.Pass{
+			File:     f,
+			Dev:      r.Dev,
+			Reporter: fr,
+		}); err != nil {
 			return err
 		}
+		sum.Files = append(sum.Files, fr)
 	}
-	return nil
+	return r.ReportWriter.WriteReport(sum)
+}
+
+// DefaultTemplate is the default template used by the CI job.
+var DefaultTemplate = template.Must(template.New("report").
+	Parse(`
+{{- range $f := .Files }}
+	{{- range $r := $f.Reports }}
+		{{- if $r.Text }}
+			{{- printf "%s:\n\n" $r.Text }}
+		{{- else if $r.Diagnostics }}
+			{{- printf "Unnamed diagnostics for file %s:\n\n" $f.File.Name }}
+		{{- end }}
+		{{- range $d := $r.Diagnostics }}
+			{{- printf "\tL%d: %s\n" ($f.Line $d.Pos) $d.Text }}
+		{{- end }}
+		{{- if $r.Diagnostics }}
+			{{- print "\n" }}
+		{{- end }}
+	{{- end }}
+{{- end -}}
+`))
+
+type (
+	// A SummaryReport contains a summary of the analysis of all files.
+	// It is used as an input to templates to report the CI results.
+	SummaryReport struct {
+		Files []*FileReport // All files and their report.
+	}
+
+	// FileReport contains a summary of the analysis of a single file.
+	FileReport struct {
+		migrate.File
+		Reports []sqlcheck.Report
+
+		// file content.
+		buf     []byte
+		bufOnce sync.Once
+	}
+
+	// ReportWriter is a type of report writer that writes a summary of analysis reports.
+	ReportWriter interface {
+		WriteReport(SummaryReport) error
+	}
+
+	// A TemplateWriter is a type of writer that writes output according to a template.
+	TemplateWriter struct {
+		T *template.Template
+		W io.Writer
+	}
+)
+
+// NewFileReport returns a new FileReport.
+func NewFileReport(f migrate.File) *FileReport {
+	return &FileReport{File: f}
+}
+
+// Contents returns the contents of the file.
+func (f *FileReport) Contents() []byte {
+	f.bufOnce.Do(func() {
+		// Assume no error as the file was
+		// already loaded in previous steps.
+		f.buf, _ = io.ReadAll(f.File)
+	})
+	return f.buf
+}
+
+// Line returns the line number from a position.
+func (f *FileReport) Line(pos int) int {
+	return bytes.Count(f.Contents()[:pos], []byte("\n")) + 1
+}
+
+// WriteReport implements sqlcheck.ReportWriter.
+func (f *FileReport) WriteReport(r sqlcheck.Report) {
+	f.Reports = append(f.Reports, r)
+}
+
+// WriteReport implements ReportWriter.
+func (w *TemplateWriter) WriteReport(r SummaryReport) error {
+	return w.T.Execute(w.W, r)
 }

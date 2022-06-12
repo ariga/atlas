@@ -778,7 +778,7 @@ func (f LocalFile) Name() string {
 
 // Read implements io.Reader.
 func (f LocalFile) Read(buf []byte) (int, error) {
-	return f.c.Read(buf)
+	return copy(buf, f.c.Bytes()), io.EOF
 }
 
 var _ File = (*LocalFile)(nil)

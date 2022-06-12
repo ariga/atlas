@@ -12,6 +12,7 @@ import (
 	"io"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlcheck"
@@ -146,11 +147,12 @@ var _ ChangeDetector = (*GitChangeDetector)(nil)
 // isNewFile determines if the given file has been added in the given tree diff.
 // It assumes the diff is sorted by filename.
 func (d *GitChangeDetector) isNewFile(diff object.Changes, file migrate.File) (bool, error) {
-	n := filepath.ToSlash(filepath.Join(d.path, file.Name())) // git uses "/" as path separator regardless of platform
+	// Git uses "/" as path separator regardless of platform.
+	n := filepath.ToSlash(filepath.Join(d.path, file.Name()))
 	i := sort.Search(len(diff), func(i int) bool {
 		return diff[i].To.Name >= n
 	})
-	if i <= len(diff) && diff[i].To.Name == n {
+	if i <= len(diff) && strings.HasSuffix(diff[i].To.Name, n) {
 		a, err := diff[i].Action()
 		if err != nil {
 			return false, err
