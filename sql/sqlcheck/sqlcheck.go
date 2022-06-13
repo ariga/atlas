@@ -133,6 +133,56 @@ var Destructive = &driverAware{
 	},
 }
 
+// Renames detects potential column renames.
+var Renames = &driverAware{
+	run: func(ctx context.Context, diags []Diagnostic, p *Pass) error {
+		for _, sc := range p.File.Changes {
+			for _, c := range sc.Changes {
+				c, ok := c.(*schema.ModifyTable)
+				if !ok {
+					continue
+				}
+			Loop:
+				for i := range c.Changes {
+					d, ok := c.Changes[i].(*schema.DropColumn)
+					if !ok {
+						continue
+					}
+					for j := range c.Changes[i+1:] {
+						a, ok := c.Changes[i+1+j].(*schema.AddColumn)
+						if !ok {
+							continue
+						}
+						// Use schema.Differ to see if type has changed, minimal setup to test only type changes
+						fromTbl := schema.NewTable("f").AddColumns(schema.NewColumn("diff").SetType(d.C.Type.Type))
+						toTbl := schema.NewTable("f").AddColumns(schema.NewColumn("diff").SetType(a.C.Type.Type))
+						changes, err := p.Dev.TableDiff(fromTbl, toTbl)
+						if err != nil {
+							return err
+						}
+						// If there are no changes, assume type hasn't changed
+						if len(changes) > 0 {
+							continue
+						}
+						diags = append(diags, Diagnostic{
+							Pos:  sc.Pos,
+							Text: fmt.Sprintf("Potential rename from column %q to %q in table %q", d.C.Name, a.C.Name, c.T.Name),
+						})
+						continue Loop // Be greedy, assume first match is most correct
+					}
+				}
+			}
+		}
+		if len(diags) > 0 {
+			p.Reporter.WriteReport(Report{
+				Text:        fmt.Sprintf("Potential renames detected in file %q", p.File.Name()),
+				Diagnostics: diags,
+			})
+		}
+		return nil
+	},
+}
+
 // driverAware is a type of analyzer that allows registering driver-level diagnostic functions.
 type driverAware struct {
 	run     func(context.Context, []Diagnostic, *Pass) error
