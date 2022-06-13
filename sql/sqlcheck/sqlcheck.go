@@ -6,6 +6,7 @@ package sqlcheck
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -131,6 +132,40 @@ var Destructive = &driverAware{
 		}
 		return nil
 	},
+}
+
+// MigrationIntegrity returns an Analyzer that runs migrate.Validate on the passed dir.
+func MigrationIntegrity(dir migrate.Dir) Analyzer {
+	return &migrationIntegrity{
+		dir: dir,
+	}
+}
+
+// migrationIntegrity checks the hash sum integrity of a migrate dir.
+type migrationIntegrity struct {
+	dir migrate.Dir
+}
+
+// Analyze implements the Analyzer interface.
+func (m *migrationIntegrity) Analyze(_ context.Context, p *Pass) error {
+	diags := make([]Diagnostic, 0)
+	err := migrate.Validate(m.dir)
+	if err != nil {
+		if !errors.Is(err, migrate.ErrChecksumMismatch) {
+			return err
+		}
+		diags = append(diags, Diagnostic{
+			Pos:  0,
+			Text: fmt.Sprintf("There was a checksum mismatch"),
+		})
+	}
+	if len(diags) > 0 {
+		p.Reporter.WriteReport(Report{
+			Text:        fmt.Sprintf("Migrations directory %q could not be verified", m.dir),
+			Diagnostics: diags,
+		})
+	}
+	return nil
 }
 
 // driverAware is a type of analyzer that allows registering driver-level diagnostic functions.
