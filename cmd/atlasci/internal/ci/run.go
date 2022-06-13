@@ -5,10 +5,10 @@
 package ci
 
 import (
-	"bytes"
 	"context"
+	"encoding/json"
 	"io"
-	"sync"
+	"strings"
 	"text/template"
 
 	"ariga.io/atlas/sql/migrate"
@@ -61,7 +61,10 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	var sum SummaryReport
 	for _, f := range files {
-		fr := NewFileReport(f)
+		fr, err := NewFileReport(f)
+		if err != nil {
+			return err
+		}
 		if err := r.Analyzer.Analyze(ctx, &sqlcheck.Pass{
 			File:     f,
 			Dev:      r.Dev,
@@ -74,9 +77,18 @@ func (r *Runner) Run(ctx context.Context) error {
 	return r.ReportWriter.WriteReport(sum)
 }
 
-// DefaultTemplate is the default template used by the CI job.
-var DefaultTemplate = template.Must(template.New("report").
-	Parse(`
+var (
+	// TemplateFuncs are global functions available in templates.
+	TemplateFuncs = template.FuncMap{
+		"json": func(v interface{}) (string, error) {
+			b, err := json.Marshal(v)
+			return string(b), err
+		},
+	}
+	// DefaultTemplate is the default template used by the CI job.
+	DefaultTemplate = template.Must(template.New("report").
+			Funcs(TemplateFuncs).
+			Parse(`
 {{- range $f := .Files }}
 	{{- range $r := $f.Reports }}
 		{{- if $r.Text }}
@@ -93,6 +105,7 @@ var DefaultTemplate = template.Must(template.New("report").
 	{{- end }}
 {{- end -}}
 `))
+)
 
 type (
 	// A SummaryReport contains a summary of the analysis of all files.
@@ -103,12 +116,9 @@ type (
 
 	// FileReport contains a summary of the analysis of a single file.
 	FileReport struct {
-		migrate.File
+		Name    string
+		Text    string
 		Reports []sqlcheck.Report
-
-		// file content.
-		buf     []byte
-		bufOnce sync.Once
 	}
 
 	// ReportWriter is a type of report writer that writes a summary of analysis reports.
@@ -124,23 +134,17 @@ type (
 )
 
 // NewFileReport returns a new FileReport.
-func NewFileReport(f migrate.File) *FileReport {
-	return &FileReport{File: f}
-}
-
-// Contents returns the contents of the file.
-func (f *FileReport) Contents() []byte {
-	f.bufOnce.Do(func() {
-		// Assume no error as the file was
-		// already loaded in previous steps.
-		f.buf, _ = io.ReadAll(f.File)
-	})
-	return f.buf
+func NewFileReport(f migrate.File) (*FileReport, error) {
+	buf, err := io.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+	return &FileReport{Name: f.Name(), Text: string(buf)}, nil
 }
 
 // Line returns the line number from a position.
 func (f *FileReport) Line(pos int) int {
-	return bytes.Count(f.Contents()[:pos], []byte("\n")) + 1
+	return strings.Count(f.Text[:pos], "\n") + 1
 }
 
 // WriteReport implements sqlcheck.ReportWriter.
