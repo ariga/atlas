@@ -96,7 +96,7 @@ Examples:
 func (o *options) parse() error {
 	flag.Usage = func() { fmt.Fprint(os.Stderr, usage) }
 	flag.StringVar(&o.dir, "dir", os.Getenv("ATLASCI_DIR"), "")
-	flag.StringVar(&o.devURL, "dev-url", os.Getenv("ATLASCI_DEL_URL"), "")
+	flag.StringVar(&o.devURL, "dev-url", os.Getenv("ATLASCI_DEV_URL"), "")
 	flag.StringVar(&o.format, "format", "", "")
 	flag.IntVar(&o.detectFrom.latest, "latest", 0, "")
 	flag.StringVar(&o.detectFrom.gitBase, "git-base", os.Getenv("ATLASCI_GIT_BASE"), "")
