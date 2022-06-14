@@ -84,8 +84,8 @@ func (a Analyzers) Analyze(ctx context.Context, p *Pass) error {
 type AnalyzeFunc func(context.Context, *Pass) error
 
 // Analyze calls a(ctx, p).
-func (a AnalyzeFunc) Analyze(ctx context.Context, p *Pass) error {
-	return a(ctx, p)
+func (f AnalyzeFunc) Analyze(ctx context.Context, p *Pass) error {
+	return f(ctx, p)
 }
 
 // ReportWriterFunc is a function that implements Reporter.
@@ -143,14 +143,13 @@ var Destructive = &driverAware{
 
 // Renames detects potential column renames.
 var Renames = AnalyzeFunc(func(ctx context.Context, p *Pass) error {
-	diags := make([]Diagnostic, 0)
+	var diags []Diagnostic
 	for _, sc := range p.File.Changes {
 		for _, c := range sc.Changes {
 			c, ok := c.(*schema.ModifyTable)
 			if !ok {
 				continue
 			}
-		Loop:
 			for i := range c.Changes {
 				d, ok := c.Changes[i].(*schema.DropColumn)
 				if !ok {
@@ -179,7 +178,7 @@ var Renames = AnalyzeFunc(func(ctx context.Context, p *Pass) error {
 						Pos:  sc.Pos,
 						Text: fmt.Sprintf("Potential rename from column %q to %q in table %q", d.C.Name, a.C.Name, c.T.Name),
 					})
-					continue Loop // Be greedy, assume first match is most likely correct.
+					break // Be greedy, assume first match is most likely correct.
 				}
 			}
 		}
