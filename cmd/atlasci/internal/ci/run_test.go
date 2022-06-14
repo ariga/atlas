@@ -13,7 +13,6 @@ import (
 
 	"ariga.io/atlas/cmd/atlasci/internal/ci"
 	"ariga.io/atlas/sql/migrate"
-	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"
 
@@ -60,40 +59,17 @@ func TestRunner_Run(t *testing.T) {
 //go:embed testdata/atlas.sum
 var hash []byte
 
-func TestMigrationAnalyzer_Analyze(t *testing.T) {
-	var (
-		report sqlcheck.Report
-		pass   = &sqlcheck.Pass{
-			Dev: &sqlclient.Client{Name: "mysql"},
-			File: &sqlcheck.File{
-				File: testFile{name: "1.sql"},
-				Changes: []*sqlcheck.Change{
-					{
-						Stmt: "DROP DATABASE `test`",
-						Changes: schema.Changes{
-							&schema.DropSchema{S: schema.New("test")},
-						},
-					},
-					{
-						Stmt: "DROP TABLE `users`",
-						Changes: schema.Changes{
-							&schema.DropTable{T: schema.NewTable("users")},
-						},
-					},
-				},
-			},
-			Reporter: sqlcheck.ReportWriterFunc(func(r sqlcheck.Report) {
-				report = r
-			}),
-		}
-	)
+func TestChecksumAnalyzer_Analyze(t *testing.T) {
 	d, err := migrate.NewLocalDir(t.TempDir())
 	require.NoError(t, err)
-	require.NoError(t, d.WriteFile("atlas.sum", hash))
-	err = (&ci.MigrationAnalyzer{Dir: d}).Analyze(context.Background(), pass)
+	err = (&ci.ChecksumAnalyzer{Dir: d}).Analyze(context.Background(), nil)
 	require.NoError(t, err)
-	require.Len(t, report.Diagnostics, 1)
-	require.Equal(t, "There was a checksum mismatch", report.Diagnostics[0].Text)
+
+	d, err = migrate.NewLocalDir(t.TempDir())
+	require.NoError(t, err)
+	require.NoError(t, d.WriteFile("atlas.sum", hash))
+	err = (&ci.ChecksumAnalyzer{Dir: d}).Analyze(context.Background(), nil)
+	require.ErrorIs(t, err, migrate.ErrChecksumMismatch)
 }
 
 type testAnalyzer struct {

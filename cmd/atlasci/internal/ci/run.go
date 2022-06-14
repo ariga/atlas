@@ -7,7 +7,6 @@ package ci
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"strings"
 	"text/template"
@@ -158,42 +157,13 @@ func (w *TemplateWriter) WriteReport(r SummaryReport) error {
 	return w.T.Execute(w.W, r)
 }
 
-// MigrationAnalyzer implements sqlcheck.Analyzer. It validates the migration dir.
-type MigrationAnalyzer struct {
+// ChecksumAnalyzer implements sqlcheck.Analyzer. It wraps migrate.Validate.
+// Intended to be run as the first Analyzer, it will fail if the migration directory could not be validated.
+type ChecksumAnalyzer struct {
 	Dir migrate.Dir
 }
 
 // Analyze implements the sqlcheck.Analyzer interface.
-func (m *MigrationAnalyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
-	diags := make([]sqlcheck.Diagnostic, 0)
-	err := migrate.Validate(m.Dir)
-	if err != nil {
-		switch {
-		case errors.Is(err, migrate.ErrChecksumMismatch):
-			diags = append(diags, sqlcheck.Diagnostic{
-				Pos:  0,
-				Text: "There was a checksum mismatch",
-			})
-		case errors.Is(err, migrate.ErrChecksumFormat):
-			diags = append(diags, sqlcheck.Diagnostic{
-				Pos:  0,
-				Text: "The checksum file format is invalid",
-			})
-		case errors.Is(err, migrate.ErrChecksumNotFound):
-			diags = append(diags, sqlcheck.Diagnostic{
-				Pos:  0,
-				Text: "The checksum file was not found",
-			})
-		default:
-			return err
-		}
-	}
-	if len(diags) > 0 {
-		p.Reporter.WriteReport(sqlcheck.Report{
-			Text:        "Migration directory could not be verified",
-			Diagnostics: diags,
-		})
-
-	}
-	return nil
+func (m *ChecksumAnalyzer) Analyze(_ context.Context, _ *sqlcheck.Pass) error {
+	return migrate.Validate(m.Dir)
 }
