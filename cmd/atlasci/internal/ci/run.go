@@ -156,3 +156,14 @@ func (f *FileReport) WriteReport(r sqlcheck.Report) {
 func (w *TemplateWriter) WriteReport(r SummaryReport) error {
 	return w.T.Execute(w.W, r)
 }
+
+// ChecksumAnalyzer implements sqlcheck.Analyzer. It wraps migrate.Validate.
+// Intended to be run as the first Analyzer, it will fail if the migration directory could not be validated.
+type ChecksumAnalyzer struct {
+	Dir migrate.Dir
+}
+
+// Analyze implements the sqlcheck.Analyzer interface.
+func (m *ChecksumAnalyzer) Analyze(_ context.Context, _ *sqlcheck.Pass) error {
+	return migrate.Validate(m.Dir)
+}

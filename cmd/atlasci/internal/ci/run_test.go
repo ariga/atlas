@@ -7,6 +7,7 @@ package ci_test
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
 	"testing"
 
@@ -53,6 +54,22 @@ func TestRunner_Run(t *testing.T) {
 	L1: Diagnostic 1
 
 `, b.String())
+}
+
+//go:embed testdata/atlas.sum
+var hash []byte
+
+func TestChecksumAnalyzer_Analyze(t *testing.T) {
+	d, err := migrate.NewLocalDir(t.TempDir())
+	require.NoError(t, err)
+	err = (&ci.ChecksumAnalyzer{Dir: d}).Analyze(context.Background(), nil)
+	require.NoError(t, err)
+
+	d, err = migrate.NewLocalDir(t.TempDir())
+	require.NoError(t, err)
+	require.NoError(t, d.WriteFile("atlas.sum", hash))
+	err = (&ci.ChecksumAnalyzer{Dir: d}).Analyze(context.Background(), nil)
+	require.ErrorIs(t, err, migrate.ErrChecksumMismatch)
 }
 
 type testAnalyzer struct {
