@@ -78,6 +78,7 @@ func TestSQLite_Script(t *testing.T) {
 			"cmpmig":  tt.cmdCmpMig,
 			"execsql": tt.cmdExec,
 			"atlas":   tt.cmdCLI,
+			"atlasci": tt.cmdCI,
 		},
 	})
 }
@@ -147,7 +148,10 @@ var (
 	keyDrv *sqlite.Driver
 )
 
-const cliPathKey = "cli"
+const (
+	atlasPathKey   = "cli.atlas"
+	atlasciPathKey = "cli.atlasci"
+)
 
 func (t *liteTest) setupScript(env *testscript.Env) error {
 	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&_fk=1",
@@ -177,11 +181,16 @@ func (t *liteTest) setupScript(env *testscript.Env) error {
 }
 
 func setupCLITest(t *testing.T, env *testscript.Env) error {
-	cliPath, err := buildCmd(t)
+	path, err := buildCmd(t)
 	if err != nil {
 		return err
 	}
-	env.Setenv(cliPathKey, cliPath)
+	env.Setenv(atlasPathKey, path)
+	path, err = buildCICmd(t)
+	if err != nil {
+		return err
+	}
+	env.Setenv(atlasciPathKey, path)
 	return nil
 }
 
@@ -221,7 +230,7 @@ func (t *myTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {
 }
 
 func (t *myTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {
-	cmdCLI(ts, neg, args, t.dsn("test"))
+	cmdCLI(ts, neg, args, t.dsn("test"), ts.Getenv(atlasPathKey))
 }
 
 func (t *pgTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {
@@ -398,14 +407,15 @@ func (t *liteTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
 
 func (t *liteTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {
 	dbURL := fmt.Sprintf("sqlite://file:%s/atlas.sqlite?cache=shared&_fk=1", ts.Getenv("WORK"))
-	cmdCLI(ts, neg, args, dbURL)
+	cmdCLI(ts, neg, args, dbURL, ts.Getenv(atlasPathKey))
 }
 
-func cmdCLI(ts *testscript.TestScript, neg bool, args []string, dbURL string) {
-	var (
-		cliPath = ts.Getenv(cliPathKey)
-		workDir = ts.Getenv("WORK")
-	)
+func (t *liteTest) cmdCI(ts *testscript.TestScript, neg bool, args []string) {
+	dbURL := fmt.Sprintf("sqlite://file:%s/atlas.sqlite?cache=shared&_fk=1", ts.Getenv("WORK"))
+	cmdCLI(ts, neg, args, dbURL, ts.Getenv(atlasciPathKey))
+}
+func cmdCLI(ts *testscript.TestScript, neg bool, args []string, dbURL, cliPath string) {
+	workDir := ts.Getenv("WORK")
 	for i, arg := range args {
 		args[i] = strings.ReplaceAll(arg, "URL", dbURL)
 	}

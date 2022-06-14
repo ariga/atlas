@@ -58,7 +58,7 @@ func TestDestructive(t *testing.T) {
 	)
 	err := sqlcheck.Destructive.Analyze(context.Background(), pass)
 	require.NoError(t, err)
-	require.Equal(t, `Destructive changes detected in file "1.sql"`, report.Text)
+	require.Equal(t, `Destructive changes detected in file 1.sql`, report.Text)
 	require.Len(t, report.Diagnostics, 2)
 
 	pass.File.Changes = append(pass.File.Changes, &sqlcheck.Change{

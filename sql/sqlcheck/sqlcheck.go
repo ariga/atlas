@@ -125,7 +125,7 @@ var Destructive = &driverAware{
 		}
 		if len(diags) > 0 {
 			p.Reporter.WriteReport(Report{
-				Text:        fmt.Sprintf("Destructive changes detected in file %q", p.File.Name()),
+				Text:        fmt.Sprintf("Destructive changes detected in file %s", p.File.Name()),
 				Diagnostics: diags,
 			})
 		}
