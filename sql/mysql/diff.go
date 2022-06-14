@@ -79,8 +79,9 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 }
 
 // ColumnChange returns the schema changes (if any) for migrating one column to the other.
-func (d *diff) ColumnChange(from, to *schema.Column) (schema.ChangeKind, error) {
+func (d *diff) ColumnChange(fromT *schema.Table, from, to *schema.Column) (schema.ChangeKind, error) {
 	change := sqlx.CommentChange(from.Attrs, to.Attrs)
+	change |= d.columnCharsetChange(from.Attrs, fromT.Attrs, to.Attrs)
 	if from.Type.Null != to.Type.Null {
 		change |= schema.ChangeNull
 	}
@@ -233,6 +234,25 @@ func (*diff) charsetChange(from, top, to []schema.Attr) schema.Change {
 		}
 	}
 	return noChange
+}
+
+// columnCharsetChange indicate if there is a change to the column cha
+func (*diff) columnCharsetChange(from, top, to []schema.Attr) schema.ChangeKind {
+	var (
+		fromC, topC, toC       schema.Charset
+		fromHas, topHas, toHas = sqlx.Has(from, &fromC), sqlx.Has(top, &topC), sqlx.Has(to, &toC)
+	)
+	// Column was updated with custom CHARSET that was dropped.
+	// Hence, we should revert to the one defined on the table.
+	if fromHas && !toHas && topHas && fromC.V != topC.V ||
+		// Custom CHARSET was added to the column. Hence,
+		// Does not match the one defined in the table.
+		!fromHas && toHas && topHas && toC.V != topC.V ||
+		// CHARSET was explicitly changed.
+		fromHas && toHas && fromC.V != toC.V {
+		return schema.ChangeCharset
+	}
+	return schema.NoChange
 }
 
 // autoIncChange returns the schema change for changing the AUTO_INCREMENT

@@ -229,6 +229,105 @@ func TestDiff_TableDiff(t *testing.T) {
 				},
 			}
 		}(),
+		// Custom CHARSET was dropped.
+		func() testcase {
+			var (
+				from = schema.NewTable("t1").
+					SetSchema(schema.New("public")).
+					SetCharset("utf8").
+					AddColumns(schema.NewStringColumn("c1", "text").SetCharset("latin1"))
+				to = schema.NewTable("t1").
+					SetSchema(schema.New("public")).
+					SetCharset("utf8").
+					AddColumns(schema.NewStringColumn("c1", "text"))
+			)
+			return testcase{
+				name: "columns",
+				from: from,
+				to:   to,
+				wantChanges: []schema.Change{
+					&schema.ModifyColumn{
+						From:   from.Columns[0],
+						To:     to.Columns[0],
+						Change: schema.ChangeCharset,
+					},
+				},
+			}
+		}(),
+		// Custom CHARSET was added.
+		func() testcase {
+			var (
+				from = schema.NewTable("t1").
+					SetSchema(schema.New("public")).
+					SetCharset("utf8").
+					AddColumns(schema.NewStringColumn("c1", "text"))
+				to = schema.NewTable("t1").
+					SetSchema(schema.New("public")).
+					SetCharset("utf8").
+					AddColumns(schema.NewStringColumn("c1", "text").SetCharset("latin1"))
+			)
+			return testcase{
+				name: "columns",
+				from: from,
+				to:   to,
+				wantChanges: []schema.Change{
+					&schema.ModifyColumn{
+						From:   from.Columns[0],
+						To:     to.Columns[0],
+						Change: schema.ChangeCharset,
+					},
+				},
+			}
+		}(),
+		// Custom CHARSET was changed.
+		func() testcase {
+			var (
+				from = schema.NewTable("t1").
+					SetSchema(schema.New("public")).
+					SetCharset("utf8").
+					AddColumns(schema.NewStringColumn("c1", "text").SetCharset("hebrew"))
+				to = schema.NewTable("t1").
+					SetSchema(schema.New("public")).
+					SetCharset("utf8").
+					AddColumns(schema.NewStringColumn("c1", "text").SetCharset("latin1"))
+			)
+			return testcase{
+				name: "columns",
+				from: from,
+				to:   to,
+				wantChanges: []schema.Change{
+					&schema.ModifyColumn{
+						From:   from.Columns[0],
+						To:     to.Columns[0],
+						Change: schema.ChangeCharset,
+					},
+				},
+			}
+		}(),
+		// Nop CHARSET change.
+		func() testcase {
+			var (
+				from = schema.NewTable("t1").
+					SetSchema(schema.New("public")).
+					SetCharset("utf8").
+					AddColumns(
+						schema.NewStringColumn("c1", "text").SetCharset("utf8"),
+						schema.NewStringColumn("c2", "text"),
+					)
+				to = schema.NewTable("t1").
+					SetSchema(schema.New("public")).
+					SetCharset("utf8").
+					AddColumns(
+						schema.NewStringColumn("c1", "text"),
+						schema.NewStringColumn("c2", "text").SetCharset("utf8"),
+					)
+			)
+			return testcase{
+				name: "columns",
+				from: from,
+				to:   to,
+			}
+		}(),
 		func() testcase {
 			var (
 				s    = schema.New("public")
