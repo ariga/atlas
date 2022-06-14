@@ -112,22 +112,22 @@ func TestHashSum(t *testing.T) {
 	requireFileEqual(t, d, v+"_plan.sql", "cmd;\n")
 }
 
-//go:embed testdata/atlas.sum
+//go:embed testdata/migrate/atlas.sum
 var hash []byte
 
 func TestValidate(t *testing.T) {
-	// Add the sum file form the testdata dir without any files in it - should fail.
+	// Add the sum file form the testdata/migrate dir without any files in it - should fail.
 	p := t.TempDir()
 	d, err := migrate.NewLocalDir(p)
 	require.NoError(t, err)
 	require.NoError(t, d.WriteFile("atlas.sum", hash))
 	require.Equal(t, migrate.ErrChecksumMismatch, migrate.Validate(d))
 
-	td := "testdata"
+	td := "testdata/migrate"
 	d, err = migrate.NewLocalDir(td)
 	require.NoError(t, err)
 
-	// Testdata is valid.
+	// testdata/migrate is valid.
 	require.Nil(t, migrate.Validate(d))
 
 	// Making a manual change to the sum file should raise validation error.
@@ -165,7 +165,7 @@ func TestValidate(t *testing.T) {
 }
 
 func TestHash_MarshalText(t *testing.T) {
-	d, err := migrate.NewLocalDir("testdata")
+	d, err := migrate.NewLocalDir("testdata/migrate")
 	require.NoError(t, err)
 	h, err := migrate.HashSum(d)
 	require.NoError(t, err)
@@ -174,7 +174,7 @@ func TestHash_MarshalText(t *testing.T) {
 }
 
 func TestHash_UnmarshalText(t *testing.T) {
-	d, err := migrate.NewLocalDir("testdata")
+	d, err := migrate.NewLocalDir("testdata/migrate")
 	require.NoError(t, err)
 	h, err := migrate.HashSum(d)
 	require.NoError(t, err)
@@ -186,7 +186,7 @@ func TestHash_UnmarshalText(t *testing.T) {
 // Deprecated: GlobStateReader will be removed once the Executor is functional.
 func TestExecutor_ReadState(t *testing.T) {
 	ctx := context.Background()
-	d, err := migrate.NewLocalDir("testdata")
+	d, err := migrate.NewLocalDir("testdata/migrate")
 	require.NoError(t, err)
 
 	// Locking not supported.
@@ -264,7 +264,7 @@ func TestLocalDir(t *testing.T) {
 	require.Equal(t, "content", string(c))
 
 	// Default Scanner implementation.
-	d, err = migrate.NewLocalDir("testdata/sub")
+	d, err = migrate.NewLocalDir("testdata/migrate/sub")
 	require.NoError(t, err)
 	require.NotNil(t, d)
 
@@ -343,7 +343,7 @@ func TestExecutor(t *testing.T) {
 			Hash:           "wQB3Vh3PHVXQg9OD3Gn7TBxbZN3r1Qb7TtAE1g3q9mQ=",
 		}
 	)
-	dir, err = migrate.NewLocalDir(filepath.Join("testdata", "sub"))
+	dir, err = migrate.NewLocalDir(filepath.Join("testdata/migrate", "sub"))
 	require.NoError(t, err)
 	ex, err = migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(log))
 	require.NoError(t, err)
