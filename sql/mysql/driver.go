@@ -191,6 +191,12 @@ func (d *conn) supportsRenameColumn() bool {
 	return d.gteV(v)
 }
 
+// supportsIndexComment reports if the connected database
+// supports the index comment.
+func (d *conn) supportsIndexComment() bool {
+	return d.mariadb() || d.gteV("5.5.0")
+}
+
 // mariadb reports if the Driver is connected to a MariaDB database.
 func (d *conn) mariadb() bool {
 	return strings.Index(d.version, "MariaDB") > 0
