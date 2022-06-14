@@ -728,22 +728,13 @@ func (d *LocalDir) Files() ([]File, error) {
 	return ret, nil
 }
 
-// Stmts implements Scanner.Stmts. It reads migration file line-by-line and expects a statement to be one line only. // TODO(masseelch): add multi-line statement support
+// Stmts implements Scanner.Stmts. It reads migration file line-by-line and expects a statement to be one line only.
 func (d *LocalDir) Stmts(f File) ([]string, error) {
-	var (
-		stmts []string
-		sc    = bufio.NewScanner(f)
-	)
-	for sc.Scan() {
-		t := sc.Text()
-		if !strings.HasPrefix(strings.TrimSpace(t), "--") {
-			stmts = append(stmts, t)
-		}
-	}
-	if err := sc.Err(); err != nil {
+	b, err := io.ReadAll(f)
+	if err != nil {
 		return nil, err
 	}
-	return stmts, nil
+	return stmts(string(b))
 }
 
 // Version implements Scanner.Version.
@@ -778,7 +769,7 @@ func (f LocalFile) Name() string {
 
 // Read implements io.Reader.
 func (f LocalFile) Read(buf []byte) (int, error) {
-	return copy(buf, f.c.Bytes()), io.EOF
+	return f.c.Read(buf)
 }
 
 var _ File = (*LocalFile)(nil)
