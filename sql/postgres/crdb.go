@@ -80,8 +80,9 @@ func (cd *crdbDiff) Normalize(from, to *schema.Table) {
 	cd.normalize(to)
 }
 
-func (cd *crdbDiff) ColumnChange(from, to *schema.Column) (schema.ChangeKind, error) {
-	// All serial types in crdb become bigints under the hood, see: https://www.cockroachlabs.com/docs/stable/serial.html#generated-values-for-mode-sql_sequence-and-sql_sequence_cached.
+func (cd *crdbDiff) ColumnChange(fromT *schema.Table, from, to *schema.Column) (schema.ChangeKind, error) {
+	// All serial types in crdb become bigints under the hood,
+	// See: https://www.cockroachlabs.com/docs/stable/serial.html#generated-values-for-mode-sql_sequence-and-sql_sequence_cached.
 	if s, ok := to.Type.Type.(*SerialType); ok {
 		to.Type.Type = &schema.IntegerType{
 			T: TypeBigInt,
@@ -90,7 +91,7 @@ func (cd *crdbDiff) ColumnChange(from, to *schema.Column) (schema.ChangeKind, er
 			to.Type.Type = s
 		}()
 	}
-	return cd.diff.ColumnChange(from, to)
+	return cd.diff.ColumnChange(fromT, from, to)
 }
 
 func (cd *crdbDiff) normalize(table *schema.Table) {
