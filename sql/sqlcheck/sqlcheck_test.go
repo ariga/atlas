@@ -6,7 +6,6 @@ package sqlcheck_test
 
 import (
 	"context"
-	_ "embed"
 	"testing"
 
 	"ariga.io/atlas/sql/migrate"
@@ -80,44 +79,6 @@ func TestDestructive(t *testing.T) {
 	err = sqlcheck.Destructive.Analyze(context.Background(), pass)
 	require.NoError(t, err)
 	require.Len(t, report.Diagnostics, 3)
-}
-
-//go:embed testdata/atlas.sum
-var hash []byte
-
-func TestMigrationIntegrity(t *testing.T) {
-	var (
-		report sqlcheck.Report
-		pass   = &sqlcheck.Pass{
-			Dev: &sqlclient.Client{Name: "mysql"},
-			File: &sqlcheck.File{
-				File: testFile{name: "1.sql"},
-				Changes: []*sqlcheck.Change{
-					{
-						Stmt: "DROP DATABASE `test`",
-						Changes: schema.Changes{
-							&schema.DropSchema{S: schema.New("test")},
-						},
-					},
-					{
-						Stmt: "DROP TABLE `users`",
-						Changes: schema.Changes{
-							&schema.DropTable{T: schema.NewTable("users")},
-						},
-					},
-				},
-			},
-			Reporter: sqlcheck.ReportWriterFunc(func(r sqlcheck.Report) {
-				report = r
-			}),
-		}
-	)
-	d, err := migrate.NewLocalDir(t.TempDir())
-	require.NoError(t, err)
-	require.NoError(t, d.WriteFile("atlas.sum", hash))
-	err = sqlcheck.MigrationIntegrity(d).Analyze(context.Background(), pass)
-	require.NoError(t, err)
-	require.Len(t, report.Diagnostics, 1)
 }
 
 type testFile struct {
