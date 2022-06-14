@@ -6,7 +6,6 @@ package sqlcheck_test
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
 	"ariga.io/atlas/sql/migrate"
@@ -83,10 +82,12 @@ func TestDestructive(t *testing.T) {
 }
 
 func TestRenames(t *testing.T) {
+	driver := &mockDriver{}
+	// Happy path test
 	var (
 		report sqlcheck.Report
 		pass   = &sqlcheck.Pass{
-			Dev: &sqlclient.Client{Name: "mysql", Driver: &mockDriver{}},
+			Dev: &sqlclient.Client{Name: "mysql", Driver: driver},
 			File: &sqlcheck.File{
 				File: testFile{name: "1.sql"},
 				Changes: []*sqlcheck.Change{
@@ -112,6 +113,58 @@ func TestRenames(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, `Potential renames detected in file "1.sql"`, report.Text)
 	require.Len(t, report.Diagnostics, 1)
+
+	// Happy path with a column change in between
+	pass.File.Changes = []*sqlcheck.Change{
+		{
+			Stmt: "MODIFY TABLE `users`",
+			Changes: schema.Changes{
+				&schema.ModifyTable{
+					T: schema.NewTable("users"),
+					Changes: schema.Changes{
+						&schema.DropColumn{C: schema.NewBoolColumn("name", "boolean")},
+						&schema.ModifyColumn{
+							From:   schema.NewColumn("hello"),
+							To:     schema.NewColumn("hello").SetComment("With comment"),
+							Change: schema.ChangeComment,
+						},
+						&schema.AddColumn{C: schema.NewBoolColumn("username", "boolean")},
+					},
+				},
+			},
+		},
+	}
+	report = sqlcheck.Report{}
+	err = sqlcheck.Renames.Analyze(context.Background(), pass)
+	require.NoError(t, err)
+	require.Equal(t, `Potential renames detected in file "1.sql"`, report.Text)
+	require.Len(t, report.Diagnostics, 1)
+
+	// Non-identitical columns should not be reported
+	pass.File.Changes = []*sqlcheck.Change{
+		{
+			Stmt: "MODIFY TABLE `users`",
+			Changes: schema.Changes{
+				&schema.ModifyTable{
+					T: schema.NewTable("users"),
+					Changes: schema.Changes{
+						&schema.DropColumn{C: schema.NewBoolColumn("name", "boolean").SetComment("With comment")},
+						&schema.AddColumn{C: schema.NewBoolColumn("username", "boolean")},
+					},
+				},
+			},
+		},
+	}
+	driver.diffRes = schema.Changes{&schema.ModifyColumn{
+		From:   schema.NewBoolColumn("username", "boolean").SetComment("With comment"),
+		To:     schema.NewBoolColumn("username", "boolean"),
+		Change: schema.ChangeComment,
+	}}
+	report = sqlcheck.Report{}
+	err = sqlcheck.Renames.Analyze(context.Background(), pass)
+	require.NoError(t, err)
+	require.Empty(t, report.Text)
+	require.Len(t, report.Diagnostics, 0)
 }
 
 type testFile struct {
@@ -125,32 +178,9 @@ func (t testFile) Name() string {
 
 type mockDriver struct {
 	migrate.Driver
+	diffRes []schema.Change
 }
 
-func (m mockDriver) TableDiff(from, to *schema.Table) (changes []schema.Change, _ error) {
-	for _, c1 := range from.Columns {
-		c2, ok := to.Column(c1.Name)
-		if !ok {
-			continue
-		}
-		if change := m.ColumnDiff(c1, c2); change != schema.NoChange {
-			changes = append(changes, &schema.ModifyColumn{
-				From:   c1,
-				To:     c2,
-				Change: change,
-			})
-		}
-	}
-	return
-}
-
-func (m *mockDriver) ColumnDiff(from, to *schema.Column) (change schema.ChangeKind) {
-	// This is used to mock a change different to a Type change.
-	if len(from.Attrs) != len(to.Attrs) {
-		change |= schema.ChangeComment
-	}
-	if reflect.TypeOf(from.Type.Type) != reflect.TypeOf(to.Type.Type) {
-		change |= schema.ChangeType
-	}
-	return
+func (m *mockDriver) TableDiff(_, _ *schema.Table) ([]schema.Change, error) {
+	return m.diffRes, nil
 }

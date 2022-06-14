@@ -80,6 +80,14 @@ func (a Analyzers) Analyze(ctx context.Context, p *Pass) error {
 	return nil
 }
 
+// AnalyzeFunc implements Analyzer.
+type AnalyzeFunc func(context.Context, *Pass) error
+
+// Analyze calls a(ctx, p).
+func (a AnalyzeFunc) Analyze(ctx context.Context, p *Pass) error {
+	return a(ctx, p)
+}
+
 // ReportWriterFunc is a function that implements Reporter.
 type ReportWriterFunc func(Report)
 
@@ -134,54 +142,56 @@ var Destructive = &driverAware{
 }
 
 // Renames detects potential column renames.
-var Renames = &driverAware{
-	run: func(ctx context.Context, diags []Diagnostic, p *Pass) error {
-		for _, sc := range p.File.Changes {
-			for _, c := range sc.Changes {
-				c, ok := c.(*schema.ModifyTable)
+var Renames = AnalyzeFunc(func(ctx context.Context, p *Pass) error {
+	diags := make([]Diagnostic, 0)
+	for _, sc := range p.File.Changes {
+		for _, c := range sc.Changes {
+			c, ok := c.(*schema.ModifyTable)
+			if !ok {
+				continue
+			}
+		Loop:
+			for i := range c.Changes {
+				d, ok := c.Changes[i].(*schema.DropColumn)
 				if !ok {
 					continue
 				}
-			Loop:
-				for i := range c.Changes {
-					d, ok := c.Changes[i].(*schema.DropColumn)
+				// It is only possible for the related add to come after the drop.
+				// See: https://github.com/ariga/atlas/blob/master/sql/internal/sqlx/diff.go#L188-L193
+				for j := range c.Changes[i+1:] {
+					a, ok := c.Changes[i+1+j].(*schema.AddColumn)
 					if !ok {
 						continue
 					}
-					for j := range c.Changes[i+1:] {
-						a, ok := c.Changes[i+1+j].(*schema.AddColumn)
-						if !ok {
-							continue
-						}
-						// Use schema.Differ to see if type has changed, minimal setup to test only type changes
-						fromTbl := schema.NewTable("f").AddColumns(schema.NewColumn("diff").SetType(d.C.Type.Type))
-						toTbl := schema.NewTable("f").AddColumns(schema.NewColumn("diff").SetType(a.C.Type.Type))
-						changes, err := p.Dev.TableDiff(fromTbl, toTbl)
-						if err != nil {
-							return err
-						}
-						// If there are no changes, assume type hasn't changed
-						if len(changes) > 0 {
-							continue
-						}
-						diags = append(diags, Diagnostic{
-							Pos:  sc.Pos,
-							Text: fmt.Sprintf("Potential rename from column %q to %q in table %q", d.C.Name, a.C.Name, c.T.Name),
-						})
-						continue Loop // Be greedy, assume first match is most correct
+					// Use schema.Differ to determine if it is a different column.
+					// We assume that if the two columns were named the same, no changes would be detected.
+					dCopy := *d.C
+					dCopy.Name = a.C.Name
+					fromTbl, toTbl := schema.NewTable("diff").AddColumns(&dCopy), schema.NewTable("diff").AddColumns(a.C)
+					changes, err := p.Dev.TableDiff(fromTbl, toTbl)
+					if err != nil {
+						return err
 					}
+					if len(changes) > 0 {
+						continue
+					}
+					diags = append(diags, Diagnostic{
+						Pos:  sc.Pos,
+						Text: fmt.Sprintf("Potential rename from column %q to %q in table %q", d.C.Name, a.C.Name, c.T.Name),
+					})
+					continue Loop // Be greedy, assume first match is most likely correct.
 				}
 			}
 		}
-		if len(diags) > 0 {
-			p.Reporter.WriteReport(Report{
-				Text:        fmt.Sprintf("Potential renames detected in file %q", p.File.Name()),
-				Diagnostics: diags,
-			})
-		}
-		return nil
-	},
-}
+	}
+	if len(diags) > 0 {
+		p.Reporter.WriteReport(Report{
+			Text:        fmt.Sprintf("Potential renames detected in file %q", p.File.Name()),
+			Diagnostics: diags,
+		})
+	}
+	return nil
+})
 
 // driverAware is a type of analyzer that allows registering driver-level diagnostic functions.
 type driverAware struct {
