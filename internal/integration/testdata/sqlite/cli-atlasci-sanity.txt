@@ -6,11 +6,15 @@ cmp got2.txt expected2.txt
 
 -- migrations/1.sql --
 CREATE TABLE users (id int);
+
 CREATE TABLE pets (id int);
+
 -- migrations/2.sql --
 DROP TABLE users;
+
 -- migrations/3.sql --
 DROP TABLE pets;
+
 -- expected1.txt --
 Destructive changes detected in file 3.sql:
 

@@ -64,7 +64,7 @@ type (
 	// If the DiffDriver implements the Normalizer interface, TableDiff normalizes its table
 	// inputs before starting the diff process.
 	Normalizer interface {
-		Normalize(from, to *schema.Table)
+		Normalize(from, to *schema.Table) error
 	}
 )
 
@@ -148,7 +148,9 @@ func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
 	}
 	// Normalizing tables before starting the diff process.
 	if n, ok := d.DiffDriver.(Normalizer); ok {
-		n.Normalize(from, to)
+		if err := n.Normalize(from, to); err != nil {
+			return nil, err
+		}
 	}
 	var changes []schema.Change
 	if from.Name != to.Name {

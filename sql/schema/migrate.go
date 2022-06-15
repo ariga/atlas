@@ -199,8 +199,8 @@ const (
 	ChangeAttr ChangeKind = 1 << (iota - 1)
 	// ChangeCharset describes character-set change.
 	ChangeCharset
-	// ChangeCollation describes collation/encoding change.
-	ChangeCollation
+	// ChangeCollate describes collation/encoding change.
+	ChangeCollate
 	// ChangeComment describes comment chang (of any element).
 	ChangeComment
 

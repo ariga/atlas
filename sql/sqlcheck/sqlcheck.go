@@ -88,9 +88,6 @@ func (f ReportWriterFunc) WriteReport(r Report) {
 	f(r)
 }
 
-// NopReportWriter is a Reporter that does nothing.
-var NopReportWriter ReportWriter = ReportWriterFunc(func(Report) {})
-
 // Destructive checks destructive changes.
 var Destructive = &driverAware{
 	run: func(ctx context.Context, diags []Diagnostic, p *Pass) error {

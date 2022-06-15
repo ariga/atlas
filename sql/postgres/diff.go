@@ -262,9 +262,10 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 }
 
 // Normalize implements the sqlx.Normalizer interface.
-func (d *diff) Normalize(from, to *schema.Table) {
+func (d *diff) Normalize(from, to *schema.Table) error {
 	d.normalize(from)
 	d.normalize(to)
+	return nil
 }
 
 func (d *diff) normalize(table *schema.Table) {
