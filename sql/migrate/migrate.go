@@ -14,8 +14,10 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"text/template"
@@ -842,13 +844,21 @@ type templateFile struct {
 // Name implements the File interface.
 func (f *templateFile) Name() string { return f.n }
 
-// Filename of the migration directory integrity sum file.
-const hashFile = "atlas.sum"
+const (
+	// Filename of the migration directory integrity sum file.
+	hashFile = "atlas.sum"
+	// Directive used it a file should be excluded by the sum computation.
+	directiveNone = "ignore"
+)
+
+// Determine if an "atlas:sum" directive is used on the file.
+var reSumDirective = regexp.MustCompile(`atlas:sum ([a-zA-Z-]*)`)
 
 // HashFile represents the integrity sum file of the migration dir.
 type HashFile []struct{ N, H string }
 
 // HashSum reads the whole dir, sorts the files by name and creates a HashSum from its contents.
+// If a files first line matches the above regex, it will be excluded from hash creation.
 func HashSum(dir Dir) (HashFile, error) {
 	var (
 		hs HashFile
@@ -871,7 +881,18 @@ func HashSum(dir Dir) (HashFile, error) {
 			if _, err := h.Write([]byte(path)); err != nil {
 				return err
 			}
-			if _, err = io.Copy(h, f); err != nil {
+			c, err := ioutil.ReadAll(f)
+			if err != nil {
+				return err
+			}
+			// Check if this file contains an "atlas:sum" directive and if so, act to it.
+			if drctv := reSumDirective.FindSubmatch(bytes.SplitN(c, []byte("\n"), 2)[0]); len(drctv) > 0 {
+				switch string(drctv[1]) {
+				case directiveNone:
+					return nil
+				}
+			}
+			if _, err := h.Write(c); err != nil {
 				return err
 			}
 			hs = append(hs, struct{ N, H string }{path, base64.StdEncoding.EncodeToString(h.Sum(nil))})
