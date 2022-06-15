@@ -90,6 +90,7 @@ func TestPlanner_Plan(t *testing.T) {
 }
 
 func TestHashSum(t *testing.T) {
+	// Sum file gets created.
 	p := t.TempDir()
 	d, err := migrate.NewLocalDir(p)
 	require.NoError(t, err)
@@ -102,6 +103,7 @@ func TestHashSum(t *testing.T) {
 	requireFileEqual(t, d, v+"_plan.sql", "cmd;\n")
 	require.FileExists(t, filepath.Join(p, "atlas.sum"))
 
+	// Disable sum.
 	p = t.TempDir()
 	d, err = migrate.NewLocalDir(p)
 	require.NoError(t, err)
@@ -110,6 +112,24 @@ func TestHashSum(t *testing.T) {
 	require.NoError(t, pl.WritePlan(plan))
 	require.Equal(t, 1, countFiles(t, d))
 	requireFileEqual(t, d, v+"_plan.sql", "cmd;\n")
+
+	// Files with directive in first line get ignored.
+	p = t.TempDir()
+	d, err = migrate.NewLocalDir(p)
+	require.NoError(t, err)
+	pl = migrate.NewPlanner(nil, d)
+	require.NotNil(t, pl)
+	require.NoError(t, os.WriteFile(filepath.Join(p, "include"), []byte("//atlas:sum\nfoo"), 0600))
+	require.NoError(t, os.WriteFile(filepath.Join(p, "exclude_1"), []byte("//atlas:sum ignore bar"), 0600))
+	require.NoError(t, os.WriteFile(filepath.Join(p, "exclude_2"), []byte("//atlas:sum ignore\nbar"), 0600))
+	require.NoError(t, pl.WritePlan(plan))
+	require.Equal(t, 5, countFiles(t, d))
+	requireFileEqual(t, d, v+"_plan.sql", "cmd;\n")
+	c, err := os.ReadFile(filepath.Join(p, "atlas.sum"))
+	require.NoError(t, err)
+	require.Contains(t, string(c), "include")
+	require.NotContains(t, string(c), "exclude_2")
+	require.NotContains(t, string(c), "exclude_2")
 }
 
 //go:embed testdata/migrate/atlas.sum
