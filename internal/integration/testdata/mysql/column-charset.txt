@@ -1,6 +1,22 @@
 apply 1.hcl
 cmpshow users 1.sql
 
+# Dropping the default COLLATE from the HCL does not have any effect.
+apply 2.hcl
+cmpshow users 1.sql
+
+# Changing the default COLLATE to hebrew_bin.
+apply 3.hcl
+cmpshow users 3.sql
+
+# Dropping custom COLLATE reverts to the default.
+apply 4.hcl
+cmpshow users 1.sql
+
+# Dropping CHARSET and COLLATE.
+apply 5.hcl
+cmpshow users 5.sql
+
 -- 1.hcl --
 schema "$db" {
     charset = "$charset"
@@ -26,4 +42,78 @@ CREATE TABLE `users` (
 -- mysql8/1.sql --
 CREATE TABLE `users` (
   `name` varchar(255) CHARACTER SET hebrew COLLATE hebrew_general_ci NOT NULL
+)
+
+-- 2.hcl --
+schema "$db" {
+    charset = "$charset"
+    collate = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "name" {
+        type = varchar(255)
+        charset = "hebrew"
+    }
+    charset = "$charset"
+    collate = "$collate"
+}
+
+-- 3.hcl --
+schema "$db" {
+    charset = "$charset"
+    collate = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "name" {
+        type = varchar(255)
+        charset = "hebrew"
+        collate = "hebrew_bin"
+    }
+    charset = "$charset"
+    collate = "$collate"
+}
+
+-- 3.sql --
+CREATE TABLE `users` (
+  `name` varchar(255) CHARACTER SET hebrew COLLATE hebrew_bin NOT NULL
+)
+
+-- 4.hcl --
+schema "$db" {
+    charset = "$charset"
+    collate = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "name" {
+        type = varchar(255)
+        charset = "hebrew"
+    }
+    charset = "$charset"
+    collate = "$collate"
+}
+
+-- 5.hcl --
+schema "$db" {
+    charset = "$charset"
+    collate = "$collate"
+}
+
+table "users" {
+    schema = schema.$db
+    column "name" {
+        type = varchar(255)
+    }
+    charset = "$charset"
+    collate = "$collate"
+}
+
+-- 5.sql --
+CREATE TABLE `users` (
+  `name` varchar(255) NOT NULL
 )
