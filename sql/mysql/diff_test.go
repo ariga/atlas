@@ -62,11 +62,11 @@ func TestDiff_TableDiff(t *testing.T) {
 		},
 		{
 			name: "add collation",
-			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}},
-			to:   &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Collation{V: "latin1"}}},
+			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Charset{V: "latin1"}}},
+			to:   &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Collation{V: "latin1_bin"}}},
 			wantChanges: []schema.Change{
 				&schema.AddAttr{
-					A: &schema.Collation{V: "latin1"},
+					A: &schema.Collation{V: "latin1_bin"},
 				},
 			},
 		},
@@ -83,22 +83,12 @@ func TestDiff_TableDiff(t *testing.T) {
 		},
 		{
 			name: "modify collation",
-			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Collation{V: "utf8"}}},
-			to:   &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Collation{V: "latin1"}}},
+			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Charset{V: "latin1"}, &schema.Collation{V: "latin1_swedish_ci"}}},
+			to:   &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Collation{V: "latin1_bin"}}},
 			wantChanges: []schema.Change{
 				&schema.ModifyAttr{
-					From: &schema.Collation{V: "utf8"},
-					To:   &schema.Collation{V: "latin1"},
-				},
-			},
-		},
-		{
-			name: "add charset",
-			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}},
-			to:   &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Charset{V: "hebrew"}}},
-			wantChanges: []schema.Change{
-				&schema.AddAttr{
-					A: &schema.Charset{V: "hebrew"},
+					From: &schema.Collation{V: "latin1_swedish_ci"},
+					To:   &schema.Collation{V: "latin1_bin"},
 				},
 			},
 		},
@@ -115,12 +105,16 @@ func TestDiff_TableDiff(t *testing.T) {
 		},
 		{
 			name: "modify charset",
-			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Charset{V: "hebrew"}}},
-			to:   &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Charset{V: "binary"}}},
+			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&schema.Charset{V: "utf8"}, &schema.Collation{V: "utf8_general_ci"}}},
+			to:   &schema.Table{Name: "users", Attrs: []schema.Attr{&schema.Charset{V: "utf8mb4"}}},
 			wantChanges: []schema.Change{
 				&schema.ModifyAttr{
-					From: &schema.Charset{V: "hebrew"},
-					To:   &schema.Charset{V: "binary"},
+					From: &schema.Charset{V: "utf8"},
+					To:   &schema.Charset{V: "utf8mb4"},
+				},
+				&schema.ModifyAttr{
+					From: &schema.Collation{V: "utf8_general_ci"},
+					To:   &schema.Collation{V: "utf8mb4_0900_ai_ci"},
 				},
 			},
 		},
@@ -235,6 +229,7 @@ func TestDiff_TableDiff(t *testing.T) {
 				from = schema.NewTable("t1").
 					SetSchema(schema.New("public")).
 					SetCharset("utf8").
+					SetCollation("utf8_general_ci").
 					AddColumns(schema.NewStringColumn("c1", "text").SetCharset("latin1"))
 				to = schema.NewTable("t1").
 					SetSchema(schema.New("public")).
@@ -260,6 +255,7 @@ func TestDiff_TableDiff(t *testing.T) {
 				from = schema.NewTable("t1").
 					SetSchema(schema.New("public")).
 					SetCharset("utf8").
+					SetCollation("utf8_general_ci").
 					AddColumns(schema.NewStringColumn("c1", "text"))
 				to = schema.NewTable("t1").
 					SetSchema(schema.New("public")).
@@ -274,7 +270,7 @@ func TestDiff_TableDiff(t *testing.T) {
 					&schema.ModifyColumn{
 						From:   from.Columns[0],
 						To:     to.Columns[0],
-						Change: schema.ChangeCharset,
+						Change: schema.ChangeCharset | schema.ChangeCollate,
 					},
 				},
 			}
@@ -285,10 +281,12 @@ func TestDiff_TableDiff(t *testing.T) {
 				from = schema.NewTable("t1").
 					SetSchema(schema.New("public")).
 					SetCharset("utf8").
+					SetCollation("utf8_general_ci").
 					AddColumns(schema.NewStringColumn("c1", "text").SetCharset("hebrew"))
 				to = schema.NewTable("t1").
 					SetSchema(schema.New("public")).
 					SetCharset("utf8").
+					SetCollation("utf8_general_ci").
 					AddColumns(schema.NewStringColumn("c1", "text").SetCharset("latin1"))
 			)
 			return testcase{
@@ -299,7 +297,7 @@ func TestDiff_TableDiff(t *testing.T) {
 					&schema.ModifyColumn{
 						From:   from.Columns[0],
 						To:     to.Columns[0],
-						Change: schema.ChangeCharset,
+						Change: schema.ChangeCharset | schema.ChangeCollate,
 					},
 				},
 			}
@@ -309,17 +307,18 @@ func TestDiff_TableDiff(t *testing.T) {
 			var (
 				from = schema.NewTable("t1").
 					SetSchema(schema.New("public")).
-					SetCharset("utf8").
+					SetCharset("utf8mb3").
+					SetCollation("utf8_general_ci").
 					AddColumns(
-						schema.NewStringColumn("c1", "text").SetCharset("utf8"),
+						schema.NewStringColumn("c1", "text").SetCharset("utf8mb3"),
 						schema.NewStringColumn("c2", "text"),
 					)
 				to = schema.NewTable("t1").
 					SetSchema(schema.New("public")).
-					SetCharset("utf8").
+					SetCollation("utf8_general_ci").
 					AddColumns(
 						schema.NewStringColumn("c1", "text"),
-						schema.NewStringColumn("c2", "text").SetCharset("utf8"),
+						schema.NewStringColumn("c2", "text").SetCharset("utf8mb3"),
 					)
 			)
 			return testcase{
