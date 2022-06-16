@@ -10,13 +10,23 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 )
 
 // A diff provides a MySQL implementation for sqlx.DiffDriver.
-type diff struct{ conn }
+type diff struct {
+	conn
+	// charset to collation mapping.
+	// See, internal directory.
+	ch2co, co2ch struct {
+		sync.Once
+		v   map[string]string
+		err error
+	}
+}
 
 // SchemaAttrDiff returns a changeset for migrating schema attributes from one state to the other.
 func (d *diff) SchemaAttrDiff(from, to *schema.Schema) []schema.Change {
@@ -173,7 +183,7 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 }
 
 // Normalize implements the sqlx.Normalizer interface.
-func (*diff) Normalize(from, to *schema.Table) error {
+func (d *diff) Normalize(from, to *schema.Table) error {
 	indexes := make([]*schema.Index, 0, len(from.Indexes))
 	for _, idx := range from.Indexes {
 		// MySQL requires that foreign key columns be indexed; Therefore, if the child
@@ -190,10 +200,10 @@ func (*diff) Normalize(from, to *schema.Table) error {
 
 	// Avoid proposing changes to the table COLLATE or CHARSET
 	// in case only one of these properties is defined.
-	if err := defaultCollate(&to.Attrs); err != nil {
+	if err := d.defaultCollate(&to.Attrs); err != nil {
 		return err
 	}
-	return defaultCharset(&to.Attrs)
+	return d.defaultCharset(&to.Attrs)
 }
 
 // collationChange returns the schema change for migrating the collation if
@@ -255,8 +265,8 @@ func (*diff) charsetChange(from, top, to []schema.Attr) schema.Change {
 }
 
 // columnCharsetChange indicates if there is a change to the column charset.
-func (*diff) columnCharsetChanged(fromT *schema.Table, from, to *schema.Column) (bool, error) {
-	if err := defaultCharset(&to.Attrs); err != nil {
+func (d *diff) columnCharsetChanged(fromT *schema.Table, from, to *schema.Column) (bool, error) {
+	if err := d.defaultCharset(&to.Attrs); err != nil {
 		return false, err
 	}
 	var (
@@ -275,8 +285,8 @@ func (*diff) columnCharsetChanged(fromT *schema.Table, from, to *schema.Column) 
 }
 
 // columnCollateChanged indicates if there is a change to the column charset.
-func (*diff) columnCollateChanged(fromT *schema.Table, from, to *schema.Column) (bool, error) {
-	if err := defaultCollate(&to.Attrs); err != nil {
+func (d *diff) columnCollateChanged(fromT *schema.Table, from, to *schema.Column) (bool, error) {
+	if err := d.defaultCollate(&to.Attrs); err != nil {
 		return false, err
 	}
 	var (
@@ -549,58 +559,18 @@ search:
 
 // defaultCollate appends the default COLLATE to the attributes in case a
 // custom character-set was defined for the element and the COLLATE was not.
-func defaultCollate(attrs *[]schema.Attr) error {
-	var (
-		charset  schema.Charset
-		defaults = map[string]string{
-			"armscii8": "armscii8_general_ci",
-			"ascii":    "ascii_general_ci",
-			"big5":     "big5_chinese_ci",
-			"binary":   "binary",
-			"cp1250":   "cp1250_general_ci",
-			"cp1251":   "cp1251_general_ci",
-			"cp1256":   "cp1256_general_ci",
-			"cp1257":   "cp1257_general_ci",
-			"cp850":    "cp850_general_ci",
-			"cp852":    "cp852_general_ci",
-			"cp866":    "cp866_general_ci",
-			"cp932":    "cp932_japanese_ci",
-			"dec8":     "dec8_swedish_ci",
-			"eucjpms":  "eucjpms_japanese_ci",
-			"euckr":    "euckr_korean_ci",
-			"gb18030":  "gb18030_chinese_ci",
-			"gb2312":   "gb2312_chinese_ci",
-			"gbk":      "gbk_chinese_ci",
-			"geostd8":  "geostd8_general_ci",
-			"greek":    "greek_general_ci",
-			"hebrew":   "hebrew_general_ci",
-			"hp8":      "hp8_english_ci",
-			"keybcs2":  "keybcs2_general_ci",
-			"koi8r":    "koi8r_general_ci",
-			"koi8u":    "koi8u_general_ci",
-			"latin1":   "latin1_swedish_ci",
-			"latin2":   "latin2_general_ci",
-			"latin5":   "latin5_turkish_ci",
-			"latin7":   "latin7_general_ci",
-			"macce":    "macce_general_ci",
-			"macroman": "macroman_general_ci",
-			"sjis":     "sjis_japanese_ci",
-			"swe7":     "swe7_swedish_ci",
-			"tis620":   "tis620_thai_ci",
-			"ucs2":     "ucs2_general_ci",
-			"ujis":     "ujis_japanese_ci",
-			"utf16":    "utf16_general_ci",
-			"utf16le":  "utf16le_general_ci",
-			"utf32":    "utf32_general_ci",
-			"utf8":     "utf8_general_ci",
-			"utf8mb3":  "utf8_general_ci",
-			"utf8mb4":  "utf8mb4_0900_ai_ci",
-		}
-	)
+func (d *diff) defaultCollate(attrs *[]schema.Attr) error {
+	var charset schema.Charset
 	if !sqlx.Has(*attrs, &charset) || sqlx.Has(*attrs, &schema.Collation{}) {
 		return nil
 	}
-	v, ok := defaults[charset.V]
+	d.ch2co.Do(func() {
+		d.ch2co.v, d.ch2co.err = d.charsetToCollate()
+	})
+	if d.ch2co.err != nil {
+		return d.ch2co.err
+	}
+	v, ok := d.ch2co.v[charset.V]
 	if !ok {
 		return fmt.Errorf("mysql: unknown character set: %q", charset.V)
 	}
@@ -610,288 +580,18 @@ func defaultCollate(attrs *[]schema.Attr) error {
 
 // defaultCharset appends the default CHARSET to the attributes in case a
 // custom collation was defined for the element and the CHARSET was not.
-func defaultCharset(attrs *[]schema.Attr) error {
-	var (
-		collate  schema.Collation
-		defaults = map[string]string{
-			"armscii8_bin":               "armscii",
-			"armscii8_general_ci":        "armscii",
-			"ascii_bin":                  "ascii",
-			"ascii_general_ci":           "ascii",
-			"big5_bin":                   "big5",
-			"big5_chinese_ci":            "big5",
-			"binary":                     "binary",
-			"cp1250_bin":                 "cp1250",
-			"cp1250_croatian_ci":         "cp1250",
-			"cp1250_czech_cs":            "cp1250",
-			"cp1250_general_ci":          "cp1250",
-			"cp1250_polish_ci":           "cp1250",
-			"cp1251_bin":                 "cp1251",
-			"cp1251_bulgarian_ci":        "cp1251",
-			"cp1251_general_ci":          "cp1251",
-			"cp1251_general_cs":          "cp1251",
-			"cp1251_ukrainian_ci":        "cp1251",
-			"cp1256_bin":                 "cp1256",
-			"cp1256_general_ci":          "cp1256",
-			"cp1257_bin":                 "cp1257",
-			"cp1257_general_ci":          "cp1257",
-			"cp1257_lithuanian_ci":       "cp1257",
-			"cp850_bin":                  "cp850",
-			"cp850_general_ci":           "cp850",
-			"cp852_bin":                  "cp852",
-			"cp852_general_ci":           "cp852",
-			"cp866_bin":                  "cp866",
-			"cp866_general_ci":           "cp866",
-			"cp932_bin":                  "cp932",
-			"cp932_japanese_ci":          "cp932",
-			"dec8_bin":                   "dec8",
-			"dec8_swedish_ci":            "dec8",
-			"eucjpms_bin":                "eucjpms",
-			"eucjpms_japanese_ci":        "eucjpms",
-			"euckr_bin":                  "euckr",
-			"euckr_korean_ci":            "euckr",
-			"gb18030_bin":                "gb18030",
-			"gb18030_chinese_ci":         "gb18030",
-			"gb18030_unicode_520_ci":     "gb18030",
-			"gb2312_bin":                 "gb2312",
-			"gb2312_chinese_ci":          "gb2312",
-			"gbk_bin":                    "gbk",
-			"gbk_chinese_ci":             "gbk",
-			"geostd8_bin":                "geostd8",
-			"geostd8_general_ci":         "geostd8",
-			"greek_bin":                  "greek",
-			"greek_general_ci":           "greek",
-			"hebrew_bin":                 "hebrew",
-			"hebrew_general_ci":          "hebrew",
-			"hp8_bin":                    "hp8",
-			"hp8_english_ci":             "hp8",
-			"keybcs2_bin":                "keybcs2",
-			"keybcs2_general_ci":         "keybcs2",
-			"koi8r_bin":                  "koi8r",
-			"koi8r_general_ci":           "koi8r",
-			"koi8u_bin":                  "koi8u",
-			"koi8u_general_ci":           "koi8u",
-			"latin1_bin":                 "latin1",
-			"latin1_danish_ci":           "latin1",
-			"latin1_general_ci":          "latin1",
-			"latin1_general_cs":          "latin1",
-			"latin1_german1_ci":          "latin1",
-			"latin1_german2_ci":          "latin1",
-			"latin1_spanish_ci":          "latin1",
-			"latin1_swedish_ci":          "latin1",
-			"latin2_bin":                 "latin2",
-			"latin2_croatian_ci":         "latin2",
-			"latin2_czech_cs":            "latin2",
-			"latin2_general_ci":          "latin2",
-			"latin2_hungarian_ci":        "latin2",
-			"latin5_bin":                 "latin5",
-			"latin5_turkish_ci":          "latin5",
-			"latin7_bin":                 "latin7",
-			"latin7_estonian_cs":         "latin7",
-			"latin7_general_ci":          "latin7",
-			"latin7_general_cs":          "latin7",
-			"macce_bin":                  "macce",
-			"macce_general_ci":           "macce",
-			"macroman_bin":               "macroma",
-			"macroman_general_ci":        "macroma",
-			"sjis_bin":                   "sjis",
-			"sjis_japanese_ci":           "sjis",
-			"swe7_bin":                   "swe7",
-			"swe7_swedish_ci":            "swe7",
-			"tis620_bin":                 "tis620",
-			"tis620_thai_ci":             "tis620",
-			"ucs2_bin":                   "ucs2",
-			"ucs2_croatian_ci":           "ucs2",
-			"ucs2_czech_ci":              "ucs2",
-			"ucs2_danish_ci":             "ucs2",
-			"ucs2_esperanto_ci":          "ucs2",
-			"ucs2_estonian_ci":           "ucs2",
-			"ucs2_general_ci":            "ucs2",
-			"ucs2_general_mysql500_ci":   "ucs2",
-			"ucs2_german2_ci":            "ucs2",
-			"ucs2_hungarian_ci":          "ucs2",
-			"ucs2_icelandic_ci":          "ucs2",
-			"ucs2_latvian_ci":            "ucs2",
-			"ucs2_lithuanian_ci":         "ucs2",
-			"ucs2_persian_ci":            "ucs2",
-			"ucs2_polish_ci":             "ucs2",
-			"ucs2_romanian_ci":           "ucs2",
-			"ucs2_roman_ci":              "ucs2",
-			"ucs2_sinhala_ci":            "ucs2",
-			"ucs2_slovak_ci":             "ucs2",
-			"ucs2_slovenian_ci":          "ucs2",
-			"ucs2_spanish2_ci":           "ucs2",
-			"ucs2_spanish_ci":            "ucs2",
-			"ucs2_swedish_ci":            "ucs2",
-			"ucs2_turkish_ci":            "ucs2",
-			"ucs2_unicode_520_ci":        "ucs2",
-			"ucs2_unicode_ci":            "ucs2",
-			"ucs2_vietnamese_ci":         "ucs2",
-			"ujis_bin":                   "ujis",
-			"ujis_japanese_ci":           "ujis",
-			"utf16le_bin":                "utf16le",
-			"utf16le_general_ci":         "utf16le",
-			"utf16_bin":                  "utf16",
-			"utf16_croatian_ci":          "utf16",
-			"utf16_czech_ci":             "utf16",
-			"utf16_danish_ci":            "utf16",
-			"utf16_esperanto_ci":         "utf16",
-			"utf16_estonian_ci":          "utf16",
-			"utf16_general_ci":           "utf16",
-			"utf16_german2_ci":           "utf16",
-			"utf16_hungarian_ci":         "utf16",
-			"utf16_icelandic_ci":         "utf16",
-			"utf16_latvian_ci":           "utf16",
-			"utf16_lithuanian_ci":        "utf16",
-			"utf16_persian_ci":           "utf16",
-			"utf16_polish_ci":            "utf16",
-			"utf16_romanian_ci":          "utf16",
-			"utf16_roman_ci":             "utf16",
-			"utf16_sinhala_ci":           "utf16",
-			"utf16_slovak_ci":            "utf16",
-			"utf16_slovenian_ci":         "utf16",
-			"utf16_spanish2_ci":          "utf16",
-			"utf16_spanish_ci":           "utf16",
-			"utf16_swedish_ci":           "utf16",
-			"utf16_turkish_ci":           "utf16",
-			"utf16_unicode_520_ci":       "utf16",
-			"utf16_unicode_ci":           "utf16",
-			"utf16_vietnamese_ci":        "utf16",
-			"utf32_bin":                  "utf32",
-			"utf32_croatian_ci":          "utf32",
-			"utf32_czech_ci":             "utf32",
-			"utf32_danish_ci":            "utf32",
-			"utf32_esperanto_ci":         "utf32",
-			"utf32_estonian_ci":          "utf32",
-			"utf32_general_ci":           "utf32",
-			"utf32_german2_ci":           "utf32",
-			"utf32_hungarian_ci":         "utf32",
-			"utf32_icelandic_ci":         "utf32",
-			"utf32_latvian_ci":           "utf32",
-			"utf32_lithuanian_ci":        "utf32",
-			"utf32_persian_ci":           "utf32",
-			"utf32_polish_ci":            "utf32",
-			"utf32_romanian_ci":          "utf32",
-			"utf32_roman_ci":             "utf32",
-			"utf32_sinhala_ci":           "utf32",
-			"utf32_slovak_ci":            "utf32",
-			"utf32_slovenian_ci":         "utf32",
-			"utf32_spanish2_ci":          "utf32",
-			"utf32_spanish_ci":           "utf32",
-			"utf32_swedish_ci":           "utf32",
-			"utf32_turkish_ci":           "utf32",
-			"utf32_unicode_520_ci":       "utf32",
-			"utf32_unicode_ci":           "utf32",
-			"utf32_vietnamese_ci":        "utf32",
-			"utf8mb4_0900_ai_ci":         "utf8mb4",
-			"utf8mb4_0900_as_ci":         "utf8mb4",
-			"utf8mb4_0900_as_cs":         "utf8mb4",
-			"utf8mb4_0900_bin":           "utf8mb4",
-			"utf8mb4_bin":                "utf8mb4",
-			"utf8mb4_croatian_ci":        "utf8mb4",
-			"utf8mb4_cs_0900_ai_ci":      "utf8mb4",
-			"utf8mb4_cs_0900_as_cs":      "utf8mb4",
-			"utf8mb4_czech_ci":           "utf8mb4",
-			"utf8mb4_danish_ci":          "utf8mb4",
-			"utf8mb4_da_0900_ai_ci":      "utf8mb4",
-			"utf8mb4_da_0900_as_cs":      "utf8mb4",
-			"utf8mb4_de_pb_0900_ai_ci":   "utf8mb4",
-			"utf8mb4_de_pb_0900_as_cs":   "utf8mb4",
-			"utf8mb4_eo_0900_ai_ci":      "utf8mb4",
-			"utf8mb4_eo_0900_as_cs":      "utf8mb4",
-			"utf8mb4_esperanto_ci":       "utf8mb4",
-			"utf8mb4_estonian_ci":        "utf8mb4",
-			"utf8mb4_es_0900_ai_ci":      "utf8mb4",
-			"utf8mb4_es_0900_as_cs":      "utf8mb4",
-			"utf8mb4_es_trad_0900_ai_ci": "utf8mb4",
-			"utf8mb4_es_trad_0900_as_cs": "utf8mb4",
-			"utf8mb4_et_0900_ai_ci":      "utf8mb4",
-			"utf8mb4_et_0900_as_cs":      "utf8mb4",
-			"utf8mb4_general_ci":         "utf8mb4",
-			"utf8mb4_german2_ci":         "utf8mb4",
-			"utf8mb4_hr_0900_ai_ci":      "utf8mb4",
-			"utf8mb4_hr_0900_as_cs":      "utf8mb4",
-			"utf8mb4_hungarian_ci":       "utf8mb4",
-			"utf8mb4_hu_0900_ai_ci":      "utf8mb4",
-			"utf8mb4_hu_0900_as_cs":      "utf8mb4",
-			"utf8mb4_icelandic_ci":       "utf8mb4",
-			"utf8mb4_is_0900_ai_ci":      "utf8mb4",
-			"utf8mb4_is_0900_as_cs":      "utf8mb4",
-			"utf8mb4_ja_0900_as_cs":      "utf8mb4",
-			"utf8mb4_ja_0900_as_cs_ks":   "utf8mb4",
-			"utf8mb4_latvian_ci":         "utf8mb4",
-			"utf8mb4_la_0900_ai_ci":      "utf8mb4",
-			"utf8mb4_la_0900_as_cs":      "utf8mb4",
-			"utf8mb4_lithuanian_ci":      "utf8mb4",
-			"utf8mb4_lt_0900_ai_ci":      "utf8mb4",
-			"utf8mb4_lt_0900_as_cs":      "utf8mb4",
-			"utf8mb4_lv_0900_ai_ci":      "utf8mb4",
-			"utf8mb4_lv_0900_as_cs":      "utf8mb4",
-			"utf8mb4_persian_ci":         "utf8mb4",
-			"utf8mb4_pl_0900_ai_ci":      "utf8mb4",
-			"utf8mb4_pl_0900_as_cs":      "utf8mb4",
-			"utf8mb4_polish_ci":          "utf8mb4",
-			"utf8mb4_romanian_ci":        "utf8mb4",
-			"utf8mb4_roman_ci":           "utf8mb4",
-			"utf8mb4_ro_0900_ai_ci":      "utf8mb4",
-			"utf8mb4_ro_0900_as_cs":      "utf8mb4",
-			"utf8mb4_ru_0900_ai_ci":      "utf8mb4",
-			"utf8mb4_ru_0900_as_cs":      "utf8mb4",
-			"utf8mb4_sinhala_ci":         "utf8mb4",
-			"utf8mb4_sk_0900_ai_ci":      "utf8mb4",
-			"utf8mb4_sk_0900_as_cs":      "utf8mb4",
-			"utf8mb4_slovak_ci":          "utf8mb4",
-			"utf8mb4_slovenian_ci":       "utf8mb4",
-			"utf8mb4_sl_0900_ai_ci":      "utf8mb4",
-			"utf8mb4_sl_0900_as_cs":      "utf8mb4",
-			"utf8mb4_spanish2_ci":        "utf8mb4",
-			"utf8mb4_spanish_ci":         "utf8mb4",
-			"utf8mb4_sv_0900_ai_ci":      "utf8mb4",
-			"utf8mb4_sv_0900_as_cs":      "utf8mb4",
-			"utf8mb4_swedish_ci":         "utf8mb4",
-			"utf8mb4_tr_0900_ai_ci":      "utf8mb4",
-			"utf8mb4_tr_0900_as_cs":      "utf8mb4",
-			"utf8mb4_turkish_ci":         "utf8mb4",
-			"utf8mb4_unicode_520_ci":     "utf8mb4",
-			"utf8mb4_unicode_ci":         "utf8mb4",
-			"utf8mb4_vietnamese_ci":      "utf8mb4",
-			"utf8mb4_vi_0900_ai_ci":      "utf8mb4",
-			"utf8mb4_vi_0900_as_cs":      "utf8mb4",
-			"utf8mb4_zh_0900_as_cs":      "utf8mb4",
-			"utf8_bin":                   "utf8mb3",
-			"utf8_croatian_ci":           "utf8mb3",
-			"utf8_czech_ci":              "utf8mb3",
-			"utf8_danish_ci":             "utf8mb3",
-			"utf8_esperanto_ci":          "utf8mb3",
-			"utf8_estonian_ci":           "utf8mb3",
-			"utf8_general_ci":            "utf8mb3",
-			"utf8_general_mysql500_ci":   "utf8mb3",
-			"utf8_german2_ci":            "utf8mb3",
-			"utf8_hungarian_ci":          "utf8mb3",
-			"utf8_icelandic_ci":          "utf8mb3",
-			"utf8_latvian_ci":            "utf8mb3",
-			"utf8_lithuanian_ci":         "utf8mb3",
-			"utf8_persian_ci":            "utf8mb3",
-			"utf8_polish_ci":             "utf8mb3",
-			"utf8_romanian_ci":           "utf8mb3",
-			"utf8_roman_ci":              "utf8mb3",
-			"utf8_sinhala_ci":            "utf8mb3",
-			"utf8_slovak_ci":             "utf8mb3",
-			"utf8_slovenian_ci":          "utf8mb3",
-			"utf8_spanish2_ci":           "utf8mb3",
-			"utf8_spanish_ci":            "utf8mb3",
-			"utf8_swedish_ci":            "utf8mb3",
-			"utf8_tolower_ci":            "utf8mb3",
-			"utf8_turkish_ci":            "utf8mb3",
-			"utf8_unicode_520_ci":        "utf8mb3",
-			"utf8_unicode_ci":            "utf8mb3",
-			"utf8_vietnamese_ci":         "utf8mb3",
-		}
-	)
+func (d *diff) defaultCharset(attrs *[]schema.Attr) error {
+	var collate schema.Collation
 	if !sqlx.Has(*attrs, &collate) || sqlx.Has(*attrs, &schema.Charset{}) {
 		return nil
 	}
-	v, ok := defaults[collate.V]
+	d.co2ch.Do(func() {
+		d.co2ch.v, d.co2ch.err = d.collateToCharset()
+	})
+	if d.co2ch.err != nil {
+		return d.co2ch.err
+	}
+	v, ok := d.co2ch.v[collate.V]
 	if !ok {
 		return fmt.Errorf("mysql: unknown collation: %q", collate.V)
 	}

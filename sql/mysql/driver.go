@@ -6,6 +6,8 @@ package mysql
 
 import (
 	"context"
+	"embed"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
@@ -61,14 +63,14 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	if c.tidb() {
 		return &Driver{
 			conn:        c,
-			Differ:      &sqlx.Diff{DiffDriver: &tdiff{diff{c}}},
+			Differ:      &sqlx.Diff{DiffDriver: &tdiff{diff{conn: c}}},
 			Inspector:   &tinspect{inspect{c}},
 			PlanApplier: &tplanApply{planApply{c}},
 		}, nil
 	}
 	return &Driver{
 		conn:        c,
-		Differ:      &sqlx.Diff{DiffDriver: &diff{c}},
+		Differ:      &sqlx.Diff{DiffDriver: &diff{conn: c}},
 		Inspector:   &inspect{c},
 		PlanApplier: &planApply{c},
 	}, nil
@@ -133,89 +135,107 @@ func acquire(ctx context.Context, conn schema.ExecQuerier, name string, timeout 
 
 // supportsCheck reports if the connected database supports
 // the CHECK clause, and return the querying for getting them.
-func (d *conn) supportsCheck() (string, bool) {
+func (c *conn) supportsCheck() (string, bool) {
 	v, q := "8.0.16", myChecksQuery
-	if d.mariadb() {
+	if c.mariadb() {
 		v, q = "10.2.1", marChecksQuery
 	}
-	return q, d.gteV(v)
+	return q, c.gteV(v)
 }
 
 // supportsIndexExpr reports if the connected database supports
 // index expressions (functional key part).
-func (d *conn) supportsIndexExpr() bool {
-	return !d.mariadb() && d.gteV("8.0.13")
+func (c *conn) supportsIndexExpr() bool {
+	return !c.mariadb() && c.gteV("8.0.13")
 }
 
 // supportsDisplayWidth reports if the connected database supports
 // getting the display width information from the information schema.
-func (d *conn) supportsDisplayWidth() bool {
+func (c *conn) supportsDisplayWidth() bool {
 	// MySQL v8.0.19 dropped the display width
 	// information from the information schema
-	return d.mariadb() || d.ltV("8.0.19")
+	return c.mariadb() || c.ltV("8.0.19")
 }
 
 // supportsExprDefault reports if the connected database supports
 // expressions in the DEFAULT clause on column definition.
-func (d *conn) supportsExprDefault() bool {
+func (c *conn) supportsExprDefault() bool {
 	v := "8.0.13"
-	if d.mariadb() {
+	if c.mariadb() {
 		v = "10.2.1"
 	}
-	return d.gteV(v)
+	return c.gteV(v)
 }
 
 // supportsEnforceCheck reports if the connected database supports
 // the ENFORCED option in CHECK constraint syntax.
-func (d *conn) supportsEnforceCheck() bool {
-	return !d.mariadb() && d.gteV("8.0.16")
+func (c *conn) supportsEnforceCheck() bool {
+	return !c.mariadb() && c.gteV("8.0.16")
 }
 
 // supportsGeneratedColumns reports if the connected database
 // supports the generated columns in information schema.
-func (d *conn) supportsGeneratedColumns() bool {
+func (c *conn) supportsGeneratedColumns() bool {
 	v := "5.7"
-	if d.mariadb() {
+	if c.mariadb() {
 		v = "10.2"
 	}
-	return d.gteV(v)
+	return c.gteV(v)
 }
 
 // supportsRenameColumn reports if the connected database
 // supports the "RENAME COLUMN" clause.
-func (d *conn) supportsRenameColumn() bool {
+func (c *conn) supportsRenameColumn() bool {
 	v := "8"
-	if d.mariadb() {
+	if c.mariadb() {
 		v = "10.5.2"
 	}
-	return d.gteV(v)
+	return c.gteV(v)
+}
+
+// charsetToCollate returns the mapping from charset to its default collation.
+func (c *conn) charsetToCollate() (map[string]string, error) {
+	name := "internal/charset2collate"
+	if c.mariadb() {
+		name += ".maria"
+	}
+	return decode(name)
+}
+
+// collateToCharset returns the mapping from a collation to its charset.
+func (c *conn) collateToCharset() (map[string]string, error) {
+	name := "internal/collate2charset"
+	if c.mariadb() {
+		name += ".maria"
+	}
+	return decode(name)
 }
 
 // mariadb reports if the Driver is connected to a MariaDB database.
-func (d *conn) mariadb() bool {
-	return strings.Index(d.version, "MariaDB") > 0
+func (c *conn) mariadb() bool {
+	return strings.Index(c.version, "MariaDB") > 0
 }
 
 // tidb reports if the Driver is connected to a TiDB database.
-func (d *conn) tidb() bool {
-	return strings.Index(d.version, "TiDB") > 0
+func (c *conn) tidb() bool {
+	return strings.Index(c.version, "TiDB") > 0
 }
 
 // compareV returns an integer comparing two versions according to
 // semantic version precedence.
-func (d *conn) compareV(w string) int {
-	v := d.version
-	if d.mariadb() {
+func (c *conn) compareV(w string) int {
+	v := c.version
+	if c.mariadb() {
 		v = v[:strings.Index(v, "MariaDB")-1]
 	}
 	return semver.Compare("v"+v, "v"+w)
 }
 
 // gteV reports if the connection version is >= w.
-func (d *conn) gteV(w string) bool { return d.compareV(w) >= 0 }
+func (c *conn) gteV(w string) bool { return c.compareV(w) >= 0 }
 
 // ltV reports if the connection version is < w.
-func (d *conn) ltV(w string) bool { return d.compareV(w) == -1 }
+func (c *conn) ltV(w string) bool { return c.compareV(w) == -1 }
 
 // unescape strings with backslashes returned
 // for SQL expressions from information schema.
@@ -274,6 +294,21 @@ func dsn(u *url.URL) string {
 		b.WriteString(u.RawQuery)
 	}
 	return b.String()
+}
+
+//go:embed internal/*
+var encoding embed.FS
+
+func decode(name string) (map[string]string, error) {
+	f, err := encoding.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	var m map[string]string
+	if err := json.NewDecoder(f).Decode(&m); err != nil {
+		return nil, fmt.Errorf("decode %q", name)
+	}
+	return m, nil
 }
 
 // MySQL standard column types as defined in its codebase. Name and order
