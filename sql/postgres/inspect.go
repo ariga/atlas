@@ -165,12 +165,12 @@ func (i *inspect) columns(ctx context.Context, s *schema.Schema) error {
 // addColumn scans the current row and adds a new column from it to the table.
 func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	var (
-		typid, maxlen, precision, timeprecision, scale, seqstart, seqinc                                              sql.NullInt64
+		typid, maxlen, precision, timeprecision, scale, seqstart, seqinc, seqcurr                                     sql.NullInt64
 		table, name, typ, nullable, defaults, udt, identity, genidentity, genexpr, charset, collate, comment, typtype sql.NullString
 	)
 	if err := rows.Scan(
 		&table, &name, &typ, &nullable, &defaults, &maxlen, &precision, &timeprecision, &scale, &charset,
-		&collate, &udt, &identity, &seqstart, &seqinc, &genidentity, &genexpr, &comment, &typtype, &typid,
+		&collate, &udt, &identity, &seqstart, &seqinc, &seqcurr, &genidentity, &genexpr, &comment, &typtype, &typid,
 	); err != nil {
 		return err
 	}
@@ -202,6 +202,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 		c.Attrs = append(c.Attrs, &Identity{
 			Generation: genidentity.String,
 			Sequence: &Sequence{
+				Current:   seqcurr.Int64,
 				Start:     seqstart.Int64,
 				Increment: seqinc.Int64,
 			},
@@ -717,6 +718,8 @@ type (
 	// https://www.postgresql.org/docs/current/sql-createsequence.html
 	Sequence struct {
 		Start, Increment int64
+		// Current sequence value. Attached in inspection.
+		Current int64
 	}
 
 	// Identity defines an identity column.
@@ -894,6 +897,7 @@ SELECT
 	t1.is_identity,
 	t1.identity_start,
 	t1.identity_increment,
+	(CASE WHEN t1.is_identity = 'YES' THEN currval(pg_get_serial_sequence(table_schema || '.' || t1.table_name, t1.column_name)) END) AS identity_current,
 	t1.identity_generation,
 	t1.generation_expression,
 	col_description(t3.oid, "ordinal_position") AS comment,
