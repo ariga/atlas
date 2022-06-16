@@ -318,6 +318,7 @@ SELECT
 	t1.is_identity,
 	t5.start_value as identity_start,
 	t5.increment_by as identity_increment,
+	t5.last_value AS identity_last,
 	t1.identity_generation,
 	t1.generation_expression,
 	col_description(t3.oid, "ordinal_position") AS comment,
@@ -332,7 +333,7 @@ FROM
 	LEFT JOIN pg_sequences AS t5
 	ON t5.schemaname || '.' || t5.sequencename = btrim(btrim(t1.column_default, 'nextval('''), '''::REGCLASS)')
 WHERE
-	table_schema = $1 AND table_name IN (%s)
+	t1.table_schema = $1 AND t1.table_name IN (%s)
 ORDER BY
 	t1.table_name, t1.ordinal_position
 `
