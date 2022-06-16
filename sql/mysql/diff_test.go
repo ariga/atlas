@@ -307,10 +307,10 @@ func TestDiff_TableDiff(t *testing.T) {
 			var (
 				from = schema.NewTable("t1").
 					SetSchema(schema.New("public")).
-					SetCharset("utf8mb3").
+					SetCharset("utf8").
 					SetCollation("utf8_general_ci").
 					AddColumns(
-						schema.NewStringColumn("c1", "text").SetCharset("utf8mb3"),
+						schema.NewStringColumn("c1", "text").SetCharset("utf8"),
 						schema.NewStringColumn("c2", "text"),
 					)
 				to = schema.NewTable("t1").
@@ -318,7 +318,7 @@ func TestDiff_TableDiff(t *testing.T) {
 					SetCollation("utf8_general_ci").
 					AddColumns(
 						schema.NewStringColumn("c1", "text"),
-						schema.NewStringColumn("c2", "text").SetCharset("utf8mb3"),
+						schema.NewStringColumn("c2", "text").SetCharset("utf8"),
 					)
 			)
 			return testcase{
