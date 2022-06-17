@@ -911,9 +911,9 @@ FROM
 	LEFT JOIN pg_catalog.pg_type AS t4
 	ON t1.udt_name = t4.typname
 	LEFT JOIN pg_sequences AS t5
-	ON t5.schemaname || '.' || t5.sequencename = pg_get_serial_sequence(table_schema || '.' || t1.table_name, t1.column_name)
+	ON quote_ident(t5.schemaname) || '.' || quote_ident(t5.sequencename) = pg_get_serial_sequence(quote_ident(t1.table_schema) || '.' || quote_ident(t1.table_name), t1.column_name)
 WHERE
-	table_schema = $1 AND table_name IN (%s)
+	t1.table_schema = $1 AND t1.table_name IN (%s)
 ORDER BY
 	t1.table_name, t1.ordinal_position
 `
