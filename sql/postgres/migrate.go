@@ -326,7 +326,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 				}
 				reverse = append(reverse, &schema.DropColumn{C: change.C})
 			case *schema.ModifyColumn:
-				if err := s.alterColumn(b, change); err != nil {
+				if err := s.alterColumn(b, change.Change, change.To); err != nil {
 					return err
 				}
 				if change.Change.Is(schema.ChangeGenerated) {
@@ -630,49 +630,44 @@ func (s *state) columnDefault(b *sqlx.Builder, c *schema.Column) {
 	}
 }
 
-func (s *state) alterColumn(b *sqlx.Builder, c *schema.ModifyColumn) error {
-	for k := c.Change; !k.Is(schema.NoChange); {
-		b.P("ALTER COLUMN").Ident(c.To.Name)
+func (s *state) alterColumn(b *sqlx.Builder, k schema.ChangeKind, c *schema.Column) error {
+	for !k.Is(schema.NoChange) {
+		b.P("ALTER COLUMN").Ident(c.Name)
 		switch {
 		case k.Is(schema.ChangeType):
-			t, err := FormatType(c.To.Type.Type)
+			t, err := FormatType(c.Type.Type)
 			if err != nil {
 				return err
 			}
 			b.P("TYPE", t)
-			if collate := (schema.Collation{}); sqlx.Has(c.To.Attrs, &collate) {
+			if collate := (schema.Collation{}); sqlx.Has(c.Attrs, &collate) {
 				b.P("COLLATE", collate.V)
 			}
 			k &= ^schema.ChangeType
-		case k.Is(schema.ChangeNull) && c.To.Type.Null:
+		case k.Is(schema.ChangeNull) && c.Type.Null:
 			b.P("DROP NOT NULL")
 			k &= ^schema.ChangeNull
-		case k.Is(schema.ChangeNull) && !c.To.Type.Null:
+		case k.Is(schema.ChangeNull) && !c.Type.Null:
 			b.P("SET NOT NULL")
 			k &= ^schema.ChangeNull
-		case k.Is(schema.ChangeDefault) && c.To.Default == nil:
+		case k.Is(schema.ChangeDefault) && c.Default == nil:
 			b.P("DROP DEFAULT")
 			k &= ^schema.ChangeDefault
-		case k.Is(schema.ChangeDefault) && c.To.Default != nil:
-			s.columnDefault(b.P("SET"), c.To)
+		case k.Is(schema.ChangeDefault) && c.Default != nil:
+			s.columnDefault(b.P("SET"), c)
 			k &= ^schema.ChangeDefault
 		case k.Is(schema.ChangeAttr):
-			toI, ok := identity(c.To.Attrs)
+			id, ok := identity(c.Attrs)
 			if !ok {
-				return fmt.Errorf("unexpected attribute change (expect IDENTITY): %v", c.To.Attrs)
+				return fmt.Errorf("unexpected attribute change (expect IDENTITY): %v", c.Attrs)
 			}
 			// The syntax for altering identity columns is identical to sequence_options.
 			// https://www.postgresql.org/docs/current/sql-altersequence.html
-			b.P("SET GENERATED", toI.Generation, "SET START WITH", strconv.FormatInt(toI.Sequence.Start, 10), "SET INCREMENT BY", strconv.FormatInt(toI.Sequence.Increment, 10))
-			// Skip SEQUENCE RESTART in case the "start value" is less than the "current value" in one
-			// of the states (inspected and desired), because this function is used for both UP and DOWN.
-			if fromI, ok := identity(c.From.Attrs); (!ok || fromI.Sequence.Last < toI.Sequence.Start) && toI.Sequence.Last < toI.Sequence.Start {
-				b.P("RESTART")
-			}
+			b.P("SET GENERATED", id.Generation, "SET START WITH", strconv.FormatInt(id.Sequence.Start, 10), "SET INCREMENT BY", strconv.FormatInt(id.Sequence.Increment, 10), "RESTART")
 			k &= ^schema.ChangeAttr
 		case k.Is(schema.ChangeGenerated):
-			if sqlx.Has(c.To.Attrs, &schema.GeneratedExpr{}) {
-				return fmt.Errorf("unexpected generation expression change (expect DROP EXPRESSION): %v", c.To.Attrs)
+			if sqlx.Has(c.Attrs, &schema.GeneratedExpr{}) {
+				return fmt.Errorf("unexpected generation expression change (expect DROP EXPRESSION): %v", c.Attrs)
 			}
 			b.P("DROP EXPRESSION")
 			k &= ^schema.ChangeGenerated
