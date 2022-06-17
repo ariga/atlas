@@ -331,7 +331,7 @@ FROM
 	LEFT JOIN pg_catalog.pg_type AS t4
 	ON t1.udt_name = t4.typname
 	LEFT JOIN pg_sequences AS t5
-	ON t5.schemaname || '.' || t5.sequencename = btrim(btrim(t1.column_default, 'nextval('''), '''::REGCLASS)')
+	ON quote_ident(t5.schemaname) || '.' || quote_ident(t5.sequencename) = btrim(btrim(t1.column_default, 'nextval('''), '''::REGCLASS)')
 WHERE
 	t1.table_schema = $1 AND t1.table_name IN (%s)
 ORDER BY
