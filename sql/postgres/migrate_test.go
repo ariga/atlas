@@ -104,14 +104,7 @@ func TestPlanChanges(t *testing.T) {
 						Name: "users",
 						Columns: []*schema.Column{
 							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
-							{
-								Name: "name",
-								Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}},
-								Indexes: []*schema.Index{
-									schema.NewIndex("name_index").
-										AddParts(schema.NewColumnPart(schema.NewColumn("name"))),
-								},
-							}},
+							{Name: "name", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}}},
 					}
 					return &schema.ModifyTable{
 						T: users,
@@ -131,6 +124,38 @@ func TestPlanChanges(t *testing.T) {
 					{
 						Cmd:     `DROP INDEX "name_index"`,
 						Reverse: `CREATE INDEX "name_index" ON "users" ("name")`,
+					},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+							{Name: "nickname", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}}},
+					}
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.DropIndex{
+								I: schema.NewUniqueIndex("unique_nickname").
+									AddColumns(schema.NewColumn("nickname")).
+									AddAttrs(&ConType{T: "u"}),
+							},
+						},
+					}
+				}(),
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `ALTER TABLE "users" DROP CONSTRAINT "unique_nickname"`,
+						Reverse: `ALTER TABLE "users" ADD CONSTRAINT "unique_nickname" UNIQUE ("nickname")`,
 					},
 				},
 			},
