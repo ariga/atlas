@@ -802,6 +802,9 @@ type (
 	}
 )
 
+// IsUnique reports if the type is unique constraint.
+func (c ConType) IsUnique() bool { return strings.ToLower(c.T) == "u" }
+
 // newIndexStorage parses and returns the index storage parameters.
 func newIndexStorage(opts string) (*IndexStorageParams, error) {
 	params := &IndexStorageParams{}
@@ -933,7 +936,7 @@ SELECT
 	pg_index_column_has_property(idx.indexrelid, idx.ord, 'desc') AS desc,
 	pg_index_column_has_property(idx.indexrelid, idx.ord, 'nulls_first') AS nulls_first,
 	pg_index_column_has_property(idx.indexrelid, idx.ord, 'nulls_last') AS nulls_last,
-	obj_description(to_regclass($1 || i.relname)::oid) AS comment,
+	obj_description(i.oid, 'pg_class') AS comment,
 	i.reloptions AS options
 FROM
 	(

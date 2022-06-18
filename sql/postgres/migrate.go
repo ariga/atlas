@@ -211,7 +211,13 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 			}
 			addI = append(addI, change.I)
 		case *schema.DropIndex:
-			dropI = append(dropI, change.I)
+			// Unlike DROP INDEX statements that are executed separately,
+			// DROP CONSTRAINT are added to the ALTER TABLE statement below.
+			if isUniqueConstraint(change.I) {
+				alter = append(alter, change)
+			} else {
+				dropI = append(dropI, change.I)
+			}
 		case *schema.ModifyIndex:
 			k := change.Change
 			if change.Change.Is(schema.ChangeComment) {
@@ -340,6 +346,14 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			case *schema.DropColumn:
 				b.P("DROP COLUMN").Ident(change.C.Name)
 				reverse = append(reverse, &schema.AddColumn{C: change.C})
+			case *schema.AddIndex:
+				b.P("ADD CONSTRAINT").Ident(change.I.Name).P("UNIQUE")
+				s.indexParts(b, change.I.Parts)
+				// Skip reversing this operation as it is the inverse of
+				// the operation below and should not be used besides this.
+			case *schema.DropIndex:
+				b.P("DROP CONSTRAINT").Ident(change.I.Name)
+				reverse = append(reverse, &schema.AddIndex{I: change.I})
 			case *schema.AddForeignKey:
 				b.P("ADD")
 				s.fks(b, change.F)
@@ -812,7 +826,7 @@ search:
 	for _, c := range changes {
 		switch c := c.(type) {
 		// Indexes involving the column are automatically dropped
-		// with it. This true for multi-columns indexes as well.
+		// with it. This is true for multi-columns indexes as well.
 		// See https://www.postgresql.org/docs/current/sql-altertable.html
 		case *schema.DropIndex:
 			for _, p := range c.I.Parts {
@@ -867,6 +881,33 @@ func check(b *sqlx.Builder, c *schema.Check) {
 	if sqlx.Has(c.Attrs, &NoInherit{}) {
 		b.P("NO INHERIT")
 	}
+}
+
+// isUniqueConstraint reports if the index is a valid UNIQUE constraint.
+func isUniqueConstraint(i *schema.Index) bool {
+	if c := (ConType{}); !sqlx.Has(i.Attrs, &c) || !c.IsUnique() || !i.Unique {
+		return false
+	}
+	// UNIQUE constraint cannot use functional indexes,
+	// and all its parts must have the default sort ordering.
+	for _, p := range i.Parts {
+		if p.X != nil || p.Desc {
+			return false
+		}
+	}
+	for _, a := range i.Attrs {
+		switch a := a.(type) {
+		// UNIQUE constraints must have BTREE type indexes.
+		case *IndexType:
+			if strings.ToUpper(a.T) != IndexTypeBTree {
+				return false
+			}
+		// Partial indexes are not allowed.
+		case *IndexPredicate:
+			return false
+		}
+	}
+	return true
 }
 
 func quote(s string) string {
