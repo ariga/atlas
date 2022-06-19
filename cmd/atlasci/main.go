@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"flag"
 	"fmt"
 	"os"
@@ -29,6 +30,10 @@ import (
 func main() {
 	var opt options
 	check(opt.parse())
+	if opt.license {
+		fmt.Println(license)
+		return
+	}
 	ctx := context.Background()
 	dev, err := sqlclient.Open(ctx, opt.devURL)
 	check(err)
@@ -75,6 +80,7 @@ type options struct {
 		gitBase string // git branch name.
 		gitRoot string // repository root.
 	}
+	license bool // user ran atlasci license.
 }
 
 var usage = `Usage:  atlasci [options]
@@ -86,6 +92,9 @@ Options:
   --latest       int      Run analysis on the latest N migration files
   --git-base     string   Run analysis against the base Git branch
   --git-root     string   Path to the repository root
+
+Additional commands:
+  license        Display license information for this program.
 
 Examples:
   atlasci --dir path/to/dir --dev-url mysql://root:pass@localhost:3306 --latest 1
@@ -102,6 +111,10 @@ func (o *options) parse() error {
 	flag.StringVar(&o.detectFrom.gitBase, "git-base", os.Getenv("ATLASCI_GIT_BASE"), "")
 	flag.StringVar(&o.detectFrom.gitRoot, "git-root", os.Getenv("ATLASCI_GIT_ROOT"), "")
 	flag.Parse()
+	if args := flag.Args(); len(args) > 0 && args[0] == "license" {
+		o.license = true
+		return nil
+	}
 	var errors []string
 	if o.dir == "" {
 		errors = append(errors, "--dev-url is required")
@@ -130,3 +143,7 @@ func check(err error) {
 		os.Exit(1)
 	}
 }
+
+var license = `LICENSE
+
+Atlas CI is licensed under Apache 2.0 as found in https://github.com/ariga/atlas/blob/master/LICENSE.`
