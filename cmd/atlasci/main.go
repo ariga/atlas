@@ -111,7 +111,7 @@ func (o *options) parse() error {
 	}
 	var errors []string
 	if o.dir == "" {
-		errors = append(errors, "--dev-url is required")
+		errors = append(errors, "--dir is required")
 	}
 	if o.devURL == "" {
 		errors = append(errors, "--dev-url is required")
