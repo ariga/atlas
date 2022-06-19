@@ -135,11 +135,7 @@ type (
 
 // NewFileReport returns a new FileReport.
 func NewFileReport(f migrate.File) (*FileReport, error) {
-	buf, err := io.ReadAll(f)
-	if err != nil {
-		return nil, err
-	}
-	return &FileReport{Name: f.Name(), Text: string(buf)}, nil
+	return &FileReport{Name: f.Name(), Text: string(f.Bytes())}, nil
 }
 
 // Line returns the line number from a position.

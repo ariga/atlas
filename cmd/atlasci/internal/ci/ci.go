@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -226,8 +225,7 @@ func (d *DevLoader) LoadChanges(ctx context.Context, files []migrate.File) ([]*s
 		diff[i] = &sqlcheck.File{
 			File: f,
 		}
-		bf := newFile(f)
-		stmts, err := d.Scan.Stmts(bf)
+		stmts, err := d.Scan.Stmts(f)
 		if err != nil {
 			return nil, err
 		}
@@ -246,7 +244,7 @@ func (d *DevLoader) LoadChanges(ctx context.Context, files []migrate.File) ([]*s
 			current = target
 			// In case the change is recognized by Atlas.
 			if len(changes) > 0 {
-				p, err := bf.pos(s)
+				p, err := pos(f, s)
 				if err != nil {
 					return nil, err
 				}
@@ -261,32 +259,11 @@ func (d *DevLoader) LoadChanges(ctx context.Context, files []migrate.File) ([]*s
 	return diff, nil
 }
 
-// file wraps the migration file and copies its
-// underlying bytes to a new buffer on Read.
-type file struct {
-	migrate.File
-	io.Reader
-	buf *bytes.Buffer
-}
-
-func newFile(f migrate.File) *file {
-	b := &bytes.Buffer{}
-	return &file{
-		File:   f,
-		buf:    b,
-		Reader: io.TeeReader(f, b),
-	}
-}
-
-func (f *file) Read(p []byte) (int, error) {
-	return f.Reader.Read(p)
-}
-
 // pos returns the position of a statement in migration file.
-func (f *file) pos(stmt string) (int, error) {
-	i := bytes.Index(f.buf.Bytes(), []byte(stmt))
+func pos(f migrate.File, stmt string) (int, error) {
+	i := bytes.Index(f.Bytes(), []byte(stmt))
 	if i == -1 {
-		return 0, fmt.Errorf("statement %q was not found in %q", stmt, f.buf.String())
+		return 0, fmt.Errorf("statement %q was not found in %q", stmt, f.Bytes())
 	}
 	return i, nil
 }
