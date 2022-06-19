@@ -118,10 +118,10 @@ func (o *options) parse() error {
 		errors = append(errors, "--dev-url is required")
 	}
 	if o.detectFrom.latest > 0 && o.detectFrom.gitBase != "" {
-		errors = append(errors, "--latest and --base-branch are mutually exclusive")
+		errors = append(errors, "--latest and --git-base are mutually exclusive")
 	}
 	if o.detectFrom.latest == 0 && o.detectFrom.gitBase == "" {
-		errors = append(errors, "--latest or --base-branch is required")
+		errors = append(errors, "--latest or --git-base is required")
 	}
 	if len(errors) > 0 {
 		return fmt.Errorf("%s", strings.Join(errors, ", "))
