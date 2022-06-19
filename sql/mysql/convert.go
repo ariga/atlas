@@ -28,10 +28,8 @@ func FormatType(t schema.Type) (string, error) {
 		}
 	case *schema.BinaryType:
 		f = strings.ToLower(t.T)
-		if f == TypeVarBinary {
-			// Zero is also a valid length.
-			f = fmt.Sprintf("%s(%d)", f, t.Size)
-		}
+	        // Zero is also a valid length.
+	        f = fmt.Sprintf("%s(%d)", f, t.Size)
 	case *schema.DecimalType:
 		if f = strings.ToLower(t.T); f != TypeDecimal && f != TypeNumeric {
 			return "", fmt.Errorf("mysql: unexpected decimal type: %q", t.T)
