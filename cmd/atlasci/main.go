@@ -29,10 +29,6 @@ import (
 func main() {
 	var opt options
 	check(opt.parse())
-	if opt.license {
-		fmt.Println(license)
-		return
-	}
 	ctx := context.Background()
 	dev, err := sqlclient.Open(ctx, opt.devURL)
 	check(err)
@@ -111,8 +107,8 @@ func (o *options) parse() error {
 	flag.StringVar(&o.detectFrom.gitRoot, "git-root", os.Getenv("ATLASCI_GIT_ROOT"), "")
 	flag.Parse()
 	if args := flag.Args(); len(args) > 0 && args[0] == "license" {
-		o.license = true
-		return nil
+		fmt.Println(license)
+		os.Exit(0)
 	}
 	var errors []string
 	if o.dir == "" {
