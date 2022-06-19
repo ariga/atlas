@@ -155,9 +155,10 @@ type (
 
 	// File represents a single migration file.
 	File interface {
-		io.Reader
 		// Name returns the name of the migration file.
 		Name() string
+		// Bytes returns the read content of the file.
+		Bytes() []byte
 	}
 
 	// Scanner wraps several methods to interpret a migration Dir.
@@ -295,11 +296,7 @@ func (p *Planner) WritePlan(plan *Plan) error {
 	}
 	// Store the files in the migration directory.
 	for _, f := range files {
-		d, err := io.ReadAll(f)
-		if err != nil {
-			return err
-		}
-		if err := p.dir.WriteFile(f.Name(), d); err != nil {
+		if err := p.dir.WriteFile(f.Name(), f.Bytes()); err != nil {
 			return err
 		}
 	}
@@ -725,18 +722,14 @@ func (d *LocalDir) Files() ([]File, error) {
 		if err != nil {
 			return nil, fmt.Errorf("sql/migrate: read file %q: %w", n, err)
 		}
-		ret[i] = &LocalFile{bytes.NewBuffer(b), n}
+		ret[i] = &LocalFile{n: n, b: b}
 	}
 	return ret, nil
 }
 
 // Stmts implements Scanner.Stmts. It reads migration file line-by-line and expects a statement to be one line only.
 func (d *LocalDir) Stmts(f File) ([]string, error) {
-	b, err := io.ReadAll(f)
-	if err != nil {
-		return nil, err
-	}
-	return stmts(string(b))
+	return stmts(string(f.Bytes()))
 }
 
 // Version implements Scanner.Version.
@@ -760,8 +753,8 @@ var _ interface {
 
 // LocalFile is used by LocalDir to implement the Scanner interface.
 type LocalFile struct {
-	c *bytes.Buffer
 	n string
+	b []byte
 }
 
 // Name implements File.Name.
@@ -769,9 +762,9 @@ func (f LocalFile) Name() string {
 	return f.n
 }
 
-// Read implements io.Reader.
-func (f LocalFile) Read(buf []byte) (int, error) {
-	return f.c.Read(buf)
+// Bytes returns local file data.
+func (f LocalFile) Bytes() []byte {
+	return f.b
 }
 
 var _ File = (*LocalFile)(nil)

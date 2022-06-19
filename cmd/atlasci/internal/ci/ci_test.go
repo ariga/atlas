@@ -6,7 +6,6 @@ package ci_test
 
 import (
 	"context"
-	"io"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -176,11 +175,7 @@ func (t testDir) Files() ([]migrate.File, error) {
 }
 
 func (testDir) Stmts(f migrate.File) ([]string, error) {
-	buf, err := io.ReadAll(f)
-	if err != nil {
-		return nil, err
-	}
-	return strings.Split(string(buf), "\n"), nil
+	return strings.Split(string(f.Bytes()), "\n"), nil
 }
 
 type testFile struct {
@@ -191,6 +186,6 @@ func (f testFile) Name() string {
 	return f.name
 }
 
-func (f testFile) Read(p []byte) (n int, err error) {
-	return copy(p, f.content), io.EOF
+func (f testFile) Bytes() []byte {
+	return []byte(f.content)
 }
