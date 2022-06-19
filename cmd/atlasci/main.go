@@ -75,7 +75,6 @@ type options struct {
 		gitBase string // git branch name.
 		gitRoot string // repository root.
 	}
-	license bool // user ran atlasci license.
 }
 
 var usage = `Usage:  atlasci [options]
