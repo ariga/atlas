@@ -808,7 +808,7 @@ create table atlas_types_sanity
 				},
 				{
 					Name: "tInterval",
-					Type: &schema.ColumnType{Type: &schema.UnsupportedType{T: "interval"}, Raw: "interval", Null: true},
+					Type: &schema.ColumnType{Type: &postgres.IntervalType{T: "interval", Precision: intp(6)}, Raw: "interval", Null: true},
 					Default: &schema.RawExpr{
 						X: "'04:00:00':::INTERVAL",
 					},

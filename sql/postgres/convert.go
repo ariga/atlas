@@ -51,6 +51,14 @@ func FormatType(t schema.Type) (string, error) {
 		case TypeInt8:
 			f = TypeBigInt
 		}
+	case *IntervalType:
+		f = strings.ToLower(t.T)
+		if t.F != "" {
+			f += " " + strings.ToLower(t.F)
+		}
+		if t.Precision != nil && *t.Precision != defaultTimePrecision {
+			f += fmt.Sprintf("(%d)", *t.Precision)
+		}
 	case *schema.StringType:
 		switch f = strings.ToLower(t.T); f {
 		case TypeText:
@@ -169,6 +177,19 @@ func arrayType(t string) (string, bool) {
 	return matches[1], true
 }
 
+// reInterval parses declaration of interval fields. See: https://www.postgresql.org/docs/current/datatype-datetime.html.
+var reInterval = regexp.MustCompile(`(?i)(?:INTERVAL\s*)?(YEAR|MONTH|DAY|HOUR|MINUTE|SECOND|YEAR TO MONTH|DAY TO HOUR|DAY TO MINUTE|DAY TO SECOND|HOUR TO MINUTE|HOUR TO SECOND|MINUTE TO SECOND)?\s*(?:\(([0-6])\))?$`)
+
+// intervalField reports if the given string is an interval
+// field type and returns its value (e.g. SECOND, MINUTE TO SECOND).
+func intervalField(t string) (string, bool) {
+	matches := reInterval.FindStringSubmatch(t)
+	if len(matches) != 3 || matches[1] == "" {
+		return "", false
+	}
+	return matches[1], true
+}
+
 // columnDesc represents a column descriptor.
 type columnDesc struct {
 	typ           string
@@ -180,6 +201,7 @@ type columnDesc struct {
 	typtype       string
 	typid         int64
 	parts         []string
+	interval      string
 }
 
 var reDigits = regexp.MustCompile(`\d`)
@@ -236,6 +258,16 @@ func parseColumn(s string) (*columnDesc, error) {
 		}
 		c.typ = timeAlias(t)
 		c.timePrecision = &p
+	case TypeInterval:
+		matches := reInterval.FindStringSubmatch(s)
+		c.interval = matches[1]
+		if matches[2] != "" {
+			i, err := strconv.ParseInt(matches[2], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("postgres: parse interval precision %q: %w", parts[1], err)
+			}
+			c.timePrecision = &i
+		}
 	default:
 		c.typ = s
 	}
