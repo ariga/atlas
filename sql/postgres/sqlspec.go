@@ -569,6 +569,48 @@ var TypeRegistry = schemahcl.NewRegistry(
 		schemahcl.TypeSpec("hstore"),
 		schemahcl.TypeSpec("sql", schemahcl.WithAttributes(&schemaspec.TypeAttr{Name: "def", Required: true, Kind: reflect.String})),
 	),
+	schemahcl.WithSpecs(func() (specs []*schemaspec.TypeSpec) {
+		for _, f := range []string{"interval", "year", "month", "day", "hour", "minute", "second", "year to month", "day to hour", "day to minute", "day to second", "hour to minute", "hour to second", "minute to second"} {
+			specs = append(
+				specs,
+				schemahcl.TypeSpec(
+					specutil.Var(f),
+					schemahcl.WithAttributes(precisionTypeAttr()),
+					schemahcl.WithToSpec(func(t schema.Type) (*schemaspec.Type, error) {
+						i, ok := t.(*IntervalType)
+						if !ok {
+							return nil, fmt.Errorf("postgres: unexpected interval type %T", t)
+						}
+						spec := &schemaspec.Type{T: TypeInterval}
+						if i.F != "" {
+							spec.T = specutil.Var(strings.ToLower(i.F))
+						}
+						if p := i.Precision; p != nil && *p != defaultTimePrecision {
+							spec.Attrs = []*schemaspec.Attr{specutil.IntAttr("precision", *p)}
+						}
+						return spec, nil
+					}),
+					schemahcl.WithFromSpec(func(t *schemaspec.Type) (schema.Type, error) {
+						i := &IntervalType{T: TypeInterval}
+						if t.T != TypeInterval {
+							i.F = specutil.FromVar(t.T)
+						}
+						if a, ok := attr(t, "precision"); ok {
+							p, err := a.Int()
+							if err != nil {
+								return nil, fmt.Errorf(`postgres: parsing attribute "precision": %w`, err)
+							}
+							if p != defaultTimePrecision {
+								i.Precision = &p
+							}
+						}
+						return i, nil
+					}),
+				),
+			)
+		}
+		return specs
+	}()...),
 )
 
 func precisionTypeAttr() *schemaspec.TypeAttr {
