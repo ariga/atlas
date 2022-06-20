@@ -6,6 +6,7 @@ package postgres
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 
 	"ariga.io/atlas/sql/internal/spectest"
@@ -1110,6 +1111,83 @@ func TestParseType_Time(t *testing.T) {
 			typ, err := ParseType(tt.typ)
 			require.NoError(t, err)
 			require.Equal(t, tt.expected, typ)
+		})
+	}
+}
+
+func TestFormatType_Interval(t *testing.T) {
+	p := func(i int) *int { return &i }
+	for i, tt := range []struct {
+		typ *IntervalType
+		fmt string
+	}{
+		{
+			typ: &IntervalType{T: "interval"},
+			fmt: "interval",
+		},
+		{
+			typ: &IntervalType{T: "interval", Precision: p(6)},
+			fmt: "interval",
+		},
+		{
+			typ: &IntervalType{T: "interval", Precision: p(3)},
+			fmt: "interval(3)",
+		},
+		{
+			typ: &IntervalType{T: "interval", F: "DAY"},
+			fmt: "interval day",
+		},
+		{
+			typ: &IntervalType{T: "interval", F: "HOUR TO SECOND"},
+			fmt: "interval hour to second",
+		},
+		{
+			typ: &IntervalType{T: "interval", F: "HOUR TO SECOND", Precision: p(2)},
+			fmt: "interval hour to second(2)",
+		},
+		{
+			typ: &IntervalType{T: "interval", F: "DAY TO HOUR", Precision: p(6)},
+			fmt: "interval day to hour",
+		},
+	} {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			f, err := FormatType(tt.typ)
+			require.NoError(t, err)
+			require.Equal(t, tt.fmt, f)
+		})
+	}
+}
+func TestParseType_Interval(t *testing.T) {
+	p := func(i int) *int { return &i }
+	for i, tt := range []struct {
+		typ    string
+		parsed *IntervalType
+	}{
+		{
+			typ:    "interval",
+			parsed: &IntervalType{T: "interval", Precision: p(6)},
+		},
+		{
+			typ:    "interval(2)",
+			parsed: &IntervalType{T: "interval", Precision: p(2)},
+		},
+		{
+			typ:    "interval day",
+			parsed: &IntervalType{T: "interval", F: "day", Precision: p(6)},
+		},
+		{
+			typ:    "interval day to second(2)",
+			parsed: &IntervalType{T: "interval", F: "day to second", Precision: p(2)},
+		},
+		{
+			typ:    "interval day to second (2)",
+			parsed: &IntervalType{T: "interval", F: "day to second", Precision: p(2)},
+		},
+	} {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			p, err := ParseType(tt.typ)
+			require.NoError(t, err)
+			require.Equal(t, tt.parsed, p)
 		})
 	}
 }
