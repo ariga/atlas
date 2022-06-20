@@ -373,7 +373,8 @@ func (e *Executor) Lock(ctx context.Context) (schema.UnlockFunc, error) {
 	return unlock, nil
 }
 
-// Pending returns all pending (not applied) migration files in the migration directory.
+// Pending returns all pending (not applied) migration files in the migration directory. It will return an error, if
+// there is at least one revision in a "not-ok" state (error or ongoing).
 func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 	// Don't operate with a broken migration directory.
 	if err := Validate(e.dir); err != nil {
@@ -383,6 +384,16 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 	revs, err := e.rrw.ReadRevisions(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("sql/migrate: execute: read revisions: %w", err)
+	}
+	// Check for all revisions to be "okay".
+	for _, r := range revs {
+		if r.ExecutionState != stateOK {
+			return nil, fmt.Errorf(
+				"sql/migrate: execute: dirty migration state: version %q has state %q",
+				r.Version,
+				r.ExecutionState,
+			)
+		}
 	}
 	// Select the correct migration files.
 	sc := e.dir.(Scanner)
@@ -424,7 +435,8 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 	return migrations[len(revs):], nil
 }
 
-// Execute executes the given migration file on the database.
+// Execute executes the given migration file on the database. It does not check for the database to be clean before
+// attempting to apply the changes. This behavior is required to enabled "fixing" a broken state.
 func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 	r := &Revision{ExecutedAt: time.Now(), ExecutionState: stateOngoing}
 	if err := e.rrw.WriteRevision(ctx, r); err != nil {
@@ -479,7 +491,8 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 	return
 }
 
-// ExecuteN executes n pending migration files. If n<=0 all pending migration files are executed.
+// ExecuteN executes n pending migration files. If n<=0 all pending migration files are executed. It will not attempt
+// an execution if the database is not "clean" (has only successfully applied migrations).
 func (e *Executor) ExecuteN(ctx context.Context, n int) error {
 	unlock, err := e.Lock(ctx)
 	if err != nil {

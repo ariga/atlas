@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	_ "embed"
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -423,7 +424,7 @@ func TestExecutor(t *testing.T) {
 	require.True(t, drv.released())
 
 	// Unknown revision present.
-	*rrw = mockRevisionReadWriter(migrate.Revisions{&migrate.Revision{Version: "unknown"}})
+	*rrw = mockRevisionReadWriter(migrate.Revisions{&migrate.Revision{Version: "unknown", ExecutionState: "ok"}})
 	*drv = lockMockDriver{&mockDriver{}}
 	require.EqualError(t, ex.ExecuteN(context.Background(), 0),
 		`sql/migrate: execute: revisions and migrations mismatch: rev "1.a" <> file "unknown"`,
@@ -434,7 +435,7 @@ func TestExecutor(t *testing.T) {
 	require.True(t, drv.released())
 
 	// More revisions than migration files.
-	*rrw = mockRevisionReadWriter(migrate.Revisions{&migrate.Revision{Version: "unknown"}, rev1, rev2})
+	*rrw = mockRevisionReadWriter(migrate.Revisions{{Version: "unknown", ExecutionState: "ok"}, rev1, rev2})
 	*drv = lockMockDriver{&mockDriver{}}
 	require.EqualError(t, ex.ExecuteN(context.Background(), 0),
 		`sql/migrate: execute: revisions and migrations mismatch: more revisions than migrations`,
@@ -442,6 +443,29 @@ func TestExecutor(t *testing.T) {
 
 	require.Equal(t, drv.lockCounter, 1)
 	require.Equal(t, drv.unlockCounter, 1)
+	require.True(t, drv.released())
+
+	// Incomplete revisions (error or ongoing) present.
+	rev1.ExecutionState = "error"
+	*rrw = mockRevisionReadWriter(migrate.Revisions{rev1})
+	*drv = lockMockDriver{&mockDriver{}}
+	require.EqualError(t, ex.ExecuteN(context.Background(), 0), fmt.Sprintf(
+		"sql/migrate: execute: dirty migration state: version %q has state %q",
+		rev1.Version, "error",
+	))
+
+	require.Equal(t, drv.lockCounter, 1)
+	require.Equal(t, drv.unlockCounter, 1)
+	require.True(t, drv.released())
+
+	rev1.ExecutionState = "ongoing"
+	require.EqualError(t, ex.ExecuteN(context.Background(), 0), fmt.Sprintf(
+		"sql/migrate: execute: dirty migration state: version %q has state %q",
+		rev1.Version, "ongoing",
+	))
+
+	require.Equal(t, drv.lockCounter, 2)
+	require.Equal(t, drv.unlockCounter, 2)
 	require.True(t, drv.released())
 }
 
