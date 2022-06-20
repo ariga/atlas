@@ -169,6 +169,19 @@ func arrayType(t string) (string, bool) {
 	return matches[1], true
 }
 
+// reInterval parses declaration of interval fields. See: https://www.postgresql.org/docs/current/datatype-datetime.html.
+var reInterval = regexp.MustCompile(`(?i)(?:INTERVAL\s+)*(YEAR|MONTH|DAY|HOUR|MINUTE|SECOND|YEAR TO MONTH|DAY TO HOUR|DAY TO MINUTE|DAY TO SECOND|HOUR TO MINUTE|HOUR TO SECOND|MINUTE TO SECOND)\s*(?:\([0-6]\))*$`)
+
+// intervalField reports if the given string is an interval
+// field type and returns its value (e.g. SECOND, MINUTE TO SECOND).
+func intervalField(t string) (string, bool) {
+	matches := reInterval.FindStringSubmatch(t)
+	if len(matches) != 2 {
+		return "", false
+	}
+	return matches[1], true
+}
+
 // columnDesc represents a column descriptor.
 type columnDesc struct {
 	typ           string
@@ -180,6 +193,7 @@ type columnDesc struct {
 	typtype       string
 	typid         int64
 	parts         []string
+	interval      string
 }
 
 var reDigits = regexp.MustCompile(`\d`)

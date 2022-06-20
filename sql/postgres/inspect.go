@@ -165,11 +165,11 @@ func (i *inspect) columns(ctx context.Context, s *schema.Schema) error {
 // addColumn scans the current row and adds a new column from it to the table.
 func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	var (
-		typid, maxlen, precision, timeprecision, scale, seqstart, seqinc, seqlast                                     sql.NullInt64
-		table, name, typ, nullable, defaults, udt, identity, genidentity, genexpr, charset, collate, comment, typtype sql.NullString
+		typid, maxlen, precision, timeprecision, scale, seqstart, seqinc, seqlast                                               sql.NullInt64
+		table, name, typ, nullable, defaults, udt, identity, genidentity, genexpr, charset, collate, comment, typtype, interval sql.NullString
 	)
 	if err := rows.Scan(
-		&table, &name, &typ, &nullable, &defaults, &maxlen, &precision, &timeprecision, &scale, &charset,
+		&table, &name, &typ, &nullable, &defaults, &maxlen, &precision, &timeprecision, &scale, &interval, &charset,
 		&collate, &udt, &identity, &seqstart, &seqinc, &seqlast, &genidentity, &genexpr, &comment, &typtype, &typid,
 	); err != nil {
 		return err
@@ -192,6 +192,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 		scale:         scale.Int64,
 		typtype:       typtype.String,
 		typid:         typid.Int64,
+		interval:      interval.String,
 		precision:     precision.Int64,
 		timePrecision: &timeprecision.Int64,
 	})
@@ -255,8 +256,18 @@ func columnType(c *columnDesc) schema.Type {
 		}
 		typ = &schema.TimeType{T: t, Precision: &p}
 	case TypeInterval:
-		// TODO: get 'interval_type' from query above before implementing.
-		typ = &schema.UnsupportedType{T: t}
+		p := defaultTimePrecision
+		if c.timePrecision != nil {
+			p = int(*c.timePrecision)
+		}
+		typ = &IntervalType{T: t, Precision: &p}
+		if c.interval != "" {
+			f, ok := intervalField(c.interval)
+			if !ok {
+				return &schema.UnsupportedType{T: c.interval}
+			}
+			typ.(*IntervalType).F = f
+		}
 	case TypeReal, TypeDouble, TypeFloat4, TypeFloat8:
 		typ = &schema.FloatType{T: t, Precision: int(c.precision)}
 	case TypeJSON, TypeJSONB:
@@ -674,6 +685,15 @@ type (
 		Len int64
 	}
 
+	// IntervalType defines an interval type.
+	// https://www.postgresql.org/docs/current/datatype-datetime.html
+	IntervalType struct {
+		schema.Type
+		T         string // Type name.
+		F         string // Optional field. YEAR, MONTH, ..., MINUTE TO SECOND.
+		Precision *int   // Optional precision.
+	}
+
 	// A NetworkType defines a network type.
 	// https://www.postgresql.org/docs/current/datatype-net-types.html
 	NetworkType struct {
@@ -895,6 +915,7 @@ SELECT
 	t1.numeric_precision,
 	t1.datetime_precision,
 	t1.numeric_scale,
+	t1.interval_type,
 	t1.character_set_name,
 	t1.collation_name,
 	t1.udt_name,

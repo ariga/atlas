@@ -312,6 +312,7 @@ SELECT
 	t1.numeric_precision,
 	t1.datetime_precision,
 	t1.numeric_scale,
+	t1.interval_type,
 	t1.character_set_name,
 	t1.collation_name,
 	t1.udt_name,
