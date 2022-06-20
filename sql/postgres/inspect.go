@@ -901,7 +901,7 @@ SELECT
 	t1.is_identity,
 	t1.identity_start,
 	t1.identity_increment,
-	t5.last_value AS identity_last,
+	(CASE WHEN t1.is_identity = 'YES' THEN (SELECT last_value FROM pg_sequences WHERE quote_ident(schemaname) || '.' || quote_ident(sequencename) = pg_get_serial_sequence(quote_ident(t1.table_schema) || '.' || quote_ident(t1.table_name), t1.column_name)) END) AS identity_last,
 	t1.identity_generation,
 	t1.generation_expression,
 	col_description(t3.oid, "ordinal_position") AS comment,
@@ -913,8 +913,6 @@ FROM
 	JOIN pg_catalog.pg_class AS t3 ON t3.relnamespace = t2.oid AND t3.relname = t1.table_name
 	LEFT JOIN pg_catalog.pg_type AS t4
 	ON t1.udt_name = t4.typname
-	LEFT JOIN pg_sequences AS t5
-	ON quote_ident(t5.schemaname) || '.' || quote_ident(t5.sequencename) = pg_get_serial_sequence(quote_ident(t1.table_schema) || '.' || quote_ident(t1.table_name), t1.column_name)
 WHERE
 	t1.table_schema = $1 AND t1.table_name IN (%s)
 ORDER BY
