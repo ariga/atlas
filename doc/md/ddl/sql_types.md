@@ -157,7 +157,7 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                    type = date(10)
+                    type = date(6)
                 </pre>
                 
                 
@@ -175,7 +175,7 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                    type = datetime(10)
+                    type = datetime(6)
                 </pre>
                 
                 
@@ -195,7 +195,7 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                    type = decimal(10,2)
+                    type = decimal(6,2)
                 </pre>
                 
                 <pre>
@@ -219,7 +219,7 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                    type = double(10,2)
+                    type = double(6,2)
                 </pre>
                 
                 <pre>
@@ -261,7 +261,7 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                    type = float(10,2)
+                    type = float(6,2)
                 </pre>
                 
                 <pre>
@@ -518,7 +518,7 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                    type = numeric(10,2)
+                    type = numeric(6,2)
                 </pre>
                 
                 <pre>
@@ -576,7 +576,7 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                    type = real(10,2)
+                    type = real(6,2)
                 </pre>
                 
                 <pre>
@@ -657,7 +657,7 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                    type = time(10)
+                    type = time(6)
                 </pre>
                 
                 
@@ -675,7 +675,7 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                    type = timestamp(10)
+                    type = timestamp(6)
                 </pre>
                 
                 
@@ -786,7 +786,7 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                    type = year(10)
+                    type = year(6)
                 </pre>
                 
                 
@@ -1057,13 +1057,12 @@ slug: /ddl/sql-types
             <td>day</td>
             <td>
                 <ul>
-                        <li>precision (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                    type = day(10)
+                    type = day
                 </pre>
                 
                 
@@ -1075,13 +1074,12 @@ slug: /ddl/sql-types
             <td>day_to_hour</td>
             <td>
                 <ul>
-                        <li>precision (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                    type = day_to_hour(10)
+                    type = day_to_hour
                 </pre>
                 
                 
@@ -1093,13 +1091,12 @@ slug: /ddl/sql-types
             <td>day_to_minute</td>
             <td>
                 <ul>
-                        <li>precision (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                    type = day_to_minute(10)
+                    type = day_to_minute
                 </pre>
                 
                 
@@ -1117,7 +1114,7 @@ slug: /ddl/sql-types
             <td>
                 
                 <pre>
-                    type = day_to_second(10)
+                    type = day_to_second(6)
                 </pre>
                 
                 
@@ -1220,13 +1217,12 @@ enum "my_enum" &#123;
             <td>hour</td>
             <td>
                 <ul>
-                        <li>precision (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                    type = hour(10)
+                    type = hour
                 </pre>
                 
                 
@@ -1238,13 +1234,12 @@ enum "my_enum" &#123;
             <td>hour_to_minute</td>
             <td>
                 <ul>
-                        <li>precision (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                    type = hour_to_minute(10)
+                    type = hour_to_minute
                 </pre>
                 
                 
@@ -1262,7 +1257,7 @@ enum "my_enum" &#123;
             <td>
                 
                 <pre>
-                    type = hour_to_second(10)
+                    type = hour_to_second(6)
                 </pre>
                 
                 
@@ -1399,7 +1394,7 @@ enum "my_enum" &#123;
             <td>
                 
                 <pre>
-                    type = interval(10)
+                    type = interval(6)
                 </pre>
                 
                 
@@ -1513,13 +1508,12 @@ enum "my_enum" &#123;
             <td>minute</td>
             <td>
                 <ul>
-                        <li>precision (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                    type = minute(10)
+                    type = minute
                 </pre>
                 
                 
@@ -1537,7 +1531,7 @@ enum "my_enum" &#123;
             <td>
                 
                 <pre>
-                    type = minute_to_second(10)
+                    type = minute_to_second(6)
                 </pre>
                 
                 
@@ -1566,13 +1560,12 @@ enum "my_enum" &#123;
             <td>month</td>
             <td>
                 <ul>
-                        <li>precision (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                    type = month(10)
+                    type = month
                 </pre>
                 
                 
@@ -1658,7 +1651,7 @@ enum "my_enum" &#123;
             <td>
                 
                 <pre>
-                    type = second(10)
+                    type = second(6)
                 </pre>
                 
                 
@@ -1813,7 +1806,7 @@ enum "my_enum" &#123;
             <td>
                 
                 <pre>
-                    type = time(10)
+                    type = time
                 </pre>
                 
                 
@@ -1831,7 +1824,7 @@ enum "my_enum" &#123;
             <td>
                 
                 <pre>
-                    type = timestamp(10)
+                    type = timestamp
                 </pre>
                 
                 
@@ -1849,7 +1842,7 @@ enum "my_enum" &#123;
             <td>
                 
                 <pre>
-                    type = timestamptz(10)
+                    type = timestamptz
                 </pre>
                 
                 
@@ -1867,7 +1860,7 @@ enum "my_enum" &#123;
             <td>
                 
                 <pre>
-                    type = timetz(10)
+                    type = timetz
                 </pre>
                 
                 
@@ -1931,13 +1924,12 @@ enum "my_enum" &#123;
             <td>year</td>
             <td>
                 <ul>
-                        <li>precision (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                    type = year(10)
+                    type = year
                 </pre>
                 
                 
@@ -1949,13 +1941,12 @@ enum "my_enum" &#123;
             <td>year_to_month</td>
             <td>
                 <ul>
-                        <li>precision (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                    type = year_to_month(10)
+                    type = year_to_month
                 </pre>
                 
                 
@@ -2113,7 +2104,7 @@ enum "my_enum" &#123;
             <td>
                 
                 <pre>
-                    type = decimal(10,2)
+                    type = decimal(6,2)
                 </pre>
                 
                 
@@ -2329,7 +2320,7 @@ enum "my_enum" &#123;
             <td>
                 
                 <pre>
-                    type = numeric(10,2)
+                    type = numeric(6,2)
                 </pre>
                 
                 
@@ -2366,7 +2357,7 @@ enum "my_enum" &#123;
             <td>
                 
                 <pre>
-                    type = real(10,2)
+                    type = real(6,2)
                 </pre>
                 
                 

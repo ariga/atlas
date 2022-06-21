@@ -110,7 +110,7 @@ func dummyType(ts *schemaspec.TypeSpec) *schemaspec.Type {
 		case reflect.Int, reflect.Int64:
 			n := "255"
 			if attr.Name == "precision" {
-				n = "10"
+				n = "6"
 			}
 			if attr.Name == "scale" {
 				n = "2"
