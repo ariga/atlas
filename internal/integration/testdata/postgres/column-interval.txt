@@ -1,0 +1,70 @@
+apply 1.hcl
+cmpshow logs 1.sql
+cmphcl 1.inspect.hcl
+
+-- 1.hcl --
+table "logs" {
+  schema = schema.script_column_interval
+  column "a" {
+    null = false
+    type = interval
+    default = "3 hours"
+  }
+  column "b" {
+    null = false
+    type = interval(1)
+  }
+  column "c" {
+    null = false
+    type = second
+  }
+  column "d" {
+    null = false
+    type = second(1)
+  }
+  column "e" {
+    null = true
+    type = day_to_second(4)
+  }
+}
+
+schema "script_column_interval" {}
+
+-- 1.sql --
+                 Table "script_column_interval.logs"
+ Column |           Type            | Collation | Nullable |       Default
+--------+---------------------------+-----------+----------+----------------------
+ a      | interval                  |           | not null | '03:00:00'::interval
+ b      | interval(1)               |           | not null |
+ c      | interval second           |           | not null |
+ d      | interval second(1)        |           | not null |
+ e      | interval day to second(4) |           |          |
+
+
+-- 1.inspect.hcl --
+table "logs" {
+  schema = schema.script_column_interval
+  column "a" {
+    null    = false
+    type    = interval
+    default = sql("'03:00:00'::interval")
+  }
+  column "b" {
+    null = false
+    type = interval(1)
+  }
+  column "c" {
+    null = false
+    type = second
+  }
+  column "d" {
+    null = false
+    type = second(1)
+  }
+  column "e" {
+    null = true
+    type = day_to_second(4)
+  }
+}
+schema "script_column_interval" {
+}
