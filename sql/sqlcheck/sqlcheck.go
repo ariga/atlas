@@ -7,6 +7,7 @@ package sqlcheck
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"sync"
 
 	"ariga.io/atlas/sql/internal/sqlx"
@@ -127,6 +128,45 @@ var Destructive = &driverAware{
 			})
 		}
 		return nil
+	},
+}
+
+// These are the regexes used for detecting renames in statements for StatementRename.
+var (
+	mysqlRenameRegex = regexp.MustCompile("ALTER TABLE ([`\\w]+) RENAME COLUMN ([`\\w]+) TO ([`\\w]+)")
+	mysqlChangeRegex = regexp.MustCompile("ALTER TABLE ([`\\w]+) CHANGE(?: COLUMN)? ([`\\w]+) ([`\\w]+) [\\w()]+")
+)
+
+// StatementRename detects renames in the change statement.
+var StatementRename = &driverAware{
+	run: func(ctx context.Context, diags []Diagnostic, p *Pass) error {
+		if len(diags) > 0 {
+			p.Reporter.WriteReport(Report{
+				Text:        fmt.Sprintf("Renames detected in file %s", p.File.Name()),
+				Diagnostics: diags,
+			})
+		}
+		return nil
+	},
+	drivers: map[string]func(context.Context, *Pass) ([]Diagnostic, error){
+		"mysql": func(ctx context.Context, p *Pass) ([]Diagnostic, error) {
+			var diags []Diagnostic
+			for _, c := range p.File.Changes {
+				// Find submatches from the capturing groups so we can detect what table and columns are being changed.
+				submatches := mysqlRenameRegex.FindStringSubmatch(c.Stmt)
+				if submatches == nil {
+					submatches = mysqlChangeRegex.FindStringSubmatch(c.Stmt)
+					if submatches == nil {
+						continue
+					}
+				}
+				diags = append(diags, Diagnostic{
+					Pos:  c.Pos,
+					Text: fmt.Sprintf("Rename detected on table %s from column %s to %s", submatches[1], submatches[2], submatches[3]),
+				})
+			}
+			return diags, nil
+		},
 	},
 }
 

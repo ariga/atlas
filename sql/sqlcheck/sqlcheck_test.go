@@ -81,6 +81,63 @@ func TestDestructive(t *testing.T) {
 	require.Len(t, report.Diagnostics, 3)
 }
 
+func TestStatementRename(t *testing.T) {
+	var (
+		report sqlcheck.Report
+		pass   = &sqlcheck.Pass{
+			Dev: &sqlclient.Client{Name: "mysql"},
+			File: &sqlcheck.File{
+				File: testFile{name: "1.sql"},
+				Changes: []*sqlcheck.Change{
+					{
+						Stmt: "ALTER TABLE `test` RENAME COLUMN `old_name` TO `new_name`",
+						Changes: schema.Changes{
+							&schema.ModifyTable{
+								T: schema.NewTable("test"),
+								Changes: schema.Changes{
+									&schema.DropColumn{C: schema.NewColumn("old_name")},
+									&schema.AddColumn{C: schema.NewColumn("new_name")},
+								},
+							},
+						},
+					},
+				},
+			},
+			Reporter: sqlcheck.ReportWriterFunc(func(r sqlcheck.Report) {
+				report = r
+			}),
+		}
+	)
+	err := sqlcheck.StatementRename.Analyze(context.Background(), pass)
+	require.NoError(t, err)
+	require.Equal(t, `Renames detected in file 1.sql`, report.Text)
+	require.Len(t, report.Diagnostics, 1)
+	require.Equal(t, "Rename detected on table `test` from column `old_name` to `new_name`", report.Diagnostics[0].Text)
+
+	pass.File.Changes = append(pass.File.Changes, &sqlcheck.Change{
+		Stmt: "ALTER TABLE `pets` CHANGE `old_name` `new_name` VARCHAR(25)",
+		Changes: schema.Changes{
+			&schema.ModifyTable{
+				T: schema.NewTable("pets"),
+				Changes: schema.Changes{
+					&schema.ModifyTable{
+						T: schema.NewTable("test"),
+						Changes: schema.Changes{
+							&schema.DropColumn{C: schema.NewStringColumn("old_name", "VARCHAR(25)")},
+							&schema.AddColumn{C: schema.NewStringColumn("new_name", "VARCHAR(25)")},
+						},
+					},
+				},
+			},
+		},
+	})
+	err = sqlcheck.StatementRename.Analyze(context.Background(), pass)
+	require.NoError(t, err)
+	require.Equal(t, `Renames detected in file 1.sql`, report.Text)
+	require.Len(t, report.Diagnostics, 2)
+	require.Equal(t, "Rename detected on table `pets` from column `old_name` to `new_name`", report.Diagnostics[1].Text)
+}
+
 type testFile struct {
 	name string
 	migrate.File
