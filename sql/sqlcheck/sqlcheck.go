@@ -131,12 +131,6 @@ var Destructive = &driverAware{
 	},
 }
 
-// These are the regexes used for detecting renames in statements for StatementRename.
-var (
-	mysqlRenameRegex = regexp.MustCompile("ALTER TABLE ([`\\w]+) RENAME COLUMN ([`\\w]+) TO ([`\\w]+)")
-	mysqlChangeRegex = regexp.MustCompile("ALTER TABLE ([`\\w]+) CHANGE(?: COLUMN)? ([`\\w]+) ([`\\w]+) [\\w()]+")
-)
-
 // StatementRename detects renames in the change statement.
 var StatementRename = &driverAware{
 	run: func(ctx context.Context, diags []Diagnostic, p *Pass) error {
@@ -150,7 +144,11 @@ var StatementRename = &driverAware{
 	},
 	drivers: map[string]func(context.Context, *Pass) ([]Diagnostic, error){
 		"mysql": func(ctx context.Context, p *Pass) ([]Diagnostic, error) {
-			var diags []Diagnostic
+			var (
+				mysqlRenameRegex = regexp.MustCompile("ALTER TABLE ([`\\w]+) RENAME COLUMN ([`\\w]+) TO ([`\\w]+)")
+				mysqlChangeRegex = regexp.MustCompile("ALTER TABLE ([`\\w]+) CHANGE(?: COLUMN)? ([`\\w]+) ([`\\w]+) [\\w()]+")
+				diags            []Diagnostic
+			)
 			for _, c := range p.File.Changes {
 				// Find submatches from the capturing groups so we can detect what table and columns are being changed.
 				submatches := mysqlRenameRegex.FindStringSubmatch(c.Stmt)
