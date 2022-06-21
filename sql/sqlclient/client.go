@@ -161,7 +161,7 @@ var drivers sync.Map
 type (
 	// openOptions holds additional configuration values for opening a Client.
 	openOptions struct {
-		schema string
+		schema *string
 	}
 
 	// OpenOption allows to configure a openOptions using functional arguments.
@@ -193,12 +193,12 @@ func OpenURL(ctx context.Context, u *url.URL, opts ...OpenOption) (*Client, erro
 		return nil, fmt.Errorf("sql/sqlclient: no opener was register with name %q", u.Scheme)
 	}
 	// If there is a schema given and the driver allows to change the schema for the url, do it.
-	if cfg.schema != "" {
+	if cfg.schema != nil {
 		sc, ok := v.(*driver).parser.(SchemaChanger)
 		if !ok {
 			return nil, ErrUnsupported
 		}
-		u = sc.ChangeSchema(u, cfg.schema)
+		u = sc.ChangeSchema(u, *cfg.schema)
 	}
 	client, err := v.(*driver).Open(ctx, u)
 	if err != nil {
@@ -214,7 +214,7 @@ func OpenURL(ctx context.Context, u *url.URL, opts ...OpenOption) (*Client, erro
 // If the registered driver does not support this, ErrUnsupported is returned instead.
 func OpenSchema(s string) OpenOption {
 	return func(c *openOptions) error {
-		c.schema = s
+		c.schema = &s
 		return nil
 	}
 }
