@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+
+	"ariga.io/atlas/sql/schema"
 )
 
 type (
@@ -92,6 +94,16 @@ type (
 		// Format is an optional formatting function.
 		// If exists, it will be used instead the registry one.
 		Format func(*Type) (string, error)
+
+		// FromSpec is an optional function that can be attached
+		// to the type spec and allows converting the schema spec
+		// type to a schema type (from document to databse).
+		FromSpec func(*Type) (schema.Type, error)
+
+		// ToSpec is an optional function that can be attached
+		// to the type spec and allows converting the schema type
+		// to a schema spec type (from database to document).
+		ToSpec func(schema.Type) (*Type, error)
 	}
 
 	// TypeAttr describes an attribute of a TypeSpec, for example `varchar` fields

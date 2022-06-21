@@ -1053,6 +1053,78 @@ slug: /ddl/sql-types
         </tr>
         
         <tr>
+            <td>day</td>
+            <td>day</td>
+            <td>
+                <ul>
+                        <li>precision (int)</li>
+                </ul>
+            </td>
+            <td>
+                
+                <pre>
+                    type = day(10)
+                </pre>
+                
+                
+            </td>
+        </tr>
+        
+        <tr>
+            <td>day_to_hour</td>
+            <td>day_to_hour</td>
+            <td>
+                <ul>
+                        <li>precision (int)</li>
+                </ul>
+            </td>
+            <td>
+                
+                <pre>
+                    type = day_to_hour(10)
+                </pre>
+                
+                
+            </td>
+        </tr>
+        
+        <tr>
+            <td>day_to_minute</td>
+            <td>day_to_minute</td>
+            <td>
+                <ul>
+                        <li>precision (int)</li>
+                </ul>
+            </td>
+            <td>
+                
+                <pre>
+                    type = day_to_minute(10)
+                </pre>
+                
+                
+            </td>
+        </tr>
+        
+        <tr>
+            <td>day_to_second</td>
+            <td>day_to_second</td>
+            <td>
+                <ul>
+                        <li>precision (int)</li>
+                </ul>
+            </td>
+            <td>
+                
+                <pre>
+                    type = day_to_second(10)
+                </pre>
+                
+                
+            </td>
+        </tr>
+        
+        <tr>
             <td>decimal</td>
             <td>decimal</td>
             <td>
@@ -1137,6 +1209,60 @@ enum "my_enum" &#123;
                 
                 <pre>
                     type = float8
+                </pre>
+                
+                
+            </td>
+        </tr>
+        
+        <tr>
+            <td>hour</td>
+            <td>hour</td>
+            <td>
+                <ul>
+                        <li>precision (int)</li>
+                </ul>
+            </td>
+            <td>
+                
+                <pre>
+                    type = hour(10)
+                </pre>
+                
+                
+            </td>
+        </tr>
+        
+        <tr>
+            <td>hour_to_minute</td>
+            <td>hour_to_minute</td>
+            <td>
+                <ul>
+                        <li>precision (int)</li>
+                </ul>
+            </td>
+            <td>
+                
+                <pre>
+                    type = hour_to_minute(10)
+                </pre>
+                
+                
+            </td>
+        </tr>
+        
+        <tr>
+            <td>hour_to_second</td>
+            <td>hour_to_second</td>
+            <td>
+                <ul>
+                        <li>precision (int)</li>
+                </ul>
+            </td>
+            <td>
+                
+                <pre>
+                    type = hour_to_second(10)
                 </pre>
                 
                 
@@ -1263,6 +1389,24 @@ enum "my_enum" &#123;
         </tr>
         
         <tr>
+            <td>interval</td>
+            <td>interval</td>
+            <td>
+                <ul>
+                        <li>precision (int)</li>
+                </ul>
+            </td>
+            <td>
+                
+                <pre>
+                    type = interval(10)
+                </pre>
+                
+                
+            </td>
+        </tr>
+        
+        <tr>
             <td>json</td>
             <td>json</td>
             <td>
@@ -1365,6 +1509,42 @@ enum "my_enum" &#123;
         </tr>
         
         <tr>
+            <td>minute</td>
+            <td>minute</td>
+            <td>
+                <ul>
+                        <li>precision (int)</li>
+                </ul>
+            </td>
+            <td>
+                
+                <pre>
+                    type = minute(10)
+                </pre>
+                
+                
+            </td>
+        </tr>
+        
+        <tr>
+            <td>minute_to_second</td>
+            <td>minute_to_second</td>
+            <td>
+                <ul>
+                        <li>precision (int)</li>
+                </ul>
+            </td>
+            <td>
+                
+                <pre>
+                    type = minute_to_second(10)
+                </pre>
+                
+                
+            </td>
+        </tr>
+        
+        <tr>
             <td>money</td>
             <td>money</td>
             <td>
@@ -1375,6 +1555,24 @@ enum "my_enum" &#123;
                 
                 <pre>
                     type = money
+                </pre>
+                
+                
+            </td>
+        </tr>
+        
+        <tr>
+            <td>month</td>
+            <td>month</td>
+            <td>
+                <ul>
+                        <li>precision (int)</li>
+                </ul>
+            </td>
+            <td>
+                
+                <pre>
+                    type = month(10)
                 </pre>
                 
                 
@@ -1443,6 +1641,24 @@ enum "my_enum" &#123;
                 
                 <pre>
                     type = real
+                </pre>
+                
+                
+            </td>
+        </tr>
+        
+        <tr>
+            <td>second</td>
+            <td>second</td>
+            <td>
+                <ul>
+                        <li>precision (int)</li>
+                </ul>
+            </td>
+            <td>
+                
+                <pre>
+                    type = second(10)
                 </pre>
                 
                 
@@ -1704,6 +1920,42 @@ enum "my_enum" &#123;
                 
                 <pre>
                     type = xml
+                </pre>
+                
+                
+            </td>
+        </tr>
+        
+        <tr>
+            <td>year</td>
+            <td>year</td>
+            <td>
+                <ul>
+                        <li>precision (int)</li>
+                </ul>
+            </td>
+            <td>
+                
+                <pre>
+                    type = year(10)
+                </pre>
+                
+                
+            </td>
+        </tr>
+        
+        <tr>
+            <td>year_to_month</td>
+            <td>year_to_month</td>
+            <td>
+                <ul>
+                        <li>precision (int)</li>
+                </ul>
+            </td>
+            <td>
+                
+                <pre>
+                    type = year_to_month(10)
                 </pre>
                 
                 

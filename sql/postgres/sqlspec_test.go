@@ -765,7 +765,7 @@ schema "test" {
 }
 
 func TestTypes(t *testing.T) {
-	// TODO(rotemtam) interval
+	p := func(i int) *int { return &i }
 	for _, tt := range []struct {
 		typeExpr string
 		expected schema.Type
@@ -909,6 +909,26 @@ func TestTypes(t *testing.T) {
 		{
 			typeExpr: "timestamptz(4)",
 			expected: typeTime(TypeTimestampTZ, 4),
+		},
+		{
+			typeExpr: "interval",
+			expected: &IntervalType{T: "interval"},
+		},
+		{
+			typeExpr: "interval(1)",
+			expected: &IntervalType{T: "interval", Precision: p(1)},
+		},
+		{
+			typeExpr: "second",
+			expected: &IntervalType{T: "interval", F: "second"},
+		},
+		{
+			typeExpr: "minute_to_second",
+			expected: &IntervalType{T: "interval", F: "minute to second"},
+		},
+		{
+			typeExpr: "minute_to_second(2)",
+			expected: &IntervalType{T: "interval", F: "minute to second", Precision: p(2)},
 		},
 		{
 			typeExpr: "real",

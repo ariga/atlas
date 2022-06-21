@@ -204,6 +204,9 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 	if !ok {
 		return r.spec(typ)
 	}
+	if typeSpec.ToSpec != nil {
+		return typeSpec.ToSpec(typ)
+	}
 	s := &schemaspec.Type{T: typeSpec.T}
 	// Iterate the attributes in reverse order, so we can skip zero value and optional attrs.
 	for i := len(typeSpec.Attributes) - 1; i >= 0; i-- {
@@ -289,6 +292,9 @@ func (r *TypeRegistry) Type(typ *schemaspec.Type, extra []*schemaspec.Attr) (sch
 		T: typ.T,
 	}
 	cp.Attrs = appendIfNotExist(typ.Attrs, picked)
+	if typeSpec.FromSpec != nil {
+		return typeSpec.FromSpec(cp)
+	}
 	printType, err := r.PrintType(cp)
 	if err != nil {
 		return nil, err
@@ -310,6 +316,20 @@ func WithAttributes(attrs ...*schemaspec.TypeAttr) TypeSpecOption {
 func WithTypeFormatter(f func(*schemaspec.Type) (string, error)) TypeSpecOption {
 	return func(spec *schemaspec.TypeSpec) {
 		spec.Format = f
+	}
+}
+
+// WithFromSpec allows configuring the FromSpec convert function using functional options.
+func WithFromSpec(f func(*schemaspec.Type) (schema.Type, error)) TypeSpecOption {
+	return func(spec *schemaspec.TypeSpec) {
+		spec.FromSpec = f
+	}
+}
+
+// WithToSpec allows configuring the ToSpec convert function using functional options.
+func WithToSpec(f func(schema.Type) (*schemaspec.Type, error)) TypeSpecOption {
+	return func(spec *schemaspec.TypeSpec) {
+		spec.ToSpec = f
 	}
 }
 

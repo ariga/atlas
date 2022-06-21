@@ -221,7 +221,7 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	switch fromT := fromT.(type) {
 	case *schema.BinaryType, *schema.BoolType, *schema.DecimalType, *schema.FloatType,
 		*schema.IntegerType, *schema.JSONType, *schema.SpatialType, *schema.StringType,
-		*schema.TimeType, *BitType, *NetworkType, *UserDefinedType:
+		*schema.TimeType, *BitType, *IntervalType, *NetworkType, *UserDefinedType:
 		t1, err := FormatType(toT)
 		if err != nil {
 			return false, err
