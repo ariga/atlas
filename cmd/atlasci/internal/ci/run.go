@@ -94,7 +94,7 @@ var (
 		{{- if $r.Text }}
 			{{- printf "%s:\n\n" $r.Text }}
 		{{- else if $r.Diagnostics }}
-			{{- printf "Unnamed diagnostics for file %s:\n\n" $f.File.Name }}
+			{{- printf "Unnamed diagnostics for file %s:\n\n" $f.Name }}
 		{{- end }}
 		{{- range $d := $r.Diagnostics }}
 			{{- printf "\tL%d: %s\n" ($f.Line $d.Pos) $d.Text }}
