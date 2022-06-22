@@ -229,6 +229,7 @@ func (d *DevLoader) LoadChanges(ctx context.Context, files []migrate.File) ([]*s
 		if err != nil {
 			return nil, err
 		}
+		start := current
 		for _, s := range stmts {
 			if _, err := d.Dev.ExecContext(ctx, s); err != nil {
 				return nil, err
@@ -242,18 +243,18 @@ func (d *DevLoader) LoadChanges(ctx context.Context, files []migrate.File) ([]*s
 				return nil, err
 			}
 			current = target
-			// In case the change is recognized by Atlas.
-			if len(changes) > 0 {
-				p, err := pos(f, s)
-				if err != nil {
-					return nil, err
-				}
-				diff[i].Changes = append(diff[i].Changes, &sqlcheck.Change{
-					Pos:     p,
-					Stmt:    s,
-					Changes: changes,
-				})
+			p, err := pos(f, s)
+			if err != nil {
+				return nil, err
 			}
+			diff[i].Changes = append(diff[i].Changes, &sqlcheck.Change{
+				Pos:     p,
+				Stmt:    s,
+				Changes: changes,
+			})
+		}
+		if diff[i].Sum, err = d.Dev.RealmDiff(start, current); err != nil {
+			return nil, err
 		}
 	}
 	return diff, nil

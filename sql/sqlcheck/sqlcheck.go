@@ -38,8 +38,14 @@ type (
 	// File represents a parsed version of a migration file.
 	File struct {
 		migrate.File
-		// Changes is the list of changes this file represents.
+
+		// Changes represents the list of changes this file represents.
 		Changes []*Change
+
+		// Sum represents a summary of changes this file represents. For example,
+		// in case of a file that contains exactly two statements, and the first
+		// statement is reverted by the one after it, the Sum is nil.
+		Sum schema.Changes
 	}
 
 	// A Change in a migration file.
