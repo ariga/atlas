@@ -6,10 +6,7 @@ package sqlcheck
 
 import (
 	"context"
-	"fmt"
-	"sync"
 
-	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
@@ -31,7 +28,7 @@ type (
 		// Dev is a driver-specific environment used to execute analysis work.
 		Dev *sqlclient.Client
 
-		// Report reports a analysis reports.
+		// Report reports analysis reports.
 		Reporter ReportWriter
 	}
 
@@ -46,6 +43,9 @@ type (
 		// in case of a file that contains exactly two statements, and the first
 		// statement is reverted by the one after it, the Sum is nil.
 		Sum schema.Changes
+
+		// schema spans. lazily initialized.
+		spans map[string]*schemaSpan
 	}
 
 	// A Change in a migration file.
@@ -94,74 +94,118 @@ func (f ReportWriterFunc) WriteReport(r Report) {
 	f(r)
 }
 
-// Destructive checks destructive changes.
-var Destructive = &driverAware{
-	run: func(ctx context.Context, diags []Diagnostic, p *Pass) error {
-		for _, sc := range p.File.Changes {
-			for _, c := range sc.Changes {
-				switch c := c.(type) {
-				case *schema.DropSchema:
-					diags = append(diags, Diagnostic{
-						Pos:  sc.Pos,
-						Text: fmt.Sprintf("Dropping schema %q", c.S.Name),
-					})
-				case *schema.DropTable:
-					diags = append(diags, Diagnostic{
-						Pos:  sc.Pos,
-						Text: fmt.Sprintf("Dropping table %q", c.T.Name),
-					})
-				case *schema.ModifyTable:
-					for i := range c.Changes {
-						d, ok := c.Changes[i].(*schema.DropColumn)
-						if !ok {
-							continue
-						}
-						if g := (schema.GeneratedExpr{}); !sqlx.Has(d.C.Attrs, &g) || g.Type != "VIRTUAL" {
-							diags = append(diags, Diagnostic{
-								Pos:  sc.Pos,
-								Text: fmt.Sprintf("Dropping non-virtual column %q", d.C.Name),
-							})
-						}
+// ResourceSpan describes the lifespan of a resource
+// in perspective to the migration file.
+type ResourceSpan uint
+
+const (
+	// SpanUnknown describes unknown lifespan.
+	// e.g. resource may exist before this file.
+	SpanUnknown ResourceSpan = iota
+
+	// SpanAdded describes that a span of
+	// a resource was started in this file.
+	SpanAdded
+
+	// SpanDropped describes that a span of
+	// a resource was ended in this file.
+	SpanDropped
+
+	// SpanTemporary indicates that a resource lifetime
+	// was started and ended in this file (CREATE and DROP).
+	SpanTemporary = SpanAdded | SpanDropped
+)
+
+// SchemaSpan returns the span information for the schema.
+func (f *File) SchemaSpan(s *schema.Schema) ResourceSpan {
+	return f.schemaSpan(s).state
+}
+
+// TableSpan returns the span information for the table.
+func (f *File) TableSpan(t *schema.Table) ResourceSpan {
+	return f.tableSpan(t).state
+}
+
+// ColumnSpan returns the span information for the column.
+func (f *File) ColumnSpan(t *schema.Table, c *schema.Column) ResourceSpan {
+	return f.tableSpan(t).columns[c.Name]
+}
+
+// IndexSpan returns the span information for the span.
+func (f *File) IndexSpan(t *schema.Table, i *schema.Index) ResourceSpan {
+	return f.tableSpan(t).indexes[i.Name]
+}
+
+type (
+	// schemaSpan holds the span structure of a schema.
+	schemaSpan struct {
+		state  ResourceSpan
+		tables map[string]*tableSpan
+	}
+	// schemaSpan holds the span structure of a table.
+	tableSpan struct {
+		state   ResourceSpan
+		columns map[string]ResourceSpan
+		indexes map[string]ResourceSpan
+	}
+)
+
+func (f *File) loadSpans() {
+	f.spans = make(map[string]*schemaSpan)
+	for _, sc := range f.Changes {
+		for _, c := range sc.Changes {
+			switch c := c.(type) {
+			case *schema.AddSchema:
+				f.schemaSpan(c.S).state = SpanAdded
+			case *schema.DropSchema:
+				f.schemaSpan(c.S).state |= SpanDropped
+			case *schema.AddTable:
+				span := f.tableSpan(c.T)
+				span.state = SpanAdded
+				for _, column := range c.T.Columns {
+					span.columns[column.Name] = SpanAdded
+				}
+				for _, idx := range c.T.Indexes {
+					span.indexes[idx.Name] = SpanAdded
+				}
+			case *schema.DropTable:
+				f.tableSpan(c.T).state |= SpanDropped
+			case *schema.ModifyTable:
+				span := f.tableSpan(c.T)
+				for _, c1 := range c.Changes {
+					switch c1 := c1.(type) {
+					case *schema.AddColumn:
+						span.columns[c1.C.Name] = SpanAdded
+					case *schema.DropColumn:
+						span.columns[c1.C.Name] |= SpanDropped
+					case *schema.AddIndex:
+						span.indexes[c1.I.Name] = SpanAdded
+					case *schema.DropIndex:
+						span.indexes[c1.I.Name] |= SpanDropped
 					}
 				}
 			}
 		}
-		if len(diags) > 0 {
-			p.Reporter.WriteReport(Report{
-				Text:        fmt.Sprintf("Destructive changes detected in file %s", p.File.Name()),
-				Diagnostics: diags,
-			})
-		}
-		return nil
-	},
-}
-
-// driverAware is a type of analyzer that allows registering driver-level diagnostic functions.
-type driverAware struct {
-	run     func(context.Context, []Diagnostic, *Pass) error
-	mu      sync.RWMutex
-	drivers map[string]func(context.Context, *Pass) ([]Diagnostic, error)
-}
-
-// Register registers driver-level run function to extend the analyzer.
-func (a *driverAware) Register(name string, run func(context.Context, *Pass) ([]Diagnostic, error)) {
-	a.mu.Lock()
-	if a.drivers == nil {
-		a.drivers = make(map[string]func(context.Context, *Pass) ([]Diagnostic, error))
 	}
-	a.drivers[name] = run
-	a.mu.Unlock()
 }
 
-// Analyze implements the Analyzer interface.
-func (a *driverAware) Analyze(ctx context.Context, p *Pass) error {
-	var diags []Diagnostic
-	if run, ok := a.drivers[p.Dev.Name]; ok {
-		d, err := run(ctx, p)
-		if err != nil {
-			return err
-		}
-		diags = d
+func (f *File) schemaSpan(s *schema.Schema) *schemaSpan {
+	if f.spans == nil {
+		f.loadSpans()
 	}
-	return a.run(ctx, diags, p)
+	if f.spans[s.Name] == nil {
+		f.spans[s.Name] = &schemaSpan{tables: make(map[string]*tableSpan)}
+	}
+	return f.spans[s.Name]
+}
+
+func (f *File) tableSpan(t *schema.Table) *tableSpan {
+	span := f.schemaSpan(t.Schema)
+	if span.tables[t.Name] == nil {
+		span.tables[t.Name] = &tableSpan{
+			columns: make(map[string]ResourceSpan),
+			indexes: make(map[string]ResourceSpan),
+		}
+	}
+	return f.spans[t.Schema.Name].tables[t.Name]
 }
