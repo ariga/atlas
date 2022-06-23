@@ -1126,12 +1126,14 @@ slug: /ddl/sql-types
             <td>decimal</td>
             <td>
                 <ul>
+                        <li>precision (int)</li>
+                        <li>scale (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                    type = decimal
+                    type = decimal(6,2)
                 </pre>
                 
                 
@@ -1577,12 +1579,14 @@ enum "my_enum" &#123;
             <td>numeric</td>
             <td>
                 <ul>
+                        <li>precision (int)</li>
+                        <li>scale (int)</li>
                 </ul>
             </td>
             <td>
                 
                 <pre>
-                    type = numeric
+                    type = numeric(6,2)
                 </pre>
                 
                 

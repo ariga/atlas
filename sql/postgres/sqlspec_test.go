@@ -947,8 +947,24 @@ func TestTypes(t *testing.T) {
 			expected: &schema.DecimalType{T: TypeNumeric},
 		},
 		{
+			typeExpr: "numeric(10)",
+			expected: &schema.DecimalType{T: TypeNumeric, Precision: 10},
+		},
+		{
+			typeExpr: "numeric(10, 2)",
+			expected: &schema.DecimalType{T: TypeNumeric, Precision: 10, Scale: 2},
+		},
+		{
 			typeExpr: "decimal",
 			expected: &schema.DecimalType{T: TypeDecimal},
+		},
+		{
+			typeExpr: "decimal(10)",
+			expected: &schema.DecimalType{T: TypeDecimal, Precision: 10},
+		},
+		{
+			typeExpr: "decimal(10,2)",
+			expected: &schema.DecimalType{T: TypeDecimal, Precision: 10, Scale: 2},
 		},
 		{
 			typeExpr: "smallserial",

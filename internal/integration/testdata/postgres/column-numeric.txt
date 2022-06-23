@@ -1,0 +1,90 @@
+apply 1.hcl
+cmpshow users 1.sql
+
+apply 2.hcl
+cmpshow users 2.sql
+
+-- 1.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "a" {
+    null = false
+    type = numeric
+  }
+  column "b" {
+    null = false
+    type = numeric(10)
+  }
+  column "c" {
+    null = false
+    type = numeric(10,2)
+  }
+  column "d" {
+    null = false
+    type = decimal
+  }
+  column "e" {
+    null = false
+    type = decimal(10)
+  }
+  column "f" {
+    null = false
+    type = decimal(10,2)
+  }
+}
+
+-- 1.sql --
+           Table "script_column_numeric.users"
+ Column |     Type      | Collation | Nullable | Default
+--------+---------------+-----------+----------+---------
+ a      | numeric       |           | not null |
+ b      | numeric(10,0) |           | not null |
+ c      | numeric(10,2) |           | not null |
+ d      | numeric       |           | not null |
+ e      | numeric(10,0) |           | not null |
+ f      | numeric(10,2) |           | not null |
+
+
+-- 2.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "a" {
+    null = false
+    type = numeric(5)
+  }
+  column "b" {
+    null = false
+    type = numeric(10,2)
+  }
+  column "c" {
+    null = false
+    type = numeric
+  }
+  column "d" {
+    null = false
+    type = decimal(4)
+  }
+  column "e" {
+    null = false
+    type = decimal
+  }
+  column "f" {
+    null = false
+    type = decimal(10,3)
+  }
+}
+
+-- 2.sql --
+           Table "script_column_numeric.users"
+ Column |     Type      | Collation | Nullable | Default
+--------+---------------+-----------+----------+---------
+ a      | numeric(5,0)  |           | not null |
+ b      | numeric(10,2) |           | not null |
+ c      | numeric       |           | not null |
+ d      | numeric(4,0)  |           | not null |
+ e      | numeric       |           | not null |
+ f      | numeric(10,3) |           | not null |
