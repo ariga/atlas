@@ -194,7 +194,9 @@ func (d *conn) supportsRenameColumn() bool {
 // supportsIndexComment reports if the connected database
 // supports the index comment.
 func (d *conn) supportsIndexComment() bool {
-	return d.mariadb() || d.gteV("5.5.0")
+	// According to release notes
+	// MySQL 5.5.3 starts supprinting the index comment
+	return d.mariadb() || d.gteV("5.5.3")
 }
 
 // mariadb reports if the Driver is connected to a MariaDB database.
