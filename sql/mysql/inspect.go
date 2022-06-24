@@ -293,14 +293,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 
 // indexes queries and appends the indexes of the given table.
 func (i *inspect) indexes(ctx context.Context, s *schema.Schema) error {
-	query := indexesNoCommentQuery
-	if i.supportsIndexComment() {
-		query = indexesQuery
-	}
-
-	if i.supportsIndexExpr() {
-		query = indexesExprQuery
-	}
+	query := i.indexQuery()
 	rows, err := i.querySchema(ctx, query, s)
 	if err != nil {
 		return fmt.Errorf("mysql: query schema %q indexes: %w", s.Name, err)
@@ -444,6 +437,20 @@ func (i *inspect) checks(ctx context.Context, s *schema.Schema) error {
 		t.Attrs = append(t.Attrs, check)
 	}
 	return rows.Err()
+}
+
+// indexQuery returns the query to retrieve the indexes of the given table.
+func (i *inspect) indexQuery() string {
+	query := indexesNoCommentQuery
+	if i.supportsIndexComment() {
+		query = indexesQuery
+	}
+
+	if i.supportsIndexExpr() {
+		query = indexesExprQuery
+	}
+
+	return query
 }
 
 // extraAttr is a parsed version of the information_schema EXTRA column.
