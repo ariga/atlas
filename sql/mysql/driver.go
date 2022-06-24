@@ -195,7 +195,7 @@ func (d *conn) supportsRenameColumn() bool {
 // supports the index comment.
 func (d *conn) supportsIndexComment() bool {
 	// According to release notes
-	// MySQL 5.5.3 starts supprinting the index comment
+	// MySQL 5.5.3 starts supporting the index comment
 	return d.mariadb() || d.gteV("5.5.3")
 }
 
