@@ -18,6 +18,8 @@ import (
 	_ "ariga.io/atlas/sql/mysql"
 	_ "ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/sqlcheck"
+	"ariga.io/atlas/sql/sqlcheck/datadepend"
+	"ariga.io/atlas/sql/sqlcheck/destructive"
 	"ariga.io/atlas/sql/sqlclient"
 	_ "ariga.io/atlas/sql/sqlite"
 
@@ -60,7 +62,8 @@ func main() {
 		},
 		Analyzer: sqlcheck.Analyzers{
 			// Add more analyzers here.
-			sqlcheck.Destructive,
+			datadepend.New(datadepend.Options{}),
+			destructive.New(destructive.Options{}),
 		},
 	}
 	check(r.Run(ctx))
