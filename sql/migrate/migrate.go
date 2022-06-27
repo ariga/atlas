@@ -404,7 +404,7 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 	// Check if the existing revisions did come from the migration directory and not from somewhere else.
 	hf, err := readHashFile(e.dir)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("sql/migrate: execute: read atlas.sum file: %w", err)
+		return nil, fmt.Errorf("sql/migrate: execute: read %s file: %w", HashFileName, err)
 	}
 	// If there is no atlas.sum file there are no migration files.
 	if errors.Is(err, os.ErrNotExist) {
@@ -851,8 +851,8 @@ type templateFile struct {
 func (f *templateFile) Name() string { return f.n }
 
 const (
-	// Filename of the migration directory integrity sum file.
-	hashFile = "atlas.sum"
+	// HashFileName of the migration directory integrity sum file.
+	HashFileName = "atlas.sum"
 	// Directive used it a file should be excluded by the sum computation.
 	directiveNone = "ignore"
 )
@@ -875,7 +875,7 @@ func HashSum(dir Dir) (HashFile, error) {
 			return err
 		}
 		// If this is the integrity sum file do not include it into the sum.
-		if filepath.Base(path) == hashFile {
+		if filepath.Base(path) == HashFileName {
 			return nil
 		}
 		if !d.IsDir() {
@@ -917,7 +917,7 @@ func WriteSumFile(dir Dir, sum HashFile) error {
 	if err != nil {
 		return err
 	}
-	return dir.WriteFile(hashFile, b)
+	return dir.WriteFile(HashFileName, b)
 }
 
 // Sum returns the checksum of the represented hash file.
@@ -980,16 +980,13 @@ var (
 // If they don't match ErrChecksumMismatch is returned.
 func Validate(dir Dir) error {
 	fh, err := readHashFile(dir)
-	if os.IsNotExist(err) {
+	if errors.Is(err, fs.ErrNotExist) {
 		// If there are no migration files yet this is okay.
 		files, err := fs.ReadDir(dir, "/")
-		if err != nil {
-			return err
+		if err != nil || len(files) > 0 {
+			return ErrChecksumNotFound
 		}
-		if len(files) == 0 {
-			return nil
-		}
-		return ErrChecksumNotFound
+		return nil
 	}
 	if err != nil {
 		return err
@@ -1006,7 +1003,7 @@ func Validate(dir Dir) error {
 
 // readHashFile reads the HashFile from the given Dir.
 func readHashFile(dir Dir) (HashFile, error) {
-	f, err := dir.Open(hashFile)
+	f, err := dir.Open(HashFileName)
 	if err != nil {
 		return nil, err
 	}

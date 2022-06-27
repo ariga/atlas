@@ -68,12 +68,12 @@ func TestDriver_LockError(t *testing.T) {
 	d.ExecQuerier = db
 
 	t.Run("Timeout", func(t *testing.T) {
-		name, sec := "name", 1
+		name, sec := "name", 60
 		m.ExpectQuery(sqltest.Escape("SELECT GET_LOCK(?, ?)")).
 			WithArgs(name, sec).
 			WillReturnRows(sqlmock.NewRows([]string{"acquired"}).AddRow(0)).
 			RowsWillBeClosed()
-		unlock, err := d.Lock(context.Background(), name, time.Second)
+		unlock, err := d.Lock(context.Background(), name, time.Minute)
 		require.Equal(t, schema.ErrLocked, err)
 		require.Nil(t, unlock)
 	})

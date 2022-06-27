@@ -54,14 +54,13 @@ func main() {
 	}
 	r := &ci.Runner{
 		Dev:            dev,
-		Scan:           dir,
+		Dir:            dir,
 		ChangeDetector: detect,
 		ReportWriter: &ci.TemplateWriter{
 			T: format,
 			W: os.Stdout,
 		},
 		Analyzer: sqlcheck.Analyzers{
-			// Add more analyzers here.
 			datadepend.New(datadepend.Options{}),
 			destructive.New(destructive.Options{}),
 		},
