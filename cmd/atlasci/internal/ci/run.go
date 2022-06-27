@@ -7,6 +7,8 @@ package ci
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"text/template"
@@ -26,8 +28,8 @@ type Runner struct {
 	// be used by the runner.
 	ChangeDetector ChangeDetector
 
-	// Scan is used for scanning the migration directory.
-	Scan migrate.Scanner
+	// Dir is used for scanning and validating the migration directory.
+	Dir DirScanner
 
 	// Analyzer defines the analysis to be run in the CI job.
 	Analyzer sqlcheck.Analyzer
@@ -38,43 +40,58 @@ type Runner struct {
 
 // Run executes the CI job.
 func (r *Runner) Run(ctx context.Context) error {
+	sum, err := r.summary(ctx)
+	switch err := err.(type) {
+	case nil:
+		return r.ReportWriter.WriteReport(sum)
+	case *FileError:
+		return r.ReportWriter.WriteReport(&SummaryReport{
+			Files: []*FileReport{{Name: err.File, Error: err.Error()}},
+		})
+	default:
+		return err
+	}
+}
+
+func (r *Runner) summary(ctx context.Context) (*SummaryReport, error) {
+	// Validate sum file in case it exists.
+	if err := migrate.Validate(r.Dir); err != nil && !errors.Is(err, migrate.ErrChecksumNotFound) {
+		return nil, &FileError{File: migrate.HashFileName, Err: err}
+	}
 	base, feat, err := r.ChangeDetector.DetectChanges(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// Bring the dev environment to the base point.
 	for _, f := range base {
-		stmt, err := r.Scan.Stmts(f)
+		stmt, err := r.Dir.Stmts(f)
 		if err != nil {
-			return err
+			return nil, &FileError{File: f.Name(), Err: fmt.Errorf("scanning statements: %w", err)}
 		}
 		for _, s := range stmt {
 			if _, err := r.Dev.ExecContext(ctx, s); err != nil {
-				return err
+				return nil, &FileError{File: f.Name(), Err: fmt.Errorf("executing statement: %q: %w", s, err)}
 			}
 		}
 	}
-	l := &DevLoader{Dev: r.Dev, Scan: r.Scan}
+	l := &DevLoader{Dev: r.Dev, Scan: r.Dir}
 	files, err := l.LoadChanges(ctx, feat)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	var sum SummaryReport
+	sum := &SummaryReport{Files: make([]*FileReport, 0, len(files))}
 	for _, f := range files {
-		fr, err := NewFileReport(f)
-		if err != nil {
-			return err
-		}
+		fr := NewFileReport(f)
 		if err := r.Analyzer.Analyze(ctx, &sqlcheck.Pass{
 			File:     f,
 			Dev:      r.Dev,
 			Reporter: fr,
 		}); err != nil {
-			return err
+			fr.Error = err.Error()
 		}
 		sum.Files = append(sum.Files, fr)
 	}
-	return r.ReportWriter.WriteReport(sum)
+	return sum, nil
 }
 
 var (
@@ -90,17 +107,21 @@ var (
 			Funcs(TemplateFuncs).
 			Parse(`
 {{- range $f := .Files }}
-	{{- range $r := $f.Reports }}
-		{{- if $r.Text }}
-			{{- printf "%s:\n\n" $r.Text }}
-		{{- else if $r.Diagnostics }}
-			{{- printf "Unnamed diagnostics for file %s:\n\n" $f.Name }}
-		{{- end }}
-		{{- range $d := $r.Diagnostics }}
-			{{- printf "\tL%d: %s\n" ($f.Line $d.Pos) $d.Text }}
-		{{- end }}
-		{{- if $r.Diagnostics }}
-			{{- print "\n" }}
+	{{- if $f.Error }}
+		{{- printf "%s: %s\n" $f.Name $f.Error }}
+	{{- else }}
+		{{- range $r := $f.Reports }}
+			{{- if $r.Text }}
+				{{- printf "%s:\n\n" $r.Text }}
+			{{- else if $r.Diagnostics }}
+				{{- printf "Unnamed diagnostics for file %s:\n\n" $f.Name }}
+			{{- end }}
+			{{- range $d := $r.Diagnostics }}
+				{{- printf "\tL%d: %s\n" ($f.Line $d.Pos) $d.Text }}
+			{{- end }}
+			{{- if $r.Diagnostics }}
+				{{- print "\n" }}
+			{{- end }}
 		{{- end }}
 	{{- end }}
 {{- end -}}
@@ -116,14 +137,15 @@ type (
 
 	// FileReport contains a summary of the analysis of a single file.
 	FileReport struct {
-		Name    string
-		Text    string
-		Reports []sqlcheck.Report
+		Name    string            // Name of the file.
+		Text    string            // Contents of the file.
+		Reports []sqlcheck.Report // List of reports.
+		Error   string            // File specific error.
 	}
 
 	// ReportWriter is a type of report writer that writes a summary of analysis reports.
 	ReportWriter interface {
-		WriteReport(SummaryReport) error
+		WriteReport(*SummaryReport) error
 	}
 
 	// A TemplateWriter is a type of writer that writes output according to a template.
@@ -134,8 +156,8 @@ type (
 )
 
 // NewFileReport returns a new FileReport.
-func NewFileReport(f migrate.File) (*FileReport, error) {
-	return &FileReport{Name: f.Name(), Text: string(f.Bytes())}, nil
+func NewFileReport(f migrate.File) *FileReport {
+	return &FileReport{Name: f.Name(), Text: string(f.Bytes())}
 }
 
 // Line returns the line number from a position.
@@ -149,17 +171,6 @@ func (f *FileReport) WriteReport(r sqlcheck.Report) {
 }
 
 // WriteReport implements ReportWriter.
-func (w *TemplateWriter) WriteReport(r SummaryReport) error {
+func (w *TemplateWriter) WriteReport(r *SummaryReport) error {
 	return w.T.Execute(w.W, r)
-}
-
-// ChecksumAnalyzer implements sqlcheck.Analyzer. It wraps migrate.Validate.
-// Intended to be run as the first Analyzer, it will fail if the migration directory could not be validated.
-type ChecksumAnalyzer struct {
-	Dir migrate.Dir
-}
-
-// Analyze implements the sqlcheck.Analyzer interface.
-func (m *ChecksumAnalyzer) Analyze(_ context.Context, _ *sqlcheck.Pass) error {
-	return migrate.Validate(m.Dir)
 }

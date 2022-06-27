@@ -6,6 +6,7 @@ package ci_test
 
 import (
 	"context"
+	"io/fs"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -183,6 +184,10 @@ type testDir struct {
 	files []migrate.File
 }
 
+func (t testDir) Open(string) (fs.File, error) {
+	return nil, fs.ErrNotExist
+}
+
 func (t testDir) Files() ([]migrate.File, error) {
 	return t.files, nil
 }
@@ -192,6 +197,7 @@ func (testDir) Stmts(f migrate.File) ([]string, error) {
 }
 
 type testFile struct {
+	fs.File
 	name, content string
 }
 

@@ -227,12 +227,12 @@ func (d *DevLoader) LoadChanges(ctx context.Context, files []migrate.File) ([]*s
 		}
 		stmts, err := d.Scan.Stmts(f)
 		if err != nil {
-			return nil, err
+			return nil, &FileError{File: f.Name(), Err: fmt.Errorf("scanning statements: %w", err)}
 		}
 		start := current
 		for _, s := range stmts {
 			if _, err := d.Dev.ExecContext(ctx, s); err != nil {
-				return nil, err
+				return nil, &FileError{File: f.Name(), Err: fmt.Errorf("executing statement: %w", err)}
 			}
 			target, err := d.Dev.InspectRealm(ctx, nil)
 			if err != nil {
@@ -264,7 +264,15 @@ func (d *DevLoader) LoadChanges(ctx context.Context, files []migrate.File) ([]*s
 func pos(f migrate.File, stmt string) (int, error) {
 	i := bytes.Index(f.Bytes(), []byte(stmt))
 	if i == -1 {
-		return 0, fmt.Errorf("statement %q was not found in %q", stmt, f.Bytes())
+		return 0, &FileError{File: f.Name(), Err: fmt.Errorf("statement %q was not found in %q", stmt, f.Bytes())}
 	}
 	return i, nil
 }
+
+// FileError represents an error that occurred while processing a file.
+type FileError struct {
+	File string
+	Err  error
+}
+
+func (e FileError) Error() string { return e.Err.Error() }

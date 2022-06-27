@@ -25,8 +25,8 @@ func TestRunner_Run(t *testing.T) {
 	c, err := sqlclient.Open(ctx, "sqlite://run?mode=memory&cache=shared&_fk=1")
 	require.NoError(t, err)
 	r := &ci.Runner{
-		Scan: testDir{},
-		Dev:  c,
+		Dir: testDir{},
+		Dev: c,
 		ChangeDetector: testDetector{
 			base: []migrate.File{
 				testFile{name: "1.sql", content: "CREATE TABLE users (id INT)"},
@@ -54,22 +54,6 @@ func TestRunner_Run(t *testing.T) {
 	L1: Diagnostic 1
 
 `, b.String())
-}
-
-//go:embed testdata/atlas.sum
-var hash []byte
-
-func TestChecksumAnalyzer_Analyze(t *testing.T) {
-	d, err := migrate.NewLocalDir(t.TempDir())
-	require.NoError(t, err)
-	err = (&ci.ChecksumAnalyzer{Dir: d}).Analyze(context.Background(), nil)
-	require.NoError(t, err)
-
-	d, err = migrate.NewLocalDir(t.TempDir())
-	require.NoError(t, err)
-	require.NoError(t, d.WriteFile("atlas.sum", hash))
-	err = (&ci.ChecksumAnalyzer{Dir: d}).Analyze(context.Background(), nil)
-	require.ErrorIs(t, err, migrate.ErrChecksumMismatch)
 }
 
 type testAnalyzer struct {
