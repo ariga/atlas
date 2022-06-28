@@ -46,7 +46,8 @@ func main() {
 	detect := ci.LatestChanges(dir, opt.detectFrom.latest)
 	if opt.detectFrom.gitBase != "" {
 		detect, err = ci.NewGitChangeDetector(
-			opt.detectFrom.gitRoot, dir,
+			dir,
+			ci.WithWorkDir(opt.detectFrom.gitDir),
 			ci.WithBase(opt.detectFrom.gitBase),
 			ci.WithMigrationsPath(opt.dir),
 		)
@@ -75,7 +76,7 @@ type options struct {
 	detectFrom struct {
 		latest  int    // latest N migration files.
 		gitBase string // git branch name.
-		gitRoot string // repository root.
+		gitDir  string // repository working dir.
 	}
 }
 
@@ -87,7 +88,7 @@ Options:
   --dev-url      string   Select a data source using the URL format
   --latest       int      Run analysis on the latest N migration files
   --git-base     string   Run analysis against the base Git branch
-  --git-root     string   Path to the repository root
+  --git-dir      string   Path to the repository working directory
 
 Additional commands:
   license        Display license information for this program.
@@ -105,7 +106,7 @@ func (o *options) parse() error {
 	flag.StringVar(&o.format, "format", "", "")
 	flag.IntVar(&o.detectFrom.latest, "latest", 0, "")
 	flag.StringVar(&o.detectFrom.gitBase, "git-base", os.Getenv("ATLASCI_GIT_BASE"), "")
-	flag.StringVar(&o.detectFrom.gitRoot, "git-root", os.Getenv("ATLASCI_GIT_ROOT"), "")
+	flag.StringVar(&o.detectFrom.gitDir, "git-dir", os.Getenv("ATLASCI_GIT_DIR"), "")
 	flag.Parse()
 	if args := flag.Args(); len(args) > 0 && args[0] == "license" {
 		fmt.Println(license)
@@ -127,8 +128,8 @@ func (o *options) parse() error {
 	if len(errors) > 0 {
 		return fmt.Errorf("%s", strings.Join(errors, ", "))
 	}
-	if o.detectFrom.gitRoot == "" {
-		o.detectFrom.gitRoot = "."
+	if o.detectFrom.gitDir == "" {
+		o.detectFrom.gitDir = "."
 	}
 	return nil
 }

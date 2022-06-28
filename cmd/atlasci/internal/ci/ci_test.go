@@ -7,9 +7,13 @@ package ci_test
 import (
 	"context"
 	"io/fs"
+	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"ariga.io/atlas/cmd/atlasci/internal/ci"
 	"ariga.io/atlas/sql/migrate"
@@ -17,89 +21,72 @@ import (
 	"ariga.io/atlas/sql/sqlclient"
 	_ "ariga.io/atlas/sql/sqlite"
 
-	"github.com/go-git/go-billy/v5/osfs"
-	"github.com/go-git/go-billy/v5/util"
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/cache"
-	"github.com/go-git/go-git/v5/plumbing/object"
-	"github.com/go-git/go-git/v5/storage/filesystem"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGitChangeDetector(t *testing.T) {
-	cs, err := ci.NewGitChangeDetector("", nil)
-	require.Nil(t, cs)
-	require.EqualError(t, err, "internal/ci: root cannot be empty")
+	// Prepare environment.
+	root := filepath.Join(t.TempDir(), t.Name(), strconv.FormatInt(time.Now().Unix(), 10))
+	mdir := filepath.Join(root, "migrations")
+	require.NoError(t, os.MkdirAll(mdir, 0755))
+	git := func(args ...string) {
+		out, err := exec.Command("git", append([]string{"-C", root}, args...)...).CombinedOutput()
+		require.NoError(t, err, string(out))
+	}
+	git("init")
+	// Config a fake Git user for the working directory.
+	git("config", "user.name", "a8m")
+	git("config", "user.email", "a8m@atlasgo.io")
+	require.NoError(t, os.WriteFile(filepath.Join(mdir, "1_applied.sql"), []byte("1_applied.sql"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(mdir, "2_applied.sql"), []byte("2_applied.sql"), 0644))
+	git("add", ".")
+	git("commit", "-m", "applied migrations")
+	git("checkout", "-b", "feature")
+	require.NoError(t, os.WriteFile(filepath.Join(mdir, "3_new.sql"), []byte("3_new.sql"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(mdir, "4_new.sql"), []byte("4_new.sql"), 0644))
+	git("add", ".")
+	git("commit", "-am", "new migrations")
 
-	cs, err = ci.NewGitChangeDetector("testdata", nil)
-	require.Nil(t, cs)
-	require.EqualError(t, err, "internal/ci: dir cannot be nil")
-
-	tmp, err := util.TempDir(osfs.Default, "", "testdata")
+	// Test change detector.
+	dir, err := migrate.NewLocalDir(mdir)
 	require.NoError(t, err)
-	fs := osfs.New(tmp)
-	require.NoError(t, fs.MkdirAll("migrations", 0755))
-	r, err := git.Init(filesystem.NewStorage(fs, cache.NewObjectLRUDefault()), fs)
+	cs, err := ci.NewGitChangeDetector(dir, ci.WithWorkDir(root))
 	require.NoError(t, err)
-	w, err := r.Worktree()
-	require.NoError(t, err)
-
-	_, err = fs.Create("migrations/1_applied.sql")
-	require.NoError(t, err)
-	_, err = w.Add("migrations/1_applied.sql")
-	require.NoError(t, err)
-	commit, err := w.Commit("first migration file", &git.CommitOptions{
-		Author: &object.Signature{Name: "a8m"},
-	})
-	require.NoError(t, err)
-	_, err = r.CommitObject(commit)
-	require.NoError(t, err)
-
-	// OK
-	d, err := migrate.NewLocalDir(filepath.Join(fs.Root(), "migrations"))
-	require.NoError(t, err)
-	cs, err = ci.NewGitChangeDetector(fs.Root(), d)
-	require.NoError(t, err)
-	require.NotNil(t, cs)
-
-	// No diff.
 	base, feat, err := cs.DetectChanges(context.Background())
 	require.NoError(t, err)
-	require.Len(t, base, 1)
-	require.Empty(t, feat)
-	require.Equal(t, "1_applied.sql", base[0].Name())
-
-	// Feature branch.
-	err = w.Checkout(&git.CheckoutOptions{
-		Create: true,
-		Branch: plumbing.NewBranchReferenceName("feature"),
-		Keep:   true,
-	})
-	require.NoError(t, err)
-	_, err = fs.Create("migrations/2_new.sql")
-	require.NoError(t, err)
-	_, err = fs.Create("migrations/3_new_the_second.sql")
-	require.NoError(t, err)
-	_, err = w.Add("migrations/2_new.sql")
-	require.NoError(t, err)
-	_, err = w.Add("migrations/3_new_the_second.sql")
-	require.NoError(t, err)
-	commit, err = w.Commit("second and third migration files", &git.CommitOptions{
-		Author: &object.Signature{Name: "a8m"},
-	})
-	require.NoError(t, err)
-	_, err = r.CommitObject(commit)
-	require.NoError(t, err)
-
-	base, feat, err = cs.DetectChanges(context.Background())
-	require.NoError(t, err)
-	require.Len(t, base, 1)
+	require.Len(t, base, 2)
 	require.Len(t, feat, 2)
 	require.Equal(t, "1_applied.sql", base[0].Name())
-	require.Equal(t, "2_new.sql", feat[0].Name())
-	require.Equal(t, "3_new_the_second.sql", feat[1].Name())
+	require.Equal(t, "2_applied.sql", base[1].Name())
+	require.Equal(t, "3_new.sql", feat[0].Name())
+	require.Equal(t, "4_new.sql", feat[1].Name())
+
+	require.NoError(t, os.WriteFile(filepath.Join(mdir, "5_new.sql"), []byte("5_new.sql"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(mdir, "6_new.sql"), []byte("6_new.sql"), 0644))
+	git("checkout", "-b", "feature-1")
+	git("add", ".")
+	git("commit", "-am", "new migrations")
+	base, feat, err = cs.DetectChanges(context.Background())
+	require.NoError(t, err)
+	require.Len(t, base, 2)
+	require.Len(t, feat, 4)
+	require.Equal(t, "5_new.sql", feat[2].Name())
+	require.Equal(t, "6_new.sql", feat[3].Name())
+
+	// Compare feature and feature-1.
+	cs, err = ci.NewGitChangeDetector(dir, ci.WithWorkDir(root), ci.WithBase("feature"))
+	require.NoError(t, err)
+	base, feat, err = cs.DetectChanges(context.Background())
+	require.NoError(t, err)
+	require.Len(t, base, 4)
+	require.Len(t, feat, 2)
+	require.Equal(t, "1_applied.sql", base[0].Name())
+	require.Equal(t, "2_applied.sql", base[1].Name())
+	require.Equal(t, "3_new.sql", base[2].Name())
+	require.Equal(t, "4_new.sql", base[3].Name())
+	require.Equal(t, "5_new.sql", feat[0].Name())
+	require.Equal(t, "6_new.sql", feat[1].Name())
 }
 
 func TestLatestChanges(t *testing.T) {
