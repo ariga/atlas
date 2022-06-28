@@ -9,18 +9,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os/exec"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"
-
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
-	"github.com/go-git/go-git/v5/utils/merkletrie"
 )
 
 type (
@@ -47,7 +42,7 @@ type (
 type (
 	// GitChangeDetector implements the ChangeDetector interface by utilizing a git repository.
 	GitChangeDetector struct {
-		root string     // path to the git repository root
+		work string     // path to the git working directory (i.e. -C)
 		base string     // name of the base branch (e.g. master)
 		path string     // path of the migration directory relative to the repository root (in slash notation)
 		dir  DirScanner // the migration directory to load migration files from
@@ -58,14 +53,11 @@ type (
 )
 
 // NewGitChangeDetector configures a new GitChangeDetector.
-func NewGitChangeDetector(root string, dir DirScanner, opts ...GitChangeDetectorOption) (*GitChangeDetector, error) {
-	if root == "" {
-		return nil, errors.New("internal/ci: root cannot be empty")
-	}
+func NewGitChangeDetector(dir DirScanner, opts ...GitChangeDetectorOption) (*GitChangeDetector, error) {
 	if dir == nil {
 		return nil, errors.New("internal/ci: dir cannot be nil")
 	}
-	d := &GitChangeDetector{root: root, dir: dir}
+	d := &GitChangeDetector{dir: dir}
 	for _, opt := range opts {
 		if err := opt(d); err != nil {
 			return nil, err
@@ -78,6 +70,14 @@ func NewGitChangeDetector(root string, dir DirScanner, opts ...GitChangeDetector
 		d.path = "migrations"
 	}
 	return d, nil
+}
+
+// WithWorkDir configures the git working directory for a GitChangeDetector.
+func WithWorkDir(work string) GitChangeDetectorOption {
+	return func(d *GitChangeDetector) error {
+		d.work = work
+		return nil
+	}
 }
 
 // WithBase configures the git base branch name for a GitChangeDetector.
@@ -97,87 +97,41 @@ func WithMigrationsPath(path string) GitChangeDetectorOption {
 }
 
 // DetectChanges implements the ChangeDetector interface.
-func (d *GitChangeDetector) DetectChanges(context.Context) ([]migrate.File, []migrate.File, error) {
-	// Fetch all the files of the migration directory.
+func (d *GitChangeDetector) DetectChanges(ctx context.Context) ([]migrate.File, []migrate.File, error) {
+	if _, err := exec.LookPath("git"); err != nil {
+		return nil, nil, fmt.Errorf("lookup git: %w", err)
+	}
+	var args []string
+	if d.work != "" {
+		args = append(args, "-C", d.work)
+	}
+	args = append(args, "--no-pager", "diff", "--name-only", "--diff-filter=A", d.base, "HEAD", d.path)
+	buf, err := exec.CommandContext(ctx, "git", args...).
+		CombinedOutput()
+	if err != nil {
+		return nil, nil, fmt.Errorf("git diff: %w", err)
+	}
+	diff := strings.Split(string(buf), "\n")
+	names := make(map[string]struct{}, len(diff))
+	for i := range diff {
+		names[filepath.Base(diff[i])] = struct{}{}
+	}
 	files, err := d.dir.Files()
 	if err != nil {
-		return nil, nil, fmt.Errorf("internal/ci: reading migration directory: %w", err)
+		return nil, nil, fmt.Errorf("reading migration directory: %w", err)
 	}
-	// Diff the base tree and head tree.
-	r, err := git.PlainOpen(d.root)
-	if err != nil {
-		return nil, nil, fmt.Errorf("internal/ci: open git repo: %w", err)
-	}
-	baseT, err := treeObject(r, plumbing.NewBranchReferenceName(d.base))
-	if err != nil {
-		return nil, nil, fmt.Errorf("internal/ci: %w", err)
-	}
-	headT, err := treeObject(r, plumbing.HEAD)
-	if err != nil {
-		return nil, nil, fmt.Errorf("internal/ci: %w", err)
-	}
-	diff, err := baseT.Diff(headT)
-	if err != nil {
-		return nil, nil, err
-	}
-	if len(diff) == 0 {
-		return files, nil, nil
-	}
-	// Since isNewFile assumes a sorted slice of changes, make sure to sort it.
-	sort.Sort(diff)
 	// Iterate over the migration files. If we find a file, that has been added in the diff between base and head,
 	// every migration file preceding it can be considered old, the file itself and everything thereafter new,
 	// since Atlas assumes a linear migration history.
 	for i, f := range files {
-		ok, err := d.isNewFile(diff, f)
-		if err != nil {
-			return nil, nil, err
+		if _, ok := names[f.Name()]; ok {
+			return files[:i], files[i:], nil
 		}
-		if !ok {
-			continue
-		}
-		return files[:i], files[i:], nil
 	}
 	return files, nil, nil
 }
 
 var _ ChangeDetector = (*GitChangeDetector)(nil)
-
-// isNewFile determines if the given file has been added in the given tree diff.
-// It assumes the diff is sorted by filename.
-func (d *GitChangeDetector) isNewFile(diff object.Changes, file migrate.File) (bool, error) {
-	// Git uses "/" as path separator regardless of platform.
-	n := filepath.ToSlash(filepath.Join(d.path, file.Name()))
-	i := sort.Search(len(diff), func(i int) bool {
-		return diff[i].To.Name >= n
-	})
-	if i <= len(diff) && strings.HasSuffix(diff[i].To.Name, n) {
-		a, err := diff[i].Action()
-		if err != nil {
-			return false, err
-		}
-		return a == merkletrie.Insert, nil
-	}
-	// If the file has not been found in the diff, it must be an old one.
-	return false, nil
-}
-
-// treeObject returns the object.Tree for a git reference name (e.g. refs/head/master).
-func treeObject(r *git.Repository, n plumbing.ReferenceName) (*object.Tree, error) {
-	ref, err := r.Reference(n, true)
-	if err != nil {
-		return nil, fmt.Errorf("reference feature branch: %w", err)
-	}
-	c, err := r.CommitObject(ref.Hash())
-	if err != nil {
-		return nil, fmt.Errorf("de-reference commit %q: %w", ref.Hash(), err)
-	}
-	t, err := c.Tree()
-	if err != nil {
-		return nil, fmt.Errorf("get tree for commit %q: %w", c.Hash, err)
-	}
-	return t, nil
-}
 
 // latestChange implements the ChangeDetector by selecting the latest N files.
 type latestChange struct {
