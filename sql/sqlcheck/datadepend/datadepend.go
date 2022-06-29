@@ -32,7 +32,7 @@ type (
 	}
 )
 
-// New creates a new destructive analyzer with the given options.
+// New creates a new data-dependant analyzer with the given options.
 func New(opts Options) *Analyzer {
 	unique := true
 	if opts.UniqueIndex != nil {
