@@ -211,6 +211,14 @@ func (c *conn) collateToCharset() (map[string]string, error) {
 	return decode(name)
 }
 
+// supportsIndexComment reports if the connected database
+// supports comments on indexes.
+func (d *conn) supportsIndexComment() bool {
+	// According to Oracle release notes, comments on
+	// indexes were added in version 5.5.3.
+	return d.mariadb() || d.gteV("5.5.3")
+}
+
 // mariadb reports if the Driver is connected to a MariaDB database.
 func (c *conn) mariadb() bool {
 	return strings.Index(c.version, "MariaDB") > 0
