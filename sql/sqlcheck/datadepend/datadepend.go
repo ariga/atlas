@@ -43,17 +43,12 @@ func New(opts Options) *Analyzer {
 
 // Analyze implements sqlcheck.Analyzer.
 func (a *Analyzer) Analyze(ctx context.Context, p *sqlcheck.Pass) error {
-	f, ok := drivers.Load(p)
+	f, ok := drivers.Load(p.Dev.Name)
 	if ok {
 		return f.(func(context.Context, *Analyzer, *sqlcheck.Pass) error)(ctx, a, p)
 	}
 	// Fallback to the default implementation.
-	if diags := a.Diagnostics(ctx, p); len(diags) > 0 {
-		p.Reporter.WriteReport(sqlcheck.Report{
-			Text:        fmt.Sprintf("Data dependent changes detected in file %s", p.File.Name()),
-			Diagnostics: diags,
-		})
-	}
+	a.Report(p, a.Diagnostics(ctx, p))
 	return nil
 }
 
@@ -101,6 +96,18 @@ func (a *Analyzer) Diagnostics(_ context.Context, p *sqlcheck.Pass) (diags []sql
 		}
 	}
 	return
+}
+
+// Report provides standard reporting for data-dependent changes. Drivers that
+// decorate this Analyzer should call this function to get consistent reporting
+// between dialects.
+func (a *Analyzer) Report(p *sqlcheck.Pass, diags []sqlcheck.Diagnostic) {
+	if len(diags) > 0 {
+		p.Reporter.WriteReport(sqlcheck.Report{
+			Text:        fmt.Sprintf("Data dependent changes detected in file %s", p.File.Name()),
+			Diagnostics: diags,
+		})
+	}
 }
 
 // drivers specific analyzers.

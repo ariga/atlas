@@ -63,8 +63,8 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 	if change := d.collationChange(from.Attrs, from.Schema.Attrs, to.Attrs); change != noChange {
 		changes = append(changes, change)
 	}
-	if _, ok := d.supportsCheck(); !ok && sqlx.Has(to.Attrs, &schema.Check{}) {
-		return nil, fmt.Errorf("version %q does not support CHECK constraints", d.version)
+	if !d.SupportsCheck() && sqlx.Has(to.Attrs, &schema.Check{}) {
+		return nil, fmt.Errorf("version %q does not support CHECK constraints", d.V)
 	}
 	// For MariaDB, we skip JSON CHECK constraints that were created by the databases,
 	// or by Atlas for older versions. These CHECK constraints (inlined on the columns)
@@ -134,9 +134,9 @@ func (d *diff) IsGeneratedIndexName(_ *schema.Table, idx *schema.Index) bool {
 	// mysql-server/sql/sql_table.cc#add_functional_index_to_create_list
 	const f = "functional_index"
 	switch {
-	case d.supportsIndexExpr() && idx.Name == f:
+	case d.SupportsIndexExpr() && idx.Name == f:
 		return true
-	case d.supportsIndexExpr() && strings.HasPrefix(idx.Name+"_", f):
+	case d.SupportsIndexExpr() && strings.HasPrefix(idx.Name+"_", f):
 		i, err := strconv.ParseInt(strings.TrimLeft(idx.Name, idx.Name+"_"), 10, 64)
 		return err == nil && i > 1
 	case len(idx.Parts) == 0 || idx.Parts[0].C == nil:
@@ -367,7 +367,7 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 		toT := toT.(*schema.IntegerType)
 		// MySQL v8.0.19 dropped both display-width
 		// and zerofill from the information schema.
-		if d.supportsDisplayWidth() {
+		if d.SupportsDisplayWidth() {
 			ft, _, _, err := parseColumn(fromT.T)
 			if err != nil {
 				return false, err
@@ -565,7 +565,7 @@ func (d *diff) defaultCollate(attrs *[]schema.Attr) error {
 		return nil
 	}
 	d.ch2co.Do(func() {
-		d.ch2co.v, d.ch2co.err = d.charsetToCollate()
+		d.ch2co.v, d.ch2co.err = d.CharsetToCollate()
 	})
 	if d.ch2co.err != nil {
 		return d.ch2co.err
@@ -586,7 +586,7 @@ func (d *diff) defaultCharset(attrs *[]schema.Attr) error {
 		return nil
 	}
 	d.co2ch.Do(func() {
-		d.co2ch.v, d.co2ch.err = d.collateToCharset()
+		d.co2ch.v, d.co2ch.err = d.CollateToCharset()
 	})
 	if d.co2ch.err != nil {
 		return d.co2ch.err
