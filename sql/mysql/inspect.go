@@ -293,10 +293,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 
 // indexes queries and appends the indexes of the given table.
 func (i *inspect) indexes(ctx context.Context, s *schema.Schema) error {
-	query := indexesQuery
-	if i.supportsIndexExpr() {
-		query = indexesExprQuery
-	}
+	query := i.indexQuery()
 	rows, err := i.querySchema(ctx, query, s)
 	if err != nil {
 		return fmt.Errorf("mysql: query schema %q indexes: %w", s.Name, err)
@@ -440,6 +437,18 @@ func (i *inspect) checks(ctx context.Context, s *schema.Schema) error {
 		t.Attrs = append(t.Attrs, check)
 	}
 	return rows.Err()
+}
+
+// indexQuery returns the query to retrieve the indexes of the given table.
+func (i *inspect) indexQuery() string {
+	query := indexesNoCommentQuery
+	if i.supportsIndexComment() {
+		query = indexesQuery
+	}
+	if i.supportsIndexExpr() {
+		query = indexesExprQuery
+	}
+	return query
 }
 
 // extraAttr is a parsed version of the information_schema EXTRA column.
@@ -658,8 +667,9 @@ const (
 	columnsExprQuery = "SELECT `TABLE_NAME`, `COLUMN_NAME`, `COLUMN_TYPE`, `COLUMN_COMMENT`, `IS_NULLABLE`, `COLUMN_KEY`, `COLUMN_DEFAULT`, `EXTRA`, `CHARACTER_SET_NAME`, `COLLATION_NAME`, `GENERATION_EXPRESSION` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` IN (%s) ORDER BY `ORDINAL_POSITION`"
 
 	// Query to list table indexes.
-	indexesQuery     = "SELECT `TABLE_NAME`, `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `INDEX_TYPE`, UPPER(`COLLATION`) = 'D' AS `DESC`, `INDEX_COMMENT`, `SUB_PART`, NULL AS `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` IN (%s) ORDER BY `index_name`, `seq_in_index`"
-	indexesExprQuery = "SELECT `TABLE_NAME`, `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `INDEX_TYPE`, UPPER(`COLLATION`) = 'D' AS `DESC`, `INDEX_COMMENT`, `SUB_PART`, `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` IN (%s) ORDER BY `index_name`, `seq_in_index`"
+	indexesQuery          = "SELECT `TABLE_NAME`, `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `INDEX_TYPE`, UPPER(`COLLATION`) = 'D' AS `DESC`, `INDEX_COMMENT`, `SUB_PART`, NULL AS `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` IN (%s) ORDER BY `index_name`, `seq_in_index`"
+	indexesExprQuery      = "SELECT `TABLE_NAME`, `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `INDEX_TYPE`, UPPER(`COLLATION`) = 'D' AS `DESC`, `INDEX_COMMENT`, `SUB_PART`, `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` IN (%s) ORDER BY `index_name`, `seq_in_index`"
+	indexesNoCommentQuery = "SELECT `TABLE_NAME`, `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `INDEX_TYPE`, UPPER(`COLLATION`) = 'D' AS `DESC`, NULL AS `INDEX_COMMENT`, `SUB_PART`, NULL AS `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` IN (%s) ORDER BY `index_name`, `seq_in_index`"
 
 	tablesQuery = `
 SELECT
