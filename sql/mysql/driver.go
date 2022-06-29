@@ -192,10 +192,10 @@ func (d *conn) supportsRenameColumn() bool {
 }
 
 // supportsIndexComment reports if the connected database
-// supports the index comment.
+// supports comments on indexes.
 func (d *conn) supportsIndexComment() bool {
-	// According to release notes
-	// MySQL 5.5.3 starts supporting the index comment
+	// According to Oracle release notes, comments on
+	// indexes were added in version 5.5.3.
 	return d.mariadb() || d.gteV("5.5.3")
 }
 
