@@ -2,6 +2,12 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
+// Package sqlcheck provides interfaces for analyzing the contents of SQL files
+// to generate insights on the safety of many kinds of changes to database
+// schemas. With this package developers may define an Analyzer that can be used
+// to diagnose the impact of SQL statements on the target database. For instance,
+// The `destructive` package exposes an Analyzer that detects destructive changes
+// to the database schema, such as the dropping of tables or columns.
 package sqlcheck
 
 import (
