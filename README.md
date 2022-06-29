@@ -37,7 +37,7 @@ atlas schema inspect -u "mysql://root:pass@localhost:3306/example" > atlas.hcl
 ```shell
 atlas schema apply -u "mysql://root:pass@localhost:3306/example" -f atlas.hcl
 ```
-- **Declarative Migrations vs. Versioned Migrations**: Atlas offers two workflows. Declarative migrations allow the user to provide a desired state and Atlas gets the schema there instantly (simply using inspect and apply commands). Alternatively, declarative migrations are explicitly defined and assigned a version. Atlas can then bring a schema to the desired version by following the migrations between the current version and the specified one.
+- **Declarative Migrations vs. Versioned Migrations**: Atlas offers two workflows. Declarative migrations allow the user to provide a desired state and Atlas gets the schema there instantly (simply using inspect and apply commands). Alternatively, versioned migrations are explicitly defined and assigned a version. Atlas can then bring a schema to the desired version by following the migrations between the current version and the specified one.
 
 ### About the Project
 Read more about the motivation of the project [here](https://atlasgo.io/blog/2021/11/25/meet-atlas).
