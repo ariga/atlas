@@ -26,16 +26,6 @@ func (d *diff) SchemaAttrDiff(_, _ *schema.Schema) []schema.Change {
 // TableAttrDiff returns a changeset for migrating table attributes from one state to the other.
 func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 	var changes []schema.Change
-	switch {
-	case sqlx.Has(from.Attrs, &WithoutRowID{}) && !sqlx.Has(to.Attrs, &WithoutRowID{}):
-		changes = append(changes, &schema.DropAttr{
-			A: &WithoutRowID{},
-		})
-	case !sqlx.Has(from.Attrs, &WithoutRowID{}) && sqlx.Has(to.Attrs, &WithoutRowID{}):
-		changes = append(changes, &schema.AddAttr{
-			A: &WithoutRowID{},
-		})
-	}
 	return append(changes, sqlx.CheckDiff(from, to)...), nil
 }
 
@@ -132,21 +122,7 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 
 // Normalize implements the sqlx.Normalizer interface.
 func (d *diff) Normalize(from, to *schema.Table) error {
-	used := make([]bool, len(to.ForeignKeys))
-	// In SQLite, there is no easy way to get the foreign-key constraint
-	// name, except for parsing the CREATE statement). Therefore, we check
-	// if there is a foreign-key with identical properties.
-	for _, fk1 := range from.ForeignKeys {
-		for i, fk2 := range to.ForeignKeys {
-			if used[i] {
-				continue
-			}
-			if fk2.Symbol == fk1.Symbol && !isNumber(fk1.Symbol) || sameFK(fk1, fk2) {
-				fk1.Symbol = fk2.Symbol
-				used[i] = true
-			}
-		}
-	}
+	// TODO: implement
 	return nil
 }
 

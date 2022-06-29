@@ -20,10 +20,11 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
+	_ "github.com/googleapis/go-sql-spanner"
 )
 
 type (
-	// Driver represents a SQLite driver for introspecting database schemas,
+	// Driver represents a Spanner driver for introspecting database schemas,
 	// generating diff between schema elements and apply migrations changes.
 	Driver struct {
 		conn
@@ -35,48 +36,39 @@ type (
 	// database connection and its information.
 	conn struct {
 		schema.ExecQuerier
-		// System variables that are set on `Open`.
-		fkEnabled  bool
-		version    string
-		collations []string
+		databaseDialect string
 	}
 )
 
 func init() {
 	sqlclient.Register(
-		"spanner3",
+		"spanner",
 		sqlclient.DriverOpener(Open),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
-		sqlclient.RegisterFlavours("spanner"),
 		sqlclient.RegisterURLParser(sqlclient.URLParserFunc(func(u *url.URL) *sqlclient.URL {
-			uc := &sqlclient.URL{URL: u, DSN: strings.TrimPrefix(u.String(), u.Scheme+"://"), Schema: mainFile}
-			if mode := u.Query().Get("mode"); mode == "memory" {
-				// The "file:" prefix is mandatory for memory modes.
-				uc.DSN = "file:" + uc.DSN
-			}
+			uc := &sqlclient.URL{URL: u, DSN: strings.TrimPrefix(u.String(), u.Scheme+"://")}
 			return uc
 		})),
 	)
 }
 
-// Open opens a new SQLite driver.
+// Open opens a new Spanner driver.
 func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	var (
 		c   = conn{ExecQuerier: db}
 		ctx = context.Background()
 	)
-	rows, err := db.QueryContext(ctx, "SELECT spanner_version(), foreign_keys from pragma_foreign_keys")
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	rows, err := db.QueryContext(ctx, paramsQuery)
 	if err != nil {
-		return nil, fmt.Errorf("spanner: query version and foreign_keys pragma: %w", err)
+		return nil, fmt.Errorf("spanner: query database options: %w", err)
 	}
-	if err := sqlx.ScanOne(rows, &c.version, &c.fkEnabled); err != nil {
-		return nil, fmt.Errorf("spanner: scan version and foreign_keys pragma: %w", err)
+	if err := sqlx.ScanOne(rows, &c.databaseDialect); err != nil {
+		return nil, fmt.Errorf("spanner: query database options: %w", err)
 	}
-	if rows, err = db.QueryContext(ctx, "SELECT name FROM pragma_collation_list()"); err != nil {
-		return nil, fmt.Errorf("spanner: query foreign_keys pragma: %w", err)
-	}
-	if c.collations, err = sqlx.ScanStrings(rows); err != nil {
-		return nil, fmt.Errorf("spanner: scanning database collations: %w", err)
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to execute query: %v", err)
 	}
 	return &Driver{
 		conn:        c,
@@ -84,30 +76,6 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 		Inspector:   &inspect{c},
 		PlanApplier: &planApply{c},
 	}, nil
-}
-
-// IsClean implements the inlined IsClean interface to override what to consider a clean database.
-func (d *Driver) IsClean(ctx context.Context) (bool, error) {
-	r, err := d.InspectRealm(ctx, nil)
-	if err != nil {
-		return false, err
-	}
-	return r == nil || len(r.Schemas) == 1 && r.Schemas[0].Name == mainFile && len(r.Schemas[0].Tables) == 0, nil
-}
-
-// Clean implements the inlined migrate.Clean interface to override the "emptying" behavior.
-func (d *Driver) Clean(ctx context.Context) error {
-	for _, stmt := range []string{
-		"PRAGMA writable_schema = 1;",
-		"DELETE FROM spanner_master WHERE type IN ('table', 'index', 'trigger');",
-		"PRAGMA writable_schema = 0;",
-		"VACUUM;",
-	} {
-		if _, err := d.ExecContext(ctx, stmt); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // Lock implements the schema.Locker interface.
@@ -143,14 +111,26 @@ func acquireLock(path string, timeout time.Duration) (schema.UnlockFunc, error) 
 	return func() error { return os.Remove(path) }, nil
 }
 
-// SQLite standard data types as defined in its codebase and documentation.
-// https://www.spanner.org/datatype3.html
-// https://github.com/spanner/spanner/blob/master/src/global.c
+// Standard column types (and their aliases) as defined by Spanner.
 const (
-	TypeInteger = "integer" // SQLITE_TYPE_INTEGER
-	TypeReal    = "real"    // SQLITE_TYPE_REAL
-	TypeText    = "text"    // SQLITE_TYPE_TEXT
-	TypeBlob    = "blob"    // SQLITE_TYPE_BLOB
+	TypeString         = "STRING"
+	TypeStringArray    = "ARRAY<STRING>"
+	TypeBytes          = "BYTES"
+	TypeBytesArray     = "ARRAY<BYTES>"
+	TypeInt64          = "INT64"
+	TypeInt64Array     = "ARRAY<INT64>"
+	TypeBool           = "BOOL"
+	TypeBoolArray      = "ARRAY<BOOL>"
+	TypeFloat64        = "FLOAT64"
+	TypeFloat64Array   = "ARRAY<FLOAT64>"
+	TypeNumeric        = "NUMERIC"
+	TypeNumericArray   = "ARRAY<NUMERIC>"
+	TypeTimestamp      = "TIMESTAMP"
+	TypeTimestampArray = "ARRAY<TIMESTAMP>"
+	TypeDate           = "DATE"
+	TypeDateArray      = "ARRAY<DATE>"
+	TypeStruct         = "ARRAY<STRUCT>"
+	TypeJSON           = "JSON"
 )
 
 // SQLite generated columns types.

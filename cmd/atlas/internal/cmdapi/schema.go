@@ -90,6 +90,7 @@ migration.`,
   atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" -f schema.hcl
   atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -f schema.hcl
   atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f schema.hcl`,
+  atlas schema apply -u "spanner://projects/PROJECT/instances/INSTANCE/databases/DATABASE" -f atlas.hcl"`,
 	}
 
 	// SchemaClean represents the 'atlas schema clean' subcommand.
@@ -126,7 +127,8 @@ flag.
 		Example: `  atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname"
   atlas schema inspect -u "mariadb://user:pass@localhost:3306/" --schema=schemaA,schemaB -s schemaC
   atlas schema inspect --url "postgres://user:pass@host:port/dbname?sslmode=disable"
-  atlas schema inspect -u "sqlite://file:ex1.db?_fk=1"`,
+  atlas schema inspect -u "sqlite://file:ex1.db?_fk=1"
+  atlas schema inspect -u "spanner://projects/PROJECT/instances/INSTANCE/databases/DATABASE"`,
 	}
 
 	// SchemaFmt represents the 'atlas schema fmt' subcommand.

@@ -74,14 +74,6 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) (err error) {
 			return err
 		}
 	}
-	// Disable foreign-keys enforcement if it is required
-	// by one of the changes in the plan.
-	if s.skipFKs && s.conn.fkEnabled {
-		// Callers should note that these 2 pragmas are no-op in transactions,
-		// and therefore, should not call BEGIN manually. https://spanner.org/pragma.html#pragma_foreign_keys
-		s.Changes = append([]*migrate.Change{{Cmd: "PRAGMA foreign_keys = off", Comment: "disable the enforcement of foreign-keys constraints"}}, s.Changes...)
-		s.append(&migrate.Change{Cmd: "PRAGMA foreign_keys = on", Comment: "enable back the enforcement of foreign-keys constraints"})
-	}
 	return nil
 }
 
@@ -101,7 +93,7 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 			}
 		})
 		// Primary keys with auto-increment are inlined on the column definition.
-		if pk := add.T.PrimaryKey; pk != nil && !autoincPK(pk) {
+		if pk := add.T.PrimaryKey; pk != nil {
 			b.Comma().P("PRIMARY KEY")
 			s.indexParts(b, pk.Parts)
 		}
@@ -118,9 +110,6 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 	})
 	if len(errs) > 0 {
 		return fmt.Errorf("create table %q: %s", add.T.Name, strings.Join(errs, ", "))
-	}
-	if p := (WithoutRowID{}); sqlx.Has(add.T.Attrs, &p) {
-		b.P("WITHOUT ROWID")
 	}
 	s.append(&migrate.Change{
 		Cmd:     b.String(),
@@ -209,16 +198,6 @@ func (s *state) column(b *sqlx.Builder, c *schema.Column) error {
 		}
 		b.P("DEFAULT", x)
 	}
-	switch hasA, hasX := sqlx.Has(c.Attrs, &AutoIncrement{}), sqlx.Has(c.Attrs, &schema.GeneratedExpr{}); {
-	case hasA && hasX:
-		return fmt.Errorf("both autoincrement and generation expression specified for column %q", c.Name)
-	case hasA:
-		b.P("PRIMARY KEY AUTOINCREMENT")
-	case hasX:
-		x := &schema.GeneratedExpr{}
-		sqlx.Has(c.Attrs, x)
-		b.P("AS", sqlx.MayWrap(x.Expr), x.Type)
-	}
 	return nil
 }
 
@@ -239,26 +218,6 @@ func (s *state) dropIndexes(t *schema.Table, indexes ...*schema.Index) error {
 
 func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) error {
 	for _, idx := range indexes {
-		// PRIMARY KEY or UNIQUE columns automatically create indexes with the generated name.
-		// See: spanner/build.c#spanner3CreateIndex. Therefore, we ignore such PKs, but create
-		// the inlined UNIQUE constraints manually with custom name, because SQLite does not
-		// allow creating indexes with such names manually. Note, this case is possible if
-		// "apply" schema that was inspected from the database as-is.
-		if strings.HasPrefix(idx.Name, "spanner_autoindex") {
-			if i := (IndexOrigin{}); sqlx.Has(idx.Attrs, &i) && i.O == "p" {
-				continue
-			}
-			// Use the following format: <Table>_<Columns>.
-			names := make([]string, len(idx.Parts)+1)
-			names[0] = t.Name
-			for i, p := range idx.Parts {
-				if p.C == nil {
-					return fmt.Errorf("unexpected index part %s (%d)", idx.Name, i)
-				}
-				names[i+1] = p.C.Name
-			}
-			idx.Name = strings.Join(names, "_")
-		}
 		b := Build("CREATE")
 		if idx.Unique {
 			b.P("UNIQUE")
@@ -441,35 +400,8 @@ func (s *state) alterTable(modify *schema.ModifyTable) error {
 	return nil
 }
 
-// tableSeq sets the sequence value of the table if it was provided by
-// the user on table creation.
 func (s *state) tableSeq(ctx context.Context, add *schema.AddTable) error {
-	var inc AutoIncrement
-	switch pk := add.T.PrimaryKey; {
-	// Sequence was set on the table.
-	case sqlx.Has(add.T.Attrs, &inc) && inc.Seq > 0:
-	// Sequence was set on table primary-key (a single column PK).
-	case pk != nil && len(pk.Parts) == 1 && pk.Parts[0].C != nil && sqlx.Has(pk.Parts[0].C.Attrs, &inc) && inc.Seq > 0:
-	default:
-		return nil
-	}
-	// SQLite tracks the AUTOINCREMENT in the "spanner_sequence" table that is created and initialized automatically
-	// whenever the first "PRIMARY KEY AUTOINCREMENT" is created. However, rows in this table are populated after the
-	// first insertion to the associated table (name, seq). Therefore, we check if the sequence table and the row exist,
-	// and in case they are not, we insert a new non-zero sequence to it.
-	rows, err := s.QueryContext(ctx, "SELECT seq FROM spanner_sequence WHERE name = ?", add.T.Name)
-	if err != nil || !rows.Next() {
-		s.append(&migrate.Change{
-			Cmd:     fmt.Sprintf("INSERT INTO spanner_sequence (name, seq) VALUES (%q, %d)", add.T.Name, inc.Seq),
-			Source:  add,
-			Reverse: fmt.Sprintf("UPDATE spanner_sequence SET seq = 0 WHERE name = %q", add.T.Name),
-			Comment: fmt.Sprintf("set sequence for %q table", add.T.Name),
-		})
-	}
-	if rows != nil {
-		return rows.Close()
-	}
-	return nil
+	return fmt.Errorf("not implemented")
 }
 
 func (s *state) append(c *migrate.Change) {
@@ -506,11 +438,6 @@ func check(b *sqlx.Builder, c *schema.Check) {
 		b.P("CONSTRAINT").Ident(c.Name)
 	}
 	b.P("CHECK", expr)
-}
-
-func autoincPK(pk *schema.Index) bool {
-	return sqlx.Has(pk.Attrs, &AutoIncrement{}) ||
-		len(pk.Parts) == 1 && pk.Parts[0].C != nil && sqlx.Has(pk.Parts[0].C.Attrs, &AutoIncrement{})
 }
 
 // Build instantiates a new builder and writes the given phrase to it.
