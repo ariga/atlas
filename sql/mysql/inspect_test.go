@@ -19,13 +19,15 @@ import (
 
 // Single table queries used by the different tests.
 var (
-	queryFKs         = sqltest.Escape(fmt.Sprintf(fksQuery, "?"))
-	queryTable       = sqltest.Escape(fmt.Sprintf(tablesQuery, "?"))
-	queryColumns     = sqltest.Escape(fmt.Sprintf(columnsExprQuery, "?"))
-	queryIndexes     = sqltest.Escape(fmt.Sprintf(indexesQuery, "?"))
-	queryIndexesExpr = sqltest.Escape(fmt.Sprintf(indexesExprQuery, "?"))
-	queryMyChecks    = sqltest.Escape(fmt.Sprintf(myChecksQuery, "?"))
-	queryMarChecks   = sqltest.Escape(fmt.Sprintf(marChecksQuery, "?"))
+	queryFKs              = sqltest.Escape(fmt.Sprintf(fksQuery, "?"))
+	queryTable            = sqltest.Escape(fmt.Sprintf(tablesQuery, "?"))
+	queryColumns          = sqltest.Escape(fmt.Sprintf(columnsExprQuery, "?"))
+	queryColumnsNoExpr    = sqltest.Escape(fmt.Sprintf(columnsQuery, "?"))
+	queryIndexes          = sqltest.Escape(fmt.Sprintf(indexesQuery, "?"))
+	queryIndexesNoComment = sqltest.Escape(fmt.Sprintf(indexesNoCommentQuery, "?"))
+	queryIndexesExpr      = sqltest.Escape(fmt.Sprintf(indexesExprQuery, "?"))
+	queryMyChecks         = sqltest.Escape(fmt.Sprintf(myChecksQuery, "?"))
+	queryMarChecks        = sqltest.Escape(fmt.Sprintf(marChecksQuery, "?"))
 )
 
 func TestDriver_InspectTable(t *testing.T) {
@@ -234,14 +236,14 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+------------+-------------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+---------------------------+ 
-| table_name |    column_name    | column_type        | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name | generation_expression     | 
-+------------+-------------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+---------------------------+ 
-| users      |  float            | float              |                | NO          |            |                |       | NULL               | NULL           | NULL                      | 
-| users      |  double           | double             |                | NO          |            |                |       | NULL               | NULL           | NULL                      | 
-| users      |  float_unsigned   | float unsigned     |                | NO          |            |                |       | NULL               | NULL           | NULL                      | 
-| users      |  double_unsigned  | double unsigned    |                | NO          |            |                |       | NULL               | NULL           | NULL                      | 
-| users      |  float_unsigned_p | float(10) unsigned |                | NO          |            |                |       | NULL               | NULL           | NULL                      | 
++------------+-------------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+---------------------------+
+| table_name |    column_name    | column_type        | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name | generation_expression     |
++------------+-------------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+---------------------------+
+| users      |  float            | float              |                | NO          |            |                |       | NULL               | NULL           | NULL                      |
+| users      |  double           | double             |                | NO          |            |                |       | NULL               | NULL           | NULL                      |
+| users      |  float_unsigned   | float unsigned     |                | NO          |            |                |       | NULL               | NULL           | NULL                      |
+| users      |  double_unsigned  | double unsigned    |                | NO          |            |                |       | NULL               | NULL           | NULL                      |
+| users      |  float_unsigned_p | float(10) unsigned |                | NO          |            |                |       | NULL               | NULL           | NULL                      |
 +------------+-------------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+---------------------------+
 `))
 				m.noIndexes()
@@ -421,18 +423,18 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+------------+-------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+---------------------------+ 
-| table_name | column_name | column_type        | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name | GENERATION_EXPRESSION     | 
-+------------+-------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+---------------------------+ 
-| users      | c1          | point              |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      | 
-| users      | c2          | multipoint         |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      | 
-| users      | c3          | linestring         |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      | 
-| users      | c4          | multilinestring    |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      | 
-| users      | c5          | polygon            |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      |  
-| users      | c6          | multipolygon       |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      |  
-| users      | c7          | geometry           |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      |  
-| users      | c8          | geometrycollection |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      |  
-| users      | c9          | geomcollection     |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      |  
++------------+-------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+---------------------------+
+| table_name | column_name | column_type        | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name | GENERATION_EXPRESSION     |
++------------+-------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+---------------------------+
+| users      | c1          | point              |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      |
+| users      | c2          | multipoint         |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      |
+| users      | c3          | linestring         |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      |
+| users      | c4          | multilinestring    |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      |
+| users      | c5          | polygon            |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      |
+| users      | c6          | multipolygon       |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      |
+| users      | c7          | geometry           |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      |
+| users      | c8          | geometrycollection |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      |
+| users      | c9          | geomcollection     |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      |
 +------------+-------------+--------------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+---------------------------+
 `))
 				m.noIndexes()
@@ -562,19 +564,49 @@ func TestDriver_InspectTable(t *testing.T) {
 			},
 		},
 		{
+			name:    "indexes/not_support_comment",
+			version: "5.1.60",
+			before: func(m mock) {
+				m.tableExists("public", "users", true)
+				m.ExpectQuery(queryColumnsNoExpr).
+					WithArgs("public", "users").
+					WillReturnRows(sqltest.Rows(`
++------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+---------------------------+
+| TABLE_NAME | COLUMN_NAME | COLUMN_TYPE  | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     | GENERATION_EXPRESSION     |
++------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+---------------------------+
+| users      | id          | int          |                | NO          | PRI        | NULL           |                | NULL               | NULL               | NULL                      |
++------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+---------------------------+
+`))
+				m.ExpectQuery(queryIndexesNoComment).
+					WithArgs("public", "users").
+					WillReturnRows(sqltest.Rows(`
++--------------+--------------+-------------+------------+--------------+--------------+---------+--------------+------------+------------------+
+| TABLE_NAME   | INDEX_NAME   | COLUMN_NAME | NON_UNIQUE | SEQ_IN_INDEX | INDEX_TYPE   | DESC    | COMMENT      | SUB_PART   | EXPRESSION       |
++--------------+--------------+-------------+------------+--------------+--------------+---------+--------------+------------+------------------+
+| users        | PRIMARY      | id          |          0 |            1 | BTREE        | 0       | NULL         |       NULL |      NULL        |
++--------------+--------------+-------------+------------+--------------+--------------+---------+--------------+------------+------------------+
+`))
+				m.noFKs()
+			},
+			expect: func(require *require.Assertions, t *schema.Table, err error) {
+				// nothing to expect, ExpectQuery is enough for this test
+				require.NoError(err)
+			},
+		},
+		{
 			name: "fks",
 			before: func(m mock) {
 				m.tableExists("public", "users", true)
 				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+---------------------------+ 
-| TABLE_NAME | COLUMN_NAME | COLUMN_TYPE  | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     | GENERATION_EXPRESSION     | 
-+------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+---------------------------+ 
-| users      | id          | int          |                | NO          | PRI        | NULL           |                | NULL               | NULL               | NULL                      | 
-| users      | oid         | int          |                | NO          | MUL        | NULL           |                | NULL               | NULL               | NULL                      | 
-| users      | uid         | int          |                | NO          | MUL        | NULL           |                | NULL               | NULL               | NULL                      | 
-+------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+---------------------------+ 
++------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+---------------------------+
+| TABLE_NAME | COLUMN_NAME | COLUMN_TYPE  | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     | GENERATION_EXPRESSION     |
++------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+---------------------------+
+| users      | id          | int          |                | NO          | PRI        | NULL           |                | NULL               | NULL               | NULL                      |
+| users      | oid         | int          |                | NO          | MUL        | NULL           |                | NULL               | NULL               | NULL                      |
+| users      | uid         | int          |                | NO          | MUL        | NULL           |                | NULL               | NULL               | NULL                      |
++------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+---------------------------+
 `))
 				m.noIndexes()
 				m.ExpectQuery(queryFKs).
@@ -617,12 +649,12 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+-------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+---------------------------+ 
-| TABLE_NAME  | COLUMN_NAME | COLUMN_TYPE  | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     | GENERATION_EXPRESSION     | 
-+-------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+---------------------------+ 
-| users       | id          | int          |                | NO          | PRI        | NULL           |                | NULL               | NULL               | NULL                      | 
-| users       | c1          | int          |                | NO          | MUL        | NULL           |                | NULL               | NULL               | NULL                      | 
-+-------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+---------------------------+ 
++-------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+---------------------------+
+| TABLE_NAME  | COLUMN_NAME | COLUMN_TYPE  | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | CHARACTER_SET_NAME | COLLATION_NAME     | GENERATION_EXPRESSION     |
++-------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+---------------------------+
+| users       | id          | int          |                | NO          | PRI        | NULL           |                | NULL               | NULL               | NULL                      |
+| users       | c1          | int          |                | NO          | MUL        | NULL           |                | NULL               | NULL               | NULL                      |
++-------------+-------------+--------------+----------------+-------------+------------+----------------+----------------+--------------------+--------------------+---------------------------+
 `))
 				m.noIndexes()
 				m.noFKs()
