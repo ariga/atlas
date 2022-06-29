@@ -445,11 +445,9 @@ func (i *inspect) indexQuery() string {
 	if i.supportsIndexComment() {
 		query = indexesQuery
 	}
-
 	if i.supportsIndexExpr() {
 		query = indexesExprQuery
 	}
-
 	return query
 }
 
