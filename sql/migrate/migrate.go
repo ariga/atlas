@@ -183,7 +183,7 @@ type (
 		WriteRevision(context.Context, *Revision) error
 	}
 
-	// Planner can plan the steps to take to migrate from one state to another. It uses the enclosed FS to write
+	// Planner can plan the steps to take to migrate from one state to another. It uses the enclosed Dir to write
 	// those changes to versioned migration files.
 	Planner struct {
 		drv Driver    // driver to use
@@ -265,11 +265,18 @@ func DisableChecksum() PlannerOption {
 // Plan calculates the migration Plan required for moving the current state (from) state to
 // the next state (to). A StateReader can be a directory, static schema elements or a Driver connection.
 func (p *Planner) Plan(ctx context.Context, name string, to StateReader) (*Plan, error) {
-	ex, err := NewExecutor(p.drv, p.dir, NopRevisionReadWriter{})
-	if err != nil {
-		return nil, err
+	var from StateReader
+	if sr, ok := p.dir.(StateReader); ok {
+		from = sr
 	}
-	current, err := ex.ReadState(ctx)
+	if from == nil {
+		ex, err := NewExecutor(p.drv, p.dir, NopRevisionReadWriter{})
+		if err != nil {
+			return nil, err
+		}
+		from = ex
+	}
+	current, err := from.ReadState(ctx)
 	if err != nil {
 		return nil, err
 	}

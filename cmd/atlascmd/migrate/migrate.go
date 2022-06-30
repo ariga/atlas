@@ -66,11 +66,11 @@ func (r *EntRevisions) Init(ctx context.Context) error {
 		return r.ec.Schema.Create(ctx, entschema.WithAtlas(true))
 	}
 	// Driver does support changing schemas. Make sure the schema does exist before proceeding.
-	_, err2 := r.ac.InspectSchema(ctx, r.schema, &schema.InspectOptions{Mode: schema.InspectSchemas})
-	if err2 != nil && !schema.IsNotExistError(err2) {
-		return err2
+	_, err = r.ac.InspectSchema(ctx, r.schema, &schema.InspectOptions{Mode: schema.InspectSchemas})
+	if err != nil && !schema.IsNotExistError(err) {
+		return err
 	}
-	if schema.IsNotExistError(err2) {
+	if schema.IsNotExistError(err) {
 		if err := r.ac.ApplyChanges(ctx, []schema.Change{
 			&schema.AddSchema{S: &schema.Schema{Name: r.schema}},
 		}); err != nil {
