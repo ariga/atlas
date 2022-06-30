@@ -203,14 +203,14 @@ func TestMigrate_New(t *testing.T) {
 	require.FileExists(t, filepath.Join(p, v+"_liquibase.sql"))
 	require.Equal(t, 9, countFiles(t, p))
 
-	s, err = runCmd(Root, "migrate", "new", "dbmate", "--dir", "file://"+p, "--format", formatDbmate)
+	s, err = runCmd(Root, "migrate", "new", "dbmate", "--dir", "file://"+p, "--format", formatDBMate)
 	require.Zero(t, s)
 	require.NoError(t, err)
 	require.FileExists(t, filepath.Join(p, v+"_dbmate.sql"))
 	require.Equal(t, 10, countFiles(t, p))
 
 	f := filepath.Join("testdata", "mysql", "new.sql")
-	require.NoError(t, os.WriteFile(f, []byte("contents"), 0600))
+	require.NoError(t, os.WriteFile(f, []byte("contents"), 0o600))
 	t.Cleanup(func() { os.Remove(f) })
 	s, err = runCmd(Root, "migrate", "new", "--dir", "file://testdata/mysql")
 	require.NotZero(t, s)
@@ -225,7 +225,7 @@ func TestMigrate_Validate(t *testing.T) {
 	require.NoError(t, err)
 
 	f := filepath.Join("testdata", "mysql", "new.sql")
-	require.NoError(t, os.WriteFile(f, []byte("contents"), 0600))
+	require.NoError(t, os.WriteFile(f, []byte("contents"), 0o600))
 	t.Cleanup(func() { os.Remove(f) })
 	s, err = runCmd(Root, "migrate", "validate", "--dir", "file://testdata/mysql")
 	require.NotZero(t, s)
@@ -234,8 +234,8 @@ func TestMigrate_Validate(t *testing.T) {
 
 	// Replay migration files if a dev-url is given.
 	p := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(p, "1_initial.sql"), []byte("create table t1 (c1 int)"), 0644))
-	require.NoError(t, os.WriteFile(filepath.Join(p, "2_second.sql"), []byte("create table t2 (c2 int)"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(p, "1_initial.sql"), []byte("create table t1 (c1 int)"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(p, "2_second.sql"), []byte("create table t2 (c2 int)"), 0o644))
 	_, err = runCmd(Root, "migrate", "hash", "--force", "--dir", "file://"+p)
 	require.NoError(t, err)
 	s, err = runCmd(
@@ -366,7 +366,7 @@ table "accounts" {
 
 func hclURL(t *testing.T) string {
 	p := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(p, "atlas.hcl"), []byte(hcl), 0600))
+	require.NoError(t, os.WriteFile(filepath.Join(p, "atlas.hcl"), []byte(hcl), 0o600))
 	return "file://" + filepath.Join(p, "atlas.hcl")
 }
 
