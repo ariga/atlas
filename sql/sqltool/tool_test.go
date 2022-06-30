@@ -98,6 +98,24 @@ CREATE TABLE t2(c int);
 `, v, v),
 			},
 		},
+		{
+			"amacneil/dbmate",
+			sqltool.DbmateFormatter,
+			map[string]string{
+				v + "_tooling-plan.sql": `-- migrate:up
+-- create table t1
+CREATE TABLE t1(c int);
+-- create table t2
+CREATE TABLE t2(c int);
+
+-- migrate:down
+-- reverse: create table t2
+DROP TABLE t2;
+-- reverse: create table t1
+DROP TABLE t1 IF EXISTS;
+`,
+			},
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			d := dir(t)

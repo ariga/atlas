@@ -47,6 +47,14 @@ var (
 {{ with $change.Reverse }}--rollback: {{ . }};{{ end }}
 {{ end }}`,
 	)
+	// DbmateFormatter returns a migrate.Formatter compatible with amacneil/dbmate.
+	DbmateFormatter = templateFormatter(
+		"{{ now }}{{ with .Name }}_{{ . }}{{ end }}.sql",
+		`-- migrate:up
+{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}
+-- migrate:down
+{{ range rev .Changes }}{{ if .Reverse }}{{ with .Comment }}-- reverse: {{ println . }}{{ end }}{{ printf "%s;\n" .Reverse }}{{ end }}{{ end }}`,
+	)
 	// funcs contains the template.FuncMap for the different formatters.
 	funcs = template.FuncMap{
 		"inc": func(x int) int { return x + 1 },
