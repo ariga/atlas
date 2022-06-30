@@ -95,7 +95,7 @@ func (d *Driver) IsClean(ctx context.Context) (bool, error) {
 	return r == nil || len(r.Schemas) == 1 && r.Schemas[0].Name == mainFile && len(r.Schemas[0].Tables) == 0, nil
 }
 
-// Clean implements the inlined migrate.Clean interface to override the "emptying" behavior.
+// Clean implements the inlined Clean interface to override the "emptying" behavior.
 func (d *Driver) Clean(ctx context.Context) error {
 	for _, stmt := range []string{
 		"PRAGMA writable_schema = 1;",
