@@ -1,7 +1,6 @@
 ---
 title: Migration Analyzers
-id: projects
-slug: /ci/analyzers
+slug: /lint/analyzers
 ---
 The database is often the most critical component in software architectures. Being a stateful component, it cannot be
 easily rebuilt, scaled-out or fixed by a restart. Outages that involve damage to data or simply unavailability of the database
