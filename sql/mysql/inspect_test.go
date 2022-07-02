@@ -302,16 +302,17 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+------------+-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+---------------------------+
-| table_name | column_name | column_type   | column_comment | is_nullable | column_key | column_default | extra | character_set_name | collation_name | generation_expression     |
-+------------+-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+---------------------------+
-| users      | c1          | char(20)      |                | NO          |            | char           |       | NULL               | NULL           | NULL                      |
-| users      | c2          | varchar(30)   |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      |
-| users      | c3          | tinytext      |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      |
-| users      | c4          | mediumtext    |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      |
-| users      | c5          | text          |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      |
-| users      | c6          | longtext      |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                      |
-+------------+-------------+---------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+---------------------------+
++------------+-------------+---------------+----------------+-------------+------------+--------------------------------------------+-------------------+--------------------+----------------+---------------------------+
+| table_name | column_name | column_type   | column_comment | is_nullable | column_key | column_default                             | extra             | character_set_name | collation_name | generation_expression     |
++------------+-------------+---------------+----------------+-------------+------------+--------------------------------------------+-------------------+--------------------+----------------+---------------------------+
+| users      | c1          | char(20)      |                | NO          |            | char                                       |                   | NULL               | NULL           | NULL                      |
+| users      | c2          | varchar(30)   |                | NO          |            | NULL                                       |                   | NULL               | NULL           | NULL                      |
+| users      | c3          | tinytext      |                | NO          |            | NULL                                       |                   | NULL               | NULL           | NULL                      |
+| users      | c4          | mediumtext    |                | NO          |            | NULL                                       |                   | NULL               | NULL           | NULL                      |
+| users      | c5          | text          |                | NO          |            | NULL                                       |                   | NULL               | NULL           | NULL                      |
+| users      | c6          | longtext      |                | NO          |            | NULL                                       |                   | NULL               | NULL           | NULL                      |
+| users      | c7          | varchar(20)   |                | NO          |            | concat(_latin1\'Hello \',` + "`name`" + `) | DEFAULT_GENERATED | NULL               | NULL           | NULL                      |
++------------+-------------+---------------+----------------+-------------+------------+--------------------------------------------+-------------------+--------------------+----------------+---------------------------+
 `))
 				m.noIndexes()
 				m.noFKs()
@@ -326,6 +327,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c4", Type: &schema.ColumnType{Raw: "mediumtext", Type: &schema.StringType{T: "mediumtext"}}},
 					{Name: "c5", Type: &schema.ColumnType{Raw: "text", Type: &schema.StringType{T: "text"}}},
 					{Name: "c6", Type: &schema.ColumnType{Raw: "longtext", Type: &schema.StringType{T: "longtext"}}},
+					{Name: "c7", Type: &schema.ColumnType{Raw: "varchar(20)", Type: &schema.StringType{T: "varchar", Size: 20}}, Default: &schema.RawExpr{X: "(concat(_latin1'Hello ',`name`))"}},
 				}, t.Columns)
 			},
 		},
@@ -463,13 +465,14 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(queryColumns).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-+------------+-------------+-------------+----------------+-------------+------------+----------------+-------------------+--------------------+----------------+-----------------------+
-| TABLE_NAME | COLUMN_NAME | COLUMN_TYPE | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA             | CHARACTER_SET_NAME | COLLATION_NAME | GENERATION_EXPRESSION |
-+------------+-------------+-------------+----------------+-------------+------------+----------------+-------------------+--------------------+----------------+-----------------------+
-| users      | c1          | int         |                | NO          |            | NULL           |                   | NULL               | NULL           |                       |
-| users      | c2          | int         |                | NO          |            | NULL           | VIRTUAL GENERATED | NULL               | NULL           | ` + "(`c1` * `c1`)" + `   |
-| users      | c3          | int         |                | NO          |            | NULL           | STORED GENERATED  | NULL               | NULL           | ` + "(`c1` + `c2`)" + `   |
-+------------+-------------+-------------+----------------+-------------+------------+----------------+-------------------+--------------------+----------------+-----------------------+
++------------+-------------+-------------+----------------+-------------+------------+----------------+-------------------+--------------------+----------------+--------------------------------------+
+| TABLE_NAME | COLUMN_NAME | COLUMN_TYPE | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA             | CHARACTER_SET_NAME | COLLATION_NAME | GENERATION_EXPRESSION                |
++------------+-------------+-------------+----------------+-------------+------------+----------------+-------------------+--------------------+----------------+--------------------------------------+
+| users      | c1          | int         |                | NO          |            | NULL           |                   | NULL               | NULL           |                                      |
+| users      | c2          | int         |                | NO          |            | NULL           | VIRTUAL GENERATED | NULL               | NULL           | ` + "(`c1` * `c1`)" + `              |
+| users      | c3          | int         |                | NO          |            | NULL           | STORED GENERATED  | NULL               | NULL           | ` + "(`c1` + `c2`)" + `              |
+| users      | c4          | varchar(20) |                | NO          |            | NULL           | STORED GENERATED  | NULL               | NULL           | concat(_latin1\'\\\'\',_latin1\'"\') |
++------------+-------------+-------------+----------------+-------------+------------+----------------+-------------------+--------------------+----------------+--------------------------------------+
 `))
 				m.noIndexes()
 				m.noFKs()
@@ -481,6 +484,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c1", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}},
 					{Name: "c2", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&schema.GeneratedExpr{Expr: "(`c1` * `c1`)", Type: "VIRTUAL"}}},
 					{Name: "c3", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}, Attrs: []schema.Attr{&schema.GeneratedExpr{Expr: "(`c1` + `c2`)", Type: "STORED"}}},
+					{Name: "c4", Type: &schema.ColumnType{Raw: "varchar(20)", Type: &schema.StringType{T: "varchar", Size: 20}}, Attrs: []schema.Attr{&schema.GeneratedExpr{Expr: "concat(_latin1'\\'',_latin1'\"')", Type: "STORED"}}},
 				}, t.Columns)
 			},
 		},

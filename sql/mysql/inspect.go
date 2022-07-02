@@ -257,8 +257,11 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	if attr.onUpdate != "" {
 		c.Attrs = append(c.Attrs, &OnUpdate{A: attr.onUpdate})
 	}
-	if expr.String != "" {
-		c.SetGeneratedExpr(&schema.GeneratedExpr{Expr: expr.String, Type: attr.generatedType})
+	if x := expr.String; x != "" {
+		if !i.mariadb() {
+			x = unescape(x)
+		}
+		c.SetGeneratedExpr(&schema.GeneratedExpr{Expr: x, Type: attr.generatedType})
 	}
 	if defaults.Valid {
 		if i.mariadb() {
@@ -555,7 +558,7 @@ func (i *inspect) myDefaultExpr(c *schema.Column, x string, attr *extraAttr) sch
 		if _, ok := c.Type.Type.(*schema.TimeType); ok && reCurrTimestamp.MatchString(x) {
 			return &schema.RawExpr{X: x}
 		}
-		return &schema.RawExpr{X: sqlx.MayWrap(x)}
+		return &schema.RawExpr{X: sqlx.MayWrap(unescape(x))}
 	}
 	switch c.Type.Type.(type) {
 	case *schema.BinaryType:
