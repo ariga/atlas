@@ -1,0 +1,46 @@
+# Run tests only on MySQL 8.
+only mysql8
+
+# Apply schema "1.hcl" on fresh database.
+apply 1.hcl
+
+# Compare the result of "SHOW TABLE users" with the content of a file named '1.sql'.
+cmpshow users 1.sql
+cmphcl 1.hcl
+
+-- 1.hcl --
+table "users" {
+  schema = schema.script_column_default_expr
+  column "a" {
+    null    = false
+    type    = varchar(255)
+    default = ""
+  }
+  column "b" {
+    null    = false
+    type    = varchar(255)
+    default = sql("(concat(_utf8mb4'a',`a`,_utf8mb4'\\'s',_utf8mb4'b'))")
+  }
+  column "c" {
+    null    = false
+    type    = varchar(255)
+    default = "a'b"
+  }
+  column "d" {
+    null    = false
+    type    = varchar(255)
+    default = sql("(_utf8mb4'a\\'b')")
+  }
+}
+schema "script_column_default_expr" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_0900_ai_ci"
+}
+
+-- 1.sql --
+CREATE TABLE `users` (
+  `a` varchar(255) NOT NULL DEFAULT '',
+  `b` varchar(255) NOT NULL DEFAULT (concat(_utf8mb4'a',`a`,_utf8mb4'\'s',_utf8mb4'b')),
+  `c` varchar(255) NOT NULL DEFAULT 'a''b',
+  `d` varchar(255) NOT NULL DEFAULT (_utf8mb4'a\'b')
+)
