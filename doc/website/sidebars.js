@@ -34,6 +34,16 @@ module.exports = {
             ],
         },
         {
+            type: 'category',
+            label: 'Knowledge Center',
+            collapsed: true,
+            items: [
+                {type: 'category', label: 'MySQL',  collapsed: false, items: [
+                    {type: 'doc', id: 'knowledge-center/mysql/mysql-generated-columns', label: 'Generated Columns'},
+                ]},
+            ]
+        },
+        {
             type: 'doc',
             id: 'dev-database'
         },
