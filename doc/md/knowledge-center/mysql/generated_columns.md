@@ -4,23 +4,23 @@ title: How to Use Generated Columns in MySQL with Atlas
 slug: /knowledge/mysql/generated-columns
 ---
 
-**MySQL** is a popular open-source relational database that lets you store data. **Generated Columns** are a feature of MySQL that allows you to store and read data that is dependent on other data; without requiring complex INSERT or UPDATE queries.
+**MySQL** is a popular open-source relational database that lets you store data. **Generated columns** are a feature of MySQL that allows you to store and read data that is dependent on other data; without requiring complex INSERT or UPDATE queries.
 
 ## What are Generated Columns?
 
-Generated Columns are columns that contain values calculated by expressions which can be dependent on other columns; in a similar manner to formulas in a spreadsheet. There are two types of Generated Columns in MySQL: _Stored_ and _Virtual_.
+Generated columns are columns that contain values calculated by expressions which can be dependent on other columns; in a similar manner to formulas in a spreadsheet. There are two types of generated columns in MySQL: _Stored_ and _Virtual_.
 
 ### Stored Generated Columns
 
-Stored Generated Columns are stored and evaluated when a row is inserted or updated. As a result, stored generated columns use disk space in addition to CPU cycles during the execution of `INSERT` and `UPDATE` statements.
+Stored generated columns are stored and evaluated when a row is inserted or updated. As a result, stored generated columns use disk space in addition to CPU cycles during the execution of `INSERT` and `UPDATE` statements.
 
 ### Virtual Generated Columns
 
-Virtual Generated Columns are not stored, and only evaluated when a row is read _(after BEFORE [triggers](https://dev.mysql.com/doc/refman/5.7/en/trigger-syntax.html))_. As a result, virtual generated columns take no storage at the cost of CPU cycles for `SELECT` statements.
+Virtual generated columns are not stored, and only evaluated when a row is read _(after BEFORE [triggers](https://dev.mysql.com/doc/refman/5.7/en/trigger-syntax.html))_. As a result, virtual generated columns take no storage at the cost of CPU cycles for `SELECT` statements.
 
 ### Limitations of Generated Columns
 
-Generated Column expressions must be deterministic which means that — given the same input — an expression must always produce the same output. As a result, Generated Columns can not be used with stored variables, functions, procedures, and subqueries; which could cause the output to be non-deterministic. Following this constraint, Generated Columns can not be used to generate random values. On the other hand, a Generated Column may reference other generated columns within the same table, as long as those columns are declared before the Generated Column. In contrast, a Generated Column may reference any non-generated column _regardless_ of its position within the table.
+Generated column expressions must be deterministic which means that — given the same input — an expression must always produce the same output. As a result, generated columns can not be used with stored variables, functions, procedures, and subqueries; which could cause the output to be non-deterministic. Following this constraint, generated columns can not be used to generate random values. On the other hand, a generated column may reference any non-generated column _regardless_ of its position within the table row and any other generated column within the same table row, as long as those columns are declared before the generated column.
 
 ## When to use Generated Columns?
 
@@ -35,11 +35,11 @@ column_name data_type [GENERATED ALWAYS] AS (expr) [VIRTUAL | STORED]
 
 ### Using Stored Generated Columns
 
-Stored Generated Columns should be used for data _(in a table)_ that is read more frequently than it is updated. This saves CPU cycles while reading rows _(via `SELECT`)_. Stored Generated Columns should also be used when you want to index the column or use it as a foreign key constraint. Alternatively, use stored generated columns as a cache for complex conditions that are costly to calculate.
+Stored generated columns should be used for data _(in a table)_ that is read more frequently than it is updated. This saves CPU cycles while reading rows _(via `SELECT`)_. Stored generated columns should also be used when you want to index the column or use it as a foreign key constraint. Alternatively, use stored generated columns as a cache for complex conditions that are costly to calculate.
 
 #### Example
 
-The following example declares a Stored Generated Column in a table that stores the base and height of a triangle in the `base` and `height` column, then computes its area in `area` _(when triangles are inserted or updated)_.
+The following example declares a stored generated column in a table that stores the base and height of a triangle in the `base` and `height` column, then computes its area in `area` _(when triangles are inserted or updated)_.
 
 ```sql
 CREATE TABLE triangles (
@@ -51,11 +51,11 @@ CREATE TABLE triangles (
 
 ### Using Virtual Generated Columns
 
-Virtual Generated Columns should be used for computed data _(in a table)_ that is updated more frequently than it is read or computed data that is expensive to store on disk _(via `INSERT` or `UPDATE`)_. Since values are calculated on the fly, virtual generated columns are perfect for table columns that will have a new value for every `SELECT` statement. If you use the _InnoDB Storage Engine_, secondary indexes can be defined on virtual columns.
+Virtual generated columns should be used for computed data _(in a table)_ that is updated more frequently than it is read or computed data that is expensive to store on disk _(via `INSERT` or `UPDATE`)_. Since values are calculated on the fly, virtual generated columns are perfect for table columns that will have a new value for every `SELECT` statement. If you use the _InnoDB Storage Engine_, secondary indexes can be defined on virtual columns.
 
 #### Example
 
-The following example declares a Virtual Generated Column in a table that stores the price and amount of products sold in the `price` and `quantity` column, then computes its `revenue` _(when products are read)_.
+The following example declares a virtual generated column in a table that stores the price and amount of products sold in the `price` and `quantity` column, then computes its `revenue` _(when products are read)_.
 
 ```sql
 CREATE TABLE products (
@@ -67,7 +67,7 @@ CREATE TABLE products (
 
 ## Managing Generated Columns is easy with Atlas
 
-Managing Generated Columns and Database Schemas in MySQL is confusing and error-prone. [Atlas](https://atlasgo.io) is an open-source tool that allows you to manage your database using a simple declarative syntax (similar to Terraform). Instead of creating complex SQL statements that break upon schema migration, we will implement Generated Columns using Atlas.
+Managing generated columns and database schemas in MySQL is confusing and error-prone. [Atlas](https://atlasgo.io) is an open-source tool that allows you to manage your database using a simple declarative syntax (similar to Terraform). Instead of creating complex SQL statements that break upon schema migration, we will implement generated columns using Atlas.
 
 ### Getting started with Atlas
 
@@ -89,7 +89,7 @@ column "name" {
 
 ### Implementing Stored Generated Columns with Atlas
 
-The following example declares a Stored Generated Column in a table that stores the lengths of the sides of right-triangles in the `a` and `b` column, then computes the hypotenuse in `c` _(when triangles are inserted or updated)_.
+The following example declares a stored generated column in a table that stores the lengths of the sides of right-triangles in the `a` and `b` column, then computes the hypotenuse in `c` _(when triangles are inserted or updated)_.
 
 ```hcl
 table "triangles"  {
@@ -146,7 +146,7 @@ Select all the triangles in the table using `SELECT  *  FROM triangles` to recei
 
 ### Implementing Virtual Generated Columns Columns with Atlas
 
-The following example declares a Virtual Generated Column in a TABLE that stores the first and last name of a person, and computes the full name of the person _(when people are selected)_.
+The following example declares a virtual generated column in a TABLE that stores the first and last name of a person, and computes the full name of the person _(when people are selected)_.
 
 ```hcl
 table "people"  {
