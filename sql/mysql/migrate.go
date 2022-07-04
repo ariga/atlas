@@ -349,7 +349,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 					Change: change.Change,
 				})
 			case *schema.RenameColumn:
-				if s.supportsRenameColumn() {
+				if s.SupportsRenameColumn() {
 					b.P("RENAME COLUMN").Ident(change.From.Name).P("TO").Ident(change.To.Name)
 				} else {
 					b.P("CHANGE COLUMN").Ident(change.From.Name)
@@ -407,10 +407,10 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 				case change.From.Name != change.To.Name:
 					return fmt.Errorf("mismatch check constraint names: %q != %q", change.From.Name, change.To.Name)
 				// Enforcement added.
-				case s.supportsEnforceCheck() && sqlx.Has(change.From.Attrs, &Enforced{}) && !sqlx.Has(change.To.Attrs, &Enforced{}):
+				case s.SupportsEnforceCheck() && sqlx.Has(change.From.Attrs, &Enforced{}) && !sqlx.Has(change.To.Attrs, &Enforced{}):
 					b.P("ALTER CHECK").Ident(change.From.Name).P("ENFORCED")
 				// Enforcement dropped.
-				case s.supportsEnforceCheck() && !sqlx.Has(change.From.Attrs, &Enforced{}) && sqlx.Has(change.To.Attrs, &Enforced{}):
+				case s.SupportsEnforceCheck() && !sqlx.Has(change.From.Attrs, &Enforced{}) && sqlx.Has(change.To.Attrs, &Enforced{}):
 					b.P("ALTER CHECK").Ident(change.From.Name).P("NOT ENFORCED")
 				// Expr was changed.
 				case change.From.Expr != change.To.Expr:
@@ -489,7 +489,7 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 	}
 	// MariaDB does not accept [NOT NULL | NULL]
 	// as part of the generated columns' syntax.
-	if !asX || !s.mariadb() {
+	if !asX || !s.Maria() {
 		if !c.Type.Null {
 			b.P("NOT")
 		}
@@ -498,7 +498,7 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 	s.columnDefault(b, c)
 	// Add manually the JSON_VALID constraint for older
 	// versions < 10.4.3. See Driver.checks for full info.
-	if _, ok := c.Type.Type.(*schema.JSONType); ok && s.mariadb() && s.ltV("10.4.3") && !sqlx.Has(c.Attrs, &schema.Check{}) {
+	if _, ok := c.Type.Type.(*schema.JSONType); ok && s.Maria() && s.LT("10.4.3") && !sqlx.Has(c.Attrs, &schema.Check{}) {
 		b.P("CHECK").Wrap(func(b *sqlx.Builder) {
 			b.WriteString(fmt.Sprintf("json_valid(`%s`)", c.Name))
 		})
@@ -734,7 +734,7 @@ func (s *state) check(b *sqlx.Builder, c *schema.Check) {
 		b.P("CONSTRAINT").Ident(c.Name)
 	}
 	b.P("CHECK", sqlx.MayWrap(c.Expr))
-	if s.supportsEnforceCheck() && sqlx.Has(c.Attrs, &Enforced{}) {
+	if s.SupportsEnforceCheck() && sqlx.Has(c.Attrs, &Enforced{}) {
 		b.P("ENFORCED")
 	}
 }

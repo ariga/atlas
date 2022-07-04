@@ -202,7 +202,7 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 // columns queries and appends the columns of the given table.
 func (i *inspect) columns(ctx context.Context, s *schema.Schema) error {
 	query := columnsQuery
-	if i.supportsGeneratedColumns() {
+	if i.SupportsGeneratedColumns() {
 		query = columnsExprQuery
 	}
 	rows, err := i.querySchema(ctx, query, s)
@@ -258,13 +258,13 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 		c.Attrs = append(c.Attrs, &OnUpdate{A: attr.onUpdate})
 	}
 	if x := expr.String; x != "" {
-		if !i.mariadb() {
+		if !i.Maria() {
 			x = unescape(x)
 		}
 		c.SetGeneratedExpr(&schema.GeneratedExpr{Expr: x, Type: attr.generatedType})
 	}
 	if defaults.Valid {
-		if i.mariadb() {
+		if i.Maria() {
 			c.Default = i.marDefaultExpr(c, defaults.String)
 		} else {
 			c.Default = i.myDefaultExpr(c, defaults.String, attr)
@@ -418,7 +418,7 @@ func (i *inspect) checks(ctx context.Context, s *schema.Schema) error {
 			Name: name.String,
 			Expr: unescape(clause.String),
 		}
-		if i.mariadb() {
+		if i.Maria() {
 			check.Expr = clause.String
 			// In MariaDB, JSON is an alias to LONGTEXT. For versions >= 10.4.3, the CHARSET and COLLATE set to utf8mb4
 			// and a CHECK constraint is automatically created for the column as well (i.e. JSON_VALID(`<C>`)). However,
@@ -442,13 +442,23 @@ func (i *inspect) checks(ctx context.Context, s *schema.Schema) error {
 	return rows.Err()
 }
 
+// supportsCheck reports if the connected database supports
+// the CHECK clause, and return the querying for getting them.
+func (i *inspect) supportsCheck() (string, bool) {
+	q := myChecksQuery
+	if i.Maria() {
+		q = marChecksQuery
+	}
+	return q, i.SupportsCheck()
+}
+
 // indexQuery returns the query to retrieve the indexes of the given table.
 func (i *inspect) indexQuery() string {
 	query := indexesNoCommentQuery
-	if i.supportsIndexComment() {
+	if i.SupportsIndexComment() {
 		query = indexesQuery
 	}
-	if i.supportsIndexExpr() {
+	if i.SupportsIndexExpr() {
 		query = indexesExprQuery
 	}
 	return query
@@ -553,7 +563,7 @@ var reCurrTimestamp = regexp.MustCompile(`(?i)^current_timestamp(?:\(\d?\))?$`)
 // myDefaultExpr returns the correct schema.Expr based on the column attributes for MySQL.
 func (i *inspect) myDefaultExpr(c *schema.Column, x string, attr *extraAttr) schema.Expr {
 	// In MySQL, the DEFAULT_GENERATED indicates the column has an expression default value.
-	if i.supportsExprDefault() && attr.defaultGenerated {
+	if i.SupportsExprDefault() && attr.defaultGenerated {
 		// Skip CURRENT_TIMESTAMP, because wrapping it with parens will translate it to now().
 		if _, ok := c.Type.Type.(*schema.TimeType); ok && reCurrTimestamp.MatchString(x) {
 			return &schema.RawExpr{X: x}
@@ -618,7 +628,7 @@ func (i *inspect) marDefaultExpr(c *schema.Column, x string) schema.Expr {
 		return nil
 	}
 	// From MariaDB 10.2.7, string-based literals are quoted to distinguish them from expressions.
-	if i.gteV("10.2.7") && sqlx.IsQuoted(x, '\'') {
+	if i.GTE("10.2.7") && sqlx.IsQuoted(x, '\'') {
 		return &schema.Literal{V: x}
 	}
 	// In this case, we need to manually check if the expression is literal, or fallback to raw expression.
@@ -639,7 +649,7 @@ func (i *inspect) marDefaultExpr(c *schema.Column, x string) schema.Expr {
 			return &schema.RawExpr{X: x}
 		}
 	}
-	if !i.supportsExprDefault() {
+	if !i.SupportsExprDefault() {
 		return &schema.Literal{V: quote(x)}
 	}
 	return &schema.RawExpr{X: sqlx.MayWrap(x)}

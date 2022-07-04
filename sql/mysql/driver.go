@@ -6,8 +6,6 @@ package mysql
 
 import (
 	"context"
-	"embed"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
@@ -15,9 +13,9 @@ import (
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/mysql/internal/mysqlversion"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
-	"golang.org/x/mod/semver"
 )
 
 type (
@@ -34,7 +32,7 @@ type (
 	conn struct {
 		schema.ExecQuerier
 		// System variables that are set on `Open`.
-		version string
+		mysqlversion.V
 		collate string
 		charset string
 	}
@@ -57,10 +55,10 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	if err != nil {
 		return nil, fmt.Errorf("mysql: query system variables: %w", err)
 	}
-	if err := sqlx.ScanOne(rows, &c.version, &c.collate, &c.charset); err != nil {
+	if err := sqlx.ScanOne(rows, &c.V, &c.collate, &c.charset); err != nil {
 		return nil, fmt.Errorf("mysql: scan system variables: %w", err)
 	}
-	if c.tidb() {
+	if c.TiDB() {
 		return &Driver{
 			conn:        c,
 			Differ:      &sqlx.Diff{DiffDriver: &tdiff{diff{conn: c}}},
@@ -133,118 +131,6 @@ func acquire(ctx context.Context, conn schema.ExecQuerier, name string, timeout 
 	return nil
 }
 
-// supportsCheck reports if the connected database supports
-// the CHECK clause, and return the querying for getting them.
-func (c *conn) supportsCheck() (string, bool) {
-	v, q := "8.0.16", myChecksQuery
-	if c.mariadb() {
-		v, q = "10.2.1", marChecksQuery
-	}
-	return q, c.gteV(v)
-}
-
-// supportsIndexExpr reports if the connected database supports
-// index expressions (functional key part).
-func (c *conn) supportsIndexExpr() bool {
-	return !c.mariadb() && c.gteV("8.0.13")
-}
-
-// supportsDisplayWidth reports if the connected database supports
-// getting the display width information from the information schema.
-func (c *conn) supportsDisplayWidth() bool {
-	// MySQL v8.0.19 dropped the display width
-	// information from the information schema
-	return c.mariadb() || c.ltV("8.0.19")
-}
-
-// supportsExprDefault reports if the connected database supports
-// expressions in the DEFAULT clause on column definition.
-func (c *conn) supportsExprDefault() bool {
-	v := "8.0.13"
-	if c.mariadb() {
-		v = "10.2.1"
-	}
-	return c.gteV(v)
-}
-
-// supportsEnforceCheck reports if the connected database supports
-// the ENFORCED option in CHECK constraint syntax.
-func (c *conn) supportsEnforceCheck() bool {
-	return !c.mariadb() && c.gteV("8.0.16")
-}
-
-// supportsGeneratedColumns reports if the connected database
-// supports the generated columns in information schema.
-func (c *conn) supportsGeneratedColumns() bool {
-	v := "5.7"
-	if c.mariadb() {
-		v = "10.2"
-	}
-	return c.gteV(v)
-}
-
-// supportsRenameColumn reports if the connected database
-// supports the "RENAME COLUMN" clause.
-func (c *conn) supportsRenameColumn() bool {
-	v := "8"
-	if c.mariadb() {
-		v = "10.5.2"
-	}
-	return c.gteV(v)
-}
-
-// charsetToCollate returns the mapping from charset to its default collation.
-func (c *conn) charsetToCollate() (map[string]string, error) {
-	name := "internal/charset2collate"
-	if c.mariadb() {
-		name += ".maria"
-	}
-	return decode(name)
-}
-
-// collateToCharset returns the mapping from a collation to its charset.
-func (c *conn) collateToCharset() (map[string]string, error) {
-	name := "internal/collate2charset"
-	if c.mariadb() {
-		name += ".maria"
-	}
-	return decode(name)
-}
-
-// supportsIndexComment reports if the connected database
-// supports comments on indexes.
-func (c *conn) supportsIndexComment() bool {
-	// According to Oracle release notes, comments on
-	// indexes were added in version 5.5.3.
-	return c.mariadb() || c.gteV("5.5.3")
-}
-
-// mariadb reports if the Driver is connected to a MariaDB database.
-func (c *conn) mariadb() bool {
-	return strings.Index(c.version, "MariaDB") > 0
-}
-
-// tidb reports if the Driver is connected to a TiDB database.
-func (c *conn) tidb() bool {
-	return strings.Index(c.version, "TiDB") > 0
-}
-
-// compareV returns an integer comparing two versions according to
-// semantic version precedence.
-func (c *conn) compareV(w string) int {
-	v := c.version
-	if c.mariadb() {
-		v = v[:strings.Index(v, "MariaDB")-1]
-	}
-	return semver.Compare("v"+v, "v"+w)
-}
-
-// gteV reports if the connection version is >= w.
-func (c *conn) gteV(w string) bool { return c.compareV(w) >= 0 }
-
-// ltV reports if the connection version is < w.
-func (c *conn) ltV(w string) bool { return c.compareV(w) == -1 }
-
 // unescape strings with backslashes returned
 // for SQL expressions from information schema.
 func unescape(s string) string {
@@ -302,21 +188,6 @@ func dsn(u *url.URL) string {
 		b.WriteString(u.RawQuery)
 	}
 	return b.String()
-}
-
-//go:embed internal/*
-var encoding embed.FS
-
-func decode(name string) (map[string]string, error) {
-	f, err := encoding.Open(name)
-	if err != nil {
-		return nil, err
-	}
-	var m map[string]string
-	if err := json.NewDecoder(f).Decode(&m); err != nil {
-		return nil, fmt.Errorf("decode %q", name)
-	}
-	return m, nil
 }
 
 // MySQL standard column types as defined in its codebase. Name and order
