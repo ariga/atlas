@@ -87,8 +87,26 @@ func (s *State) setInputVals(ctx *hcl.EvalContext, body hcl.Body, input map[stri
 		}
 		ctxVars[v.Name] = v.Default
 	}
-	ctx.Variables["var"] = cty.ObjectVal(ctxVars)
+	orig, ok := ctx.Variables["var"]
+	if ok {
+		orig.ForEachElement(func(key cty.Value, val cty.Value) (stop bool) {
+			ctxVars[key.AsString()] = val
+			return false
+		})
+	}
+	mergeCtxVar(ctx, "var", ctxVars)
 	return nil
+}
+
+func mergeCtxVar(ctx *hcl.EvalContext, key string, vals map[string]cty.Value) {
+	v, ok := ctx.Variables[key]
+	if ok {
+		v.ForEachElement(func(key cty.Value, val cty.Value) (stop bool) {
+			vals[key.AsString()] = val
+			return false
+		})
+	}
+	ctx.Variables[key] = cty.ObjectVal(vals)
 }
 
 // readVar reads the raw inputVal as a cty.Value using the type definition on v.
@@ -124,7 +142,7 @@ func capsuleTypeVal(t string) cty.Value {
 
 func setBlockVars(ctx *hcl.EvalContext, b *hclsyntax.Body) (*hcl.EvalContext, error) {
 	defs := defRegistry(b)
-	vars, err := blockVars(b, "", defs)
+	vars, err := blockVars(b.Blocks, "", defs)
 	if err != nil {
 		return nil, err
 	}
@@ -137,11 +155,11 @@ func setBlockVars(ctx *hcl.EvalContext, b *hclsyntax.Body) (*hcl.EvalContext, er
 	return ctx, nil
 }
 
-func blockVars(b *hclsyntax.Body, parentAddr string, defs *blockDef) (map[string]cty.Value, error) {
+func blockVars(blocks hclsyntax.Blocks, parentAddr string, defs *blockDef) (map[string]cty.Value, error) {
 	vars := make(map[string]cty.Value)
 	for name, def := range defs.children {
 		v := make(map[string]cty.Value)
-		blocks := blocksOfType(b.Blocks, name)
+		blocks := blocksOfType(blocks, name)
 		if len(blocks) == 0 {
 			v[name] = cty.NullVal(def.asCty())
 		}
@@ -161,7 +179,7 @@ func blockVars(b *hclsyntax.Body, parentAddr string, defs *blockDef) (map[string
 			}
 			self := addr(parentAddr, name, blkName, qualifier)
 			attrs["__ref"] = cty.StringVal(self)
-			varMap, err := blockVars(blk.Body, self, def)
+			varMap, err := blockVars(blk.Body.Blocks, self, def)
 			if err != nil {
 				return nil, err
 			}
