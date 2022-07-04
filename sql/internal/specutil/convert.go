@@ -458,7 +458,8 @@ func FromIndex(idx *schema.Index, partFns ...func(*schema.IndexPart, *sqlspec.In
 	convertCommentFromSchema(idx.Attrs, &spec.Extra.Attrs)
 	if parts, ok := columnsOnly(idx); ok {
 		spec.Columns = parts
-		return spec, nil
+	} else {
+		return nil, fmt.Errorf("missing column for index %q", idx.Name)
 	}
 	spec.Parts = make([]*sqlspec.IndexPart, len(idx.Parts))
 	for i, p := range idx.Parts {
