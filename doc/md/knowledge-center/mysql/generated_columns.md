@@ -71,11 +71,11 @@ Managing generated columns and database schemas in MySQL is confusing and error-
 
 ### Getting started with Atlas
 
-Install the latest version of Atlas using the [Guide to Setting Up Atlas](https://atlasgo.io/cli/getting-started/setting-up).
+Install the latest version of Atlas using the [Guide to Setting Up Atlas](/cli/getting-started/setting-up).
 
 ### Generated Column Syntax in Atlas
 
-Use `as` in a column in a table to declare a MySQL generated column. For examples with other databases, read the [Atlas Generated Columns DDL](https://atlasgo.io/ddl/sql/#generated-columns).
+Use `as` in a column in a table to declare a MySQL generated column. For examples with other databases, read the [Atlas Generated Columns DDL](/ddl/sql/#generated-columns).
 
 ```hcl
 column "name" {
