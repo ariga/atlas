@@ -9,8 +9,8 @@ import (
 	"os"
 	"os/signal"
 
-	"ariga.io/atlas/cmd/atlascmd"
-	_ "ariga.io/atlas/cmd/atlascmd/docker"
+	"ariga.io/atlas/cmd/atlas/internal/cmdapi"
+	_ "ariga.io/atlas/cmd/atlas/internal/docker"
 	_ "ariga.io/atlas/sql/mysql"
 	_ "ariga.io/atlas/sql/postgres"
 	_ "ariga.io/atlas/sql/sqlite"
@@ -22,9 +22,9 @@ import (
 
 func main() {
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
-	atlascmd.Root.SetOut(os.Stdout)
-	err := atlascmd.Root.ExecuteContext(ctx)
-	atlascmd.CheckForUpdate()
+	cmdapi.Root.SetOut(os.Stdout)
+	err := cmdapi.Root.ExecuteContext(ctx)
+	cmdapi.CheckForUpdate()
 	if err != nil {
 		os.Exit(1)
 	}
