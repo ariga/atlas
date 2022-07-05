@@ -16,33 +16,6 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-// evalCtx constructs an *hcl.EvalContext with the Variables field populated with per
-// block type reference maps that can be used in the HCL file evaluation. For example,
-// if the evaluated file contains blocks such as:
-//	greeting "english" {
-//		word = "hello"
-//	}
-//	greeting "hebrew" {
-//		word = "shalom"
-//	}
-//
-// They can be then referenced in other blocks:
-//	message "welcome_hebrew" {
-//		title = "{greeting.hebrew.word}, world!"
-//	}
-//
-func (s *State) evalCtx(ctx *hcl.EvalContext, f *hcl.File) (*hcl.EvalContext, error) {
-	c := &container{}
-	if diag := gohcl.DecodeBody(f.Body, ctx, c); diag.HasErrors() {
-		return nil, diag
-	}
-	b, ok := c.Body.(*hclsyntax.Body)
-	if !ok {
-		return nil, fmt.Errorf("schemahcl: expected an hcl body")
-	}
-	return setBlockVars(ctx, b)
-}
-
 // varDef is an HCL resource that defines an input variable to the Atlas DDL document.
 type varDef struct {
 	Name    string    `hcl:",label"`
@@ -87,8 +60,20 @@ func (s *State) setInputVals(ctx *hcl.EvalContext, body hcl.Body, input map[stri
 		}
 		ctxVars[v.Name] = v.Default
 	}
-	ctx.Variables["var"] = cty.ObjectVal(ctxVars)
+	mergeCtxVar(ctx, ctxVars)
 	return nil
+}
+
+func mergeCtxVar(ctx *hcl.EvalContext, vals map[string]cty.Value) {
+	const key = "var"
+	v, ok := ctx.Variables[key]
+	if ok {
+		v.ForEachElement(func(key cty.Value, val cty.Value) (stop bool) {
+			vals[key.AsString()] = val
+			return false
+		})
+	}
+	ctx.Variables[key] = cty.ObjectVal(vals)
 }
 
 // readVar reads the raw inputVal as a cty.Value using the type definition on v.
@@ -124,7 +109,7 @@ func capsuleTypeVal(t string) cty.Value {
 
 func setBlockVars(ctx *hcl.EvalContext, b *hclsyntax.Body) (*hcl.EvalContext, error) {
 	defs := defRegistry(b)
-	vars, err := blockVars(b, "", defs)
+	vars, err := blockVars(b.Blocks, "", defs)
 	if err != nil {
 		return nil, err
 	}
@@ -137,11 +122,11 @@ func setBlockVars(ctx *hcl.EvalContext, b *hclsyntax.Body) (*hcl.EvalContext, er
 	return ctx, nil
 }
 
-func blockVars(b *hclsyntax.Body, parentAddr string, defs *blockDef) (map[string]cty.Value, error) {
+func blockVars(blocks hclsyntax.Blocks, parentAddr string, defs *blockDef) (map[string]cty.Value, error) {
 	vars := make(map[string]cty.Value)
 	for name, def := range defs.children {
 		v := make(map[string]cty.Value)
-		blocks := blocksOfType(b.Blocks, name)
+		blocks := blocksOfType(blocks, name)
 		if len(blocks) == 0 {
 			v[name] = cty.NullVal(def.asCty())
 		}
@@ -161,7 +146,7 @@ func blockVars(b *hclsyntax.Body, parentAddr string, defs *blockDef) (map[string
 			}
 			self := addr(parentAddr, name, blkName, qualifier)
 			attrs["__ref"] = cty.StringVal(self)
-			varMap, err := blockVars(blk.Body, self, def)
+			varMap, err := blockVars(blk.Body.Blocks, self, def)
 			if err != nil {
 				return nil, err
 			}

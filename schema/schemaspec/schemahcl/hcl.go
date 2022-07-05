@@ -15,7 +15,6 @@ import (
 	"ariga.io/atlas/schema/schemaspec"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hcl/v2/hclwrite"
@@ -70,11 +69,67 @@ func (s *State) UnmarshalSpec(data []byte, v interface{}) error {
 	return s.Eval(data, v, nil)
 }
 
-// Eval implements the Evaluator interface.
-func (s *State) Eval(data []byte, v interface{}, input map[string]string) error {
-	spec, err := s.eval(data, input)
+// EvalFiles evaluates the files in the provided paths using the input variables and
+// populates v with the result.
+func (s *State) EvalFiles(paths []string, v interface{}, input map[string]string) error {
+	parser := hclparse.NewParser()
+	for _, path := range paths {
+		if _, diag := parser.ParseHCLFile(path); diag.HasErrors() {
+			return diag
+		}
+	}
+	return s.eval(parser, v, input)
+}
+
+// eval evaluates the parsed HCL documents using the input variables and populates v
+// using the result.
+func (s *State) eval(parsed *hclparse.Parser, v interface{}, input map[string]string) error {
+	ctx := s.config.newCtx()
+	reg := &blockDef{
+		fields:   make(map[string]struct{}),
+		children: make(map[string]*blockDef),
+	}
+	files := parsed.Files()
+	fileNames := make([]string, 0, len(files))
+	allBlocks := make([]*hclsyntax.Block, 0, len(files))
+	// Prepare reg and allBlocks.
+	for name, file := range files {
+		fileNames = append(fileNames, name)
+		if err := s.setInputVals(ctx, file.Body, input); err != nil {
+			return err
+		}
+		body := file.Body.(*hclsyntax.Body)
+		for _, blk := range body.Blocks {
+			// Variable definition blocks are available in the HCL source but not reachable by reference.
+			if blk.Type == varBlock {
+				continue
+			}
+			allBlocks = append(allBlocks, blk)
+			reg.child(extractDef(blk, reg))
+		}
+	}
+	vars, err := blockVars(allBlocks, "", reg)
 	if err != nil {
 		return err
+	}
+	if ctx.Variables == nil {
+		ctx.Variables = make(map[string]cty.Value)
+	}
+	for k, v := range vars {
+		ctx.Variables[k] = v
+	}
+	spec := &schemaspec.Resource{}
+	sort.Slice(fileNames, func(i, j int) bool {
+		return fileNames[i] < fileNames[j]
+	})
+	for _, fn := range fileNames {
+		file := files[fn]
+		r, err := s.resource(ctx, file)
+		if err != nil {
+			return err
+		}
+		spec.Children = append(spec.Children, r.Children...)
+		spec.Attrs = append(spec.Attrs, r.Attrs...)
 	}
 	if err := patchRefs(spec); err != nil {
 		return err
@@ -83,6 +138,15 @@ func (s *State) Eval(data []byte, v interface{}, input map[string]string) error 
 		return fmt.Errorf("schemahcl: failed reading spec as %T: %w", v, err)
 	}
 	return nil
+}
+
+// Eval implements the Evaluator interface.
+func (s *State) Eval(data []byte, v interface{}, input map[string]string) error {
+	parser := hclparse.NewParser()
+	if _, diag := parser.ParseHCL(data, ""); diag.HasErrors() {
+		return diag
+	}
+	return s.eval(parser, v, input)
 }
 
 // addrRef maps addresses to their referenced resource.
@@ -150,34 +214,9 @@ func rep(r *schemaspec.Resource) string {
 	return fmt.Sprintf("$%s.%s", r.Type, n)
 }
 
-// eval evaluates the input Atlas HCL document with the given input and returns a
-// *schemaspec.Resource representing it.
-func (s *State) eval(body []byte, input map[string]string) (*schemaspec.Resource, error) {
-	ctx := s.config.newCtx()
-	parser := hclparse.NewParser()
-	srcHCL, diag := parser.ParseHCL(body, "")
-	if diag.HasErrors() {
-		return nil, diag
-	}
-	if srcHCL == nil {
-		return nil, fmt.Errorf("schemahcl: no HCL syntax found in body")
-	}
-	c := &container{}
-	if err := s.setInputVals(ctx, srcHCL.Body, input); err != nil {
-		return nil, err
-	}
-	ctx, err := s.evalCtx(ctx, srcHCL)
-	if err != nil {
-		return nil, err
-	}
-	if diag := gohcl.DecodeBody(srcHCL.Body, ctx, c); diag.HasErrors() {
-		return nil, diag
-	}
-	return s.extract(ctx, c.Body)
-}
-
-func (s *State) extract(ctx *hcl.EvalContext, remain hcl.Body) (*schemaspec.Resource, error) {
-	body, ok := remain.(*hclsyntax.Body)
+// resource converts the hcl file to a schemaspec.Resource.
+func (s *State) resource(ctx *hcl.EvalContext, file *hcl.File) (*schemaspec.Resource, error) {
+	body, ok := file.Body.(*hclsyntax.Body)
 	if !ok {
 		return nil, fmt.Errorf("schemahcl: expected remainder to be of type *hclsyntax.Body")
 	}

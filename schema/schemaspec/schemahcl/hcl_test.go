@@ -7,6 +7,8 @@ package schemahcl
 import (
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"ariga.io/atlas/schema/schemaspec"
@@ -308,4 +310,31 @@ person "rotem" {
 	err := New().Eval([]byte(h), &test, map[string]string{"family_name": "tam"})
 	require.NoError(t, err)
 	require.EqualValues(t, "$family.tam", test.People[0].Family.V)
+}
+
+func TestMultiFile(t *testing.T) {
+	type Person struct {
+		Name  string `spec:",name"`
+		Hobby string `spec:"hobby"`
+	}
+	var test struct {
+		People []*Person `spec:"person"`
+	}
+	paths := make([]string, 0)
+	testDir := "testdata/"
+	dir, err := os.ReadDir(testDir)
+	require.NoError(t, err)
+	for _, file := range dir {
+		if file.IsDir() {
+			continue
+		}
+		paths = append(paths, filepath.Join(testDir, file.Name()))
+	}
+	err = New().EvalFiles(paths, &test, map[string]string{
+		"hobby": "coding",
+	})
+	require.NoError(t, err)
+	require.Len(t, test.People, 2)
+	require.EqualValues(t, &Person{Name: "rotemtam", Hobby: "coding"}, test.People[0])
+	require.EqualValues(t, &Person{Name: "tzuri", Hobby: "ice-cream"}, test.People[1])
 }
