@@ -87,11 +87,12 @@ func (s *State) setInputVals(ctx *hcl.EvalContext, body hcl.Body, input map[stri
 		}
 		ctxVars[v.Name] = v.Default
 	}
-	mergeCtxVar(ctx, "var", ctxVars)
+	mergeCtxVar(ctx, ctxVars)
 	return nil
 }
 
-func mergeCtxVar(ctx *hcl.EvalContext, key string, vals map[string]cty.Value) {
+func mergeCtxVar(ctx *hcl.EvalContext, vals map[string]cty.Value) {
+	const key = "var"
 	v, ok := ctx.Variables[key]
 	if ok {
 		v.ForEachElement(func(key cty.Value, val cty.Value) (stop bool) {

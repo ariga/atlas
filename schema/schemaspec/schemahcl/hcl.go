@@ -74,8 +74,7 @@ func (s *State) UnmarshalSpec(data []byte, v interface{}) error {
 func (s *State) EvalFiles(paths []string, v interface{}, input map[string]string) error {
 	parser := hclparse.NewParser()
 	for _, path := range paths {
-		_, diag := parser.ParseHCLFile(path)
-		if diag.HasErrors() {
+		if _, diag := parser.ParseHCLFile(path); diag.HasErrors() {
 			return diag
 		}
 	}
@@ -92,7 +91,7 @@ func (s *State) eval(parsed *hclparse.Parser, v interface{}, input map[string]st
 	}
 	files := parsed.Files()
 	fileNames := make([]string, 0, len(files))
-	allBlocks := make([]*hclsyntax.Block, 0)
+	allBlocks := make([]*hclsyntax.Block, 0, len(files))
 	// Prepare reg and allBlocks.
 	for name, file := range files {
 		fileNames = append(fileNames, name)
@@ -101,7 +100,7 @@ func (s *State) eval(parsed *hclparse.Parser, v interface{}, input map[string]st
 		}
 		body := file.Body.(*hclsyntax.Body)
 		for _, blk := range body.Blocks {
-			// variable definition blocks are available in the HCL source but not reachable by reference.
+			// Variable definition blocks are available in the HCL source but not reachable by reference.
 			if blk.Type == varBlock {
 				continue
 			}
