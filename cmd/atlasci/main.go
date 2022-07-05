@@ -13,7 +13,6 @@ import (
 	"text/template"
 
 	"ariga.io/atlas/cmd/atlasci/internal/ci"
-	_ "ariga.io/atlas/cmd/atlascmd/docker"
 	"ariga.io/atlas/sql/migrate"
 	_ "ariga.io/atlas/sql/mysql"
 	_ "ariga.io/atlas/sql/postgres"

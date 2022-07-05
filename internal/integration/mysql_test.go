@@ -79,12 +79,6 @@ func myRun(t *testing.T, fn func(*myTest)) {
 	}
 }
 
-func TestMySQL_EntRevisions(t *testing.T) {
-	myRun(t, func(t *myTest) {
-		testEntRevisions(t)
-	})
-}
-
 func TestMySQL_Executor(t *testing.T) {
 	myRun(t, func(t *myTest) {
 		testExecutor(t)

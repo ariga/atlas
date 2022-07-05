@@ -14,7 +14,7 @@ import (
 	"strings"
 	"text/template"
 
-	"ariga.io/atlas/cmd/atlascmd"
+	"ariga.io/atlas/cmd/atlas/internal/cmdapi"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
@@ -41,7 +41,7 @@ func main() {
 	if err := t.ExecuteTemplate(f, "header", nil); err != nil {
 		log.Fatal(err)
 	}
-	blocks := prepare(atlascmd.Root, make([]*block, 0), 0)
+	blocks := prepare(cmdapi.Root, make([]*block, 0), 0)
 	if err := t.ExecuteTemplate(f, "body", struct {
 		Blocks []*block
 	}{Blocks: blocks}); err != nil {
