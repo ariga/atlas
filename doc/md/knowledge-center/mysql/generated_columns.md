@@ -4,7 +4,7 @@ title: How to Use Generated Columns in MySQL with Atlas
 slug: /knowledge/mysql/generated-columns
 ---
 
-**MySQL** is a popular open-source relational database. **Generated columns** are a feature of MySQL that allows you to define tables with columns whose value is a function of the value stored in other columns; without requiring complex expressions in SELECT, INSERT or UPDATE queries.
+**MySQL** is a popular open-source relational database. **Generated columns** are a feature of MySQL that allows you to define tables with columns whose value is a function of the value stored in other columns; without requiring complex expressions in `SELECT`, `INSERT` or `UPDATE` queries.
 
 ## What are Generated Columns?
 
