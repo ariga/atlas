@@ -49,6 +49,11 @@ module.exports = {
           position: 'left',
         },
         {
+          to: 'knowledge',
+          label: 'Knowledge Center',
+          position: 'left',
+        },
+        {
           to: 'blog',
           label: 'Blog',
           position: 'left'
@@ -65,6 +70,7 @@ module.exports = {
             {"label": "Data Definition Language ", "to": "ddl/intro"},
             {"label": "CLI Reference", "to": "cli/reference"},
             {"label": "Blog", "to": "blog"},
+            {"label": "Knowledge Center", "to": "knowledge"},
             {"label": "About", "to": "about"},
           ]
         },
