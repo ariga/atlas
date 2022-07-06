@@ -85,6 +85,16 @@ var (
 	EvalHCL = sqlspec.EvalFunc(evalSpec)
 )
 
+// EvalHCLBytes is a helper that evaluates an HCL document from a byte slice instead
+// of from an hclparse.Parser instance.
+func EvalHCLBytes(b []byte, v interface{}, inp map[string]string) error {
+	parsed, err := schemahcl.ParseBytes(b)
+	if err != nil {
+		return err
+	}
+	return EvalHCL(parsed, v, inp)
+}
+
 // convertTable converts a sqlspec.Table to a schema.Table. Table conversion is done without converting
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the convertSchema function.

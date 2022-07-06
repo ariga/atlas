@@ -10,7 +10,6 @@ import (
 
 	"ariga.io/atlas/sql/internal/spectest"
 	"ariga.io/atlas/sql/schema"
-	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/stretchr/testify/require"
 )
 
@@ -102,7 +101,7 @@ table "accounts" {
 }
 `
 	var s schema.Schema
-	err := evalBytes([]byte(f), &s)
+	err := EvalHCLBytes([]byte(f), &s, nil)
 	require.NoError(t, err)
 
 	exp := &schema.Schema{
@@ -379,7 +378,7 @@ schema "test" {
 			&schema.Collation{V: "utf8mb4_0900_ai_ci"},
 		}
 	)
-	require.NoError(t, evalBytes(buf, &s2))
+	require.NoError(t, EvalHCLBytes(buf, &s2, nil))
 	require.Equal(t, utf8mb4, s2.Attrs)
 	posts, ok := s2.Table("posts")
 	require.True(t, ok)
@@ -565,7 +564,7 @@ table "users" {
 }
 `
 	)
-	err := evalBytes([]byte(f), &s)
+	err := EvalHCLBytes([]byte(f), &s, nil)
 	require.NoError(t, err)
 	c := schema.NewStringColumn("name", "text")
 	exp := schema.New("test").
@@ -758,7 +757,7 @@ table "users" {
 }
 `
 	)
-	err := evalBytes([]byte(f), &s)
+	err := EvalHCLBytes([]byte(f), &s, nil)
 	require.NoError(t, err)
 	exp := schema.New("test").
 		AddTables(
@@ -1143,14 +1142,14 @@ schema "test" {
 }
 `, tt.typeExpr, lineIfSet(tt.extraAttr))
 			var test schema.Schema
-			err := evalBytes([]byte(doc), &test)
+			err := EvalHCLBytes([]byte(doc), &test, nil)
 			require.NoError(t, err)
 			colspec := test.Tables[0].Columns[0]
 			require.EqualValues(t, tt.expected, colspec.Type.Type)
 			spec, err := MarshalHCL(&test)
 			require.NoError(t, err)
 			var after schema.Schema
-			err = evalBytes(spec, &after)
+			err = EvalHCLBytes(spec, &after, nil)
 			require.NoError(t, err)
 			require.EqualValues(t, tt.expected, after.Tables[0].Columns[0].Type.Type)
 		})
@@ -1170,12 +1169,4 @@ func lineIfSet(s string) string {
 		return "\n" + s
 	}
 	return s
-}
-
-func evalBytes(src []byte, v interface{}) error {
-	p := hclparse.NewParser()
-	if _, diag := p.ParseHCL(src, ""); diag.HasErrors() {
-		return diag
-	}
-	return EvalHCL(p, v, nil)
 }

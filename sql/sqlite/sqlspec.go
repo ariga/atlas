@@ -205,6 +205,16 @@ var (
 	EvalHCL = sqlspec.EvalFunc(evalSpec)
 )
 
+// EvalHCLBytes is a helper that evaluates an HCL document from a byte slice instead
+// of from an hclparse.Parser instance.
+func EvalHCLBytes(b []byte, v interface{}, inp map[string]string) error {
+	parsed, err := schemahcl.ParseBytes(b)
+	if err != nil {
+		return err
+	}
+	return EvalHCL(parsed, v, inp)
+}
+
 // storedOrVirtual returns a STORED or VIRTUAL
 // generated type option based on the given string.
 func storedOrVirtual(s string) string {
