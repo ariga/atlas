@@ -16,6 +16,7 @@ import (
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
+	"github.com/hashicorp/hcl/v2/hclparse"
 )
 
 type doc struct {
@@ -24,9 +25,9 @@ type doc struct {
 }
 
 // evalSpec evaluates an Atlas DDL document into v using the input.
-func evalSpec(data []byte, v interface{}, input map[string]string) error {
+func evalSpec(p *hclparse.Parser, v interface{}, input map[string]string) error {
 	var d doc
-	if err := hclState.Eval(data, &d, input); err != nil {
+	if err := hclState.EvalParsed(p, &d, input); err != nil {
 		return err
 	}
 	switch v := v.(type) {
@@ -76,16 +77,12 @@ var (
 		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
 		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
 	)
-	// UnmarshalHCL unmarshals an Atlas HCL DDL document into v.
-	UnmarshalHCL = schemaspec.UnmarshalerFunc(func(data []byte, v interface{}) error {
-		return evalSpec(data, v, nil)
-	})
 	// MarshalHCL marshals v into an Atlas HCL DDL document.
 	MarshalHCL = schemaspec.MarshalerFunc(func(v interface{}) ([]byte, error) {
 		return MarshalSpec(v, hclState)
 	})
 	// EvalHCL implements the schemahcl.Evaluator interface.
-	EvalHCL = schemahcl.EvalFunc(evalSpec)
+	EvalHCL = sqlspec.EvalFunc(evalSpec)
 )
 
 // convertTable converts a sqlspec.Table to a schema.Table. Table conversion is done without converting

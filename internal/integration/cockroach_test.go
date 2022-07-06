@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
@@ -390,7 +391,7 @@ func TestCockroach_CLI(t *testing.T) {
 			}`
 	t.Run("SchemaInspect", func(t *testing.T) {
 		crdbRun(t, func(t *crdbTest) {
-			testCLISchemaInspect(t, h, t.dsn(), postgres.UnmarshalHCL, "-s", "public")
+			testCLISchemaInspect(t, h, t.dsn(), postgres.EvalHCL, "-s", "public")
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
@@ -462,14 +463,14 @@ func TestCockroach_CLI_MultiSchema(t *testing.T) {
 		crdbRun(t, func(t *crdbTest) {
 			t.dropSchemas("test2")
 			t.dropTables("users")
-			testCLIMultiSchemaInspect(t, h, t.dsn(), []string{"public", "test2"}, postgres.UnmarshalHCL)
+			testCLIMultiSchemaInspect(t, h, t.dsn(), []string{"public", "test2"}, postgres.EvalHCL)
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
 		crdbRun(t, func(t *crdbTest) {
 			t.dropSchemas("test2")
 			t.dropTables("users")
-			testCLIMultiSchemaApply(t, h, t.dsn(), []string{"public", "test2"}, postgres.UnmarshalHCL)
+			testCLIMultiSchemaApply(t, h, t.dsn(), []string{"public", "test2"}, postgres.EvalHCL)
 		})
 	})
 }
@@ -495,7 +496,9 @@ create table atlas_defaults
 		spec, err := postgres.MarshalHCL(realm.Schemas[0])
 		require.NoError(t, err)
 		var s schema.Schema
-		err = postgres.UnmarshalHCL(spec, &s)
+		parsed, err := schemahcl.ParseBytes(spec)
+		require.NoError(t, err)
+		err = postgres.EvalHCL(parsed, &s, nil)
 		require.NoError(t, err)
 		t.dropTables(n)
 		t.applyHcl(string(spec))
@@ -846,7 +849,9 @@ func (t *crdbTest) revisionsStorage() migrate.RevisionReadWriter {
 func (t *crdbTest) applyHcl(spec string) {
 	realm := t.loadRealm()
 	var desired schema.Schema
-	err := postgres.UnmarshalHCL([]byte(spec), &desired)
+	parsed, err := schemahcl.ParseBytes([]byte(spec))
+	require.NoError(t, err)
+	err = postgres.EvalHCL(parsed, &desired, nil)
 	require.NoError(t, err)
 	existing := realm.Schemas[0]
 	diff, err := t.drv.SchemaDiff(existing, &desired)
@@ -1006,7 +1011,9 @@ func (t *crdbTest) dropSchemas(names ...string) {
 func (t *crdbTest) applyRealmHcl(spec string) {
 	realm := t.loadRealm()
 	var desired schema.Realm
-	err := postgres.UnmarshalHCL([]byte(spec), &desired)
+	parsed, err := schemahcl.ParseBytes([]byte(spec))
+	require.NoError(t, err)
+	err = postgres.EvalHCL(parsed, &desired, nil)
 	require.NoError(t, err)
 	diff, err := t.drv.RealmDiff(realm, &desired)
 	require.NoError(t, err)

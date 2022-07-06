@@ -9,7 +9,6 @@ import (
 	"strconv"
 
 	"ariga.io/atlas/schema/schemaspec"
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
 )
@@ -140,36 +139,6 @@ func QualifyDuplicates(tableSpecs []*sqlspec.Table) error {
 			tbl.Qualifier = schemaName
 		}
 		seen[tbl.Name] = tbl
-	}
-	return nil
-}
-
-// Unmarshal unmarshals an Atlas DDL document using an unmarshaler into v. Unmarshal uses the
-// given convertTable function to convert a *sqlspec.Table into a *schema.Table.
-func Unmarshal(data []byte, evaluator schemahcl.Evaluator, v interface{}, input map[string]string,
-	convertTable ConvertTableFunc) error {
-	var d doc
-	if err := evaluator.Eval(data, &d, input); err != nil {
-		return err
-	}
-	switch v := v.(type) {
-	case *schema.Realm:
-		err := Scan(v, d.Schemas, d.Tables, convertTable)
-		if err != nil {
-			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
-		}
-	case *schema.Schema:
-		if len(d.Schemas) != 1 {
-			return fmt.Errorf("specutil: expecting document to contain a single schema, got %d", len(d.Schemas))
-		}
-		var r schema.Realm
-		if err := Scan(&r, d.Schemas, d.Tables, convertTable); err != nil {
-			return err
-		}
-		r.Schemas[0].Realm = nil
-		*v = *r.Schemas[0]
-	default:
-		return fmt.Errorf("specutil: failed unmarshaling spec. %T is not supported", v)
 	}
 	return nil
 }

@@ -30,7 +30,7 @@ bl = [true, false]
 		StringList []string `spec:"sl"`
 		BoolList   []bool   `spec:"bl"`
 	}
-	err := Unmarshal([]byte(f), &test)
+	err := New().Eval([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, 1, test.Int)
 	require.EqualValues(t, true, test.Bool)
@@ -69,7 +69,7 @@ func TestResource(t *testing.T) {
 		}
 	)
 	var test File
-	err := Unmarshal([]byte(f), &test)
+	err := New().Eval([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.Len(t, test.Endpoints, 1)
 	expected := &Endpoint{
@@ -194,7 +194,7 @@ cast "lion_king" {
 		var test struct {
 			Cast *Cast `spec:"cast"`
 		}
-		err := Unmarshal([]byte(f), &test)
+		err := New().Eval([]byte(f), &test, nil)
 		require.NoError(t, err)
 		require.EqualValues(t, &Cast{
 			Animal: &Lion{
@@ -217,7 +217,7 @@ zoo "ramat_gan" {
 		var test struct {
 			Zoo *Zoo `spec:"zoo"`
 		}
-		err := Unmarshal([]byte(f), &test)
+		err := New().Eval([]byte(f), &test, nil)
 		require.NoError(t, err)
 		require.EqualValues(t, &Zoo{
 			Animals: []Animal{
@@ -245,7 +245,7 @@ func TestQualified(t *testing.T) {
 	h := `person "dr" "jekyll" {
 }
 `
-	err := Unmarshal([]byte(h), &test)
+	err := New().Eval([]byte(h), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, test.Person, &Person{
 		Title: "dr",
@@ -270,7 +270,7 @@ ref = named.block_id.name
 		Named *Named `spec:"named"`
 		Ref   string `spec:"ref"`
 	}
-	err := Unmarshal([]byte(h), &test)
+	err := New().Eval([]byte(h), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, &Named{
 		Name: "atlas",

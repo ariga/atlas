@@ -12,7 +12,8 @@ import (
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/schema"
-
+	"ariga.io/atlas/sql/sqlspec"
+	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,7 +40,7 @@ func RegistrySanityTest(t *testing.T, registry *schemahcl.TypeRegistry, skip []s
 
 // TestInputVars runs a test verifying that the driver's exposed Eval function uses
 // input variables properly.
-func TestInputVars(t *testing.T, evaluator schemahcl.Evaluator) {
+func TestInputVars(t *testing.T, evaluator sqlspec.Evaluator) {
 	h := `
 variable "tenant" {
 	type = string
@@ -62,7 +63,10 @@ table "users" {
 }
 `
 	var test schema.Realm
-	err := evaluator.Eval([]byte(h), &test, map[string]string{"tenant": "rotemtam"})
+	p := hclparse.NewParser()
+	_, diag := p.ParseHCL([]byte(h), "")
+	require.False(t, diag.HasErrors())
+	err := evaluator.Eval(p, &test, map[string]string{"tenant": "rotemtam"})
 	require.NoError(t, err)
 	require.EqualValues(t, "rotemtam", test.Schemas[0].Name)
 	require.Len(t, test.Schemas[0].Tables, 1)

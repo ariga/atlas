@@ -63,19 +63,9 @@ type (
 		MarshalSpec(interface{}) ([]byte, error)
 	}
 
-	// Unmarshaler is the interface implemented by types that can unmarshal an Atlas DDL
-	// representation into an object.
-	Unmarshaler interface {
-		UnmarshalSpec([]byte, interface{}) error
-	}
-
 	// MarshalerFunc is the function type that is implemented by the MarshalSpec
 	// method of the Marshaler interface.
 	MarshalerFunc func(interface{}) ([]byte, error)
-
-	// UnmarshalerFunc is the function type that is implemented by the UnmarshalSpec
-	// method of the Unmarshaler interface.
-	UnmarshalerFunc func([]byte, interface{}) error
 
 	// TypeSpec represents a specification for defining a Type.
 	TypeSpec struct {
@@ -243,11 +233,6 @@ func (f MarshalerFunc) MarshalSpec(v interface{}) ([]byte, error) {
 	return f(v)
 }
 
-// UnmarshalSpec implements Unmarshaler.
-func (f UnmarshalerFunc) UnmarshalSpec(data []byte, v interface{}) error {
-	return f(data, v)
-}
-
 func attrVal(attrs []*Attr, name string) (*Attr, bool) {
 	for _, attr := range attrs {
 		if attr.K == name {
@@ -310,6 +295,5 @@ func (*Ref) val()          {}
 func (*Type) val()         {}
 
 var (
-	_ Unmarshaler = UnmarshalerFunc(nil)
-	_ Marshaler   = MarshalerFunc(nil)
+	_ Marshaler = MarshalerFunc(nil)
 )

@@ -11,6 +11,7 @@ import (
 
 	"ariga.io/atlas/sql/internal/spectest"
 	"ariga.io/atlas/sql/schema"
+	"github.com/hashicorp/hcl/v2/hclparse"
 
 	"github.com/stretchr/testify/require"
 )
@@ -98,7 +99,7 @@ enum "account_type" {
 }
 `
 	var s schema.Schema
-	err := UnmarshalHCL([]byte(f), &s)
+	err := evalBytes([]byte(f), &s)
 	require.NoError(t, err)
 	exp := &schema.Schema{
 		Name: "schema",
@@ -275,7 +276,7 @@ table "t" {
 `
 	t.Run("Invalid", func(t *testing.T) {
 		f := fmt.Sprintf(f, "UNK")
-		err := UnmarshalHCL([]byte(f), &schema.Schema{})
+		err := evalBytes([]byte(f), &schema.Schema{})
 		require.Error(t, err)
 	})
 	t.Run("Valid", func(t *testing.T) {
@@ -283,7 +284,7 @@ table "t" {
 			s schema.Schema
 			f = fmt.Sprintf(f, "HASH")
 		)
-		err := UnmarshalHCL([]byte(f), &s)
+		err := evalBytes([]byte(f), &s)
 		require.NoError(t, err)
 		idx := s.Tables[0].Indexes[0]
 		require.Equal(t, IndexTypeHash, idx.Attrs[0].(*IndexType).T)
@@ -306,7 +307,7 @@ table "t" {
 }
 `
 	var s schema.Schema
-	err := UnmarshalHCL([]byte(f), &s)
+	err := evalBytes([]byte(f), &s)
 	require.NoError(t, err)
 	idx := s.Tables[0].Indexes[0]
 	require.Equal(t, IndexTypeBRIN, idx.Attrs[0].(*IndexType).T)
@@ -333,7 +334,7 @@ table "logs" {
 }
 `
 		)
-		err := UnmarshalHCL([]byte(f), s)
+		err := evalBytes([]byte(f), s)
 		require.NoError(t, err)
 		c := schema.NewStringColumn("name", "text")
 		expected := schema.New("test").
@@ -363,7 +364,7 @@ table "logs" {
 }
 `
 		)
-		err := UnmarshalHCL([]byte(f), s)
+		err := evalBytes([]byte(f), s)
 		require.NoError(t, err)
 		c := schema.NewStringColumn("name", "text")
 		expected := schema.New("test").
@@ -372,7 +373,7 @@ table "logs" {
 	})
 
 	t.Run("Invalid", func(t *testing.T) {
-		err := UnmarshalHCL([]byte(`
+		err := evalBytes([]byte(`
 			schema "test" {}
 			table "logs" {
 				schema = schema.test
@@ -384,7 +385,7 @@ table "logs" {
 		`), &schema.Schema{})
 		require.EqualError(t, err, "missing attribute logs.partition.type")
 
-		err = UnmarshalHCL([]byte(`
+		err = evalBytes([]byte(`
 			schema "test" {}
 			table "logs" {
 				schema = schema.test
@@ -396,7 +397,7 @@ table "logs" {
 		`), &schema.Schema{})
 		require.EqualError(t, err, `missing columns or expressions for logs.partition`)
 
-		err = UnmarshalHCL([]byte(`
+		err = evalBytes([]byte(`
 			schema "test" {}
 			table "logs" {
 				schema = schema.test
@@ -581,7 +582,7 @@ table "t" {
 `
 	t.Run("Invalid", func(t *testing.T) {
 		f := fmt.Sprintf(f, "UNK")
-		err := UnmarshalHCL([]byte(f), &schema.Schema{})
+		err := evalBytes([]byte(f), &schema.Schema{})
 		require.Error(t, err)
 	})
 	t.Run("Valid", func(t *testing.T) {
@@ -589,7 +590,7 @@ table "t" {
 			s schema.Schema
 			f = fmt.Sprintf(f, "ALWAYS")
 		)
-		err := UnmarshalHCL([]byte(f), &s)
+		err := evalBytes([]byte(f), &s)
 		require.NoError(t, err)
 		id := s.Tables[0].Columns[0].Attrs[0].(*Identity)
 		require.Equal(t, GeneratedTypeAlways, id.Generation)
@@ -663,7 +664,7 @@ table "users" {
 }
 `
 	)
-	err := UnmarshalHCL([]byte(f), &s)
+	err := evalBytes([]byte(f), &s)
 	require.NoError(t, err)
 	exp := schema.New("test").
 		AddTables(
@@ -1047,14 +1048,14 @@ func TestTypes(t *testing.T) {
 schema "test" {
 }
 `, tt.typeExpr)
-			err := UnmarshalHCL([]byte(doc), &test)
+			err := evalBytes([]byte(doc), &test)
 			require.NoError(t, err)
 			colspec := test.Tables[0].Columns[0]
 			require.EqualValues(t, tt.expected, colspec.Type.Type)
 			spec, err := MarshalHCL(&test)
 			require.NoError(t, err)
 			var after schema.Schema
-			err = UnmarshalHCL(spec, &after)
+			err = evalBytes(spec, &after)
 			require.NoError(t, err)
 			require.EqualValues(t, tt.expected, after.Tables[0].Columns[0].Type.Type)
 		})
@@ -1234,4 +1235,12 @@ func TestRegistrySanity(t *testing.T) {
 
 func TestInputVars(t *testing.T) {
 	spectest.TestInputVars(t, EvalHCL)
+}
+
+func evalBytes(src []byte, v interface{}) error {
+	p := hclparse.NewParser()
+	if _, diag := p.ParseHCL(src, ""); diag.HasErrors() {
+		return diag
+	}
+	return EvalHCL(p, v, nil)
 }

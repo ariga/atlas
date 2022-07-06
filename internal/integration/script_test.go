@@ -18,6 +18,7 @@ import (
 	"testing"
 	"unicode"
 
+	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
@@ -516,7 +517,11 @@ func (t *myTest) hclDiff(ts *testscript.TestScript, name string) ([]schema.Chang
 		ctx     = context.Background()
 		r       = strings.NewReplacer("$charset", ts.Getenv("charset"), "$collate", ts.Getenv("collate"), "$db", ts.Getenv("db"))
 	)
-	ts.Check(mysql.UnmarshalHCL([]byte(r.Replace(f)), desired))
+	parsed, err := schemahcl.ParseBytes([]byte(r.Replace(f)))
+	if err != nil {
+		return nil, err
+	}
+	ts.Check(mysql.EvalHCL(parsed, desired, nil))
 	current, err := t.drv.InspectSchema(ctx, desired.Name, nil)
 	ts.Check(err)
 	desired, err = t.drv.(schema.Normalizer).NormalizeSchema(ctx, desired)
@@ -546,7 +551,11 @@ func (t *pgTest) hclDiff(ts *testscript.TestScript, name string) ([]schema.Chang
 		ctx     = context.Background()
 		f       = strings.ReplaceAll(ts.ReadFile(name), "$db", ts.Getenv("db"))
 	)
-	ts.Check(postgres.UnmarshalHCL([]byte(f), desired))
+	parsed, err := schemahcl.ParseBytes([]byte(f))
+	if err != nil {
+		return nil, err
+	}
+	ts.Check(postgres.EvalHCL(parsed, desired, nil))
 	current, err := t.drv.InspectSchema(ctx, desired.Name, nil)
 	ts.Check(err)
 	desired, err = t.drv.(schema.Normalizer).NormalizeSchema(ctx, desired)
@@ -576,7 +585,11 @@ func (t *liteTest) hclDiff(ts *testscript.TestScript, name string) ([]schema.Cha
 		f       = ts.ReadFile(name)
 		drv     = ts.Value(keyDrv).(*sqlite.Driver)
 	)
-	ts.Check(sqlite.UnmarshalHCL([]byte(f), desired))
+	parsed, err := schemahcl.ParseBytes([]byte(f))
+	if err != nil {
+		return nil, err
+	}
+	ts.Check(sqlite.EvalHCL(parsed, desired, nil))
 	current, err := drv.InspectSchema(context.Background(), desired.Name, nil)
 	ts.Check(err)
 	changes, err := drv.SchemaDiff(current, desired)

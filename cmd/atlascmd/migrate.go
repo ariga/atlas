@@ -21,6 +21,7 @@ import (
 	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqltool"
 	"github.com/fatih/color"
+	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/spf13/pflag"
 
 	"github.com/spf13/cobra"
@@ -384,7 +385,11 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 			return nil, err
 		}
 		realm := &schema.Realm{}
-		if err := client.Eval(f, realm, nil); err != nil {
+		parsed, err := parseHCLBytes(f)
+		if err != nil {
+			return nil, err
+		}
+		if err := client.Eval(parsed, realm, nil); err != nil {
 			return nil, err
 		}
 		if len(schemas) > 0 {
@@ -422,6 +427,14 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 			StateReader: migrate.Conn(client, &schema.InspectRealmOption{Schemas: schemas}),
 		}, nil
 	}
+}
+
+func parseHCLBytes(b []byte) (*hclparse.Parser, error) {
+	p := hclparse.NewParser()
+	if _, diag := p.ParseHCL(b, ""); diag.HasErrors() {
+		return nil, diag
+	}
+	return p, nil
 }
 
 const (

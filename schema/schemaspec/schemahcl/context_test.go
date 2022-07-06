@@ -60,7 +60,7 @@ config "defaults" {
 		Backends  []*Backend  `spec:"backend"`
 		Endpoints []*Endpoint `spec:"endpoint"`
 	}
-	err := Unmarshal([]byte(f), &test)
+	err := New().Eval([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, []*Endpoint{
 		{
@@ -115,7 +115,7 @@ continent = country.israel.metadata.geo.continent
 		}
 	)
 	var test Test
-	err := Unmarshal([]byte(f), &test)
+	err := New().Eval([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, test, Test{
 		Countries: []*Country{
@@ -161,7 +161,7 @@ country "israel" {
 	var test struct {
 		Countries []*Country `spec:"country"`
 	}
-	err := Unmarshal([]byte(f), &test)
+	err := New().Eval([]byte(f), &test, nil)
 	israel := &Country{
 		Name: "israel",
 		Cities: []*City{
@@ -196,7 +196,7 @@ pet "garfield" {
 		People []*Person `spec:"person"`
 		Pets   []*Pet    `spec:"pet"`
 	}
-	err := Unmarshal([]byte(f), &test)
+	err := New().Eval([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, &Pet{
 		Name:  "garfield",
@@ -236,7 +236,7 @@ group "lion_kings" {
 		Users  []*User  `spec:"user"`
 		Groups []*Group `spec:"group"`
 	}
-	err := Unmarshal([]byte(f), &test)
+	err := New().Eval([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, &Group{
 		Name: "lion_kings",
@@ -287,7 +287,7 @@ person "jane" {
 	var test struct {
 		People []*Person `spec:"person"`
 	}
-	err := Unmarshal([]byte(f), &test)
+	err := New().Eval([]byte(f), &test, nil)
 	require.NoError(t, err)
 	john := &Person{
 		Name:     "john",
@@ -460,7 +460,7 @@ r = user.atlas.cli
 		V string          `spec:"v"`
 		R *schemaspec.Ref `spec:"r"`
 	}
-	err := Unmarshal([]byte(h), &test)
+	err := New().Eval([]byte(h), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, "v0.3.9", test.V)
 	require.EqualValues(t, "$user.atlas.cli", test.R.V)

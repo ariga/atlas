@@ -12,6 +12,7 @@ import (
 	"log"
 	"testing"
 
+	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
 
@@ -515,7 +516,9 @@ create table atlas_defaults
 		spec, err := mysql.MarshalHCL(realm.Schemas[0])
 		require.NoError(t, err)
 		var s schema.Realm
-		err = mysql.UnmarshalHCL(spec, &s)
+		parsed, err := schemahcl.ParseBytes(spec)
+		require.NoError(t, err)
+		err = mysql.EvalHCL(parsed, &s, nil)
 		require.NoError(t, err)
 		t.dropTables(n)
 		t.applyHcl(string(spec))
@@ -557,7 +560,7 @@ func TestTiDB_CLI_MultiSchema(t *testing.T) {
 			t.dropTables("users")
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
-			testCLIMultiSchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V, charset.V, collate.V), t.dsn(""), []string{"test", "test2"}, mysql.UnmarshalHCL)
+			testCLIMultiSchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V, charset.V, collate.V), t.dsn(""), []string{"test", "test2"}, mysql.EvalHCL)
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
@@ -566,7 +569,7 @@ func TestTiDB_CLI_MultiSchema(t *testing.T) {
 			t.dropTables("users")
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
-			testCLIMultiSchemaApply(t, fmt.Sprintf(h, charset.V, collate.V, charset.V, collate.V), t.dsn(""), []string{"test", "test2"}, mysql.UnmarshalHCL)
+			testCLIMultiSchemaApply(t, fmt.Sprintf(h, charset.V, collate.V, charset.V, collate.V), t.dsn(""), []string{"test", "test2"}, mysql.EvalHCL)
 		})
 	})
 }
@@ -590,7 +593,7 @@ func TestTiDB_CLI(t *testing.T) {
 		tidbRun(t, func(t *myTest) {
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
-			testCLISchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"), mysql.UnmarshalHCL)
+			testCLISchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"), mysql.EvalHCL)
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {

@@ -6,6 +6,7 @@ package sqlspec
 
 import (
 	"ariga.io/atlas/schema/schemaspec"
+	"github.com/hashicorp/hcl/v2/hclparse"
 )
 
 type (
@@ -79,7 +80,20 @@ type (
 
 	// Type represents a database agnostic column type.
 	Type string
+
+	// Evaluator is the interface that wraps the Eval function.
+	Evaluator interface {
+		// Eval evaluates parsed HCL files using input variables into a schema.Realm.
+		Eval(*hclparse.Parser, interface{}, map[string]string) error
+	}
+
+	// EvalFunc is an adapter that allows the use of an ordinary function as an Evaluator.
+	EvalFunc func(*hclparse.Parser, interface{}, map[string]string) error
 )
+
+func (f EvalFunc) Eval(p *hclparse.Parser, i interface{}, input map[string]string) error {
+	return f(p, i, input)
+}
 
 func init() {
 	schemaspec.Register("table", &Table{})

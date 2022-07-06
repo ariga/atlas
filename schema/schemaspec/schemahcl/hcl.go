@@ -26,34 +26,16 @@ var (
 	Marshal = schemaspec.MarshalerFunc(New().MarshalSpec)
 )
 
-var (
-	// Unmarshal parses the Atlas HCL-encoded data and stores the result in the target.
-	Unmarshal = schemaspec.UnmarshalerFunc(New().UnmarshalSpec)
-)
-
 type (
 	container struct {
 		Body hcl.Body `hcl:",remain"`
 	}
 
-	// State implements schemaspec.Unmarshaler and schemaspec.Marshaler for Atlas HCL syntax
-	// and stores a configuration for these operations.
+	// State is used to evaluate and marshal Atlas HCL documents, and stores a configuration for these operations.
 	State struct {
 		config *Config
 	}
-	// Evaluator evaluates the Atlas DDL document with the given input and stores it in
-	// the provided object.
-	Evaluator interface {
-		Eval([]byte, interface{}, map[string]string) error
-	}
-	// EvalFunc is an adapter that allows the use of an ordinary function as an Evaluator.
-	EvalFunc func([]byte, interface{}, map[string]string) error
 )
-
-// Eval implements the Evaluator interface.
-func (f EvalFunc) Eval(data []byte, v interface{}, input map[string]string) error {
-	return f(data, v, input)
-}
 
 // MarshalSpec implements schemaspec.Marshaler for Atlas HCL documents.
 func (s *State) MarshalSpec(v interface{}) ([]byte, error) {
@@ -78,12 +60,12 @@ func (s *State) EvalFiles(paths []string, v interface{}, input map[string]string
 			return diag
 		}
 	}
-	return s.eval(parser, v, input)
+	return s.EvalParsed(parser, v, input)
 }
 
-// eval evaluates the parsed HCL documents using the input variables and populates v
+// EvalParsed evaluates the parsed HCL documents using the input variables and populates v
 // using the result.
-func (s *State) eval(parsed *hclparse.Parser, v interface{}, input map[string]string) error {
+func (s *State) EvalParsed(parsed *hclparse.Parser, v interface{}, input map[string]string) error {
 	ctx := s.config.newCtx()
 	reg := &blockDef{
 		fields:   make(map[string]struct{}),
@@ -146,7 +128,7 @@ func (s *State) Eval(data []byte, v interface{}, input map[string]string) error 
 	if _, diag := parser.ParseHCL(data, ""); diag.HasErrors() {
 		return diag
 	}
-	return s.eval(parser, v, input)
+	return s.EvalParsed(parser, v, input)
 }
 
 // addrRef maps addresses to their referenced resource.
@@ -557,4 +539,12 @@ func hclRawList(items []string) hclwrite.Tokens {
 		Bytes: []byte("]"),
 	})
 	return t
+}
+
+func ParseBytes(b []byte) (*hclparse.Parser, error) {
+	p := hclparse.NewParser()
+	if _, diag := p.ParseHCL(b, ""); diag.HasErrors() {
+		return nil, diag
+	}
+	return p, nil
 }

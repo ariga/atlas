@@ -5,6 +5,7 @@
 package sqlite
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -15,11 +16,35 @@ import (
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
+	"github.com/hashicorp/hcl/v2/hclparse"
 )
 
 // evalSpec evaluates an Atlas DDL document using an unmarshaler into v by using the input.
-func evalSpec(data []byte, v interface{}, input map[string]string) error {
-	return specutil.Unmarshal(data, hclState, v, input, convertTable)
+func evalSpec(p *hclparse.Parser, v interface{}, input map[string]string) error {
+	var d doc
+	if err := hclState.EvalParsed(p, &d, input); err != nil {
+		return err
+	}
+	switch v := v.(type) {
+	case *schema.Realm:
+		err := specutil.Scan(v, d.Schemas, d.Tables, convertTable)
+		if err != nil {
+			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
+		}
+	case *schema.Schema:
+		if len(d.Schemas) != 1 {
+			return fmt.Errorf("specutil: expecting document to contain a single schema, got %d", len(d.Schemas))
+		}
+		var r schema.Realm
+		if err := specutil.Scan(&r, d.Schemas, d.Tables, convertTable); err != nil {
+			return err
+		}
+		r.Schemas[0].Realm = nil
+		*v = *r.Schemas[0]
+	default:
+		return fmt.Errorf("specutil: failed unmarshaling spec. %T is not supported", v)
+	}
+	return nil
 }
 
 // MarshalSpec marshals v into an Atlas DDL document using a schemaspec.Marshaler.
@@ -172,16 +197,12 @@ var (
 		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
 		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
 	)
-	// UnmarshalHCL unmarshals an Atlas HCL DDL document into v.
-	UnmarshalHCL = schemaspec.UnmarshalerFunc(func(data []byte, v interface{}) error {
-		return evalSpec(data, v, nil)
-	})
 	// MarshalHCL marshals v into an Atlas HCL DDL document.
 	MarshalHCL = schemaspec.MarshalerFunc(func(v interface{}) ([]byte, error) {
 		return MarshalSpec(v, hclState)
 	})
 	// EvalHCL implements the schemahcl.Evaluator interface.
-	EvalHCL = schemahcl.EvalFunc(evalSpec)
+	EvalHCL = sqlspec.EvalFunc(evalSpec)
 )
 
 // storedOrVirtual returns a STORED or VIRTUAL
@@ -191,4 +212,9 @@ func storedOrVirtual(s string) string {
 		return virtual
 	}
 	return s
+}
+
+type doc struct {
+	Tables  []*sqlspec.Table  `spec:"table"`
+	Schemas []*sqlspec.Schema `spec:"schema"`
 }

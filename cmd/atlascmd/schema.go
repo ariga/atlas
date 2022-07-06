@@ -305,7 +305,11 @@ func applyRun(ctx context.Context, client *sqlclient.Client, devURL string, file
 		return err
 	}
 	desired := &schema.Realm{}
-	if err := client.Eval(f, desired, input); err != nil {
+	parsed, err := parseHCLBytes(f)
+	if err != nil {
+		return err
+	}
+	if err := client.Eval(parsed, desired, input); err != nil {
 		return err
 	}
 	if len(schemas) > 0 {
