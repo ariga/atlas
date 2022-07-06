@@ -27,10 +27,6 @@ var (
 )
 
 type (
-	container struct {
-		Body hcl.Body `hcl:",remain"`
-	}
-
 	// State is used to evaluate and marshal Atlas HCL documents, and stores a configuration for these operations.
 	State struct {
 		config *Config
@@ -46,11 +42,6 @@ func (s *State) MarshalSpec(v interface{}) ([]byte, error) {
 	return s.encode(r)
 }
 
-// UnmarshalSpec implements schemaspec.Unmarshaler.
-func (s *State) UnmarshalSpec(data []byte, v interface{}) error {
-	return s.Eval(data, v, nil)
-}
-
 // EvalFiles evaluates the files in the provided paths using the input variables and
 // populates v with the result.
 func (s *State) EvalFiles(paths []string, v interface{}, input map[string]string) error {
@@ -60,12 +51,12 @@ func (s *State) EvalFiles(paths []string, v interface{}, input map[string]string
 			return diag
 		}
 	}
-	return s.EvalParsed(parser, v, input)
+	return s.Eval(parser, v, input)
 }
 
-// EvalParsed evaluates the parsed HCL documents using the input variables and populates v
+// Eval evaluates the parsed HCL documents using the input variables and populates v
 // using the result.
-func (s *State) EvalParsed(parsed *hclparse.Parser, v interface{}, input map[string]string) error {
+func (s *State) Eval(parsed *hclparse.Parser, v interface{}, input map[string]string) error {
 	ctx := s.config.newCtx()
 	reg := &blockDef{
 		fields:   make(map[string]struct{}),
@@ -122,13 +113,13 @@ func (s *State) EvalParsed(parsed *hclparse.Parser, v interface{}, input map[str
 	return nil
 }
 
-// Eval implements the Evaluator interface.
-func (s *State) Eval(data []byte, v interface{}, input map[string]string) error {
+// EvalBytes implements the Evaluator interface.
+func (s *State) EvalBytes(data []byte, v interface{}, input map[string]string) error {
 	parser := hclparse.NewParser()
 	if _, diag := parser.ParseHCL(data, ""); diag.HasErrors() {
 		return diag
 	}
-	return s.EvalParsed(parser, v, input)
+	return s.Eval(parser, v, input)
 }
 
 // addrRef maps addresses to their referenced resource.

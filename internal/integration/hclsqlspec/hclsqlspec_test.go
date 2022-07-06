@@ -530,7 +530,7 @@ schema "c" {
 
 func decode(f string) (*db, error) {
 	d := &db{}
-	if err := hcl.Eval([]byte(f), d, nil); err != nil {
+	if err := hcl.EvalBytes([]byte(f), d, nil); err != nil {
 		return nil, err
 	}
 	return d, nil

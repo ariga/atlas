@@ -31,7 +31,7 @@ modify_table {
 	var test struct {
 		Changes []sqlspec.Change `spec:""`
 	}
-	err := hcl.UnmarshalSpec([]byte(f), &test)
+	err := hcl.EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, &sqlspec.ModifyTable{
 		Table: "users",

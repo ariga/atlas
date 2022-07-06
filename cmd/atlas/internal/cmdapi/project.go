@@ -95,7 +95,7 @@ func LoadEnv(path string, name string, opts ...LoadOption) (*Env, error) {
 		return nil, err
 	}
 	var project projectFile
-	if err := hclState.Eval(b, &project, cfg.inputVals); err != nil {
+	if err := hclState.EvalBytes(b, &project, cfg.inputVals); err != nil {
 		return nil, err
 	}
 	projEnvs := make(map[string]*Env)

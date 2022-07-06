@@ -41,7 +41,7 @@ func init() {
 // evalSpec evaluates an Atlas DDL document into v using the input.
 func evalSpec(p *hclparse.Parser, v interface{}, input map[string]string) error {
 	var d doc
-	if err := hclState.EvalParsed(p, &d, input); err != nil {
+	if err := hclState.Eval(p, &d, input); err != nil {
 		return err
 	}
 	switch v := v.(type) {

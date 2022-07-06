@@ -30,7 +30,7 @@ bl = [true, false]
 		StringList []string `spec:"sl"`
 		BoolList   []bool   `spec:"bl"`
 	}
-	err := New().Eval([]byte(f), &test, nil)
+	err := New().EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, 1, test.Int)
 	require.EqualValues(t, true, test.Bool)
@@ -69,7 +69,7 @@ func TestResource(t *testing.T) {
 		}
 	)
 	var test File
-	err := New().Eval([]byte(f), &test, nil)
+	err := New().EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.Len(t, test.Endpoints, 1)
 	expected := &Endpoint{
@@ -118,7 +118,7 @@ show "seinfeld" {
 			WithScopedEnums("show.day", "SUN", "MON", "TUE"),
 		}
 	)
-	err := New(opts...).UnmarshalSpec([]byte(f), &test)
+	err := New(opts...).EvalBytes([]byte(f), &test, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -194,7 +194,7 @@ cast "lion_king" {
 		var test struct {
 			Cast *Cast `spec:"cast"`
 		}
-		err := New().Eval([]byte(f), &test, nil)
+		err := New().EvalBytes([]byte(f), &test, nil)
 		require.NoError(t, err)
 		require.EqualValues(t, &Cast{
 			Animal: &Lion{
@@ -217,7 +217,7 @@ zoo "ramat_gan" {
 		var test struct {
 			Zoo *Zoo `spec:"zoo"`
 		}
-		err := New().Eval([]byte(f), &test, nil)
+		err := New().EvalBytes([]byte(f), &test, nil)
 		require.NoError(t, err)
 		require.EqualValues(t, &Zoo{
 			Animals: []Animal{
@@ -245,7 +245,7 @@ func TestQualified(t *testing.T) {
 	h := `person "dr" "jekyll" {
 }
 `
-	err := New().Eval([]byte(h), &test, nil)
+	err := New().EvalBytes([]byte(h), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, test.Person, &Person{
 		Title: "dr",
@@ -270,7 +270,7 @@ ref = named.block_id.name
 		Named *Named `spec:"named"`
 		Ref   string `spec:"ref"`
 	}
-	err := New().Eval([]byte(h), &test, nil)
+	err := New().EvalBytes([]byte(h), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, &Named{
 		Name: "atlas",
@@ -307,7 +307,7 @@ person "rotem" {
 	family = family.default
 }
 `
-	err := New().Eval([]byte(h), &test, map[string]string{"family_name": "tam"})
+	err := New().EvalBytes([]byte(h), &test, map[string]string{"family_name": "tam"})
 	require.NoError(t, err)
 	require.EqualValues(t, "$family.tam", test.People[0].Family.V)
 }

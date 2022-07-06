@@ -60,7 +60,7 @@ config "defaults" {
 		Backends  []*Backend  `spec:"backend"`
 		Endpoints []*Endpoint `spec:"endpoint"`
 	}
-	err := New().Eval([]byte(f), &test, nil)
+	err := New().EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, []*Endpoint{
 		{
@@ -115,7 +115,7 @@ continent = country.israel.metadata.geo.continent
 		}
 	)
 	var test Test
-	err := New().Eval([]byte(f), &test, nil)
+	err := New().EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, test, Test{
 		Countries: []*Country{
@@ -161,7 +161,7 @@ country "israel" {
 	var test struct {
 		Countries []*Country `spec:"country"`
 	}
-	err := New().Eval([]byte(f), &test, nil)
+	err := New().EvalBytes([]byte(f), &test, nil)
 	israel := &Country{
 		Name: "israel",
 		Cities: []*City{
@@ -196,7 +196,7 @@ pet "garfield" {
 		People []*Person `spec:"person"`
 		Pets   []*Pet    `spec:"pet"`
 	}
-	err := New().Eval([]byte(f), &test, nil)
+	err := New().EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, &Pet{
 		Name:  "garfield",
@@ -236,7 +236,7 @@ group "lion_kings" {
 		Users  []*User  `spec:"user"`
 		Groups []*Group `spec:"group"`
 	}
-	err := New().Eval([]byte(f), &test, nil)
+	err := New().EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, &Group{
 		Name: "lion_kings",
@@ -287,7 +287,7 @@ person "jane" {
 	var test struct {
 		People []*Person `spec:"person"`
 	}
-	err := New().Eval([]byte(f), &test, nil)
+	err := New().EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
 	john := &Person{
 		Name:     "john",
@@ -379,7 +379,7 @@ variadic = enum("a","b","c")
 		Varchar  *schemaspec.Type `spec:"sized"`
 		Variadic *schemaspec.Type `spec:"variadic"`
 	}
-	err := s.UnmarshalSpec([]byte(f), &test)
+	err := s.EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, "int", test.First.T)
 	require.EqualValues(t, "bool", test.Second.T)
@@ -437,7 +437,7 @@ arg_2 = float(10,2)
 		Arg1 *schemaspec.Type `spec:"arg_1"`
 		Arg2 *schemaspec.Type `spec:"arg_2"`
 	}
-	err := s.UnmarshalSpec([]byte(f), &test)
+	err := s.EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.Nil(t, test.Arg0.Attrs)
 	require.EqualValues(t, []*schemaspec.Attr{
@@ -460,7 +460,7 @@ r = user.atlas.cli
 		V string          `spec:"v"`
 		R *schemaspec.Ref `spec:"r"`
 	}
-	err := New().Eval([]byte(h), &test, nil)
+	err := New().EvalBytes([]byte(h), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, "v0.3.9", test.V)
 	require.EqualValues(t, "$user.atlas.cli", test.R.V)
@@ -497,7 +497,7 @@ bool = var.bool
 		Int     int    `spec:"int"`
 		Bool    bool   `spec:"bool"`
 	}
-	err := state.Eval([]byte(h), &test, map[string]string{
+	err := state.EvalBytes([]byte(h), &test, map[string]string{
 		"name": "rotemtam",
 		"int":  "42",
 		"bool": "true",
