@@ -91,6 +91,7 @@ type (
 	EvalFunc func(*hclparse.Parser, interface{}, map[string]string) error
 )
 
+// Eval implements the Evaluator interface.
 func (f EvalFunc) Eval(p *hclparse.Parser, i interface{}, input map[string]string) error {
 	return f(p, i, input)
 }
