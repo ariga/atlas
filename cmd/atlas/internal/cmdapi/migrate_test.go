@@ -278,6 +278,38 @@ func TestMigrate_Hash(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestMigrate_Lint(t *testing.T) {
+	p := t.TempDir()
+	s, err := runCmd(
+		Root, "migrate", "lint",
+		"--dir", "file://"+p,
+		"--dev-url", openSQLite(t, ""),
+		"--latest", "1",
+	)
+	require.NoError(t, err)
+	require.Empty(t, s)
+
+	err = os.WriteFile(filepath.Join(p, "new.sql"), []byte("DROP TABLE t;"), 0600)
+	require.NoError(t, err)
+	s, err = runCmd(
+		Root, "migrate", "lint",
+		"--dir", "file://"+p,
+		"--dev-url", openSQLite(t, "CREATE TABLE t(c int);"),
+		"--latest", "1",
+	)
+	require.NoError(t, err)
+	require.Equal(t, "Destructive changes detected in file new.sql:\n\n\tL1: Dropping table \"t\"\n\n", s)
+	s, err = runCmd(
+		Root, "migrate", "lint",
+		"--dir", "file://"+p,
+		"--dev-url", openSQLite(t, "CREATE TABLE t(c int);"),
+		"--latest", "1",
+		"--log", "{{ range .Files }}{{ .Name }}{{ end }}",
+	)
+	require.NoError(t, err)
+	require.Equal(t, "new.sql", s)
+}
+
 const hcl = `
 schema "main" {
 }

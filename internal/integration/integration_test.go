@@ -552,11 +552,3 @@ func buildCmd(t *testing.T) (string, error) {
 	}
 	return filepath.Join(td, "atlas"), nil
 }
-
-func buildCICmd(t *testing.T) (string, error) {
-	td := t.TempDir()
-	if b, err := exec.Command("go", "build", "-o", td, "ariga.io/atlas/cmd/atlasci").CombinedOutput(); err != nil {
-		return "", fmt.Errorf("%w: %s", err, b)
-	}
-	return filepath.Join(td, "atlasci"), nil
-}

@@ -13,11 +13,16 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
+	"ariga.io/atlas/cmd/atlas/internal/ci"
 	entmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlcheck"
+	"ariga.io/atlas/sql/sqlcheck/datadepend"
+	"ariga.io/atlas/sql/sqlcheck/destructive"
 	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqltool"
 	"github.com/fatih/color"
@@ -36,6 +41,9 @@ const (
 	migrateFlagTo              = "to"
 	migrateFlagSchema          = "schema"
 	migrateDiffFlagVerbose     = "verbose"
+	migrateLintLatest          = "latest"
+	migrateLintGitDir          = "git-dir"
+	migrateLintGitBase         = "git-base"
 )
 
 var (
@@ -50,6 +58,12 @@ var (
 		RevisionSchema string
 		Force          bool
 		Verbose        bool
+		Lint           struct {
+			Format  string // log formatting
+			Latest  uint   // latest N migration files
+			GitDir  string // repository working dir
+			GitBase string // branch name to compare with
+		}
 	}
 	// MigrateCmd represents the migrate command. It wraps several other sub-commands.
 	MigrateCmd = &cobra.Command{
@@ -111,7 +125,7 @@ the migration directory state to the desired schema. The desired state can be an
 		PreRunE: migrateFlagsFromEnv,
 		RunE:    CmdMigrateDiffRun,
 	}
-	// MigrateHashCmd represents the migrate hash command.
+	// MigrateHashCmd represents the 'atlas migrate hash' command.
 	MigrateHashCmd = &cobra.Command{
 		Use:   "hash",
 		Short: "Hash (re-)creates an integrity hash file for the migration directory.",
@@ -121,7 +135,7 @@ This command should be used whenever a manual change in the migration directory 
 		PreRunE: migrateFlagsFromEnv,
 		RunE:    CmdMigrateHashRun,
 	}
-	// MigrateNewCmd represents the migrate new command.
+	// MigrateNewCmd represents the 'atlas migrate new' command.
 	MigrateNewCmd = &cobra.Command{
 		Use:     "new",
 		Short:   "Creates a new empty migration file in the migration directory.",
@@ -131,7 +145,7 @@ This command should be used whenever a manual change in the migration directory 
 		PreRunE: migrateFlagsFromEnv,
 		RunE:    CmdMigrateNewRun,
 	}
-	// MigrateValidateCmd represents the migrate validate command.
+	// MigrateValidateCmd represents the 'atlas migrate validate' command.
 	MigrateValidateCmd = &cobra.Command{
 		Use:   "validate",
 		Short: "Validates the migration directories checksum and SQL statements.",
@@ -144,6 +158,18 @@ executed on the connected database in order to validate SQL semantics.`,
 		PreRunE: migrateFlagsFromEnv,
 		RunE:    CmdMigrateValidateRun,
 	}
+	// MigrateLintCmd represents the 'atlas migrate Lint' command.
+	MigrateLintCmd = &cobra.Command{
+		Use: "lint",
+		Example: `  atlas migrate lint
+  atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --latest 1
+  atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --git-base master
+  atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --log '{{ json .Files }}'`,
+		// Override the parent 'migrate' pre-run function to allow executing
+		// 'migrate lint' on directories that are not maintained by Atlas.
+		PersistentPreRunE: migrateFlagsFromEnv,
+		RunE:              CmdMigrateLintRun,
+	}
 )
 
 func init() {
@@ -154,6 +180,7 @@ func init() {
 	MigrateCmd.AddCommand(MigrateHashCmd)
 	MigrateCmd.AddCommand(MigrateNewCmd)
 	MigrateCmd.AddCommand(MigrateValidateCmd)
+	MigrateCmd.AddCommand(MigrateLintCmd)
 	// Reusable flags.
 	devURL := func(set *pflag.FlagSet) {
 		set.StringVarP(&MigrateFlags.DevURL, migrateFlagDevURL, "", "", "[driver://username:password@address/dbname?param=value] select a data source using the URL format")
@@ -180,6 +207,12 @@ func init() {
 	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateFlagTo))
 	// Validate flags.
 	devURL(MigrateValidateCmd.Flags())
+	// Lint flags.
+	devURL(MigrateLintCmd.Flags())
+	MigrateLintCmd.PersistentFlags().StringVarP(&MigrateFlags.Lint.Format, migrateFlagLog, "", "", "custom logging using a Go template")
+	MigrateLintCmd.PersistentFlags().UintVarP(&MigrateFlags.Lint.Latest, migrateLintLatest, "", 0, "run analysis on the latest N migration files")
+	MigrateLintCmd.PersistentFlags().StringVarP(&MigrateFlags.Lint.GitBase, migrateLintGitBase, "", "", "run analysis against the base Git branch")
+	MigrateLintCmd.PersistentFlags().StringVarP(&MigrateFlags.Lint.GitDir, migrateLintGitDir, "", ".", "path to the repository working directory")
 	receivesEnv(MigrateCmd)
 }
 
@@ -356,18 +389,72 @@ func CmdMigrateValidateRun(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
+// CmdMigrateLintRun is the command executed when running the CLI with 'migrate lint' args.
+func CmdMigrateLintRun(cmd *cobra.Command, _ []string) error {
+	dev, err := sqlclient.Open(cmd.Context(), MigrateFlags.DevURL)
+	if err != nil {
+		return err
+	}
+	defer dev.Close()
+	dir, err := dir()
+	if err != nil {
+		return err
+	}
+	var (
+		detect ci.ChangeDetector
+		local  = dir.(*migrate.LocalDir)
+	)
+	switch {
+	case MigrateFlags.Lint.Latest == 0 && MigrateFlags.Lint.GitBase == "":
+		return fmt.Errorf("--%s or --%s is required", migrateLintLatest, migrateLintGitBase)
+	case MigrateFlags.Lint.Latest > 0 && MigrateFlags.Lint.GitBase != "":
+		return fmt.Errorf("--%s and --%s are mutually exclusive", migrateLintLatest, migrateLintGitBase)
+	case MigrateFlags.Lint.Latest > 0:
+		detect = ci.LatestChanges(local, int(MigrateFlags.Lint.Latest))
+	case MigrateFlags.Lint.GitBase != "":
+		detect, err = ci.NewGitChangeDetector(
+			local,
+			ci.WithWorkDir(MigrateFlags.Lint.GitDir),
+			ci.WithBase(MigrateFlags.Lint.GitBase),
+			ci.WithMigrationsPath(local.Path()),
+		)
+		if err != nil {
+			return err
+		}
+	}
+	format := ci.DefaultTemplate
+	if f := MigrateFlags.Lint.Format; f != "" {
+		format, err = template.New("format").Funcs(ci.TemplateFuncs).Parse(f)
+		if err != nil {
+			return fmt.Errorf("parse log format: %w", err)
+		}
+	}
+	r := &ci.Runner{
+		Dev:            dev,
+		Dir:            local,
+		ChangeDetector: detect,
+		ReportWriter: &ci.TemplateWriter{
+			T: format,
+			W: cmd.OutOrStdout(),
+		},
+		Analyzer: sqlcheck.Analyzers{
+			datadepend.New(datadepend.Options{}),
+			destructive.New(destructive.Options{}),
+		},
+	}
+	return r.Run(cmd.Context())
+}
+
 // dir returns a migrate.Dir to use as migration directory. For now only local directories are supported.
 func dir() (migrate.Dir, error) {
 	parts := strings.SplitN(MigrateFlags.DirURL, "://", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid dir url %q", MigrateFlags.DirURL)
 	}
-	switch parts[0] {
-	case "file":
-		return migrate.NewLocalDir(parts[1])
-	default:
+	if parts[0] != "file" {
 		return nil, fmt.Errorf("unsupported driver %q", parts[0])
 	}
+	return migrate.NewLocalDir(parts[1])
 }
 
 // to returns a migrate.StateReader for the given to flag.

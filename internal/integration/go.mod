@@ -6,8 +6,6 @@ replace ariga.io/atlas => ../../
 
 replace ariga.io/atlas/cmd/atlas => ../../cmd/atlas
 
-replace ariga.io/atlas/cmd/atlasci => ../../cmd/atlasci
-
 require (
 	ariga.io/atlas v0.4.3
 	ariga.io/atlas/cmd/atlas v0.4.3
@@ -23,7 +21,6 @@ require (
 )
 
 require (
-	ariga.io/atlas/cmd/atlasci v0.0.0-00010101000000-000000000000 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20220517143526-88bb52951d5b // indirect
 	github.com/acomagu/bufpipe v1.0.3 // indirect
