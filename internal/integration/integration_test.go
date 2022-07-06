@@ -21,12 +21,9 @@ import (
 	"text/template"
 	"time"
 
-	entmigrate "ariga.io/atlas/cmd/atlascmd/migrate"
-	"ariga.io/atlas/cmd/atlascmd/migrate/ent/revision"
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
-	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqlspec"
 	entsql "entgo.io/ent/dialect/sql"
 	entschema "entgo.io/ent/dialect/sql/schema"
@@ -488,25 +485,6 @@ func testAdvisoryLock(t *testing.T, l schema.Locker) {
 	})
 }
 
-// testEntRevisions will not be run for SQLite. It has its own version of this test.
-func testEntRevisions(t T) {
-	const name = "my_revisions_schema"
-
-	c, err := sqlclient.Open(context.Background(), t.url())
-	require.NoError(t, err)
-
-	r, err := entmigrate.NewEntRevisions(c, entmigrate.WithSchema(name))
-	require.NoError(t, err)
-
-	require.NoError(t, r.Init(context.Background()))
-	t.dropSchemas(name)
-
-	s, err := c.InspectSchema(context.Background(), name, nil)
-	require.NoError(t, err)
-	_, ok := s.Table(revision.Table)
-	require.True(t, ok)
-}
-
 func testExecutor(t T) {
 	usersT, postsT := t.users(), t.posts()
 	petsT := &schema.Table{
@@ -588,12 +566,4 @@ func buildCmd(t *testing.T) (string, error) {
 		return "", fmt.Errorf("%w: %s", err, b)
 	}
 	return filepath.Join(td, "atlas"), nil
-}
-
-func buildCICmd(t *testing.T) (string, error) {
-	td := t.TempDir()
-	if b, err := exec.Command("go", "build", "-o", td, "ariga.io/atlas/cmd/atlasci").CombinedOutput(); err != nil {
-		return "", fmt.Errorf("%w: %s", err, b)
-	}
-	return filepath.Join(td, "atlasci"), nil
 }

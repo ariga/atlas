@@ -71,10 +71,7 @@ jobs:
         working-directory: schema
       - name: Run cli tests
         run: go test -race ./...
-        working-directory: cmd/atlascmd
-      - name: Run atlasci tests
-        run: go test -race ./internal/ci/...
-        working-directory: cmd/atlasci
+        working-directory: cmd/atlas
 
   {{ range $ }}
   integration-{{ .Version }}:

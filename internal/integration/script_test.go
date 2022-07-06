@@ -79,7 +79,6 @@ func TestSQLite_Script(t *testing.T) {
 			"cmpmig":  tt.cmdCmpMig,
 			"execsql": tt.cmdExec,
 			"atlas":   tt.cmdCLI,
-			"atlasci": tt.cmdCI,
 		},
 	})
 }
@@ -187,11 +186,6 @@ func setupCLITest(t *testing.T, env *testscript.Env) error {
 		return err
 	}
 	env.Setenv(atlasPathKey, path)
-	path, err = buildCICmd(t)
-	if err != nil {
-		return err
-	}
-	env.Setenv(atlasciPathKey, path)
 	return nil
 }
 
@@ -411,10 +405,6 @@ func (t *liteTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {
 	cmdCLI(ts, neg, args, dbURL, ts.Getenv(atlasPathKey))
 }
 
-func (t *liteTest) cmdCI(ts *testscript.TestScript, neg bool, args []string) {
-	dbURL := fmt.Sprintf("sqlite://file:%s/atlas.sqlite?cache=shared&_fk=1", ts.Getenv("WORK"))
-	cmdCLI(ts, neg, args, dbURL, ts.Getenv(atlasciPathKey))
-}
 func cmdCLI(ts *testscript.TestScript, neg bool, args []string, dbURL, cliPath string) {
 	workDir := ts.Getenv("WORK")
 	for i, arg := range args {
