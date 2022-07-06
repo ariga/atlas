@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"testing"
 
-	"ariga.io/atlas/cmd/atlasci/internal/ci"
+	"ariga.io/atlas/cmd/atlas/internal/ci"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"

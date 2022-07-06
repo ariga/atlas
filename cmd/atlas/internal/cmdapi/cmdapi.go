@@ -25,10 +25,6 @@ var (
 		SilenceUsage: true,
 	}
 
-	// version is the atlas CLI build version
-	// Should be set by build script "-X 'ariga.io/atlas/cmd/action.version=${version}'"
-	version string
-
 	// GlobalFlags contains flags common to many Atlas sub-commands.
 	GlobalFlags struct {
 		// SelectedEnv contains the environment selected from the active
@@ -38,6 +34,10 @@ var (
 		// Atlas DDL or project files.
 		Vars map[string]string
 	}
+
+	// version holds Atlas version. When built with cloud packages
+	// should be set by build flag. "-X 'ariga.io/atlas/cmd/atlas/internal/cmdapi.version=${version}'"
+	version string
 
 	// schemaCmd represents the subcommand 'atlas version'.
 	versionCmd = &cobra.Command{
@@ -70,6 +70,18 @@ List of supported environment parameters:
 			}
 		},
 	}
+
+	// license holds Atlas license. When built with cloud packages
+	// should be set by build flag. "-X 'ariga.io/atlas/cmd/atlas/internal/cmdapi.license=${license}'"
+	license = `LICENSE
+Atlas is licensed under Apache 2.0 as found in https://github.com/ariga/atlas/blob/master/LICENSE.`
+	licenseCmd = &cobra.Command{
+		Use:   "license",
+		Short: "Display license information",
+		Run: func(cmd *cobra.Command, _ []string) {
+			cmd.Println(license)
+		},
+	}
 )
 
 // CheckForUpdate exposes internal update logic to CLI.
@@ -81,6 +93,7 @@ func init() {
 	Root.AddCommand(EnvCmd)
 	Root.AddCommand(schemaCmd)
 	Root.AddCommand(versionCmd)
+	Root.AddCommand(licenseCmd)
 }
 
 // receivesEnv configures cmd to receive the common '--env' flag.
