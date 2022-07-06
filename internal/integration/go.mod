@@ -4,10 +4,13 @@ go 1.17
 
 replace ariga.io/atlas => ../../
 
+replace ariga.io/atlas/cmd/atlas => ../../cmd/atlas
+
 replace ariga.io/atlas/cmd/atlasci => ../../cmd/atlasci
 
 require (
-	ariga.io/atlas v0.4.1
+	ariga.io/atlas v0.4.3
+	ariga.io/atlas/cmd/atlas v0.4.3
 	entgo.io/ent v0.10.2-0.20220502113020-4ac82f5bb3f0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/hashicorp/hcl/v2 v2.10.1 // indirect

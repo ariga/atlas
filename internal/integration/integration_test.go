@@ -21,12 +21,9 @@ import (
 	"text/template"
 	"time"
 
-	entmigrate "ariga.io/atlas/cmd/atlascmd/migrate"
-	"ariga.io/atlas/cmd/atlascmd/migrate/ent/revision"
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
-	"ariga.io/atlas/sql/sqlclient"
 	entsql "entgo.io/ent/dialect/sql"
 	entschema "entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/entc/integration/ent"
@@ -471,25 +468,6 @@ func testAdvisoryLock(t *testing.T, l schema.Locker) {
 			require.NoError(t, unlock())
 		}
 	})
-}
-
-// testEntRevisions will not be run for SQLite. It has its own version of this test.
-func testEntRevisions(t T) {
-	const name = "my_revisions_schema"
-
-	c, err := sqlclient.Open(context.Background(), t.url())
-	require.NoError(t, err)
-
-	r, err := entmigrate.NewEntRevisions(c, entmigrate.WithSchema(name))
-	require.NoError(t, err)
-
-	require.NoError(t, r.Init(context.Background()))
-	t.dropSchemas(name)
-
-	s, err := c.InspectSchema(context.Background(), name, nil)
-	require.NoError(t, err)
-	_, ok := s.Table(revision.Table)
-	require.True(t, ok)
 }
 
 func testExecutor(t T) {

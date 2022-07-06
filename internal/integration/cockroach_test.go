@@ -78,12 +78,6 @@ func crdbRun(t *testing.T, fn func(*crdbTest)) {
 	}
 }
 
-func TestCockroach_EntRevisions(t *testing.T) {
-	crdbRun(t, func(t *crdbTest) {
-		testEntRevisions(t)
-	})
-}
-
 func TestCockroach_Executor(t *testing.T) {
 	crdbRun(t, func(t *crdbTest) {
 		testExecutor(t)

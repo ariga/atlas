@@ -67,12 +67,6 @@ func tidbRun(t *testing.T, fn func(*myTest)) {
 	}
 }
 
-func TestTiDB_EntRevisions(t *testing.T) {
-	tidbRun(t, func(t *myTest) {
-		testEntRevisions(t)
-	})
-}
-
 func TestTiDB_AddDropTable(t *testing.T) {
 	tidbRun(t, func(t *myTest) {
 		testAddDrop(t)
