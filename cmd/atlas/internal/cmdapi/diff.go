@@ -30,8 +30,8 @@ SQL statements to migrate the "from" database to the schema of the "to" database
 			cmdDiffRun(cmd, &opts)
 		},
 	}
-	cmd.Flags().StringVarP(&opts.fromURL, "from", "", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format")
-	cmd.Flags().StringVarP(&opts.toURL, "to", "", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format")
+	cmd.Flags().StringVarP(&opts.fromURL, "from", "", "", "[driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format")
+	cmd.Flags().StringVarP(&opts.toURL, "to", "", "", "[driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format")
 	cobra.CheckErr(cmd.MarkFlagRequired("from"))
 	cobra.CheckErr(cmd.MarkFlagRequired("to"))
 	return cmd

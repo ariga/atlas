@@ -152,7 +152,7 @@ func init() {
 
 	// Schema inspect flags.
 	schemaCmd.AddCommand(SchemaInspect)
-	SchemaInspect.Flags().StringVarP(&SchemaFlags.URL, urlFlag, "u", "", "[driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format")
+	SchemaInspect.Flags().StringVarP(&SchemaFlags.URL, urlFlag, "u", "", "[driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format")
 	SchemaInspect.Flags().BoolVarP(&InspectFlags.Web, "web", "w", false, "Open in a local Atlas UI")
 	SchemaInspect.Flags().StringVarP(&InspectFlags.Addr, "addr", "", ":5800", "Used with -w, local address to bind the server to")
 	SchemaInspect.Flags().StringSliceVarP(&SchemaFlags.Schemas, schemaFlag, "s", nil, "Set schema name")
