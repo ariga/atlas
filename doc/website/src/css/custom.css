@@ -162,3 +162,7 @@ div[class^='announcementBar_'] {
   );
   font-weight: bold;
 }
+
+.tabs-container  p {
+  margin-bottom: 10px;
+}
