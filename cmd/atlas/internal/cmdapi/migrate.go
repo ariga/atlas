@@ -25,11 +25,11 @@ import (
 	"ariga.io/atlas/sql/sqlcheck/destructive"
 	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqltool"
+
 	"github.com/fatih/color"
 	"github.com/hashicorp/hcl/v2/hclparse"
-	"github.com/spf13/pflag"
-
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 const (
@@ -122,7 +122,8 @@ it to a given desired state and create a new migration file containing SQL state
 directory state to the desired schema. The desired state can be another connected database or an HCL file.`,
 		Example: `  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl
   atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl add_users_table
-  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname`,
+  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname
+  atlas migrate diff --env dev`,
 		Args:    cobra.MaximumNArgs(1),
 		PreRunE: migrateFlagsFromEnv,
 		RunE:    CmdMigrateDiffRun,
@@ -327,12 +328,16 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		name = args[0]
 	}
-	plan, err := pl.Plan(cmd.Context(), name, desired)
-	if err != nil {
+	switch plan, err := pl.Plan(cmd.Context(), name, desired); {
+	case errors.Is(err, migrate.ErrNoPlan):
+		schemaCmd.Println("The migration directory is synced with the desired state, no changes to be made")
+		return nil
+	case err != nil:
 		return err
+	default:
+		// Write the plan to a new file.
+		return pl.WritePlan(plan)
 	}
-	// Write the plan to a new file.
-	return pl.WritePlan(plan)
 }
 
 // CmdMigrateHashRun is the command executed when running the CLI with 'migrate hash' args.

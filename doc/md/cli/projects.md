@@ -13,7 +13,7 @@ environments when working with Atlas. A project file is a file named
 // Define an environment named "local"
 env "local" {
   // Declare where the schema definition file resides.
-  src = "./schema/project.hcl"
+  src = "./project/schema.hcl"
   
   // Define the URL of the database which is managed in
   // this environment.
@@ -75,7 +75,7 @@ to the environment block:
 ```hcl
 env "local" {
   url = "sqlite://test?mode=memory&_fk=1"
-  src = "./schema.hcl"
+  src = "schema.hcl"
   
   // Other attributes are passed as input values to "schema.hcl":
   tenant = "rotemtam"
@@ -105,7 +105,7 @@ variable "tenant" {
 
 env "local" {
   url = "sqlite://test?mode=memory&_fk=1"
-  src = "./schema.hcl"
+  src = "schema.hcl"
   
   // The value for "tenant" is determined by the user at runtime.
   tenant = var.tenant
