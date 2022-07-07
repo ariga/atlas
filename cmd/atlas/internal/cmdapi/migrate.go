@@ -99,7 +99,7 @@ to re-hash the contents and resolve the error
 	}
 	// MigrateApplyCmd represents the 'atlas migrate apply' subcommand.
 	MigrateApplyCmd = &cobra.Command{
-		Use:   "apply",
+		Use:   "apply [flags] [count]",
 		Short: "Applies pending migration files on the connected database.",
 		Long: `'atlas migrate apply' reads the migration state of the connected database and computes what migrations are pending.
 It then attempts to apply the pending migration files in the correct order onto the database. 
@@ -108,19 +108,20 @@ As a safety measure 'atlas migrate apply' will abort with an error, if:
   - the migration directory is not in sync with the 'atlas.sum' file
   - the migration and database history do not match each other`,
 		Example: `  atlas migrate apply --to mysql://user:pass@localhost:3306/dbname
-  atlas migrate apply 1 --dir file:///path/to/migration/directory --to mysql://user:pass@localhost:3306/dbname`,
+  atlas migrate apply --dir file:///path/to/migration/directory --to mysql://user:pass@localhost:3306/dbname 1`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: CmdMigrateApplyRun,
 	}
 	// MigrateDiffCmd represents the 'atlas migrate diff' subcommand.
 	MigrateDiffCmd = &cobra.Command{
-		Use:   "diff",
-		Short: "Compute the diff between the migration directory and a connected database and create a new migration file.",
-		Long: `'atlas migrate diff' uses the dev-database to re-run all migration files in the migration
-directory and compares it to a given desired state and create a new migration file containing SQL statements to migrate 
-the migration directory state to the desired schema. The desired state can be another connected database or an HCL file.`,
-		Example: `  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname
-  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl`,
+		Use:   "diff [flags] [name]",
+		Short: "Compute the diff between the migration directory and a desired state and create a new migration file.",
+		Long: `'atlas migrate diff' uses the dev-database to re-run all migration files in the migration directory, compares
+it to a given desired state and create a new migration file containing SQL statements to migrate the migration
+directory state to the desired schema. The desired state can be another connected database or an HCL file.`,
+		Example: `  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl
+  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl add_users_table
+  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname`,
 		Args:    cobra.MaximumNArgs(1),
 		PreRunE: migrateFlagsFromEnv,
 		RunE:    CmdMigrateDiffRun,
@@ -160,7 +161,8 @@ executed on the connected database in order to validate SQL semantics.`,
 	}
 	// MigrateLintCmd represents the 'atlas migrate Lint' command.
 	MigrateLintCmd = &cobra.Command{
-		Use: "lint",
+		Use:   "lint",
+		Short: "Run analysis on the migration directory",
 		Example: `  atlas migrate lint
   atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --latest 1
   atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --git-base master
@@ -198,6 +200,7 @@ func init() {
 	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.LogFormat, migrateFlagLog, "", logFormatTTY, "log format to use")
 	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.RevisionSchema, migrateFlagRevisionsSchema, "", "", "schema name where the revisions table is to be created")
 	toURL(MigrateApplyCmd.Flags())
+	cobra.CheckErr(MigrateApplyCmd.MarkFlagRequired(migrateFlagTo))
 	// Diff flags.
 	devURL(MigrateDiffCmd.Flags())
 	toURL(MigrateDiffCmd.Flags())

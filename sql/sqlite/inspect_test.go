@@ -520,7 +520,7 @@ func (m mock) systemVars(version string) {
 }
 
 func (m mock) tableExists(table string, exists bool, stmt ...string) {
-	m.ExpectQuery(sqltest.Escape(databasesQuery + " WHERE name IN (?)")).
+	m.ExpectQuery(sqltest.Escape(fmt.Sprintf(databasesQueryArgs, "?"))).
 		WithArgs("main").
 		WillReturnRows(sqltest.Rows(`
  name |   file    
