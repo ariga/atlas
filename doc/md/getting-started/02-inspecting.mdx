@@ -19,7 +19,7 @@ atlas schema inspect --help
 ### Inspecting our database
 
 To inspect our locally-running MySQL instance from the [previous](01-introduction.mdx) section,
-use the `-u` flag and write output to a file named `atlas.hcl`:
+use the `-u` flag and write output to a file named `schema.hcl`:
 
 <Tabs
 defaultValue="mysql"
@@ -32,12 +32,12 @@ values={[
 <TabItem value="mysql">
 
 ```shell
-atlas schema inspect -u "mysql://root:pass@localhost:3306/example" > atlas.hcl
+atlas schema inspect -u "mysql://root:pass@localhost:3306/example" > schema.hcl
 ```
 
 Then, view the contents of the file:
 
-```hcl title="atlas.hcl"
+```hcl title="schema.hcl"
 schema "example" {
   charset = "utf8mb4"
   collate = "utf8mb4_0900_ai_ci"
@@ -48,12 +48,12 @@ schema "example" {
 <TabItem value="maria">
 
 ```shell
-atlas schema inspect -u "maria://root:pass@localhost:3306/example" > atlas.hcl
+atlas schema inspect -u "maria://root:pass@localhost:3306/example" > schema.hcl
 ```
 
 Then, view the contents of the file:
 
-```hcl title="atlas.hcl"
+```hcl title="schema.hcl"
 schema "example" {
   charset = "utf8mb4"
   collate = "utf8mb4_0900_ai_ci"
@@ -64,12 +64,12 @@ schema "example" {
 <TabItem value="postgres">
 
 ```shell
-atlas schema inspect -u "postgres://postgres:pass@localhost:5432/example?sslmode=disable" > atlas.hcl
+atlas schema inspect -u "postgres://postgres:pass@localhost:5432/example?sslmode=disable" > schema.hcl
 ```
 
 Then, view the contents of the file:
 
-```hcl title="atlas.hcl"
+```hcl title="schema.hcl"
 schema "public" {
 }
 ```
@@ -78,12 +78,12 @@ schema "public" {
 <TabItem value="sqlite">
 
 ```shell
-atlas schema inspect -u "sqlite://file.db" > atlas.hcl
+atlas schema inspect -u "sqlite://file.db" > schema.hcl
 ```
 
 Then, view the contents of the file:
 
-```hcl title="atlas.hcl"
+```hcl title="schema.hcl"
 schema "main" {
 }
 ```
@@ -138,28 +138,28 @@ values={[
 <TabItem value="mysql">
 
 ```shell
-atlas schema inspect -u "mysql://root:pass@localhost:3306/example" > atlas.hcl
+atlas schema inspect -u "mysql://root:pass@localhost:3306/example" > schema.hcl
 ```
 
 </TabItem>
 <TabItem value="maria">
 
 ```shell
-atlas schema inspect -u "maria://root:pass@localhost:3306/example" > atlas.hcl
+atlas schema inspect -u "maria://root:pass@localhost:3306/example" > schema.hcl
 ```
 
 </TabItem>
 <TabItem value="postgres">
 
 ```shell
-atlas schema inspect -u "postgres://postgres:pass@localhost:5432/example?sslmode=disable" > atlas.hcl
+atlas schema inspect -u "postgres://postgres:pass@localhost:5432/example?sslmode=disable" > schema.hcl
 ```
 
 </TabItem>
 <TabItem value="sqlite">
 
 ```shell
-atlas schema inspect -u "sqlite://file.db" > atlas.hcl
+atlas schema inspect -u "sqlite://file.db" > schema.hcl
 ```
 
 </TabItem>

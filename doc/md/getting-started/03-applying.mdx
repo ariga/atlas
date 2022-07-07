@@ -35,7 +35,7 @@ relationship between blog posts and categories:
 
 ![Blog ERD](https://atlasgo.io/uploads/images/blog-erd-2.png)
 
-First, let's store the existing schema in a file named `atlas.hcl`:
+First, let's store the existing schema in a file named `schema.hcl`:
 
 <Tabs
 defaultValue="mysql"
@@ -48,28 +48,28 @@ values={[
 <TabItem value="mysql">
 
 ```shell
-atlas schema inspect -u "mysql://root:pass@localhost:3306/example" > atlas.hcl
+atlas schema inspect -u "mysql://root:pass@localhost:3306/example" > schema.hcl
 ```
 
 </TabItem>
 <TabItem value="maria">
 
 ```shell
-atlas schema inspect -u "maria://root:pass@localhost:3306/example" > atlas.hcl
+atlas schema inspect -u "maria://root:pass@localhost:3306/example" > schema.hcl
 ```
 
 </TabItem>
 <TabItem value="postgres">
 
 ```shell
-atlas schema inspect -u "postgres://postgres:pass@localhost:5432/example?sslmode=disable" > atlas.hcl
+atlas schema inspect -u "postgres://postgres:pass@localhost:5432/example?sslmode=disable" > schema.hcl
 ```
 
 </TabItem>
 <TabItem value="sqlite">
 
 ```shell
-atlas schema inspect -u "sqlite://file.db" > atlas.hcl
+atlas schema inspect -u "sqlite://file.db" > schema.hcl
 ```
 
 </TabItem>
@@ -107,28 +107,28 @@ values={[
 <TabItem value="mysql">
 
 ```shell
-atlas schema apply -u "mysql://root:pass@localhost:3306/example" -f atlas.hcl
+atlas schema apply -u "mysql://root:pass@localhost:3306/example" -f schema.hcl
 ```
 
 </TabItem>
 <TabItem value="maria">
 
 ```shell
-atlas schema apply -u "maria://root:pass@localhost:3306/example" -f atlas.hcl
+atlas schema apply -u "maria://root:pass@localhost:3306/example" -f schema.hcl
 ```
 
 </TabItem>
 <TabItem value="postgres">
 
 ```shell
-atlas schema apply -u "postgres://postgres:pass@localhost:5432/example?sslmode=disable" -f atlas.hcl
+atlas schema apply -u "postgres://postgres:pass@localhost:5432/example?sslmode=disable" -f schema.hcl
 ```
 
 </TabItem>
 <TabItem value="sqlite">
 
 ```shell
-atlas schema apply -u "sqlite://file.db" -f atlas.hcl
+atlas schema apply -u "sqlite://file.db" -f schema.hcl
 ```
 
 </TabItem>
@@ -166,7 +166,7 @@ mysql> show create table categories;
 ```
 
 Amazing! Our new table was created. Next, let's define our association table,
-add the following block to our `atlas.hcl` file:
+add the following block to our `schema.hcl` file:
 ```hcl
 table "post_categories" {
     schema = schema.example
@@ -192,7 +192,7 @@ and `categories` tables.
 
 Let's try to apply the schema again, this time with the updated schema:
 ```text
-atlas schema apply -u "mysql://root:pass@localhost:3306/example" -f atlas.hcl
+atlas schema apply -u "mysql://root:pass@localhost:3306/example" -f schema.hcl
 -- Planned Changes:
 -- Create "post_categories" table
 CREATE TABLE `example`.`post_categories` (`post_id` int NOT NULL, `category_id` int NOT NULL, CONSTRAINT `post_category_post` FOREIGN KEY (`post_id`) REFERENCES `example`.`blog_posts` (`id`), CONSTRAINT `post_category_category` FOREIGN KEY (`category_id`) REFERENCES `example`.`categories` (`id`))

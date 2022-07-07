@@ -393,7 +393,7 @@ func (i *inspect) databases(ctx context.Context, opts *schema.InspectRealmOption
 		query = databasesQuery
 	)
 	if opts != nil && len(opts.Schemas) > 0 {
-		query += " WHERE name IN (" + strings.Repeat("?, ", len(opts.Schemas)-1) + "?)"
+		query = fmt.Sprintf(databasesQueryArgs, strings.Repeat("?, ", len(opts.Schemas)-1)+"?")
 		for _, s := range opts.Schemas {
 			args = append(args, s)
 		}
@@ -704,7 +704,8 @@ const (
 	// Name of main database file.
 	mainFile = "main"
 	// Query to list attached database files.
-	databasesQuery = "SELECT `name`, `file` FROM pragma_database_list()"
+	databasesQuery     = "SELECT `name`, `file` FROM pragma_database_list() WHERE `name` <> 'temp'"
+	databasesQueryArgs = "SELECT `name`, `file` FROM pragma_database_list() WHERE `name` IN (%s)"
 	// Query to list database tables.
 	tablesQuery = "SELECT `name`, `sql` FROM sqlite_master WHERE `type` = 'table' AND `name` NOT LIKE 'sqlite_%'"
 	// Query to list table information.
