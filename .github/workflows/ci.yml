@@ -68,7 +68,7 @@ jobs:
         working-directory: sql
       - name: Run schema tests
         run: go test -race ./...
-        working-directory: schemahcl
+        working-directory: schema
       - name: Run cli tests
         run: go test -race ./...
         working-directory: cmd/atlas
