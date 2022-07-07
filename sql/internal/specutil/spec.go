@@ -8,80 +8,80 @@ import (
 	"fmt"
 	"strconv"
 
-	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
 	"github.com/hashicorp/hcl/v2/hclparse"
 )
 
 // StrAttr is a helper method for constructing *schemaspec.Attr of type string.
-func StrAttr(k, v string) *schemaspec.Attr {
-	return &schemaspec.Attr{
+func StrAttr(k, v string) *schemahcl.Attr {
+	return &schemahcl.Attr{
 		K: k,
-		V: &schemaspec.LiteralValue{V: strconv.Quote(v)},
+		V: &schemahcl.LiteralValue{V: strconv.Quote(v)},
 	}
 }
 
 // BoolAttr is a helper method for constructing *schemaspec.Attr of type bool.
-func BoolAttr(k string, v bool) *schemaspec.Attr {
-	return &schemaspec.Attr{
+func BoolAttr(k string, v bool) *schemahcl.Attr {
+	return &schemahcl.Attr{
 		K: k,
-		V: &schemaspec.LiteralValue{V: strconv.FormatBool(v)},
+		V: &schemahcl.LiteralValue{V: strconv.FormatBool(v)},
 	}
 }
 
 // IntAttr is a helper method for constructing *schemaspec.Attr with the numeric value of v.
-func IntAttr(k string, v int) *schemaspec.Attr {
+func IntAttr(k string, v int) *schemahcl.Attr {
 	return Int64Attr(k, int64(v))
 }
 
 // Int64Attr is a helper method for constructing *schemaspec.Attr with the numeric value of v.
-func Int64Attr(k string, v int64) *schemaspec.Attr {
-	return &schemaspec.Attr{
+func Int64Attr(k string, v int64) *schemahcl.Attr {
+	return &schemahcl.Attr{
 		K: k,
-		V: &schemaspec.LiteralValue{V: strconv.FormatInt(v, 10)},
+		V: &schemahcl.LiteralValue{V: strconv.FormatInt(v, 10)},
 	}
 }
 
 // LitAttr is a helper method for constructing *schemaspec.Attr instances that contain literal values.
-func LitAttr(k, v string) *schemaspec.Attr {
-	return &schemaspec.Attr{
+func LitAttr(k, v string) *schemahcl.Attr {
+	return &schemahcl.Attr{
 		K: k,
-		V: &schemaspec.LiteralValue{V: v},
+		V: &schemahcl.LiteralValue{V: v},
 	}
 }
 
 // RawAttr is a helper method for constructing *schemaspec.Attr instances that contain sql expressions.
-func RawAttr(k, v string) *schemaspec.Attr {
-	return &schemaspec.Attr{
+func RawAttr(k, v string) *schemahcl.Attr {
+	return &schemahcl.Attr{
 		K: k,
-		V: &schemaspec.RawExpr{X: v},
+		V: &schemahcl.RawExpr{X: v},
 	}
 }
 
 // VarAttr is a helper method for constructing *schemaspec.Attr instances that contain a variable reference.
-func VarAttr(k, v string) *schemaspec.Attr {
-	return &schemaspec.Attr{
+func VarAttr(k, v string) *schemahcl.Attr {
+	return &schemahcl.Attr{
 		K: k,
-		V: &schemaspec.Ref{V: v},
+		V: &schemahcl.Ref{V: v},
 	}
 }
 
 // RefAttr is a helper method for constructing *schemaspec.Attr instances that contain a reference.
-func RefAttr(k string, r *schemaspec.Ref) *schemaspec.Attr {
-	return &schemaspec.Attr{
+func RefAttr(k string, r *schemahcl.Ref) *schemahcl.Attr {
+	return &schemahcl.Attr{
 		K: k,
 		V: r,
 	}
 }
 
 // ListAttr is a helper method for constructing *schemaspec.Attr instances that contain list values.
-func ListAttr(k string, litValues ...string) *schemaspec.Attr {
-	lv := &schemaspec.ListValue{}
+func ListAttr(k string, litValues ...string) *schemahcl.Attr {
+	lv := &schemahcl.ListValue{}
 	for _, v := range litValues {
-		lv.V = append(lv.V, &schemaspec.LiteralValue{V: v})
+		lv.V = append(lv.V, &schemahcl.LiteralValue{V: v})
 	}
-	return &schemaspec.Attr{
+	return &schemahcl.Attr{
 		K: k,
 		V: lv,
 	}
@@ -94,7 +94,7 @@ type doc struct {
 
 // Marshal marshals v into an Atlas DDL document using a schemaspec.Marshaler. Marshal uses the given
 // schemaSpec function to convert a *schema.Schema into *sqlspec.Schema and []*sqlspec.Table.
-func Marshal(v interface{}, marshaler schemaspec.Marshaler, schemaSpec func(schem *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error)) ([]byte, error) {
+func Marshal(v interface{}, marshaler schemahcl.Marshaler, schemaSpec func(schem *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error)) ([]byte, error) {
 	d := &doc{}
 	switch s := v.(type) {
 	case *schema.Schema:

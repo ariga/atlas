@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"ariga.io/atlas/schema/schemaspec"
-
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
@@ -18,7 +16,7 @@ import (
 type (
 	// Config configures an unmarshaling.
 	Config struct {
-		types    []*schemaspec.TypeSpec
+		types    []*TypeSpec
 		newCtx   func() *hcl.EvalContext
 		pathVars map[string]map[string]cty.Value
 	}
@@ -71,7 +69,7 @@ func WithScopedEnums(path string, enums ...string) Option {
 }
 
 // WithTypes configures the list of given types as identifiers in the unmarshaling context.
-func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
+func WithTypes(typeSpecs []*TypeSpec) Option {
 	newCtx := func() *hcl.EvalContext {
 		ctx := &hcl.EvalContext{
 			Variables: make(map[string]cty.Value),
@@ -81,7 +79,7 @@ func WithTypes(typeSpecs []*schemaspec.TypeSpec) Option {
 			typeSpec := ts
 			// If no required args exist, register the type as a variable in the HCL context.
 			if len(typeFuncReqArgs(typeSpec)) == 0 {
-				typ := &schemaspec.Type{T: typeSpec.T}
+				typ := &Type{T: typeSpec.T}
 				ctx.Variables[typeSpec.Name] = cty.CapsuleVal(ctyTypeSpec, typ)
 			}
 			// If func args exist, register the type as a function in HCL.
@@ -105,14 +103,14 @@ func rawExprImpl() function.Function {
 		},
 		Type: function.StaticReturnType(ctyRawExpr),
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-			t := &schemaspec.RawExpr{X: args[0].AsString()}
+			t := &RawExpr{X: args[0].AsString()}
 			return cty.CapsuleVal(ctyRawExpr, t), nil
 		},
 	})
 }
 
 // typeFuncSpec returns the HCL function for defining the type in the spec.
-func typeFuncSpec(typeSpec *schemaspec.TypeSpec) function.Function {
+func typeFuncSpec(typeSpec *TypeSpec) function.Function {
 	spec := &function.Spec{
 		Type: function.StaticReturnType(ctyTypeSpec),
 	}
@@ -143,9 +141,9 @@ func typeFuncSpec(typeSpec *schemaspec.TypeSpec) function.Function {
 }
 
 // typeFuncSpecImpl returns the function implementation for the HCL function spec.
-func typeFuncSpecImpl(spec *function.Spec, typeSpec *schemaspec.TypeSpec) function.ImplFunc {
+func typeFuncSpecImpl(spec *function.Spec, typeSpec *TypeSpec) function.ImplFunc {
 	return func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-		t := &schemaspec.Type{
+		t := &Type{
 			T: typeSpec.T,
 		}
 		if len(args) > len(typeSpec.Attributes) && typeSpec.Attributes[len(typeSpec.Attributes)-1].Kind != reflect.Slice {
@@ -157,7 +155,7 @@ func typeFuncSpecImpl(spec *function.Spec, typeSpec *schemaspec.TypeSpec) functi
 		for _, attr := range typeFuncArgs(typeSpec) {
 			// If the attribute is a slice, read all remaining args into a list value.
 			if attr.Kind == reflect.Slice {
-				lst := &schemaspec.ListValue{}
+				lst := &ListValue{}
 				for _, arg := range args {
 					v, err := extractLiteralValue(arg)
 					if err != nil {
@@ -165,7 +163,7 @@ func typeFuncSpecImpl(spec *function.Spec, typeSpec *schemaspec.TypeSpec) functi
 					}
 					lst.V = append(lst.V, v)
 				}
-				t.Attrs = append(t.Attrs, &schemaspec.Attr{K: attr.Name, V: lst})
+				t.Attrs = append(t.Attrs, &Attr{K: attr.Name, V: lst})
 				break
 			}
 			if len(args) == 0 {
@@ -178,7 +176,7 @@ func typeFuncSpecImpl(spec *function.Spec, typeSpec *schemaspec.TypeSpec) functi
 			if err != nil {
 				return cty.NilVal, err
 			}
-			t.Attrs = append(t.Attrs, &schemaspec.Attr{K: attr.Name, V: v})
+			t.Attrs = append(t.Attrs, &Attr{K: attr.Name, V: v})
 		}
 		return cty.CapsuleVal(ctyTypeSpec, t), nil
 	}
@@ -186,8 +184,8 @@ func typeFuncSpecImpl(spec *function.Spec, typeSpec *schemaspec.TypeSpec) functi
 
 // typeFuncArgs returns the type attributes that are configured via arguments to the
 // type definition, for example precision and scale in a decimal definition, i.e `decimal(10,2)`.
-func typeFuncArgs(spec *schemaspec.TypeSpec) []*schemaspec.TypeAttr {
-	var args []*schemaspec.TypeAttr
+func typeFuncArgs(spec *TypeSpec) []*TypeAttr {
+	var args []*TypeAttr
 	for _, attr := range spec.Attributes {
 		// TODO(rotemtam): this should be defined on the TypeSpec.
 		if attr.Name == "unsigned" {
@@ -201,8 +199,8 @@ func typeFuncArgs(spec *schemaspec.TypeSpec) []*schemaspec.TypeAttr {
 // typeFuncReqArgs returns the required type attributes that are configured via arguments.
 // for instance, in MySQL a field may be defined as both `int` and `int(10)`, in this case
 // it is not a required parameter.
-func typeFuncReqArgs(spec *schemaspec.TypeSpec) []*schemaspec.TypeAttr {
-	var args []*schemaspec.TypeAttr
+func typeFuncReqArgs(spec *TypeSpec) []*TypeAttr {
+	var args []*TypeAttr
 	for _, arg := range typeFuncArgs(spec) {
 		if arg.Required {
 			args = append(args, arg)

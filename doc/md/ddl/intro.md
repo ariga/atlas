@@ -132,7 +132,7 @@ playlist "comedy" {
 
 ### Reading with Go
 
-To read an Atlas HCL document with Go use the `Unmarshal` ([doc](https://pkg.go.dev/ariga.io/atlas/schema/schemaspec/schemahcl#Unmarshal)) function
+To read an Atlas HCL document with Go use the `Unmarshal` ([doc](https://pkg.go.dev/ariga.io/atlas/schemahcl#Unmarshal)) function
 from the `schemahcl` package:
 
 ```go
@@ -179,7 +179,7 @@ This mapping is discussed in the section about [Extensions](#extensions).
 ### Writing with Go
 
 To encode a Go struct back into HCL, use the `schemahcl.Marshal`
-([doc](https://pkg.go.dev/ariga.io/atlas/schema/schemaspec/schemahcl#Marshal)) function:
+([doc](https://pkg.go.dev/ariga.io/atlas/schemahcl#Marshal)) function:
 
 ```go
 func ExampleMarshal() {

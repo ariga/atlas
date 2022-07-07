@@ -10,8 +10,7 @@ import (
 	"reflect"
 	"strings"
 
-	"ariga.io/atlas/schema/schemaspec"
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
@@ -65,7 +64,7 @@ func evalSpec(p *hclparse.Parser, v interface{}, input map[string]string) error 
 }
 
 // MarshalSpec marshals v into an Atlas DDL document using a schemaspec.Marshaler.
-func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) {
+func MarshalSpec(v interface{}, marshaler schemahcl.Marshaler) ([]byte, error) {
 	return specutil.Marshal(v, marshaler, schemaSpec)
 }
 
@@ -78,7 +77,7 @@ var (
 		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
 	)
 	// MarshalHCL marshals v into an Atlas HCL DDL document.
-	MarshalHCL = schemaspec.MarshalerFunc(func(v interface{}) ([]byte, error) {
+	MarshalHCL = schemahcl.MarshalerFunc(func(v interface{}) ([]byte, error) {
 		return MarshalSpec(v, hclState)
 	})
 	// EvalHCL implements the schemahcl.Evaluator interface.
@@ -168,7 +167,7 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 		return nil, err
 	}
 	if attr, ok := spec.Attr("on_update"); ok {
-		exp, ok := attr.V.(*schemaspec.RawExpr)
+		exp, ok := attr.V.(*schemahcl.RawExpr)
 		if !ok {
 			return nil, fmt.Errorf(`unexpected type %T for atrribute "on_update"`, attr.V)
 		}
@@ -364,66 +363,66 @@ var TypeRegistry = schemahcl.NewRegistry(
 	schemahcl.WithFormatter(FormatType),
 	schemahcl.WithParser(ParseType),
 	schemahcl.WithSpecs(
-		&schemaspec.TypeSpec{
+		&schemahcl.TypeSpec{
 			Name: TypeEnum,
 			T:    TypeEnum,
-			Attributes: []*schemaspec.TypeAttr{
+			Attributes: []*schemahcl.TypeAttr{
 				{Name: "values", Kind: reflect.Slice, Required: true},
 			},
 			RType: reflect.TypeOf(schema.EnumType{}),
 		},
-		&schemaspec.TypeSpec{
+		&schemahcl.TypeSpec{
 			Name: TypeSet,
 			T:    TypeSet,
-			Attributes: []*schemaspec.TypeAttr{
+			Attributes: []*schemahcl.TypeAttr{
 				{Name: "values", Kind: reflect.Slice, Required: true},
 			},
 			RType: reflect.TypeOf(SetType{}),
 		},
-		schemahcl.TypeSpec(TypeBool),
-		schemahcl.TypeSpec(TypeBoolean),
-		schemahcl.TypeSpec(TypeBit, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec(TypeInt, schemahcl.WithAttributes(unsignedTypeAttr(), schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec(TypeTinyInt, schemahcl.WithAttributes(unsignedTypeAttr(), schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec(TypeSmallInt, schemahcl.WithAttributes(unsignedTypeAttr(), schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec(TypeMediumInt, schemahcl.WithAttributes(unsignedTypeAttr(), schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec(TypeBigInt, schemahcl.WithAttributes(unsignedTypeAttr(), schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec(TypeDecimal, schemahcl.WithAttributes(unsignedTypeAttr(), &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		schemahcl.TypeSpec(TypeNumeric, schemahcl.WithAttributes(unsignedTypeAttr(), &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		schemahcl.TypeSpec(TypeFloat, schemahcl.WithAttributes(unsignedTypeAttr(), &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		schemahcl.TypeSpec(TypeDouble, schemahcl.WithAttributes(unsignedTypeAttr(), &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		schemahcl.TypeSpec(TypeReal, schemahcl.WithAttributes(unsignedTypeAttr(), &schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		schemahcl.TypeSpec(TypeTimestamp, schemahcl.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false})),
-		schemahcl.TypeSpec(TypeDate, schemahcl.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false})),
-		schemahcl.TypeSpec(TypeTime, schemahcl.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false})),
-		schemahcl.TypeSpec(TypeDateTime, schemahcl.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false})),
-		schemahcl.TypeSpec(TypeYear, schemahcl.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false})),
-		schemahcl.TypeSpec(TypeVarchar, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(true))),
-		schemahcl.TypeSpec(TypeChar, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec(TypeVarBinary, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec(TypeBinary, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec(TypeBlob, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec(TypeTinyBlob),
-		schemahcl.TypeSpec(TypeMediumBlob),
-		schemahcl.TypeSpec(TypeLongBlob),
-		schemahcl.TypeSpec(TypeJSON),
-		schemahcl.TypeSpec(TypeText, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec(TypeTinyText),
-		schemahcl.TypeSpec(TypeMediumText),
-		schemahcl.TypeSpec(TypeLongText),
-		schemahcl.TypeSpec(TypeGeometry),
-		schemahcl.TypeSpec(TypePoint),
-		schemahcl.TypeSpec(TypeMultiPoint),
-		schemahcl.TypeSpec(TypeLineString),
-		schemahcl.TypeSpec(TypeMultiLineString),
-		schemahcl.TypeSpec(TypePolygon),
-		schemahcl.TypeSpec(TypeMultiPolygon),
-		schemahcl.TypeSpec(TypeGeometryCollection),
+		schemahcl.NewTypeSpec(TypeBool),
+		schemahcl.NewTypeSpec(TypeBoolean),
+		schemahcl.NewTypeSpec(TypeBit, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec(TypeInt, schemahcl.WithAttributes(unsignedTypeAttr(), schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec(TypeTinyInt, schemahcl.WithAttributes(unsignedTypeAttr(), schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec(TypeSmallInt, schemahcl.WithAttributes(unsignedTypeAttr(), schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec(TypeMediumInt, schemahcl.WithAttributes(unsignedTypeAttr(), schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec(TypeBigInt, schemahcl.WithAttributes(unsignedTypeAttr(), schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec(TypeDecimal, schemahcl.WithAttributes(unsignedTypeAttr(), &schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec(TypeNumeric, schemahcl.WithAttributes(unsignedTypeAttr(), &schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec(TypeFloat, schemahcl.WithAttributes(unsignedTypeAttr(), &schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec(TypeDouble, schemahcl.WithAttributes(unsignedTypeAttr(), &schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec(TypeReal, schemahcl.WithAttributes(unsignedTypeAttr(), &schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec(TypeTimestamp, schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec(TypeDate, schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec(TypeTime, schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec(TypeDateTime, schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec(TypeYear, schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec(TypeVarchar, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(true))),
+		schemahcl.NewTypeSpec(TypeChar, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec(TypeVarBinary, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec(TypeBinary, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec(TypeBlob, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec(TypeTinyBlob),
+		schemahcl.NewTypeSpec(TypeMediumBlob),
+		schemahcl.NewTypeSpec(TypeLongBlob),
+		schemahcl.NewTypeSpec(TypeJSON),
+		schemahcl.NewTypeSpec(TypeText, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec(TypeTinyText),
+		schemahcl.NewTypeSpec(TypeMediumText),
+		schemahcl.NewTypeSpec(TypeLongText),
+		schemahcl.NewTypeSpec(TypeGeometry),
+		schemahcl.NewTypeSpec(TypePoint),
+		schemahcl.NewTypeSpec(TypeMultiPoint),
+		schemahcl.NewTypeSpec(TypeLineString),
+		schemahcl.NewTypeSpec(TypeMultiLineString),
+		schemahcl.NewTypeSpec(TypePolygon),
+		schemahcl.NewTypeSpec(TypeMultiPolygon),
+		schemahcl.NewTypeSpec(TypeGeometryCollection),
 	),
 )
 
-func unsignedTypeAttr() *schemaspec.TypeAttr {
-	return &schemaspec.TypeAttr{
+func unsignedTypeAttr() *schemahcl.TypeAttr {
+	return &schemahcl.TypeAttr{
 		Name: "unsigned",
 		Kind: reflect.Bool,
 	}

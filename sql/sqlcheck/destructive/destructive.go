@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"strings"
 
-	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
@@ -29,7 +29,7 @@ type (
 		DropColumn *bool `spec:"drop_column,omitempty"`
 
 		// Allow drivers to extend the configuration.
-		schemaspec.DefaultExtension
+		schemahcl.DefaultExtension
 	}
 
 	// Analyzer checks for destructive changes.

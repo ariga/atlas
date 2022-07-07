@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"strconv"
 
-	"ariga.io/atlas/schema/schemaspec"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -79,7 +78,7 @@ func mergeCtxVar(ctx *hcl.EvalContext, vals map[string]cty.Value) {
 // readVar reads the raw inputVal as a cty.Value using the type definition on v.
 func readVar(v *varDef, inputVal string) (cty.Value, error) {
 	et := v.Type.EncapsulatedValue()
-	typ, ok := et.(*schemaspec.Type)
+	typ, ok := et.(*Type)
 	if !ok {
 		return cty.NilVal, fmt.Errorf("expected schemaspec.Type got %T", et)
 	}
@@ -104,7 +103,7 @@ func readVar(v *varDef, inputVal string) (cty.Value, error) {
 }
 
 func capsuleTypeVal(t string) cty.Value {
-	return cty.CapsuleVal(ctyTypeSpec, &schemaspec.Type{T: t})
+	return cty.CapsuleVal(ctyTypeSpec, &Type{T: t})
 }
 
 func setBlockVars(ctx *hcl.EvalContext, b *hclsyntax.Body) (*hcl.EvalContext, error) {
@@ -224,7 +223,7 @@ func attrMap(attrs hclsyntax.Attributes) map[string]cty.Value {
 
 // ctySchemaLit is a cty.Capsule type the encapsulates a schemaspec.LiteralValue.
 var (
-	ctySchemaLit = cty.CapsuleWithOps("lit", reflect.TypeOf(schemaspec.LiteralValue{}), &cty.CapsuleOps{
+	ctySchemaLit = cty.CapsuleWithOps("lit", reflect.TypeOf(LiteralValue{}), &cty.CapsuleOps{
 		// ConversionFrom facilitates reading the encapsulated type as a string, as is needed, for example,
 		// when interpolating it in a string expression.
 		ConversionFrom: func(src cty.Type) func(interface{}, cty.Path) (cty.Value, error) {
@@ -232,7 +231,7 @@ var (
 				return nil
 			}
 			return func(i interface{}, path cty.Path) (cty.Value, error) {
-				lit, ok := i.(*schemaspec.LiteralValue)
+				lit, ok := i.(*LiteralValue)
 				if !ok {
 					return cty.Value{}, fmt.Errorf("schemahcl: expected *schemaspec.LiteralValue got %T", i)
 				}
@@ -244,8 +243,8 @@ var (
 			}
 		},
 	})
-	ctyTypeSpec = cty.Capsule("type", reflect.TypeOf(schemaspec.Type{}))
-	ctyRawExpr  = cty.Capsule("raw_expr", reflect.TypeOf(schemaspec.RawExpr{}))
+	ctyTypeSpec = cty.Capsule("type", reflect.TypeOf(Type{}))
+	ctyRawExpr  = cty.Capsule("raw_expr", reflect.TypeOf(RawExpr{}))
 )
 
 // varBlock is the block type for variable declarations.

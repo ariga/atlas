@@ -2,31 +2,29 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package schemaspec_test
+package schemahcl_test
 
 import (
 	"testing"
 
-	"ariga.io/atlas/schema/schemaspec"
-	"ariga.io/atlas/schema/schemaspec/internal/schemautil"
-
+	"ariga.io/atlas/schemahcl"
 	"github.com/stretchr/testify/require"
 )
 
 type OwnerBlock struct {
-	schemaspec.DefaultExtension
-	ID        string                   `spec:",name"`
-	FirstName string                   `spec:"first_name"`
-	Born      int                      `spec:"born"`
-	Active    bool                     `spec:"active"`
-	BoolPtr   *bool                    `spec:"bool_ptr"`
-	OmitBool1 bool                     `spec:"omit_bool1,omitempty"`
-	OmitBool2 bool                     `spec:"omit_bool2,omitempty"`
-	Lit       *schemaspec.LiteralValue `spec:"lit"`
+	schemahcl.DefaultExtension
+	ID        string                  `spec:",name"`
+	FirstName string                  `spec:"first_name"`
+	Born      int                     `spec:"born"`
+	Active    bool                    `spec:"active"`
+	BoolPtr   *bool                   `spec:"bool_ptr"`
+	OmitBool1 bool                    `spec:"omit_bool1,omitempty"`
+	OmitBool2 bool                    `spec:"omit_bool2,omitempty"`
+	Lit       *schemahcl.LiteralValue `spec:"lit"`
 }
 
 type PetBlock struct {
-	schemaspec.DefaultExtension
+	schemahcl.DefaultExtension
 	ID        string        `spec:",name"`
 	Breed     string        `spec:"breed"`
 	Born      int           `spec:"born"`
@@ -35,7 +33,7 @@ type PetBlock struct {
 }
 
 func TestInvalidExt(t *testing.T) {
-	r := &schemaspec.Resource{}
+	r := &schemahcl.Resource{}
 	err := r.As(1)
 	require.EqualError(t, err, "schemaspec: expected target to be a pointer")
 	var p *string
@@ -44,20 +42,20 @@ func TestInvalidExt(t *testing.T) {
 }
 
 func TestExtension(t *testing.T) {
-	schemaspec.Register("owner", &OwnerBlock{})
-	original := &schemaspec.Resource{
+	schemahcl.Register("owner", &OwnerBlock{})
+	original := &schemahcl.Resource{
 		Name: "name",
 		Type: "owner",
-		Attrs: []*schemaspec.Attr{
-			schemautil.StrLitAttr("first_name", "tzuri"),
-			schemautil.LitAttr("born", "2019"),
-			schemautil.LitAttr("active", "true"),
-			schemautil.LitAttr("bool_ptr", "true"),
-			schemautil.LitAttr("omit_bool1", "true"),
-			schemautil.LitAttr("lit", "1000"),
-			schemautil.LitAttr("extra", "true"),
+		Attrs: []*schemahcl.Attr{
+			schemahcl.StrLitAttr("first_name", "tzuri"),
+			schemahcl.LitAttr("born", "2019"),
+			schemahcl.LitAttr("active", "true"),
+			schemahcl.LitAttr("bool_ptr", "true"),
+			schemahcl.LitAttr("omit_bool1", "true"),
+			schemahcl.LitAttr("lit", "1000"),
+			schemahcl.LitAttr("extra", "true"),
 		},
-		Children: []*schemaspec.Resource{
+		Children: []*schemahcl.Resource{
 			{
 				Name: "extra",
 				Type: "extra",
@@ -73,44 +71,44 @@ func TestExtension(t *testing.T) {
 	require.EqualValues(t, true, owner.Active)
 	require.NotNil(t, owner.BoolPtr)
 	require.EqualValues(t, true, *owner.BoolPtr)
-	require.EqualValues(t, schemautil.LitAttr("lit", "1000").V, owner.Lit)
+	require.EqualValues(t, schemahcl.LitAttr("lit", "1000").V, owner.Lit)
 	attr, ok := owner.Remain().Attr("extra")
 	require.True(t, ok)
 	eb, err := attr.Bool()
 	require.NoError(t, err)
 	require.True(t, eb)
 
-	scan := &schemaspec.Resource{}
+	scan := &schemahcl.Resource{}
 	err = scan.Scan(&owner)
 	require.NoError(t, err)
 	require.EqualValues(t, original, scan)
 }
 
 func TestNested(t *testing.T) {
-	schemaspec.Register("pet", &PetBlock{})
-	pet := &schemaspec.Resource{
+	schemahcl.Register("pet", &PetBlock{})
+	pet := &schemahcl.Resource{
 		Name: "donut",
 		Type: "pet",
-		Attrs: []*schemaspec.Attr{
-			schemautil.StrLitAttr("breed", "golden retriever"),
-			schemautil.LitAttr("born", "2002"),
+		Attrs: []*schemahcl.Attr{
+			schemahcl.StrLitAttr("breed", "golden retriever"),
+			schemahcl.LitAttr("born", "2002"),
 		},
-		Children: []*schemaspec.Resource{
+		Children: []*schemahcl.Resource{
 			{
 				Name: "rotemtam",
 				Type: "owner",
-				Attrs: []*schemaspec.Attr{
-					schemautil.StrLitAttr("first_name", "rotem"),
-					schemautil.LitAttr("born", "1985"),
-					schemautil.LitAttr("active", "true"),
+				Attrs: []*schemahcl.Attr{
+					schemahcl.StrLitAttr("first_name", "rotem"),
+					schemahcl.LitAttr("born", "1985"),
+					schemahcl.LitAttr("active", "true"),
 				},
 			},
 			{
 				Name: "gonnie",
 				Type: "role_model",
-				Attrs: []*schemaspec.Attr{
-					schemautil.StrLitAttr("breed", "golden retriever"),
-					schemautil.LitAttr("born", "1998"),
+				Attrs: []*schemahcl.Attr{
+					schemahcl.StrLitAttr("breed", "golden retriever"),
+					schemahcl.LitAttr("born", "1998"),
 				},
 			},
 		},
@@ -131,7 +129,7 @@ func TestNested(t *testing.T) {
 			Born:  1998,
 		},
 	}, pb)
-	scan := &schemaspec.Resource{}
+	scan := &schemahcl.Resource{}
 	err = scan.Scan(&pb)
 	require.NoError(t, err)
 	require.EqualValues(t, pet, scan)
@@ -142,25 +140,25 @@ func TestNested(t *testing.T) {
 
 func TestRef(t *testing.T) {
 	type A struct {
-		Name string          `spec:",name"`
-		User *schemaspec.Ref `spec:"user"`
+		Name string         `spec:",name"`
+		User *schemahcl.Ref `spec:"user"`
 	}
-	schemaspec.Register("a", &A{})
-	resource := &schemaspec.Resource{
+	schemahcl.Register("a", &A{})
+	resource := &schemahcl.Resource{
 		Name: "x",
 		Type: "a",
-		Attrs: []*schemaspec.Attr{
+		Attrs: []*schemahcl.Attr{
 			{
 				K: "user",
-				V: &schemaspec.Ref{V: "$user.rotemtam"},
+				V: &schemahcl.Ref{V: "$user.rotemtam"},
 			},
 		},
 	}
 	var a A
 	err := resource.As(&a)
 	require.NoError(t, err)
-	require.EqualValues(t, &schemaspec.Ref{V: "$user.rotemtam"}, a.User)
-	scan := &schemaspec.Resource{}
+	require.EqualValues(t, &schemahcl.Ref{V: "$user.rotemtam"}, a.User)
+	scan := &schemahcl.Resource{}
 	err = scan.Scan(&a)
 	require.NoError(t, err)
 	require.EqualValues(t, resource, scan)
@@ -168,20 +166,20 @@ func TestRef(t *testing.T) {
 
 func TestListRef(t *testing.T) {
 	type B struct {
-		Name  string            `spec:",name"`
-		Users []*schemaspec.Ref `spec:"users"`
+		Name  string           `spec:",name"`
+		Users []*schemahcl.Ref `spec:"users"`
 	}
-	schemaspec.Register("b", &B{})
-	resource := &schemaspec.Resource{
+	schemahcl.Register("b", &B{})
+	resource := &schemahcl.Resource{
 		Name: "x",
 		Type: "b",
-		Attrs: []*schemaspec.Attr{
+		Attrs: []*schemahcl.Attr{
 			{
 				K: "users",
-				V: &schemaspec.ListValue{
-					V: []schemaspec.Value{
-						&schemaspec.Ref{V: "$user.a8m"},
-						&schemaspec.Ref{V: "$user.rotemtam"},
+				V: &schemahcl.ListValue{
+					V: []schemahcl.Value{
+						&schemahcl.Ref{V: "$user.a8m"},
+						&schemahcl.Ref{V: "$user.rotemtam"},
 					},
 				},
 			},
@@ -192,11 +190,11 @@ func TestListRef(t *testing.T) {
 	err := resource.As(&b)
 	require.NoError(t, err)
 	require.Len(t, b.Users, 2)
-	require.EqualValues(t, []*schemaspec.Ref{
+	require.EqualValues(t, []*schemahcl.Ref{
 		{V: "$user.a8m"},
 		{V: "$user.rotemtam"},
 	}, b.Users)
-	scan := &schemaspec.Resource{}
+	scan := &schemahcl.Resource{}
 	err = scan.Scan(&b)
 	require.NoError(t, err)
 	require.EqualValues(t, resource, scan)
@@ -206,12 +204,12 @@ func TestNameAttr(t *testing.T) {
 	type Named struct {
 		Name string `spec:"name,name"`
 	}
-	schemaspec.Register("named", &Named{})
-	resource := &schemaspec.Resource{
+	schemahcl.Register("named", &Named{})
+	resource := &schemahcl.Resource{
 		Name: "id",
 		Type: "named",
-		Attrs: []*schemaspec.Attr{
-			schemautil.StrLitAttr("name", "atlas"),
+		Attrs: []*schemahcl.Attr{
+			schemahcl.StrLitAttr("name", "atlas"),
 		},
 	}
 	var tgt Named

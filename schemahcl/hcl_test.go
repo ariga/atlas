@@ -11,8 +11,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"ariga.io/atlas/schema/schemaspec"
-
 	"github.com/stretchr/testify/require"
 )
 
@@ -181,8 +179,8 @@ func TestInterface(t *testing.T) {
 			Animal Animal `spec:""`
 		}
 	)
-	schemaspec.Register("lion", &Lion{})
-	schemaspec.Register("parrot", &Parrot{})
+	Register("lion", &Lion{})
+	Register("parrot", &Parrot{})
 	t.Run("single", func(t *testing.T) {
 		f := `
 cast "lion_king" {
@@ -284,12 +282,12 @@ func TestRefPatch(t *testing.T) {
 			Name string `spec:"name,name"`
 		}
 		Person struct {
-			Name   string          `spec:",name"`
-			Family *schemaspec.Ref `spec:"family"`
+			Name   string `spec:",name"`
+			Family *Ref   `spec:"family"`
 		}
 	)
-	schemaspec.Register("family", &Family{})
-	schemaspec.Register("person", &Person{})
+	Register("family", &Family{})
+	Register("person", &Person{})
 	var test struct {
 		Families []*Family `spec:"family"`
 		People   []*Person `spec:"person"`

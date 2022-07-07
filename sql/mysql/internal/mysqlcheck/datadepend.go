@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
@@ -26,7 +26,7 @@ type (
 		NotNull *bool `spec:"not_null,omitempty"`
 
 		// Allow drivers to extend the configuration.
-		schemaspec.DefaultExtension
+		schemahcl.DefaultExtension
 	}
 
 	// DataDepend checks data-dependent changes for MySQL.

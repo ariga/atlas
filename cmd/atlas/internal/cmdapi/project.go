@@ -8,8 +8,7 @@ import (
 	"fmt"
 	"os"
 
-	"ariga.io/atlas/schema/schemaspec"
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
+	"ariga.io/atlas/schemahcl"
 )
 
 const projectFileName = "atlas.hcl"
@@ -47,7 +46,7 @@ func (e *Env) asMap() (map[string]string, error) {
 			m[attr.K] = v
 			continue
 		}
-		if lv, ok := attr.V.(*schemaspec.LiteralValue); ok {
+		if lv, ok := attr.V.(*schemahcl.LiteralValue); ok {
 			m[attr.K] = lv.V
 		}
 		return nil, fmt.Errorf("expecting attr %q to be a literal, got: %T", attr.K, attr.V)
@@ -76,7 +75,7 @@ type Env struct {
 	// Directory containing the migrations for the env.
 	MigrationDir *MigrationDir `spec:"migration_dir"`
 
-	schemaspec.DefaultExtension
+	schemahcl.DefaultExtension
 }
 
 var hclState = schemahcl.New(
@@ -125,5 +124,5 @@ func LoadEnv(path string, name string, opts ...LoadOption) (*Env, error) {
 }
 
 func init() {
-	schemaspec.Register("env", &Env{})
+	schemahcl.Register("env", &Env{})
 }

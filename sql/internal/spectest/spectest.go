@@ -8,8 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"ariga.io/atlas/schema/schemaspec"
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
@@ -81,10 +80,10 @@ func contains(s string, l []string) bool {
 	return false
 }
 
-func dummyType(t *testing.T, ts *schemaspec.TypeSpec) *schemaspec.Type {
-	spec := &schemaspec.Type{T: ts.T}
+func dummyType(t *testing.T, ts *schemahcl.TypeSpec) *schemahcl.Type {
+	spec := &schemahcl.Type{T: ts.T}
 	for _, attr := range ts.Attributes {
-		var a *schemaspec.Attr
+		var a *schemahcl.Attr
 		switch attr.Kind {
 		case reflect.Int, reflect.Int64:
 			a = specutil.LitAttr(attr.Name, "2")

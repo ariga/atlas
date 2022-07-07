@@ -7,8 +7,7 @@ package hclsqlspec
 import (
 	"testing"
 
-	"ariga.io/atlas/schema/schemaspec"
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
@@ -20,7 +19,7 @@ import (
 
 var dialects = []struct {
 	name string
-	schemaspec.Marshaler
+	schemahcl.Marshaler
 	sqlspec.Evaluator
 }{
 	{
@@ -141,35 +140,35 @@ table "accounts" {
 		Tables: []*sqlspec.Table{
 			{
 				Name:   "users",
-				Schema: &schemaspec.Ref{V: "$schema.hi"},
+				Schema: &schemahcl.Ref{V: "$schema.hi"},
 				Columns: []*sqlspec.Column{
 					{
 						Name:    "id",
-						Type:    &schemaspec.Type{T: "int"},
+						Type:    &schemahcl.Type{T: "int"},
 						Null:    false,
-						Default: &schemaspec.LiteralValue{V: "123"},
+						Default: &schemahcl.LiteralValue{V: "123"},
 					},
 					{
 						Name:    "age",
-						Type:    &schemaspec.Type{T: "int"},
+						Type:    &schemahcl.Type{T: "int"},
 						Null:    false,
-						Default: &schemaspec.LiteralValue{V: "10"},
+						Default: &schemahcl.LiteralValue{V: "10"},
 					},
 					{
 						Name:    "active",
-						Type:    &schemaspec.Type{T: "boolean"},
+						Type:    &schemahcl.Type{T: "boolean"},
 						Null:    false,
-						Default: &schemaspec.LiteralValue{V: "true"},
+						Default: &schemahcl.LiteralValue{V: "true"},
 					},
 					{
 						Name:    "account_active",
-						Type:    &schemaspec.Type{T: "boolean"},
+						Type:    &schemahcl.Type{T: "boolean"},
 						Null:    false,
-						Default: &schemaspec.LiteralValue{V: "true"},
+						Default: &schemahcl.LiteralValue{V: "true"},
 					},
 				},
 				PrimaryKey: &sqlspec.PrimaryKey{
-					Columns: []*schemaspec.Ref{
+					Columns: []*schemahcl.Ref{
 						{
 							V: "$table.users.$column.id",
 						},
@@ -182,7 +181,7 @@ table "accounts" {
 					{
 						Name:   "age",
 						Unique: true,
-						Columns: []*schemaspec.Ref{
+						Columns: []*schemahcl.Ref{
 							{
 								V: "$table.users.$column.age",
 							},
@@ -191,7 +190,7 @@ table "accounts" {
 					{
 						Name:   "active",
 						Unique: false,
-						Columns: []*schemaspec.Ref{
+						Columns: []*schemahcl.Ref{
 							{
 								V: "$table.users.$column.active",
 							},
@@ -201,51 +200,51 @@ table "accounts" {
 				ForeignKeys: []*sqlspec.ForeignKey{
 					{
 						Symbol: "fk",
-						Columns: []*schemaspec.Ref{
+						Columns: []*schemahcl.Ref{
 							{
 								V: "$table.users.$column.account_active",
 							},
 						},
-						RefColumns: []*schemaspec.Ref{
+						RefColumns: []*schemahcl.Ref{
 							{
 								V: "$table.accounts.$column.active",
 							},
 						},
-						OnDelete: &schemaspec.Ref{V: string(schema.SetNull)},
+						OnDelete: &schemahcl.Ref{V: string(schema.SetNull)},
 					},
 				},
 			},
 			{
 				Name:   "accounts",
-				Schema: &schemaspec.Ref{V: "$schema.hi"},
+				Schema: &schemahcl.Ref{V: "$schema.hi"},
 				Columns: []*sqlspec.Column{
 					{
 						Name:    "id",
-						Type:    &schemaspec.Type{T: "int"},
+						Type:    &schemahcl.Type{T: "int"},
 						Null:    false,
-						Default: &schemaspec.LiteralValue{V: "123"},
+						Default: &schemahcl.LiteralValue{V: "123"},
 					},
 					{
 						Name:    "age",
-						Type:    &schemaspec.Type{T: "int"},
+						Type:    &schemahcl.Type{T: "int"},
 						Null:    false,
-						Default: &schemaspec.LiteralValue{V: "10"},
+						Default: &schemahcl.LiteralValue{V: "10"},
 					},
 					{
 						Name:    "active",
-						Type:    &schemaspec.Type{T: "boolean"},
+						Type:    &schemahcl.Type{T: "boolean"},
 						Null:    false,
-						Default: &schemaspec.LiteralValue{V: "true"},
+						Default: &schemahcl.LiteralValue{V: "true"},
 					},
 					{
 						Name:    "user_active",
-						Type:    &schemaspec.Type{T: "boolean"},
+						Type:    &schemahcl.Type{T: "boolean"},
 						Null:    false,
-						Default: &schemaspec.LiteralValue{V: "true"},
+						Default: &schemahcl.LiteralValue{V: "true"},
 					},
 				},
 				PrimaryKey: &sqlspec.PrimaryKey{
-					Columns: []*schemaspec.Ref{
+					Columns: []*schemahcl.Ref{
 						{
 							V: "$table.accounts.$column.id",
 						},
@@ -255,7 +254,7 @@ table "accounts" {
 					{
 						Name:   "age",
 						Unique: true,
-						Columns: []*schemaspec.Ref{
+						Columns: []*schemahcl.Ref{
 							{
 								V: "$table.accounts.$column.age",
 							},
@@ -264,7 +263,7 @@ table "accounts" {
 					{
 						Name:   "active",
 						Unique: false,
-						Columns: []*schemaspec.Ref{
+						Columns: []*schemahcl.Ref{
 							{
 								V: "$table.accounts.$column.active",
 							},
@@ -274,17 +273,17 @@ table "accounts" {
 				ForeignKeys: []*sqlspec.ForeignKey{
 					{
 						Symbol: "fk",
-						Columns: []*schemaspec.Ref{
+						Columns: []*schemahcl.Ref{
 							{
 								V: "$table.accounts.$column.user_active",
 							},
 						},
-						RefColumns: []*schemaspec.Ref{
+						RefColumns: []*schemahcl.Ref{
 							{
 								V: "$table.users.$column.active",
 							},
 						},
-						OnDelete: &schemaspec.Ref{V: string(schema.SetNull)},
+						OnDelete: &schemahcl.Ref{V: string(schema.SetNull)},
 					},
 				},
 			},
@@ -303,10 +302,10 @@ schema "hi" {
 		Schemas: []*sqlspec.Schema{
 			{
 				Name: "hi",
-				DefaultExtension: schemaspec.DefaultExtension{
-					Extra: schemaspec.Resource{
-						Attrs: []*schemaspec.Attr{
-							{K: "x", V: &schemaspec.LiteralValue{V: "1"}},
+				DefaultExtension: schemahcl.DefaultExtension{
+					Extra: schemahcl.Resource{
+						Attrs: []*schemahcl.Attr{
+							{K: "x", V: &schemahcl.LiteralValue{V: "1"}},
 						},
 					},
 				},

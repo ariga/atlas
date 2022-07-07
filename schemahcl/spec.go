@@ -2,7 +2,7 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package schemaspec
+package schemahcl
 
 import (
 	"fmt"
@@ -297,3 +297,29 @@ func (*Type) val()         {}
 var (
 	_ Marshaler = MarshalerFunc(nil)
 )
+
+// LitAttr is a helper method for constructing *schemaspec.Attr instances that contain literal values.
+func LitAttr(k, v string) *Attr {
+	return &Attr{
+		K: k,
+		V: &LiteralValue{V: v},
+	}
+}
+
+// StrLitAttr is a helper method for constructing *schemaspec.Attr instances that contain literal values
+// representing string literals.
+func StrLitAttr(k, v string) *Attr {
+	return LitAttr(k, strconv.Quote(v))
+}
+
+// ListAttr is a helper method for constructing *schemaspec.Attr instances that contain list values.
+func ListAttr(k string, litValues ...string) *Attr {
+	lv := &ListValue{}
+	for _, v := range litValues {
+		lv.V = append(lv.V, &LiteralValue{V: v})
+	}
+	return &Attr{
+		K: k,
+		V: lv,
+	}
+}

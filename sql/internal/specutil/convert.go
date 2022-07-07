@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
@@ -135,9 +135,9 @@ func Column(spec *sqlspec.Column, conv ConvertTypeFunc) (*schema.Column, error) 
 	}
 	if spec.Default != nil {
 		switch d := spec.Default.(type) {
-		case *schemaspec.LiteralValue:
+		case *schemahcl.LiteralValue:
 			out.Default = &schema.Literal{V: d.V}
-		case *schemaspec.RawExpr:
+		case *schemahcl.RawExpr:
 			out.Default = &schema.RawExpr{X: d.X}
 		default:
 			return nil, fmt.Errorf("unsupported value type for default: %T", d)
@@ -344,7 +344,7 @@ func FromTable(t *schema.Table, colFn ColumnSpecFunc, pkFn PrimaryKeySpecFunc, i
 
 // FromPrimaryKey converts schema.Index to a sqlspec.PrimaryKey.
 func FromPrimaryKey(s *schema.Index) (*sqlspec.PrimaryKey, error) {
-	c := make([]*schemaspec.Ref, 0, len(s.Parts))
+	c := make([]*schemahcl.Ref, 0, len(s.Parts))
 	for _, v := range s.Parts {
 		c = append(c, ColumnRef(v.C.Name))
 	}
@@ -363,8 +363,8 @@ func FromColumn(col *schema.Column, columnTypeSpec ColumnTypeSpecFunc) (*sqlspec
 		Name: col.Name,
 		Type: ct.Type,
 		Null: col.Type.Null,
-		DefaultExtension: schemaspec.DefaultExtension{
-			Extra: schemaspec.Resource{Attrs: ct.DefaultExtension.Extra.Attrs},
+		DefaultExtension: schemahcl.DefaultExtension{
+			Extra: schemahcl.Resource{Attrs: ct.DefaultExtension.Extra.Attrs},
 		},
 	}
 	if col.Default != nil {
@@ -379,10 +379,10 @@ func FromColumn(col *schema.Column, columnTypeSpec ColumnTypeSpecFunc) (*sqlspec
 }
 
 // FromGenExpr returns the spec for a generated expression.
-func FromGenExpr(x schema.GeneratedExpr, t func(string) string) *schemaspec.Resource {
-	return &schemaspec.Resource{
+func FromGenExpr(x schema.GeneratedExpr, t func(string) string) *schemahcl.Resource {
+	return &schemahcl.Resource{
 		Type: "as",
-		Attrs: []*schemaspec.Attr{
+		Attrs: []*schemahcl.Attr{
 			StrAttr("expr", x.Expr),
 			VarAttr("type", t(x.Type)),
 		},
@@ -390,7 +390,7 @@ func FromGenExpr(x schema.GeneratedExpr, t func(string) string) *schemaspec.Reso
 }
 
 // ConvertGenExpr converts the "as" attribute or the block under the given resource.
-func ConvertGenExpr(r *schemaspec.Resource, c *schema.Column, t func(string) string) error {
+func ConvertGenExpr(r *schemahcl.Resource, c *schema.Column, t func(string) string) error {
 	asA, okA := r.Attr("as")
 	asR, okR := r.Resource("as")
 	switch {
@@ -421,20 +421,20 @@ func ConvertGenExpr(r *schemaspec.Resource, c *schema.Column, t func(string) str
 	return nil
 }
 
-func toValue(expr schema.Expr) (schemaspec.Value, error) {
+func toValue(expr schema.Expr) (schemahcl.Value, error) {
 	var (
 		v   string
 		err error
 	)
 	switch expr := expr.(type) {
 	case *schema.RawExpr:
-		return &schemaspec.RawExpr{X: expr.X}, nil
+		return &schemahcl.RawExpr{X: expr.X}, nil
 	case *schema.Literal:
 		v, err = normalizeQuotes(expr.V)
 		if err != nil {
 			return nil, err
 		}
-		return &schemaspec.LiteralValue{V: v}, nil
+		return &schemahcl.LiteralValue{V: v}, nil
 	default:
 		return nil, fmt.Errorf("converting expr %T to literal value", expr)
 	}
@@ -485,8 +485,8 @@ func FromIndex(idx *schema.Index, partFns ...func(*schema.IndexPart, *sqlspec.In
 	return spec, nil
 }
 
-func columnsOnly(idx *schema.Index) ([]*schemaspec.Ref, bool) {
-	parts := make([]*schemaspec.Ref, len(idx.Parts))
+func columnsOnly(idx *schema.Index) ([]*schemahcl.Ref, bool) {
+	parts := make([]*schemahcl.Ref, len(idx.Parts))
 	for i, p := range idx.Parts {
 		if p.C == nil || p.Desc {
 			return nil, false
@@ -498,11 +498,11 @@ func columnsOnly(idx *schema.Index) ([]*schemaspec.Ref, bool) {
 
 // FromForeignKey converts schema.ForeignKey to sqlspec.ForeignKey.
 func FromForeignKey(s *schema.ForeignKey) (*sqlspec.ForeignKey, error) {
-	c := make([]*schemaspec.Ref, 0, len(s.Columns))
+	c := make([]*schemahcl.Ref, 0, len(s.Columns))
 	for _, v := range s.Columns {
 		c = append(c, ColumnRef(v.Name))
 	}
-	r := make([]*schemaspec.Ref, 0, len(s.RefColumns))
+	r := make([]*schemahcl.Ref, 0, len(s.RefColumns))
 	for _, v := range s.RefColumns {
 		ref := ColumnRef(v.Name)
 		if s.Table != s.RefTable {
@@ -516,10 +516,10 @@ func FromForeignKey(s *schema.ForeignKey) (*sqlspec.ForeignKey, error) {
 		RefColumns: r,
 	}
 	if s.OnUpdate != "" {
-		fk.OnUpdate = &schemaspec.Ref{V: Var(string(s.OnUpdate))}
+		fk.OnUpdate = &schemahcl.Ref{V: Var(string(s.OnUpdate))}
 	}
 	if s.OnDelete != "" {
-		fk.OnDelete = &schemaspec.Ref{V: Var(string(s.OnDelete))}
+		fk.OnDelete = &schemahcl.Ref{V: Var(string(s.OnDelete))}
 	}
 	return fk, nil
 }
@@ -533,7 +533,7 @@ func FromCheck(s *schema.Check) *sqlspec.Check {
 }
 
 // SchemaName returns the name from a ref to a schema.
-func SchemaName(ref *schemaspec.Ref) (string, error) {
+func SchemaName(ref *schemahcl.Ref) (string, error) {
 	if ref == nil {
 		return "", errors.New("missing 'schema' attribute")
 	}
@@ -545,7 +545,7 @@ func SchemaName(ref *schemaspec.Ref) (string, error) {
 }
 
 // ColumnByRef returns a column from the table by its reference.
-func ColumnByRef(t *schema.Table, ref *schemaspec.Ref) (*schema.Column, error) {
+func ColumnByRef(t *schema.Table, ref *schemahcl.Ref) (*schema.Column, error) {
 	s := strings.Split(ref.V, "$column.")
 	if len(s) != 2 {
 		return nil, fmt.Errorf("specutil: failed to extract column name from %q", ref)
@@ -557,7 +557,7 @@ func ColumnByRef(t *schema.Table, ref *schemaspec.Ref) (*schema.Column, error) {
 	return c, nil
 }
 
-func externalRef(ref *schemaspec.Ref, sch *schema.Schema) (*schema.Table, *schema.Column, error) {
+func externalRef(ref *schemahcl.Ref, sch *schema.Schema) (*schema.Table, *schema.Column, error) {
 	tbl, err := findTable(ref, sch)
 	if err != nil {
 		return nil, nil, err
@@ -572,7 +572,7 @@ func externalRef(ref *schemaspec.Ref, sch *schema.Schema) (*schema.Table, *schem
 // findTable finds the table referenced by ref in the provided schema. If the table
 // is not in the provided schema.Schema other schemas in the connected schema.Realm
 // are searched as well.
-func findTable(ref *schemaspec.Ref, sch *schema.Schema) (*schema.Table, error) {
+func findTable(ref *schemahcl.Ref, sch *schema.Schema) (*schema.Table, error) {
 	qualifier, tblName, err := tableName(ref)
 	if err != nil {
 		return nil, err
@@ -600,7 +600,7 @@ func findTable(ref *schemaspec.Ref, sch *schema.Schema) (*schema.Table, error) {
 	return tbl, nil
 }
 
-func tableName(ref *schemaspec.Ref) (qualifier, name string, err error) {
+func tableName(ref *schemahcl.Ref) (qualifier, name string, err error) {
 	s := strings.Split(ref.V, "$column.")
 	if len(s) != 2 {
 		return "", "", fmt.Errorf("sqlspec: failed to split by column name from %q", ref)
@@ -618,27 +618,27 @@ func tableName(ref *schemaspec.Ref) (qualifier, name string, err error) {
 	return
 }
 
-func isLocalRef(r *schemaspec.Ref) bool {
+func isLocalRef(r *schemahcl.Ref) bool {
 	return strings.HasPrefix(r.V, "$column")
 }
 
 // ColumnRef returns the reference of a column by its name.
-func ColumnRef(cName string) *schemaspec.Ref {
-	return &schemaspec.Ref{V: "$column." + cName}
+func ColumnRef(cName string) *schemahcl.Ref {
+	return &schemahcl.Ref{V: "$column." + cName}
 }
 
-func externalColRef(cName string, tName string) *schemaspec.Ref {
-	return &schemaspec.Ref{V: "$table." + tName + ".$column." + cName}
+func externalColRef(cName string, tName string) *schemahcl.Ref {
+	return &schemahcl.Ref{V: "$table." + tName + ".$column." + cName}
 }
 
 // SchemaRef returns the schemaspec.Ref to the schema with the given name.
-func SchemaRef(n string) *schemaspec.Ref {
-	return &schemaspec.Ref{V: "$schema." + n}
+func SchemaRef(n string) *schemahcl.Ref {
+	return &schemahcl.Ref{V: "$schema." + n}
 }
 
 // Attrer is the interface that wraps the Attr method.
 type Attrer interface {
-	Attr(string) (*schemaspec.Attr, bool)
+	Attr(string) (*schemahcl.Attr, bool)
 }
 
 // convertCommentFromSpec converts a spec comment attribute to a schema element attribute.
@@ -654,7 +654,7 @@ func convertCommentFromSpec(spec Attrer, attrs *[]schema.Attr) error {
 }
 
 // convertCommentFromSchema converts a schema element comment attribute to a spec comment attribute.
-func convertCommentFromSchema(src []schema.Attr, trgt *[]*schemaspec.Attr) {
+func convertCommentFromSchema(src []schema.Attr, trgt *[]*schemahcl.Attr) {
 	var c schema.Comment
 	if sqlx.Has(src, &c) {
 		*trgt = append(*trgt, StrAttr("comment", c.Text))

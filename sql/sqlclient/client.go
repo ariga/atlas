@@ -13,7 +13,7 @@ import (
 	"net/url"
 	"sync"
 
-	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
 
@@ -41,7 +41,7 @@ type (
 
 		// Marshal and Evaluator functions for decoding
 		// and encoding the schema documents.
-		schemaspec.Marshaler
+		schemahcl.Marshaler
 		sqlspec.Evaluator
 
 		// A func to open a migrate.Driver with a given schema.ExecQuerier. Used when creating a TxClient.
@@ -225,7 +225,7 @@ type (
 		parser     URLParser
 		flavours   []string
 		codec      interface {
-			schemaspec.Marshaler
+			schemahcl.Marshaler
 			sqlspec.Evaluator
 		}
 	}
@@ -252,10 +252,10 @@ func RegisterURLParser(p URLParser) RegisterOption {
 
 // RegisterCodec registers static codec for attaching into
 // the client after it is opened.
-func RegisterCodec(m schemaspec.Marshaler, e sqlspec.Evaluator) RegisterOption {
+func RegisterCodec(m schemahcl.Marshaler, e sqlspec.Evaluator) RegisterOption {
 	return func(opts *registerOptions) {
 		opts.codec = struct {
-			schemaspec.Marshaler
+			schemahcl.Marshaler
 			sqlspec.Evaluator
 		}{
 			Marshaler: m,
