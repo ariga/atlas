@@ -10,7 +10,7 @@ import (
 	"sort"
 	"testing"
 
-	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/schemahcl"
 	"github.com/stretchr/testify/require"
 )
 
@@ -58,12 +58,12 @@ env "local" {
 				URL:    "file://migrations",
 				Format: formatAtlas,
 			},
-			DefaultExtension: schemaspec.DefaultExtension{
-				Extra: schemaspec.Resource{
-					Attrs: []*schemaspec.Attr{
-						{K: "bool", V: &schemaspec.LiteralValue{V: "true"}},
-						{K: "integer", V: &schemaspec.LiteralValue{V: "42"}},
-						{K: "str", V: &schemaspec.LiteralValue{V: `"hello"`}},
+			DefaultExtension: schemahcl.DefaultExtension{
+				Extra: schemahcl.Resource{
+					Attrs: []*schemahcl.Attr{
+						{K: "bool", V: &schemahcl.LiteralValue{V: "true"}},
+						{K: "integer", V: &schemahcl.LiteralValue{V: "42"}},
+						{K: "str", V: &schemahcl.LiteralValue{V: `"hello"`}},
 					},
 				},
 			},

@@ -11,8 +11,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"ariga.io/atlas/schema/schemaspec"
-
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,7 +28,7 @@ bl = [true, false]
 		StringList []string `spec:"sl"`
 		BoolList   []bool   `spec:"bl"`
 	}
-	err := Unmarshal([]byte(f), &test)
+	err := New().EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, 1, test.Int)
 	require.EqualValues(t, true, test.Bool)
@@ -69,7 +67,7 @@ func TestResource(t *testing.T) {
 		}
 	)
 	var test File
-	err := Unmarshal([]byte(f), &test)
+	err := New().EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.Len(t, test.Endpoints, 1)
 	expected := &Endpoint{
@@ -118,7 +116,7 @@ show "seinfeld" {
 			WithScopedEnums("show.day", "SUN", "MON", "TUE"),
 		}
 	)
-	err := New(opts...).UnmarshalSpec([]byte(f), &test)
+	err := New(opts...).EvalBytes([]byte(f), &test, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -181,8 +179,8 @@ func TestInterface(t *testing.T) {
 			Animal Animal `spec:""`
 		}
 	)
-	schemaspec.Register("lion", &Lion{})
-	schemaspec.Register("parrot", &Parrot{})
+	Register("lion", &Lion{})
+	Register("parrot", &Parrot{})
 	t.Run("single", func(t *testing.T) {
 		f := `
 cast "lion_king" {
@@ -194,7 +192,7 @@ cast "lion_king" {
 		var test struct {
 			Cast *Cast `spec:"cast"`
 		}
-		err := Unmarshal([]byte(f), &test)
+		err := New().EvalBytes([]byte(f), &test, nil)
 		require.NoError(t, err)
 		require.EqualValues(t, &Cast{
 			Animal: &Lion{
@@ -217,7 +215,7 @@ zoo "ramat_gan" {
 		var test struct {
 			Zoo *Zoo `spec:"zoo"`
 		}
-		err := Unmarshal([]byte(f), &test)
+		err := New().EvalBytes([]byte(f), &test, nil)
 		require.NoError(t, err)
 		require.EqualValues(t, &Zoo{
 			Animals: []Animal{
@@ -245,7 +243,7 @@ func TestQualified(t *testing.T) {
 	h := `person "dr" "jekyll" {
 }
 `
-	err := Unmarshal([]byte(h), &test)
+	err := New().EvalBytes([]byte(h), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, test.Person, &Person{
 		Title: "dr",
@@ -270,7 +268,7 @@ ref = named.block_id.name
 		Named *Named `spec:"named"`
 		Ref   string `spec:"ref"`
 	}
-	err := Unmarshal([]byte(h), &test)
+	err := New().EvalBytes([]byte(h), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, &Named{
 		Name: "atlas",
@@ -284,12 +282,12 @@ func TestRefPatch(t *testing.T) {
 			Name string `spec:"name,name"`
 		}
 		Person struct {
-			Name   string          `spec:",name"`
-			Family *schemaspec.Ref `spec:"family"`
+			Name   string `spec:",name"`
+			Family *Ref   `spec:"family"`
 		}
 	)
-	schemaspec.Register("family", &Family{})
-	schemaspec.Register("person", &Person{})
+	Register("family", &Family{})
+	Register("person", &Person{})
 	var test struct {
 		Families []*Family `spec:"family"`
 		People   []*Person `spec:"person"`
@@ -307,7 +305,7 @@ person "rotem" {
 	family = family.default
 }
 `
-	err := New().Eval([]byte(h), &test, map[string]string{"family_name": "tam"})
+	err := New().EvalBytes([]byte(h), &test, map[string]string{"family_name": "tam"})
 	require.NoError(t, err)
 	require.EqualValues(t, "$family.tam", test.People[0].Family.V)
 }

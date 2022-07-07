@@ -10,12 +10,12 @@ import (
 	"strconv"
 	"strings"
 
-	"ariga.io/atlas/schema/schemaspec"
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
+	"github.com/hashicorp/hcl/v2/hclparse"
 )
 
 type (
@@ -26,21 +26,21 @@ type (
 	}
 	// Enum holds a specification for an enum, that can be referenced as a column type.
 	Enum struct {
-		Name   string          `spec:",name"`
-		Schema *schemaspec.Ref `spec:"schema"`
-		Values []string        `spec:"values"`
-		schemaspec.DefaultExtension
+		Name   string         `spec:",name"`
+		Schema *schemahcl.Ref `spec:"schema"`
+		Values []string       `spec:"values"`
+		schemahcl.DefaultExtension
 	}
 )
 
 func init() {
-	schemaspec.Register("enum", &Enum{})
+	schemahcl.Register("enum", &Enum{})
 }
 
 // evalSpec evaluates an Atlas DDL document into v using the input.
-func evalSpec(data []byte, v interface{}, input map[string]string) error {
+func evalSpec(p *hclparse.Parser, v interface{}, input map[string]string) error {
 	var d doc
-	if err := hclState.Eval(data, &d, input); err != nil {
+	if err := hclState.Eval(p, &d, input); err != nil {
 		return err
 	}
 	switch v := v.(type) {
@@ -74,8 +74,8 @@ func evalSpec(data []byte, v interface{}, input map[string]string) error {
 	return nil
 }
 
-// MarshalSpec marshals v into an Atlas DDL document using a schemaspec.Marshaler.
-func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) {
+// MarshalSpec marshals v into an Atlas DDL document using a schemahcl.Marshaler.
+func MarshalSpec(v interface{}, marshaler schemahcl.Marshaler) ([]byte, error) {
 	var d doc
 	switch s := v.(type) {
 	case *schema.Schema:
@@ -116,16 +116,16 @@ var (
 		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
 		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
 	)
-	// UnmarshalHCL unmarshals an Atlas HCL DDL document into v.
-	UnmarshalHCL = schemaspec.UnmarshalerFunc(func(data []byte, v interface{}) error {
-		return evalSpec(data, v, nil)
-	})
 	// MarshalHCL marshals v into an Atlas HCL DDL document.
-	MarshalHCL = schemaspec.MarshalerFunc(func(v interface{}) ([]byte, error) {
+	MarshalHCL = schemahcl.MarshalerFunc(func(v interface{}) ([]byte, error) {
 		return MarshalSpec(v, hclState)
 	})
 	// EvalHCL implements the schemahcl.Evaluator interface.
 	EvalHCL = schemahcl.EvalFunc(evalSpec)
+
+	// EvalHCLBytes is a helper that evaluates an HCL document from a byte slice instead
+	// of from an hclparse.Parser instance.
+	EvalHCLBytes = specutil.HCLBytesFunc(EvalHCL)
 )
 
 // convertTable converts a sqlspec.Table to a schema.Table. Table conversion is done without converting
@@ -143,17 +143,17 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 }
 
 // convertPartition converts and appends the partition block into the table attributes if exists.
-func convertPartition(spec schemaspec.Resource, table *schema.Table) error {
+func convertPartition(spec schemahcl.Resource, table *schema.Table) error {
 	r, ok := spec.Resource("partition")
 	if !ok {
 		return nil
 	}
 	var p struct {
-		Type    string            `spec:"type"`
-		Columns []*schemaspec.Ref `spec:"columns"`
+		Type    string           `spec:"type"`
+		Columns []*schemahcl.Ref `spec:"columns"`
 		Parts   []*struct {
-			Expr   string          `spec:"expr"`
-			Column *schemaspec.Ref `spec:"column"`
+			Expr   string         `spec:"expr"`
+			Column *schemahcl.Ref `spec:"column"`
 		} `spec:"by"`
 	}
 	if err := r.As(&p); err != nil {
@@ -199,29 +199,29 @@ func convertPartition(spec schemaspec.Resource, table *schema.Table) error {
 }
 
 // fromPartition returns the resource spec for representing the partition block.
-func fromPartition(p Partition) *schemaspec.Resource {
-	key := &schemaspec.Resource{
+func fromPartition(p Partition) *schemahcl.Resource {
+	key := &schemahcl.Resource{
 		Type: "partition",
-		Attrs: []*schemaspec.Attr{
+		Attrs: []*schemahcl.Attr{
 			specutil.VarAttr("type", strings.ToUpper(specutil.Var(p.T))),
 		},
 	}
-	columns, ok := func() (*schemaspec.ListValue, bool) {
-		parts := make([]schemaspec.Value, 0, len(p.Parts))
+	columns, ok := func() (*schemahcl.ListValue, bool) {
+		parts := make([]schemahcl.Value, 0, len(p.Parts))
 		for _, p := range p.Parts {
 			if p.C == nil {
 				return nil, false
 			}
 			parts = append(parts, specutil.ColumnRef(p.C.Name))
 		}
-		return &schemaspec.ListValue{V: parts}, true
+		return &schemahcl.ListValue{V: parts}, true
 	}()
 	if ok {
-		key.Attrs = append(key.Attrs, &schemaspec.Attr{K: "columns", V: columns})
+		key.Attrs = append(key.Attrs, &schemahcl.Attr{K: "columns", V: columns})
 		return key
 	}
 	for _, p := range p.Parts {
-		part := &schemaspec.Resource{Type: "by"}
+		part := &schemahcl.Resource{Type: "by"}
 		switch {
 		case p.C != nil:
 			part.Attrs = append(part.Attrs, specutil.RefAttr("column", specutil.ColumnRef(p.C.Name)))
@@ -255,7 +255,7 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 	return c, nil
 }
 
-func convertIdentity(r *schemaspec.Resource) (*Identity, error) {
+func convertIdentity(r *schemahcl.Resource) (*Identity, error) {
 	var spec struct {
 		Generation string `spec:"generated"`
 		Start      int64  `spec:"start"`
@@ -276,8 +276,8 @@ func convertIdentity(r *schemaspec.Resource) (*Identity, error) {
 
 // fixDefaultQuotes fixes the quotes on the Default field to be single quotes
 // instead of double quotes.
-func fixDefaultQuotes(value schemaspec.Value) error {
-	lv, ok := value.(*schemaspec.LiteralValue)
+func fixDefaultQuotes(value schemahcl.Value) error {
+	lv, ok := value.(*schemahcl.LiteralValue)
 	if !ok {
 		return nil
 	}
@@ -368,7 +368,7 @@ func convertEnums(tbls []*sqlspec.Table, enums []*Enum, sch *schema.Schema) erro
 }
 
 // resolveEnum returns the first Enum that matches the name referenced by the given column type.
-func resolveEnum(ref *schemaspec.Type, enums []*Enum) (*Enum, error) {
+func resolveEnum(ref *schemahcl.Type, enums []*Enum) (*Enum, error) {
 	n, err := enumName(ref)
 	if err != nil {
 		return nil, err
@@ -382,7 +382,7 @@ func resolveEnum(ref *schemaspec.Type, enums []*Enum) (*Enum, error) {
 }
 
 // enumName extracts the name of the referenced Enum from the reference string.
-func enumName(ref *schemaspec.Type) (string, error) {
+func enumName(ref *schemahcl.Type) (string, error) {
 	s := strings.Split(ref.T, "$enum.")
 	if len(s) != 2 {
 		return "", fmt.Errorf("postgres: failed to extract enum name from %q", ref.T)
@@ -391,8 +391,8 @@ func enumName(ref *schemaspec.Type) (string, error) {
 }
 
 // enumRef returns a reference string to the given enum name.
-func enumRef(n string) *schemaspec.Ref {
-	return &schemaspec.Ref{
+func enumRef(n string) *schemahcl.Ref {
+	return &schemahcl.Ref{
 		V: "$enum." + n,
 	}
 }
@@ -478,10 +478,10 @@ func columnSpec(c *schema.Column, _ *schema.Table) (*sqlspec.Column, error) {
 }
 
 // fromIdentity returns the resource spec for representing the identity attributes.
-func fromIdentity(i *Identity) *schemaspec.Resource {
-	id := &schemaspec.Resource{
+func fromIdentity(i *Identity) *schemahcl.Resource {
+	id := &schemahcl.Resource{
 		Type: "identity",
-		Attrs: []*schemaspec.Attr{
+		Attrs: []*schemahcl.Attr{
 			specutil.VarAttr("generated", strings.ToUpper(specutil.Var(i.Generation))),
 		},
 	}
@@ -500,7 +500,7 @@ func fromIdentity(i *Identity) *schemaspec.Resource {
 func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	// Handle postgres enum types. They cannot be put into the TypeRegistry since their name is dynamic.
 	if e, ok := t.(*schema.EnumType); ok {
-		return &sqlspec.Column{Type: &schemaspec.Type{
+		return &sqlspec.Column{Type: &schemahcl.Type{
 			T:     enumRef(e.T).V,
 			IsRef: true,
 		}}, nil
@@ -517,75 +517,75 @@ var TypeRegistry = schemahcl.NewRegistry(
 	schemahcl.WithSpecFunc(typeSpec),
 	schemahcl.WithParser(ParseType),
 	schemahcl.WithSpecs(
-		schemahcl.TypeSpec(TypeBit, schemahcl.WithAttributes(&schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64})),
-		schemahcl.AliasTypeSpec("bit_varying", TypeBitVar, schemahcl.WithAttributes(&schemaspec.TypeAttr{Name: "len", Kind: reflect.Int64})),
-		schemahcl.TypeSpec(TypeVarChar, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec(TypeBit, schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "len", Kind: reflect.Int64})),
+		schemahcl.AliasTypeSpec("bit_varying", TypeBitVar, schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "len", Kind: reflect.Int64})),
+		schemahcl.NewTypeSpec(TypeVarChar, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
 		schemahcl.AliasTypeSpec("character_varying", TypeCharVar, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec(TypeChar, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(true))),
-		schemahcl.TypeSpec(TypeCharacter, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(true))),
-		schemahcl.TypeSpec(TypeInt2),
-		schemahcl.TypeSpec(TypeInt4),
-		schemahcl.TypeSpec(TypeInt8),
-		schemahcl.TypeSpec(TypeInt),
-		schemahcl.TypeSpec(TypeInteger),
-		schemahcl.TypeSpec(TypeSmallInt),
-		schemahcl.TypeSpec(TypeBigInt),
-		schemahcl.TypeSpec(TypeText),
-		schemahcl.TypeSpec(TypeBoolean),
-		schemahcl.TypeSpec(TypeBool),
-		schemahcl.TypeSpec(TypeBytea),
-		schemahcl.TypeSpec(TypeCIDR),
-		schemahcl.TypeSpec(TypeInet),
-		schemahcl.TypeSpec(TypeMACAddr),
-		schemahcl.TypeSpec(TypeMACAddr8),
-		schemahcl.TypeSpec(TypeCircle),
-		schemahcl.TypeSpec(TypeLine),
-		schemahcl.TypeSpec(TypeLseg),
-		schemahcl.TypeSpec(TypeBox),
-		schemahcl.TypeSpec(TypePath),
-		schemahcl.TypeSpec(TypePoint),
-		schemahcl.TypeSpec(TypeDate),
-		schemahcl.TypeSpec(TypeTime, schemahcl.WithAttributes(precisionTypeAttr()), formatTime()),
-		schemahcl.TypeSpec(TypeTimeTZ, schemahcl.WithAttributes(precisionTypeAttr()), formatTime()),
-		schemahcl.TypeSpec(TypeTimestampTZ, schemahcl.WithAttributes(precisionTypeAttr()), formatTime()),
-		schemahcl.TypeSpec(TypeTimestamp, schemahcl.WithAttributes(precisionTypeAttr()), formatTime()),
+		schemahcl.NewTypeSpec(TypeChar, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(true))),
+		schemahcl.NewTypeSpec(TypeCharacter, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(true))),
+		schemahcl.NewTypeSpec(TypeInt2),
+		schemahcl.NewTypeSpec(TypeInt4),
+		schemahcl.NewTypeSpec(TypeInt8),
+		schemahcl.NewTypeSpec(TypeInt),
+		schemahcl.NewTypeSpec(TypeInteger),
+		schemahcl.NewTypeSpec(TypeSmallInt),
+		schemahcl.NewTypeSpec(TypeBigInt),
+		schemahcl.NewTypeSpec(TypeText),
+		schemahcl.NewTypeSpec(TypeBoolean),
+		schemahcl.NewTypeSpec(TypeBool),
+		schemahcl.NewTypeSpec(TypeBytea),
+		schemahcl.NewTypeSpec(TypeCIDR),
+		schemahcl.NewTypeSpec(TypeInet),
+		schemahcl.NewTypeSpec(TypeMACAddr),
+		schemahcl.NewTypeSpec(TypeMACAddr8),
+		schemahcl.NewTypeSpec(TypeCircle),
+		schemahcl.NewTypeSpec(TypeLine),
+		schemahcl.NewTypeSpec(TypeLseg),
+		schemahcl.NewTypeSpec(TypeBox),
+		schemahcl.NewTypeSpec(TypePath),
+		schemahcl.NewTypeSpec(TypePoint),
+		schemahcl.NewTypeSpec(TypeDate),
+		schemahcl.NewTypeSpec(TypeTime, schemahcl.WithAttributes(precisionTypeAttr()), formatTime()),
+		schemahcl.NewTypeSpec(TypeTimeTZ, schemahcl.WithAttributes(precisionTypeAttr()), formatTime()),
+		schemahcl.NewTypeSpec(TypeTimestampTZ, schemahcl.WithAttributes(precisionTypeAttr()), formatTime()),
+		schemahcl.NewTypeSpec(TypeTimestamp, schemahcl.WithAttributes(precisionTypeAttr()), formatTime()),
 		schemahcl.AliasTypeSpec("double_precision", TypeDouble),
-		schemahcl.TypeSpec(TypeReal),
-		schemahcl.TypeSpec(TypeFloat8),
-		schemahcl.TypeSpec(TypeFloat4),
-		schemahcl.TypeSpec(TypeNumeric, schemahcl.WithAttributes(precisionTypeAttr(), &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		schemahcl.TypeSpec(TypeDecimal, schemahcl.WithAttributes(precisionTypeAttr(), &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		schemahcl.TypeSpec(TypeSmallSerial),
-		schemahcl.TypeSpec(TypeSerial),
-		schemahcl.TypeSpec(TypeBigSerial),
-		schemahcl.TypeSpec(TypeSerial2),
-		schemahcl.TypeSpec(TypeSerial4),
-		schemahcl.TypeSpec(TypeSerial8),
-		schemahcl.TypeSpec(TypeXML),
-		schemahcl.TypeSpec(TypeJSON),
-		schemahcl.TypeSpec(TypeJSONB),
-		schemahcl.TypeSpec(TypeUUID),
-		schemahcl.TypeSpec(TypeMoney),
-		schemahcl.TypeSpec("hstore"),
-		schemahcl.TypeSpec("sql", schemahcl.WithAttributes(&schemaspec.TypeAttr{Name: "def", Required: true, Kind: reflect.String})),
+		schemahcl.NewTypeSpec(TypeReal),
+		schemahcl.NewTypeSpec(TypeFloat8),
+		schemahcl.NewTypeSpec(TypeFloat4),
+		schemahcl.NewTypeSpec(TypeNumeric, schemahcl.WithAttributes(precisionTypeAttr(), &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec(TypeDecimal, schemahcl.WithAttributes(precisionTypeAttr(), &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec(TypeSmallSerial),
+		schemahcl.NewTypeSpec(TypeSerial),
+		schemahcl.NewTypeSpec(TypeBigSerial),
+		schemahcl.NewTypeSpec(TypeSerial2),
+		schemahcl.NewTypeSpec(TypeSerial4),
+		schemahcl.NewTypeSpec(TypeSerial8),
+		schemahcl.NewTypeSpec(TypeXML),
+		schemahcl.NewTypeSpec(TypeJSON),
+		schemahcl.NewTypeSpec(TypeJSONB),
+		schemahcl.NewTypeSpec(TypeUUID),
+		schemahcl.NewTypeSpec(TypeMoney),
+		schemahcl.NewTypeSpec("hstore"),
+		schemahcl.NewTypeSpec("sql", schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "def", Required: true, Kind: reflect.String})),
 	),
-	schemahcl.WithSpecs(func() (specs []*schemaspec.TypeSpec) {
+	schemahcl.WithSpecs(func() (specs []*schemahcl.TypeSpec) {
 		opts := []schemahcl.TypeSpecOption{
-			schemahcl.WithToSpec(func(t schema.Type) (*schemaspec.Type, error) {
+			schemahcl.WithToSpec(func(t schema.Type) (*schemahcl.Type, error) {
 				i, ok := t.(*IntervalType)
 				if !ok {
 					return nil, fmt.Errorf("postgres: unexpected interval type %T", t)
 				}
-				spec := &schemaspec.Type{T: TypeInterval}
+				spec := &schemahcl.Type{T: TypeInterval}
 				if i.F != "" {
 					spec.T = specutil.Var(strings.ToLower(i.F))
 				}
 				if p := i.Precision; p != nil && *p != defaultTimePrecision {
-					spec.Attrs = []*schemaspec.Attr{specutil.IntAttr("precision", *p)}
+					spec.Attrs = []*schemahcl.Attr{specutil.IntAttr("precision", *p)}
 				}
 				return spec, nil
 			}),
-			schemahcl.WithFromSpec(func(t *schemaspec.Type) (schema.Type, error) {
+			schemahcl.WithFromSpec(func(t *schemahcl.Type) (schema.Type, error) {
 				i := &IntervalType{T: TypeInterval}
 				if t.T != TypeInterval {
 					i.F = specutil.FromVar(t.T)
@@ -603,24 +603,24 @@ var TypeRegistry = schemahcl.NewRegistry(
 			}),
 		}
 		for _, f := range []string{"interval", "second", "day to second", "hour to second", "minute to second"} {
-			specs = append(specs, schemahcl.TypeSpec(specutil.Var(f), append(opts, schemahcl.WithAttributes(precisionTypeAttr()))...))
+			specs = append(specs, schemahcl.NewTypeSpec(specutil.Var(f), append(opts, schemahcl.WithAttributes(precisionTypeAttr()))...))
 		}
 		for _, f := range []string{"year", "month", "day", "hour", "minute", "year to month", "day to hour", "day to minute", "hour to minute"} {
-			specs = append(specs, schemahcl.TypeSpec(specutil.Var(f), opts...))
+			specs = append(specs, schemahcl.NewTypeSpec(specutil.Var(f), opts...))
 		}
 		return specs
 	}()...),
 )
 
-func precisionTypeAttr() *schemaspec.TypeAttr {
-	return &schemaspec.TypeAttr{
+func precisionTypeAttr() *schemahcl.TypeAttr {
+	return &schemahcl.TypeAttr{
 		Name:     "precision",
 		Kind:     reflect.Int,
 		Required: false,
 	}
 }
 
-func attr(typ *schemaspec.Type, key string) (*schemaspec.Attr, bool) {
+func attr(typ *schemahcl.Type, key string) (*schemahcl.Attr, bool) {
 	for _, a := range typ.Attrs {
 		if a.K == key {
 			return a, true
@@ -629,11 +629,11 @@ func attr(typ *schemaspec.Type, key string) (*schemaspec.Attr, bool) {
 	return nil, false
 }
 
-func typeSpec(t schema.Type) (*schemaspec.Type, error) {
+func typeSpec(t schema.Type) (*schemahcl.Type, error) {
 	if t, ok := t.(*schema.TimeType); ok && t.T != TypeDate {
-		spec := &schemaspec.Type{T: timeAlias(t.T)}
+		spec := &schemahcl.Type{T: timeAlias(t.T)}
 		if p := t.Precision; p != nil && *p != defaultTimePrecision {
-			spec.Attrs = []*schemaspec.Attr{specutil.IntAttr("precision", *p)}
+			spec.Attrs = []*schemahcl.Attr{specutil.IntAttr("precision", *p)}
 		}
 		return spec, nil
 	}
@@ -641,12 +641,12 @@ func typeSpec(t schema.Type) (*schemaspec.Type, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &schemaspec.Type{T: s}, nil
+	return &schemahcl.Type{T: s}, nil
 }
 
 // formatTime overrides the default printing logic done by schemahcl.hclType.
 func formatTime() schemahcl.TypeSpecOption {
-	return schemahcl.WithTypeFormatter(func(t *schemaspec.Type) (string, error) {
+	return schemahcl.WithTypeFormatter(func(t *schemahcl.Type) (string, error) {
 		a, ok := attr(t, "precision")
 		if !ok {
 			return t.T, nil

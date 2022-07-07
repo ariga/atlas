@@ -8,9 +8,6 @@ import (
 	"reflect"
 	"testing"
 
-	"ariga.io/atlas/schema/schemaspec"
-	"ariga.io/atlas/schema/schemaspec/internal/schemautil"
-
 	"github.com/stretchr/testify/require"
 )
 
@@ -60,7 +57,7 @@ config "defaults" {
 		Backends  []*Backend  `spec:"backend"`
 		Endpoints []*Endpoint `spec:"endpoint"`
 	}
-	err := Unmarshal([]byte(f), &test)
+	err := New().EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, []*Endpoint{
 		{
@@ -107,15 +104,15 @@ continent = country.israel.metadata.geo.continent
 			Metadata []*Metadata `spec:"metadata"`
 		}
 		Test struct {
-			Countries    []*Country      `spec:"country"`
-			MetadataRef  *schemaspec.Ref `spec:"metadata"`
-			PhonePrefix  string          `spec:"phone_prefix"`
-			PhonePrefix2 string          `spec:"phone_prefix_2"`
-			Continent    string          `spec:"continent"`
+			Countries    []*Country `spec:"country"`
+			MetadataRef  *Ref       `spec:"metadata"`
+			PhonePrefix  string     `spec:"phone_prefix"`
+			PhonePrefix2 string     `spec:"phone_prefix_2"`
+			Continent    string     `spec:"continent"`
 		}
 	)
 	var test Test
-	err := Unmarshal([]byte(f), &test)
+	err := New().EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, test, Test{
 		Countries: []*Country{
@@ -127,7 +124,7 @@ continent = country.israel.metadata.geo.continent
 				},
 			},
 		},
-		MetadataRef:  &schemaspec.Ref{V: "$country.israel.$metadata.0"},
+		MetadataRef:  &Ref{V: "$country.israel.$metadata.0"},
 		PhonePrefix:  "972",
 		PhonePrefix2: "123",
 		Continent:    "asia",
@@ -161,7 +158,7 @@ country "israel" {
 	var test struct {
 		Countries []*Country `spec:"country"`
 	}
-	err := Unmarshal([]byte(f), &test)
+	err := New().EvalBytes([]byte(f), &test, nil)
 	israel := &Country{
 		Name: "israel",
 		Cities: []*City{
@@ -187,21 +184,21 @@ pet "garfield" {
 			Name string `spec:",name"`
 		}
 		Pet struct {
-			Name  string          `spec:",name"`
-			Type  string          `spec:"type"`
-			Owner *schemaspec.Ref `spec:"owner"`
+			Name  string `spec:",name"`
+			Type  string `spec:"type"`
+			Owner *Ref   `spec:"owner"`
 		}
 	)
 	var test struct {
 		People []*Person `spec:"person"`
 		Pets   []*Pet    `spec:"pet"`
 	}
-	err := Unmarshal([]byte(f), &test)
+	err := New().EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, &Pet{
 		Name:  "garfield",
 		Type:  "cat",
-		Owner: &schemaspec.Ref{V: "$person.jon"},
+		Owner: &Ref{V: "$person.jon"},
 	}, test.Pets[0])
 	marshal, err := Marshal(&test)
 	require.NoError(t, err)
@@ -228,19 +225,19 @@ group "lion_kings" {
 			Name string `spec:",name"`
 		}
 		Group struct {
-			Name    string            `spec:",name"`
-			Members []*schemaspec.Ref `spec:"members"`
+			Name    string `spec:",name"`
+			Members []*Ref `spec:"members"`
 		}
 	)
 	var test struct {
 		Users  []*User  `spec:"user"`
 		Groups []*Group `spec:"group"`
 	}
-	err := Unmarshal([]byte(f), &test)
+	err := New().EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, &Group{
 		Name: "lion_kings",
-		Members: []*schemaspec.Ref{
+		Members: []*Ref{
 			{V: "$user.simba"},
 			{V: "$user.mufasa"},
 		},
@@ -287,7 +284,7 @@ person "jane" {
 	var test struct {
 		People []*Person `spec:"person"`
 	}
-	err := Unmarshal([]byte(f), &test)
+	err := New().EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
 	john := &Person{
 		Name:     "john",
@@ -313,14 +310,14 @@ person "jane" {
 
 func TestSchemaRefParse(t *testing.T) {
 	type Point struct {
-		Z []*schemaspec.Ref `spec:"z"`
+		Z []*Ref `spec:"z"`
 	}
 	var test = struct {
 		Points []*Point `spec:"point"`
 	}{
 		Points: []*Point{
-			{Z: []*schemaspec.Ref{{V: "$a"}}},
-			{Z: []*schemaspec.Ref{{V: "b"}}},
+			{Z: []*Ref{{V: "$a"}}},
+			{Z: []*Ref{{V: "b"}}},
 		},
 	}
 	b, err := Marshal(&test)
@@ -345,12 +342,12 @@ variadic = enum("a","b","c")
 `
 	s := New(
 		WithTypes(
-			[]*schemaspec.TypeSpec{
+			[]*TypeSpec{
 				{Name: "bool", T: "bool"},
 				{
 					Name: "int",
 					T:    "int",
-					Attributes: []*schemaspec.TypeAttr{
+					Attributes: []*TypeAttr{
 						{Name: "size", Kind: reflect.Int, Required: false},
 						{Name: "unsigned", Kind: reflect.Bool, Required: false},
 					},
@@ -358,14 +355,14 @@ variadic = enum("a","b","c")
 				{
 					Name: "varchar",
 					T:    "varchar",
-					Attributes: []*schemaspec.TypeAttr{
+					Attributes: []*TypeAttr{
 						{Name: "size", Kind: reflect.Int, Required: false},
 					},
 				},
 				{
 					Name: "enum",
 					T:    "enum",
-					Attributes: []*schemaspec.TypeAttr{
+					Attributes: []*TypeAttr{
 						{Name: "values", Kind: reflect.Slice, Required: false},
 					},
 				},
@@ -373,41 +370,41 @@ variadic = enum("a","b","c")
 		),
 	)
 	var test struct {
-		First    *schemaspec.Type `spec:"first"`
-		Second   *schemaspec.Type `spec:"second"`
-		Third    *schemaspec.Type `spec:"third"`
-		Varchar  *schemaspec.Type `spec:"sized"`
-		Variadic *schemaspec.Type `spec:"variadic"`
+		First    *Type `spec:"first"`
+		Second   *Type `spec:"second"`
+		Third    *Type `spec:"third"`
+		Varchar  *Type `spec:"sized"`
+		Variadic *Type `spec:"variadic"`
 	}
-	err := s.UnmarshalSpec([]byte(f), &test)
+	err := s.EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, "int", test.First.T)
 	require.EqualValues(t, "bool", test.Second.T)
-	require.EqualValues(t, &schemaspec.Type{
+	require.EqualValues(t, &Type{
 		T: "varchar",
-		Attrs: []*schemaspec.Attr{
-			{K: "size", V: &schemaspec.LiteralValue{V: "255"}},
+		Attrs: []*Attr{
+			{K: "size", V: &LiteralValue{V: "255"}},
 		},
 	}, test.Varchar)
-	require.EqualValues(t, &schemaspec.Type{
+	require.EqualValues(t, &Type{
 		T: "enum",
-		Attrs: []*schemaspec.Attr{
+		Attrs: []*Attr{
 			{
 				K: "values",
-				V: &schemaspec.ListValue{
-					V: []schemaspec.Value{
-						&schemaspec.LiteralValue{V: `"a"`},
-						&schemaspec.LiteralValue{V: `"b"`},
-						&schemaspec.LiteralValue{V: `"c"`},
+				V: &ListValue{
+					V: []Value{
+						&LiteralValue{V: `"a"`},
+						&LiteralValue{V: `"b"`},
+						&LiteralValue{V: `"c"`},
 					},
 				},
 			},
 		},
 	}, test.Variadic)
-	require.EqualValues(t, &schemaspec.Type{
+	require.EqualValues(t, &Type{
 		T: "int",
-		Attrs: []*schemaspec.Attr{
-			{K: "size", V: &schemaspec.LiteralValue{V: "10"}},
+		Attrs: []*Attr{
+			{K: "size", V: &LiteralValue{V: "10"}},
 		},
 	}, test.Third)
 	after, err := s.MarshalSpec(&test)
@@ -417,11 +414,11 @@ variadic = enum("a","b","c")
 
 func TestOptionalArgs(t *testing.T) {
 	s := New(
-		WithTypes([]*schemaspec.TypeSpec{
+		WithTypes([]*TypeSpec{
 			{
 				T:    "float",
 				Name: "float",
-				Attributes: []*schemaspec.TypeAttr{
+				Attributes: []*TypeAttr{
 					{Name: "precision", Kind: reflect.Int, Required: false},
 					{Name: "scale", Kind: reflect.Int, Required: false},
 				},
@@ -433,19 +430,19 @@ arg_1 = float(10)
 arg_2 = float(10,2)
 `
 	var test struct {
-		Arg0 *schemaspec.Type `spec:"arg_0"`
-		Arg1 *schemaspec.Type `spec:"arg_1"`
-		Arg2 *schemaspec.Type `spec:"arg_2"`
+		Arg0 *Type `spec:"arg_0"`
+		Arg1 *Type `spec:"arg_1"`
+		Arg2 *Type `spec:"arg_2"`
 	}
-	err := s.UnmarshalSpec([]byte(f), &test)
+	err := s.EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.Nil(t, test.Arg0.Attrs)
-	require.EqualValues(t, []*schemaspec.Attr{
-		schemautil.LitAttr("precision", "10"),
+	require.EqualValues(t, []*Attr{
+		LitAttr("precision", "10"),
 	}, test.Arg1.Attrs)
-	require.EqualValues(t, []*schemaspec.Attr{
-		schemautil.LitAttr("precision", "10"),
-		schemautil.LitAttr("scale", "2"),
+	require.EqualValues(t, []*Attr{
+		LitAttr("precision", "10"),
+		LitAttr("scale", "2"),
 	}, test.Arg2.Attrs)
 }
 
@@ -457,10 +454,10 @@ v = user.atlas.cli.version
 r = user.atlas.cli
 `
 	var test struct {
-		V string          `spec:"v"`
-		R *schemaspec.Ref `spec:"r"`
+		V string `spec:"v"`
+		R *Ref   `spec:"r"`
 	}
-	err := Unmarshal([]byte(h), &test)
+	err := New().EvalBytes([]byte(h), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, "v0.3.9", test.V)
 	require.EqualValues(t, "$user.atlas.cli", test.R.V)
@@ -497,7 +494,7 @@ bool = var.bool
 		Int     int    `spec:"int"`
 		Bool    bool   `spec:"bool"`
 	}
-	err := state.Eval([]byte(h), &test, map[string]string{
+	err := state.EvalBytes([]byte(h), &test, map[string]string{
 		"name": "rotemtam",
 		"int":  "42",
 		"bool": "true",

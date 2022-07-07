@@ -14,8 +14,7 @@ import (
 	"strings"
 	"text/template"
 
-	"ariga.io/atlas/schema/schemaspec"
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/sqlite"
@@ -31,7 +30,7 @@ type (
 		Types []Type
 	}
 	Type struct {
-		*schemaspec.TypeSpec
+		*schemahcl.TypeSpec
 		Info            string
 		MarshalOverride string
 	}
@@ -42,7 +41,7 @@ func main() {
 	drivers := []*Driver{
 		{Name: "MySQL/MariaDB", Types: wrap(mysql.TypeRegistry.Specs())},
 		{Name: "Postgres", Types: append(wrap(postgres.TypeRegistry.Specs()), Type{
-			TypeSpec: &schemaspec.TypeSpec{
+			TypeSpec: &schemahcl.TypeSpec{
 				Name: "enum",
 				T:    "my_enum",
 			},
@@ -102,10 +101,10 @@ func colHcl(ts *Type, d *Driver) []string {
 	return res
 }
 
-func dummyType(ts *schemaspec.TypeSpec) *schemaspec.Type {
-	spec := &schemaspec.Type{T: ts.T}
+func dummyType(ts *schemahcl.TypeSpec) *schemahcl.Type {
+	spec := &schemahcl.Type{T: ts.T}
 	for _, attr := range ts.Attributes {
-		var a *schemaspec.Attr
+		var a *schemahcl.Attr
 		switch attr.Kind {
 		case reflect.Int, reflect.Int64:
 			n := "255"
@@ -130,36 +129,36 @@ func dummyType(ts *schemaspec.TypeSpec) *schemaspec.Type {
 	return spec
 }
 
-// StrAttr is a helper method for constructing *schemaspec.Attr of type string.
-func StrAttr(k, v string) *schemaspec.Attr {
-	return &schemaspec.Attr{
+// StrAttr is a helper method for constructing *schemahcl.Attr of type string.
+func StrAttr(k, v string) *schemahcl.Attr {
+	return &schemahcl.Attr{
 		K: k,
-		V: &schemaspec.LiteralValue{V: strconv.Quote(v)},
+		V: &schemahcl.LiteralValue{V: strconv.Quote(v)},
 	}
 }
 
-// LitAttr is a helper method for constructing *schemaspec.Attr instances that contain literal values.
-func LitAttr(k, v string) *schemaspec.Attr {
-	return &schemaspec.Attr{
+// LitAttr is a helper method for constructing *schemahcl.Attr instances that contain literal values.
+func LitAttr(k, v string) *schemahcl.Attr {
+	return &schemahcl.Attr{
 		K: k,
-		V: &schemaspec.LiteralValue{V: v},
+		V: &schemahcl.LiteralValue{V: v},
 	}
 }
 
-// ListAttr is a helper method for constructing *schemaspec.Attr instances that contain list values.
-func ListAttr(k string, litValues ...string) *schemaspec.Attr {
-	lv := &schemaspec.ListValue{}
+// ListAttr is a helper method for constructing *schemahcl.Attr instances that contain list values.
+func ListAttr(k string, litValues ...string) *schemahcl.Attr {
+	lv := &schemahcl.ListValue{}
 	for _, v := range litValues {
-		lv.V = append(lv.V, &schemaspec.LiteralValue{V: v})
+		lv.V = append(lv.V, &schemahcl.LiteralValue{V: v})
 	}
-	return &schemaspec.Attr{
+	return &schemahcl.Attr{
 		K: k,
 		V: lv,
 	}
 }
 
-// wrap iterates over the given slice of schemaspec.TypeSpec and wraps them with Type.
-func wrap(tss []*schemaspec.TypeSpec) []Type {
+// wrap iterates over the given slice of schemahcl.TypeSpec and wraps them with Type.
+func wrap(tss []*schemahcl.TypeSpec) []Type {
 	res := make([]Type, len(tss))
 	for i, ts := range tss {
 		res[i] = Type{TypeSpec: ts}
@@ -168,8 +167,8 @@ func wrap(tss []*schemaspec.TypeSpec) []Type {
 }
 
 // unwrap undoes wrap.
-func unwrap(tss []Type) []*schemaspec.TypeSpec {
-	res := make([]*schemaspec.TypeSpec, len(tss))
+func unwrap(tss []Type) []*schemahcl.TypeSpec {
+	res := make([]*schemahcl.TypeSpec, len(tss))
 	for i, ts := range tss {
 		res[i] = ts.TypeSpec
 	}

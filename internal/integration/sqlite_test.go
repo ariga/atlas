@@ -470,7 +470,7 @@ create table atlas_defaults
 		spec, err := sqlite.MarshalHCL(realm.Schemas[0])
 		require.NoError(t, err)
 		var s schema.Schema
-		err = sqlite.UnmarshalHCL(spec, &s)
+		err = sqlite.EvalHCLBytes(spec, &s, nil)
 		require.NoError(t, err)
 		t.dropTables(n)
 		t.applyHcl(string(spec))
@@ -504,12 +504,12 @@ env "hello" {
 			})
 			require.NoError(t, err)
 
-			testCLISchemaInspectEnv(t, h, "hello", sqlite.UnmarshalHCL)
+			testCLISchemaInspectEnv(t, h, "hello", sqlite.EvalHCL)
 		})
 	})
 	t.Run("SchemaInspect", func(t *testing.T) {
 		liteRun(t, func(t *liteTest) {
-			testCLISchemaInspect(t, h, t.dsn(), sqlite.UnmarshalHCL)
+			testCLISchemaInspect(t, h, t.dsn(), sqlite.EvalHCL)
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
@@ -814,7 +814,7 @@ func (t *liteTest) dropSchemas(...string) {}
 func (t *liteTest) applyHcl(spec string) {
 	realm := t.loadRealm()
 	var desired schema.Schema
-	err := sqlite.UnmarshalHCL([]byte(spec), &desired)
+	err := sqlite.EvalHCLBytes([]byte(spec), &desired, nil)
 	require.NoError(t, err)
 	existing := realm.Schemas[0]
 	diff, err := t.drv.SchemaDiff(existing, &desired)

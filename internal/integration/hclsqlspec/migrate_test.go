@@ -7,8 +7,7 @@ package hclsqlspec
 import (
 	"testing"
 
-	"ariga.io/atlas/schema/schemaspec"
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/sqlspec"
 
@@ -31,7 +30,7 @@ modify_table {
 	var test struct {
 		Changes []sqlspec.Change `spec:""`
 	}
-	err := hcl.UnmarshalSpec([]byte(f), &test)
+	err := hcl.EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, &sqlspec.ModifyTable{
 		Table: "users",
@@ -40,7 +39,7 @@ modify_table {
 				Column: &sqlspec.Column{
 					Name: "id",
 					Null: false,
-					Type: &schemaspec.Type{T: "int"},
+					Type: &schemahcl.Type{T: "int"},
 				},
 			},
 		},

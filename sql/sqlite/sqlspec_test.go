@@ -10,7 +10,6 @@ import (
 
 	"ariga.io/atlas/sql/internal/spectest"
 	"ariga.io/atlas/sql/schema"
-
 	"github.com/stretchr/testify/require"
 )
 
@@ -175,7 +174,7 @@ table "accounts" {
 	}
 
 	var s schema.Schema
-	err := UnmarshalHCL([]byte(f), &s)
+	err := EvalHCLBytes([]byte(f), &s, nil)
 	require.NoError(t, err)
 	require.EqualValues(t, exp, &s)
 }
@@ -407,14 +406,14 @@ func TestTypes(t *testing.T) {
 schema "test" {
 }
 `, tt.typeExpr)
-			err := UnmarshalHCL([]byte(doc), &test)
+			err := EvalHCLBytes([]byte(doc), &test, nil)
 			require.NoError(t, err)
 			colspec := test.Tables[0].Columns[0]
 			require.EqualValues(t, tt.expected, colspec.Type.Type)
 			spec, err := MarshalSpec(&test, hclState)
 			require.NoError(t, err)
 			var after schema.Schema
-			err = UnmarshalHCL(spec, &after)
+			err = EvalHCLBytes(spec, &after, nil)
 			require.NoError(t, err)
 			require.EqualValues(t, tt.expected, after.Tables[0].Columns[0].Type.Type)
 		})

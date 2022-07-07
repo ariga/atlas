@@ -9,12 +9,9 @@ title: Data Definition Language
 In the core of the Atlas project resides the Atlas Data Definition Language (DDL). The DDL is designed to capture an
 organization's data topologies and other aspects of its data infrastructure.
 
-In the design of the DDL, we took two important considerations:
-
-* Extensible - As data topologies can contain a set of diverse data technologies, the language is designed to be modular
-  with different extensions extending the types of resources and relationships that can be described using it.
-* Decoupled from Syntax - The initial syntax for the language is based on HCL (v2). Additional 
-syntaxes are (such as YAML, TypeScript or Go) in the future.
+In the design of the DDL, we put an emphasis on extensibility: As data topologies can contain a set of diverse 
+data technologies, the language is designed to be modular with different extensions extending the types of 
+resources and relationships that can be described using it.
 
 ## HCL
 
@@ -28,7 +25,7 @@ and optionally a name. Consider this block:
 
 ```hcl
 user "rotemtam" {
-   ...
+   // ...
 }
 ```
 
@@ -132,7 +129,7 @@ playlist "comedy" {
 
 ### Reading with Go
 
-To read an Atlas HCL document with Go use the `Unmarshal` ([doc](https://pkg.go.dev/ariga.io/atlas/schema/schemaspec/schemahcl#Unmarshal)) function
+To read an Atlas HCL document with Go use the `EvalBytes` ([doc](https://pkg.go.dev/ariga.io/atlas/schemahcl#EvalBytes)) function
 from the `schemahcl` package:
 
 ```go
@@ -160,7 +157,7 @@ show "seinfeld" {
   var test struct {
     Shows []*Show `spec:"show"`
   }
-  err := Unmarshal([]byte(f), &test)
+  err := EvalBytes([]byte(f), &test, nil)
   if err != nil {
     panic(err)
   }
@@ -170,16 +167,16 @@ show "seinfeld" {
 }
 ```
 
-Observe that similar to the standard-library's `json.Unmarshal` function, this function
-takes a byte-slice and an empty interface as arguments. The empty interface should be a
-pointer to a struct into which the `Unmarshal` function will read the values. The struct
-fields must be annotated with `spec` tags that define the mapping from HCL to the Go type.
-This mapping is discussed in the section about [Extensions](#extensions).
+This function takes a byte-slice, an empty interface as arguments and a map of strings as input. 
+The empty interface should be a  pointer to a struct into which the `EvalBytes` function will 
+read the values. The struct fields must be annotated with `spec` tags that define the mapping from HCL to the Go type.
+This mapping is discussed in the section about [Extensions](#extensions). The final map argument may contain 
+[Input Values](input.md) to be passed as parameters of the evaluation.  
 
 ### Writing with Go
 
 To encode a Go struct back into HCL, use the `schemahcl.Marshal`
-([doc](https://pkg.go.dev/ariga.io/atlas/schema/schemaspec/schemahcl#Marshal)) function:
+([doc](https://pkg.go.dev/ariga.io/atlas/schemahcl#Marshal)) function:
 
 ```go
 func ExampleMarshal() {
@@ -240,16 +237,16 @@ point "origin" {
 }
 ```
 
-To operate correctly, struct extensions should be registered using the `schemaspec.Register`
+To operate correctly, struct extensions should be registered using the `schemahcl.Register`
 function:
 
 ```go
-schemaspec.Register("point", &Point{})
+schemahcl.Register("point", &Point{})
 ```
 
-Extension structs may implement the [Remainer](https://pkg.go.dev/ariga.io/atlas/schema/schemaspec#Remainer)
+Extension structs may implement the [Remainer](https://pkg.go.dev/ariga.io/atlas/schemahcl#Remainer)
 interface if they wish to store any attributes and children that are not matched by their
-tagged fields. As a convenience the `schemaspec` package exports a `DefaultExtension` type that
+tagged fields. As a convenience the `schemahcl` package exports a `DefaultExtension` type that
 can be embedded to support this behavior.
 
 ### Qualifiers

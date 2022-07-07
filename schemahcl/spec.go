@@ -2,7 +2,7 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package schemaspec
+package schemahcl
 
 import (
 	"fmt"
@@ -56,26 +56,6 @@ type (
 	Ref struct {
 		V string
 	}
-
-	// Marshaler is the interface implemented by types that can marshal objects into a
-	// valid Atlas DDL representation.
-	Marshaler interface {
-		MarshalSpec(interface{}) ([]byte, error)
-	}
-
-	// Unmarshaler is the interface implemented by types that can unmarshal an Atlas DDL
-	// representation into an object.
-	Unmarshaler interface {
-		UnmarshalSpec([]byte, interface{}) error
-	}
-
-	// MarshalerFunc is the function type that is implemented by the MarshalSpec
-	// method of the Marshaler interface.
-	MarshalerFunc func(interface{}) ([]byte, error)
-
-	// UnmarshalerFunc is the function type that is implemented by the UnmarshalSpec
-	// method of the Unmarshaler interface.
-	UnmarshalerFunc func([]byte, interface{}) error
 
 	// TypeSpec represents a specification for defining a Type.
 	TypeSpec struct {
@@ -189,7 +169,7 @@ func (a *Attr) Strings() ([]string, error) {
 	for _, item := range lst.V {
 		sv, err := StrVal(item)
 		if err != nil {
-			return nil, fmt.Errorf("schemaspec: failed parsing item %q to string: %w", item, err)
+			return nil, fmt.Errorf("schemahcl: failed parsing item %q to string: %w", item, err)
 		}
 		out = append(out, sv)
 	}
@@ -201,7 +181,7 @@ func (a *Attr) Strings() ([]string, error) {
 func (a *Attr) Bools() ([]bool, error) {
 	lst, ok := a.V.(*ListValue)
 	if !ok {
-		return nil, fmt.Errorf("schemaspec: attribute %q is not a list", a.K)
+		return nil, fmt.Errorf("schemahcl: attribute %q is not a list", a.K)
 	}
 	out := make([]bool, 0, len(lst.V))
 	for _, item := range lst.V {
@@ -243,11 +223,6 @@ func (f MarshalerFunc) MarshalSpec(v interface{}) ([]byte, error) {
 	return f(v)
 }
 
-// UnmarshalSpec implements Unmarshaler.
-func (f UnmarshalerFunc) UnmarshalSpec(data []byte, v interface{}) error {
-	return f(data, v)
-}
-
 func attrVal(attrs []*Attr, name string) (*Attr, bool) {
 	for _, attr := range attrs {
 		if attr.K == name {
@@ -273,7 +248,7 @@ func replaceOrAppendAttr(attrs []*Attr, attr *Attr) []*Attr {
 func StrVal(v Value) (string, error) {
 	lit, ok := v.(*LiteralValue)
 	if !ok {
-		return "", fmt.Errorf("schemaspec: expected %T to be LiteralValue", v)
+		return "", fmt.Errorf("schemahcl: expected %T to be LiteralValue", v)
 	}
 	return strconv.Unquote(lit.V)
 }
@@ -284,11 +259,11 @@ func StrVal(v Value) (string, error) {
 func BoolVal(v Value) (bool, error) {
 	lit, ok := v.(*LiteralValue)
 	if !ok {
-		return false, fmt.Errorf("schemaspec: expected %T to be LiteralValue", v)
+		return false, fmt.Errorf("schemahcl: expected %T to be LiteralValue", v)
 	}
 	b, err := strconv.ParseBool(lit.V)
 	if err != nil {
-		return false, fmt.Errorf("schemaspec: failed parsing %q as bool: %w", lit.V, err)
+		return false, fmt.Errorf("schemahcl: failed parsing %q as bool: %w", lit.V, err)
 	}
 	return b, nil
 }
@@ -310,6 +285,31 @@ func (*Ref) val()          {}
 func (*Type) val()         {}
 
 var (
-	_ Unmarshaler = UnmarshalerFunc(nil)
-	_ Marshaler   = MarshalerFunc(nil)
+	_ Marshaler = MarshalerFunc(nil)
 )
+
+// LitAttr is a helper method for constructing *schemahcl.Attr instances that contain literal values.
+func LitAttr(k, v string) *Attr {
+	return &Attr{
+		K: k,
+		V: &LiteralValue{V: v},
+	}
+}
+
+// StrLitAttr is a helper method for constructing *schemahcl.Attr instances that contain literal values
+// representing string literals.
+func StrLitAttr(k, v string) *Attr {
+	return LitAttr(k, strconv.Quote(v))
+}
+
+// ListAttr is a helper method for constructing *schemahcl.Attr instances that contain list values.
+func ListAttr(k string, litValues ...string) *Attr {
+	lv := &ListValue{}
+	for _, v := range litValues {
+		lv.V = append(lv.V, &LiteralValue{V: v})
+	}
+	return &Attr{
+		K: k,
+		V: lv,
+	}
+}

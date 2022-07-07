@@ -12,8 +12,6 @@ import (
 	"strconv"
 	"strings"
 
-	"ariga.io/atlas/schema/schemaspec"
-	"ariga.io/atlas/schema/schemaspec/internal/schemautil"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/go-openapi/inflect"
@@ -21,7 +19,7 @@ import (
 
 // PrintType returns the string representation of a column type which can be parsed
 // by the driver into a schema.Type.
-func (r *TypeRegistry) PrintType(typ *schemaspec.Type) (string, error) {
+func (r *TypeRegistry) PrintType(typ *Type) (string, error) {
 	spec, ok := r.findT(typ.T)
 	if !ok {
 		return "", fmt.Errorf("specutil: type %q not found in registry", typ.T)
@@ -46,11 +44,11 @@ func (r *TypeRegistry) PrintType(typ *schemaspec.Type) (string, error) {
 			continue
 		}
 		switch v := arg.V.(type) {
-		case *schemaspec.LiteralValue:
+		case *LiteralValue:
 			args = append(args, v.V)
-		case *schemaspec.ListValue:
+		case *ListValue:
 			for _, li := range v.V {
-				lit, ok := li.(*schemaspec.LiteralValue)
+				lit, ok := li.(*LiteralValue)
 				if !ok {
 					return "", fmt.Errorf("expecting literal value. got: %T", li)
 				}
@@ -70,10 +68,10 @@ func (r *TypeRegistry) PrintType(typ *schemaspec.Type) (string, error) {
 	return typ.T + mid + suffix, nil
 }
 
-// TypeRegistry is a collection of *schemaspec.TypeSpec.
+// TypeRegistry is a collection of *schemahcl.TypeSpec.
 type TypeRegistry struct {
-	r      []*schemaspec.TypeSpec
-	spec   func(schema.Type) (*schemaspec.Type, error)
+	r      []*TypeSpec
+	spec   func(schema.Type) (*Type, error)
 	parser func(string) (schema.Type, error)
 }
 
@@ -81,20 +79,20 @@ type TypeRegistry struct {
 // schema.Type as string.
 func WithFormatter(f func(schema.Type) (string, error)) TypeRegistryOption {
 	return func(registry *TypeRegistry) error {
-		registry.spec = func(t schema.Type) (*schemaspec.Type, error) {
+		registry.spec = func(t schema.Type) (*Type, error) {
 			s, err := f(t)
 			if err != nil {
 				return nil, fmt.Errorf("specutil: cannot format type %T: %w", t, err)
 			}
-			return &schemaspec.Type{T: s}, nil
+			return &Type{T: s}, nil
 		}
 		return nil
 	}
 }
 
 // WithSpecFunc configures the registry to use the given function for converting
-// a schema.Type to schemaspec.Type
-func WithSpecFunc(spec func(schema.Type) (*schemaspec.Type, error)) TypeRegistryOption {
+// a schema.Type to schemahcl.Type
+func WithSpecFunc(spec func(schema.Type) (*Type, error)) TypeRegistryOption {
 	return func(registry *TypeRegistry) error {
 		registry.spec = spec
 		return nil
@@ -111,7 +109,7 @@ func WithParser(parser func(string) (schema.Type, error)) TypeRegistryOption {
 }
 
 // Register adds one or more TypeSpec to the registry.
-func (r *TypeRegistry) Register(specs ...*schemaspec.TypeSpec) error {
+func (r *TypeRegistry) Register(specs ...*TypeSpec) error {
 	for _, s := range specs {
 		if err := validSpec(s); err != nil {
 			return fmt.Errorf("specutil: invalid typespec %q: %w", s.Name, err)
@@ -127,7 +125,7 @@ func (r *TypeRegistry) Register(specs ...*schemaspec.TypeSpec) error {
 	return nil
 }
 
-func validSpec(typeSpec *schemaspec.TypeSpec) error {
+func validSpec(typeSpec *TypeSpec) error {
 	var seenOptional bool
 	for i, attr := range typeSpec.Attributes {
 		if attr.Kind == reflect.Slice && i < len(typeSpec.Attributes)-1 {
@@ -145,7 +143,7 @@ func validSpec(typeSpec *schemaspec.TypeSpec) error {
 type TypeRegistryOption func(*TypeRegistry) error
 
 // WithSpecs configures the registry to register the given list of type specs.
-func WithSpecs(specs ...*schemaspec.TypeSpec) TypeRegistryOption {
+func WithSpecs(specs ...*TypeSpec) TypeRegistryOption {
 	return func(registry *TypeRegistry) error {
 		if err := registry.Register(specs...); err != nil {
 			return fmt.Errorf("failed registering types: %s", err)
@@ -167,7 +165,7 @@ func NewRegistry(opts ...TypeRegistryOption) *TypeRegistry {
 }
 
 // findName searches the registry for types that have the provided name.
-func (r *TypeRegistry) findName(name string) (*schemaspec.TypeSpec, bool) {
+func (r *TypeRegistry) findName(name string) (*TypeSpec, bool) {
 	for _, current := range r.r {
 		if current.Name == name {
 			return current, true
@@ -177,7 +175,7 @@ func (r *TypeRegistry) findName(name string) (*schemaspec.TypeSpec, bool) {
 }
 
 // findT searches the registry for types that have the provided T.
-func (r *TypeRegistry) findT(t string) (*schemaspec.TypeSpec, bool) {
+func (r *TypeRegistry) findT(t string) (*TypeSpec, bool) {
 	for _, current := range r.r {
 		if current.T == t {
 			return current, true
@@ -186,10 +184,10 @@ func (r *TypeRegistry) findT(t string) (*schemaspec.TypeSpec, bool) {
 	return nil, false
 }
 
-// Convert converts the schema.Type to a *schemaspec.Type.
-func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
+// Convert converts the schema.Type to a *schemahcl.Type.
+func (r *TypeRegistry) Convert(typ schema.Type) (*Type, error) {
 	if ut, ok := typ.(*schema.UnsupportedType); ok {
-		return &schemaspec.Type{
+		return &Type{
 			T: ut.T,
 		}, nil
 	}
@@ -207,7 +205,7 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 	if typeSpec.ToSpec != nil {
 		return typeSpec.ToSpec(typ)
 	}
-	s := &schemaspec.Type{T: typeSpec.T}
+	s := &Type{T: typeSpec.T}
 	// Iterate the attributes in reverse order, so we can skip zero value and optional attrs.
 	for i := len(typeSpec.Attributes) - 1; i >= 0; i-- {
 		attr := typeSpec.Attributes[i]
@@ -227,14 +225,14 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 				break
 			}
 			i := strconv.Itoa(v)
-			s.Attrs = append([]*schemaspec.Attr{schemautil.LitAttr(attr.Name, i)}, s.Attrs...)
+			s.Attrs = append([]*Attr{LitAttr(attr.Name, i)}, s.Attrs...)
 		case reflect.Bool:
 			v := field.Bool()
 			if !v && len(s.Attrs) == 0 {
 				break
 			}
 			b := strconv.FormatBool(v)
-			s.Attrs = append([]*schemaspec.Attr{schemautil.LitAttr(attr.Name, b)}, s.Attrs...)
+			s.Attrs = append([]*Attr{LitAttr(attr.Name, b)}, s.Attrs...)
 		case reflect.Slice:
 			lits := make([]string, 0, field.Len())
 			for i := 0; i < field.Len(); i++ {
@@ -244,7 +242,7 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 				}
 				lits = append(lits, strconv.Quote(fi.String()))
 			}
-			s.Attrs = append([]*schemaspec.Attr{schemautil.ListAttr(attr.Name, lits...)}, s.Attrs...)
+			s.Attrs = append([]*Attr{ListAttr(attr.Name, lits...)}, s.Attrs...)
 		default:
 			return nil, fmt.Errorf("specutil: unsupported attr kind %s for attribute %q of %q", attr.Kind, attr.Name, typeSpec.Name)
 		}
@@ -252,7 +250,7 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*schemaspec.Type, error) {
 	return s, nil
 }
 
-func (r *TypeRegistry) findType(rv reflect.Value) (*schemaspec.TypeSpec, bool) {
+func (r *TypeRegistry) findType(rv reflect.Value) (*TypeSpec, bool) {
 	tf := rv.FieldByName("T")
 	if tf.IsValid() && tf.Kind() == reflect.String {
 		name := tf.String()
@@ -266,7 +264,7 @@ func (r *TypeRegistry) findType(rv reflect.Value) (*schemaspec.TypeSpec, bool) {
 	return nil, false
 }
 
-func (r *TypeRegistry) findRType(rt reflect.Type) (*schemaspec.TypeSpec, bool) {
+func (r *TypeRegistry) findRType(rt reflect.Type) (*TypeSpec, bool) {
 	for _, ts := range r.Specs() {
 		if ts.RType != nil && ts.RType == rt {
 			return ts, true
@@ -276,19 +274,19 @@ func (r *TypeRegistry) findRType(rt reflect.Type) (*schemaspec.TypeSpec, bool) {
 }
 
 // Specs returns the TypeSpecs in the registry.
-func (r *TypeRegistry) Specs() []*schemaspec.TypeSpec {
+func (r *TypeRegistry) Specs() []*TypeSpec {
 	return r.r
 }
 
-// Type converts a *schemaspec.Type into a schema.Type.
-func (r *TypeRegistry) Type(typ *schemaspec.Type, extra []*schemaspec.Attr) (schema.Type, error) {
+// Type converts a *schemahcl.Type into a schema.Type.
+func (r *TypeRegistry) Type(typ *Type, extra []*Attr) (schema.Type, error) {
 	typeSpec, ok := r.findT(typ.T)
 	if !ok {
 		return r.parser(typ.T)
 	}
 	nfa := typeNonFuncArgs(typeSpec)
 	picked := pickTypeAttrs(extra, nfa)
-	cp := &schemaspec.Type{
+	cp := &Type{
 		T: typ.T,
 	}
 	cp.Attrs = appendIfNotExist(typ.Attrs, picked)
@@ -302,45 +300,45 @@ func (r *TypeRegistry) Type(typ *schemaspec.Type, extra []*schemaspec.Attr) (sch
 	return r.parser(printType)
 }
 
-// TypeSpecOption configures a schemaspec.TypeSpec.
-type TypeSpecOption func(*schemaspec.TypeSpec)
+// TypeSpecOption configures a schemahcl.TypeSpec.
+type TypeSpecOption func(*TypeSpec)
 
 // WithAttributes returns an attributes TypeSpecOption.
-func WithAttributes(attrs ...*schemaspec.TypeAttr) TypeSpecOption {
-	return func(spec *schemaspec.TypeSpec) {
+func WithAttributes(attrs ...*TypeAttr) TypeSpecOption {
+	return func(spec *TypeSpec) {
 		spec.Attributes = attrs
 	}
 }
 
 // WithTypeFormatter allows overriding the Format function for the Type.
-func WithTypeFormatter(f func(*schemaspec.Type) (string, error)) TypeSpecOption {
-	return func(spec *schemaspec.TypeSpec) {
+func WithTypeFormatter(f func(*Type) (string, error)) TypeSpecOption {
+	return func(spec *TypeSpec) {
 		spec.Format = f
 	}
 }
 
 // WithFromSpec allows configuring the FromSpec convert function using functional options.
-func WithFromSpec(f func(*schemaspec.Type) (schema.Type, error)) TypeSpecOption {
-	return func(spec *schemaspec.TypeSpec) {
+func WithFromSpec(f func(*Type) (schema.Type, error)) TypeSpecOption {
+	return func(spec *TypeSpec) {
 		spec.FromSpec = f
 	}
 }
 
 // WithToSpec allows configuring the ToSpec convert function using functional options.
-func WithToSpec(f func(schema.Type) (*schemaspec.Type, error)) TypeSpecOption {
-	return func(spec *schemaspec.TypeSpec) {
+func WithToSpec(f func(schema.Type) (*Type, error)) TypeSpecOption {
+	return func(spec *TypeSpec) {
 		spec.ToSpec = f
 	}
 }
 
-// TypeSpec returns a TypeSpec with the provided name.
-func TypeSpec(name string, opts ...TypeSpecOption) *schemaspec.TypeSpec {
+// NewTypeSpec returns a TypeSpec with the provided name.
+func NewTypeSpec(name string, opts ...TypeSpecOption) *TypeSpec {
 	return AliasTypeSpec(name, name, opts...)
 }
 
 // AliasTypeSpec returns a TypeSpec with the provided name.
-func AliasTypeSpec(name, dbType string, opts ...TypeSpecOption) *schemaspec.TypeSpec {
-	ts := &schemaspec.TypeSpec{
+func AliasTypeSpec(name, dbType string, opts ...TypeSpecOption) *TypeSpec {
+	ts := &TypeSpec{
 		Name: name,
 		T:    dbType,
 	}
@@ -351,8 +349,8 @@ func AliasTypeSpec(name, dbType string, opts ...TypeSpecOption) *schemaspec.Type
 }
 
 // SizeTypeAttr returns a TypeAttr for a size attribute.
-func SizeTypeAttr(required bool) *schemaspec.TypeAttr {
-	return &schemaspec.TypeAttr{
+func SizeTypeAttr(required bool) *TypeAttr {
+	return &TypeAttr{
 		Name:     "size",
 		Kind:     reflect.Int,
 		Required: required,
@@ -361,8 +359,8 @@ func SizeTypeAttr(required bool) *schemaspec.TypeAttr {
 
 // typeNonFuncArgs returns the type attributes that are NOT configured via arguments to the
 // type definition, `int unsigned`.
-func typeNonFuncArgs(spec *schemaspec.TypeSpec) []*schemaspec.TypeAttr {
-	var args []*schemaspec.TypeAttr
+func typeNonFuncArgs(spec *TypeSpec) []*TypeAttr {
+	var args []*TypeAttr
 	for _, attr := range spec.Attributes {
 		// TODO(rotemtam): this should be defined on the TypeSpec.
 		if attr.Name == "unsigned" {
@@ -373,12 +371,12 @@ func typeNonFuncArgs(spec *schemaspec.TypeSpec) []*schemaspec.TypeAttr {
 }
 
 // pickTypeAttrs returns the relevant Attrs matching the wanted TypeAttrs.
-func pickTypeAttrs(src []*schemaspec.Attr, wanted []*schemaspec.TypeAttr) []*schemaspec.Attr {
+func pickTypeAttrs(src []*Attr, wanted []*TypeAttr) []*Attr {
 	keys := make(map[string]struct{})
 	for _, w := range wanted {
 		keys[w.Name] = struct{}{}
 	}
-	var picked []*schemaspec.Attr
+	var picked []*Attr
 	for _, attr := range src {
 		if _, ok := keys[attr.K]; ok {
 			picked = append(picked, attr)
@@ -387,7 +385,7 @@ func pickTypeAttrs(src []*schemaspec.Attr, wanted []*schemaspec.TypeAttr) []*sch
 	return picked
 }
 
-func appendIfNotExist(base []*schemaspec.Attr, additional []*schemaspec.Attr) []*schemaspec.Attr {
+func appendIfNotExist(base []*Attr, additional []*Attr) []*Attr {
 	exists := make(map[string]struct{})
 	for _, attr := range base {
 		exists[attr.K] = struct{}{}

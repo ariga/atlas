@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"sync"
 
-	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
 )
@@ -23,7 +23,7 @@ type (
 		UniqueIndex *bool `spec:"drop_schema,omitempty"`
 
 		// Allow drivers to extend the configuration.
-		schemaspec.DefaultExtension
+		schemahcl.DefaultExtension
 	}
 
 	// Analyzer checks data-dependent changes.

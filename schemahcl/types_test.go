@@ -8,54 +8,52 @@ import (
 	"reflect"
 	"testing"
 
-	"ariga.io/atlas/schema/schemaspec"
-	"ariga.io/atlas/schema/schemaspec/internal/schemautil"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestTypePrint(t *testing.T) {
-	intSpec := &schemaspec.TypeSpec{
+	intSpec := &TypeSpec{
 		Name: "int",
 		T:    "int",
-		Attributes: []*schemaspec.TypeAttr{
+		Attributes: []*TypeAttr{
 			unsignedTypeAttr(),
 		},
 	}
 	for _, tt := range []struct {
-		spec     *schemaspec.TypeSpec
-		typ      *schemaspec.Type
+		spec     *TypeSpec
+		typ      *Type
 		expected string
 	}{
 		{
 			spec:     intSpec,
-			typ:      &schemaspec.Type{T: "int"},
+			typ:      &Type{T: "int"},
 			expected: "int",
 		},
 		{
 			spec:     intSpec,
-			typ:      &schemaspec.Type{T: "int", Attrs: []*schemaspec.Attr{schemautil.LitAttr("unsigned", "true")}},
+			typ:      &Type{T: "int", Attrs: []*Attr{LitAttr("unsigned", "true")}},
 			expected: "int unsigned",
 		},
 		{
-			spec: &schemaspec.TypeSpec{
+			spec: &TypeSpec{
 				Name:       "float",
 				T:          "float",
-				Attributes: []*schemaspec.TypeAttr{unsignedTypeAttr()},
+				Attributes: []*TypeAttr{unsignedTypeAttr()},
 			},
-			typ:      &schemaspec.Type{T: "float", Attrs: []*schemaspec.Attr{schemautil.LitAttr("unsigned", "true")}},
+			typ:      &Type{T: "float", Attrs: []*Attr{LitAttr("unsigned", "true")}},
 			expected: "float unsigned",
 		},
 		{
-			spec: &schemaspec.TypeSpec{
+			spec: &TypeSpec{
 				T:    "varchar",
 				Name: "varchar",
-				Attributes: []*schemaspec.TypeAttr{
+				Attributes: []*TypeAttr{
 					{Name: "size", Kind: reflect.Int, Required: true},
 				},
 			},
-			typ:      &schemaspec.Type{T: "varchar", Attrs: []*schemaspec.Attr{schemautil.LitAttr("size", "255")}},
+			typ:      &Type{T: "varchar", Attrs: []*Attr{LitAttr("size", "255")}},
 			expected: "varchar(255)",
 		},
 	} {
@@ -72,7 +70,7 @@ func TestTypePrint(t *testing.T) {
 
 func TestRegistry(t *testing.T) {
 	r := &TypeRegistry{}
-	text := &schemaspec.TypeSpec{Name: "text", T: "text"}
+	text := &TypeSpec{Name: "text", T: "text"}
 	err := r.Register(text)
 	require.NoError(t, err)
 	err = r.Register(text)
@@ -84,54 +82,54 @@ func TestRegistry(t *testing.T) {
 
 func TestValidSpec(t *testing.T) {
 	registry := &TypeRegistry{}
-	err := registry.Register(&schemaspec.TypeSpec{
+	err := registry.Register(&TypeSpec{
 		Name: "X",
 		T:    "X",
-		Attributes: []*schemaspec.TypeAttr{
+		Attributes: []*TypeAttr{
 			{Name: "a", Required: false, Kind: reflect.Slice},
 			{Name: "b", Required: true},
 		},
 	})
 	require.EqualError(t, err, `specutil: invalid typespec "X": attr "a" is of kind slice but not last`)
-	err = registry.Register(&schemaspec.TypeSpec{
+	err = registry.Register(&TypeSpec{
 		Name: "Z",
 		T:    "Z",
-		Attributes: []*schemaspec.TypeAttr{
+		Attributes: []*TypeAttr{
 			{Name: "b", Required: true},
 			{Name: "a", Required: false, Kind: reflect.Slice},
 		},
 	})
 	require.NoError(t, err)
-	err = registry.Register(&schemaspec.TypeSpec{
+	err = registry.Register(&TypeSpec{
 		Name: "Z2",
 		T:    "Z2",
-		Attributes: []*schemaspec.TypeAttr{
+		Attributes: []*TypeAttr{
 			{Name: "a", Required: false, Kind: reflect.Slice},
 		},
 	})
 	require.NoError(t, err)
-	err = registry.Register(&schemaspec.TypeSpec{
+	err = registry.Register(&TypeSpec{
 		Name: "X",
 		T:    "X",
-		Attributes: []*schemaspec.TypeAttr{
+		Attributes: []*TypeAttr{
 			{Name: "a", Required: false},
 			{Name: "b", Required: true},
 		},
 	})
 	require.EqualError(t, err, `specutil: invalid typespec "X": attr "b" required after optional attr`)
-	err = registry.Register(&schemaspec.TypeSpec{
+	err = registry.Register(&TypeSpec{
 		Name: "X",
 		T:    "X",
-		Attributes: []*schemaspec.TypeAttr{
+		Attributes: []*TypeAttr{
 			{Name: "a", Required: true},
 			{Name: "b", Required: false},
 		},
 	})
 	require.NoError(t, err)
-	err = registry.Register(&schemaspec.TypeSpec{
+	err = registry.Register(&TypeSpec{
 		Name: "Y",
 		T:    "Y",
-		Attributes: []*schemaspec.TypeAttr{
+		Attributes: []*TypeAttr{
 			{Name: "a", Required: false},
 			{Name: "b", Required: false},
 		},
@@ -142,24 +140,24 @@ func TestValidSpec(t *testing.T) {
 func TestRegistryConvert(t *testing.T) {
 	r := &TypeRegistry{}
 	err := r.Register(
-		TypeSpec("varchar", WithAttributes(SizeTypeAttr(true))),
-		TypeSpec("int", WithAttributes(unsignedTypeAttr())),
-		TypeSpec(
+		NewTypeSpec("varchar", WithAttributes(SizeTypeAttr(true))),
+		NewTypeSpec("int", WithAttributes(unsignedTypeAttr())),
+		NewTypeSpec(
 			"decimal",
 			WithAttributes(
-				&schemaspec.TypeAttr{
+				&TypeAttr{
 					Name:     "precision",
 					Kind:     reflect.Int,
 					Required: false,
 				},
-				&schemaspec.TypeAttr{
+				&TypeAttr{
 					Name:     "scale",
 					Kind:     reflect.Int,
 					Required: false,
 				},
 			),
 		),
-		TypeSpec("enum", WithAttributes(&schemaspec.TypeAttr{
+		NewTypeSpec("enum", WithAttributes(&TypeAttr{
 			Name:     "values",
 			Kind:     reflect.Slice,
 			Required: true,
@@ -168,54 +166,54 @@ func TestRegistryConvert(t *testing.T) {
 	require.NoError(t, err)
 	for _, tt := range []struct {
 		typ         schema.Type
-		expected    *schemaspec.Type
+		expected    *Type
 		expectedErr string
 	}{
 		{
 			typ:      &schema.StringType{T: "varchar", Size: 255},
-			expected: &schemaspec.Type{T: "varchar", Attrs: []*schemaspec.Attr{schemautil.LitAttr("size", "255")}},
+			expected: &Type{T: "varchar", Attrs: []*Attr{LitAttr("size", "255")}},
 		},
 		{
 			typ:      &schema.IntegerType{T: "int", Unsigned: true},
-			expected: &schemaspec.Type{T: "int", Attrs: []*schemaspec.Attr{schemautil.LitAttr("unsigned", "true")}},
+			expected: &Type{T: "int", Attrs: []*Attr{LitAttr("unsigned", "true")}},
 		},
 		{
 			typ:      &schema.IntegerType{T: "int", Unsigned: true},
-			expected: &schemaspec.Type{T: "int", Attrs: []*schemaspec.Attr{schemautil.LitAttr("unsigned", "true")}},
+			expected: &Type{T: "int", Attrs: []*Attr{LitAttr("unsigned", "true")}},
 		},
 		{
 			typ: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2}, // decimal(10,2)
-			expected: &schemaspec.Type{T: "decimal", Attrs: []*schemaspec.Attr{
-				schemautil.LitAttr("precision", "10"),
-				schemautil.LitAttr("scale", "2"),
+			expected: &Type{T: "decimal", Attrs: []*Attr{
+				LitAttr("precision", "10"),
+				LitAttr("scale", "2"),
 			}},
 		},
 		{
 			typ: &schema.DecimalType{T: "decimal", Precision: 10}, // decimal(10)
-			expected: &schemaspec.Type{T: "decimal", Attrs: []*schemaspec.Attr{
-				schemautil.LitAttr("precision", "10"),
+			expected: &Type{T: "decimal", Attrs: []*Attr{
+				LitAttr("precision", "10"),
 			}},
 		},
 		{
 			typ: &schema.DecimalType{T: "decimal", Scale: 2}, // decimal(0,2)
-			expected: &schemaspec.Type{T: "decimal", Attrs: []*schemaspec.Attr{
-				schemautil.LitAttr("precision", "0"),
-				schemautil.LitAttr("scale", "2"),
+			expected: &Type{T: "decimal", Attrs: []*Attr{
+				LitAttr("precision", "0"),
+				LitAttr("scale", "2"),
 			}},
 		},
 		{
 			typ:      &schema.DecimalType{T: "decimal"}, // decimal
-			expected: &schemaspec.Type{T: "decimal"},
+			expected: &Type{T: "decimal"},
 		},
 		{
 			typ: &schema.EnumType{T: "enum", Values: []string{"on", "off"}},
-			expected: &schemaspec.Type{T: "enum", Attrs: []*schemaspec.Attr{
-				schemautil.ListAttr("values", `"on"`, `"off"`),
+			expected: &Type{T: "enum", Attrs: []*Attr{
+				ListAttr("values", `"on"`, `"off"`),
 			}},
 		},
 		{
 			typ:         nil,
-			expected:    &schemaspec.Type{},
+			expected:    &Type{},
 			expectedErr: "specutil: invalid schema.Type on Convert",
 		},
 	} {
@@ -231,8 +229,8 @@ func TestRegistryConvert(t *testing.T) {
 	}
 }
 
-func unsignedTypeAttr() *schemaspec.TypeAttr {
-	return &schemaspec.TypeAttr{
+func unsignedTypeAttr() *TypeAttr {
+	return &TypeAttr{
 		Name: "unsigned",
 		Kind: reflect.Bool,
 	}

@@ -21,12 +21,13 @@ import (
 	"text/template"
 	"time"
 
-	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	entsql "entgo.io/ent/dialect/sql"
 	entschema "entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/entc/integration/ent"
+	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/stretchr/testify/require"
 )
 
@@ -177,12 +178,12 @@ func testHCLIntegration(t T, full string, empty string) {
 	require.Empty(t, t.realm().Schemas[0].Tables)
 }
 
-func testCLISchemaInspect(t T, h string, dsn string, unmarshaler schemaspec.Unmarshaler, args ...string) {
+func testCLISchemaInspect(t T, h string, dsn string, eval schemahcl.Evaluator, args ...string) {
 	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
 	var expected schema.Schema
-	err = unmarshaler.UnmarshalSpec([]byte(h), &expected)
+	err = evalBytes([]byte(h), &expected, eval)
 	require.NoError(t, err)
 	t.applyHcl(h)
 	runArgs := []string{
@@ -199,18 +200,18 @@ func testCLISchemaInspect(t T, h string, dsn string, unmarshaler schemaspec.Unma
 	cmd.Stdout = stdout
 	require.NoError(t, cmd.Run(), stderr.String())
 	var actual schema.Schema
-	err = unmarshaler.UnmarshalSpec(stdout.Bytes(), &actual)
+	err = evalBytes(stdout.Bytes(), &actual, eval)
 	require.NoError(t, err)
 	require.Empty(t, stderr.String())
 	require.Equal(t, expected, actual)
 }
 
-func testCLISchemaInspectEnv(t T, h string, env string, unmarshaler schemaspec.Unmarshaler) {
+func testCLISchemaInspectEnv(t T, h string, env string, eval schemahcl.Evaluator) {
 	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
 	var expected schema.Schema
-	err = unmarshaler.UnmarshalSpec([]byte(h), &expected)
+	err = evalBytes([]byte(h), &expected, eval)
 	require.NoError(t, err)
 	t.applyHcl(h)
 	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
@@ -224,7 +225,7 @@ func testCLISchemaInspectEnv(t T, h string, env string, unmarshaler schemaspec.U
 	cmd.Stdout = stdout
 	require.NoError(t, cmd.Run(), stderr.String())
 	var actual schema.Schema
-	err = unmarshaler.UnmarshalSpec(stdout.Bytes(), &actual)
+	err = evalBytes(stdout.Bytes(), &actual, eval)
 	require.NoError(t, err)
 	require.Empty(t, stderr.String())
 	require.Equal(t, expected, actual)
@@ -241,14 +242,14 @@ func initCLI() error {
 	return err
 }
 
-func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, unmarshaler schemaspec.Unmarshaler) {
+func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, eval schemahcl.Evaluator) {
 	err := initCLI()
 	f := filepath.Join(t.TempDir(), "atlas.hcl")
 	err = ioutil.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
 	require.NoError(t, err)
 	var expected schema.Realm
-	err = unmarshaler.UnmarshalSpec([]byte(h), &expected)
+	err = evalBytes([]byte(h), &expected, eval)
 	require.NoError(t, err)
 	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
 		"schema",
@@ -271,11 +272,11 @@ func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, unmars
 	require.Contains(t, stdout.String(), `-- Add new schema named "test2"`)
 }
 
-func testCLIMultiSchemaInspect(t T, h string, dsn string, schemas []string, unmarshaler schemaspec.Unmarshaler) {
+func testCLIMultiSchemaInspect(t T, h string, dsn string, schemas []string, eval schemahcl.Evaluator) {
 	err := initCLI()
 	require.NoError(t, err)
 	var expected schema.Realm
-	err = unmarshaler.UnmarshalSpec([]byte(h), &expected)
+	err = evalBytes([]byte(h), &expected, eval)
 	require.NoError(t, err)
 	t.applyRealmHcl(h)
 	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
@@ -291,7 +292,7 @@ func testCLIMultiSchemaInspect(t T, h string, dsn string, schemas []string, unma
 	cmd.Stdout = stdout
 	require.NoError(t, cmd.Run(), stderr.String())
 	var actual schema.Realm
-	err = unmarshaler.UnmarshalSpec(stdout.Bytes(), &actual)
+	err = evalBytes(stdout.Bytes(), &actual, eval)
 	require.NoError(t, err)
 	require.Empty(t, stderr.String())
 	require.Equal(t, expected, actual)
@@ -551,4 +552,12 @@ func buildCmd(t *testing.T) (string, error) {
 		return "", fmt.Errorf("%w: %s", err, b)
 	}
 	return filepath.Join(td, "atlas"), nil
+}
+
+func evalBytes(b []byte, v interface{}, ev schemahcl.Evaluator) error {
+	p := hclparse.NewParser()
+	if _, diag := p.ParseHCL(b, ""); diag.HasErrors() {
+		return diag
+	}
+	return ev.Eval(p, v, nil)
 }

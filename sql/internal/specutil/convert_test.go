@@ -7,7 +7,7 @@ package specutil
 import (
 	"testing"
 
-	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
 
@@ -65,14 +65,14 @@ func TestFromForeignKey(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, &sqlspec.ForeignKey{
 		Symbol: "fk",
-		Columns: []*schemaspec.Ref{
+		Columns: []*schemahcl.Ref{
 			{V: "$column.parent_id"},
 		},
-		RefColumns: []*schemaspec.Ref{
+		RefColumns: []*schemahcl.Ref{
 			{V: "$column.id"},
 		},
-		OnUpdate: &schemaspec.Ref{V: "NO_ACTION"},
-		OnDelete: &schemaspec.Ref{V: "CASCADE"},
+		OnUpdate: &schemahcl.Ref{V: "NO_ACTION"},
+		OnDelete: &schemahcl.Ref{V: "CASCADE"},
 	}, key)
 
 	fk.OnDelete = ""
@@ -81,10 +81,10 @@ func TestFromForeignKey(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, &sqlspec.ForeignKey{
 		Symbol: "fk",
-		Columns: []*schemaspec.Ref{
+		Columns: []*schemahcl.Ref{
 			{V: "$column.parent_id"},
 		},
-		RefColumns: []*schemaspec.Ref{
+		RefColumns: []*schemahcl.Ref{
 			{V: "$column.id"},
 		},
 	}, key)

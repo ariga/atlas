@@ -8,16 +8,15 @@ import (
 	"reflect"
 	"testing"
 
-	"ariga.io/atlas/schema/schemaspec"
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/schema"
-
+	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/stretchr/testify/require"
 )
 
-// RegistrySanityTest runs a sanity for a TypeRegistry, generated a dummy *schemaspec.Type
-// then converting it to a schema.Type and back to a *schemaspec.Type.
+// RegistrySanityTest runs a sanity for a TypeRegistry, generated a dummy *schemahcl.Type
+// then converting it to a schema.Type and back to a *schemahcl.Type.
 func RegistrySanityTest(t *testing.T, registry *schemahcl.TypeRegistry, skip []string) {
 	for _, ts := range registry.Specs() {
 		if contains(ts.Name, skip) {
@@ -62,7 +61,10 @@ table "users" {
 }
 `
 	var test schema.Realm
-	err := evaluator.Eval([]byte(h), &test, map[string]string{"tenant": "rotemtam"})
+	p := hclparse.NewParser()
+	_, diag := p.ParseHCL([]byte(h), "")
+	require.False(t, diag.HasErrors())
+	err := evaluator.Eval(p, &test, map[string]string{"tenant": "rotemtam"})
 	require.NoError(t, err)
 	require.EqualValues(t, "rotemtam", test.Schemas[0].Name)
 	require.Len(t, test.Schemas[0].Tables, 1)
@@ -77,10 +79,10 @@ func contains(s string, l []string) bool {
 	return false
 }
 
-func dummyType(t *testing.T, ts *schemaspec.TypeSpec) *schemaspec.Type {
-	spec := &schemaspec.Type{T: ts.T}
+func dummyType(t *testing.T, ts *schemahcl.TypeSpec) *schemahcl.Type {
+	spec := &schemahcl.Type{T: ts.T}
 	for _, attr := range ts.Attributes {
-		var a *schemaspec.Attr
+		var a *schemahcl.Attr
 		switch attr.Kind {
 		case reflect.Int, reflect.Int64:
 			a = specutil.LitAttr(attr.Name, "2")

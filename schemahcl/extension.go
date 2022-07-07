@@ -2,7 +2,7 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package schemaspec
+package schemahcl
 
 import (
 	"errors"
@@ -60,7 +60,7 @@ func (r registry) lookup(ext interface{}) (string, bool) {
 // implementers returns a slice of the names of the extensions that implement i.
 func (r registry) implementers(i reflect.Type) ([]string, error) {
 	if i.Kind() != reflect.Interface {
-		return nil, fmt.Errorf("schemaspec: expected interface got %s", i.Kind())
+		return nil, fmt.Errorf("schemahcl: expected interface got %s", i.Kind())
 	}
 	var names []string
 	for name, typ := range r {
@@ -78,10 +78,10 @@ func Register(name string, ext interface{}) {
 	extensionsMu.Lock()
 	defer extensionsMu.Unlock()
 	if ext == nil {
-		panic("schemaspec: Register extension is nil")
+		panic("schemahcl: Register extension is nil")
 	}
 	if _, dup := extensions[name]; dup {
-		panic("schemaspec: Register called twice for type " + name)
+		panic("schemahcl: Register called twice for type " + name)
 	}
 	extensions[name] = ext
 }
@@ -99,16 +99,16 @@ func (r *Resource) As(target interface{}) error {
 		switch {
 		case ft.isName() && !hasAttr(r, ft.tag):
 			if seenName {
-				return errors.New("schemaspec: extension must have only one isName field")
+				return errors.New("schemahcl: extension must have only one isName field")
 			}
 			seenName = true
 			if field.Kind() != reflect.String {
-				return errors.New("schemaspec: extension isName field must be of type string")
+				return errors.New("schemahcl: extension isName field must be of type string")
 			}
 			field.SetString(r.Name)
 		case ft.isQualifier():
 			if seenQualifier {
-				return errors.New("schemaspec: extension must have only one qualifier field")
+				return errors.New("schemahcl: extension must have only one qualifier field")
 			}
 			seenQualifier = true
 			field.SetString(r.Qualifier)
@@ -193,7 +193,7 @@ func (r *Resource) As(target interface{}) error {
 	for attrName := range existingAttrs {
 		attr, ok := r.Attr(attrName)
 		if !ok {
-			return fmt.Errorf("schemaspec: expected attr %q to exist", attrName)
+			return fmt.Errorf("schemahcl: expected attr %q to exist", attrName)
 		}
 		extras.SetAttr(attr)
 	}
@@ -231,10 +231,10 @@ func (r *Resource) FinalName() (string, error) {
 func validateStructPtr(target interface{}) error {
 	typeOf := reflect.TypeOf(target)
 	if typeOf.Kind() != reflect.Ptr {
-		return errors.New("schemaspec: expected target to be a pointer")
+		return errors.New("schemahcl: expected target to be a pointer")
 	}
 	if typeOf.Elem().Kind() != reflect.Struct {
-		return errors.New("schemaspec: expected target to be a pointer to a struct")
+		return errors.New("schemahcl: expected target to be a pointer to a struct")
 	}
 	return nil
 }
@@ -252,7 +252,7 @@ func existingElements(r *Resource) (attrs, children map[string]struct{}) {
 
 func setChildSlice(field reflect.Value, children []*Resource) error {
 	if field.Type().Kind() != reflect.Slice {
-		return fmt.Errorf("schemaspec: expected field to be of kind slice")
+		return fmt.Errorf("schemahcl: expected field to be of kind slice")
 	}
 	if len(children) == 0 {
 		return nil
@@ -278,29 +278,29 @@ func setField(field reflect.Value, attr *Attr) error {
 	case reflect.String:
 		s, err := attr.String()
 		if err != nil {
-			return fmt.Errorf("schemaspec: value of attr %q cannot be read as string: %w", attr.K, err)
+			return fmt.Errorf("schemahcl: value of attr %q cannot be read as string: %w", attr.K, err)
 		}
 		field.SetString(s)
 	case reflect.Int, reflect.Int64:
 		i, err := attr.Int()
 		if err != nil {
-			return fmt.Errorf("schemaspec: value of attr %q cannot be read as integer: %w", attr.K, err)
+			return fmt.Errorf("schemahcl: value of attr %q cannot be read as integer: %w", attr.K, err)
 		}
 		field.SetInt(int64(i))
 	case reflect.Bool:
 		b, err := attr.Bool()
 		if err != nil {
-			return fmt.Errorf("schemaspec: value of attr %q cannot be read as bool: %w", attr.K, err)
+			return fmt.Errorf("schemahcl: value of attr %q cannot be read as bool: %w", attr.K, err)
 		}
 		field.SetBool(b)
 	case reflect.Ptr:
 		if err := setPtr(field, attr.V); err != nil {
-			return fmt.Errorf("schemaspec: failed setting pointer field %q: %w", attr.K, err)
+			return fmt.Errorf("schemahcl: failed setting pointer field %q: %w", attr.K, err)
 		}
 	case reflect.Interface:
 		field.Set(reflect.ValueOf(attr.V))
 	default:
-		return fmt.Errorf("schemaspec: unsupported field kind %q", field.Kind())
+		return fmt.Errorf("schemahcl: unsupported field kind %q", field.Kind())
 	}
 	return nil
 }
@@ -364,7 +364,7 @@ func setPtr(field reflect.Value, val Value) error {
 func setSliceAttr(field reflect.Value, attr *Attr) error {
 	lst, ok := attr.V.(*ListValue)
 	if !ok {
-		return fmt.Errorf("schemaspec: field is of type slice but attr %q does not contain a ListValue", attr.K)
+		return fmt.Errorf("schemahcl: field is of type slice but attr %q does not contain a ListValue", attr.K)
 	}
 	typ := field.Type().Elem()
 
@@ -413,12 +413,12 @@ func (r *Resource) Scan(ext interface{}) error {
 		case ft.omitempty() && isEmpty(field):
 		case ft.isName():
 			if field.Kind() != reflect.String {
-				return errors.New("schemaspec: extension name field must be string")
+				return errors.New("schemahcl: extension name field must be string")
 			}
 			r.Name = field.String()
 		case ft.isQualifier():
 			if field.Kind() != reflect.String {
-				return errors.New("schemaspec: extension qualifer field must be string")
+				return errors.New("schemahcl: extension qualifer field must be string")
 			}
 			r.Qualifier = field.String()
 		case isResourceSlice(field.Type()):
@@ -481,7 +481,7 @@ func scanPtr(key string, r *Resource, field reflect.Value) error {
 	case *string:
 		attr.V = &LiteralValue{V: strconv.Quote(*e)}
 	default:
-		return fmt.Errorf("schemaspec: unsupported pointer to %s", e)
+		return fmt.Errorf("schemahcl: unsupported pointer to %s", e)
 	}
 	r.SetAttr(attr)
 	return nil
@@ -505,7 +505,7 @@ func scanAttr(key string, r *Resource, field reflect.Value) error {
 		i := field.Interface()
 		v, ok := i.(Value)
 		if !ok {
-			return fmt.Errorf("schemaspec: unsupported interface type %T for field %q", i, key)
+			return fmt.Errorf("schemahcl: unsupported interface type %T for field %q", i, key)
 		}
 		r.SetAttr(&Attr{
 			K: key,
@@ -513,7 +513,7 @@ func scanAttr(key string, r *Resource, field reflect.Value) error {
 		})
 		return nil
 	default:
-		return fmt.Errorf("schemaspec: unsupported field kind %q", field.Kind())
+		return fmt.Errorf("schemahcl: unsupported field kind %q", field.Kind())
 	}
 	r.SetAttr(&Attr{
 		K: key,
@@ -541,7 +541,7 @@ func scanSliceAttr(key string, r *Resource, field reflect.Value) error {
 		}
 	case reflect.Ptr:
 		if typ.Elem() != reflect.TypeOf(&Ref{}) {
-			return fmt.Errorf("schemaspec: currently on ref slice values supported, got %s", typ)
+			return fmt.Errorf("schemahcl: currently on ref slice values supported, got %s", typ)
 		}
 		for i := 0; i < field.Len(); i++ {
 			item := field.Index(i).Interface().(*Ref)

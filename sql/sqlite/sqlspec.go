@@ -5,25 +5,49 @@
 package sqlite
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
 
-	"ariga.io/atlas/schema/schemaspec"
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
+	"github.com/hashicorp/hcl/v2/hclparse"
 )
 
 // evalSpec evaluates an Atlas DDL document using an unmarshaler into v by using the input.
-func evalSpec(data []byte, v interface{}, input map[string]string) error {
-	return specutil.Unmarshal(data, hclState, v, input, convertTable)
+func evalSpec(p *hclparse.Parser, v interface{}, input map[string]string) error {
+	var d doc
+	if err := hclState.Eval(p, &d, input); err != nil {
+		return err
+	}
+	switch v := v.(type) {
+	case *schema.Realm:
+		err := specutil.Scan(v, d.Schemas, d.Tables, convertTable)
+		if err != nil {
+			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
+		}
+	case *schema.Schema:
+		if len(d.Schemas) != 1 {
+			return fmt.Errorf("specutil: expecting document to contain a single schema, got %d", len(d.Schemas))
+		}
+		var r schema.Realm
+		if err := specutil.Scan(&r, d.Schemas, d.Tables, convertTable); err != nil {
+			return err
+		}
+		r.Schemas[0].Realm = nil
+		*v = *r.Schemas[0]
+	default:
+		return fmt.Errorf("specutil: failed unmarshaling spec. %T is not supported", v)
+	}
+	return nil
 }
 
-// MarshalSpec marshals v into an Atlas DDL document using a schemaspec.Marshaler.
-func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) {
+// MarshalSpec marshals v into an Atlas DDL document using a schemahcl.Marshaler.
+func MarshalSpec(v interface{}, marshaler schemahcl.Marshaler) ([]byte, error) {
 	return specutil.Marshal(v, marshaler, schemaSpec)
 }
 
@@ -133,35 +157,35 @@ var TypeRegistry = schemahcl.NewRegistry(
 	schemahcl.WithFormatter(FormatType),
 	schemahcl.WithParser(ParseType),
 	schemahcl.WithSpecs(
-		schemahcl.TypeSpec(TypeReal, schemahcl.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		schemahcl.TypeSpec(TypeBlob, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec(TypeText, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec(TypeInteger, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec("int", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec("tinyint", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec("smallint", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec("mediumint", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec("bigint", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec(TypeReal, schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec(TypeBlob, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec(TypeText, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec(TypeInteger, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec("int", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec("tinyint", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec("smallint", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec("mediumint", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec("bigint", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
 		schemahcl.AliasTypeSpec("unsigned_big_int", "unsigned big int", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec("int2", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec("int8", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec("double", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec("int2", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec("int8", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec("double", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
 		schemahcl.AliasTypeSpec("double_precision", "double precision", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec("float", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec("character", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec("varchar", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec("float", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec("character", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec("varchar", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
 		schemahcl.AliasTypeSpec("varying_character", "varying character", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec("nchar", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec("nchar", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
 		schemahcl.AliasTypeSpec("native_character", "native character", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec("nvarchar", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec("clob", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec("numeric", schemahcl.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		schemahcl.TypeSpec("decimal", schemahcl.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		schemahcl.TypeSpec("boolean"),
-		schemahcl.TypeSpec("date"),
-		schemahcl.TypeSpec("datetime"),
-		schemahcl.TypeSpec("json"),
-		schemahcl.TypeSpec("uuid"),
+		schemahcl.NewTypeSpec("nvarchar", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec("clob", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec("numeric", schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec("decimal", schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec("boolean"),
+		schemahcl.NewTypeSpec("date"),
+		schemahcl.NewTypeSpec("datetime"),
+		schemahcl.NewTypeSpec("json"),
+		schemahcl.NewTypeSpec("uuid"),
 	),
 )
 
@@ -172,16 +196,16 @@ var (
 		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
 		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
 	)
-	// UnmarshalHCL unmarshals an Atlas HCL DDL document into v.
-	UnmarshalHCL = schemaspec.UnmarshalerFunc(func(data []byte, v interface{}) error {
-		return evalSpec(data, v, nil)
-	})
 	// MarshalHCL marshals v into an Atlas HCL DDL document.
-	MarshalHCL = schemaspec.MarshalerFunc(func(v interface{}) ([]byte, error) {
+	MarshalHCL = schemahcl.MarshalerFunc(func(v interface{}) ([]byte, error) {
 		return MarshalSpec(v, hclState)
 	})
 	// EvalHCL implements the schemahcl.Evaluator interface.
 	EvalHCL = schemahcl.EvalFunc(evalSpec)
+
+	// EvalHCLBytes is a helper that evaluates an HCL document from a byte slice instead
+	// of from an hclparse.Parser instance.
+	EvalHCLBytes = specutil.HCLBytesFunc(EvalHCL)
 )
 
 // storedOrVirtual returns a STORED or VIRTUAL
@@ -191,4 +215,9 @@ func storedOrVirtual(s string) string {
 		return virtual
 	}
 	return s
+}
+
+type doc struct {
+	Tables  []*sqlspec.Table  `spec:"table"`
+	Schemas []*sqlspec.Schema `spec:"schema"`
 }

@@ -5,7 +5,7 @@
 package sqlspec
 
 import (
-	"ariga.io/atlas/schema/schemaspec"
+	"ariga.io/atlas/schemahcl"
 )
 
 type (
@@ -30,6 +30,6 @@ type (
 )
 
 func init() {
-	schemaspec.Register("modify_table", &ModifyTable{})
-	schemaspec.Register("add_column", &AddColumn{})
+	schemahcl.Register("modify_table", &ModifyTable{})
+	schemahcl.Register("add_column", &AddColumn{})
 }
