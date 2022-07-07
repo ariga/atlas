@@ -27,7 +27,7 @@ var (
 )
 
 type (
-	// State is used to evaluate and marshal Atlas HCL documents, and stores a configuration for these operations.
+	// State is used to evaluate and marshal Atlas HCL documents and stores a configuration for these operations.
 	State struct {
 		config *Config
 	}
