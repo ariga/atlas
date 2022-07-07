@@ -446,9 +446,6 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 // attempting to apply the changes. This behavior is required to enabled "fixing" a broken state.
 func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 	r := &Revision{ExecutedAt: time.Now(), ExecutionState: stateOngoing}
-	if err := e.rrw.WriteRevision(ctx, r); err != nil {
-		return fmt.Errorf("sql/migrate: execute: storing revision: %w", err)
-	}
 	// Make sure to store the Revision information.
 	defer func(ctx context.Context, rrw RevisionReadWriter, r *Revision) {
 		if err2 := e.rrw.WriteRevision(ctx, r); err2 != nil {
@@ -456,32 +453,33 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 		}
 	}(ctx, e.rrw, r)
 	sc := e.dir.(Scanner)
-	v, err := sc.Version(m)
+	r.Version, err = sc.Version(m)
 	if err != nil {
 		return r.setGoErr(fmt.Errorf("sql/migrate: execute: scan version from %q: %w", m.Name(), err))
 	}
-	r.Version = v
-	d, err := sc.Desc(m)
+	r.Description, err = sc.Desc(m)
 	if err != nil {
 		return r.setGoErr(fmt.Errorf("sql/migrate: execute: scan description from %q: %w", m.Name(), err))
 
 	}
-	r.Description = d
 	if e.log != nil {
-		e.log.Log(LogFile{v, d})
+		e.log.Log(LogFile{r.Version, r.Description})
 	}
 	hf, err := HashSum(e.dir)
 	if err != nil {
 		return fmt.Errorf("sql/migrate: execute: create hash file: %w", err)
 	}
-	h, err := hf.sumByName(m.Name())
+	r.Hash, err = hf.sumByName(m.Name())
 	if err != nil {
 		return r.setGoErr(fmt.Errorf("sql/migrate: execute: scanning checksum for file %q: %w", m.Name(), err))
 	}
-	r.Hash = h
 	stmts, err := sc.Stmts(m)
 	if err != nil {
 		return r.setGoErr(fmt.Errorf("sql/migrate: execute: scanning statements from file %q: %w", m.Name(), err))
+	}
+	// Save once to mark as started in the database.
+	if err := e.rrw.WriteRevision(ctx, r); err != nil {
+		return fmt.Errorf("sql/migrate: execute: write revision: %w", err)
 	}
 	for _, stmt := range stmts {
 		if e.log != nil {
@@ -489,12 +487,12 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 		}
 		if _, err := e.drv.ExecContext(ctx, stmt); err != nil {
 			return r.setSQLErr(
-				fmt.Errorf("sql/migrate: execute: executing statement %q from version %q: %w", stmt, v, err),
+				fmt.Errorf("sql/migrate: execute: executing statement %q from version %q: %w", stmt, r.Version, err),
 				stmt,
 			)
 		}
-		r.done(true)
 	}
+	r.done(true)
 	return
 }
 
