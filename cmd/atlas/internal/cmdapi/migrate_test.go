@@ -36,12 +36,13 @@ func TestMigrate_Apply(t *testing.T) {
 	p := t.TempDir()
 
 	// Fails on empty directory.
-	_, err := runCmd(
+	b, err := runCmd(
 		Root, "migrate", "apply",
 		"--dir", "file://"+p,
 		"-u", openSQLite(t, ""),
 	)
-	require.ErrorIs(t, err, migrate.ErrNoPendingFiles)
+	require.NoError(t, err)
+	require.Equal(t, "The migration directory is synced with the database, no migration files to execute\n", b)
 
 	// Fails on directory without sum file.
 	require.NoError(t, os.Rename(

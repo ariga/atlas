@@ -278,15 +278,15 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 			}
 		}
 	}(rrw, cmd.Context())
-	err = ex.ExecuteN(cmd.Context(), n)
-	if err != nil {
+	if err = ex.ExecuteN(cmd.Context(), n); errors.Is(err, migrate.ErrNoPendingFiles) {
+		cmd.Println("The migration directory is synced with the database, no migration files to execute")
+	} else if err != nil {
 		if err2 := tx.Rollback(); err2 != nil {
 			err = fmt.Errorf("%v: %w", err2, err)
 		}
 		return err
 	}
-	err = tx.Commit()
-	return err
+	return tx.Commit()
 }
 
 // CmdMigrateDiffRun is the command executed when running the CLI with 'migrate diff' args.
@@ -331,7 +331,7 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	}
 	switch plan, err := pl.Plan(cmd.Context(), name, desired); {
 	case errors.Is(err, migrate.ErrNoPlan):
-		schemaCmd.Println("The migration directory is synced with the desired state, no changes to be made")
+		cmd.Println("The migration directory is synced with the desired state, no changes to be made")
 		return nil
 	case err != nil:
 		return err
