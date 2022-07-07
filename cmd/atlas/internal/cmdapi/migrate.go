@@ -33,6 +33,7 @@ import (
 )
 
 const (
+	migrateFlagURL             = "url"
 	migrateFlagDevURL          = "dev-url"
 	migrateFlagDir             = "dir"
 	migrateFlagForce           = "force"
@@ -50,6 +51,7 @@ const (
 var (
 	// MigrateFlags are the flags used in MigrateCmd (and sub-commands).
 	MigrateFlags struct {
+		URL            string
 		DirURL         string
 		DevURL         string
 		ToURL          string
@@ -108,10 +110,12 @@ The first argument denotes the maximum number of migration files to apply.
 As a safety measure 'atlas migrate apply' will abort with an error, if:
   - the migration directory is not in sync with the 'atlas.sum' file
   - the migration and database history do not match each other`,
-		Example: `  atlas migrate apply --to mysql://user:pass@localhost:3306/dbname
-  atlas migrate apply --dir file:///path/to/migration/directory --to mysql://user:pass@localhost:3306/dbname 1`,
-		Args: cobra.MaximumNArgs(1),
-		RunE: CmdMigrateApplyRun,
+		Example: `  atlas migrate apply -u mysql://user:pass@localhost:3306/dbname
+  atlas migrate apply --dir file:///path/to/migration/directory --url mysql://user:pass@localhost:3306/dbname 1
+  atlas migrate apply --env dev 1`,
+		Args:    cobra.MaximumNArgs(1),
+		PreRunE: migrateFlagsFromEnv,
+		RunE:    CmdMigrateApplyRun,
 	}
 	// MigrateDiffCmd represents the 'atlas migrate diff' subcommand.
 	MigrateDiffCmd = &cobra.Command{
@@ -186,11 +190,8 @@ func init() {
 	MigrateCmd.AddCommand(MigrateValidateCmd)
 	MigrateCmd.AddCommand(MigrateLintCmd)
 	// Reusable flags.
-	devURL := func(set *pflag.FlagSet) {
-		set.StringVarP(&MigrateFlags.DevURL, migrateFlagDevURL, "", "", "[driver://username:password@address/dbname?param=value] select a data source using the URL format")
-	}
-	toURL := func(set *pflag.FlagSet) {
-		set.StringVarP(&MigrateFlags.ToURL, migrateFlagTo, "", "", "[driver://username:password@address/dbname?param=value] select a data source using the URL format")
+	urlFlag := func(f *string, name, short string, set *pflag.FlagSet) {
+		set.StringVarP(f, name, short, "", "[driver://username:password@address/dbname?param=value] select a data source using the URL format")
 	}
 	// Global flags.
 	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.DirURL, migrateFlagDir, "", "file://migrations", "select migration directory using URL format")
@@ -201,19 +202,19 @@ func init() {
 	// Apply flags.
 	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.LogFormat, migrateFlagLog, "", logFormatTTY, "log format to use")
 	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.RevisionSchema, migrateFlagRevisionsSchema, "", "", "schema name where the revisions table is to be created")
-	toURL(MigrateApplyCmd.Flags())
-	cobra.CheckErr(MigrateApplyCmd.MarkFlagRequired(migrateFlagTo))
+	urlFlag(&MigrateFlags.URL, migrateFlagURL, "u", MigrateApplyCmd.Flags())
+	cobra.CheckErr(MigrateApplyCmd.MarkFlagRequired(migrateFlagURL))
 	// Diff flags.
-	devURL(MigrateDiffCmd.Flags())
-	toURL(MigrateDiffCmd.Flags())
+	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateDiffCmd.Flags())
+	urlFlag(&MigrateFlags.ToURL, migrateFlagTo, "", MigrateDiffCmd.Flags())
 	MigrateDiffCmd.Flags().BoolVarP(&MigrateFlags.Verbose, migrateDiffFlagVerbose, "", false, "enable verbose logging")
 	MigrateDiffCmd.Flags().SortFlags = false
 	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateFlagDevURL))
 	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateFlagTo))
 	// Validate flags.
-	devURL(MigrateValidateCmd.Flags())
+	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateValidateCmd.Flags())
 	// Lint flags.
-	devURL(MigrateLintCmd.Flags())
+	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateLintCmd.Flags())
 	MigrateLintCmd.PersistentFlags().StringVarP(&MigrateFlags.Lint.Format, migrateFlagLog, "", "", "custom logging using a Go template")
 	MigrateLintCmd.PersistentFlags().UintVarP(&MigrateFlags.Lint.Latest, migrateLintLatest, "", 0, "run analysis on the latest N migration files")
 	MigrateLintCmd.PersistentFlags().StringVarP(&MigrateFlags.Lint.GitBase, migrateLintGitBase, "", "", "run analysis against the base Git branch")
@@ -227,8 +228,8 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		n   int
 		err error
 	)
-	if len(args) > 1 {
-		n, err = strconv.Atoi(args[1])
+	if len(args) > 0 {
+		n, err = strconv.Atoi(args[0])
 		if err != nil {
 			return err
 		}
@@ -239,7 +240,7 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	// Open a client to the database.
-	target, err := sqlclient.Open(cmd.Context(), MigrateFlags.ToURL)
+	target, err := sqlclient.Open(cmd.Context(), MigrateFlags.URL)
 	if err != nil {
 		return err
 	}
@@ -630,6 +631,9 @@ func migrateFlagsFromEnv(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	if err := inputValsFromEnv(cmd); err != nil {
+		return err
+	}
+	if err := maySetFlag(cmd, migrateFlagURL, activeEnv.URL); err != nil {
 		return err
 	}
 	if err := maySetFlag(cmd, migrateFlagDevURL, activeEnv.DevURL); err != nil {

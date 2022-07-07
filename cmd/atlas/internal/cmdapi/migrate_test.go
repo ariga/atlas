@@ -39,7 +39,7 @@ func TestMigrate_Apply(t *testing.T) {
 	_, err := runCmd(
 		Root, "migrate", "apply",
 		"--dir", "file://"+p,
-		"--to", openSQLite(t, ""),
+		"-u", openSQLite(t, ""),
 	)
 	require.ErrorIs(t, err, migrate.ErrNoPendingFiles)
 
@@ -55,7 +55,7 @@ func TestMigrate_Apply(t *testing.T) {
 	_, err = runCmd(
 		Root, "migrate", "apply",
 		"--dir", "file://testdata/sqlite",
-		"--to", openSQLite(t, ""),
+		"--url", openSQLite(t, ""),
 	)
 	require.ErrorIs(t, err, migrate.ErrChecksumNotFound)
 	require.NoError(t, os.Rename(
@@ -89,7 +89,7 @@ func TestMigrate_Apply(t *testing.T) {
 	s, err := runCmd(
 		Root, "migrate", "apply",
 		"--dir", "file://testdata/sqlite",
-		"--to", fmt.Sprintf("sqlitelockapply://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
+		"--url", fmt.Sprintf("sqlitelockapply://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
 	)
 	require.ErrorIs(t, err, errLock)
 	require.True(t, strings.HasPrefix(s, "Error: sql/migrate: acquiring database lock: "+errLock.Error()))
@@ -98,7 +98,7 @@ func TestMigrate_Apply(t *testing.T) {
 	s, err = runCmd(
 		Root, "migrate", "apply",
 		"--dir", "file://testdata/sqlite",
-		"--to", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
+		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
 	)
 	require.NoError(t, err)
 	require.Contains(t, s, "20220318104614")                         // log to version
