@@ -521,8 +521,8 @@ func (m *lockMockDriver) Lock(_ context.Context, name string, _ time.Duration) (
 func (m *lockMockDriver) released() bool {
 	return len(m.locks) == 0
 }
-func (m *emptyMockDriver) IsClean(context.Context) (bool, error) {
-	return true, nil
+func (m *emptyMockDriver) IsClean(context.Context) error {
+	return nil
 }
 
 type mockRevisionReadWriter migrate.Revisions

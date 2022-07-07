@@ -87,12 +87,15 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 }
 
 // IsClean implements the inlined IsClean interface to override what to consider a clean database.
-func (d *Driver) IsClean(ctx context.Context) (bool, error) {
+func (d *Driver) IsClean(ctx context.Context) error {
 	r, err := d.InspectRealm(ctx, nil)
 	if err != nil {
-		return false, err
+		return err
 	}
-	return r == nil || len(r.Schemas) == 1 && r.Schemas[0].Name == mainFile && len(r.Schemas[0].Tables) == 0, nil
+	if !(r == nil || (len(r.Schemas) == 1 && r.Schemas[0].Name == mainFile && len(r.Schemas[0].Tables) == 0)) {
+		return migrate.ErrNotClean
+	}
+	return nil
 }
 
 // Clean implements the inlined Clean interface to override the "emptying" behavior.

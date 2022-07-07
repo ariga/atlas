@@ -120,23 +120,20 @@ func TestDevLoader_LoadChanges(t *testing.T) {
 	c, err := sqlclient.Open(ctx, "sqlite://ci?mode=memory&cache=shared&_fk=1")
 	require.NoError(t, err)
 	defer c.Close()
-	err = c.ApplyChanges(ctx, []schema.Change{
-		&schema.AddTable{
-			T: schema.NewTable("users").AddColumns(schema.NewIntColumn("id", "int")),
-		},
-	})
-	require.NoError(t, err)
 	l := &ci.DevLoader{Dev: c, Scan: testDir{}}
-	diff, err := l.LoadChanges(ctx, nil)
+	diff, err := l.LoadChanges(ctx, nil, nil)
 	require.NoError(t, err)
 	require.Empty(t, diff)
 
+	base := []migrate.File{
+		testFile{name: "base.sql", content: "CREATE TABLE users (id INT)"},
+	}
 	files := []migrate.File{
 		testFile{name: "1.sql", content: "CREATE TABLE t1 (id INT)\nINSERT INTO t1 (id) VALUES (1)"},
 		testFile{name: "2.sql", content: "CREATE TABLE t2 (id INT)\nDROP TABLE users"},
 		testFile{name: "3.sql", content: "CREATE TABLE t3 (id INT)\nDROP TABLE t3"},
 	}
-	diff, err = l.LoadChanges(ctx, files)
+	diff, err = l.LoadChanges(ctx, base, files)
 	require.NoError(t, err)
 	require.Len(t, diff, 3)
 
@@ -164,6 +161,15 @@ func TestDevLoader_LoadChanges(t *testing.T) {
 	require.IsType(t, (*schema.AddTable)(nil), diff[2].Changes[0].Changes[0])
 	require.IsType(t, (*schema.DropTable)(nil), diff[2].Changes[1].Changes[0])
 	require.Empty(t, diff[2].Sum)
+
+	err = c.ApplyChanges(ctx, []schema.Change{
+		&schema.AddTable{
+			T: schema.NewTable("users").AddColumns(schema.NewIntColumn("id", "int")),
+		},
+	})
+	require.NoError(t, err)
+	_, err = l.LoadChanges(ctx, base, files)
+	require.ErrorIs(t, err, migrate.ErrNotClean)
 }
 
 type testDir struct {

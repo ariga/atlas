@@ -561,49 +561,12 @@ func (e *Executor) ReadState(ctx context.Context) (realm *schema.Realm, err erro
 	}
 	defer unlock()
 	// We need an empty database state to reliably replay the migration directory.
-	if c, ok := e.drv.(interface {
-		// The IsClean method can be added to a Driver to override how to
-		// determine if a connected database is in a clean state.
-		// This interface exists solely to support SQLite flavors.
-		IsClean(context.Context) (bool, error)
-	}); ok {
-		e, err := c.IsClean(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("sql/migrate: checking database state: %w", err)
-		}
-		if !e {
-			return nil, ErrNotClean
-		}
-	} else {
-		realm, err = e.drv.InspectRealm(ctx, nil)
-		if err != nil {
-			return nil, err
-		}
-		if len(realm.Schemas) > 0 {
-			return nil, ErrNotClean
-		}
+	if err := IsClean(e.drv, ctx); err != nil {
+		return nil, fmt.Errorf("sql/migrate: checking database state: %w", err)
 	}
 	// Clean up after ourselves.
 	defer func() {
-		if e, ok := e.drv.(interface {
-			// The Clean method can be added to a Driver to change how to clean a database.
-			// This interface exists solely to support SQLite flavors.
-			Clean(context.Context) error
-		}); ok {
-			if derr := e.Clean(ctx); derr != nil {
-				err = wrap(derr, err)
-			}
-			return
-		}
-		realm, derr := e.drv.InspectRealm(ctx, nil)
-		if derr != nil {
-			err = wrap(derr, err)
-		}
-		del := make([]schema.Change, len(realm.Schemas))
-		for i, s := range realm.Schemas {
-			del[i] = &schema.DropSchema{S: s, Extra: []schema.Clause{&schema.IfExists{}}}
-		}
-		if err2 := e.drv.ApplyChanges(ctx, del); err2 != nil {
+		if err2 := Clean(e.drv, ctx); err2 != nil {
 			err = wrap(err2, err)
 		}
 	}()
@@ -614,6 +577,46 @@ func (e *Executor) ReadState(ctx context.Context) (realm *schema.Realm, err erro
 	// Inspect the database back and return the result.
 	realm, err = e.drv.InspectRealm(ctx, nil)
 	return
+}
+
+// IsClean checks if the given driver operates on a clean database.
+func IsClean(drv Driver, ctx context.Context) error {
+	if c, ok := drv.(interface {
+		// The IsClean method can be added to a Driver to override how to
+		// determine if a connected database is in a clean state.
+		// This interface exists solely to support SQLite flavors.
+		IsClean(context.Context) error
+	}); ok {
+		return c.IsClean(ctx)
+	}
+	realm, err := drv.InspectRealm(ctx, nil)
+	if err != nil {
+		return err
+	}
+	if len(realm.Schemas) > 0 {
+		return ErrNotClean
+	}
+	return nil
+}
+
+// Clean cleans the database the given driver is connected to.
+func Clean(drv Driver, ctx context.Context) error {
+	if e, ok := drv.(interface {
+		// The Clean method can be added to a Driver to change how to clean a database.
+		// This interface exists solely to support SQLite flavors.
+		Clean(context.Context) error
+	}); ok {
+		return e.Clean(ctx)
+	}
+	realm, err := drv.InspectRealm(ctx, nil)
+	if err != nil {
+		return err
+	}
+	del := make([]schema.Change, len(realm.Schemas))
+	for i, s := range realm.Schemas {
+		del[i] = &schema.DropSchema{S: s, Extra: []schema.Clause{&schema.IfExists{}}}
+	}
+	return drv.ApplyChanges(ctx, del)
 }
 
 // NopRevisionReadWriter is a RevisionsReadWriter that does nothing.
