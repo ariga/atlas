@@ -4,6 +4,9 @@ title: Inspecting Schemas
 slug: /cli/getting-started/inspection
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 Atlas features a Data Definition Language (DDL) that has an [HCL-syntax](https://github.com/hashicorp/hcl)
 for defining the desired state of database schemas. In this section we will learn how to use the Atlas
 CLI to inspect an existing database and write it's schema in HCL to a file. 
@@ -12,67 +15,91 @@ Inspection is done via the `atlas schema inspect` command. To learn about its pa
 ```shell
 atlas schema inspect --help
 ```
-View the output:
-```text
-`atlas schema inspect` connects to the given database and inspects its schema.
-It then prints to the screen the schema of that database in Atlas DDL syntax. This output can be
-saved to a file, commonly by redirecting the output to a file named with a ".hcl" suffix:
-
-  atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname" > atlas.hcl
-
-This file can then be edited and used with the `atlas schema apply` command to plan
-and execute schema migrations against the given database. In cases where users wish to inspect
-all multiple schemas in a given database (for instance a MySQL server may contain multiple named
-databases), omit the relevant part from the url, e.g. "mysql://user:pass@localhost:3306/".
-To select specific schemas from the databases, users may use the "--schema" (or "-s" shorthand)
-flag.
-
-Usage:
-  atlas schema inspect [flags]
-
-Examples:
-  atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname"
-  atlas schema inspect -u "mariadb://user:pass@localhost:3306/" --schema=schemaA,schemaB -s schemaC
-  atlas schema inspect --url "postgres://user:pass@host:port/dbname?sslmode=disable"
-  atlas schema inspect -u "sqlite://file:ex1.db?_fk=1"
-
-Flags:
-      --addr string      Used with -w, local address to bind the server to (default ":5800")
-  -h, --help             help for inspect
-  -s, --schema strings   Set schema name
-  -u, --url string       [driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format
-  -w, --web              Open in a local Atlas UI
-```
-
-:::info
-
-If you're using PostgreSQL, there is [additional documentation about building the connection string](../url#ssltls-mode)
-
-:::
 
 ### Inspecting our database
 
 To inspect our locally-running MySQL instance from the [previous](01-introduction.mdx) section,
 use the `-u` flag and write output to a file named `atlas.hcl`:
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+]}>
+<TabItem value="mysql">
+
 ```shell
 atlas schema inspect -u "mysql://root:pass@localhost:3306/example" > atlas.hcl
 ```
-To view the contents of the created file:
-```shell
-cat atlas.hcl
-```
-View the output:
-```hcl
+
+Then, view the contents of the file:
+
+```hcl title="atlas.hcl"
 schema "example" {
   charset = "utf8mb4"
   collate = "utf8mb4_0900_ai_ci"
 }
 ```
+
+</TabItem>
+<TabItem value="maria">
+
+```shell
+atlas schema inspect -u "maria://root:pass@localhost:3306/example" > atlas.hcl
+```
+
+Then, view the contents of the file:
+
+```hcl title="atlas.hcl"
+schema "example" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_0900_ai_ci"
+}
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```shell
+atlas schema inspect -u "postgres://postgres:pass@localhost:5432/example?sslmode=disable" > atlas.hcl
+```
+
+Then, view the contents of the file:
+
+```hcl title="atlas.hcl"
+schema "public" {
+}
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```shell
+atlas schema inspect -u "sqlite://file.db" > atlas.hcl
+```
+
+Then, view the contents of the file:
+
+```hcl title="atlas.hcl"
+schema "main" {
+}
+```
+
+</TabItem>
+</Tabs>
+
 As you can see, Atlas inspected our (empty) database and wrote an Atlas HCL document 
 containing only a [Schema](../ddl/sql.mdx#schema) resource.
 
 Next, let's create some tables in our SQL database and see how they are reflected
-in the inspected Atlas HCL document. 
+in the inspected Atlas HCL document.
+
+:::info
+If you're using PostgreSQL, there is [additional documentation about building the connection string](../url#ssltls-mode)
+:::
 
 ### Modifying our database schema manually
 

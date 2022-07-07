@@ -29,7 +29,6 @@ values={[
 In MySQL and MariaDB, the `schema` resource can contain the `charset` and `collate` attributes. Read more about them
 in [MySQL](https://dev.mysql.com/doc/refman/8.0/en/charset.html) or
 [MariaDB](https://mariadb.com/kb/en/setting-character-sets-and-collations/) websites.
-<br/>
 
 ```hcl
 # Schema with attributes.
@@ -59,7 +58,6 @@ schema "private" {}
 
 Atlas does not support [attached databases](https://www.sqlite.org/lang_attach.html), and support only the default
 database (i.e. `main`).
-<br/>
 
 ```hcl
 schema "main" {}
@@ -577,7 +575,6 @@ values={[
 <TabItem value="mysql">
 
 In MySQL/MariaDB the `auto_increment` attribute can be set on columns and tables.
-<br/>
 
 ```hcl
 table "users" {
@@ -594,7 +591,6 @@ table "users" {
 ```
 
 The `auto_increment` column can be set on the table to configure a start value other than 1.
-<br/>
 
 ```hcl
 table "users" {
@@ -615,7 +611,6 @@ table "users" {
 <TabItem value="postgres">
 
 PostgreSQL supports `serial` columns and the `generated as identity` syntax for versions >= 10.
-<br/>
 
 ```hcl
 table "users" {
@@ -640,7 +635,6 @@ table "users" {
 
 SQLite allows configuring [`AUTOINCREMENT`](https://www.sqlite.org/autoinc.html) columns using the `auto_increment`
 attribute.
-<br/>
 
 ```hcl
 table "users" {
