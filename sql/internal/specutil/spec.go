@@ -11,6 +11,7 @@ import (
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
+	"github.com/hashicorp/hcl/v2/hclparse"
 )
 
 // StrAttr is a helper method for constructing *schemaspec.Attr of type string.
@@ -141,4 +142,16 @@ func QualifyDuplicates(tableSpecs []*sqlspec.Table) error {
 		seen[tbl.Name] = tbl
 	}
 	return nil
+}
+
+// HCLBytesFunc returns a helper that evaluates an HCL document from a byte slice instead
+// of from an hclparse.Parser instance.
+func HCLBytesFunc(ev sqlspec.Evaluator) func(b []byte, v interface{}, inp map[string]string) error {
+	return func(b []byte, v interface{}, inp map[string]string) error {
+		parser := hclparse.NewParser()
+		if _, diag := parser.ParseHCL(b, ""); diag.HasErrors() {
+			return diag
+		}
+		return ev.Eval(parser, v, inp)
+	}
 }

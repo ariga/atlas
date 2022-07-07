@@ -21,13 +21,13 @@ import (
 	"text/template"
 	"time"
 
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
 	entsql "entgo.io/ent/dialect/sql"
 	entschema "entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/entc/integration/ent"
+	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/stretchr/testify/require"
 )
 
@@ -183,9 +183,7 @@ func testCLISchemaInspect(t T, h string, dsn string, eval sqlspec.Evaluator, arg
 	require.NoError(t, err)
 	t.dropTables("users")
 	var expected schema.Schema
-	parsed, err := schemahcl.ParseBytes([]byte(h))
-	require.NoError(t, err)
-	err = eval.Eval(parsed, &expected, nil)
+	err = evalBytes([]byte(h), &expected, eval)
 	require.NoError(t, err)
 	t.applyHcl(h)
 	runArgs := []string{
@@ -202,9 +200,7 @@ func testCLISchemaInspect(t T, h string, dsn string, eval sqlspec.Evaluator, arg
 	cmd.Stdout = stdout
 	require.NoError(t, cmd.Run(), stderr.String())
 	var actual schema.Schema
-	parsed, err = schemahcl.ParseBytes(stdout.Bytes())
-	require.NoError(t, err)
-	err = eval.Eval(parsed, &actual, nil)
+	err = evalBytes(stdout.Bytes(), &actual, eval)
 	require.NoError(t, err)
 	require.Empty(t, stderr.String())
 	require.Equal(t, expected, actual)
@@ -215,9 +211,7 @@ func testCLISchemaInspectEnv(t T, h string, env string, eval sqlspec.Evaluator) 
 	require.NoError(t, err)
 	t.dropTables("users")
 	var expected schema.Schema
-	parsed, err := schemahcl.ParseBytes([]byte(h))
-	require.NoError(t, err)
-	err = eval.Eval(parsed, &expected, nil)
+	err = evalBytes([]byte(h), &expected, eval)
 	require.NoError(t, err)
 	t.applyHcl(h)
 	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
@@ -231,9 +225,7 @@ func testCLISchemaInspectEnv(t T, h string, env string, eval sqlspec.Evaluator) 
 	cmd.Stdout = stdout
 	require.NoError(t, cmd.Run(), stderr.String())
 	var actual schema.Schema
-	parsed, err = schemahcl.ParseBytes(stdout.Bytes())
-	require.NoError(t, err)
-	err = eval.Eval(parsed, &actual, nil)
+	err = evalBytes(stdout.Bytes(), &actual, eval)
 	require.NoError(t, err)
 	require.Empty(t, stderr.String())
 	require.Equal(t, expected, actual)
@@ -257,9 +249,7 @@ func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, eval s
 	require.NoError(t, err)
 	require.NoError(t, err)
 	var expected schema.Realm
-	parsed, err := schemahcl.ParseBytes([]byte(h))
-	require.NoError(t, err)
-	err = eval.Eval(parsed, &expected, nil)
+	err = evalBytes([]byte(h), &expected, eval)
 	require.NoError(t, err)
 	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
 		"schema",
@@ -286,9 +276,7 @@ func testCLIMultiSchemaInspect(t T, h string, dsn string, schemas []string, eval
 	err := initCLI()
 	require.NoError(t, err)
 	var expected schema.Realm
-	parsed, err := schemahcl.ParseBytes([]byte(h))
-	require.NoError(t, err)
-	err = eval.Eval(parsed, &expected, nil)
+	err = evalBytes([]byte(h), &expected, eval)
 	require.NoError(t, err)
 	t.applyRealmHcl(h)
 	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
@@ -304,9 +292,7 @@ func testCLIMultiSchemaInspect(t T, h string, dsn string, schemas []string, eval
 	cmd.Stdout = stdout
 	require.NoError(t, cmd.Run(), stderr.String())
 	var actual schema.Realm
-	parsed, err = schemahcl.ParseBytes(stdout.Bytes())
-	require.NoError(t, err)
-	err = eval.Eval(parsed, &actual, nil)
+	err = evalBytes(stdout.Bytes(), &actual, eval)
 	require.NoError(t, err)
 	require.Empty(t, stderr.String())
 	require.Equal(t, expected, actual)
@@ -566,4 +552,12 @@ func buildCmd(t *testing.T) (string, error) {
 		return "", fmt.Errorf("%w: %s", err, b)
 	}
 	return filepath.Join(td, "atlas"), nil
+}
+
+func evalBytes(b []byte, v interface{}, ev sqlspec.Evaluator) error {
+	p := hclparse.NewParser()
+	if _, diag := p.ParseHCL(b, ""); diag.HasErrors() {
+		return diag
+	}
+	return ev.Eval(p, v, nil)
 }

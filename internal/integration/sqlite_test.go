@@ -15,7 +15,6 @@ import (
 	"strings"
 	"testing"
 
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
@@ -471,9 +470,7 @@ create table atlas_defaults
 		spec, err := sqlite.MarshalHCL(realm.Schemas[0])
 		require.NoError(t, err)
 		var s schema.Schema
-		parsed, err := schemahcl.ParseBytes(spec)
-		require.NoError(t, err)
-		err = sqlite.EvalHCL(parsed, &s, nil)
+		err = sqlite.EvalHCLBytes(spec, &s, nil)
 		require.NoError(t, err)
 		t.dropTables(n)
 		t.applyHcl(string(spec))
@@ -817,9 +814,7 @@ func (t *liteTest) dropSchemas(...string) {}
 func (t *liteTest) applyHcl(spec string) {
 	realm := t.loadRealm()
 	var desired schema.Schema
-	parsed, err := schemahcl.ParseBytes([]byte(spec))
-	require.NoError(t, err)
-	err = sqlite.EvalHCL(parsed, &desired, nil)
+	err := sqlite.EvalHCLBytes([]byte(spec), &desired, nil)
 	require.NoError(t, err)
 	existing := realm.Schemas[0]
 	diff, err := t.drv.SchemaDiff(existing, &desired)

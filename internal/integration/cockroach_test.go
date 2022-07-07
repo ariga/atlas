@@ -13,7 +13,6 @@ import (
 	"strings"
 	"testing"
 
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
@@ -490,9 +489,7 @@ create table atlas_defaults
 		spec, err := postgres.MarshalHCL(realm.Schemas[0])
 		require.NoError(t, err)
 		var s schema.Schema
-		parsed, err := schemahcl.ParseBytes(spec)
-		require.NoError(t, err)
-		err = postgres.EvalHCL(parsed, &s, nil)
+		err = postgres.EvalHCLBytes(spec, &s, nil)
 		require.NoError(t, err)
 		t.dropTables(n)
 		t.applyHcl(string(spec))
@@ -843,9 +840,7 @@ func (t *crdbTest) revisionsStorage() migrate.RevisionReadWriter {
 func (t *crdbTest) applyHcl(spec string) {
 	realm := t.loadRealm()
 	var desired schema.Schema
-	parsed, err := schemahcl.ParseBytes([]byte(spec))
-	require.NoError(t, err)
-	err = postgres.EvalHCL(parsed, &desired, nil)
+	err := postgres.EvalHCLBytes([]byte(spec), &desired, nil)
 	require.NoError(t, err)
 	existing := realm.Schemas[0]
 	diff, err := t.drv.SchemaDiff(existing, &desired)
@@ -1005,9 +1000,7 @@ func (t *crdbTest) dropSchemas(names ...string) {
 func (t *crdbTest) applyRealmHcl(spec string) {
 	realm := t.loadRealm()
 	var desired schema.Realm
-	parsed, err := schemahcl.ParseBytes([]byte(spec))
-	require.NoError(t, err)
-	err = postgres.EvalHCL(parsed, &desired, nil)
+	err := postgres.EvalHCLBytes([]byte(spec), &desired, nil)
 	require.NoError(t, err)
 	diff, err := t.drv.RealmDiff(realm, &desired)
 	require.NoError(t, err)

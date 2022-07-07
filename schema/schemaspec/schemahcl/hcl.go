@@ -531,12 +531,3 @@ func hclRawList(items []string) hclwrite.Tokens {
 	})
 	return t
 }
-
-// ParseBytes creates a new hclparse.Parser and parses the input bytes with it.
-func ParseBytes(b []byte) (*hclparse.Parser, error) {
-	p := hclparse.NewParser()
-	if _, diag := p.ParseHCL(b, ""); diag.HasErrors() {
-		return nil, diag
-	}
-	return p, nil
-}

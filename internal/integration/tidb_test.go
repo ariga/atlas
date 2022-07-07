@@ -12,7 +12,6 @@ import (
 	"log"
 	"testing"
 
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
 
@@ -510,9 +509,7 @@ create table atlas_defaults
 		spec, err := mysql.MarshalHCL(realm.Schemas[0])
 		require.NoError(t, err)
 		var s schema.Realm
-		parsed, err := schemahcl.ParseBytes(spec)
-		require.NoError(t, err)
-		err = mysql.EvalHCL(parsed, &s, nil)
+		err = mysql.EvalHCLBytes(spec, &s, nil)
 		require.NoError(t, err)
 		t.dropTables(n)
 		t.applyHcl(string(spec))
