@@ -237,7 +237,7 @@ func TestExecutor_ReadState(t *testing.T) {
 	// Does not work if database is not clean.
 	drv.realm = schema.Realm{Schemas: []*schema.Schema{{Name: "schema"}}}
 	_, err = ex.ReadState(ctx)
-	require.EqualError(t, err, "sql/migrate: connected database is not clean")
+	require.ErrorIs(t, err, migrate.ErrNotClean)
 	require.Equal(t, 3, drv.lockCounter)
 	require.Equal(t, 3, drv.unlockCounter)
 	require.True(t, drv.released())
@@ -521,8 +521,8 @@ func (m *lockMockDriver) Lock(_ context.Context, name string, _ time.Duration) (
 func (m *lockMockDriver) released() bool {
 	return len(m.locks) == 0
 }
-func (m *emptyMockDriver) IsClean(context.Context) (bool, error) {
-	return true, nil
+func (m *emptyMockDriver) IsClean(context.Context) error {
+	return nil
 }
 
 type mockRevisionReadWriter migrate.Revisions

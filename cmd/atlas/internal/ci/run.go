@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"strings"
 	"text/template"
@@ -62,20 +61,8 @@ func (r *Runner) summary(ctx context.Context) (*SummaryReport, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Bring the dev environment to the base point.
-	for _, f := range base {
-		stmt, err := r.Dir.Stmts(f)
-		if err != nil {
-			return nil, &FileError{File: f.Name(), Err: fmt.Errorf("scanning statements: %w", err)}
-		}
-		for _, s := range stmt {
-			if _, err := r.Dev.ExecContext(ctx, s); err != nil {
-				return nil, &FileError{File: f.Name(), Err: fmt.Errorf("executing statement: %q: %w", s, err)}
-			}
-		}
-	}
 	l := &DevLoader{Dev: r.Dev, Scan: r.Dir}
-	files, err := l.LoadChanges(ctx, feat)
+	files, err := l.LoadChanges(ctx, base, feat)
 	if err != nil {
 		return nil, err
 	}

@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"
 )
@@ -169,7 +170,43 @@ type DevLoader struct {
 }
 
 // LoadChanges implements the ChangesLoader interface.
-func (d *DevLoader) LoadChanges(ctx context.Context, files []migrate.File) ([]*sqlcheck.File, error) {
+func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File) (_ []*sqlcheck.File, err error) {
+	// Lock database so no one else interferes with our change detection.
+	l, ok := d.Dev.Driver.(schema.Locker)
+	if !ok {
+		return nil, errors.New("driver does not support locking")
+	}
+	unlock, err := l.Lock(ctx, "atlas_ci_change_detection", 0)
+	if err != nil {
+		return nil, fmt.Errorf("acquiring database lock: %w", err)
+	}
+	defer unlock()
+	// We need an empty database state to reliably replay the migration directory.
+	if err := migrate.IsClean(ctx, d.Dev.Driver); err != nil {
+		return nil, err
+	}
+	// Clean up after ourselves.
+	defer func() {
+		if err2 := migrate.Clean(ctx, d.Dev.Driver); err2 != nil {
+			if err != nil {
+				err = fmt.Errorf("%w: %v", err, err2)
+				return
+			}
+			err = err2
+		}
+	}()
+	// Bring the dev environment to the base point.
+	for _, f := range base {
+		stmt, err := d.Scan.Stmts(f)
+		if err != nil {
+			return nil, &FileError{File: f.Name(), Err: fmt.Errorf("scanning statements: %w", err)}
+		}
+		for _, s := range stmt {
+			if _, err := d.Dev.ExecContext(ctx, s); err != nil {
+				return nil, &FileError{File: f.Name(), Err: fmt.Errorf("executing statement: %q: %w", s, err)}
+			}
+		}
+	}
 	diff := make([]*sqlcheck.File, len(files))
 	current, err := d.Dev.InspectRealm(ctx, nil)
 	if err != nil {

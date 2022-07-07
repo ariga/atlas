@@ -118,8 +118,7 @@ func TestMigrate_Diff(t *testing.T) {
 		"--dev-url", openSQLite(t, "create table t (c int);"),
 		"--to", hclURL(t),
 	)
-	require.True(t, strings.HasPrefix(s, "Error: sql/migrate: connected database is not clean"))
-	require.EqualError(t, err, "sql/migrate: connected database is not clean")
+	require.ErrorIs(t, err, migrate.ErrNotClean)
 
 	// Works (on empty directory).
 	s, err = runCmd(
@@ -289,12 +288,14 @@ func TestMigrate_Lint(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, s)
 
+	err = os.WriteFile(filepath.Join(p, "base.sql"), []byte("CREATE TABLE t(c int);"), 0600)
+	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(p, "new.sql"), []byte("DROP TABLE t;"), 0600)
 	require.NoError(t, err)
 	s, err = runCmd(
 		Root, "migrate", "lint",
 		"--dir", "file://"+p,
-		"--dev-url", openSQLite(t, "CREATE TABLE t(c int);"),
+		"--dev-url", openSQLite(t, ""),
 		"--latest", "1",
 	)
 	require.NoError(t, err)
@@ -302,7 +303,7 @@ func TestMigrate_Lint(t *testing.T) {
 	s, err = runCmd(
 		Root, "migrate", "lint",
 		"--dir", "file://"+p,
-		"--dev-url", openSQLite(t, "CREATE TABLE t(c int);"),
+		"--dev-url", openSQLite(t, ""),
 		"--latest", "1",
 		"--log", "{{ range .Files }}{{ .Name }}{{ end }}",
 	)
