@@ -11,7 +11,6 @@ import (
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/schema"
-	"ariga.io/atlas/sql/sqlspec"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/stretchr/testify/require"
 )
@@ -39,7 +38,7 @@ func RegistrySanityTest(t *testing.T, registry *schemahcl.TypeRegistry, skip []s
 
 // TestInputVars runs a test verifying that the driver's exposed Eval function uses
 // input variables properly.
-func TestInputVars(t *testing.T, evaluator sqlspec.Evaluator) {
+func TestInputVars(t *testing.T, evaluator schemahcl.Evaluator) {
 	h := `
 variable "tenant" {
 	type = string

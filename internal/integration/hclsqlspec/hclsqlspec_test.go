@@ -20,7 +20,7 @@ import (
 var dialects = []struct {
 	name string
 	schemahcl.Marshaler
-	sqlspec.Evaluator
+	schemahcl.Evaluator
 }{
 	{
 		name:      "mysql",

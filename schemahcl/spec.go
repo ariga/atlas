@@ -57,16 +57,6 @@ type (
 		V string
 	}
 
-	// Marshaler is the interface implemented by types that can marshal objects into a
-	// valid Atlas DDL representation.
-	Marshaler interface {
-		MarshalSpec(interface{}) ([]byte, error)
-	}
-
-	// MarshalerFunc is the function type that is implemented by the MarshalSpec
-	// method of the Marshaler interface.
-	MarshalerFunc func(interface{}) ([]byte, error)
-
 	// TypeSpec represents a specification for defining a Type.
 	TypeSpec struct {
 		// Name is the identifier for the type in an Atlas DDL document.

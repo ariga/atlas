@@ -21,9 +21,9 @@ import (
 	"text/template"
 	"time"
 
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
-	"ariga.io/atlas/sql/sqlspec"
 	entsql "entgo.io/ent/dialect/sql"
 	entschema "entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/entc/integration/ent"
@@ -178,7 +178,7 @@ func testHCLIntegration(t T, full string, empty string) {
 	require.Empty(t, t.realm().Schemas[0].Tables)
 }
 
-func testCLISchemaInspect(t T, h string, dsn string, eval sqlspec.Evaluator, args ...string) {
+func testCLISchemaInspect(t T, h string, dsn string, eval schemahcl.Evaluator, args ...string) {
 	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
@@ -206,7 +206,7 @@ func testCLISchemaInspect(t T, h string, dsn string, eval sqlspec.Evaluator, arg
 	require.Equal(t, expected, actual)
 }
 
-func testCLISchemaInspectEnv(t T, h string, env string, eval sqlspec.Evaluator) {
+func testCLISchemaInspectEnv(t T, h string, env string, eval schemahcl.Evaluator) {
 	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
@@ -242,7 +242,7 @@ func initCLI() error {
 	return err
 }
 
-func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, eval sqlspec.Evaluator) {
+func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, eval schemahcl.Evaluator) {
 	err := initCLI()
 	f := filepath.Join(t.TempDir(), "atlas.hcl")
 	err = ioutil.WriteFile(f, []byte(h), 0644)
@@ -272,7 +272,7 @@ func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, eval s
 	require.Contains(t, stdout.String(), `-- Add new schema named "test2"`)
 }
 
-func testCLIMultiSchemaInspect(t T, h string, dsn string, schemas []string, eval sqlspec.Evaluator) {
+func testCLIMultiSchemaInspect(t T, h string, dsn string, schemas []string, eval schemahcl.Evaluator) {
 	err := initCLI()
 	require.NoError(t, err)
 	var expected schema.Realm
@@ -554,7 +554,7 @@ func buildCmd(t *testing.T) (string, error) {
 	return filepath.Join(td, "atlas"), nil
 }
 
-func evalBytes(b []byte, v interface{}, ev sqlspec.Evaluator) error {
+func evalBytes(b []byte, v interface{}, ev schemahcl.Evaluator) error {
 	p := hclparse.NewParser()
 	if _, diag := p.ParseHCL(b, ""); diag.HasErrors() {
 		return diag

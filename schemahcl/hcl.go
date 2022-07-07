@@ -29,6 +29,21 @@ type (
 	State struct {
 		config *Config
 	}
+	// Evaluator is the interface that wraps the Eval function.
+	Evaluator interface {
+		// Eval evaluates parsed HCL files using input variables into a schema.Realm.
+		Eval(*hclparse.Parser, interface{}, map[string]string) error
+	}
+	// EvalFunc is an adapter that allows the use of an ordinary function as an Evaluator.
+	EvalFunc func(*hclparse.Parser, interface{}, map[string]string) error
+	// Marshaler is the interface that wraps the MarshalSpec function.
+	Marshaler interface {
+		// MarshalSpec marshals the provided input into a valid Atlas HCL document.
+		MarshalSpec(interface{}) ([]byte, error)
+	}
+	// MarshalerFunc is the function type that is implemented by the MarshalSpec
+	// method of the Marshaler interface.
+	MarshalerFunc func(interface{}) ([]byte, error)
 )
 
 // MarshalSpec implements Marshaler for Atlas HCL documents.
@@ -529,4 +544,9 @@ func hclRawList(items []string) hclwrite.Tokens {
 		Bytes: []byte("]"),
 	})
 	return t
+}
+
+// Eval implements the Evaluator interface.
+func (f EvalFunc) Eval(p *hclparse.Parser, i interface{}, input map[string]string) error {
+	return f(p, i, input)
 }

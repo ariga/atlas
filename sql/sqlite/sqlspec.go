@@ -201,7 +201,7 @@ var (
 		return MarshalSpec(v, hclState)
 	})
 	// EvalHCL implements the schemahcl.Evaluator interface.
-	EvalHCL = sqlspec.EvalFunc(evalSpec)
+	EvalHCL = schemahcl.EvalFunc(evalSpec)
 
 	// EvalHCLBytes is a helper that evaluates an HCL document from a byte slice instead
 	// of from an hclparse.Parser instance.

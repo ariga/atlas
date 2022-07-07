@@ -146,7 +146,7 @@ func QualifyDuplicates(tableSpecs []*sqlspec.Table) error {
 
 // HCLBytesFunc returns a helper that evaluates an HCL document from a byte slice instead
 // of from an hclparse.Parser instance.
-func HCLBytesFunc(ev sqlspec.Evaluator) func(b []byte, v interface{}, inp map[string]string) error {
+func HCLBytesFunc(ev schemahcl.Evaluator) func(b []byte, v interface{}, inp map[string]string) error {
 	return func(b []byte, v interface{}, inp map[string]string) error {
 		parser := hclparse.NewParser()
 		if _, diag := parser.ParseHCL(b, ""); diag.HasErrors() {
