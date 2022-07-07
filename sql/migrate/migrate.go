@@ -561,12 +561,12 @@ func (e *Executor) ReadState(ctx context.Context) (realm *schema.Realm, err erro
 	}
 	defer unlock()
 	// We need an empty database state to reliably replay the migration directory.
-	if err := IsClean(e.drv, ctx); err != nil {
+	if err := IsClean(ctx, e.drv); err != nil {
 		return nil, fmt.Errorf("sql/migrate: checking database state: %w", err)
 	}
 	// Clean up after ourselves.
 	defer func() {
-		if err2 := Clean(e.drv, ctx); err2 != nil {
+		if err2 := Clean(ctx, e.drv); err2 != nil {
 			err = wrap(err2, err)
 		}
 	}()
@@ -580,7 +580,7 @@ func (e *Executor) ReadState(ctx context.Context) (realm *schema.Realm, err erro
 }
 
 // IsClean checks if the given driver operates on a clean database.
-func IsClean(drv Driver, ctx context.Context) error {
+func IsClean(ctx context.Context, drv Driver) error {
 	if c, ok := drv.(interface {
 		// The IsClean method can be added to a Driver to override how to
 		// determine if a connected database is in a clean state.
@@ -600,7 +600,7 @@ func IsClean(drv Driver, ctx context.Context) error {
 }
 
 // Clean cleans the database the given driver is connected to.
-func Clean(drv Driver, ctx context.Context) error {
+func Clean(ctx context.Context, drv Driver) error {
 	if e, ok := drv.(interface {
 		// The Clean method can be added to a Driver to change how to clean a database.
 		// This interface exists solely to support SQLite flavors.

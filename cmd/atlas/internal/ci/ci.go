@@ -182,12 +182,12 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 	}
 	defer unlock()
 	// We need an empty database state to reliably replay the migration directory.
-	if err := migrate.IsClean(d.Dev.Driver, ctx); err != nil {
+	if err := migrate.IsClean(ctx, d.Dev.Driver); err != nil {
 		return nil, err
 	}
 	// Clean up after ourselves.
 	defer func() {
-		if err2 := migrate.Clean(d.Dev.Driver, ctx); err2 != nil {
+		if err2 := migrate.Clean(ctx, d.Dev.Driver); err2 != nil {
 			if err != nil {
 				err = fmt.Errorf("%w: %v", err, err2)
 				return
