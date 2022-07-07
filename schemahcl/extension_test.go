@@ -35,10 +35,10 @@ type PetBlock struct {
 func TestInvalidExt(t *testing.T) {
 	r := &schemahcl.Resource{}
 	err := r.As(1)
-	require.EqualError(t, err, "schemaspec: expected target to be a pointer")
+	require.EqualError(t, err, "schemahcl: expected target to be a pointer")
 	var p *string
 	err = r.As(p)
-	require.EqualError(t, err, "schemaspec: expected target to be a pointer to a struct")
+	require.EqualError(t, err, "schemahcl: expected target to be a pointer to a struct")
 }
 
 func TestExtension(t *testing.T) {

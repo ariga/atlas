@@ -16,8 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// RegistrySanityTest runs a sanity for a TypeRegistry, generated a dummy *schemaspec.Type
-// then converting it to a schema.Type and back to a *schemaspec.Type.
+// RegistrySanityTest runs a sanity for a TypeRegistry, generated a dummy *schemahcl.Type
+// then converting it to a schema.Type and back to a *schemahcl.Type.
 func RegistrySanityTest(t *testing.T, registry *schemahcl.TypeRegistry, skip []string) {
 	for _, ts := range registry.Specs() {
 		if contains(ts.Name, skip) {

@@ -129,7 +129,7 @@ func dummyType(ts *schemahcl.TypeSpec) *schemahcl.Type {
 	return spec
 }
 
-// StrAttr is a helper method for constructing *schemaspec.Attr of type string.
+// StrAttr is a helper method for constructing *schemahcl.Attr of type string.
 func StrAttr(k, v string) *schemahcl.Attr {
 	return &schemahcl.Attr{
 		K: k,
@@ -137,7 +137,7 @@ func StrAttr(k, v string) *schemahcl.Attr {
 	}
 }
 
-// LitAttr is a helper method for constructing *schemaspec.Attr instances that contain literal values.
+// LitAttr is a helper method for constructing *schemahcl.Attr instances that contain literal values.
 func LitAttr(k, v string) *schemahcl.Attr {
 	return &schemahcl.Attr{
 		K: k,
@@ -145,7 +145,7 @@ func LitAttr(k, v string) *schemahcl.Attr {
 	}
 }
 
-// ListAttr is a helper method for constructing *schemaspec.Attr instances that contain list values.
+// ListAttr is a helper method for constructing *schemahcl.Attr instances that contain list values.
 func ListAttr(k string, litValues ...string) *schemahcl.Attr {
 	lv := &schemahcl.ListValue{}
 	for _, v := range litValues {
@@ -157,7 +157,7 @@ func ListAttr(k string, litValues ...string) *schemahcl.Attr {
 	}
 }
 
-// wrap iterates over the given slice of schemaspec.TypeSpec and wraps them with Type.
+// wrap iterates over the given slice of schemahcl.TypeSpec and wraps them with Type.
 func wrap(tss []*schemahcl.TypeSpec) []Type {
 	res := make([]Type, len(tss))
 	for i, ts := range tss {

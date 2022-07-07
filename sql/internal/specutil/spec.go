@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclparse"
 )
 
-// StrAttr is a helper method for constructing *schemaspec.Attr of type string.
+// StrAttr is a helper method for constructing *schemahcl.Attr of type string.
 func StrAttr(k, v string) *schemahcl.Attr {
 	return &schemahcl.Attr{
 		K: k,
@@ -22,7 +22,7 @@ func StrAttr(k, v string) *schemahcl.Attr {
 	}
 }
 
-// BoolAttr is a helper method for constructing *schemaspec.Attr of type bool.
+// BoolAttr is a helper method for constructing *schemahcl.Attr of type bool.
 func BoolAttr(k string, v bool) *schemahcl.Attr {
 	return &schemahcl.Attr{
 		K: k,
@@ -30,12 +30,12 @@ func BoolAttr(k string, v bool) *schemahcl.Attr {
 	}
 }
 
-// IntAttr is a helper method for constructing *schemaspec.Attr with the numeric value of v.
+// IntAttr is a helper method for constructing *schemahcl.Attr with the numeric value of v.
 func IntAttr(k string, v int) *schemahcl.Attr {
 	return Int64Attr(k, int64(v))
 }
 
-// Int64Attr is a helper method for constructing *schemaspec.Attr with the numeric value of v.
+// Int64Attr is a helper method for constructing *schemahcl.Attr with the numeric value of v.
 func Int64Attr(k string, v int64) *schemahcl.Attr {
 	return &schemahcl.Attr{
 		K: k,
@@ -43,7 +43,7 @@ func Int64Attr(k string, v int64) *schemahcl.Attr {
 	}
 }
 
-// LitAttr is a helper method for constructing *schemaspec.Attr instances that contain literal values.
+// LitAttr is a helper method for constructing *schemahcl.Attr instances that contain literal values.
 func LitAttr(k, v string) *schemahcl.Attr {
 	return &schemahcl.Attr{
 		K: k,
@@ -51,7 +51,7 @@ func LitAttr(k, v string) *schemahcl.Attr {
 	}
 }
 
-// RawAttr is a helper method for constructing *schemaspec.Attr instances that contain sql expressions.
+// RawAttr is a helper method for constructing *schemahcl.Attr instances that contain sql expressions.
 func RawAttr(k, v string) *schemahcl.Attr {
 	return &schemahcl.Attr{
 		K: k,
@@ -59,7 +59,7 @@ func RawAttr(k, v string) *schemahcl.Attr {
 	}
 }
 
-// VarAttr is a helper method for constructing *schemaspec.Attr instances that contain a variable reference.
+// VarAttr is a helper method for constructing *schemahcl.Attr instances that contain a variable reference.
 func VarAttr(k, v string) *schemahcl.Attr {
 	return &schemahcl.Attr{
 		K: k,
@@ -67,7 +67,7 @@ func VarAttr(k, v string) *schemahcl.Attr {
 	}
 }
 
-// RefAttr is a helper method for constructing *schemaspec.Attr instances that contain a reference.
+// RefAttr is a helper method for constructing *schemahcl.Attr instances that contain a reference.
 func RefAttr(k string, r *schemahcl.Ref) *schemahcl.Attr {
 	return &schemahcl.Attr{
 		K: k,
@@ -75,7 +75,7 @@ func RefAttr(k string, r *schemahcl.Ref) *schemahcl.Attr {
 	}
 }
 
-// ListAttr is a helper method for constructing *schemaspec.Attr instances that contain list values.
+// ListAttr is a helper method for constructing *schemahcl.Attr instances that contain list values.
 func ListAttr(k string, litValues ...string) *schemahcl.Attr {
 	lv := &schemahcl.ListValue{}
 	for _, v := range litValues {
@@ -92,7 +92,7 @@ type doc struct {
 	Schemas []*sqlspec.Schema `spec:"schema"`
 }
 
-// Marshal marshals v into an Atlas DDL document using a schemaspec.Marshaler. Marshal uses the given
+// Marshal marshals v into an Atlas DDL document using a schemahcl.Marshaler. Marshal uses the given
 // schemaSpec function to convert a *schema.Schema into *sqlspec.Schema and []*sqlspec.Table.
 func Marshal(v interface{}, marshaler schemahcl.Marshaler, schemaSpec func(schem *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error)) ([]byte, error) {
 	d := &doc{}

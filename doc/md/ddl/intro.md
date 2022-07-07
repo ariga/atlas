@@ -244,12 +244,12 @@ To operate correctly, struct extensions should be registered using the `schemasp
 function:
 
 ```go
-schemaspec.Register("point", &Point{})
+schemahcl.Register("point", &Point{})
 ```
 
-Extension structs may implement the [Remainer](https://pkg.go.dev/ariga.io/atlas/schema/schemaspec#Remainer)
+Extension structs may implement the [Remainer](https://pkg.go.dev/ariga.io/atlas/schemahcl#Remainer)
 interface if they wish to store any attributes and children that are not matched by their
-tagged fields. As a convenience the `schemaspec` package exports a `DefaultExtension` type that
+tagged fields. As a convenience the `schemahcl` package exports a `DefaultExtension` type that
 can be embedded to support this behavior.
 
 ### Qualifiers

@@ -31,7 +31,7 @@ type (
 	}
 )
 
-// MarshalSpec implements schemaspec.Marshaler for Atlas HCL documents.
+// MarshalSpec implements Marshaler for Atlas HCL documents.
 func (s *State) MarshalSpec(v interface{}) ([]byte, error) {
 	r := &Resource{}
 	if err := r.Scan(v); err != nil {
@@ -111,7 +111,8 @@ func (s *State) Eval(parsed *hclparse.Parser, v interface{}, input map[string]st
 	return nil
 }
 
-// EvalBytes implements the Evaluator interface.
+// EvalBytes evaluates the data byte-slice as an Atlas HCL document using the input variables
+// and stores the result in v.
 func (s *State) EvalBytes(data []byte, v interface{}, input map[string]string) error {
 	parser := hclparse.NewParser()
 	if _, diag := parser.ParseHCL(data, ""); diag.HasErrors() {
@@ -123,7 +124,7 @@ func (s *State) EvalBytes(data []byte, v interface{}, input map[string]string) e
 // addrRef maps addresses to their referenced resource.
 type addrRef map[string]*Resource
 
-// patchRefs recursively searches for schemaspec.Ref under the provided schemaspec.Resource
+// patchRefs recursively searches for schemahcl.Ref under the provided schemahcl.Resource
 // and patches any variables with their concrete names.
 func patchRefs(spec *Resource) error {
 	return make(addrRef).patch(spec)
@@ -185,7 +186,7 @@ func rep(r *Resource) string {
 	return fmt.Sprintf("$%s.%s", r.Type, n)
 }
 
-// resource converts the hcl file to a schemaspec.Resource.
+// resource converts the hcl file to a schemahcl.Resource.
 func (s *State) resource(ctx *hcl.EvalContext, file *hcl.File) (*Resource, error) {
 	body, ok := file.Body.(*hclsyntax.Body)
 	if !ok {
@@ -331,7 +332,7 @@ func (s *State) toResource(ctx *hcl.EvalContext, block *hclsyntax.Block, scope [
 	return spec, nil
 }
 
-// encode encodes the give *schemaspec.Resource into a byte slice containing an Atlas HCL
+// encode encodes the give *schemahcl.Resource into a byte slice containing an Atlas HCL
 // document representing it.
 func (s *State) encode(r *Resource) ([]byte, error) {
 	f := hclwrite.NewFile()

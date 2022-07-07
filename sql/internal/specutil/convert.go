@@ -631,7 +631,7 @@ func externalColRef(cName string, tName string) *schemahcl.Ref {
 	return &schemahcl.Ref{V: "$table." + tName + ".$column." + cName}
 }
 
-// SchemaRef returns the schemaspec.Ref to the schema with the given name.
+// SchemaRef returns the schemahcl.Ref to the schema with the given name.
 func SchemaRef(n string) *schemahcl.Ref {
 	return &schemahcl.Ref{V: "$schema." + n}
 }

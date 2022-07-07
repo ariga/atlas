@@ -80,7 +80,7 @@ func readVar(v *varDef, inputVal string) (cty.Value, error) {
 	et := v.Type.EncapsulatedValue()
 	typ, ok := et.(*Type)
 	if !ok {
-		return cty.NilVal, fmt.Errorf("expected schemaspec.Type got %T", et)
+		return cty.NilVal, fmt.Errorf("expected schemahcl.Type got %T", et)
 	}
 	switch typ.T {
 	case "string":
@@ -221,7 +221,7 @@ func attrMap(attrs hclsyntax.Attributes) map[string]cty.Value {
 	return out
 }
 
-// ctySchemaLit is a cty.Capsule type the encapsulates a schemaspec.LiteralValue.
+// ctySchemaLit is a cty.Capsule type the encapsulates a schemahcl.LiteralValue.
 var (
 	ctySchemaLit = cty.CapsuleWithOps("lit", reflect.TypeOf(LiteralValue{}), &cty.CapsuleOps{
 		// ConversionFrom facilitates reading the encapsulated type as a string, as is needed, for example,
@@ -233,7 +233,7 @@ var (
 			return func(i interface{}, path cty.Path) (cty.Value, error) {
 				lit, ok := i.(*LiteralValue)
 				if !ok {
-					return cty.Value{}, fmt.Errorf("schemahcl: expected *schemaspec.LiteralValue got %T", i)
+					return cty.Value{}, fmt.Errorf("schemahcl: expected *schemahcl.LiteralValue got %T", i)
 				}
 				uq, err := strconv.Unquote(lit.V)
 				if err != nil {

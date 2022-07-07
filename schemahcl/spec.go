@@ -179,7 +179,7 @@ func (a *Attr) Strings() ([]string, error) {
 	for _, item := range lst.V {
 		sv, err := StrVal(item)
 		if err != nil {
-			return nil, fmt.Errorf("schemaspec: failed parsing item %q to string: %w", item, err)
+			return nil, fmt.Errorf("schemahcl: failed parsing item %q to string: %w", item, err)
 		}
 		out = append(out, sv)
 	}
@@ -191,7 +191,7 @@ func (a *Attr) Strings() ([]string, error) {
 func (a *Attr) Bools() ([]bool, error) {
 	lst, ok := a.V.(*ListValue)
 	if !ok {
-		return nil, fmt.Errorf("schemaspec: attribute %q is not a list", a.K)
+		return nil, fmt.Errorf("schemahcl: attribute %q is not a list", a.K)
 	}
 	out := make([]bool, 0, len(lst.V))
 	for _, item := range lst.V {
@@ -258,7 +258,7 @@ func replaceOrAppendAttr(attrs []*Attr, attr *Attr) []*Attr {
 func StrVal(v Value) (string, error) {
 	lit, ok := v.(*LiteralValue)
 	if !ok {
-		return "", fmt.Errorf("schemaspec: expected %T to be LiteralValue", v)
+		return "", fmt.Errorf("schemahcl: expected %T to be LiteralValue", v)
 	}
 	return strconv.Unquote(lit.V)
 }
@@ -269,11 +269,11 @@ func StrVal(v Value) (string, error) {
 func BoolVal(v Value) (bool, error) {
 	lit, ok := v.(*LiteralValue)
 	if !ok {
-		return false, fmt.Errorf("schemaspec: expected %T to be LiteralValue", v)
+		return false, fmt.Errorf("schemahcl: expected %T to be LiteralValue", v)
 	}
 	b, err := strconv.ParseBool(lit.V)
 	if err != nil {
-		return false, fmt.Errorf("schemaspec: failed parsing %q as bool: %w", lit.V, err)
+		return false, fmt.Errorf("schemahcl: failed parsing %q as bool: %w", lit.V, err)
 	}
 	return b, nil
 }
@@ -298,7 +298,7 @@ var (
 	_ Marshaler = MarshalerFunc(nil)
 )
 
-// LitAttr is a helper method for constructing *schemaspec.Attr instances that contain literal values.
+// LitAttr is a helper method for constructing *schemahcl.Attr instances that contain literal values.
 func LitAttr(k, v string) *Attr {
 	return &Attr{
 		K: k,
@@ -306,13 +306,13 @@ func LitAttr(k, v string) *Attr {
 	}
 }
 
-// StrLitAttr is a helper method for constructing *schemaspec.Attr instances that contain literal values
+// StrLitAttr is a helper method for constructing *schemahcl.Attr instances that contain literal values
 // representing string literals.
 func StrLitAttr(k, v string) *Attr {
 	return LitAttr(k, strconv.Quote(v))
 }
 
-// ListAttr is a helper method for constructing *schemaspec.Attr instances that contain list values.
+// ListAttr is a helper method for constructing *schemahcl.Attr instances that contain list values.
 func ListAttr(k string, litValues ...string) *Attr {
 	lv := &ListValue{}
 	for _, v := range litValues {

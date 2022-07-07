@@ -68,7 +68,7 @@ func (r *TypeRegistry) PrintType(typ *Type) (string, error) {
 	return typ.T + mid + suffix, nil
 }
 
-// TypeRegistry is a collection of *schemaspec.TypeSpec.
+// TypeRegistry is a collection of *schemahcl.TypeSpec.
 type TypeRegistry struct {
 	r      []*TypeSpec
 	spec   func(schema.Type) (*Type, error)
@@ -91,7 +91,7 @@ func WithFormatter(f func(schema.Type) (string, error)) TypeRegistryOption {
 }
 
 // WithSpecFunc configures the registry to use the given function for converting
-// a schema.Type to schemaspec.Type
+// a schema.Type to schemahcl.Type
 func WithSpecFunc(spec func(schema.Type) (*Type, error)) TypeRegistryOption {
 	return func(registry *TypeRegistry) error {
 		registry.spec = spec
@@ -184,7 +184,7 @@ func (r *TypeRegistry) findT(t string) (*TypeSpec, bool) {
 	return nil, false
 }
 
-// Convert converts the schema.Type to a *schemaspec.Type.
+// Convert converts the schema.Type to a *schemahcl.Type.
 func (r *TypeRegistry) Convert(typ schema.Type) (*Type, error) {
 	if ut, ok := typ.(*schema.UnsupportedType); ok {
 		return &Type{
@@ -278,7 +278,7 @@ func (r *TypeRegistry) Specs() []*TypeSpec {
 	return r.r
 }
 
-// Type converts a *schemaspec.Type into a schema.Type.
+// Type converts a *schemahcl.Type into a schema.Type.
 func (r *TypeRegistry) Type(typ *Type, extra []*Attr) (schema.Type, error) {
 	typeSpec, ok := r.findT(typ.T)
 	if !ok {
@@ -300,7 +300,7 @@ func (r *TypeRegistry) Type(typ *Type, extra []*Attr) (schema.Type, error) {
 	return r.parser(printType)
 }
 
-// TypeSpecOption configures a schemaspec.TypeSpec.
+// TypeSpecOption configures a schemahcl.TypeSpec.
 type TypeSpecOption func(*TypeSpec)
 
 // WithAttributes returns an attributes TypeSpecOption.
