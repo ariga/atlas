@@ -244,7 +244,7 @@ func initCLI() error {
 
 func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, eval schemahcl.Evaluator) {
 	err := initCLI()
-	f := filepath.Join(t.TempDir(), "atlas.hcl")
+	f := filepath.Join(t.TempDir(), "schema.hcl")
 	err = ioutil.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
 	require.NoError(t, err)
@@ -302,7 +302,7 @@ func testCLISchemaApply(t T, h string, dsn string, args ...string) {
 	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
-	f := filepath.Join(t.TempDir(), "atlas.hcl")
+	f := filepath.Join(t.TempDir(), "schema.hcl")
 	err = ioutil.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
 	runArgs := []string{
@@ -337,7 +337,7 @@ func testCLISchemaApplyDry(t T, h string, dsn string) {
 	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
-	f := filepath.Join(t.TempDir(), "atlas.hcl")
+	f := filepath.Join(t.TempDir(), "schema.hcl")
 	err = ioutil.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
 	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
@@ -370,7 +370,7 @@ func testCLISchemaApplyAutoApprove(t T, h string, dsn string, args ...string) {
 	err := initCLI()
 	require.NoError(t, err)
 	t.dropTables("users")
-	f := filepath.Join(t.TempDir(), "atlas.hcl")
+	f := filepath.Join(t.TempDir(), "schema.hcl")
 	err = ioutil.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
 	runArgs := []string{
