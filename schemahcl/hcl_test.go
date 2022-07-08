@@ -312,8 +312,9 @@ person "rotem" {
 
 func TestMultiFile(t *testing.T) {
 	type Person struct {
-		Name  string `spec:",name"`
-		Hobby string `spec:"hobby"`
+		Name   string `spec:",name"`
+		Hobby  string `spec:"hobby"`
+		Parent *Ref   `spec:"parent"`
 	}
 	var test struct {
 		People []*Person `spec:"person"`
@@ -334,5 +335,9 @@ func TestMultiFile(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, test.People, 2)
 	require.EqualValues(t, &Person{Name: "rotemtam", Hobby: "coding"}, test.People[0])
-	require.EqualValues(t, &Person{Name: "tzuri", Hobby: "ice-cream"}, test.People[1])
+	require.EqualValues(t, &Person{
+		Name:   "tzuri",
+		Hobby:  "ice-cream",
+		Parent: &Ref{V: "$person.rotemtam"},
+	}, test.People[1])
 }

@@ -1,0 +1,31 @@
+atlas schema apply --env local --auto-approve
+cmpshow users expected.sql
+
+-- atlas.hcl --
+env "local" {
+    url = "URL"
+    src = "./schema"
+    def_val = "hello"
+}
+-- schema/vars.hcl --
+variable "def_val" {
+    type = string
+}
+-- schema/table.hcl --
+table "users" {
+  schema = schema.main
+  column "id" {
+    null = false
+    type = int
+  }
+  column "status" {
+    null = true
+    type = text
+    default = var.def_val
+  }
+}
+-- schema/schema.hcl --
+schema "main" {
+}
+-- expected.sql --
+CREATE TABLE `users` (`id` int NOT NULL, `status` text NULL DEFAULT 'hello')

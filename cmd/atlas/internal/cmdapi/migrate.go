@@ -9,7 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -478,12 +478,8 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 	schemas := MigrateFlags.Schemas
 	switch parts[0] {
 	case "file": // hcl file
-		f, err := ioutil.ReadFile(parts[1])
-		if err != nil {
-			return nil, err
-		}
 		realm := &schema.Realm{}
-		parsed, err := parseHCLBytes(f)
+		parsed, err := parseHCLPaths([]string{parts[1]})
 		if err != nil {
 			return nil, err
 		}
@@ -527,12 +523,48 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 	}
 }
 
-func parseHCLBytes(b []byte) (*hclparse.Parser, error) {
+// parseHCL paths parses the HCL files in the given paths. If a path represents a directory,
+// its direct descendants will be considered, skipping any subdirectories. Files named "atlas.hcl"
+// are skipped as well/
+func parseHCLPaths(paths []string) (*hclparse.Parser, error) {
 	p := hclparse.NewParser()
-	if _, diag := p.ParseHCL(b, ""); diag.HasErrors() {
-		return nil, diag
+	for _, path := range paths {
+		switch stat, err := os.Stat(path); {
+		case err != nil:
+			return nil, err
+		case stat.IsDir():
+			dir, err := os.ReadDir(path)
+			if err != nil {
+				return nil, err
+			}
+			for _, f := range dir {
+				// Skip nested dirs.
+				if f.IsDir() {
+					continue
+				}
+				if err := mayParse(p, filepath.Join(path, f.Name())); err != nil {
+					return nil, err
+				}
+			}
+		default:
+			if err := mayParse(p, path); err != nil {
+
+				return nil, err
+			}
+		}
 	}
 	return p, nil
+}
+
+// mayParse will parse the file in path if it is an HCL file not named "atlas.hcl".
+func mayParse(p *hclparse.Parser, path string) error {
+	if n := filepath.Base(path); n == projectFileName || !strings.HasSuffix(n, ".hcl") {
+		return nil
+	}
+	if _, diag := p.ParseHCLFile(path); diag.HasErrors() {
+		return diag
+	}
+	return nil
 }
 
 const (

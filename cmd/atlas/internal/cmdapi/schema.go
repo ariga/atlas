@@ -51,7 +51,7 @@ var (
 	// ApplyFlags are the flags used in SchemaApply command.
 	ApplyFlags struct {
 		DevURL      string
-		File        string
+		Paths       []string
 		Web         bool
 		Addr        string
 		DryRun      bool
@@ -136,7 +136,7 @@ func init() {
 	// Schema apply flags.
 	schemaCmd.AddCommand(SchemaApply)
 	SchemaApply.Flags().SortFlags = false
-	SchemaApply.Flags().StringVarP(&ApplyFlags.File, fileFlag, "f", "", "[/path/to/file] file containing the HCL schema.")
+	SchemaApply.Flags().StringSliceVarP(&ApplyFlags.Paths, fileFlag, "f", nil, "[/path/to/schemas] file or directory containing the HCL files")
 	SchemaApply.Flags().StringVarP(&SchemaFlags.URL, urlFlag, "u", "", "URL to the database using the format:\n[driver://username:password@address/dbname?param=value]")
 	SchemaApply.Flags().StringSliceVarP(&SchemaFlags.Schemas, schemaFlag, "s", nil, "Set schema names.")
 	SchemaApply.Flags().StringVarP(&ApplyFlags.DevURL, devURLFlag, "", "", "URL for the dev database. Used to validate schemas and calculate diffs\nbefore running migration.")
@@ -275,7 +275,7 @@ func CmdApplyRun(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	defer c.Close()
-	return applyRun(cmd.Context(), c, ApplyFlags.DevURL, ApplyFlags.File, ApplyFlags.DryRun, ApplyFlags.AutoApprove, GlobalFlags.Vars)
+	return applyRun(cmd.Context(), c, ApplyFlags.DevURL, ApplyFlags.Paths, ApplyFlags.DryRun, ApplyFlags.AutoApprove, GlobalFlags.Vars)
 }
 
 // CmdFmtRun formats all HCL files in a given directory using canonical HCL formatting
@@ -289,7 +289,7 @@ func CmdFmtRun(cmd *cobra.Command, args []string) {
 	}
 }
 
-func applyRun(ctx context.Context, client *sqlclient.Client, devURL string, file string, dryRun, autoApprove bool, input map[string]string) error {
+func applyRun(ctx context.Context, client *sqlclient.Client, devURL string, paths []string, dryRun, autoApprove bool, input map[string]string) error {
 	schemas := SchemaFlags.Schemas
 	if client.URL.Schema != "" {
 		schemas = append(schemas, client.URL.Schema)
@@ -300,12 +300,8 @@ func applyRun(ctx context.Context, client *sqlclient.Client, devURL string, file
 	if err != nil {
 		return err
 	}
-	f, err := ioutil.ReadFile(file)
-	if err != nil {
-		return err
-	}
 	desired := &schema.Realm{}
-	parsed, err := parseHCLBytes(f)
+	parsed, err := parseHCLPaths(paths)
 	if err != nil {
 		return err
 	}
@@ -320,7 +316,7 @@ func applyRun(ctx context.Context, client *sqlclient.Client, devURL string, file
 		}
 		for _, s := range desired.Schemas {
 			if !sm[s.Name] {
-				return fmt.Errorf("schema %q from file %q was not selected %q, all schemas defined in file must be selected", s.Name, file, schemas)
+				return fmt.Errorf("schema %q was not selected %q, all schemas defined in file must be selected", s.Name, schemas)
 			}
 		}
 	}
