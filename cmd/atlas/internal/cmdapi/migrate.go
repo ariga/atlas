@@ -144,7 +144,7 @@ This command should be used whenever a manual change in the migration directory 
 	}
 	// MigrateNewCmd represents the 'atlas migrate new' command.
 	MigrateNewCmd = &cobra.Command{
-		Use:     "new",
+		Use:     "new [name]",
 		Short:   "Creates a new empty migration file in the migration directory.",
 		Long:    `'atlas migrate new' creates a new migration according to the configured formatter without any statements in it.`,
 		Example: `  atlas migrate new my-new-migration`,
@@ -154,14 +154,15 @@ This command should be used whenever a manual change in the migration directory 
 	}
 	// MigrateValidateCmd represents the 'atlas migrate validate' command.
 	MigrateValidateCmd = &cobra.Command{
-		Use:   "validate",
+		Use:   "validate [flags]",
 		Short: "Validates the migration directories checksum and SQL statements.",
-		Long: `'atlas migrate validate' computes the integrity hash sum of the migration directory and compares it to 
-the atlas.sum file. If there is a mismatch it will be reported. If the --dev-url flag is given, the migration files are 
-executed on the connected database in order to validate SQL semantics.`,
+		Long: `'atlas migrate validate' computes the integrity hash sum of the migration directory and compares it to the
+atlas.sum file. If there is a mismatch it will be reported. If the --dev-url flag is given, the migration
+files are executed on the connected database in order to validate SQL semantics.`,
 		Example: `  atlas migrate validate
   atlas migrate validate --dir file:///path/to/migration/directory
-  atlas migrate validate --dir file:///path/to/migration/directory --dev-url mysql://user:pass@localhost:3306/dev`,
+  atlas migrate validate --dir file:///path/to/migration/directory --dev-url mysql://user:pass@localhost:3306/dev
+  atlas migrate validate --env dev`,
 		PreRunE: migrateFlagsFromEnv,
 		RunE:    CmdMigrateValidateRun,
 	}
@@ -169,7 +170,7 @@ executed on the connected database in order to validate SQL semantics.`,
 	MigrateLintCmd = &cobra.Command{
 		Use:   "lint",
 		Short: "Run analysis on the migration directory",
-		Example: `  atlas migrate lint
+		Example: `  atlas migrate lint --env dev
   atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --latest 1
   atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --git-base master
   atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --log '{{ json .Files }}'`,
@@ -191,7 +192,7 @@ func init() {
 	MigrateCmd.AddCommand(MigrateLintCmd)
 	// Reusable flags.
 	urlFlag := func(f *string, name, short string, set *pflag.FlagSet) {
-		set.StringVarP(f, name, short, "", "[driver://username:password@address/dbname?param=value] select a data source using the URL format")
+		set.StringVarP(f, name, short, "", "[driver://username:password@address/dbname?param=value] select a database using the URL format")
 	}
 	// Global flags.
 	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.DirURL, migrateFlagDir, "", "file://migrations", "select migration directory using URL format")
@@ -219,6 +220,7 @@ func init() {
 	MigrateLintCmd.PersistentFlags().UintVarP(&MigrateFlags.Lint.Latest, migrateLintLatest, "", 0, "run analysis on the latest N migration files")
 	MigrateLintCmd.PersistentFlags().StringVarP(&MigrateFlags.Lint.GitBase, migrateLintGitBase, "", "", "run analysis against the base Git branch")
 	MigrateLintCmd.PersistentFlags().StringVarP(&MigrateFlags.Lint.GitDir, migrateLintGitDir, "", ".", "path to the repository working directory")
+	cobra.CheckErr(MigrateLintCmd.MarkFlagRequired(migrateFlagDevURL))
 	receivesEnv(MigrateCmd)
 }
 
