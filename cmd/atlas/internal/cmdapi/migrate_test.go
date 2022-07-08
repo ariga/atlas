@@ -394,8 +394,8 @@ table "accounts" {
 
 func hclURL(t *testing.T) string {
 	p := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(p, "atlas.hcl"), []byte(hcl), 0600))
-	return "file://" + filepath.Join(p, "atlas.hcl")
+	require.NoError(t, os.WriteFile(filepath.Join(p, "schema.hcl"), []byte(hcl), 0600))
+	return "file://" + filepath.Join(p, "schema.hcl")
 }
 
 func copyFile(src, dst string) error {
