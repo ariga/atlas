@@ -18,6 +18,7 @@ import (
 
 	"ariga.io/atlas/cmd/atlas/internal/ci"
 	entmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
+	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
@@ -25,11 +26,10 @@ import (
 	"ariga.io/atlas/sql/sqlcheck/destructive"
 	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqltool"
-	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
-
 	"github.com/fatih/color"
+	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -42,6 +42,7 @@ const (
 	migrateFlagFormat          = "format"
 	migrateFlagLog             = "log"
 	migrateFlagRevisionsSchema = "revisions-schema"
+	migrateFlagCreateRevisions = "create-revisions"
 	migrateFlagTo              = "to"
 	migrateFlagSchema          = "schema"
 	migrateDiffFlagVerbose     = "verbose"
@@ -53,17 +54,18 @@ const (
 var (
 	// MigrateFlags are the flags used in MigrateCmd (and sub-commands).
 	MigrateFlags struct {
-		URL            string
-		DirURL         string
-		DevURL         string
-		ToURL          string
-		Schemas        []string
-		Format         string
-		LogFormat      string
-		RevisionSchema string
-		Force          bool
-		Verbose        bool
-		Lint           struct {
+		URL             string
+		DirURL          string
+		DevURL          string
+		ToURL           string
+		Schemas         []string
+		Format          string
+		LogFormat       string
+		RevisionSchema  string
+		CreateRevisions bool
+		Force           bool
+		Verbose         bool
+		Lint            struct {
 			Format  string // log formatting
 			Latest  uint   // latest N migration files
 			GitDir  string // repository working dir
@@ -204,7 +206,8 @@ func init() {
 	MigrateCmd.PersistentFlags().SortFlags = false
 	// Apply flags.
 	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.LogFormat, migrateFlagLog, "", logFormatTTY, "log format to use")
-	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.RevisionSchema, migrateFlagRevisionsSchema, "", "", "schema name where the revisions table is to be created")
+	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.RevisionSchema, migrateFlagRevisionsSchema, "", entmigrate.DefaultRevisionSchema, "schema name where the revisions table resides")
+	MigrateApplyCmd.Flags().BoolVarP(&MigrateFlags.CreateRevisions, migrateFlagCreateRevisions, "", false, "whether to create revisions schema and table if they don't exist yet")
 	urlFlag(&MigrateFlags.URL, migrateFlagURL, "u", MigrateApplyCmd.Flags())
 	cobra.CheckErr(MigrateApplyCmd.MarkFlagRequired(migrateFlagURL))
 	// Diff flags.
@@ -244,7 +247,7 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	// Open a client to the database.
-	target, err := sqlclient.Open(cmd.Context(), MigrateFlags.URL)
+	c, err := sqlclient.Open(cmd.Context(), MigrateFlags.URL)
 	if err != nil {
 		return err
 	}
@@ -253,9 +256,16 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	ok, err := revisionsTableExists(cmd.Context(), c)
+	if err != nil {
+		return err
+	}
+	if !ok && !MigrateFlags.CreateRevisions {
+		return fmt.Errorf("The revisions table could not be found. If you are sure there is no typo and you want to create the table pass in the --%s flag.\n", migrateFlagCreateRevisions)
+	}
 	// Currently, only in DB revisions are supported.
 	opts := []entmigrate.Option{entmigrate.WithSchema(MigrateFlags.RevisionSchema)}
-	rrw, err := entmigrate.NewEntRevisions(target, opts...)
+	rrw, err := entmigrate.NewEntRevisions(c, opts...)
 	if err != nil {
 		return err
 	}
@@ -264,7 +274,7 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 	}
 	// Wrap the whole execution in one transaction. This behaviour will change once
 	// there are insights about migration files available.
-	tx, err := target.Tx(cmd.Context(), nil)
+	tx, err := c.Tx(cmd.Context(), nil)
 	if err != nil {
 		return err
 	}
@@ -346,7 +356,7 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 }
 
 // CmdMigrateHashRun is the command executed when running the CLI with 'migrate hash' args.
-func CmdMigrateHashRun(_ *cobra.Command, _ []string) error {
+func CmdMigrateHashRun(*cobra.Command, []string) error {
 	dir, err := dir()
 	if err != nil {
 		return err
@@ -523,6 +533,36 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 			StateReader: migrate.Conn(client, &schema.InspectRealmOption{Schemas: schemas}),
 		}, nil
 	}
+}
+
+func revisionsTableExists(ctx context.Context, c *sqlclient.Client) (bool, error) {
+	// Connect to the given schema name.
+	sc, err := sqlclient.Open(ctx, MigrateFlags.URL, sqlclient.OpenSchema(MigrateFlags.RevisionSchema))
+	switch {
+	case err != nil && !errors.Is(err, sqlclient.ErrUnsupported):
+		return false, err
+	case errors.Is(err, sqlclient.ErrUnsupported):
+		// If the driver does not support changing the schema use the existing connection.
+		sc = c
+	case err == nil:
+		// Connecting attempt to the schema was successful, make sure to close it.
+		defer sc.Close()
+	}
+	// Inspect schema and check if the table does already exist.
+	s, err := sc.InspectSchema(ctx, "", &schema.InspectOptions{Tables: []string{revision.Table}})
+	switch {
+	case err != nil && !schema.IsNotExistError(err):
+		return false, err
+	case schema.IsNotExistError(err):
+		// Schema does not exist.
+		return false, nil
+	}
+	if _, ok := s.Table(revision.Table); !ok {
+		// Table does not exist.
+		return false, nil
+	}
+	// Schema and Table are present.
+	return true, nil
 }
 
 // parseHCL paths parses the HCL files in the given paths. If a path represents a directory,

@@ -40,7 +40,9 @@ func TestMigrate_Apply(t *testing.T) {
 		Root, "migrate", "apply",
 		"--dir", "file://"+p,
 		"-u", openSQLite(t, ""),
+		"--create-revisions",
 	)
+	MigrateFlags.CreateRevisions = false
 	require.NoError(t, err)
 	require.Equal(t, "The migration directory is synced with the database, no migration files to execute\n", b)
 
@@ -57,7 +59,9 @@ func TestMigrate_Apply(t *testing.T) {
 		Root, "migrate", "apply",
 		"--dir", "file://testdata/sqlite",
 		"--url", openSQLite(t, ""),
+		"--create-revisions",
 	)
+	MigrateFlags.CreateRevisions = false
 	require.ErrorIs(t, err, migrate.ErrChecksumNotFound)
 	require.NoError(t, os.Rename(
 		filepath.FromSlash("testdata/sqlite/atlas.sum.bak"),
@@ -91,16 +95,30 @@ func TestMigrate_Apply(t *testing.T) {
 		Root, "migrate", "apply",
 		"--dir", "file://testdata/sqlite",
 		"--url", fmt.Sprintf("sqlitelockapply://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
+		"--create-revisions",
 	)
+	MigrateFlags.CreateRevisions = false
 	require.ErrorIs(t, err, errLock)
 	require.True(t, strings.HasPrefix(s, "Error: sql/migrate: acquiring database lock: "+errLock.Error()))
+
+	// Will refuse to work if no revision table does exist and there is no --create-revisions flag.
+	s, err = runCmd(
+		Root, "migrate", "apply",
+		"--dir", "file://testdata/sqlite",
+		"-u", openSQLite(t, ""),
+	)
+	require.Contains(t, s, "The revisions table could not be found")
+	require.Contains(t, s, "--create-revisions")
+	require.Error(t, err)
 
 	// Will work and print stuff to the console.
 	s, err = runCmd(
 		Root, "migrate", "apply",
 		"--dir", "file://testdata/sqlite",
 		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
+		"--create-revisions",
 	)
+	MigrateFlags.CreateRevisions = false
 	require.NoError(t, err)
 	require.Contains(t, s, "20220318104614")                         // log to version
 	require.Contains(t, s, "CREATE TABLE tbl (`col` int NOT NULL);") // logs statement
