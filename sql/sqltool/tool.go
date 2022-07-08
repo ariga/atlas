@@ -89,11 +89,11 @@ func (d *GolangMigrateDir) Files() ([]migrate.File, error) {
 
 // Desc implements Scanner.Desc.
 func (d *GolangMigrateDir) Desc(f migrate.File) (string, error) {
-	split := strings.SplitN(f.Name(), "_", 2)
-	if len(split) == 1 {
-		return "", nil
+	desc, err := d.LocalDir.Desc(f)
+	if err != nil {
+		return "", err
 	}
-	return strings.TrimSuffix(split[1], ".up.sql"), nil
+	return strings.TrimSuffix(desc, ".up"), nil
 }
 
 // funcs contains the template.FuncMap for the different formatters.
