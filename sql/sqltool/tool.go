@@ -57,8 +57,8 @@ var (
 // implementation compatible with golang-migrate/migrate.
 type GolangMigrateDir struct{ *migrate.LocalDir }
 
-// NewGolandMigrateDir returns a new GolangMigrateDir.
-func NewGolandMigrateDir(path string) (*GolangMigrateDir, error) {
+// NewGolangMigrateDir returns a new GolangMigrateDir.
+func NewGolangMigrateDir(path string) (*GolangMigrateDir, error) {
 	dir, err := migrate.NewLocalDir(path)
 	if err != nil {
 		return nil, err

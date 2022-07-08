@@ -113,7 +113,7 @@ CREATE TABLE t2(c int);
 }
 
 func TestScanners(t *testing.T) {
-	d, err := sqltool.NewGolandMigrateDir("testdata/golang-migrate")
+	d, err := sqltool.NewGolangMigrateDir("testdata/golang-migrate")
 	require.NoError(t, err)
 
 	files, err := d.Files()
