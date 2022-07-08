@@ -5,6 +5,10 @@
 package sqltool
 
 import (
+	"fmt"
+	"io/fs"
+	"sort"
+	"strings"
 	"text/template"
 	"time"
 
@@ -47,14 +51,58 @@ var (
 {{ with $change.Reverse }}--rollback: {{ . }};{{ end }}
 {{ end }}`,
 	)
-	// funcs contains the template.FuncMap for the different formatters.
-	funcs = template.FuncMap{
-		"inc": func(x int) int { return x + 1 },
-		// now format the current time in a lexicographically ascending order while maintaining human readability.
-		"now": func() string { return time.Now().UTC().Format("20060102150405") },
-		"rev": reverse,
-	}
 )
+
+// GolangMigrateDir wraps a migrate.LocalDir and provides a migrate.Scanner
+// implementation compatible with golang-migrate/migrate.
+type GolangMigrateDir struct{ *migrate.LocalDir }
+
+// NewGolandMigrateDir returns a new GolangMigrateDir.
+func NewGolandMigrateDir(path string) (*GolangMigrateDir, error) {
+	dir, err := migrate.NewLocalDir(path)
+	if err != nil {
+		return nil, err
+	}
+	return &GolangMigrateDir{dir}, nil
+}
+
+// Files implements Scanner.Files. It looks for all files with up.sql suffix and orders them by filename-
+func (d *GolangMigrateDir) Files() ([]migrate.File, error) {
+	names, err := fs.Glob(d, "*.up.sql")
+	if err != nil {
+		return nil, err
+	}
+	// Sort files lexicographically.
+	sort.Slice(names, func(i, j int) bool {
+		return names[i] < names[j]
+	})
+	ret := make([]migrate.File, len(names))
+	for i, n := range names {
+		b, err := fs.ReadFile(d, n)
+		if err != nil {
+			return nil, fmt.Errorf("sql/migrate: read file %q: %w", n, err)
+		}
+		ret[i] = migrate.NewLocalFile(n, b)
+	}
+	return ret, nil
+}
+
+// Desc implements Scanner.Desc.
+func (d *GolangMigrateDir) Desc(f migrate.File) (string, error) {
+	split := strings.SplitN(f.Name(), "_", 2)
+	if len(split) == 1 {
+		return "", nil
+	}
+	return strings.TrimSuffix(split[1], ".up.sql"), nil
+}
+
+// funcs contains the template.FuncMap for the different formatters.
+var funcs = template.FuncMap{
+	"inc": func(x int) int { return x + 1 },
+	// now formats the current time in a lexicographically ascending order while maintaining human readability.
+	"now": func() string { return time.Now().UTC().Format("20060102150405") },
+	"rev": reverse,
+}
 
 // templateFormatter parses the given templates and passes them on to the migrate.NewTemplateFormatter.
 func templateFormatter(templates ...string) migrate.Formatter {

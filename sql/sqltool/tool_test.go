@@ -112,6 +112,37 @@ CREATE TABLE t2(c int);
 	}
 }
 
+func TestScanners(t *testing.T) {
+	d, err := sqltool.NewGolandMigrateDir("testdata/golang-migrate")
+	require.NoError(t, err)
+
+	files, err := d.Files()
+	require.NoError(t, err)
+	require.Len(t, files, 2)
+	require.Equal(t, "1_initial.up.sql", files[0].Name())
+	require.Equal(t, "2_second_migration.up.sql", files[1].Name())
+
+	first, second := files[0], files[1]
+
+	stmts, err := d.Stmts(first)
+	require.NoError(t, err)
+	require.Equal(t, []string{"CREATE TABLE tbl\n(\n    col INT\n);"}, stmts)
+	stmts, err = d.Stmts(second)
+	require.NoError(t, err)
+	require.Equal(t, []string{"CREATE TABLE tbl_2 (col INT);"}, stmts)
+
+	v, err := d.Version(first)
+	require.NoError(t, err)
+	require.Equal(t, "1", v)
+
+	desc, err := d.Desc(first)
+	require.NoError(t, err)
+	require.Equal(t, "initial", desc)
+	desc, err = d.Desc(second)
+	require.NoError(t, err)
+	require.Equal(t, "second_migration", desc)
+}
+
 func dir(t *testing.T) migrate.Dir {
 	p := t.TempDir()
 	d, err := migrate.NewLocalDir(p)

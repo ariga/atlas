@@ -748,7 +748,7 @@ func (d *LocalDir) Files() ([]File, error) {
 		if err != nil {
 			return nil, fmt.Errorf("sql/migrate: read file %q: %w", n, err)
 		}
-		ret[i] = &LocalFile{n: n, b: b}
+		ret[i] = NewLocalFile(n, b)
 	}
 	return ret, nil
 }
@@ -781,6 +781,11 @@ var _ interface {
 type LocalFile struct {
 	n string
 	b []byte
+}
+
+// NewLocalFile returns a new local file.
+func NewLocalFile(path string, data []byte) *LocalFile {
+	return &LocalFile{path, data}
 }
 
 // Name implements File.Name.
