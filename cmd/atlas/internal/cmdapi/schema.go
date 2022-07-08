@@ -136,7 +136,7 @@ func init() {
 	// Schema apply flags.
 	schemaCmd.AddCommand(SchemaApply)
 	SchemaApply.Flags().SortFlags = false
-	SchemaApply.Flags().StringSliceVarP(&ApplyFlags.Paths, fileFlag, "f", nil, "[/path/to/schemas] file or directory containing the HCL files")
+	SchemaApply.Flags().StringSliceVarP(&ApplyFlags.Paths, fileFlag, "f", nil, "[paths...] file or directory containing the HCL files")
 	SchemaApply.Flags().StringVarP(&SchemaFlags.URL, urlFlag, "u", "", "URL to the database using the format:\n[driver://username:password@address/dbname?param=value]")
 	SchemaApply.Flags().StringSliceVarP(&SchemaFlags.Schemas, schemaFlag, "s", nil, "Set schema names.")
 	SchemaApply.Flags().StringVarP(&ApplyFlags.DevURL, devURLFlag, "", "", "URL for the dev database. Used to validate schemas and calculate diffs\nbefore running migration.")

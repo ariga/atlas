@@ -548,7 +548,6 @@ func parseHCLPaths(paths ...string) (*hclparse.Parser, error) {
 			}
 		default:
 			if err := mayParse(p, path); err != nil {
-
 				return nil, err
 			}
 		}
