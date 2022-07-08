@@ -65,7 +65,7 @@ type (
 		// If zero, InspectRealm inspects all schemas and their child resources.
 		Mode InspectMode
 
-		// Schemas to inspect. Empty means all tables in the schema.
+		// Schemas to inspect. Empty means all schemas in the realm.
 		Schemas []string
 	}
 

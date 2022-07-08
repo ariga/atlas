@@ -6,7 +6,6 @@ package cmdapi
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -268,7 +267,7 @@ func CmdInspectRun(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	schemaCmd.Print(string(ddl))
+	cmd.Print(string(ddl))
 	return nil
 }
 
@@ -282,7 +281,7 @@ func CmdApplyRun(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	defer c.Close()
-	return applyRun(cmd.Context(), c, ApplyFlags.DevURL, ApplyFlags.Paths, ApplyFlags.DryRun, ApplyFlags.AutoApprove, GlobalFlags.Vars)
+	return applyRun(cmd, c, ApplyFlags.DevURL, ApplyFlags.Paths, ApplyFlags.DryRun, ApplyFlags.AutoApprove, GlobalFlags.Vars)
 }
 
 // CmdFmtRun formats all HCL files in a given directory using canonical HCL formatting
@@ -296,8 +295,8 @@ func CmdFmtRun(cmd *cobra.Command, args []string) {
 	}
 }
 
-func applyRun(ctx context.Context, client *sqlclient.Client, devURL string, paths []string, dryRun, autoApprove bool, input map[string]string) error {
-	schemas := SchemaFlags.Schemas
+func applyRun(cmd *cobra.Command, client *sqlclient.Client, devURL string, paths []string, dryRun, autoApprove bool, input map[string]string) error {
+	schemas, ctx := SchemaFlags.Schemas, cmd.Context()
 	if client.URL.Schema != "" {
 		schemas = append(schemas, client.URL.Schema)
 	}
@@ -343,19 +342,19 @@ func applyRun(ctx context.Context, client *sqlclient.Client, devURL string, path
 		return err
 	}
 	if len(changes) == 0 {
-		schemaCmd.Println("Schema is synced, no changes to be made")
+		cmd.Println("Schema is synced, no changes to be made")
 		return nil
 	}
 	p, err := client.PlanChanges(ctx, "plan", changes)
 	if err != nil {
 		return err
 	}
-	schemaCmd.Println("-- Planned Changes:")
+	cmd.Println("-- Planned Changes:")
 	for _, c := range p.Changes {
 		if c.Comment != "" {
-			schemaCmd.Println("--", strings.ToUpper(c.Comment[:1])+c.Comment[1:])
+			cmd.Println("--", strings.ToUpper(c.Comment[:1])+c.Comment[1:])
 		}
-		schemaCmd.Println(c.Cmd)
+		cmd.Println(c.Cmd)
 	}
 	if dryRun {
 		return nil
