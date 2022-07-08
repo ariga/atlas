@@ -301,7 +301,7 @@ func applyRun(ctx context.Context, client *sqlclient.Client, devURL string, path
 		return err
 	}
 	desired := &schema.Realm{}
-	parsed, err := parseHCLPaths(paths)
+	parsed, err := parseHCLPaths(paths...)
 	if err != nil {
 		return err
 	}

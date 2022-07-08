@@ -479,7 +479,7 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 	switch parts[0] {
 	case "file": // hcl file
 		realm := &schema.Realm{}
-		parsed, err := parseHCLPaths([]string{parts[1]})
+		parsed, err := parseHCLPaths(parts[1])
 		if err != nil {
 			return nil, err
 		}
@@ -526,7 +526,7 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 // parseHCL paths parses the HCL files in the given paths. If a path represents a directory,
 // its direct descendants will be considered, skipping any subdirectories. Files named "atlas.hcl"
 // are skipped as well/
-func parseHCLPaths(paths []string) (*hclparse.Parser, error) {
+func parseHCLPaths(paths ...string) (*hclparse.Parser, error) {
 	p := hclparse.NewParser()
 	for _, path := range paths {
 		switch stat, err := os.Stat(path); {
@@ -558,7 +558,7 @@ func parseHCLPaths(paths []string) (*hclparse.Parser, error) {
 
 // mayParse will parse the file in path if it is an HCL file not named "atlas.hcl".
 func mayParse(p *hclparse.Parser, path string) error {
-	if n := filepath.Base(path); n == projectFileName || !strings.HasSuffix(n, ".hcl") {
+	if n := filepath.Base(path); n == projectFileName || filepath.Ext(n) != ".hcl" {
 		return nil
 	}
 	if _, diag := p.ParseHCLFile(path); diag.HasErrors() {
