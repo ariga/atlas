@@ -271,11 +271,11 @@ database to the state described in the provided Atlas schema. Before running the
 migration, Atlas will print the migration plan and prompt the user for approval.
 
 The schema is provided by one or more paths (to a file or directory) using the "-f" flag:
-  atlas schema apply -u <url> -f file1.hcl -f file2.hcl
-  atlas schema apply -u <url> -f schema/ -f override.hcl
+  atlas schema apply -u URL -f file1.hcl -f file2.hcl
+  atlas schema apply -u URL -f schema/ -f override.hcl
 
 As a convenience, schemas may also be provided via an environment definition in
-the project file (see: atlasgo.io/cli/projects).
+the project file (see: https://atlasgo.io/cli/projects).
 
 If run with the "--dry-run" flag, atlas will exit after printing out the planned
 migration.
