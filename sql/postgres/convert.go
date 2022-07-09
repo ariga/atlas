@@ -146,16 +146,21 @@ func FormatType(t schema.Type) (string, error) {
 // The raw value is expected to follow the format in PostgreSQL information schema
 // or as an input for the CREATE TABLE statement.
 func ParseType(typ string) (schema.Type, error) {
-	d, err := parseColumn(typ)
-	if err != nil {
-		return nil, err
-	}
+	var (
+		err error
+		d   *columnDesc
+	)
 	// Normalize PostgreSQL array data types from "CREATE TABLE" format to
 	// "INFORMATION_SCHEMA" format (i.e. as it is inspected from the database).
 	if t, ok := arrayType(typ); ok {
-		d = &columnDesc{typ: TypeArray, udt: t}
+		d = &columnDesc{typ: TypeArray, fmtype: t + "[]"}
+	} else if d, err = parseColumn(typ); err != nil {
+		return nil, err
 	}
-	t := columnType(d)
+	t, err := columnType(d)
+	if err != nil {
+		return nil, err
+	}
 	// If the type is unknown (to us), we fall back to user-defined but expect
 	// to improve this in future versions by ensuring this against the database.
 	if ut, ok := t.(*schema.UnsupportedType); ok {
@@ -165,16 +170,16 @@ func ParseType(typ string) (schema.Type, error) {
 }
 
 // reArray parses array declaration. See: https://postgresql.org/docs/current/arrays.html.
-var reArray = regexp.MustCompile(`(?i)(\w+)\s*(?:(?:\[\d*])+|\s+ARRAY\s*(?:\[\d*])*)`)
+var reArray = regexp.MustCompile(`(?i)(.+?)(( +ARRAY( *\[[ \d]*] *)*)+|( *\[[ \d]*] *)+)$`)
 
 // arrayType reports if the given string is an array type (e.g. int[], text[2]),
 // and returns its "udt_name" as it was inspected from the database.
 func arrayType(t string) (string, bool) {
 	matches := reArray.FindStringSubmatch(t)
-	if len(matches) != 2 {
+	if len(matches) < 2 {
 		return "", false
 	}
-	return matches[1], true
+	return strings.TrimSpace(matches[1]), true
 }
 
 // reInterval parses declaration of interval fields. See: https://www.postgresql.org/docs/current/datatype-datetime.html.
@@ -192,14 +197,14 @@ func intervalField(t string) (string, bool) {
 
 // columnDesc represents a column descriptor.
 type columnDesc struct {
-	typ           string
-	size          int64
-	udt           string
+	typ           string // data_type
+	fmtype        string // pg_catalog.format_type
+	size          int64  // character_maximum_length
+	typtype       string // pg_type.typtype
+	typid         int64  // pg_type.oid
 	precision     int64
 	timePrecision *int64
 	scale         int64
-	typtype       string
-	typid         int64
 	parts         []string
 	interval      string
 }
@@ -291,7 +296,7 @@ func parseCharParts(parts []string, c *columnDesc) error {
 	}
 	size, err := strconv.ParseInt(parts[0], 10, 64)
 	if err != nil {
-		return fmt.Errorf("postgres: parse size %q: %w", parts[1], err)
+		return fmt.Errorf("postgres: parse size %q: %w", parts[0], err)
 	}
 	c.size = size
 	return nil

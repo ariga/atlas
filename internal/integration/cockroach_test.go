@@ -165,7 +165,7 @@ func TestCockroach_AddColumns(t *testing.T) {
 			&schema.Column{Name: "m", Type: &schema.ColumnType{Type: &schema.BoolType{T: "boolean"}, Null: true}, Default: &schema.Literal{V: "false"}},
 			&schema.Column{Name: "n", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "geometry"}, Null: true}, Default: &schema.Literal{V: "'POINT(1 2)'"}},
 			&schema.Column{Name: "o", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "geometry"}, Null: true}, Default: &schema.Literal{V: "'LINESTRING(0 0, 1440 900)'"}},
-			&schema.Column{Name: "q", Type: &schema.ColumnType{Type: &postgres.ArrayType{T: "text[]"}, Null: true}, Default: &schema.Literal{V: "'{}'"}},
+			&schema.Column{Name: "q", Type: &schema.ColumnType{Type: &postgres.ArrayType{Type: &schema.StringType{T: "text"}, T: "text[]"}, Null: true}, Default: &schema.Literal{V: "'{}'"}},
 		)
 		changes := t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 14)
@@ -215,7 +215,7 @@ func TestCockroach_ColumnArray(t *testing.T) {
 		// Add column.
 		usersT.Columns = append(
 			usersT.Columns,
-			&schema.Column{Name: "a", Type: &schema.ColumnType{Raw: "int[]", Type: &postgres.ArrayType{T: "int[]"}}, Default: &schema.Literal{V: "'{1}'"}},
+			&schema.Column{Name: "a", Type: &schema.ColumnType{Raw: "bigint[]", Type: &postgres.ArrayType{Type: &schema.IntegerType{T: "bigint"}, T: "bigint[]"}}, Default: &schema.Literal{V: "'{1}'"}},
 		)
 		changes := t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 1)
@@ -774,7 +774,7 @@ create table atlas_types_sanity
 				},
 				{
 					Name: "tArray",
-					Type: &schema.ColumnType{Type: &postgres.ArrayType{T: "text[]"}, Raw: "ARRAY", Null: true},
+					Type: &schema.ColumnType{Type: &postgres.ArrayType{Type: &schema.StringType{T: "text"}, T: "text[]"}, Raw: "ARRAY", Null: true},
 					Default: &schema.RawExpr{
 						X: "ARRAY[]:::STRING[]",
 					},

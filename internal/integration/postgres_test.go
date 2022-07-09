@@ -196,7 +196,7 @@ func TestPostgres_AddColumns(t *testing.T) {
 			&schema.Column{Name: "n", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "point"}, Null: true}, Default: &schema.Literal{V: "'(1,2)'"}},
 			&schema.Column{Name: "o", Type: &schema.ColumnType{Type: &schema.SpatialType{T: "line"}, Null: true}, Default: &schema.Literal{V: "'{1,2,3}'"}},
 			&schema.Column{Name: "p", Type: &schema.ColumnType{Type: &postgres.UserDefinedType{T: "hstore"}, Null: true}, Default: &schema.RawExpr{X: "'a => 1'"}},
-			&schema.Column{Name: "q", Type: &schema.ColumnType{Type: &postgres.ArrayType{T: "text[]"}, Null: true}, Default: &schema.Literal{V: "'{}'"}},
+			&schema.Column{Name: "q", Type: &schema.ColumnType{Type: &postgres.ArrayType{Type: &schema.StringType{T: "text"}, T: "text[]"}, Null: true}, Default: &schema.Literal{V: "'{}'"}},
 		)
 		changes := t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 17)
@@ -252,7 +252,7 @@ func TestPostgres_ColumnArray(t *testing.T) {
 		// Add column.
 		usersT.Columns = append(
 			usersT.Columns,
-			&schema.Column{Name: "a", Type: &schema.ColumnType{Raw: "int[]", Type: &postgres.ArrayType{T: "int[]"}}, Default: &schema.Literal{V: "'{1}'"}},
+			&schema.Column{Name: "a", Type: &schema.ColumnType{Raw: "int[]", Type: &postgres.ArrayType{Type: &schema.IntegerType{T: "int"}, T: "int[]"}}, Default: &schema.Literal{V: "'{1}'"}},
 		)
 		changes := t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 1)
@@ -1011,7 +1011,7 @@ create table atlas_types_sanity
 				},
 				{
 					Name: "tArray",
-					Type: &schema.ColumnType{Type: &postgres.ArrayType{T: "text[]"}, Raw: "ARRAY", Null: true},
+					Type: &schema.ColumnType{Type: &postgres.ArrayType{Type: &schema.StringType{T: "text"}, T: "text[]"}, Raw: "ARRAY", Null: true},
 					Default: &schema.Literal{
 						V: "'{}'",
 					},

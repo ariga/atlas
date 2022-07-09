@@ -82,7 +82,7 @@ func (cd *crdbDiff) Normalize(from, to *schema.Table) error {
 }
 
 func (cd *crdbDiff) ColumnChange(fromT *schema.Table, from, to *schema.Column) (schema.ChangeKind, error) {
-	// All serial types in crdb become bigints under the hood,
+	// All serial types in Cockroach become are implemented as bigint.
 	// See: https://www.cockroachlabs.com/docs/stable/serial.html#generated-values-for-mode-sql_sequence-and-sql_sequence_cached.
 	if s, ok := to.Type.Type.(*SerialType); ok {
 		to.Type.Type = &schema.IntegerType{
@@ -306,6 +306,7 @@ SELECT
 	t1.table_name,
 	t1.column_name,
 	t1.data_type,
+	pg_catalog.format_type(a.atttypid, a.atttypmod) AS format_type,
 	t1.is_nullable,
 	t1.column_default,
 	t1.character_maximum_length,
@@ -315,7 +316,6 @@ SELECT
 	t1.interval_type,
 	t1.character_set_name,
 	t1.collation_name,
-	t1.udt_name,
 	t1.is_identity,
 	t5.start_value as identity_start,
 	t5.increment_by as identity_increment,
@@ -329,6 +329,7 @@ FROM
 	"information_schema"."columns" AS t1
 	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
 	JOIN pg_catalog.pg_class AS t3 ON t3.relnamespace = t2.oid AND t3.relname = t1.table_name
+	JOIN pg_catalog.pg_attribute AS a ON a.attrelid = t3.oid AND a.attname = t1.column_name
 	LEFT JOIN pg_catalog.pg_type AS t4
 	ON t1.udt_name = t4.typname
 	LEFT JOIN pg_sequences AS t5

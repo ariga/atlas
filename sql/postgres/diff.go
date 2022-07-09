@@ -248,12 +248,24 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 		changed = fromT.T != toT.T
 	case *ArrayType:
 		toT := toT.(*ArrayType)
-		changed = fromT.T != toT.T
-		// Array types can be defined differently, but they may represent the same type.
-		// Therefore, in case of mismatch, we verify it using the database engine.
-		if changed {
-			equals, err := d.typesEqual(fromT.T, toT.T)
-			return !equals, err
+		// Same type.
+		if changed = fromT.T != toT.T; !changed {
+			break
+		}
+		// In case the desired schema is not normalized, the string type can look different even
+		// if the two strings represent the same array type (varchar(1), character varying (1)).
+		// Therefore, we try by comparing the underlying types if they were defined.
+		if fromT.Type != nil && toT.Type != nil {
+			t1, err := FormatType(fromT.Type)
+			if err != nil {
+				return false, err
+			}
+			t2, err := FormatType(toT.Type)
+			if err != nil {
+				return false, err
+			}
+			// Same underlying type.
+			changed = t1 != t2
 		}
 	default:
 		return false, &sqlx.UnsupportedTypeError{Type: fromT}
@@ -324,22 +336,6 @@ func (d *diff) valuesEqual(x, y string) (bool, error) {
 	// The DEFAULT expressions are safe to be inlined in the SELECT
 	// statement same as we inline them in the CREATE TABLE statement.
 	rows, err := d.QueryContext(context.Background(), fmt.Sprintf("SELECT %s = %s", x, y))
-	if err != nil {
-		return false, err
-	}
-	if err := sqlx.ScanOne(rows, &b); err != nil {
-		return false, err
-	}
-	return b, nil
-}
-
-// typesEqual reports if the data types x and y
-// equal according to the database engine.
-func (d *diff) typesEqual(x, y string) (bool, error) {
-	var b bool
-	// The datatype are safe to be inlined in the SELECT statement
-	// same as we inline them in the CREATE TABLE statement.
-	rows, err := d.QueryContext(context.Background(), fmt.Sprintf("SELECT '%s'::regtype = '%s'::regtype", x, y))
 	if err != nil {
 		return false, err
 	}

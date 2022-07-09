@@ -1,0 +1,103 @@
+apply 1.hcl
+cmpshow logs 1.sql
+
+# Change size of the underlying type.
+apply 2.change-size.hcl
+cmpshow logs 2.sql
+
+synced 3.nochange.hcl
+synced 4.nochange.hcl
+
+apply 5.hcl
+cmpshow logs 5.sql
+
+
+-- 1.hcl --
+schema "$db" {}
+
+table "logs" {
+  schema    = schema.$db
+  column "records" {
+    null      = false
+    type      = sql("varchar(255)[]")
+  }
+}
+
+-- 1.sql --
+                  Table "script_column_array.logs"
+ Column  |           Type           | Collation | Nullable | Default
+---------+--------------------------+-----------+----------+---------
+ records | character varying(255)[] |           | not null |
+
+
+-- 2.change-size.hcl --
+schema "$db" {}
+
+table "logs" {
+  schema    = schema.$db
+  column "records" {
+    null      = false
+    type      = sql("varchar(100) ARRAY")
+  }
+}
+
+-- 2.sql --
+                  Table "script_column_array.logs"
+ Column  |           Type           | Collation | Nullable | Default
+---------+--------------------------+-----------+----------+---------
+ records | character varying(100)[] |           | not null |
+
+-- 3.nochange.hcl --
+schema "$db" {}
+
+table "logs" {
+  schema    = schema.$db
+  column "records" {
+    null      = false
+    type      = sql("varchar(100) ARRAY")
+  }
+}
+
+-- 4.nochange.hcl --
+schema "$db" {}
+
+table "logs" {
+  schema    = schema.$db
+  column "records" {
+    null      = false
+    type      = sql("varchar(100) [10][]")
+  }
+}
+
+-- 5.hcl --
+schema "$db" {}
+
+table "logs" {
+  schema    = schema.$db
+  column "a" {
+    null = false
+    type = sql("int[1]")
+  }
+  column "b" {
+    null = false
+    type = sql("int ARRAY[1]")
+  }
+  column "c" {
+    null = false
+    type = sql("character varying(100) ARRAY[1]")
+  }
+  column "d" {
+    null = false
+    type = sql("point [][1]")
+  }
+}
+
+-- 5.sql --
+       Table "script_column_array.logs"
+ Column |           Type           | Collation | Nullable | Default
+--------+--------------------------+-----------+----------+---------
+ a      | integer[]                |           | not null |
+ b      | integer[]                |           | not null |
+ c      | character varying(100)[] |           | not null |
+ d      | point[]                  |           | not null |
+
