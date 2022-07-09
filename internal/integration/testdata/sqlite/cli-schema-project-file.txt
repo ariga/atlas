@@ -7,6 +7,9 @@ stderr '"url" not set'
 ! atlas schema apply --url URL
 stderr '"file" not set'
 
+! atlas schema apply -f atlas.hcl -u URL
+stderr 'cannot parse project file'
+
 # Verify "url" and "src" attributes of the env are used.
 atlas schema apply --env local --auto-approve
 atlas schema inspect --env local > inspected.hcl

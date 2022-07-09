@@ -1,3 +1,6 @@
+! atlas schema apply -f empty/ -u URL --auto-approve
+stderr 'no schema files found'
+
 atlas schema apply -f schema/ -u URL --auto-approve
 cmpshow users expected.sql
 
@@ -17,5 +20,7 @@ table "users" {
 -- schema/schema.hcl --
 schema "main" {
 }
+-- empty/hello.txt --
+hello, world!
 -- expected.sql --
 CREATE TABLE `users` (`id` int NOT NULL, `status` text NULL DEFAULT 'hello')

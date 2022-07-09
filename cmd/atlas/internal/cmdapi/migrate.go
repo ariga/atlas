@@ -25,6 +25,8 @@ import (
 	"ariga.io/atlas/sql/sqlcheck/destructive"
 	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqltool"
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/fatih/color"
 	"github.com/hashicorp/hcl/v2/hclparse"
@@ -552,18 +554,35 @@ func parseHCLPaths(paths ...string) (*hclparse.Parser, error) {
 			}
 		}
 	}
+	if len(p.Files()) == 0 {
+		return nil, fmt.Errorf("no schema files found in: %s", paths)
+	}
 	return p, nil
 }
 
-// mayParse will parse the file in path if it is an HCL file not named "atlas.hcl".
+// mayParse will parse the file in path if it is an HCL file. If the file is an Atlas
+// project file an error is returned.
 func mayParse(p *hclparse.Parser, path string) error {
-	if n := filepath.Base(path); n == projectFileName || filepath.Ext(n) != ".hcl" {
+	if n := filepath.Base(path); filepath.Ext(n) != ".hcl" {
 		return nil
 	}
-	if _, diag := p.ParseHCLFile(path); diag.HasErrors() {
+	switch f, diag := p.ParseHCLFile(path); {
+	case diag.HasErrors():
 		return diag
+	case isProjectFile(f):
+		return fmt.Errorf("cannot parse project file %q as a schema file", path)
+	default:
+		return nil
 	}
-	return nil
+}
+
+func isProjectFile(f *hcl.File) bool {
+	for _, blk := range f.Body.(*hclsyntax.Body).Blocks {
+		if blk.Type == "env" {
+			return true
+		}
+	}
+	return false
 }
 
 const (
