@@ -64,19 +64,26 @@ var (
 		Short: "Apply an atlas schema to a target database.",
 		// Use 80-columns as max width.
 		Long: `'atlas schema apply' plans and executes a database migration to bring a given
-database to the state described in the Atlas schema file. Before running the
+database to the state described in the provided Atlas schema. Before running the
 migration, Atlas will print the migration plan and prompt the user for approval.
+
+The schema is provided by one or more paths (to a file or directory) using the "-f" flag:
+  atlas schema apply -u <url> -f file1.hcl -f file2.hcl
+  atlas schema apply -u <url> -f schema/ -f override.hcl
+
+As a convenience, schemas may also be provided via an environment definition in
+the project file (see: https://atlasgo.io/cli/projects).
 
 If run with the "--dry-run" flag, atlas will exit after printing out the planned
 migration.`,
 		PreRunE: schemaFlagsFromEnv,
 		RunE:    CmdApplyRun,
 		Example: `  atlas schema apply -u "mysql://user:pass@localhost/dbname" -f atlas.hcl
-  atlas schema apply -u "mysql://localhost" -f atlas.hcl --schema prod --schema staging
-  atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" -f atlas.hcl --dry-run
-  atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" -f atlas.hcl
-  atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -f atlas.hcl
-  atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f atlas.hcl`,
+  atlas schema apply -u "mysql://localhost" -f schema.hcl --schema prod --schema staging
+  atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" -f schema.hcl --dry-run
+  atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" -f schema.hcl
+  atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -f schema.hcl
+  atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f schema.hcl`,
 	}
 
 	// InspectFlags are the flags used in SchemaInspect command.
@@ -92,7 +99,7 @@ migration.`,
 It then prints to the screen the schema of that database in Atlas DDL syntax. This output can be
 saved to a file, commonly by redirecting the output to a file named with a ".hcl" suffix:
 
-  atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname" > atlas.hcl
+  atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname" > schema.hcl
 
 This file can then be edited and used with the` + " `atlas schema apply` " + `command to plan
 and execute schema migrations against the given database. In cases where users wish to inspect
