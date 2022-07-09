@@ -312,7 +312,7 @@ func TestMigrate_Lint(t *testing.T) {
 	require.Equal(t, "new.sql", s)
 }
 
-const hcl = `
+const testSchema = `
 schema "main" {
 }
 
@@ -394,7 +394,7 @@ table "accounts" {
 
 func hclURL(t *testing.T) string {
 	p := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(p, "schema.hcl"), []byte(hcl), 0600))
+	require.NoError(t, os.WriteFile(filepath.Join(p, "schema.hcl"), []byte(testSchema), 0600))
 	return "file://" + filepath.Join(p, "schema.hcl")
 }
 

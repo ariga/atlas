@@ -72,7 +72,7 @@ The schema is provided by one or more paths (to a file or directory) using the "
   atlas schema apply -u <url> -f schema/ -f override.hcl
 
 As a convenience, schemas may also be provided via an environment definition in
-the project file (see: https://atlasgo.io/cli/projects).
+the project file (see: atlasgo.io/cli/projects).
 
 If run with the "--dry-run" flag, atlas will exit after printing out the planned
 migration.`,
