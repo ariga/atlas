@@ -44,6 +44,16 @@ List of supported environment parameters:
   variable "ATLAS_NO_UPDATE_NOTIFIER".
 
 
+## atlas license
+
+Display license information
+
+#### Usage
+```
+atlas license
+```
+
+
 ## atlas migrate
 
 Manage versioned migration files
@@ -74,7 +84,7 @@ Applies pending migration files on the connected database.
 
 #### Usage
 ```
-atlas migrate apply [flags]
+atlas migrate apply [flags] [count]
 ```
 
 #### Details
@@ -88,37 +98,40 @@ As a safety measure 'atlas migrate apply' will abort with an error, if:
 #### Example
 
 ```
-  atlas migrate apply --to mysql://user:pass@localhost:3306/dbname
-  atlas migrate apply 1 --dir file:///path/to/migration/directory --to mysql://user:pass@localhost:3306/dbname
+  atlas migrate apply -u mysql://user:pass@localhost:3306/dbname
+  atlas migrate apply --dir file:///path/to/migration/directory --url mysql://user:pass@localhost:3306/dbname 1
+  atlas migrate apply --env dev 1
 ```
 #### Flags
 ```
       --log string                log format to use (default "tty")
       --revisions-schema string   schema name where the revisions table is to be created
-      --to string                 [driver://username:password@address/dbname?param=value] select a data source using the URL format
+  -u, --url string                [driver://username:password@address/dbname?param=value] select a data source using the URL format
 
 ```
 
 
 ### atlas migrate diff
 
-Compute the diff between the migration directory and a connected database and create a new migration file.
+Compute the diff between the migration directory and a desired state and create a new migration file.
 
 #### Usage
 ```
-atlas migrate diff [flags]
+atlas migrate diff [flags] [name]
 ```
 
 #### Details
-'atlas migrate diff' uses the dev-database to re-run all migration files in the migration
-directory and compares it to a given desired state and create a new migration file containing SQL statements to migrate 
-the migration directory state to the desired schema. The desired state can be another connected database or an HCL file.
+'atlas migrate diff' uses the dev-database to re-run all migration files in the migration directory, compares
+it to a given desired state and create a new migration file containing SQL statements to migrate the migration
+directory state to the desired schema. The desired state can be another connected database or an HCL file.
 
 #### Example
 
 ```
-  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname
   atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl
+  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl add_users_table
+  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname
+  atlas migrate diff --env dev
 ```
 #### Flags
 ```
@@ -147,6 +160,34 @@ This command should be used whenever a manual change in the migration directory 
 ```
   atlas migrate hash --force
 ```
+
+### atlas migrate lint
+
+Run analysis on the migration directory
+
+#### Usage
+```
+atlas migrate lint [flags]
+```
+
+#### Example
+
+```
+  atlas migrate lint
+  atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --latest 1
+  atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --git-base master
+  atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --log '{{ json .Files }}'
+```
+#### Flags
+```
+      --dev-url string    [driver://username:password@address/dbname?param=value] select a data source using the URL format
+      --git-base string   run analysis against the base Git branch
+      --git-dir string    path to the repository working directory (default ".")
+      --latest uint       run analysis on the latest N migration files
+      --log string        custom logging using a Go template
+
+```
+
 
 ### atlas migrate new
 
@@ -243,7 +284,7 @@ migration.
 ```
 #### Flags
 ```
-  -f, --file string      [/path/to/file] file containing the HCL schema.
+  -f, --file strings     [paths...] file or directory containing the HCL files
   -u, --url string       URL to the database using the format:
                          [driver://username:password@address/dbname?param=value]
   -s, --schema strings   Set schema names.
