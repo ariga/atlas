@@ -526,8 +526,8 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 }
 
 // parseHCL paths parses the HCL files in the given paths. If a path represents a directory,
-// its direct descendants will be considered, skipping any subdirectories. Files named "atlas.hcl"
-// are skipped as well/
+// its direct descendants will be considered, skipping any subdirectories. If a project file
+// is present in the input paths, an error is returned.
 func parseHCLPaths(paths ...string) (*hclparse.Parser, error) {
 	p := hclparse.NewParser()
 	for _, path := range paths {
