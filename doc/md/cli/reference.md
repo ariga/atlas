@@ -21,7 +21,13 @@ If you would like to build Atlas from source follow the instructions [here](http
 
 If you would like to build Atlas from source without the UI code run:
 ```shell
-go get ariga.io/atlas/cmd/atlas
+go install ariga.io/atlas/cmd/atlas@latest
+```
+This will install the latest version to your `$GOPATH/bin` directory.
+
+You can also build a specific version by using the [release tags](https://github.com/ariga/atlas/releases) published on GitHub, for example:
+```shell
+go install ariga.io/atlas/cmd/atlas@v0.4.2
 ```
 
 ## atlas env
