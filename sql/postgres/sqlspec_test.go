@@ -1011,27 +1011,39 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			typeExpr: `sql("int[]")`,
-			expected: &ArrayType{T: "int[]"},
+			expected: &ArrayType{Type: &schema.IntegerType{T: "int"}, T: "int[]"},
 		},
 		{
 			typeExpr: `sql("int[2]")`,
-			expected: &ArrayType{T: "int[]"},
+			expected: &ArrayType{Type: &schema.IntegerType{T: "int"}, T: "int[]"},
 		},
 		{
 			typeExpr: `sql("text[][]")`,
-			expected: &ArrayType{T: "text[]"},
+			expected: &ArrayType{Type: &schema.StringType{T: "text"}, T: "text[]"},
 		},
 		{
 			typeExpr: `sql("integer [3][3]")`,
-			expected: &ArrayType{T: "integer[]"},
+			expected: &ArrayType{Type: &schema.IntegerType{T: "integer"}, T: "integer[]"},
 		},
 		{
-			typeExpr: `sql("integer ARRAY[4]")`,
-			expected: &ArrayType{T: "integer[]"},
+			typeExpr: `sql("integer  ARRAY[4]")`,
+			expected: &ArrayType{Type: &schema.IntegerType{T: "integer"}, T: "integer[]"},
 		},
 		{
 			typeExpr: `sql("integer ARRAY")`,
-			expected: &ArrayType{T: "integer[]"},
+			expected: &ArrayType{Type: &schema.IntegerType{T: "integer"}, T: "integer[]"},
+		},
+		{
+			typeExpr: `sql("character varying(255) [1][2]")`,
+			expected: &ArrayType{Type: &schema.StringType{T: "character varying", Size: 255}, T: "character varying(255)[]"},
+		},
+		{
+			typeExpr: `sql("character varying ARRAY[2]")`,
+			expected: &ArrayType{Type: &schema.StringType{T: "character varying"}, T: "character varying[]"},
+		},
+		{
+			typeExpr: `sql("varchar(2) [ 2 ] [  ]")`,
+			expected: &ArrayType{Type: &schema.StringType{T: "varchar", Size: 2}, T: "varchar(2)[]"},
 		},
 	} {
 		t.Run(tt.typeExpr, func(t *testing.T) {

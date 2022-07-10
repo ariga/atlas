@@ -163,14 +163,14 @@ func (i *inspect) columns(ctx context.Context, s *schema.Schema) error {
 }
 
 // addColumn scans the current row and adds a new column from it to the table.
-func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
+func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) (err error) {
 	var (
-		typid, maxlen, precision, timeprecision, scale, seqstart, seqinc, seqlast                                               sql.NullInt64
-		table, name, typ, nullable, defaults, udt, identity, genidentity, genexpr, charset, collate, comment, typtype, interval sql.NullString
+		typid, maxlen, precision, timeprecision, scale, seqstart, seqinc, seqlast                                                  sql.NullInt64
+		table, name, typ, fmtype, nullable, defaults, identity, genidentity, genexpr, charset, collate, comment, typtype, interval sql.NullString
 	)
-	if err := rows.Scan(
-		&table, &name, &typ, &nullable, &defaults, &maxlen, &precision, &timeprecision, &scale, &interval, &charset,
-		&collate, &udt, &identity, &seqstart, &seqinc, &seqlast, &genidentity, &genexpr, &comment, &typtype, &typid,
+	if err = rows.Scan(
+		&table, &name, &typ, &fmtype, &nullable, &defaults, &maxlen, &precision, &timeprecision, &scale, &interval,
+		&charset, &collate, &identity, &seqstart, &seqinc, &seqlast, &genidentity, &genexpr, &comment, &typtype, &typid,
 	); err != nil {
 		return err
 	}
@@ -185,10 +185,10 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 			Null: nullable.String == "YES",
 		},
 	}
-	c.Type.Type = columnType(&columnDesc{
+	c.Type.Type, err = columnType(&columnDesc{
 		typ:           typ.String,
+		fmtype:        fmtype.String,
 		size:          maxlen.Int64,
-		udt:           udt.String,
 		scale:         scale.Int64,
 		typtype:       typtype.String,
 		typid:         typid.Int64,
@@ -227,7 +227,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	return nil
 }
 
-func columnType(c *columnDesc) schema.Type {
+func columnType(c *columnDesc) (schema.Type, error) {
 	var typ schema.Type
 	switch t := c.typ; strings.ToLower(t) {
 	case TypeBigInt, TypeInt8, TypeInt, TypeInteger, TypeInt4, TypeSmallInt, TypeInt2, TypeInt64:
@@ -264,7 +264,7 @@ func columnType(c *columnDesc) schema.Type {
 		if c.interval != "" {
 			f, ok := intervalField(c.interval)
 			if !ok {
-				return &schema.UnsupportedType{T: c.interval}
+				return &schema.UnsupportedType{T: c.interval}, nil
 			}
 			typ.(*IntervalType).F = f
 		}
@@ -283,23 +283,28 @@ func columnType(c *columnDesc) schema.Type {
 	case TypeXML:
 		typ = &XMLType{T: t}
 	case TypeArray:
-		// Note that for ARRAY types, the 'udt_name' column holds the array type
-		// prefixed with '_'. For example, for 'integer[]' the result is '_int',
-		// and for 'text[N][M]' the result is also '_text'. That's because, the
-		// database ignores any size or multi-dimensions constraints.
-		typ = &ArrayType{T: strings.TrimPrefix(c.udt, "_") + "[]"}
+		// Ignore multi-dimensions or size constraints
+		// as they are ignored by the database.
+		typ = &ArrayType{T: c.fmtype}
+		if t, ok := arrayType(c.fmtype); ok {
+			tt, err := ParseType(t)
+			if err != nil {
+				return nil, err
+			}
+			typ.(*ArrayType).Type = tt
+		}
 	case TypeUserDefined:
-		typ = &UserDefinedType{T: c.udt}
+		typ = &UserDefinedType{T: c.fmtype}
 		// The `typtype` column is set to 'e' for enum types, and the
 		// values are filled in batch after the rows above is closed.
 		// https://www.postgresql.org/docs/current/catalog-pg-type.html
 		if c.typtype == "e" {
-			typ = &enumType{T: c.udt, ID: c.typid}
+			typ = &enumType{T: c.fmtype, ID: c.typid}
 		}
 	default:
 		typ = &schema.UnsupportedType{T: t}
 	}
-	return typ
+	return typ, nil
 }
 
 // enumValues fills enum columns with their values from the database.
@@ -673,8 +678,8 @@ type (
 	// ArrayType defines an array type.
 	// https://www.postgresql.org/docs/current/arrays.html
 	ArrayType struct {
-		schema.Type
-		T string
+		schema.Type        // Underlying items type (e.g. varchar(255)).
+		T           string // Formatted type (e.g. int[]).
 	}
 
 	// BitType defines a bit type.
@@ -909,6 +914,7 @@ SELECT
 	t1.table_name,
 	t1.column_name,
 	t1.data_type,
+	pg_catalog.format_type(a.atttypid, a.atttypmod) AS format_type,
 	t1.is_nullable,
 	t1.column_default,
 	t1.character_maximum_length,
@@ -918,7 +924,6 @@ SELECT
 	t1.interval_type,
 	t1.character_set_name,
 	t1.collation_name,
-	t1.udt_name,
 	t1.is_identity,
 	t1.identity_start,
 	t1.identity_increment,
@@ -932,8 +937,8 @@ FROM
 	"information_schema"."columns" AS t1
 	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
 	JOIN pg_catalog.pg_class AS t3 ON t3.relnamespace = t2.oid AND t3.relname = t1.table_name
-	LEFT JOIN pg_catalog.pg_type AS t4
-	ON t1.udt_name = t4.typname
+	JOIN pg_catalog.pg_attribute AS a ON a.attrelid = t3.oid AND a.attname = t1.column_name
+	LEFT JOIN pg_catalog.pg_type AS t4 ON t1.udt_name = t4.typname
 WHERE
 	t1.table_schema = $1 AND t1.table_name IN (%s)
 ORDER BY

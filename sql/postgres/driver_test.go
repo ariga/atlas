@@ -50,7 +50,7 @@ func TestDriver_LockError(t *testing.T) {
 			WithArgs(hash).
 			WillReturnError(context.DeadlineExceeded).
 			RowsWillBeClosed()
-		unlock, err := d.Lock(context.Background(), name, time.Millisecond)
+		unlock, err := d.Lock(context.Background(), name, time.Minute)
 		require.Equal(t, schema.ErrLocked, err)
 		require.Nil(t, unlock)
 	})
