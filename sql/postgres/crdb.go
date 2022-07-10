@@ -82,7 +82,7 @@ func (cd *crdbDiff) Normalize(from, to *schema.Table) error {
 }
 
 func (cd *crdbDiff) ColumnChange(fromT *schema.Table, from, to *schema.Column) (schema.ChangeKind, error) {
-	// All serial types in Cockroach become are implemented as bigint.
+	// All serial types in Cockroach are implemented as bigint.
 	// See: https://www.cockroachlabs.com/docs/stable/serial.html#generated-values-for-mode-sql_sequence-and-sql_sequence_cached.
 	if s, ok := to.Type.Type.(*SerialType); ok {
 		to.Type.Type = &schema.IntegerType{
