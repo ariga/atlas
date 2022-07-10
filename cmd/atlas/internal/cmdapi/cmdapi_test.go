@@ -31,7 +31,6 @@ func TestEnv_Set(t *testing.T) {
 
 func TestCLI_Version(t *testing.T) {
 	// Required to have a clean "stderr" while running first time.
-	require.NoError(t, exec.Command("go", "run", "-mod=mod", "ariga.io/atlas/cmd/atlas").Run())
 	tests := []struct {
 		name     string
 		cmd      *exec.Cmd
