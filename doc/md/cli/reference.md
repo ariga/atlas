@@ -44,6 +44,16 @@ List of supported environment parameters:
   variable "ATLAS_NO_UPDATE_NOTIFIER".
 
 
+## atlas license
+
+Display license information
+
+#### Usage
+```
+atlas license
+```
+
+
 ## atlas migrate
 
 Manage versioned migration files
@@ -74,7 +84,7 @@ Applies pending migration files on the connected database.
 
 #### Usage
 ```
-atlas migrate apply [flags]
+atlas migrate apply [flags] [count]
 ```
 
 #### Details
@@ -88,42 +98,45 @@ As a safety measure 'atlas migrate apply' will abort with an error, if:
 #### Example
 
 ```
-  atlas migrate apply --to mysql://user:pass@localhost:3306/dbname
-  atlas migrate apply 1 --dir file:///path/to/migration/directory --to mysql://user:pass@localhost:3306/dbname
+  atlas migrate apply -u mysql://user:pass@localhost:3306/dbname
+  atlas migrate apply --dir file:///path/to/migration/directory --url mysql://user:pass@localhost:3306/dbname 1
+  atlas migrate apply --env dev 1
 ```
 #### Flags
 ```
       --log string                log format to use (default "tty")
       --revisions-schema string   schema name where the revisions table is to be created
-      --to string                 [driver://username:password@address/dbname?param=value] select a data source using the URL format
+  -u, --url string                [driver://username:password@address/dbname?param=value] select a database using the URL format
 
 ```
 
 
 ### atlas migrate diff
 
-Compute the diff between the migration directory and a connected database and create a new migration file.
+Compute the diff between the migration directory and a desired state and create a new migration file.
 
 #### Usage
 ```
-atlas migrate diff [flags]
+atlas migrate diff [flags] [name]
 ```
 
 #### Details
-'atlas migrate diff' uses the dev-database to re-run all migration files in the migration
-directory and compares it to a given desired state and create a new migration file containing SQL statements to migrate 
-the migration directory state to the desired schema. The desired state can be another connected database or an HCL file.
+'atlas migrate diff' uses the dev-database to re-run all migration files in the migration directory, compares
+it to a given desired state and create a new migration file containing SQL statements to migrate the migration
+directory state to the desired schema. The desired state can be another connected database or an HCL file.
 
 #### Example
 
 ```
-  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname
   atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl
+  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl add_users_table
+  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname
+  atlas migrate diff --env dev
 ```
 #### Flags
 ```
-      --dev-url string   [driver://username:password@address/dbname?param=value] select a data source using the URL format
-      --to string        [driver://username:password@address/dbname?param=value] select a data source using the URL format
+      --dev-url string   [driver://username:password@address/dbname?param=value] select a database using the URL format
+      --to string        [driver://username:password@address/dbname?param=value] select a database using the URL format
       --verbose          enable verbose logging
 
 ```
@@ -148,13 +161,41 @@ This command should be used whenever a manual change in the migration directory 
   atlas migrate hash --force
 ```
 
+### atlas migrate lint
+
+Run analysis on the migration directory
+
+#### Usage
+```
+atlas migrate lint [flags]
+```
+
+#### Example
+
+```
+  atlas migrate lint --env dev
+  atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --latest 1
+  atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --git-base master
+  atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --log '{{ json .Files }}'
+```
+#### Flags
+```
+      --dev-url string    [driver://username:password@address/dbname?param=value] select a database using the URL format
+      --git-base string   run analysis against the base Git branch
+      --git-dir string    path to the repository working directory (default ".")
+      --latest uint       run analysis on the latest N migration files
+      --log string        custom logging using a Go template
+
+```
+
+
 ### atlas migrate new
 
 Creates a new empty migration file in the migration directory.
 
 #### Usage
 ```
-atlas migrate new
+atlas migrate new [name]
 ```
 
 #### Details
@@ -176,9 +217,9 @@ atlas migrate validate [flags]
 ```
 
 #### Details
-'atlas migrate validate' computes the integrity hash sum of the migration directory and compares it to 
-the atlas.sum file. If there is a mismatch it will be reported. If the --dev-url flag is given, the migration files are 
-executed on the connected database in order to validate SQL semantics.
+'atlas migrate validate' computes the integrity hash sum of the migration directory and compares it to the
+atlas.sum file. If there is a mismatch it will be reported. If the --dev-url flag is given, the migration
+files are executed on the connected database in order to validate SQL semantics.
 
 #### Example
 
@@ -186,10 +227,11 @@ executed on the connected database in order to validate SQL semantics.
   atlas migrate validate
   atlas migrate validate --dir file:///path/to/migration/directory
   atlas migrate validate --dir file:///path/to/migration/directory --dev-url mysql://user:pass@localhost:3306/dev
+  atlas migrate validate --env dev
 ```
 #### Flags
 ```
-      --dev-url string   [driver://username:password@address/dbname?param=value] select a data source using the URL format
+      --dev-url string   [driver://username:password@address/dbname?param=value] select a database using the URL format
 
 ```
 
@@ -225,8 +267,15 @@ atlas schema apply [flags]
 
 #### Details
 'atlas schema apply' plans and executes a database migration to bring a given
-database to the state described in the Atlas schema file. Before running the
+database to the state described in the provided Atlas schema. Before running the
 migration, Atlas will print the migration plan and prompt the user for approval.
+
+The schema is provided by one or more paths (to a file or directory) using the "-f" flag:
+  atlas schema apply -u URL -f file1.hcl -f file2.hcl
+  atlas schema apply -u URL -f schema/ -f override.hcl
+
+As a convenience, schemas may also be provided via an environment definition in
+the project file (see: https://atlasgo.io/cli/projects).
 
 If run with the "--dry-run" flag, atlas will exit after printing out the planned
 migration.
@@ -235,15 +284,15 @@ migration.
 
 ```
   atlas schema apply -u "mysql://user:pass@localhost/dbname" -f atlas.hcl
-  atlas schema apply -u "mysql://localhost" -f atlas.hcl --schema prod --schema staging
-  atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" -f atlas.hcl --dry-run
-  atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" -f atlas.hcl
-  atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -f atlas.hcl
-  atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f atlas.hcl
+  atlas schema apply -u "mysql://localhost" -f schema.hcl --schema prod --schema staging
+  atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" -f schema.hcl --dry-run
+  atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" -f schema.hcl
+  atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -f schema.hcl
+  atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f schema.hcl
 ```
 #### Flags
 ```
-  -f, --file string      [/path/to/file] file containing the HCL schema.
+  -f, --file strings     [paths...] file or directory containing the HCL files
   -u, --url string       URL to the database using the format:
                          [driver://username:password@address/dbname?param=value]
   -s, --schema strings   Set schema names.
@@ -274,8 +323,8 @@ SQL statements to migrate the "from" database to the schema of the "to" database
 
 #### Flags
 ```
-      --from string   [driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format
-      --to string     [driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format
+      --from string   [driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format
+      --to string     [driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format
 
 ```
 
@@ -313,7 +362,7 @@ atlas schema inspect [flags]
 It then prints to the screen the schema of that database in Atlas DDL syntax. This output can be
 saved to a file, commonly by redirecting the output to a file named with a ".hcl" suffix:
 
-  atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname" > atlas.hcl
+  atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname" > schema.hcl
 
 This file can then be edited and used with the `atlas schema apply` command to plan
 and execute schema migrations against the given database. In cases where users wish to inspect
@@ -335,7 +384,7 @@ flag.
 ```
       --addr string      Used with -w, local address to bind the server to (default ":5800")
   -s, --schema strings   Set schema name
-  -u, --url string       [driver://username:password@protocol(address)/dbname?param=value] Select data source using the url format
+  -u, --url string       [driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format
   -w, --web              Open in a local Atlas UI
 
 ```
