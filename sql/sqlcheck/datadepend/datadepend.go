@@ -7,7 +7,6 @@ package datadepend
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/schema"
@@ -43,11 +42,6 @@ func New(opts Options) *Analyzer {
 
 // Analyze implements sqlcheck.Analyzer.
 func (a *Analyzer) Analyze(ctx context.Context, p *sqlcheck.Pass) error {
-	f, ok := drivers.Load(p.Dev.Name)
-	if ok {
-		return f.(func(context.Context, *Analyzer, *sqlcheck.Pass) error)(ctx, a, p)
-	}
-	// Fallback to the default implementation.
 	a.Report(p, a.Diagnostics(ctx, p))
 	return nil
 }
@@ -108,13 +102,4 @@ func (a *Analyzer) Report(p *sqlcheck.Pass, diags []sqlcheck.Diagnostic) {
 			Diagnostics: diags,
 		})
 	}
-}
-
-// drivers specific analyzers.
-var drivers sync.Map
-
-// Register allows drivers to override the
-// default analysis with custom behavior.
-func Register(name string, f func(context.Context, *Analyzer, *sqlcheck.Pass) error) {
-	drivers.Store(name, f)
 }

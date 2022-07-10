@@ -181,7 +181,7 @@ func selectEnv(selected string) (*Env, error) {
 		return env, nil
 	}
 	if _, err := os.Stat(projectFileName); os.IsNotExist(err) {
-		return env, nil
+		return nil, fmt.Errorf("project file %q was not found", projectFileName)
 	}
 	return LoadEnv(projectFileName, selected, WithInput(GlobalFlags.Vars))
 }

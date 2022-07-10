@@ -47,14 +47,14 @@ func New(opts Options) *Analyzer {
 	return d
 }
 
-// Analyze implements Analyzer.
-func (d *Analyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
+// Analyze implements sqlcheck.Analyzer.
+func (a *Analyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
 	var diags []sqlcheck.Diagnostic
 	for _, sc := range p.File.Changes {
 		for _, c := range sc.Changes {
 			switch c := c.(type) {
 			case *schema.DropSchema:
-				if *d.DropSchema && p.File.SchemaSpan(c.S) != sqlcheck.SpanTemporary {
+				if *a.DropSchema && p.File.SchemaSpan(c.S) != sqlcheck.SpanTemporary {
 					var text string
 					switch n := len(c.S.Tables); {
 					case n == 0:
@@ -67,14 +67,14 @@ func (d *Analyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
 					diags = append(diags, sqlcheck.Diagnostic{Pos: sc.Pos, Text: text})
 				}
 			case *schema.DropTable:
-				if *d.DropTable && p.File.SchemaSpan(c.T.Schema) != sqlcheck.SpanDropped && p.File.TableSpan(c.T) != sqlcheck.SpanTemporary {
+				if *a.DropTable && p.File.SchemaSpan(c.T.Schema) != sqlcheck.SpanDropped && p.File.TableSpan(c.T) != sqlcheck.SpanTemporary {
 					diags = append(diags, sqlcheck.Diagnostic{
 						Pos:  sc.Pos,
 						Text: fmt.Sprintf("Dropping table %q", c.T.Name),
 					})
 				}
 			case *schema.ModifyTable:
-				if !*d.DropColumn {
+				if !*a.DropColumn {
 					continue
 				}
 				for i := range c.Changes {

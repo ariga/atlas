@@ -10,18 +10,13 @@ import (
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/mysql"
-	"ariga.io/atlas/sql/mysql/internal/mysqlcheck"
+	"ariga.io/atlas/sql/mysql/mysqlcheck"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
-	"ariga.io/atlas/sql/sqlcheck/datadepend"
 	"ariga.io/atlas/sql/sqlclient"
 
 	"github.com/stretchr/testify/require"
 )
-
-func init() {
-	datadepend.Register("mysql", mysqlcheck.RegisterDataDepend)
-}
 
 func TestDataDepend_MySQL_ImplicitUpdate(t *testing.T) {
 	var (
@@ -65,9 +60,9 @@ func TestDataDepend_MySQL_ImplicitUpdate(t *testing.T) {
 			}),
 		}
 	)
-	az := datadepend.New(datadepend.Options{})
-	err := az.Analyze(context.Background(), pass)
+	az, err := mysqlcheck.NewDataDepend(nil)
 	require.NoError(t, err)
+	require.NoError(t, az.Analyze(context.Background(), pass))
 	require.Equal(t, report.Diagnostics[0].Text, `Adding a non-nullable "int" column "b" on table "users" without a default value implicitly sets existing rows with 0`)
 	require.Equal(t, report.Diagnostics[1].Text, `Adding a non-nullable "float" column "c" on table "users" without a default value implicitly sets existing rows with 0`)
 	require.Equal(t, report.Diagnostics[2].Text, `Adding a non-nullable "varchar" column "d" on table "users" without a default value implicitly sets existing rows with ""`)
@@ -111,9 +106,9 @@ func TestDataDepend_MySQL8_ImplicitUpdate(t *testing.T) {
 			}),
 		}
 	)
-	az := datadepend.New(datadepend.Options{})
-	err := az.Analyze(context.Background(), pass)
+	az, err := mysqlcheck.NewDataDepend(nil)
 	require.NoError(t, err)
+	require.NoError(t, az.Analyze(context.Background(), pass))
 	require.Equal(t,
 		report.Diagnostics[0].Text,
 		`Adding a non-nullable "timestamp" column "b" on table "users" without a default value implicitly sets existing rows with 0000-00-00 00:00:00`,
@@ -159,10 +154,9 @@ func TestDataDepend_MySQL_MightFail(t *testing.T) {
 			}),
 		}
 	)
-	datadepend.Register("mysql", mysqlcheck.RegisterDataDepend)
-	az := datadepend.New(datadepend.Options{})
-	err := az.Analyze(context.Background(), pass)
+	az, err := mysqlcheck.NewDataDepend(nil)
 	require.NoError(t, err)
+	require.NoError(t, az.Analyze(context.Background(), pass))
 	require.Equal(t, report.Diagnostics[0].Text, `Adding a non-nullable "date" column "b" will fail in case table "users" is not empty`)
 	require.Equal(t, report.Diagnostics[1].Text, `Adding a non-nullable "datetime" column "c" will fail in case table "users" is not empty`)
 	require.Equal(t, report.Diagnostics[2].Text, `Adding a non-nullable "point" column "d" will fail in case table "users" is not empty`)
@@ -216,9 +210,9 @@ func TestDataDepend_Maria_ImplicitUpdate(t *testing.T) {
 			}),
 		}
 	)
-	az := datadepend.New(datadepend.Options{})
-	err := az.Analyze(context.Background(), pass)
+	az, err := mysqlcheck.NewDataDepend(nil)
 	require.NoError(t, err)
+	require.NoError(t, az.Analyze(context.Background(), pass))
 	require.Equal(t, report.Diagnostics[0].Text, `Adding a non-nullable "text" column "b" on table "users" without a default value implicitly sets existing rows with ""`)
 	require.Equal(t, report.Diagnostics[1].Text, `Adding a non-nullable "json" column "c" on table "users" without a default value implicitly sets existing rows with ""`)
 	require.Equal(t, report.Diagnostics[2].Text, `Adding a non-nullable "date" column "d" on table "users" without a default value implicitly sets existing rows with 00:00:00`)

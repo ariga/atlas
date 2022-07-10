@@ -42,9 +42,12 @@ type (
 	}
 )
 
+// DriverName holds the name used for registration.
+const DriverName = "sqlite3"
+
 func init() {
 	sqlclient.Register(
-		"sqlite3",
+		DriverName,
 		sqlclient.DriverOpener(Open),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
 		sqlclient.RegisterFlavours("sqlite"),
@@ -80,7 +83,7 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	}
 	return &Driver{
 		conn:        c,
-		Differ:      &sqlx.Diff{DiffDriver: &diff{c}},
+		Differ:      &sqlx.Diff{DiffDriver: &Diff{}},
 		Inspector:   &inspect{c},
 		PlanApplier: &planApply{c},
 	}, nil
