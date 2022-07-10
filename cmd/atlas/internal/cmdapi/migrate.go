@@ -207,7 +207,7 @@ func init() {
 	// Apply flags.
 	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.LogFormat, migrateFlagLog, "", logFormatTTY, "log format to use")
 	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.RevisionSchema, migrateFlagRevisionsSchema, "", entmigrate.DefaultRevisionSchema, "schema name where the revisions table resides")
-	MigrateApplyCmd.Flags().BoolVarP(&MigrateFlags.CreateRevisions, migrateFlagCreateRevisions, "", false, "whether to create revisions schema and table if they don't exist yet")
+	MigrateApplyCmd.Flags().BoolVarP(&MigrateFlags.CreateRevisions, migrateFlagCreateRevisions, "", false, "whether to create revisions schema and table if they do not exist yet")
 	urlFlag(&MigrateFlags.URL, migrateFlagURL, "u", MigrateApplyCmd.Flags())
 	cobra.CheckErr(MigrateApplyCmd.MarkFlagRequired(migrateFlagURL))
 	// Diff flags.
