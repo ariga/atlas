@@ -556,12 +556,9 @@ func revisionsTableExists(ctx context.Context, c *sqlclient.Client) (bool, error
 		}
 		return false, err
 	}
-	if _, ok := s.Table(revision.Table); !ok {
-		// Table does not exist.
-		return false, nil
-	}
-	// Schema and Table are present.
-	return true, nil
+	_, ok := s.Table(revision.Table)
+	// Indicate if both schema and tables exist.
+	return ok, nil
 }
 
 // parseHCL paths parses the HCL files in the given paths. If a path represents a directory,
