@@ -550,12 +550,11 @@ func revisionsTableExists(ctx context.Context, c *sqlclient.Client) (bool, error
 	}
 	// Inspect schema and check if the table does already exist.
 	s, err := sc.InspectSchema(ctx, "", &schema.InspectOptions{Tables: []string{revision.Table}})
-	switch {
-	case err != nil && !schema.IsNotExistError(err):
+	if err != nil {
+		if schema.IsNotExistError(err) {
+			err = nil
+		}
 		return false, err
-	case schema.IsNotExistError(err):
-		// Schema does not exist.
-		return false, nil
 	}
 	if _, ok := s.Table(revision.Table); !ok {
 		// Table does not exist.
