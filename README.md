@@ -16,10 +16,10 @@ Atlas CLI is an open source tool that helps developers manage their database sch
 
 ## Quick Installation
 
-On macOS:
+On macOS via [Homebrew](https://brew.sh/):
 
 ```shell
-brew install ariga/tap/atlas
+brew install atlas
 ```
 
 Click [here](https://atlasgo.io/cli/getting-started/setting-up) to read instructions for other platforms.
