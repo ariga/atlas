@@ -19,6 +19,7 @@ import (
 
 	"ariga.io/atlas/cmd/atlas/internal/ci"
 	entmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
+	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
@@ -159,6 +160,16 @@ This command should be used whenever a manual change in the migration directory 
 		PreRunE: migrateFlagsFromEnv,
 		RunE:    CmdMigrateNewRun,
 	}
+	// MigrateStatusCmd represents the 'atlas migrate status' command.
+	MigrateStatusCmd = &cobra.Command{
+		Use:   "status [flags]",
+		Short: "Get information about the current migration status.",
+		Long:  `'atlas migrate status' reports information about the current status of a connected database compared to the migration directory.`,
+		Example: `  atlas migrate status --url mysql://user:pass@localhost:3306/
+  atlas migrate status --url mysql://user:pass@localhost:3306/ --dir file:///path/to/migration/directory`,
+		PreRunE: migrateFlagsFromEnv,
+		RunE:    CmdMigrateStatusRun,
+	}
 	// MigrateValidateCmd represents the 'atlas migrate validate' command.
 	MigrateValidateCmd = &cobra.Command{
 		Use:   "validate [flags]",
@@ -196,6 +207,7 @@ func init() {
 	MigrateCmd.AddCommand(MigrateHashCmd)
 	MigrateCmd.AddCommand(MigrateNewCmd)
 	MigrateCmd.AddCommand(MigrateValidateCmd)
+	MigrateCmd.AddCommand(MigrateStatusCmd)
 	MigrateCmd.AddCommand(MigrateLintCmd)
 	// Reusable flags.
 	urlFlag := func(f *string, name, short string, set *pflag.FlagSet) {
@@ -222,6 +234,8 @@ func init() {
 	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateFlagTo))
 	// Validate flags.
 	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateValidateCmd.Flags())
+	// Status flags.
+	urlFlag(&MigrateFlags.URL, migrateFlagURL, "u", MigrateStatusCmd.Flags())
 	// Lint flags.
 	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateLintCmd.Flags())
 	MigrateLintCmd.PersistentFlags().StringVarP(&MigrateFlags.Lint.Format, migrateFlagLog, "", "", "custom logging using a Go template")
@@ -254,6 +268,7 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	defer c.Close()
 	// Get the correct log format and destination. Currently, only os.Stdout is supported.
 	l, err := logFormat(cmd.OutOrStdout())
 	if err != nil {
@@ -396,6 +411,123 @@ func CmdMigrateNewRun(_ *cobra.Command, args []string) error {
 	return migrate.NewPlanner(nil, dir, migrate.WithFormatter(f)).WritePlan(&migrate.Plan{Name: name})
 }
 
+// CmdMigrateStatusRun is the command executed when running the CLI with 'migrate status' args.
+func CmdMigrateStatusRun(cmd *cobra.Command, _ []string) error {
+	// Open the migration directory.
+	dir, err := dir()
+	if err != nil {
+		return err
+	}
+	sc := dir.(migrate.Scanner) // all supported migration directories implement the migrate.Scanner
+	avail, err := sc.Files()
+	if err != nil {
+		return err
+	}
+	// Open a client to the database.
+	client, err := sqlclient.Open(cmd.Context(), MigrateFlags.URL)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	if ok, err := revisionsTableExists(cmd.Context(), client); !ok || err != nil {
+		if err != nil {
+			return err
+		}
+		return errors.New("revisions table does not exist")
+	}
+	// Currently, only in DB revisions are supported.
+	opts := []entmigrate.Option{entmigrate.WithSchema(MigrateFlags.RevisionSchema)}
+	rrw, err := entmigrate.NewEntRevisions(client, opts...)
+	if err != nil {
+		return err
+	}
+	if err := rrw.Init(cmd.Context()); err != nil {
+		return err
+	}
+	// Executor can give us insights on the revision state.
+	ex, err := migrate.NewExecutor(client.Driver, dir, rrw)
+	if err != nil {
+		return err
+	}
+	dirty := migrate.ErrDirty{}
+	pending, err := ex.Pending(context.Background())
+	if err != nil && !errors.As(err, &dirty) && !errors.Is(err, migrate.ErrNoPendingFiles) {
+		return err
+	}
+	var (
+		applied                 = avail[:len(pending)+1]
+		prev, cur, next, latest string
+	)
+	switch len(applied) {
+	case 0:
+		prev = "none"
+		cur = "none"
+	case 1:
+		prev = "none"
+		cur, err = sc.Version(applied[len(applied)-1])
+		if err != nil {
+			return err
+		}
+	default:
+		prev, err = sc.Version(applied[len(applied)-2])
+		if err != nil {
+			return err
+		}
+		cur, err = sc.Version(applied[len(applied)-1])
+		if err != nil {
+			return err
+		}
+	}
+	switch len(pending) {
+	case 0:
+		next = "Already at latest version"
+	default:
+		next, err = sc.Version(pending[0])
+		if err != nil {
+			return err
+		}
+	}
+	latest, err = sc.Version(avail[len(avail)-1])
+	if err != nil {
+		return err
+	}
+	out := cmd.OutOrStdout()
+	fmt.Fprintf(out, "Migration Status: ")
+	if errors.As(err, &dirty) {
+		var c func(string, ...interface{}) string
+		switch dirty.State {
+		case migrate.StateOngoing:
+			c = yellow
+		case migrate.StateError:
+			c = red
+		}
+		s := c(strings.ToUpper(dirty.State))
+		fmt.Fprintf(out, "%s\nDirty migration state: version %s has state %s.", s, cyan(dirty.Version), s)
+	}
+	if err == nil {
+		switch len(pending) {
+		case 0:
+			// If there are no pending files, all files have been applied.
+			fmt.Fprintln(out, green("OK"))
+		default:
+			// If there are pending files, collect more info.
+			fmt.Fprintln(out, cyan("PENDING"))
+		}
+	}
+	fmt.Fprintf(out, "%s%s Previous Version:\t%s\n", indent2, dash, cyan(prev))
+	fmt.Fprintf(out, "%s%s Current Version:\t%s\n", indent2, dash, cyan(cur))
+	fmt.Fprintf(out, "%s%s Next Version:\t%s\n", indent2, dash, cyan(next))
+	fmt.Fprintf(out, "%s%s Latest Version:\t%s\n", indent2, dash, cyan(latest))
+	fmt.Fprintf(out, "%s%s Available:\t\t%s\n", indent2, dash, cyan(strconv.Itoa(len(avail))))
+	fmt.Fprintf(out, "%s%s Executed:\t\t%s\n", indent2, dash, cyan(strconv.Itoa(len(applied))))
+	c := cyan
+	if len(pending) == 0 {
+		c = green
+	}
+	fmt.Fprintf(out, "%s%s Pending:\t\t%s\n", indent2, dash, c(strconv.Itoa(len(pending))))
+	return nil
+}
+
 // CmdMigrateValidateRun is the command executed when running the CLI with 'migrate validate' args.
 func CmdMigrateValidateRun(cmd *cobra.Command, _ []string) error {
 	// Validating the integrity is done by the PersistentPreRun already.
@@ -478,6 +610,36 @@ func CmdMigrateLintRun(cmd *cobra.Command, _ []string) error {
 		},
 	}
 	return r.Run(cmd.Context())
+}
+
+func revisionsTableExists(ctx context.Context, c *sqlclient.Client) (bool, error) {
+	// Connect to the given schema name.
+	sc, err := sqlclient.Open(ctx, MigrateFlags.URL, sqlclient.OpenSchema(MigrateFlags.RevisionSchema))
+	switch {
+	case err != nil && !errors.Is(err, sqlclient.ErrUnsupported):
+		return false, err
+	case errors.Is(err, sqlclient.ErrUnsupported):
+		// If the driver does not support changing the schema use the existing connection.
+		sc = c
+	case err == nil:
+		// Connecting attempt to the schema was successful, make sure to close it.
+		defer sc.Close()
+	}
+	// Inspect schema and check if the table does already exist.
+	s, err := sc.InspectSchema(ctx, "", &schema.InspectOptions{Tables: []string{revision.Table}})
+	switch {
+	case err != nil && !schema.IsNotExistError(err):
+		return false, err
+	case schema.IsNotExistError(err):
+		// Schema does not exist.
+		return false, nil
+	}
+	if _, ok := s.Table(revision.Table); !ok {
+		// Table does not exist.
+		return false, nil
+	}
+	// Schema and Table are present.
+	return true, nil
 }
 
 // dir returns a migrate.Dir to use as migration directory. For now only local directories are supported.
@@ -647,6 +809,8 @@ type LogTTY struct {
 
 var (
 	cyan    = color.CyanString
+	green   = color.HiGreenString
+	red     = color.HiRedString
 	yellow  = color.YellowString
 	dash    = yellow("--")
 	arr     = cyan("->")
