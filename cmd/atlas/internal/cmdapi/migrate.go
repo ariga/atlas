@@ -612,6 +612,7 @@ const (
 	formatGoose         = "goose"
 	formatFlyway        = "flyway"
 	formatLiquibase     = "liquibase"
+	formatDbmate        = "dbmate"
 )
 
 func formatter() (migrate.Formatter, error) {
@@ -626,6 +627,8 @@ func formatter() (migrate.Formatter, error) {
 		return sqltool.FlywayFormatter, nil
 	case formatLiquibase:
 		return sqltool.LiquibaseFormatter, nil
+	case formatDbmate:
+		return sqltool.DbmateFormatter, nil
 	default:
 		return nil, fmt.Errorf("unknown format %q", MigrateFlags.Format)
 	}
