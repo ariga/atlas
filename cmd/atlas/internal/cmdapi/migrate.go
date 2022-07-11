@@ -6,6 +6,7 @@ package cmdapi
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -25,11 +26,10 @@ import (
 	"ariga.io/atlas/sql/sqlcheck/destructive"
 	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqltool"
-	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
-
 	"github.com/fatih/color"
+	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -42,6 +42,7 @@ const (
 	migrateFlagFormat          = "format"
 	migrateFlagLog             = "log"
 	migrateFlagRevisionsSchema = "revisions-schema"
+	migrateFlagDryRun          = "dry-run"
 	migrateFlagTo              = "to"
 	migrateFlagSchema          = "schema"
 	migrateDiffFlagVerbose     = "verbose"
@@ -61,6 +62,7 @@ var (
 		Format         string
 		LogFormat      string
 		RevisionSchema string
+		DryRun         bool
 		Force          bool
 		Verbose        bool
 		Lint           struct {
@@ -111,10 +113,13 @@ It then attempts to apply the pending migration files in the correct order onto 
 The first argument denotes the maximum number of migration files to apply.
 As a safety measure 'atlas migrate apply' will abort with an error, if:
   - the migration directory is not in sync with the 'atlas.sum' file
-  - the migration and database history do not match each other`,
+  - the migration and database history do not match each other
+
+If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 		Example: `  atlas migrate apply -u mysql://user:pass@localhost:3306/dbname
   atlas migrate apply --dir file:///path/to/migration/directory --url mysql://user:pass@localhost:3306/dbname 1
-  atlas migrate apply --env dev 1`,
+  atlas migrate apply --env dev 1
+  atlas migrate apply --dry-run --env dev 1`,
 		Args:    cobra.MaximumNArgs(1),
 		PreRunE: migrateFlagsFromEnv,
 		RunE:    CmdMigrateApplyRun,
@@ -204,7 +209,8 @@ func init() {
 	MigrateCmd.PersistentFlags().SortFlags = false
 	// Apply flags.
 	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.LogFormat, migrateFlagLog, "", logFormatTTY, "log format to use")
-	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.RevisionSchema, migrateFlagRevisionsSchema, "", "", "schema name where the revisions table is to be created")
+	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.RevisionSchema, migrateFlagRevisionsSchema, "", entmigrate.DefaultRevisionSchema, "schema name where the revisions table resides")
+	MigrateApplyCmd.Flags().BoolVarP(&MigrateFlags.DryRun, migrateFlagDryRun, "", false, "do not actually execute any SQL but show it on screen")
 	urlFlag(&MigrateFlags.URL, migrateFlagURL, "u", MigrateApplyCmd.Flags())
 	cobra.CheckErr(MigrateApplyCmd.MarkFlagRequired(migrateFlagURL))
 	// Diff flags.
@@ -244,7 +250,7 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	// Open a client to the database.
-	target, err := sqlclient.Open(cmd.Context(), MigrateFlags.URL)
+	c, err := sqlclient.Open(cmd.Context(), MigrateFlags.URL)
 	if err != nil {
 		return err
 	}
@@ -254,23 +260,12 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	// Currently, only in DB revisions are supported.
-	opts := []entmigrate.Option{entmigrate.WithSchema(MigrateFlags.RevisionSchema)}
-	rrw, err := entmigrate.NewEntRevisions(target, opts...)
+	var rrw migrate.RevisionReadWriter
+	rrw, err = entmigrate.NewEntRevisions(c, []entmigrate.Option{entmigrate.WithSchema(MigrateFlags.RevisionSchema)}...)
 	if err != nil {
 		return err
 	}
-	if err := rrw.Init(cmd.Context()); err != nil {
-		return err
-	}
-	// Wrap the whole execution in one transaction. This behaviour will change once
-	// there are insights about migration files available.
-	tx, err := target.Tx(cmd.Context(), nil)
-	if err != nil {
-		return err
-	}
-	// Get the executor.
-	ex, err := migrate.NewExecutor(tx.Driver, dir, rrw, migrate.WithLogger(l))
-	if err != nil {
+	if err := rrw.(*entmigrate.EntRevisions).Init(cmd.Context()); err != nil {
 		return err
 	}
 	defer func(rrw *entmigrate.EntRevisions, ctx context.Context) {
@@ -281,16 +276,42 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 				err = err2
 			}
 		}
-	}(rrw, cmd.Context())
+	}(rrw.(*entmigrate.EntRevisions), cmd.Context())
+	var (
+		drv migrate.Driver
+		tx  *sqlclient.TxClient
+	)
+	if MigrateFlags.DryRun {
+		drv = &dryRunDriver{c.Driver}
+		rrw = &dryRunRevisions{rrw}
+	} else {
+		// Wrap the whole execution in one transaction. This behaviour will change once
+		// there are insights about migration files available.
+		tx, err = c.Tx(cmd.Context(), nil)
+		if err != nil {
+			return err
+		}
+		drv = tx.Driver
+	}
+	// Get the executor.
+	ex, err := migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(l))
+	if err != nil {
+		return err
+	}
 	if err = ex.ExecuteN(cmd.Context(), n); errors.Is(err, migrate.ErrNoPendingFiles) {
 		cmd.Println("The migration directory is synced with the database, no migration files to execute")
 	} else if err != nil {
-		if err2 := tx.Rollback(); err2 != nil {
-			err = fmt.Errorf("%v: %w", err2, err)
+		if !MigrateFlags.DryRun {
+			if err2 := tx.Rollback(); err2 != nil {
+				err = fmt.Errorf("%v: %w", err2, err)
+			}
 		}
 		return err
 	}
-	return tx.Commit()
+	if !MigrateFlags.DryRun {
+		return tx.Commit()
+	}
+	return nil
 }
 
 // CmdMigrateDiffRun is the command executed when running the CLI with 'migrate diff' args.
@@ -346,7 +367,7 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 }
 
 // CmdMigrateHashRun is the command executed when running the CLI with 'migrate hash' args.
-func CmdMigrateHashRun(_ *cobra.Command, _ []string) error {
+func CmdMigrateHashRun(*cobra.Command, []string) error {
 	dir, err := dir()
 	if err != nil {
 		return err
@@ -713,5 +734,38 @@ func migrateFlagsFromEnv(cmd *cobra.Command, _ []string) error {
 			return err
 		}
 	}
+	return nil
+}
+
+type (
+	// dryRunDriver wraps a migrate.Driver without executing any SQL statements.
+	dryRunDriver struct {
+		migrate.Driver
+	}
+
+	// dryRunRevisions wraps a migrate.RevisionReadWriter without executing any SQL statements.
+	dryRunRevisions struct {
+		migrate.RevisionReadWriter
+	}
+)
+
+// QueryContext overrides the wrapped schema.ExecQuerier to not execute any SQL.
+func (dryRunDriver) QueryContext(context.Context, string, ...interface{}) (*sql.Rows, error) {
+	return nil, nil
+}
+
+// ExecContext overrides the wrapped schema.ExecQuerier to not execute any SQL.
+func (dryRunDriver) ExecContext(context.Context, string, ...interface{}) (sql.Result, error) {
+	return nil, nil
+}
+
+// Lock implements the schema.Locker interface.
+func (dryRunDriver) Lock(context.Context, string, time.Duration) (schema.UnlockFunc, error) {
+	// We dry-run, we don't execute anything. Locking is not required.
+	return func() error { return nil }, nil
+}
+
+// WriteRevision overrides the wrapped migrate.RevisionReadWriter to not saved any changes to revisions.
+func (dryRunRevisions) WriteRevision(context.Context, *migrate.Revision) error {
 	return nil
 }

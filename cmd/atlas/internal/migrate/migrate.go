@@ -18,6 +18,8 @@ import (
 	entschema "entgo.io/ent/dialect/sql/schema"
 )
 
+const DefaultRevisionSchema = "atlas_schema_revisions"
+
 type (
 	// A EntRevisions provides implementation for the migrate.RevisionReadWriter interface.
 	EntRevisions struct {
@@ -42,7 +44,7 @@ func NewEntRevisions(ac *sqlclient.Client, opts ...Option) (*EntRevisions, error
 		}
 	}
 	if r.schema == "" {
-		r.schema = "atlas_schema_revisions"
+		r.schema = DefaultRevisionSchema
 	}
 	return r, nil
 }

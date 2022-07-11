@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	migrate2 "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
@@ -100,12 +101,43 @@ func TestMigrate_Apply(t *testing.T) {
 		Root, "migrate", "apply",
 		"--dir", "file://testdata/sqlite",
 		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
+		"1",
 	)
 	require.NoError(t, err)
-	require.Contains(t, s, "20220318104614")                         // log to version
-	require.Contains(t, s, "CREATE TABLE tbl (`col` int NOT NULL);") // logs statement
-	require.Contains(t, s, "1 migrations")                           // logs amount of migrations
-	require.Contains(t, s, "1 sql statements")                       // logs amount of statement
+	require.Contains(t, s, "20220318104614")                           // log to version
+	require.Contains(t, s, "CREATE TABLE tbl (`col` int NOT NULL);")   // logs statement
+	require.NotContains(t, s, "ALTER TABLE `tbl` ADD `col_2` bigint;") // does not execute second file
+	require.Contains(t, s, "1 migrations")                             // logs amount of migrations
+	require.Contains(t, s, "1 sql statements")                         // logs amount of statement
+
+	// Dry run will print the statements in second migration file without executing them. No changes to the revisions
+	// will be done.
+	s, err = runCmd(
+		Root, "migrate", "apply",
+		"--dir", "file://testdata/sqlite",
+		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
+		"--dry-run",
+		"1",
+	)
+	require.NoError(t, err)
+	require.Contains(t, s, "20220318104615")                        // log to version
+	require.Contains(t, s, "ALTER TABLE `tbl` ADD `col_2` bigint;") // logs statement
+	c, err := sqlclient.Open(context.Background(), fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, c.Close())
+	})
+	sch, err := c.InspectSchema(context.Background(), "", nil)
+	tbl, ok := sch.Table("tbl")
+	require.True(t, ok)
+	_, ok = tbl.Column("col_2")
+	require.False(t, ok)
+	rrw, err := migrate2.NewEntRevisions(c)
+	require.NoError(t, err)
+	require.NoError(t, rrw.Init(context.Background()))
+	revs, err := rrw.ReadRevisions(context.Background())
+	require.NoError(t, err)
+	require.Len(t, revs, 1)
 }
 
 func TestMigrate_Diff(t *testing.T) {
@@ -119,7 +151,8 @@ func TestMigrate_Diff(t *testing.T) {
 		"--dev-url", openSQLite(t, "create table t (c int);"),
 		"--to", hclURL(t),
 	)
-	require.ErrorIs(t, err, migrate.ErrNotClean)
+	require.ErrorAs(t, err, &migrate.NotCleanError{})
+	require.ErrorContains(t, err, "found table \"t\"")
 
 	// Works (on empty directory).
 	s, err = runCmd(
