@@ -319,12 +319,12 @@ func (p *Planner) WritePlan(plan *Plan) error {
 }
 
 const (
-	// stateOngoing is set once a migration file has been started to be applied.
-	stateOngoing = "ongoing"
-	// stateOK is set once a migration file is applied without errors.
-	stateOK = "ok"
-	// stateError  is set once a migration file could not be applied due to an error.
-	stateError = "error"
+	// StateOngoing is set once a migration file has been started to be applied.
+	StateOngoing = "ongoing"
+	// StateOK is set once a migration file is applied without errors.
+	StateOK = "ok"
+	// StateError  is set once a migration file could not be applied due to an error.
+	StateError = "error"
 )
 
 var (
@@ -380,6 +380,17 @@ func (e *Executor) Lock(ctx context.Context) (schema.UnlockFunc, error) {
 	return unlock, nil
 }
 
+// ErrDirty is returned if the revision table is dirty.
+type ErrDirty struct {
+	Version string
+	State   string
+}
+
+// Error implements the error interface.
+func (e ErrDirty) Error() string {
+	return fmt.Sprintf("dirty migration state: version %q has state %q", e.Version, e.State)
+}
+
 // Pending returns all pending (not applied) migration files in the migration directory. It will return an error, if
 // there is at least one revision in a "not-ok" state (error or ongoing).
 func (e *Executor) Pending(ctx context.Context) ([]File, error) {
@@ -394,12 +405,8 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 	}
 	// Check for all revisions to be "okay".
 	for _, r := range revs {
-		if r.ExecutionState != stateOK {
-			return nil, fmt.Errorf(
-				"sql/migrate: execute: dirty migration state: version %q has state %q",
-				r.Version,
-				r.ExecutionState,
-			)
+		if r.ExecutionState != StateOK {
+			return nil, fmt.Errorf("sql/migrate: execute: %w", ErrDirty{r.Version, r.ExecutionState})
 		}
 	}
 	// Select the correct migration files.
@@ -445,7 +452,7 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 // Execute executes the given migration file on the database. It does not check for the database to be clean before
 // attempting to apply the changes. This behavior is required to enabled "fixing" a broken state.
 func (e *Executor) Execute(ctx context.Context, m File) (err error) {
-	r := &Revision{ExecutedAt: time.Now(), ExecutionState: stateOngoing}
+	r := &Revision{ExecutedAt: time.Now(), ExecutionState: StateOngoing}
 	// Make sure to store the Revision information.
 	defer func(ctx context.Context, rrw RevisionReadWriter, r *Revision) {
 		if err2 := e.rrw.WriteRevision(ctx, r); err2 != nil {
@@ -637,9 +644,9 @@ var _ RevisionReadWriter = (*NopRevisionReadWriter)(nil)
 func (r *Revision) done(ok bool) {
 	r.ExecutionTime = time.Now().Sub(r.ExecutedAt)
 	if ok {
-		r.ExecutionState = stateOK
+		r.ExecutionState = StateOK
 	} else {
-		r.ExecutionState = stateError
+		r.ExecutionState = StateError
 	}
 }
 
