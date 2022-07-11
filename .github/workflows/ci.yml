@@ -69,6 +69,23 @@ jobs:
       - name: Run schemahcl tests
         run: go test -race ./...
         working-directory: schemahcl
+
+  cli:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: [ '1.18' ]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go }}
+      - uses: actions/cache@v2.1.5
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: Run cli tests
         run: go test -race ./...
         working-directory: cmd/atlas
