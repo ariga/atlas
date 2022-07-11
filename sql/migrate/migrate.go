@@ -545,13 +545,13 @@ func (e *Executor) ExecuteN(ctx context.Context, n int) error {
 	return err
 }
 
-// ErrNotClean is returned when the connected dev-db is not in a clean state (aka it has schemas and tables).
+// NotCleanError is returned when the connected dev-db is not in a clean state (aka it has schemas and tables).
 // This check is done to ensure no data is lost by overriding it when working on the dev-dn.
-type ErrNotClean struct {
+type NotCleanError struct {
 	Reason string // reason why the database is considered not clean
 }
 
-func (e ErrNotClean) Error() string {
+func (e NotCleanError) Error() string {
 	return "sql/migrate: connected database is not clean: " + e.Reason
 }
 
@@ -598,7 +598,7 @@ func IsClean(ctx context.Context, drv Driver) error {
 		return err
 	}
 	if len(realm.Schemas) > 0 {
-		return ErrNotClean{fmt.Sprintf("found schema %q", realm.Schemas[0].Name)}
+		return NotCleanError{fmt.Sprintf("found schema %q", realm.Schemas[0].Name)}
 	}
 	return nil
 }
