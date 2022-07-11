@@ -151,7 +151,8 @@ func TestMigrate_Diff(t *testing.T) {
 		"--dev-url", openSQLite(t, "create table t (c int);"),
 		"--to", hclURL(t),
 	)
-	require.ErrorIs(t, err, migrate.ErrNotClean)
+	require.ErrorAs(t, err, &migrate.NotCleanError{})
+	require.ErrorContains(t, err, "found table \"t\"")
 
 	// Works (on empty directory).
 	s, err = runCmd(

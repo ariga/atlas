@@ -93,7 +93,7 @@ func (d *Driver) IsClean(ctx context.Context) error {
 		return err
 	}
 	if !(r == nil || (len(r.Schemas) == 1 && r.Schemas[0].Name == mainFile && len(r.Schemas[0].Tables) == 0)) {
-		return migrate.ErrNotClean
+		return migrate.NotCleanError{Reason: fmt.Sprintf("found table %q", r.Schemas[0].Tables[0].Name)}
 	}
 	return nil
 }
