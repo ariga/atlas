@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -84,20 +85,12 @@ var (
 			}
 			// Migrate commands will not run on a broken migration directory, unless the force flag is given.
 			if !MigrateFlags.Force {
-				dir, err := dir()
+				dir, err := dir(false)
 				if err != nil {
 					return err
 				}
 				if err := migrate.Validate(dir); err != nil {
-					fmt.Fprintf(cmd.OutOrStderr(), `You have a checksum error in your migration directory.
-This happens if you manually create or edit a migration file.
-Please check your migration files and run
-
-'atlas migrate hash --force'
-
-to re-hash the contents and resolve the error
-
-`)
+					printChecksumErr(cmd.OutOrStderr())
 					cmd.SilenceUsage = true
 					return err
 				}
@@ -121,9 +114,8 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
   atlas migrate apply --dir file:///path/to/migration/directory --url mysql://user:pass@localhost:3306/dbname 1
   atlas migrate apply --env dev 1
   atlas migrate apply --dry-run --env dev 1`,
-		Args:    cobra.MaximumNArgs(1),
-		PreRunE: migrateFlagsFromEnv,
-		RunE:    CmdMigrateApplyRun,
+		Args: cobra.MaximumNArgs(1),
+		RunE: CmdMigrateApplyRun,
 	}
 	// MigrateDiffCmd represents the 'atlas migrate diff' subcommand.
 	MigrateDiffCmd = &cobra.Command{
@@ -136,9 +128,28 @@ directory state to the desired schema. The desired state can be another connecte
   atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl add_users_table
   atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname
   atlas migrate diff --env dev`,
-		Args:    cobra.MaximumNArgs(1),
-		PreRunE: migrateFlagsFromEnv,
-		RunE:    CmdMigrateDiffRun,
+		Args: cobra.MaximumNArgs(1),
+		// If the migration directory does not exist on the validation attempt, this command will create it and
+		// consider the new migration directory "valid".
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			if err := migrateFlagsFromEnv(cmd, nil); err != nil {
+				return err
+			}
+			// Migrate commands will not run on a broken migration directory, unless the force flag is given.
+			if !MigrateFlags.Force {
+				dir, err := dir(true)
+				if err != nil {
+					return err
+				}
+				if err := migrate.Validate(dir); err != nil {
+					printChecksumErr(cmd.OutOrStderr())
+					cmd.SilenceUsage = true
+					return err
+				}
+			}
+			return nil
+		},
+		RunE: CmdMigrateDiffRun,
 	}
 	// MigrateHashCmd represents the 'atlas migrate hash' command.
 	MigrateHashCmd = &cobra.Command{
@@ -147,7 +158,6 @@ directory state to the desired schema. The desired state can be another connecte
 		Long: `'atlas migrate hash' computes the integrity hash sum of the migration directory and stores it in the atlas.sum file.
 This command should be used whenever a manual change in the migration directory was made.`,
 		Example: `  atlas migrate hash --force`,
-		PreRunE: migrateFlagsFromEnv,
 		RunE:    CmdMigrateHashRun,
 	}
 	// MigrateNewCmd represents the 'atlas migrate new' command.
@@ -157,7 +167,6 @@ This command should be used whenever a manual change in the migration directory 
 		Long:    `'atlas migrate new' creates a new migration according to the configured formatter without any statements in it.`,
 		Example: `  atlas migrate new my-new-migration`,
 		Args:    cobra.MaximumNArgs(1),
-		PreRunE: migrateFlagsFromEnv,
 		RunE:    CmdMigrateNewRun,
 	}
 	// MigrateStatusCmd represents the 'atlas migrate status' command.
@@ -167,8 +176,7 @@ This command should be used whenever a manual change in the migration directory 
 		Long:  `'atlas migrate status' reports information about the current status of a connected database compared to the migration directory.`,
 		Example: `  atlas migrate status --url mysql://user:pass@localhost:3306/
   atlas migrate status --url mysql://user:pass@localhost:3306/ --dir file:///path/to/migration/directory`,
-		PreRunE: migrateFlagsFromEnv,
-		RunE:    CmdMigrateStatusRun,
+		RunE: CmdMigrateStatusRun,
 	}
 	// MigrateValidateCmd represents the 'atlas migrate validate' command.
 	MigrateValidateCmd = &cobra.Command{
@@ -181,8 +189,7 @@ files are executed on the connected database in order to validate SQL semantics.
   atlas migrate validate --dir file:///path/to/migration/directory
   atlas migrate validate --dir file:///path/to/migration/directory --dev-url mysql://user:pass@localhost:3306/dev
   atlas migrate validate --env dev`,
-		PreRunE: migrateFlagsFromEnv,
-		RunE:    CmdMigrateValidateRun,
+		RunE: CmdMigrateValidateRun,
 	}
 	// MigrateLintCmd represents the 'atlas migrate Lint' command.
 	MigrateLintCmd = &cobra.Command{
@@ -259,7 +266,7 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		}
 	}
 	// Open the migration directory.
-	dir, err := dir()
+	dir, err := dir(false)
 	if err != nil {
 		return err
 	}
@@ -347,7 +354,7 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 		defer cobra.CheckErr(unlock())
 	}
 	// Open the migration directory.
-	dir, err := dir()
+	dir, err := dir(false)
 	if err != nil {
 		return err
 	}
@@ -383,7 +390,7 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 
 // CmdMigrateHashRun is the command executed when running the CLI with 'migrate hash' args.
 func CmdMigrateHashRun(*cobra.Command, []string) error {
-	dir, err := dir()
+	dir, err := dir(false)
 	if err != nil {
 		return err
 	}
@@ -396,7 +403,7 @@ func CmdMigrateHashRun(*cobra.Command, []string) error {
 
 // CmdMigrateNewRun is the command executed when running the CLI with 'migrate new' args.
 func CmdMigrateNewRun(_ *cobra.Command, args []string) error {
-	dir, err := dir()
+	dir, err := dir(false)
 	if err != nil {
 		return err
 	}
@@ -414,7 +421,7 @@ func CmdMigrateNewRun(_ *cobra.Command, args []string) error {
 // CmdMigrateStatusRun is the command executed when running the CLI with 'migrate status' args.
 func CmdMigrateStatusRun(cmd *cobra.Command, _ []string) error {
 	// Open the migration directory.
-	dir, err := dir()
+	dir, err := dir(false)
 	if err != nil {
 		return err
 	}
@@ -525,7 +532,7 @@ func CmdMigrateValidateRun(cmd *cobra.Command, _ []string) error {
 	}
 	defer dev.Close()
 	// Currently, only our own migration file format is supported.
-	dir, err := dir()
+	dir, err := dir(false)
 	if err != nil {
 		return err
 	}
@@ -546,7 +553,7 @@ func CmdMigrateLintRun(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	defer dev.Close()
-	dir, err := dir()
+	dir, err := dir(false)
 	if err != nil {
 		return err
 	}
@@ -595,6 +602,18 @@ func CmdMigrateLintRun(cmd *cobra.Command, _ []string) error {
 	return r.Run(cmd.Context())
 }
 
+func printChecksumErr(out io.Writer) {
+	fmt.Fprintf(out, `You have a checksum error in your migration directory.
+This happens if you manually create or edit a migration file.
+Please check your migration files and run
+
+'atlas migrate hash --force'
+
+to re-hash the contents and resolve the error
+
+`)
+}
+
 func revisionsTableExists(ctx context.Context, c *sqlclient.Client) (bool, error) {
 	// Connect to the given schema name.
 	sc, err := sqlclient.Open(ctx, MigrateFlags.URL, sqlclient.OpenSchema(MigrateFlags.RevisionSchema))
@@ -626,7 +645,7 @@ func revisionsTableExists(ctx context.Context, c *sqlclient.Client) (bool, error
 }
 
 // dir returns a migrate.Dir to use as migration directory. For now only local directories are supported.
-func dir() (migrate.Dir, error) {
+func dir(create bool) (migrate.Dir, error) {
 	parts := strings.SplitN(MigrateFlags.DirURL, "://", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid dir url %q", MigrateFlags.DirURL)
@@ -634,7 +653,14 @@ func dir() (migrate.Dir, error) {
 	if parts[0] != "file" {
 		return nil, fmt.Errorf("unsupported driver %q", parts[0])
 	}
-	return migrate.NewLocalDir(parts[1])
+	d, err := migrate.NewLocalDir(parts[1])
+	if create && errors.Is(err, fs.ErrNotExist) {
+		if err := os.MkdirAll(parts[1], 0755); err != nil {
+			return nil, err
+		}
+		d, err = migrate.NewLocalDir(parts[1])
+	}
+	return d, err
 }
 
 // to returns a migrate.StateReader for the given to flag.

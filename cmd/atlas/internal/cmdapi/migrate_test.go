@@ -143,7 +143,18 @@ func TestMigrate_Apply(t *testing.T) {
 func TestMigrate_Diff(t *testing.T) {
 	p := t.TempDir()
 
+	// Will create migration directory if not existing.
+	_, err := runCmd(
+		Root, "migrate", "diff",
+		"name",
+		"--dir", "file://"+filepath.Join(p, "migrations"),
+		"--dev-url", openSQLite(t, ""),
+		"--to", hclURL(t))
+	require.NoError(t, err)
+	require.FileExists(t, filepath.Join(p, "migrations", fmt.Sprintf("%s_name.sql", time.Now().UTC().Format("20060102150405"))))
+
 	// Expect no clean dev error.
+	p = t.TempDir()
 	s, err := runCmd(
 		Root, "migrate", "diff",
 		"name",
