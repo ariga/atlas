@@ -380,14 +380,14 @@ func (e *Executor) Lock(ctx context.Context) (schema.UnlockFunc, error) {
 	return unlock, nil
 }
 
-// ErrDirty is returned if the revision table is dirty.
-type ErrDirty struct {
+// DirtyError is returned if the revision table is dirty.
+type DirtyError struct {
 	Version string
 	State   string
 }
 
 // Error implements the error interface.
-func (e ErrDirty) Error() string {
+func (e DirtyError) Error() string {
 	return fmt.Sprintf("dirty migration state: version %q has state %q", e.Version, e.State)
 }
 
@@ -406,7 +406,7 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 	// Check for all revisions to be "okay".
 	for _, r := range revs {
 		if r.ExecutionState != StateOK {
-			return nil, fmt.Errorf("sql/migrate: execute: %w", ErrDirty{r.Version, r.ExecutionState})
+			return nil, fmt.Errorf("sql/migrate: execute: %w", DirtyError{r.Version, r.ExecutionState})
 		}
 	}
 	// Select the correct migration files.
