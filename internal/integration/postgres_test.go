@@ -563,7 +563,11 @@ func TestPostgres_Snapshot(t *testing.T) {
 	pgRun(t, func(t *pgTest) {
 		client, err := sqlclient.Open(context.Background(), fmt.Sprintf("postgres://postgres:pass@localhost:%d/test?sslmode=disable&search_path=another", t.port))
 		require.NoError(t, err)
+
+		_, err = client.ExecContext(context.Background(), "CREATE SCHEMA another")
+		require.NoError(t, err)
 		t.Cleanup(func() {
+			_, err = client.ExecContext(context.Background(), "DROP SCHEMA IF EXISTS another")
 			require.NoError(t, client.Close())
 		})
 		drv := client.Driver
