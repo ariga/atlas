@@ -6,6 +6,7 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"hash/fnv"
@@ -27,6 +28,7 @@ type (
 		schema.Differ
 		schema.Inspector
 		migrate.PlanApplier
+		schema string // the schema given in the `search_path` parameter (if given)
 	}
 
 	// database connection and its information.
@@ -46,10 +48,33 @@ const DriverName = "postgres"
 func init() {
 	sqlclient.Register(
 		DriverName,
-		sqlclient.DriverOpener(Open),
+		sqlclient.OpenerFunc(opener),
+		sqlclient.RegisterDriverOpener(Open),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
 		sqlclient.RegisterURLParser(parser{}),
 	)
+}
+
+func opener(_ context.Context, u *url.URL) (*sqlclient.Client, error) {
+	ur := parser{}.ParseURL(u)
+	db, err := sql.Open("postgres", ur.DSN)
+	if err != nil {
+		return nil, err
+	}
+	drv, err := Open(db)
+	if err != nil {
+		if cerr := db.Close(); cerr != nil {
+			err = fmt.Errorf("%w: %v", err, cerr)
+		}
+		return nil, err
+	}
+	drv.(*Driver).schema = ur.Schema
+	return &sqlclient.Client{
+		Name:   "postgres",
+		DB:     db,
+		URL:    ur,
+		Driver: drv,
+	}, nil
 }
 
 // Open opens a new PostgreSQL driver.
@@ -132,6 +157,58 @@ func (d *Driver) Lock(ctx context.Context, name string, timeout time.Duration) (
 		}
 		return nil
 	}, nil
+}
+
+func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
+	// Postgres will only then be considered bound to a schema if the `search_path` was given.
+	// In all other cases, the connection is considered bound to the realm.
+	if d.schema != "" {
+		s, err := d.InspectSchema(ctx, d.schema, nil)
+		if err != nil {
+			return nil, err
+		}
+		if len(s.Tables) > 0 {
+			return nil, migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in connected schema", s.Tables[0].Name)}
+		}
+		return func(ctx context.Context) error {
+			current, err := d.InspectSchema(ctx, s.Name, nil)
+			if err != nil {
+				return err
+			}
+			changes, err := d.SchemaDiff(current, s)
+			if err != nil {
+				return err
+			}
+			return d.ApplyChanges(ctx, changes)
+		}, nil
+	}
+	// Not bound to a schema.
+	realm, err := d.InspectRealm(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	restore := func(ctx context.Context) error {
+		current, err := d.InspectRealm(ctx, nil)
+		if err != nil {
+			return err
+		}
+		changes, err := d.RealmDiff(current, realm)
+		if err != nil {
+			return err
+		}
+		return d.ApplyChanges(ctx, changes)
+	}
+	// Postgres is considered clean, if there are no schemas or the public schema has no tables.
+	if len(realm.Schemas) == 0 {
+		return restore, nil
+	}
+	if s, ok := realm.Schema("public"); len(realm.Schemas) == 1 && ok {
+		if len(s.Tables) > 0 {
+			return nil, migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name)}
+		}
+		return restore, nil
+	}
+	return nil, migrate.NotCleanError{Reason: fmt.Sprintf("found schema %q", realm.Schemas[0].Name)}
 }
 
 func acquire(ctx context.Context, conn schema.ExecQuerier, id uint32, timeout time.Duration) error {

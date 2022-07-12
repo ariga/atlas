@@ -273,7 +273,7 @@ func RegisterDriverOpener(open func(schema.ExecQuerier) (migrate.Driver, error))
 
 // DriverOpener is a helper Opener creator for sharing between all drivers.
 func DriverOpener(open func(schema.ExecQuerier) (migrate.Driver, error)) Opener {
-	return OpenerFunc(func(ctx context.Context, u *url.URL) (*Client, error) {
+	return OpenerFunc(func(_ context.Context, u *url.URL) (*Client, error) {
 		v, ok := drivers.Load(u.Scheme)
 		if !ok {
 			return nil, fmt.Errorf("sql/sqlclient: unexpected missing opener %q", u.Scheme)

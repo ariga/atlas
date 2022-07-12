@@ -181,13 +181,17 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 		return nil, fmt.Errorf("acquiring database lock: %w", err)
 	}
 	defer unlock()
-	// We need an empty database state to reliably replay the migration directory.
-	if err := migrate.IsClean(ctx, d.Dev.Driver); err != nil {
-		return nil, err
-	}
 	// Clean up after ourselves.
+	snap, ok := d.Dev.Driver.(migrate.Snapshoter)
+	if !ok {
+		return nil, errors.New("driver does not implement migrate.Snapshoter")
+	}
+	restore, err := snap.Snapshot(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("taking database snapshot: %w", err)
+	}
 	defer func() {
-		if err2 := migrate.Clean(ctx, d.Dev.Driver); err2 != nil {
+		if err2 := restore(ctx); err2 != nil {
 			if err != nil {
 				err = fmt.Errorf("%w: %v", err, err2)
 				return

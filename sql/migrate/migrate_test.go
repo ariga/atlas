@@ -204,7 +204,6 @@ func TestHash_UnmarshalText(t *testing.T) {
 	require.Equal(t, h, ac)
 }
 
-// Deprecated: GlobStateReader will be removed once the Executor is functional.
 func TestExecutor_ReadState(t *testing.T) {
 	ctx := context.Background()
 	d, err := migrate.NewLocalDir("testdata/migrate")
@@ -240,22 +239,6 @@ func TestExecutor_ReadState(t *testing.T) {
 	require.ErrorAs(t, err, &migrate.NotCleanError{})
 	require.Equal(t, 3, drv.lockCounter)
 	require.Equal(t, 3, drv.unlockCounter)
-	require.True(t, drv.released())
-
-	// Works.
-	edrv := &emptyMockDriver{drv}
-	ex, err = migrate.NewExecutor(edrv, d, migrate.NopRevisionReadWriter{})
-	require.NoError(t, err)
-	_, err = ex.ReadState(ctx)
-	require.NoError(t, err)
-	require.Equal(t, []schema.Change{
-		&schema.DropSchema{
-			S:     &schema.Schema{Name: "schema"},
-			Extra: []schema.Clause{&schema.IfExists{}},
-		},
-	}, edrv.applied)
-	require.Equal(t, 5, drv.lockCounter)
-	require.Equal(t, 5, drv.unlockCounter)
 	require.True(t, drv.released())
 }
 
@@ -503,6 +486,16 @@ func (m *mockDriver) ApplyChanges(_ context.Context, changes []schema.Change) er
 	m.applied = changes
 	return nil
 }
+func (m *mockDriver) Snapshot(context.Context) (migrate.RestoreFunc, error) {
+	if len(m.realm.Schemas) > 0 {
+		return nil, migrate.NotCleanError{}
+	}
+	realm := m.realm
+	return func(context.Context) error {
+		m.realm = realm
+		return nil
+	}, nil
+}
 func (m *lockMockDriver) Lock(_ context.Context, name string, _ time.Duration) (schema.UnlockFunc, error) {
 	if _, ok := m.locks[name]; ok {
 		return nil, errors.New("lockErr")
@@ -520,9 +513,6 @@ func (m *lockMockDriver) Lock(_ context.Context, name string, _ time.Duration) (
 }
 func (m *lockMockDriver) released() bool {
 	return len(m.locks) == 0
-}
-func (m *emptyMockDriver) IsClean(context.Context) error {
-	return nil
 }
 
 type mockRevisionReadWriter migrate.Revisions

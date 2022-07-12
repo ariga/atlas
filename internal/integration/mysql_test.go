@@ -562,6 +562,39 @@ schema "test" {
 	})
 }
 
+func TestMySQL_Snapshot(t *testing.T) {
+	myRun(t, func(t *myTest) {
+		db, err := sql.Open("mysql", fmt.Sprintf("root:pass@tcp(localhost:%d)/", t.port))
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			require.NoError(t, db.Close())
+		})
+		drv, err := mysql.Open(db)
+		require.NoError(t, err)
+
+		_, err = drv.(migrate.Snapshoter).Snapshot(context.Background())
+		require.ErrorAs(t, err, &migrate.NotCleanError{})
+
+		r, err := t.driver().InspectRealm(context.Background(), nil)
+		require.NoError(t, err)
+		restore, err := t.driver().(migrate.Snapshoter).Snapshot(context.Background())
+		require.NoError(t, err) // connected to test schema
+		t.migrate(&schema.AddTable{T: schema.NewTable("my_table").AddColumns(
+			schema.NewIntColumn("col_1", "integer").SetNull(true),
+			schema.NewIntColumn("col_2", "bigint"),
+		)})
+		t.Cleanup(func() {
+			t.dropTables("my_table")
+		})
+		require.NoError(t, restore(context.Background()))
+		r1, err := t.driver().InspectRealm(context.Background(), nil)
+		require.NoError(t, err)
+		diff, err := t.driver().RealmDiff(r1, r)
+		require.NoError(t, err)
+		require.Zero(t, diff)
+	})
+}
+
 func TestMySQL_CLI(t *testing.T) {
 	h := `
 			schema "test" {

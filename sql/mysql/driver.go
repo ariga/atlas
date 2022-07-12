@@ -117,6 +117,50 @@ func (d *Driver) Lock(ctx context.Context, name string, timeout time.Duration) (
 	}, nil
 }
 
+func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
+	// If the connection is bound to a schema, we can restore the state if the schema has no tables.
+	s, err := d.InspectSchema(ctx, "", nil)
+	if err != nil && !schema.IsNotExistError(err) {
+		return nil, err
+	}
+	// If a schema was found, it has to have no tables attached to be considered clean.
+	if s != nil {
+		if len(s.Tables) > 0 {
+			return nil, migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name)}
+		}
+		return func(ctx context.Context) error {
+			current, err := d.InspectSchema(ctx, s.Name, nil)
+			if err != nil {
+				return err
+			}
+			changes, err := d.SchemaDiff(current, s)
+			if err != nil {
+				return err
+			}
+			return d.ApplyChanges(ctx, changes)
+		}, nil
+	}
+	// Otherwise, the database can not have any schema.
+	realm, err := d.InspectRealm(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	if len(realm.Schemas) > 0 {
+		return nil, migrate.NotCleanError{Reason: fmt.Sprintf("found schema %q", realm.Schemas[0].Name)}
+	}
+	return func(ctx context.Context) error {
+		current, err := d.InspectRealm(ctx, nil)
+		if err != nil {
+			return err
+		}
+		changes, err := d.RealmDiff(current, realm)
+		if err != nil {
+			return err
+		}
+		return d.ApplyChanges(ctx, changes)
+	}, nil
+}
+
 func acquire(ctx context.Context, conn schema.ExecQuerier, name string, timeout time.Duration) error {
 	rows, err := conn.QueryContext(ctx, "SELECT GET_LOCK(?, ?)", name, int(timeout.Seconds()))
 	if err != nil {

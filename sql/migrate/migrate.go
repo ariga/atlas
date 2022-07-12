@@ -332,6 +332,8 @@ var (
 	ErrNoPendingFiles = errors.New("sql/migrate: execute: nothing to do")
 	// ErrLockUnsupported is returned when the given driver does not implement the schema.Locker interface.
 	ErrLockUnsupported = errors.New("sql/migrate: driver does not support locking")
+	// ErrSnapshotUnsupported is returned when the given driver does not implement the Snapshoter interface.
+	ErrSnapshotUnsupported = errors.New("sql/migrate: driver does not support taking a database snapshot")
 )
 
 // NewExecutor creates a new Executor with default values. // TODO(masseelch): Operator Version and other Meta
@@ -348,6 +350,10 @@ func NewExecutor(drv Driver, dir Dir, rrw RevisionReadWriter, opts ...ExecutorOp
 	// If the driver does not support acquiring a lock, don't execute migrations as this can potentially be fatal.
 	if _, ok := drv.(schema.Locker); !ok {
 		return nil, ErrLockUnsupported
+	}
+	// Check if the driver implements Snapshoter interface.
+	if _, ok := drv.(Snapshoter); !ok {
+		return nil, ErrSnapshotUnsupported
 	}
 	// Check if the Dir implements Scanner interface.
 	if _, ok := dir.(Scanner); !ok {
@@ -552,16 +558,6 @@ func (e *Executor) ExecuteN(ctx context.Context, n int) error {
 	return err
 }
 
-// NotCleanError is returned when the connected dev-db is not in a clean state (aka it has schemas and tables).
-// This check is done to ensure no data is lost by overriding it when working on the dev-dn.
-type NotCleanError struct {
-	Reason string // reason why the database is considered not clean
-}
-
-func (e NotCleanError) Error() string {
-	return "sql/migrate: connected database is not clean: " + e.Reason
-}
-
 // ReadState implements the StateReader interface.
 //
 // It does so by calling Execute and inspecting the database thereafter.
@@ -571,13 +567,13 @@ func (e *Executor) ReadState(ctx context.Context) (realm *schema.Realm, err erro
 		return nil, fmt.Errorf("sql/migrate: acquiring database lock: %w", err)
 	}
 	defer unlock()
-	// We need an empty database state to reliably replay the migration directory.
-	if err := IsClean(ctx, e.drv); err != nil {
-		return nil, fmt.Errorf("sql/migrate: checking database state: %w", err)
-	}
 	// Clean up after ourselves.
+	restore, err := e.drv.(Snapshoter).Snapshot(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("sql/migrate: taking database snapshot: %w", err)
+	}
 	defer func() {
-		if err2 := Clean(ctx, e.drv); err2 != nil {
+		if err2 := restore(ctx); err2 != nil {
 			err = wrap(err2, err)
 		}
 	}()
@@ -590,44 +586,27 @@ func (e *Executor) ReadState(ctx context.Context) (realm *schema.Realm, err erro
 	return
 }
 
-// IsClean checks if the given driver operates on a clean database.
-func IsClean(ctx context.Context, drv Driver) error {
-	if c, ok := drv.(interface {
-		// The IsClean method can be added to a Driver to override how to
-		// determine if a connected database is in a clean state.
-		// This interface exists solely to support SQLite flavors.
-		IsClean(context.Context) error
-	}); ok {
-		return c.IsClean(ctx)
+type (
+	// Snapshoter wraps the Snapshot method.
+	Snapshoter interface {
+		// Snapshot takes a snapshot of the current database state and returns a function that can be called to restore
+		// that state. Snapshot should return an error, if the current state can not be restored completely, e.g. if
+		// there is a table already containing some rows.
+		Snapshot(context.Context) (RestoreFunc, error)
 	}
-	realm, err := drv.InspectRealm(ctx, nil)
-	if err != nil {
-		return err
-	}
-	if len(realm.Schemas) > 0 {
-		return NotCleanError{fmt.Sprintf("found schema %q", realm.Schemas[0].Name)}
-	}
-	return nil
-}
 
-// Clean cleans the database the given driver is connected to.
-func Clean(ctx context.Context, drv Driver) error {
-	if e, ok := drv.(interface {
-		// The Clean method can be added to a Driver to change how to clean a database.
-		// This interface exists solely to support SQLite flavors.
-		Clean(context.Context) error
-	}); ok {
-		return e.Clean(ctx)
+	// RestoreFunc is returned by the Snapshoter to explicitly restore the database state.
+	RestoreFunc func(context.Context) error
+
+	// NotCleanError is returned when the connected dev-db is not in a clean state (aka it has schemas and tables).
+	// This check is done to ensure no data is lost by overriding it when working on the dev-db.
+	NotCleanError struct {
+		Reason string // reason why the database is considered not clean
 	}
-	realm, err := drv.InspectRealm(ctx, nil)
-	if err != nil {
-		return err
-	}
-	del := make([]schema.Change, len(realm.Schemas))
-	for i, s := range realm.Schemas {
-		del[i] = &schema.DropSchema{S: s, Extra: []schema.Clause{&schema.IfExists{}}}
-	}
-	return drv.ApplyChanges(ctx, del)
+)
+
+func (e NotCleanError) Error() string {
+	return "sql/migrate: connected database is not clean: " + e.Reason
 }
 
 // NopRevisionReadWriter is a RevisionsReadWriter that does nothing.

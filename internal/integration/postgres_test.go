@@ -16,6 +16,7 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlclient"
 
 	"entgo.io/ent/dialect"
 	_ "github.com/lib/pq"
@@ -556,6 +557,42 @@ func (t *pgTest) applyRealmHcl(spec string) {
 	require.NoError(t, err)
 	err = t.drv.ApplyChanges(context.Background(), diff)
 	require.NoError(t, err)
+}
+
+func TestPostgres_Snapshot(t *testing.T) {
+	pgRun(t, func(t *pgTest) {
+		client, err := sqlclient.Open(context.Background(), fmt.Sprintf("postgres://postgres:pass@localhost:%d/test?sslmode=disable&search_path=another", t.port))
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			require.NoError(t, client.Close())
+		})
+		drv := client.Driver
+
+		_, err = t.driver().(migrate.Snapshoter).Snapshot(context.Background())
+		require.ErrorAs(t, err, &migrate.NotCleanError{})
+
+		r, err := drv.InspectRealm(context.Background(), nil)
+		require.NoError(t, err)
+		restore, err := drv.(migrate.Snapshoter).Snapshot(context.Background())
+		require.NoError(t, err) // connected to test schema
+		require.NoError(t, drv.ApplyChanges(context.Background(), []schema.Change{
+			&schema.AddTable{T: schema.NewTable("my_table").
+				AddColumns(
+					schema.NewIntColumn("col_1", "integer").SetNull(true),
+					schema.NewIntColumn("col_2", "bigint"),
+				),
+			},
+		}))
+		t.Cleanup(func() {
+			t.dropTables("my_table")
+		})
+		require.NoError(t, restore(context.Background()))
+		r1, err := drv.InspectRealm(context.Background(), nil)
+		require.NoError(t, err)
+		diff, err := drv.RealmDiff(r1, r)
+		require.NoError(t, err)
+		require.Zero(t, diff)
+	})
 }
 
 func TestPostgres_CLI(t *testing.T) {
