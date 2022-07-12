@@ -15,14 +15,15 @@ import (
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlcheck/datadepend"
+	"ariga.io/atlas/sql/sqlcheck/destructive"
 )
 
 type (
-	// DataDependOptions defines the configuration options
-	// for the data-dependent changes checker.
+	// DataDependOptions defines the additional configuration
+	// options for the data-dependent changes checker.
 	DataDependOptions struct {
-		// NotNull indicates if the analyzer should check for modification or
-		// addition of not null constraints to
+		// NotNull indicates if the analyzer should check for modification
+		// or addition of NOT NULL constraints to columns.
 		NotNull *bool `spec:"not_null,omitempty"`
 
 		// Allow drivers to extend the configuration.
@@ -35,6 +36,15 @@ type (
 		*datadepend.Analyzer
 	}
 )
+
+// NewDataDepend creates new data-depend analyzer.
+func NewDataDepend(*schemahcl.Resource) (*DataDepend, error) {
+	notnull := true
+	return &DataDepend{
+		Analyzer:          datadepend.New(datadepend.Options{}),
+		DataDependOptions: DataDependOptions{NotNull: &notnull},
+	}, nil
+}
 
 // Analyze runs data-depend analysis on MySQL changes.
 func (d *DataDepend) Analyze(ctx context.Context, p *sqlcheck.Pass) error {
@@ -59,22 +69,6 @@ func (d *DataDepend) Analyze(ctx context.Context, p *sqlcheck.Pass) error {
 	}
 	d.Report(p, diags)
 	return nil
-}
-
-// RegisterDataDepend is the constructor used in datadepend.Register.
-func RegisterDataDepend(ctx context.Context, az *datadepend.Analyzer, pass *sqlcheck.Pass) error {
-	var (
-		notnull = true
-		opts    DataDependOptions
-	)
-	if err := az.Extra.As(&opts); err != nil {
-		return err
-	}
-	if opts.NotNull == nil {
-		opts.NotNull = &notnull
-	}
-	d := &DataDepend{Analyzer: az, DataDependOptions: opts}
-	return d.Analyze(ctx, pass)
 }
 
 func (d *DataDepend) addColumn(p *sqlcheck.Pass, change *sqlcheck.Change, t *schema.Table, c *schema.Column) (diags []sqlcheck.Diagnostic, err error) {
@@ -187,4 +181,17 @@ func (d *DataDepend) addColumn(p *sqlcheck.Pass, change *sqlcheck.Change, t *sch
 		}
 	}
 	return
+}
+
+func init() {
+	sqlcheck.Register(mysql.DriverName, func(r *schemahcl.Resource) (sqlcheck.Analyzer, error) {
+		az, err := NewDataDepend(r)
+		if err != nil {
+			return nil, err
+		}
+		return sqlcheck.Analyzers{
+			destructive.New(destructive.Options{}),
+			az,
+		}, nil
+	})
 }

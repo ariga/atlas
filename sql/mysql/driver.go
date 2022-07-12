@@ -38,9 +38,12 @@ type (
 	}
 )
 
+// DriverName holds the name used for registration.
+const DriverName = "mysql"
+
 func init() {
 	sqlclient.Register(
-		"mysql",
+		DriverName,
 		sqlclient.DriverOpener(Open),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
 		sqlclient.RegisterFlavours("maria", "mariadb"),

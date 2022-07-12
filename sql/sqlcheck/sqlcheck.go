@@ -12,7 +12,9 @@ package sqlcheck
 
 import (
 	"context"
+	"sync"
 
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
@@ -90,6 +92,14 @@ func (a Analyzers) Analyze(ctx context.Context, p *Pass) error {
 		}
 	}
 	return nil
+}
+
+// AnalyzerFunc allows using ordinary functions as analyzers.
+type AnalyzerFunc func(ctx context.Context, p *Pass) error
+
+// Analyze calls f.
+func (f AnalyzerFunc) Analyze(ctx context.Context, p *Pass) error {
+	return f(ctx, p)
 }
 
 // ReportWriterFunc is a function that implements Reporter.
@@ -214,4 +224,24 @@ func (f *File) tableSpan(t *schema.Table) *tableSpan {
 		}
 	}
 	return f.spans[t.Schema.Name].tables[t.Name]
+}
+
+// drivers specific analyzers.
+var drivers sync.Map
+
+// Register allows drivers to register a constructor function for creating
+// analyzers from the given HCL resource.
+func Register(name string, f func(*schemahcl.Resource) (Analyzer, error)) {
+	drivers.Store(name, f)
+}
+
+// AnalyzerFor instantiates a new Analyzer from the given HCL resource
+// based on the registered constructor function.
+func AnalyzerFor(name string, r *schemahcl.Resource) (Analyzer, error) {
+	f, ok := drivers.Load(name)
+	if ok {
+		return f.(func(*schemahcl.Resource) (Analyzer, error))(r)
+	}
+	// A nop analyzer.
+	return (Analyzers)(nil), nil
 }

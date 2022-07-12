@@ -23,8 +23,6 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
-	"ariga.io/atlas/sql/sqlcheck/datadepend"
-	"ariga.io/atlas/sql/sqlcheck/destructive"
 	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqltool"
 	"github.com/fatih/color"
@@ -579,6 +577,10 @@ func CmdMigrateLintRun(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("parse log format: %w", err)
 		}
 	}
+	az, err := sqlcheck.AnalyzerFor(dev.Name, nil)
+	if err != nil {
+		return err
+	}
 	r := &ci.Runner{
 		Dev:            dev,
 		Dir:            local,
@@ -587,10 +589,7 @@ func CmdMigrateLintRun(cmd *cobra.Command, _ []string) error {
 			T: format,
 			W: cmd.OutOrStdout(),
 		},
-		Analyzer: sqlcheck.Analyzers{
-			datadepend.New(datadepend.Options{}),
-			destructive.New(destructive.Options{}),
-		},
+		Analyzer: az,
 	}
 	return r.Run(cmd.Context())
 }

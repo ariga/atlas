@@ -23,6 +23,7 @@ import (
 	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqlite"
 	_ "ariga.io/atlas/sql/sqlite"
+	_ "ariga.io/atlas/sql/sqlite/sqlitecheck"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"

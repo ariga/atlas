@@ -40,9 +40,12 @@ type (
 	}
 )
 
+// DriverName holds the name used for registration.
+const DriverName = "postgres"
+
 func init() {
 	sqlclient.Register(
-		"postgres",
+		DriverName,
 		sqlclient.DriverOpener(Open),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
 		sqlclient.RegisterURLParser(parser{}),
