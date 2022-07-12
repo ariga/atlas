@@ -117,6 +117,7 @@ func (d *Driver) Lock(ctx context.Context, name string, timeout time.Duration) (
 	}, nil
 }
 
+// Snapshot implements migrate.Snapshoter.
 func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 	// If the connection is bound to a schema, we can restore the state if the schema has no tables.
 	s, err := d.InspectSchema(ctx, "", nil)

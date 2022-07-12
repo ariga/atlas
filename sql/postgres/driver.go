@@ -159,6 +159,7 @@ func (d *Driver) Lock(ctx context.Context, name string, timeout time.Duration) (
 	}, nil
 }
 
+// Snapshot implements migrate.Snapshoter.
 func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 	// Postgres will only then be considered bound to a schema if the `search_path` was given.
 	// In all other cases, the connection is considered bound to the realm.

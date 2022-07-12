@@ -89,6 +89,7 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	}, nil
 }
 
+// Snapshot implements migrate.Snapshoter.
 func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 	r, err := d.InspectRealm(ctx, nil)
 	if err != nil {
