@@ -472,6 +472,10 @@ func (d *sqliteLockerDriver) Lock(context.Context, string, time.Duration) (schem
 	return func() error { return nil }, errLock
 }
 
+func (d *sqliteLockerDriver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
+	return d.Driver.(migrate.Snapshoter).Snapshot(ctx)
+}
+
 func countFiles(t *testing.T, p string) int {
 	files, err := os.ReadDir(p)
 	require.NoError(t, err)

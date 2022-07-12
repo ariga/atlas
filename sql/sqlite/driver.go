@@ -89,31 +89,28 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	}, nil
 }
 
-// IsClean implements the inlined IsClean interface to override what to consider a clean database.
-func (d *Driver) IsClean(ctx context.Context) error {
+// Snapshot implements migrate.Snapshoter.
+func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 	r, err := d.InspectRealm(ctx, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !(r == nil || (len(r.Schemas) == 1 && r.Schemas[0].Name == mainFile && len(r.Schemas[0].Tables) == 0)) {
-		return migrate.NotCleanError{Reason: fmt.Sprintf("found table %q", r.Schemas[0].Tables[0].Name)}
+		return nil, migrate.NotCleanError{Reason: fmt.Sprintf("found table %q", r.Schemas[0].Tables[0].Name)}
 	}
-	return nil
-}
-
-// Clean implements the inlined Clean interface to override the "emptying" behavior.
-func (d *Driver) Clean(ctx context.Context) error {
-	for _, stmt := range []string{
-		"PRAGMA writable_schema = 1;",
-		"DELETE FROM sqlite_master WHERE type IN ('table', 'index', 'trigger');",
-		"PRAGMA writable_schema = 0;",
-		"VACUUM;",
-	} {
-		if _, err := d.ExecContext(ctx, stmt); err != nil {
-			return err
+	return func(ctx context.Context) error {
+		for _, stmt := range []string{
+			"PRAGMA writable_schema = 1;",
+			"DELETE FROM sqlite_master WHERE type IN ('table', 'index', 'trigger');",
+			"PRAGMA writable_schema = 0;",
+			"VACUUM;",
+		} {
+			if _, err := d.ExecContext(ctx, stmt); err != nil {
+				return err
+			}
 		}
-	}
-	return nil
+		return nil
+	}, nil
 }
 
 // Lock implements the schema.Locker interface.

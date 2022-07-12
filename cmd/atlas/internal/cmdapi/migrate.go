@@ -937,6 +937,12 @@ func (dryRunDriver) Lock(context.Context, string, time.Duration) (schema.UnlockF
 	return func() error { return nil }, nil
 }
 
+// Snapshot implements the migrate.Snapshoter interface.
+func (dryRunDriver) Snapshot(context.Context) (migrate.RestoreFunc, error) {
+	// We dry-run, we don't execute anything. Snapshotting not required.
+	return func(context.Context) error { return nil }, nil
+}
+
 // WriteRevision overrides the wrapped migrate.RevisionReadWriter to not saved any changes to revisions.
 func (dryRunRevisions) WriteRevision(context.Context, *migrate.Revision) error {
 	return nil
