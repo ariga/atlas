@@ -57,7 +57,7 @@ func init() {
 
 func opener(_ context.Context, u *url.URL) (*sqlclient.Client, error) {
 	ur := parser{}.ParseURL(u)
-	db, err := sql.Open("postgres", ur.DSN)
+	db, err := sql.Open(DriverName, ur.DSN)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func opener(_ context.Context, u *url.URL) (*sqlclient.Client, error) {
 	}
 	drv.(*Driver).schema = ur.Schema
 	return &sqlclient.Client{
-		Name:   "postgres",
+		Name:   DriverName,
 		DB:     db,
 		URL:    ur,
 		Driver: drv,
