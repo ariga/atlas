@@ -23,7 +23,7 @@ type (
 	// options for the data-dependent changes checker.
 	DataDependOptions struct {
 		// NotNull indicates if the analyzer should check for modification
-		// or addition of not null constraints to columns.
+		// or addition of NOT NULL constraints to columns.
 		NotNull *bool `spec:"not_null,omitempty"`
 
 		// Allow drivers to extend the configuration.
