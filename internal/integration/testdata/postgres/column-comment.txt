@@ -1,0 +1,42 @@
+apply 1.hcl
+cmpshow users 1.sql
+
+apply 2.hcl
+cmpshow users 2.sql
+
+-- 1.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "created_at" {
+    null = false
+    type = timestamp
+    comment = "without time zone"
+  }
+}
+
+-- 1.sql --
+                   Table "script_column_comment.users"
+   Column   |            Type             | Collation | Nullable | Default
+------------+-----------------------------+-----------+----------+---------
+ created_at | timestamp without time zone |           | not null |
+
+-- 2.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "created_at" {
+    null = false
+    type = timestamptz
+    comment = "with time zone"
+  }
+}
+
+-- 2.sql --
+                 Table "script_column_comment.users"
+   Column   |           Type           | Collation | Nullable | Default
+------------+--------------------------+-----------+----------+---------
+ created_at | timestamp with time zone |           | not null |
+
