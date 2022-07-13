@@ -2,7 +2,7 @@
 stderr 'got mixed --to url schemes'
 
 ! atlas migrate diff --dev-url sqlite://devdb --to mysql://localhost/x --to mysql://localhost/y --dir file://migrations
-stderr 'got multiple urls of scheme'
+stderr 'got multiple --to urls of scheme'
 
 atlas migrate diff --dev-url sqlite://devdb --to file://schema/ --dir file://migrations
 cmpmig 0 diff.sql
