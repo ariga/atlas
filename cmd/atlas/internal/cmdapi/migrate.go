@@ -232,7 +232,7 @@ func init() {
 	cobra.CheckErr(MigrateApplyCmd.MarkFlagRequired(migrateFlagURL))
 	// Diff flags.
 	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateDiffCmd.Flags())
-	MigrateDiffCmd.Flags().StringSliceVarP(&MigrateFlags.ToURLs, migrateFlagTo, "", nil, "to URLs")
+	MigrateDiffCmd.Flags().StringSliceVarP(&MigrateFlags.ToURLs, migrateFlagTo, "", nil, "[driver://username:password@address/dbname?param=value ...] select a desired state using the URL format")
 	MigrateDiffCmd.Flags().BoolVarP(&MigrateFlags.Verbose, migrateDiffFlagVerbose, "", false, "enable verbose logging")
 	MigrateDiffCmd.Flags().SortFlags = false
 	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateFlagDevURL))
@@ -726,24 +726,23 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 func selectScheme(urls []string) (string, error) {
 	var previous string
 	if len(urls) == 0 {
-		return "", errors.New("at least one to url is required")
+		return "", errors.New("at least one --to url is required")
 	}
 	for _, url := range urls {
 		parts := strings.SplitN(url, "://", 2)
 		switch current := parts[0]; {
 		case previous == "":
 			previous = current
-			continue
 		case previous != current:
-			return "", fmt.Errorf("got mixed url schemes: %q and %q", previous, current)
+			return "", fmt.Errorf("got mixed --to url schemes: %q and %q, the desired state must be provided from a single kind of source", previous, current)
 		case current != "file":
-			return "", fmt.Errorf("got multiple urls of scheme: %q", current)
+			return "", fmt.Errorf("got multiple --to urls of scheme %q, only multiple 'file://' urls are supported", current)
 		}
 	}
 	return previous, nil
 }
 
-// parseHCL paths parses the HCL files in the given paths. If a path represents a directory,
+// parseHCLPaths parses the HCL files in the given paths. If a path represents a directory,
 // its direct descendants will be considered, skipping any subdirectories. If a project file
 // is present in the input paths, an error is returned.
 func parseHCLPaths(paths ...string) (*hclparse.Parser, error) {
