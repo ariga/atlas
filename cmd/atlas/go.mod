@@ -3,16 +3,16 @@ module ariga.io/atlas/cmd/atlas
 go 1.18
 
 require (
-	ariga.io/atlas v0.4.3-0.20220711075326-c3fb0f64fd0e
-	entgo.io/ent v0.10.2-0.20220502113020-4ac82f5bb3f0
+	ariga.io/atlas v0.4.3-0.20220713104915-cda1480dd791
+	entgo.io/ent v0.10.2-0.20220713114056-1c01301de11b
 	github.com/fatih/color v1.13.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/hashicorp/hcl/v2 v2.10.0
 	github.com/lib/pq v1.10.5
 	github.com/manifoldco/promptui v0.9.0
-	github.com/mattn/go-sqlite3 v1.14.10
+	github.com/mattn/go-sqlite3 v1.14.13
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/spf13/cobra v1.4.0
+	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.1-0.20210427113832-6241f9ab9942
 	golang.org/x/mod v0.5.1
