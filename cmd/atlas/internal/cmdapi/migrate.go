@@ -57,7 +57,7 @@ var (
 		URL            string
 		DirURL         string
 		DevURL         string
-		ToURL          string
+		ToURLs         []string
 		Schemas        []string
 		Format         string
 		LogFormat      string
@@ -232,7 +232,7 @@ func init() {
 	cobra.CheckErr(MigrateApplyCmd.MarkFlagRequired(migrateFlagURL))
 	// Diff flags.
 	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateDiffCmd.Flags())
-	urlFlag(&MigrateFlags.ToURL, migrateFlagTo, "", MigrateDiffCmd.Flags())
+	MigrateDiffCmd.Flags().StringSliceVarP(&MigrateFlags.ToURLs, migrateFlagTo, "", nil, "[driver://username:password@address/dbname?param=value ...] select a desired state using the URL format")
 	MigrateDiffCmd.Flags().BoolVarP(&MigrateFlags.Verbose, migrateDiffFlagVerbose, "", false, "enable verbose logging")
 	MigrateDiffCmd.Flags().SortFlags = false
 	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateFlagDevURL))
@@ -664,15 +664,19 @@ func dir(create bool) (migrate.Dir, error) {
 
 // to returns a migrate.StateReader for the given to flag.
 func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, error) {
-	parts := strings.SplitN(MigrateFlags.ToURL, "://", 2)
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid driver url %q", MigrateFlags.ToURL)
+	scheme, err := selectScheme(MigrateFlags.ToURLs)
+	if err != nil {
+		return nil, err
 	}
 	schemas := MigrateFlags.Schemas
-	switch parts[0] {
+	switch scheme {
 	case "file": // hcl file
 		realm := &schema.Realm{}
-		parsed, err := parseHCLPaths(parts[1])
+		paths := make([]string, 0, len(MigrateFlags.ToURLs))
+		for _, u := range MigrateFlags.ToURLs {
+			paths = append(paths, strings.TrimPrefix(u, "file://"))
+		}
+		parsed, err := parseHCLPaths(paths...)
 		if err != nil {
 			return nil, err
 		}
@@ -687,7 +691,7 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 			}
 			for _, s := range realm.Schemas {
 				if !sm[s.Name] {
-					return nil, fmt.Errorf("schema %q from file %q is not requested (all schemas in HCL must be requested)", s.Name, parts[1])
+					return nil, fmt.Errorf("schema %q from paths %q is not requested (all schemas in HCL must be requested)", s.Name, paths)
 				}
 			}
 		}
@@ -699,7 +703,7 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 		}
 		return migrate.Realm(realm), nil
 	default: // database connection
-		client, err := sqlclient.Open(ctx, MigrateFlags.ToURL)
+		client, err := sqlclient.Open(ctx, MigrateFlags.ToURLs[0])
 		if err != nil {
 			return nil, err
 		}
@@ -716,7 +720,29 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 	}
 }
 
-// parseHCL paths parses the HCL files in the given paths. If a path represents a directory,
+// selectScheme validates the scheme of the provided to urls and returns the selected
+// url scheme. Currently, all URLs must be of the same scheme, and only multiple
+// "file://" URLs are allowed.
+func selectScheme(urls []string) (string, error) {
+	var scheme string
+	if len(urls) == 0 {
+		return "", errors.New("at least one --to url is required")
+	}
+	for _, url := range urls {
+		parts := strings.SplitN(url, "://", 2)
+		switch current := parts[0]; {
+		case scheme == "":
+			scheme = current
+		case scheme != current:
+			return "", fmt.Errorf("got mixed --to url schemes: %q and %q, the desired state must be provided from a single kind of source", scheme, current)
+		case current != "file":
+			return "", fmt.Errorf("got multiple --to urls of scheme %q, only multiple 'file://' urls are supported", current)
+		}
+	}
+	return scheme, nil
+}
+
+// parseHCLPaths parses the HCL files in the given paths. If a path represents a directory,
 // its direct descendants will be considered, skipping any subdirectories. If a project file
 // is present in the input paths, an error is returned.
 func parseHCLPaths(paths ...string) (*hclparse.Parser, error) {

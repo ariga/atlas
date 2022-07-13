@@ -21,13 +21,7 @@ If you would like to build Atlas from source follow the instructions [here](http
 
 If you would like to build Atlas from source without the UI code run:
 ```shell
-go install ariga.io/atlas/cmd/atlas@latest
-```
-This will install the latest version to your `$GOPATH/bin` directory.
-
-You can also build a specific version by using the [release tags](https://github.com/ariga/atlas/releases) published on GitHub, for example:
-```shell
-go install ariga.io/atlas/cmd/atlas@v0.4.2
+go get ariga.io/atlas/cmd/atlas
 ```
 
 ## atlas env
@@ -101,17 +95,21 @@ As a safety measure 'atlas migrate apply' will abort with an error, if:
   - the migration directory is not in sync with the 'atlas.sum' file
   - the migration and database history do not match each other
 
+If run with the "--dry-run" flag, atlas will not execute any SQL.
+
 #### Example
 
 ```
   atlas migrate apply -u mysql://user:pass@localhost:3306/dbname
   atlas migrate apply --dir file:///path/to/migration/directory --url mysql://user:pass@localhost:3306/dbname 1
   atlas migrate apply --env dev 1
+  atlas migrate apply --dry-run --env dev 1
 ```
 #### Flags
 ```
+      --dry-run                   do not actually execute any SQL but show it on screen
       --log string                log format to use (default "tty")
-      --revisions-schema string   schema name where the revisions table is to be created
+      --revisions-schema string   schema name where the revisions table resides (default "atlas_schema_revisions")
   -u, --url string                [driver://username:password@address/dbname?param=value] select a database using the URL format
 
 ```
@@ -142,7 +140,7 @@ directory state to the desired schema. The desired state can be another connecte
 #### Flags
 ```
       --dev-url string   [driver://username:password@address/dbname?param=value] select a database using the URL format
-      --to string        [driver://username:password@address/dbname?param=value] select a database using the URL format
+      --to strings       [driver://username:password@address/dbname?param=value ...] select a desired state using the URL format
       --verbose          enable verbose logging
 
 ```
@@ -212,6 +210,31 @@ atlas migrate new [name]
 ```
   atlas migrate new my-new-migration
 ```
+
+### atlas migrate status
+
+Get information about the current migration status.
+
+#### Usage
+```
+atlas migrate status [flags]
+```
+
+#### Details
+'atlas migrate status' reports information about the current status of a connected database compared to the migration directory.
+
+#### Example
+
+```
+  atlas migrate status --url mysql://user:pass@localhost:3306/
+  atlas migrate status --url mysql://user:pass@localhost:3306/ --dir file:///path/to/migration/directory
+```
+#### Flags
+```
+  -u, --url string   [driver://username:password@address/dbname?param=value] select a database using the URL format
+
+```
+
 
 ### atlas migrate validate
 
@@ -356,7 +379,7 @@ files in the directory are formatted, no input will be printed out.
 
 ### atlas schema inspect
 
-Inspect a database's and print its schema in Atlas DDL syntax.
+Inspect a database and print its schema in Atlas DDL syntax.
 
 #### Usage
 ```

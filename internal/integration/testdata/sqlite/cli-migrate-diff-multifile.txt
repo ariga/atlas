@@ -1,0 +1,29 @@
+! atlas migrate diff --dev-url sqlite://devdb --to file://schema/ --to other://scheme --dir file://migrations
+stderr 'got mixed --to url schemes'
+
+! atlas migrate diff --dev-url sqlite://devdb --to mysql://localhost/x --to mysql://localhost/y --dir file://migrations
+stderr 'got multiple --to urls of scheme'
+
+atlas migrate diff --dev-url sqlite://devdb --to file://schema/ --dir file://migrations
+cmpmig 0 diff.sql
+
+# reset dir
+exec rm -rf migrations/
+
+atlas migrate diff --dev-url sqlite://devdb --to file://schema/schema.hcl --to file://schema/table.hcl --dir file://migrations
+cmpmig 0 diff.sql
+
+-- schema/schema.hcl --
+schema "main" {
+}
+-- schema/table.hcl --
+table "users" {
+  schema = schema.main
+  column "id" {
+    null = false
+    type = int
+  }
+}
+-- diff.sql --
+-- create "users" table
+CREATE TABLE `users` (`id` int NOT NULL);
