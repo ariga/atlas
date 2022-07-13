@@ -724,22 +724,22 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 // url scheme. Currently, all URLs must be of the same scheme, and only multiple
 // "file://" URLs are allowed.
 func selectScheme(urls []string) (string, error) {
-	var previous string
+	var scheme string
 	if len(urls) == 0 {
 		return "", errors.New("at least one --to url is required")
 	}
 	for _, url := range urls {
 		parts := strings.SplitN(url, "://", 2)
 		switch current := parts[0]; {
-		case previous == "":
-			previous = current
-		case previous != current:
-			return "", fmt.Errorf("got mixed --to url schemes: %q and %q, the desired state must be provided from a single kind of source", previous, current)
+		case scheme == "":
+			scheme = current
+		case scheme != current:
+			return "", fmt.Errorf("got mixed --to url schemes: %q and %q, the desired state must be provided from a single kind of source", scheme, current)
 		case current != "file":
 			return "", fmt.Errorf("got multiple --to urls of scheme %q, only multiple 'file://' urls are supported", current)
 		}
 	}
-	return previous, nil
+	return scheme, nil
 }
 
 // parseHCLPaths parses the HCL files in the given paths. If a path represents a directory,
