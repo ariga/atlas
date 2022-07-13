@@ -5,7 +5,6 @@
 package mysqlcheck
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -18,82 +17,31 @@ import (
 	"ariga.io/atlas/sql/sqlcheck/destructive"
 )
 
-type (
-	// DataDependOptions defines the additional configuration
-	// options for the data-dependent changes checker.
-	DataDependOptions struct {
-		// NotNull indicates if the analyzer should check for modification
-		// or addition of NOT NULL constraints to columns.
-		NotNull *bool `spec:"not_null,omitempty"`
-
-		// Allow drivers to extend the configuration.
-		schemahcl.DefaultExtension
-	}
-
-	// DataDepend checks data-dependent changes for MySQL.
-	DataDepend struct {
-		DataDependOptions
-		*datadepend.Analyzer
-	}
-)
-
 // NewDataDepend creates new data-depend analyzer.
-func NewDataDepend(*schemahcl.Resource) (*DataDepend, error) {
-	notnull := true
-	return &DataDepend{
-		Analyzer:          datadepend.New(datadepend.Options{}),
-		DataDependOptions: DataDependOptions{NotNull: &notnull},
-	}, nil
+func NewDataDepend(*schemahcl.Resource) *datadepend.Analyzer {
+	var opts datadepend.Options
+	opts.Handler.AddNotNull = addNotNull
+	return datadepend.New(opts)
 }
 
-// Analyze runs data-depend analysis on MySQL changes.
-func (d *DataDepend) Analyze(ctx context.Context, p *sqlcheck.Pass) error {
-	diags := d.Diagnostics(ctx, p)
-	for _, sc := range p.File.Changes {
-		for _, c := range sc.Changes {
-			m, ok := c.(*schema.ModifyTable)
-			if !ok {
-				continue
-			}
-			for _, c := range m.Changes {
-				switch c := c.(type) {
-				case *schema.AddColumn:
-					ds, err := d.addColumn(p, sc, m.T, c.C)
-					if err != nil {
-						return err
-					}
-					diags = append(diags, ds...)
-				}
-			}
-		}
-	}
-	d.Report(p, diags)
-	return nil
-}
-
-func (d *DataDepend) addColumn(p *sqlcheck.Pass, change *sqlcheck.Change, t *schema.Table, c *schema.Column) (diags []sqlcheck.Diagnostic, err error) {
-	// Skip this check in case it is disabled, the column is nullable
-	// or with default value, or the table was added in this file.
-	if !*d.NotNull || c.Type.Null || c.Default != nil || p.File.TableSpan(t)&sqlcheck.SpanAdded == 1 {
-		return
-	}
+func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err error) {
 	// Two types of reporting, implicit rows update and
 	// changes that may cause the migration to fail.
 	mightFail := func(tt string) {
 		diags = append(diags, sqlcheck.Diagnostic{
-			Pos: change.Pos,
+			Pos: p.Change.Pos,
 			Text: fmt.Sprintf(
 				"Adding a non-nullable %q column %q will fail in case table %q is not empty",
-				tt, c.Name, t.Name,
+				tt, p.Column.Name, p.Table.Name,
 			),
 		})
 	}
 	implicitUpdate := func(tt, v string) {
 		diags = append(diags, sqlcheck.Diagnostic{
-			Pos: change.Pos,
+			Pos: p.Change.Pos,
 			Text: fmt.Sprintf(
 				"Adding a non-nullable %q column %q on table %q without a default value implicitly sets existing rows with %s",
-				tt, c.Name, t.Name, v,
+				tt, p.Column.Name, p.Table.Name, v,
 			),
 		})
 	}
@@ -101,9 +49,9 @@ func (d *DataDepend) addColumn(p *sqlcheck.Pass, change *sqlcheck.Change, t *sch
 	if !ok {
 		return nil, fmt.Errorf("unexpected migrate driver %T", p.Dev.Driver)
 	}
-	switch ct := c.Type.Type.(type) {
+	switch ct := p.Column.Type.Type.(type) {
 	case *mysql.BitType, *schema.BoolType, *schema.IntegerType, *schema.DecimalType, *schema.FloatType, *schema.BinaryType:
-		tt, err := mysql.FormatType(c.Type.Type)
+		tt, err := mysql.FormatType(p.Column.Type.Type)
 		if err != nil {
 			return nil, err
 		}
@@ -122,7 +70,7 @@ func (d *DataDepend) addColumn(p *sqlcheck.Pass, change *sqlcheck.Change, t *sch
 		}
 	case *schema.EnumType:
 		if len(ct.Values) == 0 {
-			return nil, fmt.Errorf("unexpected empty values for enum column %q.%q", t.Name, c.Name)
+			return nil, fmt.Errorf("unexpected empty values for enum column %q.%q", p.Table.Name, p.Column.Name)
 		}
 		implicitUpdate("enum", strconv.Quote(ct.Values[0]))
 	case *mysql.SetType:
@@ -154,8 +102,8 @@ func (d *DataDepend) addColumn(p *sqlcheck.Pass, change *sqlcheck.Change, t *sch
 			case drv.Maria():
 				// Maria has a special behavior for the first TIMESTAMP column.
 				// See: https://mariadb.com/kb/en/timestamp/#automatic-values
-				for i := 0; i < len(t.Columns) && t.Columns[i].Name != c.Name; i++ {
-					tt, err := mysql.FormatType(t.Columns[i].Type.Type)
+				for i := 0; i < len(p.Table.Columns) && p.Table.Columns[i].Name != p.Column.Name; i++ {
+					tt, err := mysql.FormatType(p.Table.Columns[i].Type.Type)
 					if err != nil {
 						return nil, err
 					}
@@ -185,13 +133,9 @@ func (d *DataDepend) addColumn(p *sqlcheck.Pass, change *sqlcheck.Change, t *sch
 
 func init() {
 	sqlcheck.Register(mysql.DriverName, func(r *schemahcl.Resource) (sqlcheck.Analyzer, error) {
-		az, err := NewDataDepend(r)
-		if err != nil {
-			return nil, err
-		}
 		return sqlcheck.Analyzers{
 			destructive.New(destructive.Options{}),
-			az,
+			NewDataDepend(nil),
 		}, nil
 	})
 }
