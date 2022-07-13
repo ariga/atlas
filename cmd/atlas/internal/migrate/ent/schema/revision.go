@@ -22,13 +22,19 @@ type Revision struct {
 func (Revision) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("id").
-			StorageKey("version"),
-		field.String("description"),
-		field.Enum("execution_state").
-			Values("ongoing", "ok", "error"),
-		field.Time("executed_at"),
+			StorageKey("version").
+			Immutable(),
+		field.String("description").
+			Immutable(),
+		field.Int("applied"),
+		field.Int("total").
+			Positive(),
+		field.Time("executed_at").
+			Immutable(),
 		field.Int64("execution_time").
 			GoType(time.Duration(0)),
+		field.String("error").
+			Optional(),
 		field.String("hash"),
 		field.String("operator_version"),
 		field.JSON("meta", make(map[string]string)),

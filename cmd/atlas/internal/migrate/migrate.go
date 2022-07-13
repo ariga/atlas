@@ -91,6 +91,20 @@ func (r *EntRevisions) Init(ctx context.Context) error {
 	return r.ec.Schema.Create(ctx, entschema.WithAtlas(true))
 }
 
+// ReadRevision reads a revision from the revisions table.
+//
+// ReadRevision will not return results only saved in cache.
+func (r *EntRevisions) ReadRevision(ctx context.Context, v string) (*migrate.Revision, error) {
+	rev, err := r.ec.Revision.Get(ctx, v)
+	if err != nil && !ent.IsNotFound(err) {
+		return nil, err
+	}
+	if ent.IsNotFound(err) {
+		return nil, migrate.ErrNotExist
+	}
+	return fromEnt(rev), nil
+}
+
 // ReadRevisions reads the revisions from the revisions table.
 //
 // ReadRevisions will not return results only saved to cache.
@@ -100,17 +114,8 @@ func (r *EntRevisions) ReadRevisions(ctx context.Context) (migrate.Revisions, er
 		return nil, err
 	}
 	ret := make(migrate.Revisions, len(revs))
-	for i, r := range revs {
-		ret[i] = &migrate.Revision{
-			Version:         r.ID,
-			Description:     r.Description,
-			ExecutionState:  string(r.ExecutionState),
-			ExecutedAt:      r.ExecutedAt,
-			ExecutionTime:   r.ExecutionTime,
-			Hash:            r.Hash,
-			OperatorVersion: r.OperatorVersion,
-			Meta:            r.Meta,
-		}
+	for i, rev := range revs {
+		ret[i] = fromEnt(rev)
 	}
 	return ret, nil
 }
@@ -146,15 +151,32 @@ func (r *EntRevisions) write(ctx context.Context, rev *migrate.Revision) error {
 	return r.ec.Revision.Create().
 		SetID(rev.Version).
 		SetDescription(rev.Description).
-		SetExecutionState(revision.ExecutionState(rev.ExecutionState)).
+		SetApplied(rev.Applied).
+		SetTotal(rev.Total).
 		SetExecutedAt(rev.ExecutedAt).
 		SetExecutionTime(rev.ExecutionTime).
+		SetError(rev.Error).
 		SetHash(rev.Hash).
 		SetOperatorVersion(rev.OperatorVersion).
 		SetMeta(rev.Meta).
 		OnConflict(sql.ConflictColumns(revision.FieldID)).
 		UpdateNewValues().
 		Exec(ctx)
+}
+
+func fromEnt(r *ent.Revision) *migrate.Revision {
+	return &migrate.Revision{
+		Version:         r.ID,
+		Description:     r.Description,
+		Applied:         r.Applied,
+		Total:           r.Total,
+		ExecutedAt:      r.ExecutedAt,
+		ExecutionTime:   r.ExecutionTime,
+		Error:           r.Error,
+		Hash:            r.Hash,
+		OperatorVersion: r.OperatorVersion,
+		Meta:            r.Meta,
+	}
 }
 
 func (r *EntRevisions) useCache() bool {

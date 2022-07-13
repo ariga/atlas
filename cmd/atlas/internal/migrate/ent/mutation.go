@@ -38,10 +38,14 @@ type RevisionMutation struct {
 	typ               string
 	id                *string
 	description       *string
-	execution_state   *revision.ExecutionState
+	applied           *int
+	addapplied        *int
+	total             *int
+	addtotal          *int
 	executed_at       *time.Time
 	execution_time    *time.Duration
 	addexecution_time *time.Duration
+	error             *string
 	hash              *string
 	operator_version  *string
 	meta              *map[string]string
@@ -191,40 +195,116 @@ func (m *RevisionMutation) ResetDescription() {
 	m.description = nil
 }
 
-// SetExecutionState sets the "execution_state" field.
-func (m *RevisionMutation) SetExecutionState(rs revision.ExecutionState) {
-	m.execution_state = &rs
+// SetApplied sets the "applied" field.
+func (m *RevisionMutation) SetApplied(i int) {
+	m.applied = &i
+	m.addapplied = nil
 }
 
-// ExecutionState returns the value of the "execution_state" field in the mutation.
-func (m *RevisionMutation) ExecutionState() (r revision.ExecutionState, exists bool) {
-	v := m.execution_state
+// Applied returns the value of the "applied" field in the mutation.
+func (m *RevisionMutation) Applied() (r int, exists bool) {
+	v := m.applied
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldExecutionState returns the old "execution_state" field's value of the Revision entity.
+// OldApplied returns the old "applied" field's value of the Revision entity.
 // If the Revision object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RevisionMutation) OldExecutionState(ctx context.Context) (v revision.ExecutionState, err error) {
+func (m *RevisionMutation) OldApplied(ctx context.Context) (v int, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldExecutionState is only allowed on UpdateOne operations")
+		return v, errors.New("OldApplied is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldExecutionState requires an ID field in the mutation")
+		return v, errors.New("OldApplied requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldExecutionState: %w", err)
+		return v, fmt.Errorf("querying old value for OldApplied: %w", err)
 	}
-	return oldValue.ExecutionState, nil
+	return oldValue.Applied, nil
 }
 
-// ResetExecutionState resets all changes to the "execution_state" field.
-func (m *RevisionMutation) ResetExecutionState() {
-	m.execution_state = nil
+// AddApplied adds i to the "applied" field.
+func (m *RevisionMutation) AddApplied(i int) {
+	if m.addapplied != nil {
+		*m.addapplied += i
+	} else {
+		m.addapplied = &i
+	}
+}
+
+// AddedApplied returns the value that was added to the "applied" field in this mutation.
+func (m *RevisionMutation) AddedApplied() (r int, exists bool) {
+	v := m.addapplied
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetApplied resets all changes to the "applied" field.
+func (m *RevisionMutation) ResetApplied() {
+	m.applied = nil
+	m.addapplied = nil
+}
+
+// SetTotal sets the "total" field.
+func (m *RevisionMutation) SetTotal(i int) {
+	m.total = &i
+	m.addtotal = nil
+}
+
+// Total returns the value of the "total" field in the mutation.
+func (m *RevisionMutation) Total() (r int, exists bool) {
+	v := m.total
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTotal returns the old "total" field's value of the Revision entity.
+// If the Revision object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RevisionMutation) OldTotal(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTotal is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTotal requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTotal: %w", err)
+	}
+	return oldValue.Total, nil
+}
+
+// AddTotal adds i to the "total" field.
+func (m *RevisionMutation) AddTotal(i int) {
+	if m.addtotal != nil {
+		*m.addtotal += i
+	} else {
+		m.addtotal = &i
+	}
+}
+
+// AddedTotal returns the value that was added to the "total" field in this mutation.
+func (m *RevisionMutation) AddedTotal() (r int, exists bool) {
+	v := m.addtotal
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTotal resets all changes to the "total" field.
+func (m *RevisionMutation) ResetTotal() {
+	m.total = nil
+	m.addtotal = nil
 }
 
 // SetExecutedAt sets the "executed_at" field.
@@ -317,6 +397,55 @@ func (m *RevisionMutation) AddedExecutionTime() (r time.Duration, exists bool) {
 func (m *RevisionMutation) ResetExecutionTime() {
 	m.execution_time = nil
 	m.addexecution_time = nil
+}
+
+// SetError sets the "error" field.
+func (m *RevisionMutation) SetError(s string) {
+	m.error = &s
+}
+
+// Error returns the value of the "error" field in the mutation.
+func (m *RevisionMutation) Error() (r string, exists bool) {
+	v := m.error
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldError returns the old "error" field's value of the Revision entity.
+// If the Revision object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RevisionMutation) OldError(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldError is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldError requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldError: %w", err)
+	}
+	return oldValue.Error, nil
+}
+
+// ClearError clears the value of the "error" field.
+func (m *RevisionMutation) ClearError() {
+	m.error = nil
+	m.clearedFields[revision.FieldError] = struct{}{}
+}
+
+// ErrorCleared returns if the "error" field was cleared in this mutation.
+func (m *RevisionMutation) ErrorCleared() bool {
+	_, ok := m.clearedFields[revision.FieldError]
+	return ok
+}
+
+// ResetError resets all changes to the "error" field.
+func (m *RevisionMutation) ResetError() {
+	m.error = nil
+	delete(m.clearedFields, revision.FieldError)
 }
 
 // SetHash sets the "hash" field.
@@ -446,18 +575,24 @@ func (m *RevisionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RevisionMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 9)
 	if m.description != nil {
 		fields = append(fields, revision.FieldDescription)
 	}
-	if m.execution_state != nil {
-		fields = append(fields, revision.FieldExecutionState)
+	if m.applied != nil {
+		fields = append(fields, revision.FieldApplied)
+	}
+	if m.total != nil {
+		fields = append(fields, revision.FieldTotal)
 	}
 	if m.executed_at != nil {
 		fields = append(fields, revision.FieldExecutedAt)
 	}
 	if m.execution_time != nil {
 		fields = append(fields, revision.FieldExecutionTime)
+	}
+	if m.error != nil {
+		fields = append(fields, revision.FieldError)
 	}
 	if m.hash != nil {
 		fields = append(fields, revision.FieldHash)
@@ -478,12 +613,16 @@ func (m *RevisionMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case revision.FieldDescription:
 		return m.Description()
-	case revision.FieldExecutionState:
-		return m.ExecutionState()
+	case revision.FieldApplied:
+		return m.Applied()
+	case revision.FieldTotal:
+		return m.Total()
 	case revision.FieldExecutedAt:
 		return m.ExecutedAt()
 	case revision.FieldExecutionTime:
 		return m.ExecutionTime()
+	case revision.FieldError:
+		return m.Error()
 	case revision.FieldHash:
 		return m.Hash()
 	case revision.FieldOperatorVersion:
@@ -501,12 +640,16 @@ func (m *RevisionMutation) OldField(ctx context.Context, name string) (ent.Value
 	switch name {
 	case revision.FieldDescription:
 		return m.OldDescription(ctx)
-	case revision.FieldExecutionState:
-		return m.OldExecutionState(ctx)
+	case revision.FieldApplied:
+		return m.OldApplied(ctx)
+	case revision.FieldTotal:
+		return m.OldTotal(ctx)
 	case revision.FieldExecutedAt:
 		return m.OldExecutedAt(ctx)
 	case revision.FieldExecutionTime:
 		return m.OldExecutionTime(ctx)
+	case revision.FieldError:
+		return m.OldError(ctx)
 	case revision.FieldHash:
 		return m.OldHash(ctx)
 	case revision.FieldOperatorVersion:
@@ -529,12 +672,19 @@ func (m *RevisionMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetDescription(v)
 		return nil
-	case revision.FieldExecutionState:
-		v, ok := value.(revision.ExecutionState)
+	case revision.FieldApplied:
+		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetExecutionState(v)
+		m.SetApplied(v)
+		return nil
+	case revision.FieldTotal:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTotal(v)
 		return nil
 	case revision.FieldExecutedAt:
 		v, ok := value.(time.Time)
@@ -549,6 +699,13 @@ func (m *RevisionMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetExecutionTime(v)
+		return nil
+	case revision.FieldError:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetError(v)
 		return nil
 	case revision.FieldHash:
 		v, ok := value.(string)
@@ -579,6 +736,12 @@ func (m *RevisionMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *RevisionMutation) AddedFields() []string {
 	var fields []string
+	if m.addapplied != nil {
+		fields = append(fields, revision.FieldApplied)
+	}
+	if m.addtotal != nil {
+		fields = append(fields, revision.FieldTotal)
+	}
 	if m.addexecution_time != nil {
 		fields = append(fields, revision.FieldExecutionTime)
 	}
@@ -590,6 +753,10 @@ func (m *RevisionMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *RevisionMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
+	case revision.FieldApplied:
+		return m.AddedApplied()
+	case revision.FieldTotal:
+		return m.AddedTotal()
 	case revision.FieldExecutionTime:
 		return m.AddedExecutionTime()
 	}
@@ -601,6 +768,20 @@ func (m *RevisionMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *RevisionMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case revision.FieldApplied:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddApplied(v)
+		return nil
+	case revision.FieldTotal:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTotal(v)
+		return nil
 	case revision.FieldExecutionTime:
 		v, ok := value.(time.Duration)
 		if !ok {
@@ -615,7 +796,11 @@ func (m *RevisionMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *RevisionMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(revision.FieldError) {
+		fields = append(fields, revision.FieldError)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -628,6 +813,11 @@ func (m *RevisionMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *RevisionMutation) ClearField(name string) error {
+	switch name {
+	case revision.FieldError:
+		m.ClearError()
+		return nil
+	}
 	return fmt.Errorf("unknown Revision nullable field %s", name)
 }
 
@@ -638,14 +828,20 @@ func (m *RevisionMutation) ResetField(name string) error {
 	case revision.FieldDescription:
 		m.ResetDescription()
 		return nil
-	case revision.FieldExecutionState:
-		m.ResetExecutionState()
+	case revision.FieldApplied:
+		m.ResetApplied()
+		return nil
+	case revision.FieldTotal:
+		m.ResetTotal()
 		return nil
 	case revision.FieldExecutedAt:
 		m.ResetExecutedAt()
 		return nil
 	case revision.FieldExecutionTime:
 		m.ResetExecutionTime()
+		return nil
+	case revision.FieldError:
+		m.ResetError()
 		return nil
 	case revision.FieldHash:
 		m.ResetHash()

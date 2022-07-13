@@ -538,6 +538,15 @@ func (r *rrw) WriteRevision(_ context.Context, rev *migrate.Revision) error {
 	return nil
 }
 
+func (r *rrw) ReadRevision(_ context.Context, v string) (*migrate.Revision, error) {
+	for _, rev := range *r {
+		if rev.Version == v {
+			return rev, nil
+		}
+	}
+	return nil, migrate.ErrNotExist
+}
+
 func (r *rrw) ReadRevisions(context.Context) (migrate.Revisions, error) {
 	return migrate.Revisions(*r), nil
 }

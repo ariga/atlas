@@ -23,12 +23,16 @@ type Revision struct {
 	ID string `json:"id,omitempty"`
 	// Description holds the value of the "description" field.
 	Description string `json:"description,omitempty"`
-	// ExecutionState holds the value of the "execution_state" field.
-	ExecutionState revision.ExecutionState `json:"execution_state,omitempty"`
+	// Applied holds the value of the "applied" field.
+	Applied int `json:"applied,omitempty"`
+	// Total holds the value of the "total" field.
+	Total int `json:"total,omitempty"`
 	// ExecutedAt holds the value of the "executed_at" field.
 	ExecutedAt time.Time `json:"executed_at,omitempty"`
 	// ExecutionTime holds the value of the "execution_time" field.
 	ExecutionTime time.Duration `json:"execution_time,omitempty"`
+	// Error holds the value of the "error" field.
+	Error string `json:"error,omitempty"`
 	// Hash holds the value of the "hash" field.
 	Hash string `json:"hash,omitempty"`
 	// OperatorVersion holds the value of the "operator_version" field.
@@ -44,9 +48,9 @@ func (*Revision) scanValues(columns []string) ([]interface{}, error) {
 		switch columns[i] {
 		case revision.FieldMeta:
 			values[i] = new([]byte)
-		case revision.FieldExecutionTime:
+		case revision.FieldApplied, revision.FieldTotal, revision.FieldExecutionTime:
 			values[i] = new(sql.NullInt64)
-		case revision.FieldID, revision.FieldDescription, revision.FieldExecutionState, revision.FieldHash, revision.FieldOperatorVersion:
+		case revision.FieldID, revision.FieldDescription, revision.FieldError, revision.FieldHash, revision.FieldOperatorVersion:
 			values[i] = new(sql.NullString)
 		case revision.FieldExecutedAt:
 			values[i] = new(sql.NullTime)
@@ -77,11 +81,17 @@ func (r *Revision) assignValues(columns []string, values []interface{}) error {
 			} else if value.Valid {
 				r.Description = value.String
 			}
-		case revision.FieldExecutionState:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field execution_state", values[i])
+		case revision.FieldApplied:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field applied", values[i])
 			} else if value.Valid {
-				r.ExecutionState = revision.ExecutionState(value.String)
+				r.Applied = int(value.Int64)
+			}
+		case revision.FieldTotal:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field total", values[i])
+			} else if value.Valid {
+				r.Total = int(value.Int64)
 			}
 		case revision.FieldExecutedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -94,6 +104,12 @@ func (r *Revision) assignValues(columns []string, values []interface{}) error {
 				return fmt.Errorf("unexpected type %T for field execution_time", values[i])
 			} else if value.Valid {
 				r.ExecutionTime = time.Duration(value.Int64)
+			}
+		case revision.FieldError:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field error", values[i])
+			} else if value.Valid {
+				r.Error = value.String
 			}
 		case revision.FieldHash:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -145,12 +161,16 @@ func (r *Revision) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v", r.ID))
 	builder.WriteString(", description=")
 	builder.WriteString(r.Description)
-	builder.WriteString(", execution_state=")
-	builder.WriteString(fmt.Sprintf("%v", r.ExecutionState))
+	builder.WriteString(", applied=")
+	builder.WriteString(fmt.Sprintf("%v", r.Applied))
+	builder.WriteString(", total=")
+	builder.WriteString(fmt.Sprintf("%v", r.Total))
 	builder.WriteString(", executed_at=")
 	builder.WriteString(r.ExecutedAt.Format(time.ANSIC))
 	builder.WriteString(", execution_time=")
 	builder.WriteString(fmt.Sprintf("%v", r.ExecutionTime))
+	builder.WriteString(", error=")
+	builder.WriteString(r.Error)
 	builder.WriteString(", hash=")
 	builder.WriteString(r.Hash)
 	builder.WriteString(", operator_version=")

@@ -179,7 +179,11 @@ type (
 	//
 	// Atlas drivers provide a sql based implementation of this interface by default.
 	RevisionReadWriter interface {
+		// ReadRevisions returns all revisions.
 		ReadRevisions(context.Context) (Revisions, error)
+		// ReadRevision returns a revision by version. Returns ErrNotExist if the version does not exist.
+		ReadRevision(context.Context, string) (*Revision, error)
+		// WriteRevision saves the revision to the storage.
 		WriteRevision(context.Context, *Revision) error
 	}
 
@@ -202,8 +206,10 @@ type (
 		Version string
 		// Description of this migration.
 		Description string
-		// ExecutionState of this migration. One of ["ongoing", "ok", "error"].
-		ExecutionState string
+		// Applied denotes the amount of successfully applied statements of the revision.
+		Applied int
+		// Total denotes the total amount of statements of the migration.
+		Total int
 		// ExecutedAt denotes when this migration was started to be executed.
 		ExecutedAt time.Time
 		// ExecutionTime denotes the time it took for this migration to be applied on the database.
@@ -318,54 +324,49 @@ func (p *Planner) WritePlan(plan *Plan) error {
 	return nil
 }
 
-const (
-	// StateOngoing is set once a migration file has been started to be applied.
-	StateOngoing = "ongoing"
-	// StateOK is set once a migration file is applied without errors.
-	StateOK = "ok"
-	// StateError  is set once a migration file could not be applied due to an error.
-	StateError = "error"
-)
-
 var (
-	// ErrNoPendingFiles is returned when there are no pending migration files to execute on the managed database.
+	// ErrNoPendingFiles is returned if there are no pending migration files to execute on the managed database.
 	ErrNoPendingFiles = errors.New("sql/migrate: execute: nothing to do")
-	// ErrLockUnsupported is returned when the given driver does not implement the schema.Locker interface.
+	// ErrLockUnsupported is returned if there is no schema.Locker given.
 	ErrLockUnsupported = errors.New("sql/migrate: driver does not support locking")
-	// ErrSnapshotUnsupported is returned when the given driver does not implement the Snapshoter interface.
+	// ErrSnapshotUnsupported is returned if there is no Snapshoter given.
 	ErrSnapshotUnsupported = errors.New("sql/migrate: driver does not support taking a database snapshot")
+	// ErrNotExist is returned if the requested revision is not found in the storage.
+	ErrNotExist = errors.New("sql/migrate: revision not found")
+	// ErrScanUnsupported is returned if there is no Scanner given.
+	ErrScanUnsupported = errors.New("sql/migrate: revision not found")
 )
 
 // NewExecutor creates a new Executor with default values. // TODO(masseelch): Operator Version and other Meta
 func NewExecutor(drv Driver, dir Dir, rrw RevisionReadWriter, opts ...ExecutorOption) (*Executor, error) {
 	if drv == nil {
-		return nil, errors.New("sql/migrate: execute: drv cannot be nil")
+		return nil, errors.New("sql/migrate: execute: no driver given")
 	}
 	if dir == nil {
-		return nil, errors.New("sql/migrate: execute: dir cannot be nil")
+		return nil, errors.New("sql/migrate: execute: no dir given")
 	}
 	if rrw == nil {
-		return nil, errors.New("sql/migrate: execute: rrw cannot be nil")
+		return nil, errors.New("sql/migrate: execute: no revision storage given")
 	}
-	// If the driver does not support acquiring a lock, don't execute migrations as this can potentially be fatal.
-	if _, ok := drv.(schema.Locker); !ok {
-		return nil, ErrLockUnsupported
-	}
-	// Check if the driver implements Snapshoter interface.
-	if _, ok := drv.(Snapshoter); !ok {
-		return nil, ErrSnapshotUnsupported
-	}
-	// Check if the Dir implements Scanner interface.
-	if _, ok := dir.(Scanner); !ok {
-		return nil, errors.New("sql/migrate: execute: no scanner available")
-	}
-	p := &Executor{drv: drv, dir: dir, rrw: rrw}
+	ex := &Executor{drv: drv, dir: dir, rrw: rrw}
 	for _, opt := range opts {
-		if err := opt(p); err != nil {
+		if err := opt(ex); err != nil {
 			return nil, err
 		}
 	}
-	return p, nil
+	if ex.log == nil {
+		ex.log = NopLogger{}
+	}
+	if _, ok := drv.(schema.Locker); !ok {
+		return nil, ErrLockUnsupported
+	}
+	if _, ok := drv.(Snapshoter); !ok {
+		return nil, ErrSnapshotUnsupported
+	}
+	if _, ok := dir.(Scanner); !ok {
+		return nil, ErrScanUnsupported
+	}
+	return ex, nil
 }
 
 // WithLogger sets the Logger of an Executor.
@@ -386,19 +387,7 @@ func (e *Executor) Lock(ctx context.Context) (schema.UnlockFunc, error) {
 	return unlock, nil
 }
 
-// DirtyError is returned if the revision table is dirty.
-type DirtyError struct {
-	Version string
-	State   string
-}
-
-// Error implements the error interface.
-func (e DirtyError) Error() string {
-	return fmt.Sprintf("dirty migration state: version %q has state %q", e.Version, e.State)
-}
-
-// Pending returns all pending (not applied) migration files in the migration directory. It will return an error, if
-// there is at least one revision in a "not-ok" state (error or ongoing).
+// Pending returns all pending (not fully applied) migration files in the migration directory.
 func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 	// Don't operate with a broken migration directory.
 	if err := Validate(e.dir); err != nil {
@@ -409,15 +398,8 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 	if err != nil {
 		return nil, fmt.Errorf("sql/migrate: execute: read revisions: %w", err)
 	}
-	// Check for all revisions to be "okay".
-	for _, r := range revs {
-		if r.ExecutionState != StateOK {
-			return nil, fmt.Errorf("sql/migrate: execute: %w", DirtyError{r.Version, r.ExecutionState})
-		}
-	}
 	// Select the correct migration files.
-	sc := e.dir.(Scanner)
-	migrations, err := sc.Files()
+	migrations, err := e.dir.(Scanner).Files()
 	if err != nil {
 		return nil, fmt.Errorf("sql/migrate: execute: select migration files: %w", err)
 	}
@@ -436,77 +418,108 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 	}
 	for i := range revs {
 		m := migrations[i]
-		v, err := sc.Version(m)
+		v, err := e.dir.(Scanner).Version(m)
 		if err != nil {
 			return nil, fmt.Errorf("sql/migrate: execute: scan version from %q: %w", m.Name(), err)
 		}
-		d, err := sc.Desc(m)
+		d, err := e.dir.(Scanner).Desc(m)
 		if err != nil {
 			return nil, fmt.Errorf("sql/migrate: execute: scan description from %q: %w", m.Name(), err)
 		}
 		r := revs[i]
-		if v != r.Version || d != r.Description || hf[i].H != r.Hash {
+		// All fully applied revisions must match both version and description.
+		// In case of a not fully applied migration, the hash might change since the file could have been edited to fix
+		// a previous failure. Thus, hashes don't have to match in that case.
+		hash := (i < len(revs)-1 && hf[i].H != r.Hash) || (i == len(revs)-1 && r.Complete() == nil && hf[i].H != r.Hash)
+		if v != r.Version || d != r.Description || hash {
 			return nil, fmt.Errorf("sql/migrate: execute: revisions and migrations mismatch: rev %q <> file %q", v, r.Version)
 		}
 	}
-	if len(migrations) == len(revs) {
+	// If there are no revisions yet, return all migration files as pending.
+	if len(revs) == 0 {
+		return migrations, nil
+	}
+	pending := migrations[len(revs):]
+	// If the last revision is not applied in full, it is considered pending as well.
+	if last := revs[len(revs)-1]; last.Applied < last.Total {
+		pending = append(migrations[len(revs)-1:len(revs)], pending...)
+	}
+	if len(pending) == 0 {
 		return nil, ErrNoPendingFiles
 	}
-	return migrations[len(revs):], nil
+	return pending, nil
 }
 
 // Execute executes the given migration file on the database. It does not check for the database to be clean before
 // attempting to apply the changes. This behavior is required to enabled "fixing" a broken state.
 func (e *Executor) Execute(ctx context.Context, m File) (err error) {
-	r := &Revision{ExecutedAt: time.Now(), ExecutionState: StateOngoing}
-	// Make sure to store the Revision information.
-	defer func(ctx context.Context, rrw RevisionReadWriter, r *Revision) {
-		if err2 := e.rrw.WriteRevision(ctx, r); err2 != nil {
-			err = wrap(fmt.Errorf("execute: write revision: %w", err2), err)
-		}
-	}(ctx, e.rrw, r)
-	sc := e.dir.(Scanner)
-	r.Version, err = sc.Version(m)
-	if err != nil {
-		return r.setGoErr(fmt.Errorf("sql/migrate: execute: scan version from %q: %w", m.Name(), err))
-	}
-	r.Description, err = sc.Desc(m)
-	if err != nil {
-		return r.setGoErr(fmt.Errorf("sql/migrate: execute: scan description from %q: %w", m.Name(), err))
-
-	}
-	if e.log != nil {
-		e.log.Log(LogFile{r.Version, r.Description})
-	}
 	hf, err := HashSum(e.dir)
 	if err != nil {
-		return fmt.Errorf("sql/migrate: execute: create hash file: %w", err)
+		return fmt.Errorf("sql/migrate: execute: compute hash: %w", err)
 	}
-	r.Hash, err = hf.sumByName(m.Name())
+	version, err := e.dir.(Scanner).Version(m)
 	if err != nil {
-		return r.setGoErr(fmt.Errorf("sql/migrate: execute: scanning checksum for file %q: %w", m.Name(), err))
+		return fmt.Errorf("sql/migrate: execute: scan version from %q: %w", m.Name(), err)
 	}
-	stmts, err := sc.Stmts(m)
+	desc, err := e.dir.(Scanner).Desc(m)
 	if err != nil {
-		return r.setGoErr(fmt.Errorf("sql/migrate: execute: scanning statements from file %q: %w", m.Name(), err))
+		return fmt.Errorf("sql/migrate: execute: scan description from %q: %w", m.Name(), err)
+	}
+	hash, err := hf.sumByName(m.Name())
+	if err != nil {
+		return fmt.Errorf("sql/migrate: execute: scanning checksum from %q: %w", m.Name(), err)
+	}
+	stmts, err := e.dir.(Scanner).Stmts(m)
+	if err != nil {
+		return fmt.Errorf("sql/migrate: execute: scanning statements from %q: %w", m.Name(), err)
+	}
+	// If there already is a revision with this version in the database,
+	// and it is partly applied, continue where the last attempt was left off.
+	r, err := e.rrw.ReadRevision(ctx, version)
+	if err != nil && !errors.Is(err, ErrNotExist) {
+		return fmt.Errorf("sql/migrate: execute: read revision: %w", err)
+	}
+	if errors.Is(err, ErrNotExist) {
+		// New revision, create a new entry.
+		r = &Revision{
+			Version:     version,
+			Description: desc,
+			Total:       len(stmts),
+			ExecutedAt:  time.Now(),
+			Hash:        hash,
+		}
 	}
 	// Save once to mark as started in the database.
-	if err := e.rrw.WriteRevision(ctx, r); err != nil {
+	if err = writeRevision(ctx, e.rrw, r); err != nil {
+		return err
+	}
+	// Make sure to store the Revision information.
+	defer func(ctx context.Context, rrw RevisionReadWriter, r *Revision) {
+		if err2 := writeRevision(ctx, rrw, r); err2 != nil {
+			err = wrap(err2, err)
+		}
+	}(ctx, e.rrw, r)
+	e.log.Log(LogFile{r.Version, r.Description})
+	for _, stmt := range stmts[r.Applied:r.Total] {
+		e.log.Log(LogStmt{stmt})
+		if _, err = e.drv.ExecContext(ctx, stmt); err != nil {
+			r.setSQLErr(stmt, err)
+			return fmt.Errorf("sql/migrate: execute: executing statement %q from version %q: %w", stmt, r.Version, err)
+		}
+		r.Applied++
+		if err = writeRevision(ctx, e.rrw, r); err != nil {
+			return err
+		}
+	}
+	r.done()
+	return
+}
+
+func writeRevision(ctx context.Context, w RevisionReadWriter, r *Revision) error {
+	if err := w.WriteRevision(ctx, r); err != nil {
 		return fmt.Errorf("sql/migrate: execute: write revision: %w", err)
 	}
-	for _, stmt := range stmts {
-		if e.log != nil {
-			e.log.Log(LogStmt{stmt})
-		}
-		if _, err := e.drv.ExecContext(ctx, stmt); err != nil {
-			return r.setSQLErr(
-				fmt.Errorf("sql/migrate: execute: executing statement %q from version %q: %w", stmt, r.Version, err),
-				stmt,
-			)
-		}
-	}
-	r.done(true)
-	return
+	return nil
 }
 
 // ExecuteN executes n pending migration files. If n<=0 all pending migration files are executed. It will not attempt
@@ -527,34 +540,30 @@ func (e *Executor) ExecuteN(ctx context.Context, n int) error {
 		}
 		pending = pending[:n]
 	}
-	if e.log != nil {
-		names := make([]string, len(pending))
-		for i := range pending {
-			names[i] = pending[i].Name()
-		}
-		revs, err := e.rrw.ReadRevisions(ctx)
-		if err != nil {
-			return fmt.Errorf("sql/migrate: execute: read revisions: %w", err)
-		}
-		last := pending[len(pending)-1]
-		v, err := e.dir.(Scanner).Version(last)
-		if err != nil {
-			return fmt.Errorf("sql/migrate: execute: scan version from %q: %w", last.Name(), err)
-		}
-		l := LogExecution{To: v, Files: names}
-		if len(revs) > 0 {
-			l.From = revs[len(revs)-1].Version
-		}
-		e.log.Log(l)
+	names := make([]string, len(pending))
+	for i := range pending {
+		names[i] = pending[i].Name()
 	}
+	revs, err := e.rrw.ReadRevisions(ctx)
+	if err != nil {
+		return fmt.Errorf("sql/migrate: execute: read revisions: %w", err)
+	}
+	last := pending[len(pending)-1]
+	v, err := e.dir.(Scanner).Version(last)
+	if err != nil {
+		return fmt.Errorf("sql/migrate: execute: scan version from %q: %w", last.Name(), err)
+	}
+	l := LogExecution{To: v, Files: names}
+	if len(revs) > 0 {
+		l.From = revs[len(revs)-1].Version
+	}
+	e.log.Log(l)
 	for _, m := range pending {
 		if err := e.Execute(ctx, m); err != nil {
 			return err
 		}
 	}
-	if e.log != nil {
-		e.log.Log(LogDone{})
-	}
+	e.log.Log(LogDone{})
 	return err
 }
 
@@ -618,6 +627,11 @@ func (NopRevisionReadWriter) ReadRevisions(context.Context) (Revisions, error) {
 	return nil, nil
 }
 
+// ReadRevision implements RevisionsReadWriter.ReadRevision,
+func (NopRevisionReadWriter) ReadRevision(context.Context, string) (*Revision, error) {
+	return nil, ErrNotExist
+}
+
 // WriteRevision implements RevisionsReadWriter.WriteRevision,
 func (NopRevisionReadWriter) WriteRevision(context.Context, *Revision) error {
 	return nil
@@ -625,26 +639,28 @@ func (NopRevisionReadWriter) WriteRevision(context.Context, *Revision) error {
 
 var _ RevisionReadWriter = (*NopRevisionReadWriter)(nil)
 
-// done computes and sets the ExecutionTime.
-func (r *Revision) done(ok bool) {
-	r.ExecutionTime = time.Now().Sub(r.ExecutedAt)
-	if ok {
-		r.ExecutionState = StateOK
-	} else {
-		r.ExecutionState = StateError
+// Complete returns if a revision has been applied without errors and in full.
+func (r *Revision) Complete() error {
+	if r.Error != "" {
+		return errors.New(r.Error)
 	}
+	return nil
+}
+
+// done computes and sets the ExecutionTime.
+func (r *Revision) done() {
+	r.ExecutionTime = time.Now().Sub(r.ExecutedAt)
 }
 
 func (r *Revision) setGoErr(err error) error {
-	r.done(false)
+	r.done()
 	r.Error = fmt.Sprintf("Go:\n%s", err)
 	return err
 }
 
-func (r *Revision) setSQLErr(err error, stmt string) error {
-	r.done(false)
+func (r *Revision) setSQLErr(stmt string, err error) {
+	r.done()
 	r.Error = fmt.Sprintf("Statement:\n%s\n\nError:\n%s", stmt, err)
-	return err
 }
 
 type (
@@ -684,12 +700,19 @@ type (
 
 	// LogDone is sent if the execution is done.
 	LogDone struct{}
+
+	// NopLogger is a Logger that does nothing.
+	// It is useful for one-time replay of the migration directory.
+	NopLogger struct{}
 )
 
 func (LogExecution) logEntry() {}
 func (LogFile) logEntry()      {}
 func (LogStmt) logEntry()      {}
 func (LogDone) logEntry()      {}
+
+// Log implements the Logger interface.
+func (NopLogger) Log(LogEntry) {}
 
 // LocalDir implements Dir for a local path. It implements the Scanner interface compatible with
 // migration files generated by the DefaultFormatter.
