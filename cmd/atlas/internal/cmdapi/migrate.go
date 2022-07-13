@@ -917,14 +917,17 @@ func migrateFlagsFromEnv(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	// Transform "src" to a URL.
-	toURL := activeEnv.Source
-	if toURL != "" {
-		if toURL, err = filepath.Abs(activeEnv.Source); err != nil {
-			return fmt.Errorf("finding abs path to source: %q: %w", activeEnv.Source, err)
-		}
-		toURL = "file://" + toURL
+	srcs, err := activeEnv.Sources()
+	if err != nil {
+		return err
 	}
-	if err := maySetFlag(cmd, migrateFlagTo, toURL); err != nil {
+	for i, s := range srcs {
+		if s, err = filepath.Abs(s); err != nil {
+			return fmt.Errorf("finding abs path to source: %q: %w", s, err)
+		}
+		srcs[i] = "file://" + s
+	}
+	if err := maySetFlag(cmd, migrateFlagTo, strings.Join(srcs, ",")); err != nil {
 		return err
 	}
 	if s := "[" + strings.Join(activeEnv.Schemas, "") + "]"; len(activeEnv.Schemas) > 0 {

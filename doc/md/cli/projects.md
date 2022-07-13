@@ -12,7 +12,10 @@ environments when working with Atlas. A project file is a file named
 ```hcl
 // Define an environment named "local"
 env "local" {
-  // Declare where the schema definition file resides.
+  // Declare where the schema definition resides.
+  // Also supported:
+  //   src = "./dir/with/schema" 
+  //   src = ["multi.hcl", "file.hcl"]
   src = "./project/schema.hcl"
   
   // Define the URL of the database which is managed in

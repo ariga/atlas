@@ -42,6 +42,9 @@ type MigrationDir struct {
 func (e *Env) asMap() (map[string]string, error) {
 	m := make(map[string]string, len(e.Extra.Attrs))
 	for _, attr := range e.Extra.Attrs {
+		if attr.K == "src" {
+			continue
+		}
 		if v, err := attr.String(); err == nil {
 			m[attr.K] = v
 			continue
@@ -66,9 +69,6 @@ type Env struct {
 	// See: https://atlasgo.io/dev-database
 	DevURL string `spec:"dev"`
 
-	// Path to the file containing the desired schema of the environment.
-	Source string `spec:"src"`
-
 	// List of schemas in this database that are managed by Atlas.
 	Schemas []string `spec:"schemas"`
 
@@ -76,6 +76,21 @@ type Env struct {
 	MigrationDir *MigrationDir `spec:"migration_dir"`
 
 	schemahcl.DefaultExtension
+}
+
+// Sources returns the paths containing the Atlas schema.
+func (e *Env) Sources() ([]string, error) {
+	attr, exists := e.Attr("src")
+	if !exists {
+		return nil, nil
+	}
+	if s, err := attr.String(); err == nil {
+		return []string{s}, nil
+	}
+	if s, err := attr.Strings(); err == nil {
+		return s, nil
+	}
+	return nil, fmt.Errorf("expected src to be either a string or a string array")
 }
 
 var hclState = schemahcl.New(
@@ -108,8 +123,8 @@ func LoadEnv(path string, name string, opts ...LoadOption) (*Env, error) {
 		if e.URL == "" {
 			return nil, fmt.Errorf("no url set for env %q", e.Name)
 		}
-		if e.Source == "" {
-			return nil, fmt.Errorf("no src set for env %q", e.Name)
+		if _, err := e.Sources(); err != nil {
+			return nil, err
 		}
 		projEnvs[e.Name] = e
 	}
