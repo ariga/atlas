@@ -289,7 +289,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 					return err
 				}
 			}
-			alter = append(alter, change)
+			alter = append(alter, &schema.ModifyColumn{To: change.To, From: change.From, Change: k})
 		case *schema.RenameColumn:
 			// "RENAME COLUMN" cannot be combined with other alterations.
 			b := Build("ALTER TABLE").Table(modify.T).P("RENAME COLUMN")
@@ -690,10 +690,7 @@ func (s *state) alterColumn(b *sqlx.Builder, c *schema.ModifyColumn) error {
 			}
 			b.P("DROP EXPRESSION")
 			k &= ^schema.ChangeGenerated
-		case k.Is(schema.ChangeComment):
-			// Handled separately on modifyTable.
-			k &= ^schema.ChangeComment
-		default:
+		default: // e.g. schema.ChangeComment.
 			return fmt.Errorf("unexpected column change: %d", k)
 		}
 		if !k.Is(schema.NoChange) {
