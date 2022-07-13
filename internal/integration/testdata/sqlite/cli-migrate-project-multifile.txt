@@ -1,24 +1,45 @@
-exec mkdir migrations
 atlas migrate diff --env local
 cmpmig 0 diff.sql
 
-atlas migrate validate --env local
+# reset
+exec rm -rf migrations
 
-atlas migrate new 1 --env local
-cmpmig 1 empty.sql
+atlas migrate diff --env src_list
+cmpmig 0 diff.sql
 
-exec touch migrations/2.sql
-! atlas migrate validate --env local
-stderr 'Error: checksum mismatch'
+# reset
+exec rm -rf migrations
 
-atlas migrate hash --force --env local
-atlas migrate validate --env local
-
+atlas migrate diff --env single_elem
+cmpmig 0 diff.sql
 -- atlas.hcl --
 env "local" {
     url = "URL"
     dev = "sqlite://test?mode=memory&_fk=1"
     src = "./schema"
+    migration_dir {
+        url = "file://migrations"
+        format = atlas
+    }
+}
+env "src_list" {
+    url = "URL"
+    dev = "sqlite://test?mode=memory&_fk=1"
+    src = [
+        "./schema/1.hcl",
+        "./schema/2.hcl",
+    ]
+    migration_dir {
+        url = "file://migrations"
+        format = atlas
+    }
+}
+env "single_elem" {
+    url = "URL"
+    dev = "sqlite://test?mode=memory&_fk=1"
+    src = [
+        "./schema/",
+    ]
     migration_dir {
         url = "file://migrations"
         format = atlas

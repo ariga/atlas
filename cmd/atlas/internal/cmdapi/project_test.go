@@ -37,6 +37,14 @@ env "local" {
 	integer = 42
 	str = var.name
 }
+
+env "multi" {
+	url = "mysql://root:pass@localhost:3306/"
+	src = [
+		"./a.hcl",
+		"./b.hcl",
+	]
+}
 `
 	err := os.WriteFile(filepath.Join(d, projectFileName), []byte(h), 0600)
 	require.NoError(t, err)
@@ -52,7 +60,6 @@ env "local" {
 			Name:    "local",
 			URL:     "mysql://root:pass@localhost:3306/",
 			DevURL:  "docker://mysql/8",
-			Source:  "./app.hcl",
 			Schemas: []string{"hello", "world"},
 			MigrationDir: &MigrationDir{
 				URL:    "file://migrations",
@@ -63,11 +70,22 @@ env "local" {
 					Attrs: []*schemahcl.Attr{
 						{K: "bool", V: &schemahcl.LiteralValue{V: "true"}},
 						{K: "integer", V: &schemahcl.LiteralValue{V: "42"}},
+						{K: "src", V: &schemahcl.LiteralValue{V: `"./app.hcl"`}},
 						{K: "str", V: &schemahcl.LiteralValue{V: `"hello"`}},
 					},
 				},
 			},
 		}, env)
+		sources, err := env.Sources()
+		require.NoError(t, err)
+		require.EqualValues(t, []string{"./app.hcl"}, sources)
+	})
+	t.Run("multi", func(t *testing.T) {
+		env, err := LoadEnv(path, "multi")
+		require.NoError(t, err)
+		srcs, err := env.Sources()
+		require.NoError(t, err)
+		require.EqualValues(t, []string{"./a.hcl", "./b.hcl"}, srcs)
 	})
 	t.Run("with input", func(t *testing.T) {
 		env, err := LoadEnv(path, "local", WithInput(map[string]string{
