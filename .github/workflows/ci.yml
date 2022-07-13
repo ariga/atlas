@@ -41,8 +41,6 @@ jobs:
       - name: go generate cmd/atlas
         working-directory: cmd/atlas
         run: go generate ./...
-        env:
-          GOWORK: off
       - name: Verify generated files are checked in properly
         run: |
           status=$(git status --porcelain | grep -v "go.\(sum\|mod\)" | cat)
