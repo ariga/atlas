@@ -5,18 +5,41 @@
 package sqlitecheck
 
 import (
+	"fmt"
+
 	"ariga.io/atlas/schemahcl"
+	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlcheck/datadepend"
 	"ariga.io/atlas/sql/sqlcheck/destructive"
-	"ariga.io/atlas/sql/sqlite"
 )
 
+// NewDataDepend creates new data-depend analyzer.
+func NewDataDepend(*schemahcl.Resource) *datadepend.Analyzer {
+	var opts datadepend.Options
+	opts.Handler.AddNotNull = func(p *datadepend.ColumnPass) ([]sqlcheck.Diagnostic, error) {
+		tt, err := postgres.FormatType(p.Column.Type.Type)
+		if err != nil {
+			return nil, err
+		}
+		return []sqlcheck.Diagnostic{
+			{
+				Pos: p.Change.Pos,
+				Text: fmt.Sprintf(
+					"Adding a non-nullable %q column %q will fail in case table %q is not empty",
+					tt, p.Column.Name, p.Table.Name,
+				),
+			},
+		}, nil
+	}
+	return datadepend.New(opts)
+}
+
 func init() {
-	sqlcheck.Register(sqlite.DriverName, func(*schemahcl.Resource) (sqlcheck.Analyzer, error) {
+	sqlcheck.Register(postgres.DriverName, func(*schemahcl.Resource) (sqlcheck.Analyzer, error) {
 		return sqlcheck.Analyzers{
 			destructive.New(destructive.Options{}),
-			datadepend.New(datadepend.Options{}),
+			NewDataDepend(nil),
 		}, nil
 	})
 }
