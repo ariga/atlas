@@ -233,6 +233,7 @@ func TestMigrate_Diff(t *testing.T) {
 	p := t.TempDir()
 
 	// Will create migration directory if not existing.
+	MigrateFlags.Force = false
 	_, err := runCmd(
 		Root, "migrate", "diff",
 		"name",

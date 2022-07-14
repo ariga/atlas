@@ -146,11 +146,11 @@ func (r *Revision) Update() *RevisionUpdateOne {
 // Unwrap unwraps the Revision entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
 func (r *Revision) Unwrap() *Revision {
-	tx, ok := r.config.driver.(*txDriver)
+	_tx, ok := r.config.driver.(*txDriver)
 	if !ok {
 		panic("ent: Revision is not a transactional entity")
 	}
-	r.config.driver = tx.drv
+	r.config.driver = _tx.drv
 	return r
 }
 
@@ -158,24 +158,32 @@ func (r *Revision) Unwrap() *Revision {
 func (r *Revision) String() string {
 	var builder strings.Builder
 	builder.WriteString("Revision(")
-	builder.WriteString(fmt.Sprintf("id=%v", r.ID))
-	builder.WriteString(", description=")
+	builder.WriteString(fmt.Sprintf("id=%v, ", r.ID))
+	builder.WriteString("description=")
 	builder.WriteString(r.Description)
-	builder.WriteString(", applied=")
+	builder.WriteString(", ")
+	builder.WriteString("applied=")
 	builder.WriteString(fmt.Sprintf("%v", r.Applied))
-	builder.WriteString(", total=")
+	builder.WriteString(", ")
+	builder.WriteString("total=")
 	builder.WriteString(fmt.Sprintf("%v", r.Total))
-	builder.WriteString(", executed_at=")
+	builder.WriteString(", ")
+	builder.WriteString("executed_at=")
 	builder.WriteString(r.ExecutedAt.Format(time.ANSIC))
-	builder.WriteString(", execution_time=")
+	builder.WriteString(", ")
+	builder.WriteString("execution_time=")
 	builder.WriteString(fmt.Sprintf("%v", r.ExecutionTime))
-	builder.WriteString(", error=")
+	builder.WriteString(", ")
+	builder.WriteString("error=")
 	builder.WriteString(r.Error)
-	builder.WriteString(", hash=")
+	builder.WriteString(", ")
+	builder.WriteString("hash=")
 	builder.WriteString(r.Hash)
-	builder.WriteString(", operator_version=")
+	builder.WriteString(", ")
+	builder.WriteString("operator_version=")
 	builder.WriteString(r.OperatorVersion)
-	builder.WriteString(", meta=")
+	builder.WriteString(", ")
+	builder.WriteString("meta=")
 	builder.WriteString(fmt.Sprintf("%v", r.Meta))
 	builder.WriteByte(')')
 	return builder.String()

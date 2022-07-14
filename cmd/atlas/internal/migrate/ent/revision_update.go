@@ -285,7 +285,7 @@ func (ru *RevisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{revision.Label}
 		} else if sqlgraph.IsConstraintError(err) {
-			err = &ConstraintError{err.Error(), err}
+			err = &ConstraintError{msg: err.Error(), wrap: err}
 		}
 		return 0, err
 	}
@@ -420,9 +420,15 @@ func (ruo *RevisionUpdateOne) Save(ctx context.Context) (*Revision, error) {
 			}
 			mut = ruo.hooks[i](mut)
 		}
-		if _, err := mut.Mutate(ctx, ruo.mutation); err != nil {
+		v, err := mut.Mutate(ctx, ruo.mutation)
+		if err != nil {
 			return nil, err
 		}
+		nv, ok := v.(*Revision)
+		if !ok {
+			return nil, fmt.Errorf("unexpected node type %T returned from RevisionMutation", v)
+		}
+		node = nv
 	}
 	return node, err
 }
@@ -579,7 +585,7 @@ func (ruo *RevisionUpdateOne) sqlSave(ctx context.Context) (_node *Revision, err
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{revision.Label}
 		} else if sqlgraph.IsConstraintError(err) {
-			err = &ConstraintError{err.Error(), err}
+			err = &ConstraintError{msg: err.Error(), wrap: err}
 		}
 		return nil, err
 	}

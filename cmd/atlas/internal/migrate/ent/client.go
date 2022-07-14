@@ -142,7 +142,7 @@ func (c *RevisionClient) Use(hooks ...Hook) {
 	c.hooks.Revision = append(c.hooks.Revision, hooks...)
 }
 
-// Create returns a create builder for Revision.
+// Create returns a builder for creating a Revision entity.
 func (c *RevisionClient) Create() *RevisionCreate {
 	mutation := newRevisionMutation(c.config, OpCreate)
 	return &RevisionCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
@@ -177,12 +177,12 @@ func (c *RevisionClient) Delete() *RevisionDelete {
 	return &RevisionDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// DeleteOne returns a delete builder for the given entity.
+// DeleteOne returns a builder for deleting the given entity.
 func (c *RevisionClient) DeleteOne(r *Revision) *RevisionDeleteOne {
 	return c.DeleteOneID(r.ID)
 }
 
-// DeleteOneID returns a delete builder for the given id.
+// DeleteOne returns a builder for deleting the given entity by its id.
 func (c *RevisionClient) DeleteOneID(id string) *RevisionDeleteOne {
 	builder := c.Delete().Where(revision.ID(id))
 	builder.mutation.id = &id
