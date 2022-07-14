@@ -218,6 +218,9 @@ func init() {
 	urlFlag := func(f *string, name, short string, set *pflag.FlagSet) {
 		set.StringVarP(f, name, short, "", "[driver://username:password@address/dbname?param=value] select a database using the URL format")
 	}
+	revisionsFlag := func(set *pflag.FlagSet) {
+		set.StringVarP(&MigrateFlags.RevisionSchema, migrateFlagRevisionsSchema, "", entmigrate.DefaultRevisionSchema, "schema name where the revisions table resides")
+	}
 	// Global flags.
 	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.DirURL, migrateFlagDir, "", "file://migrations", "select migration directory using URL format")
 	MigrateCmd.PersistentFlags().StringSliceVarP(&MigrateFlags.Schemas, migrateFlagSchema, "", nil, "set schema names")
@@ -226,7 +229,7 @@ func init() {
 	MigrateCmd.PersistentFlags().SortFlags = false
 	// Apply flags.
 	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.LogFormat, migrateFlagLog, "", logFormatTTY, "log format to use")
-	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.RevisionSchema, migrateFlagRevisionsSchema, "", entmigrate.DefaultRevisionSchema, "schema name where the revisions table resides")
+	revisionsFlag(MigrateApplyCmd.Flags())
 	MigrateApplyCmd.Flags().BoolVarP(&MigrateFlags.DryRun, migrateFlagDryRun, "", false, "do not actually execute any SQL but show it on screen")
 	urlFlag(&MigrateFlags.URL, migrateFlagURL, "u", MigrateApplyCmd.Flags())
 	cobra.CheckErr(MigrateApplyCmd.MarkFlagRequired(migrateFlagURL))
@@ -241,6 +244,7 @@ func init() {
 	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateValidateCmd.Flags())
 	// Status flags.
 	urlFlag(&MigrateFlags.URL, migrateFlagURL, "u", MigrateStatusCmd.Flags())
+	revisionsFlag(MigrateStatusCmd.Flags())
 	// Lint flags.
 	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateLintCmd.Flags())
 	MigrateLintCmd.PersistentFlags().StringVarP(&MigrateFlags.Lint.Format, migrateFlagLog, "", "", "custom logging using a Go template")
@@ -475,7 +479,7 @@ func CmdMigrateStatusRun(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return err
 		}
-		return statusPrint(cmd.OutOrStdout(), sc, avail, nil, nil)
+		return statusPrint(cmd.OutOrStdout(), sc, avail, avail, nil)
 	}
 	// Currently, only in DB revisions are supported.
 	opts := []entmigrate.Option{entmigrate.WithSchema(MigrateFlags.RevisionSchema)}
@@ -495,39 +499,64 @@ func CmdMigrateStatusRun(cmd *cobra.Command, _ []string) error {
 	if err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
 		return err
 	}
-	return statusPrint(cmd.OutOrStdout(), sc, avail, avail[:len(pending)+1], pending)
+	revs, err := rrw.ReadRevisions(cmd.Context())
+	if err != nil {
+		return err
+	}
+	return statusPrint(cmd.OutOrStdout(), sc, avail, pending, revs)
 }
 
-func statusPrint(out io.Writer, sc migrate.Scanner, avail, applied, pending []migrate.File) (err error) {
-	var cur, next, state string
-	if len(applied) == 0 {
+func statusPrint(out io.Writer, sc migrate.Scanner, avail, pending []migrate.File, revs migrate.Revisions) (err error) {
+	var (
+		cur, next, state string
+		applied          = avail[: len(avail)-len(pending) : len(avail)-len(pending)]
+		partial          = len(revs) != 0 && revs[len(revs)-1].Applied < revs[len(revs)-1].Total
+	)
+	if len(avail) == len(pending) {
 		cur = "No version applied yet"
 	} else {
-		cur, err = sc.Version(applied[len(applied)-1])
+		cur, err = sc.Version(avail[len(avail)-len(pending)])
 		if err != nil {
 			return err
+		}
+		cur = cyan(cur)
+		// If the last pending version is partially applied, tell so.
+		if partial {
+			cur += fmt.Sprintf(" (%d statements applied)", revs[len(revs)-1].Applied)
 		}
 	}
 	if len(pending) == 0 {
 		state = green("OK")
 		next = "Already at latest version"
 	} else {
-		state = cyan("PENDING")
+		state = yellow("PENDING")
 		next, err = sc.Version(pending[0])
 		if err != nil {
 			return err
 		}
+		next = cyan(next)
+		if partial {
+			next += fmt.Sprintf(" (%d statements left)", revs[len(revs)-1].Total-revs[len(revs)-1].Applied)
+		}
+	}
+	exec := cyan(strconv.Itoa(len(applied)))
+	if partial {
+		exec += " + 1 partially"
 	}
 	fmt.Fprintf(out, "Migration Status: %s\n", state)
-	fmt.Fprintf(out, "%s%s Current Version:\t%s\n", indent2, dash, cyan(cur))
-	fmt.Fprintf(out, "%s%s Next Version:\t%s\n", indent2, dash, cyan(next))
-	fmt.Fprintf(out, "%s%s Available:\t\t%s\n", indent2, dash, cyan(strconv.Itoa(len(avail))))
-	fmt.Fprintf(out, "%s%s Executed:\t\t%s\n", indent2, dash, cyan(strconv.Itoa(len(applied))))
+	fmt.Fprintf(out, "%s%s Current Version:\t%s\n", indent2, dash, cur)
+	fmt.Fprintf(out, "%s%s Next Version:\t%s\n", indent2, dash, next)
+	// fmt.Fprintf(out, "%s%s Available Files:\t%s\n", indent2, dash, cyan(strconv.Itoa(len(avail))))
+	fmt.Fprintf(out, "%s%s Executed Files:\t%s\n", indent2, dash, exec)
 	c := cyan
 	if len(pending) == 0 {
 		c = green
 	}
-	fmt.Fprintf(out, "%s%s Pending:\t\t%s\n", indent2, dash, c(strconv.Itoa(len(pending))))
+	fmt.Fprintf(out, "%s%s Pending Files:\t%s", indent2, dash, c(strconv.Itoa(len(pending))))
+	if partial {
+		fmt.Fprintf(out, " (partially)")
+	}
+	fmt.Fprintf(out, "\n")
 	return nil
 }
 
