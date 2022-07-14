@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -38,13 +39,13 @@ func TestMigrate_Apply(t *testing.T) {
 	p := t.TempDir()
 
 	// Fails on empty directory.
-	b, err := runCmd(
+	s, err := runCmd(
 		Root, "migrate", "apply",
 		"--dir", "file://"+p,
 		"-u", openSQLite(t, ""),
 	)
 	require.NoError(t, err)
-	require.Equal(t, "The migration directory is synced with the database, no migration files to execute\n", b)
+	require.Equal(t, "The migration directory is synced with the database, no migration files to execute\n", s)
 
 	// Fails on directory without sum file.
 	require.NoError(t, os.Rename(
@@ -89,7 +90,7 @@ func TestMigrate_Apply(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 
-	s, err := runCmd(
+	s, err = runCmd(
 		Root, "migrate", "apply",
 		"--dir", "file://testdata/sqlite",
 		"--url", fmt.Sprintf("sqlitelockapply://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
@@ -109,7 +110,94 @@ func TestMigrate_Apply(t *testing.T) {
 	require.Contains(t, s, "CREATE TABLE tbl (`col` int NOT NULL);")   // logs statement
 	require.NotContains(t, s, "ALTER TABLE `tbl` ADD `col_2` bigint;") // does not execute second file
 	require.Contains(t, s, "1 migrations")                             // logs amount of migrations
-	require.Contains(t, s, "1 sql statements")                         // logs amount of statement
+	require.Contains(t, s, "1 sql statements")
+
+	// Transactions will be wrapped per file. If the second file has an error, first still is applied.
+	s, err = runCmd(
+		Root, "migrate", "apply",
+		"--dir", "file://testdata/sqlite2",
+		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test2.db")),
+	)
+	require.Error(t, err)
+	require.Contains(t, s, "20220318104614")                           // log to version
+	require.Contains(t, s, "CREATE TABLE tbl (`col` int NOT NULL);")   // logs statement
+	require.Contains(t, s, "ALTER TABLE `tbl` ADD `col_2` bigint;")    // does execute first stmt first second file
+	require.Contains(t, s, "ALTER TABLE `tbl` ADD `col_3` bigint;")    // does execute second stmt first second file
+	require.NotContains(t, s, "ALTER TABLE `tbl` ADD `col_4` bigint;") // but not third
+	require.Contains(t, s, "1 migrations ok (1 with errors)")          // logs amount of migrations
+	require.Contains(t, s, "2 sql statements ok (1 with errors)")      // logs amount of statement
+	require.Contains(t, s, "Error: Execution had errors:")             // logs error summary
+	require.Contains(t, s, "near \"asdasd\": syntax error")            // logs error summary
+
+	c, err := sqlclient.Open(context.Background(), fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test2.db")))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, c.Close())
+	})
+	sch, err := c.InspectSchema(context.Background(), "", nil)
+	tbl, ok := sch.Table("tbl")
+	require.True(t, ok)
+	_, ok = tbl.Column("col_2")
+	require.False(t, ok)
+	_, ok = tbl.Column("col_3")
+	require.False(t, ok)
+	rrw, err := migrate2.NewEntRevisions(c)
+	require.NoError(t, err)
+	require.NoError(t, rrw.Init(context.Background()))
+	revs, err := rrw.ReadRevisions(context.Background())
+	require.NoError(t, err)
+	require.Len(t, revs, 2)
+	require.Equal(t, 1, revs[1].Applied)
+	require.Equal(t, 3, revs[1].Total)
+
+	// Running again will pick up the failed statement and try it again.
+	s, err = runCmd(
+		Root, "migrate", "apply",
+		"--dir", "file://testdata/sqlite2",
+		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test2.db")),
+	)
+	require.Error(t, err)
+	require.NotContains(t, s, "20220318104614")                         // first version is applied already
+	require.Contains(t, s, "20220318104615")                            // retry second (partially applied)
+	require.NotContains(t, s, "CREATE TABLE tbl (`col` int NOT NULL);") // will not attempt stmts from first file
+	require.NotContains(t, s, "ALTER TABLE `tbl` ADD `col_2` bigint;")  // does not execute first stmt first second file
+	require.Contains(t, s, "ALTER TABLE `tbl` ADD `col_3` bigint;")     // does execute second stmt first second file
+	require.NotContains(t, s, "ALTER TABLE `tbl` ADD `col_4` bigint;")  // but not third
+	require.Contains(t, s, "0 migrations ok (1 with errors)")           // logs amount of migrations
+	require.Contains(t, s, "0 sql statements ok (1 with errors)")       // logs amount of statement
+	require.Contains(t, s, "Error: Execution had errors:")              // logs error summary
+	require.Contains(t, s, "near \"asdasd\": syntax error")             // logs error summary
+
+	// Fixing the migration file will finish without errors.
+	require.NoError(t, exec.Command("cp", "-r", "testdata/sqlite2", "testdata/sqlite3").Run())
+	t.Cleanup(func() {
+		require.NoError(t, os.RemoveAll("testdata/sqlite3"))
+	})
+	require.NoError(t, exec.Command("sed", "-i", "s/asdasd //g", "testdata/sqlite3/20220318104615_second.sql").Run())
+	_, err = runCmd(Root, "migrate", "hash", "--force", "--dir", "file://testdata/sqlite3")
+	require.NoError(t, err)
+	s, err = runCmd(
+		Root, "migrate", "apply",
+		"--dir", "file://testdata/sqlite3",
+		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test2.db")),
+	)
+	require.NoError(t, err)
+	require.Contains(t, s, "20220318104615")                        // retry second (partially applied)
+	require.Contains(t, s, "ALTER TABLE `tbl` ADD `col_3` bigint;") // does execute second stmt first second file
+	require.Contains(t, s, "ALTER TABLE `tbl` ADD `col_4` bigint;") // does execute second stmt first second file
+	require.Contains(t, s, "1 migrations")                          // logs amount of migrations
+	require.Contains(t, s, "2")                                     // logs amount of statement
+	require.NotContains(t, s, "Error: Execution had errors:")       // logs error summary
+	require.NotContains(t, s, "near \"asdasd\": syntax error")      // logs error summary
+
+	// Running again will report database being in clean state.
+	s, err = runCmd(
+		Root, "migrate", "apply",
+		"--dir", "file://testdata/sqlite3",
+		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test2.db")),
+	)
+	require.NoError(t, err)
+	require.Equal(t, "The migration directory is synced with the database, no migration files to execute\n", s)
 
 	// Dry run will print the statements in second migration file without executing them. No changes to the revisions
 	// will be done.
@@ -123,20 +211,20 @@ func TestMigrate_Apply(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, s, "20220318104615")                        // log to version
 	require.Contains(t, s, "ALTER TABLE `tbl` ADD `col_2` bigint;") // logs statement
-	c, err := sqlclient.Open(context.Background(), fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")))
+	c1, err := sqlclient.Open(context.Background(), fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")))
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, c.Close())
+		require.NoError(t, c1.Close())
 	})
-	sch, err := c.InspectSchema(context.Background(), "", nil)
-	tbl, ok := sch.Table("tbl")
+	sch, err = c1.InspectSchema(context.Background(), "", nil)
+	tbl, ok = sch.Table("tbl")
 	require.True(t, ok)
 	_, ok = tbl.Column("col_2")
 	require.False(t, ok)
-	rrw, err := migrate2.NewEntRevisions(c)
+	rrw, err = migrate2.NewEntRevisions(c1)
 	require.NoError(t, err)
 	require.NoError(t, rrw.Init(context.Background()))
-	revs, err := rrw.ReadRevisions(context.Background())
+	revs, err = rrw.ReadRevisions(context.Background())
 	require.NoError(t, err)
 	require.Len(t, revs, 1)
 }
@@ -145,6 +233,7 @@ func TestMigrate_Diff(t *testing.T) {
 	p := t.TempDir()
 
 	// Will create migration directory if not existing.
+	MigrateFlags.Force = false
 	_, err := runCmd(
 		Root, "migrate", "diff",
 		"name",

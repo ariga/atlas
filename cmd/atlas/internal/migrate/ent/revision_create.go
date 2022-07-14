@@ -33,9 +33,15 @@ func (rc *RevisionCreate) SetDescription(s string) *RevisionCreate {
 	return rc
 }
 
-// SetExecutionState sets the "execution_state" field.
-func (rc *RevisionCreate) SetExecutionState(rs revision.ExecutionState) *RevisionCreate {
-	rc.mutation.SetExecutionState(rs)
+// SetApplied sets the "applied" field.
+func (rc *RevisionCreate) SetApplied(i int) *RevisionCreate {
+	rc.mutation.SetApplied(i)
+	return rc
+}
+
+// SetTotal sets the "total" field.
+func (rc *RevisionCreate) SetTotal(i int) *RevisionCreate {
+	rc.mutation.SetTotal(i)
 	return rc
 }
 
@@ -48,6 +54,20 @@ func (rc *RevisionCreate) SetExecutedAt(t time.Time) *RevisionCreate {
 // SetExecutionTime sets the "execution_time" field.
 func (rc *RevisionCreate) SetExecutionTime(t time.Duration) *RevisionCreate {
 	rc.mutation.SetExecutionTime(t)
+	return rc
+}
+
+// SetError sets the "error" field.
+func (rc *RevisionCreate) SetError(s string) *RevisionCreate {
+	rc.mutation.SetError(s)
+	return rc
+}
+
+// SetNillableError sets the "error" field if the given value is not nil.
+func (rc *RevisionCreate) SetNillableError(s *string) *RevisionCreate {
+	if s != nil {
+		rc.SetError(*s)
+	}
 	return rc
 }
 
@@ -114,9 +134,15 @@ func (rc *RevisionCreate) Save(ctx context.Context) (*Revision, error) {
 			}
 			mut = rc.hooks[i](mut)
 		}
-		if _, err := mut.Mutate(ctx, rc.mutation); err != nil {
+		v, err := mut.Mutate(ctx, rc.mutation)
+		if err != nil {
 			return nil, err
 		}
+		nv, ok := v.(*Revision)
+		if !ok {
+			return nil, fmt.Errorf("unexpected node type %T returned from RevisionMutation", v)
+		}
+		node = nv
 	}
 	return node, err
 }
@@ -148,12 +174,15 @@ func (rc *RevisionCreate) check() error {
 	if _, ok := rc.mutation.Description(); !ok {
 		return &ValidationError{Name: "description", err: errors.New(`ent: missing required field "Revision.description"`)}
 	}
-	if _, ok := rc.mutation.ExecutionState(); !ok {
-		return &ValidationError{Name: "execution_state", err: errors.New(`ent: missing required field "Revision.execution_state"`)}
+	if _, ok := rc.mutation.Applied(); !ok {
+		return &ValidationError{Name: "applied", err: errors.New(`ent: missing required field "Revision.applied"`)}
 	}
-	if v, ok := rc.mutation.ExecutionState(); ok {
-		if err := revision.ExecutionStateValidator(v); err != nil {
-			return &ValidationError{Name: "execution_state", err: fmt.Errorf(`ent: validator failed for field "Revision.execution_state": %w`, err)}
+	if _, ok := rc.mutation.Total(); !ok {
+		return &ValidationError{Name: "total", err: errors.New(`ent: missing required field "Revision.total"`)}
+	}
+	if v, ok := rc.mutation.Total(); ok {
+		if err := revision.TotalValidator(v); err != nil {
+			return &ValidationError{Name: "total", err: fmt.Errorf(`ent: validator failed for field "Revision.total": %w`, err)}
 		}
 	}
 	if _, ok := rc.mutation.ExecutedAt(); !ok {
@@ -178,7 +207,7 @@ func (rc *RevisionCreate) sqlSave(ctx context.Context) (*Revision, error) {
 	_node, _spec := rc.createSpec()
 	if err := sqlgraph.CreateNode(ctx, rc.driver, _spec); err != nil {
 		if sqlgraph.IsConstraintError(err) {
-			err = &ConstraintError{err.Error(), err}
+			err = &ConstraintError{msg: err.Error(), wrap: err}
 		}
 		return nil, err
 	}
@@ -217,13 +246,21 @@ func (rc *RevisionCreate) createSpec() (*Revision, *sqlgraph.CreateSpec) {
 		})
 		_node.Description = value
 	}
-	if value, ok := rc.mutation.ExecutionState(); ok {
+	if value, ok := rc.mutation.Applied(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeEnum,
+			Type:   field.TypeInt,
 			Value:  value,
-			Column: revision.FieldExecutionState,
+			Column: revision.FieldApplied,
 		})
-		_node.ExecutionState = value
+		_node.Applied = value
+	}
+	if value, ok := rc.mutation.Total(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt,
+			Value:  value,
+			Column: revision.FieldTotal,
+		})
+		_node.Total = value
 	}
 	if value, ok := rc.mutation.ExecutedAt(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -240,6 +277,14 @@ func (rc *RevisionCreate) createSpec() (*Revision, *sqlgraph.CreateSpec) {
 			Column: revision.FieldExecutionTime,
 		})
 		_node.ExecutionTime = value
+	}
+	if value, ok := rc.mutation.Error(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: revision.FieldError,
+		})
+		_node.Error = value
 	}
 	if value, ok := rc.mutation.Hash(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -331,15 +376,39 @@ func (u *RevisionUpsert) UpdateDescription() *RevisionUpsert {
 	return u
 }
 
-// SetExecutionState sets the "execution_state" field.
-func (u *RevisionUpsert) SetExecutionState(v revision.ExecutionState) *RevisionUpsert {
-	u.Set(revision.FieldExecutionState, v)
+// SetApplied sets the "applied" field.
+func (u *RevisionUpsert) SetApplied(v int) *RevisionUpsert {
+	u.Set(revision.FieldApplied, v)
 	return u
 }
 
-// UpdateExecutionState sets the "execution_state" field to the value that was provided on create.
-func (u *RevisionUpsert) UpdateExecutionState() *RevisionUpsert {
-	u.SetExcluded(revision.FieldExecutionState)
+// UpdateApplied sets the "applied" field to the value that was provided on create.
+func (u *RevisionUpsert) UpdateApplied() *RevisionUpsert {
+	u.SetExcluded(revision.FieldApplied)
+	return u
+}
+
+// AddApplied adds v to the "applied" field.
+func (u *RevisionUpsert) AddApplied(v int) *RevisionUpsert {
+	u.Add(revision.FieldApplied, v)
+	return u
+}
+
+// SetTotal sets the "total" field.
+func (u *RevisionUpsert) SetTotal(v int) *RevisionUpsert {
+	u.Set(revision.FieldTotal, v)
+	return u
+}
+
+// UpdateTotal sets the "total" field to the value that was provided on create.
+func (u *RevisionUpsert) UpdateTotal() *RevisionUpsert {
+	u.SetExcluded(revision.FieldTotal)
+	return u
+}
+
+// AddTotal adds v to the "total" field.
+func (u *RevisionUpsert) AddTotal(v int) *RevisionUpsert {
+	u.Add(revision.FieldTotal, v)
 	return u
 }
 
@@ -370,6 +439,24 @@ func (u *RevisionUpsert) UpdateExecutionTime() *RevisionUpsert {
 // AddExecutionTime adds v to the "execution_time" field.
 func (u *RevisionUpsert) AddExecutionTime(v time.Duration) *RevisionUpsert {
 	u.Add(revision.FieldExecutionTime, v)
+	return u
+}
+
+// SetError sets the "error" field.
+func (u *RevisionUpsert) SetError(v string) *RevisionUpsert {
+	u.Set(revision.FieldError, v)
+	return u
+}
+
+// UpdateError sets the "error" field to the value that was provided on create.
+func (u *RevisionUpsert) UpdateError() *RevisionUpsert {
+	u.SetExcluded(revision.FieldError)
+	return u
+}
+
+// ClearError clears the value of the "error" field.
+func (u *RevisionUpsert) ClearError() *RevisionUpsert {
+	u.SetNull(revision.FieldError)
 	return u
 }
 
@@ -427,6 +514,12 @@ func (u *RevisionUpsertOne) UpdateNewValues() *RevisionUpsertOne {
 		if _, exists := u.create.mutation.ID(); exists {
 			s.SetIgnore(revision.FieldID)
 		}
+		if _, exists := u.create.mutation.Description(); exists {
+			s.SetIgnore(revision.FieldDescription)
+		}
+		if _, exists := u.create.mutation.ExecutedAt(); exists {
+			s.SetIgnore(revision.FieldExecutedAt)
+		}
 	}))
 	return u
 }
@@ -473,17 +566,45 @@ func (u *RevisionUpsertOne) UpdateDescription() *RevisionUpsertOne {
 	})
 }
 
-// SetExecutionState sets the "execution_state" field.
-func (u *RevisionUpsertOne) SetExecutionState(v revision.ExecutionState) *RevisionUpsertOne {
+// SetApplied sets the "applied" field.
+func (u *RevisionUpsertOne) SetApplied(v int) *RevisionUpsertOne {
 	return u.Update(func(s *RevisionUpsert) {
-		s.SetExecutionState(v)
+		s.SetApplied(v)
 	})
 }
 
-// UpdateExecutionState sets the "execution_state" field to the value that was provided on create.
-func (u *RevisionUpsertOne) UpdateExecutionState() *RevisionUpsertOne {
+// AddApplied adds v to the "applied" field.
+func (u *RevisionUpsertOne) AddApplied(v int) *RevisionUpsertOne {
 	return u.Update(func(s *RevisionUpsert) {
-		s.UpdateExecutionState()
+		s.AddApplied(v)
+	})
+}
+
+// UpdateApplied sets the "applied" field to the value that was provided on create.
+func (u *RevisionUpsertOne) UpdateApplied() *RevisionUpsertOne {
+	return u.Update(func(s *RevisionUpsert) {
+		s.UpdateApplied()
+	})
+}
+
+// SetTotal sets the "total" field.
+func (u *RevisionUpsertOne) SetTotal(v int) *RevisionUpsertOne {
+	return u.Update(func(s *RevisionUpsert) {
+		s.SetTotal(v)
+	})
+}
+
+// AddTotal adds v to the "total" field.
+func (u *RevisionUpsertOne) AddTotal(v int) *RevisionUpsertOne {
+	return u.Update(func(s *RevisionUpsert) {
+		s.AddTotal(v)
+	})
+}
+
+// UpdateTotal sets the "total" field to the value that was provided on create.
+func (u *RevisionUpsertOne) UpdateTotal() *RevisionUpsertOne {
+	return u.Update(func(s *RevisionUpsert) {
+		s.UpdateTotal()
 	})
 }
 
@@ -519,6 +640,27 @@ func (u *RevisionUpsertOne) AddExecutionTime(v time.Duration) *RevisionUpsertOne
 func (u *RevisionUpsertOne) UpdateExecutionTime() *RevisionUpsertOne {
 	return u.Update(func(s *RevisionUpsert) {
 		s.UpdateExecutionTime()
+	})
+}
+
+// SetError sets the "error" field.
+func (u *RevisionUpsertOne) SetError(v string) *RevisionUpsertOne {
+	return u.Update(func(s *RevisionUpsert) {
+		s.SetError(v)
+	})
+}
+
+// UpdateError sets the "error" field to the value that was provided on create.
+func (u *RevisionUpsertOne) UpdateError() *RevisionUpsertOne {
+	return u.Update(func(s *RevisionUpsert) {
+		s.UpdateError()
+	})
+}
+
+// ClearError clears the value of the "error" field.
+func (u *RevisionUpsertOne) ClearError() *RevisionUpsertOne {
+	return u.Update(func(s *RevisionUpsert) {
+		s.ClearError()
 	})
 }
 
@@ -636,7 +778,7 @@ func (rcb *RevisionCreateBulk) Save(ctx context.Context) ([]*Revision, error) {
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, rcb.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
-							err = &ConstraintError{err.Error(), err}
+							err = &ConstraintError{msg: err.Error(), wrap: err}
 						}
 					}
 				}
@@ -746,6 +888,12 @@ func (u *RevisionUpsertBulk) UpdateNewValues() *RevisionUpsertBulk {
 				s.SetIgnore(revision.FieldID)
 				return
 			}
+			if _, exists := b.mutation.Description(); exists {
+				s.SetIgnore(revision.FieldDescription)
+			}
+			if _, exists := b.mutation.ExecutedAt(); exists {
+				s.SetIgnore(revision.FieldExecutedAt)
+			}
 		}
 	}))
 	return u
@@ -793,17 +941,45 @@ func (u *RevisionUpsertBulk) UpdateDescription() *RevisionUpsertBulk {
 	})
 }
 
-// SetExecutionState sets the "execution_state" field.
-func (u *RevisionUpsertBulk) SetExecutionState(v revision.ExecutionState) *RevisionUpsertBulk {
+// SetApplied sets the "applied" field.
+func (u *RevisionUpsertBulk) SetApplied(v int) *RevisionUpsertBulk {
 	return u.Update(func(s *RevisionUpsert) {
-		s.SetExecutionState(v)
+		s.SetApplied(v)
 	})
 }
 
-// UpdateExecutionState sets the "execution_state" field to the value that was provided on create.
-func (u *RevisionUpsertBulk) UpdateExecutionState() *RevisionUpsertBulk {
+// AddApplied adds v to the "applied" field.
+func (u *RevisionUpsertBulk) AddApplied(v int) *RevisionUpsertBulk {
 	return u.Update(func(s *RevisionUpsert) {
-		s.UpdateExecutionState()
+		s.AddApplied(v)
+	})
+}
+
+// UpdateApplied sets the "applied" field to the value that was provided on create.
+func (u *RevisionUpsertBulk) UpdateApplied() *RevisionUpsertBulk {
+	return u.Update(func(s *RevisionUpsert) {
+		s.UpdateApplied()
+	})
+}
+
+// SetTotal sets the "total" field.
+func (u *RevisionUpsertBulk) SetTotal(v int) *RevisionUpsertBulk {
+	return u.Update(func(s *RevisionUpsert) {
+		s.SetTotal(v)
+	})
+}
+
+// AddTotal adds v to the "total" field.
+func (u *RevisionUpsertBulk) AddTotal(v int) *RevisionUpsertBulk {
+	return u.Update(func(s *RevisionUpsert) {
+		s.AddTotal(v)
+	})
+}
+
+// UpdateTotal sets the "total" field to the value that was provided on create.
+func (u *RevisionUpsertBulk) UpdateTotal() *RevisionUpsertBulk {
+	return u.Update(func(s *RevisionUpsert) {
+		s.UpdateTotal()
 	})
 }
 
@@ -839,6 +1015,27 @@ func (u *RevisionUpsertBulk) AddExecutionTime(v time.Duration) *RevisionUpsertBu
 func (u *RevisionUpsertBulk) UpdateExecutionTime() *RevisionUpsertBulk {
 	return u.Update(func(s *RevisionUpsert) {
 		s.UpdateExecutionTime()
+	})
+}
+
+// SetError sets the "error" field.
+func (u *RevisionUpsertBulk) SetError(v string) *RevisionUpsertBulk {
+	return u.Update(func(s *RevisionUpsert) {
+		s.SetError(v)
+	})
+}
+
+// UpdateError sets the "error" field to the value that was provided on create.
+func (u *RevisionUpsertBulk) UpdateError() *RevisionUpsertBulk {
+	return u.Update(func(s *RevisionUpsert) {
+		s.UpdateError()
+	})
+}
+
+// ClearError clears the value of the "error" field.
+func (u *RevisionUpsertBulk) ClearError() *RevisionUpsertBulk {
+	return u.Update(func(s *RevisionUpsert) {
+		s.ClearError()
 	})
 }
 

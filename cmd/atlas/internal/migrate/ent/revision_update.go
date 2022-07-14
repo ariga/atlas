@@ -33,21 +33,29 @@ func (ru *RevisionUpdate) Where(ps ...predicate.Revision) *RevisionUpdate {
 	return ru
 }
 
-// SetDescription sets the "description" field.
-func (ru *RevisionUpdate) SetDescription(s string) *RevisionUpdate {
-	ru.mutation.SetDescription(s)
+// SetApplied sets the "applied" field.
+func (ru *RevisionUpdate) SetApplied(i int) *RevisionUpdate {
+	ru.mutation.ResetApplied()
+	ru.mutation.SetApplied(i)
 	return ru
 }
 
-// SetExecutionState sets the "execution_state" field.
-func (ru *RevisionUpdate) SetExecutionState(rs revision.ExecutionState) *RevisionUpdate {
-	ru.mutation.SetExecutionState(rs)
+// AddApplied adds i to the "applied" field.
+func (ru *RevisionUpdate) AddApplied(i int) *RevisionUpdate {
+	ru.mutation.AddApplied(i)
 	return ru
 }
 
-// SetExecutedAt sets the "executed_at" field.
-func (ru *RevisionUpdate) SetExecutedAt(t time.Time) *RevisionUpdate {
-	ru.mutation.SetExecutedAt(t)
+// SetTotal sets the "total" field.
+func (ru *RevisionUpdate) SetTotal(i int) *RevisionUpdate {
+	ru.mutation.ResetTotal()
+	ru.mutation.SetTotal(i)
+	return ru
+}
+
+// AddTotal adds i to the "total" field.
+func (ru *RevisionUpdate) AddTotal(i int) *RevisionUpdate {
+	ru.mutation.AddTotal(i)
 	return ru
 }
 
@@ -61,6 +69,26 @@ func (ru *RevisionUpdate) SetExecutionTime(t time.Duration) *RevisionUpdate {
 // AddExecutionTime adds t to the "execution_time" field.
 func (ru *RevisionUpdate) AddExecutionTime(t time.Duration) *RevisionUpdate {
 	ru.mutation.AddExecutionTime(t)
+	return ru
+}
+
+// SetError sets the "error" field.
+func (ru *RevisionUpdate) SetError(s string) *RevisionUpdate {
+	ru.mutation.SetError(s)
+	return ru
+}
+
+// SetNillableError sets the "error" field if the given value is not nil.
+func (ru *RevisionUpdate) SetNillableError(s *string) *RevisionUpdate {
+	if s != nil {
+		ru.SetError(*s)
+	}
+	return ru
+}
+
+// ClearError clears the value of the "error" field.
+func (ru *RevisionUpdate) ClearError() *RevisionUpdate {
+	ru.mutation.ClearError()
 	return ru
 }
 
@@ -149,9 +177,9 @@ func (ru *RevisionUpdate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (ru *RevisionUpdate) check() error {
-	if v, ok := ru.mutation.ExecutionState(); ok {
-		if err := revision.ExecutionStateValidator(v); err != nil {
-			return &ValidationError{Name: "execution_state", err: fmt.Errorf(`ent: validator failed for field "Revision.execution_state": %w`, err)}
+	if v, ok := ru.mutation.Total(); ok {
+		if err := revision.TotalValidator(v); err != nil {
+			return &ValidationError{Name: "total", err: fmt.Errorf(`ent: validator failed for field "Revision.total": %w`, err)}
 		}
 	}
 	return nil
@@ -175,25 +203,32 @@ func (ru *RevisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
-	if value, ok := ru.mutation.Description(); ok {
+	if value, ok := ru.mutation.Applied(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
+			Type:   field.TypeInt,
 			Value:  value,
-			Column: revision.FieldDescription,
+			Column: revision.FieldApplied,
 		})
 	}
-	if value, ok := ru.mutation.ExecutionState(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeEnum,
+	if value, ok := ru.mutation.AddedApplied(); ok {
+		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt,
 			Value:  value,
-			Column: revision.FieldExecutionState,
+			Column: revision.FieldApplied,
 		})
 	}
-	if value, ok := ru.mutation.ExecutedAt(); ok {
+	if value, ok := ru.mutation.Total(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
+			Type:   field.TypeInt,
 			Value:  value,
-			Column: revision.FieldExecutedAt,
+			Column: revision.FieldTotal,
+		})
+	}
+	if value, ok := ru.mutation.AddedTotal(); ok {
+		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt,
+			Value:  value,
+			Column: revision.FieldTotal,
 		})
 	}
 	if value, ok := ru.mutation.ExecutionTime(); ok {
@@ -208,6 +243,19 @@ func (ru *RevisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Type:   field.TypeInt64,
 			Value:  value,
 			Column: revision.FieldExecutionTime,
+		})
+	}
+	if value, ok := ru.mutation.Error(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: revision.FieldError,
+		})
+	}
+	if ru.mutation.ErrorCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Column: revision.FieldError,
 		})
 	}
 	if value, ok := ru.mutation.Hash(); ok {
@@ -237,7 +285,7 @@ func (ru *RevisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{revision.Label}
 		} else if sqlgraph.IsConstraintError(err) {
-			err = &ConstraintError{err.Error(), err}
+			err = &ConstraintError{msg: err.Error(), wrap: err}
 		}
 		return 0, err
 	}
@@ -252,21 +300,29 @@ type RevisionUpdateOne struct {
 	mutation *RevisionMutation
 }
 
-// SetDescription sets the "description" field.
-func (ruo *RevisionUpdateOne) SetDescription(s string) *RevisionUpdateOne {
-	ruo.mutation.SetDescription(s)
+// SetApplied sets the "applied" field.
+func (ruo *RevisionUpdateOne) SetApplied(i int) *RevisionUpdateOne {
+	ruo.mutation.ResetApplied()
+	ruo.mutation.SetApplied(i)
 	return ruo
 }
 
-// SetExecutionState sets the "execution_state" field.
-func (ruo *RevisionUpdateOne) SetExecutionState(rs revision.ExecutionState) *RevisionUpdateOne {
-	ruo.mutation.SetExecutionState(rs)
+// AddApplied adds i to the "applied" field.
+func (ruo *RevisionUpdateOne) AddApplied(i int) *RevisionUpdateOne {
+	ruo.mutation.AddApplied(i)
 	return ruo
 }
 
-// SetExecutedAt sets the "executed_at" field.
-func (ruo *RevisionUpdateOne) SetExecutedAt(t time.Time) *RevisionUpdateOne {
-	ruo.mutation.SetExecutedAt(t)
+// SetTotal sets the "total" field.
+func (ruo *RevisionUpdateOne) SetTotal(i int) *RevisionUpdateOne {
+	ruo.mutation.ResetTotal()
+	ruo.mutation.SetTotal(i)
+	return ruo
+}
+
+// AddTotal adds i to the "total" field.
+func (ruo *RevisionUpdateOne) AddTotal(i int) *RevisionUpdateOne {
+	ruo.mutation.AddTotal(i)
 	return ruo
 }
 
@@ -280,6 +336,26 @@ func (ruo *RevisionUpdateOne) SetExecutionTime(t time.Duration) *RevisionUpdateO
 // AddExecutionTime adds t to the "execution_time" field.
 func (ruo *RevisionUpdateOne) AddExecutionTime(t time.Duration) *RevisionUpdateOne {
 	ruo.mutation.AddExecutionTime(t)
+	return ruo
+}
+
+// SetError sets the "error" field.
+func (ruo *RevisionUpdateOne) SetError(s string) *RevisionUpdateOne {
+	ruo.mutation.SetError(s)
+	return ruo
+}
+
+// SetNillableError sets the "error" field if the given value is not nil.
+func (ruo *RevisionUpdateOne) SetNillableError(s *string) *RevisionUpdateOne {
+	if s != nil {
+		ruo.SetError(*s)
+	}
+	return ruo
+}
+
+// ClearError clears the value of the "error" field.
+func (ruo *RevisionUpdateOne) ClearError() *RevisionUpdateOne {
+	ruo.mutation.ClearError()
 	return ruo
 }
 
@@ -344,9 +420,15 @@ func (ruo *RevisionUpdateOne) Save(ctx context.Context) (*Revision, error) {
 			}
 			mut = ruo.hooks[i](mut)
 		}
-		if _, err := mut.Mutate(ctx, ruo.mutation); err != nil {
+		v, err := mut.Mutate(ctx, ruo.mutation)
+		if err != nil {
 			return nil, err
 		}
+		nv, ok := v.(*Revision)
+		if !ok {
+			return nil, fmt.Errorf("unexpected node type %T returned from RevisionMutation", v)
+		}
+		node = nv
 	}
 	return node, err
 }
@@ -375,9 +457,9 @@ func (ruo *RevisionUpdateOne) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (ruo *RevisionUpdateOne) check() error {
-	if v, ok := ruo.mutation.ExecutionState(); ok {
-		if err := revision.ExecutionStateValidator(v); err != nil {
-			return &ValidationError{Name: "execution_state", err: fmt.Errorf(`ent: validator failed for field "Revision.execution_state": %w`, err)}
+	if v, ok := ruo.mutation.Total(); ok {
+		if err := revision.TotalValidator(v); err != nil {
+			return &ValidationError{Name: "total", err: fmt.Errorf(`ent: validator failed for field "Revision.total": %w`, err)}
 		}
 	}
 	return nil
@@ -418,25 +500,32 @@ func (ruo *RevisionUpdateOne) sqlSave(ctx context.Context) (_node *Revision, err
 			}
 		}
 	}
-	if value, ok := ruo.mutation.Description(); ok {
+	if value, ok := ruo.mutation.Applied(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
+			Type:   field.TypeInt,
 			Value:  value,
-			Column: revision.FieldDescription,
+			Column: revision.FieldApplied,
 		})
 	}
-	if value, ok := ruo.mutation.ExecutionState(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeEnum,
+	if value, ok := ruo.mutation.AddedApplied(); ok {
+		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt,
 			Value:  value,
-			Column: revision.FieldExecutionState,
+			Column: revision.FieldApplied,
 		})
 	}
-	if value, ok := ruo.mutation.ExecutedAt(); ok {
+	if value, ok := ruo.mutation.Total(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
+			Type:   field.TypeInt,
 			Value:  value,
-			Column: revision.FieldExecutedAt,
+			Column: revision.FieldTotal,
+		})
+	}
+	if value, ok := ruo.mutation.AddedTotal(); ok {
+		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt,
+			Value:  value,
+			Column: revision.FieldTotal,
 		})
 	}
 	if value, ok := ruo.mutation.ExecutionTime(); ok {
@@ -451,6 +540,19 @@ func (ruo *RevisionUpdateOne) sqlSave(ctx context.Context) (_node *Revision, err
 			Type:   field.TypeInt64,
 			Value:  value,
 			Column: revision.FieldExecutionTime,
+		})
+	}
+	if value, ok := ruo.mutation.Error(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: revision.FieldError,
+		})
+	}
+	if ruo.mutation.ErrorCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Column: revision.FieldError,
 		})
 	}
 	if value, ok := ruo.mutation.Hash(); ok {
@@ -483,7 +585,7 @@ func (ruo *RevisionUpdateOne) sqlSave(ctx context.Context) (_node *Revision, err
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{revision.Label}
 		} else if sqlgraph.IsConstraintError(err) {
-			err = &ConstraintError{err.Error(), err}
+			err = &ConstraintError{msg: err.Error(), wrap: err}
 		}
 		return nil, err
 	}

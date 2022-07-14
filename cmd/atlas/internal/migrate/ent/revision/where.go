@@ -37,12 +37,6 @@ func IDNEQ(id string) predicate.Revision {
 // IDIn applies the In predicate on the ID field.
 func IDIn(ids ...string) predicate.Revision {
 	return predicate.Revision(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(ids) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		v := make([]interface{}, len(ids))
 		for i := range v {
 			v[i] = ids[i]
@@ -54,12 +48,6 @@ func IDIn(ids ...string) predicate.Revision {
 // IDNotIn applies the NotIn predicate on the ID field.
 func IDNotIn(ids ...string) predicate.Revision {
 	return predicate.Revision(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(ids) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		v := make([]interface{}, len(ids))
 		for i := range v {
 			v[i] = ids[i]
@@ -103,6 +91,20 @@ func Description(v string) predicate.Revision {
 	})
 }
 
+// Applied applies equality check predicate on the "applied" field. It's identical to AppliedEQ.
+func Applied(v int) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldApplied), v))
+	})
+}
+
+// Total applies equality check predicate on the "total" field. It's identical to TotalEQ.
+func Total(v int) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldTotal), v))
+	})
+}
+
 // ExecutedAt applies equality check predicate on the "executed_at" field. It's identical to ExecutedAtEQ.
 func ExecutedAt(v time.Time) predicate.Revision {
 	return predicate.Revision(func(s *sql.Selector) {
@@ -115,6 +117,13 @@ func ExecutionTime(v time.Duration) predicate.Revision {
 	vc := int64(v)
 	return predicate.Revision(func(s *sql.Selector) {
 		s.Where(sql.EQ(s.C(FieldExecutionTime), vc))
+	})
+}
+
+// Error applies equality check predicate on the "error" field. It's identical to ErrorEQ.
+func Error(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldError), v))
 	})
 }
 
@@ -243,22 +252,22 @@ func DescriptionContainsFold(v string) predicate.Revision {
 	})
 }
 
-// ExecutionStateEQ applies the EQ predicate on the "execution_state" field.
-func ExecutionStateEQ(v ExecutionState) predicate.Revision {
+// AppliedEQ applies the EQ predicate on the "applied" field.
+func AppliedEQ(v int) predicate.Revision {
 	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldExecutionState), v))
+		s.Where(sql.EQ(s.C(FieldApplied), v))
 	})
 }
 
-// ExecutionStateNEQ applies the NEQ predicate on the "execution_state" field.
-func ExecutionStateNEQ(v ExecutionState) predicate.Revision {
+// AppliedNEQ applies the NEQ predicate on the "applied" field.
+func AppliedNEQ(v int) predicate.Revision {
 	return predicate.Revision(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldExecutionState), v))
+		s.Where(sql.NEQ(s.C(FieldApplied), v))
 	})
 }
 
-// ExecutionStateIn applies the In predicate on the "execution_state" field.
-func ExecutionStateIn(vs ...ExecutionState) predicate.Revision {
+// AppliedIn applies the In predicate on the "applied" field.
+func AppliedIn(vs ...int) predicate.Revision {
 	v := make([]interface{}, len(vs))
 	for i := range v {
 		v[i] = vs[i]
@@ -270,12 +279,12 @@ func ExecutionStateIn(vs ...ExecutionState) predicate.Revision {
 			s.Where(sql.False())
 			return
 		}
-		s.Where(sql.In(s.C(FieldExecutionState), v...))
+		s.Where(sql.In(s.C(FieldApplied), v...))
 	})
 }
 
-// ExecutionStateNotIn applies the NotIn predicate on the "execution_state" field.
-func ExecutionStateNotIn(vs ...ExecutionState) predicate.Revision {
+// AppliedNotIn applies the NotIn predicate on the "applied" field.
+func AppliedNotIn(vs ...int) predicate.Revision {
 	v := make([]interface{}, len(vs))
 	for i := range v {
 		v[i] = vs[i]
@@ -287,7 +296,111 @@ func ExecutionStateNotIn(vs ...ExecutionState) predicate.Revision {
 			s.Where(sql.False())
 			return
 		}
-		s.Where(sql.NotIn(s.C(FieldExecutionState), v...))
+		s.Where(sql.NotIn(s.C(FieldApplied), v...))
+	})
+}
+
+// AppliedGT applies the GT predicate on the "applied" field.
+func AppliedGT(v int) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldApplied), v))
+	})
+}
+
+// AppliedGTE applies the GTE predicate on the "applied" field.
+func AppliedGTE(v int) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldApplied), v))
+	})
+}
+
+// AppliedLT applies the LT predicate on the "applied" field.
+func AppliedLT(v int) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldApplied), v))
+	})
+}
+
+// AppliedLTE applies the LTE predicate on the "applied" field.
+func AppliedLTE(v int) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldApplied), v))
+	})
+}
+
+// TotalEQ applies the EQ predicate on the "total" field.
+func TotalEQ(v int) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldTotal), v))
+	})
+}
+
+// TotalNEQ applies the NEQ predicate on the "total" field.
+func TotalNEQ(v int) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldTotal), v))
+	})
+}
+
+// TotalIn applies the In predicate on the "total" field.
+func TotalIn(vs ...int) predicate.Revision {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Revision(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldTotal), v...))
+	})
+}
+
+// TotalNotIn applies the NotIn predicate on the "total" field.
+func TotalNotIn(vs ...int) predicate.Revision {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Revision(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldTotal), v...))
+	})
+}
+
+// TotalGT applies the GT predicate on the "total" field.
+func TotalGT(v int) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldTotal), v))
+	})
+}
+
+// TotalGTE applies the GTE predicate on the "total" field.
+func TotalGTE(v int) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldTotal), v))
+	})
+}
+
+// TotalLT applies the LT predicate on the "total" field.
+func TotalLT(v int) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldTotal), v))
+	})
+}
+
+// TotalLTE applies the LTE predicate on the "total" field.
+func TotalLTE(v int) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldTotal), v))
 	})
 }
 
@@ -446,6 +559,131 @@ func ExecutionTimeLTE(v time.Duration) predicate.Revision {
 	vc := int64(v)
 	return predicate.Revision(func(s *sql.Selector) {
 		s.Where(sql.LTE(s.C(FieldExecutionTime), vc))
+	})
+}
+
+// ErrorEQ applies the EQ predicate on the "error" field.
+func ErrorEQ(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldError), v))
+	})
+}
+
+// ErrorNEQ applies the NEQ predicate on the "error" field.
+func ErrorNEQ(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldError), v))
+	})
+}
+
+// ErrorIn applies the In predicate on the "error" field.
+func ErrorIn(vs ...string) predicate.Revision {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Revision(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldError), v...))
+	})
+}
+
+// ErrorNotIn applies the NotIn predicate on the "error" field.
+func ErrorNotIn(vs ...string) predicate.Revision {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Revision(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldError), v...))
+	})
+}
+
+// ErrorGT applies the GT predicate on the "error" field.
+func ErrorGT(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldError), v))
+	})
+}
+
+// ErrorGTE applies the GTE predicate on the "error" field.
+func ErrorGTE(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldError), v))
+	})
+}
+
+// ErrorLT applies the LT predicate on the "error" field.
+func ErrorLT(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldError), v))
+	})
+}
+
+// ErrorLTE applies the LTE predicate on the "error" field.
+func ErrorLTE(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldError), v))
+	})
+}
+
+// ErrorContains applies the Contains predicate on the "error" field.
+func ErrorContains(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.Contains(s.C(FieldError), v))
+	})
+}
+
+// ErrorHasPrefix applies the HasPrefix predicate on the "error" field.
+func ErrorHasPrefix(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.HasPrefix(s.C(FieldError), v))
+	})
+}
+
+// ErrorHasSuffix applies the HasSuffix predicate on the "error" field.
+func ErrorHasSuffix(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.HasSuffix(s.C(FieldError), v))
+	})
+}
+
+// ErrorIsNil applies the IsNil predicate on the "error" field.
+func ErrorIsNil() predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldError)))
+	})
+}
+
+// ErrorNotNil applies the NotNil predicate on the "error" field.
+func ErrorNotNil() predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldError)))
+	})
+}
+
+// ErrorEqualFold applies the EqualFold predicate on the "error" field.
+func ErrorEqualFold(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.EqualFold(s.C(FieldError), v))
+	})
+}
+
+// ErrorContainsFold applies the ContainsFold predicate on the "error" field.
+func ErrorContainsFold(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.ContainsFold(s.C(FieldError), v))
 	})
 }
 

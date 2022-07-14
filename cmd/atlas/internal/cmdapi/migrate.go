@@ -297,6 +297,41 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 			}
 		}
 	}(rrw.(*entmigrate.EntRevisions), cmd.Context())
+	// Determine pending files and lock the database while working.
+	ex, err := migrate.NewExecutor(c.Driver, dir, rrw, migrate.WithLogger(l))
+	if err != nil {
+		return err
+	}
+	unlock, err := ex.Lock(cmd.Context())
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	pending, err := ex.Pending(cmd.Context())
+	if err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
+		return err
+	}
+	if errors.Is(err, migrate.ErrNoPendingFiles) {
+		cmd.Println("The migration directory is synced with the database, no migration files to execute")
+		return nil
+	}
+	if n > 0 {
+		// Cannot apply more than len(pending) files.
+		if n >= len(pending) {
+			n = len(pending)
+		}
+		pending = pending[:n]
+	}
+	revs, err := rrw.ReadRevisions(cmd.Context())
+	if err != nil {
+		return err
+	}
+	if err := migrate.LogIntro(struct {
+		migrate.Logger
+		migrate.Scanner
+	}{l, dir.(migrate.Scanner)}, revs, pending); err != nil {
+		return err
+	}
 	var (
 		drv migrate.Driver
 		tx  *sqlclient.TxClient
@@ -304,33 +339,35 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 	if MigrateFlags.DryRun {
 		drv = &dryRunDriver{c.Driver}
 		rrw = &dryRunRevisions{rrw}
-	} else {
-		// Wrap the whole execution in one transaction. This behaviour will change once
-		// there are insights about migration files available.
-		tx, err = c.Tx(cmd.Context(), nil)
+	}
+	for _, f := range pending {
+		if !MigrateFlags.DryRun {
+			// Wrap the file execution in a transaction.
+			tx, err = c.Tx(cmd.Context(), nil)
+			if err != nil {
+				return err
+			}
+			drv = tx.Driver
+		}
+		ex, err := migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(l))
 		if err != nil {
 			return err
 		}
-		drv = tx.Driver
-	}
-	// Get the executor.
-	ex, err := migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(l))
-	if err != nil {
-		return err
-	}
-	if err = ex.ExecuteN(cmd.Context(), n); errors.Is(err, migrate.ErrNoPendingFiles) {
-		cmd.Println("The migration directory is synced with the database, no migration files to execute")
-	} else if err != nil {
+		if err := ex.Execute(cmd.Context(), f); err != nil {
+			if !MigrateFlags.DryRun {
+				if err2 := tx.Rollback(); err2 != nil {
+					err = fmt.Errorf("%v: %w", err2, err)
+				}
+			}
+			return err
+		}
 		if !MigrateFlags.DryRun {
-			if err2 := tx.Rollback(); err2 != nil {
-				err = fmt.Errorf("%v: %w", err2, err)
+			if err := tx.Commit(); err != nil {
+				return err
 			}
 		}
-		return err
 	}
-	if !MigrateFlags.DryRun {
-		return tx.Commit()
-	}
+	l.Log(migrate.LogDone{})
 	return nil
 }
 
@@ -454,33 +491,11 @@ func CmdMigrateStatusRun(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	dirty := migrate.DirtyError{}
-	pending, err := ex.Pending(context.Background())
-	if err != nil && !errors.As(err, &dirty) && !errors.Is(err, migrate.ErrNoPendingFiles) {
+	pending, err := ex.Pending(cmd.Context())
+	if err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
 		return err
 	}
-	if errors.As(err, &dirty) {
-		var c func(string, ...interface{}) string
-		switch dirty.State {
-		case migrate.StateOngoing:
-			c = yellow
-		case migrate.StateError:
-			c = red
-		}
-		s := c(strings.ToUpper(dirty.State))
-		msgPrint(cmd.OutOrStdout(), s, fmt.Sprintf("Dirty migration state: version %s has state %s", dirty.Version, s))
-		return nil
-	}
 	return statusPrint(cmd.OutOrStdout(), sc, avail, avail[:len(pending)+1], pending)
-}
-
-func headerPrint(out io.Writer, state string) {
-	fmt.Fprintf(out, "Migration Status: %s\n", state)
-}
-
-func msgPrint(out io.Writer, state, msg string) {
-	headerPrint(out, state)
-	fmt.Fprintln(out, msg)
 }
 
 func statusPrint(out io.Writer, sc migrate.Scanner, avail, applied, pending []migrate.File) (err error) {
@@ -503,7 +518,7 @@ func statusPrint(out io.Writer, sc migrate.Scanner, avail, applied, pending []mi
 			return err
 		}
 	}
-	headerPrint(out, state)
+	fmt.Fprintf(out, "Migration Status: %s\n", state)
 	fmt.Fprintf(out, "%s%s Current Version:\t%s\n", indent2, dash, cyan(cur))
 	fmt.Fprintf(out, "%s%s Next Version:\t%s\n", indent2, dash, cyan(next))
 	fmt.Fprintf(out, "%s%s Available:\t\t%s\n", indent2, dash, cyan(strconv.Itoa(len(avail))))
@@ -845,14 +860,15 @@ type LogTTY struct {
 }
 
 var (
-	cyan    = color.CyanString
-	green   = color.HiGreenString
-	red     = color.HiRedString
-	yellow  = color.YellowString
-	dash    = yellow("--")
-	arr     = cyan("->")
-	indent2 = strings.Repeat(" ", 2)
-	indent4 = strings.Repeat(indent2, 2)
+	cyan         = color.CyanString
+	green        = color.HiGreenString
+	red          = color.HiRedString
+	redBgWhiteFg = color.New(color.FgHiWhite, color.BgHiRed).SprintFunc()
+	yellow       = color.YellowString
+	dash         = yellow("--")
+	arr          = cyan("->")
+	indent2      = "  "
+	indent4      = indent2 + indent2
 )
 
 // Log implements the migrate.Logger interface.
@@ -871,7 +887,11 @@ func (l *LogTTY) Log(e migrate.LogEntry) {
 			l.reportFileEnd()
 		}
 		l.fileStart = time.Now()
-		fmt.Fprintf(l.out, "\n%s%v migrating version %v\n", indent2, dash, cyan(e.Version))
+		fmt.Fprintf(l.out, "\n%s%v migrating version %v", indent2, dash, cyan(e.Version))
+		if e.Skip > 0 {
+			fmt.Fprintf(l.out, " (partially applied - skipping %s statements)", yellow("%d", e.Skip))
+		}
+		fmt.Fprint(l.out, "\n")
 	case migrate.LogStmt:
 		l.stmtCounter++
 		fmt.Fprintf(l.out, "%s%v %s\n", indent4, arr, e.SQL)
@@ -881,6 +901,13 @@ func (l *LogTTY) Log(e migrate.LogEntry) {
 		fmt.Fprintf(l.out, "%s%v %v\n", indent2, dash, time.Since(l.start))
 		fmt.Fprintf(l.out, "%s%v %v migrations\n", indent2, dash, l.fileCounter)
 		fmt.Fprintf(l.out, "%s%v %v sql statements\n", indent2, dash, l.stmtCounter)
+	case migrate.LogError:
+		fmt.Fprintf(l.out, "%s %s\n", indent4, redBgWhiteFg(e.Error.Error()))
+		fmt.Fprintf(l.out, "\n%s%v\n", indent2, cyan(strings.Repeat("-", 25)))
+		fmt.Fprintf(l.out, "%s%v %v\n", indent2, dash, time.Since(l.start))
+		fmt.Fprintf(l.out, "%s%v %v migrations ok (%s)\n", indent2, dash, l.fileCounter-1, red("1 with errors"))
+		fmt.Fprintf(l.out, "%s%v %v sql statements ok (%s)\n", indent2, dash, l.stmtCounter-1, red("1 with errors"))
+		fmt.Fprintf(l.out, "\n%s\n%v\n\n", red("Error: Execution had errors:"), redBgWhiteFg(e.Error.Error()))
 	default:
 		fmt.Fprintf(l.out, "%v", e)
 	}

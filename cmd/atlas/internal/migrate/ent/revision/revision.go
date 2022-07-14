@@ -6,10 +6,6 @@
 
 package revision
 
-import (
-	"fmt"
-)
-
 const (
 	// Label holds the string label denoting the revision type in the database.
 	Label = "revision"
@@ -17,12 +13,16 @@ const (
 	FieldID = "version"
 	// FieldDescription holds the string denoting the description field in the database.
 	FieldDescription = "description"
-	// FieldExecutionState holds the string denoting the execution_state field in the database.
-	FieldExecutionState = "execution_state"
+	// FieldApplied holds the string denoting the applied field in the database.
+	FieldApplied = "applied"
+	// FieldTotal holds the string denoting the total field in the database.
+	FieldTotal = "total"
 	// FieldExecutedAt holds the string denoting the executed_at field in the database.
 	FieldExecutedAt = "executed_at"
 	// FieldExecutionTime holds the string denoting the execution_time field in the database.
 	FieldExecutionTime = "execution_time"
+	// FieldError holds the string denoting the error field in the database.
+	FieldError = "error"
 	// FieldHash holds the string denoting the hash field in the database.
 	FieldHash = "hash"
 	// FieldOperatorVersion holds the string denoting the operator_version field in the database.
@@ -37,9 +37,11 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldDescription,
-	FieldExecutionState,
+	FieldApplied,
+	FieldTotal,
 	FieldExecutedAt,
 	FieldExecutionTime,
+	FieldError,
 	FieldHash,
 	FieldOperatorVersion,
 	FieldMeta,
@@ -55,26 +57,7 @@ func ValidColumn(column string) bool {
 	return false
 }
 
-// ExecutionState defines the type for the "execution_state" enum field.
-type ExecutionState string
-
-// ExecutionState values.
-const (
-	ExecutionStateOngoing ExecutionState = "ongoing"
-	ExecutionStateOk      ExecutionState = "ok"
-	ExecutionStateError   ExecutionState = "error"
+var (
+	// TotalValidator is a validator for the "total" field. It is called by the builders before save.
+	TotalValidator func(int) error
 )
-
-func (es ExecutionState) String() string {
-	return string(es)
-}
-
-// ExecutionStateValidator is a validator for the "execution_state" field enum values. It is called by the builders before save.
-func ExecutionStateValidator(es ExecutionState) error {
-	switch es {
-	case ExecutionStateOngoing, ExecutionStateOk, ExecutionStateError:
-		return nil
-	default:
-		return fmt.Errorf("revision: invalid enum value for execution_state field: %q", es)
-	}
-}
