@@ -9,12 +9,12 @@ With the release of [v0.5.0](https://github.com/ariga/atlas/releases/tag/v0.5.0)
 happy to announce a very significant milestone for the project. While this version includes some
 cool features (such as multi-file schemas) and a [swath](https://github.com/ariga/atlas/compare/v0.4.2...v0.5.0)
 of incremental improvements and bugfixes, there is one feature that we're particularly
-excited about and wanted to share with you in the post. 
+excited about and want to share with you in this post. 
 
-As most outages happen directly as a result of a change to a system, Atlas provides users with means to verify the
+As most outages happen directly as a result of a change to a system, Atlas provides users with the means to verify the
 safety of planned changes before they happen. The [`sqlcheck`](https://pkg.go.dev/ariga.io/atlas@master/sql/sqlcheck)
 package provides interfaces for analyzing the contents of SQL files to generate insights on the safety of many kinds of
-changes to database schemas. With this package developers may define an `Analyzer` that can be used to diagnose the impact
+changes to database schemas. With this package, developers may define an `Analyzer` that can be used to diagnose the impact
 of SQL statements on the target database.
 
 This functionality is exposed to CLI users via the `migrate lint` subcommand. By utilizing
