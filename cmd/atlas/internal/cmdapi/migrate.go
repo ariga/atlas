@@ -887,7 +887,11 @@ func (l *LogTTY) Log(e migrate.LogEntry) {
 			l.reportFileEnd()
 		}
 		l.fileStart = time.Now()
-		fmt.Fprintf(l.out, "\n%s%v migrating version %v\n", indent2, dash, cyan(e.Version))
+		fmt.Fprintf(l.out, "\n%s%v migrating version %v", indent2, dash, cyan(e.Version))
+		if e.Skip > 0 {
+			fmt.Fprintf(l.out, " (partially applied - skipping %s statements)", yellow("%d", e.Skip))
+		}
+		fmt.Fprint(l.out, "\n")
 	case migrate.LogStmt:
 		l.stmtCounter++
 		fmt.Fprintf(l.out, "%s%v %s\n", indent4, arr, e.SQL)
@@ -898,11 +902,11 @@ func (l *LogTTY) Log(e migrate.LogEntry) {
 		fmt.Fprintf(l.out, "%s%v %v migrations\n", indent2, dash, l.fileCounter)
 		fmt.Fprintf(l.out, "%s%v %v sql statements\n", indent2, dash, l.stmtCounter)
 	case migrate.LogError:
-		l.reportFileEnd()
+		fmt.Fprintf(l.out, "%s %s\n", indent4, redBgWhiteFg(e.Error.Error()))
 		fmt.Fprintf(l.out, "\n%s%v\n", indent2, cyan(strings.Repeat("-", 25)))
 		fmt.Fprintf(l.out, "%s%v %v\n", indent2, dash, time.Since(l.start))
-		fmt.Fprintf(l.out, "%s%v %v migrations\n", indent2, dash, l.fileCounter)
-		fmt.Fprintf(l.out, "%s%v %v sql statements\n", indent2, dash, l.stmtCounter)
+		fmt.Fprintf(l.out, "%s%v %v migrations ok (%s)\n", indent2, dash, l.fileCounter-1, red("1 with errors"))
+		fmt.Fprintf(l.out, "%s%v %v sql statements ok (%s)\n", indent2, dash, l.stmtCounter-1, red("1 with errors"))
 		fmt.Fprintf(l.out, "\n%s\n%v\n\n", red("Error: Execution had errors:"), redBgWhiteFg(e.Error.Error()))
 	default:
 		fmt.Fprintf(l.out, "%v", e)

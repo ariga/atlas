@@ -499,7 +499,7 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 			err = wrap(err2, err)
 		}
 	}(ctx, e.rrw, r)
-	e.log.Log(LogFile{r.Version, r.Description})
+	e.log.Log(LogFile{r.Version, r.Description, r.Applied})
 	for _, stmt := range stmts[r.Applied:r.Total] {
 		e.log.Log(LogStmt{stmt})
 		if _, err = e.drv.ExecContext(ctx, stmt); err != nil {
@@ -684,6 +684,9 @@ type (
 		Version string
 		// Desc of migration executed.
 		Desc string
+		// Skip holds the number of stmts of this file that will be skipped.
+		// This happens, if a migration file was only applied partially and will now continue to be applied.
+		Skip int
 	}
 
 	// LogStmt is sent if a new SQL statement is executed.
