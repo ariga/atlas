@@ -47,6 +47,7 @@ type RevisionMutation struct {
 	addexecution_time *time.Duration
 	error             *string
 	hash              *string
+	partial_hashes    *[]string
 	operator_version  *string
 	meta              *map[string]string
 	clearedFields     map[string]struct{}
@@ -484,6 +485,55 @@ func (m *RevisionMutation) ResetHash() {
 	m.hash = nil
 }
 
+// SetPartialHashes sets the "partial_hashes" field.
+func (m *RevisionMutation) SetPartialHashes(s []string) {
+	m.partial_hashes = &s
+}
+
+// PartialHashes returns the value of the "partial_hashes" field in the mutation.
+func (m *RevisionMutation) PartialHashes() (r []string, exists bool) {
+	v := m.partial_hashes
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPartialHashes returns the old "partial_hashes" field's value of the Revision entity.
+// If the Revision object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RevisionMutation) OldPartialHashes(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPartialHashes is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPartialHashes requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPartialHashes: %w", err)
+	}
+	return oldValue.PartialHashes, nil
+}
+
+// ClearPartialHashes clears the value of the "partial_hashes" field.
+func (m *RevisionMutation) ClearPartialHashes() {
+	m.partial_hashes = nil
+	m.clearedFields[revision.FieldPartialHashes] = struct{}{}
+}
+
+// PartialHashesCleared returns if the "partial_hashes" field was cleared in this mutation.
+func (m *RevisionMutation) PartialHashesCleared() bool {
+	_, ok := m.clearedFields[revision.FieldPartialHashes]
+	return ok
+}
+
+// ResetPartialHashes resets all changes to the "partial_hashes" field.
+func (m *RevisionMutation) ResetPartialHashes() {
+	m.partial_hashes = nil
+	delete(m.clearedFields, revision.FieldPartialHashes)
+}
+
 // SetOperatorVersion sets the "operator_version" field.
 func (m *RevisionMutation) SetOperatorVersion(s string) {
 	m.operator_version = &s
@@ -575,7 +625,7 @@ func (m *RevisionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RevisionMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.description != nil {
 		fields = append(fields, revision.FieldDescription)
 	}
@@ -596,6 +646,9 @@ func (m *RevisionMutation) Fields() []string {
 	}
 	if m.hash != nil {
 		fields = append(fields, revision.FieldHash)
+	}
+	if m.partial_hashes != nil {
+		fields = append(fields, revision.FieldPartialHashes)
 	}
 	if m.operator_version != nil {
 		fields = append(fields, revision.FieldOperatorVersion)
@@ -625,6 +678,8 @@ func (m *RevisionMutation) Field(name string) (ent.Value, bool) {
 		return m.Error()
 	case revision.FieldHash:
 		return m.Hash()
+	case revision.FieldPartialHashes:
+		return m.PartialHashes()
 	case revision.FieldOperatorVersion:
 		return m.OperatorVersion()
 	case revision.FieldMeta:
@@ -652,6 +707,8 @@ func (m *RevisionMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldError(ctx)
 	case revision.FieldHash:
 		return m.OldHash(ctx)
+	case revision.FieldPartialHashes:
+		return m.OldPartialHashes(ctx)
 	case revision.FieldOperatorVersion:
 		return m.OldOperatorVersion(ctx)
 	case revision.FieldMeta:
@@ -713,6 +770,13 @@ func (m *RevisionMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetHash(v)
+		return nil
+	case revision.FieldPartialHashes:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPartialHashes(v)
 		return nil
 	case revision.FieldOperatorVersion:
 		v, ok := value.(string)
@@ -800,6 +864,9 @@ func (m *RevisionMutation) ClearedFields() []string {
 	if m.FieldCleared(revision.FieldError) {
 		fields = append(fields, revision.FieldError)
 	}
+	if m.FieldCleared(revision.FieldPartialHashes) {
+		fields = append(fields, revision.FieldPartialHashes)
+	}
 	return fields
 }
 
@@ -816,6 +883,9 @@ func (m *RevisionMutation) ClearField(name string) error {
 	switch name {
 	case revision.FieldError:
 		m.ClearError()
+		return nil
+	case revision.FieldPartialHashes:
+		m.ClearPartialHashes()
 		return nil
 	}
 	return fmt.Errorf("unknown Revision nullable field %s", name)
@@ -845,6 +915,9 @@ func (m *RevisionMutation) ResetField(name string) error {
 		return nil
 	case revision.FieldHash:
 		m.ResetHash()
+		return nil
+	case revision.FieldPartialHashes:
+		m.ResetPartialHashes()
 		return nil
 	case revision.FieldOperatorVersion:
 		m.ResetOperatorVersion()

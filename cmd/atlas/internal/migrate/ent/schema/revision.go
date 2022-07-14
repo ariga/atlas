@@ -36,6 +36,8 @@ func (Revision) Fields() []ent.Field {
 		field.String("error").
 			Optional(),
 		field.String("hash"),
+		field.Strings("partial_hashes").
+			Optional(),
 		field.String("operator_version"),
 		field.JSON("meta", make(map[string]string)),
 	}

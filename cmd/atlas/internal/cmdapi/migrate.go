@@ -905,8 +905,8 @@ func (l *LogTTY) Log(e migrate.LogEntry) {
 		fmt.Fprintf(l.out, "%s %s\n", indent4, redBgWhiteFg(e.Error.Error()))
 		fmt.Fprintf(l.out, "\n%s%v\n", indent2, cyan(strings.Repeat("-", 25)))
 		fmt.Fprintf(l.out, "%s%v %v\n", indent2, dash, time.Since(l.start))
-		fmt.Fprintf(l.out, "%s%v %v migrations ok (%s)\n", indent2, dash, l.fileCounter-1, red("1 with errors"))
-		fmt.Fprintf(l.out, "%s%v %v sql statements ok (%s)\n", indent2, dash, l.stmtCounter-1, red("1 with errors"))
+		fmt.Fprintf(l.out, "%s%v %v migrations ok (%s)\n", indent2, dash, zero(l.fileCounter-1), red("1 with errors"))
+		fmt.Fprintf(l.out, "%s%v %v sql statements ok (%s)\n", indent2, dash, zero(l.stmtCounter-1), red("1 with errors"))
 		fmt.Fprintf(l.out, "\n%s\n%v\n\n", red("Error: Execution had errors:"), redBgWhiteFg(e.Error.Error()))
 	default:
 		fmt.Fprintf(l.out, "%v", e)
@@ -915,6 +915,13 @@ func (l *LogTTY) Log(e migrate.LogEntry) {
 
 func (l *LogTTY) reportFileEnd() {
 	fmt.Fprintf(l.out, "%s%v ok (%v)\n", indent2, dash, yellow("%s", time.Since(l.fileStart)))
+}
+
+func zero(v int) int {
+	if v < 0 {
+		return 0
+	}
+	return v
 }
 
 func logFormat(out io.Writer) (migrate.Logger, error) {

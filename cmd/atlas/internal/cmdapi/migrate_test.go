@@ -168,11 +168,23 @@ func TestMigrate_Apply(t *testing.T) {
 	require.Contains(t, s, "Error: Execution had errors:")              // logs error summary
 	require.Contains(t, s, "near \"asdasd\": syntax error")             // logs error summary
 
-	// Fixing the migration file will finish without errors.
+	// Editing an applied line will raise error.
 	require.NoError(t, exec.Command("cp", "-r", "testdata/sqlite2", "testdata/sqlite3").Run())
 	t.Cleanup(func() {
 		require.NoError(t, os.RemoveAll("testdata/sqlite3"))
 	})
+	require.NoError(t, exec.Command("sed", "-i", "s/col_2/col_5/g", "testdata/sqlite3/20220318104615_second.sql").Run())
+	_, err = runCmd(Root, "migrate", "hash", "--force", "--dir", "file://testdata/sqlite3")
+	require.NoError(t, err)
+	s, err = runCmd(
+		Root, "migrate", "apply",
+		"--dir", "file://testdata/sqlite3",
+		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test2.db")),
+	)
+	require.ErrorAs(t, err, &migrate.HistoryChangedError{})
+
+	// Fixing the migration file will finish without errors.
+	require.NoError(t, exec.Command("sed", "-i", "s/col_5/col_2/g", "testdata/sqlite3/20220318104615_second.sql").Run())
 	require.NoError(t, exec.Command("sed", "-i", "s/asdasd //g", "testdata/sqlite3/20220318104615_second.sql").Run())
 	_, err = runCmd(Root, "migrate", "hash", "--force", "--dir", "file://testdata/sqlite3")
 	require.NoError(t, err)

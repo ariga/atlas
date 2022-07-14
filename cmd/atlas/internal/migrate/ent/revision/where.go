@@ -798,6 +798,20 @@ func HashContainsFold(v string) predicate.Revision {
 	})
 }
 
+// PartialHashesIsNil applies the IsNil predicate on the "partial_hashes" field.
+func PartialHashesIsNil() predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldPartialHashes)))
+	})
+}
+
+// PartialHashesNotNil applies the NotNil predicate on the "partial_hashes" field.
+func PartialHashesNotNil() predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldPartialHashes)))
+	})
+}
+
 // OperatorVersionEQ applies the EQ predicate on the "operator_version" field.
 func OperatorVersionEQ(v string) predicate.Revision {
 	return predicate.Revision(func(s *sql.Selector) {

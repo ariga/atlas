@@ -221,6 +221,8 @@ type (
 		Error string
 		// Hash is the check-sum of this migration as stated by the migration directories HashFile.
 		Hash string
+		// PartialHashes contains one hash per statement that has been applied on the database.
+		PartialHashes []string
 		// OperatorVersion holds a string representation of the Atlas operator managing this database migration.
 		OperatorVersion string
 		// Meta holds additional custom meta-data given for this migration.
@@ -450,8 +452,8 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 	return pending, nil
 }
 
-// Execute executes the given migration file on the database. It does not check for the database to be clean before
-// attempting to apply the changes. This behavior is required to enabled "fixing" a broken state.
+// Execute executes the given migration file on the database. If it sees a file, that has been partially applied, it
+// will continue with the next statement in line.
 func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 	hf, err := HashSum(e.dir)
 	if err != nil {
@@ -472,6 +474,17 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 	stmts, err := e.dir.(Scanner).Stmts(m)
 	if err != nil {
 		return fmt.Errorf("sql/migrate: execute: scanning statements from %q: %w", m.Name(), err)
+	}
+	// Create checksums for the statements.
+	var (
+		sums = make([]string, len(stmts))
+		h    = sha256.New()
+	)
+	for i, stmt := range stmts {
+		if _, err := h.Write([]byte(stmt)); err != nil {
+			return err
+		}
+		sums[i] = base64.StdEncoding.EncodeToString(h.Sum(nil))
 	}
 	// If there already is a revision with this version in the database,
 	// and it is partially applied, continue where the last attempt was left off.
@@ -499,18 +512,26 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 			err = wrap(err2, err)
 		}
 	}(ctx, e.rrw, r)
-	e.log.Log(LogFile{r.Version, r.Description, r.Applied})
-	for i, stmt := range stmts {
-		if i < r.Applied {
-			// Skip if already applied.
-			continue
+	if r.Applied > 0 {
+		// If the file has been applied partially before, check if the
+		// applied history didn't change, as this is dangerous.
+		for i := 0; i < r.Applied; i++ {
+			if i > len(sums) || sums[i] != strings.TrimPrefix(r.PartialHashes[i], "h1:") {
+				err = HistoryChangedError{m.Name(), i + 1}
+				e.log.Log(LogError{Error: err})
+				return err
+			}
 		}
+	}
+	e.log.Log(LogFile{r.Version, r.Description, r.Applied})
+	for _, stmt := range stmts[r.Applied:] {
 		e.log.Log(LogStmt{stmt})
 		if _, err = e.drv.ExecContext(ctx, stmt); err != nil {
 			e.log.Log(LogError{Error: err})
 			r.setSQLErr(stmt, err)
 			return fmt.Errorf("sql/migrate: execute: executing statement %q from version %q: %w", stmt, r.Version, err)
 		}
+		r.PartialHashes = append(r.PartialHashes, "h1:"+sums[r.Applied])
 		r.Applied++
 		if err = writeRevision(ctx, e.rrw, r); err != nil {
 			return err
@@ -525,6 +546,16 @@ func writeRevision(ctx context.Context, w RevisionReadWriter, r *Revision) error
 		return fmt.Errorf("sql/migrate: execute: write revision: %w", err)
 	}
 	return nil
+}
+
+// HistoryChangedError is returned if between two execution attempts already applied statements of a file have changed.
+type HistoryChangedError struct {
+	File string
+	Stmt int
+}
+
+func (e HistoryChangedError) Error() string {
+	return fmt.Sprintf("sql/migrate: execute: history changed: statement %d from file %q changed", e.Stmt, e.File)
 }
 
 // ExecuteN executes n pending migration files. If n<=0 all pending migration files are executed. It will not attempt

@@ -23,6 +23,7 @@ var (
 		{Name: "execution_time", Type: field.TypeInt64},
 		{Name: "error", Type: field.TypeString, Nullable: true},
 		{Name: "hash", Type: field.TypeString},
+		{Name: "partial_hashes", Type: field.TypeJSON, Nullable: true},
 		{Name: "operator_version", Type: field.TypeString},
 		{Name: "meta", Type: field.TypeJSON},
 	}
