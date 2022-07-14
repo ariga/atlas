@@ -19,8 +19,7 @@ of SQL statements on the target database.
 
 This functionality is exposed to CLI users via the `migrate lint` subcommand. By utilizing
 the `sqlcheck` package, Atlas can now check your migration directory for common problems
-and issues. One of the core concepts of practicing DevOps is to continuously verify the
-safety of each change, and to do so in an automated way.
+and issues. 
 
 ### `atlas migrate lint` in action
 
@@ -54,7 +53,7 @@ table "users" {
 ```
 
 To simplify the commands we need to type in this demo, let's create an Atlas
-[project file](https://atlasgo.io/cli/projects) to define a local environment:
+[project file](https://atlasgo.io/cli/projects) to define a local environment.
 ```hcl title=atlas.hcl
 env "local" {
   src = "./schema.hcl"
@@ -122,6 +121,12 @@ Destructive changes detected in file 20220714090811.sql:
 
 	L2: Dropping non-virtual column "name"
 ```
+When we run the `lint` command, we need to instruct Atlas on how to decide
+what set of migration files to analyze. Currently, two modes are supported.
+* `--git-base <branchName>`: which selects the diff between the provided branch
+and the current one as the change-set;
+* `--latest <n>` which selects the latest `n` migration files as the change-set. 
+
 As expected, Atlas analyzed this change and detected a _destructive change_
 to our database schema. In addition, Atlas users can analyze the migration 
 directory to automatically detect:
