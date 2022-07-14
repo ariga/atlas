@@ -587,6 +587,8 @@ func (s *state) column(b *sqlx.Builder, c *schema.Column) error {
 	b.Ident(c.Name).P(t)
 	if !c.Type.Null {
 		b.P("NOT")
+	} else if t, ok := c.Type.Type.(*SerialType); ok {
+		return fmt.Errorf("NOT NULL constraint is required for %s column %q", t.T, c.Name)
 	}
 	b.P("NULL")
 	s.columnDefault(b, c)
@@ -659,6 +661,9 @@ func (s *state) alterColumn(b *sqlx.Builder, c *schema.ModifyColumn) error {
 			}
 			k &= ^schema.ChangeType
 		case k.Is(schema.ChangeNull) && c.To.Type.Null:
+			if t, ok := c.To.Type.Type.(*SerialType); ok {
+				return fmt.Errorf("NOT NULL constraint is required for %s column %q", t.T, c.To.Name)
+			}
 			b.P("DROP NOT NULL")
 			k &= ^schema.ChangeNull
 		case k.Is(schema.ChangeNull) && !c.To.Type.Null:
