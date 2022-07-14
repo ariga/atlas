@@ -146,8 +146,8 @@ the single most critical component of any software system, did not receive this 
 of treatment.
 
 Until today, the task of verifying the safety of migration scripts was reserved to
-humans (preferably SQL savvy, and highly experienced), with this milestone, we
-believe, we start paving a road to a reality where teams can move as quickly and
+humans (preferably SQL savvy, and highly experienced). We believe that with this milestone
+we are beginning to pave a road to a reality where teams can move as quickly and
 safely with their databases as they can with their code.
 
 
