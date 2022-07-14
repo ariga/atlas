@@ -307,7 +307,7 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	defer unlock()
-	pending, err := ex.Pending(context.Background())
+	pending, err := ex.Pending(cmd.Context())
 	if err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
 		return err
 	}
@@ -315,8 +315,8 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		cmd.Println("The migration directory is synced with the database, no migration files to execute")
 		return nil
 	}
-	// Cannot apply more than len(pending) files.
 	if n > 0 {
+		// Cannot apply more than len(pending) files.
 		if n >= len(pending) {
 			n = len(pending)
 		}
@@ -342,7 +342,7 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 	}
 	for _, f := range pending {
 		if !MigrateFlags.DryRun {
-			// Wrap the file execution in one transaction.
+			// Wrap the file execution in a transaction.
 			tx, err = c.Tx(cmd.Context(), nil)
 			if err != nil {
 				return err
@@ -867,8 +867,8 @@ var (
 	yellow       = color.YellowString
 	dash         = yellow("--")
 	arr          = cyan("->")
-	indent2      = strings.Repeat(" ", 2)
-	indent4      = strings.Repeat(indent2, 2)
+	indent2      = "  "
+	indent4      = indent2 + indent2
 )
 
 // Log implements the migrate.Logger interface.

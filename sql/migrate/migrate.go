@@ -500,7 +500,11 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 		}
 	}(ctx, e.rrw, r)
 	e.log.Log(LogFile{r.Version, r.Description, r.Applied})
-	for _, stmt := range stmts[r.Applied:r.Total] {
+	for i, stmt := range stmts {
+		if i < r.Applied {
+			// Skip if already applied.
+			continue
+		}
 		e.log.Log(LogStmt{stmt})
 		if _, err = e.drv.ExecContext(ctx, stmt); err != nil {
 			e.log.Log(LogError{Error: err})
