@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -197,7 +198,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) (err error) {
 		timePrecision: &timeprecision.Int64,
 	})
 	if defaults.Valid {
-		c.Default = defaultExpr(c, defaults.String)
+		defaultExpr(c, defaults.String)
 	}
 	if identity.String == "YES" {
 		c.Attrs = append(c.Attrs, &Identity{
@@ -614,16 +615,40 @@ func nArgs(start, n int) string {
 	return b.String()
 }
 
-func defaultExpr(c *schema.Column, x string) schema.Expr {
+var nextval = regexp.MustCompile(`(?i) *nextval\('(?:[\w$]+\.)*[\w$]+_[\w$]+_seq'(?:::regclass)*\) *$`)
+
+func defaultExpr(c *schema.Column, s string) {
 	switch {
-	case sqlx.IsLiteralBool(x), sqlx.IsLiteralNumber(x), sqlx.IsQuoted(x, '\''):
-		return &schema.Literal{V: x}
-	default:
-		// Try casting or fallback to raw expressions (e.g. column text[] has the default of '{}':text[]).
-		if v, ok := canConvert(c.Type, x); ok {
-			return &schema.Literal{V: v}
+	// The definition of "<column> <serial type>" is equivalent to specifying:
+	// "<column> <int type> NOT NULL DEFAULT nextval('<table>_<column>_seq')".
+	// https://postgresql.org/docs/current/datatype-numeric.html#DATATYPE-SERIAL.
+	case nextval.MatchString(s):
+		var (
+			st     string
+			tt, ok = c.Type.Type.(*schema.IntegerType)
+		)
+		if !ok {
+			return
 		}
-		return &schema.RawExpr{X: x}
+		switch tt.T {
+		case TypeSmallInt:
+			st = TypeSmallSerial
+		case TypeInteger:
+			st = TypeSerial
+		case TypeBigInt:
+			st = TypeBigSerial
+		}
+		c.Type.Raw = st
+		c.Type.Type = &SerialType{T: st}
+	case sqlx.IsLiteralBool(s), sqlx.IsLiteralNumber(s), sqlx.IsQuoted(s, '\''):
+		c.Default = &schema.Literal{V: s}
+	default:
+		var x schema.Expr = &schema.RawExpr{X: s}
+		// Try casting or fallback to raw expressions (e.g. column text[] has the default of '{}':text[]).
+		if v, ok := canConvert(c.Type, s); ok {
+			x = &schema.Literal{V: v}
+		}
+		c.Default = x
 	}
 }
 

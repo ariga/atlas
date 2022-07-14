@@ -42,12 +42,11 @@ func (i *crdbInspect) patchSchema(s *schema.Schema) {
 			if !ok {
 				continue
 			}
+			c.Default = nil
 			if g := strings.ToUpper(id.Generation); strings.Contains(g, "ALWAYS") {
 				id.Generation = "ALWAYS"
-				c.Default = nil
 			} else if strings.Contains(g, "BY DEFAULT") {
 				id.Generation = "BY DEFAULT"
-				c.Default = nil
 			}
 			schema.ReplaceOrAppend(&c.Attrs, id)
 		}
@@ -84,13 +83,14 @@ func (cd *crdbDiff) Normalize(from, to *schema.Table) error {
 func (cd *crdbDiff) ColumnChange(fromT *schema.Table, from, to *schema.Column) (schema.ChangeKind, error) {
 	// All serial types in Cockroach are implemented as bigint.
 	// See: https://www.cockroachlabs.com/docs/stable/serial.html#generated-values-for-mode-sql_sequence-and-sql_sequence_cached.
-	if s, ok := to.Type.Type.(*SerialType); ok {
-		to.Type.Type = &schema.IntegerType{
-			T: TypeBigInt,
+	for _, c := range []*schema.Column{from, to} {
+		if _, ok := c.Type.Type.(*SerialType); ok {
+			c.Type.Type = &schema.IntegerType{
+				T: TypeBigInt,
+			}
+			to.Default = nil
+			from.Default = nil
 		}
-		defer func() {
-			to.Type.Type = s
-		}()
 	}
 	return cd.diff.ColumnChange(fromT, from, to)
 }

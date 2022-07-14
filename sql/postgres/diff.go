@@ -196,32 +196,14 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	if fromT == nil || toT == nil {
 		return false, fmt.Errorf("postgres: missing type information for column %q", from.Name)
 	}
-	// Skip checking SERIAL types as they are not real types in the database, but more
-	// like a convenience way for creating integers types with AUTO_INCREMENT property.
-	if s, ok := to.Type.Type.(*SerialType); ok {
-		i, ok := from.Type.Type.(*schema.IntegerType)
-		if !ok {
-			return true, nil
-		}
-		var it string
-		switch s.T {
-		case TypeSmallSerial:
-			it = TypeSmallInt
-		case TypeSerial:
-			it = TypeInteger
-		case TypeBigSerial:
-			it = TypeBigInt
-		}
-		return i.T != it, nil
-	}
 	if reflect.TypeOf(fromT) != reflect.TypeOf(toT) {
 		return true, nil
 	}
 	var changed bool
 	switch fromT := fromT.(type) {
-	case *schema.BinaryType, *schema.BoolType, *schema.DecimalType, *schema.FloatType,
-		*schema.IntegerType, *schema.JSONType, *schema.SpatialType, *schema.StringType,
-		*schema.TimeType, *BitType, *IntervalType, *NetworkType, *UserDefinedType:
+	case *schema.BinaryType, *BitType, *schema.BoolType, *schema.DecimalType, *schema.FloatType,
+		*IntervalType, *schema.IntegerType, *schema.JSONType, *SerialType, *schema.SpatialType,
+		*schema.StringType, *schema.TimeType, *NetworkType, *UserDefinedType:
 		t1, err := FormatType(toT)
 		if err != nil {
 			return false, err
@@ -319,12 +301,6 @@ func (d *diff) normalize(table *schema.Table) {
 			}
 		case *enumType:
 			c.Type.Type = &schema.EnumType{T: t.T, Values: t.Values}
-		case *SerialType:
-			// The definition of "<column> <serial type>" is equivalent to specifying:
-			// "<column> <int type> NOT NULL DEFAULT nextval('<table>_<column>_seq')".
-			c.Default = &schema.RawExpr{
-				X: fmt.Sprintf("nextval('%s_%s_seq'::regclass)", table.Name, c.Name),
-			}
 		}
 	}
 }
