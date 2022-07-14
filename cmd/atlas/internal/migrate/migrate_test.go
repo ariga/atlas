@@ -50,9 +50,10 @@ func TestEntRevisions_Flush(t *testing.T) {
 
 	// Writing will only fill the cache.
 	require.NoError(t, r.WriteRevision(ctx, &migrate.Revision{
-		Version:        "version",
-		ExecutedAt:     time.Now(),
-		ExecutionState: "ongoing",
+		Version:    "version",
+		ExecutedAt: time.Now(),
+		Applied:    1,
+		Total:      2,
 	}))
 	require.Len(t, r.cache, 1)
 	revs, err := r.ReadRevisions(ctx)
