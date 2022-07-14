@@ -20,22 +20,22 @@ import (
 var dialects = []struct {
 	name string
 	schemahcl.Marshaler
-	schemahcl.Evaluator
+	Eval func(b []byte, v interface{}, inp map[string]string) error
 }{
 	{
 		name:      "mysql",
 		Marshaler: mysql.MarshalHCL,
-		Evaluator: mysql.EvalHCL,
+		Eval:      mysql.EvalHCLBytes,
 	},
 	{
 		name:      "postgres",
 		Marshaler: postgres.MarshalHCL,
-		Evaluator: postgres.EvalHCL,
+		Eval:      postgres.EvalHCLBytes,
 	},
 	{
 		name:      "sqlite",
 		Marshaler: sqlite.MarshalHCL,
-		Evaluator: sqlite.EvalHCL,
+		Eval:      sqlite.EvalHCLBytes,
 	},
 }
 
@@ -371,9 +371,7 @@ table "t2" {
 	for _, tt := range dialects {
 		t.Run(tt.name, func(t *testing.T) {
 			var r schema.Realm
-			parsed, err := schemahcl.ParseBytes([]byte(f))
-			require.NoError(t, err)
-			err = tt.Eval(parsed, &r, nil)
+			err := tt.Eval([]byte(f), &r, nil)
 			require.NoError(t, err)
 			exp := &schema.Realm{
 				Schemas: []*schema.Schema{
@@ -399,9 +397,7 @@ table "t2" {
 			hcl, err := tt.MarshalSpec(&r)
 			require.NoError(t, err)
 			var after schema.Realm
-			parsed, err = schemahcl.ParseBytes(hcl)
-			require.NoError(t, err)
-			err = tt.Eval(parsed, &after, nil)
+			err = tt.Eval(hcl, &after, nil)
 			require.NoError(t, err)
 			require.EqualValues(t, exp, &after)
 		})
@@ -422,9 +418,7 @@ func TestUnsignedImmutability(t *testing.T) {
 schema "test" {
 }`
 	var s schema.Schema
-	parsed, err := schemahcl.ParseBytes([]byte(f))
-	require.NoError(t, err)
-	err = mysql.EvalHCL(parsed, &s, nil)
+	err := mysql.EvalHCLBytes([]byte(f), &s, nil)
 	require.NoError(t, err)
 	tbl := s.Tables[0]
 	require.EqualValues(t, &schema.IntegerType{T: "bigint", Unsigned: true}, tbl.Columns[0].Type.Type)
@@ -465,9 +459,7 @@ table "b" "users" {
 }
 `
 	var r schema.Realm
-	parsed, err := schemahcl.ParseBytes([]byte(h))
-	require.NoError(t, err)
-	err = mysql.EvalHCL(parsed, &r, nil)
+	err := mysql.EvalHCLBytes([]byte(h), &r, nil)
 	require.NoError(t, err)
 
 	require.EqualValues(t, r.Schemas[0].Tables[0].Columns[0], r.Schemas[1].Tables[0].ForeignKeys[0].RefColumns[0])
