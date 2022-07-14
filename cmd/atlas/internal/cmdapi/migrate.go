@@ -297,7 +297,7 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 			}
 		}
 	}(rrw.(*entmigrate.EntRevisions), cmd.Context())
-	// Get the executor.
+	// Determine pending files and lock the database while working.
 	ex, err := migrate.NewExecutor(c.Driver, dir, rrw, migrate.WithLogger(l))
 	if err != nil {
 		return err
@@ -315,6 +315,7 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		cmd.Println("The migration directory is synced with the database, no migration files to execute")
 		return nil
 	}
+	// Cannot apply more than len(pending) files.
 	if n > 0 {
 		if n >= len(pending) {
 			n = len(pending)
@@ -348,7 +349,6 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 			}
 			drv = tx.Driver
 		}
-		// Get the executor.
 		ex, err := migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(l))
 		if err != nil {
 			return err

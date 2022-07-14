@@ -474,13 +474,13 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 		return fmt.Errorf("sql/migrate: execute: scanning statements from %q: %w", m.Name(), err)
 	}
 	// If there already is a revision with this version in the database,
-	// and it is partly applied, continue where the last attempt was left off.
+	// and it is partially applied, continue where the last attempt was left off.
 	r, err := e.rrw.ReadRevision(ctx, version)
 	if err != nil && !errors.Is(err, ErrNotExist) {
 		return fmt.Errorf("sql/migrate: execute: read revision: %w", err)
 	}
 	if errors.Is(err, ErrNotExist) {
-		// New revision, create a new entry.
+		// Haven't seen this file before, create a new revision.
 		r = &Revision{
 			Version:     version,
 			Description: desc,
@@ -722,6 +722,8 @@ type LogScanner interface {
 	Scanner
 }
 
+// LogIntro gathers some meta information from the migration files and stored revisions to
+// log some general information prior to actual execution.
 func LogIntro(l LogScanner, revs Revisions, files []File) error {
 	names := make([]string, len(files))
 	for i := range files {
