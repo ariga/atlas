@@ -124,8 +124,8 @@ Destructive changes detected in file 20220714090811.sql:
 When we run the `lint` command, we need to instruct Atlas on how to decide
 what set of migration files to analyze. Currently, two modes are supported.
 * `--git-base <branchName>`: which selects the diff between the provided branch
-and the current one as the change-set;
-* `--latest <n>` which selects the latest `n` migration files as the change-set. 
+and the current one as the changeset.
+* `--latest <n>` which selects the latest `n` migration files as the changeset. 
 
 As expected, Atlas analyzed this change and detected a _destructive change_
 to our database schema. In addition, Atlas users can analyze the migration 
