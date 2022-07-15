@@ -512,9 +512,16 @@ func statusPrint(out io.Writer, sc migrate.Scanner, avail, pending []migrate.Fil
 		applied          = avail[: len(avail)-len(pending) : len(avail)-len(pending)]
 		partial          = len(revs) != 0 && revs[len(revs)-1].Applied < revs[len(revs)-1].Total
 	)
-	if len(avail) == len(pending) {
+	switch len(pending) {
+	case len(avail):
 		cur = "No version applied yet"
-	} else {
+	case 0:
+		cur, err = sc.Version(avail[len(avail)-1])
+		if err != nil {
+			return err
+		}
+		cur = cyan(cur)
+	default:
 		cur, err = sc.Version(avail[len(avail)-len(pending)])
 		if err != nil {
 			return err
