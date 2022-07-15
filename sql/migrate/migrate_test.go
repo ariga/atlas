@@ -514,7 +514,13 @@ func TestExecutor(t *testing.T) {
 		Error:       "Statement:\nALTER TABLE t_sub ADD c4 int;\n\nError:\nthis is an error",
 	}, revs[len(revs)-1])
 
+	// Will fail if applied contents hash has changed (like when editing a partially applied file to fix an error).
+	h := revs[len(revs)-1].PartialHashes[0]
+	revs[len(revs)-1].PartialHashes[0] += h
+	require.ErrorAs(t, ex.ExecuteN(context.Background(), 1), &migrate.HistoryChangedError{})
+
 	// Re-attempting to migrate will pick up where the execution was left off.
+	revs[len(revs)-1].PartialHashes[0] = h
 	*drv = lockMockDriver{&mockDriver{}}
 	require.NoError(t, ex.ExecuteN(context.Background(), 1))
 	require.Equal(t, []string{"ALTER TABLE t_sub ADD c4 int;"}, drv.executed)

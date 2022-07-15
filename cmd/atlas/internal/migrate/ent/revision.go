@@ -35,6 +35,8 @@ type Revision struct {
 	Error string `json:"error,omitempty"`
 	// Hash holds the value of the "hash" field.
 	Hash string `json:"hash,omitempty"`
+	// PartialHashes holds the value of the "partial_hashes" field.
+	PartialHashes []string `json:"partial_hashes,omitempty"`
 	// OperatorVersion holds the value of the "operator_version" field.
 	OperatorVersion string `json:"operator_version,omitempty"`
 	// Meta holds the value of the "meta" field.
@@ -46,7 +48,7 @@ func (*Revision) scanValues(columns []string) ([]interface{}, error) {
 	values := make([]interface{}, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case revision.FieldMeta:
+		case revision.FieldPartialHashes, revision.FieldMeta:
 			values[i] = new([]byte)
 		case revision.FieldApplied, revision.FieldTotal, revision.FieldExecutionTime:
 			values[i] = new(sql.NullInt64)
@@ -117,6 +119,14 @@ func (r *Revision) assignValues(columns []string, values []interface{}) error {
 			} else if value.Valid {
 				r.Hash = value.String
 			}
+		case revision.FieldPartialHashes:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field partial_hashes", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &r.PartialHashes); err != nil {
+					return fmt.Errorf("unmarshal field partial_hashes: %w", err)
+				}
+			}
 		case revision.FieldOperatorVersion:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field operator_version", values[i])
@@ -179,6 +189,9 @@ func (r *Revision) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("hash=")
 	builder.WriteString(r.Hash)
+	builder.WriteString(", ")
+	builder.WriteString("partial_hashes=")
+	builder.WriteString(fmt.Sprintf("%v", r.PartialHashes))
 	builder.WriteString(", ")
 	builder.WriteString("operator_version=")
 	builder.WriteString(r.OperatorVersion)

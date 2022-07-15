@@ -157,6 +157,7 @@ func (r *EntRevisions) write(ctx context.Context, rev *migrate.Revision) error {
 		SetExecutionTime(rev.ExecutionTime).
 		SetError(rev.Error).
 		SetHash(rev.Hash).
+		SetPartialHashes(rev.PartialHashes).
 		SetOperatorVersion(rev.OperatorVersion).
 		SetMeta(rev.Meta).
 		OnConflict(sql.ConflictColumns(revision.FieldID)).
@@ -174,6 +175,7 @@ func fromEnt(r *ent.Revision) *migrate.Revision {
 		ExecutionTime:   r.ExecutionTime,
 		Error:           r.Error,
 		Hash:            r.Hash,
+		PartialHashes:   r.PartialHashes,
 		OperatorVersion: r.OperatorVersion,
 		Meta:            r.Meta,
 	}

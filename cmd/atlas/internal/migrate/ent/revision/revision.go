@@ -25,6 +25,8 @@ const (
 	FieldError = "error"
 	// FieldHash holds the string denoting the hash field in the database.
 	FieldHash = "hash"
+	// FieldPartialHashes holds the string denoting the partial_hashes field in the database.
+	FieldPartialHashes = "partial_hashes"
 	// FieldOperatorVersion holds the string denoting the operator_version field in the database.
 	FieldOperatorVersion = "operator_version"
 	// FieldMeta holds the string denoting the meta field in the database.
@@ -43,6 +45,7 @@ var Columns = []string{
 	FieldExecutionTime,
 	FieldError,
 	FieldHash,
+	FieldPartialHashes,
 	FieldOperatorVersion,
 	FieldMeta,
 }

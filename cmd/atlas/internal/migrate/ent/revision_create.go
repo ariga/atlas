@@ -77,6 +77,12 @@ func (rc *RevisionCreate) SetHash(s string) *RevisionCreate {
 	return rc
 }
 
+// SetPartialHashes sets the "partial_hashes" field.
+func (rc *RevisionCreate) SetPartialHashes(s []string) *RevisionCreate {
+	rc.mutation.SetPartialHashes(s)
+	return rc
+}
+
 // SetOperatorVersion sets the "operator_version" field.
 func (rc *RevisionCreate) SetOperatorVersion(s string) *RevisionCreate {
 	rc.mutation.SetOperatorVersion(s)
@@ -294,6 +300,14 @@ func (rc *RevisionCreate) createSpec() (*Revision, *sqlgraph.CreateSpec) {
 		})
 		_node.Hash = value
 	}
+	if value, ok := rc.mutation.PartialHashes(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeJSON,
+			Value:  value,
+			Column: revision.FieldPartialHashes,
+		})
+		_node.PartialHashes = value
+	}
 	if value, ok := rc.mutation.OperatorVersion(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
@@ -469,6 +483,24 @@ func (u *RevisionUpsert) SetHash(v string) *RevisionUpsert {
 // UpdateHash sets the "hash" field to the value that was provided on create.
 func (u *RevisionUpsert) UpdateHash() *RevisionUpsert {
 	u.SetExcluded(revision.FieldHash)
+	return u
+}
+
+// SetPartialHashes sets the "partial_hashes" field.
+func (u *RevisionUpsert) SetPartialHashes(v []string) *RevisionUpsert {
+	u.Set(revision.FieldPartialHashes, v)
+	return u
+}
+
+// UpdatePartialHashes sets the "partial_hashes" field to the value that was provided on create.
+func (u *RevisionUpsert) UpdatePartialHashes() *RevisionUpsert {
+	u.SetExcluded(revision.FieldPartialHashes)
+	return u
+}
+
+// ClearPartialHashes clears the value of the "partial_hashes" field.
+func (u *RevisionUpsert) ClearPartialHashes() *RevisionUpsert {
+	u.SetNull(revision.FieldPartialHashes)
 	return u
 }
 
@@ -675,6 +707,27 @@ func (u *RevisionUpsertOne) SetHash(v string) *RevisionUpsertOne {
 func (u *RevisionUpsertOne) UpdateHash() *RevisionUpsertOne {
 	return u.Update(func(s *RevisionUpsert) {
 		s.UpdateHash()
+	})
+}
+
+// SetPartialHashes sets the "partial_hashes" field.
+func (u *RevisionUpsertOne) SetPartialHashes(v []string) *RevisionUpsertOne {
+	return u.Update(func(s *RevisionUpsert) {
+		s.SetPartialHashes(v)
+	})
+}
+
+// UpdatePartialHashes sets the "partial_hashes" field to the value that was provided on create.
+func (u *RevisionUpsertOne) UpdatePartialHashes() *RevisionUpsertOne {
+	return u.Update(func(s *RevisionUpsert) {
+		s.UpdatePartialHashes()
+	})
+}
+
+// ClearPartialHashes clears the value of the "partial_hashes" field.
+func (u *RevisionUpsertOne) ClearPartialHashes() *RevisionUpsertOne {
+	return u.Update(func(s *RevisionUpsert) {
+		s.ClearPartialHashes()
 	})
 }
 
@@ -1050,6 +1103,27 @@ func (u *RevisionUpsertBulk) SetHash(v string) *RevisionUpsertBulk {
 func (u *RevisionUpsertBulk) UpdateHash() *RevisionUpsertBulk {
 	return u.Update(func(s *RevisionUpsert) {
 		s.UpdateHash()
+	})
+}
+
+// SetPartialHashes sets the "partial_hashes" field.
+func (u *RevisionUpsertBulk) SetPartialHashes(v []string) *RevisionUpsertBulk {
+	return u.Update(func(s *RevisionUpsert) {
+		s.SetPartialHashes(v)
+	})
+}
+
+// UpdatePartialHashes sets the "partial_hashes" field to the value that was provided on create.
+func (u *RevisionUpsertBulk) UpdatePartialHashes() *RevisionUpsertBulk {
+	return u.Update(func(s *RevisionUpsert) {
+		s.UpdatePartialHashes()
+	})
+}
+
+// ClearPartialHashes clears the value of the "partial_hashes" field.
+func (u *RevisionUpsertBulk) ClearPartialHashes() *RevisionUpsertBulk {
+	return u.Update(func(s *RevisionUpsert) {
+		s.ClearPartialHashes()
 	})
 }
 

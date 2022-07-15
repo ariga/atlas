@@ -98,6 +98,18 @@ func (ru *RevisionUpdate) SetHash(s string) *RevisionUpdate {
 	return ru
 }
 
+// SetPartialHashes sets the "partial_hashes" field.
+func (ru *RevisionUpdate) SetPartialHashes(s []string) *RevisionUpdate {
+	ru.mutation.SetPartialHashes(s)
+	return ru
+}
+
+// ClearPartialHashes clears the value of the "partial_hashes" field.
+func (ru *RevisionUpdate) ClearPartialHashes() *RevisionUpdate {
+	ru.mutation.ClearPartialHashes()
+	return ru
+}
+
 // SetOperatorVersion sets the "operator_version" field.
 func (ru *RevisionUpdate) SetOperatorVersion(s string) *RevisionUpdate {
 	ru.mutation.SetOperatorVersion(s)
@@ -265,6 +277,19 @@ func (ru *RevisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: revision.FieldHash,
 		})
 	}
+	if value, ok := ru.mutation.PartialHashes(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeJSON,
+			Value:  value,
+			Column: revision.FieldPartialHashes,
+		})
+	}
+	if ru.mutation.PartialHashesCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeJSON,
+			Column: revision.FieldPartialHashes,
+		})
+	}
 	if value, ok := ru.mutation.OperatorVersion(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
@@ -362,6 +387,18 @@ func (ruo *RevisionUpdateOne) ClearError() *RevisionUpdateOne {
 // SetHash sets the "hash" field.
 func (ruo *RevisionUpdateOne) SetHash(s string) *RevisionUpdateOne {
 	ruo.mutation.SetHash(s)
+	return ruo
+}
+
+// SetPartialHashes sets the "partial_hashes" field.
+func (ruo *RevisionUpdateOne) SetPartialHashes(s []string) *RevisionUpdateOne {
+	ruo.mutation.SetPartialHashes(s)
+	return ruo
+}
+
+// ClearPartialHashes clears the value of the "partial_hashes" field.
+func (ruo *RevisionUpdateOne) ClearPartialHashes() *RevisionUpdateOne {
+	ruo.mutation.ClearPartialHashes()
 	return ruo
 }
 
@@ -560,6 +597,19 @@ func (ruo *RevisionUpdateOne) sqlSave(ctx context.Context) (_node *Revision, err
 			Type:   field.TypeString,
 			Value:  value,
 			Column: revision.FieldHash,
+		})
+	}
+	if value, ok := ruo.mutation.PartialHashes(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeJSON,
+			Value:  value,
+			Column: revision.FieldPartialHashes,
+		})
+	}
+	if ruo.mutation.PartialHashesCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeJSON,
+			Column: revision.FieldPartialHashes,
 		})
 	}
 	if value, ok := ruo.mutation.OperatorVersion(); ok {
