@@ -1,0 +1,20 @@
+atlas migrate diff --env local
+cmpmig 0 diff.sql
+-- atlas.hcl --
+env "local" {
+    src = "1.hcl"
+    dev = "sqlite://devdb"
+}
+-- 1.hcl --
+table "users" {
+  schema = schema.main
+  column "id" {
+    null = false
+    type = int
+  }
+}
+schema "main" {
+}
+-- diff.sql --
+-- create "users" table
+CREATE TABLE `users` (`id` int NOT NULL);
