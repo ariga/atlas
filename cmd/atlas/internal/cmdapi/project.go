@@ -120,9 +120,6 @@ func LoadEnv(path string, name string, opts ...LoadOption) (*Env, error) {
 		if e.Name == "" {
 			return nil, fmt.Errorf("all envs must have names on file %q", path)
 		}
-		if e.URL == "" {
-			return nil, fmt.Errorf("no url set for env %q", e.Name)
-		}
 		if _, err := e.Sources(); err != nil {
 			return nil, err
 		}
