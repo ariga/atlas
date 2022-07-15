@@ -231,7 +231,8 @@ atlas migrate status [flags]
 ```
 #### Flags
 ```
-  -u, --url string   [driver://username:password@address/dbname?param=value] select a database using the URL format
+      --revisions-schema string   schema name where the revisions table resides (default "atlas_schema_revisions")
+  -u, --url string                [driver://username:password@address/dbname?param=value] select a database using the URL format
 
 ```
 
