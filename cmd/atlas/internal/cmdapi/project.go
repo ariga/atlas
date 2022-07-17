@@ -5,6 +5,7 @@
 package cmdapi
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -90,7 +91,7 @@ func (e *Env) Sources() ([]string, error) {
 	if s, err := attr.Strings(); err == nil {
 		return s, nil
 	}
-	return nil, fmt.Errorf("expected src to be either a string or a string array")
+	return nil, errors.New("expected src to be either a string or a string array")
 }
 
 var hclState = schemahcl.New(
