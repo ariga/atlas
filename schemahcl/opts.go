@@ -141,7 +141,7 @@ func typeFuncSpec(typeSpec *TypeSpec) function.Function {
 }
 
 // typeFuncSpecImpl returns the function implementation for the HCL function spec.
-func typeFuncSpecImpl(spec *function.Spec, typeSpec *TypeSpec) function.ImplFunc {
+func typeFuncSpecImpl(_ *function.Spec, typeSpec *TypeSpec) function.ImplFunc {
 	return func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 		t := &Type{
 			T: typeSpec.T,
