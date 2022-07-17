@@ -1,0 +1,82 @@
+apply 1.hcl
+cmpshow t 1.sql
+
+apply 2.hcl
+cmpshow t 2.sql
+
+apply 3.hcl
+cmpshow t 3.sql
+
+-- 1.hcl --
+schema "$db" {}
+
+table "t" {
+  schema = schema.$db
+  column "x" {
+    type = smallserial
+  }
+  column "y" {
+    type = serial
+  }
+  column "z" {
+    type = bigserial
+  }
+}
+
+-- 1.sql --
+                                Table "script_column_serial.t"
+ Column |   Type   | Collation | Nullable |                      Default
+--------+----------+-----------+----------+---------------------------------------------------
+ x      | smallint |           | not null | nextval('script_column_serial.t_x_seq'::regclass)
+ y      | integer  |           | not null | nextval('script_column_serial.t_y_seq'::regclass)
+ z      | bigint   |           | not null | nextval('script_column_serial.t_z_seq'::regclass)
+
+-- 2.hcl --
+ schema "$db" {}
+
+ table "t" {
+   schema = schema.$db
+   column "x" {
+     # Drop sequence.
+     type = smallint
+   }
+   column "y" {
+     # Drop sequence and change type.
+     type = bigint
+   }
+   column "z" {
+     # Change sequence type.
+     type = serial
+   }
+ }
+
+-- 2.sql --
+                                Table "script_column_serial.t"
+ Column |   Type   | Collation | Nullable |                      Default
+--------+----------+-----------+----------+---------------------------------------------------
+ x      | smallint |           | not null |
+ y      | bigint   |           | not null |
+ z      | integer  |           | not null | nextval('script_column_serial.t_z_seq'::regclass)
+
+
+-- 3.hcl --
+ schema "$db" {}
+
+ table "t" {
+   schema = schema.$db
+   column "x" {
+     # Add sequence.
+     type = smallserial
+   }
+   column "y" {
+     # Add sequence and change type.
+     type = serial
+   }
+ }
+
+-- 3.sql --
+                                Table "script_column_serial.t"
+ Column |   Type   | Collation | Nullable |                      Default
+--------+----------+-----------+----------+---------------------------------------------------
+ x      | smallint |           | not null | nextval('script_column_serial.t_x_seq'::regclass)
+ y      | integer  |           | not null | nextval('script_column_serial.t_y_seq'::regclass)
