@@ -1,30 +1,44 @@
 ---
-id: mysql-generated-columns
+id: generated-columns
 title: How to Use Generated Columns in MySQL with Atlas
 slug: /knowledge/mysql/generated-columns
 ---
 
-**MySQL** is a popular open-source relational database. **Generated columns** are a feature of MySQL that allows you to define tables with columns whose value is a function of the value stored in other columns; without requiring complex expressions in `SELECT`, `INSERT` or `UPDATE` queries.
+**MySQL** is a popular open-source relational database. **Generated columns** are a feature of MySQL that allows you to
+define tables with columns whose value is a function of the value stored in other columns; without requiring complex
+expressions in `SELECT`, `INSERT` or `UPDATE` queries.
 
 ## What are Generated Columns?
 
-Generated columns are columns that contain values calculated by expressions which can be dependent on other columns; in a similar manner to formulas in a spreadsheet. There are two types of generated columns in MySQL: _Stored_ and _Virtual_.
+Generated columns are columns that contain values calculated by expressions which can be dependent on other columns; in
+a similar manner to formulas in a spreadsheet. There are two types of generated columns in MySQL: _Stored_ and _Virtual_.
 
 ### Stored Generated Columns
 
-Stored generated columns are stored and evaluated when a row is inserted or updated. As a result, stored generated columns use disk space in addition to CPU cycles during the execution of `INSERT` and `UPDATE` statements.
+Stored generated columns are stored and evaluated when a row is inserted or updated. As a result, stored generated
+columns use disk space in addition to CPU cycles during the execution of `INSERT` and `UPDATE` statements.
 
 ### Virtual Generated Columns
 
-Virtual generated columns are not stored, and only evaluated when a row is read _(after BEFORE [triggers](https://dev.mysql.com/doc/refman/5.7/en/trigger-syntax.html))_. As a result, virtual generated columns take no storage at the cost of CPU cycles for `SELECT` statements.
+Virtual generated columns are not stored, and only evaluated when a row is read
+_(after BEFORE [triggers](https://dev.mysql.com/doc/refman/5.7/en/trigger-syntax.html))_.
+As a result, virtual generated columns take no storage at the cost of CPU cycles for `SELECT` statements.
 
 ### Limitations of Generated Columns
 
-Generated column expressions must be deterministic which means that — given the same input — an expression must always produce the same output. As a result, generated columns can not be used with stored variables, functions, procedures, and subqueries; which could cause the output to be non-deterministic. Following this constraint, generated columns can not be used to generate random values. On the other hand, a generated column may reference any non-generated column _regardless_ of its position within the table row and any other generated column within the same table row, as long as those columns are declared before the generated column.
+Generated column expressions must be deterministic which means that — given the same input — an expression must always
+produce the same output. As a result, generated columns can not be used with stored variables, functions, procedures,
+and subqueries; which could cause the output to be non-deterministic. Following this constraint, generated columns can
+not be used to generate random values. On the other hand, a generated column may reference any non-generated
+column _regardless_ of its position within the table row and any other generated column within the same table row,
+as long as those columns are declared before the generated column.
 
 ## When to use Generated Columns?
 
-Generated columns should be used whenever you want to create a column with a value that can be directly determined from the values of other columns in the same row. In simpler words, for data that is dependent on other data. This saves the developer from complex application code that is prone to errors on `SELECT`, `INSERT` and `UPDATE` statements. It also ensures that data which must be consistent, stays consistent.
+Generated columns should be used whenever you want to create a column with a value that can be directly determined
+from the values of other columns in the same row. In simpler words, for data that is dependent on other data. This
+saves the developer from complex application code that is prone to errors on `SELECT`, `INSERT` and `UPDATE` statements.
+It also ensures that data which must be consistent, stays consistent.
 
 **MySQL Syntax for a Generated Column**
 
@@ -35,7 +49,10 @@ column_name data_type [GENERATED ALWAYS] AS (expr) [VIRTUAL | STORED]
 
 ### Using Stored Generated Columns
 
-Stored generated columns should be used for data _(in a table)_ that is read more frequently than it is updated. This saves CPU cycles while reading rows _(via `SELECT`)_. Stored generated columns should also be used when you want to index the column or use it as a foreign key constraint. Alternatively, use stored generated columns as a cache for complex conditions that are costly to calculate.
+Stored generated columns should be used for data _(in a table)_ that is read more frequently than it is updated.
+This saves CPU cycles while reading rows _(via `SELECT`)_. Stored generated columns should also be used when you
+want to use the column in the table primary key or use it as a foreign key constraint. Alternatively, use stored
+generated columns as a cache for complex conditions that are costly to calculate.
 
 #### Example
 
@@ -215,4 +232,5 @@ Select all the people in the table using `SELECT  *  FROM people` to receive a t
 
 ## Need More Help?
 
-[Join the Ariga Discord Server](https://discord.gg/pBgPDyNU3G) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling.
+[Join the Ariga Discord Server](https://discord.gg/zZ6sWVg6NT) for early access to features and the ability to provide
+exclusive feedback that improves your Database Management Tooling.

@@ -44,11 +44,6 @@ module.exports = {
           position: 'left',
         },
         {
-          to: 'https://pkg.go.dev/ariga.io/atlas',
-          label: 'GoDoc',
-          position: 'left',
-        },
-        {
           to: 'knowledge',
           label: 'Knowledge Center',
           position: 'left',

@@ -21,11 +21,6 @@ function Nav() {
             </Link>
         </li>
         <li className={index.linkItem}>
-            <Link to="https://pkg.go.dev/ariga.io/atlas">
-                GoDoc
-            </Link>
-        </li>
-        <li className={index.linkItem}>
             <Link to="/knowledge">
                 Knowledge Center
             </Link>
