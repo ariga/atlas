@@ -115,7 +115,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c16", Type: &schema.ColumnType{Raw: "money", Type: &CurrencyType{T: "money"}}},
 					{Name: "c17", Type: &schema.ColumnType{Raw: "numeric", Type: &schema.DecimalType{T: "numeric"}}},
 					{Name: "c18", Type: &schema.ColumnType{Raw: "numeric", Type: &schema.DecimalType{T: "numeric", Precision: 4, Scale: 4}}},
-					{Name: "c19", Type: &schema.ColumnType{Raw: "serial", Type: &SerialType{T: "serial"}}},
+					{Name: "c19", Type: &schema.ColumnType{Raw: "serial", Type: &SerialType{T: "serial", SequenceName: "t1_c19_seq"}}},
 					{Name: "c20", Type: &schema.ColumnType{Raw: "uuid", Type: &UUIDType{T: "uuid"}}},
 					{Name: "c21", Type: &schema.ColumnType{Raw: "xml", Type: &XMLType{T: "xml"}}},
 					{Name: "c22", Type: &schema.ColumnType{Raw: "ARRAY", Null: true, Type: &ArrayType{Type: &schema.IntegerType{T: "integer"}, T: "integer[]"}}},
@@ -128,7 +128,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c29", Type: &schema.ColumnType{Raw: "interval", Type: &IntervalType{T: "interval", Precision: p(6)}}},
 					{Name: "c30", Type: &schema.ColumnType{Raw: "interval", Type: &IntervalType{T: "interval", F: "MONTH", Precision: p(6)}}},
 					{Name: "c31", Type: &schema.ColumnType{Raw: "interval", Type: &IntervalType{T: "interval", F: "MINUTE TO SECOND", Precision: p(6)}}},
-					{Name: "c32", Type: &schema.ColumnType{Raw: "bigserial", Type: &SerialType{T: "bigserial"}}},
+					{Name: "c32", Type: &schema.ColumnType{Raw: "bigserial", Type: &SerialType{T: "bigserial", SequenceName: "t1_c32_seq"}}},
 				}, t.Columns)
 			},
 		},

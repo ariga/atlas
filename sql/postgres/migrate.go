@@ -321,7 +321,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 		reverse    []schema.Change
 		reversible = true
 	)
-	build := func(changes []schema.Change) (string, error) {
+	build := func(alter *alterChange, changes []schema.Change) (string, error) {
 		b := Build("ALTER TABLE").Table(t)
 		err := b.MapCommaErr(changes, func(i int, b *sqlx.Builder) error {
 			switch change := changes[i].(type) {
@@ -332,7 +332,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 				}
 				reverse = append(reverse, &schema.DropColumn{C: change.C})
 			case *schema.ModifyColumn:
-				if err := s.alterColumn(b, change); err != nil {
+				if err := s.alterColumn(b, alter, t, change); err != nil {
 					return err
 				}
 				if change.Change.Is(schema.ChangeGenerated) {
@@ -397,12 +397,13 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 		}
 		return b.String(), nil
 	}
-	cmd, err := build(changes)
+	cmd := &alterChange{}
+	stmt, err := build(cmd, changes)
 	if err != nil {
 		return fmt.Errorf("alter table %q: %v", t.Name, err)
 	}
-	change := &migrate.Change{
-		Cmd: cmd,
+	cmd.main = &migrate.Change{
+		Cmd: stmt,
 		Source: &schema.ModifyTable{
 			T:       t,
 			Changes: changes,
@@ -413,11 +414,161 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 		// Changes should be reverted in
 		// a reversed order they were created.
 		sqlx.ReverseChanges(reverse)
-		if change.Reverse, err = build(reverse); err != nil {
+		if cmd.main.Reverse, err = build(&alterChange{}, reverse); err != nil {
 			return fmt.Errorf("reverse alter table %q: %v", t.Name, err)
 		}
 	}
-	s.append(change)
+	cmd.append(s)
+	return nil
+}
+
+// alterChange describes an alter table migrate.Change where its main command
+// can be supported by additional statements before and after it is executed.
+type alterChange struct {
+	main          *migrate.Change
+	before, after []*migrate.Change
+}
+
+func (a *alterChange) append(s *state) {
+	s.append(a.before...)
+	s.append(a.main)
+	s.append(a.after...)
+}
+
+func (s *state) alterColumn(b *sqlx.Builder, alter *alterChange, t *schema.Table, c *schema.ModifyColumn) error {
+	for k := c.Change; !k.Is(schema.NoChange); {
+		b.P("ALTER COLUMN").Ident(c.To.Name)
+		switch {
+		case k.Is(schema.ChangeType):
+			if err := alterType(b, alter, t, c); err != nil {
+				return err
+			}
+			k &= ^schema.ChangeType
+		case k.Is(schema.ChangeNull) && c.To.Type.Null:
+			if t, ok := c.To.Type.Type.(*SerialType); ok {
+				return fmt.Errorf("NOT NULL constraint is required for %s column %q", t.T, c.To.Name)
+			}
+			b.P("DROP NOT NULL")
+			k &= ^schema.ChangeNull
+		case k.Is(schema.ChangeNull) && !c.To.Type.Null:
+			b.P("SET NOT NULL")
+			k &= ^schema.ChangeNull
+		case k.Is(schema.ChangeDefault) && c.To.Default == nil:
+			b.P("DROP DEFAULT")
+			k &= ^schema.ChangeDefault
+		case k.Is(schema.ChangeDefault) && c.To.Default != nil:
+			s.columnDefault(b.P("SET"), c.To)
+			k &= ^schema.ChangeDefault
+		case k.Is(schema.ChangeAttr):
+			toI, ok := identity(c.To.Attrs)
+			if !ok {
+				return fmt.Errorf("unexpected attribute change (expect IDENTITY): %v", c.To.Attrs)
+			}
+			// The syntax for altering identity columns is identical to sequence_options.
+			// https://www.postgresql.org/docs/current/sql-altersequence.html
+			b.P("SET GENERATED", toI.Generation, "SET START WITH", strconv.FormatInt(toI.Sequence.Start, 10), "SET INCREMENT BY", strconv.FormatInt(toI.Sequence.Increment, 10))
+			// Skip SEQUENCE RESTART in case the "start value" is less than the "current value" in one
+			// of the states (inspected and desired), because this function is used for both UP and DOWN.
+			if fromI, ok := identity(c.From.Attrs); (!ok || fromI.Sequence.Last < toI.Sequence.Start) && toI.Sequence.Last < toI.Sequence.Start {
+				b.P("RESTART")
+			}
+			k &= ^schema.ChangeAttr
+		case k.Is(schema.ChangeGenerated):
+			if sqlx.Has(c.To.Attrs, &schema.GeneratedExpr{}) {
+				return fmt.Errorf("unexpected generation expression change (expect DROP EXPRESSION): %v", c.To.Attrs)
+			}
+			b.P("DROP EXPRESSION")
+			k &= ^schema.ChangeGenerated
+		default: // e.g. schema.ChangeComment.
+			return fmt.Errorf("unexpected column change: %d", k)
+		}
+		if !k.Is(schema.NoChange) {
+			b.Comma()
+		}
+	}
+	return nil
+}
+
+// alterType appends the clause(s) to alter the column type and assuming the
+// "ALTER COLUMN <Name>" was called before by the alterColumn function.
+func alterType(b *sqlx.Builder, alter *alterChange, t *schema.Table, c *schema.ModifyColumn) error {
+	// Commands for creating and dropping serial sequences.
+	createDropSeq := func(s *SerialType) (string, string, string) {
+		seq := fmt.Sprintf(`%q.%q`, t.Schema.Name, s.sequence(t, c.To))
+		drop := Build("DROP SEQUENCE IF EXISTS").P(seq).String()
+		create := Build("CREATE SEQUENCE IF NOT EXISTS").P(seq, "OWNED BY").
+			P(fmt.Sprintf(`%q.%q.%q`, t.Schema.Name, t.Name, c.To.Name)).
+			String()
+		return create, drop, seq
+	}
+	toS, toHas := c.To.Type.Type.(*SerialType)
+	fromS, fromHas := c.From.Type.Type.(*SerialType)
+	switch {
+	// Sequence was dropped.
+	case fromHas && !toHas:
+		b.P("DROP DEFAULT")
+		create, drop, _ := createDropSeq(fromS)
+		// Sequence should be deleted after it was dropped
+		// from the DEFAULT value.
+		alter.after = append(alter.after, &migrate.Change{
+			Source:  c,
+			Comment: fmt.Sprintf("drop sequence used by serial column %q", c.From.Name),
+			Cmd:     drop,
+			Reverse: create,
+		})
+		toT, err := FormatType(c.To.Type.Type)
+		if err != nil {
+			return err
+		}
+		fromT, err := FormatType(fromS.IntegerType())
+		if err != nil {
+			return err
+		}
+		// Underlying type was changed. e.g. serial to bigint.
+		if toT != fromT {
+			b.Comma().P("ALTER COLUMN").Ident(c.To.Name).P("TYPE", toT)
+		}
+	// Sequence was added.
+	case !fromHas && toHas:
+		create, drop, seq := createDropSeq(toS)
+		// Sequence should be created before it is used by the
+		// column DEFAULT value.
+		alter.before = append(alter.before, &migrate.Change{
+			Source:  c,
+			Comment: fmt.Sprintf("create sequence for serial column %q", c.To.Name),
+			Cmd:     create,
+			Reverse: drop,
+		})
+		b.P("SET DEFAULT", fmt.Sprintf("nextval('%s')", seq))
+		toT, err := FormatType(toS.IntegerType())
+		if err != nil {
+			return err
+		}
+		fromT, err := FormatType(c.From.Type.Type)
+		if err != nil {
+			return err
+		}
+		// Underlying type was changed. e.g. integer to bigserial (bigint).
+		if toT != fromT {
+			b.Comma().P("ALTER COLUMN").Ident(c.To.Name).P("TYPE", toT)
+		}
+	// Serial type was changed. e.g. serial to bigserial.
+	case fromHas && toHas:
+		t, err := FormatType(toS.IntegerType())
+		if err != nil {
+			return err
+		}
+		b.P("TYPE", t)
+	default:
+		t, err := FormatType(c.To.Type.Type)
+		if err != nil {
+			return err
+		}
+		b.P("TYPE", t)
+	}
+	if collate := (schema.Collation{}); sqlx.Has(c.To.Attrs, &collate) {
+		b.P("COLLATE", collate.V)
+	}
 	return nil
 }
 
@@ -644,65 +795,6 @@ func (s *state) columnDefault(b *sqlx.Builder, c *schema.Column) {
 			b.P("DEFAULT", x.X)
 		}
 	}
-}
-
-func (s *state) alterColumn(b *sqlx.Builder, c *schema.ModifyColumn) error {
-	for k := c.Change; !k.Is(schema.NoChange); {
-		b.P("ALTER COLUMN").Ident(c.To.Name)
-		switch {
-		case k.Is(schema.ChangeType):
-			t, err := FormatType(c.To.Type.Type)
-			if err != nil {
-				return err
-			}
-			b.P("TYPE", t)
-			if collate := (schema.Collation{}); sqlx.Has(c.To.Attrs, &collate) {
-				b.P("COLLATE", collate.V)
-			}
-			k &= ^schema.ChangeType
-		case k.Is(schema.ChangeNull) && c.To.Type.Null:
-			if t, ok := c.To.Type.Type.(*SerialType); ok {
-				return fmt.Errorf("NOT NULL constraint is required for %s column %q", t.T, c.To.Name)
-			}
-			b.P("DROP NOT NULL")
-			k &= ^schema.ChangeNull
-		case k.Is(schema.ChangeNull) && !c.To.Type.Null:
-			b.P("SET NOT NULL")
-			k &= ^schema.ChangeNull
-		case k.Is(schema.ChangeDefault) && c.To.Default == nil:
-			b.P("DROP DEFAULT")
-			k &= ^schema.ChangeDefault
-		case k.Is(schema.ChangeDefault) && c.To.Default != nil:
-			s.columnDefault(b.P("SET"), c.To)
-			k &= ^schema.ChangeDefault
-		case k.Is(schema.ChangeAttr):
-			toI, ok := identity(c.To.Attrs)
-			if !ok {
-				return fmt.Errorf("unexpected attribute change (expect IDENTITY): %v", c.To.Attrs)
-			}
-			// The syntax for altering identity columns is identical to sequence_options.
-			// https://www.postgresql.org/docs/current/sql-altersequence.html
-			b.P("SET GENERATED", toI.Generation, "SET START WITH", strconv.FormatInt(toI.Sequence.Start, 10), "SET INCREMENT BY", strconv.FormatInt(toI.Sequence.Increment, 10))
-			// Skip SEQUENCE RESTART in case the "start value" is less than the "current value" in one
-			// of the states (inspected and desired), because this function is used for both UP and DOWN.
-			if fromI, ok := identity(c.From.Attrs); (!ok || fromI.Sequence.Last < toI.Sequence.Start) && toI.Sequence.Last < toI.Sequence.Start {
-				b.P("RESTART")
-			}
-			k &= ^schema.ChangeAttr
-		case k.Is(schema.ChangeGenerated):
-			if sqlx.Has(c.To.Attrs, &schema.GeneratedExpr{}) {
-				return fmt.Errorf("unexpected generation expression change (expect DROP EXPRESSION): %v", c.To.Attrs)
-			}
-			b.P("DROP EXPRESSION")
-			k &= ^schema.ChangeGenerated
-		default: // e.g. schema.ChangeComment.
-			return fmt.Errorf("unexpected column change: %d", k)
-		}
-		if !k.Is(schema.NoChange) {
-			b.Comma()
-		}
-	}
-	return nil
 }
 
 func (s *state) indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {

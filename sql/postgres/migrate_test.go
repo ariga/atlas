@@ -185,19 +185,6 @@ func TestPlanChanges(t *testing.T) {
 					T: &schema.Table{
 						Name: "posts",
 						Columns: []*schema.Column{
-							{Name: "id", Type: &schema.ColumnType{Type: &SerialType{T: "serial"}, Null: true}},
-						},
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
-			changes: []schema.Change{
-				&schema.AddTable{
-					T: &schema.Table{
-						Name: "posts",
-						Columns: []*schema.Column{
 							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "integer"}}, Attrs: []schema.Attr{&Identity{}, &schema.Comment{}}},
 							{Name: "text", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}, Null: true}},
 						},
@@ -855,6 +842,141 @@ func TestPlanChanges(t *testing.T) {
 					{
 						Cmd:     `ALTER INDEX "a" RENAME TO "b"`,
 						Reverse: `ALTER INDEX "b" RENAME TO "a"`,
+					},
+				},
+			},
+		},
+		// Invalid serial type.
+		{
+			changes: []schema.Change{
+				&schema.AddTable{
+					T: &schema.Table{
+						Name: "posts",
+						Columns: []*schema.Column{
+							{Name: "id", Type: &schema.ColumnType{Type: &SerialType{T: "serial"}, Null: true}},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		// Drop serial sequence.
+		{
+			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("posts").
+						SetSchema(schema.New("public")).
+						AddColumns(
+							schema.NewIntColumn("c1", "integer"),
+							schema.NewIntColumn("c2", "integer"),
+						),
+					Changes: schema.Changes{
+						&schema.ModifyColumn{
+							From:   schema.NewColumn("c1").SetType(&SerialType{T: "smallserial"}),
+							To:     schema.NewIntColumn("c1", "integer"),
+							Change: schema.ChangeType,
+						},
+						&schema.ModifyColumn{
+							From:   schema.NewColumn("c2").SetType(&SerialType{T: "serial", SequenceName: "previous_name"}),
+							To:     schema.NewIntColumn("c2", "integer"),
+							Change: schema.ChangeType,
+						},
+					},
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `ALTER TABLE "public"."posts" ALTER COLUMN "c1" DROP DEFAULT, ALTER COLUMN "c1" TYPE integer, ALTER COLUMN "c2" DROP DEFAULT`,
+						Reverse: `ALTER TABLE "public"."posts" ALTER COLUMN "c2" SET DEFAULT nextval('"public"."previous_name"'), ALTER COLUMN "c1" SET DEFAULT nextval('"public"."posts_c1_seq"'), ALTER COLUMN "c1" TYPE smallint`,
+					},
+					{
+						Cmd:     `DROP SEQUENCE IF EXISTS "public"."posts_c1_seq"`,
+						Reverse: `CREATE SEQUENCE IF NOT EXISTS "public"."posts_c1_seq" OWNED BY "public"."posts"."c1"`,
+					},
+					{
+						Cmd:     `DROP SEQUENCE IF EXISTS "public"."previous_name"`,
+						Reverse: `CREATE SEQUENCE IF NOT EXISTS "public"."previous_name" OWNED BY "public"."posts"."c2"`,
+					},
+				},
+			},
+		},
+		// Add serial sequence.
+		{
+			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("posts").
+						SetSchema(schema.New("public")).
+						AddColumns(
+							schema.NewColumn("c1").SetType(&SerialType{T: "serial"}),
+							schema.NewColumn("c2").SetType(&SerialType{T: "bigserial"}),
+						),
+					Changes: schema.Changes{
+						&schema.ModifyColumn{
+							From:   schema.NewIntColumn("c1", "integer"),
+							To:     schema.NewColumn("c1").SetType(&SerialType{T: "serial"}),
+							Change: schema.ChangeType,
+						},
+						&schema.ModifyColumn{
+							From:   schema.NewIntColumn("c2", "integer"),
+							To:     schema.NewColumn("c2").SetType(&SerialType{T: "bigserial"}),
+							Change: schema.ChangeType,
+						},
+					},
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `CREATE SEQUENCE IF NOT EXISTS "public"."posts_c1_seq" OWNED BY "public"."posts"."c1"`,
+						Reverse: `DROP SEQUENCE IF EXISTS "public"."posts_c1_seq"`,
+					},
+					{
+						Cmd:     `CREATE SEQUENCE IF NOT EXISTS "public"."posts_c2_seq" OWNED BY "public"."posts"."c2"`,
+						Reverse: `DROP SEQUENCE IF EXISTS "public"."posts_c2_seq"`,
+					},
+					{
+						Cmd:     `ALTER TABLE "public"."posts" ALTER COLUMN "c1" SET DEFAULT nextval('"public"."posts_c1_seq"'), ALTER COLUMN "c2" SET DEFAULT nextval('"public"."posts_c2_seq"'), ALTER COLUMN "c2" TYPE bigint`,
+						Reverse: `ALTER TABLE "public"."posts" ALTER COLUMN "c2" DROP DEFAULT, ALTER COLUMN "c2" TYPE integer, ALTER COLUMN "c1" DROP DEFAULT`,
+					},
+				},
+			},
+		},
+		// Change underlying sequence type.
+		{
+			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("posts").
+						SetSchema(schema.New("public")).
+						AddColumns(
+							schema.NewColumn("c1").SetType(&SerialType{T: "serial"}),
+							schema.NewColumn("c2").SetType(&SerialType{T: "bigserial"}),
+						),
+					Changes: schema.Changes{
+						&schema.ModifyColumn{
+							From:   schema.NewColumn("c1").SetType(&SerialType{T: "smallserial"}),
+							To:     schema.NewColumn("c1").SetType(&SerialType{T: "serial"}),
+							Change: schema.ChangeType,
+						},
+						&schema.ModifyColumn{
+							From:   schema.NewColumn("c2").SetType(&SerialType{T: "serial"}),
+							To:     schema.NewColumn("c2").SetType(&SerialType{T: "bigserial"}),
+							Change: schema.ChangeType,
+						},
+					},
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `ALTER TABLE "public"."posts" ALTER COLUMN "c1" TYPE integer, ALTER COLUMN "c2" TYPE bigint`,
+						Reverse: `ALTER TABLE "public"."posts" ALTER COLUMN "c2" TYPE integer, ALTER COLUMN "c1" TYPE smallint`,
 					},
 				},
 			},

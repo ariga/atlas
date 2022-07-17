@@ -298,7 +298,7 @@ func columnType(c *columnDesc) (schema.Type, error) {
 		typ = &UserDefinedType{T: c.fmtype}
 		// The `typtype` column is set to 'e' for enum types, and the
 		// values are filled in batch after the rows above is closed.
-		// https://www.postgresql.org/docs/current/catalog-pg-type.html
+		// https://postgresql.org/docs/current/catalog-pg-type.html
 		if c.typtype == "e" {
 			typ = &enumType{T: c.fmtype, ID: c.typid}
 		}
@@ -615,31 +615,22 @@ func nArgs(start, n int) string {
 	return b.String()
 }
 
-var nextval = regexp.MustCompile(`(?i) *nextval\('(?:[\w$]+\.)*[\w$]+_[\w$]+_seq'(?:::regclass)*\) *$`)
+var nextval = regexp.MustCompile(`(?i) *nextval\('(?:[\w$]+\.)*([\w$]+_[\w$]+_seq)'(?:::regclass)*\) *$`)
 
 func defaultExpr(c *schema.Column, s string) {
-	switch {
+	switch m := nextval.FindStringSubmatch(s); {
 	// The definition of "<column> <serial type>" is equivalent to specifying:
 	// "<column> <int type> NOT NULL DEFAULT nextval('<table>_<column>_seq')".
 	// https://postgresql.org/docs/current/datatype-numeric.html#DATATYPE-SERIAL.
-	case nextval.MatchString(s):
-		var (
-			st     string
-			tt, ok = c.Type.Type.(*schema.IntegerType)
-		)
+	case len(m) == 2:
+		tt, ok := c.Type.Type.(*schema.IntegerType)
 		if !ok {
 			return
 		}
-		switch tt.T {
-		case TypeSmallInt:
-			st = TypeSmallSerial
-		case TypeInteger:
-			st = TypeSerial
-		case TypeBigInt:
-			st = TypeBigSerial
-		}
-		c.Type.Raw = st
-		c.Type.Type = &SerialType{T: st}
+		st := &SerialType{SequenceName: m[1]}
+		st.SetType(tt)
+		c.Type.Raw = st.T
+		c.Type.Type = st
 	case sqlx.IsLiteralBool(s), sqlx.IsLiteralNumber(s), sqlx.IsQuoted(s, '\''):
 		c.Default = &schema.Literal{V: s}
 	default:
@@ -701,14 +692,14 @@ type (
 	}
 
 	// ArrayType defines an array type.
-	// https://www.postgresql.org/docs/current/arrays.html
+	// https://postgresql.org/docs/current/arrays.html
 	ArrayType struct {
 		schema.Type        // Underlying items type (e.g. varchar(255)).
 		T           string // Formatted type (e.g. int[]).
 	}
 
 	// BitType defines a bit type.
-	// https://www.postgresql.org/docs/current/datatype-bit.html
+	// https://postgresql.org/docs/current/datatype-bit.html
 	BitType struct {
 		schema.Type
 		T   string
@@ -716,7 +707,7 @@ type (
 	}
 
 	// IntervalType defines an interval type.
-	// https://www.postgresql.org/docs/current/datatype-datetime.html
+	// https://postgresql.org/docs/current/datatype-datetime.html
 	IntervalType struct {
 		schema.Type
 		T         string // Type name.
@@ -725,7 +716,7 @@ type (
 	}
 
 	// A NetworkType defines a network type.
-	// https://www.postgresql.org/docs/current/datatype-net-types.html
+	// https://postgresql.org/docs/current/datatype-net-types.html
 	NetworkType struct {
 		schema.Type
 		T   string
@@ -739,10 +730,15 @@ type (
 	}
 
 	// A SerialType defines a serial type.
+	// https://postgresql.org/docs/current/datatype-numeric.html#DATATYPE-SERIAL
 	SerialType struct {
 		schema.Type
 		T         string
 		Precision int
+		// SequenceName holds the inspected sequence name attached to the column.
+		// It defaults to <Table>_<Column>_seq when the column is created, but may
+		// be different in case the table or the column was renamed.
+		SequenceName string
 	}
 
 	// A UUIDType defines a UUID type.
@@ -758,18 +754,18 @@ type (
 	}
 
 	// ConType describes constraint type.
-	// https://www.postgresql.org/docs/current/catalog-pg-constraint.html
+	// https://postgresql.org/docs/current/catalog-pg-constraint.html
 	ConType struct {
 		schema.Attr
 		T string // c, f, p, u, t, x.
 	}
 
 	// Sequence defines (the supported) sequence options.
-	// https://www.postgresql.org/docs/current/sql-createsequence.html
+	// https://postgresql.org/docs/current/sql-createsequence.html
 	Sequence struct {
 		Start, Increment int64
 		// Last sequence value written to disk.
-		// https://www.postgresql.org/docs/current/view-pg-sequences.html.
+		// https://postgresql.org/docs/current/view-pg-sequences.html.
 		Last int64
 	}
 
@@ -781,21 +777,21 @@ type (
 	}
 
 	// IndexType represents an index type.
-	// https://www.postgresql.org/docs/current/indexes-types.html
+	// https://postgresql.org/docs/current/indexes-types.html
 	IndexType struct {
 		schema.Attr
 		T string // BTREE, BRIN, HASH, GiST, SP-GiST, GIN.
 	}
 
 	// IndexPredicate describes a partial index predicate.
-	// https://www.postgresql.org/docs/current/catalog-pg-index.html
+	// https://postgresql.org/docs/current/catalog-pg-index.html
 	IndexPredicate struct {
 		schema.Attr
 		P string
 	}
 
 	// IndexColumnProperty describes an index column property.
-	// https://www.postgresql.org/docs/current/functions-info.html#FUNCTIONS-INFO-INDEX-COLUMN-PROPS
+	// https://postgresql.org/docs/current/functions-info.html#FUNCTIONS-INFO-INDEX-COLUMN-PROPS
 	IndexColumnProperty struct {
 		schema.Attr
 		// NullsFirst defaults to true for DESC indexes.
@@ -805,7 +801,7 @@ type (
 	}
 
 	// IndexStorageParams describes index storage parameters add with the WITH clause.
-	// https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-STORAGE-PARAMETERS
+	// https://postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-STORAGE-PARAMETERS
 	IndexStorageParams struct {
 		schema.Attr
 		// AutoSummarize defines the authsummarize storage parameter.
@@ -816,7 +812,7 @@ type (
 	}
 
 	// NoInherit attribute defines the NO INHERIT flag for CHECK constraint.
-	// https://www.postgresql.org/docs/current/catalog-pg-constraint.html
+	// https://postgresql.org/docs/current/catalog-pg-constraint.html
 	NoInherit struct {
 		schema.Attr
 	}
@@ -854,6 +850,39 @@ type (
 
 // IsUnique reports if the type is unique constraint.
 func (c ConType) IsUnique() bool { return strings.ToLower(c.T) == "u" }
+
+// IntegerType returns the underlying integer type this serial type represents.
+func (s *SerialType) IntegerType() *schema.IntegerType {
+	t := &schema.IntegerType{T: TypeInteger}
+	switch s.T {
+	case TypeSerial2, TypeSmallSerial:
+		t.T = TypeSmallInt
+	case TypeSerial8, TypeBigSerial:
+		t.T = TypeBigInt
+	}
+	return t
+}
+
+// SetType sets the serial type from the given integer type.
+func (s *SerialType) SetType(t *schema.IntegerType) {
+	switch t.T {
+	case TypeSmallInt, TypeInt2:
+		s.T = TypeSmallSerial
+	case TypeInteger, TypeInt4, TypeInt:
+		s.T = TypeSerial
+	case TypeBigInt, TypeInt8:
+		s.T = TypeBigSerial
+	}
+}
+
+// sequence returns the inspected name of the sequence
+// or the standard name defined by postgres.
+func (s *SerialType) sequence(t *schema.Table, c *schema.Column) string {
+	if s.SequenceName != "" {
+		return s.SequenceName
+	}
+	return fmt.Sprintf("%s_%s_seq", t.Name, c.Name)
+}
 
 // newIndexStorage parses and returns the index storage parameters.
 func newIndexStorage(opts string) (*IndexStorageParams, error) {
