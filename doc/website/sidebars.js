@@ -10,8 +10,7 @@
  */
 
 module.exports = {
-    // By default, Docusaurus generates a sidebar from the docs folder structure
-    tutorialSidebar: [
+    documentation: [
         {
             type: 'category',
             label: 'Getting Started',
@@ -71,7 +70,25 @@ module.exports = {
             id: 'contributing',
         }
     ],
-    aboutSidebar: [
+    knowledge: [
+        {
+            type: 'doc',
+            id: 'knowledge/knowledge'
+        },
+        {
+            type: 'category',
+            label: 'MySQL',
+            collapsed: false,
+            items: [
+                {
+                  type: 'doc',
+                  id: 'knowledge/mysql/generated-columns',
+                  label: 'Generated Columns'
+                },
+            ],
+        },
+    ],
+    about: [
         {
             type: 'doc',
             label: 'About',

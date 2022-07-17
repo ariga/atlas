@@ -44,8 +44,8 @@ module.exports = {
           position: 'left',
         },
         {
-          to: 'https://pkg.go.dev/ariga.io/atlas',
-          label: 'GoDoc',
+          to: 'knowledge',
+          label: 'Knowledge Center',
           position: 'left',
         },
         {
@@ -65,6 +65,7 @@ module.exports = {
             {"label": "Data Definition Language ", "to": "ddl/intro"},
             {"label": "CLI Reference", "to": "cli/reference"},
             {"label": "Blog", "to": "blog"},
+            {"label": "Knowledge Center", "to": "knowledge"},
             {"label": "About", "to": "about"},
           ]
         },
