@@ -126,10 +126,17 @@ and (max-width: 525px) {
   }
 }
 
+/* Make navbar looks friendly on small devices. */
 @media only screen
 and (max-width: 400px) {
   .nav_src-pages-index-module .linkItem_src-pages-index-module {
     padding-right: 0!important;
+  }
+  .nav_src-pages-index-module {
+    width: 100%!important;
+  }
+  .socialLinks_src-pages-index-module {
+    display: none !important;
   }
 }
 
