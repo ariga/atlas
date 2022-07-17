@@ -87,9 +87,9 @@ type (
 
 // Schema returns the first schema that matched the given name.
 func (r *Realm) Schema(name string) (*Schema, bool) {
-	for _, t := range r.Schemas {
-		if t.Name == name {
-			return t, true
+	for _, s := range r.Schemas {
+		if s.Name == name {
+			return s, true
 		}
 	}
 	return nil, false

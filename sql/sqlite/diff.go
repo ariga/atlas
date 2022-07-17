@@ -134,7 +134,7 @@ func (*Diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 func (d *Diff) Normalize(from, to *schema.Table) error {
 	used := make([]bool, len(to.ForeignKeys))
 	// In SQLite, there is no easy way to get the foreign-key constraint
-	// name, except for parsing the CREATE statement). Therefore, we check
+	// name, except for parsing the CREATE statement. Therefore, we check
 	// if there is a foreign-key with identical properties.
 	for _, fk1 := range from.ForeignKeys {
 		for i, fk2 := range to.ForeignKeys {
