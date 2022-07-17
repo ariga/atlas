@@ -113,19 +113,6 @@ export default function () {
                         return <img style={{margin: "20px 0" }} src={erdImage} alt="erd"/>
                     }}
                 </BrowserOnly>
-
-                <section className={index.section} style={{ marginTop: "10px" }}>
-                   <h2 className={index.titleSecondary} style={{ textAlign: "center" }}>
-                       Visualize your schemas <br/> using the <span style={{color: "#2064E9"}}>Atlas UI</span>
-                   </h2>
-                   <p className={index.paragraphSecondary}
-                      style={{ color: "#757889" }}>
-                       With a single command-line flag, Atlas opens up as a rich user interface to visualize and manage your data topology.
-                   </p>
-               </section>
-                <AtlasButton text="Get Started" link="/ui/intro" type="secondaryButton"/>
-
-                <img  className={index.dashboardImage} src="https://atlasgo.io/uploads/atlas-ui-180122.png" alt="ent"/>
             </div>
         </div>
 
