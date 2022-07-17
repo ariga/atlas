@@ -126,6 +126,13 @@ and (max-width: 525px) {
   }
 }
 
+@media only screen
+and (max-width: 400px) {
+  .nav_src-pages-index-module .linkItem_src-pages-index-module {
+    padding-right: 0!important;
+  }
+}
+
 /* Make sql syntax highlight a bit better */
 span.token.keyword {
   color: rgb(199, 146, 234);
