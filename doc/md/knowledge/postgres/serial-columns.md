@@ -193,7 +193,7 @@ schema "public" {
 }
 ```
 
-After changing the `c` to `bigint`, we can run `schema apply` and let Atlas plan and execute the new changes:
+After changing column `c` to `bigint`, we can run `schema apply` and let Atlas plan and execute the new changes:
 
 ```console
 atlas schema apply -u "postgres://postgres:pass@:5432/test?sslmode=disable" -f schema.hcl
