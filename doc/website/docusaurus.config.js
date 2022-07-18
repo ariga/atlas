@@ -11,6 +11,21 @@ module.exports = {
   themeConfig: {
     prism: {
       additionalLanguages: ['hcl'],
+      magicComments: [
+        {
+          className: 'theme-code-block-highlighted-line',
+          line: 'highlight-next-line',
+          block: {start: 'highlight-start', end: 'highlight-end'},
+        },
+        {
+          className: 'code-block-error-message',
+          line: 'highlight-next-line-error-message',
+        },
+        {
+          className: 'code-block-info-line',
+          line: 'highlight-next-line-info',
+        },
+      ],
     },
     algolia: {
       appId: 'D158RRDJO1',

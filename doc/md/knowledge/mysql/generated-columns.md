@@ -1,6 +1,6 @@
 ---
 id: generated-columns
-title: How to Use Generated Columns in MySQL with Atlas
+title: Generated Columns in MySQL with Atlas
 slug: /knowledge/mysql/generated-columns
 ---
 

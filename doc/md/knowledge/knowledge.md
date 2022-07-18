@@ -12,5 +12,11 @@ Welcome to the Atlas Knowledge Center.
 
 ### MySQL
 
-[How to Use Generated Columns in MySQL with Atlas](mysql/generated_columns.md)
+[Generated Columns](mysql/generated-columns.md)
+
+### PostgreSQL
+
+[Serial Type Columns](postgres/serial-columns.md)
+
+
 

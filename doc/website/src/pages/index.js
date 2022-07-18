@@ -1,17 +1,11 @@
 import React from 'react';
 import Link from '@docusaurus/Link';
-import LayoutProviders from '@theme/LayoutProviders';
+import LayoutProvider from '@theme/Layout/Provider';
 import Footer from '@theme/Footer';
 import index from './index.module.css';
 import GithubIcon from '../assets/icons/github.svg';
 import DiscordIcon from '../assets/icons/discord.svg';
 import BrowserOnly from "@docusaurus/core/lib/client/exports/BrowserOnly";
-
-function Chip({ text }) {
-    return <div className={index.chip}>
-        {text}
-    </div>
-}
 
 function Nav() {
     return  <ul className={index.nav}>
@@ -61,7 +55,7 @@ function AtlasButton({ link, text, type, style }) {
 }
 
 export default function () {
-    return <LayoutProviders>
+    return <LayoutProvider>
         {/* first slide */}
         <div id="slide1" className={index.slide1} style={{backgroundImage:'url(https://atlasgo.io/uploads/landing/background.png)'}}>
             <Header />
@@ -156,5 +150,5 @@ export default function () {
             </div>
         </div>
         <Footer />
-    </LayoutProviders>
+    </LayoutProvider>
 }
