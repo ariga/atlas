@@ -5,7 +5,7 @@ slug: /knowledge/postgres/serial-columns
 ---
 
 PostgreSQL allows creating columns of types `smallserial`, `serial`, and `bigserial`. These types are not
-actual types but more like "macros" for creating non-nullable integer columns with sequences attached.
+_actual_ types, but more like "macros" for creating non-nullable integer columns with sequences attached.
 
 We can see it in action by creating a table with 3 "serial columns": 
 
