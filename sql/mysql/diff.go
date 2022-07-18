@@ -358,8 +358,17 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	}
 	var changed bool
 	switch fromT := fromT.(type) {
-	case *schema.BinaryType, *schema.BoolType, *schema.DecimalType, *schema.FloatType:
-		changed = mustFormat(fromT) != mustFormat(toT)
+	case *BitType, *schema.BinaryType, *schema.BoolType, *schema.DecimalType, *schema.FloatType,
+		*schema.JSONType, *schema.StringType, *schema.SpatialType, *schema.TimeType:
+		ft, err := FormatType(fromT)
+		if err != nil {
+			return false, err
+		}
+		tt, err := FormatType(toT)
+		if err != nil {
+			return false, err
+		}
+		changed = ft != tt
 	case *schema.EnumType:
 		toT := toT.(*schema.EnumType)
 		changed = !sqlx.ValuesEqual(fromT.Values, toT.Values)
@@ -379,20 +388,6 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 			fromT.T, toT.T = ft[0], tt[0]
 		}
 		changed = fromT.T != toT.T || fromT.Unsigned != toT.Unsigned
-	case *schema.JSONType:
-		toT := toT.(*schema.JSONType)
-		changed = fromT.T != toT.T
-	case *schema.StringType:
-		changed = mustFormat(fromT) != mustFormat(toT)
-	case *schema.SpatialType:
-		toT := toT.(*schema.SpatialType)
-		changed = fromT.T != toT.T
-	case *schema.TimeType:
-		toT := toT.(*schema.TimeType)
-		changed = fromT.T != toT.T
-	case *BitType:
-		toT := toT.(*BitType)
-		changed = fromT.T != toT.T
 	case *SetType:
 		toT := toT.(*SetType)
 		changed = !sqlx.ValuesEqual(fromT.Values, toT.Values)

@@ -1,0 +1,25 @@
+apply 1.hcl
+cmpshow t 1.sql
+
+-- 1.hcl --
+schema "$db" {}
+
+table "t" {
+  schema = schema.$db
+  column "c1" {
+    type = bit
+  }
+  column "c2" {
+    type = bit(1)
+  }
+  column "c3" {
+    type = bit(64)
+  }
+}
+
+-- 1.sql --
+CREATE TABLE `t` (
+  `c1` bit(1) NOT NULL,
+  `c2` bit(1) NOT NULL,
+  `c3` bit(64) NOT NULL
+)

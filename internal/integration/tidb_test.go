@@ -770,7 +770,7 @@ create table atlas_types_sanity
 				Columns: []*schema.Column{
 					{
 						Name:    "tBit",
-						Type:    &schema.ColumnType{Type: &mysql.BitType{T: "bit"}, Raw: "bit(10) unsigned", Null: true},
+						Type:    &schema.ColumnType{Type: &mysql.BitType{T: "bit", Size: 10}, Raw: "bit(10) unsigned", Null: true},
 						Default: &schema.Literal{V: "b'1000000001'"},
 					},
 					{

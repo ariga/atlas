@@ -601,8 +601,10 @@ func parseColumn(typ string) (parts []string, size int64, unsigned bool, err err
 		if len(parts) > 2 || len(parts) == 2 && !unsigned {
 			size, err = strconv.ParseInt(parts[1], 10, 64)
 		}
-	case TypeBinary, TypeVarBinary, TypeChar, TypeVarchar:
-		size, err = strconv.ParseInt(parts[1], 10, 64)
+	case TypeBit, TypeBinary, TypeVarBinary, TypeChar, TypeVarchar:
+		if len(parts) > 1 {
+			size, err = strconv.ParseInt(parts[1], 10, 64)
+		}
 	}
 	if err != nil {
 		return nil, 0, false, fmt.Errorf("parse %q to int: %w", parts[1], err)
@@ -828,7 +830,8 @@ type (
 	// BitType represents a bit type.
 	BitType struct {
 		schema.Type
-		T string
+		T    string
+		Size int
 	}
 
 	// SetType represents a set type.

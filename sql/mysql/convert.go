@@ -20,6 +20,11 @@ func FormatType(t schema.Type) (string, error) {
 	switch t := t.(type) {
 	case *BitType:
 		f = strings.ToLower(t.T)
+		if t.Size > 1 {
+			// The default size is 1. Thus, both
+			// BIT and BIT(1) are formatted as bit.
+			f += fmt.Sprintf("(%d)", t.Size)
+		}
 	case *schema.BoolType:
 		// Map all flavors to a single form.
 		switch f = strings.ToLower(t.T); f {
@@ -74,7 +79,7 @@ func FormatType(t schema.Type) (string, error) {
 	case *schema.JSONType:
 		f = strings.ToLower(t.T)
 	case *SetType:
-		f = fmt.Sprintf("enum(%s)", formatValues(t.Values))
+		f = fmt.Sprintf("set(%s)", formatValues(t.Values))
 	case *schema.StringType:
 		f = strings.ToLower(t.T)
 		switch f {
@@ -113,7 +118,8 @@ func ParseType(raw string) (schema.Type, error) {
 	switch t := parts[0]; t {
 	case TypeBit:
 		return &BitType{
-			T: t,
+			T:    t,
+			Size: int(size),
 		}, nil
 	// bool and booleans are synonyms for
 	// tinyint with display-width set to 1.
@@ -242,15 +248,6 @@ func ParseType(raw string) (schema.Type, error) {
 			T: t,
 		}, nil
 	}
-}
-
-// mustFormat calls to FormatType and panics in case of error.
-func mustFormat(t schema.Type) string {
-	s, err := FormatType(t)
-	if err != nil {
-		panic(err)
-	}
-	return s
 }
 
 // formatValues formats ENUM and SET values.
