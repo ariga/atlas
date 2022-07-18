@@ -25,7 +25,7 @@ CREATE TABLE serials(
  c3     | bigint   | not null | nextval('t_c3_seq'::regclass)
 ```
 
-As you can see, each serial column was created as non-nullable integer with a default value set to next sequence
+As you can see, each serial column was created as non-nullable integer with a default value set to the next sequence
 value.
 
 :::info
