@@ -53,7 +53,7 @@ owned by the column `c`, and setting the column `DEFAULT` value to the increment
 [`nextval`](https://www.postgresql.org/docs/current/functions-sequence.html) function.
 
 :::note
-Note that, it is recommended to follow the PostgreSQL naming format (i.e. `<table>_<column>_seq`)
+Note that it is recommended to follow the PostgreSQL naming format (i.e. `<table>_<column>_seq`)
 when creating the sequence as some database tooling know to detect such columns as "serial columns".
 :::
 
