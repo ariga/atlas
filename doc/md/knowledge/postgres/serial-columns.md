@@ -91,7 +91,7 @@ DETAIL:  Key (c)=(2) already exists.
 ```
 
 We can work around this by setting the sequence current value to the maximum value of `c`, so the following call to
-`nextval` will return `MAX(c)+1`, the one after `MAX(c)+2`, etc.
+`nextval` will return `MAX(c)+1`, the one after `MAX(c)+2`, and so on.
 
 ```sql
 SELECT setval('"public"."t_c_seq"', (SELECT MAX("c") FROM "t"));
