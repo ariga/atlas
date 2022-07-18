@@ -209,7 +209,7 @@ DROP SEQUENCE IF EXISTS "public"."t_c_seq"
 ```
 
 As you can see, Atlas dropped the `DEFAULT` value that was created by the `serial` type, and in addition removed
-also the sequence that was attached to it as it is no longer used by the column.
+the sequence that was attached to it, as it is no longer used by the column.
 
 #### Change a column type from `bigint` to `serial`
 
