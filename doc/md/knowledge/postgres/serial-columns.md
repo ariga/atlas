@@ -116,8 +116,8 @@ SELECT "c" FROM "t";
 ### Managing Serial Columns with Atlas
 
 Atlas makes it easier to define and manipulate columns of `serial` types. Let's use the
-[`atlas schema inspect`](../../cli/reference.md#atlas-schema-inspect) command to get a representation in Atlas 
-the Atlas language of the table we created above:
+[`atlas schema inspect`](../../cli/reference.md#atlas-schema-inspect) command to get a representation
+of the table we created above in the Atlas HCL format :
 
 ```console
 atlas schema inspect -u "postgres://postgres:pass@:5432/test?sslmode=disable" > schema.hcl 
