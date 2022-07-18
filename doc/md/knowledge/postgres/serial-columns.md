@@ -35,7 +35,7 @@ Note that `nextval` increments the sequence by 1 and returns its value. Thus, th
 
 ### `ALTER COLUMN` type to serial
 
-Sometimes, it is necessary to change the column type from `integer` type to `serial`. However, as mentioned above, the
+Sometimes it is necessary to change the column type from `integer` type to `serial`. However, as mentioned above, the
 `serial` type is not a true type, and therefore, the following commands will fail:
 
 ```sql
