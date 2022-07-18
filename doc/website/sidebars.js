@@ -87,6 +87,18 @@ module.exports = {
                 },
             ],
         },
+        {
+            type: 'category',
+            label: 'PostgreSQL',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'knowledge/postgres/serial-columns',
+                    label: 'Serial Type Columns'
+                },
+            ],
+        },
     ],
     about: [
         {
