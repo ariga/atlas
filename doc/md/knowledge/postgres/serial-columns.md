@@ -233,7 +233,7 @@ schema "public" {
 Changing a column type from `bigint` to `serial` requires 3 changes:
 1. Create a sequence named `t_c_seq` owned by `c`.
 2. Set the `DEFAULT` value of `c` to `nextval('"public"."t_c_seq"')`.
-3. Alter the column type as `serial` maps to `integer` (!= `bigint`).
+3. Alter the column type, as `serial` maps to `integer` (!= `bigint`).
 
 We call [`atlas schema apply`](../../cli/reference.md#atlas-schema-apply) to plan and execute this three steps process
 with Atlas:
