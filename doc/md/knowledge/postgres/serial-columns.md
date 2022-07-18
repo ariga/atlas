@@ -138,7 +138,7 @@ schema "public" {
 }
 ```
 
-After inspecting the schema, we can modify it a bit to demonstrate Atlas's capabilities in migration planning:
+After inspecting the schema, we can modify it to demonstrate Atlas's capabilities in migration planning:
 
 #### Change a column type from `serial` to `bigserial`
 
