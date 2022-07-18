@@ -909,8 +909,12 @@ func TestTypes(t *testing.T) {
 			expected: &schema.EnumType{T: TypeEnum, Values: []string{"on", "off"}},
 		},
 		{
-			typeExpr: "bit(10)",
+			typeExpr: "bit",
 			expected: &BitType{T: TypeBit},
+		},
+		{
+			typeExpr: "bit(10)",
+			expected: &BitType{T: TypeBit, Size: 10},
 		},
 		{
 			typeExpr: "int(10)",

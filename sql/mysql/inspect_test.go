@@ -296,6 +296,34 @@ func TestDriver_InspectTable(t *testing.T) {
 			},
 		},
 		{
+			name: "bit type",
+			before: func(m mock) {
+				m.tableExists("public", "users", true)
+				m.ExpectQuery(queryColumns).
+					WithArgs("public", "users").
+					WillReturnRows(sqltest.Rows(`
++------------+------------+-------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+---------------------------+
+| TABLE_NAME |COLUMN_NAME | COLUMN_TYPE | COLUMN_COMMENT | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA | CHARACTER_SET_NAME | COLLATION_NAME | GENERATION_EXPRESSION     |
++------------+------------+-------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+---------------------------+
+| users      |c1          | bit        |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                       |
+| users      |c2          | bit(1)     |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                       |
+| users      |c3          | bit(2)     |                | NO          |            | NULL           |       | NULL               | NULL           | NULL                       |
++------------+------------+-------------+----------------+-------------+------------+----------------+-------+--------------------+----------------+---------------------------+
+`))
+				m.noIndexes()
+				m.noFKs()
+			},
+			expect: func(require *require.Assertions, t *schema.Table, err error) {
+				require.NoError(err)
+				require.Equal("users", t.Name)
+				require.EqualValues([]*schema.Column{
+					{Name: "c1", Type: &schema.ColumnType{Raw: "bit", Type: &BitType{T: "bit"}}},
+					{Name: "c2", Type: &schema.ColumnType{Raw: "bit(1)", Type: &BitType{T: "bit", Size: 1}}},
+					{Name: "c3", Type: &schema.ColumnType{Raw: "bit(2)", Type: &BitType{T: "bit", Size: 2}}},
+				}, t.Columns)
+			},
+		},
+		{
 			name: "string types",
 			before: func(m mock) {
 				m.tableExists("public", "users", true)
