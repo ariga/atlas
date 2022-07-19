@@ -470,7 +470,7 @@ table "t" {
 
 ### Integer
 
-The `smallint`, `integer` / `int`, `bigint` allows creating integer types.
+The `smallint`, `integer` / `int`, `bigint` types allow creating integer types.
 
 ```hcl
 table "t" {
