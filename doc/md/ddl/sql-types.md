@@ -122,7 +122,7 @@ table "t" {
 
 ### Fixed Point
 
-The `decimal` and `numeric` types are supported for storing exact numeric values. Note that, in MySQL the two types
+The `decimal` and `numeric` types are supported for storing exact numeric values. Note that in MySQL the two types
 are identical.
 
 ```hcl
