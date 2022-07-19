@@ -326,7 +326,7 @@ table "t" {
 ### Bit
 
 The `bit` and `bit varying` types allow creating
-[bit strings](https://www.postgresql.org/docs/current/datatype-bit.html) columns.
+[bit string](https://www.postgresql.org/docs/current/datatype-bit.html) columns.
 
 ```hcl
 table "t" {
