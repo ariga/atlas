@@ -633,7 +633,7 @@ func TestMarshalSpec_TimePrecision(t *testing.T) {
 					schema.NewTimeColumn("tTimestamp", TypeTimestamp, schema.TimePrecision(3)).
 						SetDefault(&schema.RawExpr{X: "current_timestamp(3)"}).
 						AddAttrs(&OnUpdate{A: "current_timestamp(3)"}),
-					schema.NewTimeColumn("tDate", TypeDate, schema.TimePrecision(2)),
+					schema.NewTimeColumn("tDate", TypeDate),
 					schema.NewTimeColumn("tYear", TypeYear, schema.TimePrecision(2)),
 				),
 		)
@@ -661,7 +661,7 @@ func TestMarshalSpec_TimePrecision(t *testing.T) {
   }
   column "tDate" {
     null = false
-    type = date(2)
+    type = date
   }
   column "tYear" {
     null = false
@@ -814,6 +814,7 @@ schema "test" {
 }
 
 func TestTypes(t *testing.T) {
+	p := func(i int) *int { return &i }
 	tests := []struct {
 		typeExpr  string
 		extraAttr string
@@ -833,11 +834,11 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			typeExpr: "binary(255)",
-			expected: &schema.BinaryType{T: TypeBinary, Size: 255},
+			expected: &schema.BinaryType{T: TypeBinary, Size: p(255)},
 		},
 		{
 			typeExpr: "varbinary(255)",
-			expected: &schema.BinaryType{T: TypeVarBinary, Size: 255},
+			expected: &schema.BinaryType{T: TypeVarBinary, Size: p(255)},
 		},
 		{
 			typeExpr: "int",
@@ -1005,10 +1006,6 @@ func TestTypes(t *testing.T) {
 			expected: &schema.TimeType{T: TypeDate},
 		},
 		{
-			typeExpr: "date(2)",
-			expected: typeTime(TypeDate, 2),
-		},
-		{
 			typeExpr: "time",
 			expected: &schema.TimeType{T: TypeTime},
 		},
@@ -1042,27 +1039,31 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			typeExpr: "varbinary(30)",
-			expected: &schema.BinaryType{T: TypeVarBinary, Size: 30},
+			expected: &schema.BinaryType{T: TypeVarBinary, Size: p(30)},
+		},
+		{
+			typeExpr: "binary",
+			expected: &schema.BinaryType{T: TypeBinary},
 		},
 		{
 			typeExpr: "binary(5)",
-			expected: &schema.BinaryType{T: TypeBinary, Size: 5},
+			expected: &schema.BinaryType{T: TypeBinary, Size: p(5)},
 		},
 		{
 			typeExpr: "blob(5)",
-			expected: &schema.StringType{T: TypeBlob},
+			expected: &schema.BinaryType{T: TypeBlob},
 		},
 		{
 			typeExpr: "tinyblob",
-			expected: &schema.StringType{T: TypeTinyBlob},
+			expected: &schema.BinaryType{T: TypeTinyBlob},
 		},
 		{
 			typeExpr: "mediumblob",
-			expected: &schema.StringType{T: TypeMediumBlob},
+			expected: &schema.BinaryType{T: TypeMediumBlob},
 		},
 		{
 			typeExpr: "longblob",
-			expected: &schema.StringType{T: TypeLongBlob},
+			expected: &schema.BinaryType{T: TypeLongBlob},
 		},
 		{
 			typeExpr: "json",
@@ -1162,6 +1163,43 @@ schema "test" {
 
 func TestInputVars(t *testing.T) {
 	spectest.TestInputVars(t, EvalHCL)
+}
+
+func TestParseType_Decimal(t *testing.T) {
+	for _, tt := range []struct {
+		input   string
+		wantT   *schema.DecimalType
+		wantErr bool
+	}{
+		{
+			input: "decimal",
+			wantT: &schema.DecimalType{T: TypeDecimal},
+		},
+		{
+			input: "decimal unsigned",
+			wantT: &schema.DecimalType{T: TypeDecimal, Unsigned: true},
+		},
+		{
+			input: "decimal(10)",
+			wantT: &schema.DecimalType{T: TypeDecimal, Precision: 10},
+		},
+		{
+			input: "decimal(10) unsigned",
+			wantT: &schema.DecimalType{T: TypeDecimal, Precision: 10, Unsigned: true},
+		},
+		{
+			input: "decimal(10,2)",
+			wantT: &schema.DecimalType{T: TypeDecimal, Precision: 10, Scale: 2},
+		},
+		{
+			input: "decimal(10, 2) unsigned",
+			wantT: &schema.DecimalType{T: TypeDecimal, Precision: 10, Scale: 2, Unsigned: true},
+		},
+	} {
+		d, err := ParseType(tt.input)
+		require.Equal(t, tt.wantErr, err != nil)
+		require.Equal(t, tt.wantT, d)
+	}
 }
 
 func typeTime(t string, p int) schema.Type {

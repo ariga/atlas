@@ -289,7 +289,7 @@ type BinaryOption func(*BinaryType)
 // BinarySize configures the size of the binary type.
 func BinarySize(size int) BinaryOption {
 	return func(b *BinaryType) {
-		b.Size = size
+		b.Size = &size
 	}
 }
 

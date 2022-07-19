@@ -194,7 +194,7 @@ type (
 	// BinaryType represents a type that stores a binary data.
 	BinaryType struct {
 		T    string
-		Size int
+		Size *int
 	}
 
 	// StringType represents a string type.
