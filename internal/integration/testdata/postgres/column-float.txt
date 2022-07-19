@@ -1,0 +1,64 @@
+apply 1.hcl
+cmpshow users 1.sql
+
+apply 2.hcl
+cmpshow users 2.sql
+
+-- 1.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "c1" {
+    type = real
+  }
+  column "c2" {
+    type = double_precision
+  }
+  column "c3" {
+    // Equals to real when precision is between 1 and 24.
+    type = float(10)
+  }
+  column "c4" {
+    // Equals to double_precision when precision is between 1 and 24.
+    type = float(30)
+  }
+}
+
+-- 1.sql --
+             Table "script_column_float.users"
+ Column |       Type       | Collation | Nullable | Default
+--------+------------------+-----------+----------+---------
+ c1     | real             |           | not null |
+ c2     | double precision |           | not null |
+ c3     | real             |           | not null |
+ c4     | double precision |           | not null |
+
+
+-- 2.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "c1" {
+    type = double_precision
+  }
+  column "c2" {
+    type = real
+  }
+  column "c3" {
+    type = float(30)
+  }
+  column "c4" {
+    type = float(10)
+  }
+}
+
+-- 2.sql --
+             Table "script_column_float.users"
+ Column |       Type       | Collation | Nullable | Default
+--------+------------------+-----------+----------+---------
+ c1     | double precision |           | not null |
+ c2     | real             |           | not null |
+ c3     | double precision |           | not null |
+ c4     | real             |           | not null |

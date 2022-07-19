@@ -314,6 +314,7 @@ const (
 	TypeReal   = "real"
 	TypeFloat8 = "float8" // double precision
 	TypeFloat4 = "float4" // real
+	TypeFloat  = "float"  // float(p).
 
 	TypeNumeric = "numeric"
 	TypeDecimal = "decimal" // numeric

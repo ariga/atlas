@@ -92,6 +92,15 @@ func FormatType(t schema.Type) (string, error) {
 			f = TypeReal
 		case TypeFloat8:
 			f = TypeDouble
+		case TypeFloat:
+			switch {
+			case t.Precision > 0 && t.Precision <= 24:
+				f = TypeReal
+			case t.Precision == 0 || (t.Precision > 24 && t.Precision <= 53):
+				f = TypeDouble
+			default:
+				return "", fmt.Errorf("postgres: precision for type float must be between 1 and 53: %d", t.Precision)
+			}
 		}
 	case *schema.DecimalType:
 		switch f = strings.ToLower(t.T); f {
@@ -228,7 +237,7 @@ func parseColumn(s string) (*columnDesc, error) {
 		if err := parseCharParts(c.parts, c); err != nil {
 			return nil, err
 		}
-	case TypeDecimal, TypeNumeric:
+	case TypeDecimal, TypeNumeric, TypeFloat:
 		if len(parts) > 1 {
 			c.precision, err = strconv.ParseInt(parts[1], 10, 64)
 			if err != nil {

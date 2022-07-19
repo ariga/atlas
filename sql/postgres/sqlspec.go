@@ -552,6 +552,7 @@ var TypeRegistry = schemahcl.NewRegistry(
 		schemahcl.NewTypeSpec(TypeTimestamp, schemahcl.WithAttributes(precisionTypeAttr()), formatTime()),
 		schemahcl.AliasTypeSpec("double_precision", TypeDouble),
 		schemahcl.NewTypeSpec(TypeReal),
+		schemahcl.NewTypeSpec(TypeFloat, schemahcl.WithAttributes(precisionTypeAttr())),
 		schemahcl.NewTypeSpec(TypeFloat8),
 		schemahcl.NewTypeSpec(TypeFloat4),
 		schemahcl.NewTypeSpec(TypeNumeric, schemahcl.WithAttributes(precisionTypeAttr(), &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),

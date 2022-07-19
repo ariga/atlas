@@ -934,6 +934,18 @@ func TestTypes(t *testing.T) {
 			expected: &schema.FloatType{T: TypeReal, Precision: 24},
 		},
 		{
+			typeExpr: "float",
+			expected: &schema.FloatType{T: TypeFloat},
+		},
+		{
+			typeExpr: "float(1)",
+			expected: &schema.FloatType{T: TypeFloat, Precision: 1},
+		},
+		{
+			typeExpr: "float(25)",
+			expected: &schema.FloatType{T: TypeFloat, Precision: 25},
+		},
+		{
 			typeExpr: "float8",
 			expected: &schema.FloatType{T: TypeFloat8, Precision: 53},
 		},

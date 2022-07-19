@@ -437,6 +437,32 @@ table "t" {
 }
 ```
 
+
+### Floating Point (Float)
+
+The `real` and `double_precision` types are supported for storing
+[approximate numeric values](https://www.postgresql.org/docs/current/datatype-numeric.html#DATATYPE-FLOAT).
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    type = real
+  }
+  column "c2" {
+    type = double_precision
+  }
+  column "c3" {
+    // Equals to real when precision is between 1 to 24.
+    type = float(10)
+  }
+  column "c2" {
+    // Equals to double_precision when precision is between 1 to 24.
+    type = float(30)
+  }
+}
+```
+
 ### Geometric
 
 Atlas supports the standard PostgreSQL types for creating geometric columns.
