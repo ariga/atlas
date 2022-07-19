@@ -23,9 +23,10 @@ func FormatType(t schema.Type) (string, error) {
 		f = strings.ToLower(t.T)
 	case *BitType:
 		f = strings.ToLower(t.T)
-		// BIT without a length is equivalent to BIT(1).
-		if f == TypeBit && t.Len == 0 {
-			f = fmt.Sprintf("%s(1)", f)
+		// BIT without a length is equivalent to BIT(1),
+		// BIT VARYING has unlimited length.
+		if f == TypeBit && t.Len > 1 || f == TypeBitVar && t.Len > 0 {
+			f = fmt.Sprintf("%s(%d)", f, t.Len)
 		}
 	case *schema.BoolType:
 		// BOOLEAN can be abbreviated as BOOL.
