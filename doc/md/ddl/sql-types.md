@@ -45,7 +45,7 @@ table "t" {
 
 ### Blob
 
-The `tinyblob`, `mediumblob`, `blob` and `longblob` types allow storing binary large object.
+The `tinyblob`, `mediumblob`, `blob` and `longblob` types allow storing binary large objects.
 
 ```hcl
 table "t" {
