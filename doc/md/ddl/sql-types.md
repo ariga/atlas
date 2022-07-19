@@ -87,7 +87,7 @@ Learn more about the motivation for these types in the
 
 ### Date and Time
 
-Atlas supports the standard MySQL types for storing date and time values. `time`, `timestamp`, `date`, `datetime`,
+Atlas supports the standard MySQL types for storing date and time values: `time`, `timestamp`, `date`, `datetime`,
 and `year`.
 
 ```hcl
