@@ -82,7 +82,7 @@ table "t" {
 }
 ```
 
-Learn more about the motivation for these types in
+Learn more about the motivation for these types in the
 [MySQL website](https://dev.mysql.com/doc/refman/8.0/en/other-vendor-data-types.html).
 
 ### Date and Time
