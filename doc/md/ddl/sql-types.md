@@ -67,7 +67,7 @@ table "t" {
 
 ### Boolean
 
-The `bool` and `boolean` are mapped to `tinyint(1)` in MySQL. Still, Atlas allows maintaining columns of type `bool`
+The `bool` and `boolean` types are mapped to `tinyint(1)` in MySQL. Still, Atlas allows maintaining columns of type `bool`
 in the schema for simplicity reasons.
 
 ```hcl
