@@ -269,7 +269,7 @@ func columnType(c *columnDesc) (schema.Type, error) {
 			}
 			typ.(*IntervalType).F = f
 		}
-	case TypeReal, TypeDouble, TypeFloat4, TypeFloat8:
+	case TypeReal, TypeDouble, TypeFloat, TypeFloat4, TypeFloat8:
 		typ = &schema.FloatType{T: t, Precision: int(c.precision)}
 	case TypeJSON, TypeJSONB:
 		typ = &schema.JSONType{T: t}
