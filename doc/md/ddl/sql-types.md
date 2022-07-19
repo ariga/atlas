@@ -120,7 +120,7 @@ table "t" {
 }
 ```
 
-### Fixed Point
+### Fixed Point (Decimal)
 
 The `decimal` and `numeric` types are supported for storing exact numeric values. Note that in MySQL the two types
 are identical.
@@ -147,7 +147,7 @@ table "t" {
 }
 ```
 
-### Floating Point
+### Floating Point (Float)
 
 The `float` and `double` types are supported for storing approximate numeric values.
 
@@ -317,6 +317,227 @@ table "t" {
   }
   column "c4" {
     type = linestring
+  }
+}
+```
+
+## PostgreSQL
+
+### Bit
+
+The `bit` and `bit varying` types allow creating
+[bit strings](https://www.postgresql.org/docs/current/datatype-bit.html) columns.
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    // Equals to bit(1).
+    type = bit
+  }
+  column "c2" {
+    type = bit(2)
+  }
+  column "c3" {
+    // Unlimited length.
+    type = bit_varying
+  }
+  column "c4" {
+    type = bit_varying(1)
+  }
+}
+
+```
+
+### Boolean
+
+The `boolean` type allows creating standard SQL boolean columns.
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    type = boolean
+  }
+  column "c2" {
+    type    = boolean
+    default = true 
+  }
+}
+```
+
+### Binary
+
+The `bytea` type allows creating binary strings columns.
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    type = bytea
+  }
+}
+```
+
+### Date, Time and Interval
+
+Atlas supports the standard PostgreSQL types for creating date, time and interval columns.
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    type = date
+  }
+  column "c2" {
+    // Equals to "time without time zone".
+    type = time
+  }
+  column "c3" {
+    // Equals to "time with time zone".
+    type = timetz
+  }
+  column "c4" {
+    // Equals "timestamp without time zone".
+    type = timestamp
+  }
+  column "c5" {
+    // Equals "timestamp with time zone".
+    type = timestamptz
+  }
+  column "c6" {
+    type = timestamp(4)
+  }
+  column "c7" {
+    type = interval
+  }
+}
+```
+
+### Fixed Point (Decimal)
+
+The `decimal` and `numeric` types are supported for storing exact numeric values. Note that in PostgreSQL the two types
+are identical.
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    // Equals to decimal.
+    type = numeric
+  }
+  column "c2" {
+    // Equals to decimal(5).
+    type = numeric(5)
+  }
+  column "c3" {
+    // Equals to decimal(5,2).
+    type = numeric(5,2)
+  }
+}
+```
+
+### Geometric
+
+Atlas supports the standard PostgreSQL types for creating geometric columns.
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    type = circle
+  }
+  column "c2" {
+    type = line
+  }
+  column "c3" {
+    type = lseg
+  }
+  column "c4" {
+      type = box
+  }
+  column "c5" {
+      type = path
+  }
+  column "c6" {
+      type = polygon
+  }
+  column "c7" {
+      type = point
+  }
+}
+```
+
+### Integer
+
+The `smallint`, `integer` / `int`, `bigint` allows creating integer types.
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    type = smallint
+  }
+  column "c2" {
+    type = integer
+  }
+  column "c3" {
+    type = int
+  }
+  column "c4" {
+    type    = bigint
+    default = 1
+  }
+}
+```
+
+### Network Address
+
+The `inet`, `cidr`, `macaddr` and `macaddr8` types allow creating network address columns.
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    type = inet
+  }
+  column "c2" {
+    type = cidr
+  }
+  column "c3" {
+    type = macaddr
+  }
+  column "c4" {
+    type = macaddr8
+  }
+}
+```
+
+### String
+
+The `varchar`, `char`, `character_varying`, `character` and `text` types allow creating string columns.
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    // Unlimited length.
+    type = varchar
+  }
+  column "c2" {
+    // Alias to character_varying(255).
+    type = varchar(255)
+  }
+  column "c3" {
+    // Equals to char(1).
+    type = char
+  }
+  column "c4" {
+    // Alias to character(5).
+    type = char(5)
+  }
+  column "c5" {
+    type = text
   }
 }
 ```
