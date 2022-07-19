@@ -192,7 +192,7 @@ table "t" {
 
 ### Integer
 
-The `int`, `tinyint`, `smallint`, `mediumint`, `bigint` integer types are support by Atlas.
+The `tinyint`, `smallint`, `int`, `mediumint`, `bigint` integer types are support by Atlas.
 
 ```hcl
 table "t" {
