@@ -749,7 +749,7 @@ create table atlas_types_sanity
 				},
 				{
 					Name: "tBlob",
-					Type: &schema.ColumnType{Type: &schema.BinaryType{T: "blob", Size: 0}, Raw: "blob(10)", Null: false},
+					Type: &schema.ColumnType{Type: &schema.BinaryType{T: "blob"}, Raw: "blob(10)", Null: false},
 					Default: &schema.Literal{
 						V: "'A'",
 					},

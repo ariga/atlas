@@ -589,7 +589,7 @@ func (i *inspect) myDefaultExpr(c *schema.Column, x string, attr *extraAttr) sch
 }
 
 // parseColumn returns column parts, size and signed-info from a MySQL type.
-func parseColumn(typ string) (parts []string, size int64, unsigned bool, err error) {
+func parseColumn(typ string) (parts []string, size int, unsigned bool, err error) {
 	switch parts = strings.FieldsFunc(typ, func(r rune) bool {
 		return r == '(' || r == ')' || r == ' ' || r == ','
 	}); parts[0] {
@@ -599,11 +599,11 @@ func parseColumn(typ string) (parts []string, size int64, unsigned bool, err err
 			unsigned = true
 		}
 		if len(parts) > 2 || len(parts) == 2 && !unsigned {
-			size, err = strconv.ParseInt(parts[1], 10, 64)
+			size, err = strconv.Atoi(parts[1])
 		}
 	case TypeBit, TypeBinary, TypeVarBinary, TypeChar, TypeVarchar:
 		if len(parts) > 1 {
-			size, err = strconv.ParseInt(parts[1], 10, 64)
+			size, err = strconv.Atoi(parts[1])
 		}
 	}
 	if err != nil {

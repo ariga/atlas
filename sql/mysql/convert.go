@@ -33,9 +33,9 @@ func FormatType(t schema.Type) (string, error) {
 		}
 	case *schema.BinaryType:
 		f = strings.ToLower(t.T)
-		if f == TypeVarBinary {
-			// Zero is also a valid length.
-			f = fmt.Sprintf("%s(%d)", f, t.Size)
+		// Accept 0 as a valid size, and avoid appending the default size of type BINARY.
+		if f == TypeVarBinary && t.Size != nil || f == TypeBinary && t.Size != nil && *t.Size != 1 {
+			f = fmt.Sprintf("%s(%d)", f, *t.Size)
 		}
 	case *schema.DecimalType:
 		if f = strings.ToLower(t.T); f != TypeDecimal && f != TypeNumeric {
@@ -144,7 +144,7 @@ func ParseType(raw string) (schema.Type, error) {
 		if attr := parts[len(parts)-1]; attr == "zerofill" && size != 0 {
 			ft.Attrs = []schema.Attr{
 				&DisplayWidth{
-					N: int(size),
+					N: size,
 				},
 				&ZeroFill{
 					A: attr,
@@ -158,18 +158,14 @@ func ParseType(raw string) (schema.Type, error) {
 			Unsigned: unsigned,
 		}
 		if len(parts) > 1 && parts[1] != "unsigned" {
-			p, err := strconv.ParseInt(parts[1], 10, 64)
-			if err != nil {
+			if dt.Precision, err = strconv.Atoi(parts[1]); err != nil {
 				return nil, fmt.Errorf("parse precision %q", parts[1])
 			}
-			dt.Precision = int(p)
 		}
 		if len(parts) > 2 && parts[2] != "unsigned" {
-			s, err := strconv.ParseInt(parts[2], 10, 64)
-			if err != nil {
+			if dt.Scale, err = strconv.Atoi(parts[2]); err != nil {
 				return nil, fmt.Errorf("parse scale %q", parts[1])
 			}
-			dt.Scale = int(s)
 		}
 		return dt, nil
 	case TypeFloat, TypeDouble, TypeReal:
@@ -178,18 +174,17 @@ func ParseType(raw string) (schema.Type, error) {
 			Unsigned: unsigned,
 		}
 		if len(parts) > 1 && parts[1] != "unsigned" {
-			p, err := strconv.ParseInt(parts[1], 10, 64)
-			if err != nil {
+			if ft.Precision, err = strconv.Atoi(parts[1]); err != nil {
 				return nil, fmt.Errorf("parse precision %q", parts[1])
 			}
-			ft.Precision = int(p)
 		}
 		return ft, nil
 	case TypeBinary, TypeVarBinary:
-		return &schema.BinaryType{
-			T:    t,
-			Size: int(size),
-		}, nil
+		bt := &schema.BinaryType{T: t}
+		if len(parts) > 1 {
+			bt.Size = &size
+		}
+		return bt, nil
 	case TypeTinyBlob, TypeMediumBlob, TypeBlob, TypeLongBlob:
 		return &schema.BinaryType{
 			T: t,
@@ -197,7 +192,7 @@ func ParseType(raw string) (schema.Type, error) {
 	case TypeChar, TypeVarchar:
 		return &schema.StringType{
 			T:    t,
-			Size: int(size),
+			Size: size,
 		}, nil
 	case TypeTinyText, TypeMediumText, TypeText, TypeLongText:
 		return &schema.StringType{

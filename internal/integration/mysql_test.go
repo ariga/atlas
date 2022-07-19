@@ -1014,34 +1014,34 @@ create table atlas_types_sanity
 					},
 					{
 						Name: "tVarBinary",
-						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "varbinary", Size: 30},
+						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "varbinary", Size: intp(30)},
 							Raw: "varbinary(30)", Null: true},
 						Default: &schema.Literal{V: t.valueByVersion(map[string]string{"mysql8": "0x546974616E"}, t.quoted("Titan"))},
 					},
 					{
 						Name: "tBinary",
-						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "binary", Size: 5},
+						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "binary", Size: intp(5)},
 							Raw: "binary(5)", Null: true},
 						Default: &schema.Literal{V: t.valueByVersion(map[string]string{"mysql8": "0x546974616E"}, t.quoted("Titan"))},
 					},
 					{
 						Name: "tBlob",
-						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "tinyblob", Size: 0},
+						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "tinyblob"},
 							Raw: "tinyblob", Null: true},
 					},
 					{
 						Name: "tTinyBlob",
-						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "tinyblob", Size: 0},
+						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "tinyblob"},
 							Raw: "tinyblob", Null: true},
 					},
 					{
 						Name: "tMediumBlob",
-						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "mediumblob", Size: 0},
+						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "mediumblob"},
 							Raw: "mediumblob", Null: true},
 					},
 					{
 						Name: "tLongBlob",
-						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "longblob", Size: 0},
+						Type: &schema.ColumnType{Type: &schema.BinaryType{T: "longblob"},
 							Raw: "longblob", Null: true},
 					},
 					{

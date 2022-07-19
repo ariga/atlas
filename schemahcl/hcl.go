@@ -151,7 +151,6 @@ func (r addrRef) patch(resource *Resource) error {
 		if ref, ok := attr.V.(*Ref); ok {
 			referenced, ok := cp[ref.V]
 			if !ok {
-				fmt.Println(cp)
 				return fmt.Errorf("broken reference to %q", ref.V)
 			}
 			if name, err := referenced.FinalName(); err == nil {
@@ -251,7 +250,7 @@ func (s *State) toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes, sco
 		at := &Attr{K: hclAttr.Name}
 		value, diag := hclAttr.Expr.Value(ctx)
 		if diag.HasErrors() {
-			return nil, diag
+			return nil, s.typeError(diag)
 		}
 		var err error
 		switch {
@@ -276,6 +275,29 @@ func (s *State) toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes, sco
 		return attrs[i].K < attrs[j].K
 	})
 	return attrs, nil
+}
+
+// typeError improves diagnostic reporting in case of parse error.
+func (s *State) typeError(diag hcl.Diagnostics) error {
+	for _, d := range diag {
+		switch e := d.Expression.(type) {
+		case *hclsyntax.FunctionCallExpr:
+			if d.Summary != "Call to unknown function" {
+				continue
+			}
+			if t, ok := s.findTypeSpec(e.Name); ok && len(t.Attributes) == 0 {
+				d.Detail = fmt.Sprintf("Type %q does not accept attributes", t.Name)
+			}
+		case *hclsyntax.ScopeTraversalExpr:
+			if d.Summary != "Unknown variable" {
+				continue
+			}
+			if t, ok := s.findTypeSpec(e.Traversal.RootName()); ok && len(t.Attributes) > 0 {
+				d.Detail = fmt.Sprintf("Type %q requires at least 1 argument", t.Name)
+			}
+		}
+	}
+	return diag
 }
 
 func isRef(v cty.Value) bool {
