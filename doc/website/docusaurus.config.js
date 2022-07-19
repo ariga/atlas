@@ -82,6 +82,7 @@ module.exports = {
             {"label": "Blog", "to": "blog"},
             {"label": "Knowledge Center", "to": "knowledge"},
             {"label": "About", "to": "about"},
+            {"label": "GoDoc", "to": "https://pkg.go.dev/ariga.io/atlas"},
           ]
         },
         {
