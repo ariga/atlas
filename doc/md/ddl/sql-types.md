@@ -368,7 +368,7 @@ table "t" {
 
 ### Binary
 
-The `bytea` type allows creating binary strings columns.
+The `bytea` type allows creating binary string columns.
 
 ```hcl
 table "t" {
