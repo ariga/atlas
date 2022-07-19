@@ -5,6 +5,7 @@ import Footer from '@theme/Footer';
 import index from './index.module.css';
 import GithubIcon from '../assets/icons/github.svg';
 import DiscordIcon from '../assets/icons/discord.svg';
+import TwitterIcon from '../assets/icons/twitter.svg';
 import BrowserOnly from "@docusaurus/core/lib/client/exports/BrowserOnly";
 
 function Nav() {
@@ -35,6 +36,9 @@ function SocialLinks() {
 
         <a href="https://discord.gg/zZ6sWVg6NT" target="_blank">
             <DiscordIcon />
+        </a>
+        <a href="https://twitter.com/ariga_io" target="_blank">
+            <TwitterIcon />
         </a>
     </div>
 }

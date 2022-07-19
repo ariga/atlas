@@ -90,6 +90,7 @@ module.exports = {
           "items": [
             {"label": "GitHub", "to": "https://github.com/ariga/atlas"},
             {"label": "Discord", "to": "https://discord.gg/zZ6sWVg6NT"},
+            {"label": "Twitter", "to": "https://twitter.com/ariga_io"}
           ]
         },
         {
