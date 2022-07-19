@@ -9,7 +9,7 @@ slug: /ddl/sql-types
 ### Bit
 
 The `bit` type allows creating [BIT](https://dev.mysql.com/doc/refman/8.0/en/bit-type.html) columns.
-An optional size attribute allows controlling the number of bits stored in the column with the range of 1 to 64.
+An optional size attribute allows controlling the number of bits stored in a column, ranging from 1 to 64.
 
 ```hcl
 table "t" {
