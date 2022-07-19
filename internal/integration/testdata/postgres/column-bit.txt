@@ -1,0 +1,69 @@
+apply 1.hcl
+cmpshow t 1.sql
+
+# Change size of the underlying type.
+apply 2.hcl
+cmpshow t 2.sql
+
+-- 1.hcl --
+schema "$db" {}
+
+table "t" {
+  schema = schema.$db
+  column "c1" {
+    // Equals to bit(1).
+    type = bit
+  }
+  column "c2" {
+    type = bit(2)
+  }
+  column "c3" {
+    // Unlimited length.
+    type = bit_varying
+  }
+  column "c4" {
+    type = bit_varying(1)
+  }
+}
+
+-- 1.sql --
+               Table "script_column_bit.t"
+ Column |      Type      | Collation | Nullable | Default
+--------+----------------+-----------+----------+---------
+ c1     | bit(1)         |           | not null |
+ c2     | bit(2)         |           | not null |
+ c3     | bit varying    |           | not null |
+ c4     | bit varying(1) |           | not null |
+
+-- 2.hcl --
+schema "$db" {}
+
+table "t" {
+  schema = schema.$db
+  column "c1" {
+    // No change.
+    type = bit(1)
+  }
+  column "c2" {
+    // Reduce size.
+    type = bit(1)
+  }
+  column "c3" {
+    // Add size.
+    type = bit_varying(4)
+  }
+  column "c4" {
+    // Increase size.
+    type = bit_varying(64)
+  }
+}
+
+-- 2.sql --
+               Table "script_column_bit.t"
+ Column |      Type       | Collation | Nullable | Default
+--------+-----------------+-----------+----------+---------
+ c1     | bit(1)          |           | not null |
+ c2     | bit(1)          |           | not null |
+ c3     | bit varying(4)  |           | not null |
+ c4     | bit varying(64) |           | not null |
+
