@@ -1,5 +1,6 @@
 ---
 title: Go API
+id: go-api
 slug: /integrations/go-api
 ---
 In addition to using Atlas as a CLI tool, all of Atlas's core-engine capabilities are available as
