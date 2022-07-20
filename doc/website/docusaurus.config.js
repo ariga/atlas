@@ -130,10 +130,6 @@ module.exports = {
             to: '/integrations/terraform-provider',
             from: '/terraform-provider'
           },
-          {
-            to: '/integrations/go-api',
-            from: ['/go-api/intro','/go-api/inspect'],
-          },
         ],
       },
     ],
