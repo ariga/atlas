@@ -102,8 +102,7 @@ As you can see, the `Inspector` interface provides methods for inspecting on dif
 Each database driver (for example [MySQL](https://pkg.go.dev/ariga.io/atlas@master/sql/mysql#Driver),
 [Postgres](https://pkg.go.dev/ariga.io/atlas@master/sql/postgres#Driver) or
 [SQLite](https://pkg.go.dev/ariga.io/atlas@master/sql/sqlite#Driver)) implements this interface. Let's
-see how we can use this interface by inspecting a "dummy" SQLite database. Continuing on the example
-in the [previous](intro.md) section:
+see how we can use this interface by inspecting a "dummy" SQLite database.
 
 ```go
 func TestInspect(t *testing.T) {
