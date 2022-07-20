@@ -126,6 +126,14 @@ module.exports = {
             to: '/dev-database',
             from: '/cli/dev-database',
           },
+          {
+            to: '/integrations/terraform-provider',
+            from: '/terraform-provider'
+          },
+          {
+            to: '/integrations/go-api',
+            from: ['/go-api/intro','/go-api/inspect'],
+          },
         ],
       },
     ],
