@@ -47,14 +47,6 @@ module.exports = {
         },
         {
             type: 'doc',
-            id: 'ui/atlas-ui-intro',
-        },
-        {
-            type: 'doc',
-            id: 'deployment/deployment',
-        },
-        {
-            type: 'doc',
             id: 'terraform-provider',
         },
         {
