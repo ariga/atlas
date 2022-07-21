@@ -1,6 +1,6 @@
 ---
-id: ddl-intro
-slug: /ddl/intro
+id: ddl
+slug: /ddl
 title: Data Definition Language
 ---
 
@@ -9,8 +9,8 @@ title: Data Definition Language
 In the core of the Atlas project resides the Atlas Data Definition Language (DDL). The DDL is designed to capture an
 organization's data topologies and other aspects of its data infrastructure.
 
-In the design of the DDL, we put an emphasis on extensibility: As data topologies can contain a set of diverse 
-data technologies, the language is designed to be modular with different extensions extending the types of 
+In the design of the DDL, we put an emphasis on extensibility: As data topologies can contain a set of diverse
+data technologies, the language is designed to be modular with different extensions extending the types of
 resources and relationships that can be described using it.
 
 ## HCL
@@ -31,7 +31,7 @@ user "rotemtam" {
 
 This block describes a resource of type `user` with a name of `rotemtam`.
 
-### Qualifiers 
+### Qualifiers
 
 In some cases, a document may contain multiple resources with the same name. To differentiate between
 the different resources, the Atlas DDL supports _qualifiers_, an additional label preceding the resource
@@ -39,7 +39,7 @@ name:
 
 ```hcl
 person "dr" "jekyll" {
-  
+
 }
 ```
 
@@ -122,7 +122,7 @@ playlist "comedy" {
     show.seinfeld.id
     // will equal 1
     show.friends.id,
-    // will equal 2 
+    // will equal 2
   ]
 }
 ```
@@ -137,10 +137,10 @@ func ExampleUnmarshal() {
     f := `
 show "seinfeld" {
 	writer "jerry" {
-		full_name = "Jerry Seinfeld"	
+		full_name = "Jerry Seinfeld"
 	}
 	writer "larry" {
-		full_name = "Larry David"	
+		full_name = "Larry David"
 	}
 }`
 
@@ -167,11 +167,11 @@ show "seinfeld" {
 }
 ```
 
-This function takes a byte-slice, an empty interface as arguments and a map of strings as input. 
-The empty interface should be a  pointer to a struct into which the `EvalBytes` function will 
+This function takes a byte-slice, an empty interface as arguments and a map of strings as input.
+The empty interface should be a  pointer to a struct into which the `EvalBytes` function will
 read the values. The struct fields must be annotated with `spec` tags that define the mapping from HCL to the Go type.
-This mapping is discussed in the section about [Extensions](#extensions). The final map argument may contain 
-[Input Values](input.md) to be passed as parameters of the evaluation.  
+This mapping is discussed in the section about [Extensions](#extensions). The final map argument may contain
+[Input Values](input.md) to be passed as parameters of the evaluation.
 
 ### Writing with Go
 
@@ -214,7 +214,7 @@ func ExampleMarshal() {
 ## Extensions
 
 Applications working with the Atlas DDL are expected to extend the Atlas language by
-defining their own type structs that objects can be handled in a type-safe way. 
+defining their own type structs that objects can be handled in a type-safe way.
 
 The mapping between the extension struct fields and the configuration syntax is done by placing tags on the
 extension struct field using the `spec` key in the tag. To specify that a field should be mapped to
@@ -265,6 +265,6 @@ Can capture a qualified HCL resource such as:
 
 ```hcl
 person "dr" "jekyll" {
-  
+
 }
 ```

@@ -142,6 +142,26 @@ module.exports = {
             to: '/concepts/dev-database',
             from: '/dev-database',
           },
+          {
+            to: '/concepts/ddl',
+            from: '/ddl/intro',
+          },
+          {
+            to: '/atlas-schema/input-variables',
+            from: '/ddl/input-variables',
+          },
+          {
+            to: '/atlas-schema/projects',
+            from: '/cli/projects',
+          },
+          {
+            to: '/atlas-schema/sql-types',
+            from: '/ddl/sql-types',
+          },
+          {
+            to: '/atlas-schema/sql-resources',
+            from: '/ddl/sql',
+          },
         ],
       },
     ],
