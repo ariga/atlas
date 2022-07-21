@@ -123,10 +123,6 @@ module.exports = {
       {
         redirects: [
           {
-            to: '/dev-database',
-            from: '/cli/dev-database',
-          },
-          {
             to: '/integrations/terraform-provider',
             from: '/terraform-provider'
           },
