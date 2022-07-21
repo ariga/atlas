@@ -40,7 +40,6 @@ module.exports = {
             type: 'category',
             label: 'CLI',
             items: [
-                {type: 'doc', id: 'cli/cli-reference', label: 'Reference'},
                 {type: 'doc', id: 'cli/cli-url', label: 'URLs'},
                 {type: 'doc', id: 'cli/projects'},
             ]
@@ -56,6 +55,10 @@ module.exports = {
         {
             type: 'doc',
             id: 'contributing',
+        },
+        {
+            type: 'doc',
+            id: 'cli-reference'
         }
     ],
     knowledge: [
