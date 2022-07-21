@@ -213,12 +213,11 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 			return false, err
 		}
 		changed = t1 != t2
-	case *enumType:
-		toT := toT.(*schema.EnumType)
-		changed = fromT.T != toT.T || !sqlx.ValuesEqual(fromT.Values, toT.Values)
 	case *schema.EnumType:
 		toT := toT.(*schema.EnumType)
-		changed = fromT.T != toT.T || !sqlx.ValuesEqual(fromT.Values, toT.Values)
+		// Column type was changed if the underlying enum type was changed or values are not equal.
+		changed = !sqlx.ValuesEqual(fromT.Values, toT.Values) || fromT.T != toT.T ||
+			(toT.Schema != nil && fromT.Schema != nil && fromT.Schema.Name != toT.Schema.Name)
 	case *CurrencyType:
 		toT := toT.(*CurrencyType)
 		changed = fromT.T != toT.T
