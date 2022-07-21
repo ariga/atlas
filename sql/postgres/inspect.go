@@ -300,7 +300,7 @@ func columnType(c *columnDesc) (schema.Type, error) {
 		// values are filled in batch after the rows above is closed.
 		// https://postgresql.org/docs/current/catalog-pg-type.html
 		if c.typtype == "e" {
-			typ = &enumType{T: c.fmtype, ID: c.typid}
+			typ = newEnumType(c.fmtype, c.typid)
 		}
 	default:
 		typ = &schema.UnsupportedType{T: t}
@@ -321,9 +321,12 @@ func (i *inspect) enumValues(ctx context.Context, s *schema.Schema) error {
 				if _, ok := ids[enum.ID]; !ok {
 					args = append(args, enum.ID)
 				}
-				// Convert the intermediate type to the
-				// standard schema.EnumType.
-				e := &schema.EnumType{T: enum.T}
+				// Convert the intermediate type to
+				// the standard schema.EnumType.
+				e := &schema.EnumType{T: enum.T, Schema: s}
+				if enum.Schema != "" && enum.Schema != s.Name {
+					e.Schema = schema.New(enum.Schema)
+				}
 				c.Type.Type = e
 				c.Type.Raw = enum.T
 				ids[enum.ID] = append(ids[enum.ID], e)
@@ -615,10 +618,10 @@ func nArgs(start, n int) string {
 	return b.String()
 }
 
-var nextval = regexp.MustCompile(`(?i) *nextval\('(?:[\w$]+\.)*([\w$]+_[\w$]+_seq)'(?:::regclass)*\) *$`)
+var reNextval = regexp.MustCompile(`(?i) *nextval\('(?:[\w$]+\.)*([\w$]+_[\w$]+_seq)'(?:::regclass)*\) *$`)
 
 func defaultExpr(c *schema.Column, s string) {
-	switch m := nextval.FindStringSubmatch(s); {
+	switch m := reNextval.FindStringSubmatch(s); {
 	// The definition of "<column> <serial type>" is equivalent to specifying:
 	// "<column> <int type> NOT NULL DEFAULT nextval('<table>_<column>_seq')".
 	// https://postgresql.org/docs/current/datatype-numeric.html#DATATYPE-SERIAL.
@@ -687,6 +690,7 @@ type (
 	enumType struct {
 		schema.Type
 		T      string // Type name.
+		Schema string // Optional schema name.
 		ID     int64  // Type id.
 		Values []string
 	}
@@ -910,6 +914,43 @@ func newIndexStorage(opts string) (*IndexStorageParams, error) {
 	return params, nil
 }
 
+// reEnumType extracts the enum type and an option schema qualifier.
+var reEnumType = regexp.MustCompile(`^(?:(".+"|\w+)\.)?(".+"|\w+)$`)
+
+func newEnumType(t string, id int64) *enumType {
+	var (
+		e     = &enumType{T: t, ID: id}
+		parts = reEnumType.FindStringSubmatch(e.T)
+		r     = func(s string) string {
+			s = strings.ReplaceAll(s, `""`, `"`)
+			if len(s) > 1 && s[0] == '"' && s[len(s)-1] == '"' {
+				s = s[1 : len(s)-1]
+			}
+			return s
+		}
+	)
+	if len(parts) > 1 {
+		e.Schema = r(parts[1])
+	}
+	if len(parts) > 2 {
+		e.T = r(parts[2])
+	}
+	return e
+}
+
+func enumIdent(s *schema.Schema, e *schema.EnumType) string {
+	switch {
+	// Enum schema has higher precedence.
+	case e.Schema != nil:
+		return fmt.Sprintf("%q.%q", e.Schema.Name, e.T)
+	// Fallback to table schema if exists.
+	case s != nil:
+		return fmt.Sprintf("%q.%q", s.Name, e.T)
+	default:
+		return strconv.Quote(e.T)
+	}
+}
+
 const (
 	// Query to list runtime parameters.
 	paramsQuery = `SELECT setting FROM pg_settings WHERE name IN ('lc_collate', 'lc_ctype', 'server_version_num', 'crdb_version') ORDER BY name DESC`
@@ -992,7 +1033,7 @@ FROM
 	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
 	JOIN pg_catalog.pg_class AS t3 ON t3.relnamespace = t2.oid AND t3.relname = t1.table_name
 	JOIN pg_catalog.pg_attribute AS a ON a.attrelid = t3.oid AND a.attname = t1.column_name
-	LEFT JOIN pg_catalog.pg_type AS t4 ON t1.udt_name = t4.typname
+	LEFT JOIN pg_catalog.pg_type AS t4 ON t1.udt_name = t4.typname AND t4.typnamespace = t2.oid
 WHERE
 	t1.table_schema = $1 AND t1.table_name IN (%s)
 ORDER BY

@@ -268,6 +268,13 @@ func EnumValues(values ...string) EnumOption {
 	}
 }
 
+// EnumSchema configures the schema of the enum.
+func EnumSchema(s *Schema) EnumOption {
+	return func(e *EnumType) {
+		e.Schema = s
+	}
+}
+
 // NewEnumColumn creates a new EnumType column.
 func NewEnumColumn(name string, opts ...EnumOption) *Column {
 	t := &EnumType{}
