@@ -8,11 +8,11 @@ image: https://blog.ariga.io/uploads/images/posts/v0.4.1/project-file.png
 A few days ago we released [v0.4.1](https://github.com/ariga/atlas/releases/tag/v0.4.1) of
 Atlas. Along with [a multitude](https://github.com/ariga/atlas/compare/v0.4.0...v0.4.1) of
 improvements and fixes, I'm happy to announce the release of a feature that we've been planning
-for a while: [Project Files](https://atlasgo.io/cli/projects).
+for a while: [Project Files](https://atlasgo.io/atlas-schema/projects).
 
-Project files provide a way to describe and interact with multiple environments while working 
+Project files provide a way to describe and interact with multiple environments while working
 with Atlas. A project file is a file named `atlas.hcl` that contains one or more `env` blocks,
-each describing an environment. Each environment has a reference to where the schema definition 
+each describing an environment. Each environment has a reference to where the schema definition
 file resides, a database URL and an array of the schemas in the database that are managed by Atlas:
 
 ```hcl
@@ -20,15 +20,15 @@ file resides, a database URL and an array of the schemas in the database that ar
 env "local" {
   // Declare where the schema definition file resides.
   src = "./schema/project.hcl"
-  
+
   // Define the URL of the database which is managed in
   // this environment.
   url = "mysql://localhost:3306"
-  
+
   // Define the URL of the Dev Database for this environment.
   // See: https://atlasgo.io/dev-database
   dev = "mysql://localhost:3307"
-  
+
   // The schemas in the database that are managed by Atlas.
   schemas = ["users", "admin"]
 }
@@ -66,8 +66,8 @@ Then run the `migrate diff` command against this environment using the `--env` f
 atlas migrate diff --env local
 ```
 
-Alternatively, suppose you want to use Atlas to apply the schema on your staging environment. 
-Without project files, you would use: 
+Alternatively, suppose you want to use Atlas to apply the schema on your staging environment.
+Without project files, you would use:
 
 ```
 atlas schema apply -u mysql://root:password@db.ariga.dev:3306 --dev-url mysql://root:password@localhost:3307 -f schema.hcl
@@ -88,10 +88,10 @@ atlas schema apply --env staging
 
 ### Passing credentials as input values
 
-Similar to [schema definition files](/ddl/sql), project files also support [Input Variables](/ddl/input-variables). This means
-that we can define `variable` blocks on the project file to declare which values should be provided when the file is 
-evaluated. This mechanism can (and should) be used to avoid committing to source control database credentials. 
-To do this, first define a variable named `db_password`: 
+Similar to [schema definition files](/atlas-schema/sql-resources), project files also support [Input Variables](/ddl/input-variables). This means
+that we can define `variable` blocks on the project file to declare which values should be provided when the file is
+evaluated. This mechanism can (and should) be used to avoid committing to source control database credentials.
+To do this, first define a variable named `db_password`:
 
 ```hcl
 variable "db_password" {
@@ -109,8 +109,8 @@ env "staging" {
 }
 ```
 
-If we run `schema apply` without providing the password input variable, we will receive an 
-error message: 
+If we run `schema apply` without providing the password input variable, we will receive an
+error message:
 
 ```
 Error: missing value for required variable "db_password"
@@ -122,11 +122,11 @@ To provide the input variable run:
 atlas schema apply --env staging --var db_password=pass
 ```
 
-Input variables can be used for many other use cases by passing them as [input values to schema files](https://atlasgo.io/cli/projects#project-input-variables).
+Input variables can be used for many other use cases by passing them as [input values to schema files](https://atlasgo.io/atlas-schema/projects#project-input-variables).
 
 ### What's next
 
-In this post, I presented [Project Files](https://atlasgo.io/cli/projects), a new feature recently added to Atlas
+In this post, I presented [Project Files](https://atlasgo.io/atlas-schema/projects), a new feature recently added to Atlas
 to help developers create more fluent workflows for managing changes to their database schemas. In the coming weeks
 we will be adding a few more improvements to the dev flow, such as support for marking a specific environment as
 the default one (alleviating the need to specify `--env` in many cases) and [multi-file schema definitions](https://github.com/ariga/atlas/issues/510).

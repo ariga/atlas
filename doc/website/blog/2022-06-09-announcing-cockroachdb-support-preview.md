@@ -126,7 +126,7 @@ docker stop crdb
 In this short example, we demonstrated two of Atlas's basic features: database inspection
 and declarative schema migration (applying a desired schema on a database). Here are some topics
 you may want to explore when getting started with Atlas:
-* [Learn the DDL](/ddl/sql) - learn how to define any SQL resource in Atlas's data definition
+* [Learn the DDL](/atlas-schema/sql-resources) - learn how to define any SQL resource in Atlas's data definition
   language.
 * [Try the Terraform Provider](https://atlasgo.io/blog/2022/05/04/announcing-terraform-provider) - see how you can use
   the Atlas Terraform Provider to integrate schema management in your general Infrastructure-as-Code workflows.

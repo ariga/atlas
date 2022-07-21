@@ -72,7 +72,7 @@ Will run the `migrate validate` command against the Dev Database defined in the
 
 ### Passing Input Values
 
-Project files may pass [input values](/ddl/input-variables) to variables defined in
+Project files may pass [input values](/atlas-schemas/input-variables) to variables defined in
 the Atlas schema of the environment. To do this simply provide additional attributes
 to the environment block:
 ```hcl

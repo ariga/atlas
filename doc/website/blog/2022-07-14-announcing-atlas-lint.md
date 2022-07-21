@@ -53,7 +53,7 @@ table "users" {
 ```
 
 To simplify the commands we need to type in this demo, let's create an Atlas
-[project file](https://atlasgo.io/cli/projects) to define a local environment.
+[project file](https://atlasgo.io/atlas-schema/projects) to define a local environment.
 ```hcl title=atlas.hcl
 env "local" {
   src = "./schema.hcl"
