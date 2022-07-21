@@ -257,6 +257,7 @@ enum "account_type" {
 			{SeqNo: 0, C: exp.Tables[1].Columns[0]},
 		},
 	}
+	exp.Realm = schema.NewRealm(exp)
 	require.EqualValues(t, exp, &s)
 }
 
@@ -339,6 +340,7 @@ table "logs" {
 		c := schema.NewStringColumn("name", "text")
 		expected := schema.New("test").
 			AddTables(schema.NewTable("logs").AddColumns(c).AddAttrs(&Partition{T: PartitionTypeHash, Parts: []*PartitionPart{{C: c}}}))
+		expected.SetRealm(schema.NewRealm(expected))
 		require.Equal(t, expected, s)
 	})
 
@@ -369,6 +371,7 @@ table "logs" {
 		c := schema.NewStringColumn("name", "text")
 		expected := schema.New("test").
 			AddTables(schema.NewTable("logs").AddColumns(c).AddAttrs(&Partition{T: PartitionTypeRange, Parts: []*PartitionPart{{C: c}, {X: &schema.RawExpr{X: "lower(name)"}}}}))
+		expected.SetRealm(schema.NewRealm(expected))
 		require.Equal(t, expected, s)
 	})
 
@@ -666,7 +669,7 @@ table "users" {
 	)
 	err := EvalHCLBytes([]byte(f), &s, nil)
 	require.NoError(t, err)
-	exp := schema.New("test").
+	expected := schema.New("test").
 		AddTables(
 			schema.NewTable("users").
 				AddColumns(
@@ -675,7 +678,8 @@ table "users" {
 					schema.NewIntColumn("c3", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "3", Type: "STORED"}),
 				),
 		)
-	require.EqualValues(t, exp, &s)
+	expected.SetRealm(schema.NewRealm(expected))
+	require.EqualValues(t, expected, &s)
 }
 
 func TestMarshalSpec_Enum(t *testing.T) {

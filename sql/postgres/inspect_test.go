@@ -77,7 +77,7 @@ func TestDriver_InspectTable(t *testing.T) {
  users       |  c30         | interval                    | interval            | NO          |                                        |                          |                   |                  6 |               |        MONTH        |                    |                | NO          |                |                    |                  |                     |                       |         | b       |  1269
  users       |  c31         | interval                    | interval            | NO          |                                        |                          |                   |                  6 |               | MINUTE TO SECOND(6) |                    |                | NO          |                |                    |                  |                     |                       |         | b       |  1233
  users       |  c32         | bigint                      | int4                | NO          | nextval('public.t1_c32_seq'::regclass) |                          |                32 |                    |             0 |                     |                    |                | NO          |                |                    |                  |                     |                       |         | b       |    23
- users       |  c33         | USER-DEFINED                | test."status""."    | NO          |                                        |                          |                   |                    |               |                     |                    |                | NO          |                |                    |                  |                     |                       |         | e       | 16775
+ users       |  c33         | USER-DEFINED                | test."status""."    | NO          |  'unknown'::test."status""."           |                          |                   |                    |               |                     |                    |                | NO          |                |                    |                  |                     |                       |         | e       | 16775
 `))
 				m.ExpectQuery(sqltest.Escape(`SELECT enumtypid, enumlabel FROM pg_enum WHERE enumtypid IN ($1, $2)`)).
 					WithArgs(16774, 16775).
@@ -131,7 +131,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c30", Type: &schema.ColumnType{Raw: "interval", Type: &IntervalType{T: "interval", F: "MONTH", Precision: p(6)}}},
 					{Name: "c31", Type: &schema.ColumnType{Raw: "interval", Type: &IntervalType{T: "interval", F: "MINUTE TO SECOND", Precision: p(6)}}},
 					{Name: "c32", Type: &schema.ColumnType{Raw: "bigserial", Type: &SerialType{T: "bigserial", SequenceName: "t1_c32_seq"}}},
-					{Name: "c33", Type: &schema.ColumnType{Raw: `status".`, Type: &schema.EnumType{T: `status".`, Values: []string{"unknown"}, Schema: schema.New("test")}}},
+					{Name: "c33", Type: &schema.ColumnType{Raw: `status".`, Type: &schema.EnumType{T: `status".`, Values: []string{"unknown"}, Schema: schema.New("test")}}, Default: &schema.Literal{V: "'unknown'"}},
 				}, t.Columns)
 			},
 		},

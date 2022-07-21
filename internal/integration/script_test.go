@@ -570,7 +570,7 @@ func (t *liteTest) hclDiff(ts *testscript.TestScript, name string) ([]schema.Cha
 	current, err := drv.InspectSchema(context.Background(), desired.Name, nil)
 	ts.Check(err)
 	changes, err := drv.SchemaDiff(current, desired)
-	// Diff errors should returned back to the caller.
+	// Diff errors should return to the caller.
 	if err != nil {
 		return nil, err
 	}

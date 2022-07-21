@@ -64,7 +64,6 @@ func evalSpec(p *hclparse.Parser, v interface{}, input map[string]string) error 
 		if err := convertEnums(d.Tables, d.Enums, r); err != nil {
 			return err
 		}
-		r.Schemas[0].Realm = nil
 		*v = *r.Schemas[0]
 	default:
 		return fmt.Errorf("specutil: failed unmarshaling spec. %T is not supported", v)
