@@ -46,15 +46,11 @@ module.exports = {
             ]
         },
         {
-            type: 'doc',
-            id: 'terraform-provider',
-        },
-        {
             type: 'category',
-            label: 'Go API',
+            label: 'Integrations',
             items: [
-                {type: 'doc', id: 'go-api/intro', label: 'Introduction'},
-                {type: 'doc', id: 'go-api/inspect', label: 'Inspecting Schemas'},
+                {type: 'doc', id: 'integrations/terraform-provider', label: 'Terraform Provider'},
+                {type: 'doc', id: 'integrations/go-api', label: 'Go API'},
             ]
         },
         {

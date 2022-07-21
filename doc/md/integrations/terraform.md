@@ -1,11 +1,11 @@
 ---
 title: Terraform Provider
 id: terraform-provider
-slug: /terraform-provider
+slug: /integrations/terraform-provider
 ---
 ## Introduction
 
-The official [Atlas Terraform provider](https://registry.terraform.io/providers/ariga/atlas/latest) 
+The official [Atlas Terraform provider](https://registry.terraform.io/providers/ariga/atlas/latest)
 allows you to use Atlas with Terraform to manage your database schemas as part of you Infrastructure-as-Code (Iac)
 workflow . Read about the release announcement [here](https://atlasgo.io/blog/2022/05/04/announcing-terraform-provider).
 * [Documentation](https://registry.terraform.io/providers/ariga/atlas/latest/docs)
@@ -27,7 +27,7 @@ terraform {
 ## Basic example
 
 Currently, the Atlas Terraform provider uses an [HCL file](/ddl/sql) to describe the
-desired state of the database, and performs migrations according to the state difference 
+desired state of the database, and performs migrations according to the state difference
 between the HCL file and the target database.
 
 To use the Terraform provider, you will need such a file. If you are working against a fresh,
@@ -46,7 +46,7 @@ For instructions on using a database with an existing schema, [see below](#worki
 
 ### Configure Terraform
 
-Use the following configuration to apply the HCL file `schema.hcl` onto a target MySQL 
+Use the following configuration to apply the HCL file `schema.hcl` onto a target MySQL
 database (but you can specify any of the [supported databases](https://github.com/ariga/atlas#supported-databases)):
 
 ```hcl title="main.tf"
@@ -61,7 +61,7 @@ data "atlas_schema" "market" {
 // Sync the state of the target database with the hcl file.
 resource "atlas_schema" "market" {
   hcl = data.atlas_schema.market.hcl
-  url = "mysql://root:pass@localhost:3306/market"  
+  url = "mysql://root:pass@localhost:3306/market"
   dev_db_url = "mysql://root:pass@localhost:3307/market"
 }
 ```
