@@ -7,18 +7,18 @@ slug: /knowledge/postgres/serial-columns
 PostgreSQL allows creating columns of types `smallserial`, `serial`, and `bigserial`. These types are not
 _actual_ types, but more like "macros" for creating non-nullable integer columns with sequences attached.
 
-We can see this in action by creating a table with 3 "serial columns": 
+We can see this in action by creating a table with 3 "serial columns":
 
 ```sql
 CREATE TABLE serials(
     c1 smallserial,
-    c2 serial, 
+    c2 serial,
     c3 bigserial
 );
 ```
 
 ```sql title="Serials Description"
- Column |   Type   | Nullable |            Default            
+ Column |   Type   | Nullable |            Default
 --------+----------+----------+-------------------------------
  c1     | smallint | not null | nextval('t_c1_seq'::regclass)
  c2     | integer  | not null | nextval('t_c2_seq'::regclass)
@@ -74,12 +74,12 @@ will reach to the minimum value of `c`. Let's see an example:
 ```sql
 SELECT "c" FROM "t";
 // highlight-start
- c 
+ c
 ---
  2
  3
 // highlight-end
- 
+
 -- Works!
 INSERT INTO "t" DEFAULT VALUES;
 -- Fails!
@@ -96,7 +96,7 @@ We can work around this by setting the sequence current value to the maximum val
 ```sql
 SELECT setval('"public"."t_c_seq"', (SELECT MAX("c") FROM "t"));
 // highlight-start
- setval 
+ setval
 --------
    3
 // highlight-end
@@ -105,7 +105,7 @@ SELECT setval('"public"."t_c_seq"', (SELECT MAX("c") FROM "t"));
 INSERT INTO "t" DEFAULT VALUES;
 SELECT "c" FROM "t";
 // highlight-start
- c 
+ c
 ---
  2
  3
@@ -116,11 +116,11 @@ SELECT "c" FROM "t";
 ### Managing Serial Columns with Atlas
 
 Atlas makes it easier to define and manipulate columns of `serial` types. Let's use the
-[`atlas schema inspect`](../../cli/reference.md#atlas-schema-inspect) command to get a representation
+[`atlas schema inspect`](../../reference.md#atlas-schema-inspect) command to get a representation
 of the table we created above in the Atlas HCL format :
 
 ```console
-atlas schema inspect -u "postgres://postgres:pass@:5432/test?sslmode=disable" > schema.hcl 
+atlas schema inspect -u "postgres://postgres:pass@:5432/test?sslmode=disable" > schema.hcl
 ```
 
 ```hcl title="schema.hcl"
@@ -235,7 +235,7 @@ Changing a column type from `bigint` to `serial` requires 3 changes:
 2. Set the `DEFAULT` value of `c` to `nextval('"public"."t_c_seq"')`.
 3. Alter the column type, as `serial` maps to `integer` (!= `bigint`).
 
-We call [`atlas schema apply`](../../cli/reference.md#atlas-schema-apply) to plan and execute this three step process
+We call [`atlas schema apply`](../../reference.md#atlas-schema-apply) to plan and execute this three step process
 with Atlas:
 
 ```console

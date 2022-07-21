@@ -13,7 +13,7 @@ dev/twin database. For a one-time use Atlas can spin up an ephemeral local docke
 
 ## Validation
 
-Suppose we want to the add the following `CHECK` constraint to the table below: 
+Suppose we want to the add the following `CHECK` constraint to the table below:
 
 ```hcl title="test.hcl" {6-8}
 table "t" {
@@ -27,7 +27,7 @@ table "t" {
 }
 ```
 
-After running [`schema apply`](cli/reference.md#atlas-schema-apply), we get the following error because the `CHECK`
+After running [`schema apply`](reference.md#atlas-schema-apply), we get the following error because the `CHECK`
 constraint is invalid, as column `d` does not exist.
 
 ```shell
@@ -68,7 +68,7 @@ apply changes on the database: `schema apply` and `migrate diff`. In both comman
 "current" state can be an inspected database or a migration directory, and the "desired" state can be an inspected
 database, or an HCL file.
 
-Schemas that are written in HCL files are defined in natural form by humans. However, databases store schemas in 
+Schemas that are written in HCL files are defined in natural form by humans. However, databases store schemas in
 normal form (also known as canonical form). Therefore, when Atlas compares two different forms it may suggest incorrect
 or unnecessary schema changes, and using the `--dev-url` option can solve this (see the above section for more
 in-depth example).
@@ -90,7 +90,7 @@ table "t" {
 ```
 
 ```shell
-$ atlas schema apply --url "mysql://root:pass@:3308/test" -f test.hcl 
+$ atlas schema apply --url "mysql://root:pass@:3308/test" -f test.hcl
 ```
 ```text
 -- Planned Changes:
@@ -102,7 +102,7 @@ ALTER TABLE `test`.`t` ADD INDEX `i` ((upper(concat('c', c))))
 We added a new index-expression to our schema, but using `schema inspect` will show our index in its normal form.
 
 ```shell
-$ atlas schema inspect --url "mysql://root:pass@:3308/test"  
+$ atlas schema inspect --url "mysql://root:pass@:3308/test"
 ```
 ```hcl {7-11}
 table "t" {
@@ -121,7 +121,7 @@ table "t" {
 
 Therefore, running `schema apply` again will suggest unnecessary schema changes.
 ```shell
-$ atlas schema apply --url "mysql://root:pass@:3308/test" -f test.hcl 
+$ atlas schema apply --url "mysql://root:pass@:3308/test" -f test.hcl
 ```
 ```text
 -- Planned Changes:

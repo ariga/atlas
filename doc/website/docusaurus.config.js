@@ -78,7 +78,7 @@ module.exports = {
           "items": [
             {"label": "Getting Started", "to": "cli/getting-started/setting-up"},
             {"label": "Data Definition Language ", "to": "ddl/intro"},
-            {"label": "CLI Reference", "to": "cli/reference"},
+            {"label": "CLI Reference", "to": "cli-reference"},
             {"label": "Blog", "to": "blog"},
             {"label": "Knowledge Center", "to": "knowledge"},
             {"label": "About", "to": "about"},
@@ -133,6 +133,10 @@ module.exports = {
           {
             to: '/integrations/go-api',
             from: ['/go-api/intro','/go-api/inspect'],
+          },
+          {
+            to: '/cli-reference',
+            from: '/cli/reference',
           },
         ],
       },

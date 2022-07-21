@@ -76,7 +76,7 @@ To prevent a situation where Terraform accidentally creates a plan that includes
 schemas) that exist in your database on this initial run, make sure that the HCL file that you pass to the `atlas_schema`
 resources is up-to-date.
 
-Luckily, you do not need to write this file by hand. The Atlas CLI's [`schema inspect` command](http://localhost:3000/cli/reference#atlas-schema-inspect)
+Luckily, you do not need to write this file by hand. The Atlas CLI's [`schema inspect` command](https://atlasgo.io/cli-reference#atlas-schema-inspect)
 can do this for you. To inspect an existing database and write its HCL representation to a file simply run:
 ```
 atlas schema inspect -u <database url> > <target file>

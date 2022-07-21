@@ -21,7 +21,7 @@ import (
 )
 
 func main() {
-	f, err := os.Create("../../doc/md/cli/reference.md")
+	f, err := os.Create("../../doc/md/reference.md")
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -1,7 +1,7 @@
 ---
 title: CLI Reference
 id: cli-reference
-slug: /cli/reference
+slug: cli-reference
 ---
 ## Introduction
 
@@ -15,7 +15,7 @@ For a more detailed introduction to the CLI capabilities, head over to the
 ## Distributed Binaries
 
 The binaries distributed in official releases are released under the  [Ariga End User License](https://ariga.io/legal/atlas/eula).
-If you would like to build Atlas from source follow the instructions [here](https://atlasgo.io/cli/reference#building-from-source).
+If you would like to build Atlas from source follow the instructions [here](https://atlasgo.io/cli-reference#building-from-source).
 
 ### Building from Source
 
