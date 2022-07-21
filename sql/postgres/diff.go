@@ -254,56 +254,6 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	return changed, nil
 }
 
-// Normalize implements the sqlx.Normalizer interface.
-func (d *diff) Normalize(from, to *schema.Table) error {
-	d.normalize(from)
-	d.normalize(to)
-	return nil
-}
-
-func (d *diff) normalize(table *schema.Table) {
-	for _, c := range table.Columns {
-		switch t := c.Type.Type.(type) {
-		case nil:
-		case *schema.TimeType:
-			// "timestamp" and "timestamptz" are accepted as
-			// abbreviations for timestamp with(out) time zone.
-			switch t.T {
-			case "timestamp with time zone":
-				t.T = "timestamptz"
-			case "timestamp without time zone":
-				t.T = "timestamp"
-			}
-		case *schema.FloatType:
-			// The same numeric precision is used in all platform.
-			// See: https://www.postgresql.org/docs/current/datatype-numeric.html
-			switch {
-			case t.T == "float" && t.Precision < 25:
-				// float(1) to float(24) are selected as "real" type.
-				t.T = "real"
-				fallthrough
-			case t.T == "real":
-				t.Precision = 24
-			case t.T == "float" && t.Precision >= 25:
-				// float(25) to float(53) are selected as "double precision" type.
-				t.T = "double precision"
-				fallthrough
-			case t.T == "double precision":
-				t.Precision = 53
-			}
-		case *schema.StringType:
-			switch t.T {
-			case "character", "char":
-				// Character without length specifier
-				// is equivalent to character(1).
-				t.Size = 1
-			}
-		case *enumType:
-			c.Type.Type = &schema.EnumType{T: t.T, Values: t.Values}
-		}
-	}
-}
-
 // valuesEqual reports if the DEFAULT values x and y
 // equal according to the database engine.
 func (d *diff) valuesEqual(x, y string) (bool, error) {
