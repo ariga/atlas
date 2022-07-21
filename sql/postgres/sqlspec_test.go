@@ -93,6 +93,7 @@ table "accounts" {
 }
 
 enum "account_type" {
+	schema = schema.schema
 	values = ["private", "business"]
 }
 `
@@ -211,6 +212,7 @@ enum "account_type" {
 						Type: &schema.EnumType{
 							T:      "account_type",
 							Values: []string{"private", "business"},
+							Schema: exp,
 						},
 					},
 				},
@@ -710,11 +712,11 @@ table "table2" {
     type = enum.account_type
   }
 }
-schema "test" {
-}
 enum "account_type" {
   schema = schema.test
   values = ["private", "business"]
+}
+schema "test" {
 }
 `
 	require.EqualValues(t, expected, string(buf))
