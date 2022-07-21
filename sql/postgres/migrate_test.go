@@ -521,18 +521,23 @@ func TestPlanChanges(t *testing.T) {
 		{
 			changes: []schema.Change{
 				func() schema.Change {
-					users := &schema.Table{
-						Name: "users",
-						Columns: []*schema.Column{
-							{Name: "state", Type: &schema.ColumnType{Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}},
-						},
-					}
+					users := schema.NewTable("users").
+						SetSchema(schema.New("public")).
+						AddColumns(
+							schema.NewEnumColumn("state", schema.EnumName("state"), schema.EnumValues("on", "off")),
+							schema.NewEnumColumn("status", schema.EnumName("status"), schema.EnumValues("a", "b"), schema.EnumSchema(schema.New("test"))),
+						)
 					return &schema.ModifyTable{
 						T: users,
 						Changes: []schema.Change{
 							&schema.ModifyColumn{
 								From:   &schema.Column{Name: "state", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}}},
-								To:     &schema.Column{Name: "state", Type: &schema.ColumnType{Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}},
+								To:     users.Columns[0],
+								Change: schema.ChangeType,
+							},
+							&schema.ModifyColumn{
+								From:   &schema.Column{Name: "status", Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}}},
+								To:     users.Columns[1],
 								Change: schema.ChangeType,
 							},
 						},
@@ -540,32 +545,36 @@ func TestPlanChanges(t *testing.T) {
 				}(),
 			},
 			mock: func(m mock) {
-				m.ExpectQuery(sqltest.Escape("SELECT * FROM pg_type WHERE typname = $1 AND typtype = 'e'")).
-					WithArgs("state").WillReturnRows(sqlmock.NewRows([]string{"name"}))
+				m.ExpectQuery(sqltest.Escape("SELECT * FROM pg_type t join pg_namespace n on t.typnamespace = n.oid WHERE t.typname = $1 AND n.nspname = $2 AND t.typtype = 'e'")).
+					WithArgs("state", "public").
+					WillReturnRows(sqlmock.NewRows([]string{"name"}))
+				m.ExpectQuery(sqltest.Escape("SELECT * FROM pg_type t join pg_namespace n on t.typnamespace = n.oid WHERE t.typname = $1 AND n.nspname = $2 AND t.typtype = 'e'")).
+					WithArgs("status", "test").
+					WillReturnRows(sqlmock.NewRows([]string{"name"}))
 			},
 			wantPlan: &migrate.Plan{
 				Reversible:    true,
 				Transactional: true,
 				Changes: []*migrate.Change{
-					{Cmd: `CREATE TYPE "state" AS ENUM ('on', 'off')`, Reverse: `DROP TYPE "state"`},
-					{Cmd: `ALTER TABLE "users" ALTER COLUMN "state" TYPE state`, Reverse: `ALTER TABLE "users" ALTER COLUMN "state" TYPE text`},
+					{Cmd: `CREATE TYPE "public"."state" AS ENUM ('on', 'off')`, Reverse: `DROP TYPE "public"."state"`},
+					{Cmd: `CREATE TYPE "test"."status" AS ENUM ('a', 'b')`, Reverse: `DROP TYPE "test"."status"`},
+					{Cmd: `ALTER TABLE "public"."users" ALTER COLUMN "state" TYPE "public"."state", ALTER COLUMN "status" TYPE "test"."status"`, Reverse: `ALTER TABLE "public"."users" ALTER COLUMN "status" TYPE text, ALTER COLUMN "state" TYPE text`},
 				},
 			},
 		},
 		{
 			changes: []schema.Change{
 				func() schema.Change {
-					users := &schema.Table{
-						Name: "users",
-						Columns: []*schema.Column{
-							{Name: "state", Type: &schema.ColumnType{Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}},
-						},
-					}
+					users := schema.NewTable("users").
+						SetSchema(schema.New("public")).
+						AddColumns(
+							schema.NewEnumColumn("state", schema.EnumName("state"), schema.EnumValues("on", "off")),
+						)
 					return &schema.ModifyTable{
 						T: users,
 						Changes: []schema.Change{
 							&schema.ModifyColumn{
-								From:   &schema.Column{Name: "state", Type: &schema.ColumnType{Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}},
+								From:   users.Columns[0],
 								To:     &schema.Column{Name: "state", Type: &schema.ColumnType{Type: &schema.EnumType{T: "state", Values: []string{"on", "off", "unknown"}}}},
 								Change: schema.ChangeType,
 							},
@@ -577,7 +586,7 @@ func TestPlanChanges(t *testing.T) {
 				Reversible:    false,
 				Transactional: true,
 				Changes: []*migrate.Change{
-					{Cmd: `ALTER TYPE "state" ADD VALUE 'unknown'`},
+					{Cmd: `ALTER TYPE "public"."state" ADD VALUE 'unknown'`},
 				},
 			},
 		},
@@ -585,12 +594,11 @@ func TestPlanChanges(t *testing.T) {
 		{
 			changes: []schema.Change{
 				func() schema.Change {
-					users := &schema.Table{
-						Name: "users",
-						Columns: []*schema.Column{
-							{Name: "state", Type: &schema.ColumnType{Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}},
-						},
-					}
+					users := schema.NewTable("users").
+						SetSchema(schema.New("public")).
+						AddColumns(
+							schema.NewEnumColumn("state", schema.EnumName("state"), schema.EnumValues("on", "off")),
+						)
 					return &schema.ModifyTable{
 						T: users,
 						Changes: []schema.Change{
@@ -607,8 +615,8 @@ func TestPlanChanges(t *testing.T) {
 				Reversible:    false,
 				Transactional: true,
 				Changes: []*migrate.Change{
-					{Cmd: `ALTER TYPE "state" ADD VALUE 'unknown'`},
-					{Cmd: `COMMENT ON COLUMN "users" ."state" IS ''`, Reverse: `COMMENT ON COLUMN "users" ."state" IS 'foo'`},
+					{Cmd: `ALTER TYPE "public"."state" ADD VALUE 'unknown'`},
+					{Cmd: `COMMENT ON COLUMN "public"."users" ."state" IS ''`, Reverse: `COMMENT ON COLUMN "public"."users" ."state" IS 'foo'`},
 				},
 			},
 		},
