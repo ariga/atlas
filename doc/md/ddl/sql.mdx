@@ -120,7 +120,7 @@ table "products" {
 
 ### Partitions
 
-Table partitioning refers to splitting logical large tables into smaller physical ones. 
+Table partitioning refers to splitting logical large tables into smaller physical ones.
 
 :::note
 Atlas currently only supports PostgreSQL. Support for the remaining dialects will be added in future versions.
@@ -297,13 +297,13 @@ table "users" {
 </Tabs>
 
 :::info
-Note, it is recommended to use the [`--dev-url`](../dev-database) option when generated columns are used.
+Note, it is recommended to use the [`--dev-url`](../concepts/dev-database) option when generated columns are used.
 :::
 
 ## Column Types
 
 The SQL dialects supported by Atlas (Postgres, MySQL, MariaDB, and SQLite) vary in
-the types they support. At this point, the Atlas DDL does not attempt to abstract 
+the types they support. At this point, the Atlas DDL does not attempt to abstract
 away the differences between various databases. This means that the schema documents
 are tied to a specific database engine and version. This may change in a future version
 of Atlas as we plan to add "Virtual Types" support. This section lists the various
@@ -314,9 +314,9 @@ For a full list of supported column types, [click here](sql-types.md).
 ## Primary Key
 
 A `primary_key` is a child resource of a `table`, and it defines the table's
-primary key. 
+primary key.
 
-#### Example 
+#### Example
 
 ```hcl
 primary_key {
@@ -333,7 +333,7 @@ primary_key {
 ## Foreign Key
 
 Foreign keys are child resources of a `table`, and it defines some columns in the table
-as references to columns in other tables. 
+as references to columns in other tables.
 
 #### Example
 
@@ -442,7 +442,7 @@ table "t" {
 ```
 
 :::info
-Note, it is recommended to use the [`--dev-url`](../dev-database) option when index expressions are used.
+Note, it is recommended to use the [`--dev-url`](../concepts/dev-database) option when index expressions are used.
 :::
 
 ### Partial Indexes
@@ -467,7 +467,7 @@ table "t" {
 ```
 
 :::info
-Note, it is recommended to use the [`--dev-url`](../dev-database) option when partial indexes are used.
+Note, it is recommended to use the [`--dev-url`](../concepts/dev-database) option when partial indexes are used.
 :::
 
 ### Index Prefixes

@@ -138,6 +138,14 @@ module.exports = {
             to: '/cli-reference',
             from: '/cli/reference',
           },
+          {
+            to: '/concepts/url',
+            from: '/cli/url',
+          },
+          {
+            to: '/concepts/dev-database',
+            from: '/dev-database',
+          },
         ],
       },
     ],
