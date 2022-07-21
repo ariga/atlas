@@ -144,6 +144,8 @@ func FormatType(t schema.Type) (string, error) {
 		f = strings.ToLower(t.T)
 	case *UserDefinedType:
 		f = strings.ToLower(t.T)
+	case *XMLType:
+		f = strings.ToLower(t.T)
 	case *schema.UnsupportedType:
 		return "", fmt.Errorf("postgres: unsupported type: %q", t.T)
 	default:
