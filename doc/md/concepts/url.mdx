@@ -1,7 +1,7 @@
 ---
 title: URLs
-id: cli-url
-slug: /cli/url
+id: concepts-url
+slug: /concepts/url
 ---
 
 import Tabs from '@theme/Tabs';
@@ -74,7 +74,7 @@ sqlite://file?cache=shared&mode=memory
 <TabItem value="docker">
 
 Atlas can spin up an ephemeral local docker container for you by specifying a special URL like below. This can be useful
-if you need a [dev database](../dev.md) for schema validation or diffing. However, some images like `mysql` /
+if you need a [dev database](../concepts/dev.md) for schema validation or diffing. However, some images like `mysql` /
 `mariadb` take quite some time to "boot", before they are ready to be used. For a smoother developing experience
 consider spinning up a longer lived container by yourself.
 
@@ -91,7 +91,7 @@ docker://mariadb/10.8.2-rc-focal
 
 ## SSL/TLS Mode
 
-The default SSL mode for Postgres is `required`. Please follow the 
+The default SSL mode for Postgres is `required`. Please follow the
 [Postgres documentation](https://www.postgresql.org/docs/current/libpq-ssl.html)
 for configuring your SSL connection for your database, or set SSL mode to `disable`
 with the search parameter `?sslmode=disable`. For local databases,

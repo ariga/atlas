@@ -1,7 +1,7 @@
 ---
 title: Dev Database
 id: dev-database
-slug: /dev-database
+slug: /concepts/dev-database
 ---
 ## Introduction
 
@@ -9,7 +9,7 @@ Atlas uses the concept of "Dev Database" to provide extra safety and correctness
 a development database (a twin environment) to validate schemas, simulate migrations and calculate the state of the
 migration directory by replaying the historical changes. Let's go over a few examples to explain the benefits of using a
 dev/twin database. For a one-time use Atlas can spin up an ephemeral local docker container for you with a special
-[docker driver](cli/url.mdx).
+[docker driver](concepts/url.mdx).
 
 ## Validation
 

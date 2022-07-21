@@ -8,14 +8,14 @@ image: https://blog.ariga.io/uploads/images/posts/terraform-provider/terraform-p
 Today we are glad to announce the release of the official [Atlas Terraform Provider](https://registry.terraform.io/providers/ariga/atlas).
 
 ### What is Terraform
-[Terraform](https://terraform.io/) is a popular open-source tool created by [HashiCorp](https://www.hashicorp.com/), used to greatly simplify the task of provisioning and managing resources in the cloud. With Terraform, organizations can describe the desired state of their infrastructure in a simple configuration language and let Terraform plan and apply these changes in an automated way. This way, Terraform allows teams to truly deliver infrastructure-as-code (IaC), which completely change how teams and organizations manage their cloud infrastructure. 
+[Terraform](https://terraform.io/) is a popular open-source tool created by [HashiCorp](https://www.hashicorp.com/), used to greatly simplify the task of provisioning and managing resources in the cloud. With Terraform, organizations can describe the desired state of their infrastructure in a simple configuration language and let Terraform plan and apply these changes in an automated way. This way, Terraform allows teams to truly deliver infrastructure-as-code (IaC), which completely change how teams and organizations manage their cloud infrastructure.
 
 ### Infrastructure-as-Code and database management
-Most cloud-native applications are backed by a database. The database is often the most critical part of many software systems, so making changes to its schema (structure and layout of the data inside) is a very risky business. However, schemas must evolve: as functionality changes over time, the backing tables are added, columns are dropped, indexes are created for performance reasons, and more.  
-  
-Therefore it is surprising that there is no established way of integrating the management of schema changes (commonly called schema "migrations") into popular Infrastructure-as-Code workflows. For this reason, many organizations are running migrations from within the application code or using solutions outside the ecosystem of Terraform, meaning that management of the production environment is fragmented and hard to synchronize. Atlas aims to change that.  
-  
-The Atlas Terraform provider allows you to synchronize your database with your desired schema, in a safe and stateful manner. By using Atlas’s core migration engine and embedding it in a Terraform provider, we are enabling teams to manage their database schemas as part of their full IaC workflow. This way, teams can use existing providers (such as AWS or GCP) to provision the database instance and use the Atlas provider to keep the schema in sync. Integrating Atlas with Terraform is especially useful because it couples the state of the infrastructure with the state of the database. It is also extremely neat when using a [dev database](https://atlasgo.io/dev-database), which is a feature that combines infrastructure and DB management to provide safety and correctness.
+Most cloud-native applications are backed by a database. The database is often the most critical part of many software systems, so making changes to its schema (structure and layout of the data inside) is a very risky business. However, schemas must evolve: as functionality changes over time, the backing tables are added, columns are dropped, indexes are created for performance reasons, and more.
+
+Therefore it is surprising that there is no established way of integrating the management of schema changes (commonly called schema "migrations") into popular Infrastructure-as-Code workflows. For this reason, many organizations are running migrations from within the application code or using solutions outside the ecosystem of Terraform, meaning that management of the production environment is fragmented and hard to synchronize. Atlas aims to change that.
+
+The Atlas Terraform provider allows you to synchronize your database with your desired schema, in a safe and stateful manner. By using Atlas’s core migration engine and embedding it in a Terraform provider, we are enabling teams to manage their database schemas as part of their full IaC workflow. This way, teams can use existing providers (such as AWS or GCP) to provision the database instance and use the Atlas provider to keep the schema in sync. Integrating Atlas with Terraform is especially useful because it couples the state of the infrastructure with the state of the database. It is also extremely neat when using a [dev database](https://atlasgo.io/concepts/dev-database), which is a feature that combines infrastructure and DB management to provide safety and correctness.
 
 ### Demo
 #### Prerequisites
@@ -29,7 +29,7 @@ docker run -p 3306:3306 --name iloveatlas -e MYSQL_ROOT_PASSWORD=pass -e MYSQL_D
 ```
 Great! Now we have an instance of MySQL database running.
 
-As an extra measure of safety, we will run another identical database which will serve as a [Dev Database](https://atlasgo.io/cli/dev-database). In short, the dev-db helps to catch errors that can only be detected when applying the schema. It is also useful to format the schema in a correct and predictable way. Read more about it [here](https://atlasgo.io/cli/dev-database).  
+As an extra measure of safety, we will run another identical database which will serve as a [Dev Database](https://atlasgo.io/concepts/dev-database). In short, the dev-db helps to catch errors that can only be detected when applying the schema. It is also useful to format the schema in a correct and predictable way. Read more about it [here](https://atlasgo.io/cli/dev-database).
 Run a second instance of MySQL on another port, to serve as a dev-db:
 
 ```shell
@@ -58,7 +58,7 @@ schema "market" {
   charset = "utf8mb4"
   collate = "utf8mb4_0900_ai_ci"
 }
-``` 
+```
 Save the schema file locally in a file named `schema.hcl`.
 
 Now that we have our database schema we can use terraform to apply that schema to our database.
@@ -82,7 +82,7 @@ data "atlas_schema" "market" {
 
 resource "atlas_schema" "market" {
   hcl = data.atlas_schema.market.hcl
-  url = "mysql://root:pass@localhost:3306/market"  
+  url = "mysql://root:pass@localhost:3306/market"
   dev_db_url = "mysql://root:pass@localhost:3307/market"
 }
 ```
@@ -124,7 +124,7 @@ For more examples and documentation visit the official [GitHub repository](https
 
 ### What's next
 
-In this post, we presented the [Atlas Terraform Provider](https://registry.terraform.io/providers/ariga/atlas/latest). The provider currently supports the basic, declarative migration workflow that is available in the Atlas engine. In upcoming versions, we will add support for an additional kind of workflow that is supported by the engine and is called [versioned migration authoring](https://entgo.io/blog/2022/03/14/announcing-versioned-migrations/). In addition, more advanced safety checks (such as simulation on database snapshots) and migration strategies are also being worked on.  
+In this post, we presented the [Atlas Terraform Provider](https://registry.terraform.io/providers/ariga/atlas/latest). The provider currently supports the basic, declarative migration workflow that is available in the Atlas engine. In upcoming versions, we will add support for an additional kind of workflow that is supported by the engine and is called [versioned migration authoring](https://entgo.io/blog/2022/03/14/announcing-versioned-migrations/). In addition, more advanced safety checks (such as simulation on database snapshots) and migration strategies are also being worked on.
 
 While the Terraform provider has just been released, the [core engine](https://github.com/ariga/atlas) that it is driving, is well tested and widely used (especially as the migration engine backing the popular [Ent](https://github.com/ent/ent) framework.) If you, like me, have always wanted to manage your database schema as part of your team's infrastructure-as-code workflow, give the Atlas Terraform provider a try!
 

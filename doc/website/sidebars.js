@@ -33,16 +33,19 @@ module.exports = {
             ],
         },
         {
-            type: 'doc',
-            id: 'dev-database'
-        },
-        {
             type: 'category',
             label: 'CLI',
             items: [
-                {type: 'doc', id: 'cli/cli-url', label: 'URLs'},
                 {type: 'doc', id: 'cli/projects'},
-            ]
+            ],
+        },
+        {
+            type: 'category',
+            label: 'Concepts',
+            items: [
+                {type: 'doc', id: 'concepts/dev-database', label: 'Dev Database'},
+                {type: 'doc', id: 'concepts/concepts-url', label: 'URLs'},
+            ],
         },
         {
             type: 'category',
