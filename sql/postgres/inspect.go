@@ -647,17 +647,15 @@ func defaultExpr(c *schema.Column, s string) {
 }
 
 func canConvert(t *schema.ColumnType, x string) (string, bool) {
-	r := t.Raw
-	if t, ok := t.Type.(*ArrayType); ok {
-		r = t.T
-	}
-	i := strings.Index(x, "::"+r)
+	i := strings.LastIndex(x, "::")
 	if i == -1 || !sqlx.IsQuoted(x[:i], '\'') {
 		return "", false
 	}
 	q := x[0:i]
 	x = x[1 : i-1]
 	switch t.Type.(type) {
+	case *enumType:
+		return q, true
 	case *schema.BoolType:
 		if sqlx.IsLiteralBool(x) {
 			return x, true

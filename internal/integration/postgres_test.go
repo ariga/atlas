@@ -832,12 +832,12 @@ create table atlas_types_sanity
 				{
 					Name:    "tCharacter",
 					Type:    &schema.ColumnType{Type: &schema.StringType{T: "character", Size: 10}, Raw: "character", Null: true},
-					Default: &schema.RawExpr{X: "'atlas'::bpchar"},
+					Default: &schema.Literal{V: "'atlas'"},
 				},
 				{
 					Name:    "tChar",
 					Type:    &schema.ColumnType{Type: &schema.StringType{T: "character", Size: 10}, Raw: "character", Null: true},
-					Default: &schema.RawExpr{X: "'atlas'::bpchar"},
+					Default: &schema.Literal{V: "'atlas'"},
 				},
 				{
 					Name:    "tCharVar",

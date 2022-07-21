@@ -45,6 +45,9 @@ func (d *DevDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *sc
 		}
 	)
 	for _, s := range r.Schemas {
+		if s.Realm != r {
+			s.Realm = r
+		}
 		dev := d.formatName(s.Name)
 		names[dev] = s.Name
 		s.Name = dev
@@ -58,6 +61,11 @@ func (d *DevDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *sc
 			// If objects are not strongly connected.
 			if t.Schema != s {
 				t.Schema = s
+			}
+			for _, c := range t.Columns {
+				if e, ok := c.Type.Type.(*schema.EnumType); ok && e.Schema != s {
+					e.Schema = s
+				}
 			}
 			changes = append(changes, &schema.AddTable{T: t})
 		}

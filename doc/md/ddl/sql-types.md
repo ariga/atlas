@@ -323,6 +323,33 @@ table "t" {
 
 ## PostgreSQL
 
+### Array
+
+Atlas supports defining PostgreSQL array types using the `sql` function.
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    type = sql("int[]")
+  }
+  column "c2" {
+    type = sql("text[]")
+  }
+  column "c3" {
+    type = sql("int ARRAY")
+  }
+  column "c4" {
+    type = sql("varchar(255)[]")
+  }
+  column "c5" {
+    // The current PostgreSQL implementation
+    // ignores any supplied array size limits.
+    type = sql("point[4][4]")
+  }
+}
+```
+
 ### Bit
 
 The `bit` and `bit varying` types allow creating
@@ -410,6 +437,31 @@ table "t" {
   }
   column "c7" {
     type = interval
+  }
+}
+```
+
+### Enum
+
+The `enum` type allows storing a set of enumerated values.
+
+```hcl
+enum "status" {
+  schema = schema.test
+  values = ["on", "off"]
+}
+
+table "t1" {
+  schema = schema.test
+  column "c1" {
+    type = enum.status
+  }
+}
+
+table "t2" {
+  schema = schema.test
+  column "c1" {
+    type = enum.status
   }
 }
 ```
@@ -517,6 +569,35 @@ table "t" {
 }
 ```
 
+### JSON
+
+The `json` and `jsonb` types allow creating columns for storing JSON objects.
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    type = json
+  }
+  column "c2" {
+    type = jsonb
+  }
+}
+```
+
+### Money
+
+The `money` data type allows creating columns for storing currency amount with a fixed fractional precision.
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    type = money
+  }
+}
+```
+
 ### Network Address
 
 The `inet`, `cidr`, `macaddr` and `macaddr8` types allow creating network address columns.
@@ -535,6 +616,26 @@ table "t" {
   }
   column "c4" {
     type = macaddr8
+  }
+}
+```
+
+### Serial
+
+PostgreSQL supports creating columns of types `smallserial`, `serial`, and `bigserial`. Note that these types are not
+_actual_ types, but more like "macros" for creating non-nullable integer columns with sequences attached.
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+      type = smallserial
+  }
+  column "c2" {
+      type = serial
+  }
+  column "c3" {
+      type = bigserial
   }
 }
 ```
@@ -564,6 +665,36 @@ table "t" {
   }
   column "c5" {
     type = text
+  }
+}
+```
+
+### UUID
+
+The `uuid` data type allows creating columns for storing Universally Unique Identifiers (UUID).
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    type = uuid
+  }
+  column "c2" {
+    type    = uuid
+    default = sql("gen_random_uuid()")
+  }
+}
+```
+
+### XML
+
+The `xml` data type allows creating columns for storing XML data.
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "c1" {
+    type = xml
   }
 }
 ```
