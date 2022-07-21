@@ -228,86 +228,6 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) (err error) {
 	return nil
 }
 
-func columnType(c *columnDesc) (schema.Type, error) {
-	var typ schema.Type
-	switch t := c.typ; strings.ToLower(t) {
-	case TypeBigInt, TypeInt8, TypeInt, TypeInteger, TypeInt4, TypeSmallInt, TypeInt2, TypeInt64:
-		typ = &schema.IntegerType{T: t}
-	case TypeBit, TypeBitVar:
-		typ = &BitType{T: t, Len: c.size}
-	case TypeBool, TypeBoolean:
-		typ = &schema.BoolType{T: t}
-	case TypeBytea:
-		typ = &schema.BinaryType{T: t}
-	case TypeCharacter, TypeChar, TypeCharVar, TypeVarChar, TypeText:
-		// A `character` column without length specifier is equivalent to `character(1)`,
-		// but `varchar` without length accepts strings of any size (same as `text`).
-		typ = &schema.StringType{T: t, Size: int(c.size)}
-	case TypeCIDR, TypeInet, TypeMACAddr, TypeMACAddr8:
-		typ = &NetworkType{T: t}
-	case TypeCircle, TypeLine, TypeLseg, TypeBox, TypePath, TypePolygon, TypePoint, TypeGeometry:
-		typ = &schema.SpatialType{T: t}
-	case TypeDate:
-		typ = &schema.TimeType{T: t}
-	case TypeTime, TypeTimeWOTZ, TypeTimeTZ, TypeTimeWTZ, TypeTimestamp,
-		TypeTimestampTZ, TypeTimestampWTZ, TypeTimestampWOTZ:
-		p := defaultTimePrecision
-		if c.timePrecision != nil {
-			p = int(*c.timePrecision)
-		}
-		typ = &schema.TimeType{T: t, Precision: &p}
-	case TypeInterval:
-		p := defaultTimePrecision
-		if c.timePrecision != nil {
-			p = int(*c.timePrecision)
-		}
-		typ = &IntervalType{T: t, Precision: &p}
-		if c.interval != "" {
-			f, ok := intervalField(c.interval)
-			if !ok {
-				return &schema.UnsupportedType{T: c.interval}, nil
-			}
-			typ.(*IntervalType).F = f
-		}
-	case TypeReal, TypeDouble, TypeFloat, TypeFloat4, TypeFloat8:
-		typ = &schema.FloatType{T: t, Precision: int(c.precision)}
-	case TypeJSON, TypeJSONB:
-		typ = &schema.JSONType{T: t}
-	case TypeMoney:
-		typ = &CurrencyType{T: t}
-	case TypeDecimal, TypeNumeric:
-		typ = &schema.DecimalType{T: t, Precision: int(c.precision), Scale: int(c.scale)}
-	case TypeSmallSerial, TypeSerial, TypeBigSerial, TypeSerial2, TypeSerial4, TypeSerial8:
-		typ = &SerialType{T: t, Precision: int(c.precision)}
-	case TypeUUID:
-		typ = &UUIDType{T: t}
-	case TypeXML:
-		typ = &XMLType{T: t}
-	case TypeArray:
-		// Ignore multi-dimensions or size constraints
-		// as they are ignored by the database.
-		typ = &ArrayType{T: c.fmtype}
-		if t, ok := arrayType(c.fmtype); ok {
-			tt, err := ParseType(t)
-			if err != nil {
-				return nil, err
-			}
-			typ.(*ArrayType).Type = tt
-		}
-	case TypeUserDefined:
-		typ = &UserDefinedType{T: c.fmtype}
-		// The `typtype` column is set to 'e' for enum types, and the
-		// values are filled in batch after the rows above is closed.
-		// https://postgresql.org/docs/current/catalog-pg-type.html
-		if c.typtype == "e" {
-			typ = newEnumType(c.fmtype, c.typid)
-		}
-	default:
-		typ = &schema.UnsupportedType{T: t}
-	}
-	return typ, nil
-}
-
 // enumValues fills enum columns with their values from the database.
 func (i *inspect) enumValues(ctx context.Context, s *schema.Schema) error {
 	var (
@@ -934,19 +854,6 @@ func newEnumType(t string, id int64) *enumType {
 		e.T = r(parts[2])
 	}
 	return e
-}
-
-func enumIdent(s *schema.Schema, e *schema.EnumType) string {
-	switch {
-	// Enum schema has higher precedence.
-	case e.Schema != nil:
-		return fmt.Sprintf("%q.%q", e.Schema.Name, e.T)
-	// Fallback to table schema if exists.
-	case s != nil:
-		return fmt.Sprintf("%q.%q", s.Name, e.T)
-	default:
-		return strconv.Quote(e.T)
-	}
 }
 
 const (
