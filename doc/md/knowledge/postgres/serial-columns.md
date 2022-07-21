@@ -116,7 +116,7 @@ SELECT "c" FROM "t";
 ### Managing Serial Columns with Atlas
 
 Atlas makes it easier to define and manipulate columns of `serial` types. Let's use the
-[`atlas schema inspect`](../../cli-reference.md#atlas-schema-inspect) command to get a representation
+[`atlas schema inspect`](../../reference.md#atlas-schema-inspect) command to get a representation
 of the table we created above in the Atlas HCL format :
 
 ```console
@@ -235,7 +235,7 @@ Changing a column type from `bigint` to `serial` requires 3 changes:
 2. Set the `DEFAULT` value of `c` to `nextval('"public"."t_c_seq"')`.
 3. Alter the column type, as `serial` maps to `integer` (!= `bigint`).
 
-We call [`atlas schema apply`](../../cli-reference.md#atlas-schema-apply) to plan and execute this three step process
+We call [`atlas schema apply`](../../reference.md#atlas-schema-apply) to plan and execute this three step process
 with Atlas:
 
 ```console
