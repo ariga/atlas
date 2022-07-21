@@ -21,8 +21,8 @@ import (
 type (
 	doc struct {
 		Tables  []*sqlspec.Table  `spec:"table"`
-		Schemas []*sqlspec.Schema `spec:"schema"`
 		Enums   []*Enum           `spec:"enum"`
+		Schemas []*sqlspec.Schema `spec:"schema"`
 	}
 	// Enum holds a specification for an enum, that can be referenced as a column type.
 	Enum struct {
@@ -49,21 +49,19 @@ func evalSpec(p *hclparse.Parser, v interface{}, input map[string]string) error 
 			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
 		}
 		if len(d.Enums) > 0 {
-			for _, sch := range v.Schemas {
-				if err := convertEnums(d.Tables, d.Enums, sch); err != nil {
-					return err
-				}
+			if err := convertEnums(d.Tables, d.Enums, v); err != nil {
+				return err
 			}
 		}
 	case *schema.Schema:
 		if len(d.Schemas) != 1 {
 			return fmt.Errorf("specutil: expecting document to contain a single schema, got %d", len(d.Schemas))
 		}
-		var r schema.Realm
-		if err := specutil.Scan(&r, d.Schemas, d.Tables, convertTable); err != nil {
+		r := &schema.Realm{}
+		if err := specutil.Scan(r, d.Schemas, d.Tables, convertTable); err != nil {
 			return err
 		}
-		if err := convertEnums(d.Tables, d.Enums, r.Schemas[0]); err != nil {
+		if err := convertEnums(d.Tables, d.Enums, r); err != nil {
 			return err
 		}
 		r.Schemas[0].Realm = nil
@@ -341,44 +339,61 @@ func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 
 // convertEnums converts possibly referenced column types (like enums) to
 // an actual schema.Type and sets it on the correct schema.Column.
-func convertEnums(tbls []*sqlspec.Table, enums []*Enum, sch *schema.Schema) error {
-	for _, tbl := range tbls {
-		for _, col := range tbl.Columns {
-			if col.Type.IsRef {
-				e, err := resolveEnum(col.Type, enums)
-				if err != nil {
-					return err
-				}
-				t, ok := sch.Table(tbl.Name)
-				if !ok {
-					return fmt.Errorf("postgres: table %q not found in schema %q", tbl.Name, sch.Name)
-				}
-				c, ok := t.Column(col.Name)
-				if !ok {
-					return fmt.Errorf("postgrs: column %q not found in table %q", col.Name, t.Name)
-				}
-				c.Type.Type = &schema.EnumType{
-					T:      e.Name,
-					Values: e.Values,
-				}
+func convertEnums(tables []*sqlspec.Table, enums []*Enum, r *schema.Realm) error {
+	var (
+		used   = make(map[*Enum]struct{})
+		byName = make(map[string]*Enum)
+	)
+	for _, e := range enums {
+		byName[e.Name] = e
+	}
+	for _, t := range tables {
+		for _, c := range t.Columns {
+			if !c.Type.IsRef {
+				continue
 			}
+			name, err := enumName(c.Type)
+			if err != nil {
+				return err
+			}
+			e, ok := byName[name]
+			if !ok {
+				return fmt.Errorf("enum %q was not found", name)
+			}
+			used[e] = struct{}{}
+			schemaE, err := specutil.SchemaName(e.Schema)
+			if err != nil {
+				return fmt.Errorf("extract schema name from enum refrence: %w", err)
+			}
+			es, ok := r.Schema(schemaE)
+			if !ok {
+				return fmt.Errorf("schema %q not found in realm for table %q", schemaE, t.Name)
+			}
+			schemaT, err := specutil.SchemaName(t.Schema)
+			if err != nil {
+				return fmt.Errorf("extract schema name from table refrence: %w", err)
+			}
+			ts, ok := r.Schema(schemaT)
+			if !ok {
+				return fmt.Errorf("schema %q not found in realm for table %q", schemaT, t.Name)
+			}
+			tt, ok := ts.Table(t.Name)
+			if !ok {
+				return fmt.Errorf("table %q not found in schema %q", t.Name, ts.Name)
+			}
+			cc, ok := tt.Column(c.Name)
+			if !ok {
+				return fmt.Errorf("column %q not found in table %q", c.Name, t.Name)
+			}
+			cc.Type.Type = &schema.EnumType{T: e.Name, Schema: es, Values: e.Values}
+		}
+	}
+	for _, e := range enums {
+		if _, ok := used[e]; !ok {
+			return fmt.Errorf("enum %q declared but not used", e.Name)
 		}
 	}
 	return nil
-}
-
-// resolveEnum returns the first Enum that matches the name referenced by the given column type.
-func resolveEnum(ref *schemahcl.Type, enums []*Enum) (*Enum, error) {
-	n, err := enumName(ref)
-	if err != nil {
-		return nil, err
-	}
-	for _, e := range enums {
-		if e.Name == n {
-			return e, err
-		}
-	}
-	return nil, fmt.Errorf("postgres: enum %q not found", n)
 }
 
 // enumName extracts the name of the referenced Enum from the reference string.
