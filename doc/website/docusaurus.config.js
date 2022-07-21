@@ -136,8 +136,8 @@ module.exports = {
           },
           {
             to: '/cli-reference',
-            from: '/cli/reference'
-          }
+            from: '/cli/reference',
+          },
         ],
       },
     ],
