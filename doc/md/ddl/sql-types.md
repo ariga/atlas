@@ -698,3 +698,101 @@ table "t" {
   }
 }
 ```
+
+## SQLite
+
+Values in SQLite are stored in one of the four native types: `BLOB`, `INTEGER`, `NULL`, `TEXT` and `REAL`. Still, Atlas
+supports variety of data types that are commonly used by ORMs. These types are mapped to column affinities based on
+the rules described in [SQLite website](https://www.sqlite.org/datatype3.html#type_affinity).
+
+### Blob
+
+The `blob` data type allows creating columns with `BLOB` type affinity.
+
+```hcl
+table "t" {
+  schema = schema.main
+  column "c" {
+    type = blob
+  }
+}
+```
+
+### Integer
+
+The `int` and `integer` data types allow creating columns with `INTEGER` type affinity.
+
+```hcl
+table "t" {
+  schema = schema.main
+  column "c" {
+    type = int
+  }
+}
+```
+
+### Numeric
+
+The `numeric` and `decimal` data types allow creating columns with `NUMERIC` type affinity.
+
+```hcl
+table "t" {
+  schema = schema.main
+  column "c" {
+    type = decimal
+  }
+}
+```
+
+### Text
+
+The `text`, `varchar`, `clob`, `character` and `varying_character` data types allow creating columns with `text` type
+affinity. i.e. stored as text strings.
+
+```hcl
+table "t" {
+  schema = schema.main
+  column "c" {
+    type = text
+  }
+}
+```
+
+### Real
+
+The `real`, `double`, `double_precision`, and `float` data types allow creating columns with `real` type
+affinity.
+
+```hcl
+table "t" {
+  schema = schema.main
+  column "c" {
+    type = real
+  }
+}
+```
+
+### Additional Types
+
+As mentioned above, Atlas supports variety of data types that are commonly used by ORMs. e.g. [Ent](https://entgo.io).
+
+```hcl
+table "t" {
+  schema = schema.main
+  column "c1" {
+    type = bool
+  }
+  column "c2" {
+    type = date 
+  }
+  column "c3" {
+    type = datetime
+  }
+  column "c4" {
+    type = uuid
+  }
+  column "c5" {
+    type = json
+  }
+}
+```
