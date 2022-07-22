@@ -28,8 +28,9 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 			Reversible:    true,
 			Transactional: true,
 		},
-		altered: make(map[string]*schema.EnumType),
 		created: make(map[string]*schema.EnumType),
+		altered: make(map[string]*schema.EnumType),
+		dropped: make(map[string]*schema.EnumType),
 	}
 	if err := s.plan(ctx, changes); err != nil {
 		return nil, err
@@ -55,9 +56,9 @@ func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change) e
 type state struct {
 	conn
 	migrate.Plan
-	// Track the enums that were altered or created
-	// in this phase to avoid duplicate updates.
-	altered, created map[string]*schema.EnumType
+	// Track the enums that were created, altered and
+	// dropped, in this phase to avoid duplicate updates.
+	created, altered, dropped map[string]*schema.EnumType
 }
 
 // Exec executes the changes on the database. An error is returned
@@ -353,7 +354,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 				fromE, fromHas := change.From.Type.Type.(*schema.EnumType)
 				// In case the enum was dropped or replaced with a different one.
 				if fromHas && !toHas || fromHas && toHas && enumIdent(t.Schema, fromE) != enumIdent(t.Schema, toE) {
-					if err := mayDropEnum(alter, t.Schema, fromE); err != nil {
+					if err := s.mayDropEnum(alter, t.Schema, fromE); err != nil {
 						return err
 					}
 				}
@@ -361,7 +362,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 				b.P("DROP COLUMN").Ident(change.C.Name)
 				reverse = append(reverse, &schema.AddColumn{C: change.C})
 				if e, ok := change.C.Type.Type.(*schema.EnumType); ok {
-					if err := mayDropEnum(alter, t.Schema, e); err != nil {
+					if err := s.mayDropEnum(alter, t.Schema, e); err != nil {
 						return err
 					}
 				}
@@ -736,25 +737,30 @@ func (s *state) enumExists(ctx context.Context, ns *schema.Schema, e *schema.Enu
 }
 
 // mayDropEnum drops dangling enum types form the schema.
-func mayDropEnum(alter *alterChange, s *schema.Schema, e *schema.EnumType) error {
-	schemas := []*schema.Schema{s}
-	// In case there is a realm attached, traverse the entire tree.
-	if s.Realm != nil && len(s.Realm.Schemas) > 0 {
-		schemas = s.Realm.Schemas
+func (s *state) mayDropEnum(alter *alterChange, ns *schema.Schema, e *schema.EnumType) error {
+	name := enumIdent(ns, e)
+	if _, ok := s.dropped[name]; ok {
+		return nil
 	}
-	for _, ns := range schemas {
-		for _, t := range ns.Tables {
+	schemas := []*schema.Schema{ns}
+	// In case there is a realm attached, traverse the entire tree.
+	if ns.Realm != nil && len(ns.Realm.Schemas) > 0 {
+		schemas = ns.Realm.Schemas
+	}
+	for i := range schemas {
+		for _, t := range schemas[i].Tables {
 			for _, c := range t.Columns {
 				e1, ok := c.Type.Type.(*schema.EnumType)
 				// Although we search in siblings schemas, use the
 				// table's one for building the enum identifier.
-				if ok && enumIdent(s, e1) == enumIdent(s, e) {
+				if ok && enumIdent(ns, e1) == name {
 					return nil
 				}
 			}
 		}
 	}
-	create, drop := createDropEnum(s, e)
+	s.dropped[name] = e
+	create, drop := createDropEnum(ns, e)
 	alter.after = append(alter.after, &migrate.Change{
 		Cmd:     drop,
 		Reverse: create,

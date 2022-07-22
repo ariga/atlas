@@ -541,7 +541,10 @@ func TestPlanChanges(t *testing.T) {
 								Change: schema.ChangeType,
 							},
 							&schema.DropColumn{
-								C: schema.NewEnumColumn("dc", schema.EnumName("de"), schema.EnumValues("on")),
+								C: schema.NewEnumColumn("dc1", schema.EnumName("de"), schema.EnumValues("on")),
+							},
+							&schema.DropColumn{
+								C: schema.NewEnumColumn("dc2", schema.EnumName("de"), schema.EnumValues("on")),
 							},
 						},
 					}
@@ -561,7 +564,7 @@ func TestPlanChanges(t *testing.T) {
 				Changes: []*migrate.Change{
 					{Cmd: `CREATE TYPE "public"."state" AS ENUM ('on', 'off')`, Reverse: `DROP TYPE "public"."state"`},
 					{Cmd: `CREATE TYPE "test"."status" AS ENUM ('a', 'b')`, Reverse: `DROP TYPE "test"."status"`},
-					{Cmd: `ALTER TABLE "public"."users" ALTER COLUMN "state" TYPE "public"."state", ALTER COLUMN "status" TYPE "test"."status", DROP COLUMN "dc"`, Reverse: `ALTER TABLE "public"."users" ADD COLUMN "dc" "public"."de" NOT NULL, ALTER COLUMN "status" TYPE text, ALTER COLUMN "state" TYPE text`},
+					{Cmd: `ALTER TABLE "public"."users" ALTER COLUMN "state" TYPE "public"."state", ALTER COLUMN "status" TYPE "test"."status", DROP COLUMN "dc1", DROP COLUMN "dc2"`, Reverse: `ALTER TABLE "public"."users" ADD COLUMN "dc2" "public"."de" NOT NULL, ADD COLUMN "dc1" "public"."de" NOT NULL, ALTER COLUMN "status" TYPE text, ALTER COLUMN "state" TYPE text`},
 					{Cmd: `DROP TYPE "public"."de"`, Reverse: `CREATE TYPE "public"."de" AS ENUM ('on')`},
 				},
 			},
