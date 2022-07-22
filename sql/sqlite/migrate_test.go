@@ -223,6 +223,41 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		// Nothing to INSERT.
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := &schema.Table{
+						Name: "users",
+						Columns: []*schema.Column{
+							{Name: "c2", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+						},
+					}
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.DropColumn{
+								C: &schema.Column{Name: "c1", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
+							},
+							&schema.AddColumn{
+								C: &schema.Column{Name: "c2", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+							},
+						},
+					}
+				}(),
+			},
+			plan: &migrate.Plan{
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{Cmd: "PRAGMA foreign_keys = off"},
+					{Cmd: "CREATE TABLE `new_users` (`c2` bigint NOT NULL)", Reverse: "DROP TABLE `new_users`"},
+					/* Nothing to INSERT from `users` as `c1` was dropped. */
+					{Cmd: "DROP TABLE `users`"},
+					{Cmd: "ALTER TABLE `new_users` RENAME TO `users`"},
+					{Cmd: "PRAGMA foreign_keys = on"},
+				},
+			},
+		},
 		{
 			changes: []schema.Change{
 				&schema.RenameTable{

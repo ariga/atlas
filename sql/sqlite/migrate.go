@@ -166,14 +166,20 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 	if err := s.addTable(ctx, &schema.AddTable{T: &newT}); err != nil {
 		return err
 	}
-	if err := s.copyRows(modify.T, &newT, modify.Changes); err != nil {
+	copied, err := s.copyRows(modify.T, &newT, modify.Changes)
+	if err != nil {
 		return err
 	}
 	// Drop the current table, and rename the new one to its real name.
 	s.append(&migrate.Change{
-		Cmd:     Build("DROP TABLE").Ident(modify.T.Name).String(),
-		Source:  modify,
-		Comment: fmt.Sprintf("drop %q table after copying rows", modify.T.Name),
+		Cmd:    Build("DROP TABLE").Ident(modify.T.Name).String(),
+		Source: modify,
+		Comment: fmt.Sprintf("drop %q table %s", modify.T.Name, func() string {
+			if copied {
+				return "after copying rows"
+			}
+			return "without copying rows (no columns)"
+		}()),
 	})
 	s.append(&migrate.Change{
 		Cmd:     Build("ALTER TABLE").Ident(newT.Name).P("RENAME TO").Ident(modify.T.Name).String(),
@@ -325,7 +331,7 @@ func (s *state) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
 	})
 }
 
-func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.Change) error {
+func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.Change) (bool, error) {
 	var (
 		args       []interface{}
 		fromC, toC []string
@@ -344,7 +350,7 @@ func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.
 					break
 				}
 				if change != nil {
-					return fmt.Errorf("duplicate changes for column: %q: %T, %T", column.Name, change, c)
+					return false, fmt.Errorf("duplicate changes for column: %q: %T, %T", column.Name, change, c)
 				}
 				change = changes[i]
 			case *schema.ModifyColumn:
@@ -352,12 +358,12 @@ func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.
 					break
 				}
 				if change != nil {
-					return fmt.Errorf("duplicate changes for column: %q: %T, %T", column.Name, change, c)
+					return false, fmt.Errorf("duplicate changes for column: %q: %T, %T", column.Name, change, c)
 				}
 				change = changes[i]
 			case *schema.DropColumn:
 				if c.C.Name == column.Name {
-					return fmt.Errorf("unexpected drop column: %q", column.Name)
+					return false, fmt.Errorf("unexpected drop column: %q", column.Name)
 				}
 			}
 		}
@@ -373,7 +379,7 @@ func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.
 				fromC = append(fromC, fmt.Sprintf("IFNULL(`%[1]s`, ?) AS `%[1]s`", column.Name))
 				x, err := defaultValue(column)
 				if err != nil {
-					return err
+					return false, err
 				}
 				args = append(args, x)
 			} else {
@@ -385,13 +391,18 @@ func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.
 			fromC = append(fromC, column.Name)
 		}
 	}
-	stmt := fmt.Sprintf("INSERT INTO `%s` (%s) SELECT %s FROM `%s`", to.Name, identComma(toC), identComma(fromC), from.Name)
-	s.append(&migrate.Change{
-		Cmd:     stmt,
-		Args:    args,
-		Comment: fmt.Sprintf("copy rows from old table %q to new temporary table %q", from.Name, to.Name),
-	})
-	return nil
+	insert := len(toC) > 0
+	if insert {
+		s.append(&migrate.Change{
+			Cmd: fmt.Sprintf(
+				"INSERT INTO `%s` (%s) SELECT %s FROM `%s`",
+				to.Name, identComma(toC), identComma(fromC), from.Name,
+			),
+			Args:    args,
+			Comment: fmt.Sprintf("copy rows from old table %q to new temporary table %q", from.Name, to.Name),
+		})
+	}
+	return insert, nil
 }
 
 // alterTable alters the table with the given changes. Assuming the changes are "alterable".
