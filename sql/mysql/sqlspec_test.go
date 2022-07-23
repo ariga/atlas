@@ -701,7 +701,6 @@ func TestMarshalSpec_GeneratedColumn(t *testing.T) {
 			schema.NewTable("users").
 				AddColumns(
 					schema.NewIntColumn("c1", "int"),
-					schema.NewIntColumn("c 1", "int"),
 					schema.NewIntColumn("c2", "int").
 						SetGeneratedExpr(&schema.GeneratedExpr{Expr: "c1 * 2"}),
 					schema.NewIntColumn("c3", "int").
@@ -715,10 +714,6 @@ func TestMarshalSpec_GeneratedColumn(t *testing.T) {
 	const expected = `table "users" {
   schema = schema.test
   column "c1" {
-    null = false
-    type = int
-  }
-  column "c 1" {
     null = false
     type = int
   }
