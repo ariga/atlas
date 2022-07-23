@@ -304,7 +304,9 @@ func StrLitAttr(k, v string) *Attr {
 
 // ListAttr is a helper method for constructing *schemahcl.Attr instances that contain list values.
 func ListAttr(k string, litValues ...string) *Attr {
-	lv := &ListValue{}
+	lv := &ListValue{
+		V: make([]Value, 0, len(litValues)),
+	}
 	for _, v := range litValues {
 		lv.V = append(lv.V, &LiteralValue{V: v})
 	}

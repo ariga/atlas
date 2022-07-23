@@ -372,7 +372,7 @@ func typeNonFuncArgs(spec *TypeSpec) []*TypeAttr {
 
 // pickTypeAttrs returns the relevant Attrs matching the wanted TypeAttrs.
 func pickTypeAttrs(src []*Attr, wanted []*TypeAttr) []*Attr {
-	keys := make(map[string]struct{})
+	keys := make(map[string]struct{}, len(wanted))
 	for _, w := range wanted {
 		keys[w.Name] = struct{}{}
 	}
@@ -386,7 +386,7 @@ func pickTypeAttrs(src []*Attr, wanted []*TypeAttr) []*Attr {
 }
 
 func appendIfNotExist(base []*Attr, additional []*Attr) []*Attr {
-	exists := make(map[string]struct{})
+	exists := make(map[string]struct{}, len(base))
 	for _, attr := range base {
 		exists[attr.K] = struct{}{}
 	}

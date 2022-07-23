@@ -155,7 +155,9 @@ func typeFuncSpecImpl(_ *function.Spec, typeSpec *TypeSpec) function.ImplFunc {
 		for _, attr := range typeFuncArgs(typeSpec) {
 			// If the attribute is a slice, read all remaining args into a list value.
 			if attr.Kind == reflect.Slice {
-				lst := &ListValue{}
+				lst := &ListValue{
+					V: make([]Value, 0, len(args)),
+				}
 				for _, arg := range args {
 					v, err := extractLiteralValue(arg)
 					if err != nil {

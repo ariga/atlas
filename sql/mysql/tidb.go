@@ -229,14 +229,14 @@ func (i *tinspect) setFKs(s *schema.Schema, t *schema.Table) error {
 			return fmt.Errorf("couldn't resolve ref table %s on ", m[3])
 		}
 		fk.RefTable = refTable
-		for _, c := range columns(s, clmns) {
+		for _, c := range columns(clmns) {
 			column, ok := t.Column(c)
 			if !ok {
 				return fmt.Errorf("column %q was not found for fk %q", c, ctName)
 			}
 			fk.Columns = append(fk.Columns, column)
 		}
-		for _, c := range columns(s, refClmns) {
+		for _, c := range columns(refClmns) {
 			column, ok := refTable.Column(c)
 			if !ok {
 				return fmt.Errorf("ref column %q was not found for fk %q", c, ctName)
@@ -249,7 +249,7 @@ func (i *tinspect) setFKs(s *schema.Schema, t *schema.Table) error {
 }
 
 // columns from the matched regex above.
-func columns(schema *schema.Schema, s string) []string {
+func columns(s string) []string {
 	names := strings.Split(s, ",")
 	for i := range names {
 		names[i] = strings.Trim(strings.TrimSpace(names[i]), "`\"")

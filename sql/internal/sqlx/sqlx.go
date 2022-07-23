@@ -151,7 +151,7 @@ func SchemaFKs(s *schema.Schema, rows *sql.Rows) error {
 
 // LinkSchemaTables links foreign-key stub tables/columns to actual elements.
 func LinkSchemaTables(schemas []*schema.Schema) {
-	byName := make(map[string]map[string]*schema.Table)
+	byName := make(map[string]map[string]*schema.Table, len(schemas))
 	for _, s := range schemas {
 		byName[s.Name] = make(map[string]*schema.Table)
 		for _, t := range s.Tables {

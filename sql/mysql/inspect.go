@@ -658,7 +658,8 @@ func (i *inspect) marDefaultExpr(c *schema.Column, x string) schema.Expr {
 }
 
 func (i *inspect) querySchema(ctx context.Context, query string, s *schema.Schema) (*sql.Rows, error) {
-	args := []interface{}{s.Name}
+	args := make([]interface{}, 0, 1+len(s.Tables))
+	args = append(args, s.Name)
 	for _, t := range s.Tables {
 		args = append(args, t.Name)
 	}

@@ -37,7 +37,7 @@ type DevDriver struct {
 // a "dev database", and then inspects them from there.
 func (d *DevDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *schema.Realm, err error) {
 	var (
-		names   = make(map[string]string)
+		names   = make(map[string]string, len(r.Schemas))
 		changes = make([]schema.Change, 0, len(r.Schemas))
 		reverse = make([]schema.Change, 0, len(r.Schemas))
 		opts    = &schema.InspectRealmOption{
