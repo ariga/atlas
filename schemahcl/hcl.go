@@ -539,45 +539,35 @@ func findAttr(attrs []*Attr, k string) (*Attr, bool) {
 }
 
 func hclRefTokens(ref string) hclwrite.Tokens {
-	s := strings.Split(strings.ReplaceAll(ref, "$", ""), ".")
-	t := make([]*hclwrite.Token, 0, len(s))
-	for i, s := range s {
-		if i == 0 {
+	t := []*hclwrite.Token{}
+	for i, s := range strings.Split(ref, ".") {
+		// Ignore the first $ as token for reference.
+		if len(s) > 1 && s[0] == '$' {
+			s = s[1:]
+		}
+		switch {
+		case i == 0:
 			t = append(t, hclRawTokens(s)...)
-		} else if hclsyntax.ValidIdentifier(s) {
-			t = append(t, hclTraverseAttr(s)...)
-		} else {
-			t = append(t, hclTraverseIndex(cty.StringVal(s))...)
+		case hclsyntax.ValidIdentifier(s):
+			t = append(t, &hclwrite.Token{
+				Type:  hclsyntax.TokenDot,
+				Bytes: []byte{'.'},
+			}, &hclwrite.Token{
+				Type:  hclsyntax.TokenIdent,
+				Bytes: []byte(s),
+			})
+		default:
+			t = append(t, &hclwrite.Token{
+				Type:  hclsyntax.TokenOBrack,
+				Bytes: []byte{'['},
+			})
+			t = append(t, hclwrite.TokensForValue(cty.StringVal(s))...)
+			t = append(t, &hclwrite.Token{
+				Type:  hclsyntax.TokenCBrack,
+				Bytes: []byte{']'},
+			})
 		}
 	}
-	return t
-}
-
-func hclTraverseAttr(name string) hclwrite.Tokens {
-	return hclwrite.Tokens{
-		&hclwrite.Token{
-			Type:  hclsyntax.TokenDot,
-			Bytes: []byte{'.'},
-		},
-		&hclwrite.Token{
-			Type:  hclsyntax.TokenIdent,
-			Bytes: []byte(name),
-		},
-	}
-}
-
-func hclTraverseIndex(v cty.Value) hclwrite.Tokens {
-	t := hclwrite.Tokens{
-		&hclwrite.Token{
-			Type:  hclsyntax.TokenOBrack,
-			Bytes: []byte{'['},
-		},
-	}
-	t = append(t, hclwrite.TokensForValue(v)...)
-	t = append(t, &hclwrite.Token{
-		Type:  hclsyntax.TokenCBrack,
-		Bytes: []byte{']'},
-	})
 	return t
 }
 
