@@ -425,12 +425,10 @@ func (s *State) writeAttr(attr *Attr, body *hclwrite.Body) error {
 	attr = normalizeLiterals(attr)
 	switch v := attr.V.(type) {
 	case *Ref:
-		expr := strings.ReplaceAll(v.V, "$", "")
-		body.SetAttributeRaw(attr.K, hclRawTokens(expr))
+		body.SetAttributeRaw(attr.K, hclRefTokens(v.V))
 	case *Type:
 		if v.IsRef {
-			expr := strings.ReplaceAll(v.T, "$", "")
-			body.SetAttributeRaw(attr.K, hclRawTokens(expr))
+			body.SetAttributeRaw(attr.K, hclRefTokens(v.T))
 			break
 		}
 		spec, ok := s.findTypeSpec(v.T)
@@ -456,19 +454,18 @@ func (s *State) writeAttr(attr *Attr, body *hclwrite.Body) error {
 		if v.V == nil {
 			return nil
 		}
-		lst := make([]string, 0, len(v.V))
+		lst := make([]hclwrite.Tokens, 0, len(v.V))
 		for _, item := range v.V {
 			switch v := item.(type) {
 			case *Ref:
-				expr := strings.ReplaceAll(v.V, "$", "")
-				lst = append(lst, expr)
+				lst = append(lst, hclRefTokens(v.V))
 			case *LiteralValue:
-				lst = append(lst, v.V)
+				lst = append(lst, hclRawTokens(v.V))
 			default:
 				return fmt.Errorf("cannot write elem type %T of attr %q to HCL list", v, attr)
 			}
 		}
-		body.SetAttributeRaw(attr.K, hclRawList(lst))
+		body.SetAttributeRaw(attr.K, hclList(lst))
 	default:
 		return fmt.Errorf("schemacl: unknown literal type %T", v)
 	}
@@ -541,6 +538,49 @@ func findAttr(attrs []*Attr, k string) (*Attr, bool) {
 	return nil, false
 }
 
+func hclRefTokens(ref string) hclwrite.Tokens {
+	s := strings.Split(strings.ReplaceAll(ref, "$", ""), ".")
+	t := make([]*hclwrite.Token, 0, len(s))
+	for i, s := range s {
+		if i == 0 {
+			t = append(t, hclRawTokens(s)...)
+		} else if hclsyntax.ValidIdentifier(s) {
+			t = append(t, hclTraverseAttr(s)...)
+		} else {
+			t = append(t, hclTraverseIndex(cty.StringVal(s))...)
+		}
+	}
+	return t
+}
+
+func hclTraverseAttr(name string) hclwrite.Tokens {
+	return hclwrite.Tokens{
+		&hclwrite.Token{
+			Type:  hclsyntax.TokenDot,
+			Bytes: []byte{'.'},
+		},
+		&hclwrite.Token{
+			Type:  hclsyntax.TokenIdent,
+			Bytes: []byte(name),
+		},
+	}
+}
+
+func hclTraverseIndex(v cty.Value) hclwrite.Tokens {
+	t := hclwrite.Tokens{
+		&hclwrite.Token{
+			Type:  hclsyntax.TokenOBrack,
+			Bytes: []byte{'['},
+		},
+	}
+	t = append(t, hclwrite.TokensForValue(v)...)
+	t = append(t, &hclwrite.Token{
+		Type:  hclsyntax.TokenCBrack,
+		Bytes: []byte{']'},
+	})
+	return t
+}
+
 func hclRawTokens(s string) hclwrite.Tokens {
 	return hclwrite.Tokens{
 		&hclwrite.Token{
@@ -550,7 +590,7 @@ func hclRawTokens(s string) hclwrite.Tokens {
 	}
 }
 
-func hclRawList(items []string) hclwrite.Tokens {
+func hclList(items []hclwrite.Tokens) hclwrite.Tokens {
 	t := hclwrite.Tokens{&hclwrite.Token{
 		Type:  hclsyntax.TokenOBrack,
 		Bytes: []byte("["),
@@ -559,7 +599,7 @@ func hclRawList(items []string) hclwrite.Tokens {
 		if i > 0 {
 			t = append(t, &hclwrite.Token{Type: hclsyntax.TokenComma, Bytes: []byte(",")})
 		}
-		t = append(t, &hclwrite.Token{Type: hclsyntax.TokenIdent, Bytes: []byte(item)})
+		t = append(t, item...)
 	}
 	t = append(t, &hclwrite.Token{
 		Type:  hclsyntax.TokenCBrack,
