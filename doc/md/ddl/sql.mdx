@@ -615,7 +615,7 @@ PostgreSQL supports `serial` columns and the `generated as identity` syntax for 
 ```hcl
 table "users" {
   schema = schema.public
-  column "name" {
+  column "id" {
     null = false
     type = int
     identity {
