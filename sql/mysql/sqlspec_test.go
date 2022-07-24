@@ -585,16 +585,23 @@ table "users" {
 
 func TestMarshalSpec_IndexParts(t *testing.T) {
 	c := schema.NewStringColumn("name", "text")
+	c2 := schema.NewStringColumn("Full Name", "text")
 	s := schema.New("test").
 		AddTables(
 			schema.NewTable("users").
-				AddColumns(c).
+				AddColumns(c, c2).
 				AddIndexes(
 					schema.NewIndex("idx").
 						AddParts(
 							schema.NewColumnPart(c).SetDesc(true).AddAttrs(&SubPart{Len: 10}),
 							schema.NewExprPart(&schema.RawExpr{X: "lower(name)"}),
 						),
+					schema.NewIndex("idx2").
+						AddParts(
+							schema.NewColumnPart(c2).SetDesc(true).AddAttrs(&SubPart{Len: 10}),
+						),
+					schema.NewIndex("idx3").
+						AddParts(schema.NewColumnPart(c2)),
 				),
 		)
 	buf, err := MarshalHCL(s)
@@ -602,6 +609,10 @@ func TestMarshalSpec_IndexParts(t *testing.T) {
 	exp := `table "users" {
   schema = schema.test
   column "name" {
+    null = false
+    type = text
+  }
+  column "Full Name" {
     null = false
     type = text
   }
@@ -615,11 +626,21 @@ func TestMarshalSpec_IndexParts(t *testing.T) {
       expr = "lower(name)"
     }
   }
+  index "idx2" {
+    on {
+      desc   = true
+      column = column["Full Name"]
+      prefix = 10
+    }
+  }
+  index "idx3" {
+    columns = [column["Full Name"]]
+  }
 }
 schema "test" {
 }
 `
-	require.EqualValues(t, exp, buf)
+	require.EqualValues(t, exp, string(buf))
 }
 
 func TestMarshalSpec_TimePrecision(t *testing.T) {
