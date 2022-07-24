@@ -33,7 +33,7 @@ func (Revision) Fields() []ent.Field {
 			Immutable(),
 		field.Int64("execution_time").
 			GoType(time.Duration(0)),
-		field.String("error").
+		field.Text("error").
 			Optional(),
 		field.String("hash"),
 		field.Strings("partial_hashes").
