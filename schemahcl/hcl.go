@@ -539,7 +539,7 @@ func findAttr(attrs []*Attr, k string) (*Attr, bool) {
 }
 
 func hclRefTokens(ref string) hclwrite.Tokens {
-	t := []*hclwrite.Token{}
+	var t []*hclwrite.Token
 	for i, s := range strings.Split(ref, ".") {
 		// Ignore the first $ as token for reference.
 		if len(s) > 1 && s[0] == '$' {
