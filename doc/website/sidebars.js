@@ -26,10 +26,17 @@ module.exports = {
             label: 'Atlas Schemas',
             collapsed: false,
             items: [
+<<<<<<< HEAD
                 {type: 'doc', id: 'atlas-schema/sql-resources', label: 'SQL Resources'},
                 {type: 'doc', id: 'atlas-schema/sql-types', label: 'SQL Column Types'},
                 {type: 'doc', id: 'atlas-schema/input-variables', label: 'Input Variables'},
                 {type: 'doc', id: 'atlas-schema/projects', label: 'Project Structure'},
+=======
+               'atlas-schema/sql-resources',
+               'atlas-schema/sql-types',
+               'atlas-schema/projects',
+               'atlas-schema/input-variables',
+>>>>>>> dcebb1b5cdd2e93a239f3045b6b1cc1ef42cf7c1
             ],
         },
         {
