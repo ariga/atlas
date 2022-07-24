@@ -28,8 +28,8 @@ module.exports = {
             items: [
                 {type: 'doc', id: 'atlas-schema/sql-resources', label: 'SQL Resources'},
                 {type: 'doc', id: 'atlas-schema/sql-types', label: 'SQL Column Types'},
-                {type: 'doc', id: 'atlas-schema/input-variables', label: 'Input Variables'},
                 {type: 'doc', id: 'atlas-schema/projects', label: 'Project Structure'},
+                {type: 'doc', id: 'atlas-schema/input-variables', label: 'Input Variables'},
             ],
         },
         {
@@ -37,9 +37,9 @@ module.exports = {
             label: 'Concepts',
             collapsed: false,
             items: [
-                {type: 'doc', id: 'concepts/ddl', label: 'Data Definition Language'},
-                {type: 'doc', id: 'concepts/dev-database', label: 'Dev Database'},
                 {type: 'doc', id: 'concepts/concepts-url', label: 'URLs'},
+                {type: 'doc', id: 'concepts/dev-database', label: 'Dev Database'},
+                {type: 'doc', id: 'concepts/ddl', label: 'Data Definition Language'},
             ],
         },
         {
