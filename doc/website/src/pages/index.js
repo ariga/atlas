@@ -21,6 +21,11 @@ function Nav() {
             </Link>
         </li>
         <li className={index.linkItem}>
+            <Link to="/knowledge">
+                Knowledge Center
+            </Link>
+        </li>
+        <li className={index.linkItem}>
             <Link to="/blog">
                 Blog
             </Link>

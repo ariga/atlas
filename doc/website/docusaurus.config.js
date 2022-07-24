@@ -64,6 +64,11 @@ module.exports = {
           position: 'left',
         },
         {
+          to: 'knowledge',
+          label: 'Knowledge Center',
+          position: 'left',
+        },
+        {
           to: 'blog',
           label: 'Blog',
           position: 'left'
