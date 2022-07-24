@@ -98,7 +98,7 @@ schema "main" {
 
 ### Project Input Variables
 
-Project files may also declare [input variables](../ddl/input.md) that can be supplied to the CLI
+Project files may also declare [input variables](../atlas-schema/input.md) that can be supplied to the CLI
 at runtime. For example:
 
 ```hcl
