@@ -1,7 +1,7 @@
 ---
 title: Project Structure
 id: projects
-slug: /cli/projects
+slug: /atlas-schema/projects
 ---
 ### Project Files
 
@@ -72,7 +72,7 @@ Will run the `migrate validate` command against the Dev Database defined in the
 
 ### Passing Input Values
 
-Project files may pass [input values](/ddl/input-variables) to variables defined in
+Project files may pass [input values](/atlas-schema/input-variables) to variables defined in
 the Atlas schema of the environment. To do this simply provide additional attributes
 to the environment block:
 ```hcl
@@ -98,7 +98,7 @@ schema "main" {
 
 ### Project Input Variables
 
-Project files may also declare [input variables](../ddl/input.md) that can be supplied to the CLI
+Project files may also declare [input variables](../atlas-schema/input.md) that can be supplied to the CLI
 at runtime. For example:
 
 ```hcl

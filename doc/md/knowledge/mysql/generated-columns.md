@@ -43,7 +43,7 @@ It also ensures that data which must be consistent, stays consistent.
 **MySQL Syntax for a Generated Column**
 
 ```sql
-column_name data_type [GENERATED ALWAYS] AS (expr) [VIRTUAL | STORED] 
+column_name data_type [GENERATED ALWAYS] AS (expr) [VIRTUAL | STORED]
     [NOT NULL | NULL] [UNIQUE [KEY]] [[PRIMARY] KEY] [COMMENT 'string']
 ```
 
@@ -92,7 +92,7 @@ Install the latest version of Atlas using the [Guide to Setting Up Atlas](/cli/g
 
 ### Generated Column Syntax in Atlas
 
-Use `as` in a column in a table to declare a MySQL generated column. For examples with other databases, read the [Atlas Generated Columns DDL](/ddl/sql/#generated-columns).
+Use `as` in a column in a table to declare a MySQL generated column. For examples with other databases, read the [Atlas Generated Columns DDL](/atlas-schema/sql.mdx#generated-columns).
 
 ```hcl
 column "name" {

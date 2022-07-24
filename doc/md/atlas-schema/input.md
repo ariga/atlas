@@ -1,6 +1,6 @@
 ---
-id: ddl-input-variables
-slug: /ddl/input-variables
+id: input-variables
+slug: /atlas-schema/input-variables
 title: Input Variables
 ---
 In some cases, it is desirable to reuse an Atlas HCL document in different contexts.
@@ -52,14 +52,14 @@ variable "tenant" {
 }
 
 // Define the schema, "tenant" here is a placeholder for the final
-// schema name that will be defined at runtime. 
+// schema name that will be defined at runtime.
 schema "tenant" {
     // Reference to the input variable.
 	name = var.tenant
 }
 table "users" {
-    // Refer to the "tenant" schema. It's actual name will be 
-    // defined at runtime. 
+    // Refer to the "tenant" schema. It's actual name will be
+    // defined at runtime.
 	schema = schema.tenant
 	column "id" {
 		type = int

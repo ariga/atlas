@@ -1,7 +1,7 @@
 ---
-id: ddl-sql-types
+id: sql-types
 title: SQL Column Types
-slug: /ddl/sql-types
+slug: /atlas-schema/sql-types
 ---
 
 ## MySQL
@@ -388,7 +388,7 @@ table "t" {
   }
   column "c2" {
     type    = boolean
-    default = true 
+    default = true
   }
 }
 ```
@@ -783,7 +783,7 @@ table "t" {
     type = bool
   }
   column "c2" {
-    type = date 
+    type = date
   }
   column "c3" {
     type = datetime

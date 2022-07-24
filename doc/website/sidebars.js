@@ -23,33 +23,29 @@ module.exports = {
         },
         {
             type: 'category',
-            label: 'Data Definition Language',
+            label: 'Atlas Schemas',
             collapsed: false,
             items: [
-                'ddl/ddl-sql',
-                'ddl/ddl-sql-types',
-                'ddl/ddl-input-variables',
-                'ddl/ddl-intro',
-            ],
-        },
-        {
-            type: 'category',
-            label: 'CLI',
-            items: [
-                {type: 'doc', id: 'cli/projects'},
+                {type: 'doc', id: 'atlas-schema/sql-resources', label: 'SQL Resources'},
+                {type: 'doc', id: 'atlas-schema/sql-types', label: 'SQL Column Types'},
+                {type: 'doc', id: 'atlas-schema/projects', label: 'Project Structure'},
+                {type: 'doc', id: 'atlas-schema/input-variables', label: 'Input Variables'},
             ],
         },
         {
             type: 'category',
             label: 'Concepts',
+            collapsed: false,
             items: [
-                {type: 'doc', id: 'concepts/dev-database', label: 'Dev Database'},
                 {type: 'doc', id: 'concepts/concepts-url', label: 'URLs'},
+                {type: 'doc', id: 'concepts/dev-database', label: 'Dev Database'},
+                {type: 'doc', id: 'concepts/ddl', label: 'Data Definition Language'},
             ],
         },
         {
             type: 'category',
             label: 'Integrations',
+            collapsed: false,
             items: [
                 {type: 'doc', id: 'integrations/terraform-provider', label: 'Terraform Provider'},
                 {type: 'doc', id: 'integrations/go-api', label: 'Go API'},
