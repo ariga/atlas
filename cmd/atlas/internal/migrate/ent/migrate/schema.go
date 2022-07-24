@@ -21,7 +21,7 @@ var (
 		{Name: "total", Type: field.TypeInt},
 		{Name: "executed_at", Type: field.TypeTime},
 		{Name: "execution_time", Type: field.TypeInt64},
-		{Name: "error", Type: field.TypeString, Nullable: true},
+		{Name: "error", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "hash", Type: field.TypeString},
 		{Name: "partial_hashes", Type: field.TypeJSON, Nullable: true},
 		{Name: "operator_version", Type: field.TypeString},
