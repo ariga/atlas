@@ -1,7 +1,7 @@
 ---
 title: Project Structure
 id: projects
-slug: /cli/projects
+slug: /atlas-schema/projects
 ---
 ### Project Files
 

@@ -1,6 +1,6 @@
 ---
 id: ddl
-slug: /ddl
+slug: /concepts/ddl
 title: Data Definition Language
 ---
 
