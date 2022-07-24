@@ -29,6 +29,20 @@ table "users" {
             expr = "b"
         }
     }
+    column "d e" {
+        null = false
+        type = varchar(255)
+    }
+    column "d $" {
+        null = false
+        type = varchar(255)
+    }
+    index "idx_1" {
+        columns = [column["d e"]]
+    }
+    index "idx_2" {
+        columns = [column["d $"]]
+    }
 }
 
 -- 1.inspect.hcl --
@@ -53,6 +67,20 @@ table "users" {
       expr = "`b`"
       type = STORED
     }
+  }
+  column "d e" {
+    null = false
+    type = varchar(255)
+  }
+  column "d $" {
+    null = false
+    type = varchar(255)
+  }
+  index "idx_1" {
+    columns = [column["d e"]]
+  }
+  index "idx_2" {
+    columns = [column["d $"]]
   }
 }
 schema "$db" {

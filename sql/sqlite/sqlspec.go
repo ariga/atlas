@@ -181,6 +181,7 @@ var TypeRegistry = schemahcl.NewRegistry(
 		schemahcl.NewTypeSpec("clob", schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
 		schemahcl.NewTypeSpec("numeric", schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
 		schemahcl.NewTypeSpec("decimal", schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec("bool"),
 		schemahcl.NewTypeSpec("boolean"),
 		schemahcl.NewTypeSpec("date"),
 		schemahcl.NewTypeSpec("datetime"),

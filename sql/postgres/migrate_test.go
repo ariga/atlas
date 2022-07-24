@@ -540,15 +540,21 @@ func TestPlanChanges(t *testing.T) {
 								To:     users.Columns[1],
 								Change: schema.ChangeType,
 							},
+							&schema.DropColumn{
+								C: schema.NewEnumColumn("dc1", schema.EnumName("de"), schema.EnumValues("on")),
+							},
+							&schema.DropColumn{
+								C: schema.NewEnumColumn("dc2", schema.EnumName("de"), schema.EnumValues("on")),
+							},
 						},
 					}
 				}(),
 			},
 			mock: func(m mock) {
-				m.ExpectQuery(sqltest.Escape("SELECT * FROM pg_type t join pg_namespace n on t.typnamespace = n.oid WHERE t.typname = $1 AND n.nspname = $2 AND t.typtype = 'e'")).
+				m.ExpectQuery(sqltest.Escape("SELECT * FROM pg_type t JOIN pg_namespace n on t.typnamespace = n.oid WHERE t.typname = $1 AND n.nspname = $2 AND t.typtype = 'e'")).
 					WithArgs("state", "public").
 					WillReturnRows(sqlmock.NewRows([]string{"name"}))
-				m.ExpectQuery(sqltest.Escape("SELECT * FROM pg_type t join pg_namespace n on t.typnamespace = n.oid WHERE t.typname = $1 AND n.nspname = $2 AND t.typtype = 'e'")).
+				m.ExpectQuery(sqltest.Escape("SELECT * FROM pg_type t JOIN pg_namespace n on t.typnamespace = n.oid WHERE t.typname = $1 AND n.nspname = $2 AND t.typtype = 'e'")).
 					WithArgs("status", "test").
 					WillReturnRows(sqlmock.NewRows([]string{"name"}))
 			},
@@ -558,7 +564,8 @@ func TestPlanChanges(t *testing.T) {
 				Changes: []*migrate.Change{
 					{Cmd: `CREATE TYPE "public"."state" AS ENUM ('on', 'off')`, Reverse: `DROP TYPE "public"."state"`},
 					{Cmd: `CREATE TYPE "test"."status" AS ENUM ('a', 'b')`, Reverse: `DROP TYPE "test"."status"`},
-					{Cmd: `ALTER TABLE "public"."users" ALTER COLUMN "state" TYPE "public"."state", ALTER COLUMN "status" TYPE "test"."status"`, Reverse: `ALTER TABLE "public"."users" ALTER COLUMN "status" TYPE text, ALTER COLUMN "state" TYPE text`},
+					{Cmd: `ALTER TABLE "public"."users" ALTER COLUMN "state" TYPE "public"."state", ALTER COLUMN "status" TYPE "test"."status", DROP COLUMN "dc1", DROP COLUMN "dc2"`, Reverse: `ALTER TABLE "public"."users" ADD COLUMN "dc2" "public"."de" NOT NULL, ADD COLUMN "dc1" "public"."de" NOT NULL, ALTER COLUMN "status" TYPE text, ALTER COLUMN "state" TYPE text`},
+					{Cmd: `DROP TYPE "public"."de"`, Reverse: `CREATE TYPE "public"."de" AS ENUM ('on')`},
 				},
 			},
 		},

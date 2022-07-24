@@ -28,8 +28,9 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 			Reversible:    true,
 			Transactional: true,
 		},
-		altered: make(map[string]*schema.EnumType),
 		created: make(map[string]*schema.EnumType),
+		altered: make(map[string]*schema.EnumType),
+		dropped: make(map[string]*schema.EnumType),
 	}
 	if err := s.plan(ctx, changes); err != nil {
 		return nil, err
@@ -55,9 +56,9 @@ func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change) e
 type state struct {
 	conn
 	migrate.Plan
-	// Track the enums that were altered or created
-	// in this phase to avoid duplicate updates.
-	altered, created map[string]*schema.EnumType
+	// Track the enums that were created, altered and
+	// dropped, in this phase to avoid duplicate updates.
+	created, altered, dropped map[string]*schema.EnumType
 }
 
 // Exec executes the changes on the database. An error is returned
@@ -126,7 +127,7 @@ func (s *state) topLevel(changes []schema.Change) []schema.Change {
 // addTable builds and executes the query for creating a table in a schema.
 func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 	// Create enum types before using them in the `CREATE TABLE` statement.
-	if err := s.addTypes(ctx, add.T, add.T.Columns...); err != nil {
+	if err := s.mayAddEnums(ctx, add.T, add.T.Columns...); err != nil {
 		return err
 	}
 	var (
@@ -255,7 +256,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 				F: change.To,
 			})
 		case *schema.AddColumn:
-			if err := s.addTypes(ctx, modify.T, change.C); err != nil {
+			if err := s.mayAddEnums(ctx, modify.T, change.C); err != nil {
 				return err
 			}
 			if c := (schema.Comment{}); sqlx.Has(change.C.Attrs, &c) {
@@ -278,7 +279,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 			from, ok1 := change.From.Type.Type.(*schema.EnumType)
 			to, ok2 := change.To.Type.Type.(*schema.EnumType)
 			switch {
-			// Enum was changed.
+			// Enum was changed (underlying values).
 			case ok1 && ok2 && enumIdent(modify.T.Schema, from) == enumIdent(modify.T.Schema, to):
 				if err := s.alterEnum(modify.T, from, to); err != nil {
 					return err
@@ -288,10 +289,10 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 				if k == schema.ChangeType {
 					continue
 				}
-			// Column type was changed to enum, or enum type was changed.
+			// Enum was added or changed.
 			case !ok1 && ok2 ||
 				ok1 && ok2 && enumIdent(modify.T.Schema, from) != enumIdent(modify.T.Schema, to):
-				if err := s.addTypes(ctx, modify.T, change.To); err != nil {
+				if err := s.mayAddEnums(ctx, modify.T, change.To); err != nil {
 					return err
 				}
 			}
@@ -349,9 +350,22 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 					To:     change.From,
 					Change: change.Change & ^schema.ChangeGenerated,
 				})
+				toE, toHas := change.From.Type.Type.(*schema.EnumType)
+				fromE, fromHas := change.From.Type.Type.(*schema.EnumType)
+				// In case the enum was dropped or replaced with a different one.
+				if fromHas && !toHas || fromHas && toHas && enumIdent(t.Schema, fromE) != enumIdent(t.Schema, toE) {
+					if err := s.mayDropEnum(alter, t.Schema, fromE); err != nil {
+						return err
+					}
+				}
 			case *schema.DropColumn:
 				b.P("DROP COLUMN").Ident(change.C.Name)
 				reverse = append(reverse, &schema.AddColumn{C: change.C})
+				if e, ok := change.C.Type.Type.(*schema.EnumType); ok {
+					if err := s.mayDropEnum(alter, t.Schema, e); err != nil {
+						return err
+					}
+				}
 			case *schema.AddIndex:
 				b.P("ADD CONSTRAINT").Ident(change.I.Name).P("UNIQUE")
 				s.indexParts(b, change.I.Parts)
@@ -650,7 +664,7 @@ func (s *state) dropIndexes(t *schema.Table, indexes ...*schema.Index) {
 	}
 }
 
-func (s *state) addTypes(ctx context.Context, t *schema.Table, columns ...*schema.Column) error {
+func (s *state) mayAddEnums(ctx context.Context, t *schema.Table, columns ...*schema.Column) error {
 	for _, c := range columns {
 		e, ok := c.Type.Type.(*schema.EnumType)
 		if !ok {
@@ -674,16 +688,11 @@ func (s *state) addTypes(ctx context.Context, t *schema.Table, columns ...*schem
 			continue
 		}
 		s.created[name] = e
-		b := Build("CREATE TYPE").P(name, "AS ENUM")
-		b.Wrap(func(b *sqlx.Builder) {
-			b.MapComma(e.Values, func(i int, b *sqlx.Builder) {
-				b.WriteString(quote(e.Values[i]))
-			})
-		})
+		create, drop := createDropEnum(t.Schema, e)
 		s.append(&migrate.Change{
-			Cmd:     b.String(),
+			Cmd:     create,
+			Reverse: drop,
 			Comment: fmt.Sprintf("create enum type %q", e.T),
-			Reverse: Build("DROP TYPE").P(name).String(),
 		})
 	}
 	return nil
@@ -719,12 +728,45 @@ func (s *state) enumExists(ctx context.Context, ns *schema.Schema, e *schema.Enu
 	if e.Schema != nil {
 		ns = e.Schema
 	}
-	rows, err := s.QueryContext(ctx, `SELECT * FROM pg_type t join pg_namespace n on t.typnamespace = n.oid WHERE t.typname = $1 AND n.nspname = $2 AND t.typtype = 'e'`, e.T, ns.Name)
+	rows, err := s.QueryContext(ctx, `SELECT * FROM pg_type t JOIN pg_namespace n on t.typnamespace = n.oid WHERE t.typname = $1 AND n.nspname = $2 AND t.typtype = 'e'`, e.T, ns.Name)
 	if err != nil {
 		return false, fmt.Errorf("check enum existence: %w", err)
 	}
 	defer rows.Close()
 	return rows.Next(), rows.Err()
+}
+
+// mayDropEnum drops dangling enum types form the schema.
+func (s *state) mayDropEnum(alter *alterChange, ns *schema.Schema, e *schema.EnumType) error {
+	name := enumIdent(ns, e)
+	if _, ok := s.dropped[name]; ok {
+		return nil
+	}
+	schemas := []*schema.Schema{ns}
+	// In case there is a realm attached, traverse the entire tree.
+	if ns.Realm != nil && len(ns.Realm.Schemas) > 0 {
+		schemas = ns.Realm.Schemas
+	}
+	for i := range schemas {
+		for _, t := range schemas[i].Tables {
+			for _, c := range t.Columns {
+				e1, ok := c.Type.Type.(*schema.EnumType)
+				// Although we search in siblings schemas, use the
+				// table's one for building the enum identifier.
+				if ok && enumIdent(ns, e1) == name {
+					return nil
+				}
+			}
+		}
+	}
+	s.dropped[name] = e
+	create, drop := createDropEnum(ns, e)
+	alter.after = append(alter.after, &migrate.Change{
+		Cmd:     drop,
+		Reverse: create,
+		Comment: fmt.Sprintf("drop enum type %q", e.T),
+	})
+	return nil
 }
 
 func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) {
@@ -1045,4 +1087,30 @@ func quote(s string) string {
 		return s
 	}
 	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
+}
+
+func enumIdent(s *schema.Schema, e *schema.EnumType) string {
+	switch {
+	// Enum schema has higher precedence.
+	case e.Schema != nil:
+		return fmt.Sprintf("%q.%q", e.Schema.Name, e.T)
+	// Fallback to table schema if exists.
+	case s != nil:
+		return fmt.Sprintf("%q.%q", s.Name, e.T)
+	default:
+		return strconv.Quote(e.T)
+	}
+}
+
+func createDropEnum(s *schema.Schema, e *schema.EnumType) (string, string) {
+	name := enumIdent(s, e)
+	return Build("CREATE TYPE").
+			P(name, "AS ENUM").
+			Wrap(func(b *sqlx.Builder) {
+				b.MapComma(e.Values, func(i int, b *sqlx.Builder) {
+					b.WriteString(quote(e.Values[i]))
+				})
+			}).
+			String(),
+		Build("DROP TYPE").P(name).String()
 }
