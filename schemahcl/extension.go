@@ -240,7 +240,7 @@ func validateStructPtr(target interface{}) error {
 }
 
 func existingElements(r *Resource) (attrs, children map[string]struct{}) {
-	attrs, children = make(map[string]struct{}), make(map[string]struct{})
+	attrs, children = make(map[string]struct{}, len(r.Attrs)), make(map[string]struct{}, len(r.Children))
 	for _, ea := range r.Attrs {
 		attrs[ea.K] = struct{}{}
 	}

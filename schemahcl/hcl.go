@@ -99,7 +99,7 @@ func (s *State) Eval(parsed *hclparse.Parser, v interface{}, input map[string]st
 		return err
 	}
 	if ctx.Variables == nil {
-		ctx.Variables = make(map[string]cty.Value)
+		ctx.Variables = make(map[string]cty.Value, len(vars))
 	}
 	for k, v := range vars {
 		ctx.Variables[k] = v
@@ -167,7 +167,7 @@ func (r addrRef) patch(resource *Resource) error {
 }
 
 func (r addrRef) copy() addrRef {
-	n := make(addrRef)
+	n := make(addrRef, len(r))
 	for k, v := range r {
 		n[k] = v
 	}
@@ -244,7 +244,7 @@ func (s *State) mayExtendVars(ctx *hcl.EvalContext, scope []string) *hcl.EvalCon
 }
 
 func (s *State) toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes, scope []string) ([]*Attr, error) {
-	var attrs []*Attr
+	attrs := make([]*Attr, 0, len(hclAttrs))
 	for _, hclAttr := range hclAttrs {
 		ctx := s.mayExtendVars(ctx, append(scope, hclAttr.Name))
 		at := &Attr{K: hclAttr.Name}
@@ -305,7 +305,9 @@ func isRef(v cty.Value) bool {
 }
 
 func extractListValue(value cty.Value) (*ListValue, error) {
-	lst := &ListValue{}
+	lst := &ListValue{
+		V: make([]Value, 0, value.LengthInt()),
+	}
 	it := value.ElementIterator()
 	for it.Next() {
 		_, v := it.Element()

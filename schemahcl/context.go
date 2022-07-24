@@ -113,7 +113,7 @@ func setBlockVars(ctx *hcl.EvalContext, b *hclsyntax.Body) (*hcl.EvalContext, er
 		return nil, err
 	}
 	if ctx.Variables == nil {
-		ctx.Variables = make(map[string]cty.Value)
+		ctx.Variables = make(map[string]cty.Value, len(vars))
 	}
 	for k, v := range vars {
 		ctx.Variables[k] = v
@@ -176,9 +176,11 @@ func addr(parentAddr, typeName, blkName, qualifier string) string {
 	if len(parentAddr) > 0 {
 		prefixDot = "."
 	}
-	suffix := blkName
+	var suffix string
 	if qualifier != "" {
 		suffix = qualifier + "." + blkName
+	} else {
+		suffix = blkName
 	}
 	return fmt.Sprintf("%s%s$%s.%s", parentAddr, prefixDot, typeName, suffix)
 }
@@ -293,7 +295,7 @@ func (t *blockDef) child(c *blockDef) {
 
 // asCty returns a cty.Type representing the blockDef.
 func (t *blockDef) asCty() cty.Type {
-	f := make(map[string]cty.Type)
+	f := make(map[string]cty.Type, len(t.fields)+1+len(t.children))
 	for attr := range t.fields {
 		f[attr] = ctySchemaLit
 	}
@@ -308,7 +310,7 @@ func extractDef(blk *hclsyntax.Block, parent *blockDef) *blockDef {
 	cur := &blockDef{
 		name:     blk.Type,
 		parent:   parent,
-		fields:   make(map[string]struct{}),
+		fields:   make(map[string]struct{}, len(blk.Body.Attributes)),
 		children: make(map[string]*blockDef),
 	}
 	for _, a := range blk.Body.Attributes {
