@@ -98,7 +98,7 @@ The benefit of the versioned migrations approach is that it is explicit: enginee
 know _exactly_ what queries are going to be run against the database when the time
 comes to execute them.  Because changes are planned ahead of time, migration authors
 can control precisely how to reach the desired schema.  If we consider a migration as 
-a plan to get from state A to state B, oftentimes multiple paths exist each with a
+a plan to get from state A to state B, oftentimes multiple paths exist, each with a
 very different impact on the database. To demonstrate, consider an initial state which
 contains a table with two columns:
 ```sql
