@@ -76,7 +76,7 @@ ALTER TABLE `new_users` RENAME TO `users`
 As the database is one of the most critical components in any system, applying changes
 to its schema is rightfully considered a dangerous operation. For this reason, many teams
 prefer a more imperative approach where each change to the database schema is checked-in 
-to source control and reviewed during code-review. In addition, often applications are 
+to source control and reviewed during code-review. In addition, applications are often 
 deployed to numerous environments that are not controlled or even accessible by the team developing it. 
 In such cases, declarative migrations, which rely on a network connection to and human 
 approval of the plan which is created on the fly are not even possible. Each such change
