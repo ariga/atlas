@@ -64,7 +64,7 @@ And have Atlas's engine devise a plan similar to this:
 -- Create "new_users" table
 CREATE TABLE `new_users` (`id` int NOT NULL, `greeting` text NOT NULL DEFAULT 'shalom')
 -- Copy rows from old table "users" to new temporary table "new_users"
-INSERT INTO `new_users` (`id`, `greeting`) SELECT `id`, IFNULL(`greeting`, ?) AS `greeting` FROM `users`
+INSERT INTO `new_users` (`id`, `greeting`) SELECT `id`, IFNULL(`greeting`, 'shalom') AS `greeting` FROM `users`
 -- Drop "users" table after copying rows
 DROP TABLE `users`
 -- Rename temporary table "new_users" to "users"
