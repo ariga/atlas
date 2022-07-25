@@ -83,15 +83,15 @@ tools such as [Flyway](https://flywaydb.org/), [Liquibase](https://liquibase.org
 [golang-migrate](https://github.com/golang-migrate/migrate) support a workflow that
 is commonly called "versioned migrations".
 
-In addition to the need for more control which is provided by versioned migrations,
-applications are often deployed to multiple environments at once, that are not controlled 
-or even accessible by the team developing them. In such cases, declarative migrations, 
+In addition to the higher level of control which is provided by versioned migrations,
+applications are often deployed to multiple remote environments at once. These environments,
+are not controlled (or even accessible) by the development team. In such cases, declarative migrations, 
 which rely on a network connection to the target database and on human
-approval of migrations plans in real-time, are not even possible.
+approval of migrations plans in real-time, are not a feasible strategy.
 
-With versioned migrations (sometimes called "change base migrations") instead of describing 
-the desired state ("what the database should look like"), you describe the changes itself 
-("how to reach the state"). Most of the time this is done by creating a set of SQL files 
+With versioned migrations (sometimes called "change-based migrations") instead of describing 
+the desired state ("what the database should look like"), developers describe the changes themselves 
+("how to reach the state"). Most of the time, this is done by creating a set of SQL files 
 containing the statements needed. Each of the files is assigned a unique version and a
 description of the changes. Tools like the ones mentioned earlier are then able to 
 interpret the migration files and to apply (some of) them in the correct order to 
