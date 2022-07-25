@@ -76,15 +76,18 @@ ALTER TABLE `new_users` RENAME TO `users`
 As the database is one of the most critical components in any system, applying changes
 to its schema is rightfully considered a dangerous operation. For this reason, many teams
 prefer a more imperative approach where each change to the database schema is checked-in 
-to source control and reviewed during code-review. In addition, applications are often 
-deployed to numerous environments that are not controlled or even accessible by the team developing it. 
-In such cases, declarative migrations, which rely on a network connection to and human 
-approval of the plan which is created on the fly are not even possible. Each such change
+to source control and reviewed during code-review.  Each such change
 is called a "migration", as it migrates the database schema from the previous version to 
 the next. To support this kind of requirement, many popular database schema management
 tools such as [Flyway](https://flywaydb.org/), [Liquibase](https://liquibase.org/) or 
 [golang-migrate](https://github.com/golang-migrate/migrate) support a workflow that
 is commonly called "versioned migrations".
+
+In addition to the need for more control which is provided by versioned migrations,
+applications are often deployed to multiple environments at once, that are not controlled 
+or even accessible by the team developing them. In such cases, declarative migrations, 
+which rely on a network connection to the target database and on human
+approval of migrations plans in real-time, are not even possible.
 
 With versioned migrations (sometimes called "change base migrations") instead of describing 
 the desired state ("what the database should look like"), you describe the changes itself 
