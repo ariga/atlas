@@ -140,7 +140,7 @@ func Conn(drv Driver, opts *schema.InspectRealmOption) StateReader {
 }
 
 type (
-	// Dir wraps the functionality described a migration directory.
+	// Dir wraps the functionality used to interact with a migration directory.
 	Dir interface {
 		fs.FS
 		// WriteFile writes the data to the named file.
