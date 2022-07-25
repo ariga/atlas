@@ -32,21 +32,15 @@ type (
 		// LoadChanges converts each of the given migration files into one Changes.
 		LoadChanges(context.Context, []migrate.File) ([]*sqlcheck.File, error)
 	}
-
-	// DirScanner stitches migrate.Dir and migrate.Scanner into one interface.
-	DirScanner interface {
-		migrate.Dir
-		migrate.Scanner
-	}
 )
 
 type (
 	// GitChangeDetector implements the ChangeDetector interface by utilizing a git repository.
 	GitChangeDetector struct {
-		work string     // path to the git working directory (i.e. -C)
-		base string     // name of the base branch (e.g. master)
-		path string     // path of the migration directory relative to the repository root (in slash notation)
-		dir  DirScanner // the migration directory to load migration files from
+		work string      // path to the git working directory (i.e. -C)
+		base string      // name of the base branch (e.g. master)
+		path string      // path of the migration directory relative to the repository root (in slash notation)
+		dir  migrate.Dir // the migration directory to load migration files from
 	}
 
 	// GitChangeDetectorOption allows configuring GitChangeDetector with functional arguments.
@@ -54,7 +48,7 @@ type (
 )
 
 // NewGitChangeDetector configures a new GitChangeDetector.
-func NewGitChangeDetector(dir DirScanner, opts ...GitChangeDetectorOption) (*GitChangeDetector, error) {
+func NewGitChangeDetector(dir migrate.Dir, opts ...GitChangeDetectorOption) (*GitChangeDetector, error) {
 	if dir == nil {
 		return nil, errors.New("internal/ci: dir cannot be nil")
 	}
@@ -136,14 +130,14 @@ var _ ChangeDetector = (*GitChangeDetector)(nil)
 
 // latestChange implements the ChangeDetector by selecting the latest N files.
 type latestChange struct {
-	n   int        // number of (latest) files considered new.
-	dir DirScanner // migration directory to load migration files from.
+	n   int         // number of (latest) files considered new.
+	dir migrate.Dir // migration directory to load migration files from.
 }
 
 // LatestChanges implements the ChangeDetector interface by selecting the latest N files as new.
 // It is useful for executing analysis on files in development before they are committed or on
 // all files in a directory.
-func LatestChanges(dir DirScanner, n int) ChangeDetector {
+func LatestChanges(dir migrate.Dir, n int) ChangeDetector {
 	return &latestChange{n: n, dir: dir}
 }
 
@@ -165,8 +159,6 @@ func (d *latestChange) DetectChanges(context.Context) ([]migrate.File, []migrate
 type DevLoader struct {
 	// Dev environment used as a sandbox instantiated to the starting point (e.g. base branch).
 	Dev *sqlclient.Client
-	// Scan is used for scanning the migration directory.
-	Scan migrate.Scanner
 }
 
 // LoadChanges implements the ChangesLoader interface.
@@ -201,7 +193,7 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 	}()
 	// Bring the dev environment to the base point.
 	for _, f := range base {
-		stmt, err := d.Scan.Stmts(f)
+		stmt, err := f.Stmts()
 		if err != nil {
 			return nil, &FileError{File: f.Name(), Err: fmt.Errorf("scanning statements: %w", err)}
 		}
@@ -220,7 +212,7 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 		diff[i] = &sqlcheck.File{
 			File: f,
 		}
-		stmts, err := d.Scan.Stmts(f)
+		stmts, err := f.Stmts()
 		if err != nil {
 			return nil, &FileError{File: f.Name(), Err: fmt.Errorf("scanning statements: %w", err)}
 		}

@@ -330,10 +330,7 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := migrate.LogIntro(struct {
-		migrate.Logger
-		migrate.Scanner
-	}{l, dir.(migrate.Scanner)}, revs, pending); err != nil {
+	if err := migrate.LogIntro(l, revs, pending); err != nil {
 		return err
 	}
 	var (
@@ -464,8 +461,7 @@ func CmdMigrateStatusRun(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	sc := dir.(migrate.Scanner) // all supported migration directories implement the migrate.Scanner
-	avail, err := sc.Files()
+	avail, err := dir.Files()
 	if err != nil {
 		return err
 	}
@@ -479,7 +475,7 @@ func CmdMigrateStatusRun(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return err
 		}
-		return statusPrint(cmd.OutOrStdout(), sc, avail, avail, nil)
+		return statusPrint(cmd.OutOrStdout(), avail, avail, nil)
 	}
 	// Currently, only in DB revisions are supported.
 	opts := []entmigrate.Option{entmigrate.WithSchema(MigrateFlags.RevisionSchema)}
@@ -503,10 +499,10 @@ func CmdMigrateStatusRun(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	return statusPrint(cmd.OutOrStdout(), sc, avail, pending, revs)
+	return statusPrint(cmd.OutOrStdout(), avail, pending, revs)
 }
 
-func statusPrint(out io.Writer, sc migrate.Scanner, avail, pending []migrate.File, revs migrate.Revisions) (err error) {
+func statusPrint(out io.Writer, avail, pending []migrate.File, revs migrate.Revisions) (err error) {
 	var (
 		cur, next, state string
 		applied          = avail[: len(avail)-len(pending) : len(avail)-len(pending)]
@@ -516,17 +512,9 @@ func statusPrint(out io.Writer, sc migrate.Scanner, avail, pending []migrate.Fil
 	case len(avail):
 		cur = "No version applied yet"
 	case 0:
-		cur, err = sc.Version(avail[len(avail)-1])
-		if err != nil {
-			return err
-		}
-		cur = cyan(cur)
+		cur = cyan(avail[len(avail)-1].Version())
 	default:
-		cur, err = sc.Version(avail[len(avail)-len(pending)])
-		if err != nil {
-			return err
-		}
-		cur = cyan(cur)
+		cur = cyan(avail[len(avail)-len(pending)].Version())
 		// If the last pending version is partially applied, tell so.
 		if partial {
 			cur += fmt.Sprintf(" (%d statements applied)", revs[len(revs)-1].Applied)
@@ -537,11 +525,7 @@ func statusPrint(out io.Writer, sc migrate.Scanner, avail, pending []migrate.Fil
 		next = "Already at latest version"
 	} else {
 		state = yellow("PENDING")
-		next, err = sc.Version(pending[0])
-		if err != nil {
-			return err
-		}
-		next = cyan(next)
+		next = cyan(pending[0].Version())
 		if partial {
 			next += fmt.Sprintf(" (%d statements left)", revs[len(revs)-1].Total-revs[len(revs)-1].Applied)
 		}

@@ -20,7 +20,7 @@ func TestLocalFile_Stmts(t *testing.T) {
 	files, err := dir.Files()
 	require.NoError(t, err)
 	for _, f := range files {
-		stmts, err := dir.Stmts(f)
+		stmts, err := f.Stmts()
 		require.NoError(t, err)
 		buf, err := os.ReadFile(filepath.Join(path, f.Name()+".golden"))
 		require.NoError(t, err)

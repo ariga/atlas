@@ -142,23 +142,17 @@ func TestScanners(t *testing.T) {
 
 	first, second := files[0], files[1]
 
-	stmts, err := d.Stmts(first)
+	stmts, err := first.Stmts()
 	require.NoError(t, err)
 	require.Equal(t, []string{"CREATE TABLE tbl\n(\n    col INT\n);"}, stmts)
-	stmts, err = d.Stmts(second)
+	stmts, err = second.Stmts()
 	require.NoError(t, err)
 	require.Equal(t, []string{"CREATE TABLE tbl_2 (col INT);"}, stmts)
 
-	v, err := d.Version(first)
-	require.NoError(t, err)
-	require.Equal(t, "1", v)
-
-	desc, err := d.Desc(first)
-	require.NoError(t, err)
-	require.Equal(t, "initial", desc)
-	desc, err = d.Desc(second)
-	require.NoError(t, err)
-	require.Equal(t, "second_migration", desc)
+	require.Equal(t, "1", first.Version())
+	require.Equal(t, "initial", first.Desc())
+	require.Equal(t, "2", second.Version())
+	require.Equal(t, "second_migration", second.Desc())
 }
 
 func dir(t *testing.T) migrate.Dir {

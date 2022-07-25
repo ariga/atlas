@@ -28,7 +28,7 @@ type Runner struct {
 	ChangeDetector ChangeDetector
 
 	// Dir is used for scanning and validating the migration directory.
-	Dir DirScanner
+	Dir migrate.Dir
 
 	// Analyzer defines the analysis to be run in the CI job.
 	Analyzer sqlcheck.Analyzer
@@ -61,7 +61,7 @@ func (r *Runner) summary(ctx context.Context) (*SummaryReport, error) {
 	if err != nil {
 		return nil, err
 	}
-	l := &DevLoader{Dev: r.Dev, Scan: r.Dir}
+	l := &DevLoader{Dev: r.Dev}
 	files, err := l.LoadChanges(ctx, base, feat)
 	if err != nil {
 		return nil, err

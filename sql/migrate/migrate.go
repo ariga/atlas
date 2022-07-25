@@ -140,11 +140,14 @@ func Conn(drv Driver, opts *schema.InspectRealmOption) StateReader {
 }
 
 type (
-	// Dir describes the methods needed for a Planner to manage migration files.
+	// Dir wraps the functionality described a migration directory.
 	Dir interface {
 		fs.FS
 		// WriteFile writes the data to the named file.
 		WriteFile(string, []byte) error
+
+		// Files returns a set of files stored in this Dir to be executed on a database.
+		Files() ([]File, error)
 	}
 
 	// Formatter wraps the Format method.
@@ -157,20 +160,14 @@ type (
 	File interface {
 		// Name returns the name of the migration file.
 		Name() string
+		// Desc returns the description of the migration File.
+		Desc() string
+		// Version returns the version of the migration File.
+		Version() string
 		// Bytes returns the read content of the file.
 		Bytes() []byte
-	}
-
-	// Scanner wraps several methods to interpret a migration Dir.
-	Scanner interface {
-		// Files returns a set of files from the given Dir to be executed on a database.
-		Files() ([]File, error)
-		// Stmts returns a set of SQL statements from the given File to be executed on a database.
-		Stmts(File) ([]string, error)
-		// Version returns the version of the migration File.
-		Version(File) (string, error)
-		// Desc returns the description of the migration File.
-		Desc(File) (string, error)
+		// Stmts returns the set of SQL statements this file holds.
+		Stmts() ([]string, error)
 	}
 
 	// A RevisionReadWriter reads and writes information about a Revisions to a persistent storage.
@@ -193,7 +190,6 @@ type (
 		drv Driver    // driver to use
 		dir Dir       // where migration files are stored and read from
 		fmt Formatter // how to format a plan to migration files
-		sc  Scanner   // how to interpret a migration dir
 		sum bool      // whether to create a sum file for the migration directory
 	}
 
@@ -335,8 +331,6 @@ var (
 	ErrSnapshotUnsupported = errors.New("sql/migrate: driver does not support taking a database snapshot")
 	// ErrNotExist is returned if the requested revision is not found in the storage.
 	ErrNotExist = errors.New("sql/migrate: revision not found")
-	// ErrScanUnsupported is returned if there is no Scanner given.
-	ErrScanUnsupported = errors.New("sql/migrate: revision not found")
 )
 
 // NewExecutor creates a new Executor with default values. // TODO(masseelch): Operator Version and other Meta
@@ -364,9 +358,6 @@ func NewExecutor(drv Driver, dir Dir, rrw RevisionReadWriter, opts ...ExecutorOp
 	}
 	if _, ok := drv.(Snapshoter); !ok {
 		return nil, ErrSnapshotUnsupported
-	}
-	if _, ok := dir.(Scanner); !ok {
-		return nil, ErrScanUnsupported
 	}
 	return ex, nil
 }
@@ -401,7 +392,7 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 		return nil, fmt.Errorf("sql/migrate: execute: read revisions: %w", err)
 	}
 	// Select the correct migration files.
-	migrations, err := e.dir.(Scanner).Files()
+	migrations, err := e.dir.Files()
 	if err != nil {
 		return nil, fmt.Errorf("sql/migrate: execute: select migration files: %w", err)
 	}
@@ -420,21 +411,13 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 	}
 	for i := range revs {
 		m := migrations[i]
-		v, err := e.dir.(Scanner).Version(m)
-		if err != nil {
-			return nil, fmt.Errorf("sql/migrate: execute: scan version from %q: %w", m.Name(), err)
-		}
-		d, err := e.dir.(Scanner).Desc(m)
-		if err != nil {
-			return nil, fmt.Errorf("sql/migrate: execute: scan description from %q: %w", m.Name(), err)
-		}
 		r := revs[i]
 		// All fully applied revisions must match both version and description.
 		// In case of a not fully applied migration, the hash might change since the file could have been edited to fix
 		// a previous failure. Thus, hashes don't have to match in that case.
 		hash := (i < len(revs)-1 && hf[i].H != r.Hash) || (i == len(revs)-1 && r.Complete() == nil && hf[i].H != r.Hash)
-		if v != r.Version || d != r.Description || hash {
-			return nil, fmt.Errorf("sql/migrate: execute: revisions and migrations mismatch: rev %q <> file %q", v, r.Version)
+		if m.Version() != r.Version || m.Desc() != r.Description || hash {
+			return nil, fmt.Errorf("sql/migrate: execute: revisions and migrations mismatch: rev %q <> file %q", r.Version, m.Version())
 		}
 	}
 	// If there are no revisions yet, return all migration files as pending.
@@ -459,19 +442,11 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 	if err != nil {
 		return fmt.Errorf("sql/migrate: execute: compute hash: %w", err)
 	}
-	version, err := e.dir.(Scanner).Version(m)
-	if err != nil {
-		return fmt.Errorf("sql/migrate: execute: scan version from %q: %w", m.Name(), err)
-	}
-	desc, err := e.dir.(Scanner).Desc(m)
-	if err != nil {
-		return fmt.Errorf("sql/migrate: execute: scan description from %q: %w", m.Name(), err)
-	}
 	hash, err := hf.sumByName(m.Name())
 	if err != nil {
 		return fmt.Errorf("sql/migrate: execute: scanning checksum from %q: %w", m.Name(), err)
 	}
-	stmts, err := e.dir.(Scanner).Stmts(m)
+	stmts, err := m.Stmts()
 	if err != nil {
 		return fmt.Errorf("sql/migrate: execute: scanning statements from %q: %w", m.Name(), err)
 	}
@@ -486,6 +461,7 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 		}
 		sums[i] = base64.StdEncoding.EncodeToString(h.Sum(nil))
 	}
+	version := m.Version()
 	// If there already is a revision with this version in the database,
 	// and it is partially applied, continue where the last attempt was left off.
 	r, err := e.rrw.ReadRevision(ctx, version)
@@ -496,7 +472,7 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 		// Haven't seen this file before, create a new revision.
 		r = &Revision{
 			Version:     version,
-			Description: desc,
+			Description: m.Desc(),
 			Total:       len(stmts),
 			ExecutedAt:  time.Now(),
 			Hash:        hash,
@@ -560,12 +536,16 @@ func (e HistoryChangedError) Error() string {
 
 // ExecuteN executes n pending migration files. If n<=0 all pending migration files are executed. It will not attempt
 // an execution if the database is not "clean" (has only successfully applied migrations).
-func (e *Executor) ExecuteN(ctx context.Context, n int) error {
+func (e *Executor) ExecuteN(ctx context.Context, n int) (err error) {
 	unlock, err := e.Lock(ctx)
 	if err != nil {
 		return err
 	}
-	defer unlock()
+	defer func() {
+		if err2 := unlock(); err2 != nil {
+			err = wrap(err2, err)
+		}
+	}()
 	pending, err := e.Pending(ctx)
 	if err != nil {
 		return err
@@ -580,10 +560,7 @@ func (e *Executor) ExecuteN(ctx context.Context, n int) error {
 	if err != nil {
 		return fmt.Errorf("sql/migrate: execute: read revisions: %w", err)
 	}
-	if err := LogIntro(struct {
-		Logger
-		Scanner
-	}{e.log, e.dir.(Scanner)}, revs, pending); err != nil {
+	if err := LogIntro(e.log, revs, pending); err != nil {
 		return err
 	}
 	for _, m := range pending {
@@ -603,7 +580,11 @@ func (e *Executor) ReadState(ctx context.Context) (realm *schema.Realm, err erro
 	if err != nil {
 		return nil, fmt.Errorf("sql/migrate: acquiring database lock: %w", err)
 	}
-	defer unlock()
+	defer func() {
+		if err2 := unlock(); err2 != nil {
+			err = wrap(err2, err)
+		}
+	}()
 	// Clean up after ourselves.
 	restore, err := e.drv.(Snapshoter).Snapshot(ctx)
 	if err != nil {
@@ -751,25 +732,15 @@ func (LogError) logEntry()     {}
 // Log implements the Logger interface.
 func (NopLogger) Log(LogEntry) {}
 
-// LogScanner stitches Logger and Scanner into one interface.
-type LogScanner interface {
-	Logger
-	Scanner
-}
-
 // LogIntro gathers some meta information from the migration files and stored revisions to
 // log some general information prior to actual execution.
-func LogIntro(l LogScanner, revs Revisions, files []File) error {
+func LogIntro(l Logger, revs Revisions, files []File) error {
 	names := make([]string, len(files))
 	for i := range files {
 		names[i] = files[i].Name()
 	}
 	last := files[len(files)-1]
-	v, err := l.(Scanner).Version(last)
-	if err != nil {
-		return fmt.Errorf("sql/migrate: execute: scan version from %q: %w", last.Name(), err)
-	}
-	e := LogExecution{To: v, Files: names}
+	e := LogExecution{To: last.Version(), Files: names}
 	if len(revs) > 0 {
 		e.From = revs[len(revs)-1].Version
 	}
@@ -782,6 +753,8 @@ func LogIntro(l LogScanner, revs Revisions, files []File) error {
 type LocalDir struct {
 	path string
 }
+
+var _ Dir = (*LocalDir)(nil)
 
 // NewLocalDir returns a new the Dir used by a Planner to work on the given local path.
 func NewLocalDir(path string) (*LocalDir, error) {
@@ -826,34 +799,10 @@ func (d *LocalDir) Files() ([]File, error) {
 		if err != nil {
 			return nil, fmt.Errorf("sql/migrate: read file %q: %w", n, err)
 		}
-		ret[i] = NewLocalFile(n, b)
+		ret[i] = &LocalFile{n: n, b: b}
 	}
 	return ret, nil
 }
-
-// Stmts implements Scanner.Stmts. It reads migration file line-by-line and expects a statement to be one line only.
-func (d *LocalDir) Stmts(f File) ([]string, error) {
-	return stmts(string(f.Bytes()))
-}
-
-// Version implements Scanner.Version.
-func (d *LocalDir) Version(f File) (string, error) {
-	return strings.SplitN(f.Name(), "_", 2)[0], nil
-}
-
-// Desc implements Scanner.Desc.
-func (d *LocalDir) Desc(f File) (string, error) {
-	split := strings.SplitN(f.Name(), "_", 2)
-	if len(split) == 1 {
-		return "", nil
-	}
-	return strings.TrimSuffix(split[1], ".sql"), nil
-}
-
-var _ interface {
-	Dir
-	Scanner
-} = (*LocalDir)(nil)
 
 // LocalFile is used by LocalDir to implement the Scanner interface.
 type LocalFile struct {
@@ -861,9 +810,11 @@ type LocalFile struct {
 	b []byte
 }
 
+var _ File = (*LocalFile)(nil)
+
 // NewLocalFile returns a new local file.
-func NewLocalFile(path string, data []byte) *LocalFile {
-	return &LocalFile{path, data}
+func NewLocalFile(name string, data []byte) *LocalFile {
+	return &LocalFile{n: name, b: data}
 }
 
 // Name implements File.Name.
@@ -871,12 +822,29 @@ func (f LocalFile) Name() string {
 	return f.n
 }
 
+// Desc implements File.Desc.
+func (f LocalFile) Desc() string {
+	parts := strings.SplitN(f.n, "_", 2)
+	if len(parts) == 1 {
+		return ""
+	}
+	return strings.TrimSuffix(parts[1], ".sql")
+}
+
+// Version implements File.Version.
+func (f LocalFile) Version() string {
+	return strings.SplitN(f.n, "_", 2)[0]
+}
+
+// Stmts implements Scanner.Stmts. It reads migration file line-by-line and expects a statement to be one line only.
+func (f LocalFile) Stmts() ([]string, error) {
+	return stmts(string(f.b))
+}
+
 // Bytes returns local file data.
 func (f LocalFile) Bytes() []byte {
 	return f.b
 }
-
-var _ File = (*LocalFile)(nil)
 
 var (
 	// templateFuncs contains the template.FuncMap for the DefaultFormatter.
@@ -923,28 +891,20 @@ func NewTemplateFormatter(templates ...*template.Template) (*TemplateFormatter, 
 func (t *TemplateFormatter) Format(plan *Plan) ([]File, error) {
 	files := make([]File, 0, len(t.templates))
 	for _, tpl := range t.templates {
-		var n, c bytes.Buffer
+		var n, b bytes.Buffer
 		if err := tpl.N.Execute(&n, plan); err != nil {
 			return nil, err
 		}
-		if err := tpl.C.Execute(&c, plan); err != nil {
+		if err := tpl.C.Execute(&b, plan); err != nil {
 			return nil, err
 		}
-		files = append(files, &templateFile{
-			Buffer: &c,
-			n:      n.String(),
+		files = append(files, &LocalFile{
+			n: n.String(),
+			b: b.Bytes(),
 		})
 	}
 	return files, nil
 }
-
-type templateFile struct {
-	*bytes.Buffer
-	n string
-}
-
-// Name implements the File interface.
-func (f *templateFile) Name() string { return f.n }
 
 const (
 	// HashFileName of the migration directory integrity sum file.

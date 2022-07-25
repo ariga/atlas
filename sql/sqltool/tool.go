@@ -61,7 +61,7 @@ var (
 	)
 )
 
-// GolangMigrateDir wraps a migrate.LocalDir and provides a migrate.Scanner
+// GolangMigrateDir wraps migrate.LocalDir and provides
 // implementation compatible with golang-migrate/migrate.
 type GolangMigrateDir struct{ *migrate.LocalDir }
 
@@ -90,18 +90,20 @@ func (d *GolangMigrateDir) Files() ([]migrate.File, error) {
 		if err != nil {
 			return nil, fmt.Errorf("sql/migrate: read file %q: %w", n, err)
 		}
-		ret[i] = migrate.NewLocalFile(n, b)
+		ret[i] = &GolangMigrateFile{LocalFile: migrate.NewLocalFile(n, b)}
 	}
 	return ret, nil
 }
 
-// Desc implements Scanner.Desc.
-func (d *GolangMigrateDir) Desc(f migrate.File) (string, error) {
-	desc, err := d.LocalDir.Desc(f)
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSuffix(desc, ".up"), nil
+// GolangMigrateFile wraps migrate.LocalFile
+// with custom description function.
+type GolangMigrateFile struct {
+	*migrate.LocalFile
+}
+
+// Desc implements File.Desc.
+func (f *GolangMigrateFile) Desc() string {
+	return strings.TrimSuffix(f.LocalFile.Desc(), ".up")
 }
 
 // funcs contains the template.FuncMap for the different formatters.
@@ -118,11 +120,11 @@ func templateFormatter(templates ...string) migrate.Formatter {
 	for i, t := range templates {
 		tpls[i] = template.Must(template.New("").Funcs(funcs).Parse(t))
 	}
-	fmt, err := migrate.NewTemplateFormatter(tpls...)
+	tf, err := migrate.NewTemplateFormatter(tpls...)
 	if err != nil {
 		panic(err)
 	}
-	return fmt
+	return tf
 }
 
 // reverse changes for the down migration.
