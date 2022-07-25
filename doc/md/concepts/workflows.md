@@ -131,7 +131,7 @@ of expertise that is not always available to every engineer, as we demonstrated
 in our example of setting a default value in a SQLite database above.
 
 As part of the Atlas project we advocate for a third combined approach that we call 
-"Versioned Migration Aut    horing". Versioned Migration Authoring is an attempt to combine
+"Versioned Migration Authoring". Versioned Migration Authoring is an attempt to combine
 the simplicity and expressiveness of the declarative approach with the control and 
 explicitness of versioned migrations. 
 
