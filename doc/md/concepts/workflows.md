@@ -9,7 +9,7 @@ to manage database schemas: _declarative_ and _versioned_ migrations.
 
 ### Declarative Migrations
 
-The declarative approach has become so popular with engineers nowadays because it embodies
+The declarative approach has become increasingly popular with engineers nowadays because it embodies
 a convenient separation of concerns between application and infrastructure engineers.
 Application engineers describe _what_ (the desired state) they need to happen, and
 infrastructure engineers build tools that plan and execute ways to get to that state (_how_).
