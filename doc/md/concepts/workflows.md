@@ -5,7 +5,7 @@ slug: /concepts/declarative-vs-versioned
 ---
 
 This section introduces two types of workflows that are supported by Atlas
-to manage database schemas _declarative_ and _versioned_ migrations. 
+to manage database schemas: _declarative_ and _versioned_ migrations. 
 
 ### Declarative Migrations
 
