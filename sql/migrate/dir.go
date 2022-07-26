@@ -133,7 +133,7 @@ func (f LocalFile) Name() string {
 
 // Baseline reports if this file marked as a baseline migration.
 func (f LocalFile) Baseline() bool {
-	_, ok := Directive(string(f.b), directivePrefixSQL, directiveBaseline)
+	_, ok := directive(string(f.b), directiveBaseline, directivePrefixSQL)
 	return ok
 }
 
@@ -256,7 +256,7 @@ func HashSum(dir Dir) (HashFile, error) {
 				return err
 			}
 			// Check if this file contains an "atlas:sum" directive and if so, act to it.
-			if mode, ok := Directive(string(c), "", directiveSum); ok && mode == sumModeIgnore {
+			if mode, ok := directive(string(c), directiveSum); ok && mode == sumModeIgnore {
 				return nil
 			}
 			if _, err := h.Write(c); err != nil {
@@ -362,26 +362,15 @@ func Validate(dir Dir) error {
 	return nil
 }
 
-// SplitBaseline splits the directory files into two groups.
-// The first one holds all baseline files and the second
-// holds all file that need to be executed in the migration.
-func SplitBaseline(dir Dir) ([]File, []File, error) {
-	files, err := dir.Files()
-	if err != nil {
-		return nil, nil, err
-	}
-	idx := -1
-	for i, f := range files {
-		if f.Baseline() {
-			idx = i
+// FilesLastIndex returns the index of the last file
+// satisfying f(i), or -1 if none do.
+func FilesLastIndex(files []File, f func(File) bool) int {
+	for i := len(files) - 1; i >= 0; i-- {
+		if f(files[i]) {
+			return i
 		}
 	}
-	if idx == -1 {
-		return nil, files, nil
-	}
-	// In case baseline files were found, skip all
-	// files prior to the latest one including it.
-	return files[:idx+1], files[idx+1:], nil
+	return -1
 }
 
 const (
@@ -396,15 +385,17 @@ const (
 
 var reDirective = regexp.MustCompile(`^([ -~]*)atlas:(\w+)(?: +([ -~]*))*`)
 
-// Directive searches in the content a line that matches a directive
+// directive searches in the content a line that matches a directive
 // with the given prefix and name. For example:
 //
-//	Directive(b, "-- ", "delimiter")
-//	Directive(b, "", "sum")
+//	directive(c, "delimiter", "-- ")	// '-- atlas:delimiter.*'
+//	directive(c, "sum", "")				// 'atlas:sum.*'
+//	directive(c, "sum")					// '.*atlas:sum'
 //
-func Directive(content, prefix, name string) (string, bool) {
+func directive(content, name string, prefix ...string) (string, bool) {
 	m := reDirective.FindStringSubmatch(content)
-	if len(m) == 4 && m[1] == prefix && m[2] == name {
+	// In case the prefix was provided ensures it is matched.
+	if len(m) == 4 && m[2] == name && (len(prefix) == 0 || prefix[0] == m[1]) {
 		return m[3], true
 	}
 	return "", false

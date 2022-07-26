@@ -48,7 +48,7 @@ const (
 
 func newLex(input string) (*lex, error) {
 	delim := delimiter
-	if d, ok := Directive(input, directivePrefixSQL, directiveDelimiter); ok {
+	if d, ok := directive(input, directiveDelimiter, directivePrefixSQL); ok {
 		if d == "" {
 			return nil, errors.New("empty delimiter")
 		}

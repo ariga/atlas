@@ -17,36 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDirective(t *testing.T) {
-	mode, ok := migrate.Directive("atlas:sum ignore", "", "sum")
-	require.True(t, ok)
-	require.Equal(t, "ignore", mode)
-	mode, ok = migrate.Directive("atlas:sum ignore\n", "", "sum")
-	require.True(t, ok)
-	require.Equal(t, "ignore", mode)
-	mode, ok = migrate.Directive("atlas:sum ignore\n\n", "", "sum")
-	require.True(t, ok)
-	require.Equal(t, "ignore", mode)
-
-	delimiter, ok := migrate.Directive("-- atlas:delimiter \\n\\n\nCREATE TABLE t(c)\n\n", "-- ", "delimiter")
-	require.True(t, ok)
-	require.Equal(t, "\\n\\n", delimiter)
-
-	delimiter, ok = migrate.Directive("-- \\n\\n\nCREATE TABLE t(c 'atlas:delimiter')\n\n", "-- ", "delimiter")
-	require.False(t, ok)
-	require.Empty(t, delimiter)
-
-	baseline, ok := migrate.Directive("-- atlas:baseline\n...\n", "-- ", "baseline")
-	require.True(t, ok)
-	require.Empty(t, baseline)
-	baseline, ok = migrate.Directive("-- atlas:baseline \n...\n", "-- ", "baseline")
-	require.True(t, ok)
-	require.Empty(t, baseline)
-	baseline, ok = migrate.Directive("-- atlas:baseline  \n...\n", "-- ", "baseline")
-	require.True(t, ok)
-	require.Empty(t, baseline)
-}
-
 func TestHashSum(t *testing.T) {
 	// Sum file gets created.
 	p := t.TempDir()
@@ -80,14 +50,16 @@ func TestHashSum(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(p, "include"), []byte("//atlas:sum\nfoo"), 0600))
 	require.NoError(t, os.WriteFile(filepath.Join(p, "exclude_1"), []byte("//atlas:sum ignore bar"), 0600))
 	require.NoError(t, os.WriteFile(filepath.Join(p, "exclude_2"), []byte("//atlas:sum ignore\nbar"), 0600))
+	require.NoError(t, os.WriteFile(filepath.Join(p, "exclude_3"), []byte("atlas:sum ignore"), 0600))
 	require.NoError(t, pl.WritePlan(plan))
-	require.Equal(t, 5, countFiles(t, d))
+	require.Equal(t, 6, countFiles(t, d))
 	requireFileEqual(t, d, v+"_plan.sql", "cmd;\n")
 	c, err := os.ReadFile(filepath.Join(p, "atlas.sum"))
 	require.NoError(t, err)
 	require.Contains(t, string(c), "include")
 	require.NotContains(t, string(c), "exclude_2")
 	require.NotContains(t, string(c), "exclude_2")
+	require.NotContains(t, string(c), "exclude_3")
 }
 
 //go:embed testdata/migrate/atlas.sum
@@ -211,26 +183,15 @@ func TestLocalDir(t *testing.T) {
 	require.Equal(t, "description", files[1].Desc())
 }
 
-func TestSplitBaseline(t *testing.T) {
-	dir, err := migrate.NewLocalDir("testdata/migrate/baseline1")
+func TestLocalFile_Baseline(t *testing.T) {
+	dir, err := migrate.NewLocalDir("testdata/baseline")
 	require.NoError(t, err)
-	baseline, files, err := migrate.SplitBaseline(dir)
+	files, err := dir.Files()
 	require.NoError(t, err)
-	require.Len(t, baseline, 1)
-	require.True(t, baseline[0].Baseline())
-	require.Equal(t, "1_baseline.sql", baseline[0].Name())
-	require.Len(t, files, 1)
-	require.False(t, files[0].Baseline())
-	require.Equal(t, "2_initial.sql", files[0].Name())
-
-	dir, err = migrate.NewLocalDir("testdata/migrate/baseline2")
-	require.NoError(t, err)
-	baseline, files, err = migrate.SplitBaseline(dir)
-	require.NoError(t, err)
-	require.Len(t, baseline, 3)
-	require.Equal(t, "1_baseline.sql", baseline[0].Name())
-	require.Equal(t, "2_baseline.sql", baseline[1].Name())
-	require.Equal(t, "3_baseline.sql", baseline[2].Name())
-	require.Len(t, files, 1)
-	require.Equal(t, "4_initial.sql", files[0].Name())
+	idx := migrate.FilesLastIndex(files, func(f migrate.File) bool {
+		return f.Baseline()
+	})
+	require.Equal(t, 2, idx)
+	require.True(t, files[idx].Baseline())
+	require.False(t, files[idx+1].Baseline())
 }
