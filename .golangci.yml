@@ -8,7 +8,7 @@ issues:
     - path: _test\.go
       linters:
         - gosec
-    - path: sql/migrate/migrate.go
+    - path: sql/migrate/dir.go
       linters:
         - gosec
 

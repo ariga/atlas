@@ -16,14 +16,14 @@ import (
 )
 
 var (
-	// GolangMigrateFormatter is a migrate.Formatter compatible with golang-migrate/migrate.
+	// GolangMigrateFormatter returns migrate.Formatter compatible with golang-migrate/migrate.
 	GolangMigrateFormatter = templateFormatter(
 		"{{ now }}{{ with .Name }}_{{ . }}{{ end }}.up.sql",
 		`{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}`,
 		"{{ now }}{{ with .Name }}_{{ . }}{{ end }}.down.sql",
 		`{{ range rev .Changes }}{{ if .Reverse }}{{ with .Comment }}-- reverse: {{ println . }}{{ end }}{{ printf "%s;\n" .Reverse }}{{ end }}{{ end }}`,
 	)
-	// GooseFormatter returns a migrate.Formatter compatible with pressly/goose.
+	// GooseFormatter returns migrate.Formatter compatible with pressly/goose.
 	GooseFormatter = templateFormatter(
 		"{{ now }}{{ with .Name }}_{{ . }}{{ end }}.sql",
 		`-- +goose Up
@@ -31,14 +31,14 @@ var (
 -- +goose Down
 {{ range rev .Changes }}{{ if .Reverse }}{{ with .Comment }}-- reverse: {{ println . }}{{ end }}{{ printf "%s;\n" .Reverse }}{{ end }}{{ end }}`,
 	)
-	// FlywayFormatter returns a migrate.Formatter compatible with Flyway.
+	// FlywayFormatter returns migrate.Formatter compatible with Flyway.
 	FlywayFormatter = templateFormatter(
 		"V{{ now }}{{ with .Name }}__{{ . }}{{ end }}.sql",
 		`{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}`,
 		"U{{ now }}{{ with .Name }}__{{ . }}{{ end }}.sql",
 		`{{ range rev .Changes }}{{ if .Reverse }}{{ with .Comment }}-- reverse: {{ println . }}{{ end }}{{ printf "%s;\n" .Reverse }}{{ end }}{{ end }}`,
 	)
-	// LiquibaseFormatter returns a migrate.Formatter compatible with Liquibase.
+	// LiquibaseFormatter returns migrate.Formatter compatible with Liquibase.
 	LiquibaseFormatter = templateFormatter(
 		"{{ now }}{{ with .Name }}_{{ . }}{{ end }}.sql",
 		`{{- $now := now -}}
@@ -51,7 +51,7 @@ var (
 {{ with $change.Reverse }}--rollback: {{ . }};{{ end }}
 {{ end }}`,
 	)
-	// DbmateFormatter returns a migrate.Formatter compatible with amacneil/dbmate.
+	// DbmateFormatter returns migrate.Formatter compatible with amacneil/dbmate.
 	DbmateFormatter = templateFormatter(
 		"{{ now }}{{ with .Name }}_{{ . }}{{ end }}.sql",
 		`-- migrate:up

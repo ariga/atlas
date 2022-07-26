@@ -9,9 +9,7 @@ import (
 	"database/sql"
 	_ "embed"
 	"errors"
-	"io"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"testing"
 	"text/template"
@@ -89,120 +87,6 @@ func TestPlanner_Plan(t *testing.T) {
 	require.Equal(t, drv.plan, plan)
 }
 
-func TestHashSum(t *testing.T) {
-	// Sum file gets created.
-	p := t.TempDir()
-	d, err := migrate.NewLocalDir(p)
-	require.NoError(t, err)
-	plan := &migrate.Plan{Name: "plan", Changes: []*migrate.Change{{Cmd: "cmd"}}}
-	pl := migrate.NewPlanner(nil, d)
-	require.NotNil(t, pl)
-	require.NoError(t, pl.WritePlan(plan))
-	v := time.Now().UTC().Format("20060102150405")
-	require.Equal(t, 2, countFiles(t, d))
-	requireFileEqual(t, d, v+"_plan.sql", "cmd;\n")
-	require.FileExists(t, filepath.Join(p, "atlas.sum"))
-
-	// Disable sum.
-	p = t.TempDir()
-	d, err = migrate.NewLocalDir(p)
-	require.NoError(t, err)
-	pl = migrate.NewPlanner(nil, d, migrate.DisableChecksum())
-	require.NotNil(t, pl)
-	require.NoError(t, pl.WritePlan(plan))
-	require.Equal(t, 1, countFiles(t, d))
-	requireFileEqual(t, d, v+"_plan.sql", "cmd;\n")
-
-	// Files with directive in first line get ignored.
-	p = t.TempDir()
-	d, err = migrate.NewLocalDir(p)
-	require.NoError(t, err)
-	pl = migrate.NewPlanner(nil, d)
-	require.NotNil(t, pl)
-	require.NoError(t, os.WriteFile(filepath.Join(p, "include"), []byte("//atlas:sum\nfoo"), 0600))
-	require.NoError(t, os.WriteFile(filepath.Join(p, "exclude_1"), []byte("//atlas:sum ignore bar"), 0600))
-	require.NoError(t, os.WriteFile(filepath.Join(p, "exclude_2"), []byte("//atlas:sum ignore\nbar"), 0600))
-	require.NoError(t, pl.WritePlan(plan))
-	require.Equal(t, 5, countFiles(t, d))
-	requireFileEqual(t, d, v+"_plan.sql", "cmd;\n")
-	c, err := os.ReadFile(filepath.Join(p, "atlas.sum"))
-	require.NoError(t, err)
-	require.Contains(t, string(c), "include")
-	require.NotContains(t, string(c), "exclude_2")
-	require.NotContains(t, string(c), "exclude_2")
-}
-
-//go:embed testdata/migrate/atlas.sum
-var hash []byte
-
-func TestValidate(t *testing.T) {
-	// Add the sum file form the testdata/migrate dir without any files in it - should fail.
-	p := t.TempDir()
-	d, err := migrate.NewLocalDir(p)
-	require.NoError(t, err)
-	require.NoError(t, d.WriteFile("atlas.sum", hash))
-	require.Equal(t, migrate.ErrChecksumMismatch, migrate.Validate(d))
-
-	td := "testdata/migrate"
-	d, err = migrate.NewLocalDir(td)
-	require.NoError(t, err)
-
-	// testdata/migrate is valid.
-	require.Nil(t, migrate.Validate(d))
-
-	// Making a manual change to the sum file should raise validation error.
-	f, err := os.OpenFile(filepath.Join(td, "atlas.sum"), os.O_RDWR, os.ModeAppend)
-	require.NoError(t, err)
-	_, err = f.WriteString("foo")
-	require.NoError(t, err)
-	require.NoError(t, f.Close())
-	t.Cleanup(func() {
-		require.NoError(t, os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644))
-	})
-	require.Equal(t, migrate.ErrChecksumMismatch, migrate.Validate(d))
-	require.NoError(t, os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644))
-	f, err = os.OpenFile(filepath.Join(td, "atlas.sum"), os.O_APPEND|os.O_WRONLY, os.ModeAppend)
-	require.NoError(t, err)
-	_, err = f.WriteString("foo")
-	require.NoError(t, err)
-	require.NoError(t, f.Close())
-	require.Equal(t, migrate.ErrChecksumFormat, migrate.Validate(d))
-	require.NoError(t, os.WriteFile(filepath.Join(td, "atlas.sum"), hash, 0644))
-
-	// Changing the filename should raise validation error.
-	require.NoError(t, os.Rename(filepath.Join(td, "1_initial.up.sql"), filepath.Join(td, "1_first.up.sql")))
-	t.Cleanup(func() {
-		require.NoError(t, os.Rename(filepath.Join(td, "1_first.up.sql"), filepath.Join(td, "1_initial.up.sql")))
-	})
-	require.Equal(t, migrate.ErrChecksumMismatch, migrate.Validate(d))
-
-	// Removing it as well (move it out of the dir).
-	require.NoError(t, os.Rename(filepath.Join(td, "1_first.up.sql"), filepath.Join(td, "..", "bak")))
-	t.Cleanup(func() {
-		require.NoError(t, os.Rename(filepath.Join(td, "..", "bak"), filepath.Join(td, "1_first.up.sql")))
-	})
-	require.Equal(t, migrate.ErrChecksumMismatch, migrate.Validate(d))
-}
-
-func TestHash_MarshalText(t *testing.T) {
-	d, err := migrate.NewLocalDir("testdata/migrate")
-	require.NoError(t, err)
-	h, err := migrate.HashSum(d)
-	require.NoError(t, err)
-	ac, err := h.MarshalText()
-	require.Equal(t, hash, ac)
-}
-
-func TestHash_UnmarshalText(t *testing.T) {
-	d, err := migrate.NewLocalDir("testdata/migrate")
-	require.NoError(t, err)
-	h, err := migrate.HashSum(d)
-	require.NoError(t, err)
-	var ac migrate.HashFile
-	require.NoError(t, ac.UnmarshalText(hash))
-	require.Equal(t, h, ac)
-}
-
 func TestExecutor_ReadState(t *testing.T) {
 	ctx := context.Background()
 	d, err := migrate.NewLocalDir("testdata/migrate")
@@ -239,56 +123,6 @@ func TestExecutor_ReadState(t *testing.T) {
 	require.Equal(t, 3, drv.lockCounter)
 	require.Equal(t, 3, drv.unlockCounter)
 	require.True(t, drv.released())
-}
-
-func TestLocalDir(t *testing.T) {
-	// Files don't work.
-	d, err := migrate.NewLocalDir("migrate.go")
-	require.ErrorContains(t, err, "sql/migrate: \"migrate.go\" is not a dir")
-	require.Nil(t, d)
-
-	// Does not create a dir for you.
-	d, err = migrate.NewLocalDir("foo/bar")
-	require.EqualError(t, err, "sql/migrate: stat foo/bar: no such file or directory")
-	require.Nil(t, d)
-
-	// Open and WriteFile work.
-	d, err = migrate.NewLocalDir(t.TempDir())
-	require.NoError(t, err)
-	require.NotNil(t, d)
-	require.NoError(t, d.WriteFile("name", []byte("content")))
-	f, err := d.Open("name")
-	require.NoError(t, err)
-	i, err := f.Stat()
-	require.NoError(t, err)
-	require.Equal(t, i.Name(), "name")
-	c, err := io.ReadAll(f)
-	require.NoError(t, err)
-	require.Equal(t, "content", string(c))
-
-	// Default Scanner implementation.
-	d, err = migrate.NewLocalDir("testdata/migrate/sub")
-	require.NoError(t, err)
-	require.NotNil(t, d)
-
-	files, err := d.Files()
-	require.NoError(t, err)
-	require.Len(t, files, 3)
-	require.Equal(t, "1.a_sub.up.sql", files[0].Name())
-	require.Equal(t, "2.10.x-20_description.sql", files[1].Name())
-	require.Equal(t, "3_partly.sql", files[2].Name())
-
-	stmts, err := files[0].Stmts()
-	require.NoError(t, err)
-	require.Equal(t, []string{"CREATE TABLE t_sub(c int);", "ALTER TABLE t_sub ADD c1 int;"}, stmts)
-	require.Equal(t, "1.a", files[0].Version())
-	require.Equal(t, "sub.up", files[0].Desc())
-
-	stmts, err = files[1].Stmts()
-	require.NoError(t, err)
-	require.Equal(t, []string{"ALTER TABLE t_sub ADD c2 int;"}, stmts)
-	require.Equal(t, "2.10.x-20", files[1].Version())
-	require.Equal(t, "description", files[1].Desc())
 }
 
 func TestExecutor_Pending(t *testing.T) {
