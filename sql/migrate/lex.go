@@ -42,28 +42,23 @@ type lex struct {
 }
 
 const (
-	eos          = -1
-	delimiter    = ";"
-	delimComment = "-- atlas:delimiter"
+	eos       = -1
+	delimiter = ";"
 )
 
 func newLex(input string) (*lex, error) {
 	delim := delimiter
-	input = strings.TrimSpace(input)
-	if strings.HasPrefix(input, delimComment) {
-		input = input[len(delimComment):]
-		if !strings.HasPrefix(input, " ") {
-			return nil, fmt.Errorf("expect space after %q, got: %s", delimComment, input[:1])
-		}
-		input = strings.TrimSpace(input)
-		i := strings.Index(input, "\n")
-		if i == -1 {
+	if d, ok := Directive(input, directivePrefixSQL, directiveDelimiter); ok {
+		if d == "" {
 			return nil, errors.New("empty delimiter")
 		}
+		parts := strings.SplitN(input, "\n", 2)
+		if len(parts) == 1 {
+			return nil, fmt.Errorf("not input found after delimiter %q", d)
+		}
 		// Unescape delimiters. e.g. "\\n" => "\n".
-		delim = strings.NewReplacer(`\n`, "\n", `\r`, "\r", `\t`, "\t").
-			Replace(input[:i])
-		input = strings.TrimSpace(input[i+1:])
+		delim = strings.NewReplacer(`\n`, "\n", `\r`, "\r", `\t`, "\t").Replace(d)
+		input = parts[1]
 	}
 	l := &lex{input: input, delim: delim}
 	return l, nil
