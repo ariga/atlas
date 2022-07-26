@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -26,6 +27,7 @@ import (
 	_ "ariga.io/atlas/sql/sqlite"
 	_ "ariga.io/atlas/sql/sqlite/sqlitecheck"
 
+	"github.com/fatih/color"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
@@ -37,6 +39,9 @@ func TestMigrate(t *testing.T) {
 
 func TestMigrate_Apply(t *testing.T) {
 	p := t.TempDir()
+	// Disable text coloring in testing
+	// to assert on string matching.
+	color.NoColor = true
 
 	// Fails on empty directory.
 	s, err := runCmd(
@@ -173,7 +178,7 @@ func TestMigrate_Apply(t *testing.T) {
 	t.Cleanup(func() {
 		require.NoError(t, os.RemoveAll("testdata/sqlite3"))
 	})
-	require.NoError(t, exec.Command("sed", "-i", "s/col_2/col_5/g", "testdata/sqlite3/20220318104615_second.sql").Run())
+	sed(t, "s/col_2/col_5/g", "testdata/sqlite3/20220318104615_second.sql")
 	_, err = runCmd(Root, "migrate", "hash", "--force", "--dir", "file://testdata/sqlite3")
 	require.NoError(t, err)
 	s, err = runCmd(
@@ -184,8 +189,8 @@ func TestMigrate_Apply(t *testing.T) {
 	require.ErrorAs(t, err, &migrate.HistoryChangedError{})
 
 	// Fixing the migration file will finish without errors.
-	require.NoError(t, exec.Command("sed", "-i", "s/col_5/col_2/g", "testdata/sqlite3/20220318104615_second.sql").Run())
-	require.NoError(t, exec.Command("sed", "-i", "s/asdasd //g", "testdata/sqlite3/20220318104615_second.sql").Run())
+	sed(t, "s/col_5/col_2/g", "testdata/sqlite3/20220318104615_second.sql")
+	sed(t, "s/asdasd //g", "testdata/sqlite3/20220318104615_second.sql")
 	_, err = runCmd(Root, "migrate", "hash", "--force", "--dir", "file://testdata/sqlite3")
 	require.NoError(t, err)
 	s, err = runCmd(
@@ -581,4 +586,13 @@ func countFiles(t *testing.T, p string) int {
 	files, err := os.ReadDir(p)
 	require.NoError(t, err)
 	return len(files)
+}
+
+func sed(t *testing.T, r, p string) {
+	args := []string{"-i"}
+	if runtime.GOOS == "darwin" {
+		args = append(args, ".bk")
+	}
+	buf, err := exec.Command("sed", append(args, r, p)...).CombinedOutput()
+	require.NoError(t, err, string(buf))
 }

@@ -120,7 +120,7 @@ func TestDevLoader_LoadChanges(t *testing.T) {
 	c, err := sqlclient.Open(ctx, "sqlite://ci?mode=memory&cache=shared&_fk=1")
 	require.NoError(t, err)
 	defer c.Close()
-	l := &ci.DevLoader{Dev: c, Scan: testDir{}}
+	l := &ci.DevLoader{Dev: c}
 	diff, err := l.LoadChanges(ctx, nil, nil)
 	require.NoError(t, err)
 	require.Empty(t, diff)
@@ -173,7 +173,7 @@ func TestDevLoader_LoadChanges(t *testing.T) {
 }
 
 type testDir struct {
-	ci.DirScanner
+	migrate.Dir
 	files []migrate.File
 }
 
@@ -185,12 +185,8 @@ func (t testDir) Files() ([]migrate.File, error) {
 	return t.files, nil
 }
 
-func (testDir) Stmts(f migrate.File) ([]string, error) {
-	return strings.Split(string(f.Bytes()), "\n"), nil
-}
-
 type testFile struct {
-	fs.File
+	migrate.File
 	name, content string
 }
 
@@ -200,4 +196,8 @@ func (f testFile) Name() string {
 
 func (f testFile) Bytes() []byte {
 	return []byte(f.content)
+}
+
+func (f testFile) Stmts() ([]string, error) {
+	return strings.Split(string(f.Bytes()), "\n"), nil
 }

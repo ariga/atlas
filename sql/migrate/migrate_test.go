@@ -278,25 +278,17 @@ func TestLocalDir(t *testing.T) {
 	require.Equal(t, "2.10.x-20_description.sql", files[1].Name())
 	require.Equal(t, "3_partly.sql", files[2].Name())
 
-	stmts, err := d.Stmts(files[0])
+	stmts, err := files[0].Stmts()
 	require.NoError(t, err)
 	require.Equal(t, []string{"CREATE TABLE t_sub(c int);", "ALTER TABLE t_sub ADD c1 int;"}, stmts)
-	v, err := d.Version(files[0])
-	require.NoError(t, err)
-	require.Equal(t, "1.a", v)
-	desc, err := d.Desc(files[0])
-	require.NoError(t, err)
-	require.Equal(t, "sub.up", desc)
+	require.Equal(t, "1.a", files[0].Version())
+	require.Equal(t, "sub.up", files[0].Desc())
 
-	stmts, err = d.Stmts(files[1])
+	stmts, err = files[1].Stmts()
 	require.NoError(t, err)
 	require.Equal(t, []string{"ALTER TABLE t_sub ADD c2 int;"}, stmts)
-	v, err = d.Version(files[1])
-	require.NoError(t, err)
-	require.Equal(t, "2.10.x-20", v)
-	desc, err = d.Desc(files[1])
-	require.NoError(t, err)
-	require.Equal(t, "description", desc)
+	require.Equal(t, "2.10.x-20", files[1].Version())
+	require.Equal(t, "description", files[1].Desc())
 }
 
 func TestExecutor_Pending(t *testing.T) {
@@ -481,7 +473,7 @@ func TestExecutor(t *testing.T) {
 	*rrw = mockRevisionReadWriter(migrate.Revisions{&migrate.Revision{Version: "unknown"}})
 	*drv = lockMockDriver{&mockDriver{}}
 	require.EqualError(t, ex.ExecuteN(context.Background(), 0),
-		`sql/migrate: execute: revisions and migrations mismatch: rev "1.a" <> file "unknown"`,
+		`sql/migrate: execute: revisions and migrations mismatch: rev "unknown" <> file "1.a"`,
 	)
 
 	require.Equal(t, drv.lockCounter, 1)
