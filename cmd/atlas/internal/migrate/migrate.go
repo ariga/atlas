@@ -15,7 +15,6 @@ import (
 	"ariga.io/atlas/sql/sqlclient"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
-	entschema "entgo.io/ent/dialect/sql/schema"
 )
 
 const DefaultRevisionSchema = "atlas_schema_revisions"
@@ -65,7 +64,7 @@ func (r *EntRevisions) Init(ctx context.Context) error {
 	// If the driver does not support changing the schema (most likely SQLite) use the existing connection.
 	if err != nil && errors.Is(err, sqlclient.ErrUnsupported) {
 		r.ec = ent.NewClient(ent.Driver(sql.OpenDB(r.ac.Name, r.ac.DB)))
-		return r.ec.Schema.Create(ctx, entschema.WithAtlas(true))
+		return r.ec.Schema.Create(ctx)
 	}
 	// Driver does support changing schemas. Make sure the schema does exist before proceeding.
 	_, err = r.ac.InspectSchema(ctx, r.schema, &schema.InspectOptions{Mode: schema.InspectSchemas})
@@ -88,7 +87,7 @@ func (r *EntRevisions) Init(ctx context.Context) error {
 	}
 	r.ac.AddClosers(r.sc)
 	r.ec = ent.NewClient(ent.Driver(sql.OpenDB(r.sc.Name, r.sc.DB)))
-	return r.ec.Schema.Create(ctx, entschema.WithAtlas(true))
+	return r.ec.Schema.Create(ctx)
 }
 
 // ReadRevision reads a revision from the revisions table.
