@@ -213,6 +213,36 @@ func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 	return nil, migrate.NotCleanError{Reason: fmt.Sprintf("found schema %q", realm.Schemas[0].Name)}
 }
 
+// CheckClean implements migrate.CleanChecker.
+func (d *Driver) CheckClean(ctx context.Context, revT *migrate.TableIdent) error {
+	if d.schema != "" {
+		switch s, err := d.InspectSchema(ctx, d.schema, nil); {
+		case err != nil:
+			return err
+		case len(s.Tables) == 0, (revT.Schema == "" || s.Name == revT.Schema) && len(s.Tables) == 1 && s.Tables[0].Name == revT.Name:
+			return nil
+		default:
+			return &migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name)}
+		}
+	}
+	r, err := d.InspectRealm(ctx, nil)
+	if err != nil {
+		return err
+	}
+	for _, s := range r.Schemas {
+		switch {
+		case len(s.Tables) == 0 && s.Name == "public":
+		case len(s.Tables) == 0 || s.Name != revT.Schema:
+			return &migrate.NotCleanError{Reason: fmt.Sprintf("found schema %q", s.Name)}
+		case len(s.Tables) > 1:
+			return &migrate.NotCleanError{Reason: fmt.Sprintf("found %d tables in schema %q", len(s.Tables), s.Name)}
+		case len(s.Tables) == 1 && s.Tables[0].Name != revT.Name:
+			return &migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name)}
+		}
+	}
+	return nil
+}
+
 func acquire(ctx context.Context, conn schema.ExecQuerier, id uint32, timeout time.Duration) error {
 	switch {
 	// With timeout (context-based).

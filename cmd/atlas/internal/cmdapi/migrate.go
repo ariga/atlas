@@ -35,20 +35,23 @@ import (
 )
 
 const (
-	migrateFlagURL             = "url"
-	migrateFlagDevURL          = "dev-url"
-	migrateFlagDir             = "dir"
-	migrateFlagForce           = "force"
-	migrateFlagFormat          = "format"
-	migrateFlagLog             = "log"
-	migrateFlagRevisionsSchema = "revisions-schema"
-	migrateFlagDryRun          = "dry-run"
-	migrateFlagTo              = "to"
-	migrateFlagSchema          = "schema"
-	migrateDiffFlagVerbose     = "verbose"
-	migrateLintLatest          = "latest"
-	migrateLintGitDir          = "git-dir"
-	migrateLintGitBase         = "git-base"
+	migrateFlagURL              = "url"
+	migrateFlagDevURL           = "dev-url"
+	migrateFlagDir              = "dir"
+	migrateFlagForce            = "force"
+	migrateFlagFormat           = "format"
+	migrateFlagLog              = "log"
+	migrateFlagRevisionsSchema  = "revisions-schema"
+	migrateFlagDryRun           = "dry-run"
+	migrateFlagTo               = "to"
+	migrateFlagSchema           = "schema"
+	migrateDiffFlagVerbose      = "verbose"
+	migrateLintLatest           = "latest"
+	migrateLintGitDir           = "git-dir"
+	migrateLintGitBase          = "git-base"
+	migrateApplyAllowDirty      = "allow-dirty"
+	migrateApplyFromVersion     = "from"
+	migrateApplyBaselineVersion = "baseline"
 )
 
 var (
@@ -60,12 +63,17 @@ var (
 		ToURLs         []string
 		Schemas        []string
 		Format         string
-		LogFormat      string
 		RevisionSchema string
-		DryRun         bool
 		Force          bool
 		Verbose        bool
-		Lint           struct {
+		Apply          struct {
+			DryRun          bool
+			LogFormat       string
+			AllowDirty      bool
+			FromVersion     string
+			BaselineVersion string
+		}
+		Lint struct {
 			Format  string // log formatting
 			Latest  uint   // latest N migration files
 			GitDir  string // repository working dir
@@ -228,9 +236,12 @@ func init() {
 	MigrateCmd.PersistentFlags().BoolVarP(&MigrateFlags.Force, migrateFlagForce, "", false, "force a command to run on a broken migration directory state")
 	MigrateCmd.PersistentFlags().SortFlags = false
 	// Apply flags.
-	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.LogFormat, migrateFlagLog, "", logFormatTTY, "log format to use")
+	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.Apply.LogFormat, migrateFlagLog, "", logFormatTTY, "log format to use")
 	revisionsFlag(MigrateApplyCmd.Flags())
-	MigrateApplyCmd.Flags().BoolVarP(&MigrateFlags.DryRun, migrateFlagDryRun, "", false, "do not actually execute any SQL but show it on screen")
+	MigrateApplyCmd.Flags().BoolVarP(&MigrateFlags.Apply.DryRun, migrateFlagDryRun, "", false, "do not actually execute any SQL but show it on screen")
+	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.Apply.BaselineVersion, migrateApplyFromVersion, "", "", "calculate pending files from the given version (including it)")
+	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.Apply.BaselineVersion, migrateApplyBaselineVersion, "", "", "start the first migration after the given baseline version")
+	MigrateApplyCmd.Flags().BoolVarP(&MigrateFlags.Apply.AllowDirty, migrateApplyAllowDirty, "", false, "allow start working on a non-clean database")
 	urlFlag(&MigrateFlags.URL, migrateFlagURL, "u", MigrateApplyCmd.Flags())
 	cobra.CheckErr(MigrateApplyCmd.MarkFlagRequired(migrateFlagURL))
 	// Diff flags.
@@ -283,7 +294,6 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	// Currently, only in DB revisions are supported.
 	var rrw migrate.RevisionReadWriter
 	rrw, err = entmigrate.NewEntRevisions(c, []entmigrate.Option{entmigrate.WithSchema(MigrateFlags.RevisionSchema)}...)
 	if err != nil {
@@ -292,17 +302,16 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 	if err := rrw.(*entmigrate.EntRevisions).Init(cmd.Context()); err != nil {
 		return err
 	}
-	defer func(rrw *entmigrate.EntRevisions, ctx context.Context) {
-		if err2 := rrw.Flush(ctx); err2 != nil {
+	defer func(rrw *entmigrate.EntRevisions) {
+		if err2 := rrw.Flush(cmd.Context()); err2 != nil {
 			if err != nil {
-				err = fmt.Errorf("%v: %w", err2, err)
-			} else {
-				err = err2
+				err2 = fmt.Errorf("%w: %v", err, err2)
 			}
+			err = err2
 		}
-	}(rrw.(*entmigrate.EntRevisions), cmd.Context())
+	}(rrw.(*entmigrate.EntRevisions))
 	// Determine pending files and lock the database while working.
-	ex, err := migrate.NewExecutor(c.Driver, dir, rrw, migrate.WithLogger(l))
+	ex, err := migrate.NewExecutor(c.Driver, dir, rrw, executorOptions(l)...)
 	if err != nil {
 		return err
 	}
@@ -337,12 +346,12 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		drv migrate.Driver
 		tx  *sqlclient.TxClient
 	)
-	if MigrateFlags.DryRun {
+	if MigrateFlags.Apply.DryRun {
 		drv = &dryRunDriver{c.Driver}
 		rrw = &dryRunRevisions{rrw}
 	}
 	for _, f := range pending {
-		if !MigrateFlags.DryRun {
+		if !MigrateFlags.Apply.DryRun {
 			// Wrap the file execution in a transaction.
 			tx, err = c.Tx(cmd.Context(), nil)
 			if err != nil {
@@ -350,19 +359,19 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 			}
 			drv = tx.Driver
 		}
-		ex, err := migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(l))
+		ex, err := migrate.NewExecutor(drv, dir, rrw, executorOptions(l)...)
 		if err != nil {
 			return err
 		}
 		if err := ex.Execute(cmd.Context(), f); err != nil {
-			if !MigrateFlags.DryRun {
+			if !MigrateFlags.Apply.DryRun {
 				if err2 := tx.Rollback(); err2 != nil {
 					err = fmt.Errorf("%v: %w", err2, err)
 				}
 			}
 			return err
 		}
-		if !MigrateFlags.DryRun {
+		if !MigrateFlags.Apply.DryRun {
 			if err := tx.Commit(); err != nil {
 				return err
 			}
@@ -370,6 +379,20 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 	}
 	l.Log(migrate.LogDone{})
 	return nil
+}
+
+func executorOptions(l migrate.Logger) []migrate.ExecutorOption {
+	opts := []migrate.ExecutorOption{migrate.WithLogger(l)}
+	if MigrateFlags.Apply.AllowDirty {
+		opts = append(opts, migrate.WithAllowDirty(true))
+	}
+	if v := MigrateFlags.Apply.BaselineVersion; v != "" {
+		opts = append(opts, migrate.WithBaselineVersion(v))
+	}
+	if v := MigrateFlags.Apply.FromVersion; v != "" {
+		opts = append(opts, migrate.WithFromVersion(v))
+	}
+	return opts
 }
 
 // CmdMigrateDiffRun is the command executed when running the CLI with 'migrate diff' args.
@@ -865,9 +888,7 @@ func formatter() (migrate.Formatter, error) {
 	}
 }
 
-const (
-	logFormatTTY = "tty"
-)
+const logFormatTTY = "tty"
 
 // LogTTY is a migrate.Logger that pretty prints execution progress.
 // If the connected out is not a tty, it will fall back to a non-colorful output.
@@ -945,11 +966,11 @@ func zero(v int) int {
 }
 
 func logFormat(out io.Writer) (migrate.Logger, error) {
-	switch MigrateFlags.LogFormat {
+	switch l := MigrateFlags.Apply.LogFormat; l {
 	case logFormatTTY:
 		return &LogTTY{out: out}, nil
 	default:
-		return nil, fmt.Errorf("unknown log-format %q", MigrateFlags.LogFormat)
+		return nil, fmt.Errorf("unknown log-format %q", l)
 	}
 }
 
@@ -1018,6 +1039,11 @@ func (dryRunDriver) ExecContext(context.Context, string, ...interface{}) (sql.Re
 func (dryRunDriver) Lock(context.Context, string, time.Duration) (schema.UnlockFunc, error) {
 	// We dry-run, we don't execute anything. Locking is not required.
 	return func() error { return nil }, nil
+}
+
+// CheckClean implements the migrate.CleanChecker interface.
+func (dryRunDriver) CheckClean(context.Context, *migrate.TableIdent) error {
+	return nil
 }
 
 // Snapshot implements the migrate.Snapshoter interface.

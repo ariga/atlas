@@ -48,8 +48,6 @@ type (
 		Desc() string
 		// Version returns the version of the migration File.
 		Version() string
-		// Baseline indicates if this file is marked as a baseline migration.
-		Baseline() bool
 		// Bytes returns the read content of the file.
 		Bytes() []byte
 		// Stmts returns the set of SQL statements this file holds.
@@ -131,12 +129,6 @@ func (f LocalFile) Name() string {
 	return f.n
 }
 
-// Baseline reports if this file marked as a baseline migration.
-func (f LocalFile) Baseline() bool {
-	_, ok := directive(string(f.b), directiveBaseline, directivePrefixSQL)
-	return ok
-}
-
 // Desc implements File.Desc.
 func (f LocalFile) Desc() string {
 	parts := strings.SplitN(f.n, "_", 2)
@@ -148,7 +140,7 @@ func (f LocalFile) Desc() string {
 
 // Version implements File.Version.
 func (f LocalFile) Version() string {
-	return strings.SplitN(f.n, "_", 2)[0]
+	return strings.SplitN(strings.TrimSuffix(f.n, ".sql"), "_", 2)[0]
 }
 
 // Stmts implements Scanner.Stmts. It reads migration file line-by-line and expects a statement to be one line only.
@@ -374,10 +366,9 @@ func FilesLastIndex(files []File, f func(File) bool) int {
 }
 
 const (
+	// atlas:sum directive.
 	directiveSum  = "sum"
 	sumModeIgnore = "ignore"
-	// atlas:baseline directive.
-	directiveBaseline = "baseline"
 	// atlas:delimiter directive.
 	directiveDelimiter = "delimiter"
 	directivePrefixSQL = "-- "

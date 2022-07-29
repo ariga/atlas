@@ -303,28 +303,6 @@ func TestExecutor(t *testing.T) {
 	require.Equal(t, 1, drv.unlockCounter)
 	require.True(t, drv.released())
 
-	// Unknown revision present.
-	*rrw = mockRevisionReadWriter(migrate.Revisions{&migrate.Revision{Version: "unknown"}})
-	*drv = lockMockDriver{&mockDriver{}}
-	require.EqualError(t, ex.ExecuteN(context.Background(), 0),
-		`sql/migrate: execute: revisions and migrations mismatch: rev "unknown" <> file "1.a"`,
-	)
-
-	require.Equal(t, drv.lockCounter, 1)
-	require.Equal(t, drv.unlockCounter, 1)
-	require.True(t, drv.released())
-
-	// More revisions than migration files.
-	*rrw = mockRevisionReadWriter(migrate.Revisions{{Version: "unknown"}, rev1, rev2, rev2})
-	*drv = lockMockDriver{&mockDriver{}}
-	require.EqualError(t, ex.ExecuteN(context.Background(), 0),
-		`sql/migrate: execute: revisions and migrations mismatch: more revisions than migrations`,
-	)
-
-	require.Equal(t, drv.lockCounter, 1)
-	require.Equal(t, drv.unlockCounter, 1)
-	require.True(t, drv.released())
-
 	// Failing, counter will be correct.
 	*rrw = mockRevisionReadWriter(migrate.Revisions{rev1, rev2})
 	*drv = lockMockDriver{&mockDriver{}}
@@ -355,6 +333,77 @@ func TestExecutor(t *testing.T) {
 	require.ErrorIs(t, ex.ExecuteN(context.Background(), 0), migrate.ErrNoPendingFiles)
 }
 
+func TestExecutor_Baseline(t *testing.T) {
+	var (
+		drv = &lockMockDriver{&mockDriver{dirty: true}}
+		rrw = &mockRevisionReadWriter{}
+		log = &mockLogger{}
+	)
+	dir, err := migrate.NewLocalDir(filepath.Join("testdata/migrate", "sub"))
+	require.NoError(t, err)
+	ex, err := migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(log))
+	require.NoError(t, err)
+
+	// Require baseline-version or explicit flag to work on a dirty workspace.
+	files, err := ex.Pending(context.Background())
+	require.EqualError(t, err, "sql/migrate: connected database is not clean: found table. baseline version or allow-dirty are required")
+	require.Nil(t, files)
+
+	ex, err = migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(log), migrate.WithAllowDirty(true))
+	require.NoError(t, err)
+	files, err = ex.Pending(context.Background())
+	require.NoError(t, err)
+	require.Len(t, files, 3)
+
+	ex, err = migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(log), migrate.WithBaselineVersion("2.10.x-20"))
+	require.NoError(t, err)
+	files, err = ex.Pending(context.Background())
+	require.NoError(t, err)
+	require.Len(t, files, 1)
+
+	ex, err = migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(log), migrate.WithBaselineVersion("3"))
+	require.NoError(t, err)
+	files, err = ex.Pending(context.Background())
+	require.ErrorIs(t, err, migrate.ErrNoPendingFiles)
+}
+
+func TestExecutor_FromVersion(t *testing.T) {
+	var (
+		drv = &lockMockDriver{&mockDriver{}}
+		log = &mockLogger{}
+		rrw = &mockRevisionReadWriter{
+			{
+				Version:     "1.a",
+				Description: "sub.up",
+				Applied:     2,
+				Total:       2,
+				Hash:        "nXyZR020M/mH7LxkoTkJr7BcQkipVg90imQ9I4595dw=",
+			},
+		}
+	)
+	dir, err := migrate.NewLocalDir(filepath.Join("testdata/migrate", "sub"))
+	require.NoError(t, err)
+	ex, err := migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(log))
+	require.NoError(t, err)
+	files, err := ex.Pending(context.Background())
+	require.NoError(t, err)
+	require.Len(t, files, 2)
+
+	// Control the starting point.
+	ex, err = migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(log), migrate.WithFromVersion("3"))
+	require.NoError(t, err)
+	files, err = ex.Pending(context.Background())
+	require.NoError(t, err)
+	require.Len(t, files, 1)
+
+	// Starting point was not found.
+	ex, err = migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(log), migrate.WithFromVersion("4"))
+	require.NoError(t, err)
+	files, err = ex.Pending(context.Background())
+	require.EqualError(t, err, `starting point version "4" was not found in the migration directory`)
+	require.Nil(t, files)
+}
+
 type (
 	mockDriver struct {
 		migrate.Driver
@@ -368,6 +417,7 @@ type (
 		unlockCounter int
 		failCounter   int
 		failWith      error
+		dirty         bool
 	}
 	lockMockDriver struct{ *mockDriver }
 )
@@ -392,16 +442,20 @@ func (m *mockDriver) ExecContext(_ context.Context, query string, _ ...interface
 func (m *mockDriver) InspectRealm(context.Context, *schema.InspectRealmOption) (*schema.Realm, error) {
 	return &m.realm, nil
 }
+
 func (m *mockDriver) RealmDiff(_, _ *schema.Realm) ([]schema.Change, error) {
 	return m.changes, nil
 }
+
 func (m *mockDriver) PlanChanges(context.Context, string, []schema.Change) (*migrate.Plan, error) {
 	return m.plan, nil
 }
+
 func (m *mockDriver) ApplyChanges(_ context.Context, changes []schema.Change) error {
 	m.applied = changes
 	return nil
 }
+
 func (m *mockDriver) Snapshot(context.Context) (migrate.RestoreFunc, error) {
 	if len(m.realm.Schemas) > 0 {
 		return nil, migrate.NotCleanError{}
@@ -412,6 +466,14 @@ func (m *mockDriver) Snapshot(context.Context) (migrate.RestoreFunc, error) {
 		return nil
 	}, nil
 }
+
+func (m *mockDriver) CheckClean(context.Context, *migrate.TableIdent) error {
+	if m.dirty {
+		return &migrate.NotCleanError{Reason: "found table"}
+	}
+	return nil
+}
+
 func (m *lockMockDriver) Lock(_ context.Context, name string, _ time.Duration) (schema.UnlockFunc, error) {
 	if _, ok := m.locks[name]; ok {
 		return nil, errors.New("lockErr")
@@ -427,11 +489,24 @@ func (m *lockMockDriver) Lock(_ context.Context, name string, _ time.Duration) (
 		return nil
 	}, nil
 }
+
 func (m *lockMockDriver) released() bool {
 	return len(m.locks) == 0
 }
 
 type mockRevisionReadWriter migrate.Revisions
+
+func (mockRevisionReadWriter) Ident() *migrate.TableIdent {
+	return nil
+}
+
+func (mockRevisionReadWriter) Exists(_ context.Context) (bool, error) {
+	return true, nil
+}
+
+func (mockRevisionReadWriter) Init(_ context.Context) error {
+	return nil
+}
 
 func (rrw *mockRevisionReadWriter) WriteRevision(_ context.Context, r *migrate.Revision) error {
 	for i, rev := range *rrw {
@@ -450,7 +525,7 @@ func (rrw *mockRevisionReadWriter) ReadRevision(_ context.Context, v string) (*m
 			return r, nil
 		}
 	}
-	return nil, migrate.ErrNotExist
+	return nil, migrate.ErrRevisionNotExist
 }
 
 func (rrw *mockRevisionReadWriter) ReadRevisions(context.Context) (migrate.Revisions, error) {

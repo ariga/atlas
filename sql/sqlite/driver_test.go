@@ -12,6 +12,9 @@ import (
 	"testing"
 	"time"
 
+	"ariga.io/atlas/sql/migrate"
+
+	"ariga.io/atlas/sql/schema"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,4 +48,39 @@ func TestDriver_LockAcquired(t *testing.T) {
 
 	// Acquiring a lock on another value works as well.
 	_, err = drv.Lock(context.Background(), "another", time.Second)
+}
+
+func TestDriver_CheckClean(t *testing.T) {
+	var (
+		r   = schema.NewRealm()
+		drv = &Driver{Inspector: &mockInspector{realm: r}}
+	)
+	// Empty realm.
+	err := drv.CheckClean(context.Background(), nil)
+	require.NoError(t, err)
+	// Empty schema.
+	r.AddSchemas(schema.New("main"))
+	err = drv.CheckClean(context.Background(), nil)
+	require.NoError(t, err)
+	// Schema with revisions table only.
+	r.Schemas[0].AddTables(schema.NewTable("revisions"))
+	err = drv.CheckClean(context.Background(), &migrate.TableIdent{Name: "revisions"})
+	require.NoError(t, err)
+	// Unknown table.
+	r.Schemas[0].Tables[0].Name = "unknown"
+	err = drv.CheckClean(context.Background(), &migrate.TableIdent{Name: "revisions"})
+	require.EqualError(t, err, `sql/migrate: connected database is not clean: found table "unknown"`)
+	// Multiple tables.
+	r.Schemas[0].Tables = []*schema.Table{schema.NewTable("a"), schema.NewTable("revisions")}
+	err = drv.CheckClean(context.Background(), &migrate.TableIdent{Schema: "test", Name: "revisions"})
+	require.EqualError(t, err, `sql/migrate: connected database is not clean: found multiple tables: 2`)
+}
+
+type mockInspector struct {
+	schema.Inspector
+	realm *schema.Realm
+}
+
+func (m *mockInspector) InspectRealm(context.Context, *schema.InspectRealmOption) (*schema.Realm, error) {
+	return m.realm, nil
 }

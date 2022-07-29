@@ -182,16 +182,3 @@ func TestLocalDir(t *testing.T) {
 	require.Equal(t, "2.10.x-20", files[1].Version())
 	require.Equal(t, "description", files[1].Desc())
 }
-
-func TestLocalFile_Baseline(t *testing.T) {
-	dir, err := migrate.NewLocalDir("testdata/baseline")
-	require.NoError(t, err)
-	files, err := dir.Files()
-	require.NoError(t, err)
-	idx := migrate.FilesLastIndex(files, func(f migrate.File) bool {
-		return f.Baseline()
-	})
-	require.Equal(t, 2, idx)
-	require.True(t, files[idx].Baseline())
-	require.False(t, files[idx+1].Baseline())
-}

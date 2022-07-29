@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"ariga.io/atlas/sql/internal/sqltest"
-
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 
