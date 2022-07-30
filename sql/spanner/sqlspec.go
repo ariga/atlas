@@ -5,12 +5,13 @@
 package spanner
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
 
 	"ariga.io/atlas/schema/schemaspec"
-	"ariga.io/atlas/schema/schemaspec/schemahcl"
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
@@ -19,11 +20,11 @@ import (
 
 // evalSpec evaluates an Atlas DDL document using an unmarshaler into v by using the input.
 func evalSpec(data []byte, v interface{}, input map[string]string) error {
-	return specutil.Unmarshal(data, hclState, v, input, convertTable)
+	return fmt.Errorf("evalSpec: %T", v)
 }
 
-// MarshalSpec marshals v into an Atlas DDL document using a schemaspec.Marshaler.
-func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) {
+// MarshalSpec marshals v into an Atlas DDL document using a schemahcl.Marshaler.
+func MarshalSpec(v interface{}, marshaler schemahcl.Marshaler) ([]byte, error) {
 	return specutil.Marshal(v, marshaler, schemaSpec)
 }
 
@@ -123,14 +124,14 @@ var TypeRegistry = schemahcl.NewRegistry(
 	schemahcl.WithFormatter(FormatType),
 	schemahcl.WithParser(ParseType),
 	schemahcl.WithSpecs(
-		schemahcl.TypeSpec(TypeString, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec(TypeInt64, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
-		schemahcl.TypeSpec(TypeNumeric, schemahcl.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		schemahcl.TypeSpec("decimal", schemahcl.WithAttributes(&schemaspec.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemaspec.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
-		schemahcl.TypeSpec(TypeBool),
-		schemahcl.TypeSpec(TypeTimestamp),
-		schemahcl.TypeSpec(TypeDate),
-		schemahcl.TypeSpec(TypeJSON),
+		schemahcl.NewTypeSpec(TypeString, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec(TypeInt64, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
+		schemahcl.NewTypeSpec(TypeNumeric, schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec("decimal", schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "precision", Kind: reflect.Int, Required: false}, &schemahcl.TypeAttr{Name: "scale", Kind: reflect.Int, Required: false})),
+		schemahcl.NewTypeSpec(TypeBool),
+		schemahcl.NewTypeSpec(TypeTimestamp),
+		schemahcl.NewTypeSpec(TypeDate),
+		schemahcl.NewTypeSpec(TypeJSON),
 	),
 )
 
@@ -146,7 +147,7 @@ var (
 		return evalSpec(data, v, nil)
 	})
 	// MarshalHCL marshals v into an Atlas HCL DDL document.
-	MarshalHCL = schemaspec.MarshalerFunc(func(v interface{}) ([]byte, error) {
+	MarshalHCL = schemahcl.MarshalerFunc(func(v interface{}) ([]byte, error) {
 		return MarshalSpec(v, hclState)
 	})
 	// EvalHCL implements the schemahcl.Evaluator interface.
