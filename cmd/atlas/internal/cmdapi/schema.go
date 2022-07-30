@@ -89,7 +89,7 @@ migration.`,
   atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" -f schema.hcl --dry-run
   atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" -f schema.hcl
   atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -f schema.hcl
-  atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f schema.hcl`,
+  atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f schema.hcl
   atlas schema apply -u "spanner://projects/PROJECT/instances/INSTANCE/databases/DATABASE" -f atlas.hcl"`,
 	}
 

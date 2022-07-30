@@ -10,17 +10,43 @@ import (
 	"strconv"
 	"strings"
 
-	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
+	"github.com/hashicorp/hcl/v2/hclparse"
 )
 
+type doc struct {
+	Tables  []*sqlspec.Table  `spec:"table"`
+	Schemas []*sqlspec.Schema `spec:"schema"`
+}
+
 // evalSpec evaluates an Atlas DDL document using an unmarshaler into v by using the input.
-func evalSpec(data []byte, v interface{}, input map[string]string) error {
-	return fmt.Errorf("evalSpec: %T", v)
+func evalSpec(p *hclparse.Parser, v interface{}, input map[string]string) error {
+	var d doc
+	if err := hclState.Eval(p, &d, input); err != nil {
+		return err
+	}
+	switch v := v.(type) {
+	case *schema.Realm:
+		if err := specutil.Scan(v, d.Schemas, d.Tables, convertTable); err != nil {
+			return fmt.Errorf("specutil: failed converting to *schema.Realm: %w", err)
+		}
+	case *schema.Schema:
+		if len(d.Schemas) != 1 {
+			return fmt.Errorf("specutil: expecting document to contain a single schema, got %d", len(d.Schemas))
+		}
+		r := &schema.Realm{}
+		if err := specutil.Scan(r, d.Schemas, d.Tables, convertTable); err != nil {
+			return err
+		}
+		*v = *r.Schemas[0]
+	default:
+		return fmt.Errorf("specutil: failed unmarshaling spec. %T is not supported", v)
+	}
+	return nil
 }
 
 // MarshalSpec marshals v into an Atlas DDL document using a schemahcl.Marshaler.
@@ -142,10 +168,6 @@ var (
 		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
 		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
 	)
-	// UnmarshalHCL unmarshals an Atlas HCL DDL document into v.
-	UnmarshalHCL = schemaspec.UnmarshalerFunc(func(data []byte, v interface{}) error {
-		return evalSpec(data, v, nil)
-	})
 	// MarshalHCL marshals v into an Atlas HCL DDL document.
 	MarshalHCL = schemahcl.MarshalerFunc(func(v interface{}) ([]byte, error) {
 		return MarshalSpec(v, hclState)

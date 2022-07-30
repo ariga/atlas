@@ -38,26 +38,26 @@ func TestDiff_TableDiff(t *testing.T) {
 			to:      &schema.Table{Name: "users"},
 			wantErr: true,
 		},
-		{
-			name: "add attr",
-			from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}},
-			to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&WithoutRowID{}}},
-			wantChanges: []schema.Change{
-				&schema.AddAttr{
-					A: &WithoutRowID{},
-				},
-			},
-		},
-		{
-			name: "drop attr",
-			from: &schema.Table{Name: "t1", Attrs: []schema.Attr{&WithoutRowID{}}},
-			to:   &schema.Table{Name: "t1"},
-			wantChanges: []schema.Change{
-				&schema.DropAttr{
-					A: &WithoutRowID{},
-				},
-			},
-		},
+		// {
+		// 	name: "add attr",
+		// 	from: &schema.Table{Name: "t1", Schema: &schema.Schema{Name: "public"}},
+		// 	to:   &schema.Table{Name: "t1", Attrs: []schema.Attr{&WithoutRowID{}}},
+		// 	wantChanges: []schema.Change{
+		// 		&schema.AddAttr{
+		// 			A: &WithoutRowID{},
+		// 		},
+		// 	},
+		// },
+		// {
+		// 	name: "drop attr",
+		// 	from: &schema.Table{Name: "t1", Attrs: []schema.Attr{&WithoutRowID{}}},
+		// 	to:   &schema.Table{Name: "t1"},
+		// 	wantChanges: []schema.Change{
+		// 		&schema.DropAttr{
+		// 			A: &WithoutRowID{},
+		// 		},
+		// 	},
+		// },
 		{
 			name: "add check",
 			from: &schema.Table{Name: "t1"},
