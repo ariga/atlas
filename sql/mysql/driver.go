@@ -162,6 +162,37 @@ func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 	}, nil
 }
 
+// CheckClean implements migrate.CleanChecker.
+func (d *Driver) CheckClean(ctx context.Context, revT *migrate.TableIdent) error {
+	s, err := d.InspectSchema(ctx, "", nil)
+	if err != nil && !schema.IsNotExistError(err) {
+		return err
+	}
+	if s != nil {
+		switch {
+		case len(s.Tables) == 0, (revT.Schema == "" || s.Name == revT.Schema) && len(s.Tables) == 1 && s.Tables[0].Name == revT.Name:
+			return nil
+		default:
+			return &migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name)}
+		}
+	}
+	r, err := d.InspectRealm(ctx, nil)
+	if err != nil {
+		return err
+	}
+	switch n := len(r.Schemas); {
+	case n > 1:
+		return migrate.NotCleanError{Reason: fmt.Sprintf("found multiple schemas: %d", len(r.Schemas))}
+	case n == 1 && r.Schemas[0].Name != revT.Schema:
+		return migrate.NotCleanError{Reason: fmt.Sprintf("found schema %q", r.Schemas[0].Name)}
+	case n == 1 && len(r.Schemas[0].Tables) > 1:
+		return migrate.NotCleanError{Reason: fmt.Sprintf("found multiple tables: %d", len(r.Schemas[0].Tables))}
+	case n == 1 && len(r.Schemas[0].Tables) == 1 && r.Schemas[0].Tables[0].Name != revT.Name:
+		return migrate.NotCleanError{Reason: fmt.Sprintf("found table %q", r.Schemas[0].Tables[0].Name)}
+	}
+	return nil
+}
+
 func acquire(ctx context.Context, conn schema.ExecQuerier, name string, timeout time.Duration) error {
 	rows, err := conn.QueryContext(ctx, "SELECT GET_LOCK(?, ?)", name, int(timeout.Seconds()))
 	if err != nil {

@@ -113,6 +113,25 @@ func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
 	}, nil
 }
 
+// CheckClean implements migrate.CleanChecker.
+func (d *Driver) CheckClean(ctx context.Context, revT *migrate.TableIdent) error {
+	r, err := d.InspectRealm(ctx, nil)
+	if err != nil {
+		return err
+	}
+	switch n := len(r.Schemas); {
+	case n > 1:
+		return migrate.NotCleanError{Reason: fmt.Sprintf("found multiple schemas: %d", len(r.Schemas))}
+	case n == 1 && r.Schemas[0].Name != mainFile:
+		return migrate.NotCleanError{Reason: fmt.Sprintf("found schema %q", r.Schemas[0].Name)}
+	case n == 1 && len(r.Schemas[0].Tables) > 1:
+		return migrate.NotCleanError{Reason: fmt.Sprintf("found multiple tables: %d", len(r.Schemas[0].Tables))}
+	case n == 1 && len(r.Schemas[0].Tables) == 1 && r.Schemas[0].Tables[0].Name != revT.Name:
+		return migrate.NotCleanError{Reason: fmt.Sprintf("found table %q", r.Schemas[0].Tables[0].Name)}
+	}
+	return nil
+}
+
 // Lock implements the schema.Locker interface.
 func (d *Driver) Lock(_ context.Context, name string, timeout time.Duration) (schema.UnlockFunc, error) {
 	path := filepath.Join(os.TempDir(), name+".lock")

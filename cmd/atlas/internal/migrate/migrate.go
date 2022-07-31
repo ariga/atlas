@@ -17,13 +17,13 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
+// DefaultRevisionSchema is the default schema for storing revisions table.
 const DefaultRevisionSchema = "atlas_schema_revisions"
 
 type (
 	// A EntRevisions provides implementation for the migrate.RevisionReadWriter interface.
 	EntRevisions struct {
 		ac     *sqlclient.Client  // underlying Atlas client
-		sc     *sqlclient.Client  // underlying Atlas client connected to the named schema
 		ec     *ent.Client        // underlying Ent client
 		schema string             // name of the schema the revision table resides in
 		cache  []migrate.Revision // cache stores writes to Ent for blocked connections (like in SQLite).
@@ -56,11 +56,15 @@ func WithSchema(s string) Option {
 	}
 }
 
-// Init makes sure the revision table does exist in the connected database.
+// Ident returns the table identifier.
+func (r *EntRevisions) Ident() *migrate.TableIdent {
+	return &migrate.TableIdent{Name: revision.Table, Schema: r.schema}
+}
+
+// Init runs migration for the revisions' table in the connected database.
 func (r *EntRevisions) Init(ctx context.Context) error {
 	// Try to open a connection to the schema we are storing the revision table in.
-	var err error
-	r.sc, err = sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
+	sc, err := sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
 	// If the driver does not support changing the schema (most likely SQLite) use the existing connection.
 	if err != nil && errors.Is(err, sqlclient.ErrUnsupported) {
 		r.ec = ent.NewClient(ent.Driver(sql.OpenDB(r.ac.Name, r.ac.DB)))
@@ -79,14 +83,14 @@ func (r *EntRevisions) Init(ctx context.Context) error {
 		}
 	}
 	// If the previous connection attempt was unsuccessful, re-try with the schema present.
-	if r.sc == nil {
-		r.sc, err = sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
+	if sc == nil {
+		sc, err = sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
 		if err != nil {
 			return err
 		}
 	}
-	r.ac.AddClosers(r.sc)
-	r.ec = ent.NewClient(ent.Driver(sql.OpenDB(r.sc.Name, r.sc.DB)))
+	r.ac.AddClosers(sc)
+	r.ec = ent.NewClient(ent.Driver(sql.OpenDB(sc.Name, sc.DB)))
 	return r.ec.Schema.Create(ctx)
 }
 
@@ -99,7 +103,7 @@ func (r *EntRevisions) ReadRevision(ctx context.Context, v string) (*migrate.Rev
 		return nil, err
 	}
 	if ent.IsNotFound(err) {
-		return nil, migrate.ErrNotExist
+		return nil, migrate.ErrRevisionNotExist
 	}
 	return fromEnt(rev), nil
 }

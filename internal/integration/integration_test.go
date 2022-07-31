@@ -527,6 +527,10 @@ func plan(t T, name string, changes ...schema.Change) *migrate.Plan {
 
 type rrw migrate.Revisions
 
+func (r *rrw) Ident() *migrate.TableIdent {
+	return &migrate.TableIdent{}
+}
+
 func (r *rrw) WriteRevision(_ context.Context, rev *migrate.Revision) error {
 	for i, rev2 := range *r {
 		if rev2.Version == rev.Version {
@@ -544,7 +548,7 @@ func (r *rrw) ReadRevision(_ context.Context, v string) (*migrate.Revision, erro
 			return rev, nil
 		}
 	}
-	return nil, migrate.ErrNotExist
+	return nil, migrate.ErrRevisionNotExist
 }
 
 func (r *rrw) ReadRevisions(context.Context) (migrate.Revisions, error) {
