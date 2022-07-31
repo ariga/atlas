@@ -73,6 +73,9 @@ type Env struct {
 	// List of schemas in this database that are managed by Atlas.
 	Schemas []string `spec:"schemas"`
 
+	// schema name where the revisions's table resides (default "atlas_schema_revisions").
+	RevisionsSchema string `spec:"revisions_schema"`
+
 	// Directory containing the migrations for the env.
 	MigrationDir *MigrationDir `spec:"migration_dir"`
 

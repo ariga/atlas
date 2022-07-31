@@ -27,6 +27,7 @@ env "local" {
 	dev = "docker://mysql/8"
 	src = "./app.hcl"
 	schemas = ["hello", "world"]
+	revisions_schema = "revisions"
 	
 	migration_dir {
 		url = "file://migrations"
@@ -57,10 +58,11 @@ env "multi" {
 		})
 		require.NoError(t, err)
 		require.EqualValues(t, &Env{
-			Name:    "local",
-			URL:     "mysql://root:pass@localhost:3306/",
-			DevURL:  "docker://mysql/8",
-			Schemas: []string{"hello", "world"},
+			Name:            "local",
+			URL:             "mysql://root:pass@localhost:3306/",
+			DevURL:          "docker://mysql/8",
+			Schemas:         []string{"hello", "world"},
+			RevisionsSchema: "revisions",
 			MigrationDir: &MigrationDir{
 				URL:    "file://migrations",
 				Format: formatAtlas,
