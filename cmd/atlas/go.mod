@@ -3,7 +3,7 @@ module ariga.io/atlas/cmd/atlas
 go 1.18
 
 require (
-	ariga.io/atlas v0.5.1-0.20220726073255-fec1ee8d4caa
+	ariga.io/atlas v0.5.1-0.20220801112446-175f0b2f060f
 	entgo.io/ent v0.11.1
 	github.com/fatih/color v1.13.0
 	github.com/go-sql-driver/mysql v1.6.0
