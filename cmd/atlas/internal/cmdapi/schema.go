@@ -51,8 +51,6 @@ var (
 	ApplyFlags struct {
 		DevURL      string
 		Paths       []string
-		Web         bool
-		Addr        string
 		DryRun      bool
 		AutoApprove bool
 		Verbose     bool
@@ -85,11 +83,6 @@ migration.`,
   atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f schema.hcl`,
 	}
 
-	// InspectFlags are the flags used in SchemaInspect command.
-	InspectFlags struct {
-		Web  bool
-		Addr string
-	}
 	// SchemaInspect represents the 'atlas schema inspect' subcommand.
 	SchemaInspect = &cobra.Command{
 		Use:   "inspect",
@@ -148,8 +141,6 @@ func init() {
 	SchemaApply.Flags().StringVarP(&ApplyFlags.DevURL, devURLFlag, "", "", "URL for the dev database. Used to validate schemas and calculate diffs\nbefore running migration.")
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.DryRun, "dry-run", "", false, "Dry-run. Print SQL plan without prompting for execution.")
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.AutoApprove, "auto-approve", "", false, "Auto approve. Apply the schema changes without prompting for approval.")
-	SchemaApply.Flags().BoolVarP(&ApplyFlags.Web, "web", "w", false, "Open in a local Atlas UI.")
-	SchemaApply.Flags().StringVarP(&ApplyFlags.Addr, "addr", "", ":5800", "used with -w, local address to bind the server to.")
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.Verbose, migrateDiffFlagVerbose, "", false, "enable verbose logging")
 	SchemaApply.Flags().StringVarP(&SchemaFlags.DSN, dsnFlag, "d", "", "")
 	cobra.CheckErr(SchemaApply.Flags().MarkHidden(dsnFlag))
@@ -159,8 +150,6 @@ func init() {
 	// Schema inspect flags.
 	schemaCmd.AddCommand(SchemaInspect)
 	SchemaInspect.Flags().StringVarP(&SchemaFlags.URL, urlFlag, "u", "", "[driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format")
-	SchemaInspect.Flags().BoolVarP(&InspectFlags.Web, "web", "w", false, "Open in a local Atlas UI")
-	SchemaInspect.Flags().StringVarP(&InspectFlags.Addr, "addr", "", ":5800", "Used with -w, local address to bind the server to")
 	SchemaInspect.Flags().StringSliceVarP(&SchemaFlags.Schemas, schemaFlag, "s", nil, "Set schema name")
 	SchemaInspect.Flags().StringVarP(&SchemaFlags.DSN, dsnFlag, "d", "", "")
 	cobra.CheckErr(SchemaInspect.Flags().MarkHidden(dsnFlag))
@@ -248,9 +237,6 @@ func dsn2url(cmd *cobra.Command) error {
 
 // CmdInspectRun is the command used when running CLI.
 func CmdInspectRun(cmd *cobra.Command, _ []string) error {
-	if InspectFlags.Web {
-		return errors.New("atlas UI is not available in this release")
-	}
 	// Create the client.
 	client, err := sqlclient.Open(cmd.Context(), SchemaFlags.URL)
 	if err != nil {
@@ -277,9 +263,6 @@ func CmdInspectRun(cmd *cobra.Command, _ []string) error {
 
 // CmdApplyRun is the command used when running CLI.
 func CmdApplyRun(cmd *cobra.Command, _ []string) error {
-	if ApplyFlags.Web {
-		return errors.New("atlas UI is not available in this release")
-	}
 	c, err := sqlclient.Open(cmd.Context(), SchemaFlags.URL)
 	if err != nil {
 		return err
