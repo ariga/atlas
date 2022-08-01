@@ -83,7 +83,7 @@ func WithBase(base string) GitChangeDetectorOption {
 	}
 }
 
-// WithMigrationsPath configures the git base branch name for a GitChangeDetector.
+// WithMigrationsPath configures the path for the migration directory.
 func WithMigrationsPath(path string) GitChangeDetectorOption {
 	return func(d *GitChangeDetector) error {
 		d.path = filepath.ToSlash(path)
@@ -185,8 +185,7 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 	defer func() {
 		if err2 := restore(ctx); err2 != nil {
 			if err != nil {
-				err = fmt.Errorf("%w: %v", err, err2)
-				return
+				err2 = fmt.Errorf("%w: %v", err, err2)
 			}
 			err = err2
 		}
