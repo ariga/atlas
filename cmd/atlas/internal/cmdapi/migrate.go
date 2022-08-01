@@ -613,23 +613,20 @@ func CmdMigrateLintRun(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	var (
-		detect ci.ChangeDetector
-		local  = dir.(*migrate.LocalDir)
-	)
+	var detect ci.ChangeDetector
 	switch {
 	case MigrateFlags.Lint.Latest == 0 && MigrateFlags.Lint.GitBase == "":
 		return fmt.Errorf("--%s or --%s is required", migrateLintLatest, migrateLintGitBase)
 	case MigrateFlags.Lint.Latest > 0 && MigrateFlags.Lint.GitBase != "":
 		return fmt.Errorf("--%s and --%s are mutually exclusive", migrateLintLatest, migrateLintGitBase)
 	case MigrateFlags.Lint.Latest > 0:
-		detect = ci.LatestChanges(local, int(MigrateFlags.Lint.Latest))
+		detect = ci.LatestChanges(dir, int(MigrateFlags.Lint.Latest))
 	case MigrateFlags.Lint.GitBase != "":
 		detect, err = ci.NewGitChangeDetector(
-			local,
+			dir,
 			ci.WithWorkDir(MigrateFlags.Lint.GitDir),
 			ci.WithBase(MigrateFlags.Lint.GitBase),
-			ci.WithMigrationsPath(local.Path()),
+			ci.WithMigrationsPath(dir.(interface{ Path() string }).Path()),
 		)
 		if err != nil {
 			return err
@@ -648,7 +645,7 @@ func CmdMigrateLintRun(cmd *cobra.Command, _ []string) error {
 	}
 	r := &ci.Runner{
 		Dev:            dev,
-		Dir:            local,
+		Dir:            dir,
 		ChangeDetector: detect,
 		ReportWriter: &ci.TemplateWriter{
 			T: format,
@@ -710,12 +707,16 @@ func dir(create bool) (migrate.Dir, error) {
 	if parts[0] != "file" {
 		return nil, fmt.Errorf("unsupported driver %q", parts[0])
 	}
-	d, err := migrate.NewLocalDir(parts[1])
+	f := func() (migrate.Dir, error) { return migrate.NewLocalDir(parts[1]) }
+	if MigrateFlags.DirFormat == formatGolangMigrate {
+		f = func() (migrate.Dir, error) { return sqltool.NewGolangMigrateDir(parts[1]) }
+	}
+	d, err := f()
 	if create && errors.Is(err, fs.ErrNotExist) {
 		if err := os.MkdirAll(parts[1], 0755); err != nil {
 			return nil, err
 		}
-		d, err = migrate.NewLocalDir(parts[1])
+		d, err = f()
 	}
 	return d, err
 }

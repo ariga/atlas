@@ -446,9 +446,9 @@ func TestMigrate_Lint(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, s)
 
-	err = os.WriteFile(filepath.Join(p, "base.sql"), []byte("CREATE TABLE t(c int);"), 0600)
+	err = os.WriteFile(filepath.Join(p, "1.sql"), []byte("CREATE TABLE t(c int);"), 0600)
 	require.NoError(t, err)
-	err = os.WriteFile(filepath.Join(p, "new.sql"), []byte("DROP TABLE t;"), 0600)
+	err = os.WriteFile(filepath.Join(p, "2.sql"), []byte("DROP TABLE t;"), 0600)
 	require.NoError(t, err)
 	s, err = runCmd(
 		Root, "migrate", "lint",
@@ -457,7 +457,7 @@ func TestMigrate_Lint(t *testing.T) {
 		"--latest", "1",
 	)
 	require.NoError(t, err)
-	require.Equal(t, "Destructive changes detected in file new.sql:\n\n\tL1: Dropping table \"t\"\n\n", s)
+	require.Equal(t, "Destructive changes detected in file 2.sql:\n\n\tL1: Dropping table \"t\"\n\n", s)
 	s, err = runCmd(
 		Root, "migrate", "lint",
 		"--dir", "file://"+p,
@@ -466,7 +466,21 @@ func TestMigrate_Lint(t *testing.T) {
 		"--log", "{{ range .Files }}{{ .Name }}{{ end }}",
 	)
 	require.NoError(t, err)
-	require.Equal(t, "new.sql", s)
+	require.Equal(t, "2.sql", s)
+
+	// Change files to golang-migrate format.
+	require.NoError(t, os.Rename(filepath.Join(p, "1.sql"), filepath.Join(p, "1.up.sql")))
+	require.NoError(t, os.Rename(filepath.Join(p, "2.sql"), filepath.Join(p, "1.down.sql")))
+	s, err = runCmd(
+		Root, "migrate", "lint",
+		"--dir", "file://"+p,
+		"--dir-format", "golang-migrate",
+		"--dev-url", openSQLite(t, ""),
+		"--latest", "2",
+		"--log", "{{ range .Files }}{{ .Name }}:{{ len .Reports }}{{ end }}",
+	)
+	require.NoError(t, err)
+	require.Equal(t, "1.up.sql:0", s)
 }
 
 const testSchema = `
