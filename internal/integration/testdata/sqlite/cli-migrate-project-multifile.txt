@@ -17,8 +17,8 @@ env "local" {
     url = "URL"
     dev = "sqlite://test?mode=memory&_fk=1"
     src = "./schema"
-    migration_dir {
-        url = "file://migrations"
+    migration {
+        dir = "file://migrations"
         format = atlas
     }
 }
@@ -29,8 +29,8 @@ env "src_list" {
         "./schema/1.hcl",
         "./schema/2.hcl",
     ]
-    migration_dir {
-        url = "file://migrations"
+    migration {
+        dir = "file://migrations"
         format = atlas
     }
 }
@@ -40,8 +40,8 @@ env "single_elem" {
     src = [
         "./schema/",
     ]
-    migration_dir {
-        url = "file://migrations"
+    migration {
+        dir = "file://migrations"
         format = atlas
     }
 }

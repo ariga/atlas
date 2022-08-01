@@ -38,8 +38,8 @@ const (
 	migrateFlagURL              = "url"
 	migrateFlagDevURL           = "dev-url"
 	migrateFlagDir              = "dir"
+	migrateFlagDirFormat        = "dir-format"
 	migrateFlagForce            = "force"
-	migrateFlagFormat           = "format"
 	migrateFlagLog              = "log"
 	migrateFlagRevisionsSchema  = "revisions-schema"
 	migrateFlagDryRun           = "dry-run"
@@ -58,11 +58,11 @@ var (
 	// MigrateFlags are the flags used in MigrateCmd (and sub-commands).
 	MigrateFlags struct {
 		URL            string
-		DirURL         string
 		DevURL         string
 		ToURLs         []string
 		Schemas        []string
-		Format         string
+		DirURL         string
+		DirFormat      string
 		RevisionSchema string
 		Force          bool
 		Verbose        bool
@@ -232,7 +232,7 @@ func init() {
 	// Global flags.
 	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.DirURL, migrateFlagDir, "", "file://migrations", "select migration directory using URL format")
 	MigrateCmd.PersistentFlags().StringSliceVarP(&MigrateFlags.Schemas, migrateFlagSchema, "", nil, "set schema names")
-	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.Format, migrateFlagFormat, "", formatAtlas, "set migration file format")
+	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.DirFormat, migrateFlagDirFormat, "", formatAtlas, "set migration file format")
 	MigrateCmd.PersistentFlags().BoolVarP(&MigrateFlags.Force, migrateFlagForce, "", false, "force a command to run on a broken migration directory state")
 	MigrateCmd.PersistentFlags().SortFlags = false
 	// Apply flags.
@@ -870,7 +870,7 @@ const (
 )
 
 func formatter() (migrate.Formatter, error) {
-	switch MigrateFlags.Format {
+	switch MigrateFlags.DirFormat {
 	case formatAtlas:
 		return migrate.DefaultFormatter, nil
 	case formatGolangMigrate:
@@ -884,7 +884,7 @@ func formatter() (migrate.Formatter, error) {
 	case formatDbmate:
 		return sqltool.DbmateFormatter, nil
 	default:
-		return nil, fmt.Errorf("unknown format %q", MigrateFlags.Format)
+		return nil, fmt.Errorf("unknown format %q", MigrateFlags.DirFormat)
 	}
 }
 
@@ -988,10 +988,10 @@ func migrateFlagsFromEnv(cmd *cobra.Command, _ []string) error {
 	if err := maySetFlag(cmd, migrateFlagDevURL, activeEnv.DevURL); err != nil {
 		return err
 	}
-	if err := maySetFlag(cmd, migrateFlagRevisionsSchema, activeEnv.RevisionsSchema); err != nil {
+	if err := maySetFlag(cmd, migrateFlagRevisionsSchema, activeEnv.Migration.RevisionsSchema); err != nil {
 		return err
 	}
-	if err := maySetFlag(cmd, migrateFlagFormat, activeEnv.MigrationDir.Format); err != nil {
+	if err := maySetFlag(cmd, migrateFlagDirFormat, activeEnv.Migration.Format); err != nil {
 		return err
 	}
 	// Transform "src" to a URL.
