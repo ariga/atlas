@@ -214,7 +214,10 @@ func (t *TemplateFormatter) Format(plan *Plan) ([]File, error) {
 }
 
 // HashFileName of the migration directory integrity sum file.
-const HashFileName = "atlas.sum"
+const (
+	HashFileName = "atlas.sum"
+	SQLFile      = ".sql"
+)
 
 // HashFile represents the integrity sum file of the migration dir.
 type HashFile []struct{ N, H string }
@@ -230,8 +233,8 @@ func HashSum(dir Dir) (HashFile, error) {
 		if err != nil {
 			return err
 		}
-		// If this is the integrity sum file do not include it into the sum.
-		if filepath.Base(path) == HashFileName {
+		// If this is not migration file do not include it into the sum.
+		if !strings.HasSuffix(filepath.Base(path), SQLFile) {
 			return nil
 		}
 		if !d.IsDir() {
