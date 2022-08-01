@@ -319,7 +319,6 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 			}
 		}
 		// TODO(tmc): Handle this data better.
-		fmt.Println(tableName, columnName.String, ordinalPosition, columnOrdering.String, isNullable.String)
 		part := &schema.IndexPart{}
 		part.C, ok = t.Column(columnName.String)
 		idx.Parts = append(idx.Parts, part)
