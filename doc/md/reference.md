@@ -415,7 +415,7 @@ flag.
 ```
   -s, --schema strings   Set schema name
   -u, --url string       [driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format
-  
+
 ```
 
 
