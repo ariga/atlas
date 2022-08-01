@@ -71,6 +71,9 @@ func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *sche
 		if err := i.columns(ctx, s); err != nil {
 			return err
 		}
+		// if err := i.pks(ctx, s); err != nil {
+		// 	return err
+		// }
 		if err := i.indexes(ctx, s); err != nil {
 			return err
 		}
@@ -276,16 +279,26 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 			parentTableName                 sql.NullString
 			isUnique, isNullFiltered        bool
 			indexState                      sql.NullString
+			columnName                      sql.NullString
+			ordinalPosition                 int
+			columnOrdering                  sql.NullString
+			isNullable                      sql.NullString
 		)
-
-		if err := rows.Scan(&tableSchema, &tableName, &indexName, &indexType, &parentTableName, &isUnique, &isNullFiltered, &indexState); err != nil {
+		if err := rows.Scan(
+			&tableSchema, &tableName, &indexName, &indexType, &parentTableName, &isUnique, &isNullFiltered, &indexState,
+			&columnName, &ordinalPosition, &columnOrdering, &isNullable); err != nil {
 			return fmt.Errorf("spanner: scanning indexes for schema %q: %w", s.Name, err)
 		}
+		if tableName == "" {
+			continue
+		}
+
 		t, ok := s.Table(tableName)
 		if !ok {
 			return fmt.Errorf("table %q was not found in schema", tableName)
 		}
-		idx, ok := names[indexName]
+		name := tableName + indexName
+		idx, ok := names[name]
 		if !ok {
 			idx = &schema.Index{
 				Name:   tableSchema.String,
@@ -295,17 +308,21 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 					&IndexType{T: indexType},
 				},
 			}
-			// TODO(tmc): Add attrs.
-			names[indexName] = idx
+			// TODO(tmc): Add additional attrs.
+			names[name] = idx
 			if indexType == "PRIMARY_KEY" {
-				t.PrimaryKey = idx
+				if t.PrimaryKey == nil {
+					t.PrimaryKey = idx
+				}
 			} else {
 				t.Indexes = append(t.Indexes, idx)
 			}
 		}
 		// TODO(tmc): Handle this data better.
-		// part := &schema.IndexPart{SeqNo: len(idx.Parts) + 1}
-		// idx.Parts = append(idx.Parts, part)
+		fmt.Println(tableName, columnName.String, ordinalPosition, columnOrdering.String, isNullable.String)
+		part := &schema.IndexPart{}
+		part.C, ok = t.Column(columnName.String)
+		idx.Parts = append(idx.Parts, part)
 	}
 	return nil
 }
@@ -319,6 +336,35 @@ func (i *inspect) fks(ctx context.Context, s *schema.Schema) error {
 	defer rows.Close()
 	if err := sqlx.SchemaFKs(s, rows); err != nil {
 		return fmt.Errorf("spanner: %w", err)
+	}
+	return rows.Err()
+}
+
+// pks queries and appends the foreign keys of the given table.
+func (i *inspect) pks(ctx context.Context, s *schema.Schema) error {
+	rows, err := i.querySchema(ctx, primaryKeysQuery, s)
+	if err != nil {
+		return fmt.Errorf("spanner: querying schema %q foreign keys: %w", s.Name, err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var name, table, column, tSchema, refTable, refColumn, refSchema string
+		if err := rows.Scan(&name, &table, &column, &tSchema, &refTable, &refColumn, &refSchema); err != nil {
+			return err
+		}
+		// spew.Dump(name, table, column, tSchema, refTable, refColumn, refSchema)
+		// t, ok := s.Table(table)
+		// if !ok {
+		// 	return fmt.Errorf("table %q was not found in schema", table)
+		// }
+		// t.PrimaryKey = &schema.Index{
+		// 	Name:   name,
+		// 	Unique: isUnique,
+		// 	Table:  t,
+		// 	Attrs: []schema.Attr{
+		// 		&IndexType{T: indexType},
+		// 	},
+		// }
 	}
 	return rows.Err()
 }
@@ -732,22 +778,33 @@ ORDER BY
 	// Query to list table indexes.
 	indexesQuery = `
 SELECT
-	table_schema,
-	table_name,
-	index_name,
-	index_type,
-	parent_table_name,
-	is_unique,
-	is_null_filtered,
-	index_state
+	t1.table_schema,
+	t1.table_name,
+	t1.index_name,
+	t1.index_type,
+	t1.parent_table_name,
+	t1.is_unique,
+	t1.is_null_filtered,
+	t1.index_state,
+	t2.column_name, 
+	t2.ordinal_position,
+	t2.column_ordering,
+	t2.is_nullable
 FROM
-	information_schema.indexes
+	information_schema.indexes as t1
+    JOIN information_schema.index_columns t2
+    ON (
+		t1.table_schema = t2.table_schema
+		AND t1.table_name = t2.table_name
+		AND t1.index_name = t2.index_name
+	)
 WHERE
-	table_schema = @schema
-	AND table_name IN UNNEST (@table)
+	t1.table_schema = @schema
+	AND t2.table_name IN UNNEST (@table)
 ORDER BY
-	table_name, index_name
+	t1.table_name, t1.index_name, t2.ordinal_position
 `
+	// Query to list foreign keys.
 	fksQuery = `
 SELECT
     t1.constraint_name,
@@ -772,6 +829,33 @@ FROM
     AND t1.table_schema = t4.constraint_schema
 WHERE
     t1.constraint_type = 'FOREIGN KEY'
+	AND t1.table_schema = @schema
+	AND t1.table_name IN UNNEST (@table)
+ORDER BY
+    t1.constraint_name,
+    t2.ordinal_position
+`
+
+	// Query to list primary keys.
+	primaryKeysQuery = `
+SELECT
+    t1.constraint_name,
+    t1.table_name,
+    t2.column_name,
+    t1.table_schema,
+    t3.table_name AS referenced_table_name,
+    t3.column_name AS referenced_column_name,
+    t3.table_schema AS referenced_schema_name
+FROM
+	information_schema.table_constraints t1
+    JOIN information_schema.key_column_usage t2
+    ON t1.constraint_name = t2.constraint_name
+    AND t1.table_schema = t2.constraint_schema
+    JOIN information_schema.constraint_column_usage t3
+    ON t1.constraint_name = t3.constraint_name
+    AND t1.table_schema = t3.constraint_schema
+WHERE
+    t1.constraint_type = 'PRIMARY KEY'
 	AND t1.table_schema = @schema
 	AND t1.table_name IN UNNEST (@table)
 ORDER BY
