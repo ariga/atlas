@@ -301,7 +301,7 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 		idx, ok := names[name]
 		if !ok {
 			idx = &schema.Index{
-				Name:   tableSchema.String,
+				Name:   indexName,
 				Unique: isUnique,
 				Table:  t,
 				Attrs: []schema.Attr{
