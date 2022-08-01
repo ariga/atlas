@@ -19,8 +19,8 @@ env "local" {
     url = "URL"
     dev = "sqlite://test?mode=memory&_fk=1"
     src = "./1.hcl"
-    migration_dir {
-        url = "file://migrations"
+    migration {
+        dir = "file://migrations"
         format = atlas
     }
 }

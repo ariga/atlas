@@ -33,10 +33,11 @@ type projectFile struct {
 	Envs []*Env `spec:"env"`
 }
 
-// MigrationDir represents the migration directory for the Env.
-type MigrationDir struct {
-	URL    string `spec:"url"`
-	Format string `spec:"format"`
+// Migration represents the migration directory for the Env.
+type Migration struct {
+	Dir             string `spec:"dir"`
+	Format          string `spec:"format"`
+	RevisionsSchema string `spec:"revisions_schema"`
 }
 
 // asMap returns the extra attributes stored in the Env as a map[string]string.
@@ -73,11 +74,8 @@ type Env struct {
 	// List of schemas in this database that are managed by Atlas.
 	Schemas []string `spec:"schemas"`
 
-	// schema name where the revisions's table resides (default "atlas_schema_revisions").
-	RevisionsSchema string `spec:"revisions_schema"`
-
-	// Directory containing the migrations for the env.
-	MigrationDir *MigrationDir `spec:"migration_dir"`
+	// Migration containing the migration configuration of the env.
+	Migration *Migration `spec:"migration"`
 
 	schemahcl.DefaultExtension
 }
@@ -98,7 +96,7 @@ func (e *Env) Sources() ([]string, error) {
 }
 
 var hclState = schemahcl.New(
-	schemahcl.WithScopedEnums("env.migration_dir.format", formatAtlas, formatFlyway, formatLiquibase, formatGoose, formatGolangMigrate),
+	schemahcl.WithScopedEnums("env.migration.format", formatAtlas, formatFlyway, formatLiquibase, formatGoose, formatGolangMigrate),
 )
 
 // LoadEnv reads the project file in path, and loads the environment
@@ -133,8 +131,8 @@ func LoadEnv(path string, name string, opts ...LoadOption) (*Env, error) {
 	if !ok {
 		return nil, fmt.Errorf("env %q not defined in project file", name)
 	}
-	if selected.MigrationDir == nil {
-		selected.MigrationDir = &MigrationDir{}
+	if selected.Migration == nil {
+		selected.Migration = &Migration{}
 	}
 	return selected, nil
 }

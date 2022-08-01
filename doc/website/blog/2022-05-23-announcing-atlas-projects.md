@@ -53,8 +53,8 @@ env "local" {
     url = "mysql://root:password@localhost:3306"
     dev = "mysql://root:password@localhost:3307"
     src = "./schema.hcl"
-    migration_dir {
-        url = "file://migrations"
+    migration {
+        dir = "file://migrations"
         format = atlas
     }
 }

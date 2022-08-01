@@ -27,11 +27,10 @@ env "local" {
 	dev = "docker://mysql/8"
 	src = "./app.hcl"
 	schemas = ["hello", "world"]
-	revisions_schema = "revisions"
-	
-	migration_dir {
-		url = "file://migrations"
+	migration {
+		dir = "file://migrations"
 		format = atlas
+		revisions_schema = "revisions"
 	}
 	
 	bool = true
@@ -53,19 +52,20 @@ env "multi" {
 	t.Run("ok", func(t *testing.T) {
 		var env *Env
 		env, err = LoadEnv(path, "local")
+		require.NoError(t, err)
 		sort.Slice(env.Extra.Attrs, func(i, j int) bool {
 			return env.Extra.Attrs[i].K < env.Extra.Attrs[j].K
 		})
 		require.NoError(t, err)
 		require.EqualValues(t, &Env{
-			Name:            "local",
-			URL:             "mysql://root:pass@localhost:3306/",
-			DevURL:          "docker://mysql/8",
-			Schemas:         []string{"hello", "world"},
-			RevisionsSchema: "revisions",
-			MigrationDir: &MigrationDir{
-				URL:    "file://migrations",
-				Format: formatAtlas,
+			Name:    "local",
+			URL:     "mysql://root:pass@localhost:3306/",
+			DevURL:  "docker://mysql/8",
+			Schemas: []string{"hello", "world"},
+			Migration: &Migration{
+				Dir:             "file://migrations",
+				Format:          formatAtlas,
+				RevisionsSchema: "revisions",
 			},
 			DefaultExtension: schemahcl.DefaultExtension{
 				Extra: schemahcl.Resource{

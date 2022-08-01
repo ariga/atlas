@@ -47,16 +47,16 @@ environment.
 
 ### Projects with Versioned Migrations
 
-Environments may declare a `migration_dir` block to configure how versioned migrations
+Environments may declare a `migration` block to configure how versioned migrations
 work in the specific environment:
 
 ```hcl
 env "local" {
     // ..
-    migration_dir {
+    migration {
         // URL where the migration directory resides. Only filesystem directories
         // are currently supported but more options will be added in the future.
-        url = "file://migrations"
+        dir = "file://migrations"
         // Format of the migration directory: atlas | flyway | liquibase | goose | golang-migrate
         format = atlas
     }
