@@ -71,9 +71,6 @@ func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *sche
 		if err := i.columns(ctx, s); err != nil {
 			return err
 		}
-		// if err := i.pks(ctx, s); err != nil {
-		// 	return err
-		// }
 		if err := i.indexes(ctx, s); err != nil {
 			return err
 		}
@@ -174,6 +171,14 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	})
 	if columnDefault.Valid {
 		c.Default = defaultExpr(c, columnDefault.String)
+	}
+	if isGenerated.String == "ALWAYS" {
+		c.Attrs = []schema.Attr{
+			&schema.GeneratedExpr{
+				Expr: generationExpression.String,
+				Type: "STORED",
+			},
+		}
 	}
 	t.Columns = append(t.Columns, c)
 	return nil
