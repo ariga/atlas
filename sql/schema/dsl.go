@@ -79,6 +79,15 @@ func NewRealm(schemas ...*Schema) *Realm {
 	return r
 }
 
+// AddSchemas adds and links the given schemas to the realm.
+func (r *Realm) AddSchemas(schemas ...*Schema) *Realm {
+	for _, s := range schemas {
+		s.SetRealm(r)
+	}
+	r.Schemas = append(r.Schemas, schemas...)
+	return r
+}
+
 // SetCharset sets or appends the Charset attribute
 // to the realm with the given value.
 func (r *Realm) SetCharset(v string) *Realm {

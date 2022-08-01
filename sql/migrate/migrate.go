@@ -10,7 +10,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"os"
+	"io/fs"
 	"strings"
 	"time"
 
@@ -131,20 +131,6 @@ func Conn(drv Driver, opts *schema.InspectRealmOption) StateReader {
 }
 
 type (
-	// A RevisionReadWriter reads and writes information about a Revisions to a persistent storage.
-	// If the implementation happens provide an "Init() error" method,
-	// it will be called once before attempting to read or write.
-	//
-	// Atlas drivers provide a sql based implementation of this interface by default.
-	RevisionReadWriter interface {
-		// ReadRevisions returns all revisions.
-		ReadRevisions(context.Context) (Revisions, error)
-		// ReadRevision returns a revision by version. Returns ErrNotExist if the version does not exist.
-		ReadRevision(context.Context, string) (*Revision, error)
-		// WriteRevision saves the revision to the storage.
-		WriteRevision(context.Context, *Revision) error
-	}
-
 	// Planner can plan the steps to take to migrate from one state to another. It uses the enclosed Dir to write
 	// those changes to versioned migration files.
 	Planner struct {
@@ -156,6 +142,20 @@ type (
 
 	// PlannerOption allows managing a Planner using functional arguments.
 	PlannerOption func(*Planner)
+
+	// A RevisionReadWriter wraps the functionality for reading
+	// and writing migration revisions in a database table.
+	RevisionReadWriter interface {
+		// Ident returns an object identifies this history table.
+		Ident() *TableIdent
+		// ReadRevisions returns all revisions.
+		ReadRevisions(context.Context) (Revisions, error)
+		// ReadRevision returns a revision by version.
+		// Returns ErrRevisionNotExist if the version does not exist.
+		ReadRevision(context.Context, string) (*Revision, error)
+		// WriteRevision saves the revision to the storage.
+		WriteRevision(context.Context, *Revision) error
+	}
 
 	// A Revision denotes an applied migration in a deployment. Used to track migration executions state of a database.
 	Revision struct {
@@ -191,10 +191,13 @@ type (
 
 	// Executor is responsible to manage and execute a set of migration files against a database.
 	Executor struct {
-		drv Driver             // The Driver to access and manage the database.
-		dir Dir                // The Dir with migration files to use.
-		rrw RevisionReadWriter // The RevisionReadWriter to read and write database revisions to.
-		log Logger             // The Logger to use.
+		drv         Driver             // The Driver to access and manage the database.
+		dir         Dir                // The Dir with migration files to use.
+		rrw         RevisionReadWriter // The RevisionReadWriter to read and write database revisions to.
+		log         Logger             // The Logger to use.
+		fromVer     string             // Calculate pending files from the given version (including it).
+		baselineVer string             // Start the first migration after the given baseline version.
+		allowDirty  bool               // Allow start working on a non-clean database.
 	}
 
 	// ExecutorOption allows configuring an Executor using functional arguments.
@@ -290,8 +293,10 @@ var (
 	ErrLockUnsupported = errors.New("sql/migrate: driver does not support locking")
 	// ErrSnapshotUnsupported is returned if there is no Snapshoter given.
 	ErrSnapshotUnsupported = errors.New("sql/migrate: driver does not support taking a database snapshot")
-	// ErrNotExist is returned if the requested revision is not found in the storage.
-	ErrNotExist = errors.New("sql/migrate: revision not found")
+	// ErrCleanCheckerUnsupported is returned if there is no CleanChecker given.
+	ErrCleanCheckerUnsupported = errors.New("sql/migrate: driver does not support checking if database is clean")
+	// ErrRevisionNotExist is returned if the requested revision is not found in the storage.
+	ErrRevisionNotExist = errors.New("sql/migrate: revision not found")
 )
 
 // NewExecutor creates a new Executor with default values. // TODO(masseelch): Operator Version and other Meta
@@ -320,6 +325,12 @@ func NewExecutor(drv Driver, dir Dir, rrw RevisionReadWriter, opts ...ExecutorOp
 	if _, ok := drv.(Snapshoter); !ok {
 		return nil, ErrSnapshotUnsupported
 	}
+	if _, ok := drv.(CleanChecker); !ok {
+		return nil, ErrCleanCheckerUnsupported
+	}
+	if ex.baselineVer != "" && ex.allowDirty {
+		return nil, errors.New("sql/migrate: execute: baseline and allow-dirty are mutually exclusive")
+	}
 	return ex, nil
 }
 
@@ -327,6 +338,33 @@ func NewExecutor(drv Driver, dir Dir, rrw RevisionReadWriter, opts ...ExecutorOp
 func WithLogger(log Logger) ExecutorOption {
 	return func(ex *Executor) error {
 		ex.log = log
+		return nil
+	}
+}
+
+// WithFromVersion allows passing a file version as a starting point for calculating
+// pending migration scripts. It can be useful for skipping specific files.
+func WithFromVersion(v string) ExecutorOption {
+	return func(ex *Executor) error {
+		ex.fromVer = v
+		return nil
+	}
+}
+
+// WithBaselineVersion allows setting the baseline version of the database on the
+// first migration. Hence, all versions up to and including this version are skipped.
+func WithBaselineVersion(v string) ExecutorOption {
+	return func(ex *Executor) error {
+		ex.baselineVer = v
+		return nil
+	}
+}
+
+// WithAllowDirty defines if we can start working on a non-clean database
+// in the first migration execution.
+func WithAllowDirty(b bool) ExecutorOption {
+	return func(ex *Executor) error {
+		ex.allowDirty = b
 		return nil
 	}
 }
@@ -358,37 +396,59 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 		return nil, fmt.Errorf("sql/migrate: execute: select migration files: %w", err)
 	}
 	// Check if the existing revisions did come from the migration directory and not from somewhere else.
-	hf, err := readHashFile(e.dir)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
+	_, err = readHashFile(e.dir)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, fmt.Errorf("sql/migrate: execute: read %s file: %w", HashFileName, err)
 	}
 	// If there is no atlas.sum file there are no migration files.
-	if errors.Is(err, os.ErrNotExist) {
+	if errors.Is(err, fs.ErrNotExist) {
 		return nil, ErrNoPendingFiles
 	}
-	// For up to len(revisions) revisions the migration files must both match in order and content.
-	if len(revs) > len(migrations) { // TODO(masseelch): keep compaction in mind.
-		return nil, errors.New("sql/migrate: execute: revisions and migrations mismatch: more revisions than migrations")
-	}
-	for i := range revs {
-		m := migrations[i]
-		r := revs[i]
-		// All fully applied revisions must match both version and description.
-		// In case of a not fully applied migration, the hash might change since the file could have been edited to fix
-		// a previous failure. Thus, hashes don't have to match in that case.
-		hash := (i < len(revs)-1 && hf[i].H != r.Hash) || (i == len(revs)-1 && r.Complete() == nil && hf[i].H != r.Hash)
-		if m.Version() != r.Version || m.Desc() != r.Description || hash {
-			return nil, fmt.Errorf("sql/migrate: execute: revisions and migrations mismatch: rev %q <> file %q", r.Version, m.Version())
+	var pending []File
+	switch {
+	// If it is the first time we run.
+	case len(revs) == 0:
+		var cerr *NotCleanError
+		if err = e.drv.(CleanChecker).CheckClean(ctx, e.rrw.Ident()); err != nil && !errors.As(err, &cerr) {
+			return nil, err
 		}
-	}
-	// If there are no revisions yet, return all migration files as pending.
-	if len(revs) == 0 {
-		return migrations, nil
-	}
-	pending := migrations[len(revs):]
-	// If the last revision is not applied in full, it is considered pending as well.
-	if last := revs[len(revs)-1]; last.Applied < last.Total {
-		pending = append(migrations[len(revs)-1:len(revs)], pending...)
+		// In case the workspace is not clean one of the flags are required.
+		if cerr != nil && !e.allowDirty && e.baselineVer == "" {
+			return nil, fmt.Errorf("%w. baseline version or allow-dirty are required", cerr)
+		}
+		pending = migrations
+		if e.baselineVer != "" {
+			baseline := FilesLastIndex(migrations, func(f File) bool {
+				return f.Version() == e.baselineVer
+			})
+			if baseline == -1 {
+				return nil, fmt.Errorf("baseline version %q was not found", e.baselineVer)
+			}
+			pending = migrations[baseline+1:]
+		}
+	// Not the first time we execute and a
+	// custom starting point was provided.
+	case e.fromVer != "":
+		idx := FilesLastIndex(migrations, func(f File) bool {
+			return f.Version() == e.fromVer
+		})
+		if idx == -1 {
+			return nil, fmt.Errorf("starting point version %q was not found in the migration directory", e.fromVer)
+		}
+		pending = migrations[idx:]
+	default:
+		last := revs[len(revs)-1]
+		idx := FilesLastIndex(migrations, func(f File) bool {
+			return f.Version() == last.Version
+		})
+		if idx == -1 {
+			return nil, fmt.Errorf("version %q exists in revisions table was not found in the migration directory", last.Version)
+		}
+		// If this file was not partially applied, take the next one.
+		if last.Applied == last.Total {
+			idx++
+		}
+		pending = migrations[idx:]
 	}
 	if len(pending) == 0 {
 		return nil, ErrNoPendingFiles
@@ -426,10 +486,10 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 	// If there already is a revision with this version in the database,
 	// and it is partially applied, continue where the last attempt was left off.
 	r, err := e.rrw.ReadRevision(ctx, version)
-	if err != nil && !errors.Is(err, ErrNotExist) {
+	if err != nil && !errors.Is(err, ErrRevisionNotExist) {
 		return fmt.Errorf("sql/migrate: execute: read revision: %w", err)
 	}
-	if errors.Is(err, ErrNotExist) {
+	if errors.Is(err, ErrRevisionNotExist) {
 		// Haven't seen this file before, create a new revision.
 		r = &Revision{
 			Version:     version,
@@ -577,6 +637,19 @@ type (
 	// RestoreFunc is returned by the Snapshoter to explicitly restore the database state.
 	RestoreFunc func(context.Context) error
 
+	// TableIdent describes a table identifier returned by the revisions table.
+	TableIdent struct {
+		Name   string // name of the table.
+		Schema string // optional schema.
+	}
+
+	// CleanChecker wraps the single CheckClean method.
+	CleanChecker interface {
+		// CheckClean checks if the connected realm or schema does not contain any resources besides the
+		// revision history table. A NotCleanError is returned in case the connection is not-empty.
+		CheckClean(context.Context, *TableIdent) error
+	}
+
 	// NotCleanError is returned when the connected dev-db is not in a clean state (aka it has schemas and tables).
 	// This check is done to ensure no data is lost by overriding it when working on the dev-db.
 	NotCleanError struct {
@@ -588,21 +661,26 @@ func (e NotCleanError) Error() string {
 	return "sql/migrate: connected database is not clean: " + e.Reason
 }
 
-// NopRevisionReadWriter is a RevisionsReadWriter that does nothing.
+// NopRevisionReadWriter is a RevisionReadWriter that does nothing.
 // It is useful for one-time replay of the migration directory.
 type NopRevisionReadWriter struct{}
 
-// ReadRevisions implements RevisionsReadWriter.ReadRevisions,
+// Ident implements RevisionsReadWriter.TableIdent.
+func (NopRevisionReadWriter) Ident() *TableIdent {
+	return nil
+}
+
+// ReadRevisions implements RevisionsReadWriter.ReadRevisions.
 func (NopRevisionReadWriter) ReadRevisions(context.Context) (Revisions, error) {
 	return nil, nil
 }
 
-// ReadRevision implements RevisionsReadWriter.ReadRevision,
+// ReadRevision implements RevisionsReadWriter.ReadRevision.
 func (NopRevisionReadWriter) ReadRevision(context.Context, string) (*Revision, error) {
-	return nil, ErrNotExist
+	return nil, ErrRevisionNotExist
 }
 
-// WriteRevision implements RevisionsReadWriter.WriteRevision,
+// WriteRevision implements RevisionsReadWriter.WriteRevision.
 func (NopRevisionReadWriter) WriteRevision(context.Context, *Revision) error {
 	return nil
 }
