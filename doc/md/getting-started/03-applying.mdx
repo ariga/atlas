@@ -178,11 +178,11 @@ table "post_categories" {
     }
     foreign_key "post_category_post" {
         columns     = [column.post_id]
-        ref_columns = [column.id]
+        ref_columns = [table.blog_posts.column.id]
     }
     foreign_key "post_category_category" {
         columns     = [column.category_id]
-        ref_columns = [column.id]
+        ref_columns = [table.categories.column.id]
     }
 }
 ```
