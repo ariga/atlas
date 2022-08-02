@@ -64,8 +64,8 @@ func (r *EntRevisions) Ident() *migrate.TableIdent {
 // Init runs migration for the revisions' table in the connected database.
 func (r *EntRevisions) Init(ctx context.Context) error {
 	// Try to open a connection to the schema we are storing the revision table in.
-	sc, err := sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
-	// If the driver does not support changing the schema (most likely SQLite) use the existing connection.
+	sc, err := r.openSchema(ctx)
+	// If the driver does not support changing the schema (SQLite) use the existing connection.
 	if err != nil && errors.Is(err, sqlclient.ErrUnsupported) {
 		r.ec = ent.NewClient(ent.Driver(sql.OpenDB(r.ac.Name, r.ac.DB)))
 		return r.ec.Schema.Create(ctx)
@@ -84,7 +84,7 @@ func (r *EntRevisions) Init(ctx context.Context) error {
 	}
 	// If the previous connection attempt was unsuccessful, re-try with the schema present.
 	if sc == nil {
-		sc, err = sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
+		sc, err = r.openSchema(ctx)
 		if err != nil {
 			return err
 		}
@@ -188,6 +188,18 @@ func (r *EntRevisions) useCache() bool {
 	// For SQLite dialect and flavors we have to enable the revision write cache to postpone writing to
 	// the database until the transaction wrapping the migration execution has been committed.
 	return r.ac.Name == dialect.SQLite
+}
+
+func (r *EntRevisions) openSchema(ctx context.Context) (*sqlclient.Client, error) {
+	u := r.ac.URL.URL
+	if r.ac.Name == dialect.MySQL && !u.Query().Has("parseTime") {
+		v := *u
+		q := v.Query()
+		q.Set("parseTime", "true")
+		v.RawQuery = q.Encode()
+		u = &v
+	}
+	return sqlclient.OpenURL(ctx, u, sqlclient.OpenSchema(r.schema))
 }
 
 var _ migrate.RevisionReadWriter = (*EntRevisions)(nil)
