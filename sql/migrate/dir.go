@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -90,9 +89,18 @@ func (d *LocalDir) WriteFile(name string, b []byte) error {
 	return os.WriteFile(filepath.Join(d.path, name), b, 0644)
 }
 
-// Files implements Dir.Files. It looks for all files with .sql suffix and orders them by filename.
+// Files implements Dir.Files. It looks recursively for all files with .sql suffix and orders them by filename.
 func (d *LocalDir) Files() ([]File, error) {
-	names, err := fs.Glob(d, "*.sql")
+	var names []string
+	err := fs.WalkDir(d, "", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && strings.HasSuffix(d.Name(), ".sql") {
+			names = append(names, path)
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -214,10 +222,7 @@ func (t *TemplateFormatter) Format(plan *Plan) ([]File, error) {
 }
 
 // HashFileName of the migration directory integrity sum file.
-const (
-	HashFileName = "atlas.sum"
-	SQLFile      = ".sql"
-)
+const HashFileName = "atlas.sum"
 
 // HashFile represents the integrity sum file of the migration dir.
 type HashFile []struct{ N, H string }
@@ -229,40 +234,22 @@ func HashSum(dir Dir) (HashFile, error) {
 		hs HashFile
 		h  = sha256.New()
 	)
-	err := fs.WalkDir(dir, "", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		// If this is not migration file do not include it into the sum.
-		if !strings.HasSuffix(filepath.Base(path), SQLFile) {
-			return nil
-		}
-		if !d.IsDir() {
-			f, err := dir.Open(path)
-			if err != nil {
-				return err
-			}
-			defer f.Close()
-			if _, err := h.Write([]byte(path)); err != nil {
-				return err
-			}
-			c, err := ioutil.ReadAll(f)
-			if err != nil {
-				return err
-			}
-			// Check if this file contains an "atlas:sum" directive and if so, act to it.
-			if mode, ok := directive(string(c), directiveSum); ok && mode == sumModeIgnore {
-				return nil
-			}
-			if _, err := h.Write(c); err != nil {
-				return err
-			}
-			hs = append(hs, struct{ N, H string }{path, base64.StdEncoding.EncodeToString(h.Sum(nil))})
-		}
-		return nil
-	})
+	files, err := dir.Files()
 	if err != nil {
 		return nil, err
+	}
+	for _, f := range files {
+		if _, err = h.Write([]byte(f.Name())); err != nil {
+			return nil, err
+		}
+		// Check if this file contains an "atlas:sum" directive and if so, act to it.
+		if mode, ok := directive(string(f.Bytes()), directiveSum); ok && mode == sumModeIgnore {
+			continue
+		}
+		if _, err = h.Write(f.Bytes()); err != nil {
+			return nil, err
+		}
+		hs = append(hs, struct{ N, H string }{f.Name(), base64.StdEncoding.EncodeToString(h.Sum(nil))})
 	}
 	return hs, nil
 }

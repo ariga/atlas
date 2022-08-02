@@ -102,7 +102,14 @@ func TestExecutor_ReadState(t *testing.T) {
 
 	_, err = ex.ReadState(ctx)
 	require.NoError(t, err)
-	require.Equal(t, []string{"DROP TABLE IF EXISTS t;", "CREATE TABLE t(c int);"}, drv.executed)
+	require.Equal(t, []string{"DROP TABLE IF EXISTS t;",
+		"CREATE TABLE t(c int);",
+		"CREATE TABLE t_sub(c int);",
+		"ALTER TABLE t_sub ADD c1 int;",
+		"ALTER TABLE t_sub ADD c2 int;",
+		"ALTER TABLE t_sub ADD c3 int;",
+		"ALTER TABLE t_sub ADD c4 int;"},
+		drv.executed)
 	require.Equal(t, 2, drv.lockCounter)
 	require.Equal(t, 2, drv.unlockCounter)
 	require.True(t, drv.released())
