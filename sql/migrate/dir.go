@@ -339,6 +339,7 @@ func Validate(dir Dir) error {
 		return err
 	}
 	if fh.Sum() != mh.Sum() {
+		fmt.Printf("mismatch:\n%s\n%s\n", fh.Sum(), mh.Sum())
 		return ErrChecksumMismatch
 	}
 	return nil
