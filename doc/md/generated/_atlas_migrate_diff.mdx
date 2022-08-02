@@ -1,0 +1,28 @@
+```
+'atlas migrate diff' uses the dev-database to re-run all migration files in the migration directory, compares
+it to a given desired state and create a new migration file containing SQL statements to migrate the migration
+directory state to the desired schema. The desired state can be another connected database or an HCL file.
+
+Usage:
+  atlas migrate diff [flags] [name]
+
+Examples:
+  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl
+  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl add_users_table
+  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname
+  atlas migrate diff --env dev
+
+Flags:
+      --dev-url string   [driver://username:password@address/dbname?param=value] select a database using the URL format
+      --to strings       [driver://username:password@address/dbname?param=value ...] select a desired state using the URL format
+      --verbose          enable verbose logging
+
+Global Flags:
+      --dir string           select migration directory using URL format (default "file://migrations")
+      --dir-format string    set migration file format (default "atlas")
+      --env string           set which env from the project file to use
+      --force                force a command to run on a broken migration directory state
+      --schema strings       set schema names
+      --var stringToString   input variables (default [])
+
+```

@@ -1,0 +1,17 @@
+```
+'atlas schema diff' connects to two given databases, inspects
+them, calculates the difference in their schemas, and prints a plan of
+SQL statements to migrate the "from" database to the schema of the "to" database.
+
+Usage:
+  atlas schema diff [flags]
+
+Flags:
+      --from string   [driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format
+      --to string     [driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format
+
+Global Flags:
+      --env string           set which env from the project file to use
+      --var stringToString   input variables (default [])
+
+```

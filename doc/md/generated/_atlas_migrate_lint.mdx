@@ -1,0 +1,28 @@
+```
+Run analysis on the migration directory
+
+Usage:
+  atlas migrate lint [flags]
+
+Examples:
+  atlas migrate lint --env dev
+  atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --latest 1
+  atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --git-base master
+  atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --log '{{ json .Files }}'
+
+Flags:
+      --dev-url string    [driver://username:password@address/dbname?param=value] select a database using the URL format
+      --git-base string   run analysis against the base Git branch
+      --git-dir string    path to the repository working directory (default ".")
+      --latest uint       run analysis on the latest N migration files
+      --log string        custom logging using a Go template
+
+Global Flags:
+      --dir string           select migration directory using URL format (default "file://migrations")
+      --dir-format string    set migration file format (default "atlas")
+      --env string           set which env from the project file to use
+      --force                force a command to run on a broken migration directory state
+      --schema strings       set schema names
+      --var stringToString   input variables (default [])
+
+```

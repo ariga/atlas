@@ -1,0 +1,37 @@
+```
+'atlas migrate apply' reads the migration state of the connected database and computes what migrations are pending.
+It then attempts to apply the pending migration files in the correct order onto the database. 
+The first argument denotes the maximum number of migration files to apply.
+As a safety measure 'atlas migrate apply' will abort with an error, if:
+  - the migration directory is not in sync with the 'atlas.sum' file
+  - the migration and database history do not match each other
+
+If run with the "--dry-run" flag, atlas will not execute any SQL.
+
+Usage:
+  atlas migrate apply [flags] [count]
+
+Examples:
+  atlas migrate apply -u mysql://user:pass@localhost:3306/dbname
+  atlas migrate apply --dir file:///path/to/migration/directory --url mysql://user:pass@localhost:3306/dbname 1
+  atlas migrate apply --env dev 1
+  atlas migrate apply --dry-run --env dev 1
+
+Flags:
+      --allow-dirty               allow start working on a non-clean database
+      --baseline string           start the first migration after the given baseline version
+      --dry-run                   do not actually execute any SQL but show it on screen
+      --from string               calculate pending files from the given version (including it)
+      --log string                log format to use (default "tty")
+      --revisions-schema string   schema name where the revisions table resides (default "atlas_schema_revisions")
+  -u, --url string                [driver://username:password@address/dbname?param=value] select a database using the URL format
+
+Global Flags:
+      --dir string           select migration directory using URL format (default "file://migrations")
+      --dir-format string    set migration file format (default "atlas")
+      --env string           set which env from the project file to use
+      --force                force a command to run on a broken migration directory state
+      --schema strings       set schema names
+      --var stringToString   input variables (default [])
+
+```

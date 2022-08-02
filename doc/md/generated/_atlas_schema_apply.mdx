@@ -1,0 +1,42 @@
+```
+'atlas schema apply' plans and executes a database migration to bring a given
+database to the state described in the provided Atlas schema. Before running the
+migration, Atlas will print the migration plan and prompt the user for approval.
+
+The schema is provided by one or more paths (to a file or directory) using the "-f" flag:
+  atlas schema apply -u URL -f file1.hcl -f file2.hcl
+  atlas schema apply -u URL -f schema/ -f override.hcl
+
+As a convenience, schemas may also be provided via an environment definition in
+the project file (see: https://atlasgo.io/cli/projects).
+
+If run with the "--dry-run" flag, atlas will exit after printing out the planned
+migration.
+
+Usage:
+  atlas schema apply [flags]
+
+Examples:
+  atlas schema apply -u "mysql://user:pass@localhost/dbname" -f atlas.hcl
+  atlas schema apply -u "mysql://localhost" -f schema.hcl --schema prod --schema staging
+  atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" -f schema.hcl --dry-run
+  atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" -f schema.hcl
+  atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -f schema.hcl
+  atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f schema.hcl
+
+Flags:
+  -f, --file strings     [paths...] file or directory containing the HCL files
+  -u, --url string       URL to the database using the format:
+                         [driver://username:password@address/dbname?param=value]
+  -s, --schema strings   Set schema names.
+      --dev-url string   URL for the dev database. Used to validate schemas and calculate diffs
+                         before running migration.
+      --dry-run          Dry-run. Print SQL plan without prompting for execution.
+      --auto-approve     Auto approve. Apply the schema changes without prompting for approval.
+      --verbose          enable verbose logging
+
+Global Flags:
+      --env string           set which env from the project file to use
+      --var stringToString   input variables (default [])
+
+```

@@ -5,3 +5,4 @@
 package main
 
 //go:generate go run doc.go
+//go:generate go run docv2.go

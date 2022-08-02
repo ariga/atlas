@@ -1,0 +1,26 @@
+```
+'atlas migrate' wraps several sub-commands for migration management.
+
+Usage:
+  atlas migrate [command]
+
+Available Commands:
+  apply       Applies pending migration files on the connected database.
+  diff        Compute the diff between the migration directory and a desired state and create a new migration file.
+  hash        Hash (re-)creates an integrity hash file for the migration directory.
+  lint        Run analysis on the migration directory
+  new         Creates a new empty migration file in the migration directory.
+  status      Get information about the current migration status.
+  validate    Validates the migration directories checksum and SQL statements.
+
+Flags:
+      --dir string           select migration directory using URL format (default "file://migrations")
+      --dir-format string    set migration file format (default "atlas")
+      --env string           set which env from the project file to use
+      --force                force a command to run on a broken migration directory state
+      --schema strings       set schema names
+      --var stringToString   input variables (default [])
+
+Use "atlas migrate [command] --help" for more information about a command.
+
+```

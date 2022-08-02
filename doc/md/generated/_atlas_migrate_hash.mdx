@@ -1,0 +1,19 @@
+```
+'atlas migrate hash' computes the integrity hash sum of the migration directory and stores it in the atlas.sum file.
+This command should be used whenever a manual change in the migration directory was made.
+
+Usage:
+  atlas migrate hash [flags]
+
+Examples:
+  atlas migrate hash --force
+
+Global Flags:
+      --dir string           select migration directory using URL format (default "file://migrations")
+      --dir-format string    set migration file format (default "atlas")
+      --env string           set which env from the project file to use
+      --force                force a command to run on a broken migration directory state
+      --schema strings       set schema names
+      --var stringToString   input variables (default [])
+
+```
