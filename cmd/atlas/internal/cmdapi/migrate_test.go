@@ -328,6 +328,8 @@ func TestMigrate_New(t *testing.T) {
 	require.FileExists(t, filepath.Join(p, "atlas.sum"))
 	require.Equal(t, 3, countFiles(t, p))
 
+	s, err = runCmd(Root, "migrate", "hash", "--dir", "file://"+p, "--force", "--dir-format", formatGolangMigrate)
+	fmt.Println(s)
 	s, err = runCmd(Root, "migrate", "new", "golang-migrate", "--dir", "file://"+p, "--dir-format", formatGolangMigrate)
 	require.Zero(t, s)
 	require.NoError(t, err)
@@ -364,7 +366,7 @@ func TestMigrate_New(t *testing.T) {
 	require.NoError(t, os.WriteFile(f, []byte("contents"), 0600))
 	t.Cleanup(func() { os.Remove(f) })
 	s, err = runCmd(Root, "migrate", "new", "--dir", "file://testdata/mysql")
-	require.NotZero(t, s)
+	require.Zero(t, s)
 	require.Error(t, err)
 }
 
