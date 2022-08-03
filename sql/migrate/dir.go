@@ -330,15 +330,6 @@ func Validate(dir Dir) error {
 		return err
 	}
 	if fh.Sum() != mh.Sum() {
-		fmt.Printf("dir name: %s\n", dir)
-		files, _ := dir.Files()
-		fmt.Printf("file names:\n")
-		for _, file := range files {
-			fmt.Printf("%s\n", file.Name())
-		}
-		fhText, _ := fh.MarshalText()
-		mhText, _ := mh.MarshalText()
-		fmt.Printf("mismatch file contetns:\n%s\n%s\n", fhText, mhText)
 		return ErrChecksumMismatch
 	}
 	return nil
