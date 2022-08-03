@@ -7,7 +7,7 @@ title: Declarative schema migrations
 import Help from '../generated/_atlas_schema_apply.mdx';
 
 With Atlas, users do not need to plan database schema changes themselves. Instead
-of figuring our the correct SQL statements to get their database to the desired schema,
+of figuring out the correct SQL statements to get their database to the desired state,
 declarative schema migrations only require the user to provide the desired schema and
 a connection string to the target database, and can get a migration plan that is tailor-made
 to the specific database engine they are working against.
@@ -29,14 +29,14 @@ reconcile any gaps between the inspected and desired schemas.
 
 ### Dev-database
 When storing schema definitions, many database engines perform some form of
-normalization. That is, despite us providing some specific definition of some
+normalization. That is, despite us providing a specific definition of some
 aspect of the schema, the database will store it in another, equivalent form.
-This means in some situations it may appear to Atlas as if some diff exists
+This means in certain situations it may appear to Atlas as if some diff exists
 between the desired and inspected schemas, whereas in reality there is none.
 
 To overcome these situations, users may use the `--dev-url` flag to provide
-Atlas with a connection string to a _Dev-Database_
-that will be used to normalize the schema prior to planning migrations and
+Atlas with a connection string to a _Dev-Database_.
+This database is used to normalize the schema prior to planning migrations and
 for simulating changes to ensure their applicability before execution.
 
 [Read more about Dev-Databases](/concepts/dev-database)
