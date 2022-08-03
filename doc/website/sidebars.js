@@ -26,8 +26,8 @@ module.exports = {
             label: "Declarative Workflows",
             collapsed: false,
             items: [
-                {type: 'doc', id: 'declarative/inspect', label: 'schema inspect'},
-                {type: 'doc', id: 'declarative/apply', label: 'schema apply'},
+                {type: 'doc', id: 'declarative/inspect', label: 'Schema Inspection'},
+                {type: 'doc', id: 'declarative/apply', label: 'Applying Changes'},
             ]
         },
         {
