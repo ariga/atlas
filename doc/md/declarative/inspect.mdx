@@ -1,0 +1,181 @@
+---
+id: inspect
+slug: /declarative/inspect
+title: Inspecting existing schemas with Atlas 
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+### Automatic Schema Inspection
+Many projects begin with an existing database that users wish to start managing
+with Atlas. In this case, instead of having developers learn the [Atlas Language](/atlas-schema/sql-resources)
+and reverse engineer a schema definition file that precisely describes the existing database,
+Atlas supports _automatic schema inspection_.
+
+With automatic schema inspection, users simply provide Atlas with a connection string
+to their target database and Atlas prints out a schema definition file in the Atlas
+language that they can use as the starting point for working with this database.
+
+### Flags
+
+When using `schema inspect` to inspect an existing database, users may supply multiple
+parameters:
+* `--url` (required, `-u` accepted as well) - the [URL](/concepts/url) of database to be inspected.
+* `--schema` (optional, may be supplied multiple times) - schemas to inspect within 
+ the target database.
+* `--exclude` (optional, may be supplied multiple times) - filter out resources matching the given glob pattern.
+
+### Examples
+
+#### Entire Database
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+]}>
+<TabItem value="mysql">
+
+```
+atlas schema inspect -u "mysql://localhost"
+
+atlas schema inspect -u "mysql://user:pass@localhost:3306"
+```
+
+</TabItem>
+<TabItem value="maria">
+
+```
+atlas schema inspect -u "maria://localhost"
+
+atlas schema inspect -u "maria://user:pass@localhost:3306"
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```
+atlas schema inspect -u "postgres://localhost:5432/database"
+
+atlas schema inspect -u "postgres://postgres:pass@0.0.0.0:5432/database?sslmode=disable"
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```
+atlas schema inspect -u "sqlite://file.db"
+
+atlas schema inspect -u "sqlite://file?cache=shared&mode=memory"
+```
+
+</TabItem>
+</Tabs>
+
+#### Single Schema
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+]}>
+<TabItem value="mysql">
+
+```
+atlas schema inspect -u "mysql://localhost/schema"
+
+atlas schema inspect -u "mysql://user:pass@localhost:3306/schema"
+```
+
+</TabItem>
+<TabItem value="maria">
+
+```
+atlas schema inspect -u "maria://localhost/schema"
+
+atlas schema inspect -u "maria://user:pass@localhost:3306/schema"
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```
+atlas schema inspect -u "postgres://localhost:5432/database?search_path=schema"
+
+atlas schema inspect -u "postgres://postgres:pass@0.0.0.0:5432/database?sslmode=disable&sslmode=disable"
+```
+
+</TabItem>
+</Tabs>
+
+#### Multiple Schemas
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+]}>
+<TabItem value="mysql">
+
+```
+atlas schema inspect -u "mysql://localhost" --schema schema1 --schema schema2
+
+atlas schema inspect -u "mysql://user:pass@localhost:3306" -s schema1,schema2
+```
+
+</TabItem>
+<TabItem value="maria">
+
+```
+atlas schema inspect -u "maria://localhost" --schema schema1 --schema schema2
+
+atlas schema inspect -u "maria://user:pass@localhost:3306" -s schema1,schema2
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```
+atlas schema inspect -u "postgres://localhost:5432/database" --schema schema1 --schema schema2
+
+atlas schema inspect -u "postgres://postgres:pass@0.0.0.0:5432/database?sslmode=disable" -s schema1,schema2
+```
+
+</TabItem>
+</Tabs>
+
+#### Exclude Schemas
+
+```
+atlas schema inspect -u "mysql://localhost" --exclude "internal"
+
+atlas schema inspect -u "mysql://localhost" --exclude "schema_*"
+```
+
+#### Exclude Tables
+
+```
+atlas schema inspect -u "mysql://localhost" --exclude "*.prefix_*"
+
+atlas schema inspect -u "mysql://localhost" --exclude "schema.table"
+```
+
+#### Exclude Table Resources
+
+```
+atlas schema inspect -u "mysql://localhost" --exclude "*.*.prefix_*"
+
+atlas schema inspect -u "mysql://localhost" --exclude "public.*.c1"
+```
+
+### Reference
+
+[CLI Command Reference](/cli-reference#atlas-schema-apply)
