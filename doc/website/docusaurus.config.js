@@ -29,7 +29,7 @@ module.exports = {
     },
     algolia: {
       appId: 'D158RRDJO1',
-      apiKey: "383b9efbb1486f812c8c023556b15396",
+      apiKey: "3585a7e658ef4ab7775a9099be3778d2",
       indexName: "atlasgo",
     },
     navbar: {
