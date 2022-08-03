@@ -31,6 +31,14 @@ module.exports = {
             ]
         },
         {
+            type: "category",
+            label: "Versioned Workflows",
+            collapsed: false,
+            items: [
+                {type: 'doc', id: 'versioned/diff', label: 'Planning Migrations'},
+            ]
+        },
+        {
             type: 'category',
             label: 'Atlas Schemas',
             collapsed: false,
