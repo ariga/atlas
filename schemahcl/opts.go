@@ -5,6 +5,7 @@
 package schemahcl
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -105,7 +106,7 @@ func rawExprImpl() function.Function {
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			x := args[0].AsString()
 			if len(x) == 0 {
-				return cty.NilVal, fmt.Errorf("invalid expr: %q", x)
+				return cty.NilVal, errors.New("empty expression")
 			}
 			t := &RawExpr{X: x}
 			return cty.CapsuleVal(ctyRawExpr, t), nil
