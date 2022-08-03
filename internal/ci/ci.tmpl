@@ -14,7 +14,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v2
       with:
-        go-version: 1.17
+        go-version: 1.18
     - uses: actions/checkout@v2
     - name: Run linters
       uses: golangci/golangci-lint-action@v3
@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: [ '1.17', '1.18' ]
+        go: [ '1.18', '1.19' ]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: [ '1.18' ]
+        go: [ '1.19' ]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
@@ -96,7 +96,7 @@ jobs:
       - uses: actions/checkout@v2.3.4
       - uses: actions/setup-go@v2
         with:
-          go-version: 1.18
+          go-version: 1.19
       - uses: actions/cache@v2.1.6
         with:
           path: ~/go/pkg/mod
@@ -126,7 +126,7 @@ jobs:
       - uses: actions/checkout@v2.3.4
       - uses: actions/setup-go@v2
         with:
-          go-version: 1.18
+          go-version: 1.19
       - uses: actions/cache@v2.1.6
         with:
           path: ~/go/pkg/mod
