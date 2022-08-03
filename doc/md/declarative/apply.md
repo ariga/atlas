@@ -4,8 +4,6 @@ slug: /declarative/apply
 title: Declarative schema migrations
 ---
 
-import Help from '../generated/_atlas_schema_apply.mdx';
-
 With Atlas, users do not need to plan database schema changes themselves. Instead
 of figuring out the correct SQL statements to get their database to the desired state,
 Atlas supports a kind of workflow that we call _declarative schema migration_.
@@ -43,4 +41,4 @@ for simulating changes to ensure their applicability before execution.
 
 ### Reference
 
-<Help/>
+[CLI Command Reference](/cli-reference#atlas-schema-apply)
