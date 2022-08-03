@@ -81,7 +81,7 @@ can do this for you. To inspect an existing database and write its HCL represent
 ```
 atlas schema inspect -u <database url> > <target file>
 ```
-Replacing `<database url>` with the [URL](http://localhost:3000/cli/url) for your database, and `<target file>`
+Replacing `<database url>` with the [URL](/concepts/url) for your database, and `<target file>`
 with the name of the file you want to write the output to. For example:
 ```
 atlas schema inspect -u mysql://user:pass@localhost:3306 > schema.hcl
