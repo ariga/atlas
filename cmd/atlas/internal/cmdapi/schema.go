@@ -22,12 +22,13 @@ import (
 )
 
 const (
-	urlFlag    = "url"
-	schemaFlag = "schema"
-	devURLFlag = "dev-url"
-	fileFlag   = "file"
-	dsnFlag    = "dsn"
-	varFlag    = "var"
+	urlFlag     = "url"
+	schemaFlag  = "schema"
+	excludeFlag = "exclude"
+	devURLFlag  = "dev-url"
+	fileFlag    = "file"
+	dsnFlag     = "dsn"
+	varFlag     = "var"
 )
 
 var (
@@ -42,6 +43,7 @@ var (
 	SchemaFlags struct {
 		URL     string
 		Schemas []string
+		Exclude []string
 
 		// Deprecated: DSN is an alias for URL.
 		DSN string
@@ -151,6 +153,7 @@ func init() {
 	schemaCmd.AddCommand(SchemaInspect)
 	SchemaInspect.Flags().StringVarP(&SchemaFlags.URL, urlFlag, "u", "", "[driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format")
 	SchemaInspect.Flags().StringSliceVarP(&SchemaFlags.Schemas, schemaFlag, "s", nil, "Set schema name")
+	SchemaInspect.Flags().StringSliceVarP(&SchemaFlags.Exclude, excludeFlag, "", nil, "List of glob patterns used to filter resources from inspection")
 	SchemaInspect.Flags().StringVarP(&SchemaFlags.DSN, dsnFlag, "d", "", "")
 	cobra.CheckErr(SchemaInspect.Flags().MarkHidden(dsnFlag))
 	cobra.CheckErr(SchemaInspect.MarkFlagRequired(urlFlag))
@@ -204,6 +207,11 @@ func schemaFlagsFromEnv(cmd *cobra.Command, _ []string) error {
 			return err
 		}
 	}
+	if s := strings.Join(activeEnv.Exclude, ","); s != "" {
+		if err := maySetFlag(cmd, excludeFlag, s); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -249,6 +257,7 @@ func CmdInspectRun(cmd *cobra.Command, _ []string) error {
 	}
 	s, err := client.InspectRealm(cmd.Context(), &schema.InspectRealmOption{
 		Schemas: schemas,
+		Exclude: SchemaFlags.Exclude,
 	})
 	if err != nil {
 		return err
@@ -289,6 +298,7 @@ func applyRun(cmd *cobra.Command, client *sqlclient.Client, devURL string, paths
 	}
 	realm, err := client.InspectRealm(ctx, &schema.InspectRealmOption{
 		Schemas: schemas,
+		Exclude: SchemaFlags.Exclude,
 	})
 	if err != nil {
 		return err

@@ -74,6 +74,10 @@ type Env struct {
 	// List of schemas in this database that are managed by Atlas.
 	Schemas []string `spec:"schemas"`
 
+	// Exclude defines a list of glob patterns used to filter
+	// resources on inspection.
+	Exclude []string `spec:"exclude"`
+
 	// Migration containing the migration configuration of the env.
 	Migration *Migration `spec:"migration"`
 

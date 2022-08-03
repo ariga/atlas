@@ -27,6 +27,9 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 	if err != nil {
 		return nil, err
 	}
+	if opts == nil {
+		opts = &schema.InspectRealmOption{}
+	}
 	r := schema.NewRealm(schemas...).SetCharset(i.charset).SetCollation(i.collate)
 	if len(schemas) == 0 || !sqlx.ModeInspectRealm(opts).Is(schema.InspectTables) {
 		return r, nil
@@ -35,7 +38,7 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 		return nil, err
 	}
 	sqlx.LinkSchemaTables(schemas)
-	return r, nil
+	return sqlx.ExcludeRealm(r, opts.Exclude)
 }
 
 // InspectSchema returns schema descriptions of the tables in the given schema.
@@ -51,6 +54,9 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 	case n > 1:
 		return nil, fmt.Errorf("mysql: %d schemas were found for %q", n, name)
 	}
+	if opts == nil {
+		opts = &schema.InspectOptions{}
+	}
 	r := schema.NewRealm(schemas...).SetCharset(i.charset).SetCollation(i.collate)
 	if sqlx.ModeInspectSchema(opts).Is(schema.InspectTables) {
 		if err := i.inspectTables(ctx, r, opts); err != nil {
@@ -58,7 +64,7 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 		}
 		sqlx.LinkSchemaTables(schemas)
 	}
-	return r.Schemas[0], nil
+	return sqlx.ExcludeSchema(r.Schemas[0], opts.Exclude)
 }
 
 func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *schema.InspectOptions) error {

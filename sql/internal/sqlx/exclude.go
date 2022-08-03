@@ -14,21 +14,24 @@ import (
 )
 
 // ExcludeRealm filters resources in the realm based on the given patterns.
-func ExcludeRealm(r *schema.Realm, patterns []string) error {
+func ExcludeRealm(r *schema.Realm, patterns []string) (*schema.Realm, error) {
+	if len(patterns) == 0 {
+		return r, nil
+	}
 	var schemas []*schema.Schema
 	globs, err := split(patterns)
 	if err != nil {
-		return err
+		return nil, err
 	}
 Filter:
 	for _, s := range r.Schemas {
 		for i, g := range globs {
 			if len(g) > 3 {
-				return fmt.Errorf("too many parts in pattern: %q", patterns[i])
+				return nil, fmt.Errorf("too many parts in pattern: %q", patterns[i])
 			}
 			match, err := filepath.Match(g[0], s.Name)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			if match {
 				// In case there is a match, and it is
@@ -37,25 +40,31 @@ Filter:
 					continue Filter
 				}
 				if err := excludeS(s, g[1:]); err != nil {
-					return err
+					return nil, err
 				}
 			}
 		}
 		schemas = append(schemas, s)
 	}
 	r.Schemas = schemas
-	return nil
+	return r, nil
 }
 
 // ExcludeSchema filters resources in the schema based on the given patterns.
-func ExcludeSchema(s *schema.Schema, patterns []string) error {
+func ExcludeSchema(s *schema.Schema, patterns []string) (*schema.Schema, error) {
+	if len(patterns) == 0 {
+		return s, nil
+	}
 	if s.Realm == nil {
-		return fmt.Errorf("missing realm for schema %q", s.Name)
+		return nil, fmt.Errorf("missing realm for schema %q", s.Name)
 	}
 	for i, p := range patterns {
 		patterns[i] = fmt.Sprintf("%s.%s", s.Name, p)
 	}
-	return ExcludeRealm(s.Realm, patterns)
+	if _, err := ExcludeRealm(s.Realm, patterns); err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 // split parses the list of patterns into chain of resource-globs.

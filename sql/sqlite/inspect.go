@@ -31,27 +31,27 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 	if len(schemas) > 1 {
 		return nil, fmt.Errorf("sqlite: multiple database files are not supported by the driver. got: %d", len(schemas))
 	}
-	realm := &schema.Realm{Schemas: schemas}
+	if opts == nil {
+		opts = &schema.InspectRealmOption{}
+	}
+	r := schema.NewRealm(schemas...)
 	if !sqlx.ModeInspectRealm(opts).Is(schema.InspectTables) {
-		return realm, nil
+		return sqlx.ExcludeRealm(r, opts.Exclude)
 	}
 	for _, s := range schemas {
 		tables, err := i.tables(ctx, nil)
 		if err != nil {
 			return nil, err
 		}
+		s.AddTables(tables...)
 		for _, t := range tables {
-			t.Schema = s
-			t, err := i.inspectTable(ctx, t)
-			if err != nil {
+			if err := i.inspectTable(ctx, t); err != nil {
 				return nil, err
 			}
-			s.Tables = append(s.Tables, t)
 		}
-		s.Realm = realm
 	}
-	sqlx.LinkSchemaTables(realm.Schemas)
-	return realm, nil
+	sqlx.LinkSchemaTables(r.Schemas)
+	return sqlx.ExcludeRealm(r, opts.Exclude)
 }
 
 // InspectSchema returns schema descriptions of the tables in the given schema.
@@ -71,41 +71,41 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 			Err: fmt.Errorf("sqlite: schema %q was not found", name),
 		}
 	}
-	s := schemas[0]
-	s.Realm = schema.NewRealm(schemas...)
+	if opts == nil {
+		opts = &schema.InspectOptions{}
+	}
+	r := schema.NewRealm(schemas...)
 	if !sqlx.ModeInspectSchema(opts).Is(schema.InspectTables) {
-		return s, nil
+		return sqlx.ExcludeSchema(r.Schemas[0], opts.Exclude)
 	}
 	tables, err := i.tables(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
+	r.Schemas[0].AddTables(tables...)
 	for _, t := range tables {
-		t.Schema = s
-		t, err := i.inspectTable(ctx, t)
-		if err != nil {
+		if err := i.inspectTable(ctx, t); err != nil {
 			return nil, err
 		}
-		s.Tables = append(s.Tables, t)
 	}
 	sqlx.LinkSchemaTables(schemas)
-	return s, nil
+	return sqlx.ExcludeSchema(r.Schemas[0], opts.Exclude)
 }
 
-func (i *inspect) inspectTable(ctx context.Context, t *schema.Table) (*schema.Table, error) {
+func (i *inspect) inspectTable(ctx context.Context, t *schema.Table) error {
 	if err := i.columns(ctx, t); err != nil {
-		return nil, err
+		return err
 	}
 	if err := i.indexes(ctx, t); err != nil {
-		return nil, err
+		return err
 	}
 	if err := i.fks(ctx, t); err != nil {
-		return nil, err
+		return err
 	}
 	if err := fillChecks(t); err != nil {
-		return nil, err
+		return err
 	}
-	return t, nil
+	return nil
 }
 
 // columns queries and appends the columns of the given table.

@@ -413,8 +413,9 @@ flag.
 ```
 #### Flags
 ```
-  -s, --schema strings   Set schema name
-  -u, --url string       [driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format
+      --exclude strings   List of glob patterns used to filter resources from inspection
+  -s, --schema strings    Set schema name
+  -u, --url string        [driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format
 
 ```
 
