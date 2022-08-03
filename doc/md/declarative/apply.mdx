@@ -16,7 +16,7 @@ and the desired schema and Atlas does all of the planning.
 
 ### Auto-approval
 Before executing the migration against the target database, Atlas will print the SQL
-queries that it is going to run and prompt the user for approval. Users that wish
+statements that it is going to run and prompt the user for approval. Users that wish
 to automatically approve may run the `schema apply` command with the `--auto-approve`
 flag.
 
@@ -24,7 +24,7 @@ flag.
 In order to skip the execution of the SQL queries against the target database,
 users may provide the `--dry-run` flag. When invoked with this flag, Atlas will
 connect to the target database, inspect its current state, calculate the diff
-between the provided desired schema and print out a series of SQL queries to
+between the provided desired schema and print out a series of SQL statements to
 reconcile any gaps between the inspected and desired schemas.
 
 ### Dev-database

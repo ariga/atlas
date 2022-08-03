@@ -17,9 +17,7 @@ func main() {
 		panic(err)
 	}
 	for k, v := range docs {
-		md := "```\n" +
-			string(v) + "\n" +
-			"```"
+		md := "```\n" + string(v) + "\n" + "```"
 		if err := os.WriteFile("../../doc/md/generated/_"+k+".mdx", []byte(md), os.ModePerm); err != nil {
 			panic(err)
 		}
