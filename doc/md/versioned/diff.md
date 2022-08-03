@@ -20,7 +20,7 @@ contents was modified after the fact.
 
 ### Flags
 When using `migrate diff` to plan a migration users must supply multiple parameters:
-* `--dev-url` a [URL](/concepts/url) to a [Dev-database](/concepts/dev) that will be used
+* `--dev-url` a [URL](/concepts/url) to a [Dev-database](/concepts/dev-database) that will be used
  to compute the diff.
 * `--dir` the URL of the migrations directory, by default it is `file://migrations`, e.g a
  directory named `migrations` in the current working directory.
