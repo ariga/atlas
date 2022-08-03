@@ -412,6 +412,13 @@ variadic = enum("a","b","c")
 	require.EqualValues(t, f, string(after))
 }
 
+func TestEmptyStrSQL(t *testing.T) {
+	s := New(WithTypes(nil))
+	h := `x = sql("")`
+	err := s.EvalBytes([]byte(h), &struct{}{}, nil)
+	require.ErrorContains(t, err, "empty expression")
+}
+
 func TestOptionalArgs(t *testing.T) {
 	s := New(
 		WithTypes([]*TypeSpec{

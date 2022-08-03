@@ -5,6 +5,7 @@
 package schemahcl
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -103,7 +104,11 @@ func rawExprImpl() function.Function {
 		},
 		Type: function.StaticReturnType(ctyRawExpr),
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-			t := &RawExpr{X: args[0].AsString()}
+			x := args[0].AsString()
+			if len(x) == 0 {
+				return cty.NilVal, errors.New("empty expression")
+			}
+			t := &RawExpr{X: x}
 			return cty.CapsuleVal(ctyRawExpr, t), nil
 		},
 	})
