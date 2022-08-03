@@ -22,6 +22,15 @@ module.exports = {
             ]
         },
         {
+            type: "category",
+            label: "Declarative Workflows",
+            collapsed: false,
+            items: [
+                {type: 'doc', id: 'declarative/inspect', label: 'Schema Inspection'},
+                {type: 'doc', id: 'declarative/apply', label: 'Applying Changes'},
+            ]
+        },
+        {
             type: 'category',
             label: 'Atlas Schemas',
             collapsed: false,
