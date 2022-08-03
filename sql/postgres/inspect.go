@@ -27,16 +27,19 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 	if err != nil {
 		return nil, err
 	}
+	if opts == nil {
+		opts = &schema.InspectRealmOption{}
+	}
 	r := schema.NewRealm(schemas...).SetCollation(i.collate)
 	r.Attrs = append(r.Attrs, &CType{V: i.ctype})
 	if len(schemas) == 0 || !sqlx.ModeInspectRealm(opts).Is(schema.InspectTables) {
-		return r, nil
+		return sqlx.ExcludeRealm(r, opts.Exclude)
 	}
 	if err := i.inspectTables(ctx, r, nil); err != nil {
 		return nil, err
 	}
 	sqlx.LinkSchemaTables(schemas)
-	return r, nil
+	return sqlx.ExcludeRealm(r, opts.Exclude)
 }
 
 // InspectSchema returns schema descriptions of the tables in the given schema.
@@ -52,6 +55,9 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 	case n > 1:
 		return nil, fmt.Errorf("postgres: %d schemas were found for %q", n, name)
 	}
+	if opts == nil {
+		opts = &schema.InspectOptions{}
+	}
 	r := schema.NewRealm(schemas...).SetCollation(i.collate)
 	r.Attrs = append(r.Attrs, &CType{V: i.ctype})
 	if sqlx.ModeInspectSchema(opts).Is(schema.InspectTables) {
@@ -60,7 +66,7 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 		}
 		sqlx.LinkSchemaTables(schemas)
 	}
-	return r.Schemas[0], nil
+	return sqlx.ExcludeSchema(r.Schemas[0], opts.Exclude)
 }
 
 func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *schema.InspectOptions) error {

@@ -14,21 +14,26 @@ import (
 
 func TestExcludeRealm_Schemas(t *testing.T) {
 	r := schema.NewRealm(schema.New("s1"), schema.New("s2"), schema.New("s3"))
-	require.NoError(t, ExcludeRealm(r, []string{"s4"}))
+	r, err := ExcludeRealm(r, []string{"s4"})
+	require.NoError(t, err)
 	require.Len(t, r.Schemas, 3)
 
-	require.NoError(t, ExcludeRealm(r, []string{"s1", "s2.t2", "s3.t3.c3"}))
+	r, err = ExcludeRealm(r, []string{"s1", "s2.t2", "s3.t3.c3"})
+	require.NoError(t, err)
 	require.Len(t, r.Schemas, 2)
 	require.Equal(t, "s2", r.Schemas[0].Name)
 	require.Equal(t, "s3", r.Schemas[1].Name)
 
-	require.NoError(t, ExcludeRealm(r, []string{"*"}))
+	r, err = ExcludeRealm(r, []string{"*"})
+	require.NoError(t, err)
 	require.Empty(t, r.Schemas)
 
 	r = schema.NewRealm(schema.New("s1"), schema.New("s2"), schema.New("s3"))
-	require.NoError(t, ExcludeRealm(r, []string{"s*.*", "s*.*.*"}))
+	r, err = ExcludeRealm(r, []string{"s*.*", "s*.*.*"})
+	require.NoError(t, err)
 	require.Len(t, r.Schemas, 3)
-	require.NoError(t, ExcludeRealm(r, []string{"s*"}))
+	r, err = ExcludeRealm(r, []string{"s*"})
+	require.NoError(t, err)
 	require.Empty(t, r.Schemas)
 }
 
@@ -48,36 +53,43 @@ func TestExcludeRealm_Tables(t *testing.T) {
 			schema.NewTable("t3"),
 		),
 	)
-	require.NoError(t, ExcludeRealm(r, []string{"s4"}))
+	r, err := ExcludeRealm(r, []string{"s4"})
+	require.NoError(t, err)
 	require.Len(t, r.Schemas, 4)
-	require.NoError(t, ExcludeRealm(r, []string{"s0"}))
+	r, err = ExcludeRealm(r, []string{"s0"})
+	require.NoError(t, err)
 	require.Len(t, r.Schemas, 3)
 	require.Equal(t, "s1", r.Schemas[0].Name)
 	require.Equal(t, "s2", r.Schemas[1].Name)
 	require.Equal(t, "s3", r.Schemas[2].Name)
 
-	require.NoError(t, ExcludeRealm(r, []string{"*.t1.*"}))
+	r, err = ExcludeRealm(r, []string{"*.t1.*"})
+	require.NoError(t, err)
 	require.Len(t, r.Schemas, 3)
 	require.Len(t, r.Schemas[0].Tables, 1)
 	require.Len(t, r.Schemas[1].Tables, 2)
 	require.Len(t, r.Schemas[2].Tables, 3)
 
-	require.NoError(t, ExcludeRealm(r, []string{"*.t1"}))
+	r, err = ExcludeRealm(r, []string{"*.t1"})
+	require.NoError(t, err)
 	require.Len(t, r.Schemas, 3)
 	require.Empty(t, r.Schemas[0].Tables)
 	require.Len(t, r.Schemas[1].Tables, 1)
 	require.Len(t, r.Schemas[2].Tables, 2)
 
-	require.NoError(t, ExcludeRealm(r, []string{"s[12].t2"}))
+	r, err = ExcludeRealm(r, []string{"s[12].t2"})
+	require.NoError(t, err)
 	require.Len(t, r.Schemas, 3)
 	require.Empty(t, r.Schemas[0].Tables)
 	require.Empty(t, r.Schemas[1].Tables)
 	require.Len(t, r.Schemas[2].Tables, 2)
 
-	require.NoError(t, ExcludeRealm(r, []string{"*.t[23].*"}))
+	r, err = ExcludeRealm(r, []string{"*.t[23].*"})
+	require.NoError(t, err)
 	require.Len(t, r.Schemas, 3)
 	require.Len(t, r.Schemas[2].Tables, 2)
-	require.NoError(t, ExcludeRealm(r, []string{"*.t[23]"}))
+	r, err = ExcludeRealm(r, []string{"*.t[23]"})
+	require.NoError(t, err)
 	require.Len(t, r.Schemas, 3)
 	require.Empty(t, r.Schemas[2].Tables)
 }
@@ -121,7 +133,8 @@ func TestExcludeRealm_Columns(t *testing.T) {
 			}(),
 		),
 	)
-	require.NoError(t, ExcludeRealm(r, []string{"s[23].t[23].c1"}))
+	r, err := ExcludeRealm(r, []string{"s[23].t[23].c1"})
+	require.NoError(t, err)
 	require.Len(t, r.Schemas, 3)
 	require.Len(t, r.Schemas[0].Tables, 1)
 	require.Len(t, r.Schemas[0].Tables[0].Columns, 1)
@@ -141,7 +154,8 @@ func TestExcludeRealm_Columns(t *testing.T) {
 	require.Len(t, r.Schemas[2].Tables[2].Columns, 2)
 	require.Len(t, r.Schemas[2].Tables[2].Indexes, 1)
 
-	require.NoError(t, ExcludeRealm(r, []string{"s[23].t*.*"}))
+	r, err = ExcludeRealm(r, []string{"s[23].t*.*"})
+	require.NoError(t, err)
 	require.Len(t, r.Schemas, 3)
 	require.Len(t, r.Schemas[0].Tables, 1)
 	require.Len(t, r.Schemas[0].Tables[0].Columns, 1)
@@ -161,7 +175,8 @@ func TestExcludeRealm_Columns(t *testing.T) {
 	require.Empty(t, r.Schemas[2].Tables[2].Columns)
 	require.Empty(t, r.Schemas[2].Tables[2].Indexes)
 
-	require.NoError(t, ExcludeRealm(r, []string{"*.*.*"}))
+	r, err = ExcludeRealm(r, []string{"*.*.*"})
+	require.NoError(t, err)
 	require.Len(t, r.Schemas, 3)
 	require.Len(t, r.Schemas[0].Tables, 1)
 	require.Empty(t, r.Schemas[0].Tables[0].Columns)
@@ -175,7 +190,8 @@ func TestExcludeSchema(t *testing.T) {
 			schema.NewTable("t2"),
 		),
 	)
-	require.NoError(t, ExcludeSchema(r.Schemas[0], []string{"t2"}))
+	_, err := ExcludeSchema(r.Schemas[0], []string{"t2"})
+	require.NoError(t, err)
 	require.Len(t, r.Schemas, 1)
 	require.Len(t, r.Schemas[0].Tables, 1)
 }
