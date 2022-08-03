@@ -328,6 +328,9 @@ func TestMigrate_New(t *testing.T) {
 	require.FileExists(t, filepath.Join(p, "atlas.sum"))
 	require.Equal(t, 3, countFiles(t, p))
 
+	_, err = runCmd(Root, "migrate", "hash", "--dir", "file://"+p, "--force", "--dir-format", formatGolangMigrate)
+	require.NoError(t, err)
+	MigrateFlags.Force = false
 	s, err = runCmd(Root, "migrate", "new", "golang-migrate", "--dir", "file://"+p, "--dir-format", formatGolangMigrate)
 	require.Zero(t, s)
 	require.NoError(t, err)
@@ -335,6 +338,9 @@ func TestMigrate_New(t *testing.T) {
 	require.FileExists(t, filepath.Join(p, v+"_golang-migrate.down.sql"))
 	require.Equal(t, 5, countFiles(t, p))
 
+	s, err = runCmd(Root, "migrate", "hash", "--dir", "file://"+p, "--force", "--dir-format", formatGoose)
+	require.NoError(t, err)
+	MigrateFlags.Force = false
 	s, err = runCmd(Root, "migrate", "new", "goose", "--dir", "file://"+p, "--dir-format", formatGoose)
 	require.Zero(t, s)
 	require.NoError(t, err)
