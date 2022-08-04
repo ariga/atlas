@@ -163,6 +163,8 @@ type (
 		Version string
 		// Description of this migration.
 		Description string
+		// Type of the migration.
+		Type RevisionType
 		// Applied denotes the amount of successfully applied statements of the revision.
 		Applied int
 		// Total denotes the total amount of statements of the migration.
@@ -182,9 +184,10 @@ type (
 		PartialHashes []string
 		// OperatorVersion holds a string representation of the Atlas operator managing this database migration.
 		OperatorVersion string
-		// Meta holds additional custom meta-data given for this migration.
-		Meta map[string]string
 	}
+
+	// RevisionType defines the type of the revision record in the history table.
+	RevisionType uint
 
 	// Revisions is an ordered set of Revision structs.
 	Revisions []*Revision
@@ -202,6 +205,26 @@ type (
 
 	// ExecutorOption allows configuring an Executor using functional arguments.
 	ExecutorOption func(*Executor) error
+)
+
+const (
+	// RevisionTypeUnknown represents an unknown revision type.
+	// This is type is unexpected and exists here to only ensure
+	// the type is not set to the zero value.
+	RevisionTypeUnknown RevisionType = 0
+
+	// RevisionTypeBaseline represents a baseline revision. Note that only
+	// the first record can represent a baseline migration and most of its
+	// fields are set to the zero value.
+	RevisionTypeBaseline RevisionType = 1 << (iota - 1)
+
+	// RevisionTypeExecute represents a migration that was executed.
+	RevisionTypeExecute
+
+	// RevisionTypeResolved represents a migration that was resolved. A migration
+	// script that was script executed and then resolved should set its Type to
+	// RevisionTypeExecute | RevisionTypeResolved.
+	RevisionTypeResolved
 )
 
 // NewPlanner creates a new Planner.
@@ -424,6 +447,11 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 			if baseline == -1 {
 				return nil, fmt.Errorf("baseline version %q was not found", e.baselineVer)
 			}
+			f := migrations[baseline]
+			// Mark the revision in the database as baseline revision.
+			if err := writeRevision(ctx, e.rrw, &Revision{Version: f.Version(), Description: f.Desc(), Type: RevisionTypeBaseline}); err != nil {
+				return nil, err
+			}
 			pending = migrations[baseline+1:]
 		}
 	// Not the first time we execute and a
@@ -494,8 +522,8 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 		r = &Revision{
 			Version:     version,
 			Description: m.Desc(),
+			Type:        RevisionTypeExecute,
 			Total:       len(stmts),
-			ExecutedAt:  time.Now(),
 			Hash:        hash,
 		}
 	}
@@ -539,6 +567,7 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 }
 
 func writeRevision(ctx context.Context, w RevisionReadWriter, r *Revision) error {
+	r.ExecutedAt = time.Now()
 	if err := w.WriteRevision(ctx, r); err != nil {
 		return fmt.Errorf("sql/migrate: execute: write revision: %w", err)
 	}
