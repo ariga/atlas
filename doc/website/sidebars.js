@@ -37,6 +37,7 @@ module.exports = {
             items: [
                 {type: 'doc', id: 'versioned/diff', label: 'Migration Planning'},
                 {type: 'doc', id: 'versioned/lint', label: 'Migration Linting'},
+                {type: 'doc', id: 'versioned/new', label: 'Manual Migrations'},
             ]
         },
         {
