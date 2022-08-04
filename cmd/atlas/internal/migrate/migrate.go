@@ -154,6 +154,7 @@ func (r *EntRevisions) write(ctx context.Context, rev *migrate.Revision) error {
 	return r.ec.Revision.Create().
 		SetID(rev.Version).
 		SetDescription(rev.Description).
+		SetType(rev.Type).
 		SetApplied(rev.Applied).
 		SetTotal(rev.Total).
 		SetExecutedAt(rev.ExecutedAt).
@@ -162,7 +163,6 @@ func (r *EntRevisions) write(ctx context.Context, rev *migrate.Revision) error {
 		SetHash(rev.Hash).
 		SetPartialHashes(rev.PartialHashes).
 		SetOperatorVersion(rev.OperatorVersion).
-		SetMeta(rev.Meta).
 		OnConflict(sql.ConflictColumns(revision.FieldID)).
 		UpdateNewValues().
 		Exec(ctx)
@@ -172,6 +172,7 @@ func fromEnt(r *ent.Revision) *migrate.Revision {
 	return &migrate.Revision{
 		Version:         r.ID,
 		Description:     r.Description,
+		Type:            r.Type,
 		Applied:         r.Applied,
 		Total:           r.Total,
 		ExecutedAt:      r.ExecutedAt,
@@ -180,7 +181,6 @@ func fromEnt(r *ent.Revision) *migrate.Revision {
 		Hash:            r.Hash,
 		PartialHashes:   r.PartialHashes,
 		OperatorVersion: r.OperatorVersion,
-		Meta:            r.Meta,
 	}
 }
 

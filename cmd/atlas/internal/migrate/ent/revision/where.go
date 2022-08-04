@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/predicate"
+	"ariga.io/atlas/sql/migrate"
 	"entgo.io/ent/dialect/sql"
 )
 
@@ -88,6 +89,14 @@ func IDLTE(id string) predicate.Revision {
 func Description(v string) predicate.Revision {
 	return predicate.Revision(func(s *sql.Selector) {
 		s.Where(sql.EQ(s.C(FieldDescription), v))
+	})
+}
+
+// Type applies equality check predicate on the "type" field. It's identical to TypeEQ.
+func Type(v migrate.RevisionType) predicate.Revision {
+	vc := uint(v)
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldType), vc))
 	})
 }
 
@@ -249,6 +258,88 @@ func DescriptionEqualFold(v string) predicate.Revision {
 func DescriptionContainsFold(v string) predicate.Revision {
 	return predicate.Revision(func(s *sql.Selector) {
 		s.Where(sql.ContainsFold(s.C(FieldDescription), v))
+	})
+}
+
+// TypeEQ applies the EQ predicate on the "type" field.
+func TypeEQ(v migrate.RevisionType) predicate.Revision {
+	vc := uint(v)
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldType), vc))
+	})
+}
+
+// TypeNEQ applies the NEQ predicate on the "type" field.
+func TypeNEQ(v migrate.RevisionType) predicate.Revision {
+	vc := uint(v)
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldType), vc))
+	})
+}
+
+// TypeIn applies the In predicate on the "type" field.
+func TypeIn(vs ...migrate.RevisionType) predicate.Revision {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = uint(vs[i])
+	}
+	return predicate.Revision(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldType), v...))
+	})
+}
+
+// TypeNotIn applies the NotIn predicate on the "type" field.
+func TypeNotIn(vs ...migrate.RevisionType) predicate.Revision {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = uint(vs[i])
+	}
+	return predicate.Revision(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldType), v...))
+	})
+}
+
+// TypeGT applies the GT predicate on the "type" field.
+func TypeGT(v migrate.RevisionType) predicate.Revision {
+	vc := uint(v)
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldType), vc))
+	})
+}
+
+// TypeGTE applies the GTE predicate on the "type" field.
+func TypeGTE(v migrate.RevisionType) predicate.Revision {
+	vc := uint(v)
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldType), vc))
+	})
+}
+
+// TypeLT applies the LT predicate on the "type" field.
+func TypeLT(v migrate.RevisionType) predicate.Revision {
+	vc := uint(v)
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldType), vc))
+	})
+}
+
+// TypeLTE applies the LTE predicate on the "type" field.
+func TypeLTE(v migrate.RevisionType) predicate.Revision {
+	vc := uint(v)
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldType), vc))
 	})
 }
 

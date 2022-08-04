@@ -246,6 +246,28 @@ func TestMigrate_Apply(t *testing.T) {
 	require.Len(t, revs, 1)
 }
 
+func TestMigrate_ApplyBaseline(t *testing.T) {
+	p := t.TempDir()
+	// Run migration with baseline should store this revision in the database.
+	s, err := runCmd(
+		Root, "migrate", "apply",
+		"--dir", "file://testdata/baseline1",
+		"--baseline", "1",
+		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
+	)
+	require.NoError(t, err)
+	require.Contains(t, s, "The migration directory is synced with the database, no migration files to execute")
+
+	// Next run without baseline should run the migration from the baseline.
+	s, err = runCmd(
+		Root, "migrate", "apply",
+		"--dir", "file://testdata/baseline2",
+		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
+	)
+	require.NoError(t, err)
+	require.Contains(t, s, "Migrating to version 20220318104615 (2 migrations in total)")
+}
+
 func TestMigrate_Diff(t *testing.T) {
 	p := t.TempDir()
 

@@ -220,6 +220,7 @@ func TestExecutor(t *testing.T) {
 		rev1 = &migrate.Revision{
 			Version:     "1.a",
 			Description: "sub.up",
+			Type:        migrate.RevisionTypeExecute,
 			Applied:     2,
 			Total:       2,
 			Hash:        "nXyZR020M/mH7LxkoTkJr7BcQkipVg90imQ9I4595dw=",
@@ -227,6 +228,7 @@ func TestExecutor(t *testing.T) {
 		rev2 = &migrate.Revision{
 			Version:     "2.10.x-20",
 			Description: "description",
+			Type:        migrate.RevisionTypeExecute,
 			Applied:     1,
 			Total:       1,
 			Hash:        "wQB3Vh3PHVXQg9OD3Gn7TBxbZN3r1Qb7TtAE1g3q9mQ=",
@@ -313,6 +315,7 @@ func TestExecutor(t *testing.T) {
 	requireEqualRevision(t, &migrate.Revision{
 		Version:     "3",
 		Description: "partly",
+		Type:        migrate.RevisionTypeExecute,
 		Applied:     1,
 		Total:       2,
 		Error:       "Statement:\nALTER TABLE t_sub ADD c4 int;\n\nError:\nthis is an error",
@@ -335,13 +338,13 @@ func TestExecutor(t *testing.T) {
 
 func TestExecutor_Baseline(t *testing.T) {
 	var (
+		rrw mockRevisionReadWriter
 		drv = &lockMockDriver{&mockDriver{dirty: true}}
-		rrw = &mockRevisionReadWriter{}
 		log = &mockLogger{}
 	)
 	dir, err := migrate.NewLocalDir(filepath.Join("testdata/migrate", "sub"))
 	require.NoError(t, err)
-	ex, err := migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(log))
+	ex, err := migrate.NewExecutor(drv, dir, &rrw, migrate.WithLogger(log))
 	require.NoError(t, err)
 
 	// Require baseline-version or explicit flag to work on a dirty workspace.
@@ -349,22 +352,33 @@ func TestExecutor_Baseline(t *testing.T) {
 	require.EqualError(t, err, "sql/migrate: connected database is not clean: found table. baseline version or allow-dirty are required")
 	require.Nil(t, files)
 
-	ex, err = migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(log), migrate.WithAllowDirty(true))
+	rrw = mockRevisionReadWriter{}
+	ex, err = migrate.NewExecutor(drv, dir, &rrw, migrate.WithLogger(log), migrate.WithAllowDirty(true))
 	require.NoError(t, err)
 	files, err = ex.Pending(context.Background())
 	require.NoError(t, err)
 	require.Len(t, files, 3)
 
-	ex, err = migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(log), migrate.WithBaselineVersion("2.10.x-20"))
+	rrw = mockRevisionReadWriter{}
+	ex, err = migrate.NewExecutor(drv, dir, &rrw, migrate.WithLogger(log), migrate.WithBaselineVersion("2.10.x-20"))
 	require.NoError(t, err)
 	files, err = ex.Pending(context.Background())
 	require.NoError(t, err)
 	require.Len(t, files, 1)
+	require.Len(t, rrw, 1)
+	require.Equal(t, "2.10.x-20", rrw[0].Version)
+	require.Equal(t, "description", rrw[0].Description)
+	require.Equal(t, migrate.RevisionTypeBaseline, rrw[0].Type)
 
-	ex, err = migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(log), migrate.WithBaselineVersion("3"))
+	rrw = mockRevisionReadWriter{}
+	ex, err = migrate.NewExecutor(drv, dir, &rrw, migrate.WithLogger(log), migrate.WithBaselineVersion("3"))
 	require.NoError(t, err)
 	files, err = ex.Pending(context.Background())
 	require.ErrorIs(t, err, migrate.ErrNoPendingFiles)
+	require.Len(t, rrw, 1)
+	require.Equal(t, "3", rrw[0].Version)
+	require.Equal(t, "partly", rrw[0].Description)
+	require.Equal(t, migrate.RevisionTypeBaseline, rrw[0].Type)
 }
 
 func TestExecutor_FromVersion(t *testing.T) {
@@ -550,6 +564,7 @@ func requireEqualRevisions(t *testing.T, expected, actual migrate.Revisions) {
 func requireEqualRevision(t *testing.T, expected, actual *migrate.Revision) {
 	require.Equal(t, expected.Version, actual.Version)
 	require.Equal(t, expected.Description, actual.Description)
+	require.Equal(t, expected.Type, actual.Type)
 	require.Equal(t, expected.Applied, actual.Applied)
 	require.Equal(t, expected.Total, actual.Total)
 	require.Equal(t, expected.Error, actual.Error)
@@ -557,7 +572,6 @@ func requireEqualRevision(t *testing.T, expected, actual *migrate.Revision) {
 		require.Equal(t, expected.Hash, actual.Hash)
 	}
 	require.Equal(t, expected.OperatorVersion, actual.OperatorVersion)
-	require.Equal(t, expected.Meta, actual.Meta)
 }
 
 func countFiles(t *testing.T, d migrate.Dir) int {

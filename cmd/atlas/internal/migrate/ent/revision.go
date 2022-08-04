@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
+	"ariga.io/atlas/sql/migrate"
 	"entgo.io/ent/dialect/sql"
 )
 
@@ -23,6 +24,8 @@ type Revision struct {
 	ID string `json:"id,omitempty"`
 	// Description holds the value of the "description" field.
 	Description string `json:"description,omitempty"`
+	// Type holds the value of the "type" field.
+	Type migrate.RevisionType `json:"type,omitempty"`
 	// Applied holds the value of the "applied" field.
 	Applied int `json:"applied,omitempty"`
 	// Total holds the value of the "total" field.
@@ -39,8 +42,6 @@ type Revision struct {
 	PartialHashes []string `json:"partial_hashes,omitempty"`
 	// OperatorVersion holds the value of the "operator_version" field.
 	OperatorVersion string `json:"operator_version,omitempty"`
-	// Meta holds the value of the "meta" field.
-	Meta map[string]string `json:"meta,omitempty"`
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -48,9 +49,9 @@ func (*Revision) scanValues(columns []string) ([]interface{}, error) {
 	values := make([]interface{}, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case revision.FieldPartialHashes, revision.FieldMeta:
+		case revision.FieldPartialHashes:
 			values[i] = new([]byte)
-		case revision.FieldApplied, revision.FieldTotal, revision.FieldExecutionTime:
+		case revision.FieldType, revision.FieldApplied, revision.FieldTotal, revision.FieldExecutionTime:
 			values[i] = new(sql.NullInt64)
 		case revision.FieldID, revision.FieldDescription, revision.FieldError, revision.FieldHash, revision.FieldOperatorVersion:
 			values[i] = new(sql.NullString)
@@ -82,6 +83,12 @@ func (r *Revision) assignValues(columns []string, values []interface{}) error {
 				return fmt.Errorf("unexpected type %T for field description", values[i])
 			} else if value.Valid {
 				r.Description = value.String
+			}
+		case revision.FieldType:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field type", values[i])
+			} else if value.Valid {
+				r.Type = migrate.RevisionType(value.Int64)
 			}
 		case revision.FieldApplied:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -133,14 +140,6 @@ func (r *Revision) assignValues(columns []string, values []interface{}) error {
 			} else if value.Valid {
 				r.OperatorVersion = value.String
 			}
-		case revision.FieldMeta:
-			if value, ok := values[i].(*[]byte); !ok {
-				return fmt.Errorf("unexpected type %T for field meta", values[i])
-			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &r.Meta); err != nil {
-					return fmt.Errorf("unmarshal field meta: %w", err)
-				}
-			}
 		}
 	}
 	return nil
@@ -172,6 +171,9 @@ func (r *Revision) String() string {
 	builder.WriteString("description=")
 	builder.WriteString(r.Description)
 	builder.WriteString(", ")
+	builder.WriteString("type=")
+	builder.WriteString(fmt.Sprintf("%v", r.Type))
+	builder.WriteString(", ")
 	builder.WriteString("applied=")
 	builder.WriteString(fmt.Sprintf("%v", r.Applied))
 	builder.WriteString(", ")
@@ -195,9 +197,6 @@ func (r *Revision) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("operator_version=")
 	builder.WriteString(r.OperatorVersion)
-	builder.WriteString(", ")
-	builder.WriteString("meta=")
-	builder.WriteString(fmt.Sprintf("%v", r.Meta))
 	builder.WriteByte(')')
 	return builder.String()
 }
