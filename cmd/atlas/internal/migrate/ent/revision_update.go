@@ -15,6 +15,7 @@ import (
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/internal"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/predicate"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
+	"ariga.io/atlas/sql/migrate"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -30,6 +31,19 @@ type RevisionUpdate struct {
 // Where appends a list predicates to the RevisionUpdate builder.
 func (ru *RevisionUpdate) Where(ps ...predicate.Revision) *RevisionUpdate {
 	ru.mutation.Where(ps...)
+	return ru
+}
+
+// SetType sets the "type" field.
+func (ru *RevisionUpdate) SetType(mt migrate.RevisionType) *RevisionUpdate {
+	ru.mutation.ResetType()
+	ru.mutation.SetType(mt)
+	return ru
+}
+
+// AddType adds mt to the "type" field.
+func (ru *RevisionUpdate) AddType(mt migrate.RevisionType) *RevisionUpdate {
+	ru.mutation.AddType(mt)
 	return ru
 }
 
@@ -113,12 +127,6 @@ func (ru *RevisionUpdate) ClearPartialHashes() *RevisionUpdate {
 // SetOperatorVersion sets the "operator_version" field.
 func (ru *RevisionUpdate) SetOperatorVersion(s string) *RevisionUpdate {
 	ru.mutation.SetOperatorVersion(s)
-	return ru
-}
-
-// SetMeta sets the "meta" field.
-func (ru *RevisionUpdate) SetMeta(m map[string]string) *RevisionUpdate {
-	ru.mutation.SetMeta(m)
 	return ru
 }
 
@@ -215,6 +223,20 @@ func (ru *RevisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
+	if value, ok := ru.mutation.GetType(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeUint,
+			Value:  value,
+			Column: revision.FieldType,
+		})
+	}
+	if value, ok := ru.mutation.AddedType(); ok {
+		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
+			Type:   field.TypeUint,
+			Value:  value,
+			Column: revision.FieldType,
+		})
+	}
 	if value, ok := ru.mutation.Applied(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeInt,
@@ -297,13 +319,6 @@ func (ru *RevisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: revision.FieldOperatorVersion,
 		})
 	}
-	if value, ok := ru.mutation.Meta(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeJSON,
-			Value:  value,
-			Column: revision.FieldMeta,
-		})
-	}
 	_spec.Node.Schema = ru.schemaConfig.Revision
 	ctx = internal.NewSchemaConfigContext(ctx, ru.schemaConfig)
 	if n, err = sqlgraph.UpdateNodes(ctx, ru.driver, _spec); err != nil {
@@ -323,6 +338,19 @@ type RevisionUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *RevisionMutation
+}
+
+// SetType sets the "type" field.
+func (ruo *RevisionUpdateOne) SetType(mt migrate.RevisionType) *RevisionUpdateOne {
+	ruo.mutation.ResetType()
+	ruo.mutation.SetType(mt)
+	return ruo
+}
+
+// AddType adds mt to the "type" field.
+func (ruo *RevisionUpdateOne) AddType(mt migrate.RevisionType) *RevisionUpdateOne {
+	ruo.mutation.AddType(mt)
+	return ruo
 }
 
 // SetApplied sets the "applied" field.
@@ -405,12 +433,6 @@ func (ruo *RevisionUpdateOne) ClearPartialHashes() *RevisionUpdateOne {
 // SetOperatorVersion sets the "operator_version" field.
 func (ruo *RevisionUpdateOne) SetOperatorVersion(s string) *RevisionUpdateOne {
 	ruo.mutation.SetOperatorVersion(s)
-	return ruo
-}
-
-// SetMeta sets the "meta" field.
-func (ruo *RevisionUpdateOne) SetMeta(m map[string]string) *RevisionUpdateOne {
-	ruo.mutation.SetMeta(m)
 	return ruo
 }
 
@@ -537,6 +559,20 @@ func (ruo *RevisionUpdateOne) sqlSave(ctx context.Context) (_node *Revision, err
 			}
 		}
 	}
+	if value, ok := ruo.mutation.GetType(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeUint,
+			Value:  value,
+			Column: revision.FieldType,
+		})
+	}
+	if value, ok := ruo.mutation.AddedType(); ok {
+		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
+			Type:   field.TypeUint,
+			Value:  value,
+			Column: revision.FieldType,
+		})
+	}
 	if value, ok := ruo.mutation.Applied(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeInt,
@@ -617,13 +653,6 @@ func (ruo *RevisionUpdateOne) sqlSave(ctx context.Context) (_node *Revision, err
 			Type:   field.TypeString,
 			Value:  value,
 			Column: revision.FieldOperatorVersion,
-		})
-	}
-	if value, ok := ruo.mutation.Meta(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeJSON,
-			Value:  value,
-			Column: revision.FieldMeta,
 		})
 	}
 	_spec.Node.Schema = ruo.schemaConfig.Revision

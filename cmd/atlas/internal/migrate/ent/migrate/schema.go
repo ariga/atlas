@@ -17,6 +17,7 @@ var (
 	AtlasSchemaRevisionsColumns = []*schema.Column{
 		{Name: "version", Type: field.TypeString},
 		{Name: "description", Type: field.TypeString},
+		{Name: "type", Type: field.TypeUint},
 		{Name: "applied", Type: field.TypeInt},
 		{Name: "total", Type: field.TypeInt},
 		{Name: "executed_at", Type: field.TypeTime},
@@ -25,7 +26,6 @@ var (
 		{Name: "hash", Type: field.TypeString},
 		{Name: "partial_hashes", Type: field.TypeJSON, Nullable: true},
 		{Name: "operator_version", Type: field.TypeString},
-		{Name: "meta", Type: field.TypeJSON},
 	}
 	// AtlasSchemaRevisionsTable holds the schema information for the "atlas_schema_revisions" table.
 	AtlasSchemaRevisionsTable = &schema.Table{

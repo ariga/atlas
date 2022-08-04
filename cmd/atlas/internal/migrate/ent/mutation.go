@@ -15,6 +15,7 @@ import (
 
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/predicate"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
+	"ariga.io/atlas/sql/migrate"
 
 	"entgo.io/ent"
 )
@@ -38,6 +39,8 @@ type RevisionMutation struct {
 	typ               string
 	id                *string
 	description       *string
+	_type             *migrate.RevisionType
+	add_type          *migrate.RevisionType
 	applied           *int
 	addapplied        *int
 	total             *int
@@ -49,7 +52,6 @@ type RevisionMutation struct {
 	hash              *string
 	partial_hashes    *[]string
 	operator_version  *string
-	meta              *map[string]string
 	clearedFields     map[string]struct{}
 	done              bool
 	oldValue          func(context.Context) (*Revision, error)
@@ -194,6 +196,62 @@ func (m *RevisionMutation) OldDescription(ctx context.Context) (v string, err er
 // ResetDescription resets all changes to the "description" field.
 func (m *RevisionMutation) ResetDescription() {
 	m.description = nil
+}
+
+// SetType sets the "type" field.
+func (m *RevisionMutation) SetType(mt migrate.RevisionType) {
+	m._type = &mt
+	m.add_type = nil
+}
+
+// GetType returns the value of the "type" field in the mutation.
+func (m *RevisionMutation) GetType() (r migrate.RevisionType, exists bool) {
+	v := m._type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldType returns the old "type" field's value of the Revision entity.
+// If the Revision object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RevisionMutation) OldType(ctx context.Context) (v migrate.RevisionType, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldType: %w", err)
+	}
+	return oldValue.Type, nil
+}
+
+// AddType adds mt to the "type" field.
+func (m *RevisionMutation) AddType(mt migrate.RevisionType) {
+	if m.add_type != nil {
+		*m.add_type += mt
+	} else {
+		m.add_type = &mt
+	}
+}
+
+// AddedType returns the value that was added to the "type" field in this mutation.
+func (m *RevisionMutation) AddedType() (r migrate.RevisionType, exists bool) {
+	v := m.add_type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetType resets all changes to the "type" field.
+func (m *RevisionMutation) ResetType() {
+	m._type = nil
+	m.add_type = nil
 }
 
 // SetApplied sets the "applied" field.
@@ -570,42 +628,6 @@ func (m *RevisionMutation) ResetOperatorVersion() {
 	m.operator_version = nil
 }
 
-// SetMeta sets the "meta" field.
-func (m *RevisionMutation) SetMeta(value map[string]string) {
-	m.meta = &value
-}
-
-// Meta returns the value of the "meta" field in the mutation.
-func (m *RevisionMutation) Meta() (r map[string]string, exists bool) {
-	v := m.meta
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldMeta returns the old "meta" field's value of the Revision entity.
-// If the Revision object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RevisionMutation) OldMeta(ctx context.Context) (v map[string]string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldMeta is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldMeta requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldMeta: %w", err)
-	}
-	return oldValue.Meta, nil
-}
-
-// ResetMeta resets all changes to the "meta" field.
-func (m *RevisionMutation) ResetMeta() {
-	m.meta = nil
-}
-
 // Where appends a list predicates to the RevisionMutation builder.
 func (m *RevisionMutation) Where(ps ...predicate.Revision) {
 	m.predicates = append(m.predicates, ps...)
@@ -628,6 +650,9 @@ func (m *RevisionMutation) Fields() []string {
 	fields := make([]string, 0, 10)
 	if m.description != nil {
 		fields = append(fields, revision.FieldDescription)
+	}
+	if m._type != nil {
+		fields = append(fields, revision.FieldType)
 	}
 	if m.applied != nil {
 		fields = append(fields, revision.FieldApplied)
@@ -653,9 +678,6 @@ func (m *RevisionMutation) Fields() []string {
 	if m.operator_version != nil {
 		fields = append(fields, revision.FieldOperatorVersion)
 	}
-	if m.meta != nil {
-		fields = append(fields, revision.FieldMeta)
-	}
 	return fields
 }
 
@@ -666,6 +688,8 @@ func (m *RevisionMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case revision.FieldDescription:
 		return m.Description()
+	case revision.FieldType:
+		return m.GetType()
 	case revision.FieldApplied:
 		return m.Applied()
 	case revision.FieldTotal:
@@ -682,8 +706,6 @@ func (m *RevisionMutation) Field(name string) (ent.Value, bool) {
 		return m.PartialHashes()
 	case revision.FieldOperatorVersion:
 		return m.OperatorVersion()
-	case revision.FieldMeta:
-		return m.Meta()
 	}
 	return nil, false
 }
@@ -695,6 +717,8 @@ func (m *RevisionMutation) OldField(ctx context.Context, name string) (ent.Value
 	switch name {
 	case revision.FieldDescription:
 		return m.OldDescription(ctx)
+	case revision.FieldType:
+		return m.OldType(ctx)
 	case revision.FieldApplied:
 		return m.OldApplied(ctx)
 	case revision.FieldTotal:
@@ -711,8 +735,6 @@ func (m *RevisionMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldPartialHashes(ctx)
 	case revision.FieldOperatorVersion:
 		return m.OldOperatorVersion(ctx)
-	case revision.FieldMeta:
-		return m.OldMeta(ctx)
 	}
 	return nil, fmt.Errorf("unknown Revision field %s", name)
 }
@@ -728,6 +750,13 @@ func (m *RevisionMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetDescription(v)
+		return nil
+	case revision.FieldType:
+		v, ok := value.(migrate.RevisionType)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetType(v)
 		return nil
 	case revision.FieldApplied:
 		v, ok := value.(int)
@@ -785,13 +814,6 @@ func (m *RevisionMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetOperatorVersion(v)
 		return nil
-	case revision.FieldMeta:
-		v, ok := value.(map[string]string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetMeta(v)
-		return nil
 	}
 	return fmt.Errorf("unknown Revision field %s", name)
 }
@@ -800,6 +822,9 @@ func (m *RevisionMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *RevisionMutation) AddedFields() []string {
 	var fields []string
+	if m.add_type != nil {
+		fields = append(fields, revision.FieldType)
+	}
 	if m.addapplied != nil {
 		fields = append(fields, revision.FieldApplied)
 	}
@@ -817,6 +842,8 @@ func (m *RevisionMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *RevisionMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
+	case revision.FieldType:
+		return m.AddedType()
 	case revision.FieldApplied:
 		return m.AddedApplied()
 	case revision.FieldTotal:
@@ -832,6 +859,13 @@ func (m *RevisionMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *RevisionMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case revision.FieldType:
+		v, ok := value.(migrate.RevisionType)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddType(v)
+		return nil
 	case revision.FieldApplied:
 		v, ok := value.(int)
 		if !ok {
@@ -898,6 +932,9 @@ func (m *RevisionMutation) ResetField(name string) error {
 	case revision.FieldDescription:
 		m.ResetDescription()
 		return nil
+	case revision.FieldType:
+		m.ResetType()
+		return nil
 	case revision.FieldApplied:
 		m.ResetApplied()
 		return nil
@@ -921,9 +958,6 @@ func (m *RevisionMutation) ResetField(name string) error {
 		return nil
 	case revision.FieldOperatorVersion:
 		m.ResetOperatorVersion()
-		return nil
-	case revision.FieldMeta:
-		m.ResetMeta()
 		return nil
 	}
 	return fmt.Errorf("unknown Revision field %s", name)

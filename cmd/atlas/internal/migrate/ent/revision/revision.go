@@ -13,6 +13,8 @@ const (
 	FieldID = "version"
 	// FieldDescription holds the string denoting the description field in the database.
 	FieldDescription = "description"
+	// FieldType holds the string denoting the type field in the database.
+	FieldType = "type"
 	// FieldApplied holds the string denoting the applied field in the database.
 	FieldApplied = "applied"
 	// FieldTotal holds the string denoting the total field in the database.
@@ -29,8 +31,6 @@ const (
 	FieldPartialHashes = "partial_hashes"
 	// FieldOperatorVersion holds the string denoting the operator_version field in the database.
 	FieldOperatorVersion = "operator_version"
-	// FieldMeta holds the string denoting the meta field in the database.
-	FieldMeta = "meta"
 	// Table holds the table name of the revision in the database.
 	Table = "atlas_schema_revisions"
 )
@@ -39,6 +39,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldDescription,
+	FieldType,
 	FieldApplied,
 	FieldTotal,
 	FieldExecutedAt,
@@ -47,7 +48,6 @@ var Columns = []string{
 	FieldHash,
 	FieldPartialHashes,
 	FieldOperatorVersion,
-	FieldMeta,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
