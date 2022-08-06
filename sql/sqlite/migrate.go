@@ -332,10 +332,7 @@ func (s *state) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
 }
 
 func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.Change) (bool, error) {
-	var (
-		args       []interface{}
-		fromC, toC []string
-	)
+	var fromC, toC []string
 	for _, column := range to.Columns {
 		// Skip generated columns in INSERT as they are computed.
 		if sqlx.Has(column.Attrs, &schema.GeneratedExpr{}) {
@@ -376,12 +373,11 @@ func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.
 		case *schema.ModifyColumn:
 			toC = append(toC, column.Name)
 			if !column.Type.Null && column.Default != nil && change.Change.Is(schema.ChangeNull|schema.ChangeDefault) {
-				fromC = append(fromC, fmt.Sprintf("IFNULL(`%[1]s`, ?) AS `%[1]s`", column.Name))
 				x, err := defaultValue(column)
 				if err != nil {
 					return false, err
 				}
-				args = append(args, x)
+				fromC = append(fromC, fmt.Sprintf("IFNULL(`%[1]s`, %s) AS `%[1]s`", column.Name, x))
 			} else {
 				fromC = append(fromC, column.Name)
 			}
@@ -398,7 +394,6 @@ func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.
 				"INSERT INTO `%s` (%s) SELECT %s FROM `%s`",
 				to.Name, identComma(toC), identComma(fromC), from.Name,
 			),
-			Args:    args,
 			Comment: fmt.Sprintf("copy rows from old table %q to new temporary table %q", from.Name, to.Name),
 		})
 	}
@@ -533,7 +528,12 @@ func Build(phrase string) *sqlx.Builder {
 func defaultValue(c *schema.Column) (string, error) {
 	switch x := c.Default.(type) {
 	case *schema.Literal:
-		return sqlx.SingleQuote(x.V)
+		switch c.Type.Type.(type) {
+		case *schema.BoolType, *schema.DecimalType, *schema.IntegerType, *schema.FloatType:
+			return x.V, nil
+		default:
+			return sqlx.SingleQuote(x.V)
+		}
 	case *schema.RawExpr:
 		return x.X, nil
 	default:
