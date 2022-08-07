@@ -265,7 +265,7 @@ func TestMigrate_ApplyBaseline(t *testing.T) {
 		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
 	)
 	require.NoError(t, err)
-	require.Contains(t, s, "Migrating to version 20220318104615 (2 migrations in total)")
+	require.Contains(t, s, "Migrating to version 20220318104615 from 1 (2 migrations in total)")
 }
 
 func TestMigrate_Diff(t *testing.T) {

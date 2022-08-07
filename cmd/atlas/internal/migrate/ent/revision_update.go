@@ -197,6 +197,11 @@ func (ru *RevisionUpdate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (ru *RevisionUpdate) check() error {
+	if v, ok := ru.mutation.Applied(); ok {
+		if err := revision.AppliedValidator(v); err != nil {
+			return &ValidationError{Name: "applied", err: fmt.Errorf(`ent: validator failed for field "Revision.applied": %w`, err)}
+		}
+	}
 	if v, ok := ru.mutation.Total(); ok {
 		if err := revision.TotalValidator(v); err != nil {
 			return &ValidationError{Name: "total", err: fmt.Errorf(`ent: validator failed for field "Revision.total": %w`, err)}
@@ -516,6 +521,11 @@ func (ruo *RevisionUpdateOne) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (ruo *RevisionUpdateOne) check() error {
+	if v, ok := ruo.mutation.Applied(); ok {
+		if err := revision.AppliedValidator(v); err != nil {
+			return &ValidationError{Name: "applied", err: fmt.Errorf(`ent: validator failed for field "Revision.applied": %w`, err)}
+		}
+	}
 	if v, ok := ruo.mutation.Total(); ok {
 		if err := revision.TotalValidator(v); err != nil {
 			return &ValidationError{Name: "total", err: fmt.Errorf(`ent: validator failed for field "Revision.total": %w`, err)}

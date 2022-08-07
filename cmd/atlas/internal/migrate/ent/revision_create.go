@@ -187,6 +187,11 @@ func (rc *RevisionCreate) check() error {
 	if _, ok := rc.mutation.Applied(); !ok {
 		return &ValidationError{Name: "applied", err: errors.New(`ent: missing required field "Revision.applied"`)}
 	}
+	if v, ok := rc.mutation.Applied(); ok {
+		if err := revision.AppliedValidator(v); err != nil {
+			return &ValidationError{Name: "applied", err: fmt.Errorf(`ent: validator failed for field "Revision.applied": %w`, err)}
+		}
+	}
 	if _, ok := rc.mutation.Total(); !ok {
 		return &ValidationError{Name: "total", err: errors.New(`ent: missing required field "Revision.total"`)}
 	}
