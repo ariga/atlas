@@ -87,6 +87,39 @@ func TestPlanner_Plan(t *testing.T) {
 	require.Equal(t, drv.plan, plan)
 }
 
+func TestPlanner_PlanSchemaMode(t *testing.T) {
+	var (
+		drv = &lockMockDriver{&mockDriver{}}
+		ctx = context.Background()
+	)
+	d, err := migrate.NewLocalDir(t.TempDir())
+	require.NoError(t, err)
+
+	// Schema is missing in dev connection.
+	pl := migrate.NewPlanner(drv, d, migrate.PlanSchema("test"))
+	plan, err := pl.Plan(ctx, "empty", migrate.Realm(nil))
+	require.EqualError(t, err, `missing schema "test" in realm after replaying migration directory`)
+	require.Nil(t, plan)
+
+	drv.realm = *schema.NewRealm(schema.New("test"))
+	pl = migrate.NewPlanner(drv, d, migrate.PlanSchema("test"))
+	plan, err = pl.Plan(ctx, "empty", migrate.Realm(schema.NewRealm()))
+	require.EqualError(t, err, `missing schema definition in desired state`)
+	require.Nil(t, plan)
+
+	drv.realm = *schema.NewRealm(schema.New("test"))
+	pl = migrate.NewPlanner(drv, d, migrate.PlanSchema("test"))
+	plan, err = pl.Plan(ctx, "multi", migrate.Realm(schema.NewRealm(schema.New("test"), schema.New("dev"))))
+	require.EqualError(t, err, `found 2 schema definitions in desired state on schema mode`)
+	require.Nil(t, plan)
+
+	drv.realm = *schema.NewRealm(schema.New("test"))
+	pl = migrate.NewPlanner(drv, d, migrate.PlanSchema("test"))
+	plan, err = pl.Plan(ctx, "multi", migrate.Realm(schema.NewRealm(schema.New("test"))))
+	require.ErrorIs(t, err, migrate.ErrNoPlan)
+	require.Nil(t, plan)
+}
+
 func TestExecutor_ReadState(t *testing.T) {
 	ctx := context.Background()
 	d, err := migrate.NewLocalDir("testdata/migrate")
@@ -117,6 +150,7 @@ func TestExecutor_ReadState(t *testing.T) {
 	drv.locks = make(map[string]struct{})
 
 	// Does not work if database is not clean.
+	drv.dirty = true
 	drv.realm = schema.Realm{Schemas: []*schema.Schema{{Name: "schema"}}}
 	_, err = ex.ReadState(ctx)
 	require.ErrorAs(t, err, &migrate.NotCleanError{})
@@ -457,6 +491,10 @@ func (m *mockDriver) InspectRealm(context.Context, *schema.InspectRealmOption) (
 	return &m.realm, nil
 }
 
+func (m *mockDriver) SchemaDiff(_, _ *schema.Schema) ([]schema.Change, error) {
+	return m.changes, nil
+}
+
 func (m *mockDriver) RealmDiff(_, _ *schema.Realm) ([]schema.Change, error) {
 	return m.changes, nil
 }
@@ -471,7 +509,7 @@ func (m *mockDriver) ApplyChanges(_ context.Context, changes []schema.Change) er
 }
 
 func (m *mockDriver) Snapshot(context.Context) (migrate.RestoreFunc, error) {
-	if len(m.realm.Schemas) > 0 {
+	if m.dirty {
 		return nil, migrate.NotCleanError{}
 	}
 	realm := m.realm
