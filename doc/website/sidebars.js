@@ -28,6 +28,7 @@ module.exports = {
             items: [
                 {type: 'doc', id: 'declarative/inspect', label: 'Schema Inspection'},
                 {type: 'doc', id: 'declarative/apply', label: 'Applying Changes'},
+                {type: 'doc', id: 'declarative/diff', label: 'Calculating Diffs'},
             ]
         },
         {
