@@ -1,0 +1,81 @@
+---
+id: diff
+slug: /declarative/diff
+title: Declarative schema migrations
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+It is sometimes useful to be able to calculate the diff between two
+databases. For instance, as you are developing you may want to calculate
+how to move from an existing database to some other state that you are
+interested in. Alternatively, you may be diagnosing some issue and want
+to verify there is no difference between a local copy of a schema and a
+remote one. 
+
+To accommodate these types of use-cases, Atlas supports the `schema diff`
+command. This command connects to two given databases, inspects
+them, calculates the difference in their schemas, and prints a plan of
+SQL statements to migrate the "from" database to the schema of the "to" database.
+
+### Flags
+* `--from` (required) - the [URL](/concepts/url) of the database to calculate the 
+ diff from. Currently requires a URL to a specific schema (named database).
+* `--to` (required) - the [URL](/concepts/url) of the database to calculate the
+  diff to. Currently requires a URL to a specific schema (named database).
+
+### Examples
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+]}>
+<TabItem value="mysql">
+
+Diff to a remote schema
+```
+atlas schema diff --from "mysql://user:pass@localhost:3306/schema" --to "mysql://user:pass@remote:3306/schema"
+```
+
+Diff to another schema in the same database
+```
+atlas schema diff --from "mysql://user:pass@localhost:3306/schema" --to "mysql://user:pass@localhost:3306/other"
+```
+
+</TabItem>
+<TabItem value="maria">
+
+Diff to a remote schema
+```
+atlas schema diff --from "maria://user:pass@localhost:3306/schema" --to "maria://user:pass@remote:3306/schema"
+```
+
+Diff to another schema in the same database
+```
+atlas schema diff --from "maria://user:pass@localhost:3306/schema" --to "maria://user:pass@localhost:3306/other"
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+Diff to a remote schema:
+```
+atlas schema diff --from "postgres://localhost:5432/database?search_path=schema" --to "postgres://remote:5432/database?search_path=schema"
+```
+
+Diff to another schema in the same database
+```
+atlas schema diff --from "postgres://localhost:5432/database?search_path=schema" --to "postgres://localhost:5432/database?search_path=other"
+```
+
+</TabItem>
+</Tabs>
+
+
+### Reference
+
+[CLI Command Reference](/cli-reference#atlas-schema-diff)
