@@ -419,26 +419,31 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	}
 	// Get a state reader for the desired state.
 	desired, err := to(cmd.Context(), dev)
-	if src, ok := desired.(io.Closer); ok {
-		defer src.Close()
-	}
 	if err != nil {
 		return err
 	}
+	defer desired.Close()
 	f, err := formatter()
 	if err != nil {
 		return err
 	}
+	opts := []migrate.PlannerOption{migrate.PlanFormat(f)}
+	if dev.URL.Schema != "" {
+		opts = append(opts, migrate.PlanSchema(dev.URL.Schema))
+	}
 	// Plan the changes and create a new migration file.
-	pl := migrate.NewPlanner(dev.Driver, dir, migrate.WithFormatter(f))
+	pl := migrate.NewPlanner(dev.Driver, dir, opts...)
 	var name string
 	if len(args) > 0 {
 		name = args[0]
 	}
-	switch plan, err := pl.Plan(cmd.Context(), name, desired); {
+	var cerr migrate.NotCleanError
+	switch plan, err := pl.Plan(cmd.Context(), name, desired.StateReader); {
 	case errors.Is(err, migrate.ErrNoPlan):
 		cmd.Println("The migration directory is synced with the desired state, no changes to be made")
 		return nil
+	case errors.As(err, &cerr) && dev.URL.Schema == "" && desired.Schema != "":
+		return fmt.Errorf("dev database is not clean (%s). Add a schema to the URL to limit the scope of the connection", cerr.Reason)
 	case err != nil:
 		return err
 	default:
@@ -474,7 +479,7 @@ func CmdMigrateNewRun(_ *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		name = args[0]
 	}
-	return migrate.NewPlanner(nil, dir, migrate.WithFormatter(f)).WritePlan(&migrate.Plan{Name: name})
+	return migrate.NewPlanner(nil, dir, migrate.PlanFormat(f)).WritePlan(&migrate.Plan{Name: name})
 }
 
 // CmdMigrateStatusRun is the command executed when running the CLI with 'migrate status' args.
@@ -721,8 +726,14 @@ func dir(create bool) (migrate.Dir, error) {
 	return d, err
 }
 
+type target struct {
+	migrate.StateReader        // desired state.
+	io.Closer                  // optional close function.
+	Schema              string // in case we work on a single schema.
+}
+
 // to returns a migrate.StateReader for the given to flag.
-func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, error) {
+func to(ctx context.Context, dev *sqlclient.Client) (*target, error) {
 	scheme, err := selectScheme(MigrateFlags.ToURLs)
 	if err != nil {
 		return nil, err
@@ -739,7 +750,7 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 		if err != nil {
 			return nil, err
 		}
-		if err := client.Eval(parsed, realm, nil); err != nil {
+		if err := dev.Eval(parsed, realm, nil); err != nil {
 			return nil, err
 		}
 		if len(schemas) > 0 {
@@ -754,28 +765,51 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 				}
 			}
 		}
-		if norm, ok := client.Driver.(schema.Normalizer); ok {
+		// In case the dev connection is bound to a specific schema, we require the
+		// desired schema to contain only one schema. Thus, executing diff will be
+		// done on the content of these two schema and not the whole realm.
+		if dev.URL.Schema != "" && len(realm.Schemas) > 1 {
+			return nil, fmt.Errorf("cannot use HCL with more than 1 schema when dev-url is limited to schema %q", dev.URL.Schema)
+		}
+		if norm, ok := dev.Driver.(schema.Normalizer); ok && len(realm.Schemas) > 0 {
 			realm, err = norm.NormalizeRealm(ctx, realm)
 			if err != nil {
 				return nil, err
 			}
 		}
-		return migrate.Realm(realm), nil
+		t := &target{StateReader: migrate.Realm(realm), Closer: io.NopCloser(nil)}
+		if len(realm.Schemas) == 1 {
+			t.Schema = realm.Schemas[0].Name
+		}
+		return t, nil
 	default: // database connection
 		client, err := sqlclient.Open(ctx, MigrateFlags.ToURLs[0])
 		if err != nil {
 			return nil, err
 		}
-		if client.URL.Schema != "" {
-			schemas = append(schemas, client.URL.Schema)
+		t := &target{Closer: client}
+		switch s := client.URL.Schema; {
+		// Connection to a specific schema.
+		case s != "":
+			if len(schemas) > 1 || len(schemas) == 1 && schemas[0] != s {
+				return nil, fmt.Errorf("cannot specify schemas with a schema connection to %q", s)
+			}
+			t.Schema = s
+			t.StateReader = migrate.SchemaConn(client, s, &schema.InspectOptions{})
+		// A single schema is selected.
+		case len(schemas) == 1:
+			t.Schema = schemas[0]
+			t.StateReader = migrate.SchemaConn(client, schemas[0], &schema.InspectOptions{})
+		// Multiple or all schemas.
+		default:
+			// In case the dev connection is limited to a single schema,
+			// but we compare it to entire database.
+			if dev.URL.Schema != "" {
+				return nil, fmt.Errorf("cannot use database-url without a schema when dev-url is limited to %q", dev.URL.Schema)
+			}
+			t.StateReader = migrate.RealmConn(client, &schema.InspectRealmOption{Schemas: schemas})
 		}
-		return struct {
-			migrate.StateReader
-			io.Closer
-		}{
-			Closer:      client,
-			StateReader: migrate.Conn(client, &schema.InspectRealmOption{Schemas: schemas}),
-		}, nil
+		return t, nil
 	}
 }
 

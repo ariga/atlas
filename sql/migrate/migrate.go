@@ -120,10 +120,21 @@ func Schema(s *schema.Schema) StateReader {
 	})
 }
 
-// Conn returns a StateReader for a Driver.
-func Conn(drv Driver, opts *schema.InspectRealmOption) StateReader {
+// RealmConn returns a StateReader for a Driver connected to a database.
+func RealmConn(drv Driver, opts *schema.InspectRealmOption) StateReader {
 	return StateReaderFunc(func(ctx context.Context) (*schema.Realm, error) {
 		return drv.InspectRealm(ctx, opts)
+	})
+}
+
+// SchemaConn returns a StateReader for a Driver connected to a schema.
+func SchemaConn(drv Driver, name string, opts *schema.InspectOptions) StateReader {
+	return StateReaderFunc(func(ctx context.Context) (*schema.Realm, error) {
+		s, err := drv.InspectSchema(ctx, name, opts)
+		if err != nil {
+			return nil, err
+		}
+		return Schema(s).ReadState(ctx)
 	})
 }
 
@@ -131,10 +142,11 @@ type (
 	// Planner can plan the steps to take to migrate from one state to another. It uses the enclosed Dir to write
 	// those changes to versioned migration files.
 	Planner struct {
-		drv Driver    // driver to use
-		dir Dir       // where migration files are stored and read from
-		fmt Formatter // how to format a plan to migration files
-		sum bool      // whether to create a sum file for the migration directory
+		drv    Driver    // driver to use
+		dir    Dir       // where migration files are stored and read from
+		fmt    Formatter // how to format a plan to migration files
+		schema string    // optional schema to use for inspection
+		sum    bool      // whether to create a sum file for the migration directory
 	}
 
 	// PlannerOption allows managing a Planner using functional arguments.
@@ -236,19 +248,36 @@ func NewPlanner(drv Driver, dir Dir, opts ...PlannerOption) *Planner {
 	return p
 }
 
-// WithFormatter sets the Formatter of a Planner.
-func WithFormatter(fmt Formatter) PlannerOption {
+// PlanSchema allows setting a schema name to inspect
+// after replaying the migration directory.
+func PlanSchema(name string) PlannerOption {
+	return func(p *Planner) {
+		p.schema = name
+	}
+}
+
+// PlanFormat sets the Formatter of a Planner.
+func PlanFormat(fmt Formatter) PlannerOption {
 	return func(p *Planner) {
 		p.fmt = fmt
 	}
 }
 
-// DisableChecksum disables the hash-sum functionality for the migration directory.
-func DisableChecksum() PlannerOption {
+// PlanWithoutChecksum disables the hash-sum functionality for the migration directory.
+func PlanWithoutChecksum() PlannerOption {
 	return func(p *Planner) {
 		p.sum = false
 	}
 }
+
+var (
+	// WithFormatter calls PlanFormat.
+	// Deprecated: use PlanFormat instead.
+	WithFormatter = PlanFormat
+	// DisableChecksum calls PlanWithoutChecksum.
+	// Deprecated: use PlanWithoutChecksum instead.
+	DisableChecksum = PlanWithoutChecksum
+)
 
 // Plan calculates the migration Plan required for moving the current state (from) state to
 // the next state (to). A StateReader can be a directory, static schema elements or a Driver connection.
@@ -272,7 +301,22 @@ func (p *Planner) Plan(ctx context.Context, name string, to StateReader) (*Plan,
 	if err != nil {
 		return nil, err
 	}
-	changes, err := p.drv.RealmDiff(current, desired)
+	var changes []schema.Change
+	switch {
+	case p.schema != "":
+		switch s, ok := current.Schema(p.schema); {
+		case !ok:
+			return nil, fmt.Errorf("missing schema %q in realm after replaying migration directory", p.schema)
+		case len(desired.Schemas) == 0:
+			return nil, errors.New("missing schema definition in desired state")
+		case len(desired.Schemas) > 1:
+			return nil, fmt.Errorf("found %d schema definitions in desired state on schema mode", len(desired.Schemas))
+		default:
+			changes, err = p.drv.SchemaDiff(s, desired.Schemas[0])
+		}
+	default:
+		changes, err = p.drv.RealmDiff(current, desired)
+	}
 	if err != nil {
 		return nil, err
 	}

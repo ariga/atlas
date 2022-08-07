@@ -270,6 +270,7 @@ func TestMigrate_ApplyBaseline(t *testing.T) {
 
 func TestMigrate_Diff(t *testing.T) {
 	p := t.TempDir()
+	to := hclURL(t)
 
 	// Will create migration directory if not existing.
 	MigrateFlags.Force = false
@@ -278,7 +279,8 @@ func TestMigrate_Diff(t *testing.T) {
 		"name",
 		"--dir", "file://"+filepath.Join(p, "migrations"),
 		"--dev-url", openSQLite(t, ""),
-		"--to", hclURL(t))
+		"--to", to,
+	)
 	require.NoError(t, err)
 	require.FileExists(t, filepath.Join(p, "migrations", fmt.Sprintf("%s_name.sql", time.Now().UTC().Format("20060102150405"))))
 
@@ -289,7 +291,7 @@ func TestMigrate_Diff(t *testing.T) {
 		"name",
 		"--dir", "file://"+p,
 		"--dev-url", openSQLite(t, "create table t (c int);"),
-		"--to", hclURL(t),
+		"--to", to,
 	)
 	require.ErrorAs(t, err, &migrate.NotCleanError{})
 	require.ErrorContains(t, err, "found table \"t\"")
@@ -300,7 +302,7 @@ func TestMigrate_Diff(t *testing.T) {
 		"name",
 		"--dir", "file://"+p,
 		"--dev-url", openSQLite(t, ""),
-		"--to", hclURL(t),
+		"--to", to,
 	)
 	require.NoError(t, err)
 	require.Zero(t, s)
@@ -324,7 +326,7 @@ func TestMigrate_Diff(t *testing.T) {
 		"name",
 		"--dir", "file://"+t.TempDir(),
 		"--dev-url", fmt.Sprintf("sqlitelockdiff://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
-		"--to", hclURL(t),
+		"--to", to,
 	)
 	require.True(t, strings.HasPrefix(s, "Error: "+errLock.Error()))
 	require.ErrorIs(t, err, errLock)
