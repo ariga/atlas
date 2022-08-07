@@ -17,6 +17,10 @@ import (
 func init() {
 	revisionFields := schema.Revision{}.Fields()
 	_ = revisionFields
+	// revisionDescApplied is the schema descriptor for applied field.
+	revisionDescApplied := revisionFields[3].Descriptor()
+	// revision.AppliedValidator is a validator for the "applied" field. It is called by the builders before save.
+	revision.AppliedValidator = revisionDescApplied.Validators[0].(func(int) error)
 	// revisionDescTotal is the schema descriptor for total field.
 	revisionDescTotal := revisionFields[4].Descriptor()
 	// revision.TotalValidator is a validator for the "total" field. It is called by the builders before save.

@@ -61,6 +61,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// AppliedValidator is a validator for the "applied" field. It is called by the builders before save.
+	AppliedValidator func(int) error
 	// TotalValidator is a validator for the "total" field. It is called by the builders before save.
 	TotalValidator func(int) error
 )
