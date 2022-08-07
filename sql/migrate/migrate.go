@@ -84,9 +84,6 @@ type (
 	// StateReader wraps the method for reading a database/schema state.
 	// The types below provides a few builtin options for reading a state
 	// from a migration directory, a static object (e.g. a parsed file).
-	//
-	// In next Go version, the State will be replaced with the following
-	// union type `interface { Realm | Schema }`.
 	StateReader interface {
 		ReadState(ctx context.Context) (*schema.Realm, error)
 	}
