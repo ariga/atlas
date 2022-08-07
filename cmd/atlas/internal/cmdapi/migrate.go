@@ -727,9 +727,9 @@ func dir(create bool) (migrate.Dir, error) {
 }
 
 type target struct {
-	migrate.StateReader              // desired state.
-	Close               func() error // optional close function.
-	Schema              string       // in case we work on a single schema.
+	migrate.StateReader        // desired state.
+	io.Closer                  // optional close function.
+	Schema              string // in case we work on a single schema.
 }
 
 // to returns a migrate.StateReader for the given to flag.
@@ -769,7 +769,7 @@ func to(ctx context.Context, dev *sqlclient.Client) (*target, error) {
 		// desired schema to contain only one schema. Thus, executing diff will be
 		// done on the content of these two schema and not the whole realm.
 		if dev.URL.Schema != "" && len(realm.Schemas) > 1 {
-			return nil, fmt.Errorf("cannot use HCL with multiple schemas when dev-url is limited to schema %q", dev.URL.Schema)
+			return nil, fmt.Errorf("cannot use HCL with more than 1 schema when dev-url is limited to schema %q", dev.URL.Schema)
 		}
 		if norm, ok := dev.Driver.(schema.Normalizer); ok && len(realm.Schemas) > 0 {
 			realm, err = norm.NormalizeRealm(ctx, realm)
@@ -777,7 +777,7 @@ func to(ctx context.Context, dev *sqlclient.Client) (*target, error) {
 				return nil, err
 			}
 		}
-		t := &target{StateReader: migrate.Realm(realm), Close: func() error { return nil }}
+		t := &target{StateReader: migrate.Realm(realm), Closer: io.NopCloser(nil)}
 		if len(realm.Schemas) == 1 {
 			t.Schema = realm.Schemas[0].Name
 		}
@@ -787,7 +787,7 @@ func to(ctx context.Context, dev *sqlclient.Client) (*target, error) {
 		if err != nil {
 			return nil, err
 		}
-		t := &target{Close: client.Close}
+		t := &target{Closer: client}
 		switch s := client.URL.Schema; {
 		// Connection to a specific schema.
 		case s != "":

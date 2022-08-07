@@ -148,7 +148,7 @@ type (
 		drv    Driver    // driver to use
 		dir    Dir       // where migration files are stored and read from
 		fmt    Formatter // how to format a plan to migration files
-		schema string    // optional schema to use for inspection.
+		schema string    // optional schema to use for inspection
 		sum    bool      // whether to create a sum file for the migration directory
 	}
 
