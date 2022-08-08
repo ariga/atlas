@@ -1122,11 +1122,11 @@ func (t *pgTest) url() string {
 	return t.dsn("")
 }
 
-func (t *pgTest) dsn(dbname string) string {
-	if dbname == "" {
-		dbname = "public"
+func (t *pgTest) dsn(schema string) string {
+	if schema == "" {
+		schema = "public"
 	}
-	return fmt.Sprintf("postgres://postgres:pass@localhost:%d/test?sslmode=disable&search_path=%s", t.port, dbname)
+	return fmt.Sprintf("postgres://postgres:pass@localhost:%d/test?sslmode=disable&search_path=%s", t.port, schema)
 }
 
 func (t *pgTest) driver() migrate.Driver {
