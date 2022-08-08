@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"text/template"
@@ -35,50 +36,80 @@ type Runner struct {
 
 	// ReportWriter writes the summary report.
 	ReportWriter ReportWriter
+
+	// summary report. reset on each run.
+	sum *SummaryReport
 }
 
 // Run executes the CI job.
 func (r *Runner) Run(ctx context.Context) error {
-	sum, err := r.summary(ctx)
-	switch err := err.(type) {
-	case nil:
-		return r.ReportWriter.WriteReport(sum)
-	case *FileError:
-		return r.ReportWriter.WriteReport(&SummaryReport{
-			Files: []*FileReport{{Name: err.File, Error: err.Error()}},
-		})
-	default:
-		return err
+	err := r.summary(ctx)
+	if err2 := r.ReportWriter.WriteReport(r.sum); err2 != nil {
+		if err != nil {
+			err2 = fmt.Errorf("%w: %v", err, err2)
+		}
+		err = err2
 	}
+	return err
 }
 
-func (r *Runner) summary(ctx context.Context) (*SummaryReport, error) {
-	// Validate sum file in case it exists.
-	if err := migrate.Validate(r.Dir); err != nil && !errors.Is(err, migrate.ErrChecksumNotFound) {
-		return nil, &FileError{File: migrate.HashFileName, Err: err}
+const (
+	stepIntegrityCheck = "Migration Integrity Check"
+	stepDetectChanges  = "Detect New Migration Files"
+	stepLoadChanges    = "Replay Migration Files"
+	stepAnalyzeFile    = "Analyze %s"
+)
+
+func (r *Runner) summary(ctx context.Context) error {
+	r.sum = NewSummaryReport(r.Dev, r.Dir)
+
+	// Integrity check.
+	switch err := migrate.Validate(r.Dir); {
+	case errors.Is(err, migrate.ErrChecksumNotFound):
+	case err != nil:
+		r.sum.Files = append(r.sum.Files, &FileReport{Name: migrate.HashFileName, Error: err})
+		return r.sum.StepError(stepIntegrityCheck, fmt.Sprintf("File %s is invalid", migrate.HashFileName), err)
+	default:
+		r.sum.StepResult(stepIntegrityCheck, fmt.Sprintf("File %s is valid", migrate.HashFileName), nil)
 	}
+
+	// Detect new migration files.
 	base, feat, err := r.ChangeDetector.DetectChanges(ctx)
 	if err != nil {
-		return nil, err
+		return r.sum.StepError(stepDetectChanges, "Failed find new migration files", err)
 	}
+	r.sum.StepResult(stepDetectChanges, fmt.Sprintf("Found %d new migration files (from %d total)", len(feat), len(base)+len(feat)), nil)
+
+	// Load files into changes.
 	l := &DevLoader{Dev: r.Dev}
-	files, err := l.LoadChanges(ctx, base, feat)
+	diff, err := l.LoadChanges(ctx, base, feat)
 	if err != nil {
-		return nil, err
+		if fr := (&FileError{}); errors.As(err, fr) {
+			r.sum.Files = append(r.sum.Files, &FileReport{Name: fr.File, Error: err})
+		}
+		return r.sum.StepError(stepDetectChanges, "Failed loading changes on dev database", err)
 	}
-	sum := &SummaryReport{Files: make([]*FileReport, 0, len(files))}
-	for _, f := range files {
+	r.sum.StepResult(stepLoadChanges, fmt.Sprintf("Loaded %d changes on dev database", len(diff.Files)), nil)
+	r.sum.WriteSchema(r.Dev, diff)
+
+	// Analyze files.
+	for _, f := range diff.Files {
 		fr := NewFileReport(f)
 		if err := r.Analyzer.Analyze(ctx, &sqlcheck.Pass{
 			File:     f,
 			Dev:      r.Dev,
 			Reporter: fr,
 		}); err != nil {
-			fr.Error = err.Error()
+			fr.Error = err
 		}
-		sum.Files = append(sum.Files, fr)
+		r.sum.Files = append(r.sum.Files, fr)
+		r.sum.StepResult(
+			fmt.Sprintf(stepAnalyzeFile, f.Name()),
+			fmt.Sprintf("%d reports were found in analysis", len(fr.Reports)),
+			fr,
+		)
 	}
-	return sum, nil
+	return nil
 }
 
 var (
@@ -119,7 +150,29 @@ type (
 	// A SummaryReport contains a summary of the analysis of all files.
 	// It is used as an input to templates to report the CI results.
 	SummaryReport struct {
-		Files []*FileReport // All files and their report.
+		// Env holds the environment information.
+		Env struct {
+			Driver string         // Driver name.
+			URL    *sqlclient.URL // URL to dev database.
+			Dir    string         // Path to migration directory.
+		}
+
+		// Steps of the analysis. Added in verbose mode.
+		Steps []struct {
+			Name   string // Step name.
+			Text   string // Step description.
+			Error  error  // Error that cause the execution to halt.
+			Result any    // Result of the step. For example, a diagnostic.
+		}
+
+		// Schema versions found by the runner.
+		Schema struct {
+			Current string // Current schema.
+			Desired string // Desired schema.
+		}
+
+		// Files reports. Non-empty in case there are findings.
+		Files []*FileReport
 	}
 
 	// FileReport contains a summary of the analysis of a single file.
@@ -127,7 +180,7 @@ type (
 		Name    string            // Name of the file.
 		Text    string            // Contents of the file.
 		Reports []sqlcheck.Report // List of reports.
-		Error   string            // File specific error.
+		Error   error             // File specific error.
 	}
 
 	// ReportWriter is a type of report writer that writes a summary of analysis reports.
@@ -141,6 +194,63 @@ type (
 		W io.Writer
 	}
 )
+
+// NewSummaryReport returns a new SummaryReport.
+func NewSummaryReport(c *sqlclient.Client, dir migrate.Dir) *SummaryReport {
+	sum := &SummaryReport{
+		Env: struct {
+			Driver string
+			URL    *sqlclient.URL
+			Dir    string
+		}{
+			Driver: c.Name,
+			URL:    c.URL,
+		},
+	}
+	if p, ok := dir.(interface{ Path() string }); ok {
+		sum.Env.Dir = p.Path()
+	}
+	return sum
+}
+
+// StepResult appends step result to the summary.
+func (f *SummaryReport) StepResult(name, text string, result any) {
+	f.Steps = append(f.Steps, struct {
+		Name   string
+		Text   string
+		Error  error
+		Result any
+	}{
+		Name:   name,
+		Text:   text,
+		Result: result,
+	})
+}
+
+// StepError appends step error to the summary.
+func (f *SummaryReport) StepError(name, text string, err error) error {
+	f.Steps = append(f.Steps, struct {
+		Name   string
+		Text   string
+		Error  error
+		Result any
+	}{
+		Name:  name,
+		Text:  text,
+		Error: err,
+	})
+	return err
+}
+
+// WriteSchema writes the current and desired schema to the summary.
+func (f *SummaryReport) WriteSchema(c *sqlclient.Client, diff *Changes) {
+	if curr, err := c.MarshalSpec(diff.From); err == nil {
+		f.Schema.Current = string(curr)
+	}
+	if desired, err := c.MarshalSpec(diff.To); err == nil {
+		f.Schema.Desired = string(desired)
+	}
+}
 
 // NewFileReport returns a new FileReport.
 func NewFileReport(f migrate.File) *FileReport {

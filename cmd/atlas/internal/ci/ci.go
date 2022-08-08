@@ -30,7 +30,13 @@ type (
 	// It will also label migration files as either "generated" or "handcrafted".
 	ChangeLoader interface {
 		// LoadChanges converts each of the given migration files into one Changes.
-		LoadChanges(context.Context, []migrate.File) ([]*sqlcheck.File, error)
+		LoadChanges(context.Context, []migrate.File) (*Changes, error)
+	}
+
+	// Changes holds schema changes information returned by the loader.
+	Changes struct {
+		From, To *schema.Realm    // Current and desired schema.
+		Files    []*sqlcheck.File // Files for moving from current to desired state.
 	}
 )
 
@@ -162,7 +168,7 @@ type DevLoader struct {
 }
 
 // LoadChanges implements the ChangesLoader interface.
-func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File) (_ []*sqlcheck.File, err error) {
+func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File) (diff *Changes, err error) {
 	// Lock database so no one else interferes with our change detection.
 	l, ok := d.Dev.Driver.(schema.Locker)
 	if !ok {
@@ -202,13 +208,16 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 			}
 		}
 	}
-	diff := make([]*sqlcheck.File, len(files))
 	current, err := d.Dev.InspectRealm(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
+	diff = &Changes{
+		From:  current,
+		Files: make([]*sqlcheck.File, len(files)),
+	}
 	for i, f := range files {
-		diff[i] = &sqlcheck.File{
+		diff.Files[i] = &sqlcheck.File{
 			File: f,
 		}
 		stmts, err := f.Stmts()
@@ -233,16 +242,17 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 			if err != nil {
 				return nil, err
 			}
-			diff[i].Changes = append(diff[i].Changes, &sqlcheck.Change{
+			diff.Files[i].Changes = append(diff.Files[i].Changes, &sqlcheck.Change{
 				Pos:     p,
 				Stmt:    s,
 				Changes: changes,
 			})
 		}
-		if diff[i].Sum, err = d.Dev.RealmDiff(start, current); err != nil {
+		if diff.Files[i].Sum, err = d.Dev.RealmDiff(start, current); err != nil {
 			return nil, err
 		}
 	}
+	diff.To = current
 	return diff, nil
 }
 

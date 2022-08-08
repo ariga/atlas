@@ -123,7 +123,7 @@ func TestDevLoader_LoadChanges(t *testing.T) {
 	l := &ci.DevLoader{Dev: c}
 	diff, err := l.LoadChanges(ctx, nil, nil)
 	require.NoError(t, err)
-	require.Empty(t, diff)
+	require.Empty(t, diff.Files)
 
 	base := []migrate.File{
 		testFile{name: "base.sql", content: "CREATE TABLE users (id INT)"},
@@ -135,32 +135,37 @@ func TestDevLoader_LoadChanges(t *testing.T) {
 	}
 	diff, err = l.LoadChanges(ctx, base, files)
 	require.NoError(t, err)
-	require.Len(t, diff, 3)
+	require.Len(t, diff.Files, 3)
 
 	// File 1.
-	require.Equal(t, files[0], diff[0].File)
-	require.Len(t, diff[0].Changes, 2)
-	require.Zero(t, diff[0].Changes[0].Pos)
-	require.Equal(t, "CREATE TABLE t1 (id INT)", diff[0].Changes[0].Stmt)
-	require.IsType(t, (*schema.AddTable)(nil), diff[0].Changes[0].Changes[0])
-	require.Equal(t, "INSERT INTO t1 (id) VALUES (1)", diff[0].Changes[1].Stmt)
-	require.Empty(t, diff[0].Changes[1].Changes)
+	require.Equal(t, files[0], diff.Files[0].File)
+	require.Len(t, diff.Files[0].Changes, 2)
+	require.Zero(t, diff.Files[0].Changes[0].Pos)
+	require.Equal(t, "CREATE TABLE t1 (id INT)", diff.Files[0].Changes[0].Stmt)
+	require.IsType(t, (*schema.AddTable)(nil), diff.Files[0].Changes[0].Changes[0])
+	require.Equal(t, "INSERT INTO t1 (id) VALUES (1)", diff.Files[0].Changes[1].Stmt)
+	require.Empty(t, diff.Files[0].Changes[1].Changes)
 
 	// File 2.
-	require.Equal(t, files[1], diff[1].File)
-	require.Len(t, diff[1].Changes, 2)
-	require.Zero(t, diff[1].Changes[0].Pos)
-	require.Equal(t, "CREATE TABLE t2 (id INT)", diff[1].Changes[0].Stmt)
-	require.IsType(t, (*schema.AddTable)(nil), diff[1].Changes[0].Changes[0])
-	require.Zero(t, diff[1].Changes[0].Pos)
-	require.Equal(t, "DROP TABLE users", diff[1].Changes[1].Stmt)
-	require.IsType(t, (*schema.DropTable)(nil), diff[1].Changes[1].Changes[0])
+	require.Equal(t, files[1], diff.Files[1].File)
+	require.Len(t, diff.Files[1].Changes, 2)
+	require.Zero(t, diff.Files[1].Changes[0].Pos)
+	require.Equal(t, "CREATE TABLE t2 (id INT)", diff.Files[1].Changes[0].Stmt)
+	require.IsType(t, (*schema.AddTable)(nil), diff.Files[1].Changes[0].Changes[0])
+	require.Zero(t, diff.Files[1].Changes[0].Pos)
+	require.Equal(t, "DROP TABLE users", diff.Files[1].Changes[1].Stmt)
+	require.IsType(t, (*schema.DropTable)(nil), diff.Files[1].Changes[1].Changes[0])
 
 	// File 3.
-	require.Equal(t, files[2], diff[2].File)
-	require.IsType(t, (*schema.AddTable)(nil), diff[2].Changes[0].Changes[0])
-	require.IsType(t, (*schema.DropTable)(nil), diff[2].Changes[1].Changes[0])
-	require.Empty(t, diff[2].Sum)
+	require.Equal(t, files[2], diff.Files[2].File)
+	require.IsType(t, (*schema.AddTable)(nil), diff.Files[2].Changes[0].Changes[0])
+	require.IsType(t, (*schema.DropTable)(nil), diff.Files[2].Changes[1].Changes[0])
+	require.Empty(t, diff.Files[2].Sum)
+
+	// Changes.
+	changes, err := c.RealmDiff(diff.From, diff.To)
+	require.NoError(t, err)
+	require.Len(t, changes, 3)
 
 	err = c.ApplyChanges(ctx, []schema.Change{
 		&schema.AddTable{
@@ -175,6 +180,10 @@ func TestDevLoader_LoadChanges(t *testing.T) {
 type testDir struct {
 	migrate.Dir
 	files []migrate.File
+}
+
+func (t testDir) Path() string {
+	return "migrations"
 }
 
 func (t testDir) Open(string) (fs.File, error) {
