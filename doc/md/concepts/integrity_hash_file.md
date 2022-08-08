@@ -5,7 +5,7 @@ title: Integrity Sum File
 ---
 
 ## Version Migration Files
-Version migration files are files that describe changes to the databases. Usually these files are prefixed with a number - which describe the version of the database change. The framework that runs these files uses these numbers to determine which changes have been applied to the database.
+Version migration files are files that describe changes to the databases. Usually, these files are prefixed with a number that describes the version of the database change. The framework that executes these script files uses these numbers to determine which files have been applied to the database.
 
 In Ent, you’ll find these files in ent/migrations/ folder.
 In Django, you’ll find these files in project_name/app_name/migrations/ folder.
