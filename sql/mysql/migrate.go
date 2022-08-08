@@ -199,7 +199,7 @@ func (s *state) modifySchema(modify *schema.ModifySchema) error {
 	return nil
 }
 
-// addTable builds and appends the migrate.Change
+// addTable builds and appends a migration change
 // for creating a table in a schema.
 func (s *state) addTable(add *schema.AddTable) error {
 	var (
@@ -210,6 +210,9 @@ func (s *state) addTable(add *schema.AddTable) error {
 		b.P("IF NOT EXISTS")
 	}
 	b.Table(add.T)
+	if len(add.T.Columns) == 0 {
+		return fmt.Errorf("table %q has no columns", add.T.Name)
+	}
 	b.Wrap(func(b *sqlx.Builder) {
 		b.MapComma(add.T.Columns, func(i int, b *sqlx.Builder) {
 			if err := s.column(b, add.T, add.T.Columns[i]); err != nil {
@@ -272,6 +275,9 @@ func (s *state) dropTable(drop *schema.DropTable) {
 // bringing the table into its modified state.
 func (s *state) modifyTable(modify *schema.ModifyTable) error {
 	var changes [2][]schema.Change
+	if len(modify.T.Columns) == 0 {
+		return fmt.Errorf("table %q has no columns; drop the table instead", modify.T.Name)
+	}
 	for _, change := range skipAutoChanges(modify.Changes) {
 		switch change := change.(type) {
 		// Foreign-key modification is translated into 2 steps.
