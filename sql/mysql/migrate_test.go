@@ -180,6 +180,20 @@ func TestPlanChanges(t *testing.T) {
 	}{
 		{
 			changes: []schema.Change{
+				&schema.AddTable{T: schema.NewTable("users")},
+			},
+			// Table "users" has no columns.
+			wantErr: true,
+		},
+		{
+			changes: []schema.Change{
+				&schema.ModifyTable{T: schema.NewTable("users")},
+			},
+			// Table "users" has no columns; drop the table instead.
+			wantErr: true,
+		},
+		{
+			changes: []schema.Change{
 				&schema.AddSchema{S: schema.New("test").SetCharset("utf8mb4"), Extra: []schema.Clause{&schema.IfNotExists{}}},
 				&schema.DropSchema{S: schema.New("test").SetCharset("utf8mb4"), Extra: []schema.Clause{&schema.IfExists{}}},
 			},
@@ -664,7 +678,8 @@ func TestPlanChanges(t *testing.T) {
 		{
 			changes: []schema.Change{
 				&schema.ModifyTable{
-					T: schema.NewTable("users"),
+					T: schema.NewTable("users").
+						AddColumns(schema.NewColumn("c").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1"})),
 					Changes: []schema.Change{
 						&schema.ModifyColumn{
 							Change: schema.ChangeGenerated,
@@ -680,7 +695,8 @@ func TestPlanChanges(t *testing.T) {
 		{
 			changes: []schema.Change{
 				&schema.ModifyTable{
-					T: schema.NewTable("users"),
+					T: schema.NewTable("users").
+						AddColumns(schema.NewColumn("c")),
 					Changes: []schema.Change{
 						&schema.ModifyColumn{
 							Change: schema.ChangeGenerated,
@@ -696,7 +712,8 @@ func TestPlanChanges(t *testing.T) {
 		{
 			changes: []schema.Change{
 				&schema.ModifyTable{
-					T: schema.NewTable("users"),
+					T: schema.NewTable("users").
+						AddColumns(schema.NewColumn("c").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"})),
 					Changes: []schema.Change{
 						&schema.ModifyColumn{
 							Change: schema.ChangeGenerated,
@@ -712,7 +729,8 @@ func TestPlanChanges(t *testing.T) {
 		{
 			changes: []schema.Change{
 				&schema.ModifyTable{
-					T: schema.NewTable("users"),
+					T: schema.NewTable("users").
+						AddColumns(schema.NewIntColumn("c", "int")),
 					Changes: []schema.Change{
 						&schema.ModifyColumn{
 							Change: schema.ChangeGenerated,
@@ -736,7 +754,8 @@ func TestPlanChanges(t *testing.T) {
 		{
 			changes: []schema.Change{
 				&schema.ModifyTable{
-					T: schema.NewTable("users"),
+					T: schema.NewTable("users").
+						AddColumns(schema.NewIntColumn("c", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"})),
 					Changes: []schema.Change{
 						&schema.ModifyColumn{
 							Change: schema.ChangeGenerated,
@@ -793,7 +812,9 @@ func TestPlanChanges(t *testing.T) {
 		{
 			changes: []schema.Change{
 				&schema.ModifyTable{
-					T: schema.NewTable("t1").SetSchema(schema.New("s1")),
+					T: schema.NewTable("t1").
+						SetSchema(schema.New("s1")).
+						AddColumns(schema.NewColumn("b")),
 					Changes: []schema.Change{
 						&schema.RenameColumn{
 							From: schema.NewColumn("a"),
@@ -816,7 +837,9 @@ func TestPlanChanges(t *testing.T) {
 			version: "5.6",
 			changes: []schema.Change{
 				&schema.ModifyTable{
-					T: schema.NewTable("t1").SetSchema(schema.New("s1")),
+					T: schema.NewTable("t1").
+						SetSchema(schema.New("s1")).
+						AddColumns(schema.NewIntColumn("b", "int")),
 					Changes: []schema.Change{
 						&schema.RenameColumn{
 							From: schema.NewIntColumn("a", "int"),
@@ -838,7 +861,9 @@ func TestPlanChanges(t *testing.T) {
 		{
 			changes: []schema.Change{
 				&schema.ModifyTable{
-					T: schema.NewTable("t1").SetSchema(schema.New("s1")),
+					T: schema.NewTable("t1").
+						SetSchema(schema.New("s1")).
+						AddColumns(schema.NewIntColumn("b", "int")),
 					Changes: []schema.Change{
 						&schema.RenameIndex{
 							From: schema.NewIndex("a"),
