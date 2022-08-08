@@ -1,5 +1,5 @@
 ---
-id: hash_file
+id: sum_file
 slug: /concepts/integrity_hash_file
 title: Integrity Hash File
 ---
