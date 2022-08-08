@@ -1,7 +1,7 @@
 ---
 id: sum_file
 slug: /concepts/integrity_hash_file
-title: Integrity Hash File
+title: Integrity Sum File
 ---
 
 ## Version Migration Files
