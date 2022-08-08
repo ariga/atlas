@@ -40,6 +40,7 @@ func TestMySQL_Script(t *testing.T) {
 				"synced":  t.cmdSynced,
 				"cmphcl":  t.cmdCmpHCL,
 				"cmpshow": t.cmdCmpShow,
+				"cmpmig":  t.cmdCmpMig,
 				"execsql": t.cmdExec,
 				"atlas":   t.cmdCLI,
 			},
@@ -59,7 +60,9 @@ func TestPostgres_Script(t *testing.T) {
 				"synced":  t.cmdSynced,
 				"cmphcl":  t.cmdCmpHCL,
 				"cmpshow": t.cmdCmpShow,
+				"cmpmig":  t.cmdCmpMig,
 				"execsql": t.cmdExec,
+				"atlas":   t.cmdCLI,
 			},
 		})
 	})
@@ -107,7 +110,7 @@ func replaceDBURL(env *testscript.Env, url string) error {
 
 func (t *pgTest) setupScript(env *testscript.Env) error {
 	env.Setenv("version", t.version)
-	u := strings.ReplaceAll(t.dsn(), "/test", "/")
+	u := strings.ReplaceAll(t.dsn(""), "/test", "/")
 	if err := replaceDBURL(env, u); err != nil {
 		return err
 	}
@@ -223,10 +226,6 @@ func (t *myTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {
 	})
 }
 
-func (t *myTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {
-	cmdCLI(ts, neg, args, t.dsn("test"), ts.Getenv(atlasPathKey))
-}
-
 func (t *pgTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {
 	cmdCmpShow(ts, args, func(schema, name string) (string, error) {
 		buf, err := exec.Command("docker", "ps", "-qa", "-f", fmt.Sprintf("publish=%d", t.port)).CombinedOutput()
@@ -271,37 +270,6 @@ func (t *liteTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) 
 		}
 		return strings.Join(stmts, "\n"), nil
 	})
-}
-
-// cmdCmpMig compares the nth migration file under migrations/ to the provided file.
-// Because migration are created with the execution timestamp, lexicographic order of
-// the files in the directory is used to access the file of interest.
-func (t *liteTest) cmdCmpMig(ts *testscript.TestScript, _ bool, args []string) {
-	if len(args) < 2 {
-		ts.Fatalf("invalid number of args to 'cmpmig': %d", len(args))
-	}
-	expected := ts.ReadFile(args[1])
-	dir, err := os.ReadDir(ts.MkAbs("migrations"))
-	ts.Check(err)
-	idx, err := strconv.Atoi(args[0])
-	ts.Check(err)
-	current := 0
-	for _, f := range dir {
-		if f.IsDir() || !strings.HasSuffix(f.Name(), ".sql") {
-			continue
-		}
-		if current == idx {
-			actual := ts.ReadFile(filepath.Join("migrations", f.Name()))
-			var sb strings.Builder
-			if strings.TrimSpace(actual) == strings.TrimSpace(expected) {
-				return
-			}
-			ts.Check(diff.Text(f.Name(), args[1], expected, actual, &sb))
-			ts.Fatalf(sb.String())
-		}
-		current++
-	}
-	ts.Fatalf("could not find the #%d migration", idx)
 }
 
 func cmdCmpShow(ts *testscript.TestScript, args []string, show func(schema, name string) (string, error)) {
@@ -399,6 +367,14 @@ func (t *liteTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
 	cmdExec(ts, args, ts.Value(keyDB).(*sql.DB))
 }
 
+func (t *myTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {
+	cmdCLI(ts, neg, args, t.dsn(ts.Getenv("db")), ts.Getenv(atlasPathKey))
+}
+
+func (t *pgTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {
+	cmdCLI(ts, neg, args, t.dsn(ts.Getenv("db")), ts.Getenv(atlasPathKey))
+}
+
 func (t *liteTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {
 	dbURL := fmt.Sprintf("sqlite://file:%s/atlas.sqlite?cache=shared&_fk=1", ts.Getenv("WORK"))
 	cmdCLI(ts, neg, args, dbURL, ts.Getenv(atlasPathKey))
@@ -433,6 +409,59 @@ func cmdCLI(ts *testscript.TestScript, neg bool, args []string, dbURL, cliPath s
 			ts.Fatalf("expected fail")
 		}
 	}
+}
+
+func (t *myTest) cmdCmpMig(ts *testscript.TestScript, neg bool, args []string) {
+	cmdCmpMig(ts, neg, args)
+}
+
+func (t *pgTest) cmdCmpMig(ts *testscript.TestScript, neg bool, args []string) {
+	cmdCmpMig(ts, neg, args)
+}
+
+func (t *liteTest) cmdCmpMig(ts *testscript.TestScript, neg bool, args []string) {
+	cmdCmpMig(ts, neg, args)
+}
+
+// cmdCmpMig compares a migration file under migrations with a provided file.
+// If the first argument is a filename that does exist, that file is used for comparison.
+// If there is no file with that name, the argument is parsed to an integer n and the
+// nth sql file is used for comparison. Lexicographic order of
+// the files in the directory is used to access the file of interest.
+func cmdCmpMig(ts *testscript.TestScript, _ bool, args []string) {
+	if len(args) < 2 {
+		ts.Fatalf("invalid number of args to 'cmpmig': %d", len(args))
+	}
+	// Check if there is a file prefixed by database version (1.sql and <version>/1.sql).
+	var (
+		ver   = ts.Getenv("version")
+		fname = args[1]
+	)
+	if _, err := os.Stat(ts.MkAbs(filepath.Join(ver, fname))); err == nil {
+		fname = filepath.Join(ver, fname)
+	}
+	expected := ts.ReadFile(fname)
+	dir, err := os.ReadDir(ts.MkAbs("migrations"))
+	ts.Check(err)
+	idx, err := strconv.Atoi(args[0])
+	ts.Check(err)
+	current := 0
+	for _, f := range dir {
+		if f.IsDir() || !strings.HasSuffix(f.Name(), ".sql") {
+			continue
+		}
+		if current == idx {
+			actual := ts.ReadFile(filepath.Join("migrations", f.Name()))
+			var sb strings.Builder
+			if strings.TrimSpace(actual) == strings.TrimSpace(expected) {
+				return
+			}
+			ts.Check(diff.Text(f.Name(), args[1], expected, actual, &sb))
+			ts.Fatalf(sb.String())
+		}
+		current++
+	}
+	ts.Fatalf("could not find the #%d migration", idx)
 }
 
 func cmdExec(ts *testscript.TestScript, args []string, db *sql.DB) {
