@@ -511,6 +511,20 @@ func TestMigrate_Lint(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, "1.up.sql:0", s)
+
+	// Invalid files.
+	MigrateFlags.Lint.Format = ""
+	err = os.WriteFile(filepath.Join(p, "2.up.sql"), []byte("BORING"), 0600)
+	require.NoError(t, err)
+	s, err = runCmd(
+		Root, "migrate", "lint",
+		"--dir", "file://"+p,
+		"--dir-format", "golang-migrate",
+		"--dev-url", openSQLite(t, ""),
+		"--latest", "1",
+	)
+	require.Error(t, err)
+	require.Equal(t, "2.up.sql: executing statement: near \"BORING\": syntax error\n", s)
 }
 
 const testSchema = `

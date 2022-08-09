@@ -89,12 +89,12 @@ Env:
 sqlite3, migrations
 
 Steps:
-{"Name":"Detect New Migration Files","Text":"Found 1 new migration files (from 2 total)","Error":null,"Result":null}
-{"Name":"Replay Migration Files","Text":"Loaded 1 changes on dev database","Error":null,"Result":null}
-{"Name":"Analyze 2.sql","Text":"1 reports were found in analysis","Error":null,"Result":{"Name":"2.sql","Text":"CREATE TABLE pets (id INT)\nDROP TABLE users","Reports":[{"Text":"Report 2. File \"2.sql\"","Diagnostics":[{"Pos":1,"Text":"Diagnostic 1"},{"Pos":2,"Text":"Diagnostic 2"}]}],"Error":null}}
+{"Name":"Detect New Migration Files","Text":"Found 1 new migration files (from 2 total)"}
+{"Name":"Replay Migration Files","Text":"Loaded 1 changes on dev database"}
+{"Name":"Analyze 2.sql","Text":"1 reports were found in analysis","Result":{"Name":"2.sql","Text":"CREATE TABLE pets (id INT)\nDROP TABLE users","Reports":[{"Text":"Report 2. File \"2.sql\"","Diagnostics":[{"Pos":1,"Text":"Diagnostic 1"},{"Pos":2,"Text":"Diagnostic 2"}]}]}}
 
 Files:
-{"Name":"2.sql","Text":"CREATE TABLE pets (id INT)\nDROP TABLE users","Reports":[{"Text":"Report 2. File \"2.sql\"","Diagnostics":[{"Pos":1,"Text":"Diagnostic 1"},{"Pos":2,"Text":"Diagnostic 2"}]}],"Error":null}
+{"Name":"2.sql","Text":"CREATE TABLE pets (id INT)\nDROP TABLE users","Reports":[{"Text":"Report 2. File \"2.sql\"","Diagnostics":[{"Pos":1,"Text":"Diagnostic 1"},{"Pos":2,"Text":"Diagnostic 2"}]}]}
 
 
 Current Schema:

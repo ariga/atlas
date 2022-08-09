@@ -658,7 +658,10 @@ func CmdMigrateLintRun(cmd *cobra.Command, _ []string) error {
 		},
 		Analyzer: az,
 	}
-	return r.Run(cmd.Context())
+	err = r.Run(cmd.Context())
+	// Print the error in case it was not printed before.
+	cmd.SilenceErrors = errors.As(err, &ci.SilentError{})
+	return err
 }
 
 func printChecksumErr(out io.Writer) {
