@@ -21,6 +21,7 @@ import (
 func TestPlanChanges(t *testing.T) {
 	tests := []struct {
 		changes []schema.Change
+		options []migrate.PlanOption
 		mock    func(mock)
 		plan    *migrate.Plan
 	}{
@@ -337,6 +338,44 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		// The default is no qualifier.
+		{
+			changes: []schema.Change{
+				&schema.AddTable{T: schema.NewTable("t").SetSchema(schema.New("main")).AddColumns(schema.NewIntColumn("a", "int"))},
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "CREATE TABLE `t` (`a` int NOT NULL)",
+						Reverse: "DROP TABLE `t`",
+					},
+				},
+			},
+		},
+		// Custom qualifier.
+		{
+			changes: []schema.Change{
+				&schema.AddTable{T: schema.NewTable("t").SetSchema(schema.New("d")).AddColumns(schema.NewIntColumn("a", "int"))},
+			},
+			options: []migrate.PlanOption{
+				func(o *migrate.PlanOptions) {
+					s := "other"
+					o.SchemaQualifier = &s
+				},
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "CREATE TABLE `other`.`t` (`a` int NOT NULL)",
+						Reverse: "DROP TABLE `other`.`t`",
+					},
+				},
+			},
+		},
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
@@ -349,7 +388,7 @@ func TestPlanChanges(t *testing.T) {
 			}
 			drv, err := Open(db)
 			require.NoError(t, err)
-			plan, err := drv.PlanChanges(context.Background(), "plan", tt.changes)
+			plan, err := drv.PlanChanges(context.Background(), "plan", tt.changes, tt.options...)
 			require.NoError(t, err)
 			require.Equal(t, tt.plan.Reversible, plan.Reversible)
 			require.Equal(t, tt.plan.Transactional, plan.Transactional)

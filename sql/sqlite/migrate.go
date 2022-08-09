@@ -18,7 +18,7 @@ import (
 type planApply struct{ conn }
 
 // PlanChanges returns a migration plan for the given schema changes.
-func (p *planApply) PlanChanges(ctx context.Context, name string, changes []schema.Change) (*migrate.Plan, error) {
+func (p *planApply) PlanChanges(ctx context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
 	s := &state{
 		conn: p.conn,
 		Plan: migrate.Plan{
@@ -26,6 +26,14 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 			Reversible:    true,
 			Transactional: true,
 		},
+		PlanOptions: migrate.PlanOptions{
+			// Currently, the driver does not support attached
+			// schemas and assumed the connected schema is "main".
+			SchemaQualifier: new(string),
+		},
+	}
+	for _, o := range opts {
+		o(&s.PlanOptions)
 	}
 	if err := s.plan(ctx, changes); err != nil {
 		return nil, err
@@ -41,8 +49,8 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 // ApplyChanges applies the changes on the database. An error is returned
 // if the driver is unable to produce a plan to it, or one of the statements
 // is failed or unsupported.
-func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change) error {
-	return sqlx.ApplyChanges(ctx, changes, p)
+func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change, opts ...migrate.PlanOption) error {
+	return sqlx.ApplyChanges(ctx, changes, p, opts...)
 }
 
 // state represents the state of a planning. It's not part of
@@ -51,6 +59,7 @@ func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change) e
 type state struct {
 	conn
 	migrate.Plan
+	migrate.PlanOptions
 	skipFKs bool
 }
 
@@ -89,7 +98,7 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) (err error) {
 func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 	var (
 		errs []string
-		b    = Build("CREATE TABLE").Ident(add.T.Name)
+		b    = s.Build("CREATE TABLE").Table(add.T)
 	)
 	if sqlx.Has(add.Extra, &schema.IfNotExists{}) {
 		b.P("IF NOT EXISTS")
@@ -125,7 +134,7 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 	s.append(&migrate.Change{
 		Cmd:     b.String(),
 		Source:  add,
-		Reverse: Build("DROP TABLE").Table(add.T).String(),
+		Reverse: s.Build("DROP TABLE").Table(add.T).String(),
 		Comment: fmt.Sprintf("create %q table", add.T.Name),
 	})
 	if err := s.tableSeq(ctx, add); err != nil {
@@ -137,7 +146,7 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 // dropTable builds and executes the query for dropping a table from a schema.
 func (s *state) dropTable(drop *schema.DropTable) error {
 	s.skipFKs = true
-	b := Build("DROP TABLE").Ident(drop.T.Name)
+	b := s.Build("DROP TABLE").Ident(drop.T.Name)
 	if sqlx.Has(drop.Extra, &schema.IfExists{}) {
 		b.P("IF EXISTS")
 	}
@@ -172,7 +181,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 	}
 	// Drop the current table, and rename the new one to its real name.
 	s.append(&migrate.Change{
-		Cmd:    Build("DROP TABLE").Ident(modify.T.Name).String(),
+		Cmd:    s.Build("DROP TABLE").Ident(modify.T.Name).String(),
 		Source: modify,
 		Comment: fmt.Sprintf("drop %q table %s", modify.T.Name, func() string {
 			if copied {
@@ -182,7 +191,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 		}()),
 	})
 	s.append(&migrate.Change{
-		Cmd:     Build("ALTER TABLE").Ident(newT.Name).P("RENAME TO").Ident(modify.T.Name).String(),
+		Cmd:     s.Build("ALTER TABLE").Ident(newT.Name).P("RENAME TO").Ident(modify.T.Name).String(),
 		Source:  modify,
 		Comment: fmt.Sprintf("rename temporary table %q to %q", newT.Name, modify.T.Name),
 	})
@@ -193,8 +202,8 @@ func (s *state) renameTable(c *schema.RenameTable) {
 	s.append(&migrate.Change{
 		Source:  c,
 		Comment: fmt.Sprintf("rename a table from %q to %q", c.From.Name, c.To.Name),
-		Cmd:     Build("ALTER TABLE").Table(c.From).P("RENAME TO").Table(c.To).String(),
-		Reverse: Build("ALTER TABLE").Table(c.To).P("RENAME TO").Table(c.From).String(),
+		Cmd:     s.Build("ALTER TABLE").Table(c.From).P("RENAME TO").Table(c.To).String(),
+		Reverse: s.Build("ALTER TABLE").Table(c.To).P("RENAME TO").Table(c.From).String(),
 	})
 }
 
@@ -265,7 +274,7 @@ func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) error {
 			}
 			idx.Name = strings.Join(names, "_")
 		}
-		b := Build("CREATE")
+		b := s.Build("CREATE")
 		if idx.Unique {
 			b.P("UNIQUE")
 		}
@@ -281,7 +290,7 @@ func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) error {
 		s.append(&migrate.Change{
 			Cmd:     b.String(),
 			Source:  &schema.AddIndex{I: idx},
-			Reverse: Build("DROP INDEX").Ident(idx.Name).String(),
+			Reverse: s.Build("DROP INDEX").Ident(idx.Name).String(),
 			Comment: fmt.Sprintf("create index %q to table: %q", idx.Name, t.Name),
 		})
 	}
@@ -420,7 +429,7 @@ func (s *state) alterTable(modify *schema.ModifyTable) error {
 				return err
 			}
 		case *schema.AddColumn:
-			b := Build("ALTER TABLE").Ident(modify.T.Name)
+			b := s.Build("ALTER TABLE").Ident(modify.T.Name)
 			r := b.Clone()
 			if err := s.column(b.P("ADD COLUMN"), change.C); err != nil {
 				return err
@@ -432,7 +441,7 @@ func (s *state) alterTable(modify *schema.ModifyTable) error {
 				Comment: fmt.Sprintf("add column %q to table: %q", change.C.Name, modify.T.Name),
 			})
 		case *schema.RenameColumn:
-			b := Build("ALTER TABLE").Ident(modify.T.Name).P("RENAME COLUMN")
+			b := s.Build("ALTER TABLE").Ident(modify.T.Name).P("RENAME COLUMN")
 			r := b.Clone()
 			s.append(&migrate.Change{
 				Source:  change,
@@ -520,9 +529,9 @@ func autoincPK(pk *schema.Index) bool {
 }
 
 // Build instantiates a new builder and writes the given phrase to it.
-func Build(phrase string) *sqlx.Builder {
-	b := &sqlx.Builder{QuoteChar: '`'}
-	return b.P(phrase)
+func (s *state) Build(phrases ...string) *sqlx.Builder {
+	b := &sqlx.Builder{QuoteChar: '`', Schema: s.SchemaQualifier}
+	return b.P(phrases...)
 }
 
 func defaultValue(c *schema.Column) (string, error) {
