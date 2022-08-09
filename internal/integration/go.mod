@@ -1,6 +1,6 @@
 module ariga.io/atlas/internal/integration
 
-go 1.17
+go 1.19
 
 replace ariga.io/atlas => ../../
 
@@ -20,7 +20,7 @@ require (
 )
 
 require (
-	ariga.io/atlas/cmd/atlas v0.5.1-0.20220808114055-54febc21ee29 // indirect
+	ariga.io/atlas/cmd/atlas v0.5.1-0.20220810063018-93d5f3ca9ef3 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e // indirect

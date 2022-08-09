@@ -86,7 +86,28 @@ func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []sch
 	sort.SliceStable(fc, func(i, j int) bool {
 		return priority(fc[i]) < priority(fc[j])
 	})
-	return p.planApply.PlanChanges(ctx, name, changes, opts...)
+	s := &state{
+		conn: p.conn,
+		Plan: migrate.Plan{
+			Name: name,
+			// A plan is reversible, if all
+			// its changes are reversible.
+			Reversible:    true,
+			Transactional: false,
+		},
+	}
+	for _, c := range fc {
+		// Use the planner of MySQL with each "atomic" change.
+		plan, err := p.planApply.PlanChanges(ctx, name, []schema.Change{c}, opts...)
+		if err != nil {
+			return nil, err
+		}
+		if !plan.Reversible {
+			s.Plan.Reversible = false
+		}
+		s.Plan.Changes = append(s.Plan.Changes, plan.Changes...)
+	}
+	return &s.Plan, nil
 }
 
 func (p *tplanApply) ApplyChanges(ctx context.Context, changes []schema.Change, opts ...migrate.PlanOption) error {

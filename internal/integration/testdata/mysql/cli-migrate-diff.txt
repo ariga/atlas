@@ -31,7 +31,7 @@ table "users" {
 
 -- 1.sql --
 -- create "users" table
-CREATE TABLE `script_cli_migrate_diff`.`users` (`id` bigint NOT NULL AUTO_INCREMENT, PRIMARY KEY (`id`)) CHARSET utf8mb4 COLLATE utf8mb4_general_ci;
+CREATE TABLE `users` (`id` bigint NOT NULL AUTO_INCREMENT, PRIMARY KEY (`id`)) CHARSET utf8mb4 COLLATE utf8mb4_general_ci;
 
 -- 2.hcl --
 schema "script_cli_migrate_diff" {}
@@ -57,16 +57,16 @@ table "users" {
 
 -- 2.sql --
 -- modify "users" table
-ALTER TABLE `script_cli_migrate_diff`.`users` ADD COLUMN `create_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6);
+ALTER TABLE `users` ADD COLUMN `create_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6);
 
 -- maria102/2.sql --
 -- modify "users" table
-ALTER TABLE `script_cli_migrate_diff`.`users` ADD COLUMN `create_time` timestamp(6) NOT NULL DEFAULT (current_timestamp(6));
+ALTER TABLE `users` ADD COLUMN `create_time` timestamp(6) NOT NULL DEFAULT (current_timestamp(6));
 
 -- maria103/2.sql --
 -- modify "users" table
-ALTER TABLE `script_cli_migrate_diff`.`users` ADD COLUMN `create_time` timestamp(6) NOT NULL DEFAULT (current_timestamp(6));
+ALTER TABLE `users` ADD COLUMN `create_time` timestamp(6) NOT NULL DEFAULT (current_timestamp(6));
 
 -- maria107/2.sql --
 -- modify "users" table
-ALTER TABLE `script_cli_migrate_diff`.`users` ADD COLUMN `create_time` timestamp(6) NOT NULL DEFAULT (current_timestamp(6));
+ALTER TABLE `users` ADD COLUMN `create_time` timestamp(6) NOT NULL DEFAULT (current_timestamp(6));

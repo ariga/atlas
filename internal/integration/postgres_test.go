@@ -10,6 +10,9 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -695,6 +698,59 @@ func TestPostgres_CLI_MultiSchema(t *testing.T) {
 			t.dropTables("users")
 			testCLIMultiSchemaApply(t, h, t.dsn(""), []string{"public", "test2"}, postgres.EvalHCL)
 		})
+	})
+}
+
+func TestPostgres_MigrateDiffRealm(t *testing.T) {
+	bin, err := buildCmd(t)
+	require.NoError(t, err)
+	pgRun(t, func(t *pgTest) {
+		dir := t.TempDir()
+		_, err := t.db.Exec("CREATE DATABASE migrate_diff")
+		require.NoError(t, err)
+		defer t.db.Exec("DROP DATABASE IF EXISTS migrate_diff")
+
+		hcl := `
+schema "public" {}
+table "users" {
+	schema = schema.public
+	column "id" { type = integer }
+}
+schema "other" {}
+table "posts" {
+	schema = schema.other
+	column "id" { type = integer }
+}
+`
+		err = os.WriteFile(filepath.Join(dir, "schema.hcl"), []byte(hcl), 0600)
+		diff := func() string {
+			out, err := exec.Command(
+				bin, "migrate", "diff",
+				"--dir", fmt.Sprintf("file://%s", filepath.Join(dir, "migrations")),
+				"--to", fmt.Sprintf("file://%s", filepath.Join(dir, "schema.hcl")),
+				"--dev-url", fmt.Sprintf("postgres://postgres:pass@localhost:%d/migrate_diff?sslmode=disable", t.port),
+			).CombinedOutput()
+			require.NoError(t, err, string(out))
+			return strings.TrimSpace(string(out))
+		}
+		require.Empty(t, diff())
+
+		// Expect one file and read its contents.
+		files, err := os.ReadDir(filepath.Join(dir, "migrations"))
+		require.NoError(t, err)
+		require.Equal(t, 2, len(files))
+		require.Equal(t, "atlas.sum", files[1].Name())
+		b, err := os.ReadFile(filepath.Join(dir, "migrations", files[0].Name()))
+		require.NoError(t, err)
+		require.Equal(t,
+			`-- Add new schema named "other"
+CREATE SCHEMA "other";
+-- create "users" table
+CREATE TABLE "public"."users" ("id" integer NOT NULL);
+-- create "posts" table
+CREATE TABLE "other"."posts" ("id" integer NOT NULL);
+`, string(b))
+		require.Equal(t, "The migration directory is synced with the desired state, no changes to be made", diff())
 	})
 }
 

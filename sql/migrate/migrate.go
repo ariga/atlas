@@ -73,13 +73,23 @@ type (
 	// on the database.
 	PlanApplier interface {
 		// PlanChanges returns a migration plan for applying the given changeset.
-		PlanChanges(context.Context, string, []schema.Change) (*Plan, error)
+		PlanChanges(context.Context, string, []schema.Change, ...PlanOption) (*Plan, error)
 
 		// ApplyChanges is responsible for applying the given changeset.
 		// An error may return from ApplyChanges if the driver is unable
 		// to execute a change.
-		ApplyChanges(context.Context, []schema.Change) error
+		ApplyChanges(context.Context, []schema.Change, ...PlanOption) error
 	}
+
+	// PlanOptions holds the migration plan options to be used by PlanApplier.
+	PlanOptions struct {
+		// PlanWithSchemaQualifier allows setting a custom schema to prefix
+		// tables and other resources. An empty string indicates no qualifier.
+		SchemaQualifier *string
+	}
+
+	// PlanOption allows configuring a drivers' plan using functional arguments.
+	PlanOption func(*PlanOptions)
 
 	// StateReader wraps the method for reading a database/schema state.
 	// The types below provides a few builtin options for reading a state
@@ -142,11 +152,11 @@ type (
 	// Planner can plan the steps to take to migrate from one state to another. It uses the enclosed Dir to write
 	// those changes to versioned migration files.
 	Planner struct {
-		drv    Driver    // driver to use
-		dir    Dir       // where migration files are stored and read from
-		fmt    Formatter // how to format a plan to migration files
-		schema string    // optional schema to use for inspection
-		sum    bool      // whether to create a sum file for the migration directory
+		drv  Driver       // driver to use
+		dir  Dir          // where migration files are stored and read from
+		fmt  Formatter    // how to format a plan to migration files
+		sum  bool         // whether to create a sum file for the migration directory
+		opts []PlanOption // driver options
 	}
 
 	// PlannerOption allows managing a Planner using functional arguments.
@@ -248,11 +258,16 @@ func NewPlanner(drv Driver, dir Dir, opts ...PlannerOption) *Planner {
 	return p
 }
 
-// PlanSchema allows setting a schema name to inspect
-// after replaying the migration directory.
-func PlanSchema(name string) PlannerOption {
+// PlanWithSchemaQualifier allows setting a custom schema to prefix tables and
+// other resources. An empty string indicates no prefix.
+//
+// Note, this options require the changes to be scoped to one
+// schema and returns an error otherwise.
+func PlanWithSchemaQualifier(q string) PlannerOption {
 	return func(p *Planner) {
-		p.schema = name
+		p.opts = append(p.opts, func(o *PlanOptions) {
+			o.SchemaQualifier = &q
+		})
 	}
 }
 
@@ -263,10 +278,11 @@ func PlanFormat(fmt Formatter) PlannerOption {
 	}
 }
 
-// PlanWithoutChecksum disables the hash-sum functionality for the migration directory.
-func PlanWithoutChecksum() PlannerOption {
+// PlanWithChecksum allows setting if the hash-sum functionality
+// for the migration directory is enabled or not.
+func PlanWithChecksum(b bool) PlannerOption {
 	return func(p *Planner) {
-		p.sum = false
+		p.sum = b
 	}
 }
 
@@ -274,26 +290,36 @@ var (
 	// WithFormatter calls PlanFormat.
 	// Deprecated: use PlanFormat instead.
 	WithFormatter = PlanFormat
-	// DisableChecksum calls PlanWithoutChecksum.
+	// DisableChecksum calls PlanWithChecksum(false).
 	// Deprecated: use PlanWithoutChecksum instead.
-	DisableChecksum = PlanWithoutChecksum
+	DisableChecksum = func() PlannerOption { return PlanWithChecksum(false) }
 )
 
 // Plan calculates the migration Plan required for moving the current state (from) state to
 // the next state (to). A StateReader can be a directory, static schema elements or a Driver connection.
 func (p *Planner) Plan(ctx context.Context, name string, to StateReader) (*Plan, error) {
-	var from StateReader
-	if sr, ok := p.dir.(StateReader); ok {
-		from = sr
+	return p.plan(ctx, name, to, true)
+}
+
+// PlanSchema is like Plan but limits its scope to the schema connection.
+// Note, the operation fails in case the connection was not set to a schema.
+func (p *Planner) PlanSchema(ctx context.Context, name string, to StateReader) (*Plan, error) {
+	return p.plan(ctx, name, to, false)
+}
+
+func (p *Planner) plan(ctx context.Context, name string, to StateReader, realmScope bool) (*Plan, error) {
+	from, err := NewExecutor(p.drv, p.dir, NopRevisionReadWriter{})
+	if err != nil {
+		return nil, err
 	}
-	if from == nil {
-		ex, err := NewExecutor(p.drv, p.dir, NopRevisionReadWriter{})
-		if err != nil {
-			return nil, err
+	current, err := from.Replay(ctx, func() StateReader {
+		if realmScope {
+			return RealmConn(p.drv, nil)
 		}
-		from = ex
-	}
-	current, err := from.ReadState(ctx)
+		// In case the scope is the schema connection,
+		// inspect it and return its connected realm.
+		return SchemaConn(p.drv, "", nil)
+	}())
 	if err != nil {
 		return nil, err
 	}
@@ -303,19 +329,27 @@ func (p *Planner) Plan(ctx context.Context, name string, to StateReader) (*Plan,
 	}
 	var changes []schema.Change
 	switch {
-	case p.schema != "":
-		switch s, ok := current.Schema(p.schema); {
-		case !ok:
-			return nil, fmt.Errorf("missing schema %q in realm after replaying migration directory", p.schema)
-		case len(desired.Schemas) == 0:
-			return nil, errors.New("missing schema definition in desired state")
-		case len(desired.Schemas) > 1:
-			return nil, fmt.Errorf("found %d schema definitions in desired state on schema mode", len(desired.Schemas))
-		default:
-			changes, err = p.drv.SchemaDiff(s, desired.Schemas[0])
-		}
-	default:
+	case realmScope:
 		changes, err = p.drv.RealmDiff(current, desired)
+	default:
+		switch n, m := len(current.Schemas), len(desired.Schemas); {
+		case n == 0:
+			return nil, errors.New("no schema was found in current state after replaying migration directory")
+		case n > 1:
+			return nil, fmt.Errorf("%d schemas were found in current state after replaying migration directory", len(current.Schemas))
+		case m == 0:
+			return nil, errors.New("no schema was found in desired state")
+		case m > 1:
+			return nil, fmt.Errorf("%d schemas were found in desired state; expect 1", len(desired.Schemas))
+		default:
+			s1, s2 := *current.Schemas[0], *desired.Schemas[0]
+			// Avoid comparing schema names when scope is limited to one schema,
+			// and the schema qualifier is controlled by the caller.
+			if s1.Name != s2.Name {
+				s1.Name = s2.Name
+			}
+			changes, err = p.drv.SchemaDiff(&s1, &s2)
+		}
 	}
 	if err != nil {
 		return nil, err
@@ -323,7 +357,7 @@ func (p *Planner) Plan(ctx context.Context, name string, to StateReader) (*Plan,
 	if len(changes) == 0 {
 		return nil, ErrNoPlan
 	}
-	return p.drv.PlanChanges(ctx, name, changes)
+	return p.drv.PlanChanges(ctx, name, changes, p.opts...)
 }
 
 // WritePlan writes the given Plan to the Dir based on the configured Formatter.
@@ -663,10 +697,8 @@ func (e *Executor) ExecuteN(ctx context.Context, n int) (err error) {
 	return err
 }
 
-// ReadState implements the StateReader interface.
-//
-// It does so by calling Execute and inspecting the database thereafter.
-func (e *Executor) ReadState(ctx context.Context) (realm *schema.Realm, err error) {
+// Replay the migration directory and invoke the state to get back the inspection result.
+func (e *Executor) Replay(ctx context.Context, r StateReader) (_ *schema.Realm, err error) {
 	unlock, err := e.drv.(schema.Locker).Lock(ctx, "atlas_migration_directory_state", 0)
 	if err != nil {
 		return nil, fmt.Errorf("sql/migrate: acquiring database lock: %w", err)
@@ -690,9 +722,7 @@ func (e *Executor) ReadState(ctx context.Context) (realm *schema.Realm, err erro
 	if err := e.ExecuteN(ctx, 0); err != nil && !errors.Is(err, ErrNoPendingFiles) {
 		return nil, fmt.Errorf("sql/migrate: read migration directory state: %w", err)
 	}
-	// Inspect the database back and return the result.
-	realm, err = e.drv.InspectRealm(ctx, nil)
-	return
+	return r.ReadState(ctx)
 }
 
 type (

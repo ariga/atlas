@@ -429,7 +429,8 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	}
 	opts := []migrate.PlannerOption{migrate.PlanFormat(f)}
 	if dev.URL.Schema != "" {
-		opts = append(opts, migrate.PlanSchema(dev.URL.Schema))
+		// Disable tables qualifier in schema-mode.
+		opts = append(opts, migrate.PlanWithSchemaQualifier(""))
 	}
 	// Plan the changes and create a new migration file.
 	pl := migrate.NewPlanner(dev.Driver, dir, opts...)
@@ -437,8 +438,14 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		name = args[0]
 	}
+	plan, err := func() (*migrate.Plan, error) {
+		if dev.URL.Schema != "" {
+			return pl.PlanSchema(cmd.Context(), name, desired.StateReader)
+		}
+		return pl.Plan(cmd.Context(), name, desired.StateReader)
+	}()
 	var cerr migrate.NotCleanError
-	switch plan, err := pl.Plan(cmd.Context(), name, desired.StateReader); {
+	switch {
 	case errors.Is(err, migrate.ErrNoPlan):
 		cmd.Println("The migration directory is synced with the desired state, no changes to be made")
 		return nil
@@ -601,7 +608,12 @@ func CmdMigrateValidateRun(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := ex.ReadState(cmd.Context()); err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
+	if _, err := ex.Replay(cmd.Context(), func() migrate.StateReader {
+		if dev.URL.Schema != "" {
+			return migrate.SchemaConn(dev, "", nil)
+		}
+		return migrate.RealmConn(dev, nil)
+	}()); err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
 		return fmt.Errorf("replaying the migration directory: %w", err)
 	}
 	return nil
