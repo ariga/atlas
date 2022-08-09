@@ -6,9 +6,9 @@ title: Integrity Sum File
 
 ## Integrity Hash File
 When multiple engineers work on the same project in parallel, there is a chance that their migration scripts will conflict with each other and may cause unexpected behavior. For example:
-One can retroactively change the content of migrations that have already run.
-One can accidentally change the order in which migrations are organized.
-One can commit semantically incorrect SQL scripts.
+1. One can retroactively change the content of migrations that have already run.
+2. One can accidentally change the order in which migrations are organized.
+3. One can commit semantically incorrect SQL scripts.
 
 Atlas creates the Integrity Hash File - internally named “atlas.sum” - to tackle these issues. 
 
