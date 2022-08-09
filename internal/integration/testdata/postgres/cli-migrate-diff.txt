@@ -1,3 +1,5 @@
+only postgres10 postgres11 postgres13
+
 exec mkdir migrations
 
 ! atlas migrate diff --to file://1.hcl --dir file://migrations

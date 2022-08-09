@@ -34,15 +34,16 @@ func TestMySQL_Script(t *testing.T) {
 			Dir:   "testdata/mysql",
 			Setup: t.setupScript,
 			Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
-				"only":    cmdOnly,
-				"apply":   t.cmdApply,
-				"exist":   t.cmdExist,
-				"synced":  t.cmdSynced,
-				"cmphcl":  t.cmdCmpHCL,
-				"cmpshow": t.cmdCmpShow,
-				"cmpmig":  t.cmdCmpMig,
-				"execsql": t.cmdExec,
-				"atlas":   t.cmdCLI,
+				"only":        cmdOnly,
+				"apply":       t.cmdApply,
+				"exist":       t.cmdExist,
+				"synced":      t.cmdSynced,
+				"cmphcl":      t.cmdCmpHCL,
+				"cmpshow":     t.cmdCmpShow,
+				"cmpmig":      t.cmdCmpMig,
+				"execsql":     t.cmdExec,
+				"atlas":       t.cmdCLI,
+				"clearSchema": t.clearSchema,
 			},
 		})
 	})
@@ -54,15 +55,16 @@ func TestPostgres_Script(t *testing.T) {
 			Dir:   "testdata/postgres",
 			Setup: t.setupScript,
 			Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
-				"only":    cmdOnly,
-				"apply":   t.cmdApply,
-				"exist":   t.cmdExist,
-				"synced":  t.cmdSynced,
-				"cmphcl":  t.cmdCmpHCL,
-				"cmpshow": t.cmdCmpShow,
-				"cmpmig":  t.cmdCmpMig,
-				"execsql": t.cmdExec,
-				"atlas":   t.cmdCLI,
+				"only":        cmdOnly,
+				"apply":       t.cmdApply,
+				"exist":       t.cmdExist,
+				"synced":      t.cmdSynced,
+				"cmphcl":      t.cmdCmpHCL,
+				"cmpshow":     t.cmdCmpShow,
+				"cmpmig":      t.cmdCmpMig,
+				"execsql":     t.cmdExec,
+				"atlas":       t.cmdCLI,
+				"clearSchema": t.clearSchema,
 			},
 		})
 	})
@@ -381,9 +383,12 @@ func (t *liteTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {
 }
 
 func cmdCLI(ts *testscript.TestScript, neg bool, args []string, dbURL, cliPath string) {
-	workDir := ts.Getenv("WORK")
+	var (
+		workDir = ts.Getenv("WORK")
+		r       = strings.NewReplacer("URL", dbURL, "$db", ts.Getenv("db"))
+	)
 	for i, arg := range args {
-		args[i] = strings.ReplaceAll(arg, "URL", dbURL)
+		args[i] = r.Replace(arg)
 	}
 	switch l := len(args); {
 	// If command was run with a unix redirect-like suffix.
@@ -604,6 +609,26 @@ func (t *liteTest) hclDiff(ts *testscript.TestScript, name string) ([]schema.Cha
 		return nil, err
 	}
 	return changes, nil
+}
+
+func (t *myTest) clearSchema(ts *testscript.TestScript, _ bool, args []string) {
+	if len(args) == 0 {
+		args = append(args, ts.Getenv("db"))
+	}
+	_, err := t.db.Exec("DROP DATABASE IF EXISTS " + args[0])
+	ts.Check(err)
+	_, err = t.db.Exec("CREATE DATABASE IF NOT EXISTS " + args[0])
+	ts.Check(err)
+}
+
+func (t *pgTest) clearSchema(ts *testscript.TestScript, _ bool, args []string) {
+	if len(args) == 0 {
+		args = append(args, ts.Getenv("db"))
+	}
+	_, err := t.db.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", args[0]))
+	ts.Check(err)
+	_, err = t.db.Exec("CREATE SCHEMA IF NOT EXISTS " + args[0])
+	ts.Check(err)
 }
 
 func cmdSynced(ts *testscript.TestScript, neg bool, args []string, diff func(*testscript.TestScript, string) ([]schema.Change, error)) {

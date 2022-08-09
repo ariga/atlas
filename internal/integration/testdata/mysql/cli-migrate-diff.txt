@@ -1,3 +1,5 @@
+only maria
+
 exec mkdir migrations
 
 ! atlas migrate diff --to file://1.hcl --dir file://migrations
