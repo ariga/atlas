@@ -20,7 +20,7 @@ import (
 type planApply struct{ conn }
 
 // PlanChanges returns a migration plan for the given schema changes.
-func (p *planApply) PlanChanges(ctx context.Context, name string, changes []schema.Change) (*migrate.Plan, error) {
+func (p *planApply) PlanChanges(ctx context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
 	s := &state{
 		conn: p.conn,
 		Plan: migrate.Plan{
@@ -31,6 +31,9 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 		created: make(map[string]*schema.EnumType),
 		altered: make(map[string]*schema.EnumType),
 		dropped: make(map[string]*schema.EnumType),
+	}
+	for _, o := range opts {
+		o(&s.PlanOptions)
 	}
 	if err := s.plan(ctx, changes); err != nil {
 		return nil, err
@@ -46,8 +49,8 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 // ApplyChanges applies the changes on the database. An error is returned
 // if the driver is unable to produce a plan to do so, or one of the statements
 // is failed or unsupported.
-func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change) error {
-	return sqlx.ApplyChanges(ctx, changes, p)
+func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change, opts ...migrate.PlanOption) error {
+	return sqlx.ApplyChanges(ctx, changes, p, opts...)
 }
 
 // state represents the state of a planning. It is not part of
@@ -56,6 +59,7 @@ func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change) e
 type state struct {
 	conn
 	migrate.Plan
+	migrate.PlanOptions
 	// Track the enums that were created, altered and
 	// dropped, in this phase to avoid duplicate updates.
 	created, altered, dropped map[string]*schema.EnumType
@@ -95,7 +99,7 @@ func (s *state) topLevel(changes []schema.Change) []schema.Change {
 	for _, c := range changes {
 		switch c := c.(type) {
 		case *schema.AddSchema:
-			b := Build("CREATE SCHEMA")
+			b := s.Build("CREATE SCHEMA")
 			if sqlx.Has(c.Extra, &schema.IfNotExists{}) {
 				b.P("IF NOT EXISTS")
 			}
@@ -103,11 +107,11 @@ func (s *state) topLevel(changes []schema.Change) []schema.Change {
 			s.append(&migrate.Change{
 				Cmd:     b.String(),
 				Source:  c,
-				Reverse: Build("DROP SCHEMA").Ident(c.S.Name).P("CASCADE").String(),
+				Reverse: s.Build("DROP SCHEMA").Ident(c.S.Name).P("CASCADE").String(),
 				Comment: fmt.Sprintf("Add new schema named %q", c.S.Name),
 			})
 		case *schema.DropSchema:
-			b := Build("DROP SCHEMA")
+			b := s.Build("DROP SCHEMA")
 			if sqlx.Has(c.Extra, &schema.IfExists{}) {
 				b.P("IF EXISTS")
 			}
@@ -132,7 +136,7 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 	}
 	var (
 		errs []string
-		b    = Build("CREATE TABLE")
+		b    = s.Build("CREATE TABLE")
 	)
 	if sqlx.Has(add.Extra, &schema.IfNotExists{}) {
 		b.P("IF NOT EXISTS")
@@ -173,7 +177,7 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 		Cmd:     b.String(),
 		Source:  add,
 		Comment: fmt.Sprintf("create %q table", add.T.Name),
-		Reverse: Build("DROP TABLE").Table(add.T).String(),
+		Reverse: s.Build("DROP TABLE").Table(add.T).String(),
 	})
 	s.addIndexes(add.T, add.T.Indexes...)
 	s.addComments(add.T)
@@ -182,7 +186,7 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 
 // dropTable builds and executes the query for dropping a table from a schema.
 func (s *state) dropTable(drop *schema.DropTable) {
-	b := Build("DROP TABLE")
+	b := s.Build("DROP TABLE")
 	if sqlx.Has(drop.Extra, &schema.IfExists{}) {
 		b.P("IF EXISTS")
 	}
@@ -244,8 +248,8 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 			changes = append(changes, &migrate.Change{
 				Source:  change,
 				Comment: fmt.Sprintf("rename an index from %q to %q", change.From.Name, change.To.Name),
-				Cmd:     Build("ALTER INDEX").Ident(change.From.Name).P("RENAME TO").Ident(change.To.Name).String(),
-				Reverse: Build("ALTER INDEX").Ident(change.To.Name).P("RENAME TO").Ident(change.From.Name).String(),
+				Cmd:     s.Build("ALTER INDEX").Ident(change.From.Name).P("RENAME TO").Ident(change.To.Name).String(),
+				Reverse: s.Build("ALTER INDEX").Ident(change.To.Name).P("RENAME TO").Ident(change.From.Name).String(),
 			})
 		case *schema.ModifyForeignKey:
 			// Foreign-key modification is translated into 2 steps.
@@ -280,7 +284,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 			to, ok2 := change.To.Type.Type.(*schema.EnumType)
 			switch {
 			// Enum was changed (underlying values).
-			case ok1 && ok2 && enumIdent(modify.T.Schema, from) == enumIdent(modify.T.Schema, to):
+			case ok1 && ok2 && s.enumIdent(modify.T.Schema, from) == s.enumIdent(modify.T.Schema, to):
 				if err := s.alterEnum(modify.T, from, to); err != nil {
 					return err
 				}
@@ -291,7 +295,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 				}
 			// Enum was added or changed.
 			case !ok1 && ok2 ||
-				ok1 && ok2 && enumIdent(modify.T.Schema, from) != enumIdent(modify.T.Schema, to):
+				ok1 && ok2 && s.enumIdent(modify.T.Schema, from) != s.enumIdent(modify.T.Schema, to):
 				if err := s.mayAddEnums(ctx, modify.T, change.To); err != nil {
 					return err
 				}
@@ -299,7 +303,7 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 			alter = append(alter, &schema.ModifyColumn{To: change.To, From: change.From, Change: k})
 		case *schema.RenameColumn:
 			// "RENAME COLUMN" cannot be combined with other alterations.
-			b := Build("ALTER TABLE").Table(modify.T).P("RENAME COLUMN")
+			b := s.Build("ALTER TABLE").Table(modify.T).P("RENAME COLUMN")
 			r := b.Clone()
 			changes = append(changes, &migrate.Change{
 				Source:  change,
@@ -329,7 +333,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 		reversible = true
 	)
 	build := func(alter *alterChange, changes []schema.Change) (string, error) {
-		b := Build("ALTER TABLE").Table(t)
+		b := s.Build("ALTER TABLE").Table(t)
 		err := b.MapCommaErr(changes, func(i int, b *sqlx.Builder) error {
 			switch change := changes[i].(type) {
 			case *schema.AddColumn:
@@ -353,7 +357,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 				toE, toHas := change.From.Type.Type.(*schema.EnumType)
 				fromE, fromHas := change.From.Type.Type.(*schema.EnumType)
 				// In case the enum was dropped or replaced with a different one.
-				if fromHas && !toHas || fromHas && toHas && enumIdent(t.Schema, fromE) != enumIdent(t.Schema, toE) {
+				if fromHas && !toHas || fromHas && toHas && s.enumIdent(t.Schema, fromE) != s.enumIdent(t.Schema, toE) {
 					if err := s.mayDropEnum(alter, t.Schema, fromE); err != nil {
 						return err
 					}
@@ -460,7 +464,7 @@ func (s *state) alterColumn(b *sqlx.Builder, alter *alterChange, t *schema.Table
 		b.P("ALTER COLUMN").Ident(c.To.Name)
 		switch {
 		case k.Is(schema.ChangeType):
-			if err := alterType(b, alter, t, c); err != nil {
+			if err := s.alterType(b, alter, t, c); err != nil {
 				return err
 			}
 			k &= ^schema.ChangeType
@@ -511,13 +515,13 @@ func (s *state) alterColumn(b *sqlx.Builder, alter *alterChange, t *schema.Table
 
 // alterType appends the clause(s) to alter the column type and assuming the
 // "ALTER COLUMN <Name>" was called before by the alterColumn function.
-func alterType(b *sqlx.Builder, alter *alterChange, t *schema.Table, c *schema.ModifyColumn) error {
+func (s *state) alterType(b *sqlx.Builder, alter *alterChange, t *schema.Table, c *schema.ModifyColumn) error {
 	// Commands for creating and dropping serial sequences.
-	createDropSeq := func(s *SerialType) (string, string, string) {
-		seq := fmt.Sprintf(`%q.%q`, t.Schema.Name, s.sequence(t, c.To))
-		drop := Build("DROP SEQUENCE IF EXISTS").P(seq).String()
-		create := Build("CREATE SEQUENCE IF NOT EXISTS").P(seq, "OWNED BY").
-			P(fmt.Sprintf(`%q.%q.%q`, t.Schema.Name, t.Name, c.To.Name)).
+	createDropSeq := func(st *SerialType) (string, string, string) {
+		seq := fmt.Sprintf(`%s%q`, s.schemaPrefix(t.Schema), st.sequence(t, c.To))
+		drop := s.Build("DROP SEQUENCE IF EXISTS").P(seq).String()
+		create := s.Build("CREATE SEQUENCE IF NOT EXISTS").P(seq, "OWNED BY").
+			P(fmt.Sprintf(`%s%q.%q`, s.schemaPrefix(t.Schema), t.Name, c.To.Name)).
 			String()
 		return create, drop, seq
 	}
@@ -585,7 +589,7 @@ func alterType(b *sqlx.Builder, alter *alterChange, t *schema.Table, c *schema.M
 			err error
 		)
 		if e, ok := c.To.Type.Type.(*schema.EnumType); ok {
-			f = enumIdent(t.Schema, e)
+			f = s.enumIdent(t.Schema, e)
 		} else if f, err = FormatType(c.To.Type.Type); err != nil {
 			return err
 		}
@@ -601,8 +605,8 @@ func (s *state) renameTable(c *schema.RenameTable) {
 	s.append(&migrate.Change{
 		Source:  c,
 		Comment: fmt.Sprintf("rename a table from %q to %q", c.From.Name, c.To.Name),
-		Cmd:     Build("ALTER TABLE").Table(c.From).P("RENAME TO").Table(c.To).String(),
-		Reverse: Build("ALTER TABLE").Table(c.To).P("RENAME TO").Table(c.From).String(),
+		Cmd:     s.Build("ALTER TABLE").Table(c.From).P("RENAME TO").Table(c.To).String(),
+		Reverse: s.Build("ALTER TABLE").Table(c.To).P("RENAME TO").Table(c.From).String(),
 	})
 }
 
@@ -623,8 +627,8 @@ func (s *state) addComments(t *schema.Table) {
 	}
 }
 
-func (*state) tableComment(t *schema.Table, to, from string) *migrate.Change {
-	b := Build("COMMENT ON TABLE").Table(t).P("IS")
+func (s *state) tableComment(t *schema.Table, to, from string) *migrate.Change {
+	b := s.Build("COMMENT ON TABLE").Table(t).P("IS")
 	return &migrate.Change{
 		Cmd:     b.Clone().P(quote(to)).String(),
 		Comment: fmt.Sprintf("set comment to table: %q", t.Name),
@@ -632,8 +636,8 @@ func (*state) tableComment(t *schema.Table, to, from string) *migrate.Change {
 	}
 }
 
-func (*state) columnComment(t *schema.Table, c *schema.Column, to, from string) *migrate.Change {
-	b := Build("COMMENT ON COLUMN").Table(t)
+func (s *state) columnComment(t *schema.Table, c *schema.Column, to, from string) *migrate.Change {
+	b := s.Build("COMMENT ON COLUMN").Table(t)
 	b.WriteByte('.')
 	b.Ident(c.Name).P("IS")
 	return &migrate.Change{
@@ -643,8 +647,8 @@ func (*state) columnComment(t *schema.Table, c *schema.Column, to, from string) 
 	}
 }
 
-func (*state) indexComment(t *schema.Table, idx *schema.Index, to, from string) *migrate.Change {
-	b := Build("COMMENT ON INDEX").Ident(idx.Name).P("IS")
+func (s *state) indexComment(t *schema.Table, idx *schema.Index, to, from string) *migrate.Change {
+	b := s.Build("COMMENT ON INDEX").Ident(idx.Name).P("IS")
 	return &migrate.Change{
 		Cmd:     b.Clone().P(quote(to)).String(),
 		Comment: fmt.Sprintf("set comment to index: %q on table: %q", idx.Name, t.Name),
@@ -680,7 +684,7 @@ func (s *state) mayAddEnums(ctx context.Context, t *schema.Table, columns ...*sc
 			// on this migration phase.
 			continue
 		}
-		name := enumIdent(t.Schema, e)
+		name := s.enumIdent(t.Schema, e)
 		if prev, ok := s.created[name]; ok {
 			if !sqlx.ValuesEqual(prev.Values, e.Values) {
 				return fmt.Errorf("enum type %s has inconsistent desired state: %q != %q", name, prev.Values, e.Values)
@@ -688,7 +692,7 @@ func (s *state) mayAddEnums(ctx context.Context, t *schema.Table, columns ...*sc
 			continue
 		}
 		s.created[name] = e
-		create, drop := createDropEnum(t.Schema, e)
+		create, drop := s.createDropEnum(t.Schema, e)
 		s.append(&migrate.Change{
 			Cmd:     create,
 			Reverse: drop,
@@ -707,7 +711,7 @@ func (s *state) alterEnum(t *schema.Table, from, to *schema.EnumType) error {
 			return fmt.Errorf("replacing or reordering enum (%q) value is not supported: %q != %q", to.T, to.Values, from.Values)
 		}
 	}
-	name := enumIdent(t.Schema, from)
+	name := s.enumIdent(t.Schema, from)
 	if prev, ok := s.altered[name]; ok {
 		if !sqlx.ValuesEqual(prev.Values, to.Values) {
 			return fmt.Errorf("enum type %s has inconsistent desired state: %q != %q", name, prev.Values, to.Values)
@@ -717,7 +721,7 @@ func (s *state) alterEnum(t *schema.Table, from, to *schema.EnumType) error {
 	s.altered[name] = to
 	for _, v := range to.Values[len(from.Values):] {
 		s.append(&migrate.Change{
-			Cmd:     Build("ALTER TYPE").P(name, "ADD VALUE", quote(v)).String(),
+			Cmd:     s.Build("ALTER TYPE").P(name, "ADD VALUE", quote(v)).String(),
 			Comment: fmt.Sprintf("add value to enum type: %q", from.T),
 		})
 	}
@@ -725,10 +729,12 @@ func (s *state) alterEnum(t *schema.Table, from, to *schema.EnumType) error {
 }
 
 func (s *state) enumExists(ctx context.Context, ns *schema.Schema, e *schema.EnumType) (bool, error) {
-	if e.Schema != nil {
-		ns = e.Schema
+	query, args := `SELECT * FROM pg_type t JOIN pg_namespace n on t.typnamespace = n.oid WHERE t.typname = $1 AND t.typtype = 'e'`, []any{e.T}
+	if es := s.enumSchema(ns, e); es != "" {
+		query += " AND n.nspname = $2"
+		args = append(args, es)
 	}
-	rows, err := s.QueryContext(ctx, `SELECT * FROM pg_type t JOIN pg_namespace n on t.typnamespace = n.oid WHERE t.typname = $1 AND n.nspname = $2 AND t.typtype = 'e'`, e.T, ns.Name)
+	rows, err := s.QueryContext(ctx, query, args...)
 	if err != nil {
 		return false, fmt.Errorf("check enum existence: %w", err)
 	}
@@ -738,7 +744,7 @@ func (s *state) enumExists(ctx context.Context, ns *schema.Schema, e *schema.Enu
 
 // mayDropEnum drops dangling enum types form the schema.
 func (s *state) mayDropEnum(alter *alterChange, ns *schema.Schema, e *schema.EnumType) error {
-	name := enumIdent(ns, e)
+	name := s.enumIdent(ns, e)
 	if _, ok := s.dropped[name]; ok {
 		return nil
 	}
@@ -753,14 +759,14 @@ func (s *state) mayDropEnum(alter *alterChange, ns *schema.Schema, e *schema.Enu
 				e1, ok := c.Type.Type.(*schema.EnumType)
 				// Although we search in siblings schemas, use the
 				// table's one for building the enum identifier.
-				if ok && enumIdent(ns, e1) == name {
+				if ok && s.enumIdent(ns, e1) == name {
 					return nil
 				}
 			}
 		}
 	}
 	s.dropped[name] = e
-	create, drop := createDropEnum(ns, e)
+	create, drop := s.createDropEnum(ns, e)
 	alter.after = append(alter.after, &migrate.Change{
 		Cmd:     drop,
 		Reverse: create,
@@ -771,7 +777,7 @@ func (s *state) mayDropEnum(alter *alterChange, ns *schema.Schema, e *schema.Enu
 
 func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) {
 	for _, idx := range indexes {
-		b := Build("CREATE")
+		b := s.Build("CREATE")
 		if idx.Unique {
 			b.P("UNIQUE")
 		}
@@ -785,16 +791,13 @@ func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) {
 			Cmd:     b.String(),
 			Comment: fmt.Sprintf("create index %q to table: %q", idx.Name, t.Name),
 			Reverse: func() string {
-				b := Build("DROP INDEX")
+				b := s.Build("DROP INDEX")
 				// Unlike MySQL, the DROP command is not attached to ALTER TABLE.
 				// Therefore, we print indexes with their qualified name, because
 				// the connection that executes the statements may not be attached
 				// to this schema.
 				if t.Schema != nil {
-					b.WriteByte(b.QuoteChar)
-					b.WriteString(t.Schema.Name)
-					b.WriteByte(b.QuoteChar)
-					b.WriteByte('.')
+					b.WriteString(s.schemaPrefix(t.Schema))
 				}
 				b.Ident(idx.Name)
 				return b.String()
@@ -809,7 +812,7 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 		err error
 	)
 	if e, ok := c.Type.Type.(*schema.EnumType); ok {
-		f = enumIdent(t.Schema, e)
+		f = s.enumIdent(t.Schema, e)
 	} else if f, err = FormatType(c.Type.Type); err != nil {
 		return err
 	}
@@ -977,9 +980,9 @@ func (s *state) append(c ...*migrate.Change) {
 }
 
 // Build instantiates a new builder and writes the given phrase to it.
-func Build(phrase string) *sqlx.Builder {
-	b := &sqlx.Builder{QuoteChar: '"'}
-	return b.P(phrase)
+func (s *state) Build(phrases ...string) *sqlx.Builder {
+	b := &sqlx.Builder{QuoteChar: '"', Schema: s.SchemaQualifier}
+	return b.P(phrases...)
 }
 
 // skipAutoChanges filters unnecessary changes that are automatically
@@ -1089,22 +1092,9 @@ func quote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
 }
 
-func enumIdent(s *schema.Schema, e *schema.EnumType) string {
-	switch {
-	// Enum schema has higher precedence.
-	case e.Schema != nil:
-		return fmt.Sprintf("%q.%q", e.Schema.Name, e.T)
-	// Fallback to table schema if exists.
-	case s != nil:
-		return fmt.Sprintf("%q.%q", s.Name, e.T)
-	default:
-		return strconv.Quote(e.T)
-	}
-}
-
-func createDropEnum(s *schema.Schema, e *schema.EnumType) (string, string) {
-	name := enumIdent(s, e)
-	return Build("CREATE TYPE").
+func (s *state) createDropEnum(sc *schema.Schema, e *schema.EnumType) (string, string) {
+	name := s.enumIdent(sc, e)
+	return s.Build("CREATE TYPE").
 			P(name, "AS ENUM").
 			Wrap(func(b *sqlx.Builder) {
 				b.MapComma(e.Values, func(i int, b *sqlx.Builder) {
@@ -1112,5 +1102,42 @@ func createDropEnum(s *schema.Schema, e *schema.EnumType) (string, string) {
 				})
 			}).
 			String(),
-		Build("DROP TYPE").P(name).String()
+		s.Build("DROP TYPE").P(name).String()
+}
+
+func (s *state) enumIdent(ns *schema.Schema, e *schema.EnumType) string {
+	es := s.enumSchema(ns, e)
+	if es != "" {
+		return fmt.Sprintf("%q.%q", es, e.T)
+	}
+	return strconv.Quote(e.T)
+}
+
+func (s *state) enumSchema(ns *schema.Schema, e *schema.EnumType) (es string) {
+	switch {
+	// In case the plan uses a specific schema qualifier.
+	case s.SchemaQualifier != nil:
+		es = *s.SchemaQualifier
+	// Enum schema has higher precedence.
+	case e.Schema != nil:
+		es = e.Schema.Name
+	// Fallback to table schema if exists.
+	case ns != nil:
+		es = ns.Name
+	}
+	return
+}
+
+// schemaPrefix returns the schema prefix based on the planner config.
+func (s *state) schemaPrefix(ns *schema.Schema) string {
+	switch {
+	case s.SchemaQualifier != nil:
+		// In case the qualifier is empty, ignore.
+		if *s.SchemaQualifier != "" {
+			return fmt.Sprintf("%q.", *s.SchemaQualifier)
+		}
+	case ns != nil && ns.Name != "":
+		return fmt.Sprintf("%q.", ns.Name)
+	}
+	return ""
 }
