@@ -4,19 +4,11 @@ slug: /concepts/integrity_hash_file
 title: Integrity Sum File
 ---
 
-## Version Migration Files
-Version migration files are files that describe changes to the databases. Usually, these files are prefixed with a number that describes the version of the database change. The framework that executes these script files uses these numbers to determine which files have been applied to the database.
-
-In Ent, you’ll find these files in ent/migrations/ folder.
-In Django, you’ll find these files in project_name/app_name/migrations/ folder.
-
 ## Integrity Hash File
-Databases hold one of the most valuable assets of the organization. Unfortunately, databases are also quite fragile. Especially when working in teams where developers are working in parallel on the same business logic. Data loss is real and that’s why good practice is so important when working with DBs.
-
-There are 3 issues that can occur with version migration files.
-1. One can retroactively change the content of migrations that have already run.
-2. One can accidentally change the order in which migrations are organized.
-3. One can commit semantically incorrect SQL scripts.
+When multiple engineers work on the same project in parallel, there is a chance that their migration scripts will conflict with each other and may cause unexpected behavior. For example:
+One can retroactively change the content of migrations that have already run.
+One can accidentally change the order in which migrations are organized.
+One can commit semantically incorrect SQL scripts.
 
 Atlas creates the Integrity Hash File - internally named “atlas.sum” - to tackle these issues. 
 
