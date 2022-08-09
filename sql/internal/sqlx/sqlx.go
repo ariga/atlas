@@ -214,7 +214,8 @@ func ModeInspectRealm(o *schema.InspectRealmOption) schema.InspectMode {
 // A Builder provides a syntactic sugar API for writing SQL statements.
 type Builder struct {
 	bytes.Buffer
-	QuoteChar byte
+	QuoteChar byte    // quoting identifiers
+	Schema    *string // schema qualifier
 }
 
 // P writes a list of phrases to the builder separated and
@@ -249,7 +250,16 @@ func (b *Builder) Ident(s string) *Builder {
 // Table writes the table identifier to the builder, prefixed
 // with the schema name if exists.
 func (b *Builder) Table(t *schema.Table) *Builder {
-	if t.Schema != nil {
+	switch {
+	// Custom qualifier.
+	case b.Schema != nil:
+		// Empty means skip prefix.
+		if *b.Schema != "" {
+			b.Ident(*b.Schema)
+			b.rewriteLastByte('.')
+		}
+	// Default schema qualifier.
+	case t.Schema != nil && t.Schema.Name != "":
 		b.Ident(t.Schema.Name)
 		b.rewriteLastByte('.')
 	}
@@ -339,7 +349,7 @@ func (b *Builder) rewriteLastByte(c byte) {
 	buf[len(buf)-1] = c
 }
 
-// IsQuoted reports if the given string is quoted with one of the given quotes (e.g. '\'', '"', '`').
+// IsQuoted reports if the given string is quoted with one of the given quotes (e.g. ', ", `).
 func IsQuoted(s string, q ...byte) bool {
 	for i := range q {
 		if l, r := strings.IndexByte(s, q[i]), strings.LastIndexByte(s, q[i]); l < r && l == 0 && r == len(s)-1 {

@@ -61,6 +61,27 @@ func TestBuilder(t *testing.T) {
 	require.Equal(t, `CREATE TABLE "users" ("a" int NOT NULL, "b" int NOT NULL, "c" int NOT NULL, PRIMARY KEY ("a", "b", "c"))`, b.String())
 }
 
+func TestBuilder_Qualifier(t *testing.T) {
+	var (
+		s = "other"
+		b = &Builder{QuoteChar: '"', Schema: &s}
+	)
+	b.P("CREATE TABLE").Table(schema.NewTable("users"))
+	require.Equal(t, `CREATE TABLE "other"."users"`, b.String())
+
+	// Bypass table schema.
+	b.Reset()
+	b.P("CREATE TABLE").Table(schema.NewTable("users").SetSchema(schema.New("test")))
+	require.Equal(t, `CREATE TABLE "other"."users"`, b.String())
+
+	// Empty qualifier, means skip.
+	s = ""
+	b.Reset()
+	b.P("CREATE TABLE").Table(schema.NewTable("users").SetSchema(schema.New("test")))
+	require.Equal(t, `CREATE TABLE "users"`, b.String())
+
+}
+
 func TestMayWrap(t *testing.T) {
 	tests := []struct {
 		input   string
