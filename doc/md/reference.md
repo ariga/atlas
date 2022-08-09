@@ -40,7 +40,7 @@ Every set environment param will be printed in the form of NAME=VALUE.
 
 List of supported environment parameters:
 * ATLAS_NO_UPDATE_NOTIFIER: On any command, the CLI will check for new releases using the GitHub API.
-  This check will happen at most once every 24 hours. To cancel this behavior, set the environment
+  This check will happen at most once every 24 hours. To cancel this behavior, set the environment 
   variable "ATLAS_NO_UPDATE_NOTIFIER".
 
 
@@ -89,7 +89,7 @@ atlas migrate apply [flags] [count]
 
 #### Details
 'atlas migrate apply' reads the migration state of the connected database and computes what migrations are pending.
-It then attempts to apply the pending migration files in the correct order onto the database.
+It then attempts to apply the pending migration files in the correct order onto the database. 
 The first argument denotes the maximum number of migration files to apply.
 As a safety measure 'atlas migrate apply' will abort with an error, if:
   - the migration directory is not in sync with the 'atlas.sum' file
@@ -401,7 +401,7 @@ all multiple schemas in a given database (for instance a MySQL server may contai
 databases), omit the relevant part from the url, e.g. "mysql://user:pass@localhost:3306/".
 To select specific schemas from the databases, users may use the "--schema" (or "-s" shorthand)
 flag.
-
+	
 
 #### Example
 
@@ -430,25 +430,4 @@ atlas version
 ```
 
 
-## atlas serve
-
-Run Atlas web UI in a standalone mode
-
-#### Usage
-```
-atlas serve [flags]
-```
-
-#### Details
-'atlas serve' runs the Atlas web UI in a standalone mode with optional persistent storage.
-If you do not specify the storage, it will be stored in-memory.
-Atlas encrypts sensitive data such as passwords using the generated keyset.json.
-
-#### Flags
-```
---addr string       listen address for atlas serve (default ":5800")
---storage string    data store url using the dsn format:
-                    [driver://username:password@protocol(address)/dbname?param=value] (default "in-memory")
--h, --help          help for serve
-```
 

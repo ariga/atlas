@@ -13,7 +13,7 @@ Similar information can be obtained by running any atlas command with the `-h` o
 flags.
 
 For a more detailed introduction to the CLI capabilities, head over to the
-[Getting Started](getting-started/01-introduction.mdx) page.
+[Getting Started](/getting-started/) page.
 
 ## Distributed Binaries
 
@@ -59,26 +59,5 @@ go get ariga.io/atlas/cmd/atlas
 ```
 {{ end }}
 {{ end }}
-## atlas serve
-
-Run Atlas web UI in a standalone mode
-
-#### Usage
-```
-atlas serve [flags]
-```
-
-#### Details
-'atlas serve' runs the Atlas web UI in a standalone mode with optional persistent storage.
-If you do not specify the storage, it will be stored in-memory.
-Atlas encrypts sensitive data such as passwords using the generated keyset.json.
-
-#### Flags
-```
---addr string       listen address for atlas serve (default ":5800")
---storage string    data store url using the dsn format:
-                    [driver://username:password@protocol(address)/dbname?param=value] (default "in-memory")
--h, --help          help for serve
-```
 
 {{ end }}
