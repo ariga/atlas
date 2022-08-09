@@ -81,49 +81,16 @@ func flat(changes []schema.Change) []schema.Change {
 }
 
 // PlanChanges returns a migration plan for the given schema changes.
-func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []schema.Change) (*migrate.Plan, error) {
+func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
 	fc := flat(changes)
 	sort.SliceStable(fc, func(i, j int) bool {
 		return priority(fc[i]) < priority(fc[j])
 	})
-	s := &state{
-		conn: p.conn,
-		Plan: migrate.Plan{
-			Name: name,
-			// A plan is reversible, if all
-			// its changes are reversible.
-			Reversible:    true,
-			Transactional: false,
-		},
-	}
-	for _, c := range fc {
-		// Use the planner of MySQL with each "atomic" change.
-		plan, err := p.planApply.PlanChanges(ctx, name, []schema.Change{c})
-		if err != nil {
-			return nil, err
-		}
-		if !plan.Reversible {
-			s.Plan.Reversible = false
-		}
-		s.Plan.Changes = append(s.Plan.Changes, plan.Changes...)
-	}
-	return &s.Plan, nil
+	return p.planApply.PlanChanges(ctx, name, changes, opts...)
 }
 
-func (p *tplanApply) ApplyChanges(ctx context.Context, changes []schema.Change) error {
-	plan, err := p.PlanChanges(ctx, "apply", changes)
-	if err != nil {
-		return err
-	}
-	for _, c := range plan.Changes {
-		if _, err := p.ExecContext(ctx, c.Cmd, c.Args...); err != nil {
-			if c.Comment != "" {
-				err = fmt.Errorf("%s: %w", c.Comment, err)
-			}
-			return err
-		}
-	}
-	return nil
+func (p *tplanApply) ApplyChanges(ctx context.Context, changes []schema.Change, opts ...migrate.PlanOption) error {
+	return sqlx.ApplyChanges(ctx, changes, p, opts...)
 }
 
 func (i *tinspect) InspectSchema(ctx context.Context, name string, opts *schema.InspectOptions) (*schema.Schema, error) {

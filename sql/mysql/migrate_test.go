@@ -175,6 +175,7 @@ func TestPlanChanges(t *testing.T) {
 	tests := []struct {
 		version  string
 		changes  []schema.Change
+		options  []migrate.PlanOption
 		wantPlan *migrate.Plan
 		wantErr  bool
 	}{
@@ -882,6 +883,45 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		// Empty qualifier.
+		{
+			changes: []schema.Change{
+				&schema.AddTable{T: schema.NewTable("t").SetSchema(schema.New("d")).AddColumns(schema.NewIntColumn("a", "int"))},
+			},
+			options: []migrate.PlanOption{
+				func(o *migrate.PlanOptions) { o.SchemaQualifier = new(string) },
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "CREATE TABLE `t` (`a` int NOT NULL)",
+						Reverse: "DROP TABLE `t`",
+					},
+				},
+			},
+		},
+		// Custom qualifier.
+		{
+			changes: []schema.Change{
+				&schema.AddTable{T: schema.NewTable("t").SetSchema(schema.New("d")).AddColumns(schema.NewIntColumn("a", "int"))},
+			},
+			options: []migrate.PlanOption{
+				func(o *migrate.PlanOptions) {
+					s := "other"
+					o.SchemaQualifier = &s
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "CREATE TABLE `other`.`t` (`a` int NOT NULL)",
+						Reverse: "DROP TABLE `other`.`t`",
+					},
+				},
+			},
+		},
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
@@ -890,7 +930,7 @@ func TestPlanChanges(t *testing.T) {
 			}
 			db, _, err := newMigrate(tt.version)
 			require.NoError(t, err)
-			plan, err := db.PlanChanges(context.Background(), "wantPlan", tt.changes)
+			plan, err := db.PlanChanges(context.Background(), "wantPlan", tt.changes, tt.options...)
 			if tt.wantErr {
 				require.Error(t, err, "expect plan to fail")
 				return

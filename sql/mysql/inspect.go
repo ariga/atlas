@@ -553,7 +553,8 @@ func (i *inspect) setAutoInc(s *showTable, t *schema.Table) error {
 // createStmt loads the CREATE TABLE statement for the table.
 func (i *inspect) createStmt(ctx context.Context, t *schema.Table) error {
 	c := &CreateStmt{}
-	rows, err := i.QueryContext(ctx, Build("SHOW CREATE TABLE").Table(t).String())
+	b := &sqlx.Builder{QuoteChar: '`'}
+	rows, err := i.QueryContext(ctx, b.P("SHOW CREATE TABLE").Table(t).String())
 	if err != nil {
 		return fmt.Errorf("query CREATE TABLE %q: %w", t.Name, err)
 	}
