@@ -123,7 +123,7 @@ module.exports = {
       {
         redirects: [
           {
-            to: '/getting-started/getting-started',
+            to: '/getting-started/',
             from: '/cli/getting-started/setting-up',
           },
           {
