@@ -614,17 +614,17 @@ func TestPostgres_CLI(t *testing.T) {
 			}`
 	t.Run("SchemaInspect", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
-			testCLISchemaInspect(t, h, t.dsn(), postgres.EvalHCL)
+			testCLISchemaInspect(t, h, t.dsn(""), postgres.EvalHCL)
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
-			testCLISchemaApply(t, h, t.dsn())
+			testCLISchemaApply(t, h, t.dsn(""))
 		})
 	})
 	t.Run("SchemaApplyDryRun", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
-			testCLISchemaApplyDry(t, h, t.dsn())
+			testCLISchemaApplyDry(t, h, t.dsn(""))
 		})
 	})
 	t.Run("SchemaApplyWithVars", func(t *testing.T) {
@@ -643,17 +643,17 @@ table "users" {
 }
 `
 		pgRun(t, func(t *pgTest) {
-			testCLISchemaApply(t, h, t.dsn(), "--var", "tenant=public")
+			testCLISchemaApply(t, h, t.dsn(""), "--var", "tenant=public")
 		})
 	})
 	t.Run("SchemaDiffRun", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
-			testCLISchemaDiff(t, t.dsn())
+			testCLISchemaDiff(t, t.dsn(""))
 		})
 	})
 	t.Run("SchemaApplyAutoApprove", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
-			testCLISchemaApplyAutoApprove(t, h, t.dsn())
+			testCLISchemaApplyAutoApprove(t, h, t.dsn(""))
 		})
 	})
 }
@@ -686,14 +686,14 @@ func TestPostgres_CLI_MultiSchema(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
 			t.dropSchemas("test2")
 			t.dropTables("users")
-			testCLIMultiSchemaInspect(t, h, t.dsn(), []string{"public", "test2"}, postgres.EvalHCL)
+			testCLIMultiSchemaInspect(t, h, t.dsn(""), []string{"public", "test2"}, postgres.EvalHCL)
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
 			t.dropSchemas("test2")
 			t.dropTables("users")
-			testCLIMultiSchemaApply(t, h, t.dsn(), []string{"public", "test2"}, postgres.EvalHCL)
+			testCLIMultiSchemaApply(t, h, t.dsn(""), []string{"public", "test2"}, postgres.EvalHCL)
 		})
 	})
 }
@@ -1119,11 +1119,14 @@ create table atlas_types_sanity
 }
 
 func (t *pgTest) url() string {
-	return t.dsn()
+	return t.dsn("")
 }
 
-func (t *pgTest) dsn() string {
-	return fmt.Sprintf("postgres://postgres:pass@localhost:%d/test?sslmode=disable", t.port)
+func (t *pgTest) dsn(schema string) string {
+	if schema == "" {
+		schema = "public"
+	}
+	return fmt.Sprintf("postgres://postgres:pass@localhost:%d/test?sslmode=disable&search_path=%s", t.port, schema)
 }
 
 func (t *pgTest) driver() migrate.Driver {
