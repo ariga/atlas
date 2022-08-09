@@ -18,6 +18,7 @@ import (
 	"testing"
 	"unicode"
 
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
@@ -645,7 +646,7 @@ func cmdSynced(ts *testscript.TestScript, neg bool, args []string, diff func(*te
 	}
 }
 
-func cmdApply(ts *testscript.TestScript, neg bool, args []string, apply func(context.Context, []schema.Change) error, diff func(*testscript.TestScript, string) ([]schema.Change, error)) {
+func cmdApply(ts *testscript.TestScript, neg bool, args []string, apply func(context.Context, []schema.Change, ...migrate.PlanOption) error, diff func(*testscript.TestScript, string) ([]schema.Change, error)) {
 	changes, err := diff(ts, args[0])
 	switch {
 	case err != nil && !neg:
