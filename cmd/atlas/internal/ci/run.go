@@ -43,14 +43,17 @@ type Runner struct {
 
 // Run executes the CI job.
 func (r *Runner) Run(ctx context.Context) error {
-	err := r.summary(ctx)
-	if err2 := r.ReportWriter.WriteReport(r.sum); err2 != nil {
-		if err != nil {
-			err2 = fmt.Errorf("%w: %v", err, err2)
+	switch err := r.summary(ctx); err.(type) {
+	case nil:
+		return r.ReportWriter.WriteReport(r.sum)
+	case *FileError:
+		if err := r.ReportWriter.WriteReport(r.sum); err != nil {
+			return err
 		}
-		err = err2
+		return SilentError{error: err}
+	default:
+		return err
 	}
-	return err
 }
 
 const (
@@ -67,7 +70,8 @@ func (r *Runner) summary(ctx context.Context) error {
 	switch err := migrate.Validate(r.Dir); {
 	case errors.Is(err, migrate.ErrChecksumNotFound):
 	case err != nil:
-		r.sum.Files = append(r.sum.Files, &FileReport{Name: migrate.HashFileName, Error: err})
+		err := &FileError{File: migrate.HashFileName, Err: err}
+		r.sum.Files = append(r.sum.Files, &FileReport{Name: migrate.HashFileName, Error: err.Error()})
 		return r.sum.StepError(stepIntegrityCheck, fmt.Sprintf("File %s is invalid", migrate.HashFileName), err)
 	default:
 		r.sum.StepResult(stepIntegrityCheck, fmt.Sprintf("File %s is valid", migrate.HashFileName), nil)
@@ -84,8 +88,8 @@ func (r *Runner) summary(ctx context.Context) error {
 	l := &DevLoader{Dev: r.Dev}
 	diff, err := l.LoadChanges(ctx, base, feat)
 	if err != nil {
-		if fr := (&FileError{}); errors.As(err, fr) {
-			r.sum.Files = append(r.sum.Files, &FileReport{Name: fr.File, Error: err})
+		if fr := (&FileError{}); errors.As(err, &fr) {
+			r.sum.Files = append(r.sum.Files, &FileReport{Name: fr.File, Error: err.Error()})
 		}
 		return r.sum.StepError(stepDetectChanges, "Failed loading changes on dev database", err)
 	}
@@ -100,7 +104,7 @@ func (r *Runner) summary(ctx context.Context) error {
 			Dev:      r.Dev,
 			Reporter: fr,
 		}); err != nil {
-			fr.Error = err
+			fr.Error = err.Error()
 		}
 		r.sum.Files = append(r.sum.Files, fr)
 		r.sum.StepResult(
@@ -152,35 +156,35 @@ type (
 	SummaryReport struct {
 		// Env holds the environment information.
 		Env struct {
-			Driver string         // Driver name.
-			URL    *sqlclient.URL // URL to dev database.
-			Dir    string         // Path to migration directory.
+			Driver string         `json:"Driver,omitempty"` // Driver name.
+			URL    *sqlclient.URL `json:"URL,omitempty"`    // URL to dev database.
+			Dir    string         `json:"Dir,omitempty"`    // Path to migration directory.
 		}
 
 		// Steps of the analysis. Added in verbose mode.
 		Steps []struct {
-			Name   string // Step name.
-			Text   string // Step description.
-			Error  error  // Error that cause the execution to halt.
-			Result any    // Result of the step. For example, a diagnostic.
+			Name   string `json:"Name,omitempty"`   // Step name.
+			Text   string `json:"Text,omitempty"`   // Step description.
+			Error  string `json:"Error,omitempty"`  // Error that cause the execution to halt.
+			Result any    `json:"Result,omitempty"` // Result of the step. For example, a diagnostic.
 		}
 
 		// Schema versions found by the runner.
 		Schema struct {
-			Current string // Current schema.
-			Desired string // Desired schema.
+			Current string `json:"Current,omitempty"` // Current schema.
+			Desired string `json:"Desired,omitempty"` // Desired schema.
 		}
 
 		// Files reports. Non-empty in case there are findings.
-		Files []*FileReport
+		Files []*FileReport `json:"Files,omitempty"`
 	}
 
 	// FileReport contains a summary of the analysis of a single file.
 	FileReport struct {
-		Name    string            // Name of the file.
-		Text    string            // Contents of the file.
-		Reports []sqlcheck.Report // List of reports.
-		Error   error             // File specific error.
+		Name    string            `json:"Name,omitempty"`    // Name of the file.
+		Text    string            `json:"Text,omitempty"`    // Contents of the file.
+		Reports []sqlcheck.Report `json:"Reports,omitempty"` // List of reports.
+		Error   string            `json:"Error,omitempty"`   // File specific error.
 	}
 
 	// ReportWriter is a type of report writer that writes a summary of analysis reports.
@@ -193,19 +197,24 @@ type (
 		T *template.Template
 		W io.Writer
 	}
+
+	// SilentError is returned in case the wrapped error is already
+	// printed by the runner and should not be printed by its caller
+	SilentError struct{ error }
 )
 
 // NewSummaryReport returns a new SummaryReport.
 func NewSummaryReport(c *sqlclient.Client, dir migrate.Dir) *SummaryReport {
 	sum := &SummaryReport{
 		Env: struct {
-			Driver string
-			URL    *sqlclient.URL
-			Dir    string
+			Driver string         `json:"Driver,omitempty"`
+			URL    *sqlclient.URL `json:"URL,omitempty"`
+			Dir    string         `json:"Dir,omitempty"`
 		}{
 			Driver: c.Name,
 			URL:    c.URL,
 		},
+		Files: make([]*FileReport, 0),
 	}
 	if p, ok := dir.(interface{ Path() string }); ok {
 		sum.Env.Dir = p.Path()
@@ -216,10 +225,10 @@ func NewSummaryReport(c *sqlclient.Client, dir migrate.Dir) *SummaryReport {
 // StepResult appends step result to the summary.
 func (f *SummaryReport) StepResult(name, text string, result any) {
 	f.Steps = append(f.Steps, struct {
-		Name   string
-		Text   string
-		Error  error
-		Result any
+		Name   string `json:"Name,omitempty"`
+		Text   string `json:"Text,omitempty"`
+		Error  string `json:"Error,omitempty"`
+		Result any    `json:"Result,omitempty"`
 	}{
 		Name:   name,
 		Text:   text,
@@ -230,14 +239,14 @@ func (f *SummaryReport) StepResult(name, text string, result any) {
 // StepError appends step error to the summary.
 func (f *SummaryReport) StepError(name, text string, err error) error {
 	f.Steps = append(f.Steps, struct {
-		Name   string
-		Text   string
-		Error  error
-		Result any
+		Name   string `json:"Name,omitempty"`
+		Text   string `json:"Text,omitempty"`
+		Error  string `json:"Error,omitempty"`
+		Result any    `json:"Result,omitempty"`
 	}{
 		Name:  name,
 		Text:  text,
-		Error: err,
+		Error: err.Error(),
 	})
 	return err
 }
