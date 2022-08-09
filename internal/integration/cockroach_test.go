@@ -8,9 +8,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"io"
 	"log"
 	"strings"
+	"sync"
 	"testing"
 
 	"ariga.io/atlas/sql/migrate"
@@ -31,50 +31,35 @@ type crdbTest struct {
 	rrw     migrate.RevisionReadWriter
 	version string
 	port    int
+	once    *sync.Once
 }
 
-var crdbTests = struct {
-	drivers map[string]*crdbTest
-	ports   map[string]int
-}{
-	drivers: make(map[string]*crdbTest),
-	ports: map[string]int{
-		"cockroach": 26257,
-	},
-}
-
-func crdbInit(d string) []io.Closer {
-	var cs []io.Closer
-	if d != "" {
-		p, ok := crdbTests.ports[d]
-		if ok {
-			crdbTests.ports = map[string]int{d: p}
-		} else {
-			crdbTests.ports = make(map[string]int)
-		}
-	}
-	for version, port := range crdbTests.ports {
-		db, err := sql.Open("postgres", fmt.Sprintf("host=localhost port=%d user=root dbname=defaultdb password=pass sslmode=disable", port))
-		if err != nil {
-			log.Fatalln(err)
-		}
-		cs = append(cs, db)
-
-		drv, err := postgres.Open(db)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		crdbTests.drivers[version] = &crdbTest{db: db, drv: drv, version: version, port: port, rrw: &rrw{}}
-	}
-	return cs
+var crdbTests = map[string]*crdbTest{
+	"cockroach": {port: 26257, once: &sync.Once{}},
 }
 
 func crdbRun(t *testing.T, fn func(*crdbTest)) {
-	for version, tt := range crdbTests.drivers {
-		t.Run(version, func(t *testing.T) {
-			tt := &crdbTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port, rrw: tt.rrw}
-			fn(tt)
-		})
+	for version, tt := range crdbTests {
+		if flagDialect == "" || flagDialect == version {
+			t.Run(version, func(t *testing.T) {
+				tt.once.Do(func() {
+					var err error
+					tt.version = version
+					tt.rrw = &rrw{}
+					tt.db, err = sql.Open("postgres", fmt.Sprintf("host=localhost port=%d user=root dbname=defaultdb password=pass sslmode=disable", tt.port))
+					if err != nil {
+						log.Fatalln(err)
+					}
+					dbs = append(dbs, tt.db) // close connection after all tests have been run
+					tt.drv, err = postgres.Open(tt.db)
+					if err != nil {
+						log.Fatalln(err)
+					}
+				})
+				tt := &crdbTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port, rrw: tt.rrw}
+				fn(tt)
+			})
+		}
 	}
 }
 

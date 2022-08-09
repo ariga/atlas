@@ -8,9 +8,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"io"
 	"log"
 	"strings"
+	"sync"
 	"testing"
 
 	"ariga.io/atlas/sql/migrate"
@@ -30,53 +30,39 @@ type pgTest struct {
 	rrw     migrate.RevisionReadWriter
 	version string
 	port    int
+	once    *sync.Once
 }
 
-var pgTests = struct {
-	drivers map[string]*pgTest
-	ports   map[string]int
-}{
-	drivers: make(map[string]*pgTest),
-	ports: map[string]int{
-		"postgres10": 5430,
-		"postgres11": 5431,
-		"postgres12": 5432,
-		"postgres13": 5433,
-		"postgres14": 5434,
-	},
-}
-
-func pgInit(d string) []io.Closer {
-	var cs []io.Closer
-	if d != "" {
-		p, ok := pgTests.ports[d]
-		if ok {
-			pgTests.ports = map[string]int{d: p}
-		} else {
-			pgTests.ports = make(map[string]int)
-		}
-	}
-	for version, port := range pgTests.ports {
-		db, err := sql.Open("postgres", fmt.Sprintf("host=localhost port=%d user=postgres dbname=test password=pass sslmode=disable", port))
-		if err != nil {
-			log.Fatalln(err)
-		}
-		cs = append(cs, db)
-		drv, err := postgres.Open(db)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		pgTests.drivers[version] = &pgTest{db: db, drv: drv, version: version, port: port, rrw: &rrw{}}
-	}
-	return cs
+var pgTests = map[string]*pgTest{
+	"postgres10": {port: 5430, once: &sync.Once{}},
+	"postgres11": {port: 5431, once: &sync.Once{}},
+	"postgres12": {port: 5432, once: &sync.Once{}},
+	"postgres13": {port: 5433, once: &sync.Once{}},
+	"postgres14": {port: 5434, once: &sync.Once{}},
 }
 
 func pgRun(t *testing.T, fn func(*pgTest)) {
-	for version, tt := range pgTests.drivers {
-		t.Run(version, func(t *testing.T) {
-			tt := &pgTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port, rrw: tt.rrw}
-			fn(tt)
-		})
+	for version, tt := range pgTests {
+		if flagDialect == "" || flagDialect == version {
+			t.Run(version, func(t *testing.T) {
+				tt.once.Do(func() {
+					var err error
+					tt.version = version
+					tt.rrw = &rrw{}
+					tt.db, err = sql.Open("postgres", fmt.Sprintf("host=localhost port=%d user=postgres dbname=test password=pass sslmode=disable", tt.port))
+					if err != nil {
+						log.Fatalln(err)
+					}
+					dbs = append(dbs, tt.db) // close connection after all tests have been run
+					tt.drv, err = postgres.Open(tt.db)
+					if err != nil {
+						log.Fatalln(err)
+					}
+				})
+				tt := &pgTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port, rrw: tt.rrw}
+				fn(tt)
+			})
+		}
 	}
 }
 

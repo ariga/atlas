@@ -8,8 +8,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"io"
 	"log"
+	"sync"
 	"testing"
 
 	"ariga.io/atlas/sql/mysql"
@@ -25,45 +25,33 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var tidbTests = struct {
-	drivers map[string]*myTest
-	ports   map[string]int
-}{
-	drivers: make(map[string]*myTest),
-	ports:   map[string]int{"tidb5": 4309, "tidb6": 4310},
-}
-
-func tidbInit(d string) []io.Closer {
-	var cs []io.Closer
-	if d != "" {
-		p, ok := tidbTests.ports[d]
-		if ok {
-			tidbTests.ports = map[string]int{d: p}
-		} else {
-			tidbTests.ports = make(map[string]int)
-		}
-	}
-	for version, port := range tidbTests.ports {
-		db, err := sql.Open("mysql", fmt.Sprintf("root@tcp(localhost:%d)/test?parseTime=True", port))
-		if err != nil {
-			log.Fatalln(err)
-		}
-		cs = append(cs, db)
-		drv, err := mysql.Open(db)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		tidbTests.drivers[version] = &myTest{db: db, drv: drv, version: version, port: port, rrw: &rrw{}}
-	}
-	return cs
+var tidbTests = map[string]*myTest{
+	"tidb5": {port: 4309, once: &sync.Once{}},
+	"tidb6": {port: 4310, once: &sync.Once{}},
 }
 
 func tidbRun(t *testing.T, fn func(*myTest)) {
-	for version, tt := range tidbTests.drivers {
-		t.Run(version, func(t *testing.T) {
-			tt := &myTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port, rrw: tt.rrw}
-			fn(tt)
-		})
+	for version, tt := range tidbTests {
+		if flagDialect == "" || flagDialect == version {
+			t.Run(version, func(t *testing.T) {
+				tt.once.Do(func() {
+					var err error
+					tt.version = version
+					tt.rrw = &rrw{}
+					tt.db, err = sql.Open("mysql", fmt.Sprintf("root@tcp(localhost:%d)/test?parseTime=True", tt.port))
+					if err != nil {
+						log.Fatalln(err)
+					}
+					dbs = append(dbs, tt.db) // close connection after all tests have been run
+					tt.drv, err = mysql.Open(tt.db)
+					if err != nil {
+						log.Fatalln(err)
+					}
+				})
+				tt := &myTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port, rrw: tt.rrw}
+				fn(tt)
+			})
+		}
 	}
 }
 
