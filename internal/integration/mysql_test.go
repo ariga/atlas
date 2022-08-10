@@ -42,7 +42,7 @@ var myTests = map[string]*myTest{
 
 func myRun(t *testing.T, fn func(*myTest)) {
 	for version, tt := range myTests {
-		if flagDialect == "" || flagDialect == version {
+		if flagVersion == "" || flagVersion == version {
 			t.Run(version, func(t *testing.T) {
 				tt.once.Do(func() {
 					var err error

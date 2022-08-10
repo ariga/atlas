@@ -1,0 +1,51 @@
+only postgres12
+
+# make sure sum file is correct
+atlas migrate hash --force
+
+# for clean database
+atlas migrate status --url URL --revisions-schema $db
+cmp stdout status_clean.txt
+
+# apply one
+atlas migrate apply --url URL --revisions-schema $db 1
+atlas migrate status --url URL --revisions-schema $db
+cmp stdout status_one_applied.txt
+
+# apply next (and last)
+atlas migrate apply --url URL --revisions-schema $db 1
+atlas migrate status --url URL --revisions-schema $db
+cmp stdout status_ok.txt
+
+-- migrations/1.sql --
+CREATE TABLE "users" ("id" bigint NOT NULL GENERATED ALWAYS AS IDENTITY, PRIMARY KEY ("id"));
+
+-- migrations/2.sql --
+ALTER TABLE "users" ADD COLUMN "happy" boolean NOT NULL DEFAULT true;
+
+-- broken_migration.sql --
+CREATE TABLE "users" ("id" bigint NOT NULL GENERATED ALWAYS AS IDENTITY, PRIMARY KEY ("id"));
+THIS LINE ADDS A SYNTAX ERROR;
+
+-- fixed_migration.sql --
+CREATE TABLE "users" ("id" bigint NOT NULL GENERATED ALWAYS AS IDENTITY, PRIMARY KEY ("id"));
+ALTER TABLE "users" ADD COLUMN "happy" boolean NOT NULL DEFAULT true;
+
+-- status_clean.txt --
+Migration Status: PENDING
+  -- Current Version:  No version applied yet
+  -- Next Version:     1
+  -- Executed Files:   0
+  -- Pending Files:    2
+-- status_one_applied.txt --
+Migration Status: PENDING
+  -- Current Version:  1
+  -- Next Version:     2
+  -- Executed Files:   1
+  -- Pending Files:    1
+-- status_ok.txt --
+Migration Status: OK
+  -- Current Version:  2
+  -- Next Version:     Already at latest version
+  -- Executed Files:   2
+  -- Pending Files:    0

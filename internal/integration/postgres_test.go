@@ -43,7 +43,7 @@ var pgTests = map[string]*pgTest{
 
 func pgRun(t *testing.T, fn func(*pgTest)) {
 	for version, tt := range pgTests {
-		if flagDialect == "" || flagDialect == version {
+		if flagVersion == "" || flagVersion == version {
 			t.Run(version, func(t *testing.T) {
 				tt.once.Do(func() {
 					var err error
