@@ -137,7 +137,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for mysql56
         working-directory: internal/integration
-        run: go test -race -count=2 -v -run="MySQL.*/mysql56|MySQL.*/.*/mysql56|MySQL.*/.*/.*/mysql56" -dialect=mysql56 ./...
+        run: go test -race -count=2 -v -run="MySQL" -dialect="mysql56" ./...
   
   integration-mysql57:
     runs-on: ubuntu-latest
@@ -168,7 +168,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for mysql57
         working-directory: internal/integration
-        run: go test -race -count=2 -v -run="MySQL.*/mysql57|MySQL.*/.*/mysql57|MySQL.*/.*/.*/mysql57" -dialect=mysql57 ./...
+        run: go test -race -count=2 -v -run="MySQL" -dialect="mysql57" ./...
   
   integration-mysql8:
     runs-on: ubuntu-latest
@@ -199,7 +199,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for mysql8
         working-directory: internal/integration
-        run: go test -race -count=2 -v -run="MySQL.*/mysql8|MySQL.*/.*/mysql8|MySQL.*/.*/.*/mysql8" -dialect=mysql8 ./...
+        run: go test -race -count=2 -v -run="MySQL" -dialect="mysql8" ./...
   
   integration-maria107:
     runs-on: ubuntu-latest
@@ -230,7 +230,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for maria107
         working-directory: internal/integration
-        run: go test -race -count=2 -v -run="MySQL.*/maria107|MySQL.*/.*/maria107|MySQL.*/.*/.*/maria107" -dialect=maria107 ./...
+        run: go test -race -count=2 -v -run="MySQL" -dialect="maria107" ./...
   
   integration-maria102:
     runs-on: ubuntu-latest
@@ -261,7 +261,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for maria102
         working-directory: internal/integration
-        run: go test -race -count=2 -v -run="MySQL.*/maria102|MySQL.*/.*/maria102|MySQL.*/.*/.*/maria102" -dialect=maria102 ./...
+        run: go test -race -count=2 -v -run="MySQL" -dialect="maria102" ./...
   
   integration-maria103:
     runs-on: ubuntu-latest
@@ -292,7 +292,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for maria103
         working-directory: internal/integration
-        run: go test -race -count=2 -v -run="MySQL.*/maria103|MySQL.*/.*/maria103|MySQL.*/.*/.*/maria103" -dialect=maria103 ./...
+        run: go test -race -count=2 -v -run="MySQL" -dialect="maria103" ./...
   
   integration-postgres10:
     runs-on: ubuntu-latest
@@ -322,7 +322,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for postgres10
         working-directory: internal/integration
-        run: go test -race -count=2 -v -run="Postgres.*/postgres10|Postgres.*/.*/postgres10|Postgres.*/.*/.*/postgres10" -dialect=postgres10 ./...
+        run: go test -race -count=2 -v -run="Postgres" -dialect="postgres10" ./...
   
   integration-postgres11:
     runs-on: ubuntu-latest
@@ -352,7 +352,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for postgres11
         working-directory: internal/integration
-        run: go test -race -count=2 -v -run="Postgres.*/postgres11|Postgres.*/.*/postgres11|Postgres.*/.*/.*/postgres11" -dialect=postgres11 ./...
+        run: go test -race -count=2 -v -run="Postgres" -dialect="postgres11" ./...
   
   integration-postgres12:
     runs-on: ubuntu-latest
@@ -382,7 +382,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for postgres12
         working-directory: internal/integration
-        run: go test -race -count=2 -v -run="Postgres.*/postgres12|Postgres.*/.*/postgres12|Postgres.*/.*/.*/postgres12" -dialect=postgres12 ./...
+        run: go test -race -count=2 -v -run="Postgres" -dialect="postgres12" ./...
   
   integration-postgres13:
     runs-on: ubuntu-latest
@@ -412,7 +412,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for postgres13
         working-directory: internal/integration
-        run: go test -race -count=2 -v -run="Postgres.*/postgres13|Postgres.*/.*/postgres13|Postgres.*/.*/.*/postgres13" -dialect=postgres13 ./...
+        run: go test -race -count=2 -v -run="Postgres" -dialect="postgres13" ./...
   
   integration-postgres14:
     runs-on: ubuntu-latest
@@ -442,7 +442,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for postgres14
         working-directory: internal/integration
-        run: go test -race -count=2 -v -run="Postgres.*/postgres14|Postgres.*/.*/postgres14|Postgres.*/.*/.*/postgres14" -dialect=postgres14 ./...
+        run: go test -race -count=2 -v -run="Postgres" -dialect="postgres14" ./...
   
   integration-tidb5:
     runs-on: ubuntu-latest
@@ -466,7 +466,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for tidb5
         working-directory: internal/integration
-        run: go test -race -count=2 -v -run="TiDB.*/tidb5|TiDB.*/.*/tidb5|TiDB.*/.*/.*/tidb5" -dialect=tidb5 ./...
+        run: go test -race -count=2 -v -run="TiDB" -dialect="tidb5" ./...
   
   integration-tidb6:
     runs-on: ubuntu-latest
@@ -490,7 +490,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for tidb6
         working-directory: internal/integration
-        run: go test -race -count=2 -v -run="TiDB.*/tidb6|TiDB.*/.*/tidb6|TiDB.*/.*/.*/tidb6" -dialect=tidb6 ./...
+        run: go test -race -count=2 -v -run="TiDB" -dialect="tidb6" ./...
   
   integration-sqlite:
     runs-on: ubuntu-latest
@@ -508,7 +508,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for sqlite
         working-directory: internal/integration
-        run: go test -race -count=2 -v -run="SQLite.*" -dialect=sqlite ./...
+        run: go test -race -count=2 -v -run="SQLite.*" -dialect="sqlite" ./...
   
   integration-cockroach:
     runs-on: ubuntu-latest
@@ -532,5 +532,5 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run integration tests for cockroach
         working-directory: internal/integration
-        run: go test -race -count=2 -v -run="Cockroach.*/Cockroach|Cockroach.*/.*/Cockroach|Cockroach.*/.*/.*/Cockroach" -dialect=cockroach ./...
+        run: go test -race -count=2 -v -run="Cockroach" -dialect="cockroach" ./...
   

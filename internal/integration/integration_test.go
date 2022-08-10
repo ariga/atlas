@@ -31,21 +31,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var (
+	dbs         []io.Closer
+	flagDialect string
+)
+
 func TestMain(m *testing.M) {
-	var dialect string
-	flag.StringVar(&dialect, "dialect", "", "[mysql56, postgres10, tidb5, ...] what dialect (version) to test")
+	flag.StringVar(&flagDialect, "dialect", "", "[mysql56, postgres10, tidb5, ...] what dialect (version) to test")
 	flag.Parse()
-	var dbs []io.Closer
-	dbs = append(dbs, myInit(dialect)...)
-	dbs = append(dbs, pgInit(dialect)...)
-	dbs = append(dbs, tidbInit(dialect)...)
-	dbs = append(dbs, crdbInit(dialect)...)
-	defer func() {
-		for _, db := range dbs {
-			db.Close()
-		}
-	}()
-	os.Exit(m.Run())
+	code := m.Run()
+	for _, db := range dbs {
+		db.Close()
+	}
+	os.Exit(code)
 }
 
 // T holds the elements common between dialect tests.
