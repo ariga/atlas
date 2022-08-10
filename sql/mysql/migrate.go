@@ -67,6 +67,11 @@ type state struct {
 // plan builds the migration plan for applying the
 // given changes on the attached connection.
 func (s *state) plan(changes []schema.Change) error {
+	if s.SchemaQualifier != nil {
+		if err := sqlx.CheckChangesScope(changes); err != nil {
+			return err
+		}
+	}
 	planned, err := s.topLevel(changes)
 	if err != nil {
 		return err

@@ -1097,6 +1097,17 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		// Empty qualifier in multi-schema mode should fail.
+		{
+			changes: []schema.Change{
+				&schema.AddTable{T: schema.NewTable("t1").SetSchema(schema.New("s1")).AddColumns(schema.NewIntColumn("a", "int"))},
+				&schema.AddTable{T: schema.NewTable("t2").SetSchema(schema.New("s2")).AddColumns(schema.NewIntColumn("a", "int"))},
+			},
+			options: []migrate.PlanOption{
+				func(o *migrate.PlanOptions) { o.SchemaQualifier = new(string) },
+			},
+			wantErr: true,
+		},
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
