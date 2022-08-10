@@ -709,9 +709,9 @@ table "posts" {
 }
 `
 		err = os.WriteFile(filepath.Join(dir, "schema.hcl"), []byte(hcl), 0600)
-		diff := func() string {
+		diff := func(name string) string {
 			out, err := exec.Command(
-				bin, "migrate", "diff",
+				bin, "migrate", "diff", name,
 				"--dir", fmt.Sprintf("file://%s", filepath.Join(dir, "migrations")),
 				"--to", fmt.Sprintf("file://%s", filepath.Join(dir, "schema.hcl")),
 				"--dev-url", fmt.Sprintf("postgres://postgres:pass@localhost:%d/migrate_diff?sslmode=disable", t.port),
@@ -719,7 +719,7 @@ table "posts" {
 			require.NoError(t, err, string(out))
 			return strings.TrimSpace(string(out))
 		}
-		require.Empty(t, diff())
+		require.Empty(t, diff("initial"))
 
 		// Expect one file and read its contents.
 		files, err := os.ReadDir(filepath.Join(dir, "migrations"))
@@ -736,7 +736,26 @@ CREATE TABLE "public"."users" ("id" integer NOT NULL);
 -- create "posts" table
 CREATE TABLE "other"."posts" ("id" integer NOT NULL);
 `, string(b))
-		require.Equal(t, "The migration directory is synced with the desired state, no changes to be made", diff())
+		require.Equal(t, "The migration directory is synced with the desired state, no changes to be made", diff("no_change"))
+
+		// Append a change to the schema and expect a migration to be created.
+		hcl += `
+table "other" "users" {
+	schema = schema.other
+	column "id" { type = integer }
+}`
+		err = os.WriteFile(filepath.Join(dir, "schema.hcl"), []byte(hcl), 0600)
+		require.Empty(t, diff("second"))
+		require.Equal(t, "The migration directory is synced with the desired state, no changes to be made", diff("no_change"))
+		files, err = os.ReadDir(filepath.Join(dir, "migrations"))
+		require.NoError(t, err)
+		require.Equal(t, 3, len(files), dir)
+		b, err = os.ReadFile(filepath.Join(dir, "migrations", files[1].Name()))
+		require.NoError(t, err)
+		require.Equal(t,
+			`-- create "users" table
+CREATE TABLE "other"."users" ("id" integer NOT NULL);
+`, string(b))
 	})
 }
 
