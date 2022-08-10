@@ -291,6 +291,15 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	defer c.Close()
+	// Acquire a lock.
+	if l, ok := c.Driver.(schema.Locker); ok {
+		unlock, err := l.Lock(cmd.Context(), "atlas_migrate_execute", 0)
+		if err != nil {
+			return fmt.Errorf("acquiring database lock: %w", err)
+		}
+		// If unlocking fails notify the user about it.
+		defer cobra.CheckErr(unlock())
+	}
 	// Get the correct log format and destination. Currently, only os.Stdout is supported.
 	l, err := logFormat(cmd.OutOrStdout())
 	if err != nil {
@@ -317,11 +326,6 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	unlock, err := ex.Lock(cmd.Context())
-	if err != nil {
-		return err
-	}
-	defer unlock()
 	pending, err := ex.Pending(cmd.Context())
 	if err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
 		return err
@@ -409,7 +413,7 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	if l, ok := dev.Driver.(schema.Locker); ok {
 		unlock, err := l.Lock(cmd.Context(), "atlas_migrate_diff", 0)
 		if err != nil {
-			return err
+			return fmt.Errorf("acquiring database lock: %w", err)
 		}
 		// If unlocking fails notify the user about it.
 		defer cobra.CheckErr(unlock())

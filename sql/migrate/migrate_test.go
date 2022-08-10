@@ -59,7 +59,7 @@ func TestPlanner_WritePlan(t *testing.T) {
 
 func TestPlanner_Plan(t *testing.T) {
 	var (
-		drv = &lockMockDriver{&mockDriver{}}
+		drv = &mockDriver{}
 		ctx = context.Background()
 	)
 	d, err := migrate.NewLocalDir(t.TempDir())
@@ -89,7 +89,7 @@ func TestPlanner_Plan(t *testing.T) {
 
 func TestPlanner_PlanSchema(t *testing.T) {
 	var (
-		drv = &lockMockDriver{&mockDriver{}}
+		drv = &mockDriver{}
 		ctx = context.Background()
 	)
 	d, err := migrate.NewLocalDir(t.TempDir())
@@ -125,43 +125,24 @@ func TestExecutor_Replay(t *testing.T) {
 	d, err := migrate.NewLocalDir("testdata/migrate")
 	require.NoError(t, err)
 
-	// Locking not supported.
-	_, err = migrate.NewExecutor(&mockDriver{}, d, migrate.NopRevisionReadWriter{})
-	require.ErrorIs(t, err, migrate.ErrLockUnsupported)
-
-	drv := &lockMockDriver{&mockDriver{}}
+	drv := &mockDriver{}
 	ex, err := migrate.NewExecutor(drv, d, migrate.NopRevisionReadWriter{})
 	require.NoError(t, err)
 
 	_, err = ex.Replay(ctx, migrate.RealmConn(drv, nil))
 	require.NoError(t, err)
 	require.Equal(t, []string{"DROP TABLE IF EXISTS t;", "CREATE TABLE t(c int);"}, drv.executed)
-	require.Equal(t, 2, drv.lockCounter)
-	require.Equal(t, 2, drv.unlockCounter)
-	require.True(t, drv.released())
-
-	// Does not work if locked.
-	drv.locks = map[string]struct{}{"atlas_migration_directory_state": {}}
-	_, err = ex.Replay(ctx, migrate.RealmConn(drv, nil))
-	require.EqualError(t, err, "sql/migrate: acquiring database lock: lockErr")
-	require.Equal(t, 2, drv.lockCounter)
-	require.Equal(t, 2, drv.unlockCounter)
-	require.False(t, drv.released())
-	drv.locks = make(map[string]struct{})
 
 	// Does not work if database is not clean.
 	drv.dirty = true
 	drv.realm = schema.Realm{Schemas: []*schema.Schema{{Name: "schema"}}}
 	_, err = ex.Replay(ctx, migrate.RealmConn(drv, nil))
 	require.ErrorAs(t, err, &migrate.NotCleanError{})
-	require.Equal(t, 3, drv.lockCounter)
-	require.Equal(t, 3, drv.unlockCounter)
-	require.True(t, drv.released())
 }
 
 func TestExecutor_Pending(t *testing.T) {
 	var (
-		drv  = &lockMockDriver{&mockDriver{}}
+		drv  = &mockDriver{}
 		rrw  = &mockRevisionReadWriter{}
 		log  = &mockLogger{}
 		rev1 = &migrate.Revision{
@@ -232,23 +213,18 @@ func TestExecutor(t *testing.T) {
 	require.EqualError(t, err, "sql/migrate: execute: no revision storage given")
 	require.Nil(t, ex)
 
-	// Does not work if no locking mechanism is provided.
-	ex, err = migrate.NewExecutor(&mockDriver{}, dir, &mockRevisionReadWriter{})
-	require.ErrorIs(t, err, migrate.ErrLockUnsupported)
-	require.Nil(t, ex)
-
 	// Does not operate on invalid migration dir.
 	dir, err = migrate.NewLocalDir(t.TempDir())
 	require.NoError(t, err)
 	require.NoError(t, dir.WriteFile("atlas.sum", hash))
-	ex, err = migrate.NewExecutor(&lockMockDriver{&mockDriver{}}, dir, &mockRevisionReadWriter{})
+	ex, err = migrate.NewExecutor(&mockDriver{}, dir, &mockRevisionReadWriter{})
 	require.NoError(t, err)
 	require.NotNil(t, ex)
 	require.ErrorIs(t, ex.ExecuteN(context.Background(), 0), migrate.ErrChecksumMismatch)
 
 	// Prerequisites.
 	var (
-		drv  = &lockMockDriver{&mockDriver{}}
+		drv  = &mockDriver{}
 		rrw  = &mockRevisionReadWriter{}
 		log  = &mockLogger{}
 		rev1 = &migrate.Revision{
@@ -288,9 +264,6 @@ func TestExecutor(t *testing.T) {
 		migrate.LogStmt{SQL: "ALTER TABLE t_sub ADD c2 int;"},
 		migrate.LogDone{},
 	}, []migrate.LogEntry(*log))
-	require.Equal(t, drv.lockCounter, 1)
-	require.Equal(t, drv.unlockCounter, 1)
-	require.True(t, drv.released())
 
 	// Partly is pending.
 	p, err := ex.Pending(context.Background())
@@ -300,20 +273,17 @@ func TestExecutor(t *testing.T) {
 
 	// Apply one by one.
 	*rrw = mockRevisionReadWriter{}
-	*drv = lockMockDriver{&mockDriver{}}
+	*drv = mockDriver{}
 
 	require.NoError(t, ex.ExecuteN(context.Background(), 1))
-	require.Equal(t, drv.executed, []string{"CREATE TABLE t_sub(c int);", "ALTER TABLE t_sub ADD c1 int;"})
+	require.Equal(t, []string{"CREATE TABLE t_sub(c int);", "ALTER TABLE t_sub ADD c1 int;"}, drv.executed)
 	requireEqualRevisions(t, migrate.Revisions{rev1}, migrate.Revisions(*rrw))
 
 	require.NoError(t, ex.ExecuteN(context.Background(), 1))
-	require.Equal(t, drv.executed, []string{
+	require.Equal(t, []string{
 		"CREATE TABLE t_sub(c int);", "ALTER TABLE t_sub ADD c1 int;", "ALTER TABLE t_sub ADD c2 int;",
-	})
+	}, drv.executed)
 	requireEqualRevisions(t, migrate.Revisions{rev1, rev2}, migrate.Revisions(*rrw))
-	require.Equal(t, 2, drv.lockCounter)
-	require.Equal(t, 2, drv.unlockCounter)
-	require.True(t, drv.released())
 
 	// Partly is pending.
 	p, err = ex.Pending(context.Background())
@@ -323,7 +293,7 @@ func TestExecutor(t *testing.T) {
 
 	// Suppose first revision is already executed, only execute second migration file.
 	*rrw = mockRevisionReadWriter(migrate.Revisions{rev1})
-	*drv = lockMockDriver{&mockDriver{}}
+	*drv = mockDriver{}
 
 	require.NoError(t, ex.ExecuteN(context.Background(), 1))
 	require.Equal(t, []string{"ALTER TABLE t_sub ADD c2 int;"}, drv.executed)
@@ -335,13 +305,9 @@ func TestExecutor(t *testing.T) {
 	require.Len(t, p, 1)
 	require.Equal(t, "3_partly.sql", p[0].Name())
 
-	require.Equal(t, 1, drv.lockCounter)
-	require.Equal(t, 1, drv.unlockCounter)
-	require.True(t, drv.released())
-
 	// Failing, counter will be correct.
 	*rrw = mockRevisionReadWriter(migrate.Revisions{rev1, rev2})
-	*drv = lockMockDriver{&mockDriver{}}
+	*drv = mockDriver{}
 	drv.failOn(2, errors.New("this is an error"))
 	require.ErrorContains(t, ex.ExecuteN(context.Background(), 1), "this is an error")
 	revs, err := rrw.ReadRevisions(context.Background())
@@ -362,7 +328,7 @@ func TestExecutor(t *testing.T) {
 
 	// Re-attempting to migrate will pick up where the execution was left off.
 	revs[len(revs)-1].PartialHashes[0] = h
-	*drv = lockMockDriver{&mockDriver{}}
+	*drv = mockDriver{}
 	require.NoError(t, ex.ExecuteN(context.Background(), 1))
 	require.Equal(t, []string{"ALTER TABLE t_sub ADD c4 int;"}, drv.executed)
 
@@ -373,7 +339,7 @@ func TestExecutor(t *testing.T) {
 func TestExecutor_Baseline(t *testing.T) {
 	var (
 		rrw mockRevisionReadWriter
-		drv = &lockMockDriver{&mockDriver{dirty: true}}
+		drv = &mockDriver{dirty: true}
 		log = &mockLogger{}
 	)
 	dir, err := migrate.NewLocalDir(filepath.Join("testdata/migrate", "sub"))
@@ -417,7 +383,7 @@ func TestExecutor_Baseline(t *testing.T) {
 
 func TestExecutor_FromVersion(t *testing.T) {
 	var (
-		drv = &lockMockDriver{&mockDriver{}}
+		drv = &mockDriver{}
 		log = &mockLogger{}
 		rrw = &mockRevisionReadWriter{
 			{
@@ -455,19 +421,15 @@ func TestExecutor_FromVersion(t *testing.T) {
 type (
 	mockDriver struct {
 		migrate.Driver
-		plan          *migrate.Plan
-		changes       []schema.Change
-		applied       []schema.Change
-		realm         schema.Realm
-		executed      []string
-		locks         map[string]struct{}
-		lockCounter   int
-		unlockCounter int
-		failCounter   int
-		failWith      error
-		dirty         bool
+		plan        *migrate.Plan
+		changes     []schema.Change
+		applied     []schema.Change
+		realm       schema.Realm
+		executed    []string
+		failCounter int
+		failWith    error
+		dirty       bool
 	}
-	lockMockDriver struct{ *mockDriver }
 )
 
 // the nth call to ExecContext will fail with the given error.
@@ -531,26 +493,6 @@ func (m *mockDriver) CheckClean(context.Context, *migrate.TableIdent) error {
 		return &migrate.NotCleanError{Reason: "found table"}
 	}
 	return nil
-}
-
-func (m *lockMockDriver) Lock(_ context.Context, name string, _ time.Duration) (schema.UnlockFunc, error) {
-	if _, ok := m.locks[name]; ok {
-		return nil, errors.New("lockErr")
-	}
-	m.lockCounter++
-	if m.locks == nil {
-		m.locks = make(map[string]struct{})
-	}
-	m.locks[name] = struct{}{}
-	return func() error {
-		m.unlockCounter++
-		delete(m.locks, name)
-		return nil
-	}, nil
-}
-
-func (m *lockMockDriver) released() bool {
-	return len(m.locks) == 0
 }
 
 type mockRevisionReadWriter migrate.Revisions
