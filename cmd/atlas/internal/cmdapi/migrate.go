@@ -45,7 +45,6 @@ const (
 	migrateFlagDryRun           = "dry-run"
 	migrateFlagTo               = "to"
 	migrateFlagSchema           = "schema"
-	migrateDiffFlagVerbose      = "verbose"
 	migrateLintLatest           = "latest"
 	migrateLintGitDir           = "git-dir"
 	migrateLintGitBase          = "git-base"
@@ -65,7 +64,6 @@ var (
 		DirFormat      string
 		RevisionSchema string
 		Force          bool
-		Verbose        bool
 		Apply          struct {
 			DryRun          bool
 			LogFormat       string
@@ -247,7 +245,6 @@ func init() {
 	// Diff flags.
 	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateDiffCmd.Flags())
 	MigrateDiffCmd.Flags().StringSliceVarP(&MigrateFlags.ToURLs, migrateFlagTo, "", nil, "[driver://username:password@address/dbname?param=value ...] select a desired state using the URL format")
-	MigrateDiffCmd.Flags().BoolVarP(&MigrateFlags.Verbose, migrateDiffFlagVerbose, "", false, "enable verbose logging")
 	MigrateDiffCmd.Flags().SortFlags = false
 	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateFlagDevURL))
 	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateFlagTo))

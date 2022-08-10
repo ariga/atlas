@@ -55,7 +55,6 @@ var (
 		Paths       []string
 		DryRun      bool
 		AutoApprove bool
-		Verbose     bool
 	}
 	// SchemaApply represents the 'atlas schema apply' subcommand command.
 	SchemaApply = &cobra.Command{
@@ -143,7 +142,6 @@ func init() {
 	SchemaApply.Flags().StringVarP(&ApplyFlags.DevURL, devURLFlag, "", "", "URL for the dev database. Used to validate schemas and calculate diffs\nbefore running migration.")
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.DryRun, "dry-run", "", false, "Dry-run. Print SQL plan without prompting for execution.")
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.AutoApprove, "auto-approve", "", false, "Auto approve. Apply the schema changes without prompting for approval.")
-	SchemaApply.Flags().BoolVarP(&ApplyFlags.Verbose, migrateDiffFlagVerbose, "", false, "enable verbose logging")
 	SchemaApply.Flags().StringVarP(&SchemaFlags.DSN, dsnFlag, "d", "", "")
 	cobra.CheckErr(SchemaApply.Flags().MarkHidden(dsnFlag))
 	cobra.CheckErr(SchemaApply.MarkFlagRequired(urlFlag))
