@@ -28,16 +28,16 @@ type myTest struct {
 	rrw     migrate.RevisionReadWriter
 	version string
 	port    int
-	once    *sync.Once
+	once    sync.Once
 }
 
 var myTests = map[string]*myTest{
-	"mysql56":  {port: 3306, once: &sync.Once{}},
-	"mysql57":  {port: 3307, once: &sync.Once{}},
-	"mysql8":   {port: 3308, once: &sync.Once{}},
-	"maria107": {port: 4306, once: &sync.Once{}},
-	"maria102": {port: 4307, once: &sync.Once{}},
-	"maria103": {port: 4308, once: &sync.Once{}},
+	"mysql56":  {port: 3306},
+	"mysql57":  {port: 3307},
+	"mysql8":   {port: 3308},
+	"maria107": {port: 4306},
+	"maria102": {port: 4307},
+	"maria103": {port: 4308},
 }
 
 func myRun(t *testing.T, fn func(*myTest)) {

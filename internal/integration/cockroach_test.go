@@ -31,11 +31,11 @@ type crdbTest struct {
 	rrw     migrate.RevisionReadWriter
 	version string
 	port    int
-	once    *sync.Once
+	once    sync.Once
 }
 
 var crdbTests = map[string]*crdbTest{
-	"cockroach": {port: 26257, once: &sync.Once{}},
+	"cockroach": {port: 26257},
 }
 
 func crdbRun(t *testing.T, fn func(*crdbTest)) {

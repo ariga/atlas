@@ -30,15 +30,15 @@ type pgTest struct {
 	rrw     migrate.RevisionReadWriter
 	version string
 	port    int
-	once    *sync.Once
+	once    sync.Once
 }
 
 var pgTests = map[string]*pgTest{
-	"postgres10": {port: 5430, once: &sync.Once{}},
-	"postgres11": {port: 5431, once: &sync.Once{}},
-	"postgres12": {port: 5432, once: &sync.Once{}},
-	"postgres13": {port: 5433, once: &sync.Once{}},
-	"postgres14": {port: 5434, once: &sync.Once{}},
+	"postgres10": {port: 5430},
+	"postgres11": {port: 5431},
+	"postgres12": {port: 5432},
+	"postgres13": {port: 5433},
+	"postgres14": {port: 5434},
 }
 
 func pgRun(t *testing.T, fn func(*pgTest)) {

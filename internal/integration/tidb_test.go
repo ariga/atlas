@@ -9,7 +9,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"sync"
 	"testing"
 
 	"ariga.io/atlas/sql/mysql"
@@ -26,8 +25,8 @@ import (
 )
 
 var tidbTests = map[string]*myTest{
-	"tidb5": {port: 4309, once: &sync.Once{}},
-	"tidb6": {port: 4310, once: &sync.Once{}},
+	"tidb5": {port: 4309},
+	"tidb6": {port: 4310},
 }
 
 func tidbRun(t *testing.T, fn func(*myTest)) {
