@@ -68,6 +68,11 @@ type state struct {
 // Exec executes the changes on the database. An error is returned
 // if one of the operations fail, or a change is not supported.
 func (s *state) plan(ctx context.Context, changes []schema.Change) error {
+	if s.SchemaQualifier != nil {
+		if err := sqlx.CheckChangesScope(changes); err != nil {
+			return err
+		}
+	}
 	planned := s.topLevel(changes)
 	planned, err := sqlx.DetachCycles(planned)
 	if err != nil {
