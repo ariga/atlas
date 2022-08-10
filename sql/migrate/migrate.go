@@ -387,8 +387,6 @@ func (p *Planner) WritePlan(plan *Plan) error {
 var (
 	// ErrNoPendingFiles is returned if there are no pending migration files to execute on the managed database.
 	ErrNoPendingFiles = errors.New("sql/migrate: execute: nothing to do")
-	// ErrLockUnsupported is returned if there is no schema.Locker given.
-	ErrLockUnsupported = errors.New("sql/migrate: driver does not support locking")
 	// ErrSnapshotUnsupported is returned if there is no Snapshoter given.
 	ErrSnapshotUnsupported = errors.New("sql/migrate: driver does not support taking a database snapshot")
 	// ErrCleanCheckerUnsupported is returned if there is no CleanChecker given.
@@ -416,9 +414,6 @@ func NewExecutor(drv Driver, dir Dir, rrw RevisionReadWriter, opts ...ExecutorOp
 	}
 	if ex.log == nil {
 		ex.log = NopLogger{}
-	}
-	if _, ok := drv.(schema.Locker); !ok {
-		return nil, ErrLockUnsupported
 	}
 	if _, ok := drv.(Snapshoter); !ok {
 		return nil, ErrSnapshotUnsupported
@@ -465,16 +460,6 @@ func WithAllowDirty(b bool) ExecutorOption {
 		ex.allowDirty = b
 		return nil
 	}
-}
-
-// Lock acquires a lock for the executor.
-// It is considered a user error to not call Lock before the Pending and Execute methods.
-func (e *Executor) Lock(ctx context.Context) (schema.UnlockFunc, error) {
-	unlock, err := e.drv.(schema.Locker).Lock(ctx, "atlas_migration_execute", 0)
-	if err != nil {
-		return nil, fmt.Errorf("sql/migrate: acquiring database lock: %w", err)
-	}
-	return unlock, nil
 }
 
 // Pending returns all pending (not fully applied) migration files in the migration directory.
@@ -662,15 +647,6 @@ func (e HistoryChangedError) Error() string {
 // ExecuteN executes n pending migration files. If n<=0 all pending migration files are executed. It will not attempt
 // an execution if the database is not "clean" (has only successfully applied migrations).
 func (e *Executor) ExecuteN(ctx context.Context, n int) (err error) {
-	unlock, err := e.Lock(ctx)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err2 := unlock(); err2 != nil {
-			err = wrap(err2, err)
-		}
-	}()
 	pending, err := e.Pending(ctx)
 	if err != nil {
 		return err
@@ -699,15 +675,6 @@ func (e *Executor) ExecuteN(ctx context.Context, n int) (err error) {
 
 // Replay the migration directory and invoke the state to get back the inspection result.
 func (e *Executor) Replay(ctx context.Context, r StateReader) (_ *schema.Realm, err error) {
-	unlock, err := e.drv.(schema.Locker).Lock(ctx, "atlas_migration_directory_state", 0)
-	if err != nil {
-		return nil, fmt.Errorf("sql/migrate: acquiring database lock: %w", err)
-	}
-	defer func() {
-		if err2 := unlock(); err2 != nil {
-			err = wrap(err2, err)
-		}
-	}()
 	// Clean up after ourselves.
 	restore, err := e.drv.(Snapshoter).Snapshot(ctx)
 	if err != nil {

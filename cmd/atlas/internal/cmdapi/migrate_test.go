@@ -101,7 +101,7 @@ func TestMigrate_Apply(t *testing.T) {
 		"--url", fmt.Sprintf("sqlitelockapply://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
 	)
 	require.ErrorIs(t, err, errLock)
-	require.True(t, strings.HasPrefix(s, "Error: sql/migrate: acquiring database lock: "+errLock.Error()))
+	require.True(t, strings.HasPrefix(s, "Error: acquiring database lock: "+errLock.Error()))
 
 	// Will work and print stuff to the console.
 	s, err = runCmd(
@@ -328,7 +328,7 @@ func TestMigrate_Diff(t *testing.T) {
 		"--dev-url", fmt.Sprintf("sqlitelockdiff://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
 		"--to", to,
 	)
-	require.True(t, strings.HasPrefix(s, "Error: "+errLock.Error()))
+	require.True(t, strings.HasPrefix(s, "Error: acquiring database lock: "+errLock.Error()))
 	require.ErrorIs(t, err, errLock)
 }
 
