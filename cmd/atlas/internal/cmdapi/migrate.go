@@ -48,6 +48,7 @@ const (
 	migrateLintLatest           = "latest"
 	migrateLintGitDir           = "git-dir"
 	migrateLintGitBase          = "git-base"
+	migrateDiffQualifier        = "qualifier"
 	migrateApplyAllowDirty      = "allow-dirty"
 	migrateApplyFromVersion     = "from"
 	migrateApplyBaselineVersion = "baseline"
@@ -70,6 +71,9 @@ var (
 			AllowDirty      bool
 			FromVersion     string
 			BaselineVersion string
+		}
+		Diff struct {
+			Qualifier string // optional table qualifier
 		}
 		Lint struct {
 			Format  string // log formatting
@@ -245,6 +249,7 @@ func init() {
 	// Diff flags.
 	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateDiffCmd.Flags())
 	MigrateDiffCmd.Flags().StringSliceVarP(&MigrateFlags.ToURLs, migrateFlagTo, "", nil, "[driver://username:password@address/dbname?param=value ...] select a desired state using the URL format")
+	MigrateDiffCmd.Flags().StringVarP(&MigrateFlags.Diff.Qualifier, migrateDiffQualifier, "", "", "qualify tables with custom qualifier when working on a single schema")
 	MigrateDiffCmd.Flags().SortFlags = false
 	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateFlagDevURL))
 	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateFlagTo))
@@ -427,7 +432,7 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	opts := []migrate.PlannerOption{migrate.PlanFormat(f)}
 	if dev.URL.Schema != "" {
 		// Disable tables qualifier in schema-mode.
-		opts = append(opts, migrate.PlanWithSchemaQualifier(""))
+		opts = append(opts, migrate.PlanWithSchemaQualifier(MigrateFlags.Diff.Qualifier))
 	}
 	// Plan the changes and create a new migration file.
 	pl := migrate.NewPlanner(dev.Driver, dir, opts...)
