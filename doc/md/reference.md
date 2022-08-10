@@ -144,7 +144,6 @@ directory state to the desired schema. The desired state can be another connecte
 ```
       --dev-url string   [driver://username:password@address/dbname?param=value] select a database using the URL format
       --to strings       [driver://username:password@address/dbname?param=value ...] select a desired state using the URL format
-      --verbose          enable verbose logging
 
 ```
 
@@ -333,7 +332,6 @@ migration.
                          before running migration.
       --dry-run          Dry-run. Print SQL plan without prompting for execution.
       --auto-approve     Auto approve. Apply the schema changes without prompting for approval.
-      --verbose          enable verbose logging
 
 ```
 
