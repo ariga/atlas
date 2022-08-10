@@ -14,6 +14,11 @@ cmpmig 0 1.sql
 atlas migrate diff --dev-url URL --to file://./2.hcl second
 cmpmig 1 2.sql
 
+# Clean migration directory and run diff with a custom qualifier.
+exec rm -rf migrations
+atlas migrate diff --dev-url URL --to file://./1.hcl --qualifier test first
+cmpmig 0 1-qualifier.sql
+
 -- 1.hcl --
 schema "script_cli_migrate_diff" {}
 
@@ -34,6 +39,10 @@ table "users" {
 -- 1.sql --
 -- create "users" table
 CREATE TABLE `users` (`id` bigint NOT NULL AUTO_INCREMENT, PRIMARY KEY (`id`)) CHARSET utf8mb4 COLLATE utf8mb4_general_ci;
+
+-- 1-qualifier.sql --
+-- create "users" table
+CREATE TABLE `test`.`users` (`id` bigint NOT NULL AUTO_INCREMENT, PRIMARY KEY (`id`)) CHARSET utf8mb4 COLLATE utf8mb4_general_ci;
 
 -- 2.hcl --
 schema "script_cli_migrate_diff" {}

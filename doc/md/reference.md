@@ -142,8 +142,9 @@ directory state to the desired schema. The desired state can be another connecte
 ```
 #### Flags
 ```
-      --dev-url string   [driver://username:password@address/dbname?param=value] select a database using the URL format
-      --to strings       [driver://username:password@address/dbname?param=value ...] select a desired state using the URL format
+      --dev-url string     [driver://username:password@address/dbname?param=value] select a database using the URL format
+      --to strings         [driver://username:password@address/dbname?param=value ...] select a desired state using the URL format
+      --qualifier string   qualify tables with custom qualifier when working on a single schema
 
 ```
 
