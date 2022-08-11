@@ -31,7 +31,7 @@ var tidbTests = map[string]*myTest{
 
 func tidbRun(t *testing.T, fn func(*myTest)) {
 	for version, tt := range tidbTests {
-		if flagDialect == "" || flagDialect == version {
+		if flagVersion == "" || flagVersion == version {
 			t.Run(version, func(t *testing.T) {
 				tt.once.Do(func() {
 					var err error

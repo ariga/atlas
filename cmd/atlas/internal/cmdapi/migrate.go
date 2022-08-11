@@ -552,10 +552,8 @@ func statusPrint(out io.Writer, avail, pending []migrate.File, revs migrate.Revi
 	switch len(pending) {
 	case len(avail):
 		cur = "No version applied yet"
-	case 0:
-		cur = cyan(avail[len(avail)-1].Version())
 	default:
-		cur = cyan(avail[len(avail)-len(pending)].Version())
+		cur = cyan(applied[len(applied)-1].Version())
 		// If the last pending version is partially applied, tell so.
 		if partial {
 			cur += fmt.Sprintf(" (%d statements applied)", revs[len(revs)-1].Applied)
@@ -575,16 +573,15 @@ func statusPrint(out io.Writer, avail, pending []migrate.File, revs migrate.Revi
 	if partial {
 		exec += " + 1 partially"
 	}
-	fmt.Fprintf(out, "Migration Status: %s\n", state)
-	fmt.Fprintf(out, "%s%s Current Version:\t%s\n", indent2, dash, cur)
-	fmt.Fprintf(out, "%s%s Next Version:\t%s\n", indent2, dash, next)
-	// fmt.Fprintf(out, "%s%s Available Files:\t%s\n", indent2, dash, cyan(strconv.Itoa(len(avail))))
-	fmt.Fprintf(out, "%s%s Executed Files:\t%s\n", indent2, dash, exec)
 	c := cyan
 	if len(pending) == 0 {
 		c = green
 	}
-	fmt.Fprintf(out, "%s%s Pending Files:\t%s", indent2, dash, c(strconv.Itoa(len(pending))))
+	fmt.Fprintf(out, "Migration Status: %s\n", state)
+	fmt.Fprintf(out, "%s%s Current Version:  %s\n", indent2, dash, cur)
+	fmt.Fprintf(out, "%s%s Next Version:     %s\n", indent2, dash, next)
+	fmt.Fprintf(out, "%s%s Executed Files:   %s\n", indent2, dash, exec)
+	fmt.Fprintf(out, "%s%s Pending Files:    %s", indent2, dash, c(strconv.Itoa(len(pending))))
 	if partial {
 		fmt.Fprintf(out, " (partially)")
 	}

@@ -1,4 +1,4 @@
-only postgres12 postgres14
+only postgres14
 
 ! atlas migrate apply
 stderr 'Error: checksum file not found'

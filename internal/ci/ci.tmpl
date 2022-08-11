@@ -135,5 +135,5 @@ jobs:
             {{ "${{ runner.os }}-go-" }}
       - name: Run integration tests for {{ .Version }}
         working-directory: internal/integration
-        run: go test -race -count=2 -v -run="{{ .Regex }}" -dialect="{{ .Version }}" ./...
+        run: go test -race -count=2 -v -run="{{ .Regex }}" -version="{{ .Version }}" ./...
   {{ end }}
