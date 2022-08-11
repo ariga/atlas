@@ -40,8 +40,10 @@ creating our `users` table:
 * `--dev-url` a [URL](/concepts/url) to a [Dev Database](/concepts/dev-database) that will be used to compute the diff.
 
 ```bash
-atlas migrate diff --dir="file://migrations" --to="file://schema.hcl" \
- --dev-url="mysql://root:pass@:3306/test" create_users
+atlas migrate diff create_users \
+  --dir="file://migrations" \
+  --to="file://schema.hcl" \
+  --dev-url="mysql://root:pass@:3306/test"
 ```
 
 Run `ls migrations`, and you will notice Atlas created 2 files:
@@ -97,8 +99,10 @@ table "users" {
 Then, run `atlas migrate diff`:
 
 ```bash
-atlas migrate diff --dir="file://migrations" --to="file://schema.hcl" \
- --dev-url="mysql://root:pass@:3306/test" add_users_name
+atlas migrate diff add_users_name \
+  --dir="file://migrations" \
+  --to="file://schema.hcl" \
+  --dev-url="mysql://root:pass@:3306/test"
 ```
 
 You will notice Atlas added a new file to the migration directory:
@@ -163,8 +167,10 @@ Let's run `atlas migrate diff` with the necessary parameters to generate a migra
 creating our `users` table:
 
 ```bash
-atlas migrate diff --dir="file://migrations" --to="mysql://root:pass@:3306/public" \
- --dev-url="mysql://root:pass@:3306/test" create_users
+atlas migrate diff create_users \
+  --dir="file://migrations" \
+  --to="mysql://root:pass@:3306/public" \
+  --dev-url="mysql://root:pass@:3306/test"
 ```
 
 Run `ls migrations`, and you will notice Atlas created 2 files:
@@ -210,8 +216,11 @@ Let's run the [example above](#generate-migration-from-database-schema), with th
 the output:
 
 ```bash
-atlas migrate diff --dir="file://migrations" --to="file://schema.hcl" \
- --dev-url="mysql://root:pass@:3306/test" --qualifier="market" create_users
+atlas migrate diff create_users \
+  --dir="file://migrations" \
+  --to="file://schema.hcl" \
+  --dev-url="mysql://root:pass@:3306/test" \
+  --qualifier="market"
 ```
 
 Running `cat migrations/*.sql` will print the same migration script but the `users` table will be qualified with
@@ -228,8 +237,11 @@ Some migration tools use a different file format than the one used by Atlas. The
 an option named `--dir-format` that allows controlling the format of the migration directory.
 
 ```bash
-atlas migrate diff --dir="file://migrations" --to="file://schema.hcl" \
- --dev-url="mysql://root:pass@:3306/test" --dir-format="golang-migrate" create_users
+atlas migrate diff create_users \
+  --dir="file://migrations" \
+  --to="file://schema.hcl" \
+  --dev-url="mysql://root:pass@:3306/test" \
+  --dir-format="golang-migrate"
 ```
 
 Run `ls migrations`, and you will notice Atlas created 3 files:
