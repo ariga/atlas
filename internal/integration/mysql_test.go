@@ -718,6 +718,67 @@ schema "second" {
 	})
 }
 
+func TestMySQL_HCL_ForeignKeyCrossSchema(t *testing.T) {
+	const expected = `table "credit_cards" {
+  schema = schema.financial
+  column "id" {
+    null = false
+    type = int
+  }
+  column "user_id" {
+    null = false
+    type = int
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "user_id_fkey" {
+    columns     = [column.user_id]
+    ref_columns = [table.users.users.column.id]
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
+  }
+  index "user_id_fkey" {
+    columns = [column.user_id]
+  }
+}
+table "users" "users" {
+  schema = schema.users
+  column "id" {
+    null = false
+    type = int
+  }
+  column "email" {
+    null = false
+    type = varchar(255)
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+schema "financial" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_general_ci"
+}
+schema "users" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_general_ci"
+}
+`
+	myRun(t, func(t *myTest) {
+		t.dropSchemas("financial", "users")
+		realm := t.loadRealm()
+		hcl, err := mysql.MarshalHCL(realm)
+		require.NoError(t, err)
+		t.applyRealmHcl(string(hcl) + "\n" + expected)
+		realm, err = t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{Schemas: []string{"users", "financial"}})
+		require.NoError(t, err)
+		actual, err := mysql.MarshalHCL(realm)
+		require.NoError(t, err)
+		require.Equal(t, expected, string(actual))
+	})
+}
+
 func TestMySQL_DefaultsHCL(t *testing.T) {
 	n := "atlas_defaults"
 	myRun(t, func(t *myTest) {

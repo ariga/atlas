@@ -113,6 +113,9 @@ func Marshal(v interface{}, marshaler schemahcl.Marshaler, schemaSpec func(schem
 			d.Tables = append(d.Tables, tables...)
 			d.Schemas = append(d.Schemas, spec)
 		}
+		if err := QualifyReferencedTables(d.Tables, s); err != nil {
+			return nil, err
+		}
 	default:
 		return nil, fmt.Errorf("specutil: failed marshaling spec. %T is not supported", v)
 	}
@@ -140,6 +143,31 @@ func QualifyDuplicates(tableSpecs []*sqlspec.Table) error {
 			tbl.Qualifier = schemaName
 		}
 		seen[tbl.Name] = tbl
+	}
+	return nil
+}
+
+// QualifyReferencedTables sets the Qualified field equal to the schema name in any tables
+// that are references across schema boundaries from any foreign key.
+func QualifyReferencedTables(tableSpecs []*sqlspec.Table, realm *schema.Realm) error {
+	// Iterate over all tables in the realm. If any of the tables has a foreign key referencing a table in another
+	// schema, the targeted table needs to have a qualifier set.
+	for _, s := range realm.Schemas {
+		for _, t := range s.Tables {
+			for _, f := range t.ForeignKeys {
+				if f.Table.Schema != f.RefTable.Schema {
+					for _, tbl := range tableSpecs {
+						n, err := SchemaName(tbl.Schema)
+						if err != nil {
+							return err
+						}
+						if f.RefTable.Name == tbl.Name && f.RefTable.Schema.Name == n && tbl.Qualifier == "" {
+							tbl.Qualifier = n
+						}
+					}
+				}
+			}
+		}
 	}
 	return nil
 }
