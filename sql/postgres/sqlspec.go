@@ -94,6 +94,9 @@ func MarshalSpec(v interface{}, marshaler schemahcl.Marshaler) ([]byte, error) {
 			d.Schemas = append(d.Schemas, doc.Schemas...)
 			d.Enums = append(d.Enums, doc.Enums...)
 		}
+		if err := specutil.QualifyReferencedTables(d.Tables, s); err != nil {
+			return nil, err
+		}
 	default:
 		return nil, fmt.Errorf("specutil: failed marshaling spec. %T is not supported", v)
 	}

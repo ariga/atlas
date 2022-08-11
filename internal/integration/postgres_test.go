@@ -20,7 +20,6 @@ import (
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
-
 	"entgo.io/ent/dialect"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/require"
@@ -534,6 +533,60 @@ schema "second" {
 		require.True(t, ok)
 		_, ok = realm.Schema("second")
 		require.True(t, ok)
+	})
+}
+
+func TestPostgres_HCL_ForeignKeyCrossSchema(t *testing.T) {
+	const expected = `table "credit_cards" {
+  schema = schema.financial
+  column "id" {
+    null = false
+    type = serial
+  }
+  column "user_id" {
+    null = false
+    type = integer
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "user_id_fkey" {
+    columns     = [column.user_id]
+    ref_columns = [table.users.users.column.id]
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
+  }
+}
+table "users" "users" {
+  schema = schema.users
+  column "id" {
+    null = false
+    type = bigserial
+  }
+  column "email" {
+    null = false
+    type = character_varying
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+schema "financial" {
+}
+schema "users" {
+}
+`
+	pgRun(t, func(t *pgTest) {
+		t.dropSchemas("financial", "users")
+		realm := t.loadRealm()
+		hcl, err := postgres.MarshalHCL(realm)
+		require.NoError(t, err)
+		t.applyRealmHcl(string(hcl) + "\n" + expected)
+		realm, err = t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{Schemas: []string{"users", "financial"}})
+		require.NoError(t, err)
+		actual, err := postgres.MarshalHCL(realm)
+		require.NoError(t, err)
+		require.Equal(t, expected, string(actual))
 	})
 }
 

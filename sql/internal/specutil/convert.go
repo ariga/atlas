@@ -506,7 +506,11 @@ func FromForeignKey(s *schema.ForeignKey) (*sqlspec.ForeignKey, error) {
 	for _, v := range s.RefColumns {
 		ref := ColumnRef(v.Name)
 		if s.Table != s.RefTable {
-			ref = externalColRef(v.Name, s.RefTable.Name)
+			if s.Table.Schema == s.RefTable.Schema {
+				ref = externalColRef(v.Name, s.RefTable.Name)
+			} else {
+				ref = crossSchemaColRef(v.Name, s.RefTable.Name, s.RefTable.Schema.Name)
+			}
 		}
 		r = append(r, ref)
 	}
@@ -629,6 +633,10 @@ func ColumnRef(cName string) *schemahcl.Ref {
 
 func externalColRef(cName string, tName string) *schemahcl.Ref {
 	return &schemahcl.Ref{V: "$table." + tName + ".$column." + cName}
+}
+
+func crossSchemaColRef(cName, tName, sName string) *schemahcl.Ref {
+	return &schemahcl.Ref{V: "$table." + sName + "." + tName + ".$column." + cName}
 }
 
 // SchemaRef returns the schemahcl.Ref to the schema with the given name.
