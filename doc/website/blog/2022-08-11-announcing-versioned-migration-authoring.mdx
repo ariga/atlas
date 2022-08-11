@@ -5,6 +5,10 @@ tags: [atlas, migrations, versioned]
 image: https://blog.ariga.io/uploads/images/posts/v0.5.0/atlas-lint.png
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+
 With the release of [v0.6.0](https://github.com/ariga/atlas/releases/tag/v0.6.0), we are
 happy to announce official support for a style of workflow for managing changes to database
 schemas that we have been experimenting with in the past months: _Versioned Migration Authoring_.
@@ -24,7 +28,8 @@ schemas that we have been experimenting with in the past months: _Versioned Migr
 a third combined approach that we call "Versioned Migration Authoring". 
 * Versioned Migration Authoring is an attempt to combine the simplicity and 
  expressiveness of the declarative approach with the control and explicitness of versioned migrations.
-* To use Versioned Migration Authoring today, use the `atlas migrate diff` command.
+* To use Versioned Migration Authoring today, use the `atlas migrate diff` command. See
+  the [Getting Started](#getting-started) section below for instructions. 
 
 ### Declarative Migrations
 
@@ -163,8 +168,76 @@ However, instead of coupling planning and execution, plans are instead written
 into normal migration files which can be checked into source control, fine-tuned manually and
 reviewed in regular code review processes.
 
-### Getting Started
+### Getting started
 
+Start by downloading the Atlas CLI. The following command will work for MacOS:
+```bash
+brew install ariga/tap/atlas
+```
+For instructions on other platforms [go here](cli/getting-started/setting-up#install-the-cli).
 
+Start by defining a simple Atlas schema with one table and an empty migration directory:
+
+```hcl title="schema.hcl"
+schema "test" {}
+
+table "users" {
+  schema = schema.test
+  column "id" {
+    type = int
+  }
+}
+```
+
+Let's run `atlas migrate diff` with the necessary parameters to generate a migration script for
+creating our `users` table:
+
+* `--dir` the URL to the migration directory, by default it is `file://migrations`.
+* `--to` the URL of the desired state, an HCL file or a database connection.
+* `--dev-url` a [URL](/concepts/url) to a [Dev Database](/concepts/dev-database) that will be used to compute the diff.
+
+```bash
+atlas migrate diff --dir="file://migrations" --to="file://schema.hcl" \
+ --dev-url="mysql://root:pass@:3306/test" create_users
+```
+
+Observe two files were created in the `migrations` directory:
+
+<Tabs
+defaultValue="migration_file"
+values={[
+{label: '20220811074144_create_users.sql', value: 'migration_file'},
+{label: 'atlas.sum', value: 'sum_file'},
+]}>
+<TabItem value="migration_file">
+
+By default, migration files are named with the following format `{{ now }}_{{ name }}.sql`.
+If you wish to use a different file format, use the `--dir-format` option.
+
+```sql
+-- create "users" table
+CREATE TABLE `users` (`id` int NOT NULL) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+```
+
+</TabItem>
+<TabItem value="sum_file">
+
+In addition to the migration directory, Atlas maintains a file name `atlas.sum` which is used
+to ensure the integrity of the migration directory and force developers to deal with situations
+where migration order or contents was modified after the fact.
+
+```text
+h1:t1fEP1rSsGf1gYrYCjsGyEyuM0cnhATlq93B7h8uXxY=
+20220811074144_create_users.sql h1:liZcCBbAn/HyBTqBAEVar9fJNKPTb2Eq+rEKZeCFC9M=
+```
+
+</TabItem>
+</Tabs>
+
+### Further reading
+
+To learn more about Versioned Migration Authoring:
+* Read the [docs](/versioned/diff)
+* [CLI Command Reference](/cli-reference#atlas-migrate-diff)
 
 Have questions? Feedback? Find our team [on our Discord server](https://discord.gg/zZ6sWVg6NT).
