@@ -2,7 +2,7 @@
 title: Announcing v0.6.0 with Versioned Migration Authoring
 authors: a8m
 tags: [atlas, migrations, versioned]
-image: https://blog.ariga.io/uploads/images/posts/v0.5.0/atlas-lint.png
+image: https://blog.ariga.io/uploads/images/posts/v0.6.0/atlas-migrate-diff.png
 ---
 
 import Tabs from '@theme/Tabs';
@@ -13,7 +13,7 @@ With the release of [v0.6.0](https://github.com/ariga/atlas/releases/tag/v0.6.0)
 happy to announce official support for a style of workflow for managing changes to database
 schemas that we have been experimenting with in the past months: _Versioned Migration Authoring_.
 
-### tl;dr
+### TL;DR
 
 * Atlas supports a declarative workflow (similar to Terraform) where users provide the 
  desired database schema in a simple [data definition language](https://atlasgo.io/atlas-schema/sql-resources)
@@ -21,7 +21,7 @@ schemas that we have been experimenting with in the past months: _Versioned Migr
  is supported by the [`schema apply`](https://atlasgo.io/declarative/apply) command.
 * Many teams prefer a more imperative approach where each change to the database schema 
  is checked-in to source control and reviewed during code-review. This type of workflow
- is commonly called _versioned migrations_ and is supported by many established tools such
+ is commonly called _versioned migrations_ (or _change based migrations_) and is supported by many established tools such
  as [Flyway](https://flyway.org) and [Liquibase](https://liquibase.org).
 * The downside of the versioned migration approach is, of course, that it puts the burden of 
  planning the migration on developers. As part of the Atlas project we advocate for 
@@ -61,6 +61,7 @@ table "users" {
   }
 }
 ```
+
 Now, suppose that you want to add a default value of `"shalom"` to the `greeting`
 column. Many developers are not aware that it isn't possible to modify a column's
 default value in an existing table in SQLite. Instead, the common practice is to
@@ -100,7 +101,7 @@ ALTER TABLE `new_users` RENAME TO `users`
 As the database is one of the most critical components in any system, applying changes
 to its schema is rightfully considered a dangerous operation. For this reason, many teams
 prefer a more imperative approach where each change to the database schema is checked-in
-to source control and reviewed during code-review.  Each such change
+to source control and reviewed during code-review. Each such change
 is called a "migration", as it migrates the database schema from the previous version to
 the next. To support this kind of requirement, many popular database schema management
 tools such as [Flyway](https://flywaydb.org/), [Liquibase](https://liquibase.org/) or
@@ -108,7 +109,7 @@ tools such as [Flyway](https://flywaydb.org/), [Liquibase](https://liquibase.org
 is commonly called "versioned migrations".
 
 In addition to the higher level of control which is provided by versioned migrations,
-applications are often deployed to multiple remote environments at once. These environments,
+applications are often deployed to multiple remote environments at once. These environments
 are not controlled (or even accessible) by the development team. In such cases, declarative migrations,
 which rely on a network connection to the target database and on human
 approval of migrations plans in real-time, are not a feasible strategy.
@@ -128,6 +129,7 @@ can control precisely how to reach the desired schema.  If we consider a migrati
 a plan to get from state A to state B, oftentimes multiple paths exist, each with a
 very different impact on the database. To demonstrate, consider an initial state which
 contains a table with two columns:
+
 ```sql
 CREATE TABLE users (
     id int,
@@ -170,11 +172,21 @@ reviewed in regular code review processes.
 
 ### Getting started
 
-Start by downloading the Atlas CLI. The following command will work for MacOS:
-```bash
+
+<Tabs
+defaultValue="apple-intel-brew"
+values={[
+{label: 'macOS (Homebrew)', value: 'apple-intel-brew'},
+{label: 'macOS (Plain)', value: 'apple-intel-plain'},
+{label: 'Linux', value: 'linux'},
+{label: 'Windows', value: 'windows'},
+]}>
+<TabItem value="apple-intel-brew">
+
+Get the latest release with [Homebrew](https://brew.sh/):
+
+```shell
 brew install ariga/tap/atlas
-```
-For instructions on other platforms [go here](cli/getting-started/setting-up#install-the-cli).
 
 Start by defining a simple Atlas schema with one table and an empty migration directory:
 
@@ -197,8 +209,10 @@ creating our `users` table:
 * `--dev-url` a [URL](/concepts/url) to a [Dev Database](/concepts/dev-database) that will be used to compute the diff.
 
 ```bash
-atlas migrate diff --dir="file://migrations" --to="file://schema.hcl" \
- --dev-url="mysql://root:pass@:3306/test" create_users
+atlas migrate diff create_users \
+  --dir="file://migrations" \
+  --to="file://schema.hcl" \
+  --dev-url="mysql://root:pass@:3306/test"
 ```
 
 Observe two files were created in the `migrations` directory:
