@@ -172,14 +172,15 @@ reviewed in regular code review processes.
 
 ### Getting started
 
+Start by downloading the Atlas CLI:
 
 <Tabs
-defaultValue="apple-intel-brew"
-values={[
-{label: 'macOS (Homebrew)', value: 'apple-intel-brew'},
-{label: 'macOS (Plain)', value: 'apple-intel-plain'},
-{label: 'Linux', value: 'linux'},
-{label: 'Windows', value: 'windows'},
+    defaultValue="apple-intel-brew"
+    values={[
+        {label: 'macOS (Homebrew)', value: 'apple-intel-brew'},
+        {label: 'macOS (Plain)', value: 'apple-intel-plain'},
+        {label: 'Linux', value: 'linux'},
+        {label: 'Windows', value: 'windows'},
 ]}>
 <TabItem value="apple-intel-brew">
 
@@ -187,8 +188,53 @@ Get the latest release with [Homebrew](https://brew.sh/):
 
 ```shell
 brew install ariga/tap/atlas
+```
 
-Start by defining a simple Atlas schema with one table and an empty migration directory:
+</TabItem>
+<TabItem value="apple-intel-plain">
+
+Download latest release.
+```shell
+curl -LO https://release.ariga.io/atlas/atlas-darwin-amd64-latest
+```
+
+Make the atlas binary executable.
+```shell
+chmod +x ./atlas-darwin-amd64-latest
+```
+
+Move the atlas binary to a file location on your system PATH.
+```shell
+sudo mv ./atlas-darwin-amd64-latest /usr/local/bin/atlas
+```
+```shell
+sudo chown root: /usr/local/bin/atlas
+```
+
+</TabItem>
+<TabItem value="linux">
+
+Download latest release.
+```shell
+curl -LO https://release.ariga.io/atlas/atlas-linux-amd64-latest
+```
+
+Move the atlas binary to a file location on your system PATH.
+```shell
+sudo install -o root -g root -m 0755 ./atlas-linux-amd64-latest /usr/local/bin/atlas
+```
+
+</TabItem>
+<TabItem value="windows">
+
+Download the [latest release](https://release.ariga.io/atlas/atlas-windows-amd64-latest.exe) and
+move the atlas binary to a file location on your system PATH.
+
+
+</TabItem>
+</Tabs>
+
+Next, define a simple Atlas schema with one table and an empty migration directory:
 
 ```hcl title="schema.hcl"
 schema "test" {}
