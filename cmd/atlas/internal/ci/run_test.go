@@ -10,6 +10,7 @@ import (
 	_ "embed"
 	"fmt"
 	"testing"
+	"text/template"
 
 	"ariga.io/atlas/cmd/atlas/internal/ci"
 	"ariga.io/atlas/sql/migrate"
@@ -52,6 +53,71 @@ func TestRunner_Run(t *testing.T) {
 	require.Equal(t, `Report 1. File "2.sql":
 
 	L1: Diagnostic 1
+
+`, b.String())
+
+	b.Reset()
+	r.ReportWriter.(*ci.TemplateWriter).T = template.Must(template.New("").
+		Funcs(ci.TemplateFuncs).
+		Parse(`
+Env:
+{{ .Env.Driver }}, {{ .Env.Dir }}
+
+Steps:
+{{ range $s := .Steps }}
+	{{- if $s.Error }}
+		"Error in step " {{ $s.Name }} ": " {{ $s.Error }} 
+	{{- else }}
+		{{- json $s }}
+	{{- end }}
+{{ end }}
+{{- if .Files }}
+Files:
+{{ range $f := .Files }}
+	{{- json $f }}
+{{ end }}
+{{- end }}
+
+Current Schema:
+{{ .Schema.Current }}
+Desired Schema:
+{{ .Schema.Desired }}
+`))
+	require.NoError(t, r.Run(ctx))
+	require.Equal(t, `
+Env:
+sqlite3, migrations
+
+Steps:
+{"Name":"Detect New Migration Files","Text":"Found 1 new migration files (from 2 total)"}
+{"Name":"Replay Migration Files","Text":"Loaded 1 changes on dev database"}
+{"Name":"Analyze 2.sql","Text":"1 reports were found in analysis","Result":{"Name":"2.sql","Text":"CREATE TABLE pets (id INT)\nDROP TABLE users","Reports":[{"Text":"Report 2. File \"2.sql\"","Diagnostics":[{"Pos":1,"Text":"Diagnostic 1"},{"Pos":2,"Text":"Diagnostic 2"}]}]}}
+
+Files:
+{"Name":"2.sql","Text":"CREATE TABLE pets (id INT)\nDROP TABLE users","Reports":[{"Text":"Report 2. File \"2.sql\"","Diagnostics":[{"Pos":1,"Text":"Diagnostic 1"},{"Pos":2,"Text":"Diagnostic 2"}]}]}
+
+
+Current Schema:
+table "users" {
+  schema = schema.main
+  column "id" {
+    null = true
+    type = int
+  }
+}
+schema "main" {
+}
+
+Desired Schema:
+table "pets" {
+  schema = schema.main
+  column "id" {
+    null = true
+    type = int
+  }
+}
+schema "main" {
+}
 
 `, b.String())
 }

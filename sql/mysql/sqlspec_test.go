@@ -8,8 +8,11 @@ import (
 	"fmt"
 	"testing"
 
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/internal/spectest"
+	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlspec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -1184,6 +1187,41 @@ schema "test" {
 
 func TestInputVars(t *testing.T) {
 	spectest.TestInputVars(t, EvalHCL)
+}
+
+func TestQualifyReferencedTables(t *testing.T) {
+	var (
+		col       = schema.NewIntColumn("col", "integer")
+		targetCol = schema.NewIntColumn("target_column", "integer")
+		targetTbl = schema.NewTable("target_table").AddColumns(targetCol)
+		realm     = schema.NewRealm(
+			schema.New("target_schema").AddTables(targetTbl),
+			schema.New("sch").
+				AddTables(
+					schema.NewTable("tbl").
+						AddColumns(col).
+						AddForeignKeys(
+							schema.NewForeignKey("col_fk").
+								SetRefTable(targetTbl).
+								AddColumns(col).
+								AddRefColumns(targetCol),
+						),
+				),
+		)
+		tables = []*sqlspec.Table{
+			{
+				Name:   "tbl",
+				Schema: &schemahcl.Ref{V: "$schema.sch"},
+			},
+			{
+				Name:   "target_table",
+				Schema: &schemahcl.Ref{V: "$schema.target_schema"},
+			},
+		}
+	)
+	require.NoError(t, specutil.QualifyReferencedTables(tables, realm))
+	require.Zero(t, tables[0].Qualifier)
+	require.Equal(t, "target_schema", tables[1].Qualifier)
 }
 
 func TestParseType_Decimal(t *testing.T) {

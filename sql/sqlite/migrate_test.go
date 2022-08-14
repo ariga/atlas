@@ -21,6 +21,7 @@ import (
 func TestPlanChanges(t *testing.T) {
 	tests := []struct {
 		changes []schema.Change
+		options []migrate.PlanOption
 		mock    func(mock)
 		plan    *migrate.Plan
 	}{
@@ -191,7 +192,9 @@ func TestPlanChanges(t *testing.T) {
 					users := &schema.Table{
 						Name: "users",
 						Columns: []*schema.Column{
-							{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
+							schema.NewIntColumn("id", "bigint"),
+							schema.NewIntColumn("rank", "int").SetDefault(&schema.Literal{V: "1"}),
+							schema.NewStringColumn("nick", "text").SetDefault(&schema.Literal{V: "a8m"}),
 						},
 						Attrs: []schema.Attr{
 							&schema.Check{Expr: "(id <> 0)"},
@@ -200,6 +203,16 @@ func TestPlanChanges(t *testing.T) {
 					return &schema.ModifyTable{
 						T: users,
 						Changes: []schema.Change{
+							&schema.ModifyColumn{
+								From:   schema.NewNullIntColumn("id", "bigint"),
+								To:     users.Columns[1],
+								Change: schema.ChangeNull | schema.ChangeDefault,
+							},
+							&schema.ModifyColumn{
+								From:   schema.NewNullStringColumn("nick", "text"),
+								To:     users.Columns[2],
+								Change: schema.ChangeNull | schema.ChangeDefault,
+							},
 							&schema.DropColumn{
 								C: &schema.Column{Name: "name", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
 							},
@@ -214,8 +227,8 @@ func TestPlanChanges(t *testing.T) {
 				Transactional: true,
 				Changes: []*migrate.Change{
 					{Cmd: "PRAGMA foreign_keys = off"},
-					{Cmd: "CREATE TABLE `new_users` (`id` bigint NOT NULL, CHECK (id <> 0))", Reverse: "DROP TABLE `new_users`"},
-					{Cmd: "INSERT INTO `new_users` (`id`) SELECT `id` FROM `users`"},
+					{Cmd: "CREATE TABLE `new_users` (`id` bigint NOT NULL, `rank` int NOT NULL DEFAULT 1, `nick` text NOT NULL DEFAULT 'a8m', CHECK (id <> 0))", Reverse: "DROP TABLE `new_users`"},
+					{Cmd: "INSERT INTO `new_users` (`id`, `rank`, `nick`) SELECT `id`, IFNULL(`rank`, 1) AS `rank`, IFNULL(`nick`, 'a8m') AS `nick` FROM `users`"},
 					{Cmd: "DROP TABLE `users`"},
 					{Cmd: "ALTER TABLE `new_users` RENAME TO `users`"},
 					{Cmd: "PRAGMA foreign_keys = on"},
@@ -325,6 +338,44 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		// The default is no qualifier.
+		{
+			changes: []schema.Change{
+				&schema.AddTable{T: schema.NewTable("t").SetSchema(schema.New("main")).AddColumns(schema.NewIntColumn("a", "int"))},
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "CREATE TABLE `t` (`a` int NOT NULL)",
+						Reverse: "DROP TABLE `t`",
+					},
+				},
+			},
+		},
+		// Custom qualifier.
+		{
+			changes: []schema.Change{
+				&schema.AddTable{T: schema.NewTable("t").SetSchema(schema.New("d")).AddColumns(schema.NewIntColumn("a", "int"))},
+			},
+			options: []migrate.PlanOption{
+				func(o *migrate.PlanOptions) {
+					s := "other"
+					o.SchemaQualifier = &s
+				},
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "CREATE TABLE `other`.`t` (`a` int NOT NULL)",
+						Reverse: "DROP TABLE `other`.`t`",
+					},
+				},
+			},
+		},
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
@@ -337,7 +388,7 @@ func TestPlanChanges(t *testing.T) {
 			}
 			drv, err := Open(db)
 			require.NoError(t, err)
-			plan, err := drv.PlanChanges(context.Background(), "plan", tt.changes)
+			plan, err := drv.PlanChanges(context.Background(), "plan", tt.changes, tt.options...)
 			require.NoError(t, err)
 			require.Equal(t, tt.plan.Reversible, plan.Reversible)
 			require.Equal(t, tt.plan.Transactional, plan.Transactional)

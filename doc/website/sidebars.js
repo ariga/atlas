@@ -26,6 +26,7 @@ module.exports = {
             items: [
                 {type: 'doc', id: 'declarative/inspect', label: 'Schema Inspection'},
                 {type: 'doc', id: 'declarative/apply', label: 'Applying Changes'},
+                {type: 'doc', id: 'declarative/diff', label: 'Calculating Diffs'},
             ]
         },
         {
@@ -33,7 +34,7 @@ module.exports = {
             label: "Versioned Workflows",
             collapsed: false,
             items: [
-                {type: 'doc', id: 'versioned/diff', label: 'Migration Planning'},
+                {type: 'doc', id: 'versioned/diff', label: 'Migration Authoring'},
                 {type: 'doc', id: 'versioned/lint', label: 'Migration Linting'},
                 {type: 'doc', id: 'versioned/new', label: 'Manual Migrations'},
             ]

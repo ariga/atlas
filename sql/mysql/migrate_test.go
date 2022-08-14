@@ -175,9 +175,24 @@ func TestPlanChanges(t *testing.T) {
 	tests := []struct {
 		version  string
 		changes  []schema.Change
+		options  []migrate.PlanOption
 		wantPlan *migrate.Plan
 		wantErr  bool
 	}{
+		{
+			changes: []schema.Change{
+				&schema.AddTable{T: schema.NewTable("users")},
+			},
+			// Table "users" has no columns.
+			wantErr: true,
+		},
+		{
+			changes: []schema.Change{
+				&schema.ModifyTable{T: schema.NewTable("users")},
+			},
+			// Table "users" has no columns; drop the table instead.
+			wantErr: true,
+		},
 		{
 			changes: []schema.Change{
 				&schema.AddSchema{S: schema.New("test").SetCharset("utf8mb4"), Extra: []schema.Clause{&schema.IfNotExists{}}},
@@ -664,7 +679,8 @@ func TestPlanChanges(t *testing.T) {
 		{
 			changes: []schema.Change{
 				&schema.ModifyTable{
-					T: schema.NewTable("users"),
+					T: schema.NewTable("users").
+						AddColumns(schema.NewColumn("c").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1"})),
 					Changes: []schema.Change{
 						&schema.ModifyColumn{
 							Change: schema.ChangeGenerated,
@@ -680,7 +696,8 @@ func TestPlanChanges(t *testing.T) {
 		{
 			changes: []schema.Change{
 				&schema.ModifyTable{
-					T: schema.NewTable("users"),
+					T: schema.NewTable("users").
+						AddColumns(schema.NewColumn("c")),
 					Changes: []schema.Change{
 						&schema.ModifyColumn{
 							Change: schema.ChangeGenerated,
@@ -696,7 +713,8 @@ func TestPlanChanges(t *testing.T) {
 		{
 			changes: []schema.Change{
 				&schema.ModifyTable{
-					T: schema.NewTable("users"),
+					T: schema.NewTable("users").
+						AddColumns(schema.NewColumn("c").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"})),
 					Changes: []schema.Change{
 						&schema.ModifyColumn{
 							Change: schema.ChangeGenerated,
@@ -712,7 +730,8 @@ func TestPlanChanges(t *testing.T) {
 		{
 			changes: []schema.Change{
 				&schema.ModifyTable{
-					T: schema.NewTable("users"),
+					T: schema.NewTable("users").
+						AddColumns(schema.NewIntColumn("c", "int")),
 					Changes: []schema.Change{
 						&schema.ModifyColumn{
 							Change: schema.ChangeGenerated,
@@ -736,7 +755,8 @@ func TestPlanChanges(t *testing.T) {
 		{
 			changes: []schema.Change{
 				&schema.ModifyTable{
-					T: schema.NewTable("users"),
+					T: schema.NewTable("users").
+						AddColumns(schema.NewIntColumn("c", "int").SetGeneratedExpr(&schema.GeneratedExpr{Expr: "1", Type: "STORED"})),
 					Changes: []schema.Change{
 						&schema.ModifyColumn{
 							Change: schema.ChangeGenerated,
@@ -793,7 +813,9 @@ func TestPlanChanges(t *testing.T) {
 		{
 			changes: []schema.Change{
 				&schema.ModifyTable{
-					T: schema.NewTable("t1").SetSchema(schema.New("s1")),
+					T: schema.NewTable("t1").
+						SetSchema(schema.New("s1")).
+						AddColumns(schema.NewColumn("b")),
 					Changes: []schema.Change{
 						&schema.RenameColumn{
 							From: schema.NewColumn("a"),
@@ -816,7 +838,9 @@ func TestPlanChanges(t *testing.T) {
 			version: "5.6",
 			changes: []schema.Change{
 				&schema.ModifyTable{
-					T: schema.NewTable("t1").SetSchema(schema.New("s1")),
+					T: schema.NewTable("t1").
+						SetSchema(schema.New("s1")).
+						AddColumns(schema.NewIntColumn("b", "int")),
 					Changes: []schema.Change{
 						&schema.RenameColumn{
 							From: schema.NewIntColumn("a", "int"),
@@ -838,7 +862,9 @@ func TestPlanChanges(t *testing.T) {
 		{
 			changes: []schema.Change{
 				&schema.ModifyTable{
-					T: schema.NewTable("t1").SetSchema(schema.New("s1")),
+					T: schema.NewTable("t1").
+						SetSchema(schema.New("s1")).
+						AddColumns(schema.NewIntColumn("b", "int")),
 					Changes: []schema.Change{
 						&schema.RenameIndex{
 							From: schema.NewIndex("a"),
@@ -857,6 +883,56 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		// Empty qualifier.
+		{
+			changes: []schema.Change{
+				&schema.AddTable{T: schema.NewTable("t").SetSchema(schema.New("d")).AddColumns(schema.NewIntColumn("a", "int"))},
+			},
+			options: []migrate.PlanOption{
+				func(o *migrate.PlanOptions) { o.SchemaQualifier = new(string) },
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "CREATE TABLE `t` (`a` int NOT NULL)",
+						Reverse: "DROP TABLE `t`",
+					},
+				},
+			},
+		},
+		// Custom qualifier.
+		{
+			changes: []schema.Change{
+				&schema.AddTable{T: schema.NewTable("t").SetSchema(schema.New("d")).AddColumns(schema.NewIntColumn("a", "int"))},
+			},
+			options: []migrate.PlanOption{
+				func(o *migrate.PlanOptions) {
+					s := "other"
+					o.SchemaQualifier = &s
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "CREATE TABLE `other`.`t` (`a` int NOT NULL)",
+						Reverse: "DROP TABLE `other`.`t`",
+					},
+				},
+			},
+		},
+		// Empty qualifier in multi-schema mode should fail.
+		{
+			changes: []schema.Change{
+				&schema.AddTable{T: schema.NewTable("t1").SetSchema(schema.New("s1")).AddColumns(schema.NewIntColumn("a", "int"))},
+				&schema.AddTable{T: schema.NewTable("t2").SetSchema(schema.New("s2")).AddColumns(schema.NewIntColumn("a", "int"))},
+			},
+			options: []migrate.PlanOption{
+				func(o *migrate.PlanOptions) { o.SchemaQualifier = new(string) },
+			},
+			wantErr: true,
+		},
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
@@ -865,7 +941,7 @@ func TestPlanChanges(t *testing.T) {
 			}
 			db, _, err := newMigrate(tt.version)
 			require.NoError(t, err)
-			plan, err := db.PlanChanges(context.Background(), "wantPlan", tt.changes)
+			plan, err := db.PlanChanges(context.Background(), "wantPlan", tt.changes, tt.options...)
 			if tt.wantErr {
 				require.Error(t, err, "expect plan to fail")
 				return

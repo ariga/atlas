@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
+	"ariga.io/atlas/sql/migrate"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -30,6 +31,12 @@ type RevisionCreate struct {
 // SetDescription sets the "description" field.
 func (rc *RevisionCreate) SetDescription(s string) *RevisionCreate {
 	rc.mutation.SetDescription(s)
+	return rc
+}
+
+// SetType sets the "type" field.
+func (rc *RevisionCreate) SetType(mt migrate.RevisionType) *RevisionCreate {
+	rc.mutation.SetType(mt)
 	return rc
 }
 
@@ -86,12 +93,6 @@ func (rc *RevisionCreate) SetPartialHashes(s []string) *RevisionCreate {
 // SetOperatorVersion sets the "operator_version" field.
 func (rc *RevisionCreate) SetOperatorVersion(s string) *RevisionCreate {
 	rc.mutation.SetOperatorVersion(s)
-	return rc
-}
-
-// SetMeta sets the "meta" field.
-func (rc *RevisionCreate) SetMeta(m map[string]string) *RevisionCreate {
-	rc.mutation.SetMeta(m)
 	return rc
 }
 
@@ -180,8 +181,16 @@ func (rc *RevisionCreate) check() error {
 	if _, ok := rc.mutation.Description(); !ok {
 		return &ValidationError{Name: "description", err: errors.New(`ent: missing required field "Revision.description"`)}
 	}
+	if _, ok := rc.mutation.GetType(); !ok {
+		return &ValidationError{Name: "type", err: errors.New(`ent: missing required field "Revision.type"`)}
+	}
 	if _, ok := rc.mutation.Applied(); !ok {
 		return &ValidationError{Name: "applied", err: errors.New(`ent: missing required field "Revision.applied"`)}
+	}
+	if v, ok := rc.mutation.Applied(); ok {
+		if err := revision.AppliedValidator(v); err != nil {
+			return &ValidationError{Name: "applied", err: fmt.Errorf(`ent: validator failed for field "Revision.applied": %w`, err)}
+		}
 	}
 	if _, ok := rc.mutation.Total(); !ok {
 		return &ValidationError{Name: "total", err: errors.New(`ent: missing required field "Revision.total"`)}
@@ -202,9 +211,6 @@ func (rc *RevisionCreate) check() error {
 	}
 	if _, ok := rc.mutation.OperatorVersion(); !ok {
 		return &ValidationError{Name: "operator_version", err: errors.New(`ent: missing required field "Revision.operator_version"`)}
-	}
-	if _, ok := rc.mutation.Meta(); !ok {
-		return &ValidationError{Name: "meta", err: errors.New(`ent: missing required field "Revision.meta"`)}
 	}
 	return nil
 }
@@ -251,6 +257,14 @@ func (rc *RevisionCreate) createSpec() (*Revision, *sqlgraph.CreateSpec) {
 			Column: revision.FieldDescription,
 		})
 		_node.Description = value
+	}
+	if value, ok := rc.mutation.GetType(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeUint,
+			Value:  value,
+			Column: revision.FieldType,
+		})
+		_node.Type = value
 	}
 	if value, ok := rc.mutation.Applied(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -316,14 +330,6 @@ func (rc *RevisionCreate) createSpec() (*Revision, *sqlgraph.CreateSpec) {
 		})
 		_node.OperatorVersion = value
 	}
-	if value, ok := rc.mutation.Meta(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeJSON,
-			Value:  value,
-			Column: revision.FieldMeta,
-		})
-		_node.Meta = value
-	}
 	return _node, _spec
 }
 
@@ -387,6 +393,24 @@ func (u *RevisionUpsert) SetDescription(v string) *RevisionUpsert {
 // UpdateDescription sets the "description" field to the value that was provided on create.
 func (u *RevisionUpsert) UpdateDescription() *RevisionUpsert {
 	u.SetExcluded(revision.FieldDescription)
+	return u
+}
+
+// SetType sets the "type" field.
+func (u *RevisionUpsert) SetType(v migrate.RevisionType) *RevisionUpsert {
+	u.Set(revision.FieldType, v)
+	return u
+}
+
+// UpdateType sets the "type" field to the value that was provided on create.
+func (u *RevisionUpsert) UpdateType() *RevisionUpsert {
+	u.SetExcluded(revision.FieldType)
+	return u
+}
+
+// AddType adds v to the "type" field.
+func (u *RevisionUpsert) AddType(v migrate.RevisionType) *RevisionUpsert {
+	u.Add(revision.FieldType, v)
 	return u
 }
 
@@ -516,18 +540,6 @@ func (u *RevisionUpsert) UpdateOperatorVersion() *RevisionUpsert {
 	return u
 }
 
-// SetMeta sets the "meta" field.
-func (u *RevisionUpsert) SetMeta(v map[string]string) *RevisionUpsert {
-	u.Set(revision.FieldMeta, v)
-	return u
-}
-
-// UpdateMeta sets the "meta" field to the value that was provided on create.
-func (u *RevisionUpsert) UpdateMeta() *RevisionUpsert {
-	u.SetExcluded(revision.FieldMeta)
-	return u
-}
-
 // UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
 // Using this option is equivalent to using:
 //
@@ -595,6 +607,27 @@ func (u *RevisionUpsertOne) SetDescription(v string) *RevisionUpsertOne {
 func (u *RevisionUpsertOne) UpdateDescription() *RevisionUpsertOne {
 	return u.Update(func(s *RevisionUpsert) {
 		s.UpdateDescription()
+	})
+}
+
+// SetType sets the "type" field.
+func (u *RevisionUpsertOne) SetType(v migrate.RevisionType) *RevisionUpsertOne {
+	return u.Update(func(s *RevisionUpsert) {
+		s.SetType(v)
+	})
+}
+
+// AddType adds v to the "type" field.
+func (u *RevisionUpsertOne) AddType(v migrate.RevisionType) *RevisionUpsertOne {
+	return u.Update(func(s *RevisionUpsert) {
+		s.AddType(v)
+	})
+}
+
+// UpdateType sets the "type" field to the value that was provided on create.
+func (u *RevisionUpsertOne) UpdateType() *RevisionUpsertOne {
+	return u.Update(func(s *RevisionUpsert) {
+		s.UpdateType()
 	})
 }
 
@@ -742,20 +775,6 @@ func (u *RevisionUpsertOne) SetOperatorVersion(v string) *RevisionUpsertOne {
 func (u *RevisionUpsertOne) UpdateOperatorVersion() *RevisionUpsertOne {
 	return u.Update(func(s *RevisionUpsert) {
 		s.UpdateOperatorVersion()
-	})
-}
-
-// SetMeta sets the "meta" field.
-func (u *RevisionUpsertOne) SetMeta(v map[string]string) *RevisionUpsertOne {
-	return u.Update(func(s *RevisionUpsert) {
-		s.SetMeta(v)
-	})
-}
-
-// UpdateMeta sets the "meta" field to the value that was provided on create.
-func (u *RevisionUpsertOne) UpdateMeta() *RevisionUpsertOne {
-	return u.Update(func(s *RevisionUpsert) {
-		s.UpdateMeta()
 	})
 }
 
@@ -994,6 +1013,27 @@ func (u *RevisionUpsertBulk) UpdateDescription() *RevisionUpsertBulk {
 	})
 }
 
+// SetType sets the "type" field.
+func (u *RevisionUpsertBulk) SetType(v migrate.RevisionType) *RevisionUpsertBulk {
+	return u.Update(func(s *RevisionUpsert) {
+		s.SetType(v)
+	})
+}
+
+// AddType adds v to the "type" field.
+func (u *RevisionUpsertBulk) AddType(v migrate.RevisionType) *RevisionUpsertBulk {
+	return u.Update(func(s *RevisionUpsert) {
+		s.AddType(v)
+	})
+}
+
+// UpdateType sets the "type" field to the value that was provided on create.
+func (u *RevisionUpsertBulk) UpdateType() *RevisionUpsertBulk {
+	return u.Update(func(s *RevisionUpsert) {
+		s.UpdateType()
+	})
+}
+
 // SetApplied sets the "applied" field.
 func (u *RevisionUpsertBulk) SetApplied(v int) *RevisionUpsertBulk {
 	return u.Update(func(s *RevisionUpsert) {
@@ -1138,20 +1178,6 @@ func (u *RevisionUpsertBulk) SetOperatorVersion(v string) *RevisionUpsertBulk {
 func (u *RevisionUpsertBulk) UpdateOperatorVersion() *RevisionUpsertBulk {
 	return u.Update(func(s *RevisionUpsert) {
 		s.UpdateOperatorVersion()
-	})
-}
-
-// SetMeta sets the "meta" field.
-func (u *RevisionUpsertBulk) SetMeta(v map[string]string) *RevisionUpsertBulk {
-	return u.Update(func(s *RevisionUpsert) {
-		s.SetMeta(v)
-	})
-}
-
-// UpdateMeta sets the "meta" field to the value that was provided on create.
-func (u *RevisionUpsertBulk) UpdateMeta() *RevisionUpsertBulk {
-	return u.Update(func(s *RevisionUpsert) {
-		s.UpdateMeta()
 	})
 }
 

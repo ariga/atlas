@@ -45,10 +45,10 @@ const (
 	migrateFlagDryRun           = "dry-run"
 	migrateFlagTo               = "to"
 	migrateFlagSchema           = "schema"
-	migrateDiffFlagVerbose      = "verbose"
 	migrateLintLatest           = "latest"
 	migrateLintGitDir           = "git-dir"
 	migrateLintGitBase          = "git-base"
+	migrateDiffQualifier        = "qualifier"
 	migrateApplyAllowDirty      = "allow-dirty"
 	migrateApplyFromVersion     = "from"
 	migrateApplyBaselineVersion = "baseline"
@@ -65,13 +65,15 @@ var (
 		DirFormat      string
 		RevisionSchema string
 		Force          bool
-		Verbose        bool
 		Apply          struct {
 			DryRun          bool
 			LogFormat       string
 			AllowDirty      bool
 			FromVersion     string
 			BaselineVersion string
+		}
+		Diff struct {
+			Qualifier string // optional table qualifier
 		}
 		Lint struct {
 			Format  string // log formatting
@@ -247,7 +249,7 @@ func init() {
 	// Diff flags.
 	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateDiffCmd.Flags())
 	MigrateDiffCmd.Flags().StringSliceVarP(&MigrateFlags.ToURLs, migrateFlagTo, "", nil, "[driver://username:password@address/dbname?param=value ...] select a desired state using the URL format")
-	MigrateDiffCmd.Flags().BoolVarP(&MigrateFlags.Verbose, migrateDiffFlagVerbose, "", false, "enable verbose logging")
+	MigrateDiffCmd.Flags().StringVarP(&MigrateFlags.Diff.Qualifier, migrateDiffQualifier, "", "", "qualify tables with custom qualifier when working on a single schema")
 	MigrateDiffCmd.Flags().SortFlags = false
 	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateFlagDevURL))
 	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateFlagTo))
@@ -289,6 +291,15 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	defer c.Close()
+	// Acquire a lock.
+	if l, ok := c.Driver.(schema.Locker); ok {
+		unlock, err := l.Lock(cmd.Context(), "atlas_migrate_execute", 0)
+		if err != nil {
+			return fmt.Errorf("acquiring database lock: %w", err)
+		}
+		// If unlocking fails notify the user about it.
+		defer cobra.CheckErr(unlock())
+	}
 	// Get the correct log format and destination. Currently, only os.Stdout is supported.
 	l, err := logFormat(cmd.OutOrStdout())
 	if err != nil {
@@ -315,11 +326,6 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	unlock, err := ex.Lock(cmd.Context())
-	if err != nil {
-		return err
-	}
-	defer unlock()
 	pending, err := ex.Pending(cmd.Context())
 	if err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
 		return err
@@ -407,7 +413,7 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	if l, ok := dev.Driver.(schema.Locker); ok {
 		unlock, err := l.Lock(cmd.Context(), "atlas_migrate_diff", 0)
 		if err != nil {
-			return err
+			return fmt.Errorf("acquiring database lock: %w", err)
 		}
 		// If unlocking fails notify the user about it.
 		defer cobra.CheckErr(unlock())
@@ -419,26 +425,38 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	}
 	// Get a state reader for the desired state.
 	desired, err := to(cmd.Context(), dev)
-	if src, ok := desired.(io.Closer); ok {
-		defer src.Close()
-	}
 	if err != nil {
 		return err
 	}
+	defer desired.Close()
 	f, err := formatter()
 	if err != nil {
 		return err
 	}
+	opts := []migrate.PlannerOption{migrate.PlanFormat(f)}
+	if dev.URL.Schema != "" {
+		// Disable tables qualifier in schema-mode.
+		opts = append(opts, migrate.PlanWithSchemaQualifier(MigrateFlags.Diff.Qualifier))
+	}
 	// Plan the changes and create a new migration file.
-	pl := migrate.NewPlanner(dev.Driver, dir, migrate.WithFormatter(f))
+	pl := migrate.NewPlanner(dev.Driver, dir, opts...)
 	var name string
 	if len(args) > 0 {
 		name = args[0]
 	}
-	switch plan, err := pl.Plan(cmd.Context(), name, desired); {
+	plan, err := func() (*migrate.Plan, error) {
+		if dev.URL.Schema != "" {
+			return pl.PlanSchema(cmd.Context(), name, desired.StateReader)
+		}
+		return pl.Plan(cmd.Context(), name, desired.StateReader)
+	}()
+	var cerr migrate.NotCleanError
+	switch {
 	case errors.Is(err, migrate.ErrNoPlan):
 		cmd.Println("The migration directory is synced with the desired state, no changes to be made")
 		return nil
+	case errors.As(err, &cerr) && dev.URL.Schema == "" && desired.Schema != "":
+		return fmt.Errorf("dev database is not clean (%s). Add a schema to the URL to limit the scope of the connection", cerr.Reason)
 	case err != nil:
 		return err
 	default:
@@ -474,7 +492,7 @@ func CmdMigrateNewRun(_ *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		name = args[0]
 	}
-	return migrate.NewPlanner(nil, dir, migrate.WithFormatter(f)).WritePlan(&migrate.Plan{Name: name})
+	return migrate.NewPlanner(nil, dir, migrate.PlanFormat(f)).WritePlan(&migrate.Plan{Name: name})
 }
 
 // CmdMigrateStatusRun is the command executed when running the CLI with 'migrate status' args.
@@ -534,10 +552,8 @@ func statusPrint(out io.Writer, avail, pending []migrate.File, revs migrate.Revi
 	switch len(pending) {
 	case len(avail):
 		cur = "No version applied yet"
-	case 0:
-		cur = cyan(avail[len(avail)-1].Version())
 	default:
-		cur = cyan(avail[len(avail)-len(pending)].Version())
+		cur = cyan(applied[len(applied)-1].Version())
 		// If the last pending version is partially applied, tell so.
 		if partial {
 			cur += fmt.Sprintf(" (%d statements applied)", revs[len(revs)-1].Applied)
@@ -557,16 +573,15 @@ func statusPrint(out io.Writer, avail, pending []migrate.File, revs migrate.Revi
 	if partial {
 		exec += " + 1 partially"
 	}
-	fmt.Fprintf(out, "Migration Status: %s\n", state)
-	fmt.Fprintf(out, "%s%s Current Version:\t%s\n", indent2, dash, cur)
-	fmt.Fprintf(out, "%s%s Next Version:\t%s\n", indent2, dash, next)
-	// fmt.Fprintf(out, "%s%s Available Files:\t%s\n", indent2, dash, cyan(strconv.Itoa(len(avail))))
-	fmt.Fprintf(out, "%s%s Executed Files:\t%s\n", indent2, dash, exec)
 	c := cyan
 	if len(pending) == 0 {
 		c = green
 	}
-	fmt.Fprintf(out, "%s%s Pending Files:\t%s", indent2, dash, c(strconv.Itoa(len(pending))))
+	fmt.Fprintf(out, "Migration Status: %s\n", state)
+	fmt.Fprintf(out, "%s%s Current Version:  %s\n", indent2, dash, cur)
+	fmt.Fprintf(out, "%s%s Next Version:     %s\n", indent2, dash, next)
+	fmt.Fprintf(out, "%s%s Executed Files:   %s\n", indent2, dash, exec)
+	fmt.Fprintf(out, "%s%s Pending Files:    %s", indent2, dash, c(strconv.Itoa(len(pending))))
 	if partial {
 		fmt.Fprintf(out, " (partially)")
 	}
@@ -596,7 +611,12 @@ func CmdMigrateValidateRun(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := ex.ReadState(cmd.Context()); err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
+	if _, err := ex.Replay(cmd.Context(), func() migrate.StateReader {
+		if dev.URL.Schema != "" {
+			return migrate.SchemaConn(dev, "", nil)
+		}
+		return migrate.RealmConn(dev, nil)
+	}()); err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
 		return fmt.Errorf("replaying the migration directory: %w", err)
 	}
 	return nil
@@ -653,7 +673,10 @@ func CmdMigrateLintRun(cmd *cobra.Command, _ []string) error {
 		},
 		Analyzer: az,
 	}
-	return r.Run(cmd.Context())
+	err = r.Run(cmd.Context())
+	// Print the error in case it was not printed before.
+	cmd.SilenceErrors = errors.As(err, &ci.SilentError{})
+	return err
 }
 
 func printChecksumErr(out io.Writer) {
@@ -721,8 +744,14 @@ func dir(create bool) (migrate.Dir, error) {
 	return d, err
 }
 
+type target struct {
+	migrate.StateReader        // desired state.
+	io.Closer                  // optional close function.
+	Schema              string // in case we work on a single schema.
+}
+
 // to returns a migrate.StateReader for the given to flag.
-func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, error) {
+func to(ctx context.Context, dev *sqlclient.Client) (*target, error) {
 	scheme, err := selectScheme(MigrateFlags.ToURLs)
 	if err != nil {
 		return nil, err
@@ -739,7 +768,7 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 		if err != nil {
 			return nil, err
 		}
-		if err := client.Eval(parsed, realm, nil); err != nil {
+		if err := dev.Eval(parsed, realm, nil); err != nil {
 			return nil, err
 		}
 		if len(schemas) > 0 {
@@ -754,28 +783,51 @@ func to(ctx context.Context, client *sqlclient.Client) (migrate.StateReader, err
 				}
 			}
 		}
-		if norm, ok := client.Driver.(schema.Normalizer); ok {
+		// In case the dev connection is bound to a specific schema, we require the
+		// desired schema to contain only one schema. Thus, executing diff will be
+		// done on the content of these two schema and not the whole realm.
+		if dev.URL.Schema != "" && len(realm.Schemas) > 1 {
+			return nil, fmt.Errorf("cannot use HCL with more than 1 schema when dev-url is limited to schema %q", dev.URL.Schema)
+		}
+		if norm, ok := dev.Driver.(schema.Normalizer); ok && len(realm.Schemas) > 0 {
 			realm, err = norm.NormalizeRealm(ctx, realm)
 			if err != nil {
 				return nil, err
 			}
 		}
-		return migrate.Realm(realm), nil
+		t := &target{StateReader: migrate.Realm(realm), Closer: io.NopCloser(nil)}
+		if len(realm.Schemas) == 1 {
+			t.Schema = realm.Schemas[0].Name
+		}
+		return t, nil
 	default: // database connection
 		client, err := sqlclient.Open(ctx, MigrateFlags.ToURLs[0])
 		if err != nil {
 			return nil, err
 		}
-		if client.URL.Schema != "" {
-			schemas = append(schemas, client.URL.Schema)
+		t := &target{Closer: client}
+		switch s := client.URL.Schema; {
+		// Connection to a specific schema.
+		case s != "":
+			if len(schemas) > 1 || len(schemas) == 1 && schemas[0] != s {
+				return nil, fmt.Errorf("cannot specify schemas with a schema connection to %q", s)
+			}
+			t.Schema = s
+			t.StateReader = migrate.SchemaConn(client, s, &schema.InspectOptions{})
+		// A single schema is selected.
+		case len(schemas) == 1:
+			t.Schema = schemas[0]
+			t.StateReader = migrate.SchemaConn(client, schemas[0], &schema.InspectOptions{})
+		// Multiple or all schemas.
+		default:
+			// In case the dev connection is limited to a single schema,
+			// but we compare it to entire database.
+			if dev.URL.Schema != "" {
+				return nil, fmt.Errorf("cannot use database-url without a schema when dev-url is limited to %q", dev.URL.Schema)
+			}
+			t.StateReader = migrate.RealmConn(client, &schema.InspectRealmOption{Schemas: schemas})
 		}
-		return struct {
-			migrate.StateReader
-			io.Closer
-		}{
-			Closer:      client,
-			StateReader: migrate.Conn(client, &schema.InspectRealmOption{Schemas: schemas}),
-		}, nil
+		return t, nil
 	}
 }
 

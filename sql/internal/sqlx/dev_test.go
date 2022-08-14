@@ -53,7 +53,7 @@ func (m *mockDriver) InspectRealm(_ context.Context, opts *schema.InspectRealmOp
 	return m.realm, nil
 }
 
-func (m *mockDriver) ApplyChanges(_ context.Context, changes []schema.Change) error {
+func (m *mockDriver) ApplyChanges(_ context.Context, changes []schema.Change, _ ...migrate.PlanOption) error {
 	m.changes = append(m.changes, changes)
 	return nil
 }

@@ -8,16 +8,18 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"io"
 	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
-
 	"entgo.io/ent/dialect"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/require"
@@ -30,53 +32,39 @@ type pgTest struct {
 	rrw     migrate.RevisionReadWriter
 	version string
 	port    int
+	once    sync.Once
 }
 
-var pgTests = struct {
-	drivers map[string]*pgTest
-	ports   map[string]int
-}{
-	drivers: make(map[string]*pgTest),
-	ports: map[string]int{
-		"postgres10": 5430,
-		"postgres11": 5431,
-		"postgres12": 5432,
-		"postgres13": 5433,
-		"postgres14": 5434,
-	},
-}
-
-func pgInit(d string) []io.Closer {
-	var cs []io.Closer
-	if d != "" {
-		p, ok := pgTests.ports[d]
-		if ok {
-			pgTests.ports = map[string]int{d: p}
-		} else {
-			pgTests.ports = make(map[string]int)
-		}
-	}
-	for version, port := range pgTests.ports {
-		db, err := sql.Open("postgres", fmt.Sprintf("host=localhost port=%d user=postgres dbname=test password=pass sslmode=disable", port))
-		if err != nil {
-			log.Fatalln(err)
-		}
-		cs = append(cs, db)
-		drv, err := postgres.Open(db)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		pgTests.drivers[version] = &pgTest{db: db, drv: drv, version: version, port: port, rrw: &rrw{}}
-	}
-	return cs
+var pgTests = map[string]*pgTest{
+	"postgres10": {port: 5430},
+	"postgres11": {port: 5431},
+	"postgres12": {port: 5432},
+	"postgres13": {port: 5433},
+	"postgres14": {port: 5434},
 }
 
 func pgRun(t *testing.T, fn func(*pgTest)) {
-	for version, tt := range pgTests.drivers {
-		t.Run(version, func(t *testing.T) {
-			tt := &pgTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port, rrw: tt.rrw}
-			fn(tt)
-		})
+	for version, tt := range pgTests {
+		if flagVersion == "" || flagVersion == version {
+			t.Run(version, func(t *testing.T) {
+				tt.once.Do(func() {
+					var err error
+					tt.version = version
+					tt.rrw = &rrw{}
+					tt.db, err = sql.Open("postgres", fmt.Sprintf("host=localhost port=%d user=postgres dbname=test password=pass sslmode=disable", tt.port))
+					if err != nil {
+						log.Fatalln(err)
+					}
+					dbs = append(dbs, tt.db) // close connection after all tests have been run
+					tt.drv, err = postgres.Open(tt.db)
+					if err != nil {
+						log.Fatalln(err)
+					}
+				})
+				tt := &pgTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port, rrw: tt.rrw}
+				fn(tt)
+			})
+		}
 	}
 }
 
@@ -548,6 +536,60 @@ schema "second" {
 	})
 }
 
+func TestPostgres_HCL_ForeignKeyCrossSchema(t *testing.T) {
+	const expected = `table "credit_cards" {
+  schema = schema.financial
+  column "id" {
+    null = false
+    type = serial
+  }
+  column "user_id" {
+    null = false
+    type = integer
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "user_id_fkey" {
+    columns     = [column.user_id]
+    ref_columns = [table.users.users.column.id]
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
+  }
+}
+table "users" "users" {
+  schema = schema.users
+  column "id" {
+    null = false
+    type = bigserial
+  }
+  column "email" {
+    null = false
+    type = character_varying
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+schema "financial" {
+}
+schema "users" {
+}
+`
+	pgRun(t, func(t *pgTest) {
+		t.dropSchemas("financial", "users")
+		realm := t.loadRealm()
+		hcl, err := postgres.MarshalHCL(realm)
+		require.NoError(t, err)
+		t.applyRealmHcl(string(hcl) + "\n" + expected)
+		realm, err = t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{Schemas: []string{"users", "financial"}})
+		require.NoError(t, err)
+		actual, err := postgres.MarshalHCL(realm)
+		require.NoError(t, err)
+		require.Equal(t, expected, string(actual))
+	})
+}
+
 func (t *pgTest) applyRealmHcl(spec string) {
 	realm := t.loadRealm()
 	var desired schema.Realm
@@ -614,17 +656,17 @@ func TestPostgres_CLI(t *testing.T) {
 			}`
 	t.Run("SchemaInspect", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
-			testCLISchemaInspect(t, h, t.dsn(), postgres.EvalHCL)
+			testCLISchemaInspect(t, h, t.dsn(""), postgres.EvalHCL)
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
-			testCLISchemaApply(t, h, t.dsn())
+			testCLISchemaApply(t, h, t.dsn(""))
 		})
 	})
 	t.Run("SchemaApplyDryRun", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
-			testCLISchemaApplyDry(t, h, t.dsn())
+			testCLISchemaApplyDry(t, h, t.dsn(""))
 		})
 	})
 	t.Run("SchemaApplyWithVars", func(t *testing.T) {
@@ -643,17 +685,17 @@ table "users" {
 }
 `
 		pgRun(t, func(t *pgTest) {
-			testCLISchemaApply(t, h, t.dsn(), "--var", "tenant=public")
+			testCLISchemaApply(t, h, t.dsn(""), "--var", "tenant=public")
 		})
 	})
 	t.Run("SchemaDiffRun", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
-			testCLISchemaDiff(t, t.dsn())
+			testCLISchemaDiff(t, t.dsn(""))
 		})
 	})
 	t.Run("SchemaApplyAutoApprove", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
-			testCLISchemaApplyAutoApprove(t, h, t.dsn())
+			testCLISchemaApplyAutoApprove(t, h, t.dsn(""))
 		})
 	})
 }
@@ -686,15 +728,87 @@ func TestPostgres_CLI_MultiSchema(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
 			t.dropSchemas("test2")
 			t.dropTables("users")
-			testCLIMultiSchemaInspect(t, h, t.dsn(), []string{"public", "test2"}, postgres.EvalHCL)
+			testCLIMultiSchemaInspect(t, h, t.dsn(""), []string{"public", "test2"}, postgres.EvalHCL)
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
 			t.dropSchemas("test2")
 			t.dropTables("users")
-			testCLIMultiSchemaApply(t, h, t.dsn(), []string{"public", "test2"}, postgres.EvalHCL)
+			testCLIMultiSchemaApply(t, h, t.dsn(""), []string{"public", "test2"}, postgres.EvalHCL)
 		})
+	})
+}
+
+func TestPostgres_MigrateDiffRealm(t *testing.T) {
+	bin, err := buildCmd(t)
+	require.NoError(t, err)
+	pgRun(t, func(t *pgTest) {
+		dir := t.TempDir()
+		_, err := t.db.Exec("CREATE DATABASE migrate_diff")
+		require.NoError(t, err)
+		defer t.db.Exec("DROP DATABASE IF EXISTS migrate_diff")
+
+		hcl := `
+schema "public" {}
+table "users" {
+	schema = schema.public
+	column "id" { type = integer }
+}
+schema "other" {}
+table "posts" {
+	schema = schema.other
+	column "id" { type = integer }
+}
+`
+		err = os.WriteFile(filepath.Join(dir, "schema.hcl"), []byte(hcl), 0600)
+		diff := func(name string) string {
+			out, err := exec.Command(
+				bin, "migrate", "diff", name,
+				"--dir", fmt.Sprintf("file://%s", filepath.Join(dir, "migrations")),
+				"--to", fmt.Sprintf("file://%s", filepath.Join(dir, "schema.hcl")),
+				"--dev-url", fmt.Sprintf("postgres://postgres:pass@localhost:%d/migrate_diff?sslmode=disable", t.port),
+			).CombinedOutput()
+			require.NoError(t, err, string(out))
+			return strings.TrimSpace(string(out))
+		}
+		require.Empty(t, diff("initial"))
+
+		// Expect one file and read its contents.
+		files, err := os.ReadDir(filepath.Join(dir, "migrations"))
+		require.NoError(t, err)
+		require.Equal(t, 2, len(files))
+		require.Equal(t, "atlas.sum", files[1].Name())
+		b, err := os.ReadFile(filepath.Join(dir, "migrations", files[0].Name()))
+		require.NoError(t, err)
+		require.Equal(t,
+			`-- Add new schema named "other"
+CREATE SCHEMA "other";
+-- create "users" table
+CREATE TABLE "public"."users" ("id" integer NOT NULL);
+-- create "posts" table
+CREATE TABLE "other"."posts" ("id" integer NOT NULL);
+`, string(b))
+		require.Equal(t, "The migration directory is synced with the desired state, no changes to be made", diff("no_change"))
+
+		// Append a change to the schema and expect a migration to be created.
+		hcl += `
+table "other" "users" {
+	schema = schema.other
+	column "id" { type = integer }
+}`
+		err = os.WriteFile(filepath.Join(dir, "schema.hcl"), []byte(hcl), 0600)
+		require.Empty(t, diff("second"))
+		require.Equal(t, "The migration directory is synced with the desired state, no changes to be made", diff("no_change"))
+		files, err = os.ReadDir(filepath.Join(dir, "migrations"))
+		require.NoError(t, err)
+		require.Equal(t, 3, len(files), dir)
+		b, err = os.ReadFile(filepath.Join(dir, "migrations", files[1].Name()))
+		require.NoError(t, err)
+		require.Equal(t,
+			`-- create "users" table
+CREATE TABLE "other"."users" ("id" integer NOT NULL);
+`, string(b))
 	})
 }
 
@@ -1119,11 +1233,14 @@ create table atlas_types_sanity
 }
 
 func (t *pgTest) url() string {
-	return t.dsn()
+	return t.dsn("")
 }
 
-func (t *pgTest) dsn() string {
-	return fmt.Sprintf("postgres://postgres:pass@localhost:%d/test?sslmode=disable", t.port)
+func (t *pgTest) dsn(schema string) string {
+	if schema == "" {
+		schema = "public"
+	}
+	return fmt.Sprintf("postgres://postgres:pass@localhost:%d/test?sslmode=disable&search_path=%s", t.port, schema)
 }
 
 func (t *pgTest) driver() migrate.Driver {

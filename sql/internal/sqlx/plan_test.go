@@ -92,3 +92,23 @@ func TestDetachCycles(t *testing.T) {
 	workplaces.ForeignKeys = nil
 	require.Equal(t, deletion, planned[2:])
 }
+
+func TestCheckChangesScope(t *testing.T) {
+	err := CheckChangesScope([]schema.Change{
+		&schema.AddSchema{},
+	})
+	require.EqualError(t, err, "*schema.AddSchema is not allowed when migration plan is scoped to one schema")
+	err = CheckChangesScope([]schema.Change{
+		&schema.ModifySchema{},
+	})
+	require.EqualError(t, err, "*schema.ModifySchema is not allowed when migration plan is scoped to one schema")
+	err = CheckChangesScope([]schema.Change{
+		&schema.DropSchema{},
+	})
+	require.EqualError(t, err, "*schema.DropSchema is not allowed when migration plan is scoped to one schema")
+	err = CheckChangesScope([]schema.Change{
+		&schema.AddTable{T: schema.NewTable("users").SetSchema(schema.New("s1"))},
+		&schema.AddTable{T: schema.NewTable("users").SetSchema(schema.New("s2"))},
+	})
+	require.EqualError(t, err, "found 2 schemas when migration plan is scoped to one")
+}

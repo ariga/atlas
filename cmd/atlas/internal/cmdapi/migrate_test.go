@@ -101,7 +101,7 @@ func TestMigrate_Apply(t *testing.T) {
 		"--url", fmt.Sprintf("sqlitelockapply://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
 	)
 	require.ErrorIs(t, err, errLock)
-	require.True(t, strings.HasPrefix(s, "Error: sql/migrate: acquiring database lock: "+errLock.Error()))
+	require.True(t, strings.HasPrefix(s, "Error: acquiring database lock: "+errLock.Error()))
 
 	// Will work and print stuff to the console.
 	s, err = runCmd(
@@ -246,8 +246,31 @@ func TestMigrate_Apply(t *testing.T) {
 	require.Len(t, revs, 1)
 }
 
+func TestMigrate_ApplyBaseline(t *testing.T) {
+	p := t.TempDir()
+	// Run migration with baseline should store this revision in the database.
+	s, err := runCmd(
+		Root, "migrate", "apply",
+		"--dir", "file://testdata/baseline1",
+		"--baseline", "1",
+		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
+	)
+	require.NoError(t, err)
+	require.Contains(t, s, "The migration directory is synced with the database, no migration files to execute")
+
+	// Next run without baseline should run the migration from the baseline.
+	s, err = runCmd(
+		Root, "migrate", "apply",
+		"--dir", "file://testdata/baseline2",
+		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
+	)
+	require.NoError(t, err)
+	require.Contains(t, s, "Migrating to version 20220318104615 from 1 (2 migrations in total)")
+}
+
 func TestMigrate_Diff(t *testing.T) {
 	p := t.TempDir()
+	to := hclURL(t)
 
 	// Will create migration directory if not existing.
 	MigrateFlags.Force = false
@@ -256,7 +279,8 @@ func TestMigrate_Diff(t *testing.T) {
 		"name",
 		"--dir", "file://"+filepath.Join(p, "migrations"),
 		"--dev-url", openSQLite(t, ""),
-		"--to", hclURL(t))
+		"--to", to,
+	)
 	require.NoError(t, err)
 	require.FileExists(t, filepath.Join(p, "migrations", fmt.Sprintf("%s_name.sql", time.Now().UTC().Format("20060102150405"))))
 
@@ -267,7 +291,7 @@ func TestMigrate_Diff(t *testing.T) {
 		"name",
 		"--dir", "file://"+p,
 		"--dev-url", openSQLite(t, "create table t (c int);"),
-		"--to", hclURL(t),
+		"--to", to,
 	)
 	require.ErrorAs(t, err, &migrate.NotCleanError{})
 	require.ErrorContains(t, err, "found table \"t\"")
@@ -278,7 +302,7 @@ func TestMigrate_Diff(t *testing.T) {
 		"name",
 		"--dir", "file://"+p,
 		"--dev-url", openSQLite(t, ""),
-		"--to", hclURL(t),
+		"--to", to,
 	)
 	require.NoError(t, err)
 	require.Zero(t, s)
@@ -302,9 +326,9 @@ func TestMigrate_Diff(t *testing.T) {
 		"name",
 		"--dir", "file://"+t.TempDir(),
 		"--dev-url", fmt.Sprintf("sqlitelockdiff://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
-		"--to", hclURL(t),
+		"--to", to,
 	)
-	require.True(t, strings.HasPrefix(s, "Error: "+errLock.Error()))
+	require.True(t, strings.HasPrefix(s, "Error: acquiring database lock: "+errLock.Error()))
 	require.ErrorIs(t, err, errLock)
 }
 
@@ -487,6 +511,20 @@ func TestMigrate_Lint(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, "1.up.sql:0", s)
+
+	// Invalid files.
+	MigrateFlags.Lint.Format = ""
+	err = os.WriteFile(filepath.Join(p, "2.up.sql"), []byte("BORING"), 0600)
+	require.NoError(t, err)
+	s, err = runCmd(
+		Root, "migrate", "lint",
+		"--dir", "file://"+p,
+		"--dir-format", "golang-migrate",
+		"--dev-url", openSQLite(t, ""),
+		"--latest", "1",
+	)
+	require.Error(t, err)
+	require.Equal(t, "2.up.sql: executing statement: near \"BORING\": syntax error\n", s)
 }
 
 const testSchema = `

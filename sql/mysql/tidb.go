@@ -81,7 +81,7 @@ func flat(changes []schema.Change) []schema.Change {
 }
 
 // PlanChanges returns a migration plan for the given schema changes.
-func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []schema.Change) (*migrate.Plan, error) {
+func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
 	fc := flat(changes)
 	sort.SliceStable(fc, func(i, j int) bool {
 		return priority(fc[i]) < priority(fc[j])
@@ -98,7 +98,7 @@ func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []sch
 	}
 	for _, c := range fc {
 		// Use the planner of MySQL with each "atomic" change.
-		plan, err := p.planApply.PlanChanges(ctx, name, []schema.Change{c})
+		plan, err := p.planApply.PlanChanges(ctx, name, []schema.Change{c}, opts...)
 		if err != nil {
 			return nil, err
 		}
@@ -110,20 +110,8 @@ func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []sch
 	return &s.Plan, nil
 }
 
-func (p *tplanApply) ApplyChanges(ctx context.Context, changes []schema.Change) error {
-	plan, err := p.PlanChanges(ctx, "apply", changes)
-	if err != nil {
-		return err
-	}
-	for _, c := range plan.Changes {
-		if _, err := p.ExecContext(ctx, c.Cmd, c.Args...); err != nil {
-			if c.Comment != "" {
-				err = fmt.Errorf("%s: %w", c.Comment, err)
-			}
-			return err
-		}
-	}
-	return nil
+func (p *tplanApply) ApplyChanges(ctx context.Context, changes []schema.Change, opts ...migrate.PlanOption) error {
+	return sqlx.ApplyChanges(ctx, changes, p, opts...)
 }
 
 func (i *tinspect) InspectSchema(ctx context.Context, name string, opts *schema.InspectOptions) (*schema.Schema, error) {

@@ -7,6 +7,8 @@ package schema
 import (
 	"time"
 
+	"ariga.io/atlas/sql/migrate"
+
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema"
@@ -26,9 +28,12 @@ func (Revision) Fields() []ent.Field {
 			Immutable(),
 		field.String("description").
 			Immutable(),
-		field.Int("applied"),
+		field.Uint("type").
+			GoType(migrate.RevisionType(0)),
+		field.Int("applied").
+			NonNegative(),
 		field.Int("total").
-			Positive(),
+			NonNegative(),
 		field.Time("executed_at").
 			Immutable(),
 		field.Int64("execution_time").
@@ -39,7 +44,6 @@ func (Revision) Fields() []ent.Field {
 		field.Strings("partial_hashes").
 			Optional(),
 		field.String("operator_version"),
-		field.JSON("meta", make(map[string]string)),
 	}
 }
 

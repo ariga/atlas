@@ -20,7 +20,7 @@ import (
 type planApply struct{ conn }
 
 // PlanChanges returns a migration plan for the given schema changes.
-func (p *planApply) PlanChanges(_ context.Context, name string, changes []schema.Change) (*migrate.Plan, error) {
+func (p *planApply) PlanChanges(_ context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
 	s := &state{
 		conn: p.conn,
 		Plan: migrate.Plan{
@@ -32,6 +32,9 @@ func (p *planApply) PlanChanges(_ context.Context, name string, changes []schema
 			// https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html
 			Transactional: false,
 		},
+	}
+	for _, o := range opts {
+		o(&s.PlanOptions)
 	}
 	if err := s.plan(changes); err != nil {
 		return nil, err
@@ -48,8 +51,8 @@ func (p *planApply) PlanChanges(_ context.Context, name string, changes []schema
 // ApplyChanges applies the changes on the database. An error is returned
 // if the driver is unable to produce a plan to it, or one of the statements
 // is failed or unsupported.
-func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change) error {
-	return sqlx.ApplyChanges(ctx, changes, p)
+func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change, opts ...migrate.PlanOption) error {
+	return sqlx.ApplyChanges(ctx, changes, p, opts...)
 }
 
 // state represents the state of a planning. It is not part of
@@ -58,11 +61,17 @@ func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change) e
 type state struct {
 	conn
 	migrate.Plan
+	migrate.PlanOptions
 }
 
 // plan builds the migration plan for applying the
 // given changes on the attached connection.
 func (s *state) plan(changes []schema.Change) error {
+	if s.SchemaQualifier != nil {
+		if err := sqlx.CheckChangesScope(changes); err != nil {
+			return err
+		}
+	}
 	planned, err := s.topLevel(changes)
 	if err != nil {
 		return err
@@ -97,7 +106,7 @@ func (s *state) topLevel(changes []schema.Change) ([]schema.Change, error) {
 	for _, c := range changes {
 		switch c := c.(type) {
 		case *schema.AddSchema:
-			b := Build("CREATE DATABASE")
+			b := s.Build("CREATE DATABASE")
 			if sqlx.Has(c.Extra, &schema.IfNotExists{}) {
 				b.P("IF NOT EXISTS")
 			}
@@ -113,11 +122,11 @@ func (s *state) topLevel(changes []schema.Change) ([]schema.Change, error) {
 			s.append(&migrate.Change{
 				Cmd:     b.String(),
 				Source:  c,
-				Reverse: Build("DROP DATABASE").Ident(c.S.Name).String(),
+				Reverse: s.Build("DROP DATABASE").Ident(c.S.Name).String(),
 				Comment: fmt.Sprintf("add new schema named %q", c.S.Name),
 			})
 		case *schema.DropSchema:
-			b := Build("DROP DATABASE")
+			b := s.Build("DROP DATABASE")
 			if sqlx.Has(c.Extra, &schema.IfExists{}) {
 				b.P("IF EXISTS")
 			}
@@ -141,7 +150,7 @@ func (s *state) topLevel(changes []schema.Change) ([]schema.Change, error) {
 // modifySchema builds and appends the migrate.Changes for bringing
 // the schema into its modified state.
 func (s *state) modifySchema(modify *schema.ModifySchema) error {
-	b, r := Build(""), Build("")
+	b, r := s.Build(), s.Build()
 	for _, change := range modify.Changes {
 		switch change := change.(type) {
 		// Add schema attributes to an existing schema only if
@@ -185,7 +194,7 @@ func (s *state) modifySchema(modify *schema.ModifySchema) error {
 		}
 	}
 	if b.Len() > 0 {
-		bs := Build("ALTER DATABASE").Ident(modify.S.Name)
+		bs := s.Build("ALTER DATABASE").Ident(modify.S.Name)
 		rs := bs.Clone()
 		bs.WriteString(b.String())
 		rs.WriteString(r.String())
@@ -199,17 +208,20 @@ func (s *state) modifySchema(modify *schema.ModifySchema) error {
 	return nil
 }
 
-// addTable builds and appends the migrate.Change
+// addTable builds and appends a migration change
 // for creating a table in a schema.
 func (s *state) addTable(add *schema.AddTable) error {
 	var (
 		errs []string
-		b    = Build("CREATE TABLE")
+		b    = s.Build("CREATE TABLE")
 	)
 	if sqlx.Has(add.Extra, &schema.IfNotExists{}) {
 		b.P("IF NOT EXISTS")
 	}
 	b.Table(add.T)
+	if len(add.T.Columns) == 0 {
+		return fmt.Errorf("table %q has no columns", add.T.Name)
+	}
 	b.Wrap(func(b *sqlx.Builder) {
 		b.MapComma(add.T.Columns, func(i int, b *sqlx.Builder) {
 			if err := s.column(b, add.T, add.T.Columns[i]); err != nil {
@@ -247,7 +259,7 @@ func (s *state) addTable(add *schema.AddTable) error {
 	s.append(&migrate.Change{
 		Cmd:     b.String(),
 		Source:  add,
-		Reverse: Build("DROP TABLE").Table(add.T).String(),
+		Reverse: s.Build("DROP TABLE").Table(add.T).String(),
 		Comment: fmt.Sprintf("create %q table", add.T.Name),
 	})
 	return nil
@@ -256,7 +268,7 @@ func (s *state) addTable(add *schema.AddTable) error {
 // dropTable builds and appends the migrate.Change
 // for dropping a table from a schema.
 func (s *state) dropTable(drop *schema.DropTable) {
-	b := Build("DROP TABLE")
+	b := s.Build("DROP TABLE")
 	if sqlx.Has(drop.Extra, &schema.IfExists{}) {
 		b.P("IF EXISTS")
 	}
@@ -272,6 +284,9 @@ func (s *state) dropTable(drop *schema.DropTable) {
 // bringing the table into its modified state.
 func (s *state) modifyTable(modify *schema.ModifyTable) error {
 	var changes [2][]schema.Change
+	if len(modify.T.Columns) == 0 {
+		return fmt.Errorf("table %q has no columns; drop the table instead", modify.T.Name)
+	}
 	for _, change := range skipAutoChanges(modify.Changes) {
 		switch change := change.(type) {
 		// Foreign-key modification is translated into 2 steps.
@@ -326,7 +341,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 		reversible = true
 	)
 	build := func(changes []schema.Change) (string, error) {
-		b := Build("ALTER TABLE").Table(t)
+		b := s.Build("ALTER TABLE").Table(t)
 		err := b.MapCommaErr(changes, func(i int, b *sqlx.Builder) error {
 			switch change := changes[i].(type) {
 			case *schema.AddColumn:
@@ -459,8 +474,8 @@ func (s *state) renameTable(c *schema.RenameTable) {
 	s.append(&migrate.Change{
 		Source:  c,
 		Comment: fmt.Sprintf("rename a table from %q to %q", c.From.Name, c.To.Name),
-		Cmd:     Build("RENAME TABLE").Table(c.From).P("TO").Table(c.To).String(),
-		Reverse: Build("RENAME TABLE").Table(c.To).P("TO").Table(c.From).String(),
+		Cmd:     s.Build("RENAME TABLE").Table(c.From).P("TO").Table(c.To).String(),
+		Reverse: s.Build("RENAME TABLE").Table(c.To).P("TO").Table(c.From).String(),
 	})
 }
 
@@ -693,9 +708,9 @@ func (s *state) columnDefault(b *sqlx.Builder, c *schema.Column) {
 }
 
 // Build instantiates a new builder and writes the given phrase to it.
-func Build(phrase string) *sqlx.Builder {
-	b := &sqlx.Builder{QuoteChar: '`'}
-	return b.P(phrase)
+func (s *state) Build(phrases ...string) *sqlx.Builder {
+	b := &sqlx.Builder{QuoteChar: '`', Schema: s.SchemaQualifier}
+	return b.P(phrases...)
 }
 
 // skipAutoChanges filters unnecessary changes that are automatically

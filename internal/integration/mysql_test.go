@@ -8,9 +8,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"io"
 	"log"
 	"strings"
+	"sync"
 	"testing"
 
 	"ariga.io/atlas/sql/migrate"
@@ -28,54 +28,40 @@ type myTest struct {
 	rrw     migrate.RevisionReadWriter
 	version string
 	port    int
+	once    sync.Once
 }
 
-var myTests = struct {
-	drivers map[string]*myTest
-	ports   map[string]int
-}{
-	drivers: make(map[string]*myTest),
-	ports: map[string]int{
-		"mysql56":  3306,
-		"mysql57":  3307,
-		"mysql8":   3308,
-		"maria107": 4306,
-		"maria102": 4307,
-		"maria103": 4308,
-	},
-}
-
-func myInit(d string) []io.Closer {
-	var cs []io.Closer
-	if d != "" {
-		p, ok := myTests.ports[d]
-		if ok {
-			myTests.ports = map[string]int{d: p}
-		} else {
-			myTests.ports = make(map[string]int)
-		}
-	}
-	for version, port := range myTests.ports {
-		db, err := sql.Open("mysql", fmt.Sprintf("root:pass@tcp(localhost:%d)/test?parseTime=True", port))
-		if err != nil {
-			log.Fatalln(err)
-		}
-		cs = append(cs, db)
-		drv, err := mysql.Open(db)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		myTests.drivers[version] = &myTest{db: db, drv: drv, version: version, port: port, rrw: &rrw{}}
-	}
-	return cs
+var myTests = map[string]*myTest{
+	"mysql56":  {port: 3306},
+	"mysql57":  {port: 3307},
+	"mysql8":   {port: 3308},
+	"maria107": {port: 4306},
+	"maria102": {port: 4307},
+	"maria103": {port: 4308},
 }
 
 func myRun(t *testing.T, fn func(*myTest)) {
-	for version, tt := range myTests.drivers {
-		t.Run(version, func(t *testing.T) {
-			tt := &myTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port, rrw: tt.rrw}
-			fn(tt)
-		})
+	for version, tt := range myTests {
+		if flagVersion == "" || flagVersion == version {
+			t.Run(version, func(t *testing.T) {
+				tt.once.Do(func() {
+					var err error
+					tt.version = version
+					tt.rrw = &rrw{}
+					tt.db, err = sql.Open("mysql", fmt.Sprintf("root:pass@tcp(localhost:%d)/test?parseTime=True", tt.port))
+					if err != nil {
+						log.Fatalln(err)
+					}
+					dbs = append(dbs, tt.db) // close connection after all tests have been run
+					tt.drv, err = mysql.Open(tt.db)
+					if err != nil {
+						log.Fatalln(err)
+					}
+				})
+				tt := &myTest{T: t, db: tt.db, drv: tt.drv, version: version, port: tt.port, rrw: tt.rrw}
+				fn(tt)
+			})
+		}
 	}
 }
 
@@ -729,6 +715,67 @@ schema "second" {
 		require.True(t, ok)
 		_, ok = realm.Schema("second")
 		require.True(t, ok)
+	})
+}
+
+func TestMySQL_HCL_ForeignKeyCrossSchema(t *testing.T) {
+	const expected = `table "credit_cards" {
+  schema = schema.financial
+  column "id" {
+    null = false
+    type = int
+  }
+  column "user_id" {
+    null = false
+    type = int
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "user_id_fkey" {
+    columns     = [column.user_id]
+    ref_columns = [table.users.users.column.id]
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
+  }
+  index "user_id_fkey" {
+    columns = [column.user_id]
+  }
+}
+table "users" "users" {
+  schema = schema.users
+  column "id" {
+    null = false
+    type = int
+  }
+  column "email" {
+    null = false
+    type = varchar(255)
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+schema "financial" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_general_ci"
+}
+schema "users" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_general_ci"
+}
+`
+	myRun(t, func(t *myTest) {
+		t.dropSchemas("financial", "users")
+		realm := t.loadRealm()
+		hcl, err := mysql.MarshalHCL(realm)
+		require.NoError(t, err)
+		t.applyRealmHcl(string(hcl) + "\n" + expected)
+		realm, err = t.drv.InspectRealm(context.Background(), &schema.InspectRealmOption{Schemas: []string{"users", "financial"}})
+		require.NoError(t, err)
+		actual, err := mysql.MarshalHCL(realm)
+		require.NoError(t, err)
+		require.Equal(t, expected, string(actual))
 	})
 }
 

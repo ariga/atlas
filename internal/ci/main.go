@@ -7,10 +7,8 @@ package main
 import (
 	"bytes"
 	_ "embed"
-	"fmt"
 	"log"
 	"os"
-	"strings"
 	"text/template"
 )
 
@@ -55,7 +53,7 @@ var (
 		{
 			Version: "mysql56",
 			Image:   "mysql:5.6.35",
-			Regex:   re("MySQL.*/%smysql56"),
+			Regex:   "MySQL",
 			Env:     mysqlEnv,
 			Ports:   []string{"3306:3306"},
 			Options: mysqlOptions,
@@ -63,7 +61,7 @@ var (
 		{
 			Version: "mysql57",
 			Image:   "mysql:5.7.26",
-			Regex:   re("MySQL.*/%smysql57"),
+			Regex:   "MySQL",
 			Env:     mysqlEnv,
 			Ports:   []string{"3307:3306"},
 			Options: mysqlOptions,
@@ -71,7 +69,7 @@ var (
 		{
 			Version: "mysql8",
 			Image:   "mysql:8",
-			Regex:   re("MySQL.*/%smysql8"),
+			Regex:   "MySQL",
 			Env:     mysqlEnv,
 			Ports:   []string{"3308:3306"},
 			Options: mysqlOptions,
@@ -79,7 +77,7 @@ var (
 		{
 			Version: "maria107",
 			Image:   "mariadb:10.7",
-			Regex:   re("MySQL.*/%smaria107"),
+			Regex:   "MySQL",
 			Env:     mysqlEnv,
 			Ports:   []string{"4306:3306"},
 			Options: mysqlOptions,
@@ -87,7 +85,7 @@ var (
 		{
 			Version: "maria102",
 			Image:   "mariadb:10.2.32",
-			Regex:   re("MySQL.*/%smaria102"),
+			Regex:   "MySQL",
 			Env:     mysqlEnv,
 			Ports:   []string{"4307:3306"},
 			Options: mysqlOptions,
@@ -95,7 +93,7 @@ var (
 		{
 			Version: "maria103",
 			Image:   "mariadb:10.3.13",
-			Regex:   re("MySQL.*/%smaria103"),
+			Regex:   "MySQL",
 			Env:     mysqlEnv,
 			Ports:   []string{"4308:3306"},
 			Options: mysqlOptions,
@@ -103,7 +101,7 @@ var (
 		{
 			Version: "postgres10",
 			Image:   "postgres:10",
-			Regex:   re("Postgres.*/%spostgres10"),
+			Regex:   "Postgres",
 			Env:     pgEnv,
 			Ports:   []string{"5430:5432"},
 			Options: pgOptions,
@@ -111,7 +109,7 @@ var (
 		{
 			Version: "postgres11",
 			Image:   "postgres:11",
-			Regex:   re("Postgres.*/%spostgres11"),
+			Regex:   "Postgres",
 			Env:     pgEnv,
 			Ports:   []string{"5431:5432"},
 			Options: pgOptions,
@@ -119,7 +117,7 @@ var (
 		{
 			Version: "postgres12",
 			Image:   "postgres:12.3",
-			Regex:   re("Postgres.*/%spostgres12"),
+			Regex:   "Postgres",
 			Env:     pgEnv,
 			Ports:   []string{"5432:5432"},
 			Options: pgOptions,
@@ -127,7 +125,7 @@ var (
 		{
 			Version: "postgres13",
 			Image:   "postgres:13.1",
-			Regex:   re("Postgres.*/%spostgres13"),
+			Regex:   "Postgres",
 			Env:     pgEnv,
 			Ports:   []string{"5433:5432"},
 			Options: pgOptions,
@@ -135,7 +133,7 @@ var (
 		{
 			Version: "postgres14",
 			Image:   "postgres:14",
-			Regex:   re("Postgres.*/%spostgres14"),
+			Regex:   "Postgres",
 			Env:     pgEnv,
 			Ports:   []string{"5434:5432"},
 			Options: pgOptions,
@@ -143,13 +141,13 @@ var (
 		{
 			Version: "tidb5",
 			Image:   "pingcap/tidb:v5.4.0",
-			Regex:   re("TiDB.*/%stidb5"),
+			Regex:   "TiDB",
 			Ports:   []string{"4309:4000"},
 		},
 		{
 			Version: "tidb6",
 			Image:   "pingcap/tidb:v6.0.0",
-			Regex:   re("TiDB.*/%stidb6"),
+			Regex:   "TiDB",
 			Ports:   []string{"4310:4000"},
 		},
 		{
@@ -159,19 +157,11 @@ var (
 		{
 			Version: "cockroach",
 			Image:   "ghcr.io/ariga/cockroachdb-single-node:v21.2.11",
-			Regex:   re("Cockroach.*/%sCockroach"),
+			Regex:   "Cockroach",
 			Ports:   []string{"26257:26257"},
 		},
 	}
 )
-
-func re(p string) string {
-	var s []string
-	for i := 0; i < 3; i++ {
-		s = append(s, fmt.Sprintf(p, strings.Repeat(".*/", i)))
-	}
-	return strings.Join(s, "|")
-}
 
 func main() {
 	var buf bytes.Buffer

@@ -20,6 +20,7 @@ import (
 func TestPlanChanges(t *testing.T) {
 	tests := []struct {
 		changes  []schema.Change
+		options  []migrate.PlanOption
 		mock     func(mock)
 		wantPlan *migrate.Plan
 		wantErr  bool
@@ -551,10 +552,10 @@ func TestPlanChanges(t *testing.T) {
 				}(),
 			},
 			mock: func(m mock) {
-				m.ExpectQuery(sqltest.Escape("SELECT * FROM pg_type t JOIN pg_namespace n on t.typnamespace = n.oid WHERE t.typname = $1 AND n.nspname = $2 AND t.typtype = 'e'")).
+				m.ExpectQuery(sqltest.Escape("SELECT * FROM pg_type t JOIN pg_namespace n on t.typnamespace = n.oid WHERE t.typname = $1 AND t.typtype = 'e' AND n.nspname = $2 ")).
 					WithArgs("state", "public").
 					WillReturnRows(sqlmock.NewRows([]string{"name"}))
-				m.ExpectQuery(sqltest.Escape("SELECT * FROM pg_type t JOIN pg_namespace n on t.typnamespace = n.oid WHERE t.typname = $1 AND n.nspname = $2 AND t.typtype = 'e'")).
+				m.ExpectQuery(sqltest.Escape("SELECT * FROM pg_type t JOIN pg_namespace n on t.typnamespace = n.oid WHERE t.typname = $1 AND t.typtype = 'e' AND n.nspname = $2 ")).
 					WithArgs("status", "test").
 					WillReturnRows(sqlmock.NewRows([]string{"name"}))
 			},
@@ -996,6 +997,117 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		// Empty qualifier.
+		{
+			changes: []schema.Change{
+				&schema.AddTable{
+					T: schema.NewTable("posts").
+						SetSchema(schema.New("test1")).
+						AddColumns(
+							schema.NewEnumColumn("c1", schema.EnumName("enum"), schema.EnumValues("a"), schema.EnumSchema(schema.New("test2"))),
+						),
+				},
+			},
+			options: []migrate.PlanOption{
+				func(o *migrate.PlanOptions) { o.SchemaQualifier = new(string) },
+			},
+			mock: func(m mock) {
+				m.ExpectQuery(sqltest.Escape("SELECT * FROM pg_type t JOIN pg_namespace n on t.typnamespace = n.oid WHERE t.typname = $1 AND t.typtype = 'e'")).
+					WithArgs("enum").
+					WillReturnRows(sqlmock.NewRows([]string{"name"}))
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `CREATE TYPE "enum" AS ENUM ('a')`,
+						Reverse: `DROP TYPE "enum"`,
+					},
+					{
+						Cmd:     `CREATE TABLE "posts" ("c1" "enum" NOT NULL)`,
+						Reverse: `DROP TABLE "posts"`,
+					},
+				},
+			},
+		},
+		// Empty sequence qualifier.
+		{
+			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("posts").
+						SetSchema(schema.New("public")).
+						AddColumns(
+							schema.NewColumn("c1").SetType(&SerialType{T: "serial"}),
+						),
+					Changes: schema.Changes{
+						&schema.ModifyColumn{
+							From:   schema.NewIntColumn("c1", "integer"),
+							To:     schema.NewColumn("c1").SetType(&SerialType{T: "serial"}),
+							Change: schema.ChangeType,
+						},
+					},
+				},
+			},
+			options: []migrate.PlanOption{
+				func(o *migrate.PlanOptions) { o.SchemaQualifier = new(string) },
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `CREATE SEQUENCE IF NOT EXISTS "posts_c1_seq" OWNED BY "posts"."c1"`,
+						Reverse: `DROP SEQUENCE IF EXISTS "posts_c1_seq"`,
+					},
+					{
+						Cmd:     `ALTER TABLE "posts" ALTER COLUMN "c1" SET DEFAULT nextval('"posts_c1_seq"')`,
+						Reverse: `ALTER TABLE "posts" ALTER COLUMN "c1" DROP DEFAULT`,
+					},
+				},
+			},
+		},
+		// Empty index qualifier.
+		{
+			changes: []schema.Change{
+				&schema.ModifyTable{
+					T: schema.NewTable("posts").
+						SetSchema(schema.New("public")).
+						AddColumns(
+							schema.NewIntColumn("c", "int"),
+						),
+					Changes: schema.Changes{
+						&schema.AddIndex{
+							I: schema.NewIndex("i").AddColumns(schema.NewIntColumn("c", "int")),
+						},
+					},
+				},
+			},
+			options: []migrate.PlanOption{
+				func(o *migrate.PlanOptions) { o.SchemaQualifier = new(string) },
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     `CREATE INDEX "i" ON "posts" ("c")`,
+						Reverse: `DROP INDEX "i"`,
+					},
+				},
+			},
+		},
+		// Empty qualifier in multi-schema mode should fail.
+		{
+			changes: []schema.Change{
+				&schema.AddTable{T: schema.NewTable("t1").SetSchema(schema.New("s1")).AddColumns(schema.NewIntColumn("a", "int"))},
+				&schema.AddTable{T: schema.NewTable("t2").SetSchema(schema.New("s2")).AddColumns(schema.NewIntColumn("a", "int"))},
+			},
+			options: []migrate.PlanOption{
+				func(o *migrate.PlanOptions) { o.SchemaQualifier = new(string) },
+			},
+			wantErr: true,
+		},
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
@@ -1008,7 +1120,7 @@ func TestPlanChanges(t *testing.T) {
 			}
 			drv, err := Open(db)
 			require.NoError(t, err)
-			plan, err := drv.PlanChanges(context.Background(), "wantPlan", tt.changes)
+			plan, err := drv.PlanChanges(context.Background(), "wantPlan", tt.changes, tt.options...)
 			if tt.wantErr {
 				require.Error(t, err, "expect plan to fail")
 				return

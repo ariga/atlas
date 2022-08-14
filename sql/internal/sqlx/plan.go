@@ -17,12 +17,12 @@ import (
 
 type execPlanner interface {
 	ExecContext(context.Context, string, ...interface{}) (sql.Result, error)
-	PlanChanges(context.Context, string, []schema.Change) (*migrate.Plan, error)
+	PlanChanges(context.Context, string, []schema.Change, ...migrate.PlanOption) (*migrate.Plan, error)
 }
 
 // ApplyChanges is a helper used by the different drivers to apply changes.
-func ApplyChanges(ctx context.Context, changes []schema.Change, p execPlanner) error {
-	plan, err := p.PlanChanges(ctx, "apply", changes)
+func ApplyChanges(ctx context.Context, changes []schema.Change, p execPlanner, opts ...migrate.PlanOption) error {
+	plan, err := p.PlanChanges(ctx, "apply", changes, opts...)
 	if err != nil {
 		return err
 	}
@@ -247,4 +247,38 @@ func isDropped(changes []schema.Change, t *schema.Table) bool {
 		}
 	}
 	return false
+}
+
+// CheckChangesScope checks that changes can be applied
+// on a schema scope (connection).
+func CheckChangesScope(changes []schema.Change) error {
+	names := make(map[string]struct{})
+	for _, c := range changes {
+		var t *schema.Table
+		switch c := c.(type) {
+		case *schema.AddSchema, *schema.ModifySchema, *schema.DropSchema:
+			return fmt.Errorf("%T is not allowed when migration plan is scoped to one schema", c)
+		case *schema.AddTable:
+			t = c.T
+		case *schema.ModifyTable:
+			t = c.T
+		case *schema.DropTable:
+			t = c.T
+		default:
+			continue
+		}
+		if t.Schema != nil && t.Schema.Name != "" {
+			names[t.Schema.Name] = struct{}{}
+		}
+		for _, c := range t.Columns {
+			e, ok := c.Type.Type.(*schema.EnumType)
+			if ok && e.Schema != nil && e.Schema.Name != "" {
+				names[t.Schema.Name] = struct{}{}
+			}
+		}
+	}
+	if len(names) > 1 {
+		return fmt.Errorf("found %d schemas when migration plan is scoped to one", len(names))
+	}
+	return nil
 }
