@@ -100,7 +100,7 @@ ALTER TABLE `new_users` RENAME TO `users`
 
 As the database is one of the most critical components in any system, applying changes
 to its schema is rightfully considered a dangerous operation. For this reason, many teams
-prefer a more imperative approach where each change to the database schema is checked-in
+prefer a more imperative approach where each change to the database schema is checked in
 to source control and reviewed during code-review. Each such change
 is called a "migration", as it migrates the database schema from the previous version to
 the next. To support this kind of requirement, many popular database schema management
@@ -114,7 +114,7 @@ are not controlled (or even accessible) by the development team. In such cases, 
 which rely on a network connection to the target database and on human
 approval of migrations plans in real-time, are not a feasible strategy.
 
-With versioned migrations (sometimes called "change-based migrations") instead of describing
+With versioned migrations (sometimes called "change-based migrations"), instead of describing
 the desired state ("what the database should look like"), developers describe the changes themselves
 ("how to reach the state"). Most of the time, this is done by creating a set of SQL files
 containing the statements needed. Each of the files is assigned a unique version and a
@@ -124,8 +124,8 @@ transition to the desired database structure.
 
 The benefit of the versioned migrations approach is that it is explicit: engineers
 know _exactly_ what queries are going to be run against the database when the time
-comes to execute them.  Because changes are planned ahead of time, migration authors
-can control precisely how to reach the desired schema.  If we consider a migration as
+comes to execute them. Because changes are planned ahead of time, migration authors
+can control precisely how to reach the desired schema. If we consider a migration as
 a plan to get from state A to state B, oftentimes multiple paths exist, each with a
 very different impact on the database. To demonstrate, consider an initial state which
 contains a table with two columns:
@@ -149,7 +149,7 @@ There are at least two ways get from the initial to the desired state:
 
 Depending on the context, either may be the desired outcome for the developer
 planning the change. With versioned migrations, engineers have the ultimate confidence
-of what change is going to happen which may not be known ahead of time in a _declarative_
+of what change is going to happen, which may not be known ahead of time in a _declarative_
 approach.
 
 ### Migration Authoring
@@ -261,7 +261,7 @@ atlas migrate diff create_users \
   --dev-url="mysql://root:pass@:3306/test"
 ```
 
-Observe two files were created in the `migrations` directory:
+Observe that two files were created in the `migrations` directory:
 
 <Tabs
 defaultValue="migration_file"
@@ -284,7 +284,7 @@ CREATE TABLE `users` (`id` int NOT NULL) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai
 
 In addition to the migration directory, Atlas maintains a file name `atlas.sum` which is used
 to ensure the integrity of the migration directory and force developers to deal with situations
-where migration order or contents was modified after the fact.
+where migration order or contents were modified after the fact.
 
 ```text
 h1:t1fEP1rSsGf1gYrYCjsGyEyuM0cnhATlq93B7h8uXxY=
