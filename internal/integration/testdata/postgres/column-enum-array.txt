@@ -1,0 +1,155 @@
+# Create table with an enum array column.
+apply 1.hcl
+cmpshow enums 1.sql
+
+# Drop an enum array column.
+apply 2.hcl
+cmpshow enums 2.sql
+
+# Append an enum array column to an existing table.
+apply 3.hcl
+cmpshow enums 3.sql
+
+# Append an enum column to existing enum.
+apply 4.hcl
+cmpshow enums 4.sql
+
+# Append an enum value.
+apply 5.hcl
+cmphcl 5.inspect.hcl
+
+-- 1.hcl --
+schema "$db" {}
+
+enum "status" {
+    schema = schema.$db
+    values = ["active", "inactive"]
+}
+
+table "enums" {
+  schema = schema.$db
+  column "statuses" {
+    type = sql("status[]")
+  }
+}
+
+-- 1.sql --
+                    Table "script_column_enum_array.enums"
+  Column  |               Type                | Collation | Nullable | Default
+----------+-----------------------------------+-----------+----------+---------
+ statuses | script_column_enum_array.status[] |           | not null |
+
+-- 2.hcl --
+schema "$db" {}
+
+table "enums" {
+  schema = schema.$db
+  column "a" {
+    type = int
+  }
+}
+
+-- 2.sql --
+      Table "script_column_enum_array.enums"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ a      | integer |           | not null |
+
+-- 3.hcl --
+schema "$db" {}
+
+enum "status" {
+    schema = schema.$db
+    values = ["active", "inactive"]
+}
+
+table "enums" {
+  schema = schema.$db
+  column "a" {
+    type = int
+  }
+  column "statuses" {
+    type = sql("status[]")
+  }
+}
+
+-- 3.sql --
+                    Table "script_column_enum_array.enums"
+  Column  |               Type                | Collation | Nullable | Default
+----------+-----------------------------------+-----------+----------+---------
+ a        | integer                           |           | not null |
+ statuses | script_column_enum_array.status[] |           | not null |
+
+-- 4.hcl --
+schema "$db" {}
+
+enum "status" {
+    schema = schema.$db
+    values = ["active", "inactive"]
+}
+
+table "enums" {
+  schema = schema.$db
+  column "a" {
+    type = int
+  }
+  column "statuses" {
+    type = sql("status[]")
+  }
+  column "status" {
+    type = enum.status
+  }
+}
+
+-- 4.sql --
+                    Table "script_column_enum_array.enums"
+  Column  |               Type                | Collation | Nullable | Default
+----------+-----------------------------------+-----------+----------+---------
+ a        | integer                           |           | not null |
+ statuses | script_column_enum_array.status[] |           | not null |
+ status   | script_column_enum_array.status   |           | not null |
+
+
+-- 5.hcl --
+schema "$db" {}
+
+enum "status" {
+    schema = schema.$db
+    values = ["active", "inactive", "unknown"]
+}
+
+table "enums" {
+  schema = schema.$db
+  column "a" {
+    type = int
+  }
+  column "statuses" {
+    type = sql("status[]")
+  }
+  column "status" {
+    type = enum.status
+  }
+}
+
+-- 5.inspect.hcl --
+table "enums" {
+  schema = schema.script_column_enum_array
+  column "a" {
+    null = false
+    type = integer
+  }
+  column "statuses" {
+    null = false
+    type = sql("script_column_enum_array.status[]")
+  }
+  column "status" {
+    null = false
+    type = enum.status
+  }
+}
+enum "status" {
+  schema = schema.script_column_enum_array
+  values = ["active", "inactive", "unknown"]
+}
+schema "script_column_enum_array" {
+}

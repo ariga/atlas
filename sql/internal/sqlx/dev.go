@@ -28,6 +28,10 @@ type DevDriver struct {
 	// DropClause holds optional clauses that
 	// can be added to the DropSchema change.
 	DropClause []schema.Clause
+
+	// PatchColumn allows providing a custom function to patch
+	// columns that hold a schema reference.
+	PatchColumn func(*schema.Schema, *schema.Column)
 }
 
 // NormalizeRealm implements the schema.Normalizer interface.
@@ -65,6 +69,9 @@ func (d *DevDriver) NormalizeRealm(ctx context.Context, r *schema.Realm) (nr *sc
 			for _, c := range t.Columns {
 				if e, ok := c.Type.Type.(*schema.EnumType); ok && e.Schema != s {
 					e.Schema = s
+				}
+				if d.PatchColumn != nil {
+					d.PatchColumn(s, c)
 				}
 			}
 			changes = append(changes, &schema.AddTable{T: t})

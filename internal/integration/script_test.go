@@ -153,10 +153,7 @@ var (
 	keyDrv *sqlite.Driver
 )
 
-const (
-	atlasPathKey   = "cli.atlas"
-	atlasciPathKey = "cli.atlasci"
-)
+const atlasPathKey = "cli.atlas"
 
 func (t *liteTest) setupScript(env *testscript.Env) error {
 	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&_fk=1",
