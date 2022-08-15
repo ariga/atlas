@@ -351,19 +351,27 @@ func convertEnums(tables []*sqlspec.Table, enums []*Enum, r *schema.Realm) error
 	}
 	for _, t := range tables {
 		for _, c := range t.Columns {
-			if !c.Type.IsRef {
-				continue
+			var enum *Enum
+			switch {
+			case c.Type.IsRef:
+				n, err := enumName(c.Type)
+				if err != nil {
+					return err
+				}
+				e, ok := byName[n]
+				if !ok {
+					return fmt.Errorf("enum %q was not found", n)
+				}
+				enum = e
+			default:
+				n, ok := arrayType(c.Type.T)
+				if !ok || byName[n] == nil {
+					continue
+				}
+				enum = byName[n]
 			}
-			name, err := enumName(c.Type)
-			if err != nil {
-				return err
-			}
-			e, ok := byName[name]
-			if !ok {
-				return fmt.Errorf("enum %q was not found", name)
-			}
-			used[e] = struct{}{}
-			schemaE, err := specutil.SchemaName(e.Schema)
+			used[enum] = struct{}{}
+			schemaE, err := specutil.SchemaName(enum.Schema)
 			if err != nil {
 				return fmt.Errorf("extract schema name from enum refrence: %w", err)
 			}
@@ -387,7 +395,13 @@ func convertEnums(tables []*sqlspec.Table, enums []*Enum, r *schema.Realm) error
 			if !ok {
 				return fmt.Errorf("column %q not found in table %q", c.Name, t.Name)
 			}
-			cc.Type.Type = &schema.EnumType{T: e.Name, Schema: es, Values: e.Values}
+			e := &schema.EnumType{T: enum.Name, Schema: es, Values: enum.Values}
+			switch t := cc.Type.Type.(type) {
+			case *ArrayType:
+				t.Type = e
+			default:
+				cc.Type.Type = e
+			}
 		}
 	}
 	for _, e := range enums {

@@ -812,13 +812,8 @@ func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) {
 }
 
 func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error {
-	var (
-		f   string
-		err error
-	)
-	if e, ok := c.Type.Type.(*schema.EnumType); ok {
-		f = s.enumIdent(t.Schema, e)
-	} else if f, err = FormatType(c.Type.Type); err != nil {
+	f, err := s.formatType(t, c)
+	if err != nil {
 		return err
 	}
 	b.Ident(c.Name).P(f)
@@ -1145,6 +1140,19 @@ func (s *state) schemaPrefix(ns *schema.Schema) string {
 		return fmt.Sprintf("%q.", ns.Name)
 	}
 	return ""
+}
+
+// formatType formats the type but takes into account the qualifier.
+func (s *state) formatType(t *schema.Table, c *schema.Column) (string, error) {
+	switch tt := c.Type.Type.(type) {
+	case *schema.EnumType:
+		return s.enumIdent(t.Schema, tt), nil
+	case *ArrayType:
+		if e, ok := tt.Type.(*schema.EnumType); ok {
+			return s.enumIdent(t.Schema, e) + "[]", nil
+		}
+	}
+	return FormatType(c.Type.Type)
 }
 
 func hasEnumType(c *schema.Column) (*schema.EnumType, bool) {
