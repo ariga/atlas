@@ -245,6 +245,11 @@ func columnType(c *columnDesc) (schema.Type, error) {
 			if err != nil {
 				return nil, err
 			}
+			if c.elemtyp == "e" {
+				// Override the element type in
+				// case it is an enum.
+				tt = newEnumType(t, c.typelem)
+			}
 			typ.(*ArrayType).Type = tt
 		}
 	case TypeUserDefined:
@@ -293,6 +298,8 @@ type columnDesc struct {
 	fmtype        string // pg_catalog.format_type
 	size          int64  // character_maximum_length
 	typtype       string // pg_type.typtype
+	typelem       int64  // pg_type.typelem
+	elemtyp       string // pg_type.typtype of the array element type above.
 	typid         int64  // pg_type.oid
 	precision     int64
 	timePrecision *int64
