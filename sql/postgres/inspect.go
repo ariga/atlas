@@ -172,12 +172,12 @@ func (i *inspect) columns(ctx context.Context, s *schema.Schema) error {
 // addColumn scans the current row and adds a new column from it to the table.
 func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) (err error) {
 	var (
-		typid, maxlen, precision, timeprecision, scale, seqstart, seqinc, seqlast                                                  sql.NullInt64
-		table, name, typ, fmtype, nullable, defaults, identity, genidentity, genexpr, charset, collate, comment, typtype, interval sql.NullString
+		typid, typelem, maxlen, precision, timeprecision, scale, seqstart, seqinc, seqlast                                                  sql.NullInt64
+		table, name, typ, fmtype, nullable, defaults, identity, genidentity, genexpr, charset, collate, comment, typtype, elemtyp, interval sql.NullString
 	)
 	if err = rows.Scan(
-		&table, &name, &typ, &fmtype, &nullable, &defaults, &maxlen, &precision, &timeprecision, &scale, &interval,
-		&charset, &collate, &identity, &seqstart, &seqinc, &seqlast, &genidentity, &genexpr, &comment, &typtype, &typid,
+		&table, &name, &typ, &fmtype, &nullable, &defaults, &maxlen, &precision, &timeprecision, &scale, &interval, &charset,
+		&collate, &identity, &seqstart, &seqinc, &seqlast, &genidentity, &genexpr, &comment, &typtype, &typelem, &elemtyp, &typid,
 	); err != nil {
 		return err
 	}
@@ -198,6 +198,8 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) (err error) {
 		size:          maxlen.Int64,
 		scale:         scale.Int64,
 		typtype:       typtype.String,
+		typelem:       typelem.Int64,
+		elemtyp:       elemtyp.String,
 		typid:         typid.Int64,
 		interval:      interval.String,
 		precision:     precision.Int64,
@@ -240,22 +242,31 @@ func (i *inspect) enumValues(ctx context.Context, s *schema.Schema) error {
 		args  []interface{}
 		ids   = make(map[int64][]*schema.EnumType)
 		query = "SELECT enumtypid, enumlabel FROM pg_enum WHERE enumtypid IN (%s)"
+		newE  = func(e1 *enumType) *schema.EnumType {
+			if _, ok := ids[e1.ID]; !ok {
+				args = append(args, e1.ID)
+			}
+			// Convert the intermediate type to
+			// the standard schema.EnumType.
+			e2 := &schema.EnumType{T: e1.T, Schema: s}
+			if e1.Schema != "" && e1.Schema != s.Name {
+				e2.Schema = schema.New(e1.Schema)
+			}
+			ids[e1.ID] = append(ids[e1.ID], e2)
+			return e2
+		}
 	)
 	for _, t := range s.Tables {
 		for _, c := range t.Columns {
-			if enum, ok := c.Type.Type.(*enumType); ok {
-				if _, ok := ids[enum.ID]; !ok {
-					args = append(args, enum.ID)
-				}
-				// Convert the intermediate type to
-				// the standard schema.EnumType.
-				e := &schema.EnumType{T: enum.T, Schema: s}
-				if enum.Schema != "" && enum.Schema != s.Name {
-					e.Schema = schema.New(enum.Schema)
-				}
+			switch t := c.Type.Type.(type) {
+			case *enumType:
+				e := newE(t)
 				c.Type.Type = e
-				c.Type.Raw = enum.T
-				ids[enum.ID] = append(ids[enum.ID], e)
+				c.Type.Raw = e.T
+			case *ArrayType:
+				if e, ok := t.Type.(*enumType); ok {
+					t.Type = newE(e)
+				}
 			}
 		}
 	}
@@ -938,6 +949,8 @@ SELECT
 	t1.generation_expression,
 	col_description(t3.oid, "ordinal_position") AS comment,
 	t4.typtype,
+	t4.typelem,
+	(CASE WHEN t4.typcategory = 'A' AND t4.typelem <> 0 THEN (SELECT t.typtype FROM pg_catalog.pg_type t WHERE t.oid = t4.typelem) END) AS elemtyp,
 	t4.oid
 FROM
 	"information_schema"."columns" AS t1
