@@ -54,7 +54,7 @@ module.exports = {
           position: 'right',
         },
         {
-          to: 'cli/getting-started/setting-up',
+          to: 'getting-started',
           label: 'Docs',
           position: 'left',
         },
@@ -76,7 +76,7 @@ module.exports = {
         {
           "title": "Docs",
           "items": [
-            {"label": "Getting Started", "to": "cli/getting-started/setting-up"},
+            {"label": "Getting Started", "to": "getting-started"},
             {"label": "Data Definition Language ", "to": "concepts/ddl"},
             {"label": "CLI Reference", "to": "cli-reference"},
             {"label": "Blog", "to": "blog"},
@@ -122,6 +122,10 @@ module.exports = {
       '@docusaurus/plugin-client-redirects',
       {
         redirects: [
+          {
+            to: '/getting-started/',
+            from: '/cli/getting-started/setting-up',
+          },
           {
             to: '/integrations/terraform-provider',
             from: '/terraform-provider'
