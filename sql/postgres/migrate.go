@@ -285,8 +285,8 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 					continue
 				}
 			}
-			from, ok1 := change.From.Type.Type.(*schema.EnumType)
-			to, ok2 := change.To.Type.Type.(*schema.EnumType)
+			from, ok1 := hasEnumType(change.From)
+			to, ok2 := hasEnumType(change.To)
 			switch {
 			// Enum was changed (underlying values).
 			case ok1 && ok2 && s.enumIdent(modify.T.Schema, from) == s.enumIdent(modify.T.Schema, to):
@@ -359,8 +359,8 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 					To:     change.From,
 					Change: change.Change & ^schema.ChangeGenerated,
 				})
-				toE, toHas := change.From.Type.Type.(*schema.EnumType)
-				fromE, fromHas := change.From.Type.Type.(*schema.EnumType)
+				toE, toHas := hasEnumType(change.To)
+				fromE, fromHas := hasEnumType(change.From)
 				// In case the enum was dropped or replaced with a different one.
 				if fromHas && !toHas || fromHas && toHas && s.enumIdent(t.Schema, fromE) != s.enumIdent(t.Schema, toE) {
 					if err := s.mayDropEnum(alter, t.Schema, fromE); err != nil {
@@ -370,7 +370,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			case *schema.DropColumn:
 				b.P("DROP COLUMN").Ident(change.C.Name)
 				reverse = append(reverse, &schema.AddColumn{C: change.C})
-				if e, ok := change.C.Type.Type.(*schema.EnumType); ok {
+				if e, ok := hasEnumType(change.C); ok {
 					if err := s.mayDropEnum(alter, t.Schema, e); err != nil {
 						return err
 					}
@@ -675,7 +675,7 @@ func (s *state) dropIndexes(t *schema.Table, indexes ...*schema.Index) {
 
 func (s *state) mayAddEnums(ctx context.Context, t *schema.Table, columns ...*schema.Column) error {
 	for _, c := range columns {
-		e, ok := c.Type.Type.(*schema.EnumType)
+		e, ok := hasEnumType(c)
 		if !ok {
 			continue
 		}
@@ -761,7 +761,7 @@ func (s *state) mayDropEnum(alter *alterChange, ns *schema.Schema, e *schema.Enu
 	for i := range schemas {
 		for _, t := range schemas[i].Tables {
 			for _, c := range t.Columns {
-				e1, ok := c.Type.Type.(*schema.EnumType)
+				e1, ok := hasEnumType(c)
 				// Although we search in siblings schemas, use the
 				// table's one for building the enum identifier.
 				if ok && s.enumIdent(ns, e1) == name {
@@ -1145,4 +1145,16 @@ func (s *state) schemaPrefix(ns *schema.Schema) string {
 		return fmt.Sprintf("%q.", ns.Name)
 	}
 	return ""
+}
+
+func hasEnumType(c *schema.Column) (*schema.EnumType, bool) {
+	switch t := c.Type.Type.(type) {
+	case *schema.EnumType:
+		return t, true
+	case *ArrayType:
+		if e, ok := t.Type.(*schema.EnumType); ok {
+			return e, true
+		}
+	}
+	return nil, false
 }
