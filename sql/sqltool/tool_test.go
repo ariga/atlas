@@ -131,28 +131,61 @@ DROP TABLE t1 IF EXISTS;
 }
 
 func TestScanners(t *testing.T) {
-	d, err := sqltool.NewGolangMigrateDir("testdata/golang-migrate")
-	require.NoError(t, err)
-
-	files, err := d.Files()
-	require.NoError(t, err)
-	require.Len(t, files, 2)
-	require.Equal(t, "1_initial.up.sql", files[0].Name())
-	require.Equal(t, "2_second_migration.up.sql", files[1].Name())
-
-	first, second := files[0], files[1]
-
-	stmts, err := first.Stmts()
-	require.NoError(t, err)
-	require.Equal(t, []string{"CREATE TABLE tbl\n(\n    col INT\n);"}, stmts)
-	stmts, err = second.Stmts()
-	require.NoError(t, err)
-	require.Equal(t, []string{"CREATE TABLE tbl_2 (col INT);"}, stmts)
-
-	require.Equal(t, "1", first.Version())
-	require.Equal(t, "initial", first.Desc())
-	require.Equal(t, "2", second.Version())
-	require.Equal(t, "second_migration", second.Desc())
+	for _, tt := range []struct {
+		name                   string
+		dir                    migrate.Dir
+		versions, descriptions []string
+		stmts                  [][]string
+	}{
+		{
+			name: "golang-migrate",
+			dir: func() migrate.Dir {
+				d, err := sqltool.NewGolangMigrateDir("testdata/golang-migrate")
+				require.NoError(t, err)
+				return d
+			}(),
+			versions:     []string{"1", "2"},
+			descriptions: []string{"initial", "second_migration"},
+			stmts: [][]string{
+				{"CREATE TABLE tbl\n(\n    col INT\n);"},
+				{"CREATE TABLE tbl_2 (col INT);"},
+			},
+		},
+		{
+			name: "goose",
+			dir: func() migrate.Dir {
+				d, err := sqltool.NewGooseDir("testdata/goose")
+				require.NoError(t, err)
+				return d
+			}(),
+			versions:     []string{"1", "2"},
+			descriptions: []string{"initial", "second_migration"},
+			stmts: [][]string{
+				{
+					"CREATE TABLE post\n(\n    id    int NOT NULL,\n    title text,\n    body  text,\n    PRIMARY KEY (id)\n);",
+					"ALTER TABLE post ADD created_at TIMESTAMP NOT NULL;",
+					"INSERT INTO post (title) VALUES (\n'This is\nmy multiline\n\nvalue');",
+				},
+				{"CREATE\nOR REPLACE FUNCTION histories_partition_creation( DATE, DATE )\nreturns void AS $$\nDECLARE\ncreate_query text;\nBEGIN\nFOR create_query IN\nSELECT 'CREATE TABLE IF NOT EXISTS histories_'\n           || TO_CHAR(d, 'YYYY_MM')\n           || ' ( CHECK( created_at >= timestamp '''\n           || TO_CHAR(d, 'YYYY-MM-DD 00:00:00')\n           || ''' AND created_at < timestamp '''\n           || TO_CHAR(d + INTERVAL '1 month', 'YYYY-MM-DD 00:00:00')\n           || ''' ) ) inherits ( histories );'\nFROM generate_series($1, $2, '1 month') AS d LOOP\n    EXECUTE create_query;\nEND LOOP;  -- LOOP END\nEND;         -- FUNCTION END\n$$\nlanguage plpgsql;"},
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			files, err := tt.dir.Files()
+			require.NoError(t, err)
+			require.Len(t, files, len(tt.versions))
+			for i := range tt.versions {
+				require.Equal(t, tt.versions[i], files[i].Version())
+				require.Equal(t, tt.descriptions[i], files[i].Desc())
+				stmts, err := files[i].Stmts()
+				require.NoError(t, err)
+				require.Len(t, stmts, len(tt.stmts[i]))
+				for j, stmt := range stmts {
+					require.Equal(t, tt.stmts[i][j], stmt)
+				}
+			}
+		})
+	}
 }
 
 func dir(t *testing.T) migrate.Dir {

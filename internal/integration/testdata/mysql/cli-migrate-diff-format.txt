@@ -1,0 +1,65 @@
+only maria103
+
+mkdir migrations
+
+atlas migrate diff --dev-url URL --to file://1.hcl --dir-format golang-migrate first
+cmpmig 0 golang-migrate/1.down.sql
+cmpmig 1 golang-migrate/1.up.sql
+
+atlas migrate diff --dev-url URL --to file://2.hcl --dir-format golang-migrate second
+cmpmig 2 golang-migrate/2.down.sql
+cmpmig 3 golang-migrate/2.up.sql
+
+-- golang-migrate/1.up.sql --
+-- create "users" table
+CREATE TABLE `users` (`id` bigint NOT NULL AUTO_INCREMENT, PRIMARY KEY (`id`)) CHARSET utf8mb4 COLLATE utf8mb4_general_ci;
+
+-- golang-migrate/1.down.sql --
+-- reverse: create "users" table
+DROP TABLE `users`;
+
+-- golang-migrate/2.up.sql --
+-- modify "users" table
+ALTER TABLE `users` ADD COLUMN `email` varchar(100) NULL;
+
+-- golang-migrate/2.down.sql --
+-- reverse: modify "users" table
+ALTER TABLE `users` DROP COLUMN `email`;
+
+-- 1.hcl --
+schema "script_cli_migrate_diff_format" {}
+
+table "users" {
+  schema = schema.script_cli_migrate_diff_format
+  column "id" {
+    null = false
+    type = bigint
+    auto_increment = true
+  }
+  primary_key  {
+    columns = [column.id]
+  }
+  charset = "utf8mb4"
+  collate = "utf8mb4_general_ci"
+}
+
+-- 2.hcl --
+schema "script_cli_migrate_diff_format" {}
+
+table "users" {
+  schema = schema.script_cli_migrate_diff_format
+  column "id" {
+    null = false
+    type = bigint
+    auto_increment = true
+  }
+  column "email" {
+    null = true
+    type = varchar(100)
+  }
+  primary_key  {
+    columns = [column.id]
+  }
+  charset = "utf8mb4"
+  collate = "utf8mb4_general_ci"
+}

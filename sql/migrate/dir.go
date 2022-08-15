@@ -181,7 +181,6 @@ type TemplateFormatter struct {
 //		template.Must(template.New("").Parse("{{now.Unix}}{{.Name}}.sql")),                 // name template
 //		template.Must(template.New("").Parse("{{range .Changes}}{{println .Cmd}}{{end}}")), // content template
 //	)
-//
 func NewTemplateFormatter(templates ...*template.Template) (*TemplateFormatter, error) {
 	if n := len(templates); n == 0 || n%2 == 1 {
 		return nil, fmt.Errorf("zero or odd number of templates given")
@@ -363,7 +362,6 @@ var reDirective = regexp.MustCompile(`^([ -~]*)atlas:(\w+)(?: +([ -~]*))*`)
 //	directive(c, "delimiter", "-- ")	// '-- atlas:delimiter.*'
 //	directive(c, "sum", "")				// 'atlas:sum.*'
 //	directive(c, "sum")					// '.*atlas:sum'
-//
 func directive(content, name string, prefix ...string) (string, bool) {
 	m := reDirective.FindStringSubmatch(content)
 	// In case the prefix was provided ensures it is matched.

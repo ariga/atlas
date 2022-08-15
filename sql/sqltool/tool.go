@@ -5,8 +5,11 @@
 package sqltool
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"io/fs"
+	"regexp"
 	"sort"
 	"strings"
 	"text/template"
@@ -61,8 +64,7 @@ var (
 	)
 )
 
-// GolangMigrateDir wraps migrate.LocalDir and provides
-// implementation compatible with golang-migrate/migrate.
+// GolangMigrateDir wraps migrate.LocalDir and provides implementation compatible with golang-migrate/migrate.
 type GolangMigrateDir struct{ *migrate.LocalDir }
 
 // NewGolangMigrateDir returns a new GolangMigrateDir.
@@ -74,7 +76,7 @@ func NewGolangMigrateDir(path string) (*GolangMigrateDir, error) {
 	return &GolangMigrateDir{dir}, nil
 }
 
-// Files implements Scanner.Files. It looks for all files with up.sql suffix and orders them by filename-
+// Files implements Scanner.Files. It looks for all files with up.sql suffix and orders them by filename.
 func (d *GolangMigrateDir) Files() ([]migrate.File, error) {
 	names, err := fs.Glob(d, "*.up.sql")
 	if err != nil {
@@ -95,8 +97,7 @@ func (d *GolangMigrateDir) Files() ([]migrate.File, error) {
 	return ret, nil
 }
 
-// GolangMigrateFile wraps migrate.LocalFile
-// with custom description function.
+// GolangMigrateFile wraps migrate.LocalFile with custom description function.
 type GolangMigrateFile struct {
 	*migrate.LocalFile
 }
@@ -104,6 +105,126 @@ type GolangMigrateFile struct {
 // Desc implements File.Desc.
 func (f *GolangMigrateFile) Desc() string {
 	return strings.TrimSuffix(f.LocalFile.Desc(), ".up")
+}
+
+// GooseDir wraps migrate.LocalDir and provides implementation compatible with pressly/goose.
+type GooseDir struct{ *migrate.LocalDir }
+
+// NewGooseDir returns a new GooseDir.
+func NewGooseDir(path string) (*GooseDir, error) {
+	dir, err := migrate.NewLocalDir(path)
+	if err != nil {
+		return nil, err
+	}
+	return &GooseDir{dir}, nil
+}
+
+// GooseFile wraps migrate.LocalFile with custom statements function.
+type GooseFile struct {
+	*migrate.LocalFile
+}
+
+// Files implements Scanner.Files. It looks for all files with up.sql suffix and orders them by filename.
+func (d *GooseDir) Files() ([]migrate.File, error) {
+	files, err := d.LocalDir.Files()
+	if err != nil {
+		return nil, err
+	}
+	for i, f := range files {
+		files[i] = &GooseFile{f.(*migrate.LocalFile)}
+	}
+	return files, nil
+}
+
+// Stmts implements Scanner.Stmts. It understands the migration format used by pressly/goose sql migration files.
+func (f *GooseFile) Stmts() ([]string, error) {
+	var (
+		state, line int
+		stmts       []string
+		buf         strings.Builder
+		sc          = bufio.NewScanner(bytes.NewReader(f.Bytes()))
+	)
+	for sc.Scan() {
+		line++
+		s := sc.Text()
+		// Handle pragmas.
+		if strings.HasPrefix(s, pragma) {
+			switch strings.TrimSpace(strings.TrimPrefix(s, pragma)) {
+			case "Up":
+				switch state {
+				case none: // found the "up" part of the file
+					state = up
+				default:
+					return nil, unexpectedGoosePragmaErr(f, line, "Up")
+				}
+			case "Down":
+				switch state {
+				case up: // found the "down" part
+					if rest := strings.TrimSpace(buf.String()); len(rest) > 0 {
+						return nil, unexpectedGoosePragmaErr(f, line, "Down")
+					}
+					return stmts, nil
+				default:
+					return nil, unexpectedGoosePragmaErr(f, line, "Down")
+				}
+			case "StatementBegin":
+				switch state {
+				case up:
+					state = begin // begin of a statement
+				default:
+					return nil, unexpectedGoosePragmaErr(f, line, "StatementBegin")
+				}
+			case "StatementEnd":
+				switch state {
+				case begin:
+					state = end // end of a statement
+				default:
+					return nil, unexpectedGoosePragmaErr(f, line, "StatementEnd")
+				}
+			}
+		}
+		// Write the line of the statement.
+		if !rePragma.MatchString(s) {
+			if _, err := buf.WriteString(s + "\n"); err != nil {
+				return nil, err
+			}
+		}
+		switch state {
+		case up: // end of statement if line ends with semicolon
+			if s := strings.TrimSpace(s); strings.HasSuffix(s, ";") && !strings.HasPrefix(s, "--") {
+				stmts = append(stmts, strings.TrimSpace(buf.String()))
+				buf.Reset()
+			}
+		case end: // end of statement marked by pragma
+			stmts = append(stmts, strings.TrimSpace(buf.String()))
+			buf.Reset()
+			state = up // back in up block
+		}
+	}
+	if err := sc.Err(); err != nil {
+		return nil, fmt.Errorf("sql/migrate: scanning migration %q: %w", f.Name(), err)
+	}
+	if state == none {
+		return nil, fmt.Errorf("sql/migrate: empty migration %q", f.Name())
+	}
+	return stmts, nil
+}
+
+const (
+	none int = iota // state when parsing goose sql file
+	up
+	begin
+	end
+	pragma = "-- +goose"
+)
+
+var rePragma = regexp.MustCompile("-- \\+goose Up|Down|StatementBegin|StatementEnd")
+
+func unexpectedGoosePragmaErr(f *GooseFile, line int, pragma string) error {
+	return fmt.Errorf(
+		"sql/migrate: goose: %s:%d unexpected pragma '%s'",
+		f.Name(), line, pragma,
+	)
 }
 
 // funcs contains the template.FuncMap for the different formatters.
