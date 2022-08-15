@@ -231,6 +231,10 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 		toT := toT.(*ArrayType)
 		// Same type.
 		if changed = fromT.T != toT.T; !changed {
+			// In case it is an enum type, compare its values.
+			fromE, ok1 := fromT.Type.(*schema.EnumType)
+			toE, ok2 := toT.Type.(*schema.EnumType)
+			changed = ok1 && ok2 && !sqlx.ValuesEqual(fromE.Values, toE.Values)
 			break
 		}
 		// In case the desired schema is not normalized, the string type can look different even

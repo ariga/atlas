@@ -284,6 +284,37 @@ func TestDiff_TableDiff(t *testing.T) {
 				},
 			}
 		}(),
+		// Modify array of type enum.
+		func() testcase {
+			var (
+				from = schema.NewTable("users").
+					SetSchema(schema.New("public")).
+					AddColumns(
+						schema.NewColumn("a1").SetType(&ArrayType{T: "state[]", Type: &schema.EnumType{T: "state", Values: []string{"on"}}}),
+						schema.NewColumn("a2").SetType(&ArrayType{T: "state[]", Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}),
+						schema.NewColumn("a3").SetType(&ArrayType{T: "state[]", Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}),
+					)
+				to = schema.NewTable("users").
+					SetSchema(schema.New("public")).
+					AddColumns(
+						// Add value.
+						schema.NewColumn("a1").SetType(&ArrayType{T: "state[]", Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}),
+						// Drop value.
+						schema.NewColumn("a2").SetType(&ArrayType{T: "state[]", Type: &schema.EnumType{T: "state", Values: []string{"on"}}}),
+						// Same values.
+						schema.NewColumn("a3").SetType(&ArrayType{T: "state[]", Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}}}),
+					)
+			)
+			return testcase{
+				name: "enum arrays",
+				from: from,
+				to:   to,
+				wantChanges: []schema.Change{
+					&schema.ModifyColumn{From: from.Columns[0], To: to.Columns[0], Change: schema.ChangeType},
+					&schema.ModifyColumn{From: from.Columns[1], To: to.Columns[1], Change: schema.ChangeType},
+				},
+			}
+		}(),
 		func() testcase {
 			var (
 				from = &schema.Table{
