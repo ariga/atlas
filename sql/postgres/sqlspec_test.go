@@ -694,6 +694,14 @@ func TestMarshalSpec_Enum(t *testing.T) {
 						schema.EnumName("account_type"),
 						schema.EnumValues("private", "business"),
 					),
+					schema.NewColumn("account_states").
+						SetType(&ArrayType{
+							T: "states[]",
+							Type: &schema.EnumType{
+								T:      "state",
+								Values: []string{"on", "off"},
+							},
+						}),
 				),
 			schema.NewTable("table2").
 				AddColumns(
@@ -711,6 +719,10 @@ func TestMarshalSpec_Enum(t *testing.T) {
     null = false
     type = enum.account_type
   }
+  column "account_states" {
+    null = false
+    type = sql("states[]")
+  }
 }
 table "table2" {
   schema = schema.test
@@ -722,6 +734,10 @@ table "table2" {
 enum "account_type" {
   schema = schema.test
   values = ["private", "business"]
+}
+enum "state" {
+  schema = schema.test
+  values = ["on", "off"]
 }
 schema "test" {
 }
