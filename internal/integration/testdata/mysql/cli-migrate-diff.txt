@@ -1,4 +1,4 @@
-only maria
+only maria107 maria102
 
 exec mkdir migrations
 
@@ -71,10 +71,6 @@ table "users" {
 ALTER TABLE `users` ADD COLUMN `create_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6);
 
 -- maria102/2.sql --
--- modify "users" table
-ALTER TABLE `users` ADD COLUMN `create_time` timestamp(6) NOT NULL DEFAULT (current_timestamp(6));
-
--- maria103/2.sql --
 -- modify "users" table
 ALTER TABLE `users` ADD COLUMN `create_time` timestamp(6) NOT NULL DEFAULT (current_timestamp(6));
 
