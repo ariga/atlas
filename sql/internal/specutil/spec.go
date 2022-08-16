@@ -94,7 +94,7 @@ type doc struct {
 
 // Marshal marshals v into an Atlas DDL document using a schemahcl.Marshaler. Marshal uses the given
 // schemaSpec function to convert a *schema.Schema into *sqlspec.Schema and []*sqlspec.Table.
-func Marshal(v interface{}, marshaler schemahcl.Marshaler, schemaSpec func(schem *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error)) ([]byte, error) {
+func Marshal(v any, marshaler schemahcl.Marshaler, schemaSpec func(schem *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error)) ([]byte, error) {
 	d := &doc{}
 	switch s := v.(type) {
 	case *schema.Schema:
@@ -174,8 +174,8 @@ func QualifyReferencedTables(tableSpecs []*sqlspec.Table, realm *schema.Realm) e
 
 // HCLBytesFunc returns a helper that evaluates an HCL document from a byte slice instead
 // of from an hclparse.Parser instance.
-func HCLBytesFunc(ev schemahcl.Evaluator) func(b []byte, v interface{}, inp map[string]string) error {
-	return func(b []byte, v interface{}, inp map[string]string) error {
+func HCLBytesFunc(ev schemahcl.Evaluator) func(b []byte, v any, inp map[string]string) error {
+	return func(b []byte, v any, inp map[string]string) error {
 		parser := hclparse.NewParser()
 		if _, diag := parser.ParseHCL(b, ""); diag.HasErrors() {
 			return diag

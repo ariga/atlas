@@ -351,7 +351,7 @@ func (i *inspect) addFKs(t *schema.Table, rows *sql.Rows) error {
 // tableNames returns a list of all tables exist in the schema.
 func (i *inspect) tables(ctx context.Context, opts *schema.InspectOptions) ([]*schema.Table, error) {
 	var (
-		args  []interface{}
+		args  []any
 		query = tablesQuery
 	)
 	if opts != nil && len(opts.Tables) > 0 {
@@ -389,7 +389,7 @@ func (i *inspect) tables(ctx context.Context, opts *schema.InspectOptions) ([]*s
 // schemas returns the list of the schemas in the database.
 func (i *inspect) databases(ctx context.Context, opts *schema.InspectRealmOption) ([]*schema.Schema, error) {
 	var (
-		args  []interface{}
+		args  []any
 		query = databasesQuery
 	)
 	if opts != nil && len(opts.Schemas) > 0 {

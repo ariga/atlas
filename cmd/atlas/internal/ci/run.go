@@ -119,7 +119,7 @@ func (r *Runner) summary(ctx context.Context) error {
 var (
 	// TemplateFuncs are global functions available in templates.
 	TemplateFuncs = template.FuncMap{
-		"json": func(v interface{}) (string, error) {
+		"json": func(v any) (string, error) {
 			b, err := json.Marshal(v)
 			return string(b), err
 		},

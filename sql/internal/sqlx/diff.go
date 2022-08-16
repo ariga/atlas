@@ -376,7 +376,7 @@ var (
 // Has finds the first element in the elements list that
 // matches target, and if so, sets target to that attribute
 // value and returns true.
-func Has(elements, target interface{}) bool {
+func Has(elements, target any) bool {
 	ev := reflect.ValueOf(elements)
 	if t := ev.Type(); t != attrsType && t != clausesType && t != exprsType {
 		panic(fmt.Sprintf("unexpected elements type: %T", elements))

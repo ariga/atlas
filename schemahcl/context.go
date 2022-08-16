@@ -226,11 +226,11 @@ var (
 	ctySchemaLit = cty.CapsuleWithOps("lit", reflect.TypeOf(LiteralValue{}), &cty.CapsuleOps{
 		// ConversionFrom facilitates reading the encapsulated type as a string, as is needed, for example,
 		// when interpolating it in a string expression.
-		ConversionFrom: func(src cty.Type) func(interface{}, cty.Path) (cty.Value, error) {
+		ConversionFrom: func(src cty.Type) func(any, cty.Path) (cty.Value, error) {
 			if src != cty.String {
 				return nil
 			}
-			return func(i interface{}, path cty.Path) (cty.Value, error) {
+			return func(i any, path cty.Path) (cty.Value, error) {
 				lit, ok := i.(*LiteralValue)
 				if !ok {
 					return cty.Value{}, fmt.Errorf("schemahcl: expected *schemahcl.LiteralValue got %T", i)

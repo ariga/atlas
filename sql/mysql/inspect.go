@@ -97,7 +97,7 @@ func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *sche
 // schemas returns the list of the schemas in the database.
 func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) ([]*schema.Schema, error) {
 	var (
-		args  []interface{}
+		args  []any
 		query = schemasQuery
 	)
 	if opts != nil {
@@ -142,7 +142,7 @@ func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) 
 
 func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.InspectOptions) error {
 	var (
-		args  []interface{}
+		args  []any
 		query = fmt.Sprintf(tablesQuery, nArgs(len(realm.Schemas)))
 	)
 	for _, s := range realm.Schemas {
@@ -665,7 +665,7 @@ func (i *inspect) marDefaultExpr(c *schema.Column, x string) schema.Expr {
 }
 
 func (i *inspect) querySchema(ctx context.Context, query string, s *schema.Schema) (*sql.Rows, error) {
-	args := []interface{}{s.Name}
+	args := []any{s.Name}
 	for _, t := range s.Tables {
 		args = append(args, t.Name)
 	}

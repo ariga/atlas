@@ -266,7 +266,6 @@ func (rq *RevisionQuery) Clone() *RevisionQuery {
 //		GroupBy(revision.FieldDescription).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
-//
 func (rq *RevisionQuery) GroupBy(field string, fields ...string) *RevisionGroupBy {
 	grbuild := &RevisionGroupBy{config: rq.config}
 	grbuild.fields = append([]string{field}, fields...)
@@ -293,7 +292,6 @@ func (rq *RevisionQuery) GroupBy(field string, fields ...string) *RevisionGroupB
 //	client.Revision.Query().
 //		Select(revision.FieldDescription).
 //		Scan(ctx, &v)
-//
 func (rq *RevisionQuery) Select(fields ...string) *RevisionSelect {
 	rq.fields = append(rq.fields, fields...)
 	selbuild := &RevisionSelect{RevisionQuery: rq}

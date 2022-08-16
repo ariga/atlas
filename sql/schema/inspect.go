@@ -29,8 +29,8 @@ func IsNotExistError(err error) bool {
 
 // ExecQuerier wraps the two standard sql.DB methods.
 type ExecQuerier interface {
-	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
-	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 }
 
 // An InspectMode controls the amount and depth of information returned on inspection.

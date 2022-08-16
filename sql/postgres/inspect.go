@@ -99,7 +99,7 @@ func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *sche
 // table returns the table from the database, or a NotExistError if the table was not found.
 func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.InspectOptions) error {
 	var (
-		args  []interface{}
+		args  []any
 		query = fmt.Sprintf(tablesQuery, nArgs(0, len(realm.Schemas)))
 	)
 	for _, s := range realm.Schemas {
@@ -239,7 +239,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) (err error) {
 // enumValues fills enum columns with their values from the database.
 func (i *inspect) enumValues(ctx context.Context, s *schema.Schema) error {
 	var (
-		args  []interface{}
+		args  []any
 		ids   = make(map[int64][]*schema.EnumType)
 		query = "SELECT enumtypid, enumlabel FROM pg_enum WHERE enumtypid IN (%s)"
 		newE  = func(e1 *enumType) *schema.EnumType {
@@ -497,7 +497,7 @@ func (i *inspect) addChecks(s *schema.Schema, rows *sql.Rows) error {
 // schemas returns the list of the schemas in the database.
 func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) ([]*schema.Schema, error) {
 	var (
-		args  []interface{}
+		args  []any
 		query = schemasQuery
 	)
 	if opts != nil {
@@ -536,7 +536,7 @@ func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) 
 }
 
 func (i *inspect) querySchema(ctx context.Context, query string, s *schema.Schema) (*sql.Rows, error) {
-	args := []interface{}{s.Name}
+	args := []any{s.Name}
 	for _, t := range s.Tables {
 		args = append(args, t.Name)
 	}
