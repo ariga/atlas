@@ -199,6 +199,6 @@ div[class^='announcementBar_'] {
   padding: 0 var(--ifm-pre-padding);
   border-left: 3px solid rgb(193 230 140 / 80%);
 }
-.code-block-info-line {
+.code-block-info-line span {
   color: rgb(191, 199, 213)!important;
 }
