@@ -10,6 +10,15 @@ atlas migrate diff --dev-url URL --to file://2.hcl --dir-format golang-migrate s
 cmpmig 2 golang-migrate/2.down.sql
 cmpmig 3 golang-migrate/2.up.sql
 
+rm migrations
+mkdir migrations
+
+atlas migrate diff --dev-url URL --to file://1.hcl --dir-format goose first
+cmpmig 0 goose/1.sql
+
+atlas migrate diff --dev-url URL --to file://2.hcl --dir-format goose second
+cmpmig 1 goose/2.sql
+
 -- golang-migrate/1.up.sql --
 -- create "users" table
 CREATE TABLE `users` (`id` bigint NOT NULL AUTO_INCREMENT, PRIMARY KEY (`id`)) CHARSET utf8mb4 COLLATE utf8mb4_general_ci;
@@ -23,6 +32,24 @@ DROP TABLE `users`;
 ALTER TABLE `users` ADD COLUMN `email` varchar(100) NULL;
 
 -- golang-migrate/2.down.sql --
+-- reverse: modify "users" table
+ALTER TABLE `users` DROP COLUMN `email`;
+
+-- goose/1.sql --
+-- +goose Up
+-- create "users" table
+CREATE TABLE `users` (`id` bigint NOT NULL AUTO_INCREMENT, PRIMARY KEY (`id`)) CHARSET utf8mb4 COLLATE utf8mb4_general_ci;
+
+-- +goose Down
+-- reverse: create "users" table
+DROP TABLE `users`;
+
+-- goose/2.sql --
+-- +goose Up
+-- modify "users" table
+ALTER TABLE `users` ADD COLUMN `email` varchar(100) NULL;
+
+-- +goose Down
 -- reverse: modify "users" table
 ALTER TABLE `users` DROP COLUMN `email`;
 

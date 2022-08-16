@@ -731,8 +731,17 @@ func dir(create bool) (migrate.Dir, error) {
 		return nil, fmt.Errorf("unsupported driver %q", parts[0])
 	}
 	f := func() (migrate.Dir, error) { return migrate.NewLocalDir(parts[1]) }
-	if MigrateFlags.DirFormat == formatGolangMigrate {
+	switch MigrateFlags.DirFormat {
+	case formatAtlas:
+	case formatGolangMigrate:
 		f = func() (migrate.Dir, error) { return sqltool.NewGolangMigrateDir(parts[1]) }
+	case formatGoose:
+		f = func() (migrate.Dir, error) { return sqltool.NewGooseDir(parts[1]) }
+	case formatFlyway:
+	case formatLiquibase:
+	case formatDbmate:
+	default:
+		return nil, fmt.Errorf("unknown dir format %q", MigrateFlags.DirFormat)
 	}
 	d, err := f()
 	if create && errors.Is(err, fs.ErrNotExist) {
