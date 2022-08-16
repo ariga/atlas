@@ -400,7 +400,8 @@ func TestMigrate_New(t *testing.T) {
 
 func TestMigrate_Validate(t *testing.T) {
 	// Without re-playing.
-	MigrateFlags.DevURL = "" // global flags are set from other tests ...
+	MigrateFlags.DevURL = ""         // global flags are set from other tests ...
+	MigrateFlags.DirFormat = "atlas" // global flags are set from other tests ...
 	s, err := runCmd(Root, "migrate", "validate", "--dir", "file://testdata/mysql")
 	require.Zero(t, s)
 	require.NoError(t, err)
@@ -419,6 +420,9 @@ func TestMigrate_Validate(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(p, "2_second.sql"), []byte("create table t2 (c2 int)"), 0644))
 	_, err = runCmd(Root, "migrate", "hash", "--force", "--dir", "file://"+p)
 	require.NoError(t, err)
+	b, err := os.ReadFile(filepath.Join(p, "1_initial.sql"))
+	require.NoError(t, err)
+	fmt.Println(string(b))
 	s, err = runCmd(
 		Root, "migrate", "validate",
 		"--dir", "file://"+p,

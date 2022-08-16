@@ -740,6 +740,7 @@ func dir(create bool) (migrate.Dir, error) {
 	case formatFlyway:
 	case formatLiquibase:
 	case formatDbmate:
+		f = func() (migrate.Dir, error) { return sqltool.NewDBMateDir(parts[1]) }
 	default:
 		return nil, fmt.Errorf("unknown dir format %q", MigrateFlags.DirFormat)
 	}
