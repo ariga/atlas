@@ -7,6 +7,7 @@ package cmdapi
 import (
 	"strings"
 
+	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 
 	"github.com/spf13/cobra"
@@ -54,19 +55,30 @@ func cmdDiffRun(cmd *cobra.Command, flags *diffCmdOpts) {
 	defer toC.Close()
 	fromName := fromC.URL.Schema
 	toName := toC.URL.Schema
-	fromSchema, err := fromC.InspectSchema(ctx, fromName, nil)
-	cobra.CheckErr(err)
-	toSchema, err := toC.InspectSchema(ctx, toName, nil)
-	cobra.CheckErr(err)
-	// SchemaDiff checks for name equality which is irrelevant in the case
-	// the user wants to compare their contents, if the names are different
-	// we reset them to allow the comparison.
-	if fromName != toName {
-		toSchema.Name = ""
-		fromSchema.Name = ""
+	var diff []schema.Change
+	// if one of schema names is empty we compare realms
+	if fromName == "" || toName == "" {
+		fromRealm, err := fromC.InspectRealm(ctx, nil)
+		cobra.CheckErr(err)
+		toRealm, err := toC.InspectRealm(ctx, nil)
+		cobra.CheckErr(err)
+		diff, err = toC.RealmDiff(fromRealm, toRealm)
+		cobra.CheckErr(err)
+	} else {
+		fromSchema, err := fromC.InspectSchema(ctx, fromName, nil)
+		cobra.CheckErr(err)
+		toSchema, err := toC.InspectSchema(ctx, toName, nil)
+		cobra.CheckErr(err)
+		// SchemaDiff checks for name equality which is irrelevant in the case
+		// the user wants to compare their contents, if the names are different
+		// we reset them to allow the comparison.
+		if fromName != toName {
+			toSchema.Name = ""
+			fromSchema.Name = ""
+		}
+		diff, err = toC.SchemaDiff(fromSchema, toSchema)
+		cobra.CheckErr(err)
 	}
-	diff, err := toC.SchemaDiff(fromSchema, toSchema)
-	cobra.CheckErr(err)
 	p, err := toC.PlanChanges(ctx, "plan", diff)
 	cobra.CheckErr(err)
 	if len(p.Changes) == 0 {
