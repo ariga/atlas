@@ -5,6 +5,7 @@
 package cmdapi
 
 import (
+	"fmt"
 	"strings"
 
 	"ariga.io/atlas/sql/schema"
@@ -58,6 +59,9 @@ func cmdDiffRun(cmd *cobra.Command, flags *diffCmdOpts) {
 	var diff []schema.Change
 	// if one of schema names is empty we compare realms
 	if fromName == "" || toName == "" {
+		if fromName != toName {
+			cobra.CheckErr(fmt.Errorf("can not diff realm with schame, from schema: %s, to schema: %s", fromName, toName))
+		}
 		fromRealm, err := fromC.InspectRealm(ctx, nil)
 		cobra.CheckErr(err)
 		toRealm, err := toC.InspectRealm(ctx, nil)
