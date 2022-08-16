@@ -20,7 +20,7 @@ import (
 var dialects = []struct {
 	name string
 	schemahcl.Marshaler
-	Eval func(b []byte, v interface{}, inp map[string]string) error
+	Eval func(b []byte, v any, inp map[string]string) error
 }{
 	{
 		name:      "mysql",

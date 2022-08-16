@@ -59,7 +59,7 @@ func ValidString(s sql.NullString) bool {
 }
 
 // ScanOne scans one record and closes the rows at the end.
-func ScanOne(rows *sql.Rows, dest ...interface{}) error {
+func ScanOne(rows *sql.Rows, dest ...any) error {
 	defer rows.Close()
 	if !rows.Next() {
 		return sql.ErrNoRows
@@ -283,7 +283,7 @@ func (b *Builder) Comma() *Builder {
 
 // MapComma maps the slice x using the function f and joins the result with
 // a comma separating between the written elements.
-func (b *Builder) MapComma(x interface{}, f func(i int, b *Builder)) *Builder {
+func (b *Builder) MapComma(x any, f func(i int, b *Builder)) *Builder {
 	s := reflect.ValueOf(x)
 	for i := 0; i < s.Len(); i++ {
 		if i > 0 {
@@ -295,7 +295,7 @@ func (b *Builder) MapComma(x interface{}, f func(i int, b *Builder)) *Builder {
 }
 
 // MapCommaErr is like MapComma, but returns an error if f returns an error.
-func (b *Builder) MapCommaErr(x interface{}, f func(i int, b *Builder) error) error {
+func (b *Builder) MapCommaErr(x any, f func(i int, b *Builder) error) error {
 	s := reflect.ValueOf(x)
 	for i := 0; i < s.Len(); i++ {
 		if i > 0 {

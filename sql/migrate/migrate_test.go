@@ -438,7 +438,7 @@ func (m *mockDriver) failOn(n int, err error) {
 	m.failWith = err
 }
 
-func (m *mockDriver) ExecContext(_ context.Context, query string, _ ...interface{}) (sql.Result, error) {
+func (m *mockDriver) ExecContext(_ context.Context, query string, _ ...any) (sql.Result, error) {
 	if m.failCounter > 0 {
 		m.failCounter--
 		if m.failCounter == 0 {

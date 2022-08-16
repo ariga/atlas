@@ -123,6 +123,6 @@ type mockDriver struct {
 	db schema.ExecQuerier
 }
 
-func (m *mockDriver) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+func (m *mockDriver) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	return m.db.ExecContext(ctx, query, args...)
 }

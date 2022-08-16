@@ -42,7 +42,7 @@ const (
 // 2. If last poll was more than 24h, poll GitHub public API https://docs.github.com/en/rest/reference/releases#get-the-latest-release
 // 3. Store the latest release metadata
 // 4. If current build Version, that is not development, is lower than the latest release, notify user
-func Check(version string, logF func(i ...interface{})) {
+func Check(version string, logF func(i ...any)) {
 	if !enabled(version) {
 		return
 	}

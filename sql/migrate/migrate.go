@@ -42,7 +42,7 @@ type (
 		Cmd string
 
 		// Args for placeholder parameters in the statement above.
-		Args []interface{}
+		Args []any
 
 		// A Comment describes the change.
 		Comment string

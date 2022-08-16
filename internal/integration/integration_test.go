@@ -565,7 +565,7 @@ func buildCmd(t *testing.T) (string, error) {
 	return filepath.Join(td, "atlas"), nil
 }
 
-func evalBytes(b []byte, v interface{}, ev schemahcl.Evaluator) error {
+func evalBytes(b []byte, v any, ev schemahcl.Evaluator) error {
 	p := hclparse.NewParser()
 	if _, diag := p.ParseHCL(b, ""); diag.HasErrors() {
 		return diag

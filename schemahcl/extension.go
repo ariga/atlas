@@ -39,14 +39,14 @@ func (d *DefaultExtension) Attr(name string) (*Attr, bool) {
 	return d.Extra.Attr(name)
 }
 
-type registry map[string]interface{}
+type registry map[string]any
 
 var (
 	extensions   = make(registry)
 	extensionsMu sync.RWMutex
 )
 
-func (r registry) lookup(ext interface{}) (string, bool) {
+func (r registry) lookup(ext any) (string, bool) {
 	extensionsMu.RLock()
 	defer extensionsMu.RUnlock()
 	for k, v := range r {
@@ -74,7 +74,7 @@ func (r registry) implementers(i reflect.Type) ([]string, error) {
 // Register records the type of ext in the global extension registry.
 // If Register is called twice with the same name or if ext is nil,
 // it panics.
-func Register(name string, ext interface{}) {
+func Register(name string, ext any) {
 	extensionsMu.Lock()
 	defer extensionsMu.Unlock()
 	if ext == nil {
@@ -87,7 +87,7 @@ func Register(name string, ext interface{}) {
 }
 
 // As reads the attributes and children resources of the resource into the target struct.
-func (r *Resource) As(target interface{}) error {
+func (r *Resource) As(target any) error {
 	if err := validateStructPtr(target); err != nil {
 		return err
 	}
@@ -228,7 +228,7 @@ func (r *Resource) FinalName() (string, error) {
 	return "", fmt.Errorf("extension %q has no name field", r.Type)
 }
 
-func validateStructPtr(target interface{}) error {
+func validateStructPtr(target any) error {
 	typeOf := reflect.TypeOf(target)
 	if typeOf.Kind() != reflect.Ptr {
 		return errors.New("schemahcl: expected target to be a pointer")
@@ -402,7 +402,7 @@ func setSliceAttr(field reflect.Value, attr *Attr) error {
 
 // Scan reads the Extension into the Resource. Scan will override the Resource
 // name or type if they are set for the extension.
-func (r *Resource) Scan(ext interface{}) error {
+func (r *Resource) Scan(ext any) error {
 	if lookup, ok := extensions.lookup(ext); ok {
 		r.Type = lookup
 	}
@@ -559,7 +559,7 @@ func scanSliceAttr(key string, r *Resource, field reflect.Value) error {
 
 // specFields uses reflection to find struct fields that are tagged with "spec"
 // and returns a list of mappings from the tag to the field name.
-func specFields(ext interface{}) []fieldDesc {
+func specFields(ext any) []fieldDesc {
 	t := reflect.TypeOf(ext)
 	var fields []fieldDesc
 	for i := 0; i < t.Elem().NumField(); i++ {

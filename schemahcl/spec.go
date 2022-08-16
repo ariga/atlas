@@ -219,7 +219,7 @@ func (r *Resource) SetAttr(attr *Attr) {
 }
 
 // MarshalSpec implements Marshaler.
-func (f MarshalerFunc) MarshalSpec(v interface{}) ([]byte, error) {
+func (f MarshalerFunc) MarshalSpec(v any) ([]byte, error) {
 	return f(v)
 }
 

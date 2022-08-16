@@ -1091,12 +1091,12 @@ type (
 )
 
 // QueryContext overrides the wrapped schema.ExecQuerier to not execute any SQL.
-func (dryRunDriver) QueryContext(context.Context, string, ...interface{}) (*sql.Rows, error) {
+func (dryRunDriver) QueryContext(context.Context, string, ...any) (*sql.Rows, error) {
 	return nil, nil
 }
 
 // ExecContext overrides the wrapped schema.ExecQuerier to not execute any SQL.
-func (dryRunDriver) ExecContext(context.Context, string, ...interface{}) (sql.Result, error) {
+func (dryRunDriver) ExecContext(context.Context, string, ...any) (sql.Result, error) {
 	return nil, nil
 }
 
