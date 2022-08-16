@@ -9,7 +9,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -40,7 +39,7 @@ func TestDiffCmd_Synced(t *testing.T) {
 
 // openSQLite creates a sqlite db, seeds it with the seed query and returns the url to it.
 func openSQLite(t *testing.T, seed string) string {
-	f, err := ioutil.TempFile("", "sqlite.db")
+	f, err := os.CreateTemp("", "sqlite.db")
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		os.Remove(f.Name())
