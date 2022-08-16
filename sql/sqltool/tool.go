@@ -148,43 +148,43 @@ func (f *GooseFile) Stmts() ([]string, error) {
 		line++
 		s := sc.Text()
 		// Handle pragmas.
-		if strings.HasPrefix(s, pragma) {
-			switch strings.TrimSpace(strings.TrimPrefix(s, pragma)) {
+		if strings.HasPrefix(s, goosePragma) {
+			switch strings.TrimSpace(strings.TrimPrefix(s, goosePragma)) {
 			case "Up":
 				switch state {
 				case none: // found the "up" part of the file
 					state = up
 				default:
-					return nil, unexpectedGoosePragmaErr(f, line, "Up")
+					return nil, unexpectedPragmaErr(f, line, "Up")
 				}
 			case "Down":
 				switch state {
 				case up: // found the "down" part
 					if rest := strings.TrimSpace(buf.String()); len(rest) > 0 {
-						return nil, unexpectedGoosePragmaErr(f, line, "Down")
+						return nil, unexpectedPragmaErr(f, line, "Down")
 					}
 					return stmts, nil
 				default:
-					return nil, unexpectedGoosePragmaErr(f, line, "Down")
+					return nil, unexpectedPragmaErr(f, line, "Down")
 				}
 			case "StatementBegin":
 				switch state {
 				case up:
 					state = begin // begin of a statement
 				default:
-					return nil, unexpectedGoosePragmaErr(f, line, "StatementBegin")
+					return nil, unexpectedPragmaErr(f, line, "StatementBegin")
 				}
 			case "StatementEnd":
 				switch state {
 				case begin:
 					state = end // end of a statement
 				default:
-					return nil, unexpectedGoosePragmaErr(f, line, "StatementEnd")
+					return nil, unexpectedPragmaErr(f, line, "StatementEnd")
 				}
 			}
 		}
 		// Write the line of the statement.
-		if !rePragma.MatchString(s) {
+		if !reGoosePragma.MatchString(s) {
 			if _, err := buf.WriteString(s + "\n"); err != nil {
 				return nil, err
 			}
@@ -195,7 +195,7 @@ func (f *GooseFile) Stmts() ([]string, error) {
 				stmts = append(stmts, strings.TrimSpace(buf.String()))
 				buf.Reset()
 			}
-		case end: // end of statement marked by pragma
+		case end: // end of statement marked by goosePragma
 			stmts = append(stmts, strings.TrimSpace(buf.String()))
 			buf.Reset()
 			state = up // back in up block
@@ -211,20 +211,115 @@ func (f *GooseFile) Stmts() ([]string, error) {
 }
 
 const (
-	none int = iota // state when parsing goose sql file
+	none int = iota // state when parsing goose/dbmate sql file
 	up
 	begin
 	end
-	pragma = "-- +goose"
+	goosePragma  = "-- +goose"
+	dbmatePragma = "-- migrate:"
 )
 
-var rePragma = regexp.MustCompile("-- \\+goose Up|Down|StatementBegin|StatementEnd")
+var (
+	reGoosePragma  = regexp.MustCompile(regexp.QuoteMeta(goosePragma) + " Up|Down|StatementBegin|StatementEnd")
+	reDBMatePragma = regexp.MustCompile(dbmatePragma + "up|down")
+)
 
-func unexpectedGoosePragmaErr(f *GooseFile, line int, pragma string) error {
+func unexpectedPragmaErr(f migrate.File, line int, pragma string) error {
+	var tool string
+	switch f := f.(type) {
+	case *GooseFile:
+		tool = "goose"
+	case *DBMateFile:
+		tool = "dbmate"
+	default:
+		return fmt.Errorf("sql/migrate: unexpected migration file type '%T'", f)
+	}
 	return fmt.Errorf(
-		"sql/migrate: goose: %s:%d unexpected pragma '%s'",
-		f.Name(), line, pragma,
+		"sql/migrate: %s: %s:%d unexpected goosePragma '%s'",
+		tool, f.Name(), line, pragma,
 	)
+}
+
+// DBMateDir wraps migrate.LocalDir and provides implementation compatible with amacneil/dbmate.
+type DBMateDir struct{ *migrate.LocalDir }
+
+// NewDBMateDir returns a new DBMateDir.
+func NewDBMateDir(path string) (*DBMateDir, error) {
+	dir, err := migrate.NewLocalDir(path)
+	if err != nil {
+		return nil, err
+	}
+	return &DBMateDir{dir}, nil
+}
+
+// DBMateFile wraps migrate.LocalFile with custom statements function.
+type DBMateFile struct {
+	*migrate.LocalFile
+}
+
+// Files implements Scanner.Files. It looks for all files with up.sql suffix and orders them by filename.
+func (d *DBMateDir) Files() ([]migrate.File, error) {
+	files, err := d.LocalDir.Files()
+	if err != nil {
+		return nil, err
+	}
+	for i, f := range files {
+		files[i] = &DBMateFile{f.(*migrate.LocalFile)}
+	}
+	return files, nil
+}
+
+// Stmts implements Scanner.Stmts. It understands the migration format used by pressly/DBMate sql migration files.
+func (f *DBMateFile) Stmts() ([]string, error) {
+	var (
+		state, line int
+		stmts       []string
+		buf         strings.Builder
+		sc          = bufio.NewScanner(bytes.NewReader(f.Bytes()))
+	)
+	for sc.Scan() {
+		line++
+		s := sc.Text()
+		// Handle pragmas.
+		if strings.HasPrefix(s, dbmatePragma) {
+			switch strings.TrimSpace(strings.TrimPrefix(s, dbmatePragma)) {
+			case "up":
+				switch state {
+				case none: // found the "up" part of the file
+					state = up
+				default:
+					return nil, unexpectedPragmaErr(f, line, "up")
+				}
+			case "down":
+				switch state {
+				case up: // found the "down" part
+					if rest := strings.TrimSpace(buf.String()); len(rest) > 0 {
+						return nil, unexpectedPragmaErr(f, line, "down")
+					}
+					return stmts, nil
+				default:
+					return nil, unexpectedPragmaErr(f, line, "down")
+				}
+			}
+		}
+		// Write the line of the statement.
+		if !reDBMatePragma.MatchString(s) {
+			if _, err := buf.WriteString(s + "\n"); err != nil {
+				return nil, err
+			}
+		}
+		if s := strings.TrimSpace(s); strings.HasSuffix(s, ";") && !strings.HasPrefix(s, "--") {
+			stmts = append(stmts, strings.TrimSpace(buf.String()))
+			buf.Reset()
+		}
+	}
+	if err := sc.Err(); err != nil {
+		return nil, fmt.Errorf("sql/migrate: scanning migration %q: %w", f.Name(), err)
+	}
+	if state == none {
+		return nil, fmt.Errorf("sql/migrate: empty migration %q", f.Name())
+	}
+	return stmts, nil
 }
 
 // funcs contains the template.FuncMap for the different formatters.
