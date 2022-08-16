@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"ariga.io/atlas/cmd/atlas/internal/sqlparse"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
@@ -245,7 +246,7 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 			diff.Files[i].Changes = append(diff.Files[i].Changes, &sqlcheck.Change{
 				Pos:     p,
 				Stmt:    s,
-				Changes: changes,
+				Changes: d.mayFix(s, changes),
 			})
 		}
 		if diff.Files[i].Sum, err = d.Dev.RealmDiff(start, current); err != nil {
@@ -254,6 +255,14 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 	}
 	diff.To = current
 	return diff, nil
+}
+
+// mayFix uses the sqlparse package for fixing or attaching more info to the changes.
+func (d *DevLoader) mayFix(stmt string, changes schema.Changes) schema.Changes {
+	if fixed, err := sqlparse.FixerFor(d.Dev.Name).FixChange(stmt, changes); err == nil {
+		return fixed
+	}
+	return changes
 }
 
 // pos returns the position of a statement in migration file.
