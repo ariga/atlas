@@ -737,9 +737,6 @@ func dir(create bool) (migrate.Dir, error) {
 		f = func() (migrate.Dir, error) { return sqltool.NewGolangMigrateDir(parts[1]) }
 	case formatGoose:
 		f = func() (migrate.Dir, error) { return sqltool.NewGooseDir(parts[1]) }
-	case formatFlyway:
-	case formatLiquibase:
-	case formatDbmate:
 	default:
 		return nil, fmt.Errorf("unknown dir format %q", MigrateFlags.DirFormat)
 	}
