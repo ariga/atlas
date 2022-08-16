@@ -28,6 +28,17 @@ cmpmig 0 dbmate/1.sql
 atlas migrate diff --dev-url URL --to file://2.hcl --dir-format dbmate second
 cmpmig 1 dbmate/2.sql
 
+rm migrations
+mkdir migrations
+
+atlas migrate diff --dev-url URL --to file://1.hcl --dir-format flyway first
+cmpmig 0 flyway/U1.sql
+cmpmig 1 flyway/V1.sql
+
+atlas migrate diff --dev-url URL --to file://2.hcl --dir-format flyway second
+cmpmig 1 flyway/U2.sql
+cmpmig 3 flyway/V2.sql
+
 -- golang-migrate/1.up.sql --
 -- create "users" table
 CREATE TABLE `users` (`id` bigint NOT NULL AUTO_INCREMENT, PRIMARY KEY (`id`)) CHARSET utf8mb4 COLLATE utf8mb4_general_ci;
@@ -77,6 +88,22 @@ DROP TABLE `users`;
 ALTER TABLE `users` ADD COLUMN `email` varchar(100) NULL;
 
 -- migrate:down
+-- reverse: modify "users" table
+ALTER TABLE `users` DROP COLUMN `email`;
+
+-- flyway/V1.sql --
+-- create "users" table
+CREATE TABLE `users` (`id` bigint NOT NULL AUTO_INCREMENT, PRIMARY KEY (`id`)) CHARSET utf8mb4 COLLATE utf8mb4_general_ci;
+
+-- flyway/U1.sql --
+-- reverse: create "users" table
+DROP TABLE `users`;
+
+-- flyway/V2.sql --
+-- modify "users" table
+ALTER TABLE `users` ADD COLUMN `email` varchar(100) NULL;
+
+-- flyway/U2.sql --
 -- reverse: modify "users" table
 ALTER TABLE `users` DROP COLUMN `email`;
 

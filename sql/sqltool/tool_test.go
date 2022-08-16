@@ -100,7 +100,7 @@ CREATE TABLE t2(c int);
 		},
 		{
 			"amacneil/dbmate",
-			sqltool.DbmateFormatter,
+			sqltool.DBMateFormatter,
 			map[string]string{
 				v + "_tooling-plan.sql": `-- migrate:up
 -- create table t1
@@ -167,6 +167,24 @@ func TestScanners(t *testing.T) {
 					"INSERT INTO post (title) VALUES (\n'This is\nmy multiline\n\nvalue');",
 				},
 				{"CREATE\nOR REPLACE FUNCTION histories_partition_creation( DATE, DATE )\nreturns void AS $$\nDECLARE\ncreate_query text;\nBEGIN\nFOR create_query IN\nSELECT 'CREATE TABLE IF NOT EXISTS histories_'\n           || TO_CHAR(d, 'YYYY_MM')\n           || ' ( CHECK( created_at >= timestamp '''\n           || TO_CHAR(d, 'YYYY-MM-DD 00:00:00')\n           || ''' AND created_at < timestamp '''\n           || TO_CHAR(d + INTERVAL '1 month', 'YYYY-MM-DD 00:00:00')\n           || ''' ) ) inherits ( histories );'\nFROM generate_series($1, $2, '1 month') AS d LOOP\n    EXECUTE create_query;\nEND LOOP;  -- LOOP END\nEND;         -- FUNCTION END\n$$\nlanguage plpgsql;"},
+			},
+		},
+		{
+			name: "flyway",
+			dir: func() migrate.Dir {
+				d, err := sqltool.NewFlywayDir("testdata/flyway")
+				require.NoError(t, err)
+				return d
+			}(),
+			versions:     []string{"1", "2"},
+			descriptions: []string{"initial", "second_migration"},
+			stmts: [][]string{
+				{
+					"CREATE TABLE post\n(\n    id    int NOT NULL,\n    title text,\n    body  text,\n    PRIMARY KEY (id)\n);",
+					"ALTER TABLE post ADD created_at TIMESTAMP NOT NULL;",
+					"INSERT INTO post (title) VALUES (\n'This is\nmy multiline\n\nvalue');",
+				},
+				{"CREATE TABLE tbl_2 (col INT);"},
 			},
 		},
 		{
