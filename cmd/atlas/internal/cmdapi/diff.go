@@ -5,8 +5,10 @@
 package cmdapi
 
 import (
+	"fmt"
 	"strings"
 
+	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 
 	"github.com/spf13/cobra"
@@ -52,21 +54,38 @@ func cmdDiffRun(cmd *cobra.Command, flags *diffCmdOpts) {
 	toC, err := sqlclient.Open(cmd.Context(), flags.toURL)
 	cobra.CheckErr(err)
 	defer toC.Close()
-	fromName := fromC.URL.Schema
-	toName := toC.URL.Schema
-	fromSchema, err := fromC.InspectSchema(ctx, fromName, nil)
-	cobra.CheckErr(err)
-	toSchema, err := toC.InspectSchema(ctx, toName, nil)
-	cobra.CheckErr(err)
-	// SchemaDiff checks for name equality which is irrelevant in the case
-	// the user wants to compare their contents, if the names are different
-	// we reset them to allow the comparison.
-	if fromName != toName {
-		toSchema.Name = ""
-		fromSchema.Name = ""
+	fromS := fromC.URL.Schema
+	toS := toC.URL.Schema
+	var diff []schema.Change
+	switch {
+	case fromS == "" && toS == "":
+		// compare realm.
+		fromRealm, err := fromC.InspectRealm(ctx, nil)
+		cobra.CheckErr(err)
+		toRealm, err := toC.InspectRealm(ctx, nil)
+		cobra.CheckErr(err)
+		diff, err = toC.RealmDiff(fromRealm, toRealm)
+		cobra.CheckErr(err)
+	case fromS == "":
+		cobra.CheckErr(fmt.Errorf("cannot diff schema %q with a database connection", fromS))
+	case toS == "":
+		cobra.CheckErr(fmt.Errorf("cannot diff database connection with a schema %q", toS))
+	default:
+		// compare schemas.
+		fromSchema, err := fromC.InspectSchema(ctx, fromS, nil)
+		cobra.CheckErr(err)
+		toSchema, err := toC.InspectSchema(ctx, toS, nil)
+		cobra.CheckErr(err)
+		// SchemaDiff checks for name equality which is irrelevant in the case
+		// the user wants to compare their contents, if the names are different
+		// we reset them to allow the comparison.
+		if fromS != toS {
+			toSchema.Name = ""
+			fromSchema.Name = ""
+		}
+		diff, err = toC.SchemaDiff(fromSchema, toSchema)
+		cobra.CheckErr(err)
 	}
-	diff, err := toC.SchemaDiff(fromSchema, toSchema)
-	cobra.CheckErr(err)
 	p, err := toC.PlanChanges(ctx, "plan", diff)
 	cobra.CheckErr(err)
 	if len(p.Changes) == 0 {
