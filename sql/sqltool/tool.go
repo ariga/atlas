@@ -355,6 +355,11 @@ func (f FlywayFile) Version() string {
 	return strings.TrimPrefix(strings.SplitN(strings.TrimSuffix(f.Name(), ".sql"), "__", 2)[0], "V")
 }
 
+// NewLiquibaseDir returns a new LiquibaseDir.
+func NewLiquibaseDir(path string) (*migrate.LocalDir, error) {
+	return migrate.NewLocalDir(path)
+}
+
 const (
 	none int = iota // state when parsing goose/dbmate sql file
 	up

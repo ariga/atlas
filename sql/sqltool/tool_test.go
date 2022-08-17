@@ -188,6 +188,24 @@ func TestScanners(t *testing.T) {
 			},
 		},
 		{
+			name: "liquibase",
+			dir: func() migrate.Dir {
+				d, err := sqltool.NewLiquibaseDir("testdata/liquibase")
+				require.NoError(t, err)
+				return d
+			}(),
+			versions:     []string{"1", "2"},
+			descriptions: []string{"initial", "second_migration"},
+			stmts: [][]string{
+				{
+					"CREATE TABLE post\n(\n    id    int NOT NULL,\n    title text,\n    body  text,\n    PRIMARY KEY (id)\n);",
+					"ALTER TABLE post ADD created_at TIMESTAMP NOT NULL;",
+					"INSERT INTO post (title) VALUES (\n'This is\nmy multiline\n\nvalue');",
+				},
+				{"CREATE TABLE tbl_2 (col INT);"},
+			},
+		},
+		{
 			name: "dbmate",
 			dir: func() migrate.Dir {
 				d, err := sqltool.NewDBMateDir("testdata/dbmate")
