@@ -54,29 +54,32 @@ func cmdDiffRun(cmd *cobra.Command, flags *diffCmdOpts) {
 	toC, err := sqlclient.Open(cmd.Context(), flags.toURL)
 	cobra.CheckErr(err)
 	defer toC.Close()
-	fromName := fromC.URL.Schema
-	toName := toC.URL.Schema
+	fromS := fromC.URL.Schema
+	toS := toC.URL.Schema
 	var diff []schema.Change
-	// if one of schema names is empty we compare realms
-	if fromName == "" || toName == "" {
-		if fromName != toName {
-			cobra.CheckErr(fmt.Errorf("can not diff realm with schame, from schema: %s, to schema: %s", fromName, toName))
-		}
+	switch {
+	case fromS == "" && toS == "":
+		// compare realm.
 		fromRealm, err := fromC.InspectRealm(ctx, nil)
 		cobra.CheckErr(err)
 		toRealm, err := toC.InspectRealm(ctx, nil)
 		cobra.CheckErr(err)
 		diff, err = toC.RealmDiff(fromRealm, toRealm)
 		cobra.CheckErr(err)
-	} else {
-		fromSchema, err := fromC.InspectSchema(ctx, fromName, nil)
+	case fromS == "":
+		cobra.CheckErr(fmt.Errorf("cannot diff schema %q with a database connection", fromS))
+	case toS == "":
+		cobra.CheckErr(fmt.Errorf("cannot diff database connection with a schema %q", toS))
+	default:
+		// compare schemas.
+		fromSchema, err := fromC.InspectSchema(ctx, fromS, nil)
 		cobra.CheckErr(err)
-		toSchema, err := toC.InspectSchema(ctx, toName, nil)
+		toSchema, err := toC.InspectSchema(ctx, toS, nil)
 		cobra.CheckErr(err)
 		// SchemaDiff checks for name equality which is irrelevant in the case
 		// the user wants to compare their contents, if the names are different
 		// we reset them to allow the comparison.
-		if fromName != toName {
+		if fromS != toS {
 			toSchema.Name = ""
 			fromSchema.Name = ""
 		}
