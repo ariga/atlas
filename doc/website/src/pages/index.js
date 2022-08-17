@@ -77,7 +77,7 @@ export default function () {
                             on your desired state.
                         </p>
                     </div>
-                    <AtlasButton style={{"marginTop": "5%"}} text="Get Started"  link="/cli/getting-started/setting-up" type="primaryButton"/>
+                    <AtlasButton style={{"marginTop": "5%"}} text="Get Started" link="/getting-started" type="primaryButton"/>
                 </div>
                 <div className={index.imageContainer}>
                     <img src="https://atlasgo.io/uploads/hero2.png" alt="hero"/>
