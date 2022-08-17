@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 	"unicode"
 
 	"ariga.io/atlas/sql/migrate"
@@ -45,6 +46,7 @@ func TestMySQL_Script(t *testing.T) {
 				"execsql":     t.cmdExec,
 				"atlas":       t.cmdCLI,
 				"clearSchema": t.clearSchema,
+				"sleep":       sleep,
 			},
 		})
 	})
@@ -205,6 +207,14 @@ func cmdOnly(ts *testscript.TestScript, neg bool, args []string) {
 	// This is not an elegant way to get the created testing.T for the script,
 	// but we need some workaround to get it in order to skip specific tests.
 	ts.Value(keyT).(testscript.T).Skip("skip version", ver)
+}
+
+// sleep calls time.Sleep with the given duration in seconds.
+// Used since generated migration contain a timestamp one generation.
+func sleep(ts *testscript.TestScript, _ bool, args []string) {
+	d, err := time.ParseDuration(args[0])
+	ts.Check(err)
+	time.Sleep(d)
 }
 
 func (t *myTest) cmdCmpShow(ts *testscript.TestScript, _ bool, args []string) {

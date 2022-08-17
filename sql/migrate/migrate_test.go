@@ -349,7 +349,7 @@ func TestExecutor_Baseline(t *testing.T) {
 
 	// Require baseline-version or explicit flag to work on a dirty workspace.
 	files, err := ex.Pending(context.Background())
-	require.EqualError(t, err, "sql/migrate: connected database is not clean: found table. baseline version or allow-dirty are required")
+	require.EqualError(t, err, "sql/migrate: connected database is not clean: found table. baseline version or allow-dirty is required")
 	require.Nil(t, files)
 
 	rrw = mockRevisionReadWriter{}

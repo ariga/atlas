@@ -495,9 +495,9 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 		if err = e.drv.(CleanChecker).CheckClean(ctx, e.rrw.Ident()); err != nil && !errors.As(err, &cerr) {
 			return nil, err
 		}
-		// In case the workspace is not clean one of the flags are required.
+		// In case the workspace is not clean one of the flags is required.
 		if cerr != nil && !e.allowDirty && e.baselineVer == "" {
-			return nil, fmt.Errorf("%w. baseline version or allow-dirty are required", cerr)
+			return nil, fmt.Errorf("%w. baseline version or allow-dirty is required", cerr)
 		}
 		pending = migrations
 		if e.baselineVer != "" {
