@@ -738,6 +738,7 @@ func dir(create bool) (migrate.Dir, error) {
 	case formatGoose:
 		f = func() (migrate.Dir, error) { return sqltool.NewGooseDir(parts[1]) }
 	case formatFlyway:
+		f = func() (migrate.Dir, error) { return sqltool.NewFlywayDir(parts[1]) }
 	case formatLiquibase:
 	case formatDbmate:
 		f = func() (migrate.Dir, error) { return sqltool.NewDBMateDir(parts[1]) }
@@ -945,7 +946,7 @@ func formatter() (migrate.Formatter, error) {
 	case formatLiquibase:
 		return sqltool.LiquibaseFormatter, nil
 	case formatDbmate:
-		return sqltool.DbmateFormatter, nil
+		return sqltool.DBMateFormatter, nil
 	default:
 		return nil, fmt.Errorf("unknown format %q", MigrateFlags.DirFormat)
 	}
