@@ -11,7 +11,7 @@ import BrowserOnly from "@docusaurus/core/lib/client/exports/BrowserOnly";
 function Nav() {
     return  <ul className={index.nav}>
         <li className={index.linkItem}>
-            <Link to={"/cli/getting-started/setting-up"}>
+            <Link to={"/getting-started"}>
                Docs
             </Link>
         </li>
