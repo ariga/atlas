@@ -740,6 +740,7 @@ func dir(create bool) (migrate.Dir, error) {
 	case formatFlyway:
 		f = func() (migrate.Dir, error) { return sqltool.NewFlywayDir(parts[1]) }
 	case formatLiquibase:
+		f = func() (migrate.Dir, error) { return sqltool.NewLiquibaseDir(parts[1]) }
 	case formatDbmate:
 		f = func() (migrate.Dir, error) { return sqltool.NewDBMateDir(parts[1]) }
 	default:

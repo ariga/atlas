@@ -426,6 +426,8 @@ func (t *liteTest) cmdCmpMig(ts *testscript.TestScript, neg bool, args []string)
 	cmdCmpMig(ts, neg, args)
 }
 
+var reLiquibaseChangeset = regexp.MustCompile("--changeset atlas:[0-9]+-[0-9]+")
+
 // cmdCmpMig compares a migration file under migrations with a provided file.
 // If the first argument is a filename that does exist, that file is used for comparison.
 // If there is no file with that name, the argument is parsed to an integer n and the
@@ -443,7 +445,7 @@ func cmdCmpMig(ts *testscript.TestScript, _ bool, args []string) {
 	if _, err := os.Stat(ts.MkAbs(filepath.Join(ver, fname))); err == nil {
 		fname = filepath.Join(ver, fname)
 	}
-	expected := ts.ReadFile(fname)
+	expected := strings.TrimSpace(ts.ReadFile(fname))
 	dir, err := os.ReadDir(ts.MkAbs("migrations"))
 	ts.Check(err)
 	idx, err := strconv.Atoi(args[0])
@@ -454,13 +456,25 @@ func cmdCmpMig(ts *testscript.TestScript, _ bool, args []string) {
 			continue
 		}
 		if current == idx {
-			actual := ts.ReadFile(filepath.Join("migrations", f.Name()))
-			var sb strings.Builder
-			if strings.TrimSpace(actual) == strings.TrimSpace(expected) {
-				return
+			actual := strings.TrimSpace(ts.ReadFile(filepath.Join("migrations", f.Name())))
+			exLines, acLines := strings.Split(actual, "\n"), strings.Split(expected, "\n")
+			if len(exLines) != len(acLines) {
+				var sb strings.Builder
+				ts.Check(diff.Text(f.Name(), args[1], expected, actual, &sb))
+				ts.Fatalf(sb.String())
 			}
-			ts.Check(diff.Text(f.Name(), args[1], expected, actual, &sb))
-			ts.Fatalf(sb.String())
+			for i := range exLines {
+				// Skip liquibase changeset comments since they contain a timestamp.
+				if reLiquibaseChangeset.MatchString(acLines[i]) {
+					continue
+				}
+				if exLines[i] != acLines[i] {
+					var sb strings.Builder
+					ts.Check(diff.Text(f.Name(), args[1], expected, actual, &sb))
+					ts.Fatalf(sb.String())
+				}
+			}
+			return
 		}
 		current++
 	}

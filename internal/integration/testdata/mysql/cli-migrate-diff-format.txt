@@ -39,6 +39,15 @@ atlas migrate diff --dev-url URL --to file://2.hcl --dir-format flyway second
 cmpmig 1 flyway/U2.sql
 cmpmig 3 flyway/V2.sql
 
+rm migrations
+mkdir migrations
+
+atlas migrate diff --dev-url URL --to file://1.hcl --dir-format liquibase first
+cmpmig 0 liquibase/1.sql
+
+atlas migrate diff --dev-url URL --to file://2.hcl --dir-format liquibase second
+cmpmig 1 liquibase/2.sql
+
 -- golang-migrate/1.up.sql --
 -- create "users" table
 CREATE TABLE `users` (`id` bigint NOT NULL AUTO_INCREMENT, PRIMARY KEY (`id`)) CHARSET utf8mb4 COLLATE utf8mb4_general_ci;
@@ -106,6 +115,20 @@ ALTER TABLE `users` ADD COLUMN `email` varchar(100) NULL;
 -- flyway/U2.sql --
 -- reverse: modify "users" table
 ALTER TABLE `users` DROP COLUMN `email`;
+
+-- liquibase/1.sql --
+--liquibase formatted sql
+--changeset atlas:0-0
+--comment: create "users" table
+CREATE TABLE `users` (`id` bigint NOT NULL AUTO_INCREMENT, PRIMARY KEY (`id`)) CHARSET utf8mb4 COLLATE utf8mb4_general_ci;
+--rollback: DROP TABLE `users`;
+
+-- liquibase/2.sql --
+--liquibase formatted sql
+--changeset atlas:0-0
+--comment: modify "users" table
+ALTER TABLE `users` ADD COLUMN `email` varchar(100) NULL;
+--rollback: ALTER TABLE `users` DROP COLUMN `email`;
 
 -- 1.hcl --
 schema "script_cli_migrate_diff_format" {}
