@@ -4,9 +4,13 @@
 name: Continuous Integration
 on:
   pull_request:
+    paths-ignore:
+      - 'doc/**'
   push:
     branches:
       - master
+    paths-ignore:
+      - 'doc/**'
 
 jobs:
   lint:
