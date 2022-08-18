@@ -176,15 +176,15 @@ func TestScanners(t *testing.T) {
 				require.NoError(t, err)
 				return d
 			}(),
-			versions:     []string{"1", "2"},
-			descriptions: []string{"initial", "second_migration"},
+			versions:     []string{"2", "3", ""},
+			descriptions: []string{"baseline", "third_migration", "views"},
 			stmts: [][]string{
 				{
-					"CREATE TABLE post\n(\n    id    int NOT NULL,\n    title text,\n    body  text,\n    PRIMARY KEY (id)\n);",
-					"ALTER TABLE post ADD created_at TIMESTAMP NOT NULL;",
-					"INSERT INTO post (title) VALUES (\n'This is\nmy multiline\n\nvalue');",
+					"CREATE TABLE post\n(\n    id    int NOT NULL,\n    title text,\n    body  text,\n    created_at TIMESTAMP NOT NULL\n    PRIMARY KEY (id)\n);",
+					"INSERT INTO post (title, created_at) VALUES (\n'This is\nmy multiline\n\nvalue', NOW());",
 				},
-				{"CREATE TABLE tbl_2 (col INT);"},
+				{"ALTER TABLE tbl_2 ADD col_1 INTEGER NOT NULL;"},
+				{"CREATE VIEW `my_view` AS SELECT * FROM `post`;"},
 			},
 		},
 		{

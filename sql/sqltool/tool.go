@@ -313,24 +313,41 @@ func NewFlywayDir(path string) (*FlywayDir, error) {
 	return &FlywayDir{dir}, nil
 }
 
-// Files implements Scanner.Files. It looks for all files with .sql suffix.
+// Files implements Scanner.Files. It looks for all files with .sql suffix. The given directory is recursively scanned
+// for non-hidden subdirectories. All found files will be ordered by migration type (Baseline, Versioned, Repeatable)
+// and filename.
 func (d *FlywayDir) Files() ([]migrate.File, error) {
-	var names []string
-	if err := fs.WalkDir(d, "", func(path string, d fs.DirEntry, err error) error {
+	var ff flywayFiles
+	if err := fs.WalkDir(d, "", func(path string, e fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if path != "" && d.IsDir() {
-			return fs.SkipDir
+		if path != "" && e.IsDir() {
+			h, err := hidden(filepath.Join(d.Path(), path))
+			if err != nil {
+				return err
+			}
+			if h {
+				return fs.SkipDir
+			}
+			return nil
 		}
-		if filepath.Ext(d.Name()) == ".sql" && d.Name()[0] == 'V' {
-			names = append(names, path)
+		var (
+			pfx  = e.Name()[0]
+			base = filepath.Base(e.Name())
+			ext  = filepath.Ext(e.Name())
+		)
+		if ext != ".sql" || len(base) < 4 || (pfx != 'V' && pfx != 'B' && pfx != 'R') {
+			return nil
 		}
-		return nil
+		return ff.add(path)
 	}); err != nil {
 		return nil, err
 	}
-	ret := make([]migrate.File, len(names))
+	var (
+		names = ff.names()
+		ret   = make([]migrate.File, len(names))
+	)
 	for i, n := range names {
 		b, err := fs.ReadFile(d, n)
 		if err != nil {
@@ -343,16 +360,12 @@ func (d *FlywayDir) Files() ([]migrate.File, error) {
 
 // Desc implements File.Desc.
 func (f FlywayFile) Desc() string {
-	parts := strings.SplitN(f.Name(), "__", 2)
-	if len(parts) == 1 {
-		return ""
-	}
-	return strings.TrimSuffix(parts[1], ".sql")
+	return flywayDesc(f.Name())
 }
 
 // Version implements File.Version.
 func (f FlywayFile) Version() string {
-	return strings.TrimPrefix(strings.SplitN(strings.TrimSuffix(f.Name(), ".sql"), "__", 2)[0], "V")
+	return flywayVersion(f.Name())
 }
 
 // NewLiquibaseDir returns a new LiquibaseDir.
@@ -373,6 +386,77 @@ var (
 	reGoosePragma  = regexp.MustCompile(regexp.QuoteMeta(goosePragma) + " Up|Down|StatementBegin|StatementEnd")
 	reDBMatePragma = regexp.MustCompile(dbmatePragma + "up|down")
 )
+
+// flywayFiles retrieves flyway migration files by calls to add(). It will only keep the latest baseline and ignore
+// all versioned files that are included in that baseline.
+type flywayFiles struct {
+	baseline   string
+	versioned  []string
+	repeatable []string
+}
+
+// add the given path to the migration files according to its type. The input directory is assumed to be valid
+// according to the Flyway documentation (no duplicate versions, etc.).
+func (ff *flywayFiles) add(path string) error {
+	switch p := filepath.Base(path)[0]; p {
+	case 'B':
+		if ff.baseline != "" && flywayVersion(path) < flywayVersion(ff.baseline) {
+			return nil
+		}
+		ff.baseline = path
+		// In case we set a new baseline, remove all versioned files with a version smaller than the new baseline.
+		var (
+			bv = flywayVersion(ff.baseline)
+			vs []string
+		)
+		for _, v := range ff.versioned {
+			if v > bv {
+				vs = append(vs, v)
+			}
+		}
+		ff.versioned = vs
+		return nil
+	case 'V':
+		v := flywayVersion(path)
+		if ff.baseline == "" || flywayVersion(ff.baseline) < v {
+			ff.versioned = append(ff.versioned, path)
+		}
+		return nil
+	case 'R':
+		ff.repeatable = append(ff.repeatable, path)
+		return nil
+	default:
+		return fmt.Errorf("sql/sqltool: unexpected Flyway prefix %q", p)
+	}
+}
+
+func (ff *flywayFiles) names() []string {
+	var names []string
+	if ff.baseline != "" {
+		names = append(names, ff.baseline)
+	}
+	sort.Strings(ff.versioned)
+	sort.Strings(ff.repeatable)
+	names = append(names, ff.versioned...)
+	names = append(names, ff.repeatable...)
+	return names
+}
+
+func flywayDesc(path string) string {
+	parts := strings.SplitN(path, "__", 2)
+	if len(parts) == 1 {
+		return ""
+	}
+	return strings.TrimSuffix(parts[1], ".sql")
+}
+
+func flywayVersion(path string) string {
+	// Repeatable migrations don't have a version.
+	if filepath.Base(path)[0] == 'R' {
+		return ""
+	}
+	return strings.SplitN(strings.TrimSuffix(filepath.Base(path), ".sql"), "__", 2)[0][1:]
+}
 
 func unexpectedPragmaErr(f migrate.File, line int, pragma string) error {
 	var tool string

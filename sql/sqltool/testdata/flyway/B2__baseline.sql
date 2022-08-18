@@ -1,13 +1,11 @@
--- comment
 CREATE TABLE post
 (
     id    int NOT NULL,
     title text,
     body  text,
+    created_at TIMESTAMP NOT NULL
     PRIMARY KEY (id)
 );
-
-ALTER TABLE post ADD created_at TIMESTAMP NOT NULL;
 
 INSERT INTO post (title, created_at) VALUES (
 'This is
