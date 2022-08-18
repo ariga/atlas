@@ -9,6 +9,8 @@ CREATE TABLE users (id int);
 
 CREATE TABLE pets (id int);
 
+ALTER TABLE users RENAME COLUMN id TO oid;
+
 -- migrations/2.sql --
 DROP TABLE users;
 

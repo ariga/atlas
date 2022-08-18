@@ -132,10 +132,11 @@ func TestDevLoader_LoadChanges(t *testing.T) {
 		testFile{name: "1.sql", content: "CREATE TABLE t1 (id INT)\nINSERT INTO t1 (id) VALUES (1)"},
 		testFile{name: "2.sql", content: "CREATE TABLE t2 (id INT)\nDROP TABLE users"},
 		testFile{name: "3.sql", content: "CREATE TABLE t3 (id INT)\nDROP TABLE t3"},
+		testFile{name: "4.sql", content: "ALTER TABLE t2 RENAME id TO oid"},
 	}
 	diff, err = l.LoadChanges(ctx, base, files)
 	require.NoError(t, err)
-	require.Len(t, diff.Files, 3)
+	require.Len(t, diff.Files, 4)
 
 	// File 1.
 	require.Equal(t, files[0], diff.Files[0].File)
@@ -161,6 +162,11 @@ func TestDevLoader_LoadChanges(t *testing.T) {
 	require.IsType(t, (*schema.AddTable)(nil), diff.Files[2].Changes[0].Changes[0])
 	require.IsType(t, (*schema.DropTable)(nil), diff.Files[2].Changes[1].Changes[0])
 	require.Empty(t, diff.Files[2].Sum)
+
+	// File 3.
+	require.Equal(t, files[3], diff.Files[3].File)
+	require.IsType(t, (*schema.ModifyTable)(nil), diff.Files[3].Changes[0].Changes[0])
+	require.IsType(t, (*schema.RenameColumn)(nil), diff.Files[3].Changes[0].Changes[0].(*schema.ModifyTable).Changes[0])
 
 	// Changes.
 	changes, err := c.RealmDiff(diff.From, diff.To)
