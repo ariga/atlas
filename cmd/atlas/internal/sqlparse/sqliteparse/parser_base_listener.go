@@ -576,12 +576,6 @@ func (s *BaseParserListener) EnterTable_or_index_name(ctx *Table_or_index_nameCo
 // ExitTable_or_index_name is called when production table_or_index_name is exited.
 func (s *BaseParserListener) ExitTable_or_index_name(ctx *Table_or_index_nameContext) {}
 
-// EnterNew_table_name is called when production new_table_name is entered.
-func (s *BaseParserListener) EnterNew_table_name(ctx *New_table_nameContext) {}
-
-// ExitNew_table_name is called when production new_table_name is exited.
-func (s *BaseParserListener) ExitNew_table_name(ctx *New_table_nameContext) {}
-
 // EnterColumn_name is called when production column_name is entered.
 func (s *BaseParserListener) EnterColumn_name(ctx *Column_nameContext) {}
 

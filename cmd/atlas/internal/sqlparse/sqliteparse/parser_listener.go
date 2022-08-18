@@ -283,9 +283,6 @@ type ParserListener interface {
 	// EnterTable_or_index_name is called when entering the table_or_index_name production.
 	EnterTable_or_index_name(c *Table_or_index_nameContext)
 
-	// EnterNew_table_name is called when entering the new_table_name production.
-	EnterNew_table_name(c *New_table_nameContext)
-
 	// EnterColumn_name is called when entering the column_name production.
 	EnterColumn_name(c *Column_nameContext)
 
@@ -618,9 +615,6 @@ type ParserListener interface {
 
 	// ExitTable_or_index_name is called when exiting the table_or_index_name production.
 	ExitTable_or_index_name(c *Table_or_index_nameContext)
-
-	// ExitNew_table_name is called when exiting the new_table_name production.
-	ExitNew_table_name(c *New_table_nameContext)
 
 	// ExitColumn_name is called when exiting the column_name production.
 	ExitColumn_name(c *Column_nameContext)

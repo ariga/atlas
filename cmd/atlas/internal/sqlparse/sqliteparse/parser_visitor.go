@@ -283,9 +283,6 @@ type ParserVisitor interface {
 	// Visit a parse tree produced by Parser#table_or_index_name.
 	VisitTable_or_index_name(ctx *Table_or_index_nameContext) interface{}
 
-	// Visit a parse tree produced by Parser#new_table_name.
-	VisitNew_table_name(ctx *New_table_nameContext) interface{}
-
 	// Visit a parse tree produced by Parser#column_name.
 	VisitColumn_name(ctx *Column_nameContext) interface{}
 
