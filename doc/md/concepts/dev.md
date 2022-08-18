@@ -13,7 +13,7 @@ dev/twin database. For a one-time use Atlas can spin up an ephemeral local docke
 
 :::info
 
-Atlas cleans up after itself! You can use one instance of a "Dev Database" for multiple environments, as long 
+Atlas cleans up after itself! You can use the same instance of a "Dev Database" for multiple environments, as long 
 as they are not accessed concurrently.
 
 :::
