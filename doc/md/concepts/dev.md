@@ -11,6 +11,13 @@ migration directory by replaying the historical changes. Let's go over a few exa
 dev/twin database. For a one-time use Atlas can spin up an ephemeral local docker container for you with a special
 [docker driver](concepts/url.mdx).
 
+:::info
+
+Atlas cleans up after itself! You can use one instance of a "Dev Database" for multiple environments, as long 
+as they are not accessed concurrently.
+
+:::
+
 ## Validation
 
 Suppose we want to the add the following `CHECK` constraint to the table below:
