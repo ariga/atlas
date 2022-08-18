@@ -389,54 +389,41 @@ var (
 
 // flywayFiles retrieves flyway migration files by calls to add(). It will only keep the latest baseline and ignore
 // all versioned files that are included in that baseline.
-// Check for duplicate versions / repeatable descriptions
-// https://github.com/flyway/flyway/blob/6afa0bf54370ccd984852f6e8dab70a8f6b0b97e/flyway-core/src/main/java/org/flywaydb/core/internal/resolver/CompositeMigrationResolver.java#L77
 type flywayFiles struct {
 	baseline   string
-	versioned  map[string]string // version and filepath
-	repeatable map[string]string // description and filepath
+	versioned  []string
+	repeatable []string
 }
 
+// add the given path to the migration files according to its type. The input directory is assumed to be valid
+// according to the Flyway documentation (no duplicate versions, etc.).
 func (ff *flywayFiles) add(path string) error {
 	switch p := filepath.Base(path)[0]; p {
 	case 'B':
-		switch {
-		case ff.baseline != "" && flywayVersion(ff.baseline) == flywayVersion(path):
-			return fmt.Errorf("sql/sqltool: flyway: found duplicate baseline migrations %q and %q", ff.baseline, path)
-		case ff.baseline == "" || flywayVersion(ff.baseline) < flywayVersion(path):
-			ff.baseline = path
-		default:
+		if ff.baseline != "" && flywayVersion(path) < flywayVersion(ff.baseline) {
 			return nil
 		}
+		ff.baseline = path
 		// In case we set a new baseline, remove all versioned files with a version smaller than the new baseline.
-		bv := flywayVersion(ff.baseline)
-		for v := range ff.versioned {
-			if v <= bv {
-				delete(ff.versioned, v)
+		var (
+			bv = flywayVersion(ff.baseline)
+			vs []string
+		)
+		for _, v := range ff.versioned {
+			if v > bv {
+				vs = append(vs, v)
 			}
 		}
+		ff.versioned = vs
 		return nil
 	case 'V':
 		v := flywayVersion(path)
 		if ff.baseline == "" || flywayVersion(ff.baseline) < v {
-			if d, ok := ff.versioned[v]; ok {
-				return fmt.Errorf("sql/sqltool: flyway: found duplicate versioned migrations %q and %q", d, path)
-			}
-			if ff.versioned == nil {
-				ff.versioned = make(map[string]string)
-			}
-			ff.versioned[v] = path
+			ff.versioned = append(ff.versioned, path)
 		}
 		return nil
 	case 'R':
-		v := flywayDesc(path)
-		if d, ok := ff.repeatable[v]; ok {
-			return fmt.Errorf("sql/sqltool: flyway: found duplicate repeatable migrations %q and %q", d, path)
-		}
-		if ff.repeatable == nil {
-			ff.repeatable = make(map[string]string)
-		}
-		ff.repeatable[v] = path
+		ff.repeatable = append(ff.repeatable, path)
 		return nil
 	default:
 		return fmt.Errorf("sql/sqltool: unexpected Flyway prefix %q", p)
@@ -448,19 +435,10 @@ func (ff *flywayFiles) names() []string {
 	if ff.baseline != "" {
 		names = append(names, ff.baseline)
 	}
-	sortedVals := func(m map[string]string) []string {
-		keys := make([]string, 0, len(m))
-		for k := range m {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for i, k := range keys {
-			keys[i] = m[k]
-		}
-		return keys
-	}
-	names = append(names, sortedVals(ff.versioned)...)
-	names = append(names, sortedVals(ff.repeatable)...)
+	sort.Strings(ff.versioned)
+	sort.Strings(ff.repeatable)
+	names = append(names, ff.versioned...)
+	names = append(names, ff.repeatable...)
 	return names
 }
 

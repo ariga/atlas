@@ -35,7 +35,6 @@ atlas migrate diff --dev-url URL --to file://1.hcl --dir-format flyway first
 cmpmig 0 flyway/U1.sql
 cmpmig 1 flyway/V1.sql
 
-sleep 1s
 atlas migrate diff --dev-url URL --to file://2.hcl --dir-format flyway second
 cmpmig 1 flyway/U2.sql
 cmpmig 3 flyway/V2.sql
