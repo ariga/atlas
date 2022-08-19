@@ -130,7 +130,7 @@ func TestValidate(t *testing.T) {
 func TestHash_MarshalText(t *testing.T) {
 	d, err := migrate.NewLocalDir("testdata/migrate")
 	require.NoError(t, err)
-	h, err := migrate.HashSum(d)
+	h, err := d.Checksum()
 	require.NoError(t, err)
 	ac, err := h.MarshalText()
 	require.Equal(t, hash, ac)
@@ -139,7 +139,7 @@ func TestHash_MarshalText(t *testing.T) {
 func TestHash_UnmarshalText(t *testing.T) {
 	d, err := migrate.NewLocalDir("testdata/migrate")
 	require.NoError(t, err)
-	h, err := migrate.HashSum(d)
+	h, err := d.Checksum()
 	require.NoError(t, err)
 	var ac migrate.HashFile
 	require.NoError(t, ac.UnmarshalText(hash))

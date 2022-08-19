@@ -452,7 +452,7 @@ func TestMigrate_Hash(t *testing.T) {
 	require.NoError(t, err)
 	dir, err := migrate.NewLocalDir(p)
 	require.NoError(t, err)
-	sum, err := migrate.HashSum(dir)
+	sum, err := dir.Checksum()
 	require.NoError(t, err)
 	b, err := sum.MarshalText()
 	require.NoError(t, err)

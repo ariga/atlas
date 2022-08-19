@@ -471,7 +471,7 @@ func CmdMigrateHashRun(*cobra.Command, []string) error {
 	if err != nil {
 		return err
 	}
-	sum, err := migrate.HashSum(dir)
+	sum, err := dir.Checksum()
 	if err != nil {
 		return err
 	}

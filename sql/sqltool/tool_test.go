@@ -242,6 +242,90 @@ func TestScanners(t *testing.T) {
 	}
 }
 
+func TestChecksum(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		dir   migrate.Dir
+		files []string // files expected to be part of the checksum (in order)
+	}{
+		{
+			name: "golang-migrate",
+			dir: func() migrate.Dir {
+				d, err := sqltool.NewGolangMigrateDir("testdata/golang-migrate")
+				require.NoError(t, err)
+				return d
+			}(),
+			files: []string{
+				"1_initial.down.sql",
+				"1_initial.up.sql",
+				"2_second_migration.down.sql",
+				"2_second_migration.up.sql",
+			},
+		},
+		{
+			name: "goose",
+			dir: func() migrate.Dir {
+				d, err := sqltool.NewGooseDir("testdata/goose")
+				require.NoError(t, err)
+				return d
+			}(),
+			files: []string{
+				"1_initial.sql",
+				"2_second_migration.sql",
+			},
+		},
+		{
+			name: "flyway",
+			dir: func() migrate.Dir {
+				d, err := sqltool.NewFlywayDir("testdata/flyway")
+				require.NoError(t, err)
+				return d
+			}(),
+			files: []string{
+				"B2__baseline.sql",
+				"R__views.sql",
+				"U1__initial.sql",
+				"V1__initial.sql",
+				"V2__second_migration.sql",
+				"V3__third_migration.sql",
+			},
+		},
+		{
+			name: "liquibase",
+			dir: func() migrate.Dir {
+				d, err := sqltool.NewLiquibaseDir("testdata/liquibase")
+				require.NoError(t, err)
+				return d
+			}(),
+			files: []string{
+				"1_initial.sql",
+				"2_second_migration.sql",
+			},
+		},
+		{
+			name: "dbmate",
+			dir: func() migrate.Dir {
+				d, err := sqltool.NewDBMateDir("testdata/dbmate")
+				require.NoError(t, err)
+				return d
+			}(),
+			files: []string{
+				"1_initial.sql",
+				"2_second_migration.sql",
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			sum, err := tt.dir.Checksum()
+			require.NoError(t, err)
+			require.Len(t, sum, len(tt.files))
+			for i := range tt.files {
+				require.Equal(t, tt.files[i], sum[i].N)
+			}
+		})
+	}
+}
+
 func dir(t *testing.T) migrate.Dir {
 	p := t.TempDir()
 	d, err := migrate.NewLocalDir(p)
