@@ -150,3 +150,10 @@ Schema is synced, no changes to be made
 ```
 
 Hooray! Our desired schema is synced and no changes have to be made.
+
+:::info
+
+Atlas cleans up after itself! You can use the same instance of a "Dev Database" for multiple environments, as long
+as they are not accessed concurrently.
+
+:::
