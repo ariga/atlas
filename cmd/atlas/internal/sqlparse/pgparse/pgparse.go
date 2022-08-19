@@ -7,6 +7,7 @@ package pgparse
 import (
 	"fmt"
 
+	"ariga.io/atlas/cmd/atlas/internal/sqlparse/parsefix"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/auxten/postgresql-parser/pkg/sql/parser"
@@ -19,33 +20,24 @@ func FixChange(s string, changes schema.Changes) (schema.Changes, error) {
 	if err != nil {
 		return nil, err
 	}
-	alter, ok := stmt.AST.(*tree.AlterTable)
-	if !ok {
-		return changes, nil
-	}
-	if len(changes) != 1 {
-		return nil, fmt.Errorf("unexected number fo changes: %d", len(changes))
-	}
-	modify, ok := changes[0].(*schema.ModifyTable)
-	if !ok {
-		return nil, fmt.Errorf("expected modify-table change for alter-table statement, but got: %T", changes[0])
-	}
-	if rename, ok := renameColumn(alter); ok {
-		changes := schema.Changes(modify.Changes)
-		// ALTER COLUMN cannot be combined with additional commands.
-		if len(changes) > 2 {
-			return nil, fmt.Errorf("unexpected number of changes found: %d", len(changes))
-		}
-		i1 := changes.IndexDropColumn(rename.From)
-		i2 := changes.IndexAddColumn(rename.To)
-		if i1 != -1 && i2 != -1 {
-			modify.Changes = schema.Changes{
-				&schema.RenameColumn{
-					From: changes[i1].(*schema.DropColumn).C,
-					To:   changes[i2].(*schema.AddColumn).C,
-				},
+	switch stmt := stmt.AST.(type) {
+	case *tree.AlterTable:
+		if r, ok := renameColumn(stmt); ok {
+			if len(changes) != 1 {
+				return nil, fmt.Errorf("unexected number fo changes: %d", len(changes))
 			}
+			modify, ok := changes[0].(*schema.ModifyTable)
+			if !ok {
+				return nil, fmt.Errorf("expected modify-table change for alter-table statement, but got: %T", changes[0])
+			}
+			// ALTER COLUMN cannot be combined with additional commands.
+			if len(changes) > 2 {
+				return nil, fmt.Errorf("unexpected number of changes found: %d", len(changes))
+			}
+			parsefix.RenameColumn(modify, r.From, r.To)
 		}
+	case *tree.RenameTable:
+		changes = parsefix.RenameTable(changes, stmt.Name.String(), stmt.NewName.String())
 	}
 	return changes, nil
 }

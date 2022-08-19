@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	"ariga.io/atlas/cmd/atlas/internal/sqlparse/parsefix"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
@@ -96,6 +97,21 @@ func (s *Stmt) RenameColumn() (*struct{ From, To string }, bool) {
 	}, true
 }
 
+// RenameTable returns the renamed table information from the statement, if exists.
+func (s *Stmt) RenameTable() (*struct{ From, To string }, bool) {
+	if !s.IsAlterTable() {
+		return nil, false
+	}
+	alter := s.stmt.GetChild(0).(*Alter_table_stmtContext)
+	if alter.new_table_name == nil {
+		return nil, false
+	}
+	return &struct{ From, To string }{
+		From: alter.Table_name(0).GetText(),
+		To:   alter.new_table_name.GetText(),
+	}, true
+}
+
 // FixChange fixes the changes according to the given statement.
 func FixChange(s string, changes schema.Changes) (schema.Changes, error) {
 	stmt, err := ParseStmt(s)
@@ -105,29 +121,22 @@ func FixChange(s string, changes schema.Changes) (schema.Changes, error) {
 	if !stmt.IsAlterTable() {
 		return changes, nil
 	}
-	if len(changes) != 1 {
-		return nil, fmt.Errorf("unexected number fo changes: %d", len(changes))
-	}
-	modify, ok := changes[0].(*schema.ModifyTable)
-	if !ok {
-		return nil, fmt.Errorf("expected modify-table change for alter-table statement, but got: %T", changes[0])
-	}
-	if rename, ok := stmt.RenameColumn(); ok {
-		changes := schema.Changes(modify.Changes)
+	if r, ok := stmt.RenameColumn(); ok {
+		if len(changes) != 1 {
+			return nil, fmt.Errorf("unexected number fo changes: %d", len(changes))
+		}
+		modify, ok := changes[0].(*schema.ModifyTable)
+		if !ok {
+			return nil, fmt.Errorf("expected modify-table change for alter-table statement, but got: %T", changes[0])
+		}
 		// ALTER COLUMN cannot be combined with additional commands.
 		if len(changes) > 2 {
 			return nil, fmt.Errorf("unexpected number of changes found: %d", len(changes))
 		}
-		i1 := changes.IndexDropColumn(rename.From)
-		i2 := changes.IndexAddColumn(rename.To)
-		if i1 != -1 && i2 != -1 {
-			modify.Changes = schema.Changes{
-				&schema.RenameColumn{
-					From: changes[i1].(*schema.DropColumn).C,
-					To:   changes[i2].(*schema.AddColumn).C,
-				},
-			}
-		}
+		parsefix.RenameColumn(modify, r.From, r.To)
+	}
+	if r, ok := stmt.RenameTable(); ok {
+		changes = parsefix.RenameTable(changes, r.From, r.To)
 	}
 	return changes, nil
 }

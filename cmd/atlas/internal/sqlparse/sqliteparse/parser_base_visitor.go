@@ -375,10 +375,6 @@ func (v *BaseParserVisitor) VisitTable_or_index_name(ctx *Table_or_index_nameCon
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseParserVisitor) VisitNew_table_name(ctx *New_table_nameContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
 func (v *BaseParserVisitor) VisitColumn_name(ctx *Column_nameContext) interface{} {
 	return v.VisitChildren(ctx)
 }

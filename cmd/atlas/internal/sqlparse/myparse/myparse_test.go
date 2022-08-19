@@ -71,9 +71,9 @@ func TestFixChange_RenameColumns(t *testing.T) {
 			&schema.ModifyTable{
 				Changes: schema.Changes{
 					&schema.AddIndex{I: schema.NewIndex("i").AddColumns(schema.NewColumn("id"))},
+					&schema.RenameColumn{From: schema.NewColumn("c1"), To: schema.NewColumn("c2")},
 					&schema.AddColumn{C: schema.NewColumn("c3")},
 					&schema.AddColumn{C: schema.NewColumn("c4")},
-					&schema.RenameColumn{From: schema.NewColumn("c1"), To: schema.NewColumn("c2")},
 				},
 			},
 		},

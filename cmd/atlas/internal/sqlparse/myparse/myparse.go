@@ -7,6 +7,7 @@ package myparse
 import (
 	"fmt"
 
+	"ariga.io/atlas/cmd/atlas/internal/sqlparse/parsefix"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/pingcap/tidb/parser"
@@ -32,18 +33,7 @@ func FixChange(s string, changes schema.Changes) (schema.Changes, error) {
 		return nil, fmt.Errorf("expected modify-table change for alter-table statement, but got: %T", changes[0])
 	}
 	for _, r := range renameColumns(alter) {
-		changes := schema.Changes(modify.Changes)
-		i1 := changes.IndexDropColumn(r.From)
-		i2 := changes.IndexAddColumn(r.To)
-		if i1 == -1 || i2 == -1 {
-			continue
-		}
-		changes = append(changes, &schema.RenameColumn{
-			From: changes[i1].(*schema.DropColumn).C,
-			To:   changes[i2].(*schema.AddColumn).C,
-		})
-		changes.RemoveIndex(i1, i2)
-		modify.Changes = changes
+		parsefix.RenameColumn(modify, r.From, r.To)
 	}
 	return changes, nil
 }
