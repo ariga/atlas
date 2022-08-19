@@ -11,6 +11,13 @@ migration directory by replaying the historical changes. Let's go over a few exa
 dev/twin database. For a one-time use Atlas can spin up an ephemeral local docker container for you with a special
 [docker driver](concepts/url.mdx).
 
+:::info
+
+Atlas cleans up after itself! You can use the same instance of a "Dev Database" for multiple environments, as long 
+as they are not accessed concurrently.
+
+:::
+
 ## Validation
 
 Suppose we want to the add the following `CHECK` constraint to the table below:
@@ -143,3 +150,10 @@ Schema is synced, no changes to be made
 ```
 
 Hooray! Our desired schema is synced and no changes have to be made.
+
+:::info
+
+Atlas cleans up after itself! You can use the same instance of a "Dev Database" for multiple environments, as long
+as they are not accessed concurrently.
+
+:::
