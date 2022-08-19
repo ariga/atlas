@@ -375,7 +375,7 @@ func (p *Planner) WritePlan(plan *Plan) error {
 	}
 	// If enabled, update the sum file.
 	if p.sum {
-		sum, err := HashSum(p.dir)
+		sum, err := p.dir.Checksum()
 		if err != nil {
 			return err
 		}
@@ -547,7 +547,7 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 // Execute executes the given migration file on the database. If it sees a file, that has been partially applied, it
 // will continue with the next statement in line.
 func (e *Executor) Execute(ctx context.Context, m File) (err error) {
-	hf, err := HashSum(e.dir)
+	hf, err := e.dir.Checksum()
 	if err != nil {
 		return fmt.Errorf("sql/migrate: execute: compute hash: %w", err)
 	}

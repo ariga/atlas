@@ -31,6 +31,9 @@ type (
 
 		// Files returns a set of files stored in this Dir to be executed on a database.
 		Files() ([]File, error)
+
+		// Checksum returns a HashFile of the migration directory.
+		Checksum() (HashFile, error)
 	}
 
 	// Formatter wraps the Format method.
@@ -108,6 +111,32 @@ func (d *LocalDir) Files() ([]File, error) {
 		ret[i] = NewLocalFile(n, b)
 	}
 	return ret, nil
+}
+
+// Checksum implements Dir.Checksum. By default, it calls Files() and creates a checksum from them.
+func (d *LocalDir) Checksum() (HashFile, error) {
+	var (
+		hs HashFile
+		h  = sha256.New()
+	)
+	files, err := d.Files()
+	if err != nil {
+		return nil, err
+	}
+	for _, f := range files {
+		if _, err = h.Write([]byte(f.Name())); err != nil {
+			return nil, err
+		}
+		// Check if this file contains an "atlas:sum" directive and if so, act to it.
+		if mode, ok := directive(string(f.Bytes()), directiveSum); ok && mode == sumModeIgnore {
+			continue
+		}
+		if _, err = h.Write(f.Bytes()); err != nil {
+			return nil, err
+		}
+		hs = append(hs, struct{ N, H string }{f.Name(), base64.StdEncoding.EncodeToString(h.Sum(nil))})
+	}
+	return hs, nil
 }
 
 // LocalFile is used by LocalDir to implement the Scanner interface.
@@ -218,30 +247,10 @@ const HashFileName = "atlas.sum"
 type HashFile []struct{ N, H string }
 
 // HashSum reads the whole dir, sorts the files by name and creates a HashSum from its contents.
-// If a files first line matches the above regex, it will be excluded from hash creation.
+//
+// Deprecated: Use Dir.Checksum instead.
 func HashSum(dir Dir) (HashFile, error) {
-	var (
-		hs HashFile
-		h  = sha256.New()
-	)
-	files, err := dir.Files()
-	if err != nil {
-		return nil, err
-	}
-	for _, f := range files {
-		if _, err = h.Write([]byte(f.Name())); err != nil {
-			return nil, err
-		}
-		// Check if this file contains an "atlas:sum" directive and if so, act to it.
-		if mode, ok := directive(string(f.Bytes()), directiveSum); ok && mode == sumModeIgnore {
-			continue
-		}
-		if _, err = h.Write(f.Bytes()); err != nil {
-			return nil, err
-		}
-		hs = append(hs, struct{ N, H string }{f.Name(), base64.StdEncoding.EncodeToString(h.Sum(nil))})
-	}
-	return hs, nil
+	return dir.Checksum()
 }
 
 // WriteSumFile writes the given HashFile to the Dir. If the file does not exist, it is created.
@@ -324,7 +333,7 @@ func Validate(dir Dir) error {
 	if err != nil {
 		return err
 	}
-	mh, err := HashSum(dir)
+	mh, err := dir.Checksum()
 	if err != nil {
 		return err
 	}
