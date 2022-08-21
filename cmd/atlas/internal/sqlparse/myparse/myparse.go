@@ -21,19 +21,26 @@ func FixChange(s string, changes schema.Changes) (schema.Changes, error) {
 	if err != nil {
 		return nil, err
 	}
-	alter, ok := stmt.(*ast.AlterTableStmt)
-	if !ok {
-		return changes, nil
-	}
-	if len(changes) != 1 {
-		return nil, fmt.Errorf("unexected number fo changes: %d", len(changes))
-	}
-	modify, ok := changes[0].(*schema.ModifyTable)
-	if !ok {
-		return nil, fmt.Errorf("expected modify-table change for alter-table statement, but got: %T", changes[0])
-	}
-	for _, r := range renameColumns(alter) {
-		parsefix.RenameColumn(modify, r.From, r.To)
+	switch stmt := stmt.(type) {
+	case *ast.AlterTableStmt:
+		if len(changes) != 1 {
+			return nil, fmt.Errorf("unexected number fo changes: %d", len(changes))
+		}
+		modify, ok := changes[0].(*schema.ModifyTable)
+		if !ok {
+			return nil, fmt.Errorf("expected modify-table change for alter-table statement, but got: %T", changes[0])
+		}
+		for _, r := range renameColumns(stmt) {
+			parsefix.RenameColumn(modify, r.From, r.To)
+		}
+	case *ast.RenameTableStmt:
+		for _, t := range stmt.TableToTables {
+			changes = parsefix.RenameTable(
+				changes,
+				t.OldTable.Name.String(),
+				t.NewTable.Name.String(),
+			)
+		}
 	}
 	return changes, nil
 }

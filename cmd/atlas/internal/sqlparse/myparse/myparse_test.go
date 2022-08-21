@@ -80,3 +80,39 @@ func TestFixChange_RenameColumns(t *testing.T) {
 		changes,
 	)
 }
+
+func TestFixChange_RenameTable(t *testing.T) {
+	changes, err := myparse.FixChange(
+		"RENAME TABLE t1 TO t2",
+		schema.Changes{
+			&schema.DropTable{T: schema.NewTable("t1")},
+			&schema.AddTable{T: schema.NewTable("t2")},
+		},
+	)
+	require.NoError(t, err)
+	require.Equal(
+		t,
+		schema.Changes{
+			&schema.RenameTable{From: schema.NewTable("t1"), To: schema.NewTable("t2")},
+		},
+		changes,
+	)
+	changes, err = myparse.FixChange(
+		"RENAME TABLE t1 TO t2, t3 TO t4",
+		schema.Changes{
+			&schema.DropTable{T: schema.NewTable("t1")},
+			&schema.AddTable{T: schema.NewTable("t2")},
+			&schema.DropTable{T: schema.NewTable("t3")},
+			&schema.AddTable{T: schema.NewTable("t4")},
+		},
+	)
+	require.NoError(t, err)
+	require.Equal(
+		t,
+		schema.Changes{
+			&schema.RenameTable{From: schema.NewTable("t1"), To: schema.NewTable("t2")},
+			&schema.RenameTable{From: schema.NewTable("t3"), To: schema.NewTable("t4")},
+		},
+		changes,
+	)
+}
