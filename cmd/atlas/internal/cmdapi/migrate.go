@@ -18,7 +18,7 @@ import (
 	"text/template"
 	"time"
 
-	"ariga.io/atlas/cmd/atlas/internal/ci"
+	"ariga.io/atlas/cmd/atlas/internal/lint"
 	entmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
 	"ariga.io/atlas/sql/migrate"
@@ -633,28 +633,28 @@ func CmdMigrateLintRun(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	var detect ci.ChangeDetector
+	var detect lint.ChangeDetector
 	switch {
 	case MigrateFlags.Lint.Latest == 0 && MigrateFlags.Lint.GitBase == "":
 		return fmt.Errorf("--%s or --%s is required", migrateLintLatest, migrateLintGitBase)
 	case MigrateFlags.Lint.Latest > 0 && MigrateFlags.Lint.GitBase != "":
 		return fmt.Errorf("--%s and --%s are mutually exclusive", migrateLintLatest, migrateLintGitBase)
 	case MigrateFlags.Lint.Latest > 0:
-		detect = ci.LatestChanges(dir, int(MigrateFlags.Lint.Latest))
+		detect = lint.LatestChanges(dir, int(MigrateFlags.Lint.Latest))
 	case MigrateFlags.Lint.GitBase != "":
-		detect, err = ci.NewGitChangeDetector(
+		detect, err = lint.NewGitChangeDetector(
 			dir,
-			ci.WithWorkDir(MigrateFlags.Lint.GitDir),
-			ci.WithBase(MigrateFlags.Lint.GitBase),
-			ci.WithMigrationsPath(dir.(interface{ Path() string }).Path()),
+			lint.WithWorkDir(MigrateFlags.Lint.GitDir),
+			lint.WithBase(MigrateFlags.Lint.GitBase),
+			lint.WithMigrationsPath(dir.(interface{ Path() string }).Path()),
 		)
 		if err != nil {
 			return err
 		}
 	}
-	format := ci.DefaultTemplate
+	format := lint.DefaultTemplate
 	if f := MigrateFlags.Lint.Format; f != "" {
-		format, err = template.New("format").Funcs(ci.TemplateFuncs).Parse(f)
+		format, err = template.New("format").Funcs(lint.TemplateFuncs).Parse(f)
 		if err != nil {
 			return fmt.Errorf("parse log format: %w", err)
 		}
@@ -663,11 +663,11 @@ func CmdMigrateLintRun(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	r := &ci.Runner{
+	r := &lint.Runner{
 		Dev:            dev,
 		Dir:            dir,
 		ChangeDetector: detect,
-		ReportWriter: &ci.TemplateWriter{
+		ReportWriter: &lint.TemplateWriter{
 			T: format,
 			W: cmd.OutOrStdout(),
 		},
@@ -675,7 +675,7 @@ func CmdMigrateLintRun(cmd *cobra.Command, _ []string) error {
 	}
 	err = r.Run(cmd.Context())
 	// Print the error in case it was not printed before.
-	cmd.SilenceErrors = errors.As(err, &ci.SilentError{})
+	cmd.SilenceErrors = errors.As(err, &lint.SilentError{})
 	return err
 }
 
