@@ -94,14 +94,14 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 			d.Schemas = append(d.Schemas, doc.Schemas...)
 			d.Enums = append(d.Enums, doc.Enums...)
 		}
-		if err := specutil.QualifyReferencedTables(d.Tables, s); err != nil {
+		if err := specutil.QualifyDuplicates(d.Tables); err != nil {
+			return nil, err
+		}
+		if err := specutil.QualifyReferences(d.Tables, s); err != nil {
 			return nil, err
 		}
 	default:
 		return nil, fmt.Errorf("specutil: failed marshaling spec. %T is not supported", v)
-	}
-	if err := specutil.QualifyDuplicates(d.Tables); err != nil {
-		return nil, err
 	}
 	return marshaler.MarshalSpec(&d)
 }

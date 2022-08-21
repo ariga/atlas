@@ -742,6 +742,13 @@ func TestMySQL_HCL_ForeignKeyCrossSchema(t *testing.T) {
     columns = [column.user_id]
   }
 }
+table "financial" "users" {
+  schema = schema.financial
+  column "id" {
+    null = false
+    type = int
+  }
+}
 table "users" "users" {
   schema = schema.users
   column "id" {

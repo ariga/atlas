@@ -113,14 +113,14 @@ func Marshal(v any, marshaler schemahcl.Marshaler, schemaSpec func(schem *schema
 			d.Tables = append(d.Tables, tables...)
 			d.Schemas = append(d.Schemas, spec)
 		}
-		if err := QualifyReferencedTables(d.Tables, s); err != nil {
+		if err := QualifyDuplicates(d.Tables); err != nil {
+			return nil, err
+		}
+		if err := QualifyReferences(d.Tables, s); err != nil {
 			return nil, err
 		}
 	default:
 		return nil, fmt.Errorf("specutil: failed marshaling spec. %T is not supported", v)
-	}
-	if err := QualifyDuplicates(d.Tables); err != nil {
-		return nil, err
 	}
 	return marshaler.MarshalSpec(d)
 }
@@ -147,24 +147,42 @@ func QualifyDuplicates(tableSpecs []*sqlspec.Table) error {
 	return nil
 }
 
-// QualifyReferencedTables sets the Qualified field equal to the schema name in any tables
-// that are references across schema boundaries from any foreign key.
-func QualifyReferencedTables(tableSpecs []*sqlspec.Table, realm *schema.Realm) error {
-	// Iterate over all tables in the realm. If any of the tables has a foreign key referencing a table in another
-	// schema, the targeted table needs to have a qualifier set.
-	for _, s := range realm.Schemas {
-		for _, t := range s.Tables {
-			for _, f := range t.ForeignKeys {
-				if f.Table.Schema != f.RefTable.Schema {
-					for _, tbl := range tableSpecs {
-						n, err := SchemaName(tbl.Schema)
-						if err != nil {
-							return err
-						}
-						if f.RefTable.Name == tbl.Name && f.RefTable.Schema.Name == n && tbl.Qualifier == "" {
-							tbl.Qualifier = n
-						}
-					}
+// QualifyReferences qualifies any reference with qualifier.
+func QualifyReferences(tableSpecs []*sqlspec.Table, realm *schema.Realm) error {
+	type cref struct{ s, t string }
+	byRef := make(map[cref]*sqlspec.Table)
+	for _, t := range tableSpecs {
+		r := cref{s: t.Qualifier, t: t.Name}
+		if byRef[r] != nil {
+			return fmt.Errorf("duplicate references were found for: %v", r)
+		}
+		byRef[r] = t
+	}
+	for _, t := range tableSpecs {
+		sname, err := SchemaName(t.Schema)
+		if err != nil {
+			return err
+		}
+		s1, ok := realm.Schema(sname)
+		if !ok {
+			return fmt.Errorf("schema %q was not found in realm", sname)
+		}
+		t1, ok := s1.Table(t.Name)
+		if !ok {
+			return fmt.Errorf("table %q.%q was not found in realm", sname, t.Name)
+		}
+		for _, fk := range t.ForeignKeys {
+			fk1, ok := t1.ForeignKey(fk.Symbol)
+			if !ok {
+				return fmt.Errorf("table %q.%q.%q was not found in realm", sname, t.Name, fk.Symbol)
+			}
+			for i, c := range fk.RefColumns {
+				if r, ok := byRef[cref{s: fk1.RefTable.Schema.Name, t: fk1.RefTable.Name}]; ok && r.Qualifier != "" {
+					fk.RefColumns[i] = qualifiedExternalColRef(fk1.RefColumns[i].Name, r.Name, r.Qualifier)
+				} else if r, ok := byRef[cref{t: fk1.RefTable.Name}]; ok && r.Qualifier == "" {
+					fk.RefColumns[i] = externalColRef(fk1.RefColumns[i].Name, r.Name)
+				} else {
+					return fmt.Errorf("missing reference for column %q in %q.%q.%q", c.V, sname, t.Name, fk.Symbol)
 				}
 			}
 		}

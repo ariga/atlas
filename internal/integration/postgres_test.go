@@ -557,6 +557,13 @@ func TestPostgres_HCL_ForeignKeyCrossSchema(t *testing.T) {
     on_delete   = NO_ACTION
   }
 }
+table "financial" "users" {
+  schema = schema.financial
+  column "id" {
+    null = false
+    type = serial
+  }
+}
 table "users" "users" {
   schema = schema.users
   column "id" {
