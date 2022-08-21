@@ -82,9 +82,9 @@ func TestCheckForUpdate(t *testing.T) {
 				require.NoError(t, err)
 				require.NoError(t, ioutil.WriteFile(fileLocation(p), b, 0600))
 			}
-			var f func() (LatestRelease, error)
+			var f func() (*LatestRelease, error)
 			if tt.latestRelease != nil {
-				f = func() (LatestRelease, error) { return *tt.latestRelease, nil }
+				f = func() (*LatestRelease, error) { return tt.latestRelease, nil }
 			}
 			ok, m, err := shouldUpdate(tt.currentVersion, p, f)
 			require.NoError(t, err)

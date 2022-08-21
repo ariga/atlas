@@ -7,6 +7,7 @@ package update
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -70,7 +71,7 @@ func enabled(version string) bool {
 	return true
 }
 
-func shouldUpdate(version string, path string, latestReleaseF func() (LatestRelease, error)) (bool, string, error) {
+func shouldUpdate(version string, path string, latestReleaseF func() (*LatestRelease, error)) (bool, string, error) {
 	r := localStore(path)
 	if shouldSkip(r) {
 		return false, "", nil
@@ -88,33 +89,40 @@ func shouldUpdate(version string, path string, latestReleaseF func() (LatestRele
 	return true, fmt.Sprintf("A new version of Atlas is available (%s):\n%s", l.Version, l.URL), nil
 }
 
-func latestReleaseFromGithub() (LatestRelease, error) {
-	req, err := http.NewRequest(http.MethodGet, "https://api.github.com/repos/ariga/atlas/releases/latest", nil)
+func latestReleaseFromGithub() (*LatestRelease, error) {
+	req, err := http.NewRequest(http.MethodGet, "https://api.github.com/repos/ariga/atlas/tags", nil)
 	if err != nil {
-		return LatestRelease{}, err
+		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 	// https://docs.github.com/en/rest/overview/resources-in-the-rest-api#user-agent-required
 	req.Header.Set("User-Agent", "Ariga-Atlas-CLI")
-	client := &http.Client{Timeout: time.Second * 10}
-	resp, err := client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return LatestRelease{}, err
+		return nil, err
 	}
-	defer resp.Body.Close()
-	data, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return LatestRelease{}, err
+		return nil, err
 	}
-	if resp.StatusCode != http.StatusOK {
-		return LatestRelease{}, fmt.Errorf("update: failed to fetch latest release version")
+	var tags []tag
+	if err := json.Unmarshal(b, &tags); err != nil {
+		return nil, err
 	}
-	var b LatestRelease
-	if err := json.Unmarshal(data, &b); err != nil {
-		return LatestRelease{}, err
+	var max tag
+	for _, tag := range tags {
+		if !semver.IsValid(tag.Name) {
+			continue
+		}
+		if semver.Compare(tag.Name, max.Name) > 0 {
+			max = tag
+		}
 	}
-	return b, nil
+	return &LatestRelease{
+		Version: max.Name,
+		URL:     fmt.Sprintf("https://github.com/ariga/atlas/releases/tag/%s", max.Name),
+	}, nil
 }
 
 func shouldSkip(r *Store) bool {
@@ -136,7 +144,7 @@ func localStore(path string) *Store {
 	return &s
 }
 
-func saveStore(path string, l LatestRelease, t time.Time) error {
+func saveStore(path string, l *LatestRelease, t time.Time) error {
 	s := Store{Version: l.Version, URL: l.URL, CheckedAt: t}
 	err := os.MkdirAll(path, 0755)
 	if err != nil {
@@ -151,4 +159,8 @@ func saveStore(path string, l LatestRelease, t time.Time) error {
 
 func fileLocation(p string) string {
 	return filepath.Join(p, "release.json")
+}
+
+type tag struct {
+	Name string `json:"name"`
 }
