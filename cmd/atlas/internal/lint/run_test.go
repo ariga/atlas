@@ -2,7 +2,7 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package ci_test
+package lint_test
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 	"testing"
 	"text/template"
 
-	"ariga.io/atlas/cmd/atlas/internal/ci"
+	"ariga.io/atlas/cmd/atlas/internal/lint"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"
@@ -25,7 +25,7 @@ func TestRunner_Run(t *testing.T) {
 	b := &bytes.Buffer{}
 	c, err := sqlclient.Open(ctx, "sqlite://run?mode=memory&cache=shared&_fk=1")
 	require.NoError(t, err)
-	r := &ci.Runner{
+	r := &lint.Runner{
 		Dir: testDir{},
 		Dev: c,
 		ChangeDetector: testDetector{
@@ -37,8 +37,8 @@ func TestRunner_Run(t *testing.T) {
 			},
 		},
 		Analyzer: &testAnalyzer{},
-		ReportWriter: &ci.TemplateWriter{
-			T: ci.DefaultTemplate,
+		ReportWriter: &lint.TemplateWriter{
+			T: lint.DefaultTemplate,
 			W: b,
 		},
 	}
@@ -57,8 +57,8 @@ func TestRunner_Run(t *testing.T) {
 `, b.String())
 
 	b.Reset()
-	r.ReportWriter.(*ci.TemplateWriter).T = template.Must(template.New("").
-		Funcs(ci.TemplateFuncs).
+	r.ReportWriter.(*lint.TemplateWriter).T = template.Must(template.New("").
+		Funcs(lint.TemplateFuncs).
 		Parse(`
 Env:
 {{ .Env.Driver }}, {{ .Env.Dir }}
