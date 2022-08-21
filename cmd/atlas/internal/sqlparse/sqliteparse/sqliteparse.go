@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"ariga.io/atlas/cmd/atlas/internal/sqlparse/parsefix"
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
@@ -113,7 +114,7 @@ func (s *Stmt) RenameTable() (*struct{ From, To string }, bool) {
 }
 
 // FixChange fixes the changes according to the given statement.
-func FixChange(s string, changes schema.Changes) (schema.Changes, error) {
+func FixChange(_ migrate.Driver, s string, changes schema.Changes) (schema.Changes, error) {
 	stmt, err := ParseStmt(s)
 	if err != nil {
 		return nil, err

@@ -15,18 +15,21 @@ import (
 
 func TestFixChange_RenameColumns(t *testing.T) {
 	_, err := sqliteparse.FixChange(
+		nil,
 		"ALTER TABLE t RENAME COLUMN c1 TO c2",
 		nil,
 	)
 	require.Error(t, err)
 
 	_, err = sqliteparse.FixChange(
+		nil,
 		"ALTER TABLE t RENAME COLUMN c1 TO c2",
 		schema.Changes{&schema.AddTable{}},
 	)
 	require.Error(t, err)
 
 	changes, err := sqliteparse.FixChange(
+		nil,
 		"ALTER TABLE t RENAME COLUMN c1 TO c2",
 		schema.Changes{
 			&schema.ModifyTable{
@@ -53,6 +56,7 @@ func TestFixChange_RenameColumns(t *testing.T) {
 
 func TestFixChange_RenameTable(t *testing.T) {
 	changes, err := sqliteparse.FixChange(
+		nil,
 		"ALTER TABLE t1 RENAME TO t2",
 		schema.Changes{
 			&schema.DropTable{T: schema.NewTable("t1")},
