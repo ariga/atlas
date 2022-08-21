@@ -1,0 +1,39 @@
+only mysql8
+
+atlas migrate lint --dir file://migrations1 --dev-url URL --latest=1 > got.txt
+cmp got.txt empty.txt
+
+atlas migrate lint --dir file://migrations2 --dev-url URL --latest=1 > got.txt
+cmp got.txt empty.txt
+
+atlas migrate lint --dir file://migrations3 --dev-url URL --latest=1 > got.txt
+cmp got.txt expected3.txt
+
+-- empty.txt --
+-- migrations1/1.sql --
+CREATE TABLE users (id int);
+/* Rename column is not a destructive change. */
+ALTER TABLE users RENAME COLUMN id TO oid;
+
+-- migrations2/1.sql --
+CREATE TABLE users (id int);
+
+-- migrations2/2.sql --
+/* Rename table mixed with rename column is not a destructive change. */
+ALTER TABLE users RENAME TO user, RENAME COLUMN id TO oid;
+
+-- migrations3/1.sql --
+CREATE TABLE users (id int);
+
+-- migrations3/2.sql --
+/* Rename table mixed with rename column is not a destructive change. */
+ALTER TABLE users RENAME TO user, RENAME COLUMN id TO oid;
+
+-- migrations3/3.sql --
+ALTER TABLE user ADD COLUMN id int, DROP COLUMN oid;
+
+-- expected3.txt --
+Destructive changes detected in file 3.sql:
+
+	L1: Dropping non-virtual column "oid"
+

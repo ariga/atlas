@@ -259,7 +259,7 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 
 // mayFix uses the sqlparse package for fixing or attaching more info to the changes.
 func (d *DevLoader) mayFix(stmt string, changes schema.Changes) schema.Changes {
-	if fixed, err := sqlparse.FixerFor(d.Dev.Name).FixChange(stmt, changes); err == nil {
+	if fixed, err := sqlparse.FixerFor(d.Dev.Name).FixChange(d.Dev.Driver, stmt, changes); err == nil {
 		return fixed
 	}
 	return changes

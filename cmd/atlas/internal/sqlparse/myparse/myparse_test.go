@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"ariga.io/atlas/cmd/atlas/internal/sqlparse/myparse"
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/stretchr/testify/require"
@@ -15,18 +16,14 @@ import (
 
 func TestFixChange_RenameColumns(t *testing.T) {
 	_, err := myparse.FixChange(
-		"ALTER TABLE t RENAME COLUMN c1 TO c2",
 		nil,
-	)
-	require.Error(t, err)
-
-	_, err = myparse.FixChange(
 		"ALTER TABLE t RENAME COLUMN c1 TO c2",
 		schema.Changes{&schema.AddTable{}},
 	)
 	require.Error(t, err)
 
 	changes, err := myparse.FixChange(
+		nil,
 		"ALTER TABLE t RENAME COLUMN c1 TO c2",
 		schema.Changes{
 			&schema.ModifyTable{
@@ -51,6 +48,7 @@ func TestFixChange_RenameColumns(t *testing.T) {
 	)
 
 	changes, err = myparse.FixChange(
+		nil,
 		"ALTER TABLE t ADD INDEX i(id), RENAME COLUMN c1 TO c2, ADD COLUMN c3 int, DROP COLUMN c4",
 		schema.Changes{
 			&schema.ModifyTable{
@@ -83,6 +81,7 @@ func TestFixChange_RenameColumns(t *testing.T) {
 
 func TestFixChange_RenameTable(t *testing.T) {
 	changes, err := myparse.FixChange(
+		nil,
 		"RENAME TABLE t1 TO t2",
 		schema.Changes{
 			&schema.DropTable{T: schema.NewTable("t1")},
@@ -98,6 +97,7 @@ func TestFixChange_RenameTable(t *testing.T) {
 		changes,
 	)
 	changes, err = myparse.FixChange(
+		nil,
 		"RENAME TABLE t1 TO t2, t3 TO t4",
 		schema.Changes{
 			&schema.DropTable{T: schema.NewTable("t1")},
@@ -115,4 +115,43 @@ func TestFixChange_RenameTable(t *testing.T) {
 		},
 		changes,
 	)
+}
+
+func TestFixChange_AlterAndRename(t *testing.T) {
+	drv := &mockDriver{}
+	drv.changes = append(drv.changes, &schema.AddColumn{C: schema.NewIntColumn("c2", "int")})
+	changes, err := myparse.FixChange(
+		drv,
+		"ALTER TABLE t1 RENAME TO t2, ADD COLUMN c2 int",
+		schema.Changes{
+			&schema.DropTable{T: schema.NewTable("t1").AddColumns(schema.NewIntColumn("c1", "int"))},
+			&schema.AddTable{T: schema.NewTable("t2").AddColumns(schema.NewIntColumn("c1", "int"), schema.NewIntColumn("c2", "int"))},
+		},
+	)
+	require.NoError(t, err)
+	require.Equal(
+		t,
+		schema.Changes{
+			&schema.ModifyTable{
+				T: schema.NewTable("t1").AddColumns(schema.NewIntColumn("c1", "int"), schema.NewIntColumn("c2", "int")),
+				Changes: schema.Changes{
+					&schema.AddColumn{C: schema.NewIntColumn("c2", "int")},
+				},
+			},
+			&schema.RenameTable{
+				From: schema.NewTable("t1").AddColumns(schema.NewIntColumn("c1", "int"), schema.NewIntColumn("c2", "int")),
+				To:   schema.NewTable("t2").AddColumns(schema.NewIntColumn("c1", "int"), schema.NewIntColumn("c2", "int")),
+			},
+		},
+		changes,
+	)
+}
+
+type mockDriver struct {
+	migrate.Driver
+	changes schema.Changes
+}
+
+func (d mockDriver) TableDiff(_, _ *schema.Table) ([]schema.Change, error) {
+	return d.changes, nil
 }

@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"ariga.io/atlas/cmd/atlas/internal/sqlparse/parsefix"
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/auxten/postgresql-parser/pkg/sql/parser"
@@ -15,7 +16,7 @@ import (
 )
 
 // FixChange fixes the changes according to the given statement.
-func FixChange(s string, changes schema.Changes) (schema.Changes, error) {
+func FixChange(_ migrate.Driver, s string, changes schema.Changes) (schema.Changes, error) {
 	stmt, err := parser.ParseOne(s)
 	if err != nil {
 		return nil, err

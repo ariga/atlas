@@ -10,6 +10,7 @@ import (
 	"ariga.io/atlas/cmd/atlas/internal/sqlparse/myparse"
 	"ariga.io/atlas/cmd/atlas/internal/sqlparse/pgparse"
 	"ariga.io/atlas/cmd/atlas/internal/sqlparse/sqliteparse"
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
 	"ariga.io/atlas/sql/schema"
@@ -19,15 +20,15 @@ import (
 // A ChangesFixer wraps the FixChange method.
 type ChangesFixer interface {
 	// FixChange fixes the given changes according to the given statement.
-	FixChange(stmt string, changes schema.Changes) (schema.Changes, error)
+	FixChange(d migrate.Driver, stmt string, changes schema.Changes) (schema.Changes, error)
 }
 
 // FixerFunc allows using ordinary functions as change fixers.
-type FixerFunc func(stmt string, changes schema.Changes) (schema.Changes, error)
+type FixerFunc func(migrate.Driver, string, schema.Changes) (schema.Changes, error)
 
 // FixChange calls f.
-func (f FixerFunc) FixChange(stmt string, changes schema.Changes) (schema.Changes, error) {
-	return f(stmt, changes)
+func (f FixerFunc) FixChange(d migrate.Driver, stmt string, changes schema.Changes) (schema.Changes, error) {
+	return f(d, stmt, changes)
 }
 
 // drivers specific fixers.
@@ -45,7 +46,7 @@ func FixerFor(name string) ChangesFixer {
 		return f.(ChangesFixer)
 	}
 	// A nop analyzer.
-	return FixerFunc(func(_ string, changes schema.Changes) (schema.Changes, error) {
+	return FixerFunc(func(_ migrate.Driver, _ string, changes schema.Changes) (schema.Changes, error) {
 		return changes, nil
 	})
 }

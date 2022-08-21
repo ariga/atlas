@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"ariga.io/atlas/cmd/atlas/internal/sqlparse/parsefix"
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/pingcap/tidb/parser"
@@ -16,15 +17,18 @@ import (
 )
 
 // FixChange fixes the changes according to the given statement.
-func FixChange(s string, changes schema.Changes) (schema.Changes, error) {
+func FixChange(d migrate.Driver, s string, changes schema.Changes) (schema.Changes, error) {
 	stmt, err := parser.New().ParseOneStmt(s, "", "")
 	if err != nil {
 		return nil, err
 	}
+	if len(changes) == 0 {
+		return changes, nil
+	}
 	switch stmt := stmt.(type) {
 	case *ast.AlterTableStmt:
-		if len(changes) != 1 {
-			return nil, fmt.Errorf("unexected number fo changes: %d", len(changes))
+		if changes, err = renameTable(d, stmt, changes); err != nil {
+			return nil, err
 		}
 		modify, ok := changes[0].(*schema.ModifyTable)
 		if !ok {
@@ -37,8 +41,8 @@ func FixChange(s string, changes schema.Changes) (schema.Changes, error) {
 		for _, t := range stmt.TableToTables {
 			changes = parsefix.RenameTable(
 				changes,
-				t.OldTable.Name.String(),
-				t.NewTable.Name.String(),
+				t.OldTable.Name.O,
+				t.NewTable.Name.O,
 			)
 		}
 	}
@@ -56,4 +60,42 @@ func renameColumns(stmt *ast.AlterTableStmt) (rename []struct{ From, To string }
 		}
 	}
 	return
+}
+
+// renameTable fixes the changes from ALTER command with RENAME into ModifyTable and RenameTable.
+func renameTable(drv migrate.Driver, stmt *ast.AlterTableStmt, changes schema.Changes) (schema.Changes, error) {
+	var r *ast.AlterTableSpec
+	for _, s := range stmt.Specs {
+		if s.Tp == ast.AlterTableRenameTable {
+			r = s
+			break
+		}
+	}
+	if r == nil {
+		return changes, nil
+	}
+	if len(changes) != 2 {
+		return nil, fmt.Errorf("unexected number fo changes for ALTER command with RENAME clause: %d", len(changes))
+	}
+	i, j := changes.IndexDropTable(stmt.Table.Name.O), changes.IndexAddTable(r.NewTable.Name.O)
+	if i == -1 {
+		return nil, fmt.Errorf("DropTable %q change was not found in changes", stmt.Table.Name)
+	}
+	if j == -1 {
+		return nil, fmt.Errorf("AddTable %q change was not found in changes", r.NewTable.Name)
+	}
+	fromT, toT := changes[0].(*schema.DropTable).T, changes[1].(*schema.AddTable).T
+	fromT.Name = toT.Name
+	diff, err := drv.TableDiff(fromT, toT)
+	if err != nil {
+		return nil, err
+	}
+	changeT := *toT
+	changeT.Name = stmt.Table.Name.O
+	return schema.Changes{
+		// Modify the table first.
+		&schema.ModifyTable{T: &changeT, Changes: diff},
+		// Then, apply the RENAME.
+		&schema.RenameTable{From: &changeT, To: toT},
+	}, nil
 }
