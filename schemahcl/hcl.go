@@ -19,10 +19,8 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-var (
-	// Marshal returns the Atlas HCL encoding of v.
-	Marshal = MarshalerFunc(New().MarshalSpec)
-)
+// Marshal returns the Atlas HCL encoding of v.
+var Marshal = MarshalerFunc(New().MarshalSpec)
 
 type (
 	// State is used to evaluate and marshal Atlas HCL documents and stores a configuration for these operations.
@@ -174,7 +172,7 @@ func (r addrRef) copy() addrRef {
 	return n
 }
 
-// load loads the references from the children of the resource.
+// load the references from the children of the resource.
 func (r addrRef) load(res *Resource, track string) addrRef {
 	unlabeled := 0
 	for _, ch := range res.Children {
