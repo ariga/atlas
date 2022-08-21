@@ -86,7 +86,7 @@ func findTableSpec(tableSpecs []*sqlspec.Table, schemaName, tableName string) (*
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the Schema function.
 func Table(spec *sqlspec.Table, parent *schema.Schema, convertColumn ConvertColumnFunc,
-	convertPk ConvertPrimaryKeyFunc, convertIndex ConvertIndexFunc, convertCheck ConvertCheckFunc) (*schema.Table, error) {
+	convertPK ConvertPrimaryKeyFunc, convertIndex ConvertIndexFunc, convertCheck ConvertCheckFunc) (*schema.Table, error) {
 	tbl := &schema.Table{
 		Name:   spec.Name,
 		Schema: parent,
@@ -99,7 +99,7 @@ func Table(spec *sqlspec.Table, parent *schema.Schema, convertColumn ConvertColu
 		tbl.Columns = append(tbl.Columns, col)
 	}
 	if spec.PrimaryKey != nil {
-		pk, err := convertPk(spec.PrimaryKey, tbl)
+		pk, err := convertPK(spec.PrimaryKey, tbl)
 		if err != nil {
 			return nil, err
 		}
@@ -506,11 +506,7 @@ func FromForeignKey(s *schema.ForeignKey) (*sqlspec.ForeignKey, error) {
 	for _, v := range s.RefColumns {
 		ref := ColumnRef(v.Name)
 		if s.Table != s.RefTable {
-			if s.Table.Schema == s.RefTable.Schema {
-				ref = externalColRef(v.Name, s.RefTable.Name)
-			} else {
-				ref = crossSchemaColRef(v.Name, s.RefTable.Name, s.RefTable.Schema.Name)
-			}
+			ref = externalColRef(v.Name, s.RefTable.Name)
 		}
 		r = append(r, ref)
 	}
@@ -635,7 +631,7 @@ func externalColRef(cName string, tName string) *schemahcl.Ref {
 	return &schemahcl.Ref{V: "$table." + tName + ".$column." + cName}
 }
 
-func crossSchemaColRef(cName, tName, sName string) *schemahcl.Ref {
+func qualifiedExternalColRef(cName, tName, sName string) *schemahcl.Ref {
 	return &schemahcl.Ref{V: "$table." + sName + "." + tName + ".$column." + cName}
 }
 

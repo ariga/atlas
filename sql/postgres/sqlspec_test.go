@@ -9,11 +9,8 @@ import (
 	"strconv"
 	"testing"
 
-	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/internal/spectest"
-	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/schema"
-	"ariga.io/atlas/sql/sqlspec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -1284,37 +1281,91 @@ func TestInputVars(t *testing.T) {
 	spectest.TestInputVars(t, EvalHCL)
 }
 
-func TestQualifyReferencedTables(t *testing.T) {
-	var (
-		col       = schema.NewIntColumn("col", "integer")
-		targetCol = schema.NewIntColumn("target_column", "integer")
-		targetTbl = schema.NewTable("target_table").AddColumns(targetCol)
-		realm     = schema.NewRealm(
-			schema.New("target_schema").AddTables(targetTbl),
-			schema.New("sch").
-				AddTables(
-					schema.NewTable("tbl").
-						AddColumns(col).
-						AddForeignKeys(
-							schema.NewForeignKey("col_fk").
-								SetRefTable(targetTbl).
-								AddColumns(col).
-								AddRefColumns(targetCol),
-						),
-				),
-		)
-		tables = []*sqlspec.Table{
-			{
-				Name:   "tbl",
-				Schema: &schemahcl.Ref{V: "$schema.sch"},
-			},
-			{
-				Name:   "target_table",
-				Schema: &schemahcl.Ref{V: "$schema.target_schema"},
-			},
-		}
+func TestMarshalRealm(t *testing.T) {
+	t1 := schema.NewTable("t1").
+		AddColumns(schema.NewIntColumn("id", "int"))
+	t2 := schema.NewTable("t2").
+		SetComment("Qualified with s1").
+		AddColumns(schema.NewIntColumn("oid", "int"))
+	t2.AddForeignKeys(schema.NewForeignKey("oid2id").AddColumns(t2.Columns[0]).SetRefTable(t1).AddRefColumns(t1.Columns[0]))
+
+	t3 := schema.NewTable("t3").
+		AddColumns(schema.NewIntColumn("id", "int"))
+	t4 := schema.NewTable("t2").
+		SetComment("Qualified with s2").
+		AddColumns(schema.NewIntColumn("oid", "int"))
+	t4.AddForeignKeys(schema.NewForeignKey("oid2id").AddColumns(t4.Columns[0]).SetRefTable(t3).AddRefColumns(t3.Columns[0]))
+	t5 := schema.NewTable("t5").
+		AddColumns(schema.NewIntColumn("oid", "int"))
+	t5.AddForeignKeys(schema.NewForeignKey("oid2id1").AddColumns(t5.Columns[0]).SetRefTable(t1).AddRefColumns(t1.Columns[0]))
+	// Reference is qualified with s1.
+	t5.AddForeignKeys(schema.NewForeignKey("oid2id2").AddColumns(t5.Columns[0]).SetRefTable(t2).AddRefColumns(t2.Columns[0]))
+
+	r := schema.NewRealm(
+		schema.New("s1").AddTables(t1, t2),
+		schema.New("s2").AddTables(t3, t4, t5),
 	)
-	require.NoError(t, specutil.QualifyReferencedTables(tables, realm))
-	require.Zero(t, tables[0].Qualifier)
-	require.Equal(t, "target_schema", tables[1].Qualifier)
+	got, err := MarshalHCL.MarshalSpec(r)
+	require.NoError(t, err)
+	require.Equal(
+		t,
+		`table "t1" {
+  schema = schema.s1
+  column "id" {
+    null = false
+    type = int
+  }
+}
+table "s1" "t2" {
+  schema  = schema.s1
+  comment = "Qualified with s1"
+  column "oid" {
+    null = false
+    type = int
+  }
+  foreign_key "oid2id" {
+    columns     = [column.oid]
+    ref_columns = [table.t1.column.id]
+  }
+}
+table "t3" {
+  schema = schema.s2
+  column "id" {
+    null = false
+    type = int
+  }
+}
+table "s2" "t2" {
+  schema  = schema.s2
+  comment = "Qualified with s2"
+  column "oid" {
+    null = false
+    type = int
+  }
+  foreign_key "oid2id" {
+    columns     = [column.oid]
+    ref_columns = [table.t3.column.id]
+  }
+}
+table "t5" {
+  schema = schema.s2
+  column "oid" {
+    null = false
+    type = int
+  }
+  foreign_key "oid2id1" {
+    columns     = [column.oid]
+    ref_columns = [table.t1.column.id]
+  }
+  foreign_key "oid2id2" {
+    columns     = [column.oid]
+    ref_columns = [table.s1.t2.column.oid]
+  }
+}
+schema "s1" {
+}
+schema "s2" {
+}
+`,
+		string(got))
 }
