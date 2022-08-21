@@ -162,12 +162,5 @@ func fileLocation(p string) string {
 }
 
 type tag struct {
-	Name       string `json:"name"`
-	ZipballURL string `json:"zipball_url"`
-	TarballURL string `json:"tarball_url"`
-	Commit     struct {
-		SHA string `json:"sha"`
-		URL string `json:"url"`
-	} `json:"commit"`
-	NodeID string `json:"node_id"`
+	Name string `json:"name"`
 }
