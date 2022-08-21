@@ -21,9 +21,9 @@ SQL statements to migrate the "from" database to the schema of the "to" database
 
 ### Flags
 * `--from` (required) - the [URL](/concepts/url) of the database to calculate the 
- diff from. Currently requires a URL to a specific schema (named database).
+ diff from.
 * `--to` (required) - the [URL](/concepts/url) of the database to calculate the
-  diff to. Currently requires a URL to a specific schema (named database).
+  diff to.
 
 ### Examples
 
@@ -35,6 +35,11 @@ values={[
 {label: 'PostgreSQL', value: 'postgres'},
 ]}>
 <TabItem value="mysql">
+
+Diff to a remote database:
+```
+atlas schema diff --from "mysql://user:pass@localhost:3306" --to "mysql://user:pass@remote:3306"
+```
 
 Diff to a remote schema
 ```
@@ -49,6 +54,11 @@ atlas schema diff --from "mysql://user:pass@localhost:3306/schema" --to "mysql:/
 </TabItem>
 <TabItem value="maria">
 
+Diff to a remote database:
+```
+atlas schema diff --from "maria://user:pass@localhost:3306" --to "maria://user:pass@remote:3306"
+```
+
 Diff to a remote schema
 ```
 atlas schema diff --from "maria://user:pass@localhost:3306/schema" --to "maria://user:pass@remote:3306/schema"
@@ -61,6 +71,11 @@ atlas schema diff --from "maria://user:pass@localhost:3306/schema" --to "maria:/
 
 </TabItem>
 <TabItem value="postgres">
+
+Diff to a remote database:
+```
+atlas schema diff --from "postgres://localhost:5432/database" --to "postgres://remote:5432/database"
+```
 
 Diff to a remote schema:
 ```
