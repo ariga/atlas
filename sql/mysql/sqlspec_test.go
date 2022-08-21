@@ -1271,3 +1271,49 @@ func lineIfSet(s string) string {
 	}
 	return s
 }
+
+func TestUnmarshalSpec(t *testing.T) {
+	s := []byte(`
+schema "s1" {}
+schema "s2" {}
+
+table "s1" "t1" {
+ schema  = schema.s1
+ column "id" {
+   type = int
+ }
+}
+
+table "s2" "t1" {
+  schema  = schema.s2
+  column "id" {
+    type = int
+  }
+}
+table "s2" "t2" {
+  schema  = schema.s2
+  column "oid" {
+    type = int
+  }
+  foreign_key "fk" {
+    columns = [column.oid]
+    ref_columns = [table.s2.t1.column.id]
+  }
+}
+`)
+	var (
+		r        schema.Realm
+		expected = schema.NewRealm(
+			schema.New("s1").AddTables(schema.NewTable("t1").AddColumns(schema.NewIntColumn("id", "int"))),
+			schema.New("s2").AddTables(
+				schema.NewTable("t1").AddColumns(schema.NewIntColumn("id", "int")),
+				schema.NewTable("t2").AddColumns(schema.NewIntColumn("oid", "int")),
+			),
+		)
+	)
+	expected.Schemas[1].Tables[1].AddForeignKeys(schema.NewForeignKey("fk").
+		AddColumns(expected.Schemas[1].Tables[1].Columns[0]).
+		SetRefTable(expected.Schemas[1].Tables[0]).
+		AddRefColumns(expected.Schemas[1].Tables[0].Columns[0]))
+	require.NoError(t, EvalHCLBytes(s, &r, nil))
+}
