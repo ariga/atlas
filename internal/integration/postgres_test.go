@@ -819,10 +819,16 @@ func TestPostgres_SchemaDiff(t *testing.T) {
 		dir := t.TempDir()
 		_, err = t.db.Exec("CREATE DATABASE test1")
 		require.NoError(t, err)
+		t.Cleanup(func() {
+			_, err := t.db.Exec("DROP DATABASE IF EXISTS test1")
+			require.NoError(t, err)
+		})
 		_, err = t.db.Exec("CREATE DATABASE test2")
 		require.NoError(t, err)
-		defer t.db.Exec("DROP DATABASE IF EXISTS test1")
-		defer t.db.Exec("DROP DATABASE IF EXISTS test2")
+		t.Cleanup(func() {
+			_, err = t.db.Exec("DROP DATABASE IF EXISTS test2")
+			require.NoError(t, err)
+		})
 
 		diff := func(db1, db2 string) string {
 			out, err := exec.Command(
