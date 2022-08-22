@@ -6,7 +6,8 @@ cmp got.txt empty.txt
 atlas migrate lint --dir file://migrations2 --dev-url URL --latest=1 > got.txt
 cmp got.txt empty.txt
 
-atlas migrate lint --dir file://migrations3 --dev-url URL --latest=1 > got.txt
+# Expect the command to fail; exit code 1.
+! atlas migrate lint --dir file://migrations3 --dev-url URL --latest=1 > got.txt
 cmp got.txt expected3.txt
 
 -- empty.txt --

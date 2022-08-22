@@ -196,6 +196,9 @@ func (a *Attr) Bools() ([]bool, error) {
 
 // Resource returns the first child Resource by its type and reports whether it was found.
 func (r *Resource) Resource(t string) (*Resource, bool) {
+	if r == nil {
+		return nil, false
+	}
 	for i := range r.Children {
 		if r.Children[i].Type == t {
 			return r.Children[i], true

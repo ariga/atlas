@@ -1,7 +1,9 @@
-atlas migrate lint --dir file://migrations --dev-url URL --latest=1 > got1.txt
+# Expect the command to fail; exit code 1.
+! atlas migrate lint --dir file://migrations --dev-url URL --latest=1 > got1.txt
 cmp got1.txt expected1.txt
 
-atlas migrate lint --dir file://migrations --dev-url URL --latest=2 > got2.txt
+# Expect the command to fail; exit code 1.
+! atlas migrate lint --dir file://migrations --dev-url URL --latest=2 > got2.txt
 cmp got2.txt expected2.txt
 
 -- migrations/1.sql --

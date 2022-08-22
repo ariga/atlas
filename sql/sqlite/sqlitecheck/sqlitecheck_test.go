@@ -110,7 +110,8 @@ func TestDetectModifyTable(t *testing.T) {
 	)
 	az, err := sqlcheck.AnalyzerFor(sqlite.DriverName, nil)
 	require.NoError(t, err)
-	require.NoError(t, az.Analyze(context.Background(), pass))
+	err = az.Analyze(context.Background(), pass)
+	require.EqualError(t, err, "Destructive changes detected in file 1.sql")
 
 	require.Equal(t, report.Text, "Destructive changes detected in file 1.sql")
 	require.Len(t, report.Diagnostics, 3)
