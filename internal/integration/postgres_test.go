@@ -839,10 +839,10 @@ func TestPostgres_SchemaDiff(t *testing.T) {
 			require.NoError(t, err, string(out))
 			return strings.TrimSpace(string(out))
 		}
-		// diff databases with same realm
+		// Diff a database with itself.
 		require.Equal(t, "Schemas are synced, no changes to be made.", diff("test1?sslmode=disable", "test2?sslmode=disable"))
 
-		// create schemas on test2 DB
+		// Create schemas on test2 database.
 		hcl := `
 schema "public" {}
 table "users" {
@@ -865,7 +865,7 @@ table "posts" {
 		).CombinedOutput()
 		require.NoError(t, err, string(out))
 
-		// diff databases with different realm
+		// Diff a database with different one.
 		require.Equal(t, `-- Add new schema named "other"
 CREATE SCHEMA "other"
 -- Create "users" table
