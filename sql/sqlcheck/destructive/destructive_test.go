@@ -8,6 +8,8 @@ import (
 	"context"
 	"testing"
 
+	"ariga.io/atlas/schemahcl"
+	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
@@ -59,9 +61,10 @@ func TestAnalyzer_DropTable(t *testing.T) {
 			}),
 		}
 	)
-	az := destructive.New(destructive.Options{})
-	err := az.Analyze(context.Background(), pass)
+	az, err := destructive.New(nil)
 	require.NoError(t, err)
+	err = az.Analyze(context.Background(), pass)
+	require.Error(t, err)
 	require.Equal(t, `Destructive changes detected in file 1.sql`, report.Text)
 	require.Len(t, report.Diagnostics, 2)
 	require.Equal(t, `Dropping table "users"`, report.Diagnostics[0].Text)
@@ -96,8 +99,9 @@ func TestAnalyzer_SkipTemporaryTable(t *testing.T) {
 			}),
 		}
 	)
-	az := destructive.New(destructive.Options{})
-	err := az.Analyze(context.Background(), pass)
+	az, err := destructive.New(nil)
+	require.NoError(t, err)
+	err = az.Analyze(context.Background(), pass)
 	require.NoError(t, err)
 	require.Nil(t, report, "no report")
 }
@@ -145,8 +149,18 @@ func TestAnalyzer_DropSchema(t *testing.T) {
 			}),
 		}
 	)
-	az := destructive.New(destructive.Options{})
-	err := az.Analyze(context.Background(), pass)
+	az, err := destructive.New(&schemahcl.Resource{
+		Children: []*schemahcl.Resource{
+			{
+				Type: "destructive",
+				Attrs: []*schemahcl.Attr{
+					specutil.BoolAttr("error", false),
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+	err = az.Analyze(context.Background(), pass)
 	require.NoError(t, err)
 	require.Equal(t, `Destructive changes detected in file 1.sql`, report.Text)
 	require.Len(t, report.Diagnostics, 2)
@@ -198,66 +212,21 @@ func TestAnalyzer_DropColumn(t *testing.T) {
 			}),
 		}
 	)
-	az := destructive.New(destructive.Options{})
-	err := az.Analyze(context.Background(), pass)
+	az, err := destructive.New(&schemahcl.Resource{
+		Children: []*schemahcl.Resource{
+			{
+				Type: "destructive",
+				Attrs: []*schemahcl.Attr{
+					specutil.BoolAttr("error", false),
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+	err = az.Analyze(context.Background(), pass)
 	require.NoError(t, err)
 	require.Len(t, report.Diagnostics, 1)
 	require.Equal(t, `Dropping non-virtual column "c"`, report.Diagnostics[0].Text)
-}
-
-func TestAnalyzer_Options(t *testing.T) {
-	var (
-		off  bool
-		pass = &sqlcheck.Pass{
-			Dev: &sqlclient.Client{Name: "mysql"},
-			File: &sqlcheck.File{
-				File: testFile{name: "1.sql"},
-				Changes: []*sqlcheck.Change{
-					{
-						Stmt: "DROP DATABASE `test`",
-						Changes: schema.Changes{
-							&schema.DropSchema{
-								S: schema.New("test"),
-							},
-						},
-					},
-					{
-						Stmt: "DROP TABLE `users`",
-						Changes: schema.Changes{
-							&schema.DropTable{
-								T: schema.NewTable("users").
-									SetSchema(schema.New("test")),
-							},
-						},
-					},
-					{
-						Stmt: "ALTER TABLE `pets`",
-						Changes: []schema.Change{
-							&schema.ModifyTable{
-								T: schema.NewTable("pets").
-									SetSchema(schema.New("test")),
-								Changes: schema.Changes{
-									&schema.DropColumn{
-										C: schema.NewColumn("c"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			Reporter: sqlcheck.ReportWriterFunc(func(r sqlcheck.Report) {
-				t.Fatal("unexpected report")
-			}),
-		}
-	)
-	az := destructive.New(destructive.Options{
-		DropTable:  &off,
-		DropSchema: &off,
-		DropColumn: &off,
-	})
-	err := az.Analyze(context.Background(), pass)
-	require.NoError(t, err)
 }
 
 type testFile struct {

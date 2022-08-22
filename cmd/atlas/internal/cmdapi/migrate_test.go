@@ -489,7 +489,7 @@ func TestMigrate_Lint(t *testing.T) {
 		"--dev-url", openSQLite(t, ""),
 		"--latest", "1",
 	)
-	require.NoError(t, err)
+	require.Error(t, err)
 	require.Equal(t, "Destructive changes detected in file 2.sql:\n\n\tL1: Dropping table \"t\"\n\n", s)
 	s, err = runCmd(
 		Root, "migrate", "lint",
@@ -498,7 +498,7 @@ func TestMigrate_Lint(t *testing.T) {
 		"--latest", "1",
 		"--log", "{{ range .Files }}{{ .Name }}{{ end }}",
 	)
-	require.NoError(t, err)
+	require.Error(t, err)
 	require.Equal(t, "2.sql", s)
 
 	// Change files to golang-migrate format.

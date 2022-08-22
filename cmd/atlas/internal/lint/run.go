@@ -45,7 +45,17 @@ type Runner struct {
 func (r *Runner) Run(ctx context.Context) error {
 	switch err := r.summary(ctx); err.(type) {
 	case nil:
-		return r.ReportWriter.WriteReport(r.sum)
+		if err := r.ReportWriter.WriteReport(r.sum); err != nil {
+			return err
+		}
+		// If any of the analyzers returns
+		// an error, fail silently.
+		for _, f := range r.sum.Files {
+			if f.Error != "" {
+				return SilentError{}
+			}
+		}
+		return nil
 	case *FileError:
 		if err := r.ReportWriter.WriteReport(r.sum); err != nil {
 			return err
@@ -129,7 +139,8 @@ var (
 			Funcs(TemplateFuncs).
 			Parse(`
 {{- range $f := .Files }}
-	{{- if $f.Error }}
+	{{- /* If there is an error but not diagnostics, print it. */}}
+	{{- if and $f.Error (not $f.Reports) }}
 		{{- printf "%s: %s\n" $f.Name $f.Error }}
 	{{- else }}
 		{{- range $r := $f.Reports }}

@@ -36,10 +36,11 @@ func NewDataDepend(*schemahcl.Resource) *datadepend.Analyzer {
 }
 
 func init() {
-	sqlcheck.Register(postgres.DriverName, func(*schemahcl.Resource) (sqlcheck.Analyzer, error) {
-		return sqlcheck.Analyzers{
-			destructive.New(destructive.Options{}),
-			NewDataDepend(nil),
-		}, nil
+	sqlcheck.Register(postgres.DriverName, func(r *schemahcl.Resource) (sqlcheck.Analyzer, error) {
+		d, err := destructive.New(r)
+		if err != nil {
+			return nil, err
+		}
+		return sqlcheck.Analyzers{d, NewDataDepend(nil)}, nil
 	})
 }

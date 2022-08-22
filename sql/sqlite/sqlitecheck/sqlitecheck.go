@@ -39,7 +39,11 @@ func NewDataDepend(*schemahcl.Resource) *datadepend.Analyzer {
 }
 
 func init() {
-	sqlcheck.Register(sqlite.DriverName, func(*schemahcl.Resource) (sqlcheck.Analyzer, error) {
+	sqlcheck.Register(sqlite.DriverName, func(r *schemahcl.Resource) (sqlcheck.Analyzer, error) {
+		dest, err := destructive.New(r)
+		if err != nil {
+			return nil, err
+		}
 		return sqlcheck.Analyzers{
 			sqlcheck.AnalyzerFunc(func(ctx context.Context, p *sqlcheck.Pass) error {
 				var changes []*sqlcheck.Change
@@ -76,7 +80,7 @@ func init() {
 				p.File.Changes = changes
 				return nil
 			}),
-			destructive.New(destructive.Options{}),
+			dest,
 			NewDataDepend(nil),
 		}, nil
 	})

@@ -1,5 +1,7 @@
-atlas migrate lint --env local --latest=2 > got1.txt
+# Expect the command to fail; exit code 1.
+! atlas migrate lint --env local --latest=2 > got1.txt
 cmp got1.txt expected1.txt
+
 -- atlas.hcl --
 env "local" {
     dev = "URL"

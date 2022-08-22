@@ -79,6 +79,16 @@ type (
 	ReportWriter interface {
 		WriteReport(Report)
 	}
+
+	// Options defines a generic configuration options for analyzers.
+	Options struct {
+		// Error indicates if an analyzer should
+		// error in case a Diagnostic was found.
+		Error bool `spec:"error"`
+
+		// Allow drivers to extend the configuration.
+		schemahcl.DefaultExtension
+	}
 )
 
 // Analyzers implements Analyzer.

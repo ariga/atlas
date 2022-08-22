@@ -400,7 +400,7 @@ func cmdCLI(ts *testscript.TestScript, neg bool, args []string, dbURL, cliPath s
 		stderr := &bytes.Buffer{}
 		cmd.Stderr = stderr
 		cmd.Dir = workDir
-		if err := cmd.Run(); err != nil {
+		if err := cmd.Run(); err != nil && !neg {
 			ts.Fatalf("\n[stderr]\n%s", stderr)
 		}
 	default:
