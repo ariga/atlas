@@ -52,7 +52,7 @@ h1:KRFsSi68ZOarsQAJZ1mfSiMSkIOZlMq4RzyF//Pwf8A=
 The `atlas.sum` file contains the checksum of each migration file (implemented by a 
 reverse, one branch merkle hash tree), and a sum of all files. Adding new files 
 results in a change to the sum file, which will raise merge conflicts in most 
-version controls systems. 
+version control systems. 
 
 ### How does this mechanism prevent situations like the one we described above? 
 
