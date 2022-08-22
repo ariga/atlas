@@ -26,7 +26,7 @@ Something like this might happen:
 4. Team A's branch is merged to the mainline branch. 
 5. Team B's branch is merged. 
 6. When both changes are deployed, the first one to run will succeed and the second will fail.
-   This will happen in an arbitrary order. (Migrations are run in lexicographic order, usually set by the timestamp
+   This will happen in an arbitrary order (migrations are run in lexicographic order, usually set by the timestamp
    on the developer's workstation when generating them).
 
 ### The solution
