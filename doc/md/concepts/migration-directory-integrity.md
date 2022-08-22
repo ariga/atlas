@@ -10,7 +10,7 @@ _migration directory integrity file_.
 
 ### The problem
 
-Suppose you have multiple teams working on a system in parallel, all of which need to make 
+Suppose you have multiple teams working on a system simultaneously, all of which need to make 
 changes to the database schema from time to time. Unless they somehow coordinate, they
 may end up with a broken migration directory.
 
