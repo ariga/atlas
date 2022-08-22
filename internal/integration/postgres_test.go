@@ -812,6 +812,76 @@ CREATE TABLE "other"."users" ("id" integer NOT NULL);
 	})
 }
 
+func TestPostgres_SchemaDiff(t *testing.T) {
+	bin, err := buildCmd(t)
+	require.NoError(t, err)
+	pgRun(t, func(t *pgTest) {
+		dir := t.TempDir()
+		_, err = t.db.Exec("CREATE DATABASE test1")
+		require.NoError(t, err)
+		_, err = t.db.Exec("CREATE DATABASE test2")
+		require.NoError(t, err)
+		defer t.db.Exec("DROP DATABASE IF EXISTS test1")
+		defer t.db.Exec("DROP DATABASE IF EXISTS test2")
+
+		diff := func(db1, db2 string) string {
+			out, err := exec.Command(
+				bin, "schema", "diff",
+				"--from", fmt.Sprintf("postgres://postgres:pass@localhost:%d/%s", t.port, db1),
+				"--to", fmt.Sprintf("postgres://postgres:pass@localhost:%d/%s", t.port, db2),
+			).CombinedOutput()
+			require.NoError(t, err, string(out))
+			return strings.TrimSpace(string(out))
+		}
+		// diff databases with same realm
+		require.Equal(t, "Schemas are synced, no changes to be made.", diff("test1?sslmode=disable", "test2?sslmode=disable"))
+
+		// create schemas on test2 DB
+		hcl := `
+schema "public" {}
+table "users" {
+	schema = schema.public
+	column "id" { type = integer }
+}
+schema "other" {}
+table "posts" {
+	schema = schema.other
+	column "id" { type = integer }
+}
+`
+		err = os.WriteFile(filepath.Join(dir, "schema.hcl"), []byte(hcl), 0600)
+		require.NoError(t, err)
+		out, err := exec.Command(
+			bin, "schema", "apply",
+			"-u", fmt.Sprintf("postgres://postgres:pass@localhost:%d/test2?sslmode=disable", t.port),
+			"-f", fmt.Sprintf(filepath.Join(dir, "schema.hcl")),
+			"--auto-approve",
+		).CombinedOutput()
+		require.NoError(t, err, string(out))
+
+		// diff databases with different realm
+		require.Equal(t, `-- Add new schema named "other"
+CREATE SCHEMA "other"
+-- Create "users" table
+CREATE TABLE "public"."users" ("id" integer NOT NULL)
+-- Create "posts" table
+CREATE TABLE "other"."posts" ("id" integer NOT NULL)`, diff("test1?sslmode=disable", "test2?sslmode=disable"))
+		// diff schemas
+		require.Equal(t, `-- Drop "posts" table
+DROP TABLE "posts"
+-- Create "users" table
+CREATE TABLE "users" ("id" integer NOT NULL)`, diff("test2?sslmode=disable&search_path=other", "test2?sslmode=disable&search_path=public"))
+		// diff between schema and database
+		out, err = exec.Command(
+			bin, "schema", "diff",
+			"--from", fmt.Sprintf("postgres://postgres:pass@localhost:%d/test2?sslmode=disable", t.port),
+			"--to", fmt.Sprintf("postgres://postgres:pass@localhost:%d/test2?sslmode=disable&search_path=public", t.port),
+		).CombinedOutput()
+		require.Error(t, err, string(out))
+		require.Equal(t, "Error: cannot diff schema \"\" with a database connection\n", string(out))
+	})
+}
+
 func TestPostgres_DefaultsHCL(t *testing.T) {
 	n := "atlas_defaults"
 	pgRun(t, func(t *pgTest) {
