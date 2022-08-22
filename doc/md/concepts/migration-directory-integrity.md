@@ -40,7 +40,7 @@ no such conflict happens because migrations are typically described in a separat
 file for each migration. 
 
 Atlas's engine offers a way to prevent concurrent creation of new migration 
-files and guard against accidental changes in the migration history we call
+files and guards against accidental changes in the migration history we call
 *Migration Directory Integrity File*, which simply is another file in your
 migration directory called `atlas.sum` and looks something like:
 
