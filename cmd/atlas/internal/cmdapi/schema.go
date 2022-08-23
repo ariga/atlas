@@ -139,6 +139,7 @@ func init() {
 	SchemaApply.Flags().StringSliceVarP(&ApplyFlags.Paths, fileFlag, "f", nil, "[paths...] file or directory containing the HCL files")
 	SchemaApply.Flags().StringVarP(&SchemaFlags.URL, urlFlag, "u", "", "URL to the database using the format:\n[driver://username:password@address/dbname?param=value]")
 	SchemaApply.Flags().StringSliceVarP(&SchemaFlags.Schemas, schemaFlag, "s", nil, "Set schema names.")
+	SchemaApply.Flags().StringSliceVarP(&SchemaFlags.Exclude, excludeFlag, "", nil, "List of glob patterns used to filter resources from applying.")
 	SchemaApply.Flags().StringVarP(&ApplyFlags.DevURL, devURLFlag, "", "", "URL for the dev database. Used to validate schemas and calculate diffs\nbefore running migration.")
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.DryRun, "dry-run", "", false, "Dry-run. Print SQL plan without prompting for execution.")
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.AutoApprove, "auto-approve", "", false, "Auto approve. Apply the schema changes without prompting for approval.")
@@ -307,6 +308,9 @@ func applyRun(cmd *cobra.Command, client *sqlclient.Client, devURL string, paths
 		return err
 	}
 	if err := client.Eval(parsed, desired, input); err != nil {
+		return err
+	}
+	if desired, err = schema.ExcludeRealm(desired, SchemaFlags.Exclude); err != nil {
 		return err
 	}
 	if len(schemas) > 0 {

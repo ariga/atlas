@@ -38,7 +38,7 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 		return nil, err
 	}
 	sqlx.LinkSchemaTables(schemas)
-	return sqlx.ExcludeRealm(r, opts.Exclude)
+	return schema.ExcludeRealm(r, opts.Exclude)
 }
 
 // InspectSchema returns schema descriptions of the tables in the given schema.
@@ -64,7 +64,7 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 		}
 		sqlx.LinkSchemaTables(schemas)
 	}
-	return sqlx.ExcludeSchema(r.Schemas[0], opts.Exclude)
+	return schema.ExcludeSchema(r.Schemas[0], opts.Exclude)
 }
 
 func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *schema.InspectOptions) error {

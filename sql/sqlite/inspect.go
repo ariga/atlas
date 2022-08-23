@@ -36,7 +36,7 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 	}
 	r := schema.NewRealm(schemas...)
 	if !sqlx.ModeInspectRealm(opts).Is(schema.InspectTables) {
-		return sqlx.ExcludeRealm(r, opts.Exclude)
+		return schema.ExcludeRealm(r, opts.Exclude)
 	}
 	for _, s := range schemas {
 		tables, err := i.tables(ctx, nil)
@@ -51,7 +51,7 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 		}
 	}
 	sqlx.LinkSchemaTables(r.Schemas)
-	return sqlx.ExcludeRealm(r, opts.Exclude)
+	return schema.ExcludeRealm(r, opts.Exclude)
 }
 
 // InspectSchema returns schema descriptions of the tables in the given schema.
@@ -76,7 +76,7 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 	}
 	r := schema.NewRealm(schemas...)
 	if !sqlx.ModeInspectSchema(opts).Is(schema.InspectTables) {
-		return sqlx.ExcludeSchema(r.Schemas[0], opts.Exclude)
+		return schema.ExcludeSchema(r.Schemas[0], opts.Exclude)
 	}
 	tables, err := i.tables(ctx, opts)
 	if err != nil {
@@ -89,7 +89,7 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 		}
 	}
 	sqlx.LinkSchemaTables(schemas)
-	return sqlx.ExcludeSchema(r.Schemas[0], opts.Exclude)
+	return schema.ExcludeSchema(r.Schemas[0], opts.Exclude)
 }
 
 func (i *inspect) inspectTable(ctx context.Context, t *schema.Table) error {

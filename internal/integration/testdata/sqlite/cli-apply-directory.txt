@@ -1,6 +1,12 @@
 ! atlas schema apply -f empty/ -u URL --auto-approve
 stderr 'no schema files found'
 
+atlas schema apply -f schema/ -u URL --auto-approve  --exclude "*.users" --dry-run > inspected.txt
+cmp inspected.txt synced.txt
+
+atlas schema apply -f schema/ -u URL --auto-approve  --exclude "*.users.status" --dry-run > inspected.txt
+cmp inspected.txt id.txt
+
 atlas schema apply -f schema/ -u URL --auto-approve
 cmpshow users expected.sql
 
@@ -22,5 +28,11 @@ schema "main" {
 }
 -- empty/hello.txt --
 hello, world!
+-- synced.txt --
+Schema is synced, no changes to be made
+-- id.txt --
+-- Planned Changes:
+-- Create "users" table
+CREATE TABLE `users` (`id` int NOT NULL)
 -- expected.sql --
 CREATE TABLE `users` (`id` int NOT NULL, `status` text NULL DEFAULT 'hello')

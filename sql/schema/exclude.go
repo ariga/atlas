@@ -2,23 +2,21 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package sqlx
+package schema
 
 import (
 	"encoding/csv"
 	"fmt"
 	"path/filepath"
 	"strings"
-
-	"ariga.io/atlas/sql/schema"
 )
 
 // ExcludeRealm filters resources in the realm based on the given patterns.
-func ExcludeRealm(r *schema.Realm, patterns []string) (*schema.Realm, error) {
+func ExcludeRealm(r *Realm, patterns []string) (*Realm, error) {
 	if len(patterns) == 0 {
 		return r, nil
 	}
-	var schemas []*schema.Schema
+	var schemas []*Schema
 	globs, err := split(patterns)
 	if err != nil {
 		return nil, err
@@ -51,7 +49,7 @@ Filter:
 }
 
 // ExcludeSchema filters resources in the schema based on the given patterns.
-func ExcludeSchema(s *schema.Schema, patterns []string) (*schema.Schema, error) {
+func ExcludeSchema(s *Schema, patterns []string) (*Schema, error) {
 	if len(patterns) == 0 {
 		return s, nil
 	}
@@ -88,8 +86,8 @@ func split(patterns []string) ([][]string, error) {
 	return globs, nil
 }
 
-func excludeS(s *schema.Schema, glob []string) error {
-	var tables []*schema.Table
+func excludeS(s *Schema, glob []string) error {
+	var tables []*Table
 	for _, t := range s.Tables {
 		match, err := filepath.Match(glob[0], t.Name)
 		if err != nil {
@@ -112,10 +110,10 @@ func excludeS(s *schema.Schema, glob []string) error {
 	return nil
 }
 
-func excludeT(t *schema.Table, pattern string) (err error) {
-	ex := make(map[*schema.Index]struct{})
-	ef := make(map[*schema.ForeignKey]struct{})
-	t.Columns, err = filter(t.Columns, func(c *schema.Column) (bool, error) {
+func excludeT(t *Table, pattern string) (err error) {
+	ex := make(map[*Index]struct{})
+	ef := make(map[*ForeignKey]struct{})
+	t.Columns, err = filter(t.Columns, func(c *Column) (bool, error) {
 		match, err := filepath.Match(pattern, c.Name)
 		if !match || err != nil {
 			return false, err
@@ -128,13 +126,13 @@ func excludeT(t *schema.Table, pattern string) (err error) {
 		}
 		return true, nil
 	})
-	t.Indexes, err = filter(t.Indexes, func(idx *schema.Index) (bool, error) {
+	t.Indexes, err = filter(t.Indexes, func(idx *Index) (bool, error) {
 		if _, ok := ex[idx]; ok {
 			return true, nil
 		}
 		return filepath.Match(pattern, idx.Name)
 	})
-	t.ForeignKeys, err = filter(t.ForeignKeys, func(fk *schema.ForeignKey) (bool, error) {
+	t.ForeignKeys, err = filter(t.ForeignKeys, func(fk *ForeignKey) (bool, error) {
 		if _, ok := ef[fk]; ok {
 			return true, nil
 		}
