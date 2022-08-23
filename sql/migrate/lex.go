@@ -96,6 +96,8 @@ func (l *lex) stmt() (stmt string, err error) {
 			if err := l.skipQuote(r); err != nil {
 				return "", err
 			}
+		case r == '#':
+			l.skipComment("#", "\n")
 		case r == '-' && l.next() == '-':
 			l.skipComment("--", "\n")
 		case r == '/' && l.next() == '*':
