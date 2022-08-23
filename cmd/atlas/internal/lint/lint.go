@@ -209,7 +209,7 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 			}
 		}
 	}
-	current, err := d.Dev.InspectRealm(ctx, nil)
+	current, err := d.inspect(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +230,7 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 			if _, err := d.Dev.ExecContext(ctx, s); err != nil {
 				return nil, &FileError{File: f.Name(), Err: fmt.Errorf("executing statement: %w", err)}
 			}
-			target, err := d.Dev.InspectRealm(ctx, nil)
+			target, err := d.inspect(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -263,6 +263,15 @@ func (d *DevLoader) mayFix(stmt string, changes schema.Changes) schema.Changes {
 		return fixed
 	}
 	return changes
+}
+
+// inspect the realm and filter by schema if we are connected to one.
+func (d *DevLoader) inspect(ctx context.Context) (*schema.Realm, error) {
+	opts := &schema.InspectRealmOption{}
+	if d.Dev.URL.Schema != "" {
+		opts.Schemas = append(opts.Schemas, d.Dev.URL.Schema)
+	}
+	return d.Dev.InspectRealm(ctx, opts)
 }
 
 // pos returns the position of a statement in migration file.
