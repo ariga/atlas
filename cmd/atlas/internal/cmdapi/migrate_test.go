@@ -419,9 +419,6 @@ func TestMigrate_Validate(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(p, "2_second.sql"), []byte("create table t2 (c2 int)"), 0644))
 	_, err = runCmd(Root, "migrate", "hash", "--force", "--dir", "file://"+p)
 	require.NoError(t, err)
-	b, err := os.ReadFile(filepath.Join(p, "1_initial.sql"))
-	require.NoError(t, err)
-	fmt.Println(string(b))
 	s, err = runCmd(
 		Root, "migrate", "validate",
 		"--dir", "file://"+p,
