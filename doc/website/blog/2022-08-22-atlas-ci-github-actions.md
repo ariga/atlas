@@ -2,7 +2,7 @@
 title: Prevent destructive changes to your database with the Atlas GitHub Action
 authors: rotemtam
 tags: [ci, github-actions, announcement]
-image: https://blog.ariga.io/uploads/images/posts/v0.6.0/atlas-migrate-diff.png
+image: https://atlasgo.io/uploads/images/actions-share-image.png
 ---
 
 Losing data is painful for almost all organizations. This is one of the reasons teams are very
