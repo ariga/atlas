@@ -85,7 +85,7 @@ CREATE TABLE `orders` (
 
 ### Installing the Atlas Action
 
-To make sure we never accidentally delete data during schema changes we enact a policy that prohibits
+To make sure we never accidentally delete data during schema changes, we enact a policy that prohibits
 destructive changes to the database. To enforce this policy, we invoke the `atlas-action` GitHub Action
 from within our continuous integration flow by adding a workflow file name `.github/workflows/atlas-ci.yaml`:
 
@@ -142,7 +142,7 @@ ALTER TABLE `orders` DROP COLUMN `total`;
 
 This change is proposed in [PR #1](https://github.com/rotemtam/atlas-action-demo/pull/1/files)
 in our example repo. Because we have previously set up the Atlas GitHub Action to
-[lint our migration directory](https://github.com/rotemtam/atlas-action-demo/blob/master/.github/workflows/atlas-ci.yaml)
+[lint our migration directory](https://github.com/rotemtam/atlas-action-demo/blob/master/.github/workflows/atlas-ci.yaml),
 whenever a file changes under the `migrations/` directory, a workflow is triggered.
 
 After letting our workflow complete, observe that GitHub informs us that the `Atlas CI / lint`
