@@ -10,6 +10,10 @@ cmp got.txt empty.txt
 ! atlas migrate lint --dir file://migrations3 --dev-url URL --latest=1 > got.txt
 cmp got.txt expected3.txt
 
+# Expect to log only the connected schema.
+! atlas migrate lint --dir file://migrations3 --dev-url URL --log='{{println "current:"}}{{.Schema.Current}}{{println "desired:"}}{{.Schema.Desired}}' --latest=1 > got.txt
+cmp got.txt schema3.txt
+
 -- empty.txt --
 -- migrations1/1.sql --
 CREATE TABLE users (id int);
@@ -38,3 +42,28 @@ Destructive changes detected in file 3.sql:
 
 	L1: Dropping non-virtual column "oid"
 
+-- schema3.txt --
+current:
+table "user" {
+  schema = schema.script_cli_migrate_lint_destructive
+  column "oid" {
+    null = true
+    type = int
+  }
+}
+schema "script_cli_migrate_lint_destructive" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_0900_ai_ci"
+}
+desired:
+table "user" {
+  schema = schema.script_cli_migrate_lint_destructive
+  column "id" {
+    null = true
+    type = int
+  }
+}
+schema "script_cli_migrate_lint_destructive" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_0900_ai_ci"
+}
