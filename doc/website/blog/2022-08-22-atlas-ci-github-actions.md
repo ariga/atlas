@@ -159,14 +159,15 @@ Examining the Action [run summary](https://github.com/rotemtam/atlas-action-demo
 
 ![](https://atlasgo.io/uploads/images/workflow-summary-03.png)
 
+As you can see, Atlas has detected the destructive change we proposed to apply 
+to our database and failed our build!
+
 ### Wrapping up
 
 In this post we discussed why many teams set policies to prevent destructive
 changes to database schemas. We further showed how such policies can be enforced
 in an automated way using the official [Atlas GitHub Action](https://atlasgo.io/integrations/github-actions).
 
-As you can see, Atlas has detected the destructive change we proposed to apply 
-to our database and failed our build!
 
 ### Further reading
 
