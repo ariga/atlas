@@ -10,7 +10,7 @@ import (
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/mysql"
-	"ariga.io/atlas/sql/mysql/mysqlcheck"
+	_ "ariga.io/atlas/sql/mysql/mysqlcheck"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"
@@ -60,7 +60,8 @@ func TestDataDepend_MySQL_ImplicitUpdate(t *testing.T) {
 			}),
 		}
 	)
-	az := mysqlcheck.NewDataDepend(nil)
+	az, err := sqlcheck.AnalyzerFor(mysql.DriverName, nil)
+	require.NoError(t, err)
 	require.NoError(t, az.Analyze(context.Background(), pass))
 	require.Equal(t, report.Diagnostics[0].Text, `Adding a non-nullable "int" column "b" on table "users" without a default value implicitly sets existing rows with 0`)
 	require.Equal(t, report.Diagnostics[1].Text, `Adding a non-nullable "float" column "c" on table "users" without a default value implicitly sets existing rows with 0`)
@@ -105,7 +106,8 @@ func TestDataDepend_MySQL8_ImplicitUpdate(t *testing.T) {
 			}),
 		}
 	)
-	az := mysqlcheck.NewDataDepend(nil)
+	az, err := sqlcheck.AnalyzerFor(mysql.DriverName, nil)
+	require.NoError(t, err)
 	require.NoError(t, az.Analyze(context.Background(), pass))
 	require.Equal(t,
 		report.Diagnostics[0].Text,
@@ -152,7 +154,8 @@ func TestDataDepend_MySQL_MightFail(t *testing.T) {
 			}),
 		}
 	)
-	az := mysqlcheck.NewDataDepend(nil)
+	az, err := sqlcheck.AnalyzerFor(mysql.DriverName, nil)
+	require.NoError(t, err)
 	require.NoError(t, az.Analyze(context.Background(), pass))
 	require.Equal(t, report.Diagnostics[0].Text, `Adding a non-nullable "date" column "b" will fail in case table "users" is not empty`)
 	require.Equal(t, report.Diagnostics[1].Text, `Adding a non-nullable "datetime" column "c" will fail in case table "users" is not empty`)
@@ -207,7 +210,8 @@ func TestDataDepend_Maria_ImplicitUpdate(t *testing.T) {
 			}),
 		}
 	)
-	az := mysqlcheck.NewDataDepend(nil)
+	az, err := sqlcheck.AnalyzerFor(mysql.DriverName, nil)
+	require.NoError(t, err)
 	require.NoError(t, az.Analyze(context.Background(), pass))
 	require.Equal(t, report.Diagnostics[0].Text, `Adding a non-nullable "text" column "b" on table "users" without a default value implicitly sets existing rows with ""`)
 	require.Equal(t, report.Diagnostics[1].Text, `Adding a non-nullable "json" column "c" on table "users" without a default value implicitly sets existing rows with ""`)

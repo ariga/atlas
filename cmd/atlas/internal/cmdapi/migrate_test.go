@@ -487,7 +487,7 @@ func TestMigrate_Lint(t *testing.T) {
 		"--latest", "1",
 	)
 	require.Error(t, err)
-	require.Equal(t, "Destructive changes detected in file 2.sql:\n\n\tL1: Dropping table \"t\"\n\n", s)
+	require.Equal(t, "2.sql: destructive change detected:\n\n\tL1: Dropping table \"t\"\n\n", s)
 	s, err = runCmd(
 		Root, "migrate", "lint",
 		"--dir", "file://"+p,

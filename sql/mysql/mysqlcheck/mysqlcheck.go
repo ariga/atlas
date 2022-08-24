@@ -17,13 +17,6 @@ import (
 	"ariga.io/atlas/sql/sqlcheck/destructive"
 )
 
-// NewDataDepend creates new data-depend analyzer.
-func NewDataDepend(*schemahcl.Resource) *datadepend.Analyzer {
-	var opts datadepend.Options
-	opts.Handler.AddNotNull = addNotNull
-	return datadepend.New(opts)
-}
-
 func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err error) {
 	// Two types of reporting, implicit rows update and
 	// changes that may cause the migration to fail.
@@ -133,10 +126,16 @@ func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err erro
 
 func init() {
 	sqlcheck.Register(mysql.DriverName, func(r *schemahcl.Resource) (sqlcheck.Analyzer, error) {
-		d, err := destructive.New(r)
+		ds, err := destructive.New(r)
 		if err != nil {
 			return nil, err
 		}
-		return sqlcheck.Analyzers{d, NewDataDepend(nil)}, nil
+		dd, err := datadepend.New(r, datadepend.Handler{
+			AddNotNull: addNotNull,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return sqlcheck.Analyzers{ds, dd}, nil
 	})
 }

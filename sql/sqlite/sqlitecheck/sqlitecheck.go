@@ -17,30 +17,31 @@ import (
 	"ariga.io/atlas/sql/sqlite"
 )
 
-// NewDataDepend creates new data-depend analyzer.
-func NewDataDepend(*schemahcl.Resource) *datadepend.Analyzer {
-	var opts datadepend.Options
-	opts.Handler.AddNotNull = func(p *datadepend.ColumnPass) ([]sqlcheck.Diagnostic, error) {
-		tt, err := sqlite.FormatType(p.Column.Type.Type)
-		if err != nil {
-			return nil, err
-		}
-		return []sqlcheck.Diagnostic{
-			{
-				Pos: p.Change.Pos,
-				Text: fmt.Sprintf(
-					"Adding a non-nullable %q column %q will fail in case table %q is not empty",
-					tt, p.Column.Name, p.Table.Name,
-				),
-			},
-		}, nil
+func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err error) {
+	tt, err := sqlite.FormatType(p.Column.Type.Type)
+	if err != nil {
+		return nil, err
 	}
-	return datadepend.New(opts)
+	return []sqlcheck.Diagnostic{
+		{
+			Pos: p.Change.Pos,
+			Text: fmt.Sprintf(
+				"Adding a non-nullable %q column %q will fail in case table %q is not empty",
+				tt, p.Column.Name, p.Table.Name,
+			),
+		},
+	}, nil
 }
 
 func init() {
 	sqlcheck.Register(sqlite.DriverName, func(r *schemahcl.Resource) (sqlcheck.Analyzer, error) {
-		dest, err := destructive.New(r)
+		ds, err := destructive.New(r)
+		if err != nil {
+			return nil, err
+		}
+		dd, err := datadepend.New(r, datadepend.Handler{
+			AddNotNull: addNotNull,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -80,8 +81,7 @@ func init() {
 				p.File.Changes = changes
 				return nil
 			}),
-			dest,
-			NewDataDepend(nil),
+			ds, dd,
 		}, nil
 	})
 }

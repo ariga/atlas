@@ -8,6 +8,9 @@ import (
 	"context"
 	"testing"
 
+	"ariga.io/atlas/schemahcl"
+	"ariga.io/atlas/sql/internal/specutil"
+
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
@@ -60,10 +63,11 @@ func TestAnalyzer_AddUniqueIndex(t *testing.T) {
 			}),
 		}
 	)
-	az := datadepend.New(datadepend.Options{})
-	err := az.Analyze(context.Background(), pass)
+	az, err := datadepend.New(nil, datadepend.Handler{})
 	require.NoError(t, err)
-	require.Equal(t, "Data dependent changes detected in file 1.sql", report.Text)
+	err = az.Analyze(context.Background(), pass)
+	require.NoError(t, err)
+	require.Equal(t, "data dependent change detected", report.Text)
 	require.Len(t, report.Diagnostics, 1)
 	require.Equal(t, `Adding a unique index "idx_b" on table "users" might fail in case column "b" contains duplicate entries`, report.Diagnostics[0].Text)
 }
@@ -116,18 +120,19 @@ func TestAnalyzer_ModifyUniqueIndex(t *testing.T) {
 			}),
 		}
 	)
-	az := datadepend.New(datadepend.Options{})
-	err := az.Analyze(context.Background(), pass)
+	az, err := datadepend.New(nil, datadepend.Handler{})
 	require.NoError(t, err)
-	require.Equal(t, "Data dependent changes detected in file 1.sql", report.Text)
+	err = az.Analyze(context.Background(), pass)
+	require.NoError(t, err)
+	require.Equal(t, "data dependent change detected", report.Text)
 	require.Len(t, report.Diagnostics, 1)
 	require.Equal(t, `Modifying an index "idx_b" on table "users" might fail in case of duplicate entries`, report.Diagnostics[0].Text)
 }
 
 func TestAnalyzer_Options(t *testing.T) {
 	var (
-		off  bool
-		pass = &sqlcheck.Pass{
+		report *sqlcheck.Report
+		pass   = &sqlcheck.Pass{
 			Dev: &sqlclient.Client{},
 			File: &sqlcheck.File{
 				File: testFile{name: "1.sql"},
@@ -161,13 +166,24 @@ func TestAnalyzer_Options(t *testing.T) {
 				},
 			},
 			Reporter: sqlcheck.ReportWriterFunc(func(r sqlcheck.Report) {
-				t.Fatal("unexpected report", r)
+				report = &r
 			}),
 		}
 	)
-	az := datadepend.New(datadepend.Options{UniqueIndex: &off})
-	err := az.Analyze(context.Background(), pass)
+	az, err := datadepend.New(&schemahcl.Resource{
+		Children: []*schemahcl.Resource{
+			{
+				Type: "data_depend",
+				Attrs: []*schemahcl.Attr{
+					specutil.BoolAttr("error", true),
+				},
+			},
+		},
+	}, datadepend.Handler{})
 	require.NoError(t, err)
+	err = az.Analyze(context.Background(), pass)
+	require.EqualError(t, err, "data dependent change detected")
+	require.NotNil(t, report)
 }
 
 type testFile struct {

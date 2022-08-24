@@ -23,14 +23,14 @@ type Analyzer struct {
 
 // New creates a new destructive changes Analyzer with the given options.
 func New(r *schemahcl.Resource) (*Analyzer, error) {
-	d := &Analyzer{}
-	d.Error = true
+	az := &Analyzer{}
+	az.Error = sqlx.P(true)
 	if r, ok := r.Resource("destructive"); ok {
-		if err := r.As(&d.Options); err != nil {
+		if err := r.As(&az.Options); err != nil {
 			return nil, fmt.Errorf("sql/sqlcheck: parsing destructive check options: %w", err)
 		}
 	}
-	return d, nil
+	return az, nil
 }
 
 // Analyze implements sqlcheck.Analyzer.
@@ -76,11 +76,18 @@ func (a *Analyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
 		}
 	}
 	if len(diags) > 0 {
-		text := fmt.Sprintf("Destructive changes detected in file %s", p.File.Name())
+		text := reportText(len(diags))
 		p.Reporter.WriteReport(sqlcheck.Report{Text: text, Diagnostics: diags})
-		if a.Error {
+		if sqlx.V(a.Error) {
 			return errors.New(text)
 		}
 	}
 	return nil
+}
+
+func reportText(n int) string {
+	if n > 1 {
+		return fmt.Sprintf("%d destructive changes detected", n)
+	}
+	return "destructive change detected"
 }
