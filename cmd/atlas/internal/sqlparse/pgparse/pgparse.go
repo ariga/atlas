@@ -35,19 +35,22 @@ func FixChange(_ migrate.Driver, s string, changes schema.Changes) (schema.Chang
 			if len(changes) > 2 {
 				return nil, fmt.Errorf("unexpected number of changes found: %d", len(changes))
 			}
-			parsefix.RenameColumn(modify, r.From, r.To)
+			parsefix.RenameColumn(modify, r)
 		}
 	case *tree.RenameTable:
-		changes = parsefix.RenameTable(changes, stmt.Name.String(), stmt.NewName.String())
+		changes = parsefix.RenameTable(changes, &parsefix.Rename{
+			From: stmt.Name.String(),
+			To:   stmt.NewName.String(),
+		})
 	}
 	return changes, nil
 }
 
 // renameColumns returns the renamed column exists in the statement, is any.
-func renameColumn(stmt *tree.AlterTable) (*struct{ From, To string }, bool) {
+func renameColumn(stmt *tree.AlterTable) (*parsefix.Rename, bool) {
 	for _, c := range stmt.Cmds {
 		if r, ok := c.(*tree.AlterTableRenameColumn); ok {
-			return &struct{ From, To string }{
+			return &parsefix.Rename{
 				From: r.Column.String(),
 				To:   r.NewName.String(),
 			}, true

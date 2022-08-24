@@ -84,7 +84,7 @@ func (s *Stmt) IsAlterTable() bool {
 }
 
 // RenameColumn returns the renamed column information from the statement, if exists.
-func (s *Stmt) RenameColumn() (*struct{ From, To string }, bool) {
+func (s *Stmt) RenameColumn() (*parsefix.Rename, bool) {
 	if !s.IsAlterTable() {
 		return nil, false
 	}
@@ -92,14 +92,14 @@ func (s *Stmt) RenameColumn() (*struct{ From, To string }, bool) {
 	if alter.old_column_name == nil || alter.new_column_name == nil {
 		return nil, false
 	}
-	return &struct{ From, To string }{
+	return &parsefix.Rename{
 		From: alter.old_column_name.GetText(),
 		To:   alter.new_column_name.GetText(),
 	}, true
 }
 
 // RenameTable returns the renamed table information from the statement, if exists.
-func (s *Stmt) RenameTable() (*struct{ From, To string }, bool) {
+func (s *Stmt) RenameTable() (*parsefix.Rename, bool) {
 	if !s.IsAlterTable() {
 		return nil, false
 	}
@@ -107,7 +107,7 @@ func (s *Stmt) RenameTable() (*struct{ From, To string }, bool) {
 	if alter.new_table_name == nil {
 		return nil, false
 	}
-	return &struct{ From, To string }{
+	return &parsefix.Rename{
 		From: alter.Table_name(0).GetText(),
 		To:   alter.new_table_name.GetText(),
 	}, true
@@ -134,10 +134,10 @@ func FixChange(_ migrate.Driver, s string, changes schema.Changes) (schema.Chang
 		if len(changes) > 2 {
 			return nil, fmt.Errorf("unexpected number of changes found: %d", len(changes))
 		}
-		parsefix.RenameColumn(modify, r.From, r.To)
+		parsefix.RenameColumn(modify, r)
 	}
 	if r, ok := stmt.RenameTable(); ok {
-		changes = parsefix.RenameTable(changes, r.From, r.To)
+		changes = parsefix.RenameTable(changes, r)
 	}
 	return changes, nil
 }
