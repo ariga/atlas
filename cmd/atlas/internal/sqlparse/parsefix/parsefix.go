@@ -9,11 +9,16 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
+// Rename describes a rename of resource.
+type Rename struct {
+	From, To string
+}
+
 // RenameColumn patches DROP/ADD column commands to RENAME.
-func RenameColumn(modify *schema.ModifyTable, from, to string) {
+func RenameColumn(modify *schema.ModifyTable, r *Rename) {
 	changes := schema.Changes(modify.Changes)
-	i := changes.IndexDropColumn(from)
-	j := changes.IndexAddColumn(to)
+	i := changes.IndexDropColumn(r.From)
+	j := changes.IndexAddColumn(r.To)
 	if i != -1 && j != -1 {
 		changes[max(i, j)] = &schema.RenameColumn{
 			From: changes[i].(*schema.DropColumn).C,
@@ -24,10 +29,25 @@ func RenameColumn(modify *schema.ModifyTable, from, to string) {
 	}
 }
 
+// RenameIndex patches DROP/ADD index commands to RENAME.
+func RenameIndex(modify *schema.ModifyTable, r *Rename) {
+	changes := schema.Changes(modify.Changes)
+	i := changes.IndexDropIndex(r.From)
+	j := changes.IndexAddIndex(r.To)
+	if i != -1 && j != -1 {
+		changes[max(i, j)] = &schema.RenameIndex{
+			From: changes[i].(*schema.DropIndex).I,
+			To:   changes[j].(*schema.AddIndex).I,
+		}
+		changes.RemoveIndex(min(i, j))
+		modify.Changes = changes
+	}
+}
+
 // RenameTable patches DROP/ADD table commands to RENAME.
-func RenameTable(changes schema.Changes, from, to string) schema.Changes {
-	i := changes.IndexDropTable(from)
-	j := changes.IndexAddTable(to)
+func RenameTable(changes schema.Changes, r *Rename) schema.Changes {
+	i := changes.IndexDropTable(r.From)
+	j := changes.IndexAddTable(r.To)
 	if i != -1 && j != -1 {
 		changes[max(i, j)] = &schema.RenameTable{
 			From: changes[i].(*schema.DropTable).T,

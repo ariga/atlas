@@ -35,27 +35,44 @@ func FixChange(d migrate.Driver, s string, changes schema.Changes) (schema.Chang
 			return nil, fmt.Errorf("expected modify-table change for alter-table statement, but got: %T", changes[0])
 		}
 		for _, r := range renameColumns(stmt) {
-			parsefix.RenameColumn(modify, r.From, r.To)
+			parsefix.RenameColumn(modify, r)
+		}
+		for _, r := range renameIndexes(stmt) {
+			parsefix.RenameIndex(modify, r)
 		}
 	case *ast.RenameTableStmt:
 		for _, t := range stmt.TableToTables {
 			changes = parsefix.RenameTable(
 				changes,
-				t.OldTable.Name.O,
-				t.NewTable.Name.O,
-			)
+				&parsefix.Rename{
+					From: t.OldTable.Name.O,
+					To:   t.NewTable.Name.O,
+				})
 		}
 	}
 	return changes, nil
 }
 
 // renameColumns returns all renamed columns exist in the statement.
-func renameColumns(stmt *ast.AlterTableStmt) (rename []struct{ From, To string }) {
+func renameColumns(stmt *ast.AlterTableStmt) (rename []*parsefix.Rename) {
 	for _, s := range stmt.Specs {
 		if s.Tp == ast.AlterTableRenameColumn {
-			rename = append(rename, struct{ From, To string }{
+			rename = append(rename, &parsefix.Rename{
 				From: s.OldColumnName.Name.O,
 				To:   s.NewColumnName.Name.O,
+			})
+		}
+	}
+	return
+}
+
+// renameIndexes returns all renamed indexes exist in the statement.
+func renameIndexes(stmt *ast.AlterTableStmt) (rename []*parsefix.Rename) {
+	for _, s := range stmt.Specs {
+		if s.Tp == ast.AlterTableRenameIndex {
+			rename = append(rename, &parsefix.Rename{
+				From: s.FromKey.O,
+				To:   s.ToKey.O,
 			})
 		}
 	}
