@@ -54,6 +54,33 @@ func TestFixChange_RenameColumns(t *testing.T) {
 	)
 }
 
+func TestFixChange_RenameIndexes(t *testing.T) {
+	changes, err := pgparse.FixChange(
+		nil,
+		"ALTER INDEX IF EXISTS i1 RENAME TO i2",
+		schema.Changes{
+			&schema.ModifyTable{
+				Changes: schema.Changes{
+					&schema.DropIndex{I: schema.NewIndex("i1")},
+					&schema.AddIndex{I: schema.NewIndex("i2")},
+				},
+			},
+		},
+	)
+	require.NoError(t, err)
+	require.Equal(
+		t,
+		schema.Changes{
+			&schema.ModifyTable{
+				Changes: schema.Changes{
+					&schema.RenameIndex{From: schema.NewIndex("i1"), To: schema.NewIndex("i2")},
+				},
+			},
+		},
+		changes,
+	)
+}
+
 func TestFixChange_RenameTable(t *testing.T) {
 	changes, err := pgparse.FixChange(
 		nil,

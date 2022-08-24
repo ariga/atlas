@@ -24,19 +24,21 @@ func FixChange(_ migrate.Driver, s string, changes schema.Changes) (schema.Chang
 	switch stmt := stmt.AST.(type) {
 	case *tree.AlterTable:
 		if r, ok := renameColumn(stmt); ok {
-			if len(changes) != 1 {
-				return nil, fmt.Errorf("unexected number fo changes: %d", len(changes))
-			}
-			modify, ok := changes[0].(*schema.ModifyTable)
-			if !ok {
-				return nil, fmt.Errorf("expected modify-table change for alter-table statement, but got: %T", changes[0])
-			}
-			// ALTER COLUMN cannot be combined with additional commands.
-			if len(changes) > 2 {
-				return nil, fmt.Errorf("unexpected number of changes found: %d", len(changes))
+			modify, err := expectModify(changes)
+			if err != nil {
+				return nil, err
 			}
 			parsefix.RenameColumn(modify, r)
 		}
+	case *tree.RenameIndex:
+		modify, err := expectModify(changes)
+		if err != nil {
+			return nil, err
+		}
+		parsefix.RenameIndex(modify, &parsefix.Rename{
+			From: stmt.Index.String(),
+			To:   stmt.NewName.String(),
+		})
 	case *tree.RenameTable:
 		changes = parsefix.RenameTable(changes, &parsefix.Rename{
 			From: stmt.Name.String(),
@@ -46,7 +48,7 @@ func FixChange(_ migrate.Driver, s string, changes schema.Changes) (schema.Chang
 	return changes, nil
 }
 
-// renameColumns returns the renamed column exists in the statement, is any.
+// renameColumn returns the renamed column exists in the statement, is any.
 func renameColumn(stmt *tree.AlterTable) (*parsefix.Rename, bool) {
 	for _, c := range stmt.Cmds {
 		if r, ok := c.(*tree.AlterTableRenameColumn); ok {
@@ -57,4 +59,15 @@ func renameColumn(stmt *tree.AlterTable) (*parsefix.Rename, bool) {
 		}
 	}
 	return nil, false
+}
+
+func expectModify(changes schema.Changes) (*schema.ModifyTable, error) {
+	if len(changes) != 1 {
+		return nil, fmt.Errorf("unexected number fo changes: %d", len(changes))
+	}
+	modify, ok := changes[0].(*schema.ModifyTable)
+	if !ok {
+		return nil, fmt.Errorf("expected modify-table change for alter-table statement, but got: %T", changes[0])
+	}
+	return modify, nil
 }

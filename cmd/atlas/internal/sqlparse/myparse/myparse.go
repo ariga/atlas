@@ -53,7 +53,7 @@ func FixChange(d migrate.Driver, s string, changes schema.Changes) (schema.Chang
 	return changes, nil
 }
 
-// renameColumns returns all renamed columns exist in the statement.
+// renameColumns returns all renamed columns that exist in the statement.
 func renameColumns(stmt *ast.AlterTableStmt) (rename []*parsefix.Rename) {
 	for _, s := range stmt.Specs {
 		if s.Tp == ast.AlterTableRenameColumn {
@@ -66,7 +66,7 @@ func renameColumns(stmt *ast.AlterTableStmt) (rename []*parsefix.Rename) {
 	return
 }
 
-// renameIndexes returns all renamed indexes exist in the statement.
+// renameIndexes returns all renamed indexes that exist in the statement.
 func renameIndexes(stmt *ast.AlterTableStmt) (rename []*parsefix.Rename) {
 	for _, s := range stmt.Specs {
 		if s.Tp == ast.AlterTableRenameIndex {

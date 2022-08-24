@@ -9,7 +9,7 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
-// Rename describes a rename of resource.
+// Rename describes rename of a resource.
 type Rename struct {
 	From, To string
 }
