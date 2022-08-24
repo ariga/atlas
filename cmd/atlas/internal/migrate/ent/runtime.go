@@ -9,6 +9,7 @@ package ent
 import (
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/schema"
+	"ariga.io/atlas/sql/migrate"
 )
 
 // The init function reads all schema descriptors with runtime code
@@ -17,6 +18,10 @@ import (
 func init() {
 	revisionFields := schema.Revision{}.Fields()
 	_ = revisionFields
+	// revisionDescType is the schema descriptor for type field.
+	revisionDescType := revisionFields[2].Descriptor()
+	// revision.DefaultType holds the default value on creation for the type field.
+	revision.DefaultType = migrate.RevisionType(revisionDescType.Default.(uint))
 	// revisionDescApplied is the schema descriptor for applied field.
 	revisionDescApplied := revisionFields[3].Descriptor()
 	// revision.AppliedValidator is a validator for the "applied" field. It is called by the builders before save.

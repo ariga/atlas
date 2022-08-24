@@ -15,6 +15,7 @@ import (
 	"ariga.io/atlas/sql/sqlclient"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	entschema "entgo.io/ent/dialect/sql/schema"
 )
 
 // DefaultRevisionSchema is the default schema for storing revisions table.
@@ -91,7 +92,7 @@ func (r *EntRevisions) Init(ctx context.Context) error {
 	}
 	r.ac.AddClosers(sc)
 	r.ec = ent.NewClient(ent.Driver(sql.OpenDB(sc.Name, sc.DB)))
-	return r.ec.Schema.Create(ctx)
+	return r.ec.Schema.Create(ctx, entschema.WithDropColumn(true))
 }
 
 // ReadRevision reads a revision from the revisions table.

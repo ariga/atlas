@@ -41,6 +41,14 @@ func (ru *RevisionUpdate) SetType(mt migrate.RevisionType) *RevisionUpdate {
 	return ru
 }
 
+// SetNillableType sets the "type" field if the given value is not nil.
+func (ru *RevisionUpdate) SetNillableType(mt *migrate.RevisionType) *RevisionUpdate {
+	if mt != nil {
+		ru.SetType(*mt)
+	}
+	return ru
+}
+
 // AddType adds mt to the "type" field.
 func (ru *RevisionUpdate) AddType(mt migrate.RevisionType) *RevisionUpdate {
 	ru.mutation.AddType(mt)
@@ -349,6 +357,14 @@ type RevisionUpdateOne struct {
 func (ruo *RevisionUpdateOne) SetType(mt migrate.RevisionType) *RevisionUpdateOne {
 	ruo.mutation.ResetType()
 	ruo.mutation.SetType(mt)
+	return ruo
+}
+
+// SetNillableType sets the "type" field if the given value is not nil.
+func (ruo *RevisionUpdateOne) SetNillableType(mt *migrate.RevisionType) *RevisionUpdateOne {
+	if mt != nil {
+		ruo.SetType(*mt)
+	}
 	return ruo
 }
 

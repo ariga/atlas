@@ -40,6 +40,14 @@ func (rc *RevisionCreate) SetType(mt migrate.RevisionType) *RevisionCreate {
 	return rc
 }
 
+// SetNillableType sets the "type" field if the given value is not nil.
+func (rc *RevisionCreate) SetNillableType(mt *migrate.RevisionType) *RevisionCreate {
+	if mt != nil {
+		rc.SetType(*mt)
+	}
+	return rc
+}
+
 // SetApplied sets the "applied" field.
 func (rc *RevisionCreate) SetApplied(i int) *RevisionCreate {
 	rc.mutation.SetApplied(i)
@@ -113,6 +121,7 @@ func (rc *RevisionCreate) Save(ctx context.Context) (*Revision, error) {
 		err  error
 		node *Revision
 	)
+	rc.defaults()
 	if len(rc.hooks) == 0 {
 		if err = rc.check(); err != nil {
 			return nil, err
@@ -173,6 +182,14 @@ func (rc *RevisionCreate) Exec(ctx context.Context) error {
 func (rc *RevisionCreate) ExecX(ctx context.Context) {
 	if err := rc.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (rc *RevisionCreate) defaults() {
+	if _, ok := rc.mutation.GetType(); !ok {
+		v := revision.DefaultType
+		rc.mutation.SetType(v)
 	}
 }
 
@@ -827,6 +844,7 @@ func (rcb *RevisionCreateBulk) Save(ctx context.Context) ([]*Revision, error) {
 	for i := range rcb.builders {
 		func(i int, root context.Context) {
 			builder := rcb.builders[i]
+			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*RevisionMutation)
 				if !ok {
