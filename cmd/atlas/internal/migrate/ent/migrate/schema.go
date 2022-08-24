@@ -17,7 +17,7 @@ var (
 	AtlasSchemaRevisionsColumns = []*schema.Column{
 		{Name: "version", Type: field.TypeString},
 		{Name: "description", Type: field.TypeString},
-		{Name: "type", Type: field.TypeUint},
+		{Name: "type", Type: field.TypeUint, Default: 2},
 		{Name: "applied", Type: field.TypeInt},
 		{Name: "total", Type: field.TypeInt},
 		{Name: "executed_at", Type: field.TypeTime},

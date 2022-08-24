@@ -29,7 +29,8 @@ func (Revision) Fields() []ent.Field {
 		field.String("description").
 			Immutable(),
 		field.Uint("type").
-			GoType(migrate.RevisionType(0)),
+			GoType(migrate.RevisionType(0)).
+			Default(uint(migrate.RevisionTypeExecute)),
 		field.Int("applied").
 			NonNegative(),
 		field.Int("total").

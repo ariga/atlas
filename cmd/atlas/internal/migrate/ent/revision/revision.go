@@ -6,6 +6,10 @@
 
 package revision
 
+import (
+	"ariga.io/atlas/sql/migrate"
+)
+
 const (
 	// Label holds the string label denoting the revision type in the database.
 	Label = "revision"
@@ -61,6 +65,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// DefaultType holds the default value on creation for the "type" field.
+	DefaultType migrate.RevisionType
 	// AppliedValidator is a validator for the "applied" field. It is called by the builders before save.
 	AppliedValidator func(int) error
 	// TotalValidator is a validator for the "total" field. It is called by the builders before save.
