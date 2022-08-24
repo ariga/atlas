@@ -6,35 +6,27 @@ package datadepend
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"ariga.io/atlas/schemahcl"
+	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
 )
 
 type (
-	// Options defines the configuration options
-	// for the data-dependent changes checker.
-	Options struct {
-		// UniqueIndex indicates if the analyzer should check for modification or
-		// addition of unique indexes to tables that can cause migration to fail.
-		UniqueIndex *bool `spec:"drop_schema,omitempty"`
-
-		// NotNull indicates if the analyzer should check for modification
-		// or addition of NOT NULL constraints to columns.
-		NotNull *bool `spec:"not_null,omitempty"`
-
-		// Underlying driver handlers.
-		Handler struct {
-			// AddNotNull is applied when a new non-nullable column was
-			// added to an existing table.
-			AddNotNull ColumnHandler
-		}
-	}
-
 	// Analyzer checks data-dependent changes.
 	Analyzer struct {
-		Options
+		sqlcheck.Options
+		Handler
+	}
+
+	// Handler holds the underlying driver handlers.
+	Handler struct {
+		// AddNotNull is applied when a new non-nullable column was
+		// added to an existing table.
+		AddNotNull ColumnHandler
 	}
 
 	// ColumnPass wraps the information needed
@@ -51,21 +43,19 @@ type (
 )
 
 // New creates a new data-dependant analyzer with the given options.
-func New(opts Options) *Analyzer {
-	notnull, unique := true, true
-	if opts.NotNull != nil {
-		notnull = *opts.NotNull
+func New(r *schemahcl.Resource, h Handler) (*Analyzer, error) {
+	az := &Analyzer{Handler: h}
+	if r, ok := r.Resource("data_depend"); ok {
+		if err := r.As(&az.Options); err != nil {
+			return nil, fmt.Errorf("sql/sqlcheck: parsing datadepend check options: %w", err)
+		}
 	}
-	if opts.UniqueIndex != nil {
-		unique = *opts.UniqueIndex
-	}
-	return &Analyzer{Options: Options{UniqueIndex: &unique, NotNull: &notnull, Handler: opts.Handler}}
+	return az, nil
 }
 
 // Analyze runs data-depend analysis on MySQL changes.
 func (a *Analyzer) Analyze(ctx context.Context, p *sqlcheck.Pass) error {
-	a.Report(p, a.Diagnostics(ctx, p))
-	return nil
+	return a.Report(p, a.Diagnostics(ctx, p))
 }
 
 // Diagnostics runs the common analysis on the file and returns its diagnostics.
@@ -90,14 +80,14 @@ func (a *Analyzer) Diagnostics(_ context.Context, p *sqlcheck.Pass) (diags []sql
 						return nil
 					}()
 					// A unique index was added on an existing column.
-					if *a.UniqueIndex && c.I.Unique && column != nil {
+					if c.I.Unique && column != nil {
 						diags = append(diags, sqlcheck.Diagnostic{
 							Pos:  sc.Pos,
 							Text: fmt.Sprintf("Adding a unique index %q on table %q might fail in case column %q contains duplicate entries", c.I.Name, m.T.Name, column.Name),
 						})
 					}
 				case *schema.ModifyIndex:
-					if *a.UniqueIndex && c.Change.Is(schema.ChangeUnique) && c.To.Unique && p.File.IndexSpan(m.T, c.To)&sqlcheck.SpanAdded == 0 {
+					if c.Change.Is(schema.ChangeUnique) && c.To.Unique && p.File.IndexSpan(m.T, c.To)&sqlcheck.SpanAdded == 0 {
 						diags = append(diags, sqlcheck.Diagnostic{
 							Pos:  sc.Pos,
 							Text: fmt.Sprintf("Modifying an index %q on table %q might fail in case of duplicate entries", c.To.Name, m.T.Name),
@@ -106,7 +96,7 @@ func (a *Analyzer) Diagnostics(_ context.Context, p *sqlcheck.Pass) (diags []sql
 				case *schema.AddColumn:
 					// In case the column is nullable without default
 					// value and the table was not added in this file.
-					if *a.NotNull && a.Handler.AddNotNull != nil && !c.C.Type.Null && c.C.Default == nil && p.File.TableSpan(m.T)&sqlcheck.SpanAdded != 1 {
+					if a.Handler.AddNotNull != nil && !c.C.Type.Null && c.C.Default == nil && p.File.TableSpan(m.T)&sqlcheck.SpanAdded != 1 {
 						d, err := a.Handler.AddNotNull(&ColumnPass{Pass: p, Change: sc, Table: m.T, Column: c.C})
 						if err != nil {
 							return
@@ -123,11 +113,23 @@ func (a *Analyzer) Diagnostics(_ context.Context, p *sqlcheck.Pass) (diags []sql
 // Report provides standard reporting for data-dependent changes. Drivers that
 // decorate this Analyzer should call this function to get consistent reporting
 // between dialects.
-func (a *Analyzer) Report(p *sqlcheck.Pass, diags []sqlcheck.Diagnostic) {
+func (a *Analyzer) Report(p *sqlcheck.Pass, diags []sqlcheck.Diagnostic) error {
 	if len(diags) > 0 {
+		text := reportText(len(diags))
 		p.Reporter.WriteReport(sqlcheck.Report{
-			Text:        fmt.Sprintf("Data dependent changes detected in file %s", p.File.Name()),
+			Text:        text,
 			Diagnostics: diags,
 		})
+		if sqlx.V(a.Error) {
+			return errors.New(text)
+		}
 	}
+	return nil
+}
+
+func reportText(n int) string {
+	if n > 1 {
+		return fmt.Sprintf("%d data dependent changes detected", n)
+	}
+	return "data dependent change detected"
 }

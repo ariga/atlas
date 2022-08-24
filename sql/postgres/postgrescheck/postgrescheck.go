@@ -2,7 +2,7 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package sqlitecheck
+package postgrescheck
 
 import (
 	"fmt"
@@ -14,33 +14,31 @@ import (
 	"ariga.io/atlas/sql/sqlcheck/destructive"
 )
 
-// NewDataDepend creates new data-depend analyzer.
-func NewDataDepend(*schemahcl.Resource) *datadepend.Analyzer {
-	var opts datadepend.Options
-	opts.Handler.AddNotNull = func(p *datadepend.ColumnPass) ([]sqlcheck.Diagnostic, error) {
-		tt, err := postgres.FormatType(p.Column.Type.Type)
-		if err != nil {
-			return nil, err
-		}
-		return []sqlcheck.Diagnostic{
-			{
-				Pos: p.Change.Pos,
-				Text: fmt.Sprintf(
-					"Adding a non-nullable %q column %q will fail in case table %q is not empty",
-					tt, p.Column.Name, p.Table.Name,
-				),
-			},
-		}, nil
+func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err error) {
+	tt, err := postgres.FormatType(p.Column.Type.Type)
+	if err != nil {
+		return nil, err
 	}
-	return datadepend.New(opts)
+	return []sqlcheck.Diagnostic{
+		{
+			Pos: p.Change.Pos,
+			Text: fmt.Sprintf(
+				"Adding a non-nullable %q column %q will fail in case table %q is not empty",
+				tt, p.Column.Name, p.Table.Name,
+			),
+		},
+	}, nil
 }
 
 func init() {
 	sqlcheck.Register(postgres.DriverName, func(r *schemahcl.Resource) (sqlcheck.Analyzer, error) {
-		d, err := destructive.New(r)
+		ds, err := destructive.New(r)
 		if err != nil {
 			return nil, err
 		}
-		return sqlcheck.Analyzers{d, NewDataDepend(nil)}, nil
+		dd, err := datadepend.New(r, datadepend.Handler{
+			AddNotNull: addNotNull,
+		})
+		return sqlcheck.Analyzers{ds, dd}, nil
 	})
 }

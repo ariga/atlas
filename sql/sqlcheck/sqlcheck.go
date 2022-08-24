@@ -84,7 +84,7 @@ type (
 	Options struct {
 		// Error indicates if an analyzer should
 		// error in case a Diagnostic was found.
-		Error bool `spec:"error"`
+		Error *bool `spec:"error"`
 
 		// Allow drivers to extend the configuration.
 		schemahcl.DefaultExtension

@@ -65,7 +65,7 @@ func TestAnalyzer_DropTable(t *testing.T) {
 	require.NoError(t, err)
 	err = az.Analyze(context.Background(), pass)
 	require.Error(t, err)
-	require.Equal(t, `Destructive changes detected in file 1.sql`, report.Text)
+	require.Equal(t, "2 destructive changes detected", report.Text)
 	require.Len(t, report.Diagnostics, 2)
 	require.Equal(t, `Dropping table "users"`, report.Diagnostics[0].Text)
 	require.Equal(t, `Dropping table "posts"`, report.Diagnostics[1].Text)
@@ -162,7 +162,7 @@ func TestAnalyzer_DropSchema(t *testing.T) {
 	require.NoError(t, err)
 	err = az.Analyze(context.Background(), pass)
 	require.NoError(t, err)
-	require.Equal(t, `Destructive changes detected in file 1.sql`, report.Text)
+	require.Equal(t, "2 destructive changes detected", report.Text)
 	require.Len(t, report.Diagnostics, 2)
 	require.Equal(t, `Dropping non-empty schema "test" with 2 tables`, report.Diagnostics[0].Text)
 	require.Equal(t, `Dropping schema "market"`, report.Diagnostics[1].Text)
@@ -226,6 +226,7 @@ func TestAnalyzer_DropColumn(t *testing.T) {
 	err = az.Analyze(context.Background(), pass)
 	require.NoError(t, err)
 	require.Len(t, report.Diagnostics, 1)
+	require.Equal(t, "destructive change detected", report.Text)
 	require.Equal(t, `Dropping non-virtual column "c"`, report.Diagnostics[0].Text)
 }
 

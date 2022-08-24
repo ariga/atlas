@@ -50,7 +50,7 @@ func TestRunner_Run(t *testing.T) {
 	require.Len(t, changes, 2)
 	require.Equal(t, "CREATE TABLE pets (id INT)", changes[0].Stmt)
 	require.Equal(t, "DROP TABLE users", changes[1].Stmt)
-	require.Equal(t, `Report 1. File "2.sql":
+	require.Equal(t, `2.sql: Report 1:
 
 	L1: Diagnostic 1
 
@@ -91,10 +91,10 @@ sqlite3, migrations
 Steps:
 {"Name":"Detect New Migration Files","Text":"Found 1 new migration files (from 2 total)"}
 {"Name":"Replay Migration Files","Text":"Loaded 1 changes on dev database"}
-{"Name":"Analyze 2.sql","Text":"1 reports were found in analysis","Result":{"Name":"2.sql","Text":"CREATE TABLE pets (id INT)\nDROP TABLE users","Reports":[{"Text":"Report 2. File \"2.sql\"","Diagnostics":[{"Pos":1,"Text":"Diagnostic 1"},{"Pos":2,"Text":"Diagnostic 2"}]}]}}
+{"Name":"Analyze 2.sql","Text":"1 reports were found in analysis","Result":{"Name":"2.sql","Text":"CREATE TABLE pets (id INT)\nDROP TABLE users","Reports":[{"Text":"Report 2","Diagnostics":[{"Pos":1,"Text":"Diagnostic 1"},{"Pos":2,"Text":"Diagnostic 2"}]}]}}
 
 Files:
-{"Name":"2.sql","Text":"CREATE TABLE pets (id INT)\nDROP TABLE users","Reports":[{"Text":"Report 2. File \"2.sql\"","Diagnostics":[{"Pos":1,"Text":"Diagnostic 1"},{"Pos":2,"Text":"Diagnostic 2"}]}]}
+{"Name":"2.sql","Text":"CREATE TABLE pets (id INT)\nDROP TABLE users","Reports":[{"Text":"Report 2","Diagnostics":[{"Pos":1,"Text":"Diagnostic 1"},{"Pos":2,"Text":"Diagnostic 2"}]}]}
 
 
 Current Schema:
@@ -129,7 +129,7 @@ type testAnalyzer struct {
 func (t *testAnalyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
 	t.passes = append(t.passes, p)
 	r := sqlcheck.Report{
-		Text: fmt.Sprintf("Report %d. File %q", len(t.passes), p.File.Name()),
+		Text: fmt.Sprintf("Report %d", len(t.passes)),
 	}
 	for i := 1; i <= len(t.passes); i++ {
 		r.Diagnostics = append(r.Diagnostics, sqlcheck.Diagnostic{

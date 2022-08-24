@@ -13,7 +13,7 @@ ALTER TABLE users ADD COLUMN c2 int NOT NULL;
 ALTER TABLE users ADD COLUMN c3 int NOT NULL DEFAULT 1;
 
 -- expected1.txt --
-Data dependent changes detected in file 2.sql:
+2.sql: data dependent change detected:
 
 	L1: Adding a non-nullable "int" column "c2" will fail in case table "users" is not empty
 

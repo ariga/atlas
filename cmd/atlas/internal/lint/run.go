@@ -145,7 +145,7 @@ var (
 	{{- else }}
 		{{- range $r := $f.Reports }}
 			{{- if $r.Text }}
-				{{- printf "%s:\n\n" $r.Text }}
+				{{- printf "%s: %s:\n\n" $f.Name $r.Text }}
 			{{- else if $r.Diagnostics }}
 				{{- printf "Unnamed diagnostics for file %s:\n\n" $f.Name }}
 			{{- end }}

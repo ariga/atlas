@@ -447,3 +447,17 @@ func ReverseChanges(c []schema.Change) {
 		c[i], c[n-i-1] = c[n-i-1], c[i]
 	}
 }
+
+// P returns a pointer to v.
+func P[T any](v T) *T {
+	return &v
+}
+
+// V returns the value p is pointing to.
+// If p is nil, the zero value is returned.
+func V[T any](p *T) (v T) {
+	if p != nil {
+		v = *p
+	}
+	return
+}
