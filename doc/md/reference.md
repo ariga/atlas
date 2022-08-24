@@ -325,14 +325,15 @@ migration.
 ```
 #### Flags
 ```
-  -f, --file strings     [paths...] file or directory containing the HCL files
-  -u, --url string       URL to the database using the format:
-                         [driver://username:password@address/dbname?param=value]
-  -s, --schema strings   Set schema names.
-      --dev-url string   URL for the dev database. Used to validate schemas and calculate diffs
-                         before running migration.
-      --dry-run          Dry-run. Print SQL plan without prompting for execution.
-      --auto-approve     Auto approve. Apply the schema changes without prompting for approval.
+  -f, --file strings      [paths...] file or directory containing the HCL files
+  -u, --url string        URL to the database using the format:
+                          [driver://username:password@address/dbname?param=value]
+      --exclude strings   List of glob patterns used to filter resources from applying.
+  -s, --schema strings    Set schema names.
+      --dev-url string    URL for the dev database. Used to validate schemas and calculate diffs
+                          before running migration.
+      --dry-run           Dry-run. Print SQL plan without prompting for execution.
+      --auto-approve      Auto approve. Apply the schema changes without prompting for approval.
 
 ```
 
