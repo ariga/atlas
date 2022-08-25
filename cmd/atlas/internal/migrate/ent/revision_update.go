@@ -62,6 +62,14 @@ func (ru *RevisionUpdate) SetApplied(i int) *RevisionUpdate {
 	return ru
 }
 
+// SetNillableApplied sets the "applied" field if the given value is not nil.
+func (ru *RevisionUpdate) SetNillableApplied(i *int) *RevisionUpdate {
+	if i != nil {
+		ru.SetApplied(*i)
+	}
+	return ru
+}
+
 // AddApplied adds i to the "applied" field.
 func (ru *RevisionUpdate) AddApplied(i int) *RevisionUpdate {
 	ru.mutation.AddApplied(i)
@@ -72,6 +80,14 @@ func (ru *RevisionUpdate) AddApplied(i int) *RevisionUpdate {
 func (ru *RevisionUpdate) SetTotal(i int) *RevisionUpdate {
 	ru.mutation.ResetTotal()
 	ru.mutation.SetTotal(i)
+	return ru
+}
+
+// SetNillableTotal sets the "total" field if the given value is not nil.
+func (ru *RevisionUpdate) SetNillableTotal(i *int) *RevisionUpdate {
+	if i != nil {
+		ru.SetTotal(*i)
+	}
 	return ru
 }
 
@@ -381,6 +397,14 @@ func (ruo *RevisionUpdateOne) SetApplied(i int) *RevisionUpdateOne {
 	return ruo
 }
 
+// SetNillableApplied sets the "applied" field if the given value is not nil.
+func (ruo *RevisionUpdateOne) SetNillableApplied(i *int) *RevisionUpdateOne {
+	if i != nil {
+		ruo.SetApplied(*i)
+	}
+	return ruo
+}
+
 // AddApplied adds i to the "applied" field.
 func (ruo *RevisionUpdateOne) AddApplied(i int) *RevisionUpdateOne {
 	ruo.mutation.AddApplied(i)
@@ -391,6 +415,14 @@ func (ruo *RevisionUpdateOne) AddApplied(i int) *RevisionUpdateOne {
 func (ruo *RevisionUpdateOne) SetTotal(i int) *RevisionUpdateOne {
 	ruo.mutation.ResetTotal()
 	ruo.mutation.SetTotal(i)
+	return ruo
+}
+
+// SetNillableTotal sets the "total" field if the given value is not nil.
+func (ruo *RevisionUpdateOne) SetNillableTotal(i *int) *RevisionUpdateOne {
+	if i != nil {
+		ruo.SetTotal(*i)
+	}
 	return ruo
 }
 

@@ -111,6 +111,32 @@ jobs:
         working-directory: internal/integration/hclsqlspec
         run: go test -race -count=2 -v ./...
 
+  revisions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2.3.4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.19
+      - uses: actions/cache@v2.1.6
+        with:
+          path: ~/go/pkg/mod
+          key: {{ "${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}" }}
+          restore-keys: |
+            {{ "${{ runner.os }}-go-" }}
+      - name: Checkout origin/master
+        run: git checkout origin/master
+      - name: Create revisions from master
+        run: go run main.go migrate apply --dir file://internal/cmdapi/testdata/sqlite --url sqlite://db?_fk=1
+        working-directory: cmd/atlas
+      - name: Checkout previous HEAD
+        run: git checkout -
+      - name: Migrate revisions table to HEAD
+        run: go run main.go migrate apply --dir file://internal/cmdapi/testdata/sqlite --url sqlite://db?_fk=1
+        working-directory: cmd/atlas
+
   {{ range $ }}
   integration-{{ .Version }}:
     runs-on: ubuntu-latest

@@ -32,9 +32,11 @@ func (Revision) Fields() []ent.Field {
 			GoType(migrate.RevisionType(0)).
 			Default(uint(migrate.RevisionTypeExecute)),
 		field.Int("applied").
-			NonNegative(),
+			NonNegative().
+			Default(0),
 		field.Int("total").
-			NonNegative(),
+			NonNegative().
+			Default(0),
 		field.Time("executed_at").
 			Immutable(),
 		field.Int64("execution_time").

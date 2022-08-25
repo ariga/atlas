@@ -67,8 +67,12 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultType holds the default value on creation for the "type" field.
 	DefaultType migrate.RevisionType
+	// DefaultApplied holds the default value on creation for the "applied" field.
+	DefaultApplied int
 	// AppliedValidator is a validator for the "applied" field. It is called by the builders before save.
 	AppliedValidator func(int) error
+	// DefaultTotal holds the default value on creation for the "total" field.
+	DefaultTotal int
 	// TotalValidator is a validator for the "total" field. It is called by the builders before save.
 	TotalValidator func(int) error
 )
