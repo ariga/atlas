@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -135,7 +134,7 @@ func (d *Driver) CheckClean(ctx context.Context, revT *migrate.TableIdent) error
 // Lock implements the schema.Locker interface.
 func (d *Driver) Lock(_ context.Context, name string, timeout time.Duration) (schema.UnlockFunc, error) {
 	path := filepath.Join(os.TempDir(), name+".lock")
-	c, err := ioutil.ReadFile(path)
+	c, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return acquireLock(path, timeout)
 	}

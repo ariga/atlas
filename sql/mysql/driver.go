@@ -169,12 +169,10 @@ func (d *Driver) CheckClean(ctx context.Context, revT *migrate.TableIdent) error
 		return err
 	}
 	if s != nil {
-		switch {
-		case len(s.Tables) == 0, (revT.Schema == "" || s.Name == revT.Schema) && len(s.Tables) == 1 && s.Tables[0].Name == revT.Name:
+		if len(s.Tables) == 0 || ((revT.Schema == "" || s.Name == revT.Schema) && len(s.Tables) == 1 && s.Tables[0].Name == revT.Name) {
 			return nil
-		default:
-			return &migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name)}
 		}
+		return &migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name)}
 	}
 	r, err := d.InspectRealm(ctx, nil)
 	if err != nil {

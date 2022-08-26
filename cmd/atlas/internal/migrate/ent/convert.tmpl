@@ -1,0 +1,36 @@
+{{/* gotype: entgo.io/ent/entc/gen.Graph */}}
+
+{{ define "convert" }}
+
+{{ $pkg := base $.Config.Package }}
+{{ template "header" $ }}
+
+import "ariga.io/atlas/sql/migrate"
+
+{{ range $n := $.Nodes }}
+    {{ if eq $n.Name "Revision" }}
+        {{ $builder := $n.CreateName }}
+        {{ $receiver := receiver $builder }}
+
+        // SetRevision takes the values for each field from the given migrate.Revision.
+        func ({{ $receiver }} *{{ $builder }}) SetRevision(rev *migrate.Revision) *{{ $builder }} {
+            {{ $receiver }}.SetID(rev.Version)
+            {{- range $f := $n.Fields }}
+                {{ $receiver }}.Set{{ $f.StructField }}(rev.{{ $f.StructField }})
+            {{- end }}
+            return {{ $receiver }}
+        }
+
+        // AtlasRevision returns an migrate.Revision from the current Revision.
+        func({{ $n.Receiver}} *Revision) AtlasRevision() *migrate.Revision {
+            return &migrate.Revision{
+                Version: r.ID,
+                {{- range $f := $n.Fields }}
+                    {{ $f.StructField }}: r.{{ $f.StructField }},
+                {{- end }}
+            }
+        }
+    {{ end }}
+{{ end }}
+
+{{ end }}

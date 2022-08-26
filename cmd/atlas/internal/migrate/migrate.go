@@ -153,17 +153,7 @@ func (r *EntRevisions) Flush(ctx context.Context) error {
 // write attempts to write the given revision to the database.
 func (r *EntRevisions) write(ctx context.Context, rev *migrate.Revision) error {
 	return r.ec.Revision.Create().
-		SetID(rev.Version).
-		SetDescription(rev.Description).
-		SetType(rev.Type).
-		SetApplied(rev.Applied).
-		SetTotal(rev.Total).
-		SetExecutedAt(rev.ExecutedAt).
-		SetExecutionTime(rev.ExecutionTime).
-		SetError(rev.Error).
-		SetHash(rev.Hash).
-		SetPartialHashes(rev.PartialHashes).
-		SetOperatorVersion(rev.OperatorVersion).
+		SetRevision(rev).
 		OnConflict(sql.ConflictColumns(revision.FieldID)).
 		UpdateNewValues().
 		Exec(ctx)
