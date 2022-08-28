@@ -63,3 +63,81 @@ might succeed in performing it only to be surprised that their migration script
 fails in production, breaking a deployment sequence or causing other unexpected
 behavior. Using the `datadepend` ([GoDoc](https://pkg.go.dev/ariga.io/atlas@master/sql/sqlcheck/datadepend)) 
 Analyzer, teams can detect this risk early and account for it in pre-deployment checks to a database. 
+
+## Checks
+
+The following schema change checks are provided by Atlas:
+
+| **Check**                          | **Short Description**                                                       |
+|------------------------------------|-----------------------------------------------------------------------------|
+| [**DS1**](#destructive-changes)    | Destructive changes                                                         |
+| [DS101](#DS101)                    | Schema was dropped                                                          |
+| [DS102](#DS102)                    | Table was dropped                                                           |
+| [DS103](#DS103)                    | Non-virtual column was dropped                                              |
+| [**MF1**](#data-dependent-changes) | Changes that might fail                                                     |
+| [MF101](#MF101)                    | Add unique index to existing column                                         |
+| [MF102](#MF102)                    | Modifying non-unique index to unique                                        |
+| [MF103](#MF103)                    | Adding a non-nullable column to an existing table                           |
+| **MY**                             | MySQL and MariaDB specific checks                                           |
+| [MY101](#MY101)                    | Adding a non-nullable column without a `DEFAULT` value to an existing table |
+
+
+#### DS101 {#DS101}
+
+Destructive change that is reported when a database schema was dropped. For example:
+
+```sql
+DROP SCHEMA test;
+```
+
+#### DS102 {#DS102}
+
+Destructive change that is reported when a table schema was dropped. For example:
+
+```sql
+DROP TABLE test.t;
+```
+
+#### DS103 {#DS103}
+
+Destructive change that is reported when a non-virtual column was dropped. For example:
+
+```sql
+ALTER TABLE t DROP COLUMN c;
+```
+
+#### MF101 {#MF101}
+
+Adding a unique index to a table might fail in case one of the indexed columns contain duplicate entries. For example:
+
+```sql
+CREATE UNIQUE INDEX i ON t(c);
+```
+
+#### MF102 {#MF102}
+
+Modifying a non-unique index to be unique might fail in case one of the indexed columns contain duplicate entries.
+
+:::note
+Since index modification is done with `DROP` and `CREATE`, this check will be reported only when analyzing changes
+programmatically or when working with the [declarative workflow](../concepts/workflows.md#declarative-migrations).
+:::
+
+#### MF103 {#MF103}
+
+Adding a non-nullable column to a table might fail in case the table is not empty. For example:
+
+```sql
+ALTER TABLE t ADD COLUMN c int NOT NULL;
+```
+
+#### MY101 {#MY101}
+
+Adding a non-nullable column to a table without a `DEFAULT` value implicitly sets existing rows with the column
+zero (default) value. For example:
+
+```sql
+ALTER TABLE t ADD COLUMN c int NOT NULL;
+// highlight-next-line
+-- Append column `c` to all existing rows with the value 0.
+```

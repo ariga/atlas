@@ -73,6 +73,7 @@ type (
 	Diagnostic struct {
 		Pos  int    // Diagnostic position.
 		Text string // Diagnostic text.
+		Code string // Code describes the check. For example, DS101
 	}
 
 	// ReportWriter represents a writer for analysis reports.
@@ -234,6 +235,18 @@ func (f *File) tableSpan(t *schema.Table) *tableSpan {
 		}
 	}
 	return f.spans[t.Schema.Name].tables[t.Name]
+}
+
+// codes registry
+var codes sync.Map
+
+// Code stores the given code in the registry.
+// It protects from duplicate analyzers' codes.
+func Code(code string) string {
+	if _, loaded := codes.LoadOrStore(code, struct{}{}); loaded {
+		panic("sqlcheck: Code called twice for " + code)
+	}
+	return code
 }
 
 // drivers specific analyzers.

@@ -33,6 +33,13 @@ func New(r *schemahcl.Resource) (*Analyzer, error) {
 	return az, nil
 }
 
+// List of codes.
+var (
+	codeDropS = sqlcheck.Code("DS101")
+	codeDropT = sqlcheck.Code("DS102")
+	codeDropC = sqlcheck.Code("DS103")
+)
+
 // Analyze implements sqlcheck.Analyzer.
 func (a *Analyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
 	var diags []sqlcheck.Diagnostic
@@ -50,11 +57,16 @@ func (a *Analyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
 					case n > 1:
 						text = fmt.Sprintf("Dropping non-empty schema %q with %d tables", c.S.Name, n)
 					}
-					diags = append(diags, sqlcheck.Diagnostic{Pos: sc.Pos, Text: text})
+					diags = append(diags, sqlcheck.Diagnostic{
+						Code: codeDropS,
+						Pos:  sc.Pos,
+						Text: text,
+					})
 				}
 			case *schema.DropTable:
 				if p.File.SchemaSpan(c.T.Schema) != sqlcheck.SpanDropped && p.File.TableSpan(c.T) != sqlcheck.SpanTemporary {
 					diags = append(diags, sqlcheck.Diagnostic{
+						Code: codeDropT,
 						Pos:  sc.Pos,
 						Text: fmt.Sprintf("Dropping table %q", c.T.Name),
 					})
@@ -67,6 +79,7 @@ func (a *Analyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
 					}
 					if g := (schema.GeneratedExpr{}); !sqlx.Has(d.C.Attrs, &g) || strings.ToUpper(g.Type) != "VIRTUAL" {
 						diags = append(diags, sqlcheck.Diagnostic{
+							Code: codeDropC,
 							Pos:  sc.Pos,
 							Text: fmt.Sprintf("Dropping non-virtual column %q", d.C.Name),
 						})
