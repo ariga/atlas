@@ -1,3 +1,3 @@
 CREATE INDEX i1 ON t1(c1)
-
+-- end --
 CREATE INDEX i2 ON t2(c2)

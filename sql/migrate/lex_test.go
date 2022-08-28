@@ -24,6 +24,6 @@ func TestLocalFile_Stmts(t *testing.T) {
 		require.NoError(t, err)
 		buf, err := os.ReadFile(filepath.Join(path, f.Name()+".golden"))
 		require.NoError(t, err)
-		require.Equal(t, string(buf), strings.Join(stmts, "\n\n"))
+		require.Equal(t, string(buf), strings.Join(stmts, "\n-- end --\n"))
 	}
 }

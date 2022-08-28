@@ -1,15 +1,15 @@
 CREATE TABLE t1(id int);
-
+-- end --
 CREATE TABLE t2(id int);
-
+-- end --
 CREATE TABLE t3(id int);
-
+-- end --
 CREATE TABLE t4(
     id int
     /* comment */
     -- comment
 ) ENGINE=InnoDB;
-
+-- end --
 CREATE TABLE t5(
     id int
     /* comment */
