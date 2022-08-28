@@ -72,6 +72,7 @@ func (l *lex) stmt() (stmt string, err error) {
 		if l.delim != delimiter {
 			stmt = strings.TrimSuffix(stmt, l.delim)
 		}
+		stmt = strings.TrimSpace(stmt)
 	}()
 	// Trim trailing whitespace.
 	l.skipSpaces()
@@ -96,15 +97,16 @@ func (l *lex) stmt() (stmt string, err error) {
 			if err := l.skipQuote(r); err != nil {
 				return "", err
 			}
+		// Delimiters take precedence over comments.
+		case strings.HasPrefix(l.input[l.pos-l.width:], l.delim) && l.depth == 0:
+			l.pos += len(l.delim) - l.width
+			return l.input[:l.pos], nil
 		case r == '#':
 			l.skipComment("#", "\n")
 		case r == '-' && l.next() == '-':
 			l.skipComment("--", "\n")
 		case r == '/' && l.next() == '*':
 			l.skipComment("/*", "*/")
-		case strings.HasPrefix(l.input[l.pos-l.width:], l.delim) && l.depth == 0:
-			l.pos += len(l.delim) - l.width
-			return l.input[:l.pos], nil
 		}
 	}
 }

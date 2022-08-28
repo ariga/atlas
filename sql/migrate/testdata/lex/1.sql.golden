@@ -1,19 +1,19 @@
 CREATE TABLE t1(id int);
-
+-- end --
 CREATE TABLE t2(id int);
-
+-- end --
 CREATE TABLE t3(id int);
-
+-- end --
 CREATE TABLE t4(
     id int,
     name varchar(255)
 );
-
+-- end --
 CREATE TABLE t4(
     id int,
     `name` varchar(255) DEFAULT ';'
 ) ENGINE=InnoDB;
-
+-- end --
 CREATE TABLE t5(
     id int
     /* comment */

@@ -1,7 +1,6 @@
--- atlas:delimiter ATLAS_DELIMITER
+-- atlas:delimiter \n-- end --\n
 
 DELIMITER $$
-
 CREATE DEFINER='boring' PROCEDURE proc ()
     COMMENT 'ATLAS_DELIMITER'
     SQL SECURITY INVOKER
@@ -14,7 +13,8 @@ BEGIN
 
     SELECT CONCAT('Enabled ', @rows := ROW_COUNT(), ' background thread', IF(@rows != 1, 's', '')) AS summary;
 END$$
-
 DELIMITER ;
+
+-- end --
 
 CALL proc();
