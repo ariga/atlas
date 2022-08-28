@@ -42,7 +42,7 @@ type (
 	ColumnHandler func(*ColumnPass) ([]sqlcheck.Diagnostic, error)
 )
 
-// New creates a new data-dependant analyzer with the given options.
+// New creates a new data-dependent analyzer with the given options.
 func New(r *schemahcl.Resource, h Handler) (*Analyzer, error) {
 	az := &Analyzer{Handler: h}
 	if r, ok := r.Resource("data_depend"); ok {

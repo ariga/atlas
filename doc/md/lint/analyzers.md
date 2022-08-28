@@ -32,15 +32,15 @@ will be deleted from disk, with no way to recover it. There are definitely situa
 of change is desired, but they are relatively rare. Using the `destructive` ([GoDoc](https://pkg.go.dev/ariga.io/atlas@master/sql/sqlcheck/destructive))
 Analyzer, teams can detect this type of change and design workflows that prevent it from happening accidentally. 
 
-### Data-dependant Changes 
+### Data-dependent Changes 
 
-Data-dependant changes are changes to a database schema that _may_ succeed or fail, depending on the
+Data-dependent changes are changes to a database schema that _may_ succeed or fail, depending on the
 data that is stored in the database. For instance, consider a statement such as:
 
 ```sql
 ALTER TABLE `example`.`orders` ADD UNIQUE INDEX `idx_name` (`name`);
 ```
-This statement is considered data-dependant because if the `orders` table 
+This statement is considered data-dependent because if the `orders` table 
 contains duplicate values on the name column we will not be able to add a uniqueness
 constraint. Consider we added two records with the name `atlas` to the table:
 ```
