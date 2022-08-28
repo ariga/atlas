@@ -17,6 +17,9 @@ import (
 	"ariga.io/atlas/sql/sqlcheck/destructive"
 )
 
+// codeImplicitUpdate is a MySQL specific code for reporting implicit update.
+var codeImplicitUpdate = sqlcheck.Code("MY101")
+
 func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err error) {
 	// Two types of reporting, implicit rows update and
 	// changes that may cause the migration to fail.
@@ -31,7 +34,8 @@ func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err erro
 	}
 	implicitUpdate := func(tt, v string) {
 		diags = append(diags, sqlcheck.Diagnostic{
-			Pos: p.Change.Pos,
+			Code: codeImplicitUpdate,
+			Pos:  p.Change.Pos,
 			Text: fmt.Sprintf(
 				"Adding a non-nullable %q column %q on table %q without a default value implicitly sets existing rows with %s",
 				tt, p.Column.Name, p.Table.Name, v,

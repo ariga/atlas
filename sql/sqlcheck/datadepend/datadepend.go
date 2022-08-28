@@ -58,6 +58,13 @@ func (a *Analyzer) Analyze(ctx context.Context, p *sqlcheck.Pass) error {
 	return a.Report(p, a.Diagnostics(ctx, p))
 }
 
+// List of codes.
+var (
+	codeAddUniqueI  = sqlcheck.Code("MF101")
+	codeModUniqueI  = sqlcheck.Code("MF102")
+	codeAddNotNullC = sqlcheck.Code("MF103")
+)
+
 // Diagnostics runs the common analysis on the file and returns its diagnostics.
 func (a *Analyzer) Diagnostics(_ context.Context, p *sqlcheck.Pass) (diags []sqlcheck.Diagnostic) {
 	for _, sc := range p.File.Changes {
@@ -82,6 +89,7 @@ func (a *Analyzer) Diagnostics(_ context.Context, p *sqlcheck.Pass) (diags []sql
 					// A unique index was added on an existing column.
 					if c.I.Unique && column != nil {
 						diags = append(diags, sqlcheck.Diagnostic{
+							Code: codeAddUniqueI,
 							Pos:  sc.Pos,
 							Text: fmt.Sprintf("Adding a unique index %q on table %q might fail in case column %q contains duplicate entries", c.I.Name, m.T.Name, column.Name),
 						})
@@ -89,6 +97,7 @@ func (a *Analyzer) Diagnostics(_ context.Context, p *sqlcheck.Pass) (diags []sql
 				case *schema.ModifyIndex:
 					if c.Change.Is(schema.ChangeUnique) && c.To.Unique && p.File.IndexSpan(m.T, c.To)&sqlcheck.SpanAdded == 0 {
 						diags = append(diags, sqlcheck.Diagnostic{
+							Code: codeModUniqueI,
 							Pos:  sc.Pos,
 							Text: fmt.Sprintf("Modifying an index %q on table %q might fail in case of duplicate entries", c.To.Name, m.T.Name),
 						})
@@ -100,6 +109,12 @@ func (a *Analyzer) Diagnostics(_ context.Context, p *sqlcheck.Pass) (diags []sql
 						d, err := a.Handler.AddNotNull(&ColumnPass{Pass: p, Change: sc, Table: m.T, Column: c.C})
 						if err != nil {
 							return
+						}
+						for i := range d {
+							// In case there is no driver-specific code.
+							if d[i].Code == "" {
+								d[i].Code = codeAddNotNullC
+							}
 						}
 						diags = append(diags, d...)
 					}

@@ -177,7 +177,7 @@ div[class^='announcementBar_'] {
   font-weight: bold;
 }
 
-.tabs-container  p {
+.tabs-container p {
   margin-bottom: 10px;
 }
 
@@ -201,4 +201,10 @@ div[class^='announcementBar_'] {
 }
 .code-block-info-line span {
   color: rgb(191, 199, 213)!important;
+}
+
+/* Full-width checks table. */
+.docs-doc-id-lint\/analyzers table {
+  display:table;
+  width:100%;
 }
