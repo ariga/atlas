@@ -52,6 +52,7 @@ const (
 	migrateApplyAllowDirty      = "allow-dirty"
 	migrateApplyFromVersion     = "from"
 	migrateApplyBaselineVersion = "baseline"
+	migrateApplyTxMode          = "tx-mode"
 )
 
 var (
@@ -71,6 +72,7 @@ var (
 			AllowDirty      bool
 			FromVersion     string
 			BaselineVersion string
+			TxMode          string
 		}
 		Diff struct {
 			Qualifier string // optional table qualifier
@@ -243,10 +245,13 @@ func init() {
 	MigrateApplyCmd.Flags().BoolVarP(&MigrateFlags.Apply.DryRun, migrateFlagDryRun, "", false, "do not actually execute any SQL but show it on screen")
 	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.Apply.FromVersion, migrateApplyFromVersion, "", "", "calculate pending files from the given version (including it)")
 	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.Apply.BaselineVersion, migrateApplyBaselineVersion, "", "", "start the first migration after the given baseline version")
+	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.Apply.TxMode, migrateApplyTxMode, "", txModeFile, "set transaction mode [none, file, all]")
 	MigrateApplyCmd.Flags().BoolVarP(&MigrateFlags.Apply.AllowDirty, migrateApplyAllowDirty, "", false, "allow start working on a non-clean database")
 	urlFlag(&MigrateFlags.URL, migrateFlagURL, "u", MigrateApplyCmd.Flags())
 	MigrateApplyCmd.Flags().SortFlags = false
 	cobra.CheckErr(MigrateApplyCmd.MarkFlagRequired(migrateFlagURL))
+	MigrateApplyCmd.MarkFlagsMutuallyExclusive(migrateApplyTxMode, migrateFlagDryRun)
+	MigrateApplyCmd.MarkFlagsMutuallyExclusive(migrateApplyFromVersion, migrateApplyBaselineVersion)
 	// Diff flags.
 	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateDiffCmd.Flags())
 	MigrateDiffCmd.Flags().StringSliceVarP(&MigrateFlags.ToURLs, migrateFlagTo, "", nil, "[driver://username:password@address/dbname?param=value ...] select a desired state using the URL format")
@@ -350,42 +355,126 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	var (
+		mux = tx{c: c, rrw: rrw, files: pending}
 		drv migrate.Driver
-		tx  *sqlclient.TxClient
 	)
-	if MigrateFlags.Apply.DryRun {
-		drv = &dryRunDriver{c.Driver}
-		rrw = &dryRunRevisions{rrw}
-	}
 	for _, f := range pending {
-		if !MigrateFlags.Apply.DryRun {
-			// Wrap the file execution in a transaction.
-			tx, err = c.Tx(cmd.Context(), nil)
-			if err != nil {
-				return err
-			}
-			drv = tx.Driver
+		drv, rrw, err = mux.driver(cmd.Context())
+		if err != nil {
+			return err
 		}
 		ex, err := migrate.NewExecutor(drv, dir, rrw, executorOptions(l)...)
 		if err != nil {
 			return err
 		}
-		if err := ex.Execute(cmd.Context(), f); err != nil {
-			if !MigrateFlags.Apply.DryRun {
-				if err2 := tx.Rollback(); err2 != nil {
-					err = fmt.Errorf("%v: %w", err2, err)
-				}
-			}
+		if err := mux.mayRollback(ex.Execute(cmd.Context(), f), f); err != nil {
 			return err
 		}
-		if !MigrateFlags.Apply.DryRun {
-			if err := tx.Commit(); err != nil {
-				return err
+		if err := mux.mayCommit(); err != nil {
+			return err
+		}
+	}
+	if err := mux.commit(); err != nil {
+		return err
+	}
+	l.Log(migrate.LogDone{})
+	return mux.commit()
+}
+
+// tx handles wrapping migration execution in transactions.
+// It is also responsible for saving this information onto the revisions as the core package is transaction agnostic.
+type tx struct {
+	c     *sqlclient.Client
+	tx    *sqlclient.TxClient
+	ctx   context.Context
+	rrw   migrate.RevisionReadWriter
+	files []migrate.File
+}
+
+// driver returns the migrate.Driver to use to execute migration statements.
+func (mux *tx) driver(ctx context.Context) (migrate.Driver, migrate.RevisionReadWriter, error) {
+	if MigrateFlags.Apply.DryRun {
+		// If the --dry-run flag is given we don't want to execute any statements on the database.
+		return &dryRunDriver{mux.c.Driver}, &dryRunRevisions{mux.rrw}, nil
+	}
+	switch MigrateFlags.Apply.TxMode {
+	case txModeNone:
+		return mux.c.Driver, mux.rrw, nil
+	case txModeFile:
+		// In file-mode, this function is called each time a new file is executed. Open a transaction.
+		if mux.tx != nil {
+			return nil, nil, errors.New("unexpected active transaction")
+		}
+		var err error
+		mux.tx, err = mux.c.Tx(ctx, nil)
+		if err != nil {
+			return nil, nil, err
+		}
+		return mux.tx.Driver, mux.rrw, nil
+	case txModeAll:
+		// In file-mode, this function is called each time a new file is executed. Since we wrap all files into one
+		// huge transaction, if there already is an opened one, use that.
+		if mux.tx == nil {
+			var err error
+			mux.tx, err = mux.c.Tx(ctx, nil)
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+		return mux.tx.Driver, mux.rrw, nil
+	default:
+		return nil, nil, fmt.Errorf("unknown tx-mode %q", MigrateFlags.Apply.TxMode)
+	}
+}
+
+// mayRollback may roll back a transaction depending on the given transaction mode.
+func (mux *tx) mayRollback(err error, file migrate.File) error {
+	if mux.tx != nil && err != nil {
+		if err2 := mux.tx.Rollback(); err2 != nil {
+			err = fmt.Errorf("%v: %w", err2, err)
+		}
+		var rollback []migrate.File
+		switch MigrateFlags.Apply.TxMode {
+		case txModeFile:
+			rollback = append(rollback, file)
+		case txModeAll:
+			for _, f := range mux.files {
+				if f.Version() > file.Version() {
+					break
+				}
+				rollback = append(rollback, f)
+			}
+		}
+		for _, f := range rollback {
+			rev, err2 := mux.rrw.ReadRevision(mux.ctx, f.Version())
+			if err2 != nil {
+				err = fmt.Errorf("%v: %w", err2, err)
+			}
+			rev.Applied = 0
+			if err2 := mux.rrw.WriteRevision(mux.ctx, rev); err2 != nil {
+				err = fmt.Errorf("%v: %w", err2, err)
 			}
 		}
 	}
-	l.Log(migrate.LogDone{})
+	return err
+}
+
+// mayCommit may commit a transaction depending on the given transaction mode.
+func (mux *tx) mayCommit() error {
+	// Only commit if each file is wrapped in a transaction.
+	if !MigrateFlags.Apply.DryRun && MigrateFlags.Apply.TxMode == txModeFile {
+		return mux.commit()
+	}
 	return nil
+}
+
+// commit the transaction, if one is active.
+func (mux *tx) commit() error {
+	if mux.tx == nil {
+		return nil
+	}
+	defer func() { mux.tx = nil }()
+	return mux.tx.Commit()
 }
 
 func executorOptions(l migrate.Logger) []migrate.ExecutorOption {
@@ -679,6 +768,12 @@ func CmdMigrateLintRun(cmd *cobra.Command, _ []string) error {
 	cmd.SilenceErrors = errors.As(err, &lint.SilentError{})
 	return err
 }
+
+const (
+	txModeNone = "none"
+	txModeAll  = "all"
+	txModeFile = "file"
+)
 
 func printChecksumErr(out io.Writer) {
 	fmt.Fprintf(out, `You have a checksum error in your migration directory.
