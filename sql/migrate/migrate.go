@@ -167,7 +167,7 @@ type (
 		// Ident returns an object identifies this history table.
 		Ident() *TableIdent
 		// ReadRevisions returns all revisions.
-		ReadRevisions(context.Context) (Revisions, error)
+		ReadRevisions(context.Context) ([]*Revision, error)
 		// ReadRevision returns a revision by version.
 		// Returns ErrRevisionNotExist if the version does not exist.
 		ReadRevision(context.Context, string) (*Revision, error)
@@ -206,9 +206,6 @@ type (
 
 	// RevisionType defines the type of the revision record in the history table.
 	RevisionType uint
-
-	// Revisions is an ordered set of Revision structs.
-	Revisions []*Revision
 
 	// Executor is responsible to manage and execute a set of migration files against a database.
 	Executor struct {
@@ -733,7 +730,7 @@ func (NopRevisionReadWriter) Ident() *TableIdent {
 }
 
 // ReadRevisions implements RevisionsReadWriter.ReadRevisions.
-func (NopRevisionReadWriter) ReadRevisions(context.Context) (Revisions, error) {
+func (NopRevisionReadWriter) ReadRevisions(context.Context) ([]*Revision, error) {
 	return nil, nil
 }
 
@@ -835,7 +832,7 @@ func (NopLogger) Log(LogEntry) {}
 
 // LogIntro gathers some meta information from the migration files and stored revisions to
 // log some general information prior to actual execution.
-func LogIntro(l Logger, revs Revisions, files []File) error {
+func LogIntro(l Logger, revs []*Revision, files []File) error {
 	names := make([]string, len(files))
 	for i := range files {
 		names[i] = files[i].Name()
@@ -858,7 +855,7 @@ func wrap(err1, err2 error) error {
 
 // RevisionsLastIndex returns the index of the last revision
 // satisfying f(i), or -1 if none do.
-func RevisionsLastIndex(revs Revisions, f func(*Revision) bool) int {
+func RevisionsLastIndex(revs []*Revision, f func(*Revision) bool) int {
 	for i := len(revs) - 1; i >= 0; i-- {
 		if f(revs[i]) {
 			return i

@@ -632,7 +632,7 @@ func CmdMigrateStatusRun(cmd *cobra.Command, _ []string) error {
 	return statusPrint(cmd.OutOrStdout(), avail, pending, revs)
 }
 
-func statusPrint(out io.Writer, avail, pending []migrate.File, revs migrate.Revisions) (err error) {
+func statusPrint(out io.Writer, avail, pending []migrate.File, revs []*migrate.Revision) (err error) {
 	var (
 		cur, next, state string
 		applied          = avail[: len(avail)-len(pending) : len(avail)-len(pending)]
