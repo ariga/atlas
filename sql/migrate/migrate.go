@@ -521,6 +521,10 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 		lastIdx := RevisionsLastIndex(revs, func(r *Revision) bool {
 			return r.Applied == r.Total
 		})
+		if lastIdx == -1 {
+			pending = migrations
+			break
+		}
 		last := revs[lastIdx]
 		idx := FilesLastIndex(migrations, func(f File) bool {
 			return f.Version() == last.Version
