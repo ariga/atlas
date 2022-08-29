@@ -161,8 +161,7 @@ type (
 	// PlannerOption allows managing a Planner using functional arguments.
 	PlannerOption func(*Planner)
 
-	// A RevisionReadWriter wraps the functionality for reading
-	// and writing migration revisions in a database table.
+	// A RevisionReadWriter wraps the functionality for reading and writing migration revisions in a database table.
 	RevisionReadWriter interface {
 		// Ident returns an object identifies this history table.
 		Ident() *TableIdent
@@ -514,22 +513,18 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 		}
 		pending = migrations[idx:]
 	default:
-		// Find the last fully applied revision.
-		lastIdx := RevisionsLastIndex(revs, func(r *Revision) bool {
-			return r.Applied == r.Total
-		})
-		if lastIdx == -1 {
-			pending = migrations
-			break
-		}
-		last := revs[lastIdx]
+		last := revs[len(revs)-1]
 		idx := FilesLastIndex(migrations, func(f File) bool {
 			return f.Version() == last.Version
 		})
 		if idx == -1 {
 			return nil, fmt.Errorf("version %q exists in revisions table was not found in the migration directory", last.Version)
 		}
-		pending = migrations[idx+1:]
+		// If this file was not partially applied, take the next one.
+		if last.Applied == last.Total {
+			idx++
+		}
+		pending = migrations[idx:]
 	}
 	if len(pending) == 0 {
 		return nil, ErrNoPendingFiles
@@ -851,15 +846,4 @@ func wrap(err1, err2 error) error {
 		return fmt.Errorf("sql/migrate: %w: %v", err2, err1)
 	}
 	return err1
-}
-
-// RevisionsLastIndex returns the index of the last revision
-// satisfying f(i), or -1 if none do.
-func RevisionsLastIndex(revs []*Revision, f func(*Revision) bool) int {
-	for i := len(revs) - 1; i >= 0; i-- {
-		if f(revs[i]) {
-			return i
-		}
-	}
-	return -1
 }

@@ -311,21 +311,13 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	var rrw migrate.RevisionReadWriter
-	rrw, err = entmigrate.NewEntRevisions(c, []entmigrate.Option{entmigrate.WithSchema(MigrateFlags.RevisionSchema)}...)
+	rrw, err = entRevisions(cmd.Context(), c)
 	if err != nil {
 		return err
 	}
-	if err := rrw.(*entmigrate.EntRevisions).Init(cmd.Context()); err != nil {
+	if err := rrw.(*entmigrate.EntRevisions).Migrate(cmd.Context()); err != nil {
 		return err
 	}
-	defer func(rrw *entmigrate.EntRevisions) {
-		if err2 := rrw.Flush(cmd.Context()); err2 != nil {
-			if err != nil {
-				err2 = fmt.Errorf("%w: %v", err, err2)
-			}
-			err = err2
-		}
-	}(rrw.(*entmigrate.EntRevisions))
 	// Determine pending files and lock the database while working.
 	ex, err := migrate.NewExecutor(c.Driver, dir, rrw, executorOptions(l)...)
 	if err != nil {
@@ -354,11 +346,11 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	var (
-		mux = tx{ctx: cmd.Context(), c: c, rrw: rrw, files: pending}
+		tx  = tx{c: c, rrw: rrw}
 		drv migrate.Driver
 	)
 	for _, f := range pending {
-		drv, rrw, err = mux.driver(cmd.Context())
+		drv, rrw, err = tx.driver(cmd.Context())
 		if err != nil {
 			return err
 		}
@@ -366,28 +358,29 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		if err := mux.mayRollback(ex.Execute(cmd.Context(), f), f); err != nil {
+		if err := tx.mayRollback(ex.Execute(cmd.Context(), f)); err != nil {
 			return err
 		}
-		if err := mux.mayCommit(); err != nil {
+		if err := tx.mayCommit(); err != nil {
 			return err
 		}
 	}
-	if err := mux.commit(); err != nil {
+	if err := tx.commit(); err != nil {
 		return err
 	}
 	l.Log(migrate.LogDone{})
-	return mux.commit()
+	return tx.commit()
+}
+
+func entRevisions(ctx context.Context, c *sqlclient.Client) (*entmigrate.EntRevisions, error) {
+	return entmigrate.NewEntRevisions(ctx, c, entmigrate.WithSchema(MigrateFlags.RevisionSchema))
 }
 
 // tx handles wrapping migration execution in transactions.
-// It is also responsible for saving this information onto the revisions as the core package is transaction agnostic.
 type tx struct {
-	c     *sqlclient.Client
-	tx    *sqlclient.TxClient
-	ctx   context.Context
-	rrw   migrate.RevisionReadWriter
-	files []migrate.File
+	c   *sqlclient.Client
+	tx  *sqlclient.TxClient
+	rrw migrate.RevisionReadWriter
 }
 
 // driver returns the migrate.Driver to use to execute migration statements.
@@ -409,6 +402,10 @@ func (tx *tx) driver(ctx context.Context) (migrate.Driver, migrate.RevisionReadW
 		if err != nil {
 			return nil, nil, err
 		}
+		tx.rrw, err = entRevisions(ctx, tx.tx.Client)
+		if err != nil {
+			return nil, nil, err
+		}
 		return tx.tx.Driver, tx.rrw, nil
 	case txModeAll:
 		// In file-mode, this function is called each time a new file is executed. Since we wrap all files into one
@@ -416,6 +413,10 @@ func (tx *tx) driver(ctx context.Context) (migrate.Driver, migrate.RevisionReadW
 		if tx.tx == nil {
 			var err error
 			tx.tx, err = tx.c.Tx(ctx, nil)
+			if err != nil {
+				return nil, nil, err
+			}
+			tx.rrw, err = entRevisions(ctx, tx.tx.Client)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -427,32 +428,10 @@ func (tx *tx) driver(ctx context.Context) (migrate.Driver, migrate.RevisionReadW
 }
 
 // mayRollback may roll back a transaction depending on the given transaction mode.
-func (tx *tx) mayRollback(err error, file migrate.File) error {
+func (tx *tx) mayRollback(err error) error {
 	if tx.tx != nil && err != nil {
 		if err2 := tx.tx.Rollback(); err2 != nil {
-			return fmt.Errorf("%v: %w", err2, err)
-		}
-		var rollback []migrate.File
-		switch MigrateFlags.Apply.TxMode {
-		case txModeFile:
-			rollback = append(rollback, file)
-		case txModeAll:
-			for _, f := range tx.files {
-				if f.Version() > file.Version() {
-					break
-				}
-				rollback = append(rollback, f)
-			}
-		}
-		for _, f := range rollback {
-			rev, err2 := tx.rrw.ReadRevision(tx.ctx, f.Version())
-			if err2 != nil {
-				return fmt.Errorf("%v: %w", err2, err)
-			}
-			rev.Applied = 0
-			if err2 := tx.rrw.WriteRevision(tx.ctx, rev); err2 != nil {
-				return fmt.Errorf("%v: %w", err2, err)
-			}
+			err = fmt.Errorf("%v: %w", err2, err)
 		}
 	}
 	return err
@@ -608,12 +587,8 @@ func CmdMigrateStatusRun(cmd *cobra.Command, _ []string) error {
 		return statusPrint(cmd.OutOrStdout(), avail, avail, nil)
 	}
 	// Currently, only in DB revisions are supported.
-	opts := []entmigrate.Option{entmigrate.WithSchema(MigrateFlags.RevisionSchema)}
-	rrw, err := entmigrate.NewEntRevisions(client, opts...)
+	rrw, err := entmigrate.NewEntRevisions(cmd.Context(), client, entmigrate.WithSchema(MigrateFlags.RevisionSchema))
 	if err != nil {
-		return err
-	}
-	if err := rrw.Init(cmd.Context()); err != nil {
 		return err
 	}
 	// Executor can give us insights on the revision state.

@@ -38,7 +38,10 @@ func TestMigrate(t *testing.T) {
 }
 
 func TestMigrate_Apply(t *testing.T) {
-	p := t.TempDir()
+	var (
+		p   = t.TempDir()
+		ctx = context.Background()
+	)
 	// Disable text coloring in testing
 	// to assert on string matching.
 	color.NoColor = true
@@ -134,26 +137,23 @@ func TestMigrate_Apply(t *testing.T) {
 	require.Contains(t, s, "Error: Execution had errors:")             // logs error summary
 	require.Contains(t, s, "near \"asdasd\": syntax error")            // logs error summary
 
-	c, err := sqlclient.Open(context.Background(), fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test2.db")))
+	c, err := sqlclient.Open(ctx, fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test2.db")))
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c.Close())
 	})
-	sch, err := c.InspectSchema(context.Background(), "", nil)
+	sch, err := c.InspectSchema(ctx, "", nil)
 	tbl, ok := sch.Table("tbl")
 	require.True(t, ok)
 	_, ok = tbl.Column("col_2")
 	require.False(t, ok)
 	_, ok = tbl.Column("col_3")
 	require.False(t, ok)
-	rrw, err := migrate2.NewEntRevisions(c)
+	rrw, err := migrate2.NewEntRevisions(ctx, c)
 	require.NoError(t, err)
-	require.NoError(t, rrw.Init(context.Background()))
-	revs, err := rrw.ReadRevisions(context.Background())
+	revs, err := rrw.ReadRevisions(ctx)
 	require.NoError(t, err)
-	require.Len(t, revs, 2)
-	require.Equal(t, 1, revs[1].Applied)
-	require.Equal(t, 3, revs[1].Total)
+	require.Len(t, revs, 1)
 
 	// Running again will pick up the failed statement and try it again.
 	s, err = runCmd(
@@ -162,14 +162,14 @@ func TestMigrate_Apply(t *testing.T) {
 		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test2.db")),
 	)
 	require.Error(t, err)
-	require.NotContains(t, s, "20220318104614")                         // first version is applied already
+	require.Contains(t, s, "20220318104614")                            // currently applied version
 	require.Contains(t, s, "20220318104615")                            // retry second (partially applied)
 	require.NotContains(t, s, "CREATE TABLE tbl (`col` int NOT NULL);") // will not attempt stmts from first file
-	require.NotContains(t, s, "ALTER TABLE `tbl` ADD `col_2` bigint;")  // does not execute first stmt first second file
+	require.Contains(t, s, "ALTER TABLE `tbl` ADD `col_2` bigint;")     // picks up first statement
 	require.Contains(t, s, "ALTER TABLE `tbl` ADD `col_3` bigint;")     // does execute second stmt first second file
 	require.NotContains(t, s, "ALTER TABLE `tbl` ADD `col_4` bigint;")  // but not third
 	require.Contains(t, s, "0 migrations ok (1 with errors)")           // logs amount of migrations
-	require.Contains(t, s, "0 sql statements ok (1 with errors)")       // logs amount of statement
+	require.Contains(t, s, "1 sql statements ok (1 with errors)")       // logs amount of statement
 	require.Contains(t, s, "Error: Execution had errors:")              // logs error summary
 	require.Contains(t, s, "near \"asdasd\": syntax error")             // logs error summary
 
@@ -234,20 +234,19 @@ func TestMigrate_Apply(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, s, "20220318104615")                        // log to version
 	require.Contains(t, s, "ALTER TABLE `tbl` ADD `col_2` bigint;") // logs statement
-	c1, err := sqlclient.Open(context.Background(), fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")))
+	c1, err := sqlclient.Open(ctx, fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")))
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c1.Close())
 	})
-	sch, err = c1.InspectSchema(context.Background(), "", nil)
+	sch, err = c1.InspectSchema(ctx, "", nil)
 	tbl, ok = sch.Table("tbl")
 	require.True(t, ok)
 	_, ok = tbl.Column("col_2")
 	require.False(t, ok)
-	rrw, err = migrate2.NewEntRevisions(c1)
+	rrw, err = migrate2.NewEntRevisions(ctx, c1)
 	require.NoError(t, err)
-	require.NoError(t, rrw.Init(context.Background()))
-	revs, err = rrw.ReadRevisions(context.Background())
+	revs, err = rrw.ReadRevisions(ctx)
 	require.NoError(t, err)
 	require.Len(t, revs, 1)
 }

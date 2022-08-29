@@ -498,7 +498,7 @@ func testExecutor(t T) {
 		)),
 	)
 	require.NoError(t, err)
-	pl := migrate.NewPlanner(t.driver(), dir, migrate.WithFormatter(f))
+	pl := migrate.NewPlanner(t.driver(), dir, migrate.PlanFormat(f))
 	require.NoError(t, err)
 
 	require.NoError(t, pl.WritePlan(plan(t, "1_users", &schema.AddTable{T: usersT})))

@@ -35,7 +35,7 @@ func TestHashSum(t *testing.T) {
 	p = t.TempDir()
 	d, err = migrate.NewLocalDir(p)
 	require.NoError(t, err)
-	pl = migrate.NewPlanner(nil, d, migrate.DisableChecksum())
+	pl = migrate.NewPlanner(nil, d, migrate.PlanWithChecksum(false))
 	require.NotNil(t, pl)
 	require.NoError(t, pl.WritePlan(plan))
 	require.Equal(t, 1, countFiles(t, d))

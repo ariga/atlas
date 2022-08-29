@@ -119,7 +119,7 @@ DROP TABLE t1 IF EXISTS;
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			d := dir(t)
-			pl := migrate.NewPlanner(nil, d, migrate.WithFormatter(tt.fmt), migrate.DisableChecksum())
+			pl := migrate.NewPlanner(nil, d, migrate.PlanFormat(tt.fmt), migrate.PlanWithChecksum(false))
 			require.NotNil(t, pl)
 			require.NoError(t, pl.WritePlan(plan))
 			require.Equal(t, len(tt.expected), countFiles(t, d))
