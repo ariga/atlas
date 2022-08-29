@@ -250,7 +250,6 @@ func init() {
 	urlFlag(&MigrateFlags.URL, migrateFlagURL, "u", MigrateApplyCmd.Flags())
 	MigrateApplyCmd.Flags().SortFlags = false
 	cobra.CheckErr(MigrateApplyCmd.MarkFlagRequired(migrateFlagURL))
-	MigrateApplyCmd.MarkFlagsMutuallyExclusive(migrateApplyTxMode, migrateFlagDryRun)
 	MigrateApplyCmd.MarkFlagsMutuallyExclusive(migrateApplyFromVersion, migrateApplyBaselineVersion)
 	// Diff flags.
 	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateDiffCmd.Flags())
@@ -431,7 +430,7 @@ func (tx *tx) driver(ctx context.Context) (migrate.Driver, migrate.RevisionReadW
 func (tx *tx) mayRollback(err error, file migrate.File) error {
 	if tx.tx != nil && err != nil {
 		if err2 := tx.tx.Rollback(); err2 != nil {
-			err = fmt.Errorf("%v: %w", err2, err)
+			return fmt.Errorf("%v: %w", err2, err)
 		}
 		var rollback []migrate.File
 		switch MigrateFlags.Apply.TxMode {
@@ -448,11 +447,11 @@ func (tx *tx) mayRollback(err error, file migrate.File) error {
 		for _, f := range rollback {
 			rev, err2 := tx.rrw.ReadRevision(tx.ctx, f.Version())
 			if err2 != nil {
-				err = fmt.Errorf("%v: %w", err2, err)
+				return fmt.Errorf("%v: %w", err2, err)
 			}
 			rev.Applied = 0
 			if err2 := tx.rrw.WriteRevision(tx.ctx, rev); err2 != nil {
-				err = fmt.Errorf("%v: %w", err2, err)
+				return fmt.Errorf("%v: %w", err2, err)
 			}
 		}
 	}
