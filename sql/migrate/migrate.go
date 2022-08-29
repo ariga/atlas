@@ -595,7 +595,7 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 	}(ctx, e.rrw, r)
 	if r.Applied > 0 {
 		// If the file has been applied partially before, check if the
-		// applied statements were not changed.
+		// applied statements have not changed.
 		for i := 0; i < r.Applied; i++ {
 			if i > len(sums) || sums[i] != strings.TrimPrefix(r.PartialHashes[i], "h1:") {
 				err = HistoryChangedError{m.Name(), i + 1}

@@ -174,6 +174,12 @@ func TestMigrate_Apply(t *testing.T) {
 	require.Contains(t, s, "near \"asdasd\": syntax error")             // logs error summary
 
 	// Editing an applied line will raise error.
+	s, err = runCmd(
+		Root, "migrate", "apply",
+		"--dir", "file://testdata/sqlite2",
+		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test2.db")),
+		"--tx-mode", "none",
+	)
 	require.NoError(t, exec.Command("cp", "-r", "testdata/sqlite2", "testdata/sqlite3").Run())
 	t.Cleanup(func() {
 		require.NoError(t, os.RemoveAll("testdata/sqlite3"))

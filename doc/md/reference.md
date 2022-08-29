@@ -112,6 +112,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.
       --dry-run                   do not actually execute any SQL but show it on screen
       --from string               calculate pending files from the given version (including it)
       --baseline string           start the first migration after the given baseline version
+      --tx-mode string            set transaction mode [none, file, all] (default "file")
       --allow-dirty               allow start working on a non-clean database
   -u, --url string                [driver://username:password@address/dbname?param=value] select a database using the URL format
 
