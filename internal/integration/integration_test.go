@@ -523,7 +523,7 @@ func plan(t T, name string, changes ...schema.Change) *migrate.Plan {
 	return p
 }
 
-type rrw migrate.Revisions
+type rrw []*migrate.Revision
 
 func (r *rrw) Ident() *migrate.TableIdent {
 	return &migrate.TableIdent{}
@@ -549,12 +549,12 @@ func (r *rrw) ReadRevision(_ context.Context, v string) (*migrate.Revision, erro
 	return nil, migrate.ErrRevisionNotExist
 }
 
-func (r *rrw) ReadRevisions(context.Context) (migrate.Revisions, error) {
-	return migrate.Revisions(*r), nil
+func (r *rrw) ReadRevisions(context.Context) ([]*migrate.Revision, error) {
+	return []*migrate.Revision(*r), nil
 }
 
 func (r *rrw) clean() {
-	*r = rrw(migrate.Revisions{})
+	*r = rrw([]*migrate.Revision{})
 }
 
 func buildCmd(t *testing.T) (string, error) {

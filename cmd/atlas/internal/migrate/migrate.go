@@ -112,12 +112,12 @@ func (r *EntRevisions) ReadRevision(ctx context.Context, v string) (*migrate.Rev
 // ReadRevisions reads the revisions from the revisions table.
 //
 // ReadRevisions will not return results only saved to cache.
-func (r *EntRevisions) ReadRevisions(ctx context.Context) (migrate.Revisions, error) {
+func (r *EntRevisions) ReadRevisions(ctx context.Context) ([]*migrate.Revision, error) {
 	revs, err := r.ec.Revision.Query().Order(ent.Asc(revision.FieldID)).All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	ret := make(migrate.Revisions, len(revs))
+	ret := make([]*migrate.Revision, len(revs))
 	for i, rev := range revs {
 		ret[i] = fromEnt(rev)
 	}
