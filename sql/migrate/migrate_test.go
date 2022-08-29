@@ -414,7 +414,7 @@ func TestExecutor_FromVersion(t *testing.T) {
 	ex, err = migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(log), migrate.WithFromVersion("4"))
 	require.NoError(t, err)
 	files, err = ex.Pending(context.Background())
-	require.EqualError(t, err, `starting point version "4" was not found in the migration directory`)
+	require.EqualError(t, err, `starting point version "4" not found in the migration directory`)
 	require.Nil(t, files)
 }
 

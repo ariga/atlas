@@ -10,7 +10,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io/fs"
 	"strings"
 	"time"
 
@@ -228,7 +227,7 @@ type (
 
 const (
 	// RevisionTypeUnknown represents an unknown revision type.
-	// This is type is unexpected and exists here to only ensure
+	// This type is unexpected and exists here to only ensure
 	// the type is not set to the zero value.
 	RevisionTypeUnknown RevisionType = 0
 
@@ -478,13 +477,7 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 	if err != nil {
 		return nil, fmt.Errorf("sql/migrate: execute: select migration files: %w", err)
 	}
-	// Check if the existing revisions did come from the migration directory and not from somewhere else.
-	_, err = readHashFile(e.dir)
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return nil, fmt.Errorf("sql/migrate: execute: read %s file: %w", HashFileName, err)
-	}
-	// If there is no atlas.sum file there are no migration files.
-	if errors.Is(err, fs.ErrNotExist) {
+	if len(migrations) == 0 {
 		return nil, ErrNoPendingFiles
 	}
 	var pending []File
@@ -505,7 +498,7 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 				return f.Version() == e.baselineVer
 			})
 			if baseline == -1 {
-				return nil, fmt.Errorf("baseline version %q was not found", e.baselineVer)
+				return nil, fmt.Errorf("baseline version %q not found", e.baselineVer)
 			}
 			f := migrations[baseline]
 			// Mark the revision in the database as baseline revision.
@@ -514,29 +507,28 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 			}
 			pending = migrations[baseline+1:]
 		}
-	// Not the first time we execute and a
-	// custom starting point was provided.
+	// Not the first time we execute and a custom starting point was provided.
 	case e.fromVer != "":
 		idx := FilesLastIndex(migrations, func(f File) bool {
 			return f.Version() == e.fromVer
 		})
 		if idx == -1 {
-			return nil, fmt.Errorf("starting point version %q was not found in the migration directory", e.fromVer)
+			return nil, fmt.Errorf("starting point version %q not found in the migration directory", e.fromVer)
 		}
 		pending = migrations[idx:]
 	default:
-		last := revs[len(revs)-1]
+		// Find the last fully applied revision.
+		lastIdx := RevisionsLastIndex(revs, func(r *Revision) bool {
+			return r.Applied == r.Total
+		})
+		last := revs[lastIdx]
 		idx := FilesLastIndex(migrations, func(f File) bool {
 			return f.Version() == last.Version
 		})
 		if idx == -1 {
 			return nil, fmt.Errorf("version %q exists in revisions table was not found in the migration directory", last.Version)
 		}
-		// If this file was not partially applied, take the next one.
-		if last.Applied == last.Total {
-			idx++
-		}
-		pending = migrations[idx:]
+		pending = migrations[idx+1:]
 	}
 	if len(pending) == 0 {
 		return nil, ErrNoPendingFiles
@@ -644,8 +636,7 @@ func (e HistoryChangedError) Error() string {
 	return fmt.Sprintf("sql/migrate: execute: history changed: statement %d from file %q changed", e.Stmt, e.File)
 }
 
-// ExecuteN executes n pending migration files. If n<=0 all pending migration files are executed. It will not attempt
-// an execution if the database is not "clean" (has only successfully applied migrations).
+// ExecuteN executes n pending migration files. If n<=0 all pending migration files are executed.
 func (e *Executor) ExecuteN(ctx context.Context, n int) (err error) {
 	pending, err := e.Pending(ctx)
 	if err != nil {
@@ -859,4 +850,15 @@ func wrap(err1, err2 error) error {
 		return fmt.Errorf("sql/migrate: %w: %v", err2, err1)
 	}
 	return err1
+}
+
+// RevisionsLastIndex returns the index of the last revision
+// satisfying f(i), or -1 if none do.
+func RevisionsLastIndex(revs Revisions, f func(*Revision) bool) int {
+	for i := len(revs) - 1; i >= 0; i-- {
+		if f(revs[i]) {
+			return i
+		}
+	}
+	return -1
 }
