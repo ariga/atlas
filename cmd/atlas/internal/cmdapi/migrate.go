@@ -241,10 +241,11 @@ func init() {
 	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.Apply.LogFormat, migrateFlagLog, "", logFormatTTY, "log format to use")
 	revisionsFlag(MigrateApplyCmd.Flags())
 	MigrateApplyCmd.Flags().BoolVarP(&MigrateFlags.Apply.DryRun, migrateFlagDryRun, "", false, "do not actually execute any SQL but show it on screen")
-	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.Apply.BaselineVersion, migrateApplyFromVersion, "", "", "calculate pending files from the given version (including it)")
+	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.Apply.FromVersion, migrateApplyFromVersion, "", "", "calculate pending files from the given version (including it)")
 	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.Apply.BaselineVersion, migrateApplyBaselineVersion, "", "", "start the first migration after the given baseline version")
 	MigrateApplyCmd.Flags().BoolVarP(&MigrateFlags.Apply.AllowDirty, migrateApplyAllowDirty, "", false, "allow start working on a non-clean database")
 	urlFlag(&MigrateFlags.URL, migrateFlagURL, "u", MigrateApplyCmd.Flags())
+	MigrateApplyCmd.Flags().SortFlags = false
 	cobra.CheckErr(MigrateApplyCmd.MarkFlagRequired(migrateFlagURL))
 	// Diff flags.
 	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateDiffCmd.Flags())
@@ -741,7 +742,7 @@ func dir(create bool) (migrate.Dir, error) {
 		f = func() (migrate.Dir, error) { return sqltool.NewFlywayDir(parts[1]) }
 	case formatLiquibase:
 		f = func() (migrate.Dir, error) { return sqltool.NewLiquibaseDir(parts[1]) }
-	case formatDbmate:
+	case formatDBMate:
 		f = func() (migrate.Dir, error) { return sqltool.NewDBMateDir(parts[1]) }
 	default:
 		return nil, fmt.Errorf("unknown dir format %q", MigrateFlags.DirFormat)
@@ -931,7 +932,7 @@ const (
 	formatGoose         = "goose"
 	formatFlyway        = "flyway"
 	formatLiquibase     = "liquibase"
-	formatDbmate        = "dbmate"
+	formatDBMate        = "dbmate"
 )
 
 func formatter() (migrate.Formatter, error) {
@@ -946,7 +947,7 @@ func formatter() (migrate.Formatter, error) {
 		return sqltool.FlywayFormatter, nil
 	case formatLiquibase:
 		return sqltool.LiquibaseFormatter, nil
-	case formatDbmate:
+	case formatDBMate:
 		return sqltool.DBMateFormatter, nil
 	default:
 		return nil, fmt.Errorf("unknown format %q", MigrateFlags.DirFormat)
@@ -1083,14 +1084,10 @@ func migrateFlagsFromEnv(cmd *cobra.Command, _ []string) error {
 
 type (
 	// dryRunDriver wraps a migrate.Driver without executing any SQL statements.
-	dryRunDriver struct {
-		migrate.Driver
-	}
+	dryRunDriver struct{ migrate.Driver }
 
 	// dryRunRevisions wraps a migrate.RevisionReadWriter without executing any SQL statements.
-	dryRunRevisions struct {
-		migrate.RevisionReadWriter
-	}
+	dryRunRevisions struct{ migrate.RevisionReadWriter }
 )
 
 // QueryContext overrides the wrapped schema.ExecQuerier to not execute any SQL.

@@ -195,6 +195,21 @@ func TestExecutor_Pending(t *testing.T) {
 	p, err = ex.Pending(context.Background())
 	require.NoError(t, err)
 	require.Len(t, p, 1)
+
+	// All versions have revisions, but are last two are rolled back (0 applied).
+	rev2.Applied = 0
+	rev3.Applied = 0
+	*rrw = mockRevisionReadWriter(migrate.Revisions{rev1, rev2, rev3})
+	p, err = ex.Pending(context.Background())
+	require.NoError(t, err)
+	require.Len(t, p, 2)
+
+	// All versions have revisions, but are all rolled back (0 applied).
+	rev1.Applied = 0
+	*rrw = mockRevisionReadWriter(migrate.Revisions{rev1, rev2, rev3})
+	p, err = ex.Pending(context.Background())
+	require.NoError(t, err)
+	require.Len(t, p, 3)
 }
 
 func TestExecutor(t *testing.T) {
@@ -414,7 +429,7 @@ func TestExecutor_FromVersion(t *testing.T) {
 	ex, err = migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(log), migrate.WithFromVersion("4"))
 	require.NoError(t, err)
 	files, err = ex.Pending(context.Background())
-	require.EqualError(t, err, `starting point version "4" was not found in the migration directory`)
+	require.EqualError(t, err, `starting point version "4" not found in the migration directory`)
 	require.Nil(t, files)
 }
 

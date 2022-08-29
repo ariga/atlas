@@ -383,7 +383,7 @@ func TestMigrate_New(t *testing.T) {
 	require.Equal(t, 2, countFiles(t, p))
 
 	p = t.TempDir()
-	s, err = runCmd(Root, "migrate", "new", "dbmate", "--dir", "file://"+p, "--dir-format", formatDbmate)
+	s, err = runCmd(Root, "migrate", "new", "dbmate", "--dir", "file://"+p, "--dir-format", formatDBMate)
 	require.Zero(t, s)
 	require.NoError(t, err)
 	require.FileExists(t, filepath.Join(p, v+"_dbmate.sql"))
