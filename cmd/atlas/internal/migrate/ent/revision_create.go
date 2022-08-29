@@ -54,9 +54,25 @@ func (rc *RevisionCreate) SetApplied(i int) *RevisionCreate {
 	return rc
 }
 
+// SetNillableApplied sets the "applied" field if the given value is not nil.
+func (rc *RevisionCreate) SetNillableApplied(i *int) *RevisionCreate {
+	if i != nil {
+		rc.SetApplied(*i)
+	}
+	return rc
+}
+
 // SetTotal sets the "total" field.
 func (rc *RevisionCreate) SetTotal(i int) *RevisionCreate {
 	rc.mutation.SetTotal(i)
+	return rc
+}
+
+// SetNillableTotal sets the "total" field if the given value is not nil.
+func (rc *RevisionCreate) SetNillableTotal(i *int) *RevisionCreate {
+	if i != nil {
+		rc.SetTotal(*i)
+	}
 	return rc
 }
 
@@ -190,6 +206,14 @@ func (rc *RevisionCreate) defaults() {
 	if _, ok := rc.mutation.GetType(); !ok {
 		v := revision.DefaultType
 		rc.mutation.SetType(v)
+	}
+	if _, ok := rc.mutation.Applied(); !ok {
+		v := revision.DefaultApplied
+		rc.mutation.SetApplied(v)
+	}
+	if _, ok := rc.mutation.Total(); !ok {
+		v := revision.DefaultTotal
+		rc.mutation.SetTotal(v)
 	}
 }
 

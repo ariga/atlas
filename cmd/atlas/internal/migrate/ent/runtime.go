@@ -24,10 +24,14 @@ func init() {
 	revision.DefaultType = migrate.RevisionType(revisionDescType.Default.(uint))
 	// revisionDescApplied is the schema descriptor for applied field.
 	revisionDescApplied := revisionFields[3].Descriptor()
+	// revision.DefaultApplied holds the default value on creation for the applied field.
+	revision.DefaultApplied = revisionDescApplied.Default.(int)
 	// revision.AppliedValidator is a validator for the "applied" field. It is called by the builders before save.
 	revision.AppliedValidator = revisionDescApplied.Validators[0].(func(int) error)
 	// revisionDescTotal is the schema descriptor for total field.
 	revisionDescTotal := revisionFields[4].Descriptor()
+	// revision.DefaultTotal holds the default value on creation for the total field.
+	revision.DefaultTotal = revisionDescTotal.Default.(int)
 	// revision.TotalValidator is a validator for the "total" field. It is called by the builders before save.
 	revision.TotalValidator = revisionDescTotal.Validators[0].(func(int) error)
 }

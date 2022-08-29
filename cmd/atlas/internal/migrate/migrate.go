@@ -22,7 +22,7 @@ import (
 const DefaultRevisionSchema = "atlas_schema_revisions"
 
 type (
-	// A EntRevisions provides implementation for the migrate.RevisionReadWriter interface.
+	// EntRevisions provides implementation for the migrate.RevisionReadWriter interface.
 	EntRevisions struct {
 		ac     *sqlclient.Client  // underlying Atlas client
 		ec     *ent.Client        // underlying Ent client
