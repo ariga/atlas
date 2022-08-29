@@ -355,7 +355,7 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	var (
-		mux = tx{c: c, rrw: rrw, files: pending}
+		mux = tx{ctx: cmd.Context(), c: c, rrw: rrw, files: pending}
 		drv migrate.Driver
 	)
 	for _, f := range pending {
@@ -392,45 +392,45 @@ type tx struct {
 }
 
 // driver returns the migrate.Driver to use to execute migration statements.
-func (mux *tx) driver(ctx context.Context) (migrate.Driver, migrate.RevisionReadWriter, error) {
+func (tx *tx) driver(ctx context.Context) (migrate.Driver, migrate.RevisionReadWriter, error) {
 	if MigrateFlags.Apply.DryRun {
 		// If the --dry-run flag is given we don't want to execute any statements on the database.
-		return &dryRunDriver{mux.c.Driver}, &dryRunRevisions{mux.rrw}, nil
+		return &dryRunDriver{tx.c.Driver}, &dryRunRevisions{tx.rrw}, nil
 	}
 	switch MigrateFlags.Apply.TxMode {
 	case txModeNone:
-		return mux.c.Driver, mux.rrw, nil
+		return tx.c.Driver, tx.rrw, nil
 	case txModeFile:
 		// In file-mode, this function is called each time a new file is executed. Open a transaction.
-		if mux.tx != nil {
+		if tx.tx != nil {
 			return nil, nil, errors.New("unexpected active transaction")
 		}
 		var err error
-		mux.tx, err = mux.c.Tx(ctx, nil)
+		tx.tx, err = tx.c.Tx(ctx, nil)
 		if err != nil {
 			return nil, nil, err
 		}
-		return mux.tx.Driver, mux.rrw, nil
+		return tx.tx.Driver, tx.rrw, nil
 	case txModeAll:
 		// In file-mode, this function is called each time a new file is executed. Since we wrap all files into one
 		// huge transaction, if there already is an opened one, use that.
-		if mux.tx == nil {
+		if tx.tx == nil {
 			var err error
-			mux.tx, err = mux.c.Tx(ctx, nil)
+			tx.tx, err = tx.c.Tx(ctx, nil)
 			if err != nil {
 				return nil, nil, err
 			}
 		}
-		return mux.tx.Driver, mux.rrw, nil
+		return tx.tx.Driver, tx.rrw, nil
 	default:
 		return nil, nil, fmt.Errorf("unknown tx-mode %q", MigrateFlags.Apply.TxMode)
 	}
 }
 
 // mayRollback may roll back a transaction depending on the given transaction mode.
-func (mux *tx) mayRollback(err error, file migrate.File) error {
-	if mux.tx != nil && err != nil {
-		if err2 := mux.tx.Rollback(); err2 != nil {
+func (tx *tx) mayRollback(err error, file migrate.File) error {
+	if tx.tx != nil && err != nil {
+		if err2 := tx.tx.Rollback(); err2 != nil {
 			err = fmt.Errorf("%v: %w", err2, err)
 		}
 		var rollback []migrate.File
@@ -438,7 +438,7 @@ func (mux *tx) mayRollback(err error, file migrate.File) error {
 		case txModeFile:
 			rollback = append(rollback, file)
 		case txModeAll:
-			for _, f := range mux.files {
+			for _, f := range tx.files {
 				if f.Version() > file.Version() {
 					break
 				}
@@ -446,12 +446,12 @@ func (mux *tx) mayRollback(err error, file migrate.File) error {
 			}
 		}
 		for _, f := range rollback {
-			rev, err2 := mux.rrw.ReadRevision(mux.ctx, f.Version())
+			rev, err2 := tx.rrw.ReadRevision(tx.ctx, f.Version())
 			if err2 != nil {
 				err = fmt.Errorf("%v: %w", err2, err)
 			}
 			rev.Applied = 0
-			if err2 := mux.rrw.WriteRevision(mux.ctx, rev); err2 != nil {
+			if err2 := tx.rrw.WriteRevision(tx.ctx, rev); err2 != nil {
 				err = fmt.Errorf("%v: %w", err2, err)
 			}
 		}
@@ -460,21 +460,21 @@ func (mux *tx) mayRollback(err error, file migrate.File) error {
 }
 
 // mayCommit may commit a transaction depending on the given transaction mode.
-func (mux *tx) mayCommit() error {
+func (tx *tx) mayCommit() error {
 	// Only commit if each file is wrapped in a transaction.
 	if !MigrateFlags.Apply.DryRun && MigrateFlags.Apply.TxMode == txModeFile {
-		return mux.commit()
+		return tx.commit()
 	}
 	return nil
 }
 
 // commit the transaction, if one is active.
-func (mux *tx) commit() error {
-	if mux.tx == nil {
+func (tx *tx) commit() error {
+	if tx.tx == nil {
 		return nil
 	}
-	defer func() { mux.tx = nil }()
-	return mux.tx.Commit()
+	defer func() { tx.tx = nil }()
+	return tx.tx.Commit()
 }
 
 func executorOptions(l migrate.Logger) []migrate.ExecutorOption {
