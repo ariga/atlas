@@ -7,6 +7,7 @@ package migrate
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
@@ -35,6 +36,10 @@ type (
 
 // NewEntRevisions creates a new EntRevisions with the given sqlclient.Client.
 func NewEntRevisions(ctx context.Context, ac *sqlclient.Client, opts ...Option) (*EntRevisions, error) {
+	// MySQL connections need to set the parseTime value.
+	if ac.Name == dialect.MySQL && strings.ToLower(ac.URL.Query().Get("parseTime")) != "true" {
+		return nil, errors.New("mysql connections require the 'parseTime=true' connection parameter")
+	}
 	r := &EntRevisions{ac: ac}
 	for _, opt := range opts {
 		if err := opt(r); err != nil {
