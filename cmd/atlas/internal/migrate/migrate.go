@@ -15,7 +15,7 @@ import (
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql"
 	entschema "entgo.io/ent/dialect/sql/schema"
 )
 
@@ -50,7 +50,7 @@ func NewEntRevisions(ctx context.Context, ac *sqlclient.Client, opts ...Option) 
 		r.schema = DefaultRevisionSchema
 	}
 	// Create the connection with the underlying migrate.Driver to have it inside a possible transaction.
-	entopts := []ent.Option{ent.Driver(entsql.NewDriver(r.ac.Name, entsql.Conn{ExecQuerier: r.ac.Driver}))}
+	entopts := []ent.Option{ent.Driver(sql.NewDriver(r.ac.Name, sql.Conn{ExecQuerier: r.ac.Driver}))}
 	// SQLite does not support multiple schema, therefore schema-config is only needed for other dialects.
 	if r.ac.Name != dialect.SQLite {
 		// Make sure the schema to store the revisions table in does exist.
@@ -119,7 +119,7 @@ func (r *EntRevisions) ReadRevisions(ctx context.Context) ([]*migrate.Revision, 
 func (r *EntRevisions) WriteRevision(ctx context.Context, rev *migrate.Revision) error {
 	return r.ec.Revision.Create().
 		SetRevision(rev).
-		OnConflict(entsql.ConflictColumns(revision.FieldID)).
+		OnConflict(sql.ConflictColumns(revision.FieldID)).
 		UpdateNewValues().
 		Exec(ctx)
 }
@@ -128,7 +128,7 @@ func (r *EntRevisions) WriteRevision(ctx context.Context, rev *migrate.Revision)
 // execution in a transaction and assumes the underlying connection is of type *sql.DB, which is not true for actually
 // reading and writing revisions.
 func (r *EntRevisions) Migrate(ctx context.Context) error {
-	return ent.NewClient(ent.Driver(entsql.OpenDB(r.ac.Name, r.ac.DB))).Schema.Create(ctx,
+	return ent.NewClient(ent.Driver(sql.OpenDB(r.ac.Name, r.ac.DB))).Schema.Create(ctx,
 		entschema.WithDropColumn(true),
 		entschema.WithDiffHook(func(next entschema.Differ) entschema.Differ {
 			return entschema.DiffFunc(func(current, desired *schema.Schema) ([]schema.Change, error) {
