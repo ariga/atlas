@@ -11,7 +11,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -243,7 +242,7 @@ func initCLI() error {
 func testCLIMultiSchemaApply(t T, h string, dsn string, schemas []string, eval schemahcl.Evaluator) {
 	err := initCLI()
 	f := filepath.Join(t.TempDir(), "schema.hcl")
-	err = ioutil.WriteFile(f, []byte(h), 0644)
+	err = os.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
 	require.NoError(t, err)
 	var expected schema.Realm
@@ -301,7 +300,7 @@ func testCLISchemaApply(t T, h string, dsn string, args ...string) {
 	require.NoError(t, err)
 	t.dropTables("users")
 	f := filepath.Join(t.TempDir(), "schema.hcl")
-	err = ioutil.WriteFile(f, []byte(h), 0644)
+	err = os.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
 	runArgs := []string{
 		"run", "ariga.io/atlas/cmd/atlas",
@@ -336,7 +335,7 @@ func testCLISchemaApplyDry(t T, h string, dsn string) {
 	require.NoError(t, err)
 	t.dropTables("users")
 	f := filepath.Join(t.TempDir(), "schema.hcl")
-	err = ioutil.WriteFile(f, []byte(h), 0644)
+	err = os.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
 	cmd := exec.Command("go", "run", "ariga.io/atlas/cmd/atlas",
 		"schema",
@@ -369,7 +368,7 @@ func testCLISchemaApplyAutoApprove(t T, h string, dsn string, args ...string) {
 	require.NoError(t, err)
 	t.dropTables("users")
 	f := filepath.Join(t.TempDir(), "schema.hcl")
-	err = ioutil.WriteFile(f, []byte(h), 0644)
+	err = os.WriteFile(f, []byte(h), 0644)
 	require.NoError(t, err)
 	runArgs := []string{
 		"run", "ariga.io/atlas/cmd/atlas",
@@ -550,11 +549,11 @@ func (r *rrw) ReadRevision(_ context.Context, v string) (*migrate.Revision, erro
 }
 
 func (r *rrw) ReadRevisions(context.Context) ([]*migrate.Revision, error) {
-	return []*migrate.Revision(*r), nil
+	return *r, nil
 }
 
 func (r *rrw) clean() {
-	*r = rrw([]*migrate.Revision{})
+	*r = []*migrate.Revision{}
 }
 
 func buildCmd(t *testing.T) (string, error) {

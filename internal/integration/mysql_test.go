@@ -1278,7 +1278,7 @@ func (t *myTest) dsn(dbname string) string {
 	if t.mariadb() {
 		d = "mariadb"
 	}
-	return fmt.Sprintf("%s://root%s@localhost:%d/%s", d, pass, t.port, dbname)
+	return fmt.Sprintf("%s://root%s@localhost:%d/%s?parseTime=true", d, pass, t.port, dbname)
 }
 
 func (t *myTest) driver() migrate.Driver {
