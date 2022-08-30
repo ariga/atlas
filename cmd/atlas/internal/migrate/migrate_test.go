@@ -22,8 +22,9 @@ func TestNewEntRevisions(t *testing.T) {
 		fmt.Sprintf("sqlite://%s?cache=shared&mode=memory&_fk=true", filepath.Join(t.TempDir(), "revision")),
 	)
 	require.NoError(t, err)
-	_, err = NewEntRevisions(context.Background(), &Config{drv: c.Driver, db: c.DB, dialect: c.Name})
+	r, err := NewEntRevisions(context.Background(), c)
 	require.NoError(t, err)
+	require.NoError(t, r.Migrate(context.Background()))
 
 	s, err := c.Driver.InspectSchema(context.Background(), "", nil)
 	require.NoError(t, err)
