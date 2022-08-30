@@ -346,11 +346,11 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	var (
-		tx  = tx{c: c, rrw: rrw}
+		mux = tx{c: c, rrw: rrw}
 		drv migrate.Driver
 	)
 	for _, f := range pending {
-		drv, rrw, err = tx.driver(cmd.Context())
+		drv, rrw, err = mux.driver(cmd.Context())
 		if err != nil {
 			return err
 		}
@@ -358,18 +358,18 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		if err := tx.mayRollback(ex.Execute(cmd.Context(), f)); err != nil {
+		if err := mux.mayRollback(ex.Execute(cmd.Context(), f)); err != nil {
 			return err
 		}
-		if err := tx.mayCommit(); err != nil {
+		if err := mux.mayCommit(); err != nil {
 			return err
 		}
 	}
-	if err := tx.commit(); err != nil {
+	if err := mux.commit(); err != nil {
 		return err
 	}
 	l.Log(migrate.LogDone{})
-	return tx.commit()
+	return mux.commit()
 }
 
 func entRevisions(ctx context.Context, c *sqlclient.Client) (*entmigrate.EntRevisions, error) {
