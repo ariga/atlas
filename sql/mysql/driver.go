@@ -228,6 +228,7 @@ type parser struct{}
 
 // ParseURL implements the sqlclient.URLParser interface.
 func (parser) ParseURL(u *url.URL) *sqlclient.URL {
+	u.Query().Set("parseTime", "true")
 	return &sqlclient.URL{URL: u, DSN: dsn(u), Schema: strings.TrimPrefix(u.Path, "/")}
 }
 
