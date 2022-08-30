@@ -77,13 +77,14 @@ func TestSQLite_Script(t *testing.T) {
 		Dir:   "testdata/sqlite",
 		Setup: tt.setupScript,
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
-			"apply":   tt.cmdApply,
-			"exist":   tt.cmdExist,
-			"synced":  tt.cmdSynced,
-			"cmpshow": tt.cmdCmpShow,
-			"cmpmig":  tt.cmdCmpMig,
-			"execsql": tt.cmdExec,
-			"atlas":   tt.cmdCLI,
+			"apply":       tt.cmdApply,
+			"exist":       tt.cmdExist,
+			"synced":      tt.cmdSynced,
+			"cmpshow":     tt.cmdCmpShow,
+			"cmpmig":      tt.cmdCmpMig,
+			"execsql":     tt.cmdExec,
+			"atlas":       tt.cmdCLI,
+			"clearSchema": tt.clearSchema,
 		},
 	})
 }
@@ -641,6 +642,18 @@ func (t *pgTest) clearSchema(ts *testscript.TestScript, _ bool, args []string) {
 	ts.Check(err)
 	_, err = t.db.Exec("CREATE SCHEMA IF NOT EXISTS " + args[0])
 	ts.Check(err)
+}
+
+func (t *liteTest) clearSchema(ts *testscript.TestScript, _ bool, _ []string) {
+	for _, stmt := range []string{
+		"PRAGMA writable_schema = 1;",
+		"DELETE FROM sqlite_master WHERE type IN ('table', 'index', 'trigger');",
+		"PRAGMA writable_schema = 0;",
+		"VACUUM;",
+	} {
+		_, err := ts.Value(keyDB).(*sql.DB).Exec(stmt)
+		ts.Check(err)
+	}
 }
 
 func cmdSynced(ts *testscript.TestScript, neg bool, args []string, diff func(*testscript.TestScript, string) ([]schema.Change, error)) {

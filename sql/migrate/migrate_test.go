@@ -34,7 +34,7 @@ func TestPlanner_WritePlan(t *testing.T) {
 	}
 
 	// DefaultFormatter
-	pl := migrate.NewPlanner(nil, d, migrate.DisableChecksum())
+	pl := migrate.NewPlanner(nil, d, migrate.PlanWithChecksum(false))
 	require.NotNil(t, pl)
 	require.NoError(t, pl.WritePlan(plan))
 	v := time.Now().UTC().Format("20060102150405")
@@ -49,7 +49,7 @@ func TestPlanner_WritePlan(t *testing.T) {
 		template.Must(template.New("").Parse("{{ range .Changes }}{{ println .Reverse }}{{ end }}")),
 	)
 	require.NoError(t, err)
-	pl = migrate.NewPlanner(nil, d, migrate.WithFormatter(fmt), migrate.DisableChecksum())
+	pl = migrate.NewPlanner(nil, d, migrate.PlanFormat(fmt), migrate.PlanWithChecksum(false))
 	require.NotNil(t, pl)
 	require.NoError(t, pl.WritePlan(plan))
 	require.Equal(t, countFiles(t, d), 3)
@@ -179,37 +179,22 @@ func TestExecutor_Pending(t *testing.T) {
 	require.Len(t, p, 3)
 
 	// 2 are pending.
-	*rrw = mockRevisionReadWriter([]*migrate.Revision{rev1})
+	*rrw = []*migrate.Revision{rev1}
 	p, err = ex.Pending(context.Background())
 	require.NoError(t, err)
 	require.Len(t, p, 2)
 
 	// Only the last one is pending (in full).
-	*rrw = mockRevisionReadWriter([]*migrate.Revision{rev1, rev2})
+	*rrw = []*migrate.Revision{rev1, rev2}
 	p, err = ex.Pending(context.Background())
 	require.NoError(t, err)
 	require.Len(t, p, 1)
 
 	// First statement of last one is marked as applied, second isn't. Third file is still pending.
-	*rrw = mockRevisionReadWriter([]*migrate.Revision{rev1, rev2, rev3})
+	*rrw = []*migrate.Revision{rev1, rev2, rev3}
 	p, err = ex.Pending(context.Background())
 	require.NoError(t, err)
 	require.Len(t, p, 1)
-
-	// All versions have revisions, but are last two are rolled back (0 applied).
-	rev2.Applied = 0
-	rev3.Applied = 0
-	*rrw = mockRevisionReadWriter([]*migrate.Revision{rev1, rev2, rev3})
-	p, err = ex.Pending(context.Background())
-	require.NoError(t, err)
-	require.Len(t, p, 2)
-
-	// All versions have revisions, but are all rolled back (0 applied).
-	rev1.Applied = 0
-	*rrw = mockRevisionReadWriter([]*migrate.Revision{rev1, rev2, rev3})
-	p, err = ex.Pending(context.Background())
-	require.NoError(t, err)
-	require.Len(t, p, 3)
 }
 
 func TestExecutor(t *testing.T) {
@@ -269,7 +254,7 @@ func TestExecutor(t *testing.T) {
 	require.Equal(t, drv.executed, []string{
 		"CREATE TABLE t_sub(c int);", "ALTER TABLE t_sub ADD c1 int;", "ALTER TABLE t_sub ADD c2 int;",
 	})
-	requireEqualRevisions(t, []*migrate.Revision{rev1, rev2}, []*migrate.Revision(*rrw))
+	requireEqualRevisions(t, []*migrate.Revision{rev1, rev2}, *rrw)
 	require.Equal(t, []migrate.LogEntry{
 		migrate.LogExecution{To: "2.10.x-20", Files: []string{"1.a_sub.up.sql", "2.10.x-20_description.sql"}},
 		migrate.LogFile{Version: "1.a", Desc: "sub.up"},
@@ -292,13 +277,13 @@ func TestExecutor(t *testing.T) {
 
 	require.NoError(t, ex.ExecuteN(context.Background(), 1))
 	require.Equal(t, []string{"CREATE TABLE t_sub(c int);", "ALTER TABLE t_sub ADD c1 int;"}, drv.executed)
-	requireEqualRevisions(t, []*migrate.Revision{rev1}, []*migrate.Revision(*rrw))
+	requireEqualRevisions(t, []*migrate.Revision{rev1}, *rrw)
 
 	require.NoError(t, ex.ExecuteN(context.Background(), 1))
 	require.Equal(t, []string{
 		"CREATE TABLE t_sub(c int);", "ALTER TABLE t_sub ADD c1 int;", "ALTER TABLE t_sub ADD c2 int;",
 	}, drv.executed)
-	requireEqualRevisions(t, []*migrate.Revision{rev1, rev2}, []*migrate.Revision(*rrw))
+	requireEqualRevisions(t, []*migrate.Revision{rev1, rev2}, *rrw)
 
 	// Partly is pending.
 	p, err = ex.Pending(context.Background())
@@ -307,12 +292,12 @@ func TestExecutor(t *testing.T) {
 	require.Equal(t, "3_partly.sql", p[0].Name())
 
 	// Suppose first revision is already executed, only execute second migration file.
-	*rrw = mockRevisionReadWriter([]*migrate.Revision{rev1})
+	*rrw = []*migrate.Revision{rev1}
 	*drv = mockDriver{}
 
 	require.NoError(t, ex.ExecuteN(context.Background(), 1))
 	require.Equal(t, []string{"ALTER TABLE t_sub ADD c2 int;"}, drv.executed)
-	requireEqualRevisions(t, []*migrate.Revision{rev1, rev2}, []*migrate.Revision(*rrw))
+	requireEqualRevisions(t, []*migrate.Revision{rev1, rev2}, *rrw)
 
 	// Partly is pending.
 	p, err = ex.Pending(context.Background())
@@ -321,7 +306,7 @@ func TestExecutor(t *testing.T) {
 	require.Equal(t, "3_partly.sql", p[0].Name())
 
 	// Failing, counter will be correct.
-	*rrw = mockRevisionReadWriter([]*migrate.Revision{rev1, rev2})
+	*rrw = []*migrate.Revision{rev1, rev2}
 	*drv = mockDriver{}
 	drv.failOn(2, errors.New("this is an error"))
 	require.ErrorContains(t, ex.ExecuteN(context.Background(), 1), "this is an error")
@@ -512,15 +497,15 @@ func (m *mockDriver) CheckClean(context.Context, *migrate.TableIdent) error {
 
 type mockRevisionReadWriter []*migrate.Revision
 
-func (mockRevisionReadWriter) Ident() *migrate.TableIdent {
+func (*mockRevisionReadWriter) Ident() *migrate.TableIdent {
 	return nil
 }
 
-func (mockRevisionReadWriter) Exists(_ context.Context) (bool, error) {
+func (*mockRevisionReadWriter) Exists(_ context.Context) (bool, error) {
 	return true, nil
 }
 
-func (mockRevisionReadWriter) Init(_ context.Context) error {
+func (*mockRevisionReadWriter) Init(_ context.Context) error {
 	return nil
 }
 
@@ -545,11 +530,11 @@ func (rrw *mockRevisionReadWriter) ReadRevision(_ context.Context, v string) (*m
 }
 
 func (rrw *mockRevisionReadWriter) ReadRevisions(context.Context) ([]*migrate.Revision, error) {
-	return []*migrate.Revision(*rrw), nil
+	return *rrw, nil
 }
 
 func (rrw *mockRevisionReadWriter) clean() {
-	*rrw = mockRevisionReadWriter([]*migrate.Revision{})
+	*rrw = []*migrate.Revision{}
 }
 
 type mockLogger []migrate.LogEntry

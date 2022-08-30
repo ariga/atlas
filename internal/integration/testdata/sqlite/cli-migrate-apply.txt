@@ -1,0 +1,146 @@
+! atlas migrate apply
+stderr 'Error: checksum file not found'
+stdout 'You have a checksum error in your migration directory.'
+stdout 'atlas migrate hash --force'
+
+atlas migrate hash --force
+
+# Apply all of them
+atlas migrate apply --url URL
+stdout 'Migrating to version 2 \(2 migrations in total\):'
+stdout '-- migrating version 1'
+stdout '-> CREATE TABLE `users` \(`id` integer NOT NULL, `age` integer NOT NULL, `name` TEXT NOT NULL, PRIMARY KEY \(`id`\)\);'
+stdout '-- migrating version 2'
+stdout '-> CREATE TABLE `pets` \(`id` integer NOT NULL, `name` TEXT NOT NULL, PRIMARY KEY \(`id`\)\);'
+stdout '-- 2 migrations'
+stdout '-- 2 sql statements'
+cmpshow users users.sql
+cmpshow pets pets.sql
+
+atlas migrate apply --url URL 1
+stdout 'The migration directory is synced with the database, no migration files to execute'
+
+clearSchema
+
+# Apply one by one
+atlas migrate apply --url URL 1
+stdout 'Migrating to version 1 \(1 migrations in total\):'
+cmpshow users users.sql
+
+atlas migrate apply --url URL 1
+stdout 'Migrating to version 2 from 1 \(1 migrations in total\):'
+cmpshow users users.sql
+cmpshow pets pets.sql
+
+atlas migrate apply --url URL 1
+stdout 'The migration directory is synced with the database, no migration files to execute'
+
+clearSchema
+
+# Move the broken migration into the migrations directory and check the different transaction modes.
+cp broken.sql migrations/3_third.sql
+atlas migrate hash --force
+
+! atlas migrate apply --url URL --tx-mode invalid
+stderr 'unknown tx-mode "invalid"'
+
+# Test --tx-mode all
+
+! atlas migrate apply --url URL --tx-mode all
+stderr 'executing statement "THIS IS A FAILING STATEMENT;" from version "3"'
+atlas schema inspect --url URL --exclude $db.atlas_schema_revisions
+cmp stdout empty.hcl
+
+# Apply one migration, after rolling everything back, the first revision must still exist.
+atlas migrate apply --url URL 1
+atlas schema inspect --url URL --exclude $db.atlas_schema_revisions --exclude $db.users
+cmp stdout empty.hcl
+cmpshow users users.sql
+
+! atlas migrate apply --url URL --tx-mode all
+stderr 'executing statement "THIS IS A FAILING STATEMENT;" from version "3"'
+atlas schema inspect --url URL --exclude $db.atlas_schema_revisions --exclude $db.users
+cmp stdout empty.hcl
+
+# If the broken migration is gone, we can apply everything without any problems.
+rm migrations/3_third.sql
+atlas migrate hash --force
+
+atlas migrate apply --url URL --revisions-schema $db
+cmpshow users users.sql
+cmpshow pets pets.sql
+atlas schema inspect --url URL --exclude $db.atlas_schema_revisions --exclude $db.users --exclude $db.pets
+cmp stdout empty.hcl
+
+clearSchema
+
+# Test --tx-mode file
+
+cp broken.sql migrations/3_third.sql
+atlas migrate hash --force
+
+! atlas migrate apply --url URL --tx-mode file
+stderr 'executing statement "THIS IS A FAILING STATEMENT;" from version "3"'
+atlas schema inspect --url URL --exclude $db.atlas_schema_revisions
+cmpshow users users.sql
+cmpshow pets pets.sql
+
+# Table "broken" does not exist since we rolled back that migration.
+atlas schema inspect --url URL --exclude $db.atlas_schema_revisions --exclude $db.users --exclude $db.pets
+cmp stdout empty.hcl
+
+# If the broken migration is gone, we can apply everything without any problems.
+rm migrations/3_third.sql
+atlas migrate hash --force
+
+atlas migrate apply --url URL --revisions-schema $db
+cmpshow users users.sql
+cmpshow pets pets.sql
+atlas schema inspect --url URL --exclude $db.atlas_schema_revisions --exclude $db.users --exclude $db.pets
+cmp stdout empty.hcl
+
+clearSchema
+
+# Test --tx-mode none
+
+cp broken.sql migrations/3_third.sql
+atlas migrate hash --force
+
+! atlas migrate apply --url URL --tx-mode none
+stderr 'executing statement "THIS IS A FAILING STATEMENT;" from version "3"'
+atlas schema inspect --url URL --exclude $db.atlas_schema_revisions
+cmpshow users users.sql
+cmpshow pets pets.sql
+
+# Table "broken" does exist since we do not have transactions.
+atlas schema inspect --url URL --exclude $db.atlas_schema_revisions --exclude $db.users --exclude $db.pets
+cmp stdout broken.hcl
+
+-- migrations/1_first.sql --
+CREATE TABLE `users` (`id` integer NOT NULL, `age` integer NOT NULL, `name` TEXT NOT NULL, PRIMARY KEY (`id`));
+
+-- migrations/2_second.sql --
+CREATE TABLE `pets` (`id` integer NOT NULL, `name` TEXT NOT NULL, PRIMARY KEY (`id`));
+
+-- broken.sql --
+CREATE TABLE `broken` (`id` integer);
+THIS IS A FAILING STATEMENT;
+
+-- empty.hcl --
+schema "main" {
+}
+-- broken.hcl --
+table "broken" {
+  schema = schema.main
+  column "id" {
+    null = true
+    type = integer
+  }
+}
+schema "main" {
+}
+-- users.sql --
+CREATE TABLE `users` (`id` integer NOT NULL, `age` integer NOT NULL, `name` TEXT NOT NULL, PRIMARY KEY (`id`))
+
+-- pets.sql --
+CREATE TABLE `pets` (`id` integer NOT NULL, `name` TEXT NOT NULL, PRIMARY KEY (`id`))
