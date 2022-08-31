@@ -8,7 +8,6 @@ package main
 
 import (
 	"log"
-	"path/filepath"
 
 	"entgo.io/ent/entc"
 	"entgo.io/ent/entc/gen"
@@ -27,7 +26,7 @@ func main() {
 			gen.FeatureExecQuery,
 			gen.FeatureSchemaConfig,
 		},
-	}, entc.TemplateFiles(filepath.Join("template", "convert.tmpl")))
+	}, entc.TemplateDir("template"))
 	if err != nil {
 		log.Fatalf("running ent codegen: %v", err)
 	}
