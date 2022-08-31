@@ -217,7 +217,7 @@ func TestExecutor(t *testing.T) {
 	dir, err = migrate.NewLocalDir(t.TempDir())
 	require.NoError(t, err)
 	require.NoError(t, dir.WriteFile("atlas.sum", hash))
-	ex, err = migrate.NewExecutor(&mockDriver{}, dir, &mockRevisionReadWriter{})
+	ex, err = migrate.NewExecutor(&mockDriver{}, dir, &mockRevisionReadWriter{}, migrate.WithOperatorVersion("op"))
 	require.NoError(t, err)
 	require.NotNil(t, ex)
 	require.ErrorIs(t, ex.ExecuteN(context.Background(), 0), migrate.ErrChecksumMismatch)
@@ -228,25 +228,27 @@ func TestExecutor(t *testing.T) {
 		rrw  = &mockRevisionReadWriter{}
 		log  = &mockLogger{}
 		rev1 = &migrate.Revision{
-			Version:     "1.a",
-			Description: "sub.up",
-			Type:        migrate.RevisionTypeExecute,
-			Applied:     2,
-			Total:       2,
-			Hash:        "nXyZR020M/mH7LxkoTkJr7BcQkipVg90imQ9I4595dw=",
+			Version:         "1.a",
+			Description:     "sub.up",
+			Type:            migrate.RevisionTypeExecute,
+			Applied:         2,
+			Total:           2,
+			Hash:            "nXyZR020M/mH7LxkoTkJr7BcQkipVg90imQ9I4595dw=",
+			OperatorVersion: "op",
 		}
 		rev2 = &migrate.Revision{
-			Version:     "2.10.x-20",
-			Description: "description",
-			Type:        migrate.RevisionTypeExecute,
-			Applied:     1,
-			Total:       1,
-			Hash:        "wQB3Vh3PHVXQg9OD3Gn7TBxbZN3r1Qb7TtAE1g3q9mQ=",
+			Version:         "2.10.x-20",
+			Description:     "description",
+			Type:            migrate.RevisionTypeExecute,
+			Applied:         1,
+			Total:           1,
+			Hash:            "wQB3Vh3PHVXQg9OD3Gn7TBxbZN3r1Qb7TtAE1g3q9mQ=",
+			OperatorVersion: "op",
 		}
 	)
 	dir, err = migrate.NewLocalDir(filepath.Join("testdata/migrate", "sub"))
 	require.NoError(t, err)
-	ex, err = migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(log))
+	ex, err = migrate.NewExecutor(drv, dir, rrw, migrate.WithLogger(log), migrate.WithOperatorVersion("op"))
 	require.NoError(t, err)
 
 	// Applies two of them.
@@ -313,12 +315,13 @@ func TestExecutor(t *testing.T) {
 	revs, err := rrw.ReadRevisions(context.Background())
 	require.NoError(t, err)
 	requireEqualRevision(t, &migrate.Revision{
-		Version:     "3",
-		Description: "partly",
-		Type:        migrate.RevisionTypeExecute,
-		Applied:     1,
-		Total:       2,
-		Error:       "Statement:\nALTER TABLE t_sub ADD c4 int;\n\nError:\nthis is an error",
+		Version:         "3",
+		Description:     "partly",
+		Type:            migrate.RevisionTypeExecute,
+		Applied:         1,
+		Total:           2,
+		Error:           "Statement:\nALTER TABLE t_sub ADD c4 int;\n\nError:\nthis is an error",
+		OperatorVersion: "op",
 	}, revs[len(revs)-1])
 
 	// Will fail if applied contents hash has changed (like when editing a partially applied file to fix an error).

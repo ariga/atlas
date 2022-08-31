@@ -456,7 +456,11 @@ func (tx *tx) commit() error {
 }
 
 func executorOptions(l migrate.Logger) []migrate.ExecutorOption {
-	opts := []migrate.ExecutorOption{migrate.WithLogger(l)}
+	v, _ := parse(version)
+	opts := []migrate.ExecutorOption{
+		migrate.WithLogger(l),
+		migrate.WithOperatorVersion("Atlas CLI - " + v),
+	}
 	if MigrateFlags.Apply.AllowDirty {
 		opts = append(opts, migrate.WithAllowDirty(true))
 	}

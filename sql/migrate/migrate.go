@@ -215,6 +215,7 @@ type (
 		fromVer     string             // Calculate pending files from the given version (including it).
 		baselineVer string             // Start the first migration after the given baseline version.
 		allowDirty  bool               // Allow start working on a non-clean database.
+		operator    string             // Revision.OperatorVersion
 	}
 
 	// ExecutorOption allows configuring an Executor using functional arguments.
@@ -390,7 +391,7 @@ var (
 	ErrRevisionNotExist = errors.New("sql/migrate: revision not found")
 )
 
-// NewExecutor creates a new Executor with default values. // TODO(masseelch): Operator Version and other Meta
+// NewExecutor creates a new Executor with default values.
 func NewExecutor(drv Driver, dir Dir, rrw RevisionReadWriter, opts ...ExecutorOption) (*Executor, error) {
 	if drv == nil {
 		return nil, errors.New("sql/migrate: execute: no driver given")
@@ -422,6 +423,24 @@ func NewExecutor(drv Driver, dir Dir, rrw RevisionReadWriter, opts ...ExecutorOp
 	return ex, nil
 }
 
+// WithAllowDirty defines if we can start working on a non-clean database
+// in the first migration execution.
+func WithAllowDirty(b bool) ExecutorOption {
+	return func(ex *Executor) error {
+		ex.allowDirty = b
+		return nil
+	}
+}
+
+// WithBaselineVersion allows setting the baseline version of the database on the
+// first migration. Hence, all versions up to and including this version are skipped.
+func WithBaselineVersion(v string) ExecutorOption {
+	return func(ex *Executor) error {
+		ex.baselineVer = v
+		return nil
+	}
+}
+
 // WithLogger sets the Logger of an Executor.
 func WithLogger(log Logger) ExecutorOption {
 	return func(ex *Executor) error {
@@ -439,20 +458,11 @@ func WithFromVersion(v string) ExecutorOption {
 	}
 }
 
-// WithBaselineVersion allows setting the baseline version of the database on the
-// first migration. Hence, all versions up to and including this version are skipped.
-func WithBaselineVersion(v string) ExecutorOption {
+// WithOperatorVersion sets the operator version to save on the revisions
+// when executing migration files.
+func WithOperatorVersion(v string) ExecutorOption {
 	return func(ex *Executor) error {
-		ex.baselineVer = v
-		return nil
-	}
-}
-
-// WithAllowDirty defines if we can start working on a non-clean database
-// in the first migration execution.
-func WithAllowDirty(b bool) ExecutorOption {
-	return func(ex *Executor) error {
-		ex.allowDirty = b
+		ex.operator = v
 		return nil
 	}
 }
@@ -498,7 +508,7 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 			}
 			f := migrations[baseline]
 			// Mark the revision in the database as baseline revision.
-			if err := writeRevision(ctx, e.rrw, &Revision{Version: f.Version(), Description: f.Desc(), Type: RevisionTypeBaseline}); err != nil {
+			if err := e.writeRevision(ctx, &Revision{Version: f.Version(), Description: f.Desc(), Type: RevisionTypeBaseline}); err != nil {
 				return nil, err
 			}
 			pending = migrations[baseline+1:]
@@ -576,15 +586,15 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 		}
 	}
 	// Save once to mark as started in the database.
-	if err = writeRevision(ctx, e.rrw, r); err != nil {
+	if err = e.writeRevision(ctx, r); err != nil {
 		return err
 	}
 	// Make sure to store the Revision information.
-	defer func(ctx context.Context, rrw RevisionReadWriter, r *Revision) {
-		if err2 := writeRevision(ctx, rrw, r); err2 != nil {
+	defer func(ctx context.Context, e *Executor, r *Revision) {
+		if err2 := e.writeRevision(ctx, r); err2 != nil {
 			err = wrap(err2, err)
 		}
-	}(ctx, e.rrw, r)
+	}(ctx, e, r)
 	if r.Applied > 0 {
 		// If the file has been applied partially before, check if the
 		// applied statements have not changed.
@@ -606,7 +616,7 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 		}
 		r.PartialHashes = append(r.PartialHashes, "h1:"+sums[r.Applied])
 		r.Applied++
-		if err = writeRevision(ctx, e.rrw, r); err != nil {
+		if err = e.writeRevision(ctx, r); err != nil {
 			return err
 		}
 	}
@@ -614,9 +624,10 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 	return
 }
 
-func writeRevision(ctx context.Context, w RevisionReadWriter, r *Revision) error {
+func (e *Executor) writeRevision(ctx context.Context, r *Revision) error {
 	r.ExecutedAt = time.Now()
-	if err := w.WriteRevision(ctx, r); err != nil {
+	r.OperatorVersion = e.operator
+	if err := e.rrw.WriteRevision(ctx, r); err != nil {
 		return fmt.Errorf("sql/migrate: execute: write revision: %w", err)
 	}
 	return nil
@@ -741,23 +752,9 @@ func (NopRevisionReadWriter) WriteRevision(context.Context, *Revision) error {
 
 var _ RevisionReadWriter = (*NopRevisionReadWriter)(nil)
 
-// Complete returns if a revision has been applied without errors and in full.
-func (r *Revision) Complete() error {
-	if r.Error != "" {
-		return errors.New(r.Error)
-	}
-	return nil
-}
-
 // done computes and sets the ExecutionTime.
 func (r *Revision) done() {
 	r.ExecutionTime = time.Now().Sub(r.ExecutedAt)
-}
-
-func (r *Revision) setGoErr(err error) error {
-	r.done()
-	r.Error = fmt.Sprintf("Go:\n%s", err)
-	return err
 }
 
 func (r *Revision) setSQLErr(stmt string, err error) {
