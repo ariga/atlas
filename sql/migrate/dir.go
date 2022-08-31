@@ -171,8 +171,22 @@ func (f LocalFile) Version() string {
 	return strings.SplitN(strings.TrimSuffix(f.n, ".sql"), "_", 2)[0]
 }
 
-// Stmts implements Scanner.Stmts. It reads migration file line-by-line and expects a statement to be one line only.
+// Stmts returns the SQL statement exists in the local file.
 func (f LocalFile) Stmts() ([]string, error) {
+	s, err := stmts(string(f.b))
+	if err != nil {
+		return nil, err
+	}
+	stmts := make([]string, len(s))
+	for i := range s {
+		stmts[i] = s[i].Text
+	}
+	return stmts, nil
+}
+
+// StmtDecls returns the all statement declarations exist
+// in the local file.
+func (f LocalFile) StmtDecls() ([]*Stmt, error) {
 	return stmts(string(f.b))
 }
 
