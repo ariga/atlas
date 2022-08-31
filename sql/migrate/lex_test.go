@@ -27,3 +27,41 @@ func TestLocalFile_Stmts(t *testing.T) {
 		require.Equal(t, string(buf), strings.Join(stmts, "\n-- end --\n"))
 	}
 }
+
+func TestLocalFile_StmtDecls(t *testing.T) {
+	f := NewLocalFile("f", []byte(`
+-- test
+cmd1;
+
+-- hello
+-- world
+cmd2;
+
+-- skip
+-- this
+# comment
+
+/* Skip this as well */
+
+# Skip this
+/* one */
+
+# command
+cmd3;
+
+/* comment1 */
+/* comment2 */
+cmd4;
+`))
+	stmts, err := f.StmtDecls()
+	require.NoError(t, err)
+	require.Len(t, stmts, 4)
+	require.Equal(t, "cmd1;", stmts[0].Text)
+	require.Equal(t, []string{"-- test\n"}, stmts[0].Comments)
+	require.Equal(t, "cmd2;", stmts[1].Text)
+	require.Equal(t, []string{"-- hello\n", "-- world\n"}, stmts[1].Comments)
+	require.Equal(t, "cmd3;", stmts[2].Text)
+	require.Equal(t, []string{"# command\n"}, stmts[2].Comments)
+	require.Equal(t, "cmd4;", stmts[3].Text)
+	require.Equal(t, []string{"/* comment1 */", "/* comment2 */"}, stmts[3].Comments)
+}

@@ -13,10 +13,17 @@ import (
 	"unicode/utf8"
 )
 
+// Stmt represents a scanned statement text along with its
+// position in the file and associated comments group.
+type Stmt struct {
+	Text     string   // statement text
+	Comments []string // associated comments
+}
+
 // stmts provides a generic implementation for extracting
 // SQL statements from the given file contents.
-func stmts(input string) ([]string, error) {
-	var stmts []string
+func stmts(input string) ([]*Stmt, error) {
+	var stmts []*Stmt
 	l, err := newLex(input)
 	if err != nil {
 		return nil, err
@@ -34,11 +41,12 @@ func stmts(input string) ([]string, error) {
 }
 
 type lex struct {
-	input string
-	pos   int    // current position.
-	width int    // size of latest rune.
-	depth int    // depth of parentheses.
-	delim string // configured delimiter.
+	input    string
+	pos      int      // current position
+	width    int      // size of latest rune
+	depth    int      // depth of parentheses
+	delim    string   // configured delimiter
+	comments []string // collected comments
 }
 
 const (
@@ -64,51 +72,47 @@ func newLex(input string) (*lex, error) {
 	return l, nil
 }
 
-func (l *lex) stmt() (stmt string, err error) {
-	defer func() {
-		l.input = l.input[l.pos:]
-		l.pos = 0
-		// Trim custom delimiter.
-		if l.delim != delimiter {
-			stmt = strings.TrimSuffix(stmt, l.delim)
-		}
-		stmt = strings.TrimSpace(stmt)
-	}()
+func (l *lex) stmt() (*Stmt, error) {
+	var text string
 	// Trim trailing whitespace.
 	l.skipSpaces()
+Scan:
 	for {
 		switch r := l.next(); {
 		case r == eos:
 			if l.depth > 0 {
-				return "", errors.New("unclosed parentheses")
+				return nil, errors.New("unclosed parentheses")
 			}
 			if l.pos > 0 {
-				return l.input, nil
+				text = l.input
+				break Scan
 			}
-			return "", io.EOF
+			return nil, io.EOF
 		case r == '(':
 			l.depth++
 		case r == ')':
 			if l.depth == 0 {
-				return "", fmt.Errorf("unexpected ')' at position %d", l.pos)
+				return nil, fmt.Errorf("unexpected ')' at position %d", l.pos)
 			}
 			l.depth--
 		case r == '\'', r == '"', r == '`':
 			if err := l.skipQuote(r); err != nil {
-				return "", err
+				return nil, err
 			}
 		// Delimiters take precedence over comments.
 		case strings.HasPrefix(l.input[l.pos-l.width:], l.delim) && l.depth == 0:
 			l.pos += len(l.delim) - l.width
-			return l.input[:l.pos], nil
+			text = l.input[:l.pos]
+			break Scan
 		case r == '#':
-			l.skipComment("#", "\n")
+			l.comment("#", "\n")
 		case r == '-' && l.next() == '-':
-			l.skipComment("--", "\n")
+			l.comment("--", "\n")
 		case r == '/' && l.next() == '*':
-			l.skipComment("/*", "*/")
+			l.comment("/*", "*/")
 		}
 	}
+	return l.emit(text), nil
 }
 
 func (l *lex) next() rune {
@@ -118,6 +122,13 @@ func (l *lex) next() rune {
 	r, w := utf8.DecodeRuneInString(l.input[l.pos:])
 	l.pos += w
 	l.width = w
+	return r
+}
+
+func (l *lex) pick() rune {
+	p, w := l.pos, l.width
+	r := l.next()
+	l.pos, l.width = p, w
 	return r
 }
 
@@ -134,23 +145,42 @@ func (l *lex) skipQuote(quote rune) error {
 	}
 }
 
-func (l *lex) skipComment(left, right string) {
+func (l *lex) comment(left, right string) {
 	i := strings.Index(l.input[l.pos:], right)
 	// Not a comment.
 	if i == -1 {
 		return
 	}
-	// If we did not scan any statement
-	// characters, it can be skipped.
-	if l.pos == len(left) {
-		l.input = l.input[l.pos+i+len(right):]
-		l.pos = 0
-		l.skipSpaces()
-	} else {
+	// If the comment reside inside a statement, collect it.
+	if l.pos != len(left) {
 		l.pos += i + len(right)
+		return
 	}
+	// If we did not scan any statement characters, it
+	// can be skipped and stored in the comments group.
+	l.comments = append(l.comments, l.input[:l.pos+i+len(right)])
+	l.input = l.input[l.pos+i+len(right):]
+	l.pos = 0
+	// Double \n separate the comments group from the statement.
+	if strings.HasPrefix(l.input, "\n\n") || right == "\n" && strings.HasPrefix(l.input, "\n") {
+		l.comments = nil
+	}
+	l.skipSpaces()
 }
 
 func (l *lex) skipSpaces() {
 	l.input = strings.TrimLeftFunc(l.input, unicode.IsSpace)
+}
+
+func (l *lex) emit(text string) *Stmt {
+	s := &Stmt{Text: text, Comments: l.comments}
+	l.input = l.input[l.pos:]
+	l.pos = 0
+	l.comments = nil
+	// Trim custom delimiter.
+	if l.delim != delimiter {
+		s.Text = strings.TrimSuffix(s.Text, l.delim)
+	}
+	s.Text = strings.TrimSpace(s.Text)
+	return s
 }
