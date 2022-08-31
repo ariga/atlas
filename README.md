@@ -1,9 +1,32 @@
+<div align="center">
+<img width="50%" align="center" style="display: block; "
+     src="https://blog.ariga.io/uploads/images/atlas_logo_text.png"/>
+</div>
+</br>
+<h1 align="center">A Database Toolkit</h1>
 
-# Atlas -  A Database Toolkit
-[![Discord](https://img.shields.io/discord/930720389120794674?label=discord&logo=discord&style=flat-square&logoColor=white)](https://discord.gg/zZ6sWVg6NT)
 
-<img width="50%" align="right" style="display: block; margin:40px auto;"
-     src="https://atlasgo.io/uploads/images/gopher.png"/>
+<div align="center">
+Manage your database schemas with Atlas CLI
+</div>
+
+<div align="center">
+     <p align="center">
+         <br />
+         <a href="https://atlasgo.io/getting-started/?utm_source=github&utm_campaign=github_atlas_readme&utm_medium=social" rel="dofollow"><strong>Explore the docs »</strong></a>
+         <br /><br/>
+          <a href="https://discord.com/invite/zZ6sWVg6NT">Discord</a>
+    ·
+          <a href="https://twitter.com/ariga_io/?utm_source=github&utm_campaign=github_atlas_readme&utm_medium=social">Twitter</a>
+     ·
+          <a href="https://github.com/ariga/atlas/issues">Report a Bug</a>
+    ·
+          <a href="https://github.com/ariga/atlas/discussions">Request a Feature</a>
+          
+
+</div>
+
+# ⭐️ What is Atlas?
 
 Atlas CLI is an open source tool that helps developers manage their database schemas by applying modern DevOps principles. Contrary to existing tools, Atlas intelligently plans schema migrations for you. Atlas users can use the [Atlas DDL](https://atlasgo.io/concepts/ddl#hcl) (data definition language) to describe their desired database schema and use the command-line tool to plan and apply the migrations to their systems.
 
