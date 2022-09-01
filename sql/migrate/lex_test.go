@@ -29,7 +29,7 @@ func TestLocalFile_Stmts(t *testing.T) {
 }
 
 func TestLocalFile_StmtDecls(t *testing.T) {
-	f := NewLocalFile("f", []byte(`
+	f := `cmd0;
 -- test
 cmd1;
 
@@ -64,23 +64,38 @@ cmd5;
 atlas:lint not a directive
 */
 cmd6;
-`))
-	stmts, err := f.StmtDecls()
+`
+	stmts, err := NewLocalFile("f", []byte(f)).StmtDecls()
 	require.NoError(t, err)
-	require.Len(t, stmts, 6)
-	require.Equal(t, "cmd1;", stmts[0].Text)
-	require.Equal(t, []string{"-- test\n"}, stmts[0].Comments)
-	require.Equal(t, "cmd2;", stmts[1].Text)
-	require.Equal(t, []string{"-- hello\n", "-- world\n"}, stmts[1].Comments)
-	require.Equal(t, "cmd3;", stmts[2].Text)
-	require.Equal(t, []string{"# command\n"}, stmts[2].Comments)
-	require.Equal(t, "cmd4;", stmts[3].Text)
-	require.Equal(t, []string{"/* comment1 */", "/* comment2 */"}, stmts[3].Comments)
-	require.Equal(t, "cmd5;", stmts[4].Text)
-	require.Equal(t, []string{"--atlas:nolint\n", "-- atlas:nolint destructive\n"}, stmts[4].Comments)
-	require.Equal(t, []string{"", "destructive"}, stmts[4].Directive("nolint"))
-	require.Equal(t, "cmd6;", stmts[5].Text)
-	require.Equal(t, []string{"#atlas:lint error\n", "/*atlas:nolint DS101*/", "/* atlas:lint not a directive */", "/*\natlas:lint not a directive\n*/"}, stmts[5].Comments)
-	require.Equal(t, []string{"error"}, stmts[5].Directive("lint"))
-	require.Equal(t, []string{"DS101"}, stmts[5].Directive("nolint"))
+	require.Len(t, stmts, 7)
+
+	require.Equal(t, "cmd0;", stmts[0].Text)
+	require.Equal(t, 0, stmts[0].Pos, "start of the file")
+
+	require.Equal(t, "cmd1;", stmts[1].Text)
+	require.Equal(t, strings.Index(f, "cmd1;"), stmts[1].Pos)
+	require.Equal(t, []string{"-- test\n"}, stmts[1].Comments)
+
+	require.Equal(t, "cmd2;", stmts[2].Text)
+	require.Equal(t, strings.Index(f, "cmd2;"), stmts[2].Pos)
+	require.Equal(t, []string{"-- hello\n", "-- world\n"}, stmts[2].Comments)
+
+	require.Equal(t, "cmd3;", stmts[3].Text)
+	require.Equal(t, strings.Index(f, "cmd3;"), stmts[3].Pos)
+	require.Equal(t, []string{"# command\n"}, stmts[3].Comments)
+
+	require.Equal(t, "cmd4;", stmts[4].Text)
+	require.Equal(t, strings.Index(f, "cmd4;"), stmts[4].Pos)
+	require.Equal(t, []string{"/* comment1 */", "/* comment2 */"}, stmts[4].Comments)
+
+	require.Equal(t, "cmd5;", stmts[5].Text)
+	require.Equal(t, strings.Index(f, "cmd5;"), stmts[5].Pos)
+	require.Equal(t, []string{"--atlas:nolint\n", "-- atlas:nolint destructive\n"}, stmts[5].Comments)
+	require.Equal(t, []string{"", "destructive"}, stmts[5].Directive("nolint"))
+
+	require.Equal(t, "cmd6;", stmts[6].Text)
+	require.Equal(t, strings.Index(f, "cmd6;"), stmts[6].Pos)
+	require.Equal(t, []string{"#atlas:lint error\n", "/*atlas:nolint DS101*/", "/* atlas:lint not a directive */", "/*\natlas:lint not a directive\n*/"}, stmts[6].Comments)
+	require.Equal(t, []string{"error"}, stmts[6].Directive("lint"))
+	require.Equal(t, []string{"DS101"}, stmts[6].Directive("nolint"))
 }
