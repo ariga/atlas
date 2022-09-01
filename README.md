@@ -22,8 +22,6 @@ Manage your database schemas with Atlas CLI
     ·
           <a href="https://github.com/ariga/atlas/discussions">Request a Feature</a>
      </p>
-          
-
 </div>
 
 
