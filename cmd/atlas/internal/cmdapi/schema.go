@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 	"github.com/hashicorp/hcl/v2/hclwrite"
@@ -313,15 +314,6 @@ func CmdCleanRun(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	defer c.Close()
-	// Acquire a lock.
-	if l, ok := c.Driver.(schema.Locker); ok {
-		unlock, err := l.Lock(cmd.Context(), "atlas_migrate_execute", 0)
-		if err != nil {
-			return fmt.Errorf("acquiring database lock: %w", err)
-		}
-		// If unlocking fails notify the user about it.
-		defer cobra.CheckErr(unlock())
-	}
 	var drop []schema.Change
 	// If the connection is bound to a schema, only drop the resources inside the schema.
 	switch c.URL.Schema {
@@ -348,7 +340,19 @@ func CmdCleanRun(cmd *cobra.Command, _ []string) error {
 		cmd.Println("Nothing to drop")
 		return nil
 	}
-	p, err := c.PlanChanges(cmd.Context(), "", drop)
+	if err := summary(cmd, c, drop); err != nil {
+		return err
+	}
+	if CleanFlags.AutoApprove || promptUser() {
+		if err := c.ApplyChanges(cmd.Context(), drop); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func summary(cmd *cobra.Command, drv migrate.Driver, changes []schema.Change) error {
+	p, err := drv.PlanChanges(cmd.Context(), "", changes)
 	if err != nil {
 		return err
 	}
@@ -358,11 +362,6 @@ func CmdCleanRun(cmd *cobra.Command, _ []string) error {
 			cmd.Println("--", strings.ToUpper(c.Comment[:1])+c.Comment[1:])
 		}
 		cmd.Println(c.Cmd)
-	}
-	if CleanFlags.AutoApprove || promptUser() {
-		if err := c.ApplyChanges(cmd.Context(), drop); err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -429,21 +428,10 @@ func applyRun(cmd *cobra.Command, client *sqlclient.Client, devURL string, paths
 		cmd.Println("Schema is synced, no changes to be made")
 		return nil
 	}
-	p, err := client.PlanChanges(ctx, "plan", changes)
-	if err != nil {
+	if err := summary(cmd, client, changes); err != nil {
 		return err
 	}
-	cmd.Println("-- Planned Changes:")
-	for _, c := range p.Changes {
-		if c.Comment != "" {
-			cmd.Println("--", strings.ToUpper(c.Comment[:1])+c.Comment[1:])
-		}
-		cmd.Println(c.Cmd)
-	}
-	if dryRun {
-		return nil
-	}
-	if autoApprove || promptUser() {
+	if !dryRun && (autoApprove || promptUser()) {
 		if err := client.ApplyChanges(ctx, changes); err != nil {
 			return err
 		}
