@@ -119,33 +119,6 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.
 ```
 
 
-### atlas migrate clean
-
-Removes all objects from the connected database.
-
-#### Usage
-```
-atlas migrate clean [flags]
-```
-
-#### Details
-'atlas migrate clean' drops all objects in the connected database and leaves it in an empty state.
-As a safety feature, 'atlas migrate clean' will ask for confirmation before attempting to execute any SQL.
-
-#### Example
-
-```
-  atlas migrate clean -u mysql://user:pass@localhost:3306/dbname
-  atlas migrate clean --auto-approve --env local 
-```
-#### Flags
-```
-      --local-url string   [driver://username:password@address/dbname?param=value] select a database using the URL format
-      --auto-approve       Auto approve. Drop the resources without prompting for approval.
-
-```
-
-
 ### atlas migrate diff
 
 Compute the diff between the migration directory and a desired state and create a new migration file.
@@ -362,6 +335,34 @@ migration.
                           before running migration.
       --dry-run           Dry-run. Print SQL plan without prompting for execution.
       --auto-approve      Auto approve. Apply the schema changes without prompting for approval.
+
+```
+
+
+### atlas schema clean
+
+Removes all objects from the connected database.
+
+#### Usage
+```
+atlas schema clean [flags]
+```
+
+#### Details
+'atlas migrate clean' drops all objects in the connected database and leaves it in an empty state.
+As a safety feature, 'atlas migrate clean' will ask for confirmation before attempting to execute any SQL.
+
+#### Example
+
+```
+  atlas migrate clean -u mysql://user:pass@localhost:3306/dbname
+  atlas migrate clean --auto-approve --env local 
+```
+#### Flags
+```
+      --auto-approve   Auto approve. Apply the schema changes without prompting for approval.
+  -u, --url string     URL to the database using the format:
+                       [driver://username:password@address/dbname?param=value]
 
 ```
 
