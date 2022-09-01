@@ -349,14 +349,14 @@ atlas schema clean [flags]
 ```
 
 #### Details
-'atlas migrate clean' drops all objects in the connected database and leaves it in an empty state.
-As a safety feature, 'atlas migrate clean' will ask for confirmation before attempting to execute any SQL.
+'atlas schema clean' drops all objects in the connected database and leaves it in an empty state.
+As a safety feature, 'atlas schema clean' will ask for confirmation before attempting to execute any SQL.
 
 #### Example
 
 ```
-  atlas migrate clean -u mysql://user:pass@localhost:3306/dbname
-  atlas migrate clean --auto-approve --env local 
+  atlas schema clean -u mysql://user:pass@localhost:3306/dbname
+  atlas schema clean -u mysql://user:pass@localhost:3306/
 ```
 #### Flags
 ```
