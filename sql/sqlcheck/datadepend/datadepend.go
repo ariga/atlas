@@ -90,7 +90,7 @@ func (a *Analyzer) Diagnostics(_ context.Context, p *sqlcheck.Pass) (diags []sql
 					if c.I.Unique && column != nil {
 						diags = append(diags, sqlcheck.Diagnostic{
 							Code: codeAddUniqueI,
-							Pos:  sc.Pos,
+							Pos:  sc.Stmt.Pos,
 							Text: fmt.Sprintf("Adding a unique index %q on table %q might fail in case column %q contains duplicate entries", c.I.Name, m.T.Name, column.Name),
 						})
 					}
@@ -98,7 +98,7 @@ func (a *Analyzer) Diagnostics(_ context.Context, p *sqlcheck.Pass) (diags []sql
 					if c.Change.Is(schema.ChangeUnique) && c.To.Unique && p.File.IndexSpan(m.T, c.To)&sqlcheck.SpanAdded == 0 {
 						diags = append(diags, sqlcheck.Diagnostic{
 							Code: codeModUniqueI,
-							Pos:  sc.Pos,
+							Pos:  sc.Stmt.Pos,
 							Text: fmt.Sprintf("Modifying an index %q on table %q might fail in case of duplicate entries", c.To.Name, m.T.Name),
 						})
 					}

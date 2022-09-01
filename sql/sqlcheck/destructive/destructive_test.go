@@ -28,7 +28,9 @@ func TestAnalyzer_DropTable(t *testing.T) {
 				File: testFile{name: "1.sql"},
 				Changes: []*sqlcheck.Change{
 					{
-						Stmt: "DROP TABLE `users`",
+						Stmt: &migrate.Stmt{
+							Text: "DROP TABLE `users`",
+						},
 						Changes: schema.Changes{
 							&schema.DropTable{
 								T: schema.NewTable("users").
@@ -37,7 +39,9 @@ func TestAnalyzer_DropTable(t *testing.T) {
 						},
 					},
 					{
-						Stmt: "DROP TABLE `posts`",
+						Stmt: &migrate.Stmt{
+							Text: "DROP TABLE `posts`",
+						},
 						Changes: schema.Changes{
 							&schema.DropTable{
 								T: schema.NewTable("posts").
@@ -46,7 +50,9 @@ func TestAnalyzer_DropTable(t *testing.T) {
 						},
 					},
 					{
-						Stmt: "CREATE TABLE `posts`",
+						Stmt: &migrate.Stmt{
+							Text: "CREATE TABLE `posts`",
+						},
 						Changes: schema.Changes{
 							&schema.AddTable{
 								T: schema.NewTable("posts").
@@ -80,7 +86,9 @@ func TestAnalyzer_SkipTemporaryTable(t *testing.T) {
 				File: testFile{name: "1.sql"},
 				Changes: []*sqlcheck.Change{
 					{
-						Stmt: "DROP TABLE `users`",
+						Stmt: &migrate.Stmt{
+							Text: "DROP TABLE `users`",
+						},
 						Changes: schema.Changes{
 							&schema.AddTable{
 								T: schema.NewTable("users").
@@ -115,7 +123,9 @@ func TestAnalyzer_DropSchema(t *testing.T) {
 				File: testFile{name: "1.sql"},
 				Changes: []*sqlcheck.Change{
 					{
-						Stmt: "DROP SCHEMA `test`",
+						Stmt: &migrate.Stmt{
+							Text: "DROP SCHEMA `test`",
+						},
 						Changes: schema.Changes{
 							&schema.DropSchema{
 								S: schema.New("test").
@@ -127,7 +137,9 @@ func TestAnalyzer_DropSchema(t *testing.T) {
 						},
 					},
 					{
-						Stmt: "DROP SCHEMA `market`",
+						Stmt: &migrate.Stmt{
+							Text: "DROP SCHEMA `market`",
+						},
 						Changes: schema.Changes{
 							&schema.DropSchema{
 								S: schema.New("market"),
@@ -135,7 +147,9 @@ func TestAnalyzer_DropSchema(t *testing.T) {
 						},
 					},
 					{
-						Stmt: "CREATE DATABASE `market`",
+						Stmt: &migrate.Stmt{
+							Text: "CREATE DATABASE `market`",
+						},
 						Changes: schema.Changes{
 							&schema.AddSchema{
 								S: schema.New("market"),
@@ -177,7 +191,9 @@ func TestAnalyzer_DropColumn(t *testing.T) {
 				File: testFile{name: "1.sql"},
 				Changes: []*sqlcheck.Change{
 					{
-						Stmt: "ALTER TABLE `pets`",
+						Stmt: &migrate.Stmt{
+							Text: "ALTER TABLE `pets`",
+						},
 						Changes: []schema.Change{
 							&schema.ModifyTable{
 								T: schema.NewTable("pets").
@@ -192,7 +208,9 @@ func TestAnalyzer_DropColumn(t *testing.T) {
 						},
 					},
 					{
-						Stmt: "ALTER TABLE `pets`",
+						Stmt: &migrate.Stmt{
+							Text: "ALTER TABLE `pets`",
+						},
 						Changes: []schema.Change{
 							&schema.ModifySchema{
 								S: schema.New("test"),

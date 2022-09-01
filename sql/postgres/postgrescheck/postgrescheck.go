@@ -21,7 +21,7 @@ func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err erro
 	}
 	return []sqlcheck.Diagnostic{
 		{
-			Pos: p.Change.Pos,
+			Pos: p.Change.Stmt.Pos,
 			Text: fmt.Sprintf(
 				"Adding a non-nullable %q column %q will fail in case table %q is not empty",
 				tt, p.Column.Name, p.Table.Name,

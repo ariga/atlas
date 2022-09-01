@@ -25,7 +25,7 @@ func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err erro
 	// changes that may cause the migration to fail.
 	mightFail := func(tt string) {
 		diags = append(diags, sqlcheck.Diagnostic{
-			Pos: p.Change.Pos,
+			Pos: p.Change.Stmt.Pos,
 			Text: fmt.Sprintf(
 				"Adding a non-nullable %q column %q will fail in case table %q is not empty",
 				tt, p.Column.Name, p.Table.Name,
@@ -35,7 +35,7 @@ func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err erro
 	implicitUpdate := func(tt, v string) {
 		diags = append(diags, sqlcheck.Diagnostic{
 			Code: codeImplicitUpdate,
-			Pos:  p.Change.Pos,
+			Pos:  p.Change.Stmt.Pos,
 			Text: fmt.Sprintf(
 				"Adding a non-nullable %q column %q on table %q without a default value implicitly sets existing rows with %s",
 				tt, p.Column.Name, p.Table.Name, v,

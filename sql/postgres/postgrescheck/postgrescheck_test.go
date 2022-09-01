@@ -25,7 +25,9 @@ func TestDataDepend_MightFail(t *testing.T) {
 				File: testFile{name: "1.sql"},
 				Changes: []*sqlcheck.Change{
 					{
-						Stmt: "ALTER TABLE users",
+						Stmt: &migrate.Stmt{
+							Text: "ALTER TABLE users",
+						},
 						Changes: schema.Changes{
 							&schema.ModifyTable{
 								T: schema.NewTable("users").

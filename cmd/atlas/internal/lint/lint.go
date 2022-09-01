@@ -221,13 +221,13 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 		diff.Files[i] = &sqlcheck.File{
 			File: f,
 		}
-		stmts, err := f.Stmts()
+		stmts, err := stmts(f)
 		if err != nil {
 			return nil, &FileError{File: f.Name(), Err: fmt.Errorf("scanning statements: %w", err)}
 		}
 		start := current
 		for _, s := range stmts {
-			if _, err := d.Dev.ExecContext(ctx, s); err != nil {
+			if _, err := d.Dev.ExecContext(ctx, s.Text); err != nil {
 				return nil, &FileError{File: f.Name(), Err: fmt.Errorf("executing statement: %w", err)}
 			}
 			target, err := d.inspect(ctx)
@@ -239,14 +239,9 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 				return nil, err
 			}
 			current = target
-			p, err := pos(f, s)
-			if err != nil {
-				return nil, err
-			}
 			diff.Files[i].Changes = append(diff.Files[i].Changes, &sqlcheck.Change{
-				Pos:     p,
 				Stmt:    s,
-				Changes: d.mayFix(s, changes),
+				Changes: d.mayFix(s.Text, changes),
 			})
 		}
 		if diff.Files[i].Sum, err = d.Dev.RealmDiff(start, current); err != nil {
@@ -272,6 +267,27 @@ func (d *DevLoader) inspect(ctx context.Context) (*schema.Realm, error) {
 		opts.Schemas = append(opts.Schemas, d.Dev.URL.Schema)
 	}
 	return d.Dev.InspectRealm(ctx, opts)
+}
+
+func stmts(f migrate.File) ([]*migrate.Stmt, error) {
+	if s, ok := f.(interface {
+		StmtDecls() ([]*migrate.Stmt, error)
+	}); ok {
+		return s.StmtDecls()
+	}
+	s1, err := f.Stmts()
+	if err != nil {
+		return nil, err
+	}
+	s2 := make([]*migrate.Stmt, len(s1))
+	for i := range s1 {
+		p, err := pos(f, s1[i])
+		if err != nil {
+			return nil, err
+		}
+		s2[i] = &migrate.Stmt{Pos: p, Text: s1[i]}
+	}
+	return s2, nil
 }
 
 // pos returns the position of a statement in migration file.

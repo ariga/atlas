@@ -59,7 +59,7 @@ func (a *Analyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
 					}
 					diags = append(diags, sqlcheck.Diagnostic{
 						Code: codeDropS,
-						Pos:  sc.Pos,
+						Pos:  sc.Stmt.Pos,
 						Text: text,
 					})
 				}
@@ -67,7 +67,7 @@ func (a *Analyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
 				if p.File.SchemaSpan(c.T.Schema) != sqlcheck.SpanDropped && p.File.TableSpan(c.T) != sqlcheck.SpanTemporary {
 					diags = append(diags, sqlcheck.Diagnostic{
 						Code: codeDropT,
-						Pos:  sc.Pos,
+						Pos:  sc.Stmt.Pos,
 						Text: fmt.Sprintf("Dropping table %q", c.T.Name),
 					})
 				}
@@ -80,7 +80,7 @@ func (a *Analyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
 					if g := (schema.GeneratedExpr{}); !sqlx.Has(d.C.Attrs, &g) || strings.ToUpper(g.Type) != "VIRTUAL" {
 						diags = append(diags, sqlcheck.Diagnostic{
 							Code: codeDropC,
-							Pos:  sc.Pos,
+							Pos:  sc.Stmt.Pos,
 							Text: fmt.Sprintf("Dropping non-virtual column %q", d.C.Name),
 						})
 					}
