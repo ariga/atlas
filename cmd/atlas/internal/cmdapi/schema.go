@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -22,16 +23,20 @@ import (
 )
 
 const (
-	urlFlag     = "url"
-	schemaFlag  = "schema"
-	excludeFlag = "exclude"
-	devURLFlag  = "dev-url"
-	fileFlag    = "file"
-	dsnFlag     = "dsn"
-	varFlag     = "var"
+	urlFlag         = "url"
+	schemaFlag      = "schema"
+	excludeFlag     = "exclude"
+	devURLFlag      = "dev-url"
+	fileFlag        = "file"
+	dsnFlag         = "dsn"
+	varFlag         = "var"
+	autoApproveFlag = "auto-approve"
 )
 
 var (
+	promptIn  io.ReadCloser  = nil
+	promptOut io.WriteCloser = nil
+
 	// schemaCmd represents the subcommand 'atlas schema'.
 	schemaCmd = &cobra.Command{
 		Use:   "schema",
@@ -56,6 +61,13 @@ var (
 		DryRun      bool
 		AutoApprove bool
 	}
+
+	// CleanFlags are the flags used in SchemaClean command.
+	CleanFlags struct {
+		URL         string
+		AutoApprove bool
+	}
+
 	// SchemaApply represents the 'atlas schema apply' subcommand command.
 	SchemaApply = &cobra.Command{
 		Use:   "apply",
@@ -82,6 +94,18 @@ migration.`,
   atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" -f schema.hcl
   atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -f schema.hcl
   atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f schema.hcl`,
+	}
+
+	// SchemaClean represents the 'atlas schema clean' subcommand.
+	SchemaClean = &cobra.Command{
+		Use:   "clean [flags]",
+		Short: "Removes all objects from the connected database.",
+		Long: `'atlas migrate clean' drops all objects in the connected database and leaves it in an empty state.
+As a safety feature, 'atlas migrate clean' will ask for confirmation before attempting to execute any SQL.`,
+		Example: `  atlas migrate clean -u mysql://user:pass@localhost:3306/dbname
+  atlas migrate clean --auto-approve --env local `,
+		PreRunE: schemaFlagsFromEnv,
+		RunE:    CmdCleanRun,
 	}
 
 	// SchemaInspect represents the 'atlas schema inspect' subcommand.
@@ -142,11 +166,16 @@ func init() {
 	SchemaApply.Flags().StringSliceVarP(&SchemaFlags.Schemas, schemaFlag, "s", nil, "Set schema names.")
 	SchemaApply.Flags().StringVarP(&ApplyFlags.DevURL, devURLFlag, "", "", "URL for the dev database. Used to validate schemas and calculate diffs\nbefore running migration.")
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.DryRun, "dry-run", "", false, "Dry-run. Print SQL plan without prompting for execution.")
-	SchemaApply.Flags().BoolVarP(&ApplyFlags.AutoApprove, "auto-approve", "", false, "Auto approve. Apply the schema changes without prompting for approval.")
+	SchemaApply.Flags().BoolVarP(&ApplyFlags.AutoApprove, autoApproveFlag, "", false, "Auto approve. Apply the schema changes without prompting for approval.")
 	SchemaApply.Flags().StringVarP(&SchemaFlags.DSN, dsnFlag, "d", "", "")
 	cobra.CheckErr(SchemaApply.Flags().MarkHidden(dsnFlag))
 	cobra.CheckErr(SchemaApply.MarkFlagRequired(urlFlag))
 	cobra.CheckErr(SchemaApply.MarkFlagRequired(fileFlag))
+
+	// Schema clean flags.
+	SchemaClean.Flags().StringVarP(&CleanFlags.URL, urlFlag, "u", "", "URL to the database using the format:\n[driver://username:password@address/dbname?param=value]")
+	SchemaClean.Flags().BoolVarP(&CleanFlags.AutoApprove, autoApproveFlag, "", false, "Auto approve. Apply the schema changes without prompting for approval.")
+	cobra.CheckErr(SchemaClean.MarkFlagRequired(urlFlag))
 
 	// Schema inspect flags.
 	schemaCmd.AddCommand(SchemaInspect)
@@ -159,6 +188,7 @@ func init() {
 
 	// Schema fmt.
 	schemaCmd.AddCommand(SchemaFmt)
+	schemaCmd.AddCommand(SchemaClean)
 }
 
 // selectEnv returns the Env from the current project file based on the selected
@@ -234,6 +264,7 @@ func maySetFlag(cmd *cobra.Command, name, envVal string) error {
 func dsn2url(cmd *cobra.Command) error {
 	dsnF, urlF := cmd.Flag(dsnFlag), cmd.Flag(urlFlag)
 	switch {
+	case dsnF == nil:
 	case dsnF.Changed && urlF.Changed:
 		return errors.New(`both flags "url" and "dsn" were set`)
 	case dsnF.Changed && !urlF.Changed:
@@ -277,6 +308,68 @@ func CmdApplyRun(cmd *cobra.Command, _ []string) error {
 	}
 	defer c.Close()
 	return applyRun(cmd, c, ApplyFlags.DevURL, ApplyFlags.Paths, ApplyFlags.DryRun, ApplyFlags.AutoApprove, GlobalFlags.Vars)
+}
+
+// CmdCleanRun is the command executed when running the CLI with 'schema clean' args.
+func CmdCleanRun(cmd *cobra.Command, _ []string) error {
+	// Open a client to the database.
+	c, err := sqlclient.Open(cmd.Context(), CleanFlags.URL)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+	// Acquire a lock.
+	if l, ok := c.Driver.(schema.Locker); ok {
+		unlock, err := l.Lock(cmd.Context(), "atlas_migrate_execute", 0)
+		if err != nil {
+			return fmt.Errorf("acquiring database lock: %w", err)
+		}
+		// If unlocking fails notify the user about it.
+		defer cobra.CheckErr(unlock())
+	}
+	var drop []schema.Change
+	// If the connection is bound to a schema, only drop the resources inside the schema.
+	switch c.URL.Schema {
+	case "":
+		r, err := c.InspectRealm(cmd.Context(), nil)
+		if err != nil {
+			return err
+		}
+		drop, err = c.RealmDiff(r, nil)
+		if err != nil {
+			return err
+		}
+	default:
+		s, err := c.InspectSchema(cmd.Context(), c.URL.Schema, nil)
+		if err != nil {
+			return err
+		}
+		drop, err = c.SchemaDiff(s, schema.New(s.Name))
+		if err != nil {
+			return err
+		}
+	}
+	if len(drop) == 0 {
+		cmd.Println("Nothing to drop")
+		return nil
+	}
+	p, err := c.PlanChanges(cmd.Context(), "", drop)
+	if err != nil {
+		return err
+	}
+	cmd.Println("-- Planned Changes:")
+	for _, c := range p.Changes {
+		if c.Comment != "" {
+			cmd.Println("--", strings.ToUpper(c.Comment[:1])+c.Comment[1:])
+		}
+		cmd.Println(c.Cmd)
+	}
+	if CleanFlags.AutoApprove || promptUser() {
+		if err := c.ApplyChanges(cmd.Context(), drop); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // CmdFmtRun formats all HCL files in a given directory using canonical HCL formatting
@@ -365,8 +458,10 @@ func applyRun(cmd *cobra.Command, client *sqlclient.Client, devURL string, paths
 
 func promptUser() bool {
 	prompt := promptui.Select{
-		Label: "Are you sure?",
-		Items: []string{answerApply, answerAbort},
+		Label:  "Are you sure?",
+		Items:  []string{answerApply, answerAbort},
+		Stdin:  promptIn,
+		Stdout: promptOut,
 	}
 	_, result, err := prompt.Run()
 	cobra.CheckErr(err)

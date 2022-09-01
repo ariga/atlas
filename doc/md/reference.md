@@ -119,6 +119,33 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.
 ```
 
 
+### atlas migrate clean
+
+Removes all objects from the connected database.
+
+#### Usage
+```
+atlas migrate clean [flags]
+```
+
+#### Details
+'atlas migrate clean' drops all objects in the connected database and leaves it in an empty state.
+As a safety feature, 'atlas migrate clean' will ask for confirmation before attempting to execute any SQL.
+
+#### Example
+
+```
+  atlas migrate clean -u mysql://user:pass@localhost:3306/dbname
+  atlas migrate clean --auto-approve --env local 
+```
+#### Flags
+```
+      --local-url string   [driver://username:password@address/dbname?param=value] select a database using the URL format
+      --auto-approve       Auto approve. Drop the resources without prompting for approval.
+
+```
+
+
 ### atlas migrate diff
 
 Compute the diff between the migration directory and a desired state and create a new migration file.

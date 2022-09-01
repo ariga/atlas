@@ -74,6 +74,9 @@ var (
 			BaselineVersion string
 			TxMode          string
 		}
+		Clean struct {
+			AutoApprove bool
+		}
 		Diff struct {
 			Qualifier string // optional table qualifier
 		}
