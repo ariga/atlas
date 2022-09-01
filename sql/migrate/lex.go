@@ -16,6 +16,7 @@ import (
 // Stmt represents a scanned statement text along with its
 // position in the file and associated comments group.
 type Stmt struct {
+	Pos      int      // statement position
 	Text     string   // statement text
 	Comments []string // associated comments
 }
@@ -62,7 +63,8 @@ func stmts(input string) ([]*Stmt, error) {
 
 type lex struct {
 	input    string
-	pos      int      // current position
+	pos      int      // current and real position
+	total    int      // total bytes scanned so far
 	width    int      // size of latest rune
 	depth    int      // depth of parentheses
 	delim    string   // configured delimiter
@@ -121,7 +123,7 @@ Scan:
 			}
 		// Delimiters take precedence over comments.
 		case strings.HasPrefix(l.input[l.pos-l.width:], l.delim) && l.depth == 0:
-			l.pos += len(l.delim) - l.width
+			l.addPos(len(l.delim) - l.width)
 			text = l.input[:l.pos]
 			break Scan
 		case r == '#':
@@ -140,16 +142,14 @@ func (l *lex) next() rune {
 		return eos
 	}
 	r, w := utf8.DecodeRuneInString(l.input[l.pos:])
-	l.pos += w
 	l.width = w
+	l.addPos(w)
 	return r
 }
 
-func (l *lex) pick() rune {
-	p, w := l.pos, l.width
-	r := l.next()
-	l.pos, l.width = p, w
-	return r
+func (l *lex) addPos(p int) {
+	l.pos += p
+	l.total += p
 }
 
 func (l *lex) skipQuote(quote rune) error {
@@ -173,13 +173,14 @@ func (l *lex) comment(left, right string) {
 	}
 	// If the comment reside inside a statement, collect it.
 	if l.pos != len(left) {
-		l.pos += i + len(right)
+		l.addPos(i + len(right))
 		return
 	}
+	l.addPos(i + len(right))
 	// If we did not scan any statement characters, it
 	// can be skipped and stored in the comments group.
-	l.comments = append(l.comments, l.input[:l.pos+i+len(right)])
-	l.input = l.input[l.pos+i+len(right):]
+	l.comments = append(l.comments, l.input[:l.pos])
+	l.input = l.input[l.pos:]
 	l.pos = 0
 	// Double \n separate the comments group from the statement.
 	if strings.HasPrefix(l.input, "\n\n") || right == "\n" && strings.HasPrefix(l.input, "\n") {
@@ -189,11 +190,13 @@ func (l *lex) comment(left, right string) {
 }
 
 func (l *lex) skipSpaces() {
+	n := len(l.input)
 	l.input = strings.TrimLeftFunc(l.input, unicode.IsSpace)
+	l.total += n - len(l.input)
 }
 
 func (l *lex) emit(text string) *Stmt {
-	s := &Stmt{Text: text, Comments: l.comments}
+	s := &Stmt{Pos: l.total - len(text), Text: text, Comments: l.comments}
 	l.input = l.input[l.pos:]
 	l.pos = 0
 	l.comments = nil
