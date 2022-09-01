@@ -2,18 +2,12 @@
      <img width="50%" align="center" style="display: block; "
      src="https://blog.ariga.io/uploads/images/atlas_logo_text.png"/>
 </div>
-<h1 align="center">A Database Toolkit</h1>
-
-
-<div align="center">
-Manage your database schemas with Atlas CLI
-</div>
+<h2 align="center">Manage your database schemas with Atlas CLI</h2>
 
 <div align="center">
      <p align="center">
-         <br />
          <a href="https://atlasgo.io/getting-started/" rel="dofollow"><strong>Explore the docs »</strong></a>
-         <br /><br/>
+         <br/><br/>
           <a href="https://discord.com/invite/zZ6sWVg6NT">Discord</a>
     ·
           <a href="https://twitter.com/ariga_io/">Twitter</a>
@@ -24,16 +18,7 @@ Manage your database schemas with Atlas CLI
      </p>
 </div>
 
-
-
 Atlas CLI is an open source tool that helps developers manage their database schemas by applying modern DevOps principles. Contrary to existing tools, Atlas intelligently plans schema migrations for you. Atlas users can use the [Atlas DDL](https://atlasgo.io/concepts/ddl#hcl) (data definition language) to describe their desired database schema and use the command-line tool to plan and apply the migrations to their systems.
-
-### Supported databases:
-* MySQL
-* MariaDB
-* PostgresSQL
-* SQLite
-* TiDB
 
 ## Quick Installation
 
@@ -62,3 +47,6 @@ atlas schema apply -u "mysql://root:pass@localhost:3306/example" -f atlas.hcl
 
 ### About the Project
 Read more about the motivation of the project [here](https://atlasgo.io/blog/2021/11/25/meet-atlas).
+
+### Supported Databses
+MySQL, MariaDB, PostgresSQL, SQLite, TiDB, CockroachDB
