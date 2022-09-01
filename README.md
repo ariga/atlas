@@ -25,7 +25,6 @@ Manage your database schemas with Atlas CLI
 </div>
 
 
-# What is it?
 
 Atlas CLI is an open source tool that helps developers manage their database schemas by applying modern DevOps principles. Contrary to existing tools, Atlas intelligently plans schema migrations for you. Atlas users can use the [Atlas DDL](https://atlasgo.io/concepts/ddl#hcl) (data definition language) to describe their desired database schema and use the command-line tool to plan and apply the migrations to their systems.
 
