@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -17,7 +16,6 @@ import (
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlclient"
-	"github.com/chzyer/readline"
 	"github.com/stretchr/testify/require"
 )
 
@@ -120,46 +118,14 @@ func TestSchema_Clean(t *testing.T) {
 	_, err = runCmd(Root, "migrate", "apply", "--dir", "file://testdata/sqlite", "--url", u)
 	require.NoError(t, err)
 
-	// Shows confirmation and aborts on "Abort".
-	promptIn = readCloserString(string(rune(readline.CharNext)) + "\n")
-	promptOut = writeClose{io.Discard}
-	t.Cleanup(func() {
-		promptIn = nil
-		promptOut = nil
-	})
-	s, err := runCmd(Root, "schema", "clean", "--url", u)
-	require.NoError(t, err)
-	require.NotZero(t, s)
-	require.ErrorAs(t, c.Driver.(migrate.CleanChecker).CheckClean(context.Background(), nil), &migrate.NotCleanError{})
-
-	// // Shows confirmation and proceeds on "Apply".
-	promptIn = readCloserString("\n")
-	s, err = runCmd(Root, "schema", "clean", "--url", u)
-	require.NoError(t, err)
-	require.NotZero(t, s)
-	require.NoError(t, c.Driver.(migrate.CleanChecker).CheckClean(context.Background(), nil))
-
-	// Auto-Approve does not require a confirmation.
+	// Run clean and expect to be clean.
 	_, err = runCmd(Root, "migrate", "apply", "--dir", "file://testdata/sqlite", "--url", u)
 	require.NoError(t, err)
-	s, err = runCmd(Root, "schema", "clean", "--url", u, "--auto-approve")
+	s, err := runCmd(Root, "schema", "clean", "--url", u, "--auto-approve")
 	require.NoError(t, err)
 	require.NotZero(t, s)
 	require.NoError(t, c.Driver.(migrate.CleanChecker).CheckClean(context.Background(), nil))
 }
-
-func readCloserString(s string) io.ReadCloser {
-	return bufClose{bytes.NewBufferString(s)}
-}
-
-type (
-	bufClose   struct{ *bytes.Buffer }
-	writeClose struct{ io.Writer }
-)
-
-func (bufClose) Close() error { return nil }
-
-func (writeClose) Close() error { return nil }
 
 func runFmt(t *testing.T, args []string) string {
 	var out bytes.Buffer

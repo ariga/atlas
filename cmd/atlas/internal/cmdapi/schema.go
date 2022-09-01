@@ -8,9 +8,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,9 +32,6 @@ const (
 )
 
 var (
-	promptIn  io.ReadCloser  = nil
-	promptOut io.WriteCloser = nil
-
 	// schemaCmd represents the subcommand 'atlas schema'.
 	schemaCmd = &cobra.Command{
 		Use:   "schema",
@@ -458,10 +453,8 @@ func applyRun(cmd *cobra.Command, client *sqlclient.Client, devURL string, paths
 
 func promptUser() bool {
 	prompt := promptui.Select{
-		Label:  "Are you sure?",
-		Items:  []string{answerApply, answerAbort},
-		Stdin:  promptIn,
-		Stdout: promptOut,
+		Label: "Are you sure?",
+		Items: []string{answerApply, answerAbort},
 	}
 	_, result, err := prompt.Run()
 	cobra.CheckErr(err)
@@ -495,7 +488,7 @@ func tasks(path string) ([]fmttask, error) {
 		}
 		return tasks, nil
 	}
-	all, err := ioutil.ReadDir(path)
+	all, err := os.ReadDir(path)
 	if err != nil {
 		return nil, err
 	}
@@ -504,9 +497,13 @@ func tasks(path string) ([]fmttask, error) {
 			continue
 		}
 		if strings.HasSuffix(f.Name(), ".hcl") {
+			i, err := f.Info()
+			if err != nil {
+				return nil, err
+			}
 			tasks = append(tasks, fmttask{
 				path: filepath.Join(path, f.Name()),
-				info: f,
+				info: i,
 			})
 		}
 	}
