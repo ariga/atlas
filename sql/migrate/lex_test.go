@@ -52,10 +52,22 @@ cmd3;
 /* comment1 */
 /* comment2 */
 cmd4;
+
+--atlas:nolint
+-- atlas:nolint destructive
+cmd5;
+
+#atlas:lint error
+/*atlas:nolint DS101*/
+/* atlas:lint not a directive */
+/*
+atlas:lint not a directive
+*/
+cmd6;
 `))
 	stmts, err := f.StmtDecls()
 	require.NoError(t, err)
-	require.Len(t, stmts, 4)
+	require.Len(t, stmts, 6)
 	require.Equal(t, "cmd1;", stmts[0].Text)
 	require.Equal(t, []string{"-- test\n"}, stmts[0].Comments)
 	require.Equal(t, "cmd2;", stmts[1].Text)
@@ -64,4 +76,11 @@ cmd4;
 	require.Equal(t, []string{"# command\n"}, stmts[2].Comments)
 	require.Equal(t, "cmd4;", stmts[3].Text)
 	require.Equal(t, []string{"/* comment1 */", "/* comment2 */"}, stmts[3].Comments)
+	require.Equal(t, "cmd5;", stmts[4].Text)
+	require.Equal(t, []string{"--atlas:nolint\n", "-- atlas:nolint destructive\n"}, stmts[4].Comments)
+	require.Equal(t, []string{"", "destructive"}, stmts[4].Directive("nolint"))
+	require.Equal(t, "cmd6;", stmts[5].Text)
+	require.Equal(t, []string{"#atlas:lint error\n", "/*atlas:nolint DS101*/", "/* atlas:lint not a directive */", "/*\natlas:lint not a directive\n*/"}, stmts[5].Comments)
+	require.Equal(t, []string{"error"}, stmts[5].Directive("lint"))
+	require.Equal(t, []string{"DS101"}, stmts[5].Directive("nolint"))
 }

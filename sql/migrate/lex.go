@@ -20,6 +20,26 @@ type Stmt struct {
 	Comments []string // associated comments
 }
 
+// Directive returns all directive comments with the given name.
+// See: pkg.go.dev/cmd/compile#hdr-Compiler_Directives.
+func (s *Stmt) Directive(name string) (ds []string) {
+	for _, c := range s.Comments {
+		switch {
+		case strings.HasPrefix(c, "/*") && !strings.Contains(c, "\n"):
+			if d, ok := directive(strings.TrimSuffix(c, "*/"), name, "/*"); ok {
+				ds = append(ds, d)
+			}
+		default:
+			for _, p := range []string{"#", "--", "-- "} {
+				if d, ok := directive(c, name, p); ok {
+					ds = append(ds, d)
+				}
+			}
+		}
+	}
+	return
+}
+
 // stmts provides a generic implementation for extracting
 // SQL statements from the given file contents.
 func stmts(input string) ([]*Stmt, error) {
