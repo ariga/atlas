@@ -35,7 +35,9 @@ func TestDetectModifyTable(t *testing.T) {
 				Changes: []*sqlcheck.Change{
 					// A real drop.
 					{
-						Stmt: "DROP TABLE `users`",
+						Stmt: &migrate.Stmt{
+							Text: "DROP TABLE `users`",
+						},
 						Changes: schema.Changes{
 							&schema.DropTable{
 								T: schema.NewTable("users").
@@ -45,10 +47,14 @@ func TestDetectModifyTable(t *testing.T) {
 					},
 					// Table modification using a temporary table.
 					{
-						Stmt: "PRAGMA foreign_keys = off;",
+						Stmt: &migrate.Stmt{
+							Text: "PRAGMA foreign_keys = off;",
+						},
 					},
 					{
-						Stmt: "CREATE TABLE `new_posts` (`text` text NOT NULL);",
+						Stmt: &migrate.Stmt{
+							Text: "CREATE TABLE `new_posts` (`text` text NOT NULL);",
+						},
 						Changes: schema.Changes{
 							&schema.AddTable{
 								T: schema.NewTable("new_posts").
@@ -58,10 +64,14 @@ func TestDetectModifyTable(t *testing.T) {
 						},
 					},
 					{
-						Stmt: "INSERT INTO `new_posts` (`text`) SELECT `text` FROM `posts`;",
+						Stmt: &migrate.Stmt{
+							Text: "INSERT INTO `new_posts` (`text`) SELECT `text` FROM `posts`;",
+						},
 					},
 					{
-						Stmt: "DROP TABLE `posts`",
+						Stmt: &migrate.Stmt{
+							Text: "DROP TABLE `posts`",
+						},
 						Changes: schema.Changes{
 							&schema.DropTable{
 								T: schema.NewTable("posts").
@@ -74,7 +84,9 @@ func TestDetectModifyTable(t *testing.T) {
 						},
 					},
 					{
-						Stmt: "ALTER TABLE `new_posts` RENAME TO `posts`;",
+						Stmt: &migrate.Stmt{
+							Text: "ALTER TABLE `new_posts` RENAME TO `posts`;",
+						},
 						Changes: schema.Changes{
 							&schema.DropTable{
 								T: schema.NewTable("new_posts").
@@ -89,11 +101,15 @@ func TestDetectModifyTable(t *testing.T) {
 						},
 					},
 					{
-						Stmt: "PRAGMA foreign_keys = on;",
+						Stmt: &migrate.Stmt{
+							Text: "PRAGMA foreign_keys = on;",
+						},
 					},
 					// Another real drop.
 					{
-						Stmt: "DROP TABLE `pets`",
+						Stmt: &migrate.Stmt{
+							Text: "DROP TABLE `pets`",
+						},
 						Changes: schema.Changes{
 							&schema.DropTable{
 								T: schema.NewTable("pets").

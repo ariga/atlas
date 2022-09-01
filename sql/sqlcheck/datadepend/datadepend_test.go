@@ -29,7 +29,9 @@ func TestAnalyzer_AddUniqueIndex(t *testing.T) {
 				File: testFile{name: "1.sql"},
 				Changes: []*sqlcheck.Change{
 					{
-						Stmt: "ALTER TABLE users",
+						Stmt: &migrate.Stmt{
+							Text: "ALTER TABLE users",
+						},
 						Changes: schema.Changes{
 							&schema.ModifyTable{
 								T: schema.NewTable("users").
@@ -81,7 +83,9 @@ func TestAnalyzer_ModifyUniqueIndex(t *testing.T) {
 				File: testFile{name: "1.sql"},
 				Changes: []*sqlcheck.Change{
 					{
-						Stmt: "ALTER TABLE users",
+						Stmt: &migrate.Stmt{
+							Text: "ALTER TABLE users",
+						},
 						Changes: schema.Changes{
 							&schema.ModifyTable{
 								T: schema.NewTable("users").
@@ -138,7 +142,9 @@ func TestAnalyzer_Options(t *testing.T) {
 				File: testFile{name: "1.sql"},
 				Changes: []*sqlcheck.Change{
 					{
-						Stmt: "ALTER TABLE users",
+						Stmt: &migrate.Stmt{
+							Text: "ALTER TABLE users",
+						},
 						Changes: schema.Changes{
 							&schema.ModifyTable{
 								T: schema.NewTable("users").

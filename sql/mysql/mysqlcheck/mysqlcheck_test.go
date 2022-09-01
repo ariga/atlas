@@ -30,7 +30,9 @@ func TestDataDepend_MySQL_ImplicitUpdate(t *testing.T) {
 				File: testFile{name: "1.sql"},
 				Changes: []*sqlcheck.Change{
 					{
-						Stmt: "ALTER TABLE users",
+						Stmt: &migrate.Stmt{
+							Text: "ALTER TABLE users",
+						},
 						Changes: schema.Changes{
 							&schema.ModifyTable{
 								T: schema.NewTable("users").
@@ -84,7 +86,9 @@ func TestDataDepend_MySQL8_ImplicitUpdate(t *testing.T) {
 				File: testFile{name: "1.sql"},
 				Changes: []*sqlcheck.Change{
 					{
-						Stmt: "ALTER TABLE users",
+						Stmt: &migrate.Stmt{
+							Text: "ALTER TABLE users",
+						},
 						Changes: schema.Changes{
 							&schema.ModifyTable{
 								T: schema.NewTable("users").
@@ -128,7 +132,9 @@ func TestDataDepend_MySQL_MightFail(t *testing.T) {
 				File: testFile{name: "1.sql"},
 				Changes: []*sqlcheck.Change{
 					{
-						Stmt: "ALTER TABLE users",
+						Stmt: &migrate.Stmt{
+							Text: "ALTER TABLE users",
+						},
 						Changes: schema.Changes{
 							&schema.ModifyTable{
 								T: schema.NewTable("users").
@@ -176,7 +182,9 @@ func TestDataDepend_Maria_ImplicitUpdate(t *testing.T) {
 				File: testFile{name: "1.sql"},
 				Changes: []*sqlcheck.Change{
 					{
-						Stmt: "ALTER TABLE users",
+						Stmt: &migrate.Stmt{
+							Text: "ALTER TABLE users",
+						},
 						Changes: schema.Changes{
 							&schema.ModifyTable{
 								T: schema.NewTable("users").

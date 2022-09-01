@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"strings"
 
+	"ariga.io/atlas/sql/migrate"
+
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
@@ -24,7 +26,7 @@ func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err erro
 	}
 	return []sqlcheck.Diagnostic{
 		{
-			Pos: p.Change.Pos,
+			Pos: p.Change.Stmt.Pos,
 			Text: fmt.Sprintf(
 				"Adding a non-nullable %q column %q will fail in case table %q is not empty",
 				tt, p.Column.Name, p.Table.Name,
@@ -61,14 +63,16 @@ func init() {
 						return nil
 					}
 					changes = append(changes, &sqlcheck.Change{
-						// Use the position of the first statement.
-						Pos: p.File.Changes[i].Pos,
-						// A combined statement.
-						Stmt: strings.Join([]string{
-							p.File.Changes[i].Stmt,
-							p.File.Changes[i+2].Stmt,
-							p.File.Changes[i+3].Stmt,
-						}, "\n"),
+						Stmt: &migrate.Stmt{
+							// Use the position of the first statement.
+							Pos: p.File.Changes[i].Stmt.Pos,
+							// A combined statement.
+							Text: strings.Join([]string{
+								p.File.Changes[i].Stmt.Text,
+								p.File.Changes[i+2].Stmt.Text,
+								p.File.Changes[i+3].Stmt.Text,
+							}, "\n"),
+						},
 						Changes: schema.Changes{
 							&schema.ModifyTable{
 								T:       currT,

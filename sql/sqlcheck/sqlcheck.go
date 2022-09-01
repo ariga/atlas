@@ -58,9 +58,8 @@ type (
 
 	// A Change in a migration file.
 	Change struct {
-		schema.Changes        // The actual changes.
-		Stmt           string // The SQL statement generated this change.
-		Pos            int    // The position of the statement in the file.
+		schema.Changes               // The actual changes.
+		Stmt           *migrate.Stmt // The SQL statement generated this change.
 	}
 
 	// A Report describes an analysis report with an optional specific diagnostic.

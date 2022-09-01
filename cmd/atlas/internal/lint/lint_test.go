@@ -141,20 +141,20 @@ func TestDevLoader_LoadChanges(t *testing.T) {
 	// File 1.
 	require.Equal(t, files[0], diff.Files[0].File)
 	require.Len(t, diff.Files[0].Changes, 2)
-	require.Zero(t, diff.Files[0].Changes[0].Pos)
-	require.Equal(t, "CREATE TABLE t1 (id INT)", diff.Files[0].Changes[0].Stmt)
+	require.Zero(t, diff.Files[0].Changes[0].Stmt.Pos)
+	require.Equal(t, "CREATE TABLE t1 (id INT)", diff.Files[0].Changes[0].Stmt.Text)
 	require.IsType(t, (*schema.AddTable)(nil), diff.Files[0].Changes[0].Changes[0])
-	require.Equal(t, "INSERT INTO t1 (id) VALUES (1)", diff.Files[0].Changes[1].Stmt)
+	require.Equal(t, "INSERT INTO t1 (id) VALUES (1)", diff.Files[0].Changes[1].Stmt.Text)
 	require.Empty(t, diff.Files[0].Changes[1].Changes)
 
 	// File 2.
 	require.Equal(t, files[1], diff.Files[1].File)
 	require.Len(t, diff.Files[1].Changes, 2)
-	require.Zero(t, diff.Files[1].Changes[0].Pos)
-	require.Equal(t, "CREATE TABLE t2 (id INT)", diff.Files[1].Changes[0].Stmt)
+	require.Zero(t, diff.Files[1].Changes[0].Stmt.Pos)
+	require.Equal(t, "CREATE TABLE t2 (id INT)", diff.Files[1].Changes[0].Stmt.Text)
 	require.IsType(t, (*schema.AddTable)(nil), diff.Files[1].Changes[0].Changes[0])
-	require.Zero(t, diff.Files[1].Changes[0].Pos)
-	require.Equal(t, "DROP TABLE users", diff.Files[1].Changes[1].Stmt)
+	require.Zero(t, diff.Files[1].Changes[0].Stmt.Pos)
+	require.Equal(t, "DROP TABLE users", diff.Files[1].Changes[1].Stmt.Text)
 	require.IsType(t, (*schema.DropTable)(nil), diff.Files[1].Changes[1].Changes[0])
 
 	// File 3.

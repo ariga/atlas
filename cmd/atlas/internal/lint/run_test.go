@@ -48,8 +48,8 @@ func TestRunner_Run(t *testing.T) {
 	require.Len(t, passes, 1)
 	changes := passes[0].File.Changes
 	require.Len(t, changes, 2)
-	require.Equal(t, "CREATE TABLE pets (id INT)", changes[0].Stmt)
-	require.Equal(t, "DROP TABLE users", changes[1].Stmt)
+	require.Equal(t, "CREATE TABLE pets (id INT)", changes[0].Stmt.Text)
+	require.Equal(t, "DROP TABLE users", changes[1].Stmt.Text)
 	require.Equal(t, `2.sql: Report 1:
 
 	L1: Diagnostic 1
