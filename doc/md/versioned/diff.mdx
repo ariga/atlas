@@ -39,11 +39,11 @@ creating our `users` table:
 * `--to` the URL of the desired state, an HCL file or a database connection.
 * `--dev-url` a [URL](/concepts/url) to a [Dev Database](/concepts/dev-database) that will be used to compute the diff.
 
-```bash
+```shell
 atlas migrate diff create_users \
-  --dir="file://migrations" \
-  --to="file://schema.hcl" \
-  --dev-url="mysql://root:pass@:3306/test"
+  --dir "file://migrations" \
+  --to "file://schema.hcl" \
+  --dev-url "mysql://root:pass@:3306/test"
 ```
 
 Run `ls migrations`, and you will notice Atlas created 2 files:
@@ -98,11 +98,11 @@ table "users" {
 
 Then, run `atlas migrate diff`:
 
-```bash
+```shell
 atlas migrate diff add_users_name \
-  --dir="file://migrations" \
-  --to="file://schema.hcl" \
-  --dev-url="mysql://root:pass@:3306/test"
+  --dir "file://migrations" \
+  --to "file://schema.hcl" \
+  --dev-url "mysql://root:pass@:3306/test"
 ```
 
 You will notice Atlas added a new file to the migration directory:
@@ -166,11 +166,11 @@ mysql> describe users;
 Let's run `atlas migrate diff` with the necessary parameters to generate a migration script for
 creating our `users` table:
 
-```bash
+```shell
 atlas migrate diff create_users \
-  --dir="file://migrations" \
-  --to="mysql://root:pass@:3306/public" \
-  --dev-url="mysql://root:pass@:3306/test"
+  --dir "file://migrations" \
+  --to "mysql://root:pass@:3306/public" \
+  --dev-url "mysql://root:pass@:3306/test"
 ```
 
 Run `ls migrations`, and you will notice Atlas created 2 files:
@@ -215,12 +215,12 @@ to have those qualifiers. To address this, Atlas allows passing another flag to 
 Let's run the [example above](#generate-migration-from-database-schema), with the `--qualifier` flag and compare
 the output:
 
-```bash
+```shell
 atlas migrate diff create_users \
-  --dir="file://migrations" \
-  --to="file://schema.hcl" \
-  --dev-url="mysql://root:pass@:3306/test" \
-  --qualifier="market"
+  --dir "file://migrations" \
+  --to "file://schema.hcl" \
+  --dev-url "mysql://root:pass@:3306/test" \
+  --qualifier "market"
 ```
 
 Running `cat migrations/*.sql` will print the same migration script but the `users` table will be qualified with
@@ -236,12 +236,12 @@ CREATE TABLE `market`.`users` (`id` int NOT NULL, `name` varchar(255) NOT NULL) 
 Some migration tools use a different file format than the one used by Atlas. Therefore, Atlas provides
 an option named `--dir-format` that allows controlling the format of the migration directory.
 
-```bash
+```shell
 atlas migrate diff create_users \
-  --dir="file://migrations" \
-  --to="file://schema.hcl" \
-  --dev-url="mysql://root:pass@:3306/test" \
-  --dir-format="golang-migrate"
+  --dir "file://migrations" \
+  --to "file://schema.hcl" \
+  --dev-url "mysql://root:pass@:3306/test" \
+  --dir-format "golang-migrate"
 ```
 
 Run `ls migrations`, and you will notice Atlas created 3 files:
@@ -322,7 +322,7 @@ values={[
 ]}>
 <TabItem value="mysql">
 
-```bash
+```shell
 atlas migrate diff --dir="file://migrations" --to="file://schema.hcl" \
  --dev-url="mysql://root:pass@:3306/" create_all
 ```
@@ -343,7 +343,7 @@ CREATE TABLE `market`.`users` (`name` int NOT NULL) CHARSET utf8mb4 COLLATE utf8
 </TabItem>
 <TabItem value="postgres">
 
-```bash
+```shell
 atlas migrate diff --dir="file://migrations" --to="file://schema.hcl" \
  --dev-url="postgres://root:pass@:5434/database?sslmode=disable" create_all
 ```

@@ -69,10 +69,7 @@ atlas migrate
 #### Flags
 ```
       --dir string           select migration directory using URL format (default "file://migrations")
-      --dir-format string    set migration file format (default "atlas")
       --env string           set which env from the project file to use
-      --force                force a command to run on a broken migration directory state
-      --schema strings       set schema names
       --var stringToString   input variables (default [])
 
 ```

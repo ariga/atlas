@@ -231,7 +231,7 @@ func init() {
 		set.StringVarP(f, name, short, "", "[driver://username:password@address/dbname?param=value] select a database using the URL format")
 	}
 	revisionsFlag := func(set *pflag.FlagSet) {
-		set.StringVarP(&MigrateFlags.RevisionSchema, migrateFlagRevisionsSchema, "", entmigrate.DefaultRevisionSchema, "schema name where the revisions table resides")
+		set.StringVarP(&MigrateFlags.RevisionSchema, migrateFlagRevisionsSchema, "", revision.Table, "schema name where the revisions table resides")
 	}
 	// Global flags.
 	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.DirURL, migrateFlagDir, "", "file://migrations", "select migration directory using URL format")
@@ -251,6 +251,9 @@ func init() {
 	MigrateApplyCmd.Flags().SortFlags = false
 	cobra.CheckErr(MigrateApplyCmd.MarkFlagRequired(migrateFlagURL))
 	MigrateApplyCmd.MarkFlagsMutuallyExclusive(migrateApplyFromVersion, migrateApplyBaselineVersion)
+	cobra.CheckErr(MigrateApplyCmd.Flags().MarkHidden(migrateFlagDirFormat))
+	cobra.CheckErr(MigrateApplyCmd.Flags().MarkHidden(migrateFlagForce))
+	cobra.CheckErr(MigrateApplyCmd.Flags().MarkHidden(migrateFlagSchema))
 	// Diff flags.
 	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateDiffCmd.Flags())
 	MigrateDiffCmd.Flags().StringSliceVarP(&MigrateFlags.ToURLs, migrateFlagTo, "", nil, "[driver://username:password@address/dbname?param=value ...] select a desired state using the URL format")

@@ -10,6 +10,7 @@ import (
 
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
+	sch "ariga.io/atlas/cmd/atlas/internal/migrate/ent/schema"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
@@ -17,9 +18,6 @@ import (
 	"entgo.io/ent/dialect/sql"
 	entschema "entgo.io/ent/dialect/sql/schema"
 )
-
-// DefaultRevisionSchema is the default schema for storing revisions table.
-const DefaultRevisionSchema = "atlas_schema_revisions"
 
 type (
 	// EntRevisions provides implementation for the migrate.RevisionReadWriter interface.
@@ -42,7 +40,7 @@ func NewEntRevisions(ctx context.Context, ac *sqlclient.Client, opts ...Option) 
 		}
 	}
 	if r.schema == "" {
-		r.schema = DefaultRevisionSchema
+		r.schema = sch.DefaultRevisionSchema
 	}
 	// Create the connection with the underlying migrate.Driver to have it inside a possible transaction.
 	entopts := []ent.Option{ent.Driver(sql.NewDriver(r.ac.Name, sql.Conn{ExecQuerier: r.ac.Driver}))}
