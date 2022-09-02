@@ -331,13 +331,13 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 			s, err := c.InspectSchema(cmd.Context(), defaultRevisionSchema, opts)
 			switch {
 			case schema.IsNotExistError(err):
-				goto proceed
 			case err != nil:
 				return err
-			}
-			if _, ok := s.Table(revision.Table); ok {
-				fmt.Fprintf(cmd.OutOrStderr(), `We couldn't find a revision table in the connected schema but 
-found one in the schema 'atlas_schema_revisions' and cannot.
+			default:
+				if _, ok := s.Table(revision.Table); ok {
+					fmt.Fprintf(cmd.OutOrStderr(),
+						`We couldn't find a revision table in the connected schema but found one in 
+the schema 'atlas_schema_revisions' and cannot determine the desired behavior.
 
 As a safety guard, we require you to specify whether to use the existing
 table in 'atlas_schema_revisions' or create a new one in the connected schema
@@ -345,12 +345,12 @@ by providing the '--revisions-schema' flag or deleting the 'atlas_schema_revisio
 schema if it is unused.
 
 `)
-				cmd.SilenceUsage = true
-				return errors.New("ambiguous revision table")
+					cmd.SilenceUsage = true
+					return errors.New("ambiguous revision table")
+				}
 			}
 		}
 	}
-proceed:
 	// Get the correct log format and destination. Currently, only os.Stdout is supported.
 	l, err := logFormat(cmd.OutOrStdout())
 	if err != nil {
