@@ -284,6 +284,9 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		if n < 1 {
+			return fmt.Errorf("cannot apply '%d' migration files", n)
+		}
 	}
 	// Open the migration directory.
 	dir, err := dir(false)
