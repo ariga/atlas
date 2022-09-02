@@ -26,7 +26,6 @@ import (
 	"ariga.io/atlas/sql/sqlite"
 	_ "ariga.io/atlas/sql/sqlite"
 	_ "ariga.io/atlas/sql/sqlite/sqlitecheck"
-
 	"github.com/fatih/color"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"

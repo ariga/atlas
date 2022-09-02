@@ -6,12 +6,16 @@ package cmdapi
 
 import (
 	"bytes"
+	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 	"testing"
 
+	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/sqlclient"
 	"github.com/stretchr/testify/require"
 )
 
@@ -101,6 +105,26 @@ func TestFmt(t *testing.T) {
 			require.EqualValues(t, tt.expectedOut, out)
 		})
 	}
+}
+
+func TestSchema_Clean(t *testing.T) {
+	var (
+		u      = fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(t.TempDir(), "test.db"))
+		c, err = sqlclient.Open(context.Background(), u)
+	)
+	require.NoError(t, err)
+
+	// Apply migrations onto database.
+	_, err = runCmd(Root, "migrate", "apply", "--dir", "file://testdata/sqlite", "--url", u)
+	require.NoError(t, err)
+
+	// Run clean and expect to be clean.
+	_, err = runCmd(Root, "migrate", "apply", "--dir", "file://testdata/sqlite", "--url", u)
+	require.NoError(t, err)
+	s, err := runCmd(Root, "schema", "clean", "--url", u, "--auto-approve")
+	require.NoError(t, err)
+	require.NotZero(t, s)
+	require.NoError(t, c.Driver.(migrate.CleanChecker).CheckClean(context.Background(), nil))
 }
 
 func runFmt(t *testing.T, args []string) string {

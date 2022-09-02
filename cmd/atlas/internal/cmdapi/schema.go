@@ -9,11 +9,11 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 	"github.com/hashicorp/hcl/v2/hclwrite"
@@ -22,13 +22,14 @@ import (
 )
 
 const (
-	urlFlag     = "url"
-	schemaFlag  = "schema"
-	excludeFlag = "exclude"
-	devURLFlag  = "dev-url"
-	fileFlag    = "file"
-	dsnFlag     = "dsn"
-	varFlag     = "var"
+	urlFlag         = "url"
+	schemaFlag      = "schema"
+	excludeFlag     = "exclude"
+	devURLFlag      = "dev-url"
+	fileFlag        = "file"
+	dsnFlag         = "dsn"
+	varFlag         = "var"
+	autoApproveFlag = "auto-approve"
 )
 
 var (
@@ -56,6 +57,13 @@ var (
 		DryRun      bool
 		AutoApprove bool
 	}
+
+	// CleanFlags are the flags used in SchemaClean command.
+	CleanFlags struct {
+		URL         string
+		AutoApprove bool
+	}
+
 	// SchemaApply represents the 'atlas schema apply' subcommand command.
 	SchemaApply = &cobra.Command{
 		Use:   "apply",
@@ -82,6 +90,18 @@ migration.`,
   atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" -f schema.hcl
   atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -f schema.hcl
   atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f schema.hcl`,
+	}
+
+	// SchemaClean represents the 'atlas schema clean' subcommand.
+	SchemaClean = &cobra.Command{
+		Use:   "clean [flags]",
+		Short: "Removes all objects from the connected database.",
+		Long: `'atlas schema clean' drops all objects in the connected database and leaves it in an empty state.
+As a safety feature, 'atlas schema clean' will ask for confirmation before attempting to execute any SQL.`,
+		Example: `  atlas schema clean -u mysql://user:pass@localhost:3306/dbname
+  atlas schema clean -u mysql://user:pass@localhost:3306/`,
+		PreRunE: schemaFlagsFromEnv,
+		RunE:    CmdCleanRun,
 	}
 
 	// SchemaInspect represents the 'atlas schema inspect' subcommand.
@@ -142,11 +162,16 @@ func init() {
 	SchemaApply.Flags().StringSliceVarP(&SchemaFlags.Schemas, schemaFlag, "s", nil, "Set schema names.")
 	SchemaApply.Flags().StringVarP(&ApplyFlags.DevURL, devURLFlag, "", "", "URL for the dev database. Used to validate schemas and calculate diffs\nbefore running migration.")
 	SchemaApply.Flags().BoolVarP(&ApplyFlags.DryRun, "dry-run", "", false, "Dry-run. Print SQL plan without prompting for execution.")
-	SchemaApply.Flags().BoolVarP(&ApplyFlags.AutoApprove, "auto-approve", "", false, "Auto approve. Apply the schema changes without prompting for approval.")
+	SchemaApply.Flags().BoolVarP(&ApplyFlags.AutoApprove, autoApproveFlag, "", false, "Auto approve. Apply the schema changes without prompting for approval.")
 	SchemaApply.Flags().StringVarP(&SchemaFlags.DSN, dsnFlag, "d", "", "")
 	cobra.CheckErr(SchemaApply.Flags().MarkHidden(dsnFlag))
 	cobra.CheckErr(SchemaApply.MarkFlagRequired(urlFlag))
 	cobra.CheckErr(SchemaApply.MarkFlagRequired(fileFlag))
+
+	// Schema clean flags.
+	SchemaClean.Flags().StringVarP(&CleanFlags.URL, urlFlag, "u", "", "URL to the database using the format:\n[driver://username:password@address/dbname?param=value]")
+	SchemaClean.Flags().BoolVarP(&CleanFlags.AutoApprove, autoApproveFlag, "", false, "Auto approve. Apply the schema changes without prompting for approval.")
+	cobra.CheckErr(SchemaClean.MarkFlagRequired(urlFlag))
 
 	// Schema inspect flags.
 	schemaCmd.AddCommand(SchemaInspect)
@@ -159,6 +184,7 @@ func init() {
 
 	// Schema fmt.
 	schemaCmd.AddCommand(SchemaFmt)
+	schemaCmd.AddCommand(SchemaClean)
 }
 
 // selectEnv returns the Env from the current project file based on the selected
@@ -234,6 +260,7 @@ func maySetFlag(cmd *cobra.Command, name, envVal string) error {
 func dsn2url(cmd *cobra.Command) error {
 	dsnF, urlF := cmd.Flag(dsnFlag), cmd.Flag(urlFlag)
 	switch {
+	case dsnF == nil:
 	case dsnF.Changed && urlF.Changed:
 		return errors.New(`both flags "url" and "dsn" were set`)
 	case dsnF.Changed && !urlF.Changed:
@@ -277,6 +304,66 @@ func CmdApplyRun(cmd *cobra.Command, _ []string) error {
 	}
 	defer c.Close()
 	return applyRun(cmd, c, ApplyFlags.DevURL, ApplyFlags.Paths, ApplyFlags.DryRun, ApplyFlags.AutoApprove, GlobalFlags.Vars)
+}
+
+// CmdCleanRun is the command executed when running the CLI with 'schema clean' args.
+func CmdCleanRun(cmd *cobra.Command, _ []string) error {
+	// Open a client to the database.
+	c, err := sqlclient.Open(cmd.Context(), CleanFlags.URL)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+	var drop []schema.Change
+	// If the connection is bound to a schema, only drop the resources inside the schema.
+	switch c.URL.Schema {
+	case "":
+		r, err := c.InspectRealm(cmd.Context(), nil)
+		if err != nil {
+			return err
+		}
+		drop, err = c.RealmDiff(r, nil)
+		if err != nil {
+			return err
+		}
+	default:
+		s, err := c.InspectSchema(cmd.Context(), c.URL.Schema, nil)
+		if err != nil {
+			return err
+		}
+		drop, err = c.SchemaDiff(s, schema.New(s.Name))
+		if err != nil {
+			return err
+		}
+	}
+	if len(drop) == 0 {
+		cmd.Println("Nothing to drop")
+		return nil
+	}
+	if err := summary(cmd, c, drop); err != nil {
+		return err
+	}
+	if CleanFlags.AutoApprove || promptUser() {
+		if err := c.ApplyChanges(cmd.Context(), drop); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func summary(cmd *cobra.Command, drv migrate.Driver, changes []schema.Change) error {
+	p, err := drv.PlanChanges(cmd.Context(), "", changes)
+	if err != nil {
+		return err
+	}
+	cmd.Println("-- Planned Changes:")
+	for _, c := range p.Changes {
+		if c.Comment != "" {
+			cmd.Println("--", strings.ToUpper(c.Comment[:1])+c.Comment[1:])
+		}
+		cmd.Println(c.Cmd)
+	}
+	return nil
 }
 
 // CmdFmtRun formats all HCL files in a given directory using canonical HCL formatting
@@ -341,21 +428,10 @@ func applyRun(cmd *cobra.Command, client *sqlclient.Client, devURL string, paths
 		cmd.Println("Schema is synced, no changes to be made")
 		return nil
 	}
-	p, err := client.PlanChanges(ctx, "plan", changes)
-	if err != nil {
+	if err := summary(cmd, client, changes); err != nil {
 		return err
 	}
-	cmd.Println("-- Planned Changes:")
-	for _, c := range p.Changes {
-		if c.Comment != "" {
-			cmd.Println("--", strings.ToUpper(c.Comment[:1])+c.Comment[1:])
-		}
-		cmd.Println(c.Cmd)
-	}
-	if dryRun {
-		return nil
-	}
-	if autoApprove || promptUser() {
+	if !dryRun && (autoApprove || promptUser()) {
 		if err := client.ApplyChanges(ctx, changes); err != nil {
 			return err
 		}
@@ -400,7 +476,7 @@ func tasks(path string) ([]fmttask, error) {
 		}
 		return tasks, nil
 	}
-	all, err := ioutil.ReadDir(path)
+	all, err := os.ReadDir(path)
 	if err != nil {
 		return nil, err
 	}
@@ -409,9 +485,13 @@ func tasks(path string) ([]fmttask, error) {
 			continue
 		}
 		if strings.HasSuffix(f.Name(), ".hcl") {
+			i, err := f.Info()
+			if err != nil {
+				return nil, err
+			}
 			tasks = append(tasks, fmttask{
 				path: filepath.Join(path, f.Name()),
-				info: f,
+				info: i,
 			})
 		}
 	}

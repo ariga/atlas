@@ -339,6 +339,34 @@ migration.
 ```
 
 
+### atlas schema clean
+
+Removes all objects from the connected database.
+
+#### Usage
+```
+atlas schema clean [flags]
+```
+
+#### Details
+'atlas schema clean' drops all objects in the connected database and leaves it in an empty state.
+As a safety feature, 'atlas schema clean' will ask for confirmation before attempting to execute any SQL.
+
+#### Example
+
+```
+  atlas schema clean -u mysql://user:pass@localhost:3306/dbname
+  atlas schema clean -u mysql://user:pass@localhost:3306/
+```
+#### Flags
+```
+      --auto-approve   Auto approve. Apply the schema changes without prompting for approval.
+  -u, --url string     URL to the database using the format:
+                       [driver://username:password@address/dbname?param=value]
+
+```
+
+
 ### atlas schema diff
 
 Calculate and print the diff between two schemas.
