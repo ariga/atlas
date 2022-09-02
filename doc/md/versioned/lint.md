@@ -34,16 +34,26 @@ format the output of the `lint` command.
 ### Examples
 
 Analyze all changes relative to the `master` Git branch:
-```
-atlas migrate lint --dir file://my/project/migrations --dev-url mysql://root:pass@localhost:3306/dev --git-base master
+```shell
+atlas migrate lint \
+  --dir file://my/project/migrations \
+  --dev-url mysql://root:pass@localhost:3306/dev \
+  --git-base master
 ```
 Analyze the latest 2 migration files:
-```
-atlas migrate lint --dir file://my/project/migrations --dev-url mysql://root:pass@localhost:3306/dev --latest 2
+```shell
+atlas migrate lint \
+  --dir file://my/project/migrations \
+  --dev-url mysql://root:pass@localhost:3306/dev \
+  --latest 2
 ```
 Format output as JSON:
-```
-atlas migrate lint --dir file://my/project/migrations --dev-url mysql://root:pass@localhost:3306/dev --git-base master --log '{{ json .Files }}'
+```shell
+atlas migrate lint \
+  --dir file://my/project/migrations \
+  --dev-url mysql://root:pass@localhost:3306/dev \
+  --git-base master \
+  --log '{{ json .Files }}'
 ```
 
 ### Reference

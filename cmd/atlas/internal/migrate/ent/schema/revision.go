@@ -15,6 +15,9 @@ import (
 	"entgo.io/ent/schema/field"
 )
 
+// DefaultRevisionSchema is the default schema for storing revisions table.
+const DefaultRevisionSchema = "atlas_schema_revisions"
+
 // Revision holds the schema definition for the Revision entity.
 type Revision struct {
 	ent.Schema
@@ -53,6 +56,6 @@ func (Revision) Fields() []ent.Field {
 // Annotations of the Revision.
 func (Revision) Annotations() []schema.Annotation {
 	return []schema.Annotation{
-		entsql.Annotation{Table: "atlas_schema_revisions"},
+		entsql.Annotation{Table: DefaultRevisionSchema},
 	}
 }
