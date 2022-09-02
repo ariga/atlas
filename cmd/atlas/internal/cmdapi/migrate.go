@@ -231,7 +231,7 @@ func init() {
 		set.StringVarP(f, name, short, "", "[driver://username:password@address/dbname?param=value] select a database using the URL format")
 	}
 	revisionsFlag := func(set *pflag.FlagSet) {
-		set.StringVarP(&MigrateFlags.RevisionSchema, migrateFlagRevisionsSchema, "", revision.Table, "schema name where the revisions table resides")
+		set.StringVarP(&MigrateFlags.RevisionSchema, migrateFlagRevisionsSchema, "", "", "schema name where the revisions table resides")
 	}
 	// Global flags.
 	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.DirURL, migrateFlagDir, "", "file://migrations", "select migration directory using URL format")
@@ -276,6 +276,9 @@ func init() {
 	receivesEnv(MigrateCmd)
 }
 
+// defaultRevisionSchema is the default schema for storing revisions table.
+const defaultRevisionSchema = "atlas_schema_revisions"
+
 // CmdMigrateApplyRun is the command executed when running the CLI with 'migrate apply' args.
 func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 	var (
@@ -311,6 +314,43 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		// If unlocking fails notify the user about it.
 		defer cobra.CheckErr(unlock())
 	}
+	// The "old" default  behavior for the revision schema location was to store the revision table in its own schema.
+	// Now, the table is saved in the connected schema, if any. To keep the backwards compatability, we now require
+	// for schema bound connections to have the schema-revision flag present if there is no revision table in the schema
+	// but the old default schema does have one.
+	if c.URL.Schema != "" && MigrateFlags.RevisionSchema == "" {
+		// If the scheme does not contain a revision table, but we can find a table in the previous default schema,
+		// abort and tell the user to specify the intention.
+		opts := &schema.InspectOptions{Tables: []string{revision.Table}}
+		s, err := c.InspectSchema(cmd.Context(), "", opts)
+		if err != nil {
+			return err
+		}
+		if _, ok := s.Table(revision.Table); !ok {
+			// Check for the old default schema. If it does not exist, we have no problem.
+			s, err := c.InspectSchema(cmd.Context(), defaultRevisionSchema, opts)
+			switch {
+			case schema.IsNotExistError(err):
+				goto proceed
+			case err != nil:
+				return err
+			}
+			if _, ok := s.Table(revision.Table); ok {
+				fmt.Fprintf(cmd.OutOrStderr(), `We couldn't find a revision table in the connected schema but 
+found one in the schema 'atlas_schema_revisions' and cannot.
+
+As a safety guard, we require you to specify whether to use the existing
+table in 'atlas_schema_revisions' or create a new one in the connected schema
+by providing the '--revisions-schema' flag or deleting the 'atlas_schema_revisions'
+schema if it is unused.
+
+`)
+				cmd.SilenceUsage = true
+				return errors.New("ambiguous revision table")
+			}
+		}
+	}
+proceed:
 	// Get the correct log format and destination. Currently, only os.Stdout is supported.
 	l, err := logFormat(cmd.OutOrStdout())
 	if err != nil {
@@ -379,7 +419,16 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 }
 
 func entRevisions(ctx context.Context, c *sqlclient.Client) (*entmigrate.EntRevisions, error) {
-	return entmigrate.NewEntRevisions(ctx, c, entmigrate.WithSchema(MigrateFlags.RevisionSchema))
+	var s string
+	switch {
+	case MigrateFlags.RevisionSchema != "":
+		s = MigrateFlags.RevisionSchema
+	case c.URL.Schema != "":
+		s = c.URL.Schema
+	default:
+		s = defaultRevisionSchema
+	}
+	return entmigrate.NewEntRevisions(ctx, c, entmigrate.WithSchema(s))
 }
 
 // tx handles wrapping migration execution in transactions.
