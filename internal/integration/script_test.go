@@ -96,7 +96,7 @@ func (t *myTest) setupScript(env *testscript.Env) error {
 	env.Setenv("version", t.version)
 	env.Setenv("charset", attrs[0].(*schema.Charset).V)
 	env.Setenv("collate", attrs[1].(*schema.Collation).V)
-	if err := replaceDBURL(env, t.dsn("")); err != nil {
+	if err := replaceDBURL(env, t.url("")); err != nil {
 		return err
 	}
 	return setupScript(t.T, env, t.db, "DROP SCHEMA IF EXISTS %s")
@@ -114,7 +114,7 @@ func replaceDBURL(env *testscript.Env, url string) error {
 
 func (t *pgTest) setupScript(env *testscript.Env) error {
 	env.Setenv("version", t.version)
-	u := strings.ReplaceAll(t.dsn(""), "/test", "/")
+	u := strings.ReplaceAll(t.url(""), "/test", "/")
 	if err := replaceDBURL(env, u); err != nil {
 		return err
 	}
@@ -369,11 +369,11 @@ func (t *liteTest) cmdExec(ts *testscript.TestScript, _ bool, args []string) {
 }
 
 func (t *myTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {
-	cmdCLI(ts, neg, args, t.dsn(ts.Getenv("db")), ts.Getenv(atlasPathKey))
+	cmdCLI(ts, neg, args, t.url(ts.Getenv("db")), ts.Getenv(atlasPathKey))
 }
 
 func (t *pgTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {
-	cmdCLI(ts, neg, args, t.dsn(ts.Getenv("db")), ts.Getenv(atlasPathKey))
+	cmdCLI(ts, neg, args, t.url(ts.Getenv("db")), ts.Getenv(atlasPathKey))
 }
 
 func (t *liteTest) cmdCLI(ts *testscript.TestScript, neg bool, args []string) {

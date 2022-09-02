@@ -581,6 +581,12 @@ func TestMySQL_Snapshot(t *testing.T) {
 	})
 }
 
+func TestMySQL_CLI_MigrateApplyBC(t *testing.T) {
+	myRun(t, func(t *myTest) {
+		testCLIMigrateApplyBC(t, "mysql")
+	})
+}
+
 func TestMySQL_CLI(t *testing.T) {
 	h := `
 			schema "test" {
@@ -600,14 +606,14 @@ func TestMySQL_CLI(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
-			testCLISchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"), mysql.EvalHCL)
+			testCLISchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V), t.url("test"), mysql.EvalHCL)
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
-			testCLISchemaApply(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"))
+			testCLISchemaApply(t, fmt.Sprintf(h, charset.V, collate.V), t.url("test"))
 		})
 	})
 	t.Run("SchemaApplyWithVars", func(t *testing.T) {
@@ -626,26 +632,26 @@ table "users" {
 }
 `
 		myRun(t, func(t *myTest) {
-			testCLISchemaApply(t, h, t.dsn("test"), "--var", "tenant=test")
+			testCLISchemaApply(t, h, t.url("test"), "--var", "tenant=test")
 		})
 	})
 	t.Run("SchemaApplyDryRun", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
-			testCLISchemaApplyDry(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"))
+			testCLISchemaApplyDry(t, fmt.Sprintf(h, charset.V, collate.V), t.url("test"))
 		})
 	})
 	t.Run("SchemaDiffRun", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
-			testCLISchemaDiff(t, t.dsn("test"))
+			testCLISchemaDiff(t, t.url("test"))
 		})
 	})
 	t.Run("SchemaApplyAutoApprove", func(t *testing.T) {
 		myRun(t, func(t *myTest) {
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
-			testCLISchemaApplyAutoApprove(t, fmt.Sprintf(h, charset.V, collate.V), t.dsn("test"))
+			testCLISchemaApplyAutoApprove(t, fmt.Sprintf(h, charset.V, collate.V), t.url("test"))
 		})
 	})
 }
@@ -684,7 +690,7 @@ func TestMySQL_CLI_MultiSchema(t *testing.T) {
 			t.dropTables("users")
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
-			testCLIMultiSchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V, charset.V, collate.V), t.dsn(""), []string{"test", "test2"}, mysql.EvalHCL)
+			testCLIMultiSchemaInspect(t, fmt.Sprintf(h, charset.V, collate.V, charset.V, collate.V), t.url(""), []string{"test", "test2"}, mysql.EvalHCL)
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
@@ -693,7 +699,7 @@ func TestMySQL_CLI_MultiSchema(t *testing.T) {
 			t.dropTables("users")
 			attrs := t.defaultAttrs()
 			charset, collate := attrs[0].(*schema.Charset), attrs[1].(*schema.Collation)
-			testCLIMultiSchemaApply(t, fmt.Sprintf(h, charset.V, collate.V, charset.V, collate.V), t.dsn(""), []string{"test", "test2"}, mysql.EvalHCL)
+			testCLIMultiSchemaApply(t, fmt.Sprintf(h, charset.V, collate.V, charset.V, collate.V), t.url(""), []string{"test", "test2"}, mysql.EvalHCL)
 		})
 	})
 }
@@ -1265,11 +1271,7 @@ create table atlas_types_sanity
 	})
 }
 
-func (t *myTest) url() string {
-	return t.dsn("")
-}
-
-func (t *myTest) dsn(dbname string) string {
+func (t *myTest) url(dbname string) string {
 	d := "mysql"
 	pass := ":pass"
 	if t.tidb() {
@@ -1415,34 +1417,6 @@ func (t *myTest) posts() *schema.Table {
 		{Symbol: "author_id", Table: postsT, Columns: postsT.Columns[1:2], RefTable: usersT, RefColumns: usersT.Columns[:1], OnDelete: schema.NoAction},
 	}
 	return postsT
-}
-
-func (t *myTest) revisions() *schema.Table {
-	versionsT := &schema.Table{
-		Name: "atlas_schema_revisions",
-		Columns: []*schema.Column{
-			{Name: "version", Type: &schema.ColumnType{Type: &schema.StringType{T: t.valueByVersion(map[string]string{"mysql56": "varchar(191)"}, "varchar(255)")}}},
-			{Name: "description", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
-			{Name: "execution_state", Type: &schema.ColumnType{Type: &schema.EnumType{Values: []string{"ongoing", "ok", "error"}}}},
-			{Name: "executed_at", Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp"}, Raw: "timestamp", Null: t.version != "mysql8"}},
-			{Name: "execution_time", Type: &schema.ColumnType{Type: &schema.IntegerType{T: t.valueByVersion(map[string]string{"mysql56": "bigint(20)"}, "bigint")}}},
-			{Name: "hash", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
-			{Name: "operator_version", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
-		},
-		Attrs: []schema.Attr{
-			&schema.Charset{V: "utf8mb4"},       // because of Ent
-			&schema.Collation{V: "utf8mb4_bin"}, // because of Ent
-		},
-	}
-	versionsT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: versionsT.Columns[0]}}}
-	var metaType schema.ColumnType
-	if t.version == "mysql56" {
-		metaType = schema.ColumnType{Type: &schema.BinaryType{T: "longblob"}}
-	} else {
-		metaType = schema.ColumnType{Type: &schema.JSONType{T: "json"}}
-	}
-	versionsT.Columns = append(versionsT.Columns, &schema.Column{Name: "meta", Type: &metaType})
-	return versionsT
 }
 
 func (t *myTest) valueByVersion(values map[string]string, defaults string) string {
