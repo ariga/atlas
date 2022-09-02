@@ -105,6 +105,17 @@ func TestMigrate_Apply(t *testing.T) {
 	require.ErrorIs(t, err, errLock)
 	require.True(t, strings.HasPrefix(s, "Error: acquiring database lock: "+errLock.Error()))
 
+	// Apply zero throws error.
+	for _, n := range []string{"-1", "0"} {
+		_, err = runCmd(
+			Root, "migrate", "apply",
+			"--dir", "file://testdata/sqlite",
+			"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
+			"--", n,
+		)
+		require.EqualError(t, err, fmt.Sprintf("cannot apply '%s' migration files", n))
+	}
+
 	// Will work and print stuff to the console.
 	s, err = runCmd(
 		Root, "migrate", "apply",
