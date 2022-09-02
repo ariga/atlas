@@ -37,7 +37,7 @@ module.exports = {
                 {type: 'doc', id: 'versioned/diff', label: 'Migration Authoring'},
                 {type: 'doc', id: 'versioned/lint', label: 'Migration Linting'},
                 {type: 'doc', id: 'versioned/new', label: 'Manual Migrations'},
-                {type: 'doc', id: 'versioned/execution', label: 'Migration Execution'},
+                // {type: 'doc', id: 'versioned/apply', label: 'Migration Applying'},
             ]
         },
         {
