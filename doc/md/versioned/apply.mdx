@@ -115,36 +115,36 @@ flag:
 First time apply with baseline on production environment:
 ```shell
 atlas migrate apply \
-  --env production \
-  --baseline 20220811074144
+  --env "production" \
+  --baseline "20220811074144"
 ```
 
 Execute 1 pending migration file, but don't run, but print SQL statements on screen:
 ```shell
 atlas migrate apply 1 \
-  --env production \
-  --baseline 20220811074144 \
+  --env "production" \
+  --baseline "20220811074144" \
   --dry-run
 ```
 
 Specify revision table schema and custom migration directory path:
 ```shell
 atlas migrate apply \
-  --url mysql://root:pass@remote:3306/my_database \
-  --revisions-schema atlas_migration_history \
-  --dir file://custom/path/to/dir
+  --url "mysql://root:pass@remote:3306/my_database" \
+  --revisions-schema "atlas_migration_history" \
+  --dir "file://custom/path/to/dir"
 ```
 
 Ignore unclean database and run the first 3 migrations:
 ```shell
 atlas migrate apply 3 \
-  --url mysql://root:pass@remote:3306/my_database \
-  --dir file://custom/path/to/dir
+  --url "mysql://root:pass@remote:3306/my_database" \
+  --dir "file://custom/path/to/dir"
 ```
 
 Run all pending migrations, but do not use a transaction:
 ```shell
 atlas migrate apply \
-  --url mysql://root:pass@remote:3306/my_database \
-  --tx-mode none
+  --url "mysql://root:pass@remote:3306/my_database" \
+  --tx-mode "none"
 ```

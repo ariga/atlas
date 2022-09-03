@@ -36,24 +36,24 @@ format the output of the `lint` command.
 Analyze all changes relative to the `master` Git branch:
 ```shell
 atlas migrate lint \
-  --dir file://my/project/migrations \
-  --dev-url mysql://root:pass@localhost:3306/dev \
-  --git-base master
+  --dir "file://my/project/migrations" \
+  --dev-url "mysql://root:pass@localhost:3306/dev" \
+  --git-base "master"
 ```
 Analyze the latest 2 migration files:
 ```shell
 atlas migrate lint \
-  --dir file://my/project/migrations \
-  --dev-url mysql://root:pass@localhost:3306/dev \
+  --dir "file://my/project/migrations" \
+  --dev-url "mysql://root:pass@localhost:3306/dev" \
   --latest 2
 ```
 Format output as JSON:
 ```shell
 atlas migrate lint \
-  --dir file://my/project/migrations \
-  --dev-url mysql://root:pass@localhost:3306/dev \
-  --git-base master \
-  --log '{{ json .Files }}'
+  --dir "file://my/project/migrations" \
+  --dev-url "mysql://root:pass@localhost:3306/dev" \
+  --git-base "master" \
+  --log "{{ json .Files }}"
 ```
 
 ### Reference
