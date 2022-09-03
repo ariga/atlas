@@ -323,8 +323,10 @@ values={[
 <TabItem value="mysql">
 
 ```shell
-atlas migrate diff --dir="file://migrations" --to="file://schema.hcl" \
- --dev-url="mysql://root:pass@:3306/" create_all
+atlas migrate diff create_all \
+  --dir "file://migrations" \
+  --to "file://schema.hcl" \
+  --dev-url "mysql://root:pass@:3306/"
 ```
 
 Running `cat migrations/*.sql` will print the followings:
@@ -344,8 +346,10 @@ CREATE TABLE `market`.`users` (`name` int NOT NULL) CHARSET utf8mb4 COLLATE utf8
 <TabItem value="postgres">
 
 ```shell
-atlas migrate diff --dir="file://migrations" --to="file://schema.hcl" \
- --dev-url="postgres://root:pass@:5434/database?sslmode=disable" create_all
+atlas migrate diff create_all \
+  --dir "file://migrations" \
+  --to "file://schema.hcl" \
+  --dev-url "postgres://root:pass@:5434/database?sslmode=disable"
 ```
 
 Running `cat migrations/*.sql` will print the followings:
