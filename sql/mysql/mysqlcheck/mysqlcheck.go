@@ -129,7 +129,7 @@ func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err erro
 }
 
 func init() {
-	sqlcheck.Register(mysql.DriverName, func(r *schemahcl.Resource) (sqlcheck.Analyzer, error) {
+	sqlcheck.Register(mysql.DriverName, func(r *schemahcl.Resource) ([]sqlcheck.Analyzer, error) {
 		ds, err := destructive.New(r)
 		if err != nil {
 			return nil, err
@@ -140,6 +140,6 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
-		return sqlcheck.Analyzers{ds, dd}, nil
+		return []sqlcheck.Analyzer{ds, dd}, nil
 	})
 }

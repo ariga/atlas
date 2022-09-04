@@ -1,0 +1,51 @@
+# Ignore all diagnostics.
+atlas migrate lint --dir file://migrations1 --dev-url URL --latest=1 > got.txt
+cmp got.txt empty.txt
+
+# Ignore specific diagnostics.
+atlas migrate lint --dir file://migrations2 --dev-url URL --latest=1 > got.txt
+cmp got.txt empty.txt
+
+# Ignore by code.
+atlas migrate lint --dir file://migrations3 --dev-url URL --latest=1 > got.txt
+cmp got.txt expected3.txt
+
+-- migrations1/1.sql --
+CREATE TABLE users (id int);
+CREATE TABLE pets (id int);
+
+-- migrations1/2.sql --
+
+-- atlas:nolint
+ALTER TABLE users ADD COLUMN name text NOT NULL;
+
+-- atlas:nolint
+DROP TABLE pets;
+
+-- migrations2/1.sql --
+CREATE TABLE users (id int);
+CREATE TABLE pets (id int);
+
+-- migrations2/2.sql --
+
+-- atlas:nolint data_depend
+ALTER TABLE users ADD COLUMN name text NOT NULL;
+
+-- atlas:nolint destructive
+DROP TABLE pets;
+
+-- empty.txt --
+-- migrations3/1.sql --
+CREATE TABLE users (id int);
+CREATE TABLE pets (id int);
+
+-- migrations3/2.sql --
+ALTER TABLE users ADD COLUMN name text NOT NULL;
+-- atlas:nolint DS102
+DROP TABLE pets;
+
+-- expected3.txt --
+2.sql: data dependent changes detected:
+
+	L1: Adding a non-nullable "text" column "name" will fail in case table "users" is not empty
+

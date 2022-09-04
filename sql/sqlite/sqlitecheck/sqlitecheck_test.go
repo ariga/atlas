@@ -124,12 +124,12 @@ func TestDetectModifyTable(t *testing.T) {
 			}),
 		}
 	)
-	az, err := sqlcheck.AnalyzerFor(sqlite.DriverName, nil)
+	azs, err := sqlcheck.AnalyzerFor(sqlite.DriverName, nil)
 	require.NoError(t, err)
-	err = az.Analyze(context.Background(), pass)
-	require.EqualError(t, err, "3 destructive changes detected")
+	err = sqlcheck.Analyzers(azs).Analyze(context.Background(), pass)
+	require.EqualError(t, err, "destructive changes detected")
 
-	require.Equal(t, report.Text, "3 destructive changes detected")
+	require.Equal(t, report.Text, "destructive changes detected")
 	require.Len(t, report.Diagnostics, 3)
 	require.Equal(t, report.Diagnostics[0].Text, `Dropping table "users"`)
 	require.Equal(t, report.Diagnostics[1].Text, `Dropping non-virtual column "posted_at"`)

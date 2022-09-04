@@ -36,7 +36,9 @@ func TestRunner_Run(t *testing.T) {
 				testFile{name: "2.sql", content: "CREATE TABLE pets (id INT)\nDROP TABLE users"},
 			},
 		},
-		Analyzer: &testAnalyzer{},
+		Analyzers: []sqlcheck.Analyzer{
+			&testAnalyzer{},
+		},
 		ReportWriter: &lint.TemplateWriter{
 			T: lint.DefaultTemplate,
 			W: b,
@@ -44,7 +46,7 @@ func TestRunner_Run(t *testing.T) {
 	}
 	require.NoError(t, r.Run(ctx))
 
-	passes := r.Analyzer.(*testAnalyzer).passes
+	passes := r.Analyzers[0].(*testAnalyzer).passes
 	require.Len(t, passes, 1)
 	changes := passes[0].File.Changes
 	require.Len(t, changes, 2)

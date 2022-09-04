@@ -16,6 +16,8 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"
+
+	"golang.org/x/exp/slices"
 )
 
 // Runner is used to execute CI jobs.
@@ -31,8 +33,8 @@ type Runner struct {
 	// Dir is used for scanning and validating the migration directory.
 	Dir migrate.Dir
 
-	// Analyzer defines the analysis to be run in the CI job.
-	Analyzer sqlcheck.Analyzer
+	// Analyzers defines the analysis to be run in the CI job.
+	Analyzers []sqlcheck.Analyzer
 
 	// ReportWriter writes the summary report.
 	ReportWriter ReportWriter
@@ -108,14 +110,21 @@ func (r *Runner) summary(ctx context.Context) error {
 
 	// Analyze files.
 	for _, f := range diff.Files {
-		fr := NewFileReport(f)
-		if err := r.Analyzer.Analyze(ctx, &sqlcheck.Pass{
-			File:     f,
-			Dev:      r.Dev,
-			Reporter: fr,
-		}); err != nil {
-			fr.Error = err.Error()
+		var (
+			es []string
+			nl = nolintRules(f)
+			fr = NewFileReport(f)
+		)
+		for _, az := range r.Analyzers {
+			if err := az.Analyze(ctx, &sqlcheck.Pass{
+				File:     f,
+				Dev:      r.Dev,
+				Reporter: nl.reporterFor(fr, az),
+			}); err != nil && !nl.skipped {
+				es = append(es, err.Error())
+			}
 		}
+		fr.Error = strings.Join(es, "; ")
 		r.sum.Files = append(r.sum.Files, fr)
 		r.sum.StepResult(
 			fmt.Sprintf(stepAnalyzeFile, f.Name()),
@@ -290,4 +299,45 @@ func (f *FileReport) WriteReport(r sqlcheck.Report) {
 // WriteReport implements ReportWriter.
 func (w *TemplateWriter) WriteReport(r *SummaryReport) error {
 	return w.T.Execute(w.W, r)
+}
+
+func nolintRules(f *sqlcheck.File) *skipRules {
+	s := &skipRules{pos2rules: make(map[int][]string)}
+	for _, c := range f.Changes {
+		for _, d := range c.Stmt.Directive("nolint") {
+			s.pos2rules[c.Stmt.Pos] = append(s.pos2rules[c.Stmt.Pos], strings.Split(d, " ")...)
+		}
+	}
+	return s
+}
+
+type skipRules struct {
+	pos2rules map[int][]string // statement positions to rules
+	skipped   bool             // last one skipped
+}
+
+func (s *skipRules) reporterFor(rw sqlcheck.ReportWriter, az sqlcheck.Analyzer) sqlcheck.ReportWriter {
+	return sqlcheck.ReportWriterFunc(func(r sqlcheck.Report) {
+		var (
+			ds     = make([]sqlcheck.Diagnostic, 0, len(r.Diagnostics))
+			az, ok = az.(sqlcheck.NamedAnalyzer)
+		)
+		for _, d := range r.Diagnostics {
+			switch rules := s.pos2rules[d.Pos]; {
+			case
+				// A directive without specific classes/codes
+				// (e.g. atlas:nolint) ignore all diagnostics.
+				len(rules) == 1 && rules[0] == "",
+				// Match a specific code/diagnostic. e.g. atlas:nolint DS101.
+				slices.Contains(rules, d.Code),
+				// Skip the entire analyzer (class of changes).
+				ok && slices.Contains(rules, az.Name()):
+			default:
+				ds = append(ds, d)
+			}
+		}
+		if s.skipped = len(ds) == 0; !s.skipped {
+			rw.WriteReport(sqlcheck.Report{Text: r.Text, Diagnostics: ds})
+		}
+	})
 }

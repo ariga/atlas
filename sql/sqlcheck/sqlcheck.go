@@ -27,6 +27,14 @@ type (
 		Analyze(context.Context, *Pass) error
 	}
 
+	// A NamedAnalyzer describes an Analyzer that has a name.
+	NamedAnalyzer interface {
+		Analyzer
+		// Name of the analyzer. Identifies the analyzer
+		// in configuration and linting passes.
+		Name() string
+	}
+
 	// A Pass provides information to the Run function that
 	// applies a specific analyzer to an SQL file.
 	Pass struct {
@@ -253,17 +261,16 @@ var drivers sync.Map
 
 // Register allows drivers to register a constructor function for creating
 // analyzers from the given HCL resource.
-func Register(name string, f func(*schemahcl.Resource) (Analyzer, error)) {
+func Register(name string, f func(*schemahcl.Resource) ([]Analyzer, error)) {
 	drivers.Store(name, f)
 }
 
 // AnalyzerFor instantiates a new Analyzer from the given HCL resource
 // based on the registered constructor function.
-func AnalyzerFor(name string, r *schemahcl.Resource) (Analyzer, error) {
+func AnalyzerFor(name string, r *schemahcl.Resource) ([]Analyzer, error) {
 	f, ok := drivers.Load(name)
 	if ok {
-		return f.(func(*schemahcl.Resource) (Analyzer, error))(r)
+		return f.(func(*schemahcl.Resource) ([]Analyzer, error))(r)
 	}
-	// A nop analyzer.
-	return (Analyzers)(nil), nil
+	return nil, nil
 }

@@ -38,7 +38,7 @@ ALTER TABLE users RENAME TO user, RENAME COLUMN id TO oid;
 ALTER TABLE user ADD COLUMN id int, DROP COLUMN oid;
 
 -- expected3.txt --
-3.sql: destructive change detected:
+3.sql: destructive changes detected:
 
 	L1: Dropping non-virtual column "oid"
 
