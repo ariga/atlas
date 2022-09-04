@@ -1,0 +1,142 @@
+---
+id: lint
+slug: /versioned/lint
+title: Verifying migration safety
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+With the `atlas migrate lint` command, users can analyze the migration directory
+to detect potentially dangerous changes to the database schema. This command may be
+incorporated in _continuous integration_ pipelines to enable teams to enforce desired
+policies with regard to schema changes. 
+
+[Learn more about Atlas's analyzers](/lint/analyzers)
+
+### Flags
+
+When using `migrate lint` to analyze migrations, users must supply multiple parameters:
+* `--dev-url` a [URL](/concepts/url) to a [Dev-database](/concepts/dev-database) that will be used
+ to simulate the changes and verify their correctness.
+* `--dir` the URL of the migration directory, by default it is `file://migrations`, e.g a
+ directory named `migrations` in the current working directory.
+
+### Changeset detection
+
+When we run the `lint` command, we need to instruct Atlas on how to decide what 
+set of migration files to analyze. Currently, two modes are supported.
+
+* `--git-base <branchName>`: which selects the diff between the provided branch and 
+ the current one as the changeset.
+* `--latest <n>` which selects the latest n migration files as the changeset.
+
+### `nolint` directive
+
+Annotating a statement with the `--atlas:nolint` directive allows excluding it from the analysis reporting. For example:
+
+<Tabs
+defaultValue="all"
+values={[
+{label: 'All', value: 'all'},
+{label: 'Class of changes', value: 'by_name'},
+{label: 'Specific checks', value: 'by_check'},
+]}>
+<TabItem value="all">
+
+Using `--atlas:nolint` excludes the annotated statement from all linters.
+
+```sql
+//highlight-next-line
+-- atlas:nolint
+ALTER TABLE `t1` DROP COLUMN `c1`, ADD COLUMN `d1` varchar(255) NOT NULL;
+
+//highlight-next-line
+--atlas:nolint
+ALTER TABLE `t2` DROP COLUMN `c2`, ADD COLUMN `d2` varchar(255) NOT NULL;
+
+//highlight-next-line
+/*atlas:nolint*/
+ALTER TABLE `t3` DROP COLUMN `c3`, ADD COLUMN `d3` varchar(255) NOT NULL;
+
+//highlight-next-line
+#atlas:nolint
+ALTER TABLE `t4` DROP COLUMN `c4`, ADD COLUMN `d4` varchar(255) NOT NULL;
+```
+
+</TabItem>
+<TabItem value="by_name">
+
+Using `--atlas:nolint [names...]` excludes reporting specific analyzers for the annotated statements.
+
+```sql
+//highlight-next-line
+-- Ignore reporting destructive changes.
+//highlight-next-line
+-- atlas:nolint destructive
+ALTER TABLE `t1` DROP COLUMN `c1`, ADD COLUMN `d1` varchar(255) NOT NULL;
+
+//highlight-next-line
+-- Ignore reporting destructive and data-dependent changes.
+//highlight-next-line
+--atlas:nolint destructive data_depend
+ALTER TABLE `t2` DROP COLUMN `c2`, ADD COLUMN `d2` varchar(255) NOT NULL;
+
+//highlight-next-line
+/*atlas:nolint data_depend*/
+ALTER TABLE `t3` DROP COLUMN `c3`, ADD COLUMN `d3` varchar(255) NOT NULL;
+
+//highlight-next-line
+#atlas:nolint destructive data_depend
+ALTER TABLE `t4` DROP COLUMN `c4`, ADD COLUMN `d4` varchar(255) NOT NULL;
+```
+
+</TabItem>
+
+<TabItem value="by_check">
+
+Using `--atlas:nolint [checks...]` excludes reporting specific [checks](../lint/analyzers.md#checks) for the annotated
+statement.
+
+```sql
+//highlight-next-line
+-- atlas:nolint DS103 MY101
+ALTER TABLE `t1` DROP COLUMN `c1`, ADD COLUMN `d1` varchar(255) NOT NULL;
+```
+
+</TabItem>
+</Tabs>
+
+### Output
+
+Users may supply a [Go template](https://pkg.go.dev/text/template) string as the `--log` parameter to
+format the output of the `lint` command.
+
+### Examples
+
+Analyze all changes relative to the `master` Git branch:
+```shell
+atlas migrate lint \
+  --dir "file://my/project/migrations" \
+  --dev-url "mysql://root:pass@localhost:3306/dev" \
+  --git-base "master"
+```
+Analyze the latest 2 migration files:
+```shell
+atlas migrate lint \
+  --dir "file://my/project/migrations" \
+  --dev-url "mysql://root:pass@localhost:3306/dev" \
+  --latest 2
+```
+Format output as JSON:
+```shell
+atlas migrate lint \
+  --dir "file://my/project/migrations" \
+  --dev-url "mysql://root:pass@localhost:3306/dev" \
+  --git-base "master" \
+  --log "{{ json .Files }}"
+```
+
+### Reference
+
+[CLI Command Reference](/cli-reference#atlas-migrate-lint)
