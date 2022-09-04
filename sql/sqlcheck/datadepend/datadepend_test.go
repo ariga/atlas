@@ -69,7 +69,7 @@ func TestAnalyzer_AddUniqueIndex(t *testing.T) {
 	require.NoError(t, err)
 	err = az.Analyze(context.Background(), pass)
 	require.NoError(t, err)
-	require.Equal(t, "data dependent change detected", report.Text)
+	require.Equal(t, "data dependent changes detected", report.Text)
 	require.Len(t, report.Diagnostics, 1)
 	require.Equal(t, `Adding a unique index "idx_b" on table "users" might fail in case column "b" contains duplicate entries`, report.Diagnostics[0].Text)
 }
@@ -128,7 +128,7 @@ func TestAnalyzer_ModifyUniqueIndex(t *testing.T) {
 	require.NoError(t, err)
 	err = az.Analyze(context.Background(), pass)
 	require.NoError(t, err)
-	require.Equal(t, "data dependent change detected", report.Text)
+	require.Equal(t, "data dependent changes detected", report.Text)
 	require.Len(t, report.Diagnostics, 1)
 	require.Equal(t, `Modifying an index "idx_b" on table "users" might fail in case of duplicate entries`, report.Diagnostics[0].Text)
 }
@@ -188,7 +188,7 @@ func TestAnalyzer_Options(t *testing.T) {
 	}, datadepend.Handler{})
 	require.NoError(t, err)
 	err = az.Analyze(context.Background(), pass)
-	require.EqualError(t, err, "data dependent change detected")
+	require.EqualError(t, err, "data dependent changes detected")
 	require.NotNil(t, report)
 }
 

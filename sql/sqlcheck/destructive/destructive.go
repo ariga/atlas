@@ -25,7 +25,7 @@ type Analyzer struct {
 func New(r *schemahcl.Resource) (*Analyzer, error) {
 	az := &Analyzer{}
 	az.Error = sqlx.P(true)
-	if r, ok := r.Resource("destructive"); ok {
+	if r, ok := r.Resource(az.Name()); ok {
 		if err := r.As(&az.Options); err != nil {
 			return nil, fmt.Errorf("sql/sqlcheck: parsing destructive check options: %w", err)
 		}
@@ -39,6 +39,11 @@ var (
 	codeDropT = sqlcheck.Code("DS102")
 	codeDropC = sqlcheck.Code("DS103")
 )
+
+// Name of the analyzer. Implements the sqlcheck.NamedAnalyzer interface.
+func (*Analyzer) Name() string {
+	return "destructive"
+}
 
 // Analyze implements sqlcheck.Analyzer.
 func (a *Analyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
@@ -89,18 +94,12 @@ func (a *Analyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
 		}
 	}
 	if len(diags) > 0 {
-		text := reportText(len(diags))
-		p.Reporter.WriteReport(sqlcheck.Report{Text: text, Diagnostics: diags})
+		p.Reporter.WriteReport(sqlcheck.Report{Text: reportText, Diagnostics: diags})
 		if sqlx.V(a.Error) {
-			return errors.New(text)
+			return errors.New(reportText)
 		}
 	}
 	return nil
 }
 
-func reportText(n int) string {
-	if n > 1 {
-		return fmt.Sprintf("%d destructive changes detected", n)
-	}
-	return "destructive change detected"
-}
+const reportText = "destructive changes detected"

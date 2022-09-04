@@ -36,7 +36,7 @@ func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err erro
 }
 
 func init() {
-	sqlcheck.Register(sqlite.DriverName, func(r *schemahcl.Resource) (sqlcheck.Analyzer, error) {
+	sqlcheck.Register(sqlite.DriverName, func(r *schemahcl.Resource) ([]sqlcheck.Analyzer, error) {
 		ds, err := destructive.New(r)
 		if err != nil {
 			return nil, err
@@ -47,7 +47,7 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
-		return sqlcheck.Analyzers{
+		return []sqlcheck.Analyzer{
 			sqlcheck.AnalyzerFunc(func(ctx context.Context, p *sqlcheck.Pass) error {
 				var changes []*sqlcheck.Change
 				// Detect sequence of changes using temporary table and transform them to one ModifyTable change.

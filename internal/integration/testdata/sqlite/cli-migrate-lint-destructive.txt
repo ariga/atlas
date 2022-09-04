@@ -20,16 +20,16 @@ DROP TABLE users;
 DROP TABLE pets;
 
 -- expected1.txt --
-3.sql: destructive change detected:
+3.sql: destructive changes detected:
 
 	L1: Dropping table "pets"
 
 -- expected2.txt --
-2.sql: destructive change detected:
+2.sql: destructive changes detected:
 
 	L1: Dropping table "users"
 
-3.sql: destructive change detected:
+3.sql: destructive changes detected:
 
 	L1: Dropping table "pets"
 

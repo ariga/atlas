@@ -49,9 +49,9 @@ func TestDataDepend_MightFail(t *testing.T) {
 			}),
 		}
 	)
-	az, err := sqlcheck.AnalyzerFor(postgres.DriverName, nil)
+	azs, err := sqlcheck.AnalyzerFor(postgres.DriverName, nil)
 	require.NoError(t, err)
-	require.NoError(t, az.Analyze(context.Background(), pass))
+	require.NoError(t, sqlcheck.Analyzers(azs).Analyze(context.Background(), pass))
 	require.Equal(t, report.Diagnostics[0].Text, `Adding a non-nullable "int" column "b" will fail in case table "users" is not empty`)
 }
 

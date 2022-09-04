@@ -45,12 +45,17 @@ type (
 // New creates a new data-dependent analyzer with the given options.
 func New(r *schemahcl.Resource, h Handler) (*Analyzer, error) {
 	az := &Analyzer{Handler: h}
-	if r, ok := r.Resource("data_depend"); ok {
+	if r, ok := r.Resource(az.Name()); ok {
 		if err := r.As(&az.Options); err != nil {
 			return nil, fmt.Errorf("sql/sqlcheck: parsing datadepend check options: %w", err)
 		}
 	}
 	return az, nil
+}
+
+// Name of the analyzer. Implements the sqlcheck.NamedAnalyzer interface.
+func (*Analyzer) Name() string {
+	return "data_depend"
 }
 
 // Analyze runs data-depend analysis on MySQL changes.
@@ -130,21 +135,12 @@ func (a *Analyzer) Diagnostics(_ context.Context, p *sqlcheck.Pass) (diags []sql
 // between dialects.
 func (a *Analyzer) Report(p *sqlcheck.Pass, diags []sqlcheck.Diagnostic) error {
 	if len(diags) > 0 {
-		text := reportText(len(diags))
-		p.Reporter.WriteReport(sqlcheck.Report{
-			Text:        text,
-			Diagnostics: diags,
-		})
+		p.Reporter.WriteReport(sqlcheck.Report{Text: reportText, Diagnostics: diags})
 		if sqlx.V(a.Error) {
-			return errors.New(text)
+			return errors.New(reportText)
 		}
 	}
 	return nil
 }
 
-func reportText(n int) string {
-	if n > 1 {
-		return fmt.Sprintf("%d data dependent changes detected", n)
-	}
-	return "data dependent change detected"
-}
+const reportText = "data dependent changes detected"

@@ -745,7 +745,7 @@ func CmdMigrateLintRun(cmd *cobra.Command, _ []string) error {
 			T: format,
 			W: cmd.OutOrStdout(),
 		},
-		Analyzer: az,
+		Analyzers: az,
 	}
 	err = r.Run(cmd.Context())
 	// Print the error in case it was not printed before.
