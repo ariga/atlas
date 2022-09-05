@@ -136,6 +136,10 @@ atlas migrate lint \
   --git-base "master" \
   --log "{{ json .Files }}"
 ```
+Use the configuration defined in [`atlas.hcl`](../atlas-schema/projects#configure-migration-linting):
+```shell
+atlas migrate lint --env "local"
+```
 
 ### Reference
 
