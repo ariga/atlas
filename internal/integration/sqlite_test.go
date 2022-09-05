@@ -495,7 +495,7 @@ env "hello" {
 	url = "%s"
 	src = "./schema.hcl"
 }
-`, t.dsn())
+`, t.url(""))
 			wd, _ := os.Getwd()
 			envfile := filepath.Join(wd, "atlas.hcl")
 			err := os.WriteFile(envfile, []byte(env), 0600)
@@ -509,12 +509,12 @@ env "hello" {
 	})
 	t.Run("SchemaInspect", func(t *testing.T) {
 		liteRun(t, func(t *liteTest) {
-			testCLISchemaInspect(t, h, t.dsn(), sqlite.EvalHCL)
+			testCLISchemaInspect(t, h, t.url(""), sqlite.EvalHCL)
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
 		liteRun(t, func(t *liteTest) {
-			testCLISchemaApply(t, h, t.dsn())
+			testCLISchemaApply(t, h, t.url(""))
 		})
 	})
 	t.Run("SchemaApplyWithVars", func(t *testing.T) {
@@ -533,22 +533,22 @@ table "users" {
 }
 `
 		liteRun(t, func(t *liteTest) {
-			testCLISchemaApply(t, h, t.dsn(), "--var", "tenant=main")
+			testCLISchemaApply(t, h, t.url(""), "--var", "tenant=main")
 		})
 	})
 	t.Run("SchemaApplyDryRun", func(t *testing.T) {
 		liteRun(t, func(t *liteTest) {
-			testCLISchemaApplyDry(t, h, t.dsn())
+			testCLISchemaApplyDry(t, h, t.url(""))
 		})
 	})
 	t.Run("SchemaDiffRun", func(t *testing.T) {
 		liteRun(t, func(t *liteTest) {
-			testCLISchemaDiff(t, t.dsn())
+			testCLISchemaDiff(t, t.url(""))
 		})
 	})
 	t.Run("SchemaApplyAutoApprove", func(t *testing.T) {
 		liteRun(t, func(t *liteTest) {
-			testCLISchemaApplyAutoApprove(t, h, t.dsn())
+			testCLISchemaApplyAutoApprove(t, h, t.url(""))
 		})
 	})
 }
@@ -905,24 +905,6 @@ func (t *liteTest) posts() *schema.Table {
 	return postsT
 }
 
-func (t *liteTest) revisions() *schema.Table {
-	versionsT := &schema.Table{
-		Name: "atlas_schema_revisions",
-		Columns: []*schema.Column{
-			{Name: "version", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
-			{Name: "description", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
-			{Name: "execution_state", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(7)"}}},
-			{Name: "executed_at", Type: &schema.ColumnType{Type: &schema.TimeType{T: "datetime"}}},
-			{Name: "execution_time", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}}},
-			{Name: "hash", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(44)"}}},
-			{Name: "operator_version", Type: &schema.ColumnType{Type: &schema.StringType{T: "varchar(255)"}}},
-			{Name: "meta", Type: &schema.ColumnType{Type: &schema.JSONType{T: "json"}, Raw: "json"}},
-		},
-	}
-	versionsT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: versionsT.Columns[0]}}}
-	return versionsT
-}
-
 func (t *liteTest) realm() *schema.Realm {
 	r := &schema.Realm{
 		Schemas: []*schema.Schema{
@@ -958,12 +940,8 @@ func (t *liteTest) dropTables(names ...string) {
 	})
 }
 
-func (t *liteTest) dsn() string {
+func (t *liteTest) url(_ string) string {
 	return fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", t.file)
-}
-
-func (t *liteTest) url() string {
-	return t.dsn()
 }
 
 func (t *liteTest) applyRealmHcl(spec string) {

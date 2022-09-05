@@ -48,7 +48,7 @@ func TestMain(m *testing.M) {
 // T holds the elements common between dialect tests.
 type T interface {
 	testing.TB
-	url() string
+	url(string) string
 	driver() migrate.Driver
 	revisionsStorage() migrate.RevisionReadWriter
 	realm() *schema.Realm
@@ -57,7 +57,6 @@ type T interface {
 	loadUsers() *schema.Table
 	posts() *schema.Table
 	loadPosts() *schema.Table
-	revisions() *schema.Table
 	loadTable(string) *schema.Table
 	dropTables(...string)
 	dropSchemas(...string)
@@ -175,12 +174,113 @@ func testHCLIntegration(t T, full string, empty string) {
 	require.Empty(t, t.realm().Schemas[0].Tables)
 }
 
-func testCLISchemaInspect(t T, h string, dsn string, eval schemahcl.Evaluator, args ...string) {
-	err := initCLI()
+func testCLIMigrateApplyBC(t T, dialect string) {
+	require.NoError(t, initCLI())
+	ctx := context.Background()
+
+	t.dropSchemas("bc_test", "bc_test_2", "atlas_schema_revisions")
+	t.dropTables("bc_tbl", "atlas_schema_revisions")
+	t.migrate(&schema.AddSchema{S: schema.New("bc_test")})
+
+	// Connection to schema with flag will respect flag (also mimics "old" behavior).
+	out, err := exec.Command(
+		"go", "run", "ariga.io/atlas/cmd/atlas",
+		"migrate", "apply",
+		"--allow-dirty", // since database does contain more than one schema
+		"--dir", "file://testdata/migrations/"+dialect,
+		"--url", t.url("bc_test"),
+		"--revisions-schema", "atlas_schema_revisions",
+	).CombinedOutput()
+	require.NoError(t, err, string(out))
+	s, err := t.driver().InspectSchema(ctx, "atlas_schema_revisions", nil)
 	require.NoError(t, err)
+	_, ok := s.Table("atlas_schema_revisions")
+	require.True(t, ok)
+
+	// Connection to realm will see the existing schema and will not attempt to migrate.
+	out, err = exec.Command(
+		"go", "run", "ariga.io/atlas/cmd/atlas",
+		"migrate", "apply",
+		"--dir", "file://testdata/migrations/"+dialect,
+		"--url", t.url(""),
+	).CombinedOutput()
+	require.NoError(t, err, string(out))
+	require.Contains(t, string(out), "The migration directory is synced with the database")
+
+	// Connection to schema without flag will error.
+	out, err = exec.Command(
+		"go", "run", "ariga.io/atlas/cmd/atlas",
+		"migrate", "apply",
+		"--dir", "file://testdata/migrations/"+dialect,
+		"--url", t.url("bc_test"),
+	).CombinedOutput()
+	require.Error(t, err)
+	require.Contains(t, string(out), "We couldn't find a revision table in the connected schema but found one in")
+
+	// Providing the flag and we are good.
+	out, err = exec.Command(
+		"go", "run", "ariga.io/atlas/cmd/atlas",
+		"migrate", "apply",
+		"--dir", "file://testdata/migrations/"+dialect,
+		"--url", t.url("bc_test"),
+		"--revisions-schema", "atlas_schema_revisions",
+	).CombinedOutput()
+	require.NoError(t, err)
+	require.Contains(t, string(out), "The migration directory is synced with the database")
+
+	// Providing the flag to the schema instead will work as well.
+	t.migrate(
+		&schema.DropSchema{S: schema.New("bc_test")},
+		&schema.AddSchema{S: schema.New("bc_test")},
+	)
+	out, err = exec.Command(
+		"go", "run", "ariga.io/atlas/cmd/atlas",
+		"migrate", "apply",
+		"--dir", "file://testdata/migrations/"+dialect,
+		"--url", t.url("bc_test"),
+		"--revisions-schema", "bc_test",
+	).CombinedOutput()
+	require.NoError(t, err, string(out))
+	require.NotContains(t, string(out), "The migration directory is synced with the database")
+
+	// Consecutive attempts do not need the flag anymore.
+	out, err = exec.Command(
+		"go", "run", "ariga.io/atlas/cmd/atlas",
+		"migrate", "apply",
+		"--dir", "file://testdata/migrations/"+dialect,
+		"--url", t.url("bc_test"),
+	).CombinedOutput()
+	require.NoError(t, err)
+	require.Contains(t, string(out), "The migration directory is synced with the database")
+
+	// Last, if bound to schema and no "old" behavior extra schema does
+	// exist, the revision table will be saved in the connected one.
+	t.migrate(
+		&schema.DropSchema{S: schema.New("atlas_schema_revisions")},
+		&schema.DropSchema{S: schema.New("bc_test")},
+		&schema.AddSchema{S: schema.New("bc_test_2")},
+	)
+	out, err = exec.Command(
+		"go", "run", "ariga.io/atlas/cmd/atlas",
+		"migrate", "apply",
+		"--allow-dirty", // since database does contain more than one schema
+		"--dir", "file://testdata/migrations/"+dialect,
+		"--url", t.url("bc_test_2"),
+	).CombinedOutput()
+	require.NoError(t, err, string(out))
+	s, err = t.driver().InspectSchema(ctx, "atlas_schema_revisions", nil)
+	require.True(t, schema.IsNotExistError(err))
+	s, err = t.driver().InspectSchema(ctx, "bc_test_2", nil)
+	require.NoError(t, err)
+	_, ok = s.Table("atlas_schema_revisions")
+	require.True(t, ok)
+}
+
+func testCLISchemaInspect(t T, h string, dsn string, eval schemahcl.Evaluator, args ...string) {
+	require.NoError(t, initCLI())
 	t.dropTables("users")
 	var expected schema.Schema
-	err = evalBytes([]byte(h), &expected, eval)
+	err := evalBytes([]byte(h), &expected, eval)
 	require.NoError(t, err)
 	t.applyHcl(h)
 	runArgs := []string{

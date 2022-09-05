@@ -648,6 +648,12 @@ func TestPostgres_Snapshot(t *testing.T) {
 	})
 }
 
+func TestPostgres_CLI_MigrateApplyBC(t *testing.T) {
+	pgRun(t, func(t *pgTest) {
+		testCLIMigrateApplyBC(t, "postgres")
+	})
+}
+
 func TestPostgres_CLI(t *testing.T) {
 	h := `
 			schema "public" {
@@ -663,17 +669,17 @@ func TestPostgres_CLI(t *testing.T) {
 			}`
 	t.Run("SchemaInspect", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
-			testCLISchemaInspect(t, h, t.dsn(""), postgres.EvalHCL)
+			testCLISchemaInspect(t, h, t.url(""), postgres.EvalHCL)
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
-			testCLISchemaApply(t, h, t.dsn(""))
+			testCLISchemaApply(t, h, t.url(""))
 		})
 	})
 	t.Run("SchemaApplyDryRun", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
-			testCLISchemaApplyDry(t, h, t.dsn(""))
+			testCLISchemaApplyDry(t, h, t.url(""))
 		})
 	})
 	t.Run("SchemaApplyWithVars", func(t *testing.T) {
@@ -692,17 +698,17 @@ table "users" {
 }
 `
 		pgRun(t, func(t *pgTest) {
-			testCLISchemaApply(t, h, t.dsn(""), "--var", "tenant=public")
+			testCLISchemaApply(t, h, t.url(""), "--var", "tenant=public")
 		})
 	})
 	t.Run("SchemaDiffRun", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
-			testCLISchemaDiff(t, t.dsn(""))
+			testCLISchemaDiff(t, t.url(""))
 		})
 	})
 	t.Run("SchemaApplyAutoApprove", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
-			testCLISchemaApplyAutoApprove(t, h, t.dsn(""))
+			testCLISchemaApplyAutoApprove(t, h, t.url(""))
 		})
 	})
 }
@@ -735,14 +741,14 @@ func TestPostgres_CLI_MultiSchema(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
 			t.dropSchemas("test2")
 			t.dropTables("users")
-			testCLIMultiSchemaInspect(t, h, t.dsn(""), []string{"public", "test2"}, postgres.EvalHCL)
+			testCLIMultiSchemaInspect(t, h, t.url(""), []string{"public", "test2"}, postgres.EvalHCL)
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
 			t.dropSchemas("test2")
 			t.dropTables("users")
-			testCLIMultiSchemaApply(t, h, t.dsn(""), []string{"public", "test2"}, postgres.EvalHCL)
+			testCLIMultiSchemaApply(t, h, t.url(""), []string{"public", "test2"}, postgres.EvalHCL)
 		})
 	})
 }
@@ -1315,15 +1321,16 @@ create table atlas_types_sanity
 	})
 }
 
-func (t *pgTest) url() string {
-	return t.dsn("")
-}
-
-func (t *pgTest) dsn(schema string) string {
-	if schema == "" {
-		schema = "public"
+func (t *pgTest) url(schema string) string {
+	var (
+		format = "postgres://postgres:pass@localhost:%d/test?sslmode=disable"
+		args   = []any{t.port}
+	)
+	if schema != "" {
+		format += "&search_path=%s"
+		args = append(args, schema)
 	}
-	return fmt.Sprintf("postgres://postgres:pass@localhost:%d/test?sslmode=disable&search_path=%s", t.port, schema)
+	return fmt.Sprintf(format, args...)
 }
 
 func (t *pgTest) driver() migrate.Driver {
@@ -1434,24 +1441,6 @@ func (t *pgTest) posts() *schema.Table {
 		{Symbol: "author_id", Table: postsT, Columns: postsT.Columns[1:2], RefTable: usersT, RefColumns: usersT.Columns[:1], OnDelete: schema.NoAction},
 	}
 	return postsT
-}
-
-func (t *pgTest) revisions() *schema.Table {
-	versionsT := &schema.Table{
-		Name: "atlas_schema_revisions",
-		Columns: []*schema.Column{
-			{Name: "version", Type: &schema.ColumnType{Type: &schema.StringType{T: "character varying"}}},
-			{Name: "description", Type: &schema.ColumnType{Type: &schema.StringType{T: "character varying"}}},
-			{Name: "execution_state", Type: &schema.ColumnType{Type: &schema.StringType{T: "character varying"}}},
-			{Name: "executed_at", Type: &schema.ColumnType{Type: &schema.TimeType{T: "timestamp with time zone"}}},
-			{Name: "execution_time", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "bigint"}}},
-			{Name: "hash", Type: &schema.ColumnType{Type: &schema.StringType{T: "character varying"}}},
-			{Name: "operator_version", Type: &schema.ColumnType{Type: &schema.StringType{T: "character varying"}}},
-			{Name: "meta", Type: &schema.ColumnType{Type: &schema.JSONType{T: "jsonb"}, Raw: "jsonb"}},
-		},
-	}
-	versionsT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: versionsT.Columns[0]}}}
-	return versionsT
 }
 
 func (t *pgTest) realm() *schema.Realm {

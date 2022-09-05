@@ -6,11 +6,9 @@ package migrate
 
 import (
 	"context"
-	"errors"
 
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
-	sch "ariga.io/atlas/cmd/atlas/internal/migrate/ent/schema"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
@@ -39,9 +37,6 @@ func NewEntRevisions(ctx context.Context, ac *sqlclient.Client, opts ...Option) 
 			return nil, err
 		}
 	}
-	if r.schema == "" {
-		r.schema = sch.DefaultRevisionSchema
-	}
 	// Create the connection with the underlying migrate.Driver to have it inside a possible transaction.
 	entopts := []ent.Option{ent.Driver(sql.NewDriver(r.ac.Name, sql.Conn{ExecQuerier: r.ac.Driver}))}
 	// SQLite does not support multiple schema, therefore schema-config is only needed for other dialects.
@@ -58,8 +53,10 @@ func NewEntRevisions(ctx context.Context, ac *sqlclient.Client, opts ...Option) 
 				return nil, err
 			}
 		}
-		// Tell Ent to operate on that schema.
-		entopts = append(entopts, ent.AlternateSchema(ent.SchemaConfig{Revision: r.schema}))
+		// Tell Ent to operate on a given schema.
+		if r.schema != "" {
+			entopts = append(entopts, ent.AlternateSchema(ent.SchemaConfig{Revision: r.schema}))
+		}
 	}
 	// Instantiate the Ent client and migrate the revision schema.
 	r.ec = ent.NewClient(entopts...)
@@ -121,19 +118,17 @@ func (r *EntRevisions) WriteRevision(ctx context.Context, rev *migrate.Revision)
 // execution in a transaction and assumes the underlying connection is of type *sql.DB, which is not true for actually
 // reading and writing revisions.
 func (r *EntRevisions) Migrate(ctx context.Context) error {
-	return ent.NewClient(ent.Driver(sql.OpenDB(r.ac.Name, r.ac.DB))).Schema.Create(ctx,
-		entschema.WithDropColumn(true),
-		entschema.WithDiffHook(func(next entschema.Differ) entschema.Differ {
-			return entschema.DiffFunc(func(current, desired *schema.Schema) ([]schema.Change, error) {
-				t, ok := desired.Table(revision.Table)
-				if !ok {
-					return nil, errors.New("revisions table not found in desired state")
-				}
-				t.SetSchema(schema.New(r.schema))
-				return next.Diff(current, desired)
-			})
-		}),
-	)
+	c := ent.NewClient(ent.Driver(sql.OpenDB(r.ac.Name, r.ac.DB)))
+	// Ensure the ent client is bound to the requested revision schema. Open a new connection, if not.
+	if r.ac.Name != dialect.SQLite && r.ac.URL.Schema != r.schema {
+		sc, err := sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
+		if err != nil {
+			return err
+		}
+		defer sc.Close()
+		c = ent.NewClient(ent.Driver(sql.OpenDB(sc.Name, sc.DB)))
+	}
+	return c.Schema.Create(ctx, entschema.WithDropColumn(true))
 }
 
 var _ migrate.RevisionReadWriter = (*EntRevisions)(nil)

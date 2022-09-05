@@ -231,7 +231,7 @@ func init() {
 		set.StringVarP(f, name, short, "", "[driver://username:password@address/dbname?param=value] select a database using the URL format")
 	}
 	revisionsFlag := func(set *pflag.FlagSet) {
-		set.StringVarP(&MigrateFlags.RevisionSchema, migrateFlagRevisionsSchema, "", revision.Table, "schema name where the revisions table resides")
+		set.StringVarP(&MigrateFlags.RevisionSchema, migrateFlagRevisionsSchema, "", "", "schema name where the revisions table resides")
 	}
 	// Global flags.
 	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.DirURL, migrateFlagDir, "", "file://migrations", "select migration directory using URL format")
@@ -311,6 +311,9 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		// If unlocking fails notify the user about it.
 		defer cobra.CheckErr(unlock())
 	}
+	if err := checkRevisionSchemaClarity(cmd, c); err != nil {
+		return err
+	}
 	// Get the correct log format and destination. Currently, only os.Stdout is supported.
 	l, err := logFormat(cmd.OutOrStdout())
 	if err != nil {
@@ -378,8 +381,72 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 	return mux.commit()
 }
 
+func checkRevisionSchemaClarity(cmd *cobra.Command, c *sqlclient.Client) error {
+	// The "old" default  behavior for the revision schema location was to store the revision table in its own schema.
+	// Now, the table is saved in the connected schema, if any. To keep the backwards compatability, we now require
+	// for schema bound connections to have the schema-revision flag present if there is no revision table in the schema
+	// but the old default schema does have one.
+	if c.URL.Schema != "" && MigrateFlags.RevisionSchema == "" {
+		// If the schema does not contain a revision table, but we can find a table in the previous default schema,
+		// abort and tell the user to specify the intention.
+		opts := &schema.InspectOptions{Tables: []string{revision.Table}}
+		s, err := c.InspectSchema(cmd.Context(), "", opts)
+		var ok bool
+		switch {
+		case schema.IsNotExistError(err):
+			// If the schema does not exist, the table does not as well.
+		case err != nil:
+			return err
+		default:
+			// Connected schema does exist, check if the table does.
+			_, ok = s.Table(revision.Table)
+		}
+		if !ok { // Either schema or table does not exist.
+			// Check for the old default schema. If it does not exist, we have no problem.
+			s, err := c.InspectSchema(cmd.Context(), defaultRevisionSchema, opts)
+			switch {
+			case schema.IsNotExistError(err):
+				// Schema does not exist, we can proceed.
+			case err != nil:
+				return err
+			default:
+				if _, ok := s.Table(revision.Table); ok {
+					fmt.Fprintf(cmd.OutOrStderr(),
+						`We couldn't find a revision table in the connected schema but found one in 
+the schema 'atlas_schema_revisions' and cannot determine the desired behavior.
+
+As a safety guard, we require you to specify whether to use the existing
+table in 'atlas_schema_revisions' or create a new one in the connected schema
+by providing the '--revisions-schema' flag or deleting the 'atlas_schema_revisions'
+schema if it is unused.
+
+`)
+					cmd.SilenceUsage = true
+					cmd.SilenceErrors = true
+					return errors.New("ambiguous revision table")
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func entRevisions(ctx context.Context, c *sqlclient.Client) (*entmigrate.EntRevisions, error) {
-	return entmigrate.NewEntRevisions(ctx, c, entmigrate.WithSchema(MigrateFlags.RevisionSchema))
+	return entmigrate.NewEntRevisions(ctx, c, entmigrate.WithSchema(revisionSchemaName(c)))
+}
+
+// defaultRevisionSchema is the default schema for storing revisions table.
+const defaultRevisionSchema = "atlas_schema_revisions"
+
+func revisionSchemaName(c *sqlclient.Client) string {
+	switch {
+	case MigrateFlags.RevisionSchema != "":
+		return MigrateFlags.RevisionSchema
+	case c.URL.Schema != "":
+		return c.URL.Schema
+	default:
+		return defaultRevisionSchema
+	}
 }
 
 // tx handles wrapping migration execution in transactions.
@@ -590,14 +657,27 @@ func CmdMigrateStatusRun(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	defer client.Close()
-	if ok, err := revisionsTableExists(cmd.Context(), client); !ok || err != nil {
-		if err != nil {
-			return err
-		}
+	if err := checkRevisionSchemaClarity(cmd, client); err != nil {
+		return err
+	}
+	// Inspect schema and check if the table does already exist.
+	s, err := client.InspectSchema(
+		cmd.Context(),
+		revisionSchemaName(client),
+		&schema.InspectOptions{Tables: []string{revision.Table}},
+	)
+	switch {
+	case err != nil && !schema.IsNotExistError(err):
+		return err
+	case schema.IsNotExistError(err):
+		return statusPrint(cmd.OutOrStdout(), avail, avail, nil)
+	}
+	if _, ok := s.Table(revision.Table); !ok {
+		// Table does not exist.
 		return statusPrint(cmd.OutOrStdout(), avail, avail, nil)
 	}
 	// Currently, only in DB revisions are supported.
-	rrw, err := entmigrate.NewEntRevisions(cmd.Context(), client, entmigrate.WithSchema(MigrateFlags.RevisionSchema))
+	rrw, err := entRevisions(cmd.Context(), client)
 	if err != nil {
 		return err
 	}
@@ -769,36 +849,6 @@ Please check your migration files and run
 to re-hash the contents and resolve the error
 
 `)
-}
-
-func revisionsTableExists(ctx context.Context, c *sqlclient.Client) (bool, error) {
-	// Connect to the given schema name.
-	sc, err := sqlclient.Open(ctx, MigrateFlags.URL, sqlclient.OpenSchema(MigrateFlags.RevisionSchema))
-	switch {
-	case err != nil && !errors.Is(err, sqlclient.ErrUnsupported):
-		return false, err
-	case errors.Is(err, sqlclient.ErrUnsupported):
-		// If the driver does not support changing the schema use the existing connection.
-		sc = c
-	case err == nil:
-		// Connecting attempt to the schema was successful, make sure to close it.
-		defer sc.Close()
-	}
-	// Inspect schema and check if the table does already exist.
-	s, err := sc.InspectSchema(ctx, "", &schema.InspectOptions{Tables: []string{revision.Table}})
-	switch {
-	case err != nil && !schema.IsNotExistError(err):
-		return false, err
-	case schema.IsNotExistError(err):
-		// Schema does not exist.
-		return false, nil
-	}
-	if _, ok := s.Table(revision.Table); !ok {
-		// Table does not exist.
-		return false, nil
-	}
-	// Schema and Table are present.
-	return true, nil
 }
 
 // dir returns a migrate.Dir to use as migration directory. For now only local directories are supported.

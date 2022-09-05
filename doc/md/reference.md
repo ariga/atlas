@@ -105,7 +105,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.
 #### Flags
 ```
       --log string                log format to use (default "tty")
-      --revisions-schema string   schema name where the revisions table resides (default "atlas_schema_revisions")
+      --revisions-schema string   schema name where the revisions table resides
       --dry-run                   do not actually execute any SQL but show it on screen
       --from string               calculate pending files from the given version (including it)
       --baseline string           start the first migration after the given baseline version
@@ -232,7 +232,7 @@ atlas migrate status [flags]
 ```
 #### Flags
 ```
-      --revisions-schema string   schema name where the revisions table resides (default "atlas_schema_revisions")
+      --revisions-schema string   schema name where the revisions table resides
   -u, --url string                [driver://username:password@address/dbname?param=value] select a database using the URL format
 
 ```
