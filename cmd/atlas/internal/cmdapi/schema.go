@@ -192,6 +192,7 @@ func init() {
 // a zero-value Env is returned.
 func selectEnv(selected string) (*Env, error) {
 	env := &Env{
+		Lint:      &Lint{},
 		Migration: &Migration{},
 	}
 	if selected == "" {

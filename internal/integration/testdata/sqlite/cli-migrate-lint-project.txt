@@ -1,0 +1,43 @@
+atlas migrate lint --dir file://migrations --dev-url URL --env=log_name > got.txt
+cmp got.txt expected1.txt
+
+atlas migrate lint --dir file://migrations --dev-url URL --env=log_count > got.txt
+cmp got.txt expected2.txt
+
+-- migrations/1.sql --
+CREATE TABLE users (id int);
+
+CREATE TABLE pets (id int);
+
+ALTER TABLE users RENAME COLUMN id TO oid;
+
+-- migrations/2.sql --
+DROP TABLE users;
+
+-- migrations/3.sql --
+DROP TABLE pets;
+
+-- expected1.txt --
+3.sql
+-- expected2.txt --
+2
+-- atlas.hcl --
+lint {
+    latest = 1
+    destructive {
+        error = false
+    }
+}
+
+env "log_name" {
+    lint {
+        log = "{{ range .Files }}{{ println .Name }}{{ end }}"
+    }
+}
+
+env "log_count" {
+    lint {
+        latest = 2
+        log = "{{ len .Files | println }}"
+    }
+}
