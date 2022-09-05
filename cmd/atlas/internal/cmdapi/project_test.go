@@ -22,6 +22,17 @@ variable "name" {
 	default = "hello"
 }
 
+lint {
+	destructive {
+		error = true
+	}
+	log = <<EOS
+{{- range $f := .Files }}
+	{{- $f.Name }}
+{{- end }}
+EOS
+}
+
 env "local" {
 	url = "mysql://root:pass@localhost:3306/"
 	dev = "docker://mysql/8"
@@ -31,6 +42,9 @@ env "local" {
 		dir = "file://migrations"
 		format = atlas
 		revisions_schema = "revisions"
+	}
+	lint {
+		latest = 1
 	}
 	
 	bool = true
@@ -44,6 +58,12 @@ env "multi" {
 		"./a.hcl",
 		"./b.hcl",
 	]
+	lint {
+		git {
+			dir  = "./path"
+			base = "master"
+		}
+	}
 }
 `
 	err := os.WriteFile(filepath.Join(d, projectFileName), []byte(h), 0600)
@@ -66,6 +86,22 @@ env "multi" {
 				Dir:             "file://migrations",
 				Format:          formatAtlas,
 				RevisionsSchema: "revisions",
+			},
+			Lint: &Lint{
+				Latest: 1,
+				Log:    "{{- range $f := .Files }}\n\t{{- $f.Name }}\n{{- end }}\n",
+				DefaultExtension: schemahcl.DefaultExtension{
+					Extra: schemahcl.Resource{
+						Children: []*schemahcl.Resource{
+							{
+								Type: "destructive",
+								Attrs: []*schemahcl.Attr{
+									{K: "error", V: &schemahcl.LiteralValue{V: "true"}},
+								},
+							},
+						},
+					},
+				},
 			},
 			DefaultExtension: schemahcl.DefaultExtension{
 				Extra: schemahcl.Resource{

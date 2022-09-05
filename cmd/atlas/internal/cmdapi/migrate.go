@@ -813,7 +813,11 @@ func CmdMigrateLintRun(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("parse log format: %w", err)
 		}
 	}
-	az, err := sqlcheck.AnalyzerFor(dev.Name, nil)
+	env, err := selectEnv(GlobalFlags.SelectedEnv)
+	if err != nil {
+		return err
+	}
+	az, err := sqlcheck.AnalyzerFor(dev.Name, env.Lint.Remain())
 	if err != nil {
 		return err
 	}
@@ -1177,17 +1181,33 @@ func migrateFlagsFromEnv(cmd *cobra.Command, _ []string) error {
 	if err := inputValsFromEnv(cmd); err != nil {
 		return err
 	}
-	if err := maySetFlag(cmd, migrateFlagURL, activeEnv.URL); err != nil {
-		return err
-	}
 	if err := maySetFlag(cmd, migrateFlagDevURL, activeEnv.DevURL); err != nil {
-		return err
-	}
-	if err := maySetFlag(cmd, migrateFlagRevisionsSchema, activeEnv.Migration.RevisionsSchema); err != nil {
 		return err
 	}
 	if err := maySetFlag(cmd, migrateFlagDirFormat, activeEnv.Migration.Format); err != nil {
 		return err
+	}
+	switch cmd.Name() {
+	case "lint":
+		if err := maySetFlag(cmd, migrateFlagLog, activeEnv.Lint.Log); err != nil {
+			return err
+		}
+		if err := maySetFlag(cmd, migrateLintLatest, strconv.Itoa(activeEnv.Lint.Latest)); err != nil {
+			return err
+		}
+		if err := maySetFlag(cmd, migrateLintGitDir, activeEnv.Lint.Git.Dir); err != nil {
+			return err
+		}
+		if err := maySetFlag(cmd, migrateLintGitBase, activeEnv.Lint.Git.Base); err != nil {
+			return err
+		}
+	default:
+		if err := maySetFlag(cmd, migrateFlagURL, activeEnv.URL); err != nil {
+			return err
+		}
+		if err := maySetFlag(cmd, migrateFlagRevisionsSchema, activeEnv.Migration.RevisionsSchema); err != nil {
+			return err
+		}
 	}
 	// Transform "src" to a URL.
 	srcs, err := activeEnv.Sources()
