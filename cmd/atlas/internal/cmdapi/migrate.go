@@ -422,6 +422,7 @@ schema if it is unused.
 
 `)
 					cmd.SilenceUsage = true
+					cmd.SilenceErrors = true
 					return errors.New("ambiguous revision table")
 				}
 			}
@@ -444,7 +445,7 @@ func revisionSchemaName(c *sqlclient.Client) string {
 	case c.URL.Schema != "":
 		return c.URL.Schema
 	default:
-		return "atlas_schema_revisions"
+		return defaultRevisionSchema
 	}
 }
 
