@@ -3,6 +3,7 @@ title: Project Structure
 id: projects
 slug: /atlas-schema/projects
 ---
+
 ### Project Files
 
 Project files provide a convenient way to describe and interact with multiple
@@ -65,14 +66,53 @@ env "local" {
 
 Once defined, `migrate` commands can use this configuration, for example:
 ```shell
-$ atlas migrate validate --env local
+atlas migrate validate --env local
 ```
 Will run the `migrate validate` command against the Dev Database defined in the
 `local` environment.
 
+### Configure Migration Linting
+
+Project files may declare `lint` blocks to configure how migration linting run in a specific environment or globally.
+
+```hcl
+lint {
+  destructive {
+    // By default, destructive changes cause migration linting to error
+    // on exit (code 1). Setting `error` to false disables this behavior.
+    error = false
+  }
+  // Custom logging can be enabled using the `log` attribute.
+  log = <<EOS
+{{- range $f := .Files }}
+	{{- json $f }}
+{{- end }}
+EOS
+}
+
+env "local" {
+  // Define a specific migration linting config for this environment.
+  // This block inherits and overrides all attributes of the global config.
+  lint {
+    latest = 1
+  }
+}
+
+env "ci" {
+  lint {
+    git {
+      base = "master"
+      // An optional attribute for setting the working
+      // directory of the git command (-C flag).
+      dir = "<path>"
+    }
+  }
+}
+```
+
 ### Passing Input Values
 
-Project files may pass [input values](/atlas-schema/input-variables) to variables defined in
+Project files may pass [input values](input-variables) to variables defined in
 the Atlas schema of the environment. To do this simply provide additional attributes
 to the environment block:
 ```hcl
@@ -117,7 +157,7 @@ env "local" {
 To set the value for this variable at runtime, use the `--var` flag:
 
 ```shell
-$ atlas schema apply --env local --var tenant=rotemtam
+atlas schema apply --env local --var tenant=rotemtam
 ```
 
 It is worth mentioning that when running Atlas commands within a project using

@@ -32,6 +32,18 @@ will be deleted from disk, with no way to recover it. There are definitely situa
 of change is desired, but they are relatively rare. Using the `destructive` ([GoDoc](https://pkg.go.dev/ariga.io/atlas@master/sql/sqlcheck/destructive))
 Analyzer, teams can detect this type of change and design workflows that prevent it from happening accidentally. 
 
+Running migration linting locally on in CI fails with exit code 1 in case destructive changes are detected. However,
+users can disable this by configuring the `destructive` analyzer in the [`atlas.hcl`](../atlas-schema/projects#configure-migration-linting)
+file:
+
+```hcl title="atlas.hcl" {2-4}
+lint {
+  destructive {
+    error = false
+  }
+}
+```
+
 ### Data-dependent Changes 
 
 Data-dependent changes are changes to a database schema that _may_ succeed or fail, depending on the
@@ -54,15 +66,27 @@ mysql> insert into orders (name) values ("atlas");
 Query OK, 1 row affected (0.01 sec)
 ```
 Attempting to add a uniqueness constraint on the `name` column, will fail:
-```
+```sql
 mysql> ALTER TABLE `example`.`orders` ADD UNIQUE INDEX `idx_name` (`name`);
+// highlight-next-line-error-message
 ERROR 1062 (23000): Duplicate entry 'atlas' for key 'orders.idx_name'
 ```
 This type of change is tricky because a developer trying to simulate it locally
 might succeed in performing it only to be surprised that their migration script
 fails in production, breaking a deployment sequence or causing other unexpected
-behavior. Using the `datadepend` ([GoDoc](https://pkg.go.dev/ariga.io/atlas@master/sql/sqlcheck/datadepend)) 
+behavior. Using the `data_depend` ([GoDoc](https://pkg.go.dev/ariga.io/atlas@master/sql/sqlcheck/datadepend))
 Analyzer, teams can detect this risk early and account for it in pre-deployment checks to a database. 
+
+By default, data-dependent changes are reported but not cause migration linting to fail. Users can change this by
+configuring the `data_depend` analyzer in the [`atlas.hcl`](../atlas-schema/projects#configure-migration-linting) file:
+
+```hcl title="atlas.hcl" {2-4}
+lint {
+  data_depend {
+    error = true
+  }
+}
+```
 
 ## Checks
 
