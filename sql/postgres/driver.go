@@ -286,6 +286,11 @@ func acquire(ctx context.Context, conn schema.ExecQuerier, id uint32, timeout ti
 	}
 }
 
+// supportsIndexInclude reports if the server supports the INCLUDE clause.
+func (c *conn) supportsIndexInclude() bool {
+	return semver.Compare("v"+c.version, "v11.00.00") >= 0
+}
+
 type parser struct{}
 
 // ParseURL implements the sqlclient.URLParser interface.

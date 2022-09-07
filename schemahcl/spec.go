@@ -158,15 +158,32 @@ func (a *Attr) Ref() (string, error) {
 	return ref.V, nil
 }
 
-// Strings returns a slice of strings from the Value of the Attr. If The value is not a ListValue or its
-// values cannot be converted to strings an error is returned.
-func (a *Attr) Strings() ([]string, error) {
-	lst, ok := a.V.(*ListValue)
+// Refs returns a slice of references.
+func (a *Attr) Refs() ([]*Ref, error) {
+	l, ok := a.V.(*ListValue)
 	if !ok {
 		return nil, fmt.Errorf("schema: attribute %q is not a list", a.K)
 	}
-	out := make([]string, 0, len(lst.V))
-	for _, item := range lst.V {
+	refs := make([]*Ref, 0, len(l.V))
+	for _, v := range l.V {
+		r, ok := v.(*Ref)
+		if !ok {
+			return nil, fmt.Errorf("schemahcl: expected %T to be Ref", v)
+		}
+		refs = append(refs, r)
+	}
+	return refs, nil
+}
+
+// Strings returns a slice of strings from the Value of the Attr. If The value is not a ListValue or its
+// values cannot be converted to strings an error is returned.
+func (a *Attr) Strings() ([]string, error) {
+	l, ok := a.V.(*ListValue)
+	if !ok {
+		return nil, fmt.Errorf("schema: attribute %q is not a list", a.K)
+	}
+	out := make([]string, 0, len(l.V))
+	for _, item := range l.V {
 		sv, err := StrVal(item)
 		if err != nil {
 			return nil, fmt.Errorf("schemahcl: failed parsing item %q to string: %w", item, err)

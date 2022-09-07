@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"testing"
 
+	"ariga.io/atlas/sql/internal/sqlx"
+
 	"ariga.io/atlas/sql/internal/spectest"
 	"ariga.io/atlas/sql/schema"
 	"github.com/stretchr/testify/require"
@@ -600,6 +602,99 @@ table "t" {
 		require.EqualValues(t, 10, id.Sequence.Start)
 		require.Zero(t, id.Sequence.Increment)
 	})
+}
+
+func TestUnmarshalSpec_IndexInclude(t *testing.T) {
+	f := `
+schema "s" {}
+table "t" {
+	schema = schema.s
+	column "c" {
+		type = int
+	}
+	column "d" {
+		type = int
+	}
+	index "c" {
+		columns = [
+			column.c,
+		]
+		include = [
+			column.d,
+		]
+	}
+}
+`
+	var s schema.Schema
+	err := EvalHCLBytes([]byte(f), &s, nil)
+	require.NoError(t, err)
+	require.Len(t, s.Tables, 1)
+	require.Len(t, s.Tables[0].Columns, 2)
+	require.Len(t, s.Tables[0].Indexes, 1)
+	idx, ok := s.Tables[0].Index("c")
+	require.True(t, ok)
+	require.Len(t, idx.Parts, 1)
+	require.Len(t, idx.Attrs, 1)
+	var include IndexInclude
+	require.True(t, sqlx.Has(idx.Attrs, &include))
+	require.Len(t, include.Columns, 1)
+	require.Equal(t, "d", include.Columns[0].Name)
+}
+
+func TestMarshalSpec_IndexInclude(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "c",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}},
+					},
+					{
+						Name: "d",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	s.Tables[0].Schema = s
+	s.Tables[0].Indexes = []*schema.Index{
+		{
+			Name:  "index",
+			Table: s.Tables[0],
+			Parts: []*schema.IndexPart{
+				{SeqNo: 0, C: s.Tables[0].Columns[0]},
+			},
+			Attrs: []schema.Attr{
+				&IndexInclude{Columns: s.Tables[0].Columns[1:]},
+			},
+		},
+	}
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "c" {
+    null = false
+    type = int
+  }
+  column "d" {
+    null = false
+    type = int
+  }
+  index "index" {
+    columns = [column.c]
+    include = [column.d]
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
 }
 
 func TestMarshalSpec_GeneratedColumn(t *testing.T) {

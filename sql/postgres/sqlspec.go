@@ -318,6 +318,22 @@ func convertIndex(spec *sqlspec.Index, t *schema.Table) (*schema.Index, error) {
 		}
 		idx.Attrs = append(idx.Attrs, &IndexStorageParams{PagesPerRange: p})
 	}
+	if attr, ok := spec.Attr("include"); ok {
+		refs, err := attr.Refs()
+		if err != nil {
+			return nil, err
+		}
+		if len(refs) == 0 {
+			return nil, fmt.Errorf("unexpected empty INCLUDE in index %q definition", spec.Name)
+		}
+		include := make([]*schema.Column, len(refs))
+		for i, r := range refs {
+			if include[i], err = specutil.ColumnByRef(t, r); err != nil {
+				return nil, err
+			}
+		}
+		idx.Attrs = append(idx.Attrs, &IndexInclude{Columns: include})
+	}
 	return idx, nil
 }
 
@@ -481,6 +497,16 @@ func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 	// Avoid printing the index type if it is the default.
 	if i := (IndexType{}); sqlx.Has(idx.Attrs, &i) && i.T != IndexTypeBTree {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("type", strings.ToUpper(i.T)))
+	}
+	if i := (IndexInclude{}); sqlx.Has(idx.Attrs, &i) && len(i.Columns) > 0 {
+		attr := &schemahcl.ListValue{}
+		for _, c := range i.Columns {
+			attr.V = append(attr.V, specutil.ColumnRef(c.Name))
+		}
+		spec.Extra.Attrs = append(spec.Extra.Attrs, &schemahcl.Attr{
+			K: "include",
+			V: attr,
+		})
 	}
 	if i := (IndexPredicate{}); sqlx.Has(idx.Attrs, &i) && i.P != "" {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("where", strconv.Quote(i.P)))
