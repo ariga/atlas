@@ -295,10 +295,14 @@ func (i *inspect) enumValues(ctx context.Context, s *schema.Schema) error {
 
 // indexes queries and appends the indexes of the given table.
 func (i *inspect) indexes(ctx context.Context, s *schema.Schema) error {
-	if i.conn.crdb {
+	query := indexesQuery
+	switch {
+	case i.conn.crdb:
 		return i.crdbIndexes(ctx, s)
+	case !i.conn.supportsIndexInclude():
+		query = indexesQueryNoInclude
 	}
-	rows, err := i.querySchema(ctx, indexesQuery, s)
+	rows, err := i.querySchema(ctx, query, s)
 	if err != nil {
 		return fmt.Errorf("postgres: querying schema %q indexes: %w", s.Name, err)
 	}
@@ -314,12 +318,12 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 	names := make(map[string]*schema.Index)
 	for rows.Next() {
 		var (
-			uniq, primary                                 bool
+			uniq, primary, included                       bool
 			table, name, typ                              string
 			desc, nullsfirst, nullslast                   sql.NullBool
 			column, contype, pred, expr, comment, options sql.NullString
 		)
-		if err := rows.Scan(&table, &name, &typ, &column, &primary, &uniq, &contype, &pred, &expr, &desc, &nullsfirst, &nullslast, &comment, &options); err != nil {
+		if err := rows.Scan(&table, &name, &typ, &column, &included, &primary, &uniq, &contype, &pred, &expr, &desc, &nullsfirst, &nullslast, &comment, &options); err != nil {
 			return fmt.Errorf("postgres: scanning indexes for schema %q: %w", s.Name, err)
 		}
 		t, ok := s.Table(table)
@@ -367,20 +371,30 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 			})
 		}
 		switch {
+		case included:
+			c, ok := t.Column(column.String)
+			if !ok {
+				return fmt.Errorf("postgres: INCLUDE column %q was not found for index %q", column.String, idx.Name)
+			}
+			var include IndexInclude
+			sqlx.Has(idx.Attrs, &include)
+			include.Columns = append(include.Columns, c)
+			schema.ReplaceOrAppend(&idx.Attrs, &include)
 		case sqlx.ValidString(column):
 			part.C, ok = t.Column(column.String)
 			if !ok {
 				return fmt.Errorf("postgres: column %q was not found for index %q", column.String, idx.Name)
 			}
 			part.C.Indexes = append(part.C.Indexes, idx)
+			idx.Parts = append(idx.Parts, part)
 		case sqlx.ValidString(expr):
 			part.X = &schema.RawExpr{
 				X: expr.String,
 			}
+			idx.Parts = append(idx.Parts, part)
 		default:
 			return fmt.Errorf("postgres: invalid part for index %q", idx.Name)
 		}
-		idx.Parts = append(idx.Parts, part)
 	}
 	return nil
 }
@@ -750,6 +764,14 @@ type (
 		PagesPerRange int64
 	}
 
+	// IndexInclude describes the INCLUDE clause allows specifying
+	// a list of column which added to the index as non-key columns.
+	// https://www.postgresql.org/docs/current/sql-createindex.html
+	IndexInclude struct {
+		schema.Attr
+		Columns []*schema.Column
+	}
+
 	// NoInherit attribute defines the NO INHERIT flag for CHECK constraint.
 	// https://postgresql.org/docs/current/catalog-pg-constraint.html
 	NoInherit struct {
@@ -963,45 +985,6 @@ WHERE
 ORDER BY
 	t1.table_name, t1.ordinal_position
 `
-
-	// Query to list table indexes.
-	indexesQuery = `
-SELECT
-	t.relname AS table_name,
-	i.relname AS index_name,
-	am.amname AS index_type,
-	a.attname AS column_name,
-	idx.indisprimary AS primary,
-	idx.indisunique AS unique,
-	c.contype AS constraint_type,
-	pg_get_expr(idx.indpred, idx.indrelid) AS predicate,
-	pg_get_indexdef(idx.indexrelid, idx.ord, false) AS expression,
-	pg_index_column_has_property(idx.indexrelid, idx.ord, 'desc') AS desc,
-	pg_index_column_has_property(idx.indexrelid, idx.ord, 'nulls_first') AS nulls_first,
-	pg_index_column_has_property(idx.indexrelid, idx.ord, 'nulls_last') AS nulls_last,
-	obj_description(i.oid, 'pg_class') AS comment,
-	i.reloptions AS options
-FROM
-	(
-		select
-			*,
-			generate_series(1,array_length(i.indkey,1)) as ord,
-			unnest(i.indkey) AS key
-		from pg_index i
-	) idx
-	JOIN pg_class i ON i.oid = idx.indexrelid
-	JOIN pg_class t ON t.oid = idx.indrelid
-	JOIN pg_namespace n ON n.oid = t.relnamespace
-	LEFT JOIN pg_constraint c ON idx.indexrelid = c.conindid
-	LEFT JOIN pg_attribute a ON (a.attrelid, a.attnum) = (idx.indrelid, idx.key)
-	JOIN pg_am am ON am.oid = i.relam
-WHERE
-	n.nspname = $1
-	AND t.relname IN (%s)
-	AND COALESCE(c.contype, '') <> 'f'
-ORDER BY
-	table_name, index_name, idx.ord
-`
 	fksQuery = `
 SELECT
     t1.constraint_name,
@@ -1057,5 +1040,48 @@ WHERE
 	AND rel.relname IN (%s)
 ORDER BY
 	t1.conname, array_position(t1.conkey, t2.attnum)
+`
+)
+
+var (
+	indexesQuery          = fmt.Sprintf(indexesQueryTmpl, "(a.attname <> '' AND idx.indnatts > idx.indnkeyatts AND idx.ord > idx.indnkeyatts)", "%s")
+	indexesQueryNoInclude = fmt.Sprintf(indexesQueryTmpl, "false", "%s")
+	indexesQueryTmpl      = `
+SELECT
+	t.relname AS table_name,
+	i.relname AS index_name,
+	am.amname AS index_type,
+	a.attname AS column_name,
+	%s AS included,
+	idx.indisprimary AS primary,
+	idx.indisunique AS unique,
+	c.contype AS constraint_type,
+	pg_get_expr(idx.indpred, idx.indrelid) AS predicate,
+	pg_get_indexdef(idx.indexrelid, idx.ord, false) AS expression,
+	pg_index_column_has_property(idx.indexrelid, idx.ord, 'desc') AS desc,
+	pg_index_column_has_property(idx.indexrelid, idx.ord, 'nulls_first') AS nulls_first,
+	pg_index_column_has_property(idx.indexrelid, idx.ord, 'nulls_last') AS nulls_last,
+	obj_description(i.oid, 'pg_class') AS comment,
+	i.reloptions AS options
+FROM
+	(
+		select
+			*,
+			generate_series(1,array_length(i.indkey,1)) as ord,
+			unnest(i.indkey) AS key
+		from pg_index i
+	) idx
+	JOIN pg_class i ON i.oid = idx.indexrelid
+	JOIN pg_class t ON t.oid = idx.indrelid
+	JOIN pg_namespace n ON n.oid = t.relnamespace
+	LEFT JOIN pg_constraint c ON idx.indexrelid = c.conindid
+	LEFT JOIN pg_attribute a ON (a.attrelid, a.attnum) = (idx.indrelid, idx.key)
+	JOIN pg_am am ON am.oid = i.relam
+WHERE
+	n.nspname = $1
+	AND t.relname IN (%s)
+	AND COALESCE(c.contype, '') <> 'f'
+ORDER BY
+	table_name, index_name, idx.ord
 `
 )
