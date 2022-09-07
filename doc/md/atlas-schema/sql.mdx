@@ -404,6 +404,11 @@ index "idx_range" {
   columns = [column.range]
   page_per_range = 128
 }
+
+index "idx_include" {
+  columns = [column.range]
+  include = [column.version]
+}
 ```
 
 #### Properties

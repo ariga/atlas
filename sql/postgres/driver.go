@@ -11,13 +11,13 @@ import (
 	"fmt"
 	"hash/fnv"
 	"net/url"
+	"strconv"
 	"time"
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
-	"golang.org/x/mod/semver"
 )
 
 type (
@@ -37,7 +37,7 @@ type (
 		// System variables that are set on `Open`.
 		collate string
 		ctype   string
-		version string
+		version int
 		crdb    bool
 	}
 )
@@ -92,13 +92,12 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	if len(params) != 3 && len(params) != 4 {
 		return nil, fmt.Errorf("postgres: unexpected number of rows: %d", len(params))
 	}
-	c.version, c.ctype, c.collate = params[0], params[1], params[2]
-	if len(c.version) != 6 {
-		return nil, fmt.Errorf("postgres: malformed version: %s", c.version)
+	c.ctype, c.collate = params[1], params[2]
+	if c.version, err = strconv.Atoi(params[0]); err != nil {
+		return nil, fmt.Errorf("postgres: malformed version: %s: %w", params[0], err)
 	}
-	c.version = fmt.Sprintf("%s.%s.%s", c.version[:2], c.version[2:4], c.version[4:])
-	if semver.Compare("v"+c.version, "v10.0.0") != -1 {
-		return nil, fmt.Errorf("postgres: unsupported postgres version: %s", c.version)
+	if c.version < 10_00_00 {
+		return nil, fmt.Errorf("postgres: unsupported postgres version: %d", c.version)
 	}
 	// Means we are connected to CockroachDB because we have a result for name='crdb_version'. see `paramsQuery`.
 	if c.crdb = len(params) == 4; c.crdb {
@@ -288,7 +287,7 @@ func acquire(ctx context.Context, conn schema.ExecQuerier, id uint32, timeout ti
 
 // supportsIndexInclude reports if the server supports the INCLUDE clause.
 func (c *conn) supportsIndexInclude() bool {
-	return semver.Compare("v"+c.version, "v11.00.00") >= 0
+	return c.version >= 11_00_00
 }
 
 type parser struct{}
