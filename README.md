@@ -48,5 +48,5 @@ atlas schema apply -u "mysql://root:pass@localhost:3306/example" -f atlas.hcl
 ### About the Project
 Read more about the motivation of the project [here](https://atlasgo.io/blog/2021/11/25/meet-atlas).
 
-### Supported Databses
+### Supported Databases
 MySQL, MariaDB, PostgresSQL, SQLite, TiDB, CockroachDB
