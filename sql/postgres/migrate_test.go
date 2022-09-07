@@ -384,6 +384,17 @@ func TestPlanChanges(t *testing.T) {
 								From: &schema.Check{Name: "id_iseven", Expr: `("id" % 2 = 0)`},
 								To:   &schema.Check{Name: "id_iseven", Expr: `(("id") % 2 = 0)`},
 							},
+							&schema.AddIndex{
+								I: &schema.Index{
+									Name: "include_key",
+									Parts: []*schema.IndexPart{
+										{C: users.Columns[0]},
+									},
+									Attrs: []schema.Attr{
+										&IndexInclude{Columns: []*schema.Column{schema.NewColumn("a"), schema.NewColumn("b")}},
+									},
+								},
+							},
 						},
 					}
 				}(),
@@ -403,6 +414,10 @@ func TestPlanChanges(t *testing.T) {
 					{
 						Cmd:     `CREATE INDEX "id_brin" ON "users" USING BRIN ("id" DESC) WITH (pages_per_range = 2)`,
 						Reverse: `DROP INDEX "id_brin"`,
+					},
+					{
+						Cmd:     `CREATE INDEX "include_key" ON "users" ("id") INCLUDE ("a", "b")`,
+						Reverse: `DROP INDEX "include_key"`,
 					},
 					{
 						Cmd:     `COMMENT ON COLUMN "users" ."name" IS 'foo'`,

@@ -923,8 +923,13 @@ func (s *state) index(b *sqlx.Builder, idx *schema.Index) {
 		b.P("USING", t.T)
 	}
 	s.indexParts(b, idx.Parts)
-	if p := (IndexPredicate{}); sqlx.Has(idx.Attrs, &p) {
-		b.P("WHERE").P(p.P)
+	if c := (IndexInclude{}); sqlx.Has(idx.Attrs, &c) {
+		b.P("INCLUDE")
+		b.Wrap(func(b *sqlx.Builder) {
+			b.MapComma(c.Columns, func(i int, b *sqlx.Builder) {
+				b.Ident(c.Columns[i].Name)
+			})
+		})
 	}
 	if p, ok := indexStorageParams(idx.Attrs); ok {
 		b.P("WITH")
@@ -939,9 +944,12 @@ func (s *state) index(b *sqlx.Builder, idx *schema.Index) {
 			b.WriteString(strings.Join(parts, ", "))
 		})
 	}
+	if p := (IndexPredicate{}); sqlx.Has(idx.Attrs, &p) {
+		b.P("WHERE").P(p.P)
+	}
 	for _, attr := range idx.Attrs {
 		switch attr.(type) {
-		case *schema.Comment, *ConType, *IndexType, *IndexPredicate, *IndexStorageParams:
+		case *schema.Comment, *ConType, *IndexType, *IndexInclude, *IndexPredicate, *IndexStorageParams:
 		default:
 			panic(fmt.Sprintf("unexpected index attribute: %T", attr))
 		}
