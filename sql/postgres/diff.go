@@ -164,6 +164,9 @@ func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 	if sqlx.Has(from, &p1) != sqlx.Has(to, &p2) || (p1.P != p2.P && p1.P != sqlx.MayWrap(p2.P)) {
 		return true
 	}
+	if indexIncludeChanged(from, to) {
+		return true
+	}
 	s1, ok1 := indexStorageParams(from)
 	s2, ok2 := indexStorageParams(to)
 	return ok1 != ok2 || ok1 && *s1 != *s2
@@ -350,6 +353,20 @@ func indexStorageParams(attrs []schema.Attr) (*IndexStorageParams, bool) {
 		return nil, false
 	}
 	return s, true
+}
+
+// indexIncludeChanged reports if the INCLUDE attribute clause was changed.
+func indexIncludeChanged(from, to []schema.Attr) bool {
+	var fromI, toI IndexInclude
+	if sqlx.Has(from, &fromI) != sqlx.Has(to, &toI) || len(fromI.Columns) != len(toI.Columns) {
+		return true
+	}
+	for i := range fromI.Columns {
+		if fromI.Columns[i].Name != toI.Columns[i].Name {
+			return true
+		}
+	}
+	return false
 }
 
 func trimCast(s string) string {
