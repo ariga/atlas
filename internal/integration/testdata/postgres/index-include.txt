@@ -1,0 +1,148 @@
+! only postgres10
+
+# Create with INCLUDE.
+apply 1.hcl
+cmpshow users 1.sql
+
+# Append one column to INCLUDE.
+apply 2.hcl
+cmpshow users 2.sql
+
+# Remove one column from INCLUDE.
+apply 3.hcl
+cmpshow users 3.sql
+
+# Remove INCLUDE.
+apply 4.hcl
+cmpshow users 4.sql
+
+-- 1.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "name" {
+    null = false
+    type = text
+  }
+  column "active" {
+    null = true
+    type = boolean
+  }
+  index "users_name" {
+    columns = [column.name]
+    where = "active"
+    include = [column.active]
+  }
+}
+
+-- 1.sql --
+        Table "script_index_include.users"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ name   | text    |           | not null |
+ active | boolean |           |          |
+Indexes:
+    "users_name" btree (name) INCLUDE (active) WHERE active
+
+
+-- 2.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "name" {
+    null = false
+    type = text
+  }
+  column "active" {
+    null = true
+    type = boolean
+  }
+  column "version" {
+    null = true
+    type = text
+  }
+  index "users_name" {
+    columns = [column.name]
+    where = "active"
+    include = [column.active, column.version]
+  }
+}
+
+-- 2.sql --
+      Table "script_index_include.users"
+ Column  |  Type   | Collation | Nullable | Default
+---------+---------+-----------+----------+---------
+ name    | text    |           | not null |
+ active  | boolean |           |          |
+ version | text    |           |          |
+Indexes:
+    "users_name" btree (name) INCLUDE (active, version) WHERE active
+
+-- 3.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "name" {
+    null = false
+    type = text
+  }
+  column "active" {
+    null = true
+    type = boolean
+  }
+  column "version" {
+    null = true
+    type = text
+  }
+  index "users_name" {
+    columns = [column.name]
+    where = "active"
+    include = [column.version]
+  }
+}
+
+-- 3.sql --
+      Table "script_index_include.users"
+ Column  |  Type   | Collation | Nullable | Default
+---------+---------+-----------+----------+---------
+ name    | text    |           | not null |
+ active  | boolean |           |          |
+ version | text    |           |          |
+Indexes:
+    "users_name" btree (name) INCLUDE (version) WHERE active
+
+-- 4.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "name" {
+    null = false
+    type = text
+  }
+  column "active" {
+    null = true
+    type = boolean
+  }
+  column "version" {
+    null = true
+    type = text
+  }
+  index "users_name" {
+    columns = [column.name]
+    where = "active"
+  }
+}
+
+-- 4.sql --
+      Table "script_index_include.users"
+ Column  |  Type   | Collation | Nullable | Default
+---------+---------+-----------+----------+---------
+ name    | text    |           | not null |
+ active  | boolean |           |          |
+ version | text    |           |          |
+Indexes:
+    "users_name" btree (name) WHERE active
