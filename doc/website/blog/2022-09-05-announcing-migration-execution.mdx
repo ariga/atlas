@@ -18,23 +18,8 @@ your database. In this post, we will give a brief overview of the features and w
 
 ### Migration File Format
 
-At Atlas, we believe in a linear migration history. Therefore, Atlas migration files format does not have the concept
-of rollback migrations. To undo a previously applied migration file, simply create a new migration file reverting
-the changes done in the file before.
-
-Now, some might argue, that rollback migration exist to have a fallback mechanism in case a migration execution fails.
-This, however, is deceptive, since
-1. some SQL statements are simply not revertible, (e.g. destructive changes like
-dropping a column),
-2. execution order of the rollback migration is not easy to determine without cluttering the original
-migration and
-3. wrapping migration execution in a transaction makes rollback obsolete, if you are working with a database
-that supports transactional DDL.
-
-Having no support for rollbacks conducts another nice effect: our migration directory consists of a bunch of simple SQL
-files, each of them standing for a version of the database schema. Atlas migration filename format follows a very simple
-structure: `version_[name].sql`, with the `name` being optional. `version` can be an arbitrary string. Migration files
-are lexicographically sorted by filename.
+The Atlas migration filename format follows a very simple structure: `version_[name].sql`, with the `name` being
+optional. `version` can be an arbitrary string. Migration files are lexicographically sorted by filename.
 
 <Tabs
     defaultValue="tree"
@@ -106,13 +91,13 @@ have a database ready to work on. You can start an ephemeral docker container wi
 
 ```shell
 # Run a local mysql container listening on port 3306.
-docker run --rm --name atlas-apply --detach --env MYSQL_ROOT_PASSWORD=pass -p 3306:3306 mysql
+docker run --rm --name atlas-apply --detach --env MYSQL_ROOT_PASSWORD=pass -p 3306:3306 mysql:8
 ```
 
 ### Apply Migrations
 
 In order to apply migrations you need to have the Atlas CLI in version v0.7.0 or above. Follow the
-[installation instructions](https://atlasgo.io/getting-started#installation) if you have no version installed yet.
+[installation instructions](https://atlasgo.io/getting-started#installation) if you don't have Atlas installed yet.
 
 Now, to apply the first migration of our migration directory, we call `atlas migrate apply` and pass in some
 configuration parameters.
@@ -141,9 +126,9 @@ Migrating to version 1 (1 migrations in total):
 ### Migration Status
 
 Atlas saves information about the database schema revisions (applied migration versions) in a special table called
-`atlas_schema_revisions`. Since in our example above the connection was schema-less (we call that `Database Realm`),
-Atlas put the revision table into its own schema called `atlas_schema_revisions` as well. For a schema bound connection
-Atlas will put the table into the connected schema. We will see that in a bit.
+`atlas_schema_revisions`. In the example above we connected to the database without specifying which schema to operate
+against. For this reason, Atlas created the revision table in a new schema called `atlas_schema_revisions`. For a
+schema-bound connection Atlas will put the table into the connected schema. We will see that in a bit.
 
 Go ahead and call `atlas migrate status` to gather information about the database migration state:
 
@@ -162,11 +147,10 @@ Migration Status: PENDING
 
 ```
 
-This output tells us, that the last applied version is `1`, the next one is called `2` and that we still have 2
+This output tells us that the last applied version is `1`, the next one is called `2` and that we still have two
 migrations pending. Let's apply the pending migrations:
 
-
-Note, that we pass in no argument to the `apply` in which case Atlas will attempt to apply all pending migrations.
+Note, that we do not pass an argument to the `apply`, in which case Atlas will attempt to apply all pending migrations.
 
 ```shell
 atlas migrate apply \
@@ -198,30 +182,30 @@ exit status 1
 
 ```
 
-What did happen there? After further investigation, you will find that our connection URL is bound to the realm, not to
-a schema. The third migration file however does not contain a schema qualifier for the `CREATE TABLE` statement.
+What happened here? After further investigation, you will find that our connection URL is bound to the entire database,
+not to a schema. The third migration file however does not contain a schema qualifier for the `CREATE TABLE` statement.
 
 By default, Atlas wraps the execution of each migration file into one transaction. This transaction gets rolled back
-if any error occurs withing execution. Be aware though, that some databases don't support transactional DDL (e.g.
-MySQL / MariaDB). if you want to learn how to configure the transaction behavior of Atlas, have a look at the
-[docs](/versioned/apply).
+if any error occurs withing execution. Be aware though, that some databases, such as MySQL and MariaDB, don't support
+transactional DDL. If you want to learn how to configure the way Atlas uses transactions, have a look at the
+[docs](/versioned/apply#transaction-configuration).
 
 ### Migration Retry
 
-The first solution would be to add the migration file and add a qualifier to the statement, so it looks like below:
+To resolve this edit the migration file and add a qualifier to the statement:
 
 ```sql
 CREATE TABLE `my_schema`.`tbl_2` (`col` int NOT NULL);
 ```
 
-Since you changed the contents of a migration file we have to re-calculate the directory integrity hash-sum by calling:
+Since you changed the contents of a migration file, we have to re-calculate the directory integrity hash-sum by calling:
 
 ```shell
 atlas migrate hash --force \
   --dir "file://migrations"
 ```
 
-We can then proceed and simply attempt to execute the migration file again.
+Then we can proceed and simply attempt to execute the migration file again.
 
 ```shell
 atlas migrate apply \
@@ -243,7 +227,7 @@ Migrating to version 3 from 2 (1 migrations in total):
 
 ```
 
-Attempting to migrate again or calling `atlas migrate status` will tell us, that all migrations have been applied onto
+Attempting to migrate again or calling `atlas migrate status` will tell us that all migrations have been applied onto
 the database and there is nothing to do at the moment.
 
 <Tabs
@@ -287,12 +271,12 @@ Migration Status: OK
 
 </Tabs>
 
-### Baseline
+### Moving an existing project to Atlas with Baseline Migrations
 
-There is a good chance someone wants to move to Atlas for an existing project where a database schema does already
-exist. In this case one could create an initial migration file reflecting the current state of a database schema by
-using `atlas migrate diff`. A very simple demonstration for this post is to head over to the database from before,
-delete the `atlas_schema_revisions` schema, empty your migration directory and run the `atlas migrate diff` command.
+Another common scenario is when you need to move an existing project to Atlas. To do so, create an initial migration
+file reflecting the current state of a database schema by using `atlas migrate diff`. A very simple way to do so would
+be by heading over to the database from before, deleting the `atlas_schema_revisions` schema, emptying your migration
+directory and running the `atlas migrate diff` command.
 
 ```shell
 rm -rf migrations
@@ -304,8 +288,8 @@ atlas migrate diff \
   --dev-url "mysql://root:pass@localhost:3306/my_schema_dev"
 ```
 
-To demonstrate, that Atlas can also work on a schema level instead of a realm connection, we are running the on a
-connection bound to the `my_schema` schema this time.
+To demonstrate that Atlas can also work on a schema level instead of a realm connection, we are running on a connection
+bound to the `my_schema` schema this time.
 
 You should end up with the following migration directory:
 
@@ -372,9 +356,9 @@ Migrating to version 20220908110847 from 20220908110527 (1 migrations in total):
 
 ### Outlook
 
-The Atlas migration execution engine is used already within Ariga for several months. We will continue working on
-improving it, and you can expect many cool feature, like assisted troubleshooting for failed migrations, a more
-intelligent dialect aware execution planning for things like MySQL implicits commits and more.
+The Atlas migration execution engine already being used within Ariga for several months. We will continue working on
+improving it, releasing cool features, such as assisted troubleshooting for failed migrations, a more
+intelligent, dialect-aware execution planning for things like MySQLs implicits commits and more.
 
 ### Wrapping up
 
