@@ -280,8 +280,8 @@ directory and running the `atlas migrate diff` command.
 
 ```shell
 rm -rf migrations
-mysql -h 27.0.0.1 -uroot -ppass -e "CREATE SCHEMA `my_schema_dev`;" # create a dev-db
-mysql -h 127.0.0.1 -uroot -ppass -e "DROP SCHEMA `atlas_schema_revisions`;"
+docker exec atlas-apply mysql -ppass -e "CREATE SCHEMA `my_schema_dev`;" # create a dev-db
+docker exec atlas-apply mysql -ppass -e "DROP SCHEMA `atlas_schema_revisions`;"
 atlas migrate diff \
   --dir "file://migrations" \
   --to "mysql://root:pass@localhost:3306/my_schema" \
@@ -356,9 +356,10 @@ Migrating to version 20220908110847 from 20220908110527 (1 migrations in total):
 
 ### Outlook
 
-The Atlas migration execution engine already being used within Ariga for several months. We will continue working on
-improving it, releasing cool features, such as assisted troubleshooting for failed migrations, a more
-intelligent, dialect-aware execution planning for things like MySQLs implicits commits and more.
+The Atlas migration engine is powering [Ent](https://entgo.io) and the execution engine is already being used within
+Ariga for several months. We will continue working on improving it, releasing cool features, such as assisted
+troubleshooting for failed migrations, a more intelligent, dialect-aware execution planning for things like MySQLs
+implicits commits and more.
 
 ### Wrapping up
 
