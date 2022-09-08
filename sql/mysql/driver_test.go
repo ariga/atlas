@@ -7,6 +7,7 @@ package mysql
 import (
 	"context"
 	"database/sql"
+	"net/url"
 	"testing"
 	"time"
 
@@ -17,6 +18,13 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 )
+
+func TestParser_ParseURLParseTime(t *testing.T) {
+	u, err := url.Parse("mysql://user:pass@localhost:3306/my_db?foo=bar")
+	require.NoError(t, err)
+	ac := parser{}.ParseURL(u)
+	require.Equal(t, "true", ac.Query().Get("parseTime"))
+}
 
 func TestDriver_LockAcquired(t *testing.T) {
 	db, m, err := sqlmock.New()
