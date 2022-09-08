@@ -208,3 +208,31 @@ div[class^='announcementBar_'] {
   display:table;
   width:100%;
 }
+
+.join-discord {
+  background-color:#5C4AEC;
+  border-radius:6px;
+  border:1px solid #5D4BED;
+  display:inline-block;
+  cursor:pointer;
+  color:#ffffff;
+  font-family:Arial;
+  font-size:17px;
+  padding:16px 31px;
+  text-decoration:none;
+  margin: 1em 0;
+}
+
+.join-discord svg {
+  margin-bottom: -6px;
+  margin-left: -6px;
+}
+
+.join-discord span {
+  padding-left: 6px;
+}
+
+.join-discord:hover  {
+  color: white;
+  text-decoration: none;
+}
