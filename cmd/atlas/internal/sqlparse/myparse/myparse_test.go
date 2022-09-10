@@ -5,6 +5,7 @@
 package myparse_test
 
 import (
+	"strconv"
 	"testing"
 
 	"ariga.io/atlas/cmd/atlas/internal/sqlparse/myparse"
@@ -15,14 +16,15 @@ import (
 )
 
 func TestFixChange_RenameColumns(t *testing.T) {
-	_, err := myparse.FixChange(
+	var p myparse.Parser
+	_, err := p.FixChange(
 		nil,
 		"ALTER TABLE t RENAME COLUMN c1 TO c2",
 		schema.Changes{&schema.AddTable{}},
 	)
 	require.Error(t, err)
 
-	changes, err := myparse.FixChange(
+	changes, err := p.FixChange(
 		nil,
 		"ALTER TABLE t RENAME COLUMN c1 TO c2",
 		schema.Changes{
@@ -47,7 +49,7 @@ func TestFixChange_RenameColumns(t *testing.T) {
 		changes,
 	)
 
-	changes, err = myparse.FixChange(
+	changes, err = p.FixChange(
 		nil,
 		"ALTER TABLE t ADD INDEX i(id), RENAME COLUMN c1 TO c2, ADD COLUMN c3 int, DROP COLUMN c4",
 		schema.Changes{
@@ -80,7 +82,8 @@ func TestFixChange_RenameColumns(t *testing.T) {
 }
 
 func TestFixChange_RenameIndexes(t *testing.T) {
-	changes, err := myparse.FixChange(
+	var p myparse.Parser
+	changes, err := p.FixChange(
 		nil,
 		"ALTER TABLE t RENAME Index i1 TO i2",
 		schema.Changes{
@@ -107,7 +110,8 @@ func TestFixChange_RenameIndexes(t *testing.T) {
 }
 
 func TestFixChange_RenameTable(t *testing.T) {
-	changes, err := myparse.FixChange(
+	var p myparse.Parser
+	changes, err := p.FixChange(
 		nil,
 		"RENAME TABLE t1 TO t2",
 		schema.Changes{
@@ -123,7 +127,7 @@ func TestFixChange_RenameTable(t *testing.T) {
 		},
 		changes,
 	)
-	changes, err = myparse.FixChange(
+	changes, err = p.FixChange(
 		nil,
 		"RENAME TABLE t1 TO t2, t3 TO t4",
 		schema.Changes{
@@ -145,9 +149,12 @@ func TestFixChange_RenameTable(t *testing.T) {
 }
 
 func TestFixChange_AlterAndRename(t *testing.T) {
-	drv := &mockDriver{}
+	var (
+		p   myparse.Parser
+		drv = &mockDriver{}
+	)
 	drv.changes = append(drv.changes, &schema.AddColumn{C: schema.NewIntColumn("c2", "int")})
-	changes, err := myparse.FixChange(
+	changes, err := p.FixChange(
 		drv,
 		"ALTER TABLE t1 RENAME TO t2, ADD COLUMN c2 int",
 		schema.Changes{
@@ -172,6 +179,66 @@ func TestFixChange_AlterAndRename(t *testing.T) {
 		},
 		changes,
 	)
+}
+
+func TestColumnFilledBefore(t *testing.T) {
+	for i, tt := range []struct {
+		file       string
+		pos        int
+		wantFilled bool
+		wantErr    bool
+	}{
+		{
+			file: `UPDATE t SET c = NULL;`,
+			pos:  100,
+		},
+		{
+			file:       `UPDATE t SET c = 2;`,
+			pos:        100,
+			wantFilled: true,
+		},
+		{
+			file:       `UPDATE t SET c = 2 WHERE c IS NULL;`,
+			pos:        100,
+			wantFilled: true,
+		},
+		{
+			file:       `UPDATE t SET c = 2 WHERE c IS NOT NULL;`,
+			pos:        100,
+			wantFilled: false,
+		},
+		{
+			file:       `UPDATE t SET c = 2 WHERE c <> NULL`,
+			pos:        100,
+			wantFilled: false,
+		},
+		{
+			file: `
+ALTER TABLE t MODIFY COLUMN c INT NOT NULL;
+UPDATE t SET c = 2 WHERE c IS NULL;
+`,
+			pos:        2,
+			wantFilled: false,
+		},
+		{
+			file: `
+UPDATE t SET c = 2 WHERE c IS NULL;
+ALTER TABLE t MODIFY COLUMN c INT NOT NULL;
+`,
+			pos:        30,
+			wantFilled: true,
+		},
+	} {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			var (
+				p myparse.Parser
+				f = migrate.NewLocalFile("file", []byte(tt.file))
+			)
+			filled, err := p.ColumnFilledBefore(f, schema.NewTable("t"), schema.NewColumn("c"), tt.pos)
+			require.Equal(t, err != nil, tt.wantErr, err)
+			require.Equal(t, filled, tt.wantFilled)
+		})
+	}
 }
 
 type mockDriver struct {

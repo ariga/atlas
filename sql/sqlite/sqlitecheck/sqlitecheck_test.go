@@ -77,7 +77,7 @@ func TestDetectModifyTable(t *testing.T) {
 								T: schema.NewTable("posts").
 									SetSchema(schema.New("main")).
 									AddColumns(
-										schema.NewStringColumn("text", "text"),
+										schema.NewNullStringColumn("text", "text"),
 										schema.NewTimeColumn("posted_at", "timestamp"),
 									),
 							},
@@ -126,7 +126,9 @@ func TestDetectModifyTable(t *testing.T) {
 	)
 	azs, err := sqlcheck.AnalyzerFor(sqlite.DriverName, nil)
 	require.NoError(t, err)
-	err = sqlcheck.Analyzers(azs).Analyze(context.Background(), pass)
+	require.Len(t, azs, 3)
+	require.NoError(t, azs[0].Analyze(context.Background(), pass))
+	err = azs[1].Analyze(context.Background(), pass)
 	require.EqualError(t, err, "destructive changes detected")
 
 	require.Equal(t, report.Text, "destructive changes detected")
@@ -134,6 +136,11 @@ func TestDetectModifyTable(t *testing.T) {
 	require.Equal(t, report.Diagnostics[0].Text, `Dropping table "users"`)
 	require.Equal(t, report.Diagnostics[1].Text, `Dropping non-virtual column "posted_at"`)
 	require.Equal(t, report.Diagnostics[2].Text, `Dropping table "pets"`)
+
+	require.NoError(t, azs[2].Analyze(context.Background(), pass))
+	require.Equal(t, report.Text, "data dependent changes detected")
+	require.Len(t, report.Diagnostics, 1)
+	require.Equal(t, report.Diagnostics[0].Text, `Modifying nullable column "text" to non-nullable without default value might fail in case it contains NULL values`)
 }
 
 type testFile struct {

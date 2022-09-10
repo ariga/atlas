@@ -11,6 +11,7 @@ import (
 
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/internal/sqlx"
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
 )
@@ -27,6 +28,10 @@ type (
 		// AddNotNull is applied when a new non-nullable column was
 		// added to an existing table.
 		AddNotNull ColumnHandler
+
+		// ModifyNotNull is an optional handler applied when
+		// a nullable column was changed to non-nullable.
+		ModifyNotNull ColumnHandler
 	}
 
 	// ColumnPass wraps the information needed
@@ -68,6 +73,7 @@ var (
 	codeAddUniqueI  = sqlcheck.Code("MF101")
 	codeModUniqueI  = sqlcheck.Code("MF102")
 	codeAddNotNullC = sqlcheck.Code("MF103")
+	codeModNotNullC = sqlcheck.Code("MF104")
 )
 
 // Diagnostics runs the common analysis on the file and returns its diagnostics.
@@ -123,6 +129,30 @@ func (a *Analyzer) Diagnostics(_ context.Context, p *sqlcheck.Pass) (diags []sql
 						}
 						diags = append(diags, d...)
 					}
+				case *schema.ModifyColumn:
+					switch {
+					case p.File.TableSpan(m.T)&sqlcheck.SpanAdded == 1 || !(c.From.Type.Null && !c.To.Type.Null):
+					case a.ModifyNotNull != nil:
+						d, err := a.Handler.ModifyNotNull(&ColumnPass{Pass: p, Change: sc, Table: m.T, Column: c.To})
+						if err != nil {
+							return
+						}
+						for i := range d {
+							// In case there is no driver-specific code.
+							if d[i].Code == "" {
+								d[i].Code = codeModNotNullC
+							}
+						}
+						diags = append(diags, d...)
+					// In case the altered column was not added in this file, and the column
+					// was changed nullable to non-nullable without back filling it with values.
+					case !ColumnFilled(p.File, m.T, c.From, sc.Stmt.Pos):
+						diags = append(diags, sqlcheck.Diagnostic{
+							Code: codeModNotNullC,
+							Pos:  sc.Stmt.Pos,
+							Text: fmt.Sprintf("Modifying nullable column %q to non-nullable might fail in case it contains NULL values", c.To.Name),
+						})
+					}
 				}
 			}
 		}
@@ -134,6 +164,7 @@ func (a *Analyzer) Diagnostics(_ context.Context, p *sqlcheck.Pass) (diags []sql
 // decorate this Analyzer should call this function to get consistent reporting
 // between dialects.
 func (a *Analyzer) Report(p *sqlcheck.Pass, diags []sqlcheck.Diagnostic) error {
+	const reportText = "data dependent changes detected"
 	if len(diags) > 0 {
 		p.Reporter.WriteReport(sqlcheck.Report{Text: reportText, Diagnostics: diags})
 		if sqlx.V(a.Error) {
@@ -143,4 +174,16 @@ func (a *Analyzer) Report(p *sqlcheck.Pass, diags []sqlcheck.Diagnostic) error {
 	return nil
 }
 
-const reportText = "data dependent changes detected"
+// ColumnFilled checks if the column was filled with values before the given position.
+func ColumnFilled(f *sqlcheck.File, t *schema.Table, c *schema.Column, pos int) bool {
+	// The parser used for parsing this file can check if the
+	// given nullable column was filled before the given position.
+	p, ok := f.Parser.(interface {
+		ColumnFilledBefore(migrate.File, *schema.Table, *schema.Column, int) (bool, error)
+	})
+	if !ok {
+		return false
+	}
+	filled, _ := p.ColumnFilledBefore(f, t, c, pos)
+	return filled
+}

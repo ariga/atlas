@@ -625,7 +625,7 @@ func CmdMigrateHashRun(*cobra.Command, []string) error {
 
 // CmdMigrateNewRun is the command executed when running the CLI with 'migrate new' args.
 func CmdMigrateNewRun(_ *cobra.Command, args []string) error {
-	dir, err := dir(false)
+	dir, err := dir(true)
 	if err != nil {
 		return err
 	}

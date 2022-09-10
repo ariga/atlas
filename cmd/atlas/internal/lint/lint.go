@@ -5,7 +5,6 @@
 package lint
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -14,6 +13,7 @@ import (
 	"strings"
 
 	"ariga.io/atlas/cmd/atlas/internal/sqlparse"
+	"ariga.io/atlas/cmd/atlas/internal/sqlparse/parseutil"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
@@ -219,9 +219,10 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 	}
 	for i, f := range files {
 		diff.Files[i] = &sqlcheck.File{
-			File: f,
+			File:   f,
+			Parser: sqlparse.ParserFor(d.Dev.Name),
 		}
-		stmts, err := stmts(f)
+		stmts, err := parseutil.StmtDecls(f)
 		if err != nil {
 			return nil, &FileError{File: f.Name(), Err: fmt.Errorf("scanning statements: %w", err)}
 		}
@@ -254,7 +255,11 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 
 // mayFix uses the sqlparse package for fixing or attaching more info to the changes.
 func (d *DevLoader) mayFix(stmt string, changes schema.Changes) schema.Changes {
-	if fixed, err := sqlparse.FixerFor(d.Dev.Name).FixChange(d.Dev.Driver, stmt, changes); err == nil {
+	p := sqlparse.ParserFor(d.Dev.Name)
+	if p == nil {
+		return changes
+	}
+	if fixed, err := p.FixChange(d.Dev.Driver, stmt, changes); err == nil {
 		return fixed
 	}
 	return changes
@@ -267,36 +272,6 @@ func (d *DevLoader) inspect(ctx context.Context) (*schema.Realm, error) {
 		opts.Schemas = append(opts.Schemas, d.Dev.URL.Schema)
 	}
 	return d.Dev.InspectRealm(ctx, opts)
-}
-
-func stmts(f migrate.File) ([]*migrate.Stmt, error) {
-	if s, ok := f.(interface {
-		StmtDecls() ([]*migrate.Stmt, error)
-	}); ok {
-		return s.StmtDecls()
-	}
-	s1, err := f.Stmts()
-	if err != nil {
-		return nil, err
-	}
-	s2 := make([]*migrate.Stmt, len(s1))
-	for i := range s1 {
-		p, err := pos(f, s1[i])
-		if err != nil {
-			return nil, err
-		}
-		s2[i] = &migrate.Stmt{Pos: p, Text: s1[i]}
-	}
-	return s2, nil
-}
-
-// pos returns the position of a statement in migration file.
-func pos(f migrate.File, stmt string) (int, error) {
-	i := bytes.Index(f.Bytes(), []byte(stmt))
-	if i == -1 {
-		return 0, &FileError{File: f.Name(), Err: fmt.Errorf("statement %q was not found in %q", stmt, f.Bytes())}
-	}
-	return i, nil
 }
 
 // FileError represents an error that occurred while processing a file.
