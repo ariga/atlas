@@ -17,42 +17,39 @@ import (
 	"ariga.io/atlas/sql/sqlite"
 )
 
-// A ChangesFixer wraps the FixChange method.
-type ChangesFixer interface {
-	// FixChange fixes the given changes according to the given statement.
+// A Parser represents an SQL file parser used to fix, search and enrich schema.Changes.
+type Parser interface {
+	// FixChange fixes the changes according to the given statement.
 	FixChange(d migrate.Driver, stmt string, changes schema.Changes) (schema.Changes, error)
-}
 
-// FixerFunc allows using ordinary functions as change fixers.
-type FixerFunc func(migrate.Driver, string, schema.Changes) (schema.Changes, error)
-
-// FixChange calls f.
-func (f FixerFunc) FixChange(d migrate.Driver, stmt string, changes schema.Changes) (schema.Changes, error) {
-	return f(d, stmt, changes)
+	// ColumnFilledBefore checks if the column was filled with values before the given position
+	// in the file. For example:
+	//
+	//	UPDATE <table> SET <column> = <value>
+	//	UPDATE <table> SET <column> = <value> WHERE <column> IS NULL
+	//
+	ColumnFilledBefore(migrate.File, *schema.Table, *schema.Column, int) (bool, error)
 }
 
 // drivers specific fixers.
 var drivers sync.Map
 
 // Register a fixer with the given name.
-func Register(name string, f ChangesFixer) {
+func Register(name string, f Parser) {
 	drivers.Store(name, f)
 }
 
-// FixerFor returns a ChangesFixer for the given driver.
-func FixerFor(name string) ChangesFixer {
+// ParserFor returns a ChangesFixer for the given driver.
+func ParserFor(name string) Parser {
 	f, ok := drivers.Load(name)
 	if ok {
-		return f.(ChangesFixer)
+		return f.(Parser)
 	}
-	// A nop analyzer.
-	return FixerFunc(func(_ migrate.Driver, _ string, changes schema.Changes) (schema.Changes, error) {
-		return changes, nil
-	})
+	return nil
 }
 
 func init() {
-	Register(mysql.DriverName, FixerFunc(myparse.FixChange))
-	Register(postgres.DriverName, FixerFunc(pgparse.FixChange))
-	Register(sqlite.DriverName, FixerFunc(sqliteparse.FixChange))
+	Register(mysql.DriverName, &myparse.Parser{})
+	Register(postgres.DriverName, &pgparse.Parser{})
+	Register(sqlite.DriverName, &sqliteparse.FileParser{})
 }

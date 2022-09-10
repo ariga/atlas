@@ -166,6 +166,12 @@ type ParserListener interface {
 	// EnterUpdate_stmt is called when entering the update_stmt production.
 	EnterUpdate_stmt(c *Update_stmtContext)
 
+	// EnterAssignment_list is called when entering the assignment_list production.
+	EnterAssignment_list(c *Assignment_listContext)
+
+	// EnterAssignment is called when entering the assignment production.
+	EnterAssignment(c *AssignmentContext)
+
 	// EnterColumn_name_list is called when entering the column_name_list production.
 	EnterColumn_name_list(c *Column_name_listContext)
 
@@ -498,6 +504,12 @@ type ParserListener interface {
 
 	// ExitUpdate_stmt is called when exiting the update_stmt production.
 	ExitUpdate_stmt(c *Update_stmtContext)
+
+	// ExitAssignment_list is called when exiting the assignment_list production.
+	ExitAssignment_list(c *Assignment_listContext)
+
+	// ExitAssignment is called when exiting the assignment production.
+	ExitAssignment(c *AssignmentContext)
 
 	// ExitColumn_name_list is called when exiting the column_name_list production.
 	ExitColumn_name_list(c *Column_name_listContext)

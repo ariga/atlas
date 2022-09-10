@@ -133,6 +133,51 @@ func TestAnalyzer_ModifyUniqueIndex(t *testing.T) {
 	require.Equal(t, `Modifying an index "idx_b" on table "users" might fail in case of duplicate entries`, report.Diagnostics[0].Text)
 }
 
+func TestAnalyzer_ModifyNullability(t *testing.T) {
+	var (
+		report *sqlcheck.Report
+		pass   = &sqlcheck.Pass{
+			Dev: &sqlclient.Client{},
+			File: &sqlcheck.File{
+				File: testFile{name: "1.sql"},
+				Changes: []*sqlcheck.Change{
+					{
+						Stmt: &migrate.Stmt{
+							Text: "ALTER TABLE users",
+						},
+						Changes: schema.Changes{
+							&schema.ModifyTable{
+								T: schema.NewTable("users").
+									SetSchema(schema.New("test")).
+									AddColumns(
+										schema.NewNullIntColumn("a", "int"),
+									),
+								Changes: []schema.Change{
+									&schema.ModifyColumn{
+										From:   schema.NewNullIntColumn("a", "int"),
+										To:     schema.NewIntColumn("a", "int"),
+										Change: schema.ChangeNull,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			Reporter: sqlcheck.ReportWriterFunc(func(r sqlcheck.Report) {
+				report = &r
+			}),
+		}
+	)
+	az, err := datadepend.New(nil, datadepend.Handler{})
+	require.NoError(t, err)
+	err = az.Analyze(context.Background(), pass)
+	require.NoError(t, err)
+	require.Equal(t, "data dependent changes detected", report.Text)
+	require.Len(t, report.Diagnostics, 1)
+	require.Equal(t, `Modifying nullable column "a" to non-nullable might fail in case it contains NULL values`, report.Diagnostics[0].Text)
+}
+
 func TestAnalyzer_Options(t *testing.T) {
 	var (
 		report *sqlcheck.Report

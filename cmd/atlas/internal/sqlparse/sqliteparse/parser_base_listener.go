@@ -338,6 +338,18 @@ func (s *BaseParserListener) EnterUpdate_stmt(ctx *Update_stmtContext) {}
 // ExitUpdate_stmt is called when production update_stmt is exited.
 func (s *BaseParserListener) ExitUpdate_stmt(ctx *Update_stmtContext) {}
 
+// EnterAssignment_list is called when production assignment_list is entered.
+func (s *BaseParserListener) EnterAssignment_list(ctx *Assignment_listContext) {}
+
+// ExitAssignment_list is called when production assignment_list is exited.
+func (s *BaseParserListener) ExitAssignment_list(ctx *Assignment_listContext) {}
+
+// EnterAssignment is called when production assignment is entered.
+func (s *BaseParserListener) EnterAssignment(ctx *AssignmentContext) {}
+
+// ExitAssignment is called when production assignment is exited.
+func (s *BaseParserListener) ExitAssignment(ctx *AssignmentContext) {}
+
 // EnterColumn_name_list is called when production column_name_list is entered.
 func (s *BaseParserListener) EnterColumn_name_list(ctx *Column_name_listContext) {}
 

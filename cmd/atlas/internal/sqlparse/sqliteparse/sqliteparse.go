@@ -9,18 +9,18 @@ import (
 	"fmt"
 	"strings"
 
-	"ariga.io/atlas/cmd/atlas/internal/sqlparse/parsefix"
+	"ariga.io/atlas/cmd/atlas/internal/sqlparse/parseutil"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
+	"golang.org/x/exp/slices"
 )
 
 type (
 	// Stmt provides extended functionality
 	// to ANTLR parsed statements.
 	Stmt struct {
-		p     *Parser
 		stmt  antlr.ParseTree
 		input string
 		err   error
@@ -68,7 +68,6 @@ func ParseStmt(text string) (stmt *Stmt, err error) {
 	p.AddErrorListener(l)
 	p.BuildParseTrees = true
 	stmt = &Stmt{
-		p:    p,
 		stmt: p.Sql_stmt(),
 	}
 	return
@@ -84,7 +83,7 @@ func (s *Stmt) IsAlterTable() bool {
 }
 
 // RenameColumn returns the renamed column information from the statement, if exists.
-func (s *Stmt) RenameColumn() (*parsefix.Rename, bool) {
+func (s *Stmt) RenameColumn() (*parseutil.Rename, bool) {
 	if !s.IsAlterTable() {
 		return nil, false
 	}
@@ -92,14 +91,14 @@ func (s *Stmt) RenameColumn() (*parsefix.Rename, bool) {
 	if alter.old_column_name == nil || alter.new_column_name == nil {
 		return nil, false
 	}
-	return &parsefix.Rename{
+	return &parseutil.Rename{
 		From: alter.old_column_name.GetText(),
 		To:   alter.new_column_name.GetText(),
 	}, true
 }
 
 // RenameTable returns the renamed table information from the statement, if exists.
-func (s *Stmt) RenameTable() (*parsefix.Rename, bool) {
+func (s *Stmt) RenameTable() (*parseutil.Rename, bool) {
 	if !s.IsAlterTable() {
 		return nil, false
 	}
@@ -107,14 +106,77 @@ func (s *Stmt) RenameTable() (*parsefix.Rename, bool) {
 	if alter.new_table_name == nil {
 		return nil, false
 	}
-	return &parsefix.Rename{
+	return &parseutil.Rename{
 		From: alter.Table_name(0).GetText(),
 		To:   alter.new_table_name.GetText(),
 	}, true
 }
 
+// TableUpdate reports if the statement is an UPDATE command for the given table.
+func (s *Stmt) TableUpdate(t *schema.Table) (*Update_stmtContext, bool) {
+	if s.stmt.GetChildCount() != 1 {
+		return nil, false
+	}
+	u, ok := s.stmt.GetChild(0).(*Update_stmtContext)
+	if !ok {
+		return nil, false
+	}
+	name, ok := u.Qualified_table_name().(*Qualified_table_nameContext)
+	if !ok || unquote(name.Table_name().GetText()) != t.Name {
+		return nil, false
+	}
+	return u, true
+}
+
+// FileParser implements the sqlparse.Parser
+type FileParser struct{}
+
+// ColumnFilledBefore checks if the column was filled before the given position.
+func (p *FileParser) ColumnFilledBefore(f migrate.File, t *schema.Table, c *schema.Column, pos int) (bool, error) {
+	return parseutil.MatchStmtBefore(f, pos, func(s *migrate.Stmt) (bool, error) {
+		stmt, err := ParseStmt(s.Text)
+		if err != nil {
+			return false, err
+		}
+		u, ok := stmt.TableUpdate(t)
+		if !ok {
+			return false, nil
+		}
+		// Accept UPDATE that fills all rows or those with NULL values as we cannot
+		// determine if NULL values were filled in case there is a custom filtering.
+		affectC := func() bool {
+			x := u.GetWhere()
+			if x == nil {
+				return true
+			}
+			if x.GetChildCount() != 3 {
+				return false
+			}
+			x1, ok := x.GetChild(0).(*ExprContext)
+			if !ok || unquote(x1.GetText()) != c.Name {
+				return false
+			}
+			x2, ok := x.GetChild(1).(*antlr.TerminalNodeImpl)
+			if !ok || x2.GetSymbol().GetTokenType() != ParserIS_ {
+				return false
+			}
+			return isnull(x.GetChild(2))
+		}()
+		list, ok := u.Assignment_list().(*Assignment_listContext)
+		if !ok {
+			return false, nil
+		}
+		idx := slices.IndexFunc(list.AllAssignment(), func(a IAssignmentContext) bool {
+			as, ok := a.(*AssignmentContext)
+			return ok && unquote(as.Column_name().GetText()) == c.Name && !isnull(as.Expr())
+		})
+		// Ensure the column was filled.
+		return affectC && idx != -1, nil
+	})
+}
+
 // FixChange fixes the changes according to the given statement.
-func FixChange(_ migrate.Driver, s string, changes schema.Changes) (schema.Changes, error) {
+func (p *FileParser) FixChange(_ migrate.Driver, s string, changes schema.Changes) (schema.Changes, error) {
 	stmt, err := ParseStmt(s)
 	if err != nil {
 		return nil, err
@@ -134,10 +196,26 @@ func FixChange(_ migrate.Driver, s string, changes schema.Changes) (schema.Chang
 		if len(changes) > 2 {
 			return nil, fmt.Errorf("unexpected number of changes found: %d", len(changes))
 		}
-		parsefix.RenameColumn(modify, r)
+		parseutil.RenameColumn(modify, r)
 	}
 	if r, ok := stmt.RenameTable(); ok {
-		changes = parsefix.RenameTable(changes, r)
+		changes = parseutil.RenameTable(changes, r)
 	}
 	return changes, nil
+}
+
+func isnull(t antlr.Tree) bool {
+	x, ok := t.(*ExprContext)
+	if !ok || x.GetChildCount() != 1 {
+		return false
+	}
+	l, ok := x.GetChild(0).(*Literal_valueContext)
+	return ok && l.GetChildCount() == 1 && len(l.GetTokens(ParserNULL_)) > 0
+}
+
+func unquote(s string) string {
+	if len(s) < 2 || s[0] != '`' || s[len(s)-1] != '`' {
+		return s
+	}
+	return s[1 : len(s)-1]
 }

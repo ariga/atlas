@@ -103,7 +103,7 @@ func (r *Runner) summary(ctx context.Context) error {
 		if fr := (&FileError{}); errors.As(err, &fr) {
 			r.sum.Files = append(r.sum.Files, &FileReport{Name: fr.File, Error: err.Error()})
 		}
-		return r.sum.StepError(stepDetectChanges, "Failed loading changes on dev database", err)
+		return r.sum.StepError(stepLoadChanges, "Failed loading changes on dev database", err)
 	}
 	r.sum.StepResult(stepLoadChanges, fmt.Sprintf("Loaded %d changes on dev database", len(diff.Files)), nil)
 	r.sum.WriteSchema(r.Dev, diff)

@@ -19,6 +19,9 @@ import (
 	"ariga.io/atlas/sql/sqlite"
 )
 
+// codeModNotNullC is an SQLite specific code for reporting modifying nullable columns to non-nullable.
+var codeModNotNullC = sqlcheck.Code("LT101")
+
 func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err error) {
 	tt, err := sqlite.FormatType(p.Column.Type.Type)
 	if err != nil {
@@ -35,6 +38,19 @@ func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err erro
 	}, nil
 }
 
+func modifyNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err error) {
+	if p.Column.Default != nil || datadepend.ColumnFilled(p.File, p.Table, p.Column, p.Change.Stmt.Pos) {
+		return nil, nil
+	}
+	return []sqlcheck.Diagnostic{
+		{
+			Pos:  p.Change.Stmt.Pos,
+			Code: codeModNotNullC,
+			Text: fmt.Sprintf("Modifying nullable column %q to non-nullable without default value might fail in case it contains NULL values", p.Column.Name),
+		},
+	}, nil
+}
+
 func init() {
 	sqlcheck.Register(sqlite.DriverName, func(r *schemahcl.Resource) ([]sqlcheck.Analyzer, error) {
 		ds, err := destructive.New(r)
@@ -42,7 +58,8 @@ func init() {
 			return nil, err
 		}
 		dd, err := datadepend.New(r, datadepend.Handler{
-			AddNotNull: addNotNull,
+			AddNotNull:    addNotNull,
+			ModifyNotNull: modifyNotNull,
 		})
 		if err != nil {
 			return nil, err

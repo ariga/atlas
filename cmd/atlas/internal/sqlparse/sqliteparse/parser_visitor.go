@@ -166,6 +166,12 @@ type ParserVisitor interface {
 	// Visit a parse tree produced by Parser#update_stmt.
 	VisitUpdate_stmt(ctx *Update_stmtContext) interface{}
 
+	// Visit a parse tree produced by Parser#assignment_list.
+	VisitAssignment_list(ctx *Assignment_listContext) interface{}
+
+	// Visit a parse tree produced by Parser#assignment.
+	VisitAssignment(ctx *AssignmentContext) interface{}
+
 	// Visit a parse tree produced by Parser#column_name_list.
 	VisitColumn_name_list(ctx *Column_name_listContext) interface{}
 

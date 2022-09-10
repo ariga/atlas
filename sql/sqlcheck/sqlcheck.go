@@ -60,6 +60,11 @@ type (
 		// statement is reverted by the one after it, the Sum is nil.
 		Sum schema.Changes
 
+		// A Parser that may be used for parsing this file. It sets to any as the contract
+		// between checks and their parsers can vary. For example, in case of running checks
+		// from CLI, the injected parser can be found in cmd/atlas/internal/sqlparse.Parser.
+		Parser any
+
 		// schema spans. lazily initialized.
 		spans map[string]*schemaSpan
 	}

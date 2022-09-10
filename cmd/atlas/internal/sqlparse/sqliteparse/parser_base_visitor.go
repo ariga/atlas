@@ -219,6 +219,14 @@ func (v *BaseParserVisitor) VisitUpdate_stmt(ctx *Update_stmtContext) interface{
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseParserVisitor) VisitAssignment_list(ctx *Assignment_listContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseParserVisitor) VisitAssignment(ctx *AssignmentContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseParserVisitor) VisitColumn_name_list(ctx *Column_name_listContext) interface{} {
 	return v.VisitChildren(ctx)
 }
