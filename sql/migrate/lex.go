@@ -63,66 +63,73 @@ func stmts(input string) ([]*Stmt, error) {
 
 type lex struct {
 	input    string
-	pos      int      // current and real position
+	pos      int      // current phase position
 	total    int      // total bytes scanned so far
 	width    int      // size of latest rune
-	depth    int      // depth of parentheses
 	delim    string   // configured delimiter
 	comments []string // collected comments
 }
 
 const (
-	eos       = -1
-	delimiter = ";"
+	eos          = -1
+	delimiter    = ";"
+	delimiterCmd = "delimiter"
 )
 
 func newLex(input string) (*lex, error) {
-	delim := delimiter
+	l := &lex{input: input, delim: delimiter}
 	if d, ok := directive(input, directiveDelimiter, directivePrefixSQL); ok {
-		if d == "" {
-			return nil, errors.New("empty delimiter")
+		if err := l.setDelim(d); err != nil {
+			return nil, err
 		}
 		parts := strings.SplitN(input, "\n", 2)
 		if len(parts) == 1 {
 			return nil, fmt.Errorf("not input found after delimiter %q", d)
 		}
-		// Unescape delimiters. e.g. "\\n" => "\n".
-		delim = strings.NewReplacer(`\n`, "\n", `\r`, "\r", `\t`, "\t").Replace(d)
-		input = parts[1]
+		l.input = parts[1]
 	}
-	l := &lex{input: input, delim: delim}
 	return l, nil
 }
 
 func (l *lex) stmt() (*Stmt, error) {
-	var text string
-	// Trim trailing whitespace.
+	var (
+		depth int
+		text  string
+	)
 	l.skipSpaces()
 Scan:
 	for {
 		switch r := l.next(); {
 		case r == eos:
-			if l.depth > 0 {
+			switch {
+			case depth > 0:
 				return nil, errors.New("unclosed parentheses")
-			}
-			if l.pos > 0 {
+			case l.pos > 0:
 				text = l.input
 				break Scan
+			default:
+				return nil, io.EOF
 			}
-			return nil, io.EOF
 		case r == '(':
-			l.depth++
+			depth++
 		case r == ')':
-			if l.depth == 0 {
+			if depth == 0 {
 				return nil, fmt.Errorf("unexpected ')' at position %d", l.pos)
 			}
-			l.depth--
+			depth--
 		case r == '\'', r == '"', r == '`':
 			if err := l.skipQuote(r); err != nil {
 				return nil, err
 			}
+		// Check if the start of the statement is the MySQL DELIMITER command.
+		// See https://dev.mysql.com/doc/refman/8.0/en/mysql-commands.html.
+		case l.pos == 1 && len(l.input) > len(delimiterCmd) && strings.EqualFold(l.input[:len(delimiterCmd)], delimiterCmd):
+			l.addPos(len(delimiterCmd) - 1)
+			if err := l.delimCmd(); err != nil {
+				return nil, err
+			}
 		// Delimiters take precedence over comments.
-		case strings.HasPrefix(l.input[l.pos-l.width:], l.delim) && l.depth == 0:
+		case depth == 0 && strings.HasPrefix(l.input[l.pos-l.width:], l.delim):
 			l.addPos(len(l.delim) - l.width)
 			text = l.input[:l.pos]
 			break Scan
@@ -144,6 +151,13 @@ func (l *lex) next() rune {
 	r, w := utf8.DecodeRuneInString(l.input[l.pos:])
 	l.width = w
 	l.addPos(w)
+	return r
+}
+
+func (l *lex) pick() rune {
+	p, w := l.pos, l.width
+	r := l.next()
+	l.pos, l.width = p, w
 	return r
 }
 
@@ -206,4 +220,36 @@ func (l *lex) emit(text string) *Stmt {
 	}
 	s.Text = strings.TrimSpace(s.Text)
 	return s
+}
+
+// delimCmd checks if the scanned "DELIMITER"
+// text represents an actual delimiter command.
+func (l *lex) delimCmd() error {
+	// A space must come after the delimiter.
+	if l.pick() != ' ' {
+		return nil
+	}
+	// Scan delimiter.
+	for r := l.pick(); r != eos && r != '\n'; r = l.next() {
+	}
+	delim := strings.TrimSpace(l.input[len(delimiterCmd):l.pos])
+	// MySQL client allows quoting delimiters.
+	if strings.HasPrefix(delim, "'") && strings.HasSuffix(delim, "'") {
+		delim = strings.ReplaceAll(delim[1:len(delim)-1], "''", "'")
+	}
+	if err := l.setDelim(delim); err != nil {
+		return err
+	}
+	// Skip all we saw until now.
+	l.emit(l.input[:l.pos])
+	return nil
+}
+
+func (l *lex) setDelim(d string) error {
+	if d == "" {
+		return errors.New("empty delimiter")
+	}
+	// Unescape delimiters. e.g. "\\n" => "\n".
+	l.delim = strings.NewReplacer(`\n`, "\n", `\r`, "\r", `\t`, "\t").Replace(d)
+	return nil
 }
