@@ -1,0 +1,47 @@
+select "Test delimiter :" as " ";
+-- end --
+select * from t1
+-- end --
+select 'End test :';
+-- end --
+select "Test delimiter :;" as " ";
+-- end --
+select * from t1
+-- end --
+select 'End test :;';
+-- end --
+select "Test delimiter //" as " ";
+-- end --
+select * from t1
+-- end --
+select 'End test //';
+-- end --
+select "Test delimiter MySQL" as " ";
+-- end --
+select * from t1
+-- end --
+select 'End test MySQL';
+-- end --
+select "Test delimiter delimiter" as " ";
+-- end --
+select * from t1
+-- end --
+select 'End test delimiter';
+-- end --
+select "Test delimiter @@" as " ";
+-- end --
+select * from t1
+-- end --
+select * from t2
+-- end --
+alter table t add column c
+-- end --
+select 'End test @@';
+-- end --
+select "Test delimiter \n\n" as " ";
+-- end --
+select * from t1
+-- end --
+select * from t2
+-- end --
+select 'End test \\n\\n';

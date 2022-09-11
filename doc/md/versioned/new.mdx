@@ -29,7 +29,51 @@ The semicolon character (`;`) is recognized by Atlas as a statement delimiter. I
 may need to be redefined because the semicolon itself is used in one of the DDL statements. For example, a stored
 program containing semicolon characters.
 
-#### Using `\n\n\n` as a delimiter:
+#### Using the `DELIMITER` command used by [MySQL client](https://dev.mysql.com/doc/refman/8.0/en/mysql-commands.html)
+
+<Tabs
+defaultValue="migration_file"
+values={[
+{label: 'Migration file', value: 'migration_file'},
+{label: 'Scanned statements', value: 'statements'},
+]}>
+<TabItem value="migration_file">
+
+```sql {1,7-8}
+DELIMITER //
+CREATE PROCEDURE dorepeat(p1 INT)
+    BEGIN
+    SET @x = 0;
+    REPEAT SET @x = @x + 1; UNTIL @x > p1 END REPEAT;
+END
+//
+DELIMITER ;
+CALL dorepeat(100)
+```
+
+</TabItem>
+<TabItem value="statements">
+
+Statement 1:
+
+```sql
+CREATE PROCEDURE dorepeat(p1 INT)
+    BEGIN
+    SET @x = 0;
+    REPEAT SET @x = @x + 1; UNTIL @x > p1 END REPEAT;
+END
+```
+
+Statement 2:
+```sql
+CALL dorepeat(100);
+```
+
+</TabItem>
+</Tabs>
+
+
+#### Using the `atlas:delimiter` directive to set `\n\n\n` as a separator:
 
 <Tabs
 defaultValue="migration_file"
@@ -75,7 +119,7 @@ CALL dorepeat(1000);
 </Tabs>
 
 
-#### Using `-- end` as a delimiter:
+#### Using the `atlas:delimiter` directive to set `-- end` as a separator:
 
 <Tabs
 defaultValue="migration_file"
