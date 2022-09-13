@@ -77,7 +77,7 @@ module.exports = {
           "title": "Docs",
           "items": [
             {"label": "Getting Started", "to": "getting-started"},
-            {"label": "Data Definition Language ", "to": "concepts/ddl"},
+            {"label": "Data Definition Language ", "to": "knowledge/ddl"},
             {"label": "CLI Reference", "to": "cli-reference"},
             {"label": "Blog", "to": "blog"},
             {"label": "Knowledge Center", "to": "knowledge"},
