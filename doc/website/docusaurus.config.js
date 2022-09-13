@@ -148,11 +148,7 @@ module.exports = {
           },
           {
             to: '/knowledge/ddl',
-            from: '/ddl/intro',
-          },
-          {
-            to: '/knowledge/ddl',
-            from: '/concepts/ddl',
+            from: ['/ddl/intro', '/concepts/ddl'],
           },
           {
             to: '/atlas-schema/input-variables',
