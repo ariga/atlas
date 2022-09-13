@@ -147,8 +147,8 @@ module.exports = {
             from: '/dev-database',
           },
           {
-            to: '/concepts/ddl',
-            from: '/ddl/intro',
+            to: '/knowledge/ddl',
+            from: ['/ddl/intro', '/concepts/ddl'],
           },
           {
             to: '/atlas-schema/input-variables',
