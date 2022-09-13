@@ -101,7 +101,7 @@ export default function () {
                 </section>
 
                 <button className={index.textButton}>
-                    <Link to="/ddl/intro">Read More <span>&#8594;</span></Link>
+                    <Link to="/atlas-schema/sql-resources">Read More <span>&#8594;</span></Link>
                 </button>
 
                 <BrowserOnly>

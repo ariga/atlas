@@ -1,7 +1,7 @@
 /** @type {import('@docusaurus/types').DocusaurusConfig} */
 module.exports = {
-  title: 'Atlas',
-  tagline: 'Manage your data',
+  title: 'Atlas | Open-source database schema management tool',
+  tagline: 'Manage your database schemas with Atlas CLI',
   url: 'https://atlasgo.io',
   baseUrl: '/',
   onBrokenLinks: 'throw',
@@ -91,6 +91,14 @@ module.exports = {
             {"label": "GitHub", "to": "https://github.com/ariga/atlas"},
             {"label": "Discord", "to": "https://discord.gg/zZ6sWVg6NT"},
             {"label": "Twitter", "to": "https://twitter.com/ariga_io"}
+          ]
+        },
+        {
+          "title": "Integrations",
+          "items": [
+            {"label": "GitHub Actions", "to": "/integrations/github-actions"},
+            {"label": "Terraform", "to": "/integrations/terraform-provider"},
+            {"label": "Go API", "to": "/integrations/go-api"}
           ]
         },
         {
