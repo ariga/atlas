@@ -9,7 +9,7 @@ import TabItem from '@theme/TabItem';
 
 The [sqlspec](https://pkg.go.dev/ariga.io/atlas@master/sql/sqlspec) package defines
 the resource types used to describe an SQL database schema. Used with the
-[Atlas HCL](/concepts/ddl.md#hcl) syntax, it is easy to compose documents describing the desired
+[Atlas HCL](/knowledge/ddl.md#hcl) syntax, it is easy to compose documents describing the desired
 state of a SQL database.
 
 ## Schema
@@ -165,7 +165,7 @@ table "metrics" {
 
 In some cases, an Atlas DDL document may contain multiple tables of the same name. This usually happens
 when the same table name appears in two different schemas. In these cases, the table names must be
-disambiguated by using resource [qualifers](/concepts/ddl.md#qualifiers). The following document describes a
+disambiguated by using resource [qualifers](/knowledge/ddl.md#qualifiers). The following document describes a
 database that contains two schemas named `a` and `b`, and both of them contain a table named `users`.
 
 ```hcl
