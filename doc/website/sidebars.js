@@ -59,7 +59,7 @@ module.exports = {
                 {type: 'doc', id: 'concepts/workflows', label: 'Declarative vs Versioned'},
                 {type: 'doc', id: 'concepts/concepts-url', label: 'URLs'},
                 {type: 'doc', id: 'concepts/dev-database', label: 'Dev Database'},
-                {type: 'doc', id: 'concepts/ddl', label: 'Data Definition Language'},
+                //{type: 'doc', id: 'concepts/ddl', label: 'Data Definition Language'},
                 {type: 'doc', id: 'concepts/migration-directory-integrity', label: 'Directory Integrity'},
             ],
         },
@@ -110,6 +110,10 @@ module.exports = {
                     label: 'Serial Type Columns'
                 },
             ],
+        },
+        {
+            type: 'doc',
+            id: 'knowledge/ddl'
         },
     ],
     about: [
