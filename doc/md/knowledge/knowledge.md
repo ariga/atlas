@@ -17,6 +17,7 @@ Welcome to the Atlas Knowledge Center.
 ### PostgreSQL
 
 [Serial Type Columns](postgres/serial-columns.md)
+[Partial Indexes](postgres/partial-indexes.md)
 
 
 
