@@ -36,6 +36,22 @@ func TestMigrate(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestMigrate_Import(t *testing.T) {
+	for _, tool := range []string{"dbmate", "flyway", "golang-migrate", "goose", "liquibase"} {
+		p := t.TempDir()
+		t.Run(tool, func(t *testing.T) {
+			out, err := runCmd(
+				Root, "migrate", "import",
+				"--from", "file://"+filepath.FromSlash("../../../../sql/sqltool/testdata/"+tool),
+				"--to", "file://"+p,
+				"--dir-format", tool,
+			)
+			require.NoError(t, err)
+			require.Zero(t, out)
+		})
+	}
+}
+
 func TestMigrate_Apply(t *testing.T) {
 	var (
 		p   = t.TempDir()

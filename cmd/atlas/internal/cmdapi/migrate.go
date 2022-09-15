@@ -180,8 +180,31 @@ This command should be used whenever a manual change in the migration directory 
 	MigrateImportCmd = &cobra.Command{
 		Use:     "import",
 		Short:   "Import a migration directory from another migration management tool to the Atlas format.",
-		Example: `  atlas migrate import liquibase --from file::///path/to/source/directory --to file:///path/to/migration/directory`,
-		RunE:    CmdMigrateImportRun,
+		Example: `  atlas migrate import --dir-format liquibase --from file:///path/to/source/directory --to file:///path/to/migration/directory`,
+		// Validate the source directory. Consider a directory with no sum file valid, since it might be an import
+		// from an existing project.
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			if err := migrateFlagsFromEnv(cmd, nil); err != nil {
+				return err
+			}
+			MigrateFlags.DirURL = MigrateFlags.Import.FromURL
+			dir, err := dir(false)
+			if err != nil {
+				return err
+			}
+			err = migrate.Validate(dir)
+			if errors.Is(err, migrate.ErrChecksumNotFound) {
+				// Consider this case valid.
+				return nil
+			}
+			if err != nil {
+				printChecksumErr(cmd.OutOrStderr())
+				cmd.SilenceUsage = true
+				return err
+			}
+			return nil
+		},
+		RunE: CmdMigrateImportRun,
 	}
 	// MigrateNewCmd represents the 'atlas migrate new' command.
 	MigrateNewCmd = &cobra.Command{
@@ -268,9 +291,6 @@ func init() {
 	MigrateApplyCmd.Flags().SortFlags = false
 	cobra.CheckErr(MigrateApplyCmd.MarkFlagRequired(migrateFlagURL))
 	MigrateApplyCmd.MarkFlagsMutuallyExclusive(migrateApplyFromVersion, migrateApplyBaselineVersion)
-	cobra.CheckErr(MigrateApplyCmd.Flags().MarkHidden(migrateFlagDirFormat))
-	cobra.CheckErr(MigrateApplyCmd.Flags().MarkHidden(migrateFlagForce))
-	cobra.CheckErr(MigrateApplyCmd.Flags().MarkHidden(migrateFlagSchema))
 	// Diff flags.
 	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateDiffCmd.Flags())
 	MigrateDiffCmd.Flags().StringSliceVarP(&MigrateFlags.ToURLs, migrateFlagTo, "", nil, "[driver://username:password@address/dbname?param=value ...] select a desired state using the URL format")
@@ -281,8 +301,9 @@ func init() {
 	// Import flags.
 	dirURLFlag(&MigrateFlags.Import.FromURL, migrateFlagImportFrom, "", MigrateImportCmd.Flags())
 	dirURLFlag(&MigrateFlags.Import.ToURL, migrateFlagImportTo, "", MigrateImportCmd.Flags())
-	cobra.CheckErr(MigrateImportCmd.InheritedFlags().MarkHidden(migrateFlagDir))
+	MigrateImportCmd.Flags().StringVarP(&MigrateFlags.DirFormat, migrateFlagDirFormat, "", "", "set migration file format")
 	cobra.CheckErr(cobra.MarkFlagRequired(MigrateImportCmd.Flags(), migrateFlagDirFormat))
+	MigrateImportCmd.Flags().SortFlags = false
 	// Validate flags.
 	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateValidateCmd.Flags())
 	// Status flags.
