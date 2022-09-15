@@ -53,6 +53,8 @@ const (
 	migrateApplyFromVersion     = "from"
 	migrateApplyBaselineVersion = "baseline"
 	migrateApplyTxMode          = "tx-mode"
+	migrateFlagImportFrom       = "from"
+	migrateFlagImportTo         = "to"
 )
 
 var (
@@ -76,6 +78,10 @@ var (
 		}
 		Diff struct {
 			Qualifier string // optional table qualifier
+		}
+		Import struct {
+			FromURL string
+			ToURL   string
 		}
 		Lint struct {
 			Format  string // log formatting
@@ -170,6 +176,13 @@ This command should be used whenever a manual change in the migration directory 
 		Example: `  atlas migrate hash --force`,
 		RunE:    CmdMigrateHashRun,
 	}
+	// MigrateImportCmd represents the 'atlas migrate import' command.
+	MigrateImportCmd = &cobra.Command{
+		Use:     "import",
+		Short:   "Import a migration directory from another migration management tool to the Atlas format.",
+		Example: `  atlas migrate import liquibase --from file::///path/to/source/directory --to file:///path/to/migration/directory`,
+		RunE:    CmdMigrateImportRun,
+	}
 	// MigrateNewCmd represents the 'atlas migrate new' command.
 	MigrateNewCmd = &cobra.Command{
 		Use:     "new [name]",
@@ -201,7 +214,7 @@ files are executed on the connected database in order to validate SQL semantics.
   atlas migrate validate --env dev`,
 		RunE: CmdMigrateValidateRun,
 	}
-	// MigrateLintCmd represents the 'atlas migrate Lint' command.
+	// MigrateLintCmd represents the 'atlas migrate lint' command.
 	MigrateLintCmd = &cobra.Command{
 		Use:   "lint",
 		Short: "Run analysis on the migration directory",
@@ -226,6 +239,7 @@ func init() {
 	MigrateCmd.AddCommand(MigrateValidateCmd)
 	MigrateCmd.AddCommand(MigrateStatusCmd)
 	MigrateCmd.AddCommand(MigrateLintCmd)
+	MigrateCmd.AddCommand(MigrateImportCmd)
 	// Reusable flags.
 	urlFlag := func(f *string, name, short string, set *pflag.FlagSet) {
 		set.StringVarP(f, name, short, "", "[driver://username:password@address/dbname?param=value] select a database using the URL format")
@@ -233,8 +247,11 @@ func init() {
 	revisionsFlag := func(set *pflag.FlagSet) {
 		set.StringVarP(&MigrateFlags.RevisionSchema, migrateFlagRevisionsSchema, "", "", "schema name where the revisions table resides")
 	}
+	dirURLFlag := func(f *string, name, short string, set *pflag.FlagSet) {
+		set.StringVarP(f, name, short, "file://migrations", "select migration directory using URL format")
+	}
 	// Global flags.
-	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.DirURL, migrateFlagDir, "", "file://migrations", "select migration directory using URL format")
+	dirURLFlag(&MigrateFlags.DirURL, migrateFlagDir, "", MigrateCmd.PersistentFlags())
 	MigrateCmd.PersistentFlags().StringSliceVarP(&MigrateFlags.Schemas, migrateFlagSchema, "", nil, "set schema names")
 	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.DirFormat, migrateFlagDirFormat, "", formatAtlas, "set migration file format")
 	MigrateCmd.PersistentFlags().BoolVarP(&MigrateFlags.Force, migrateFlagForce, "", false, "force a command to run on a broken migration directory state")
@@ -261,6 +278,11 @@ func init() {
 	MigrateDiffCmd.Flags().SortFlags = false
 	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateFlagDevURL))
 	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateFlagTo))
+	// Import flags.
+	dirURLFlag(&MigrateFlags.Import.FromURL, migrateFlagImportFrom, "", MigrateImportCmd.Flags())
+	dirURLFlag(&MigrateFlags.Import.ToURL, migrateFlagImportTo, "", MigrateImportCmd.Flags())
+	cobra.CheckErr(MigrateImportCmd.InheritedFlags().MarkHidden(migrateFlagDir))
+	cobra.CheckErr(cobra.MarkFlagRequired(MigrateImportCmd.Flags(), migrateFlagDirFormat))
 	// Validate flags.
 	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateValidateCmd.Flags())
 	// Status flags.
@@ -621,6 +643,76 @@ func CmdMigrateHashRun(*cobra.Command, []string) error {
 		return err
 	}
 	return migrate.WriteSumFile(dir, sum)
+}
+
+// CmdMigrateImportRun is the command executed when running the CLI with 'migrate import' args.
+func CmdMigrateImportRun(*cobra.Command, []string) error {
+	// Importing an Atlas project does not make any sense.
+	if MigrateFlags.DirFormat == formatAtlas {
+		return fmt.Errorf("cannot import an migration directory already in %q format", formatAtlas)
+	}
+	// Create migration directories.
+	MigrateFlags.DirURL = MigrateFlags.Import.FromURL
+	src, err := dir(false)
+	if err != nil {
+		return err
+	}
+	MigrateFlags.DirFormat = formatAtlas
+	MigrateFlags.DirURL = MigrateFlags.Import.ToURL
+	trgt, err := dir(true)
+	if err != nil {
+		return err
+	}
+	// Target must be empty.
+	ff, err := trgt.Files()
+	switch {
+	case err != nil:
+		return err
+	case len(ff) != 0:
+		return errors.New("target migration directory must be empty")
+	}
+	ff, err = src.Files()
+	switch {
+	case err != nil:
+		return err
+	case len(ff) == 0:
+		return errors.New("nothing to import")
+	}
+	// Extract the statements for each of the migration files, add them to a plan to format with the
+	// migrate.DefaultFormatter.
+	for _, f := range ff {
+		stmts, err := f.StmtDecls()
+		if err != nil {
+			return err
+		}
+		plan := &migrate.Plan{
+			Version: f.Version(),
+			Name:    f.Desc(),
+			Changes: make([]*migrate.Change, len(stmts)),
+		}
+		for i, s := range stmts {
+			cmd := strings.TrimSuffix(s.Text, ";")
+			for _, c := range s.Comments {
+				cmd += "\n" + c
+			}
+			plan.Changes[i] = &migrate.Change{Cmd: cmd}
+		}
+		files, err := migrate.DefaultFormatter.Format(plan)
+		if err != nil {
+			return err
+		}
+		for _, f := range files {
+			if err := trgt.WriteFile(f.Name(), f.Bytes()); err != nil {
+				return err
+			}
+		}
+	}
+	// Compute the sum file.
+	sum, err := trgt.Checksum()
+	if err != nil {
+		return err
+	}
+	return migrate.WriteSumFile(trgt, sum)
 }
 
 // CmdMigrateNewRun is the command executed when running the CLI with 'migrate new' args.

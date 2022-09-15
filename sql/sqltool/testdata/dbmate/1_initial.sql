@@ -7,6 +7,9 @@ CREATE TABLE post
     PRIMARY KEY (id)
 );
 
+/*
+ Multiline comment ...
+ */
 ALTER TABLE post ADD created_at TIMESTAMP NOT NULL;
 
 INSERT INTO post (title) VALUES (
@@ -16,4 +19,6 @@ my multiline
 value');
 
 -- migrate:down
+
+
 DROP TABLE post;

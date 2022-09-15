@@ -28,7 +28,6 @@ type (
 	}
 
 	// A ChangeLoader takes a set of migration files and will create multiple schema.Changes out of it.
-	// It will also label migration files as either "generated" or "handcrafted".
 	ChangeLoader interface {
 		// LoadChanges converts each of the given migration files into one Changes.
 		LoadChanges(context.Context, []migrate.File) (*Changes, error)
@@ -108,8 +107,7 @@ func (d *GitChangeDetector) DetectChanges(ctx context.Context) ([]migrate.File, 
 		args = append(args, "-C", d.work)
 	}
 	args = append(args, "--no-pager", "diff", "--name-only", "--diff-filter=A", d.base, "HEAD", d.path)
-	buf, err := exec.CommandContext(ctx, "git", args...).
-		CombinedOutput()
+	buf, err := exec.CommandContext(ctx, "git", args...).CombinedOutput()
 	if err != nil {
 		return nil, nil, fmt.Errorf("git diff: %w", err)
 	}

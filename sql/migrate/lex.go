@@ -41,9 +41,8 @@ func (s *Stmt) Directive(name string) (ds []string) {
 	return
 }
 
-// stmts provides a generic implementation for extracting
-// SQL statements from the given file contents.
-func stmts(input string) ([]*Stmt, error) {
+// Stmts provides a generic implementation for extracting SQL statements from the given file contents.
+func Stmts(input string) ([]*Stmt, error) {
 	var stmts []*Stmt
 	l, err := newLex(input)
 	if err != nil {
@@ -84,7 +83,7 @@ func newLex(input string) (*lex, error) {
 		}
 		parts := strings.SplitN(input, "\n", 2)
 		if len(parts) == 1 {
-			return nil, fmt.Errorf("not input found after delimiter %q", d)
+			return nil, fmt.Errorf("no input found after delimiter %q", d)
 		}
 		l.input = parts[1]
 	}

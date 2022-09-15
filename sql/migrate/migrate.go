@@ -22,8 +22,8 @@ type (
 	// drivers to indicate if the changeset is transactional (can be rolled-back) and
 	// reversible (a down file can be generated to it).
 	Plan struct {
-		// Name of the plan. Provided by the user or auto-generated.
-		Name string
+		// Version and Name of the plan. Provided by the user or auto-generated.
+		Version, Name string
 
 		// Reversible describes if the changeset is reversible.
 		Reversible bool
