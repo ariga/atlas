@@ -301,8 +301,6 @@ func init() {
 	// Import flags.
 	dirURLFlag(&MigrateFlags.Import.FromURL, migrateFlagImportFrom, "", MigrateImportCmd.Flags())
 	dirURLFlag(&MigrateFlags.Import.ToURL, migrateFlagImportTo, "", MigrateImportCmd.Flags())
-	MigrateImportCmd.Flags().StringVarP(&MigrateFlags.DirFormat, migrateFlagDirFormat, "", "", "set migration file format")
-	cobra.CheckErr(cobra.MarkFlagRequired(MigrateImportCmd.Flags(), migrateFlagDirFormat))
 	MigrateImportCmd.Flags().SortFlags = false
 	// Validate flags.
 	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateValidateCmd.Flags())

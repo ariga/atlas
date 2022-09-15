@@ -216,3 +216,14 @@ func (f testFile) Bytes() []byte {
 func (f testFile) Stmts() ([]string, error) {
 	return strings.Split(string(f.Bytes()), "\n"), nil
 }
+
+func (f testFile) StmtDecls() (stmts []*migrate.Stmt, err error) {
+	s, err := f.Stmts()
+	if err != nil {
+		return nil, err
+	}
+	for _, s := range s {
+		stmts = append(stmts, &migrate.Stmt{Text: s})
+	}
+	return
+}
