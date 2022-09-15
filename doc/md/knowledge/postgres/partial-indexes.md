@@ -30,8 +30,8 @@ You can learn more about partial indexes in PostgreSQL [here](https://www.postgr
 #### Basic PostgreSQL syntax for using Partial Index
 
 ```sql
-CREATE 
-    INDEX index_name
+CREATE INDEX 
+    index_name
 ON 
     table_name(column_list)
 WHERE 
@@ -212,6 +212,8 @@ If you are just getting started, Install the latest version of Atlas using the G
 :::
 
 #### Managing Partial Index in Atlas
+
+We will first use the `atlas schema inspect` command to get an HCL representation of the table which we created earlier by using the Atlas CLI:
 
 ```console
 atlas schema inspect -u "postgres://postgres:mysecretpassword@localhost:5432/vaccination_data?sslmode=disable" > schema.hcl
