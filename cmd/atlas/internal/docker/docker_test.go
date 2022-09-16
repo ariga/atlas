@@ -6,7 +6,7 @@ package docker
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -20,33 +20,32 @@ func TestDockerConfig(t *testing.T) {
 	require.Error(t, err)
 
 	// MySQL
-	cfg, err := MySQL("latest", Out(ioutil.Discard))
+	cfg, err := MySQL("latest", Out(io.Discard))
 	require.NoError(t, err)
 	require.Equal(t, &Config{
 		Image: "mysql:latest",
 		Env:   []string{"MYSQL_ROOT_PASSWORD=pass"},
 		Port:  "3306",
-		Out:   ioutil.Discard,
+		Out:   io.Discard,
 	}, cfg)
 
 	// MariaDB
-	cfg, err = MariaDB("latest", Out(ioutil.Discard))
+	cfg, err = MariaDB("latest", Out(io.Discard))
 	require.NoError(t, err)
 	require.Equal(t, &Config{
 		Image: "mariadb:latest",
 		Env:   []string{"MYSQL_ROOT_PASSWORD=pass"},
 		Port:  "3306",
-		Out:   ioutil.Discard,
+		Out:   io.Discard,
 	}, cfg)
 
 	// PostgreSQL
-	cfg, err = PostgreSQL("latest", Out(ioutil.Discard))
+	cfg, err = PostgreSQL("latest", Out(io.Discard))
 	require.NoError(t, err)
 	require.Equal(t, &Config{
 		Image: "postgres:latest",
 		Env:   []string{"POSTGRES_PASSWORD=pass"},
 		Port:  "5432",
-		Out:   ioutil.Discard,
-		setup: []string{"DROP SCHEMA IF EXISTS public CASCADE;"},
+		Out:   io.Discard,
 	}, cfg)
 }
