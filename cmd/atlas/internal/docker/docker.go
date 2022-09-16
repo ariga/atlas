@@ -93,7 +93,6 @@ func PostgreSQL(version string, opts ...ConfigOption) (*Config, error) {
 				Image("postgres:" + version),
 				Port("5432"),
 				Env("POSTGRES_PASSWORD=" + pass),
-				setup("DROP SCHEMA IF EXISTS public CASCADE;"),
 			},
 			opts...,
 		)...,
@@ -104,7 +103,6 @@ func PostgreSQL(version string, opts ...ConfigOption) (*Config, error) {
 //
 //	Image("mysql")
 //	Image("postgres:13")
-//
 func Image(i string) ConfigOption {
 	return func(c *Config) error {
 		c.Image = strings.TrimSuffix(i, ":")
@@ -116,7 +114,6 @@ func Image(i string) ConfigOption {
 //
 //	Port("3306")
 //	Port("5432")
-//
 func Port(p string) ConfigOption {
 	return func(c *Config) error {
 		c.Port = p
@@ -126,9 +123,8 @@ func Port(p string) ConfigOption {
 
 // Env sets the environment variables to pass to the container. For example:
 //
-// 	Config(Image("mysql"), Env("MYSQL_ROOT_PASSWORD=password"))
-// 	Config(Image("postgres"), Env("MYSQL_ROOT_PASSWORD=password"))
-//
+//	Config(Image("mysql"), Env("MYSQL_ROOT_PASSWORD=password"))
+//	Config(Image("postgres"), Env("MYSQL_ROOT_PASSWORD=password"))
 func Env(env ...string) ConfigOption {
 	return func(c *Config) error {
 		c.Env = env
@@ -138,9 +134,8 @@ func Env(env ...string) ConfigOption {
 
 // Out sets an io.Writer to use when running docker commands. For example:
 //
-// 	buf := new(bytes.Buffer)
-// 	NewConfig(Out(buf))
-//
+//	buf := new(bytes.Buffer)
+//	NewConfig(Out(buf))
 func Out(w io.Writer) ConfigOption {
 	return func(c *Config) error {
 		c.Out = w
@@ -150,8 +145,7 @@ func Out(w io.Writer) ConfigOption {
 
 // setup adds statements to execute once the service is ready. For example:
 //
-//  setup("DROP SCHEMA IF EXISTS public CASCADE;")
-//
+//	setup("DROP SCHEMA IF EXISTS public CASCADE;")
 func setup(s ...string) ConfigOption {
 	return func(c *Config) error {
 		c.setup = s
@@ -205,7 +199,7 @@ func (c *Container) Close() error {
 // Wait waits for this container to be ready.
 func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 	fmt.Fprintln(c.out, "Waiting for service to be ready ... ")
-	mysql.SetLogger(log.New(ioutil.Discard, "", 1))
+	mysql.SetLogger(log.New(io.Discard, "", 1))
 	defer mysql.SetLogger(log.New(os.Stderr, "[mysql] ", log.Ldate|log.Ltime|log.Lshortfile))
 	if timeout > time.Minute {
 		timeout = time.Minute
