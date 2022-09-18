@@ -102,8 +102,11 @@ The following schema change checks are provided by Atlas:
 | [MF101](#MF101)                    | Add unique index to existing column                                         |
 | [MF102](#MF102)                    | Modifying non-unique index to unique                                        |
 | [MF103](#MF103)                    | Adding a non-nullable column to an existing table                           |
+| [MF104](#MF104)                    | Modifying a nullable column to non-nullable                                 |
 | **MY**                             | MySQL and MariaDB specific checks                                           |
 | [MY101](#MY101)                    | Adding a non-nullable column without a `DEFAULT` value to an existing table |
+| **LT**                             | SQLite specific checks                                                      |
+| [LT101](#LT101)                    | Modifying a nullable column to non-nullable without a `DEFAULT` value       |
 
 
 #### DS101 {#DS101}
@@ -155,6 +158,21 @@ Adding a non-nullable column to a table might fail in case the table is not empt
 ALTER TABLE t ADD COLUMN c int NOT NULL;
 ```
 
+#### MF104 {#MF104}
+
+Modifying nullable column to non-nullable might fail in case it contains NULL values. For example:
+
+```sql
+ALTER TABLE t MODIFY COLUMN c int NOT NULL;
+```
+
+The solution, in this case, is to backfill `NULL` values with a default value:
+
+```sql {1}
+UPDATE t SET c = 0 WHERE c IS NULL;
+ALTER TABLE t MODIFY COLUMN c int NOT NULL;
+```
+
 #### MY101 {#MY101}
 
 Adding a non-nullable column to a table without a `DEFAULT` value implicitly sets existing rows with the column
@@ -164,4 +182,41 @@ zero (default) value. For example:
 ALTER TABLE t ADD COLUMN c int NOT NULL;
 // highlight-next-line
 -- Append column `c` to all existing rows with the value 0.
+```
+
+#### LT101 {#LT101}
+
+Modifying a nullable column to non-nullable without setting a `DEFAULT` might fail in case it contains `NULL` values.
+The solution is one of the following:
+
+1\. Set a `DEFAULT` value on the modified column:
+
+```sql {2}
+-- create "new_users" table
+CREATE TABLE `new_users` (`a` int NOT NULL DEFAULT 1);
+-- copy rows from old table "users" to new temporary table "new_users"
+INSERT INTO `new_users` (`a`) SELECT IFNULL(`a`, 1) FROM `users`;
+-- drop "users" table after copying rows
+DROP TABLE `users`;
+-- rename temporary table "new_users" to "users"
+ALTER TABLE `new_users` RENAME TO `users`;
+```
+
+2\. Backfill `NULL` values with a default value:
+
+```sql {1-2}
+-- backfill previous rows
+UPDATE `users` SET `a` = 1 WHERE `a` IS NULL;
+-- disable the enforcement of foreign-keys constraints
+PRAGMA foreign_keys = off;
+-- create "new_users" table
+CREATE TABLE `new_users` (`a` int NOT NULL);
+-- copy rows from old table "users" to new temporary table "new_users"
+INSERT INTO `new_users` (`a`) SELECT `a` FROM `users`;
+-- drop "users" table after copying rows
+DROP TABLE `users`;
+-- rename temporary table "new_users" to "users"
+ALTER TABLE `new_users` RENAME TO `users`;
+-- enable back the enforcement of foreign-keys constraints
+PRAGMA foreign_keys = on;
 ```
