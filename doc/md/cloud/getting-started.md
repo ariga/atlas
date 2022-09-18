@@ -18,9 +18,7 @@ SQL statements can be dangerous, and which ones are good to go.
 
 ### Signing Up
 
-To get started with Ariga Cloud, create an account by clicking 'sign up' on the homepage.
-
-<!-- ![home-page]() -->
+To get started with Ariga Cloud, create an account by clicking 'sign up' on the homepage.  
 
 In the sign up screen, enter your work email and choose a password. Once signing up, you will receive an
 email to verify your account. From your email, Ariga Cloud will open in a new tab, and you will need to sign in to
