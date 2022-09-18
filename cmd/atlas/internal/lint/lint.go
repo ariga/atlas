@@ -170,14 +170,9 @@ type DevLoader struct {
 
 // LoadChanges implements the ChangesLoader interface.
 func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File) (diff *Changes, err error) {
-	// Lock database so no one else interferes with our change detection.
-	l, ok := d.Dev.Driver.(schema.Locker)
-	if !ok {
-		return nil, errors.New("driver does not support locking")
-	}
-	unlock, err := l.Lock(ctx, "atlas_ci_change_detection", 0)
+	unlock, err := d.lock(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("acquiring database lock: %w", err)
+		return nil, err
 	}
 	defer unlock()
 	// Clean up after ourselves.
@@ -272,6 +267,25 @@ func (d *DevLoader) inspect(ctx context.Context) (*schema.Realm, error) {
 		opts.Schemas = append(opts.Schemas, d.Dev.URL.Schema)
 	}
 	return d.Dev.InspectRealm(ctx, opts)
+}
+
+// lock database so no one else interferes with our change detection.
+func (d *DevLoader) lock(ctx context.Context) (schema.UnlockFunc, error) {
+	l, ok := d.Dev.Driver.(schema.Locker)
+	if !ok {
+		return nil, errors.New("driver does not support locking")
+	}
+	name := "atlas_lint"
+	// In case the client is connected to specific schema,
+	// minimize the lock resolution to the schema name.
+	if s := d.Dev.URL.Schema; s != "" {
+		name = fmt.Sprintf("%s_%s", name, s)
+	}
+	unlock, err := l.Lock(ctx, name, 0)
+	if err != nil {
+		return nil, fmt.Errorf("acquiring database lock: %w", err)
+	}
+	return unlock, nil
 }
 
 // FileError represents an error that occurred while processing a file.
