@@ -64,6 +64,14 @@ module.exports = {
         },
         {
             type: 'category',
+            label: 'Cloud',
+            collapsed: false,
+            items: [
+                {type: 'doc', id: 'cloud/cloud-getting-started', label: 'Getting Started'},
+            ],
+        },
+        {
+            type: 'category',
             label: 'Integrations',
             collapsed: false,
             items: [
