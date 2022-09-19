@@ -8,21 +8,21 @@ slug: /knowledge/postgres/partial-indexes
 
 #### What are Partial Indexes?
 
-With PostgreSQL we can create partial indexes to improve performance and reduce the cost, all while minimizing the amount of space used to store it on disk.
+With PostgreSQL, users may create _partial indexes_, which are types of indexes that exist on a subset of a table, rather than the entire table itself. If used correctly, partial indexes improve performance and reduce costs, all while minimizing the amount of storage space they take up on the disk.
 
 #### Why do we need them?
 
-Let’s demonstrate why partial indexes are useful by contrasting them with a non-partial index. ​​If you have a lot of records in an indexed table, the number of records the index needs to track also grows. If the index grows in size, the disk space needed to store the index itself increases as well. 
-In many tables, different records are not accessed with uniform frequency. A subset of a table’s records might not be searched very frequently or not searched at all. Records take up precious space in your index whether they are queried or not. They are also updated when a new entry is added to the field.
+Let's demonstrate a case where partial indexes may be useful by contrasting them with a non-partial index. ​​If you have many records in an indexed table, the number of records the index needs to track also grows. If the index grows in size, the disk space needed to store the index itself increases as well.
+In many tables, different records are not accessed with uniform frequency. A subset of a table's records might not be searched very frequently or not searched at all. Records take up precious space in your index whether they are queried or not, and are updated when a new entry is added to the field.
 
-Partial indexes come into the picture to filter unsearched values and give you, as an engineer, a tool to index only what’s important.
+Partial indexes come into the picture to filter unsearched values and give you, as an engineer, a tool to index only what's important.
 
 :::info
 You can learn more about partial indexes in PostgreSQL [here](https://www.postgresql.org/docs/current/indexes-partial.html)
 :::
 
 #### Advantages of using Partial Indexes
-
+In cases where we know ahead the access pattern to a table and can reduce the size of an index by making it partial:
 1. Response time for SELECT operations is improved compared to databases that have non-partial index.
 2. On average, response time for UPDATE operations is also improved as the index is not going to get updated in all cases.
 3. Index is smaller in size and can fit into memory more easily, saving space on disk.
@@ -40,7 +40,7 @@ WHERE
 
 #### Example of Non-partial Index vs Partial Index in PostgreSQL
 
-Let’s see this in action by creating a table with following command:
+Let's see this in action by creating a table with the following command:
 
 ```sql
 CREATE TABLE "vaccination_data" (
@@ -52,7 +52,7 @@ CREATE TABLE "vaccination_data" (
 );
 ```
 
-Here is how a portion of the  table might look like after inserting values:
+Here is how a portion of the table might look like after inserting values:
 
 ```sql
 SELECT * FROM vaccination_data;
@@ -87,7 +87,7 @@ CREATE INDEX
 Time: 333.891 ms
 ```
 
-Now, let’s check the performance of querying data of doctors from India that have taken the vaccine with the following command:
+Now, let's check the performance of querying data of doctors from India that have taken the vaccine with the following command:
 
 ```sql
 EXPLAIN ANALYZE
@@ -118,7 +118,7 @@ QUERY PLAN
 The EXPLAIN command is used for understanding the performance of a query. You can learn more about usage of EXPLAIN command with ANALYZE option [here](https://www.postgresql.org/docs/14/using-explain.html#USING-EXPLAIN-ANALYZE)
 :::
 
-Notice that total Execution Time is 16.292ms. Also, let’s check the index size with the following command:
+Notice that total Execution Time is 16.292ms. Also, let's check the index size with the following command:
 
 ```sql
 SELECT pg_size_pretty(pg_relation_size('vaccinated_idx'));
@@ -130,7 +130,7 @@ SELECT pg_size_pretty(pg_relation_size('vaccinated_idx'));
 (1 row)
 ```
 
-Now, suppose we want to accelerate the same query using the partial index. Let’s begin by dropping the existing index that we created earlier:
+Now, suppose we want to accelerate the same query using the partial index. Let's begin by dropping the existing index that we created earlier:
 
 ```sql
 DROP INDEX vaccinated_idx;
@@ -143,8 +143,8 @@ Time: 7.183 ms
 In the following command, we have created an index with a WHERE clause that precisely describes list of doctors from India that have taken the vaccine.
 
 ```sql
-CREATE 
-    INDEX vaccinated_idx
+CREATE INDEX 
+    vaccinated_idx
 ON 
     vaccination_data(vaccinated)
 WHERE 
@@ -155,8 +155,8 @@ CREATE INDEX
 Time: 94.567 ms
 ```
 
-Notice that the partial index with the WHERE clause is created in 94.567ms, compared to the 333.891ms taken for the non-partial index on the ‘vaccinated’ column.
-Let’s check the performance of querying list of doctors from India that have taken the vaccine again, using the following command:
+Notice that the partial index with the WHERE clause is created in 94.567ms, compared to the 333.891ms taken for the non-partial index on the 'vaccinated' column.
+Let's check the performance of querying list of doctors from India that have taken the vaccine again, using the following command:
 
 ```sql
 EXPLAIN ANALYZE
@@ -176,7 +176,7 @@ QUERY PLAN
 (3 rows)
 ```
 
-Observe that total execution time has dropped significantly and is now only 0.880ms, compared to 16.292ms achieved by using a non-partial index on the ‘vaccinated’ column. Once again, let’s check the index size with the following command:
+Observe that total execution time has dropped significantly and is now only 0.880ms, compared to 16.292ms achieved by using a non-partial index on the 'vaccinated' column. Once again, let's check the index size with the following command:
 
 ```sql
 SELECT pg_size_pretty(pg_relation_size('vaccinated_idx'));
@@ -188,7 +188,7 @@ SELECT pg_size_pretty(pg_relation_size('vaccinated_idx'));
 (1 row)
 ```
 
-As we can observe, the index size for the partial index takes significantly less space (16kb) compared to the non-partial index that we created earlier on the ‘vaccinated’ column (1984kb).
+As we can observe, the index size for the partial index takes significantly less space (16kb) compared to the non-partial index that we created earlier on the 'vaccinated' column (1984kb).
 
 Here is a summary from our tests:
 
@@ -201,14 +201,14 @@ Here is a summary from our tests:
 | Size of index                                | 1984kb                  | 16kb                    | 99.1% less space   |
 (Note: The results will vary, ​​depending on the data that is stored in the database)
 
-We have seen that creating a partial index is a better choice where only a small subset of the values stored in the database are accessed frequently. Now, let’s see how we can easily manage partial indexes using Atlas in the following section.
+We have seen that creating a partial index is a better choice where only a small subset of the values stored in the database are accessed frequently. Now, let's see how we can easily manage partial indexes using Atlas.
 
 ### Managing Partial Indexes is easy with Atlas
 
 Managing partial indexes and database schemas in PostgreSQL is confusing and error-prone. Atlas is an open-source project which allows us to manage our database using a simple and easy to understand declarative syntax (similar to Terraform). We will now learn how to manage partial indexes using Atlas.
 
 :::info
-If you are just getting started, Install the latest version of Atlas using the Guide to [Setting Up Atlas](https://atlasgo.io/cli/getting-started/setting-up).
+If you are just getting started, install the latest version of Atlas using the guide to [setting up Atlas](https://atlasgo.io/cli/getting-started/setting-up).
 :::
 
 #### Managing Partial Index in Atlas
@@ -258,13 +258,13 @@ Now, lets add the following index definition to the file:
   }
 ```
 
-Save and Apply the schema using the following command:
+Save and apply the schema changes on the database by using the following command:
 
 ```console
 atlas schema apply -u "postgres://postgres:mysecretpassword@localhost:5432/vaccination_data?sslmode=disable" -f schema.hcl
 ```
 
-Atlas quickly plans the necessary SQL to add the new partial index to the database schema for us and asks us to approve it. Press Enter while ‘Apply’ option is highlighted to apply the changes:
+Atlas generates the necessary SQL statements to add the new partial index to the database schema. Press Enter while the `Apply` option is highlighted to apply the changes:
 
 ```console
 -- Planned Changes:
@@ -295,11 +295,11 @@ Amazing! Our new partial index is now created!
 
 ### Limitation of using Partial Index
 
-If you are a new engineer working on an already existing, huge database and are not familiar with existing partial indexes or the nature of queries for such a database, you might end up using expensive queries. In these cases it’s easier to use non-partial index.
+If you are a new engineer working on an already existing, huge database and are not familiar with existing partial indexes or the nature of queries for such a database, you might end up using expensive queries. In these cases it's easier to use non-partial index.
 
 ### Conclusion
 
-In this section, we learned about PostgreSQL partial indexes and how we can easily create partial indexes in a schema using Atlas.
+In this section, we learned about PostgreSQL partial indexes and how we can easily create partial indexes in our database by using Atlas.
 
 ## Need More Help?​
 
