@@ -772,6 +772,16 @@ type (
 		Columns []*schema.Column
 	}
 
+	// IndexBuildParams describes additional parameters for index creation.
+	IndexBuildParams struct {
+		schema.Attr
+
+		// Concurrently describes the CONCURRENTLY clause to instruct Postgres
+		// to build the index concurrently without blocking the current table.
+		// https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY
+		Concurrently bool
+	}
+
 	// NoInherit attribute defines the NO INHERIT flag for CHECK constraint.
 	// https://postgresql.org/docs/current/catalog-pg-constraint.html
 	NoInherit struct {
