@@ -36,15 +36,15 @@ any word before the @ sign in your address.
 :::
 
 ### Connecting to the Atlas GitHub action
-At first you will notice that your projects and CI runs are empty. In order to connect the organization
-to your GitHub repository, you will need to download the Atlas GitHub action by following these steps:
+At first you will notice that your projects and CI runs pages are empty. In order to connect the organization
+to your GitHub repository, you will need to setup the Atlas GitHub action on your repository by following these steps:
 
 :::note
 If you already have the Atlas GitHub action set up, you may skip step 4. In step 5, only add
 `ariga-token: ${{ secrets.ARIGA_TOKEN }}` to your yaml file.
 :::
 
-1. Generate an access token under 'Tokens' in the settings page.
+1. From the Settings page, generate an access token under 'Tokens' in the settings page.
 2. On your GitHub repo, under the 'Settings' section, click on 'Secrets' > 'Actions' to create a new repository secret.
 3. Name your secret (for example, ARIGA_TOKEN) and paste the generated token from step 2.
 4. Install the Atlas GitHub Action by adding a file named `.github/workflows/atlas-ci.yaml` to your repo.
@@ -200,7 +200,7 @@ jobs:
 
 ### Viewing CI Runs
 In the system, you can view all the CI runs that were triggered by the Atlas GitHub workflow.
-There are three types of runs:
+A run can complete in one of three ways:
 1. <img src="https://release.ariga.io/images/assets/success.svg" width="15" /> Successful - the CI ran successfully and found no errors or issues in your SQL statements.
 2. <img src="https://release.ariga.io/images/assets/warning.svg" width="15" /> Issues Found - there are some issues with your SQL statements that may cause a failure in production.
 3. <img src="https://release.ariga.io/images/assets/error.svg" width="15" /> Failed - the CI run failed, and can be caused for a number of reasons (bad SQL statements, incorrect configuration,
