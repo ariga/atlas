@@ -194,7 +194,8 @@ jobs:
 
 ### Viewing CI Runs
 In the system, you can view all the CI runs that were triggered by the Atlas GitHub workflow.
-A run can complete in one of three types of runs:
+A run can complete in one of three ways:
+
 1. <img src="https://release.ariga.io/images/assets/success.svg" width="15" /> Successful - the CI ran successfully and found no errors or issues in your SQL statements.
 2. <img src="https://release.ariga.io/images/assets/warning.svg" width="15" /> Issues Found - there are some issues with your SQL statements that may cause a failure in production.
 3. <img src="https://release.ariga.io/images/assets/error.svg" width="15" /> Failed - the CI run failed, and can be caused for a number of reasons (bad SQL statements, incorrect configuration,
