@@ -334,6 +334,14 @@ func convertIndex(spec *sqlspec.Index, t *schema.Table) (*schema.Index, error) {
 		}
 		idx.Attrs = append(idx.Attrs, &IndexInclude{Columns: include})
 	}
+
+	if attr, ok := spec.Attr("concurrently"); ok {
+		concurrently, err := attr.Bool()
+		if err != nil {
+			return nil, err
+		}
+		idx.Attrs = append(idx.Attrs, &IndexBuildParams{Concurrently: concurrently})
+	}
 	return idx, nil
 }
 
@@ -497,6 +505,9 @@ func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 	// Avoid printing the index type if it is the default.
 	if i := (IndexType{}); sqlx.Has(idx.Attrs, &i) && i.T != IndexTypeBTree {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("type", strings.ToUpper(i.T)))
+	}
+	if i := (IndexBuildParams{}); sqlx.Has(idx.Attrs, &i) && i.Concurrently {
+		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.BoolAttr("concurrently", true))
 	}
 	if i := (IndexInclude{}); sqlx.Has(idx.Attrs, &i) && len(i.Columns) > 0 {
 		attr := &schemahcl.ListValue{}

@@ -696,6 +696,96 @@ schema "test" {
 	require.EqualValues(t, expected, string(buf))
 }
 
+func TestUnmarshalSpec_IndexConcurrently(t *testing.T) {
+	f := `
+schema "s" {}
+table "t" {
+	schema = schema.s
+	column "c" {
+		type = int
+	}
+	column "d" {
+		type = int
+	}
+	index "c" {
+		columns = [
+			column.c,
+		]
+		concurrently = true
+	}
+}
+`
+	var s schema.Schema
+	err := EvalHCLBytes([]byte(f), &s, nil)
+	require.NoError(t, err)
+	require.Len(t, s.Tables, 1)
+	require.Len(t, s.Tables[0].Columns, 2)
+	require.Len(t, s.Tables[0].Indexes, 1)
+	idx, ok := s.Tables[0].Index("c")
+	require.True(t, ok)
+	require.Len(t, idx.Parts, 1)
+	require.Len(t, idx.Attrs, 1)
+	var concurrently IndexBuildParams
+	require.True(t, sqlx.Has(idx.Attrs, &concurrently))
+	require.True(t, concurrently.Concurrently)
+}
+
+func TestMarshalSpec_IndexConcurrently(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "c",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}},
+					},
+					{
+						Name: "d",
+						Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int"}},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	s.Tables[0].Schema = s
+	s.Tables[0].Indexes = []*schema.Index{
+		{
+			Name:  "index",
+			Table: s.Tables[0],
+			Parts: []*schema.IndexPart{
+				{SeqNo: 0, C: s.Tables[0].Columns[0]},
+			},
+			Attrs: []schema.Attr{
+				&IndexBuildParams{Concurrently: true},
+			},
+		},
+	}
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "c" {
+    null = false
+    type = int
+  }
+  column "d" {
+    null = false
+    type = int
+  }
+  index "index" {
+    columns      = [column.c]
+    concurrently = true
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
 func TestMarshalSpec_GeneratedColumn(t *testing.T) {
 	s := schema.New("test").
 		AddTables(
