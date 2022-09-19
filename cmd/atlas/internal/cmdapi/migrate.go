@@ -44,17 +44,15 @@ const (
 	migrateFlagRevisionsSchema  = "revisions-schema"
 	migrateFlagDryRun           = "dry-run"
 	migrateFlagTo               = "to"
+	migrateFlagFrom             = "from"
 	migrateFlagSchema           = "schema"
 	migrateLintLatest           = "latest"
 	migrateLintGitDir           = "git-dir"
 	migrateLintGitBase          = "git-base"
 	migrateDiffQualifier        = "qualifier"
 	migrateApplyAllowDirty      = "allow-dirty"
-	migrateApplyFromVersion     = "from"
 	migrateApplyBaselineVersion = "baseline"
 	migrateApplyTxMode          = "tx-mode"
-	migrateFlagImportFrom       = "from"
-	migrateFlagImportTo         = "to"
 )
 
 var (
@@ -192,12 +190,7 @@ This command should be used whenever a manual change in the migration directory 
 			if err != nil {
 				return err
 			}
-			err = migrate.Validate(dir)
-			if errors.Is(err, migrate.ErrChecksumNotFound) {
-				// Consider this case valid.
-				return nil
-			}
-			if err != nil {
+			if err := migrate.Validate(dir); err != nil && !errors.Is(err, migrate.ErrChecksumNotFound) {
 				printChecksumErr(cmd.OutOrStderr())
 				cmd.SilenceUsage = true
 				return err
@@ -283,14 +276,17 @@ func init() {
 	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.Apply.LogFormat, migrateFlagLog, "", logFormatTTY, "log format to use")
 	revisionsFlag(MigrateApplyCmd.Flags())
 	MigrateApplyCmd.Flags().BoolVarP(&MigrateFlags.Apply.DryRun, migrateFlagDryRun, "", false, "do not actually execute any SQL but show it on screen")
-	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.Apply.FromVersion, migrateApplyFromVersion, "", "", "calculate pending files from the given version (including it)")
+	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.Apply.FromVersion, migrateFlagFrom, "", "", "calculate pending files from the given version (including it)")
 	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.Apply.BaselineVersion, migrateApplyBaselineVersion, "", "", "start the first migration after the given baseline version")
 	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.Apply.TxMode, migrateApplyTxMode, "", txModeFile, "set transaction mode [none, file, all]")
 	MigrateApplyCmd.Flags().BoolVarP(&MigrateFlags.Apply.AllowDirty, migrateApplyAllowDirty, "", false, "allow start working on a non-clean database")
 	urlFlag(&MigrateFlags.URL, migrateFlagURL, "u", MigrateApplyCmd.Flags())
 	MigrateApplyCmd.Flags().SortFlags = false
 	cobra.CheckErr(MigrateApplyCmd.MarkFlagRequired(migrateFlagURL))
-	MigrateApplyCmd.MarkFlagsMutuallyExclusive(migrateApplyFromVersion, migrateApplyBaselineVersion)
+	MigrateApplyCmd.MarkFlagsMutuallyExclusive(migrateFlagFrom, migrateApplyBaselineVersion)
+	cobra.CheckErr(MigrateApplyCmd.Flags().MarkHidden(migrateFlagDirFormat))
+	cobra.CheckErr(MigrateApplyCmd.Flags().MarkHidden(migrateFlagForce))
+	cobra.CheckErr(MigrateApplyCmd.Flags().MarkHidden(migrateFlagSchema))
 	// Diff flags.
 	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateDiffCmd.Flags())
 	MigrateDiffCmd.Flags().StringSliceVarP(&MigrateFlags.ToURLs, migrateFlagTo, "", nil, "[driver://username:password@address/dbname?param=value ...] select a desired state using the URL format")
@@ -299,8 +295,8 @@ func init() {
 	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateFlagDevURL))
 	cobra.CheckErr(MigrateDiffCmd.MarkFlagRequired(migrateFlagTo))
 	// Import flags.
-	dirURLFlag(&MigrateFlags.Import.FromURL, migrateFlagImportFrom, "", MigrateImportCmd.Flags())
-	dirURLFlag(&MigrateFlags.Import.ToURL, migrateFlagImportTo, "", MigrateImportCmd.Flags())
+	dirURLFlag(&MigrateFlags.Import.FromURL, migrateFlagFrom, "", MigrateImportCmd.Flags())
+	dirURLFlag(&MigrateFlags.Import.ToURL, migrateFlagTo, "", MigrateImportCmd.Flags())
 	MigrateImportCmd.Flags().SortFlags = false
 	// Validate flags.
 	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateValidateCmd.Flags())
@@ -665,10 +661,9 @@ func CmdMigrateHashRun(*cobra.Command, []string) error {
 }
 
 // CmdMigrateImportRun is the command executed when running the CLI with 'migrate import' args.
-func CmdMigrateImportRun(*cobra.Command, []string) error {
-	// Importing an Atlas project does not make any sense.
+func CmdMigrateImportRun(cmd *cobra.Command, _ []string) error {
 	if MigrateFlags.DirFormat == formatAtlas {
-		return fmt.Errorf("cannot import an migration directory already in %q format", formatAtlas)
+		return fmt.Errorf("cannot import a migration directory already in %q format", formatAtlas)
 	}
 	// Create migration directories.
 	MigrateFlags.DirURL = MigrateFlags.Import.FromURL
@@ -695,7 +690,13 @@ func CmdMigrateImportRun(*cobra.Command, []string) error {
 	case err != nil:
 		return err
 	case len(ff) == 0:
-		return errors.New("nothing to import")
+		fmt.Fprint(cmd.OutOrStderr(), "nothing to import")
+		cmd.SilenceUsage = true
+		return nil
+	}
+	// Fix version numbers for Flyway repeatable migrations.
+	if _, ok := src.(*sqltool.FlywayDir); ok {
+		sqltool.SetRepeatableVersion(ff)
 	}
 	// Extract the statements for each of the migration files, add them to a plan to format with the
 	// migrate.DefaultFormatter.
@@ -709,12 +710,17 @@ func CmdMigrateImportRun(*cobra.Command, []string) error {
 			Name:    f.Desc(),
 			Changes: make([]*migrate.Change, len(stmts)),
 		}
+		var buf strings.Builder
 		for i, s := range stmts {
-			cmd := strings.TrimSuffix(s.Text, ";")
 			for _, c := range s.Comments {
-				cmd += "\n" + c
+				buf.WriteString(c)
+				if !strings.HasSuffix(c, "\n") {
+					buf.WriteString("\n")
+				}
 			}
-			plan.Changes[i] = &migrate.Change{Cmd: cmd}
+			buf.WriteString(strings.TrimSuffix(s.Text, ";"))
+			plan.Changes[i] = &migrate.Change{Cmd: buf.String()}
+			buf.Reset()
 		}
 		files, err := migrate.DefaultFormatter.Format(plan)
 		if err != nil {
@@ -726,7 +732,6 @@ func CmdMigrateImportRun(*cobra.Command, []string) error {
 			}
 		}
 	}
-	// Compute the sum file.
 	sum, err := trgt.Checksum()
 	if err != nil {
 		return err
