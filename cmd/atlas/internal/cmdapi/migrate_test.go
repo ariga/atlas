@@ -195,7 +195,7 @@ func TestMigrate_Apply(t *testing.T) {
 		require.NoError(t, os.RemoveAll("testdata/sqlite3"))
 	})
 	sed(t, "s/col_2/col_5/g", "testdata/sqlite3/20220318104615_second.sql")
-	_, err = runCmd(Root, "migrate", "hash", "--force", "--dir", "file://testdata/sqlite3")
+	_, err = runCmd(Root, "migrate", "hash", "--dir", "file://testdata/sqlite3")
 	require.NoError(t, err)
 	s, err = runCmd(
 		Root, "migrate", "apply",
@@ -207,7 +207,7 @@ func TestMigrate_Apply(t *testing.T) {
 	// Fixing the migration file will finish without errors.
 	sed(t, "s/col_5/col_2/g", "testdata/sqlite3/20220318104615_second.sql")
 	sed(t, "s/asdasd //g", "testdata/sqlite3/20220318104615_second.sql")
-	_, err = runCmd(Root, "migrate", "hash", "--force", "--dir", "file://testdata/sqlite3")
+	_, err = runCmd(Root, "migrate", "hash", "--dir", "file://testdata/sqlite3")
 	require.NoError(t, err)
 	s, err = runCmd(
 		Root, "migrate", "apply",
@@ -288,7 +288,6 @@ func TestMigrate_Diff(t *testing.T) {
 	to := hclURL(t)
 
 	// Will create migration directory if not existing.
-	MigrateFlags.Force = false
 	_, err := runCmd(
 		Root, "migrate", "diff",
 		"name",
@@ -432,7 +431,7 @@ func TestMigrate_Validate(t *testing.T) {
 	p := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(p, "1_initial.sql"), []byte("create table t1 (c1 int)"), 0644))
 	require.NoError(t, os.WriteFile(filepath.Join(p, "2_second.sql"), []byte("create table t2 (c2 int)"), 0644))
-	_, err = runCmd(Root, "migrate", "hash", "--force", "--dir", "file://"+p)
+	_, err = runCmd(Root, "migrate", "hash", "--dir", "file://"+p)
 	require.NoError(t, err)
 	s, err = runCmd(
 		Root, "migrate", "validate",
@@ -456,7 +455,7 @@ func TestMigrate_Hash(t *testing.T) {
 	err = copyFile(filepath.Join("testdata", "mysql", "20220318104614_initial.sql"), filepath.Join(p, "20220318104614_initial.sql"))
 	require.NoError(t, err)
 
-	s, err = runCmd(Root, "migrate", "hash", "--dir", "file://"+p, "--force")
+	s, err = runCmd(Root, "migrate", "hash", "--dir", "file://"+p)
 	require.Zero(t, s)
 	require.NoError(t, err)
 	require.FileExists(t, filepath.Join(p, "atlas.sum"))

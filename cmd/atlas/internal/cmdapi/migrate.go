@@ -39,7 +39,6 @@ const (
 	migrateFlagDevURL           = "dev-url"
 	migrateFlagDir              = "dir"
 	migrateFlagDirFormat        = "dir-format"
-	migrateFlagForce            = "force"
 	migrateFlagLog              = "log"
 	migrateFlagRevisionsSchema  = "revisions-schema"
 	migrateFlagDryRun           = "dry-run"
@@ -65,7 +64,6 @@ var (
 		DirURL         string
 		DirFormat      string
 		RevisionSchema string
-		Force          bool
 		Apply          struct {
 			DryRun          bool
 			LogFormat       string
@@ -93,17 +91,14 @@ var (
 			if err := migrateFlagsFromEnv(cmd, nil); err != nil {
 				return err
 			}
-			// Migrate commands will not run on a broken migration directory, unless the force flag is given.
-			if !MigrateFlags.Force {
-				dir, err := dir(false)
-				if err != nil {
-					return err
-				}
-				if err := migrate.Validate(dir); err != nil {
-					printChecksumErr(cmd.OutOrStderr())
-					cmd.SilenceUsage = true
-					return err
-				}
+			dir, err := dir(false)
+			if err != nil {
+				return err
+			}
+			if err := migrate.Validate(dir); err != nil {
+				printChecksumErr(cmd.OutOrStderr())
+				cmd.SilenceUsage = true
+				return err
 			}
 			return nil
 		},
@@ -145,17 +140,14 @@ directory state to the desired schema. The desired state can be another connecte
 			if err := migrateFlagsFromEnv(cmd, nil); err != nil {
 				return err
 			}
-			// Migrate commands will not run on a broken migration directory, unless the force flag is given.
-			if !MigrateFlags.Force {
-				dir, err := dir(true)
-				if err != nil {
-					return err
-				}
-				if err := migrate.Validate(dir); err != nil {
-					printChecksumErr(cmd.OutOrStderr())
-					cmd.SilenceUsage = true
-					return err
-				}
+			dir, err := dir(true)
+			if err != nil {
+				return err
+			}
+			if err := migrate.Validate(dir); err != nil {
+				printChecksumErr(cmd.OutOrStderr())
+				cmd.SilenceUsage = true
+				return err
 			}
 			return nil
 		},
@@ -167,7 +159,7 @@ directory state to the desired schema. The desired state can be another connecte
 		Short: "Hash (re-)creates an integrity hash file for the migration directory.",
 		Long: `'atlas migrate hash' computes the integrity hash sum of the migration directory and stores it in the atlas.sum file.
 This command should be used whenever a manual change in the migration directory was made.`,
-		Example: `  atlas migrate hash --force`,
+		Example: `  atlas migrate hash`,
 		RunE:    CmdMigrateHashRun,
 	}
 	// MigrateNewCmd represents the 'atlas migrate new' command.
@@ -237,7 +229,6 @@ func init() {
 	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.DirURL, migrateFlagDir, "", "file://migrations", "select migration directory using URL format")
 	MigrateCmd.PersistentFlags().StringSliceVarP(&MigrateFlags.Schemas, migrateFlagSchema, "", nil, "set schema names")
 	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.DirFormat, migrateFlagDirFormat, "", formatAtlas, "set migration file format")
-	MigrateCmd.PersistentFlags().BoolVarP(&MigrateFlags.Force, migrateFlagForce, "", false, "force a command to run on a broken migration directory state")
 	MigrateCmd.PersistentFlags().SortFlags = false
 	// Apply flags.
 	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.Apply.LogFormat, migrateFlagLog, "", logFormatTTY, "log format to use")
@@ -252,7 +243,6 @@ func init() {
 	cobra.CheckErr(MigrateApplyCmd.MarkFlagRequired(migrateFlagURL))
 	MigrateApplyCmd.MarkFlagsMutuallyExclusive(migrateApplyFromVersion, migrateApplyBaselineVersion)
 	cobra.CheckErr(MigrateApplyCmd.Flags().MarkHidden(migrateFlagDirFormat))
-	cobra.CheckErr(MigrateApplyCmd.Flags().MarkHidden(migrateFlagForce))
 	cobra.CheckErr(MigrateApplyCmd.Flags().MarkHidden(migrateFlagSchema))
 	// Diff flags.
 	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateDiffCmd.Flags())
@@ -848,7 +838,7 @@ func printChecksumErr(out io.Writer) {
 This happens if you manually create or edit a migration file.
 Please check your migration files and run
 
-'atlas migrate hash --force'
+'atlas migrate hash'
 
 to re-hash the contents and resolve the error
 
