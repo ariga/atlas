@@ -12,21 +12,13 @@ their [Atlas GitHub Action](/integrations/github-actions) CI runs. The cloud pla
 Atlas schema, by displaying an entity relation diagram (ERD) that shows the schema changes, as well as the entire
 database schema.
 
-The cloud shows an in-depth description of each CI run, making it easy to triage and catch errors before it's too late.
-Most importantly, it helps developers make safe changes to their database, by providing a clear explanation as to what
-SQL statements can be dangerous, and which ones are good to go.
-
 ### Signing Up
 
-To get started with Ariga Cloud, create an account by clicking 'sign up' on the homepage.
-
-<!-- ![home-page]() -->
-
-In the sign up screen, enter your work email and choose a password. Once signing up, you will receive an
-email to verify your account. From your email, Ariga Cloud will open in a new tab, and you will need to sign in to
-access your account.
-
-Once signed in, you will be prompted to create an organization. After creating the organization, you will be able
+1. To get started with [Ariga Cloud](https://ariga.cloud/), create an account by clicking 'sign up' on the homepage.
+2. In the sign up screen, enter your work email and choose a password.
+3. Next, you will receive an email to verify your account. From your email, [Ariga Cloud](https://ariga.cloud/)
+will open in a new tab, and you will need to sign in to access your account.
+4. Once signed in, you will be prompted to create an organization. After creating the organization, you will be able
 to invite team members to join it. Choose a meaningful name for the organization, as it will also be your subdomain.
 For example, "Acme Corp" will be available at "acme-corp.ariga.cloud".
 
@@ -38,15 +30,15 @@ any word before the @ sign in your address.
 :::
 
 ### Connecting to the Atlas GitHub action
-At first you will notice that your projects and CI runs are empty. In order to connect the organization
-to your GitHub repository, you will need to download the Atlas GitHub action by following these steps:
+At first you will notice that your projects and CI runs pages are empty. In order to connect the organization
+to your GitHub repository, you will need to setup the Atlas GitHub action on your repository by following these steps:
 
 :::note
 If you already have the Atlas GitHub action set up, you may skip step 4. In step 5, only add
 `ariga-token: ${{ secrets.ARIGA_TOKEN }}` to your yaml file.
 :::
 
-1. Generate an access token under 'Tokens' in the settings page.
+1. From the Settings page, generate an access token under 'Tokens'.
 2. On your GitHub repo, under the 'Settings' section, click on 'Secrets' > 'Actions' to create a new repository secret.
 3. Name your secret (for example, ARIGA_TOKEN) and paste the generated token from step 2.
 4. Install the Atlas GitHub Action by adding a file named `.github/workflows/atlas-ci.yaml` to your repo.
@@ -202,7 +194,7 @@ jobs:
 
 ### Viewing CI Runs
 In the system, you can view all the CI runs that were triggered by the Atlas GitHub workflow.
-There are three types of runs:
+A run can complete in one of three types of runs:
 1. <img src="https://release.ariga.io/images/assets/success.svg" width="15" /> Successful - the CI ran successfully and found no errors or issues in your SQL statements.
 2. <img src="https://release.ariga.io/images/assets/warning.svg" width="15" /> Issues Found - there are some issues with your SQL statements that may cause a failure in production.
 3. <img src="https://release.ariga.io/images/assets/error.svg" width="15" /> Failed - the CI run failed, and can be caused for a number of reasons (bad SQL statements, incorrect configuration,
@@ -225,4 +217,3 @@ When choosing to regenerate the token, you must remember to copy the new one int
 :::info
 For more help, reach out to us on our [Discord server](https://discord.gg/zZ6sWVg6NT).
 :::
-
