@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"ariga.io/atlas/cmd/atlas/internal/sqlparse"
-	"ariga.io/atlas/cmd/atlas/internal/sqlparse/parseutil"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
@@ -215,7 +214,7 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 			File:   f,
 			Parser: sqlparse.ParserFor(d.Dev.Name),
 		}
-		stmts, err := parseutil.StmtDecls(f)
+		stmts, err := f.StmtDecls()
 		if err != nil {
 			return nil, &FileError{File: f.Name(), Err: fmt.Errorf("scanning statements: %w", err)}
 		}
