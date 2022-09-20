@@ -1,7 +1,7 @@
 ---
 id: partial-indexes
 title: Partial Indexes in PostgreSQL
-slug: /knowledge/postgres/partial-indexes
+slug: /guides/postgres/partial-indexes
 ---
 
 ### Overview of Partial Indexes

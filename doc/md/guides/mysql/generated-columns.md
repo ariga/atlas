@@ -1,7 +1,7 @@
 ---
 id: generated-columns
 title: Generated Columns in MySQL with Atlas
-slug: /knowledge/mysql/generated-columns
+slug: /guides/mysql/generated-columns
 ---
 
 **MySQL** is a popular open-source relational database. **Generated columns** are a feature of MySQL that allows you to

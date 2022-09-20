@@ -16,8 +16,8 @@ function Nav() {
             </Link>
         </li>
         <li className={index.linkItem}>
-            <Link to="/knowledge">
-                Knowledge Center
+            <Link to="/guides">
+                Guides
             </Link>
         </li>
         <li className={index.linkItem}>

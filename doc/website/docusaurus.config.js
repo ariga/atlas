@@ -59,8 +59,8 @@ module.exports = {
           position: 'left',
         },
         {
-          to: 'knowledge',
-          label: 'Knowledge Center',
+          to: 'guides',
+          label: 'Guides',
           position: 'left',
         },
         {
@@ -77,10 +77,10 @@ module.exports = {
           "title": "Docs",
           "items": [
             {"label": "Getting Started", "to": "getting-started"},
-            {"label": "Data Definition Language ", "to": "knowledge/ddl"},
+            {"label": "Data Definition Language ", "to": "guides/ddl"},
             {"label": "CLI Reference", "to": "cli-reference"},
             {"label": "Blog", "to": "blog"},
-            {"label": "Knowledge Center", "to": "knowledge"},
+            {"label": "Guides", "to": "guides"},
             {"label": "About", "to": "about"},
             {"label": "GoDoc", "to": "https://pkg.go.dev/ariga.io/atlas"},
           ]
@@ -155,7 +155,7 @@ module.exports = {
             from: '/dev-database',
           },
           {
-            to: '/knowledge/ddl',
+            to: '/guides/ddl',
             from: ['/ddl/intro', '/concepts/ddl'],
           },
           {
@@ -173,6 +173,10 @@ module.exports = {
           {
             to: '/atlas-schema/sql-resources',
             from: '/ddl/sql',
+          },
+          {
+            to: '/guides',
+            from: '/knowledge',
           },
         ],
       },
