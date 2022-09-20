@@ -432,7 +432,7 @@ func TestPlanChanges(t *testing.T) {
 					},
 					{
 						Cmd:     `CREATE INDEX CONCURRENTLY "concurrently" ON "users" ("id")`,
-						Reverse: `DROP INDEX "concurrently"`,
+						Reverse: `DROP INDEX CONCURRENTLY "concurrently"`,
 					},
 					{
 						Cmd:     `COMMENT ON COLUMN "users" ."name" IS 'foo'`,
