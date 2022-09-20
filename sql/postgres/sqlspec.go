@@ -335,13 +335,6 @@ func convertIndex(spec *sqlspec.Index, t *schema.Table) (*schema.Index, error) {
 		idx.Attrs = append(idx.Attrs, &IndexInclude{Columns: include})
 	}
 
-	if attr, ok := spec.Attr("concurrently"); ok {
-		concurrently, err := attr.Bool()
-		if err != nil {
-			return nil, err
-		}
-		idx.Attrs = append(idx.Attrs, &IndexBuildParams{Concurrently: concurrently})
-	}
 	return idx, nil
 }
 
