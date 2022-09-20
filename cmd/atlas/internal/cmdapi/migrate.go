@@ -159,8 +159,9 @@ directory state to the desired schema. The desired state can be another connecte
 		Short: "Hash (re-)creates an integrity hash file for the migration directory.",
 		Long: `'atlas migrate hash' computes the integrity hash sum of the migration directory and stores it in the atlas.sum file.
 This command should be used whenever a manual change in the migration directory was made.`,
-		Example: `  atlas migrate hash`,
-		RunE:    CmdMigrateHashRun,
+		Example:           `  atlas migrate hash`,
+		PersistentPreRunE: migrateFlagsFromEnv,
+		RunE:              CmdMigrateHashRun,
 	}
 	// MigrateNewCmd represents the 'atlas migrate new' command.
 	MigrateNewCmd = &cobra.Command{

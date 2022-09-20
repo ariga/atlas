@@ -3,9 +3,9 @@ only mysql
 ! atlas migrate apply
 stderr 'Error: checksum file not found'
 stdout 'You have a checksum error in your migration directory.'
-stdout 'atlas migrate hash --force'
+stdout 'atlas migrate hash'
 
-atlas migrate hash --force
+atlas migrate hash
 
 # Apply all of them
 atlas migrate apply --url URL --revisions-schema $db
