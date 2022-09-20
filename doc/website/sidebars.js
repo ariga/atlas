@@ -109,6 +109,11 @@ module.exports = {
                     id: 'knowledge/postgres/serial-columns',
                     label: 'Serial Type Columns'
                 },
+                {
+                    type: 'doc',
+                    id: 'knowledge/postgres/partial-indexes',
+                    label: 'Partial Indexes'
+                },
             ],
         },
         {
