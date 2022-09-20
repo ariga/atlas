@@ -67,7 +67,7 @@ module.exports = {
             label: 'Cloud',
             collapsed: false,
             items: [
-                {type: 'doc', id: 'cloud/cloud-getting-started', label: 'Getting Started'},
+                {type: 'doc', id: 'cloud/getting-started', label: 'Getting Started'},
             ],
         },
         {

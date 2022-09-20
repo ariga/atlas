@@ -1,5 +1,5 @@
 ---
-id: cloud-getting-started
+id: getting-started
 title: Getting Started with Ariga Cloud
 sidebar_label: Getting Started
 ---
@@ -14,12 +14,13 @@ database schema.
 
 ### Signing Up
 
+![Login](https://release.ariga.io/images/assets/login1.png)
 1. To get started with [Ariga Cloud](https://ariga.cloud/), create an account by clicking 'sign up' on the homepage.
 2. In the sign up screen, enter your work email and choose a password.
 3. Next, you will receive an email to verify your account. From your email, [Ariga Cloud](https://ariga.cloud/)
 will open in a new tab, and you will need to sign in to access your account.
 4. Once signed in, you will be prompted to create an organization. After creating the organization, you will be able
-to invite team members to join it. Choose a meaningful name for the organization, as it will also be your subdomain.
+to invite team members to join. Choose a meaningful name for the organization, as it will also be your subdomain.
 For example, "Acme Corp" will be available at "acme-corp.ariga.cloud".
 
 :::note
@@ -55,17 +56,19 @@ values={[
 ]}>
 <TabItem value="mysql">
 
-```yaml {7,11,36,39}
+```yaml
 name: Atlas CI
 on:
   # Run whenever code is changed in the master branch,
   # change this to your root branch.
   push:
     branches:
+    // highlight-next-line
       - master
   # Run on PRs where something changed under the `path/to/migration/dir/` directory.
   pull_request:
     paths:
+    // highlight-next-line
       - 'path/to/migration/dir/*'
 jobs:
   lint:
@@ -89,35 +92,40 @@ jobs:
       - uses: actions/checkout@v3.0.1
         with:
           fetch-depth: 0 # Mandatory unless "latest" is set below.
-      - uses: ariga/atlas-action@latest
+      - uses: ariga/atlas-action@v0
         with:
-          dir: path/to/migrations
-          dir-format: atlas # Or: golang-migrate, goose, dbmate
+        // highlight-next-line
+          dir: 'path/to/migrations'
+          dir-format: atlas # Or: golang-migrate, goose, dbmate, flyway, liquibase
           dev-url: mysql://root:pass@localhost:3307/test
+          // highlight-next-line
           ariga-token: ${{ secrets.ARIGA_TOKEN }}
 ```
+
 
 </TabItem>
 <TabItem value="postgres">
 
-```yaml {7,11,35,38}
+```yaml
 name: Atlas CI
 on:
   # Run whenever code is changed in the master branch,
   # change this to your root branch.
   push:
     branches:
+    // highlight-next-line
       - master
   # Run on PRs where something changed under the `path/to/migration/dir/` directory.
   pull_request:
     paths:
+    // highlight-next-line
       - 'path/to/migration/dir/*'
 jobs:
   lint:
     services:
-      # Spin up a postgres:10 container to be used as the dev-database for analysis.
-      postgres10:
-        image: postgres:10
+      # Spin up a postgres:14 container to be used as the dev-database for analysis.
+      postgres14:
+        image: postgres:14
         env:
           POSTGRES_DB: test
           POSTGRES_PASSWORD: pass
@@ -133,28 +141,32 @@ jobs:
       - uses: actions/checkout@v3.0.1
         with:
           fetch-depth: 0 # Mandatory unless "latest" is set below.
-      - uses: ariga/atlas-action@latest
+      - uses: ariga/atlas-action@v0
         with:
-          dir: path/to/migrations
-          dir-format: atlas # Or: golang-migrate, goose, dbmate
+        // highlight-next-line
+          dir: 'path/to/migrations'
+          dir-format: atlas # Or: golang-migrate, goose, dbmate, flyway, liquibase
           dev-url: postgres://postgres:pass@localhost:5430/test?sslmode=disable
+        // highlight-next-line
           ariga-token: ${{ secrets.ARIGA_TOKEN }}
 ```
 
 </TabItem>
 <TabItem value="maria">
 
-```yaml {7,11,36,39}
+```yaml
 name: Atlas CI
 on:
   # Run whenever code is changed in the master branch,
   # change this to your root branch.
   push:
     branches:
+    // highlight-next-line
       - master
   # Run on PRs where something changed under the `path/to/migration/dir/` directory.
   pull_request:
     paths:
+    // highlight-next-line
       - 'path/to/migration/dir/*'
 jobs:
   lint:
@@ -178,11 +190,13 @@ jobs:
       - uses: actions/checkout@v3.0.1
         with:
           fetch-depth: 0 # Mandatory unless "latest" is set below.
-      - uses: ariga/atlas-action@latest
+      - uses: ariga/atlas-action@v0
         with:
-          dir: path/to/migrations
-          dir-format: atlas # Or: golang-migrate, goose, dbmate
+        // highlight-next-line
+          dir: 'path/to/migrations'
+          dir-format: atlas # Or: golang-migrate, goose, dbmate, flyway, liquibase
           dev-url: maria://root:pass@localhost:4306/test
+        // highlight-next-line
           ariga-token: ${{ secrets.ARIGA_TOKEN }}
 ```
 </TabItem>
@@ -192,19 +206,66 @@ jobs:
 6. After merging the workflow to your mainline branch, the workflow will be triggered.
 7. Refresh Ariga Cloud and your project will appear!
 
+![Setup Projects](https://release.ariga.io/images/assets/setup-projects.png)
+
 ### Viewing CI Runs
 In the system, you can view all the CI runs that were triggered by the Atlas GitHub workflow.
+
+Each run includes the following:
+- A summary of the run.
+- SQL statements that were analyzed.
+- An ERD that shows the changes made to the schema, as well as a full view.
+
 A run can complete in one of three ways:
 
-1. <img src="https://release.ariga.io/images/assets/success.svg" width="15" /> Successful - the CI ran successfully and found no errors or issues in your SQL statements.
-2. <img src="https://release.ariga.io/images/assets/warning.svg" width="15" /> Issues Found - there are some issues with your SQL statements that may cause a failure in production.
-3. <img src="https://release.ariga.io/images/assets/error.svg" width="15" /> Failed - the CI run failed, and can be caused for a number of reasons (bad SQL statements, incorrect configuration,
-etc.). The root of the cause will be stated in the report itself.
+<Tabs
+defaultValue="successful"
+values={[
+{label: 'Successful', value: 'successful'},
+{label: 'Issues Found', value: 'issues'},
+{label: 'Failed', value: 'failed'},
+]}>
 
-For each of these runs includes the following:
-- A summary of the run
-- SQL statements that were analyzed
-- An ERD that shows the changes made to the schema, as well as a full view
+<TabItem value="successful">
+
+![Successful Run](https://release.ariga.io/images/assets/successful-run.png)
+
+The CI ran successfully and no errors or issues were found in your SQL statements or Atlas sum file.
+
+</TabItem>
+
+<TabItem value = "issues">
+
+![Issues Found Run](https://release.ariga.io/images/assets/issues-found.png)
+
+In cases where your SQL statements _might_ cause a failure in production, the CI run will be labeled as 'issues
+found'. In this example, we can see that the column `name` was created as non-nullable. The CI is letting us know that
+this has a chance of causing a failure, because if there is a row that exists in this table that has a null `name`
+value, this migration will for a fact fail in production.
+The report also makes sure to reference the specific data-dependent check that was found
+[MF103](https://atlasgo.io/lint/analyzers#MF103), in this example).
+</TabItem>
+
+<TabItem value = "failed">
+
+![Failed Run](https://release.ariga.io/images/assets/failed-run2.png)
+The CI run can fail for multiple reasons: incorrect SQL statements, wrong configuration, and more.
+In this example, we can see the CI has failed due to an SQL statement that attempts to drop a table. Because this
+is dangerous and will result in loss of data, the CI will automatically fail any `drop` statements.
+However, users can disable this by configuring the destructive analyzer in the
+[`atlas.hcl`](https://atlasgo.io/atlas-schema/projects) file:
+
+```hcl title="atlas.hcl"
+lint {
+  //highlight-start
+  destructive {
+    error = false
+  }
+  //highlight-end
+}
+```
+</TabItem>
+</Tabs>
 
 ### Inviting Members
 Under 'Settings' > 'Members', you can invite team members to your organization.
@@ -212,7 +273,7 @@ These members will receive an email with a link to Ariga Cloud, and will be requ
 in order to access the organization.
 
 ### Regenerating Tokens
-It is possible to regenerate the access token, however once you do so the old token will be **deprecated**.
+It is possible to regenerate the access token, however once you do so the old token will be **invalidated**.
 When choosing to regenerate the token, you must remember to copy the new one into your GitHub project's 'Secrets'.
 
 :::info
