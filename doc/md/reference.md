@@ -166,6 +166,28 @@ This command should be used whenever a manual change in the migration directory 
   atlas migrate hash --force
 ```
 
+### atlas migrate import
+
+Import a migration directory from another migration management tool to the Atlas format.
+
+#### Usage
+```
+atlas migrate import [flags]
+```
+
+#### Example
+
+```
+  atlas migrate import --dir-format liquibase --from file:///path/to/source/directory --to file:///path/to/migration/directory
+```
+#### Flags
+```
+      --from string   select migration directory using URL format (default "file://migrations")
+      --to string     select migration directory using URL format (default "file://migrations")
+
+```
+
+
 ### atlas migrate lint
 
 Run analysis on the migration directory

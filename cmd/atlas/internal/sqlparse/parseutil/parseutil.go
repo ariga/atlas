@@ -6,9 +6,6 @@
 package parseutil
 
 import (
-	"bytes"
-	"fmt"
-
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 
@@ -66,7 +63,7 @@ func RenameTable(changes schema.Changes, r *Rename) schema.Changes {
 
 // MatchStmtBefore reports if the file contains any statement that matches the predicate before the given position.
 func MatchStmtBefore(f migrate.File, pos int, p func(*migrate.Stmt) (bool, error)) (bool, error) {
-	stmts, err := StmtDecls(f)
+	stmts, err := f.StmtDecls()
 	if err != nil {
 		return false, err
 	}
@@ -86,37 +83,6 @@ func MatchStmtBefore(f migrate.File, pos int, p func(*migrate.Stmt) (bool, error
 		}
 	}
 	return false, nil
-}
-
-// StmtDecls returns the statement declarations of a file.
-func StmtDecls(f migrate.File) ([]*migrate.Stmt, error) {
-	if s, ok := f.(interface {
-		StmtDecls() ([]*migrate.Stmt, error)
-	}); ok {
-		return s.StmtDecls()
-	}
-	s1, err := f.Stmts()
-	if err != nil {
-		return nil, err
-	}
-	s2 := make([]*migrate.Stmt, len(s1))
-	for i := range s1 {
-		p, err := pos(f, s1[i])
-		if err != nil {
-			return nil, err
-		}
-		s2[i] = &migrate.Stmt{Pos: p, Text: s1[i]}
-	}
-	return s2, nil
-}
-
-// pos returns the position of a statement in migration file.
-func pos(f migrate.File, stmt string) (int, error) {
-	i := bytes.Index(f.Bytes(), []byte(stmt))
-	if i == -1 {
-		return 0, fmt.Errorf("statement %q was not found in %q", stmt, f.Bytes())
-	}
-	return i, nil
 }
 
 func max(i, j int) int {

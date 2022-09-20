@@ -36,6 +36,39 @@ func TestMigrate(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestMigrate_Import(t *testing.T) {
+	for _, tool := range []string{"dbmate", "flyway", "golang-migrate", "goose", "liquibase"} {
+		p := t.TempDir()
+		t.Run(tool, func(t *testing.T) {
+			path := filepath.FromSlash("testdata/import/" + tool)
+			out, err := runCmd(
+				Root, "migrate", "import",
+				"--from", "file://"+path,
+				"--to", "file://"+p,
+				"--dir-format", tool,
+			)
+			require.NoError(t, err)
+			require.Zero(t, out)
+
+			path += "_gold"
+			ex, err := os.ReadDir(path)
+			require.NoError(t, err)
+			ac, err := os.ReadDir(p)
+			require.NoError(t, err)
+			require.Equal(t, len(ex)+1, len(ac)) // sum file
+
+			for i := range ex {
+				e, err := os.ReadFile(filepath.Join(path, ex[i].Name()))
+				require.NoError(t, err)
+				a, err := os.ReadFile(filepath.Join(p, ex[i].Name()))
+				require.NoError(t, err)
+
+				require.Equal(t, string(e), string(a))
+			}
+		})
+	}
+}
+
 func TestMigrate_Apply(t *testing.T) {
 	var (
 		p   = t.TempDir()

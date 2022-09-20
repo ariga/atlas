@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"ariga.io/atlas/cmd/atlas/internal/sqlparse"
-	"ariga.io/atlas/cmd/atlas/internal/sqlparse/parseutil"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
@@ -28,7 +27,6 @@ type (
 	}
 
 	// A ChangeLoader takes a set of migration files and will create multiple schema.Changes out of it.
-	// It will also label migration files as either "generated" or "handcrafted".
 	ChangeLoader interface {
 		// LoadChanges converts each of the given migration files into one Changes.
 		LoadChanges(context.Context, []migrate.File) (*Changes, error)
@@ -108,8 +106,7 @@ func (d *GitChangeDetector) DetectChanges(ctx context.Context) ([]migrate.File, 
 		args = append(args, "-C", d.work)
 	}
 	args = append(args, "--no-pager", "diff", "--name-only", "--diff-filter=A", d.base, "HEAD", d.path)
-	buf, err := exec.CommandContext(ctx, "git", args...).
-		CombinedOutput()
+	buf, err := exec.CommandContext(ctx, "git", args...).CombinedOutput()
 	if err != nil {
 		return nil, nil, fmt.Errorf("git diff: %w", err)
 	}
@@ -217,7 +214,7 @@ func (d *DevLoader) LoadChanges(ctx context.Context, base, files []migrate.File)
 			File:   f,
 			Parser: sqlparse.ParserFor(d.Dev.Name),
 		}
-		stmts, err := parseutil.StmtDecls(f)
+		stmts, err := f.StmtDecls()
 		if err != nil {
 			return nil, &FileError{File: f.Name(), Err: fmt.Errorf("scanning statements: %w", err)}
 		}

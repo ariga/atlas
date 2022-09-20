@@ -1,12 +1,4 @@
-
-
-
--- +goose Up
-
-
 ALTER TABLE post ADD updated_at TIMESTAMP NOT NULL;
-
--- +goose StatementBegin
 -- Comment for the function declaration.
 CREATE
 OR REPLACE FUNCTION histories_partition_creation( DATE, DATE )
@@ -28,4 +20,3 @@ END LOOP;  -- LOOP END
 END;         -- FUNCTION END
 $$
 language plpgsql;
--- +goose StatementEnd

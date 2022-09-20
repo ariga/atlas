@@ -38,6 +38,7 @@ module.exports = {
                 {type: 'doc', id: 'versioned/lint', label: 'Migration Linting'},
                 {type: 'doc', id: 'versioned/new', label: 'Manual Migrations'},
                 {type: 'doc', id: 'versioned/apply', label: 'Migration Applying'},
+                {type: 'doc', id: 'versioned/import', label: 'Migration Import'},
             ]
         },
         {

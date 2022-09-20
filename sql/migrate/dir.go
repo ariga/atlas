@@ -54,6 +54,8 @@ type (
 		Bytes() []byte
 		// Stmts returns the set of SQL statements this file holds.
 		Stmts() ([]string, error)
+		// StmtDecls returns the set of SQL statements this file holds alongside its preceding comments.
+		StmtDecls() ([]*Stmt, error)
 	}
 )
 
@@ -173,7 +175,7 @@ func (f LocalFile) Version() string {
 
 // Stmts returns the SQL statement exists in the local file.
 func (f LocalFile) Stmts() ([]string, error) {
-	s, err := stmts(string(f.b))
+	s, err := Stmts(string(f.b))
 	if err != nil {
 		return nil, err
 	}
@@ -184,10 +186,9 @@ func (f LocalFile) Stmts() ([]string, error) {
 	return stmts, nil
 }
 
-// StmtDecls returns the all statement declarations exist
-// in the local file.
+// StmtDecls returns the all statement declarations exist in the local file.
 func (f LocalFile) StmtDecls() ([]*Stmt, error) {
-	return stmts(string(f.b))
+	return Stmts(string(f.b))
 }
 
 // Bytes returns local file data.
@@ -203,9 +204,9 @@ var (
 		templates: []struct{ N, C *template.Template }{
 			{
 				N: template.Must(template.New("").Funcs(templateFuncs).Parse(
-					"{{ now }}{{ with .Name }}_{{ . }}{{ end }}.sql",
+					"{{ with .Version }}{{ . }}{{ else }}{{ now }}{{ end }}{{ with .Name }}_{{ . }}{{ end }}.sql",
 				)),
-				C: template.Must(template.New("").Funcs(templateFuncs).Parse(
+				C: template.Must(template.New("").Parse(
 					`{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}`,
 				)),
 			},

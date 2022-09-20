@@ -12,6 +12,8 @@ CREATE TABLE post
  */
 ALTER TABLE post ADD created_at TIMESTAMP NOT NULL;
 
+-- Normal comment
+-- With a second line
 INSERT INTO post (title) VALUES (
 'This is
 my multiline
