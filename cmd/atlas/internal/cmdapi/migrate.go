@@ -665,7 +665,6 @@ func CmdMigrateImportRun(cmd *cobra.Command, _ []string) error {
 	if MigrateFlags.DirFormat == formatAtlas {
 		return fmt.Errorf("cannot import a migration directory already in %q format", formatAtlas)
 	}
-	// Create migration directories.
 	MigrateFlags.DirURL = MigrateFlags.Import.FromURL
 	src, err := dir(false)
 	if err != nil {
