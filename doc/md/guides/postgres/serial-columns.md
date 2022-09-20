@@ -1,7 +1,7 @@
 ---
 id: serial-columns
 title: Serial Type Columns in PostgreSQL
-slug: /knowledge/postgres/serial-columns
+slug: /guides/postgres/serial-columns
 ---
 
 PostgreSQL allows creating columns of types `smallserial`, `serial`, and `bigserial`. These types are not

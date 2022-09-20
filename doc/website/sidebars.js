@@ -82,10 +82,10 @@ module.exports = {
             id: 'cli-reference'
         }
     ],
-    knowledge: [
+    guides: [
         {
             type: 'doc',
-            id: 'knowledge/knowledge'
+            id: 'guides/guides'
         },
         {
             type: 'category',
@@ -94,7 +94,7 @@ module.exports = {
             items: [
                 {
                   type: 'doc',
-                  id: 'knowledge/mysql/generated-columns',
+                  id: 'guides/mysql/generated-columns',
                   label: 'Generated Columns'
                 },
             ],
@@ -106,19 +106,19 @@ module.exports = {
             items: [
                 {
                     type: 'doc',
-                    id: 'knowledge/postgres/serial-columns',
+                    id: 'guides/postgres/serial-columns',
                     label: 'Serial Type Columns'
                 },
                 {
                     type: 'doc',
-                    id: 'knowledge/postgres/partial-indexes',
+                    id: 'guides/postgres/partial-indexes',
                     label: 'Partial Indexes'
                 },
             ],
         },
         {
             type: 'doc',
-            id: 'knowledge/ddl'
+            id: 'guides/ddl'
         },
     ],
     about: [
