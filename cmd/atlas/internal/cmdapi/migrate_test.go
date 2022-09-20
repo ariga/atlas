@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"os/exec"
@@ -451,6 +450,11 @@ func TestMigrate_Hash(t *testing.T) {
 	require.Zero(t, s)
 	require.NoError(t, err)
 
+	// Prints a warning if --force flag is still used.
+	s, err = runCmd(Root, "migrate", "hash", "--dir", "file://testdata/mysql", "--force")
+	require.NoError(t, err)
+	require.Equal(t, "Flag --force has been deprecated, you can safely omit it.\n", s)
+
 	p := t.TempDir()
 	err = copyFile(filepath.Join("testdata", "mysql", "20220318104614_initial.sql"), filepath.Join(p, "20220318104614_initial.sql"))
 	require.NoError(t, err)
@@ -459,7 +463,7 @@ func TestMigrate_Hash(t *testing.T) {
 	require.Zero(t, s)
 	require.NoError(t, err)
 	require.FileExists(t, filepath.Join(p, "atlas.sum"))
-	d, err := ioutil.ReadFile(filepath.Join(p, "atlas.sum"))
+	d, err := os.ReadFile(filepath.Join(p, "atlas.sum"))
 	require.NoError(t, err)
 	dir, err := migrate.NewLocalDir(p)
 	require.NoError(t, err)

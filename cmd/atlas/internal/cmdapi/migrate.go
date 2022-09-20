@@ -257,6 +257,9 @@ func init() {
 	// Status flags.
 	urlFlag(&MigrateFlags.URL, migrateFlagURL, "u", MigrateStatusCmd.Flags())
 	revisionsFlag(MigrateStatusCmd.Flags())
+	// Hash flags.
+	MigrateHashCmd.Flags().Bool("force", false, "")
+	cobra.CheckErr(MigrateHashCmd.Flags().MarkDeprecated("force", "you can safely omit it."))
 	// Lint flags.
 	urlFlag(&MigrateFlags.DevURL, migrateFlagDevURL, "", MigrateLintCmd.Flags())
 	MigrateLintCmd.PersistentFlags().StringVarP(&MigrateFlags.Lint.Format, migrateFlagLog, "", "", "custom logging using a Go template")
