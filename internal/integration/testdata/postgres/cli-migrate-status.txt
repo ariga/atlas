@@ -1,5 +1,5 @@
 # make sure sum file is correct
-atlas migrate hash --force
+atlas migrate hash
 
 # for clean database
 atlas migrate status --url URL --revisions-schema $db

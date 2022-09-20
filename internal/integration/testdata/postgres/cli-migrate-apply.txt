@@ -1,9 +1,9 @@
 ! atlas migrate apply
 stderr 'Error: checksum file not found'
 stdout 'You have a checksum error in your migration directory.'
-stdout 'atlas migrate hash --force'
+stdout 'atlas migrate hash'
 
-atlas migrate hash --force
+atlas migrate hash
 
 # Apply all of them
 atlas migrate apply --url URL --revisions-schema $db
@@ -45,7 +45,7 @@ clearSchema
 
 # Move the broken migration into the migrations directory and check the different transaction modes.
 cp broken.sql migrations/4_fourth.sql
-atlas migrate hash --force
+atlas migrate hash
 
 ! atlas migrate apply --url URL --revisions-schema $db --tx-mode invalid
 stderr 'unknown tx-mode "invalid"'
@@ -70,7 +70,7 @@ cmp stdout empty.hcl
 
 # If the broken migration is gone, we can apply everything without any problems.
 rm migrations/4_fourth.sql
-atlas migrate hash --force
+atlas migrate hash
 
 atlas migrate apply --url URL --revisions-schema $db
 cmpshow users users.sql
@@ -83,7 +83,7 @@ clearSchema
 # Test --tx-mode file
 
 cp broken.sql migrations/4_fourth.sql
-atlas migrate hash --force
+atlas migrate hash
 
 ! atlas migrate apply --url URL --revisions-schema $db --tx-mode file
 stderr 'executing statement "THIS IS A FAILING STATEMENT;" from version "4"'
@@ -97,7 +97,7 @@ cmp stdout empty.hcl
 
 # If the broken migration is gone, we can apply everything without any problems.
 rm migrations/4_fourth.sql
-atlas migrate hash --force
+atlas migrate hash
 
 atlas migrate apply --url URL --revisions-schema $db
 cmpshow users users.sql
@@ -110,7 +110,7 @@ clearSchema
 # Test --tx-mode none
 
 cp broken.sql migrations/4_fourth.sql
-atlas migrate hash --force
+atlas migrate hash
 
 ! atlas migrate apply --url URL --revisions-schema $db --tx-mode none
 stderr 'executing statement "THIS IS A FAILING STATEMENT;" from version "4"'

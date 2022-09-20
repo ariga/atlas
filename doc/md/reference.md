@@ -163,7 +163,7 @@ This command should be used whenever a manual change in the migration directory 
 #### Example
 
 ```
-  atlas migrate hash --force
+  atlas migrate hash
 ```
 
 ### atlas migrate import

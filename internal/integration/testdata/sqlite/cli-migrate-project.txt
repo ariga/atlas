@@ -11,7 +11,7 @@ exec touch migrations/2.sql
 ! atlas migrate validate --env local
 stderr 'Error: checksum mismatch'
 
-atlas migrate hash --force --env local
+atlas migrate hash --env local
 atlas migrate validate --env local
 
 -- atlas.hcl --
