@@ -22,10 +22,11 @@ You can learn more about partial indexes in PostgreSQL [here](https://www.postgr
 :::
 
 #### Advantages of using Partial Indexes
-In cases where we know ahead the access pattern to a table and can reduce the size of an index by making it partial:
-1. Response time for SELECT operations is improved compared to databases that have non-partial index.
+In cases where we know ahead of time the access pattern to a table and can reduce the size of an index by making it partial:
+1. Response time for SELECT operations is improved because the database searches through a smaller index.
 2. On average, response time for UPDATE operations is also improved as the index is not going to get updated in all cases.
-3. Index is smaller in size and can fit into memory more easily, saving space on disk.
+3. Index is smaller in size and can fit into RAM more easily. s
+4. Less space is required to store the index on disk.
 
 #### Basic PostgreSQL syntax for using Partial Index
 
@@ -205,7 +206,7 @@ We have seen that creating a partial index is a better choice where only a small
 
 ### Managing Partial Indexes is easy with Atlas
 
-Managing partial indexes and database schemas in PostgreSQL is confusing and error-prone. Atlas is an open-source project which allows us to manage our database using a simple and easy to understand declarative syntax (similar to Terraform). We will now learn how to manage partial indexes using Atlas.
+Managing partial indexes and database schemas in PostgreSQL can be confusing and error-prone. Atlas is an open-source project which allows us to manage our database using a simple and easy-to-understand declarative syntax (similar to Terraform). We will now learn how to manage partial indexes using Atlas.
 
 :::info
 If you are just getting started, install the latest version of Atlas using the guide to [setting up Atlas](https://atlasgo.io/cli/getting-started/setting-up).
@@ -295,7 +296,7 @@ Amazing! Our new partial index is now created!
 
 ### Limitation of using Partial Index
 
-If you are a new engineer working on an already existing, huge database and are not familiar with existing partial indexes or the nature of queries for such a database, you might end up using expensive queries. In these cases it's easier to use non-partial index.
+Partial indexes are useful in cases where we know ahead of time that a table is most frequently queried with a certain `WHERE` clause.  As applications evolve, access patterns to the database also change. Consequently, we may find ourselves in a situation where our index no longer covers many queries, causing them to become resource consuming and slow.
 
 ### Conclusion
 
