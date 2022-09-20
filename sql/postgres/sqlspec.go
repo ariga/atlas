@@ -499,7 +499,7 @@ func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 	if i := (IndexType{}); sqlx.Has(idx.Attrs, &i) && i.T != IndexTypeBTree {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("type", strings.ToUpper(i.T)))
 	}
-	if i := (IndexBuildParams{}); sqlx.Has(idx.Attrs, &i) && i.Concurrently {
+	if i := (Concurrently{}); sqlx.Has(idx.Attrs, &i) && i.Concurrently {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.BoolAttr("concurrently", true))
 	}
 	if i := (IndexInclude{}); sqlx.Has(idx.Attrs, &i) && len(i.Columns) > 0 {

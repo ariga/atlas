@@ -725,7 +725,7 @@ table "t" {
 	require.True(t, ok)
 	require.Len(t, idx.Parts, 1)
 	require.Len(t, idx.Attrs, 1)
-	var concurrently IndexBuildParams
+	var concurrently Concurrently
 	require.True(t, sqlx.Has(idx.Attrs, &concurrently))
 	require.True(t, concurrently.Concurrently)
 }
@@ -759,7 +759,7 @@ func TestMarshalSpec_IndexConcurrently(t *testing.T) {
 				{SeqNo: 0, C: s.Tables[0].Columns[0]},
 			},
 			Attrs: []schema.Attr{
-				&IndexBuildParams{Concurrently: true},
+				&Concurrently{Concurrently: true},
 			},
 		},
 	}

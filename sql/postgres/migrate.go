@@ -787,7 +787,7 @@ func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) {
 			b.P("UNIQUE")
 		}
 		b.P("INDEX")
-		if c := (IndexBuildParams{}); sqlx.Has(idx.Attrs, &c) {
+		if c := (Concurrently{}); sqlx.Has(idx.Attrs, &c) {
 			if c.Concurrently {
 				b.P("CONCURRENTLY")
 			}
@@ -954,7 +954,7 @@ func (s *state) index(b *sqlx.Builder, idx *schema.Index) {
 	}
 	for _, attr := range idx.Attrs {
 		switch attr.(type) {
-		case *schema.Comment, *ConType, *IndexType, *IndexInclude, *IndexBuildParams, *IndexPredicate, *IndexStorageParams:
+		case *schema.Comment, *ConType, *IndexType, *IndexInclude, *Concurrently, *IndexPredicate, *IndexStorageParams:
 		default:
 			panic(fmt.Sprintf("unexpected index attribute: %T", attr))
 		}

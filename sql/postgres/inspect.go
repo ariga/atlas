@@ -772,13 +772,11 @@ type (
 		Columns []*schema.Column
 	}
 
-	// IndexBuildParams describes additional parameters for index creation.
-	IndexBuildParams struct {
+	// Concurrently describes the CONCURRENTLY clause to instruct Postgres
+	// to build or drop the index concurrently without blocking the current table.
+	// https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY
+	Concurrently struct {
 		schema.Attr
-
-		// Concurrently describes the CONCURRENTLY clause to instruct Postgres
-		// to build the index concurrently without blocking the current table.
-		// https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY
 		Concurrently bool
 	}
 
