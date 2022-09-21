@@ -178,6 +178,22 @@ module.exports = {
             to: '/guides',
             from: '/knowledge',
           },
+          {
+            to: '/guides/mysql/generated-columns',
+            from: '/knowledge/mysql/generated-columns',
+          },
+          {
+            to: '/guides/postgres/partial-indexes',
+            from: '/knowledge/postgres/partial-indexes',
+          },
+          {
+            to: '/guides/postgres/serial-columns',
+            from: '/knowledge/postgres/serial-columns',
+          },
+          {
+            to: '/guides/ddl',
+            from: '/knowledge/ddl',
+          },          
         ],
       },
     ],
