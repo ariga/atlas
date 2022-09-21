@@ -84,7 +84,7 @@ func TestMigrate_Apply(t *testing.T) {
 		"-u", openSQLite(t, ""),
 	)
 	require.NoError(t, err)
-	require.Equal(t, "The migration directory is synced with the database, no migration files to execute\n", s)
+	require.Equal(t, "No migration files to execute\n", s)
 
 	// Fails on directory without sum file.
 	require.NoError(t, os.Rename(
@@ -222,10 +222,10 @@ func TestMigrate_Apply(t *testing.T) {
 		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test2.db")),
 		"--tx-mode", "none",
 	)
-	require.NoError(t, exec.Command("cp", "-r", "testdata/sqlite2", "testdata/sqlite3").Run())
 	t.Cleanup(func() {
-		require.NoError(t, os.RemoveAll("testdata/sqlite3"))
+		_ = os.RemoveAll("testdata/sqlite3")
 	})
+	require.NoError(t, exec.Command("cp", "-r", "testdata/sqlite2", "testdata/sqlite3").Run())
 	sed(t, "s/col_2/col_5/g", "testdata/sqlite3/20220318104615_second.sql")
 	_, err = runCmd(Root, "migrate", "hash", "--dir", "file://testdata/sqlite3")
 	require.NoError(t, err)
@@ -262,10 +262,10 @@ func TestMigrate_Apply(t *testing.T) {
 		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test2.db")),
 	)
 	require.NoError(t, err)
-	require.Equal(t, "The migration directory is synced with the database, no migration files to execute\n", s)
+	require.Equal(t, "No migration files to execute\n", s)
 
-	// Dry run will print the statements in second migration file without executing them. No changes to the revisions
-	// will be done.
+	// Dry run will print the statements in second migration file without executing them.
+	// No changes to the revisions will be done.
 	s, err = runCmd(
 		Root, "migrate", "apply",
 		"--dir", "file://testdata/sqlite",
@@ -291,6 +291,80 @@ func TestMigrate_Apply(t *testing.T) {
 	revs, err = rrw.ReadRevisions(ctx)
 	require.NoError(t, err)
 	require.Len(t, revs, 1)
+	MigrateFlags.Apply.DryRun = false // global flag, undo for rest of tests
+
+	// Prerequisites for testing missing migration behavior.
+	c1, err = sqlclient.Open(ctx, fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test3.db")))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, c1.Close())
+	})
+	require.NoError(t, os.Rename(
+		"testdata/sqlite3/20220318104615_second.sql",
+		"testdata/sqlite3/20220318104616_second.sql",
+	))
+	_, err = runCmd(Root, "migrate", "hash", "--dir", "file://testdata/sqlite3")
+	require.NoError(t, err)
+	rrw, err = migrate2.NewEntRevisions(ctx, c1)
+	require.NoError(t, err)
+	require.NoError(t, rrw.Migrate(ctx))
+
+	// No changes if the last revision has a greater version than the last migration.
+	require.NoError(t, rrw.WriteRevision(ctx, &migrate.Revision{Version: "zzz"}))
+	s, err = runCmd(
+		Root, "migrate", "apply",
+		"--dir", "file://testdata/sqlite3",
+		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test3.db")),
+	)
+	require.NoError(t, err)
+	require.Equal(t, "No migration files to execute\n", s)
+
+	// If the revision is before the last but after the first migration, only the last one is pending.
+	_, err = c1.ExecContext(ctx, "DROP table `atlas_schema_revisions`")
+	require.NoError(t, err)
+	s, err = runCmd(
+		Root, "migrate", "apply", "1",
+		"--dir", "file://testdata/sqlite3",
+		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test3.db")),
+	)
+	require.NoError(t, rrw.WriteRevision(ctx, &migrate.Revision{Version: "20220318104615"}))
+	require.NoError(t, err)
+	s, err = runCmd(
+		Root, "migrate", "apply",
+		"--dir", "file://testdata/sqlite3",
+		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test3.db")),
+	)
+	require.NoError(t, err)
+	require.NotContains(t, s, "20220318104614")                     // log to version
+	require.Contains(t, s, "20220318104616")                        // log to version
+	require.Contains(t, s, "ALTER TABLE `tbl` ADD `col_2` bigint;") // logs statement
+
+	// If the revision is before every migration file, every file is pending.
+	_, err = c1.ExecContext(ctx, "DROP table `atlas_schema_revisions`; DROP table `tbl`;")
+	require.NoError(t, err)
+	require.NoError(t, rrw.Migrate(ctx))
+	require.NoError(t, rrw.WriteRevision(ctx, &migrate.Revision{Version: "1"}))
+	require.NoError(t, err)
+	s, err = runCmd(
+		Root, "migrate", "apply",
+		"--dir", "file://testdata/sqlite3",
+		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test3.db")),
+	)
+	require.NoError(t, err)
+	require.Contains(t, s, "20220318104614")                         // log to version
+	require.Contains(t, s, "20220318104616")                         // log to version
+	require.Contains(t, s, "CREATE TABLE tbl (`col` int NOT NULL);") // logs statement
+	require.Contains(t, s, "ALTER TABLE `tbl` ADD `col_2` bigint;")  // logs statement
+
+	// If the revision is partially applied, error out.
+	require.NoError(t, rrw.WriteRevision(ctx, &migrate.Revision{Version: "z", Description: "z", Total: 1}))
+	require.NoError(t, err)
+	_, err = runCmd(
+		Root, "migrate", "apply",
+		"--dir", "file://testdata/sqlite3",
+		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test3.db")),
+	)
+	require.EqualError(t, err, migrate.MissingMigrationError{Version: "z", Description: "z"}.Error())
 }
 
 func TestMigrate_ApplyBaseline(t *testing.T) {
@@ -303,7 +377,7 @@ func TestMigrate_ApplyBaseline(t *testing.T) {
 		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
 	)
 	require.NoError(t, err)
-	require.Contains(t, s, "The migration directory is synced with the database, no migration files to execute")
+	require.Contains(t, s, "No migration files to execute")
 
 	// Next run without baseline should run the migration from the baseline.
 	s, err = runCmd(

@@ -195,6 +195,53 @@ func TestExecutor_Pending(t *testing.T) {
 	p, err = ex.Pending(context.Background())
 	require.NoError(t, err)
 	require.Len(t, p, 1)
+
+	// Nothing to do if all migrations are applied.
+	rev3.Applied = rev3.Total
+	*rrw = []*migrate.Revision{rev1, rev2, rev3}
+	p, err = ex.Pending(context.Background())
+	require.ErrorIs(t, err, migrate.ErrNoPendingFiles)
+	require.Len(t, p, 0)
+
+	// If there is a revision in the past with no existing migration, we don't care.
+	rev3.Applied = rev3.Total
+	*rrw = []*migrate.Revision{{Version: "2.11"}, rev3}
+	p, err = ex.Pending(context.Background())
+	require.ErrorIs(t, err, migrate.ErrNoPendingFiles)
+	require.Len(t, p, 0)
+
+	// If only the last migration file is applied, we expect there are no pending files.
+	*rrw = []*migrate.Revision{rev3}
+	p, err = ex.Pending(context.Background())
+	require.ErrorIs(t, err, migrate.ErrNoPendingFiles)
+	require.Len(t, p, 0)
+
+	// If the last applied revision has no matching migration file, and the last
+	// migration version precedes that revision, there is nothing to do.
+	*rrw = []*migrate.Revision{{Version: "5"}}
+	p, err = ex.Pending(context.Background())
+	require.ErrorIs(t, err, migrate.ErrNoPendingFiles)
+	require.Len(t, p, 0)
+
+	// The applied revision precedes every migration file. Expect all files pending.
+	*rrw = []*migrate.Revision{{Version: "1.1"}}
+	p, err = ex.Pending(context.Background())
+	require.NoError(t, err)
+	require.Len(t, p, 3)
+
+	// All except one file are applied. The latest revision does not exist and its version is smaller than the last
+	// migration file. Expect the last file pending.
+	*rrw = []*migrate.Revision{rev1, rev2, {Version: "2.11"}}
+	p, err = ex.Pending(context.Background())
+	require.NoError(t, err)
+	require.Len(t, p, 1)
+	require.Equal(t, rev3.Version, p[0].Version())
+
+	// If the last revision is partially applied and the matching migration file does not exist, we have a problem.
+	*rrw = []*migrate.Revision{{Version: "deleted", Description: "desc", Total: 1}}
+	p, err = ex.Pending(context.Background())
+	require.EqualError(t, err, migrate.MissingMigrationError{Version: "deleted", Description: "desc"}.Error())
+	require.Len(t, p, 0)
 }
 
 func TestExecutor(t *testing.T) {

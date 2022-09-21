@@ -18,7 +18,7 @@ cmpshow users users.sql
 cmpshow pets pets.sql
 
 atlas migrate apply --url URL 1
-stdout 'The migration directory is synced with the database, no migration files to execute'
+stdout 'No migration files to execute'
 
 clearSchema
 
@@ -33,7 +33,7 @@ cmpshow users users.sql
 cmpshow pets pets.sql
 
 atlas migrate apply --url URL 1
-stdout 'The migration directory is synced with the database, no migration files to execute'
+stdout 'No migration files to execute'
 
 clearSchema
 

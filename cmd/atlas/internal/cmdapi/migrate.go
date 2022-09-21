@@ -368,7 +368,7 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if errors.Is(err, migrate.ErrNoPendingFiles) {
-		cmd.Println("The migration directory is synced with the database, no migration files to execute")
+		cmd.Println("No migration files to execute")
 		return nil
 	}
 	if n > 0 {
@@ -629,7 +629,7 @@ func CmdMigrateDiffRun(cmd *cobra.Command, args []string) error {
 	var cerr migrate.NotCleanError
 	switch {
 	case errors.Is(err, migrate.ErrNoPlan):
-		cmd.Println("The migration directory is synced with the desired state, no changes to be made")
+		cmd.Println("No changes to be made")
 		return nil
 	case errors.As(err, &cerr) && dev.URL.Schema == "" && desired.Schema != "":
 		return fmt.Errorf("dev database is not clean (%s). Add a schema to the URL to limit the scope of the connection", cerr.Reason)
