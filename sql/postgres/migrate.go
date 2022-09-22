@@ -788,9 +788,7 @@ func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) {
 		}
 		b.P("INDEX")
 		if c := (Concurrently{}); sqlx.Has(idx.Attrs, &c) {
-			if c.Concurrently {
-				b.P("CONCURRENTLY")
-			}
+			b.P("CONCURRENTLY")
 		}
 		if idx.Name != "" {
 			b.Ident(idx.Name)
