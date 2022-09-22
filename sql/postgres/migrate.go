@@ -801,9 +801,7 @@ func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) {
 			Reverse: func() string {
 				b := s.Build("DROP INDEX")
 				if c := (Concurrently{}); sqlx.Has(idx.Attrs, &c) {
-					if c.Concurrently {
-						b.P("CONCURRENTLY")
-					}
+					b.P("CONCURRENTLY")
 				}
 				// Unlike MySQL, the DROP command is not attached to ALTER TABLE.
 				// Therefore, we print indexes with their qualified name, because
