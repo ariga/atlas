@@ -1,0 +1,62 @@
+! atlas migrate set-revision
+stderr 'Error: accepts 1 arg\(s\), received 0'
+
+! atlas migrate set-revision foo bar
+stderr 'Error: accepts 1 arg\(s\), received 2'
+
+! atlas migrate set-revision 0
+stderr 'Error: checksum file not found'
+stdout 'You have a checksum error in your migration directory.'
+
+atlas migrate hash
+
+# Works on fresh database.
+atlas migrate set-revision 1 --url URL
+atlas migrate apply 1 --url URL --dry-run
+stdout 'Migrating to version 2 from 1'
+
+# Set to second last migration.
+atlas migrate set-revision 2 --url URL
+atlas migrate apply 1 --url URL --dry-run
+stdout 'Migrating to version 3 from 2'
+
+# Have one migration applied, manual do second, set revision and continue apply.
+clearSchema
+atlas migrate apply 1 --url URL
+stdout 'Migrating to version 1'
+atlas migrate set-revision 2 --url URL
+atlas migrate apply 1 --url URL --dry-run
+stdout 'Migrating to version 3 from 2'
+
+# Set to non-existing migration requires flag.
+! atlas migrate set-revision 4 --url URL
+stdout 'You are trying to set a revision with no matching migration file\.\s+If this is your intention, consider adding the --ignore-missing-migration flag\.'
+stderr 'Error: migration with version "4" not found'
+
+# If set to version succeeding every migration, nothing to do.
+atlas migrate set-revision 4 --url URL --ignore-missing-migration
+atlas migrate apply 1 --url URL
+stdout 'No migration files to execute'
+
+# Partially applied (error), fix with set-revision.
+clearSchema
+mv broken.sql migrations/4.sql
+atlas migrate hash
+! atlas migrate apply --url URL --tx-mode none
+stdout 'Migrating to version 4'
+atlas migrate set-revision 4 --url URL
+atlas migrate apply --url URL
+stdout 'No migration files to execute'
+
+-- migrations/1_first.sql --
+CREATE TABLE `users` (`id` bigint NOT NULL, `age` bigint NOT NULL, `name` varchar(255) NOT NULL, PRIMARY KEY (`id`));
+
+-- migrations/2_second.sql --
+ALTER TABLE `users` ADD UNIQUE INDEX `age` (`age`);
+
+-- migrations/3_third.sql --
+CREATE TABLE `pets` (`id` bigint NOT NULL, `name` varchar(255) NOT NULL, PRIMARY KEY (`id`));
+
+-- broken.sql --
+CREATE TABLE `vets` (`id` bigint NOT NULL, `name` varchar(255) NOT NULL, PRIMARY KEY(`id`));
+asdf ALTER TABLE `users` ADD UNIQUE INDEX `name` (`name`);

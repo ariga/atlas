@@ -803,12 +803,20 @@ func CmdMigrateSetRevisionRun(cmd *cobra.Command, args []string) error {
 	if err := checkRevisionSchemaClarity(cmd, client); err != nil {
 		return err
 	}
+	// Ensure revision table exists.
+	rrw, err := entRevisions(cmd.Context(), client)
+	if err != nil {
+		return err
+	}
+	if err := rrw.Migrate(cmd.Context()); err != nil {
+		return err
+	}
 	// Wrap manipulation in a transaction.
 	tx, err := client.Tx(cmd.Context(), nil)
 	if err != nil {
 		return err
 	}
-	rrw, err := entRevisions(cmd.Context(), tx.Client)
+	rrw, err = entRevisions(cmd.Context(), tx.Client)
 	if err != nil {
 		return err
 	}

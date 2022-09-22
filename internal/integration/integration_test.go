@@ -648,6 +648,22 @@ func (r *rrw) ReadRevision(_ context.Context, v string) (*migrate.Revision, erro
 	return nil, migrate.ErrRevisionNotExist
 }
 
+func (r *rrw) DeleteRevision(_ context.Context, v string) error {
+	i := -1
+	for j, r := range *r {
+		if r.Version == v {
+			i = j
+			break
+		}
+	}
+	if i == -1 {
+		return nil
+	}
+	copy((*r)[i:], (*r)[i+1:])
+	*r = (*r)[:len(*r)-1]
+	return nil
+}
+
 func (r *rrw) ReadRevisions(context.Context) ([]*migrate.Revision, error) {
 	return *r, nil
 }
@@ -655,6 +671,8 @@ func (r *rrw) ReadRevisions(context.Context) ([]*migrate.Revision, error) {
 func (r *rrw) clean() {
 	*r = []*migrate.Revision{}
 }
+
+var _ migrate.RevisionReadWriter = (*rrw)(nil)
 
 func buildCmd(t *testing.T) (string, error) {
 	td := t.TempDir()
