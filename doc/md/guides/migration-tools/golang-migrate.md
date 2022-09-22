@@ -40,10 +40,10 @@ you work with (such as MySQL or PostgreSQL).
 To spin up a local MySQL database that will be used as a dev-database in our example, run:
 
 ```text
-docker run --rm --name atlas-db-dev -d -p 3306:3306 -e MYSQL_DATABASE=dev -e MYSQL_ROOT_PASSWORD=pass  mysql:8
+docker run --rm --name atlas-db-dev -d -p 3306:3306 -e MYSQL_DATABASE=dev -e MYSQL_ROOT_PASSWORD=pass mysql:8
 ```
 
-As reference for the next steps, the URL for the dev-database will be:
+As reference for the next steps, the URL for the Dev Database will be:
 ```text
 mysql://root:pass@localhost:3306/dev
 ```
@@ -168,7 +168,7 @@ as it exists in the migrations directory to the desired state that is defined by
 file:
 
 ```text
-atlas migrate diff --dir file://migrations  --dev-url mysql://root:pass@localhost:3306/dev --to file://schema.hcl --dir-format golang-migrate add_blog_posts 
+atlas migrate diff --dir file://migrations --dev-url mysql://root:pass@localhost:3306/dev --to file://schema.hcl --dir-format golang-migrate add_blog_posts 
 ```
 
 Notice that we used the `dir-format` flag to specify that we're using `golang-migrate` as the directory format.
@@ -199,7 +199,7 @@ DROP TABLE `blog_posts`;
 
 In some cases, it is convenient to use the schema of an existing database as the desired
 state for your project, instead of defining it in HCL. Atlas's `migrate diff` command can
-plan a migration from your current migration directory sum to a schema. Suppose such a 
+plan a migration from your current migration directory state to an existing schema. Suppose such a 
 database was available at `mysql://root:pass@some.db.io:3306/db`, a migration to the state
 of that database could be planned by running:
 
