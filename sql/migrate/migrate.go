@@ -391,6 +391,18 @@ var (
 	ErrRevisionNotExist = errors.New("sql/migrate: revision not found")
 )
 
+// MissingMigrationError is returned if a revision is partially applied but
+// the matching migration file is not found in the migration directory.
+type MissingMigrationError struct{ Version, Description string }
+
+// Error implements error.
+func (e MissingMigrationError) Error() string {
+	return fmt.Sprintf(
+		"sql/migrate: missing migration: revision %q is partially applied but migration file was not found",
+		fmt.Sprintf("%s_%s.sql", e.Version, e.Description),
+	)
+}
+
 // NewExecutor creates a new Executor with default values.
 func NewExecutor(drv Driver, dir Dir, rrw RevisionReadWriter, opts ...ExecutorOption) (*Executor, error) {
 	if drv == nil {
@@ -523,12 +535,27 @@ func (e *Executor) Pending(ctx context.Context) ([]File, error) {
 		}
 		pending = migrations[idx:]
 	default:
-		last := revs[len(revs)-1]
-		idx := FilesLastIndex(migrations, func(f File) bool {
-			return f.Version() == last.Version
-		})
+		var (
+			last      = revs[len(revs)-1]
+			partially = last.Applied != last.Total
+			fn        = func(f File) bool { return f.Version() <= last.Version }
+		)
+		if partially {
+			// If the last file is partially applied, we need to find the matching migration file in order to
+			// continue execution at the correct statement.
+			fn = func(f File) bool { return f.Version() == last.Version }
+		}
+		// Consider all migration files having a version < the latest revision version as pending. If the
+		// last revision is partially applied, it is considered pending as well.
+		idx := FilesLastIndex(migrations, fn)
 		if idx == -1 {
-			return nil, fmt.Errorf("version %q exists in revisions table was not found in the migration directory", last.Version)
+			// If we cannot find the matching migration version for a partially applied migration,
+			// error out since we cannot determine how to proceed from here.
+			if partially {
+				return nil, &MissingMigrationError{last.Version, last.Description}
+			}
+			// All migrations have a higher version than the latest revision. Take every migration file as pending.
+			return migrations, nil
 		}
 		// If this file was not partially applied, take the next one.
 		if last.Applied == last.Total {

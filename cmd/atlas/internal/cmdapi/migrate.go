@@ -368,7 +368,7 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if errors.Is(err, migrate.ErrNoPendingFiles) {
-		cmd.Println("The migration directory is synced with the database, no migration files to execute")
+		cmd.Println("No migration files to execute")
 		return nil
 	}
 	if n > 0 {

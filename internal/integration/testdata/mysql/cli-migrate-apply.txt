@@ -22,7 +22,7 @@ cmpshow users users.sql
 cmpshow pets pets.sql
 
 atlas migrate apply --url URL --revisions-schema $db
-stdout 'The migration directory is synced with the database, no migration files to execute'
+stdout 'No migration files to execute'
 
 clearSchema
 
@@ -41,7 +41,7 @@ cmpshow users users.sql
 cmpshow pets pets.sql
 
 atlas migrate apply --url URL --revisions-schema $db 1
-stdout 'The migration directory is synced with the database, no migration files to execute'
+stdout 'No migration files to execute'
 
 -- migrations/1_first.sql --
 CREATE TABLE `users` (`id` bigint NOT NULL AUTO_INCREMENT, `age` bigint NOT NULL, `name` varchar(255) NOT NULL, PRIMARY KEY (`id`)) CHARSET utf8mb4 COLLATE utf8mb4_bin;
