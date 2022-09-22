@@ -9,7 +9,7 @@ slug: /guides/migration-tools/golang-migrate
 CLI and Go library that's widely used in the Go community.
 * [Atlas](https://atlasgo.io) is an open-source tool for inspecting, planning, verifying and
  executing schema changes to your database. 
-* Developers using `golang-migrate` users can use Atlas to automatically plan schema migrations
+* Developers using `golang-migrate` can use Atlas to automatically plan schema migrations
   for them, based on the desired state of their schema instead of crafting them by hand. 
 
 ## Automatic migration planning for golang-migrate
