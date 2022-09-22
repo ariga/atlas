@@ -402,7 +402,7 @@ func TestPlanChanges(t *testing.T) {
 										{C: users.Columns[0]},
 									},
 									Attrs: []schema.Attr{
-										&Concurrently{Concurrently: true},
+										&Concurrently{},
 									},
 								},
 							},
