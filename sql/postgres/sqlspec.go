@@ -334,7 +334,6 @@ func convertIndex(spec *sqlspec.Index, t *schema.Table) (*schema.Index, error) {
 		}
 		idx.Attrs = append(idx.Attrs, &IndexInclude{Columns: include})
 	}
-
 	return idx, nil
 }
 
