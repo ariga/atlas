@@ -777,7 +777,6 @@ type (
 	// https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY
 	Concurrently struct {
 		schema.Attr
-		Concurrently bool
 	}
 
 	// NoInherit attribute defines the NO INHERIT flag for CHECK constraint.
