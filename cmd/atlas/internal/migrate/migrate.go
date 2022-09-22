@@ -114,6 +114,11 @@ func (r *EntRevisions) WriteRevision(ctx context.Context, rev *migrate.Revision)
 		Exec(ctx)
 }
 
+// DeleteRevision deletes a revision from the revisions table.
+func (r *EntRevisions) DeleteRevision(ctx context.Context, v string) error {
+	return r.ec.Revision.DeleteOneID(v).Exec(ctx)
+}
+
 // Migrate attempts to create / update the revisions table. This is separated since Ent attempts to wrap the migration
 // execution in a transaction and assumes the underlying connection is of type *sql.DB, which is not true for actually
 // reading and writing revisions.

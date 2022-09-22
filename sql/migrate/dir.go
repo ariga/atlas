@@ -315,7 +315,8 @@ func (f *HashFile) UnmarshalText(b []byte) error {
 	return sc.Err()
 }
 
-func (f HashFile) sumByName(n string) (string, error) {
+// SumByName returns the hash for a migration file by its name.
+func (f HashFile) SumByName(n string) (string, error) {
 	for _, f := range f {
 		if f.N == n {
 			return f.H, nil
