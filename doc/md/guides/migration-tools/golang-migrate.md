@@ -72,7 +72,7 @@ h1:y6Zf8kAu98N0jAR+yemZ7zT91nUyECLWzxxR7GHJIAg=
 1_init.up.sql h1:kOM+4u8UsYvvjQMFYAo2hDv5rbx3Mdbh9GvhmbpS0Ig=
 ```
 
-### Convert you migrations directory to an Atlas schema file
+## Convert you migrations directory to an Atlas schema file
 
 With Atlas, users can describe their desired schema using an [HCL-based configuration language](https://atlasgo.io/atlas-schema/sql-resources).
 As a new user coming from an existing project, you may not want to learn this new language and
@@ -135,7 +135,7 @@ schema "migrate-current" {
 }
 ```
 
-### Plan a new migration
+## Plan a new migration
 
 Next, let's modify the desired state of our database by modifying the `schema.hcl` file 
 to add a new table `blog_posts` that has a foreign key pointing to the existing `users`
@@ -195,7 +195,7 @@ And a down migration:
 DROP TABLE `blog_posts`;
 ```
 
-### Alternative: use an existing database as the desired state
+## Alternative: use an existing database as the desired state
 
 In some cases, it is convenient to use the schema of an existing database as the desired
 state for your project, instead of defining it in HCL. Atlas's `migrate diff` command can
