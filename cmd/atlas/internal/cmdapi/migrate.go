@@ -209,7 +209,7 @@ This command should be used whenever a manual change in the migration directory 
 	MigrateSetRevisionCmd = &cobra.Command{
 		Use:   "set-revision <version> [flags]",
 		Short: "Override the revision history.",
-		Long: `'atlas migrate set-revision' edits the revision table to consider all migrations up to and including <version>
+		Long: `'atlas migrate set-revision' edits the revision table to consider all migrations up to and including the given version
 to be applied. This command is usually used after manually making changes to the managed database.`,
 		Example: `  atlas migrate set-revision 3 --url mysql://user:pass@localhost:3306/
   atlas migrate set-revision 4 --env local
@@ -328,6 +328,8 @@ func init() {
 	receivesEnv(MigrateCmd)
 }
 
+const applyLockValue = "atlas_migrate_execute"
+
 // CmdMigrateApplyRun is the command executed when running the CLI with 'migrate apply' args.
 func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 	var (
@@ -356,7 +358,7 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 	defer c.Close()
 	// Acquire a lock.
 	if l, ok := c.Driver.(schema.Locker); ok {
-		unlock, err := l.Lock(cmd.Context(), "atlas_migrate_execute", 0)
+		unlock, err := l.Lock(cmd.Context(), applyLockValue, 0)
 		if err != nil {
 			return fmt.Errorf("acquiring database lock: %w", err)
 		}
@@ -789,6 +791,15 @@ func CmdMigrateSetRevisionRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	defer client.Close()
+	// Acquire a lock.
+	if l, ok := client.Driver.(schema.Locker); ok {
+		unlock, err := l.Lock(cmd.Context(), applyLockValue, 0)
+		if err != nil {
+			return fmt.Errorf("acquiring database lock: %w", err)
+		}
+		// If unlocking fails notify the user about it.
+		defer cobra.CheckErr(unlock())
+	}
 	if err := checkRevisionSchemaClarity(cmd, client); err != nil {
 		return err
 	}

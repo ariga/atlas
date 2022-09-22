@@ -8,7 +8,6 @@
 package main
 
 import (
-	"io"
 	"log"
 	"os"
 	"strings"
@@ -17,7 +16,6 @@ import (
 	"ariga.io/atlas/cmd/atlas/internal/cmdapi"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/cobra/doc"
 )
 
 func main() {
@@ -65,13 +63,4 @@ func prepare(cmd *cobra.Command, existing []*block, depth int) []*block {
 		existing = prepare(child, existing, depth+1)
 	}
 	return existing
-}
-
-func markdown(cmd *cobra.Command, w io.Writer, i int) {
-	if i > 0 {
-		doc.GenMarkdown(cmd, w)
-	}
-	for _, child := range cmd.Commands() {
-		markdown(child, w, i+1)
-	}
 }
