@@ -5,7 +5,7 @@ slug: /guides/migration-tools/golang-migrate
 ---
 
 ## TL;DR
-* [`golang-migrate`](https://github.com/golang-migrate/migrate) is a popular database migrations
+* [`golang-migrate`](https://github.com/golang-migrate/migrate) is a popular database migration
 CLI tool and Go library that's widely used in the Go community.
 * [Atlas](https://atlasgo.io) is an open-source tool for inspecting, planning, verifying and
  executing schema changes to your database. 
