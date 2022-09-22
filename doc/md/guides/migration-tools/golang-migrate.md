@@ -26,7 +26,7 @@ connection string to a database that contains the desired schema.
 In this guide, we will show how Atlas can automatically plan schema migrations for
 golang-migrate users. 
 
-## Pre-requeisites
+## Prerequisites
 
 * An existing project with a `golang-migrate` migrations directory.
 * Docker
@@ -40,7 +40,7 @@ you work with (such as MySQL or PostgreSQL).
 To spin up a local MySQL database that will be used as a dev-database in our example, run:
 
 ```text
-docker run --name atlas-db-dev -d -p 3306:3306 -e MYSQL_DATABASE=dev -e MYSQL_ROOT_PASSWORD=pass  mysql:8
+docker run --rm --name atlas-db-dev -d -p 3306:3306 -e MYSQL_DATABASE=dev -e MYSQL_ROOT_PASSWORD=pass  mysql:8
 ```
 
 As reference for the next steps, the URL for the dev-database will be:
@@ -64,7 +64,8 @@ atlas migrate hash --dir file://migrations
 ```
 
 Observe a new file named `atlas.sum` was created in your migrations directory
-which contains a hash sum of each file in your directory. For example:
+which contains a hash sum of each file in your directory as well as a total sum.
+For example:
 ```text
 h1:y6Zf8kAu98N0jAR+yemZ7zT91nUyECLWzxxR7GHJIAg=
 1_init.down.sql h1:0zpQpoUZcacEatOD+DYXgYD1XvfWUC7EM+agXIRzKRU=
@@ -172,8 +173,8 @@ atlas migrate diff --dir file://migrations  --dev-url mysql://root:pass@localhos
 
 Notice that we used the `dir-format` flag to specify that we're using `golang-migrate` as the directory format.
 
-Hooray! Observe that two new files were created in the migrations directory:
-```text
+Hooray! Two new files were created in the migrations directory:
+```text {5-6}
 .
 ├── migrations
 │ ├── 1_init.down.sql
