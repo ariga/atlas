@@ -395,6 +395,17 @@ func TestPlanChanges(t *testing.T) {
 									},
 								},
 							},
+							&schema.AddIndex{
+								I: &schema.Index{
+									Name: "concurrently",
+									Parts: []*schema.IndexPart{
+										{C: users.Columns[0]},
+									},
+									Attrs: []schema.Attr{
+										&Concurrently{},
+									},
+								},
+							},
 						},
 					}
 				}(),
@@ -418,6 +429,10 @@ func TestPlanChanges(t *testing.T) {
 					{
 						Cmd:     `CREATE INDEX "include_key" ON "users" ("id") INCLUDE ("a", "b")`,
 						Reverse: `DROP INDEX "include_key"`,
+					},
+					{
+						Cmd:     `CREATE INDEX CONCURRENTLY "concurrently" ON "users" ("id")`,
+						Reverse: `DROP INDEX CONCURRENTLY "concurrently"`,
 					},
 					{
 						Cmd:     `COMMENT ON COLUMN "users" ."name" IS 'foo'`,

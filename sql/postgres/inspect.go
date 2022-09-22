@@ -772,6 +772,13 @@ type (
 		Columns []*schema.Column
 	}
 
+	// Concurrently describes the CONCURRENTLY clause to instruct Postgres
+	// to build or drop the index concurrently without blocking the current table.
+	// https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY
+	Concurrently struct {
+		schema.Attr
+	}
+
 	// NoInherit attribute defines the NO INHERIT flag for CHECK constraint.
 	// https://postgresql.org/docs/current/catalog-pg-constraint.html
 	NoInherit struct {

@@ -787,6 +787,9 @@ func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) {
 			b.P("UNIQUE")
 		}
 		b.P("INDEX")
+		if c := (Concurrently{}); sqlx.Has(idx.Attrs, &c) {
+			b.P("CONCURRENTLY")
+		}
 		if idx.Name != "" {
 			b.Ident(idx.Name)
 		}
@@ -797,6 +800,9 @@ func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) {
 			Comment: fmt.Sprintf("create index %q to table: %q", idx.Name, t.Name),
 			Reverse: func() string {
 				b := s.Build("DROP INDEX")
+				if c := (Concurrently{}); sqlx.Has(idx.Attrs, &c) {
+					b.P("CONCURRENTLY")
+				}
 				// Unlike MySQL, the DROP command is not attached to ALTER TABLE.
 				// Therefore, we print indexes with their qualified name, because
 				// the connection that executes the statements may not be attached
@@ -949,7 +955,7 @@ func (s *state) index(b *sqlx.Builder, idx *schema.Index) {
 	}
 	for _, attr := range idx.Attrs {
 		switch attr.(type) {
-		case *schema.Comment, *ConType, *IndexType, *IndexInclude, *IndexPredicate, *IndexStorageParams:
+		case *schema.Comment, *ConType, *IndexType, *IndexInclude, *Concurrently, *IndexPredicate, *IndexStorageParams:
 		default:
 			panic(fmt.Sprintf("unexpected index attribute: %T", attr))
 		}
