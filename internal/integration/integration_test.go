@@ -205,7 +205,7 @@ func testCLIMigrateApplyBC(t T, dialect string) {
 		"--url", t.url(""),
 	).CombinedOutput()
 	require.NoError(t, err, string(out))
-	require.Contains(t, string(out), "The migration directory is synced with the database")
+	require.Equal(t, "No migration files to execute\n", string(out))
 
 	// Connection to schema without flag will error.
 	out, err = exec.Command(
@@ -226,7 +226,7 @@ func testCLIMigrateApplyBC(t T, dialect string) {
 		"--revisions-schema", "atlas_schema_revisions",
 	).CombinedOutput()
 	require.NoError(t, err)
-	require.Contains(t, string(out), "The migration directory is synced with the database")
+	require.Equal(t, "No migration files to execute\n", string(out))
 
 	// Providing the flag to the schema instead will work as well.
 	t.migrate(
@@ -241,7 +241,7 @@ func testCLIMigrateApplyBC(t T, dialect string) {
 		"--revisions-schema", "bc_test",
 	).CombinedOutput()
 	require.NoError(t, err, string(out))
-	require.NotContains(t, string(out), "The migration directory is synced with the database")
+	require.NotContains(t, string(out), "No migration files to execute\n")
 
 	// Consecutive attempts do not need the flag anymore.
 	out, err = exec.Command(
@@ -251,7 +251,7 @@ func testCLIMigrateApplyBC(t T, dialect string) {
 		"--url", t.url("bc_test"),
 	).CombinedOutput()
 	require.NoError(t, err)
-	require.Contains(t, string(out), "The migration directory is synced with the database")
+	require.Equal(t, "No migration files to execute\n", string(out))
 
 	// Last, if bound to schema and no "old" behavior extra schema does
 	// exist, the revision table will be saved in the connected one.
