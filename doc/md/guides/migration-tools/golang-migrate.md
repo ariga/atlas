@@ -43,7 +43,7 @@ To spin up a local MySQL database that will be used as a dev-database in our exa
 docker run --name atlas-db-dev -d -p 3306:3306 -e MYSQL_DATABASE=dev -e MYSQL_ROOT_PASSWORD=pass  mysql:8
 ```
 
-For reference for the next steps, the URL for the dev-database will be:
+As reference for the next steps, the URL for the dev-database will be:
 ```text
 mysql://root:pass@localhost:3306/dev
 ```
