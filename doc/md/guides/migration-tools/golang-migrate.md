@@ -18,7 +18,7 @@ Atlas can automatically plan database schema migrations for developers using `go
 Atlas plans migrations by calculating the diff between the _current_ state of the database,
 and it's _desired_ state. 
 
-For golang-migrate users, the current state which can be thought of as the sum of 
+For golang-migrate users, the current state can be thought of as the sum of 
 all _up_ migrations in a migration directory. The desired state can be provided to Atlas
 via an Atlas schema [HCL file](https://atlasgo.io/atlas-schema/sql-resources) or as a
 connection string to a database that contains the desired schema.
