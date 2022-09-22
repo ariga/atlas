@@ -125,6 +125,18 @@ module.exports = {
             ],
         },
         {
+            type: 'category',
+            label: 'Migration tools',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id:'guides/migration-tools/golang-migrate',
+                    label: 'golang-migrate'
+                }
+            ]
+        },
+        {
             type: 'doc',
             id: 'guides/ddl'
         },

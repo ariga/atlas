@@ -19,3 +19,7 @@ Welcome to the Atlas Guides.
 [Serial Type Columns](postgres/serial-columns.md)
 
 [Partial Indexes](postgres/partial-indexes.md)
+
+## Migration tools
+
+[`golang-migrate`](migration-tools/golang-migrate.md)
