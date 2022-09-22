@@ -4,7 +4,7 @@ title: Automatic migration planning for golang-migrate
 slug: /guides/migration-tools/golang-migrate
 ---
 
-## tl;dr
+## TL;DR
 * [`golang-migrate`](https://github.com/golang-migrate/migrate) is a popular database migrations
 CLI and Go library that's widely used in the Go community.
 * [Atlas](https://atlasgo.io) is an open-source tool for inspecting, planning, verifying and
