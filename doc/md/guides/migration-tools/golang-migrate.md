@@ -195,6 +195,18 @@ And a down migration:
 DROP TABLE `blog_posts`;
 ```
 
+### Alternative: use an existing database as the desired state
+
+In some cases, it is convenient to use the schema of an existing database as the desired
+state for your database, instead of defining it in HCL. Atlas's `migrate diff` command can
+plan a migration from your current migration directory sum to a schema. Suppose such a 
+database was available at `mysql://root:pass@some.db.io:3306/db`, a migration to the state
+of that database could be planned by running:
+
+```text
+atlas migrate diff --dir file://migrations --dev-url mysql://root:pass@localhost:3306/dev --to mysql://root:pass@some.db.io:3306/db --dir-format golang-migrate migration_name
+```
+
 ## Conclusion
 
 We began our demo by explaining how to set up a dev-database and `atlas.sum` file for your project. 
