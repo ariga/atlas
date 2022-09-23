@@ -78,6 +78,13 @@ With Atlas, users can describe their desired schema using an [HCL-based configur
 As a new user coming from an existing project, you may not want to learn this new language and
 prefer that Atlas will generate a schema file that reflects your existing schema. 
 
+:::info
+
+If you want to read the desired state from a database instead of an Atlas HCL schema file, 
+have a look [here](/guides/migration-tools/golang-migrate#alternative-use-an-existing-database-as-the-desired-state).
+
+:::
+
 Let's see how you can get your current schema from `golang-migrate` to the Atlas schema format.
 
 1\. Open a MySQL shell inside our running container:
