@@ -1,22 +1,22 @@
-! atlas migrate set-revision
+! atlas migrate set
 stderr 'Error: accepts 1 arg\(s\), received 0'
 
-! atlas migrate set-revision foo bar
+! atlas migrate set foo bar
 stderr 'Error: accepts 1 arg\(s\), received 2'
 
-! atlas migrate set-revision 0
+! atlas migrate set 0
 stderr 'Error: checksum file not found'
 stdout 'You have a checksum error in your migration directory.'
 
 atlas migrate hash
 
 # Works on fresh database.
-atlas migrate set-revision 1 --url URL
+atlas migrate set 1 --url URL
 atlas migrate apply 1 --url URL --dry-run
 stdout 'Migrating to version 2 from 1'
 
 # Set to second last migration.
-atlas migrate set-revision 2 --url URL
+atlas migrate set 2 --url URL
 atlas migrate apply 1 --url URL --dry-run
 stdout 'Migrating to version 3 from 2'
 
@@ -24,27 +24,26 @@ stdout 'Migrating to version 3 from 2'
 clearSchema
 atlas migrate apply 1 --url URL
 stdout 'Migrating to version 1'
-atlas migrate set-revision 2 --url URL
+atlas migrate set 2 --url URL
 atlas migrate apply 1 --url URL --dry-run
 stdout 'Migrating to version 3 from 2'
 
 # Set to non-existing migration requires flag.
-! atlas migrate set-revision 4 --url URL
-stdout 'You are trying to set a revision with no matching migration file\.\s+If this is your intention, consider adding the --ignore-missing-migration flag\.'
+! atlas migrate set 4 --url URL
 stderr 'Error: migration with version "4" not found'
 
-# If set to version succeeding every migration, nothing to do.
-atlas migrate set-revision 4 --url URL --ignore-missing-migration
-atlas migrate apply 1 --url URL
+# If set to last version, nothing to do.
+atlas migrate set 3 --url URL
+atlas migrate apply --url URL
 stdout 'No migration files to execute'
 
-# Partially applied (error), fix with set-revision.
+# Partially applied (error), fix with set.
 clearSchema
 mv broken.sql migrations/4.sql
 atlas migrate hash
 ! atlas migrate apply --url URL --tx-mode none
 stdout 'Migrating to version 4'
-atlas migrate set-revision 4 --url URL
+atlas migrate set 4 --url URL
 atlas migrate apply --url URL
 stdout 'No migration files to execute'
 

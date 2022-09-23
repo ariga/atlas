@@ -35,24 +35,23 @@ import (
 )
 
 const (
-	migrateFlagURL                  = "url"
-	migrateFlagDevURL               = "dev-url"
-	migrateFlagDir                  = "dir"
-	migrateFlagDirFormat            = "dir-format"
-	migrateFlagLog                  = "log"
-	migrateFlagRevisionsSchema      = "revisions-schema"
-	migrateFlagDryRun               = "dry-run"
-	migrateFlagTo                   = "to"
-	migrateFlagFrom                 = "from"
-	migrateFlagSchema               = "schema"
-	migrateLintLatest               = "latest"
-	migrateLintGitDir               = "git-dir"
-	migrateLintGitBase              = "git-base"
-	migrateDiffQualifier            = "qualifier"
-	migrateApplyAllowDirty          = "allow-dirty"
-	migrateApplyBaselineVersion     = "baseline"
-	migrateApplyTxMode              = "tx-mode"
-	migrateSetRevisionIgnoreMissing = "ignore-missing-migration"
+	migrateFlagURL              = "url"
+	migrateFlagDevURL           = "dev-url"
+	migrateFlagDir              = "dir"
+	migrateFlagDirFormat        = "dir-format"
+	migrateFlagLog              = "log"
+	migrateFlagRevisionsSchema  = "revisions-schema"
+	migrateFlagDryRun           = "dry-run"
+	migrateFlagTo               = "to"
+	migrateFlagFrom             = "from"
+	migrateFlagSchema           = "schema"
+	migrateLintLatest           = "latest"
+	migrateLintGitDir           = "git-dir"
+	migrateLintGitBase          = "git-base"
+	migrateDiffQualifier        = "qualifier"
+	migrateApplyAllowDirty      = "allow-dirty"
+	migrateApplyBaselineVersion = "baseline"
+	migrateApplyTxMode          = "tx-mode"
 )
 
 var (
@@ -85,9 +84,6 @@ var (
 			Latest  uint   // latest N migration files
 			GitDir  string // repository working dir
 			GitBase string // branch name to compare with
-		}
-		SetRevision struct {
-			IgnoreMissingMigration bool
 		}
 	}
 	// MigrateCmd represents the migrate command. It wraps several other sub-commands.
@@ -205,18 +201,17 @@ This command should be used whenever a manual change in the migration directory 
 		Args:    cobra.MaximumNArgs(1),
 		RunE:    CmdMigrateNewRun,
 	}
-	// MigrateSetRevisionCmd represents the 'atlas migrate set-revision' command.
-	MigrateSetRevisionCmd = &cobra.Command{
-		Use:   "set-revision <version> [flags]",
-		Short: "Override the revision history.",
-		Long: `'atlas migrate set-revision' edits the revision table to consider all migrations up to and including the given version
+	// MigrateSetCmd represents the 'atlas migrate set' command.
+	MigrateSetCmd = &cobra.Command{
+		Use:   "set <version> [flags]",
+		Short: "Set the current version of the migration history table.",
+		Long: `'atlas migrate set' edits the revision table to consider all migrations up to and including the given version
 to be applied. This command is usually used after manually making changes to the managed database.`,
 		Example: `  atlas migrate set-revision 3 --url mysql://user:pass@localhost:3306/
   atlas migrate set-revision 4 --env local
-  atlas migrate set-revision 1.2.4 --url mysql://user:pass@localhost:3306/my_db --revision-schema my_revisions
-  atlas migrate set-revision foo --env dev --ignore-missing-migration`,
+  atlas migrate set-revision 1.2.4 --url mysql://user:pass@localhost:3306/my_db --revision-schema my_revisions`,
 		Args: cobra.ExactArgs(1),
-		RunE: CmdMigrateSetRevisionRun,
+		RunE: CmdMigrateSetRun,
 	}
 	// MigrateStatusCmd represents the 'atlas migrate status' command.
 	MigrateStatusCmd = &cobra.Command{
@@ -266,7 +261,7 @@ func init() {
 	MigrateCmd.AddCommand(MigrateStatusCmd)
 	MigrateCmd.AddCommand(MigrateLintCmd)
 	MigrateCmd.AddCommand(MigrateImportCmd)
-	MigrateCmd.AddCommand(MigrateSetRevisionCmd)
+	MigrateCmd.AddCommand(MigrateSetCmd)
 	// Reusable flags.
 	urlFlag := func(f *string, name, short string, set *pflag.FlagSet) {
 		set.StringVarP(f, name, short, "", "[driver://username:password@address/dbname?param=value] select a database using the URL format")
@@ -312,9 +307,8 @@ func init() {
 	// Status flags.
 	urlFlag(&MigrateFlags.URL, migrateFlagURL, "u", MigrateStatusCmd.Flags())
 	revisionsFlag(MigrateStatusCmd.Flags())
-	// Set-Revision flags.
-	urlFlag(&MigrateFlags.URL, migrateFlagURL, "u", MigrateSetRevisionCmd.Flags())
-	MigrateSetRevisionCmd.Flags().BoolVarP(&MigrateFlags.SetRevision.IgnoreMissingMigration, migrateSetRevisionIgnoreMissing, "", false, "allow setting a version for to a non-existing migration")
+	// Set flags.
+	urlFlag(&MigrateFlags.URL, migrateFlagURL, "u", MigrateSetCmd.Flags())
 	// Hash flags.
 	MigrateHashCmd.Flags().Bool("force", false, "")
 	cobra.CheckErr(MigrateHashCmd.Flags().MarkDeprecated("force", "you can safely omit it."))
@@ -776,8 +770,8 @@ func CmdMigrateNewRun(_ *cobra.Command, args []string) error {
 	return migrate.NewPlanner(nil, dir, migrate.PlanFormat(f)).WritePlan(&migrate.Plan{Name: name})
 }
 
-// CmdMigrateSetRevisionRun is the command executed when running the CLI with 'migrate set-revision' args.
-func CmdMigrateSetRevisionRun(cmd *cobra.Command, args []string) error {
+// CmdMigrateSetRun is the command executed when running the CLI with 'migrate set' args.
+func CmdMigrateSetRun(cmd *cobra.Command, args []string) error {
 	dir, err := dir(false)
 	if err != nil {
 		return err
@@ -785,6 +779,12 @@ func CmdMigrateSetRevisionRun(cmd *cobra.Command, args []string) error {
 	avail, err := dir.Files()
 	if err != nil {
 		return err
+	}
+	// Check if the target version does exist in the migration directory.
+	if idx := migrate.FilesLastIndex(avail, func(f migrate.File) bool {
+		return f.Version() == args[0]
+	}); idx == -1 {
+		return fmt.Errorf("migration with version %q not found", args[0])
 	}
 	client, err := sqlclient.Open(cmd.Context(), MigrateFlags.URL)
 	if err != nil {
@@ -889,23 +889,6 @@ func CmdMigrateSetRevisionRun(cmd *cobra.Command, args []string) error {
 				Type:            migrate.RevisionTypeResolved,
 				ExecutedAt:      time.Now(),
 				Hash:            h,
-				OperatorVersion: operatorVersion(),
-			}); err != nil {
-				return err
-			}
-		}
-		// If the target version is not found in the migration directory,
-		// the user has to pass the --ignore-missing-migration flag.
-		if len(avail) == 0 || args[0] > avail[len(avail)-1].Version() {
-			if !MigrateFlags.SetRevision.IgnoreMissingMigration {
-				cmd.Println(`You are trying to set a revision with no matching migration file. 
-If this is your intention, consider adding the --ignore-missing-migration flag.`)
-				return fmt.Errorf("migration with version %q not found", args[0])
-			}
-			if err := rrw.WriteRevision(cmd.Context(), &migrate.Revision{
-				Version:         args[0],
-				Type:            migrate.RevisionTypeResolved,
-				ExecutedAt:      time.Now(),
 				OperatorVersion: operatorVersion(),
 			}); err != nil {
 				return err
