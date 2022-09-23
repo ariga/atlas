@@ -201,6 +201,18 @@ This command should be used whenever a manual change in the migration directory 
 		Args:    cobra.MaximumNArgs(1),
 		RunE:    CmdMigrateNewRun,
 	}
+	// MigrateSetCmd represents the 'atlas migrate set' command.
+	MigrateSetCmd = &cobra.Command{
+		Use:   "set <version> [flags]",
+		Short: "Set the current version of the migration history table.",
+		Long: `'atlas migrate set' edits the revision table to consider all migrations up to and including the given version
+to be applied. This command is usually used after manually making changes to the managed database.`,
+		Example: `  atlas migrate set-revision 3 --url mysql://user:pass@localhost:3306/
+  atlas migrate set-revision 4 --env local
+  atlas migrate set-revision 1.2.4 --url mysql://user:pass@localhost:3306/my_db --revision-schema my_revisions`,
+		Args: cobra.ExactArgs(1),
+		RunE: CmdMigrateSetRun,
+	}
 	// MigrateStatusCmd represents the 'atlas migrate status' command.
 	MigrateStatusCmd = &cobra.Command{
 		Use:   "status [flags]",
@@ -249,6 +261,7 @@ func init() {
 	MigrateCmd.AddCommand(MigrateStatusCmd)
 	MigrateCmd.AddCommand(MigrateLintCmd)
 	MigrateCmd.AddCommand(MigrateImportCmd)
+	MigrateCmd.AddCommand(MigrateSetCmd)
 	// Reusable flags.
 	urlFlag := func(f *string, name, short string, set *pflag.FlagSet) {
 		set.StringVarP(f, name, short, "", "[driver://username:password@address/dbname?param=value] select a database using the URL format")
@@ -294,6 +307,8 @@ func init() {
 	// Status flags.
 	urlFlag(&MigrateFlags.URL, migrateFlagURL, "u", MigrateStatusCmd.Flags())
 	revisionsFlag(MigrateStatusCmd.Flags())
+	// Set flags.
+	urlFlag(&MigrateFlags.URL, migrateFlagURL, "u", MigrateSetCmd.Flags())
 	// Hash flags.
 	MigrateHashCmd.Flags().Bool("force", false, "")
 	cobra.CheckErr(MigrateHashCmd.Flags().MarkDeprecated("force", "you can safely omit it."))
@@ -306,6 +321,8 @@ func init() {
 	cobra.CheckErr(MigrateLintCmd.MarkFlagRequired(migrateFlagDevURL))
 	receivesEnv(MigrateCmd)
 }
+
+const applyLockValue = "atlas_migrate_execute"
 
 // CmdMigrateApplyRun is the command executed when running the CLI with 'migrate apply' args.
 func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
@@ -335,7 +352,7 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 	defer c.Close()
 	// Acquire a lock.
 	if l, ok := c.Driver.(schema.Locker); ok {
-		unlock, err := l.Lock(cmd.Context(), "atlas_migrate_execute", 0)
+		unlock, err := l.Lock(cmd.Context(), applyLockValue, 0)
 		if err != nil {
 			return fmt.Errorf("acquiring database lock: %w", err)
 		}
@@ -560,10 +577,9 @@ func (tx *tx) commit() error {
 }
 
 func executorOptions(l migrate.Logger) []migrate.ExecutorOption {
-	v, _ := parse(version)
 	opts := []migrate.ExecutorOption{
 		migrate.WithLogger(l),
-		migrate.WithOperatorVersion("Atlas CLI - " + v),
+		migrate.WithOperatorVersion(operatorVersion()),
 	}
 	if MigrateFlags.Apply.AllowDirty {
 		opts = append(opts, migrate.WithAllowDirty(true))
@@ -575,6 +591,11 @@ func executorOptions(l migrate.Logger) []migrate.ExecutorOption {
 		opts = append(opts, migrate.WithFromVersion(v))
 	}
 	return opts
+}
+
+func operatorVersion() string {
+	v, _ := parse(version)
+	return "Atlas CLI - " + v
 }
 
 // CmdMigrateDiffRun is the command executed when running the CLI with 'migrate diff' args.
@@ -747,6 +768,140 @@ func CmdMigrateNewRun(_ *cobra.Command, args []string) error {
 		name = args[0]
 	}
 	return migrate.NewPlanner(nil, dir, migrate.PlanFormat(f)).WritePlan(&migrate.Plan{Name: name})
+}
+
+// CmdMigrateSetRun is the command executed when running the CLI with 'migrate set' args.
+func CmdMigrateSetRun(cmd *cobra.Command, args []string) error {
+	dir, err := dir(false)
+	if err != nil {
+		return err
+	}
+	avail, err := dir.Files()
+	if err != nil {
+		return err
+	}
+	// Check if the target version does exist in the migration directory.
+	if idx := migrate.FilesLastIndex(avail, func(f migrate.File) bool {
+		return f.Version() == args[0]
+	}); idx == -1 {
+		return fmt.Errorf("migration with version %q not found", args[0])
+	}
+	client, err := sqlclient.Open(cmd.Context(), MigrateFlags.URL)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	// Acquire a lock.
+	if l, ok := client.Driver.(schema.Locker); ok {
+		unlock, err := l.Lock(cmd.Context(), applyLockValue, 0)
+		if err != nil {
+			return fmt.Errorf("acquiring database lock: %w", err)
+		}
+		// If unlocking fails notify the user about it.
+		defer cobra.CheckErr(unlock())
+	}
+	if err := checkRevisionSchemaClarity(cmd, client); err != nil {
+		return err
+	}
+	// Ensure revision table exists.
+	rrw, err := entRevisions(cmd.Context(), client)
+	if err != nil {
+		return err
+	}
+	if err := rrw.Migrate(cmd.Context()); err != nil {
+		return err
+	}
+	// Wrap manipulation in a transaction.
+	tx, err := client.Tx(cmd.Context(), nil)
+	if err != nil {
+		return err
+	}
+	rrw, err = entRevisions(cmd.Context(), tx.Client)
+	if err != nil {
+		return err
+	}
+	revs, err := rrw.ReadRevisions(cmd.Context())
+	if err != nil {
+		return err
+	}
+	if err := func() error {
+		for _, r := range revs {
+			// Check all existing revisions and ensure they precede the given version. If we encounter a partially
+			// applied revision, or one with errors, mark them "fixed".
+			switch {
+			// remove revision to keep linear history
+			case r.Version > args[0]:
+				if err := rrw.DeleteRevision(cmd.Context(), r.Version); err != nil {
+					return err
+				}
+			// keep, but if with error mark "fixed"
+			case r.Version == args[0] && (r.Error != "" || r.Total != r.Applied):
+				r.Type = migrate.RevisionTypeExecute | migrate.RevisionTypeResolved
+				if err := rrw.WriteRevision(cmd.Context(), r); err != nil {
+					return err
+				}
+			}
+		}
+		revs, err = rrw.ReadRevisions(cmd.Context())
+		if err != nil {
+			return err
+		}
+		// If the target version succeeds the last revision, mark
+		// migrations applied, until we reach the target version.
+		var pending []migrate.File
+		switch {
+		case len(revs) == 0:
+			// Take every file until we reach target version.
+			for _, f := range avail {
+				if f.Version() > args[0] {
+					break
+				}
+				pending = append(pending, f)
+			}
+		case args[0] > revs[len(revs)-1].Version:
+		loop:
+			// Take every file succeeding the last revision until we reach target version.
+			for _, f := range avail {
+				switch {
+				case f.Version() <= revs[len(revs)-1].Version:
+					// Migration precedes last revision.
+				case f.Version() > args[0]:
+					// Migration succeeds target revision.
+					break loop
+				default: // between last revision and target
+					pending = append(pending, f)
+				}
+			}
+		}
+		// Mark every pending file as applied.
+		sum, err := dir.Checksum()
+		if err != nil {
+			return err
+		}
+		for _, f := range pending {
+			h, err := sum.SumByName(f.Name())
+			if err != nil {
+				return err
+			}
+			if err := rrw.WriteRevision(cmd.Context(), &migrate.Revision{
+				Version:         f.Version(),
+				Description:     f.Desc(),
+				Type:            migrate.RevisionTypeResolved,
+				ExecutedAt:      time.Now(),
+				Hash:            h,
+				OperatorVersion: operatorVersion(),
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		if err2 := tx.Rollback(); err2 != nil {
+			err = fmt.Errorf("%v: %w", err2, err)
+		}
+		return err
+	}
+	return tx.Commit()
 }
 
 // CmdMigrateStatusRun is the command executed when running the CLI with 'migrate status' args.

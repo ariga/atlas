@@ -172,6 +172,8 @@ type (
 		ReadRevision(context.Context, string) (*Revision, error)
 		// WriteRevision saves the revision to the storage.
 		WriteRevision(context.Context, *Revision) error
+		// DeleteRevision deletes a revision by version from the storage.
+		DeleteRevision(context.Context, string) error
 	}
 
 	// A Revision denotes an applied migration in a deployment. Used to track migration executions state of a database.
@@ -576,7 +578,7 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 	if err != nil {
 		return fmt.Errorf("sql/migrate: execute: compute hash: %w", err)
 	}
-	hash, err := hf.sumByName(m.Name())
+	hash, err := hf.SumByName(m.Name())
 	if err != nil {
 		return fmt.Errorf("sql/migrate: execute: scanning checksum from %q: %w", m.Name(), err)
 	}
@@ -774,6 +776,11 @@ func (NopRevisionReadWriter) ReadRevision(context.Context, string) (*Revision, e
 
 // WriteRevision implements RevisionsReadWriter.WriteRevision.
 func (NopRevisionReadWriter) WriteRevision(context.Context, *Revision) error {
+	return nil
+}
+
+// DeleteRevision implements RevisionsReadWriter.DeleteRevision.
+func (NopRevisionReadWriter) DeleteRevision(context.Context, string) error {
 	return nil
 }
 

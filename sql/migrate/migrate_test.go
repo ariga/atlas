@@ -571,12 +571,28 @@ func (rrw *mockRevisionReadWriter) WriteRevision(_ context.Context, r *migrate.R
 }
 
 func (rrw *mockRevisionReadWriter) ReadRevision(_ context.Context, v string) (*migrate.Revision, error) {
-	for _, r := range []*migrate.Revision(*rrw) {
+	for _, r := range *rrw {
 		if r.Version == v {
 			return r, nil
 		}
 	}
 	return nil, migrate.ErrRevisionNotExist
+}
+
+func (rrw *mockRevisionReadWriter) DeleteRevision(_ context.Context, v string) error {
+	i := -1
+	for j, r := range *rrw {
+		if r.Version == v {
+			i = j
+			break
+		}
+	}
+	if i == -1 {
+		return nil
+	}
+	copy((*rrw)[i:], (*rrw)[i+1:])
+	*rrw = (*rrw)[:len(*rrw)-1]
+	return nil
 }
 
 func (rrw *mockRevisionReadWriter) ReadRevisions(context.Context) ([]*migrate.Revision, error) {

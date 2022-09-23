@@ -14,7 +14,7 @@ require (
 	github.com/lib/pq v1.10.6
 	github.com/mattn/go-sqlite3 v1.14.14
 	github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e
-	github.com/rogpeppe/go-internal v1.8.2-0.20220112175052-f3cb5c2c6412
+	github.com/rogpeppe/go-internal v1.9.0
 	github.com/stretchr/testify v1.8.0
 	github.com/zclconf/go-cty v1.10.0 // indirect
 )

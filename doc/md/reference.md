@@ -234,6 +234,33 @@ atlas migrate new [name]
   atlas migrate new my-new-migration
 ```
 
+### atlas migrate set
+
+Set the current version of the migration history table.
+
+#### Usage
+```
+atlas migrate set <version> [flags]
+```
+
+#### Details
+'atlas migrate set' edits the revision table to consider all migrations up to and including the given version
+to be applied. This command is usually used after manually making changes to the managed database.
+
+#### Example
+
+```
+  atlas migrate set-revision 3 --url mysql://user:pass@localhost:3306/
+  atlas migrate set-revision 4 --env local
+  atlas migrate set-revision 1.2.4 --url mysql://user:pass@localhost:3306/my_db --revision-schema my_revisions
+```
+#### Flags
+```
+  -u, --url string   [driver://username:password@address/dbname?param=value] select a database using the URL format
+
+```
+
+
 ### atlas migrate status
 
 Get information about the current migration status.
