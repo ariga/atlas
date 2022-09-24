@@ -42,7 +42,7 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.InspectOptions) (s *schema.Schema, err error) {
 	schemas, err := i.schemas(ctx, &schema.InspectRealmOption{Schemas: []string{name}})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("issue lookings up schema: %w", err)
 	}
 	switch n := len(schemas); {
 	case n == 0:
@@ -52,6 +52,7 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 	}
 	r := schema.NewRealm(schemas...)
 	if sqlx.ModeInspectSchema(opts).Is(schema.InspectTables) {
+
 		if err := i.inspectTables(ctx, r, opts); err != nil {
 			return nil, err
 		}
@@ -86,11 +87,11 @@ func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *sche
 
 // table returns the table from the database, or a NotExistError if the table was not found.
 func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.InspectOptions) error {
-	var schemas []string
+	var schemas []interface{}
 	for _, s := range realm.Schemas {
 		schemas = append(schemas, s.Name)
 	}
-	rows, err := i.QueryContext(ctx, tablesQuery, schemas)
+	rows, err := i.QueryContext(ctx, tablesQuery, schemas...)
 	if err != nil {
 		return err
 	}
@@ -427,13 +428,10 @@ func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) 
 	)
 	if opts != nil {
 		switch n := len(opts.Schemas); {
-		case n == 1 && opts.Schemas[0] == "":
-			query = fmt.Sprintf(schemasQueryArgs, "= CURRENT_SCHEMA()")
-		case n == 1 && opts.Schemas[0] != "":
-			query = fmt.Sprintf(schemasQueryArgs, "= $1")
-			args = append(args, opts.Schemas[0])
+		case n == 0:
+			query = schemasQuery
 		case n > 0:
-			query = fmt.Sprintf(schemasQueryArgs, "IN ("+nArgs(0, len(opts.Schemas))+")")
+			query = schemasQueryArgs
 			for _, s := range opts.Schemas {
 				args = append(args, s)
 			}
@@ -465,7 +463,12 @@ func (i *inspect) querySchema(ctx context.Context, query string, s *schema.Schem
 	for _, t := range s.Tables {
 		tables = append(tables, t.Name)
 	}
-	return i.QueryContext(ctx, query, s.Name, tables)
+	var args []interface{}
+	args = append(args, s.Name)
+	for _, t := range tables {
+		args = append(args, t)
+	}
+	return i.QueryContext(ctx, query, args...)
 }
 
 func nArgs(start, n int) string {
@@ -725,7 +728,7 @@ const (
 	schemasQuery = "SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') ORDER BY schema_name"
 
 	// Query to list specific database schemas.
-	schemasQueryArgs = "SELECT schema_name FROM information_schema.schemata WHERE schema_name = %s ORDER BY schema_name"
+	schemasQueryArgs = "SELECT schema_name FROM information_schema.schemata WHERE schema_name IN UNNEST (@schemas) ORDER BY schema_name"
 
 	// Query to list table information.
 	tablesQuery = `
