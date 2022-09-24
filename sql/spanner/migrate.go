@@ -18,7 +18,7 @@ import (
 type planApply struct{ conn }
 
 // PlanChanges returns a migration plan for the given schema changes.
-func (p *planApply) PlanChanges(ctx context.Context, name string, changes []schema.Change) (*migrate.Plan, error) {
+func (p *planApply) PlanChanges(ctx context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
 	s := &state{
 		conn: p.conn,
 		Plan: migrate.Plan{
@@ -26,6 +26,9 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 			Reversible:    true,
 			Transactional: true,
 		},
+	}
+	for _, o := range opts {
+		o(&s.PlanOptions)
 	}
 	if err := s.plan(ctx, changes); err != nil {
 		return nil, err
@@ -41,8 +44,8 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 // ApplyChanges applies the changes on the database. An error is returned
 // if the driver is unable to produce a plan to it, or one of the statements
 // is failed or unsupported.
-func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change) error {
-	return sqlx.ApplyChanges(ctx, changes, p)
+func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change, opts ...migrate.PlanOption) error {
+	return sqlx.ApplyChanges(ctx, changes, p, opts...)
 }
 
 // state represents the state of a planning. It's not part of
@@ -51,6 +54,7 @@ func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change) e
 type state struct {
 	conn
 	migrate.Plan
+	migrate.PlanOptions
 	skipFKs bool
 }
 
