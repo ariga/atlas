@@ -6,6 +6,7 @@ package cmdapi
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -365,6 +366,39 @@ func TestMigrate_Apply(t *testing.T) {
 		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test3.db")),
 	)
 	require.EqualError(t, err, migrate.MissingMigrationError{Version: "z", Description: "z"}.Error())
+}
+
+func TestMigrate_ApplyTxMode(t *testing.T) {
+	for _, mode := range []string{"none", "file", "all"} {
+		t.Run(mode, func(t *testing.T) {
+			p := t.TempDir()
+			// Apply the first 2 migrations.
+			s, err := runCmd(
+				Root, "migrate", "apply",
+				"--dir", "file://testdata/sqlitetx",
+				"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
+				"--tx-mode", mode,
+				"2",
+			)
+			require.NoError(t, err)
+			require.NotEmpty(t, s)
+			db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")))
+			require.NoError(t, err)
+			var n int
+			require.NoError(t, db.QueryRow("SELECT COUNT(*) FROM `friendships`").Scan(&n))
+			require.Equal(t, 2, n)
+
+			// Apply the rest.
+			s, err = runCmd(
+				Root, "migrate", "apply",
+				"--dir", "file://testdata/sqlitetx",
+				"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
+				"--tx-mode", mode,
+			)
+			require.NoError(t, db.QueryRow("SELECT COUNT(*) FROM `friendships`").Scan(&n))
+			require.Equal(t, 2, n)
+		})
+	}
 }
 
 func TestMigrate_ApplyBaseline(t *testing.T) {
