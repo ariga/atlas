@@ -6,6 +6,8 @@ ariga.io/atlas v0.6.5-0.20220907135005-d80f5e6b79cf h1:sqRKqa3gdunWKmv4G7FC0j4RO
 ariga.io/atlas v0.6.5-0.20220907135005-d80f5e6b79cf/go.mod h1:ft47uSh5hWGDCmQC9DsztZg6Xk+KagM5Ts/mZYKb9JE=
 ariga.io/atlas v0.7.0 h1:daEFdUsyNm7EHyzcMfjWwq/fVv48fCfad+dIGyobY1k=
 ariga.io/atlas v0.7.0/go.mod h1:ft47uSh5hWGDCmQC9DsztZg6Xk+KagM5Ts/mZYKb9JE=
+ariga.io/atlas v0.7.1-0.20220925103247-db83ea0cd178 h1:/fhqvnyyi4h5epqhIsDQW9NLkklDnQ0GRgQqfUhl9Pw=
+ariga.io/atlas v0.7.1-0.20220925103247-db83ea0cd178/go.mod h1:ft47uSh5hWGDCmQC9DsztZg6Xk+KagM5Ts/mZYKb9JE=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 entgo.io/ent v0.11.1 h1:im67R+2W3Nee2bNS2YnoYz8oAF0Qz4AOlIvKRIAEISY=
