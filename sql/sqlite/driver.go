@@ -35,7 +35,6 @@ type (
 	conn struct {
 		schema.ExecQuerier
 		// System variables that are set on `Open`.
-		fkEnabled  bool
 		version    string
 		collations []string
 	}
@@ -67,11 +66,11 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 		c   = conn{ExecQuerier: db}
 		ctx = context.Background()
 	)
-	rows, err := db.QueryContext(ctx, "SELECT sqlite_version(), foreign_keys from pragma_foreign_keys")
+	rows, err := db.QueryContext(ctx, "SELECT sqlite_version()")
 	if err != nil {
-		return nil, fmt.Errorf("sqlite: query version and foreign_keys pragma: %w", err)
+		return nil, fmt.Errorf("sqlite: query version pragma: %w", err)
 	}
-	if err := sqlx.ScanOne(rows, &c.version, &c.fkEnabled); err != nil {
+	if err := sqlx.ScanOne(rows, &c.version); err != nil {
 		return nil, fmt.Errorf("sqlite: scan version and foreign_keys pragma: %w", err)
 	}
 	if rows, err = db.QueryContext(ctx, "SELECT name FROM pragma_collation_list()"); err != nil {

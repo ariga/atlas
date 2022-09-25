@@ -85,7 +85,7 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) (err error) {
 	}
 	// Disable foreign-keys enforcement if it is required
 	// by one of the changes in the plan.
-	if s.skipFKs && s.conn.fkEnabled {
+	if s.skipFKs {
 		// Callers should note that these 2 pragmas are no-op in transactions,
 		// and therefore, should not call BEGIN manually. https://sqlite.org/pragma.html#pragma_foreign_keys
 		s.Changes = append([]*migrate.Change{{Cmd: "PRAGMA foreign_keys = off", Comment: "disable the enforcement of foreign-keys constraints"}}, s.Changes...)
