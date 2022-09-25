@@ -133,7 +133,6 @@ const (
 	TypeJSON           = "JSON"
 )
 
-// SQLite generated columns types.
 const (
 	virtual = "VIRTUAL"
 	stored  = "STORED"
