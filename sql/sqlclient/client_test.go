@@ -96,6 +96,11 @@ func TestClient_Tx(t *testing.T) {
 		sqlclient.RegisterDriverOpener(func(db schema.ExecQuerier) (migrate.Driver, error) {
 			return &mockDriver{db: db}, nil
 		}),
+		sqlclient.RegisterTxOpener(func(ctx context.Context, db *sql.DB, opts *sql.TxOptions) (*sqlclient.Tx, error) {
+			tx, err := db.BeginTx(ctx, opts)
+			require.NoError(t, err)
+			return &sqlclient.Tx{Tx: tx, Close: func() error { return nil }}, nil
+		}),
 	)
 
 	c, err := sqlclient.Open(context.Background(), "tx://")
@@ -107,6 +112,7 @@ func TestClient_Tx(t *testing.T) {
 	_, err = tx.ExecContext(context.Background(), stmt)
 	require.NoError(t, err)
 	require.NoError(t, tx.Commit())
+	require.NotNil(t, tx.Close)
 
 	// Rollback works as well.
 	tx, err = c.Tx(context.Background(), nil)

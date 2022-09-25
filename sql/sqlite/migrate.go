@@ -87,7 +87,7 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) (err error) {
 	// by one of the changes in the plan.
 	if s.skipFKs {
 		// Callers should note that these 2 pragmas are no-op in transactions,
-		// and therefore, should not call BEGIN manually. https://sqlite.org/pragma.html#pragma_foreign_keys
+		// See: https://sqlite.org/pragma.html#pragma_foreign_keys.
 		s.Changes = append([]*migrate.Change{{Cmd: "PRAGMA foreign_keys = off", Comment: "disable the enforcement of foreign-keys constraints"}}, s.Changes...)
 		s.append(&migrate.Change{Cmd: "PRAGMA foreign_keys = on", Comment: "enable back the enforcement of foreign-keys constraints"})
 	}
