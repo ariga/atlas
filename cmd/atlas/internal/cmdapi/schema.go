@@ -89,8 +89,7 @@ migration.`,
   atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" -f schema.hcl --dry-run
   atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" -f schema.hcl
   atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -f schema.hcl
-  atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f schema.hcl
-  atlas schema apply -u "spanner://projects/PROJECT/instances/INSTANCE/databases/DATABASE" -f atlas.hcl"`,
+  atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f schema.hcl`,
 	}
 
 	// SchemaClean represents the 'atlas schema clean' subcommand.
@@ -127,8 +126,7 @@ flag.
 		Example: `  atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname"
   atlas schema inspect -u "mariadb://user:pass@localhost:3306/" --schema=schemaA,schemaB -s schemaC
   atlas schema inspect --url "postgres://user:pass@host:port/dbname?sslmode=disable"
-  atlas schema inspect -u "sqlite://file:ex1.db?_fk=1"
-  atlas schema inspect -u "spanner://projects/PROJECT/instances/INSTANCE/databases/DATABASE"`,
+  atlas schema inspect -u "sqlite://file:ex1.db?_fk=1"`,
 	}
 
 	// SchemaFmt represents the 'atlas schema fmt' subcommand.
@@ -288,15 +286,6 @@ func CmdInspectRun(cmd *cobra.Command, _ []string) error {
 		Schemas: schemas,
 		Exclude: SchemaFlags.Exclude,
 	})
-	fmt.Fprintln(os.Stderr, "realm results:", err)
-	fmt.Fprintln(os.Stderr, "realm results:", len(s.Schemas), err)
-
-	for _, sch := range s.Schemas {
-		fmt.Fprintln(os.Stderr, "schema results:", len(sch.Tables), err)
-		for _, tbl := range sch.Tables {
-			fmt.Fprintln(os.Stderr, "table results:", tbl.Name, len(tbl.Columns), err)
-		}
-	}
 	if err != nil {
 		return err
 	}
