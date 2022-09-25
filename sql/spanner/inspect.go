@@ -8,7 +8,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
@@ -29,7 +28,6 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 	if err != nil {
 		return nil, fmt.Errorf("issue in schemas(): %w", err)
 	}
-	fmt.Fprintln(os.Stderr, "schemas:", len(schemas), schemas[0].Name)
 	r := schema.NewRealm(schemas...)
 	if len(schemas) == 0 || !sqlx.ModeInspectRealm(opts).Is(schema.InspectTables) {
 		return r, nil
@@ -113,11 +111,9 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 			return fmt.Errorf("invalid table name: %q", name.String)
 		}
 		sName := tSchema.String
-		fmt.Fprintln(os.Stderr, "table sname:", sName, name.String)
 		if sName == "" {
 			sName = defaultSchemaNameAlias
 		}
-		fmt.Fprintln(os.Stderr, "table sname:", sName, name.String)
 		s, ok := realm.Schema(sName)
 		if !ok {
 			return fmt.Errorf("schema %q was not found in realm", tSchema.String)
@@ -126,7 +122,6 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 			Name: name.String,
 		}
 		s.AddTables(t)
-		fmt.Fprintln(os.Stderr, "added table:", t.Name, t.Schema.Name)
 		// TODO(tmc): handle parentTable, onDeleteAction, spannerState as attrs
 	}
 	if rows.Err() != nil {
@@ -486,11 +481,11 @@ func (i *inspect) querySchema(ctx context.Context, query string, s *schema.Schem
 	for _, t := range s.Tables {
 		tables = append(tables, t.Name)
 	}
-	name := s.Name
-	if name == defaultSchemaNameAlias {
-		name = ""
+	sName := s.Name
+	if sName == defaultSchemaNameAlias {
+		sName = ""
 	}
-	return i.QueryContext(ctx, query, s.Name, tables)
+	return i.QueryContext(ctx, query, sName, tables)
 }
 
 func nArgs(start, n int) string {
