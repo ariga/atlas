@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -20,12 +21,15 @@ type inspect struct{ conn }
 
 var _ schema.Inspector = (*inspect)(nil)
 
+const defaultSchemaNameAlias = "default"
+
 // InspectRealm returns schema descriptions of all resources in the given realm.
 func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOption) (*schema.Realm, error) {
 	schemas, err := i.schemas(ctx, opts)
 	if err != nil {
 		return nil, fmt.Errorf("issue in schemas(): %w", err)
 	}
+	fmt.Fprintln(os.Stderr, "schemas:", len(schemas), schemas[0].Name)
 	r := schema.NewRealm(schemas...)
 	if len(schemas) == 0 || !sqlx.ModeInspectRealm(opts).Is(schema.InspectTables) {
 		return r, nil
@@ -87,13 +91,17 @@ func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *sche
 
 // table returns the table from the database, or a NotExistError if the table was not found.
 func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.InspectOptions) error {
-	var schemas []interface{}
+	var schemas []string
 	for _, s := range realm.Schemas {
-		schemas = append(schemas, s.Name)
+		sName := s.Name
+		if s.Name == defaultSchemaNameAlias {
+			sName = ""
+		}
+		schemas = append(schemas, sName)
 	}
-	rows, err := i.QueryContext(ctx, tablesQuery, schemas...)
+	rows, err := i.QueryContext(ctx, tablesQuery, schemas)
 	if err != nil {
-		return err
+		return fmt.Errorf("QueryContext issue: %w", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -102,14 +110,23 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 			return fmt.Errorf("scan table information: %w", err)
 		}
 		if !sqlx.ValidString(name) {
-			return fmt.Errorf("invalid able name: %q", name.String)
+			return fmt.Errorf("invalid table name: %q", name.String)
 		}
-		s, ok := realm.Schema(tSchema.String)
+		sName := tSchema.String
+		fmt.Fprintln(os.Stderr, "table sname:", sName, name.String)
+		if sName == "" {
+			sName = defaultSchemaNameAlias
+		}
+		fmt.Fprintln(os.Stderr, "table sname:", sName, name.String)
+		s, ok := realm.Schema(sName)
 		if !ok {
 			return fmt.Errorf("schema %q was not found in realm", tSchema.String)
 		}
-		t := &schema.Table{Name: name.String}
+		t := &schema.Table{
+			Name: name.String,
+		}
 		s.AddTables(t)
+		fmt.Fprintln(os.Stderr, "added table:", t.Name, t.Schema.Name)
 		// TODO(tmc): handle parentTable, onDeleteAction, spannerState as attrs
 	}
 	if rows.Err() != nil {
@@ -220,7 +237,7 @@ func columnType(c *columnDesc) schema.Type {
 // enumValues fills enum columns with their values from the database.
 func (i *inspect) enumValues(ctx context.Context, s *schema.Schema) error {
 	var (
-		args  []interface{}
+		args  []any
 		ids   = make(map[int64][]*schema.EnumType)
 		query = "SELECT enumtypid, enumlabel FROM pg_enum WHERE enumtypid IN (%s)"
 	)
@@ -423,7 +440,7 @@ func (i *inspect) addChecks(s *schema.Schema, rows *sql.Rows) error {
 // schemas returns the list of the schemas in the database.
 func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) ([]*schema.Schema, error) {
 	var (
-		args  []interface{}
+		args  []any
 		query = schemasQuery
 	)
 	if opts != nil {
@@ -433,6 +450,9 @@ func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) 
 		case n > 0:
 			query = schemasQueryArgs
 			for _, s := range opts.Schemas {
+				if s == defaultSchemaNameAlias {
+					s = ""
+				}
 				args = append(args, s)
 			}
 		}
@@ -447,6 +467,9 @@ func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) 
 		var name string
 		if err := rows.Scan(&name); err != nil {
 			return nil, err
+		}
+		if name == "" {
+			name = defaultSchemaNameAlias
 		}
 		schemas = append(schemas, &schema.Schema{
 			Name: name,
@@ -463,12 +486,11 @@ func (i *inspect) querySchema(ctx context.Context, query string, s *schema.Schem
 	for _, t := range s.Tables {
 		tables = append(tables, t.Name)
 	}
-	var args []interface{}
-	args = append(args, s.Name)
-	for _, t := range tables {
-		args = append(args, t)
+	name := s.Name
+	if name == defaultSchemaNameAlias {
+		name = ""
 	}
-	return i.QueryContext(ctx, query, args...)
+	return i.QueryContext(ctx, query, s.Name, tables)
 }
 
 func nArgs(start, n int) string {

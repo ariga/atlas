@@ -161,7 +161,7 @@ func QualifyReferences(tableSpecs []*sqlspec.Table, realm *schema.Realm) error {
 	for _, t := range tableSpecs {
 		sname, err := SchemaName(t.Schema)
 		if err != nil {
-			return err
+			return fmt.Errorf("specutil: cannot extract schema name for table %q: %w", t.Name, err)
 		}
 		s1, ok := realm.Schema(sname)
 		if !ok {

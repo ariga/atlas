@@ -290,7 +290,7 @@ func (s *state) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
 
 func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.Change) error {
 	var (
-		args       []interface{}
+		args       []any
 		fromC, toC []string
 	)
 	for _, column := range to.Columns {
