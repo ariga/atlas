@@ -73,7 +73,7 @@ func findTableSpec(tableSpecs []*sqlspec.Table, schemaName, tableName string) (*
 	for _, tbl := range tableSpecs {
 		n, err := SchemaName(tbl.Schema)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("specutil: cannot extract schema name for table %q: %w", tbl.Name, err)
 		}
 		if n == schemaName && tbl.Name == tableName {
 			return tbl, nil

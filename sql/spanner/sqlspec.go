@@ -24,7 +24,7 @@ type doc struct {
 }
 
 // evalSpec evaluates an Atlas DDL document using an unmarshaler into v by using the input.
-func evalSpec(p *hclparse.Parser, v interface{}, input map[string]string) error {
+func evalSpec(p *hclparse.Parser, v any, input map[string]string) error {
 	var d doc
 	if err := hclState.Eval(p, &d, input); err != nil {
 		return err
@@ -50,7 +50,7 @@ func evalSpec(p *hclparse.Parser, v interface{}, input map[string]string) error 
 }
 
 // MarshalSpec marshals v into an Atlas DDL document using a schemahcl.Marshaler.
-func MarshalSpec(v interface{}, marshaler schemahcl.Marshaler) ([]byte, error) {
+func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 	return specutil.Marshal(v, marshaler, schemaSpec)
 }
 
@@ -164,12 +164,12 @@ var TypeRegistry = schemahcl.NewRegistry(
 var (
 	hclState = schemahcl.New(
 		schemahcl.WithTypes(TypeRegistry.Specs()),
-		schemahcl.WithScopedEnums("table.column.as.type", stored, virtual),
-		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
-		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
+		// schemahcl.WithScopedEnums("table.column.as.type", stored, virtual),
+		// schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
+		// schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
 	)
 	// MarshalHCL marshals v into an Atlas HCL DDL document.
-	MarshalHCL = schemahcl.MarshalerFunc(func(v interface{}) ([]byte, error) {
+	MarshalHCL = schemahcl.MarshalerFunc(func(v any) ([]byte, error) {
 		return MarshalSpec(v, hclState)
 	})
 	// EvalHCL implements the schemahcl.Evaluator interface.
