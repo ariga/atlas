@@ -288,6 +288,7 @@ func CmdInspectRun(cmd *cobra.Command, _ []string) error {
 		Schemas: schemas,
 		Exclude: SchemaFlags.Exclude,
 	})
+	fmt.Fprintln(os.Stderr, "realm results:", err)
 	fmt.Fprintln(os.Stderr, "realm results:", len(s.Schemas), err)
 
 	for _, sch := range s.Schemas {

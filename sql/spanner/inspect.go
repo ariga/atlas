@@ -93,14 +93,15 @@ func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *sche
 func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.InspectOptions) error {
 	var schemas []string
 	for _, s := range realm.Schemas {
+		sName := s.Name
 		if s.Name == defaultSchemaNameAlias {
-			s.Name = ""
+			sName = ""
 		}
-		schemas = append(schemas, s.Name)
+		schemas = append(schemas, sName)
 	}
 	rows, err := i.QueryContext(ctx, tablesQuery, schemas)
 	if err != nil {
-		return err
+		return fmt.Errorf("QueryContext issue: %w", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -109,7 +110,7 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 			return fmt.Errorf("scan table information: %w", err)
 		}
 		if !sqlx.ValidString(name) {
-			return fmt.Errorf("invalid able name: %q", name.String)
+			return fmt.Errorf("invalid table name: %q", name.String)
 		}
 		sName := tSchema.String
 		fmt.Fprintln(os.Stderr, "table sname:", sName, name.String)
@@ -117,7 +118,7 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 			sName = defaultSchemaNameAlias
 		}
 		fmt.Fprintln(os.Stderr, "table sname:", sName, name.String)
-		s, ok := realm.Schema(tSchema.String)
+		s, ok := realm.Schema(sName)
 		if !ok {
 			return fmt.Errorf("schema %q was not found in realm", tSchema.String)
 		}
