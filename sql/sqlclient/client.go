@@ -307,12 +307,13 @@ func DriverOpener(open func(schema.ExecQuerier) (migrate.Driver, error)) Opener 
 		if !ok {
 			return nil, fmt.Errorf("sql/sqlclient: unexpected missing opener %q", u.Scheme)
 		}
-		ur := v.(*driver).parser.ParseURL(u)
-		db, err := sql.Open(v.(*driver).name, ur.DSN)
+		drv := v.(*driver)
+		ur := drv.parser.ParseURL(u)
+		db, err := sql.Open(drv.name, ur.DSN)
 		if err != nil {
 			return nil, err
 		}
-		drv, err := open(db)
+		mdr, err := open(db)
 		if err != nil {
 			if cerr := db.Close(); cerr != nil {
 				err = fmt.Errorf("%w: %v", err, cerr)
@@ -320,11 +321,12 @@ func DriverOpener(open func(schema.ExecQuerier) (migrate.Driver, error)) Opener 
 			return nil, err
 		}
 		return &Client{
-			Name:       v.(*driver).name,
+			Name:       drv.name,
 			DB:         db,
 			URL:        ur,
-			Driver:     drv,
+			Driver:     mdr,
 			openDriver: open,
+			openTx:     drv.txOpener,
 		}, nil
 	})
 }
