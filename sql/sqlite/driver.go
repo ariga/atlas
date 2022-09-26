@@ -48,7 +48,7 @@ func init() {
 	sqlclient.Register(
 		DriverName,
 		sqlclient.DriverOpener(Open),
-		sqlclient.RegisterTxOpener(openTx),
+		sqlclient.RegisterTxOpener(OpenTx),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
 		sqlclient.RegisterFlavours("sqlite"),
 		sqlclient.RegisterURLParser(sqlclient.URLParserFunc(func(u *url.URL) *sqlclient.URL {
@@ -170,7 +170,8 @@ type violation struct {
 	row, index int
 }
 
-func openTx(ctx context.Context, db *sql.DB, opts *sql.TxOptions) (*sqlclient.Tx, error) {
+// OpenTx opens a transaction. If foreign keys are enabled, it disables them, checks for constraint violations before doing so, disabling
+func OpenTx(ctx context.Context, db *sql.DB, opts *sql.TxOptions) (*sqlclient.Tx, error) {
 	var on sql.NullBool
 	if err := db.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&on); err != nil {
 		return nil, fmt.Errorf("sql/sqlite: querying 'foreign_keys' pragma: %w", err)
@@ -192,7 +193,7 @@ func openTx(ctx context.Context, db *sql.DB, opts *sql.TxOptions) (*sqlclient.Tx
 	}
 	return &sqlclient.Tx{
 		Tx: tx,
-		Commit: func() error {
+		CommitFn: func() error {
 			after, err := violations(ctx, tx)
 			if err != nil {
 				if err2 := tx.Rollback(); err2 != nil {
@@ -209,7 +210,7 @@ func openTx(ctx context.Context, db *sql.DB, opts *sql.TxOptions) (*sqlclient.Tx
 			}
 			return enableFK(ctx, db, on.Bool, tx.Commit())
 		},
-		Rollback: func() error {
+		RollbackFn: func() error {
 			return enableFK(ctx, db, on.Bool, tx.Rollback())
 		},
 	}, nil

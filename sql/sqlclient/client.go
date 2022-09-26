@@ -100,20 +100,12 @@ func (c *Client) Tx(ctx context.Context, opts *sql.TxOptions) (*TxClient, error)
 
 // Commit the transaction.
 func (c *TxClient) Commit() error {
-	fn := c.Tx.Commit
-	if fn == nil {
-		fn = c.Tx.Tx.Commit
-	}
-	return fn()
+	return c.Tx.Commit()
 }
 
 // Rollback the transaction.
 func (c *TxClient) Rollback() error {
-	fn := c.Tx.Rollback
-	if fn == nil {
-		fn = c.Tx.Tx.Rollback
-	}
-	return fn()
+	return c.Tx.Rollback()
 }
 
 // AddClosers adds list of closers to close at the end of the client lifetime.
@@ -332,12 +324,30 @@ type (
 	// Tx wraps sql.Tx with optional custom Commit and Rollback functions.
 	Tx struct {
 		*sql.Tx
-		Commit   func() error // override default commit behavior
-		Rollback func() error // override default rollback behavior
+		CommitFn   func() error // override default commit behavior
+		RollbackFn func() error // override default rollback behavior
 	}
 	// TxOpener opens a transaction with optional closer.
 	TxOpener func(context.Context, *sql.DB, *sql.TxOptions) (*Tx, error)
 )
+
+// Commit the transaction.
+func (tx *Tx) Commit() error {
+	fn := tx.CommitFn
+	if fn == nil {
+		fn = tx.Tx.Commit
+	}
+	return fn()
+}
+
+// Rollback the transaction.
+func (tx *Tx) Rollback() error {
+	fn := tx.RollbackFn
+	if fn == nil {
+		fn = tx.Tx.Rollback
+	}
+	return fn()
+}
 
 // RegisterTxOpener allows registering a custom transaction opener with an optional close function.
 func RegisterTxOpener(open TxOpener) RegisterOption {

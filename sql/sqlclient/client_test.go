@@ -102,11 +102,11 @@ func TestClient_Tx(t *testing.T) {
 			require.NoError(t, err)
 			return &sqlclient.Tx{
 				Tx: tx,
-				Commit: func() error {
+				CommitFn: func() error {
 					cC = true
 					return tx.Commit()
 				},
-				Rollback: func() error {
+				RollbackFn: func() error {
 					rC = true
 					return tx.Rollback()
 				},
