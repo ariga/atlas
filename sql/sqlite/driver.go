@@ -200,7 +200,7 @@ func openTx(ctx context.Context, db *sql.DB, opts *sql.TxOptions) (*sqlclient.Tx
 				}
 				return enableFK(ctx, db, on.Bool, err)
 			}
-			if vs := newViolations(before, after); len(vs) > 0 {
+			if vs := violationsDiff(before, after); len(vs) > 0 {
 				err := fmt.Errorf("sql/sqlite: foreign key mismatch: %+v", vs)
 				if err2 := tx.Rollback(); err2 != nil {
 					err = fmt.Errorf("%v: %w", err2, err)
@@ -251,7 +251,7 @@ func violations(ctx context.Context, tx *sql.Tx) ([]violation, error) {
 
 // equalViolations compares the foreign key violations before starting a transaction with the ones afterwards.
 // It returns violations found in v2 that are not in v1.
-func newViolations(v1, v2 []violation) (vs []violation) {
+func violationsDiff(v1, v2 []violation) (vs []violation) {
 	for _, v := range v2 {
 		if !contains(v1, v) {
 			vs = append(vs, v)
