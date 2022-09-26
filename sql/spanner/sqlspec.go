@@ -81,11 +81,9 @@ func convertIndex(spec *sqlspec.Index, t *schema.Table) (*schema.Index, error) {
 func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error) {
 	c, err := specutil.Column(spec, convertColumnType)
 	if err != nil {
-		panic(err)
 		return nil, err
 	}
 	if err := specutil.ConvertGenExpr(spec.Remain(), c, storedOrVirtual); err != nil {
-		panic(err)
 		return nil, err
 	}
 	return c, nil

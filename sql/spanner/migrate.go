@@ -121,9 +121,6 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 		Reverse: Build("DROP TABLE").Table(add.T).String(),
 		Comment: fmt.Sprintf("create %q table", add.T.Name),
 	})
-	if err := s.tableSeq(ctx, add); err != nil {
-		return err
-	}
 	return s.addIndexes(add.T, add.T.Indexes...)
 }
 
@@ -402,10 +399,6 @@ func (s *state) alterTable(modify *schema.ModifyTable) error {
 		}
 	}
 	return nil
-}
-
-func (s *state) tableSeq(ctx context.Context, add *schema.AddTable) error {
-	return fmt.Errorf("not implemented")
 }
 
 func (s *state) append(c *migrate.Change) {

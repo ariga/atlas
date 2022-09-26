@@ -6,15 +6,14 @@ package spanner
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"ariga.io/atlas/sql/schema"
 )
 
-// FormatType converts types to one format. A lowered format.
-// This is due to SQLite flexibility to allow any data types
-// and use a set of rules to define the type affinity.
-// See: https://www.spanner.org/datatype3.html
+// FormatType converts from a schema.Type to an HCL-representable string.
 func FormatType(t schema.Type) (string, error) {
 	var f string
 	switch t := t.(type) {
@@ -41,7 +40,7 @@ func FormatType(t schema.Type) (string, error) {
 	case *UUIDType:
 		f = strings.ToLower(t.T)
 	case *schema.UnsupportedType:
-		return "", fmt.Errorf("spanner: unsupported type: %q", t.T)
+		return "", fmt.Errorf("spanner: unsupported type: %T(%q)", t, t.T)
 	default:
 		return "", fmt.Errorf("spanner: invalid schema type: %T", t)
 	}
@@ -65,19 +64,51 @@ func ParseType(c string) (schema.Type, error) {
 	if c == "" {
 		return &schema.UnsupportedType{}, nil
 	}
-	return nil, fmt.Errorf("not implemented")
+	cd, err := parseColumn(c)
+	if err != nil {
+		return &schema.UnsupportedType{
+			T: c,
+		}, nil
+	}
+
+	switch cd.typ {
+	case TypeInt64:
+		return &schema.IntegerType{
+			T: TypeInt64,
+		}, nil
+	case TypeString:
+		return &schema.StringType{
+			T: TypeString,
+		}, nil
+	default:
+		return &schema.UnsupportedType{
+			T: c,
+		}, nil
+	}
+}
+
+func parseColumn(s string) (*columnDesc, error) {
+	cd := &columnDesc{}
+	// split up type into, base type, size, and other modifiers.
+	re := regexp.MustCompile(`(\w+)(?:\((\d+|MAX)\))?`)
+	m := re.FindStringSubmatch(strings.ToUpper(s))
+	if len(m) == 0 {
+		return nil, fmt.Errorf("parseColumn: invalid type: %q", s)
+	}
+	cd.typ = m[1]
+	if len(m) > 2 {
+		size, _ := strconv.Atoi(m[2])
+		cd.size = int64(size)
+		if m[2] == "max" {
+			cd.sizeIsMax = true
+		}
+	}
+	return cd, nil
 }
 
 // columnDesc represents a column descriptor.
 type columnDesc struct {
-	typ           string
-	size          int64
-	udt           string
-	precision     int64
-	timePrecision *int64
-	scale         int64
-	typtype       string
-	typid         int64
-	parts         []string
-	interval      string
+	typ       string
+	size      int64
+	sizeIsMax bool
 }

@@ -216,7 +216,8 @@ func columnType(c *columnDesc) schema.Type {
 	case TypeJSON:
 		typ = &schema.JSONType{T: t}
 	case TypeNumeric:
-		typ = &schema.DecimalType{T: t, Precision: int(c.precision), Scale: int(c.scale)}
+		// typ = &schema.DecimalType{T: t, Precision: int(c.precision), Scale: int(c.scale)}
+		typ = &schema.DecimalType{T: t}
 	// case TypeBoolArray:
 	// 	// Note that for ARRAY types, the 'udt_name' column holds the array type
 	// 	// prefixed with '_'. For example, for 'integer[]' the result is '_int',
@@ -224,16 +225,16 @@ func columnType(c *columnDesc) schema.Type {
 	// 	// database ignores any size or multi-dimensions constraints.
 	// 	typ = &ArrayType{T: strings.TrimPrefix(c.udt, "_") + "[]"}
 	default:
-		typ = &schema.StringType{T: t}
-		// TODO(tmc): clean this up
-		//typ = &schema.UnsupportedType{T: t}
+		// typ = &schema.StringType{T: t}
+		// // TODO(tmc): clean this up
+		typ = &schema.UnsupportedType{T: t}
 	}
 	return typ
 }
 
 // enumValues fills enum columns with their values from the database.
 func (i *inspect) enumValues(ctx context.Context, s *schema.Schema) error {
-	return fmt.Errorf("not implemented")
+	return fmt.Errorf("enumValues: not implemented")
 }
 
 // indexes queries and appends the indexes of the given table.
