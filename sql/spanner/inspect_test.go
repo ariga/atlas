@@ -2,28 +2,44 @@ package spanner
 
 import (
 	"context"
+	"database/sql"
+	"database/sql/driver"
+	"math/big"
 	"testing"
+	"time"
 
 	"ariga.io/atlas/sql/internal/sqltest"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
+	"cloud.google.com/go/civil"
+	"cloud.google.com/go/spanner"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 )
 
+type mockValueConverter struct{}
+
+// ConvertValue implements the sqlmock.ValueConverter interface and satisfies the acceptable Spanner types.
+func (mockValueConverter) ConvertValue(v interface{}) (driver.Value, error) {
+	return driver.String.ConvertValue(v)
+}
+
 func TestDriver_InspectSchema(t *testing.T) {
-	db, m, err := sqlmock.New()
+	db, m, err := sqlmock.New(sqlmock.ValueConverterOption(mockValueConverter{}))
 	require.NoError(t, err)
 	mk := mock{m}
 	mk.databaseOpts(databaseDialectGoogleStandardSQL)
 	drv, err := Open(db)
 	require.NoError(t, err)
 	mk.ExpectQuery(sqltest.Escape(schemasQueryArgs)).
+		WithArgs([]string{""}).
 		WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow(""))
 
 	m.ExpectQuery(sqltest.Escape(tablesQuery)).
-		WithArgs("").
+		WithArgs([]string{""}).
 		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "parent_table_name", "on_delete_action", "spanner_state"}))
 	s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{})
 	require.NoError(t, err)
@@ -31,7 +47,7 @@ func TestDriver_InspectSchema(t *testing.T) {
 		r := &schema.Realm{
 			Schemas: []*schema.Schema{
 				{
-					Name: "",
+					Name: "default",
 				},
 			},
 		}
@@ -51,7 +67,7 @@ func TestDriver_InspectTable(t *testing.T) {
 			before: func(m mock) {
 				m.tableExists("", "Users", true)
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
-					WithArgs("", "Users").
+					WithArgs("", []string{"Users"}).
 					WillReturnRows(sqltest.Rows(`
 +------------+-------------+------------------+----------------+-----------+-------------+--------------+--------------+---------------------------------------------+-----------+---------------+
 | table_name | column_name | ordinal_position | column_default | data_type | is_nullable | spanner_type | is_generated | generation_expression                       | is_stored | spanner_state |
@@ -88,7 +104,7 @@ func TestDriver_InspectTable(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db, m, err := sqlmock.New()
+			db, m, err := sqlmock.New(sqlmock.ValueConverterOption(mockValueConverter{}))
 			require.NoError(t, err)
 			mk := mock{m}
 			mk.databaseOpts(databaseDialectGoogleStandardSQL)
@@ -96,7 +112,7 @@ func TestDriver_InspectTable(t *testing.T) {
 			drv, err = Open(db)
 			require.NoError(t, err)
 			mk.ExpectQuery(sqltest.Escape(schemasQueryArgs)).
-				WithArgs("").
+				WithArgs([]string{""}).
 				WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow(""))
 			tt.before(mk)
 			s, err := drv.InspectSchema(context.Background(), "", nil)
@@ -107,7 +123,7 @@ func TestDriver_InspectTable(t *testing.T) {
 }
 
 func TestDriver_Realm(t *testing.T) {
-	db, m, err := sqlmock.New()
+	db, m, err := sqlmock.New(sqlmock.ValueConverterOption(mockValueConverter{}))
 	require.NoError(t, err)
 	mk := mock{m}
 	mk.databaseOpts(databaseDialectGoogleStandardSQL)
@@ -116,7 +132,7 @@ func TestDriver_Realm(t *testing.T) {
 	mk.ExpectQuery(sqltest.Escape(schemasQuery)).
 		WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow(""))
 	m.ExpectQuery(sqltest.Escape(tablesQuery)).
-		WithArgs("").
+		WithArgs([]string{""}).
 		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "parent_table_name", "on_delete_action", "spanner_state"}))
 	realm, err := drv.InspectRealm(context.Background(), &schema.InspectRealmOption{})
 	require.NoError(t, err)
@@ -124,7 +140,7 @@ func TestDriver_Realm(t *testing.T) {
 		r := &schema.Realm{
 			Schemas: []*schema.Schema{
 				{
-					Name: "",
+					Name: "default",
 				},
 			},
 		}
@@ -133,10 +149,10 @@ func TestDriver_Realm(t *testing.T) {
 	}(), realm)
 
 	mk.ExpectQuery(sqltest.Escape(schemasQueryArgs)).
-		WithArgs("").
+		WithArgs([]string{""}).
 		WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow(""))
 	m.ExpectQuery(sqltest.Escape(tablesQuery)).
-		WithArgs("").
+		WithArgs([]string{""}).
 		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "parent_table_name", "on_delete_action", "spanner_state"}))
 	realm, err = drv.InspectRealm(context.Background(), &schema.InspectRealmOption{Schemas: []string{""}})
 	require.NoError(t, err)
@@ -144,7 +160,7 @@ func TestDriver_Realm(t *testing.T) {
 		r := &schema.Realm{
 			Schemas: []*schema.Schema{
 				{
-					Name: "",
+					Name: "default",
 				},
 			},
 		}
@@ -154,7 +170,7 @@ func TestDriver_Realm(t *testing.T) {
 }
 
 func TestInspectMode_InspectRealm(t *testing.T) {
-	db, m, err := sqlmock.New()
+	db, m, err := sqlmock.New(sqlmock.ValueConverterOption(mockValueConverter{}))
 	require.NoError(t, err)
 	mk := mock{m}
 	mk.databaseOpts(databaseDialectGoogleStandardSQL)
@@ -167,7 +183,7 @@ func TestInspectMode_InspectRealm(t *testing.T) {
 		r := &schema.Realm{
 			Schemas: []*schema.Schema{
 				{
-					Name: "",
+					Name: "default",
 				},
 			},
 		}
@@ -180,6 +196,74 @@ const databaseDialectGoogleStandardSQL = "GOOGLE_STANDARD_SQL"
 
 type mock struct {
 	sqlmock.Sqlmock
+}
+
+func (m mock) CheckNamedValue(value *driver.NamedValue) (err error) {
+	if value == nil {
+		return nil
+	}
+	switch t := value.Value.(type) {
+	default:
+		// Default is to fail, unless it is one of the following supported types.
+		return spanner.ToSpannerError(status.Errorf(codes.InvalidArgument, "unsupported value type: %v", t))
+	case nil:
+	case sql.NullInt64:
+	case sql.NullTime:
+	case sql.NullString:
+	case sql.NullFloat64:
+	case sql.NullBool:
+	case sql.NullInt32:
+	case string:
+	case spanner.NullString:
+	case []string:
+	case []spanner.NullString:
+	case *string:
+	case []*string:
+	case []byte:
+	case [][]byte:
+	case int:
+	case []int:
+	case int64:
+	case []int64:
+	case spanner.NullInt64:
+	case []spanner.NullInt64:
+	case *int64:
+	case []*int64:
+	case bool:
+	case []bool:
+	case spanner.NullBool:
+	case []spanner.NullBool:
+	case *bool:
+	case []*bool:
+	case float64:
+	case []float64:
+	case spanner.NullFloat64:
+	case []spanner.NullFloat64:
+	case *float64:
+	case []*float64:
+	case big.Rat:
+	case []big.Rat:
+	case spanner.NullNumeric:
+	case []spanner.NullNumeric:
+	case *big.Rat:
+	case []*big.Rat:
+	case time.Time:
+	case []time.Time:
+	case spanner.NullTime:
+	case []spanner.NullTime:
+	case *time.Time:
+	case []*time.Time:
+	case civil.Date:
+	case []civil.Date:
+	case spanner.NullDate:
+	case []spanner.NullDate:
+	case *civil.Date:
+	case []*civil.Date:
+	case spanner.NullJSON:
+	case []spanner.NullJSON:
+	case spanner.GenericColumnValue:
+	}
+	return nil
 }
 
 func (m mock) databaseOpts(dialect string) {
@@ -197,7 +281,7 @@ func (m mock) tableExists(schema, table string, exists bool) {
 		rows.AddRow(schema, table, nil, nil, nil)
 	}
 	m.ExpectQuery(sqltest.Escape(tablesQuery)).
-		WithArgs(schema).
+		WithArgs([]string{schema}).
 		WillReturnRows(rows)
 }
 

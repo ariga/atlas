@@ -146,9 +146,11 @@ func (i *inspect) columns(ctx context.Context, s *schema.Schema) error {
 	if err := rows.Err(); err != nil {
 		return err
 	}
-	if err := i.enumValues(ctx, s); err != nil {
-		return err
-	}
+	/*
+		if err := i.enumValues(ctx, s); err != nil {
+			return err
+		}
+	*/
 	return nil
 }
 
@@ -231,47 +233,7 @@ func columnType(c *columnDesc) schema.Type {
 
 // enumValues fills enum columns with their values from the database.
 func (i *inspect) enumValues(ctx context.Context, s *schema.Schema) error {
-	var (
-		args  []any
-		ids   = make(map[int64][]*schema.EnumType)
-		query = "SELECT enumtypid, enumlabel FROM pg_enum WHERE enumtypid IN (%s)"
-	)
-	for _, t := range s.Tables {
-		for _, c := range t.Columns {
-			if enum, ok := c.Type.Type.(*enumType); ok {
-				if _, ok := ids[enum.ID]; !ok {
-					args = append(args, enum.ID)
-				}
-				// Convert the intermediate type to the
-				// standard schema.EnumType.
-				e := &schema.EnumType{T: enum.T}
-				c.Type.Type = e
-				c.Type.Raw = enum.T
-				ids[enum.ID] = append(ids[enum.ID], e)
-			}
-		}
-	}
-	if len(ids) == 0 {
-		return nil
-	}
-	rows, err := i.QueryContext(ctx, fmt.Sprintf(query, nArgs(0, len(args))), args...)
-	if err != nil {
-		return fmt.Errorf("spanner: querying enum values: %w", err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var (
-			id int64
-			v  string
-		)
-		if err := rows.Scan(&id, &v); err != nil {
-			return fmt.Errorf("spanner: scanning enum label: %w", err)
-		}
-		for _, enum := range ids[id] {
-			enum.Values = append(enum.Values, v)
-		}
-	}
-	return nil
+	return fmt.Errorf("not implemented")
 }
 
 // indexes queries and appends the indexes of the given table.
@@ -436,6 +398,7 @@ func (i *inspect) addChecks(s *schema.Schema, rows *sql.Rows) error {
 func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) ([]*schema.Schema, error) {
 	var (
 		args  []any
+		sArgs []string
 		query = schemasQuery
 	)
 	if opts != nil {
@@ -448,8 +411,9 @@ func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) 
 				if s == defaultSchemaNameAlias {
 					s = ""
 				}
-				args = append(args, s)
+				sArgs = append(sArgs, s)
 			}
+			args = append(args, sArgs)
 		}
 	}
 	rows, err := i.QueryContext(ctx, query, args...)
