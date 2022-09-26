@@ -395,8 +395,38 @@ func TestMigrate_ApplyTxMode(t *testing.T) {
 				"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
 				"--tx-mode", mode,
 			)
+			require.NoError(t, err)
 			require.NoError(t, db.QueryRow("SELECT COUNT(*) FROM `friendships`").Scan(&n))
 			require.Equal(t, 2, n)
+
+			// For transactions check that the foreign keys are checked before the transaction is committed.
+			if mode != "none" {
+				// Apply the first 2 migrations for the faulty one.
+				s, err = runCmd(
+					Root, "migrate", "apply",
+					"--dir", "file://testdata/sqlitetx_2",
+					"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test_2.db")),
+					"--tx-mode", mode,
+					"2",
+				)
+				require.NoError(t, err)
+				require.NotEmpty(t, s)
+				db, err = sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&_fk=1", filepath.Join(p, "test_2.db")))
+				require.NoError(t, err)
+				require.NoError(t, db.QueryRow("SELECT COUNT(*) FROM `friendships`").Scan(&n))
+				require.Equal(t, 2, n)
+
+				// Apply the rest, expect it to fail due to constraint error.
+				s, err = runCmd(
+					Root, "migrate", "apply",
+					"--dir", "file://testdata/sqlitetx_2",
+					"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test_2.db")),
+					"--tx-mode", mode,
+				)
+				require.ErrorContains(t, err, "sql/sqlite: foreign key mismatch: [{tbl:friendships ref:users row:3 index:1}]")
+				require.NoError(t, db.QueryRow("SELECT COUNT(*) FROM `friendships`").Scan(&n))
+				require.Equal(t, 2, n) // was rolled back
+			}
 		})
 	}
 }
