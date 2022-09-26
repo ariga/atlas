@@ -213,8 +213,6 @@ func typeAndSize(typ string) (string, int, bool) {
 	r, _ := regexp.Compile(restring)
 	matches := r.FindStringSubmatch(typ)
 
-	fmt.Println((matches))
-
 	if len(matches) != 3 {
 		return typ, 0, false
 	}
