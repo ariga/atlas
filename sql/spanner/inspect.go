@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -182,6 +183,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	c.Type.Type = columnType(&columnDesc{
 		typ: spannerType.String,
 	})
+
 	if columnDefault.Valid {
 		c.Default = defaultExpr(c, columnDefault.String)
 	}
@@ -197,9 +199,39 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	return nil
 }
 
+func typeAndSize(typ string) (string, int, bool) {
+
+	var typeName string
+	var typeSize int
+	var err error
+
+	// The regex string used to validate the type and size.
+	restring := `^([A-Z]+)\(([1-9][0-9]*|MAX)\)$`
+
+	r, _ := regexp.Compile(restring)
+	matches := r.FindStringSubmatch(typ)
+
+	fmt.Println((matches))
+
+	if len(matches) != 3 {
+		return typ, 0, false
+	}
+
+	typeName = matches[1]
+	typeSize, err = strconv.Atoi(matches[2])
+	if err != nil {
+		typeSize = 0
+	}
+	return typeName, typeSize, true
+}
+
 func columnType(c *columnDesc) schema.Type {
 	var typ schema.Type
-	switch t := c.typ; strings.ToUpper(t) {
+
+	// Get Type and Size from the column description.
+	typeString, typeSize, _ := typeAndSize(c.typ)
+
+	switch t := typeString; strings.ToUpper(t) {
 	case TypeInt64:
 		typ = &schema.IntegerType{T: t}
 	case TypeBool:
@@ -207,7 +239,7 @@ func columnType(c *columnDesc) schema.Type {
 	case TypeBytes:
 		typ = &schema.BinaryType{T: t}
 	case TypeString:
-		typ = &schema.StringType{T: t, Size: int(c.size)}
+		typ = &schema.StringType{T: t, Size: typeSize}
 	// TODO(tmc): case TypeDate:
 	case TypeTimestamp:
 		typ = &schema.TimeType{T: t}
@@ -810,7 +842,7 @@ SELECT
 	t1.is_unique,
 	t1.is_null_filtered,
 	t1.index_state,
-	t2.column_name, 
+	t2.column_name,
 	t2.ordinal_position,
 	t2.column_ordering,
 	t2.is_nullable
