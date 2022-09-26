@@ -8,7 +8,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -201,51 +200,57 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	return nil
 }
 
-func typeAndSize(typ string) (string, int, bool) {
-
-	var typeName string
-	var typeSize int
-	var err error
-
-	// The regex string used to validate the type and size.
-	restring := `^([A-Z]+)\(([1-9][0-9]*|MAX)\)$`
-
-	r, _ := regexp.Compile(restring)
-	matches := r.FindStringSubmatch(typ)
-
-	if len(matches) != 3 {
-		return typ, 0, false
-	}
-
-	typeName = matches[1]
-	typeSize, err = strconv.Atoi(matches[2])
-	if err != nil {
-		typeSize = 0
-	}
-	return typeName, typeSize, true
+func columnParts(t string) []string {
+	t = strings.TrimSpace(strings.ToLower(t))
+	parts := strings.FieldsFunc(t, func(r rune) bool {
+		return r == '(' || r == ')' || r == ' ' || r == ','
+	})
+	return parts
 }
 
 func columnType(c *columnDesc) schema.Type {
 	var typ schema.Type
+	var typeSize int
+	var err error
 
 	// Get Type and Size from the column description.
-	typeString, typeSize, _ := typeAndSize(c.typ)
+	parts := columnParts(c.typ)
 
-	switch t := typeString; strings.ToUpper(t) {
-	case TypeInt64:
+	if len(parts) > 1 {
+		if parts[1] == "max" {
+			typeSize = -1
+		} else {
+			typeSize, err = strconv.Atoi(parts[1])
+			if err != nil {
+				// Note: What should we do if an "unsupported string" arises?
+				typeSize = 0
+			}
+		}
+	}
+
+	t := strings.TrimSpace(strings.ToUpper(c.typ))
+	switch {
+	case t == TypeInt64:
+		// case strings.HasPrefix(t, TypeInt):
 		typ = &schema.IntegerType{T: t}
-	case TypeBool:
+	case t == TypeBool:
 		typ = &schema.BoolType{T: t}
-	case TypeBytes:
-		typ = &schema.BinaryType{T: t}
-	case TypeString:
-		typ = &schema.StringType{T: t, Size: typeSize}
+	case strings.HasPrefix(t, TypeBytes) && len(parts) > 1:
+		typ = &schema.BinaryType{
+			T:    parts[0],
+			Size: &typeSize,
+		}
+	case strings.HasPrefix(t, TypeString) && len(parts) > 1:
+		typ = &schema.StringType{
+			T:    parts[0],
+			Size: typeSize,
+		}
 	// TODO(tmc): case TypeDate:
-	case TypeTimestamp:
+	case t == TypeTimestamp:
 		typ = &schema.TimeType{T: t}
-	case TypeJSON:
+	case t == TypeJSON:
 		typ = &schema.JSONType{T: t}
-	case TypeNumeric:
+	case t == TypeNumeric:
 		// typ = &schema.DecimalType{T: t, Precision: int(c.precision), Scale: int(c.scale)}
 		typ = &schema.DecimalType{T: t}
 	// case TypeBoolArray:
