@@ -201,7 +201,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 }
 
 func columnParts(t string) []string {
-	t = strings.TrimSpace(strings.ToLower(t))
+	t = strings.TrimSpace(strings.ToUpper(t))
 	parts := strings.FieldsFunc(t, func(r rune) bool {
 		return r == '(' || r == ')' || r == ' ' || r == ','
 	})
@@ -217,7 +217,7 @@ func columnType(c *columnDesc) schema.Type {
 	parts := columnParts(c.typ)
 
 	if len(parts) > 1 {
-		if parts[1] == "max" {
+		if parts[1] == "MAX" {
 			typeSize = -1
 		} else {
 			typeSize, err = strconv.Atoi(parts[1])
@@ -228,7 +228,9 @@ func columnType(c *columnDesc) schema.Type {
 		}
 	}
 
-	t := strings.TrimSpace(strings.ToUpper(c.typ))
+	// t := strings.TrimSpace(strings.ToUpper(c.typ))
+	t := parts[0]
+
 	switch {
 	case t == TypeInt64:
 		// case strings.HasPrefix(t, TypeInt):
