@@ -100,27 +100,12 @@ func (c *Client) Tx(ctx context.Context, opts *sql.TxOptions) (*TxClient, error)
 
 // Commit the transaction.
 func (c *TxClient) Commit() error {
-	if err := c.Tx.Commit(); err != nil {
-		return err
-	}
-	return c.close()
+	return c.Tx.Commit()
 }
 
 // Rollback the transaction.
 func (c *TxClient) Rollback() error {
-	if err := c.Tx.Rollback(); err != nil {
-		return err
-	}
-	return c.close()
-}
-
-func (c *TxClient) close() error {
-	if c.Tx.Close != nil {
-		if err := c.Tx.Close(); err != nil {
-			return fmt.Errorf("sql/sqlclient: closing transaction: %w", err)
-		}
-	}
-	return nil
+	return c.Tx.Rollback()
 }
 
 // AddClosers adds list of closers to close at the end of the client lifetime.
@@ -218,20 +203,24 @@ func OpenURL(ctx context.Context, u *url.URL, opts ...OpenOption) (*Client, erro
 	if !ok {
 		return nil, fmt.Errorf("sql/sqlclient: no opener was register with name %q", u.Scheme)
 	}
+	drv := v.(*driver)
 	// If there is a schema given and the driver allows to change the schema for the url, do it.
 	if cfg.schema != nil {
-		sc, ok := v.(*driver).parser.(SchemaChanger)
+		sc, ok := drv.parser.(SchemaChanger)
 		if !ok {
 			return nil, ErrUnsupported
 		}
 		u = sc.ChangeSchema(u, *cfg.schema)
 	}
-	client, err := v.(*driver).Open(ctx, u)
+	client, err := drv.Open(ctx, u)
 	if err != nil {
 		return nil, err
 	}
 	if client.URL == nil {
-		client.URL = v.(*driver).parser.ParseURL(u)
+		client.URL = drv.parser.ParseURL(u)
+	}
+	if client.openTx == nil && drv.txOpener != nil {
+		client.openTx = drv.txOpener
 	}
 	return client, nil
 }
@@ -332,14 +321,33 @@ func DriverOpener(open func(schema.ExecQuerier) (migrate.Driver, error)) Opener 
 }
 
 type (
-	// Tx wraps sql.Tx with an optional closer.
+	// Tx wraps sql.Tx with optional custom Commit and Rollback functions.
 	Tx struct {
 		*sql.Tx
-		Close func() error
+		CommitFn   func() error // override default commit behavior
+		RollbackFn func() error // override default rollback behavior
 	}
 	// TxOpener opens a transaction with optional closer.
 	TxOpener func(context.Context, *sql.DB, *sql.TxOptions) (*Tx, error)
 )
+
+// Commit the transaction.
+func (tx *Tx) Commit() error {
+	fn := tx.CommitFn
+	if fn == nil {
+		fn = tx.Tx.Commit
+	}
+	return fn()
+}
+
+// Rollback the transaction.
+func (tx *Tx) Rollback() error {
+	fn := tx.RollbackFn
+	if fn == nil {
+		fn = tx.Tx.Rollback
+	}
+	return fn()
+}
 
 // RegisterTxOpener allows registering a custom transaction opener with an optional close function.
 func RegisterTxOpener(open TxOpener) RegisterOption {
@@ -383,7 +391,7 @@ func Register(name string, opener Opener, opts ...RegisterOption) {
 			return c, err
 		})
 	}
-	drv := &driver{opener, name, opt.parser, opt.txOpener}
+	drv := &driver{Opener: opener, name: name, parser: opt.parser, txOpener: opt.txOpener}
 	for _, f := range append(opt.flavours, name) {
 		if _, ok := drivers.Load(f); ok {
 			panic("sql/sqlclient: Register called twice for " + f)

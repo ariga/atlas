@@ -88,6 +88,7 @@ func TestClient_Tx(t *testing.T) {
 	mock.ExpectExec(stmt).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectRollback()
 
+	var cC, rC bool
 	sqlclient.Register(
 		"tx",
 		sqlclient.OpenerFunc(func(context.Context, *url.URL) (*sqlclient.Client, error) {
@@ -99,7 +100,17 @@ func TestClient_Tx(t *testing.T) {
 		sqlclient.RegisterTxOpener(func(ctx context.Context, db *sql.DB, opts *sql.TxOptions) (*sqlclient.Tx, error) {
 			tx, err := db.BeginTx(ctx, opts)
 			require.NoError(t, err)
-			return &sqlclient.Tx{Tx: tx, Close: func() error { return nil }}, nil
+			return &sqlclient.Tx{
+				Tx: tx,
+				CommitFn: func() error {
+					cC = true
+					return tx.Commit()
+				},
+				RollbackFn: func() error {
+					rC = true
+					return tx.Rollback()
+				},
+			}, nil
 		}),
 	)
 
@@ -112,7 +123,7 @@ func TestClient_Tx(t *testing.T) {
 	_, err = tx.ExecContext(context.Background(), stmt)
 	require.NoError(t, err)
 	require.NoError(t, tx.Commit())
-	require.NotNil(t, tx.Close)
+	require.True(t, cC)
 
 	// Rollback works as well.
 	tx, err = c.Tx(context.Background(), nil)
@@ -120,6 +131,7 @@ func TestClient_Tx(t *testing.T) {
 	_, err = tx.ExecContext(context.Background(), stmt)
 	require.NoError(t, err)
 	require.NoError(t, tx.Rollback())
+	require.True(t, rC)
 
 	require.NoError(t, mock.ExpectationsWereMet())
 }

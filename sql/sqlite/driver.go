@@ -48,7 +48,7 @@ func init() {
 	sqlclient.Register(
 		DriverName,
 		sqlclient.DriverOpener(Open),
-		sqlclient.RegisterTxOpener(openTx),
+		sqlclient.RegisterTxOpener(OpenTx),
 		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
 		sqlclient.RegisterFlavours("sqlite"),
 		sqlclient.RegisterURLParser(sqlclient.URLParserFunc(func(u *url.URL) *sqlclient.URL {
@@ -73,10 +73,10 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 		return nil, fmt.Errorf("sqlite: query version pragma: %w", err)
 	}
 	if err := sqlx.ScanOne(rows, &c.version); err != nil {
-		return nil, fmt.Errorf("sqlite: scan version and foreign_keys pragma: %w", err)
+		return nil, fmt.Errorf("sqlite: scan version pragma: %w", err)
 	}
 	if rows, err = db.QueryContext(ctx, "SELECT name FROM pragma_collation_list()"); err != nil {
-		return nil, fmt.Errorf("sqlite: query foreign_keys pragma: %w", err)
+		return nil, fmt.Errorf("sqlite: query collation_list pragma: %w", err)
 	}
 	if c.collations, err = sqlx.ScanStrings(rows); err != nil {
 		return nil, fmt.Errorf("sqlite: scanning database collations: %w", err)
@@ -165,7 +165,13 @@ func acquireLock(path string, timeout time.Duration) (schema.UnlockFunc, error) 
 	return func() error { return os.Remove(path) }, nil
 }
 
-func openTx(ctx context.Context, db *sql.DB, opts *sql.TxOptions) (*sqlclient.Tx, error) {
+type violation struct {
+	tbl, ref   string
+	row, index int
+}
+
+// OpenTx opens a transaction. If foreign keys are enabled, it disables them, checks for constraint violations before doing so, disabling
+func OpenTx(ctx context.Context, db *sql.DB, opts *sql.TxOptions) (*sqlclient.Tx, error) {
 	var on sql.NullBool
 	if err := db.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&on); err != nil {
 		return nil, fmt.Errorf("sql/sqlite: querying 'foreign_keys' pragma: %w", err)
@@ -181,17 +187,87 @@ func openTx(ctx context.Context, db *sql.DB, opts *sql.TxOptions) (*sqlclient.Tx
 	if err != nil {
 		return nil, err
 	}
+	before, err := violations(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
 	return &sqlclient.Tx{
 		Tx: tx,
-		Close: func() error {
-			if on.Bool {
-				if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = on"); err != nil {
-					return fmt.Errorf("sql/sqlite: set 'foreign_keys = on': %w", err)
+		CommitFn: func() error {
+			after, err := violations(ctx, tx)
+			if err != nil {
+				if err2 := tx.Rollback(); err2 != nil {
+					err = fmt.Errorf("%v: %w", err2, err)
 				}
+				return enableFK(ctx, db, on.Bool, err)
 			}
-			return nil
+			if vs := violationsDiff(before, after); len(vs) > 0 {
+				err := fmt.Errorf("sql/sqlite: foreign key mismatch: %+v", vs)
+				if err2 := tx.Rollback(); err2 != nil {
+					err = fmt.Errorf("%v: %w", err2, err)
+				}
+				return enableFK(ctx, db, on.Bool, err)
+			}
+			return enableFK(ctx, db, on.Bool, tx.Commit())
+		},
+		RollbackFn: func() error {
+			return enableFK(ctx, db, on.Bool, tx.Rollback())
 		},
 	}, nil
+}
+
+func enableFK(ctx context.Context, db *sql.DB, do bool, err error) error {
+	if do {
+		// Re-enable foreign key checks if they were enabled before.
+		if _, err2 := db.ExecContext(ctx, "PRAGMA foreign_keys = on"); err2 != nil {
+			err2 = fmt.Errorf("sql/sqlite: set 'foreign_keys = on': %w", err2)
+			if err != nil {
+				return fmt.Errorf("%v: %w", err2, err)
+			}
+			return err2
+		}
+	}
+	return err
+}
+
+func violations(ctx context.Context, tx *sql.Tx) ([]violation, error) {
+	rows, err := tx.QueryContext(ctx, "PRAGMA foreign_key_check")
+	if err != nil {
+		return nil, fmt.Errorf("sql/sqlite: querying 'foreign_key_check' pragma: %w", err)
+	}
+	defer rows.Close()
+	var vs []violation
+	for rows.Next() {
+		var v violation
+		if err := rows.Scan(&v.tbl, &v.row, &v.ref, &v.index); err != nil {
+			return nil, fmt.Errorf("sql/sqlite: querying 'foreign_key_check' pragma: scanning rows: %w", err)
+		}
+		vs = append(vs, v)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("sql/sqlite: querying 'foreign_key_check' pragma: scanning rows: %w", err)
+	}
+	return vs, nil
+}
+
+// equalViolations compares the foreign key violations before starting a transaction with the ones afterwards.
+// It returns violations found in v2 that are not in v1.
+func violationsDiff(v1, v2 []violation) (vs []violation) {
+	for _, v := range v2 {
+		if !contains(v1, v) {
+			vs = append(vs, v)
+		}
+	}
+	return vs
+}
+
+func contains(hs []violation, n violation) bool {
+	for _, v := range hs {
+		if v.row == n.row && v.ref == n.ref && v.index == n.index && v.tbl == n.tbl {
+			return true
+		}
+	}
+	return false
 }
 
 // SQLite standard data types as defined in its codebase and documentation.
