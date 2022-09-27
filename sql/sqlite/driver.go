@@ -190,14 +190,14 @@ func OpenTx(ctx context.Context, db *sql.DB, opts *sql.TxOptions) (*sqlclient.Tx
 	if err != nil {
 		return nil, err
 	}
-	cm, err := CommitFn(ctx, db, tx, on.Bool)
+	cm, err := CommitFunc(ctx, db, tx, on.Bool)
 	if err != nil {
 		return nil, err
 	}
 	return &sqlclient.Tx{
 		Tx:         tx,
 		CommitFn:   cm,
-		RollbackFn: RollbackFn(ctx, db, tx, on.Bool),
+		RollbackFn: RollbackFunc(ctx, db, tx, on.Bool),
 	}, nil
 }
 
@@ -208,8 +208,8 @@ type Tx interface {
 	Rollback() error
 }
 
-// CommitFn takes a transaction and ensures to toggle foreign keys back on after tx.Commit is called.
-func CommitFn(ctx context.Context, db schema.ExecQuerier, tx Tx, on bool) (func() error, error) {
+// CommitFunc takes a transaction and ensures to toggle foreign keys back on after tx.Commit is called.
+func CommitFunc(ctx context.Context, db schema.ExecQuerier, tx Tx, on bool) (func() error, error) {
 	var (
 		before []violation
 		err    error
@@ -241,8 +241,8 @@ func CommitFn(ctx context.Context, db schema.ExecQuerier, tx Tx, on bool) (func(
 	}, nil
 }
 
-// RollbackFn takes a transaction and ensures to toggle foreign keys back on after tx.Rollback is called.
-func RollbackFn(ctx context.Context, db schema.ExecQuerier, tx Tx, on bool) func() error {
+// RollbackFunc takes a transaction and ensures to toggle foreign keys back on after tx.Rollback is called.
+func RollbackFunc(ctx context.Context, db schema.ExecQuerier, tx Tx, on bool) func() error {
 	return func() error {
 		return enableFK(ctx, db, on, tx.Rollback())
 	}
