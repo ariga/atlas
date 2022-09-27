@@ -416,16 +416,24 @@ func TestMigrate_ApplyTxMode(t *testing.T) {
 				require.NoError(t, db.QueryRow("SELECT COUNT(*) FROM `friendships`").Scan(&n))
 				require.Equal(t, 2, n)
 
-				// Apply the rest, expect it to fail due to constraint error.
+				// Add an existing constraint.
+				c, err := sqlclient.Open(context.Background(), fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test_2.db")))
+				require.NoError(t, err)
+				_, err = c.ExecContext(context.Background(), "PRAGMA foreign_keys = off; INSERT INTO `friendships` (`user_id`, `friend_id`) VALUES (3,3);PRAGMA foreign_keys = on;")
+				require.NoError(t, err)
+				require.NoError(t, db.QueryRow("SELECT COUNT(*) FROM `friendships`").Scan(&n))
+				require.Equal(t, 3, n)
+
+				// Apply the rest, expect it to fail due to constraint error, but only the new one is reported.
 				s, err = runCmd(
 					Root, "migrate", "apply",
 					"--dir", "file://testdata/sqlitetx_2",
 					"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test_2.db")),
 					"--tx-mode", mode,
 				)
-				require.ErrorContains(t, err, "sql/sqlite: foreign key mismatch: [{tbl:friendships ref:users row:3 index:1}]")
+				require.EqualError(t, err, "sql/sqlite: foreign key mismatch: [{tbl:friendships ref:users row:4 index:1}]")
 				require.NoError(t, db.QueryRow("SELECT COUNT(*) FROM `friendships`").Scan(&n))
-				require.Equal(t, 2, n) // was rolled back
+				require.Equal(t, 3, n) // was rolled back
 			}
 		})
 	}
