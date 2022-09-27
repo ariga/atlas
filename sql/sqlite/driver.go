@@ -170,7 +170,9 @@ type violation struct {
 	row, index int
 }
 
-// OpenTx opens a transaction. If foreign keys are enabled, it disables them, checks for constraint violations before doing so, disabling
+// OpenTx opens a transaction. If foreign keys are enabled, it disables them, checks for constraint violations,
+// opens the transaction and before committing ensures no new violations have been introduced by whatever Atlas was
+// doing.
 func OpenTx(ctx context.Context, db *sql.DB, opts *sql.TxOptions) (*sqlclient.Tx, error) {
 	var on sql.NullBool
 	if err := db.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&on); err != nil {
@@ -179,7 +181,8 @@ func OpenTx(ctx context.Context, db *sql.DB, opts *sql.TxOptions) (*sqlclient.Tx
 	// Disable the foreign_keys pragma in case it is enabled, and
 	// toggle it back after transaction is committed or rolled back.
 	if on.Bool {
-		if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = off"); err != nil {
+		_, err := db.ExecContext(ctx, "PRAGMA foreign_keys = off")
+		if err != nil {
 			return nil, fmt.Errorf("sql/sqlite: set 'foreign_keys = off': %w", err)
 		}
 	}
@@ -187,36 +190,65 @@ func OpenTx(ctx context.Context, db *sql.DB, opts *sql.TxOptions) (*sqlclient.Tx
 	if err != nil {
 		return nil, err
 	}
-	before, err := violations(ctx, tx)
+	cm, err := CommitFunc(ctx, db, tx, on.Bool)
 	if err != nil {
 		return nil, err
 	}
 	return &sqlclient.Tx{
-		Tx: tx,
-		CommitFn: func() error {
+		Tx:         tx,
+		CommitFn:   cm,
+		RollbackFn: RollbackFunc(ctx, db, tx, on.Bool),
+	}, nil
+}
+
+// Tx wraps schema.ExecQuerier with the transaction methods.
+type Tx interface {
+	schema.ExecQuerier
+	Commit() error
+	Rollback() error
+}
+
+// CommitFunc takes a transaction and ensures to toggle foreign keys back on after tx.Commit is called.
+func CommitFunc(ctx context.Context, db schema.ExecQuerier, tx Tx, on bool) (func() error, error) {
+	var (
+		before []violation
+		err    error
+	)
+	if on {
+		before, err = violations(ctx, tx)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return func() error {
+		if on {
 			after, err := violations(ctx, tx)
 			if err != nil {
 				if err2 := tx.Rollback(); err2 != nil {
 					err = fmt.Errorf("%v: %w", err2, err)
 				}
-				return enableFK(ctx, db, on.Bool, err)
+				return enableFK(ctx, db, on, err)
 			}
 			if vs := violationsDiff(before, after); len(vs) > 0 {
 				err := fmt.Errorf("sql/sqlite: foreign key mismatch: %+v", vs)
 				if err2 := tx.Rollback(); err2 != nil {
 					err = fmt.Errorf("%v: %w", err2, err)
 				}
-				return enableFK(ctx, db, on.Bool, err)
+				return enableFK(ctx, db, on, err)
 			}
-			return enableFK(ctx, db, on.Bool, tx.Commit())
-		},
-		RollbackFn: func() error {
-			return enableFK(ctx, db, on.Bool, tx.Rollback())
-		},
+		}
+		return enableFK(ctx, db, on, tx.Commit())
 	}, nil
 }
 
-func enableFK(ctx context.Context, db *sql.DB, do bool, err error) error {
+// RollbackFunc takes a transaction and ensures to toggle foreign keys back on after tx.Rollback is called.
+func RollbackFunc(ctx context.Context, db schema.ExecQuerier, tx Tx, on bool) func() error {
+	return func() error {
+		return enableFK(ctx, db, on, tx.Rollback())
+	}
+}
+
+func enableFK(ctx context.Context, db schema.ExecQuerier, do bool, err error) error {
 	if do {
 		// Re-enable foreign key checks if they were enabled before.
 		if _, err2 := db.ExecContext(ctx, "PRAGMA foreign_keys = on"); err2 != nil {
@@ -230,8 +262,8 @@ func enableFK(ctx context.Context, db *sql.DB, do bool, err error) error {
 	return err
 }
 
-func violations(ctx context.Context, tx *sql.Tx) ([]violation, error) {
-	rows, err := tx.QueryContext(ctx, "PRAGMA foreign_key_check")
+func violations(ctx context.Context, conn schema.ExecQuerier) ([]violation, error) {
+	rows, err := conn.QueryContext(ctx, "PRAGMA foreign_key_check")
 	if err != nil {
 		return nil, fmt.Errorf("sql/sqlite: querying 'foreign_key_check' pragma: %w", err)
 	}
