@@ -102,6 +102,20 @@ func (rc *RevisionCreate) SetNillableError(s *string) *RevisionCreate {
 	return rc
 }
 
+// SetErrorStmt sets the "error_stmt" field.
+func (rc *RevisionCreate) SetErrorStmt(s string) *RevisionCreate {
+	rc.mutation.SetErrorStmt(s)
+	return rc
+}
+
+// SetNillableErrorStmt sets the "error_stmt" field if the given value is not nil.
+func (rc *RevisionCreate) SetNillableErrorStmt(s *string) *RevisionCreate {
+	if s != nil {
+		rc.SetErrorStmt(*s)
+	}
+	return rc
+}
+
 // SetHash sets the "hash" field.
 func (rc *RevisionCreate) SetHash(s string) *RevisionCreate {
 	rc.mutation.SetHash(s)
@@ -347,6 +361,14 @@ func (rc *RevisionCreate) createSpec() (*Revision, *sqlgraph.CreateSpec) {
 		})
 		_node.Error = value
 	}
+	if value, ok := rc.mutation.ErrorStmt(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: revision.FieldErrorStmt,
+		})
+		_node.ErrorStmt = value
+	}
 	if value, ok := rc.mutation.Hash(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
@@ -534,6 +556,24 @@ func (u *RevisionUpsert) UpdateError() *RevisionUpsert {
 // ClearError clears the value of the "error" field.
 func (u *RevisionUpsert) ClearError() *RevisionUpsert {
 	u.SetNull(revision.FieldError)
+	return u
+}
+
+// SetErrorStmt sets the "error_stmt" field.
+func (u *RevisionUpsert) SetErrorStmt(v string) *RevisionUpsert {
+	u.Set(revision.FieldErrorStmt, v)
+	return u
+}
+
+// UpdateErrorStmt sets the "error_stmt" field to the value that was provided on create.
+func (u *RevisionUpsert) UpdateErrorStmt() *RevisionUpsert {
+	u.SetExcluded(revision.FieldErrorStmt)
+	return u
+}
+
+// ClearErrorStmt clears the value of the "error_stmt" field.
+func (u *RevisionUpsert) ClearErrorStmt() *RevisionUpsert {
+	u.SetNull(revision.FieldErrorStmt)
 	return u
 }
 
@@ -763,6 +803,27 @@ func (u *RevisionUpsertOne) UpdateError() *RevisionUpsertOne {
 func (u *RevisionUpsertOne) ClearError() *RevisionUpsertOne {
 	return u.Update(func(s *RevisionUpsert) {
 		s.ClearError()
+	})
+}
+
+// SetErrorStmt sets the "error_stmt" field.
+func (u *RevisionUpsertOne) SetErrorStmt(v string) *RevisionUpsertOne {
+	return u.Update(func(s *RevisionUpsert) {
+		s.SetErrorStmt(v)
+	})
+}
+
+// UpdateErrorStmt sets the "error_stmt" field to the value that was provided on create.
+func (u *RevisionUpsertOne) UpdateErrorStmt() *RevisionUpsertOne {
+	return u.Update(func(s *RevisionUpsert) {
+		s.UpdateErrorStmt()
+	})
+}
+
+// ClearErrorStmt clears the value of the "error_stmt" field.
+func (u *RevisionUpsertOne) ClearErrorStmt() *RevisionUpsertOne {
+	return u.Update(func(s *RevisionUpsert) {
+		s.ClearErrorStmt()
 	})
 }
 
@@ -1163,6 +1224,27 @@ func (u *RevisionUpsertBulk) UpdateError() *RevisionUpsertBulk {
 func (u *RevisionUpsertBulk) ClearError() *RevisionUpsertBulk {
 	return u.Update(func(s *RevisionUpsert) {
 		s.ClearError()
+	})
+}
+
+// SetErrorStmt sets the "error_stmt" field.
+func (u *RevisionUpsertBulk) SetErrorStmt(v string) *RevisionUpsertBulk {
+	return u.Update(func(s *RevisionUpsert) {
+		s.SetErrorStmt(v)
+	})
+}
+
+// UpdateErrorStmt sets the "error_stmt" field to the value that was provided on create.
+func (u *RevisionUpsertBulk) UpdateErrorStmt() *RevisionUpsertBulk {
+	return u.Update(func(s *RevisionUpsert) {
+		s.UpdateErrorStmt()
+	})
+}
+
+// ClearErrorStmt clears the value of the "error_stmt" field.
+func (u *RevisionUpsertBulk) ClearErrorStmt() *RevisionUpsertBulk {
+	return u.Update(func(s *RevisionUpsert) {
+		s.ClearErrorStmt()
 	})
 }
 

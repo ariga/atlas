@@ -29,6 +29,8 @@ const (
 	FieldExecutionTime = "execution_time"
 	// FieldError holds the string denoting the error field in the database.
 	FieldError = "error"
+	// FieldErrorStmt holds the string denoting the error_stmt field in the database.
+	FieldErrorStmt = "error_stmt"
 	// FieldHash holds the string denoting the hash field in the database.
 	FieldHash = "hash"
 	// FieldPartialHashes holds the string denoting the partial_hashes field in the database.
@@ -49,6 +51,7 @@ var Columns = []string{
 	FieldExecutedAt,
 	FieldExecutionTime,
 	FieldError,
+	FieldErrorStmt,
 	FieldHash,
 	FieldPartialHashes,
 	FieldOperatorVersion,

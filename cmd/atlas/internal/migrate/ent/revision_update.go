@@ -130,6 +130,26 @@ func (ru *RevisionUpdate) ClearError() *RevisionUpdate {
 	return ru
 }
 
+// SetErrorStmt sets the "error_stmt" field.
+func (ru *RevisionUpdate) SetErrorStmt(s string) *RevisionUpdate {
+	ru.mutation.SetErrorStmt(s)
+	return ru
+}
+
+// SetNillableErrorStmt sets the "error_stmt" field if the given value is not nil.
+func (ru *RevisionUpdate) SetNillableErrorStmt(s *string) *RevisionUpdate {
+	if s != nil {
+		ru.SetErrorStmt(*s)
+	}
+	return ru
+}
+
+// ClearErrorStmt clears the value of the "error_stmt" field.
+func (ru *RevisionUpdate) ClearErrorStmt() *RevisionUpdate {
+	ru.mutation.ClearErrorStmt()
+	return ru
+}
+
 // SetHash sets the "hash" field.
 func (ru *RevisionUpdate) SetHash(s string) *RevisionUpdate {
 	ru.mutation.SetHash(s)
@@ -321,6 +341,19 @@ func (ru *RevisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: revision.FieldError,
 		})
 	}
+	if value, ok := ru.mutation.ErrorStmt(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: revision.FieldErrorStmt,
+		})
+	}
+	if ru.mutation.ErrorStmtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Column: revision.FieldErrorStmt,
+		})
+	}
 	if value, ok := ru.mutation.Hash(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
@@ -462,6 +495,26 @@ func (ruo *RevisionUpdateOne) SetNillableError(s *string) *RevisionUpdateOne {
 // ClearError clears the value of the "error" field.
 func (ruo *RevisionUpdateOne) ClearError() *RevisionUpdateOne {
 	ruo.mutation.ClearError()
+	return ruo
+}
+
+// SetErrorStmt sets the "error_stmt" field.
+func (ruo *RevisionUpdateOne) SetErrorStmt(s string) *RevisionUpdateOne {
+	ruo.mutation.SetErrorStmt(s)
+	return ruo
+}
+
+// SetNillableErrorStmt sets the "error_stmt" field if the given value is not nil.
+func (ruo *RevisionUpdateOne) SetNillableErrorStmt(s *string) *RevisionUpdateOne {
+	if s != nil {
+		ruo.SetErrorStmt(*s)
+	}
+	return ruo
+}
+
+// ClearErrorStmt clears the value of the "error_stmt" field.
+func (ruo *RevisionUpdateOne) ClearErrorStmt() *RevisionUpdateOne {
+	ruo.mutation.ClearErrorStmt()
 	return ruo
 }
 
@@ -684,6 +737,19 @@ func (ruo *RevisionUpdateOne) sqlSave(ctx context.Context) (_node *Revision, err
 		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Column: revision.FieldError,
+		})
+	}
+	if value, ok := ruo.mutation.ErrorStmt(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: revision.FieldErrorStmt,
+		})
+	}
+	if ruo.mutation.ErrorStmtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Column: revision.FieldErrorStmt,
 		})
 	}
 	if value, ok := ruo.mutation.Hash(); ok {

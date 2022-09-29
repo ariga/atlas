@@ -46,6 +46,8 @@ func (Revision) Fields() []ent.Field {
 			GoType(time.Duration(0)),
 		field.Text("error").
 			Optional(),
+		field.Text("error_stmt").
+			Optional(),
 		field.String("hash"),
 		field.Strings("partial_hashes").
 			Optional(),

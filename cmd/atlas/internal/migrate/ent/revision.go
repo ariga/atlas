@@ -36,6 +36,8 @@ type Revision struct {
 	ExecutionTime time.Duration `json:"execution_time,omitempty"`
 	// Error holds the value of the "error" field.
 	Error string `json:"error,omitempty"`
+	// ErrorStmt holds the value of the "error_stmt" field.
+	ErrorStmt string `json:"error_stmt,omitempty"`
 	// Hash holds the value of the "hash" field.
 	Hash string `json:"hash,omitempty"`
 	// PartialHashes holds the value of the "partial_hashes" field.
@@ -53,7 +55,7 @@ func (*Revision) scanValues(columns []string) ([]interface{}, error) {
 			values[i] = new([]byte)
 		case revision.FieldType, revision.FieldApplied, revision.FieldTotal, revision.FieldExecutionTime:
 			values[i] = new(sql.NullInt64)
-		case revision.FieldID, revision.FieldDescription, revision.FieldError, revision.FieldHash, revision.FieldOperatorVersion:
+		case revision.FieldID, revision.FieldDescription, revision.FieldError, revision.FieldErrorStmt, revision.FieldHash, revision.FieldOperatorVersion:
 			values[i] = new(sql.NullString)
 		case revision.FieldExecutedAt:
 			values[i] = new(sql.NullTime)
@@ -119,6 +121,12 @@ func (r *Revision) assignValues(columns []string, values []interface{}) error {
 				return fmt.Errorf("unexpected type %T for field error", values[i])
 			} else if value.Valid {
 				r.Error = value.String
+			}
+		case revision.FieldErrorStmt:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field error_stmt", values[i])
+			} else if value.Valid {
+				r.ErrorStmt = value.String
 			}
 		case revision.FieldHash:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -188,6 +196,9 @@ func (r *Revision) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("error=")
 	builder.WriteString(r.Error)
+	builder.WriteString(", ")
+	builder.WriteString("error_stmt=")
+	builder.WriteString(r.ErrorStmt)
 	builder.WriteString(", ")
 	builder.WriteString("hash=")
 	builder.WriteString(r.Hash)

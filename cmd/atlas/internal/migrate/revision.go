@@ -126,7 +126,11 @@ func (r *EntRevisions) Migrate(ctx context.Context) error {
 	c := ent.NewClient(ent.Driver(sql.OpenDB(r.ac.Name, r.ac.DB)))
 	// Ensure the ent client is bound to the requested revision schema. Open a new connection, if not.
 	if r.ac.Name != dialect.SQLite && r.ac.URL.Schema != r.schema {
-		sc, err := sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
+		u := *r.ac.URL.URL
+		v := u.Query()
+		v.Set("_fk", "1")
+		u.RawQuery = v.Encode()
+		sc, err := sqlclient.OpenURL(ctx, &u, sqlclient.OpenSchema(r.schema))
 		if err != nil {
 			return err
 		}

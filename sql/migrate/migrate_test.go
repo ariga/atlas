@@ -21,6 +21,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestRevisionType_MarshalText(t *testing.T) {
+	for _, tt := range []struct {
+		r       migrate.RevisionType
+		ex      string
+		wantErr bool
+	}{
+		{migrate.RevisionTypeUnknown, "", true},
+		{migrate.RevisionTypeBaseline, "baseline", false},
+		{migrate.RevisionTypeExecute, "applied", false},
+		{migrate.RevisionTypeResolved, "manually set", false},
+		{migrate.RevisionTypeExecute | migrate.RevisionTypeResolved, "applied + manually set", false},
+		{migrate.RevisionTypeExecute | migrate.RevisionTypeBaseline, "", true},
+		{1 << 3, "", true},
+	} {
+		ac, err := tt.r.MarshalText()
+		if tt.wantErr {
+			require.Error(t, err)
+			require.Zero(t, ac)
+			continue
+		}
+		require.NoError(t, err)
+		require.Equal(t, tt.ex, string(ac))
+	}
+}
+
 func TestPlanner_WritePlan(t *testing.T) {
 	p := t.TempDir()
 	d, err := migrate.NewLocalDir(p)
