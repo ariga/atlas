@@ -37,9 +37,10 @@ func FormatType(t schema.Type) (string, error) {
 		f = strings.ToLower(t.T)
 	case *schema.SpatialType:
 		f = strings.ToLower(t.T)
-	case *UUIDType:
+	case *BytesType:
 		f = strings.ToLower(t.T)
 	case *schema.UnsupportedType:
+		panic(fmt.Errorf("spanner: unsupported type: %T(%q)", t, t.T))
 		return "", fmt.Errorf("spanner: unsupported type: %T(%q)", t, t.T)
 	default:
 		return "", fmt.Errorf("spanner: invalid schema type: %T", t)

@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -231,6 +232,7 @@ func columnType(c *columnDesc) schema.Type {
 	// t := strings.TrimSpace(strings.ToUpper(c.typ))
 	t := parts[0]
 
+	fmt.Fprintln(os.Stderr, "type check", t, strings.HasPrefix(t, TypeBytes), len(parts), parts)
 	switch {
 	case t == TypeInt64:
 		// case strings.HasPrefix(t, TypeInt):
@@ -238,7 +240,7 @@ func columnType(c *columnDesc) schema.Type {
 	case t == TypeBool:
 		typ = &schema.BoolType{T: t}
 	case strings.HasPrefix(t, TypeBytes) && len(parts) > 1:
-		typ = &schema.BinaryType{
+		typ = &BytesType{
 			T:    parts[0],
 			Size: &typeSize,
 		}
@@ -404,10 +406,9 @@ func (i *inspect) addChecks(s *schema.Schema, rows *sql.Rows) error {
 	names := make(map[string]*schema.Check)
 	for rows.Next() {
 		var (
-			noInherit                            bool
 			table, name, column, clause, indexes string
 		)
-		if err := rows.Scan(&table, &name, &clause, &column, &indexes, &noInherit); err != nil {
+		if err := rows.Scan(&table, &name, &clause, &column, &indexes); err != nil {
 			return fmt.Errorf("spanner: scanning check: %w", err)
 		}
 		t, ok := s.Table(table)
@@ -420,9 +421,6 @@ func (i *inspect) addChecks(s *schema.Schema, rows *sql.Rows) error {
 		check, ok := names[name]
 		if !ok {
 			check = &schema.Check{Name: name, Expr: clause, Attrs: []schema.Attr{&CheckColumns{}}}
-			if noInherit {
-				check.Attrs = append(check.Attrs, &NoInherit{})
-			}
 			names[name] = check
 			t.Attrs = append(t.Attrs, check)
 		}
@@ -517,9 +515,6 @@ func defaultExpr(c *schema.Column, x string) schema.Expr {
 
 func canConvert(t *schema.ColumnType, x string) (string, bool) {
 	r := t.Raw
-	if t, ok := t.Type.(*ArrayType); ok {
-		r = t.T
-	}
 	i := strings.Index(x, "::"+r)
 	if i == -1 || !sqlx.IsQuoted(x[:i], '\'') {
 		return "", false
@@ -535,29 +530,13 @@ func canConvert(t *schema.ColumnType, x string) (string, bool) {
 		if sqlx.IsLiteralNumber(x) {
 			return x, true
 		}
-	case *ArrayType, *schema.BinaryType, *schema.JSONType, *NetworkType, *schema.SpatialType, *schema.StringType, *schema.TimeType, *UUIDType, *XMLType:
+	case *schema.BinaryType, *schema.JSONType, *schema.SpatialType, *schema.StringType, *schema.TimeType, *BytesType:
 		return q, true
 	}
 	return "", false
 }
 
 type (
-
-	// UserDefinedType defines a user-defined type attribute.
-	UserDefinedType struct {
-		schema.Type
-		T string
-	}
-
-	// enumType represents an enum type. It serves aa intermediate representation of a Postgres enum type,
-	// to temporary save TypeID and TypeName of an enum column until the enum values can be extracted.
-	enumType struct {
-		schema.Type
-		T      string // Type name.
-		ID     int64  // Type id.
-		Values []string
-	}
-
 	// ArrayType defines an array type.
 	// https://www.spannerql.org/docs/current/arrays.html
 	ArrayType struct {
@@ -565,77 +544,19 @@ type (
 		T string
 	}
 
-	// BitType defines a bit type.
-	// https://www.spannerql.org/docs/current/datatype-bit.html
-	BitType struct {
+	// A BytesType represents a BYTES type.
+	BytesType struct {
 		schema.Type
-		T   string
-		Len int64
+		T    string
+		Size *int
 	}
 
-	// IntervalType defines an interval type.
-	// https://www.spannerql.org/docs/current/datatype-datetime.html
-	IntervalType struct {
-		schema.Type
-		T         string // Type name.
-		F         string // Optional field. YEAR, MONTH, ..., MINUTE TO SECOND.
-		Precision *int   // Optional precision.
-	}
-
-	// A NetworkType defines a network type.
-	// https://www.spannerql.org/docs/current/datatype-net-types.html
-	NetworkType struct {
-		schema.Type
-		T   string
-		Len int64
-	}
-
-	// A CurrencyType defines a currency type.
-	CurrencyType struct {
-		schema.Type
-		T string
-	}
-
-	// A SerialType defines a serial type.
-	SerialType struct {
-		schema.Type
-		T         string
-		Precision int
-	}
-
-	// A UUIDType defines a UUID type.
-	UUIDType struct {
-		schema.Type
-		T string
-	}
-
-	// A XMLType defines an XML type.
-	XMLType struct {
-		schema.Type
-		T string
-	}
-
-	// ConType describes constraint type.
-	// https://www.spannerql.org/docs/current/catalog-pg-constraint.html
-	ConType struct {
+	// CheckColumns attribute hold the column named used by the CHECK constraints.
+	// This attribute is added on inspection for internal usage and has no meaning
+	// on migration.
+	CheckColumns struct {
 		schema.Attr
-		T string // c, f, p, u, t, x.
-	}
-
-	// Sequence defines (the supported) sequence options.
-	// https://www.spannerql.org/docs/current/sql-createsequence.html
-	Sequence struct {
-		Start, Increment int64
-		// Last sequence value written to disk.
-		// https://www.spannerql.org/docs/current/view-pg-sequences.html.
-		Last int64
-	}
-
-	// Identity defines an identity column.
-	Identity struct {
-		schema.Attr
-		Generation string // ALWAYS, BY DEFAULT.
-		Sequence   *Sequence
+		Columns []string
 	}
 
 	// IndexType represents an index type.
@@ -672,72 +593,7 @@ type (
 		// parameter for BRIN indexes. Defaults to 128.
 		PagesPerRange int64
 	}
-
-	// NoInherit attribute defines the NO INHERIT flag for CHECK constraint.
-	// https://www.postgresql.org/docs/current/catalog-pg-constraint.html
-	NoInherit struct {
-		schema.Attr
-	}
-
-	// CheckColumns attribute hold the column named used by the CHECK constraints.
-	// This attribute is added on inspection for internal usage and has no meaning
-	// on migration.
-	CheckColumns struct {
-		schema.Attr
-		Columns []string
-	}
-
-	// Partition defines the spec of a partitioned table.
-	Partition struct {
-		schema.Attr
-		// T defines the type/strategy of the partition.
-		// Can be one of: RANGE, LIST, HASH.
-		T string
-		// Partition parts. The additional attributes
-		// on each part can be used to control collation.
-		Parts []*PartitionPart
-
-		// Internal info returned from pg_partitioned_table.
-		start, attrs, exprs string
-	}
-
-	// An PartitionPart represents an index part that
-	// can be either an expression or a column.
-	PartitionPart struct {
-		X     schema.Expr
-		C     *schema.Column
-		Attrs []schema.Attr
-	}
 )
-
-// IsUnique reports if the type is unique constraint.
-func (c ConType) IsUnique() bool { return strings.ToLower(c.T) == "u" }
-
-// newIndexStorage parses and returns the index storage parameters.
-func newIndexStorage(opts string) (*IndexStorageParams, error) {
-	params := &IndexStorageParams{}
-	for _, p := range strings.Split(strings.Trim(opts, "{}"), ",") {
-		kv := strings.Split(p, "=")
-		if len(kv) != 2 {
-			return nil, fmt.Errorf("invalid index storage parameter: %s", p)
-		}
-		switch kv[0] {
-		case "autosummarize":
-			b, err := strconv.ParseBool(kv[1])
-			if err != nil {
-				return nil, fmt.Errorf("failed parsing autosummarize %q: %w", kv[1], err)
-			}
-			params.AutoSummarize = b
-		case "pages_per_range":
-			i, err := strconv.ParseInt(kv[1], 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("failed parsing pages_per_range %q: %w", kv[1], err)
-			}
-			params.PagesPerRange = i
-		}
-	}
-	return params, nil
-}
 
 const (
 	// Query to list runtime parameters.
