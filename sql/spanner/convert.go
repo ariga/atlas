@@ -40,7 +40,6 @@ func FormatType(t schema.Type) (string, error) {
 	case *BytesType:
 		f = strings.ToLower(t.T)
 	case *schema.UnsupportedType:
-		panic(fmt.Errorf("spanner: unsupported type: %T(%q)", t, t.T))
 		return "", fmt.Errorf("spanner: unsupported type: %T(%q)", t, t.T)
 	default:
 		return "", fmt.Errorf("spanner: invalid schema type: %T", t)
@@ -79,6 +78,10 @@ func ParseType(c string) (schema.Type, error) {
 		}, nil
 	case TypeString:
 		return &schema.StringType{
+			T: TypeString,
+		}, nil
+	case TypeBytes:
+		return &BytesType{
 			T: TypeString,
 		}, nil
 	default:
