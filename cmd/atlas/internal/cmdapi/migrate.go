@@ -933,6 +933,7 @@ func CmdMigrateStatusRun(cmd *cobra.Command, _ []string) error {
 		Client:       client,
 		Dir:          dir,
 		ReportWriter: &cmdmigrate.TemplateWriter{T: format, W: cmd.OutOrStdout()},
+		Schema:       revisionSchemaName(client),
 	}).Run(cmd.Context())
 }
 
