@@ -248,8 +248,9 @@ func columnType(c *columnDesc) schema.Type {
 			Size:      typeSize,
 			SizeIsMax: typeSize == -1,
 		}
-	// TODO(tmc): case TypeDate:
 	case t == TypeTimestamp:
+		typ = &schema.TimeType{T: t}
+	case t == TypeDate:
 		typ = &schema.TimeType{T: t}
 	case t == TypeJSON:
 		typ = &schema.JSONType{T: t}
