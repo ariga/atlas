@@ -20,7 +20,7 @@ require (
 )
 
 require (
-	ariga.io/atlas/cmd/atlas v0.7.1-0.20220925103247-db83ea0cd178 // indirect
+	ariga.io/atlas/cmd/atlas v0.7.2 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20220816024939-bc8df83d7b9d // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
@@ -50,8 +50,10 @@ require (
 	github.com/manifoldco/promptui v0.9.0 // indirect
 	github.com/mattn/go-colorable v0.1.9 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
+	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
+	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/pingcap/errors v0.11.5-0.20210425183316-da1aaba5fb63 // indirect
 	github.com/pingcap/log v0.0.0-20210625125904-98ed8e2eb1c7 // indirect
 	github.com/pingcap/tidb/parser v0.0.0-20220817134052-9709249e523a // indirect
@@ -74,7 +76,6 @@ require (
 	google.golang.org/grpc v1.33.1 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
-	gopkg.in/errgo.v2 v2.1.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

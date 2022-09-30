@@ -47,27 +47,29 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 	if schema.IsNotExistError(err) || func() bool { _, ok := sch.Table(revision.Table); return !ok }() {
+		// Either schema or table does not exist.
 		rep.Pending = rep.Available
-		return r.ReportWriter.WriteReport(rep)
-	}
-	rrw, err := NewEntRevisions(ctx, r.Client, WithSchema(r.Schema))
-	if err != nil {
-		return err
-	}
-	if err := rrw.Migrate(ctx); err != nil {
-		return err
-	}
-	ex, err := migrate.NewExecutor(r.Client.Driver, r.Dir, rrw)
-	if err != nil {
-		return err
-	}
-	rep.Pending, err = ex.Pending(ctx)
-	if err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
-		return err
-	}
-	rep.Applied, err = rrw.ReadRevisions(ctx)
-	if err != nil {
-		return err
+	} else {
+		// Both exist, fetch their data.
+		rrw, err := NewEntRevisions(ctx, r.Client, WithSchema(r.Schema))
+		if err != nil {
+			return err
+		}
+		if err := rrw.Migrate(ctx); err != nil {
+			return err
+		}
+		ex, err := migrate.NewExecutor(r.Client.Driver, r.Dir, rrw)
+		if err != nil {
+			return err
+		}
+		rep.Pending, err = ex.Pending(ctx)
+		if err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
+			return err
+		}
+		rep.Applied, err = rrw.ReadRevisions(ctx)
+		if err != nil {
+			return err
+		}
 	}
 	switch len(rep.Pending) {
 	case len(rep.Available):
@@ -142,7 +144,7 @@ var (
 {{- if gt .Total 0 }}{{ printf " (%s statements applied)" (yellow "%d" .Count) }}{{ end }}
   {{ yellow "--" }} Next Version:    {{ cyan .Next }}
 {{- if gt .Total 0 }}{{ printf " (%s statements left)" (yellow "%d" .Left) }}{{ end }}
-  {{ yellow "--" }} Executed Files:  {{ len .Applied }} {{ if gt .Total 0 }}(last one partially){{ end }}
+  {{ yellow "--" }} Executed Files:  {{ len .Applied }}{{ if gt .Total 0 }} (last one partially){{ end }}
   {{ yellow "--" }} Pending Files:   {{ len .Pending }}
 {{ if gt .Total 0 }}
 Last migration attempt had errors:

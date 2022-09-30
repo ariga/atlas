@@ -31,19 +31,19 @@ ALTER TABLE "users" ADD COLUMN "happy" boolean NOT NULL DEFAULT true;
 
 -- status_clean.txt --
 Migration Status: PENDING
-  -- Current Version:  No version applied yet
-  -- Next Version:     1
-  -- Executed Files:   0
-  -- Pending Files:    2
+  -- Current Version: No migration applied yet
+  -- Next Version:    1
+  -- Executed Files:  0
+  -- Pending Files:   2
 -- status_one_applied.txt --
 Migration Status: PENDING
-  -- Current Version:  1
-  -- Next Version:     2
-  -- Executed Files:   1
-  -- Pending Files:    1
+  -- Current Version: 1
+  -- Next Version:    2
+  -- Executed Files:  1
+  -- Pending Files:   1
 -- status_ok.txt --
 Migration Status: OK
-  -- Current Version:  2
-  -- Next Version:     Already at latest version
-  -- Executed Files:   2
-  -- Pending Files:    0
+  -- Current Version: 2
+  -- Next Version:    Already at latest version
+  -- Executed Files:  2
+  -- Pending Files:   0

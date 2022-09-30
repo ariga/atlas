@@ -6,8 +6,6 @@ package migrate
 
 import (
 	"context"
-	"fmt"
-	"path/filepath"
 	"testing"
 
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
@@ -17,10 +15,7 @@ import (
 )
 
 func TestNewEntRevisions(t *testing.T) {
-	c, err := sqlclient.Open(
-		context.Background(),
-		fmt.Sprintf("sqlite://%s?cache=shared&mode=memory&_fk=true", filepath.Join(t.TempDir(), "revision")),
-	)
+	c, err := sqlclient.Open(context.Background(), "sqlite://?mode=memory")
 	require.NoError(t, err)
 	r, err := NewEntRevisions(context.Background(), c)
 	require.NoError(t, err)
