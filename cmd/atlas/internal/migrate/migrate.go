@@ -5,285 +5,160 @@
 package migrate
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"strings"
-	"text/template"
 
+	"ariga.io/atlas/cmd/atlas/internal/migrate/ent"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
-	"github.com/fatih/color"
-	"github.com/olekukonko/tablewriter"
-)
-
-// Runner is used to gather information about migration status.
-type Runner struct {
-	// Client configures the connection to the database to file a StatusReport for.
-	Client *sqlclient.Client
-	// Dir is used for scanning and validating the migration directory.
-	Dir migrate.Dir
-	// ReportWriter writes the summary report.
-	ReportWriter ReportWriter
-	// Schema name the revision table resides in.
-	Schema string
-}
-
-// Run creates and writes a StatusReport.
-func (r *Runner) Run(ctx context.Context) error {
-	rep, err := NewStatusReport(r.Client, r.Dir)
-	if err != nil {
-		return err
-	}
-	// Check if there already is a revision table in the defined schema.
-	// Inspect schema and check if the table does already exist.
-	sch, err := r.Client.InspectSchema(ctx, r.Schema, &schema.InspectOptions{Tables: []string{revision.Table}})
-	if err != nil && !schema.IsNotExistError(err) {
-		return err
-	}
-	if schema.IsNotExistError(err) || func() bool { _, ok := sch.Table(revision.Table); return !ok }() {
-		// Either schema or table does not exist.
-		rep.Pending = rep.Available
-	} else {
-		// Both exist, fetch their data.
-		rrw, err := NewEntRevisions(ctx, r.Client, WithSchema(r.Schema))
-		if err != nil {
-			return err
-		}
-		if err := rrw.Migrate(ctx); err != nil {
-			return err
-		}
-		ex, err := migrate.NewExecutor(r.Client.Driver, r.Dir, rrw)
-		if err != nil {
-			return err
-		}
-		rep.Pending, err = ex.Pending(ctx)
-		if err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
-			return err
-		}
-		rep.Applied, err = rrw.ReadRevisions(ctx)
-		if err != nil {
-			return err
-		}
-	}
-	switch len(rep.Pending) {
-	case len(rep.Available):
-		rep.Current = "No migration applied yet"
-	default:
-		rep.Current = rep.Applied[len(rep.Applied)-1].Version
-	}
-	if len(rep.Pending) == 0 {
-		rep.Status = "OK"
-		rep.Next = "Already at latest version"
-	} else {
-		rep.Status = "PENDING"
-		rep.Next = rep.Pending[0].Version()
-	}
-	// If the last one is partially applied (and not manually resolved).
-	if len(rep.Applied) != 0 {
-		last := rep.Applied[len(rep.Applied)-1]
-		if !last.Type.Has(migrate.RevisionTypeResolved) && last.Applied < last.Total {
-			rep.SQL = strings.ReplaceAll(last.ErrorStmt, "\n", " ")
-			rep.Error = strings.ReplaceAll(last.Error, "\n", " ")
-			rep.Count = last.Applied
-			idx := migrate.FilesLastIndex(rep.Available, func(f migrate.File) bool {
-				return f.Version() == last.Version
-			})
-			if idx == -1 {
-				return fmt.Errorf("migration file with version %q not found", last.Version)
-			}
-			stmts, err := rep.Available[idx].Stmts()
-			if err != nil {
-				return err
-			}
-			rep.Total = len(stmts)
-		}
-	}
-	return r.ReportWriter.WriteReport(rep)
-}
-
-var (
-	// TemplateFuncs are global functions available in templates.
-	TemplateFuncs = template.FuncMap{
-		"json": func(v any, args ...string) (string, error) {
-			var (
-				b   []byte
-				err error
-			)
-			switch len(args) {
-			case 0:
-				b, err = json.Marshal(v)
-			case 1:
-				b, err = json.MarshalIndent(v, "", args[0])
-			default:
-				b, err = json.MarshalIndent(v, args[0], args[1])
-			}
-			return string(b), err
-		},
-		"table":  table,
-		"cyan":   color.CyanString,
-		"green":  color.HiGreenString,
-		"red":    color.HiRedString,
-		"yellow": color.YellowString,
-		"default": func(report *StatusReport) (string, error) {
-			var buf bytes.Buffer
-			t, err := template.New("report").Funcs(template.FuncMap{
-				"cyan":   color.CyanString,
-				"green":  color.HiGreenString,
-				"red":    color.HiRedString,
-				"yellow": color.YellowString,
-			}).Parse(`Migration Status:
-{{- if eq .Status "OK"      }} {{ green .Status }}{{ end }}
-{{- if eq .Status "PENDING" }} {{ yellow .Status }}{{ end }}
-  {{ yellow "--" }} Current Version: {{ cyan .Current }}
-{{- if gt .Total 0 }}{{ printf " (%s statements applied)" (yellow "%d" .Count) }}{{ end }}
-  {{ yellow "--" }} Next Version:    {{ cyan .Next }}
-{{- if gt .Total 0 }}{{ printf " (%s statements left)" (yellow "%d" .Left) }}{{ end }}
-  {{ yellow "--" }} Executed Files:  {{ len .Applied }}{{ if gt .Total 0 }} (last one partially){{ end }}
-  {{ yellow "--" }} Pending Files:   {{ len .Pending }}
-{{ if gt .Total 0 }}
-Last migration attempt had errors:
-  {{ yellow "--" }} SQL:   {{ .SQL }}
-  {{ yellow "--" }} {{ red "ERROR:" }} {{ .Error }}
-{{- end }}`)
-			if err != nil {
-				return "", err
-			}
-			err = t.Execute(&buf, report)
-			return buf.String(), err
-		},
-	}
-	DefaultTemplate = template.Must(template.New("report").Funcs(TemplateFuncs).Parse("{{ default . }}"))
+	"entgo.io/ent/dialect"
+	"entgo.io/ent/dialect/sql"
+	entschema "entgo.io/ent/dialect/sql/schema"
 )
 
 type (
-	// Env holds the environment information.
-	Env struct {
-		Driver string         `json:"Driver,omitempty"` // Driver name.
-		URL    *sqlclient.URL `json:"URL,omitempty"`    // URL to dev database.
-		Dir    string         `json:"Dir,omitempty"`    // Path to migration directory.
+	// EntRevisions provides implementation for the migrate.RevisionReadWriter interface.
+	EntRevisions struct {
+		ac     *sqlclient.Client // underlying Atlas client
+		ec     *ent.Client       // underlying Ent client
+		schema string            // name of the schema the revision table resides in
 	}
 
-	// StatusReport contains a summary of the migration status of a database.
-	StatusReport struct {
-		Env           `json:"Env"`
-		Available     Files               `json:"Available,omitempty"` // Available migration files.
-		Pending       Files               `json:"Pending,omitempty"`   // Pending migration files.
-		Applied       []*migrate.Revision `json:"Applied,omitempty"`   // Applied migration files.
-		Current, Next string              // Current and Next migration version.
-		Count, Total  int                 // Count of Total statements applied of the last revision.
-		Status        string              // Status of migration (OK, PENDING).
-		Error         string              `json:"Error,omitempty"` // Last Error that occurred.
-		SQL           string              `json:"SQL,omitempty"`   // SQL that caused the last Error.
-	}
-
-	// ReportWriter writes a StatusReport.
-	ReportWriter interface {
-		WriteReport(*StatusReport) error
-	}
-
-	// A TemplateWriter is ReportWrite that writes output according to a template.
-	TemplateWriter struct {
-		T *template.Template
-		W io.Writer
-	}
-
-	// Files is a slice of migrate.File. Implements json.Marshaler.
-	Files []migrate.File
+	// Option allows to configure EntRevisions by using functional arguments.
+	Option func(*EntRevisions) error
 )
 
-// NewStatusReport returns a new StatusReport.
-func NewStatusReport(c *sqlclient.Client, dir migrate.Dir) (*StatusReport, error) {
-	files, err := dir.Files()
+// NewEntRevisions creates a new EntRevisions with the given sqlclient.Client.
+func NewEntRevisions(ctx context.Context, ac *sqlclient.Client, opts ...Option) (*EntRevisions, error) {
+	r := &EntRevisions{ac: ac}
+	for _, opt := range opts {
+		if err := opt(r); err != nil {
+			return nil, err
+		}
+	}
+	// Create the connection with the underlying migrate.Driver to have it inside a possible transaction.
+	entopts := []ent.Option{ent.Driver(sql.NewDriver(r.ac.Name, sql.Conn{ExecQuerier: r.ac.Driver}))}
+	// SQLite does not support multiple schema, therefore schema-config is only needed for other dialects.
+	if r.ac.Name != dialect.SQLite {
+		// Make sure the schema to store the revisions table in does exist.
+		_, err := r.ac.InspectSchema(ctx, r.schema, &schema.InspectOptions{Mode: schema.InspectSchemas})
+		if err != nil && !schema.IsNotExistError(err) {
+			return nil, err
+		}
+		if schema.IsNotExistError(err) {
+			if err := r.ac.ApplyChanges(ctx, []schema.Change{
+				&schema.AddSchema{S: &schema.Schema{Name: r.schema}},
+			}); err != nil {
+				return nil, err
+			}
+		}
+		// Tell Ent to operate on a given schema.
+		if r.schema != "" {
+			entopts = append(entopts, ent.AlternateSchema(ent.SchemaConfig{Revision: r.schema}))
+		}
+	}
+	// Instantiate the Ent client and migrate the revision schema.
+	r.ec = ent.NewClient(entopts...)
+	return r, nil
+}
+
+// WithSchema configures the schema to use for the revision table.
+func WithSchema(s string) Option {
+	return func(r *EntRevisions) error {
+		r.schema = s
+		return nil
+	}
+}
+
+// Ident returns the table identifier.
+func (r *EntRevisions) Ident() *migrate.TableIdent {
+	return &migrate.TableIdent{Name: revision.Table, Schema: r.schema}
+}
+
+// ReadRevision reads a revision from the revisions table.
+//
+// ReadRevision will not return results only saved in cache.
+func (r *EntRevisions) ReadRevision(ctx context.Context, v string) (*migrate.Revision, error) {
+	rev, err := r.ec.Revision.Get(ctx, v)
+	if err != nil && !ent.IsNotFound(err) {
+		return nil, err
+	}
+	if ent.IsNotFound(err) {
+		return nil, migrate.ErrRevisionNotExist
+	}
+	return rev.AtlasRevision(), nil
+}
+
+// ReadRevisions reads the revisions from the revisions table.
+//
+// ReadRevisions will not return results only saved to cache.
+func (r *EntRevisions) ReadRevisions(ctx context.Context) ([]*migrate.Revision, error) {
+	revs, err := r.ec.Revision.Query().Order(ent.Asc(revision.FieldID)).All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	sum := &StatusReport{
-		Env: Env{
-			Driver: c.Name,
-			URL:    c.URL,
-		},
-		Available: files,
+	ret := make([]*migrate.Revision, len(revs))
+	for i, rev := range revs {
+		ret[i] = rev.AtlasRevision()
 	}
-	if p, ok := dir.(interface{ Path() string }); ok {
-		sum.Env.Dir = p.Path()
-	}
-	return sum, nil
+	return ret, nil
 }
 
-// WriteReport implements ReportWriter.
-func (w *TemplateWriter) WriteReport(r *StatusReport) error {
-	return w.T.Execute(w.W, r)
+// WriteRevision writes a revision to the revisions table.
+func (r *EntRevisions) WriteRevision(ctx context.Context, rev *migrate.Revision) error {
+	return r.ec.Revision.Create().
+		SetRevision(rev).
+		OnConflict(sql.ConflictColumns(revision.FieldID)).
+		UpdateNewValues().
+		Exec(ctx)
 }
 
-// MarshalJSON implements json.Marshaler.
-func (fs Files) MarshalJSON() ([]byte, error) {
-	type file struct {
-		Name        string `json:"Name,omitempty"`
-		Version     string `json:"Version,omitempty"`
-		Description string `json:"Description,omitempty"`
-	}
-	files := make([]file, len(fs))
-	for i, f := range fs {
-		files[i] = file{f.Name(), f.Version(), f.Desc()}
-	}
-	return json.Marshal(files)
+// DeleteRevision deletes a revision from the revisions table.
+func (r *EntRevisions) DeleteRevision(ctx context.Context, v string) error {
+	return r.ec.Revision.DeleteOneID(v).Exec(ctx)
 }
 
-// Left returns the amount of statements left to apply (if any).
-func (r *StatusReport) Left() int { return r.Total - r.Count }
-
-func table(report *StatusReport) (string, error) {
-	var buf strings.Builder
-	tbl := tablewriter.NewWriter(&buf)
-	tbl.SetRowLine(true)
-	tbl.SetAutoMergeCellsByColumnIndex([]int{0})
-	tbl.SetHeader([]string{
-		"Version",
-		"Description",
-		"Status",
-		"Count",
-		"Executed At",
-		"Execution Time",
-		"Error",
-		"SQL",
-	})
-	for _, r := range report.Applied {
-		tbl.Append([]string{
-			r.Version,
-			r.Description,
-			r.Type.String(),
-			fmt.Sprintf("%d/%d", r.Applied, r.Total),
-			r.ExecutedAt.Format("2006-01-02 15:04:05 MST"),
-			r.ExecutionTime.String(),
-			r.Error,
-			r.ErrorStmt,
-		})
-	}
-	for i, f := range report.Pending {
-		var c string
-		if i == 0 {
-			if r := report.Applied[len(report.Applied)-1]; f.Version() == r.Version && r.Applied < r.Total {
-				stmts, err := f.Stmts()
-				if err != nil {
-					return "", err
-				}
-				c = fmt.Sprintf("%d/%d", len(stmts)-r.Applied, len(stmts))
-			}
+// Migrate attempts to create / update the revisions table. This is separated since Ent attempts to wrap the migration
+// execution in a transaction and assumes the underlying connection is of type *sql.DB, which is not true for actually
+// reading and writing revisions.
+func (r *EntRevisions) Migrate(ctx context.Context) (err error) {
+	c := ent.NewClient(ent.Driver(sql.OpenDB(r.ac.Name, r.ac.DB)))
+	// Ensure the ent client is bound to the requested revision schema. Open a new connection, if not.
+	if r.ac.Name != dialect.SQLite && r.ac.URL.Schema != r.schema {
+		sc, err := sqlclient.OpenURL(ctx, r.ac.URL.URL, sqlclient.OpenSchema(r.schema))
+		if err != nil {
+			return err
 		}
-		tbl.Append([]string{
-			f.Version(),
-			f.Desc(),
-			"pending",
-			c,
-			"", "", "", "",
-		})
+		defer sc.Close()
+		c = ent.NewClient(ent.Driver(sql.OpenDB(sc.Name, sc.DB)))
 	}
-	tbl.Render()
-	return buf.String(), nil
+	if r.ac.Name == dialect.SQLite {
+		var on sql.NullBool
+		if err := r.ac.DB.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&on); err != nil {
+			return err
+		}
+		if !on.Bool {
+			// Ent requires the foreign key checks in SQLite to be enabled for migration. Since Atlas does not,
+			// ensure they are set for the migration attempt and restore previous setting afterwards.
+			_, err := r.ac.ExecContext(ctx, "PRAGMA foreign_keys = on")
+			if err != nil {
+				return err
+			}
+			defer func() {
+				_, err2 := r.ac.ExecContext(ctx, "PRAGMA foreign_keys = off")
+				if err2 != nil {
+					if err != nil {
+						err = fmt.Errorf("%v: %w", err2, err)
+						return
+					}
+					err = err2
+				}
+			}()
+		}
+	}
+	return c.Schema.Create(ctx, entschema.WithDropColumn(true))
 }
+
+var _ migrate.RevisionReadWriter = (*EntRevisions)(nil)
