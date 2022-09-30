@@ -6,6 +6,7 @@ package migrate
 
 import (
 	"context"
+	"fmt"
 
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
@@ -122,7 +123,7 @@ func (r *EntRevisions) DeleteRevision(ctx context.Context, v string) error {
 // Migrate attempts to create / update the revisions table. This is separated since Ent attempts to wrap the migration
 // execution in a transaction and assumes the underlying connection is of type *sql.DB, which is not true for actually
 // reading and writing revisions.
-func (r *EntRevisions) Migrate(ctx context.Context) error {
+func (r *EntRevisions) Migrate(ctx context.Context) (err error) {
 	c := ent.NewClient(ent.Driver(sql.OpenDB(r.ac.Name, r.ac.DB)))
 	// Ensure the ent client is bound to the requested revision schema. Open a new connection, if not.
 	if r.ac.Name != dialect.SQLite && r.ac.URL.Schema != r.schema {
@@ -132,6 +133,30 @@ func (r *EntRevisions) Migrate(ctx context.Context) error {
 		}
 		defer sc.Close()
 		c = ent.NewClient(ent.Driver(sql.OpenDB(sc.Name, sc.DB)))
+	}
+	if r.ac.Name == dialect.SQLite {
+		var on sql.NullBool
+		if err := r.ac.DB.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&on); err != nil {
+			return err
+		}
+		if !on.Bool {
+			// Ent requires the foreign key checks in SQLite to be enabled for migration. Since Atlas does not,
+			// ensure they are set for the migration attempt and restore previous setting afterwards.
+			_, err := r.ac.ExecContext(ctx, "PRAGMA foreign_keys = on")
+			if err != nil {
+				return err
+			}
+			defer func() {
+				_, err2 := r.ac.ExecContext(ctx, "PRAGMA foreign_keys = off")
+				if err2 != nil {
+					if err != nil {
+						err = fmt.Errorf("%v: %w", err2, err)
+						return
+					}
+					err = err2
+				}
+			}()
+		}
 	}
 	return c.Schema.Create(ctx, entschema.WithDropColumn(true))
 }

@@ -178,31 +178,18 @@ type (
 
 	// A Revision denotes an applied migration in a deployment. Used to track migration executions state of a database.
 	Revision struct {
-		// Version of the migration.
-		Version string
-		// Description of this migration.
-		Description string
-		// Type of the migration.
-		Type RevisionType
-		// Applied denotes the amount of successfully applied statements of the revision.
-		Applied int
-		// Total denotes the total amount of statements of the migration.
-		Total int
-		// ExecutedAt denotes when this migration was started to be executed.
-		ExecutedAt time.Time
-		// ExecutionTime denotes the time it took for this migration to be applied on the database.
-		ExecutionTime time.Duration
-		// Error holds information about a migration error (if occurred).
-		// If the error is from the application level, it is prefixed with "Go:\n".
-		// If the error is raised from the database, Error contains both the failed statement and the database error
-		// following the "SQL:\n<sql>\n\nError:\n<err>" format.
-		Error string
-		// Hash is the check-sum of this migration as stated by the migration directories HashFile.
-		Hash string
-		// PartialHashes contains one hash per statement that has been applied on the database.
-		PartialHashes []string
-		// OperatorVersion holds a string representation of the Atlas operator managing this database migration.
-		OperatorVersion string
+		Version         string        `json:"Version"`             // Version of the migration.
+		Description     string        `json:"Description"`         // Description of this migration.
+		Type            RevisionType  `json:"Type"`                // Type of the migration.
+		Applied         int           `json:"Applied"`             // Applied amount of statements in the migration.
+		Total           int           `json:"Total"`               // Total amount of statements in the migration.
+		ExecutedAt      time.Time     `json:"ExecutedAt"`          // ExecutedAt is the starting point of execution.
+		ExecutionTime   time.Duration `json:"ExecutionTime"`       // ExecutionTime of the migration.
+		Error           string        `json:"Error,omitempty"`     // Error of the migration, if any occurred.
+		ErrorStmt       string        `json:"ErrorStmt,omitempty"` // ErrorStmt is the statement that raised Error.
+		Hash            string        `json:"-"`                   // Hash of migration file.
+		PartialHashes   []string      `json:"-"`                   // PartialHashes is the hashes of applied statements.
+		OperatorVersion string        `json:"OperatorVersion"`     // OperatorVersion that executed this migration.
 	}
 
 	// RevisionType defines the type of the revision record in the history table.
@@ -243,6 +230,36 @@ const (
 	// RevisionTypeExecute | RevisionTypeResolved.
 	RevisionTypeResolved
 )
+
+// Has returns if the given flag is set.
+func (r RevisionType) Has(f RevisionType) bool {
+	return r&f != 0
+}
+
+// String implements fmt.Stringer.
+func (r RevisionType) String() string {
+	switch {
+	case r == RevisionTypeBaseline:
+		return "baseline"
+	case r == RevisionTypeExecute:
+		return "applied"
+	case r == RevisionTypeResolved:
+		return "manually set"
+	case r == RevisionTypeExecute|RevisionTypeResolved:
+		return "applied + manually set"
+	default:
+		return "unknown"
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (r RevisionType) MarshalText() ([]byte, error) {
+	s := r.String()
+	if s == "unknown" {
+		return nil, fmt.Errorf("unexpected revision type '%v'", r)
+	}
+	return []byte(s), nil
+}
 
 // NewPlanner creates a new Planner.
 func NewPlanner(drv Driver, dir Dir, opts ...PlannerOption) *Planner {
@@ -640,7 +657,9 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 		e.log.Log(LogStmt{stmt})
 		if _, err = e.drv.ExecContext(ctx, stmt); err != nil {
 			e.log.Log(LogError{Error: err})
-			r.setSQLErr(stmt, err)
+			r.done()
+			r.ErrorStmt = stmt
+			r.Error = err.Error()
 			return fmt.Errorf("sql/migrate: execute: executing statement %q from version %q: %w", stmt, r.Version, err)
 		}
 		r.PartialHashes = append(r.PartialHashes, "h1:"+sums[r.Applied])
@@ -789,11 +808,6 @@ var _ RevisionReadWriter = (*NopRevisionReadWriter)(nil)
 // done computes and sets the ExecutionTime.
 func (r *Revision) done() {
 	r.ExecutionTime = time.Now().Sub(r.ExecutedAt)
-}
-
-func (r *Revision) setSQLErr(stmt string, err error) {
-	r.done()
-	r.Error = fmt.Sprintf("Statement:\n%s\n\nError:\n%s", stmt, err)
 }
 
 type (

@@ -49,6 +49,7 @@ type RevisionMutation struct {
 	execution_time    *time.Duration
 	addexecution_time *time.Duration
 	error             *string
+	error_stmt        *string
 	hash              *string
 	partial_hashes    *[]string
 	operator_version  *string
@@ -507,6 +508,55 @@ func (m *RevisionMutation) ResetError() {
 	delete(m.clearedFields, revision.FieldError)
 }
 
+// SetErrorStmt sets the "error_stmt" field.
+func (m *RevisionMutation) SetErrorStmt(s string) {
+	m.error_stmt = &s
+}
+
+// ErrorStmt returns the value of the "error_stmt" field in the mutation.
+func (m *RevisionMutation) ErrorStmt() (r string, exists bool) {
+	v := m.error_stmt
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldErrorStmt returns the old "error_stmt" field's value of the Revision entity.
+// If the Revision object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RevisionMutation) OldErrorStmt(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldErrorStmt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldErrorStmt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldErrorStmt: %w", err)
+	}
+	return oldValue.ErrorStmt, nil
+}
+
+// ClearErrorStmt clears the value of the "error_stmt" field.
+func (m *RevisionMutation) ClearErrorStmt() {
+	m.error_stmt = nil
+	m.clearedFields[revision.FieldErrorStmt] = struct{}{}
+}
+
+// ErrorStmtCleared returns if the "error_stmt" field was cleared in this mutation.
+func (m *RevisionMutation) ErrorStmtCleared() bool {
+	_, ok := m.clearedFields[revision.FieldErrorStmt]
+	return ok
+}
+
+// ResetErrorStmt resets all changes to the "error_stmt" field.
+func (m *RevisionMutation) ResetErrorStmt() {
+	m.error_stmt = nil
+	delete(m.clearedFields, revision.FieldErrorStmt)
+}
+
 // SetHash sets the "hash" field.
 func (m *RevisionMutation) SetHash(s string) {
 	m.hash = &s
@@ -647,7 +697,7 @@ func (m *RevisionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RevisionMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 11)
 	if m.description != nil {
 		fields = append(fields, revision.FieldDescription)
 	}
@@ -668,6 +718,9 @@ func (m *RevisionMutation) Fields() []string {
 	}
 	if m.error != nil {
 		fields = append(fields, revision.FieldError)
+	}
+	if m.error_stmt != nil {
+		fields = append(fields, revision.FieldErrorStmt)
 	}
 	if m.hash != nil {
 		fields = append(fields, revision.FieldHash)
@@ -700,6 +753,8 @@ func (m *RevisionMutation) Field(name string) (ent.Value, bool) {
 		return m.ExecutionTime()
 	case revision.FieldError:
 		return m.Error()
+	case revision.FieldErrorStmt:
+		return m.ErrorStmt()
 	case revision.FieldHash:
 		return m.Hash()
 	case revision.FieldPartialHashes:
@@ -729,6 +784,8 @@ func (m *RevisionMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldExecutionTime(ctx)
 	case revision.FieldError:
 		return m.OldError(ctx)
+	case revision.FieldErrorStmt:
+		return m.OldErrorStmt(ctx)
 	case revision.FieldHash:
 		return m.OldHash(ctx)
 	case revision.FieldPartialHashes:
@@ -792,6 +849,13 @@ func (m *RevisionMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetError(v)
+		return nil
+	case revision.FieldErrorStmt:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetErrorStmt(v)
 		return nil
 	case revision.FieldHash:
 		v, ok := value.(string)
@@ -898,6 +962,9 @@ func (m *RevisionMutation) ClearedFields() []string {
 	if m.FieldCleared(revision.FieldError) {
 		fields = append(fields, revision.FieldError)
 	}
+	if m.FieldCleared(revision.FieldErrorStmt) {
+		fields = append(fields, revision.FieldErrorStmt)
+	}
 	if m.FieldCleared(revision.FieldPartialHashes) {
 		fields = append(fields, revision.FieldPartialHashes)
 	}
@@ -917,6 +984,9 @@ func (m *RevisionMutation) ClearField(name string) error {
 	switch name {
 	case revision.FieldError:
 		m.ClearError()
+		return nil
+	case revision.FieldErrorStmt:
+		m.ClearErrorStmt()
 		return nil
 	case revision.FieldPartialHashes:
 		m.ClearPartialHashes()
@@ -949,6 +1019,9 @@ func (m *RevisionMutation) ResetField(name string) error {
 		return nil
 	case revision.FieldError:
 		m.ResetError()
+		return nil
+	case revision.FieldErrorStmt:
+		m.ResetErrorStmt()
 		return nil
 	case revision.FieldHash:
 		m.ResetHash()

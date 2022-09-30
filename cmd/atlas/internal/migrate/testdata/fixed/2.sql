@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD COLUMN `happy` boolean NOT NULL DEFAULT true;

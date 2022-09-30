@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"ariga.io/atlas/cmd/atlas/internal/lint"
-	entmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
+	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
@@ -84,6 +84,9 @@ var (
 			Latest  uint   // latest N migration files
 			GitDir  string // repository working dir
 			GitBase string // branch name to compare with
+		}
+		Status struct {
+			Format string // log formatting
 		}
 	}
 	// MigrateCmd represents the migrate command. It wraps several other sub-commands.
@@ -307,6 +310,7 @@ func init() {
 	// Status flags.
 	urlFlag(&MigrateFlags.URL, migrateFlagURL, "u", MigrateStatusCmd.Flags())
 	revisionsFlag(MigrateStatusCmd.Flags())
+	MigrateStatusCmd.Flags().StringVarP(&MigrateFlags.Status.Format, migrateFlagLog, "", "", "custom logging using a Go template")
 	// Set flags.
 	urlFlag(&MigrateFlags.URL, migrateFlagURL, "u", MigrateSetCmd.Flags())
 	// Hash flags.
@@ -372,7 +376,7 @@ func CmdMigrateApplyRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := rrw.(*entmigrate.EntRevisions).Migrate(cmd.Context()); err != nil {
+	if err := rrw.(*cmdmigrate.EntRevisions).Migrate(cmd.Context()); err != nil {
 		return err
 	}
 	// Determine pending files and lock the database while working.
@@ -479,8 +483,8 @@ schema if it is unused.
 	return nil
 }
 
-func entRevisions(ctx context.Context, c *sqlclient.Client) (*entmigrate.EntRevisions, error) {
-	return entmigrate.NewEntRevisions(ctx, c, entmigrate.WithSchema(revisionSchemaName(c)))
+func entRevisions(ctx context.Context, c *sqlclient.Client) (*cmdmigrate.EntRevisions, error) {
+	return cmdmigrate.NewEntRevisions(ctx, c, cmdmigrate.WithSchema(revisionSchemaName(c)))
 }
 
 // defaultRevisionSchema is the default schema for storing revisions table.
@@ -595,7 +599,7 @@ func executorOptions(l migrate.Logger) []migrate.ExecutorOption {
 
 func operatorVersion() string {
 	v, _ := parse(version)
-	return "Atlas CLI - " + v
+	return "Atlas CLI " + v
 }
 
 // CmdMigrateDiffRun is the command executed when running the CLI with 'migrate diff' args.
@@ -906,16 +910,10 @@ func CmdMigrateSetRun(cmd *cobra.Command, args []string) error {
 
 // CmdMigrateStatusRun is the command executed when running the CLI with 'migrate status' args.
 func CmdMigrateStatusRun(cmd *cobra.Command, _ []string) error {
-	// Open the migration directory.
 	dir, err := dir(false)
 	if err != nil {
 		return err
 	}
-	avail, err := dir.Files()
-	if err != nil {
-		return err
-	}
-	// Open a client to the database.
 	client, err := sqlclient.Open(cmd.Context(), MigrateFlags.URL)
 	if err != nil {
 		return err
@@ -924,87 +922,19 @@ func CmdMigrateStatusRun(cmd *cobra.Command, _ []string) error {
 	if err := checkRevisionSchemaClarity(cmd, client); err != nil {
 		return err
 	}
-	// Inspect schema and check if the table does already exist.
-	s, err := client.InspectSchema(
-		cmd.Context(),
-		revisionSchemaName(client),
-		&schema.InspectOptions{Tables: []string{revision.Table}},
-	)
-	switch {
-	case err != nil && !schema.IsNotExistError(err):
-		return err
-	case schema.IsNotExistError(err):
-		return statusPrint(cmd.OutOrStdout(), avail, avail, nil)
-	}
-	if _, ok := s.Table(revision.Table); !ok {
-		// Table does not exist.
-		return statusPrint(cmd.OutOrStdout(), avail, avail, nil)
-	}
-	// Currently, only in DB revisions are supported.
-	rrw, err := entRevisions(cmd.Context(), client)
-	if err != nil {
-		return err
-	}
-	// Executor can give us insights on the revision state.
-	ex, err := migrate.NewExecutor(client.Driver, dir, rrw)
-	if err != nil {
-		return err
-	}
-	pending, err := ex.Pending(cmd.Context())
-	if err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
-		return err
-	}
-	revs, err := rrw.ReadRevisions(cmd.Context())
-	if err != nil {
-		return err
-	}
-	return statusPrint(cmd.OutOrStdout(), avail, pending, revs)
-}
-
-func statusPrint(out io.Writer, avail, pending []migrate.File, revs []*migrate.Revision) (err error) {
-	var (
-		cur, next, state string
-		applied          = avail[: len(avail)-len(pending) : len(avail)-len(pending)]
-		partial          = len(revs) != 0 && revs[len(revs)-1].Applied < revs[len(revs)-1].Total
-	)
-	switch len(pending) {
-	case len(avail):
-		cur = "No version applied yet"
-	default:
-		cur = cyan(applied[len(applied)-1].Version())
-		// If the last pending version is partially applied, tell so.
-		if partial {
-			cur += fmt.Sprintf(" (%d statements applied)", revs[len(revs)-1].Applied)
+	var format = cmdmigrate.DefaultTemplate
+	if f := MigrateFlags.Status.Format; f != "" {
+		format, err = template.New("format").Funcs(cmdmigrate.TemplateFuncs).Parse(f)
+		if err != nil {
+			return fmt.Errorf("parse log format: %w", err)
 		}
 	}
-	if len(pending) == 0 {
-		state = green("OK")
-		next = "Already at latest version"
-	} else {
-		state = yellow("PENDING")
-		next = cyan(pending[0].Version())
-		if partial {
-			next += fmt.Sprintf(" (%d statements left)", revs[len(revs)-1].Total-revs[len(revs)-1].Applied)
-		}
-	}
-	exec := cyan(strconv.Itoa(len(applied)))
-	if partial {
-		exec += " + 1 partially"
-	}
-	c := cyan
-	if len(pending) == 0 {
-		c = green
-	}
-	fmt.Fprintf(out, "Migration Status: %s\n", state)
-	fmt.Fprintf(out, "%s%s Current Version:  %s\n", indent2, dash, cur)
-	fmt.Fprintf(out, "%s%s Next Version:     %s\n", indent2, dash, next)
-	fmt.Fprintf(out, "%s%s Executed Files:   %s\n", indent2, dash, exec)
-	fmt.Fprintf(out, "%s%s Pending Files:    %s", indent2, dash, c(strconv.Itoa(len(pending))))
-	if partial {
-		fmt.Fprintf(out, " (partially)")
-	}
-	fmt.Fprintf(out, "\n")
-	return nil
+	return (&cmdmigrate.Reporter{
+		Client:       client,
+		Dir:          dir,
+		ReportWriter: &cmdmigrate.TemplateWriter{T: format, W: cmd.OutOrStdout()},
+		Schema:       revisionSchemaName(client),
+	}).Status(cmd.Context())
 }
 
 // CmdMigrateValidateRun is the command executed when running the CLI with 'migrate validate' args.

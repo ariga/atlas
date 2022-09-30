@@ -136,6 +136,13 @@ func Error(v string) predicate.Revision {
 	})
 }
 
+// ErrorStmt applies equality check predicate on the "error_stmt" field. It's identical to ErrorStmtEQ.
+func ErrorStmt(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldErrorStmt), v))
+	})
+}
+
 // Hash applies equality check predicate on the "hash" field. It's identical to HashEQ.
 func Hash(v string) predicate.Revision {
 	return predicate.Revision(func(s *sql.Selector) {
@@ -775,6 +782,131 @@ func ErrorEqualFold(v string) predicate.Revision {
 func ErrorContainsFold(v string) predicate.Revision {
 	return predicate.Revision(func(s *sql.Selector) {
 		s.Where(sql.ContainsFold(s.C(FieldError), v))
+	})
+}
+
+// ErrorStmtEQ applies the EQ predicate on the "error_stmt" field.
+func ErrorStmtEQ(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldErrorStmt), v))
+	})
+}
+
+// ErrorStmtNEQ applies the NEQ predicate on the "error_stmt" field.
+func ErrorStmtNEQ(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldErrorStmt), v))
+	})
+}
+
+// ErrorStmtIn applies the In predicate on the "error_stmt" field.
+func ErrorStmtIn(vs ...string) predicate.Revision {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Revision(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldErrorStmt), v...))
+	})
+}
+
+// ErrorStmtNotIn applies the NotIn predicate on the "error_stmt" field.
+func ErrorStmtNotIn(vs ...string) predicate.Revision {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Revision(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldErrorStmt), v...))
+	})
+}
+
+// ErrorStmtGT applies the GT predicate on the "error_stmt" field.
+func ErrorStmtGT(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldErrorStmt), v))
+	})
+}
+
+// ErrorStmtGTE applies the GTE predicate on the "error_stmt" field.
+func ErrorStmtGTE(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldErrorStmt), v))
+	})
+}
+
+// ErrorStmtLT applies the LT predicate on the "error_stmt" field.
+func ErrorStmtLT(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldErrorStmt), v))
+	})
+}
+
+// ErrorStmtLTE applies the LTE predicate on the "error_stmt" field.
+func ErrorStmtLTE(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldErrorStmt), v))
+	})
+}
+
+// ErrorStmtContains applies the Contains predicate on the "error_stmt" field.
+func ErrorStmtContains(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.Contains(s.C(FieldErrorStmt), v))
+	})
+}
+
+// ErrorStmtHasPrefix applies the HasPrefix predicate on the "error_stmt" field.
+func ErrorStmtHasPrefix(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.HasPrefix(s.C(FieldErrorStmt), v))
+	})
+}
+
+// ErrorStmtHasSuffix applies the HasSuffix predicate on the "error_stmt" field.
+func ErrorStmtHasSuffix(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.HasSuffix(s.C(FieldErrorStmt), v))
+	})
+}
+
+// ErrorStmtIsNil applies the IsNil predicate on the "error_stmt" field.
+func ErrorStmtIsNil() predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldErrorStmt)))
+	})
+}
+
+// ErrorStmtNotNil applies the NotNil predicate on the "error_stmt" field.
+func ErrorStmtNotNil() predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldErrorStmt)))
+	})
+}
+
+// ErrorStmtEqualFold applies the EqualFold predicate on the "error_stmt" field.
+func ErrorStmtEqualFold(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.EqualFold(s.C(FieldErrorStmt), v))
+	})
+}
+
+// ErrorStmtContainsFold applies the ContainsFold predicate on the "error_stmt" field.
+func ErrorStmtContainsFold(v string) predicate.Revision {
+	return predicate.Revision(func(s *sql.Selector) {
+		s.Where(sql.ContainsFold(s.C(FieldErrorStmt), v))
 	})
 }
 

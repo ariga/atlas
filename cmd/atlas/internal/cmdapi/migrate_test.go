@@ -503,7 +503,8 @@ func TestMigrate_Diff(t *testing.T) {
 
 	// A lock will prevent diffing.
 	sqlclient.Register("sqlitelockdiff", sqlclient.OpenerFunc(func(ctx context.Context, u *url.URL) (*sqlclient.Client, error) {
-		client, err := sqlclient.Open(ctx, strings.Replace(u.String(), u.Scheme, "sqlite", 1))
+		u.Scheme = "sqlite"
+		client, err := sqlclient.OpenURL(ctx, u)
 		if err != nil {
 			return nil, err
 		}

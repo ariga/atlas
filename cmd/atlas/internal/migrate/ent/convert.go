@@ -18,6 +18,7 @@ func (rc *RevisionCreate) SetRevision(rev *migrate.Revision) *RevisionCreate {
 	rc.SetExecutedAt(rev.ExecutedAt)
 	rc.SetExecutionTime(rev.ExecutionTime)
 	rc.SetError(rev.Error)
+	rc.SetErrorStmt(rev.ErrorStmt)
 	rc.SetHash(rev.Hash)
 	rc.SetPartialHashes(rev.PartialHashes)
 	rc.SetOperatorVersion(rev.OperatorVersion)
@@ -35,6 +36,7 @@ func (r *Revision) AtlasRevision() *migrate.Revision {
 		ExecutedAt:      r.ExecutedAt,
 		ExecutionTime:   r.ExecutionTime,
 		Error:           r.Error,
+		ErrorStmt:       r.ErrorStmt,
 		Hash:            r.Hash,
 		PartialHashes:   r.PartialHashes,
 		OperatorVersion: r.OperatorVersion,
