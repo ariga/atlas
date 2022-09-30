@@ -392,7 +392,8 @@ func TestExecutor(t *testing.T) {
 		Type:            migrate.RevisionTypeExecute,
 		Applied:         1,
 		Total:           2,
-		Error:           "Statement:\nALTER TABLE t_sub ADD c4 int;\n\nError:\nthis is an error",
+		Error:           "this is an error",
+		ErrorStmt:       "ALTER TABLE t_sub ADD c4 int;",
 		OperatorVersion: "op",
 	}, revs[len(revs)-1])
 

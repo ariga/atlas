@@ -178,18 +178,18 @@ type (
 
 	// A Revision denotes an applied migration in a deployment. Used to track migration executions state of a database.
 	Revision struct {
-		Version         string        `json:"Version"`         // Version of the migration.
-		Description     string        `json:"Description"`     // Description of this migration.
-		Type            RevisionType  `json:"Type"`            // Type of the migration.
-		Applied         int           `json:"Applied"`         // Applied amount of statements in the migration.
-		Total           int           `json:"Total"`           // Total amount of statements in the migration.
-		ExecutedAt      time.Time     `json:"ExecutedAt"`      // ExecutedAt is the starting point of execution.
-		ExecutionTime   time.Duration `json:"ExecutionTime"`   // ExecutionTime of the migration.
-		Error           string        `json:"Error"`           // Error of the migration, if any occurred.
-		ErrorStmt       string        `json:"ErrorStmt"`       // ErrorStmt contains the statement that raised Error.
-		Hash            string        `json:"-"`               // Hash of migration file.
-		PartialHashes   []string      `json:"-"`               // PartialHashes is the hashes of applied statements.
-		OperatorVersion string        `json:"OperatorVersion"` // OperatorVersion that executed this migration.
+		Version         string        `json:"Version"`             // Version of the migration.
+		Description     string        `json:"Description"`         // Description of this migration.
+		Type            RevisionType  `json:"Type"`                // Type of the migration.
+		Applied         int           `json:"Applied"`             // Applied amount of statements in the migration.
+		Total           int           `json:"Total"`               // Total amount of statements in the migration.
+		ExecutedAt      time.Time     `json:"ExecutedAt"`          // ExecutedAt is the starting point of execution.
+		ExecutionTime   time.Duration `json:"ExecutionTime"`       // ExecutionTime of the migration.
+		Error           string        `json:"Error,omitempty"`     // Error of the migration, if any occurred.
+		ErrorStmt       string        `json:"ErrorStmt,omitempty"` // ErrorStmt is the statement that raised Error.
+		Hash            string        `json:"-"`                   // Hash of migration file.
+		PartialHashes   []string      `json:"-"`                   // PartialHashes is the hashes of applied statements.
+		OperatorVersion string        `json:"OperatorVersion"`     // OperatorVersion that executed this migration.
 	}
 
 	// RevisionType defines the type of the revision record in the history table.

@@ -281,6 +281,7 @@ atlas migrate status [flags]
 ```
 #### Flags
 ```
+      --log string                custom logging using a Go template
       --revisions-schema string   schema name where the revisions table resides
   -u, --url string                [driver://username:password@address/dbname?param=value] select a database using the URL format
 

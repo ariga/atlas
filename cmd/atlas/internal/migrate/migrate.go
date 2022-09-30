@@ -178,7 +178,8 @@ type (
 		Current, Next string              // Current and Next migration version.
 		Count, Total  int                 // Count of Total statements applied of the last revision.
 		Status        string              // Status of migration (OK, PENDING).
-		SQL, Error    string              // SQL that was executed when the last Error occurred.
+		Error         string              `json:"Error,omitempty"` // Last Error that occurred.
+		SQL           string              `json:"SQL,omitempty"`   // SQL that caused the last Error.
 	}
 
 	// ReportWriter writes a StatusReport.
