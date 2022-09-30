@@ -22,8 +22,8 @@ import (
 	"github.com/olekukonko/tablewriter"
 )
 
-// Runner is used to gather information about migration status.
-type Runner struct {
+// Reporter is used to gather information about migration status.
+type Reporter struct {
 	// Client configures the connection to the database to file a StatusReport for.
 	Client *sqlclient.Client
 	// Dir is used for scanning and validating the migration directory.
@@ -34,8 +34,8 @@ type Runner struct {
 	Schema string
 }
 
-// Run creates and writes a StatusReport.
-func (r *Runner) Run(ctx context.Context) error {
+// Status creates and writes a StatusReport.
+func (r *Reporter) Status(ctx context.Context) error {
 	rep, err := NewStatusReport(r.Client, r.Dir)
 	if err != nil {
 		return err
@@ -150,7 +150,7 @@ var (
 Last migration attempt had errors:
   {{ yellow "--" }} SQL:   {{ .SQL }}
   {{ yellow "--" }} {{ red "ERROR:" }} {{ .Error }}
-{{- end }}`)
+{{ end }}`)
 			if err != nil {
 				return "", err
 			}

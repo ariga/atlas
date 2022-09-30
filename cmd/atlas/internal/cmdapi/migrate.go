@@ -929,12 +929,12 @@ func CmdMigrateStatusRun(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("parse log format: %w", err)
 		}
 	}
-	return (&cmdmigrate.Runner{
+	return (&cmdmigrate.Reporter{
 		Client:       client,
 		Dir:          dir,
 		ReportWriter: &cmdmigrate.TemplateWriter{T: format, W: cmd.OutOrStdout()},
 		Schema:       revisionSchemaName(client),
-	}).Run(cmd.Context())
+	}).Status(cmd.Context())
 }
 
 // CmdMigrateValidateRun is the command executed when running the CLI with 'migrate validate' args.
