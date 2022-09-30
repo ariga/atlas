@@ -755,6 +755,7 @@ inner join information_schema.check_constraints as chk
 	and tbl.constraint_name = chk.constraint_name
 where
 	tbl.constraint_type = 'CHECK'
+	and not STARTS_WITH(chk.constraint_name, 'CK_IS_NOT_NULL_')
 	and tbl.table_schema = @schema
 	and tbl.table_name IN UNNEST (@table)
 order by
