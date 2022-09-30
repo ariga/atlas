@@ -85,7 +85,7 @@ var (
 			GitDir  string // repository working dir
 			GitBase string // branch name to compare with
 		}
-		status struct {
+		Status struct {
 			Format string // log formatting
 		}
 	}
@@ -310,7 +310,7 @@ func init() {
 	// Status flags.
 	urlFlag(&MigrateFlags.URL, migrateFlagURL, "u", MigrateStatusCmd.Flags())
 	revisionsFlag(MigrateStatusCmd.Flags())
-	MigrateStatusCmd.Flags().StringVarP(&MigrateFlags.status.Format, migrateFlagLog, "", "", "custom logging using a Go template")
+	MigrateStatusCmd.Flags().StringVarP(&MigrateFlags.Status.Format, migrateFlagLog, "", "", "custom logging using a Go template")
 	// Set flags.
 	urlFlag(&MigrateFlags.URL, migrateFlagURL, "u", MigrateSetCmd.Flags())
 	// Hash flags.
@@ -923,7 +923,7 @@ func CmdMigrateStatusRun(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	var format = cmdmigrate.DefaultTemplate
-	if f := MigrateFlags.status.Format; f != "" {
+	if f := MigrateFlags.Status.Format; f != "" {
 		format, err = template.New("format").Funcs(cmdmigrate.TemplateFuncs).Parse(f)
 		if err != nil {
 			return fmt.Errorf("parse log format: %w", err)
