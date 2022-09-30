@@ -98,7 +98,8 @@ func (d *diff) IsGeneratedIndexName(t *schema.Table, idx *schema.Index) bool {
 
 // IndexAttrChanged reports if the index attributes were changed.
 func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
-	panic("not implemented")
+	// TODO(tmc): Implement.
+	return false
 }
 
 // IndexPartAttrChanged reports if the index-part attributes were changed.

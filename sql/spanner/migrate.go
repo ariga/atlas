@@ -100,10 +100,6 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 			}
 		})
 		// Primary keys with auto-increment are inlined on the column definition.
-		if pk := add.T.PrimaryKey; pk != nil {
-			b.Comma().P("PRIMARY KEY")
-			s.indexParts(b, pk.Parts)
-		}
 		if len(add.T.ForeignKeys) > 0 {
 			b.Comma()
 			s.fks(b, add.T.ForeignKeys...)
@@ -115,6 +111,10 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 			}
 		}
 	})
+	if pk := add.T.PrimaryKey; pk != nil {
+		b.P("PRIMARY KEY")
+		s.indexParts(b, pk.Parts)
+	}
 	if len(errs) > 0 {
 		return fmt.Errorf("create table %q: %s", add.T.Name, strings.Join(errs, ", "))
 	}
@@ -193,8 +193,8 @@ func (s *state) column(b *sqlx.Builder, c *schema.Column) error {
 	b.Ident(c.Name).P(t)
 	if !c.Type.Null {
 		b.P("NOT")
+		b.P("NULL")
 	}
-	b.P("NULL")
 	if c.Default != nil {
 		x, err := defaultValue(c)
 		if err != nil {

@@ -209,9 +209,11 @@ func columnParts(t string) []string {
 }
 
 func columnType(c *columnDesc) schema.Type {
-	var typ schema.Type
-	var typeSize int
-	var err error
+	var (
+		typ      schema.Type
+		typeSize int
+		err      error
+	)
 
 	// Get Type and Size from the column description.
 	parts := columnParts(c.typ)
@@ -227,7 +229,6 @@ func columnType(c *columnDesc) schema.Type {
 			}
 		}
 	}
-
 	t := parts[0]
 
 	switch {
@@ -237,13 +238,15 @@ func columnType(c *columnDesc) schema.Type {
 		typ = &schema.BoolType{T: t}
 	case strings.HasPrefix(t, TypeBytes) && len(parts) > 1:
 		typ = &BytesType{
-			T:    parts[0],
-			Size: &typeSize,
+			T:         parts[0],
+			Size:      typeSize,
+			SizeIsMax: typeSize == -1,
 		}
 	case strings.HasPrefix(t, TypeString) && len(parts) > 1:
-		typ = &schema.StringType{
-			T:    parts[0],
-			Size: typeSize,
+		typ = &StringType{
+			T:         parts[0],
+			Size:      typeSize,
+			SizeIsMax: typeSize == -1,
 		}
 	// TODO(tmc): case TypeDate:
 	case t == TypeTimestamp:
@@ -508,7 +511,7 @@ func canConvert(t *schema.ColumnType, x string) (string, bool) {
 		if sqlx.IsLiteralNumber(x) {
 			return x, true
 		}
-	case *schema.BinaryType, *schema.JSONType, *schema.SpatialType, *schema.StringType, *schema.TimeType, *BytesType:
+	case *schema.BinaryType, *schema.JSONType, *schema.SpatialType, *schema.StringType, *schema.TimeType, *StringType, *BytesType, *TimestampType:
 		return q, true
 	}
 	return "", false
@@ -525,8 +528,9 @@ type (
 	// A BytesType represents a BYTES type.
 	BytesType struct {
 		schema.Type
-		T    string
-		Size *int
+		T         string
+		Size      int
+		SizeIsMax bool
 	}
 
 	// CheckColumns attribute hold the column named used by the CHECK constraints.
@@ -570,6 +574,20 @@ type (
 		// PagesPerRange defines pages_per_range storage
 		// parameter for BRIN indexes. Defaults to 128.
 		PagesPerRange int64
+	}
+
+	// A StringType represents a STRING type.
+	StringType struct {
+		schema.Type
+		T         string
+		Size      int
+		SizeIsMax bool
+	}
+
+	// A TimestampType represents a TIMESTAMP type.
+	TimestampType struct {
+		schema.Type
+		T string
 	}
 )
 

@@ -13,32 +13,42 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
-// FormatType converts from a schema.Type to an HCL-representable string.
+// FormatType converts schema type to its column form in the database.
 func FormatType(t schema.Type) (string, error) {
 	var f string
 	switch t := t.(type) {
 	case *schema.BoolType:
-		f = strings.ToLower(t.T)
+		f = t.T
 	case *schema.BinaryType:
-		f = strings.ToLower(t.T)
+		f = t.T
 	case *schema.EnumType:
 		f = t.T
 	case *schema.IntegerType:
-		f = strings.ToLower(t.T)
+		f = t.T
 	case *schema.StringType:
-		f = strings.ToLower(t.T)
+		f = t.T
 	case *schema.TimeType:
-		f = strings.ToLower(t.T)
+		f = t.T
 	case *schema.FloatType:
-		f = strings.ToLower(t.T)
+		f = t.T
 	case *schema.DecimalType:
-		f = strings.ToLower(t.T)
+		f = t.T
 	case *schema.JSONType:
-		f = strings.ToLower(t.T)
+		f = t.T
 	case *schema.SpatialType:
-		f = strings.ToLower(t.T)
+		f = t.T
 	case *BytesType:
-		f = strings.ToLower(t.T)
+		siz := fmt.Sprint(t.Size)
+		if t.Size == -1 {
+			siz = "MAX"
+		}
+		f = fmt.Sprintf("%v(%v)", t.T, siz)
+	case *StringType:
+		siz := fmt.Sprint(t.Size)
+		if t.Size == -1 {
+			siz = "MAX"
+		}
+		f = fmt.Sprintf("%v(%v)", t.T, siz)
 	case *schema.UnsupportedType:
 		return "", fmt.Errorf("spanner: unsupported type: %T(%q)", t, t.T)
 	default:
@@ -57,8 +67,6 @@ func mustFormat(t schema.Type) string {
 }
 
 // ParseType returns the schema.Type value represented by the given raw type.
-// It is expected to be one of the types in https://www.spanner.org/datatypes.html,
-// or some of the common types used by ORMs like Ent.
 func ParseType(c string) (schema.Type, error) {
 	// A datatype may be zero or more names.
 	if c == "" {
@@ -77,12 +85,20 @@ func ParseType(c string) (schema.Type, error) {
 			T: TypeInt64,
 		}, nil
 	case TypeString:
-		return &schema.StringType{
-			T: TypeString,
+		return &StringType{
+			T:         TypeString,
+			Size:      cd.size,
+			SizeIsMax: cd.sizeIsMax,
 		}, nil
 	case TypeBytes:
 		return &BytesType{
-			T: TypeString,
+			T:         TypeBytes,
+			Size:      cd.size,
+			SizeIsMax: cd.sizeIsMax,
+		}, nil
+	case TypeTimestamp:
+		return &schema.TimeType{
+			T: TypeTimestamp,
 		}, nil
 	default:
 		return &schema.UnsupportedType{
@@ -94,7 +110,7 @@ func ParseType(c string) (schema.Type, error) {
 func parseColumn(s string) (*columnDesc, error) {
 	cd := &columnDesc{}
 	// split up type into, base type, size, and other modifiers.
-	re := regexp.MustCompile(`(\w+)(?:\((\d+|MAX)\))?`)
+	re := regexp.MustCompile(`(\w+)(?:\((-?\d+|MAX)\))?`)
 	m := re.FindStringSubmatch(strings.ToUpper(s))
 	if len(m) == 0 {
 		return nil, fmt.Errorf("parseColumn: invalid type: %q", s)
@@ -102,7 +118,7 @@ func parseColumn(s string) (*columnDesc, error) {
 	cd.typ = m[1]
 	if len(m) > 2 {
 		size, _ := strconv.Atoi(m[2])
-		cd.size = int64(size)
+		cd.size = size
 		if m[2] == "max" {
 			cd.sizeIsMax = true
 		}
@@ -113,6 +129,6 @@ func parseColumn(s string) (*columnDesc, error) {
 // columnDesc represents a column descriptor.
 type columnDesc struct {
 	typ       string
-	size      int64
+	size      int
 	sizeIsMax bool
 }
