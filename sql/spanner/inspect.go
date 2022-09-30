@@ -8,7 +8,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
@@ -229,13 +228,10 @@ func columnType(c *columnDesc) schema.Type {
 		}
 	}
 
-	// t := strings.TrimSpace(strings.ToUpper(c.typ))
 	t := parts[0]
 
-	fmt.Fprintln(os.Stderr, "type check", t, strings.HasPrefix(t, TypeBytes), len(parts), parts)
 	switch {
 	case t == TypeInt64:
-		// case strings.HasPrefix(t, TypeInt):
 		typ = &schema.IntegerType{T: t}
 	case t == TypeBool:
 		typ = &schema.BoolType{T: t}
@@ -392,40 +388,22 @@ func (i *inspect) pks(ctx context.Context, s *schema.Schema) error {
 func (i *inspect) checks(ctx context.Context, s *schema.Schema) error {
 	rows, err := i.querySchema(ctx, checksQuery, s)
 	if err != nil {
-		return fmt.Errorf("spanner: querying schema %q check constraints: %w", s.Name, err)
+		return fmt.Errorf("spanner: querying schema '%q' check constraints: %w", s.Name, err)
 	}
 	defer rows.Close()
-	if err := i.addChecks(s, rows); err != nil {
-		return err
-	}
-	return rows.Err()
-}
-
-// addChecks scans the rows and adds the checks to the table.
-func (i *inspect) addChecks(s *schema.Schema, rows *sql.Rows) error {
-	names := make(map[string]*schema.Check)
 	for rows.Next() {
-		var (
-			table, name, column, clause, indexes string
-		)
-		if err := rows.Scan(&table, &name, &clause, &column, &indexes); err != nil {
+		var tableName, checkName, clause, spannerState string
+		if err := rows.Scan(&tableName, &checkName, &clause, &spannerState); err != nil {
 			return fmt.Errorf("spanner: scanning check: %w", err)
 		}
-		t, ok := s.Table(table)
+		t, ok := s.Table(tableName)
 		if !ok {
-			return fmt.Errorf("table %q was not found in schema", table)
+			return fmt.Errorf("table %q was not found in schema", tableName)
 		}
-		if _, ok := t.Column(column); !ok {
-			return fmt.Errorf("spanner: column %q was not found for check %q", column, name)
-		}
-		check, ok := names[name]
-		if !ok {
-			check = &schema.Check{Name: name, Expr: clause, Attrs: []schema.Attr{&CheckColumns{}}}
-			names[name] = check
-			t.Attrs = append(t.Attrs, check)
-		}
-		c := check.Attrs[0].(*CheckColumns)
-		c.Columns = append(c.Columns, column)
+		t.AddChecks(&schema.Check{
+			Name: checkName,
+			Expr: clause,
+		})
 	}
 	return nil
 }
@@ -721,23 +699,23 @@ ORDER BY
 	// Query to list primary keys.
 	primaryKeysQuery = `
 SELECT
-    t1.constraint_name,
-    t1.table_name,
-    t2.column_name,
-    t1.table_schema,
-    t3.table_name AS referenced_table_name,
-    t3.column_name AS referenced_column_name,
-    t3.table_schema AS referenced_schema_name
+	t1.constraint_name,
+	t1.table_name,
+	t2.column_name,
+	t1.table_schema,
+	t3.table_name AS referenced_table_name,
+	t3.column_name AS referenced_column_name,
+	t3.table_schema AS referenced_schema_name
 FROM
 	information_schema.table_constraints t1
-    JOIN information_schema.key_column_usage t2
-    ON t1.constraint_name = t2.constraint_name
-    AND t1.table_schema = t2.constraint_schema
-    JOIN information_schema.constraint_column_usage t3
-    ON t1.constraint_name = t3.constraint_name
-    AND t1.table_schema = t3.constraint_schema
+	JOIN information_schema.key_column_usage t2
+	ON t1.constraint_name = t2.constraint_name
+	AND t1.table_schema = t2.constraint_schema
+	JOIN information_schema.constraint_column_usage t3
+	ON t1.constraint_name = t3.constraint_name
+	AND t1.table_schema = t3.constraint_schema
 WHERE
-    t1.constraint_type = 'PRIMARY KEY'
+	t1.constraint_type = 'PRIMARY KEY'
 	AND t1.table_schema = @schema
 	AND t1.table_name IN UNNEST (@table)
 ORDER BY
@@ -747,16 +725,21 @@ ORDER BY
 
 	// Query to list table check constraints.
 	checksQuery = `
-SELECT
-	constraint_name,
-	check_clause,
-	spanner_state
-FROM
-	information_schema.check_constraints t1
-WHERE
-	t1.constraint_schema = @schema
-	AND t1.constraint_name IN UNNEST (@table)
-ORDER BY
-	constraint_name
+select
+	tbl.table_name as table_name,
+	chk.constraint_name as check_name,
+	chk.check_clause as clause,
+	chk.spanner_state as spanner_state,
+from information_schema.table_constraints as tbl
+inner join information_schema.check_constraints as chk
+	on tbl.constraint_catalog = chk.constraint_catalog
+	and tbl.constraint_schema = chk.constraint_schema
+	and tbl.constraint_name = chk.constraint_name
+where
+	tbl.constraint_type = 'CHECK'
+	and tbl.table_schema = @schema
+	and tbl.table_name IN UNNEST (@table)
+order by
+	check_name
 `
 )
