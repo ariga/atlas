@@ -104,6 +104,10 @@ func ParseType(c string) (schema.Type, error) {
 		return &schema.TimeType{
 			T: TypeDate,
 		}, nil
+	case TypeBool:
+		return &schema.TimeType{
+			T: TypeBool,
+		}, nil
 	default:
 		return &schema.UnsupportedType{
 			T: c,
