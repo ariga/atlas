@@ -41,6 +41,9 @@ var (
 			if err != ErrSkip {
 				return fmt.Errorf("checking for update: %w", err)
 			}
+			if err == ErrSkip {
+				return nil
+			}
 			if err := Notify.Execute(cmd.OutOrStdout(), payload); err != nil {
 				return err
 			}
