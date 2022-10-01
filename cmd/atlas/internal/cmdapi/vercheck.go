@@ -22,8 +22,8 @@ func NewVerChecker(endpoint, statePath string) *VerChecker {
 	return &VerChecker{endpoint: endpoint, statePath: statePath}
 }
 
-// Latest contains information about the most recent version.
 type (
+	// Latest contains information about the most recent version.
 	Latest struct {
 		// Version is the new version name.
 		Version string
