@@ -19,6 +19,7 @@ import (
 	_ "ariga.io/atlas/sql/mysql/mysqlcheck"
 	_ "ariga.io/atlas/sql/postgres"
 	_ "ariga.io/atlas/sql/postgres/postgrescheck"
+	_ "ariga.io/atlas/sql/spanner"
 	_ "ariga.io/atlas/sql/sqlite"
 	_ "ariga.io/atlas/sql/sqlite/sqlitecheck"
 	"github.com/mitchellh/go-homedir"
