@@ -32,7 +32,7 @@ type (
 		// Link is a URL to a web page describing the new version.
 		Link string
 	}
-	// Advisory contains contents of security advisories related to a component.
+	// Advisory contains contents of security advisories.
 	Advisory struct {
 		Text string `json:"text"`
 	}
@@ -43,7 +43,7 @@ type (
 		// Advisory is set if security advisories exist for the current version.
 		Advisory *Advisory `json:"advisory"`
 	}
-	// VerChecker retrieves version information for the vercheck service.
+	// VerChecker retrieves version information from the vercheck service.
 	VerChecker struct {
 		endpoint  string
 		statePath string
@@ -64,7 +64,7 @@ var (
 
 // Check makes an HTTP request to endpoint to check if a new version or security advisories
 // exist for the current version. Check tries to read the latest time it was run from the
-// statePath, if found and 24 hours have not passed. When done, the latest
+// statePath, if found and 24 hours have not passed the check is skipped. When done, the latest
 // time is updated in statePath.
 func (v *VerChecker) Check(ver string) (*Payload, error) {
 	if err := v.verifyTime(); err != nil {
