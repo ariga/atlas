@@ -26,9 +26,7 @@ import (
 func main() {
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	cmdapi.Root.SetOut(os.Stdout)
-	err := cmdapi.Root.ExecuteContext(ctx)
-	cmdapi.CheckForUpdate()
-	if err != nil {
+	if err := cmdapi.Root.ExecuteContext(ctx); err != nil {
 		os.Exit(1)
 	}
 }

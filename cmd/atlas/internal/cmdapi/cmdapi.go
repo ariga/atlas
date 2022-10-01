@@ -11,7 +11,7 @@ import (
 	"os"
 	"strings"
 
-	"ariga.io/atlas/cmd/atlas/internal/update"
+	"github.com/mitchellh/go-homedir"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/mod/semver"
@@ -23,6 +23,29 @@ var (
 		Use:          "atlas",
 		Short:        "A database toolkit.",
 		SilenceUsage: true,
+		PostRunE: func(cmd *cobra.Command, _ []string) error {
+			// Users may skip update checking behavior.
+			if v := os.Getenv(AtlasNoUpdateNotifier); v != "" {
+				return nil
+			}
+			// Skip if the current binary version isn't set (dev mode).
+			if !semver.IsValid(version) {
+				return nil
+			}
+			path, err := homedir.Expand("~/.atlas/release.json")
+			if err != nil {
+				return nil
+			}
+			vc := NewVerChecker("https://vercheck.ariga.io", path)
+			payload, err := vc.Check(version)
+			if err != ErrSkip {
+				return fmt.Errorf("checking for update: %w", err)
+			}
+			if err := Notify.Execute(cmd.OutOrStdout(), payload); err != nil {
+				return err
+			}
+			return nil
+		},
 	}
 
 	// GlobalFlags contains flags common to many Atlas sub-commands.
@@ -62,7 +85,7 @@ List of supported environment parameters:
   This check will happen at most once every 24 hours. To cancel this behavior, set the environment 
   variable "ATLAS_NO_UPDATE_NOTIFIER".`,
 		Run: func(cmd *cobra.Command, args []string) {
-			keys := []string{update.AtlasNoUpdateNotifier}
+			keys := []string{AtlasNoUpdateNotifier}
 			for _, k := range keys {
 				if v, ok := os.LookupEnv(k); ok {
 					cmd.Println(fmt.Sprintf("%s=%s", k, v))
@@ -83,11 +106,6 @@ Atlas is licensed under Apache 2.0 as found in https://github.com/ariga/atlas/bl
 		},
 	}
 )
-
-// CheckForUpdate exposes internal update logic to CLI.
-func CheckForUpdate() {
-	update.Check(version, Root.PrintErrln)
-}
 
 func init() {
 	Root.AddCommand(EnvCmd)

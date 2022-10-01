@@ -1,0 +1,10 @@
+{{- with .Advisory -}}
+SECURITY ADVISORY
+{{ .Text }}
+{{- end }}
+{{- with .Latest -}}
+A new version of Atlas is available ({{ .Version }}){{ with .Link }}: {{ . }}{{ end }}
+{{- with .Summary }}
+{{ . }}
+{{- end }}
+{{- end }}
