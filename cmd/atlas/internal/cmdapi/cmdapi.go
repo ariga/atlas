@@ -8,10 +8,7 @@ package cmdapi
 
 import (
 	"fmt"
-	"os"
 	"strings"
-
-	"ariga.io/atlas/cmd/atlas/internal/update"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/mod/semver"
@@ -49,28 +46,6 @@ var (
 		},
 	}
 
-	// EnvCmd represents the subcommand 'atlas env'.
-	EnvCmd = &cobra.Command{
-		Use:   "env",
-		Short: "Print atlas environment variables.",
-		Long: `'atlas env' prints atlas environment information.
-
-Every set environment param will be printed in the form of NAME=VALUE.
-
-List of supported environment parameters:
-* ATLAS_NO_UPDATE_NOTIFIER: On any command, the CLI will check for new releases using the GitHub API.
-  This check will happen at most once every 24 hours. To cancel this behavior, set the environment 
-  variable "ATLAS_NO_UPDATE_NOTIFIER".`,
-		Run: func(cmd *cobra.Command, args []string) {
-			keys := []string{update.AtlasNoUpdateNotifier}
-			for _, k := range keys {
-				if v, ok := os.LookupEnv(k); ok {
-					cmd.Println(fmt.Sprintf("%s=%s", k, v))
-				}
-			}
-		},
-	}
-
 	// license holds Atlas license. When built with cloud packages
 	// should be set by build flag. "-X 'ariga.io/atlas/cmd/atlas/internal/cmdapi.license=${license}'"
 	license = `LICENSE
@@ -84,13 +59,7 @@ Atlas is licensed under Apache 2.0 as found in https://github.com/ariga/atlas/bl
 	}
 )
 
-// CheckForUpdate exposes internal update logic to CLI.
-func CheckForUpdate() {
-	update.Check(version, Root.PrintErrln)
-}
-
 func init() {
-	Root.AddCommand(EnvCmd)
 	Root.AddCommand(schemaCmd)
 	Root.AddCommand(versionCmd)
 	Root.AddCommand(licenseCmd)
@@ -143,4 +112,9 @@ func parse(version string) (string, string) {
 		u = fmt.Sprintf("https://github.com/ariga/atlas/releases/tag/%s", version)
 	}
 	return version, u
+}
+
+// Version returns the current Atlas binary version.
+func Version() string {
+	return version
 }

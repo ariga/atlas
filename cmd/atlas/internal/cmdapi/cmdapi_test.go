@@ -10,24 +10,8 @@ import (
 	"os/exec"
 	"testing"
 
-	"ariga.io/atlas/cmd/atlas/internal/update"
-
 	"github.com/stretchr/testify/require"
 )
-
-func TestEnv(t *testing.T) {
-	out, err := runCmd(Root, "env")
-	require.NoError(t, err)
-	require.Empty(t, out)
-}
-
-func TestEnv_Set(t *testing.T) {
-	err := os.Setenv(update.AtlasNoUpdateNotifier, "test")
-	require.NoError(t, err)
-	out, err := runCmd(Root, "env")
-	require.NoError(t, err)
-	require.Equal(t, "ATLAS_NO_UPDATE_NOTIFIER=test\n", out)
-}
 
 func TestCLI_Version(t *testing.T) {
 	// Required to have a clean "stderr" while running first time.
@@ -69,6 +53,7 @@ func TestCLI_Version(t *testing.T) {
 			t.Setenv("ATLAS_NO_UPDATE_NOTIFIER", "true")
 			stdout := bytes.NewBuffer(nil)
 			tt.cmd.Stdout = stdout
+			tt.cmd.Stderr = os.Stderr
 			require.NoError(t, tt.cmd.Run())
 			require.Equal(t, tt.expected, stdout.String())
 		})

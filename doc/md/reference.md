@@ -24,26 +24,6 @@ If you would like to build Atlas from source without the UI code run:
 go get ariga.io/atlas/cmd/atlas
 ```
 
-## atlas env
-
-Print atlas environment variables.
-
-#### Usage
-```
-atlas env
-```
-
-#### Details
-'atlas env' prints atlas environment information.
-
-Every set environment param will be printed in the form of NAME=VALUE.
-
-List of supported environment parameters:
-* ATLAS_NO_UPDATE_NOTIFIER: On any command, the CLI will check for new releases using the GitHub API.
-  This check will happen at most once every 24 hours. To cancel this behavior, set the environment 
-  variable "ATLAS_NO_UPDATE_NOTIFIER".
-
-
 ## atlas license
 
 Display license information
