@@ -50,45 +50,26 @@ const (
 	versionFile = "~/.atlas/release.json"
 )
 
-var (
-	updateMessage string
-	wgVercheck    sync.WaitGroup
-)
-
-// update waits for results from checkForUpdate to be ready and returns them. If no result
-// is ready by the timeout an empty string is returned.
-func update() string {
-	update := make(chan string)
-	go func() {
-		wgVercheck.Wait()
-		update <- updateMessage
-	}()
-	select {
-	case u := <-update:
-		return u
-	case <-time.After(time.Millisecond * 500):
-		return ""
-	}
-}
-
+func noText() string {return ""}
 // checkForUpdate checks for version updates and security advisories for Atlas.
-func checkForUpdate() {
+func checkForUpdate() (func() string) {
+	done := make(chan struct{})
 	version := cmdapi.Version()
 	// Users may skip update checking behavior.
 	if v := os.Getenv(envNoUpdate); v != "" {
-		return
+		return noText
 	}
 	// Skip if the current binary version isn't set (dev mode).
 	if !semver.IsValid(version) {
-		return
+		return noText
 	}
 	path, err := homedir.Expand(versionFile)
 	if err != nil {
-		return
+		return noText
 	}
-	wgVercheck.Add(1)
+	var message string
 	go func() {
-		defer wgVercheck.Done()
+		defer close(done)
 		vc := vercheck.New(vercheckURL, path)
 		payload, err := vc.Check(version)
 		if err != nil {
@@ -98,7 +79,13 @@ func checkForUpdate() {
 		if err := vercheck.Notify.Execute(&b, payload); err != nil {
 			return
 		}
-		updateMessage = b.String()
+		message = b.String()
 	}()
-	return
+	return func() string {
+		select {
+		case u := <-done:
+		case <-time.After(time.Millisecond * 500):
+		}
+		return message
+	}
 }
