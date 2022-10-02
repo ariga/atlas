@@ -60,7 +60,6 @@ mysql://root:pass@localhost:3306/dev
 
 ## Create an auto-migration script
 
-Depends on how your project is set up, you may be able to skip this part. 
 To plan a migration to your desired state, we will first create a script that
 populates an empty database with your current schema. Suppose you have models
 such as:
@@ -122,12 +121,6 @@ go run main.go -conn 'root:pass@tcp(localhost:3306)/gorm'
 ```
 
 ## Use Atlas to plan an initial migration
-
-Next let's create a directory to hold our migration scripts:
-
-```text
-mkdir migrations
-```
 
 We can now use Atlas's `migrate diff` command to calculate a migration from the 
 current state, which can be thought of as the sum of all the migration scripts
