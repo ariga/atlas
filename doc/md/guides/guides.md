@@ -26,4 +26,4 @@ Welcome to the Atlas Guides.
 
 ## ORMs
 
-[GORM](orms/gorm)
+[GORM](orms/gorm.md)
