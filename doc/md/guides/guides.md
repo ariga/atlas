@@ -23,3 +23,7 @@ Welcome to the Atlas Guides.
 ## Migration tools
 
 [`golang-migrate`](migration-tools/golang-migrate.md)
+
+## ORMs
+
+[GORM](orms/gorm.md)
