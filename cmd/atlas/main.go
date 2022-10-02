@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"sync"
 	"time"
 
 	"ariga.io/atlas/cmd/atlas/internal/cmdapi"
@@ -33,7 +32,7 @@ import (
 func main() {
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	cmdapi.Root.SetOut(os.Stdout)
-	checkForUpdate()
+	update := checkForUpdate()
 	err := cmdapi.Root.ExecuteContext(ctx)
 	if u := update(); u != "" {
 		fmt.Println(u)
@@ -50,9 +49,10 @@ const (
 	versionFile = "~/.atlas/release.json"
 )
 
-func noText() string {return ""}
+func noText() string { return "" }
+
 // checkForUpdate checks for version updates and security advisories for Atlas.
-func checkForUpdate() (func() string) {
+func checkForUpdate() func() string {
 	done := make(chan struct{})
 	version := cmdapi.Version()
 	// Users may skip update checking behavior.
@@ -83,7 +83,7 @@ func checkForUpdate() (func() string) {
 	}()
 	return func() string {
 		select {
-		case u := <-done:
+		case <-done:
 		case <-time.After(time.Millisecond * 500):
 		}
 		return message
