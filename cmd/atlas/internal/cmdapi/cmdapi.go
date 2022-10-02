@@ -9,15 +9,12 @@ package cmdapi
 import (
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/mod/semver"
 )
 
 var (
-	waitVerCheck  sync.WaitGroup
-	updateMessage string
 	// Root represents the root command when called without any subcommands.
 	Root = &cobra.Command{
 		Use:          "atlas",
