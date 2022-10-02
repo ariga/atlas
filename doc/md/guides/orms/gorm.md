@@ -15,7 +15,7 @@ slug: /guides/orms/gorm
 
 GORM is a popular ORM widely used in the Go community. GORM allows users to 
 manage their database schemas using its [AutoMigrate](https://gorm.io/docs/migration.html#Auto-Migration)
-feature, which is usually suffucient during development and in many simple cases. 
+feature, which is usually sufficient during development and in many simple cases. 
 
 However, at some point, teams need more control and decide to employ 
 the [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations) 
