@@ -55,8 +55,8 @@ var (
 	wgVercheck    sync.WaitGroup
 )
 
-// update waits up to 500ms for results from checkForUpdate to be ready and returns them. If no results
-// is ready by time the timeout has passed an empty string is returned.
+// update waits for results from checkForUpdate to be ready and returns them. If no result
+// is ready by the timeout an empty string is returned.
 func update() string {
 	update := make(chan string)
 	go func() {
