@@ -5,7 +5,7 @@ slug: /guides/orms/gorm
 ---
 
 ## TL;DR
-* [GORM](https://gorm.io) is a an ORM library that's widely used in the Go community.
+* [GORM](https://gorm.io) is an ORM library that's widely used in the Go community.
 * [Atlas](https://atlasgo.io) is an open-source tool for inspecting, planning, linting and
   executing schema changes to your database.
 * Developers using GORM can use Atlas to automatically plan schema migrations
@@ -17,14 +17,14 @@ GORM is a popular ORM widely used in the Go community. GORM allows users to
 manage their database schemas using its [AutoMigrate](https://gorm.io/docs/migration.html#Auto-Migration)
 feature, which is usually suffucient during development and in many simple cases. 
 
-However, at some point, many teams need more control and decide to employ 
-a [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations) 
+However, at some point, teams need more control and decide to employ 
+the [versioned migrations](/concepts/declarative-vs-versioned#versioned-migrations) 
 methodology. Once this happens, the responsibility for planning migration scripts and making
 sure they are in line with what GORM expects at runtime is moved to developers.
 
 Atlas can automatically plan database schema migrations for developers using GORM.
 Atlas plans migrations by calculating the diff between the _current_ state of the database,
-and it's _desired_ state.
+and its _desired_ state.
 
 For GORM users, the current state can be thought of as the database schema that would have
 been created by GORM's [AutoMigrate](https://gorm.io/docs/migration.html#Auto-Migration)
@@ -86,31 +86,24 @@ import (
 	"gorm.io/gorm"
 )
 
-var (
-	conn string
-)
-
 func main() {
+        conn := flag.StringVar("conn", "", "connection string to db")
 	flag.Parse()
-	if conn == "" {
-		panic("conn flag required")
+	if *conn == "" {
+		log.Fatalln("conn flag required")
 	}
 	db, err := gorm.Open(mysql.Open(conn), &gorm.Config{})
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 	// Replace `&Product{}, &User{}` with the models of your application.
 	if err := db.AutoMigrate(&Product{}, &User{}); err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
-}
-
-func init() {
-	flag.StringVar(&conn, "conn", "", "connection string to db")
 }
 ```
 
-Create a schema named `gorm` in our dev database to hold the desired state:
+Create a schema named `gorm` in our Dev Database to hold the desired state:
 ```text
 docker exec atlas-db-dev mysql -ppass -e 'drop database if exists gorm; create database gorm'
 ```
@@ -130,10 +123,10 @@ which exists in the Dev Database.
 Run:
 
 ```text
-atlas migrate diff --dir file://migrations --dev-url mysql://root:pass@localhost:3306/dev --to mysql://root:pass@localhost:3306/gorm
+atlas migrate diff --dir file://migrations --dev-url mysql://root:pass@:3306/dev --to mysql://root:pass@:3306/gorm
 ```
 
-Observe two new files were created under the `migrations` directory:
+Observe that two new files were created under the `migrations` directory:
 
 * `20221002070731.sql` (name will vary on your workstation) - a migration file containing SQL to create
   your database schemas:
