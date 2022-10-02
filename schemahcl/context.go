@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/function"
 )
 
 // varDef is an HCL resource that defines an input variable to the Atlas DDL document.
@@ -30,21 +31,36 @@ type varDef struct {
 //	  default = "rotemtam"
 //	}
 func (s *State) setInputVals(ctx *hcl.EvalContext, body hcl.Body, input map[string]string) error {
-	var c struct {
-		Vars   []*varDef `hcl:"variable,block"`
-		Remain hcl.Body  `hcl:",remain"`
-	}
-	nctx := ctx.NewChild()
+	var (
+		doc struct {
+			Vars   []*varDef `hcl:"variable,block"`
+			Remain hcl.Body  `hcl:",remain"`
+		}
+		nctx = ctx.NewChild()
+	)
 	nctx.Variables = map[string]cty.Value{
-		"string": capsuleTypeVal("string"),
-		"int":    capsuleTypeVal("int"),
-		"bool":   capsuleTypeVal("bool"),
+		"string": cty.CapsuleVal(ctyNilType, &cty.String),
+		"bool":   cty.CapsuleVal(ctyNilType, &cty.Bool),
+		"int":    cty.CapsuleVal(ctyNilType, &cty.Number),
 	}
-	if diag := gohcl.DecodeBody(body, nctx, &c); diag.HasErrors() {
+	nctx.Functions = map[string]function.Function{
+		"list": function.New(&function.Spec{
+			Params: []function.Parameter{
+				{Name: "type", Type: ctyNilType},
+			},
+			Type: function.StaticReturnType(ctyNilType),
+			Impl: func(args []cty.Value, _ cty.Type) (cty.Value, error) {
+				argT := args[0].EncapsulatedValue().(*cty.Type)
+				listT := cty.List(*argT)
+				return cty.CapsuleVal(ctyNilType, &listT), nil
+			},
+		}),
+	}
+	if diag := gohcl.DecodeBody(body, nctx, &doc); diag.HasErrors() {
 		return diag
 	}
 	ctxVars := make(map[string]cty.Value)
-	for _, v := range c.Vars {
+	for _, v := range doc.Vars {
 		inputVal, ok := input[v.Name]
 		if ok {
 			ctyVal, err := readVar(v, inputVal)
@@ -78,32 +94,28 @@ func mergeCtxVar(ctx *hcl.EvalContext, vals map[string]cty.Value) {
 // readVar reads the raw inputVal as a cty.Value using the type definition on v.
 func readVar(v *varDef, inputVal string) (cty.Value, error) {
 	et := v.Type.EncapsulatedValue()
-	typ, ok := et.(*Type)
-	if !ok {
-		return cty.NilVal, fmt.Errorf("expected schemahcl.Type got %T", et)
+	typ, ok := et.(*cty.Type)
+	if !ok || typ == nil {
+		return cty.NilVal, fmt.Errorf("expected non-nillable schemahcl.Type got %T", et)
 	}
-	switch typ.T {
-	case "string":
+	switch *typ {
+	case cty.String:
 		return cty.StringVal(inputVal), nil
-	case "int":
+	case cty.Number:
 		i, err := strconv.Atoi(inputVal)
 		if err != nil {
 			return cty.NilVal, err
 		}
 		return cty.NumberIntVal(int64(i)), nil
-	case "bool":
+	case cty.Bool:
 		b, err := strconv.ParseBool(inputVal)
 		if err != nil {
 			return cty.NilVal, err
 		}
 		return cty.BoolVal(b), nil
 	default:
-		return cty.NilVal, fmt.Errorf("unknown type: %q", typ.T)
+		return cty.NilVal, fmt.Errorf("unknown type: %q", v.Name)
 	}
-}
-
-func capsuleTypeVal(t string) cty.Value {
-	return cty.CapsuleVal(ctyTypeSpec, &Type{T: t})
 }
 
 func setBlockVars(ctx *hcl.EvalContext, b *hclsyntax.Body) (*hcl.EvalContext, error) {
@@ -247,6 +259,7 @@ var (
 			}
 		},
 	})
+	ctyNilType  = cty.Capsule("type", reflect.TypeOf(cty.NilType))
 	ctyTypeSpec = cty.Capsule("type", reflect.TypeOf(Type{}))
 	ctyRawExpr  = cty.Capsule("raw_expr", reflect.TypeOf(RawExpr{}))
 )

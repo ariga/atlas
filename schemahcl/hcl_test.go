@@ -319,8 +319,10 @@ func TestMultiFile(t *testing.T) {
 	var test struct {
 		People []*Person `spec:"person"`
 	}
-	paths := make([]string, 0)
-	testDir := "testdata/"
+	var (
+		paths   []string
+		testDir = "testdata/"
+	)
 	dir, err := os.ReadDir(testDir)
 	require.NoError(t, err)
 	for _, file := range dir {
@@ -340,4 +342,61 @@ func TestMultiFile(t *testing.T) {
 		Hobby:  "ice-cream",
 		Parent: &Ref{V: "$person.rotemtam"},
 	}, test.People[1])
+}
+
+func TestDynamicBlocks(t *testing.T) {
+	type (
+		URL struct {
+			Value string `spec:"value"`
+		}
+		Env struct {
+			Name string `spec:",name"`
+			URLs []*URL `spec:"url"`
+		}
+	)
+	var (
+		doc struct {
+			Envs []*Env `spec:"env"`
+		}
+		b = []byte(`
+variable "tenants" {
+  type    = list(string)
+  default = ["atlas", "ent"]
+}
+
+env "prod" {
+  dynamic "url" {
+    for_each = var.tenants
+    content {
+      value = "mysql://root:pass@:3306/${url.value}"
+    }
+  }
+  migration {
+    dir = "file://migrations"
+  }
+}
+
+env "staging" {
+  dynamic "url" {
+    for_each = [for t in var.tenants: "mysql://root:pass@:3306/${t}"]
+    content {
+      value = "${url.value}"
+    }
+  }
+  migration {
+    dir = "file://migrations"
+  }
+}
+`)
+	)
+	require.NoError(t, New().EvalBytes(b, &doc, nil))
+	require.Len(t, doc.Envs, 2)
+	require.Equal(t, "prod", doc.Envs[0].Name)
+	require.Equal(t, "staging", doc.Envs[1].Name)
+	require.Len(t, doc.Envs[0].URLs, 2)
+	require.Len(t, doc.Envs[1].URLs, 2)
+	require.Equal(t, "mysql://root:pass@:3306/atlas", doc.Envs[0].URLs[0].Value)
+	require.Equal(t, "mysql://root:pass@:3306/atlas", doc.Envs[1].URLs[0].Value)
+	require.Equal(t, "mysql://root:pass@:3306/ent", doc.Envs[0].URLs[1].Value)
+	require.Equal(t, "mysql://root:pass@:3306/ent", doc.Envs[1].URLs[1].Value)
 }

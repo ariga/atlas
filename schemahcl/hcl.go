@@ -13,6 +13,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/ext/dynblock"
+	"github.com/hashicorp/hcl/v2/hcldec"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hcl/v2/hclwrite"
@@ -358,16 +360,42 @@ func (s *State) toResource(ctx *hcl.EvalContext, block *hclsyntax.Block, scope [
 	}
 	spec.Attrs = attrs
 	for _, blk := range block.Body.Blocks {
-		res, err := s.toResource(ctx, blk, append(scope, blk.Type))
-		if err != nil {
-			return nil, err
+		switch blk.Type {
+		case "dynamic":
+			dec, err := dynamicSpec(blk)
+			if err != nil {
+				return nil, err
+			}
+			v, _, diag := hcldec.PartialDecode(dynblock.Expand(block.Body, ctx), dec, ctx)
+			if diag.HasErrors() {
+				return nil, diag
+			}
+			for _, e := range v.GetAttr(blk.Labels[0]).AsValueSlice() {
+				r := &Resource{Type: blk.Labels[0]}
+				for k, v := range e.AsValueMap() {
+					av, err := extractLiteralValue(v)
+					if err != nil {
+						return nil, err
+					}
+					r.Attrs = append(r.Attrs, &Attr{
+						K: k,
+						V: av,
+					})
+				}
+				spec.Children = append(spec.Children, r)
+			}
+		default:
+			r, err := s.toResource(ctx, blk, append(scope, blk.Type))
+			if err != nil {
+				return nil, err
+			}
+			spec.Children = append(spec.Children, r)
 		}
-		spec.Children = append(spec.Children, res)
 	}
 	return spec, nil
 }
 
-// encode encodes the give *schemahcl.Resource into a byte slice containing an Atlas HCL
+// encode the given *schemahcl.Resource into a byte slice containing an Atlas HCL
 // document representing it.
 func (s *State) encode(r *Resource) ([]byte, error) {
 	f := hclwrite.NewFile()
@@ -599,4 +627,29 @@ func hclList(items []hclwrite.Tokens) hclwrite.Tokens {
 // Eval implements the Evaluator interface.
 func (f EvalFunc) Eval(p *hclparse.Parser, i any, input map[string]string) error {
 	return f(p, i, input)
+}
+
+func dynamicSpec(b *hclsyntax.Block) (hcldec.Spec, error) {
+	switch {
+	case len(b.Labels) != 1:
+		return nil, fmt.Errorf("unexpected number of labels for 'dynamic' block: %d", len(b.Labels))
+	case b.Body == nil || len(b.Body.Attributes) != 1 || b.Body.Attributes["for_each"] == nil:
+		return nil, fmt.Errorf("expect a single 'for_each' attribute on 'dynamic' block: %q", b.Labels[0])
+	case len(b.Body.Blocks) != 1 || b.Body.Blocks[0].Type != "content" || b.Body.Blocks[0].Body == nil:
+		return nil, fmt.Errorf("expect a non-empty 'content' block on 'dynamic' block: %q", b.Labels[0])
+	}
+	attrs := make(hcldec.ObjectSpec)
+	for name := range b.Body.Blocks[0].Body.Attributes {
+		attrs[name] = &hcldec.AttrSpec{
+			Name:     name,
+			Required: true,
+			Type:     cty.DynamicPseudoType,
+		}
+	}
+	return &hcldec.ObjectSpec{
+		b.Labels[0]: &hcldec.BlockListSpec{
+			TypeName: b.Labels[0],
+			Nested:   attrs,
+		},
+	}, nil
 }
