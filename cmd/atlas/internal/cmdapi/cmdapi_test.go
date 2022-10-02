@@ -13,20 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEnv(t *testing.T) {
-	out, err := runCmd(Root, "env")
-	require.NoError(t, err)
-	require.Empty(t, out)
-}
-
-func TestEnv_Set(t *testing.T) {
-	err := os.Setenv(AtlasNoUpdateNotifier, "test")
-	require.NoError(t, err)
-	out, err := runCmd(Root, "env")
-	require.NoError(t, err)
-	require.Equal(t, "ATLAS_NO_UPDATE_NOTIFIER=test\n", out)
-}
-
 func TestCLI_Version(t *testing.T) {
 	// Required to have a clean "stderr" while running first time.
 	tests := []struct {

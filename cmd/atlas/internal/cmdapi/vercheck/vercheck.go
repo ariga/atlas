@@ -2,7 +2,7 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package cmdapi
+package vercheck
 
 import (
 	_ "embed"
@@ -16,13 +16,8 @@ import (
 	"time"
 )
 
-const (
-	// AtlasNoUpdateNotifier when enabled it cancels checking for update
-	AtlasNoUpdateNotifier = "ATLAS_NO_UPDATE_NOTIFIER"
-)
-
-// NewVerChecker returns a new VerChecker for the endpoint.
-func NewVerChecker(endpoint, statePath string) *VerChecker {
+// New returns a new VerChecker for the endpoint.
+func New(endpoint, statePath string) *VerChecker {
 	return &VerChecker{endpoint: endpoint, statePath: statePath}
 }
 
@@ -60,8 +55,8 @@ type (
 )
 
 var (
-	// ErrSkip is returned when check isn't run because 24 hours haven't passed from the previous run.
-	ErrSkip = errors.New("skip vercheck")
+	// errSkip is returned when check isn't run because 24 hours haven't passed from the previous run.
+	errSkip = errors.New("skip vercheck")
 	// Notify is the template for displaying the payload to the user.
 	Notify *template.Template
 )
@@ -123,16 +118,16 @@ func (v *VerChecker) verifyTime() error {
 	if time.Since(s.CheckedAt) >= (time.Hour * 24) {
 		return nil
 	}
-	return ErrSkip
+	return errSkip
 }
 
 //go:embed notification.tmpl
 var notifyTmpl string
 
 func init() {
-	tmpl, err := template.New("").Parse(notifyTmpl)
+	var err error
+	Notify, err = template.New("").Parse(notifyTmpl)
 	if err != nil {
 		panic(err)
 	}
-	Notify = tmpl
 }

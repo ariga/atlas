@@ -2,7 +2,7 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-package cmdapi
+package vercheck
 
 import (
 	"bytes"
@@ -27,7 +27,7 @@ func TestVerCheck(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	vc := NewVerChecker(srv.URL, "")
+	vc := New(srv.URL, "")
 	check, err := vc.Check("v0.1.2")
 
 	require.EqualValues(t, "/atlas/v0.1.2", path)
@@ -85,7 +85,7 @@ func TestState(t *testing.T) {
 				err := os.WriteFile(path, []byte(tt.state), os.ModePerm)
 				require.NoError(t, err)
 			}
-			vc := NewVerChecker(srv.URL, path)
+			vc := New(srv.URL, path)
 			_, _ = vc.Check("v0.1.2")
 			require.EqualValues(t, tt.expectedRun, ran)
 

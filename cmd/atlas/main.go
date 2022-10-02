@@ -5,11 +5,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
+	"sync"
+	"time"
 
 	"ariga.io/atlas/cmd/atlas/internal/cmdapi"
+	"ariga.io/atlas/cmd/atlas/internal/cmdapi/vercheck"
 	_ "ariga.io/atlas/cmd/atlas/internal/docker"
 	_ "ariga.io/atlas/sql/mysql"
 	_ "ariga.io/atlas/sql/mysql/mysqlcheck"
@@ -17,6 +22,8 @@ import (
 	_ "ariga.io/atlas/sql/postgres/postgrescheck"
 	_ "ariga.io/atlas/sql/sqlite"
 	_ "ariga.io/atlas/sql/sqlite/sqlitecheck"
+	"github.com/mitchellh/go-homedir"
+	"golang.org/x/mod/semver"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
@@ -26,7 +33,72 @@ import (
 func main() {
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	cmdapi.Root.SetOut(os.Stdout)
-	if err := cmdapi.Root.ExecuteContext(ctx); err != nil {
+	checkForUpdate()
+	err := cmdapi.Root.ExecuteContext(ctx)
+	if u := update(); u != "" {
+		fmt.Println(u)
+	}
+	if err != nil {
 		os.Exit(1)
 	}
+}
+
+const (
+	// envNoUpdate when enabled it cancels checking for update
+	envNoUpdate = "ATLAS_NO_UPDATE_NOTIFIER"
+	vercheckURL = "https://vercheck.ariga.io"
+	versionFile = "~/.atlas/release.json"
+)
+
+var (
+	updateMessage string
+	wgVercheck    sync.WaitGroup
+)
+
+// update waits up to 500ms for results from checkForUpdate to be ready and returns them. If no results
+// is ready by time the timeout has passed an empty string is returned.
+func update() string {
+	update := make(chan string)
+	go func() {
+		wgVercheck.Wait()
+		update <- updateMessage
+	}()
+	select {
+	case u := <-update:
+		return u
+	case <-time.After(time.Millisecond * 500):
+		return ""
+	}
+}
+
+// checkForUpdate checks for version updates and security advisories for Atlas.
+func checkForUpdate() {
+	version := cmdapi.Version()
+	// Users may skip update checking behavior.
+	if v := os.Getenv(envNoUpdate); v != "" {
+		return
+	}
+	// Skip if the current binary version isn't set (dev mode).
+	if !semver.IsValid(version) {
+		return
+	}
+	path, err := homedir.Expand(versionFile)
+	if err != nil {
+		return
+	}
+	wgVercheck.Add(1)
+	go func() {
+		defer wgVercheck.Done()
+		vc := vercheck.New(vercheckURL, path)
+		payload, err := vc.Check(version)
+		if err != nil {
+			return
+		}
+		var b bytes.Buffer
+		if err := vercheck.Notify.Execute(&b, payload); err != nil {
+			return
+		}
+		updateMessage = b.String()
+	}()
+	return
 }
