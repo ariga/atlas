@@ -137,6 +137,18 @@ module.exports = {
             ]
         },
         {
+            type: 'category',
+            label: 'ORMs',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id:'guides/orms/gorm',
+                    label: 'GORM'
+                }
+            ]
+        },
+        {
             type: 'doc',
             id: 'guides/ddl'
         },
