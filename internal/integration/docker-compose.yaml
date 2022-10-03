@@ -141,3 +141,10 @@ services:
     ports:
       - "26257:26257"
     command: "start-single-node --insecure"
+
+  spanner1.4.6:
+    platform: linux/amd64
+    image: gcr.io/cloud-spanner-emulator/emulator:1.4.6
+    ports:
+      - "9010:9010"
+      - "9020:9020"

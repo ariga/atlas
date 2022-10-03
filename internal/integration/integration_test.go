@@ -515,6 +515,7 @@ func testCLISchemaDiff(t T, dsn string) {
 }
 
 func ensureNoChange(t T, tables ...*schema.Table) {
+	t.Helper()
 	realm := t.loadRealm()
 	require.Equal(t, len(realm.Schemas[0].Tables), len(tables))
 	for i := range tables {
@@ -569,6 +570,7 @@ func testAdvisoryLock(t *testing.T, l schema.Locker) {
 }
 
 func testExecutor(t T) {
+	t.Helper()
 	usersT, postsT := t.users(), t.posts()
 	petsT := &schema.Table{
 		Name:   "pets",
