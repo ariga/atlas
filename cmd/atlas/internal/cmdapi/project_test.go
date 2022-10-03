@@ -11,7 +11,9 @@ import (
 	"testing"
 
 	"ariga.io/atlas/schemahcl"
+
 	"github.com/stretchr/testify/require"
+	"github.com/zclconf/go-cty/cty"
 )
 
 func TestLoadEnv(t *testing.T) {
@@ -126,8 +128,8 @@ env "multi" {
 		require.EqualValues(t, []string{"./a.hcl", "./b.hcl"}, srcs)
 	})
 	t.Run("with input", func(t *testing.T) {
-		env, err := LoadEnv(path, "local", WithInput(map[string]string{
-			"name": "goodbye",
+		env, err := LoadEnv(path, "local", WithInput(map[string]cty.Value{
+			"name": cty.StringVal("goodbye"),
 		}))
 		require.NoError(t, err)
 		str, ok := env.Attr("str")

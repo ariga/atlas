@@ -16,9 +16,11 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
+
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
+	"github.com/zclconf/go-cty/cty"
 )
 
 const (
@@ -378,7 +380,7 @@ func CmdFmtRun(cmd *cobra.Command, args []string) {
 	}
 }
 
-func applyRun(cmd *cobra.Command, client *sqlclient.Client, devURL string, paths []string, dryRun, autoApprove bool, input map[string]string) error {
+func applyRun(cmd *cobra.Command, client *sqlclient.Client, devURL string, paths []string, dryRun, autoApprove bool, input map[string]cty.Value) error {
 	schemas, ctx := SchemaFlags.Schemas, cmd.Context()
 	if client.URL.Schema != "" {
 		schemas = append(schemas, client.URL.Schema)

@@ -11,8 +11,10 @@ import (
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/schema"
+
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/stretchr/testify/require"
+	"github.com/zclconf/go-cty/cty"
 )
 
 // RegistrySanityTest runs a sanity for a TypeRegistry, generated a dummy *schemahcl.Type
@@ -64,7 +66,7 @@ table "users" {
 	p := hclparse.NewParser()
 	_, diag := p.ParseHCL([]byte(h), "")
 	require.False(t, diag.HasErrors())
-	err := evaluator.Eval(p, &test, map[string]string{"tenant": "rotemtam"})
+	err := evaluator.Eval(p, &test, map[string]cty.Value{"tenant": cty.StringVal("rotemtam")})
 	require.NoError(t, err)
 	require.EqualValues(t, "rotemtam", test.Schemas[0].Name)
 	require.Len(t, test.Schemas[0].Tables, 1)

@@ -10,19 +10,21 @@ import (
 	"os"
 
 	"ariga.io/atlas/schemahcl"
+
+	"github.com/zclconf/go-cty/cty"
 )
 
 const projectFileName = "atlas.hcl"
 
 type loadConfig struct {
-	inputVals map[string]string
+	inputVals map[string]cty.Value
 }
 
 // LoadOption configures the LoadEnv function.
 type LoadOption func(*loadConfig)
 
 // WithInput is a LoadOption that sets the input values for the LoadEnv function.
-func WithInput(vals map[string]string) LoadOption {
+func WithInput(vals map[string]cty.Value) LoadOption {
 	return func(config *loadConfig) {
 		config.inputVals = vals
 	}
