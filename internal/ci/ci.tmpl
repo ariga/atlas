@@ -163,6 +163,7 @@ jobs:
           key: {{ "${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}" }}
           restore-keys: |
             {{ "${{ runner.os }}-go-" }}
+{{- .RawSetup }}
       - name: Run integration tests for {{ .Version }}
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="{{ .Regex }}" -version="{{ .Version }}" ./...

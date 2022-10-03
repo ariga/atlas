@@ -22,6 +22,8 @@ type Job struct {
 	Env     []string // env of service
 	Ports   []string // port mappings
 	Options []string // other options
+
+	RawSetup string // raw contents to include before running tests.
 }
 
 var (
@@ -159,6 +161,21 @@ var (
 			Image:   "ghcr.io/ariga/cockroachdb-single-node:v21.2.11",
 			Regex:   "Cockroach",
 			Ports:   []string{"26257:26257"},
+		},
+		{
+			Version: "spanner",
+			Image:   "gcr.io/cloud-spanner-emulator/emulator:1.4.6",
+			Regex:   "Spanner",
+			Ports:   []string{"9010:9010", "9020:9020"},
+			Env:     []string{"SPANNER_EMULATOR_HOST: localhost:9010"},
+			RawSetup: `
+      - uses: 'google-github-actions/setup-gcloud@v0'
+      - run: |
+          gcloud config set auth/disable_credentials true
+          gcloud config set project atlas
+          gcloud config set api_endpoint_overrides/spanner http://localhost:9020/
+          gcloud spanner instances create instance-1 --config=emulator-config --description="Test Instance" --nodes=1
+          gcloud spanner databases create --instance=instance-1 db-1`,
 		},
 	}
 )
