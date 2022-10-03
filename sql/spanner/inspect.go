@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -21,13 +22,6 @@ type inspect struct{ conn }
 var _ schema.Inspector = (*inspect)(nil)
 
 const defaultSchemaNameAlias = "default"
-
-// columnDesc represents a column descriptor.
-type columnDesc struct {
-	typ       string
-	size      int
-	sizeIsMax bool
-}
 
 // InspectRealm returns schema descriptions of all resources in the given realm.
 func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOption) (*schema.Realm, error) {
@@ -72,7 +66,7 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 
 func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *schema.InspectOptions) error {
 	if err := i.tables(ctx, r, opts); err != nil {
-		return fmt.Errorf("issue in tables(): %w", err)
+		return fmt.Errorf("inspectTables: issue in tables(): %w", err)
 	}
 	for _, s := range r.Schemas {
 		if len(s.Tables) == 0 {
@@ -153,11 +147,6 @@ func (i *inspect) columns(ctx context.Context, s *schema.Schema) error {
 	if err := rows.Err(); err != nil {
 		return err
 	}
-	/*
-		if err := i.enumValues(ctx, s); err != nil {
-			return err
-		}
-	*/
 	return nil
 }
 
@@ -168,6 +157,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 		ordinalPosition                                           sql.NullInt64
 		columnDefault, dataType, isNullable, spannerType          sql.NullString
 		isGenerated, generationExpression, isStored, spannerState sql.NullString
+		err                                                       error
 	)
 	if err := rows.Scan(
 		&tableName, &columnName,
@@ -184,11 +174,16 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	c := &schema.Column{
 		Name: columnName.String,
 		Type: &schema.ColumnType{
-			Raw:  dataType.String,
+			Raw:  spannerType.String,
 			Null: isNullable.String == "YES",
 		},
 	}
-	c.Type.Type = columnType(spannerType.String)
+
+	// Converts spanner string type to schema.Type.
+	c.Type.Type, err = columnType(spannerType.String)
+	if err != nil {
+		return fmt.Errorf("spanner: Unable to convert string %q to schema.Type: %w", columnName, err)
+	}
 
 	if columnDefault.Valid {
 		c.Default = defaultExpr(c, columnDefault.String)
@@ -201,85 +196,66 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 			},
 		}
 	}
-	t.Columns = append(t.Columns, c)
+	t.AddColumns(c)
 	return nil
 }
 
-func columnParts(t string) []string {
-	t = strings.TrimSpace(strings.ToUpper(t))
-	parts := strings.FieldsFunc(t, func(r rune) bool {
-		return r == '(' || r == ')' || r == ' ' || r == ','
-	})
-	return parts
-}
+// Converts spanner string type to schema.Type.
+func columnType(spannerType string) (schema.Type, error) {
+	var typ schema.Type
 
-// columnType converts a string representation of a column type to a schema.Type.
-func columnType(c string) schema.Type {
-	var (
-		typ      schema.Type
-		typeSize int
-		err      error
-	)
+	columnDescriptor := &columnDesc{}
+	spannerType = strings.TrimSpace(strings.ToUpper(spannerType))
 
-	// Get Type and Size from the column description.
-	parts := columnParts(c)
+	// Split up type into, base type, size, and other modifiers.
+	re := regexp.MustCompile(`(\w+)(?:\((-?\d+|MAX)\))?`)
+	m := removeEmptyStrings(re.FindStringSubmatch(spannerType))
+	if len(m) == 0 {
+		return nil, fmt.Errorf("columnType: Invalid type: %q", spannerType)
+	}
+	columnDescriptor.typ = m[1]
 
-	if len(parts) > 1 {
-		if parts[1] == "MAX" {
-			typeSize = -1
+	if len(m) > 2 {
+		if m[2] == "MAX" {
+			columnDescriptor.sizeIsMax = true
 		} else {
-			typeSize, err = strconv.Atoi(parts[1])
+			size, err := strconv.Atoi(m[2])
 			if err != nil {
-				// Note: What should we do if an "unsupported string" arises?
-				typeSize = 0
+				return nil, fmt.Errorf("columnType: Unable to convert %q to an int: %w", m[2], err)
 			}
+			columnDescriptor.size = size
 		}
 	}
-	t := parts[0]
 
 	switch {
-	case t == TypeInt64:
-		typ = &schema.IntegerType{T: t}
-	case t == TypeBool:
-		typ = &schema.BoolType{T: t}
-	case strings.HasPrefix(t, TypeBytes) && len(parts) > 1:
+	case columnDescriptor.typ == TypeInt64:
+		typ = &schema.IntegerType{T: columnDescriptor.typ}
+	case columnDescriptor.typ == TypeBool:
+		typ = &schema.BoolType{T: columnDescriptor.typ}
+	case strings.HasPrefix(columnDescriptor.typ, TypeBytes):
 		typ = &BytesType{
-			T:         parts[0],
-			Size:      typeSize,
-			SizeIsMax: typeSize == -1,
+			T:         columnDescriptor.typ,
+			Size:      columnDescriptor.size,
+			SizeIsMax: columnDescriptor.sizeIsMax,
 		}
-	case strings.HasPrefix(t, TypeString) && len(parts) > 1:
+	case strings.HasPrefix(columnDescriptor.typ, TypeString):
 		typ = &StringType{
-			T:         parts[0],
-			Size:      typeSize,
-			SizeIsMax: typeSize == -1,
+			T:         columnDescriptor.typ,
+			Size:      columnDescriptor.size,
+			SizeIsMax: columnDescriptor.sizeIsMax,
 		}
-	case t == TypeTimestamp:
-		typ = &schema.TimeType{T: t}
-	case t == TypeDate:
-		typ = &schema.TimeType{T: t}
-	case t == TypeJSON:
-		typ = &schema.JSONType{T: t}
-	case t == TypeNumeric:
-		// typ = &schema.DecimalType{T: t, Precision: int(c.precision), Scale: int(c.scale)}
-		typ = &schema.DecimalType{T: t}
-	// case TypeBoolArray:
-	// 	// Note that for ARRAY types, the 'udt_name' column holds the array type
-	// 	// prefixed with '_'. For example, for 'integer[]' the result is '_int',
-	// 	// and for 'text[N][M]' the result is also '_text'. That's because, the
-	// 	// database ignores any size or multi-dimensions constraints.
-	// 	typ = &ArrayType{T: strings.TrimPrefix(c.udt, "_") + "[]"}
+	case columnDescriptor.typ == TypeTimestamp:
+		typ = &schema.TimeType{T: columnDescriptor.typ}
+	case columnDescriptor.typ == TypeDate:
+		typ = &schema.TimeType{T: columnDescriptor.typ}
+	case columnDescriptor.typ == TypeJSON:
+		typ = &schema.JSONType{T: columnDescriptor.typ}
+	case columnDescriptor.typ == TypeNumeric:
+		typ = &schema.DecimalType{T: columnDescriptor.typ}
 	default:
-		// typ = &schema.StringType{T: t}
-		// // TODO(tmc): clean this up
-		typ = &schema.UnsupportedType{T: t}
+		typ = &schema.UnsupportedType{T: columnDescriptor.typ}
 	}
-	return typ
-}
-
-// enumValues fills enum columns with their values from the database.
-func (i *inspect) enumValues(ctx context.Context, s *schema.Schema) error {
-	return fmt.Errorf("enumValues: not implemented")
+	return typ, nil
 }
 
 // indexes queries and appends the indexes of the given table.
@@ -361,35 +337,6 @@ func (i *inspect) fks(ctx context.Context, s *schema.Schema) error {
 	defer rows.Close()
 	if err := sqlx.SchemaFKs(s, rows); err != nil {
 		return fmt.Errorf("spanner: %w", err)
-	}
-	return rows.Err()
-}
-
-// pks queries and appends the foreign keys of the given table.
-func (i *inspect) pks(ctx context.Context, s *schema.Schema) error {
-	rows, err := i.querySchema(ctx, primaryKeysQuery, s)
-	if err != nil {
-		return fmt.Errorf("spanner: querying schema %q foreign keys: %w", s.Name, err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var name, table, column, tSchema, refTable, refColumn, refSchema string
-		if err := rows.Scan(&name, &table, &column, &tSchema, &refTable, &refColumn, &refSchema); err != nil {
-			return err
-		}
-		// spew.Dump(name, table, column, tSchema, refTable, refColumn, refSchema)
-		// t, ok := s.Table(table)
-		// if !ok {
-		// 	return fmt.Errorf("table %q was not found in schema", table)
-		// }
-		// t.PrimaryKey = &schema.Index{
-		// 	Name:   name,
-		// 	Unique: isUnique,
-		// 	Table:  t,
-		// 	Attrs: []schema.Attr{
-		// 		&IndexType{T: indexType},
-		// 	},
-		// }
 	}
 	return rows.Err()
 }
@@ -476,18 +423,6 @@ func (i *inspect) querySchema(ctx context.Context, query string, s *schema.Schem
 	return i.QueryContext(ctx, query, sName, tables)
 }
 
-func nArgs(start, n int) string {
-	var b strings.Builder
-	for i := 1; i <= n; i++ {
-		if i > 1 {
-			b.WriteString(", ")
-		}
-		b.WriteByte('$')
-		b.WriteString(strconv.Itoa(start + i))
-	}
-	return b.String()
-}
-
 func defaultExpr(c *schema.Column, x string) schema.Expr {
 	switch {
 	case sqlx.IsLiteralBool(x), sqlx.IsLiteralNumber(x), sqlx.IsQuoted(x, '\''):
@@ -524,7 +459,25 @@ func canConvert(t *schema.ColumnType, x string) (string, bool) {
 	return "", false
 }
 
+func removeEmptyStrings(s []string) []string {
+	var r []string
+	for _, str := range s {
+		if str != "" {
+			r = append(r, str)
+		}
+	}
+	return r
+}
+
 type (
+
+	// columnDesc represents a column descriptor.
+	columnDesc struct {
+		typ       string
+		size      int
+		sizeIsMax bool
+	}
+
 	// ArrayType defines an array type.
 	// https://www.spannerql.org/docs/current/arrays.html
 	ArrayType struct {

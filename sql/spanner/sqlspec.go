@@ -88,7 +88,7 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 	return c, nil
 }
 
-// convertColumnType converts a sqlspec.Column into a concrete  schema.Type.
+// convertColumnType converts a sqlspec.Column into a concrete schema.Type.
 func convertColumnType(spec *sqlspec.Column) (schema.Type, error) {
 	return TypeRegistry.Type(spec.Type, spec.Extra.Attrs)
 }
@@ -98,7 +98,7 @@ func schemaSpec(schem *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error)
 	return specutil.FromSchema(schem, tableSpec)
 }
 
-// tableSpec converts from a concrete  sqlspec.Table to a schema.Table.
+// tableSpec converts from a concrete sqlspec.Table to a schema.Table.
 func tableSpec(tab *schema.Table) (*sqlspec.Table, error) {
 	return specutil.FromTable(
 		tab,
@@ -142,20 +142,8 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 	return &sqlspec.Column{Type: st}, nil
 }
 
-// FormatType converts schema type to its column form in the database.
-func FormatType(t schema.Type) (string, error) {
-	return "", fmt.Errorf("not implemented")
-}
-
-// ParseType returns the schema.Type value represented by the given raw type.
-func ParseType(string) (schema.Type, error) {
-	return nil, fmt.Errorf("not implemented")
-}
-
 // TypeRegistry contains the supported TypeSpecs for the spanner driver.
 var TypeRegistry = schemahcl.NewRegistry(
-	schemahcl.WithFormatter(FormatType),
-	schemahcl.WithParser(ParseType),
 	schemahcl.WithSpecs(
 		schemahcl.NewTypeSpec(TypeString, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
 		schemahcl.NewTypeSpec(TypeBytes, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
