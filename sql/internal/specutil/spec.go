@@ -11,7 +11,9 @@ import (
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
+
 	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/zclconf/go-cty/cty"
 )
 
 // StrAttr is a helper method for constructing *schemahcl.Attr of type string.
@@ -192,8 +194,8 @@ func QualifyReferences(tableSpecs []*sqlspec.Table, realm *schema.Realm) error {
 
 // HCLBytesFunc returns a helper that evaluates an HCL document from a byte slice instead
 // of from an hclparse.Parser instance.
-func HCLBytesFunc(ev schemahcl.Evaluator) func(b []byte, v any, inp map[string]string) error {
-	return func(b []byte, v any, inp map[string]string) error {
+func HCLBytesFunc(ev schemahcl.Evaluator) func(b []byte, v any, inp map[string]cty.Value) error {
+	return func(b []byte, v any, inp map[string]cty.Value) error {
 		parser := hclparse.NewParser()
 		if _, diag := parser.ParseHCL(b, ""); diag.HasErrors() {
 			return diag

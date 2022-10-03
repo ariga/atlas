@@ -15,11 +15,13 @@ import (
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
+
 	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/zclconf/go-cty/cty"
 )
 
 // evalSpec evaluates an Atlas DDL document using an unmarshaler into v by using the input.
-func evalSpec(p *hclparse.Parser, v any, input map[string]string) error {
+func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 	var d doc
 	if err := hclState.Eval(p, &d, input); err != nil {
 		return err

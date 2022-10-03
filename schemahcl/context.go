@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/convert"
 	"github.com/zclconf/go-cty/cty/function"
 )
 
@@ -30,7 +31,7 @@ type varDef struct {
 //	  type = string // also supported: int, bool
 //	  default = "rotemtam"
 //	}
-func (s *State) setInputVals(ctx *hcl.EvalContext, body hcl.Body, input map[string]string) error {
+func (s *State) setInputVals(ctx *hcl.EvalContext, body hcl.Body, input map[string]cty.Value) error {
 	var (
 		doc struct {
 			Vars   []*varDef `hcl:"variable,block"`
@@ -61,19 +62,26 @@ func (s *State) setInputVals(ctx *hcl.EvalContext, body hcl.Body, input map[stri
 	}
 	ctxVars := make(map[string]cty.Value)
 	for _, v := range doc.Vars {
-		inputVal, ok := input[v.Name]
-		if ok {
-			ctyVal, err := readVar(v, inputVal)
-			if err != nil {
-				return fmt.Errorf("failed reading var: %w", err)
-			}
-			ctxVars[v.Name] = ctyVal
-			continue
-		}
-		if v.Default == cty.NilVal {
+		var vv cty.Value
+		switch iv, ok := input[v.Name]; {
+		case ok:
+			vv = iv
+		case v.Default != cty.NilVal:
+			vv = v.Default
+		default:
 			return fmt.Errorf("missing value for required variable %q", v.Name)
 		}
-		ctxVars[v.Name] = v.Default
+		vt := v.Type.EncapsulatedValue().(*cty.Type)
+		// In case the input value is a primitive type and the expected type is a list,
+		// wrap it as a list because the variable type may not be known to the caller.
+		if vt.IsListType() && vv.Type().Equals(vt.ElementType()) {
+			vv = cty.ListVal([]cty.Value{vv})
+		}
+		cv, err := convert.Convert(vv, *vt)
+		if err != nil {
+			return fmt.Errorf("variable %q: %w", v.Name, err)
+		}
+		ctxVars[v.Name] = cv
 	}
 	mergeCtxVar(ctx, ctxVars)
 	return nil
@@ -89,33 +97,6 @@ func mergeCtxVar(ctx *hcl.EvalContext, vals map[string]cty.Value) {
 		})
 	}
 	ctx.Variables[key] = cty.ObjectVal(vals)
-}
-
-// readVar reads the raw inputVal as a cty.Value using the type definition on v.
-func readVar(v *varDef, inputVal string) (cty.Value, error) {
-	et := v.Type.EncapsulatedValue()
-	typ, ok := et.(*cty.Type)
-	if !ok || typ == nil {
-		return cty.NilVal, fmt.Errorf("expected non-nillable schemahcl.Type got %T", et)
-	}
-	switch *typ {
-	case cty.String:
-		return cty.StringVal(inputVal), nil
-	case cty.Number:
-		i, err := strconv.Atoi(inputVal)
-		if err != nil {
-			return cty.NilVal, err
-		}
-		return cty.NumberIntVal(int64(i)), nil
-	case cty.Bool:
-		b, err := strconv.ParseBool(inputVal)
-		if err != nil {
-			return cty.NilVal, err
-		}
-		return cty.BoolVal(b), nil
-	default:
-		return cty.NilVal, fmt.Errorf("unknown type: %q", v.Name)
-	}
 }
 
 func setBlockVars(ctx *hcl.EvalContext, b *hclsyntax.Body) (*hcl.EvalContext, error) {

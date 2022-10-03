@@ -7,10 +7,12 @@
 package cmdapi
 
 import (
+	"encoding/csv"
 	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/zclconf/go-cty/cty"
 	"golang.org/x/mod/semver"
 )
 
@@ -29,7 +31,7 @@ var (
 		SelectedEnv string
 		// Vars contains the input variables passed from the CLI to
 		// Atlas DDL or project files.
-		Vars map[string]string
+		Vars Vars
 	}
 
 	// version holds Atlas version. When built with cloud packages
@@ -42,7 +44,7 @@ var (
 		Short: "Prints this Atlas CLI version information.",
 		Run: func(cmd *cobra.Command, args []string) {
 			v, u := parse(version)
-			Root.Printf("atlas version %s\n%s\n", v, u)
+			cmd.Printf("atlas version %s\n%s\n", v, u)
 		},
 	}
 
@@ -68,7 +70,7 @@ func init() {
 // receivesEnv configures cmd to receive the common '--env' flag.
 func receivesEnv(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVarP(&GlobalFlags.SelectedEnv, "env", "", "", "set which env from the project file to use")
-	cmd.PersistentFlags().StringToStringVarP(&GlobalFlags.Vars, varFlag, "", nil, "input variables")
+	cmd.PersistentFlags().VarP(&GlobalFlags.Vars, varFlag, "", "input variables")
 }
 
 // inputValsFromEnv populates GlobalFlags.Vars from the active environment. If we are working
@@ -117,4 +119,51 @@ func parse(version string) (string, string) {
 // Version returns the current Atlas binary version.
 func Version() string {
 	return version
+}
+
+// Vars implements pflag.Value.
+type Vars map[string]cty.Value
+
+// String implements pflag.Value.String.
+func (v Vars) String() string {
+	var b strings.Builder
+	for k := range v {
+		if b.Len() > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(k)
+		b.WriteString(":")
+		b.WriteString(v[k].GoString())
+	}
+	return "[" + b.String() + "]"
+}
+
+// Set implements pflag.Value.Set.
+func (v *Vars) Set(s string) error {
+	if *v == nil {
+		*v = make(Vars)
+	}
+	kvs, err := csv.NewReader(strings.NewReader(s)).Read()
+	if err != nil {
+		return err
+	}
+	for i := range kvs {
+		kv := strings.SplitN(kvs[i], "=", 2)
+		if len(kv) != 2 {
+			return fmt.Errorf("variables must be format as key=value, got: %q", kvs[i])
+		}
+		v1 := cty.StringVal(kv[1])
+		switch v2, ok := (*v)[kv[0]]; {
+		case ok:
+			(*v)[kv[0]] = cty.ListVal([]cty.Value{v1, v2})
+		default:
+			(*v)[kv[0]] = v1
+		}
+	}
+	return nil
+}
+
+// Type implements pflag.Value.Type.
+func (v *Vars) Type() string {
+	return "<name>=<value>"
 }

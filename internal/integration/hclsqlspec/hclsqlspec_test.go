@@ -7,6 +7,8 @@ package hclsqlspec
 import (
 	"testing"
 
+	"github.com/zclconf/go-cty/cty"
+
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/postgres"
@@ -20,7 +22,7 @@ import (
 var dialects = []struct {
 	name string
 	schemahcl.Marshaler
-	Eval func(b []byte, v any, inp map[string]string) error
+	Eval func(b []byte, v any, inp map[string]cty.Value) error
 }{
 	{
 		name:      "mysql",

@@ -32,10 +32,10 @@ type (
 	// Evaluator is the interface that wraps the Eval function.
 	Evaluator interface {
 		// Eval evaluates parsed HCL files using input variables into a schema.Realm.
-		Eval(*hclparse.Parser, any, map[string]string) error
+		Eval(*hclparse.Parser, any, map[string]cty.Value) error
 	}
 	// EvalFunc is an adapter that allows the use of an ordinary function as an Evaluator.
-	EvalFunc func(*hclparse.Parser, any, map[string]string) error
+	EvalFunc func(*hclparse.Parser, any, map[string]cty.Value) error
 	// Marshaler is the interface that wraps the MarshalSpec function.
 	Marshaler interface {
 		// MarshalSpec marshals the provided input into a valid Atlas HCL document.
@@ -57,7 +57,7 @@ func (s *State) MarshalSpec(v any) ([]byte, error) {
 
 // EvalFiles evaluates the files in the provided paths using the input variables and
 // populates v with the result.
-func (s *State) EvalFiles(paths []string, v any, input map[string]string) error {
+func (s *State) EvalFiles(paths []string, v any, input map[string]cty.Value) error {
 	parser := hclparse.NewParser()
 	for _, path := range paths {
 		if _, diag := parser.ParseHCLFile(path); diag.HasErrors() {
@@ -69,7 +69,7 @@ func (s *State) EvalFiles(paths []string, v any, input map[string]string) error 
 
 // Eval evaluates the parsed HCL documents using the input variables and populates v
 // using the result.
-func (s *State) Eval(parsed *hclparse.Parser, v any, input map[string]string) error {
+func (s *State) Eval(parsed *hclparse.Parser, v any, input map[string]cty.Value) error {
 	ctx := s.config.newCtx()
 	reg := &blockDef{
 		fields:   make(map[string]struct{}),
@@ -128,7 +128,7 @@ func (s *State) Eval(parsed *hclparse.Parser, v any, input map[string]string) er
 
 // EvalBytes evaluates the data byte-slice as an Atlas HCL document using the input variables
 // and stores the result in v.
-func (s *State) EvalBytes(data []byte, v any, input map[string]string) error {
+func (s *State) EvalBytes(data []byte, v any, input map[string]cty.Value) error {
 	parser := hclparse.NewParser()
 	if _, diag := parser.ParseHCL(data, ""); diag.HasErrors() {
 		return diag
@@ -625,7 +625,7 @@ func hclList(items []hclwrite.Tokens) hclwrite.Tokens {
 }
 
 // Eval implements the Evaluator interface.
-func (f EvalFunc) Eval(p *hclparse.Parser, i any, input map[string]string) error {
+func (f EvalFunc) Eval(p *hclparse.Parser, i any, input map[string]cty.Value) error {
 	return f(p, i, input)
 }
 

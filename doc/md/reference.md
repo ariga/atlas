@@ -50,7 +50,7 @@ atlas migrate
 ```
       --dir string           select migration directory using URL format (default "file://migrations")
       --env string           set which env from the project file to use
-      --var stringToString   input variables (default [])
+      --var <name>=<value>   input variables (default [])
 
 ```
 
@@ -312,7 +312,7 @@ The `atlas schema` command groups subcommands for working with Atlas schemas.
 #### Flags
 ```
       --env string           set which env from the project file to use
-      --var stringToString   input variables (default [])
+      --var <name>=<value>   input variables (default [])
 
 ```
 

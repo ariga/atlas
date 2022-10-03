@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/zclconf/go-cty/cty"
 )
 
 func TestAttributes(t *testing.T) {
@@ -305,7 +306,9 @@ person "rotem" {
 	family = family.default
 }
 `
-	err := New().EvalBytes([]byte(h), &test, map[string]string{"family_name": "tam"})
+	err := New().EvalBytes([]byte(h), &test, map[string]cty.Value{
+		"family_name": cty.StringVal("tam"),
+	})
 	require.NoError(t, err)
 	require.EqualValues(t, "$family.tam", test.People[0].Family.V)
 }
@@ -331,8 +334,8 @@ func TestMultiFile(t *testing.T) {
 		}
 		paths = append(paths, filepath.Join(testDir, file.Name()))
 	}
-	err = New().EvalFiles(paths, &test, map[string]string{
-		"hobby": "coding",
+	err = New().EvalFiles(paths, &test, map[string]cty.Value{
+		"hobby": cty.StringVal("coding"),
 	})
 	require.NoError(t, err)
 	require.Len(t, test.People, 2)
@@ -364,6 +367,10 @@ variable "tenants" {
   default = ["atlas", "ent"]
 }
 
+variable "domains" {
+  type = list(string)
+}
+
 env "prod" {
   dynamic "url" {
     for_each = var.tenants
@@ -389,7 +396,12 @@ env "staging" {
 }
 `)
 	)
-	require.NoError(t, New().EvalBytes(b, &doc, nil))
+	require.NoError(t, New().EvalBytes(b, &doc, map[string]cty.Value{
+		"domains": cty.ListVal([]cty.Value{
+			cty.StringVal("a"),
+			cty.StringVal("b"),
+		}),
+	}))
 	require.Len(t, doc.Envs, 2)
 	require.Equal(t, "prod", doc.Envs[0].Name)
 	require.Equal(t, "staging", doc.Envs[1].Name)
@@ -399,4 +411,15 @@ env "staging" {
 	require.Equal(t, "mysql://root:pass@:3306/atlas", doc.Envs[1].URLs[0].Value)
 	require.Equal(t, "mysql://root:pass@:3306/ent", doc.Envs[0].URLs[1].Value)
 	require.Equal(t, "mysql://root:pass@:3306/ent", doc.Envs[1].URLs[1].Value)
+
+	// A one-element is allowed for list types.
+	require.NoError(t, New().EvalBytes(b, &doc, map[string]cty.Value{
+		"domains": cty.StringVal("a"),
+	}))
+
+	// Mismatched element types.
+	err := New().EvalBytes(b, &doc, map[string]cty.Value{
+		"domains": cty.BoolVal(false),
+	})
+	require.EqualError(t, err, `variable "domains": list of string required`)
 }
