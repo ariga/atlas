@@ -283,37 +283,37 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 			tableSchema                     sql.NullString
 			tableName, indexName, indexType string
 			parentTableName                 sql.NullString
-			isUnique, isNullFiltered        bool
-			indexState                      sql.NullString
+			isUnique, isNullFiltered        sql.NullBool
 			columnName                      sql.NullString
-			ordinalPosition                 int
+			ordinalPosition                 sql.NullInt64
 			columnOrdering                  sql.NullString
-			isNullable                      sql.NullString
+			isNullable                      sql.NullBool
 		)
 		if err := rows.Scan(
-			&tableSchema, &tableName, &indexName, &indexType, &parentTableName, &isUnique, &isNullFiltered, &indexState,
-			&columnName, &ordinalPosition, &columnOrdering, &isNullable); err != nil {
+			&tableSchema, &tableName, &indexName,
+			&indexType, &parentTableName, &isUnique,
+			&isNullFiltered, &columnName, &ordinalPosition,
+			&columnOrdering, &isNullable,
+		); err != nil {
 			return fmt.Errorf("spanner: scanning indexes for schema %q: %w", s.Name, err)
 		}
-		if tableName == "" {
-			continue
-		}
-
 		t, ok := s.Table(tableName)
 		if !ok {
 			return fmt.Errorf("table %q was not found in schema", tableName)
 		}
 		name := tableName + "_" + indexName
+		// Add Index if it doesn't exist.
 		idx, ok := names[name]
 		if !ok {
 			idx = &schema.Index{
 				Name:   indexName,
-				Unique: isUnique,
+				Unique: isUnique.Bool,
 				Table:  t,
 				Attrs: []schema.Attr{
 					&IndexType{T: indexType},
 				},
 			}
+			idx.AddAttrs(&IsNullFiltered{Bool: isNullFiltered.Bool})
 			names[name] = idx
 			if indexType == "PRIMARY_KEY" {
 				if t.PrimaryKey == nil {
@@ -323,8 +323,12 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 				t.AddIndexes(idx)
 			}
 		}
+		// Add IndexColumnPart if it doesn't exist.
 		part := &schema.IndexPart{
 			Desc: columnOrdering.String == "DESC",
+			Attrs: []schema.Attr{
+				&PartOrdinal{Int64: ordinalPosition.Int64},
+			},
 		}
 		part.C, ok = t.Column(columnName.String)
 		idx.AddParts(part)
@@ -372,9 +376,10 @@ func (i *inspect) checks(ctx context.Context, s *schema.Schema) error {
 // schemas returns the list of the schemas in the database.
 func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) ([]*schema.Schema, error) {
 	var (
-		args  []any
-		sArgs []string
-		query = schemasQuery
+		args    []any
+		sArgs   []string
+		query   = schemasQuery
+		schemas []*schema.Schema
 	)
 	if opts != nil {
 		switch n := len(opts.Schemas); {
@@ -396,7 +401,7 @@ func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) 
 		return nil, fmt.Errorf("spanner: querying schemas: %w", err)
 	}
 	defer rows.Close()
-	var schemas []*schema.Schema
+
 	for rows.Next() {
 		var name string
 		if err := rows.Scan(&name); err != nil {
@@ -480,6 +485,19 @@ type (
 		typ       string
 		size      int
 		sizeIsMax bool
+	}
+
+	// IsNullFiltered flags whether an index should be created
+	// with the NULL_FILTERED flag.
+	// https://cloud.google.com/spanner/docs/secondary-indexes#null-indexing-disable
+	IsNullFiltered struct {
+		schema.Attr
+		Bool bool
+	}
+
+	PartOrdinal struct {
+		schema.Attr
+		Int64 int64
 	}
 
 	// ArrayType defines an array type.
@@ -633,11 +651,14 @@ SELECT
 	t1.parent_table_name,
 	t1.is_unique,
 	t1.is_null_filtered,
-	t1.index_state,
 	t2.column_name,
 	t2.ordinal_position,
 	t2.column_ordering,
-	t2.is_nullable
+	CASE
+		WHEN t2.is_nullable = 'YES' THEN true
+		WHEN t2.is_nullable = 'NO' THEN false
+		ELSE null
+	END is_nullable,
 FROM
 	information_schema.indexes as t1
     JOIN information_schema.index_columns t2
@@ -677,33 +698,6 @@ FROM
     AND t1.table_schema = t4.constraint_schema
 WHERE
     t1.constraint_type = 'FOREIGN KEY'
-	AND t1.table_schema = @schema
-	AND t1.table_name IN UNNEST (@table)
-ORDER BY
-    t1.constraint_name,
-    t2.ordinal_position
-`
-
-	// Query to list primary keys.
-	primaryKeysQuery = `
-SELECT
-	t1.constraint_name,
-	t1.table_name,
-	t2.column_name,
-	t1.table_schema,
-	t3.table_name AS referenced_table_name,
-	t3.column_name AS referenced_column_name,
-	t3.table_schema AS referenced_schema_name
-FROM
-	information_schema.table_constraints t1
-	JOIN information_schema.key_column_usage t2
-	ON t1.constraint_name = t2.constraint_name
-	AND t1.table_schema = t2.constraint_schema
-	JOIN information_schema.constraint_column_usage t3
-	ON t1.constraint_name = t3.constraint_name
-	AND t1.table_schema = t3.constraint_schema
-WHERE
-	t1.constraint_type = 'PRIMARY KEY'
 	AND t1.table_schema = @schema
 	AND t1.table_name IN UNNEST (@table)
 ORDER BY
