@@ -52,14 +52,14 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 		c   = conn{ExecQuerier: db}
 		ctx = context.Background()
 	)
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	rows, err := db.QueryContext(ctx, paramsQuery)
 	if err != nil {
 		return nil, fmt.Errorf("spanner: query database options: %w", err)
 	}
 	if err := sqlx.ScanOne(rows, &c.dialect); err != nil {
-		return nil, fmt.Errorf("spanner: query database options: %w", err)
+		return nil, fmt.Errorf("spanner: scan database options: %w", err)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("spanner: failed to execute query: %w", err)
