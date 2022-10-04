@@ -303,7 +303,7 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 		if !ok {
 			return fmt.Errorf("table %q was not found in schema", tableName)
 		}
-		name := tableName + indexName
+		name := tableName + "_" + indexName
 		idx, ok := names[name]
 		if !ok {
 			idx = &schema.Index{
@@ -314,20 +314,20 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 					&IndexType{T: indexType},
 				},
 			}
-			// TODO(tmc): Add additional attrs.
 			names[name] = idx
 			if indexType == "PRIMARY_KEY" {
 				if t.PrimaryKey == nil {
 					t.PrimaryKey = idx
 				}
 			} else {
-				t.Indexes = append(t.Indexes, idx)
+				t.AddIndexes(idx)
 			}
 		}
-		// TODO(tmc): Handle this data better.
-		part := &schema.IndexPart{}
+		part := &schema.IndexPart{
+			Desc: columnOrdering.String == "DESC",
+		}
 		part.C, ok = t.Column(columnName.String)
-		idx.Parts = append(idx.Parts, part)
+		idx.AddParts(part)
 	}
 	return nil
 }
