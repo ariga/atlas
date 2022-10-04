@@ -204,7 +204,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 func columnType(spannerType string) (schema.Type, error) {
 	var typ schema.Type
 
-	columnDescriptor := &columnDesc{}
+	col := &columnDesc{}
 	spannerType = strings.TrimSpace(strings.ToUpper(spannerType))
 
 	// Split up type into, base type, size, and other modifiers.
@@ -213,47 +213,49 @@ func columnType(spannerType string) (schema.Type, error) {
 	if len(m) == 0 {
 		return nil, fmt.Errorf("columnType: Invalid type: %q", spannerType)
 	}
-	columnDescriptor.typ = m[1]
+	col.typ = m[1]
 
 	if len(m) > 2 {
 		if m[2] == "MAX" {
-			columnDescriptor.sizeIsMax = true
+			col.sizeIsMax = true
 		} else {
 			size, err := strconv.Atoi(m[2])
 			if err != nil {
 				return nil, fmt.Errorf("columnType: Unable to convert %q to an int: %w", m[2], err)
 			}
-			columnDescriptor.size = size
+			col.size = size
 		}
 	}
 
-	switch {
-	case columnDescriptor.typ == TypeInt64:
-		typ = &schema.IntegerType{T: columnDescriptor.typ}
-	case columnDescriptor.typ == TypeBool:
-		typ = &schema.BoolType{T: columnDescriptor.typ}
-	case strings.HasPrefix(columnDescriptor.typ, TypeBytes):
-		typ = &BytesType{
-			T:         columnDescriptor.typ,
-			Size:      columnDescriptor.size,
-			SizeIsMax: columnDescriptor.sizeIsMax,
-		}
-	case strings.HasPrefix(columnDescriptor.typ, TypeString):
-		typ = &StringType{
-			T:         columnDescriptor.typ,
-			Size:      columnDescriptor.size,
-			SizeIsMax: columnDescriptor.sizeIsMax,
-		}
-	case columnDescriptor.typ == TypeTimestamp:
-		typ = &schema.TimeType{T: columnDescriptor.typ}
-	case columnDescriptor.typ == TypeDate:
-		typ = &schema.TimeType{T: columnDescriptor.typ}
-	case columnDescriptor.typ == TypeJSON:
-		typ = &schema.JSONType{T: columnDescriptor.typ}
-	case columnDescriptor.typ == TypeNumeric:
-		typ = &schema.DecimalType{T: columnDescriptor.typ}
+	switch col.typ {
+	case TypeInt64:
+		typ = &schema.IntegerType{T: col.typ}
+	case TypeBool:
+		typ = &schema.BoolType{T: col.typ}
+	case TypeTimestamp:
+		typ = &schema.TimeType{T: col.typ}
+	case TypeDate:
+		typ = &schema.TimeType{T: col.typ}
+	case TypeJSON:
+		typ = &schema.JSONType{T: col.typ}
+	case TypeNumeric:
+		typ = &schema.DecimalType{T: col.typ}
 	default:
-		typ = &schema.UnsupportedType{T: columnDescriptor.typ}
+		if strings.HasPrefix(col.typ, TypeString) {
+			typ = &StringType{
+				T:         col.typ,
+				Size:      col.size,
+				SizeIsMax: col.sizeIsMax,
+			}
+		} else if strings.HasPrefix(col.typ, TypeBytes) {
+			typ = &BytesType{
+				T:         col.typ,
+				Size:      col.size,
+				SizeIsMax: col.sizeIsMax,
+			}
+		} else {
+			typ = &schema.UnsupportedType{T: col.typ}
+		}
 	}
 	return typ, nil
 }
