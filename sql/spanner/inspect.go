@@ -100,7 +100,7 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 	}
 	rows, err := i.QueryContext(ctx, tablesQuery, schemas)
 	if err != nil {
-		return fmt.Errorf("QueryContext issue: %w", err)
+		return fmt.Errorf("query tables: %w", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -539,12 +539,13 @@ type (
 	// A StringType represents a STRING type.
 	StringType struct {
 		schema.Type
-		T         string
-		Size      int
+		T    string
+		Size int
+		// Some Spanner Types can be specifically sized or take the "MAX" argument.
 		SizeIsMax bool
 	}
 
-	// A TimestampType represents a TIMESTAMP type.
+	// // A TimestampType represents a TIMESTAMP type.
 	TimestampType struct {
 		schema.Type
 		T string

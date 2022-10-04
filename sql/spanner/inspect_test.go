@@ -35,7 +35,7 @@ func TestDriver_InspectSchema(t *testing.T) {
 	db, m, err := sqlmock.New(sqlmock.ValueConverterOption(mockValueConverter{}))
 	require.NoError(t, err)
 	mk := mock{m}
-	mk.databaseOpts(databaseDialectGoogleStandardSQL)
+	mk.databaseOpts(dialectGoogleStandardSQL)
 	drv, err := Open(db)
 	require.NoError(t, err)
 	mk.ExpectQuery(sqltest.Escape(schemasQueryArgs)).
@@ -112,7 +112,7 @@ func TestDriver_InspectTable(t *testing.T) {
 			db, m, err := sqlmock.New(sqlmock.ValueConverterOption(mockValueConverter{}))
 			require.NoError(t, err)
 			mk := mock{m}
-			mk.databaseOpts(databaseDialectGoogleStandardSQL)
+			mk.databaseOpts(dialectGoogleStandardSQL)
 			var drv migrate.Driver
 			drv, err = Open(db)
 			require.NoError(t, err)
@@ -131,7 +131,7 @@ func TestDriver_Realm(t *testing.T) {
 	db, m, err := sqlmock.New(sqlmock.ValueConverterOption(mockValueConverter{}))
 	require.NoError(t, err)
 	mk := mock{m}
-	mk.databaseOpts(databaseDialectGoogleStandardSQL)
+	mk.databaseOpts(dialectGoogleStandardSQL)
 	drv, err := Open(db)
 	require.NoError(t, err)
 	mk.ExpectQuery(sqltest.Escape(schemasQuery)).
@@ -178,7 +178,7 @@ func TestInspectMode_InspectRealm(t *testing.T) {
 	db, m, err := sqlmock.New(sqlmock.ValueConverterOption(mockValueConverter{}))
 	require.NoError(t, err)
 	mk := mock{m}
-	mk.databaseOpts(databaseDialectGoogleStandardSQL)
+	mk.databaseOpts(dialectGoogleStandardSQL)
 	mk.ExpectQuery(sqltest.Escape(schemasQuery)).
 		WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow(""))
 	drv, err := Open(db)
@@ -197,7 +197,7 @@ func TestInspectMode_InspectRealm(t *testing.T) {
 	}(), realm)
 }
 
-const databaseDialectGoogleStandardSQL = "GOOGLE_STANDARD_SQL"
+const dialectGoogleStandardSQL = "GOOGLE_STANDARD_SQL"
 
 type mock struct {
 	sqlmock.Sqlmock

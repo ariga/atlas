@@ -33,7 +33,7 @@ type (
 	// database connection and its information.
 	conn struct {
 		schema.ExecQuerier
-		databaseDialect string
+		dialect string
 	}
 )
 
@@ -61,7 +61,7 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	if err != nil {
 		return nil, fmt.Errorf("spanner: query database options: %w", err)
 	}
-	if err := sqlx.ScanOne(rows, &c.databaseDialect); err != nil {
+	if err := sqlx.ScanOne(rows, &c.dialect); err != nil {
 		return nil, fmt.Errorf("spanner: query database options: %w", err)
 	}
 	if err := rows.Err(); err != nil {
