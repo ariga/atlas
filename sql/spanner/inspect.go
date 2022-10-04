@@ -21,6 +21,7 @@ type inspect struct{ conn }
 
 var _ schema.Inspector = (*inspect)(nil)
 
+// defaultSchemaNameAlias is what we map Spanner's empty schema to to enable it to be referenced in HCL representations.
 const defaultSchemaNameAlias = "default"
 
 // InspectRealm returns schema descriptions of all resources in the given realm.
@@ -93,6 +94,7 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 	var schemas []string
 	for _, s := range realm.Schemas {
 		sName := s.Name
+		// Here we reverse the schema alias.
 		if s.Name == defaultSchemaNameAlias {
 			sName = ""
 		}
