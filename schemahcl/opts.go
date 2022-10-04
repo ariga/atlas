@@ -57,8 +57,6 @@ func New(opts ...Option) *State {
 //			type = INVALID  // Not Allowed.
 //		}
 //	}
-//
-//
 func WithScopedEnums(path string, enums ...string) Option {
 	return func(c *Config) {
 		vars := make(map[string]cty.Value, len(enums))
@@ -162,7 +160,7 @@ func typeFuncSpecImpl(_ *function.Spec, typeSpec *TypeSpec) function.ImplFunc {
 			if attr.Kind == reflect.Slice {
 				lst := &ListValue{}
 				for _, arg := range args {
-					v, err := extractLiteralValue(arg)
+					v, err := extractValue(arg)
 					if err != nil {
 						return cty.NilVal, err
 					}
@@ -177,7 +175,7 @@ func typeFuncSpecImpl(_ *function.Spec, typeSpec *TypeSpec) function.ImplFunc {
 			// Pop the first arg and add it as a literal to the type.
 			var arg cty.Value
 			arg, args = args[0], args[1:]
-			v, err := extractLiteralValue(arg)
+			v, err := extractValue(arg)
 			if err != nil {
 				return cty.NilVal, err
 			}

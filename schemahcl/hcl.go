@@ -263,7 +263,7 @@ func (s *State) toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes, sco
 		case value.Type().IsTupleType():
 			at.V, err = extractListValue(value)
 		default:
-			at.V, err = extractLiteralValue(value)
+			at.V, err = extractValue(value)
 		}
 		if err != nil {
 			return nil, err
@@ -313,7 +313,7 @@ func extractListValue(value cty.Value) (*ListValue, error) {
 			lst.V = append(lst.V, &Ref{V: v.GetAttr("__ref").AsString()})
 			continue
 		}
-		litv, err := extractLiteralValue(v)
+		litv, err := extractValue(v)
 		if err != nil {
 			return nil, err
 		}
@@ -322,7 +322,7 @@ func extractListValue(value cty.Value) (*ListValue, error) {
 	return lst, nil
 }
 
-func extractLiteralValue(value cty.Value) (*LiteralValue, error) {
+func extractValue(value cty.Value) (Value, error) {
 	switch value.Type() {
 	case ctySchemaLit:
 		return value.EncapsulatedValue().(*LiteralValue), nil
@@ -334,6 +334,17 @@ func extractLiteralValue(value cty.Value) (*LiteralValue, error) {
 		return &LiteralValue{V: strconv.FormatFloat(num, 'f', -1, 64)}, nil
 	case cty.Bool:
 		return &LiteralValue{V: strconv.FormatBool(value.True())}, nil
+	case cty.List(cty.String), cty.List(cty.Number), cty.List(cty.Bool):
+		l := &ListValue{V: make([]Value, 0, value.LengthInt())}
+		for it := value.ElementIterator(); it.Next(); {
+			_, v := it.Element()
+			ev, err := extractValue(v)
+			if err != nil {
+				return nil, err
+			}
+			l.V = append(l.V, ev)
+		}
+		return l, nil
 	default:
 		return nil, fmt.Errorf("schemahcl: unsupported type %q", value.Type().GoString())
 	}
@@ -373,7 +384,7 @@ func (s *State) toResource(ctx *hcl.EvalContext, block *hclsyntax.Block, scope [
 			for _, e := range v.GetAttr(blk.Labels[0]).AsValueSlice() {
 				r := &Resource{Type: blk.Labels[0]}
 				for k, v := range e.AsValueMap() {
-					av, err := extractLiteralValue(v)
+					av, err := extractValue(v)
 					if err != nil {
 						return nil, err
 					}
