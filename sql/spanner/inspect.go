@@ -155,29 +155,29 @@ func (i *inspect) columns(ctx context.Context, s *schema.Schema) error {
 // addColumn scans the current row and adds a new column from it to the table.
 func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	var (
-		tableName, columnName                                     sql.NullString
-		ordinalPosition                                           sql.NullInt64
-		columnDefault, dataType, isNullable, spannerType          sql.NullString
-		isGenerated, generationExpression, isStored, spannerState sql.NullString
-		err                                                       error
+		table, column, spannerType, colDefault sql.NullString
+		genExpr, spannerState                  sql.NullString
+		nullable, stored, generated            sql.NullBool
+		ord                                    sql.NullInt64
+
+		err error
 	)
 	if err := rows.Scan(
-		&tableName, &columnName,
-		&ordinalPosition,
-		&columnDefault, &dataType, &isNullable, &spannerType,
-		&isGenerated, &generationExpression, &isStored, &spannerState,
+		&table, &column, &ord, &colDefault,
+		&nullable, &spannerType, &generated, &genExpr,
+		&stored, &spannerState,
 	); err != nil {
 		return err
 	}
-	t, ok := s.Table(tableName.String)
+	t, ok := s.Table(table.String)
 	if !ok {
-		return fmt.Errorf("table %q was not found in schema", tableName.String)
+		return fmt.Errorf("table %q was not found in schema", table.String)
 	}
 	c := &schema.Column{
-		Name: columnName.String,
+		Name: column.String,
 		Type: &schema.ColumnType{
 			Raw:  spannerType.String,
-			Null: isNullable.String == "YES",
+			Null: nullable.Bool,
 		},
 	}
 
@@ -187,13 +187,13 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 		return fmt.Errorf("spanner: Unable to convert string %q to schema.Type: %w", spannerType.String, err)
 	}
 
-	if columnDefault.Valid {
-		c.Default = defaultExpr(c, columnDefault.String)
+	if colDefault.Valid {
+		c.Default = defaultExpr(c, colDefault.String)
 	}
-	if isGenerated.String == "ALWAYS" {
+	if generated.Bool {
 		c.Attrs = []schema.Attr{
 			&schema.GeneratedExpr{
-				Expr: generationExpression.String,
+				Expr: genExpr.String,
 				Type: "STORED",
 			},
 		}
@@ -591,24 +591,35 @@ ORDER BY
 `
 	// Query to list table columns.
 	columnsQuery = `
-SELECT
+select
 	table_name,
 	column_name,
 	ordinal_position,
 	column_default,
-	data_type,
-	is_nullable,
+	case
+		when is_nullable = 'YES' then true
+		when is_nullable = 'NO' then false
+		else null
+	end nullable,
 	spanner_type,
-	is_generated,
+	case
+		when is_generated = 'ALWAYS' then true
+		when is_generated = 'NEVER' then false
+		else null
+	end generated,
 	generation_expression,
-	is_stored,
+	case
+		when is_stored = 'ALWAYS' then true
+		when is_stored is null then false
+		else null
+	end stored,
 	spanner_state
-FROM
+from
 	information_schema.columns AS t1
-WHERE
+where
 	table_schema = @schema
-	AND table_name IN UNNEST (@table)
-ORDER BY
+	and table_name IN UNNEST (@table)
+order by
 	t1.table_name
 `
 
