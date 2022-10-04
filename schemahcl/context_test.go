@@ -498,21 +498,28 @@ variable "convert_bool" {
   type = bool
 }
 
+variable "strings" {
+  type = list(string)
+  default = ["a", "b"]
+}
+
 name = var.name
 default = var.default
 int = var.int
 bool = var.bool
 convert_int = var.convert_int
 convert_bool = var.convert_bool
+strings = var.strings
 `
 	state := New()
 	var test struct {
-		Name        string `spec:"name"`
-		Default     string `spec:"default"`
-		Int         int    `spec:"int"`
-		Bool        bool   `spec:"bool"`
-		ConvertInt  int    `spec:"convert_int"`
-		ConvertBool bool   `spec:"convert_bool"`
+		Name        string   `spec:"name"`
+		Default     string   `spec:"default"`
+		Int         int      `spec:"int"`
+		Bool        bool     `spec:"bool"`
+		ConvertInt  int      `spec:"convert_int"`
+		ConvertBool bool     `spec:"convert_bool"`
+		Strings     []string `spec:"strings"`
 	}
 	err := state.EvalBytes([]byte(h), &test, map[string]cty.Value{
 		"name":         cty.StringVal("rotemtam"),
@@ -520,6 +527,7 @@ convert_bool = var.convert_bool
 		"bool":         cty.BoolVal(true),
 		"convert_int":  cty.StringVal("1"),
 		"convert_bool": cty.StringVal("true"),
+		"strings":      cty.ListVal([]cty.Value{cty.StringVal("a"), cty.StringVal("b")}),
 	})
 	require.NoError(t, err)
 	require.EqualValues(t, "rotemtam", test.Name)
@@ -528,4 +536,5 @@ convert_bool = var.convert_bool
 	require.EqualValues(t, true, test.Bool)
 	require.EqualValues(t, 1, test.ConvertInt)
 	require.EqualValues(t, true, test.ConvertBool)
+	require.EqualValues(t, []string{"a", "b"}, test.Strings)
 }

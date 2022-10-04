@@ -209,7 +209,7 @@ func attrMap(attrs hclsyntax.Attributes) map[string]cty.Value {
 		if diag.HasErrors() {
 			continue
 		}
-		literalValue, err := extractLiteralValue(value)
+		literalValue, err := extractValue(value)
 		if err != nil {
 			continue
 		}
