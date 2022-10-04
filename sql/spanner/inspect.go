@@ -455,7 +455,7 @@ func canConvert(t *schema.ColumnType, x string) (string, bool) {
 		if sqlx.IsLiteralNumber(x) {
 			return x, true
 		}
-	case *schema.BinaryType, *schema.JSONType, *schema.SpatialType, *schema.StringType, *schema.TimeType, *StringType, *BytesType, *TimestampType:
+	case *schema.BinaryType, *schema.JSONType, *schema.SpatialType, *schema.StringType, *schema.TimeType, *StringType, *BytesType:
 		return q, true
 	}
 	return "", false
@@ -545,12 +545,6 @@ type (
 		Size int
 		// Some Spanner Types can be specifically sized or take the "MAX" argument.
 		SizeIsMax bool
-	}
-
-	// // A TimestampType represents a TIMESTAMP type.
-	TimestampType struct {
-		schema.Type
-		T string
 	}
 )
 
