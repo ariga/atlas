@@ -244,16 +244,20 @@ func columnType(spannerType string) (schema.Type, error) {
 		typ = &schema.DecimalType{T: col.typ}
 	default:
 		if strings.HasPrefix(col.typ, TypeString) {
-			typ = &StringType{
-				T:         col.typ,
-				Size:      col.size,
-				SizeIsMax: col.sizeIsMax,
+			typ = &schema.StringType{
+				T:    col.typ,
+				Size: col.size,
+				Attrs: []schema.Attr{
+					&SizeIsMax{Bool: col.sizeIsMax},
+				},
 			}
 		} else if strings.HasPrefix(col.typ, TypeBytes) {
-			typ = &BytesType{
-				T:         col.typ,
-				Size:      col.size,
-				SizeIsMax: col.sizeIsMax,
+			typ = &schema.BinaryType{
+				T:    col.typ,
+				Size: &col.size,
+				Attrs: []schema.Attr{
+					&SizeIsMax{Bool: col.sizeIsMax},
+				},
 			}
 		} else {
 			typ = &schema.UnsupportedType{T: col.typ}
@@ -485,6 +489,12 @@ type (
 		typ       string
 		size      int
 		sizeIsMax bool
+	}
+
+	// SizeIsMax flags whether a column is of size "MAX" as opposed to a discreet int sizing.
+	SizeIsMax struct {
+		schema.Attr
+		Bool bool
 	}
 
 	// IsNullFiltered flags whether an index should be created
