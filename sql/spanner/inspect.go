@@ -327,7 +327,6 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 				t.AddIndexes(idx)
 			}
 		}
-		// Add IndexColumnPart if it doesn't exist.
 		part := &schema.IndexPart{
 			Desc: columnOrdering.String == "DESC",
 			Attrs: []schema.Attr{
@@ -335,6 +334,9 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 			},
 		}
 		part.C, ok = t.Column(columnName.String)
+		if !ok {
+			return fmt.Errorf("spanner: column %q was not found for index %q", column.String, idx.Name)
+		}
 		idx.AddParts(part)
 	}
 	return nil
