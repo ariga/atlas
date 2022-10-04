@@ -26,6 +26,7 @@ import (
 	"golang.org/x/mod/semver"
 
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/googleapis/go-sql-spanner"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 )

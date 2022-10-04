@@ -15,9 +15,6 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
-
-	// go-sql-spanner provides a database/sql interface to Cloud Spanner.
-	_ "github.com/googleapis/go-sql-spanner"
 )
 
 type (
