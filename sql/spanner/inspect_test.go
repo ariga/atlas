@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -15,10 +16,6 @@ import (
 	"ariga.io/atlas/sql/internal/sqltest"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
-	"cloud.google.com/go/civil"
-	"cloud.google.com/go/spanner"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
@@ -80,7 +77,7 @@ func TestDriver_InspectTable(t *testing.T) {
 | Users      | FirstName   | 2                | NULL           | NULL      | YES         | STRING(50)   | NEVER        | NULL                                        | NULL      | COMMITTED     |
 | Users      | LastName    | 3                | NULL           | NULL      | YES         | STRING(50)   | NEVER        | NULL                                        | NULL      | COMMITTED     |
 | Users      | Age         | 4                | NULL           | NULL      | NO          | INT64        | NEVER        | NULL                                        | NULL      | COMMITTED     |
-| Users      | FullName    | 5                | NULL           | NULL      | YES         | STRING(100)  | ALWAYS       | ARRAY_TO_STRING([FirstName, LastName], " ") | YES       | COMMITTED     |
+| Users      | FullName    | 5                | NULL           | NULL      | YES         | STRING(MAX)  | ALWAYS       | ARRAY_TO_STRING([FirstName, LastName], " ") | YES       | COMMITTED     |
 +------------+-------------+------------------+----------------+-----------+-------------+--------------+--------------+---------------------------------------------+-----------+---------------+
 `))
 				m.noIndexes()
@@ -92,12 +89,11 @@ func TestDriver_InspectTable(t *testing.T) {
 				require.NoError(err)
 				require.Equal("Users", t.Name)
 				require.EqualValues([]*schema.Column{
-					// TODO: Include size params
-					{Name: "Id", Type: &schema.ColumnType{Type: &StringType{T: "STRING", Size: 20, SizeIsMax: false}}},
-					{Name: "FirstName", Type: &schema.ColumnType{Type: &StringType{T: "STRING", Size: 50}, Null: true}},
-					{Name: "LastName", Type: &schema.ColumnType{Type: &StringType{T: "STRING", Size: 50}, Null: true}},
-					{Name: "Age", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "INT64"}}},
-					{Name: "FullName", Type: &schema.ColumnType{Type: &StringType{T: "STRING", Size: 100}, Null: true}, Attrs: []schema.Attr{
+					{Name: "Id", Type: &schema.ColumnType{Raw: "STRING(20)", Type: &StringType{T: "STRING", Size: 20, SizeIsMax: false}}},
+					{Name: "FirstName", Type: &schema.ColumnType{Raw: "STRING(50)", Type: &StringType{T: "STRING", Size: 50}, Null: true}},
+					{Name: "LastName", Type: &schema.ColumnType{Raw: "STRING(50)", Type: &StringType{T: "STRING", Size: 50}, Null: true}},
+					{Name: "Age", Type: &schema.ColumnType{Raw: "INT64", Type: &schema.IntegerType{T: "INT64"}}},
+					{Name: "FullName", Type: &schema.ColumnType{Raw: "STRING(MAX)", Type: &StringType{T: "STRING", SizeIsMax: true}, Null: true}, Attrs: []schema.Attr{
 						&schema.GeneratedExpr{
 							Expr: `ARRAY_TO_STRING([FirstName, LastName], " ")`,
 							Type: "STORED",
@@ -210,7 +206,7 @@ func (m mock) CheckNamedValue(value *driver.NamedValue) (err error) {
 	switch t := value.Value.(type) {
 	default:
 		// Default is to fail, unless it is one of the following supported types.
-		return spanner.ToSpannerError(status.Errorf(codes.InvalidArgument, "unsupported value type: %v", t))
+		return fmt.Errorf("unsupported value type: %v", t)
 	case nil:
 	case sql.NullInt64:
 	case sql.NullTime:
@@ -219,9 +215,7 @@ func (m mock) CheckNamedValue(value *driver.NamedValue) (err error) {
 	case sql.NullBool:
 	case sql.NullInt32:
 	case string:
-	case spanner.NullString:
 	case []string:
-	case []spanner.NullString:
 	case *string:
 	case []*string:
 	case []byte:
@@ -230,43 +224,24 @@ func (m mock) CheckNamedValue(value *driver.NamedValue) (err error) {
 	case []int:
 	case int64:
 	case []int64:
-	case spanner.NullInt64:
-	case []spanner.NullInt64:
 	case *int64:
 	case []*int64:
 	case bool:
 	case []bool:
-	case spanner.NullBool:
-	case []spanner.NullBool:
 	case *bool:
 	case []*bool:
 	case float64:
 	case []float64:
-	case spanner.NullFloat64:
-	case []spanner.NullFloat64:
 	case *float64:
 	case []*float64:
 	case big.Rat:
 	case []big.Rat:
-	case spanner.NullNumeric:
-	case []spanner.NullNumeric:
 	case *big.Rat:
 	case []*big.Rat:
 	case time.Time:
 	case []time.Time:
-	case spanner.NullTime:
-	case []spanner.NullTime:
 	case *time.Time:
 	case []*time.Time:
-	case civil.Date:
-	case []civil.Date:
-	case spanner.NullDate:
-	case []spanner.NullDate:
-	case *civil.Date:
-	case []*civil.Date:
-	case spanner.NullJSON:
-	case []spanner.NullJSON:
-	case spanner.GenericColumnValue:
 	}
 	return nil
 }

@@ -182,7 +182,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	// Converts spanner string type to schema.Type.
 	c.Type.Type, err = columnType(spannerType.String)
 	if err != nil {
-		return fmt.Errorf("spanner: Unable to convert string %q to schema.Type: %w", columnName, err)
+		return fmt.Errorf("spanner: Unable to convert string %q to schema.Type: %w", spannerType.String, err)
 	}
 
 	if columnDefault.Valid {
