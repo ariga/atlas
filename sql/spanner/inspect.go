@@ -286,42 +286,52 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 	names := make(map[string]*schema.Index)
 	for rows.Next() {
 		var (
-			tableSchema                     sql.NullString
-			tableName, indexName, indexType string
-			parentTableName                 sql.NullString
-			isUnique, isNullFiltered        sql.NullBool
-			columnName                      sql.NullString
-			ordinalPosition                 sql.NullInt64
-			columnOrdering                  sql.NullString
-			isNullable                      sql.NullBool
+			tableSchema          sql.NullString
+			table, name, typ     sql.NullString
+			parentTable          sql.NullString
+			unique, nullFiltered sql.NullBool
+			column               sql.NullString
+			ordinalPos           sql.NullInt64
+			order                sql.NullString
+			nullable             sql.NullBool
 		)
 		if err := rows.Scan(
-			&tableSchema, &tableName, &indexName,
-			&indexType, &parentTableName, &isUnique,
-			&isNullFiltered, &columnName, &ordinalPosition,
-			&columnOrdering, &isNullable,
+			&tableSchema, &table, &name,
+			&typ, &parentTable, &unique,
+			&nullFiltered, &column, &ordinalPos,
+			&order, &nullable,
 		); err != nil {
 			return fmt.Errorf("spanner: scanning indexes for schema %q: %w", s.Name, err)
 		}
-		t, ok := s.Table(tableName)
+		t, ok := s.Table(table.String)
 		if !ok {
-			return fmt.Errorf("table %q was not found in schema", tableName)
+			return fmt.Errorf("table %q was not found in schema", table.String)
 		}
-		name := tableName + "_" + indexName
 		// Add Index if it doesn't exist.
-		idx, ok := names[name]
+		idx, ok := names[name.String]
 		if !ok {
 			idx = &schema.Index{
-				Name:   indexName,
-				Unique: isUnique.Bool,
+				Name:   name.String,
+				Unique: unique.Bool,
 				Table:  t,
 				Attrs: []schema.Attr{
-					&IndexType{T: indexType},
+					&IndexType{T: typ.String},
 				},
 			}
-			idx.AddAttrs(&IsNullFiltered{Bool: isNullFiltered.Bool})
-			names[name] = idx
-			if indexType == "PRIMARY_KEY" {
+			if nullFiltered.Bool {
+				idx.AddAttrs(&NullFiltered{})
+			}
+			if sqlx.ValidString(parentTable) {
+				pt, ok := s.Table(parentTable.String)
+				if !ok {
+					return fmt.Errorf("spanner: Parent table %q was not found in schema", parentTable.String)
+				}
+				idx.AddAttrs(&ParentTable{T: pt})
+			}
+
+			names[name.String] = idx
+			if typ.String == "PRIMARY_KEY" {
+				fmt.Println("Adding PRIMARY_KEY", name.String)
 				if t.PrimaryKey == nil {
 					t.PrimaryKey = idx
 				}
@@ -330,12 +340,15 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 			}
 		}
 		part := &schema.IndexPart{
-			Desc:  columnOrdering.String == "DESC",
-			SeqNo: int(ordinalPosition.Int64),
+			Desc:  order.String == "DESC",
+			SeqNo: int(ordinalPos.Int64),
 		}
-		part.C, ok = t.Column(columnName.String)
+		if nullable.Bool {
+			part.AddAttrs(&Nullable{})
+		}
+		part.C, ok = t.Column(column.String)
 		if !ok {
-			return fmt.Errorf("spanner: column %q was not found for index %q", columnName.String, idx.Name)
+			return fmt.Errorf("spanner: column %q was not found for index %q", column.String, idx.Name)
 		}
 		idx.AddParts(part)
 	}
@@ -493,17 +506,27 @@ type (
 		sizeIsMax bool
 	}
 
+	// ParentTable defines an Interleaved tables parent.
+	// https://cloud.google.com/spanner/docs/schema-and-data-model#creating-interleaved-tables
+	ParentTable struct {
+		schema.Attr
+		T *schema.Table
+	}
+
+	// Nullable defines if an index Part (Column) can be null
+	//
+	Nullable struct {
+		schema.Attr
+	}
 	// MaxSize flags whether a column is of size "MAX" as opposed to a discreet int sizing.
 	MaxSize struct {
 		schema.Attr
 	}
 
-	// IsNullFiltered flags whether an index should be created
-	// with the NULL_FILTERED flag.
+	// NullFiltered flags whether an index should be created with the qualifer NULL_FILTERED.
 	// https://cloud.google.com/spanner/docs/secondary-indexes#null-indexing-disable
-	IsNullFiltered struct {
+	NullFiltered struct {
 		schema.Attr
-		Bool bool
 	}
 
 	// ArrayType defines an array type.
