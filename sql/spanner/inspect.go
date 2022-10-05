@@ -28,7 +28,7 @@ const defaultSchemaNameAlias = "default"
 func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOption) (*schema.Realm, error) {
 	schemas, err := i.schemas(ctx, opts)
 	if err != nil {
-		return nil, fmt.Errorf("issue in schemas(): %w", err)
+		return nil, fmt.Errorf("spanner: querying schemas: %w", err)
 	}
 	r := schema.NewRealm(schemas...)
 	if len(schemas) == 0 || !sqlx.ModeInspectRealm(opts).Is(schema.InspectTables) {
@@ -67,7 +67,7 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 
 func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *schema.InspectOptions) error {
 	if err := i.tables(ctx, r, opts); err != nil {
-		return fmt.Errorf("inspectTables: issue in tables(): %w", err)
+		return fmt.Errorf("spanner: querying tables: %w", err)
 	}
 	for _, s := range r.Schemas {
 		if len(s.Tables) == 0 {
@@ -468,7 +468,7 @@ func canConvert(t *schema.ColumnType, x string) (string, bool) {
 		if sqlx.IsLiteralNumber(x) {
 			return x, true
 		}
-	case *schema.BinaryType, *schema.JSONType, *schema.SpatialType, *schema.StringType, *schema.TimeType, *StringType, *BytesType:
+	case *schema.BinaryType, *schema.JSONType, *schema.SpatialType, *schema.StringType, *schema.TimeType:
 		return q, true
 	}
 	return "", false
@@ -506,23 +506,10 @@ type (
 		Bool bool
 	}
 
-	PartOrdinal struct {
-		schema.Attr
-		Int64 int64
-	}
-
 	// ArrayType defines an array type.
 	ArrayType struct {
 		schema.Type
 		T string
-	}
-
-	// A BytesType represents a BYTES type.
-	BytesType struct {
-		schema.Type
-		T       string
-		Size    int
-		MaxSize bool
 	}
 
 	// CheckColumns attribute hold the column named used by the CHECK constraints.
@@ -542,15 +529,6 @@ type (
 	IndexPredicate struct {
 		schema.Attr
 		P string
-	}
-
-	// A StringType represents a STRING type.
-	StringType struct {
-		schema.Type
-		T    string
-		Size int
-		// Some Spanner Types can be specifically sized or take the "MAX" argument.
-		MaxSize bool
 	}
 )
 
