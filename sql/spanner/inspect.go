@@ -319,9 +319,6 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 				Name:   name.String,
 				Unique: unique.Bool,
 				Table:  t,
-				Attrs: []schema.Attr{
-					&IndexType{T: typ.String},
-				},
 			}
 			if nullFiltered.Bool {
 				idx.AddAttrs(&NullFiltered{})
@@ -346,7 +343,7 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 		}
 		part := &schema.IndexPart{
 			Desc:  desc.Bool,
-			SeqNo: len(idx.Parts) + 1,
+			SeqNo: int(ordinalPos.Int64),
 		}
 		if nullable.Bool {
 			part.AddAttrs(&Nullable{})
@@ -519,7 +516,6 @@ type (
 	}
 
 	// Nullable defines if an index Part (Column) can be null
-	//
 	Nullable struct {
 		schema.Attr
 	}
@@ -532,25 +528,6 @@ type (
 	// https://cloud.google.com/spanner/docs/secondary-indexes#null-indexing-disable
 	NullFiltered struct {
 		schema.Attr
-	}
-
-	// ArrayType defines an array type.
-	ArrayType struct {
-		schema.Type
-		T string
-	}
-
-	// CheckColumns attribute hold the column named used by the CHECK constraints.
-	// This attribute is added on inspection for internal usage and has no meaning
-	// on migration.
-	CheckColumns struct {
-		schema.Attr
-		Columns []string
-	}
-
-	IndexType struct {
-		schema.Attr
-		T string
 	}
 
 	// IndexPredicate describes a partial index predicate.
