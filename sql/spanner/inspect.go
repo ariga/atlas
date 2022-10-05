@@ -495,7 +495,7 @@ type (
 		sizeIsMax bool
 	}
 
-	// SizeIsMax flags whether a column is of size "MAX" as opposed to a discreet int sizing.
+	// SizeIsMax flags whether a column is of size "MAX" as opposed to a discrete int sizing.
 	SizeIsMax struct {
 		schema.Attr
 		Bool bool
@@ -515,7 +515,6 @@ type (
 	}
 
 	// ArrayType defines an array type.
-	// https://www.spannerql.org/docs/current/arrays.html
 	ArrayType struct {
 		schema.Type
 		T string
@@ -537,39 +536,15 @@ type (
 		Columns []string
 	}
 
-	// IndexType represents an index type.
-	// https://www.spannerql.org/docs/current/indexes-types.html
 	IndexType struct {
 		schema.Attr
-		T string // BTREE, BRIN, HASH, GiST, SP-GiST, GIN.
+		T string
 	}
 
 	// IndexPredicate describes a partial index predicate.
-	// https://www.spannerql.org/docs/current/catalog-pg-index.html
 	IndexPredicate struct {
 		schema.Attr
 		P string
-	}
-
-	// IndexColumnProperty describes an index column property.
-	// https://www.spannerql.org/docs/current/functions-info.html#FUNCTIONS-INFO-INDEX-COLUMN-PROPS
-	IndexColumnProperty struct {
-		schema.Attr
-		// NullsFirst defaults to true for DESC indexes.
-		NullsFirst bool
-		// NullsLast defaults to true for ASC indexes.
-		NullsLast bool
-	}
-
-	// IndexStorageParams describes index storage parameters add with the WITH clause.
-	// https://www.spannerql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-STORAGE-PARAMETERS
-	IndexStorageParams struct {
-		schema.Attr
-		// AutoSummarize defines the authsummarize storage parameter.
-		AutoSummarize bool
-		// PagesPerRange defines pages_per_range storage
-		// parameter for BRIN indexes. Defaults to 128.
-		PagesPerRange int64
 	}
 
 	// A StringType represents a STRING type.
