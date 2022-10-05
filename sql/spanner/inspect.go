@@ -335,7 +335,7 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 		}
 		part.C, ok = t.Column(columnName.String)
 		if !ok {
-			return fmt.Errorf("spanner: column %q was not found for index %q", column.String, idx.Name)
+			return fmt.Errorf("spanner: column %q was not found for index %q", columnName.String, idx.Name)
 		}
 		idx.AddParts(part)
 	}
@@ -427,7 +427,7 @@ func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) 
 }
 
 func (i *inspect) querySchema(ctx context.Context, query string, s *schema.Schema) (*sql.Rows, error) {
-	tables := []string{}
+	tables := make([]string, 0, len(s.Tables))
 	for _, t := range s.Tables {
 		tables = append(tables, t.Name)
 	}
@@ -474,11 +474,11 @@ func canConvert(t *schema.ColumnType, x string) (string, bool) {
 	return "", false
 }
 
-func removeEmptyStrings(s []string) []string {
+func removeEmptyStrings(ss []string) []string {
 	var r []string
-	for _, str := range s {
-		if str != "" {
-			r = append(r, str)
+	for _, s := range ss {
+		if s != "" {
+			r = append(r, s)
 		}
 	}
 	return r
