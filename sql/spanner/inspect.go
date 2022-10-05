@@ -292,14 +292,13 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 			unique, nullFiltered sql.NullBool
 			column               sql.NullString
 			ordinalPos           sql.NullInt64
-			order                sql.NullString
-			nullable             sql.NullBool
+			desc, nullable       sql.NullBool
 		)
 		if err := rows.Scan(
 			&tableSchema, &table, &name,
 			&typ, &parentTable, &unique,
 			&nullFiltered, &column, &ordinalPos,
-			&order, &nullable,
+			&desc, &nullable,
 		); err != nil {
 			return fmt.Errorf("spanner: scanning indexes for schema %q: %w", s.Name, err)
 		}
@@ -307,6 +306,12 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 		if !ok {
 			return fmt.Errorf("table %q was not found in schema", table.String)
 		}
+
+		// All Primary Keys in Spanner are named 'PRIMARY_KEY'. This differentiates them.
+		if typ.String == "PRIMARY_KEY" {
+			name.String = name.String + "_" + strings.ToUpper(table.String)
+		}
+
 		// Add Index if it doesn't exist.
 		idx, ok := names[name.String]
 		if !ok {
@@ -330,18 +335,18 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 			}
 
 			names[name.String] = idx
+
 			if typ.String == "PRIMARY_KEY" {
-				fmt.Println("Adding PRIMARY_KEY", name.String)
-				if t.PrimaryKey == nil {
-					t.PrimaryKey = idx
-				}
-			} else {
+				t.SetPrimaryKey(idx)
+			} else if typ.String == "INDEX" {
 				t.AddIndexes(idx)
+			} else {
+				return fmt.Errorf("spanner: unknown index type %q", typ.String)
 			}
 		}
 		part := &schema.IndexPart{
-			Desc:  order.String == "DESC",
-			SeqNo: int(ordinalPos.Int64),
+			Desc:  desc.Bool,
+			SeqNo: len(idx.Parts) + 1,
 		}
 		if nullable.Bool {
 			part.AddAttrs(&Nullable{})
@@ -630,36 +635,40 @@ order by
 
 	// Query to list table indexes.
 	indexesQuery = `
-SELECT
-	t1.table_schema,
-	t1.table_name,
-	t1.index_name,
-	t1.index_type,
-	t1.parent_table_name,
-	t1.is_unique,
-	t1.is_null_filtered,
-	t2.column_name,
-	t2.ordinal_position,
-	t2.column_ordering,
-	CASE
-		WHEN t2.is_nullable = 'YES' THEN true
-		WHEN t2.is_nullable = 'NO' THEN false
-		ELSE null
-	END is_nullable,
-FROM
-	information_schema.indexes as t1
-    JOIN information_schema.index_columns t2
-    ON (
-		t1.table_schema = t2.table_schema
-		AND t1.table_name = t2.table_name
-		AND t1.index_name = t2.index_name
-	)
-WHERE
-	t1.table_schema = @schema
-	AND t2.table_name IN UNNEST (@table)
-ORDER BY
-	t1.table_name, t1.index_name, t2.ordinal_position
+select
+	idx.table_schema as table_schema,
+	idx.table_name as table_name,
+	idx.index_name as index_name,
+	idx.index_type as index_type,
+	idx.parent_table_name as parent_table,
+	idx.is_unique as unique,
+	idx.is_null_filtered as null_filtered,
+	idx_col.column_name as column_name,
+	idx_col.ordinal_position as column_position,
+	case
+		when idx_col.column_ordering = 'DESC' then true
+		when idx_col.column_ordering = 'ASC' then false
+		else null
+	end descending,
+	case
+		when idx_col.is_nullable = 'YES' then true
+		when idx_col.is_nullable = 'NO' then false
+		else null
+	end nullable,
+from information_schema.indexes as idx
+inner join information_schema.index_columns as idx_col
+	on
+		idx.table_schema = idx_col.table_schema
+		and idx.table_name = idx_col.table_name
+		and idx.index_name = idx_col.index_name
+where
+	idx.index_type in ('INDEX', 'PRIMARY_KEY')
+	and idx.table_schema = @schema
+	and idx_col.table_name in unnest (@table)
+order by
+	table_name, index_name, column_position
 `
+
 	// Query to list foreign keys.
 	fksQuery = `
 SELECT
