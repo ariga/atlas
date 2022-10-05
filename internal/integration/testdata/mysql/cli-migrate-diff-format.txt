@@ -2,6 +2,7 @@ only maria103
 
 mkdir migrations
 
+# old behavior still works
 atlas migrate diff --dev-url URL --to file://1.hcl --dir-format golang-migrate first
 cmpmig 0 golang-migrate/1.down.sql
 cmpmig 1 golang-migrate/1.up.sql
@@ -13,39 +14,50 @@ cmpmig 3 golang-migrate/2.up.sql
 rm migrations
 mkdir migrations
 
-atlas migrate diff --dev-url URL --to file://1.hcl --dir-format goose first
+atlas migrate diff --dev-url URL --to file://1.hcl --dir file://migrations?format=golang-migrate first
+cmpmig 0 golang-migrate/1.down.sql
+cmpmig 1 golang-migrate/1.up.sql
+
+atlas migrate diff --dev-url URL --to file://2.hcl --dir file://migrations?format=golang-migrate second
+cmpmig 2 golang-migrate/2.down.sql
+cmpmig 3 golang-migrate/2.up.sql
+
+rm migrations
+mkdir migrations
+
+atlas migrate diff --dev-url URL --to file://1.hcl --dir file://migrations?format=goose first
 cmpmig 0 goose/1.sql
 
-atlas migrate diff --dev-url URL --to file://2.hcl --dir-format goose second
+atlas migrate diff --dev-url URL --to file://2.hcl --dir file://migrations?format=goose second
 cmpmig 1 goose/2.sql
 
 rm migrations
 mkdir migrations
 
-atlas migrate diff --dev-url URL --to file://1.hcl --dir-format dbmate first
+atlas migrate diff --dev-url URL --to file://1.hcl --dir file://migrations?format=dbmate first
 cmpmig 0 dbmate/1.sql
 
-atlas migrate diff --dev-url URL --to file://2.hcl --dir-format dbmate second
+atlas migrate diff --dev-url URL --to file://2.hcl --dir file://migrations?format=dbmate second
 cmpmig 1 dbmate/2.sql
 
 rm migrations
 mkdir migrations
 
-atlas migrate diff --dev-url URL --to file://1.hcl --dir-format flyway first
+atlas migrate diff --dev-url URL --to file://1.hcl --dir file://migrations?format=flyway first
 cmpmig 0 flyway/U1.sql
 cmpmig 1 flyway/V1.sql
 
-atlas migrate diff --dev-url URL --to file://2.hcl --dir-format flyway second
+atlas migrate diff --dev-url URL --to file://2.hcl --dir file://migrations?format=flyway second
 cmpmig 1 flyway/U2.sql
 cmpmig 3 flyway/V2.sql
 
 rm migrations
 mkdir migrations
 
-atlas migrate diff --dev-url URL --to file://1.hcl --dir-format liquibase first
+atlas migrate diff --dev-url URL --to file://1.hcl --dir file://migrations?format=liquibase first
 cmpmig 0 liquibase/1.sql
 
-atlas migrate diff --dev-url URL --to file://2.hcl --dir-format liquibase second
+atlas migrate diff --dev-url URL --to file://2.hcl --dir file://migrations?format=liquibase second
 cmpmig 1 liquibase/2.sql
 
 -- golang-migrate/1.up.sql --

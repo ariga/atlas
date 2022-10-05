@@ -174,11 +174,14 @@ Now, let's use Atlas's `migrate diff` command to plan a migration from the curre
 as it exists in the migrations directory to the desired state that is defined by the `schema.hcl`
 file:
 
-```text
-atlas migrate diff --dir file://migrations --dev-url mysql://root:pass@localhost:3306/dev --to file://schema.hcl --dir-format golang-migrate add_blog_posts 
+```shell
+atlas migrate diff add_blog_posts \
+  --dir "file://migrations?format=golang-migrate" \
+  --dev-url "mysql://root:pass@localhost:3306/dev" \
+  --to "file://schema.hcl" 
 ```
 
-Notice that we used the `dir-format` flag to specify that we're using `golang-migrate` as the directory format.
+Notice that we used the `format` query parameter to specify that we're using `golang-migrate` as the directory format.
 
 Hooray! Two new files were created in the migrations directory:
 ```text {5-6}
@@ -210,8 +213,11 @@ plan a migration from your current migration directory state to an existing sche
 database was available at `mysql://root:pass@some.db.io:3306/db`, a migration to the state
 of that database could be planned by running:
 
-```text
-atlas migrate diff --dir file://migrations --dev-url mysql://root:pass@localhost:3306/dev --to mysql://root:pass@some.db.io:3306/db --dir-format golang-migrate migration_name
+```shell
+atlas migrate diff migration_name \
+  --dir "file://migrations?format=golang-migrate" \
+  --dev-url "mysql://root:pass@localhost:3306/dev" \
+  --to "mysql://root:pass@some.db.io:3306/db"
 ```
 
 ## Conclusion
