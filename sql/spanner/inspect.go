@@ -250,7 +250,7 @@ func columnType(spannerType string) (schema.Type, error) {
 				T:    col.typ,
 				Size: col.size,
 				Attrs: []schema.Attr{
-					&SizeIsMax{Bool: col.sizeIsMax},
+					&MaxSize{},
 				},
 			}
 		} else if strings.HasPrefix(col.typ, TypeBytes) {
@@ -258,7 +258,7 @@ func columnType(spannerType string) (schema.Type, error) {
 				T:    col.typ,
 				Size: &col.size,
 				Attrs: []schema.Attr{
-					&SizeIsMax{Bool: col.sizeIsMax},
+					&MaxSize{},
 				},
 			}
 		} else {
@@ -330,10 +330,8 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 			}
 		}
 		part := &schema.IndexPart{
-			Desc: columnOrdering.String == "DESC",
-			Attrs: []schema.Attr{
-				&PartOrdinal{Int64: ordinalPosition.Int64},
-			},
+			Desc:  columnOrdering.String == "DESC",
+			SeqNo: int(ordinalPosition.Int64),
 		}
 		part.C, ok = t.Column(columnName.String)
 		if !ok {
@@ -495,10 +493,9 @@ type (
 		sizeIsMax bool
 	}
 
-	// SizeIsMax flags whether a column is of size "MAX" as opposed to a discrete int sizing.
-	SizeIsMax struct {
+	// MaxSize flags whether a column is of size "MAX" as opposed to a discreet int sizing.
+	MaxSize struct {
 		schema.Attr
-		Bool bool
 	}
 
 	// IsNullFiltered flags whether an index should be created
@@ -523,9 +520,9 @@ type (
 	// A BytesType represents a BYTES type.
 	BytesType struct {
 		schema.Type
-		T         string
-		Size      int
-		SizeIsMax bool
+		T       string
+		Size    int
+		MaxSize bool
 	}
 
 	// CheckColumns attribute hold the column named used by the CHECK constraints.
@@ -553,7 +550,7 @@ type (
 		T    string
 		Size int
 		// Some Spanner Types can be specifically sized or take the "MAX" argument.
-		SizeIsMax bool
+		MaxSize bool
 	}
 )
 
