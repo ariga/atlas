@@ -202,6 +202,9 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	return nil
 }
 
+// sizedTypeRe parses spanner types such as "STRING(50)" or "BYTES(MAX)".
+var sizedTypeRe = regexp.MustCompile(`(\w+)(?:\((-?\d+|MAX)\))?`)
+
 // Converts spanner string type to schema.Type.
 func columnType(spannerType string) (schema.Type, error) {
 	var typ schema.Type
@@ -210,10 +213,9 @@ func columnType(spannerType string) (schema.Type, error) {
 	spannerType = strings.TrimSpace(strings.ToUpper(spannerType))
 
 	// Split up type into, base type, size, and other modifiers.
-	re := regexp.MustCompile(`(\w+)(?:\((-?\d+|MAX)\))?`)
-	m := removeEmptyStrings(re.FindStringSubmatch(spannerType))
+	m := removeEmptyStrings(sizedTypeRe.FindStringSubmatch(spannerType))
 	if len(m) == 0 {
-		return nil, fmt.Errorf("columnType: Invalid type: %q", spannerType)
+		return nil, fmt.Errorf("columnType: invalid type: %q", spannerType)
 	}
 	col.typ = m[1]
 
@@ -223,7 +225,7 @@ func columnType(spannerType string) (schema.Type, error) {
 		} else {
 			size, err := strconv.Atoi(m[2])
 			if err != nil {
-				return nil, fmt.Errorf("columnType: Unable to convert %q to an int: %w", m[2], err)
+				return nil, fmt.Errorf("columnType: unable to convert %q to an int: %w", m[2], err)
 			}
 			col.size = size
 		}
