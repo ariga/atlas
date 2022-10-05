@@ -157,7 +157,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	var (
 		table, column, spannerType, colDefault sql.NullString
 		genExpr, spannerState                  sql.NullString
-		nullable, stored, generated            sql.NullBool
+		nullable, isStored, generated          sql.NullBool
 		ord                                    sql.NullInt64
 
 		err error
@@ -165,7 +165,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	if err := rows.Scan(
 		&table, &column, &ord, &colDefault,
 		&nullable, &spannerType, &generated, &genExpr,
-		&stored, &spannerState,
+		&isStored, &spannerState,
 	); err != nil {
 		return err
 	}
@@ -194,7 +194,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 		c.Attrs = []schema.Attr{
 			&schema.GeneratedExpr{
 				Expr: genExpr.String,
-				Type: "STORED",
+				Type: stored,
 			},
 		}
 	}
