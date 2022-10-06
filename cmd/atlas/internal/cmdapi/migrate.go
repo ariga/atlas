@@ -281,7 +281,6 @@ func init() {
 	MigrateCmd.PersistentFlags().StringSliceVarP(&MigrateFlags.Schemas, migrateFlagSchema, "", nil, "set schema names")
 	MigrateCmd.PersistentFlags().StringVarP(&MigrateFlags.DirFormat, migrateFlagDirFormat, "", formatAtlas, "set migration file format")
 	MigrateCmd.PersistentFlags().SortFlags = false
-	cobra.CheckErr(MigrateCmd.PersistentFlags().MarkDeprecated(migrateFlagDirFormat, "you can safely omit it."))
 	// Apply flags.
 	MigrateApplyCmd.Flags().StringVarP(&MigrateFlags.Apply.LogFormat, migrateFlagLog, "", logFormatTTY, "log format to use")
 	revisionsFlag(MigrateApplyCmd.Flags())

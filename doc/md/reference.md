@@ -49,6 +49,7 @@ atlas migrate
 #### Flags
 ```
       --dir string           select migration directory using URL format (default "file://migrations")
+      --dir-format string    set migration file format (default "atlas")
       --env string           set which env from the project file to use
       --var <name>=<value>   input variables (default [])
 
