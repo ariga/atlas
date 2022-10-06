@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
-	"github.com/zclconf/go-cty/cty/function"
 )
 
 // varDef is an HCL resource that defines an input variable to the Atlas DDL document.
@@ -37,26 +36,8 @@ func (s *State) setInputVals(ctx *hcl.EvalContext, body hcl.Body, input map[stri
 			Vars   []*varDef `hcl:"variable,block"`
 			Remain hcl.Body  `hcl:",remain"`
 		}
-		nctx = ctx.NewChild()
+		nctx = varBlockContext(ctx)
 	)
-	nctx.Variables = map[string]cty.Value{
-		"string": cty.CapsuleVal(ctyNilType, &cty.String),
-		"bool":   cty.CapsuleVal(ctyNilType, &cty.Bool),
-		"int":    cty.CapsuleVal(ctyNilType, &cty.Number),
-	}
-	nctx.Functions = map[string]function.Function{
-		"list": function.New(&function.Spec{
-			Params: []function.Parameter{
-				{Name: "type", Type: ctyNilType},
-			},
-			Type: function.StaticReturnType(ctyNilType),
-			Impl: func(args []cty.Value, _ cty.Type) (cty.Value, error) {
-				argT := args[0].EncapsulatedValue().(*cty.Type)
-				listT := cty.List(*argT)
-				return cty.CapsuleVal(ctyNilType, &listT), nil
-			},
-		}),
-	}
 	if diag := gohcl.DecodeBody(body, nctx, &doc); diag.HasErrors() {
 		return diag
 	}
@@ -245,8 +226,12 @@ var (
 	ctyRawExpr  = cty.Capsule("raw_expr", reflect.TypeOf(RawExpr{}))
 )
 
-// varBlock is the block type for variable declarations.
-const varBlock = "variable"
+// Built-in blocks.
+const (
+	varBlock     = "variable"
+	dynamicBlock = "dynamic"
+	forEachAttr  = "for_each"
+)
 
 // defRegistry returns a tree of blockDef structs representing the schema of the
 // blocks in the *hclsyntax.Body. The returned fields and children of each type
