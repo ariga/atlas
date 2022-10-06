@@ -99,6 +99,9 @@ var (
 			if err := migrateFlagsFromEnv(cmd, nil); err != nil {
 				return err
 			}
+			if err := dirFormatBC(); err != nil {
+				return err
+			}
 			dir, err := dir(MigrateFlags.DirURL, false)
 			if err != nil {
 				return err
@@ -148,6 +151,9 @@ directory state to the desired schema. The desired state can be another connecte
 			if err := migrateFlagsFromEnv(cmd, nil); err != nil {
 				return err
 			}
+			if err := dirFormatBC(); err != nil {
+				return err
+			}
 			dir, err := dir(MigrateFlags.DirURL, true)
 			if err != nil {
 				return err
@@ -167,9 +173,17 @@ directory state to the desired schema. The desired state can be another connecte
 		Short: "Hash (re-)creates an integrity hash file for the migration directory.",
 		Long: `'atlas migrate hash' computes the integrity hash sum of the migration directory and stores it in the atlas.sum file.
 This command should be used whenever a manual change in the migration directory was made.`,
-		Example:           `  atlas migrate hash`,
-		PersistentPreRunE: migrateFlagsFromEnv,
-		RunE:              CmdMigrateHashRun,
+		Example: `  atlas migrate hash`,
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			if err := migrateFlagsFromEnv(cmd, nil); err != nil {
+				return err
+			}
+			if err := dirFormatBC(); err != nil {
+				return err
+			}
+			return nil
+		},
+		RunE: CmdMigrateHashRun,
 	}
 	// MigrateImportCmd represents the 'atlas migrate import' command.
 	MigrateImportCmd = &cobra.Command{
@@ -182,8 +196,10 @@ This command should be used whenever a manual change in the migration directory 
 			if err := migrateFlagsFromEnv(cmd, nil); err != nil {
 				return err
 			}
-			MigrateFlags.DirURL = MigrateFlags.Import.FromURL
-			dir, err := dir(MigrateFlags.DirURL, false)
+			if err := dirFormatBC(); err != nil {
+				return err
+			}
+			dir, err := dir(MigrateFlags.Import.FromURL, false)
 			if err != nil {
 				return err
 			}
@@ -249,8 +265,16 @@ files are executed on the connected database in order to validate SQL semantics.
   atlas migrate lint --dir file:///path/to/migration/directory --dev-url mysql://root:pass@localhost:3306 --log '{{ json .Files }}'`,
 		// Override the parent 'migrate' pre-run function to allow executing
 		// 'migrate lint' on directories that are not maintained by Atlas.
-		PersistentPreRunE: migrateFlagsFromEnv,
-		RunE:              CmdMigrateLintRun,
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			if err := migrateFlagsFromEnv(cmd, nil); err != nil {
+				return err
+			}
+			if err := dirFormatBC(); err != nil {
+				return err
+			}
+			return nil
+		},
+		RunE: CmdMigrateLintRun,
 	}
 )
 
@@ -1073,11 +1097,6 @@ func dirURL(u *url.URL, create bool) (migrate.Dir, error) {
 	if u.Scheme != "file" {
 		return nil, fmt.Errorf("unsupported driver %q", u.Scheme)
 	}
-	if !u.Query().Has("format") && MigrateFlags.DirFormat != "" { // remove once --dir-format flag is removed
-		q := u.Query()
-		q.Set("format", MigrateFlags.DirFormat)
-		u.RawQuery = q.Encode()
-	}
 	path := filepath.Join(u.Host, u.Path)
 	fn := func() (migrate.Dir, error) { return migrate.NewLocalDir(path) }
 	switch f := u.Query().Get("format"); f {
@@ -1107,6 +1126,27 @@ func dirURL(u *url.URL, create bool) (migrate.Dir, error) {
 		}
 	}
 	return d, nil
+}
+
+// dirFormatBC ensures the soon-to-be deprecated --dir-format flag gets set on all migration directory URLs.
+func dirFormatBC() error {
+	for _, s := range []*string{
+		&MigrateFlags.DirURL,
+		&MigrateFlags.Import.FromURL,
+		&MigrateFlags.Import.ToURL,
+	} {
+		u, err := url.Parse(*s)
+		if err != nil {
+			return err
+		}
+		if !u.Query().Has("format") && MigrateFlags.DirFormat != "" {
+			q := u.Query()
+			q.Set("format", MigrateFlags.DirFormat)
+			u.RawQuery = q.Encode()
+			*s = u.String()
+		}
+	}
+	return nil
 }
 
 type target struct {
