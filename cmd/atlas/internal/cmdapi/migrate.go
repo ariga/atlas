@@ -1078,26 +1078,27 @@ func dirURL(u *url.URL, create bool) (migrate.Dir, error) {
 		q.Set("format", MigrateFlags.DirFormat)
 		u.RawQuery = q.Encode()
 	}
-	fn := func() (migrate.Dir, error) { return migrate.NewLocalDir(u.Path) }
+	path := filepath.Join(u.Host, u.Path)
+	fn := func() (migrate.Dir, error) { return migrate.NewLocalDir(path) }
 	switch f := u.Query().Get("format"); f {
 	case formatAtlas:
 		// this is the default
 	case formatGolangMigrate:
-		fn = func() (migrate.Dir, error) { return sqltool.NewGolangMigrateDir(u.Path) }
+		fn = func() (migrate.Dir, error) { return sqltool.NewGolangMigrateDir(path) }
 	case formatGoose:
-		fn = func() (migrate.Dir, error) { return sqltool.NewGooseDir(u.Path) }
+		fn = func() (migrate.Dir, error) { return sqltool.NewGooseDir(path) }
 	case formatFlyway:
-		fn = func() (migrate.Dir, error) { return sqltool.NewFlywayDir(u.Path) }
+		fn = func() (migrate.Dir, error) { return sqltool.NewFlywayDir(path) }
 	case formatLiquibase:
-		fn = func() (migrate.Dir, error) { return sqltool.NewLiquibaseDir(u.Path) }
+		fn = func() (migrate.Dir, error) { return sqltool.NewLiquibaseDir(path) }
 	case formatDBMate:
-		fn = func() (migrate.Dir, error) { return sqltool.NewDBMateDir(u.Path) }
+		fn = func() (migrate.Dir, error) { return sqltool.NewDBMateDir(path) }
 	default:
 		return nil, fmt.Errorf("unknown dir format %q", f)
 	}
 	d, err := fn()
 	if create && errors.Is(err, fs.ErrNotExist) {
-		if err := os.MkdirAll(u.Path, 0755); err != nil {
+		if err := os.MkdirAll(path, 0755); err != nil {
 			return nil, err
 		}
 		d, err = fn()
