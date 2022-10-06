@@ -202,7 +202,7 @@ You might be wondering why we didn’t just use `CREATE INDEX ON bankdb(email,fi
 :::
 
 ### Advantages of using Indexes with an INCLUDE clause:
-1. B-tree part of the B-tree index has fewer levels as they do not contain include columns
+1. The B-tree has fewer levels because they do not contain include columns
 2. Greatly improves performance
 3. Has the ability to return the contents of non-key columns without having to visit the index's table
 
