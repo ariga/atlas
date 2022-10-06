@@ -66,6 +66,7 @@ func TestMigrate_Import(t *testing.T) {
 				require.Equal(t, string(e), string(a))
 			}
 		})
+		p = t.TempDir()
 		t.Run(tool, func(t *testing.T) {
 			path := filepath.FromSlash("testdata/import/" + tool)
 			out, err := runCmd(
@@ -618,7 +619,8 @@ func TestMigrate_New(t *testing.T) {
 
 func TestMigrate_Validate(t *testing.T) {
 	// Without re-playing.
-	MigrateFlags.DevURL = "" // global flags are set from other tests ...
+	MigrateFlags.DevURL = ""         // global flags are set from other tests ...
+	MigrateFlags.DirFormat = "atlas" // global flags are set from other tests ...
 	s, err := runCmd(Root, "migrate", "validate", "--dir", "file://testdata/mysql")
 	require.Zero(t, s)
 	require.NoError(t, err)

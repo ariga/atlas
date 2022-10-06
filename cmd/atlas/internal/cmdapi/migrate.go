@@ -1098,6 +1098,9 @@ func dirURL(u *url.URL, create bool) (migrate.Dir, error) {
 		return nil, fmt.Errorf("unsupported driver %q", u.Scheme)
 	}
 	path := filepath.Join(u.Host, u.Path)
+	if path == "" {
+		path = "migrations"
+	}
 	fn := func() (migrate.Dir, error) { return migrate.NewLocalDir(path) }
 	switch f := u.Query().Get("format"); f {
 	case formatAtlas:
@@ -1125,7 +1128,7 @@ func dirURL(u *url.URL, create bool) (migrate.Dir, error) {
 			return nil, err
 		}
 	}
-	return d, nil
+	return d, err
 }
 
 // dirFormatBC ensures the soon-to-be deprecated --dir-format flag gets set on all migration directory URLs.
