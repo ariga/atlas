@@ -4,7 +4,7 @@ title: Indexes with Included Columns in PostgreSQL
 slug: /guides/postgres/included-columns
 ---
 
-With PostgreSQL, we can create indexes with `INCLUDE` clauses, which are types of indexes that specify a list of columns to be included in the index as non-key columns. If used correctly, indexes with Included columns improve performance and reduce total costs.
+With PostgreSQL, we can create indexes with `INCLUDE` clauses, which are types of indexes that specify a list of columns to be included in the index as non-key columns. If used correctly, indexes with included columns improve performance and reduce total costs.
 
 ### Basic PostgreSQL syntax for using `INCLUDE` clause with an index:
 
@@ -16,15 +16,18 @@ INCLUDE(included_column_list);
 
 ### How do they work?
 
-A B-Tree index is made of two structures, 1) the B-tree and 2) The doubly linked list at the leaf node level of the B-tree. In an index with included columns, records of the columns mentioned in the `INCLUDE` clause are included in the ‘doubly linked list at the leaf node level of the B-tree’, corresponding to the heap(rows/tuples stored in a table)
+A B-Tree index is made of two structures:
+1. The B-tree
+2. The doubly linked list at the leaf node level of the B-tree
+In an index with included columns, records of the columns mentioned in the `INCLUDE` clause are included in the doubly linked list at the leaf node level of the B-tree, corresponding to the heap (rows/tuples stored in a table).
 
 :::info
-Each index is stored separately from the table's main data area, which is called the table's heap in PostgreSQL terminology. On the other hand, Leaf pages are the pages on the lowest level of the index tree. To know more about B-tree index structure in PostgreSQL, visit PostgreSQL documentation [here](https://www.postgresql.org/docs/current/btree-implementation.html#BTREE-STRUCTURE) 
+Each index is stored separately from the table's main data area, which in PostgreSQL this is known as the table's _heap_.  Leaf pages are the pages on the lowest level of the index tree. To learn more about the B-tree index structure in PostgreSQL, visit the PostgreSQL documentation [here](https://www.postgresql.org/docs/current/btree-implementation.html#BTREE-STRUCTURE). 
 :::
 
 ### When do we need them?
 
-Let's demonstrate an example where an index with an INCLUDE clause may be useful, by contrasting it with a unique index without an INCLUDE clause.
+Let's demonstrate an example where an index with an `INCLUDE` clause may be useful, by contrasting it with a unique index without an `INCLUDE` clause.
 
 First, create a table with the following command:
 
@@ -78,7 +81,7 @@ email      | imaninoble@hotmail.net
 bank       | BG45LBAX41796917951361
 ```
 
-Now, suppose we want to find the ID of a user by their email address. Let’s check the performance of the query with WHERE clause without any index, with the following command:
+Now, suppose we want to find the ID of a user by their email address. Let’s check the performance of the query with a WHERE clause without any index, with the following command:
 
 ```sql
 EXPLAIN ANALYZE
@@ -106,7 +109,7 @@ rows=1 loops=1)
 Time: 0.626 ms
 ```
 
-Notice that the total cost is 38.75 units. If we want to use a unique index to accelerate the query, we can create it on the “email” column with the following command:
+Notice that the total cost is 38.75 units. If we want to use a unique index to accelerate the query, we can create it on the `email` column with the following command:
 
 ```sql
 CREATE UNIQUE INDEX emails_idx 
@@ -143,8 +146,8 @@ time=0.200..0.203 rows=1 loops=1)
 Time: 1.470 ms
 ```
 
-Notice that total cost is now 8.29 units. The performance of the query has improved by creating a primary key index on “email” column, compared to 38.75 units without using any index. The engine still has to fetch the “first_name” and “last_name” columns from the table (also known as “Heap fetches”).
-Let's drop the existing index to demonstrate next section in the article
+Notice that the total cost is now 8.29 units. The performance of the query has improved by creating a primary key index on `email` column, compared to 38.75 units without using any index. The engine still has to fetch the `first_name` and `last_name` columns from the table (also known as "heap fetches").
+Let's drop the existing index to demonstrate the next section in the article:
 
 ```sql
 DROP INDEX emails_idx;
@@ -155,7 +158,7 @@ Time: 3.856 ms
 ```
 
 Suppose we want to accelerate the same query using the INCLUDE clause.
-In the following command, we have created an index with an INCLUDE clause that precisely covers “first_name” and “last_name” columns which are part of the query for which we are trying to improve performance.
+In the following command, we will create an index with an `INCLUDE` clause that precisely covers `first_name` and `last_name` columns which are part of the query for which we are trying to improve performance.
 
 ```sql
 CREATE UNIQUE INDEX emails_idx 
@@ -192,15 +195,15 @@ tual time=0.228..0.231 rows=1 loops=1)
  Execution Time: 0.283 ms
 (5 rows)
 ```
-Notice that the total cost is now 4.29, which is significantly lower compared to 8.29 while using a unique index without the INCLUDE clause. Because, the query only scanned the index in order to get the data. As a result, “Heap fetches” is also zero, which means the query does not access any tables to retrieve the records. 
+Notice that the total cost is now 4.29, which is significantly lower, compared to 8.29 which we got while using a unique index without the `INCLUDE` clause. We were able to reduce the total cost because the query only scanned the index in order to get the data. As a result, `heap fetches` is also zero, which means the query does not access any tables to retrieve the records. 
 
 :::info
-You might be wondering why we didn’t just use `CREATE INDEX ON bankdb(email,first_name,last_name)` instead of using the `INCLUDE` clause? One of the advantages by using the `INCLUDE` clause is having fewer levels of B-tree. All the `INCLUDE` columns are stored in the doubly linked list of the B-tree index.
+You might be wondering why we didn’t just use `CREATE INDEX ON bankdb(email,first_name,last_name)` instead of using the `INCLUDE` clause. One of the advantages of using the `INCLUDE` clause is having fewer levels in a  B-tree. All `INCLUDE` columns are stored in the doubly linked list of the B-tree index.
 :::
 
 ### Advantages of using Indexes with an INCLUDE clause:
 1. B-tree part of the B-tree index has fewer levels as they do not contain include columns
-2. Greatly improved performance
+2. Greatly improves performance
 3. Has the ability to return the contents of non-key columns without having to visit the index's table
 
 ### Limitation of using Indexes with included columns
@@ -208,7 +211,7 @@ You might be wondering why we didn’t just use `CREATE INDEX ON bankdb(email,fi
 
 ## Managing indexes with included columns is easy with Atlas
 
-Managing indexes and database schemas in PostgreSQL can be confusing and error-prone. Atlas is an open-source project which allows us to manage our database using a simple and easy-to-understand declarative syntax (similar to Terraform). We will now learn how to manage  indexes with included columns using Atlas.
+Managing indexes and database schemas in PostgreSQL can be confusing and error-prone. Atlas is an open-source project which allows us to manage our database using a simple and easy-to-understand declarative syntax (similar to Terraform). We will now learn how to manage indexes with included columns using Atlas.
 
 :::info
 If you are just getting started, install the latest version of Atlas using the guide to [setting up Atlas](https://atlasgo.io/cli/getting-started/setting-up).
