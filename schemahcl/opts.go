@@ -10,6 +10,7 @@ import (
 	"reflect"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 )
@@ -20,6 +21,7 @@ type (
 		types    []*TypeSpec
 		newCtx   func() *hcl.EvalContext
 		pathVars map[string]map[string]cty.Value
+		datasrc  map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, hcl.Diagnostics)
 	}
 
 	// Option configures a Config.
@@ -64,6 +66,34 @@ func WithScopedEnums(path string, enums ...string) Option {
 			vars[enums[i]] = cty.StringVal(enums[i])
 		}
 		c.pathVars[path] = vars
+	}
+}
+
+// WithDataSource registers a data source name and its corresponding handler.
+// e.g., the example below registers a data source named "text" that returns
+// the string defined in the data source block.
+//
+//	WithDataSource("text", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, hcl.Diagnostics) {
+//		attrs, diags := b.Body.JustAttributes()
+//		if diags.HasErrors() {
+//			return cty.NilVal, diags
+//		}
+//		v, diags := attrs["value"].Expr.Value(ctx)
+//		if diags.HasErrors() {
+//			return cty.NilVal, diags
+//		}
+//		return cty.ObjectVal(map[string]cty.Value{"output": v}), nil
+//	}),
+//
+//	data "text" "hello" {
+//	  value = "hello world"
+//	}
+func WithDataSource(name string, h func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, hcl.Diagnostics)) Option {
+	return func(c *Config) {
+		if c.datasrc == nil {
+			c.datasrc = make(map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, hcl.Diagnostics))
+		}
+		c.datasrc[name] = h
 	}
 }
 

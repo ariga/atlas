@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -16,8 +17,8 @@ import (
 	"github.com/zclconf/go-cty/cty/convert"
 )
 
-// varDef is an HCL resource that defines an input variable to the Atlas DDL document.
-type varDef struct {
+// blockVar is an HCL resource that defines an input variable to the Atlas DDL document.
+type blockVar struct {
 	Name    string    `hcl:",label"`
 	Type    cty.Value `hcl:"type"`
 	Default cty.Value `hcl:"default,optional"`
@@ -27,14 +28,14 @@ type varDef struct {
 // input variables in the document body by defining "variable" blocks:
 //
 //	variable "name" {
-//	  type = string // also supported: int, bool
+//	  type = string // also supported: number, bool
 //	  default = "rotemtam"
 //	}
 func (s *State) setInputVals(ctx *hcl.EvalContext, body hcl.Body, input map[string]cty.Value) error {
 	var (
 		doc struct {
-			Vars   []*varDef `hcl:"variable,block"`
-			Remain hcl.Body  `hcl:",remain"`
+			Vars   []*blockVar `hcl:"variable,block"`
+			Remain hcl.Body    `hcl:",remain"`
 		}
 		nctx = varBlockContext(ctx)
 	)
@@ -68,16 +69,130 @@ func (s *State) setInputVals(ctx *hcl.EvalContext, body hcl.Body, input map[stri
 	return nil
 }
 
+// evalReferences evaluates data blocks.
+func (s *State) evalReferences(ctx *hcl.EvalContext, body *hclsyntax.Body) error {
+	type node struct {
+		addr  [3]string
+		edges func() []hcl.Traversal
+		value func() (cty.Value, hcl.Diagnostics)
+	}
+	var (
+		nodes  = make(map[[3]string]*node)
+		blocks = make(hclsyntax.Blocks, 0, len(body.Blocks))
+	)
+	for _, b := range body.Blocks {
+		switch b := b; b.Type {
+		case dataBlock:
+			if len(b.Labels) < 2 {
+				return fmt.Errorf("data block %q must have exactly 2 labels", b.Type)
+			}
+			h, ok := s.config.datasrc[b.Labels[0]]
+			if !ok {
+				return fmt.Errorf("missing data source handler for %q", b.Labels[0])
+			}
+			// Data references are combined from
+			// "data", "source" and "name" labels.
+			addr := [3]string{dataBlock, b.Labels[0], b.Labels[1]}
+			nodes[addr] = &node{
+				addr:  addr,
+				value: func() (cty.Value, hcl.Diagnostics) { return h(ctx, b) },
+				edges: func() []hcl.Traversal { return bodyVars(b.Body) },
+			}
+		case localsBlock:
+			for k, v := range b.Body.Attributes {
+				k, v := k, v
+				// Local references are combined from
+				// "local" and "name" labels.
+				addr := [3]string{localRef, k, ""}
+				nodes[addr] = &node{
+					addr:  addr,
+					value: func() (cty.Value, hcl.Diagnostics) { return v.Expr.Value(ctx) },
+					edges: func() []hcl.Traversal { return hclsyntax.Variables(v.Expr) },
+				}
+			}
+		default:
+			blocks = append(blocks, b)
+		}
+	}
+	var (
+		visit    func(n *node) error
+		visited  = make(map[*node]bool)
+		progress = make(map[*node]bool)
+	)
+	visit = func(n *node) error {
+		if visited[n] {
+			return nil
+		}
+		if progress[n] {
+			addr := n.addr[:]
+			if addr[2] == "" {
+				addr = addr[:2]
+			}
+			return fmt.Errorf("cyclic reference to %q", strings.Join(addr, "."))
+		}
+		progress[n] = true
+		for _, e := range n.edges() {
+			var addr [3]string
+			switch root := e.RootName(); {
+			case root == localRef && len(e) == 2:
+				addr = [3]string{localRef, e[1].(hcl.TraverseAttr).Name, ""}
+			case root == dataBlock && len(e) > 2:
+				addr = [3]string{dataBlock, e[1].(hcl.TraverseAttr).Name, e[2].(hcl.TraverseAttr).Name}
+			}
+			// Unrecognized reference.
+			if nodes[addr] == nil {
+				continue
+			}
+			if err := visit(nodes[addr]); err != nil {
+				return err
+			}
+		}
+		delete(progress, n)
+		v, diags := n.value()
+		if diags.HasErrors() {
+			return diags
+		}
+		switch n.addr[0] {
+		case dataBlock:
+			data := make(map[string]cty.Value)
+			if vv, ok := ctx.Variables[dataBlock]; ok {
+				data = vv.AsValueMap()
+			}
+			src := make(map[string]cty.Value)
+			if vv, ok := data[n.addr[1]]; ok {
+				src = vv.AsValueMap()
+			}
+			src[n.addr[2]] = v
+			data[n.addr[1]] = cty.ObjectVal(src)
+			ctx.Variables[dataBlock] = cty.ObjectVal(data)
+		case localRef:
+			locals := make(map[string]cty.Value)
+			if vv, ok := ctx.Variables[localRef]; ok {
+				locals = vv.AsValueMap()
+			}
+			locals[n.addr[1]] = v
+			ctx.Variables[localRef] = cty.ObjectVal(locals)
+		}
+		return nil
+	}
+	for _, n := range nodes {
+		if err := visit(n); err != nil {
+			return err
+		}
+	}
+	body.Blocks = blocks
+	return nil
+}
+
 func mergeCtxVar(ctx *hcl.EvalContext, vals map[string]cty.Value) {
-	const key = "var"
-	v, ok := ctx.Variables[key]
+	v, ok := ctx.Variables[varRef]
 	if ok {
 		v.ForEachElement(func(key cty.Value, val cty.Value) (stop bool) {
 			vals[key.AsString()] = val
 			return false
 		})
 	}
-	ctx.Variables[key] = cty.ObjectVal(vals)
+	ctx.Variables[varRef] = cty.ObjectVal(vals)
 }
 
 func setBlockVars(ctx *hcl.EvalContext, b *hclsyntax.Body) (*hcl.EvalContext, error) {
@@ -229,6 +344,10 @@ var (
 // Built-in blocks.
 const (
 	varBlock     = "variable"
+	dataBlock    = "data"
+	localsBlock  = "locals"
+	varRef       = "var"
+	localRef     = "local"
 	dynamicBlock = "dynamic"
 	forEachAttr  = "for_each"
 )
@@ -301,4 +420,14 @@ func extractDef(blk *hclsyntax.Block, parent *blockDef) *blockDef {
 		cur.child(extractDef(c, cur))
 	}
 	return cur
+}
+
+func bodyVars(b *hclsyntax.Body) (vars []hcl.Traversal) {
+	for _, attr := range b.Attributes {
+		vars = append(vars, hclsyntax.Variables(attr.Expr)...)
+	}
+	for _, b := range b.Blocks {
+		vars = append(vars, bodyVars(b.Body)...)
+	}
+	return
 }
