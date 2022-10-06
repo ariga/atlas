@@ -89,11 +89,11 @@ func TestDriver_InspectTable(t *testing.T) {
 				require.NoError(err)
 				require.Equal("Users", t.Name)
 				require.EqualValues([]*schema.Column{
-					{Name: "Id", Type: &schema.ColumnType{Raw: "STRING(20)", Type: &StringType{T: "STRING", Size: 20, SizeIsMax: false}}},
-					{Name: "FirstName", Type: &schema.ColumnType{Raw: "STRING(50)", Type: &StringType{T: "STRING", Size: 50}, Null: true}},
-					{Name: "LastName", Type: &schema.ColumnType{Raw: "STRING(50)", Type: &StringType{T: "STRING", Size: 50}, Null: true}},
+					{Name: "Id", Type: &schema.ColumnType{Raw: "STRING(20)", Type: &schema.StringType{T: "STRING", Size: 20}}},
+					{Name: "FirstName", Type: &schema.ColumnType{Raw: "STRING(50)", Type: &schema.StringType{T: "STRING", Size: 50}, Null: true}},
+					{Name: "LastName", Type: &schema.ColumnType{Raw: "STRING(50)", Type: &schema.StringType{T: "STRING", Size: 50}, Null: true}},
 					{Name: "Age", Type: &schema.ColumnType{Raw: "INT64", Type: &schema.IntegerType{T: "INT64"}}},
-					{Name: "FullName", Type: &schema.ColumnType{Raw: "STRING(MAX)", Type: &StringType{T: "STRING", SizeIsMax: true}, Null: true}, Attrs: []schema.Attr{
+					{Name: "FullName", Type: &schema.ColumnType{Raw: "STRING(MAX)", Type: &schema.StringType{T: "STRING"}, Null: true}, Attrs: []schema.Attr{
 						&schema.GeneratedExpr{
 							Expr: `ARRAY_TO_STRING([FirstName, LastName], " ")`,
 							Type: "STORED",
