@@ -158,7 +158,7 @@ atlas migrate import [flags]
 #### Example
 
 ```
-  atlas migrate import --dir-format liquibase --from file:///path/to/source/directory --to file:///path/to/migration/directory
+  atlas migrate import --from file:///path/to/source/directory?format=liquibase --to file:///path/to/migration/directory
 ```
 #### Flags
 ```
