@@ -20,6 +20,8 @@ Welcome to the Atlas Guides.
 
 [Partial Indexes](postgres/partial-indexes.md)
 
+[Included Columns](postgres/included-columns.md)
+
 ## Migration tools
 
 [`golang-migrate`](migration-tools/golang-migrate.md)
