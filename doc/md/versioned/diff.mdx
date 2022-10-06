@@ -57,7 +57,7 @@ values={[
 <TabItem value="migration_file">
 
 By default, migration files are named with the following format `{{ now }}_{{ name }}.sql`.
-If you wish to use a different file format, use the `--dir-format` option.
+If you wish to use a different file format, use the `format` query parameter in the directory URL.
 
 ```sql
 -- create "users" table
@@ -184,7 +184,7 @@ values={[
 <TabItem value="migration_file">
 
 By default, migration files are named with the following format `{{ now }}_{{ name }}.sql`.
-If you wish to use a different file format, use the `--dir-format` option.
+If you wish to use a different file format, use the `format` query parameter in the directory URL.
 
 ```sql
 -- create "users" table
@@ -233,15 +233,14 @@ CREATE TABLE `market`.`users` (`id` int NOT NULL, `name` varchar(255) NOT NULL) 
 
 ### Generate migrations with custom formats
 
-Some migration tools use a different file format than the one used by Atlas. Therefore, Atlas provides
-an option named `--dir-format` that allows controlling the format of the migration directory.
+Some migration tools use a different file format than the one used by Atlas. You can control the format of the migration
+directory by passing in the `format` query parameter to the migration directory URL.
 
 ```shell
 atlas migrate diff create_users \
-  --dir "file://migrations" \
+  --dir "file://migrations?format=golang-migrate" \
   --to "file://schema.hcl" \
-  --dev-url "mysql://root:pass@:3306/test" \
-  --dir-format "golang-migrate"
+  --dev-url "mysql://root:pass@:3306/test"
 ```
 
 Run `ls migrations`, and you will notice Atlas created 3 files:

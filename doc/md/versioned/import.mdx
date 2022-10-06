@@ -14,10 +14,10 @@ a convenient command to import existing migration directories of supported tools
 
 ### Flags
 When using `atlas migrate import` to import a migration directory, users must supply multiple parameters:
-* `--from` the [URL](/concepts/url) to the migration directory to import.
+* `--from` the [URL](/concepts/url) to the migration directory to import, the `format` query parameter controls the
+migration directory format, e.g. `file://migrations?format=flyway`. Supported formats are `atlas` (default),
+`golang-migrate`, `goose`, `flyway`, `liquibase` and `dbmate`.
 * `--to` the URL of the migration directory to save imported migration files into, by default it is `file://migrations`.
-* `--dir-format` one of `[golang-migrate, goose, flyway, liquibase, dbmate]` to specifiy the migration file format of the
-migration directory to import.
 
 ### Limitations
 
@@ -174,15 +174,17 @@ CREATE VIEW `users_over_30` AS SELECT * FROM `users` where `age` > 30;
 Import existing `golang-migrate/migrate` migration directory:
 ```shell
 atlas migrate import \
-  --from "file://migrations" \
-  --to "file://atlas-migrations" \
-  -- dir-format "golang-migrate"
+  --from "file://migrations?format=golang-migrate" \
+  --to "file://atlas-migrations"
 ```
 
 Import existing Flyway migration directory:
 ```shell
 atlas migrate import \
-  --from "file://migrations" \
-  --to "file://atlas-migrations" \
-  -- dir-format "flyway"
+  --from "file://migrations?format=flyway" \
+  --to "file://atlas-migrations"
 ```
+
+### Reference
+
+[CLI Command Reference](/cli-reference#atlas-migrate-import)
