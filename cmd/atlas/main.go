@@ -19,12 +19,14 @@ import (
 	_ "ariga.io/atlas/sql/mysql/mysqlcheck"
 	_ "ariga.io/atlas/sql/postgres"
 	_ "ariga.io/atlas/sql/postgres/postgrescheck"
+	_ "ariga.io/atlas/sql/spanner"
 	_ "ariga.io/atlas/sql/sqlite"
 	_ "ariga.io/atlas/sql/sqlite/sqlitecheck"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/mod/semver"
 
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/googleapis/go-sql-spanner"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 )
