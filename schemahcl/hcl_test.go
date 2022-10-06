@@ -423,3 +423,83 @@ env "staging" {
 	})
 	require.EqualError(t, err, `variable "domains": list of string required`)
 }
+
+func TestForEachResources(t *testing.T) {
+	type (
+		Env struct {
+			Name string `spec:",name"`
+			URL  string `spec:"url"`
+		}
+	)
+	var (
+		doc struct {
+			Envs []*Env `spec:"env"`
+		}
+		b = []byte(`
+variable "tenants" {
+  type    = list(string)
+  default = ["atlas", "ent"]
+}
+
+variable "domains" {
+  type = list(object({
+    name = string
+    port = number
+  }))
+  default = [
+    {
+      name = "atlasgo.io"
+      port = 443
+    },
+    {
+      name = "entgo.io"
+      port = 443
+    },
+  ]
+}
+
+env "prod" {
+  for_each = toset(var.tenants)
+  url = "mysql://root:pass@:3306/${each.value}"
+}
+
+env "staging" {
+  for_each = toset(var.domains)
+  url = "${each.value.name}:${each.value.port}"
+}
+
+env "dev" {
+  for_each = {
+    atlas = "atlasgo.io"
+    ent   = "entgo.io"
+  }
+  url = "${each.value}/${each.key}"
+}
+`)
+	)
+	require.NoError(t, New().EvalBytes(b, &doc, nil))
+	require.Len(t, doc.Envs, 6)
+	require.Equal(t, "prod", doc.Envs[0].Name)
+	require.EqualValues(t, doc.Envs[0].URL, "mysql://root:pass@:3306/atlas")
+	require.Equal(t, "prod", doc.Envs[1].Name)
+	require.EqualValues(t, doc.Envs[1].URL, "mysql://root:pass@:3306/ent")
+	require.Equal(t, "staging", doc.Envs[2].Name)
+	require.EqualValues(t, doc.Envs[2].URL, "atlasgo.io:443")
+	require.Equal(t, "staging", doc.Envs[3].Name)
+	require.EqualValues(t, doc.Envs[3].URL, "entgo.io:443")
+	require.Equal(t, "dev", doc.Envs[4].Name)
+	require.EqualValues(t, doc.Envs[4].URL, "atlasgo.io/atlas")
+	require.Equal(t, "dev", doc.Envs[5].Name)
+	require.EqualValues(t, doc.Envs[5].URL, "entgo.io/ent")
+
+	// Mismatched element types.
+	err := New().EvalBytes(b, &doc, map[string]cty.Value{
+		"domains": cty.ListVal([]cty.Value{
+			cty.ObjectVal(map[string]cty.Value{
+				"name": cty.StringVal("a"),
+				"port": cty.StringVal("b"),
+			}),
+		}),
+	})
+	require.EqualError(t, err, `variable "domains": a number is required`)
+}

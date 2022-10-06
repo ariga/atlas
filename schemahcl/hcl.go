@@ -222,11 +222,33 @@ func (s *State) resource(ctx *hcl.EvalContext, file *hcl.File) (*Resource, error
 		if err != nil {
 			return nil, err
 		}
-		resource, err := s.toResource(ctx, blk, []string{blk.Type})
-		if err != nil {
-			return nil, err
+		switch {
+		case blk.Body != nil && blk.Body.Attributes[forEachAttr] != nil:
+			forEach, diags := blk.Body.Attributes[forEachAttr].Expr.Value(ctx)
+			if diags.HasErrors() {
+				return nil, diags
+			}
+			if t := forEach.Type(); !t.IsSetType() && !t.IsObjectType() {
+				return nil, fmt.Errorf("schemahcl: for_each does not support %s type", t.FriendlyName())
+			}
+			delete(blk.Body.Attributes, forEachAttr)
+			// Iterate over the set and create a resource for each element.
+			for it := forEach.ElementIterator(); it.Next(); {
+				k, v := it.Element()
+				ctx.Variables["each"] = cty.ObjectVal(map[string]cty.Value{"key": k, "value": v})
+				resource, err := s.toResource(ctx, blk, []string{blk.Type})
+				if err != nil {
+					return nil, err
+				}
+				res.Children = append(res.Children, resource)
+			}
+		default:
+			resource, err := s.toResource(ctx, blk, []string{blk.Type})
+			if err != nil {
+				return nil, err
+			}
+			res.Children = append(res.Children, resource)
 		}
-		res.Children = append(res.Children, resource)
 	}
 	return res, nil
 }
@@ -372,7 +394,7 @@ func (s *State) toResource(ctx *hcl.EvalContext, block *hclsyntax.Block, scope [
 	spec.Attrs = attrs
 	for _, blk := range block.Body.Blocks {
 		switch blk.Type {
-		case "dynamic":
+		case dynamicBlock:
 			dec, err := dynamicSpec(blk)
 			if err != nil {
 				return nil, err

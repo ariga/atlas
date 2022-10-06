@@ -32,8 +32,8 @@ func New(opts ...Option) *State {
 		pathVars: make(map[string]map[string]cty.Value),
 		newCtx: func() *hcl.EvalContext {
 			return &hcl.EvalContext{
+				Functions: stdFuncs(),
 				Variables: make(map[string]cty.Value),
-				Functions: make(map[string]function.Function),
 			}
 		},
 	}
