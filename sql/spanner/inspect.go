@@ -208,6 +208,7 @@ var sizedTypeRe = regexp.MustCompile(`(\w+)(?:\((-?\d+|MAX)\))?`)
 // Converts spanner string type to schema.Type.
 func columnType(spannerType string) (schema.Type, error) {
 	var typ schema.Type
+	var attrs []schema.Attr
 
 	col := &columnDesc{}
 	spannerType = strings.TrimSpace(strings.ToUpper(spannerType))
@@ -221,7 +222,7 @@ func columnType(spannerType string) (schema.Type, error) {
 
 	if len(m) > 2 {
 		if m[2] == "MAX" {
-			col.sizeIsMax = true
+			attrs = append(attrs, &MaxSize{})
 		} else {
 			size, err := strconv.Atoi(m[2])
 			if err != nil {
@@ -247,19 +248,15 @@ func columnType(spannerType string) (schema.Type, error) {
 	default:
 		if strings.HasPrefix(col.typ, TypeString) {
 			typ = &schema.StringType{
-				T:    col.typ,
-				Size: col.size,
-				Attrs: []schema.Attr{
-					&MaxSize{},
-				},
+				T:     col.typ,
+				Size:  col.size,
+				Attrs: attrs,
 			}
 		} else if strings.HasPrefix(col.typ, TypeBytes) {
 			typ = &schema.BinaryType{
-				T:    col.typ,
-				Size: &col.size,
-				Attrs: []schema.Attr{
-					&MaxSize{},
-				},
+				T:     col.typ,
+				Size:  &col.size,
+				Attrs: attrs,
 			}
 		} else {
 			typ = &schema.UnsupportedType{T: col.typ}
@@ -503,9 +500,8 @@ type (
 
 	// columnDesc represents a column descriptor.
 	columnDesc struct {
-		typ       string
-		size      int
-		sizeIsMax bool
+		typ  string
+		size int
 	}
 
 	// ParentTable defines an Interleaved tables parent.

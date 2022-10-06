@@ -70,22 +70,21 @@ func TestDriver_InspectTable(t *testing.T) {
 				m.ExpectQuery(sqltest.Escape(columnsQuery)).
 					WithArgs("", []string{"Users"}).
 					WillReturnRows(sqltest.Rows(`
-+------------+-------------+------------------+----------------+-----------+-------------+--------------+--------------+---------------------------------------------+-----------+---------------+
-| table_name | column_name | ordinal_position | column_default | data_type | is_nullable | spanner_type | is_generated | generation_expression                       | is_stored | spanner_state |
-+------------+-------------+------------------+----------------+-----------+-------------+--------------+--------------+---------------------------------------------+-----------+---------------+
-| Users      | Id          | 1                | NULL           | NULL      | NO          | STRING(20)   | NEVER        | NULL                                        | NULL      | COMMITTED     |
-| Users      | FirstName   | 2                | NULL           | NULL      | YES         | STRING(50)   | NEVER        | NULL                                        | NULL      | COMMITTED     |
-| Users      | LastName    | 3                | NULL           | NULL      | YES         | STRING(50)   | NEVER        | NULL                                        | NULL      | COMMITTED     |
-| Users      | Age         | 4                | NULL           | NULL      | NO          | INT64        | NEVER        | NULL                                        | NULL      | COMMITTED     |
-| Users      | FullName    | 5                | NULL           | NULL      | YES         | STRING(MAX)  | ALWAYS       | ARRAY_TO_STRING([FirstName, LastName], " ") | YES       | COMMITTED     |
-+------------+-------------+------------------+----------------+-----------+-------------+--------------+--------------+---------------------------------------------+-----------+---------------+
++------------+-------------+------------------+----------------+-------------+--------------+--------------+---------------------------------------------+-----------+---------------+
+| table_name | column_name | ordinal_position | column_default | is_nullable | spanner_type | is_generated | generation_expression                       | is_stored | spanner_state |
++------------+-------------+------------------+----------------+-------------+--------------+--------------+---------------------------------------------+-----------+---------------+
+| Users      | Id          | 1                | NULL           | false       | STRING(20)   | false        | NULL                                        | false     | COMMITTED     |
+| Users      | FirstName   | 2                | NULL           | true        | STRING(50)   | false        | NULL                                        | false     | COMMITTED     |
+| Users      | LastName    | 3                | NULL           | true        | STRING(50)   | false        | NULL                                        | false     | COMMITTED     |
+| Users      | Age         | 4                | NULL           | false       | INT64        | false        | NULL                                        | false     | COMMITTED     |
+| Users      | FullName    | 5                | NULL           | true        | STRING(MAX)  | true         | ARRAY_TO_STRING([FirstName, LastName], " ") | true      | COMMITTED     |
++------------+-------------+------------------+----------------+-------------+--------------+--------------+---------------------------------------------+-----------+---------------+
 `))
 				m.noIndexes()
 				m.noFKs()
 				m.noChecks()
 			},
 			expect: func(require *require.Assertions, t *schema.Table, err error) {
-				//p := func(i int) *int { return &i }
 				require.NoError(err)
 				require.Equal("Users", t.Name)
 				require.EqualValues([]*schema.Column{
@@ -93,7 +92,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "FirstName", Type: &schema.ColumnType{Raw: "STRING(50)", Type: &schema.StringType{T: "STRING", Size: 50}, Null: true}},
 					{Name: "LastName", Type: &schema.ColumnType{Raw: "STRING(50)", Type: &schema.StringType{T: "STRING", Size: 50}, Null: true}},
 					{Name: "Age", Type: &schema.ColumnType{Raw: "INT64", Type: &schema.IntegerType{T: "INT64"}}},
-					{Name: "FullName", Type: &schema.ColumnType{Raw: "STRING(MAX)", Type: &schema.StringType{T: "STRING"}, Null: true}, Attrs: []schema.Attr{
+					{Name: "FullName", Type: &schema.ColumnType{Raw: "STRING(MAX)", Type: &schema.StringType{T: "STRING", Attrs: []schema.Attr{&MaxSize{}}}, Null: true}, Attrs: []schema.Attr{
 						&schema.GeneratedExpr{
 							Expr: `ARRAY_TO_STRING([FirstName, LastName], " ")`,
 							Type: "STORED",
