@@ -233,23 +233,23 @@ table "bankdb" {
   }
   column "savings" {
     null    = true
-    type    = character_varying(100)
+    type    = varchar(100)
   }
   column "first_name" {
     null    = true
-    type    = character_varying(255)
+    type    = varchar(255)
   }
   column "last_name" {
     null    = true
-    type    = character_varying(255)
+    type    = varchar(255)
   }
   column "email" {
     null    = true
-    type    = character_varying(255)
+    type    = varchar(255)
   }
   column "bank" {
     null = true
-    type = character_varying(34)
+    type = varchar(34)
   }
   primary_key {
     columns = [column.id]
