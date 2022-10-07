@@ -84,17 +84,9 @@ func cmdDiffRun(cmd *cobra.Command, flags *diffCmdOpts) error {
 	}
 	defer to.Close()
 	if c == nil {
-		var ok bool
-		c, ok = from.Closer.(*sqlclient.Client)
-		if !ok {
-			c, ok = to.Closer.(*sqlclient.Client)
-			if !ok {
-				// There is no driver to diff. We need a dev-database.
-				cobra.CheckErr(errors.New(
-					"neither --from nor --to provides a database connection, please provide one by passing in a --dev-url",
-				))
-			}
-		}
+		// If not both states are provided by a database connection, the call to state-reader would have returned
+		// an error already. If we land in this case, we can assume both states are database connections.
+		c = to.Closer.(*sqlclient.Client)
 	}
 	current, err := from.ReadState(ctx)
 	if err != nil {
@@ -113,9 +105,9 @@ func cmdDiffRun(cmd *cobra.Command, flags *diffCmdOpts) error {
 			return err
 		}
 	case from.Schema == "":
-		cobra.CheckErr(fmt.Errorf("cannot diff schema %q with a database connection", from.Schema))
+		return fmt.Errorf("cannot diff schema %q with a database connection", from.Schema)
 	case to.Schema == "":
-		cobra.CheckErr(fmt.Errorf("cannot diff database connection with a schema %q", to.Schema))
+		return fmt.Errorf("cannot diff database connection with a schema %q", to.Schema)
 	default:
 		// SchemaDiff checks for name equality which is irrelevant in the case
 		// the user wants to compare their contents, reset them to allow the comparison.
@@ -131,7 +123,6 @@ func cmdDiffRun(cmd *cobra.Command, flags *diffCmdOpts) error {
 	}
 	if len(p.Changes) == 0 {
 		cmd.Println("Schemas are synced, no changes to be made.")
-		return nil
 	}
 	for _, c := range p.Changes {
 		if c.Comment != "" {
@@ -173,6 +164,10 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadClos
 	switch scheme {
 	// "file" scheme is valid for both migration directory and HCL paths.
 	case "file":
+		// Replaying a migration directory or evaluating an HCL file requires a dev connection.
+		if config.dev == nil {
+			return nil, errors.New("--dev-url cannot be empty")
+		}
 		if len(config.urls) > 1 {
 			// Consider urls being HCL paths.
 			return hclStateReader(ctx, config, parsed)
@@ -198,7 +193,7 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadClos
 			}
 			ext := filepath.Ext(f.Name())
 			switch {
-			case (hcl && ext == ".sql") || (sql && ext == ".hcl"):
+			case hcl && ext == ".sql", sql && ext == ".hcl":
 				return nil, fmt.Errorf("ambiguos files: %q contains both SQL and HCL files", path)
 			case ext == ".hcl":
 				hcl = true
@@ -213,10 +208,6 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadClos
 		case !sql:
 			return nil, fmt.Errorf("%q contains neither SQL nor HCL files", path)
 		default:
-			// Replay the migration directory to read the state.
-			if config.dev == nil {
-				return nil, errors.New("reading migration directory state requires a dev database connection")
-			}
 			dir, err := dirURL(parsed[0], false)
 			if err != nil {
 				return nil, err
@@ -262,9 +253,6 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadClos
 
 // hclStateReadr returns a migrate.StateReader that reads the state from the given HCL paths urls.
 func hclStateReader(ctx context.Context, config *stateReaderConfig, urls []*url.URL) (*stateReadCloser, error) {
-	if config.dev == nil {
-		return nil, errors.New("evaluating HCL files requires a dev database connection")
-	}
 	paths := make([]string, len(urls))
 	for i, u := range urls {
 		paths[i] = u.Path
