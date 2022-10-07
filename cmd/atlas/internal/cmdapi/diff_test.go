@@ -45,7 +45,7 @@ func TestCmdSchemaDiff(t *testing.T) {
 		"--from", "file://testdata/sqlite",
 		"--to", openSQLite(t, ""),
 	)
-	require.EqualError(t, err, "reading migration directory state requires a dev database connection")
+	require.EqualError(t, err, "--dev-url cannot be empty")
 
 	// Desired state from migration directory.
 	s, err = runCmd(
