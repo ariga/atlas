@@ -419,9 +419,9 @@ The database states can be read from a connected database, an HCL project or a m
 ```
 #### Flags
 ```
-      --dev-url string   [driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format
       --from string      [driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format
       --to string        [driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format
+      --dev-url string   [driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format
 
 ```
 

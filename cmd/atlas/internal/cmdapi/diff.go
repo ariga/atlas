@@ -47,6 +47,7 @@ The database states can be read from a connected database, an HCL project or a m
 	cmd.Flags().StringVarP(&opts.fromURL, "from", "", "", "[driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format")
 	cmd.Flags().StringVarP(&opts.toURL, "to", "", "", "[driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format")
 	cmd.Flags().StringVarP(&opts.devURL, "dev-url", "", "", "[driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format")
+	cmd.Flags().SortFlags = false
 	cobra.CheckErr(cmd.MarkFlagRequired("from"))
 	cobra.CheckErr(cmd.MarkFlagRequired("to"))
 	return cmd
