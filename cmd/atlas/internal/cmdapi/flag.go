@@ -29,7 +29,7 @@ func addFlagAutoApprove(set *pflag.FlagSet, target *bool) {
 
 func addFlagDSN(set *pflag.FlagSet, target *string) {
 	set.StringVarP(target, flagDSN, "d", "", "")
-	cobra.CheckErr(set.MarkDeprecated(flagDSN, "please use --url instead"))
+	cobra.CheckErr(set.MarkHidden(flagDSN))
 }
 
 func addFlagDevURL(set *pflag.FlagSet, target *string) {
@@ -88,14 +88,7 @@ func dsn2url(cmd *cobra.Command) error {
 // on the cmd, it was not set by the user via the command line and if envVal is not
 // an empty string.
 func maySetFlag(cmd *cobra.Command, name, envVal string) error {
-	fl := cmd.Flag(name)
-	if fl == nil {
-		return nil
-	}
-	if fl.Changed {
-		return nil
-	}
-	if envVal == "" {
+	if fl := cmd.Flag(name); fl == nil || fl.Changed || envVal == "" {
 		return nil
 	}
 	return cmd.Flags().Set(name, envVal)
