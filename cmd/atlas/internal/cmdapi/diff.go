@@ -188,9 +188,6 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadClos
 		// Check all files, if we find both HCL and SQL files, abort. Otherwise, proceed accordingly.
 		var hcl, sql bool
 		for _, f := range files {
-			if f.IsDir() {
-				// skip directories
-			}
 			ext := filepath.Ext(f.Name())
 			switch {
 			case hcl && ext == ".sql", sql && ext == ".hcl":
@@ -199,8 +196,9 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadClos
 				hcl = true
 			case ext == ".sql":
 				sql = true
+			default:
+				// unknown extension, we don't care
 			}
-			// unknown extension, we don't care
 		}
 		switch {
 		case hcl:
