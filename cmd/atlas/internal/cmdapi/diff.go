@@ -303,7 +303,7 @@ func hclStateReader(ctx context.Context, config *stateReaderConfig, urls []*url.
 			return nil, err
 		}
 	}
-	t := &stateReadCloser{StateReader: migrate.Realm(realm), Closer: io.NopCloser(nil)}
+	t := &stateReadCloser{StateReader: migrate.Realm(realm)}
 	if len(realm.Schemas) == 1 {
 		t.Schema = realm.Schemas[0].Name
 	}
