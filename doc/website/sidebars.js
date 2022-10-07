@@ -122,6 +122,11 @@ module.exports = {
                     id: 'guides/postgres/partial-indexes',
                     label: 'Partial Indexes'
                 },
+                {
+                    type: 'doc',
+                    id: 'guides/postgres/included-columns',
+                    label: 'Included Columns'
+                },
             ],
         },
         {
