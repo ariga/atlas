@@ -203,9 +203,7 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadClos
 		switch {
 		case hcl:
 			return hclStateReader(ctx, config, parsed)
-		case !sql:
-			return nil, fmt.Errorf("%q contains neither SQL nor HCL files", path)
-		default:
+		case sql:
 			dir, err := dirURL(parsed[0], false)
 			if err != nil {
 				return nil, err
@@ -227,6 +225,8 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadClos
 				StateReader: migrate.Realm(sr),
 				Schema:      config.dev.URL.Schema,
 			}, nil
+		default:
+			return nil, fmt.Errorf("%q contains neither SQL nor HCL files", path)
 		}
 	default:
 		// All other schemes are database (or docker) connections.
