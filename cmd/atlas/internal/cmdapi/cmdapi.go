@@ -59,7 +59,6 @@ Atlas is licensed under Apache 2.0 as found in https://github.com/ariga/atlas/bl
 )
 
 func init() {
-	Root.AddCommand(schemaCmd)
 	Root.AddCommand(versionCmd)
 	Root.AddCommand(licenseCmd)
 }
@@ -67,7 +66,7 @@ func init() {
 // receivesEnv configures cmd to receive the common '--env' flag.
 func receivesEnv(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVarP(&GlobalFlags.SelectedEnv, "env", "", "", "set which env from the project file to use")
-	cmd.PersistentFlags().VarP(&GlobalFlags.Vars, varFlag, "", "input variables")
+	cmd.PersistentFlags().VarP(&GlobalFlags.Vars, flagVar, "", "input variables")
 }
 
 // inputValsFromEnv populates GlobalFlags.Vars from the active environment. If we are working
@@ -79,7 +78,7 @@ func inputValsFromEnv(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	if fl := cmd.Flag(varFlag); fl == nil {
+	if fl := cmd.Flag(flagVar); fl == nil {
 		return nil
 	}
 	values, err := activeEnv.asMap()
@@ -94,7 +93,7 @@ func inputValsFromEnv(cmd *cobra.Command) error {
 		pairs = append(pairs, fmt.Sprintf("%s=%s", k, v))
 	}
 	vars := strings.Join(pairs, ",")
-	if err := cmd.Flags().Set(varFlag, vars); err != nil {
+	if err := cmd.Flags().Set(flagVar, vars); err != nil {
 		return err
 	}
 	return nil

@@ -145,6 +145,9 @@ func runCmd(cmd *cobra.Command, args ...string) (string, error) {
 	var out bytes.Buffer
 	cmd.SetOut(&out)
 	cmd.SetErr(&out)
+	if args == nil { // https://github.com/spf13/cobra/commit/1ef0913976db2004980575ed815c30c65acd5599
+		args = []string{}
+	}
 	cmd.SetArgs(args)
 	err := cmd.Execute()
 	return out.String(), err

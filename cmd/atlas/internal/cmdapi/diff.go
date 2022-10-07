@@ -53,10 +53,6 @@ The database states can be read from a connected database, an HCL project or a m
 	return cmd
 }
 
-func init() {
-	schemaCmd.AddCommand(newDiffCmd())
-}
-
 // cmdDiffRun connects to the given databases, and prints an SQL plan to get from
 // the "from" schema to the "to" schema.
 func cmdDiffRun(cmd *cobra.Command, flags *diffCmdOpts) error {

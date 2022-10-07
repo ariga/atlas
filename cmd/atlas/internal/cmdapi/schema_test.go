@@ -5,10 +5,8 @@
 package cmdapi
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -100,7 +98,8 @@ func TestFmt(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			dir := setupFmtTest(t, tt.inputDir)
-			out := runFmt(t, tt.args)
+			out, err := runCmd(schemaFmtCmd(), tt.args...)
+			require.NoError(t, err)
 			assertDir(t, dir, tt.expectedDir)
 			require.EqualValues(t, tt.expectedOut, out)
 		})
@@ -115,32 +114,21 @@ func TestSchema_Clean(t *testing.T) {
 	require.NoError(t, err)
 
 	// Apply migrations onto database.
-	MigrateFlags.Apply.BaselineVersion = ""
 	_, err = runCmd(Root, "migrate", "apply", "--dir", "file://testdata/sqlite", "--url", u)
 	require.NoError(t, err)
 
 	// Run clean and expect to be clean.
 	_, err = runCmd(Root, "migrate", "apply", "--dir", "file://testdata/sqlite", "--url", u)
 	require.NoError(t, err)
-	s, err := runCmd(Root, "schema", "clean", "--url", u, "--auto-approve")
+	s, err := runCmd(schemaCleanCmd(), "--url", u, "--auto-approve")
 	require.NoError(t, err)
 	require.NotZero(t, s)
 	require.NoError(t, c.Driver.(migrate.CleanChecker).CheckClean(context.Background(), nil))
 }
 
-func runFmt(t *testing.T, args []string) string {
-	var out bytes.Buffer
-	SchemaFmt.ResetCommands() // Detach from sub-commands and parents, needed to skip input validation done by them.
-	SchemaFmt.SetOut(&out)
-	SchemaFmt.SetArgs(args)
-	err := SchemaFmt.Execute()
-	require.NoError(t, err)
-	return out.String()
-}
-
 func assertDir(t *testing.T, dir string, expected map[string]string) {
 	act := make(map[string]string)
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	require.NoError(t, err)
 	for _, f := range files {
 		if f.IsDir() {
