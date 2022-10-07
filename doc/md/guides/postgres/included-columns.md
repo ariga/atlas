@@ -19,6 +19,7 @@ INCLUDE(included_column_list);
 A B-Tree index is made of two structures:
 1. The B-tree
 2. The doubly linked list at the leaf node level of the B-tree
+
 In an index with included columns, records of the columns mentioned in the `INCLUDE` clause are included in the doubly linked list at the leaf node level of the B-tree, corresponding to the heap (rows/tuples stored in a table).
 
 :::info
