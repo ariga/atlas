@@ -308,7 +308,7 @@ atlas schema
 ```
 
 #### Details
-The `atlas schema` command groups subcommands for working with Atlas schemas.
+The `atlas schema` command groups subcommands working with declarative Atlas schemas.
 
 #### Flags
 ```
@@ -355,14 +355,12 @@ migration.
 #### Flags
 ```
   -f, --file strings      [paths...] file or directory containing the HCL files
-  -u, --url string        URL to the database using the format:
-                          [driver://username:password@address/dbname?param=value]
-      --exclude strings   List of glob patterns used to filter resources from applying.
-  -s, --schema strings    Set schema names.
-      --dev-url string    URL for the dev database. Used to validate schemas and calculate diffs
-                          before running migration.
-      --dry-run           Dry-run. Print SQL plan without prompting for execution.
-      --auto-approve      Auto approve. Apply the schema changes without prompting for approval.
+  -u, --url string        [driver://username:password@address/dbname?param=value] select a resource using the URL format
+      --exclude strings   list of glob patterns used to filter resources from applying
+  -s, --schema strings    set schema names
+      --dev-url string    [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+      --dry-run           print SQL without executing it
+      --auto-approve      apply changes without prompting for approval
 
 ```
 
@@ -388,9 +386,8 @@ As a safety feature, 'atlas schema clean' will ask for confirmation before attem
 ```
 #### Flags
 ```
-      --auto-approve   Auto approve. Apply the schema changes without prompting for approval.
-  -u, --url string     URL to the database using the format:
-                       [driver://username:password@address/dbname?param=value]
+  -u, --url string     [driver://username:password@address/dbname?param=value] select a resource using the URL format
+      --auto-approve   apply changes without prompting for approval
 
 ```
 
@@ -436,7 +433,7 @@ atlas schema fmt [path ...]
 ```
 
 #### Details
-'atlas schema fmt' formats all ".hcl" files under the given path using
+'atlas schema fmt' formats all ".hcl" files under the given paths using
 canonical HCL layout style as defined by the github.com/hashicorp/hcl/v2/hclwrite package.
 Unless stated otherwise, the fmt command will use the current directory.
 
@@ -479,9 +476,9 @@ flag.
 ```
 #### Flags
 ```
-      --exclude strings   List of glob patterns used to filter resources from inspection
-  -s, --schema strings    Set schema name
-  -u, --url string        [driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format
+  -u, --url string        [driver://username:password@address/dbname?param=value] select a resource using the URL format
+  -s, --schema strings    set schema names
+      --exclude strings   list of glob patterns used to filter resources from applying
 
 ```
 

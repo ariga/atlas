@@ -271,7 +271,6 @@ flag.
 	cobra.CheckErr(cmd.MarkFlagRequired(flagURL))
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		// Create the client.
 		client, err := sqlclient.Open(cmd.Context(), flags.URL)
 		if err != nil {
 			return err
