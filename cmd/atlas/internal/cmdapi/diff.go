@@ -247,9 +247,9 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadClos
 		var sr migrate.StateReader
 		switch c.URL.Schema {
 		case "":
-			sr = migrate.SchemaConn(c.Driver, c.URL.Schema, nil)
-		default:
 			sr = migrate.RealmConn(c.Driver, nil)
+		default:
+			sr = migrate.SchemaConn(c.Driver, c.URL.Schema, nil)
 		}
 		return &stateReadCloser{
 			StateReader: sr,
