@@ -157,7 +157,7 @@ DROP INDEX
 Time: 3.856 ms
 ```
 
-Suppose we want to accelerate the same query using the INCLUDE clause.
+Suppose we want to accelerate the same query using the `INCLUDE` clause.
 In the following command, we will create an index with an `INCLUDE` clause that precisely covers `first_name` and `last_name` columns which are part of the query for which we are trying to improve performance.
 
 ```sql
