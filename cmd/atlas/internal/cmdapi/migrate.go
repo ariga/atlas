@@ -140,7 +140,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 		Long: `'atlas migrate diff' uses the dev-database to re-run all migration files in the migration directory, compares
 it to a given desired state and create a new migration file containing SQL statements to migrate the migration
 directory state to the desired schema. The desired state can be another connected database or an HCL file.`,
-		Example: `  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl
+		Example: `  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://schema.hcl
   atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl add_users_table
   atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname
   atlas migrate diff --env dev`,
@@ -1103,7 +1103,7 @@ func dirURL(u *url.URL, create bool) (migrate.Dir, error) {
 	}
 	fn := func() (migrate.Dir, error) { return migrate.NewLocalDir(path) }
 	switch f := u.Query().Get("format"); f {
-	case formatAtlas:
+	case "", formatAtlas:
 		// this is the default
 	case formatGolangMigrate:
 		fn = func() (migrate.Dir, error) { return sqltool.NewGolangMigrateDir(path) }
@@ -1245,7 +1245,7 @@ func to(ctx context.Context, dev *sqlclient.Client) (*target, error) {
 func selectScheme(urls []string) (string, error) {
 	var scheme string
 	if len(urls) == 0 {
-		return "", errors.New("at least one --to url is required")
+		return "", errors.New("at least one url is required")
 	}
 	for _, url := range urls {
 		parts := strings.SplitN(url, "://", 2)

@@ -114,7 +114,7 @@ directory state to the desired schema. The desired state can be another connecte
 #### Example
 
 ```
-  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl
+  atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://schema.hcl
   atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to file://atlas.hcl add_users_table
   atlas migrate diff --dev-url mysql://user:pass@localhost:3306/dev --to mysql://user:pass@localhost:3306/dbname
   atlas migrate diff --env dev
@@ -405,14 +405,23 @@ atlas schema diff [flags]
 ```
 
 #### Details
-'atlas schema diff' connects to two given databases, inspects
-them, calculates the difference in their schemas, and prints a plan of
+'atlas schema diff' reads the state of two given schema definitions, 
+calculates the difference in their schemas, and prints a plan of
 SQL statements to migrate the "from" database to the schema of the "to" database.
+The database states can be read from a connected database, an HCL project or a migration directory.
 
+#### Example
+
+```
+  atlas schema diff --from mysql://user:pass@localhost:3306/test --to file://schema.hcl
+  atlas schema diff --from mysql://user:pass@localhost:3306 --to file://schema_1.hcl --to file://schema_2.hcl
+  atlas schema diff --from mysql://user:pass@localhost:3306 --to file://migrations
+```
 #### Flags
 ```
-      --from string   [driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format
-      --to string     [driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format
+      --from string      [driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format
+      --to string        [driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format
+      --dev-url string   [driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format
 
 ```
 

@@ -2,8 +2,7 @@
 // This source code is licensed under the Apache 2.0 license found
 // in the LICENSE file in the root directory of this source tree.
 
-// Package cmdapi holds the atlas commands used to build
-// an atlas distribution.
+// Package cmdapi holds the atlas commands used to build an atlas distribution.
 package cmdapi
 
 import (
@@ -26,16 +25,14 @@ var (
 
 	// GlobalFlags contains flags common to many Atlas sub-commands.
 	GlobalFlags struct {
-		// SelectedEnv contains the environment selected from the active
-		// project via the --env flag.
+		// SelectedEnv contains the environment selected from the active project via the --env flag.
 		SelectedEnv string
-		// Vars contains the input variables passed from the CLI to
-		// Atlas DDL or project files.
+		// Vars contains the input variables passed from the CLI to Atlas DDL or project files.
 		Vars Vars
 	}
 
-	// version holds Atlas version. When built with cloud packages
-	// should be set by build flag. "-X 'ariga.io/atlas/cmd/atlas/internal/cmdapi.version=${version}'"
+	// version holds Atlas version. When built with cloud packages should be set by build flag
+	// "-X 'ariga.io/atlas/cmd/atlas/internal/cmdapi.version=${version}'"
 	version string
 
 	// schemaCmd represents the subcommand 'atlas version'.
@@ -48,8 +45,8 @@ var (
 		},
 	}
 
-	// license holds Atlas license. When built with cloud packages
-	// should be set by build flag. "-X 'ariga.io/atlas/cmd/atlas/internal/cmdapi.license=${license}'"
+	// license holds Atlas license. When built with cloud packages should be set by build flag
+	// "-X 'ariga.io/atlas/cmd/atlas/internal/cmdapi.license=${license}'"
 	license = `LICENSE
 Atlas is licensed under Apache 2.0 as found in https://github.com/ariga/atlas/blob/master/LICENSE.`
 	licenseCmd = &cobra.Command{
