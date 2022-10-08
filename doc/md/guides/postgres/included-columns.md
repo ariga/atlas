@@ -4,7 +4,9 @@ title: Indexes with Included Columns in PostgreSQL
 slug: /guides/postgres/included-columns
 ---
 
-With PostgreSQL, we can create indexes with `INCLUDE` clauses, which are types of indexes that specify a list of columns to be included in the index as non-key columns. If used correctly, indexes with included columns improve performance and reduce total costs.
+With PostgreSQL, we can create *covering indexes* using the `INCLUDE` clause, which are types of indexes that specify a
+list of columns to be included in the index as non-key columns. If used correctly, indexes with included columns improve
+performance and reduce total costs.
 
 ### Basic PostgreSQL syntax for using `INCLUDE` clause with an index:
 
@@ -16,14 +18,17 @@ INCLUDE(included_column_list);
 
 ### How do they work?
 
-A B-Tree index is made of two structures:
-1. The B-tree
-2. The doubly linked list at the leaf node level of the B-tree
+In PostgreSQL, a B-Tree index creates a multi-level tree structure where each level can be used as a doubly-linked list
+of pages. Leaf pages are those at the lowest level of a tree, that point to rows of tables.
 
-In an index with included columns, records of the columns mentioned in the `INCLUDE` clause are included in the doubly linked list at the leaf node level of the B-tree, corresponding to the heap (rows/tuples stored in a table).
+With *covering indexes*, records of the columns mentioned in the `INCLUDE` clause are included in the leaf pages of the
+B-Tree as "payload" and are not part of the search key.
 
 :::info
-Each index is stored separately from the table's main data area, which in PostgreSQL this is known as the table's _heap_.  Leaf pages are the pages on the lowest level of the index tree. To learn more about the B-tree index structure in PostgreSQL, visit the PostgreSQL documentation [here](https://www.postgresql.org/docs/current/btree-implementation.html#BTREE-STRUCTURE). 
+Each index is stored separately from the table's main data area, which in PostgreSQL this is known as the table's _heap_.
+To learn more about the PostgreSQL B-tree index structure and *covering indexes*, visit the documentation:
+1. [B-Tree structure](https://www.postgresql.org/docs/current/btree-implementation.html#BTREE-STRUCTURE).
+2. [Covering indexes](https://www.postgresql.org/docs/current/indexes-index-only-scans.html).
 :::
 
 ### When do we need them?
