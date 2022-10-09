@@ -1446,6 +1446,9 @@ func migrateFlagsFromEnv(cmd *cobra.Command, _ []string) error {
 	if err := maySetFlag(cmd, migrateFlagDevURL, activeEnv.DevURL); err != nil {
 		return err
 	}
+	if err := maySetFlag(cmd, migrateFlagDir, activeEnv.Migration.Dir); err != nil {
+		return err
+	}
 	if err := maySetFlag(cmd, migrateFlagDirFormat, activeEnv.Migration.Format); err != nil {
 		return err
 	}
