@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -477,7 +479,19 @@ env "dev" {
 }
 `)
 	)
-	require.NoError(t, New().EvalBytes(b, &doc, nil))
+	require.NoError(t, New(
+		WithDataSource("sql", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, hcl.Diagnostics) {
+			attrs, diags := b.Body.JustAttributes()
+			if diags.HasErrors() {
+				return cty.NilVal, diags
+			}
+			v, diags := attrs["query"].Expr.Value(ctx)
+			if diags.HasErrors() {
+				return cty.NilVal, diags
+			}
+			return cty.ObjectVal(map[string]cty.Value{"query": v}), nil
+		}),
+	).EvalBytes(b, &doc, nil))
 	require.Len(t, doc.Envs, 6)
 	require.Equal(t, "prod", doc.Envs[0].Name)
 	require.EqualValues(t, doc.Envs[0].URL, "mysql://root:pass@:3306/atlas")
@@ -502,4 +516,114 @@ env "dev" {
 		}),
 	})
 	require.EqualError(t, err, `variable "domains": a number is required`)
+}
+
+func TestDataLocalsRefs(t *testing.T) {
+	var (
+		opts = []Option{
+			WithDataSource("sql", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, hcl.Diagnostics) {
+				attrs, diags := b.Body.JustAttributes()
+				if diags.HasErrors() {
+					return cty.NilVal, diags
+				}
+				v, diags := attrs["result"].Expr.Value(ctx)
+				if diags.HasErrors() {
+					return cty.NilVal, diags
+				}
+				return cty.ObjectVal(map[string]cty.Value{"output": v}), nil
+			}),
+			WithDataSource("text", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, hcl.Diagnostics) {
+				attrs, diags := b.Body.JustAttributes()
+				if diags.HasErrors() {
+					return cty.NilVal, diags
+				}
+				v, diags := attrs["value"].Expr.Value(ctx)
+				if diags.HasErrors() {
+					return cty.NilVal, diags
+				}
+				return cty.ObjectVal(map[string]cty.Value{"output": v}), nil
+			}),
+		}
+		doc struct {
+			Values []string `spec:"vs"`
+		}
+		b = []byte(`
+variable "url" {
+  type    = string
+  default = "mysql://root:pass@:3306/atlas"
+}
+
+locals {
+  a = "local-a"
+  // locals can reference other locals.
+  b = "local-b-ref-local-a: ${local.a}"
+  // locals can reference data sources.
+  c = "local-c-ref-data-a: ${data.text.a.output}"
+  d = "local-d"
+}
+
+data "sql" "tenants" {
+  url = var.url
+  // language=mysql
+  query = <<EOS
+SELECT schema_name
+  FROM information_schema.schemata
+  WHERE schema_name LIKE 'tenant_%'
+EOS
+  // fake result.
+  result = "data-sql-tenants"
+}
+
+data "text" "a" {
+  // data sources can reference data sources.
+  value = "data-text-a-ref-data-sql-tenants: ${data.sql.tenants.output}"
+}
+
+data "text" "b" {
+  // data sources can reference locals.
+  value = "data-text-b-ref-local-d: ${local.d}"
+}
+
+vs = [
+  local.a,
+  local.b,
+  local.c,
+  data.sql.tenants.output,
+  data.text.a.output,
+  data.text.b.output,
+]
+`)
+	)
+	require.NoError(t, New(opts...).EvalBytes(b, &doc, nil))
+	require.Equal(t, []string{
+		"local-a",
+		"local-b-ref-local-a: local-a",
+		"local-c-ref-data-a: data-text-a-ref-data-sql-tenants: data-sql-tenants",
+		"data-sql-tenants",
+		"data-text-a-ref-data-sql-tenants: data-sql-tenants",
+		"data-text-b-ref-local-d: local-d",
+	}, doc.Values)
+
+	b = []byte(`locals { a = local.a }`)
+	require.EqualError(t, New(opts...).EvalBytes(b, &doc, nil), `cyclic reference to "local.a"`)
+
+	b = []byte(`
+locals {
+  a = "a"
+  b = local.c
+  c = local.b
+}
+`)
+	require.Error(t, New(opts...).EvalBytes(b, &doc, nil), `cyclic reference to "local.c"`)
+
+	b = []byte(`
+data "text" "a" {
+  value = local.a
+}
+
+locals {
+  a = data.text.a.output
+}
+`)
+	require.Error(t, New(opts...).EvalBytes(b, &doc, nil), `cyclic reference to "data.text.a"`)
 }
