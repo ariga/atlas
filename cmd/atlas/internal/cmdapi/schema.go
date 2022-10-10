@@ -23,24 +23,25 @@ import (
 
 func init() {
 	schemaCmd := schemaCmd()
-	schemaCmd.AddCommand(schemaApplyCmd())
-	schemaCmd.AddCommand(schemaCleanCmd())
-	schemaCmd.AddCommand(schemaDiffCmd())
-	schemaCmd.AddCommand(schemaFmtCmd())
-	schemaCmd.AddCommand(schemaInspectCmd())
+	schemaCmd.AddCommand(
+		schemaApplyCmd(),
+		schemaCleanCmd(),
+		schemaDiffCmd(),
+		schemaFmtCmd(),
+		schemaInspectCmd(),
+	)
 	Root.AddCommand(schemaCmd)
-
-	// Common flags.
-	receivesEnv(schemaCmd)
 }
 
 // schemaCmd represents the subcommand 'atlas schema'.
 func schemaCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "schema",
 		Short: "Work with atlas schemas.",
 		Long:  "The `atlas schema` command groups subcommands working with declarative Atlas schemas.",
 	}
+	addFlagEnvVar(cmd.PersistentFlags())
+	return cmd
 }
 
 type schemaApplyFlags struct {
@@ -54,7 +55,7 @@ type schemaApplyFlags struct {
 	DSN         string   // Deprecated: DSN is an alias for URL.
 }
 
-// schemaApplyCmd represents the 'atlas schema apply' subcommand command.
+// schemaApplyCmd represents the 'atlas schema apply' subcommand.
 func schemaApplyCmd() *cobra.Command {
 	var (
 		flags schemaApplyFlags
@@ -91,7 +92,7 @@ migration.`,
 	cmd.Flags().StringSliceVarP(&flags.Paths, flagFile, "f", nil, "[paths...] file or directory containing the HCL files")
 	addFlagURL(cmd.Flags(), &flags.URL)
 	addFlagExclude(cmd.Flags(), &flags.Exclude)
-	addFlagSchema(cmd.Flags(), &flags.Schemas)
+	addFlagSchemas(cmd.Flags(), &flags.Schemas)
 	addFlagDevURL(cmd.Flags(), &flags.DevURL)
 	addFlagDryRun(cmd.Flags(), &flags.DryRun)
 	addFlagAutoApprove(cmd.Flags(), &flags.AutoApprove)
@@ -267,8 +268,8 @@ The database states can be read from a connected database, an HCL project or a m
 		}
 	)
 	cmd.Flags().SortFlags = false
-	addFlagURL(cmd.Flags(), &flags.fromURL, flagFrom)
-	addFlagURL(cmd.Flags(), &flags.toURL, flagTo)
+	addFlagURL(cmd.Flags(), &flags.fromURL, flagFrom, "")
+	addFlagURL(cmd.Flags(), &flags.toURL, flagTo, "")
 	addFlagDevURL(cmd.Flags(), &flags.devURL)
 	cobra.CheckErr(cmd.MarkFlagRequired(flagFrom))
 	cobra.CheckErr(cmd.MarkFlagRequired(flagTo))
@@ -388,7 +389,7 @@ flag.
 	)
 	cmd.Flags().SortFlags = false
 	addFlagURL(cmd.Flags(), &flags.URL)
-	addFlagSchema(cmd.Flags(), &flags.Schemas)
+	addFlagSchemas(cmd.Flags(), &flags.Schemas)
 	addFlagExclude(cmd.Flags(), &flags.Exclude)
 	addFlagDSN(cmd.Flags(), &flags.DSN)
 	cobra.CheckErr(cmd.MarkFlagRequired(flagURL))

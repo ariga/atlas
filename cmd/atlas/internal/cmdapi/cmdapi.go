@@ -25,20 +25,6 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-const (
-	flagAutoApprove = "auto-approve"
-	flagDevURL      = "dev-url"
-	flagDryRun      = "dry-run"
-	flagDSN         = "dsn" // deprecated in favor of flagURL
-	flagExclude     = "exclude"
-	flagFile        = "file"
-	flagFrom        = "from"
-	flagTo          = "to"
-	flagSchema      = "schema"
-	flagURL         = "url"
-	flagVar         = "var"
-)
-
 var (
 	// Root represents the root command when called without any subcommands.
 	Root = &cobra.Command{
@@ -85,12 +71,6 @@ Atlas is licensed under Apache 2.0 as found in https://github.com/ariga/atlas/bl
 func init() {
 	Root.AddCommand(versionCmd)
 	Root.AddCommand(licenseCmd)
-}
-
-// receivesEnv configures cmd to receive the common '--env' flag.
-func receivesEnv(cmd *cobra.Command) {
-	cmd.PersistentFlags().StringVarP(&GlobalFlags.SelectedEnv, "env", "", "", "set which env from the project file to use")
-	cmd.PersistentFlags().VarP(&GlobalFlags.Vars, flagVar, "", "input variables")
 }
 
 // inputValsFromEnv populates GlobalFlags.Vars from the active environment. If we are working
@@ -188,13 +168,59 @@ func (v *Vars) Type() string {
 	return "<name>=<value>"
 }
 
+const (
+	flagAllowDirty     = "allow-dirty"
+	flagAutoApprove    = "auto-approve"
+	flagBaseline       = "baseline"
+	flagDevURL         = "dev-url"
+	flagDirURL         = "dir"
+	flagDirFormat      = "dir-format"
+	flagDryRun         = "dry-run"
+	flagDSN            = "dsn" // deprecated in favor of flagURL
+	flagEnv            = "env"
+	flagExclude        = "exclude"
+	flagFile           = "file"
+	flagFrom           = "from"
+	flagGitBase        = "git-base"
+	flagGitDir         = "git-dir"
+	flagLatest         = "latest"
+	flagLog            = "log"
+	flagRevisionSchema = "revisions-schema"
+	flagSchema         = "schema"
+	flagTo             = "to"
+	flagTxMode         = "tx-mode"
+	flagURL            = "url"
+	flagVar            = "var"
+	flagQualifier      = "qualifier"
+)
+
+func addFlagEnvVar(set *pflag.FlagSet) {
+	set.StringVar(&GlobalFlags.SelectedEnv, flagEnv, "", "set which env from the project file to use")
+	set.Var(&GlobalFlags.Vars, flagVar, "input variables")
+}
+
 func addFlagAutoApprove(set *pflag.FlagSet, target *bool) {
 	set.BoolVar(target, flagAutoApprove, false, "apply changes without prompting for approval")
 }
 
-func addFlagDSN(set *pflag.FlagSet, target *string) {
-	set.StringVarP(target, flagDSN, "d", "", "")
-	cobra.CheckErr(set.MarkHidden(flagDSN))
+func addFlagDirFormat(set *pflag.FlagSet, target *string) {
+	set.StringVar(target, flagDirFormat, "atlas", "select migration file format")
+}
+
+// addFlagURL adds a URL flag. If given, args[0] override the name, args[1] the shorthand, args[2] the default value.
+func addFlagDirURL(set *pflag.FlagSet, target *string, args ...string) {
+	name, short, val := flagDirURL, "", "file://migrations"
+	switch len(args) {
+	case 3:
+		val = args[2]
+		fallthrough
+	case 2:
+		short = args[1]
+		fallthrough
+	case 1:
+		name = args[0]
+	}
+	set.StringVarP(target, name, short, val, "select migration directory using URL format")
 }
 
 func addFlagDevURL(set *pflag.FlagSet, target *string) {
@@ -204,6 +230,11 @@ func addFlagDevURL(set *pflag.FlagSet, target *string) {
 		"",
 		"[driver://username:password@address/dbname?param=value] select a dev database using the URL format",
 	)
+}
+
+func addFlagDSN(set *pflag.FlagSet, target *string) {
+	set.StringVarP(target, flagDSN, "d", "", "")
+	cobra.CheckErr(set.MarkHidden(flagDSN))
 }
 
 func addFlagDryRun(set *pflag.FlagSet, target *bool) {
@@ -216,6 +247,23 @@ func addFlagExclude(set *pflag.FlagSet, target *[]string) {
 		flagExclude,
 		nil,
 		"list of glob patterns used to filter resources from applying",
+	)
+}
+
+func addFlagLog(set *pflag.FlagSet, target *string) {
+	set.StringVar(target, flagLog, "", "go template to use to format logs")
+}
+
+func addFlagRevisionSchema(set *pflag.FlagSet, target *string) {
+	set.StringVar(target, flagRevisionSchema, "", "name of the schema the revisions table resides in")
+}
+
+func addFlagSchemas(set *pflag.FlagSet, target *[]string) {
+	set.StringSliceVarP(
+		target,
+		flagSchema, "s",
+		nil,
+		"set schema names",
 	)
 }
 
@@ -237,12 +285,20 @@ func addFlagURL(set *pflag.FlagSet, target *string, args ...string) {
 	)
 }
 
-func addFlagSchema(set *pflag.FlagSet, target *[]string) {
+func addFlagURLs(set *pflag.FlagSet, target *[]string, args ...string) {
+	name, short := flagURL, "u"
+	switch len(args) {
+	case 2:
+		short = args[1]
+		fallthrough
+	case 1:
+		name = args[0]
+	}
 	set.StringSliceVarP(
 		target,
-		flagSchema, "s",
+		name, short,
 		nil,
-		"set schema names",
+		"[driver://username:password@address/dbname?param=value] select a resource using the URL format",
 	)
 }
 

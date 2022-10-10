@@ -48,8 +48,6 @@ atlas migrate
 
 #### Flags
 ```
-      --dir string           select migration directory using URL format (default "file://migrations")
-      --dir-format string    set migration file format (default "atlas")
       --env string           set which env from the project file to use
       --var <name>=<value>   input variables (default [])
 
@@ -62,7 +60,7 @@ Applies pending migration files on the connected database.
 
 #### Usage
 ```
-atlas migrate apply [flags] [count]
+atlas migrate apply [amount] [flags]
 ```
 
 #### Details
@@ -85,14 +83,15 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.
 ```
 #### Flags
 ```
-      --log string                log format to use (default "tty")
-      --revisions-schema string   schema name where the revisions table resides
-      --dry-run                   do not actually execute any SQL but show it on screen
+  -u, --url string                [driver://username:password@address/dbname?param=value] select a resource using the URL format
+      --dir string                select migration directory using URL format (default "file://migrations")
+      --log string                go template to use to format logs
+      --revisions-schema string   name of the schema the revisions table resides in
+      --dry-run                   print SQL without executing it
       --from string               calculate pending files from the given version (including it)
       --baseline string           start the first migration after the given baseline version
       --tx-mode string            set transaction mode [none, file, all] (default "file")
       --allow-dirty               allow start working on a non-clean database
-  -u, --url string                [driver://username:password@address/dbname?param=value] select a database using the URL format
 
 ```
 
@@ -103,7 +102,7 @@ Compute the diff between the migration directory and a desired state and create 
 
 #### Usage
 ```
-atlas migrate diff [flags] [name]
+atlas migrate diff [name] [flags]
 ```
 
 #### Details
@@ -121,9 +120,13 @@ directory state to the desired schema. The desired state can be another connecte
 ```
 #### Flags
 ```
-      --dev-url string     [driver://username:password@address/dbname?param=value] select a database using the URL format
-      --to strings         [driver://username:password@address/dbname?param=value ...] select a desired state using the URL format
-      --qualifier string   qualify tables with custom qualifier when working on a single schema
+  -u, --to strings                [driver://username:password@address/dbname?param=value] select a resource using the URL format
+      --dev-url string            [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+      --dir string                select migration directory using URL format (default "file://migrations")
+      --dir-format string         select migration file format (default "atlas")
+      --revisions-schema string   name of the schema the revisions table resides in
+  -s, --schema strings            set schema names
+      --qualifier string          qualify tables with custom qualifier when working on a single schema
 
 ```
 
@@ -134,7 +137,7 @@ Hash (re-)creates an integrity hash file for the migration directory.
 
 #### Usage
 ```
-atlas migrate hash
+atlas migrate hash [flags]
 ```
 
 #### Details
@@ -146,6 +149,13 @@ This command should be used whenever a manual change in the migration directory 
 ```
   atlas migrate hash
 ```
+#### Flags
+```
+      --dir string          select migration directory using URL format (default "file://migrations")
+      --dir-format string   select migration file format (default "atlas")
+
+```
+
 
 ### atlas migrate import
 
@@ -163,8 +173,9 @@ atlas migrate import [flags]
 ```
 #### Flags
 ```
-      --from string   select migration directory using URL format (default "file://migrations")
-      --to string     select migration directory using URL format (default "file://migrations")
+      --from string         select migration directory using URL format (default "file://migrations")
+      --to string           select migration directory using URL format (default "file://migrations")
+      --dir-format string   select migration file format (default "atlas")
 
 ```
 
@@ -188,11 +199,12 @@ atlas migrate lint [flags]
 ```
 #### Flags
 ```
-      --dev-url string    [driver://username:password@address/dbname?param=value] select a database using the URL format
+      --dev-url string    [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+      --dir string        select migration directory using URL format (default "file://migrations")
+      --log string        custom logging using a Go template
+      --latest uint       run analysis on the latest N migration files
       --git-base string   run analysis against the base Git branch
       --git-dir string    path to the repository working directory (default ".")
-      --latest uint       run analysis on the latest N migration files
-      --log string        custom logging using a Go template
 
 ```
 
@@ -203,7 +215,7 @@ Creates a new empty migration file in the migration directory.
 
 #### Usage
 ```
-atlas migrate new [name]
+atlas migrate new [name] [flags]
 ```
 
 #### Details
@@ -214,6 +226,13 @@ atlas migrate new [name]
 ```
   atlas migrate new my-new-migration
 ```
+#### Flags
+```
+      --dir string          select migration directory using URL format (default "file://migrations")
+      --dir-format string   select migration file format (default "atlas")
+
+```
+
 
 ### atlas migrate set
 
@@ -237,7 +256,10 @@ to be applied. This command is usually used after manually making changes to the
 ```
 #### Flags
 ```
-  -u, --url string   [driver://username:password@address/dbname?param=value] select a database using the URL format
+  -u, --url string                [driver://username:password@address/dbname?param=value] select a resource using the URL format
+      --dir string                select migration directory using URL format (default "file://migrations")
+      --dir-format string         select migration file format (default "atlas")
+      --revisions-schema string   name of the schema the revisions table resides in
 
 ```
 
@@ -262,9 +284,10 @@ atlas migrate status [flags]
 ```
 #### Flags
 ```
-      --log string                custom logging using a Go template
-      --revisions-schema string   schema name where the revisions table resides
-  -u, --url string                [driver://username:password@address/dbname?param=value] select a database using the URL format
+  -u, --url string                [driver://username:password@address/dbname?param=value] select a resource using the URL format
+      --dir string                select migration directory using URL format (default "file://migrations")
+      --dir-format string         select migration file format (default "atlas")
+      --revisions-schema string   name of the schema the revisions table resides in
 
 ```
 
@@ -293,7 +316,9 @@ files are executed on the connected database in order to validate SQL semantics.
 ```
 #### Flags
 ```
-      --dev-url string   [driver://username:password@address/dbname?param=value] select a database using the URL format
+      --dev-url string      [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+      --dir string          select migration directory using URL format (default "file://migrations")
+      --dir-format string   select migration file format (default "atlas")
 
 ```
 
@@ -416,9 +441,9 @@ The database states can be read from a connected database, an HCL project or a m
 ```
 #### Flags
 ```
-      --from string      [driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format
-      --to string        [driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format
-      --dev-url string   [driver://username:password@protocol(address)/dbname?param=value] select a database using the URL format
+      --from string      [driver://username:password@address/dbname?param=value] select a resource using the URL format
+      --to string        [driver://username:password@address/dbname?param=value] select a resource using the URL format
+      --dev-url string   [driver://username:password@address/dbname?param=value] select a dev database using the URL format
 
 ```
 

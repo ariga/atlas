@@ -213,12 +213,11 @@ func TestSchema_Clean(t *testing.T) {
 	require.NoError(t, err)
 
 	// Apply migrations onto database.
-	MigrateFlags.Apply.BaselineVersion = ""
-	_, err = runCmd(Root, "migrate", "apply", "--dir", "file://testdata/sqlite", "--url", u)
+	_, err = runCmd(migrateApplyCmd(), "--dir", "file://testdata/sqlite", "--url", u)
 	require.NoError(t, err)
 
 	// Run clean and expect to be clean.
-	_, err = runCmd(Root, "migrate", "apply", "--dir", "file://testdata/sqlite", "--url", u)
+	_, err = runCmd(migrateApplyCmd(), "--dir", "file://testdata/sqlite", "--url", u)
 	require.NoError(t, err)
 	s, err := runCmd(schemaCleanCmd(), "--url", u, "--auto-approve")
 	require.NoError(t, err)
