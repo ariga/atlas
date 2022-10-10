@@ -6,10 +6,15 @@ package cmdapi
 
 import (
 	"bytes"
+	"context"
+	"database/sql"
+	"fmt"
 	"os"
 	"os/exec"
 	"testing"
 
+	"ariga.io/atlas/sql/sqlite"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -58,4 +63,40 @@ func TestCLI_Version(t *testing.T) {
 			require.Equal(t, tt.expected, stdout.String())
 		})
 	}
+}
+
+func runCmd(cmd *cobra.Command, args ...string) (string, error) {
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	// Cobra checks for the args to equal nil and if so uses os.Args[1:].
+	// In tests, this leads to go tooling arguments being part of the command arguments.
+	if args == nil {
+		args = []string{}
+	}
+	cmd.SetArgs(args)
+	err := cmd.Execute()
+	return out.String(), err
+}
+
+// openSQLite creates a sqlite db, seeds it with the seed query and returns the url to it.
+func openSQLite(t *testing.T, seed string) string {
+	f, err := os.CreateTemp("", "sqlite.db")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		os.Remove(f.Name())
+	})
+	dsn := fmt.Sprintf("file:%s?cache=shared&_fk=1", f.Name())
+	db, err := sql.Open("sqlite3", dsn)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		db.Close()
+	})
+	drv, err := sqlite.Open(db)
+	require.NoError(t, err)
+	if len(seed) > 0 {
+		_, err := drv.ExecContext(context.Background(), seed)
+		require.NoError(t, err)
+	}
+	return fmt.Sprintf("sqlite://%s", dsn)
 }

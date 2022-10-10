@@ -30,6 +30,105 @@ const (
 `
 )
 
+func TestCmdSchemaDiff(t *testing.T) {
+	// Creates the missing table.
+	s, err := runCmd(
+		schemaDiffCmd(),
+		"--from", openSQLite(t, ""),
+		"--to", openSQLite(t, "create table t1 (id int);"),
+	)
+	require.NoError(t, err)
+	require.EqualValues(t, "-- Create \"t1\" table\nCREATE TABLE `t1` (`id` int NULL)\n", s)
+
+	// No changes.
+	s, err = runCmd(
+		schemaDiffCmd(),
+		"--from", openSQLite(t, ""),
+		"--to", openSQLite(t, ""),
+	)
+	require.NoError(t, err)
+	require.EqualValues(t, "Schemas are synced, no changes to be made.\n", s)
+
+	// Desired state from migration directory requires dev database.
+	_, err = runCmd(
+		schemaDiffCmd(),
+		"--from", "file://testdata/sqlite",
+		"--to", openSQLite(t, ""),
+	)
+	require.EqualError(t, err, "--dev-url cannot be empty")
+
+	// Desired state from migration directory.
+	s, err = runCmd(
+		schemaDiffCmd(),
+		"--from", openSQLite(t, ""),
+		"--to", "file://testdata/sqlite",
+		"--dev-url", openSQLite(t, ""),
+	)
+	require.NoError(t, err)
+	require.EqualValues(t, "-- Create \"tbl\" table\nCREATE TABLE `tbl` (`col` int NOT NULL, `col_2` bigint NULL)\n", s)
+
+	// Desired state from migration directory.
+	s, err = runCmd(
+		schemaDiffCmd(),
+		"--from", openSQLite(t, ""),
+		"--to", "file://testdata/sqlite",
+		"--dev-url", openSQLite(t, ""),
+	)
+	require.NoError(t, err)
+	require.EqualValues(t, "-- Create \"tbl\" table\nCREATE TABLE `tbl` (`col` int NOT NULL, `col_2` bigint NULL)\n", s)
+
+	// Current state from migration directory, desired state from HCL - synced.
+	p := filepath.Join(t.TempDir(), "schema.hcl")
+	require.NoError(t, os.WriteFile(p, []byte(`schema "main" {}
+table "tbl" {
+  schema = schema.main
+  column "col" {
+    type = int
+  }
+  column "col_2" {
+    type = bigint
+    null = true
+  }
+}`), 0644))
+	s, err = runCmd(
+		schemaDiffCmd(),
+		"--from", "file://testdata/sqlite",
+		"--to", "file://"+p,
+		"--dev-url", openSQLite(t, ""),
+	)
+	require.NoError(t, err)
+	require.EqualValues(t, "Schemas are synced, no changes to be made.\n", s)
+
+	// Current state from migration directory, desired state from HCL - missing column.
+	p = filepath.Join(t.TempDir(), "schema.hcl")
+	require.NoError(t, os.WriteFile(p, []byte(`schema "main" {}
+table "tbl" {
+  schema = schema.main
+  column "col" {
+    type = int
+  }
+  column "col_2" {
+    type = bigint
+    null = true
+  }
+  column "col_3" {
+    type = text
+  }
+}`), 0644))
+	s, err = runCmd(
+		schemaDiffCmd(),
+		"--from", "file://testdata/sqlite",
+		"--to", "file://"+p,
+		"--dev-url", openSQLite(t, ""),
+	)
+	require.NoError(t, err)
+	require.EqualValues(
+		t,
+		"-- Add column \"col_3\" to table: \"tbl\"\nALTER TABLE `tbl` ADD COLUMN `col_3` text NOT NULL\n",
+		s,
+	)
+}
+
 func TestFmt(t *testing.T) {
 	for _, tt := range []struct {
 		name          string

@@ -25,7 +25,7 @@ func init() {
 	schemaCmd := schemaCmd()
 	schemaCmd.AddCommand(schemaApplyCmd())
 	schemaCmd.AddCommand(schemaCleanCmd())
-	schemaCmd.AddCommand(newDiffCmd())
+	schemaCmd.AddCommand(schemaDiffCmd())
 	schemaCmd.AddCommand(schemaFmtCmd())
 	schemaCmd.AddCommand(schemaInspectCmd())
 	Root.AddCommand(schemaCmd)
@@ -237,6 +237,114 @@ func schemaCleanRun(cmd *cobra.Command, _ []string, flags schemeCleanFlags) erro
 		if err := c.ApplyChanges(cmd.Context(), drop); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+type schemaDiffFlags struct {
+	fromURL string // URL of the current state.
+	toURL   string // URL of the desired state.
+	devURL  string // URL of a dev database.
+}
+
+// schemaDiffCmd represents the 'atlas schema diff' subcommand.
+func schemaDiffCmd() *cobra.Command {
+	var (
+		flags schemaDiffFlags
+		cmd   = &cobra.Command{
+			Use:   "diff",
+			Short: "Calculate and print the diff between two schemas.",
+			Long: `'atlas schema diff' reads the state of two given schema definitions, 
+calculates the difference in their schemas, and prints a plan of
+SQL statements to migrate the "from" database to the schema of the "to" database.
+The database states can be read from a connected database, an HCL project or a migration directory.`,
+			Example: `  atlas schema diff --from mysql://user:pass@localhost:3306/test --to file://schema.hcl
+  atlas schema diff --from mysql://user:pass@localhost:3306 --to file://schema_1.hcl --to file://schema_2.hcl
+  atlas schema diff --from mysql://user:pass@localhost:3306 --to file://migrations`,
+			RunE: func(cmd *cobra.Command, args []string) error {
+				return schemaDiffRun(cmd, args, flags)
+			},
+		}
+	)
+	cmd.Flags().SortFlags = false
+	addFlagURL(cmd.Flags(), &flags.fromURL, flagFrom)
+	addFlagURL(cmd.Flags(), &flags.toURL, flagTo)
+	addFlagDevURL(cmd.Flags(), &flags.devURL)
+	cobra.CheckErr(cmd.MarkFlagRequired(flagFrom))
+	cobra.CheckErr(cmd.MarkFlagRequired(flagTo))
+	return cmd
+}
+
+func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags) error {
+	var (
+		ctx = cmd.Context()
+		c   *sqlclient.Client
+	)
+	// We need a driver for diffing and planning. If given, dev database has precedence.
+	if flags.devURL != "" {
+		var err error
+		c, err = sqlclient.Open(ctx, flags.devURL)
+		if err != nil {
+			return err
+		}
+		defer c.Close()
+	}
+	from, err := stateReader(ctx, &stateReaderConfig{urls: []string{flags.fromURL}, dev: c})
+	if err != nil {
+		return err
+	}
+	defer from.Close()
+	to, err := stateReader(ctx, &stateReaderConfig{urls: []string{flags.toURL}, dev: c})
+	if err != nil {
+		return err
+	}
+	defer to.Close()
+	if c == nil {
+		// If not both states are provided by a database connection, the call to state-reader would have returned
+		// an error already. If we land in this case, we can assume both states are database connections.
+		c = to.Closer.(*sqlclient.Client)
+	}
+	current, err := from.ReadState(ctx)
+	if err != nil {
+		return err
+	}
+	desired, err := to.ReadState(ctx)
+	if err != nil {
+		return err
+	}
+	var diff []schema.Change
+	switch {
+	// compare realm
+	case from.Schema == "" && to.Schema == "":
+		diff, err = c.RealmDiff(current, desired)
+		if err != nil {
+			return err
+		}
+	case from.Schema == "":
+		return fmt.Errorf("cannot diff schema %q with a database connection", from.Schema)
+	case to.Schema == "":
+		return fmt.Errorf("cannot diff database connection with a schema %q", to.Schema)
+	default:
+		// SchemaDiff checks for name equality which is irrelevant in the case
+		// the user wants to compare their contents, reset them to allow the comparison.
+		current.Schemas[0].Name, desired.Schemas[0].Name = "", ""
+		diff, err = c.SchemaDiff(current.Schemas[0], desired.Schemas[0])
+		if err != nil {
+			return err
+		}
+	}
+	p, err := c.PlanChanges(ctx, "plan", diff)
+	if err != nil {
+		return err
+	}
+	if len(p.Changes) == 0 {
+		cmd.Println("Schemas are synced, no changes to be made.")
+	}
+	for _, c := range p.Changes {
+		if c.Comment != "" {
+			cmd.Println("--", strings.ToUpper(c.Comment[:1])+c.Comment[1:])
+		}
+		cmd.Println(c.Cmd)
 	}
 	return nil
 }
