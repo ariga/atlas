@@ -125,7 +125,7 @@ module.exports = {
                 {
                     type: 'doc',
                     id: 'guides/postgres/included-columns',
-                    label: 'Included Columns'
+                    label: 'Covering Indexes'
                 },
             ],
         },
