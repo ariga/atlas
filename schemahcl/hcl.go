@@ -85,13 +85,16 @@ func (s *State) Eval(parsed *hclparse.Parser, v any, input map[string]cty.Value)
 			return err
 		}
 		body := file.Body.(*hclsyntax.Body)
+		if err := s.evalReferences(ctx, body); err != nil {
+			return err
+		}
 		for _, blk := range body.Blocks {
-			// Variable definition blocks are available in the HCL source but not reachable by reference.
-			if blk.Type == varBlock {
-				continue
+			// Variable blocks are available in the HCL
+			// source but not reachable by reference.
+			if blk.Type != varBlock {
+				allBlocks = append(allBlocks, blk)
+				reg.child(extractDef(blk, reg))
 			}
-			allBlocks = append(allBlocks, blk)
-			reg.child(extractDef(blk, reg))
 		}
 	}
 	vars, err := blockVars(allBlocks, "", reg)
