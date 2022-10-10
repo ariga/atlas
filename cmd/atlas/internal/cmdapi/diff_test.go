@@ -145,7 +145,9 @@ func runCmd(cmd *cobra.Command, args ...string) (string, error) {
 	var out bytes.Buffer
 	cmd.SetOut(&out)
 	cmd.SetErr(&out)
-	if args == nil { // https://github.com/spf13/cobra/commit/1ef0913976db2004980575ed815c30c65acd5599
+	// Cobra checks for the args to equal nil and if so uses os.Args[1:].
+	// In tests, this leads to go tooling arguments being part of the command arguments.
+	if args == nil {
 		args = []string{}
 	}
 	cmd.SetArgs(args)

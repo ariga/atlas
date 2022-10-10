@@ -43,20 +43,22 @@ func schemaCmd() *cobra.Command {
 	}
 }
 
+type schemaApplyFlags struct {
+	URL         string   // URL of database to apply the changes on.
+	DevURL      string   // URL of the dev database.
+	Paths       []string // Paths to HCL files.
+	Schemas     []string // Schemas to take into account when diffing.
+	Exclude     []string // List of glob patterns used to filter resources from applying (see schema.InspectOptions).
+	DryRun      bool     // Only show SQL on screen instead of applying it.
+	AutoApprove bool     // Don't prompt for approval before applying SQL.
+	DSN         string   // Deprecated: DSN is an alias for URL.
+}
+
 // schemaApplyCmd represents the 'atlas schema apply' subcommand command.
 func schemaApplyCmd() *cobra.Command {
 	var (
-		flags = &struct {
-			URL         string   // URL of database to apply the changes on.
-			DevURL      string   // URL of the dev database.
-			Paths       []string // Paths to HCL files.
-			Schemas     []string // Schemas to take into account when diffing.
-			Exclude     []string // List of glob patterns used to filter resources from applying (see schema.InspectOptions).
-			DryRun      bool     // Only show SQL on screen instead of applying it.
-			AutoApprove bool     // Don't prompt for approval before applying SQL.
-			DSN         string   // Deprecated: DSN is an alias for URL.
-		}{}
-		cmd = &cobra.Command{
+		flags schemaApplyFlags
+		cmd   = &cobra.Command{
 			Use:   "apply",
 			Short: "Apply an atlas schema to a target database.",
 			// Use 80-columns as max width.
@@ -73,13 +75,16 @@ the project file (see: https://atlasgo.io/cli/projects).
 
 If run with the "--dry-run" flag, atlas will exit after printing out the planned
 migration.`,
-			PreRunE: schemaFlagsFromEnv,
 			Example: `  atlas schema apply -u "mysql://user:pass@localhost/dbname" -f atlas.hcl
   atlas schema apply -u "mysql://localhost" -f schema.hcl --schema prod --schema staging
   atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" -f schema.hcl --dry-run
   atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" -f schema.hcl
   atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -f schema.hcl
   atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f schema.hcl`,
+			PreRunE: schemaFlagsFromEnv,
+			RunE: func(cmd *cobra.Command, args []string) error {
+				return schemaApplyRun(cmd, args, flags)
+			},
 		}
 	)
 	cmd.Flags().SortFlags = false
@@ -93,84 +98,86 @@ migration.`,
 	addFlagDSN(cmd.Flags(), &flags.DSN)
 	cobra.CheckErr(cmd.MarkFlagRequired(flagURL))
 	cobra.CheckErr(cmd.MarkFlagRequired(flagFile))
+	return cmd
+}
 
-	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
-		client, err := sqlclient.Open(cmd.Context(), flags.URL)
+func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) error {
+	client, err := sqlclient.Open(cmd.Context(), flags.URL)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	schemas, ctx := flags.Schemas, cmd.Context()
+	if client.URL.Schema != "" {
+		schemas = append(schemas, client.URL.Schema)
+	}
+	realm, err := client.InspectRealm(ctx, &schema.InspectRealmOption{
+		Schemas: schemas,
+		Exclude: flags.Exclude,
+	})
+	if err != nil {
+		return err
+	}
+	desired := &schema.Realm{}
+	parsed, err := parseHCLPaths(flags.Paths...)
+	if err != nil {
+		return err
+	}
+	if err := client.Eval(parsed, desired, GlobalFlags.Vars); err != nil {
+		return err
+	}
+	if len(schemas) > 0 {
+		// Validate all schemas in file were selected by user.
+		sm := make(map[string]bool, len(schemas))
+		for _, s := range schemas {
+			sm[s] = true
+		}
+		for _, s := range desired.Schemas {
+			if !sm[s.Name] {
+				return fmt.Errorf("schema %q was not selected %q, all schemas defined in file must be selected", s.Name, schemas)
+			}
+		}
+	}
+	if _, ok := client.Driver.(schema.Normalizer); ok && flags.DevURL != "" {
+		dev, err := sqlclient.Open(ctx, flags.DevURL)
 		if err != nil {
 			return err
 		}
-		defer client.Close()
-		schemas, ctx := flags.Schemas, cmd.Context()
-		if client.URL.Schema != "" {
-			schemas = append(schemas, client.URL.Schema)
-		}
-		realm, err := client.InspectRealm(ctx, &schema.InspectRealmOption{
-			Schemas: schemas,
-			Exclude: flags.Exclude,
-		})
+		defer dev.Close()
+		desired, err = dev.Driver.(schema.Normalizer).NormalizeRealm(ctx, desired)
 		if err != nil {
 			return err
 		}
-		desired := &schema.Realm{}
-		parsed, err := parseHCLPaths(flags.Paths...)
-		if err != nil {
-			return err
-		}
-		if err := client.Eval(parsed, desired, GlobalFlags.Vars); err != nil {
-			return err
-		}
-		if len(schemas) > 0 {
-			// Validate all schemas in file were selected by user.
-			sm := make(map[string]bool, len(schemas))
-			for _, s := range schemas {
-				sm[s] = true
-			}
-			for _, s := range desired.Schemas {
-				if !sm[s.Name] {
-					return fmt.Errorf("schema %q was not selected %q, all schemas defined in file must be selected", s.Name, schemas)
-				}
-			}
-		}
-		if _, ok := client.Driver.(schema.Normalizer); ok && flags.DevURL != "" {
-			dev, err := sqlclient.Open(ctx, flags.DevURL)
-			if err != nil {
-				return err
-			}
-			defer dev.Close()
-			desired, err = dev.Driver.(schema.Normalizer).NormalizeRealm(ctx, desired)
-			if err != nil {
-				return err
-			}
-		}
-		changes, err := client.RealmDiff(realm, desired)
-		if err != nil {
-			return err
-		}
-		if len(changes) == 0 {
-			cmd.Println("Schema is synced, no changes to be made")
-			return nil
-		}
-		if err := summary(cmd, client, changes); err != nil {
-			return err
-		}
-		if !flags.DryRun && (flags.AutoApprove || promptUser()) {
-			if err := client.ApplyChanges(ctx, changes); err != nil {
-				return err
-			}
-		}
+	}
+	changes, err := client.RealmDiff(realm, desired)
+	if err != nil {
+		return err
+	}
+	if len(changes) == 0 {
+		cmd.Println("Schema is synced, no changes to be made")
 		return nil
 	}
-	return cmd
+	if err := summary(cmd, client, changes); err != nil {
+		return err
+	}
+	if !flags.DryRun && (flags.AutoApprove || promptUser()) {
+		if err := client.ApplyChanges(ctx, changes); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type schemeCleanFlags struct {
+	URL         string // URL of database to apply the changes on.
+	AutoApprove bool   // Don't prompt for approval before applying SQL.
 }
 
 // schemaCleanCmd represents the 'atlas schema clean' subcommand.
 func schemaCleanCmd() *cobra.Command {
 	var (
-		flags = &struct {
-			URL         string // URL of database to apply the changes on.
-			AutoApprove bool   // Don't prompt for approval before applying SQL.
-		}{}
-		cmd = &cobra.Command{
+		flags schemeCleanFlags
+		cmd   = &cobra.Command{
 			Use:   "clean [flags]",
 			Short: "Removes all objects from the connected database.",
 			Long: `'atlas schema clean' drops all objects in the connected database and leaves it in an empty state.
@@ -178,69 +185,74 @@ As a safety feature, 'atlas schema clean' will ask for confirmation before attem
 			Example: `  atlas schema clean -u mysql://user:pass@localhost:3306/dbname
   atlas schema clean -u mysql://user:pass@localhost:3306/`,
 			PreRunE: schemaFlagsFromEnv,
+			RunE: func(cmd *cobra.Command, args []string) error {
+				return schemaCleanRun(cmd, args, flags)
+			},
 		}
 	)
 	cmd.Flags().SortFlags = false
 	addFlagURL(cmd.Flags(), &flags.URL)
 	addFlagAutoApprove(cmd.Flags(), &flags.AutoApprove)
 	cobra.CheckErr(cmd.MarkFlagRequired(flagURL))
+	return cmd
+}
 
-	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		// Open a client to the database.
-		c, err := sqlclient.Open(cmd.Context(), flags.URL)
+func schemaCleanRun(cmd *cobra.Command, _ []string, flags schemeCleanFlags) error {
+	// Open a client to the database.
+	c, err := sqlclient.Open(cmd.Context(), flags.URL)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+	var drop []schema.Change
+	// If the connection is bound to a schema, only drop the resources inside the schema.
+	switch c.URL.Schema {
+	case "":
+		r, err := c.InspectRealm(cmd.Context(), nil)
 		if err != nil {
 			return err
 		}
-		defer c.Close()
-		var drop []schema.Change
-		// If the connection is bound to a schema, only drop the resources inside the schema.
-		switch c.URL.Schema {
-		case "":
-			r, err := c.InspectRealm(cmd.Context(), nil)
-			if err != nil {
-				return err
-			}
-			drop, err = c.RealmDiff(r, nil)
-			if err != nil {
-				return err
-			}
-		default:
-			s, err := c.InspectSchema(cmd.Context(), c.URL.Schema, nil)
-			if err != nil {
-				return err
-			}
-			drop, err = c.SchemaDiff(s, schema.New(s.Name))
-			if err != nil {
-				return err
-			}
-		}
-		if len(drop) == 0 {
-			cmd.Println("Nothing to drop")
-			return nil
-		}
-		if err := summary(cmd, c, drop); err != nil {
+		drop, err = c.RealmDiff(r, nil)
+		if err != nil {
 			return err
 		}
-		if flags.AutoApprove || promptUser() {
-			if err := c.ApplyChanges(cmd.Context(), drop); err != nil {
-				return err
-			}
+	default:
+		s, err := c.InspectSchema(cmd.Context(), c.URL.Schema, nil)
+		if err != nil {
+			return err
 		}
+		drop, err = c.SchemaDiff(s, schema.New(s.Name))
+		if err != nil {
+			return err
+		}
+	}
+	if len(drop) == 0 {
+		cmd.Println("Nothing to drop")
 		return nil
 	}
-	return cmd
+	if err := summary(cmd, c, drop); err != nil {
+		return err
+	}
+	if flags.AutoApprove || promptUser() {
+		if err := c.ApplyChanges(cmd.Context(), drop); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type schemaInspectFlags struct {
+	URL     string   // URL of database to apply the changes on.
+	Schemas []string // Schemas to take into account when diffing.
+	Exclude []string // List of glob patterns used to filter resources from applying (see schema.InspectOptions).
+	DSN     string   // Deprecated: DSN is an alias for URL.
 }
 
 // schemaInspectCmd represents the 'atlas schema inspect' subcommand.
 func schemaInspectCmd() *cobra.Command {
 	var (
-		flags = &struct {
-			URL     string   // URL of database to apply the changes on.
-			Schemas []string // Schemas to take into account when diffing.
-			Exclude []string // List of glob patterns used to filter resources from applying (see schema.InspectOptions).
-			DSN     string   // Deprecated: DSN is an alias for URL.
-		}{}
-		cmd = &cobra.Command{
+		flags schemaInspectFlags
+		cmd   = &cobra.Command{
 			Use:   "inspect",
 			Short: "Inspect a database and print its schema in Atlas DDL syntax.",
 			Long: `'atlas schema inspect' connects to the given database and inspects its schema.
@@ -256,11 +268,14 @@ databases), omit the relevant part from the url, e.g. "mysql://user:pass@localho
 To select specific schemas from the databases, users may use the "--schema" (or "-s" shorthand)
 flag.
 	`,
-			PreRunE: schemaFlagsFromEnv,
 			Example: `  atlas schema inspect -u "mysql://user:pass@localhost:3306/dbname"
   atlas schema inspect -u "mariadb://user:pass@localhost:3306/" --schema=schemaA,schemaB -s schemaC
   atlas schema inspect --url "postgres://user:pass@host:port/dbname?sslmode=disable"
   atlas schema inspect -u "sqlite://file:ex1.db?_fk=1"`,
+			PreRunE: schemaFlagsFromEnv,
+			RunE: func(cmd *cobra.Command, args []string) error {
+				return schemaInspectRun(cmd, args, flags)
+			},
 		}
 	)
 	cmd.Flags().SortFlags = false
@@ -269,32 +284,32 @@ flag.
 	addFlagExclude(cmd.Flags(), &flags.Exclude)
 	addFlagDSN(cmd.Flags(), &flags.DSN)
 	cobra.CheckErr(cmd.MarkFlagRequired(flagURL))
-
-	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		client, err := sqlclient.Open(cmd.Context(), flags.URL)
-		if err != nil {
-			return err
-		}
-		defer client.Close()
-		schemas := flags.Schemas
-		if client.URL.Schema != "" {
-			schemas = append(schemas, client.URL.Schema)
-		}
-		s, err := client.InspectRealm(cmd.Context(), &schema.InspectRealmOption{
-			Schemas: schemas,
-			Exclude: flags.Exclude,
-		})
-		if err != nil {
-			return err
-		}
-		ddl, err := client.MarshalSpec(s)
-		if err != nil {
-			return err
-		}
-		cmd.Print(string(ddl))
-		return nil
-	}
 	return cmd
+}
+
+func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags) error {
+	client, err := sqlclient.Open(cmd.Context(), flags.URL)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	schemas := flags.Schemas
+	if client.URL.Schema != "" {
+		schemas = append(schemas, client.URL.Schema)
+	}
+	s, err := client.InspectRealm(cmd.Context(), &schema.InspectRealmOption{
+		Schemas: schemas,
+		Exclude: flags.Exclude,
+	})
+	if err != nil {
+		return err
+	}
+	ddl, err := client.MarshalSpec(s)
+	if err != nil {
+		return err
+	}
+	cmd.Print(string(ddl))
+	return nil
 }
 
 // schemaFmtCmd represents the 'atlas schema fmt' subcommand.
@@ -310,28 +325,32 @@ After running, the command will print the names of the files it has formatted. I
 files in the directory are formatted, no input will be printed out.
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				args = append(args, "./")
-			}
-			for _, path := range args {
-				tasks, err := tasks(path)
-				if err != nil {
-					return err
-				}
-				for _, task := range tasks {
-					changed, err := fmtFile(task)
-					if err != nil {
-						return err
-					}
-					if changed {
-						cmd.Println(task.path)
-					}
-				}
-			}
-			return nil
+			return schemaFmtRun(cmd, args)
 		},
 	}
 	return cmd
+}
+
+func schemaFmtRun(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		args = append(args, "./")
+	}
+	for _, path := range args {
+		tasks, err := tasks(path)
+		if err != nil {
+			return err
+		}
+		for _, task := range tasks {
+			changed, err := fmtFile(task)
+			if err != nil {
+				return err
+			}
+			if changed {
+				cmd.Println(task.path)
+			}
+		}
+	}
+	return nil
 }
 
 // selectEnv returns the Env from the current project file based on the selected
