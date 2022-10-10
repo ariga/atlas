@@ -77,7 +77,7 @@ func migrateApplyCmd() *cobra.Command {
 	var (
 		flags migrateApplyFlags
 		cmd   = &cobra.Command{
-			Use:   "apply [amount] [flags]",
+			Use:   "apply [flags] [amount]",
 			Short: "Applies pending migration files on the connected database.",
 			Long: `'atlas migrate apply' reads the migration state of the connected database and computes what migrations are pending.
 It then attempts to apply the pending migration files in the correct order onto the database. 
@@ -256,7 +256,7 @@ func migrateDiffCmd() *cobra.Command {
 	var (
 		flags migrateDiffFlags
 		cmd   = &cobra.Command{
-			Use:   "diff [name] [flags]",
+			Use:   "diff [flags] [name]",
 			Short: "Compute the diff between the migration directory and a desired state and create a new migration file.",
 			Long: `'atlas migrate diff' uses the dev-database to re-run all migration files in the migration directory, compares
 it to a given desired state and create a new migration file containing SQL statements to migrate the migration
@@ -626,7 +626,7 @@ func migrateNewCmd() *cobra.Command {
 	var (
 		flags migrateNewFlags
 		cmd   = &cobra.Command{
-			Use:     "new [name] [flags]",
+			Use:     "new [flags] [name]",
 			Short:   "Creates a new empty migration file in the migration directory.",
 			Long:    `'atlas migrate new' creates a new migration according to the configured formatter without any statements in it.`,
 			Example: `  atlas migrate new my-new-migration`,
@@ -682,7 +682,7 @@ func migrateSetCmd() *cobra.Command {
 	var (
 		flags migrateSetFlags
 		cmd   = &cobra.Command{
-			Use:   "set <version> [flags]",
+			Use:   "set [flags] <version>",
 			Short: "Set the current version of the migration history table.",
 			Long: `'atlas migrate set' edits the revision table to consider all migrations up to and including the given version
 to be applied. This command is usually used after manually making changes to the managed database.`,
