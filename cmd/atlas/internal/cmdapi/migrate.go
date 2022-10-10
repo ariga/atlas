@@ -289,6 +289,7 @@ directory state to the desired schema. The desired state can be another connecte
 	addFlagSchemas(cmd.Flags(), &flags.schemas)
 	cmd.Flags().StringVar(&flags.qualifier, flagQualifier, "", "qualify tables with custom qualifier when working on a single schema")
 	cobra.CheckErr(cmd.MarkFlagRequired(flagTo))
+	cobra.CheckErr(cmd.MarkFlagRequired(flagDevURL))
 	return cmd
 }
 

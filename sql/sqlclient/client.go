@@ -201,7 +201,7 @@ func OpenURL(ctx context.Context, u *url.URL, opts ...OpenOption) (*Client, erro
 	}
 	v, ok := drivers.Load(u.Scheme)
 	if !ok {
-		return nil, fmt.Errorf("sql/sqlclient: no opener was register with name %q", u.Scheme)
+		return nil, fmt.Errorf("sql/sqlclient: no opener was registered with name %q", u.Scheme)
 	}
 	drv := v.(*driver)
 	// If there is a schema given and the driver allows to change the schema for the url, do it.
