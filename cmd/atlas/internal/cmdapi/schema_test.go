@@ -5,10 +5,8 @@
 package cmdapi
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -31,6 +29,105 @@ const (
 }
 `
 )
+
+func TestCmdSchemaDiff(t *testing.T) {
+	// Creates the missing table.
+	s, err := runCmd(
+		schemaDiffCmd(),
+		"--from", openSQLite(t, ""),
+		"--to", openSQLite(t, "create table t1 (id int);"),
+	)
+	require.NoError(t, err)
+	require.EqualValues(t, "-- Create \"t1\" table\nCREATE TABLE `t1` (`id` int NULL)\n", s)
+
+	// No changes.
+	s, err = runCmd(
+		schemaDiffCmd(),
+		"--from", openSQLite(t, ""),
+		"--to", openSQLite(t, ""),
+	)
+	require.NoError(t, err)
+	require.EqualValues(t, "Schemas are synced, no changes to be made.\n", s)
+
+	// Desired state from migration directory requires dev database.
+	_, err = runCmd(
+		schemaDiffCmd(),
+		"--from", "file://testdata/sqlite",
+		"--to", openSQLite(t, ""),
+	)
+	require.EqualError(t, err, "--dev-url cannot be empty")
+
+	// Desired state from migration directory.
+	s, err = runCmd(
+		schemaDiffCmd(),
+		"--from", openSQLite(t, ""),
+		"--to", "file://testdata/sqlite",
+		"--dev-url", openSQLite(t, ""),
+	)
+	require.NoError(t, err)
+	require.EqualValues(t, "-- Create \"tbl\" table\nCREATE TABLE `tbl` (`col` int NOT NULL, `col_2` bigint NULL)\n", s)
+
+	// Desired state from migration directory.
+	s, err = runCmd(
+		schemaDiffCmd(),
+		"--from", openSQLite(t, ""),
+		"--to", "file://testdata/sqlite",
+		"--dev-url", openSQLite(t, ""),
+	)
+	require.NoError(t, err)
+	require.EqualValues(t, "-- Create \"tbl\" table\nCREATE TABLE `tbl` (`col` int NOT NULL, `col_2` bigint NULL)\n", s)
+
+	// Current state from migration directory, desired state from HCL - synced.
+	p := filepath.Join(t.TempDir(), "schema.hcl")
+	require.NoError(t, os.WriteFile(p, []byte(`schema "main" {}
+table "tbl" {
+  schema = schema.main
+  column "col" {
+    type = int
+  }
+  column "col_2" {
+    type = bigint
+    null = true
+  }
+}`), 0644))
+	s, err = runCmd(
+		schemaDiffCmd(),
+		"--from", "file://testdata/sqlite",
+		"--to", "file://"+p,
+		"--dev-url", openSQLite(t, ""),
+	)
+	require.NoError(t, err)
+	require.EqualValues(t, "Schemas are synced, no changes to be made.\n", s)
+
+	// Current state from migration directory, desired state from HCL - missing column.
+	p = filepath.Join(t.TempDir(), "schema.hcl")
+	require.NoError(t, os.WriteFile(p, []byte(`schema "main" {}
+table "tbl" {
+  schema = schema.main
+  column "col" {
+    type = int
+  }
+  column "col_2" {
+    type = bigint
+    null = true
+  }
+  column "col_3" {
+    type = text
+  }
+}`), 0644))
+	s, err = runCmd(
+		schemaDiffCmd(),
+		"--from", "file://testdata/sqlite",
+		"--to", "file://"+p,
+		"--dev-url", openSQLite(t, ""),
+	)
+	require.NoError(t, err)
+	require.EqualValues(
+		t,
+		"-- Add column \"col_3\" to table: \"tbl\"\nALTER TABLE `tbl` ADD COLUMN `col_3` text NOT NULL\n",
+		s,
+	)
+}
 
 func TestFmt(t *testing.T) {
 	for _, tt := range []struct {
@@ -100,7 +197,8 @@ func TestFmt(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			dir := setupFmtTest(t, tt.inputDir)
-			out := runFmt(t, tt.args)
+			out, err := runCmd(schemaFmtCmd(), tt.args...)
+			require.NoError(t, err)
 			assertDir(t, dir, tt.expectedDir)
 			require.EqualValues(t, tt.expectedOut, out)
 		})
@@ -115,32 +213,21 @@ func TestSchema_Clean(t *testing.T) {
 	require.NoError(t, err)
 
 	// Apply migrations onto database.
-	MigrateFlags.Apply.BaselineVersion = ""
-	_, err = runCmd(Root, "migrate", "apply", "--dir", "file://testdata/sqlite", "--url", u)
+	_, err = runCmd(migrateApplyCmd(), "--dir", "file://testdata/sqlite", "--url", u)
 	require.NoError(t, err)
 
 	// Run clean and expect to be clean.
-	_, err = runCmd(Root, "migrate", "apply", "--dir", "file://testdata/sqlite", "--url", u)
+	_, err = runCmd(migrateApplyCmd(), "--dir", "file://testdata/sqlite", "--url", u)
 	require.NoError(t, err)
-	s, err := runCmd(Root, "schema", "clean", "--url", u, "--auto-approve")
+	s, err := runCmd(schemaCleanCmd(), "--url", u, "--auto-approve")
 	require.NoError(t, err)
 	require.NotZero(t, s)
 	require.NoError(t, c.Driver.(migrate.CleanChecker).CheckClean(context.Background(), nil))
 }
 
-func runFmt(t *testing.T, args []string) string {
-	var out bytes.Buffer
-	SchemaFmt.ResetCommands() // Detach from sub-commands and parents, needed to skip input validation done by them.
-	SchemaFmt.SetOut(&out)
-	SchemaFmt.SetArgs(args)
-	err := SchemaFmt.Execute()
-	require.NoError(t, err)
-	return out.String()
-}
-
 func assertDir(t *testing.T, dir string, expected map[string]string) {
 	act := make(map[string]string)
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	require.NoError(t, err)
 	for _, f := range files {
 		if f.IsDir() {

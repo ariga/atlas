@@ -57,7 +57,7 @@ func TestRegisterOpen(t *testing.T) {
 	require.Equal(t, "schema", c.URL.Schema)
 
 	c1, err = sqlclient.Open(context.Background(), "postgres://:3306")
-	require.EqualError(t, err, `sql/sqlclient: no opener was register with name "postgres"`)
+	require.EqualError(t, err, `sql/sqlclient: no opener was registered with name "postgres"`)
 }
 
 func TestClient_AddClosers(t *testing.T) {
