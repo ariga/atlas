@@ -1,0 +1,32 @@
+execsql 'CREATE DOMAIN script_column_domain.positive_int AS bigint CHECK (VALUE > 0)'
+
+apply 1.hcl
+cmpshow users 1.sql
+cmphcl 1.inspect.hcl
+
+-- 1.hcl --
+schema "script_column_domain" {}
+
+table "users" {
+  schema = schema.script_column_domain
+  column "c1" {
+    type = sql("script_column_domain.positive_int")
+  }
+}
+
+-- 1.sql --
+                     Table "script_column_domain.users"
+ Column |               Type                | Collation | Nullable | Default
+--------+-----------------------------------+-----------+----------+---------
+ c1     | script_column_domain.positive_int |           | not null |
+
+-- 1.inspect.hcl --
+table "users" {
+  schema = schema.script_column_domain
+  column "c1" {
+    null = false
+    type = sql("script_column_domain.positive_int")
+  }
+}
+schema "script_column_domain" {
+}

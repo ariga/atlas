@@ -986,7 +986,7 @@ FROM
 	JOIN pg_catalog.pg_namespace AS t2 ON t2.nspname = t1.table_schema
 	JOIN pg_catalog.pg_class AS t3 ON t3.relnamespace = t2.oid AND t3.relname = t1.table_name
 	JOIN pg_catalog.pg_attribute AS a ON a.attrelid = t3.oid AND a.attname = t1.column_name
-	LEFT JOIN pg_catalog.pg_type AS t4 ON t1.udt_name = t4.typname AND t4.typnamespace = t2.oid
+	LEFT JOIN pg_catalog.pg_type AS t4 ON t4.oid = a.atttypid
 WHERE
 	t1.table_schema = $1 AND t1.table_name IN (%s)
 ORDER BY

@@ -254,14 +254,19 @@ func columnType(c *columnDesc) (schema.Type, error) {
 		}
 	case TypeUserDefined:
 		typ = &UserDefinedType{T: c.fmtype}
+	default:
+		typ = &schema.UnsupportedType{T: t}
+	}
+	switch c.typtype {
+	case "e":
 		// The `typtype` column is set to 'e' for enum types, and the
 		// values are filled in batch after the rows above is closed.
 		// https://postgresql.org/docs/current/catalog-pg-type.html
-		if c.typtype == "e" {
-			typ = newEnumType(c.fmtype, c.typid)
-		}
-	default:
-		typ = &schema.UnsupportedType{T: t}
+		typ = newEnumType(c.fmtype, c.typid)
+	case "d":
+		// Use user-defined for domain types as we do not
+		// support their creation at this stage.
+		typ = &UserDefinedType{T: c.fmtype}
 	}
 	return typ, nil
 }
