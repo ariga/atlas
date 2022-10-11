@@ -60,7 +60,7 @@ Applies pending migration files on the connected database.
 
 #### Usage
 ```
-atlas migrate apply [amount] [flags]
+atlas migrate apply [flags] [amount]
 ```
 
 #### Details
@@ -102,7 +102,7 @@ Compute the diff between the migration directory and a desired state and create 
 
 #### Usage
 ```
-atlas migrate diff [name] [flags]
+atlas migrate diff [flags] [name]
 ```
 
 #### Details
@@ -215,7 +215,7 @@ Creates a new empty migration file in the migration directory.
 
 #### Usage
 ```
-atlas migrate new [name] [flags]
+atlas migrate new [flags] [name]
 ```
 
 #### Details
@@ -240,7 +240,7 @@ Set the current version of the migration history table.
 
 #### Usage
 ```
-atlas migrate set <version> [flags]
+atlas migrate set [flags] <version>
 ```
 
 #### Details
