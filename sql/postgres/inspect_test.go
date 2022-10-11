@@ -79,6 +79,7 @@ func TestDriver_InspectTable(t *testing.T) {
  users       |  c32         | bigint                      | int4                | NO          | nextval('public.t1_c32_seq'::regclass) |                          |                32 |                    |             0 |                     |                    |                | NO          |                |                    |                  |                     |                       |         | b       |         |         |    23
  users       |  c33         | USER-DEFINED                | test."status""."    | NO          |  'unknown'::test."status""."           |                          |                   |                    |               |                     |                    |                | NO          |                |                    |                  |                     |                       |         | e       |         |         | 16775
  users       |  c34         | ARRAY                       | state[]             | NO          |                                        |                          |                   |                    |               |                     |                    |                | NO          |                |                    |                  |                     |                       |         | b       |  16774  |  e      | 16779
+ users       |  c35         | character                   | domain_char         | NO          |                                        |                          |                   |                    |               |                     |                    |                | NO          |                |                    |                  |                     |                       |         | d       |  16774  |  e      | 16779
 `))
 				m.ExpectQuery(sqltest.Escape(`SELECT enumtypid, enumlabel FROM pg_enum WHERE enumtypid IN ($1, $2)`)).
 					WithArgs(16774, 16775).
@@ -134,6 +135,7 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c32", Type: &schema.ColumnType{Raw: "bigserial", Type: &SerialType{T: "bigserial", SequenceName: "t1_c32_seq"}}},
 					{Name: "c33", Type: &schema.ColumnType{Raw: `status".`, Type: &schema.EnumType{T: `status".`, Values: []string{"unknown"}, Schema: schema.New("test")}}, Default: &schema.Literal{V: "'unknown'"}},
 					{Name: "c34", Type: &schema.ColumnType{Raw: "ARRAY", Type: &ArrayType{T: "state[]", Type: &schema.EnumType{T: "state", Values: []string{"on", "off"}, Schema: t.Schema}}}},
+					{Name: "c35", Type: &schema.ColumnType{Raw: "character", Type: &UserDefinedType{T: "domain_char"}}},
 				}, t.Columns)
 			},
 		},
