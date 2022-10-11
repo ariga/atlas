@@ -550,6 +550,7 @@ func migrateLintCmd() *cobra.Command {
 	cmd.Flags().SortFlags = false
 	addFlagDevURL(cmd.Flags(), &flags.devURL)
 	addFlagDirURL(cmd.Flags(), &flags.dirURL)
+	addFlagDirFormat(cmd.Flags(), &flags.dirFormat)
 	cmd.Flags().StringVarP(&flags.logFormat, flagLog, "", "", "custom logging using a Go template")
 	cmd.Flags().UintVarP(&flags.latest, flagLatest, "", 0, "run analysis on the latest N migration files")
 	cmd.Flags().StringVarP(&flags.gitBase, flagGitBase, "", "", "run analysis against the base Git branch")

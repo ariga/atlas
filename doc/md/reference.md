@@ -199,12 +199,13 @@ atlas migrate lint [flags]
 ```
 #### Flags
 ```
-      --dev-url string    [driver://username:password@address/dbname?param=value] select a dev database using the URL format
-      --dir string        select migration directory using URL format (default "file://migrations")
-      --log string        custom logging using a Go template
-      --latest uint       run analysis on the latest N migration files
-      --git-base string   run analysis against the base Git branch
-      --git-dir string    path to the repository working directory (default ".")
+      --dev-url string      [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+      --dir string          select migration directory using URL format (default "file://migrations")
+      --dir-format string   select migration file format (default "atlas")
+      --log string          custom logging using a Go template
+      --latest uint         run analysis on the latest N migration files
+      --git-base string     run analysis against the base Git branch
+      --git-dir string      path to the repository working directory (default ".")
 
 ```
 

@@ -732,6 +732,16 @@ func TestMigrate_Lint(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, "1.up.sql:0", s)
+	s, err = runCmd(
+		migrateLintCmd(),
+		"--dir", "file://"+p+"?format="+formatGolangMigrate,
+		"--dev-url", openSQLite(t, ""),
+		"--latest", "2",
+		"--log", "{{ range .Files }}{{ .Name }}:{{ len .Reports }}{{ end }}",
+		"--dir-format", formatGolangMigrate,
+	)
+	require.NoError(t, err)
+	require.Equal(t, "1.up.sql:0", s)
 
 	// Invalid files.
 	err = os.WriteFile(filepath.Join(p, "2.up.sql"), []byte("BORING"), 0600)
