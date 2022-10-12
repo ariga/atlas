@@ -68,17 +68,18 @@ env "multi" {
 	}
 }
 `
-	err := os.WriteFile(filepath.Join(d, projectFileName), []byte(h), 0600)
+	path := filepath.Join(d, "atlas.hcl")
+	err := os.WriteFile(path, []byte(h), 0600)
 	require.NoError(t, err)
-	path := filepath.Join(d, projectFileName)
+	GlobalFlags.ConfigURL = "file://" + path
 	t.Run("ok", func(t *testing.T) {
-		var env *Env
-		env, err = LoadEnv(path, "local")
+		envs, err := LoadEnv("local")
 		require.NoError(t, err)
+		require.Len(t, envs, 1)
+		env := envs[0]
 		sort.Slice(env.Extra.Attrs, func(i, j int) bool {
 			return env.Extra.Attrs[i].K < env.Extra.Attrs[j].K
 		})
-		require.NoError(t, err)
 		require.EqualValues(t, &Env{
 			Name:    "local",
 			URL:     "mysql://root:pass@localhost:3306/",
@@ -121,39 +122,32 @@ env "multi" {
 		require.EqualValues(t, []string{"./app.hcl"}, sources)
 	})
 	t.Run("multi", func(t *testing.T) {
-		env, err := LoadEnv(path, "multi")
+		envs, err := LoadEnv("multi")
 		require.NoError(t, err)
-		srcs, err := env.Sources()
+		require.Len(t, envs, 1)
+		srcs, err := envs[0].Sources()
 		require.NoError(t, err)
 		require.EqualValues(t, []string{"./a.hcl", "./b.hcl"}, srcs)
 	})
 	t.Run("with input", func(t *testing.T) {
-		env, err := LoadEnv(path, "local", WithInput(map[string]cty.Value{
+		envs, err := LoadEnv("local", WithInput(map[string]cty.Value{
 			"name": cty.StringVal("goodbye"),
 		}))
 		require.NoError(t, err)
-		str, ok := env.Attr("str")
+		require.Len(t, envs, 1)
+		str, ok := envs[0].Attr("str")
 		require.True(t, ok)
 		val, err := str.String()
 		require.NoError(t, err)
 		require.EqualValues(t, "goodbye", val)
 	})
 	t.Run("wrong env", func(t *testing.T) {
-		_, err = LoadEnv(path, "home")
+		_, err = LoadEnv("home")
 		require.EqualError(t, err, `env "home" not defined in project file`)
 	})
 	t.Run("wrong dir", func(t *testing.T) {
-		wd, err := os.Getwd()
-		require.NoError(t, err)
-		_, err = LoadEnv(filepath.Join(wd, projectFileName), "home")
+		GlobalFlags.ConfigURL = projectFileName
+		_, err = LoadEnv("home")
 		require.ErrorContains(t, err, `no such file or directory`)
-	})
-	t.Run("duplicate env", func(t *testing.T) {
-		dup := h + "\n" + h
-		path := filepath.Join(d, "dup.hcl")
-		err = os.WriteFile(path, []byte(dup), 0600)
-		require.NoError(t, err)
-		_, err = LoadEnv(path, "local")
-		require.EqualError(t, err, `duplicate environment name "local"`)
 	})
 }

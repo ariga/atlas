@@ -7,14 +7,16 @@ package cmdapi
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
+	"path/filepath"
 
 	"ariga.io/atlas/schemahcl"
 
 	"github.com/zclconf/go-cty/cty"
 )
 
-const projectFileName = "atlas.hcl"
+const projectFileName = "file://atlas.hcl"
 
 type loadConfig struct {
 	inputVals map[string]cty.Value
@@ -176,42 +178,50 @@ var hclState = schemahcl.New(
 	schemahcl.WithScopedEnums("env.migration.format", formatAtlas, formatFlyway, formatLiquibase, formatGoose, formatGolangMigrate),
 )
 
-// LoadEnv reads the project file in path, and loads the environment
-// with the provided name into env.
-func LoadEnv(path string, name string, opts ...LoadOption) (*Env, error) {
+// LoadEnv reads the project file in path, and loads
+// the environment instances with the provided name.
+func LoadEnv(name string, opts ...LoadOption) ([]*Env, error) {
 	cfg := &loadConfig{}
 	for _, f := range opts {
 		f(cfg)
 	}
+	u, err := url.Parse(GlobalFlags.ConfigURL)
+	if err != nil {
+		return nil, err
+	}
+	if u.Scheme != "file" {
+		return nil, fmt.Errorf("unsupported project file driver %q", u.Scheme)
+	}
+	path := filepath.Join(u.Host, u.Path)
 	b, err := os.ReadFile(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			err = fmt.Errorf("project file %q was not found: %w", path, err)
+		}
 		return nil, err
 	}
 	project := &Project{Lint: &Lint{}}
 	if err := hclState.EvalBytes(b, project, cfg.inputVals); err != nil {
 		return nil, err
 	}
-	envs := make(map[string]*Env)
+	envs := make(map[string][]*Env)
 	for _, e := range project.Envs {
-		if _, ok := envs[e.Name]; ok {
-			return nil, fmt.Errorf("duplicate environment name %q", e.Name)
-		}
 		if e.Name == "" {
 			return nil, fmt.Errorf("all envs must have names on file %q", path)
 		}
 		if _, err := e.Sources(); err != nil {
 			return nil, err
 		}
-		envs[e.Name] = e
+		if e.Migration == nil {
+			e.Migration = &Migration{}
+		}
+		e.Lint = e.Lint.Extend(project.Lint)
+		envs[e.Name] = append(envs[e.Name], e)
 	}
 	selected, ok := envs[name]
 	if !ok {
 		return nil, fmt.Errorf("env %q not defined in project file", name)
 	}
-	if selected.Migration == nil {
-		selected.Migration = &Migration{}
-	}
-	selected.Lint = selected.Lint.Extend(project.Lint)
 	return selected, nil
 }
 

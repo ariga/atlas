@@ -48,7 +48,8 @@ atlas migrate
 
 #### Flags
 ```
-      --env string           set which env from the project file to use
+  -c, --config string        select config (project) file using URL format (default "file://atlas.hcl")
+      --env string           set which env from the config file to use
       --var <name>=<value>   input variables (default [])
 
 ```
@@ -338,7 +339,8 @@ The `atlas schema` command groups subcommands working with declarative Atlas sch
 
 #### Flags
 ```
-      --env string           set which env from the project file to use
+  -c, --config string        select config (project) file using URL format (default "file://atlas.hcl")
+      --env string           set which env from the config file to use
       --var <name>=<value>   input variables (default [])
 
 ```

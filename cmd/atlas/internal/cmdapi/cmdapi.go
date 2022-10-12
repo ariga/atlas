@@ -35,6 +35,8 @@ var (
 
 	// GlobalFlags contains flags common to many Atlas sub-commands.
 	GlobalFlags struct {
+		// Config defines the path to the Atlas project/config file.
+		ConfigURL string
 		// SelectedEnv contains the environment selected from the active project via the --env flag.
 		SelectedEnv string
 		// Vars contains the input variables passed from the CLI to Atlas DDL or project files.
@@ -77,15 +79,11 @@ func init() {
 // inside a project, the "var" flag is not propagated to the schema definition. Instead, it
 // is used to evaluate the project file which can pass input values via the "values" block
 // to the schema.
-func inputValsFromEnv(cmd *cobra.Command) error {
-	activeEnv, err := selectEnv(GlobalFlags.SelectedEnv)
-	if err != nil {
-		return err
-	}
+func inputValsFromEnv(cmd *cobra.Command, env *Env) error {
 	if fl := cmd.Flag(flagVar); fl == nil {
 		return nil
 	}
-	values, err := activeEnv.asMap()
+	values, err := env.asMap()
 	if err != nil {
 		return err
 	}
@@ -172,6 +170,7 @@ const (
 	flagAllowDirty     = "allow-dirty"
 	flagAutoApprove    = "auto-approve"
 	flagBaseline       = "baseline"
+	flagConfig         = "config"
 	flagDevURL         = "dev-url"
 	flagDirURL         = "dir"
 	flagDirFormat      = "dir-format"
@@ -194,9 +193,10 @@ const (
 	flagQualifier      = "qualifier"
 )
 
-func addFlagEnvVar(set *pflag.FlagSet) {
-	set.StringVar(&GlobalFlags.SelectedEnv, flagEnv, "", "set which env from the project file to use")
+func addGlobalFlags(set *pflag.FlagSet) {
+	set.StringVar(&GlobalFlags.SelectedEnv, flagEnv, "", "set which env from the config file to use")
 	set.Var(&GlobalFlags.Vars, flagVar, "input variables")
+	set.StringVarP(&GlobalFlags.ConfigURL, flagConfig, "c", projectFileName, "select config (project) file using URL format")
 }
 
 func addFlagAutoApprove(set *pflag.FlagSet, target *bool) {
@@ -318,10 +318,31 @@ func dsn2url(cmd *cobra.Command) error {
 // on the cmd, it was not set by the user via the command line and if envVal is not
 // an empty string.
 func maySetFlag(cmd *cobra.Command, name, envVal string) error {
-	if fl := cmd.Flag(name); fl == nil || fl.Changed || envVal == "" {
+	if f := cmd.Flag(name); f == nil || f.Changed || envVal == "" {
 		return nil
 	}
 	return cmd.Flags().Set(name, envVal)
+}
+
+// resetFromEnv traverses the command flags, records what flags
+// were not set by the user and returns a callback to clear them
+// after it was set by the current environment.
+func resetFromEnv(cmd *cobra.Command) func() {
+	mayReset := make(map[string]string)
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if !f.Changed {
+			mayReset[f.Name] = f.Value.String()
+		}
+	})
+	return func() {
+		for n, v := range mayReset {
+			if f := cmd.Flag(n); f != nil && f.Changed {
+				f.Changed = false
+				// Unexpected error, because this flag was set before.
+				cobra.CheckErr(f.Value.Set(v))
+			}
+		}
+	}
 }
 
 type (

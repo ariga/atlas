@@ -57,7 +57,7 @@ func migrateCmd() *cobra.Command {
 		Short: "Manage versioned migration files",
 		Long:  "'atlas migrate' wraps several sub-commands for migration management.",
 	}
-	addFlagEnvVar(cmd.PersistentFlags())
+	addGlobalFlags(cmd.PersistentFlags())
 	return cmd
 }
 
@@ -92,14 +92,25 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
   atlas migrate apply --env dev 1
   atlas migrate apply --dry-run --env dev 1`,
 			Args: cobra.MaximumNArgs(1),
-			PreRunE: func(cmd *cobra.Command, args []string) error {
-				if err := migrateFlagsFromEnv(cmd); err != nil {
+			RunE: func(cmd *cobra.Command, args []string) error {
+				if GlobalFlags.SelectedEnv == "" {
+					return migrateApplyRun(cmd, args, flags)
+				}
+				envs, err := LoadEnv(GlobalFlags.SelectedEnv, WithInput(GlobalFlags.Vars))
+				if err != nil {
 					return err
 				}
-				return checkDir(cmd, flags.dirURL, false)
-			},
-			RunE: func(cmd *cobra.Command, args []string) error {
-				return migrateApplyRun(cmd, args, flags)
+				reset := resetFromEnv(cmd)
+				for _, e := range envs {
+					if err := setFlagsFromEnv(cmd, e); err != nil {
+						return err
+					}
+					if err := migrateApplyRun(cmd, args, flags); err != nil {
+						return err
+					}
+					reset()
+				}
+				return nil
 			},
 		}
 	)
@@ -114,7 +125,6 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 	cmd.Flags().StringVarP(&flags.txMode, flagTxMode, "", txModeFile, "set transaction mode [none, file, all]")
 	cmd.Flags().BoolVarP(&flags.allowDirty, flagAllowDirty, "", false, "allow start working on a non-clean database")
 	cmd.MarkFlagsMutuallyExclusive(flagFrom, flagBaseline)
-	cobra.CheckErr(cmd.MarkFlagRequired(flagURL))
 	return cmd
 }
 
@@ -133,10 +143,17 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 			return fmt.Errorf("cannot apply '%d' migration files", n)
 		}
 	}
-	// Open the migration directory.
+	// Open and validate the migration directory.
 	dir, err := dir(flags.dirURL, false)
 	if err != nil {
 		return err
+	}
+	if err := migrate.Validate(dir); err != nil {
+		printChecksumError(cmd)
+		return err
+	}
+	if flags.url == "" {
+		return errors.New(`required flag "url" not set`)
 	}
 	// Open a client to the database.
 	c, err := sqlclient.Open(cmd.Context(), flags.url)
@@ -1524,42 +1541,46 @@ func migrateFlagsFromEnv(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	if err := inputValsFromEnv(cmd); err != nil {
+	return setFlagsFromEnv(cmd, activeEnv)
+}
+
+func setFlagsFromEnv(cmd *cobra.Command, env *Env) error {
+	if err := inputValsFromEnv(cmd, env); err != nil {
 		return err
 	}
-	if err := maySetFlag(cmd, flagDevURL, activeEnv.DevURL); err != nil {
+	if err := maySetFlag(cmd, flagDevURL, env.DevURL); err != nil {
 		return err
 	}
-	if err := maySetFlag(cmd, flagDirURL, activeEnv.Migration.Dir); err != nil {
+	if err := maySetFlag(cmd, flagDirURL, env.Migration.Dir); err != nil {
 		return err
 	}
-	if err := maySetFlag(cmd, flagDirFormat, activeEnv.Migration.Format); err != nil {
+	if err := maySetFlag(cmd, flagDirFormat, env.Migration.Format); err != nil {
 		return err
 	}
 	switch cmd.Name() {
 	case "lint":
-		if err := maySetFlag(cmd, flagLog, activeEnv.Lint.Log); err != nil {
+		if err := maySetFlag(cmd, flagLog, env.Lint.Log); err != nil {
 			return err
 		}
-		if err := maySetFlag(cmd, flagLatest, strconv.Itoa(activeEnv.Lint.Latest)); err != nil {
+		if err := maySetFlag(cmd, flagLatest, strconv.Itoa(env.Lint.Latest)); err != nil {
 			return err
 		}
-		if err := maySetFlag(cmd, flagGitDir, activeEnv.Lint.Git.Dir); err != nil {
+		if err := maySetFlag(cmd, flagGitDir, env.Lint.Git.Dir); err != nil {
 			return err
 		}
-		if err := maySetFlag(cmd, flagGitBase, activeEnv.Lint.Git.Base); err != nil {
+		if err := maySetFlag(cmd, flagGitBase, env.Lint.Git.Base); err != nil {
 			return err
 		}
 	default:
-		if err := maySetFlag(cmd, flagURL, activeEnv.URL); err != nil {
+		if err := maySetFlag(cmd, flagURL, env.URL); err != nil {
 			return err
 		}
-		if err := maySetFlag(cmd, flagRevisionSchema, activeEnv.Migration.RevisionsSchema); err != nil {
+		if err := maySetFlag(cmd, flagRevisionSchema, env.Migration.RevisionsSchema); err != nil {
 			return err
 		}
 	}
 	// Transform "src" to a URL.
-	srcs, err := activeEnv.Sources()
+	srcs, err := env.Sources()
 	if err != nil {
 		return err
 	}
@@ -1572,7 +1593,7 @@ func migrateFlagsFromEnv(cmd *cobra.Command) error {
 	if err := maySetFlag(cmd, flagTo, strings.Join(srcs, ",")); err != nil {
 		return err
 	}
-	if s := "[" + strings.Join(activeEnv.Schemas, "") + "]"; len(activeEnv.Schemas) > 0 {
+	if s := "[" + strings.Join(env.Schemas, "") + "]"; len(env.Schemas) > 0 {
 		if err := maySetFlag(cmd, flagSchema, s); err != nil {
 			return err
 		}
