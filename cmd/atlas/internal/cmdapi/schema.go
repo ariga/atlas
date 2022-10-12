@@ -129,6 +129,8 @@ func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) erro
 			return err
 		}
 		defer dev.Close()
+	} else {
+		dev = client
 	}
 	schemas, ctx := flags.Schemas, cmd.Context()
 	if client.URL.Schema != "" {
