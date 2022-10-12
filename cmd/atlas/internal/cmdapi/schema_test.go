@@ -127,6 +127,52 @@ table "tbl" {
 		"-- Add column \"col_3\" to table: \"tbl\"\nALTER TABLE `tbl` ADD COLUMN `col_3` text NOT NULL\n",
 		s,
 	)
+
+	// Current state from migration directory, desired state from multi file HCL - missing column.
+	p = t.TempDir()
+	var (
+		one = filepath.Join(p, "one.hcl")
+		two = filepath.Join(p, "two.hcl")
+	)
+	require.NoError(t, os.WriteFile(one, []byte(`table "tbl" {
+  schema = schema.main
+  column "col" {
+    type = int
+  }
+  column "col_2" {
+    type = bigint
+    null = true
+  }
+  column "col_3" {
+    type = text
+  }
+}`), 0644))
+	require.NoError(t, os.WriteFile(two, []byte(`schema "main" {}`), 0644))
+	s, err = runCmd(
+		schemaDiffCmd(),
+		"--from", "file://testdata/sqlite",
+		"--to", "file://"+p,
+		"--dev-url", openSQLite(t, ""),
+	)
+	require.NoError(t, err)
+	require.EqualValues(
+		t,
+		"-- Add column \"col_3\" to table: \"tbl\"\nALTER TABLE `tbl` ADD COLUMN `col_3` text NOT NULL\n",
+		s,
+	)
+	s, err = runCmd(
+		schemaDiffCmd(),
+		"--from", "file://testdata/sqlite",
+		"--to", "file://"+one,
+		"--to", "file://"+two,
+		"--dev-url", openSQLite(t, ""),
+	)
+	require.NoError(t, err)
+	require.EqualValues(
+		t,
+		"-- Add column \"col_3\" to table: \"tbl\"\nALTER TABLE `tbl` ADD COLUMN `col_3` text NOT NULL\n",
+		s,
+	)
 }
 
 func TestFmt(t *testing.T) {

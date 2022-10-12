@@ -181,15 +181,19 @@ const (
 	flagExclude        = "exclude"
 	flagFile           = "file"
 	flagFrom           = "from"
+	flagFromShort      = "f"
 	flagGitBase        = "git-base"
 	flagGitDir         = "git-dir"
 	flagLatest         = "latest"
 	flagLog            = "log"
 	flagRevisionSchema = "revisions-schema"
 	flagSchema         = "schema"
+	flagSchemaShort    = "s"
 	flagTo             = "to"
+	flagToShort        = "t"
 	flagTxMode         = "tx-mode"
 	flagURL            = "url"
+	flagURLShort       = "u"
 	flagVar            = "var"
 	flagQualifier      = "qualifier"
 )
@@ -261,7 +265,7 @@ func addFlagRevisionSchema(set *pflag.FlagSet, target *string) {
 func addFlagSchemas(set *pflag.FlagSet, target *[]string) {
 	set.StringSliceVarP(
 		target,
-		flagSchema, "s",
+		flagSchema, flagSchemaShort,
 		nil,
 		"set schema names",
 	)
@@ -269,7 +273,7 @@ func addFlagSchemas(set *pflag.FlagSet, target *[]string) {
 
 // addFlagURL adds a URL flag. If given, args[0] override the name, args[1] the shorthand.
 func addFlagURL(set *pflag.FlagSet, target *string, args ...string) {
-	name, short := flagURL, "u"
+	name, short := flagURL, flagURLShort
 	switch len(args) {
 	case 2:
 		short = args[1]
@@ -286,7 +290,7 @@ func addFlagURL(set *pflag.FlagSet, target *string, args ...string) {
 }
 
 func addFlagURLs(set *pflag.FlagSet, target *[]string, args ...string) {
-	name, short := flagURL, "u"
+	name, short := flagURL, flagURLShort
 	switch len(args) {
 	case 2:
 		short = args[1]
@@ -336,6 +340,7 @@ type (
 		urls    []string          // urls to create a migrate.StateReader from
 		dev     *sqlclient.Client // dev database connection
 		schemas []string          // schemas to work on
+		vars    Vars
 	}
 )
 
@@ -451,7 +456,7 @@ func hclStateReader(ctx context.Context, config *stateReaderConfig, urls []*url.
 		return nil, err
 	}
 	realm := &schema.Realm{}
-	if err := config.dev.Eval(parser, realm, nil); err != nil {
+	if err := config.dev.Eval(parser, realm, config.vars); err != nil {
 		return nil, err
 	}
 	if len(config.schemas) > 0 {
