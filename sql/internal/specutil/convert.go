@@ -456,10 +456,6 @@ func normalizeQuotes(s string) (string, error) {
 func FromIndex(idx *schema.Index, partFns ...func(*schema.IndexPart, *sqlspec.IndexPart)) (*sqlspec.Index, error) {
 	spec := &sqlspec.Index{Name: idx.Name, Unique: idx.Unique}
 	convertCommentFromSchema(idx.Attrs, &spec.Extra.Attrs)
-	if parts, ok := columnsOnly(idx); ok {
-		spec.Columns = parts
-		return spec, nil
-	}
 	spec.Parts = make([]*sqlspec.IndexPart, len(idx.Parts))
 	for i, p := range idx.Parts {
 		part := &sqlspec.IndexPart{Desc: p.Desc}
@@ -482,18 +478,23 @@ func FromIndex(idx *schema.Index, partFns ...func(*schema.IndexPart, *sqlspec.In
 		}
 		spec.Parts[i] = part
 	}
+	if parts, ok := columnsOnly(spec.Parts); ok {
+		spec.Parts = nil
+		spec.Columns = parts
+		return spec, nil
+	}
 	return spec, nil
 }
 
-func columnsOnly(idx *schema.Index) ([]*schemahcl.Ref, bool) {
-	parts := make([]*schemahcl.Ref, len(idx.Parts))
-	for i, p := range idx.Parts {
-		if p.C == nil || p.Desc {
+func columnsOnly(parts []*sqlspec.IndexPart) ([]*schemahcl.Ref, bool) {
+	columns := make([]*schemahcl.Ref, len(parts))
+	for i, p := range parts {
+		if p.Desc || p.Column == nil || len(p.Extra.Attrs) != 0 {
 			return nil, false
 		}
-		parts[i] = ColumnRef(p.C.Name)
+		columns[i] = p.Column
 	}
-	return parts, true
+	return columns, true
 }
 
 // FromForeignKey converts schema.ForeignKey to sqlspec.ForeignKey.

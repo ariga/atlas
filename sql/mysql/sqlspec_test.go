@@ -641,6 +641,42 @@ schema "test" {
 }
 `
 	require.EqualValues(t, exp, string(buf))
+
+	// Columns only.
+	s = schema.New("test").
+		AddTables(
+			schema.NewTable("users").
+				AddColumns(c, c2).
+				AddIndexes(
+					schema.NewIndex("idx").
+						AddParts(
+							schema.NewColumnPart(c).AddAttrs(&SubPart{Len: 10}),
+						),
+				),
+		)
+	buf, err = MarshalHCL(s)
+	require.NoError(t, err)
+	exp = `table "users" {
+  schema = schema.test
+  column "name" {
+    null = false
+    type = text
+  }
+  column "Full Name" {
+    null = false
+    type = text
+  }
+  index "idx" {
+    on {
+      column = column.name
+      prefix = 10
+    }
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, exp, string(buf))
 }
 
 func TestMarshalSpec_TimePrecision(t *testing.T) {
