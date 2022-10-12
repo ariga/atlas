@@ -687,9 +687,9 @@ func migrateSetCmd() *cobra.Command {
 			Short: "Set the current version of the migration history table.",
 			Long: `'atlas migrate set' edits the revision table to consider all migrations up to and including the given version
 to be applied. This command is usually used after manually making changes to the managed database.`,
-			Example: `  atlas migrate set-revision 3 --url mysql://user:pass@localhost:3306/
-  atlas migrate set-revision 4 --env local
-  atlas migrate set-revision 1.2.4 --url mysql://user:pass@localhost:3306/my_db --revision-schema my_revisions`,
+			Example: `  atlas migrate set 3 --url mysql://user:pass@localhost:3306/
+  atlas migrate set 4 --env local
+  atlas migrate set 1.2.4 --url mysql://user:pass@localhost:3306/my_db --revision-schema my_revisions`,
 			Args: cobra.ExactArgs(1),
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
 				if err := migrateFlagsFromEnv(cmd); err != nil {

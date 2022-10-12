@@ -251,9 +251,9 @@ to be applied. This command is usually used after manually making changes to the
 #### Example
 
 ```
-  atlas migrate set-revision 3 --url mysql://user:pass@localhost:3306/
-  atlas migrate set-revision 4 --env local
-  atlas migrate set-revision 1.2.4 --url mysql://user:pass@localhost:3306/my_db --revision-schema my_revisions
+  atlas migrate set 3 --url mysql://user:pass@localhost:3306/
+  atlas migrate set 4 --env local
+  atlas migrate set 1.2.4 --url mysql://user:pass@localhost:3306/my_db --revision-schema my_revisions
 ```
 #### Flags
 ```
