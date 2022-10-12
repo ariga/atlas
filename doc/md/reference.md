@@ -60,7 +60,7 @@ Applies pending migration files on the connected database.
 
 #### Usage
 ```
-atlas migrate apply [amount] [flags]
+atlas migrate apply [flags] [amount]
 ```
 
 #### Details
@@ -102,7 +102,7 @@ Compute the diff between the migration directory and a desired state and create 
 
 #### Usage
 ```
-atlas migrate diff [name] [flags]
+atlas migrate diff [flags] [name]
 ```
 
 #### Details
@@ -215,7 +215,7 @@ Creates a new empty migration file in the migration directory.
 
 #### Usage
 ```
-atlas migrate new [name] [flags]
+atlas migrate new [flags] [name]
 ```
 
 #### Details
@@ -240,7 +240,7 @@ Set the current version of the migration history table.
 
 #### Usage
 ```
-atlas migrate set <version> [flags]
+atlas migrate set [flags] <version>
 ```
 
 #### Details
@@ -357,11 +357,12 @@ atlas schema apply [flags]
 database to the state described in the provided Atlas schema. Before running the
 migration, Atlas will print the migration plan and prompt the user for approval.
 
-The schema is provided by one or more paths (to a file or directory) using the "-f" flag:
-  atlas schema apply -u URL -f file1.hcl -f file2.hcl
-  atlas schema apply -u URL -f schema/ -f override.hcl
+The schema is provided by one or more URLs (to a HCL file or 
+directory, database or migration directory) using the "--to, -t" flag:
+  atlas schema apply -u URL --to file://file1.hcl --to file://file2.hcl
+  atlas schema apply -u URL -t file://schema/ -t file://override.hcl
 
-As a convenience, schemas may also be provided via an environment definition in
+As a convenience, schema URLs may also be provided via an environment definition in
 the project file (see: https://atlasgo.io/cli/projects).
 
 If run with the "--dry-run" flag, atlas will exit after printing out the planned
@@ -370,17 +371,18 @@ migration.
 #### Example
 
 ```
-  atlas schema apply -u "mysql://user:pass@localhost/dbname" -f atlas.hcl
-  atlas schema apply -u "mysql://localhost" -f schema.hcl --schema prod --schema staging
-  atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" -f schema.hcl --dry-run
-  atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" -f schema.hcl
-  atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -f schema.hcl
-  atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f schema.hcl
+  atlas schema apply -u "mysql://user:pass@localhost/dbname" --to file://atlas.hcl
+  atlas schema apply -u "mysql://localhost" -t file://schema.hcl --schema prod --schema staging
+  atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" -t file://schema.hcl --dry-run
+  atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" -t file://schema.hcl
+  atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -t file://schema.hcl
+  atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -t file://schema.hcl
 ```
 #### Flags
 ```
   -f, --file strings      [paths...] file or directory containing the HCL files
   -u, --url string        [driver://username:password@address/dbname?param=value] select a resource using the URL format
+  -t, --to strings        [driver://username:password@address/dbname?param=value] select a resource using the URL format
       --exclude strings   list of glob patterns used to filter resources from applying
   -s, --schema strings    set schema names
       --dev-url string    [driver://username:password@address/dbname?param=value] select a dev database using the URL format
@@ -441,8 +443,8 @@ The database states can be read from a connected database, an HCL project or a m
 ```
 #### Flags
 ```
-      --from string      [driver://username:password@address/dbname?param=value] select a resource using the URL format
-      --to string        [driver://username:password@address/dbname?param=value] select a resource using the URL format
+  -f, --from strings     [driver://username:password@address/dbname?param=value] select a resource using the URL format
+  -t, --to strings       [driver://username:password@address/dbname?param=value] select a resource using the URL format
       --dev-url string   [driver://username:password@address/dbname?param=value] select a dev database using the URL format
 
 ```

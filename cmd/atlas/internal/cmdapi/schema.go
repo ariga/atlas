@@ -102,7 +102,6 @@ migration.`,
 	)
 	cmd.Flags().SortFlags = false
 	cmd.Flags().StringSliceVarP(&flags.Paths, flagFile, "f", nil, "[paths...] file or directory containing the HCL files")
-	cobra.CheckErr(cmd.Flags().MarkDeprecated(flagFile, ", please use --to URLs instead."))
 	addFlagURL(cmd.Flags(), &flags.URL)
 	addFlagURLs(cmd.Flags(), &flags.ToURLs, flagTo, flagToShort)
 	addFlagExclude(cmd.Flags(), &flags.Exclude)
