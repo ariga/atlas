@@ -382,7 +382,7 @@ migration.
 ```
   -f, --file strings      [paths...] file or directory containing the HCL files
   -u, --url string        [driver://username:password@address/dbname?param=value] select a resource using the URL format
-  -t, --to strings        [driver://username:password@address/dbname?param=value] select a resource using the URL format
+      --to strings        [driver://username:password@address/dbname?param=value] select a resource using the URL format
       --exclude strings   list of glob patterns used to filter resources from applying
   -s, --schema strings    set schema names
       --dev-url string    [driver://username:password@address/dbname?param=value] select a dev database using the URL format
@@ -444,7 +444,7 @@ The database states can be read from a connected database, an HCL project or a m
 #### Flags
 ```
   -f, --from strings     [driver://username:password@address/dbname?param=value] select a resource using the URL format
-  -t, --to strings       [driver://username:password@address/dbname?param=value] select a resource using the URL format
+      --to strings       [driver://username:password@address/dbname?param=value] select a resource using the URL format
       --dev-url string   [driver://username:password@address/dbname?param=value] select a dev database using the URL format
 
 ```

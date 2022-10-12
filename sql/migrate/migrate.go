@@ -703,14 +703,36 @@ func (e *Executor) ExecuteN(ctx context.Context, n int) (err error) {
 		}
 		pending = pending[:n]
 	}
+	return e.exec(ctx, pending)
+}
+
+// ExecuteTo executes all pending migration files up to and including version.
+func (e *Executor) ExecuteTo(ctx context.Context, version string) (err error) {
+	pending, err := e.Pending(ctx)
+	if err != nil {
+		return err
+	}
+	// Strip pending files greater given version.
+	switch idx := FilesLastIndex(pending, func(file File) bool {
+		return file.Version() == version
+	}); idx {
+	case -1:
+		return fmt.Errorf("sql/migrate: execute: migration with version %q not found", version)
+	default:
+		pending = pending[:idx+1]
+	}
+	return e.exec(ctx, pending)
+}
+
+func (e *Executor) exec(ctx context.Context, files []File) error {
 	revs, err := e.rrw.ReadRevisions(ctx)
 	if err != nil {
 		return fmt.Errorf("sql/migrate: execute: read revisions: %w", err)
 	}
-	if err := LogIntro(e.log, revs, pending); err != nil {
+	if err := LogIntro(e.log, revs, files); err != nil {
 		return err
 	}
-	for _, m := range pending {
+	for _, m := range files {
 		if err := e.Execute(ctx, m); err != nil {
 			return err
 		}
@@ -719,8 +741,40 @@ func (e *Executor) ExecuteN(ctx context.Context, n int) (err error) {
 	return err
 }
 
+type (
+	replayConfig struct {
+		count   int    // file count to replay
+		version string // to which version to replay (inclusive)
+	}
+	// ReplayOption configures a migration directory replay behavior.
+	ReplayOption func(*replayConfig)
+)
+
+// ReplayToVersion configures the last version to apply when replaying the migration directory.
+// Mutually exclusive with ReplayFiles.
+func ReplayToVersion(v string) ReplayOption {
+	return func(c *replayConfig) {
+		c.version = v
+	}
+}
+
+// ReplayFiles configures the amount of files of the migration directory to use when replaying. After n applied files,
+// replay will stop. Mutually exclusive with ReplayToVersion.
+func ReplayFiles(n int) ReplayOption {
+	return func(c *replayConfig) {
+		c.count = n
+	}
+}
+
 // Replay the migration directory and invoke the state to get back the inspection result.
-func (e *Executor) Replay(ctx context.Context, r StateReader) (_ *schema.Realm, err error) {
+func (e *Executor) Replay(ctx context.Context, r StateReader, opts ...ReplayOption) (_ *schema.Realm, err error) {
+	c := &replayConfig{}
+	for _, opt := range opts {
+		opt(c)
+	}
+	if c.count > 0 && c.version != "" {
+		return nil, errors.New("sql/migrate: replay: only one of ReplayToVersion or ReplayFiles can be given")
+	}
 	// Clean up after ourselves.
 	restore, err := e.drv.(Snapshoter).Snapshot(ctx)
 	if err != nil {
@@ -732,7 +786,13 @@ func (e *Executor) Replay(ctx context.Context, r StateReader) (_ *schema.Realm, 
 		}
 	}()
 	// Replay the migration directory on the database.
-	if err := e.ExecuteN(ctx, 0); err != nil && !errors.Is(err, ErrNoPendingFiles) {
+	switch {
+	case c.version != "":
+		err = e.ExecuteTo(ctx, c.version)
+	default:
+		err = e.ExecuteN(ctx, c.count)
+	}
+	if err != nil && !errors.Is(err, ErrNoPendingFiles) {
 		return nil, fmt.Errorf("sql/migrate: read migration directory state: %w", err)
 	}
 	return r.ReadState(ctx)

@@ -103,7 +103,7 @@ migration.`,
 	cmd.Flags().SortFlags = false
 	cmd.Flags().StringSliceVarP(&flags.Paths, flagFile, "f", nil, "[paths...] file or directory containing the HCL files")
 	addFlagURL(cmd.Flags(), &flags.URL)
-	addFlagURLs(cmd.Flags(), &flags.ToURLs, flagTo, flagToShort)
+	addFlagURLs(cmd.Flags(), &flags.ToURLs, flagTo, "")
 	addFlagExclude(cmd.Flags(), &flags.Exclude)
 	addFlagSchemas(cmd.Flags(), &flags.Schemas)
 	addFlagDevURL(cmd.Flags(), &flags.DevURL)
@@ -129,8 +129,6 @@ func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) erro
 			return err
 		}
 		defer dev.Close()
-	} else {
-		dev = client
 	}
 	schemas, ctx := flags.Schemas, cmd.Context()
 	if client.URL.Schema != "" {
@@ -143,7 +141,7 @@ func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) erro
 	if err != nil {
 		return err
 	}
-	to, err := stateReader(ctx, &stateReaderConfig{urls: flags.ToURLs, dev: dev, vars: GlobalFlags.Vars})
+	to, err := stateReader(ctx, &stateReaderConfig{urls: flags.ToURLs, norm: client, dev: dev, vars: GlobalFlags.Vars})
 	if err != nil {
 		return err
 	}
@@ -271,7 +269,7 @@ The database states can be read from a connected database, an HCL project or a m
 	)
 	cmd.Flags().SortFlags = false
 	addFlagURLs(cmd.Flags(), &flags.fromURL, flagFrom, flagFromShort)
-	addFlagURLs(cmd.Flags(), &flags.toURL, flagTo, flagToShort)
+	addFlagURLs(cmd.Flags(), &flags.toURL, flagTo, "")
 	addFlagDevURL(cmd.Flags(), &flags.devURL)
 	cobra.CheckErr(cmd.MarkFlagRequired(flagFrom))
 	cobra.CheckErr(cmd.MarkFlagRequired(flagTo))
