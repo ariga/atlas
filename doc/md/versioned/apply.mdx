@@ -110,6 +110,11 @@ If you want to check what exactly Atlas would do when attempting a migration exe
 flag:
 * `--dry-run` to not execute any SQL but print it on the screen.
 
+### Migration status
+
+In addition to the `--dry-run` flag Atlas also provides the `atlas migrate status` command, that provides in-depth
+information about the migration status of the connected database.
+
 ### Examples
 
 First time apply with baseline on production environment:
@@ -148,3 +153,15 @@ atlas migrate apply \
   --url "mysql://root:pass@remote:3306/my_database" \
   --tx-mode "none"
 ```
+
+Show information about the migration status of a deployment:
+```shell
+atlas migrate status \
+  --url "mysql://root:pass@remote:3306/my_database" \
+  --dir "file://custom/path/to/dir" \
+  --revisions-schema "atlas_migration_history"
+```
+
+### Reference
+
+[CLI Command Reference](/cli-reference#atlas-migrate-apply)
