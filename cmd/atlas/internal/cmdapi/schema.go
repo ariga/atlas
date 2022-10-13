@@ -73,7 +73,7 @@ migration, Atlas will print the migration plan and prompt the user for approval.
 The schema is provided by one or more URLs (to a HCL file or 
 directory, database or migration directory) using the "--to, -t" flag:
   atlas schema apply -u URL --to file://file1.hcl --to file://file2.hcl
-  atlas schema apply -u URL -t file://schema/ -t file://override.hcl
+  atlas schema apply -u URL --to file://schema/ --to file://override.hcl
 
 As a convenience, schema URLs may also be provided via an environment definition in
 the project file (see: https://atlasgo.io/cli/projects).
@@ -81,11 +81,11 @@ the project file (see: https://atlasgo.io/cli/projects).
 If run with the "--dry-run" flag, atlas will exit after printing out the planned
 migration.`,
 			Example: `  atlas schema apply -u "mysql://user:pass@localhost/dbname" --to file://atlas.hcl
-  atlas schema apply -u "mysql://localhost" -t file://schema.hcl --schema prod --schema staging
-  atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" -t file://schema.hcl --dry-run
-  atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" -t file://schema.hcl
-  atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -t file://schema.hcl
-  atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -t file://schema.hcl`,
+  atlas schema apply -u "mysql://localhost" --to file://schema.hcl --schema prod --schema staging
+  atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" --to file://schema.hcl --dry-run
+  atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" --to file://schema.hcl
+  atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" --to file://schema.hcl
+  atlas schema apply -u "sqlite://file:ex1.db?_fk=1" --to file://schema.hcl`,
 			PreRunE: func(cmd *cobra.Command, args []string) error {
 				if err := schemaFlagsFromEnv(cmd, args); err != nil {
 					return err
@@ -145,6 +145,7 @@ func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) erro
 	to, err := stateReader(ctx, &stateReaderConfig{
 		urls:    flags.toURLs,
 		dev:     dev,
+		norm:    client,
 		schemas: flags.schemas,
 		vars:    GlobalFlags.Vars,
 	})

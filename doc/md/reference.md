@@ -360,7 +360,7 @@ migration, Atlas will print the migration plan and prompt the user for approval.
 The schema is provided by one or more URLs (to a HCL file or 
 directory, database or migration directory) using the "--to, -t" flag:
   atlas schema apply -u URL --to file://file1.hcl --to file://file2.hcl
-  atlas schema apply -u URL -t file://schema/ -t file://override.hcl
+  atlas schema apply -u URL --to file://schema/ --to file://override.hcl
 
 As a convenience, schema URLs may also be provided via an environment definition in
 the project file (see: https://atlasgo.io/cli/projects).
@@ -372,11 +372,11 @@ migration.
 
 ```
   atlas schema apply -u "mysql://user:pass@localhost/dbname" --to file://atlas.hcl
-  atlas schema apply -u "mysql://localhost" -t file://schema.hcl --schema prod --schema staging
-  atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" -t file://schema.hcl --dry-run
-  atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" -t file://schema.hcl
-  atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -t file://schema.hcl
-  atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -t file://schema.hcl
+  atlas schema apply -u "mysql://localhost" --to file://schema.hcl --schema prod --schema staging
+  atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" --to file://schema.hcl --dry-run
+  atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" --to file://schema.hcl
+  atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" --to file://schema.hcl
+  atlas schema apply -u "sqlite://file:ex1.db?_fk=1" --to file://schema.hcl
 ```
 #### Flags
 ```
@@ -446,6 +446,7 @@ The database states can be read from a connected database, an HCL project or a m
   -f, --from strings     [driver://username:password@address/dbname?param=value] select a resource using the URL format
       --to strings       [driver://username:password@address/dbname?param=value] select a resource using the URL format
       --dev-url string   [driver://username:password@address/dbname?param=value] select a dev database using the URL format
+  -s, --schema strings   set schema names
 
 ```
 

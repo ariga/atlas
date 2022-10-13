@@ -128,6 +128,23 @@ table "tbl" {
 		s,
 	)
 
+	// Current state from migration directory with version, desired state from HCL - two missing columns.
+	s, err = runCmd(
+		schemaDiffCmd(),
+		"--from", "file://testdata/sqlite?version=20220318104614",
+		"--to", "file://"+p,
+		"--dev-url", openSQLite(t, ""),
+	)
+	require.NoError(t, err)
+	require.EqualValues(
+		t,
+		"-- Add column \"col_2\" to table: \"tbl\"\n"+
+			"ALTER TABLE `tbl` ADD COLUMN `col_2` bigint NULL\n"+
+			"-- Add column \"col_3\" to table: \"tbl\"\n"+
+			"ALTER TABLE `tbl` ADD COLUMN `col_3` text NOT NULL\n",
+		s,
+	)
+
 	// Current state from migration directory, desired state from multi file HCL - missing column.
 	p = t.TempDir()
 	var (
