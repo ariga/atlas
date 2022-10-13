@@ -1,5 +1,5 @@
 ! atlas schema apply -f empty/ -u URL --auto-approve
-stderr 'no schema files found'
+stderr '"empty" contains neither SQL nor HCL files'
 
 atlas schema apply -f schema/ -u URL --auto-approve
 cmpshow users expected.sql
