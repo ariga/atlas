@@ -133,7 +133,11 @@ func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) erro
 		}
 		defer dev.Close()
 	}
-	from, err := stateReader(ctx, &stateReaderConfig{urls: []string{flags.url}, schemas: flags.schemas})
+	from, err := stateReader(ctx, &stateReaderConfig{
+		urls:    []string{flags.url},
+		schemas: flags.schemas,
+		exclude: flags.exclude,
+	})
 	if err != nil {
 		return err
 	}
@@ -147,6 +151,7 @@ func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) erro
 		dev:     dev,
 		norm:    client,
 		schemas: flags.schemas,
+		exclude: flags.exclude,
 		vars:    GlobalFlags.Vars,
 	})
 	if err != nil {
@@ -250,6 +255,7 @@ type schemaDiffFlags struct {
 	toURL   []string
 	devURL  string
 	schemas []string
+	exclude []string
 }
 
 // schemaDiffCmd represents the 'atlas schema diff' subcommand.
@@ -276,6 +282,7 @@ The database states can be read from a connected database, an HCL project or a m
 	addFlagURLs(cmd.Flags(), &flags.toURL, flagTo, "")
 	addFlagDevURL(cmd.Flags(), &flags.devURL)
 	addFlagSchemas(cmd.Flags(), &flags.schemas)
+	addFlagExclude(cmd.Flags(), &flags.exclude)
 	cobra.CheckErr(cmd.MarkFlagRequired(flagFrom))
 	cobra.CheckErr(cmd.MarkFlagRequired(flagTo))
 	return cmd
@@ -300,6 +307,7 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags) error 
 		dev:     c,
 		vars:    GlobalFlags.Vars,
 		schemas: flags.schemas,
+		exclude: flags.exclude,
 	})
 	if err != nil {
 		return err
@@ -310,6 +318,7 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags) error 
 		dev:     c,
 		vars:    GlobalFlags.Vars,
 		schemas: flags.schemas,
+		exclude: flags.exclude,
 	})
 	if err != nil {
 		return err
@@ -341,10 +350,10 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags) error 
 }
 
 type schemaInspectFlags struct {
-	URL     string   // URL of database to apply the changes on.
-	Schemas []string // Schemas to take into account when diffing.
-	Exclude []string // List of glob patterns used to filter resources from applying (see schema.InspectOptions).
-	DSN     string   // Deprecated: DSN is an alias for URL.
+	url     string   // URL of database to apply the changes on.
+	schemas []string // Schemas to take into account when diffing.
+	exclude []string // List of glob patterns used to filter resources from applying (see schema.InspectOptions).
+	dsn     string   // Deprecated: DSN is an alias for URL.
 }
 
 // schemaInspectCmd represents the 'atlas schema inspect' subcommand.
@@ -378,27 +387,27 @@ flag.
 		}
 	)
 	cmd.Flags().SortFlags = false
-	addFlagURL(cmd.Flags(), &flags.URL)
-	addFlagSchemas(cmd.Flags(), &flags.Schemas)
-	addFlagExclude(cmd.Flags(), &flags.Exclude)
-	addFlagDSN(cmd.Flags(), &flags.DSN)
+	addFlagURL(cmd.Flags(), &flags.url)
+	addFlagSchemas(cmd.Flags(), &flags.schemas)
+	addFlagExclude(cmd.Flags(), &flags.exclude)
+	addFlagDSN(cmd.Flags(), &flags.dsn)
 	cobra.CheckErr(cmd.MarkFlagRequired(flagURL))
 	return cmd
 }
 
 func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags) error {
-	client, err := sqlclient.Open(cmd.Context(), flags.URL)
+	client, err := sqlclient.Open(cmd.Context(), flags.url)
 	if err != nil {
 		return err
 	}
 	defer client.Close()
-	schemas := flags.Schemas
+	schemas := flags.schemas
 	if client.URL.Schema != "" {
 		schemas = append(schemas, client.URL.Schema)
 	}
 	s, err := client.InspectRealm(cmd.Context(), &schema.InspectRealmOption{
 		Schemas: schemas,
-		Exclude: flags.Exclude,
+		Exclude: flags.exclude,
 	})
 	if err != nil {
 		return err

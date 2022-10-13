@@ -5,7 +5,7 @@ stderr '"url" not set'
 stderr '"url" not set'
 
 ! atlas schema apply --url URL
-stderr '"file" not set'
+stderr 'one of flag\(s\) "file" or "to" is required'
 
 ! atlas schema apply -f atlas.hcl -u URL
 stderr 'cannot parse project file'

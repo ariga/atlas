@@ -339,6 +339,7 @@ type (
 		urls      []string          // urls to create a migrate.StateReader from
 		norm, dev *sqlclient.Client // database connections, while dev is considered a dev database, norm is not
 		schemas   []string          // schemas to work on
+		exclude   []string          // exclude flag values
 		vars      Vars
 	}
 )
@@ -415,7 +416,10 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadClos
 				if config.dev.URL.Schema != "" {
 					return migrate.SchemaConn(config.dev, "", nil)
 				}
-				return migrate.RealmConn(config.dev, nil)
+				return migrate.RealmConn(config.dev, &schema.InspectRealmOption{
+					Schemas: config.schemas,
+					Exclude: config.exclude,
+				})
 			}(), opts...)
 			if err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
 				return nil, fmt.Errorf("replaying the migration directory: %w", err)
@@ -436,9 +440,12 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadClos
 		var sr migrate.StateReader
 		switch c.URL.Schema {
 		case "":
-			sr = migrate.RealmConn(c.Driver, nil)
+			sr = migrate.RealmConn(c.Driver, &schema.InspectRealmOption{
+				Schemas: config.schemas,
+				Exclude: config.exclude,
+			})
 		default:
-			sr = migrate.SchemaConn(c.Driver, c.URL.Schema, nil)
+			sr = migrate.SchemaConn(c.Driver, c.URL.Schema, &schema.InspectOptions{Exclude: config.exclude})
 		}
 		return &stateReadCloser{
 			StateReader: sr,
