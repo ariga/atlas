@@ -240,7 +240,7 @@ The CI ran successfully and no errors or issues were found in your SQL statement
 
 <TabItem value = "issues">
 
-![Issues Found Run](https://release.ariga.io/images/assets/issues-found.png)
+![Issues Found Run](https://release.ariga.io/images/assets/issues-found-screenshot.png)
 
 In cases where your SQL statements _might_ cause a failure in production, the CI run will be labeled as 'issues
 found'. In this example, we can see that the column `name` was created as non-nullable. The CI is letting us know that
