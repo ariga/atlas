@@ -461,7 +461,7 @@ func hclStateReader(ctx context.Context, config *stateReaderConfig, urls []*url.
 	}
 	paths := make([]string, len(urls))
 	for i, u := range urls {
-		paths[i] = u.Path
+		paths[i] = filepath.Join(u.Host, u.Path)
 	}
 	parser, err := parseHCLPaths(paths...)
 	if err != nil {
