@@ -62,7 +62,6 @@ func TestMigrate_Import(t *testing.T) {
 				require.NoError(t, err)
 				a, err := os.ReadFile(filepath.Join(p, ex[i].Name()))
 				require.NoError(t, err)
-
 				require.Equal(t, string(e), string(a))
 			}
 		})
@@ -89,7 +88,6 @@ func TestMigrate_Import(t *testing.T) {
 				require.NoError(t, err)
 				a, err := os.ReadFile(filepath.Join(p, ex[i].Name()))
 				require.NoError(t, err)
-
 				require.Equal(t, string(e), string(a))
 			}
 		})
@@ -392,6 +390,43 @@ func TestMigrate_Apply(t *testing.T) {
 		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test3.db")),
 	)
 	require.EqualError(t, err, migrate.MissingMigrationError{Version: "z", Description: "z"}.Error())
+}
+
+func TestMigrate_ApplyMultiEnv(t *testing.T) {
+	p := t.TempDir()
+	h := `
+variable "urls" {
+  type = list(string)
+}
+
+env "local" {
+  for_each = toset(var.urls)
+  url = each.value
+  dev = "sqlite://ci?mode=memory&cache=shared&_fk=1"
+  migration {
+    dir = "file://testdata/sqlite"
+  }
+}
+`
+	path := filepath.Join(p, "atlas.hcl")
+	err := os.WriteFile(path, []byte(h), 0600)
+	require.NoError(t, err)
+	cmd := migrateCmd()
+	t.Cleanup(func() { GlobalFlags.SelectedEnv = "" })
+	cmd.AddCommand(migrateApplyCmd())
+	s, err := runCmd(
+		cmd, "apply",
+		"-c", "file://"+path,
+		"--env", "local",
+		"--var", fmt.Sprintf("urls=sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test1.db")),
+		"--var", fmt.Sprintf("urls=sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test2.db")),
+	)
+	require.NoError(t, err)
+	require.Equal(t, 2, strings.Count(s, "Migrating to version 20220318104615 (2 migrations in total)"), "execution per environment")
+	_, err = os.Stat(filepath.Join(p, "test1.db"))
+	require.NoError(t, err)
+	_, err = os.Stat(filepath.Join(p, "test2.db"))
+	require.NoError(t, err)
 }
 
 func TestMigrate_ApplyTxMode(t *testing.T) {

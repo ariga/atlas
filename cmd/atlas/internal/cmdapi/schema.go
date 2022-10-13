@@ -40,7 +40,7 @@ func schemaCmd() *cobra.Command {
 		Short: "Work with atlas schemas.",
 		Long:  "The `atlas schema` command groups subcommands working with declarative Atlas schemas.",
 	}
-	addFlagEnvVar(cmd.PersistentFlags())
+	addGlobalFlags(cmd.PersistentFlags())
 	return cmd
 }
 
@@ -465,18 +465,22 @@ func schemaFmtRun(cmd *cobra.Command, args []string) error {
 // selectEnv returns the Env from the current project file based on the selected
 // argument. If selected is "", or no project file exists in the current directory
 // a zero-value Env is returned.
-func selectEnv(selected string) (*Env, error) {
+func selectEnv(name string) (*Env, error) {
 	env := &Env{
 		Lint:      &Lint{},
 		Migration: &Migration{},
 	}
-	if selected == "" {
+	if name == "" {
 		return env, nil
 	}
-	if _, err := os.Stat(projectFileName); os.IsNotExist(err) {
-		return nil, fmt.Errorf("project file %q was not found", projectFileName)
+	envs, err := LoadEnv(name, WithInput(GlobalFlags.Vars))
+	if err != nil {
+		return nil, err
 	}
-	return LoadEnv(projectFileName, selected, WithInput(GlobalFlags.Vars))
+	if len(envs) > 1 {
+		return nil, fmt.Errorf("multiple envs found for %q", name)
+	}
+	return envs[0], nil
 }
 
 func schemaFlagsFromEnv(cmd *cobra.Command, _ []string) error {
@@ -484,7 +488,7 @@ func schemaFlagsFromEnv(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	if err := inputValsFromEnv(cmd); err != nil {
+	if err := inputValsFromEnv(cmd, activeEnv); err != nil {
 		return err
 	}
 	if err := dsn2url(cmd); err != nil {
