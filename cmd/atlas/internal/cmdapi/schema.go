@@ -526,16 +526,16 @@ func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *stateR
 	}
 	var diff []schema.Change
 	switch {
-	// compare realm
-	case from.Schema == "" && to.Schema == "":
+	// Compare realm if the desired state is an HCL file or both connections are not bound to a schema.
+	case to.hcl, from.schema == "" && to.schema == "":
 		diff, err = differ.RealmDiff(current, desired)
 		if err != nil {
 			return nil, err
 		}
-	case from.Schema == "":
-		return nil, fmt.Errorf("cannot diff schema %q with a database connection", from.Schema)
-	case to.Schema == "":
-		return nil, fmt.Errorf("cannot diff database connection with a schema %q", to.Schema)
+	case from.schema == "":
+		return nil, fmt.Errorf("cannot diff schema %q with a database connection", from.schema)
+	case to.schema == "":
+		return nil, fmt.Errorf("cannot diff database connection with a schema %q", to.schema)
 	default:
 		// SchemaDiff checks for name equality which is irrelevant in the case
 		// the user wants to compare their contents, reset them to allow the comparison.

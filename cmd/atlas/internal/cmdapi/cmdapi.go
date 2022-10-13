@@ -332,7 +332,8 @@ type (
 	stateReadCloser struct {
 		migrate.StateReader
 		io.Closer        // optional close function
-		Schema    string // in case we work on a single schema
+		schema    string // in case we work on a single schema
+		hcl       bool   // true if state was read from HCL files since in that case we always compare realms
 	}
 	// stateReaderConfig is given to stateReader.
 	stateReaderConfig struct {
@@ -426,7 +427,7 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadClos
 			}
 			return &stateReadCloser{
 				StateReader: migrate.Realm(sr),
-				Schema:      config.dev.URL.Schema,
+				schema:      config.dev.URL.Schema,
 			}, nil
 		default:
 			return nil, fmt.Errorf("%q contains neither SQL nor HCL files", path)
@@ -450,7 +451,7 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadClos
 		return &stateReadCloser{
 			StateReader: sr,
 			Closer:      c,
-			Schema:      c.URL.Schema,
+			schema:      c.URL.Schema,
 		}, nil
 	}
 }
@@ -505,10 +506,7 @@ func hclStateReader(ctx context.Context, config *stateReaderConfig, urls []*url.
 			return nil, err
 		}
 	}
-	t := &stateReadCloser{StateReader: migrate.Realm(realm)}
-	if len(realm.Schemas) == 1 {
-		t.Schema = realm.Schemas[0].Name
-	}
+	t := &stateReadCloser{StateReader: migrate.Realm(realm), hcl: true}
 	return t, nil
 }
 
