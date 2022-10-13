@@ -493,6 +493,89 @@ func testCLISchemaApplyAutoApprove(t T, h string, dsn string, args ...string) {
 	require.NotNil(t, u)
 }
 
+func testCLISchemaApplyFromMigrationDir(t T) {
+	const (
+		DB    = "apply_migration_dir"
+		DevDB = DB + "_dev"
+	)
+	t.dropSchemas(DB, DevDB)
+	t.migrate(&schema.AddSchema{S: schema.New(DB)}, &schema.AddSchema{S: schema.New(DevDB)})
+
+	noQualifier := func(o *migrate.PlanOptions) {
+		s := ""
+		o.SchemaQualifier = &s
+	}
+
+	users, err := t.driver().SchemaDiff(schema.New(""), schema.New("").AddTables(t.users()))
+	require.NoError(t, err)
+	postsT := t.posts()
+	postsT.ForeignKeys[0].OnUpdate = schema.NoAction
+	posts, err := t.driver().SchemaDiff(schema.New(""), schema.New("").AddTables(postsT))
+	require.NoError(t, err)
+	addUsers, err := t.driver().PlanChanges(context.Background(), "", users, noQualifier)
+	require.NoError(t, err)
+	addPosts, err := t.driver().PlanChanges(context.Background(), "", posts, noQualifier)
+	require.NoError(t, err)
+
+	var (
+		fn = func(c []*migrate.Change) string {
+			var buf strings.Builder
+			for _, c := range c {
+				buf.WriteString(c.Cmd)
+				buf.WriteString("\n")
+			}
+			return buf.String()
+		}
+		one = fn(addUsers.Changes)
+		two = fn(addPosts.Changes)
+	)
+	p := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(p, "1.sql"), []byte(one), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(p, "2.sql"), []byte(two), 0644))
+
+	require.NoError(t, initCLI())
+	require.NoError(t, exec.Command(
+		"go", "run", "ariga.io/atlas/cmd/atlas",
+		"migrate", "hash",
+		"--dir", "file://"+p,
+	).Run())
+
+	// All versions - must contain all migration files.
+	cmd := exec.Command(
+		"go", "run", "ariga.io/atlas/cmd/atlas",
+		"schema", "apply",
+		"-u", t.url(DB),
+		"--to", "file://"+p,
+		"--dev-url", t.url(DevDB),
+		"--dry-run",
+	)
+	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	require.NoError(t, cmd.Run(), stderr.String(), stdout.String())
+	require.Empty(t, stderr.String())
+	require.Contains(t, stdout.String(), one)
+	require.Contains(t, stdout.String(), two)
+
+	// One version - must contain only file one.
+	cmd = exec.Command(
+		"go", "run", "ariga.io/atlas/cmd/atlas",
+		"schema", "apply",
+		"-u", t.url(DB),
+		"--to", "file://"+p+"?version=1",
+		"--dev-url", t.url(DevDB),
+		"--dry-run",
+	)
+	stdout, stderr = bytes.NewBuffer(nil), bytes.NewBuffer(nil)
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	require.NoError(t, err)
+	require.NoError(t, cmd.Run(), stderr.String(), stdout.String())
+	require.Empty(t, stderr.String())
+	require.Contains(t, stdout.String(), one)
+	require.NotContains(t, stdout.String(), two)
+}
+
 func testCLISchemaDiff(t T, dsn string) {
 	err := initCLI()
 

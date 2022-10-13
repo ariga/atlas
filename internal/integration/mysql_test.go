@@ -654,6 +654,11 @@ table "users" {
 			testCLISchemaApplyAutoApprove(t, fmt.Sprintf(h, charset.V, collate.V), t.url("test"))
 		})
 	})
+	t.Run("SchemaApplyFromMigrationDir", func(t *testing.T) {
+		myRun(t, func(t *myTest) {
+			testCLISchemaApplyFromMigrationDir(t)
+		})
+	})
 }
 
 func TestMySQL_CLI_MultiSchema(t *testing.T) {

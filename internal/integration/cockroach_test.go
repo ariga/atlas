@@ -411,6 +411,11 @@ table "users" {
 			testCLISchemaApplyAutoApprove(t, h, t.url(""), "-s", "public")
 		})
 	})
+	t.Run("SchemaApplyFromMigrationDir", func(t *testing.T) {
+		crdbRun(t, func(t *crdbTest) {
+			testCLISchemaApplyFromMigrationDir(t)
+		})
+	})
 }
 
 func TestCockroach_CLI_MultiSchema(t *testing.T) {
