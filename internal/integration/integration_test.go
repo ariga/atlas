@@ -500,21 +500,18 @@ func testCLISchemaApplyFromMigrationDir(t T) {
 	)
 	t.dropSchemas(DB, DevDB)
 	t.migrate(&schema.AddSchema{S: schema.New(DB)}, &schema.AddSchema{S: schema.New(DevDB)})
-
-	noQualifier := func(o *migrate.PlanOptions) {
-		s := ""
-		o.SchemaQualifier = &s
-	}
+	defer t.migrate(&schema.DropSchema{S: schema.New(DB)}, &schema.DropSchema{S: schema.New(DevDB)})
 
 	users, err := t.driver().SchemaDiff(schema.New(""), schema.New("").AddTables(t.users()))
 	require.NoError(t, err)
-	postsT := t.posts()
-	postsT.ForeignKeys[0].OnUpdate = schema.NoAction
-	posts, err := t.driver().SchemaDiff(schema.New(""), schema.New("").AddTables(postsT))
+	usersT := t.users()
+	usersT.Name = "users_2"
+	users2, err := t.driver().SchemaDiff(schema.New(""), schema.New("").AddTables(usersT))
 	require.NoError(t, err)
-	addUsers, err := t.driver().PlanChanges(context.Background(), "", users, noQualifier)
+
+	addUsers, err := t.driver().PlanChanges(context.Background(), "", users)
 	require.NoError(t, err)
-	addPosts, err := t.driver().PlanChanges(context.Background(), "", posts, noQualifier)
+	addUsers2, err := t.driver().PlanChanges(context.Background(), "", users2)
 	require.NoError(t, err)
 
 	var (
@@ -527,8 +524,9 @@ func testCLISchemaApplyFromMigrationDir(t T) {
 			return buf.String()
 		}
 		one = fn(addUsers.Changes)
-		two = fn(addPosts.Changes)
+		two = fn(addUsers2.Changes)
 	)
+
 	p := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(p, "1.sql"), []byte(one), 0644))
 	require.NoError(t, os.WriteFile(filepath.Join(p, "2.sql"), []byte(two), 0644))
