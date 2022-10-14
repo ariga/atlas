@@ -480,7 +480,7 @@ env "dev" {
 `)
 	)
 	require.NoError(t, New(
-		WithDataSource("sql", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, hcl.Diagnostics) {
+		WithDataSource("sql", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
 			attrs, diags := b.Body.JustAttributes()
 			if diags.HasErrors() {
 				return cty.NilVal, diags
@@ -521,7 +521,7 @@ env "dev" {
 func TestDataLocalsRefs(t *testing.T) {
 	var (
 		opts = []Option{
-			WithDataSource("sql", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, hcl.Diagnostics) {
+			WithDataSource("sql", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
 				attrs, diags := b.Body.JustAttributes()
 				if diags.HasErrors() {
 					return cty.NilVal, diags
@@ -532,7 +532,7 @@ func TestDataLocalsRefs(t *testing.T) {
 				}
 				return cty.ObjectVal(map[string]cty.Value{"output": v}), nil
 			}),
-			WithDataSource("text", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, hcl.Diagnostics) {
+			WithDataSource("text", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
 				attrs, diags := b.Body.JustAttributes()
 				if diags.HasErrors() {
 					return cty.NilVal, diags

@@ -32,14 +32,11 @@ type blockVar struct {
 //	  default = "rotemtam"
 //	}
 func (s *State) setInputVals(ctx *hcl.EvalContext, body hcl.Body, input map[string]cty.Value) error {
-	var (
-		doc struct {
-			Vars   []*blockVar `hcl:"variable,block"`
-			Remain hcl.Body    `hcl:",remain"`
-		}
-		nctx = varBlockContext(ctx)
-	)
-	if diag := gohcl.DecodeBody(body, nctx, &doc); diag.HasErrors() {
+	var doc struct {
+		Vars   []*blockVar `hcl:"variable,block"`
+		Remain hcl.Body    `hcl:",remain"`
+	}
+	if diag := gohcl.DecodeBody(body, ctx, &doc); diag.HasErrors() {
 		return diag
 	}
 	ctxVars := make(map[string]cty.Value)
@@ -74,7 +71,7 @@ func (s *State) evalReferences(ctx *hcl.EvalContext, body *hclsyntax.Body) error
 	type node struct {
 		addr  [3]string
 		edges func() []hcl.Traversal
-		value func() (cty.Value, hcl.Diagnostics)
+		value func() (cty.Value, error)
 	}
 	var (
 		nodes  = make(map[[3]string]*node)
@@ -95,7 +92,7 @@ func (s *State) evalReferences(ctx *hcl.EvalContext, body *hclsyntax.Body) error
 			addr := [3]string{dataBlock, b.Labels[0], b.Labels[1]}
 			nodes[addr] = &node{
 				addr:  addr,
-				value: func() (cty.Value, hcl.Diagnostics) { return h(ctx, b) },
+				value: func() (cty.Value, error) { return h(ctx, b) },
 				edges: func() []hcl.Traversal { return bodyVars(b.Body) },
 			}
 		case localsBlock:
@@ -106,8 +103,14 @@ func (s *State) evalReferences(ctx *hcl.EvalContext, body *hclsyntax.Body) error
 				addr := [3]string{localRef, k, ""}
 				nodes[addr] = &node{
 					addr:  addr,
-					value: func() (cty.Value, hcl.Diagnostics) { return v.Expr.Value(ctx) },
 					edges: func() []hcl.Traversal { return hclsyntax.Variables(v.Expr) },
+					value: func() (cty.Value, error) {
+						v, diags := v.Expr.Value(ctx)
+						if diags.HasErrors() {
+							return cty.NilVal, diags
+						}
+						return v, nil
+					},
 				}
 			}
 		default:
@@ -148,9 +151,9 @@ func (s *State) evalReferences(ctx *hcl.EvalContext, body *hclsyntax.Body) error
 			}
 		}
 		delete(progress, n)
-		v, diags := n.value()
-		if diags.HasErrors() {
-			return diags
+		v, err := n.value()
+		if err != nil {
+			return err
 		}
 		switch n.addr[0] {
 		case dataBlock:

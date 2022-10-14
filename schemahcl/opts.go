@@ -21,7 +21,7 @@ type (
 		types    []*TypeSpec
 		newCtx   func() *hcl.EvalContext
 		pathVars map[string]map[string]cty.Value
-		datasrc  map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, hcl.Diagnostics)
+		datasrc  map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error)
 	}
 
 	// Option configures a Config.
@@ -33,10 +33,10 @@ func New(opts ...Option) *State {
 	cfg := &Config{
 		pathVars: make(map[string]map[string]cty.Value),
 		newCtx: func() *hcl.EvalContext {
-			return &hcl.EvalContext{
+			return stdTypes(&hcl.EvalContext{
 				Functions: stdFuncs(),
 				Variables: make(map[string]cty.Value),
-			}
+			})
 		},
 	}
 	for _, opt := range opts {
@@ -88,10 +88,10 @@ func WithScopedEnums(path string, enums ...string) Option {
 //	data "text" "hello" {
 //	  value = "hello world"
 //	}
-func WithDataSource(name string, h func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, hcl.Diagnostics)) Option {
+func WithDataSource(name string, h func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error)) Option {
 	return func(c *Config) {
 		if c.datasrc == nil {
-			c.datasrc = make(map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, hcl.Diagnostics))
+			c.datasrc = make(map[string]func(*hcl.EvalContext, *hclsyntax.Block) (cty.Value, error))
 		}
 		c.datasrc[name] = h
 	}
@@ -100,10 +100,10 @@ func WithDataSource(name string, h func(*hcl.EvalContext, *hclsyntax.Block) (cty
 // WithTypes configures the list of given types as identifiers in the unmarshaling context.
 func WithTypes(typeSpecs []*TypeSpec) Option {
 	newCtx := func() *hcl.EvalContext {
-		ctx := &hcl.EvalContext{
+		ctx := stdTypes(&hcl.EvalContext{
+			Functions: stdFuncs(),
 			Variables: make(map[string]cty.Value),
-			Functions: make(map[string]function.Function),
-		}
+		})
 		for _, ts := range typeSpecs {
 			typeSpec := ts
 			// If no required args exist, register the type as a variable in the HCL context.
@@ -119,9 +119,9 @@ func WithTypes(typeSpecs []*TypeSpec) Option {
 		ctx.Functions["sql"] = rawExprImpl()
 		return ctx
 	}
-	return func(config *Config) {
-		config.newCtx = newCtx
-		config.types = append(config.types, typeSpecs...)
+	return func(c *Config) {
+		c.newCtx = newCtx
+		c.types = append(c.types, typeSpecs...)
 	}
 }
 

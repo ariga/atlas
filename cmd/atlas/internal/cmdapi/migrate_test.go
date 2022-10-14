@@ -393,8 +393,9 @@ func TestMigrate_Apply(t *testing.T) {
 }
 
 func TestMigrate_ApplyMultiEnv(t *testing.T) {
-	p := t.TempDir()
-	h := `
+	t.Run("FromVars", func(t *testing.T) {
+		p := t.TempDir()
+		h := `
 variable "urls" {
   type = list(string)
 }
@@ -408,25 +409,97 @@ env "local" {
   }
 }
 `
-	path := filepath.Join(p, "atlas.hcl")
-	err := os.WriteFile(path, []byte(h), 0600)
-	require.NoError(t, err)
-	cmd := migrateCmd()
-	t.Cleanup(func() { GlobalFlags.SelectedEnv = "" })
-	cmd.AddCommand(migrateApplyCmd())
-	s, err := runCmd(
-		cmd, "apply",
-		"-c", "file://"+path,
-		"--env", "local",
-		"--var", fmt.Sprintf("urls=sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test1.db")),
-		"--var", fmt.Sprintf("urls=sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test2.db")),
-	)
-	require.NoError(t, err)
-	require.Equal(t, 2, strings.Count(s, "Migrating to version 20220318104615 (2 migrations in total)"), "execution per environment")
-	_, err = os.Stat(filepath.Join(p, "test1.db"))
-	require.NoError(t, err)
-	_, err = os.Stat(filepath.Join(p, "test2.db"))
-	require.NoError(t, err)
+		path := filepath.Join(p, "atlas.hcl")
+		err := os.WriteFile(path, []byte(h), 0600)
+		require.NoError(t, err)
+		cmd := migrateCmd()
+		cmd.AddCommand(migrateApplyCmd())
+		s, err := runCmd(
+			cmd, "apply",
+			"-c", "file://"+path,
+			"--env", "local",
+			"--var", fmt.Sprintf("urls=sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test1.db")),
+			"--var", fmt.Sprintf("urls=sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test2.db")),
+		)
+		require.NoError(t, err)
+		require.Equal(t, 2, strings.Count(s, "Migrating to version 20220318104615 (2 migrations in total)"), "execution per environment")
+		_, err = os.Stat(filepath.Join(p, "test1.db"))
+		require.NoError(t, err)
+		_, err = os.Stat(filepath.Join(p, "test2.db"))
+		require.NoError(t, err)
+	})
+
+	t.Run("FromDataSrc", func(t *testing.T) {
+		var (
+			h = `
+variable "url" {
+  type = string
+}
+
+data "sql" "tenants" {
+  url   = var.url
+  query = "SELECT name FROM tenants"
+}
+
+env "local" {
+  for_each = toset(data.sql.tenants.values)
+  url = "sqlite://file:${each.value}?cache=shared&_fk=1"
+  dev = "sqlite://ci?mode=memory&cache=shared&_fk=1"
+  migration {
+    dir = "file://testdata/sqlite"
+  }
+}
+`
+			p    = t.TempDir()
+			path = filepath.Join(p, "atlas.hcl")
+			dbs  = []string{filepath.Join(p, "test1.db"), filepath.Join(p, "test2.db"), filepath.Join(p, "test3.db")}
+		)
+		err := os.WriteFile(path, []byte(h), 0600)
+		require.NoError(t, err)
+		db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&_fk=1", filepath.Join(p, "tenants.db")))
+		require.NoError(t, err)
+		_, err = db.Exec("CREATE TABLE `tenants` (`name` TEXT)")
+		require.NoError(t, err)
+		_, err = db.Exec("INSERT INTO `tenants` (`name`) VALUES (?), (?), (?)", dbs[0], dbs[1], dbs[2])
+		require.NoError(t, err)
+
+		cmd := migrateCmd()
+		cmd.AddCommand(migrateApplyCmd())
+		s, err := runCmd(
+			cmd, "apply",
+			"-c", "file://"+path,
+			"--env", "local",
+			"--var", fmt.Sprintf("url=sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "tenants.db")),
+		)
+		require.NoError(t, err)
+		require.Equal(t, 3, strings.Count(s, "Migrating to version 20220318104615 (2 migrations in total)"), "execution per environment")
+		for i := range dbs {
+			_, err = os.Stat(dbs[i])
+			require.NoError(t, err)
+		}
+
+		_, err = db.Exec("INSERT INTO `tenants` (`name`) VALUES (NULL)")
+		require.NoError(t, err)
+		_, err = runCmd(
+			cmd, "apply",
+			"-c", "file://"+path,
+			"--env", "local",
+			"--var", fmt.Sprintf("url=sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "tenants.db")),
+		)
+		// Rows should represent real and consistent values.
+		require.EqualError(t, err, "data.sql.tenants: unsupported row type: <nil>")
+
+		_, err = db.Exec("DELETE FROM `tenants`")
+		require.NoError(t, err)
+		s, err = runCmd(
+			cmd, "apply",
+			"-c", "file://"+path,
+			"--env", "local",
+			"--var", fmt.Sprintf("url=sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "tenants.db")),
+		)
+		// Empty list is expanded to zero blocks.
+		require.EqualError(t, err, `env "local" not defined in project file`)
+	})
 }
 
 func TestMigrate_ApplyTxMode(t *testing.T) {
