@@ -355,24 +355,21 @@ func IsQuoted(s string, q ...byte) bool {
 	if last < 1 {
 		return false
 	}
+Top:
 	for _, quote := range q {
-		if s[0] != quote {
+		if s[0] != quote || s[last] != quote {
 			continue
 		}
-	Top:
-		for i := 1; i <= last; i++ {
-			switch c := s[i]; c {
-			case '\\', quote:
-				if i < last && s[i+1] == quote {
-					i++ // skip escaped quote
-				} else if c == quote {
-					if i == last {
-						return true
-					}
-					break Top
-				}
+		for i := 1; i < last-1; i++ {
+			switch c := s[i]; {
+			case c == '\\', c == quote && s[i+1] == quote:
+				i++
+			// Accept only escaped quotes and eject otherwise.
+			case c == quote:
+				continue Top
 			}
 		}
+		return true
 	}
 	return false
 }
