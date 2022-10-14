@@ -545,9 +545,6 @@ func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *stateR
 			return nil, err
 		}
 	}
-	if err != nil {
-		return nil, err
-	}
 	return diff, nil
 }
 

@@ -743,7 +743,6 @@ func (e *Executor) exec(ctx context.Context, files []File) error {
 
 type (
 	replayConfig struct {
-		count   int    // file count to replay
 		version string // to which version to replay (inclusive)
 	}
 	// ReplayOption configures a migration directory replay behavior.
@@ -751,18 +750,9 @@ type (
 )
 
 // ReplayToVersion configures the last version to apply when replaying the migration directory.
-// Mutually exclusive with ReplayFiles.
 func ReplayToVersion(v string) ReplayOption {
 	return func(c *replayConfig) {
 		c.version = v
-	}
-}
-
-// ReplayFiles configures the amount of files of the migration directory to use when replaying. After n applied files,
-// replay will stop. Mutually exclusive with ReplayToVersion.
-func ReplayFiles(n int) ReplayOption {
-	return func(c *replayConfig) {
-		c.count = n
 	}
 }
 
@@ -771,9 +761,6 @@ func (e *Executor) Replay(ctx context.Context, r StateReader, opts ...ReplayOpti
 	c := &replayConfig{}
 	for _, opt := range opts {
 		opt(c)
-	}
-	if c.count > 0 && c.version != "" {
-		return nil, errors.New("sql/migrate: replay: only one of ReplayToVersion or ReplayFiles can be given")
 	}
 	// Clean up after ourselves.
 	restore, err := e.drv.(Snapshoter).Snapshot(ctx)
@@ -790,7 +777,7 @@ func (e *Executor) Replay(ctx context.Context, r StateReader, opts ...ReplayOpti
 	case c.version != "":
 		err = e.ExecuteTo(ctx, c.version)
 	default:
-		err = e.ExecuteN(ctx, c.count)
+		err = e.ExecuteN(ctx, 0)
 	}
 	if err != nil && !errors.Is(err, ErrNoPendingFiles) {
 		return nil, fmt.Errorf("sql/migrate: read migration directory state: %w", err)

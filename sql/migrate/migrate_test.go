@@ -159,17 +159,6 @@ func TestExecutor_Replay(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"DROP TABLE IF EXISTS t;", "CREATE TABLE t(c int);"}, drv.executed)
 
-	// ReplayFiles option.
-	*drv = mockDriver{}
-	_, err = ex.Replay(ctx, migrate.RealmConn(drv, nil), migrate.ReplayFiles(1))
-	require.NoError(t, err)
-	require.Equal(t, []string{"DROP TABLE IF EXISTS t;"}, drv.executed)
-
-	*drv = mockDriver{}
-	_, err = ex.Replay(ctx, migrate.RealmConn(drv, nil), migrate.ReplayFiles(2))
-	require.NoError(t, err)
-	require.Equal(t, []string{"DROP TABLE IF EXISTS t;", "CREATE TABLE t(c int);"}, drv.executed)
-
 	// ReplayVersion option.
 	*drv = mockDriver{}
 	dir, err := migrate.NewLocalDir(filepath.FromSlash("testdata/migrate/sub"))

@@ -495,12 +495,12 @@ func testCLISchemaApplyAutoApprove(t T, h string, dsn string, args ...string) {
 
 func testCLISchemaApplyFromMigrationDir(t T) {
 	const (
-		DB    = "apply_migration_dir"
-		DevDB = DB + "_dev"
+		dbname  = "apply_migration_dir"
+		devname = dbname + "_dev"
 	)
-	t.dropSchemas(DB, DevDB)
-	t.migrate(&schema.AddSchema{S: schema.New(DB)}, &schema.AddSchema{S: schema.New(DevDB)})
-	defer t.migrate(&schema.DropSchema{S: schema.New(DB)}, &schema.DropSchema{S: schema.New(DevDB)})
+	t.dropSchemas(dbname, devname)
+	t.migrate(&schema.AddSchema{S: schema.New(dbname)}, &schema.AddSchema{S: schema.New(devname)})
+	defer t.migrate(&schema.DropSchema{S: schema.New(dbname)}, &schema.DropSchema{S: schema.New(devname)})
 
 	users, err := t.driver().SchemaDiff(schema.New(""), schema.New("").AddTables(t.users()))
 	require.NoError(t, err)
@@ -539,39 +539,30 @@ func testCLISchemaApplyFromMigrationDir(t T) {
 	).Run())
 
 	// All versions - must contain all migration files.
-	cmd := exec.Command(
+	out, err := exec.Command(
 		"go", "run", "ariga.io/atlas/cmd/atlas",
 		"schema", "apply",
-		"-u", t.url(DB),
+		"-u", t.url(dbname),
 		"--to", "file://"+p,
-		"--dev-url", t.url(DevDB),
+		"--dev-url", t.url(devname),
 		"--dry-run",
-	)
-	stdout, stderr := bytes.NewBuffer(nil), bytes.NewBuffer(nil)
-	cmd.Stderr = stderr
-	cmd.Stdout = stdout
-	require.NoError(t, cmd.Run(), stderr.String(), stdout.String())
-	require.Empty(t, stderr.String())
-	require.Contains(t, stdout.String(), one)
-	require.Contains(t, stdout.String(), two)
+	).CombinedOutput()
+	require.NoError(t, err)
+	require.Contains(t, string(out), one)
+	require.Contains(t, string(out), two)
 
 	// One version - must contain only file one.
-	cmd = exec.Command(
+	out, err = exec.Command(
 		"go", "run", "ariga.io/atlas/cmd/atlas",
 		"schema", "apply",
-		"-u", t.url(DB),
+		"-u", t.url(dbname),
 		"--to", "file://"+p+"?version=1",
-		"--dev-url", t.url(DevDB),
+		"--dev-url", t.url(devname),
 		"--dry-run",
-	)
-	stdout, stderr = bytes.NewBuffer(nil), bytes.NewBuffer(nil)
-	cmd.Stderr = stderr
-	cmd.Stdout = stdout
+	).CombinedOutput()
 	require.NoError(t, err)
-	require.NoError(t, cmd.Run(), stderr.String(), stdout.String())
-	require.Empty(t, stderr.String())
-	require.Contains(t, stdout.String(), one)
-	require.NotContains(t, stdout.String(), two)
+	require.Contains(t, string(out), one)
+	require.NotContains(t, string(out), two)
 }
 
 func testCLISchemaDiff(t T, dsn string) {
