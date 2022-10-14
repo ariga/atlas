@@ -150,17 +150,20 @@ func TestIsQuoted(t *testing.T) {
 		quotes []byte
 		want   bool
 	}{
-		{"\"", []byte{'"', '\''}, false},
 		{"''", []byte{'"', '\''}, true},
+		{`""`, []byte{'"', '\''}, true},
 		{"' '' \"\"'' '", []byte{'\''}, true},
 		{"''''''''", []byte{'\''}, true},
 		{"'foo'''", []byte{'\''}, true},
-		{"'foo' ''", []byte{'\''}, false},
 		{"'foo'''''", []byte{'\''}, true},
-		{"'foo' ()  ''", []byte{'\''}, false},
-		{"'foo', ''", []byte{'\''}, false},
 		{"'foo'', '''", []byte{'\''}, true},
 		{"'foo bar'", []byte{'\''}, true},
+
+		{"'", []byte{'"', '\''}, false},
+		{`"`, []byte{'"', '\''}, false},
+		{"'foo' ''", []byte{'\''}, false},
+		{"'foo' ()  ''", []byte{'\''}, false},
+		{"'foo', ''", []byte{'\''}, false},
 		{"'foo', 'bar'", []byte{'\''}, false},
 		{"'foo',\" 'bar'", []byte{'\''}, false},
 	}
