@@ -351,10 +351,25 @@ func (b *Builder) rewriteLastByte(c byte) {
 
 // IsQuoted reports if the given string is quoted with one of the given quotes (e.g. ', ", `).
 func IsQuoted(s string, q ...byte) bool {
-	for i := range q {
-		if l, r := strings.IndexByte(s, q[i]), strings.LastIndexByte(s, q[i]); l < r && l == 0 && r == len(s)-1 {
-			return true
+	last := len(s) - 1
+	if last < 1 {
+		return false
+	}
+Top:
+	for _, quote := range q {
+		if s[0] != quote || s[last] != quote {
+			continue
 		}
+		for i := 1; i < last-1; i++ {
+			switch c := s[i]; {
+			case c == '\\', c == quote && s[i+1] == quote:
+				i++
+			// Accept only escaped quotes and eject otherwise.
+			case c == quote:
+				continue Top
+			}
+		}
+		return true
 	}
 	return false
 }

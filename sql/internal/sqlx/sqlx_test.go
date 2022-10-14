@@ -144,6 +144,40 @@ func TestExprLastIndex(t *testing.T) {
 	}
 }
 
+func TestIsQuoted(t *testing.T) {
+	tests := []struct {
+		input  string
+		quotes []byte
+		want   bool
+	}{
+		{"''", []byte{'"', '\''}, true},
+		{`""`, []byte{'"', '\''}, true},
+		{"' '' \"\"'' '", []byte{'\''}, true},
+		{"''''''''", []byte{'\''}, true},
+		{"'foo'''", []byte{'\''}, true},
+		{"'foo'''''", []byte{'\''}, true},
+		{"'foo'', '''", []byte{'\''}, true},
+		{"'foo bar'", []byte{'\''}, true},
+		{`"never say \"never\""`, []byte{'"'}, true},
+		{`"never say \"never\'"`, []byte{'"'}, true},
+		{`'never say \"never\''`, []byte{'\''}, true},
+
+		{"'", []byte{'"', '\''}, false},
+		{`"`, []byte{'"', '\''}, false},
+		{"'foo' ''", []byte{'\''}, false},
+		{"'foo' ()  ''", []byte{'\''}, false},
+		{"'foo', ''", []byte{'\''}, false},
+		{"'foo', 'bar'", []byte{'\''}, false},
+		{"'foo',\" 'bar'", []byte{'\''}, false},
+	}
+	for i, tt := range tests {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			quoted := IsQuoted(tt.input, tt.quotes...)
+			require.Equal(t, tt.want, quoted)
+		})
+	}
+}
+
 func TestReverseChanges(t *testing.T) {
 	tests := []struct {
 		input  []schema.Change
