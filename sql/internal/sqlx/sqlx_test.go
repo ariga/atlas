@@ -158,6 +158,7 @@ func TestIsQuoted(t *testing.T) {
 		{"'foo'''''", []byte{'\''}, true},
 		{"'foo'', '''", []byte{'\''}, true},
 		{"'foo bar'", []byte{'\''}, true},
+		{`"never say \"never\""`, []byte{'"'}, true},
 
 		{"'", []byte{'"', '\''}, false},
 		{`"`, []byte{'"', '\''}, false},
