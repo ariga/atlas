@@ -27,7 +27,7 @@ func TestReporter_Status(t *testing.T) {
 	c, err := sqlclient.Open(ctx, "sqlite://?mode=memory")
 	require.NoError(t, err)
 	defer c.Close()
-	require.NoError(t, (&Reporter{
+	require.NoError(t, (&StatusReporter{
 		Client:       c,
 		Dir:          dir,
 		ReportWriter: &TemplateWriter{T: DefaultTemplate, W: &buf},
@@ -47,7 +47,7 @@ func TestReporter_Status(t *testing.T) {
 	ex, err := migrate.NewExecutor(c.Driver, dir, rrw)
 	require.NoError(t, err)
 	require.NoError(t, ex.ExecuteN(ctx, 1))
-	require.NoError(t, (&Reporter{
+	require.NoError(t, (&StatusReporter{
 		Client:       c,
 		Dir:          dir,
 		ReportWriter: &TemplateWriter{T: DefaultTemplate, W: &buf},
@@ -63,7 +63,7 @@ func TestReporter_Status(t *testing.T) {
 	buf.Reset()
 	require.NoError(t, err)
 	require.NoError(t, ex.ExecuteN(ctx, 1))
-	require.NoError(t, (&Reporter{
+	require.NoError(t, (&StatusReporter{
 		Client:       c,
 		Dir:          dir,
 		ReportWriter: &TemplateWriter{T: DefaultTemplate, W: &buf},
@@ -79,7 +79,7 @@ func TestReporter_Status(t *testing.T) {
 	buf.Reset()
 	require.NoError(t, err)
 	require.Error(t, ex.ExecuteN(ctx, 1))
-	require.NoError(t, (&Reporter{
+	require.NoError(t, (&StatusReporter{
 		Client:       c,
 		Dir:          dir,
 		ReportWriter: &TemplateWriter{T: DefaultTemplate, W: &buf},
@@ -102,7 +102,7 @@ Last migration attempt had errors:
 	*dir = *dir2
 	require.NoError(t, err)
 	require.NoError(t, ex.ExecuteN(ctx, 1))
-	require.NoError(t, (&Reporter{
+	require.NoError(t, (&StatusReporter{
 		Client:       c,
 		Dir:          dir,
 		ReportWriter: &TemplateWriter{T: DefaultTemplate, W: &buf},

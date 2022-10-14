@@ -917,12 +917,12 @@ func migrateStatusRun(cmd *cobra.Command, _ []string, flags migrateStatusFlags) 
 	}
 	var format = cmdmigrate.DefaultTemplate
 	if f := flags.logFormat; f != "" {
-		format, err = template.New("format").Funcs(cmdmigrate.TemplateFuncs).Parse(f)
+		format, err = template.New("format").Funcs(cmdmigrate.StatusTemplateFuncs).Parse(f)
 		if err != nil {
 			return fmt.Errorf("parse log format: %w", err)
 		}
 	}
-	return (&cmdmigrate.Reporter{
+	return (&cmdmigrate.StatusReporter{
 		Client:       client,
 		Dir:          dir,
 		ReportWriter: &cmdmigrate.TemplateWriter{T: format, W: cmd.OutOrStdout()},
