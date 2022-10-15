@@ -15,7 +15,7 @@ import (
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 )
 
-func varBlockContext(ctx *hcl.EvalContext) *hcl.EvalContext {
+func stdTypes(ctx *hcl.EvalContext) *hcl.EvalContext {
 	ctx = ctx.NewChild()
 	ctx.Variables = map[string]cty.Value{
 		"string": cty.CapsuleVal(ctyNilType, &cty.String),

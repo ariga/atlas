@@ -5,6 +5,7 @@
 package cmdapi
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -12,7 +13,10 @@ import (
 	"path/filepath"
 
 	"ariga.io/atlas/schemahcl"
+	"ariga.io/atlas/sql/sqlclient"
 
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -176,6 +180,9 @@ func (e *Env) asMap() (map[string]string, error) {
 
 var hclState = schemahcl.New(
 	schemahcl.WithScopedEnums("env.migration.format", formatAtlas, formatFlyway, formatLiquibase, formatGoose, formatGolangMigrate),
+	schemahcl.WithDataSource("sql", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
+		return (&sqlsrc{ctx: ctx, block: b}).exec()
+	}),
 )
 
 // LoadEnv reads the project file in path, and loads
@@ -227,4 +234,107 @@ func LoadEnv(name string, opts ...LoadOption) ([]*Env, error) {
 
 func init() {
 	schemahcl.Register("env", &Env{})
+}
+
+// sqlsrc represents an SQL data-source.
+type sqlsrc struct {
+	ctx   *hcl.EvalContext
+	block *hclsyntax.Block
+}
+
+// exec executes the source block for getting the data.
+func (s *sqlsrc) exec() (cty.Value, error) {
+	attrs, diags := s.block.Body.JustAttributes()
+	if diags.HasErrors() {
+		return cty.NilVal, diags
+	}
+	u, err := s.stringAttr(attrs, "url")
+	if err != nil {
+		return cty.NilVal, err
+	}
+	query, err := s.stringAttr(attrs, "query")
+	if err != nil {
+		return cty.NilVal, err
+	}
+	var args []any
+	if at, ok := attrs["args"]; ok {
+		switch v, diags := at.Expr.Value(s.ctx); {
+		case diags.HasErrors():
+			return cty.NilVal, s.errorf(`evaluating "args": %w`, err)
+		case !v.CanIterateElements():
+			return cty.NilVal, s.errorf(`attribute "args" must be a list, got: %s`, v.Type())
+		default:
+			for it := v.ElementIterator(); it.Next(); {
+				switch _, v := it.Element(); v.Type() {
+				case cty.String:
+					args = append(args, v.AsString())
+				case cty.Number:
+					f, _ := v.AsBigFloat().Float64()
+					args = append(args, f)
+				case cty.Bool:
+					args = append(args, v.True())
+				default:
+					return cty.NilVal, fmt.Errorf(`attribute "args" must contain primitive types, got: %s`, v.Type())
+				}
+			}
+		}
+	}
+	var values []cty.Value
+	c, err := sqlclient.Open(context.Background(), u)
+	if err != nil {
+		return cty.NilVal, s.errorf("opening connection: %w", err)
+	}
+	defer c.Close()
+	rows, err := c.QueryContext(context.Background(), query, args...)
+	if err != nil {
+		return cty.NilVal, s.errorf("executing query: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var v any
+		if err := rows.Scan(&v); err != nil {
+			return cty.NilVal, s.errorf("scanning row: %w", err)
+		}
+		switch v := v.(type) {
+		case bool:
+			values = append(values, cty.BoolVal(v))
+		case int64:
+			values = append(values, cty.NumberIntVal(v))
+		case float64:
+			values = append(values, cty.NumberFloatVal(v))
+		case string:
+			values = append(values, cty.StringVal(v))
+		default:
+			return cty.NilVal, s.errorf("unsupported row type: %T", v)
+		}
+	}
+	obj := map[string]cty.Value{
+		"count":  cty.NumberIntVal(int64(len(values))),
+		"values": cty.ListValEmpty(cty.NilType),
+		"value":  cty.NilVal,
+	}
+	if len(values) > 0 {
+		obj["value"] = values[0]
+		obj["values"] = cty.ListVal(values)
+	}
+	return cty.ObjectVal(obj), nil
+}
+
+func (s *sqlsrc) stringAttr(attrs hcl.Attributes, name string) (string, error) {
+	at, ok := attrs[name]
+	if !ok {
+		return "", s.errorf("missing %q attribute", name)
+	}
+	u, diags := at.Expr.Value(s.ctx)
+	if diags.HasErrors() {
+		return "", s.errorf("evaluating %q attribute: %w", name, diags)
+	}
+	if u.Type() != cty.String {
+		return "", s.errorf("attribute %q must be a string, got: %s", name, u.Type())
+	}
+	return u.AsString(), nil
+}
+
+func (s *sqlsrc) errorf(format string, args ...any) error {
+	return fmt.Errorf("data.sql.%s: %w", s.block.Labels[1], fmt.Errorf(format, args...))
 }

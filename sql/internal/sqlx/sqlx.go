@@ -364,7 +364,7 @@ Top:
 			switch c := s[i]; {
 			case c == '\\', c == quote && s[i+1] == quote:
 				i++
-			// Accept only escaped quotes and eject otherwise.
+			// Accept only escaped quotes and reject otherwise.
 			case c == quote:
 				continue Top
 			}

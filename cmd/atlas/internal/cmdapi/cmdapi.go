@@ -73,6 +73,13 @@ Atlas is licensed under Apache 2.0 as found in https://github.com/ariga/atlas/bl
 func init() {
 	Root.AddCommand(versionCmd)
 	Root.AddCommand(licenseCmd)
+	// Register a global function to clean up the global
+	// flags regardless if the command passed or failed.
+	cobra.OnFinalize(func() {
+		GlobalFlags.ConfigURL = ""
+		GlobalFlags.Vars = nil
+		GlobalFlags.SelectedEnv = ""
+	})
 }
 
 // inputValsFromEnv populates GlobalFlags.Vars from the active environment. If we are working
