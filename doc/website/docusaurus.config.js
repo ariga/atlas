@@ -9,6 +9,7 @@ module.exports = {
   organizationName: 'ariga',
   projectName: 'atlas',
   themeConfig: {
+    image: "https://atlas-og-img.vercel.app/**Atlas%20%7C**%20Open-source%20database%20schema%20management.png?theme=dark",
     prism: {
       additionalLanguages: ['hcl'],
       magicComments: [
