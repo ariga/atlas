@@ -5,7 +5,6 @@ import {getImage} from '../../share-image';
 
 export default function DocItemMetadata() {
   const {metadata, frontMatter, assets} = useDoc();
-  console.log('metadata', metadata)
   return (
     <PageMetadata
       title={metadata.title}
