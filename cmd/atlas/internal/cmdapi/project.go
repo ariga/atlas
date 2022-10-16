@@ -304,6 +304,8 @@ func (s *sqlsrc) exec() (cty.Value, error) {
 			values = append(values, cty.NumberFloatVal(v))
 		case string:
 			values = append(values, cty.StringVal(v))
+		case []byte:
+			values = append(values, cty.StringVal(string(v)))
 		default:
 			return cty.NilVal, s.errorf("unsupported row type: %T", v)
 		}
