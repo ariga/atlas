@@ -1,0 +1,41 @@
+only postgres14
+
+atlas migrate hash
+atlas migrate apply --url URL --env dev --var "url=URL" --var "pattern=script_cli_migrate_apply_datasrc"
+stdout 'Migrating to version 1 \(1 migrations in total\):'
+
+-- atlas.hcl --
+variable "url" {
+  type = string
+}
+
+variable "pattern" {
+  type = string
+}
+
+locals {
+  # The database URL without its schema name.
+  base_url = regexreplace(var.url, "&search_path=\\w+", "")
+}
+
+data "sql" "tenants" {
+  url = var.url
+  query = <<EOS
+SELECT "schema_name"
+  FROM "information_schema"."schemata"
+  WHERE "schema_name" LIKE $1
+EOS
+  args = [var.pattern]
+}
+
+env "dev" {
+  for_each = toset(data.sql.tenants.values)
+  url = "${local.base_url}&search_path=${each.value}"
+}
+
+-- migrations/1_create_users.sql --
+CREATE TABLE "users" (
+  "id" bigint NOT NULL,
+  PRIMARY KEY ("id")
+)
+
