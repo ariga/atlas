@@ -7,7 +7,7 @@ title: Migration Troubleshooting
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-There are cases, where the migration applying does not go through without an error. This document aims to provide
+In some cases, applying a migration may fail. This document aims to provide
 general support for troubleshooting migration failures.
 
 ## Retrieve Migration Status
@@ -18,7 +18,7 @@ caused the migration failure. An example output can be seen below.
 
 :::info
 
-Note, that `atlas migrate status` does not show migration attempts, that got rolled back. As long as a migration failure
+Note, that `atlas migrate status` does not show information about migration attempts that were rolled back. As long as a migration failure
 is wrapped with a transaction by a database with transactional DDL support, Atlas will rollback entries to the revision
 table within the transaction.
 
@@ -95,54 +95,60 @@ Last migration attempt had errors:
 
 ## Fixing Migration Failures
 
-In our experience, the most common failures are introduced by one of the following issues:
+In our experience, failures are commonly caused by one of the following issues:
 
-- **Syntax Error**: One SQL statement contained a syntax error. Since Atlas provides a way to [lint](/versioned/lint) a
-migration directory, this case happens due to a misconfiguration, e.g. not executing the linter before applying the
-migration or applying against the wrong dialect (like SQLite files against MySQL).
-- **Schema Dependant Change**: One SQL statement was incorrect in schema context, e.g. adding a table that does already
-exist. This case is usually caused by a schema drift, e.g. because someone manually manipulated the database schema.
-- **Data Dependant Change**: One SQL statement contained a data dependant change. If your migration adds a constraint
-like `NOT NULL` and the column does contain `NULL` values, the migration will throw an error. Though Atlas' linting
-will warn if such a change is detected, this is still a possible scenario that could break migration execution.
-- **Connection Loss**: For a number of reasons the connection to the database could be interrupted, e.g. due to a
+- **Syntax Error**: A SQL statement contained a syntax error. Since Atlas provides a way to [lint](/versioned/lint) a
+migration directory, this type of failure can be automatically prevented by running the linter before applying the
+migration against the correct type of database (e.g. lint against a MySQL database if your migrations were written for MySQL)
+- **Schema Dependent Change**: A SQL statement was incorrect in schema context, e.g. adding a table that already
+exists. This might happen, for example, in cases where someone manipulated the database schema manually.
+- **Data-dependent Change**: A SQL statement contained a data-dependent change. For example, in cases where your migration adds a constraint
+like `NOT NULL` and the target column contains `NULL` values, the migration will throw an error. Although Atlas' linter
+will warn the user if such a change is detected, this is still a possible scenario that could break migration execution.
+- **Connection Loss**: The connection to the database could be interrupted for a number of reasons, e.g. due to a
 network failure or database crash.
-
+## Handling the different types of failures
 ### Connection Loss Failures
 
-Just re-try migration execution. Atlas is smart enough to figure out where to proceed execution. For very rare cases,
-where when working without a transaction (or after an implicit commit) a connection loss occurs between an SQL statement
-and the entry in Atlas schema history table, you might need to manually revert the last applied statement because in
-those cases Atlas will continue applying one statement early.
+Retry migration execution. Atlas stores information about applied statements alongside the revision information, and
+therefore knows  where to proceed execution, even for partially applied / not rolled back migration files. For very rare
+cases, where when working without a transaction (or after an implicit commit) a connection loss occurs between a SQL
+statement and the entry in Atlas schema history table, you might need to manually revert the last applied statement
+because in those cases Atlas will continue applying one statement early.
 
 ### Syntax Errors
 
-Fix the migration file and re-try migration execution. Atlas is smart enough to continue the execution starting with the
-statement following the last successfully applied one.
+Fix the migration file and retry migration execution. Atlas will continue the execution starting with the statement
+following the last successfully applied one.
 
 ### DDL Semantics
 
-Creating or editing schema resources can result in migration failure, e.g. if you are trying to create a table that does
-already exist or to modify a table that does not exist. The cause for this is either an incorrect migration file or a
+Creating or editing schema resources can result in migration failure, e.g. if you are trying to create a table that
+already exists or to modify a table that does not exist. The cause for this is either an incorrect migration file or a
 schema drift, e.g. if someone dropped, created or modified a resource.
 
 #### Option 1: Incorrect Migration File
 
-Solution can be simple: fix the migration file and re-apply the migration. For cases with multiple deployments or no
-(fast) editorial access to the migration file you have to fix the database state to match whatever the migration file is
-expecting. You can either do this by hand or use one of the `atlas schema` commands. See
-[Option 2](#option-2-schema-drift) for more information.
+In case the migration script is incorrect, simply fix the migration file and re-apply the migration. Do not forget to
+update the migration directory checksum afterwards by running:
 
-Once the migration / database is fixed, you can retry migration execution.
+```shell
+atlas migrate hash
+```
+For cases with multiple deployments or no (fast) editorial access to the migration file you have to fix the database
+state to match whatever the migration file is expecting. You can either do this by hand or use one of the `atlas schema`
+commands. See [Option 2](#option-2-schema-drift) for more information.
+
+Once the migration/database is fixed, you can retry migration execution.
 
 #### Option 2: Schema Drift
 
-In case of a schema drift, we still consider the migration files the source of truth. Editing its contents to match the
+In case of a schema drift, we still consider the migration files the source of truth. Editing their contents to match the
 managed database will most likely break other deployments or the local dev. The solution is to fix the database schema.
-This can be done manually or with the help of `atlas schema apply` / `atlas schema diff` commands. Both commands know
-how to read a database state from a migration directory and compare it with a state read from a database. The only
-difference is, that `atlas schema apply` can then automatically apply the changes to the database, while
-`atlas schema diff` will print the SQL on screen for you to check run by hand. You can utilize the `atlas schema status`
+This can be done manually or with the help of the `atlas schema apply` / `atlas schema diff` commands. Both commands can
+read a database state from a migration directory and compare it with the current state of the target database. The only
+difference is that `atlas schema apply` can automatically apply the changes to the database, while
+`atlas schema diff` will print the SQL for you to check and run manually. You can utilize the `atlas schema status`
 command to get information about the currently applied migration version.
 
 ##### atlas schema diff
@@ -253,11 +259,11 @@ atlas schema diff \
 </TabItem>
 </Tabs>
 
-### Data Dependant Failures
+### Data Dependent Failures
 
 If the issue is caused by adding or changing a constraint, it may result in a migration failure if the existing data
-is not valid for the new constraint. E.g. changing a column from formerly `int NULL` to `int NOT NULL` on a column that
-contains `NULL` values will cause the migration to fail. This can be fixed by "fixing" the data and re-trying the
+is not valid for the new constraint. For example, changing a column from formerly `int NULL` to `int NOT NULL` on a column that
+contains `NULL` values will cause the migration to fail. This can be fixed by "fixing" the data and retrying the
 migration applying.
 
 In any case, we advise to add the executed statements to fix the data to the migration file to not run into this issue
@@ -268,22 +274,22 @@ again for other deployments.
 At Ariga, we advise to favor correctness over performance when it comes to database changes. Wrapping migration
 execution in a transaction ensures the changes made to the database are rolled back if an error occurs along the way and
 even in cases where the connection is lost, the changes are not committed. However, some databases (most notably
-MySQL / MariaDB) do not support
+MySQL and MariaDB) do not support
 [transactional DDL](https://wiki.postgresql.org/wiki/Transactional_DDL_in_PostgreSQL:_A_Competitive_Analysis). If
-working with a database with no support for transactional DDL, a rollback will not restore the state previous to the
-migration execution, and you end up with a "broken" database state. But since Atlas stores its own information about
+you are working with a database that does not support transactional DDL, a rollback will not restore the state previous to the
+migration execution, and you end up with a "broken" database state. However, since Atlas stores its own information about
 applied statements within the same transaction, it will start execution with the next statement in the migration file
 on a following migration attempt.
 
 ## Manipulating the Schema Revisions Table
 
-Atlas stores information about applied migrations in the managed database. Sometimes, you want to tell Atlas that you
+Atlas stores information about applied migrations in the managed database. Sometimes, you want to notify Atlas that you
 manually applied or rolled back a migration file. Atlas provides the
 [`atlas migrate set`](/cli-reference#atlas-migrate-set) command for such cases.
 
 :::warning
 
-Please refrain from manually making changes to the Atlas revision table. The behavior of Atlas after such a change is
+Please refrain from manually making changes to the Atlas revision table. Atlas' behavior after such a change is
 undefined, and it can possibly break your database to a point you cannot recover from.
 
 :::
