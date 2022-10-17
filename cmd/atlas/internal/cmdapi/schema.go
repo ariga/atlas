@@ -6,6 +6,8 @@ package cmdapi
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -45,14 +47,15 @@ func schemaCmd() *cobra.Command {
 }
 
 type schemaApplyFlags struct {
-	URL         string   // URL of database to apply the changes on.
-	DevURL      string   // URL of the dev database.
-	Paths       []string // Paths to HCL files.
-	Schemas     []string // Schemas to take into account when diffing.
-	Exclude     []string // List of glob patterns used to filter resources from applying (see schema.InspectOptions).
-	DryRun      bool     // Only show SQL on screen instead of applying it.
-	AutoApprove bool     // Don't prompt for approval before applying SQL.
-	DSN         string   // Deprecated: DSN is an alias for URL.
+	url         string   // URL of database to apply the changes on.
+	devURL      string   // URL of the dev database.
+	paths       []string // Paths to HCL files.
+	toURLs      []string // URLs of the desired state.
+	schemas     []string // Schemas to take into account when diffing.
+	exclude     []string // List of glob patterns used to filter resources from applying (see schema.InspectOptions).
+	dryRun      bool     // Only show SQL on screen instead of applying it.
+	autoApprove bool     // Don't prompt for approval before applying SQL.
+	dsn         string   // Deprecated: DSN is an alias for URL.
 }
 
 // schemaApplyCmd represents the 'atlas schema apply' subcommand.
@@ -67,90 +70,95 @@ func schemaApplyCmd() *cobra.Command {
 database to the state described in the provided Atlas schema. Before running the
 migration, Atlas will print the migration plan and prompt the user for approval.
 
-The schema is provided by one or more paths (to a file or directory) using the "-f" flag:
-  atlas schema apply -u URL -f file1.hcl -f file2.hcl
-  atlas schema apply -u URL -f schema/ -f override.hcl
+The schema is provided by one or more URLs (to a HCL file or 
+directory, database or migration directory) using the "--to, -t" flag:
+  atlas schema apply -u URL --to file://file1.hcl --to file://file2.hcl
+  atlas schema apply -u URL --to file://schema/ --to file://override.hcl
 
-As a convenience, schemas may also be provided via an environment definition in
+As a convenience, schema URLs may also be provided via an environment definition in
 the project file (see: https://atlasgo.io/cli/projects).
 
 If run with the "--dry-run" flag, atlas will exit after printing out the planned
 migration.`,
-			Example: `  atlas schema apply -u "mysql://user:pass@localhost/dbname" -f atlas.hcl
-  atlas schema apply -u "mysql://localhost" -f schema.hcl --schema prod --schema staging
-  atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" -f schema.hcl --dry-run
-  atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" -f schema.hcl
-  atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" -f schema.hcl
-  atlas schema apply -u "sqlite://file:ex1.db?_fk=1" -f schema.hcl`,
-			PreRunE: schemaFlagsFromEnv,
+			Example: `  atlas schema apply -u "mysql://user:pass@localhost/dbname" --to file://atlas.hcl
+  atlas schema apply -u "mysql://localhost" --to file://schema.hcl --schema prod --schema staging
+  atlas schema apply -u "mysql://user:pass@localhost:3306/dbname" --to file://schema.hcl --dry-run
+  atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" --to file://schema.hcl
+  atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" --to file://schema.hcl
+  atlas schema apply -u "sqlite://file:ex1.db?_fk=1" --to file://schema.hcl`,
+			PreRunE: func(cmd *cobra.Command, args []string) error {
+				if err := schemaFlagsFromEnv(cmd, args); err != nil {
+					return err
+				}
+				if len(flags.paths) == 0 && len(flags.toURLs) == 0 {
+					return errors.New(`one of flag(s) "file" or "to" is required`)
+				}
+				// If the old -f flag is given convert them to the URL format. If both are given, cobra would throw an
+				// error since they are marked as mutually exclusive.
+				for _, p := range flags.paths {
+					flags.toURLs = append(flags.toURLs, "file://"+p)
+				}
+				return nil
+			},
 			RunE: func(cmd *cobra.Command, args []string) error {
 				return schemaApplyRun(cmd, args, flags)
 			},
 		}
 	)
 	cmd.Flags().SortFlags = false
-	cmd.Flags().StringSliceVarP(&flags.Paths, flagFile, "f", nil, "[paths...] file or directory containing the HCL files")
-	addFlagURL(cmd.Flags(), &flags.URL)
-	addFlagExclude(cmd.Flags(), &flags.Exclude)
-	addFlagSchemas(cmd.Flags(), &flags.Schemas)
-	addFlagDevURL(cmd.Flags(), &flags.DevURL)
-	addFlagDryRun(cmd.Flags(), &flags.DryRun)
-	addFlagAutoApprove(cmd.Flags(), &flags.AutoApprove)
-	addFlagDSN(cmd.Flags(), &flags.DSN)
+	cmd.Flags().StringSliceVarP(&flags.paths, flagFile, "f", nil, "[paths...] file or directory containing the HCL files")
+	addFlagURL(cmd.Flags(), &flags.url)
+	addFlagURLs(cmd.Flags(), &flags.toURLs, flagTo, "")
+	addFlagExclude(cmd.Flags(), &flags.exclude)
+	addFlagSchemas(cmd.Flags(), &flags.schemas)
+	addFlagDevURL(cmd.Flags(), &flags.devURL)
+	addFlagDryRun(cmd.Flags(), &flags.dryRun)
+	addFlagAutoApprove(cmd.Flags(), &flags.autoApprove)
+	addFlagDSN(cmd.Flags(), &flags.dsn)
 	cobra.CheckErr(cmd.MarkFlagRequired(flagURL))
-	cobra.CheckErr(cmd.MarkFlagRequired(flagFile))
+	cmd.MarkFlagsMutuallyExclusive(flagFile, flagTo)
 	return cmd
 }
 
 func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) error {
-	client, err := sqlclient.Open(cmd.Context(), flags.URL)
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-	schemas, ctx := flags.Schemas, cmd.Context()
-	if client.URL.Schema != "" {
-		schemas = append(schemas, client.URL.Schema)
-	}
-	realm, err := client.InspectRealm(ctx, &schema.InspectRealmOption{
-		Schemas: schemas,
-		Exclude: flags.Exclude,
-	})
-	if err != nil {
-		return err
-	}
-	desired := &schema.Realm{}
-	parsed, err := parseHCLPaths(flags.Paths...)
-	if err != nil {
-		return err
-	}
-	if err := client.Eval(parsed, desired, GlobalFlags.Vars); err != nil {
-		return err
-	}
-	if len(schemas) > 0 {
-		// Validate all schemas in file were selected by user.
-		sm := make(map[string]bool, len(schemas))
-		for _, s := range schemas {
-			sm[s] = true
-		}
-		for _, s := range desired.Schemas {
-			if !sm[s.Name] {
-				return fmt.Errorf("schema %q was not selected %q, all schemas defined in file must be selected", s.Name, schemas)
-			}
-		}
-	}
-	if _, ok := client.Driver.(schema.Normalizer); ok && flags.DevURL != "" {
-		dev, err := sqlclient.Open(ctx, flags.DevURL)
+	var (
+		ctx = cmd.Context()
+		err error
+	)
+	var dev *sqlclient.Client
+	if flags.devURL != "" {
+		dev, err = sqlclient.Open(ctx, flags.devURL)
 		if err != nil {
 			return err
 		}
 		defer dev.Close()
-		desired, err = dev.Driver.(schema.Normalizer).NormalizeRealm(ctx, desired)
-		if err != nil {
-			return err
-		}
 	}
-	changes, err := client.RealmDiff(realm, desired)
+	from, err := stateReader(ctx, &stateReaderConfig{
+		urls:    []string{flags.url},
+		schemas: flags.schemas,
+		exclude: flags.exclude,
+	})
+	if err != nil {
+		return err
+	}
+	defer from.Close()
+	client, ok := from.Closer.(*sqlclient.Client)
+	if !ok {
+		return errors.New("--url must be a database connection")
+	}
+	to, err := stateReader(ctx, &stateReaderConfig{
+		urls:    flags.toURLs,
+		dev:     dev,
+		norm:    client,
+		schemas: flags.schemas,
+		exclude: flags.exclude,
+		vars:    GlobalFlags.Vars,
+	})
+	if err != nil {
+		return err
+	}
+	defer to.Close()
+	changes, err := computeDiff(ctx, client, from, to)
 	if err != nil {
 		return err
 	}
@@ -161,7 +169,7 @@ func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) erro
 	if err := summary(cmd, client, changes); err != nil {
 		return err
 	}
-	if !flags.DryRun && (flags.AutoApprove || promptUser()) {
+	if !flags.dryRun && (flags.autoApprove || promptUser()) {
 		if err := client.ApplyChanges(ctx, changes); err != nil {
 			return err
 		}
@@ -243,9 +251,11 @@ func schemaCleanRun(cmd *cobra.Command, _ []string, flags schemeCleanFlags) erro
 }
 
 type schemaDiffFlags struct {
-	fromURL string // URL of the current state.
-	toURL   string // URL of the desired state.
-	devURL  string // URL of a dev database.
+	fromURL []string
+	toURL   []string
+	devURL  string
+	schemas []string
+	exclude []string
 }
 
 // schemaDiffCmd represents the 'atlas schema diff' subcommand.
@@ -268,9 +278,11 @@ The database states can be read from a connected database, an HCL project or a m
 		}
 	)
 	cmd.Flags().SortFlags = false
-	addFlagURL(cmd.Flags(), &flags.fromURL, flagFrom, "")
-	addFlagURL(cmd.Flags(), &flags.toURL, flagTo, "")
+	addFlagURLs(cmd.Flags(), &flags.fromURL, flagFrom, flagFromShort)
+	addFlagURLs(cmd.Flags(), &flags.toURL, flagTo, "")
 	addFlagDevURL(cmd.Flags(), &flags.devURL)
+	addFlagSchemas(cmd.Flags(), &flags.schemas)
+	addFlagExclude(cmd.Flags(), &flags.exclude)
 	cobra.CheckErr(cmd.MarkFlagRequired(flagFrom))
 	cobra.CheckErr(cmd.MarkFlagRequired(flagTo))
 	return cmd
@@ -290,12 +302,24 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags) error 
 		}
 		defer c.Close()
 	}
-	from, err := stateReader(ctx, &stateReaderConfig{urls: []string{flags.fromURL}, dev: c})
+	from, err := stateReader(ctx, &stateReaderConfig{
+		urls:    flags.fromURL,
+		dev:     c,
+		vars:    GlobalFlags.Vars,
+		schemas: flags.schemas,
+		exclude: flags.exclude,
+	})
 	if err != nil {
 		return err
 	}
 	defer from.Close()
-	to, err := stateReader(ctx, &stateReaderConfig{urls: []string{flags.toURL}, dev: c})
+	to, err := stateReader(ctx, &stateReaderConfig{
+		urls:    flags.toURL,
+		dev:     c,
+		vars:    GlobalFlags.Vars,
+		schemas: flags.schemas,
+		exclude: flags.exclude,
+	})
 	if err != nil {
 		return err
 	}
@@ -305,34 +329,9 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags) error 
 		// an error already. If we land in this case, we can assume both states are database connections.
 		c = to.Closer.(*sqlclient.Client)
 	}
-	current, err := from.ReadState(ctx)
+	diff, err := computeDiff(ctx, c, from, to)
 	if err != nil {
 		return err
-	}
-	desired, err := to.ReadState(ctx)
-	if err != nil {
-		return err
-	}
-	var diff []schema.Change
-	switch {
-	// compare realm
-	case from.Schema == "" && to.Schema == "":
-		diff, err = c.RealmDiff(current, desired)
-		if err != nil {
-			return err
-		}
-	case from.Schema == "":
-		return fmt.Errorf("cannot diff schema %q with a database connection", from.Schema)
-	case to.Schema == "":
-		return fmt.Errorf("cannot diff database connection with a schema %q", to.Schema)
-	default:
-		// SchemaDiff checks for name equality which is irrelevant in the case
-		// the user wants to compare their contents, reset them to allow the comparison.
-		current.Schemas[0].Name, desired.Schemas[0].Name = "", ""
-		diff, err = c.SchemaDiff(current.Schemas[0], desired.Schemas[0])
-		if err != nil {
-			return err
-		}
 	}
 	p, err := c.PlanChanges(ctx, "plan", diff)
 	if err != nil {
@@ -351,10 +350,10 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags) error 
 }
 
 type schemaInspectFlags struct {
-	URL     string   // URL of database to apply the changes on.
-	Schemas []string // Schemas to take into account when diffing.
-	Exclude []string // List of glob patterns used to filter resources from applying (see schema.InspectOptions).
-	DSN     string   // Deprecated: DSN is an alias for URL.
+	url     string   // URL of database to apply the changes on.
+	schemas []string // Schemas to take into account when diffing.
+	exclude []string // List of glob patterns used to filter resources from applying (see schema.InspectOptions).
+	dsn     string   // Deprecated: DSN is an alias for URL.
 }
 
 // schemaInspectCmd represents the 'atlas schema inspect' subcommand.
@@ -388,27 +387,27 @@ flag.
 		}
 	)
 	cmd.Flags().SortFlags = false
-	addFlagURL(cmd.Flags(), &flags.URL)
-	addFlagSchemas(cmd.Flags(), &flags.Schemas)
-	addFlagExclude(cmd.Flags(), &flags.Exclude)
-	addFlagDSN(cmd.Flags(), &flags.DSN)
+	addFlagURL(cmd.Flags(), &flags.url)
+	addFlagSchemas(cmd.Flags(), &flags.schemas)
+	addFlagExclude(cmd.Flags(), &flags.exclude)
+	addFlagDSN(cmd.Flags(), &flags.dsn)
 	cobra.CheckErr(cmd.MarkFlagRequired(flagURL))
 	return cmd
 }
 
 func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags) error {
-	client, err := sqlclient.Open(cmd.Context(), flags.URL)
+	client, err := sqlclient.Open(cmd.Context(), flags.url)
 	if err != nil {
 		return err
 	}
 	defer client.Close()
-	schemas := flags.Schemas
+	schemas := flags.schemas
 	if client.URL.Schema != "" {
 		schemas = append(schemas, client.URL.Schema)
 	}
 	s, err := client.InspectRealm(cmd.Context(), &schema.InspectRealmOption{
 		Schemas: schemas,
-		Exclude: flags.Exclude,
+		Exclude: flags.exclude,
 	})
 	if err != nil {
 		return err
@@ -518,6 +517,39 @@ func schemaFlagsFromEnv(cmd *cobra.Command, _ []string) error {
 		}
 	}
 	return nil
+}
+
+func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *stateReadCloser) ([]schema.Change, error) {
+	current, err := from.ReadState(ctx)
+	if err != nil {
+		return nil, err
+	}
+	desired, err := to.ReadState(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var diff []schema.Change
+	switch {
+	// Compare realm if the desired state is an HCL file or both connections are not bound to a schema.
+	case to.hcl, from.schema == "" && to.schema == "":
+		diff, err = differ.RealmDiff(current, desired)
+		if err != nil {
+			return nil, err
+		}
+	case from.schema == "":
+		return nil, fmt.Errorf("cannot diff schema %q with a database connection", from.schema)
+	case to.schema == "":
+		return nil, fmt.Errorf("cannot diff database connection with a schema %q", to.schema)
+	default:
+		// SchemaDiff checks for name equality which is irrelevant in the case
+		// the user wants to compare their contents, reset them to allow the comparison.
+		current.Schemas[0].Name, desired.Schemas[0].Name = "", ""
+		diff, err = differ.SchemaDiff(current.Schemas[0], desired.Schemas[0])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return diff, nil
 }
 
 func summary(cmd *cobra.Command, drv migrate.Driver, changes []schema.Change) error {

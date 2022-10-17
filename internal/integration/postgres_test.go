@@ -711,6 +711,11 @@ table "users" {
 			testCLISchemaApplyAutoApprove(t, h, t.url(""))
 		})
 	})
+	t.Run("SchemaApplyFromMigrationDir", func(t *testing.T) {
+		pgRun(t, func(t *pgTest) {
+			testCLISchemaApplyFromMigrationDir(t)
+		})
+	})
 }
 
 func TestPostgres_CLI_MultiSchema(t *testing.T) {

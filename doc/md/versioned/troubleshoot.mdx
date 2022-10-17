@@ -1,0 +1,295 @@
+---
+id: troubleshoot
+slug: /versioned/troubleshoot
+title: Migration Troubleshooting
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+In some cases, applying a migration may fail. This document aims to provide
+general support for troubleshooting migration failures.
+
+## Retrieve Migration Status
+
+Atlas provides the `atlas migrate status` command to retrieve information about the migration status of a database. You
+can either use this command or have a look at the `atlas migrate apply` output to gather knowledge about the issue that
+caused the migration failure. An example output can be seen below.
+
+:::info
+
+Note, that `atlas migrate status` does not show information about migration attempts that were rolled back. As long as a migration failure
+is wrapped with a transaction by a database with transactional DDL support, Atlas will rollback entries to the revision
+table within the transaction.
+
+:::
+
+<Tabs
+defaultValue="apply_stdout"
+values={[
+{label: 'atlas migrate apply (STDOUT)', value: 'apply_stdout'},
+{label: 'atlas migrate apply (STDERR)', value: 'apply_stderr'},
+{label: 'atlas migrate status', value: 'status'},
+]}>
+<TabItem value="apply_stdout">
+
+```text
+$ atlas --env local migrate apply 1 --tx-mode none
+Migrating to version 2 from 1 (1 migrations in total):
+
+  -- migrating version 2
+    -> INSERT INTO `users` (`id`, `name`) VALUES (1, 'masseelch'), (2, 'rotemtam'), (3, 'a8m');
+    -> INSERT INTO `groups` (`id`, `name`) VALUES (1, 'Founders'), (2, 'Senior Engineers'), (3, 'Junior Engineers');
+    -> INSERT INTO `user_groups` (`user_id`, `group_id`) VALUES
+    -- Founders
+    (2, 1), (3, 1),
+    -- Seniors
+    (1, 2), (2, 2), (3, 2),
+    -- Constraint error (adding masseelch twice to seniors)
+    (1, 2);
+// highlight-next-line-error-message
+     Error 1062: Duplicate entry '1-2' for key 'user_groups.PRIMARY'
+
+  -------------------------
+  -- 2.521007ms
+  -- 0 migrations ok (1 with errors)
+  -- 2 sql statements ok (1 with errors)
+
+// highlight-next-line-error-message
+Error: Execution had errors:
+// highlight-next-line-error-message
+Error 1062: Duplicate entry '1-2' for key 'user_groups.PRIMARY'
+```
+
+</TabItem>
+<TabItem value="apply_stderr">
+
+```text
+$ atlas --env local migrate apply 1 --tx-mode none
+Error: sql/migrate: execute: executing statement "INSERT INTO `user_groups` (`user_id`, `group_id`) VALUES
+    -- Founders\n    (2, 1), (3, 1),
+    -- Seniors\n    (1, 2), (2, 2), (3, 2),
+    -- Constraint error (adding masseelch twice to seniors)
+    (1, 2);" from version "2": Error 1062: Duplicate entry '1-2' for key 'user_groups.PRIMARY'
+```
+
+</TabItem>
+<TabItem value="status">
+
+```text
+$ atlas --env local migrate status
+Migration Status: PENDING
+  -- Current Version: 2 (2 statements applied)
+  -- Next Version:    2 (1 statements left)
+  -- Executed Files:  2 (last one partially)
+  -- Pending Files:   2
+
+Last migration attempt had errors:
+  -- SQL:   INSERT INTO `user_groups` (`user_id`, `group_id`) VALUES     -- Founders     (2, 1), (3, 1),     -- Seniors     (1, 2), (2, 2), (3, 2),     -- Constraint error (adding masseelch twice to seniors)     (1, 2);
+// highlight-next-line-error-message
+  -- ERROR: Error 1062: Duplicate entry '1-2' for key 'user_groups.PRIMARY'
+```
+
+</TabItem>
+</Tabs>
+
+## Fixing Migration Failures
+
+In our experience, failures are commonly caused by one of the following issues:
+
+- **Syntax Error**: A SQL statement contained a syntax error. Since Atlas provides a way to [lint](/versioned/lint) a
+migration directory, this type of failure can be automatically prevented by running the linter before applying the
+migration against the correct type of database (e.g. lint against a MySQL database if your migrations were written for MySQL)
+- **Schema Dependent Change**: A SQL statement was incorrect in schema context, e.g. adding a table that already
+exists. This might happen, for example, in cases where someone manipulated the database schema manually.
+- **Data-dependent Change**: A SQL statement contained a data-dependent change. For example, in cases where your migration adds a constraint
+like `NOT NULL` and the target column contains `NULL` values, the migration will throw an error. Although Atlas' linter
+will warn the user if such a change is detected, this is still a possible scenario that could break migration execution.
+- **Connection Loss**: The connection to the database could be interrupted for a number of reasons, e.g. due to a
+network failure or database crash.
+## Handling the different types of failures
+### Connection Loss Failures
+
+Retry migration execution. Atlas stores information about applied statements alongside the revision information, and
+therefore knows  where to proceed execution, even for partially applied / not rolled back migration files. For very rare
+cases, where when working without a transaction (or after an implicit commit) a connection loss occurs between a SQL
+statement and the entry in Atlas schema history table, you might need to manually revert the last applied statement
+because in those cases Atlas will continue applying one statement early.
+
+### Syntax Errors
+
+Fix the migration file and retry migration execution. Atlas will continue the execution starting with the statement
+following the last successfully applied one.
+
+### DDL Semantics
+
+Creating or editing schema resources can result in migration failure, e.g. if you are trying to create a table that
+already exists or to modify a table that does not exist. The cause for this is either an incorrect migration file or a
+schema drift, e.g. if someone dropped, created or modified a resource.
+
+#### Option 1: Incorrect Migration File
+
+In case the migration script is incorrect, simply fix the migration file and re-apply the migration. Do not forget to
+update the migration directory checksum afterwards by running:
+
+```shell
+atlas migrate hash
+```
+For cases with multiple deployments or no (fast) editorial access to the migration file you have to fix the database
+state to match whatever the migration file is expecting. You can either do this by hand or use one of the `atlas schema`
+commands. See [Option 2](#option-2-schema-drift) for more information.
+
+Once the migration/database is fixed, you can retry migration execution.
+
+#### Option 2: Schema Drift
+
+In case of a schema drift, we still consider the migration files the source of truth. Editing their contents to match the
+managed database will most likely break other deployments or the local dev. The solution is to fix the database schema.
+This can be done manually or with the help of the `atlas schema apply` / `atlas schema diff` commands. Both commands can
+read a database state from a migration directory and compare it with the current state of the target database. The only
+difference is that `atlas schema apply` can automatically apply the changes to the database, while
+`atlas schema diff` will print the SQL for you to check and run manually. You can utilize the `atlas schema status`
+command to get information about the currently applied migration version.
+
+##### atlas schema diff
+
+<Tabs
+defaultValue="dir"
+values={[
+{label: 'Migration Directory', value: 'dir'},
+{label: 'HCL File', value: 'hcl'},
+{label: 'Another Database', value: 'db'},
+]}>
+<TabItem value="dir">
+
+Compare the state of the `from` database (the one with the schema drift), to the desired state given in the migration
+directory. Note the query parameter `version` in the connection string to the migration directory, specifying the
+version to consider the current state of the schema.
+
+```shell
+atlas schema diff \
+  --from "driver://user:pass@host:port/db" \
+  --to "file:///path/to/migrations/dir?version=myTargetVersion" \
+  --dev-url "driver://user:pass@host:port/dev_db"
+```
+
+</TabItem>
+<TabItem value="hcl">
+
+Compare the state of the `from` database (the one with the schema drift), to the desired state given in one or more HCL
+files.
+
+```shell
+atlas schema diff \
+  --from "driver://user:pass@host:port/db" \
+  --to "file:///path/to/schema_1.hcl" \
+  --to "file:///path/to/schema_2.hcl" \
+  --dev-url "driver://user:pass@host:port/dev_db"
+```
+
+</TabItem>
+<TabItem value="db">
+
+Compare the state of the `from` database (the one with the schema drift), to the desired state given by another database
+(e.g. a local dev copy of the schema).
+
+```shell
+atlas schema diff \
+  --from "driver://user:pass@host:port/current" \
+  --to "driver://user:pass@host:port/desired"
+```
+
+</TabItem>
+</Tabs>
+
+Once you apply the SQL shown by `atlas migrate diff` onto your database, the schema drift should have vanished, and you
+can retry migration applying.
+
+#### atlas schema apply
+
+Instead of only showing the SQL on the screen, you can immediately let Atlas apply it (Atlas will prompt for
+confirmation first).
+
+<Tabs
+defaultValue="dir"
+values={[
+{label: 'Migration Directory', value: 'dir'},
+{label: 'HCL File', value: 'hcl'},
+{label: 'Another Database', value: 'db'},
+]}>
+<TabItem value="dir">
+
+Migrate the state of the `url` database (the one with the schema drift), to the desired state given in the migration
+directory. Note the query parameter `version` in the connection string to the migration directory, specifying the
+version to consider the current state of the schema.
+
+```shell
+atlas schema apply \
+  --url "driver://user:pass@host:port/db" \
+  --to "file:///path/to/migrations/dir?format=atlas&version=myTargetVersion" \
+  --dev-url "driver://user:pass@host:port/dev_db"
+```
+
+</TabItem>
+<TabItem value="hcl">
+
+Compare the state of the `url` database (the one with the schema drift), to the desired state given in one or more HCL
+files.
+
+```shell
+atlas schema apply \
+  --url "driver://user:pass@host:port/db" \
+  --to "file:///path/to/schema_1.hcl" \
+  --to "file:///path/to/schema_2.hcl" \
+  --dev-url "driver://user:pass@host:port/dev_db"
+```
+
+</TabItem>
+<TabItem value="db">
+
+Compare the state of the `url` database (the one with the schema drift), to the desired state given by another database
+(e.g. a local dev copy of the schema).
+
+```shell
+atlas schema diff \
+  --from "driver://user:pass@host:port/current" \
+  --to "driver://user:pass@host:port/desired"
+```
+
+</TabItem>
+</Tabs>
+
+### Data Dependent Failures
+
+If the issue is caused by adding or changing a constraint, it may result in a migration failure if the existing data
+is not valid for the new constraint. For example, changing a column from formerly `int NULL` to `int NOT NULL` on a column that
+contains `NULL` values will cause the migration to fail. This can be fixed by "fixing" the data and retrying the
+migration applying.
+
+In any case, we advise to add the executed statements to fix the data to the migration file to not run into this issue
+again for other deployments.
+
+## A Word on Transactions
+
+At Ariga, we advise to favor correctness over performance when it comes to database changes. Wrapping migration
+execution in a transaction ensures the changes made to the database are rolled back if an error occurs along the way and
+even in cases where the connection is lost, the changes are not committed. However, some databases (most notably
+MySQL and MariaDB) do not support
+[transactional DDL](https://wiki.postgresql.org/wiki/Transactional_DDL_in_PostgreSQL:_A_Competitive_Analysis). If
+you are working with a database that does not support transactional DDL, a rollback will not restore the state previous to the
+migration execution, and you end up with a "broken" database state. However, since Atlas stores its own information about
+applied statements within the same transaction, it will start execution with the next statement in the migration file
+on a following migration attempt.
+
+## Manipulating the Schema Revisions Table
+
+Atlas stores information about applied migrations in the managed database. Sometimes, you want to notify Atlas that you
+manually applied or rolled back a migration file. Atlas provides the
+[`atlas migrate set`](/cli-reference#atlas-migrate-set) command for such cases.
+
+:::warning
+
+Please refrain from manually making changes to the Atlas revision table. Atlas' behavior after such a change is
+undefined, and it can possibly break your database to a point you cannot recover from.
+
+:::

@@ -1,13 +1,13 @@
 ! atlas schema apply -f empty/ -u URL --auto-approve
-stderr 'no schema files found'
+stderr '"empty" contains neither SQL nor HCL files'
 
 atlas schema apply -f schema/ -u URL --auto-approve
 cmpshow users expected.sql
 
-atlas schema apply -f schema/ -u URL --auto-approve --dry-run --exclude "*.*.id" > inspected.txt
+atlas schema apply -f schema/ -u URL --auto-approve --dry-run --exclude "*.id" > inspected.txt
 cmp inspected.txt alter.txt
 
-atlas schema apply -f schema/ -u URL --auto-approve --dry-run --exclude "*.users" > inspected.txt
+atlas schema apply -f schema/ -u URL --auto-approve --dry-run --exclude "users" > inspected.txt
 cmp inspected.txt create.txt
 
 -- schema/users.hcl --

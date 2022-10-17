@@ -187,15 +187,18 @@ const (
 	flagExclude        = "exclude"
 	flagFile           = "file"
 	flagFrom           = "from"
+	flagFromShort      = "f"
 	flagGitBase        = "git-base"
 	flagGitDir         = "git-dir"
 	flagLatest         = "latest"
 	flagLog            = "log"
 	flagRevisionSchema = "revisions-schema"
 	flagSchema         = "schema"
+	flagSchemaShort    = "s"
 	flagTo             = "to"
 	flagTxMode         = "tx-mode"
 	flagURL            = "url"
+	flagURLShort       = "u"
 	flagVar            = "var"
 	flagQualifier      = "qualifier"
 )
@@ -268,7 +271,7 @@ func addFlagRevisionSchema(set *pflag.FlagSet, target *string) {
 func addFlagSchemas(set *pflag.FlagSet, target *[]string) {
 	set.StringSliceVarP(
 		target,
-		flagSchema, "s",
+		flagSchema, flagSchemaShort,
 		nil,
 		"set schema names",
 	)
@@ -276,7 +279,7 @@ func addFlagSchemas(set *pflag.FlagSet, target *[]string) {
 
 // addFlagURL adds a URL flag. If given, args[0] override the name, args[1] the shorthand.
 func addFlagURL(set *pflag.FlagSet, target *string, args ...string) {
-	name, short := flagURL, "u"
+	name, short := flagURL, flagURLShort
 	switch len(args) {
 	case 2:
 		short = args[1]
@@ -293,7 +296,7 @@ func addFlagURL(set *pflag.FlagSet, target *string, args ...string) {
 }
 
 func addFlagURLs(set *pflag.FlagSet, target *[]string, args ...string) {
-	name, short := flagURL, "u"
+	name, short := flagURL, flagURLShort
 	switch len(args) {
 	case 2:
 		short = args[1]
@@ -357,13 +360,16 @@ type (
 	stateReadCloser struct {
 		migrate.StateReader
 		io.Closer        // optional close function
-		Schema    string // in case we work on a single schema
+		schema    string // in case we work on a single schema
+		hcl       bool   // true if state was read from HCL files since in that case we always compare realms
 	}
 	// stateReaderConfig is given to stateReader.
 	stateReaderConfig struct {
-		urls    []string          // urls to create a migrate.StateReader from
-		dev     *sqlclient.Client // dev database connection
-		schemas []string          // schemas to work on
+		urls      []string          // urls to create a migrate.StateReader from
+		norm, dev *sqlclient.Client // database connections, while dev is considered a dev database, norm is not
+		schemas   []string          // schemas to work on
+		exclude   []string          // exclude flag values
+		vars      Vars
 	}
 )
 
@@ -383,10 +389,6 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadClos
 	switch scheme {
 	// "file" scheme is valid for both migration directory and HCL paths.
 	case "file":
-		// Replaying a migration directory or evaluating an HCL file requires a dev connection.
-		if config.dev == nil {
-			return nil, errors.New("--dev-url cannot be empty")
-		}
 		if len(config.urls) > 1 {
 			// Consider urls being HCL paths.
 			return hclStateReader(ctx, config, parsed)
@@ -423,6 +425,10 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadClos
 		case hcl:
 			return hclStateReader(ctx, config, parsed)
 		case sql:
+			// Replaying a migration directory requires a dev connection.
+			if config.dev == nil {
+				return nil, errors.New("--dev-url cannot be empty")
+			}
 			dir, err := dirURL(parsed[0], false)
 			if err != nil {
 				return nil, err
@@ -431,18 +437,25 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadClos
 			if err != nil {
 				return nil, err
 			}
+			var opts []migrate.ReplayOption
+			if v := parsed[0].Query().Get("version"); v != "" {
+				opts = append(opts, migrate.ReplayToVersion(v))
+			}
 			sr, err := ex.Replay(ctx, func() migrate.StateReader {
 				if config.dev.URL.Schema != "" {
 					return migrate.SchemaConn(config.dev, "", nil)
 				}
-				return migrate.RealmConn(config.dev, nil)
-			}())
+				return migrate.RealmConn(config.dev, &schema.InspectRealmOption{
+					Schemas: config.schemas,
+					Exclude: config.exclude,
+				})
+			}(), opts...)
 			if err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
 				return nil, fmt.Errorf("replaying the migration directory: %w", err)
 			}
 			return &stateReadCloser{
 				StateReader: migrate.Realm(sr),
-				Schema:      config.dev.URL.Schema,
+				schema:      config.dev.URL.Schema,
 			}, nil
 		default:
 			return nil, fmt.Errorf("%q contains neither SQL nor HCL files", path)
@@ -456,30 +469,42 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadClos
 		var sr migrate.StateReader
 		switch c.URL.Schema {
 		case "":
-			sr = migrate.RealmConn(c.Driver, nil)
+			sr = migrate.RealmConn(c.Driver, &schema.InspectRealmOption{
+				Schemas: config.schemas,
+				Exclude: config.exclude,
+			})
 		default:
-			sr = migrate.SchemaConn(c.Driver, c.URL.Schema, nil)
+			sr = migrate.SchemaConn(c.Driver, c.URL.Schema, &schema.InspectOptions{Exclude: config.exclude})
 		}
 		return &stateReadCloser{
 			StateReader: sr,
 			Closer:      c,
-			Schema:      c.URL.Schema,
+			schema:      c.URL.Schema,
 		}, nil
 	}
 }
 
 // hclStateReadr returns a migrate.StateReader that reads the state from the given HCL paths urls.
 func hclStateReader(ctx context.Context, config *stateReaderConfig, urls []*url.URL) (*stateReadCloser, error) {
+	var client *sqlclient.Client
+	switch {
+	case config.dev != nil:
+		client = config.dev
+	case config.norm != nil:
+		client = config.norm
+	default:
+		return nil, errors.New("no database connection available")
+	}
 	paths := make([]string, len(urls))
 	for i, u := range urls {
-		paths[i] = u.Path
+		paths[i] = filepath.Join(u.Host, u.Path)
 	}
 	parser, err := parseHCLPaths(paths...)
 	if err != nil {
 		return nil, err
 	}
 	realm := &schema.Realm{}
-	if err := config.dev.Eval(parser, realm, nil); err != nil {
+	if err := client.Eval(parser, realm, config.vars); err != nil {
 		return nil, err
 	}
 	if len(config.schemas) > 0 {
@@ -497,22 +522,19 @@ func hclStateReader(ctx context.Context, config *stateReaderConfig, urls []*url.
 	// In case the dev connection is bound to a specific schema, we require the
 	// desired schema to contain only one schema. Thus, executing diff will be
 	// done on the content of these two schema and not the whole realm.
-	if config.dev.URL.Schema != "" && len(realm.Schemas) > 1 {
+	if client.URL.Schema != "" && len(realm.Schemas) > 1 {
 		return nil, fmt.Errorf(
 			"cannot use HCL with more than 1 schema when dev-url is limited to schema %q",
 			config.dev.URL.Schema,
 		)
 	}
-	if norm, ok := config.dev.Driver.(schema.Normalizer); ok && len(realm.Schemas) > 0 {
+	if norm, ok := client.Driver.(schema.Normalizer); ok && len(realm.Schemas) > 0 {
 		realm, err = norm.NormalizeRealm(ctx, realm)
 		if err != nil {
 			return nil, err
 		}
 	}
-	t := &stateReadCloser{StateReader: migrate.Realm(realm)}
-	if len(realm.Schemas) == 1 {
-		t.Schema = realm.Schemas[0].Name
-	}
+	t := &stateReadCloser{StateReader: migrate.Realm(realm), hcl: true}
 	return t, nil
 }
 
