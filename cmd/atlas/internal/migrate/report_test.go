@@ -30,8 +30,8 @@ func TestReporter_Status(t *testing.T) {
 	require.NoError(t, (&StatusReporter{
 		Client:       c,
 		Dir:          dir,
-		ReportWriter: &TemplateWriter{T: DefaultTemplate, W: &buf},
-	}).Status(ctx))
+		ReportWriter: &TemplateWriter{T: StatusDefaultTemplate, W: &buf},
+	}).Report(ctx))
 	require.Equal(t, `Migration Status: PENDING
   -- Current Version: No migration applied yet
   -- Next Version:    1
@@ -50,8 +50,8 @@ func TestReporter_Status(t *testing.T) {
 	require.NoError(t, (&StatusReporter{
 		Client:       c,
 		Dir:          dir,
-		ReportWriter: &TemplateWriter{T: DefaultTemplate, W: &buf},
-	}).Status(ctx))
+		ReportWriter: &TemplateWriter{T: StatusDefaultTemplate, W: &buf},
+	}).Report(ctx))
 	require.Equal(t, `Migration Status: PENDING
   -- Current Version: 1
   -- Next Version:    2
@@ -66,8 +66,8 @@ func TestReporter_Status(t *testing.T) {
 	require.NoError(t, (&StatusReporter{
 		Client:       c,
 		Dir:          dir,
-		ReportWriter: &TemplateWriter{T: DefaultTemplate, W: &buf},
-	}).Status(ctx))
+		ReportWriter: &TemplateWriter{T: StatusDefaultTemplate, W: &buf},
+	}).Report(ctx))
 	require.Equal(t, `Migration Status: PENDING
   -- Current Version: 2
   -- Next Version:    3
@@ -82,8 +82,8 @@ func TestReporter_Status(t *testing.T) {
 	require.NoError(t, (&StatusReporter{
 		Client:       c,
 		Dir:          dir,
-		ReportWriter: &TemplateWriter{T: DefaultTemplate, W: &buf},
-	}).Status(ctx))
+		ReportWriter: &TemplateWriter{T: StatusDefaultTemplate, W: &buf},
+	}).Report(ctx))
 	require.Equal(t, `Migration Status: PENDING
   -- Current Version: 3 (1 statements applied)
   -- Next Version:    3 (1 statements left)
@@ -105,8 +105,8 @@ Last migration attempt had errors:
 	require.NoError(t, (&StatusReporter{
 		Client:       c,
 		Dir:          dir,
-		ReportWriter: &TemplateWriter{T: DefaultTemplate, W: &buf},
-	}).Status(ctx))
+		ReportWriter: &TemplateWriter{T: StatusDefaultTemplate, W: &buf},
+	}).Report(ctx))
 	require.Equal(t, `Migration Status: OK
   -- Current Version: 3
   -- Next Version:    Already at latest version

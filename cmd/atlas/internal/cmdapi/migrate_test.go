@@ -202,7 +202,6 @@ func TestMigrate_Apply(t *testing.T) {
 	require.NotContains(t, s, "ALTER TABLE `tbl` ADD `col_4` bigint;") // but not third
 	require.Contains(t, s, "1 migrations ok (1 with errors)")          // logs amount of migrations
 	require.Contains(t, s, "2 sql statements ok (1 with errors)")      // logs amount of statement
-	require.Contains(t, s, "Error: Execution had errors:")             // logs error summary
 	require.Contains(t, s, "near \"asdasd\": syntax error")            // logs error summary
 
 	c, err := sqlclient.Open(ctx, fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test2.db")))
@@ -238,7 +237,6 @@ func TestMigrate_Apply(t *testing.T) {
 	require.NotContains(t, s, "ALTER TABLE `tbl` ADD `col_4` bigint;")  // but not third
 	require.Contains(t, s, "0 migrations ok (1 with errors)")           // logs amount of migrations
 	require.Contains(t, s, "1 sql statements ok (1 with errors)")       // logs amount of statement
-	require.Contains(t, s, "Error: Execution had errors:")              // logs error summary
 	require.Contains(t, s, "near \"asdasd\": syntax error")             // logs error summary
 
 	// Editing an applied line will raise error.

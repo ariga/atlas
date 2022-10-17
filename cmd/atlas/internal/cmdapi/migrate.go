@@ -27,7 +27,6 @@ import (
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqltool"
-	"github.com/fatih/color"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -131,38 +130,38 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 // migrateApplyCmd represents the 'atlas migrate apply' subcommand.
 func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags) error {
 	var (
-		n   int
-		err error
+		count int
+		err   error
 	)
 	if len(args) > 0 {
-		n, err = strconv.Atoi(args[0])
+		count, err = strconv.Atoi(args[0])
 		if err != nil {
 			return err
 		}
-		if n < 1 {
-			return fmt.Errorf("cannot apply '%d' migration files", n)
+		if count < 1 {
+			return fmt.Errorf("cannot apply '%d' migration files", count)
 		}
 	}
 	// Open and validate the migration directory.
-	dir, err := dir(flags.dirURL, false)
+	migrationDir, err := dir(flags.dirURL, false)
 	if err != nil {
 		return err
 	}
-	if err := migrate.Validate(dir); err != nil {
+	if err := migrate.Validate(migrationDir); err != nil {
 		printChecksumError(cmd)
 		return err
 	}
+	// Open a client to the database.
 	if flags.url == "" {
 		return errors.New(`required flag "url" not set`)
 	}
-	// Open a client to the database.
-	c, err := sqlclient.Open(cmd.Context(), flags.url)
+	client, err := sqlclient.Open(cmd.Context(), flags.url)
 	if err != nil {
 		return err
 	}
-	defer c.Close()
+	defer client.Close()
 	// Acquire a lock.
-	if l, ok := c.Driver.(schema.Locker); ok {
+	if l, ok := client.Driver.(schema.Locker); ok {
 		unlock, err := l.Lock(cmd.Context(), applyLockValue, 0)
 		if err != nil {
 			return fmt.Errorf("acquiring database lock: %w", err)
@@ -170,25 +169,19 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 		// If unlocking fails notify the user about it.
 		defer cobra.CheckErr(unlock())
 	}
-	if err := checkRevisionSchemaClarity(cmd, c, flags.revisionSchema); err != nil {
-		return err
-	}
-	// Get the correct log format and destination. Currently, only os.Stdout is supported.
-	l, err := logFormat(cmd.OutOrStdout(), flags.logFormat)
-	if err != nil {
+	if err := checkRevisionSchemaClarity(cmd, client, flags.revisionSchema); err != nil {
 		return err
 	}
 	var rrw migrate.RevisionReadWriter
-	rrw, err = entRevisions(cmd.Context(), c, flags.revisionSchema)
+	rrw, err = entRevisions(cmd.Context(), client, flags.revisionSchema)
 	if err != nil {
 		return err
 	}
 	if err := rrw.(*cmdmigrate.EntRevisions).Migrate(cmd.Context()); err != nil {
 		return err
 	}
-	// Determine pending files and lock the database while working.
+	// Determine pending files.
 	opts := []migrate.ExecutorOption{
-		migrate.WithLogger(l),
 		migrate.WithOperatorVersion(operatorVersion()),
 	}
 	if flags.allowDirty {
@@ -200,7 +193,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 	if v := flags.fromVersion; v != "" {
 		opts = append(opts, migrate.WithFromVersion(v))
 	}
-	ex, err := migrate.NewExecutor(c.Driver, dir, rrw, opts...)
+	ex, err := migrate.NewExecutor(client.Driver, migrationDir, rrw, opts...)
 	if err != nil {
 		return err
 	}
@@ -212,18 +205,27 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 		cmd.Println("No migration files to execute")
 		return nil
 	}
-	if n > 0 {
-		// Cannot apply more than len(pending) files.
-		if n >= len(pending) {
-			n = len(pending)
-		}
-		pending = pending[:n]
+	if l := len(pending); count == 0 || count >= l {
+		// Cannot apply more than len(pending) migration files.
+		count = l
 	}
-	revs, err := rrw.ReadRevisions(cmd.Context())
+	pending = pending[:count]
+	// Determine log format to use. If a custom one is given, logging will no longer be
+	// continual, but only output information once an applying attempt has finished.
+	var f = cmdmigrate.ApplyDefaultTemplate
+	if v := flags.logFormat; v != "" {
+		f, err = template.New("format").Funcs(cmdmigrate.ApplyTemplateFuncs).Parse(v)
+		if err != nil {
+			return fmt.Errorf("parse log format: %w", err)
+		}
+	}
+	report := cmdmigrate.NewApplyReport(client, migrationDir)
+	opts = append(opts, migrate.WithLogger(report))
+	applied, err := rrw.ReadRevisions(cmd.Context())
 	if err != nil {
 		return err
 	}
-	if err := migrate.LogIntro(l, revs, pending); err != nil {
+	if err := migrate.LogIntro(report, applied, pending); err != nil {
 		return err
 	}
 	var (
@@ -231,7 +233,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 			dryRun: flags.dryRun,
 			mode:   flags.txMode,
 			schema: flags.revisionSchema,
-			c:      c,
+			c:      client,
 			rrw:    rrw,
 		}
 		drv migrate.Driver
@@ -241,22 +243,33 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 		if err != nil {
 			return err
 		}
-		ex, err := migrate.NewExecutor(drv, dir, rrw, opts...)
+		ex, err = migrate.NewExecutor(drv, migrationDir, rrw, opts...)
 		if err != nil {
 			return err
 		}
-		if err := mux.mayRollback(ex.Execute(cmd.Context(), f)); err != nil {
-			return err
+		if err = mux.mayRollback(ex.Execute(cmd.Context(), f)); err != nil {
+			report.Error = err.Error()
+			break
 		}
-		if err := mux.mayCommit(); err != nil {
-			return err
+		if err = mux.mayCommit(); err != nil {
+			report.Error = err.Error()
+			break
 		}
 	}
-	if err := mux.commit(); err != nil {
-		return err
+	if err == nil {
+		if err = mux.commit(); err != nil {
+			report.Error = err.Error()
+		} else {
+			report.Log(migrate.LogDone{})
+		}
 	}
-	l.Log(migrate.LogDone{})
-	return mux.commit()
+	if err2 := (&cmdmigrate.TemplateWriter{T: f, W: cmd.OutOrStdout()}).WriteReport(report); err2 != nil {
+		if err != nil {
+			return fmt.Errorf("%w: %v", err2, err)
+		}
+		err = err2
+	}
+	return err
 }
 
 type migrateDiffFlags struct {
@@ -915,7 +928,7 @@ func migrateStatusRun(cmd *cobra.Command, _ []string, flags migrateStatusFlags) 
 	if err := checkRevisionSchemaClarity(cmd, client, flags.revisionSchema); err != nil {
 		return err
 	}
-	var format = cmdmigrate.DefaultTemplate
+	var format = cmdmigrate.StatusDefaultTemplate
 	if f := flags.logFormat; f != "" {
 		format, err = template.New("format").Funcs(cmdmigrate.StatusTemplateFuncs).Parse(f)
 		if err != nil {
@@ -927,7 +940,7 @@ func migrateStatusRun(cmd *cobra.Command, _ []string, flags migrateStatusFlags) 
 		Dir:          dir,
 		ReportWriter: &cmdmigrate.TemplateWriter{T: format, W: cmd.OutOrStdout()},
 		Schema:       revisionSchemaName(client, flags.revisionSchema),
-	}).Status(cmd.Context())
+	}).Report(cmd.Context())
 }
 
 type migrateValidateFlags struct {
@@ -1447,92 +1460,6 @@ func formatter(u *url.URL) (migrate.Formatter, error) {
 		return sqltool.DBMateFormatter, nil
 	default:
 		return nil, fmt.Errorf("unknown format %q", f)
-	}
-}
-
-const logFormatTTY = "tty"
-
-// LogTTY is a migrate.Logger that pretty prints execution progress.
-// If the connected out is not a tty, it will fall back to a non-colorful output.
-type LogTTY struct {
-	out         io.Writer
-	start       time.Time
-	fileStart   time.Time
-	fileCounter int
-	stmtCounter int
-}
-
-var (
-	cyan         = color.CyanString
-	green        = color.HiGreenString
-	red          = color.HiRedString
-	redBgWhiteFg = color.New(color.FgHiWhite, color.BgHiRed).SprintFunc()
-	yellow       = color.YellowString
-	dash         = yellow("--")
-	arr          = cyan("->")
-	indent2      = "  "
-	indent4      = indent2 + indent2
-)
-
-// Log implements the migrate.Logger interface.
-func (l *LogTTY) Log(e migrate.LogEntry) {
-	switch e := e.(type) {
-	case migrate.LogExecution:
-		l.start = time.Now()
-		fmt.Fprintf(l.out, "Migrating to version %v", cyan(e.To))
-		if e.From != "" {
-			fmt.Fprintf(l.out, " from %v", cyan(e.From))
-		}
-		fmt.Fprintf(l.out, " (%d migrations in total):\n", len(e.Files))
-	case migrate.LogFile:
-		l.fileCounter++
-		if !l.fileStart.IsZero() {
-			l.reportFileEnd()
-		}
-		l.fileStart = time.Now()
-		fmt.Fprintf(l.out, "\n%s%v migrating version %v", indent2, dash, cyan(e.Version))
-		if e.Skip > 0 {
-			fmt.Fprintf(l.out, " (partially applied - skipping %s statements)", yellow("%d", e.Skip))
-		}
-		fmt.Fprint(l.out, "\n")
-	case migrate.LogStmt:
-		l.stmtCounter++
-		fmt.Fprintf(l.out, "%s%v %s\n", indent4, arr, e.SQL)
-	case migrate.LogDone:
-		l.reportFileEnd()
-		fmt.Fprintf(l.out, "\n%s%v\n", indent2, cyan(strings.Repeat("-", 25)))
-		fmt.Fprintf(l.out, "%s%v %v\n", indent2, dash, time.Since(l.start))
-		fmt.Fprintf(l.out, "%s%v %v migrations\n", indent2, dash, l.fileCounter)
-		fmt.Fprintf(l.out, "%s%v %v sql statements\n", indent2, dash, l.stmtCounter)
-	case migrate.LogError:
-		fmt.Fprintf(l.out, "%s %s\n", indent4, redBgWhiteFg(e.Error.Error()))
-		fmt.Fprintf(l.out, "\n%s%v\n", indent2, cyan(strings.Repeat("-", 25)))
-		fmt.Fprintf(l.out, "%s%v %v\n", indent2, dash, time.Since(l.start))
-		fmt.Fprintf(l.out, "%s%v %v migrations ok (%s)\n", indent2, dash, zero(l.fileCounter-1), red("1 with errors"))
-		fmt.Fprintf(l.out, "%s%v %v sql statements ok (%s)\n", indent2, dash, zero(l.stmtCounter-1), red("1 with errors"))
-		fmt.Fprintf(l.out, "\n%s\n%v\n\n", red("Error: Execution had errors:"), redBgWhiteFg(e.Error.Error()))
-	default:
-		fmt.Fprintf(l.out, "%v", e)
-	}
-}
-
-func (l *LogTTY) reportFileEnd() {
-	fmt.Fprintf(l.out, "%s%v ok (%v)\n", indent2, dash, yellow("%s", time.Since(l.fileStart)))
-}
-
-func zero(v int) int {
-	if v < 0 {
-		return 0
-	}
-	return v
-}
-
-func logFormat(out io.Writer, format string) (migrate.Logger, error) {
-	switch l := format; l {
-	case "", logFormatTTY:
-		return &LogTTY{out: out}, nil
-	default:
-		return nil, fmt.Errorf("unknown log-format %q", l)
 	}
 }
 

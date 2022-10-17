@@ -330,15 +330,18 @@ func TestExecutor(t *testing.T) {
 		"CREATE TABLE t_sub(c int);", "ALTER TABLE t_sub ADD c1 int;", "ALTER TABLE t_sub ADD c2 int;",
 	})
 	requireEqualRevisions(t, []*migrate.Revision{rev1, rev2}, *rrw)
-	require.Equal(t, []migrate.LogEntry{
-		migrate.LogExecution{To: "2.10.x-20", Files: []string{"1.a_sub.up.sql", "2.10.x-20_description.sql"}},
-		migrate.LogFile{Version: "1.a", Desc: "sub.up"},
-		migrate.LogStmt{SQL: "CREATE TABLE t_sub(c int);"},
-		migrate.LogStmt{SQL: "ALTER TABLE t_sub ADD c1 int;"},
-		migrate.LogFile{Version: "2.10.x-20", Desc: "description"},
-		migrate.LogStmt{SQL: "ALTER TABLE t_sub ADD c2 int;"},
-		migrate.LogDone{},
-	}, []migrate.LogEntry(*log))
+	require.Len(t, *log, 7)
+	require.IsType(t, migrate.LogExecution{}, (*log)[0])
+	require.Equal(t, "2.10.x-20", (*log)[0].(migrate.LogExecution).To)
+	require.Len(t, (*log)[0].(migrate.LogExecution).Files, 2)
+	require.Equal(t, "1.a_sub.up.sql", (*log)[0].(migrate.LogExecution).Files[0].Name())
+	require.Equal(t, "2.10.x-20_description.sql", (*log)[0].(migrate.LogExecution).Files[1].Name())
+	require.IsType(t, migrate.LogFile{}, (*log)[1])
+	require.Equal(t, migrate.LogStmt{SQL: "CREATE TABLE t_sub(c int);"}, (*log)[2])
+	require.Equal(t, migrate.LogStmt{SQL: "ALTER TABLE t_sub ADD c1 int;"}, (*log)[3])
+	require.IsType(t, migrate.LogFile{}, (*log)[4])
+	require.Equal(t, migrate.LogStmt{SQL: "ALTER TABLE t_sub ADD c2 int;"}, (*log)[5])
+	require.Equal(t, migrate.LogDone{}, (*log)[6])
 
 	// Partly is pending.
 	p, err := ex.Pending(context.Background())

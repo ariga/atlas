@@ -652,11 +652,11 @@ func (e *Executor) Execute(ctx context.Context, m File) (err error) {
 			}
 		}
 	}
-	e.log.Log(LogFile{r.Version, r.Description, r.Applied})
+	e.log.Log(LogFile{m, r.Version, r.Description, r.Applied})
 	for _, stmt := range stmts[r.Applied:] {
 		e.log.Log(LogStmt{stmt})
 		if _, err = e.drv.ExecContext(ctx, stmt); err != nil {
-			e.log.Log(LogError{Error: err})
+			e.log.Log(LogError{SQL: stmt, Error: err})
 			r.done()
 			r.ErrorStmt = stmt
 			r.Error = err.Error()
@@ -829,14 +829,18 @@ type (
 		// To what version.
 		To string
 		// Migration Files to be executed.
-		Files []string
+		Files []File
 	}
 
 	// LogFile is sent if a new migration file is executed.
 	LogFile struct {
+		// The File being executed.
+		File File
 		// Version executed.
+		// Deprecated: Use File.Version() instead.
 		Version string
 		// Desc of migration executed.
+		// Deprecated: Use File.Desc() instead.
 		Desc string
 		// Skip holds the number of stmts of this file that will be skipped.
 		// This happens, if a migration file was only applied partially and will now continue to be applied.
@@ -853,6 +857,7 @@ type (
 
 	// LogError is sent if there is an error while execution.
 	LogError struct {
+		SQL   string // Set, if Error was caused by a SQL statement.
 		Error error
 	}
 
@@ -870,15 +875,11 @@ func (LogError) logEntry()     {}
 // Log implements the Logger interface.
 func (NopLogger) Log(LogEntry) {}
 
-// LogIntro gathers some meta information from the migration files and stored revisions to
-// log some general information prior to actual execution.
+// LogIntro gathers some meta information from the migration files and stored
+// revisions to log some general information prior to actual execution.
 func LogIntro(l Logger, revs []*Revision, files []File) error {
-	names := make([]string, len(files))
-	for i := range files {
-		names[i] = files[i].Name()
-	}
 	last := files[len(files)-1]
-	e := LogExecution{To: last.Version(), Files: names}
+	e := LogExecution{To: last.Version(), Files: files}
 	if len(revs) > 0 {
 		e.From = revs[len(revs)-1].Version
 	}
