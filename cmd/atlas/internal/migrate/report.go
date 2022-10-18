@@ -147,7 +147,7 @@ type (
 
 	// StatusReport contains a summary of the migration status of a database.
 	StatusReport struct {
-		Report
+		Report    `json:"-"`
 		Env       `json:"Env"`
 		Available Files               `json:"Available,omitempty"` // Available migration files
 		Pending   Files               `json:"Pending,omitempty"`   // Pending migration files
@@ -330,14 +330,13 @@ var (
   {{ yellow "--" }} {{ len .Applied }} migrations 
   {{ yellow "--" }} {{ .CountStmts  }} sql statements
 {{- end }}
-
 `))
 )
 
 type (
 	// ApplyReport contains a summary of a migration applying attempt on a database.
 	ApplyReport struct {
-		Report
+		Report `json:"-"`
 		Env
 		Pending Files          `json:"Pending,omitempty"` // Pending migration files
 		Applied []*AppliedFile `json:"Applied,omitempty"` // Applied files
