@@ -30,7 +30,7 @@ func TestReporter_Status(t *testing.T) {
 	require.NoError(t, (&StatusReporter{
 		Client:       c,
 		Dir:          dir,
-		ReportWriter: &TemplateWriter{T: StatusDefaultTemplate, W: &buf},
+		ReportWriter: &TemplateWriter{T: DefaultStatusTemplate, W: &buf},
 	}).Report(ctx))
 	require.Equal(t, `Migration Status: PENDING
   -- Current Version: No migration applied yet
@@ -50,7 +50,7 @@ func TestReporter_Status(t *testing.T) {
 	require.NoError(t, (&StatusReporter{
 		Client:       c,
 		Dir:          dir,
-		ReportWriter: &TemplateWriter{T: StatusDefaultTemplate, W: &buf},
+		ReportWriter: &TemplateWriter{T: DefaultStatusTemplate, W: &buf},
 	}).Report(ctx))
 	require.Equal(t, `Migration Status: PENDING
   -- Current Version: 1
@@ -66,7 +66,7 @@ func TestReporter_Status(t *testing.T) {
 	require.NoError(t, (&StatusReporter{
 		Client:       c,
 		Dir:          dir,
-		ReportWriter: &TemplateWriter{T: StatusDefaultTemplate, W: &buf},
+		ReportWriter: &TemplateWriter{T: DefaultStatusTemplate, W: &buf},
 	}).Report(ctx))
 	require.Equal(t, `Migration Status: PENDING
   -- Current Version: 2
@@ -82,7 +82,7 @@ func TestReporter_Status(t *testing.T) {
 	require.NoError(t, (&StatusReporter{
 		Client:       c,
 		Dir:          dir,
-		ReportWriter: &TemplateWriter{T: StatusDefaultTemplate, W: &buf},
+		ReportWriter: &TemplateWriter{T: DefaultStatusTemplate, W: &buf},
 	}).Report(ctx))
 	require.Equal(t, `Migration Status: PENDING
   -- Current Version: 3 (1 statements applied)
@@ -105,7 +105,7 @@ Last migration attempt had errors:
 	require.NoError(t, (&StatusReporter{
 		Client:       c,
 		Dir:          dir,
-		ReportWriter: &TemplateWriter{T: StatusDefaultTemplate, W: &buf},
+		ReportWriter: &TemplateWriter{T: DefaultStatusTemplate, W: &buf},
 	}).Report(ctx))
 	require.Equal(t, `Migration Status: OK
   -- Current Version: 3

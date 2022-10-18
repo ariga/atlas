@@ -210,21 +210,12 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 		count = l
 	}
 	pending = pending[:count]
-	// Determine log format to use. If a custom one is given, logging will no longer be
-	// continual, but only output information once an applying attempt has finished.
-	var f = cmdmigrate.ApplyDefaultTemplate
-	if v := flags.logFormat; v != "" {
-		f, err = template.New("format").Funcs(cmdmigrate.ApplyTemplateFuncs).Parse(v)
-		if err != nil {
-			return fmt.Errorf("parse log format: %w", err)
-		}
-	}
-	report := cmdmigrate.NewApplyReport(client, migrationDir)
-	opts = append(opts, migrate.WithLogger(report))
 	applied, err := rrw.ReadRevisions(cmd.Context())
 	if err != nil {
 		return err
 	}
+	report := cmdmigrate.NewApplyReport(client, migrationDir)
+	opts = append(opts, migrate.WithLogger(report))
 	if err := migrate.LogIntro(report, applied, pending); err != nil {
 		return err
 	}
@@ -261,6 +252,13 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 			report.Error = err.Error()
 		} else {
 			report.Log(migrate.LogDone{})
+		}
+	}
+	f := cmdmigrate.ApplyDefaultTemplate
+	if v := flags.logFormat; v != "" {
+		f, err = template.New("format").Funcs(cmdmigrate.ApplyTemplateFuncs).Parse(v)
+		if err != nil {
+			return fmt.Errorf("parse log format: %w", err)
 		}
 	}
 	if err2 := (&cmdmigrate.TemplateWriter{T: f, W: cmd.OutOrStdout()}).WriteReport(report); err2 != nil {
@@ -928,7 +926,7 @@ func migrateStatusRun(cmd *cobra.Command, _ []string, flags migrateStatusFlags) 
 	if err := checkRevisionSchemaClarity(cmd, client, flags.revisionSchema); err != nil {
 		return err
 	}
-	var format = cmdmigrate.StatusDefaultTemplate
+	var format = cmdmigrate.DefaultStatusTemplate
 	if f := flags.logFormat; f != "" {
 		format, err = template.New("format").Funcs(cmdmigrate.StatusTemplateFuncs).Parse(f)
 		if err != nil {

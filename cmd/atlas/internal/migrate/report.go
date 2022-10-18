@@ -129,7 +129,7 @@ Last migration attempt had errors:
 			return buf.String(), err
 		},
 	}, ColorTemplateFuncs)
-	StatusDefaultTemplate = template.Must(template.New("report").Funcs(StatusTemplateFuncs).Parse("{{ default . }}"))
+	DefaultStatusTemplate = template.Must(template.New("report").Funcs(StatusTemplateFuncs).Parse("{{ default . }}"))
 )
 
 type (
@@ -311,7 +311,7 @@ var (
 				Funcs(ApplyTemplateFuncs).
 				Parse(`Migrating to version {{ cyan .Target }}{{ with .Current }} from {{ cyan . }}{{ end }} ({{ len .Pending }} migrations in total):
 {{ range $i, $f := .Applied }}
-  {{ yellow "--" }} migrating version {{ cyan $f.File.Version }}{{ range $f.Stmts }}
+  {{ yellow "--" }} migrating version {{ cyan $f.File.Version }}{{ range $f.Applied }}
     {{ cyan "->" }} {{ . }}{{ end }}
   {{- with .Error }}
     {{ redBgWhiteFg .Error }}
@@ -355,7 +355,7 @@ type (
 		Start   time.Time
 		End     time.Time
 		Skipped int      // Amount of skipped SQL statements in a partially applied file.
-		Stmts   []string // SQL statements applied with success
+		Applied []string // SQL statements applied with success
 		Error   *struct {
 			SQL   string // SQL statement that failed.
 			Error string // Error returned by the database.
@@ -390,7 +390,7 @@ func (a *ApplyReport) Log(e migrate.LogEntry) {
 		})
 	case migrate.LogStmt:
 		f := a.Applied[len(a.Applied)-1]
-		f.Stmts = append(f.Stmts, e.SQL)
+		f.Applied = append(f.Applied, e.SQL)
 	case migrate.LogError:
 		if l := len(a.Applied); l > 0 {
 			f := a.Applied[len(a.Applied)-1]
@@ -411,9 +411,7 @@ func (a *ApplyReport) Log(e migrate.LogEntry) {
 // CountStmts returns the amount of applied statements.
 func (a *ApplyReport) CountStmts() (n int) {
 	for _, f := range a.Applied {
-		for range f.Stmts {
-			n++
-		}
+		n += len(f.Applied)
 	}
 	return
 }
@@ -427,7 +425,7 @@ func (f *AppliedFile) MarshalJSON() ([]byte, error) {
 		Start       time.Time `json:"Start,omitempty"`
 		End         time.Time `json:"End,omitempty"`
 		Skipped     int       `json:"Skipped,omitempty"`
-		Stmts       []string  `json:"Stmts,omitempty"`
+		Stmts       []string  `json:"Applied,omitempty"`
 		Error       *struct {
 			SQL   string
 			Error string
@@ -440,7 +438,7 @@ func (f *AppliedFile) MarshalJSON() ([]byte, error) {
 		Start:       f.Start,
 		End:         f.End,
 		Skipped:     f.Skipped,
-		Stmts:       f.Stmts,
+		Stmts:       f.Applied,
 		Error:       f.Error,
 	})
 }
