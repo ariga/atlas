@@ -254,7 +254,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 			report.Log(migrate.LogDone{})
 		}
 	}
-	f := cmdmigrate.ApplyDefaultTemplate
+	f := cmdmigrate.DefaultApplyTemplate
 	if v := flags.logFormat; v != "" {
 		f, err = template.New("format").Funcs(cmdmigrate.ApplyTemplateFuncs).Parse(v)
 		if err != nil {

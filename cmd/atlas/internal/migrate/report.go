@@ -306,7 +306,7 @@ var (
 		"dec":  dec,
 		"json": jsonFn,
 	})
-	ApplyDefaultTemplate = template.Must(template.
+	DefaultApplyTemplate = template.Must(template.
 				New("report").
 				Funcs(ApplyTemplateFuncs).
 				Parse(`Migrating to version {{ cyan .Target }}{{ with .Current }} from {{ cyan . }}{{ end }} ({{ len .Pending }} migrations in total):
