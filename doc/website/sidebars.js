@@ -106,6 +106,11 @@ module.exports = {
                   id: 'guides/mysql/generated-columns',
                   label: 'Generated Columns'
                 },
+                {
+                    type: 'doc',
+                    id: 'guides/mysql/terraform-mysql-rds',
+                    label: 'Managing with Terraform'
+                },
             ],
         },
         {
