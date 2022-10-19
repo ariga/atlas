@@ -217,16 +217,20 @@ Finally, configure the Atlas Terraform Provider to apply the schema in our `sche
 on the RDS-managed database instance. 
 
 ```hcl
+locals {
+  dev_db_url = "mysql://root:pass@localhost:3306/example"
+}
+
 // Load the schema from file and normalize it using the dev database.
 data "atlas_schema" "hello" {
-  dev_db_url = "mysql://root:pass@localhost:3306/example"
+  dev_db_url = local.dev_db_url
   src        = file("schema.hcl")
 }
 
 // Apply the normalized schema to the RDS-managed database.
 resource "atlas_schema" "hello" {
   hcl        = data.atlas_schema.hello.hcl
-  dev_db_url = "mysql://root:pass@localhost:3306/example"
+  dev_db_url = local.dev_db_url
   
   // The connection string will be: mysql://user:pass@endpoint/
   url = "mysql://${aws_db_instance.atlas-demo.username}:${urlencode(random_password.password.result)}@${aws_db_instance.atlas-demo.endpoint}/"
