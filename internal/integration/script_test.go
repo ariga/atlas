@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -45,6 +46,7 @@ func TestMySQL_Script(t *testing.T) {
 				"execsql":     t.cmdExec,
 				"atlas":       t.cmdCLI,
 				"clearSchema": t.clearSchema,
+				"validJSON":   validJSON,
 			},
 		})
 	})
@@ -704,4 +706,8 @@ func matchErr(ts *testscript.TestScript, err error, p string) {
 	if !re.MatchString(err.Error()) {
 		ts.Fatalf("mismatched errors: %v != %s", err, p)
 	}
+}
+
+func validJSON(ts *testscript.TestScript, _ bool, args []string) {
+	ts.Check(json.Unmarshal([]byte(ts.ReadFile(args[0])), new(map[string]any)))
 }

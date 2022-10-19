@@ -13,6 +13,7 @@ import (
 	"io"
 	"strings"
 	"text/template"
+	"time"
 
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
 	"ariga.io/atlas/sql/migrate"
@@ -25,10 +26,11 @@ import (
 var (
 	// ColorTemplateFuncs are globally available functions to color strings in a report template.
 	ColorTemplateFuncs = template.FuncMap{
-		"cyan":   color.CyanString,
-		"green":  color.HiGreenString,
-		"red":    color.HiRedString,
-		"yellow": color.YellowString,
+		"cyan":         color.CyanString,
+		"green":        color.HiGreenString,
+		"red":          color.HiRedString,
+		"redBgWhiteFg": color.New(color.FgHiWhite, color.BgHiRed).SprintFunc(),
+		"yellow":       color.YellowString,
 	}
 )
 
@@ -58,6 +60,9 @@ type (
 
 	// Files is a slice of migrate.File. Implements json.Marshaler.
 	Files []migrate.File
+
+	// File wraps migrate.File to implement json.Marshaler.
+	File struct{ migrate.File }
 )
 
 // WriteReport implements ReportWriter.
@@ -66,37 +71,40 @@ func (w *TemplateWriter) WriteReport(r Report) error {
 }
 
 // MarshalJSON implements json.Marshaler.
-func (fs Files) MarshalJSON() ([]byte, error) {
-	type file struct {
+func (f File) MarshalJSON() ([]byte, error) {
+	type local struct {
 		Name        string `json:"Name,omitempty"`
 		Version     string `json:"Version,omitempty"`
 		Description string `json:"Description,omitempty"`
 	}
-	files := make([]file, len(fs))
-	for i, f := range fs {
-		files[i] = file{f.Name(), f.Version(), f.Desc()}
+	return json.Marshal(local{f.Name(), f.Version(), f.Desc()})
+}
+
+// MarshalJSON implements json.Marshaler.
+func (f Files) MarshalJSON() ([]byte, error) {
+	files := make([]File, len(f))
+	for i := range f {
+		files[i] = File{f[i]}
 	}
 	return json.Marshal(files)
 }
 
+// NewEnv returns an initialized Env.
+func NewEnv(c *sqlclient.Client, dir migrate.Dir) Env {
+	e := Env{
+		Driver: c.Name,
+		URL:    c.URL,
+	}
+	if p, ok := dir.(interface{ Path() string }); ok {
+		e.Dir = p.Path()
+	}
+	return e
+}
+
 var (
-	// StatusTemplateFuncs are global functions available in templates.
+	// StatusTemplateFuncs are global functions available in status report templates.
 	StatusTemplateFuncs = merge(template.FuncMap{
-		"json": func(v any, args ...string) (string, error) {
-			var (
-				b   []byte
-				err error
-			)
-			switch len(args) {
-			case 0:
-				b, err = json.Marshal(v)
-			case 1:
-				b, err = json.MarshalIndent(v, "", args[0])
-			default:
-				b, err = json.MarshalIndent(v, args[0], args[1])
-			}
-			return string(b), err
-		},
+		"json":  jsonFn,
 		"table": table,
 		"default": func(report *StatusReport) (string, error) {
 			var buf bytes.Buffer
@@ -121,7 +129,7 @@ Last migration attempt had errors:
 			return buf.String(), err
 		},
 	}, ColorTemplateFuncs)
-	DefaultTemplate = template.Must(template.New("report").Funcs(StatusTemplateFuncs).Parse("{{ default . }}"))
+	DefaultStatusTemplate = template.Must(template.New("report").Funcs(StatusTemplateFuncs).Parse("{{ default . }}"))
 )
 
 type (
@@ -139,16 +147,18 @@ type (
 
 	// StatusReport contains a summary of the migration status of a database.
 	StatusReport struct {
-		Report
-		Env           `json:"Env"`
-		Available     Files               `json:"Available,omitempty"` // Available migration files.
-		Pending       Files               `json:"Pending,omitempty"`   // Pending migration files.
-		Applied       []*migrate.Revision `json:"Applied,omitempty"`   // Applied migration files.
-		Current, Next string              // Current and Next migration version.
-		Count, Total  int                 // Count of Total statements applied of the last revision.
-		Status        string              // Status of migration (OK, PENDING).
-		Error         string              `json:"Error,omitempty"` // Last Error that occurred.
-		SQL           string              `json:"SQL,omitempty"`   // SQL that caused the last Error.
+		Report    `json:"-"`
+		Env       `json:"Env"`
+		Available Files               `json:"Available,omitempty"` // Available migration files
+		Pending   Files               `json:"Pending,omitempty"`   // Pending migration files
+		Applied   []*migrate.Revision `json:"Applied,omitempty"`   // Applied migration files
+		Current   string              `json:"Current,omitempty"`   // Current migration version
+		Next      string              `json:"Next,omitempty"`      // Next migration version
+		Count     int                 `json:"Count,omitempty"`     // Count of applied statements of the last revision
+		Total     int                 `json:"Total,omitempty"`     // Total statements of the last migration
+		Status    string              `json:"Status,omitempty"`    // Status of migration (OK, PENDING)
+		Error     string              `json:"Error,omitempty"`     // Last Error that occurred
+		SQL       string              `json:"SQL,omitempty"`       // SQL that caused the last Error
 	}
 )
 
@@ -158,21 +168,14 @@ func NewStatusReport(c *sqlclient.Client, dir migrate.Dir) (*StatusReport, error
 	if err != nil {
 		return nil, err
 	}
-	sum := &StatusReport{
-		Env: Env{
-			Driver: c.Name,
-			URL:    c.URL,
-		},
+	return &StatusReport{
+		Env:       NewEnv(c, dir),
 		Available: files,
-	}
-	if p, ok := dir.(interface{ Path() string }); ok {
-		sum.Env.Dir = p.Path()
-	}
-	return sum, nil
+	}, nil
 }
 
-// Status creates and writes a StatusReport.
-func (r *StatusReporter) Status(ctx context.Context) error {
+// Report creates and writes a StatusReport.
+func (r *StatusReporter) Report(ctx context.Context) error {
 	rep, err := NewStatusReport(r.Client, r.Dir)
 	if err != nil {
 		return err
@@ -297,6 +300,149 @@ func table(report *StatusReport) (string, error) {
 	return buf.String(), nil
 }
 
+var (
+	// ApplyTemplateFuncs are global functions available in apply report templates.
+	ApplyTemplateFuncs = merge(ColorTemplateFuncs, template.FuncMap{
+		"dec":  dec,
+		"json": jsonFn,
+	})
+	DefaultApplyTemplate = template.Must(template.
+				New("report").
+				Funcs(ApplyTemplateFuncs).
+				Parse(`Migrating to version {{ cyan .Target }}{{ with .Current }} from {{ cyan . }}{{ end }} ({{ len .Pending }} migrations in total):
+{{ range $i, $f := .Applied }}
+  {{ yellow "--" }} migrating version {{ cyan $f.File.Version }}{{ range $f.Applied }}
+    {{ cyan "->" }} {{ . }}{{ end }}
+  {{- with .Error }}
+    {{ redBgWhiteFg .Error }}
+  {{- else }}
+  {{ yellow "--" }} ok ({{ yellow (.End.Sub .Start).String }})
+  {{- end }}
+{{ end }}
+  {{ cyan "-------------------------" }}
+  {{ yellow "--" }} {{ .End.Sub .Start }}
+{{- $files := len .Applied }}
+{{- $stmts := .CountStmts }}
+{{- if .Error }}
+  {{ yellow "--" }} {{ dec $files }} migrations ok (1 with errors)
+  {{ yellow "--" }} {{ dec $stmts }} sql statements ok (1 with errors)
+{{- else }}
+  {{ yellow "--" }} {{ len .Applied }} migrations 
+  {{ yellow "--" }} {{ .CountStmts  }} sql statements
+{{- end }}
+`))
+)
+
+type (
+	// ApplyReport contains a summary of a migration applying attempt on a database.
+	ApplyReport struct {
+		Report `json:"-"`
+		Env
+		Pending Files          `json:"Pending,omitempty"` // Pending migration files
+		Applied []*AppliedFile `json:"Applied,omitempty"` // Applied files
+		Current string         `json:"Current,omitempty"` // Current migration version
+		Target  string         `json:"Target,omitempty"`  // Target migration version
+		Start   time.Time
+		End     time.Time
+		// Error is set even then, if it was not caused by a statement in a migration file,
+		// but by Atlas, e.g. when committing or rolling back a transaction.
+		Error string `json:"Error,omitempty"`
+	}
+
+	// AppliedFile is part of an ApplyReport containing information about an applied file in a migration attempt.
+	AppliedFile struct {
+		migrate.File
+		Start   time.Time
+		End     time.Time
+		Skipped int      // Amount of skipped SQL statements in a partially applied file.
+		Applied []string // SQL statements applied with success
+		Error   *struct {
+			SQL   string // SQL statement that failed.
+			Error string // Error returned by the database.
+		}
+	}
+)
+
+// NewApplyReport returns an ApplyReport.
+func NewApplyReport(client *sqlclient.Client, dir migrate.Dir) *ApplyReport {
+	return &ApplyReport{
+		Env: NewEnv(client, dir),
+	}
+}
+
+// Log implements migrate.Logger.
+func (a *ApplyReport) Log(e migrate.LogEntry) {
+	switch e := e.(type) {
+	case migrate.LogExecution:
+		a.Start = time.Now()
+		a.Current = e.From
+		a.Target = e.To
+		a.Pending = e.Files
+	case migrate.LogFile:
+		if l := len(a.Applied); l > 0 {
+			f := a.Applied[l-1]
+			f.End = time.Now()
+		}
+		a.Applied = append(a.Applied, &AppliedFile{
+			File:    File{e.File},
+			Start:   time.Now(),
+			Skipped: e.Skip,
+		})
+	case migrate.LogStmt:
+		f := a.Applied[len(a.Applied)-1]
+		f.Applied = append(f.Applied, e.SQL)
+	case migrate.LogError:
+		if l := len(a.Applied); l > 0 {
+			f := a.Applied[len(a.Applied)-1]
+			f.End = time.Now()
+			a.End = f.End
+			f.Error = &struct {
+				SQL   string
+				Error string
+			}{e.SQL, e.Error.Error()}
+		}
+	case migrate.LogDone:
+		f := a.Applied[len(a.Applied)-1]
+		f.End = time.Now()
+		a.End = f.End
+	}
+}
+
+// CountStmts returns the amount of applied statements.
+func (a *ApplyReport) CountStmts() (n int) {
+	for _, f := range a.Applied {
+		n += len(f.Applied)
+	}
+	return
+}
+
+// MarshalJSON implements json.Marshaler.
+func (f *AppliedFile) MarshalJSON() ([]byte, error) {
+	type local struct {
+		Name        string    `json:"Name,omitempty"`
+		Version     string    `json:"Version,omitempty"`
+		Description string    `json:"Description,omitempty"`
+		Start       time.Time `json:"Start,omitempty"`
+		End         time.Time `json:"End,omitempty"`
+		Skipped     int       `json:"Skipped,omitempty"`
+		Stmts       []string  `json:"Applied,omitempty"`
+		Error       *struct {
+			SQL   string
+			Error string
+		} `json:"Error,omitempty"`
+	}
+	return json.Marshal(local{
+		Name:        f.Name(),
+		Version:     f.Version(),
+		Description: f.Desc(),
+		Start:       f.Start,
+		End:         f.End,
+		Skipped:     f.Skipped,
+		Stmts:       f.Applied,
+		Error:       f.Error,
+	})
+}
+
 func merge(maps ...template.FuncMap) template.FuncMap {
 	switch len(maps) {
 	case 0:
@@ -312,4 +458,24 @@ func merge(maps ...template.FuncMap) template.FuncMap {
 		}
 		return m
 	}
+}
+
+func jsonFn(v any, args ...string) (string, error) {
+	var (
+		b   []byte
+		err error
+	)
+	switch len(args) {
+	case 0:
+		b, err = json.Marshal(v)
+	case 1:
+		b, err = json.MarshalIndent(v, "", args[0])
+	default:
+		b, err = json.MarshalIndent(v, args[0], args[1])
+	}
+	return string(b), err
+}
+
+func dec(i int) int {
+	return i - 1
 }
