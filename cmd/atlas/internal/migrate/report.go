@@ -104,8 +104,9 @@ func NewEnv(c *sqlclient.Client, dir migrate.Dir) Env {
 var (
 	// StatusTemplateFuncs are global functions available in status report templates.
 	StatusTemplateFuncs = merge(template.FuncMap{
-		"json":  jsonFn,
-		"table": table,
+		"json":       jsonEncode,
+		"json_merge": jsonMerge,
+		"table":      table,
 		"default": func(report *StatusReport) (string, error) {
 			var buf bytes.Buffer
 			t, err := template.New("report").Funcs(ColorTemplateFuncs).Parse(`Migration Status:
@@ -129,6 +130,8 @@ Last migration attempt had errors:
 			return buf.String(), err
 		},
 	}, ColorTemplateFuncs)
+
+	// DefaultStatusTemplate holds the default template of the 'migrate status' command.
 	DefaultStatusTemplate = template.Must(template.New("report").Funcs(StatusTemplateFuncs).Parse("{{ default . }}"))
 )
 
@@ -303,9 +306,12 @@ func table(report *StatusReport) (string, error) {
 var (
 	// ApplyTemplateFuncs are global functions available in apply report templates.
 	ApplyTemplateFuncs = merge(ColorTemplateFuncs, template.FuncMap{
-		"dec":  dec,
-		"json": jsonFn,
+		"dec":        dec,
+		"json":       jsonEncode,
+		"json_merge": jsonMerge,
 	})
+
+	// DefaultApplyTemplate holds the default template of the 'migrate apply' command.
 	DefaultApplyTemplate = template.Must(template.
 				New("report").
 				Funcs(ApplyTemplateFuncs).
@@ -460,7 +466,7 @@ func merge(maps ...template.FuncMap) template.FuncMap {
 	}
 }
 
-func jsonFn(v any, args ...string) (string, error) {
+func jsonEncode(v any, args ...string) (string, error) {
 	var (
 		b   []byte
 		err error
@@ -474,6 +480,20 @@ func jsonFn(v any, args ...string) (string, error) {
 		b, err = json.MarshalIndent(v, args[0], args[1])
 	}
 	return string(b), err
+}
+
+func jsonMerge(objects ...string) (string, error) {
+	var r map[string]any
+	for i := range objects {
+		if err := json.Unmarshal([]byte(objects[i]), &r); err != nil {
+			return "", fmt.Errorf("json_merge: %w", err)
+		}
+	}
+	b, err := json.Marshal(r)
+	if err != nil {
+		return "", fmt.Errorf("json_merge: %w", err)
+	}
+	return string(b), nil
 }
 
 func dec(i int) int {
