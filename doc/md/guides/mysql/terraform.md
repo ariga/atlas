@@ -7,7 +7,7 @@ tags: [terraform, rds, mysql, aws, iac]
 
 ### TL;DR
 
-* Many teams use [Terraform](https://terraform.io/), a popular, open-source, infrastructure-as-code
+* Many teams use [Terraform](https://terraform.io/), a popular, open-source, infrastructure-as-code (IaC)
   tool created by [HashiCorp](https://www.hashicorp.com/) to provision their cloud infrastructure.
 * [RDS](https://aws.amazon.com/rds/) is a fully managed relational database service by AWS.
 * The popular [AWS Terraform Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
