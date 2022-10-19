@@ -5,6 +5,7 @@
 package cmdapi
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"errors"
@@ -27,6 +28,7 @@ import (
 	"ariga.io/atlas/sql/sqlcheck"
 	"ariga.io/atlas/sql/sqlclient"
 	"ariga.io/atlas/sql/sqltool"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -95,21 +97,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 				if GlobalFlags.SelectedEnv == "" {
 					return migrateApplyRun(cmd, args, flags)
 				}
-				envs, err := LoadEnv(GlobalFlags.SelectedEnv, WithInput(GlobalFlags.Vars))
-				if err != nil {
-					return err
-				}
-				reset := resetFromEnv(cmd)
-				for _, e := range envs {
-					if err := setFlagsFromEnv(cmd, e); err != nil {
-						return err
-					}
-					if err := migrateApplyRun(cmd, args, flags); err != nil {
-						return err
-					}
-					reset()
-				}
-				return nil
+				return migrateEnvsRun(migrateApplyRun, cmd, args, &flags)
 			},
 		}
 	)
@@ -1482,8 +1470,21 @@ func setFlagsFromEnv(cmd *cobra.Command, env *Env) error {
 	if err := maySetFlag(cmd, flagDirFormat, env.Migration.Format); err != nil {
 		return err
 	}
+	if err := maySetFlag(cmd, flagURL, env.URL); err != nil {
+		return err
+	}
+	if err := maySetFlag(cmd, flagRevisionSchema, env.Migration.RevisionsSchema); err != nil {
+		return err
+	}
 	switch cmd.Name() {
+	case "apply":
+		if err := maySetFlag(cmd, flagLog, env.Log.Migrate.Apply); err != nil {
+			return err
+		}
 	case "lint":
+		if err := maySetFlag(cmd, flagLog, env.Log.Migrate.Lint); err != nil {
+			return err
+		}
 		if err := maySetFlag(cmd, flagLog, env.Lint.Log); err != nil {
 			return err
 		}
@@ -1496,11 +1497,8 @@ func setFlagsFromEnv(cmd *cobra.Command, env *Env) error {
 		if err := maySetFlag(cmd, flagGitBase, env.Lint.Git.Base); err != nil {
 			return err
 		}
-	default:
-		if err := maySetFlag(cmd, flagURL, env.URL); err != nil {
-			return err
-		}
-		if err := maySetFlag(cmd, flagRevisionSchema, env.Migration.RevisionsSchema); err != nil {
+	case "status":
+		if err := maySetFlag(cmd, flagLog, env.Log.Migrate.Status); err != nil {
 			return err
 		}
 	}
@@ -1522,6 +1520,36 @@ func setFlagsFromEnv(cmd *cobra.Command, env *Env) error {
 		if err := maySetFlag(cmd, flagSchema, s); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// migrateEnvsRun executes a given command on each of the configured environment.
+func migrateEnvsRun[F any](run func(*cobra.Command, []string, F) error, cmd *cobra.Command, args []string, flags *F) error {
+	envs, err := LoadEnv(GlobalFlags.SelectedEnv, WithInput(GlobalFlags.Vars))
+	if err != nil {
+		return err
+	}
+	var (
+		w     bytes.Buffer
+		reset = resetFromEnv(cmd)
+	)
+	cmd.SetOut(io.MultiWriter(cmd.OutOrStdout(), &w))
+	for i, e := range envs {
+		if err := setFlagsFromEnv(cmd, e); err != nil {
+			return err
+		}
+		if err := run(cmd, args, *flags); err != nil {
+			return err
+		}
+		out := bytes.TrimLeft(w.Bytes(), " \t\r")
+		// In case a custom logging was configured, ensure there is
+		// a newline separator between the different environments.
+		if cmd.Flags().Changed(flagLog) && bytes.LastIndexByte(out, '\n') != len(out)-1 && i != len(envs)-1 {
+			cmd.Println()
+		}
+		reset()
+		w.Reset()
 	}
 	return nil
 }

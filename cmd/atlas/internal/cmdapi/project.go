@@ -67,6 +67,9 @@ type (
 
 		// Lint of the environment.
 		Lint *Lint `spec:"lint"`
+
+		// Log of the environment.
+		Log Log `spec:"log"`
 		schemahcl.DefaultExtension
 	}
 
@@ -89,6 +92,19 @@ type (
 			// Base configures the --git-base option.
 			Base string `spec:"base"`
 		} `spec:"git"`
+		schemahcl.DefaultExtension
+	}
+
+	// Log represents a logging configuration of an environment.
+	Log struct {
+		Migrate struct {
+			// Apply configures the logging for 'migrate apply'.
+			Apply string `spec:"apply"`
+			// Lint configures the logging for 'migrate lint'.
+			Lint string `spec:"lint"`
+			// Status configures the logging for 'migrate status'.
+			Status string `spec:"status"`
+		} `spec:"migrate"`
 		schemahcl.DefaultExtension
 	}
 )

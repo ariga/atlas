@@ -158,9 +158,11 @@ func (v *Vars) Set(s string) error {
 			return fmt.Errorf("variables must be format as key=value, got: %q", kvs[i])
 		}
 		v1 := cty.StringVal(kv[1])
-		switch v2, ok := (*v)[kv[0]]; {
+		switch v0, ok := (*v)[kv[0]]; {
+		case ok && v0.Type().IsListType():
+			(*v)[kv[0]] = cty.ListVal(append(v0.AsValueSlice(), v1))
 		case ok:
-			(*v)[kv[0]] = cty.ListVal([]cty.Value{v1, v2})
+			(*v)[kv[0]] = cty.ListVal([]cty.Value{v0, v1})
 		default:
 			(*v)[kv[0]] = v1
 		}

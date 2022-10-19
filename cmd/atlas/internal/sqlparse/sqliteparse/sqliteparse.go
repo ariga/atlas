@@ -35,7 +35,7 @@ type (
 )
 
 // SyntaxError implements ErrorListener.SyntaxError.
-func (l *listenError) SyntaxError(_ antlr.Recognizer, _ interface{}, line, column int, msg string, _ antlr.RecognitionException) {
+func (l *listenError) SyntaxError(_ antlr.Recognizer, _ any, line, column int, msg string, _ antlr.RecognitionException) {
 	if idx := strings.Index(msg, " expecting "); idx != -1 {
 		msg = msg[:idx]
 	}
