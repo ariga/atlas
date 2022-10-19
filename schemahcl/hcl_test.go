@@ -50,6 +50,10 @@ func TestResource(t *testing.T) {
   handler {
     active = true
     addr   = ":8080"
+    tag {
+      name  = "name"
+      value = "value"
+    }
   }
 }
 `
@@ -57,6 +61,10 @@ func TestResource(t *testing.T) {
 		Handler struct {
 			Active bool   `spec:"active"`
 			Addr   string `spec:"addr"`
+			Tag    struct {
+				Name  string `spec:"name"`
+				Value string `spec:"value"`
+			} `spec:"tag"`
 		}
 
 		Endpoint struct {
@@ -80,6 +88,10 @@ func TestResource(t *testing.T) {
 		Handler: &Handler{
 			Active: true,
 			Addr:   ":8080",
+			Tag: struct {
+				Name  string `spec:"name"`
+				Value string `spec:"value"`
+			}{Name: "name", Value: "value"},
 		},
 	}
 	require.EqualValues(t, expected, test.Endpoints[0])

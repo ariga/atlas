@@ -91,6 +91,11 @@ func (r *Resource) As(target any) error {
 	if err := validateStructPtr(target); err != nil {
 		return err
 	}
+	return r.as(target)
+}
+
+// As reads the attributes and children resources of the resource into the target struct.
+func (r *Resource) as(target any) error {
 	existingAttrs, existingChildren := existingElements(r)
 	var seenName, seenQualifier bool
 	v := reflect.ValueOf(target).Elem()
@@ -133,7 +138,7 @@ func (r *Resource) As(target any) error {
 				}
 				n := reflect.New(reflect.TypeOf(typ).Elem())
 				ext := n.Interface()
-				if err := c.As(ext); err != nil {
+				if err := c.as(ext); err != nil {
 					return err
 				}
 				slc = reflect.Append(slc, reflect.ValueOf(ext))
@@ -161,7 +166,7 @@ func (r *Resource) As(target any) error {
 			}
 			n := reflect.New(reflect.TypeOf(typ).Elem())
 			ext := n.Interface()
-			if err := c.As(ext); err != nil {
+			if err := c.as(ext); err != nil {
 				return err
 			}
 			field.Set(n)
@@ -175,11 +180,24 @@ func (r *Resource) As(target any) error {
 			if len(c) == 0 {
 				continue
 			}
-			res := c[0]
-			n := reflect.New(field.Type().Elem())
-			ext := n.Interface()
-			if err := res.As(ext); err != nil {
-				return err
+			var (
+				res = c[0]
+				n   reflect.Value
+			)
+			switch field.Type().Kind() {
+			case reflect.Struct:
+				n = reflect.New(field.Type())
+				ext := n.Interface()
+				if err := res.as(ext); err != nil {
+					return err
+				}
+				n = n.Elem()
+			case reflect.Pointer:
+				n = reflect.New(field.Type().Elem())
+				ext := n.Interface()
+				if err := res.as(ext); err != nil {
+					return err
+				}
 			}
 			field.Set(n)
 			delete(existingChildren, ft.tag)
@@ -262,7 +280,7 @@ func setChildSlice(field reflect.Value, children []*Resource) error {
 	for _, c := range children {
 		n := reflect.New(typ.Elem())
 		ext := n.Interface()
-		if err := c.As(ext); err != nil {
+		if err := c.as(ext); err != nil {
 			return err
 		}
 		slc = reflect.Append(slc, reflect.ValueOf(ext))
@@ -406,7 +424,7 @@ func (r *Resource) Scan(ext any) error {
 	if lookup, ok := extensions.lookup(ext); ok {
 		r.Type = lookup
 	}
-	v := reflect.ValueOf(ext).Elem()
+	v := indirect(reflect.ValueOf(ext))
 	for _, ft := range specFields(ext) {
 		field := v.FieldByName(ft.Name)
 		switch {
@@ -432,7 +450,7 @@ func (r *Resource) Scan(ext any) error {
 				r.Children = append(r.Children, child)
 			}
 		case isSingleResource(field.Type()):
-			if field.IsNil() {
+			if k := field.Kind(); k == reflect.Struct && field.IsZero() || k == reflect.Pointer && field.IsNil() {
 				continue
 			}
 			ext := field.Interface()
@@ -560,10 +578,10 @@ func scanSliceAttr(key string, r *Resource, field reflect.Value) error {
 // specFields uses reflection to find struct fields that are tagged with "spec"
 // and returns a list of mappings from the tag to the field name.
 func specFields(ext any) []fieldDesc {
-	t := reflect.TypeOf(ext)
+	t := indirect(reflect.TypeOf(ext))
 	var fields []fieldDesc
-	for i := 0; i < t.Elem().NumField(); i++ {
-		f := t.Elem().Field(i)
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
 		tag, ok := f.Tag.Lookup("spec")
 		if !ok {
 			continue
@@ -637,15 +655,14 @@ func childrenOfType(r *Resource, types ...string) []*Resource {
 }
 
 func isSingleResource(t reflect.Type) bool {
-	if t.Kind() != reflect.Ptr {
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
 		return false
 	}
-	elem := t.Elem()
-	if elem.Kind() != reflect.Struct {
-		return false
-	}
-	for i := 0; i < elem.NumField(); i++ {
-		f := elem.Field(i)
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
 		if _, ok := f.Tag.Lookup("spec"); ok {
 			return true
 		}
@@ -666,4 +683,17 @@ func isResourceSlice(t reflect.Type) bool {
 func hasAttr(r *Resource, name string) bool {
 	_, ok := r.Attr(name)
 	return ok
+}
+
+type rtype[T any] interface {
+	Elem() T
+	Kind() reflect.Kind
+}
+
+// indirect returns the type at the end of indirection.
+func indirect[T rtype[T]](t T) T {
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return t
 }
