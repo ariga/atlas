@@ -446,6 +446,16 @@ env "local" {
   migration {
     dir = "file://testdata/sqlite"
   }
+  log {
+    migrate {
+      apply = format(
+        "{{ json . | json_merge %q }}",
+        jsonencode({
+          Tenant: each.value
+        })
+      )
+    }
+  }
 }
 `
 			p    = t.TempDir()
@@ -470,7 +480,8 @@ env "local" {
 			"--var", fmt.Sprintf("url=sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "tenants.db")),
 		)
 		require.NoError(t, err)
-		require.Equal(t, 3, strings.Count(s, "Migrating to version 20220318104615 (2 migrations in total)"), "execution per environment")
+		require.Equal(t, 3, strings.Count(s, `"Tenant"`))
+		require.Equal(t, 3, strings.Count(s, `"Applied":[{"Applied":["CREATE TABLE tbl`), "execution per environment")
 		for i := range dbs {
 			_, err = os.Stat(dbs[i])
 			require.NoError(t, err)
