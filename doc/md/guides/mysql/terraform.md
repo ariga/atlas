@@ -60,7 +60,6 @@ As reference for the next steps, the URL for the Dev Database will be:
 mysql://root:pass@localhost:3306/example
 ```
 
-
 ### Getting started
 
 Create a new directory for our new Terraform project and in it a file named `main.tf`.
