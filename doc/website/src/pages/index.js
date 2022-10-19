@@ -80,7 +80,7 @@ export default function () {
                     <AtlasButton style={{"marginTop": "5%"}} text="Get Started" link="/getting-started" type="primaryButton"/>
                 </div>
                 <div className={index.imageContainer}>
-                    <img src="https://atlasgo.io/uploads/hero2.png" alt="hero"/>
+                    <img src="https://atlasgo.io/uploads/images/atlas-hero-v1.png" alt="hero"/>
                 </div>
             </div>
         </div>
