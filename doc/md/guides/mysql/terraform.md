@@ -365,7 +365,7 @@ table "users" {
   // highlight-end
 }
 ```
-Now, run re-apply with Terraform:
+Now, re-apply with Terraform:
 
 ```text
 terraform apply
