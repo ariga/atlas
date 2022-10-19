@@ -2,6 +2,7 @@ version: "3.9"
 
 services:
   mysql56:
+    container_name: atlas-integration-mysql56
     platform: linux/amd64
     image: mysql:5.6.35
     environment:
@@ -13,6 +14,7 @@ services:
       - "3306:3306"
 
   mysql57:
+    container_name: atlas-integration-mysql57
     platform: linux/amd64
     image: mysql:5.7.26
     environment:
@@ -24,6 +26,7 @@ services:
       - "3307:3306"
 
   mysql8:
+    container_name: atlas-integration-mysql8
     platform: linux/amd64
     image: mysql:8.0.19
     environment:
@@ -35,6 +38,7 @@ services:
       - "3308:3306"
 
   postgres10:
+    container_name: atlas-integration-postgres10
     platform: linux/amd64
     image: postgres:10
     environment:
@@ -46,6 +50,7 @@ services:
       - "5430:5432"
 
   postgres11:
+    container_name: atlas-integration-postgres11
     platform: linux/amd64
     image: postgres:11
     environment:
@@ -57,6 +62,7 @@ services:
       - "5431:5432"
 
   postgres12:
+    container_name: atlas-integration-postgres12
     platform: linux/amd64
     image: postgres:12
     environment:
@@ -68,6 +74,7 @@ services:
       - "5432:5432"
 
   postgres13:
+    container_name: atlas-integration-postgres13
     platform: linux/amd64
     image: postgres:13
     environment:
@@ -79,6 +86,7 @@ services:
       - "5433:5432"
 
   postgres14:
+    container_name: atlas-integration-postgres14
     platform: linux/amd64
     image: postgres:14
     environment:
@@ -90,6 +98,7 @@ services:
       - "5434:5432"
 
   mariadb:
+    container_name: atlas-integration-mariadb
     platform: linux/amd64
     image: mariadb
     environment:
@@ -101,6 +110,7 @@ services:
       - "4306:3306"
 
   mariadb102:
+    container_name: atlas-integration-mariadb102
     platform: linux/amd64
     image: mariadb:10.2.32
     environment:
@@ -112,6 +122,7 @@ services:
       - "4307:3306"
 
   mariadb103:
+    container_name: atlas-integration-mariadb103
     platform: linux/amd64
     image: mariadb:10.3.13
     environment:
@@ -124,18 +135,21 @@ services:
 
   # Default DB test, No Password
   tidb5:
+    container_name: atlas-integration-tidb5
     platform: linux/amd64
     image: pingcap/tidb:v5.4.0
     ports:
       - "4309:4000"
 
   tidb6:
+    container_name: atlas-integration-tidb6
     platform: linux/amd64
     image: pingcap/tidb:v6.0.0
     ports:
       - "4310:4000"
   
   cockroach21.2.11:
+    container_name: atlas-integration-cockroach21.2.11
     platform: linux/amd64
     image: cockroachdb/cockroach:v21.2.11
     ports:
