@@ -2,6 +2,7 @@
 id: terraform-mysql-rds
 title: Manage MySQL on RDS with Terraform and Atlas
 slug: /guides/mysql/terraform
+image: https://atlasgo.io/uploads/images/tf-mysql.png
 tags: [terraform, rds, mysql, aws, iac]
 ---
 
