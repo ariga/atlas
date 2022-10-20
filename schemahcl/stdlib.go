@@ -156,6 +156,7 @@ func stdFuncs() map[string]function.Function {
 		"trimsuffix":      stdlib.TrimSuffixFunc,
 		"try":             tryfunc.TryFunc,
 		"upper":           stdlib.UpperFunc,
+		"urlqueryset":     urlQuerySetFunc,
 		"urlsetpath":      urlSetPathFunc,
 		"values":          stdlib.ValuesFunc,
 		"zipmap":          stdlib.ZipmapFunc,
@@ -237,6 +238,34 @@ func makeToFunc(wantTy cty.Type) function.Function {
 		},
 	})
 }
+
+var urlQuerySetFunc = function.New(&function.Spec{
+	Params: []function.Parameter{
+		{
+			Name: "url",
+			Type: cty.String,
+		},
+		{
+			Name: "key",
+			Type: cty.String,
+		},
+		{
+			Name: "value",
+			Type: cty.String,
+		},
+	},
+	Type: function.StaticReturnType(cty.String),
+	Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+		u, err := url.Parse(args[0].AsString())
+		if err != nil {
+			return cty.NilVal, err
+		}
+		q := u.Query()
+		q.Set(args[1].AsString(), args[2].AsString())
+		u.RawQuery = q.Encode()
+		return cty.StringVal(u.String()), nil
+	},
+})
 
 var urlSetPathFunc = function.New(&function.Spec{
 	Params: []function.Parameter{

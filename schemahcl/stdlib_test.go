@@ -47,3 +47,49 @@ func TestURLSetPathFunc(t *testing.T) {
 		})
 	}
 }
+
+func TestURLQuerySetFunc(t *testing.T) {
+	tests := []struct {
+		URL   cty.Value
+		Key   cty.Value
+		Value cty.Value
+		Want  cty.Value
+	}{
+		{
+			cty.StringVal("postgres://postgres:pass@0.0.0.0:5432/database?sslmode=disable&sslmode=disable"),
+			cty.StringVal("search_path"),
+			cty.StringVal("schema"),
+			cty.StringVal("postgres://postgres:pass@0.0.0.0:5432/database?search_path=schema&sslmode=disable&sslmode=disable"),
+		},
+		{
+			cty.StringVal("postgres://postgres:pass@0.0.0.0:5432/database?sslmode=disable&search_path=admin&sslmode=disable"),
+			cty.StringVal("search_path"),
+			cty.StringVal("schema"),
+			cty.StringVal("postgres://postgres:pass@0.0.0.0:5432/database?search_path=schema&sslmode=disable&sslmode=disable"),
+		},
+		{
+			cty.StringVal("postgres://postgres:pass@0.0.0.0:5432/database"),
+			cty.StringVal("search_path"),
+			cty.StringVal("schema"),
+			cty.StringVal("postgres://postgres:pass@0.0.0.0:5432/database?search_path=schema"),
+		},
+		{
+			cty.StringVal("postgres://postgres:pass@0.0.0.0:5432/database?sslmode=disable&search_path=admin&sslmode=disable"),
+			cty.StringVal("search_path"),
+			cty.StringVal(""),
+			cty.StringVal("postgres://postgres:pass@0.0.0.0:5432/database?search_path=&sslmode=disable&sslmode=disable"),
+		},
+	}
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("(%#v,%#v,%#v)", test.URL, test.Key, test.Value), func(t *testing.T) {
+			got, err := urlQuerySetFunc.Call([]cty.Value{test.URL, test.Key, test.Value})
+
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if !got.RawEquals(test.Want) {
+				t.Errorf("wrong result\ngot:  %#v\nwant: %#v", got, test.Want)
+			}
+		})
+	}
+}
