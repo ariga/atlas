@@ -13,11 +13,6 @@ variable "pattern" {
   type = string
 }
 
-locals {
-  # The database URL without its schema name.
-  base_url = regexreplace(var.url, "/\\w+(\\?parseTime=true)?", "")
-}
-
 data "sql" "tenants" {
   url = var.url
   query = <<EOS
@@ -30,7 +25,7 @@ EOS
 
 env "dev" {
   for_each = toset(data.sql.tenants.values)
-  url = "${local.base_url}/${each.value}"
+  url      = urlsetpath(var.url, each.value)
 }
 
 -- migrations/1_create_users.sql --
