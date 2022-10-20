@@ -1,5 +1,5 @@
 ---
-title: Project Structure
+title: Project Configuration
 id: projects
 slug: /atlas-schema/projects
 ---
@@ -71,45 +71,6 @@ atlas migrate validate --env local
 Will run the `migrate validate` command against the Dev Database defined in the
 `local` environment.
 
-### Configure Migration Linting
-
-Project files may declare `lint` blocks to configure how migration linting run in a specific environment or globally.
-
-```hcl
-lint {
-  destructive {
-    // By default, destructive changes cause migration linting to error
-    // on exit (code 1). Setting `error` to false disables this behavior.
-    error = false
-  }
-  // Custom logging can be enabled using the `log` attribute.
-  log = <<EOS
-{{- range $f := .Files }}
-	{{- json $f }}
-{{- end }}
-EOS
-}
-
-env "local" {
-  // Define a specific migration linting config for this environment.
-  // This block inherits and overrides all attributes of the global config.
-  lint {
-    latest = 1
-  }
-}
-
-env "ci" {
-  lint {
-    git {
-      base = "master"
-      // An optional attribute for setting the working
-      // directory of the git command (-C flag).
-      dir = "<path>"
-    }
-  }
-}
-```
-
 ### Passing Input Values
 
 Project files may pass [input values](input-variables) to variables defined in
@@ -165,3 +126,183 @@ the `--env` flag, all input values supplied at the command-line are passed only
 to the project file, and not propagated automatically to children schema files.
 This is done with the purpose of creating an explicit contract between the environment
 and the schema file.
+
+## Schema Arguments and Attributes
+
+Project configuration files support different types of blocks.
+
+### Input Variables
+
+Project files support defining input variables that can be injected through the CLI, [read more here](input.md).
+
+- `type` - The type constraint of a variable.
+- `default` - Define if the variable is optional by setting its default value.
+
+```hcl
+variable "tenants" {
+  type = list(string)
+}
+
+variable "url" {
+  type    = string
+  default = "mysql://root:pass@localhost:3306/"
+}
+
+env "local" {
+  // Reference an input variable.
+  url = var.url
+}
+```
+
+### Local Values
+
+The `locals` block allows defining a list of local variables that can be reused multiple times in the project.
+
+```hcl
+locals {
+  tenants  = ["tenant_1", "tenant_2"]
+  base_url = "mysql://${var.user}:${var.pass}@${var.addr}"
+  
+  // Reference local values. 
+  db1_url  = "${local.base_url}/db1"
+  db2_url  = "${local.base_url}/db2"
+}
+```
+
+### Data Sources
+
+Data sources enable users to retrieve information stored in an external service or database. The currently supported
+data sources are: [`sql`](#data-source-sql).
+
+#### Data source: `sql`
+
+##### Arguments {#data-source-sql-arguments}
+
+- `url` - The [URL](../concepts/url.mdx) of the target database.
+- `query` - Query to execute.
+- `args` - Optional arguments for any placeholder parameters in the query.
+
+##### Attributes {#data-source-sql-attributes}
+
+- `count` - The number of returned rows.
+- `values` - The returned values. e.g. `list(string)`.
+- `value` - The first value in the list, or `nil`.
+
+```hcl
+data "sql" "tenants" {
+  url = var.url
+  query = <<EOS
+SELECT `schema_name`
+  FROM `information_schema`.`schemata`
+  WHERE `schema_name` LIKE ?
+EOS
+  args = [var.pattern]
+}
+
+env "prod" {
+  // Reference a data source.
+  for_each = toset(data.sql.tenants.values)
+  url = "${local.base_url}/${each.value}"
+}
+```
+
+### Environments
+
+The `env` block defines an environment block that can be selected by using the `--env` flag.
+
+##### Arguments {#environment-arguments}
+
+- `for_each` - A meta-argument that accepts a map or a set of strings and is used to compute an `env` instance for each
+set or map item. See the example [below](#multi-environment-example).
+
+- `url` - The [URL](../concepts/url.mdx) of the target database.
+
+- `dev` - The [URL](../concepts/url.mdx) of the [Dev Database](../concepts/dev.md).
+
+- `schemas` - A list of strings defines the schemas that Atlas manages.
+
+- `exclude` - A list of strings defines glob patterns used to filter resources on inspection.
+
+- `migration` - A block defines the migration configuration of the env.
+  - `dir` - The [URL](../concepts/url.mdx) to the migration directory.
+  - `revisions_schema` - An optional name to control the schema that the revisions table resides in.
+
+- `log` - A block defines the logging configuration of the env per command.
+  - `migrate`
+    - `apply` - Set the `--log` flag by setting custom logging for `migrate apply`.
+    - `lint` - Set the `--log` flag by setting custom logging for `migrate lint`.
+    - `status` - Set the `--log` flag by setting custom logging for `migrate status`.
+
+- `lint` - A block defines the migration linting configuration of the env.
+  - `log` - Override the `--log` flag by setting a custom logging for `migrate lint`.
+  - `lastest` - A number configures the `--latest` option.
+  - `git.base` - A run analysis against the base Git branch.
+  - `git.dir` - A path to the repository working directory.
+
+##### Multi Environment Example
+
+Atlas adopts the `for_each` meta-argument that [Terraform uses](https://www.terraform.io/language/meta-arguments/for_each)
+for `env` blocks. Setting the `for_each` argument will compute an `env` block for each item in the provided value. Note
+that `for_each` accepts a map or a set of strings.
+
+```hcl
+env "prod" {
+  for_each = toset(data.sql.tenants.values)
+  url      = "${local.base_url}/${each.value}"
+  migration {
+    dir = "file://migrations"
+  }
+  log {
+    migrate {
+      apply = format(
+        "{{ json . | json_merge %q }}",
+        jsonencode({
+          Tenant : each.value
+        })
+      )
+    }
+  }
+}
+```
+
+## Configure Migration Linting
+
+Project files may declare `lint` blocks to configure how migration linting runs in a specific environment or globally.
+
+```hcl
+lint {
+  destructive {
+    // By default, destructive changes cause migration linting to error
+    // on exit (code 1). Setting `error` to false disables this behavior.
+    error = false
+  }
+  // Custom logging can be enabled using the `log` attribute.
+  log = <<EOS
+{{- range $f := .Files }}
+	{{- json $f }}
+{{- end }}
+EOS
+}
+
+env "local" {
+  // Define a specific migration linting config for this environment.
+  // This block inherits and overrides all attributes of the global config.
+  lint {
+    latest = 1
+  }
+}
+
+env "ci" {
+  lint {
+    git {
+      base = "master"
+      // An optional attribute for setting the working
+      // directory of the git command (-C flag).
+      dir = "<path>"
+    }
+  }
+}
+```
+
+
+
