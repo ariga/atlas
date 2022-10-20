@@ -5,6 +5,7 @@
 package schemahcl
 
 import (
+	"net/url"
 	"strconv"
 
 	"github.com/hashicorp/hcl/v2"
@@ -144,17 +145,18 @@ func stdFuncs() map[string]function.Function {
 		"substr":          stdlib.SubstrFunc,
 		"timeadd":         stdlib.TimeAddFunc,
 		"title":           stdlib.TitleFunc,
-		"tostring":        makeToFunc(cty.String),
-		"tonumber":        makeToFunc(cty.Number),
 		"tobool":          makeToFunc(cty.Bool),
-		"toset":           makeToFunc(cty.Set(cty.DynamicPseudoType)),
 		"tolist":          makeToFunc(cty.List(cty.DynamicPseudoType)),
+		"tonumber":        makeToFunc(cty.Number),
+		"toset":           makeToFunc(cty.Set(cty.DynamicPseudoType)),
+		"tostring":        makeToFunc(cty.String),
 		"trim":            stdlib.TrimFunc,
 		"trimprefix":      stdlib.TrimPrefixFunc,
 		"trimspace":       stdlib.TrimSpaceFunc,
 		"trimsuffix":      stdlib.TrimSuffixFunc,
 		"try":             tryfunc.TryFunc,
 		"upper":           stdlib.UpperFunc,
+		"urlsetpath":      urlSetPathFunc,
 		"values":          stdlib.ValuesFunc,
 		"zipmap":          stdlib.ZipmapFunc,
 	}
@@ -235,3 +237,25 @@ func makeToFunc(wantTy cty.Type) function.Function {
 		},
 	})
 }
+
+var urlSetPathFunc = function.New(&function.Spec{
+	Params: []function.Parameter{
+		{
+			Name: "url",
+			Type: cty.String,
+		},
+		{
+			Name: "path",
+			Type: cty.String,
+		},
+	},
+	Type: function.StaticReturnType(cty.String),
+	Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+		u, err := url.Parse(args[0].AsString())
+		if err != nil {
+			return cty.NilVal, err
+		}
+		u.Path = args[1].AsString()
+		return cty.StringVal(u.String()), nil
+	},
+})

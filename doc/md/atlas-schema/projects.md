@@ -202,7 +202,7 @@ EOS
 env "prod" {
   // Reference a data source.
   for_each = toset(data.sql.tenants.values)
-  url = "${local.base_url}/${each.value}"
+  url      = urlsetpath(var.url, each.value)
 }
 ```
 
@@ -248,7 +248,7 @@ that `for_each` accepts a map or a set of strings.
 ```hcl
 env "prod" {
   for_each = toset(data.sql.tenants.values)
-  url      = "${local.base_url}/${each.value}"
+  url      = urlsetpath(var.url, each.value)
   migration {
     dir = "file://migrations"
   }
