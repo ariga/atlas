@@ -62,7 +62,7 @@ type (
 		*url.URL
 
 		// The DSN used for opening the connection.
-		DSN string
+		DSN string `json:"-"`
 
 		// The Schema this client is connected to.
 		Schema string
