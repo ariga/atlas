@@ -443,13 +443,10 @@ func (i *inspect) querySchema(ctx context.Context, query string, s *schema.Schem
 	for _, t := range s.Tables {
 		args = append(args, t.Name)
 	}
-
 	// Cloud Spanner's default internal schema name is an empty string.
 	if s.Name == defaultSchemaNameAlias {
 		args[0] = ""
 	}
-
-	// return i.QueryContext(ctx, query, args...)
 	return i.QueryContext(ctx, fmt.Sprintf(query, nArgs(len(s.Tables))), args...)
 }
 
