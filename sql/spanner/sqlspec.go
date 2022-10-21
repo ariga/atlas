@@ -145,6 +145,7 @@ func columnTypeSpec(t schema.Type) (*sqlspec.Column, error) {
 
 // TypeRegistry contains the supported TypeSpecs for the spanner driver.
 var TypeRegistry = schemahcl.NewRegistry(
+	schemahcl.WithParser(ParseType),
 	schemahcl.WithSpecs(
 		schemahcl.NewTypeSpec(TypeString, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
 		schemahcl.NewTypeSpec(TypeBytes, schemahcl.WithAttributes(schemahcl.SizeTypeAttr(false))),
