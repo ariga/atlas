@@ -6,6 +6,7 @@ package myparse
 
 import (
 	"fmt"
+	"strconv"
 
 	"ariga.io/atlas/cmd/atlas/internal/sqlparse/parseutil"
 	"ariga.io/atlas/sql/migrate"
@@ -55,7 +56,7 @@ func (p *Parser) ColumnFilledBefore(f migrate.File, t *schema.Table, c *schema.C
 	})
 }
 
-// ColumnFilledAfter checks if the column was filled before the given position.
+// ColumnFilledAfter checks if the column that matches the given value was filled after the position.
 func (p *Parser) ColumnFilledAfter(f migrate.File, t *schema.Table, c *schema.Column, pos int, match any) (bool, error) {
 	stmts, err := f.StmtDecls()
 	if err != nil {
@@ -107,8 +108,12 @@ func (p *Parser) ColumnFilledAfter(f migrate.File, t *schema.Table, c *schema.Co
 				if !ok1 || !ok2 || n.Name.Name.O != c.Name {
 					return false
 				}
+				x := fmt.Sprint(match)
+				if u, err := strconv.Unquote(x); err == nil {
+					x = u
+				}
 				// String representations should be ~equal.
-				return fmt.Sprint(v.Datum.GetValue()) == fmt.Sprint(match)
+				return fmt.Sprint(v.Datum.GetValue()) == x
 			}
 		}()
 		idx := slices.IndexFunc(u.List, func(a *ast.Assignment) bool {
