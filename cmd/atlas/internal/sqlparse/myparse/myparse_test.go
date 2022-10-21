@@ -254,6 +254,15 @@ func TestColumnFilledAfter(t *testing.T) {
 ALTER TABLE t MODIFY COLUMN c varchar(255) NOT NULL;
 UPDATE t SET c = CONCAT('tenant_', d) WHERE c = "";
 `,
+			matchValue: `""`,
+			pos:        30,
+			wantFilled: true,
+		},
+		{
+			file: `
+ALTER TABLE t MODIFY COLUMN c varchar(255) NOT NULL;
+UPDATE t SET c = CONCAT('tenant_', d) WHERE c = "";
+`,
 			matchValue: "",
 			pos:        30,
 			wantFilled: true,

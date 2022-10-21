@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"ariga.io/atlas/schemahcl"
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
@@ -33,14 +34,16 @@ func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err erro
 		})
 	}
 	implicitUpdate := func(tt, v string) {
-		diags = append(diags, sqlcheck.Diagnostic{
-			Code: codeImplicitUpdate,
-			Pos:  p.Change.Stmt.Pos,
-			Text: fmt.Sprintf(
-				"Adding a non-nullable %q column %q on table %q without a default value implicitly sets existing rows with %s",
-				tt, p.Column.Name, p.Table.Name, v,
-			),
-		})
+		if !columnFilledAfter(p, v) {
+			diags = append(diags, sqlcheck.Diagnostic{
+				Code: codeImplicitUpdate,
+				Pos:  p.Change.Stmt.Pos,
+				Text: fmt.Sprintf(
+					"Adding a non-nullable %q column %q on table %q without a default value implicitly sets existing rows with %s",
+					tt, p.Column.Name, p.Table.Name, v,
+				),
+			})
+		}
 	}
 	drv, ok := p.Dev.Driver.(*mysql.Driver)
 	if !ok {
@@ -126,6 +129,18 @@ func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err erro
 		}
 	}
 	return
+}
+
+// columnFilledAfter checks if the column with the given value was filled after the current change.
+func columnFilledAfter(pass *datadepend.ColumnPass, matchValue string) bool {
+	p, ok := pass.File.Parser.(interface {
+		ColumnFilledAfter(migrate.File, *schema.Table, *schema.Column, int, any) (bool, error)
+	})
+	if !ok {
+		return false
+	}
+	filled, _ := p.ColumnFilledAfter(pass.File, pass.Table, pass.Column, pass.Change.Stmt.Pos, matchValue)
+	return filled
 }
 
 func init() {
