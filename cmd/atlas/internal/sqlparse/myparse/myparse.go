@@ -14,7 +14,8 @@ import (
 	"github.com/pingcap/tidb/parser"
 	"github.com/pingcap/tidb/parser/ast"
 	"github.com/pingcap/tidb/parser/mysql"
-	_ "github.com/pingcap/tidb/parser/test_driver"
+	"github.com/pingcap/tidb/parser/opcode"
+	"github.com/pingcap/tidb/parser/test_driver"
 	"golang.org/x/exp/slices"
 )
 
@@ -52,6 +53,73 @@ func (p *Parser) ColumnFilledBefore(f migrate.File, t *schema.Table, c *schema.C
 		// Ensure the column was filled.
 		return affectC && idx != -1, nil
 	})
+}
+
+// ColumnFilledAfter checks if the column was filled before the given position.
+func (p *Parser) ColumnFilledAfter(f migrate.File, t *schema.Table, c *schema.Column, pos int, match any) (bool, error) {
+	stmts, err := f.StmtDecls()
+	if err != nil {
+		return false, err
+	}
+	switch i := slices.IndexFunc(stmts, func(s *migrate.Stmt) bool {
+		return s.Pos >= pos
+	}); i {
+	case -1:
+		return false, nil
+	default:
+		stmts = stmts[i:]
+	}
+	for _, s := range stmts {
+		stmt, err := parser.New().ParseOneStmt(s.Text, "", "")
+		if err != nil {
+			return false, err
+		}
+		u, ok := stmt.(*ast.UpdateStmt)
+		// Ensure the table was updated.
+		if !ok || !tableUpdated(u, t) {
+			continue
+		}
+		// Accept UPDATE that fills all rows or those with NULL values as we cannot
+		// determine if NULL values were filled in case there is a custom filtering.
+		affectC := func() bool {
+			if u.Where == nil {
+				return true
+			}
+			switch match.(type) {
+			case nil:
+				is, ok := u.Where.(*ast.IsNullExpr)
+				if !ok || is.Not {
+					return false
+				}
+				n, ok := is.Expr.(*ast.ColumnNameExpr)
+				return ok && n.Name.Name.O == c.Name
+			default:
+				bin, ok := u.Where.(*ast.BinaryOperationExpr)
+				if !ok || bin.Op != opcode.EQ {
+					return false
+				}
+				l, r := bin.L, bin.R
+				if _, ok := bin.L.(*ast.ColumnNameExpr); !ok {
+					l, r = r, l
+				}
+				n, ok1 := l.(*ast.ColumnNameExpr)
+				v, ok2 := r.(*test_driver.ValueExpr)
+				if !ok1 || !ok2 || n.Name.Name.O != c.Name {
+					return false
+				}
+				// String representations should be ~equal.
+				return fmt.Sprint(v.Datum.GetValue()) == fmt.Sprint(match)
+			}
+		}()
+		idx := slices.IndexFunc(u.List, func(a *ast.Assignment) bool {
+			return a.Column.Name.String() == c.Name && a.Expr != nil && a.Expr.GetType().GetType() != mysql.TypeNull
+		})
+		// Ensure the column was filled.
+		if affectC && idx != -1 {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // FixChange fixes the changes according to the given statement.

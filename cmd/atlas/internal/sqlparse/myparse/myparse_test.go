@@ -241,6 +241,72 @@ ALTER TABLE t MODIFY COLUMN c INT NOT NULL;
 	}
 }
 
+func TestColumnFilledAfter(t *testing.T) {
+	for i, tt := range []struct {
+		file       string
+		pos        int
+		matchValue any
+		wantFilled bool
+		wantErr    bool
+	}{
+		{
+			file: `
+ALTER TABLE t MODIFY COLUMN c varchar(255) NOT NULL;
+UPDATE t SET c = CONCAT('tenant_', d) WHERE c = "";
+`,
+			matchValue: "",
+			pos:        30,
+			wantFilled: true,
+		},
+		{
+			file: `
+ALTER TABLE t MODIFY COLUMN c varchar(255) NOT NULL;
+UPDATE t SET c = CONCAT('tenant_', d) WHERE c = '';
+`,
+			matchValue: "",
+			pos:        30,
+			wantFilled: true,
+		},
+		{
+			file: `
+ALTER TABLE t MODIFY COLUMN c varchar(255) NOT NULL;
+UPDATE t SET c = CONCAT('tenant_', d) WHERE c = 1;
+`,
+			matchValue: 1,
+			pos:        30,
+			wantFilled: true,
+		},
+		{
+			file: `
+ALTER TABLE t MODIFY COLUMN c varchar(255) NOT NULL;
+UPDATE t SET c = CONCAT('tenant_', d) WHERE c = 0;
+`,
+			matchValue: "0",
+			pos:        30,
+			wantFilled: true,
+		},
+		{
+			file: `
+ALTER TABLE t MODIFY COLUMN c varchar(255) NOT NULL;
+UPDATE t SET c = CONCAT('tenant_', d) WHERE c = 0;
+`,
+			matchValue: "0",
+			pos:        100,
+			wantFilled: false,
+		},
+	} {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			var (
+				p myparse.Parser
+				f = migrate.NewLocalFile("file", []byte(tt.file))
+			)
+			filled, err := p.ColumnFilledAfter(f, schema.NewTable("t"), schema.NewColumn("c"), tt.pos, tt.matchValue)
+			require.Equal(t, err != nil, tt.wantErr, err)
+			require.Equal(t, filled, tt.wantFilled)
+		})
+	}
+}
+
 type mockDriver struct {
 	migrate.Driver
 	changes schema.Changes
