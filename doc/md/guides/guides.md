@@ -24,6 +24,10 @@ Welcome to the Atlas Guides.
 
 [Included Columns](postgres/included-columns.md)
 
+### SQLite
+
+[Partial Indexes](SQLite/partial-indexes-sqlite.md)
+
 ## Migration tools
 
 [`golang-migrate`](migration-tools/golang-migrate.md)
