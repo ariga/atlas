@@ -7,12 +7,14 @@ package cmdapi
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
 	"testing"
 
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 	"github.com/stretchr/testify/require"
 )
@@ -192,6 +194,31 @@ table "tbl" {
 	)
 }
 
+func TestCmdSchemaApply(t *testing.T) {
+	const drvName = "checknormalizer"
+	// If no dev-database is given, there must not be a call to Driver.Normalize.
+	sqlclient.Register(
+		drvName,
+		sqlclient.OpenerFunc(func(ctx context.Context, url *url.URL) (*sqlclient.Client, error) {
+			url.Scheme = "sqlite"
+			c, err := sqlclient.OpenURL(ctx, url)
+			if err != nil {
+				return nil, err
+			}
+			c.Driver = &assertNormalizerDriver{t: t, Driver: c.Driver}
+			return c, nil
+		}),
+	)
+
+	p := filepath.Join(t.TempDir(), "schema.hcl")
+	require.NoError(t, os.WriteFile(p, []byte(`schema "my_schema" {}`), 0644))
+	_, _ = runCmd(
+		schemaApplyCmd(),
+		"--url", drvName+"://?mode=memory",
+		"-f", p,
+	)
+}
+
 func TestFmt(t *testing.T) {
 	for _, tt := range []struct {
 		name          string
@@ -320,4 +347,21 @@ func setupFmtTest(t *testing.T, inputDir map[string]string) string {
 	}
 	require.NoError(t, err)
 	return dir
+}
+
+type assertNormalizerDriver struct {
+	migrate.Driver
+	t *testing.T
+}
+
+// NormalizeSchema returns the normal representation of a schema.
+func (d *assertNormalizerDriver) NormalizeSchema(context.Context, *schema.Schema) (*schema.Schema, error) {
+	d.t.Fatal("did not expect a call to NormalizeSchema")
+	return nil, nil
+}
+
+// NormalizeRealm returns the normal representation of a database.
+func (d *assertNormalizerDriver) NormalizeRealm(context.Context, *schema.Realm) (*schema.Realm, error) {
+	d.t.Fatal("did not expect a call to NormalizeRealm")
+	return nil, nil
 }

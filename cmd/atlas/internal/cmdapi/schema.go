@@ -149,7 +149,7 @@ func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) erro
 	to, err := stateReader(ctx, &stateReaderConfig{
 		urls:    flags.toURLs,
 		dev:     dev,
-		norm:    client,
+		client:  client,
 		schemas: flags.schemas,
 		exclude: flags.exclude,
 		vars:    GlobalFlags.Vars,

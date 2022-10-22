@@ -367,11 +367,11 @@ type (
 	}
 	// stateReaderConfig is given to stateReader.
 	stateReaderConfig struct {
-		urls      []string          // urls to create a migrate.StateReader from
-		norm, dev *sqlclient.Client // database connections, while dev is considered a dev database, norm is not
-		schemas   []string          // schemas to work on
-		exclude   []string          // exclude flag values
-		vars      Vars
+		urls        []string          // urls to create a migrate.StateReader from
+		client, dev *sqlclient.Client // database connections, while dev is considered a dev database, client is not
+		schemas     []string          // schemas to work on
+		exclude     []string          // exclude flag values
+		vars        Vars
 	}
 )
 
@@ -492,8 +492,8 @@ func hclStateReader(ctx context.Context, config *stateReaderConfig, urls []*url.
 	switch {
 	case config.dev != nil:
 		client = config.dev
-	case config.norm != nil:
-		client = config.norm
+	case config.client != nil:
+		client = config.client
 	default:
 		return nil, errors.New("no database connection available")
 	}
@@ -530,7 +530,7 @@ func hclStateReader(ctx context.Context, config *stateReaderConfig, urls []*url.
 			config.dev.URL.Schema,
 		)
 	}
-	if norm, ok := client.Driver.(schema.Normalizer); ok && len(realm.Schemas) > 0 {
+	if norm, ok := client.Driver.(schema.Normalizer); ok && config.dev != nil { // only normalize on a dev database
 		realm, err = norm.NormalizeRealm(ctx, realm)
 		if err != nil {
 			return nil, err
