@@ -16,6 +16,8 @@ Welcome to the Atlas Guides.
 
 [Managing MySQL schemas on RDS with Terraform](mysql/terraform.md)
 
+[Dropping non-virtual columns (DS103)](mysql/ds-103.md)
+
 ### PostgreSQL
 
 [Serial Type Columns](postgres/serial-columns.md)
