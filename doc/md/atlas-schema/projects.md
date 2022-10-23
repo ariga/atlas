@@ -225,6 +225,7 @@ set or map item. See the example [below](#multi-environment-example).
 
 - `migration` - A block defines the migration configuration of the env.
   - `dir` - The [URL](../concepts/url.mdx) to the migration directory.
+  - `baseline` - An optional version to start the migration history from. Read more [here](../versioned/apply.mdx#existing-databases).
   - `revisions_schema` - An optional name to control the schema that the revisions table resides in.
 
 - `log` - A block defines the logging configuration of the env per command.
