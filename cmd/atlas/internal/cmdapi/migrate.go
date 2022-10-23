@@ -1461,6 +1461,9 @@ func setFlagsFromEnv(cmd *cobra.Command, env *Env) error {
 	if err := inputValsFromEnv(cmd, env); err != nil {
 		return err
 	}
+	if err := maySetFlag(cmd, flagURL, env.URL); err != nil {
+		return err
+	}
 	if err := maySetFlag(cmd, flagDevURL, env.DevURL); err != nil {
 		return err
 	}
@@ -1470,7 +1473,7 @@ func setFlagsFromEnv(cmd *cobra.Command, env *Env) error {
 	if err := maySetFlag(cmd, flagDirFormat, env.Migration.Format); err != nil {
 		return err
 	}
-	if err := maySetFlag(cmd, flagURL, env.URL); err != nil {
+	if err := maySetFlag(cmd, flagBaseline, env.Migration.Baseline); err != nil {
 		return err
 	}
 	if err := maySetFlag(cmd, flagRevisionSchema, env.Migration.RevisionsSchema); err != nil {
@@ -1532,9 +1535,11 @@ func migrateEnvsRun[F any](run func(*cobra.Command, []string, F) error, cmd *cob
 	}
 	var (
 		w     bytes.Buffer
+		out   = cmd.OutOrStdout()
 		reset = resetFromEnv(cmd)
 	)
-	cmd.SetOut(io.MultiWriter(cmd.OutOrStdout(), &w))
+	cmd.SetOut(io.MultiWriter(out, &w))
+	defer cmd.SetOut(out)
 	for i, e := range envs {
 		if err := setFlagsFromEnv(cmd, e); err != nil {
 			return err
@@ -1542,10 +1547,10 @@ func migrateEnvsRun[F any](run func(*cobra.Command, []string, F) error, cmd *cob
 		if err := run(cmd, args, *flags); err != nil {
 			return err
 		}
-		out := bytes.TrimLeft(w.Bytes(), " \t\r")
+		b := bytes.TrimLeft(w.Bytes(), " \t\r")
 		// In case a custom logging was configured, ensure there is
 		// a newline separator between the different environments.
-		if cmd.Flags().Changed(flagLog) && bytes.LastIndexByte(out, '\n') != len(out)-1 && i != len(envs)-1 {
+		if cmd.Flags().Changed(flagLog) && bytes.LastIndexByte(b, '\n') != len(b)-1 && i != len(envs)-1 {
 			cmd.Println()
 		}
 		reset()

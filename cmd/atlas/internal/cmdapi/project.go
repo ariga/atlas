@@ -77,6 +77,7 @@ type (
 	Migration struct {
 		Dir             string `spec:"dir"`
 		Format          string `spec:"format"`
+		Baseline        string `spec:"baseline"`
 		RevisionsSchema string `spec:"revisions_schema"`
 	}
 

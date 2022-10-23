@@ -583,25 +583,81 @@ func TestMigrate_ApplyTxMode(t *testing.T) {
 }
 
 func TestMigrate_ApplyBaseline(t *testing.T) {
-	p := t.TempDir()
-	// Run migration with baseline should store this revision in the database.
-	s, err := runCmd(
-		migrateApplyCmd(),
-		"--dir", "file://testdata/baseline1",
-		"--baseline", "1",
-		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
-	)
-	require.NoError(t, err)
-	require.Contains(t, s, "No migration files to execute")
+	t.Run("FromFlags", func(t *testing.T) {
+		p := t.TempDir()
+		// Run migration with baseline should store this revision in the database.
+		s, err := runCmd(
+			migrateApplyCmd(),
+			"--dir", "file://testdata/baseline1",
+			"--baseline", "1",
+			"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test1.db")),
+		)
+		require.NoError(t, err)
+		require.Contains(t, s, "No migration files to execute")
+		// Next run without baseline should run the migration from the baseline.
+		s, err = runCmd(
+			migrateApplyCmd(),
+			"--dir", "file://testdata/baseline1",
+			"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test1.db")),
+		)
+		require.NoError(t, err)
+		require.Contains(t, s, "No migration files to execute")
 
-	// Next run without baseline should run the migration from the baseline.
-	s, err = runCmd(
-		migrateApplyCmd(),
-		"--dir", "file://testdata/baseline2",
-		"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test.db")),
-	)
-	require.NoError(t, err)
-	require.Contains(t, s, "Migrating to version 20220318104615 from 1 (2 migrations in total)")
+		// Multiple migration files with baseline.
+		s, err = runCmd(
+			migrateApplyCmd(),
+			"--dir", "file://testdata/baseline2",
+			"--baseline", "1",
+			"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test2.db")),
+		)
+		require.NoError(t, err)
+		require.Contains(t, s, "Migrating to version 20220318104615 from 1 (2 migrations in total)")
+
+		// Run all migration files and skip baseline.
+		s, err = runCmd(
+			migrateApplyCmd(),
+			"--dir", "file://testdata/baseline2",
+			"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test3.db")),
+		)
+		require.NoError(t, err)
+		require.Contains(t, s, "Migrating to version 20220318104615 (3 migrations in total)")
+	})
+
+	t.Run("FromConfig", func(t *testing.T) {
+		const h = `
+env "local" {
+  migration {
+    baseline = "1"
+  }
+}`
+		p := t.TempDir()
+		path := filepath.Join(p, "atlas.hcl")
+		err := os.WriteFile(path, []byte(h), 0600)
+		require.NoError(t, err)
+		cmd := migrateCmd()
+		cmd.AddCommand(migrateApplyCmd())
+		s, err := runCmd(
+			cmd, "apply",
+			"-c", "file://"+path,
+			"--env", "local",
+			"--dir", "file://testdata/baseline1",
+			"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test1.db")),
+		)
+		require.NoError(t, err)
+		require.Contains(t, s, "No migration files to execute")
+
+		cmd = migrateCmd()
+		cmd.AddCommand(migrateApplyCmd())
+		s, err = runCmd(
+			cmd, "apply",
+			"-c", "file://"+path,
+			"--env", "local",
+			"--dir", "file://testdata/baseline2",
+			"--url", fmt.Sprintf("sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "test2.db")),
+		)
+		require.NoError(t, err)
+		require.Contains(t, s, "Migrating to version 20220318104615 from 1 (2 migrations in total)")
+	})
 }
 
 func TestMigrate_Diff(t *testing.T) {
