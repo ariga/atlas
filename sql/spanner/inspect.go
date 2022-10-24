@@ -500,8 +500,9 @@ type (
 
 	// columnDesc represents a column descriptor.
 	columnDesc struct {
-		typ  string
-		size int
+		typ       string
+		size      int
+		sizeIsMax bool
 	}
 
 	// ParentTable defines an Interleaved tables parent.
@@ -636,6 +637,7 @@ inner join information_schema.index_columns as idx_col
 		and idx.index_name = idx_col.index_name
 where
 	idx.index_type in ('INDEX', 'PRIMARY_KEY')
+	and idx.index_name not like 'IDX_%'
 	and idx.table_schema = @schema
 	and idx_col.table_name in unnest (@table)
 order by
