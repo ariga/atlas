@@ -111,6 +111,11 @@ module.exports = {
                     id: 'guides/mysql/terraform-mysql-rds',
                     label: 'Managing with Terraform'
                 },
+                {
+                    type: 'doc',
+                    id: 'guides/mysql/mysql-ds-103',
+                    label: 'Column Drop (DS103)'
+                },
             ],
         },
         {
