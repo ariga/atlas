@@ -7,6 +7,7 @@ package spanner
 import (
 	"context"
 	"database/sql/driver"
+	"fmt"
 	"testing"
 
 	"ariga.io/atlas/sql/internal/sqltest"
@@ -18,6 +19,16 @@ import (
 )
 
 type mockValueConverter struct{}
+
+var (
+	// single-table queries
+	queryChecks  = sqltest.Escape(fmt.Sprintf(checksQuery, "?"))
+	queryColumns = sqltest.Escape(fmt.Sprintf(columnsQuery, "?"))
+	queryFKs     = sqltest.Escape(fmt.Sprintf(fksQuery, "?"))
+	queryIndexes = sqltest.Escape(fmt.Sprintf(indexesQuery, "?"))
+	queryTables  = sqltest.Escape(fmt.Sprintf(tablesQuery, "?"))
+	querySchemas = sqltest.Escape(fmt.Sprintf(schemasQueryArgs, "IN (?)"))
+)
 
 // ConvertValue implements the sqlmock.ValueConverter interface and satisfies the acceptable Spanner types.
 func (mockValueConverter) ConvertValue(v interface{}) (driver.Value, error) {
@@ -31,12 +42,12 @@ func TestDriver_InspectSchema(t *testing.T) {
 	mk.databaseOpts(dialectGoogleStandardSQL)
 	drv, err := Open(db)
 	require.NoError(t, err)
-	mk.ExpectQuery(sqltest.Escape(schemasQueryArgs)).
-		WithArgs([]string{""}).
+	mk.ExpectQuery(querySchemas).
+		WithArgs("").
 		WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow(""))
 
-	m.ExpectQuery(sqltest.Escape(tablesQuery)).
-		WithArgs([]string{""}).
+	m.ExpectQuery(queryTables).
+		WithArgs("").
 		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "parent_table_name", "on_delete_action", "spanner_state"}))
 	s, err := drv.InspectSchema(context.Background(), "", &schema.InspectOptions{})
 	require.NoError(t, err)
@@ -63,18 +74,18 @@ func TestDriver_InspectTable(t *testing.T) {
 			name: "column types",
 			before: func(m mock) {
 				m.tableExists("", "Users", true)
-				m.ExpectQuery(sqltest.Escape(columnsQuery)).
-					WithArgs("", []string{"Users"}).
+				m.ExpectQuery(queryColumns).
+					WithArgs("", "Users").
 					WillReturnRows(sqltest.Rows(`
-+------------+-------------+------------------+----------------+-------------+--------------+--------------+---------------------------------------------+-----------+---------------+
-| table_name | column_name | ordinal_position | column_default | is_nullable | spanner_type | is_generated | generation_expression                       | is_stored | spanner_state |
-+------------+-------------+------------------+----------------+-------------+--------------+--------------+---------------------------------------------+-----------+---------------+
-| Users      | Id          | 1                | NULL           | false       | STRING(20)   | false        | NULL                                        | false     | COMMITTED     |
-| Users      | FirstName   | 2                | NULL           | true        | STRING(50)   | false        | NULL                                        | false     | COMMITTED     |
-| Users      | LastName    | 3                | NULL           | true        | STRING(50)   | false        | NULL                                        | false     | COMMITTED     |
-| Users      | Age         | 4                | NULL           | false       | INT64        | false        | NULL                                        | false     | COMMITTED     |
-| Users      | FullName    | 5                | NULL           | true        | STRING(MAX)  | true         | ARRAY_TO_STRING([FirstName, LastName], " ") | true      | COMMITTED     |
-+------------+-------------+------------------+----------------+-------------+--------------+--------------+---------------------------------------------+-----------+---------------+
++------------+-------------+------------------+----------------+----------+--------------+-----------+---------------------------------------------+--------+---------------+
+| table_name | column_name | ordinal_position | column_default | nullable | spanner_type | generated | generation_expression                       | stored | spanner_state |
++------------+-------------+------------------+----------------+----------+--------------+-----------+---------------------------------------------+--------+---------------+
+| Users      | Id          | 1                | NULL           | false    | STRING(20)   | false     | NULL                                        | false  | COMMITTED     |
+| Users      | FirstName   | 2                | NULL           | true     | STRING(50)   | false     | NULL                                        | false  | COMMITTED     |
+| Users      | LastName    | 3                | NULL           | true     | STRING(50)   | false     | NULL                                        | false  | COMMITTED     |
+| Users      | Age         | 4                | NULL           | false    | INT64        | false     | NULL                                        | false  | COMMITTED     |
+| Users      | FullName    | 5                | NULL           | true     | STRING(MAX)  | true      | ARRAY_TO_STRING([FirstName, LastName], " ") | NULL   | COMMITTED     |
++------------+-------------+------------------+----------------+----------+--------------+-----------+---------------------------------------------+--------+---------------+
 `))
 				m.noIndexes()
 				m.noFKs()
@@ -107,8 +118,7 @@ func TestDriver_InspectTable(t *testing.T) {
 			var drv migrate.Driver
 			drv, err = Open(db)
 			require.NoError(t, err)
-			mk.ExpectQuery(sqltest.Escape(schemasQueryArgs)).
-				WithArgs([]string{""}).
+			mk.ExpectQuery(querySchemas).
 				WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow(""))
 			tt.before(mk)
 			s, err := drv.InspectSchema(context.Background(), "", nil)
@@ -127,8 +137,8 @@ func TestDriver_Realm(t *testing.T) {
 	require.NoError(t, err)
 	mk.ExpectQuery(sqltest.Escape(schemasQuery)).
 		WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow(""))
-	m.ExpectQuery(sqltest.Escape(tablesQuery)).
-		WithArgs([]string{""}).
+	mk.ExpectQuery(queryTables).
+		WithArgs("").
 		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "parent_table_name", "on_delete_action", "spanner_state"}))
 	realm, err := drv.InspectRealm(context.Background(), &schema.InspectRealmOption{})
 	require.NoError(t, err)
@@ -144,11 +154,11 @@ func TestDriver_Realm(t *testing.T) {
 		return r
 	}(), realm)
 
-	mk.ExpectQuery(sqltest.Escape(schemasQueryArgs)).
-		WithArgs([]string{""}).
+	mk.ExpectQuery(querySchemas).
+		WithArgs("").
 		WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow(""))
-	m.ExpectQuery(sqltest.Escape(tablesQuery)).
-		WithArgs([]string{""}).
+	m.ExpectQuery(queryTables).
+		WithArgs("").
 		WillReturnRows(sqlmock.NewRows([]string{"table_schema", "table_name", "parent_table_name", "on_delete_action", "spanner_state"}))
 	realm, err = drv.InspectRealm(context.Background(), &schema.InspectRealmOption{Schemas: []string{""}})
 	require.NoError(t, err)
@@ -208,22 +218,22 @@ func (m mock) tableExists(schema, table string, exists bool) {
 	if exists {
 		rows.AddRow(schema, table, nil, nil, nil)
 	}
-	m.ExpectQuery(sqltest.Escape(tablesQuery)).
-		WithArgs([]string{schema}).
+	m.ExpectQuery(queryTables).
+		WithArgs(schema).
 		WillReturnRows(rows)
 }
 
 func (m mock) noIndexes() {
-	m.ExpectQuery(sqltest.Escape(indexesQuery)).
+	m.ExpectQuery(queryIndexes).
 		WillReturnRows(sqlmock.NewRows([]string{"table_name", "index_name", "column_name", "primary", "unique", "constraint_type", "predicate", "expression", "options"}))
 }
 
 func (m mock) noFKs() {
-	m.ExpectQuery(sqltest.Escape(fksQuery)).
+	m.ExpectQuery(queryFKs).
 		WillReturnRows(sqlmock.NewRows([]string{"constraint_name", "table_name", "column_name", "referenced_table_name", "referenced_column_name", "referenced_table_schema", "update_rule", "delete_rule"}))
 }
 
 func (m mock) noChecks() {
-	m.ExpectQuery(sqltest.Escape(checksQuery)).
+	m.ExpectQuery(queryChecks).
 		WillReturnRows(sqlmock.NewRows([]string{"table_name", "constraint_name", "expression", "column_name", "column_indexes"}))
 }
