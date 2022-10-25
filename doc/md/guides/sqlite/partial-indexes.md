@@ -1,7 +1,7 @@
 ---
-id: partial-indexes-sqlite
+id: partial-indexes
 title: Partial Indexes in SQLite
-slug: /guides/SQLite/partial-indexes-sqlite
+slug: /guides/sqlite/partial-indexes
 ---
 
 ### Overview of Partial Indexes
@@ -18,11 +18,8 @@ In many tables, different records are not accessed with uniform frequency. A sub
 Partial indexes come into the picture to filter unsearched values and give you, as an engineer, a tool to index only what's important.
 
 #### Advantages of using Partial Indexes
-In cases where we know ahead of time the access pattern to a table and can reduce the size of an index by making it partial:
-1. Response time for SELECT operations is improved because the database searches through a smaller index.
-2. On average, response time for UPDATE operations is also improved as the index is not going to get updated in all cases.
-3. Index is smaller in size and can fit into RAM more easily.
-4. Less space is required to store the index on disk.
+1. Partial indexses have index entries only for a defined subset of rows, compared to ordinary indexes which have exactly one index entry for every row in the table.
+2. When used wisely, partial indexes result in smaller database files with improved query as well as write performance.
 
 #### Basic SQLite syntax for using Partial Index
 
@@ -41,11 +38,11 @@ Let's see this in action by creating a table with the following command:
 
 ```sql
 CREATE TABLE vaccination_data (
-  ID INTEGER NOT NULL,
-  Country varchar(100) default NULL,
-  Title TEXT default NULL,
-  Names varchar(255) default NULL,
-  Vaccinated varchar(255) default NULL,
+  id INTEGER NOT NULL,
+  country varchar(100) default NULL,
+  title TEXT default NULL,
+  names varchar(255) default NULL,
+  vaccinated varchar(255) default NULL,
   PRIMARY KEY (id)
 );
 ```
@@ -57,7 +54,7 @@ SELECT * FROM vaccination_data;
 ```
 ```console title="Output"
 +----+--------------------+-------+----------------+------------+
-| ID |      Country       | Title |     Names      | Vaccinated |
+| id |      country       | title |     names      | vaccinated |
 +----+--------------------+-------+----------------+------------+
 | 1  | Poland             | Er.   | Travis Freeman | No         |
 | 2  | Australia          | Mr.   | Hu Dodson      | No         |
@@ -86,7 +83,7 @@ In the following example, suppose we want a list of doctors from India that have
 CREATE INDEX 
     vaccinated_idx 
 ON 
-    vaccination_data(Vaccinated);
+    vaccination_data(vaccinated);
 ```
 
 Now, let's check the size of the index that we created, with the following command:
@@ -121,9 +118,9 @@ In the following command, we have created an index with a `WHERE` clause that pr
 CREATE INDEX 
     vaccinated_idx
 ON 
-    vaccination_data(Vaccinated)
+    vaccination_data(vaccinated)
 WHERE 
-    Vaccinated = 'Yes' AND Country = 'India' AND Title = 'Dr';
+    vaccinated = 'Yes' AND country = 'India' AND title = 'Dr';
 ```
 Let’s verify if the index we created is being used in the query with `WHERE` clause by the following command:
 
@@ -134,7 +131,7 @@ SELECT
 FROM    
         vaccination_data
 WHERE
-        Vaccinated = 'Yes' AND Country = 'India' AND Title = 'Dr.';
+        vaccinated = 'Yes' AND country = 'India' AND title = 'Dr';
 ```
 
 ```console title="Output"
@@ -184,25 +181,25 @@ atlas schema inspect -u "sqlite://vaccination_data.db" > schema.hcl
 ```schema title="schema.hcl"
 table "vaccination_data" {
   schema = schema.main
-  column "Country" {
-    null    = true
-    type    = varchar(100)
-  }
-  column "Title" {
-    null    = true
-    type    = text
-  }
-  column "Names" {
-    null    = true
-    type    = varchar(255)
-  }
-  column "Vaccinated" {
-    null    = true
-    type    = varchar(255)
-  }
   column "id" {
     null = false
     type = integer
+  }
+  column "country" {
+    null    = true
+    type    = varchar(100)
+  }
+  column "title" {
+    null    = true
+    type    = text
+  }
+  column "names" {
+    null    = true
+    type    = varchar(255)
+  }
+  column "vaccinated" {
+    null    = true
+    type    = varchar(255)
   }
   primary_key {
     columns = [column.id]
@@ -216,8 +213,8 @@ Now, lets add the following index definition to the file:
 
 ```schema
   index "vaccinated_idx" {
-    columns = [column.Vaccinated]
-    where   = "(Vaccinated = 'Yes' AND Country = 'India' AND Title = 'Dr.')"
+    columns = [column.vaccinated]
+    where   = "(vaccinated = 'Yes' AND country = 'India' AND title = 'Dr.')"
   }
 ```
 
@@ -232,7 +229,7 @@ Atlas generates the necessary SQL statements to add the new partial index to the
 ```console
 -- Planned Changes:
 -- Create index "vaccinated_idx" to table: "vaccination_data"
-CREATE INDEX `vaccinated_idx` ON `vaccination_data` (`Vaccinated`) WHERE (Vaccinated = 'Yes' AND Country = 'India' AND Title = 'Dr.')
+CREATE INDEX `vaccinated_idx` ON `vaccination_data` (`vaccinated`) WHERE (vaccinated = 'Yes' AND country = 'India' AND title = 'Dr.')
 ✔ Apply
   Abort
 ```

@@ -142,8 +142,8 @@ module.exports = {
             items: [
                 {
                     type: 'doc',
-                    id: 'guides/SQLite/partial-indexes-sqlite',
-                    label: 'Partial Indexes in SQLite'
+                    id: 'guides/sqlite/partial-indexes',
+                    label: 'Partial Indexes'
                 },
             ],
         },

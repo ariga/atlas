@@ -26,7 +26,7 @@ Welcome to the Atlas Guides.
 
 ### SQLite
 
-[Partial Indexes](SQLite/partial-indexes-sqlite.md)
+[Partial Indexes](sqlite/partial-indexes.md)
 
 ## Migration tools
 
