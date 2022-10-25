@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"log"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"ariga.io/atlas/sql/schema"
@@ -43,24 +42,11 @@ func (r *TypeRegistry) PrintType(typ *Type) (string, error) {
 			}
 			continue
 		}
-		switch v := arg.V.(type) {
-		case *LiteralValue:
-			args = append(args, v.V)
-		case *ListValue:
-			for _, li := range v.V {
-				lit, ok := li.(*LiteralValue)
-				if !ok {
-					return "", fmt.Errorf("expecting literal value. got: %T", li)
-				}
-				uq, err := strconv.Unquote(lit.V)
-				if err != nil {
-					return "", fmt.Errorf("expecting list items to be quoted strings: %w", err)
-				}
-				args = append(args, "'"+uq+"'")
-			}
-		default:
-			return "", fmt.Errorf("unsupported type %T for PrintType", v)
+		attr, ok := spec.Attr(arg.K)
+		if !ok {
+			return "", fmt.Errorf("specutil: attribute %q not found in typespec %q", arg.K, typ.T)
 		}
+		args = append(args, valueArgs(attr, arg.V)...)
 	}
 	if len(args) > 0 {
 		mid = "(" + strings.Join(args, ",") + ")"
@@ -224,25 +210,25 @@ func (r *TypeRegistry) Convert(typ schema.Type) (*Type, error) {
 			if v == 0 && len(s.Attrs) == 0 {
 				break
 			}
-			i := strconv.Itoa(v)
-			s.Attrs = append([]*Attr{LitAttr(attr.Name, i)}, s.Attrs...)
+			s.Attrs = append([]*Attr{IntAttr(attr.Name, v)}, s.Attrs...)
 		case reflect.Bool:
 			v := field.Bool()
 			if !v && len(s.Attrs) == 0 {
 				break
 			}
-			b := strconv.FormatBool(v)
-			s.Attrs = append([]*Attr{LitAttr(attr.Name, b)}, s.Attrs...)
-		case reflect.Slice:
-			lits := make([]string, 0, field.Len())
-			for i := 0; i < field.Len(); i++ {
-				fi := field.Index(i)
-				if fi.Kind() != reflect.String {
-					return nil, errors.New("specutil: only string slices currently supported")
-				}
-				lits = append(lits, strconv.Quote(fi.String()))
+			s.Attrs = append([]*Attr{BoolAttr(attr.Name, v)}, s.Attrs...)
+		case reflect.String:
+			v := field.String()
+			if v == "" && len(s.Attrs) == 0 {
+				break
 			}
-			s.Attrs = append([]*Attr{ListAttr(attr.Name, lits...)}, s.Attrs...)
+			s.Attrs = append([]*Attr{StringAttr(attr.Name, v)}, s.Attrs...)
+		case reflect.Slice:
+			vs, ok := field.Interface().([]string)
+			if !ok {
+				return nil, fmt.Errorf("specutil: unsupported slice type %T", field.Interface())
+			}
+			s.Attrs = append([]*Attr{StringsAttr(attr.Name, vs...)}, s.Attrs...)
 		default:
 			return nil, fmt.Errorf("specutil: unsupported attr kind %s for attribute %q of %q", attr.Kind, attr.Name, typeSpec.Name)
 		}

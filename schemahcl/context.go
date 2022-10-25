@@ -234,7 +234,7 @@ func blockVars(blocks hclsyntax.Blocks, parentAddr string, defs *blockDef) (map[
 			// Fill missing attributes with zero values.
 			for n := range def.fields {
 				if _, ok := attrs[n]; !ok {
-					attrs[n] = cty.NullVal(ctySchemaLit)
+					attrs[n] = cty.NullVal(ctyNilType)
 				}
 			}
 			self := addr(parentAddr, name, blkName, qualifier)
@@ -308,51 +308,27 @@ func attrMap(attrs hclsyntax.Attributes) map[string]cty.Value {
 		if diag.HasErrors() {
 			continue
 		}
-		literalValue, err := extractValue(value)
-		if err != nil {
-			continue
-		}
-		out[v.Name] = cty.CapsuleVal(ctySchemaLit, literalValue)
+		out[v.Name] = value
 	}
 	return out
 }
 
-// ctySchemaLit is a cty.Capsule type the encapsulates a schemahcl.LiteralValue.
 var (
-	ctySchemaLit = cty.CapsuleWithOps("lit", reflect.TypeOf(LiteralValue{}), &cty.CapsuleOps{
-		// ConversionFrom facilitates reading the encapsulated type as a string, as is needed, for example,
-		// when interpolating it in a string expression.
-		ConversionFrom: func(src cty.Type) func(any, cty.Path) (cty.Value, error) {
-			if src != cty.String {
-				return nil
-			}
-			return func(i any, path cty.Path) (cty.Value, error) {
-				lit, ok := i.(*LiteralValue)
-				if !ok {
-					return cty.Value{}, fmt.Errorf("schemahcl: expected *schemahcl.LiteralValue got %T", i)
-				}
-				uq, err := strconv.Unquote(lit.V)
-				if err != nil {
-					return cty.StringVal(lit.V), nil
-				}
-				return cty.StringVal(uq), nil
-			}
-		},
-	})
 	ctyNilType  = cty.Capsule("type", reflect.TypeOf(cty.NilType))
 	ctyTypeSpec = cty.Capsule("type", reflect.TypeOf(Type{}))
-	ctyRawExpr  = cty.Capsule("raw_expr", reflect.TypeOf(RawExpr{}))
+	ctyRefType  = cty.Capsule("ref", reflect.TypeOf(Ref{}))
+	ctyRawExpr  = cty.Capsule("raw", reflect.TypeOf(RawExpr{}))
 )
 
 // Built-in blocks.
 const (
-	varBlock     = "variable"
-	dataBlock    = "data"
-	localsBlock  = "locals"
-	varRef       = "var"
-	localRef     = "local"
-	dynamicBlock = "dynamic"
-	forEachAttr  = "for_each"
+	varBlock    = "variable"
+	dataBlock   = "data"
+	localsBlock = "locals"
+	forEachAttr = "for_each"
+	eachRef     = "each"
+	varRef      = "var"
+	localRef    = "local"
 )
 
 // defRegistry returns a tree of blockDef structs representing the schema of the
@@ -400,7 +376,7 @@ func (t *blockDef) child(c *blockDef) {
 func (t *blockDef) asCty() cty.Type {
 	f := make(map[string]cty.Type)
 	for attr := range t.fields {
-		f[attr] = ctySchemaLit
+		f[attr] = ctyNilType
 	}
 	f["__ref"] = cty.String
 	for _, c := range t.children {

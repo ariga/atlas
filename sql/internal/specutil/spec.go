@@ -6,7 +6,6 @@ package specutil
 
 import (
 	"fmt"
-	"strconv"
 
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/schema"
@@ -16,77 +15,9 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-// StrAttr is a helper method for constructing *schemahcl.Attr of type string.
-func StrAttr(k, v string) *schemahcl.Attr {
-	return &schemahcl.Attr{
-		K: k,
-		V: &schemahcl.LiteralValue{V: strconv.Quote(v)},
-	}
-}
-
-// BoolAttr is a helper method for constructing *schemahcl.Attr of type bool.
-func BoolAttr(k string, v bool) *schemahcl.Attr {
-	return &schemahcl.Attr{
-		K: k,
-		V: &schemahcl.LiteralValue{V: strconv.FormatBool(v)},
-	}
-}
-
-// IntAttr is a helper method for constructing *schemahcl.Attr with the numeric value of v.
-func IntAttr(k string, v int) *schemahcl.Attr {
-	return Int64Attr(k, int64(v))
-}
-
-// Int64Attr is a helper method for constructing *schemahcl.Attr with the numeric value of v.
-func Int64Attr(k string, v int64) *schemahcl.Attr {
-	return &schemahcl.Attr{
-		K: k,
-		V: &schemahcl.LiteralValue{V: strconv.FormatInt(v, 10)},
-	}
-}
-
-// LitAttr is a helper method for constructing *schemahcl.Attr instances that contain literal values.
-func LitAttr(k, v string) *schemahcl.Attr {
-	return &schemahcl.Attr{
-		K: k,
-		V: &schemahcl.LiteralValue{V: v},
-	}
-}
-
-// RawAttr is a helper method for constructing *schemahcl.Attr instances that contain sql expressions.
-func RawAttr(k, v string) *schemahcl.Attr {
-	return &schemahcl.Attr{
-		K: k,
-		V: &schemahcl.RawExpr{X: v},
-	}
-}
-
 // VarAttr is a helper method for constructing *schemahcl.Attr instances that contain a variable reference.
 func VarAttr(k, v string) *schemahcl.Attr {
-	return &schemahcl.Attr{
-		K: k,
-		V: &schemahcl.Ref{V: v},
-	}
-}
-
-// RefAttr is a helper method for constructing *schemahcl.Attr instances that contain a reference.
-func RefAttr(k string, r *schemahcl.Ref) *schemahcl.Attr {
-	return &schemahcl.Attr{
-		K: k,
-		V: r,
-	}
-}
-
-// ListAttr is a helper method for constructing *schemahcl.Attr instances that contain list values.
-func ListAttr(k string, litValues ...string) *schemahcl.Attr {
-	lv := &schemahcl.ListValue{}
-	for _, v := range litValues {
-		lv.V = append(lv.V, &schemahcl.LiteralValue{V: v})
-	}
-	return &schemahcl.Attr{
-		K: k,
-		V: lv,
-	}
+	return schemahcl.RefAttr(k, &schemahcl.Ref{V: v})
 }
 
 type doc struct {

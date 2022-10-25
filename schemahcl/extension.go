@@ -8,9 +8,11 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/gocty"
 )
 
 // Remainer is the interface that is implemented by types that can store
@@ -318,12 +320,14 @@ func setField(field reflect.Value, attr *Attr) error {
 	case reflect.Interface:
 		field.Set(reflect.ValueOf(attr.V))
 	default:
-		return fmt.Errorf("schemahcl: unsupported field kind %q", field.Kind())
+		if err := gocty.FromCtyValue(attr.V, field.Addr().Interface()); err != nil {
+			return fmt.Errorf("schemahcl: failed setting field %q of type %T: %w", attr.K, field, err)
+		}
 	}
 	return nil
 }
 
-func setPtr(field reflect.Value, val Value) error {
+func setPtr(field reflect.Value, val cty.Value) error {
 	rt := reflect.TypeOf(val)
 	if field.Type() == rt {
 		field.Set(reflect.ValueOf(val))
@@ -331,7 +335,7 @@ func setPtr(field reflect.Value, val Value) error {
 	}
 	// If we are setting a Type field handle RawExpr and Ref specifically.
 	if _, ok := field.Interface().(*Type); ok {
-		switch t := val.(type) {
+		switch t := val.EncapsulatedValue().(type) {
 		case *RawExpr:
 			field.Set(reflect.ValueOf(&Type{T: t.X}))
 			return nil
@@ -347,32 +351,21 @@ func setPtr(field reflect.Value, val Value) error {
 		field.Set(reflect.New(field.Type().Elem()))
 	}
 	switch e := field.Interface().(type) {
-	case *bool:
-		b, err := BoolVal(val)
-		if err != nil {
-			return err
-		}
-		*e = b
-	case *string:
-		s, err := StrVal(val)
-		if err != nil {
-			return err
-		}
-		*e = s
-	case *LiteralValue:
-		s, err := StrVal(val)
-		if err != nil {
-			return err
-		}
-		e.V = s
 	case *Ref:
-		s, err := StrVal(val)
-		if err != nil {
-			return err
+		switch {
+		case val.Type() == cty.String:
+			e.V = val.AsString()
+		case val.Type().IsCapsuleType():
+			ref, ok := val.EncapsulatedValue().(*Ref)
+			if !ok {
+				return fmt.Errorf("schemahcl: expected value to be a *Ref, got: %T", val.EncapsulatedValue())
+			}
+			e.V = ref.V
 		}
-		e.V = s
 	default:
-		return fmt.Errorf("unhandled pointer type %T", val)
+		if err := gocty.FromCtyValue(val, e); err != nil {
+			return fmt.Errorf("converting cty.Value to %T: %w", e, err)
+		}
 	}
 	return nil
 }
@@ -380,18 +373,16 @@ func setPtr(field reflect.Value, val Value) error {
 // setSliceAttr sets the value of attr to the slice field. This function expects both the target field
 // and the source attr to be slices.
 func setSliceAttr(field reflect.Value, attr *Attr) error {
-	lst, ok := attr.V.(*ListValue)
-	if !ok {
-		return fmt.Errorf("schemahcl: field is of type slice but attr %q does not contain a ListValue", attr.K)
+	if !attr.V.Type().IsListType() && !attr.V.Type().IsTupleType() {
+		return fmt.Errorf("schemahcl: field is of type slice but attr %q is type: %s", attr.K, attr.V.Type().FriendlyName())
 	}
 	typ := field.Type().Elem()
-
-	slc := reflect.MakeSlice(reflect.SliceOf(typ), 0, len(lst.V))
+	slc := reflect.MakeSlice(reflect.SliceOf(typ), 0, attr.V.LengthInt())
 	switch typ.Kind() {
 	case reflect.String:
 		s, err := attr.Strings()
 		if err != nil {
-			return fmt.Errorf("cannot read attribute %q as string list: %w", attr.K, err)
+			return fmt.Errorf("cannot read attribute %q of type %q as string list: %w", attr.K, attr.V.Type().FriendlyName(), err)
 		}
 		for _, item := range s {
 			slc = reflect.Append(slc, reflect.ValueOf(item))
@@ -408,8 +399,15 @@ func setSliceAttr(field reflect.Value, attr *Attr) error {
 		if typ != reflect.TypeOf(&Ref{}) {
 			return fmt.Errorf("only pointers to refs supported, got %s", typ)
 		}
-		for _, c := range lst.V {
-			slc = reflect.Append(slc, reflect.ValueOf(c))
+		for _, v := range attr.V.AsValueSlice() {
+			switch {
+			case v.Type().IsCapsuleType():
+				slc = reflect.Append(slc, reflect.ValueOf(v.EncapsulatedValue().(*Ref)))
+			case isRef(v):
+				slc = reflect.Append(slc, reflect.ValueOf(&Ref{V: v.GetAttr("__ref").AsString()}))
+			default:
+				return fmt.Errorf("schemahcl: unsupported type %s in slice", v.Type().FriendlyName())
+			}
 		}
 	default:
 		return fmt.Errorf("slice of unsupported kind: %q", typ.Kind())
@@ -488,90 +486,61 @@ func (r *Resource) Scan(ext any) error {
 func scanPtr(key string, r *Resource, field reflect.Value) error {
 	attr := &Attr{K: key}
 	switch e := field.Interface().(type) {
-	case *LiteralValue:
-		attr.V = e
 	case *Ref:
-		attr.V = e
+		attr.V = cty.CapsuleVal(ctyRefType, e)
 	case *Type:
-		attr.V = e
-	case *bool:
-		attr.V = &LiteralValue{V: strconv.FormatBool(*e)}
-	case *string:
-		attr.V = &LiteralValue{V: strconv.Quote(*e)}
+		attr.V = cty.CapsuleVal(ctyTypeSpec, e)
 	default:
-		return fmt.Errorf("schemahcl: unsupported pointer to %s", e)
+		t, err := gocty.ImpliedType(e)
+		if err != nil {
+			return fmt.Errorf("schemahcl: cannot infer type for field %q when scaning pointer: %w", key, err)
+		}
+		attr.V, err = gocty.ToCtyValue(e, t)
+		if err != nil {
+			return fmt.Errorf("schemahcl: cannot convert value for field %q: %w", key, err)
+		}
 	}
 	r.SetAttr(attr)
 	return nil
 }
 
 func scanAttr(key string, r *Resource, field reflect.Value) error {
-	var lit string
-	switch field.Kind() {
-	case reflect.Slice:
-		return scanSliceAttr(key, r, field)
-	case reflect.String:
-		lit = strconv.Quote(field.String())
-	case reflect.Int:
-		lit = fmt.Sprintf("%d", field.Int())
-	case reflect.Bool:
-		lit = strconv.FormatBool(field.Bool())
-	case reflect.Interface:
+	switch k := field.Kind(); {
+	case k == reflect.Interface:
 		if field.IsNil() {
-			return nil
+			break
 		}
 		i := field.Interface()
-		v, ok := i.(Value)
+		v, ok := i.(cty.Value)
 		if !ok {
 			return fmt.Errorf("schemahcl: unsupported interface type %T for field %q", i, key)
+		}
+		r.SetAttr(&Attr{K: key, V: v})
+	case field.Type() == reflect.TypeOf([]*Ref{}):
+		if field.Len() > 0 {
+			r.SetAttr(RefsAttr(key, field.Interface().([]*Ref)...))
+		}
+	case k == reflect.Int, k == reflect.Int64:
+		r.SetAttr(Int64Attr(key, field.Int()))
+	case k == reflect.Struct:
+		if v, ok := field.Interface().(cty.Value); ok && v.IsNull() {
+			break
+		}
+		fallthrough
+	default:
+		t, err := gocty.ImpliedType(field.Interface())
+		if err != nil {
+			return fmt.Errorf("schemahcl: cannot infer type for field %q when scanning attribute: %w", key, err)
+		}
+		v, err := gocty.ToCtyValue(field.Interface(), t)
+		if err != nil {
+			return fmt.Errorf("schemahcl: cannot convert value for field %q: %w", key, err)
 		}
 		r.SetAttr(&Attr{
 			K: key,
 			V: v,
 		})
-		return nil
-	default:
-		return fmt.Errorf("schemahcl: unsupported field kind %q", field.Kind())
 	}
-	r.SetAttr(&Attr{
-		K: key,
-		V: &LiteralValue{V: lit},
-	})
-	return nil
-}
-
-// scanSliceAttr sets an Attr named "key" into the Resource r, by converting
-// the value stored in "field" into a *ListValue.
-func scanSliceAttr(key string, r *Resource, field reflect.Value) error {
-	typ := field.Type()
-	lst := &ListValue{}
-
-	switch typ.Elem().Kind() {
-	case reflect.String:
-		for i := 0; i < field.Len(); i++ {
-			item := field.Index(i).Interface().(string)
-			lst.V = append(lst.V, &LiteralValue{V: strconv.Quote(item)})
-		}
-	case reflect.Bool:
-		for i := 0; i < field.Len(); i++ {
-			item := field.Index(i).Interface().(bool)
-			lst.V = append(lst.V, &LiteralValue{V: strconv.FormatBool(item)})
-		}
-	case reflect.Ptr:
-		if typ.Elem() != reflect.TypeOf(&Ref{}) {
-			return fmt.Errorf("schemahcl: currently on ref slice values supported, got %s", typ)
-		}
-		for i := 0; i < field.Len(); i++ {
-			item := field.Index(i).Interface().(*Ref)
-			lst.V = append(lst.V, item)
-		}
-	default:
-		return fmt.Errorf("unsupported kind %q for %q", typ.Kind(), key)
-	}
-	r.SetAttr(&Attr{
-		K: key,
-		V: lst,
-	})
 	return nil
 }
 

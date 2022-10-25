@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"ariga.io/atlas/schemahcl"
-	"ariga.io/atlas/sql/internal/specutil"
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
@@ -226,7 +225,7 @@ func TestAnalyzer_Options(t *testing.T) {
 			{
 				Type: "data_depend",
 				Attrs: []*schemahcl.Attr{
-					specutil.BoolAttr("error", true),
+					schemahcl.BoolAttr("error", true),
 				},
 			},
 		},

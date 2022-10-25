@@ -14,6 +14,8 @@ import (
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
+
+	"github.com/zclconf/go-cty/cty"
 )
 
 // List of convert function types.
@@ -133,12 +135,20 @@ func Column(spec *sqlspec.Column, conv ConvertTypeFunc) (*schema.Column, error) 
 			Null: spec.Null,
 		},
 	}
-	if spec.Default != nil {
-		switch d := spec.Default.(type) {
-		case *schemahcl.LiteralValue:
-			out.Default = &schema.Literal{V: d.V}
-		case *schemahcl.RawExpr:
-			out.Default = &schema.RawExpr{X: d.X}
+	if d := spec.Default; !d.IsNull() {
+		switch {
+		case d.Type() == cty.String:
+			out.Default = &schema.Literal{V: d.AsString()}
+		case d.Type() == cty.Number:
+			out.Default = &schema.Literal{V: d.AsBigFloat().String()}
+		case d.Type() == cty.Bool:
+			out.Default = &schema.Literal{V: strconv.FormatBool(d.True())}
+		case d.Type().IsCapsuleType():
+			x, ok := d.EncapsulatedValue().(*schemahcl.RawExpr)
+			if !ok {
+				return nil, fmt.Errorf("invalid default value %q", d.Type().FriendlyName())
+			}
+			out.Default = &schema.RawExpr{X: x.X}
 		default:
 			return nil, fmt.Errorf("unsupported value type for default: %T", d)
 		}
@@ -368,7 +378,7 @@ func FromColumn(col *schema.Column, columnTypeSpec ColumnTypeSpecFunc) (*sqlspec
 		},
 	}
 	if col.Default != nil {
-		lv, err := toValue(col.Default)
+		lv, err := ExprValue(col.Default)
 		if err != nil {
 			return nil, err
 		}
@@ -383,7 +393,7 @@ func FromGenExpr(x schema.GeneratedExpr, t func(string) string) *schemahcl.Resou
 	return &schemahcl.Resource{
 		Type: "as",
 		Attrs: []*schemahcl.Attr{
-			StrAttr("expr", x.Expr),
+			schemahcl.StringAttr("expr", x.Expr),
 			VarAttr("type", t(x.Type)),
 		},
 	}
@@ -421,35 +431,42 @@ func ConvertGenExpr(r *schemahcl.Resource, c *schema.Column, t func(string) stri
 	return nil
 }
 
-func toValue(expr schema.Expr) (schemahcl.Value, error) {
-	var (
-		v   string
-		err error
-	)
-	switch expr := expr.(type) {
+// ExprValue converts a schema.Expr to a cty.Value.
+func ExprValue(expr schema.Expr) (cty.Value, error) {
+	switch x := expr.(type) {
 	case *schema.RawExpr:
-		return &schemahcl.RawExpr{X: expr.X}, nil
+		return schemahcl.RawExprValue(&schemahcl.RawExpr{X: x.X}), nil
 	case *schema.Literal:
-		v, err = normalizeQuotes(expr.V)
-		if err != nil {
-			return nil, err
+		switch {
+		case oneOfPrefix(x.V, "0x", "0X", "0b", "0B", "b'", "B'", "x'", "X'"):
+			return schemahcl.RawExprValue(&schemahcl.RawExpr{X: x.V}), nil
+		case sqlx.IsQuoted(x.V, '\'', '"'):
+			// Normalize single quotes to double quotes.
+			s, err := sqlx.Unquote(x.V)
+			if err != nil {
+				return cty.NilVal, err
+			}
+			return cty.StringVal(s), nil
+		case x.V == "true", x.V == "false":
+			return cty.BoolVal(x.V == "true"), nil
+		case strings.Contains(x.V, "."):
+			f, err := strconv.ParseFloat(x.V, 64)
+			if err != nil {
+				return cty.NilVal, err
+			}
+			return cty.NumberFloatVal(f), nil
+		case sqlx.IsLiteralNumber(x.V):
+			i, err := strconv.ParseInt(x.V, 10, 64)
+			if err != nil {
+				return cty.NilVal, err
+			}
+			return cty.NumberIntVal(i), nil
+		default:
+			return cty.NilVal, fmt.Errorf("unsupported literal value %q", x.V)
 		}
-		return &schemahcl.LiteralValue{V: v}, nil
 	default:
-		return nil, fmt.Errorf("converting expr %T to literal value", expr)
+		return cty.NilVal, fmt.Errorf("converting expr %T to literal value", expr)
 	}
-}
-
-func normalizeQuotes(s string) (string, error) {
-	if len(s) < 2 {
-		return s, nil
-	}
-	// If string is quoted with single quotes:
-	if strings.HasPrefix(s, `'`) && strings.HasSuffix(s, `'`) {
-		uq := strings.ReplaceAll(s[1:len(s)-1], "''", "'")
-		return strconv.Quote(uq), nil
-	}
-	return s, nil
 }
 
 // FromIndex converts schema.Index to sqlspec.Index.
@@ -662,7 +679,7 @@ func convertCommentFromSpec(spec Attrer, attrs *[]schema.Attr) error {
 func convertCommentFromSchema(src []schema.Attr, trgt *[]*schemahcl.Attr) {
 	var c schema.Comment
 	if sqlx.Has(src, &c) {
-		*trgt = append(*trgt, StrAttr("comment", c.Text))
+		*trgt = append(*trgt, schemahcl.StringAttr("comment", c.Text))
 	}
 }
 
@@ -682,3 +699,12 @@ func Var(s string) string { return strings.ReplaceAll(s, " ", "_") }
 
 // FromVar is the inverse function of Var.
 func FromVar(s string) string { return strings.ReplaceAll(s, "_", " ") }
+
+func oneOfPrefix(s string, ps ...string) bool {
+	for _, p := range ps {
+		if strings.HasPrefix(s, p) {
+			return true
+		}
+	}
+	return false
+}

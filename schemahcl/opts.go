@@ -188,28 +188,14 @@ func typeFuncSpecImpl(_ *function.Spec, typeSpec *TypeSpec) function.ImplFunc {
 		for _, attr := range typeFuncArgs(typeSpec) {
 			// If the attribute is a slice, read all remaining args into a list value.
 			if attr.Kind == reflect.Slice {
-				lst := &ListValue{}
-				for _, arg := range args {
-					v, err := extractValue(arg)
-					if err != nil {
-						return cty.NilVal, err
-					}
-					lst.V = append(lst.V, v)
-				}
-				t.Attrs = append(t.Attrs, &Attr{K: attr.Name, V: lst})
+				t.Attrs = append(t.Attrs, &Attr{K: attr.Name, V: cty.ListVal(args)})
 				break
 			}
 			if len(args) == 0 {
 				break
 			}
-			// Pop the first arg and add it as a literal to the type.
-			var arg cty.Value
-			arg, args = args[0], args[1:]
-			v, err := extractValue(arg)
-			if err != nil {
-				return cty.NilVal, err
-			}
-			t.Attrs = append(t.Attrs, &Attr{K: attr.Name, V: v})
+			t.Attrs = append(t.Attrs, &Attr{K: attr.Name, V: args[0]})
+			args = args[1:]
 		}
 		return cty.CapsuleVal(ctyTypeSpec, t), nil
 	}

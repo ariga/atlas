@@ -208,27 +208,27 @@ func fromPartition(p Partition) *schemahcl.Resource {
 			specutil.VarAttr("type", strings.ToUpper(specutil.Var(p.T))),
 		},
 	}
-	columns, ok := func() (*schemahcl.ListValue, bool) {
-		parts := make([]schemahcl.Value, 0, len(p.Parts))
+	columns, ok := func() ([]*schemahcl.Ref, bool) {
+		parts := make([]*schemahcl.Ref, 0, len(p.Parts))
 		for _, p := range p.Parts {
 			if p.C == nil {
 				return nil, false
 			}
 			parts = append(parts, specutil.ColumnRef(p.C.Name))
 		}
-		return &schemahcl.ListValue{V: parts}, true
+		return parts, true
 	}()
 	if ok {
-		key.Attrs = append(key.Attrs, &schemahcl.Attr{K: "columns", V: columns})
+		key.Attrs = append(key.Attrs, schemahcl.RefsAttr("columns", columns...))
 		return key
 	}
 	for _, p := range p.Parts {
 		part := &schemahcl.Resource{Type: "by"}
 		switch {
 		case p.C != nil:
-			part.Attrs = append(part.Attrs, specutil.RefAttr("column", specutil.ColumnRef(p.C.Name)))
+			part.Attrs = append(part.Attrs, schemahcl.RefAttr("column", specutil.ColumnRef(p.C.Name)))
 		case p.X != nil:
-			part.Attrs = append(part.Attrs, specutil.StrAttr("expr", p.X.(*schema.RawExpr).X))
+			part.Attrs = append(part.Attrs, schemahcl.StringAttr("expr", p.X.(*schema.RawExpr).X))
 		}
 		key.Children = append(key.Children, part)
 	}
@@ -237,7 +237,7 @@ func fromPartition(p Partition) *schemahcl.Resource {
 
 // convertColumn converts a sqlspec.Column into a schema.Column.
 func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error) {
-	if err := fixDefaultQuotes(spec.Default); err != nil {
+	if err := fixDefaultQuotes(spec); err != nil {
 		return nil, err
 	}
 	c, err := specutil.Column(spec, convertColumnType)
@@ -278,17 +278,17 @@ func convertIdentity(r *schemahcl.Resource) (*Identity, error) {
 
 // fixDefaultQuotes fixes the quotes on the Default field to be single quotes
 // instead of double quotes.
-func fixDefaultQuotes(value schemahcl.Value) error {
-	lv, ok := value.(*schemahcl.LiteralValue)
-	if !ok {
+func fixDefaultQuotes(spec *sqlspec.Column) error {
+	if spec.Default.Type() != cty.String {
 		return nil
 	}
-	if sqlx.IsQuoted(lv.V, '"') {
-		uq, err := strconv.Unquote(lv.V)
+	if s := spec.Default.AsString(); sqlx.IsQuoted(s, '"') {
+		uq, err := strconv.Unquote(s)
 		if err != nil {
 			return err
 		}
-		lv.V = "'" + uq + "'"
+		s = "'" + uq + "'"
+		spec.Default = cty.StringVal(s)
 	}
 	return nil
 }
@@ -501,20 +501,17 @@ func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("type", strings.ToUpper(i.T)))
 	}
 	if i := (IndexInclude{}); sqlx.Has(idx.Attrs, &i) && len(i.Columns) > 0 {
-		attr := &schemahcl.ListValue{}
+		refs := make([]*schemahcl.Ref, 0, len(i.Columns))
 		for _, c := range i.Columns {
-			attr.V = append(attr.V, specutil.ColumnRef(c.Name))
+			refs = append(refs, specutil.ColumnRef(c.Name))
 		}
-		spec.Extra.Attrs = append(spec.Extra.Attrs, &schemahcl.Attr{
-			K: "include",
-			V: attr,
-		})
+		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.RefsAttr("include", refs...))
 	}
 	if i := (IndexPredicate{}); sqlx.Has(idx.Attrs, &i) && i.P != "" {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("where", strconv.Quote(i.P)))
 	}
 	if p, ok := indexStorageParams(idx.Attrs); ok {
-		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.Int64Attr("page_per_range", p.PagesPerRange))
+		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.Int64Attr("page_per_range", p.PagesPerRange))
 	}
 	return spec, nil
 }
@@ -544,10 +541,10 @@ func fromIdentity(i *Identity) *schemahcl.Resource {
 	}
 	if s := i.Sequence; s != nil {
 		if s.Start != 1 {
-			id.Attrs = append(id.Attrs, specutil.Int64Attr("start", s.Start))
+			id.Attrs = append(id.Attrs, schemahcl.Int64Attr("start", s.Start))
 		}
 		if s.Increment != 1 {
-			id.Attrs = append(id.Attrs, specutil.Int64Attr("increment", s.Increment))
+			id.Attrs = append(id.Attrs, schemahcl.Int64Attr("increment", s.Increment))
 		}
 	}
 	return id
@@ -640,7 +637,7 @@ var TypeRegistry = schemahcl.NewRegistry(
 					spec.T = specutil.Var(strings.ToLower(i.F))
 				}
 				if p := i.Precision; p != nil && *p != defaultTimePrecision {
-					spec.Attrs = []*schemahcl.Attr{specutil.IntAttr("precision", *p)}
+					spec.Attrs = []*schemahcl.Attr{schemahcl.IntAttr("precision", *p)}
 				}
 				return spec, nil
 			}),
@@ -692,7 +689,7 @@ func typeSpec(t schema.Type) (*schemahcl.Type, error) {
 	if t, ok := t.(*schema.TimeType); ok && t.T != TypeDate {
 		spec := &schemahcl.Type{T: timeAlias(t.T)}
 		if p := t.Precision; p != nil && *p != defaultTimePrecision {
-			spec.Attrs = []*schemahcl.Attr{specutil.IntAttr("precision", *p)}
+			spec.Attrs = []*schemahcl.Attr{schemahcl.IntAttr("precision", *p)}
 		}
 		return spec, nil
 	}

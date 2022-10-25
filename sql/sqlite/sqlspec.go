@@ -137,7 +137,7 @@ func columnSpec(c *schema.Column, _ *schema.Table) (*sqlspec.Column, error) {
 		return nil, err
 	}
 	if sqlx.Has(c.Attrs, &AutoIncrement{}) {
-		s.Extra.Attrs = append(s.Extra.Attrs, specutil.BoolAttr("auto_increment", true))
+		s.Extra.Attrs = append(s.Extra.Attrs, schemahcl.BoolAttr("auto_increment", true))
 	}
 	if x := (schema.GeneratedExpr{}); sqlx.Has(c.Attrs, &x) {
 		s.Extra.Children = append(s.Extra.Children, specutil.FromGenExpr(x, storedOrVirtual))

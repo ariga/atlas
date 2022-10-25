@@ -8,19 +8,21 @@ import (
 	"testing"
 
 	"ariga.io/atlas/schemahcl"
+
 	"github.com/stretchr/testify/require"
+	"github.com/zclconf/go-cty/cty"
 )
 
 type OwnerBlock struct {
 	schemahcl.DefaultExtension
-	ID        string                  `spec:",name"`
-	FirstName string                  `spec:"first_name"`
-	Born      int                     `spec:"born"`
-	Active    bool                    `spec:"active"`
-	BoolPtr   *bool                   `spec:"bool_ptr"`
-	OmitBool1 bool                    `spec:"omit_bool1,omitempty"`
-	OmitBool2 bool                    `spec:"omit_bool2,omitempty"`
-	Lit       *schemahcl.LiteralValue `spec:"lit"`
+	ID        string    `spec:",name"`
+	FirstName string    `spec:"first_name"`
+	Born      int       `spec:"born"`
+	Active    bool      `spec:"active"`
+	BoolPtr   *bool     `spec:"bool_ptr"`
+	OmitBool1 bool      `spec:"omit_bool1,omitempty"`
+	OmitBool2 bool      `spec:"omit_bool2,omitempty"`
+	Lit       cty.Value `spec:"lit"`
 }
 
 type PetBlock struct {
@@ -47,13 +49,13 @@ func TestExtension(t *testing.T) {
 		Name: "name",
 		Type: "owner",
 		Attrs: []*schemahcl.Attr{
-			schemahcl.StrLitAttr("first_name", "tzuri"),
-			schemahcl.LitAttr("born", "2019"),
-			schemahcl.LitAttr("active", "true"),
-			schemahcl.LitAttr("bool_ptr", "true"),
-			schemahcl.LitAttr("omit_bool1", "true"),
-			schemahcl.LitAttr("lit", "1000"),
-			schemahcl.LitAttr("extra", "true"),
+			schemahcl.StringAttr("first_name", "tzuri"),
+			schemahcl.IntAttr("born", 2019),
+			schemahcl.BoolAttr("active", true),
+			schemahcl.BoolAttr("bool_ptr", true),
+			schemahcl.BoolAttr("omit_bool1", true),
+			schemahcl.StringAttr("lit", "1000"),
+			schemahcl.BoolAttr("extra", true),
 		},
 		Children: []*schemahcl.Resource{
 			{
@@ -71,7 +73,7 @@ func TestExtension(t *testing.T) {
 	require.EqualValues(t, true, owner.Active)
 	require.NotNil(t, owner.BoolPtr)
 	require.EqualValues(t, true, *owner.BoolPtr)
-	require.EqualValues(t, schemahcl.LitAttr("lit", "1000").V, owner.Lit)
+	require.EqualValues(t, cty.StringVal("1000"), owner.Lit)
 	attr, ok := owner.Remain().Attr("extra")
 	require.True(t, ok)
 	eb, err := attr.Bool()
@@ -90,25 +92,25 @@ func TestNested(t *testing.T) {
 		Name: "donut",
 		Type: "pet",
 		Attrs: []*schemahcl.Attr{
-			schemahcl.StrLitAttr("breed", "golden retriever"),
-			schemahcl.LitAttr("born", "2002"),
+			schemahcl.StringAttr("breed", "golden retriever"),
+			schemahcl.IntAttr("born", 2002),
 		},
 		Children: []*schemahcl.Resource{
 			{
 				Name: "rotemtam",
 				Type: "owner",
 				Attrs: []*schemahcl.Attr{
-					schemahcl.StrLitAttr("first_name", "rotem"),
-					schemahcl.LitAttr("born", "1985"),
-					schemahcl.LitAttr("active", "true"),
+					schemahcl.StringAttr("first_name", "rotem"),
+					schemahcl.IntAttr("born", 1985),
+					schemahcl.BoolAttr("active", true),
 				},
 			},
 			{
 				Name: "gonnie",
 				Type: "role_model",
 				Attrs: []*schemahcl.Attr{
-					schemahcl.StrLitAttr("breed", "golden retriever"),
-					schemahcl.LitAttr("born", "1998"),
+					schemahcl.StringAttr("breed", "golden retriever"),
+					schemahcl.IntAttr("born", 1998),
 				},
 			},
 		},
@@ -148,10 +150,7 @@ func TestRef(t *testing.T) {
 		Name: "x",
 		Type: "a",
 		Attrs: []*schemahcl.Attr{
-			{
-				K: "user",
-				V: &schemahcl.Ref{V: "$user.rotemtam"},
-			},
+			schemahcl.RefAttr("user", &schemahcl.Ref{V: "$user.rotemtam"}),
 		},
 	}
 	var a A
@@ -174,15 +173,11 @@ func TestListRef(t *testing.T) {
 		Name: "x",
 		Type: "b",
 		Attrs: []*schemahcl.Attr{
-			{
-				K: "users",
-				V: &schemahcl.ListValue{
-					V: []schemahcl.Value{
-						&schemahcl.Ref{V: "$user.a8m"},
-						&schemahcl.Ref{V: "$user.rotemtam"},
-					},
-				},
-			},
+			schemahcl.RefsAttr(
+				"users",
+				&schemahcl.Ref{V: "$user.a8m"},
+				&schemahcl.Ref{V: "$user.rotemtam"},
+			),
 		},
 	}
 
@@ -209,7 +204,7 @@ func TestNameAttr(t *testing.T) {
 		Name: "id",
 		Type: "named",
 		Attrs: []*schemahcl.Attr{
-			schemahcl.StrLitAttr("name", "atlas"),
+			schemahcl.StringAttr("name", "atlas"),
 		},
 	}
 	var tgt Named

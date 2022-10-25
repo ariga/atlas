@@ -6,6 +6,8 @@ package sqlspec
 
 import (
 	"ariga.io/atlas/schemahcl"
+
+	"github.com/zclconf/go-cty/cty"
 )
 
 type (
@@ -33,7 +35,7 @@ type (
 		Name    string          `spec:",name"`
 		Null    bool            `spec:"null"`
 		Type    *schemahcl.Type `spec:"type"`
-		Default schemahcl.Value `spec:"default"`
+		Default cty.Value       `spec:"default"`
 		schemahcl.DefaultExtension
 	}
 

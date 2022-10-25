@@ -5,6 +5,7 @@
 package hclsqlspec
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/zclconf/go-cty/cty"
@@ -148,25 +149,25 @@ table "accounts" {
 						Name:    "id",
 						Type:    &schemahcl.Type{T: "int"},
 						Null:    false,
-						Default: &schemahcl.LiteralValue{V: "123"},
+						Default: cty.NumberVal(big.NewFloat(123).SetPrec(512)),
 					},
 					{
 						Name:    "age",
 						Type:    &schemahcl.Type{T: "int"},
 						Null:    false,
-						Default: &schemahcl.LiteralValue{V: "10"},
+						Default: cty.NumberVal(big.NewFloat(10).SetPrec(512)),
 					},
 					{
 						Name:    "active",
 						Type:    &schemahcl.Type{T: "boolean"},
 						Null:    false,
-						Default: &schemahcl.LiteralValue{V: "true"},
+						Default: cty.BoolVal(true),
 					},
 					{
 						Name:    "account_active",
 						Type:    &schemahcl.Type{T: "boolean"},
 						Null:    false,
-						Default: &schemahcl.LiteralValue{V: "true"},
+						Default: cty.BoolVal(true),
 					},
 				},
 				PrimaryKey: &sqlspec.PrimaryKey{
@@ -224,25 +225,25 @@ table "accounts" {
 						Name:    "id",
 						Type:    &schemahcl.Type{T: "int"},
 						Null:    false,
-						Default: &schemahcl.LiteralValue{V: "123"},
+						Default: cty.NumberVal(big.NewFloat(123).SetPrec(512)),
 					},
 					{
 						Name:    "age",
 						Type:    &schemahcl.Type{T: "int"},
 						Null:    false,
-						Default: &schemahcl.LiteralValue{V: "10"},
+						Default: cty.NumberVal(big.NewFloat(10).SetPrec(512)),
 					},
 					{
 						Name:    "active",
 						Type:    &schemahcl.Type{T: "boolean"},
 						Null:    false,
-						Default: &schemahcl.LiteralValue{V: "true"},
+						Default: cty.BoolVal(true),
 					},
 					{
 						Name:    "user_active",
 						Type:    &schemahcl.Type{T: "boolean"},
 						Null:    false,
-						Default: &schemahcl.LiteralValue{V: "true"},
+						Default: cty.BoolVal(true),
 					},
 				},
 				PrimaryKey: &sqlspec.PrimaryKey{
@@ -307,7 +308,7 @@ schema "hi" {
 				DefaultExtension: schemahcl.DefaultExtension{
 					Extra: schemahcl.Resource{
 						Attrs: []*schemahcl.Attr{
-							{K: "x", V: &schemahcl.LiteralValue{V: "1"}},
+							schemahcl.IntAttr("x", 1),
 						},
 					},
 				},

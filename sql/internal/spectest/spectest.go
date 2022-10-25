@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"ariga.io/atlas/schemahcl"
-	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/schema"
 
 	"github.com/hashicorp/hcl/v2/hclparse"
@@ -87,13 +86,13 @@ func dummyType(t *testing.T, ts *schemahcl.TypeSpec) *schemahcl.Type {
 		var a *schemahcl.Attr
 		switch attr.Kind {
 		case reflect.Int, reflect.Int64:
-			a = specutil.LitAttr(attr.Name, "2")
+			a = schemahcl.IntAttr(attr.Name, 2)
 		case reflect.String:
-			a = specutil.LitAttr(attr.Name, `"a"`)
+			a = schemahcl.StringAttr(attr.Name, "a")
 		case reflect.Slice:
-			a = specutil.ListAttr(attr.Name, `"a"`, `"b"`)
+			a = schemahcl.StringsAttr(attr.Name, "a", "b")
 		case reflect.Bool:
-			a = specutil.LitAttr(attr.Name, "false")
+			a = schemahcl.BoolAttr(attr.Name, false)
 		default:
 			t.Fatalf("unsupported kind: %s", attr.Kind)
 		}

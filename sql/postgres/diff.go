@@ -78,7 +78,7 @@ func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
 	if ok1 != ok2 {
 		return true, nil
 	}
-	if trimCast(d1) == trimCast(d2) {
+	if trimCast(d1) == trimCast(d2) || quote(d1) == quote(d2) {
 		return false, nil
 	}
 	// Use database comparison in case of mismatch (e.g. `SELECT ARRAY[1] = '{1}'::int[]`).
