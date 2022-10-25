@@ -91,7 +91,7 @@ func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *sche
 
 // table returns the table from the database, or a NotExistError if the table was not found.
 func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.InspectOptions) error {
-	var schemas []string
+	var schemas []any
 	for _, s := range realm.Schemas {
 		sName := s.Name
 		// Here we reverse the schema alias.
@@ -100,7 +100,8 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 		}
 		schemas = append(schemas, sName)
 	}
-	rows, err := i.QueryContext(ctx, tablesQuery, schemas)
+	query := fmt.Sprintf(tablesQuery, nArgs(len(realm.Schemas)))
+	rows, err := i.QueryContext(ctx, query, schemas...)
 	if err != nil {
 		return fmt.Errorf("query tables: %w", err)
 	}
@@ -395,7 +396,6 @@ func (i *inspect) checks(ctx context.Context, s *schema.Schema) error {
 func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) ([]*schema.Schema, error) {
 	var (
 		args    []any
-		sArgs   []string
 		query   = schemasQuery
 		schemas []*schema.Schema
 	)
@@ -404,14 +404,13 @@ func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) 
 		case n == 0:
 			query = schemasQuery
 		case n > 0:
-			query = schemasQueryArgs
+			query = fmt.Sprintf(schemasQueryArgs, "IN ("+nArgs(len(opts.Schemas))+")")
 			for _, s := range opts.Schemas {
 				if s == defaultSchemaNameAlias {
 					s = ""
 				}
-				sArgs = append(sArgs, s)
+				args = append(args, s)
 			}
-			args = append(args, sArgs)
 		}
 	}
 	rows, err := i.QueryContext(ctx, query, args...)
@@ -543,7 +542,7 @@ const (
 	schemasQuery = "SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') ORDER BY schema_name"
 
 	// Query to list specific database schemas.
-	schemasQueryArgs = "SELECT schema_name FROM information_schema.schemata WHERE schema_name IN UNNEST (@schemas) ORDER BY schema_name"
+	schemasQueryArgs = "SELECT schema_name FROM information_schema.schemata WHERE schema_name %s ORDER BY schema_name"
 
 	// Query to list table information.
 	tablesQuery = `
@@ -557,7 +556,7 @@ FROM
 	information_schema.tables AS t1
 WHERE
 	t1.table_type = 'BASE TABLE'
-    AND t1.table_schema IN UNNEST (@schemas)
+    AND t1.table_schema IN (%s)
 ORDER BY
 	t1.table_schema, t1.table_name
 `
