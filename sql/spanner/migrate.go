@@ -71,9 +71,6 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) (err error) {
 			s.dropIndexes(c.I.Table, c.I)
 		case *schema.DropForeignKey:
 			s.dropForeignKeys(c.F.Table, c.F)
-		case *schema.DropSchema:
-			// skip
-			return nil
 		default:
 			err = fmt.Errorf("unsupported change %T", c)
 		}
