@@ -6,12 +6,8 @@ package spanner
 
 import (
 	"context"
-	"database/sql"
 	"database/sql/driver"
-	"fmt"
-	"math/big"
 	"testing"
-	"time"
 
 	"ariga.io/atlas/sql/internal/sqltest"
 	"ariga.io/atlas/sql/migrate"
@@ -196,53 +192,6 @@ const dialectGoogleStandardSQL = "GOOGLE_STANDARD_SQL"
 
 type mock struct {
 	sqlmock.Sqlmock
-}
-
-func (m mock) CheckNamedValue(value *driver.NamedValue) (err error) {
-	if value == nil {
-		return nil
-	}
-	switch t := value.Value.(type) {
-	default:
-		// Default is to fail, unless it is one of the following supported types.
-		return fmt.Errorf("unsupported value type: %v", t)
-	case nil:
-	case sql.NullInt64:
-	case sql.NullTime:
-	case sql.NullString:
-	case sql.NullFloat64:
-	case sql.NullBool:
-	case sql.NullInt32:
-	case string:
-	case []string:
-	case *string:
-	case []*string:
-	case []byte:
-	case [][]byte:
-	case int:
-	case []int:
-	case int64:
-	case []int64:
-	case *int64:
-	case []*int64:
-	case bool:
-	case []bool:
-	case *bool:
-	case []*bool:
-	case float64:
-	case []float64:
-	case *float64:
-	case []*float64:
-	case big.Rat:
-	case []big.Rat:
-	case *big.Rat:
-	case []*big.Rat:
-	case time.Time:
-	case []time.Time:
-	case *time.Time:
-	case []*time.Time:
-	}
-	return nil
 }
 
 func (m mock) databaseOpts(dialect string) {
