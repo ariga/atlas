@@ -7,6 +7,7 @@ package spanner
 import (
 	"context"
 	"database/sql/driver"
+	"fmt"
 	"testing"
 
 	"ariga.io/atlas/sql/internal/sqltest"
@@ -18,6 +19,10 @@ import (
 )
 
 type mockValueConverter struct{}
+
+var (
+	queryColumns = sqltest.Escape(fmt.Sprintf(columnsQuery, "?"))
+)
 
 // ConvertValue implements the sqlmock.ValueConverter interface and satisfies the acceptable Spanner types.
 func (mockValueConverter) ConvertValue(v interface{}) (driver.Value, error) {
@@ -63,18 +68,18 @@ func TestDriver_InspectTable(t *testing.T) {
 			name: "column types",
 			before: func(m mock) {
 				m.tableExists("", "Users", true)
-				m.ExpectQuery(sqltest.Escape(columnsQuery)).
-					WithArgs("", []string{"Users"}).
+				m.ExpectQuery(sqltest.Escape(queryColumns)).
+					WithArgs([]string{"", "Users"}).
 					WillReturnRows(sqltest.Rows(`
-+------------+-------------+------------------+----------------+-------------+--------------+--------------+---------------------------------------------+-----------+---------------+
-| table_name | column_name | ordinal_position | column_default | is_nullable | spanner_type | is_generated | generation_expression                       | is_stored | spanner_state |
-+------------+-------------+------------------+----------------+-------------+--------------+--------------+---------------------------------------------+-----------+---------------+
-| Users      | Id          | 1                | NULL           | false       | STRING(20)   | false        | NULL                                        | false     | COMMITTED     |
-| Users      | FirstName   | 2                | NULL           | true        | STRING(50)   | false        | NULL                                        | false     | COMMITTED     |
-| Users      | LastName    | 3                | NULL           | true        | STRING(50)   | false        | NULL                                        | false     | COMMITTED     |
-| Users      | Age         | 4                | NULL           | false       | INT64        | false        | NULL                                        | false     | COMMITTED     |
-| Users      | FullName    | 5                | NULL           | true        | STRING(MAX)  | true         | ARRAY_TO_STRING([FirstName, LastName], " ") | true      | COMMITTED     |
-+------------+-------------+------------------+----------------+-------------+--------------+--------------+---------------------------------------------+-----------+---------------+
++------------+-------------+------------------+----------------+----------+--------------+-----------+---------------------------------------------+--------+---------------+
+| table_name | column_name | ordinal_position | column_default | nullable | spanner_type | generated | generation_expression                       | stored | spanner_state |
++------------+-------------+------------------+----------------+----------+--------------+-----------+---------------------------------------------+--------+---------------+
+| Users      | Id          | 1                | NULL           | false    | STRING(20)   | false     | NULL                                        | false  | COMMITTED     |
+| Users      | FirstName   | 2                | NULL           | true     | STRING(50)   | false     | NULL                                        | false  | COMMITTED     |
+| Users      | LastName    | 3                | NULL           | true     | STRING(50)   | false     | NULL                                        | false  | COMMITTED     |
+| Users      | Age         | 4                | NULL           | false    | INT64        | false     | NULL                                        | false  | COMMITTED     |
+| Users      | FullName    | 5                | NULL           | true     | STRING(MAX)  | true      | ARRAY_TO_STRING([FirstName, LastName], " ") | NULL   | COMMITTED     |
++------------+-------------+------------------+----------------+----------+--------------+-----------+---------------------------------------------+--------+---------------+
 `))
 				m.noIndexes()
 				m.noFKs()
