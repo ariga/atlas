@@ -76,7 +76,6 @@ func (s *State) Eval(parsed *hclparse.Parser, v any, input map[string]cty.Value)
 	files := parsed.Files()
 	fileNames := make([]string, 0, len(files))
 	allBlocks := make([]*hclsyntax.Block, 0, len(files))
-	// Prepare reg and allBlocks.
 	for name, file := range files {
 		fileNames = append(fileNames, name)
 		if err := s.setInputVals(ctx, file.Body, input); err != nil {
@@ -86,14 +85,26 @@ func (s *State) Eval(parsed *hclparse.Parser, v any, input map[string]cty.Value)
 		if err := s.evalReferences(ctx, body); err != nil {
 			return err
 		}
-		for _, blk := range body.Blocks {
-			// Variable blocks are available in the HCL
-			// source but not reachable by reference.
-			if blk.Type != varBlock {
-				allBlocks = append(allBlocks, blk)
-				reg.child(extractDef(blk, reg))
+		blocks := make(hclsyntax.Blocks, 0, len(body.Blocks))
+		for _, b := range body.Blocks {
+			switch {
+			// Variable blocks are not reachable by reference.
+			case b.Type == varBlock:
+				continue
+			// Semi-evaluate blocks with the for_each meta argument.
+			case b.Body != nil && b.Body.Attributes[forEachAttr] != nil:
+				nb, err := forEachBlocks(ctx, b)
+				if err != nil {
+					return err
+				}
+				blocks = append(blocks, nb...)
+			default:
+				blocks = append(blocks, b)
 			}
+			reg.child(extractDef(b, reg))
 		}
+		body.Blocks = blocks
+		allBlocks = append(allBlocks, blocks...)
 	}
 	vars, err := blockVars(allBlocks, "", reg)
 	if err != nil {
@@ -225,33 +236,11 @@ func (s *State) resource(ctx *hcl.EvalContext, file *hcl.File) (*Resource, error
 		if err != nil {
 			return nil, err
 		}
-		switch {
-		case blk.Body != nil && blk.Body.Attributes[forEachAttr] != nil:
-			forEach, diags := blk.Body.Attributes[forEachAttr].Expr.Value(ctx)
-			if diags.HasErrors() {
-				return nil, diags
-			}
-			if t := forEach.Type(); !t.IsSetType() && !t.IsObjectType() {
-				return nil, fmt.Errorf("schemahcl: for_each does not support %s type", t.FriendlyName())
-			}
-			delete(blk.Body.Attributes, forEachAttr)
-			// Iterate over the set and create a resource for each element.
-			for it := forEach.ElementIterator(); it.Next(); {
-				k, v := it.Element()
-				ctx.Variables[eachRef] = cty.ObjectVal(map[string]cty.Value{"key": k, "value": v})
-				resource, err := s.toResource(ctx, blk, []string{blk.Type})
-				if err != nil {
-					return nil, err
-				}
-				res.Children = append(res.Children, resource)
-			}
-		default:
-			resource, err := s.toResource(ctx, blk, []string{blk.Type})
-			if err != nil {
-				return nil, err
-			}
-			res.Children = append(res.Children, resource)
+		resource, err := s.toResource(ctx, blk, []string{blk.Type})
+		if err != nil {
+			return nil, err
 		}
+		res.Children = append(res.Children, resource)
 	}
 	return res, nil
 }
@@ -592,6 +581,62 @@ func hclList(items []hclwrite.Tokens) hclwrite.Tokens {
 		Bytes: []byte("]"),
 	})
 	return t
+}
+
+func forEachBlocks(ctx *hcl.EvalContext, b *hclsyntax.Block) ([]*hclsyntax.Block, error) {
+	forEach, diags := b.Body.Attributes[forEachAttr].Expr.Value(ctx)
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	if t := forEach.Type(); !t.IsSetType() && !t.IsObjectType() {
+		return nil, fmt.Errorf("schemahcl: for_each does not support %s type", t.FriendlyName())
+	}
+	delete(b.Body.Attributes, forEachAttr)
+	blocks := make([]*hclsyntax.Block, 0, forEach.LengthInt())
+	for it := forEach.ElementIterator(); it.Next(); {
+		k, v := it.Element()
+		nctx := ctx.NewChild()
+		nctx.Variables = map[string]cty.Value{
+			eachRef: cty.ObjectVal(map[string]cty.Value{
+				"key":   k,
+				"value": v,
+			}),
+		}
+		nb, err := copyBlock(nctx, b)
+		if err != nil {
+			return nil, fmt.Errorf("schemahcl: evaluate block for value %q: %w", v, err)
+		}
+		blocks = append(blocks, nb)
+	}
+	return blocks, nil
+}
+
+func copyBlock(ctx *hcl.EvalContext, b *hclsyntax.Block) (*hclsyntax.Block, error) {
+	nb := &hclsyntax.Block{
+		Type:   b.Type,
+		Labels: b.Labels,
+		Body: &hclsyntax.Body{
+			Attributes: make(map[string]*hclsyntax.Attribute),
+			Blocks:     make([]*hclsyntax.Block, 0, len(b.Body.Blocks)),
+		},
+	}
+	for k, v := range b.Body.Attributes {
+		x, diags := v.Expr.Value(ctx)
+		if diags.HasErrors() {
+			return nil, diags
+		}
+		nv := *v
+		nv.Expr = &hclsyntax.LiteralValueExpr{Val: x}
+		nb.Body.Attributes[k] = &nv
+	}
+	for _, v := range b.Body.Blocks {
+		nv, err := copyBlock(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+		nb.Body.Blocks = append(nb.Body.Blocks, nv)
+	}
+	return nb, nil
 }
 
 // Eval implements the Evaluator interface.
