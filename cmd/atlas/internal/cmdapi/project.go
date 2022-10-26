@@ -16,6 +16,7 @@ import (
 	"ariga.io/atlas/sql/sqlclient"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -258,48 +259,54 @@ type sqlsrc struct {
 
 // exec executes the source block for getting the data.
 func (s *sqlsrc) exec() (cty.Value, error) {
-	attrs, diags := s.block.Body.JustAttributes()
+	var (
+		in struct {
+			URL    string   `hcl:"url"`
+			Query  string   `hcl:"query"`
+			Remain hcl.Body `hcl:",remain"`
+			Args   []any
+		}
+		values []cty.Value
+	)
+	if diags := gohcl.DecodeBody(s.block.Body, s.ctx, &in); diags.HasErrors() {
+		return cty.NilVal, s.errorf("decoding body: %v", diags)
+	}
+	attrs, diags := in.Remain.JustAttributes()
 	if diags.HasErrors() {
-		return cty.NilVal, diags
+		return cty.NilVal, s.errorf("getting attributes: %v", diags)
 	}
-	u, err := s.stringAttr(attrs, "url")
-	if err != nil {
-		return cty.NilVal, err
-	}
-	query, err := s.stringAttr(attrs, "query")
-	if err != nil {
-		return cty.NilVal, err
-	}
-	var args []any
 	if at, ok := attrs["args"]; ok {
 		switch v, diags := at.Expr.Value(s.ctx); {
 		case diags.HasErrors():
-			return cty.NilVal, s.errorf(`evaluating "args": %w`, err)
+			return cty.NilVal, s.errorf(`evaluating "args": %w`, diags)
 		case !v.CanIterateElements():
 			return cty.NilVal, s.errorf(`attribute "args" must be a list, got: %s`, v.Type())
 		default:
 			for it := v.ElementIterator(); it.Next(); {
 				switch _, v := it.Element(); v.Type() {
 				case cty.String:
-					args = append(args, v.AsString())
+					in.Args = append(in.Args, v.AsString())
 				case cty.Number:
 					f, _ := v.AsBigFloat().Float64()
-					args = append(args, f)
+					in.Args = append(in.Args, f)
 				case cty.Bool:
-					args = append(args, v.True())
+					in.Args = append(in.Args, v.True())
 				default:
-					return cty.NilVal, fmt.Errorf(`attribute "args" must contain primitive types, got: %s`, v.Type())
+					return cty.NilVal, s.errorf(`attribute "args" must be a list of strings, numbers or booleans, got: %s`, v.Type())
 				}
 			}
 		}
+		delete(attrs, "args")
 	}
-	var values []cty.Value
-	c, err := sqlclient.Open(context.Background(), u)
+	if len(attrs) > 0 {
+		return cty.NilVal, s.errorf("unexpected attributes: %v", attrs)
+	}
+	c, err := sqlclient.Open(context.Background(), in.URL)
 	if err != nil {
 		return cty.NilVal, s.errorf("opening connection: %w", err)
 	}
 	defer c.Close()
-	rows, err := c.QueryContext(context.Background(), query, args...)
+	rows, err := c.QueryContext(context.Background(), in.Query, in.Args...)
 	if err != nil {
 		return cty.NilVal, s.errorf("executing query: %w", err)
 	}
@@ -334,21 +341,6 @@ func (s *sqlsrc) exec() (cty.Value, error) {
 		obj["values"] = cty.ListVal(values)
 	}
 	return cty.ObjectVal(obj), nil
-}
-
-func (s *sqlsrc) stringAttr(attrs hcl.Attributes, name string) (string, error) {
-	at, ok := attrs[name]
-	if !ok {
-		return "", s.errorf("missing %q attribute", name)
-	}
-	u, diags := at.Expr.Value(s.ctx)
-	if diags.HasErrors() {
-		return "", s.errorf("evaluating %q attribute: %w", name, diags)
-	}
-	if u.Type() != cty.String {
-		return "", s.errorf("attribute %q must be a string, got: %s", name, u.Type())
-	}
-	return u.AsString(), nil
 }
 
 func (s *sqlsrc) errorf(format string, args ...any) error {
