@@ -169,11 +169,11 @@ func convertColumn(spec *sqlspec.Column, _ *schema.Table) (*schema.Column, error
 		return nil, err
 	}
 	if attr, ok := spec.Attr("on_update"); ok {
-		exp, ok := attr.V.(*schemahcl.RawExpr)
-		if !ok {
-			return nil, fmt.Errorf(`unexpected type %T for atrribute "on_update"`, attr.V)
+		x, err := attr.RawExpr()
+		if err != nil {
+			return nil, fmt.Errorf(`unexpected type %T for atrribute "on_update"`, attr.V.Type())
 		}
-		c.AddAttrs(&OnUpdate{A: exp.X})
+		c.AddAttrs(&OnUpdate{A: x.X})
 	}
 	if attr, ok := spec.Attr("auto_increment"); ok {
 		b, err := attr.Bool()
@@ -202,10 +202,10 @@ func schemaSpec(s *schema.Schema) (*sqlspec.Schema, []*sqlspec.Table, error) {
 		return nil, nil, err
 	}
 	if c, ok := hasCharset(s.Attrs, nil); ok {
-		sc.Extra.Attrs = append(sc.Extra.Attrs, specutil.StrAttr("charset", c))
+		sc.Extra.Attrs = append(sc.Extra.Attrs, schemahcl.StringAttr("charset", c))
 	}
 	if c, ok := hasCollate(s.Attrs, nil); ok {
-		sc.Extra.Attrs = append(sc.Extra.Attrs, specutil.StrAttr("collate", c))
+		sc.Extra.Attrs = append(sc.Extra.Attrs, schemahcl.StringAttr("collate", c))
 	}
 	return sc, t, nil
 }
@@ -224,10 +224,10 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 		return nil, err
 	}
 	if c, ok := hasCharset(t.Attrs, t.Schema.Attrs); ok {
-		ts.Extra.Attrs = append(ts.Extra.Attrs, specutil.StrAttr("charset", c))
+		ts.Extra.Attrs = append(ts.Extra.Attrs, schemahcl.StringAttr("charset", c))
 	}
 	if c, ok := hasCollate(t.Attrs, t.Schema.Attrs); ok {
-		ts.Extra.Attrs = append(ts.Extra.Attrs, specutil.StrAttr("collate", c))
+		ts.Extra.Attrs = append(ts.Extra.Attrs, schemahcl.StringAttr("collate", c))
 	}
 	return ts, nil
 }
@@ -246,7 +246,7 @@ func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 
 func partAttr(part *schema.IndexPart, spec *sqlspec.IndexPart) {
 	if p := (SubPart{}); sqlx.Has(part.Attrs, &p) && p.Len > 0 {
-		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.IntAttr("prefix", p.Len))
+		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.IntAttr("prefix", p.Len))
 	}
 }
 
@@ -257,16 +257,16 @@ func columnSpec(c *schema.Column, t *schema.Table) (*sqlspec.Column, error) {
 		return nil, err
 	}
 	if c, ok := hasCharset(c.Attrs, t.Attrs); ok {
-		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.StrAttr("charset", c))
+		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.StringAttr("charset", c))
 	}
 	if c, ok := hasCollate(c.Attrs, t.Attrs); ok {
-		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.StrAttr("collate", c))
+		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.StringAttr("collate", c))
 	}
 	if o := (OnUpdate{}); sqlx.Has(c.Attrs, &o) {
-		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.RawAttr("on_update", o.A))
+		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.RawAttr("on_update", o.A))
 	}
 	if sqlx.Has(c.Attrs, &AutoIncrement{}) {
-		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.BoolAttr("auto_increment", true))
+		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.BoolAttr("auto_increment", true))
 	}
 	if x := (schema.GeneratedExpr{}); sqlx.Has(c.Attrs, &x) {
 		spec.Extra.Children = append(spec.Extra.Children, specutil.FromGenExpr(x, storedOrVirtual))
@@ -292,7 +292,7 @@ func storedOrVirtual(s string) string {
 func checkSpec(s *schema.Check) *sqlspec.Check {
 	c := specutil.FromCheck(s)
 	if e := (Enforced{}); sqlx.Has(s.Attrs, &e) {
-		c.Extra.Attrs = append(c.Extra.Attrs, specutil.BoolAttr("enforced", true))
+		c.Extra.Attrs = append(c.Extra.Attrs, schemahcl.BoolAttr("enforced", true))
 	}
 	return c
 }
@@ -372,6 +372,16 @@ var TypeRegistry = schemahcl.NewRegistry(
 				{Name: "values", Kind: reflect.Slice, Required: true},
 			},
 			RType: reflect.TypeOf(schema.EnumType{}),
+			FromSpec: func(t *schemahcl.Type) (schema.Type, error) {
+				if len(t.Attrs) != 1 || t.Attrs[0].K != "values" {
+					return nil, fmt.Errorf("invalid enum type spec: %v", t)
+				}
+				v, err := t.Attrs[0].Strings()
+				if err != nil {
+					return nil, err
+				}
+				return &schema.EnumType{T: "enum", Values: v}, nil
+			},
 		},
 		&schemahcl.TypeSpec{
 			Name: TypeSet,
@@ -380,6 +390,16 @@ var TypeRegistry = schemahcl.NewRegistry(
 				{Name: "values", Kind: reflect.Slice, Required: true},
 			},
 			RType: reflect.TypeOf(SetType{}),
+			FromSpec: func(t *schemahcl.Type) (schema.Type, error) {
+				if len(t.Attrs) != 1 || t.Attrs[0].K != "values" {
+					return nil, fmt.Errorf("invalid set type spec: %v", t)
+				}
+				v, err := t.Attrs[0].Strings()
+				if err != nil {
+					return nil, err
+				}
+				return &SetType{Values: v}, nil
+			},
 		},
 		schemahcl.NewTypeSpec(TypeBool),
 		schemahcl.NewTypeSpec(TypeBoolean),

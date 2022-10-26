@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"ariga.io/atlas/schemahcl"
-	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
@@ -168,7 +167,7 @@ func TestAnalyzer_DropSchema(t *testing.T) {
 			{
 				Type: "destructive",
 				Attrs: []*schemahcl.Attr{
-					specutil.BoolAttr("error", false),
+					schemahcl.BoolAttr("error", false),
 				},
 			},
 		},
@@ -235,7 +234,7 @@ func TestAnalyzer_DropColumn(t *testing.T) {
 			{
 				Type: "destructive",
 				Attrs: []*schemahcl.Attr{
-					specutil.BoolAttr("error", false),
+					schemahcl.BoolAttr("error", false),
 				},
 			},
 		},

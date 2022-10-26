@@ -6,10 +6,13 @@ package schemahcl
 
 import (
 	"fmt"
+	"math/big"
 	"reflect"
-	"strconv"
 
 	"ariga.io/atlas/sql/schema"
+
+	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/gocty"
 )
 
 type (
@@ -25,27 +28,7 @@ type (
 	// Attr is an attribute of a Resource.
 	Attr struct {
 		K string
-		V Value
-	}
-
-	// Value represents the value of an Attr.
-	Value interface {
-		val()
-	}
-
-	// LiteralValue implements Value and represents a literal value (string, number, etc.)
-	LiteralValue struct {
-		V string
-	}
-
-	// RawExpr implements Value and represents any raw expression.
-	RawExpr struct {
-		X string
-	}
-
-	// ListValue implements Value and represents a list of Values.
-	ListValue struct {
-		V []Value
+		V cty.Value
 	}
 
 	// Ref implements Value and represents a reference to another Resource.
@@ -55,6 +38,11 @@ type (
 	// of type "column" and named "id", shall be referenced as "$table.users.$column.id", and so on.
 	Ref struct {
 		V string
+	}
+
+	// RawExpr implements Value and represents any raw expression.
+	RawExpr struct {
+		X string
 	}
 
 	// TypeSpec represents a specification for defining a Type.
@@ -103,6 +91,33 @@ type (
 	}
 )
 
+// IsRef indicates if the attribute is a reference type.
+func (a *Attr) IsRef() bool {
+	if !a.V.Type().IsCapsuleType() {
+		return false
+	}
+	_, ok := a.V.EncapsulatedValue().(*Ref)
+	return ok
+}
+
+// IsRawExpr indicates if the attribute is a RawExpr type.
+func (a *Attr) IsRawExpr() bool {
+	if !a.V.Type().IsCapsuleType() {
+		return false
+	}
+	_, ok := a.V.EncapsulatedValue().(*RawExpr)
+	return ok
+}
+
+// IsType indicates if the attribute is a type spec.
+func (a *Attr) IsType() bool {
+	if !a.V.Type().IsCapsuleType() {
+		return false
+	}
+	_, ok := a.V.EncapsulatedValue().(*Type)
+	return ok
+}
+
 // Int returns an int from the Value of the Attr. If The value is not a LiteralValue or the value
 // cannot be converted to an integer an error is returned.
 func (a *Attr) Int() (int, error) {
@@ -115,14 +130,9 @@ func (a *Attr) Int() (int, error) {
 
 // Int64 returns an int64 from the Value of the Attr. If The value is not a LiteralValue or the value
 // cannot be converted to an integer an error is returned.
-func (a *Attr) Int64() (int64, error) {
-	lit, ok := a.V.(*LiteralValue)
-	if !ok {
-		return 0, fmt.Errorf("schema: cannot read attribute %q as literal", a.K)
-	}
-	i, err := strconv.ParseInt(lit.V, 10, 64)
-	if err != nil {
-		return 0, fmt.Errorf("schema: cannot read attribute %q as integer: %w", a.K, err)
+func (a *Attr) Int64() (i int64, err error) {
+	if err = gocty.FromCtyValue(a.V, &i); err != nil {
+		return 0, err
 	}
 	return i, nil
 }
@@ -130,85 +140,97 @@ func (a *Attr) Int64() (int64, error) {
 // String returns a string from the Value of the Attr. If The value is not a LiteralValue
 // an error is returned.  String values are expected to be quoted. If the value is not
 // properly quoted an error is returned.
-func (a *Attr) String() (string, error) {
-	return StrVal(a.V)
+func (a *Attr) String() (s string, err error) {
+	if err = gocty.FromCtyValue(a.V, &s); err != nil {
+		return "", err
+	}
+	return s, nil
 }
 
 // Bool returns a boolean from the Value of the Attr. If The value is not a LiteralValue or the value
 // cannot be converted to a boolean an error is returned.
-func (a *Attr) Bool() (bool, error) {
-	lit, ok := a.V.(*LiteralValue)
-	if !ok {
-		return false, fmt.Errorf("schema: cannot read attribute %q as literal", a.K)
-	}
-	b, err := strconv.ParseBool(lit.V)
-	if err != nil {
-		return false, fmt.Errorf("schema: cannot read attribute %q as bool: %w", a.K, err)
+func (a *Attr) Bool() (b bool, err error) {
+	if err = gocty.FromCtyValue(a.V, &b); err != nil {
+		return false, err
 	}
 	return b, nil
 }
 
-// Ref returns the string representation of the Attr. If the value is not a Ref or the value
-// an error is returned.
+// Ref extracts the reference from the Value of the Attr.
 func (a *Attr) Ref() (string, error) {
-	ref, ok := a.V.(*Ref)
+	ref, ok := a.V.EncapsulatedValue().(*Ref)
 	if !ok {
 		return "", fmt.Errorf("schema: cannot read attribute %q as ref", a.K)
 	}
 	return ref.V, nil
 }
 
+// Type extracts the Type from the Attr.
+func (a *Attr) Type() (*Type, error) {
+	t, ok := a.V.EncapsulatedValue().(*Type)
+	if !ok {
+		return nil, fmt.Errorf("schema: cannot read attribute %q as type", a.K)
+	}
+	return t, nil
+}
+
+// RawExpr extracts the RawExpr from the Attr.
+func (a *Attr) RawExpr() (*RawExpr, error) {
+	if !a.IsRawExpr() {
+		return nil, fmt.Errorf("schema: cannot read attribute %q as raw expression", a.K)
+	}
+	return a.V.EncapsulatedValue().(*RawExpr), nil
+}
+
 // Refs returns a slice of references.
 func (a *Attr) Refs() ([]*Ref, error) {
-	l, ok := a.V.(*ListValue)
-	if !ok {
-		return nil, fmt.Errorf("schema: attribute %q is not a list", a.K)
-	}
-	refs := make([]*Ref, 0, len(l.V))
-	for _, v := range l.V {
-		r, ok := v.(*Ref)
+	refs := make([]*Ref, 0, len(a.V.AsValueSlice()))
+	for _, v := range a.V.AsValueSlice() {
+		ref, ok := v.EncapsulatedValue().(*Ref)
 		if !ok {
-			return nil, fmt.Errorf("schemahcl: expected %T to be Ref", v)
+			return nil, fmt.Errorf("schema: cannot read attribute %q as ref", a.K)
 		}
-		refs = append(refs, r)
+		refs = append(refs, ref)
 	}
 	return refs, nil
 }
 
 // Strings returns a slice of strings from the Value of the Attr. If The value is not a ListValue or its
 // values cannot be converted to strings an error is returned.
-func (a *Attr) Strings() ([]string, error) {
-	l, ok := a.V.(*ListValue)
-	if !ok {
-		return nil, fmt.Errorf("schema: attribute %q is not a list", a.K)
-	}
-	out := make([]string, 0, len(l.V))
-	for _, item := range l.V {
-		sv, err := StrVal(item)
-		if err != nil {
-			return nil, fmt.Errorf("schemahcl: failed parsing item %q to string: %w", item, err)
+func (a *Attr) Strings() (vs []string, err error) {
+	if a.V.Type().IsTupleType() {
+		for _, v := range a.V.AsValueSlice() {
+			var s string
+			if err = gocty.FromCtyValue(v, &s); err != nil {
+				return nil, err
+			}
+			vs = append(vs, s)
 		}
-		out = append(out, sv)
+		return vs, nil
 	}
-	return out, nil
+	if err = gocty.FromCtyValue(a.V, &vs); err != nil {
+		return nil, err
+	}
+	return vs, nil
 }
 
 // Bools returns a slice of bools from the Value of the Attr. If The value is not a ListValue or its
 // values cannot be converted to bools an error is returned.
-func (a *Attr) Bools() ([]bool, error) {
-	lst, ok := a.V.(*ListValue)
-	if !ok {
-		return nil, fmt.Errorf("schemahcl: attribute %q is not a list", a.K)
-	}
-	out := make([]bool, 0, len(lst.V))
-	for _, item := range lst.V {
-		b, err := BoolVal(item)
-		if err != nil {
-			return nil, err
+func (a *Attr) Bools() (vs []bool, err error) {
+	if a.V.Type().IsTupleType() {
+		for _, v := range a.V.AsValueSlice() {
+			var b bool
+			if err = gocty.FromCtyValue(v, &b); err != nil {
+				return nil, err
+			}
+			vs = append(vs, b)
 		}
-		out = append(out, b)
+		return vs, nil
 	}
-	return out, nil
+	if err = gocty.FromCtyValue(a.V, &vs); err != nil {
+		return nil, err
+	}
+	return vs, nil
 }
 
 // Resource returns the first child Resource by its type and reports whether it was found.
@@ -262,32 +284,6 @@ func replaceOrAppendAttr(attrs []*Attr, attr *Attr) []*Attr {
 	return append(attrs, attr)
 }
 
-// StrVal returns the raw string representation of v. If v is not a *LiteralValue
-// it returns an error. If the raw string representation of v cannot be read as
-// a string by unquoting it, an error is returned as well.
-func StrVal(v Value) (string, error) {
-	lit, ok := v.(*LiteralValue)
-	if !ok {
-		return "", fmt.Errorf("schemahcl: expected %T to be LiteralValue", v)
-	}
-	return strconv.Unquote(lit.V)
-}
-
-// BoolVal returns the bool representation of v. If v is not a *LiteralValue
-// it returns an error. If the raw string representation of v cannot be read as
-// a bool, an error is returned as well.
-func BoolVal(v Value) (bool, error) {
-	lit, ok := v.(*LiteralValue)
-	if !ok {
-		return false, fmt.Errorf("schemahcl: expected %T to be LiteralValue", v)
-	}
-	b, err := strconv.ParseBool(lit.V)
-	if err != nil {
-		return false, fmt.Errorf("schemahcl: failed parsing %q as bool: %w", lit.V, err)
-	}
-	return b, nil
-}
-
 // Attr returns a TypeAttr by name and reports if one was found.
 func (s *TypeSpec) Attr(name string) (*TypeAttr, bool) {
 	for _, ta := range s.Attributes {
@@ -298,38 +294,78 @@ func (s *TypeSpec) Attr(name string) (*TypeAttr, bool) {
 	return nil, false
 }
 
-func (*LiteralValue) val() {}
-func (*RawExpr) val()      {}
-func (*ListValue) val()    {}
-func (*Ref) val()          {}
-func (*Type) val()         {}
+var _ Marshaler = MarshalerFunc(nil)
 
-var (
-	_ Marshaler = MarshalerFunc(nil)
-)
-
-// LitAttr is a helper method for constructing *schemahcl.Attr instances that contain literal values.
-func LitAttr(k, v string) *Attr {
+// StringAttr is a helper method for constructing *schemahcl.Attr instances that contain string value.
+func StringAttr(k string, v string) *Attr {
 	return &Attr{
 		K: k,
-		V: &LiteralValue{V: v},
+		V: cty.StringVal(v),
 	}
 }
 
-// StrLitAttr is a helper method for constructing *schemahcl.Attr instances that contain literal values
-// representing string literals.
-func StrLitAttr(k, v string) *Attr {
-	return LitAttr(k, strconv.Quote(v))
+// IntAttr is a helper method for constructing *schemahcl.Attr instances that contain int64 value.
+func IntAttr(k string, v int) *Attr {
+	return Int64Attr(k, int64(v))
 }
 
-// ListAttr is a helper method for constructing *schemahcl.Attr instances that contain list values.
-func ListAttr(k string, litValues ...string) *Attr {
-	lv := &ListValue{}
-	for _, v := range litValues {
-		lv.V = append(lv.V, &LiteralValue{V: v})
+// Int64Attr is a helper method for constructing *schemahcl.Attr instances that contain int64 value.
+func Int64Attr(k string, v int64) *Attr {
+	return &Attr{
+		K: k,
+		V: cty.NumberVal(new(big.Float).SetInt64(v).SetPrec(512)),
+	}
+}
+
+// BoolAttr is a helper method for constructing *schemahcl.Attr instances that contain a boolean value.
+func BoolAttr(k string, v bool) *Attr {
+	return &Attr{
+		K: k,
+		V: cty.BoolVal(v),
+	}
+}
+
+// RefAttr is a helper method for constructing *schemahcl.Attr instances that contain a Ref value.
+func RefAttr(k string, v *Ref) *Attr {
+	return &Attr{
+		K: k,
+		V: cty.CapsuleVal(ctyRefType, v),
+	}
+}
+
+// StringsAttr is a helper method for constructing *schemahcl.Attr instances that contain list strings.
+func StringsAttr(k string, vs ...string) *Attr {
+	vv := make([]cty.Value, len(vs))
+	for i, v := range vs {
+		vv[i] = cty.StringVal(v)
 	}
 	return &Attr{
 		K: k,
-		V: lv,
+		V: cty.ListVal(vv),
 	}
+}
+
+// RefsAttr is a helper method for constructing *schemahcl.Attr instances that contain list references.
+func RefsAttr(k string, refs ...*Ref) *Attr {
+	vv := make([]cty.Value, len(refs))
+	for i, v := range refs {
+		vv[i] = cty.CapsuleVal(ctyRefType, v)
+	}
+	return &Attr{
+		K: k,
+		V: cty.ListVal(vv),
+	}
+}
+
+// RawAttr is a helper method for constructing *schemahcl.Attr instances that contain RawExpr value.
+func RawAttr(k string, x string) *Attr {
+	return &Attr{
+		K: k,
+		V: RawExprValue(&RawExpr{X: x}),
+	}
+}
+
+// RawExprValue is a helper method for constructing a cty.Value that capsules a raw expression.
+func RawExprValue(x *RawExpr) cty.Value {
+	return cty.CapsuleVal(ctyRawExpr, x)
 }

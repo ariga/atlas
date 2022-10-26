@@ -119,7 +119,7 @@ func ParseType(raw string) (schema.Type, error) {
 	case TypeBit:
 		return &BitType{
 			T:    t,
-			Size: int(size),
+			Size: size,
 		}, nil
 	// bool and booleans are synonyms for
 	// tinyint with display-width set to 1.

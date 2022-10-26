@@ -381,33 +381,25 @@ variadic = enum("a","b","c")
 	require.NoError(t, err)
 	require.EqualValues(t, "int", test.First.T)
 	require.EqualValues(t, "bool", test.Second.T)
-	require.EqualValues(t, &Type{
-		T: "varchar",
-		Attrs: []*Attr{
-			{K: "size", V: &LiteralValue{V: "255"}},
-		},
-	}, test.Varchar)
-	require.EqualValues(t, &Type{
-		T: "enum",
-		Attrs: []*Attr{
-			{
-				K: "values",
-				V: &ListValue{
-					V: []Value{
-						&LiteralValue{V: `"a"`},
-						&LiteralValue{V: `"b"`},
-						&LiteralValue{V: `"c"`},
-					},
-				},
-			},
-		},
-	}, test.Variadic)
-	require.EqualValues(t, &Type{
-		T: "int",
-		Attrs: []*Attr{
-			{K: "size", V: &LiteralValue{V: "10"}},
-		},
-	}, test.Third)
+
+	require.EqualValues(t, "varchar", test.Varchar.T)
+	require.Len(t, test.Varchar.Attrs, 1)
+	i, err := test.Varchar.Attrs[0].Int()
+	require.NoError(t, err)
+	require.EqualValues(t, 255, i)
+
+	require.EqualValues(t, "enum", test.Variadic.T)
+	require.Len(t, test.Variadic.Attrs, 1)
+	vs, err := test.Variadic.Attrs[0].Strings()
+	require.NoError(t, err)
+	require.EqualValues(t, []string{"a", "b", "c"}, vs)
+
+	require.EqualValues(t, "int", test.Third.T)
+	require.Len(t, test.Third.Attrs, 1)
+	i, err = test.Third.Attrs[0].Int()
+	require.NoError(t, err)
+	require.EqualValues(t, 10, i)
+
 	after, err := s.MarshalSpec(&test)
 	require.NoError(t, err)
 	require.EqualValues(t, f, string(after))
@@ -445,13 +437,22 @@ arg_2 = float(10,2)
 	err := s.EvalBytes([]byte(f), &test, nil)
 	require.NoError(t, err)
 	require.Nil(t, test.Arg0.Attrs)
-	require.EqualValues(t, []*Attr{
-		LitAttr("precision", "10"),
-	}, test.Arg1.Attrs)
-	require.EqualValues(t, []*Attr{
-		LitAttr("precision", "10"),
-		LitAttr("scale", "2"),
-	}, test.Arg2.Attrs)
+
+	require.Len(t, test.Arg1.Attrs, 1)
+	require.Equal(t, "precision", test.Arg1.Attrs[0].K)
+	i, err := test.Arg1.Attrs[0].Int()
+	require.NoError(t, err)
+	require.EqualValues(t, 10, i)
+
+	require.Len(t, test.Arg2.Attrs, 2)
+	require.Equal(t, "precision", test.Arg2.Attrs[0].K)
+	i, err = test.Arg2.Attrs[0].Int()
+	require.NoError(t, err)
+	require.EqualValues(t, 10, i)
+	require.Equal(t, "scale", test.Arg2.Attrs[1].K)
+	i, err = test.Arg2.Attrs[1].Int()
+	require.NoError(t, err)
+	require.EqualValues(t, 2, i)
 }
 
 func TestQualifiedRefs(t *testing.T) {

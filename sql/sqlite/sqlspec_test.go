@@ -172,7 +172,6 @@ table "accounts" {
 			{SeqNo: 0, C: exp.Tables[1].Columns[0]},
 		},
 	}
-
 	var s schema.Schema
 	err := EvalHCLBytes([]byte(f), &s, nil)
 	require.NoError(t, err)

@@ -33,7 +33,7 @@ func TestTypePrint(t *testing.T) {
 		},
 		{
 			spec:     intSpec,
-			typ:      &Type{T: "int", Attrs: []*Attr{LitAttr("unsigned", "true")}},
+			typ:      &Type{T: "int", Attrs: []*Attr{BoolAttr("unsigned", true)}},
 			expected: "int unsigned",
 		},
 		{
@@ -42,7 +42,7 @@ func TestTypePrint(t *testing.T) {
 				T:          "float",
 				Attributes: []*TypeAttr{unsignedTypeAttr()},
 			},
-			typ:      &Type{T: "float", Attrs: []*Attr{LitAttr("unsigned", "true")}},
+			typ:      &Type{T: "float", Attrs: []*Attr{BoolAttr("unsigned", true)}},
 			expected: "float unsigned",
 		},
 		{
@@ -53,7 +53,7 @@ func TestTypePrint(t *testing.T) {
 					{Name: "size", Kind: reflect.Int, Required: true},
 				},
 			},
-			typ:      &Type{T: "varchar", Attrs: []*Attr{LitAttr("size", "255")}},
+			typ:      &Type{T: "varchar", Attrs: []*Attr{IntAttr("size", 255)}},
 			expected: "varchar(255)",
 		},
 	} {
@@ -171,34 +171,34 @@ func TestRegistryConvert(t *testing.T) {
 	}{
 		{
 			typ:      &schema.StringType{T: "varchar", Size: 255},
-			expected: &Type{T: "varchar", Attrs: []*Attr{LitAttr("size", "255")}},
+			expected: &Type{T: "varchar", Attrs: []*Attr{IntAttr("size", 255)}},
 		},
 		{
 			typ:      &schema.IntegerType{T: "int", Unsigned: true},
-			expected: &Type{T: "int", Attrs: []*Attr{LitAttr("unsigned", "true")}},
+			expected: &Type{T: "int", Attrs: []*Attr{BoolAttr("unsigned", true)}},
 		},
 		{
 			typ:      &schema.IntegerType{T: "int", Unsigned: true},
-			expected: &Type{T: "int", Attrs: []*Attr{LitAttr("unsigned", "true")}},
+			expected: &Type{T: "int", Attrs: []*Attr{BoolAttr("unsigned", true)}},
 		},
 		{
 			typ: &schema.DecimalType{T: "decimal", Precision: 10, Scale: 2}, // decimal(10,2)
 			expected: &Type{T: "decimal", Attrs: []*Attr{
-				LitAttr("precision", "10"),
-				LitAttr("scale", "2"),
+				IntAttr("precision", 10),
+				IntAttr("scale", 2),
 			}},
 		},
 		{
 			typ: &schema.DecimalType{T: "decimal", Precision: 10}, // decimal(10)
 			expected: &Type{T: "decimal", Attrs: []*Attr{
-				LitAttr("precision", "10"),
+				IntAttr("precision", 10),
 			}},
 		},
 		{
 			typ: &schema.DecimalType{T: "decimal", Scale: 2}, // decimal(0,2)
 			expected: &Type{T: "decimal", Attrs: []*Attr{
-				LitAttr("precision", "0"),
-				LitAttr("scale", "2"),
+				IntAttr("precision", 0),
+				IntAttr("scale", 2),
 			}},
 		},
 		{
@@ -208,7 +208,7 @@ func TestRegistryConvert(t *testing.T) {
 		{
 			typ: &schema.EnumType{T: "enum", Values: []string{"on", "off"}},
 			expected: &Type{T: "enum", Attrs: []*Attr{
-				ListAttr("values", `"on"`, `"off"`),
+				StringsAttr("values", "on", "off"),
 			}},
 		},
 		{

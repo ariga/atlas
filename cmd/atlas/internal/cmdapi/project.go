@@ -187,9 +187,6 @@ func (e *Env) asMap() (map[string]string, error) {
 			m[attr.K] = v
 			continue
 		}
-		if lv, ok := attr.V.(*schemahcl.LiteralValue); ok {
-			m[attr.K] = lv.V
-		}
 		return nil, fmt.Errorf("expecting attr %q to be a literal, got: %T", attr.K, attr.V)
 	}
 	return m, nil

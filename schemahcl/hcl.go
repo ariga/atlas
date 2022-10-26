@@ -6,15 +6,13 @@ package schemahcl
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/ext/dynblock"
-	"github.com/hashicorp/hcl/v2/hcldec"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hcl/v2/hclwrite"
@@ -151,14 +149,16 @@ func patchRefs(spec *Resource) error {
 func (r addrRef) patch(resource *Resource) error {
 	cp := r.copy().load(resource, "")
 	for _, attr := range resource.Attrs {
-		if ref, ok := attr.V.(*Ref); ok {
-			referenced, ok := cp[ref.V]
-			if !ok {
-				return fmt.Errorf("broken reference to %q", ref.V)
-			}
-			if name, err := referenced.FinalName(); err == nil {
-				ref.V = strings.ReplaceAll(ref.V, referenced.Name, name)
-			}
+		if !attr.IsRef() {
+			continue
+		}
+		ref := attr.V.EncapsulatedValue().(*Ref)
+		referenced, ok := cp[ref.V]
+		if !ok {
+			return fmt.Errorf("broken reference to %q", ref.V)
+		}
+		if name, err := referenced.FinalName(); err == nil {
+			ref.V = strings.ReplaceAll(ref.V, referenced.Name, name)
 		}
 	}
 	for _, ch := range resource.Children {
@@ -238,7 +238,7 @@ func (s *State) resource(ctx *hcl.EvalContext, file *hcl.File) (*Resource, error
 			// Iterate over the set and create a resource for each element.
 			for it := forEach.ElementIterator(); it.Next(); {
 				k, v := it.Element()
-				ctx.Variables["each"] = cty.ObjectVal(map[string]cty.Value{"key": k, "value": v})
+				ctx.Variables[eachRef] = cty.ObjectVal(map[string]cty.Value{"key": k, "value": v})
 				resource, err := s.toResource(ctx, blk, []string{blk.Type})
 				if err != nil {
 					return nil, err
@@ -277,21 +277,21 @@ func (s *State) toAttrs(ctx *hcl.EvalContext, hclAttrs hclsyntax.Attributes, sco
 		if diag.HasErrors() {
 			return nil, s.typeError(diag)
 		}
-		var err error
-		switch {
+		switch t := value.Type(); {
 		case isRef(value):
-			at.V = &Ref{V: value.GetAttr("__ref").AsString()}
-		case value.Type() == ctyRawExpr:
-			at.V = value.EncapsulatedValue().(*RawExpr)
-		case value.Type() == ctyTypeSpec:
-			at.V = value.EncapsulatedValue().(*Type)
-		case value.Type().IsTupleType():
-			at.V, err = extractListValue(value)
+			at.V = cty.CapsuleVal(ctyRefType, &Ref{V: value.GetAttr("__ref").AsString()})
+		case (t.IsTupleType() || t.IsListType() || t.IsSetType()) && value.LengthInt() > 0:
+			values := make([]cty.Value, 0, value.LengthInt())
+			for it := value.ElementIterator(); it.Next(); {
+				_, v := it.Element()
+				if isRef(v) {
+					v = cty.CapsuleVal(ctyRefType, &Ref{V: v.GetAttr("__ref").AsString()})
+				}
+				values = append(values, v)
+			}
+			at.V = cty.ListVal(values)
 		default:
-			at.V, err = extractValue(value)
-		}
-		if err != nil {
-			return nil, err
+			at.V = value
 		}
 		attrs = append(attrs, at)
 	}
@@ -329,53 +329,6 @@ func isRef(v cty.Value) bool {
 	return v.Type().IsObjectType() && v.Type().HasAttribute("__ref")
 }
 
-func extractListValue(value cty.Value) (*ListValue, error) {
-	lst := &ListValue{}
-	it := value.ElementIterator()
-	for it.Next() {
-		_, v := it.Element()
-		if isRef(v) {
-			lst.V = append(lst.V, &Ref{V: v.GetAttr("__ref").AsString()})
-			continue
-		}
-		litv, err := extractValue(v)
-		if err != nil {
-			return nil, err
-		}
-		lst.V = append(lst.V, litv)
-	}
-	return lst, nil
-}
-
-func extractValue(value cty.Value) (Value, error) {
-	switch value.Type() {
-	case ctySchemaLit:
-		return value.EncapsulatedValue().(*LiteralValue), nil
-	case cty.String:
-		return &LiteralValue{V: strconv.Quote(value.AsString())}, nil
-	case cty.Number:
-		bf := value.AsBigFloat()
-		num, _ := bf.Float64()
-		return &LiteralValue{V: strconv.FormatFloat(num, 'f', -1, 64)}, nil
-	case cty.Bool:
-		return &LiteralValue{V: strconv.FormatBool(value.True())}, nil
-	case cty.List(cty.String), cty.List(cty.Number), cty.List(cty.Bool), cty.List(cty.NilType),
-		cty.Set(cty.String), cty.Set(cty.Number), cty.Set(cty.Bool), cty.Set(cty.NilType):
-		l := &ListValue{V: make([]Value, 0, value.LengthInt())}
-		for it := value.ElementIterator(); it.Next(); {
-			_, v := it.Element()
-			ev, err := extractValue(v)
-			if err != nil {
-				return nil, err
-			}
-			l.V = append(l.V, ev)
-		}
-		return l, nil
-	default:
-		return nil, fmt.Errorf("schemahcl: unsupported type %q", value.Type().GoString())
-	}
-}
-
 func (s *State) toResource(ctx *hcl.EvalContext, block *hclsyntax.Block, scope []string) (*Resource, error) {
 	spec := &Resource{
 		Type: block.Type,
@@ -397,37 +350,11 @@ func (s *State) toResource(ctx *hcl.EvalContext, block *hclsyntax.Block, scope [
 	}
 	spec.Attrs = attrs
 	for _, blk := range block.Body.Blocks {
-		switch blk.Type {
-		case dynamicBlock:
-			dec, err := dynamicSpec(blk)
-			if err != nil {
-				return nil, err
-			}
-			v, _, diag := hcldec.PartialDecode(dynblock.Expand(block.Body, ctx), dec, ctx)
-			if diag.HasErrors() {
-				return nil, diag
-			}
-			for _, e := range v.GetAttr(blk.Labels[0]).AsValueSlice() {
-				r := &Resource{Type: blk.Labels[0]}
-				for k, v := range e.AsValueMap() {
-					av, err := extractValue(v)
-					if err != nil {
-						return nil, err
-					}
-					r.Attrs = append(r.Attrs, &Attr{
-						K: k,
-						V: av,
-					})
-				}
-				spec.Children = append(spec.Children, r)
-			}
-		default:
-			r, err := s.toResource(ctx, blk, append(scope, blk.Type))
-			if err != nil {
-				return nil, err
-			}
-			spec.Children = append(spec.Children, r)
+		r, err := s.toResource(ctx, blk, append(scope, blk.Type))
+		if err != nil {
+			return nil, err
 		}
+		spec.Children = append(spec.Children, r)
 	}
 	return spec, nil
 }
@@ -485,69 +412,64 @@ func labels(r *Resource) []string {
 }
 
 func (s *State) writeAttr(attr *Attr, body *hclwrite.Body) error {
-	attr = normalizeLiterals(attr)
-	switch v := attr.V.(type) {
-	case *Ref:
-		body.SetAttributeRaw(attr.K, hclRefTokens(v.V))
-	case *Type:
-		if v.IsRef {
-			body.SetAttributeRaw(attr.K, hclRefTokens(v.T))
+	switch {
+	case attr.IsRef():
+		v, err := attr.Ref()
+		if err != nil {
+			return err
+		}
+		body.SetAttributeRaw(attr.K, hclRefTokens(v))
+	case attr.IsType():
+		t, err := attr.Type()
+		if err != nil {
+			return err
+		}
+		if t.IsRef {
+			body.SetAttributeRaw(attr.K, hclRefTokens(t.T))
 			break
 		}
-		spec, ok := s.findTypeSpec(v.T)
+		spec, ok := s.findTypeSpec(t.T)
 		if !ok {
-			v := fmt.Sprintf("sql(%q)", v.T)
+			v := fmt.Sprintf("sql(%q)", t.T)
 			body.SetAttributeRaw(attr.K, hclRawTokens(v))
 			break
 		}
-		st, err := hclType(spec, v)
+		st, err := hclType(spec, t)
 		if err != nil {
 			return err
 		}
 		body.SetAttributeRaw(attr.K, hclRawTokens(st))
-	case *LiteralValue:
-		body.SetAttributeRaw(attr.K, hclRawTokens(v.V))
-	case *RawExpr:
+	case attr.IsRawExpr():
+		v, err := attr.RawExpr()
+		if err != nil {
+			return err
+		}
 		// TODO(rotemtam): the func name should be decided on contextual basis.
 		fnc := fmt.Sprintf("sql(%q)", v.X)
 		body.SetAttributeRaw(attr.K, hclRawTokens(fnc))
-	case *ListValue:
+	case attr.V.Type().IsListType():
 		// Skip scanning nil slices ([]T(nil)) by default. Users that
 		// want to print empty lists, should use make([]T, 0) instead.
-		if v.V == nil {
+		if attr.V.LengthInt() == 0 {
 			return nil
 		}
-		lst := make([]hclwrite.Tokens, 0, len(v.V))
-		for _, item := range v.V {
-			switch v := item.(type) {
-			case *Ref:
-				lst = append(lst, hclRefTokens(v.V))
-			case *LiteralValue:
-				lst = append(lst, hclRawTokens(v.V))
-			default:
-				return fmt.Errorf("cannot write elem type %T of attr %q to HCL list", v, attr)
+		tokens := make([]hclwrite.Tokens, 0, attr.V.LengthInt())
+		for _, v := range attr.V.AsValueSlice() {
+			if v.Type().IsCapsuleType() {
+				ref, ok := v.EncapsulatedValue().(*Ref)
+				if !ok {
+					return fmt.Errorf("unsupported capsule type: %v", v.Type())
+				}
+				tokens = append(tokens, hclRefTokens(ref.V))
+			} else {
+				tokens = append(tokens, hclwrite.TokensForValue(v))
 			}
 		}
-		body.SetAttributeRaw(attr.K, hclList(lst))
+		body.SetAttributeRaw(attr.K, hclList(tokens))
 	default:
-		return fmt.Errorf("schemacl: unknown literal type %T", v)
+		body.SetAttributeValue(attr.K, attr.V)
 	}
 	return nil
-}
-
-// normalizeLiterals transforms attributes with LiteralValue that cannot be
-// written as correct HCL into RawExpr.
-func normalizeLiterals(attr *Attr) *Attr {
-	lv, ok := attr.V.(*LiteralValue)
-	if !ok {
-		return attr
-	}
-	exp := "x = " + lv.V
-	p := hclparse.NewParser()
-	if _, diag := p.ParseHCL([]byte(exp), ""); diag != nil {
-		return &Attr{K: attr.K, V: &RawExpr{X: lv.V}}
-	}
-	return attr
 }
 
 func (s *State) findTypeSpec(t string) (*TypeSpec, bool) {
@@ -572,24 +494,35 @@ func hclType(spec *TypeSpec, typ *Type) (string, error) {
 		if !ok {
 			continue
 		}
-		switch val := arg.V.(type) {
-		case *LiteralValue:
-			args = append(args, val.V)
-		case *ListValue:
-			for _, li := range val.V {
-				lit, ok := li.(*LiteralValue)
-				if !ok {
-					return "", errors.New("expecting literal value")
-				}
-				args = append(args, lit.V)
-			}
-		}
+		args = append(args, valueArgs(param, arg.V)...)
 	}
 	// If no args were chosen and the type can be described without a function.
 	if len(args) == 0 && len(typeFuncReqArgs(spec)) == 0 {
 		return spec.Name, nil
 	}
 	return fmt.Sprintf("%s(%s)", spec.Name, strings.Join(args, ",")), nil
+}
+
+func valueArgs(spec *TypeAttr, v cty.Value) []string {
+	switch {
+	case v.Type().IsListType(), v.Type().IsTupleType(), v.Type().IsSetType(), v.Type().IsCollectionType():
+		args := make([]string, 0, v.LengthInt())
+		for _, v := range v.AsValueSlice() {
+			args = append(args, valueArgs(spec, v)...)
+		}
+		return args
+	case v.Type() == cty.String:
+		return []string{strconv.Quote(v.AsString())}
+	case v.Type() == cty.Number && spec.Kind == reflect.Int:
+		iv, _ := v.AsBigFloat().Int64()
+		return []string{strconv.FormatInt(iv, 10)}
+	case v.Type() == cty.Number:
+		fv, _ := v.AsBigFloat().Float64()
+		return []string{strconv.FormatFloat(fv, 'f', -1, 64)}
+	case v.Type() == cty.Bool:
+		return []string{strconv.FormatBool(v.True())}
+	}
+	return nil
 }
 
 func findAttr(attrs []*Attr, k string) (*Attr, bool) {
@@ -664,29 +597,4 @@ func hclList(items []hclwrite.Tokens) hclwrite.Tokens {
 // Eval implements the Evaluator interface.
 func (f EvalFunc) Eval(p *hclparse.Parser, i any, input map[string]cty.Value) error {
 	return f(p, i, input)
-}
-
-func dynamicSpec(b *hclsyntax.Block) (hcldec.Spec, error) {
-	switch {
-	case len(b.Labels) != 1:
-		return nil, fmt.Errorf("unexpected number of labels for 'dynamic' block: %d", len(b.Labels))
-	case b.Body == nil || len(b.Body.Attributes) != 1 || b.Body.Attributes["for_each"] == nil:
-		return nil, fmt.Errorf("expect a single 'for_each' attribute on 'dynamic' block: %q", b.Labels[0])
-	case len(b.Body.Blocks) != 1 || b.Body.Blocks[0].Type != "content" || b.Body.Blocks[0].Body == nil:
-		return nil, fmt.Errorf("expect a non-empty 'content' block on 'dynamic' block: %q", b.Labels[0])
-	}
-	attrs := make(hcldec.ObjectSpec)
-	for name := range b.Body.Blocks[0].Body.Attributes {
-		attrs[name] = &hcldec.AttrSpec{
-			Name:     name,
-			Required: true,
-			Type:     cty.DynamicPseudoType,
-		}
-	}
-	return &hcldec.ObjectSpec{
-		b.Labels[0]: &hcldec.BlockListSpec{
-			TypeName: b.Labels[0],
-			Nested:   attrs,
-		},
-	}, nil
 }

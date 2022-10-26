@@ -99,7 +99,7 @@ env "multi" {
 							{
 								Type: "destructive",
 								Attrs: []*schemahcl.Attr{
-									{K: "error", V: &schemahcl.LiteralValue{V: "true"}},
+									schemahcl.BoolAttr("error", true),
 								},
 							},
 						},
@@ -109,10 +109,10 @@ env "multi" {
 			DefaultExtension: schemahcl.DefaultExtension{
 				Extra: schemahcl.Resource{
 					Attrs: []*schemahcl.Attr{
-						{K: "bool", V: &schemahcl.LiteralValue{V: "true"}},
-						{K: "integer", V: &schemahcl.LiteralValue{V: "42"}},
-						{K: "src", V: &schemahcl.LiteralValue{V: `"./app.hcl"`}},
-						{K: "str", V: &schemahcl.LiteralValue{V: `"hello"`}},
+						schemahcl.BoolAttr("bool", true),
+						schemahcl.IntAttr("integer", 42),
+						schemahcl.StringAttr("src", "./app.hcl"),
+						schemahcl.StringAttr("str", "hello"),
 					},
 				},
 			},
