@@ -436,7 +436,12 @@ variable "url" {
 
 data "sql" "tenants" {
   url   = var.url
-  query = "SELECT name FROM tenants"
+  query = <<EOS
+SELECT name FROM tenants
+	WHERE mode LIKE ? AND active = ? AND created = ?
+EOS
+  # Pass all types of arguments.
+  args  = ["%test", true, 1]
 }
 
 env "local" {
@@ -466,7 +471,7 @@ env "local" {
 		require.NoError(t, err)
 		db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&_fk=1", filepath.Join(p, "tenants.db")))
 		require.NoError(t, err)
-		_, err = db.Exec("CREATE TABLE `tenants` (`name` TEXT)")
+		_, err = db.Exec("CREATE TABLE `tenants` (`name` TEXT, `mode` TEXT DEFAULT 'test', `active` BOOL DEFAULT TRUE, `created` INT DEFAULT 1);")
 		require.NoError(t, err)
 		_, err = db.Exec("INSERT INTO `tenants` (`name`) VALUES (?), (?), (?)", dbs[0], dbs[1], dbs[2])
 		require.NoError(t, err)
