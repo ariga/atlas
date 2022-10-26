@@ -8,7 +8,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -56,13 +55,6 @@ func stRun(t *testing.T, fn func(*spannerTest)) {
 				fn(tt)
 			})
 		}
-	}
-}
-
-func skipIfEmulator(t *testing.T) {
-	t.Helper()
-	if os.Getenv("SPANNER_EMULATOR_HOST") != "" {
-		t.Skip("Skipping test for spanner emulator")
 	}
 }
 
@@ -114,13 +106,6 @@ func (t *spannerTest) applyRealmHcl(spec string) {
 
 func (t *spannerTest) revisionsStorage() migrate.RevisionReadWriter {
 	return t.rrw
-}
-
-func (t *spannerTest) valueByVersion(values map[string]string, defaults string) string {
-	if v, ok := values[t.version]; ok {
-		return v
-	}
-	return defaults
 }
 
 func (t *spannerTest) loadRealm() *schema.Realm {
@@ -236,10 +221,8 @@ func (t *spannerTest) migrate(changes ...schema.Change) {
 func (t *spannerTest) dropIndexes(names ...string) {
 	t.Cleanup(func() {
 		for _, idx := range names {
-			// fmt.Println("DROP INDEX " + idx)
 			_, err := t.db.Exec("DROP INDEX " + idx)
-			// fmt.Println("DROP INDEX "+idx+":", err)
-			// TODO(tmc): Check code more carefully.
+			// TODO(tmc): Add more check conditions
 			if err != nil {
 				if !strings.Contains(err.Error(), fmt.Sprintf("Index not found: %v", idx)) {
 					require.NoError(t.T, err, "drop index %q", idx)
@@ -252,40 +235,13 @@ func (t *spannerTest) dropIndexes(names ...string) {
 func (t *spannerTest) dropTables(names ...string) {
 	t.Cleanup(func() {
 		for _, tbl := range names {
-			// fmt.Println("DROP TABLE " + tbl)
 			_, err := t.db.Exec("DROP TABLE " + tbl)
-			// fmt.Println("DROP TABLE "+tbl+":", err)
-			// TODO(tmc): Check code more carefully.
 			if err != nil {
+				// TODO(tmc): Add more check conditions
 				if !strings.Contains(err.Error(), fmt.Sprintf("Table not found: %v", tbl)) {
 					require.NoError(t.T, err, "drop table %q", tbl)
 				}
 			}
-		}
-	})
-}
-
-func (t *spannerTest) dropForeignKeys(names ...string) {
-	t.Cleanup(func() {
-		for _, name := range names {
-			parts := strings.Split(name, ".")
-			table, key := parts[0], parts[1]
-			// fmt.Println("Dropping fk:", fmt.Sprintf(
-			// 	"ALTER TABLE %v DROP CONSTRAINT %v", table, key,
-			// ))
-			_, err := t.db.Exec(fmt.Sprintf(
-				"ALTER TABLE %v DROP CONSTRAINT %v", table, key,
-			))
-			//fmt.Println("Dropping fk:", name, err)
-			if err != nil {
-				errs := err.Error()
-				errok := strings.Contains(errs, fmt.Sprintf("%v is not a constraint", key)) ||
-					strings.Contains(errs, fmt.Sprintf("Table not found: %v", table))
-				if !errok {
-					require.NoError(t.T, err, "drop fk %q", name)
-				}
-			}
-			// fmt.Println("Dropping fk:", name, "ok")
 		}
 	})
 }
