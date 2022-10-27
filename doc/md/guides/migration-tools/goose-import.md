@@ -90,7 +90,7 @@ Atlas reports that there's nothing new to run:
 No migration files to execute
 ```
 
-That's better! Next, let's verify that Atlas is aware at what migrations 
+That's better! Next, let's verify that Atlas is aware of what migrations 
 were already applied using the `migrate status` command:
 
 ```text
