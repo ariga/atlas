@@ -16,13 +16,13 @@ import (
 
 // Job defines an integration job to run.
 type Job struct {
-	Version string   // version to test (passed to go test as flag which database dialect/version)
-	Image   string   // name of service
-	Regex   string   // run regex
-	Env     []string // env of service
-	Ports   []string // port mappings
-	Options []string // other options
-	RawSetup string // raw contents to include before running tests.
+	Version  string   // version to test (passed to go test as flag which database dialect/version)
+	Image    string   // name of service
+	Regex    string   // run regex
+	Env      []string // env of service
+	Ports    []string // port mappings
+	Options  []string // other options
+	RawSetup string   // raw contents to include before running tests.
 }
 
 var (
@@ -165,7 +165,7 @@ var (
 			Version: "spanner",
 			Image:   "gcr.io/cloud-spanner-emulator/emulator:1.4.6",
 			Regex:   "Spanner",
-			Ports:   []string{"9010:9010", "9020:9020"},
+			Ports:   []string{"9010:9010"},
 			Env:     []string{"SPANNER_EMULATOR_HOST: localhost:9010"},
 			RawSetup: `
       - uses: 'google-github-actions/setup-gcloud@v0'
