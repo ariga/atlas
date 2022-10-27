@@ -36,18 +36,18 @@ func FormatType(t schema.Type) (string, error) {
 	case *schema.BinaryType:
 		var size string
 		if t.Size == nil || sqlx.Has(t.Attrs, &MaxSize{}) {
-			siz = "MAX"
+			size = "MAX"
 		}
-		if siz == "" && t.Size != nil {
-			siz = fmt.Sprint(*t.Size)
+		if size == "" && t.Size != nil {
+			size = fmt.Sprint(*t.Size)
 		}
-		f = fmt.Sprintf("%v(%v)", t.T, siz)
+		f = fmt.Sprintf("%v(%v)", t.T, size)
 	case *schema.StringType:
-		siz := fmt.Sprint(t.Size)
+		size := fmt.Sprint(t.Size)
 		if sqlx.Has(t.Attrs, &MaxSize{}) {
-			siz = "MAX"
+			size = "MAX"
 		}
-		f = fmt.Sprintf("%v(%v)", t.T, siz)
+		f = fmt.Sprintf("%v(%v)", t.T, size)
 	case *schema.UnsupportedType:
 		return "", fmt.Errorf("spanner: unsupported type: %T(%q)", t, t.T)
 	default:

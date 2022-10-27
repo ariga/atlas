@@ -150,14 +150,13 @@ func (s *state) column(b *sqlx.Builder, c *schema.Column) error {
 		b.P("NULL")
 	}
 	if c.Default != nil {
-		x, err := defaultValue(c)
-		if err != nil {
-			return err
+		x, ok := sqlx.DefaultValue(c)
+		if ok {
+			b.P("DEFAULT")
+			b.Wrap(func(b *sqlx.Builder) {
+				b.P(x)
+			})
 		}
-		b.P("DEFAULT")
-		b.Wrap(func(b *sqlx.Builder) {
-			b.P(x)
-		})
 	}
 	return nil
 }
@@ -298,15 +297,4 @@ func check(b *sqlx.Builder, c *schema.Check) {
 func Build(phrase string) *sqlx.Builder {
 	b := &sqlx.Builder{QuoteChar: '`'}
 	return b.P(phrase)
-}
-
-func defaultValue(c *schema.Column) (string, error) {
-	switch x := c.Default.(type) {
-	case *schema.Literal:
-		return sqlx.SingleQuote(x.V)
-	case *schema.RawExpr:
-		return x.X, nil
-	default:
-		return "", fmt.Errorf("unexpected default value type: %T", x)
-	}
 }
