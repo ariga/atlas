@@ -19,9 +19,9 @@ Partial indexes come into the picture to filter unsearched values and give you, 
 
 #### Advantages of using Partial Indexes
 1. Partial indexses have index entries only for a defined subset of rows, compared to ordinary indexes which have exactly one index entry for every row in the table.
-2. When used wisely, partial indexes result in smaller database files with improved query as well as write performance.
+2. When used wisely, partial indexes result in smaller database files with improved query and write performance.
 
-#### Basic SQLite syntax for using Partial Index
+#### Basic SQLite syntax for using Partial Indexes
 
 ```sql
 CREATE INDEX 
@@ -32,7 +32,7 @@ WHERE
     expression;
 ```
 
-#### Example of Non-partial Index vs Partial Index in SQLite
+#### Example of Non-partial Indexes vs Partial Indexes in SQLite
 
 Let's see this in action by creating a table with the following command:
 
@@ -77,7 +77,7 @@ SELECT * FROM vaccination_data;
 You can also beautify tables in SQLite like shown above, by using the command `.mode table`
 :::
 
-In the following example, suppose we want a list of doctors from India that have taken the vaccine. If we want to use non-partial index, we can create it on the “vaccinated” column with the following command:
+In the following example, suppose we want a list of doctors from India that have taken the vaccine. If we want to use a non-partial index, we can create it on the "vaccinated" column with the following command:
 
 ```sql
 CREATE INDEX 
@@ -112,7 +112,7 @@ Now, suppose we want to accelerate the same query using the partial index. Let's
 DROP INDEX vaccinated_idx;
 ```
 
-In the following command, we have created an index with a `WHERE` clause that precisely describes list of doctors from India that have taken the vaccine.
+In the following command, we will create an index with a `WHERE` clause that precisely describes the list of doctors from India that have taken the vaccine.
 
 ```sql
 CREATE INDEX 
@@ -122,7 +122,7 @@ ON
 WHERE 
     vaccinated = 'Yes' AND country = 'India' AND title = 'Dr';
 ```
-Let’s verify if the index we created is being used in the query with `WHERE` clause by the following command:
+Let’s verify if the index we created is being used in the query with a `WHERE` clause by running the following command:
 
 ```sql
 EXPLAIN QUERY PLAN 
@@ -139,7 +139,7 @@ QUERY PLAN
 `--SEARCH vaccination_data USING INDEX vaccinated_idx
 ```
 
-We confirmed that the index vaccinated_idx is being used while running the query above. Let's check again the size of the index that we created, with the following command:
+We confirmed that the index vaccinated_idx is being used while running the query above. Let's check the size of the index that we created again, with the following command:
 
 ```sql
 SELECT NAME, sum(pgsize) AS size FROM dbstat GROUP BY NAME ORDER BY size DESC;
@@ -171,7 +171,7 @@ Managing partial indexes and database schemas in SQLite can be confusing and err
 If you are just getting started, install the latest version of Atlas using the guide to [setting up Atlas](https://atlasgo.io/cli/getting-started/setting-up).
 :::
 
-#### Managing Partial Index in Atlas
+#### Managing Partial Indexes in Atlas
 
 We will first use the `atlas schema inspect` command to get an HCL representation of the table which we created earlier by using the Atlas CLI:
 
@@ -218,7 +218,7 @@ Now, lets add the following index definition to the file:
   }
 ```
 
-Save the changes in schema.hcl file and apply the schema changes on the database by using the following command:
+Save the changes in the schema.hcl file and apply the changes on the database by using the following command:
 
 ```console
 atlas schema apply -u "sqlite://vaccination_data.db" -f schema.hcl
@@ -245,9 +245,9 @@ vaccinated_idx
 
 Amazing! Our new partial index is now created!
 
-### Limitation of using Partial Index
+### Limitation of using Partial Indexes
 
-Partial indexes are useful in cases where we know ahead of time that a table is most frequently queried with a certain WHERE clause. As applications evolve, access patterns to the database also change. Consequently, we may find ourselves in a situation where our index no longer covers many queries, causing them to become resource consuming and slow.
+Partial indexes are useful in cases where we know ahead of time that a table is most frequently queried with a certain WHERE clause. As applications evolve, access patterns to the database also change. Consequently, we may find ourselves in a situation where our index no longer covers many queries, causing them to become resource-consuming and slow.
 
 ### Conclusion
 
