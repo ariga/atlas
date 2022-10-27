@@ -19,9 +19,10 @@ import (
 
 // blockVar is an HCL resource that defines an input variable to the Atlas DDL document.
 type blockVar struct {
-	Name    string    `hcl:",label"`
-	Type    cty.Value `hcl:"type"`
-	Default cty.Value `hcl:"default,optional"`
+	Name        string    `hcl:",label"`
+	Type        cty.Value `hcl:"type"`
+	Default     cty.Value `hcl:"default,optional"`
+	Description string    `hcl:"description,optional"`
 }
 
 // setInputVals sets the input values into the evaluation context. HCL documents can define
