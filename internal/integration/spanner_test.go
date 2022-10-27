@@ -30,7 +30,7 @@ type spannerTest struct {
 }
 
 var spannerTests = map[string]*spannerTest{
-	"spanner-emulator": {port: 9020},
+	"spanner-emulator": {port: 9010},
 }
 
 func stRun(t *testing.T, fn func(*spannerTest)) {
@@ -62,19 +62,37 @@ func TestSpanner_AddDropTable(t *testing.T) {
 	stRun(t, func(t *spannerTest) {
 		usersT := t.users()
 		postsT := t.posts()
+		petsT := &schema.Table{
+			Name:   "pets",
+			Schema: usersT.Schema,
+			Columns: []*schema.Column{
+				{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int64"}}},
+				{Name: "fk_pets_users_owner_id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int64"}, Null: true}},
+			},
+		}
+		petsT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: postsT.Columns[0]}}}
+		petsT.ForeignKeys = []*schema.ForeignKey{
+			{Symbol: "fk_pets_users_owner_id", Table: petsT, Columns: petsT.Columns[1:], RefTable: usersT, RefColumns: usersT.Columns[:1]},
+		}
 
-		t.dropTables(postsT.Name, usersT.Name)
+		t.dropTables(postsT.Name, usersT.Name, petsT.Name)
 		t.dropIndexes("idx_author_id", "idx_id_author_id_unique")
+		t.dropConstraints("pets.fk_pets_users_owner_id")
 
 		t.migrate(
+			&schema.AddTable{T: petsT},
 			&schema.AddTable{T: postsT},
 			&schema.AddTable{T: usersT},
 		)
-		ensureNoChange(t, usersT, postsT)
+		ensureNoChange(t, usersT, postsT, petsT)
 		t.migrate(
 			&schema.DropForeignKey{F: &schema.ForeignKey{
 				Symbol: "fk_posts_users_author_id",
 				Table:  postsT,
+			}},
+			&schema.DropForeignKey{F: &schema.ForeignKey{
+				Symbol: "fk_pets_users_owner_id",
+				Table:  petsT,
 			}},
 			&schema.DropIndex{I: &schema.Index{
 				Table: postsT,
@@ -86,6 +104,7 @@ func TestSpanner_AddDropTable(t *testing.T) {
 			}},
 			&schema.DropTable{T: usersT},
 			&schema.DropTable{T: postsT},
+			&schema.DropTable{T: petsT},
 		)
 		// Ensure the realm is empty.
 		require.EqualValues(t, t.realm(), t.loadRealm())
@@ -221,7 +240,7 @@ func (t *spannerTest) migrate(changes ...schema.Change) {
 func (t *spannerTest) dropIndexes(names ...string) {
 	t.Cleanup(func() {
 		for _, idx := range names {
-			_, err := t.db.Exec("DROP INDEX " + idx)
+			_, err := t.db.ExecContext(context.Background(), "DROP INDEX "+idx)
 			// TODO(tmc): Add more check conditions
 			if err != nil {
 				if !strings.Contains(err.Error(), fmt.Sprintf("Index not found: %v", idx)) {
@@ -232,12 +251,28 @@ func (t *spannerTest) dropIndexes(names ...string) {
 	})
 }
 
+// dropConstraints drops foreign keys in the forms of refs. A ref is a period-separated "${table}.${constraint}"
+func (t *spannerTest) dropConstraints(refs ...string) {
+	t.Cleanup(func() {
+		for _, ref := range refs {
+			parts := strings.Split(ref, ".")
+			table, cstraint := parts[0], parts[1]
+			query := fmt.Sprintf("ALTER TABLE `%v` DROP CONSTRAINT `%v`", table, cstraint)
+			_, err := t.db.ExecContext(context.Background(), query)
+			if err != nil {
+				if !strings.Contains(err.Error(), fmt.Sprintf("Table not found: %v", table)) {
+					require.NoError(t.T, err, "drop constraint %q", ref)
+				}
+			}
+		}
+	})
+}
+
 func (t *spannerTest) dropTables(names ...string) {
 	t.Cleanup(func() {
 		for _, tbl := range names {
-			_, err := t.db.Exec("DROP TABLE " + tbl)
+			_, err := t.db.ExecContext(context.Background(), "DROP TABLE "+tbl)
 			if err != nil {
-				// TODO(tmc): Add more check conditions
 				if !strings.Contains(err.Error(), fmt.Sprintf("Table not found: %v", tbl)) {
 					require.NoError(t.T, err, "drop table %q", tbl)
 				}
@@ -248,7 +283,7 @@ func (t *spannerTest) dropTables(names ...string) {
 
 func (t *spannerTest) dropSchemas(names ...string) {
 	t.Cleanup(func() {
-		_, err := t.db.Exec("DROP SCHEMA " + strings.Join(names, ", ") + " CASCADE")
+		_, err := t.db.ExecContext(context.Background(), "DROP SCHEMA "+strings.Join(names, ", ")+" CASCADE")
 		require.NoError(t.T, err, "drop schema %q", names)
 	})
 }
