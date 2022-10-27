@@ -67,8 +67,8 @@ func TestSpanner_AddDropTable(t *testing.T) {
 		t.dropIndexes("idx_author_id", "idx_id_author_id_unique")
 
 		t.migrate(
-			&schema.AddTable{T: usersT},
 			&schema.AddTable{T: postsT},
+			&schema.AddTable{T: usersT},
 		)
 		ensureNoChange(t, usersT, postsT)
 		t.migrate(
