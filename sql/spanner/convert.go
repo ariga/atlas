@@ -35,7 +35,7 @@ func FormatType(t schema.Type) (string, error) {
 	case *schema.SpatialType:
 		f = t.T
 	case *schema.BinaryType:
-		siz := ""
+		var size string
 		if t.Size == nil || sqlx.Has(t.Attrs, &MaxSize{}) {
 			siz = "MAX"
 		}
