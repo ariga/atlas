@@ -287,6 +287,7 @@ atlas migrate status [flags]
 #### Flags
 ```
   -u, --url string                [driver://username:password@address/dbname?param=value] select a resource using the URL format
+      --log string                go template to use to format logs
       --dir string                select migration directory using URL format (default "file://migrations")
       --dir-format string         select migration file format (default "atlas")
       --revisions-schema string   name of the schema the revisions table resides in
