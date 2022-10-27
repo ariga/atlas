@@ -19,7 +19,7 @@ slug: /guides/migration-tools/goose-import
 * Docker
 * Atlas ([installation guide](https://atlasgo.io/getting-started/#installation))
 
-## Convert the  migration files
+## Convert the migration files
 
 The first step in importing a project to Atlas is to convert the existing
 migration files from the Goose [SQL format](https://github.com/pressly/goose#sql-migrations)
