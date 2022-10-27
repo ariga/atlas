@@ -895,6 +895,7 @@ func migrateStatusCmd() *cobra.Command {
 	)
 	cmd.Flags().SortFlags = false
 	addFlagURL(cmd.Flags(), &flags.url)
+	addFlagLog(cmd.Flags(), &flags.logFormat)
 	addFlagDirURL(cmd.Flags(), &flags.dirURL)
 	addFlagDirFormat(cmd.Flags(), &flags.dirFormat)
 	addFlagRevisionSchema(cmd.Flags(), &flags.revisionSchema)

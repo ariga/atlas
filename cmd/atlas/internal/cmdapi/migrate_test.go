@@ -729,6 +729,18 @@ func TestMigrate_Diff(t *testing.T) {
 	require.ErrorIs(t, err, errLock)
 }
 
+func TestMigrate_StatusJSON(t *testing.T) {
+	p := t.TempDir()
+	s, err := runCmd(
+		migrateStatusCmd(),
+		"--dir", "file://"+p,
+		"-u", openSQLite(t, ""),
+		"--log", "{{ json .Env.Driver }}",
+	)
+	require.NoError(t, err)
+	require.Equal(t, `"sqlite3"`, s)
+}
+
 func TestMigrate_New(t *testing.T) {
 	var (
 		p = t.TempDir()
