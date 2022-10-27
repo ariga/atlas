@@ -28,7 +28,9 @@ Welcome to the Atlas Guides.
 
 ## Migration tools
 
-[`golang-migrate`](migration-tools/golang-migrate.md)
+Automatic migration planning for [`golang-migrate`](migration-tools/golang-migrate.md)
+
+Importing from [`pressly/goose`](migration-tools/goose-import.md)
 
 ## ORMs
 

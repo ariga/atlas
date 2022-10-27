@@ -149,6 +149,11 @@ module.exports = {
                     type: 'doc',
                     id:'guides/migration-tools/golang-migrate',
                     label: 'golang-migrate'
+                },
+                {
+                    type: 'doc',
+                    id:'guides/migration-tools/goose-import',
+                    label: 'Importing from goose'
                 }
             ]
         },
