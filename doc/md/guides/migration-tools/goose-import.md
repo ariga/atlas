@@ -40,7 +40,7 @@ assume we have a simple Goose project with only two files:
 Run:
 
 ```text
-atlas migrate import --from file://goose --to file://atlas --dir-format goose
+atlas migrate import --from file://goose?format=goose --to file://atlas
 ```
 
 Observe that a new directory named `atlas` was created with 3 files:
