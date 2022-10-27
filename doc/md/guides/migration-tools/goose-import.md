@@ -91,7 +91,7 @@ No migration files to execute
 ```
 
 That's better! Next, let's verify that Atlas is aware of what migrations 
-were already applied using the `migrate status` command:
+were already applied by using the `migrate status` command:
 
 ```text
 atlas migrate status --dir file://atlas --url mysql://root:pass@localhost:3306/dev
