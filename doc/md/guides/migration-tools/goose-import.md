@@ -55,7 +55,7 @@ A few things to note about the new directory:
 * When converting the migration files, Atlas ignores the `down` migrations as those are not
   supported by Atlas.
 * Atlas created a file named `atlas.sum`. To ensure migration history is correct while multiple developers work on the same project
-  in parallel Atlas enforces [migration directory integrity](/concepts/migration-directory-integrity) using
+  in parallel, Atlas enforces [migration directory integrity](/concepts/migration-directory-integrity) using
   this file.
 * Comments not directly preceding a SQL statement are dropped as well.
 
