@@ -24,6 +24,9 @@ var _ schema.Inspector = (*inspect)(nil)
 // defaultSchemaNameAlias is what we map Spanner's empty schema to to enable it to be referenced in HCL representations.
 const defaultSchemaNameAlias = "default"
 
+// sizedTypeRe parses spanner types such as "STRING(50)" or "BYTES(MAX)".
+var sizedTypeRe = regexp.MustCompile(`(\w+)(?:\((-?\d+|MAX)\))?`)
+
 // InspectRealm returns schema descriptions of all resources in the given realm.
 func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOption) (*schema.Realm, error) {
 	schemas, err := i.schemas(ctx, opts)
@@ -202,9 +205,6 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 	t.AddColumns(c)
 	return nil
 }
-
-// sizedTypeRe parses spanner types such as "STRING(50)" or "BYTES(MAX)".
-var sizedTypeRe = regexp.MustCompile(`(\w+)(?:\((-?\d+|MAX)\))?`)
 
 // Converts spanner string type to schema.Type.
 func columnType(spannerType string) (schema.Type, error) {
@@ -501,9 +501,9 @@ type (
 
 	// columnDesc represents a column descriptor.
 	columnDesc struct {
-		typ       string
-		size      int
-		sizeIsMax bool
+		typ     string
+		size    int
+		maxSize bool
 	}
 
 	// ParentTable defines an Interleaved tables parent.

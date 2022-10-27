@@ -6,7 +6,6 @@ package spanner
 
 import (
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -105,11 +104,11 @@ func ParseType(c string) (schema.Type, error) {
 	}
 }
 
+// parseColumn attempts to populate a columnDesc.
 func parseColumn(s string) (*columnDesc, error) {
 	cd := &columnDesc{}
 	// split up type into, base type, size, and other modifiers.
-	re := regexp.MustCompile(`(\w+)(?:\((-?\d+|MAX)\))?`)
-	m := re.FindStringSubmatch(strings.ToUpper(s))
+	m := sizedTypeRe.FindStringSubmatch(strings.ToUpper(s))
 	if len(m) == 0 {
 		return nil, fmt.Errorf("parseColumn: invalid type: %q", s)
 	}
@@ -121,7 +120,7 @@ func parseColumn(s string) (*columnDesc, error) {
 		}
 		cd.size = size
 		if m[2] == "MAX" {
-			cd.sizeIsMax = true
+			cd.maxSize = true
 		}
 	}
 	return cd, nil
