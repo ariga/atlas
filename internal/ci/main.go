@@ -22,7 +22,6 @@ type Job struct {
 	Env     []string // env of service
 	Ports   []string // port mappings
 	Options []string // other options
-
 	RawSetup string // raw contents to include before running tests.
 }
 
