@@ -61,7 +61,11 @@ type state struct {
 // Exec executes the changes on the database. An error is returned
 // if one of the operations fail, or a change is not supported.
 func (s *state) plan(ctx context.Context, changes []schema.Change) (err error) {
-	for _, c := range changes {
+	planned, err := sqlx.DetachCycles(changes)
+	if err != nil {
+		return err
+	}
+	for _, c := range planned {
 		switch c := c.(type) {
 		case *schema.AddTable:
 			err = s.addTable(ctx, c)
