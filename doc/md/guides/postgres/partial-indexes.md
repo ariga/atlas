@@ -25,7 +25,7 @@ You can learn more about partial indexes in PostgreSQL [here](https://www.postgr
 In cases where we know ahead of time the access pattern to a table and can reduce the size of an index by making it partial:
 1. Response time for SELECT operations is improved because the database searches through a smaller index.
 2. On average, response time for UPDATE operations is also improved as the index is not going to get updated in all cases.
-3. Index is smaller in size and can fit into RAM more easily. s
+3. Index is smaller in size and can fit into RAM more easily.
 4. Less space is required to store the index on disk.
 
 #### Basic PostgreSQL syntax for using Partial Index

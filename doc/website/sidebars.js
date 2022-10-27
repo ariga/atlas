@@ -142,6 +142,18 @@ module.exports = {
         },
         {
             type: 'category',
+            label: 'SQLite',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'guides/sqlite/partial-indexes',
+                    label: 'Partial Indexes'
+                },
+            ],
+        },
+        {
+            type: 'category',
             label: 'Migration tools',
             collapsed: false,
             items: [
