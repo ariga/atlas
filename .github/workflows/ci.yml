@@ -564,3 +564,35 @@ jobs:
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Cockroach" -version="cockroach" ./...
   
+  integration-spanner:
+    runs-on: ubuntu-latest
+    services:
+      spanner:
+        image: gcr.io/cloud-spanner-emulator/emulator:1.4.6
+        env:
+          SPANNER_EMULATOR_HOST: localhost:9010
+        ports:
+          - 9010:9010
+        
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.19
+      - uses: actions/cache@v2.1.6
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - uses: 'google-github-actions/setup-gcloud@v0'
+      - run: |
+          gcloud config set auth/disable_credentials true
+          gcloud config set project atlas
+          gcloud config set api_endpoint_overrides/spanner http://localhost:9020/
+          gcloud spanner instances create instance-1 --config=emulator-config --description="Test Instance" --nodes=1
+          gcloud spanner databases create --instance=instance-1 db-1
+      - name: Run integration tests for spanner
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="Spanner" -version="spanner" ./...
+  
