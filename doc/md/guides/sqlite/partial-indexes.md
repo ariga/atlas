@@ -178,7 +178,7 @@ We will first use the `atlas schema inspect` command to get an HCL representatio
 ```console
 atlas schema inspect -u "sqlite://vaccination_data.db" > schema.hcl
 ```
-```schema title="schema.hcl"
+```hcl title="schema.hcl"
 table "vaccination_data" {
   schema = schema.main
   column "id" {
@@ -211,14 +211,14 @@ schema "main" {
 
 Now, lets add the following index definition to the file:
 
-```schema
+```hcl
   index "vaccinated_idx" {
     columns = [column.vaccinated]
     where   = "(vaccinated = 'Yes' AND country = 'India' AND title = 'Dr.')"
   }
 ```
 
-Save the changes in the schema.hcl file and apply the changes on the database by using the following command:
+Save the changes in the `schema.hcl` file and apply the changes on the database by using the following command:
 
 ```console
 atlas schema apply -u "sqlite://vaccination_data.db" -f schema.hcl
