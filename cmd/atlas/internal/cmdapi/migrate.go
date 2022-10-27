@@ -62,21 +62,21 @@ func migrateCmd() *cobra.Command {
 	return cmd
 }
 
-type migrateApplyFlags struct {
-	url             string
-	dirURL          string
-	revisionSchema  string
-	dryRun          bool
-	logFormat       string
-	allowDirty      bool   // allow working on a database that already has resources
-	fromVersion     string // compute pending files based on this version
-	baselineVersion string // apply with this version as baseline
-	txMode          string // (none, file, all)
+type MigrateApplyFlags struct {
+	URL             string
+	DirURL          string
+	RevisionSchema  string
+	DryRun          bool
+	LogFormat       string
+	AllowDirty      bool   // allow working on a database that already has resources
+	FromVersion     string // compute pending files based on this version
+	BaselineVersion string // apply with this version as baseline
+	TxMode          string // (none, file, all)
 }
 
 func migrateApplyCmd() *cobra.Command {
 	var (
-		flags migrateApplyFlags
+		flags MigrateApplyFlags
 		cmd   = &cobra.Command{
 			Use:   "apply [flags] [amount]",
 			Short: "Applies pending migration files on the connected database.",
@@ -95,28 +95,34 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 			Args: cobra.MaximumNArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				if GlobalFlags.SelectedEnv == "" {
-					return migrateApplyRun(cmd, args, flags)
+					return MigrateApplyRun(cmd, args, flags)
 				}
-				return migrateEnvsRun(migrateApplyRun, cmd, args, &flags)
+				return migrateEnvsRun(MigrateApplyRun, cmd, args, &flags)
 			},
 		}
 	)
 	cmd.Flags().SortFlags = false
-	addFlagURL(cmd.Flags(), &flags.url)
-	addFlagDirURL(cmd.Flags(), &flags.dirURL)
-	addFlagLog(cmd.Flags(), &flags.logFormat)
-	addFlagRevisionSchema(cmd.Flags(), &flags.revisionSchema)
-	addFlagDryRun(cmd.Flags(), &flags.dryRun)
-	cmd.Flags().StringVarP(&flags.fromVersion, flagFrom, "", "", "calculate pending files from the given version (including it)")
-	cmd.Flags().StringVarP(&flags.baselineVersion, flagBaseline, "", "", "start the first migration after the given baseline version")
-	cmd.Flags().StringVarP(&flags.txMode, flagTxMode, "", txModeFile, "set transaction mode [none, file, all]")
-	cmd.Flags().BoolVarP(&flags.allowDirty, flagAllowDirty, "", false, "allow start working on a non-clean database")
+	addFlagURL(cmd.Flags(), &flags.URL)
+	addFlagDirURL(cmd.Flags(), &flags.DirURL)
+	addFlagLog(cmd.Flags(), &flags.LogFormat)
+	addFlagRevisionSchema(cmd.Flags(), &flags.RevisionSchema)
+	addFlagDryRun(cmd.Flags(), &flags.DryRun)
+	cmd.Flags().StringVarP(&flags.FromVersion, flagFrom, "", "", "calculate pending files from the given version (including it)")
+	cmd.Flags().StringVarP(&flags.BaselineVersion, flagBaseline, "", "", "start the first migration after the given baseline version")
+	cmd.Flags().StringVarP(&flags.TxMode, flagTxMode, "", txModeFile, "set transaction mode [none, file, all]")
+	cmd.Flags().BoolVarP(&flags.AllowDirty, flagAllowDirty, "", false, "allow start working on a non-clean database")
 	cmd.MarkFlagsMutuallyExclusive(flagFrom, flagBaseline)
 	return cmd
 }
 
+type cmdContext interface {
+	Context() context.Context
+	OutOrStderr() io.Writer
+	OutOrStdout() io.Writer
+}
+
 // migrateApplyCmd represents the 'atlas migrate apply' subcommand.
-func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags) error {
+func MigrateApplyRun(cmd cmdContext, args []string, flags MigrateApplyFlags) error {
 	var (
 		count int
 		err   error
@@ -131,7 +137,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 		}
 	}
 	// Open and validate the migration directory.
-	migrationDir, err := dir(flags.dirURL, false)
+	migrationDir, err := dir(flags.DirURL, false)
 	if err != nil {
 		return err
 	}
@@ -140,10 +146,10 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 		return err
 	}
 	// Open a client to the database.
-	if flags.url == "" {
+	if flags.URL == "" {
 		return errors.New(`required flag "url" not set`)
 	}
-	client, err := sqlclient.Open(cmd.Context(), flags.url)
+	client, err := sqlclient.Open(cmd.Context(), flags.URL)
 	if err != nil {
 		return err
 	}
@@ -157,11 +163,11 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 		// If unlocking fails notify the user about it.
 		defer cobra.CheckErr(unlock())
 	}
-	if err := checkRevisionSchemaClarity(cmd, client, flags.revisionSchema); err != nil {
+	if err := checkRevisionSchemaClarity(cmd, client, flags.RevisionSchema); err != nil {
 		return err
 	}
 	var rrw migrate.RevisionReadWriter
-	rrw, err = entRevisions(cmd.Context(), client, flags.revisionSchema)
+	rrw, err = entRevisions(cmd.Context(), client, flags.RevisionSchema)
 	if err != nil {
 		return err
 	}
@@ -172,13 +178,13 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 	opts := []migrate.ExecutorOption{
 		migrate.WithOperatorVersion(operatorVersion()),
 	}
-	if flags.allowDirty {
+	if flags.AllowDirty {
 		opts = append(opts, migrate.WithAllowDirty(true))
 	}
-	if v := flags.baselineVersion; v != "" {
+	if v := flags.BaselineVersion; v != "" {
 		opts = append(opts, migrate.WithBaselineVersion(v))
 	}
-	if v := flags.fromVersion; v != "" {
+	if v := flags.FromVersion; v != "" {
 		opts = append(opts, migrate.WithFromVersion(v))
 	}
 	ex, err := migrate.NewExecutor(client.Driver, migrationDir, rrw, opts...)
@@ -190,7 +196,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 		return err
 	}
 	if errors.Is(err, migrate.ErrNoPendingFiles) {
-		cmd.Println("No migration files to execute")
+		fmt.Fprintln(cmd.OutOrStderr(), "No migration files to execute")
 		return nil
 	}
 	if l := len(pending); count == 0 || count >= l {
@@ -209,9 +215,9 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 	}
 	var (
 		mux = tx{
-			dryRun: flags.dryRun,
-			mode:   flags.txMode,
-			schema: flags.revisionSchema,
+			dryRun: flags.DryRun,
+			mode:   flags.TxMode,
+			schema: flags.RevisionSchema,
 			c:      client,
 			rrw:    rrw,
 		}
@@ -243,7 +249,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 		}
 	}
 	f := cmdmigrate.DefaultApplyTemplate
-	if v := flags.logFormat; v != "" {
+	if v := flags.LogFormat; v != "" {
 		f, err = template.New("format").Funcs(cmdmigrate.ApplyTemplateFuncs).Parse(v)
 		if err != nil {
 			return fmt.Errorf("parse log format: %w", err)
@@ -1003,7 +1009,7 @@ func migrateValidateRun(cmd *cobra.Command, _ []string, flags migrateValidateFla
 
 const applyLockValue = "atlas_migrate_execute"
 
-func checkRevisionSchemaClarity(cmd *cobra.Command, c *sqlclient.Client, revisionSchemaFlag string) error {
+func checkRevisionSchemaClarity(cmd cmdContext, c *sqlclient.Client, revisionSchemaFlag string) error {
 	// The "old" default  behavior for the revision schema location was to store the revision table in its own schema.
 	// Now, the table is saved in the connected schema, if any. To keep the backwards compatability, we now require
 	// for schema bound connections to have the schema-revision flag present if there is no revision table in the schema
@@ -1043,8 +1049,10 @@ by providing the '--revisions-schema' flag or deleting the 'atlas_schema_revisio
 schema if it is unused.
 
 `)
-					cmd.SilenceUsage = true
-					cmd.SilenceErrors = true
+					if c, ok := cmd.(*cobra.Command); ok {
+						c.SilenceUsage = true
+						c.SilenceErrors = true
+					}
 					return errors.New("ambiguous revision table")
 				}
 			}
@@ -1240,7 +1248,7 @@ func checkDir(cmd *cobra.Command, url string, create bool) error {
 	return nil
 }
 
-func printChecksumError(cmd *cobra.Command) {
+func printChecksumError(cmd cmdContext) {
 	fmt.Fprintf(cmd.OutOrStderr(), `You have a checksum error in your migration directory.
 This happens if you manually create or edit a migration file.
 Please check your migration files and run
@@ -1250,7 +1258,9 @@ Please check your migration files and run
 to re-hash the contents and resolve the error
 
 `)
-	cmd.SilenceUsage = true
+	if c, ok := cmd.(*cobra.Command); ok {
+		c.SilenceUsage = true
+	}
 }
 
 type target struct {
@@ -1528,7 +1538,7 @@ func setFlagsFromEnv(cmd *cobra.Command, env *Env) error {
 }
 
 // migrateEnvsRun executes a given command on each of the configured environment.
-func migrateEnvsRun[F any](run func(*cobra.Command, []string, F) error, cmd *cobra.Command, args []string, flags *F) error {
+func migrateEnvsRun[F any](run func(cmdContext, []string, F) error, cmd *cobra.Command, args []string, flags *F) error {
 	envs, err := LoadEnv(GlobalFlags.SelectedEnv, WithInput(GlobalFlags.Vars))
 	if err != nil {
 		return err
