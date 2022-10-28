@@ -57,6 +57,63 @@ func stRun(t *testing.T, fn func(*spannerTest)) {
 		}
 	}
 }
+func TestSpanner_HCL(t *testing.T) {
+	full := `
+schema "default" {
+}
+table "users" {
+	schema = schema.default
+	column "id" {
+		type = INT64
+	}
+	primary_key {
+		columns = [table.users.column.id]
+	}
+}
+table "posts" {
+	schema = schema.default
+	column "id" {
+		type = INT64
+	}
+	column "tags" {
+		type = STRING(42)
+	}
+	column "author_id" {
+		type = INT64
+	}
+	foreign_key "author" {
+		columns = [
+			table.posts.column.author_id,
+		]
+		ref_columns = [
+			table.users.column.id,
+		]
+	}
+	primary_key {
+		columns = [table.users.column.id]
+	}
+}
+`
+	empty := `
+schema "default" {
+}
+`
+	stRun(t, func(t *spannerTest) {
+		t.applyHcl(full)
+		users := t.loadUsers()
+		posts := t.loadPosts()
+		t.dropTables(users.Name, posts.Name)
+		t.dropIndexes("idx_author_id", "idx_id_author_id_unique")
+		t.dropConstraints("posts.fk_posts_users_author_id")
+		column, ok := users.Column("id")
+		require.True(t, ok, "expected id column")
+		require.Equal(t, "users", users.Name)
+		column, ok = posts.Column("author_id")
+		require.Equal(t, "author_id", column.Name)
+		t.applyHcl(empty)
+		require.Empty(t, t.realm().Schemas[0].Tables)
+	})
+}
 
 func TestSpanner_AddDropTable(t *testing.T) {
 	stRun(t, func(t *spannerTest) {
@@ -116,7 +173,15 @@ func (t *spannerTest) driver() migrate.Driver {
 }
 
 func (t *spannerTest) applyHcl(spec string) {
-	// not implemented
+	realm := t.loadRealm()
+	var desired schema.Schema
+	err := spanner.EvalHCLBytes([]byte(spec), &desired, nil)
+	require.NoError(t, err)
+	existing := realm.Schemas[0]
+	diff, err := t.drv.SchemaDiff(existing, &desired)
+	require.NoError(t, err)
+	err = t.drv.ApplyChanges(context.Background(), diff)
+	require.NoError(t, err)
 }
 
 func (t *spannerTest) applyRealmHcl(spec string) {

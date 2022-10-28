@@ -106,6 +106,7 @@ func ParseType(c string) (schema.Type, error) {
 
 // parseColumn attempts to populate a columnDesc.
 func parseColumn(s string) (*columnDesc, error) {
+	var err error
 	cd := &columnDesc{}
 	// split up type into, base type, size, and other modifiers.
 	m := sizedTypeRe.FindStringSubmatch(strings.ToUpper(s))
@@ -113,14 +114,14 @@ func parseColumn(s string) (*columnDesc, error) {
 		return nil, fmt.Errorf("parseColumn: invalid type: %q", s)
 	}
 	cd.typ = m[1]
-	if len(m) > 2 {
-		size, err := strconv.Atoi(m[2])
-		if err != nil {
-			return nil, fmt.Errorf("parseColumn: unable to convert %q to int: %w", m[2], err)
-		}
-		cd.size = size
+	if len(m) > 2 && m[2] != "" {
 		if m[2] == "MAX" {
 			cd.maxSize = true
+		} else {
+			cd.size, err = strconv.Atoi(m[2])
+			if err != nil {
+				return nil, fmt.Errorf("parseColumn: unable to convert %q to int: %w", m[2], err)
+			}
 		}
 	}
 	return cd, nil

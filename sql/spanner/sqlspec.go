@@ -173,6 +173,10 @@ var (
 	})
 	// EvalHCL implements the schemahcl.Evaluator interface.
 	EvalHCL = schemahcl.EvalFunc(evalSpec)
+
+	// EvalHCLBytes is a helper that evaluates an HCL document from a byte slice instead
+	// of from an hclparse.Parser instance.
+	EvalHCLBytes = specutil.HCLBytesFunc(EvalHCL)
 )
 
 // storedExpr returns the STORED generated expression type. Spanner only has STORED generated expresisons.
