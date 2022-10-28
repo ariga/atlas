@@ -117,11 +117,8 @@ func parseColumn(s string) (*columnDesc, error) {
 	if len(m) > 2 && m[2] != "" {
 		if m[2] == "MAX" {
 			cd.maxSize = true
-		} else {
-			cd.size, err = strconv.Atoi(m[2])
-			if err != nil {
-				return nil, fmt.Errorf("parseColumn: unable to convert %q to int: %w", m[2], err)
-			}
+		} else if cd.size, err = strconv.Atoi(m[2]); err != nil {
+			return nil, fmt.Errorf("parseColumn: unable to convert %q to int: %w", m[2], err)
 		}
 	}
 	return cd, nil
