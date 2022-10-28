@@ -111,6 +111,29 @@ func TestSpanner_AddDropTable(t *testing.T) {
 	})
 }
 
+func TestSpanner_AddColumns(t *testing.T) {
+	stRun(t, func(t *spannerTest) {
+		usersT := t.users()
+		t.dropTables(usersT.Name)
+		t.migrate(&schema.AddTable{T: usersT})
+		usersT.Columns = append(
+			usersT.Columns,
+			&schema.Column{Name: "a", Type: &schema.ColumnType{Type: &schema.BinaryType{T: spanner.TypeBytes}, Null: true}},
+			&schema.Column{Name: "b", Type: &schema.ColumnType{Type: &schema.BinaryType{T: spanner.TypeBytes}, Null: true}},
+			// note: The spanner emulator doesn't yet support default values so these cases can't be added.
+			// &schema.Column{Name: "b", Type: &schema.ColumnType{Type: &schema.FloatType{T: spanner.TypeFloat64}}, Default: &schema.Literal{V: "10.1"}},
+			// &schema.Column{Name: "c", Type: &schema.ColumnType{Type: &schema.StringType{T: spanner.TypeString}}, Default: &schema.Literal{V: "'y'"}},
+			// &schema.Column{Name: "d", Type: &schema.ColumnType{Type: &schema.DecimalType{T: spanner.TypeNumeric}}, Default: &schema.Literal{V: "0.99"}},
+			// &schema.Column{Name: "e", Type: &schema.ColumnType{Type: &schema.JSONType{T: spanner.TypeJSON}}, Default: &schema.Literal{V: "'{}'"}},
+			// &schema.Column{Name: "f", Type: &schema.ColumnType{Type: &schema.BoolType{T: spanner.TypeBool}, Null: true}, Default: &schema.Literal{V: "false"}},
+		)
+		changes := t.diff(t.loadUsers(), usersT)
+		require.Len(t, changes, 2)
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, usersT)
+	})
+}
+
 func (t *spannerTest) driver() migrate.Driver {
 	return t.drv
 }
