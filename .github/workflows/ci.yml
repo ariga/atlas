@@ -573,6 +573,7 @@ jobs:
           SPANNER_EMULATOR_HOST: localhost:9010
         ports:
           - 9010:9010
+          - 9020:9020
         
     steps:
       - uses: actions/checkout@v2.3.4
