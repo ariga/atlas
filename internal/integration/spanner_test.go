@@ -257,7 +257,7 @@ func (t *spannerTest) dropConstraints(refs ...string) {
 		for _, ref := range refs {
 			parts := strings.Split(ref, ".")
 			table, cstraint := parts[0], parts[1]
-			query := fmt.Sprintf("ALTER TABLE `%v` DROP CONSTRAINT `%v`", table, cstraint)
+			query := fmt.Sprintf("ALTER TABLE `%s` DROP CONSTRAINT `%s`", table, cstraint)
 			_, err := t.db.ExecContext(context.Background(), query)
 			if err != nil {
 				if !strings.Contains(err.Error(), fmt.Sprintf("Table not found: %v", table)) {
