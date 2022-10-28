@@ -46,7 +46,7 @@ connection, like VPC peering in AWS.
 there is one layer "at the top" that attaches the tenant connection to the context, and the API layer (e.g., GraphQL
 resolver) extracts the connection from the context to read/write data. As a result, we are not concerned that API
 changes will cross tenant boundaries.
-5. **Migration**: Schema changes can be executed first on _"test tenants"_ and _fail-fast__ in case of error.
+5. **Migration**: Schema changes can be executed first on _"test tenants"_ and _fail-fast_ in case of error.
 
 The primary con to this approach was that there was no elegant way to execute migrations on multiple databases
 (_N_ times) in Atlas. In the rest of the post, I'll cover how we solved this problem in Ariga and added built-in
