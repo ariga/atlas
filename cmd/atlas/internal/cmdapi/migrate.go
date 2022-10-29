@@ -261,10 +261,7 @@ func reportApply(cmd *cobra.Command, flags migrateApplyFlags, r *cmdmigrate.Appl
 			return fmt.Errorf("parse log format: %w", err)
 		}
 	}
-	if err := (&cmdmigrate.TemplateWriter{T: f, W: cmd.OutOrStdout()}).WriteReport(r); err != nil {
-		return err
-	}
-	return nil
+	return (&cmdmigrate.TemplateWriter{T: f, W: cmd.OutOrStdout()}).WriteReport(r)
 }
 
 type migrateDiffFlags struct {
