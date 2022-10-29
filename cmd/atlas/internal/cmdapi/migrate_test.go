@@ -7,6 +7,7 @@ package cmdapi
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -490,6 +491,27 @@ env "local" {
 		for i := range dbs {
 			_, err = os.Stat(dbs[i])
 			require.NoError(t, err)
+		}
+
+		cmd = migrateCmd()
+		cmd.AddCommand(migrateApplyCmd())
+		s, err = runCmd(
+			cmd, "apply",
+			"-c", "file://"+path,
+			"--env", "local",
+			"--var", fmt.Sprintf("url=sqlite://file:%s?cache=shared&_fk=1", filepath.Join(p, "tenants.db")),
+		)
+		require.NoError(t, err)
+		for _, s := range strings.Split(s, "\n") {
+			var r struct {
+				Tenant string
+				migrate2.ApplyReport
+			}
+			require.NoError(t, json.Unmarshal([]byte(s), &r))
+			require.Empty(t, r.Pending)
+			require.Empty(t, r.Applied)
+			require.NotEmpty(t, r.Tenant)
+			require.Equal(t, "sqlite3", r.Driver)
 		}
 
 		_, err = db.Exec("INSERT INTO `tenants` (`name`) VALUES (NULL)")
