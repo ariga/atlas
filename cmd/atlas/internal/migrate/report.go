@@ -315,7 +315,10 @@ var (
 	DefaultApplyTemplate = template.Must(template.
 				New("report").
 				Funcs(ApplyTemplateFuncs).
-				Parse(`Migrating to version {{ cyan .Target }}{{ with .Current }} from {{ cyan . }}{{ end }} ({{ len .Pending }} migrations in total):
+				Parse(`{{- if not .Pending -}}
+No migration files to execute
+{{- else -}}
+Migrating to version {{ cyan .Target }}{{ with .Current }} from {{ cyan . }}{{ end }} ({{ len .Pending }} migrations in total):
 {{ range $i, $f := .Applied }}
   {{ yellow "--" }} migrating version {{ cyan $f.File.Version }}{{ range $f.Applied }}
     {{ cyan "->" }} {{ . }}{{ end }}
@@ -335,6 +338,7 @@ var (
 {{- else }}
   {{ yellow "--" }} {{ len .Applied }} migrations 
   {{ yellow "--" }} {{ .CountStmts  }} sql statements
+{{- end }}
 {{- end }}
 `))
 )

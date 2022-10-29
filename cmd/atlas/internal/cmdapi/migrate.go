@@ -181,6 +181,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 	if v := flags.fromVersion; v != "" {
 		opts = append(opts, migrate.WithFromVersion(v))
 	}
+	report := cmdmigrate.NewApplyReport(client, migrationDir)
 	ex, err := migrate.NewExecutor(client.Driver, migrationDir, rrw, opts...)
 	if err != nil {
 		return err
@@ -190,8 +191,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 		return err
 	}
 	if errors.Is(err, migrate.ErrNoPendingFiles) {
-		cmd.Println("No migration files to execute")
-		return nil
+		return reportApply(cmd, flags, report)
 	}
 	if l := len(pending); count == 0 || count >= l {
 		// Cannot apply more than len(pending) migration files.
@@ -202,7 +202,6 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 	if err != nil {
 		return err
 	}
-	report := cmdmigrate.NewApplyReport(client, migrationDir)
 	opts = append(opts, migrate.WithLogger(report))
 	if err := migrate.LogIntro(report, applied, pending); err != nil {
 		return err
@@ -242,20 +241,30 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 			report.Log(migrate.LogDone{})
 		}
 	}
-	f := cmdmigrate.DefaultApplyTemplate
+	if err2 := reportApply(cmd, flags, report); err2 != nil {
+		if err != nil {
+			err2 = fmt.Errorf("%w: %v", err, err2)
+		}
+		err = err2
+	}
+	return err
+}
+
+func reportApply(cmd *cobra.Command, flags migrateApplyFlags, r *cmdmigrate.ApplyReport) error {
+	var (
+		err error
+		f   = cmdmigrate.DefaultApplyTemplate
+	)
 	if v := flags.logFormat; v != "" {
 		f, err = template.New("format").Funcs(cmdmigrate.ApplyTemplateFuncs).Parse(v)
 		if err != nil {
 			return fmt.Errorf("parse log format: %w", err)
 		}
 	}
-	if err2 := (&cmdmigrate.TemplateWriter{T: f, W: cmd.OutOrStdout()}).WriteReport(report); err2 != nil {
-		if err != nil {
-			return fmt.Errorf("%w: %v", err2, err)
-		}
-		err = err2
+	if err := (&cmdmigrate.TemplateWriter{T: f, W: cmd.OutOrStdout()}).WriteReport(r); err != nil {
+		return err
 	}
-	return err
+	return nil
 }
 
 type migrateDiffFlags struct {
