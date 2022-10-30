@@ -14,6 +14,7 @@ import (
 	"ariga.io/atlas/sql/mysql"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
+	"ariga.io/atlas/sql/sqlcheck/condrop"
 	"ariga.io/atlas/sql/sqlcheck/datadepend"
 	"ariga.io/atlas/sql/sqlcheck/destructive"
 )
@@ -149,12 +150,16 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
+		cd, err := condrop.New(r)
+		if err != nil {
+			return nil, err
+		}
 		dd, err := datadepend.New(r, datadepend.Handler{
 			AddNotNull: addNotNull,
 		})
 		if err != nil {
 			return nil, err
 		}
-		return []sqlcheck.Analyzer{ds, dd}, nil
+		return []sqlcheck.Analyzer{ds, dd, cd}, nil
 	})
 }
