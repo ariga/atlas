@@ -316,6 +316,49 @@ UPDATE t SET c = CONCAT('tenant_', d) WHERE c = 0;
 	}
 }
 
+func TestColumnHasReferences(t *testing.T) {
+	for i, tt := range []struct {
+		stmt    string
+		column  string
+		wantHas bool
+		wantErr bool
+	}{
+		{
+			stmt:    "CREATE TABLE t(c int REFERENCES t(c));",
+			column:  "c",
+			wantHas: true,
+		},
+		{
+			stmt:   "CREATE TABLE t(c int REFERENCES t(c));",
+			column: "d",
+		},
+		{
+			stmt:   "CREATE TABLE t(c int REFERENCES t(c), d int);",
+			column: "d",
+		},
+		{
+			stmt:    "ALTER TABLE t ADD COLUMN c int REFERENCES t(c);",
+			column:  "c",
+			wantHas: true,
+		},
+		{
+			stmt:   "ALTER TABLE t ADD COLUMN c int REFERENCES t(c);",
+			column: "d",
+		},
+		{
+			stmt:   "ALTER TABLE t ADD COLUMN c int REFERENCES t(c), ADD d int;",
+			column: "d",
+		},
+	} {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			var p myparse.Parser
+			hasR, err := p.ColumnHasReferences(&migrate.Stmt{Text: tt.stmt}, schema.NewColumn(tt.column))
+			require.Equal(t, err != nil, tt.wantErr, err)
+			require.Equal(t, hasR, tt.wantHas)
+		})
+	}
+}
+
 type mockDriver struct {
 	migrate.Driver
 	changes schema.Changes
