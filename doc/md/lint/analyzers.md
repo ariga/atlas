@@ -103,11 +103,12 @@ The following schema change checks are provided by Atlas:
 | [MF102](#MF102)                    | Modifying non-unique index to unique                                        |
 | [MF103](#MF103)                    | Adding a non-nullable column to an existing table                           |
 | [MF104](#MF104)                    | Modifying a nullable column to non-nullable                                 |
+| **CD1**                            | Constraint deletion changes                                                 |
+| [CD101](#CD101)                    | Foreign-key constraint was dropped                                          |
 | **MY**                             | MySQL and MariaDB specific checks                                           |
 | [MY101](#MY101)                    | Adding a non-nullable column without a `DEFAULT` value to an existing table |
 | **LT**                             | SQLite specific checks                                                      |
 | [LT101](#LT101)                    | Modifying a nullable column to non-nullable without a `DEFAULT` value       |
-
 
 #### DS101 {#DS101}
 
@@ -171,6 +172,14 @@ The solution, in this case, is to backfill `NULL` values with a default value:
 ```sql {1}
 UPDATE t SET c = 0 WHERE c IS NULL;
 ALTER TABLE t MODIFY COLUMN c int NOT NULL;
+```
+
+#### CD101 {#CD101}
+
+Constraint deletion is reported when a foreign-key constraint was dropped. For example:
+
+```sql
+ALTER TABLE pets DROP CONSTRAINT owner_id;
 ```
 
 #### MY101 {#MY101}

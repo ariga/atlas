@@ -75,7 +75,7 @@ func (a *Analyzer) Analyze(_ context.Context, p *sqlcheck.Pass) error {
 		}
 	}
 	if len(diags) > 0 {
-		const reportText = "constraints deletion detected"
+		const reportText = "constraint deletion detected"
 		p.Reporter.WriteReport(sqlcheck.Report{Text: reportText, Diagnostics: diags})
 		if sqlx.V(a.Error) {
 			return errors.New(reportText)
