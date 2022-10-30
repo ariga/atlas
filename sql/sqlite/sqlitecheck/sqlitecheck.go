@@ -9,11 +9,11 @@ import (
 	"fmt"
 	"strings"
 
-	"ariga.io/atlas/sql/migrate"
-
 	"ariga.io/atlas/schemahcl"
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlcheck"
+	"ariga.io/atlas/sql/sqlcheck/condrop"
 	"ariga.io/atlas/sql/sqlcheck/datadepend"
 	"ariga.io/atlas/sql/sqlcheck/destructive"
 	"ariga.io/atlas/sql/sqlite"
@@ -54,6 +54,10 @@ func modifyNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err e
 func init() {
 	sqlcheck.Register(sqlite.DriverName, func(r *schemahcl.Resource) ([]sqlcheck.Analyzer, error) {
 		ds, err := destructive.New(r)
+		if err != nil {
+			return nil, err
+		}
+		cd, err := condrop.New(r)
 		if err != nil {
 			return nil, err
 		}
@@ -102,7 +106,7 @@ func init() {
 				p.File.Changes = changes
 				return nil
 			}),
-			ds, dd,
+			ds, dd, cd,
 		}, nil
 	})
 }
