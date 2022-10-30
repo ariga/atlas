@@ -62,7 +62,7 @@ func TestAnalyzer_DropForeignKey(t *testing.T) {
 	err = az.Analyze(context.Background(), pass)
 	require.NoError(t, err)
 	require.Len(t, report.Diagnostics, 1)
-	require.Equal(t, "constraints deletion detected", report.Text)
+	require.Equal(t, "constraint deletion detected", report.Text)
 	require.Equal(t, `Dropping foreign-key constraint "owner_id"`, report.Diagnostics[0].Text)
 }
 

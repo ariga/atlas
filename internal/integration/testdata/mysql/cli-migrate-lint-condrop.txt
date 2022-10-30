@@ -24,7 +24,7 @@ ALTER TABLE pets DROP CONSTRAINT pet_owner_id;
 	L1: Dropping non-virtual column "u2"
 	L2: Dropping non-virtual column "owner_id"
 
-3.sql: constraints deletion detected:
+3.sql: constraint deletion detected:
 
 	L3: Dropping foreign-key constraint "pet_owner_id"
 
