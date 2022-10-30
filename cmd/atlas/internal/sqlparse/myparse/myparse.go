@@ -127,6 +127,32 @@ func (p *Parser) ColumnFilledAfter(f migrate.File, t *schema.Table, c *schema.Co
 	return false, nil
 }
 
+// ColumnHasReferences checks if the column has an inline REFERENCES clause in the given CREATE or ALTER statement.
+func (p *Parser) ColumnHasReferences(stmt *migrate.Stmt, c1 *schema.Column) (bool, error) {
+	if stmt == nil {
+		return false, nil
+	}
+	s, err := parser.New().ParseOneStmt(stmt.Text, "", "")
+	if err != nil {
+		return false, err
+	}
+	check := func(c2 *ast.ColumnDef) bool {
+		idxR := slices.IndexFunc(c2.Options, func(o *ast.ColumnOption) bool {
+			return o.Tp == ast.ColumnOptionReference
+		})
+		return c1.Name == c2.Name.Name.String() && idxR != -1
+	}
+	switch s := s.(type) {
+	case *ast.CreateTableStmt:
+		return slices.IndexFunc(s.Cols, check) != -1, nil
+	case *ast.AlterTableStmt:
+		return slices.IndexFunc(s.Specs, func(s *ast.AlterTableSpec) bool {
+			return s.Tp == ast.AlterTableAddColumns && slices.IndexFunc(s.NewColumns, check) != -1
+		}) != -1, nil
+	}
+	return false, nil
+}
+
 // FixChange fixes the changes according to the given statement.
 func (p *Parser) FixChange(d migrate.Driver, s string, changes schema.Changes) (schema.Changes, error) {
 	stmt, err := parser.New().ParseOneStmt(s, "", "")
