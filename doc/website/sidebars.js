@@ -98,6 +98,28 @@ module.exports = {
         },
         {
             type: 'category',
+            label: 'Deploying schema migrations',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'guides/deploying/intro',
+                    label: 'Introduction'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/deploying/image',
+                    label: 'Creating container images'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/deploying/helm',
+                    label: 'Kubernetes (Helm)'
+                },
+            ]
+        },
+        {
+            type: 'category',
             label: 'MySQL',
             collapsed: false,
             items: [
