@@ -1,8 +1,7 @@
 only mysql8
 
-# Expect to log only the connected schema.
 ! atlas migrate lint --dir file://migrations1 --dev-url URL --latest=1 > got.txt
-cmp got.txt migrations1.txt
+cmp got.txt expected1.txt
 
 -- migrations1/1.sql --
 CREATE TABLE users (id int, u1 int, PRIMARY KEY(id));
@@ -18,7 +17,7 @@ ALTER TABLE user ADD COLUMN u1 int, DROP COLUMN u2;
 ALTER TABLE cars DROP CONSTRAINT car_owner_id, DROP COLUMN owner_id;
 ALTER TABLE pets DROP CONSTRAINT pet_owner_id;
 
--- migrations1.txt --
+-- expected1.txt --
 3.sql: destructive changes detected:
 
 	L1: Dropping non-virtual column "u2"
