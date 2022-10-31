@@ -55,19 +55,19 @@ docker build -t my-image .
 Docker will build our image:
 
 ```text
- => [internal] load build definition from Dockerfile                                                                                                                    0.0s
- => => transferring dockerfile: 36B                                                                                                                                     0.0s
- => [internal] load .dockerignore                                                                                                                                       0.0s
- => => transferring context: 2B                                                                                                                                         0.0s
- => [internal] load metadata for docker.io/arigaio/atlas:latest                                                                                                         0.0s
- => [internal] load build context                                                                                                                                       0.0s
- => => transferring context: 252B                                                                                                                                       0.0s
- => [1/2] FROM docker.io/arigaio/atlas:latest                                                                                                                           0.0s
- => CACHED [2/2] COPY migrations /migrations                                                                                                                            0.0s
- => exporting to image                                                                                                                                                  0.0s
- => => exporting layers                                                                                                                                                 0.0s
- => => writing image sha256:c928104de31fc4c99d114d40ea849ade917beae3df7ffe9326113b289939878e                                                                            0.0s
- => => naming to docker.io/library/my-image                                                                                                                             0.0s
+ => [internal] load build definition from Dockerfile                                          0.0s
+ => => transferring dockerfile: 36B                                                           0.0s
+ => [internal] load .dockerignore                                                             0.0s
+ => => transferring context: 2B                                                               0.0s
+ => [internal] load metadata for docker.io/arigaio/atlas:latest                               0.0s
+ => [internal] load build context                                                             0.0s
+ => => transferring context: 252B                                                             0.0s
+ => [1/2] FROM docker.io/arigaio/atlas:latest                                                 0.0s
+ => CACHED [2/2] COPY migrations /migrations                                                  0.0s
+ => exporting to image                                                                        0.0s
+ => => exporting layers                                                                       0.0s
+ => => writing image sha256:c928104de31fc4c99d114d40ea849ade917beae3df7ffe9326113b289939878e  0.0s
+ => => naming to docker.io/library/my-image                                                   0.0s
 ```
 
 To verify Atlas can find your migrations directory that it's [integrity](/concepts/migration-directory-integrity)
