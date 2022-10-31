@@ -36,7 +36,7 @@ we use Helm's [pre-upgrade hooks](https://helm.sh/docs/topics/charts_hooks/) fea
 Helm pre-upgrade hooks are chart hooks that:
 > Executes on an upgrade request after templates are rendered, but before any resources are updated
 
-To use a pre-upgrade hook to run migrations with Atlas as part of our chart definition
+To use a pre-upgrade hook to run migrations with Atlas as part of our chart definition,
 we create a template for a [Kubernetes Job](https://kubernetes.io/docs/concepts/workloads/controllers/job/)
 and annotate it with the relevant [Helm hook annotations](https://helm.sh/docs/topics/charts_hooks/#the-available-hooks).
 
