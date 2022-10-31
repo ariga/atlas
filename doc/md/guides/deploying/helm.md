@@ -7,7 +7,7 @@ title: Deploying schema migrations to Kubernetes with Helm
 [Helm](https://helm.sh) is a popular package manager for Kubernetes that allows
 developers to package applications into distributable modules called 
 [Charts](https://helm.sh/docs/intro/using_helm/#three-big-concepts) that can be
-installed, upgraded, uninstalled etc. against a Kubernetes cluster.
+installed, upgraded, uninstalled, and more against a Kubernetes cluster.
 
 Helm is commonly used by software projects as a means for distributing software
 in a way that will be simple for developers to manage on their clusters. For example,
