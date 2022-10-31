@@ -12,7 +12,7 @@ the database schema and the application can cause serious problems, it is advise
 to how these changes are rolled out.
 
 Based on our experience, we have come to the conclusion that changes
-to the database schema should be thought of part of the  _deployment_ sequence, alongside
+to the database schema should be thought of as part of the  _deployment_ sequence, alongside
 changing the application version, provisioning infrastructure or applying
 configuration changes.
 
