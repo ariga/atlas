@@ -70,7 +70,7 @@ Docker will build our image:
  => => naming to docker.io/library/my-image                                                   0.0s
 ```
 
-To verify Atlas can find your migrations directory that it's [integrity](/concepts/migration-directory-integrity)
+To verify Atlas can find your migrations directory and that its [integrity](/concepts/migration-directory-integrity)
 is intact run:
 
 ```text
