@@ -30,7 +30,7 @@ Prerequisites to the guide:
 ## Using Helm lifecycle hooks
 
 To satisfy the principle of having migrations run _before_ the new application
-version starts as well as ensure that only one migration job runs concurrently,
+version starts, as well as ensure that only one migration job runs concurrently,
 we use Helm's [pre-upgrade hooks](https://helm.sh/docs/topics/charts_hooks/) feature.
 
 Helm pre-upgrade hooks are chart hooks that:
