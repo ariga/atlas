@@ -90,7 +90,7 @@ Notice the `annotations` block at the top of the file. This block contains two i
 attributes:
 1. `"helm.sh/hook": pre-install,pre-upgrade`: configures this job to run as a pre-install
   hook and as a pre-upgrade hook. 
-* `"helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded`, sets the following
+2. `"helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded`: sets the following
   deletion behavior for the jobs created by the hook:
   * `before-hook-creation`: Delete the previous resource before a new hook is launched (default)
   * `hook-succeeded`: Delete the resource after the hook is successfully executed.
