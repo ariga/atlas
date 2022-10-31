@@ -5,6 +5,7 @@
 package mysqlcheck
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -19,8 +20,12 @@ import (
 	"ariga.io/atlas/sql/sqlcheck/destructive"
 )
 
-// codeImplicitUpdate is a MySQL specific code for reporting implicit update.
-var codeImplicitUpdate = sqlcheck.Code("MY101")
+var (
+	// codeImplicitUpdate is a MySQL specific code for reporting implicit update.
+	codeImplicitUpdate = sqlcheck.Code("MY101")
+	// codeInlineRef is a MySQL specific code for reporting columns with inline references.
+	codeInlineRef = sqlcheck.Code("MY102")
+)
 
 func addNotNull(p *datadepend.ColumnPass) (diags []sqlcheck.Diagnostic, err error) {
 	// Two types of reporting, implicit rows update and
@@ -144,6 +149,52 @@ func columnFilledAfter(pass *datadepend.ColumnPass, matchValue string) bool {
 	return filled
 }
 
+// inlineRefs is an analyzer function that detects column definitions with the REFERENCES
+// clause and suggest replacing them with an explicit foreign-key definition.
+func inlineRefs(_ context.Context, p *sqlcheck.Pass) error {
+	var diags []sqlcheck.Diagnostic
+	parse, ok := p.File.Parser.(interface {
+		ColumnHasReferences(*migrate.Stmt, *schema.Column) (bool, error)
+	})
+	if !ok {
+		return nil
+	}
+	for _, sc := range p.File.Changes {
+		for _, c := range sc.Changes {
+			switch c := c.(type) {
+			case *schema.AddTable:
+				for i := range c.T.Columns {
+					if hasR, _ := parse.ColumnHasReferences(sc.Stmt, c.T.Columns[i]); hasR {
+						diags = append(diags, sqlcheck.Diagnostic{
+							Pos:  sc.Stmt.Pos,
+							Code: codeInlineRef,
+							Text: fmt.Sprintf("Defining column %q on table %q with inline REFERENCES is ignored by MySQL", c.T.Columns[i].Name, c.T.Name),
+						})
+					}
+				}
+			case *schema.ModifyTable:
+				for _, mc := range c.Changes {
+					add, ok := mc.(*schema.AddColumn)
+					if !ok {
+						continue
+					}
+					if hasR, _ := parse.ColumnHasReferences(sc.Stmt, add.C); hasR {
+						diags = append(diags, sqlcheck.Diagnostic{
+							Pos:  sc.Stmt.Pos,
+							Code: codeInlineRef,
+							Text: fmt.Sprintf("Defining column %q on table %q with inline REFERENCES is ignored by MySQL", add.C.Name, c.T.Name),
+						})
+					}
+				}
+			}
+		}
+	}
+	if len(diags) > 0 {
+		p.Reporter.WriteReport(sqlcheck.Report{Text: "inline REFERENCES detected", Diagnostics: diags})
+	}
+	return nil
+}
+
 func init() {
 	sqlcheck.Register(mysql.DriverName, func(r *schemahcl.Resource) ([]sqlcheck.Analyzer, error) {
 		ds, err := destructive.New(r)
@@ -160,6 +211,6 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
-		return []sqlcheck.Analyzer{ds, dd, cd}, nil
+		return []sqlcheck.Analyzer{ds, dd, cd, sqlcheck.AnalyzerFunc(inlineRefs)}, nil
 	})
 }
