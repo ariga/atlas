@@ -82,7 +82,7 @@ If no issues are found, no errors will be printed out.
 ## Defining the GitHub Actions Workflow
 
 Next, we define a GitHub Actions workflow that will build our container
-image and push it to GitHub container repo (ghcr.io) on every push
+image and push it to the GitHub container repo (ghcr.io) on every push
 to our mainline branch:
 
 ```yaml title=.github/workflows/push-docker.yaml
