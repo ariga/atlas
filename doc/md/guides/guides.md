@@ -8,6 +8,14 @@ slug: /guides
 
 Welcome to the Atlas Guides.
 
+## Deployments
+
+[Intro to deploying schema migrations](deploying/intro.md)
+
+[Creating container images for migrations](deploying/image.md)
+
+[Deploying schema migrations to Kubernetes with Helm](deploying/helm.md)
+
 ## Databases
 
 ### MySQL

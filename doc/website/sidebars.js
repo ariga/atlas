@@ -40,7 +40,6 @@ module.exports = {
                 {type: 'doc', id: 'versioned/apply', label: 'Migration Applying'},
                 {type: 'doc', id: 'versioned/troubleshoot', label: 'Migration Troubleshooting'},
                 {type: 'doc', id: 'versioned/import', label: 'Migration Import'},
-                {type: 'doc', id: 'versioned/deploy', label: 'Deploying'},
             ]
         },
         {
@@ -96,6 +95,28 @@ module.exports = {
         {
             type: 'doc',
             id: 'guides/guides'
+        },
+        {
+            type: 'category',
+            label: 'Deploying schema migrations',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'guides/deploying/intro',
+                    label: 'Introduction'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/deploying/image',
+                    label: 'Creating container images'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/deploying/helm',
+                    label: 'Kubernetes (Helm)'
+                },
+            ]
         },
         {
             type: 'category',
