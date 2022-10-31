@@ -88,7 +88,7 @@ Be sure to pass the following [values](https://helm.sh/docs/chart_template_guide
 
 Notice the `annotations` block at the top of the file. This block contains two important
 attributes:
-* `"helm.sh/hook": pre-install,pre-upgrade`: configures this job to run as a pre-install
+1. `"helm.sh/hook": pre-install,pre-upgrade`: configures this job to run as a pre-install
   hook and as a pre-upgrade hook. 
 * `"helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded`, sets the following
   deletion behavior for the jobs created by the hook:
