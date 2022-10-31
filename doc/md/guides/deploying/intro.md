@@ -45,7 +45,7 @@ migrations on boot are:
 Instead of running migrations on server init, we suggest using a deployment
 strategy that follows these principles:
 
-1. Schema migrations are deployed as a discrete step in the deployment pipeline
+1. Schema migrations are deployed as a discrete step in the deployment pipeline,
    preceding application version changes.
 2. If a migration fails, the whole deployment pipeline should halt.
 3. Measures should be taken to ensure that only one instance of the migration
