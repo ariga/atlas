@@ -95,5 +95,5 @@ attributes:
   * `before-hook-creation`: Delete the previous resource before a new hook is launched (default)
   * `hook-succeeded`: Delete the resource after the hook is successfully executed.
   This combination ensures that on the happy path jobs are cleaned after finishing and that 
-  in case a job fails it remains on the cluster for its operators to debug. In addition, it 
+  in case a job fails, it remains on the cluster for its operators to debug. In addition, it 
   ensures that when you retry a job, its past invocations are also cleaned up. 
