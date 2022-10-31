@@ -6,7 +6,7 @@ slug: /guides/deploying/intro
 
 ## Schema changes as Deployments
 
-Changes to database schemas  rarely happen in isolation. Most commonly, changes to the database
+Changes to database schemas rarely happen in isolation. Most commonly, changes to the database
 schema are related to some change in the application code. Because incompatibility between
 the database schema and the application can cause serious problems it is advised to give careful thought
 to how these changes are rolled out.
