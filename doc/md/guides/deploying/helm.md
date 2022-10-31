@@ -80,7 +80,7 @@ spec:
 Be sure to pass the following [values](https://helm.sh/docs/chart_template_guide/values_files/):
 
 * `imagePullSecret` - secret containing credentials to a 
- [private repository](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/)
+ [private repository](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/).
   if you are hosting on ghcr.io, see [this guide](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/).
 * `image.repository`: the container repository where you pushed your migration image to.
 * `image.tag`: the tag of the latest migration image.
