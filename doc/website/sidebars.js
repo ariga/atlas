@@ -40,7 +40,6 @@ module.exports = {
                 {type: 'doc', id: 'versioned/apply', label: 'Migration Applying'},
                 {type: 'doc', id: 'versioned/troubleshoot', label: 'Migration Troubleshooting'},
                 {type: 'doc', id: 'versioned/import', label: 'Migration Import'},
-                {type: 'doc', id: 'versioned/deploy', label: 'Deploying'},
             ]
         },
         {
