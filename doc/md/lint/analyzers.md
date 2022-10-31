@@ -107,6 +107,7 @@ The following schema change checks are provided by Atlas:
 | [CD101](#CD101)                    | Foreign-key constraint was dropped                                          |
 | **MY**                             | MySQL and MariaDB specific checks                                           |
 | [MY101](#MY101)                    | Adding a non-nullable column without a `DEFAULT` value to an existing table |
+| [MY102](#MY102)                    | Adding a column with an inline `REFERENCES` clause has no actual effect     |
 | **LT**                             | SQLite specific checks                                                      |
 | [LT101](#LT101)                    | Modifying a nullable column to non-nullable without a `DEFAULT` value       |
 
@@ -191,6 +192,16 @@ zero (default) value. For example:
 ALTER TABLE t ADD COLUMN c int NOT NULL;
 // highlight-next-line
 -- Append column `c` to all existing rows with the value 0.
+```
+
+#### MY102 {#MY102}
+
+Adding a column with an inline `REFERENCES` clause has no actual effect. Users should define a separate `FOREIGN KEY`
+specification instead. For example:
+
+```diff
+-CREATE TABLE pets (owner_id int REFERENCES users(id));
++CREATE TABLE pets (owner_id int, FOREIGN KEY (owner_id) REFERENCES users(id));
 ```
 
 #### LT101 {#LT101}
