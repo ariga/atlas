@@ -36,7 +36,7 @@ To do this we can build our container image with the official [Atlas Docker imag
 as [the base layer](https://docs.docker.com/engine/reference/builder/#from).  
 
 To do this, our Dockerfile should be placed in the directory _containing_ the `migrations`
-directory and look something like this:
+directory and will look something like this:
 
 ```dockerfile title=Dockerfile
 FROM arigaio/atlas:latest
