@@ -84,7 +84,7 @@ Be sure to pass the following [values](https://helm.sh/docs/chart_template_guide
   If you are hosting on ghcr.io, see [this guide](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/).
 * `image.repository`: the container repository where you pushed your migration image to.
 * `image.tag`: the tag of the latest migration image.
-* `dburl` the [URL](/concepts/url) of the database which you want to apply migrations to.
+* `dburl`: the [URL](/concepts/url) of the database which you want to apply migrations to.
 
 Notice the `annotations` block at the top of the file. This block contains two important
 attributes:
