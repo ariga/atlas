@@ -35,7 +35,7 @@ Our goal is to build an image that contains:
 To do this we can build our container image with the official [Atlas Docker image](https://hub.docker.com/r/arigaio/atlas)
 as [the base layer](https://docs.docker.com/engine/reference/builder/#from).  
 
-To do this our Dockerfile should be placed in the directory _containing_ the `migrations`
+To do this, our Dockerfile should be placed in the directory _containing_ the `migrations`
 directory and look something like this:
 
 ```dockerfile title=Dockerfile
