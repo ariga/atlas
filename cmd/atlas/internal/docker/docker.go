@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/url"
@@ -37,6 +36,8 @@ type (
 		Env []string
 		// Internal Port to expose anc connect to.
 		Port string
+		// Database name to create and connect on init.
+		Database string
 		// Out is a custom writer to send docker cli output to.
 		Out io.Writer
 	}
@@ -57,13 +58,48 @@ type (
 
 // NewConfig returns a new config with the given options applied.
 func NewConfig(opts ...ConfigOption) (*Config, error) {
-	c := &Config{Out: ioutil.Discard}
+	c := &Config{Out: io.Discard}
 	for _, opt := range opts {
 		if err := opt(c); err != nil {
 			return nil, err
 		}
 	}
 	return c, nil
+}
+
+// FromURL parses a URL in the format of
+// "docker://image/tag" and returns a Config.
+func FromURL(u *url.URL) (*Config, error) {
+	var (
+		tag   string
+		opts  []ConfigOption
+		parts = strings.Split(strings.TrimPrefix(u.Path, "/"), "/")
+	)
+	if len(parts) > 0 {
+		tag = parts[0]
+	}
+	if len(parts) > 1 {
+		opts = append(opts, Database(parts[1]))
+	}
+	switch u.Host {
+	case "mysql":
+		if len(parts) > 1 {
+			opts = append(opts, Env("MYSQL_DATABASE="+parts[1]))
+		}
+		return MySQL(tag, opts...)
+	case "maria", "mariadb":
+		if len(parts) > 1 {
+			opts = append(opts, Env("MYSQL_DATABASE="+parts[1]))
+		}
+		return MariaDB(tag, opts...)
+	case "postgres":
+		if len(parts) > 1 {
+			opts = append(opts, Env("POSTGRES_DB="+parts[1]))
+		}
+		return PostgreSQL(tag, opts...)
+	default:
+		return nil, fmt.Errorf("unsupported docker image %q", u.Host)
+	}
 }
 
 // MySQL returns a new Config for a MySQL image.
@@ -92,6 +128,7 @@ func PostgreSQL(version string, opts ...ConfigOption) (*Config, error) {
 			[]ConfigOption{
 				Image("postgres:" + version),
 				Port("5432"),
+				Database("postgres"),
 				Env("POSTGRES_PASSWORD=" + pass),
 			},
 			opts...,
@@ -127,7 +164,15 @@ func Port(p string) ConfigOption {
 //	Config(Image("postgres"), Env("MYSQL_ROOT_PASSWORD=password"))
 func Env(env ...string) ConfigOption {
 	return func(c *Config) error {
-		c.Env = env
+		c.Env = append(c.Env, env...)
+		return nil
+	}
+}
+
+// Database sets the database name to connect to. For example:
+func Database(name string) ConfigOption {
+	return func(c *Config) error {
+		c.Database = name
 		return nil
 	}
 }
@@ -139,16 +184,6 @@ func Env(env ...string) ConfigOption {
 func Out(w io.Writer) ConfigOption {
 	return func(c *Config) error {
 		c.Out = w
-		return nil
-	}
-}
-
-// setup adds statements to execute once the service is ready. For example:
-//
-//	setup("DROP SCHEMA IF EXISTS public CASCADE;")
-func setup(s ...string) ConfigOption {
-	return func(c *Config) error {
-		c.setup = s
 		return nil
 	}
 }
@@ -243,9 +278,9 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 func (c *Container) URL() (string, error) {
 	switch img := strings.SplitN(c.cfg.Image, ":", 2)[0]; img {
 	case "postgres":
-		return fmt.Sprintf("postgres://postgres:%s@localhost:%s/postgres?sslmode=disable", c.Passphrase, c.Port), nil
+		return fmt.Sprintf("postgres://postgres:%s@localhost:%s/%s?sslmode=disable", c.Passphrase, c.Port, c.cfg.Database), nil
 	case "mysql", "mariadb":
-		return fmt.Sprintf("%s://root:%s@localhost:%s/", img, c.Passphrase, c.Port), nil
+		return fmt.Sprintf("%s://root:%s@localhost:%s/%s", img, c.Passphrase, c.Port, c.cfg.Database), nil
 	default:
 		return "", fmt.Errorf("unknown container image: %q", img)
 	}
@@ -279,17 +314,7 @@ func init() {
 }
 
 func client(ctx context.Context, u *url.URL) (client *sqlclient.Client, err error) {
-	var cfg *Config
-	switch img, tag := u.Host, strings.TrimPrefix(u.Path, "/"); img {
-	case "mysql":
-		cfg, err = MySQL(tag)
-	case "mariadb":
-		cfg, err = MariaDB(tag)
-	case "postgres":
-		cfg, err = PostgreSQL(tag)
-	default:
-		return nil, fmt.Errorf("unsupported docker image %q", img)
-	}
+	cfg, err := FromURL(u)
 	if err != nil {
 		return nil, err
 	}
