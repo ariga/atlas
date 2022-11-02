@@ -168,6 +168,23 @@ func TestSpanner_AddDropTable(t *testing.T) {
 	})
 }
 
+func TestSpanner_AddColumns(t *testing.T) {
+	stRun(t, func(t *spannerTest) {
+		usersT := t.users()
+		t.dropTables(usersT.Name)
+		t.migrate(&schema.AddTable{T: usersT})
+		usersT.Columns = append(
+			usersT.Columns,
+			&schema.Column{Name: "a", Type: &schema.ColumnType{Type: &schema.BinaryType{T: spanner.TypeBytes}, Null: true}},
+			&schema.Column{Name: "b", Type: &schema.ColumnType{Type: &schema.BinaryType{T: spanner.TypeBytes}, Null: true}},
+		)
+		changes := t.diff(t.loadUsers(), usersT)
+		require.Len(t, changes, 2)
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, usersT)
+	})
+}
+
 func (t *spannerTest) driver() migrate.Driver {
 	return t.drv
 }
