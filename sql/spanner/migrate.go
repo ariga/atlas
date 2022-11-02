@@ -360,7 +360,6 @@ func check(b *sqlx.Builder, c *schema.Check) {
 
 // Build instantiates a new builder and writes the given phrase to it.
 func (s *state) Build(phrases ...string) *sqlx.Builder {
-	emptySchema := ""
-	b := &sqlx.Builder{QuoteChar: '`', Schema: &emptySchema}
+	b := &sqlx.Builder{QuoteChar: '`', Schema: sqlx.P("")}
 	return b.P(phrases...)
 }
