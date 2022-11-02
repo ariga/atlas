@@ -622,6 +622,8 @@ var TypeRegistry = schemahcl.NewRegistry(
 		schemahcl.NewTypeSpec(TypeJSONB),
 		schemahcl.NewTypeSpec(TypeUUID),
 		schemahcl.NewTypeSpec(TypeMoney),
+		schemahcl.NewTypeSpec(TypeTSVector),
+		schemahcl.NewTypeSpec(TypeTSQuery),
 		schemahcl.NewTypeSpec("hstore"),
 		schemahcl.NewTypeSpec("sql", schemahcl.WithAttributes(&schemahcl.TypeAttr{Name: "def", Required: true, Kind: reflect.String})),
 	),

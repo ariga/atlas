@@ -694,6 +694,13 @@ type (
 		SequenceName string
 	}
 
+	// A TextSearchType defines full text search types.
+	// https://www.postgresql.org/docs/current/datatype-textsearch.html
+	TextSearchType struct {
+		schema.Type
+		T string
+	}
+
 	// A UUIDType defines a UUID type.
 	UUIDType struct {
 		schema.Type

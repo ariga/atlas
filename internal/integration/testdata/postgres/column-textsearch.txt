@@ -1,0 +1,49 @@
+apply 1.hcl
+cmpshow t 1.sql
+cmphcl 1.inspect.hcl
+
+-- 1.hcl --
+schema "script_column_textsearch" {}
+
+table "t" {
+  schema = schema.script_column_textsearch
+  column "tsv" {
+    type = tsvector
+  }
+  column "tsq" {
+    type = tsquery
+  }
+  index "idx_tsv" {
+    type = GIN
+    columns = [column.tsv]
+  }
+}
+
+-- 1.sql --
+         Table "script_column_textsearch.t"
+ Column |   Type   | Collation | Nullable | Default
+--------+----------+-----------+----------+---------
+ tsv    | tsvector |           | not null |
+ tsq    | tsquery  |           | not null |
+Indexes:
+    "idx_tsv" gin (tsv)
+
+
+-- 1.inspect.hcl --
+table "t" {
+  schema = schema.script_column_textsearch
+  column "tsv" {
+    null = false
+    type = tsvector
+  }
+  column "tsq" {
+    null = false
+    type = tsquery
+  }
+  index "idx_tsv" {
+    columns = [column.tsv]
+    type    = GIN
+  }
+}
+schema "script_column_textsearch" {
+}

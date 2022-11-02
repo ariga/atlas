@@ -142,6 +142,10 @@ func FormatType(t schema.Type) (string, error) {
 		f = strings.ToLower(t.T)
 	case *NetworkType:
 		f = strings.ToLower(t.T)
+	case *TextSearchType:
+		if f = strings.ToLower(t.T); f != TypeTSVector && f != TypeTSQuery {
+			return "", fmt.Errorf("postgres: unsupported text search type: %q", t.T)
+		}
 	case *UserDefinedType:
 		f = strings.ToLower(t.T)
 	case *XMLType:
@@ -252,6 +256,8 @@ func columnType(c *columnDesc) (schema.Type, error) {
 			}
 			typ.(*ArrayType).Type = tt
 		}
+	case TypeTSVector, TypeTSQuery:
+		typ = &TextSearchType{T: t}
 	case TypeUserDefined:
 		typ = &UserDefinedType{T: c.fmtype}
 	default:
