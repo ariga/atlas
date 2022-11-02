@@ -669,6 +669,23 @@ table "t" {
 }
 ```
 
+### Text Search
+
+The `tsvector` and `tsquery` data types are designed to store and query full text search. Learn more about them in the
+[PostgreSQL website](https://www.postgresql.org/docs/current/datatype-textsearch.html).
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "tsv" {
+    type = tsvector
+  }
+  column "tsq" {
+    type = tsquery
+  }
+}
+```
+
 ### UUID
 
 The `uuid` data type allows creating columns for storing Universally Unique Identifiers (UUID).
