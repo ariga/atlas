@@ -7,7 +7,6 @@ package spanner
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"ariga.io/atlas/sql/internal/sqlx"
@@ -150,20 +149,6 @@ func (s *state) dropTable(drop *schema.DropTable) error {
 func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) error {
 	if len(modify.Changes) > 0 {
 		if err := s.alterTable(modify.T, modify.Changes); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// mapSemicolonNewline ...
-func mapSemicolonNewline(b *sqlx.Builder, x any, f func(i int, b *sqlx.Builder) error) error {
-	s := reflect.ValueOf(x)
-	for i := 0; i < s.Len(); i++ {
-		if i > 0 {
-			b.P(";\n")
-		}
-		if err := f(i, b); err != nil {
 			return err
 		}
 	}
