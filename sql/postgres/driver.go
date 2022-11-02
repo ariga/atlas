@@ -375,6 +375,8 @@ const (
 	TypeUUID        = "uuid"
 	TypeMoney       = "money"
 	TypeInterval    = "interval"
+	TypeTSQuery     = "tsquery"
+	TypeTSVector    = "tsvector"
 	TypeUserDefined = "user-defined"
 )
 
