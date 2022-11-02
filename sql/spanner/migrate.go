@@ -148,15 +148,8 @@ func (s *state) dropTable(drop *schema.DropTable) error {
 
 // modifyTable builds and executes the queries for bringing the table into its modified state.
 func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) error {
-	var alter []schema.Change
-	for _, change := range modify.Changes {
-		switch change := change.(type) {
-		default:
-			alter = append(alter, change)
-		}
-	}
-	if len(alter) > 0 {
-		if err := s.alterTable(modify.T, alter); err != nil {
+	if len(modify.Changes) > 0 {
+		if err := s.alterTable(modify.T, modify.Changes); err != nil {
 			return err
 		}
 	}
