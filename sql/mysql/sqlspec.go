@@ -244,10 +244,11 @@ func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 	return spec, nil
 }
 
-func partAttr(part *schema.IndexPart, spec *sqlspec.IndexPart) {
+func partAttr(_ *schema.Index, part *schema.IndexPart, spec *sqlspec.IndexPart) error {
 	if p := (SubPart{}); sqlx.Has(part.Attrs, &p) && p.Len > 0 {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.IntAttr("prefix", p.Len))
 	}
+	return nil
 }
 
 // columnSpec converts from a concrete MySQL schema.Column into a sqlspec.Column.

@@ -570,6 +570,138 @@ schema "test" {
 	require.EqualValues(t, expected, string(buf))
 }
 
+func TestMarshalSpec_IndexOpClass(t *testing.T) {
+	s := &schema.Schema{
+		Name: "test",
+		Tables: []*schema.Table{
+			{
+				Name: "users",
+				Columns: []*schema.Column{
+					{
+						Name: "a",
+						Type: &schema.ColumnType{Type: &schema.StringType{T: "text"}},
+					},
+					{
+						Name: "b",
+						Type: &schema.ColumnType{Type: &TextSearchType{T: "tsvector"}},
+					},
+				},
+			},
+		},
+	}
+	s.Tables[0].Schema = s
+	s.Tables[0].Schema = s
+	s.Tables[0].Indexes = []*schema.Index{
+		{
+			Name:   "idx0",
+			Table:  s.Tables[0],
+			Unique: true,
+			Parts: []*schema.IndexPart{
+				{SeqNo: 0, C: s.Tables[0].Columns[0], Attrs: []schema.Attr{&IndexOpClass{Name: "text_ops"}}},
+				{SeqNo: 1, C: s.Tables[0].Columns[1], Attrs: []schema.Attr{&IndexOpClass{Name: "tsvector_ops"}}},
+			},
+			Attrs: []schema.Attr{
+				&IndexType{T: IndexTypeBTree},
+			},
+		},
+		{
+			Name:   "idx1",
+			Table:  s.Tables[0],
+			Unique: true,
+			Parts: []*schema.IndexPart{
+				{SeqNo: 0, C: s.Tables[0].Columns[0], Attrs: []schema.Attr{&IndexOpClass{Name: "text_pattern_ops"}}},
+				{SeqNo: 1, C: s.Tables[0].Columns[1], Attrs: []schema.Attr{&IndexOpClass{Name: "tsvector_ops"}}},
+			},
+			Attrs: []schema.Attr{
+				&IndexType{T: IndexTypeBTree},
+			},
+		},
+		{
+			Name:   "idx2",
+			Table:  s.Tables[0],
+			Unique: true,
+			Parts: []*schema.IndexPart{
+				{SeqNo: 0, C: s.Tables[0].Columns[0], Attrs: []schema.Attr{&IndexOpClass{Name: "text_ops"}}},
+			},
+			Attrs: []schema.Attr{
+				&IndexType{T: IndexTypeBTree},
+			},
+		},
+		{
+			Name:   "idx3",
+			Table:  s.Tables[0],
+			Unique: true,
+			Parts: []*schema.IndexPart{
+				{SeqNo: 0, C: s.Tables[0].Columns[0], Attrs: []schema.Attr{&IndexOpClass{Name: "text_pattern_ops"}}},
+			},
+			Attrs: []schema.Attr{
+				&IndexType{T: IndexTypeBTree},
+			},
+		},
+		{
+			Name:   "idx4",
+			Table:  s.Tables[0],
+			Unique: true,
+			Parts: []*schema.IndexPart{
+				{SeqNo: 0, C: s.Tables[0].Columns[1], Attrs: []schema.Attr{&IndexOpClass{Name: "tsvector_ops", Default: true, Params: []struct{ N, V string }{{"siglen", "1"}}}}},
+			},
+			Attrs: []schema.Attr{
+				&IndexType{T: IndexTypeGiST},
+			},
+		},
+	}
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "a" {
+    null = false
+    type = text
+  }
+  column "b" {
+    null = false
+    type = tsvector
+  }
+  index "idx0" {
+    unique  = true
+    columns = [column.a, column.b]
+  }
+  index "idx1" {
+    unique = true
+    on {
+      column = column.a
+      ops    = text_pattern_ops
+    }
+    on {
+      column = column.b
+    }
+  }
+  index "idx2" {
+    unique  = true
+    columns = [column.a]
+  }
+  index "idx3" {
+    unique = true
+    on {
+      column = column.a
+      ops    = text_pattern_ops
+    }
+  }
+  index "idx4" {
+    unique = true
+    type   = GIST
+    on {
+      column = column.b
+      ops    = sql("tsvector_ops(siglen='1')")
+    }
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
 func TestUnmarshalSpec_Identity(t *testing.T) {
 	f := `
 schema "s" {}

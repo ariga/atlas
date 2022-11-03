@@ -9,10 +9,12 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
 	"ariga.io/atlas/sql/internal/sqlx"
+	"ariga.io/atlas/sql/postgres/internal/postgresop"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlspec"
 
@@ -111,12 +113,18 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 var (
 	hclState = schemahcl.New(
 		schemahcl.WithTypes(TypeRegistry.Specs()),
-		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeGIN, IndexTypeGiST, IndexTypeBRIN),
+		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeBRIN, IndexTypeHash, IndexTypeGIN, IndexTypeGiST, IndexTypeSPGiST),
 		schemahcl.WithScopedEnums("table.partition.type", PartitionTypeRange, PartitionTypeList, PartitionTypeHash),
 		schemahcl.WithScopedEnums("table.column.identity.generated", GeneratedTypeAlways, GeneratedTypeByDefault),
 		schemahcl.WithScopedEnums("table.column.as.type", "STORED"),
 		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
 		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
+		schemahcl.WithScopedEnums("table.index.on.ops", func() (ops []string) {
+			for _, op := range postgresop.Classes {
+				ops = append(ops, op.Name)
+			}
+			return ops
+		}()...),
 	)
 	// MarshalHCL marshals v into an Atlas HCL DDL document.
 	MarshalHCL = schemahcl.MarshalerFunc(func(v any) ([]byte, error) {
@@ -492,7 +500,7 @@ func tableSpec(table *schema.Table) (*sqlspec.Table, error) {
 }
 
 func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
-	spec, err := specutil.FromIndex(idx)
+	spec, err := specutil.FromIndex(idx, partAttr)
 	if err != nil {
 		return nil, err
 	}
@@ -514,6 +522,38 @@ func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.Int64Attr("page_per_range", p.PagesPerRange))
 	}
 	return spec, nil
+}
+
+func partAttr(idx *schema.Index, part *schema.IndexPart, spec *sqlspec.IndexPart) error {
+	var op IndexOpClass
+	if !sqlx.Has(part.Attrs, &op) {
+		return nil
+	}
+	if len(op.Params) > 0 {
+		var kv []string
+		for _, e := range op.Params {
+			kv = append(kv, fmt.Sprintf("%s='%s'", e.N, e.V))
+		}
+		spec.Extra.Attrs = append(
+			spec.Extra.Attrs,
+			schemahcl.RawAttr("ops", fmt.Sprintf("%s(%s)", op.Name, strings.Join(kv, ", "))),
+		)
+		return nil
+	}
+	var it IndexType
+	// The type of the key need to be known in order to check
+	// if it is the default operator class.
+	if part.X != nil || !sqlx.Has(idx.Attrs, &it) || op.Default {
+		return nil
+	}
+	d, err := defaultOp(op.Name, it.T, part.C.Type.Type)
+	if err != nil {
+		return fmt.Errorf("postgres: checking if operator_class is default: %w", err)
+	}
+	if !d {
+		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("ops", op.Name))
+	}
+	return nil
 }
 
 // columnSpec converts from a concrete Postgres schema.Column into a sqlspec.Column.
@@ -719,3 +759,36 @@ func formatTime() schemahcl.TypeSpecOption {
 
 // generatedType returns the default and only type for a generated column.
 func generatedType(string) string { return "STORED" }
+
+var (
+	opsOnce    sync.Once
+	defaultOps map[postgresop.Class]bool
+)
+
+// defaultOp reports if the given operator class name is the default for the index part.
+func defaultOp(name, method string, typ schema.Type) (bool, error) {
+	opsOnce.Do(func() {
+		defaultOps = make(map[postgresop.Class]bool, len(postgresop.Classes))
+		for _, op := range postgresop.Classes {
+			if op.Default {
+				defaultOps[postgresop.Class{Name: op.Name, Method: op.Method, Type: op.Type}] = true
+			}
+		}
+	})
+	var (
+		t   string
+		err error
+	)
+	switch typ := typ.(type) {
+	case *schema.EnumType:
+		t = "anyenum"
+	case *ArrayType:
+		t = "anyarray"
+	default:
+		t, err = FormatType(typ)
+		if err != nil {
+			return false, err
+		}
+	}
+	return defaultOps[postgresop.Class{Name: name, Method: strings.ToUpper(method), Type: t}], nil
+}
