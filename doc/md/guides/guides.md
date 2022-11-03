@@ -24,6 +24,8 @@ Welcome to the Atlas Guides.
 
 [Managing MySQL schemas on RDS with Terraform](mysql/terraform.md)
 
+[Inline REFERENCES clauses (MY102)](mysql/my-102.md)
+
 [Dropping non-virtual columns (DS103)](mysql/ds-103.md)
 
 ### PostgreSQL
