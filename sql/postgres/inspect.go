@@ -318,12 +318,15 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 	names := make(map[string]*schema.Index)
 	for rows.Next() {
 		var (
-			uniq, primary, included                       bool
-			table, name, typ                              string
-			desc, nullsfirst, nullslast                   sql.NullBool
-			column, contype, pred, expr, comment, options sql.NullString
+			uniq, primary, included                                           bool
+			table, name, typ                                                  string
+			desc, nullsfirst, nullslast, opcdefault                           sql.NullBool
+			column, contype, pred, expr, comment, options, opcname, opcparams sql.NullString
 		)
-		if err := rows.Scan(&table, &name, &typ, &column, &included, &primary, &uniq, &contype, &pred, &expr, &desc, &nullsfirst, &nullslast, &comment, &options); err != nil {
+		if err := rows.Scan(
+			&table, &name, &typ, &column, &included, &primary, &uniq, &contype, &pred, &expr, &desc,
+			&nullsfirst, &nullslast, &comment, &options, &opcname, &opcdefault, &opcparams,
+		); err != nil {
 			return fmt.Errorf("postgres: scanning indexes for schema %q: %w", s.Name, err)
 		}
 		t, ok := s.Table(table)
@@ -395,7 +398,31 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 		default:
 			return fmt.Errorf("postgres: invalid part for index %q", idx.Name)
 		}
+		if err := mayAppendOps(part, opcname.String, opcparams.String, opcdefault.Bool); err != nil {
+			return err
+		}
 	}
+	return nil
+}
+
+// mayAppendOps appends an operator_class attribute to the part in case it is not the default.
+func mayAppendOps(part *schema.IndexPart, name string, params string, defaults bool) error {
+	if name == "" || defaults && params == "" {
+		return nil
+	}
+	op := &IndexOpClass{Name: name, Default: defaults}
+	switch {
+	case len(params) == 0:
+	case len(params) < 2, params[0] != '{', params[len(params)-1] != '}':
+		return fmt.Errorf("postgres: unexpected operator class parameters format: %q", params)
+	default:
+		for _, e := range strings.Split(params[1:len(params)-1], ",") {
+			if kv := strings.Split(strings.TrimSpace(e), "="); len(kv) == 2 {
+				op.Params = append(op.Params, struct{ N, V string }{N: kv[0], V: kv[1]})
+			}
+		}
+	}
+	part.Attrs = append(part.Attrs, op)
 	return nil
 }
 
@@ -779,8 +806,17 @@ type (
 		Columns []*schema.Column
 	}
 
-	// Concurrently describes the CONCURRENTLY clause to instruct Postgres
-	// to build or drop the index concurrently without blocking the current table.
+	// IndexOpClass describers operator class of the index part.
+	// https://www.postgresql.org/docs/current/indexes-opclass.html.
+	IndexOpClass struct {
+		schema.Attr
+		Name    string                  // Name of the operator class.
+		Default bool                    // If it is the default operator class.
+		Params  []struct{ N, V string } // Optional parameters.
+	}
+
+	// Concurrently describes the CONCURRENTLY clause to instruct Postgres to
+	// build or drop the index concurrently without blocking the current table.
 	// https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY
 	Concurrently struct {
 		schema.Attr
@@ -1072,11 +1108,14 @@ SELECT
 	c.contype AS constraint_type,
 	pg_get_expr(idx.indpred, idx.indrelid) AS predicate,
 	pg_get_indexdef(idx.indexrelid, idx.ord, false) AS expression,
-	pg_index_column_has_property(idx.indexrelid, idx.ord, 'desc') AS desc,
+	pg_index_column_has_property(idx.indexrelid, idx.ord, 'desc') AS isdesc,
 	pg_index_column_has_property(idx.indexrelid, idx.ord, 'nulls_first') AS nulls_first,
 	pg_index_column_has_property(idx.indexrelid, idx.ord, 'nulls_last') AS nulls_last,
 	obj_description(i.oid, 'pg_class') AS comment,
-	i.reloptions AS options
+	i.reloptions AS options,
+	op.opcname AS opclass_name,
+	op.opcdefault AS opclass_default,
+	a2.attoptions AS opclass_params
 FROM
 	(
 		select
@@ -1091,6 +1130,8 @@ FROM
 	LEFT JOIN pg_constraint c ON idx.indexrelid = c.conindid
 	LEFT JOIN pg_attribute a ON (a.attrelid, a.attnum) = (idx.indrelid, idx.key)
 	JOIN pg_am am ON am.oid = i.relam
+	LEFT JOIN pg_opclass op ON op.oid = idx.indclass[idx.ord-1]
+	LEFT JOIN pg_attribute a2 ON (a2.attrelid, a2.attnum) = (idx.indexrelid, idx.ord)
 WHERE
 	n.nspname = $1
 	AND t.relname IN (%s)
