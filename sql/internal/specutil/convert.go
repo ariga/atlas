@@ -470,7 +470,7 @@ func ExprValue(expr schema.Expr) (cty.Value, error) {
 }
 
 // FromIndex converts schema.Index to sqlspec.Index.
-func FromIndex(idx *schema.Index, partFns ...func(*schema.IndexPart, *sqlspec.IndexPart)) (*sqlspec.Index, error) {
+func FromIndex(idx *schema.Index, partFns ...func(*schema.Index, *schema.IndexPart, *sqlspec.IndexPart) error) (*sqlspec.Index, error) {
 	spec := &sqlspec.Index{Name: idx.Name, Unique: idx.Unique}
 	convertCommentFromSchema(idx.Attrs, &spec.Extra.Attrs)
 	spec.Parts = make([]*sqlspec.IndexPart, len(idx.Parts))
@@ -491,7 +491,9 @@ func FromIndex(idx *schema.Index, partFns ...func(*schema.IndexPart, *sqlspec.In
 			part.Expr = x.X
 		}
 		for _, f := range partFns {
-			f(p, part)
+			if err := f(idx, p, part); err != nil {
+				return nil, err
+			}
 		}
 		spec.Parts[i] = part
 	}

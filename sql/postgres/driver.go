@@ -383,10 +383,11 @@ const (
 // List of supported index types.
 const (
 	IndexTypeBTree      = "BTREE"
+	IndexTypeBRIN       = "BRIN"
 	IndexTypeHash       = "HASH"
 	IndexTypeGIN        = "GIN"
 	IndexTypeGiST       = "GIST"
-	IndexTypeBRIN       = "BRIN"
+	IndexTypeSPGiST     = "SPGIST"
 	defaultPagePerRange = 128
 )
 
