@@ -135,6 +135,11 @@ module.exports = {
                 },
                 {
                     type: 'doc',
+                    id: 'guides/mysql/mysql-my-102',
+                    label: 'Inline REFERENCES (MY102)'
+                },
+                {
+                    type: 'doc',
                     id: 'guides/mysql/mysql-ds-103',
                     label: 'Column Drop (DS103)'
                 },
