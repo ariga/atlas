@@ -155,26 +155,28 @@ table_name | column_name |      data_type      | formatted |  is_nullable |     
 users      | id          | bigint              | int8      |  NO          |                                 |                          |                64 |                    |             0 |               |                    |                | NO          |                |                    |                  |                     |                       |         | b       |         |         |    20
 users      | c1          | smallint            | int2      |  NO          |                                 |                          |                16 |                    |             0 |               |                    |                | NO          |                |                    |                  |                     |                       |         | b       |         |         |    21
 users      | parent_id   | bigint              | int8      |  YES         |                                 |                          |                64 |                    |             0 |               |                    |                | NO          |                |                    |                  |                     |                       |         | b       |         |         |    22
+users      | ts          | tsvector            | tsvector  |  NO          |                                 |                          |                   |                    |             0 |               |                    |                | NO          |                |                    |                  |                     |                       |         | b       |         |         |    23
 `))
 				m.ExpectQuery(queryIndexes).
 					WithArgs("public", "users").
 					WillReturnRows(sqltest.Rows(`
-   table_name   |    index_name   | index_type  | column_name | included | primary | unique | constraint_type | predicate             |   expression              | desc | nulls_first | nulls_last | comment   | options
-----------------+-----------------+-------------+-------------+----------+---------+--------+-----------------+-----------------------+---------------------------+------+-------------+------------+-----------+-----------
-users           | idx             | hash        |             | f        | f       | f      |                 |                       | "left"((c11)::text, 100)  | t    | t           | f          | boring    |
-users           | idx1            | btree       |             | f        | f       | f      |                 | (id <> NULL::integer) | "left"((c11)::text, 100)  | t    | t           | f          |           |
-users           | t1_c1_key       | btree       | c1          | f        | f       | t      | u               |                       | c1                        | t    | t           | f          |           |
-users           | t1_pkey         | btree       | id          | f        | t       | t      | p               |                       | id                        | t    | f           | f          |           |
-users           | idx4            | btree       | c1          | f        | f       | t      |                 |                       | c1                        | f    | f           | f          |           |
-users           | idx4            | btree       | id          | f        | f       | t      |                 |                       | id                        | f    | f           | t          |           |
-users           | idx5            | btree       | c1          | f        | f       | t      |                 |                       | c1                        | f    | f           | f          |           |
-users           | idx5            | btree       |             | f        | f       | t      |                 |                       | coalesce(parent_id, 0)    | f    | f           | f          |           |
-users           | idx6            | brin        | c1          | f        | f       | t      |                 |                       |                           | f    | f           | f          |           | {autosummarize=true,pages_per_range=2}
-users           | idx2            | btree       |             | f        | f       | f      |                 |                       | ((c * 2))                 | f    | f           | t          |           | 
-users           | idx2            | btree       | c1          | f        | f       | f      |                 |                       | c                         | f    | f           | t          |           | 
-users           | idx2            | btree       | id          | f        | f       | f      |                 |                       | d                         | f    | f           | t          |           | 
-users           | idx2            | btree       | c1          | t        | f       | f      |                 |                       | c                         |      |             |            |           | 
-users           | idx2            | btree       | parent_id   | t        | f       | f      |                 |                       | d                         |      |             |            |           |
+   table_name   |    index_name   | index_type  | column_name | included | primary | unique | constraint_type | predicate             |   expression              | desc | nulls_first | nulls_last | comment   |                 options               |   opclass_name    | opclass_default | opclass_params 
+----------------+-----------------+-------------+-------------+----------+---------+--------+-----------------+-----------------------+---------------------------+------+-------------+------------+-----------+---------------------------------------+-------------------+-----------------+----------------
+users           | idx             | hash        |             | f        | f       | f      |                 |                       | "left"((c11)::text, 100)  | t    | t           | f          | boring    |                                       |     int4_ops      |        t        |
+users           | idx1            | btree       |             | f        | f       | f      |                 | (id <> NULL::integer) | "left"((c11)::text, 100)  | t    | t           | f          |           |                                       |     int4_ops      |        t        |
+users           | t1_c1_key       | btree       | c1          | f        | f       | t      | u               |                       | c1                        | t    | t           | f          |           |                                       |     int4_ops      |        t        |
+users           | t1_pkey         | btree       | id          | f        | t       | t      | p               |                       | id                        | t    | f           | f          |           |                                       |     int4_ops      |        t        |
+users           | idx4            | btree       | c1          | f        | f       | t      |                 |                       | c1                        | f    | f           | f          |           |                                       |     int4_ops      |        t        |
+users           | idx4            | btree       | id          | f        | f       | t      |                 |                       | id                        | f    | f           | t          |           |                                       |     int4_ops      |        t        |
+users           | idx5            | btree       | c1          | f        | f       | t      |                 |                       | c1                        | f    | f           | f          |           |                                       |     int4_ops      |        t        |
+users           | idx5            | btree       |             | f        | f       | t      |                 |                       | coalesce(parent_id, 0)    | f    | f           | f          |           |                                       |     int4_ops      |        t        |
+users           | idx6            | brin        | c1          | f        | f       | t      |                 |                       |                           | f    | f           | f          |           | {autosummarize=true,pages_per_range=2}|     int4_ops      |        t        |
+users           | idx2            | btree       |             | f        | f       | f      |                 |                       | ((c * 2))                 | f    | f           | t          |           |                                       |     int4_ops      |        t        |
+users           | idx2            | btree       | c1          | f        | f       | f      |                 |                       | c                         | f    | f           | t          |           |                                       |     int4_ops      |        t        |
+users           | idx2            | btree       | id          | f        | f       | f      |                 |                       | d                         | f    | f           | t          |           |                                       |     int4_ops      |        t        |
+users           | idx2            | btree       | c1          | t        | f       | f      |                 |                       | c                         |      |             |            |           |                                       |     int4_ops      |        t        |
+users           | idx2            | btree       | parent_id   | t        | f       | f      |                 |                       | d                         |      |             |            |           |                                       |     int4_ops      |        t        |
+users           | tsx             | gist        | ts          | f        | f       | f      |                 |                       | ts                        |      |             |            |           |                                       |     tsvector_ops  |        f        | {siglen=1}
 `))
 				m.noFKs()
 				m.noChecks()
@@ -186,6 +188,7 @@ users           | idx2            | btree       | parent_id   | t        | f    
 					{Name: "id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
 					{Name: "c1", Type: &schema.ColumnType{Raw: "smallint", Type: &schema.IntegerType{T: "smallint"}}},
 					{Name: "parent_id", Type: &schema.ColumnType{Raw: "bigint", Null: true, Type: &schema.IntegerType{T: "bigint"}}},
+					{Name: "ts", Type: &schema.ColumnType{Raw: "tsvector", Type: &TextSearchType{T: "tsvector"}}},
 				}
 				indexes := []*schema.Index{
 					{Name: "idx", Table: t, Attrs: []schema.Attr{&IndexType{T: "hash"}, &schema.Comment{Text: "boring"}}, Parts: []*schema.IndexPart{{SeqNo: 1, X: &schema.RawExpr{X: `"left"((c11)::text, 100)`}, Desc: true, Attrs: []schema.Attr{&IndexColumnProperty{NullsFirst: true}}}}},
@@ -194,7 +197,8 @@ users           | idx2            | btree       | parent_id   | t        | f    
 					{Name: "idx4", Unique: true, Table: t, Attrs: []schema.Attr{&IndexType{T: "btree"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1]}, {SeqNo: 2, C: columns[0], Attrs: []schema.Attr{&IndexColumnProperty{NullsLast: true}}}}},
 					{Name: "idx5", Unique: true, Table: t, Attrs: []schema.Attr{&IndexType{T: "btree"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1]}, {SeqNo: 2, X: &schema.RawExpr{X: `coalesce(parent_id, 0)`}}}},
 					{Name: "idx6", Unique: true, Table: t, Attrs: []schema.Attr{&IndexType{T: "brin"}, &IndexStorageParams{AutoSummarize: true, PagesPerRange: 2}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[1]}}},
-					{Name: "idx2", Unique: false, Table: t, Attrs: []schema.Attr{&IndexType{T: "btree"}, &IndexInclude{Columns: columns[1:]}}, Parts: []*schema.IndexPart{{SeqNo: 1, X: &schema.RawExpr{X: `((c * 2))`}, Attrs: []schema.Attr{&IndexColumnProperty{NullsLast: true}}}, {SeqNo: 2, C: columns[1], Attrs: []schema.Attr{&IndexColumnProperty{NullsLast: true}}}, {SeqNo: 3, C: columns[0], Attrs: []schema.Attr{&IndexColumnProperty{NullsLast: true}}}}},
+					{Name: "idx2", Unique: false, Table: t, Attrs: []schema.Attr{&IndexType{T: "btree"}, &IndexInclude{Columns: columns[1:3]}}, Parts: []*schema.IndexPart{{SeqNo: 1, X: &schema.RawExpr{X: `((c * 2))`}, Attrs: []schema.Attr{&IndexColumnProperty{NullsLast: true}}}, {SeqNo: 2, C: columns[1], Attrs: []schema.Attr{&IndexColumnProperty{NullsLast: true}}}, {SeqNo: 3, C: columns[0], Attrs: []schema.Attr{&IndexColumnProperty{NullsLast: true}}}}},
+					{Name: "tsx", Unique: false, Table: t, Attrs: []schema.Attr{&IndexType{T: "gist"}}, Parts: []*schema.IndexPart{{SeqNo: 1, C: columns[3], Attrs: []schema.Attr{&IndexOpClass{Name: "tsvector_ops", Params: []struct{ N, V string }{{N: "siglen", V: "1"}}}}}}},
 				}
 				pk := &schema.Index{
 					Name:   "t1_pkey",
@@ -204,7 +208,8 @@ users           | idx2            | btree       | parent_id   | t        | f    
 					Parts:  []*schema.IndexPart{{SeqNo: 1, C: columns[0], Desc: true}},
 				}
 				columns[0].Indexes = append(columns[0].Indexes, pk, indexes[3], indexes[6])
-				columns[1].Indexes = indexes[2:]
+				columns[1].Indexes = indexes[2:7]
+				columns[3].Indexes = indexes[7:]
 				require.EqualValues(columns, t.Columns)
 				require.EqualValues(indexes, t.Indexes)
 				require.EqualValues(pk, t.PrimaryKey)
