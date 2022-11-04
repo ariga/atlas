@@ -11,8 +11,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"ariga.io/atlas/sql/internal/sqlx"
+	"ariga.io/atlas/sql/postgres/internal/postgresop"
 	"ariga.io/atlas/sql/schema"
 )
 
@@ -893,6 +895,68 @@ func (s *SerialType) sequence(t *schema.Table, c *schema.Column) string {
 		return s.SequenceName
 	}
 	return fmt.Sprintf("%s_%s_seq", t.Name, c.Name)
+}
+
+var (
+	opsOnce    sync.Once
+	defaultOps map[postgresop.Class]bool
+)
+
+// DefaultFor reports if the operator_class is the default for the index part.
+func (o *IndexOpClass) DefaultFor(idx *schema.Index, part *schema.IndexPart) (bool, error) {
+	if len(o.Params) > 0 {
+		return false, nil
+	}
+	var it IndexType
+	// The type of the key need to be known in order to check
+	// if it is the default operator class.
+	if part.X != nil || !sqlx.Has(idx.Attrs, &it) || o.Default {
+		return false, nil
+	}
+	opsOnce.Do(func() {
+		defaultOps = make(map[postgresop.Class]bool, len(postgresop.Classes))
+		for _, op := range postgresop.Classes {
+			if op.Default {
+				defaultOps[postgresop.Class{Name: op.Name, Method: op.Method, Type: op.Type}] = true
+			}
+		}
+	})
+	var (
+		t   string
+		err error
+	)
+	switch typ := part.C.Type.Type.(type) {
+	case *schema.EnumType:
+		t = "anyenum"
+	case *ArrayType:
+		t = "anyarray"
+	default:
+		t, err = FormatType(typ)
+		if err != nil {
+			return false, fmt.Errorf("postgres: format operator-class type %T: %w", typ, err)
+		}
+	}
+	return defaultOps[postgresop.Class{Name: o.Name, Method: strings.ToUpper(it.T), Type: t}], nil
+}
+
+// String returns the string representation of the operator class.
+func (o *IndexOpClass) String() string {
+	if len(o.Params) == 0 {
+		return o.Name
+	}
+	var b strings.Builder
+	b.WriteString(o.Name)
+	b.WriteString("(")
+	for i, p := range o.Params {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(p.N)
+		b.WriteString("=")
+		b.WriteString(p.V)
+	}
+	b.WriteString(")")
+	return b.String()
 }
 
 // newIndexStorage parses and returns the index storage parameters.

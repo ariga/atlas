@@ -155,7 +155,9 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 		})
 		if pk := add.T.PrimaryKey; pk != nil {
 			b.Comma().P("PRIMARY KEY")
-			s.indexParts(b, pk.Parts)
+			if err := s.indexParts(b, pk); err != nil {
+				errs = append(errs, err.Error())
+			}
 		}
 		if len(add.T.ForeignKeys) > 0 {
 			b.Comma()
@@ -184,7 +186,9 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 		Comment: fmt.Sprintf("create %q table", add.T.Name),
 		Reverse: s.Build("DROP TABLE").Table(add.T).String(),
 	})
-	s.addIndexes(add.T, add.T.Indexes...)
+	if err := s.addIndexes(add.T, add.T.Indexes...); err != nil {
+		return err
+	}
 	s.addComments(add.T)
 	return nil
 }
@@ -377,7 +381,9 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 				}
 			case *schema.AddIndex:
 				b.P("ADD CONSTRAINT").Ident(change.I.Name).P("UNIQUE")
-				s.indexParts(b, change.I.Parts)
+				if err := s.indexParts(b, change.I); err != nil {
+					return err
+				}
 				// Skip reversing this operation as it is the inverse of
 				// the operation below and should not be used besides this.
 			case *schema.DropIndex:
@@ -780,7 +786,7 @@ func (s *state) mayDropEnum(alter *alterChange, ns *schema.Schema, e *schema.Enu
 	return nil
 }
 
-func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) {
+func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) error {
 	for _, idx := range indexes {
 		b := s.Build("CREATE")
 		if idx.Unique {
@@ -794,7 +800,9 @@ func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) {
 			b.Ident(idx.Name)
 		}
 		b.P("ON").Table(t)
-		s.index(b, idx)
+		if err := s.index(b, idx); err != nil {
+			return err
+		}
 		s.append(&migrate.Change{
 			Cmd:     b.String(),
 			Comment: fmt.Sprintf("create index %q to table: %q", idx.Name, t.Name),
@@ -815,6 +823,7 @@ func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) {
 			}(),
 		})
 	}
+	return nil
 }
 
 func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error {
@@ -877,28 +886,41 @@ func (s *state) columnDefault(b *sqlx.Builder, c *schema.Column) {
 		}
 		b.P("DEFAULT", v)
 	case *schema.RawExpr:
-		// Ignore identity functions added by the differ.
+		// Ignore identity functions added by the Differ.
 		if _, ok := c.Type.Type.(*SerialType); !ok {
 			b.P("DEFAULT", x.X)
 		}
 	}
 }
 
-func (s *state) indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {
+func (s *state) indexParts(b *sqlx.Builder, idx *schema.Index) (err error) {
 	b.Wrap(func(b *sqlx.Builder) {
-		b.MapComma(parts, func(i int, b *sqlx.Builder) {
-			switch part := parts[i]; {
+		err = b.MapCommaErr(idx.Parts, func(i int, b *sqlx.Builder) error {
+			switch part := idx.Parts[i]; {
 			case part.C != nil:
 				b.Ident(part.C.Name)
 			case part.X != nil:
 				b.WriteString(sqlx.MayWrap(part.X.(*schema.RawExpr).X))
 			}
-			s.partAttrs(b, parts[i])
+			return s.partAttrs(b, idx, idx.Parts[i])
 		})
 	})
+	return
 }
 
-func (s *state) partAttrs(b *sqlx.Builder, p *schema.IndexPart) {
+func (s *state) partAttrs(b *sqlx.Builder, idx *schema.Index, p *schema.IndexPart) error {
+	if c := (schema.Collation{}); sqlx.Has(p.Attrs, &c) {
+		b.P("COLLATE").Ident(c.V)
+	}
+	if op := (IndexOpClass{}); sqlx.Has(p.Attrs, &op) {
+		d, err := op.DefaultFor(idx, p)
+		if err != nil {
+			return err
+		}
+		if !d {
+			b.P(op.String())
+		}
+	}
 	if p.Desc {
 		b.P("DESC")
 	}
@@ -915,20 +937,23 @@ func (s *state) partAttrs(b *sqlx.Builder, p *schema.IndexPart) {
 			case !p.Desc && attr.NullsFirst:
 				b.P("NULL FIRST")
 			}
-		case *schema.Collation:
-			b.P("COLLATE").Ident(attr.V)
+		// Handled above.
+		case *IndexOpClass, *schema.Collation:
 		default:
-			panic(fmt.Sprintf("unexpected index part attribute: %T", attr))
+			return fmt.Errorf("postgres: unexpected index part attribute: %T", attr)
 		}
 	}
+	return nil
 }
 
-func (s *state) index(b *sqlx.Builder, idx *schema.Index) {
+func (s *state) index(b *sqlx.Builder, idx *schema.Index) error {
 	// Avoid appending the default method.
 	if t := (IndexType{}); sqlx.Has(idx.Attrs, &t) && strings.ToUpper(t.T) != IndexTypeBTree {
 		b.P("USING", t.T)
 	}
-	s.indexParts(b, idx.Parts)
+	if err := s.indexParts(b, idx); err != nil {
+		return err
+	}
 	if c := (IndexInclude{}); sqlx.Has(idx.Attrs, &c) {
 		b.P("INCLUDE")
 		b.Wrap(func(b *sqlx.Builder) {
@@ -957,9 +982,10 @@ func (s *state) index(b *sqlx.Builder, idx *schema.Index) {
 		switch attr.(type) {
 		case *schema.Comment, *ConType, *IndexType, *IndexInclude, *Concurrently, *IndexPredicate, *IndexStorageParams:
 		default:
-			panic(fmt.Sprintf("unexpected index attribute: %T", attr))
+			return fmt.Errorf("postgres: unexpected index attribute: %T", attr)
 		}
 	}
+	return nil
 }
 
 func (s *state) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
