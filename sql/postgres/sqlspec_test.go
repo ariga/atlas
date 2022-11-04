@@ -316,6 +316,95 @@ table "t" {
 	require.EqualValues(t, 2, idx.Attrs[1].(*IndexStorageParams).PagesPerRange)
 }
 
+func TestUnmarshalSpec_IndexOpClass(t *testing.T) {
+	const f = `table "users" {
+  schema = schema.test
+  column "a" {
+    null = false
+    type = text
+  }
+  column "b" {
+    null = false
+    type = tsvector
+  }
+  index "idx0" {
+    unique  = true
+    columns = [column.a, column.b]
+  }
+  index "idx1" {
+    unique = true
+    on {
+      column = column.a
+      ops    = text_pattern_ops
+    }
+    on {
+      column = column.b
+    }
+  }
+  index "idx2" {
+    unique  = true
+    columns = [column.a]
+  }
+  index "idx3" {
+    unique = true
+    on {
+      column = column.a
+      ops    = text_pattern_ops
+    }
+  }
+  index "idx4" {
+    unique = true
+    type   = GIST
+    on {
+      column = column.b
+      ops    = sql("tsvector_ops(siglen=1)")
+    }
+  }
+}
+schema "test" {
+}
+`
+	var s schema.Schema
+	err := EvalHCLBytes([]byte(f), &s, nil)
+	require.NoError(t, err)
+	// idx0
+	idx := s.Tables[0].Indexes[0]
+	require.Len(t, idx.Parts, 2)
+	require.Equal(t, "a", idx.Parts[0].C.Name)
+	require.Empty(t, idx.Parts[0].Attrs)
+	require.Equal(t, "b", idx.Parts[1].C.Name)
+	require.Empty(t, idx.Parts[1].Attrs)
+	// idx1
+	idx = s.Tables[0].Indexes[1]
+	require.Len(t, idx.Parts, 2)
+	require.Equal(t, "a", idx.Parts[0].C.Name)
+	require.Len(t, idx.Parts[0].Attrs, 1)
+	require.Equal(t, "text_pattern_ops", idx.Parts[0].Attrs[0].(*IndexOpClass).Name)
+	require.Equal(t, "b", idx.Parts[1].C.Name)
+	require.Empty(t, idx.Parts[1].Attrs)
+	// idx2
+	idx = s.Tables[0].Indexes[2]
+	require.Len(t, idx.Parts, 1)
+	require.Equal(t, "a", idx.Parts[0].C.Name)
+	require.Empty(t, idx.Parts[0].Attrs)
+	// idx3
+	idx = s.Tables[0].Indexes[3]
+	require.Len(t, idx.Parts, 1)
+	require.Equal(t, "a", idx.Parts[0].C.Name)
+	require.Len(t, idx.Parts[0].Attrs, 1)
+	require.Equal(t, "text_pattern_ops", idx.Parts[0].Attrs[0].(*IndexOpClass).Name)
+	// idx4
+	idx = s.Tables[0].Indexes[4]
+	require.Len(t, idx.Parts, 1)
+	require.Equal(t, "b", idx.Parts[0].C.Name)
+	require.Len(t, idx.Parts[0].Attrs, 1)
+	opc := idx.Parts[0].Attrs[0].(*IndexOpClass)
+	require.Equal(t, "tsvector_ops", opc.Name)
+	require.Len(t, opc.Params, 1)
+	require.Equal(t, "siglen", opc.Params[0].N)
+	require.Equal(t, "1", opc.Params[0].V)
+}
+
 func TestUnmarshalSpec_Partitioned(t *testing.T) {
 	t.Run("Columns", func(t *testing.T) {
 		var (
@@ -692,7 +781,7 @@ func TestMarshalSpec_IndexOpClass(t *testing.T) {
     type   = GIST
     on {
       column = column.b
-      ops    = sql("tsvector_ops(siglen='1')")
+      ops    = sql("tsvector_ops(siglen=1)")
     }
   }
 }
