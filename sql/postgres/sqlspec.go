@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"sync"
 
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/internal/specutil"
@@ -561,29 +560,17 @@ func partAttr(idx *schema.Index, part *schema.IndexPart, spec *sqlspec.IndexPart
 	if !sqlx.Has(part.Attrs, &op) {
 		return nil
 	}
-	if len(op.Params) > 0 {
-		var kv []string
-		for _, e := range op.Params {
-			kv = append(kv, fmt.Sprintf("%s=%s", e.N, e.V))
-		}
-		spec.Extra.Attrs = append(
-			spec.Extra.Attrs,
-			schemahcl.RawAttr("ops", fmt.Sprintf("%s(%s)", op.Name, strings.Join(kv, ", "))),
-		)
-		return nil
+	if d, err := op.DefaultFor(idx, part); err != nil || d {
+		return err
 	}
-	var it IndexType
-	// The type of the key need to be known in order to check
-	// if it is the default operator class.
-	if part.X != nil || !sqlx.Has(idx.Attrs, &it) || op.Default {
-		return nil
-	}
-	d, err := defaultOp(op.Name, it.T, part.C.Type.Type)
-	if err != nil {
-		return fmt.Errorf("postgres: checking if operator_class is default: %w", err)
-	}
-	if !d {
-		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("ops", op.Name))
+	switch d, err := op.DefaultFor(idx, part); {
+	case err != nil:
+		return err
+	case d:
+	case len(op.Params) > 0:
+		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.RawAttr("ops", op.String()))
+	default:
+		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("ops", op.String()))
 	}
 	return nil
 }
@@ -791,36 +778,3 @@ func formatTime() schemahcl.TypeSpecOption {
 
 // generatedType returns the default and only type for a generated column.
 func generatedType(string) string { return "STORED" }
-
-var (
-	opsOnce    sync.Once
-	defaultOps map[postgresop.Class]bool
-)
-
-// defaultOp reports if the given operator class name is the default for the index part.
-func defaultOp(name, method string, typ schema.Type) (bool, error) {
-	opsOnce.Do(func() {
-		defaultOps = make(map[postgresop.Class]bool, len(postgresop.Classes))
-		for _, op := range postgresop.Classes {
-			if op.Default {
-				defaultOps[postgresop.Class{Name: op.Name, Method: op.Method, Type: op.Type}] = true
-			}
-		}
-	})
-	var (
-		t   string
-		err error
-	)
-	switch typ := typ.(type) {
-	case *schema.EnumType:
-		t = "anyenum"
-	case *ArrayType:
-		t = "anyarray"
-	default:
-		t, err = FormatType(typ)
-		if err != nil {
-			return false, err
-		}
-	}
-	return defaultOps[postgresop.Class{Name: name, Method: strings.ToUpper(method), Type: t}], nil
-}

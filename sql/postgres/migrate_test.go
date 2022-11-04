@@ -406,6 +406,19 @@ func TestPlanChanges(t *testing.T) {
 									},
 								},
 							},
+							&schema.AddIndex{
+								I: &schema.Index{
+									Name: "operator_class",
+									Parts: []*schema.IndexPart{
+										{C: users.Columns[0], Attrs: []schema.Attr{&IndexOpClass{Name: "int8_bloom_ops"}}},
+										{C: users.Columns[0], Attrs: []schema.Attr{&IndexOpClass{Name: "int8_minmax_ops"}}},
+										{C: users.Columns[0], Attrs: []schema.Attr{&IndexOpClass{Name: "int8_minmax_multi_ops", Params: []struct{ N, V string }{{"values_per_range", "8"}}}}},
+									},
+									Attrs: []schema.Attr{
+										&IndexType{T: IndexTypeBRIN},
+									},
+								},
+							},
 						},
 					}
 				}(),
@@ -433,6 +446,10 @@ func TestPlanChanges(t *testing.T) {
 					{
 						Cmd:     `CREATE INDEX CONCURRENTLY "concurrently" ON "users" ("id")`,
 						Reverse: `DROP INDEX CONCURRENTLY "concurrently"`,
+					},
+					{
+						Cmd:     `CREATE INDEX "operator_class" ON "users" USING BRIN ("id" int8_bloom_ops, "id", "id" int8_minmax_multi_ops(values_per_range=8))`,
+						Reverse: `DROP INDEX "operator_class"`,
 					},
 					{
 						Cmd:     `COMMENT ON COLUMN "users" ."name" IS 'foo'`,
