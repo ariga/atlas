@@ -303,7 +303,7 @@ func fixDefaultQuotes(spec *sqlspec.Column) error {
 
 // convertIndex converts a sqlspec.Index into a schema.Index.
 func convertIndex(spec *sqlspec.Index, t *schema.Table) (*schema.Index, error) {
-	idx, err := specutil.Index(spec, t)
+	idx, err := specutil.Index(spec, t, convertPart)
 	if err != nil {
 		return nil, err
 	}
@@ -345,6 +345,38 @@ func convertIndex(spec *sqlspec.Index, t *schema.Table) (*schema.Index, error) {
 		idx.Attrs = append(idx.Attrs, &IndexInclude{Columns: include})
 	}
 	return idx, nil
+}
+
+func convertPart(spec *sqlspec.IndexPart, part *schema.IndexPart) error {
+	switch opc, ok := spec.Attr("ops"); {
+	case !ok:
+	case opc.IsRawExpr():
+		expr, err := opc.RawExpr()
+		if err != nil {
+			return err
+		}
+		switch parts := strings.Split(expr.X, "("); {
+		case len(parts) == 1 && parts[0] != "":
+			part.Attrs = append(part.Attrs, &IndexOpClass{Name: parts[0]})
+		case len(parts) == 2 && strings.HasSuffix(parts[1], ")"):
+			return mayAppendOps(part, parts[0], fmt.Sprintf("{%s}", parts[1][:len(parts[1])-1]), false)
+		default:
+			return fmt.Errorf("unexpected index.on.ops expression %q", expr.X)
+		}
+	case opc.IsRef():
+		name, err := opc.Ref()
+		if err != nil {
+			return err
+		}
+		part.Attrs = append(part.Attrs, &IndexOpClass{Name: name})
+	default:
+		name, err := opc.String()
+		if err != nil {
+			return err
+		}
+		part.Attrs = append(part.Attrs, &IndexOpClass{Name: name})
+	}
+	return nil
 }
 
 const defaultTimePrecision = 6
@@ -532,7 +564,7 @@ func partAttr(idx *schema.Index, part *schema.IndexPart, spec *sqlspec.IndexPart
 	if len(op.Params) > 0 {
 		var kv []string
 		for _, e := range op.Params {
-			kv = append(kv, fmt.Sprintf("%s='%s'", e.N, e.V))
+			kv = append(kv, fmt.Sprintf("%s=%s", e.N, e.V))
 		}
 		spec.Extra.Attrs = append(
 			spec.Extra.Attrs,
