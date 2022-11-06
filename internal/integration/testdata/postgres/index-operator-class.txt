@@ -1,3 +1,7 @@
+# Run this test only on 14 because tsvector_ops
+# parameters are not supported in old versions.
+only postgres14
+
 apply 1.hcl
 cmpshow pets 1.sql
 

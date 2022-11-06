@@ -409,6 +409,14 @@ index "idx_include" {
   columns = [column.range]
   include = [column.version]
 }
+
+index "idx_operator_class" {
+  type = GIN
+  on {
+    column = column.j
+    ops    = jsonb_path_ops
+  }
+}
 ```
 
 #### Properties
