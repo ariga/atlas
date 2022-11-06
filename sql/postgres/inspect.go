@@ -904,13 +904,16 @@ var (
 
 // DefaultFor reports if the operator_class is the default for the index part.
 func (o *IndexOpClass) DefaultFor(idx *schema.Index, part *schema.IndexPart) (bool, error) {
-	if len(o.Params) > 0 {
-		return false, nil
+	// Explicitly defined as the default (Usually, it comes from the inspection).
+	if o.Default && len(o.Params) == 0 {
+		return true, nil
 	}
-	var it IndexType
-	// The type of the key need to be known in order to check
-	// if it is the default operator class.
-	if part.X != nil || !sqlx.Has(idx.Attrs, &it) || o.Default {
+	it := &IndexType{T: IndexTypeBTree}
+	if sqlx.Has(idx.Attrs, it) {
+		it.T = strings.ToUpper(it.T)
+	}
+	// The key type must be known to check if it is the default op_class.
+	if part.X != nil || len(o.Params) > 0 {
 		return false, nil
 	}
 	opsOnce.Do(func() {
@@ -936,7 +939,20 @@ func (o *IndexOpClass) DefaultFor(idx *schema.Index, part *schema.IndexPart) (bo
 			return false, fmt.Errorf("postgres: format operator-class type %T: %w", typ, err)
 		}
 	}
-	return defaultOps[postgresop.Class{Name: o.Name, Method: strings.ToUpper(it.T), Type: t}], nil
+	return defaultOps[postgresop.Class{Name: o.Name, Method: it.T, Type: t}], nil
+}
+
+// Equal reports whether o and x are the same operator class.
+func (o *IndexOpClass) Equal(x *IndexOpClass) bool {
+	if o.Name != x.Name || o.Default != x.Default || len(o.Params) != len(x.Params) {
+		return false
+	}
+	for i := range o.Params {
+		if o.Params[i].N != x.Params[i].N || o.Params[i].V != x.Params[i].V {
+			return false
+		}
+	}
+	return true
 }
 
 // String returns the string representation of the operator class.

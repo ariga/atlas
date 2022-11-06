@@ -112,7 +112,7 @@ func MarshalSpec(v any, marshaler schemahcl.Marshaler) ([]byte, error) {
 var (
 	hclState = schemahcl.New(
 		schemahcl.WithTypes(TypeRegistry.Specs()),
-		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeBRIN, IndexTypeHash, IndexTypeGIN, IndexTypeGiST, IndexTypeSPGiST),
+		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeBRIN, IndexTypeHash, IndexTypeGIN, IndexTypeGiST, "GiST", IndexTypeSPGiST, "SPGiST"),
 		schemahcl.WithScopedEnums("table.partition.type", PartitionTypeRange, PartitionTypeList, PartitionTypeHash),
 		schemahcl.WithScopedEnums("table.column.identity.generated", GeneratedTypeAlways, GeneratedTypeByDefault),
 		schemahcl.WithScopedEnums("table.column.as.type", "STORED"),
@@ -311,7 +311,7 @@ func convertIndex(spec *sqlspec.Index, t *schema.Table) (*schema.Index, error) {
 		if err != nil {
 			return nil, err
 		}
-		idx.Attrs = append(idx.Attrs, &IndexType{T: t})
+		idx.Attrs = append(idx.Attrs, &IndexType{T: strings.ToUpper(t)})
 	}
 	if attr, ok := spec.Attr("where"); ok {
 		p, err := attr.String()
@@ -559,9 +559,6 @@ func partAttr(idx *schema.Index, part *schema.IndexPart, spec *sqlspec.IndexPart
 	var op IndexOpClass
 	if !sqlx.Has(part.Attrs, &op) {
 		return nil
-	}
-	if d, err := op.DefaultFor(idx, part); err != nil || d {
-		return err
 	}
 	switch d, err := op.DefaultFor(idx, part); {
 	case err != nil:

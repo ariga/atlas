@@ -162,9 +162,9 @@ func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 }
 
 // IndexPartAttrChanged reports if the index-part attributes (collation or prefix) were changed.
-func (*diff) IndexPartAttrChanged(from, to *schema.IndexPart) bool {
+func (*diff) IndexPartAttrChanged(fromI, toI *schema.Index, i int) bool {
 	var s1, s2 SubPart
-	return sqlx.Has(from.Attrs, &s1) != sqlx.Has(to.Attrs, &s2) || s1.Len != s2.Len
+	return sqlx.Has(fromI.Parts[i].Attrs, &s1) != sqlx.Has(toI.Parts[i].Attrs, &s2) || s1.Len != s2.Len
 }
 
 // ReferenceChanged reports if the foreign key referential action was changed.
