@@ -158,7 +158,7 @@ func TestSpanner_ColumnInt(t *testing.T) {
 			t.dropTables(usersT.Name)
 			change(usersT.Columns[1])
 			changes := t.diff(t.loadUsers(), usersT)
-			require.Len(t, changes, 2)
+			require.Len(t, changes, 1)
 			t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
 			ensureNoChange(t, usersT)
 		})
@@ -175,13 +175,6 @@ func TestSpanner_ColumnInt(t *testing.T) {
 			c.Type.Type = &schema.StringType{T: "STRING", Size: 41}
 		})
 	})
-
-	// note that the spanner emulator does not implement default values
-	// t.Run("ChangeDefault", func(t *testing.T) {
-	// 	run(t, func(c *schema.Column) {
-	// 		c.Default = &schema.RawExpr{X: "0"}
-	// 	})
-	// })
 }
 
 func TestSpanner_HCL(t *testing.T) {

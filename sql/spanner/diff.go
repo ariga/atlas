@@ -111,5 +111,5 @@ func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
 	if ok1 != ok2 {
 		return true, nil
 	}
-	return d1 == d2, nil
+	return d1 != d2, nil
 }
