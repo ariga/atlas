@@ -652,10 +652,10 @@ func (i *Index) AddParts(parts ...*IndexPart) *Index {
 func NewIndexPart() *IndexPart { return &IndexPart{} }
 
 // NewColumnPart creates a new index part with the given column.
-func NewColumnPart(c *Column) *IndexPart { return &IndexPart{C: c} }
+func NewColumnPart(c *Column) *IndexPart { return NewIndexPart().SetColumn(c) }
 
 // NewExprPart creates a new index part with the given expression.
-func NewExprPart(x Expr) *IndexPart { return &IndexPart{X: x} }
+func NewExprPart(x Expr) *IndexPart { return NewIndexPart().SetExpr(x) }
 
 // SetDesc configures the "DESC" attribute of the key part.
 func (p *IndexPart) SetDesc(b bool) *IndexPart {

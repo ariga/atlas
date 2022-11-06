@@ -173,12 +173,30 @@ func (*diff) IndexAttrChanged(from, to []schema.Attr) bool {
 }
 
 // IndexPartAttrChanged reports if the index-part attributes were changed.
-func (*diff) IndexPartAttrChanged(from, to *schema.IndexPart) bool {
+func (*diff) IndexPartAttrChanged(fromI, toI *schema.Index, i int) bool {
+	from, to := fromI.Parts[i], toI.Parts[i]
 	p1 := &IndexColumnProperty{NullsFirst: from.Desc, NullsLast: !from.Desc}
 	sqlx.Has(from.Attrs, p1)
 	p2 := &IndexColumnProperty{NullsFirst: to.Desc, NullsLast: !to.Desc}
 	sqlx.Has(to.Attrs, p2)
-	return p1.NullsFirst != p2.NullsFirst || p1.NullsLast != p2.NullsLast
+	if p1.NullsFirst != p2.NullsFirst || p1.NullsLast != p2.NullsLast {
+		return true
+	}
+	var fromOp, toOp IndexOpClass
+	switch fromHas, toHas := sqlx.Has(from.Attrs, &fromOp), sqlx.Has(to.Attrs, &toOp); {
+	case fromHas && toHas:
+		return !fromOp.Equal(&toOp)
+	case toHas:
+		// Report a change if a non-default operator class was added.
+		d, err := toOp.DefaultFor(toI, toI.Parts[i])
+		return !d && err == nil
+	case fromHas:
+		// Report a change if a non-default operator class was removed.
+		d, err := fromOp.DefaultFor(fromI, fromI.Parts[i])
+		return !d && err == nil
+	default:
+		return false
+	}
 }
 
 // ReferenceChanged reports if the foreign key referential action was changed.

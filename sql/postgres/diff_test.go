@@ -377,6 +377,43 @@ func TestDiff_TableDiff(t *testing.T) {
 		}(),
 		func() testcase {
 			var (
+				from = schema.NewTable("t1").
+					SetSchema(schema.New("public")).
+					AddColumns(schema.NewIntColumn("c1", "int8"))
+				to = schema.NewTable("t1").
+					SetSchema(schema.New("public")).
+					AddColumns(schema.NewIntColumn("c1", "int8"))
+			)
+			from.Indexes = []*schema.Index{
+				schema.NewIndex("idx1").AddParts(schema.NewColumnPart(from.Columns[0])),
+				schema.NewIndex("idx2").AddParts(schema.NewColumnPart(from.Columns[0])),
+				schema.NewIndex("idx3").AddParts(schema.NewColumnPart(from.Columns[0])),
+				schema.NewIndex("idx4").AddParts(schema.NewColumnPart(to.Columns[0]).AddAttrs(&IndexOpClass{Name: "int8_ops"})),
+				schema.NewIndex("idx5").AddParts(schema.NewColumnPart(to.Columns[0]).AddAttrs(&IndexOpClass{Name: "int8_ops"})),
+			}
+			to.Indexes = []*schema.Index{
+				// A default operator class was added.
+				schema.NewIndex("idx1").AddParts(schema.NewColumnPart(to.Columns[0]).AddAttrs(&IndexOpClass{Name: "int8_ops"})),
+				// Unrecognized operator class with explicit default.
+				schema.NewIndex("idx2").AddParts(schema.NewColumnPart(to.Columns[0]).AddAttrs(&IndexOpClass{Name: "int8_custom", Default: true})),
+				// A default operator class but with custom parameters.
+				schema.NewIndex("idx3").AddParts(schema.NewColumnPart(to.Columns[0]).AddAttrs(&IndexOpClass{Name: "int8_ops", Params: []struct{ N, V string }{{"signlen", "1"}}})),
+				// A default operator class was dropped.
+				schema.NewIndex("idx4").AddParts(schema.NewColumnPart(from.Columns[0])),
+				// Equal operators.
+				schema.NewIndex("idx5").AddParts(schema.NewColumnPart(to.Columns[0]).AddAttrs(&IndexOpClass{Name: "int8_ops"})),
+			}
+			return testcase{
+				name: "operator class",
+				from: from,
+				to:   to,
+				wantChanges: []schema.Change{
+					&schema.ModifyIndex{From: from.Indexes[2], To: to.Indexes[2], Change: schema.ChangeParts},
+				},
+			}
+		}(),
+		func() testcase {
+			var (
 				ref = &schema.Table{
 					Name: "t2",
 					Schema: &schema.Schema{

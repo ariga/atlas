@@ -284,12 +284,17 @@ table "t" {
 	t.Run("Valid", func(t *testing.T) {
 		var (
 			s schema.Schema
-			f = fmt.Sprintf(f, "HASH")
+			r = fmt.Sprintf(f, "HASH")
 		)
-		err := EvalHCLBytes([]byte(f), &s, nil)
-		require.NoError(t, err)
+		require.NoError(t, EvalHCLBytes([]byte(r), &s, nil))
 		idx := s.Tables[0].Indexes[0]
 		require.Equal(t, IndexTypeHash, idx.Attrs[0].(*IndexType).T)
+
+		s = schema.Schema{}
+		r = fmt.Sprintf(f, "GiST")
+		require.NoError(t, EvalHCLBytes([]byte(r), &s, nil))
+		idx = s.Tables[0].Indexes[0]
+		require.Equal(t, IndexTypeGiST, idx.Attrs[0].(*IndexType).T)
 	})
 }
 
@@ -732,7 +737,7 @@ func TestMarshalSpec_IndexOpClass(t *testing.T) {
 			Table:  s.Tables[0],
 			Unique: true,
 			Parts: []*schema.IndexPart{
-				{SeqNo: 0, C: s.Tables[0].Columns[1], Attrs: []schema.Attr{&IndexOpClass{Name: "tsvector_ops", Default: true, Params: []struct{ N, V string }{{"siglen", "1"}}}}},
+				{SeqNo: 0, C: s.Tables[0].Columns[1], Attrs: []schema.Attr{&IndexOpClass{Name: "tsvector_ops", Params: []struct{ N, V string }{{"siglen", "1"}}}}},
 			},
 			Attrs: []schema.Attr{
 				&IndexType{T: IndexTypeGiST},
