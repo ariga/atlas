@@ -1,0 +1,193 @@
+apply 1.hcl
+cmpshow pets 1.sql
+
+apply 2.hcl
+cmpshow pets 2.sql
+cmphcl 2.inspect.hcl
+
+apply 3.hcl
+cmpshow logs 3.sql
+
+apply 4.hcl
+cmpshow tsv 4.sql
+
+apply 5.hcl
+cmpshow tsv 5.sql
+
+-- 1.hcl --
+schema "script_index_operator_class" {}
+
+table "pets" {
+  schema = schema.$db
+  column "name" {
+    null = false
+    type = char(10)
+  }
+  index "name_idx1" {
+    on {
+      column = column.name
+      ops    = bpchar_ops
+    }
+  }
+  index "name_idx2" {
+    on {
+      column = column.name
+      // Set a non-default operator class.
+      ops    = bpchar_pattern_ops
+    }
+  }
+}
+
+-- 1.sql --
+        Table "script_index_operator_class.pets"
+ Column |     Type      | Collation | Nullable | Default
+--------+---------------+-----------+----------+---------
+ name   | character(10) |           | not null |
+Indexes:
+    "name_idx1" btree (name)
+    "name_idx2" btree (name bpchar_pattern_ops)
+
+
+-- 2.hcl --
+schema "script_index_operator_class" {}
+
+table "pets" {
+  schema = schema.$db
+  column "name" {
+    null = false
+    type = char(10)
+  }
+  // Flip operator classes.
+  index "name_idx1" {
+    on {
+      column = column.name
+      ops    = bpchar_pattern_ops
+    }
+  }
+  index "name_idx2" {
+    on {
+      column = column.name
+      ops    = bpchar_ops
+    }
+  }
+}
+
+-- 2.sql --
+        Table "script_index_operator_class.pets"
+ Column |     Type      | Collation | Nullable | Default
+--------+---------------+-----------+----------+---------
+ name   | character(10) |           | not null |
+Indexes:
+    "name_idx1" btree (name bpchar_pattern_ops)
+    "name_idx2" btree (name)
+
+-- 2.inspect.hcl --
+table "pets" {
+  schema = schema.script_index_operator_class
+  column "name" {
+    null = false
+    type = character(10)
+  }
+  index "name_idx1" {
+    type = BTREE
+    on {
+      column = column.name
+      ops    = bpchar_pattern_ops
+    }
+  }
+  index "name_idx2" {
+    columns = [column.name]
+    type    = BTREE
+  }
+}
+schema "script_index_operator_class" {
+}
+
+-- 3.hcl --
+schema "script_index_operator_class" {}
+
+table "logs" {
+  schema = schema.$db
+  column "j" {
+    null = false
+    type = jsonb
+  }
+  index "j_idx" {
+    type = GIN
+    on {
+      column = column.j
+      ops    = jsonb_path_ops
+    }
+  }
+}
+
+-- 3.sql --
+  Table "script_index_operator_class.logs"
+ Column | Type  | Collation | Nullable | Default
+--------+-------+-----------+----------+---------
+ j      | jsonb |           | not null |
+Indexes:
+    "j_idx" gin (j jsonb_path_ops)
+
+-- 4.hcl --
+schema "script_index_operator_class" {}
+
+table "tsv" {
+  schema = schema.$db
+  column "t" {
+    null = false
+    type = text
+  }
+  column "a" {
+    null = false
+    type = tsvector
+  }
+  index "a_idx" {
+    type = GiST
+    on {
+      column = column.a
+      ops    = sql("tsvector_ops(siglen=8)")
+    }
+  }
+}
+
+-- 4.sql --
+      Table "script_index_operator_class.tsv"
+ Column |   Type   | Collation | Nullable | Default
+--------+----------+-----------+----------+---------
+ t      | text     |           | not null |
+ a      | tsvector |           | not null |
+Indexes:
+    "a_idx" gist (a tsvector_ops (siglen='8'))
+
+
+-- 5.hcl --
+schema "script_index_operator_class" {}
+
+table "tsv" {
+  schema = schema.$db
+  column "t" {
+    null = false
+    type = text
+  }
+  column "a" {
+    null = false
+    type = tsvector
+  }
+  index "a_idx" {
+    type = GiST
+    on {
+      column = column.a
+      ops    = sql("tsvector_ops(siglen=9)")
+    }
+  }
+}
+
+-- 5.sql --
+      Table "script_index_operator_class.tsv"
+ Column |   Type   | Collation | Nullable | Default
+--------+----------+-----------+----------+---------
+ t      | text     |           | not null |
+ a      | tsvector |           | not null |
+Indexes:
+    "a_idx" gist (a tsvector_ops (siglen='9'))
