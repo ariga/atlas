@@ -107,7 +107,6 @@ module.exports = {
           "items": [
             {"label": "Privacy Policy", "to": "https://ariga.io/legal/privacy"},
             {"label": "Terms of Service", "to": "https://ariga.io/legal/tos"},
-            {"label": "End User License", "to": "https://ariga.io/legal/atlas/eula"},
           ]
         }
       ],
