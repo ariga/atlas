@@ -41,6 +41,7 @@ var pgTests = map[string]*pgTest{
 	"postgres12": {port: 5432},
 	"postgres13": {port: 5433},
 	"postgres14": {port: 5434},
+	"postgres15": {port: 5435},
 }
 
 func pgRun(t *testing.T, fn func(*pgTest)) {

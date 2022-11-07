@@ -136,8 +136,6 @@ jobs:
       - name: Migrate revisions table to HEAD
         run: go run main.go migrate apply --dir file://internal/cmdapi/testdata/sqlite --url sqlite://db?_fk=1
         working-directory: cmd/atlas
-
-  
   integration-mysql56:
     runs-on: ubuntu-latest
     services:
@@ -168,7 +166,7 @@ jobs:
       - name: Run integration tests for mysql56
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="MySQL" -version="mysql56" ./...
-  
+
   integration-mysql57:
     runs-on: ubuntu-latest
     services:
@@ -199,7 +197,7 @@ jobs:
       - name: Run integration tests for mysql57
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="MySQL" -version="mysql57" ./...
-  
+
   integration-mysql8:
     runs-on: ubuntu-latest
     services:
@@ -230,7 +228,7 @@ jobs:
       - name: Run integration tests for mysql8
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="MySQL" -version="mysql8" ./...
-  
+
   integration-maria107:
     runs-on: ubuntu-latest
     services:
@@ -261,7 +259,7 @@ jobs:
       - name: Run integration tests for maria107
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="MySQL" -version="maria107" ./...
-  
+
   integration-maria102:
     runs-on: ubuntu-latest
     services:
@@ -292,7 +290,7 @@ jobs:
       - name: Run integration tests for maria102
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="MySQL" -version="maria102" ./...
-  
+
   integration-maria103:
     runs-on: ubuntu-latest
     services:
@@ -323,7 +321,7 @@ jobs:
       - name: Run integration tests for maria103
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="MySQL" -version="maria103" ./...
-  
+
   integration-postgres10:
     runs-on: ubuntu-latest
     services:
@@ -353,7 +351,7 @@ jobs:
       - name: Run integration tests for postgres10
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Postgres" -version="postgres10" ./...
-  
+
   integration-postgres11:
     runs-on: ubuntu-latest
     services:
@@ -383,7 +381,7 @@ jobs:
       - name: Run integration tests for postgres11
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Postgres" -version="postgres11" ./...
-  
+
   integration-postgres12:
     runs-on: ubuntu-latest
     services:
@@ -413,7 +411,7 @@ jobs:
       - name: Run integration tests for postgres12
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Postgres" -version="postgres12" ./...
-  
+
   integration-postgres13:
     runs-on: ubuntu-latest
     services:
@@ -443,7 +441,7 @@ jobs:
       - name: Run integration tests for postgres13
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Postgres" -version="postgres13" ./...
-  
+
   integration-postgres14:
     runs-on: ubuntu-latest
     services:
@@ -473,7 +471,37 @@ jobs:
       - name: Run integration tests for postgres14
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Postgres" -version="postgres14" ./...
-  
+
+  integration-postgres15:
+    runs-on: ubuntu-latest
+    services:
+      postgres15:
+        image: postgres:15
+        env:
+          POSTGRES_DB: test
+          POSTGRES_PASSWORD: pass
+        ports:
+          - 5435:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.19
+      - uses: actions/cache@v2.1.6
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Run integration tests for postgres15
+        working-directory: internal/integration
+        run: go test -race -count=2 -v -run="Postgres" -version="postgres15" ./...
+
   integration-tidb5:
     runs-on: ubuntu-latest
     services:
@@ -497,7 +525,7 @@ jobs:
       - name: Run integration tests for tidb5
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="TiDB" -version="tidb5" ./...
-  
+
   integration-tidb6:
     runs-on: ubuntu-latest
     services:
@@ -521,7 +549,7 @@ jobs:
       - name: Run integration tests for tidb6
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="TiDB" -version="tidb6" ./...
-  
+
   integration-sqlite:
     runs-on: ubuntu-latest
     
@@ -539,7 +567,7 @@ jobs:
       - name: Run integration tests for sqlite
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="SQLite.*" -version="sqlite" ./...
-  
+
   integration-cockroach:
     runs-on: ubuntu-latest
     services:
@@ -563,4 +591,3 @@ jobs:
       - name: Run integration tests for cockroach
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="Cockroach" -version="cockroach" ./...
-  

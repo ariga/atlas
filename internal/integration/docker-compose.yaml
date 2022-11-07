@@ -97,6 +97,19 @@ services:
     ports:
       - "5434:5432"
 
+  postgres15:
+    container_name: atlas-integration-postgres15
+    platform: linux/amd64
+    image: postgres:15
+    environment:
+      POSTGRES_DB: test
+      POSTGRES_PASSWORD: pass
+    healthcheck:
+      test: pg_isready -U postgres
+    ports:
+      - "5435:5432"
+
+
   mariadb:
     container_name: atlas-integration-mariadb
     platform: linux/amd64
