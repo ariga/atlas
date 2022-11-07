@@ -137,7 +137,7 @@ jobs:
         run: go run main.go migrate apply --dir file://internal/cmdapi/testdata/sqlite --url sqlite://db?_fk=1
         working-directory: cmd/atlas
 
-  {{ range $ }}
+{{- range $ }}
   integration-{{ .Version }}:
     runs-on: ubuntu-latest
     {{ if .Image }}services:
@@ -166,4 +166,4 @@ jobs:
       - name: Run integration tests for {{ .Version }}
         working-directory: internal/integration
         run: go test -race -count=2 -v -run="{{ .Regex }}" -version="{{ .Version }}" ./...
-  {{ end }}
+{{ end }}
