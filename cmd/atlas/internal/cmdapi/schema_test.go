@@ -192,6 +192,37 @@ table "tbl" {
 		"-- Add column \"col_3\" to table: \"tbl\"\nALTER TABLE `tbl` ADD COLUMN `col_3` text NOT NULL\n",
 		s,
 	)
+
+	t.Run("FromConfig", func(t *testing.T) {
+		var (
+			p   = t.TempDir()
+			cp  = filepath.Join(p, "atlas.hcl")
+			sp  = filepath.Join(p, "schema.hcl")
+			cfg = fmt.Sprintf(`env "local" { dev = "%s" }`, openSQLite(t, ""))
+		)
+		require.NoError(t, os.WriteFile(cp, []byte(cfg), 0600))
+		require.NoError(t, os.WriteFile(sp, []byte(`
+schema "main" {}
+table "users" {
+  schema = schema.main
+  column "id" {
+    type = int
+  }
+}
+`), 0600))
+
+		cmd := schemaCmd()
+		cmd.AddCommand(schemaDiffCmd())
+		s, err := runCmd(
+			cmd, "diff",
+			"-c", "file://"+cp,
+			"--env", "local",
+			"--to", "file://"+sp,
+			"--from", openSQLite(t, ""),
+		)
+		require.NoError(t, err)
+		require.Equal(t, "-- Create \"users\" table\nCREATE TABLE `users` (`id` int NOT NULL)\n", s)
+	})
 }
 
 func TestCmdSchemaApply(t *testing.T) {

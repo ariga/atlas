@@ -272,6 +272,7 @@ The database states can be read from a connected database, an HCL project or a m
 			Example: `  atlas schema diff --from mysql://user:pass@localhost:3306/test --to file://schema.hcl
   atlas schema diff --from mysql://user:pass@localhost:3306 --to file://schema_1.hcl --to file://schema_2.hcl
   atlas schema diff --from mysql://user:pass@localhost:3306 --to file://migrations`,
+			PreRunE: schemaFlagsFromEnv,
 			RunE: func(cmd *cobra.Command, args []string) error {
 				return schemaDiffRun(cmd, args, flags)
 			},
