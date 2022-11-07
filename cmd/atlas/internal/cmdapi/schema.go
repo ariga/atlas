@@ -221,7 +221,7 @@ func schemaCleanRun(cmd *cobra.Command, _ []string, flags schemeCleanFlags) erro
 		if err != nil {
 			return err
 		}
-		drop, err = c.RealmDiff(r, nil)
+		drop, err = c.RealmDiff(r, schema.NewRealm())
 		if err != nil {
 			return err
 		}
