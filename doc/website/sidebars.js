@@ -124,6 +124,11 @@ module.exports = {
             collapsed: false,
             items: [
                 {
+                    type: 'doc',
+                    id: 'guides/mysql/descending-indexes',
+                    label: 'Descending Indexes'
+                  },
+                {
                   type: 'doc',
                   id: 'guides/mysql/generated-columns',
                   label: 'Generated Columns'
