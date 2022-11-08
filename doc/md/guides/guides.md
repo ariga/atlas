@@ -16,6 +16,8 @@ Welcome to the Atlas Guides.
 
 [Deploying schema migrations to Kubernetes with Helm](deploying/helm.md)
 
+[Deploying schema migrations to Kubernetes with Init Containers](deploying/init.md)
+
 ## Databases
 
 ### MySQL
