@@ -674,6 +674,19 @@ public
 	}(), realm)
 }
 
+func TestIndexOpClass_UnmarshalText(t *testing.T) {
+	var op IndexOpClass
+	require.NoError(t, op.UnmarshalText([]byte("int4_ops")))
+	require.EqualValues(t, IndexOpClass{Name: "int4_ops"}, op)
+
+	op = IndexOpClass{}
+	require.NoError(t, op.UnmarshalText([]byte("")))
+	require.EqualValues(t, IndexOpClass{}, op)
+
+	require.NoError(t, op.UnmarshalText([]byte("int4_ops(siglen=1)")))
+	require.EqualValues(t, IndexOpClass{Name: "int4_ops", Params: []struct{ N, V string }{{"siglen", "1"}}}, op)
+}
+
 type mock struct {
 	sqlmock.Sqlmock
 }
