@@ -17,6 +17,11 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
+// DefaultDiff provides basic diffing capabilities for PostgreSQL dialects.
+// Note, it is recommended to call Open, create a new Driver and use its Differ
+// when a database connection is available.
+var DefaultDiff schema.Differ = &sqlx.Diff{DiffDriver: &diff{}}
+
 // A diff provides a PostgreSQL implementation for sqlx.DiffDriver.
 type diff struct{ conn }
 
@@ -81,12 +86,16 @@ func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
 	if trimCast(d1) == trimCast(d2) || quote(d1) == quote(d2) {
 		return false, nil
 	}
-	// Use database comparison in case of mismatch (e.g. `SELECT ARRAY[1] = '{1}'::int[]`).
-	equals, err := d.valuesEqual(d1, d2)
-	if err != nil {
-		return false, err
+	var (
+		err    error
+		equals bool
+	)
+	// In case a database connection is available (not the DefaultDiff), we use the
+	// database comparison in case of mismatch (e.g. `SELECT ARRAY[1] = '{1}'::int[]`).
+	if d.conn.ExecQuerier != nil {
+		equals, err = d.valuesEqual(d1, d2)
 	}
-	return !equals, nil
+	return !equals, err
 }
 
 // generatedChanged reports if the generated expression of a column was changed.
