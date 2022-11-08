@@ -139,6 +139,14 @@ var (
 			Options: pgOptions,
 		},
 		{
+			Version: "postgres15",
+			Image:   "postgres:15",
+			Regex:   "Postgres",
+			Env:     pgEnv,
+			Ports:   []string{"5435:5432"},
+			Options: pgOptions,
+		},
+		{
 			Version: "tidb5",
 			Image:   "pingcap/tidb:v5.4.0",
 			Regex:   "TiDB",

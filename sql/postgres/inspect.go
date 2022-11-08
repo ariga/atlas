@@ -5,6 +5,7 @@
 package postgres
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
@@ -413,16 +414,8 @@ func mayAppendOps(part *schema.IndexPart, name string, params string, defaults b
 		return nil
 	}
 	op := &IndexOpClass{Name: name, Default: defaults}
-	switch {
-	case len(params) == 0:
-	case len(params) < 2, params[0] != '{', params[len(params)-1] != '}':
-		return fmt.Errorf("postgres: unexpected operator class parameters format: %q", params)
-	default:
-		for _, e := range strings.Split(params[1:len(params)-1], ",") {
-			if kv := strings.Split(strings.TrimSpace(e), "="); len(kv) == 2 {
-				op.Params = append(op.Params, struct{ N, V string }{N: kv[0], V: kv[1]})
-			}
-		}
+	if err := op.parseParams(params); err != nil {
+		return err
 	}
 	part.Attrs = append(part.Attrs, op)
 	return nil
@@ -973,6 +966,34 @@ func (o *IndexOpClass) String() string {
 	}
 	b.WriteString(")")
 	return b.String()
+}
+
+// UnmarshalText parses the operator class from its string representation.
+func (o *IndexOpClass) UnmarshalText(text []byte) error {
+	i := bytes.IndexByte(text, '(')
+	if i == -1 {
+		o.Name = string(text)
+		return nil
+	}
+	o.Name = string(text[:i])
+	return o.parseParams(string(text[i:]))
+}
+
+// parseParams parses index class parameters defined in HCL or returned
+// from the database. For example: '{k=v}', '(k1=v1,k2=v2)'.
+func (o *IndexOpClass) parseParams(kv string) error {
+	switch {
+	case kv == "":
+	case strings.HasPrefix(kv, "(") && strings.HasSuffix(kv, ")"), strings.HasPrefix(kv, "{") && strings.HasSuffix(kv, "}"):
+		for _, e := range strings.Split(kv[1:len(kv)-1], ",") {
+			if kv := strings.Split(strings.TrimSpace(e), "="); len(kv) == 2 {
+				o.Params = append(o.Params, struct{ N, V string }{N: kv[0], V: kv[1]})
+			}
+		}
+	default:
+		return fmt.Errorf("postgres: unexpected operator class parameters format: %q", kv)
+	}
+	return nil
 }
 
 // newIndexStorage parses and returns the index storage parameters.

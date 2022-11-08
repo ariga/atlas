@@ -354,13 +354,12 @@ func convertPart(spec *sqlspec.IndexPart, part *schema.IndexPart) error {
 		if err != nil {
 			return err
 		}
-		switch parts := strings.Split(expr.X, "("); {
-		case len(parts) == 1 && parts[0] != "":
-			part.Attrs = append(part.Attrs, &IndexOpClass{Name: parts[0]})
-		case len(parts) == 2 && strings.HasSuffix(parts[1], ")"):
-			return mayAppendOps(part, parts[0], fmt.Sprintf("{%s}", parts[1][:len(parts[1])-1]), false)
-		default:
-			return fmt.Errorf("unexpected index.on.ops expression %q", expr.X)
+		var op IndexOpClass
+		if err := op.UnmarshalText([]byte(expr.X)); err != nil {
+			return fmt.Errorf("unexpected index.on.ops expression %q: %w", expr.X, err)
+		}
+		if op.Name != "" {
+			part.Attrs = append(part.Attrs, &op)
 		}
 	case opc.IsRef():
 		name, err := opc.Ref()

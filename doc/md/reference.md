@@ -14,7 +14,7 @@ For a more detailed introduction to the CLI capabilities, head over to the
 
 ## Distributed Binaries
 
-The binaries distributed in official releases are released under the  [Ariga End User License](https://ariga.io/legal/atlas/eula).
+The binaries distributed in official releases are released under the  [Apache 2 License](https://github.com/ariga/atlas/blob/master/LICENSE).
 If you would like to build Atlas from source follow the instructions [here](https://atlasgo.io/cli-reference#building-from-source).
 
 ### Building from Source
