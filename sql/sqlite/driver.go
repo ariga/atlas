@@ -83,7 +83,7 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	}
 	return &Driver{
 		conn:        c,
-		Differ:      &sqlx.Diff{DiffDriver: &Diff{}},
+		Differ:      &sqlx.Diff{DiffDriver: &diff{}},
 		Inspector:   &inspect{c},
 		PlanApplier: &planApply{c},
 	}, nil

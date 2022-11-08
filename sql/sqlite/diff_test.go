@@ -329,3 +329,16 @@ func TestDiff_SchemaDiff(t *testing.T) {
 		&schema.AddTable{T: to.Tables[1]},
 	}, changes)
 }
+
+func TestDefaultDiff(t *testing.T) {
+	changes, err := DefaultDiff.SchemaDiff(
+		schema.New("main").
+			AddTables(
+				schema.NewTable("users").AddColumns(schema.NewIntColumn("id", "int")),
+			),
+		schema.New("main"),
+	)
+	require.NoError(t, err)
+	require.Len(t, changes, 1)
+	require.IsType(t, &schema.DropTable{}, changes[0])
+}
