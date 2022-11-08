@@ -623,3 +623,16 @@ func TestDiff_RealmDiff(t *testing.T) {
 		&schema.AddTable{T: to.Schemas[1].Tables[0]},
 	}, changes)
 }
+
+func TestDefaultDiff(t *testing.T) {
+	changes, err := DefaultDiff.SchemaDiff(
+		schema.New("public").
+			AddTables(
+				schema.NewTable("users").AddColumns(schema.NewIntColumn("id", "int")),
+			),
+		schema.New("public"),
+	)
+	require.NoError(t, err)
+	require.Len(t, changes, 1)
+	require.IsType(t, &schema.DropTable{}, changes[0])
+}
