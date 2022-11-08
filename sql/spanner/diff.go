@@ -45,12 +45,6 @@ func (d *diff) ColumnChange(_ *schema.Table, from, to *schema.Column) (schema.Ch
 	if changed {
 		change |= schema.ChangeDefault
 	}
-	// if changed, err = d.generatedChanged(from, to); err != nil {
-	// 	return schema.NoChange, err
-	// }
-	// if changed {
-	// 	change |= schema.ChangeGenerated
-	// }
 	return change, nil
 }
 
