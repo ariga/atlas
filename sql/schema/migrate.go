@@ -186,6 +186,8 @@ type (
 
 // A ChangeKind describes a change kind that can be combined
 // using a set of flags. The zero kind is no change.
+//
+//go:generate stringer -type ChangeKind
 type ChangeKind uint
 
 const (

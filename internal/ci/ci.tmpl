@@ -37,6 +37,8 @@ jobs:
           key: {{ "${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}" }}
           restore-keys: |
             {{ "${{ runner.os }}-go-" }}
+      - name: Install stringer
+        run: go install golang.org/x/tools/cmd/stringer@latest
       - name: run "go generate ./..."
         run: go generate ./...
       - name: go generate cmd/atlas
