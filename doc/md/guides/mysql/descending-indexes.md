@@ -9,7 +9,7 @@ In general, indexes with ascending or descending order help increase the perform
 
 #### When are descending indexes helpful?
 In versions prior to MySQL 8.0, scanning an index in reverse order had a very high cost, which resulted in reduced performance for certain queries. 
-Since the release of MySQL version 8.0, users can now create descending indexes, which can be scanned in forward order, thus increasing efficiency of scanning for certain queries with ORDER BY clause.
+Since the release of MySQL version 8.0, users can now create descending indexes, which can be scanned in forward order, thus increasing efficiency of scanning for certain queries with the ORDER BY clause.
 
 ### Syntax
 Here is how you can define descending indexes by using DESC in a table definition:
@@ -158,10 +158,10 @@ possible_keys: NULL
         Extra: Using where; Using filesort
 1 row in set, 1 warning (0.00 sec)
 ```
-Observe that MySQL is using `filesort` operation in order to resolve the query.
+Observe that MySQL is using the `filesort` operation in order to resolve the query.
 
 :::info
-A `filesort` operation uses temporary disk files as necessary if the result set is too large to fit in memory. To know more about how filesort is used to satisfy `ORDER BY` clause in MySQL, visit [here](https://dev.mysql.com/doc/refman/8.0/en/order-by-optimization.html#order-by-filesort)
+A `filesort` operation uses temporary disk files as necessary if the result set is too large to fit in memory. To learn more about how filesort is used to satisfy `ORDER BY` clause in MySQL, visit [here](https://dev.mysql.com/doc/refman/8.0/en/order-by-optimization.html#order-by-filesort)
 :::
 
 Now, let's try to optimize the query by using a descending index. Let's create a descending index on the `megabytes_used` column with the following command:
@@ -203,7 +203,7 @@ SHOW STATUS LIKE 'Last_query_cost';
 ```
 (Note: The results will vary, ​​depending on the data that is stored in the database)
 
-Amazing! Now our query cost only 52.01 units, compared to 108034.65 units earlier when descending index was not used. 
+Amazing! Now our query cost only 52.01 units, compared to 108034.65 units earlier when the descending index was not used. 
 
 Let's check how MySQL resolves the query in this case:
 
@@ -229,7 +229,7 @@ possible_keys: fastscan_idx
 
 Observe that MySQL has used the index we created in order to resolve the query this time.
 
-Additionally, you can also check whether a descending index is being used in a query or not by checking `(reverse)` along the name of the index, while running the `EXPLAIN` command with `FORMAT=TREE` option. Here is an example:
+Additionally, you can check whether a descending index is being used in a query or not by checking `(reverse)` along the name of the index, while running the `EXPLAIN` command with `FORMAT=TREE` option. Here is an example:
 
 
 ```sql
