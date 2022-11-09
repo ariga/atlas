@@ -4,14 +4,14 @@ slug: /guides/deploying/k8s-init-container
 title: Deploying schema migrations to Kubernetes with Init Containers
 ---
 
-In [Kubernetes](https://kubernetes.io), [Init Containers](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/),
+In [Kubernetes](https://kubernetes.io), [Init Containers](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/)
 are specialized containers that run before app containers in a Pod. Init containers
 can contain utilities or setup scripts not present in an app image. 
 
 Init containers can be utilized to run schema migrations with Atlas before the
 application loads. Because init containers can use a container image different
 from the application, developers can use a [purpose-built image](image.md) that
-only contains Atlas and the migrations scripts to run them.  This way, less 
+only contains Atlas and the migration scripts to run them.  This way, less 
 can be included in the application runtime environment, which reduces
 the attack surface from a security perspective. 
 
@@ -19,7 +19,7 @@ Depending on an application's [deployment strategy](https://kubernetes.io/docs/c
 multiple replicas of an init container may run concurrently.  In the case of
 schema migrations, this can cause a dangerous race condition with unknown outcomes.
 To prevent this, in databases that support advisory locking, Atlas will acquire
-a lock on the migration operation before running migrations which makes the
+a lock on the migration operation before running migrations, making the
 operation mutually exclusive.
 
 In this guide, we demonstrate how schema migrations can be integrated into
@@ -107,7 +107,7 @@ secret/atlas-project created
 ```
 
 Next, add a volume to mount the config file and an init container using it to
-the deployment: 
+the deployment manifest: 
 
 ```yaml
 apiVersion: apps/v1
