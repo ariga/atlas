@@ -5,13 +5,14 @@ slug: /guides/mysql/descending-indexes
 ---
 
 ### What are the descending indexes?
-In general, indexes with ascending or descending order help increase the performance of queries with the “ORDER BY” clause. Descending indexes are the indexes where key values are stored in descending order.
+In general, indexes with ascending or descending order help increase the performance of queries with the “ORDER BY” clause. Descending indexes are indexes where key values are stored in descending order.
 
 #### When are descending indexes helpful?
-In versions prior to MySQL 8.0, scanning an index in reverse order had very high cost, which resulted in reduced performance for certain queries. Descending indexes helps MySQL users to optimize performance of those queries. Since the release of MySQL version 8.0, users can now create descending indexes, which can be scanned in forward order, thus increasing efficiency of scanning for certain queries with `ORDER BY` clause.
+In versions prior to MySQL 8.0, scanning an index in reverse order had a very high cost, which resulted in reduced performance for certain queries. 
+Since the release of MySQL version 8.0, users can now create descending indexes, which can be scanned in forward order, thus increasing efficiency of scanning for certain queries with ORDER BY clause.
 
 ### Syntax
-Here is how you can define descending index by using DESC in a table definition:
+Here is how you can define descending indexes by using DESC in a table definition:
 
 ```sql
 CREATE TABLE t (
@@ -21,23 +22,28 @@ CREATE TABLE t (
   INDEX idx3 (c1 DESC, c2 DESC)
 );
 ```
-Or you can add descending index to existing table with the following syntax:
+Or, you can add a descending index to an existing table with the following syntax:
 ```sql
 CREATE INDEX 
     index_name_idx 
 ON 
     table_name(column_name DESC);
 ```
+:::info
+ASC or DESC specifier is used to specify whether index values are stored in ascending or descending order.
+
+By default, the index values are stored in ascending order if no specifier is given (e.g. Column `c1` in the index `idx1` and column `c2` in the index `idx2` from the table definition above)`
+:::
 
 ### Example
-Let’s create a table which represents data of an ISP’s subscribers along with their email addresses and broadband data usage by the following command:
+Let’s create a table which represents data of an ISP’s subscribers along with their email addresses and broadband data usage with the following command:
 
 ```sql
 CREATE TABLE `telecom_data` (
-  `id` mediumint(8) unsigned NOT NULL auto_increment,
+  `id` bigint(8) unsigned NOT NULL auto_increment,
   `email_address` varchar(255) default NULL,
   `user_name` varchar(255) default NULL,
-  `megabytes_used` mediumint default NULL,
+  `megabytes_used` bigint default NULL,
   PRIMARY KEY (`id`)
 ) AUTO_INCREMENT=1;
 ```
@@ -75,7 +81,7 @@ SELECT * FROM telecom_data
 | 98443 | turpis@enimEtiam.org                        | Kasper Payne   |          72018 |
 +-------+---------------------------------------------+----------------+----------------+
 ```
-We have not created any indexes yet. Now, suppose we want information about all those subscribers who have used less than 100 MB data, but in descending order. Let's query that data with the following command:
+We do not have any indexes other than the primary index on the `id` column. Now, suppose we want information about all subscribers who have used less than 100 MB data, but in descending order. Let's query that data with the following command:
 
 ```sql
 SELECT * FROM telecom_data WHERE megabytes_used < 100 ORDER BY megabytes_used DESC;
@@ -108,7 +114,7 @@ SELECT * FROM telecom_data WHERE megabytes_used < 100 ORDER BY megabytes_used DE
 |  8134 | Sed@molestietellusAenean.net                   | Ali Horn          |              2 |
 +-------+------------------------------------------------+-------------------+----------------+
 ```
-Now, let's see how much the query costed, with the following command:
+Now, let's see how much the query cost, with the following command:
 
 ```sql
 SHOW STATUS LIKE 'Last_query_cost';
@@ -121,17 +127,21 @@ SHOW STATUS LIKE 'Last_query_cost';
 +-----------------+---------------+
 ```
 
-Notice that the query costed 108034.65 units.
+Notice that the query cost 108034.65 units.
 
-Let's check how MySQL resolves the query, by using the following command and observing the EXTRA section:
+Let's check how MySQL resolves the query by running the following command and observing the EXTRA section:
+
 :::info
-You can learn more about `EXPLAIN EXTRA` information at the official documentation [here](https://dev.mysql.com/doc/refman/8.0/en/explain-output.html#explain-extra-information).
+You can learn more about information from `EXPLAIN EXTRA` at the official documentation [here](https://dev.mysql.com/doc/refman/8.0/en/explain-output.html#explain-extra-information).
 :::
 
 
 ```sql
 EXPLAIN SELECT * FROM telecom_data WHERE megabytes_used < 100 ORDER BY megabytes_used DESC\G
 ```
+:::info
+The client command `\G` is used in order to display the results vertically. To know more about client commands, visit the [documentation](https://dev.mysql.com/doc/refman/8.0/en/mysql-commands.html).
+:::
 ```console title="Output"
 *************************** 1. row ***************************
            id: 1
@@ -148,13 +158,13 @@ possible_keys: NULL
         Extra: Using where; Using filesort
 1 row in set, 1 warning (0.00 sec)
 ```
-
 Observe that MySQL is using `filesort` operation in order to resolve the query.
+
 :::info
 A `filesort` operation uses temporary disk files as necessary if the result set is too large to fit in memory. To know more about how filesort is used to satisfy `ORDER BY` clause in MySQL, visit [here](https://dev.mysql.com/doc/refman/8.0/en/order-by-optimization.html#order-by-filesort)
 :::
 
-Now, let's try to optimize the query by using descending index. Let's create an descending index on megabytes_used column with the following command:
+Now, let's try to optimize the query by using a descending index. Let's create a descending index on the `megabytes_used` column with the following command:
 
 ```sql
 CREATE INDEX fastscan_idx ON telecom_data(megabytes_used DESC);
@@ -193,7 +203,9 @@ SHOW STATUS LIKE 'Last_query_cost';
 ```
 (Note: The results will vary, ​​depending on the data that is stored in the database)
 
-Amazing! Now our query costed only 52.01 units, compared to 108034.65 units earlier when no index was used. Let's check how MySQL resolves the query this case:
+Amazing! Now our query cost only 52.01 units, compared to 108034.65 units earlier when descending index was not used. 
+
+Let's check how MySQL resolves the query in this case:
 
 ```sql
 EXPLAIN SELECT * FROM telecom_data WHERE megabytes_used < 100 ORDER BY megabytes_used DESC\G
@@ -215,9 +227,11 @@ possible_keys: fastscan_idx
 1 row in set, 1 warning (0.00 sec)
 ```
 
-Obseve that MySQL has used the index we created in order to resolve the query this time.
+Observe that MySQL has used the index we created in order to resolve the query this time.
 
-Additionally, you can also check whether descending index is being used in a query or not, by checking for `(reverse)` along the name of index, while running `EXPLAIN` command with `FORMAT=TREE` option. Here is an example:
+Additionally, you can also check whether a descending index is being used in a query or not by checking `(reverse)` along the name of the index, while running the `EXPLAIN` command with `FORMAT=TREE` option. Here is an example:
+
+
 ```sql
 EXPLAIN FORMAT=TREE SELECT * FROM telecom_data WHERE megabytes_used < 100 ORDER BY megabytes_used ASC\G
 ```
@@ -228,10 +242,10 @@ EXPLAIN: -> Index range scan on telecom_data using fastscan_idx over (100 < mega
 ```
 
 :::info
-Descending indexes are supported only for the InnoDB storage engine. You can learn more about Descending Indexes and their limitations in MySQL from official documentation [here](https://dev.mysql.com/doc/refman/8.0/en/descending-indexes.html).
+Descending indexes are supported only for the InnoDB storage engine. You can learn more about Descending Indexes and their limitations in MySQL from the [official documentation](https://dev.mysql.com/doc/refman/8.0/en/descending-indexes.html).
 :::
 
-We have seen that creating a descending index is a smart choice when it comes to usage of queries with `ORDER BY` clause. Now, let's see how we can easily manage descending indexes in MySQL using Atlas.
+We have seen that creating a descending index is a smart choice when using queries with `ORDER BY` clauses. Now, let's see how we can easily manage descending indexes in MySQL using Atlas.
 
 ### Managing Descending Indexes is easy with Atlas
 
@@ -243,7 +257,7 @@ If you are just getting started, install the latest version of Atlas using the g
 
 #### Managing Descending Indexes with Atlas
 
-We will first use the `atlas schema inspect` command to get an HCL representation of the table which we created earlier (without any indexes) by using the Atlas CLI:
+We will first use the `atlas schema inspect` command to get an HCL representation of the table we created earlier (without any indexes) by using the Atlas CLI:
 
 ```console
 atlas schema inspect -u "mysql://root:@localhost:3306/telecom_data" > schema.hcl
@@ -253,7 +267,7 @@ table "telecom_data" {
   schema = schema.telecom_data
   column "id" {
     null           = false
-    type           = mediumint
+    type           = bigint
     unsigned       = true
     auto_increment = true
   }
@@ -267,7 +281,7 @@ table "telecom_data" {
   }
   column "megabytes_used" {
     null = true
-    type = mediumint
+    type = bigint
   }
   primary_key {
     columns = [column.id]
@@ -288,7 +302,8 @@ Now, lets add the following index definition to the file:
   }
 ```
 
-Save and apply the schema changes on the database by using the following command:
+Save the file and apply the schema changes on the database by using the following command:
+
 ```console
 atlas schema apply --url "mysql://root:@localhost:3306/telecom_data" -f schema.hcl
 ```
@@ -305,7 +320,7 @@ Use the arrow keys to navigate: ↓ ↑ → ←
     Abort
 ```
 
-To verify that our new index was created, open the database command line tool from previous step and run:
+To verify that our new index was created, open the database command line tool from the previous step and run:
 
 ```sql
 show index from telecom_data\G
@@ -336,7 +351,7 @@ Index_comment:
    Expression: NULL
 2 rows in set (0.00 sec)
 ```
-Amazing! Our new descending index is now created and shown on row 2!
+Amazing! Our new descending index is now created as seen on row no. 2!
 
 ### Wrapping up
 
