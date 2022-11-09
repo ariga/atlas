@@ -116,6 +116,11 @@ module.exports = {
                     id: 'guides/deploying/helm',
                     label: 'Kubernetes (Helm)'
                 },
+                {
+                    type: 'doc',
+                    id: 'guides/deploying/k8s-init-containers',
+                    label: 'Kubernetes (Init Container)'
+                },
             ]
         },
         {
