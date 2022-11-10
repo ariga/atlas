@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"ariga.io/atlas/sql/migrate"
@@ -248,6 +249,58 @@ func TestCmdSchemaApply(t *testing.T) {
 		"--url", drvName+"://?mode=memory",
 		"-f", p,
 	)
+}
+
+func TestCmdSchemaApply_Sources(t *testing.T) {
+	var (
+		p   = t.TempDir()
+		cfg = filepath.Join(p, "atlas.hcl")
+		src = []string{filepath.Join(p, "one.hcl"), filepath.Join(p, "two.hcl")}
+	)
+	err := os.WriteFile(src[0], []byte(`
+schema "main" {}
+
+table "one" {
+  schema = schema.main
+  column "id" {
+    type = int
+  }
+}
+`), 0600)
+	require.NoError(t, err)
+	err = os.WriteFile(src[1], []byte(`
+table "two" {
+  schema = schema.main
+  column "id" {
+    type = int
+  }
+}
+`), 0600)
+	require.NoError(t, err)
+	err = os.WriteFile(cfg, []byte(fmt.Sprintf(`
+env "local" {
+  src = [%q, %q]
+}`, src[0], src[1])), 0600)
+	require.NoError(t, err)
+
+	cmd := schemaCmd()
+	cmd.AddCommand(schemaApplyCmd())
+	s, err := runCmd(
+		cmd, "apply",
+		"-u", openSQLite(t, ""),
+		"-c", "file://"+cfg,
+		"--env", "local",
+		"--auto-approve",
+	)
+	require.NoError(t, err)
+	lines := strings.Split(strings.TrimSpace(s), "\n")
+	require.Equal(t, []string{
+		"-- Planned Changes:",
+		`-- Create "one" table`,
+		"CREATE TABLE `one` (`id` int NOT NULL)",
+		`-- Create "two" table`,
+		"CREATE TABLE `two` (`id` int NOT NULL)",
+	}, lines)
 }
 
 func TestFmt(t *testing.T) {

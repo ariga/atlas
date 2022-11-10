@@ -504,7 +504,7 @@ func schemaFlagsFromEnv(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	if err := maySetFlag(cmd, flagFile, strings.Join(srcs, "")); err != nil {
+	if err := maySetFlag(cmd, flagFile, strings.Join(srcs, ",")); err != nil {
 		return err
 	}
 	if s := strings.Join(activeEnv.Schemas, ","); s != "" {

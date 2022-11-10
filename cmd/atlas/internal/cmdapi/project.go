@@ -6,7 +6,6 @@ package cmdapi
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -168,13 +167,18 @@ func (e *Env) Sources() ([]string, error) {
 	if !exists {
 		return nil, nil
 	}
-	if s, err := attr.String(); err == nil {
+	switch attr.V.Type() {
+	case cty.String:
+		s, err := attr.String()
+		if err != nil {
+			return nil, err
+		}
 		return []string{s}, nil
+	case cty.List(cty.String):
+		return attr.Strings()
+	default:
+		return nil, fmt.Errorf("expected src to be either a string or strings, got: %s", attr.V.Type().FriendlyName())
 	}
-	if s, err := attr.Strings(); err == nil {
-		return s, nil
-	}
-	return nil, errors.New("expected src to be either a string or a string array")
 }
 
 // asMap returns the extra attributes stored in the Env as a map[string]string.
