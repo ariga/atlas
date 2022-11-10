@@ -593,31 +593,39 @@ func externalRef(ref *schemahcl.Ref, sch *schema.Schema) (*schema.Table, *schema
 // is not in the provided schema.Schema other schemas in the connected schema.Realm
 // are searched as well.
 func findTable(ref *schemahcl.Ref, sch *schema.Schema) (*schema.Table, error) {
-	qualifier, tblName, err := tableName(ref)
+	qualifier, name, err := tableName(ref)
 	if err != nil {
 		return nil, err
 	}
-	// Search the same schema.
-	if qualifier == "" || qualifier == sch.Name {
-		tbl, ok := sch.Table(tblName)
-		if !ok {
-			return tbl, fmt.Errorf("sqlspec: table %q not found", tblName)
+	var (
+		matches []*schema.Table  // Found references.
+		schemas []*schema.Schema // Schemas to search.
+	)
+	switch {
+	case sch.Realm == nil || qualifier == sch.Name:
+		schemas = []*schema.Schema{sch}
+	case qualifier == "":
+		schemas = sch.Realm.Schemas
+	default:
+		s, ok := sch.Realm.Schema(qualifier)
+		if ok {
+			schemas = []*schema.Schema{s}
 		}
-		return tbl, nil
 	}
-	if sch.Realm == nil {
-		return nil, fmt.Errorf("sqlspec: table %s.%s not found", qualifier, tblName)
+	for _, s := range schemas {
+		t, ok := s.Table(name)
+		if ok {
+			matches = append(matches, t)
+		}
 	}
-	// Search for the table in another schemas in the realm.
-	sch, ok := sch.Realm.Schema(qualifier)
-	if !ok {
-		return nil, fmt.Errorf("sqlspec: schema %q not found", qualifier)
+	switch len(matches) {
+	case 1:
+		return matches[0], nil
+	case 0:
+		return nil, fmt.Errorf("sqlspec: table %q not found", name)
+	default:
+		return nil, fmt.Errorf("specutil: multiple tables found for %q", name)
 	}
-	tbl, ok := sch.Table(tblName)
-	if !ok {
-		return tbl, fmt.Errorf("sqlspec: table %q not found", tblName)
-	}
-	return tbl, nil
 }
 
 func tableName(ref *schemahcl.Ref) (qualifier, name string, err error) {
