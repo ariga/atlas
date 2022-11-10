@@ -337,12 +337,29 @@ as references to columns in other tables.
 
 #### Example
 
-```hcl
-foreign_key "manager_fk" {
-  columns = [column.manager_id]
-  ref_columns = [column.id]
-  on_delete = CASCADE
-  on_update = NO_ACTION
+```hcl title="schema.hcl" {18-19}
+table "users" {
+  schema = schema.public
+  column "id" {
+    type = integer
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+
+table "orders" {
+  schema = schema.market
+  // ...
+  column "owner_id" {
+    type = integer
+  }
+  foreign_key "owner_id" {
+    columns     = [column.owner_id]
+    ref_columns = [table.users.column.id]
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
+  }
 }
 ```
 
@@ -351,12 +368,29 @@ foreign_key "manager_fk" {
 If a foreign key references a column in a [qualified](#table-qualification) table, it is referenced
 using `table.<qualifier>.<table_name>.column.<column_name>`:
 
-```hcl {3}
-foreign_key "manager_fk" {
-  columns = [column.manager_id]
-  ref_columns = [table.other_schema.users.column.id]
-  on_delete = CASCADE
-  on_update = NO_ACTION
+```hcl title="schema.hcl" {18-19}
+table "public" "users" {
+  schema = schema.public
+  column "id" {
+    type = integer
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+
+table "admin" "users" {
+  schema = schema.admin
+  // ...
+  column "external_id" {
+    type = integer
+  }
+  foreign_key "external_id" {
+    columns     = [column.external_id]
+    ref_columns = [table.admin.users.column.id]
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
+  }
 }
 ```
 
