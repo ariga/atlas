@@ -729,31 +729,40 @@ func TestPostgres_CLI_MultiSchema(t *testing.T) {
 					type = integer
 				}
 				primary_key {
-					columns = [table.users.column.id]
+					columns = [column.id]
 				}
 			}
 			schema "test2" {	
 			}
-			table "users" {
+			table "pets" {
 				schema = schema.test2
 				column "id" {
 					type = integer
 				}
+				column "owner_id" {
+					type = integer
+				}
 				primary_key {
-					columns = [table.users.column.id]
+					columns = [column.id]
+				}
+				foreign_key "owner_id" {
+					columns     = [column.owner_id]
+					ref_columns = [table.users.column.id]
+					on_delete   = NO_ACTION
+					on_update   = NO_ACTION
 				}
 			}`
 	t.Run("SchemaInspect", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
-			t.dropSchemas("test2")
 			t.dropTables("users")
+			t.dropSchemas("test2")
 			testCLIMultiSchemaInspect(t, h, t.url(""), []string{"public", "test2"}, postgres.EvalHCL)
 		})
 	})
 	t.Run("SchemaApply", func(t *testing.T) {
 		pgRun(t, func(t *pgTest) {
-			t.dropSchemas("test2")
 			t.dropTables("users")
+			t.dropSchemas("test2")
 			testCLIMultiSchemaApply(t, h, t.url(""), []string{"public", "test2"}, postgres.EvalHCL)
 		})
 	})
