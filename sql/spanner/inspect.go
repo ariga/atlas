@@ -218,7 +218,7 @@ func columnType(spannerType string) (schema.Type, error) {
 	spannerType = strings.TrimSpace(strings.ToUpper(spannerType))
 
 	// ARRAY type handling.
-	if strings.HasPrefix(spannerType, "ARRAY<") {
+	if arrayTypeRe.MatchString(spannerType) {
 		parts := arrayTypeRe.FindStringSubmatch(spannerType)
 		inner, err := columnType(parts[1])
 		if err != nil {
