@@ -19,7 +19,7 @@ func New(name string) *Schema {
 // SetCharset sets or appends the Charset attribute
 // to the schema with the given value.
 func (s *Schema) SetCharset(v string) *Schema {
-	replaceOrAppend(&s.Attrs, &Charset{V: v})
+	ReplaceOrAppend(&s.Attrs, &Charset{V: v})
 	return s
 }
 
@@ -32,7 +32,7 @@ func (s *Schema) UnsetCharset() *Schema {
 // SetCollation sets or appends the Collation attribute
 // to the schema with the given value.
 func (s *Schema) SetCollation(v string) *Schema {
-	replaceOrAppend(&s.Attrs, &Collation{V: v})
+	ReplaceOrAppend(&s.Attrs, &Collation{V: v})
 	return s
 }
 
@@ -45,7 +45,7 @@ func (s *Schema) UnsetCollation() *Schema {
 // SetComment sets or appends the Comment attribute
 // to the schema with the given value.
 func (s *Schema) SetComment(v string) *Schema {
-	replaceOrAppend(&s.Attrs, &Comment{Text: v})
+	ReplaceOrAppend(&s.Attrs, &Comment{Text: v})
 	return s
 }
 
@@ -91,7 +91,7 @@ func (r *Realm) AddSchemas(schemas ...*Schema) *Realm {
 // SetCharset sets or appends the Charset attribute
 // to the realm with the given value.
 func (r *Realm) SetCharset(v string) *Realm {
-	replaceOrAppend(&r.Attrs, &Charset{V: v})
+	ReplaceOrAppend(&r.Attrs, &Charset{V: v})
 	return r
 }
 
@@ -104,7 +104,7 @@ func (r *Realm) UnsetCharset() *Realm {
 // SetCollation sets or appends the Collation attribute
 // to the realm with the given value.
 func (r *Realm) SetCollation(v string) *Realm {
-	replaceOrAppend(&r.Attrs, &Collation{V: v})
+	ReplaceOrAppend(&r.Attrs, &Collation{V: v})
 	return r
 }
 
@@ -122,7 +122,7 @@ func NewTable(name string) *Table {
 // SetCharset sets or appends the Charset attribute
 // to the table with the given value.
 func (t *Table) SetCharset(v string) *Table {
-	replaceOrAppend(&t.Attrs, &Charset{V: v})
+	ReplaceOrAppend(&t.Attrs, &Charset{V: v})
 	return t
 }
 
@@ -135,7 +135,7 @@ func (t *Table) UnsetCharset() *Table {
 // SetCollation sets or appends the Collation attribute
 // to the table with the given value.
 func (t *Table) SetCollation(v string) *Table {
-	replaceOrAppend(&t.Attrs, &Collation{V: v})
+	ReplaceOrAppend(&t.Attrs, &Collation{V: v})
 	return t
 }
 
@@ -148,7 +148,7 @@ func (t *Table) UnsetCollation() *Table {
 // SetComment sets or appends the Comment attribute
 // to the table with the given value.
 func (t *Table) SetComment(v string) *Table {
-	replaceOrAppend(&t.Attrs, &Comment{Text: v})
+	ReplaceOrAppend(&t.Attrs, &Comment{Text: v})
 	return t
 }
 
@@ -496,7 +496,7 @@ func (c *Column) SetDefault(x Expr) *Column {
 // SetCharset sets or appends the Charset attribute
 // to the column with the given value.
 func (c *Column) SetCharset(v string) *Column {
-	replaceOrAppend(&c.Attrs, &Charset{V: v})
+	ReplaceOrAppend(&c.Attrs, &Charset{V: v})
 	return c
 }
 
@@ -509,7 +509,7 @@ func (c *Column) UnsetCharset() *Column {
 // SetCollation sets or appends the Collation attribute
 // to the column with the given value.
 func (c *Column) SetCollation(v string) *Column {
-	replaceOrAppend(&c.Attrs, &Collation{V: v})
+	ReplaceOrAppend(&c.Attrs, &Collation{V: v})
 	return c
 }
 
@@ -522,13 +522,13 @@ func (c *Column) UnsetCollation() *Column {
 // SetComment sets or appends the Comment attribute
 // to the column with the given value.
 func (c *Column) SetComment(v string) *Column {
-	replaceOrAppend(&c.Attrs, &Comment{Text: v})
+	ReplaceOrAppend(&c.Attrs, &Comment{Text: v})
 	return c
 }
 
 // SetGeneratedExpr sets or appends the GeneratedExpr attribute.
 func (c *Column) SetGeneratedExpr(x *GeneratedExpr) *Column {
-	replaceOrAppend(&c.Attrs, x)
+	ReplaceOrAppend(&c.Attrs, x)
 	return c
 }
 
@@ -598,7 +598,7 @@ func (i *Index) SetTable(t *Table) *Index {
 // SetComment sets or appends the Comment attribute
 // to the index with the given value.
 func (i *Index) SetComment(v string) *Index {
-	replaceOrAppend(&i.Attrs, &Comment{Text: v})
+	ReplaceOrAppend(&i.Attrs, &Comment{Text: v})
 	return i
 }
 
@@ -737,9 +737,9 @@ func (f *ForeignKey) SetOnDelete(o ReferenceOption) *ForeignKey {
 	return f
 }
 
-// replaceOrAppend searches an attribute of the same type as v in
+// ReplaceOrAppend searches an attribute of the same type as v in
 // the list and replaces it. Otherwise, v is appended to the list.
-func replaceOrAppend(attrs *[]Attr, v Attr) {
+func ReplaceOrAppend(attrs *[]Attr, v Attr) {
 	t := reflect.TypeOf(v)
 	for i := range *attrs {
 		if reflect.TypeOf((*attrs)[i]) == t {
@@ -750,10 +750,15 @@ func replaceOrAppend(attrs *[]Attr, v Attr) {
 	*attrs = append(*attrs, v)
 }
 
-// ReplaceOrAppend searches an attribute of the same type as v in
-// the list and replaces it. Otherwise, v is appended to the list.
-func ReplaceOrAppend(attrs *[]Attr, v Attr) {
-	replaceOrAppend(attrs, v)
+// RemoveAttr returns a new slice where all attributes of type T are filtered.
+func RemoveAttr[T Attr](attrs []Attr) []Attr {
+	f := make([]Attr, 0, len(attrs))
+	for _, a := range attrs {
+		if _, ok := a.(T); !ok {
+			f = append(f, a)
+		}
+	}
+	return f
 }
 
 // del searches an attribute of the same type as v in
