@@ -39,6 +39,11 @@ CREATE TABLE `users` (
   `name` varchar(255) CHARACTER SET hebrew NOT NULL
 )
 
+-- maria107/1.sql --
+CREATE TABLE `users` (
+  `name` varchar(255) CHARACTER SET hebrew COLLATE hebrew_general_ci NOT NULL
+)
+
 -- mysql8/1.sql --
 CREATE TABLE `users` (
   `name` varchar(255) CHARACTER SET hebrew COLLATE hebrew_general_ci NOT NULL
