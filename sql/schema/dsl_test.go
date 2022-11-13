@@ -204,3 +204,28 @@ func TestCheck(t *testing.T) {
 		Attrs: []schema.Attr{enforced},
 	}, tbl.Attrs[1])
 }
+
+func TestRemoveAttr(t *testing.T) {
+	u := schema.NewTable("users")
+	require.Empty(t, u.Attrs)
+	u.SetComment("users table")
+	require.Len(t, u.Attrs, 1)
+	u.Attrs = schema.RemoveAttr[*schema.Comment](u.Attrs)
+	require.Empty(t, u.Attrs)
+
+	u.AddAttrs(&schema.Comment{}, &schema.Comment{})
+	require.Len(t, u.Attrs, 2)
+	u.Attrs = schema.RemoveAttr[*schema.Comment](u.Attrs)
+	require.Empty(t, u.Attrs)
+
+	u.SetCharset("charset")
+	u.SetComment("users table")
+	u.SetCollation("collation")
+	u.Attrs = schema.RemoveAttr[*schema.Comment](u.Attrs)
+	require.Len(t, u.Attrs, 2)
+	require.Equal(t, &schema.Charset{V: "charset"}, u.Attrs[0])
+	require.Equal(t, &schema.Collation{V: "collation"}, u.Attrs[1])
+	u.Attrs = schema.RemoveAttr[*schema.Collation](u.Attrs)
+	require.Len(t, u.Attrs, 1)
+	require.Equal(t, &schema.Charset{V: "charset"}, u.Attrs[0])
+}
