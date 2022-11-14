@@ -1,0 +1,16 @@
+ALTER TABLE `t1` ADD COLUMN `c1` varchar(255) DEFAULT 'name';
+ALTER TABLE `t2` ADD COLUMN `c1` varchar(255) DEFAULT 'name';
+select sleep(0.1);
+ALTER TABLE `t3` ADD COLUMN `c1` varchar(255) DEFAULT 'name';
+ALTER TABLE `t4` ADD COLUMN `c1` varchar(255) DEFAULT 'name';
+select sleep(0.1);
+ALTER TABLE `t5` ADD COLUMN `c1` varchar(255) DEFAULT 'name';
+ALTER TABLE `t6` ADD COLUMN `c1` varchar(255) DEFAULT 'name';
+ALTER TABLE `t1` ADD COLUMN `c2` varchar(255) DEFAULT 'name';
+ALTER TABLE `t2` ADD COLUMN `c2` varchar(255) DEFAULT 'name';
+select sleep(0.1);
+ALTER TABLE `t3` ADD COLUMN `c2` varchar(255) DEFAULT 'name';
+ALTER TABLE `t4` ADD COLUMN `c2` varchar(255) DEFAULT 'name';
+select sleep(0.1);           
+ALTER TABLE `t5` ADD COLUMN `c2` varchar(255) DEFAULT 'name';
+ALTER TABLE `t6` ADD COLUMN `c2` varchar(255) DEFAULT 'name';
