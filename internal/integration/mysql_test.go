@@ -9,8 +9,10 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os/exec"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"ariga.io/atlas/sql/migrate"
@@ -584,6 +586,43 @@ func TestMySQL_Snapshot(t *testing.T) {
 func TestMySQL_CLI_MigrateApplyBC(t *testing.T) {
 	myRun(t, func(t *myTest) {
 		testCLIMigrateApplyBC(t, "mysql")
+	})
+}
+
+func TestMySQL_CLI_MigrateApplyLock(t *testing.T) {
+	myRun(t, func(t *myTest) {
+		t.dropSchemas("mysqlock")
+		t.migrate(&schema.AddSchema{S: schema.New("mysqlock")})
+		var (
+			b  atomic.Bool
+			wg sync.WaitGroup
+		)
+		for i := 0; i < 5; i++ {
+			wg.Add(1)
+			go func(i int) {
+				defer wg.Done()
+				out, err := exec.Command(
+					"go", "run", "ariga.io/atlas/cmd/atlas",
+					"migrate", "apply",
+					"--dir", "file://testdata/migrations/mysqlock",
+					"--url", t.url("mysqlock"),
+				).CombinedOutput()
+				switch {
+				// Nop run.
+				case err == nil && strings.HasPrefix(string(out), "No migration files to execute"):
+				// Successful run.
+				case err == nil && strings.HasPrefix(string(out), "Migrating to version 3"):
+					if b.Swap(true) {
+						t.Errorf("migration ran twice: %s", out)
+					}
+				// In case of an error, it must be a lock error.
+				default:
+					require.Equal(t, string(out), "Error: acquiring database lock: sql/schema: lock is held by other session\nexit status 1\n")
+				}
+			}(i)
+		}
+		wg.Wait()
+		require.True(t, b.Load(), "Migration should run successfully exactly once")
 	})
 }
 

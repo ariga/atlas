@@ -155,7 +155,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 			return fmt.Errorf("acquiring database lock: %w", err)
 		}
 		// If unlocking fails notify the user about it.
-		defer cobra.CheckErr(unlock())
+		defer func() { cobra.CheckErr(unlock()) }()
 	}
 	if err := checkRevisionSchemaClarity(cmd, client, flags.revisionSchema); err != nil {
 		return err
@@ -329,7 +329,7 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags) e
 			return fmt.Errorf("acquiring database lock: %w", err)
 		}
 		// If unlocking fails notify the user about it.
-		defer cobra.CheckErr(unlock())
+		defer func() { cobra.CheckErr(unlock()) }()
 	}
 	// Open the migration directory.
 	u, err := url.Parse(flags.dirURL)
@@ -762,7 +762,7 @@ func migrateSetRun(cmd *cobra.Command, args []string, flags migrateSetFlags) err
 			return fmt.Errorf("acquiring database lock: %w", err)
 		}
 		// If unlocking fails notify the user about it.
-		defer cobra.CheckErr(unlock())
+		defer func() { cobra.CheckErr(unlock()) }()
 	}
 	if err := checkRevisionSchemaClarity(cmd, client, flags.revisionSchema); err != nil {
 		return err
