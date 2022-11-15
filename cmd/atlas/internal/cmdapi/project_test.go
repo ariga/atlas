@@ -43,6 +43,7 @@ env "local" {
 	migration {
 		dir = "file://migrations"
 		format = atlas
+		lock_timeout = "1s"
 		revisions_schema = "revisions"
 	}
 	lint {
@@ -88,6 +89,7 @@ env "multi" {
 			Migration: &Migration{
 				Dir:             "file://migrations",
 				Format:          formatAtlas,
+				LockTimeout:     "1s",
 				RevisionsSchema: "revisions",
 			},
 			Lint: &Lint{

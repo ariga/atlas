@@ -434,7 +434,7 @@ func (r *Resource) Scan(ext any) error {
 			r.Name = field.String()
 		case ft.isQualifier():
 			if field.Kind() != reflect.String {
-				return errors.New("schemahcl: extension qualifer field must be string")
+				return errors.New("schemahcl: extension qualifier field must be string")
 			}
 			r.Qualifier = field.String()
 		case isResourceSlice(field.Type()):

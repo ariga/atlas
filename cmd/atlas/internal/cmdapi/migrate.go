@@ -68,6 +68,7 @@ type migrateApplyFlags struct {
 	revisionSchema  string
 	dryRun          bool
 	logFormat       string
+	lockTimeout     time.Duration
 	allowDirty      bool   // allow working on a database that already has resources
 	fromVersion     string // compute pending files based on this version
 	baselineVersion string // apply with this version as baseline
@@ -107,6 +108,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 	addFlagLog(cmd.Flags(), &flags.logFormat)
 	addFlagRevisionSchema(cmd.Flags(), &flags.revisionSchema)
 	addFlagDryRun(cmd.Flags(), &flags.dryRun)
+	addFlagLockTimeout(cmd.Flags(), &flags.lockTimeout)
 	cmd.Flags().StringVarP(&flags.fromVersion, flagFrom, "", "", "calculate pending files from the given version (including it)")
 	cmd.Flags().StringVarP(&flags.baselineVersion, flagBaseline, "", "", "start the first migration after the given baseline version")
 	cmd.Flags().StringVarP(&flags.txMode, flagTxMode, "", txModeFile, "set transaction mode [none, file, all]")
@@ -150,7 +152,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 	defer client.Close()
 	// Acquire a lock.
 	if l, ok := client.Driver.(schema.Locker); ok {
-		unlock, err := l.Lock(cmd.Context(), applyLockValue, 0)
+		unlock, err := l.Lock(cmd.Context(), applyLockValue, flags.lockTimeout)
 		if err != nil {
 			return fmt.Errorf("acquiring database lock: %w", err)
 		}
@@ -269,6 +271,7 @@ type migrateDiffFlags struct {
 	dirURL, dirFormat string
 	devURL            string
 	schemas           []string
+	lockTimeout       time.Duration
 	revisionSchema    string // revision schema name
 	qualifier         string // optional table qualifier
 }
@@ -309,6 +312,7 @@ directory state to the desired schema. The desired state can be another connecte
 	addFlagDirFormat(cmd.Flags(), &flags.dirFormat)
 	addFlagRevisionSchema(cmd.Flags(), &flags.revisionSchema)
 	addFlagSchemas(cmd.Flags(), &flags.schemas)
+	addFlagLockTimeout(cmd.Flags(), &flags.lockTimeout)
 	cmd.Flags().StringVar(&flags.qualifier, flagQualifier, "", "qualify tables with custom qualifier when working on a single schema")
 	cobra.CheckErr(cmd.MarkFlagRequired(flagTo))
 	cobra.CheckErr(cmd.MarkFlagRequired(flagDevURL))
@@ -1489,6 +1493,13 @@ func setFlagsFromEnv(cmd *cobra.Command, env *Env) error {
 	switch cmd.Name() {
 	case "apply":
 		if err := maySetFlag(cmd, flagLog, env.Log.Migrate.Apply); err != nil {
+			return err
+		}
+		if err := maySetFlag(cmd, flagLockTimeout, env.Migration.LockTimeout); err != nil {
+			return err
+		}
+	case "diff":
+		if err := maySetFlag(cmd, flagLockTimeout, env.Migration.LockTimeout); err != nil {
 			return err
 		}
 	case "lint":

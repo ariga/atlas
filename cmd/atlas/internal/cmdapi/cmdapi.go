@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
@@ -193,6 +194,7 @@ const (
 	flagGitBase        = "git-base"
 	flagGitDir         = "git-dir"
 	flagLatest         = "latest"
+	flagLockTimeout    = "lock-timeout"
 	flagLog            = "log"
 	flagRevisionSchema = "revisions-schema"
 	flagSchema         = "schema"
@@ -217,6 +219,10 @@ func addFlagAutoApprove(set *pflag.FlagSet, target *bool) {
 
 func addFlagDirFormat(set *pflag.FlagSet, target *string) {
 	set.StringVar(target, flagDirFormat, "atlas", "select migration file format")
+}
+
+func addFlagLockTimeout(set *pflag.FlagSet, target *time.Duration) {
+	set.DurationVar(target, flagLockTimeout, 10*time.Second, "set how long to wait for the database lock")
 }
 
 // addFlagURL adds a URL flag. If given, args[0] override the name, args[1] the shorthand, args[2] the default value.
