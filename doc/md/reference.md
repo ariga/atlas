@@ -89,6 +89,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.
       --log string                go template to use to format logs
       --revisions-schema string   name of the schema the revisions table resides in
       --dry-run                   print SQL without executing it
+      --lock-timeout duration     set how long to wait for the database lock (default 10s)
       --from string               calculate pending files from the given version (including it)
       --baseline string           start the first migration after the given baseline version
       --tx-mode string            set transaction mode [none, file, all] (default "file")
@@ -127,6 +128,7 @@ directory state to the desired schema. The desired state can be another connecte
       --dir-format string         select migration file format (default "atlas")
       --revisions-schema string   name of the schema the revisions table resides in
   -s, --schema strings            set schema names
+      --lock-timeout duration     set how long to wait for the database lock (default 10s)
       --qualifier string          qualify tables with custom qualifier when working on a single schema
 
 ```
