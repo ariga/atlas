@@ -27,6 +27,9 @@ const defaultSchemaNameAlias = "default"
 // sizedTypeRe parses spanner types such as "STRING(50)" or "BYTES(MAX)".
 var sizedTypeRe = regexp.MustCompile(`(\w+)(?:\((-?\d+|MAX)\))?`)
 
+// arrayTypeRe parses spanner types such as "ARRAY<STRING(50)>" or "ARRAY<BYTES>".
+var arrayTypeRe = regexp.MustCompile(`ARRAY<(.*)>`)
+
 // InspectRealm returns schema descriptions of all resources in the given realm.
 func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOption) (*schema.Realm, error) {
 	schemas, err := i.schemas(ctx, opts)
@@ -213,6 +216,19 @@ func columnType(spannerType string) (schema.Type, error) {
 
 	col := &columnDesc{}
 	spannerType = strings.TrimSpace(strings.ToUpper(spannerType))
+
+	// ARRAY type handling.
+	if arrayTypeRe.MatchString(spannerType) {
+		parts := arrayTypeRe.FindStringSubmatch(spannerType)
+		inner, err := columnType(parts[1])
+		if err != nil {
+			return nil, err
+		}
+		return &ArrayType{
+			Type: inner,
+			T:    spannerType,
+		}, nil
+	}
 
 	// Split up type into, base type, size, and other modifiers.
 	m := removeEmptyStrings(sizedTypeRe.FindStringSubmatch(spannerType))
@@ -517,6 +533,7 @@ type (
 	Nullable struct {
 		schema.Attr
 	}
+
 	// MaxSize flags whether a column is of size "MAX" as opposed to a discreet int sizing.
 	MaxSize struct {
 		schema.Attr
@@ -532,6 +549,14 @@ type (
 	IndexPredicate struct {
 		schema.Attr
 		P string
+	}
+
+	// ArrayType defines an array type.
+	// https://cloud.google.com/spanner/docs/reference/standard-sql/data-types#array_type
+	// Note that it is invalid to have an array of array types.
+	ArrayType struct {
+		schema.Type        // Underlying items type (e.g. INT64)
+		T           string // Formatted type (e.g. ARRAY<INT64>).
 	}
 )
 

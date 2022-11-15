@@ -17,6 +17,8 @@ import (
 func FormatType(t schema.Type) (string, error) {
 	var f string
 	switch t := t.(type) {
+	case *ArrayType:
+		f = t.T
 	case *schema.BoolType:
 		f = t.T
 	case *schema.EnumType:
@@ -94,7 +96,7 @@ func ParseType(c string) (schema.Type, error) {
 			T: TypeDate,
 		}, nil
 	case TypeBool:
-		return &schema.TimeType{
+		return &schema.BoolType{
 			T: TypeBool,
 		}, nil
 	default:

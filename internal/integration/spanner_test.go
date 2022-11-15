@@ -171,6 +171,24 @@ func TestSpanner_ColumnInt(t *testing.T) {
 	})
 }
 
+func TestSpanner_ColumnArray(t *testing.T) {
+	stRun(t, func(t *spannerTest) {
+		usersT := t.users()
+		t.dropTables(usersT.Name)
+		t.migrate(&schema.AddTable{T: usersT})
+
+		// Add column.
+		usersT.Columns = append(
+			usersT.Columns,
+			&schema.Column{Name: "a", Type: &schema.ColumnType{Raw: "ARRAY<INT64>", Type: &spanner.ArrayType{Type: &schema.IntegerType{T: "INT64"}, T: "ARRAY<INT64>"}, Null: true}},
+		)
+		changes := t.diff(t.loadUsers(), usersT)
+		require.Len(t, changes, 1)
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, usersT)
+	})
+}
+
 func TestSpanner_HCL(t *testing.T) {
 	full := `
 schema "default" {
