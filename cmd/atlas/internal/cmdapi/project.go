@@ -78,6 +78,7 @@ type (
 		Dir             string `spec:"dir"`
 		Format          string `spec:"format"`
 		Baseline        string `spec:"baseline"`
+		LockTimeout     string `spec:"lock_timeout"`
 		RevisionsSchema string `spec:"revisions_schema"`
 	}
 

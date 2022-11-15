@@ -607,17 +607,15 @@ func TestMySQL_CLI_MigrateApplyLock(t *testing.T) {
 					"--dir", "file://testdata/migrations/mysqlock",
 					"--url", t.url("mysqlock"),
 				).CombinedOutput()
+				require.NoError(t, err, string(out))
 				switch {
-				// Nop run.
+				// Nop.
 				case err == nil && strings.HasPrefix(string(out), "No migration files to execute"):
 				// Successful run.
 				case err == nil && strings.HasPrefix(string(out), "Migrating to version 3"):
 					if b.Swap(true) {
 						t.Errorf("migration ran twice: %s", out)
 					}
-				// In case of an error, it must be a lock error.
-				default:
-					require.Equal(t, string(out), "Error: acquiring database lock: sql/schema: lock is held by other session\nexit status 1\n")
 				}
 			}(i)
 		}

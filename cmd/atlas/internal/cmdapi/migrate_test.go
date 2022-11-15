@@ -411,8 +411,8 @@ env "local" {
 		path := filepath.Join(p, "atlas.hcl")
 		err := os.WriteFile(path, []byte(h), 0600)
 		require.NoError(t, err)
-		cmd := migrateCmd()
-		cmd.AddCommand(migrateApplyCmd())
+		cmd, sub := migrateCmd(), migrateApplyCmd()
+		cmd.AddCommand(sub)
 		s, err := runCmd(
 			cmd, "apply",
 			"-c", "file://"+path,
