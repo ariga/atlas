@@ -226,6 +226,7 @@ set or map item. See the example [below](#multi-environment-example).
 - `migration` - A block defines the migration configuration of the env.
   - `dir` - The [URL](../concepts/url.mdx) to the migration directory.
   - `baseline` - An optional version to start the migration history from. Read more [here](../versioned/apply.mdx#existing-databases).
+  - `lock_timeout` - An optional timeout to wait for a database lock to be released. Defaults to `10s`. 
   - `revisions_schema` - An optional name to control the schema that the revisions table resides in.
 
 - `log` - A block defines the logging configuration of the env per command.
