@@ -93,7 +93,8 @@ atlas schema inspect -u mysql://user:pass@localhost:3306 > schema.hcl
 
 ## Versioned Migrations
 
-In the versioned workflow, the Atlas Terraform provider uses the migrations directory to manage changes to the database across versions. To use this workflow, we first need to [create a migrations directory](/versioned/new.mdx) using the atlas cli.
+In the versioned workflow, the Atlas Terraform provider uses the migrations directory to manage changes to the
+database across versions. To use this workflow, we first need to [create a migrations directory](/versioned/new.mdx) using the Atlas CLI.
 
 Here is the example of a migration directory that uses the versioned workflow:
 
@@ -155,7 +156,7 @@ resource "atlas_migration" "shop" {
 }
 ```
 
-For the full documentation and examples of the provider visit the [registry page](https://registry.terraform.io/providers/ariga/atlas/latest/docs).
+For the full documentation and examples for using the provider, visit the [registry page](https://registry.terraform.io/providers/ariga/atlas/latest/docs).
 
 :::info
 
