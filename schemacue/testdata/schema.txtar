@@ -1,0 +1,20 @@
+load
+
+-- module.cue --
+package main
+
+import (
+	"ariga.io/atlas/sql/schema"
+)
+
+schema.#Realm & {
+	Schemas: [{
+		Name: "auth",
+		Tables: [{
+			Name: "users",
+			Columns: [{
+				Name: "id",
+			}],
+		}],
+	}],
+}

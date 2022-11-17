@@ -114,6 +114,11 @@ func (r *Realm) UnsetCollation() *Realm {
 	return r
 }
 
+// NewSchema creates a nwe Schema.
+func NewSchema(name string) *Schema {
+	return &Schema{Name: name}
+}
+
 // NewTable creates a new Table.
 func NewTable(name string) *Table {
 	return &Table{Name: name}

@@ -1,0 +1,6 @@
+load
+
+-- module.cue --
+package main
+
+name: "example"
