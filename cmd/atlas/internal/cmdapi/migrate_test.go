@@ -749,6 +749,34 @@ func TestMigrate_Diff(t *testing.T) {
 	)
 	require.True(t, strings.HasPrefix(s, "Error: acquiring database lock: "+errLock.Error()))
 	require.ErrorIs(t, err, errLock)
+
+	t.Run("Amend", func(t *testing.T) {
+		p := t.TempDir()
+		require.NoError(t, os.Setenv("EDITOR", "echo '-- Comment' >>"))
+		t.Cleanup(func() { require.NoError(t, os.Unsetenv("EDITOR")) })
+		args := []string{
+			"--amend",
+			"--dir", "file://" + p,
+			"--dev-url", openSQLite(t, ""),
+			"--to", to,
+		}
+		_, err := runCmd(migrateDiffCmd(), args...)
+		files, err := os.ReadDir(p)
+		require.NoError(t, err)
+		require.Len(t, files, 2)
+		b, err := os.ReadFile(filepath.Join(p, files[0].Name()))
+		require.NoError(t, err)
+		require.Contains(t, string(b), "CREATE")
+		require.True(t, strings.HasSuffix(string(b), "-- Comment\n"))
+		require.Equal(t, "atlas.sum", files[1].Name())
+
+		// Second run will have no effect.
+		_, err = runCmd(migrateDiffCmd(), args...)
+		require.NoError(t, err)
+		files, err = os.ReadDir(p)
+		require.NoError(t, err)
+		require.Len(t, files, 2)
+	})
 }
 
 func TestMigrate_StatusJSON(t *testing.T) {

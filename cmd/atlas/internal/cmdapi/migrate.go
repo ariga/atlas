@@ -268,6 +268,7 @@ func reportApply(cmd *cobra.Command, flags migrateApplyFlags, r *cmdmigrate.Appl
 }
 
 type migrateDiffFlags struct {
+	amend             bool
 	desiredURLs       []string
 	dirURL, dirFormat string
 	devURL            string
@@ -315,6 +316,7 @@ directory state to the desired schema. The desired state can be another connecte
 	addFlagSchemas(cmd.Flags(), &flags.schemas)
 	addFlagLockTimeout(cmd.Flags(), &flags.lockTimeout)
 	cmd.Flags().StringVar(&flags.qualifier, flagQualifier, "", "qualify tables with custom qualifier when working on a single schema")
+	cmd.Flags().BoolVarP(&flags.amend, flagAmend, "", false, "edit the generated migration file(s)")
 	cobra.CheckErr(cmd.MarkFlagRequired(flagTo))
 	cobra.CheckErr(cmd.MarkFlagRequired(flagDevURL))
 	return cmd
@@ -344,6 +346,9 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags) e
 	dir, err := dirURL(u, false)
 	if err != nil {
 		return err
+	}
+	if flags.amend {
+		dir = &editDir{dir}
 	}
 	f, err := formatter(u)
 	if err != nil {
