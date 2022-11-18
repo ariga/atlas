@@ -826,6 +826,20 @@ func TestMigrate_New(t *testing.T) {
 	s, err = runCmd(migrateNewCmd(), "--dir", "file://testdata/mysql")
 	require.NotZero(t, s)
 	require.Error(t, err)
+
+	t.Run("Amend", func(t *testing.T) {
+		p := t.TempDir()
+		require.NoError(t, os.Setenv("EDITOR", "echo 'contents' >"))
+		t.Cleanup(func() { require.NoError(t, os.Unsetenv("EDITOR")) })
+		s, err = runCmd(migrateNewCmd(), "--dir", "file://"+p, "--amend")
+		files, err := os.ReadDir(p)
+		require.NoError(t, err)
+		require.Len(t, files, 2)
+		b, err := os.ReadFile(filepath.Join(p, files[0].Name()))
+		require.NoError(t, err)
+		require.Equal(t, "contents\n", string(b))
+		require.Equal(t, "atlas.sum", files[1].Name())
+	})
 }
 
 func TestMigrate_Validate(t *testing.T) {

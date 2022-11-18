@@ -14,6 +14,7 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -646,7 +647,11 @@ func migrateLintRun(cmd *cobra.Command, _ []string, flags migrateLintFlags) erro
 	return err
 }
 
-type migrateNewFlags struct{ dirURL, dirFormat string }
+type migrateNewFlags struct {
+	amend     bool
+	dirURL    string
+	dirFormat string
+}
 
 // migrateNewCmd represents the 'atlas migrate new' subcommand.
 func migrateNewCmd() *cobra.Command {
@@ -675,6 +680,7 @@ func migrateNewCmd() *cobra.Command {
 	cmd.Flags().SortFlags = false
 	addFlagDirURL(cmd.Flags(), &flags.dirURL)
 	addFlagDirFormat(cmd.Flags(), &flags.dirFormat)
+	cmd.Flags().BoolVarP(&flags.amend, flagAmend, "", false, "edit the created migration file(s)")
 	return cmd
 }
 
@@ -686,6 +692,9 @@ func migrateNewRun(_ *cobra.Command, args []string, flags migrateNewFlags) error
 	dir, err := dirURL(u, true)
 	if err != nil {
 		return err
+	}
+	if flags.amend {
+		dir = &editDir{dir}
 	}
 	f, err := formatter(u)
 	if err != nil {
@@ -1575,6 +1584,43 @@ func migrateEnvsRun[F any](run func(*cobra.Command, []string, F) error, cmd *cob
 		w.Reset()
 	}
 	return nil
+}
+
+type editDir struct{ migrate.Dir }
+
+// WriteFile implements the migrate.Dir.WriteFile method.
+func (d *editDir) WriteFile(name string, b []byte) (err error) {
+	if name != migrate.HashFileName {
+		if b, err = edit(name, b); err != nil {
+			return err
+		}
+	}
+	return d.Dir.WriteFile(name, b)
+}
+
+// edit allows editing the file content using editor.
+func edit(name string, src []byte) ([]byte, error) {
+	path := filepath.Join(os.TempDir(), name)
+	if err := os.WriteFile(path, src, 0644); err != nil {
+		return nil, fmt.Errorf("write source content to temp file: %w", err)
+	}
+	defer os.Remove(path)
+	editor := "vi"
+	if e := os.Getenv("EDITOR"); e != "" {
+		editor = e
+	}
+	cmd := exec.Command("sh", "-c", editor+" "+path)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("exec edit: %w", err)
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read edited temp file: %w", err)
+	}
+	return b, nil
 }
 
 type (
