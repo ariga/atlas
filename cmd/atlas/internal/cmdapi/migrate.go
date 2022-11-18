@@ -268,7 +268,7 @@ func reportApply(cmd *cobra.Command, flags migrateApplyFlags, r *cmdmigrate.Appl
 }
 
 type migrateDiffFlags struct {
-	amend             bool
+	edit              bool
 	desiredURLs       []string
 	dirURL, dirFormat string
 	devURL            string
@@ -316,7 +316,7 @@ directory state to the desired schema. The desired state can be another connecte
 	addFlagSchemas(cmd.Flags(), &flags.schemas)
 	addFlagLockTimeout(cmd.Flags(), &flags.lockTimeout)
 	cmd.Flags().StringVar(&flags.qualifier, flagQualifier, "", "qualify tables with custom qualifier when working on a single schema")
-	cmd.Flags().BoolVarP(&flags.amend, flagAmend, "", false, "edit the generated migration file(s)")
+	cmd.Flags().BoolVarP(&flags.edit, flagEdit, "", false, "edit the generated migration file(s)")
 	cobra.CheckErr(cmd.MarkFlagRequired(flagTo))
 	cobra.CheckErr(cmd.MarkFlagRequired(flagDevURL))
 	return cmd
@@ -347,7 +347,7 @@ func migrateDiffRun(cmd *cobra.Command, args []string, flags migrateDiffFlags) e
 	if err != nil {
 		return err
 	}
-	if flags.amend {
+	if flags.edit {
 		dir = &editDir{dir}
 	}
 	f, err := formatter(u)
@@ -653,7 +653,7 @@ func migrateLintRun(cmd *cobra.Command, _ []string, flags migrateLintFlags) erro
 }
 
 type migrateNewFlags struct {
-	amend     bool
+	edit      bool
 	dirURL    string
 	dirFormat string
 }
@@ -685,7 +685,7 @@ func migrateNewCmd() *cobra.Command {
 	cmd.Flags().SortFlags = false
 	addFlagDirURL(cmd.Flags(), &flags.dirURL)
 	addFlagDirFormat(cmd.Flags(), &flags.dirFormat)
-	cmd.Flags().BoolVarP(&flags.amend, flagAmend, "", false, "edit the created migration file(s)")
+	cmd.Flags().BoolVarP(&flags.edit, flagEdit, "", false, "edit the created migration file(s)")
 	return cmd
 }
 
@@ -698,7 +698,7 @@ func migrateNewRun(_ *cobra.Command, args []string, flags migrateNewFlags) error
 	if err != nil {
 		return err
 	}
-	if flags.amend {
+	if flags.edit {
 		dir = &editDir{dir}
 	}
 	f, err := formatter(u)

@@ -178,7 +178,7 @@ func (v *Vars) Type() string {
 
 const (
 	flagAllowDirty     = "allow-dirty"
-	flagAmend          = "amend"
+	flagEdit           = "edit"
 	flagAutoApprove    = "auto-approve"
 	flagBaseline       = "baseline"
 	flagConfig         = "config"

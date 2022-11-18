@@ -750,12 +750,12 @@ func TestMigrate_Diff(t *testing.T) {
 	require.True(t, strings.HasPrefix(s, "Error: acquiring database lock: "+errLock.Error()))
 	require.ErrorIs(t, err, errLock)
 
-	t.Run("Amend", func(t *testing.T) {
+	t.Run("Edit", func(t *testing.T) {
 		p := t.TempDir()
 		require.NoError(t, os.Setenv("EDITOR", "echo '-- Comment' >>"))
 		t.Cleanup(func() { require.NoError(t, os.Unsetenv("EDITOR")) })
 		args := []string{
-			"--amend",
+			"--edit",
 			"--dir", "file://" + p,
 			"--dev-url", openSQLite(t, ""),
 			"--to", to,
@@ -855,11 +855,11 @@ func TestMigrate_New(t *testing.T) {
 	require.NotZero(t, s)
 	require.Error(t, err)
 
-	t.Run("Amend", func(t *testing.T) {
+	t.Run("Edit", func(t *testing.T) {
 		p := t.TempDir()
 		require.NoError(t, os.Setenv("EDITOR", "echo 'contents' >"))
 		t.Cleanup(func() { require.NoError(t, os.Unsetenv("EDITOR")) })
-		s, err = runCmd(migrateNewCmd(), "--dir", "file://"+p, "--amend")
+		s, err = runCmd(migrateNewCmd(), "--dir", "file://"+p, "--edit")
 		files, err := os.ReadDir(p)
 		require.NoError(t, err)
 		require.Len(t, files, 2)
