@@ -130,6 +130,7 @@ directory state to the desired schema. The desired state can be another connecte
   -s, --schema strings            set schema names
       --lock-timeout duration     set how long to wait for the database lock (default 10s)
       --qualifier string          qualify tables with custom qualifier when working on a single schema
+      --amend                     edit the generated migration file(s)
 
 ```
 
@@ -234,6 +235,7 @@ atlas migrate new [flags] [name]
 ```
       --dir string          select migration directory using URL format (default "file://migrations")
       --dir-format string   select migration file format (default "atlas")
+      --amend               edit the created migration file(s)
 
 ```
 
