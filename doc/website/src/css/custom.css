@@ -18,6 +18,9 @@
   align-items: center;
 }
 
+html[data-theme='dark'] .footer__title {
+  color: #FFFFFF;
+}
 .footer__title {
   color: #000939;
   font-size: 22px;
