@@ -175,6 +175,11 @@ module.exports = {
                     id: 'guides/postgres/included-columns',
                     label: 'Covering Indexes'
                 },
+                {
+                    type: 'doc',
+                    id: 'guides/postgres/index-operator-classes',
+                    label: 'Index Operator Classes'
+                }
             ],
         },
         {
