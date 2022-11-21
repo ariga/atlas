@@ -99,7 +99,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.`,
 				if GlobalFlags.SelectedEnv == "" {
 					return migrateApplyRun(cmd, args, flags)
 				}
-				return migrateEnvsRun(migrateApplyRun, cmd, args, &flags)
+				return cmdEnvsRun(migrateApplyRun, setMigrateEnvFlags, cmd, args, &flags)
 			},
 		}
 	)
@@ -125,8 +125,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 		err   error
 	)
 	if len(args) > 0 {
-		count, err = strconv.Atoi(args[0])
-		if err != nil {
+		if count, err = strconv.Atoi(args[0]); err != nil {
 			return err
 		}
 		if count < 1 {
@@ -1372,8 +1371,8 @@ func selectScheme(urls []string) (string, error) {
 	if len(urls) == 0 {
 		return "", errors.New("at least one url is required")
 	}
-	for _, url := range urls {
-		parts := strings.SplitN(url, "://", 2)
+	for _, u := range urls {
+		parts := strings.SplitN(u, "://", 2)
 		switch current := parts[0]; {
 		case scheme == "":
 			scheme = current
@@ -1479,11 +1478,11 @@ func migrateFlagsFromEnv(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	return setFlagsFromEnv(cmd, activeEnv)
+	return setMigrateEnvFlags(cmd, activeEnv)
 }
 
-func setFlagsFromEnv(cmd *cobra.Command, env *Env) error {
-	if err := inputValsFromEnv(cmd, env); err != nil {
+func setMigrateEnvFlags(cmd *cobra.Command, env *Env) error {
+	if err := inputValuesFromEnv(cmd, env); err != nil {
 		return err
 	}
 	if err := maySetFlag(cmd, flagURL, env.URL); err != nil {
@@ -1559,8 +1558,12 @@ func setFlagsFromEnv(cmd *cobra.Command, env *Env) error {
 	return nil
 }
 
-// migrateEnvsRun executes a given command on each of the configured environment.
-func migrateEnvsRun[F any](run func(*cobra.Command, []string, F) error, cmd *cobra.Command, args []string, flags *F) error {
+// cmdEnvsRun executes a given command on each of the configured environment.
+func cmdEnvsRun[F any](
+	run func(*cobra.Command, []string, F) error,
+	set func(*cobra.Command, *Env) error,
+	cmd *cobra.Command, args []string, flags *F,
+) error {
 	envs, err := LoadEnv(GlobalFlags.SelectedEnv, WithInput(GlobalFlags.Vars))
 	if err != nil {
 		return err
@@ -1573,7 +1576,7 @@ func migrateEnvsRun[F any](run func(*cobra.Command, []string, F) error, cmd *cob
 	cmd.SetOut(io.MultiWriter(out, &w))
 	defer cmd.SetOut(out)
 	for i, e := range envs {
-		if err := setFlagsFromEnv(cmd, e); err != nil {
+		if err := set(cmd, e); err != nil {
 			return err
 		}
 		if err := run(cmd, args, *flags); err != nil {
