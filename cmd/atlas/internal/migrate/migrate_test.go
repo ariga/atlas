@@ -10,6 +10,7 @@ import (
 
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
 	"ariga.io/atlas/sql/sqlclient"
+
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
