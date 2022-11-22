@@ -260,6 +260,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 		}
 		c.Attrs = append(c.Attrs, a)
 	}
+
 	if attr.onUpdate != "" {
 		c.Attrs = append(c.Attrs, &OnUpdate{A: attr.onUpdate})
 	}
