@@ -86,22 +86,14 @@ migration.`,
   atlas schema apply -u "mariadb://user:pass@localhost:3306/dbname" --to file://schema.hcl
   atlas schema apply --url "postgres://user:pass@host:port/dbname?sslmode=disable" --to file://schema.hcl
   atlas schema apply -u "sqlite://file:ex1.db?_fk=1" --to file://schema.hcl`,
-			PreRunE: func(cmd *cobra.Command, args []string) error {
-				if err := schemaFlagsFromEnv(cmd, args); err != nil {
-					return err
-				}
-				if len(flags.paths) == 0 && len(flags.toURLs) == 0 {
-					return errors.New(`one of flag(s) "file" or "to" is required`)
-				}
-				// If the old -f flag is given convert them to the URL format. If both are given, cobra would throw an
-				// error since they are marked as mutually exclusive.
-				for _, p := range flags.paths {
-					flags.toURLs = append(flags.toURLs, "file://"+p)
-				}
-				return nil
+			PreRunE: func(cmd *cobra.Command, _ []string) error {
+				return dsn2url(cmd)
 			},
 			RunE: func(cmd *cobra.Command, args []string) error {
-				return schemaApplyRun(cmd, args, flags)
+				if GlobalFlags.SelectedEnv == "" {
+					return schemaApplyRun(cmd, args, flags)
+				}
+				return cmdEnvsRun(schemaApplyRun, setSchemaEnvFlags, cmd, args, &flags)
 			},
 		}
 	)
@@ -115,20 +107,32 @@ migration.`,
 	addFlagDryRun(cmd.Flags(), &flags.dryRun)
 	addFlagAutoApprove(cmd.Flags(), &flags.autoApprove)
 	addFlagDSN(cmd.Flags(), &flags.dsn)
-	cobra.CheckErr(cmd.MarkFlagRequired(flagURL))
 	cmd.MarkFlagsMutuallyExclusive(flagFile, flagTo)
 	return cmd
 }
 
 func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) error {
+	switch {
+	case flags.url == "":
+		return errors.New(`required flag(s) "url" not set`)
+	case len(flags.paths) == 0 && len(flags.toURLs) == 0:
+		return errors.New(`one of flag(s) "file" or "to" is required`)
+	}
+	// If the old -f flag is given convert them to the URL format. If both are given,
+	// cobra would throw an error since they are marked as mutually exclusive.
+	for _, p := range flags.paths {
+		if !strings.Contains(p, "://") {
+			p = "file://" + p
+		}
+		flags.toURLs = append(flags.toURLs, p)
+	}
 	var (
-		ctx = cmd.Context()
 		err error
+		dev *sqlclient.Client
+		ctx = cmd.Context()
 	)
-	var dev *sqlclient.Client
 	if flags.devURL != "" {
-		dev, err = sqlclient.Open(ctx, flags.devURL)
-		if err != nil {
+		if dev, err = sqlclient.Open(ctx, flags.devURL); err != nil {
 			return err
 		}
 		defer dev.Close()
@@ -193,7 +197,12 @@ func schemaCleanCmd() *cobra.Command {
 As a safety feature, 'atlas schema clean' will ask for confirmation before attempting to execute any SQL.`,
 			Example: `  atlas schema clean -u mysql://user:pass@localhost:3306/dbname
   atlas schema clean -u mysql://user:pass@localhost:3306/`,
-			PreRunE: schemaFlagsFromEnv,
+			PreRunE: func(cmd *cobra.Command, _ []string) error {
+				if err := schemaFlagsFromEnv(cmd); err != nil {
+					return err
+				}
+				return dsn2url(cmd)
+			},
 			RunE: func(cmd *cobra.Command, args []string) error {
 				return schemaCleanRun(cmd, args, flags)
 			},
@@ -272,7 +281,12 @@ The database states can be read from a connected database, an HCL project or a m
 			Example: `  atlas schema diff --from mysql://user:pass@localhost:3306/test --to file://schema.hcl
   atlas schema diff --from mysql://user:pass@localhost:3306 --to file://schema_1.hcl --to file://schema_2.hcl
   atlas schema diff --from mysql://user:pass@localhost:3306 --to file://migrations`,
-			PreRunE: schemaFlagsFromEnv,
+			PreRunE: func(cmd *cobra.Command, _ []string) error {
+				if err := schemaFlagsFromEnv(cmd); err != nil {
+					return err
+				}
+				return dsn2url(cmd)
+			},
 			RunE: func(cmd *cobra.Command, args []string) error {
 				return schemaDiffRun(cmd, args, flags)
 			},
@@ -381,7 +395,12 @@ flag.
   atlas schema inspect -u "mariadb://user:pass@localhost:3306/" --schema=schemaA,schemaB -s schemaC
   atlas schema inspect --url "postgres://user:pass@host:port/dbname?sslmode=disable"
   atlas schema inspect -u "sqlite://file:ex1.db?_fk=1"`,
-			PreRunE: schemaFlagsFromEnv,
+			PreRunE: func(cmd *cobra.Command, _ []string) error {
+				if err := schemaFlagsFromEnv(cmd); err != nil {
+					return err
+				}
+				return dsn2url(cmd)
+			},
 			RunE: func(cmd *cobra.Command, args []string) error {
 				return schemaInspectRun(cmd, args, flags)
 			},
@@ -483,36 +502,37 @@ func selectEnv(name string) (*Env, error) {
 	return envs[0], nil
 }
 
-func schemaFlagsFromEnv(cmd *cobra.Command, _ []string) error {
+func schemaFlagsFromEnv(cmd *cobra.Command) error {
 	activeEnv, err := selectEnv(GlobalFlags.SelectedEnv)
 	if err != nil {
 		return err
 	}
-	if err := inputValsFromEnv(cmd, activeEnv); err != nil {
+	return setSchemaEnvFlags(cmd, activeEnv)
+}
+
+func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
+	if err := inputValuesFromEnv(cmd, env); err != nil {
 		return err
 	}
-	if err := dsn2url(cmd); err != nil {
+	if err := maySetFlag(cmd, flagURL, env.URL); err != nil {
 		return err
 	}
-	if err := maySetFlag(cmd, flagURL, activeEnv.URL); err != nil {
+	if err := maySetFlag(cmd, flagDevURL, env.DevURL); err != nil {
 		return err
 	}
-	if err := maySetFlag(cmd, flagDevURL, activeEnv.DevURL); err != nil {
-		return err
-	}
-	srcs, err := activeEnv.Sources()
+	srcs, err := env.Sources()
 	if err != nil {
 		return err
 	}
 	if err := maySetFlag(cmd, flagFile, strings.Join(srcs, ",")); err != nil {
 		return err
 	}
-	if s := strings.Join(activeEnv.Schemas, ","); s != "" {
+	if s := strings.Join(env.Schemas, ","); s != "" {
 		if err := maySetFlag(cmd, flagSchema, s); err != nil {
 			return err
 		}
 	}
-	if s := strings.Join(activeEnv.Exclude, ","); s != "" {
+	if s := strings.Join(env.Exclude, ","); s != "" {
 		if err := maySetFlag(cmd, flagExclude, s); err != nil {
 			return err
 		}

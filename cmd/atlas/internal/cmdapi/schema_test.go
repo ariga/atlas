@@ -251,6 +251,70 @@ func TestCmdSchemaApply(t *testing.T) {
 	)
 }
 
+func TestSchema_ApplyMultiEnv(t *testing.T) {
+	p := t.TempDir()
+	cfg := filepath.Join(p, "atlas.hcl")
+	src := filepath.Join(p, "schema.hcl")
+	err := os.WriteFile(cfg, []byte(`
+variable "urls" {
+  type = list(string)
+}
+
+variable "src" {
+  type = string
+}
+
+env "local" {
+  for_each = toset(var.urls)
+  url      = each.value
+  src 	   = var.src
+}`), 0600)
+	require.NoError(t, err)
+	err = os.WriteFile(src, []byte(`
+schema "main" {}
+
+table "users" {
+  schema = schema.main
+  column "id" {
+    type = int
+  }
+}
+`), 0600)
+	require.NoError(t, err)
+	db1, db2 := filepath.Join(p, "test1.db"), filepath.Join(p, "test2.db")
+	cmd := schemaCmd()
+	cmd.AddCommand(schemaApplyCmd())
+	s, err := runCmd(
+		cmd, "apply",
+		"-c", "file://"+cfg,
+		"--env", "local",
+		"--var", fmt.Sprintf("src=file://%s", src),
+		"--var", fmt.Sprintf("urls=sqlite://file:%s?cache=shared&_fk=1", db1),
+		"--var", fmt.Sprintf("urls=sqlite://file:%s?cache=shared&_fk=1", db2),
+		"--auto-approve",
+	)
+	require.NoError(t, err)
+	require.Equal(t, 2, strings.Count(s, "CREATE TABLE `users` (`id` int NOT NULL)"))
+	_, err = os.Stat(db1)
+	require.NoError(t, err)
+	_, err = os.Stat(db2)
+	require.NoError(t, err)
+
+	cmd = schemaCmd()
+	cmd.AddCommand(schemaApplyCmd())
+	s, err = runCmd(
+		cmd, "apply",
+		"-c", "file://"+cfg,
+		"--env", "local",
+		"--var", fmt.Sprintf("src=file://%s", src),
+		"--var", fmt.Sprintf("urls=sqlite://file:%s?cache=shared&_fk=1", db1),
+		"--var", fmt.Sprintf("urls=sqlite://file:%s?cache=shared&_fk=1", db2),
+		"--auto-approve",
+	)
+	require.NoError(t, err)
+	require.Equal(t, 2, strings.Count(s, "Schema is synced, no changes to be made"))
+}
+
 func TestCmdSchemaApply_Sources(t *testing.T) {
 	var (
 		p   = t.TempDir()

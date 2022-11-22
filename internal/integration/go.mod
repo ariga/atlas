@@ -20,7 +20,7 @@ require (
 )
 
 require (
-	ariga.io/atlas/cmd/atlas v0.8.2-0.20221113160047-09851f798b12 // indirect
+	ariga.io/atlas/cmd/atlas v0.8.3-0.20221120093953-181ee6af8d94 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20220816024939-bc8df83d7b9d // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
