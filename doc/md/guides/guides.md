@@ -40,6 +40,8 @@ Welcome to the Atlas Guides.
 
 [Included Columns](postgres/included-columns.md)
 
+[Index Operator Classes](postgres/index-operator-classes.md)
+
 ### SQLite
 
 [Partial Indexes](sqlite/partial-indexes.md)
