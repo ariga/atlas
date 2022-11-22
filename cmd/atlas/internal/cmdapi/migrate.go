@@ -21,6 +21,7 @@ import (
 	"text/template"
 	"time"
 
+	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
 	"ariga.io/atlas/cmd/atlas/internal/lint"
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
@@ -183,7 +184,7 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 	if v := flags.fromVersion; v != "" {
 		opts = append(opts, migrate.WithFromVersion(v))
 	}
-	report := cmdmigrate.NewApplyReport(client, migrationDir)
+	report := cmdlog.NewApplyReport(client, migrationDir)
 	ex, err := migrate.NewExecutor(client.Driver, migrationDir, rrw, opts...)
 	if err != nil {
 		return err
@@ -252,18 +253,18 @@ func migrateApplyRun(cmd *cobra.Command, args []string, flags migrateApplyFlags)
 	return err
 }
 
-func reportApply(cmd *cobra.Command, flags migrateApplyFlags, r *cmdmigrate.ApplyReport) error {
+func reportApply(cmd *cobra.Command, flags migrateApplyFlags, r *cmdlog.ApplyReport) error {
 	var (
 		err error
-		f   = cmdmigrate.DefaultApplyTemplate
+		f   = cmdlog.DefaultApplyTemplate
 	)
 	if v := flags.logFormat; v != "" {
-		f, err = template.New("format").Funcs(cmdmigrate.ApplyTemplateFuncs).Parse(v)
+		f, err = template.New("format").Funcs(cmdlog.ApplyTemplateFuncs).Parse(v)
 		if err != nil {
 			return fmt.Errorf("parse log format: %w", err)
 		}
 	}
-	return (&cmdmigrate.TemplateWriter{T: f, W: cmd.OutOrStdout()}).WriteReport(r)
+	return (&cmdlog.TemplateWriter{T: f, W: cmd.OutOrStdout()}).WriteReport(r)
 }
 
 type migrateDiffFlags struct {
@@ -938,19 +939,25 @@ func migrateStatusRun(cmd *cobra.Command, _ []string, flags migrateStatusFlags) 
 	if err := checkRevisionSchemaClarity(cmd, client, flags.revisionSchema); err != nil {
 		return err
 	}
-	var format = cmdmigrate.DefaultStatusTemplate
+	report, err := (&cmdmigrate.StatusReporter{
+		Client: client,
+		Dir:    dir,
+		Schema: revisionSchemaName(client, flags.revisionSchema),
+	}).Report(cmd.Context())
+	if err != nil {
+		return err
+	}
+	format := &cmdlog.TemplateWriter{
+		W: cmd.OutOrStdout(),
+		T: cmdlog.DefaultStatusTemplate,
+	}
 	if f := flags.logFormat; f != "" {
-		format, err = template.New("format").Funcs(cmdmigrate.StatusTemplateFuncs).Parse(f)
+		format.T, err = template.New("format").Funcs(cmdlog.StatusTemplateFuncs).Parse(f)
 		if err != nil {
 			return fmt.Errorf("parse log format: %w", err)
 		}
 	}
-	return (&cmdmigrate.StatusReporter{
-		Client:       client,
-		Dir:          dir,
-		ReportWriter: &cmdmigrate.TemplateWriter{T: format, W: cmd.OutOrStdout()},
-		Schema:       revisionSchemaName(client, flags.revisionSchema),
-	}).Report(cmd.Context())
+	return format.WriteReport(report)
 }
 
 type migrateValidateFlags struct {

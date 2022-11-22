@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
 	migrate2 "ariga.io/atlas/cmd/atlas/internal/migrate"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
@@ -505,7 +506,7 @@ env "local" {
 		for _, s := range strings.Split(s, "\n") {
 			var r struct {
 				Tenant string
-				migrate2.ApplyReport
+				cmdlog.ApplyReport
 			}
 			require.NoError(t, json.Unmarshal([]byte(s), &r))
 			require.Empty(t, r.Pending)
