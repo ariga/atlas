@@ -33,7 +33,7 @@ func TestReporter_Status(t *testing.T) {
 	rr := &StatusReporter{Client: c, Dir: dir}
 	report, err := rr.Report(ctx)
 	require.NoError(t, err)
-	require.NoError(t, cmdlog.DefaultStatusTemplate.Execute(&buf, report))
+	require.NoError(t, cmdlog.MigrateStatusTemplate.Execute(&buf, report))
 	require.Equal(t, `Migration Status: PENDING
   -- Current Version: No migration applied yet
   -- Next Version:    1
@@ -52,7 +52,7 @@ func TestReporter_Status(t *testing.T) {
 	rr = &StatusReporter{Client: c, Dir: dir}
 	report, err = rr.Report(ctx)
 	require.NoError(t, err)
-	require.NoError(t, cmdlog.DefaultStatusTemplate.Execute(&buf, report))
+	require.NoError(t, cmdlog.MigrateStatusTemplate.Execute(&buf, report))
 	require.Equal(t, `Migration Status: PENDING
   -- Current Version: 1
   -- Next Version:    2
@@ -67,7 +67,7 @@ func TestReporter_Status(t *testing.T) {
 	rr = &StatusReporter{Client: c, Dir: dir}
 	report, err = rr.Report(ctx)
 	require.NoError(t, err)
-	require.NoError(t, cmdlog.DefaultStatusTemplate.Execute(&buf, report))
+	require.NoError(t, cmdlog.MigrateStatusTemplate.Execute(&buf, report))
 	require.Equal(t, `Migration Status: PENDING
   -- Current Version: 2
   -- Next Version:    3
@@ -82,7 +82,7 @@ func TestReporter_Status(t *testing.T) {
 	rr = &StatusReporter{Client: c, Dir: dir}
 	report, err = rr.Report(ctx)
 	require.NoError(t, err)
-	require.NoError(t, cmdlog.DefaultStatusTemplate.Execute(&buf, report))
+	require.NoError(t, cmdlog.MigrateStatusTemplate.Execute(&buf, report))
 	require.Equal(t, `Migration Status: PENDING
   -- Current Version: 3 (1 statements applied)
   -- Next Version:    3 (1 statements left)
@@ -104,7 +104,7 @@ Last migration attempt had errors:
 	rr = &StatusReporter{Client: c, Dir: dir}
 	report, err = rr.Report(ctx)
 	require.NoError(t, err)
-	require.NoError(t, cmdlog.DefaultStatusTemplate.Execute(&buf, report))
+	require.NoError(t, cmdlog.MigrateStatusTemplate.Execute(&buf, report))
 	require.Equal(t, `Migration Status: OK
   -- Current Version: 3
   -- Next Version:    Already at latest version

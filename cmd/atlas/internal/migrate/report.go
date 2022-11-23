@@ -19,7 +19,7 @@ import (
 
 // StatusReporter is used to gather information about migration status.
 type StatusReporter struct {
-	// Client configures the connection to the database to file a StatusReport for.
+	// Client configures the connection to the database to file a MigrateStatus for.
 	Client *sqlclient.Client
 	// Dir is used for scanning and validating the migration directory.
 	Dir migrate.Dir
@@ -27,9 +27,9 @@ type StatusReporter struct {
 	Schema string
 }
 
-// Report creates and writes a StatusReport.
-func (r *StatusReporter) Report(ctx context.Context) (*cmdlog.StatusReport, error) {
-	rep, err := cmdlog.NewStatusReport(r.Client, r.Dir)
+// Report creates and writes a MigrateStatus.
+func (r *StatusReporter) Report(ctx context.Context) (*cmdlog.MigrateStatus, error) {
+	rep, err := cmdlog.NewMigrateStatus(r.Client, r.Dir)
 	if err != nil {
 		return nil, err
 	}

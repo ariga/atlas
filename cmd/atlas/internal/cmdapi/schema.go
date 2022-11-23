@@ -13,7 +13,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 
+	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
@@ -55,6 +57,7 @@ type schemaApplyFlags struct {
 	exclude     []string // List of glob patterns used to filter resources from applying (see schema.InspectOptions).
 	dryRun      bool     // Only show SQL on screen instead of applying it.
 	autoApprove bool     // Don't prompt for approval before applying SQL.
+	logFormat   string   // Log format.
 	dsn         string   // Deprecated: DSN is an alias for URL.
 }
 
@@ -106,6 +109,7 @@ migration.`,
 	addFlagDevURL(cmd.Flags(), &flags.devURL)
 	addFlagDryRun(cmd.Flags(), &flags.dryRun)
 	addFlagAutoApprove(cmd.Flags(), &flags.autoApprove)
+	cmd.Flags().StringVarP(&flags.logFormat, flagLog, "", "", "custom logging using a Go template")
 	addFlagDSN(cmd.Flags(), &flags.dsn)
 	cmd.MarkFlagsMutuallyExclusive(flagFile, flagTo)
 	return cmd
@@ -117,6 +121,8 @@ func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) erro
 		return errors.New(`required flag(s) "url" not set`)
 	case len(flags.paths) == 0 && len(flags.toURLs) == 0:
 		return errors.New(`one of flag(s) "file" or "to" is required`)
+	case flags.logFormat != "" && !flags.dryRun && !flags.autoApprove:
+		return errors.New(`--log can only be used with --dry-run or --auto-approve`)
 	}
 	// If the old -f flag is given convert them to the URL format. If both are given,
 	// cobra would throw an error since they are marked as mutually exclusive.
@@ -127,10 +133,16 @@ func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) erro
 		flags.toURLs = append(flags.toURLs, p)
 	}
 	var (
-		err error
-		dev *sqlclient.Client
-		ctx = cmd.Context()
+		err    error
+		dev    *sqlclient.Client
+		ctx    = cmd.Context()
+		format = cmdlog.SchemaPlanTemplate
 	)
+	if v := flags.logFormat; v != "" {
+		if format, err = template.New("format").Funcs(cmdlog.ApplyTemplateFuncs).Parse(v); err != nil {
+			return fmt.Errorf("parse log format: %w", err)
+		}
+	}
 	if flags.devURL != "" {
 		if dev, err = sqlclient.Open(ctx, flags.devURL); err != nil {
 			return err
@@ -166,19 +178,48 @@ func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) erro
 	if err != nil {
 		return err
 	}
+	// Returning at this stage should
+	// not trigger the help message.
+	cmd.SilenceUsage = true
 	if len(changes) == 0 {
-		cmd.Println("Schema is synced, no changes to be made")
-		return nil
+		return format.Execute(cmd.OutOrStderr(), &cmdlog.SchemaApply{})
 	}
-	if err := summary(cmd, client, changes); err != nil {
-		return err
-	}
-	if !flags.dryRun && (flags.autoApprove || promptUser()) {
-		if err := client.ApplyChanges(ctx, changes); err != nil {
+	switch {
+	case flags.logFormat != "" && flags.autoApprove:
+		var (
+			applied int
+			plan    *migrate.Plan
+			cause   *cmdlog.StmtError
+		)
+		if plan, err = client.PlanChanges(cmd.Context(), "", changes); err != nil {
 			return err
 		}
+		if err = client.ApplyChanges(ctx, changes); err == nil {
+			applied = len(plan.Changes)
+		} else if i, ok := err.(interface{ Applied() int }); ok && i.Applied() < len(plan.Changes) {
+			applied, cause = i.Applied(), &cmdlog.StmtError{Stmt: plan.Changes[i.Applied()].Cmd, Text: err.Error()}
+		} else {
+			cause = &cmdlog.StmtError{Text: err.Error()}
+		}
+		apply := cmdlog.NewSchemaApply(cmdlog.NewEnv(client, nil), plan.Changes[:applied], plan.Changes[applied:], cause)
+		if err1 := format.Execute(cmd.OutOrStderr(), apply); err1 != nil {
+			if err != nil {
+				err1 = fmt.Errorf("%w: %v", err, err1)
+			}
+			err = err1
+		}
+		return err
+	default:
+		if err := summary(cmd, client, changes, format); err != nil {
+			return err
+		}
+		if !flags.dryRun && (flags.autoApprove || promptUser()) {
+			if err := client.ApplyChanges(ctx, changes); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
-	return nil
 }
 
 type schemeCleanFlags struct {
@@ -248,7 +289,7 @@ func schemaCleanRun(cmd *cobra.Command, _ []string, flags schemeCleanFlags) erro
 		cmd.Println("Nothing to drop")
 		return nil
 	}
-	if err := summary(cmd, c, drop); err != nil {
+	if err := summary(cmd, c, drop, cmdlog.SchemaPlanTemplate); err != nil {
 		return err
 	}
 	if flags.AutoApprove || promptUser() {
@@ -348,20 +389,7 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags) error 
 	if err != nil {
 		return err
 	}
-	p, err := c.PlanChanges(ctx, "plan", diff)
-	if err != nil {
-		return err
-	}
-	if len(p.Changes) == 0 {
-		cmd.Println("Schemas are synced, no changes to be made.")
-	}
-	for _, c := range p.Changes {
-		if c.Comment != "" {
-			cmd.Println("--", strings.ToUpper(c.Comment[:1])+c.Comment[1:])
-		}
-		cmd.Println(c.Cmd)
-	}
-	return nil
+	return summary(cmd, c, diff, cmdlog.SchemaDiffTemplate)
 }
 
 type schemaInspectFlags struct {
@@ -537,6 +565,12 @@ func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
 			return err
 		}
 	}
+	switch cmd.Name() {
+	case "apply":
+		if err := maySetFlag(cmd, flagLog, env.Log.Schema.Apply); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -573,19 +607,15 @@ func computeDiff(ctx context.Context, differ *sqlclient.Client, from, to *stateR
 	return diff, nil
 }
 
-func summary(cmd *cobra.Command, drv migrate.Driver, changes []schema.Change) error {
-	p, err := drv.PlanChanges(cmd.Context(), "", changes)
+func summary(cmd *cobra.Command, c *sqlclient.Client, changes []schema.Change, t *template.Template) error {
+	p, err := c.PlanChanges(cmd.Context(), "", changes)
 	if err != nil {
 		return err
 	}
-	cmd.Println("-- Planned Changes:")
-	for _, c := range p.Changes {
-		if c.Comment != "" {
-			cmd.Println("--", strings.ToUpper(c.Comment[:1])+c.Comment[1:])
-		}
-		cmd.Println(c.Cmd)
-	}
-	return nil
+	return t.Execute(
+		cmd.OutOrStdout(),
+		cmdlog.NewSchemaPlan(cmdlog.NewEnv(c, nil), p.Changes, nil),
+	)
 }
 
 const (

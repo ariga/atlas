@@ -396,6 +396,7 @@ migration.
       --dev-url string    [driver://username:password@address/dbname?param=value] select a dev database using the URL format
       --dry-run           print SQL without executing it
       --auto-approve      apply changes without prompting for approval
+      --log string        custom logging using a Go template
 
 ```
 
