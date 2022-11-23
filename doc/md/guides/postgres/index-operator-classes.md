@@ -10,7 +10,7 @@ An operator class identifies the operators to be used by the index for the index
 
 ### Syntax
 
-Here is how you can specify operator class for a column in an index definition:
+Here is how you can specify an operator class for a column in an index definition:
 
 ```sql
 CREATE INDEX 
@@ -78,7 +78,7 @@ FROM
 
 We do not have any indexes other than the primary index on the `id` column. 
 
-Now, let’s assume that we are not aware of the usage of operator classes in indexes just yet, and we want to accelerate queries involving patterns matching expressions with a `LIKE` operator, to search a name in the `subscriber_name` column. In this case, we would create an index on the column `subscriber_name` with the following command:
+Now, let’s assume that we are not aware of the usage of operator classes in indexes just yet. We want to accelerate queries involving patterns matching expressions with a `LIKE` operator in order to search a name in the `subscriber_name` column. In this case, we would create an index on the column `subscriber_name` with the following command:
 
 ```sql
 CREATE INDEX 
@@ -92,7 +92,7 @@ CREATE INDEX
 Time: 3911.261 ms (00:03.911)
 ```
 
-Awesome! Our index is now created on the `subscriber_name` column. Now suppose that we want to search for a subscriber who’s registered name begins with “Shirley C”. We can create such a query with the use of a `WHERE` clause and a `LIKE` operator. Let’s check the performance and plan of this query with the following command:
+Awesome! Our index is now created on the `subscriber_name` column. Now, suppose that we want to search for a subscriber whose registered name begins with “Shirley C”. We can create such a query with the use of a `WHERE` clause and a `LIKE` operator. Let’s check the performance and plan of this query with the following command:
 
 ```sql
 EXPLAIN ANALYZE
@@ -123,13 +123,13 @@ The EXPLAIN command is used for understanding the performance of a query. You ca
 
 Time: 243.573 ms
 ```
-Notice that the index `internet_provider_idx` that we created was not used in order to execute this query. Instead, the `Parallel Seq Scan` operation was performed. As a result, the total execution time and cost are still too high.
+Notice that the `internet_provider_idx` index that we created was not used in order to execute this query. Instead, the `Parallel Seq Scan` operation was performed. As a result, the total execution time and cost are still too high.
 
 :::info
 In a parallel sequential scan, the table's blocks will be divided into ranges and shared among the cooperating processes. Each worker process will complete the scanning of its given range of blocks before requesting an additional range of blocks. To learn more about Parallel Plans in PostgreSQL, visit the official documentation [here](https://www.postgresql.org/docs/current/parallel-plans.html).
 :::
 
-Now, you might be wondering why the index that we created was not being used in the execution of this query. This is a point where having knowledge about usage of operator classes becomes important. 
+Now, you might be wondering why the index that we created was not being used in the execution of this query. This is when having knowledge about the usage of operator classes becomes important. 
 
 As mentioned earlier, an operator class identifies the operators to be used by the index for the indexed column. Let’s see this in action by specifying an operator class in our definition with the following commands:
 
@@ -172,7 +172,7 @@ WHERE
 (5 rows)
 ```
 
-Amazing! This time, Index Scan was performed using `internet_provider_idx`. As a result the cost, planning time, and execution time for our query have reduced significantly, as we expected. 
+Amazing! This time, Index Scan was performed using `internet_provider_idx`. As a result, the cost, planning time, and execution time for our query have reduced significantly, as we expected. 
 
 The previous index (without a specified operator class) could have been helpful while executing queries with WHERE clauses with operators such as  <, <=, >, or >=. Though, the same index could not be utilized when executing queries with WHERE clauses with a `LIKE` operator.
 
@@ -226,7 +226,7 @@ schema "public" {
 }
 ```
 
-Now, lets add the following index definition to the file:
+Now, let's add the following index definition to the file:
 
 ```hcl title="schema.hcl"
   index "internet_provider_idx" {
