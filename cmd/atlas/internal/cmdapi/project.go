@@ -107,6 +107,10 @@ type (
 			// Status configures the logging for 'migrate status'.
 			Status string `spec:"status"`
 		} `spec:"migrate"`
+		Schema struct {
+			// Apply configures the logging for 'schema apply'.
+			Apply string `spec:"apply"`
+		} `spec:"schema"`
 		schemahcl.DefaultExtension
 	}
 )

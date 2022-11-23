@@ -6,6 +6,8 @@ package cmdapi
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -14,6 +16,7 @@ import (
 	"strings"
 	"testing"
 
+	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
@@ -313,6 +316,100 @@ table "users" {
 	)
 	require.NoError(t, err)
 	require.Equal(t, 2, strings.Count(s, "Schema is synced, no changes to be made"))
+}
+
+func TestSchema_ApplyLog(t *testing.T) {
+	t.Run("DryRun", func(t *testing.T) {
+		db := openSQLite(t, "")
+		cmd := schemaCmd()
+		cmd.AddCommand(schemaApplyCmd())
+		s, err := runCmd(
+			cmd, "apply",
+			"-u", db,
+			"--to", openSQLite(t, ""),
+			"--dry-run",
+			"--log", "{{ json .Changes }}",
+		)
+		require.NoError(t, err)
+		require.Equal(t, "{}", s)
+
+		cmd = schemaCmd()
+		cmd.AddCommand(schemaApplyCmd())
+		s, err = runCmd(
+			cmd, "apply",
+			"-u", db,
+			"--to", openSQLite(t, "create table t1 (id int);"),
+			"--dry-run",
+			"--log", "{{ json .Changes }}",
+		)
+		require.NoError(t, err)
+		require.Equal(t, "{\"Pending\":[\"CREATE TABLE `t1` (`id` int NULL)\"]}", s)
+	})
+	t.Run("AutoApprove", func(t *testing.T) {
+		db := openSQLite(t, "")
+		cmd := schemaCmd()
+		cmd.AddCommand(schemaApplyCmd())
+		s, err := runCmd(
+			cmd, "apply",
+			"-u", db,
+			"--to", openSQLite(t, "create table t1 (id int);"),
+			"--auto-approve",
+			"--log", "{{ json .Changes }}",
+		)
+		require.NoError(t, err)
+		require.Equal(t, "{\"Applied\":[\"CREATE TABLE `t1` (`id` int NULL)\"]}", s)
+
+		cmd = schemaCmd()
+		cmd.AddCommand(schemaApplyCmd())
+		s, err = runCmd(
+			cmd, "apply",
+			"-u", db,
+			"--to", openSQLite(t, "create table t1 (id int);"),
+			"--auto-approve",
+			"--log", "{{ json .Changes }}",
+		)
+		require.NoError(t, err)
+		require.Equal(t, "{}", s)
+
+		cmd = schemaCmd()
+		cmd.AddCommand(schemaApplyCmd())
+		s, err = runCmd(
+			cmd, "apply",
+			"-u", db,
+			"--to", openSQLite(t, "create table t2 (id int);"),
+			"--auto-approve",
+			"--log", "{{ json .Changes }}",
+		)
+		require.NoError(t, err)
+		require.Equal(t, "{\"Applied\":[\"PRAGMA foreign_keys = off\",\"DROP TABLE `t1`\",\"CREATE TABLE `t2` (`id` int NULL)\",\"PRAGMA foreign_keys = on\"]}", s)
+
+		// Simulate a failed execution.
+		conn, err := sql.Open("sqlite3", strings.TrimPrefix(db, "sqlite://"))
+		require.NoError(t, err)
+		_, err = conn.Exec("INSERT INTO t2 (`id`) VALUES (1), (1)")
+		require.NoError(t, err)
+
+		cmd = schemaCmd()
+		cmd.AddCommand(schemaApplyCmd())
+		s, err = runCmd(
+			cmd, "apply",
+			"-u", db,
+			"--to", openSQLite(t, "create table t2 (id int, c int);create unique index t2_id on t2 (id);"),
+			"--auto-approve",
+			"--log", "{{ json .Changes }}\n",
+		)
+		require.EqualError(t, err, `create index "t2_id" to table: "t2": UNIQUE constraint failed: t2.id`)
+		var out struct {
+			Applied []string
+			Pending []string
+			Error   cmdlog.StmtError
+		}
+		require.NoError(t, json.NewDecoder(strings.NewReader(s)).Decode(&out))
+		require.Equal(t, []string{"ALTER TABLE `t2` ADD COLUMN `c` int NULL"}, out.Applied)
+		require.Equal(t, []string{"CREATE UNIQUE INDEX `t2_id` ON `t2` (`id`)"}, out.Pending)
+		require.Equal(t, out.Pending[0], out.Error.Stmt)
+		require.Equal(t, `create index "t2_id" to table: "t2": UNIQUE constraint failed: t2.id`, out.Error.Text)
+	})
 }
 
 func TestCmdSchemaApply_Sources(t *testing.T) {
