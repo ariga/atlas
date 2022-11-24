@@ -4,6 +4,9 @@ id: projects
 slug: /atlas-schema/projects
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 ### Project Files
 
 Project files provide a convenient way to describe and interact with multiple
@@ -231,9 +234,11 @@ set or map item. See the example [below](#multi-environment-example).
 
 - `log` - A block defines the logging configuration of the env per command.
   - `migrate`
-    - `apply` - Set the `--log` flag by setting custom logging for `migrate apply`.
-    - `lint` - Set the `--log` flag by setting custom logging for `migrate lint`.
-    - `status` - Set the `--log` flag by setting custom logging for `migrate status`.
+    - `apply` - Set custom logging for `migrate apply`.
+    - `lint` - Set custom logging for `migrate lint`.
+    - `status` - Set custom logging for `migrate status`.
+  - `schema`
+    - `apply` - Set custom logging for `schema apply`.
 
 - `lint` - A block defines the migration linting configuration of the env.
   - `log` - Override the `--log` flag by setting a custom logging for `migrate lint`.
@@ -247,7 +252,10 @@ Atlas adopts the `for_each` meta-argument that [Terraform uses](https://www.terr
 for `env` blocks. Setting the `for_each` argument will compute an `env` block for each item in the provided value. Note
 that `for_each` accepts a map or a set of strings.
 
-```hcl
+<Tabs>
+<TabItem value="versioned" label="Versioned Migration" default>
+
+```hcl title="atlas.hcl"
 env "prod" {
   for_each = toset(data.sql.tenants.values)
   url      = urlsetpath(var.url, each.value)
@@ -266,6 +274,48 @@ env "prod" {
   }
 }
 ```
+
+</TabItem>
+<TabItem value="declarative" label="Declarative Migration">
+
+```hcl title="atlas.hcl"
+env "prod" {
+  for_each = toset(data.sql.tenants.values)
+  url      = urlsetpath(var.url, each.value)
+  src      = "schema.hcl"
+  log {
+    schema {
+      apply = format(
+        "{{ json . | json_merge %q }}",
+        jsonencode({
+          Tenant : each.value
+        })
+      )
+    }
+  }
+  // Inject custom variables to the schema.hcl defined below.
+  tenant = each.value
+}
+```
+
+```hcl title="schema.hcl"
+variable "tenant" {
+  type        = string
+  description = "The schema we operate on"
+}
+
+schema "tenant" {
+  name = var.tenant
+}
+
+table "users" {
+  schema = schema.tenant
+  // ...
+}
+```
+
+</TabItem>
+</Tabs>
 
 ## Configure Migration Linting
 
