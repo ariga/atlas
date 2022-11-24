@@ -228,7 +228,7 @@ func (i *inspect) crdbAddIndexes(s *schema.Schema, rows *sql.Rows) error {
 				idx.Attrs = append(idx.Attrs, &schema.Comment{Text: comment.String})
 			}
 			if sqlx.ValidString(contype) {
-				idx.Attrs = append(idx.Attrs, &ConType{T: contype.String})
+				idx.Attrs = append(idx.Attrs, &Constraint{T: contype.String})
 			}
 			if sqlx.ValidString(pred) {
 				idx.Attrs = append(idx.Attrs, &IndexPredicate{P: pred.String})
@@ -267,6 +267,8 @@ const (
 )
 
 // CockroachDB query for getting schema indexes.
+// Scanning constraints is disabled due to internal CockroachDB error.
+// (internal error: unexpected type *tree.DOidWrapper for key value)
 const crdbIndexesQuery = `
 SELECT
 	t.relname AS table_name,
@@ -274,7 +276,7 @@ SELECT
 	a.attname AS column_name,
 	idx.indisprimary AS primary,
 	idx.indisunique AS unique,
-	c.contype AS constraint_type,
+	NULL AS constraints,
 	pgi.indexdef create_stmt,
 	pg_get_expr(idx.indpred, idx.indrelid) AS predicate,
 	pg_get_indexdef(idx.indexrelid, idx.ord, false) AS expression,
@@ -290,13 +292,11 @@ SELECT
 	JOIN pg_class i ON i.oid = idx.indexrelid
 	JOIN pg_class t ON t.oid = idx.indrelid
 	JOIN pg_namespace n ON n.oid = t.relnamespace
-	LEFT JOIN pg_constraint c ON idx.indexrelid = c.conindid
 	LEFT JOIN pg_indexes pgi ON pgi.tablename = t.relname AND indexname = i.relname AND n.nspname = pgi.schemaname
 	LEFT JOIN pg_attribute a ON (a.attrelid, a.attnum) = (idx.indrelid, idx.key)
 WHERE
 	n.nspname = $1
 	AND t.relname IN (%s)
-	AND COALESCE(c.contype, '') <> 'f'
 ORDER BY
 	table_name, index_name, idx.ord
 `
