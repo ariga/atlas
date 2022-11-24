@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -321,14 +322,14 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 	names := make(map[string]*schema.Index)
 	for rows.Next() {
 		var (
-			uniq, primary, included                                           bool
-			table, name, typ                                                  string
-			desc, nullsfirst, nullslast, opcdefault                           sql.NullBool
-			column, contype, pred, expr, comment, options, opcname, opcparams sql.NullString
+			uniq, primary, included                                               bool
+			table, name, typ                                                      string
+			desc, nullsfirst, nullslast, opcdefault                               sql.NullBool
+			column, constraints, pred, expr, comment, options, opcname, opcparams sql.NullString
 		)
 		if err := rows.Scan(
-			&table, &name, &typ, &column, &included, &primary, &uniq, &contype, &pred, &expr, &desc,
-			&nullsfirst, &nullslast, &comment, &options, &opcname, &opcdefault, &opcparams,
+			&table, &name, &typ, &column, &included, &primary, &uniq, &constraints, &pred, &expr,
+			&desc, &nullsfirst, &nullslast, &comment, &options, &opcname, &opcdefault, &opcparams,
 		); err != nil {
 			return fmt.Errorf("postgres: scanning indexes for schema %q: %w", s.Name, err)
 		}
@@ -349,8 +350,14 @@ func (i *inspect) addIndexes(s *schema.Schema, rows *sql.Rows) error {
 			if sqlx.ValidString(comment) {
 				idx.Attrs = append(idx.Attrs, &schema.Comment{Text: comment.String})
 			}
-			if sqlx.ValidString(contype) {
-				idx.Attrs = append(idx.Attrs, &ConType{T: contype.String})
+			if sqlx.ValidString(constraints) {
+				var m map[string]string
+				if err := json.Unmarshal([]byte(constraints.String), &m); err != nil {
+					return fmt.Errorf("postgres: unmarshaling index constraints: %w", err)
+				}
+				for n, t := range m {
+					idx.Attrs = append(idx.Attrs, &Constraint{N: n, T: t})
+				}
 			}
 			if sqlx.ValidString(pred) {
 				idx.Attrs = append(idx.Attrs, &IndexPredicate{P: pred.String})
@@ -735,10 +742,11 @@ type (
 		T string
 	}
 
-	// ConType describes constraint type.
+	// Constraint describes a postgres constraint.
 	// https://postgresql.org/docs/current/catalog-pg-constraint.html
-	ConType struct {
+	Constraint struct {
 		schema.Attr
+		N string // constraint name
 		T string // c, f, p, u, t, x.
 	}
 
@@ -855,7 +863,7 @@ type (
 )
 
 // IsUnique reports if the type is unique constraint.
-func (c ConType) IsUnique() bool { return strings.ToLower(c.T) == "u" }
+func (c Constraint) IsUnique() bool { return strings.ToLower(c.T) == "u" }
 
 // IntegerType returns the underlying integer type this serial type represents.
 func (s *SerialType) IntegerType() *schema.IntegerType {
@@ -1136,35 +1144,44 @@ WHERE
 ORDER BY
 	t1.table_name, t1.ordinal_position
 `
+
 	fksQuery = `
-SELECT
-    t1.constraint_name,
-    t1.table_name,
-    t2.column_name,
-    t1.table_schema,
-    t3.table_name AS referenced_table_name,
-    t3.column_name AS referenced_column_name,
-    t3.table_schema AS referenced_schema_name,
-    t4.update_rule,
-    t4.delete_rule
-FROM
-    information_schema.table_constraints t1
-    JOIN information_schema.key_column_usage t2
-    ON t1.constraint_name = t2.constraint_name
-    AND t1.table_schema = t2.constraint_schema
-    JOIN information_schema.constraint_column_usage t3
-    ON t1.constraint_name = t3.constraint_name
-    AND t1.table_schema = t3.constraint_schema
-    JOIN information_schema.referential_constraints t4
-    ON t1.constraint_name = t4.constraint_name
-    AND t1.table_schema = t4.constraint_schema
-WHERE
-    t1.constraint_type = 'FOREIGN KEY'
-    AND t1.table_schema = $1
-    AND t1.table_name IN (%s)
-ORDER BY
-    t1.constraint_name,
-    t2.ordinal_position
+SELECT 
+    fk.constraint_name,
+    fk.table_name,
+    a1.attname AS column_name,
+    fk.schema_name,
+    fk.referenced_table_name,
+    a2.attname AS referenced_column_name,
+    fk.referenced_schema_name,
+    rc.update_rule,
+    rc.delete_rule
+	FROM 
+	    (
+	    	SELECT
+	      		con.conname AS constraint_name,
+	      		con.conrelid,
+	      		con.confrelid,
+	      		t1.relname AS table_name,
+	      		ns1.nspname AS schema_name,
+      			t2.relname AS referenced_table_name,
+	      		ns2.nspname AS referenced_schema_name,
+	      		unnest(con.conkey) AS conkey,
+	      		unnest(con.confkey) AS confkey
+	    	FROM pg_constraint con
+	    	JOIN pg_class t1 ON t1.oid = con.conrelid
+	    	JOIN pg_class t2 ON t2.oid = con.confrelid
+	    	JOIN pg_namespace ns1 on t1.relnamespace = ns1.oid
+	    	JOIN pg_namespace ns2 on t2.relnamespace = ns2.oid
+	    	WHERE ns1.nspname = $1
+	    	AND t1.relname IN (%s)
+	    	AND con.contype = 'f'
+	) AS fk
+	JOIN pg_attribute a1 ON a1.attnum = fk.conkey AND a1.attrelid = fk.conrelid
+	JOIN pg_attribute a2 ON a2.attnum = fk.confkey AND a2.attrelid = fk.confrelid
+	JOIN information_schema.referential_constraints rc ON rc.constraint_name = fk.constraint_name AND rc.constraint_schema = fk.schema_name
+	ORDER BY
+	    fk.conrelid, fk.constraint_name
 `
 
 	// Query to list table check constraints.
@@ -1206,7 +1223,7 @@ SELECT
 	%s AS included,
 	idx.indisprimary AS primary,
 	idx.indisunique AS unique,
-	c.contype AS constraint_type,
+	con.nametypes AS constraints,
 	pg_get_expr(idx.indpred, idx.indrelid) AS predicate,
 	pg_get_indexdef(idx.indexrelid, idx.ord, false) AS expression,
 	pg_index_column_has_property(idx.indexrelid, idx.ord, 'desc') AS isdesc,
@@ -1228,7 +1245,11 @@ FROM
 	JOIN pg_class i ON i.oid = idx.indexrelid
 	JOIN pg_class t ON t.oid = idx.indrelid
 	JOIN pg_namespace n ON n.oid = t.relnamespace
-	LEFT JOIN pg_constraint c ON idx.indexrelid = c.conindid
+	LEFT JOIN (
+	    select conindid, jsonb_object_agg(conname, contype) AS nametypes
+	    from pg_constraint
+	    group by conindid
+	) con ON con.conindid = idx.indexrelid
 	LEFT JOIN pg_attribute a ON (a.attrelid, a.attnum) = (idx.indrelid, idx.key)
 	JOIN pg_am am ON am.oid = i.relam
 	LEFT JOIN pg_opclass op ON op.oid = idx.indclass[idx.ord-1]
@@ -1236,7 +1257,6 @@ FROM
 WHERE
 	n.nspname = $1
 	AND t.relname IN (%s)
-	AND COALESCE(c.contype, '') <> 'f'
 ORDER BY
 	table_name, index_name, idx.ord
 `
