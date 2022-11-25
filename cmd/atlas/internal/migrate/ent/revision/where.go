@@ -38,7 +38,7 @@ func IDNEQ(id string) predicate.Revision {
 // IDIn applies the In predicate on the ID field.
 func IDIn(ids ...string) predicate.Revision {
 	return predicate.Revision(func(s *sql.Selector) {
-		v := make([]interface{}, len(ids))
+		v := make([]any, len(ids))
 		for i := range v {
 			v[i] = ids[i]
 		}
@@ -49,7 +49,7 @@ func IDIn(ids ...string) predicate.Revision {
 // IDNotIn applies the NotIn predicate on the ID field.
 func IDNotIn(ids ...string) predicate.Revision {
 	return predicate.Revision(func(s *sql.Selector) {
-		v := make([]interface{}, len(ids))
+		v := make([]any, len(ids))
 		for i := range v {
 			v[i] = ids[i]
 		}
@@ -173,34 +173,22 @@ func DescriptionNEQ(v string) predicate.Revision {
 
 // DescriptionIn applies the In predicate on the "description" field.
 func DescriptionIn(vs ...string) predicate.Revision {
-	v := make([]interface{}, len(vs))
+	v := make([]any, len(vs))
 	for i := range v {
 		v[i] = vs[i]
 	}
 	return predicate.Revision(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		s.Where(sql.In(s.C(FieldDescription), v...))
 	})
 }
 
 // DescriptionNotIn applies the NotIn predicate on the "description" field.
 func DescriptionNotIn(vs ...string) predicate.Revision {
-	v := make([]interface{}, len(vs))
+	v := make([]any, len(vs))
 	for i := range v {
 		v[i] = vs[i]
 	}
 	return predicate.Revision(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		s.Where(sql.NotIn(s.C(FieldDescription), v...))
 	})
 }
@@ -286,34 +274,22 @@ func TypeNEQ(v migrate.RevisionType) predicate.Revision {
 
 // TypeIn applies the In predicate on the "type" field.
 func TypeIn(vs ...migrate.RevisionType) predicate.Revision {
-	v := make([]interface{}, len(vs))
+	v := make([]any, len(vs))
 	for i := range v {
 		v[i] = uint(vs[i])
 	}
 	return predicate.Revision(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		s.Where(sql.In(s.C(FieldType), v...))
 	})
 }
 
 // TypeNotIn applies the NotIn predicate on the "type" field.
 func TypeNotIn(vs ...migrate.RevisionType) predicate.Revision {
-	v := make([]interface{}, len(vs))
+	v := make([]any, len(vs))
 	for i := range v {
 		v[i] = uint(vs[i])
 	}
 	return predicate.Revision(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		s.Where(sql.NotIn(s.C(FieldType), v...))
 	})
 }
@@ -366,34 +342,22 @@ func AppliedNEQ(v int) predicate.Revision {
 
 // AppliedIn applies the In predicate on the "applied" field.
 func AppliedIn(vs ...int) predicate.Revision {
-	v := make([]interface{}, len(vs))
+	v := make([]any, len(vs))
 	for i := range v {
 		v[i] = vs[i]
 	}
 	return predicate.Revision(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		s.Where(sql.In(s.C(FieldApplied), v...))
 	})
 }
 
 // AppliedNotIn applies the NotIn predicate on the "applied" field.
 func AppliedNotIn(vs ...int) predicate.Revision {
-	v := make([]interface{}, len(vs))
+	v := make([]any, len(vs))
 	for i := range v {
 		v[i] = vs[i]
 	}
 	return predicate.Revision(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		s.Where(sql.NotIn(s.C(FieldApplied), v...))
 	})
 }
@@ -442,34 +406,22 @@ func TotalNEQ(v int) predicate.Revision {
 
 // TotalIn applies the In predicate on the "total" field.
 func TotalIn(vs ...int) predicate.Revision {
-	v := make([]interface{}, len(vs))
+	v := make([]any, len(vs))
 	for i := range v {
 		v[i] = vs[i]
 	}
 	return predicate.Revision(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		s.Where(sql.In(s.C(FieldTotal), v...))
 	})
 }
 
 // TotalNotIn applies the NotIn predicate on the "total" field.
 func TotalNotIn(vs ...int) predicate.Revision {
-	v := make([]interface{}, len(vs))
+	v := make([]any, len(vs))
 	for i := range v {
 		v[i] = vs[i]
 	}
 	return predicate.Revision(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		s.Where(sql.NotIn(s.C(FieldTotal), v...))
 	})
 }
@@ -518,34 +470,22 @@ func ExecutedAtNEQ(v time.Time) predicate.Revision {
 
 // ExecutedAtIn applies the In predicate on the "executed_at" field.
 func ExecutedAtIn(vs ...time.Time) predicate.Revision {
-	v := make([]interface{}, len(vs))
+	v := make([]any, len(vs))
 	for i := range v {
 		v[i] = vs[i]
 	}
 	return predicate.Revision(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		s.Where(sql.In(s.C(FieldExecutedAt), v...))
 	})
 }
 
 // ExecutedAtNotIn applies the NotIn predicate on the "executed_at" field.
 func ExecutedAtNotIn(vs ...time.Time) predicate.Revision {
-	v := make([]interface{}, len(vs))
+	v := make([]any, len(vs))
 	for i := range v {
 		v[i] = vs[i]
 	}
 	return predicate.Revision(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		s.Where(sql.NotIn(s.C(FieldExecutedAt), v...))
 	})
 }
@@ -596,34 +536,22 @@ func ExecutionTimeNEQ(v time.Duration) predicate.Revision {
 
 // ExecutionTimeIn applies the In predicate on the "execution_time" field.
 func ExecutionTimeIn(vs ...time.Duration) predicate.Revision {
-	v := make([]interface{}, len(vs))
+	v := make([]any, len(vs))
 	for i := range v {
 		v[i] = int64(vs[i])
 	}
 	return predicate.Revision(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		s.Where(sql.In(s.C(FieldExecutionTime), v...))
 	})
 }
 
 // ExecutionTimeNotIn applies the NotIn predicate on the "execution_time" field.
 func ExecutionTimeNotIn(vs ...time.Duration) predicate.Revision {
-	v := make([]interface{}, len(vs))
+	v := make([]any, len(vs))
 	for i := range v {
 		v[i] = int64(vs[i])
 	}
 	return predicate.Revision(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		s.Where(sql.NotIn(s.C(FieldExecutionTime), v...))
 	})
 }
@@ -676,34 +604,22 @@ func ErrorNEQ(v string) predicate.Revision {
 
 // ErrorIn applies the In predicate on the "error" field.
 func ErrorIn(vs ...string) predicate.Revision {
-	v := make([]interface{}, len(vs))
+	v := make([]any, len(vs))
 	for i := range v {
 		v[i] = vs[i]
 	}
 	return predicate.Revision(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		s.Where(sql.In(s.C(FieldError), v...))
 	})
 }
 
 // ErrorNotIn applies the NotIn predicate on the "error" field.
 func ErrorNotIn(vs ...string) predicate.Revision {
-	v := make([]interface{}, len(vs))
+	v := make([]any, len(vs))
 	for i := range v {
 		v[i] = vs[i]
 	}
 	return predicate.Revision(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		s.Where(sql.NotIn(s.C(FieldError), v...))
 	})
 }
@@ -801,34 +717,22 @@ func ErrorStmtNEQ(v string) predicate.Revision {
 
 // ErrorStmtIn applies the In predicate on the "error_stmt" field.
 func ErrorStmtIn(vs ...string) predicate.Revision {
-	v := make([]interface{}, len(vs))
+	v := make([]any, len(vs))
 	for i := range v {
 		v[i] = vs[i]
 	}
 	return predicate.Revision(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		s.Where(sql.In(s.C(FieldErrorStmt), v...))
 	})
 }
 
 // ErrorStmtNotIn applies the NotIn predicate on the "error_stmt" field.
 func ErrorStmtNotIn(vs ...string) predicate.Revision {
-	v := make([]interface{}, len(vs))
+	v := make([]any, len(vs))
 	for i := range v {
 		v[i] = vs[i]
 	}
 	return predicate.Revision(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		s.Where(sql.NotIn(s.C(FieldErrorStmt), v...))
 	})
 }
@@ -926,34 +830,22 @@ func HashNEQ(v string) predicate.Revision {
 
 // HashIn applies the In predicate on the "hash" field.
 func HashIn(vs ...string) predicate.Revision {
-	v := make([]interface{}, len(vs))
+	v := make([]any, len(vs))
 	for i := range v {
 		v[i] = vs[i]
 	}
 	return predicate.Revision(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		s.Where(sql.In(s.C(FieldHash), v...))
 	})
 }
 
 // HashNotIn applies the NotIn predicate on the "hash" field.
 func HashNotIn(vs ...string) predicate.Revision {
-	v := make([]interface{}, len(vs))
+	v := make([]any, len(vs))
 	for i := range v {
 		v[i] = vs[i]
 	}
 	return predicate.Revision(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		s.Where(sql.NotIn(s.C(FieldHash), v...))
 	})
 }
@@ -1051,34 +943,22 @@ func OperatorVersionNEQ(v string) predicate.Revision {
 
 // OperatorVersionIn applies the In predicate on the "operator_version" field.
 func OperatorVersionIn(vs ...string) predicate.Revision {
-	v := make([]interface{}, len(vs))
+	v := make([]any, len(vs))
 	for i := range v {
 		v[i] = vs[i]
 	}
 	return predicate.Revision(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		s.Where(sql.In(s.C(FieldOperatorVersion), v...))
 	})
 }
 
 // OperatorVersionNotIn applies the NotIn predicate on the "operator_version" field.
 func OperatorVersionNotIn(vs ...string) predicate.Revision {
-	v := make([]interface{}, len(vs))
+	v := make([]any, len(vs))
 	for i := range v {
 		v[i] = vs[i]
 	}
 	return predicate.Revision(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		s.Where(sql.NotIn(s.C(FieldOperatorVersion), v...))
 	})
 }
