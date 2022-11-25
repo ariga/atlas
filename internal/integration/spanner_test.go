@@ -280,7 +280,7 @@ func (t *spannerTest) applyHcl(spec string) {
 }
 
 func (t *spannerTest) applyRealmHcl(spec string) {
-	// not implemented
+	t.applyHcl(spec)
 }
 
 func (t *spannerTest) revisionsStorage() migrate.RevisionReadWriter {
@@ -445,9 +445,4 @@ func (t *spannerTest) dropTables(names ...string) {
 	})
 }
 
-func (t *spannerTest) dropSchemas(names ...string) {
-	t.Cleanup(func() {
-		_, err := t.db.ExecContext(context.Background(), "DROP SCHEMA "+strings.Join(names, ", ")+" CASCADE")
-		require.NoError(t.T, err, "drop schema %q", names)
-	})
-}
+func (t *spannerTest) dropSchemas(names ...string) {}
