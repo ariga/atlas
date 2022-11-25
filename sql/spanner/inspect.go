@@ -250,6 +250,8 @@ func columnType(spannerType string) (schema.Type, error) {
 	}
 
 	switch col.typ {
+	case TypeFloat64:
+		typ = &schema.FloatType{T: col.typ}
 	case TypeInt64:
 		typ = &schema.IntegerType{T: col.typ}
 	case TypeBool:
