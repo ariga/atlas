@@ -18,6 +18,7 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 )
 
@@ -162,6 +163,12 @@ func (ru *RevisionUpdate) SetPartialHashes(s []string) *RevisionUpdate {
 	return ru
 }
 
+// AppendPartialHashes appends s to the "partial_hashes" field.
+func (ru *RevisionUpdate) AppendPartialHashes(s []string) *RevisionUpdate {
+	ru.mutation.AppendPartialHashes(s)
+	return ru
+}
+
 // ClearPartialHashes clears the value of the "partial_hashes" field.
 func (ru *RevisionUpdate) ClearPartialHashes() *RevisionUpdate {
 	ru.mutation.ClearPartialHashes()
@@ -273,113 +280,57 @@ func (ru *RevisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 	}
 	if value, ok := ru.mutation.GetType(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint,
-			Value:  value,
-			Column: revision.FieldType,
-		})
+		_spec.SetField(revision.FieldType, field.TypeUint, value)
 	}
 	if value, ok := ru.mutation.AddedType(); ok {
-		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint,
-			Value:  value,
-			Column: revision.FieldType,
-		})
+		_spec.AddField(revision.FieldType, field.TypeUint, value)
 	}
 	if value, ok := ru.mutation.Applied(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
-			Value:  value,
-			Column: revision.FieldApplied,
-		})
+		_spec.SetField(revision.FieldApplied, field.TypeInt, value)
 	}
 	if value, ok := ru.mutation.AddedApplied(); ok {
-		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
-			Value:  value,
-			Column: revision.FieldApplied,
-		})
+		_spec.AddField(revision.FieldApplied, field.TypeInt, value)
 	}
 	if value, ok := ru.mutation.Total(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
-			Value:  value,
-			Column: revision.FieldTotal,
-		})
+		_spec.SetField(revision.FieldTotal, field.TypeInt, value)
 	}
 	if value, ok := ru.mutation.AddedTotal(); ok {
-		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
-			Value:  value,
-			Column: revision.FieldTotal,
-		})
+		_spec.AddField(revision.FieldTotal, field.TypeInt, value)
 	}
 	if value, ok := ru.mutation.ExecutionTime(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: revision.FieldExecutionTime,
-		})
+		_spec.SetField(revision.FieldExecutionTime, field.TypeInt64, value)
 	}
 	if value, ok := ru.mutation.AddedExecutionTime(); ok {
-		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: revision.FieldExecutionTime,
-		})
+		_spec.AddField(revision.FieldExecutionTime, field.TypeInt64, value)
 	}
 	if value, ok := ru.mutation.Error(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: revision.FieldError,
-		})
+		_spec.SetField(revision.FieldError, field.TypeString, value)
 	}
 	if ru.mutation.ErrorCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Column: revision.FieldError,
-		})
+		_spec.ClearField(revision.FieldError, field.TypeString)
 	}
 	if value, ok := ru.mutation.ErrorStmt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: revision.FieldErrorStmt,
-		})
+		_spec.SetField(revision.FieldErrorStmt, field.TypeString, value)
 	}
 	if ru.mutation.ErrorStmtCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Column: revision.FieldErrorStmt,
-		})
+		_spec.ClearField(revision.FieldErrorStmt, field.TypeString)
 	}
 	if value, ok := ru.mutation.Hash(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: revision.FieldHash,
-		})
+		_spec.SetField(revision.FieldHash, field.TypeString, value)
 	}
 	if value, ok := ru.mutation.PartialHashes(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeJSON,
-			Value:  value,
-			Column: revision.FieldPartialHashes,
+		_spec.SetField(revision.FieldPartialHashes, field.TypeJSON, value)
+	}
+	if value, ok := ru.mutation.AppendedPartialHashes(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, revision.FieldPartialHashes, value)
 		})
 	}
 	if ru.mutation.PartialHashesCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeJSON,
-			Column: revision.FieldPartialHashes,
-		})
+		_spec.ClearField(revision.FieldPartialHashes, field.TypeJSON)
 	}
 	if value, ok := ru.mutation.OperatorVersion(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: revision.FieldOperatorVersion,
-		})
+		_spec.SetField(revision.FieldOperatorVersion, field.TypeString, value)
 	}
 	_spec.Node.Schema = ru.schemaConfig.Revision
 	ctx = internal.NewSchemaConfigContext(ctx, ru.schemaConfig)
@@ -530,6 +481,12 @@ func (ruo *RevisionUpdateOne) SetPartialHashes(s []string) *RevisionUpdateOne {
 	return ruo
 }
 
+// AppendPartialHashes appends s to the "partial_hashes" field.
+func (ruo *RevisionUpdateOne) AppendPartialHashes(s []string) *RevisionUpdateOne {
+	ruo.mutation.AppendPartialHashes(s)
+	return ruo
+}
+
 // ClearPartialHashes clears the value of the "partial_hashes" field.
 func (ruo *RevisionUpdateOne) ClearPartialHashes() *RevisionUpdateOne {
 	ruo.mutation.ClearPartialHashes()
@@ -671,113 +628,57 @@ func (ruo *RevisionUpdateOne) sqlSave(ctx context.Context) (_node *Revision, err
 		}
 	}
 	if value, ok := ruo.mutation.GetType(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint,
-			Value:  value,
-			Column: revision.FieldType,
-		})
+		_spec.SetField(revision.FieldType, field.TypeUint, value)
 	}
 	if value, ok := ruo.mutation.AddedType(); ok {
-		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint,
-			Value:  value,
-			Column: revision.FieldType,
-		})
+		_spec.AddField(revision.FieldType, field.TypeUint, value)
 	}
 	if value, ok := ruo.mutation.Applied(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
-			Value:  value,
-			Column: revision.FieldApplied,
-		})
+		_spec.SetField(revision.FieldApplied, field.TypeInt, value)
 	}
 	if value, ok := ruo.mutation.AddedApplied(); ok {
-		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
-			Value:  value,
-			Column: revision.FieldApplied,
-		})
+		_spec.AddField(revision.FieldApplied, field.TypeInt, value)
 	}
 	if value, ok := ruo.mutation.Total(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
-			Value:  value,
-			Column: revision.FieldTotal,
-		})
+		_spec.SetField(revision.FieldTotal, field.TypeInt, value)
 	}
 	if value, ok := ruo.mutation.AddedTotal(); ok {
-		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
-			Value:  value,
-			Column: revision.FieldTotal,
-		})
+		_spec.AddField(revision.FieldTotal, field.TypeInt, value)
 	}
 	if value, ok := ruo.mutation.ExecutionTime(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: revision.FieldExecutionTime,
-		})
+		_spec.SetField(revision.FieldExecutionTime, field.TypeInt64, value)
 	}
 	if value, ok := ruo.mutation.AddedExecutionTime(); ok {
-		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: revision.FieldExecutionTime,
-		})
+		_spec.AddField(revision.FieldExecutionTime, field.TypeInt64, value)
 	}
 	if value, ok := ruo.mutation.Error(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: revision.FieldError,
-		})
+		_spec.SetField(revision.FieldError, field.TypeString, value)
 	}
 	if ruo.mutation.ErrorCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Column: revision.FieldError,
-		})
+		_spec.ClearField(revision.FieldError, field.TypeString)
 	}
 	if value, ok := ruo.mutation.ErrorStmt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: revision.FieldErrorStmt,
-		})
+		_spec.SetField(revision.FieldErrorStmt, field.TypeString, value)
 	}
 	if ruo.mutation.ErrorStmtCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Column: revision.FieldErrorStmt,
-		})
+		_spec.ClearField(revision.FieldErrorStmt, field.TypeString)
 	}
 	if value, ok := ruo.mutation.Hash(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: revision.FieldHash,
-		})
+		_spec.SetField(revision.FieldHash, field.TypeString, value)
 	}
 	if value, ok := ruo.mutation.PartialHashes(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeJSON,
-			Value:  value,
-			Column: revision.FieldPartialHashes,
+		_spec.SetField(revision.FieldPartialHashes, field.TypeJSON, value)
+	}
+	if value, ok := ruo.mutation.AppendedPartialHashes(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, revision.FieldPartialHashes, value)
 		})
 	}
 	if ruo.mutation.PartialHashesCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeJSON,
-			Column: revision.FieldPartialHashes,
-		})
+		_spec.ClearField(revision.FieldPartialHashes, field.TypeJSON)
 	}
 	if value, ok := ruo.mutation.OperatorVersion(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: revision.FieldOperatorVersion,
-		})
+		_spec.SetField(revision.FieldOperatorVersion, field.TypeString, value)
 	}
 	_spec.Node.Schema = ruo.schemaConfig.Revision
 	ctx = internal.NewSchemaConfigContext(ctx, ruo.schemaConfig)
