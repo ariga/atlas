@@ -535,7 +535,7 @@ func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 		return nil, err
 	}
 	// Avoid printing the index type if it is the default.
-	if i := (IndexType{}); sqlx.Has(idx.Attrs, &i) && i.T != IndexTypeBTree {
+	if i := (IndexType{}); sqlx.Has(idx.Attrs, &i) && strings.ToUpper(i.T) != IndexTypeBTree {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("type", strings.ToUpper(i.T)))
 	}
 	if i := (IndexInclude{}); sqlx.Has(idx.Attrs, &i) && len(i.Columns) > 0 {

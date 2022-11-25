@@ -31,7 +31,6 @@ table "t1" {
   index "t1_c2_c3_idx" {
     unique  = true
     columns = [column.c2, column.c3]
-    type    = BTREE
   }
 }
 table "t2" {

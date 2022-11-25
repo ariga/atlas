@@ -27,12 +27,10 @@ table "users" {
   index "users_name_last_key" {
     unique  = true
     columns = [column.name, column.last]
-    type    = BTREE
   }
   index "users_nickname_key" {
     unique  = true
     columns = [column.nickname]
-    type    = BTREE
   }
 }
 schema "script_index_unique_constraint" {
@@ -56,7 +54,6 @@ table "users" {
   index "users_name_last_key" {
     unique  = true
     columns = [column.name, column.last]
-    type    = BTREE
   }
 }
 schema "script_index_unique_constraint" {
