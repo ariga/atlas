@@ -250,6 +250,11 @@ func (d *Driver) CheckClean(ctx context.Context, revT *migrate.TableIdent) error
 	return nil
 }
 
+// Version returns the version of the connected database.
+func (d *Driver) Version() string {
+	return strconv.Itoa(d.conn.version)
+}
+
 func acquire(ctx context.Context, conn schema.ExecQuerier, id uint32, timeout time.Duration) error {
 	switch {
 	// With timeout (context-based).

@@ -191,6 +191,11 @@ func (d *Driver) CheckClean(ctx context.Context, revT *migrate.TableIdent) error
 	return nil
 }
 
+// Version returns the version of the connected database.
+func (d *Driver) Version() string {
+	return string(d.conn.V)
+}
+
 func acquire(ctx context.Context, conn schema.ExecQuerier, name string, timeout time.Duration) error {
 	rows, err := conn.QueryContext(ctx, "SELECT GET_LOCK(?, ?)", name, int(timeout.Seconds()))
 	if err != nil {
