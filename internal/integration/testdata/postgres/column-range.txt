@@ -1,6 +1,7 @@
+only postgres14 postgres15
+
 apply 1.hcl
 cmpshow t 1.sql
-
 
 -- 1.hcl --
 schema "$db" {}
