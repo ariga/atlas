@@ -82,6 +82,8 @@ func TestDriver_InspectTable(t *testing.T) {
  users       |  c35         | character                   | domain_char         | NO          |                                        |                          |                   |                    |               |                     |                    |                | NO          |                |                    |                  |                     |                       |         | d       |  16774  |  e      | 16779
  users       |  c36         | tsvector                    | tsvector            | NO          |                                        |                          |                   |                    |               |                     |                    |                | NO          |                |                    |                  |                     |                       |         | b       |  16774  |         | 16779
  users       |  c37         | tsquery                     | tsquery             | NO          |                                        |                          |                   |                    |               |                     |                    |                | NO          |                |                    |                  |                     |                       |         | b       |  16774  |         | 16779
+ users       |  c38         | datemultirange              | datemultirange      | NO          |                                        |                          |                   |                    |               |                     |                    |                | NO          |                |                    |                  |                     |                       |         | m       |         |         | 4535
+ users       |  c39         | numrange                    | numrange            | NO          |                                        |                          |                   |                    |               |                     |                    |                | NO          |                |                    |                  |                     |                       |         | m       |         |         | 4536
 `))
 				m.ExpectQuery(sqltest.Escape(`SELECT enumtypid, enumlabel FROM pg_enum WHERE enumtypid IN ($1, $2)`)).
 					WithArgs(16774, 16775).
@@ -140,6 +142,8 @@ func TestDriver_InspectTable(t *testing.T) {
 					{Name: "c35", Type: &schema.ColumnType{Raw: "character", Type: &UserDefinedType{T: "domain_char"}}},
 					{Name: "c36", Type: &schema.ColumnType{Raw: "tsvector", Type: &TextSearchType{T: "tsvector"}}},
 					{Name: "c37", Type: &schema.ColumnType{Raw: "tsquery", Type: &TextSearchType{T: "tsquery"}}},
+					{Name: "c38", Type: &schema.ColumnType{Raw: "datemultirange", Type: &RangeType{T: "datemultirange"}}},
+					{Name: "c39", Type: &schema.ColumnType{Raw: "numrange", Type: &RangeType{T: "numrange"}}},
 				}, t.Columns)
 			},
 		},
