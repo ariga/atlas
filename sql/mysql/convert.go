@@ -244,7 +244,6 @@ func ParseType(raw string) (schema.Type, error) {
 		return &schema.UUIDType{
 			T: t,
 		}, nil
-
 	default:
 		return &schema.UnsupportedType{
 			T: t,

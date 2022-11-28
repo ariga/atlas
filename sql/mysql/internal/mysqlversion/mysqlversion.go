@@ -84,13 +84,6 @@ func (v V) SupportsIndexComment() bool {
 	return v.Maria() || v.GTE("5.5.3")
 }
 
-// SupportsUUIDDataType reports if the version supports uuid
-// data types, as from maria db 10.7.0 they are supported and offer
-// better performance over the varchar(32) and equal to binary(16) solutions.
-func (v V) SupportsUUIDDataType() bool {
-	return v.Maria() && v.GTE("10.7.0")
-}
-
 // CharsetToCollate returns the mapping from charset to its default collation.
 func (v V) CharsetToCollate() (map[string]string, error) {
 	name := "is/charset2collate"
