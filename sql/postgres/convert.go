@@ -142,6 +142,13 @@ func FormatType(t schema.Type) (string, error) {
 		f = strings.ToLower(t.T)
 	case *NetworkType:
 		f = strings.ToLower(t.T)
+	case *RangeType:
+		switch f = strings.ToLower(t.T); f {
+		case TypeInt4Range, TypeInt4MultiRange, TypeInt8Range, TypeInt8MultiRange, TypeNumRange, TypeNumMultiRange,
+			TypeTSRange, TypeTSMultiRange, TypeTSTZRange, TypeTSTZMultiRange, TypeDateRange, TypeDateMultiRange:
+		default:
+			return "", fmt.Errorf("postgres: unsupported range type: %q", t.T)
+		}
 	case *TextSearchType:
 		if f = strings.ToLower(t.T); f != TypeTSVector && f != TypeTSQuery {
 			return "", fmt.Errorf("postgres: unsupported text search type: %q", t.T)
@@ -258,6 +265,9 @@ func columnType(c *columnDesc) (schema.Type, error) {
 		}
 	case TypeTSVector, TypeTSQuery:
 		typ = &TextSearchType{T: t}
+	case TypeInt4Range, TypeInt4MultiRange, TypeInt8Range, TypeInt8MultiRange, TypeNumRange, TypeNumMultiRange,
+		TypeTSRange, TypeTSMultiRange, TypeTSTZRange, TypeTSTZMultiRange, TypeDateRange, TypeDateMultiRange:
+		typ = &RangeType{T: t}
 	case TypeUserDefined:
 		typ = &UserDefinedType{T: c.fmtype}
 	default:

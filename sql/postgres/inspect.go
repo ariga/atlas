@@ -711,6 +711,13 @@ type (
 		T string
 	}
 
+	// A RangeType defines a range type.
+	// https://www.postgresql.org/docs/current/rangetypes.html
+	RangeType struct {
+		schema.Type
+		T string
+	}
+
 	// A SerialType defines a serial type.
 	// https://postgresql.org/docs/current/datatype-numeric.html#DATATYPE-SERIAL
 	SerialType struct {
