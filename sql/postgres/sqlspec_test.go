@@ -1364,6 +1364,54 @@ func TestTypes(t *testing.T) {
 			expected: &CurrencyType{T: TypeMoney},
 		},
 		{
+			typeExpr: "int4range",
+			expected: &RangeType{T: TypeInt4Range},
+		},
+		{
+			typeExpr: "int4multirange",
+			expected: &RangeType{T: TypeInt4MultiRange},
+		},
+		{
+			typeExpr: "int8range",
+			expected: &RangeType{T: TypeInt8Range},
+		},
+		{
+			typeExpr: "int8multirange",
+			expected: &RangeType{T: TypeInt8MultiRange},
+		},
+		{
+			typeExpr: "numrange",
+			expected: &RangeType{T: TypeNumRange},
+		},
+		{
+			typeExpr: "nummultirange",
+			expected: &RangeType{T: TypeNumMultiRange},
+		},
+		{
+			typeExpr: "tsrange",
+			expected: &RangeType{T: TypeTSRange},
+		},
+		{
+			typeExpr: "tsmultirange",
+			expected: &RangeType{T: TypeTSMultiRange},
+		},
+		{
+			typeExpr: "tstzrange",
+			expected: &RangeType{T: TypeTSTZRange},
+		},
+		{
+			typeExpr: "tstzmultirange",
+			expected: &RangeType{T: TypeTSTZMultiRange},
+		},
+		{
+			typeExpr: "daterange",
+			expected: &RangeType{T: TypeDateRange},
+		},
+		{
+			typeExpr: "datemultirange",
+			expected: &RangeType{T: TypeDateMultiRange},
+		},
+		{
 			typeExpr: `sql("int[]")`,
 			expected: &ArrayType{Type: &schema.IntegerType{T: "int"}, T: "int[]"},
 		},
