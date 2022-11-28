@@ -153,6 +153,11 @@ func (d *Driver) Lock(_ context.Context, name string, timeout time.Duration) (sc
 	return acquireLock(path, timeout)
 }
 
+// Version returns the version of the connected database.
+func (d *Driver) Version() string {
+	return d.conn.version
+}
+
 func acquireLock(path string, timeout time.Duration) (schema.UnlockFunc, error) {
 	lock, err := os.Create(path)
 	if err != nil {
