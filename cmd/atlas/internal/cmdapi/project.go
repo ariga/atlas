@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"ariga.io/atlas/cmd/atlas/internal/cmdext"
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/sqlclient"
 
@@ -202,12 +203,10 @@ func (e *Env) asMap() (map[string]string, error) {
 	return m, nil
 }
 
-var hclState = schemahcl.New(
+var hclState = schemahcl.New(append(
+	cmdext.DataSources,
 	schemahcl.WithScopedEnums("env.migration.format", formatAtlas, formatFlyway, formatLiquibase, formatGoose, formatGolangMigrate),
-	schemahcl.WithDataSource("sql", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
-		return (&sqlsrc{ctx: ctx, block: b}).exec()
-	}),
-)
+)...)
 
 // LoadEnv reads the project file in path, and loads
 // the environment instances with the provided name.
