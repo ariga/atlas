@@ -644,7 +644,7 @@ func canConvert(t *schema.ColumnType, x string) (string, bool) {
 		if sqlx.IsLiteralNumber(x) {
 			return x, true
 		}
-	case *ArrayType, *schema.BinaryType, *schema.JSONType, *NetworkType, *schema.SpatialType, *schema.StringType, *schema.TimeType, *UUIDType, *XMLType:
+	case *ArrayType, *schema.BinaryType, *schema.JSONType, *NetworkType, *schema.SpatialType, *schema.StringType, *schema.TimeType, *schema.UUIDType, *XMLType:
 		return q, true
 	}
 	return "", false
@@ -737,11 +737,9 @@ type (
 		T string
 	}
 
-	// A UUIDType defines a UUID type.
-	UUIDType struct {
-		schema.Type
-		T string
-	}
+	// UUIDType is alias to schema.UUIDType.
+	// Defined here for backward compatibility reasons.
+	UUIDType = schema.UUIDType
 
 	// A XMLType defines an XML type.
 	XMLType struct {
