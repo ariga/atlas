@@ -555,15 +555,11 @@ func setSchemaEnvFlags(cmd *cobra.Command, env *Env) error {
 	if err := maySetFlag(cmd, flagFile, strings.Join(srcs, ",")); err != nil {
 		return err
 	}
-	if s := strings.Join(env.Schemas, ","); s != "" {
-		if err := maySetFlag(cmd, flagSchema, s); err != nil {
-			return err
-		}
+	if err := maySetFlag(cmd, flagSchema, strings.Join(env.Schemas, ",")); err != nil {
+		return err
 	}
-	if s := strings.Join(env.Exclude, ","); s != "" {
-		if err := maySetFlag(cmd, flagExclude, s); err != nil {
-			return err
-		}
+	if err := maySetFlag(cmd, flagExclude, strings.Join(env.Exclude, ",")); err != nil {
+		return err
 	}
 	switch cmd.Name() {
 	case "apply":

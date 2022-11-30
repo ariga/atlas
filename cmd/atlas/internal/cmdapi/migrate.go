@@ -1553,10 +1553,8 @@ func setMigrateEnvFlags(cmd *cobra.Command, env *Env) error {
 	if err := maySetFlag(cmd, flagTo, strings.Join(srcs, ",")); err != nil {
 		return err
 	}
-	if s := "[" + strings.Join(env.Schemas, "") + "]"; len(env.Schemas) > 0 {
-		if err := maySetFlag(cmd, flagSchema, s); err != nil {
-			return err
-		}
+	if err := maySetFlag(cmd, flagSchema, strings.Join(env.Schemas, ",")); err != nil {
+		return err
 	}
 	return nil
 }
