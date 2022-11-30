@@ -332,6 +332,8 @@ const (
 	TypeMultiPolygon       = "multipolygon"       // Geometry_type::kMultipolygon
 	TypeGeoCollection      = "geomcollection"     // Geometry_type::kGeometrycollection
 	TypeGeometryCollection = "geometrycollection" // Geometry_type::kGeometrycollection
+
+	TypeUUID = "uuid" // MariaDB supported uuid type from 10.7.0+
 )
 
 // Additional common constants in MySQL.
