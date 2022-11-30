@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"time"
 
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/sqlclient"
@@ -61,7 +62,17 @@ func RuntimeVarSrc(c *hcl.EvalContext, block *hclsyntax.Block) (cty.Value, error
 	}
 	q := u.Query()
 	q.Set("decoder", "string")
+	// Default timeout is 10s unless specified otherwise.
+	timeout := 10 * time.Second
+	if t := q.Get("timeout"); t != "" {
+		if timeout, err = time.ParseDuration(t); err != nil {
+			return cty.NilVal, errorf("parsing timeout: %v", err)
+		}
+		q.Del("timeout")
+	}
 	u.RawQuery = q.Encode()
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
 	vr, err := runtimevar.OpenVariable(ctx, u.String())
 	if err != nil {
 		return cty.Value{}, errorf("opening variable: %v", err)
