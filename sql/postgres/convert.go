@@ -136,7 +136,7 @@ func FormatType(t schema.Type) (string, error) {
 		}
 	case *schema.JSONType:
 		f = strings.ToLower(t.T)
-	case *UUIDType:
+	case *schema.UUIDType:
 		f = strings.ToLower(t.T)
 	case *schema.SpatialType:
 		f = strings.ToLower(t.T)
@@ -244,7 +244,7 @@ func columnType(c *columnDesc) (schema.Type, error) {
 	case TypeSmallSerial, TypeSerial, TypeBigSerial, TypeSerial2, TypeSerial4, TypeSerial8:
 		typ = &SerialType{T: t, Precision: int(c.precision)}
 	case TypeUUID:
-		typ = &UUIDType{T: t}
+		typ = &schema.UUIDType{T: t}
 	case TypeXML:
 		typ = &XMLType{T: t}
 	case TypeArray:

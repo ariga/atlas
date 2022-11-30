@@ -1357,7 +1357,7 @@ func TestTypes(t *testing.T) {
 		},
 		{
 			typeExpr: "uuid",
-			expected: &UUIDType{T: TypeUUID},
+			expected: &schema.UUIDType{T: TypeUUID},
 		},
 		{
 			typeExpr: "money",

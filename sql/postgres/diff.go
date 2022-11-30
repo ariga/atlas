@@ -233,7 +233,7 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	switch fromT := fromT.(type) {
 	case *schema.BinaryType, *BitType, *schema.BoolType, *schema.DecimalType, *schema.FloatType,
 		*IntervalType, *schema.IntegerType, *schema.JSONType, *RangeType, *SerialType, *schema.SpatialType,
-		*schema.StringType, *schema.TimeType, *TextSearchType, *NetworkType, *UserDefinedType:
+		*schema.StringType, *schema.TimeType, *TextSearchType, *NetworkType, *UserDefinedType, *schema.UUIDType:
 		t1, err := FormatType(toT)
 		if err != nil {
 			return false, err
@@ -250,9 +250,6 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 			(toT.Schema != nil && fromT.Schema != nil && fromT.Schema.Name != toT.Schema.Name)
 	case *CurrencyType:
 		toT := toT.(*CurrencyType)
-		changed = fromT.T != toT.T
-	case *UUIDType:
-		toT := toT.(*UUIDType)
 		changed = fromT.T != toT.T
 	case *XMLType:
 		toT := toT.(*XMLType)
