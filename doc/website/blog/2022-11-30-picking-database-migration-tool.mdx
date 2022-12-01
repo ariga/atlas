@@ -58,7 +58,7 @@ versioning, today Goose have 80 contributors.
 
 Goose only provides support for 7 database drivers, if your project uses one of the main
 databases in the market, Goose should be a good fit. For migration sources, Goose allows only
-the filesystem, it'’'s worth pointing out that with Go embed it is possible to embed the migration
+the filesystem, it's worth pointing out that with Go embed it is possible to embed the migration
 files on a custom binary. Goose's main difference from Golang migrate is the support for
 migrations written in Go, for cases where it is necessary to query the database during the
 migration. Goose allows for different types of migration versioning schemas, improving
@@ -75,7 +75,7 @@ Migrations in Atlas can be defined in two ways, versioned and declarative, versi
 migrations are the classical style, where the migration contents are written by the developer
 using the database language. The declarative style is more similar to infrastructure as code,
 where the schema is defined in a Terraforma-like language and the migrations commands are
-calculated based on the current and desired state of the database. It'’'s possible to use Atlas in
+calculated based on the current and desired state of the database. It's possible to use Atlas in
 a hybrid way as well, combining both styles, called [Versioned Migration Authoring](https://atlasgo.io/versioned/diff)
 where the schema is defined in the Atlas language, but the Atlas engine is used to generate versioned migrations.
 
