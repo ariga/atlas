@@ -179,6 +179,11 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/postgres/index-operator-classes',
                     label: 'Index Operator Classes'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/postgres/ar-101',
+                    label: 'Optimal data alignment (AR101)'
                 }
             ],
         },

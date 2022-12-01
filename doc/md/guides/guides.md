@@ -42,6 +42,8 @@ Welcome to the Atlas Guides.
 
 [Index Operator Classes](postgres/index-operator-classes.md)
 
+[Optimal data alignment (AR101)](postgres/ar-101.md)
+
 ### SQLite
 
 [Partial Indexes](sqlite/partial-indexes.md)
