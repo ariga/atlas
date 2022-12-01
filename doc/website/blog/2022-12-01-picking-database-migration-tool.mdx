@@ -18,7 +18,7 @@ is to present 3 popular choices for migration tools for Go projects to help you 
 By way of introduction (and full disclosure): my name is Pedro Henrique, I'm a software engineer from Brazil,
 and I've been a contributing member of the Ent/Atlas community for quite a while. I really love open-source
 and think there's room for a diverse range of tools in our ecosystem, so I will do my best to provide
-you with an accurate, respectful, and fair comparison of the tool.
+you with an accurate, respectful, and fair comparison of the tools.
 
 **[golang-migrate](https://github.com/golang-migrate/migrate)** - *Created: 2014 Github Stars: 10.3k*<br />
 Golang migrate is one of the most famous tools for handling database migrations.
@@ -31,9 +31,10 @@ database drivers, one of the Goose main features are: support for migrations
 written in Go and more control of the migrations application process.
 
 **[Atlas](https://github.com/ariga/atlas)** - *Created: 2021 Github Stars: 2.1k*<br />
-Atlas is a new database toolkit that takes different approaches for handling migrations,
-allowing for declarative and versioned migration strategies, migration linting and Github
-action integration.
+Atlas is an open-source schema migration tool that supports a declarative workflow to schema
+migrations, making it a kind of "Terraform for databases". With Atlas, users can declare their desired schema
+and let Atlas automatically plan the migrations for them. In addition, Atlas supports classic versioned migration
+workflows migration linting, and a GitHub Actions integration.
 
 
 ### Golang migrate
@@ -44,9 +45,12 @@ One of Golang migrate main strengths are the database drivers support and migrat
 
 If your project uses a database driver that is not very popular, chances are that Golang
 migrate has a driver for it. For cases where your database is not supported, Golang migrate has
-a simple API for defining new database drivers. Another feature of Golang migrate is the
-support for different migrations sources, for cases where your migration scripts resides on
-custom locations or even remote servers.
+a simple API for defining new database drivers. Databases supported by Golang migrate
+include: PostgreSQL, Redshift, Ql, Cassandra, SQLite, MySQL/MariaDB, Neo4j, MongoDB,
+Google Cloud Spanner, and more.
+
+Another feature of Golang migrate is the support for different migrations sources, for cases where your
+migration scripts resides on custom locations or even remote servers.
 
 
 ### Goose
@@ -68,28 +72,34 @@ migration. Goose allows for different types of migration versioning schemas, imp
 ### Atlas
 Atlas takes a completely different approach to Golang migrate or Goose, while both
 tools only focus on proving means of running and maintaining the migration directory, Atlas
-takes one step further to understand the migration contents, allowing for more complex
+takes one step further and actually constructs a graph representing the different database
+entities from the migration directory contents, allowing for more complex
 scenarios and providing safety for migration operations.
 
-Migrations in Atlas can be defined in two ways, versioned and declarative, versioned
-migrations are the classical style, where the migration contents are written by the developer
-using the database language. The declarative style is more similar to infrastructure as code,
-where the schema is defined in a Terraforma-like language and the migrations commands are
+Migrations in Atlas can be defined in two ways:
+* *Versioned migrations* are the classical style, where the migration contents are written by the developer
+using the database language.
+* *Declarative migrations* are more similar to Infrastructure-as-Code,
+where the schema is defined in a Terraform-like language and the migrations commands are
 calculated based on the current and desired state of the database. It's possible to use Atlas in
 a hybrid way as well, combining both styles, called [Versioned Migration Authoring](https://atlasgo.io/versioned/diff)
 where the schema is defined in the Atlas language, but the Atlas engine is used to generate versioned migrations.
 
-Atlas main strength is the ability to understand the migration content, with this
-knowledge it can provide warnings about dangerous or inefficient operations, this technique is
-called linting and can be integrated with [Atlas Github action](https://atlasgo.io/integrations/github-actions),
-if you would like to run your migrations using Terraform, Atlas has a [Terraform provider](https://atlasgo.io/integrations/terraform-provider)
-as well. Another key point that Atlas solves is handling migrations integrity, this is a huge problem when working with
+On top of Atlas's ability to load the migration directory as a graph of database entities
+an entire infrastructure of _static code analysis_ was built that is able to provide warnings
+about dangerous or inefficient operations, this technique is called **migration linting** and can be
+integrated with [Atlas Github action](https://atlasgo.io/integrations/github-actions) during CI.
+
+In addition, if you would like to run your migrations using Terraform, Atlas has a [Terraform provider](https://atlasgo.io/integrations/terraform-provider)
+as well.
+
+Another key point that Atlas solves is handling migrations integrity, this is a huge problem when working with
 multiple branches that make schema changes, Atlas solves this problem by  using an [Integrity
-file](https://atlasgo.io/concepts/migration-directory-integrity) and while we are talking about integrity,
+file](https://atlasgo.io/concepts/migration-directory-integrity). While we are on the topic of integrity,
 one key feature of Atlas is the support for running the migrations inside a transaction, unlike [Goose](https://github.com/pressly/goose/issues/335)
-during the process of migration, Atlas acquire a lock ensuring that only one migration happens at time
+during the process of migration, Atlas acquires a lock ensuring that only one migration happens at a time
 and the migration order/integrity is respected, for cases where problems are found, Atlas makes
-the troubleshooting process, allowing schema inspections, dry runs and providing helpful links to
+the troubleshooting process easier, allowing schema inspections, dry runs and providing helpful links to
 the common problems and solutions.
 
 | Feature | Golang migrate | Goose | Atlas |
