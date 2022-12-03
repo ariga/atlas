@@ -502,6 +502,7 @@ variable "convert_bool" {
 variable "strings" {
   type = list(string)
   default = ["a", "b"]
+  description = "description is a valid attribute"
 }
 
 name = var.name
@@ -512,7 +513,6 @@ convert_int = var.convert_int
 convert_bool = var.convert_bool
 strings = var.strings
 `
-	state := New()
 	var test struct {
 		Name        string   `spec:"name"`
 		Default     string   `spec:"default"`
@@ -522,7 +522,7 @@ strings = var.strings
 		ConvertBool bool     `spec:"convert_bool"`
 		Strings     []string `spec:"strings"`
 	}
-	err := state.EvalBytes([]byte(h), &test, map[string]cty.Value{
+	err := New().EvalBytes([]byte(h), &test, map[string]cty.Value{
 		"name":         cty.StringVal("rotemtam"),
 		"int":          cty.NumberIntVal(42),
 		"bool":         cty.BoolVal(true),
@@ -538,4 +538,22 @@ strings = var.strings
 	require.EqualValues(t, 1, test.ConvertInt)
 	require.EqualValues(t, true, test.ConvertBool)
 	require.EqualValues(t, []string{"a", "b"}, test.Strings)
+}
+
+func TestVariable_InvalidType(t *testing.T) {
+	h := `
+variable "name" {
+  type = "int"
+  default = "boring"
+}`
+	err := New().EvalBytes([]byte(h), &struct{}{}, nil)
+	require.EqualError(t, err, `invalid type "int" for variable "name". Valid types are: string, number, bool, list, map, or set`)
+
+	h = `
+variable "name" {
+  type = "boring"
+  default = "boring"
+}`
+	err = New().EvalBytes([]byte(h), &struct{}{}, nil)
+	require.EqualError(t, err, `invalid type "boring" for variable "name". Valid types are: string, number, bool, list, map, or set`)
 }
