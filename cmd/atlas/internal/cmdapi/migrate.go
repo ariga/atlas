@@ -264,7 +264,13 @@ func reportApply(cmd *cobra.Command, flags migrateApplyFlags, r *cmdlog.MigrateA
 			return fmt.Errorf("parse log format: %w", err)
 		}
 	}
-	return f.Execute(cmd.OutOrStdout(), r)
+	if err = f.Execute(cmd.OutOrStdout(), r); err != nil {
+		return fmt.Errorf("execute log template: %w", err)
+	}
+	// In case a custom logging was configured, avoid reporting errors twice.
+	// For example, printing error lines may break parsing the JSON output.
+	cmd.SilenceErrors = flags.logFormat != ""
+	return nil
 }
 
 type migrateDiffFlags struct {

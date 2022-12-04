@@ -317,6 +317,24 @@ func (a *MigrateApply) CountStmts() (n int) {
 }
 
 // MarshalJSON implements json.Marshaler.
+func (a *MigrateApply) MarshalJSON() ([]byte, error) {
+	type Alias MigrateApply
+	var v struct {
+		*Alias
+		Message string `json:"Message,omitempty"`
+	}
+	v.Alias = (*Alias)(a)
+	switch {
+	case a.Error != "":
+	case len(v.Applied) == 0:
+		v.Message = "No migration files to execute"
+	default:
+		v.Message = fmt.Sprintf("Migrated to version %s from %s (%d migrations in total)", v.Target, v.Current, len(v.Pending))
+	}
+	return json.Marshal(v)
+}
+
+// MarshalJSON implements json.Marshaler.
 func (f *AppliedFile) MarshalJSON() ([]byte, error) {
 	type local struct {
 		Name        string     `json:"Name,omitempty"`
