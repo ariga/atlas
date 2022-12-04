@@ -223,15 +223,14 @@ func LoadEnv(name string, opts ...LoadOption) ([]*Env, error) {
 		return nil, fmt.Errorf("unsupported project file driver %q", u.Scheme)
 	}
 	path := filepath.Join(u.Host, u.Path)
-	b, err := os.ReadFile(path)
-	if err != nil {
+	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
 			err = fmt.Errorf("project file %q was not found: %w", path, err)
 		}
 		return nil, err
 	}
 	project := &Project{Lint: &Lint{}}
-	if err := hclState.EvalBytes(b, project, cfg.inputVals); err != nil {
+	if err := hclState.EvalFiles([]string{path}, project, cfg.inputVals); err != nil {
 		return nil, err
 	}
 	envs := make(map[string][]*Env)
