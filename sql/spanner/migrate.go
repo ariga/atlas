@@ -7,6 +7,7 @@ package spanner
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"ariga.io/atlas/sql/internal/sqlx"
@@ -17,8 +18,65 @@ import (
 // A planApply provides migration capabilities for schema elements.
 type planApply struct{ conn }
 
+// priority computes the priority of each change.
+//
+// Spanner does not support multischema ALTERs (i.e. multiple changes in a single ALTER statement).
+// Therefore, we have to break down each alter. This function helps order the ALTERs so they work.
+// e.g. priority gives precedence to DropForeignKey over DropColumn, because a column cannot be
+// dropped if its foreign key was not dropped before.
+func priority(change schema.Change) int {
+	switch c := change.(type) {
+	case *schema.ModifyTable:
+		// each modifyTable should have a single change since we apply `flat` before we sort.
+		return priority(c.Changes[0])
+	case *schema.ModifySchema:
+		// each modifyTable should have a single change since we apply `flat` before we sort.
+		return priority(c.Changes[0])
+	case *schema.AddColumn:
+		return 1
+	case *schema.DropIndex, *schema.DropForeignKey, *schema.DropAttr, *schema.DropCheck:
+		return 2
+	case *schema.ModifyIndex, *schema.ModifyForeignKey:
+		return 3
+	default:
+		return 4
+	}
+}
+
+// flat takes a list of changes and breaks them down to single atomic changes (e.g: no ModifyTable
+// with multiple AddColumn inside it). Note that, the only "changes" that include sub-changes are
+// `ModifyTable` and `ModifySchema`.
+func flat(changes []schema.Change) []schema.Change {
+	var flat []schema.Change
+	for _, change := range changes {
+		switch m := change.(type) {
+		case *schema.ModifyTable:
+			for _, c := range m.Changes {
+				flat = append(flat, &schema.ModifyTable{
+					T:       m.T,
+					Changes: []schema.Change{c},
+				})
+			}
+		case *schema.ModifySchema:
+			for _, c := range m.Changes {
+				flat = append(flat, &schema.ModifySchema{
+					S:       m.S,
+					Changes: []schema.Change{c},
+				})
+			}
+		default:
+			flat = append(flat, change)
+		}
+	}
+	return flat
+}
+
 // PlanChanges returns a migration plan for the given schema changes.
 func (p *planApply) PlanChanges(ctx context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
+	fc := flat(changes)
+	sort.SliceStable(fc, func(i, j int) bool {
+		return priority(fc[i]) < priority(fc[j])
+	})
 	s := &state{
 		conn: p.conn,
 		Plan: migrate.Plan{
@@ -30,7 +88,7 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 	for _, o := range opts {
 		o(&s.PlanOptions)
 	}
-	if err := s.plan(ctx, changes); err != nil {
+	if err := s.plan(ctx, fc); err != nil {
 		return nil, err
 	}
 	for _, c := range s.Changes {
@@ -170,12 +228,26 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 		switch change := change.(type) {
 		default:
 			return nil, fmt.Errorf("unsupported change type %T", change)
+		case *schema.AddForeignKey:
+			b.P("ALTER TABLE").Table(t)
+			b.P("ADD")
+			s.fks(b, change.F)
+			statements = append(statements, b.String())
 		case *schema.AddColumn:
 			b.P("ALTER TABLE").Table(t)
 			b.P("ADD COLUMN")
 			if err := s.column(b, change.C); err != nil {
 				return nil, err
 			}
+			statements = append(statements, b.String())
+		case *schema.DropColumn:
+			b.P("ALTER TABLE").Table(t)
+			b.P("DROP COLUMN")
+			b.Ident(change.C.Name)
+			statements = append(statements, b.String())
+		case *schema.DropForeignKey:
+			b.P("ALTER TABLE").Table(t)
+			b.P("DROP CONSTRAINT").Ident(change.F.Symbol)
 			statements = append(statements, b.String())
 		case *schema.ModifyColumn:
 			alters, err := s.alterColumn(t, change)
