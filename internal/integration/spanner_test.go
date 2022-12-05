@@ -66,8 +66,8 @@ func TestSpanner_AddDropTable(t *testing.T) {
 			Name:   "pets",
 			Schema: usersT.Schema,
 			Columns: []*schema.Column{
-				{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int64"}}},
-				{Name: "fk_pets_users_owner_id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "int64"}, Null: true}},
+				{Name: "id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "INT64"}}},
+				{Name: "fk_pets_users_owner_id", Type: &schema.ColumnType{Type: &schema.IntegerType{T: "INT64"}, Null: true}},
 			},
 		}
 		petsT.PrimaryKey = &schema.Index{Parts: []*schema.IndexPart{{C: postsT.Columns[0]}}}
@@ -119,10 +119,15 @@ func TestSpanner_AddColumns(t *testing.T) {
 		usersT.Columns = append(
 			usersT.Columns,
 			&schema.Column{Name: "a", Type: &schema.ColumnType{Type: &schema.BinaryType{T: spanner.TypeBytes}, Null: true}},
-			&schema.Column{Name: "b", Type: &schema.ColumnType{Type: &schema.BinaryType{T: spanner.TypeBytes}, Null: true}},
+			&schema.Column{Name: "b", Type: &schema.ColumnType{Type: &schema.FloatType{T: spanner.TypeFloat64}, Null: true}, Default: &schema.Literal{V: "10.1"}},
+			&schema.Column{Name: "c", Type: &schema.ColumnType{Type: &schema.StringType{T: "STRING", Size: 50}}, Default: &schema.Literal{V: "'y'"}},
+			&schema.Column{Name: "d", Type: &schema.ColumnType{Type: &schema.DecimalType{T: "NUMERIC"}}, Default: &schema.Literal{V: "0.99"}},
+			&schema.Column{Name: "e", Type: &schema.ColumnType{Type: &schema.JSONType{T: "JSON"}}, Default: &schema.Literal{V: "JSON '{}'"}},
+			&schema.Column{Name: "m", Type: &schema.ColumnType{Type: &schema.BoolType{T: "BOOL"}, Null: true}, Default: &schema.Literal{V: "false"}},
+			&schema.Column{Name: "q", Type: &schema.ColumnType{Type: &spanner.ArrayType{Type: &schema.StringType{T: "STRING", Size: 42}, T: "ARRAY<STRING(42)>"}, Null: true}, Default: &schema.Literal{V: "[]"}},
 		)
 		changes := t.diff(t.loadUsers(), usersT)
-		require.Len(t, changes, 2)
+		require.Len(t, changes, 7)
 		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
 		ensureNoChange(t, usersT)
 	})
@@ -180,9 +185,20 @@ func TestSpanner_ColumnArray(t *testing.T) {
 		// Add column.
 		usersT.Columns = append(
 			usersT.Columns,
-			&schema.Column{Name: "a", Type: &schema.ColumnType{Raw: "ARRAY<INT64>", Type: &spanner.ArrayType{Type: &schema.IntegerType{T: "INT64"}, T: "ARRAY<INT64>"}, Null: true}},
+			&schema.Column{Name: "a", Type: &schema.ColumnType{Raw: "ARRAY<INT64>", Type: &spanner.ArrayType{Type: &schema.IntegerType{T: "INT64"}, T: "ARRAY<INT64>"}, Null: true}, Default: &schema.Literal{V: "[1]"}},
 		)
 		changes := t.diff(t.loadUsers(), usersT)
+		require.Len(t, changes, 1)
+		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
+		ensureNoChange(t, usersT)
+
+		// Check default.
+		usersT.Columns[2].Default = &schema.RawExpr{X: "[1]"}
+		ensureNoChange(t, usersT)
+
+		// Change default.
+		usersT.Columns[2].Default = &schema.RawExpr{X: "[1,2]"}
+		changes = t.diff(t.loadUsers(), usersT)
 		require.Len(t, changes, 1)
 		t.migrate(&schema.ModifyTable{T: usersT, Changes: changes})
 		ensureNoChange(t, usersT)
@@ -264,7 +280,7 @@ func (t *spannerTest) applyHcl(spec string) {
 }
 
 func (t *spannerTest) applyRealmHcl(spec string) {
-	// not implemented
+	t.applyHcl(spec)
 }
 
 func (t *spannerTest) revisionsStorage() migrate.RevisionReadWriter {
@@ -331,12 +347,16 @@ func (t *spannerTest) posts() *schema.Table {
 				Type: &schema.ColumnType{Raw: "INT64", Type: &schema.IntegerType{T: "INT64"}},
 			},
 			{
-				Name: "author_id",
-				Type: &schema.ColumnType{Raw: "INT64", Type: &schema.IntegerType{T: "INT64"}, Null: true},
+				Name:    "author_id",
+				Type:    &schema.ColumnType{Raw: "INT64", Type: &schema.IntegerType{T: "INT64"}, Null: true},
+				Default: &schema.Literal{V: "10"},
 			},
 			{
 				Name: "ctime",
-				Type: &schema.ColumnType{Raw: "timestamp", Type: &schema.TimeType{T: "timestamp"}},
+				Type: &schema.ColumnType{Raw: "TIMESTAMP", Type: &schema.TimeType{T: "TIMESTAMP"}},
+				Default: &schema.RawExpr{
+					X: "CURRENT_TIMESTAMP()",
+				},
 			},
 		},
 		Attrs: []schema.Attr{
@@ -425,9 +445,4 @@ func (t *spannerTest) dropTables(names ...string) {
 	})
 }
 
-func (t *spannerTest) dropSchemas(names ...string) {
-	t.Cleanup(func() {
-		_, err := t.db.ExecContext(context.Background(), "DROP SCHEMA "+strings.Join(names, ", ")+" CASCADE")
-		require.NoError(t.T, err, "drop schema %q", names)
-	})
-}
+func (t *spannerTest) dropSchemas(names ...string) {}

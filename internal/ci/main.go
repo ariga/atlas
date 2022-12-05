@@ -171,7 +171,7 @@ var (
 		},
 		{
 			Version: "spanner",
-			Image:   "gcr.io/cloud-spanner-emulator/emulator:1.4.6",
+			Image:   "gcr.io/cloud-spanner-emulator/emulator:1.4.8",
 			Regex:   "Spanner",
 			Ports:   []string{"9010:9010", "9020:9020"},
 			Env:     []string{"SPANNER_EMULATOR_HOST: localhost:9010"},

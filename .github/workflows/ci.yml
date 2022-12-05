@@ -598,7 +598,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       spanner:
-        image: gcr.io/cloud-spanner-emulator/emulator:1.4.6
+        image: gcr.io/cloud-spanner-emulator/emulator:1.4.8
         env:
           SPANNER_EMULATOR_HOST: localhost:9010
         ports:
