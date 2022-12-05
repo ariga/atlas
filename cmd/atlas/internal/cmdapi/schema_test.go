@@ -464,6 +464,19 @@ env "local" {
 	}, lines)
 }
 
+func TestSchema_InspectLog(t *testing.T) {
+	db := openSQLite(t, "create table t1 (id integer primary key);create table t2 (name text);")
+	cmd := schemaCmd()
+	cmd.AddCommand(schemaInspectCmd())
+	s, err := runCmd(
+		cmd, "inspect",
+		"-u", db,
+		"--log", "{{ json . }}",
+	)
+	require.NoError(t, err)
+	require.Equal(t, `{"schemas":[{"name":"main","tables":[{"name":"t1","columns":[{"name":"id","type":"INTEGER","null":true}],"primary_key":{"parts":[{"column":"id"}]}},{"name":"t2","columns":[{"name":"name","type":"TEXT","null":true}]}]}]}`, s)
+}
+
 func TestFmt(t *testing.T) {
 	for _, tt := range []struct {
 		name          string

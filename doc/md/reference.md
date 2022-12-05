@@ -517,6 +517,7 @@ flag.
   -u, --url string        [driver://username:password@address/dbname?param=value] select a resource using the URL format
   -s, --schema strings    set schema names
       --exclude strings   list of glob patterns used to filter resources from applying
+      --log string        go template to use to format logs
 
 ```
 
