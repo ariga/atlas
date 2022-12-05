@@ -393,10 +393,11 @@ func schemaDiffRun(cmd *cobra.Command, _ []string, flags schemaDiffFlags) error 
 }
 
 type schemaInspectFlags struct {
-	url     string   // URL of database to apply the changes on.
-	schemas []string // Schemas to take into account when diffing.
-	exclude []string // List of glob patterns used to filter resources from applying (see schema.InspectOptions).
-	dsn     string   // Deprecated: DSN is an alias for URL.
+	url       string   // URL of database to apply the changes on.
+	logFormat string   // Format of the log output.
+	schemas   []string // Schemas to take into account when diffing.
+	exclude   []string // List of glob patterns used to filter resources from applying (see schema.InspectOptions).
+	dsn       string   // Deprecated: DSN is an alias for URL.
 }
 
 // schemaInspectCmd represents the 'atlas schema inspect' subcommand.
@@ -438,6 +439,7 @@ flag.
 	addFlagURL(cmd.Flags(), &flags.url)
 	addFlagSchemas(cmd.Flags(), &flags.schemas)
 	addFlagExclude(cmd.Flags(), &flags.exclude)
+	addFlagLog(cmd.Flags(), &flags.logFormat)
 	addFlagDSN(cmd.Flags(), &flags.dsn)
 	cobra.CheckErr(cmd.MarkFlagRequired(flagURL))
 	return cmd
@@ -457,15 +459,17 @@ func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags) 
 		Schemas: schemas,
 		Exclude: flags.exclude,
 	})
-	if err != nil {
-		return err
+	format := cmdlog.SchemaInspectTemplate
+	if v := flags.logFormat; v != "" {
+		if format, err = template.New("format").Funcs(cmdlog.ApplyTemplateFuncs).Parse(v); err != nil {
+			return fmt.Errorf("parse log format: %w", err)
+		}
 	}
-	ddl, err := client.MarshalSpec(s)
-	if err != nil {
-		return err
-	}
-	cmd.Print(string(ddl))
-	return nil
+	return format.Execute(cmd.OutOrStdout(), &cmdlog.SchemaInspect{
+		Marshaler: client.Marshaler,
+		Realm:     s,
+		Error:     err,
+	})
 }
 
 // schemaFmtCmd represents the 'atlas schema fmt' subcommand.

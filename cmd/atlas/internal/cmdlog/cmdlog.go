@@ -12,7 +12,9 @@ import (
 	"text/template"
 	"time"
 
+	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 
 	"github.com/fatih/color"
@@ -440,6 +442,130 @@ func (c Changes) MarshalJSON() ([]byte, error) {
 	}
 	v.Error = c.Error
 	return json.Marshal(v)
+}
+
+// SchemaInspect contains a summary of the 'schema inspect' command.
+type SchemaInspect struct {
+	schemahcl.Marshaler `json:"-"`
+	Realm               *schema.Realm `json:"Schema,omitempty"` // Inspected realm.
+	Error               error         `json:"Error,omitempty"`  // General error that occurred during inspection.
+}
+
+// SchemaInspectTemplate holds the default template of the 'schema inspect' command.
+var SchemaInspectTemplate = template.Must(template.
+	New("inspect").
+	Funcs(ApplyTemplateFuncs).
+	Parse(`{{ with .Error }}{{ .Error }}{{ else }}{{ $.MarshalHCL }}{{ end }}`))
+
+// MarshalHCL returns the default HCL representation of the schema.
+// Used by the template declared above.
+func (s *SchemaInspect) MarshalHCL() (string, error) {
+	spec, err := s.MarshalSpec(s.Realm)
+	if err != nil {
+		return "", err
+	}
+	return string(spec), nil
+}
+
+// MarshalJSON implements json.Marshaler.
+func (s *SchemaInspect) MarshalJSON() ([]byte, error) {
+	if s.Error != nil {
+		return json.Marshal(struct{ Error string }{s.Error.Error()})
+	}
+	type (
+		Column struct {
+			Name string `json:"name"`
+			Type string `json:"type,omitempty"`
+			Null bool   `json:"null,omitempty"`
+		}
+		IndexPart struct {
+			Desc   bool   `json:"desc,omitempty"`
+			Column string `json:"column,omitempty"`
+			Expr   string `json:"expr,omitempty"`
+		}
+		Index struct {
+			Name   string      `json:"name,omitempty"`
+			Unique bool        `json:"unique,omitempty"`
+			Parts  []IndexPart `json:"parts,omitempty"`
+		}
+		ForeignKey struct {
+			Name       string   `json:"name"`
+			Columns    []string `json:"columns,omitempty"`
+			References struct {
+				Table   string   `json:"table"`
+				Columns []string `json:"columns,omitempty"`
+			} `json:"references"`
+		}
+		Table struct {
+			Name        string       `json:"name"`
+			Columns     []Column     `json:"columns,omitempty"`
+			Indexes     []Index      `json:"indexes,omitempty"`
+			PrimaryKey  *Index       `json:"primary_key,omitempty"`
+			ForeignKeys []ForeignKey `json:"foreign_keys,omitempty"`
+		}
+		Schema struct {
+			Name   string  `json:"name"`
+			Tables []Table `json:"tables,omitempty"`
+		}
+	)
+	var realm struct {
+		Schemas []Schema `json:"schemas,omitempty"`
+	}
+	for _, s1 := range s.Realm.Schemas {
+		s2 := Schema{Name: s1.Name}
+		for _, t1 := range s1.Tables {
+			t2 := Table{Name: t1.Name}
+			for _, c1 := range t1.Columns {
+				t2.Columns = append(t2.Columns, Column{
+					Name: c1.Name,
+					Type: c1.Type.Raw,
+					Null: c1.Type.Null,
+				})
+			}
+			idxParts := func(idx *schema.Index) (parts []IndexPart) {
+				for _, p1 := range idx.Parts {
+					p2 := IndexPart{Desc: p1.Desc}
+					switch {
+					case p1.C != nil:
+						p2.Column = p1.C.Name
+					case p1.X != nil:
+						switch t := p1.X.(type) {
+						case *schema.Literal:
+							p2.Expr = t.V
+						case *schema.RawExpr:
+							p2.Expr = t.X
+						}
+					}
+					parts = append(parts, p2)
+				}
+				return parts
+			}
+			for _, idx1 := range t1.Indexes {
+				t2.Indexes = append(t2.Indexes, Index{
+					Name:   idx1.Name,
+					Unique: idx1.Unique,
+					Parts:  idxParts(idx1),
+				})
+			}
+			if t1.PrimaryKey != nil {
+				t2.PrimaryKey = &Index{Parts: idxParts(t1.PrimaryKey)}
+			}
+			for _, fk1 := range t1.ForeignKeys {
+				fk2 := ForeignKey{Name: fk1.Symbol}
+				for _, c1 := range fk1.Columns {
+					fk2.Columns = append(fk2.Columns, c1.Name)
+				}
+				fk2.References.Table = fk1.RefTable.Name
+				for _, c1 := range fk1.RefColumns {
+					fk2.References.Columns = append(fk2.References.Columns, c1.Name)
+				}
+				t2.ForeignKeys = append(t2.ForeignKeys, fk2)
+			}
+			s2.Tables = append(s2.Tables, t2)
+		}
+		realm.Schemas = append(realm.Schemas, s2)
+	}
+	return json.Marshal(realm)
 }
 
 func merge(maps ...template.FuncMap) template.FuncMap {

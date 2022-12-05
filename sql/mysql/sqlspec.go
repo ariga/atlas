@@ -27,12 +27,12 @@ type doc struct {
 
 // evalSpec evaluates an Atlas DDL document into v using the input.
 func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
-	var d doc
-	if err := hclState.Eval(p, &d, input); err != nil {
-		return err
-	}
 	switch v := v.(type) {
 	case *schema.Realm:
+		var d doc
+		if err := hclState.Eval(p, &d, input); err != nil {
+			return err
+		}
 		err := specutil.Scan(v, d.Schemas, d.Tables, convertTable)
 		if err != nil {
 			return fmt.Errorf("mysql: failed converting to *schema.Realm: %w", err)
@@ -47,6 +47,10 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 			}
 		}
 	case *schema.Schema:
+		var d doc
+		if err := hclState.Eval(p, &d, input); err != nil {
+			return err
+		}
 		if len(d.Schemas) != 1 {
 			return fmt.Errorf("mysql: expecting document to contain a single schema, got %d", len(d.Schemas))
 		}
@@ -59,8 +63,10 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 		}
 		r.Schemas[0].Realm = nil
 		*v = *r.Schemas[0]
+	case schema.Schema, schema.Realm:
+		return fmt.Errorf("mysql: Eval expects a pointer: received %[1]T, expected *%[1]T", v)
 	default:
-		return fmt.Errorf("mysql: failed unmarshaling spec. %T is not supported", v)
+		return hclState.Eval(p, v, input)
 	}
 	return nil
 }
