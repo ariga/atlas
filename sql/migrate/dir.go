@@ -70,6 +70,11 @@ var _ Dir = (*LocalDir)(nil)
 // NewLocalDir returns a new the Dir used by a Planner to work on the given local path.
 func NewLocalDir(path string) (*LocalDir, error) {
 	fi, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		if err = os.MkdirAll(path, 0744); err == nil {
+			return &LocalDir{path: path}, nil
+		}
+	}
 	if err != nil {
 		return nil, fmt.Errorf("sql/migrate: %w", err)
 	}
