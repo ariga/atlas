@@ -23,9 +23,7 @@ the schema and see how different entities are connected. This can be especially 
 large databases, as it allows you to quickly identify patterns and connections that might not be immediately obvious
 when looking at the raw data.
 
-```
-GIF of Explore generating an ERD
-```
+![Using Explore to generate an ERD](https://atlasgo.io/uploads/explore-erd.gif)
 
 To automatically generate an ERD from your database, you can use the [Explore](https://gh.ariga.cloud/explore) feature
 of Ariga Cloud. To visualize a schema using the Explore feature, you need to provide your database schema in
