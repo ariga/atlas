@@ -5,19 +5,19 @@ tags: [inspection, visualization, json, erd]
 image: https://atlasgo.io/uploads/images/explore_twitter_card.png
 ---
 
-Atlas is a most commonly used for managing and applying schema changes to databases, but it can also be used for
-something else: exploring and understanding the database schemas.
+Atlas is most commonly used for managing and applying schema changes to databases, but it can also be used for
+something else: exploring and understanding database schemas.
 
 With inspection, Atlas connects to your database, analyzes its structure from the metadata tables, and
 creates a graph data structure that maps all the entities and relations within the database. Atlas can then
 take this graph and represent it in various formats for users to consume. In this post, I will present two such
-forms of representation: Entity Relationship Diagrams (ERD) and a JSON documents.
+forms of representation: Entity Relationship Diagrams (ERDs) and JSON documents.
 
 ## Schemas as ERDs
 
-One of the most useful ways to represent a database schema is using an Entity-relation Diagram (ERD). This allows
+One of the most useful ways to represent a database schema is using an Entity Relationship Diagram (ERD). This allows
 developers to see the schema in a visual and intuitive way, making it easy to understand the relationships between
-different elements of your database. When using ERDs, because the data is presented in a graph format, you can easily
+different elements of the database. When using ERDs, because the data is presented in a graph format, you can easily
 navigate through
 the schema and see how different entities are connected. This can be especially useful when working with complex or
 large databases, as it allows you to quickly identify patterns and connections that might not be immediately obvious
@@ -67,7 +67,7 @@ atlas schema inspect -u '<url>' --log '{{ json . }}'
 ```
 
 Once your schema is represented as a JSON document, you can use `jq` to analyze it. For example, to get a list of all
-the tables that contain a foreign key:
+the tables that contain a foreign key, run:
 
 ```text
 atlas schema inspect -u '<url>' --log '{{ json . }}' | jq '.schemas[].tables[] | select(.foreign_keys != null) | .name'
