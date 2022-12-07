@@ -27,8 +27,8 @@ Suppose your project has the following directory structure:
 .
 ├── docker-compose.yaml
 └── migrations
-├── 20221207103204_init.sql
-└── atlas.sum
+    ├── 20221207103204_init.sql
+    └── atlas.sum
 
 1 directory, 3 files
 ```
