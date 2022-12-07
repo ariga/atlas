@@ -57,3 +57,7 @@ Importing from [`pressly/goose`](migration-tools/goose-import.md)
 ## ORMs
 
 [GORM](orms/gorm.md)
+
+## Tests
+
+[Integration tests with docker-compose](testing/docker-compose.md)
