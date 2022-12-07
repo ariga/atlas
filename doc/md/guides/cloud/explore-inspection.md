@@ -6,8 +6,6 @@ slug: explore-inspection
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
-import CodeBlock from '@theme/CodeBlock';
-
 
 Atlas has a [Cloud platform](https://ariga.cloud/signup) that offers an [Explore feature](https://gh.ariga.cloud/explore)
 without having to sign up. The Explore feature allows you to generate an Entity Relationship Diagram (ERD) from your
@@ -56,7 +54,6 @@ environments, so be sure to find a tutorial that fits yours.
 Paste the schema in the Cloud and click visualize.
 
 ![explore_schema](https://atlasgo.io/uploads/images/explore_schema.png)
-
 
 ### Connecting to a local database with ngrok
 
