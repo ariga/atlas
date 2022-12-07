@@ -125,6 +125,18 @@ module.exports = {
         },
         {
             type: 'category',
+            label: 'Testing',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'guides/testing/integration-docker-compose',
+                    label: 'With docker-compose'
+                }
+            ]
+        },
+        {
+            type: 'category',
             label: 'MySQL',
             collapsed: false,
             items: [

@@ -58,6 +58,12 @@ Importing from [`pressly/goose`](migration-tools/goose-import.md)
 
 [GORM](orms/gorm.md)
 
+
 ## Cloud
 
 [How to inspect a local database in the Cloud](cloud/explore-inspection.md)
+
+## Tests
+
+[Integration tests with docker-compose](testing/docker-compose.md)
+
