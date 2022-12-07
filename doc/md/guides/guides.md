@@ -53,3 +53,7 @@ Importing from [`pressly/goose`](migration-tools/goose-import.md)
 ## ORMs
 
 [GORM](orms/gorm.md)
+
+## Cloud
+
+[How to inspect a local database in the Cloud](cloud/explore-inspection.md)
