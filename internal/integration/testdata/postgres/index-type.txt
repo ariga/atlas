@@ -56,7 +56,6 @@ table "users" {
     # Index without "using" defaults to BTREE.
   }
   index "users_data" {
-    type = BTREE
     columns = [column.data]
   }
 }

@@ -1,0 +1,60 @@
+only mysql8
+
+atlas schema apply --auto-approve --url URL --env dev --var "url=URL" --var "pattern=script_cli_schema_apply_datasrc" > got.txt
+cmp got.txt expected.txt
+
+-- schema.hcl --
+variable "tenant" {
+  type = string
+}
+
+schema "test" {
+  name = var.tenant
+}
+
+table "users" {
+  schema = schema.test
+  column "id" {
+    type = int
+  }
+}
+
+-- atlas.hcl --
+variable "url" {
+  type = string
+}
+
+variable "pattern" {
+  type = string
+}
+
+data "sql" "tenants" {
+  url = var.url
+  query = <<EOS
+SELECT `schema_name`
+  FROM `information_schema`.`schemata`
+  WHERE `schema_name` LIKE ?
+EOS
+  args = [var.pattern]
+}
+
+env "dev" {
+  for_each = toset(data.sql.tenants.values)
+  url      = urlsetpath(var.url, each.value)
+  src      = "schema.hcl"
+  log {
+    schema {
+      apply = format(
+        "{{ json .Changes | json_merge %q }}\n",
+        jsonencode({
+          Tenant : each.value
+        })
+      )
+    }
+  }
+  // Inject custom variables to our schema.
+  tenant = each.value
+}
+
+-- expected.txt --
+{"Applied":["CREATE TABLE `script_cli_schema_apply_datasrc`.`users` (`id` int NOT NULL)"],"Tenant":"script_cli_schema_apply_datasrc"}

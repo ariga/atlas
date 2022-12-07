@@ -620,6 +620,54 @@ table "t" {
 }
 ```
 
+### Range
+
+PostgreSQL supports the creation of range types for storing range of values of some element type.
+Learn more about them in the [PostgreSQL website](https://www.postgresql.org/docs/current/rangetypes.html).
+
+
+```hcl
+table "t" {
+  schema = schema.test
+  column "r1" {
+    type = int4range
+  }
+  column "r2" {
+    type = int8range
+  }
+  column "r3" {
+    type = numrange
+  }
+  column "r4" {
+    type = tsrange
+  }
+  column "r5" {
+    type = tstzrange
+  }
+  column "r6" {
+    type = daterange
+  }
+  column "r7" {
+    type = int4multirange
+  }
+  column "r8" {
+    type = int8multirange
+  }
+  column "r9" {
+    type = nummultirange
+  }
+  column "r10" {
+    type = tsmultirange
+  }
+  column "r11" {
+    type = tstzmultirange
+  }
+  column "r12" {
+    type = datemultirange
+  }
+}
+```
+
 ### Serial
 
 PostgreSQL supports creating columns of types `smallserial`, `serial`, and `bigserial`. Note that these types are not

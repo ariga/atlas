@@ -136,12 +136,19 @@ func FormatType(t schema.Type) (string, error) {
 		}
 	case *schema.JSONType:
 		f = strings.ToLower(t.T)
-	case *UUIDType:
+	case *schema.UUIDType:
 		f = strings.ToLower(t.T)
 	case *schema.SpatialType:
 		f = strings.ToLower(t.T)
 	case *NetworkType:
 		f = strings.ToLower(t.T)
+	case *RangeType:
+		switch f = strings.ToLower(t.T); f {
+		case TypeInt4Range, TypeInt4MultiRange, TypeInt8Range, TypeInt8MultiRange, TypeNumRange, TypeNumMultiRange,
+			TypeTSRange, TypeTSMultiRange, TypeTSTZRange, TypeTSTZMultiRange, TypeDateRange, TypeDateMultiRange:
+		default:
+			return "", fmt.Errorf("postgres: unsupported range type: %q", t.T)
+		}
 	case *TextSearchType:
 		if f = strings.ToLower(t.T); f != TypeTSVector && f != TypeTSQuery {
 			return "", fmt.Errorf("postgres: unsupported text search type: %q", t.T)
@@ -237,7 +244,7 @@ func columnType(c *columnDesc) (schema.Type, error) {
 	case TypeSmallSerial, TypeSerial, TypeBigSerial, TypeSerial2, TypeSerial4, TypeSerial8:
 		typ = &SerialType{T: t, Precision: int(c.precision)}
 	case TypeUUID:
-		typ = &UUIDType{T: t}
+		typ = &schema.UUIDType{T: t}
 	case TypeXML:
 		typ = &XMLType{T: t}
 	case TypeArray:
@@ -258,6 +265,9 @@ func columnType(c *columnDesc) (schema.Type, error) {
 		}
 	case TypeTSVector, TypeTSQuery:
 		typ = &TextSearchType{T: t}
+	case TypeInt4Range, TypeInt4MultiRange, TypeInt8Range, TypeInt8MultiRange, TypeNumRange, TypeNumMultiRange,
+		TypeTSRange, TypeTSMultiRange, TypeTSTZRange, TypeTSTZMultiRange, TypeDateRange, TypeDateMultiRange:
+		typ = &RangeType{T: t}
 	case TypeUserDefined:
 		typ = &UserDefinedType{T: c.fmtype}
 	default:

@@ -250,6 +250,11 @@ func (d *Driver) CheckClean(ctx context.Context, revT *migrate.TableIdent) error
 	return nil
 }
 
+// Version returns the version of the connected database.
+func (d *Driver) Version() string {
+	return strconv.Itoa(d.conn.version)
+}
+
 func acquire(ctx context.Context, conn schema.ExecQuerier, id uint32, timeout time.Duration) error {
 	switch {
 	// With timeout (context-based).
@@ -378,6 +383,19 @@ const (
 	TypeTSQuery     = "tsquery"
 	TypeTSVector    = "tsvector"
 	TypeUserDefined = "user-defined"
+
+	TypeInt4Range      = "int4range"
+	TypeInt4MultiRange = "int4multirange"
+	TypeInt8Range      = "int8range"
+	TypeInt8MultiRange = "int8multirange"
+	TypeNumRange       = "numrange"
+	TypeNumMultiRange  = "nummultirange"
+	TypeTSRange        = "tsrange"
+	TypeTSMultiRange   = "tsmultirange"
+	TypeTSTZRange      = "tstzrange"
+	TypeTSTZMultiRange = "tstzmultirange"
+	TypeDateRange      = "daterange"
+	TypeDateMultiRange = "datemultirange"
 )
 
 // List of supported index types.

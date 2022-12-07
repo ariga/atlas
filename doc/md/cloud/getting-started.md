@@ -257,7 +257,7 @@ The CI run can fail for multiple reasons: incorrect SQL statements, wrong config
 In this example, we can see the CI has failed due to an SQL statement that attempts to drop a table. Because this
 is dangerous and will result in loss of data, the CI will automatically fail any `drop` statements.
 However, users can disable this by configuring the destructive analyzer in the
-[`atlas.hcl`](https://atlasgo.io/atlas-schema/projects) file:
+[`atlas.hcl`](../atlas-schema/projects.mdx) file:
 
 ```hcl title="atlas.hcl"
 lint {

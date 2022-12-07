@@ -1,0 +1,64 @@
+only postgres14 postgres15
+
+apply 1.hcl
+cmpshow t 1.sql
+
+-- 1.hcl --
+schema "$db" {}
+
+table "t" {
+  schema = schema.$db
+  column "r1" {
+    type = int4range
+  }
+  column "r2" {
+    type = int8range
+  }
+  column "r3" {
+    type = numrange
+  }
+  column "r4" {
+    type = tsrange
+  }
+  column "r5" {
+    type = tstzrange
+  }
+  column "r6" {
+    type = daterange
+  }
+  column "r7" {
+    type = int4multirange
+  }
+  column "r8" {
+    type = int8multirange
+  }
+  column "r9" {
+    type = nummultirange
+  }
+  column "r10" {
+    type = tsmultirange
+  }
+  column "r11" {
+    type = tstzmultirange
+  }
+  column "r12" {
+    type = datemultirange
+  }
+}
+
+-- 1.sql --
+            Table "script_column_range.t"
+ Column |      Type      | Collation | Nullable | Default
+--------+----------------+-----------+----------+---------
+ r1     | int4range      |           | not null |
+ r2     | int8range      |           | not null |
+ r3     | numrange       |           | not null |
+ r4     | tsrange        |           | not null |
+ r5     | tstzrange      |           | not null |
+ r6     | daterange      |           | not null |
+ r7     | int4multirange |           | not null |
+ r8     | int8multirange |           | not null |
+ r9     | nummultirange  |           | not null |
+ r10    | tsmultirange   |           | not null |
+ r11    | tstzmultirange |           | not null |
+ r12    | datemultirange |           | not null |

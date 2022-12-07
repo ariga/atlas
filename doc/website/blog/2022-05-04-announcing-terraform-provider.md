@@ -67,7 +67,7 @@ Create a file named `main.tf` and copy the following snippet:
 terraform {
   required_providers {
     atlas = {
-      version = "~> 0.1.0"
+      version = "~> 0.4.0"
       source  = "ariga/atlas"
     }
   }

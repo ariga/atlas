@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"ariga.io/atlas/cmd/atlas/internal/cmdext"
 	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/sqlclient"
 
@@ -107,6 +108,10 @@ type (
 			// Status configures the logging for 'migrate status'.
 			Status string `spec:"status"`
 		} `spec:"migrate"`
+		Schema struct {
+			// Apply configures the logging for 'schema apply'.
+			Apply string `spec:"apply"`
+		} `spec:"schema"`
 		schemahcl.DefaultExtension
 	}
 )
@@ -198,12 +203,10 @@ func (e *Env) asMap() (map[string]string, error) {
 	return m, nil
 }
 
-var hclState = schemahcl.New(
+var hclState = schemahcl.New(append(
+	cmdext.DataSources,
 	schemahcl.WithScopedEnums("env.migration.format", formatAtlas, formatFlyway, formatLiquibase, formatGoose, formatGolangMigrate),
-	schemahcl.WithDataSource("sql", func(ctx *hcl.EvalContext, b *hclsyntax.Block) (cty.Value, error) {
-		return (&sqlsrc{ctx: ctx, block: b}).exec()
-	}),
-)
+)...)
 
 // LoadEnv reads the project file in path, and loads
 // the environment instances with the provided name.
@@ -220,15 +223,14 @@ func LoadEnv(name string, opts ...LoadOption) ([]*Env, error) {
 		return nil, fmt.Errorf("unsupported project file driver %q", u.Scheme)
 	}
 	path := filepath.Join(u.Host, u.Path)
-	b, err := os.ReadFile(path)
-	if err != nil {
+	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
 			err = fmt.Errorf("project file %q was not found: %w", path, err)
 		}
 		return nil, err
 	}
 	project := &Project{Lint: &Lint{}}
-	if err := hclState.EvalBytes(b, project, cfg.inputVals); err != nil {
+	if err := hclState.EvalFiles([]string{path}, project, cfg.inputVals); err != nil {
 		return nil, err
 	}
 	envs := make(map[string][]*Env)

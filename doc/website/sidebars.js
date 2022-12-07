@@ -125,6 +125,18 @@ module.exports = {
         },
         {
             type: 'category',
+            label: 'Testing',
+            collapsed: false,
+            items: [
+                {
+                    type: 'doc',
+                    id: 'guides/testing/integration-docker-compose',
+                    label: 'With docker-compose'
+                }
+            ]
+        },
+        {
+            type: 'category',
             label: 'MySQL',
             collapsed: false,
             items: [
@@ -175,6 +187,16 @@ module.exports = {
                     id: 'guides/postgres/included-columns',
                     label: 'Covering Indexes'
                 },
+                {
+                    type: 'doc',
+                    id: 'guides/postgres/index-operator-classes',
+                    label: 'Index Operator Classes'
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/postgres/ar-101',
+                    label: 'Optimal data alignment (AR101)'
+                }
             ],
         },
         {

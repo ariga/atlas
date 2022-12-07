@@ -40,6 +40,10 @@ Welcome to the Atlas Guides.
 
 [Included Columns](postgres/included-columns.md)
 
+[Index Operator Classes](postgres/index-operator-classes.md)
+
+[Optimal data alignment (AR101)](postgres/ar-101.md)
+
 ### SQLite
 
 [Partial Indexes](sqlite/partial-indexes.md)
@@ -54,6 +58,12 @@ Importing from [`pressly/goose`](migration-tools/goose-import.md)
 
 [GORM](orms/gorm.md)
 
+
 ## Cloud
 
 [How to inspect a local database in the Cloud](cloud/explore-inspection.md)
+
+
+## Tests
+
+[Integration tests with docker-compose](testing/docker-compose.md)

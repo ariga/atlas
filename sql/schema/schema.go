@@ -247,6 +247,11 @@ type (
 		T string
 	}
 
+	// A UUIDType defines a UUID type.
+	UUIDType struct {
+		T string
+	}
+
 	// UnsupportedType represents a type that is not supported by the drivers.
 	UnsupportedType struct {
 		T string
@@ -321,6 +326,7 @@ func (*FloatType) typ()       {}
 func (*StringType) typ()      {}
 func (*BinaryType) typ()      {}
 func (*SpatialType) typ()     {}
+func (*UUIDType) typ()        {}
 func (*IntegerType) typ()     {}
 func (*DecimalType) typ()     {}
 func (*UnsupportedType) typ() {}
