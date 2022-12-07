@@ -10,8 +10,11 @@ import (
 	"strings"
 	"testing"
 
+	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlclient"
+
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,16 +25,15 @@ func TestReporter_Status(t *testing.T) {
 	)
 
 	// Clean.
-	dir, err := migrate.NewLocalDir(filepath.Join("testdata", "broken"))
+	dir, err := migrate.NewLocalDir(filepath.Join("../migrate/testdata", "broken"))
 	require.NoError(t, err)
 	c, err := sqlclient.Open(ctx, "sqlite://?mode=memory")
 	require.NoError(t, err)
 	defer c.Close()
-	require.NoError(t, (&StatusReporter{
-		Client:       c,
-		Dir:          dir,
-		ReportWriter: &TemplateWriter{T: DefaultStatusTemplate, W: &buf},
-	}).Report(ctx))
+	rr := &StatusReporter{Client: c, Dir: dir}
+	report, err := rr.Report(ctx)
+	require.NoError(t, err)
+	require.NoError(t, cmdlog.MigrateStatusTemplate.Execute(&buf, report))
 	require.Equal(t, `Migration Status: PENDING
   -- Current Version: No migration applied yet
   -- Next Version:    1
@@ -47,11 +49,10 @@ func TestReporter_Status(t *testing.T) {
 	ex, err := migrate.NewExecutor(c.Driver, dir, rrw)
 	require.NoError(t, err)
 	require.NoError(t, ex.ExecuteN(ctx, 1))
-	require.NoError(t, (&StatusReporter{
-		Client:       c,
-		Dir:          dir,
-		ReportWriter: &TemplateWriter{T: DefaultStatusTemplate, W: &buf},
-	}).Report(ctx))
+	rr = &StatusReporter{Client: c, Dir: dir}
+	report, err = rr.Report(ctx)
+	require.NoError(t, err)
+	require.NoError(t, cmdlog.MigrateStatusTemplate.Execute(&buf, report))
 	require.Equal(t, `Migration Status: PENDING
   -- Current Version: 1
   -- Next Version:    2
@@ -63,11 +64,10 @@ func TestReporter_Status(t *testing.T) {
 	buf.Reset()
 	require.NoError(t, err)
 	require.NoError(t, ex.ExecuteN(ctx, 1))
-	require.NoError(t, (&StatusReporter{
-		Client:       c,
-		Dir:          dir,
-		ReportWriter: &TemplateWriter{T: DefaultStatusTemplate, W: &buf},
-	}).Report(ctx))
+	rr = &StatusReporter{Client: c, Dir: dir}
+	report, err = rr.Report(ctx)
+	require.NoError(t, err)
+	require.NoError(t, cmdlog.MigrateStatusTemplate.Execute(&buf, report))
 	require.Equal(t, `Migration Status: PENDING
   -- Current Version: 2
   -- Next Version:    3
@@ -79,11 +79,10 @@ func TestReporter_Status(t *testing.T) {
 	buf.Reset()
 	require.NoError(t, err)
 	require.Error(t, ex.ExecuteN(ctx, 1))
-	require.NoError(t, (&StatusReporter{
-		Client:       c,
-		Dir:          dir,
-		ReportWriter: &TemplateWriter{T: DefaultStatusTemplate, W: &buf},
-	}).Report(ctx))
+	rr = &StatusReporter{Client: c, Dir: dir}
+	report, err = rr.Report(ctx)
+	require.NoError(t, err)
+	require.NoError(t, cmdlog.MigrateStatusTemplate.Execute(&buf, report))
 	require.Equal(t, `Migration Status: PENDING
   -- Current Version: 3 (1 statements applied)
   -- Next Version:    3 (1 statements left)
@@ -97,16 +96,15 @@ Last migration attempt had errors:
 
 	// Fixed three - okay.
 	buf.Reset()
-	dir2, err := migrate.NewLocalDir(filepath.Join("testdata", "fixed"))
+	dir2, err := migrate.NewLocalDir(filepath.Join("../migrate/testdata", "fixed"))
 	require.NoError(t, err)
 	*dir = *dir2
 	require.NoError(t, err)
 	require.NoError(t, ex.ExecuteN(ctx, 1))
-	require.NoError(t, (&StatusReporter{
-		Client:       c,
-		Dir:          dir,
-		ReportWriter: &TemplateWriter{T: DefaultStatusTemplate, W: &buf},
-	}).Report(ctx))
+	rr = &StatusReporter{Client: c, Dir: dir}
+	report, err = rr.Report(ctx)
+	require.NoError(t, err)
+	require.NoError(t, cmdlog.MigrateStatusTemplate.Execute(&buf, report))
 	require.Equal(t, `Migration Status: OK
   -- Current Version: 3
   -- Next Version:    Already at latest version

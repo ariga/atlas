@@ -1,0 +1,142 @@
+apply 1.hcl
+cmpshow t1 t1.sql
+cmpshow t2 t2.sql
+cmphcl 1.inspect.hcl
+
+-- 1.hcl --
+schema "$db" {}
+table "t1" {
+  schema = schema.$db
+  column "c1" {
+    null = false
+    type = integer
+  }
+  column "c2" {
+    null = true
+    type = integer
+  }
+  column "c3" {
+    null = true
+    type = integer
+  }
+  primary_key {
+    columns = [column.c1]
+  }
+  index "t1_c2_c3_idx" {
+    unique  = true
+    columns = [column.c2, column.c3]
+  }
+}
+table "t2" {
+  schema = schema.$db
+  column "c1" {
+    null = false
+    type = integer
+  }
+  column "c2" {
+    null = true
+    type = integer
+  }
+  column "c3" {
+    null = true
+    type = integer
+  }
+  primary_key {
+    columns = [column.c1]
+  }
+  foreign_key "c2_c3_1" {
+    columns     = [column.c2, column.c3]
+    ref_columns = [table.t1.column.c2, table.t1.column.c3]
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
+  }
+  foreign_key "c2_c3_2" {
+    columns     = [column.c2, column.c3]
+    ref_columns = [table.t1.column.c2, table.t1.column.c3]
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
+  }
+}
+
+-- t1.sql --
+           Table "script_foreign_key.t1"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ c1     | integer |           | not null |
+ c2     | integer |           |          |
+ c3     | integer |           |          |
+Indexes:
+    "t1_pkey" PRIMARY KEY, btree (c1)
+    "t1_c2_c3_idx" UNIQUE, btree (c2, c3)
+Referenced by:
+    TABLE "script_foreign_key.t2" CONSTRAINT "c2_c3_1" FOREIGN KEY (c2, c3) REFERENCES script_foreign_key.t1(c2, c3)
+    TABLE "script_foreign_key.t2" CONSTRAINT "c2_c3_2" FOREIGN KEY (c2, c3) REFERENCES script_foreign_key.t1(c2, c3)
+
+-- t2.sql --
+           Table "script_foreign_key.t2"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ c1     | integer |           | not null |
+ c2     | integer |           |          |
+ c3     | integer |           |          |
+Indexes:
+    "t2_pkey" PRIMARY KEY, btree (c1)
+Foreign-key constraints:
+    "c2_c3_1" FOREIGN KEY (c2, c3) REFERENCES script_foreign_key.t1(c2, c3)
+    "c2_c3_2" FOREIGN KEY (c2, c3) REFERENCES script_foreign_key.t1(c2, c3)
+
+-- 1.inspect.hcl --
+table "t1" {
+  schema = schema.script_foreign_key
+  column "c1" {
+    null = false
+    type = integer
+  }
+  column "c2" {
+    null = true
+    type = integer
+  }
+  column "c3" {
+    null = true
+    type = integer
+  }
+  primary_key {
+    columns = [column.c1]
+  }
+  index "t1_c2_c3_idx" {
+    unique  = true
+    columns = [column.c2, column.c3]
+  }
+}
+table "t2" {
+  schema = schema.script_foreign_key
+  column "c1" {
+    null = false
+    type = integer
+  }
+  column "c2" {
+    null = true
+    type = integer
+  }
+  column "c3" {
+    null = true
+    type = integer
+  }
+  primary_key {
+    columns = [column.c1]
+  }
+  foreign_key "c2_c3_1" {
+    columns     = [column.c2, column.c3]
+    ref_columns = [table.t1.column.c2, table.t1.column.c3]
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
+  }
+  foreign_key "c2_c3_2" {
+    columns     = [column.c2, column.c3]
+    ref_columns = [table.t1.column.c2, table.t1.column.c3]
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
+  }
+}
+schema "script_foreign_key" {
+}

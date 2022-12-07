@@ -1,0 +1,166 @@
+only mysql8 maria107
+
+apply 1.hcl
+cmpshow t1 t1.sql
+cmpshow t2 t2.sql
+cmphcl 1.inspect.hcl
+
+-- 1.hcl --
+schema "$db" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_general_ci"
+}
+
+table "t1" {
+  schema = schema.$db
+  column "c1" {
+    null = false
+    type = int
+  }
+  column "c2" {
+    null = true
+    type = int
+  }
+  column "c3" {
+    null = true
+    type = int
+  }
+  primary_key {
+    columns = [column.c1]
+  }
+  index "t1_c2_c3_idx" {
+    unique  = true
+    columns = [column.c2, column.c3]
+  }
+}
+table "t2" {
+  schema = schema.$db
+  column "c1" {
+    null = false
+    type = int
+  }
+  column "c2" {
+    null = true
+    type = int
+  }
+  column "c3" {
+    null = true
+    type = int
+  }
+  primary_key {
+    columns = [column.c1]
+  }
+  foreign_key "c2_c3_1" {
+    columns     = [column.c2, column.c3]
+    ref_columns = [table.t1.column.c2, table.t1.column.c3]
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
+  }
+  foreign_key "c2_c3_2" {
+    columns     = [column.c2, column.c3]
+    ref_columns = [table.t1.column.c2, table.t1.column.c3]
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
+  }
+}
+
+-- mysql8/t1.sql --
+CREATE TABLE `t1` (
+  `c1` int NOT NULL,
+  `c2` int DEFAULT NULL,
+  `c3` int DEFAULT NULL,
+  PRIMARY KEY (`c1`),
+  UNIQUE KEY `t1_c2_c3_idx` (`c2`,`c3`)
+)
+
+-- mysql8/t2.sql --
+CREATE TABLE `t2` (
+  `c1` int NOT NULL,
+  `c2` int DEFAULT NULL,
+  `c3` int DEFAULT NULL,
+  PRIMARY KEY (`c1`),
+  KEY `c2_c3_2` (`c2`,`c3`),
+  CONSTRAINT `c2_c3_1` FOREIGN KEY (`c2`, `c3`) REFERENCES `t1` (`c2`, `c3`),
+  CONSTRAINT `c2_c3_2` FOREIGN KEY (`c2`, `c3`) REFERENCES `t1` (`c2`, `c3`)
+)
+
+-- t1.sql --
+CREATE TABLE `t1` (
+  `c1` int(11) NOT NULL,
+  `c2` int(11) DEFAULT NULL,
+  `c3` int(11) DEFAULT NULL,
+  PRIMARY KEY (`c1`),
+  UNIQUE KEY `t1_c2_c3_idx` (`c2`,`c3`)
+)
+
+-- t2.sql --
+CREATE TABLE `t2` (
+  `c1` int(11) NOT NULL,
+  `c2` int(11) DEFAULT NULL,
+  `c3` int(11) DEFAULT NULL,
+  PRIMARY KEY (`c1`),
+  KEY `c2_c3_2` (`c2`,`c3`),
+  CONSTRAINT `c2_c3_1` FOREIGN KEY (`c2`, `c3`) REFERENCES `t1` (`c2`, `c3`) ON DELETE NO ACTION ON UPDATE NO ACTION,
+  CONSTRAINT `c2_c3_2` FOREIGN KEY (`c2`, `c3`) REFERENCES `t1` (`c2`, `c3`) ON DELETE NO ACTION ON UPDATE NO ACTION
+)
+
+-- 1.inspect.hcl --
+table "t1" {
+  schema = schema.script_foreign_key
+  column "c1" {
+    null = false
+    type = int
+  }
+  column "c2" {
+    null = true
+    type = int
+  }
+  column "c3" {
+    null = true
+    type = int
+  }
+  primary_key {
+    columns = [column.c1]
+  }
+  index "t1_c2_c3_idx" {
+    unique  = true
+    columns = [column.c2, column.c3]
+  }
+}
+table "t2" {
+  schema = schema.script_foreign_key
+  column "c1" {
+    null = false
+    type = int
+  }
+  column "c2" {
+    null = true
+    type = int
+  }
+  column "c3" {
+    null = true
+    type = int
+  }
+  primary_key {
+    columns = [column.c1]
+  }
+  foreign_key "c2_c3_1" {
+    columns     = [column.c2, column.c3]
+    ref_columns = [table.t1.column.c2, table.t1.column.c3]
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
+  }
+  foreign_key "c2_c3_2" {
+    columns     = [column.c2, column.c3]
+    ref_columns = [table.t1.column.c2, table.t1.column.c3]
+    on_update   = NO_ACTION
+    on_delete   = NO_ACTION
+  }
+  index "c2_c3_2" {
+    columns = [column.c2, column.c3]
+  }
+}
+schema "script_foreign_key" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_general_ci"
+}

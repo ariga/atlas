@@ -1298,7 +1298,7 @@ create table atlas_types_sanity
 				},
 				{
 					Name: "tUUID",
-					Type: &schema.ColumnType{Type: &postgres.UUIDType{T: "uuid"}, Raw: "uuid", Null: true},
+					Type: &schema.ColumnType{Type: &schema.UUIDType{T: "uuid"}, Raw: "uuid", Null: true},
 					Default: &schema.Literal{
 						V: "'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'",
 					},

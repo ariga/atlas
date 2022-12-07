@@ -15,9 +15,28 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
-type execPlanner interface {
-	ExecContext(context.Context, string, ...any) (sql.Result, error)
-	PlanChanges(context.Context, string, []schema.Change, ...migrate.PlanOption) (*migrate.Plan, error)
+type (
+	execPlanner interface {
+		ExecContext(context.Context, string, ...any) (sql.Result, error)
+		PlanChanges(context.Context, string, []schema.Change, ...migrate.PlanOption) (*migrate.Plan, error)
+	}
+	// ApplyError is an error that exposes an information for getting
+	// how any changes were applied before encountering the failure.
+	ApplyError struct {
+		err     string
+		applied int
+	}
+)
+
+// Applied reports how many changes were applied before getting an error.
+// In case the first change was failed, Applied() returns 0.
+func (e *ApplyError) Applied() int {
+	return e.applied
+}
+
+// Error implements the error interface.
+func (e *ApplyError) Error() string {
+	return e.err
 }
 
 // ApplyChanges is a helper used by the different drivers to apply changes.
@@ -26,12 +45,12 @@ func ApplyChanges(ctx context.Context, changes []schema.Change, p execPlanner, o
 	if err != nil {
 		return err
 	}
-	for _, c := range plan.Changes {
+	for i, c := range plan.Changes {
 		if _, err := p.ExecContext(ctx, c.Cmd, c.Args...); err != nil {
 			if c.Comment != "" {
 				err = fmt.Errorf("%s: %w", c.Comment, err)
 			}
-			return err
+			return &ApplyError{err: err.Error(), applied: i}
 		}
 	}
 	return nil

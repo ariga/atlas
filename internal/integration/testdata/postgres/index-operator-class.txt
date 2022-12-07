@@ -93,7 +93,6 @@ table "pets" {
     type = character(10)
   }
   index "name_idx1" {
-    type = BTREE
     on {
       column = column.name
       ops    = bpchar_pattern_ops
@@ -101,7 +100,6 @@ table "pets" {
   }
   index "name_idx2" {
     columns = [column.name]
-    type    = BTREE
   }
 }
 schema "script_index_operator_class" {

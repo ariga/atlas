@@ -109,7 +109,9 @@ The following schema change checks are provided by Atlas:
 | [MY101](#MY101)                    | Adding a non-nullable column without a `DEFAULT` value to an existing table |
 | [MY102](#MY102)                    | Adding a column with an inline `REFERENCES` clause has no actual effect     |
 | **LT**                             | SQLite specific checks                                                      |
-| [LT101](#LT101)                    | Modifying a nullable column to non-nullable without a `DEFAULT` value       |
+| [LT101](#LT101)                    | Modifying a nullable column to non-nullable without a `DEFAULT` value       |  
+| **AR**                             | Ariga cloud checks                                                          |
+| [AR101](#AR101)                    | Creating table with non-optimal data alignment                              |
 
 #### DS101 {#DS101}
 
@@ -239,4 +241,33 @@ DROP TABLE `users`;
 ALTER TABLE `new_users` RENAME TO `users`;
 -- enable back the enforcement of foreign-keys constraints
 PRAGMA foreign_keys = on;
+```
+
+#### AR101 {#AR101}
+
+Creating a table with optimal data alignment may help minimize the amount of required disk space. 
+For example consider the next Postgres table on a 64-bit system:
+
+```postgresql
+CREATE TABLE accounts (
+    id bigint PRIMARY KEY,
+    premium boolean,
+    balance integer,
+    age     smallint                  
+);
+```
+Each tuple in the table takes 24 bytes of successive memory without the header.
+the `id` attribute takes 8 bytes, the `premium` takes 1 byte and 3 bytes of padding, the `balance` takes 4 bytes and the `age` takes 2 bytes,
+and lastly 6 bytes of padding allocated for the end of the row.
+In total 9 bytes of padding are allocated for each row.
+
+Compared to same table with different ordering which only takes 16 bytes in memory with 1 byte of padding:
+
+```postgresql
+CREATE TABLE accounts (
+    id bigint PRIMARY KEY,
+    balance integer,
+    age smallint,
+    premium boolean             
+);
 ```
