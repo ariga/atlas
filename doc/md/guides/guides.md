@@ -61,7 +61,7 @@ Importing from [`pressly/goose`](migration-tools/goose-import.md)
 
 ## Cloud
 
-[How to inspect a local database in the Cloud](cloud/explore-inspection.md)
+[How to inspect a local database in the Cloud](cloud/explore-inspection.mdx)
 
 
 ## Tests
