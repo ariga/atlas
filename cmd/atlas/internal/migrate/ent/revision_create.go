@@ -306,91 +306,47 @@ func (rc *RevisionCreate) createSpec() (*Revision, *sqlgraph.CreateSpec) {
 		_spec.ID.Value = id
 	}
 	if value, ok := rc.mutation.Description(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: revision.FieldDescription,
-		})
+		_spec.SetField(revision.FieldDescription, field.TypeString, value)
 		_node.Description = value
 	}
 	if value, ok := rc.mutation.GetType(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint,
-			Value:  value,
-			Column: revision.FieldType,
-		})
+		_spec.SetField(revision.FieldType, field.TypeUint, value)
 		_node.Type = value
 	}
 	if value, ok := rc.mutation.Applied(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
-			Value:  value,
-			Column: revision.FieldApplied,
-		})
+		_spec.SetField(revision.FieldApplied, field.TypeInt, value)
 		_node.Applied = value
 	}
 	if value, ok := rc.mutation.Total(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
-			Value:  value,
-			Column: revision.FieldTotal,
-		})
+		_spec.SetField(revision.FieldTotal, field.TypeInt, value)
 		_node.Total = value
 	}
 	if value, ok := rc.mutation.ExecutedAt(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: revision.FieldExecutedAt,
-		})
+		_spec.SetField(revision.FieldExecutedAt, field.TypeTime, value)
 		_node.ExecutedAt = value
 	}
 	if value, ok := rc.mutation.ExecutionTime(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: revision.FieldExecutionTime,
-		})
+		_spec.SetField(revision.FieldExecutionTime, field.TypeInt64, value)
 		_node.ExecutionTime = value
 	}
 	if value, ok := rc.mutation.Error(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: revision.FieldError,
-		})
+		_spec.SetField(revision.FieldError, field.TypeString, value)
 		_node.Error = value
 	}
 	if value, ok := rc.mutation.ErrorStmt(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: revision.FieldErrorStmt,
-		})
+		_spec.SetField(revision.FieldErrorStmt, field.TypeString, value)
 		_node.ErrorStmt = value
 	}
 	if value, ok := rc.mutation.Hash(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: revision.FieldHash,
-		})
+		_spec.SetField(revision.FieldHash, field.TypeString, value)
 		_node.Hash = value
 	}
 	if value, ok := rc.mutation.PartialHashes(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeJSON,
-			Value:  value,
-			Column: revision.FieldPartialHashes,
-		})
+		_spec.SetField(revision.FieldPartialHashes, field.TypeJSON, value)
 		_node.PartialHashes = value
 	}
 	if value, ok := rc.mutation.OperatorVersion(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: revision.FieldOperatorVersion,
-		})
+		_spec.SetField(revision.FieldOperatorVersion, field.TypeString, value)
 		_node.OperatorVersion = value
 	}
 	return _node, _spec
@@ -445,18 +401,6 @@ type (
 	}
 )
 
-// SetDescription sets the "description" field.
-func (u *RevisionUpsert) SetDescription(v string) *RevisionUpsert {
-	u.Set(revision.FieldDescription, v)
-	return u
-}
-
-// UpdateDescription sets the "description" field to the value that was provided on create.
-func (u *RevisionUpsert) UpdateDescription() *RevisionUpsert {
-	u.SetExcluded(revision.FieldDescription)
-	return u
-}
-
 // SetType sets the "type" field.
 func (u *RevisionUpsert) SetType(v migrate.RevisionType) *RevisionUpsert {
 	u.Set(revision.FieldType, v)
@@ -508,18 +452,6 @@ func (u *RevisionUpsert) UpdateTotal() *RevisionUpsert {
 // AddTotal adds v to the "total" field.
 func (u *RevisionUpsert) AddTotal(v int) *RevisionUpsert {
 	u.Add(revision.FieldTotal, v)
-	return u
-}
-
-// SetExecutedAt sets the "executed_at" field.
-func (u *RevisionUpsert) SetExecutedAt(v time.Time) *RevisionUpsert {
-	u.Set(revision.FieldExecutedAt, v)
-	return u
-}
-
-// UpdateExecutedAt sets the "executed_at" field to the value that was provided on create.
-func (u *RevisionUpsert) UpdateExecutedAt() *RevisionUpsert {
-	u.SetExcluded(revision.FieldExecutedAt)
 	return u
 }
 
@@ -673,20 +605,6 @@ func (u *RevisionUpsertOne) Update(set func(*RevisionUpsert)) *RevisionUpsertOne
 	return u
 }
 
-// SetDescription sets the "description" field.
-func (u *RevisionUpsertOne) SetDescription(v string) *RevisionUpsertOne {
-	return u.Update(func(s *RevisionUpsert) {
-		s.SetDescription(v)
-	})
-}
-
-// UpdateDescription sets the "description" field to the value that was provided on create.
-func (u *RevisionUpsertOne) UpdateDescription() *RevisionUpsertOne {
-	return u.Update(func(s *RevisionUpsert) {
-		s.UpdateDescription()
-	})
-}
-
 // SetType sets the "type" field.
 func (u *RevisionUpsertOne) SetType(v migrate.RevisionType) *RevisionUpsertOne {
 	return u.Update(func(s *RevisionUpsert) {
@@ -747,20 +665,6 @@ func (u *RevisionUpsertOne) AddTotal(v int) *RevisionUpsertOne {
 func (u *RevisionUpsertOne) UpdateTotal() *RevisionUpsertOne {
 	return u.Update(func(s *RevisionUpsert) {
 		s.UpdateTotal()
-	})
-}
-
-// SetExecutedAt sets the "executed_at" field.
-func (u *RevisionUpsertOne) SetExecutedAt(v time.Time) *RevisionUpsertOne {
-	return u.Update(func(s *RevisionUpsert) {
-		s.SetExecutedAt(v)
-	})
-}
-
-// UpdateExecutedAt sets the "executed_at" field to the value that was provided on create.
-func (u *RevisionUpsertOne) UpdateExecutedAt() *RevisionUpsertOne {
-	return u.Update(func(s *RevisionUpsert) {
-		s.UpdateExecutedAt()
 	})
 }
 
@@ -1054,7 +958,6 @@ func (u *RevisionUpsertBulk) UpdateNewValues() *RevisionUpsertBulk {
 		for _, b := range u.create.builders {
 			if _, exists := b.mutation.ID(); exists {
 				s.SetIgnore(revision.FieldID)
-				return
 			}
 			if _, exists := b.mutation.Description(); exists {
 				s.SetIgnore(revision.FieldDescription)
@@ -1092,20 +995,6 @@ func (u *RevisionUpsertBulk) Update(set func(*RevisionUpsert)) *RevisionUpsertBu
 		set(&RevisionUpsert{UpdateSet: update})
 	}))
 	return u
-}
-
-// SetDescription sets the "description" field.
-func (u *RevisionUpsertBulk) SetDescription(v string) *RevisionUpsertBulk {
-	return u.Update(func(s *RevisionUpsert) {
-		s.SetDescription(v)
-	})
-}
-
-// UpdateDescription sets the "description" field to the value that was provided on create.
-func (u *RevisionUpsertBulk) UpdateDescription() *RevisionUpsertBulk {
-	return u.Update(func(s *RevisionUpsert) {
-		s.UpdateDescription()
-	})
 }
 
 // SetType sets the "type" field.
@@ -1168,20 +1057,6 @@ func (u *RevisionUpsertBulk) AddTotal(v int) *RevisionUpsertBulk {
 func (u *RevisionUpsertBulk) UpdateTotal() *RevisionUpsertBulk {
 	return u.Update(func(s *RevisionUpsert) {
 		s.UpdateTotal()
-	})
-}
-
-// SetExecutedAt sets the "executed_at" field.
-func (u *RevisionUpsertBulk) SetExecutedAt(v time.Time) *RevisionUpsertBulk {
-	return u.Update(func(s *RevisionUpsert) {
-		s.SetExecutedAt(v)
-	})
-}
-
-// UpdateExecutedAt sets the "executed_at" field to the value that was provided on create.
-func (u *RevisionUpsertBulk) UpdateExecutedAt() *RevisionUpsertBulk {
-	return u.Update(func(s *RevisionUpsert) {
-		s.UpdateExecutedAt()
 	})
 }
 

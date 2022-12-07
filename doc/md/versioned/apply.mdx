@@ -115,6 +115,36 @@ flag:
 In addition to the `--dry-run` flag Atlas also provides the `atlas migrate status` command, that provides in-depth
 information about the migration status of the connected database.
 
+
+### Multi-Tenant environments
+
+The Atlas configuration language provides built-in support for executing versioned workflows in multi-tenant
+environments. Using the `for_each` meta-argument, users can define a single `env` block that is expanded to N instances,
+one for each tenant:
+
+```hcl title="atlas.hcl"
+env "prod" {
+  for_each = toset(var.tenants)
+  url      = urlsetpath(var.url, each.value)
+  migration {
+    dir = "file://migrations"
+  }
+  log {
+    migrate {
+      apply = format(
+        "{{ json . | json_merge %q }}",
+        jsonencode({
+          Tenant : each.value
+        })
+      )
+    }
+  }
+}
+```
+
+[Read more](../atlas-schema/projects.mdx#multi-environment-example) about how to define versioned workflows using
+project files in multi-tenant environments.
+
 ### Examples
 
 First time apply with baseline on production environment:

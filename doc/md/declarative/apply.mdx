@@ -4,6 +4,9 @@ slug: /declarative/apply
 title: Declarative schema migrations
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 With Atlas, users do not need to plan database schema changes themselves. Instead
 of figuring out the correct SQL statements to get their database to the desired state,
 Atlas supports a kind of workflow that we call _declarative schema migration_.
@@ -13,12 +16,14 @@ and the desired schema and Atlas does all of the planning.
 [Read more about declarative workflows](/concepts/declarative-vs-versioned)
 
 ### Auto-approval
+
 Before executing the migration against the target database, Atlas will print the SQL
 statements that it is going to run and prompt the user for approval. Users that wish
 to automatically approve may run the `schema apply` command with the `--auto-approve`
 flag.
 
 ### Dry-runs
+
 In order to skip the execution of the SQL queries against the target database,
 users may provide the `--dry-run` flag. When invoked with this flag, Atlas will
 connect to the target database, inspect its current state, calculate the diff
@@ -26,6 +31,7 @@ between the provided desired schema and print out a series of SQL statements to
 reconcile any gaps between the inspected and desired schemas.
 
 ### Dev-database
+
 When storing schema definitions, many database engines perform some form of
 normalization. That is, despite us providing a specific definition of some
 aspect of the schema, the database will store it in another, equivalent form.
@@ -37,7 +43,61 @@ Atlas with a connection string to a _Dev-Database_.
 This database is used to normalize the schema prior to planning migrations and
 for simulating changes to ensure their applicability before execution.
 
-[Read more about Dev-Databases](/concepts/dev-database)
+[Read more about Dev-Databases](../concepts/dev.md)
+
+### Multi-Tenant environments
+
+The Atlas configuration language provides built-in support for executing declarative workflows in multi-tenant
+environments. Using the `for_each` meta-argument, users can define a single `env` block that is expanded to N instances,
+one for each tenant:
+
+<Tabs>
+<TabItem value="atlas" label="atlas.hcl" default>
+
+```hcl
+env "prod" {
+  for_each = toset(var.tenants)
+  url      = urlsetpath(var.url, each.value)
+  src      = "schema.hcl"
+  log {
+    schema {
+      apply = format(
+        "{{ json . | json_merge %q }}",
+        jsonencode({
+          Tenant : each.value
+        })
+      )
+    }
+  }
+  // Inject custom variables to the schema.hcl defined below.
+  tenant = each.value
+}
+```
+
+</TabItem>
+<TabItem value="schema" label="schema.hcl">
+
+```hcl
+variable "tenant" {
+  type        = string
+  description = "The schema we operate on"
+}
+
+schema "tenant" {
+  name = var.tenant
+}
+
+table "users" {
+  schema = schema.tenant
+  // ...
+}
+```
+
+</TabItem>
+</Tabs>
+
+[Read more](../atlas-schema/projects.mdx#multi-environment-example) about how to define declarative workflows using
+project files in multi-tenant environments.
 
 ### Reference
 

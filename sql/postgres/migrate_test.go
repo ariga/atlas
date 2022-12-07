@@ -145,7 +145,7 @@ func TestPlanChanges(t *testing.T) {
 							&schema.DropIndex{
 								I: schema.NewUniqueIndex("unique_nickname").
 									AddColumns(schema.NewColumn("nickname")).
-									AddAttrs(&ConType{T: "u"}),
+									AddAttrs(&Constraint{T: "u"}),
 							},
 						},
 					}

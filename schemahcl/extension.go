@@ -298,44 +298,47 @@ func setField(field reflect.Value, attr *Attr) error {
 	case reflect.String:
 		s, err := attr.String()
 		if err != nil {
-			return fmt.Errorf("schemahcl: value of attr %q cannot be read as string: %w", attr.K, err)
+			return fmt.Errorf("value of attr %q cannot be read as string: %w", attr.K, err)
 		}
 		field.SetString(s)
 	case reflect.Int, reflect.Int64:
 		i, err := attr.Int()
 		if err != nil {
-			return fmt.Errorf("schemahcl: value of attr %q cannot be read as integer: %w", attr.K, err)
+			return fmt.Errorf("value of attr %q cannot be read as integer: %w", attr.K, err)
 		}
 		field.SetInt(int64(i))
 	case reflect.Bool:
 		b, err := attr.Bool()
 		if err != nil {
-			return fmt.Errorf("schemahcl: value of attr %q cannot be read as bool: %w", attr.K, err)
+			return fmt.Errorf("value of attr %q cannot be read as bool: %w", attr.K, err)
 		}
 		field.SetBool(b)
 	case reflect.Ptr:
 		if err := setPtr(field, attr.V); err != nil {
-			return fmt.Errorf("schemahcl: failed setting pointer field %q: %w", attr.K, err)
+			return fmt.Errorf("set field %q: %w", attr.K, err)
 		}
 	case reflect.Interface:
 		field.Set(reflect.ValueOf(attr.V))
 	default:
 		if err := gocty.FromCtyValue(attr.V, field.Addr().Interface()); err != nil {
-			return fmt.Errorf("schemahcl: failed setting field %q of type %T: %w", attr.K, field, err)
+			return fmt.Errorf("set field %q of type %T: %w", attr.K, field, err)
 		}
 	}
 	return nil
 }
 
-func setPtr(field reflect.Value, val cty.Value) error {
-	rt := reflect.TypeOf(val)
+func setPtr(field reflect.Value, cv cty.Value) error {
+	rt := reflect.TypeOf(cv)
 	if field.Type() == rt {
-		field.Set(reflect.ValueOf(val))
+		field.Set(reflect.ValueOf(cv))
 		return nil
 	}
 	// If we are setting a Type field handle RawExpr and Ref specifically.
 	if _, ok := field.Interface().(*Type); ok {
-		switch t := val.EncapsulatedValue().(type) {
+		if !cv.Type().IsCapsuleType() {
+			return fmt.Errorf("unexpected type %s", cv.Type().FriendlyName())
+		}
+		switch t := cv.EncapsulatedValue().(type) {
 		case *RawExpr:
 			field.Set(reflect.ValueOf(&Type{T: t.X}))
 			return nil
@@ -353,17 +356,17 @@ func setPtr(field reflect.Value, val cty.Value) error {
 	switch e := field.Interface().(type) {
 	case *Ref:
 		switch {
-		case val.Type() == cty.String:
-			e.V = val.AsString()
-		case val.Type().IsCapsuleType():
-			ref, ok := val.EncapsulatedValue().(*Ref)
+		case cv.Type() == cty.String:
+			e.V = cv.AsString()
+		case cv.Type().IsCapsuleType():
+			ref, ok := cv.EncapsulatedValue().(*Ref)
 			if !ok {
-				return fmt.Errorf("schemahcl: expected value to be a *Ref, got: %T", val.EncapsulatedValue())
+				return fmt.Errorf("schemahcl: expected value to be a *Ref, got: %T", cv.EncapsulatedValue())
 			}
 			e.V = ref.V
 		}
 	default:
-		if err := gocty.FromCtyValue(val, e); err != nil {
+		if err := gocty.FromCtyValue(cv, e); err != nil {
 			return fmt.Errorf("converting cty.Value to %T: %w", e, err)
 		}
 	}

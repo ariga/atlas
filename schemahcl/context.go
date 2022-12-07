@@ -44,6 +44,11 @@ func (s *State) setInputVals(ctx *hcl.EvalContext, body hcl.Body, input map[stri
 	for _, v := range doc.Vars {
 		var vv cty.Value
 		switch iv, ok := input[v.Name]; {
+		case !v.Type.Type().IsCapsuleType():
+			return fmt.Errorf(
+				"invalid type %q for variable %q. Valid types are: string, number, bool, list, map, or set",
+				v.Type.AsString(), v.Name,
+			)
 		case ok:
 			vv = iv
 		case v.Default != cty.NilVal:

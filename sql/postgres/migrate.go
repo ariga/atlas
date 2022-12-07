@@ -980,7 +980,7 @@ func (s *state) index(b *sqlx.Builder, idx *schema.Index) error {
 	}
 	for _, attr := range idx.Attrs {
 		switch attr.(type) {
-		case *schema.Comment, *ConType, *IndexType, *IndexInclude, *Concurrently, *IndexPredicate, *IndexStorageParams:
+		case *schema.Comment, *IndexType, *IndexInclude, *Concurrently, *Constraint, *IndexPredicate, *IndexStorageParams:
 		default:
 			return fmt.Errorf("postgres: unexpected index attribute: %T", attr)
 		}
@@ -1100,7 +1100,15 @@ func check(b *sqlx.Builder, c *schema.Check) {
 
 // isUniqueConstraint reports if the index is a valid UNIQUE constraint.
 func isUniqueConstraint(i *schema.Index) bool {
-	if c := (ConType{}); !sqlx.Has(i.Attrs, &c) || !c.IsUnique() || !i.Unique {
+	hasC := func() bool {
+		for _, a := range i.Attrs {
+			if c, ok := a.(*Constraint); ok && c.IsUnique() {
+				return true
+			}
+		}
+		return false
+	}()
+	if !hasC || !i.Unique {
 		return false
 	}
 	// UNIQUE constraint cannot use functional indexes,

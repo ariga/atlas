@@ -144,6 +144,18 @@ func TestDriver_CheckClean(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestDriver_Version(t *testing.T) {
+	db, m, err := sqlmock.New()
+	require.NoError(t, err)
+	mock{m}.version("130000")
+	drv, err := Open(db)
+	require.NoError(t, err)
+
+	type vr interface{ Version() string }
+	require.Implements(t, (*vr)(nil), drv)
+	require.Equal(t, "130000", drv.(vr).Version())
+}
+
 type mockInspector struct {
 	schema.Inspector
 	realm  *schema.Realm

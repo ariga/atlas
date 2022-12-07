@@ -83,11 +83,11 @@ func init() {
 	})
 }
 
-// inputValsFromEnv populates GlobalFlags.Vars from the active environment. If we are working
+// inputValuesFromEnv populates GlobalFlags.Vars from the active environment. If we are working
 // inside a project, the "var" flag is not propagated to the schema definition. Instead, it
 // is used to evaluate the project file which can pass input values via the "values" block
 // to the schema.
-func inputValsFromEnv(cmd *cobra.Command, env *Env) error {
+func inputValuesFromEnv(cmd *cobra.Command, env *Env) error {
 	if fl := cmd.Flag(flagVar); fl == nil {
 		return nil
 	}
@@ -104,7 +104,7 @@ func inputValsFromEnv(cmd *cobra.Command, env *Env) error {
 	}
 	vars := strings.Join(pairs, ",")
 	if err := cmd.Flags().Set(flagVar, vars); err != nil {
-		return err
+		return fmt.Errorf("set flag %q: %w", flagVar, err)
 	}
 	return nil
 }
@@ -142,6 +142,20 @@ func (v Vars) String() string {
 		b.WriteString(v[k].GoString())
 	}
 	return "[" + b.String() + "]"
+}
+
+// Copy returns a copy of the current variables.
+func (v Vars) Copy() Vars {
+	vc := make(Vars)
+	for k := range v {
+		vc[k] = v[k]
+	}
+	return vc
+}
+
+// Replace overrides the variables.
+func (v *Vars) Replace(vc Vars) {
+	*v = vc
 }
 
 // Set implements pflag.Value.Set.
@@ -347,18 +361,33 @@ func maySetFlag(cmd *cobra.Command, name, envVal string) error {
 // were not set by the user and returns a callback to clear them
 // after it was set by the current environment.
 func resetFromEnv(cmd *cobra.Command) func() {
-	mayReset := make(map[string]string)
+	mayReset := make(map[string]func() error)
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-		if !f.Changed {
-			mayReset[f.Name] = f.Value.String()
+		if f.Changed {
+			return
 		}
+		vs := f.Value.String()
+		r := func() error { return f.Value.Set(vs) }
+		if v, ok := f.Value.(*Vars); ok {
+			vs := v.Copy()
+			r = func() error {
+				v.Replace(vs)
+				return nil
+			}
+		} else if v, ok := f.Value.(pflag.SliceValue); ok {
+			vs := v.GetSlice()
+			r = func() error {
+				return v.Replace(vs)
+			}
+		}
+		mayReset[f.Name] = r
 	})
 	return func() {
-		for n, v := range mayReset {
-			if f := cmd.Flag(n); f != nil && f.Changed {
+		for name, reset := range mayReset {
+			if f := cmd.Flag(name); f != nil && f.Changed {
 				f.Changed = false
 				// Unexpected error, because this flag was set before.
-				cobra.CheckErr(f.Value.Set(v))
+				cobra.CheckErr(reset())
 			}
 		}
 	}

@@ -99,6 +99,8 @@ func FormatType(t schema.Type) (string, error) {
 		if p := t.Precision; p != nil && *p > 0 {
 			f = fmt.Sprintf("%s(%d)", f, *p)
 		}
+	case *schema.UUIDType:
+		f = strings.ToLower(t.T)
 	case *schema.UnsupportedType:
 		// Do not accept unsupported types as we should cover all cases.
 		return "", fmt.Errorf("unsupported type %q", t.T)
@@ -236,6 +238,10 @@ func ParseType(raw string) (schema.Type, error) {
 		}, nil
 	case TypePoint, TypeMultiPoint, TypeLineString, TypeMultiLineString, TypePolygon, TypeMultiPolygon, TypeGeometry, TypeGeoCollection, TypeGeometryCollection:
 		return &schema.SpatialType{
+			T: t,
+		}, nil
+	case TypeUUID:
+		return &schema.UUIDType{
 			T: t,
 		}, nil
 	default:
