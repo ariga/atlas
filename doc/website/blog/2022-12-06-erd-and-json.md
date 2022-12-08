@@ -44,7 +44,7 @@ one of two ways:
    atlas schema inspect -u mysql://root:pass@localhost:3306/db_name 
    
    # PostgreSQL
-   atlas schema inspct postgres://postgres:pass@localhost:5432/db_name?sslmode=disable 
+   atlas schema inspect postgres://postgres:pass@localhost:5432/db_name?sslmode=disable 
    ```
 
 ## Schemas as JSON documents
