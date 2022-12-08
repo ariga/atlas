@@ -23,7 +23,7 @@ the schema and see how different entities are connected. This can be especially 
 large databases, as it allows you to quickly identify patterns and connections that might not be immediately obvious
 when looking at the raw data.
 
-![Using Explore to generate an ERD](https://atlasgo.io/uploads/explore-erd.gif)
+[![Using Explore to generate an ERD](https://atlasgo.io/uploads/explore-erd.gif)](https://gh.ariga.cloud/explore)
 
 To automatically generate an ERD from your database, you can use the [Explore](https://gh.ariga.cloud/explore) feature
 of Ariga Cloud. To visualize a schema using the Explore feature, you need to provide your database schema in
@@ -41,10 +41,10 @@ one of two ways:
 
    ```bash
    # MySQL
-   atlas schema inspect -u mysql://root:pass@localhost:3306/db_name 
-   
+   atlas schema inspect -u mysql://root:pass@localhost:3306/db_name
+
    # PostgreSQL
-   atlas schema inspect postgres://postgres:pass@localhost:5432/db_name?sslmode=disable 
+   atlas schema inspect postgres://postgres:pass@localhost:5432/db_name?sslmode=disable
    ```
 
 ## Schemas as JSON documents
