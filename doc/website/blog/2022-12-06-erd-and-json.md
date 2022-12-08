@@ -36,14 +36,15 @@ one of two ways:
    existing Atlas project, you can use the `atlas schema inspect` command to generate the HCL file from your
    database.
 
-   After installing Atlas, you can run the following command to copy the HCL document to your clipboard:
+   After installing Atlas, you can run the following command to generate the HCL representation of your database
+   schema:
 
    ```bash
    # MySQL
-   atlas schema inspect -u mysql://root:pass@localhost:3306/db_name | pbcopy
+   atlas schema inspect -u mysql://root:pass@localhost:3306/db_name 
    
    # PostgreSQL
-   postgres://postgres:pass@localhost:5432/db_name?sslmode=disable | pbcopy
+   atlas schema inspect postgres://postgres:pass@localhost:5432/db_name?sslmode=disable 
    ```
 
 ## Schemas as JSON documents
@@ -64,11 +65,43 @@ custom logging format:
 atlas schema inspect -u '<url>' --log '{{ json . }}'
 ```
 
+This will output the schema as a JSON document:
+
+```js
+{
+  "schemas": [
+    {
+      "name": "test",
+      "tables": [
+        {
+          "name": "blog_posts",
+          "columns": [
+            {
+              "name": "id",
+              "type": "int"
+            },
+            {
+              "name": "title",
+              "type": "varchar(100)",
+              "null": true
+            },
+            // .. Truncated for brevity ..
+        ]
+    }
+  ]
+}
+```
+
 Once your schema is represented as a JSON document, you can use `jq` to analyze it. For example, to get a list of all
 the tables that contain a foreign key, run:
 
 ```text
-atlas schema inspect -u '<url>' --log '{{ json . }}' | jq '.schemas[].tables[] | select(.foreign_keys != null) | .name'
+atlas schema inspect -u '<url>' --log '{{ json . }}' | jq '.schemas[].tables[] | select(.foreign_keys | length > 0) | .name'
+```
+
+This will output:
+```json
+"blog_posts"
 ```
 
 ## Wrapping up
