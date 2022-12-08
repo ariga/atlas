@@ -36,14 +36,15 @@ one of two ways:
    existing Atlas project, you can use the `atlas schema inspect` command to generate the HCL file from your
    database.
 
-   After installing Atlas, you can run the following command to copy the HCL document to your clipboard:
+   After installing Atlas, you can run the following command to generate the HCL representation of your database
+   schema:
 
    ```bash
    # MySQL
-   atlas schema inspect -u mysql://root:pass@localhost:3306/db_name | pbcopy
+   atlas schema inspect -u mysql://root:pass@localhost:3306/db_name 
    
    # PostgreSQL
-   postgres://postgres:pass@localhost:5432/db_name?sslmode=disable | pbcopy
+   atlas schema inspct postgres://postgres:pass@localhost:5432/db_name?sslmode=disable 
    ```
 
 ## Schemas as JSON documents
