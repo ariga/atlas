@@ -64,11 +64,43 @@ custom logging format:
 atlas schema inspect -u '<url>' --log '{{ json . }}'
 ```
 
+This will output the schema as a JSON document:
+
+```js
+{
+  "schemas": [
+    {
+      "name": "test",
+      "tables": [
+        {
+          "name": "blog_posts",
+          "columns": [
+            {
+              "name": "id",
+              "type": "int"
+            },
+            {
+              "name": "title",
+              "type": "varchar(100)",
+              "null": true
+            },
+            // .. Truncated for brevity ..
+        ]
+    }
+  ]
+}
+```
+
 Once your schema is represented as a JSON document, you can use `jq` to analyze it. For example, to get a list of all
 the tables that contain a foreign key, run:
 
 ```text
-atlas schema inspect -u '<url>' --log '{{ json . }}' | jq '.schemas[].tables[] | select(.foreign_keys != null) | .name'
+atlas schema inspect -u '<url>' --log '{{ json . }}' | jq '.schemas[].tables[] | select(.foreign_keys | length > 0) | .name'
+```
+
+This will output:
+```json
+"blog_posts"
 ```
 
 ## Wrapping up
