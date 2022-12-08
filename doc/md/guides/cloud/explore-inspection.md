@@ -1,7 +1,7 @@
 ---
 id: explore-inspection
 title: How to inspect a local database in the Cloud
-slug: guides/cloud/explore-inspection
+slug: /guides/cloud/explore-inspection
 ---
 
 import Tabs from '@theme/Tabs';
