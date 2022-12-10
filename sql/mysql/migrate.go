@@ -85,7 +85,7 @@ func (s *state) plan(changes []schema.Change) error {
 		case *schema.AddTable:
 			err = s.addTable(c)
 		case *schema.DropTable:
-			s.dropTable(c)
+			err = s.dropTable(c)
 		case *schema.ModifyTable:
 			err = s.modifyTable(c)
 		case *schema.RenameTable:
@@ -267,7 +267,11 @@ func (s *state) addTable(add *schema.AddTable) error {
 
 // dropTable builds and appends the migrate.Change
 // for dropping a table from a schema.
-func (s *state) dropTable(drop *schema.DropTable) {
+func (s *state) dropTable(drop *schema.DropTable) error {
+	rs := &state{conn: s.conn, PlanOptions: s.PlanOptions}
+	if err := rs.addTable(&schema.AddTable{T: drop.T}); err != nil {
+		return fmt.Errorf("calculate reverse for drop table %q: %w", drop.T.Name, err)
+	}
 	b := s.Build("DROP TABLE")
 	if sqlx.Has(drop.Extra, &schema.IfExists{}) {
 		b.P("IF EXISTS")
@@ -276,8 +280,10 @@ func (s *state) dropTable(drop *schema.DropTable) {
 	s.append(&migrate.Change{
 		Cmd:     b.String(),
 		Source:  drop,
+		Reverse: rs.Changes[0].Cmd,
 		Comment: fmt.Sprintf("drop %q table", drop.T.Name),
 	})
+	return nil
 }
 
 // modifyTable builds and appends the migration changes for

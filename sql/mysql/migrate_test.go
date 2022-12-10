@@ -41,8 +41,24 @@ func TestMigrate_ApplyChanges(t *testing.T) {
 	err = migrate.ApplyChanges(context.Background(), []schema.Change{
 		&schema.AddSchema{S: &schema.Schema{Name: "test", Attrs: []schema.Attr{&schema.Charset{V: "latin"}}}},
 		&schema.DropSchema{S: &schema.Schema{Name: "atlas", Attrs: []schema.Attr{&schema.Charset{V: "latin"}}}},
-		&schema.DropTable{T: &schema.Table{Name: "users"}},
-		&schema.DropTable{T: &schema.Table{Name: "pets", Schema: &schema.Schema{Name: "public"}}, Extra: []schema.Clause{&schema.IfExists{}}},
+		&schema.DropTable{
+			T: &schema.Table{
+				Name: "users",
+				Columns: []*schema.Column{
+					{Name: "id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
+				},
+			},
+		},
+		&schema.DropTable{
+			T: &schema.Table{
+				Name:   "pets",
+				Schema: &schema.Schema{Name: "public"},
+				Columns: []*schema.Column{
+					{Name: "id", Type: &schema.ColumnType{Raw: "bigint", Type: &schema.IntegerType{T: "bigint"}}},
+				},
+			},
+			Extra: []schema.Clause{&schema.IfExists{}},
+		},
 		&schema.AddTable{
 			T: func() *schema.Table {
 				t := &schema.Table{
@@ -447,10 +463,16 @@ func TestPlanChanges(t *testing.T) {
 		},
 		{
 			changes: []schema.Change{
-				&schema.DropTable{T: &schema.Table{Name: "posts"}},
+				&schema.DropTable{T: schema.NewTable("posts").AddColumns(schema.NewIntColumn("id", "bigint"))},
 			},
 			wantPlan: &migrate.Plan{
-				Changes: []*migrate.Change{{Cmd: "DROP TABLE `posts`"}},
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "DROP TABLE `posts`",
+						Reverse: "CREATE TABLE `posts` (`id` bigint NOT NULL)",
+					},
+				},
 			},
 		},
 		{
