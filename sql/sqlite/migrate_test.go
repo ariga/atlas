@@ -79,13 +79,47 @@ func TestPlanChanges(t *testing.T) {
 		},
 		{
 			changes: []schema.Change{
-				&schema.DropTable{T: &schema.Table{Name: "posts"}},
+				&schema.DropTable{T: schema.NewTable("posts").AddColumns(schema.NewIntColumn("id", "integer"))},
 			},
 			plan: &migrate.Plan{
+				Reversible:    true,
 				Transactional: true,
 				Changes: []*migrate.Change{
 					{Cmd: "PRAGMA foreign_keys = off"},
-					{Cmd: "DROP TABLE `posts`"},
+					{
+						Cmd:     "DROP TABLE `posts`",
+						Reverse: "CREATE TABLE `posts` (`id` integer NOT NULL)",
+					},
+					{Cmd: "PRAGMA foreign_keys = on"},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
+				&schema.DropTable{
+					T: func() *schema.Table {
+						id := schema.NewIntColumn("id", "int")
+						return schema.NewTable("posts").
+							SetComment("a8m's posts").
+							AddColumns(id).
+							AddIndexes(
+								schema.NewIndex("idx").AddColumns(id).SetComment("a8m's index"),
+							)
+					}(),
+				},
+			},
+			plan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{Cmd: "PRAGMA foreign_keys = off"},
+					{
+						Cmd: "DROP TABLE `posts`",
+						Reverse: []string{
+							"CREATE TABLE `posts` (`id` int NOT NULL)",
+							"CREATE INDEX `idx` ON `posts` (`id`)",
+						},
+					},
 					{Cmd: "PRAGMA foreign_keys = on"},
 				},
 			},

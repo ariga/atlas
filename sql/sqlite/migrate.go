@@ -40,6 +40,14 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 	if err := sqlx.SetReversible(&s.Plan); err != nil {
 		return nil, err
 	}
+	// Disable foreign-keys enforcement if it is required
+	// by one of the changes in the plan.
+	if s.skipFKs {
+		// Callers should note that these 2 pragmas are no-op in transactions,
+		// See: https://sqlite.org/pragma.html#pragma_foreign_keys.
+		s.Changes = append([]*migrate.Change{{Cmd: "PRAGMA foreign_keys = off", Comment: "disable the enforcement of foreign-keys constraints"}}, s.Changes...)
+		s.append(&migrate.Change{Cmd: "PRAGMA foreign_keys = on", Comment: "enable back the enforcement of foreign-keys constraints"})
+	}
 	return &s.Plan, nil
 }
 
@@ -68,7 +76,7 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) (err error) {
 		case *schema.AddTable:
 			err = s.addTable(ctx, c)
 		case *schema.DropTable:
-			err = s.dropTable(c)
+			err = s.dropTable(ctx, c)
 		case *schema.ModifyTable:
 			err = s.modifyTable(ctx, c)
 		case *schema.RenameTable:
@@ -79,14 +87,6 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) (err error) {
 		if err != nil {
 			return err
 		}
-	}
-	// Disable foreign-keys enforcement if it is required
-	// by one of the changes in the plan.
-	if s.skipFKs {
-		// Callers should note that these 2 pragmas are no-op in transactions,
-		// See: https://sqlite.org/pragma.html#pragma_foreign_keys.
-		s.Changes = append([]*migrate.Change{{Cmd: "PRAGMA foreign_keys = off", Comment: "disable the enforcement of foreign-keys constraints"}}, s.Changes...)
-		s.append(&migrate.Change{Cmd: "PRAGMA foreign_keys = on", Comment: "enable back the enforcement of foreign-keys constraints"})
 	}
 	return nil
 }
@@ -141,7 +141,11 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 }
 
 // dropTable builds and executes the query for dropping a table from a schema.
-func (s *state) dropTable(drop *schema.DropTable) error {
+func (s *state) dropTable(ctx context.Context, drop *schema.DropTable) error {
+	rs := &state{conn: s.conn, PlanOptions: s.PlanOptions}
+	if err := rs.addTable(ctx, &schema.AddTable{T: drop.T}); err != nil {
+		return fmt.Errorf("calculate reverse for drop table %q: %w", drop.T.Name, err)
+	}
 	s.skipFKs = true
 	b := s.Build("DROP TABLE").Ident(drop.T.Name)
 	if sqlx.Has(drop.Extra, &schema.IfExists{}) {
@@ -151,6 +155,18 @@ func (s *state) dropTable(drop *schema.DropTable) error {
 		Cmd:     b.String(),
 		Source:  drop,
 		Comment: fmt.Sprintf("drop %q table", drop.T.Name),
+		// The reverse of 'DROP TABLE' might be a multi
+		// statement operation. e.g., table with indexes.
+		Reverse: func() any {
+			cmd := make([]string, len(rs.Changes))
+			for i, c := range rs.Changes {
+				cmd[i] = c.Cmd
+			}
+			if len(cmd) == 1 {
+				return cmd[0]
+			}
+			return cmd
+		}(),
 	})
 	return nil
 }

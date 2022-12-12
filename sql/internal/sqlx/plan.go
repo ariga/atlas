@@ -56,8 +56,8 @@ func ApplyChanges(ctx context.Context, changes []schema.Change, p execPlanner, o
 	return nil
 }
 
-// SetReversible updates the Plan.Reversible
-// to indicates whether it is reversible or note.
+// SetReversible sets the Reversible field to
+// true if all planned changes are reversible.
 func SetReversible(p *migrate.Plan) error {
 	reversible := true
 	for _, c := range p.Changes {
