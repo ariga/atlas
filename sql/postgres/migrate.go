@@ -25,7 +25,6 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 		conn: p.conn,
 		Plan: migrate.Plan{
 			Name:          name,
-			Reversible:    true,
 			Transactional: true,
 		},
 		created: make(map[string]*schema.EnumType),
@@ -38,11 +37,8 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 	if err := s.plan(ctx, changes); err != nil {
 		return nil, err
 	}
-	for _, c := range s.Changes {
-		if stmts, _ := c.ReverseStmts(); len(stmts) == 0 {
-			s.Reversible = false
-			break
-		}
+	if err := sqlx.SetReversible(&s.Plan); err != nil {
+		return nil, err
 	}
 	return &s.Plan, nil
 }

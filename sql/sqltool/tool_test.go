@@ -21,6 +21,7 @@ var plan = &migrate.Plan{
 	Changes: []*migrate.Change{
 		{Cmd: "CREATE TABLE t1(c int)", Reverse: "DROP TABLE t1 IF EXISTS", Comment: "create table t1"},
 		{Cmd: "CREATE TABLE t2(c int)", Reverse: "DROP TABLE t2", Comment: "create table t2"},
+		{Cmd: "DROP TABLE t3", Reverse: []string{"CREATE TABLE t1(id int)", "CREATE INDEX idx ON t1(id)"}, Comment: "drop table t3"},
 	},
 }
 
@@ -39,8 +40,13 @@ func TestFormatters(t *testing.T) {
 CREATE TABLE t1(c int);
 -- create table t2
 CREATE TABLE t2(c int);
+-- drop table t3
+DROP TABLE t3;
 `,
-				v + "_tooling-plan.down.sql": `-- reverse: create table t2
+				v + "_tooling-plan.down.sql": `-- reverse: drop table t3
+CREATE TABLE t1(id int);
+CREATE INDEX idx ON t1(id);
+-- reverse: create table t2
 DROP TABLE t2;
 -- reverse: create table t1
 DROP TABLE t1 IF EXISTS;
@@ -56,8 +62,13 @@ DROP TABLE t1 IF EXISTS;
 CREATE TABLE t1(c int);
 -- create table t2
 CREATE TABLE t2(c int);
+-- drop table t3
+DROP TABLE t3;
 
 -- +goose Down
+-- reverse: drop table t3
+CREATE TABLE t1(id int);
+CREATE INDEX idx ON t1(id);
 -- reverse: create table t2
 DROP TABLE t2;
 -- reverse: create table t1
@@ -73,8 +84,13 @@ DROP TABLE t1 IF EXISTS;
 CREATE TABLE t1(c int);
 -- create table t2
 CREATE TABLE t2(c int);
+-- drop table t3
+DROP TABLE t3;
 `,
-				"U" + v + "__tooling-plan.sql": `-- reverse: create table t2
+				"U" + v + "__tooling-plan.sql": `-- reverse: drop table t3
+CREATE TABLE t1(id int);
+CREATE INDEX idx ON t1(id);
+-- reverse: create table t2
 DROP TABLE t2;
 -- reverse: create table t1
 DROP TABLE t1 IF EXISTS;
@@ -86,16 +102,22 @@ DROP TABLE t1 IF EXISTS;
 			sqltool.LiquibaseFormatter,
 			map[string]string{
 				v + "_tooling-plan.sql": fmt.Sprintf(`--liquibase formatted sql
---changeset atlas:%s-1
+--changeset atlas:%[1]s-1
 --comment: create table t1
 CREATE TABLE t1(c int);
 --rollback: DROP TABLE t1 IF EXISTS;
 
---changeset atlas:%s-2
+--changeset atlas:%[1]s-2
 --comment: create table t2
 CREATE TABLE t2(c int);
 --rollback: DROP TABLE t2;
-`, v, v),
+
+--changeset atlas:%[1]s-3
+--comment: drop table t3
+DROP TABLE t3;
+--rollback: CREATE TABLE t1(id int);
+--rollback: CREATE INDEX idx ON t1(id);
+`, v),
 			},
 		},
 		{
@@ -107,8 +129,13 @@ CREATE TABLE t2(c int);
 CREATE TABLE t1(c int);
 -- create table t2
 CREATE TABLE t2(c int);
+-- drop table t3
+DROP TABLE t3;
 
 -- migrate:down
+-- reverse: drop table t3
+CREATE TABLE t1(id int);
+CREATE INDEX idx ON t1(id);
 -- reverse: create table t2
 DROP TABLE t2;
 -- reverse: create table t1
