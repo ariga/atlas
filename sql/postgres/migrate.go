@@ -84,7 +84,7 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) error {
 		case *schema.AddTable:
 			err = s.addTable(ctx, c)
 		case *schema.DropTable:
-			s.dropTable(c)
+			err = s.dropTable(ctx, c)
 		case *schema.ModifyTable:
 			err = s.modifyTable(ctx, c)
 		case *schema.RenameTable:
@@ -195,7 +195,11 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 }
 
 // dropTable builds and executes the query for dropping a table from a schema.
-func (s *state) dropTable(drop *schema.DropTable) {
+func (s *state) dropTable(ctx context.Context, drop *schema.DropTable) error {
+	rs := &state{conn: s.conn, PlanOptions: s.PlanOptions}
+	if err := rs.addTable(ctx, &schema.AddTable{T: drop.T}); err != nil {
+		return fmt.Errorf("calculate reverse for drop table %q: %w", drop.T.Name, err)
+	}
 	b := s.Build("DROP TABLE")
 	if sqlx.Has(drop.Extra, &schema.IfExists{}) {
 		b.P("IF EXISTS")
@@ -205,7 +209,20 @@ func (s *state) dropTable(drop *schema.DropTable) {
 		Cmd:     b.String(),
 		Source:  drop,
 		Comment: fmt.Sprintf("drop %q table", drop.T.Name),
+		// The reverse of 'DROP TABLE' might be a multi
+		// statement operation. e.g., table with indexes.
+		Reverse: func() any {
+			cmd := make([]string, len(rs.Changes))
+			for i, c := range rs.Changes {
+				cmd[i] = c.Cmd
+			}
+			if len(cmd) == 1 {
+				return cmd[0]
+			}
+			return cmd
+		}(),
 	})
+	return nil
 }
 
 // modifyTable builds the statements that bring the table into its modified state.
@@ -325,13 +342,17 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 			alter = append(alter, change)
 		}
 	}
-	s.dropIndexes(modify.T, dropI...)
+	if err := s.dropIndexes(modify.T, dropI...); err != nil {
+		return err
+	}
 	if len(alter) > 0 {
 		if err := s.alterTable(modify.T, alter); err != nil {
 			return err
 		}
 	}
-	s.addIndexes(modify.T, addI...)
+	if err := s.addIndexes(modify.T, addI...); err != nil {
+		return err
+	}
 	s.append(changes...)
 	return nil
 }
@@ -668,16 +689,19 @@ func (s *state) indexComment(t *schema.Table, idx *schema.Index, to, from string
 	}
 }
 
-func (s *state) dropIndexes(t *schema.Table, indexes ...*schema.Index) {
-	rs := &state{conn: s.conn}
-	rs.addIndexes(t, indexes...)
+func (s *state) dropIndexes(t *schema.Table, indexes ...*schema.Index) error {
+	rs := &state{conn: s.conn, PlanOptions: s.PlanOptions}
+	if err := rs.addIndexes(t, indexes...); err != nil {
+		return err
+	}
 	for i, idx := range indexes {
 		s.append(&migrate.Change{
-			Cmd:     rs.Changes[i].Reverse,
+			Cmd:     rs.Changes[i].Reverse.(string),
 			Comment: fmt.Sprintf("drop index %q from table: %q", idx.Name, t.Name),
 			Reverse: rs.Changes[i].Cmd,
 		})
 	}
+	return nil
 }
 
 func (s *state) mayAddEnums(ctx context.Context, t *schema.Table, columns ...*schema.Column) error {

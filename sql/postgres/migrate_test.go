@@ -322,13 +322,46 @@ func TestPlanChanges(t *testing.T) {
 		},
 		{
 			changes: []schema.Change{
-				&schema.DropTable{T: &schema.Table{Name: "posts"}},
+				&schema.DropTable{T: schema.NewTable("posts").AddColumns(schema.NewIntColumn("id", "int"))},
 			},
 			wantPlan: &migrate.Plan{
-				Reversible:    false,
+				Reversible:    true,
 				Transactional: true,
 				Changes: []*migrate.Change{
-					{Cmd: `DROP TABLE "posts"`},
+					{
+						Cmd:     `DROP TABLE "posts"`,
+						Reverse: `CREATE TABLE "posts" ("id" integer NOT NULL)`,
+					},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
+				&schema.DropTable{
+					T: func() *schema.Table {
+						id := schema.NewIntColumn("id", "int")
+						return schema.NewTable("posts").
+							SetComment("a8m's posts").
+							AddColumns(id).
+							AddIndexes(
+								schema.NewIndex("idx").AddColumns(id).SetComment("a8m's index"),
+							)
+					}(),
+				},
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd: `DROP TABLE "posts"`,
+						Reverse: []string{
+							`CREATE TABLE "posts" ("id" integer NOT NULL)`,
+							`CREATE INDEX "idx" ON "posts" ("id")`,
+							`COMMENT ON TABLE "posts" IS 'a8m''s posts'`,
+							`COMMENT ON INDEX "idx" IS 'a8m''s index'`,
+						},
+					},
 				},
 			},
 		},
