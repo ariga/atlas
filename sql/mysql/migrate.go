@@ -40,7 +40,7 @@ func (p *planApply) PlanChanges(_ context.Context, name string, changes []schema
 		return nil, err
 	}
 	for _, c := range s.Changes {
-		if c.Reverse == "" {
+		if stmts, _ := c.ReverseStmts(); len(stmts) == 0 {
 			s.Reversible = false
 			break
 		}
