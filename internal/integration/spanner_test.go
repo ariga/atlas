@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -15,6 +16,8 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/spanner"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	_ "github.com/googleapis/go-sql-spanner"
 	"github.com/stretchr/testify/require"
 )
@@ -300,6 +303,155 @@ schema "default" {
 		t.applyHcl(empty)
 		require.Empty(t, t.realm().Schemas[0].Tables)
 	})
+}
+
+func TestSpanner_Sanity(t *testing.T) {
+	n := "atlas_types_sanity"
+	ddl := `
+create table atlas_types_sanity
+(
+     key          INT64,
+     boolCol      BOOL,
+     stringCol    STRING(MAX),
+     bytesCol     BYTES(MAX),
+     int64Col     INT64,
+     float64Col   FLOAT64,
+     numericCol   NUMERIC,
+     dateCol      DATE,
+     timestampCol TIMESTAMP,
+     jsonCol      JSON,
+     boolArrayCol      ARRAY<BOOL>,
+     stringArrayCol    ARRAY<STRING(MAX)>,
+     bytesArrayCol     ARRAY<BYTES(MAX)>,
+     int64ArrayCol     ARRAY<INT64>,
+     float64ArrayCol   ARRAY<FLOAT64>,
+     numericArrayCol   ARRAY<NUMERIC>,
+     dateArrayCol      ARRAY<DATE>,
+     timestampArrayCol ARRAY<TIMESTAMP>,
+     jsonArrayCol      ARRAY<JSON>,
+) PRIMARY KEY (key)
+`
+	stRun(t, func(t *spannerTest) {
+		t.dropTables(n)
+		_, err := t.db.Exec(ddl)
+		require.NoError(t, err)
+		realm := t.loadRealm()
+		require.Len(t, realm.Schemas, 1)
+		ts, ok := realm.Schemas[0].Table(n)
+		require.True(t, ok)
+		keyCol, _ := ts.Column("key")
+		expected := schema.Table{
+			Name:   n,
+			Schema: realm.Schemas[0],
+			Columns: []*schema.Column{
+				keyCol,
+				{
+					Name: "boolCol",
+					Type: &schema.ColumnType{Type: &schema.BoolType{T: "BOOL"}, Raw: "BOOL", Null: true},
+				},
+				{
+					Name: "stringCol",
+					Type: &schema.ColumnType{Type: &schema.StringType{T: "STRING", Attrs: []schema.Attr{&spanner.MaxSize{}}}, Raw: "STRING(MAX)", Null: true},
+				},
+				{
+					Name: "bytesCol",
+					Type: &schema.ColumnType{Type: &schema.BinaryType{T: "BYTES", Attrs: []schema.Attr{&spanner.MaxSize{}}}, Raw: "BYTES(MAX)", Null: true},
+				},
+				{
+					Name: "int64Col",
+					Type: &schema.ColumnType{Type: &schema.IntegerType{T: "INT64"}, Raw: "INT64", Null: true},
+				},
+				{
+					Name: "float64Col",
+					Type: &schema.ColumnType{Type: &schema.FloatType{T: "FLOAT64"}, Raw: "FLOAT64", Null: true},
+				},
+				{
+					Name: "numericCol",
+					Type: &schema.ColumnType{Type: &schema.DecimalType{T: "NUMERIC"}, Raw: "NUMERIC", Null: true},
+				},
+				{
+					Name: "dateCol",
+					Type: &schema.ColumnType{Type: &schema.TimeType{T: "DATE"}, Raw: "DATE", Null: true},
+				},
+				{
+					Name: "timestampCol",
+					Type: &schema.ColumnType{Type: &schema.TimeType{T: "TIMESTAMP"}, Raw: "TIMESTAMP", Null: true},
+				},
+				{
+					Name: "jsonCol",
+					Type: &schema.ColumnType{Type: &schema.JSONType{T: "JSON"}, Raw: "JSON", Null: true},
+				},
+				{
+					Name: "boolArrayCol",
+					Type: &schema.ColumnType{Type: &spanner.ArrayType{T: "ARRAY<BOOL>", Type: &schema.BoolType{T: "BOOL"}}, Raw: "ARRAY<BOOL>", Null: true},
+				},
+				{
+					Name: "stringArrayCol",
+					Type: &schema.ColumnType{Type: &spanner.ArrayType{T: "ARRAY<STRING(MAX)>", Type: &schema.StringType{T: "STRING", Attrs: []schema.Attr{&spanner.MaxSize{}}}}, Raw: "ARRAY<STRING(MAX)>", Null: true},
+				},
+				{
+					Name: "bytesArrayCol",
+					Type: &schema.ColumnType{Type: &spanner.ArrayType{T: "ARRAY<BYTES(MAX)>", Type: &schema.BinaryType{T: "BYTES", Attrs: []schema.Attr{&spanner.MaxSize{}}}}, Raw: "ARRAY<BYTES(MAX)>", Null: true},
+				},
+				{
+					Name: "int64ArrayCol",
+					Type: &schema.ColumnType{Type: &spanner.ArrayType{T: "ARRAY<INT64>", Type: &schema.IntegerType{T: "INT64"}}, Raw: "ARRAY<INT64>", Null: true},
+				},
+				{
+					Name: "float64ArrayCol",
+					Type: &schema.ColumnType{Type: &spanner.ArrayType{T: "ARRAY<FLOAT64>", Type: &schema.FloatType{T: "FLOAT64"}}, Raw: "ARRAY<FLOAT64>", Null: true},
+				},
+				{
+					Name: "numericArrayCol",
+					Type: &schema.ColumnType{Type: &spanner.ArrayType{T: "ARRAY<NUMERIC>", Type: &schema.DecimalType{T: "NUMERIC"}}, Raw: "ARRAY<NUMERIC>", Null: true},
+				},
+				{
+					Name: "dateArrayCol",
+					Type: &schema.ColumnType{Type: &spanner.ArrayType{T: "ARRAY<DATE>", Type: &schema.TimeType{T: "DATE"}}, Raw: "ARRAY<DATE>", Null: true},
+				},
+				{
+					Name: "timestampArrayCol",
+					Type: &schema.ColumnType{Type: &spanner.ArrayType{T: "ARRAY<TIMESTAMP>", Type: &schema.TimeType{T: "TIMESTAMP"}}, Raw: "ARRAY<TIMESTAMP>", Null: true},
+				},
+				{
+					Name: "jsonArrayCol",
+					Type: &schema.ColumnType{Type: &spanner.ArrayType{T: "ARRAY<JSON>", Type: &schema.JSONType{T: "JSON"}}, Raw: "ARRAY<JSON>", Null: true},
+				},
+			},
+			PrimaryKey: &schema.Index{
+				Name:   "PRIMARY_KEY_ATLAS_TYPES_SANITY",
+				Table:  ts,
+				Unique: true,
+				Parts: []*schema.IndexPart{
+					&schema.IndexPart{C: ts.Columns[0], Attrs: []schema.Attr{
+						&spanner.Nullable{},
+					}},
+				},
+			},
+		}
+
+		sort.SliceStable(ts.Columns, func(i, j int) bool {
+			return ts.Columns[i].Name < ts.Columns[j].Name
+		})
+		sort.SliceStable(expected.Columns, func(i, j int) bool {
+			return expected.Columns[i].Name < expected.Columns[j].Name
+		})
+
+		diff := cmp.Diff(
+			expected.Columns,
+			ts.Columns,
+			cmpopts.IgnoreFields(schema.Index{}, "Table"),
+		)
+		if diff != "" {
+			t.Errorf("mismatch (-want +got): %s", diff)
+		}
+	})
+
+	// t.Run("ImplicitIndexes", func(t *testing.T) {
+	// 	stRun(t, func(t *spannerTest) {
+	// 		testImplicitIndexes(t, t.db)
+	// 	})
+	// })
 }
 
 func (t *spannerTest) driver() migrate.Driver {

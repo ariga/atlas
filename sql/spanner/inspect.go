@@ -268,14 +268,18 @@ func columnType(spannerType string) (schema.Type, error) {
 		if strings.HasPrefix(col.typ, TypeString) {
 			typ = &schema.StringType{
 				T:     col.typ,
-				Size:  col.size,
 				Attrs: attrs,
+			}
+			if col.size > 0 {
+				typ.(*schema.StringType).Size = col.size
 			}
 		} else if strings.HasPrefix(col.typ, TypeBytes) {
 			typ = &schema.BinaryType{
 				T:     col.typ,
-				Size:  &col.size,
 				Attrs: attrs,
+			}
+			if col.size > 0 {
+				typ.(*schema.BinaryType).Size = &col.size
 			}
 		} else {
 			typ = &schema.UnsupportedType{T: col.typ}
