@@ -56,6 +56,23 @@ func ApplyChanges(ctx context.Context, changes []schema.Change, p execPlanner, o
 	return nil
 }
 
+// SetReversible updates the Plan.Reversible
+// to indicates whether it is reversible or note.
+func SetReversible(p *migrate.Plan) error {
+	reversible := true
+	for _, c := range p.Changes {
+		stmts, err := c.ReverseStmts()
+		if err != nil {
+			return err
+		}
+		if len(stmts) == 0 {
+			reversible = false
+		}
+	}
+	p.Reversible = reversible
+	return nil
+}
+
 // DetachCycles takes a list of schema changes, and detaches
 // references between changes if there is at least one circular
 // reference in the changeset. More explicitly, it postpones fks

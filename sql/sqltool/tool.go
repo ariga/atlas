@@ -26,7 +26,7 @@ var (
 		"{{ now }}{{ with .Name }}_{{ . }}{{ end }}.up.sql",
 		`{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}`,
 		"{{ now }}{{ with .Name }}_{{ . }}{{ end }}.down.sql",
-		`{{ range rev .Changes }}{{ if .Reverse }}{{ with .Comment }}-- reverse: {{ println . }}{{ end }}{{ printf "%s;\n" .Reverse }}{{ end }}{{ end }}`,
+		`{{ range $c := rev .Changes }}{{ with $stmts := .ReverseStmts }}{{ with $c.Comment }}-- reverse: {{ println . }}{{ end }}{{ range $stmts }}{{ printf "%s;\n" . }}{{ end }}{{ end }}{{ end }}`,
 	)
 	// GooseFormatter returns migrate.Formatter compatible with pressly/goose.
 	GooseFormatter = templateFormatter(
@@ -34,14 +34,14 @@ var (
 		`-- +goose Up
 {{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}
 -- +goose Down
-{{ range rev .Changes }}{{ if .Reverse }}{{ with .Comment }}-- reverse: {{ println . }}{{ end }}{{ printf "%s;\n" .Reverse }}{{ end }}{{ end }}`,
+{{ range $c := rev .Changes }}{{ with $stmts := .ReverseStmts }}{{ with $c.Comment }}-- reverse: {{ println . }}{{ end }}{{ range $stmts }}{{ printf "%s;\n" . }}{{ end }}{{ end }}{{ end }}`,
 	)
 	// FlywayFormatter returns migrate.Formatter compatible with Flyway.
 	FlywayFormatter = templateFormatter(
 		"V{{ now }}{{ with .Name }}__{{ . }}{{ end }}.sql",
 		`{{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}`,
 		"U{{ now }}{{ with .Name }}__{{ . }}{{ end }}.sql",
-		`{{ range rev .Changes }}{{ if .Reverse }}{{ with .Comment }}-- reverse: {{ println . }}{{ end }}{{ printf "%s;\n" .Reverse }}{{ end }}{{ end }}`,
+		`{{ range $c := rev .Changes }}{{ with $stmts := .ReverseStmts }}{{ with $c.Comment }}-- reverse: {{ println . }}{{ end }}{{ range $stmts }}{{ printf "%s;\n" . }}{{ end }}{{ end }}{{ end }}`,
 	)
 	// LiquibaseFormatter returns migrate.Formatter compatible with Liquibase.
 	LiquibaseFormatter = templateFormatter(
@@ -53,8 +53,8 @@ var (
 --changeset atlas:{{ $now }}-{{ inc $index }}
 {{ with $change.Comment }}--comment: {{ . }}{{ end }}
 {{ $change.Cmd }};
-{{ with $change.Reverse }}--rollback: {{ . }};{{ end }}
-{{ end }}`,
+{{ with $stmts := .ReverseStmts }}{{ range $stmts }}{{ printf "--rollback: %s;\n" . }}{{ end }}{{ end }}
+{{- end }}`,
 	)
 	// DBMateFormatter returns migrate.Formatter compatible with amacneil/dbmate.
 	DBMateFormatter = templateFormatter(
@@ -62,7 +62,7 @@ var (
 		`-- migrate:up
 {{ range .Changes }}{{ with .Comment }}-- {{ println . }}{{ end }}{{ printf "%s;\n" .Cmd }}{{ end }}
 -- migrate:down
-{{ range rev .Changes }}{{ if .Reverse }}{{ with .Comment }}-- reverse: {{ println . }}{{ end }}{{ printf "%s;\n" .Reverse }}{{ end }}{{ end }}`,
+{{ range $c := rev .Changes }}{{ with $stmts := .ReverseStmts }}{{ with $c.Comment }}-- reverse: {{ println . }}{{ end }}{{ range $stmts }}{{ printf "%s;\n" . }}{{ end }}{{ end }}{{ end }}`,
 	)
 	// DbmateFormatter is the same as DBMateFormatter.
 	// Deprecated: Use DBMateFormatter instead.
