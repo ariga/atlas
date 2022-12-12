@@ -39,8 +39,9 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 		return nil, err
 	}
 	for _, c := range s.Changes {
-		if c.Reverse == "" {
+		if stmts, _ := c.ReverseStmts(); len(stmts) == 0 {
 			s.Reversible = false
+			break
 		}
 	}
 	return &s.Plan, nil
@@ -244,7 +245,7 @@ func (s *state) dropIndexes(t *schema.Table, indexes ...*schema.Index) error {
 	}
 	for i := range rs.Changes {
 		s.append(&migrate.Change{
-			Cmd:     rs.Changes[i].Reverse,
+			Cmd:     rs.Changes[i].Reverse.(string),
 			Reverse: rs.Changes[i].Cmd,
 			Comment: fmt.Sprintf("drop index %q from table: %q", indexes[i].Name, t.Name),
 		})

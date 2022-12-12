@@ -46,14 +46,28 @@ type (
 		// A Comment describes the change.
 		Comment string
 
-		// Reverse contains the "reversed statement" if
-		// command is reversible.
-		Reverse string
+		// Reverse contains the "reversed" statement(s) if
+		// the command is reversible.
+		Reverse any // string | []string
 
 		// The Source that caused this change, or nil.
 		Source schema.Change
 	}
 )
+
+// ReverseStmts returns the reverse statements of a Change, if any.
+func (c *Change) ReverseStmts() (cmd []string, err error) {
+	switch r := c.Reverse.(type) {
+	case nil:
+	case string:
+		cmd = []string{r}
+	case []string:
+		cmd = r
+	default:
+		err = fmt.Errorf("sql/migrate: unexpected type %T for reverse commands", r)
+	}
+	return
+}
 
 type (
 	// The Driver interface must be implemented by the different dialects to support database

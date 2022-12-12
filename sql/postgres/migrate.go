@@ -39,8 +39,9 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 		return nil, err
 	}
 	for _, c := range s.Changes {
-		if c.Reverse == "" {
+		if stmts, _ := c.ReverseStmts(); len(stmts) == 0 {
 			s.Reversible = false
+			break
 		}
 	}
 	return &s.Plan, nil
