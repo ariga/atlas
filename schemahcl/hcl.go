@@ -192,9 +192,9 @@ func (r addrRef) copy() addrRef {
 func (r addrRef) load(res *Resource, track string) addrRef {
 	unlabeled := 0
 	for _, ch := range res.Children {
-		current := rep(ch)
+		current := addr("", ch.Type, ch.Name, ch.Qualifier)
 		if ch.Name == "" {
-			current += strconv.Itoa(unlabeled)
+			current += "." + strconv.Itoa(unlabeled)
 			unlabeled++
 		}
 		if track != "" {
@@ -204,14 +204,6 @@ func (r addrRef) load(res *Resource, track string) addrRef {
 		r.load(ch, current)
 	}
 	return r
-}
-
-func rep(r *Resource) string {
-	n := r.Name
-	if r.Qualifier != "" {
-		n = r.Qualifier + "." + n
-	}
-	return fmt.Sprintf("$%s.%s", r.Type, n)
 }
 
 // resource converts the hcl file to a schemahcl.Resource.

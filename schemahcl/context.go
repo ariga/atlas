@@ -274,15 +274,26 @@ func blockVars(blocks hclsyntax.Blocks, parentAddr string, defs *blockDef) (map[
 }
 
 func addr(parentAddr, typeName, blkName, qualifier string) string {
-	var prefixDot string
-	if len(parentAddr) > 0 {
-		prefixDot = "."
+	var b strings.Builder
+	if parentAddr != "" {
+		b.WriteString(parentAddr)
+		b.WriteString(".")
 	}
-	suffix := blkName
-	if qualifier != "" {
-		suffix = qualifier + "." + blkName
+	b.WriteByte('$')
+	b.WriteString(typeName)
+	for _, s := range []string{qualifier, blkName} {
+		switch {
+		case s == "":
+		case strings.Contains(s, "."):
+			b.WriteString("[")
+			b.WriteString(strconv.Quote(s))
+			b.WriteString("]")
+		default:
+			b.WriteString(".")
+			b.WriteString(s)
+		}
 	}
-	return fmt.Sprintf("%s%s$%s.%s", parentAddr, prefixDot, typeName, suffix)
+	return b.String()
 }
 
 func blockName(blk *hclsyntax.Block) (qualifier string, name string) {
