@@ -472,6 +472,44 @@ r = user.atlas.cli
 	require.EqualValues(t, "$user.atlas.cli", test.R.V)
 }
 
+func TestQuotedRefs(t *testing.T) {
+	h := `
+user "ariel.mashraki" {
+  username = "a8m"
+}
+account "ariga.cloud" "a8m.dev" {
+  org = "dev"
+}
+env "dev" "a8m.dev" {}
+env "prod.1" "a8m" {}
+
+v = user["ariel.mashraki"].username
+r = user["ariel.mashraki"]
+vs = [account["ariga.cloud"]["a8m.dev"].org]
+rs = [
+	account["ariga.cloud"]["a8m.dev"],
+	env["dev"]["a8m.dev"],
+	env["prod.1"]["a8m"],
+]
+`
+	var test struct {
+		V  string   `spec:"v"`
+		R  *Ref     `spec:"r"`
+		Vs []string `spec:"vs"`
+		Rs []*Ref   `spec:"rs"`
+	}
+	err := New().EvalBytes([]byte(h), &test, nil)
+	require.NoError(t, err)
+	require.EqualValues(t, "a8m", test.V)
+	require.EqualValues(t, `$user["ariel.mashraki"]`, test.R.V)
+	require.EqualValues(t, []string{"dev"}, test.Vs)
+	require.EqualValues(t, []*Ref{
+		{`$account["ariga.cloud"]["a8m.dev"]`},
+		{`$env.dev["a8m.dev"]`},
+		{`$env["prod.1"].a8m`},
+	}, test.Rs)
+}
+
 func TestInputValues(t *testing.T) {
 	h := `
 variable "name" {
