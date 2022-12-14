@@ -37,12 +37,12 @@ func evalSpec(p *hclparse.Parser, v any, input map[string]cty.Value) error {
 		if err != nil {
 			return fmt.Errorf("mysql: failed converting to *schema.Realm: %w", err)
 		}
-		for _, schemaSpec := range d.Schemas {
-			schm, ok := v.Schema(schemaSpec.Name)
+		for _, spec := range d.Schemas {
+			s, ok := v.Schema(spec.Name)
 			if !ok {
-				return fmt.Errorf("could not find schema: %q", schemaSpec.Name)
+				return fmt.Errorf("could not find schema: %q", spec.Name)
 			}
-			if err := convertCharset(schemaSpec, &schm.Attrs); err != nil {
+			if err := convertCharset(spec, &s.Attrs); err != nil {
 				return err
 			}
 		}

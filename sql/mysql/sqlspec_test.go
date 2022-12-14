@@ -1404,3 +1404,91 @@ schema "s2" {
 `,
 		string(got))
 }
+
+func TestUnmarshalSpec_QuotedIdentifiers(t *testing.T) {
+	var (
+		r schema.Realm
+		s = []byte(`
+schema "a8m.schema" {}
+table "a8m.table" {
+  schema = schema["a8m.schema"]
+  column "a8m.column" {
+    type = int
+  }
+}
+
+schema "nati.schema" {}
+table "nati.schema" "nati.table" {
+  schema = schema["nati.schema"]
+  column "nati.column" {
+    type = int
+  }
+  foreign_key "nati.fk" {
+    columns = [column["nati.column"]]
+	ref_columns = [table["a8m.table"].column["a8m.column"]]
+  }
+}
+`)
+	)
+	require.NoError(t, EvalHCLBytes(s, &r, nil))
+	require.Len(t, r.Schemas, 2)
+	s1, ok := r.Schema("a8m.schema")
+	require.True(t, ok)
+	require.Equal(t, "a8m.schema", s1.Name)
+	require.Len(t, r.Schemas[0].Tables, 1)
+	require.Equal(t, "a8m.table", s1.Tables[0].Name)
+	require.Len(t, r.Schemas[0].Tables[0].Columns, 1)
+	require.Equal(t, "a8m.column", s1.Tables[0].Columns[0].Name)
+	s2, ok := r.Schema("nati.schema")
+	require.True(t, ok)
+	require.Equal(t, "nati.schema", s2.Name)
+	require.Len(t, r.Schemas[1].Tables, 1)
+	require.Equal(t, "nati.table", s2.Tables[0].Name)
+	require.Len(t, r.Schemas[1].Tables[0].Columns, 1)
+	require.Equal(t, "nati.column", s2.Tables[0].Columns[0].Name)
+	require.Len(t, r.Schemas[1].Tables[0].ForeignKeys, 1)
+	require.Equal(t, "nati.fk", s2.Tables[0].ForeignKeys[0].Symbol)
+	require.Len(t, r.Schemas[1].Tables[0].ForeignKeys[0].Columns, 1)
+	require.Equal(t, "nati.column", s2.Tables[0].ForeignKeys[0].Columns[0].Name)
+	require.Len(t, r.Schemas[1].Tables[0].ForeignKeys[0].RefColumns, 1)
+	require.Equal(t, "a8m.column", s2.Tables[0].ForeignKeys[0].RefColumns[0].Name)
+}
+
+func TestMarshalSpec_QuotedIdentifiers(t *testing.T) {
+	s1 := schema.New("a8m.schema").
+		AddTables(schema.NewTable("a8m.table").
+			AddColumns(schema.NewIntColumn("a8m.column", "int")))
+	s2 := schema.New("nati.schema").
+		AddTables(schema.NewTable("nati.table").
+			AddColumns(schema.NewIntColumn("nati.column", "int")).
+			AddForeignKeys(schema.NewForeignKey("nati.fk").
+				AddColumns(s1.Tables[0].Columns[0]).
+				SetRefTable(s1.Tables[0]).
+				AddRefColumns(s1.Tables[0].Columns[0])))
+	r := schema.NewRealm(s1, s2)
+	got, err := MarshalHCL.MarshalSpec(r)
+	require.NoError(t, err)
+	require.Equal(t, `table "a8m.table" {
+  schema = schema["a8m.schema"]
+  column "a8m.column" {
+    null = false
+    type = int
+  }
+}
+table "nati.table" {
+  schema = schema["nati.schema"]
+  column "nati.column" {
+    null = false
+    type = int
+  }
+  foreign_key "nati.fk" {
+    columns     = [column["a8m.column"]]
+    ref_columns = [table["a8m.table"].column["a8m.column"]]
+  }
+}
+schema "a8m.schema" {
+}
+schema "nati.schema" {
+}
+`, string(got))
+}

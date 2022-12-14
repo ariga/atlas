@@ -5,7 +5,6 @@
 package specutil
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -37,15 +36,14 @@ type (
 
 // Scan populates the Realm from the schemas and table specs.
 func Scan(r *schema.Realm, schemas []*sqlspec.Schema, tables []*sqlspec.Table, convertTable ConvertTableFunc) error {
-	// Build the schemas.
-	for _, schemaSpec := range schemas {
-		sch := &schema.Schema{Name: schemaSpec.Name, Realm: r}
+	for _, spec := range schemas {
+		sch := &schema.Schema{Name: spec.Name, Realm: r}
 		for _, tableSpec := range tables {
 			name, err := SchemaName(tableSpec.Schema)
 			if err != nil {
 				return fmt.Errorf("specutil: cannot extract schema name for table %q: %w", tableSpec.Name, err)
 			}
-			if name == schemaSpec.Name {
+			if name == spec.Name {
 				tbl, err := convertTable(tableSpec, sch)
 				if err != nil {
 					return err
@@ -554,25 +552,28 @@ func FromCheck(s *schema.Check) *sqlspec.Check {
 
 // SchemaName returns the name from a ref to a schema.
 func SchemaName(ref *schemahcl.Ref) (string, error) {
-	if ref == nil {
-		return "", errors.New("missing 'schema' attribute")
+	vs, err := ref.ByType("schema")
+	if err != nil {
+		return "", err
 	}
-	parts := strings.Split(ref.V, ".")
-	if len(parts) < 2 || parts[0] != "$schema" {
-		return "", errors.New("expected ref format of $schema.name")
+	if len(vs) != 1 {
+		return "", fmt.Errorf("specutil: expected 1 schema ref, got %d", len(vs))
 	}
-	return parts[1], nil
+	return vs[0], nil
 }
 
 // ColumnByRef returns a column from the table by its reference.
 func ColumnByRef(t *schema.Table, ref *schemahcl.Ref) (*schema.Column, error) {
-	s := strings.Split(ref.V, "$column.")
-	if len(s) != 2 {
-		return nil, fmt.Errorf("specutil: failed to extract column name from %q", ref)
+	vs, err := ref.ByType("column")
+	if err != nil {
+		return nil, err
 	}
-	c, ok := t.Column(s[1])
+	if len(vs) != 1 {
+		return nil, fmt.Errorf("specutil: expected 1 column ref, got %d", len(vs))
+	}
+	c, ok := t.Column(vs[0])
 	if !ok {
-		return nil, fmt.Errorf("specutil: unknown column %q in table %q", s[1], t.Name)
+		return nil, fmt.Errorf("specutil: unknown column %q in table %q", vs[0], t.Name)
 	}
 	return c, nil
 }
@@ -629,19 +630,17 @@ func findTable(ref *schemahcl.Ref, sch *schema.Schema) (*schema.Table, error) {
 }
 
 func tableName(ref *schemahcl.Ref) (qualifier, name string, err error) {
-	s := strings.Split(ref.V, "$column.")
-	if len(s) != 2 {
-		return "", "", fmt.Errorf("sqlspec: failed to split by column name from %q", ref)
+	vs, err := ref.ByType("table")
+	if err != nil {
+		return "", "", err
 	}
-	table := strings.TrimSuffix(s[0], ".")
-	s = strings.Split(table, ".")
-	switch len(s) {
+	switch len(vs) {
+	case 1:
+		name = vs[0]
 	case 2:
-		name = s[1]
-	case 3:
-		qualifier, name = s[1], s[2]
+		qualifier, name = vs[0], vs[1]
 	default:
-		return "", "", fmt.Errorf("sqlspec: failed to extract table name from %q", s)
+		return "", "", fmt.Errorf("sqlspec: unexpected number of references in %q", vs)
 	}
 	return
 }
@@ -652,20 +651,30 @@ func isLocalRef(r *schemahcl.Ref) bool {
 
 // ColumnRef returns the reference of a column by its name.
 func ColumnRef(cName string) *schemahcl.Ref {
-	return &schemahcl.Ref{V: "$column." + cName}
+	return schemahcl.BuildRef([]schemahcl.PathIndex{
+		{T: "column", V: []string{cName}},
+	})
 }
 
 func externalColRef(cName string, tName string) *schemahcl.Ref {
-	return &schemahcl.Ref{V: "$table." + tName + ".$column." + cName}
+	return schemahcl.BuildRef([]schemahcl.PathIndex{
+		{T: "table", V: []string{tName}},
+		{T: "column", V: []string{cName}},
+	})
 }
 
 func qualifiedExternalColRef(cName, tName, sName string) *schemahcl.Ref {
-	return &schemahcl.Ref{V: "$table." + sName + "." + tName + ".$column." + cName}
+	return schemahcl.BuildRef([]schemahcl.PathIndex{
+		{T: "table", V: []string{sName, tName}},
+		{T: "column", V: []string{cName}},
+	})
 }
 
 // SchemaRef returns the schemahcl.Ref to the schema with the given name.
-func SchemaRef(n string) *schemahcl.Ref {
-	return &schemahcl.Ref{V: "$schema." + n}
+func SchemaRef(name string) *schemahcl.Ref {
+	return schemahcl.BuildRef([]schemahcl.PathIndex{
+		{T: "schema", V: []string{name}},
+	})
 }
 
 // Attrer is the interface that wraps the Attr method.
