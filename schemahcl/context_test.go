@@ -317,18 +317,18 @@ func TestSchemaRefParse(t *testing.T) {
 		Points []*Point `spec:"point"`
 	}{
 		Points: []*Point{
-			{Z: []*Ref{{V: "$a"}}},
-			{Z: []*Ref{{V: "b"}}},
+			{Z: []*Ref{{V: "$point.1"}}},
+			{Z: []*Ref{{V: "$point.0"}}},
 		},
 	}
 	b, err := Marshal(&test)
 	require.NoError(t, err)
 	expected :=
 		`point {
-  z = [a]
+  z = [point.1]
 }
 point {
-  z = [b]
+  z = [point.0]
 }
 `
 	require.Equal(t, expected, string(b))

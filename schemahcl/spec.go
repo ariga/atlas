@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"strings"
 
 	"ariga.io/atlas/sql/schema"
-
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/gocty"
 )
@@ -212,6 +212,133 @@ func (a *Attr) Strings() (vs []string, err error) {
 		return nil, err
 	}
 	return vs, nil
+}
+
+// PathIndex represents an index in a reference path.
+type PathIndex struct {
+	T string   // type
+	V []string // identifiers
+}
+
+// Check if the path index is valid.
+func (p *PathIndex) Check() error {
+	if p.T == "" || len(p.V) == 0 {
+		return fmt.Errorf("schemahcl: missing type or identifier %v", p)
+	}
+	for _, v := range p.V {
+		if v == "" {
+			return fmt.Errorf("schemahcl: empty identifier %v", p)
+		}
+	}
+	return nil
+}
+
+// ByType returns the path index for the given type.
+func (r *Ref) ByType(name string) ([]string, error) {
+	if r == nil {
+		return nil, fmt.Errorf("schemahcl: type %q was not found in nil reference", name)
+	}
+	path, err := r.Path()
+	if err != nil {
+		return nil, err
+	}
+	var vs []string
+	for _, p := range path {
+		switch {
+		case p.T != name:
+		case vs != nil:
+			return nil, fmt.Errorf("schemahcl: multiple %q found in reference", name)
+		default:
+			if err := p.Check(); err != nil {
+				return nil, err
+			}
+			vs = p.V
+		}
+	}
+	if vs == nil {
+		return nil, fmt.Errorf("schemahcl: missing %q in reference", name)
+	}
+	return vs, nil
+}
+
+// Path returns a parsed path including block types and their identifiers.
+func (r *Ref) Path() (path []PathIndex, err error) {
+	for i := 0; i < len(r.V); i++ {
+		var part PathIndex
+		switch idx := strings.IndexAny(r.V[i:], ".["); {
+		case r.V[i] != '$':
+			return nil, fmt.Errorf("schemahcl: missing type in reference %q", r.V[i:])
+		case idx == -1:
+			return nil, fmt.Errorf("schemahcl: missing identifier in reference %q", r.V[i:])
+		default:
+			part.T = r.V[i+1 : i+idx]
+			i += idx
+		}
+	Ident:
+		for i < len(r.V) {
+			switch {
+			// End of identifier before a type.
+			case strings.HasPrefix(r.V[i:], ".$"):
+				break Ident
+			// Scan identifier.
+			case r.V[i] == '.':
+				v := r.V[i+1:]
+				if idx := strings.IndexAny(v, ".["); idx != -1 {
+					v = v[:idx]
+				}
+				part.V = append(part.V, v)
+				i += 1 + len(v)
+			// Scan attribute (["..."]).
+			case strings.HasPrefix(r.V[i:], "[\""):
+				idx := scanString(r.V[i+2:])
+				if idx == -1 {
+					return nil, fmt.Errorf("schemahcl: unterminated string in reference %q", r.V[i:])
+				}
+				v := r.V[i+2 : i+2+idx]
+				i += 2 + idx
+				if !strings.HasPrefix(r.V[i:], "\"]") {
+					return nil, fmt.Errorf("schemahcl: missing ']' in reference %q", r.V[i:])
+				}
+				part.V = append(part.V, v)
+				i += 2
+			default:
+				return nil, fmt.Errorf("schemahcl: invalid character in reference %q", r.V[i:])
+			}
+		}
+		if err := part.Check(); err != nil {
+			return nil, err
+		}
+		path = append(path, part)
+	}
+	return
+}
+
+// BuildRef from a path.
+func BuildRef(path []PathIndex) *Ref {
+	var v string
+	for _, p := range path {
+		switch {
+		case len(p.V) == 1:
+			v = addr(v, p.T, p.V[0], "")
+		case len(p.V) == 2:
+			v = addr(v, p.T, p.V[1], p.V[0])
+		default:
+			v = addr(v, p.T, "", "")
+		}
+	}
+	return &Ref{V: v}
+}
+
+func scanString(s string) int {
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '\\':
+			i++
+		case '"':
+			return i
+		}
+	}
+	return -1
 }
 
 // Bools returns a slice of bools from the Value of the Attr. If The value is not a ListValue or its

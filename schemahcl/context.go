@@ -284,16 +284,23 @@ func addr(parentAddr, typeName, blkName, qualifier string) string {
 	for _, s := range []string{qualifier, blkName} {
 		switch {
 		case s == "":
-		case strings.Contains(s, "."):
+		case validIdent(s):
+			b.WriteString(".")
+			b.WriteString(s)
+		default:
 			b.WriteString("[")
 			b.WriteString(strconv.Quote(s))
 			b.WriteString("]")
-		default:
-			b.WriteString(".")
-			b.WriteString(s)
 		}
 	}
 	return b.String()
+}
+
+// validIdent reports if the given string can
+// be used as an identifier in a reference.
+func validIdent(s string) bool {
+	_, err := cty.ParseNumberVal(s)
+	return err == nil || hclsyntax.ValidIdentifier(s)
 }
 
 func blockName(blk *hclsyntax.Block) (qualifier string, name string) {

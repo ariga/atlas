@@ -399,14 +399,22 @@ func (s *State) writeAttr(attr *Attr, body *hclwrite.Body) error {
 		if err != nil {
 			return err
 		}
-		body.SetAttributeRaw(attr.K, hclRefTokens(v))
+		ts, err := hclRefTokens(v)
+		if err != nil {
+			return err
+		}
+		body.SetAttributeRaw(attr.K, ts)
 	case attr.IsType():
 		t, err := attr.Type()
 		if err != nil {
 			return err
 		}
 		if t.IsRef {
-			body.SetAttributeRaw(attr.K, hclRefTokens(t.T))
+			ts, err := hclRefTokens(t.T)
+			if err != nil {
+				return err
+			}
+			body.SetAttributeRaw(attr.K, ts)
 			break
 		}
 		spec, ok := s.findTypeSpec(t.T)
@@ -441,7 +449,11 @@ func (s *State) writeAttr(attr *Attr, body *hclwrite.Body) error {
 				if !ok {
 					return fmt.Errorf("unsupported capsule type: %v", v.Type())
 				}
-				tokens = append(tokens, hclRefTokens(ref.V))
+				ts, err := hclRefTokens(ref.V)
+				if err != nil {
+					return err
+				}
+				tokens = append(tokens, ts)
 			} else {
 				tokens = append(tokens, hclwrite.TokensForValue(v))
 			}
@@ -515,37 +527,35 @@ func findAttr(attrs []*Attr, k string) (*Attr, bool) {
 	return nil, false
 }
 
-func hclRefTokens(ref string) hclwrite.Tokens {
-	var t []*hclwrite.Token
-	for i, s := range strings.Split(ref, ".") {
-		// Ignore the first $ as token for reference.
-		if len(s) > 1 && s[0] == '$' {
-			s = s[1:]
+func hclRefTokens(v string) (t hclwrite.Tokens, err error) {
+	// If it is a reference to a type or an enum.
+	if !strings.HasPrefix(v, "$") {
+		return []*hclwrite.Token{{Type: hclsyntax.TokenIdent, Bytes: []byte(v)}}, nil
+	}
+	path, err := (&Ref{V: v}).Path()
+	if err != nil {
+		return nil, err
+	}
+	for i, p := range path {
+		if i > 0 {
+			t = append(t, &hclwrite.Token{Type: hclsyntax.TokenDot, Bytes: []byte{'.'}})
 		}
-		switch {
-		case i == 0:
-			t = append(t, hclRawTokens(s)...)
-		case hclsyntax.ValidIdentifier(s):
-			t = append(t, &hclwrite.Token{
-				Type:  hclsyntax.TokenDot,
-				Bytes: []byte{'.'},
-			}, &hclwrite.Token{
-				Type:  hclsyntax.TokenIdent,
-				Bytes: []byte(s),
-			})
-		default:
-			t = append(t, &hclwrite.Token{
-				Type:  hclsyntax.TokenOBrack,
-				Bytes: []byte{'['},
-			})
-			t = append(t, hclwrite.TokensForValue(cty.StringVal(s))...)
-			t = append(t, &hclwrite.Token{
-				Type:  hclsyntax.TokenCBrack,
-				Bytes: []byte{']'},
-			})
+		t = append(t, &hclwrite.Token{Type: hclsyntax.TokenIdent, Bytes: []byte(p.T)})
+		for _, v := range p.V {
+			switch {
+			case validIdent(v):
+				t = append(t,
+					&hclwrite.Token{Type: hclsyntax.TokenDot, Bytes: []byte{'.'}},
+					&hclwrite.Token{Type: hclsyntax.TokenIdent, Bytes: []byte(v)},
+				)
+			default:
+				t = append(t, &hclwrite.Token{Type: hclsyntax.TokenOBrack, Bytes: []byte{'['}})
+				t = append(t, hclwrite.TokensForValue(cty.StringVal(v))...)
+				t = append(t, &hclwrite.Token{Type: hclsyntax.TokenCBrack, Bytes: []byte{']'}})
+			}
 		}
 	}
-	return t
+	return t, nil
 }
 
 func hclRawTokens(s string) hclwrite.Tokens {
