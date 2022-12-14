@@ -116,11 +116,14 @@ func (v V) TiDB() bool {
 // semantic version precedence.
 func (v V) Compare(w string) int {
 	u := string(v)
-	switch {
+	switch idx := strings.Index(u, "-"); {
 	case v.Maria():
 		u = u[:strings.Index(u, "MariaDB")-1]
 	case v.TiDB():
 		u = u[:strings.Index(u, "TiDB")-1]
+	case idx > 0:
+		// Remove server build information, if any.
+		u = u[:idx]
 	}
 	return semver.Compare("v"+u, "v"+w)
 }
