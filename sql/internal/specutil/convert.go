@@ -36,31 +36,35 @@ type (
 
 // Scan populates the Realm from the schemas and table specs.
 func Scan(r *schema.Realm, schemas []*sqlspec.Schema, tables []*sqlspec.Table, convertTable ConvertTableFunc) error {
+	byName := make(map[string]*schema.Schema)
 	for _, spec := range schemas {
-		sch := &schema.Schema{Name: spec.Name, Realm: r}
-		for _, tableSpec := range tables {
-			name, err := SchemaName(tableSpec.Schema)
-			if err != nil {
-				return fmt.Errorf("specutil: cannot extract schema name for table %q: %w", tableSpec.Name, err)
-			}
-			if name == spec.Name {
-				tbl, err := convertTable(tableSpec, sch)
-				if err != nil {
-					return err
-				}
-				sch.Tables = append(sch.Tables, tbl)
-			}
+		s := &schema.Schema{Name: spec.Name, Realm: r}
+		r.AddSchemas(s)
+		byName[spec.Name] = s
+	}
+	for _, spec := range tables {
+		name, err := SchemaName(spec.Schema)
+		if err != nil {
+			return fmt.Errorf("specutil: cannot extract schema name for table %q: %w", spec.Name, err)
 		}
-		r.Schemas = append(r.Schemas, sch)
+		s, ok := byName[name]
+		if !ok {
+			return fmt.Errorf("specutil: schema %q not found for table %q", name, spec.Name)
+		}
+		t, err := convertTable(spec, s)
+		if err != nil {
+			return fmt.Errorf("specutil: cannot convert table %q: %w", spec.Name, err)
+		}
+		s.AddTables(t)
 	}
 	// Link the foreign keys.
-	for _, sch := range r.Schemas {
-		for _, tbl := range sch.Tables {
-			tableSpec, err := findTableSpec(tables, sch.Name, tbl.Name)
+	for _, s := range r.Schemas {
+		for _, t := range s.Tables {
+			spec, err := findTableSpec(tables, s.Name, t.Name)
 			if err != nil {
 				return err
 			}
-			if err := linkForeignKeys(tbl, sch, tableSpec); err != nil {
+			if err := linkForeignKeys(t, s, spec); err != nil {
 				return err
 			}
 		}
