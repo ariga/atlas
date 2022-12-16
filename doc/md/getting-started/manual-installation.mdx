@@ -1,0 +1,65 @@
+---
+title: Manual Installation
+slug: /manual-installation
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+
+### Manual Installation
+
+If you don't trust the shell installation script or want to do a manual installation for some other reason, follow the
+below instructions.
+
+<Tabs
+defaultValue="linux"
+values={[
+{label: 'Linux', value: 'linux'},
+{label: 'macOS', value: 'apple'},
+{label: 'Windows', value: 'windows'},
+]}>
+<TabItem value="apple">
+
+Download latest release.
+```shell
+curl -LO https://release.ariga.io/atlas/atlas-darwin-amd64-latest
+```
+
+Make the atlas binary executable.
+```shell
+chmod +x ./atlas-darwin-amd64-latest
+```
+
+Move the atlas binary to a file location on your system PATH.
+```shell
+sudo mv ./atlas-darwin-amd64-latest /usr/local/bin/atlas
+```
+```shell
+sudo chown root: /usr/local/bin/atlas
+```
+
+</TabItem>
+<TabItem value="linux">
+
+Download latest release.
+```shell
+curl -LO https://release.ariga.io/atlas/atlas-linux-amd64-latest
+```
+
+Move the atlas binary to a file location on your system PATH.
+```shell
+sudo install -o root -g root -m 0755 ./atlas-linux-amd64-latest /usr/local/bin/atlas
+```
+
+</TabItem>
+<TabItem value="windows">
+
+Download the [latest release](https://release.ariga.io/atlas/atlas-windows-amd64-latest.exe) and
+move the atlas binary to a file location on your system PATH.
+
+
+</TabItem>
+</Tabs>
+
+The binaries distributed in official releases are released under the  [Apache 2 License](https://github.com/ariga/atlas/blob/master/LICENSE).
+If you would like to build Atlas from source follow the instructions [here](https://atlasgo.io/cli-reference#building-from-source).
