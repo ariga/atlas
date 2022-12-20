@@ -19,7 +19,7 @@ startup, sends users on "quests" that cover everyday engineering tasks - from de
 of a production issue - utilizing real-life tech stacks.
 
 When I first heard about Wilco, I was immediately intrigued by the idea of using a simulation game to
-teach people about database migrations. Particularly interesting is the possibility to present people with
+teach people about database migrations. Particularly interesting, is the possibility to present people with
 opportunities to solve all kinds of issues that many engineers only hit during a serious outage when there's
 very little room for error.
 
