@@ -33,10 +33,14 @@ machine.
 
 ### The new Atlas quest on Wilco
 
+![](https://atlasgo.io/uploads/images/wilco-cover.png)
+
 In the first quest we're releasing today on Wilco, you will be tasked with planning a seemingly simple database
 migration to support the development of a new feature in your imaginary company's app. As your team starts to
 roll out the feature, you will quickly realize that there are some serious issues that must be resolved, and fast!
 
-And now, without further ado, you can head over to [start your quest](https://app.wilco.gg/catalog/quest/atlas-data-dependent-changes)!
+And now, without further ado, you can head over to [start your quest](https://www.trywilco.com/quests/data-dependent-schema-migrations)!
+
+### What's next?
 
 Have questions? Feedback? Feel free to reach out [on our Discord server](https://discord.gg/zZ6sWVg6NT).
