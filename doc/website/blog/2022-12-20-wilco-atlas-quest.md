@@ -7,10 +7,11 @@ image: https://atlasgo.io/uploads/images/explore_twitter_card.png
 
 ### Learning new things 
 
-There are many ways to learn about a new topic. You can read books, watch videos, or even take a course. But one of the
-most effective ways to learn is by doing. This is especially true when it comes to learning about a new tool or
-technology. In order to truly understand how a tool works, you need to use it and see how it behaves in different
-situations.
+One of my favorite things about software engineering, is that it's a career of continuous learning.
+Every new project or challenge presents us with an opportunity to increase our knowledge and improve our skills.
+Different people learn in different ways, but for me, one of the most effective ways to learn things has always been by
+doing. Sure, reading books, watching video and immersing myself in technical documentation is foundational, but
+I only feel like I really understand something is after I've applied it in some practical way.
 
 This is why I'm excited to announce that we've partnered with [Wilco](https://trywilco.com/) to create a new
 kind of learning experience for Atlas users. Wilco develops a platform, built to emulate the conditions at a tech
