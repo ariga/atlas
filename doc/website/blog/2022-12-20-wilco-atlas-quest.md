@@ -19,14 +19,15 @@ startup, sends users on "quests" that cover everyday engineering tasks - from de
 of a production issue - utilizing real-life tech stacks.
 
 When I first heard about Wilco, I was immediately intrigued by the idea of using a simulation game to
-teach people about database migrations and especially about solving all kinds of issues that many engineers
-only hit during a serious outage when there's very little room for error.
+teach people about database migrations. Particularly interesting is the possibility to present people with
+opportunities to solve all kinds of issues that many engineers only hit during a serious outage when there's
+very little room for error.
 
 ### Introducing Wilco
 
 When you use Wilco, you're put in the shoes of a software engineer at a fictional startup. You're given access
 to a made up chat system humoristically called "Snack" where you meet different characters that you can interact with.
-You're also given access to a real GitHub repo and the means to run a real development environment on your local
+You are also given access to a real GitHub repo and the means to run a real development environment on your local
 machine.
 
 ![](https://atlasgo.io/uploads/images/wilco-snack-screenshot.png)
