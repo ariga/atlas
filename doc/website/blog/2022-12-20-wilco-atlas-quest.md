@@ -9,7 +9,7 @@ image: https://atlasgo.io/uploads/images/explore_twitter_card.png
 
 One of my favorite things about software engineering, is that it's a career of continuous learning.
 Every new project or challenge presents us with an opportunity to increase our knowledge and improve our skills.
-Different people learn in different ways, but for me, one of the most effective ways to learn things has always been by
+Different people learn in different ways, but for me, one of the most effective ways to learn something new has always been by
 doing. Sure, reading books, watching video and immersing myself in technical documentation is foundational, but
 I only feel like I really understand something is after I've applied it in some practical way.
 
