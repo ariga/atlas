@@ -2,7 +2,6 @@
 title: "Learning to solve migration issues in a realistic simulation game"
 authors: rotemtam
 tags: [simulation, learning, wilco]
-image: https://atlasgo.io/uploads/images/explore_twitter_card.png
 ---
 
 ### Learning new things 
