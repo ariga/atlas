@@ -7,7 +7,7 @@ image: https://blog.ariga.io/uploads/images/posts/v0.6.0/atlas-migrate-diff.png
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
-
+import InstallationInstructions from '../../md/components/_installation_instructions.mdx'
 
 With the release of [v0.6.0](https://github.com/ariga/atlas/releases/tag/v0.6.0), we are
 happy to announce official support for a style of workflow for managing changes to database
@@ -174,65 +174,7 @@ reviewed in regular code review processes.
 
 Start by downloading the Atlas CLI:
 
-<Tabs
-    defaultValue="apple-intel-brew"
-    values={[
-        {label: 'macOS (Homebrew)', value: 'apple-intel-brew'},
-        {label: 'macOS (Plain)', value: 'apple-intel-plain'},
-        {label: 'Linux', value: 'linux'},
-        {label: 'Windows', value: 'windows'},
-]}>
-<TabItem value="apple-intel-brew">
-
-Get the latest release with [Homebrew](https://brew.sh/):
-
-```shell
-brew install ariga/tap/atlas
-```
-
-</TabItem>
-<TabItem value="apple-intel-plain">
-
-Download latest release.
-```shell
-curl -LO https://release.ariga.io/atlas/atlas-darwin-amd64-latest
-```
-
-Make the atlas binary executable.
-```shell
-chmod +x ./atlas-darwin-amd64-latest
-```
-
-Move the atlas binary to a file location on your system PATH.
-```shell
-sudo mv ./atlas-darwin-amd64-latest /usr/local/bin/atlas
-```
-```shell
-sudo chown root: /usr/local/bin/atlas
-```
-
-</TabItem>
-<TabItem value="linux">
-
-Download latest release.
-```shell
-curl -LO https://release.ariga.io/atlas/atlas-linux-amd64-latest
-```
-
-Move the atlas binary to a file location on your system PATH.
-```shell
-sudo install -o root -g root -m 0755 ./atlas-linux-amd64-latest /usr/local/bin/atlas
-```
-
-</TabItem>
-<TabItem value="windows">
-
-Download the [latest release](https://release.ariga.io/atlas/atlas-windows-amd64-latest.exe) and
-move the atlas binary to a file location on your system PATH.
-
-
-</TabItem>
-</Tabs>
+<InstallationInstructions />
 
 Next, define a simple Atlas schema with one table and an empty migration directory:
 

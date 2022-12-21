@@ -5,6 +5,7 @@ sidebar_label: Quick Introduction
 ---
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import InstallationInstructions from '../components/_installation_instructions.mdx'
 import Discord from '../../website/src/assets/icons/discord-white.svg'
 
 Atlas CLI is an open-source tool designed to help software engineers, DBAs and DevOps
@@ -14,68 +15,11 @@ tool to plan and apply the migrations to their systems.
 
 ### Installation
 
-<Tabs
-defaultValue="apple-intel-brew"
-values={[
-{label: 'macOS (Homebrew)', value: 'apple-intel-brew'},
-{label: 'macOS (Plain)', value: 'apple-intel-plain'},
-{label: 'Linux', value: 'linux'},
-{label: 'Windows', value: 'windows'},
-]}>
-<TabItem value="apple-intel-brew">
+<InstallationInstructions />
 
-Get the latest release with [Homebrew](https://brew.sh/):
-
-```shell
-brew install ariga/tap/atlas
-```
-
-</TabItem>
-<TabItem value="apple-intel-plain">
-
-Download latest release.
-```shell
-curl -LO https://release.ariga.io/atlas/atlas-darwin-amd64-latest
-```
-
-Make the atlas binary executable.
-```shell
-chmod +x ./atlas-darwin-amd64-latest
-```
-
-Move the atlas binary to a file location on your system PATH.
-```shell
-sudo mv ./atlas-darwin-amd64-latest /usr/local/bin/atlas
-```
-```shell
-sudo chown root: /usr/local/bin/atlas
-```
-
-</TabItem>
-<TabItem value="linux">
-
-Download latest release.
-```shell
-curl -LO https://release.ariga.io/atlas/atlas-linux-amd64-latest
-```
-
-Move the atlas binary to a file location on your system PATH.
-```shell
-sudo install -o root -g root -m 0755 ./atlas-linux-amd64-latest /usr/local/bin/atlas
-```
-
-</TabItem>
-<TabItem value="windows">
-
-Download the [latest release](https://release.ariga.io/atlas/atlas-windows-amd64-latest.exe) and
-move the atlas binary to a file location on your system PATH.
-
-
-</TabItem>
-</Tabs>
-
-The binaries distributed in official releases are released under the  [Apache 2 License](https://github.com/ariga/atlas/blob/master/LICENSE).
-If you would like to build Atlas from source follow the instructions [here](https://atlasgo.io/cli-reference#building-from-source).
+The binaries distributed in official releases are released under the
+[Apache 2 License](https://github.com/ariga/atlas/blob/master/LICENSE). If you would like to build Atlas from source
+follow the instructions [here](https://atlasgo.io/cli-reference#building-from-source).
 
 ### Start a local database container
 
