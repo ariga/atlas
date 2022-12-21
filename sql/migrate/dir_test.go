@@ -195,3 +195,23 @@ func TestLocalDir(t *testing.T) {
 	require.Equal(t, "2.10.x-20", files[1].Version())
 	require.Equal(t, "description", files[1].Desc())
 }
+
+func TestMemDir(t *testing.T) {
+	var d migrate.MemDir
+	files, err := d.Files()
+	require.NoError(t, err)
+	require.Empty(t, files)
+	require.NoError(t, d.WriteFile("1.sql", []byte("create table t(c int);")))
+	files, err = d.Files()
+	require.NoError(t, err)
+	require.Len(t, files, 1)
+	require.Equal(t, "1.sql", files[0].Name())
+	require.Equal(t, "1", files[0].Version())
+	require.Equal(t, "", files[0].Desc())
+	require.EqualValues(t, "create table t(c int);", files[0].Bytes())
+	hs1, err := d.Checksum()
+	require.NoError(t, err)
+	hs2, err := migrate.NewHashFile(files)
+	require.NoError(t, err)
+	require.Equal(t, hs1, hs2)
+}
