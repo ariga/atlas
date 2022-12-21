@@ -229,7 +229,7 @@ table "users" {
 	})
 }
 
-func TestCmdSchemaApply(t *testing.T) {
+func TestSchema_Apply(t *testing.T) {
 	const drvName = "checknormalizer"
 	// If no dev-database is given, there must not be a call to Driver.Normalize.
 	sqlclient.Register(
@@ -462,6 +462,87 @@ env "local" {
 		`-- Create "two" table`,
 		"CREATE TABLE `two` (`id` int NOT NULL)",
 	}, lines)
+}
+
+func TestSchema_ApplySQL(t *testing.T) {
+	t.Run("File", func(t *testing.T) {
+		db := openSQLite(t, "")
+		p := filepath.Join(t.TempDir(), "schema.sql")
+		require.NoError(t, os.WriteFile(p, []byte(`create table t1 (id int NOT NULL);`), 0600))
+		s, err := runCmd(
+			schemaApplyCmd(),
+			"-u", db,
+			"--dev-url", openSQLite(t, ""),
+			"--to", "file://"+p,
+			"--auto-approve",
+		)
+		require.NoError(t, err)
+		require.Equal(t, "-- Planned Changes:\n-- Create \"t1\" table\nCREATE TABLE `t1` (`id` int NOT NULL)\n", s)
+
+		s, err = runCmd(
+			schemaApplyCmd(),
+			"-u", db,
+			"--dev-url", openSQLite(t, ""),
+			"--to", "file://"+p,
+			"--auto-approve",
+		)
+		require.NoError(t, err)
+		require.Equal(t, "Schema is synced, no changes to be made.\n", s)
+	})
+	t.Run("Dir", func(t *testing.T) {
+		db := openSQLite(t, "")
+		s, err := runCmd(
+			schemaApplyCmd(),
+			"-u", db,
+			"--dev-url", openSQLite(t, ""),
+			"--to", "file://testdata/sqlite",
+			"--auto-approve",
+		)
+		require.NoError(t, err)
+		require.Equal(t, "-- Planned Changes:\n-- Create \"tbl\" table\nCREATE TABLE `tbl` (`col` int NOT NULL, `col_2` bigint NULL)\n", s)
+
+		s, err = runCmd(
+			schemaApplyCmd(),
+			"-u", db,
+			"--dev-url", openSQLite(t, ""),
+			"--to", "file://testdata/sqlite",
+			"--auto-approve",
+		)
+		require.NoError(t, err)
+		require.Equal(t, "Schema is synced, no changes to be made.\n", s)
+	})
+	t.Run("Error", func(t *testing.T) {
+		_, err := runCmd(
+			schemaApplyCmd(),
+			"-u", openSQLite(t, ""),
+			"--dev-url", openSQLite(t, ""),
+			"--to", "file://testdata/sqlite",
+			"--to", "file://testdata/sqlite2",
+			"--auto-approve",
+		)
+		require.EqualError(t, err, `the provided SQL state must be either a single schema file or a migration directory, but 2 paths were found`)
+
+		_, err = runCmd(
+			schemaApplyCmd(),
+			"-u", openSQLite(t, ""),
+			"--dev-url", openSQLite(t, ""),
+			"--to", "file://"+t.TempDir(),
+			"--auto-approve",
+		)
+		require.ErrorContains(t, err, `contains neither SQL nor HCL files`)
+
+		p := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(p, "schema.sql"), []byte(`create table t1 (id int NOT NULL);`), 0600))
+		require.NoError(t, os.WriteFile(filepath.Join(p, "schema.hcl"), []byte(`schema "main" {}`), 0600))
+		_, err = runCmd(
+			schemaApplyCmd(),
+			"-u", openSQLite(t, ""),
+			"--dev-url", openSQLite(t, ""),
+			"--to", "file://"+p,
+			"--auto-approve",
+		)
+		require.EqualError(t, err, `ambiguous schema: both SQL and HCL files found: "schema.hcl", "schema.sql"`)
+	})
 }
 
 func TestSchema_InspectLog(t *testing.T) {
