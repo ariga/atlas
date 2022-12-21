@@ -427,76 +427,15 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadClos
 	switch scheme {
 	// "file" scheme is valid for both migration directory and HCL paths.
 	case "file":
-		if len(config.urls) > 1 {
-			// Consider urls being HCL paths.
-			return hclStateReader(ctx, config, parsed)
-		}
-		path := filepath.Join(parsed[0].Host, parsed[0].Path)
-		fi, err := os.Stat(path)
-		if err != nil {
+		switch ext, err := filesExt(parsed); {
+		case err != nil:
 			return nil, err
-		}
-		if !fi.IsDir() {
-			// If there is only one url given, and it is a file, consider it an HCL path.
+		case ext == extHCL:
 			return hclStateReader(ctx, config, parsed)
-		}
-		files, err := os.ReadDir(path)
-		if err != nil {
-			return nil, err
-		}
-		// Check all files, if we find both HCL and SQL files, abort. Otherwise, proceed accordingly.
-		var hcl, sql bool
-		for _, f := range files {
-			ext := filepath.Ext(f.Name())
-			switch {
-			case hcl && ext == ".sql", sql && ext == ".hcl":
-				return nil, fmt.Errorf("ambiguos files: %q contains both SQL and HCL files", path)
-			case ext == ".hcl":
-				hcl = true
-			case ext == ".sql":
-				sql = true
-			default:
-				// unknown extension, we don't care
-			}
-		}
-		switch {
-		case hcl:
-			return hclStateReader(ctx, config, parsed)
-		case sql:
-			// Replaying a migration directory requires a dev connection.
-			if config.dev == nil {
-				return nil, errors.New("--dev-url cannot be empty")
-			}
-			dir, err := dirURL(parsed[0], false)
-			if err != nil {
-				return nil, err
-			}
-			ex, err := migrate.NewExecutor(config.dev.Driver, dir, migrate.NopRevisionReadWriter{})
-			if err != nil {
-				return nil, err
-			}
-			var opts []migrate.ReplayOption
-			if v := parsed[0].Query().Get("version"); v != "" {
-				opts = append(opts, migrate.ReplayToVersion(v))
-			}
-			sr, err := ex.Replay(ctx, func() migrate.StateReader {
-				if config.dev.URL.Schema != "" {
-					return migrate.SchemaConn(config.dev, "", nil)
-				}
-				return migrate.RealmConn(config.dev, &schema.InspectRealmOption{
-					Schemas: config.schemas,
-					Exclude: config.exclude,
-				})
-			}(), opts...)
-			if err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
-				return nil, fmt.Errorf("replaying the migration directory: %w", err)
-			}
-			return &stateReadCloser{
-				StateReader: migrate.Realm(sr),
-				schema:      config.dev.URL.Schema,
-			}, nil
+		case ext == extSQL:
+			return sqlStateReader(ctx, config, parsed)
 		default:
-			return nil, fmt.Errorf("%q contains neither SQL nor HCL files", path)
+			panic("unreachable") // checked by filesExt.
 		}
 	default:
 		// All other schemes are database (or docker) connections.
@@ -522,7 +461,7 @@ func stateReader(ctx context.Context, config *stateReaderConfig) (*stateReadClos
 	}
 }
 
-// hclStateReadr returns a migrate.StateReader that reads the state from the given HCL paths urls.
+// hclStateReadr returns a StateReader that reads the state from the given HCL paths urls.
 func hclStateReader(ctx context.Context, config *stateReaderConfig, urls []*url.URL) (*stateReadCloser, error) {
 	var client *sqlclient.Client
 	switch {
@@ -576,9 +515,122 @@ func hclStateReader(ctx context.Context, config *stateReaderConfig, urls []*url.
 	return t, nil
 }
 
+func sqlStateReader(ctx context.Context, config *stateReaderConfig, urls []*url.URL) (*stateReadCloser, error) {
+	if len(urls) != 1 {
+		return nil, fmt.Errorf("the provided SQL state must be either a single schema file or a migration directory, but %d paths were found", len(urls))
+	}
+	// Replaying a migration directory requires a dev connection.
+	if config.dev == nil {
+		return nil, errors.New("--dev-url cannot be empty")
+	}
+	var (
+		dir  migrate.Dir
+		opts []migrate.ReplayOption
+		path = filepath.Join(urls[0].Host, urls[0].Path)
+	)
+	switch fi, err := os.Stat(path); {
+	case err != nil:
+		return nil, err
+	// A single schema file.
+	case !fi.IsDir():
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		dir = &migrate.MemDir{}
+		if err := dir.WriteFile(fi.Name(), b); err != nil {
+			return nil, err
+		}
+	// A migration directory.
+	default:
+		if dir, err = dirURL(urls[0], false); err != nil {
+			return nil, err
+		}
+		if v := urls[0].Query().Get("version"); v != "" {
+			opts = append(opts, migrate.ReplayToVersion(v))
+		}
+	}
+	ex, err := migrate.NewExecutor(config.dev.Driver, dir, migrate.NopRevisionReadWriter{})
+	if err != nil {
+		return nil, err
+	}
+	sr, err := ex.Replay(ctx, func() migrate.StateReader {
+		if config.dev.URL.Schema != "" {
+			return migrate.SchemaConn(config.dev, "", nil)
+		}
+		return migrate.RealmConn(config.dev, &schema.InspectRealmOption{
+			Schemas: config.schemas,
+			Exclude: config.exclude,
+		})
+	}(), opts...)
+	if err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
+		return nil, err
+	}
+	return &stateReadCloser{
+		StateReader: migrate.Realm(sr),
+		schema:      config.dev.URL.Schema,
+	}, nil
+}
+
 // Close redirects calls to Close to the enclosed io.Closer.
 func (sr *stateReadCloser) Close() {
 	if sr.Closer != nil {
 		sr.Closer.Close()
 	}
+}
+
+const (
+	extHCL = ".hcl"
+	extSQL = ".sql"
+)
+
+func filesExt(urls []*url.URL) (string, error) {
+	var path, ext string
+	set := func(curr string) error {
+		switch e := filepath.Ext(curr); {
+		case e != extHCL && e != extSQL:
+			return fmt.Errorf("unknown schema file: %q", curr)
+		case ext != "" && ext != e:
+			return fmt.Errorf("ambiguous schema: both SQL and HCL files found: %q, %q", path, curr)
+		default:
+			path, ext = curr, e
+			return nil
+		}
+	}
+	for _, u := range urls {
+		path := filepath.Join(u.Host, u.Path)
+		switch fi, err := os.Stat(path); {
+		case err != nil:
+			return "", err
+		case fi.IsDir():
+			files, err := os.ReadDir(path)
+			if err != nil {
+				return "", err
+			}
+			for _, f := range files {
+				switch filepath.Ext(f.Name()) {
+				// Ignore unknown extensions in case we read directories.
+				case extHCL, extSQL:
+					if err := set(f.Name()); err != nil {
+						return "", err
+					}
+				}
+			}
+		default:
+			if err := set(fi.Name()); err != nil {
+				return "", err
+			}
+		}
+	}
+	switch {
+	case ext != "":
+	case len(urls) == 1 && (urls[0].Host != "" || urls[0].Path != ""):
+		return "", fmt.Errorf(
+			"%q contains neither SQL nor HCL files",
+			filepath.Base(filepath.Join(urls[0].Host, urls[0].Path)),
+		)
+	default:
+		return "", errors.New("schema contains neither SQL nor HCL files")
+	}
+	return ext, nil
 }
