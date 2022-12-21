@@ -117,28 +117,11 @@ func (d *LocalDir) Files() ([]File, error) {
 
 // Checksum implements Dir.Checksum. By default, it calls Files() and creates a checksum from them.
 func (d *LocalDir) Checksum() (HashFile, error) {
-	var (
-		hs HashFile
-		h  = sha256.New()
-	)
 	files, err := d.Files()
 	if err != nil {
 		return nil, err
 	}
-	for _, f := range files {
-		if _, err = h.Write([]byte(f.Name())); err != nil {
-			return nil, err
-		}
-		// Check if this file contains an "atlas:sum" directive and if so, act to it.
-		if mode, ok := directive(string(f.Bytes()), directiveSum); ok && mode == sumModeIgnore {
-			continue
-		}
-		if _, err = h.Write(f.Bytes()); err != nil {
-			return nil, err
-		}
-		hs = append(hs, struct{ N, H string }{f.Name(), base64.StdEncoding.EncodeToString(h.Sum(nil))})
-	}
-	return hs, nil
+	return NewHashFile(files)
 }
 
 // LocalFile is used by LocalDir to implement the Scanner interface.
@@ -194,6 +177,65 @@ func (f LocalFile) StmtDecls() ([]*Stmt, error) {
 // Bytes returns local file data.
 func (f LocalFile) Bytes() []byte {
 	return f.b
+}
+
+// MemDir provides an in-memory Dir implementation.
+type MemDir struct {
+	files map[string]File
+}
+
+// Open implements fs.FS.
+func (d *MemDir) Open(name string) (fs.File, error) {
+	var b []byte
+	switch name {
+	case HashFileName:
+		h, err := d.Checksum()
+		if err != nil {
+			return nil, err
+		}
+		if b, err = h.MarshalText(); err != nil {
+			return nil, err
+		}
+	default:
+		f, ok := d.files[name]
+		if !ok {
+			return nil, fs.ErrNotExist
+		}
+		b = f.Bytes()
+	}
+	return &memFile{
+		ReadCloser: io.NopCloser(bytes.NewReader(b)),
+	}, nil
+}
+
+// WriteFile adds a new file in-memory.
+func (d *MemDir) WriteFile(name string, data []byte) error {
+	if d.files == nil {
+		d.files = make(map[string]File)
+	}
+	d.files[name] = NewLocalFile(name, data)
+	return nil
+}
+
+// Files returns a set of files stored in-memory to be executed on a database.
+func (d *MemDir) Files() ([]File, error) {
+	files := make([]File, 0, len(d.files))
+	for _, f := range d.files {
+		files = append(files, f)
+	}
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].Name() < files[j].Name()
+	})
+	return files, nil
+}
+
+// Checksum implements Dir.Checksum.
+func (d *MemDir) Checksum() (HashFile, error) {
+	files, err := d.Files()
+	if err != nil {
+		return nil, err
+	}
+	return NewHashFile(files)
 }
 
 var (
@@ -261,11 +303,26 @@ const HashFileName = "atlas.sum"
 // HashFile represents the integrity sum file of the migration dir.
 type HashFile []struct{ N, H string }
 
-// HashSum reads the whole dir, sorts the files by name and creates a HashSum from its contents.
-//
-// Deprecated: Use Dir.Checksum instead.
-func HashSum(dir Dir) (HashFile, error) {
-	return dir.Checksum()
+// NewHashFile computes and returns a HashFile from the given directory's files.
+func NewHashFile(files []File) (HashFile, error) {
+	var (
+		hs HashFile
+		h  = sha256.New()
+	)
+	for _, f := range files {
+		if _, err := h.Write([]byte(f.Name())); err != nil {
+			return nil, err
+		}
+		// Check if this file contains an "atlas:sum" directive and if so, act to it.
+		if mode, ok := directive(string(f.Bytes()), directiveSum); ok && mode == sumModeIgnore {
+			continue
+		}
+		if _, err := h.Write(f.Bytes()); err != nil {
+			return nil, err
+		}
+		hs = append(hs, struct{ N, H string }{f.Name(), base64.StdEncoding.EncodeToString(h.Sum(nil))})
+	}
+	return hs, nil
 }
 
 // WriteSumFile writes the given HashFile to the Dir. If the file does not exist, it is created.
@@ -413,3 +470,15 @@ func readHashFile(dir Dir) (HashFile, error) {
 	}
 	return fh, nil
 }
+
+// memFile implements the File interface for a file in memory.
+type memFile struct{ io.ReadCloser }
+
+// Stat returns a zero FileInfo.
+func (m *memFile) Stat() (fs.FileInfo, error) { return m, nil }
+func (m *memFile) Name() string               { return "" }
+func (m *memFile) Size() int64                { return 0 }
+func (m *memFile) Mode() fs.FileMode          { return 0 }
+func (m *memFile) ModTime() time.Time         { return time.Time{} }
+func (m *memFile) IsDir() bool                { return false }
+func (m *memFile) Sys() interface{}           { return nil }
