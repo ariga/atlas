@@ -121,6 +121,11 @@ module.exports = {
                     id: 'guides/deploying/k8s-init-containers',
                     label: 'Kubernetes (Init Container)'
                 },
+                {
+                    type: 'doc',
+                    id: 'guides/deploying/fly.io',
+                    label: 'Fly.io'
+                }
             ]
         },
         {
