@@ -6,6 +6,7 @@ defaultValue="apple-intel-plain+linux"
 values={[
 {label: 'macOS (Plain) + Linux', value: 'apple-intel-plain+linux'},
 {label: 'macOS (Homebrew)', value: 'apple-intel-brew'},
+{label: 'Docker', value: 'docker'},
 {label: 'Windows', value: 'windows'},
 {label: 'Manual Installation', value: 'manual'},
 ]}>
@@ -24,6 +25,26 @@ Get the latest release with [Homebrew](https://brew.sh/):
 
 ```shell
 brew install ariga/tap/atlas
+```
+
+</TabItem>
+<TabItem value="docker">
+
+To pull the Atlas image and run it as a Docker container:
+
+```shell
+docker pull arigaio/atlas
+docker run --rm arigaio/atlas --help
+```
+
+If the container needs access to the host network or a local directory, use the `--net=host` flag and mount the desired
+directory:
+
+```shell
+docker run --rm --net=host \
+  -v $(pwd)/migrations:/migrations \
+  arigaio/atlas migrate apply
+  --url "mysql://root:pass@:3306/test"
 ```
 
 </TabItem>
