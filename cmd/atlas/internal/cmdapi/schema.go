@@ -461,14 +461,14 @@ func schemaInspectRun(cmd *cobra.Command, _ []string, flags schemaInspectFlags) 
 	})
 	format := cmdlog.SchemaInspectTemplate
 	if v := flags.logFormat; v != "" {
-		if format, err = template.New("format").Funcs(cmdlog.ApplyTemplateFuncs).Parse(v); err != nil {
+		if format, err = template.New("format").Funcs(cmdlog.InspectTemplateFuncs).Parse(v); err != nil {
 			return fmt.Errorf("parse log format: %w", err)
 		}
 	}
 	return format.Execute(cmd.OutOrStdout(), &cmdlog.SchemaInspect{
-		Marshaler: client.Marshaler,
-		Realm:     s,
-		Error:     err,
+		Client: client,
+		Realm:  s,
+		Error:  err,
 	})
 }
 

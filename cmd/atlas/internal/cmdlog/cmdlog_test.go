@@ -5,13 +5,20 @@
 package cmdlog_test
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"testing"
+	"text/template"
 
 	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
 	"ariga.io/atlas/sql/schema"
+	"ariga.io/atlas/sql/sqlclient"
+	_ "ariga.io/atlas/sql/sqlite"
 
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
 
@@ -93,4 +100,33 @@ func TestSchemaInspect_MarshalJSON(t *testing.T) {
 	b, err = report.MarshalJSON()
 	require.NoError(t, err)
 	require.Equal(t, `{"Error":"EOF"}`, string(b))
+}
+
+func TestSchemaInspect_EncodeSQL(t *testing.T) {
+	ctx := context.Background()
+	client, err := sqlclient.Open(ctx, "sqlite://ci?mode=memory&_fk=1")
+	require.NoError(t, err)
+	defer client.Close()
+	err = client.ApplyChanges(ctx, schema.Changes{
+		&schema.AddTable{
+			T: schema.NewTable("users").
+				AddColumns(
+					schema.NewIntColumn("id", "int"),
+					schema.NewStringColumn("name", "text"),
+				),
+		},
+	})
+	require.NoError(t, err)
+	realm, err := client.InspectRealm(ctx, nil)
+	require.NoError(t, err)
+
+	var (
+		b    bytes.Buffer
+		tmpl = template.Must(template.New("format").Funcs(cmdlog.InspectTemplateFuncs).Parse(`{{ sql . }}`))
+	)
+	require.NoError(t, tmpl.Execute(&b, &cmdlog.SchemaInspect{Client: client, Realm: realm}))
+	require.Equal(t, "-- create \"users\" table\nCREATE TABLE `users` (`id` int NOT NULL, `name` text NOT NULL);\n", b.String())
+	b.Reset()
+	require.NoError(t, tmpl.Execute(&b, &cmdlog.SchemaInspect{Error: errors.New("failure")}))
+	require.Equal(t, "failure", b.String())
 }
