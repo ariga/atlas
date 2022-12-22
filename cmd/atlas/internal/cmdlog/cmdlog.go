@@ -6,13 +6,13 @@ package cmdlog
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
 	"text/template"
 	"time"
 
-	"ariga.io/atlas/schemahcl"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
@@ -446,16 +446,22 @@ func (c Changes) MarshalJSON() ([]byte, error) {
 
 // SchemaInspect contains a summary of the 'schema inspect' command.
 type SchemaInspect struct {
-	schemahcl.Marshaler `json:"-"`
-	Realm               *schema.Realm `json:"Schema,omitempty"` // Inspected realm.
-	Error               error         `json:"Error,omitempty"`  // General error that occurred during inspection.
+	*sqlclient.Client `json:"-"`
+	Realm             *schema.Realm `json:"Schema,omitempty"` // Inspected realm.
+	Error             error         `json:"Error,omitempty"`  // General error that occurred during inspection.
 }
 
-// SchemaInspectTemplate holds the default template of the 'schema inspect' command.
-var SchemaInspectTemplate = template.Must(template.
-	New("inspect").
-	Funcs(ApplyTemplateFuncs).
-	Parse(`{{ with .Error }}{{ .Error }}{{ else }}{{ $.MarshalHCL }}{{ end }}`))
+var (
+	// InspectTemplateFuncs are global functions available in inspect report templates.
+	InspectTemplateFuncs = merge(ApplyTemplateFuncs, template.FuncMap{
+		"sql": sqlEncode,
+	})
+
+	// SchemaInspectTemplate holds the default template of the 'schema inspect' command.
+	SchemaInspectTemplate = template.Must(template.New("inspect").
+				Funcs(InspectTemplateFuncs).
+				Parse(`{{ with .Error }}{{ .Error }}{{ else }}{{ $.MarshalHCL }}{{ end }}`))
+)
 
 // MarshalHCL returns the default HCL representation of the schema.
 // Used by the template declared above.
@@ -566,6 +572,39 @@ func (s *SchemaInspect) MarshalJSON() ([]byte, error) {
 		realm.Schemas = append(realm.Schemas, s2)
 	}
 	return json.Marshal(realm)
+}
+
+func sqlEncode(report *SchemaInspect) (string, error) {
+	if report.Error != nil {
+		return report.Error.Error(), nil
+	}
+	var changes schema.Changes
+	for _, s := range report.Realm.Schemas {
+		// Generate commands for creating the schemas on realm-mode.
+		if report.Client.URL.Schema == "" {
+			changes = append(changes, &schema.AddSchema{S: s})
+		}
+		for _, t := range s.Tables {
+			changes = append(changes, &schema.AddTable{T: t})
+		}
+	}
+	plan, err := report.Driver.PlanChanges(context.Background(), "plan", changes, func(o *migrate.PlanOptions) {
+		// Disable tables qualifier in schema-mode.
+		if report.URL.Schema != "" {
+			o.SchemaQualifier = new(string)
+		}
+	})
+	if err != nil {
+		return "", err
+	}
+	switch files, err := migrate.DefaultFormatter.Format(plan); {
+	case err != nil:
+		return "", err
+	case len(files) != 1:
+		return "", fmt.Errorf("unexpected number of files: %d", len(files))
+	default:
+		return string(files[0].Bytes()), nil
+	}
 }
 
 func merge(maps ...template.FuncMap) template.FuncMap {
