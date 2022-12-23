@@ -370,7 +370,7 @@ var SchemaPlanTemplate = template.Must(template.
 {{- if .Comment -}}
 {{- printf "-- %s%s\n" (slice .Comment 0 1 | upper ) (slice .Comment 1) -}}
 {{- end -}}
-{{- println .Cmd -}}
+{{- printf "%s;\n" .Cmd -}}
 {{- end -}}
 {{- else -}}
 Schema is synced, no changes to be made.
@@ -386,7 +386,7 @@ var SchemaDiffTemplate = template.Must(template.
 {{- if .Comment -}}
 {{- printf "-- %s%s\n" (slice .Comment 0 1 | upper ) (slice .Comment 1) -}}
 {{- end -}}
-{{- println .Cmd -}}
+{{- printf "%s;\n" .Cmd -}}
 {{- end -}}
 {{- else -}}
 Schemas are synced, no changes to be made.

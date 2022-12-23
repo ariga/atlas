@@ -33,8 +33,8 @@ CREATE TABLE `users` (`id` int NOT NULL, `status` text NULL DEFAULT 'hello')
 -- alter.txt --
 -- Planned Changes:
 -- Add column "id" to table: "users"
-ALTER TABLE `users` ADD COLUMN `id` int NOT NULL
+ALTER TABLE `users` ADD COLUMN `id` int NOT NULL;
 -- create.txt --
 -- Planned Changes:
 -- Create "users" table
-CREATE TABLE `users` (`id` int NOT NULL, `status` text NULL DEFAULT 'hello')
+CREATE TABLE `users` (`id` int NOT NULL, `status` text NULL DEFAULT 'hello');

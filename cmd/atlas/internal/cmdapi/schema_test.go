@@ -36,7 +36,7 @@ const (
 `
 )
 
-func TestCmdSchemaDiff(t *testing.T) {
+func TestSchema_Diff(t *testing.T) {
 	// Creates the missing table.
 	s, err := runCmd(
 		schemaDiffCmd(),
@@ -44,7 +44,7 @@ func TestCmdSchemaDiff(t *testing.T) {
 		"--to", openSQLite(t, "create table t1 (id int);"),
 	)
 	require.NoError(t, err)
-	require.EqualValues(t, "-- Create \"t1\" table\nCREATE TABLE `t1` (`id` int NULL)\n", s)
+	require.EqualValues(t, "-- Create \"t1\" table\nCREATE TABLE `t1` (`id` int NULL);\n", s)
 
 	// No changes.
 	s, err = runCmd(
@@ -71,7 +71,7 @@ func TestCmdSchemaDiff(t *testing.T) {
 		"--dev-url", openSQLite(t, ""),
 	)
 	require.NoError(t, err)
-	require.EqualValues(t, "-- Create \"tbl\" table\nCREATE TABLE `tbl` (`col` int NOT NULL, `col_2` bigint NULL)\n", s)
+	require.EqualValues(t, "-- Create \"tbl\" table\nCREATE TABLE `tbl` (`col` int NOT NULL, `col_2` bigint NULL);\n", s)
 
 	// Desired state from migration directory.
 	s, err = runCmd(
@@ -81,7 +81,7 @@ func TestCmdSchemaDiff(t *testing.T) {
 		"--dev-url", openSQLite(t, ""),
 	)
 	require.NoError(t, err)
-	require.EqualValues(t, "-- Create \"tbl\" table\nCREATE TABLE `tbl` (`col` int NOT NULL, `col_2` bigint NULL)\n", s)
+	require.EqualValues(t, "-- Create \"tbl\" table\nCREATE TABLE `tbl` (`col` int NOT NULL, `col_2` bigint NULL);\n", s)
 
 	// Current state from migration directory, desired state from HCL - synced.
 	p := filepath.Join(t.TempDir(), "schema.hcl")
@@ -130,7 +130,7 @@ table "tbl" {
 	require.NoError(t, err)
 	require.EqualValues(
 		t,
-		"-- Add column \"col_3\" to table: \"tbl\"\nALTER TABLE `tbl` ADD COLUMN `col_3` text NOT NULL\n",
+		"-- Add column \"col_3\" to table: \"tbl\"\nALTER TABLE `tbl` ADD COLUMN `col_3` text NOT NULL;\n",
 		s,
 	)
 
@@ -145,9 +145,9 @@ table "tbl" {
 	require.EqualValues(
 		t,
 		"-- Add column \"col_2\" to table: \"tbl\"\n"+
-			"ALTER TABLE `tbl` ADD COLUMN `col_2` bigint NULL\n"+
+			"ALTER TABLE `tbl` ADD COLUMN `col_2` bigint NULL;\n"+
 			"-- Add column \"col_3\" to table: \"tbl\"\n"+
-			"ALTER TABLE `tbl` ADD COLUMN `col_3` text NOT NULL\n",
+			"ALTER TABLE `tbl` ADD COLUMN `col_3` text NOT NULL;\n",
 		s,
 	)
 
@@ -180,7 +180,7 @@ table "tbl" {
 	require.NoError(t, err)
 	require.EqualValues(
 		t,
-		"-- Add column \"col_3\" to table: \"tbl\"\nALTER TABLE `tbl` ADD COLUMN `col_3` text NOT NULL\n",
+		"-- Add column \"col_3\" to table: \"tbl\"\nALTER TABLE `tbl` ADD COLUMN `col_3` text NOT NULL;\n",
 		s,
 	)
 	s, err = runCmd(
@@ -193,7 +193,7 @@ table "tbl" {
 	require.NoError(t, err)
 	require.EqualValues(
 		t,
-		"-- Add column \"col_3\" to table: \"tbl\"\nALTER TABLE `tbl` ADD COLUMN `col_3` text NOT NULL\n",
+		"-- Add column \"col_3\" to table: \"tbl\"\nALTER TABLE `tbl` ADD COLUMN `col_3` text NOT NULL;\n",
 		s,
 	)
 
@@ -225,7 +225,7 @@ table "users" {
 			"--from", openSQLite(t, ""),
 		)
 		require.NoError(t, err)
-		require.Equal(t, "-- Create \"users\" table\nCREATE TABLE `users` (`id` int NOT NULL)\n", s)
+		require.Equal(t, "-- Create \"users\" table\nCREATE TABLE `users` (`id` int NOT NULL);\n", s)
 	})
 }
 
@@ -412,7 +412,7 @@ func TestSchema_ApplyLog(t *testing.T) {
 	})
 }
 
-func TestCmdSchemaApply_Sources(t *testing.T) {
+func TesSchema_ApplySources(t *testing.T) {
 	var (
 		p   = t.TempDir()
 		cfg = filepath.Join(p, "atlas.hcl")
@@ -477,7 +477,7 @@ func TestSchema_ApplySQL(t *testing.T) {
 			"--auto-approve",
 		)
 		require.NoError(t, err)
-		require.Equal(t, "-- Planned Changes:\n-- Create \"t1\" table\nCREATE TABLE `t1` (`id` int NOT NULL)\n", s)
+		require.Equal(t, "-- Planned Changes:\n-- Create \"t1\" table\nCREATE TABLE `t1` (`id` int NOT NULL);\n", s)
 
 		s, err = runCmd(
 			schemaApplyCmd(),
@@ -499,7 +499,7 @@ func TestSchema_ApplySQL(t *testing.T) {
 			"--auto-approve",
 		)
 		require.NoError(t, err)
-		require.Equal(t, "-- Planned Changes:\n-- Create \"tbl\" table\nCREATE TABLE `tbl` (`col` int NOT NULL, `col_2` bigint NULL)\n", s)
+		require.Equal(t, "-- Planned Changes:\n-- Create \"tbl\" table\nCREATE TABLE `tbl` (`col` int NOT NULL, `col_2` bigint NULL);\n", s)
 
 		s, err = runCmd(
 			schemaApplyCmd(),
