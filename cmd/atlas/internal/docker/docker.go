@@ -249,7 +249,7 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 	for {
 		select {
 		case <-time.After(100 * time.Millisecond):
-			client, err := sqlclient.Open(ctx, u)
+			client, err := sqlclient.Open(ctx, u.String())
 			if err != nil {
 				continue
 			}
@@ -275,14 +275,14 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 }
 
 // URL returns a URL to connect to the Container.
-func (c *Container) URL() (string, error) {
+func (c *Container) URL() (*url.URL, error) {
 	switch img := strings.SplitN(c.cfg.Image, ":", 2)[0]; img {
 	case "postgres":
-		return fmt.Sprintf("postgres://postgres:%s@localhost:%s/%s?sslmode=disable", c.Passphrase, c.Port, c.cfg.Database), nil
+		return url.Parse(fmt.Sprintf("postgres://postgres:%s@localhost:%s/%s?sslmode=disable", c.Passphrase, c.Port, c.cfg.Database))
 	case "mysql", "mariadb":
-		return fmt.Sprintf("%s://root:%s@localhost:%s/%s", img, c.Passphrase, c.Port, c.cfg.Database), nil
+		return url.Parse(fmt.Sprintf("%s://root:%s@localhost:%s/%s", img, c.Passphrase, c.Port, c.cfg.Database))
 	default:
-		return "", fmt.Errorf("unknown container image: %q", img)
+		return nil, fmt.Errorf("unknown container image: %q", img)
 	}
 }
 
@@ -318,10 +318,13 @@ func client(ctx context.Context, u *url.URL) (client *sqlclient.Client, err erro
 	if err != nil {
 		return nil, err
 	}
-	if u.Query().Has("v") || u.Query().Has("verbose") {
+	qr := u.Query()
+	if qr.Has("v") || qr.Has("verbose") {
 		if err := Out(os.Stdout)(cfg); err != nil {
 			return nil, err
 		}
+		qr.Del("v")
+		qr.Del("verbose")
 	}
 	c, err := cfg.Run(ctx)
 	if err != nil {
@@ -341,7 +344,11 @@ func client(ctx context.Context, u *url.URL) (client *sqlclient.Client, err erro
 	if err != nil {
 		return nil, err
 	}
-	if client, err = sqlclient.Open(ctx, u1); err != nil {
+	for k, v := range u1.Query() {
+		qr[k] = v
+	}
+	u1.RawQuery = qr.Encode()
+	if client, err = sqlclient.Open(ctx, u1.String()); err != nil {
 		return nil, err
 	}
 	client.AddClosers(c)
