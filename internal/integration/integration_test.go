@@ -519,7 +519,7 @@ func testCLISchemaApplyFromMigrationDir(t T) {
 			var buf strings.Builder
 			for _, c := range c {
 				buf.WriteString(c.Cmd)
-				buf.WriteString("\n")
+				buf.WriteString(";\n")
 			}
 			return buf.String()
 		}

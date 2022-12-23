@@ -895,16 +895,16 @@ table "posts" {
 
 		// Diff a database with different one.
 		require.Equal(t, `-- Add new schema named "other"
-CREATE SCHEMA "other"
+CREATE SCHEMA "other";
 -- Create "users" table
-CREATE TABLE "public"."users" ("id" integer NOT NULL)
+CREATE TABLE "public"."users" ("id" integer NOT NULL);
 -- Create "posts" table
-CREATE TABLE "other"."posts" ("id" integer NOT NULL)`, diff("test1?sslmode=disable", "test2?sslmode=disable"))
+CREATE TABLE "other"."posts" ("id" integer NOT NULL);`, diff("test1?sslmode=disable", "test2?sslmode=disable"))
 		// diff schemas
 		require.Equal(t, `-- Drop "posts" table
-DROP TABLE "posts"
+DROP TABLE "posts";
 -- Create "users" table
-CREATE TABLE "users" ("id" integer NOT NULL)`, diff("test2?sslmode=disable&search_path=other", "test2?sslmode=disable&search_path=public"))
+CREATE TABLE "users" ("id" integer NOT NULL);`, diff("test2?sslmode=disable&search_path=other", "test2?sslmode=disable&search_path=public"))
 		// diff between schema and database
 		out, err = exec.Command(
 			bin, "schema", "diff",
@@ -912,7 +912,7 @@ CREATE TABLE "users" ("id" integer NOT NULL)`, diff("test2?sslmode=disable&searc
 			"--to", fmt.Sprintf("postgres://postgres:pass@localhost:%d/test2?sslmode=disable&search_path=public", t.port),
 		).CombinedOutput()
 		require.Error(t, err, string(out))
-		require.Equal(t, "Error: cannot diff schema \"\" with a database connection\n", string(out))
+		require.Equal(t, "Error: cannot diff a schema with a database connection: \"\" <> \"public\"\n", string(out))
 	})
 }
 
