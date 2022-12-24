@@ -122,7 +122,7 @@ directory state to the desired schema. The desired state can be another connecte
 ```
 #### Flags
 ```
-  -u, --to strings                [driver://username:password@address/dbname?param=value] select a resource using the URL format
+      --to strings                [driver://username:password@address/dbname?param=value] select a resource using the URL format
       --dev-url string            [driver://username:password@address/dbname?param=value] select a dev database using the URL format
       --dir string                select migration directory using URL format (default "file://migrations")
       --dir-format string         select migration file format (default "atlas")
