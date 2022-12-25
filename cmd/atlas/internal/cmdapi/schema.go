@@ -181,10 +181,9 @@ func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) erro
 	// Returning at this stage should
 	// not trigger the help message.
 	cmd.SilenceUsage = true
-	if len(changes) == 0 {
-		return format.Execute(cmd.OutOrStderr(), &cmdlog.SchemaApply{})
-	}
 	switch {
+	case len(changes) == 0:
+		return format.Execute(cmd.OutOrStderr(), &cmdlog.SchemaApply{})
 	case flags.logFormat != "" && flags.autoApprove:
 		var (
 			applied int
@@ -214,9 +213,7 @@ func schemaApplyRun(cmd *cobra.Command, _ []string, flags schemaApplyFlags) erro
 			return err
 		}
 		if !flags.dryRun && (flags.autoApprove || promptUser()) {
-			if err := client.ApplyChanges(ctx, changes); err != nil {
-				return err
-			}
+			return client.ApplyChanges(ctx, changes)
 		}
 		return nil
 	}
@@ -627,7 +624,10 @@ func promptUser() bool {
 		Items: []string{answerApply, answerAbort},
 	}
 	_, result, err := prompt.Run()
-	cobra.CheckErr(err)
+	if err != nil && err != promptui.ErrInterrupt {
+		// Fail in case of unexpected errors.
+		cobra.CheckErr(err)
+	}
 	return result == answerApply
 }
 
