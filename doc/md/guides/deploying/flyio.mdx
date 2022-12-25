@@ -7,33 +7,33 @@ title: Using Atlas with Fly.io
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-[Fly.io](https://fly.io/) is a platform for running full stack apps and databases close to the users. Under the hood Fly
+[Fly.io](https://fly.io/) is a platform for running full stack apps and databases close to the users. Under the hood, Fly
 converts Docker images (OCI images) to [Firecracker microVMs](https://firecracker-microvm.github.io/), allowing
-the deployment of the app in different regions and routing the requests based on the user latency.
+the deployment of the app in different regions and routing requests based on the user latency.
 
 Apps on Fly can be [deployed in one of three ways](https://fly.io/docs/reference/builders/), using a Dockerfile, a
 Docker image or a buildpack.
 
-In this guide, we will demonstrate how Atlas can be integrated with Fly.io deploy process using a Dockerfile.
-We will assume that you have a project already created on Fly and are able to deploy it.
+In this guide, we will demonstrate how Atlas can be integrated with the Fly.io deployment process by using a Dockerfile.
+We will assume that you have already have a Fly project and are able to deploy it.
 
 ## Release command
 
-Fly has support for running a command during a new release, the command is executed only during the release phase and
+Fly supports running a command during a new release. The command is only executed during the release phase and
 if it exits with a status other than zero, Fly marks the deployment as failed. The release command is the
 [recommended way](https://fly.io/docs/reference/configuration/#the-deploy-section) to run database migrations on Fly.
 
 :::note
-The release command only allows executing commands that are present in the application image, that means that we
-have to embed the Atlas binary with our application, [we usually suggest separated step for handling the
+The release command only allows executing commands that are present in the application image, meaning that we
+have to embed the Atlas binary with our application. [We usually suggest a separate step for handling the
 migration](https://atlasgo.io/guides/deploying/intro#running-migrations-as-part-of-deployment-pipelines),
 but since this is a requirement from Fly, we don't have an option.
 :::
 
 ## Defining the Dockerfile
 
-Using Docker multi-stage builds, we can create an easy-to-use Dockerfile, in this guide we will use a Go app as example,
-suppose our project structure is similar to the one below:
+Using Docker multi-stage builds, we can create an easy-to-use Dockerfile. In this guide we will use a Go app as an example.
+Suppose our project structure is similar to the one below:
 
 ```text
 .
@@ -69,20 +69,20 @@ COPY --from=build /build/app /app
 CMD ["/app"]
 ```
 
-If you are using a different programming language, most of the time you will have to only change the app stage.
+If you are using a different programming language, most of the time you will only have to change the app stage.
 If your application requires a runtime you may have to change the final stage as well.
 
 :::info
-It's important for the final image to have bash on it, this is mostly
-a [behavior on Fly side](https://community.fly.io/t/using-env-variables-in-release-command/7186),
+It's important for the final image to have bash on it. This is mostly
+a [behavior on Fly's side](https://community.fly.io/t/using-env-variables-in-release-command/7186),
 where expanding environment variables don't seem to work correctly on the release command.
 :::
 
-## Setting the database url secret
+## Setting the database URL secret
 
-While running the migration, Atlas needs to know the URL for the database, Fly has support for
+While running the migration, Atlas needs to know the URL for the database. Fly has support for
 defining [secrets](https://fly.io/docs/reference/secrets/), sensible values that are available during runtime as
-environment variables. We can define the database url using the command below:
+environment variables. We can define the database URL using the command below:
 
 ```
 flyctl secrets set DATABASE_URL="postgres://postgres:pass@0.0.0.0:5432/database?sslmode=disable"
@@ -93,7 +93,7 @@ secret [will be created automatically for you](https://fly.io/docs/postgres/mana
 
 ## Configuring `fly.toml`
 
-To tell Fly to execute the release command during a deployment, we only have to add a `deploy` block with the release
+To tell Fly to execute the release command during a deployment, we need to add a `deploy` block with the release
 command provided:
 
 ```toml title="fly.toml"
@@ -102,12 +102,12 @@ release_command = "bash -c '/atlas migrate apply --url $DATABASE_URL'"
 ```
 
 With the release command defined, during new deployments a new temporary VM will be created and will execute the release
-command, if the commands succeed the deployment will continue, in case of failures the deployment will be aborted.
+command. If the commands succeed the deployment will continue, in case of failures the deployment will be aborted.
 
 ## Deploying the app
 
-We can deploy the app with the command `flyctl deploy`, Fly will use a Docker installation (or a remote builder) to
-build the Docker image and push to Fly registry.
+We can deploy the app with the command `flyctl deploy`. Fly will use a Docker installation (or a remote builder) to
+build the Docker image and push to the Fly registry.
 
 The output of the release command will be presented to you on your terminal, but if you missed it, you can use the
 Monitoring page of your app or the `fly logs` command to see the previous logs entries.
@@ -163,5 +163,5 @@ Error release command failed, deployment aborted
 ## Improving the deployment pipeline
 
 You can always improve the deployment pipeline by leveraging [Atlas](https://atlasgo.io/integrations/github-actions)
-and [Fly](https://fly.io/docs/app-guides/continuous-deployment-with-github-actions/) Github action, for even more
-insight of the migrations and database schema we recommend giving a try to [Ariga Cloud](https://atlasgo.io/cloud/getting-started).
+and [Fly](https://fly.io/docs/app-guides/continuous-deployment-with-github-actions/) Github actions. For additional
+insights on the database schema and migrations, we recommend giving [Ariga Cloud](https://atlasgo.io/cloud/getting-started) a try.
