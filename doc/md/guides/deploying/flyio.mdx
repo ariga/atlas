@@ -50,7 +50,7 @@ Our objective is to build an image that contains the Atlas binary, the database 
 our Go app the Dockerfile can be defined as:
 
 ```dockerfile title="Dockerfile"
-FROM arigaio/atlas:latest as atlas
+FROM arigaio/atlas:latest-alpine as atlas
 
 # app stage
 FROM golang:1.19.2-bullseye as build
@@ -58,10 +58,10 @@ WORKDIR /build
 ADD go.mod /build/go.mod
 ADD go.sum /build/go.sum
 ADD main.go /build/main.go
-RUN go build -o app main.go
+RUN CGO_ENABLED=0 go build -o app main.go
 
 # final stage
-FROM ubuntu
+FROM alpine
 COPY --from=atlas /atlas /atlas
 COPY migrations /migrations
 
