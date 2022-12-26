@@ -31,7 +31,8 @@ but since this is a requirement from Fly, we don't have an option.
 
 ## Defining the Dockerfile
 
-Using Docker multi-stage builds, we can create an easy-to-use Dockerfile. In this guide we will use a Go app as an example.
+Using Docker multi-stage builds, we can compose lightweight images from multiple steps that use heavier base images. In this guide, we will use a Go app as an example so we can use a step for building the target binary and a separate one for producing the runtime container, that does not need to include the build tools at all.
+
 Suppose our project structure is similar to the one below:
 
 ```text
@@ -74,13 +75,13 @@ If your application requires a runtime you may have to change the final stage as
 :::info
 It's important for the final image to have a shell that is capable of environment variable interpolation, like `sh` or `bash`. This is mostly
 a [behavior on Fly's side](https://community.fly.io/t/using-env-variables-in-release-command/7186),
-where expanding environment variables don't seem to work correctly on the release command.
+where expanding environment variables don't currently work correctly on the release command.
 :::
 
 ## Setting the database URL secret
 
 While running the migration, Atlas needs to know the URL for the database. Fly has support for
-defining [secrets](https://fly.io/docs/reference/secrets/), sensible values that are available during runtime as
+defining [secrets](https://fly.io/docs/reference/secrets/), sensitive values that are available during runtime as
 environment variables. We can define the database URL using the command below:
 
 ```
