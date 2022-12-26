@@ -8,14 +8,14 @@ import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
 [Fly.io](https://fly.io/) is a platform for running full stack apps and databases close to the users. Under the hood, Fly
-converts Docker images (OCI images) to [Firecracker microVMs](https://firecracker-microvm.github.io/), allowing
-the deployment of the app in different regions and routing requests based on the user latency.
+converts Docker images (OCI images) to [Firecracker microVMs](https://firecracker-microvm.github.io/). Fly allows
+the deployment of the app in different regions and route the requests based on the [app load and user closeness](https://fly.io/docs/reference/load-balancing/).
 
 Apps on Fly can be [deployed in one of three ways](https://fly.io/docs/reference/builders/): using a Dockerfile, a
-Docker image or a buildpack.
+Docker image or a [buildpack](https://buildpacks.io/).
 
 In this guide, we will demonstrate how Atlas can be used to perform database schema migrations for Fly.io deployments process using a Dockerfile.
-We will assume that you have already have a Fly project and are able to deploy it.
+We will assume that you have already have a Fly project and are able to deploy it, if you are new to Fly, [check the getting started guide](https://fly.io/docs/speedrun/).
 
 ## Release command
 
@@ -72,7 +72,7 @@ If you are using a different programming language, most of the time you will onl
 If your application requires a runtime you may have to change the final stage as well.
 
 :::info
-It's important for the final image to have bash on it. This is mostly
+It's important for the final image to have a shell that is capable of environment variable interpolation, like `sh` or `bash`. This is mostly
 a [behavior on Fly's side](https://community.fly.io/t/using-env-variables-in-release-command/7186),
 where expanding environment variables don't seem to work correctly on the release command.
 :::
@@ -97,7 +97,7 @@ command provided:
 
 ```toml title="fly.toml"
 [deploy]
-release_command = "bash -c '/atlas migrate apply --url $DATABASE_URL'"
+release_command = "sh -c '/atlas migrate apply --url $DATABASE_URL'"
 ```
 
 With the release command defined, during new deployments a new temporary VM will be created and will execute the release
