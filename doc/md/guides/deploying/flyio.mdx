@@ -11,16 +11,15 @@ import TabItem from '@theme/TabItem';
 converts Docker images (OCI images) to [Firecracker microVMs](https://firecracker-microvm.github.io/), allowing
 the deployment of the app in different regions and routing requests based on the user latency.
 
-Apps on Fly can be [deployed in one of three ways](https://fly.io/docs/reference/builders/), using a Dockerfile, a
+Apps on Fly can be [deployed in one of three ways](https://fly.io/docs/reference/builders/): using a Dockerfile, a
 Docker image or a buildpack.
 
-In this guide, we will demonstrate how Atlas can be integrated with the Fly.io deployment process by using a Dockerfile.
+In this guide, we will demonstrate how Atlas can be used to perform database schema migrations for Fly.io deployments process using a Dockerfile.
 We will assume that you have already have a Fly project and are able to deploy it.
 
 ## Release command
 
-Fly supports running a command during a new release. The command is only executed during the release phase and
-if it exits with a status other than zero, Fly marks the deployment as failed. The release command is the
+When you configure your Fly project, you can define a _release command_. This command is executed during the release phase, before the new version of your application is deployed.  If it fails, i.e exits with a status other than zero, Fly marks the deployment as failed mas well. The release command is the
 [recommended way](https://fly.io/docs/reference/configuration/#the-deploy-section) to run database migrations on Fly.
 
 :::note
