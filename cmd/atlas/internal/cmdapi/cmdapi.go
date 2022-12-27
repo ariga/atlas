@@ -284,7 +284,7 @@ func addFlagExclude(set *pflag.FlagSet, target *[]string) {
 }
 
 func addFlagLog(set *pflag.FlagSet, target *string) {
-	set.StringVar(target, flagLog, "", "go template to use to format logs")
+	set.StringVar(target, flagLog, "", "Go template to use to format the output")
 }
 
 func addFlagRevisionSchema(set *pflag.FlagSet, target *string) {
