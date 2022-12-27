@@ -123,7 +123,7 @@ module.exports = {
                 },
                 {
                     type: 'doc',
-                    id: 'guides/deploying/fly.io',
+                    id: 'guides/deploying/fly-io',
                     label: 'Fly.io'
                 }
             ]
