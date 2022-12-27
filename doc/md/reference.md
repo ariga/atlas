@@ -122,7 +122,7 @@ directory state to the desired schema. The desired state can be another connecte
 ```
 #### Flags
 ```
-      --to strings                [driver://username:password@address/dbname?param=value] select a resource using the URL format
+      --to strings                [driver://username:password@address/dbname?param=value] select a desired state using the URL format
       --dev-url string            [driver://username:password@address/dbname?param=value] select a dev database using the URL format
       --dir string                select migration directory using URL format (default "file://migrations")
       --dir-format string         select migration file format (default "atlas")
@@ -388,9 +388,8 @@ migration.
 ```
 #### Flags
 ```
-  -f, --file strings      [paths...] file or directory containing the HCL files
   -u, --url string        [driver://username:password@address/dbname?param=value] select a resource using the URL format
-      --to strings        [driver://username:password@address/dbname?param=value] select a resource using the URL format
+      --to strings        [driver://username:password@address/dbname?param=value] select a desired state using the URL format
       --exclude strings   list of glob patterns used to filter resources from applying
   -s, --schema strings    set schema names
       --dev-url string    [driver://username:password@address/dbname?param=value] select a dev database using the URL format
@@ -453,7 +452,7 @@ The database states can be read from a connected database, an HCL project or a m
 #### Flags
 ```
   -f, --from strings      [driver://username:password@address/dbname?param=value] select a resource using the URL format
-      --to strings        [driver://username:password@address/dbname?param=value] select a resource using the URL format
+      --to strings        [driver://username:password@address/dbname?param=value] select a desired state using the URL format
       --dev-url string    [driver://username:password@address/dbname?param=value] select a dev database using the URL format
   -s, --schema strings    set schema names
       --exclude strings   list of glob patterns used to filter resources from applying
