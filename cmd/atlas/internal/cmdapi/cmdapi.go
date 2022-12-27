@@ -335,6 +335,10 @@ func addFlagURLs(set *pflag.FlagSet, target *[]string, args ...string) {
 	)
 }
 
+func addFlagToURLs(set *pflag.FlagSet, target *[]string) {
+	set.StringSliceVarP(target, flagTo, "", nil, "[driver://username:password@address/dbname?param=value] select a desired state using the URL format")
+}
+
 func dsn2url(cmd *cobra.Command) error {
 	dsnF, urlF := cmd.Flag(flagDSN), cmd.Flag(flagURL)
 	switch {

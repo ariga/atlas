@@ -314,7 +314,7 @@ directory state to the desired schema. The desired state can be another connecte
 		}
 	)
 	cmd.Flags().SortFlags = false
-	addFlagURLs(cmd.Flags(), &flags.desiredURLs, flagTo, "")
+	addFlagToURLs(cmd.Flags(), &flags.desiredURLs)
 	addFlagDevURL(cmd.Flags(), &flags.devURL)
 	addFlagDirURL(cmd.Flags(), &flags.dirURL)
 	addFlagDirFormat(cmd.Flags(), &flags.dirFormat)

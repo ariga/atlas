@@ -101,9 +101,8 @@ migration.`,
 		}
 	)
 	cmd.Flags().SortFlags = false
-	cmd.Flags().StringSliceVarP(&flags.paths, flagFile, "f", nil, "[paths...] file or directory containing the HCL files")
 	addFlagURL(cmd.Flags(), &flags.url)
-	addFlagURLs(cmd.Flags(), &flags.toURLs, flagTo, "")
+	addFlagToURLs(cmd.Flags(), &flags.toURLs)
 	addFlagExclude(cmd.Flags(), &flags.exclude)
 	addFlagSchemas(cmd.Flags(), &flags.schemas)
 	addFlagDevURL(cmd.Flags(), &flags.devURL)
@@ -111,6 +110,9 @@ migration.`,
 	addFlagAutoApprove(cmd.Flags(), &flags.autoApprove)
 	cmd.Flags().StringVarP(&flags.logFormat, flagLog, "", "", "custom logging using a Go template")
 	addFlagDSN(cmd.Flags(), &flags.dsn)
+	// Hidden support for the deprecated -f flag.
+	cmd.Flags().StringSliceVarP(&flags.paths, flagFile, "f", nil, "[paths...] file or directory containing HCL or SQL files")
+	cobra.CheckErr(cmd.Flags().MarkHidden(flagFile))
 	cmd.MarkFlagsMutuallyExclusive(flagFile, flagTo)
 	return cmd
 }
@@ -332,7 +334,7 @@ The database states can be read from a connected database, an HCL project or a m
 	)
 	cmd.Flags().SortFlags = false
 	addFlagURLs(cmd.Flags(), &flags.fromURL, flagFrom, flagFromShort)
-	addFlagURLs(cmd.Flags(), &flags.toURL, flagTo, "")
+	addFlagToURLs(cmd.Flags(), &flags.toURL)
 	addFlagDevURL(cmd.Flags(), &flags.devURL)
 	addFlagSchemas(cmd.Flags(), &flags.schemas)
 	addFlagExclude(cmd.Flags(), &flags.exclude)
