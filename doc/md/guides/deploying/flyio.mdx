@@ -26,7 +26,7 @@ When you configure your Fly project, you can define a _release command_. This co
 The release command only allows executing commands that are present in the application image, meaning that we
 have to embed the Atlas binary with our application. [We usually suggest a separate step for handling the
 migration](https://atlasgo.io/guides/deploying/intro#running-migrations-as-part-of-deployment-pipelines),
-but since this is a Fly currently does not support providing a separate image for the release phase, we recommend this solution.
+but since Fly currently does not support providing a separate image for the release phase, we recommend this solution.
 :::
 
 ## Defining the Dockerfile
