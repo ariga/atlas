@@ -61,7 +61,7 @@ that can automatically analyze the schema and identify potential issues or oppor
 To get the JSON representation of your database schema, you can use the `atlas schema inspect` command with a
 custom logging format:
 
-```text
+```shell
 atlas schema inspect -u '<url>' --log '{{ json . }}'
 ```
 
@@ -95,7 +95,7 @@ This will output the schema as a JSON document:
 Once your schema is represented as a JSON document, you can use `jq` to analyze it. For example, to get a list of all
 the tables that contain a foreign key, run:
 
-```text
+```shell
 atlas schema inspect -u '<url>' --log '{{ json . }}' | jq '.schemas[].tables[] | select(.foreign_keys | length > 0) | .name'
 ```
 

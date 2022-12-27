@@ -86,7 +86,7 @@ If run with the "--dry-run" flag, atlas will not execute any SQL.
 ```
   -u, --url string                [driver://username:password@address/dbname?param=value] select a resource using the URL format
       --dir string                select migration directory using URL format (default "file://migrations")
-      --log string                go template to use to format logs
+      --log string                Go template to use to format the output
       --revisions-schema string   name of the schema the revisions table resides in
       --dry-run                   print SQL without executing it
       --lock-timeout duration     set how long to wait for the database lock (default 10s)
@@ -291,7 +291,7 @@ atlas migrate status [flags]
 #### Flags
 ```
   -u, --url string                [driver://username:password@address/dbname?param=value] select a resource using the URL format
-      --log string                go template to use to format logs
+      --log string                Go template to use to format the output
       --dir string                select migration directory using URL format (default "file://migrations")
       --dir-format string         select migration file format (default "atlas")
       --revisions-schema string   name of the schema the revisions table resides in
@@ -517,7 +517,7 @@ flag.
   -u, --url string        [driver://username:password@address/dbname?param=value] select a resource using the URL format
   -s, --schema strings    set schema names
       --exclude strings   list of glob patterns used to filter resources from applying
-      --log string        go template to use to format logs
+      --log string        Go template to use to format the output
 
 ```
 

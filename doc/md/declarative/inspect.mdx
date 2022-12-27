@@ -17,7 +17,7 @@ With automatic schema inspection, users simply provide Atlas with a connection s
 to their target database and Atlas prints out a schema definition file in the Atlas
 language that they can use as the starting point for working with this database.
 
-### Flags
+## Flags
 
 When using `schema inspect` to inspect an existing database, users may supply multiple
 parameters:
@@ -25,10 +25,13 @@ parameters:
 * `--schema` (optional, may be supplied multiple times) - schemas to inspect within 
  the target database.
 * `--exclude` (optional, may be supplied multiple times) - filter out resources matching the given glob pattern.
+* `--log` (optional) - [Go template](https://pkg.go.dev/text/template) to use to format the output.
 
-### Examples
+## Examples
 
-#### Entire Database
+### Inspect a database
+
+The following commands demonstrate how to inspect the entire database, including all its schemas:
 
 <Tabs
 defaultValue="mysql"
@@ -40,7 +43,7 @@ values={[
 ]}>
 <TabItem value="mysql">
 
-```
+```shell
 atlas schema inspect -u "mysql://localhost"
 
 atlas schema inspect -u "mysql://user:pass@localhost:3306"
@@ -49,7 +52,7 @@ atlas schema inspect -u "mysql://user:pass@localhost:3306"
 </TabItem>
 <TabItem value="maria">
 
-```
+```shell
 atlas schema inspect -u "maria://localhost"
 
 atlas schema inspect -u "maria://user:pass@localhost:3306"
@@ -58,7 +61,7 @@ atlas schema inspect -u "maria://user:pass@localhost:3306"
 </TabItem>
 <TabItem value="postgres">
 
-```
+```shell
 atlas schema inspect -u "postgres://localhost:5432/database"
 
 atlas schema inspect -u "postgres://postgres:pass@0.0.0.0:5432/database?sslmode=disable"
@@ -67,7 +70,7 @@ atlas schema inspect -u "postgres://postgres:pass@0.0.0.0:5432/database?sslmode=
 </TabItem>
 <TabItem value="sqlite">
 
-```
+```shell
 atlas schema inspect -u "sqlite://file.db"
 
 atlas schema inspect -u "sqlite://file?cache=shared&mode=memory"
@@ -76,7 +79,9 @@ atlas schema inspect -u "sqlite://file?cache=shared&mode=memory"
 </TabItem>
 </Tabs>
 
-#### Single Schema
+### Inspect a schema
+
+The following commands show how to inspect a single schema:
 
 <Tabs
 defaultValue="mysql"
@@ -87,7 +92,7 @@ values={[
 ]}>
 <TabItem value="mysql">
 
-```
+```shell
 atlas schema inspect -u "mysql://localhost/schema"
 
 atlas schema inspect -u "mysql://user:pass@localhost:3306/schema"
@@ -96,7 +101,7 @@ atlas schema inspect -u "mysql://user:pass@localhost:3306/schema"
 </TabItem>
 <TabItem value="maria">
 
-```
+```shell
 atlas schema inspect -u "maria://localhost/schema"
 
 atlas schema inspect -u "maria://user:pass@localhost:3306/schema"
@@ -105,16 +110,18 @@ atlas schema inspect -u "maria://user:pass@localhost:3306/schema"
 </TabItem>
 <TabItem value="postgres">
 
-```
-atlas schema inspect -u "postgres://localhost:5432/database?search_path=schema"
+```shell
+atlas schema inspect -u "postgres://localhost:5432/database?search_path=public"
 
-atlas schema inspect -u "postgres://postgres:pass@0.0.0.0:5432/database?sslmode=disable&sslmode=disable"
+atlas schema inspect -u "postgres://postgres:pass@0.0.0.0:5432/database?search_path=public&sslmode=disable"
 ```
 
 </TabItem>
 </Tabs>
 
-#### Multiple Schemas
+### Inspect multiple schemas
+
+The following commands show how to inspect multiple schemas:
 
 <Tabs
 defaultValue="mysql"
@@ -125,7 +132,7 @@ values={[
 ]}>
 <TabItem value="mysql">
 
-```
+```shell
 atlas schema inspect -u "mysql://localhost" --schema schema1 --schema schema2
 
 atlas schema inspect -u "mysql://user:pass@localhost:3306" -s schema1,schema2
@@ -134,7 +141,7 @@ atlas schema inspect -u "mysql://user:pass@localhost:3306" -s schema1,schema2
 </TabItem>
 <TabItem value="maria">
 
-```
+```shell
 atlas schema inspect -u "maria://localhost" --schema schema1 --schema schema2
 
 atlas schema inspect -u "maria://user:pass@localhost:3306" -s schema1,schema2
@@ -143,7 +150,7 @@ atlas schema inspect -u "maria://user:pass@localhost:3306" -s schema1,schema2
 </TabItem>
 <TabItem value="postgres">
 
-```
+```shell
 atlas schema inspect -u "postgres://localhost:5432/database" --schema schema1 --schema schema2
 
 atlas schema inspect -u "postgres://postgres:pass@0.0.0.0:5432/database?sslmode=disable" -s schema1,schema2
@@ -152,30 +159,61 @@ atlas schema inspect -u "postgres://postgres:pass@0.0.0.0:5432/database?sslmode=
 </TabItem>
 </Tabs>
 
-#### Exclude Schemas
+### Exclude schemas
 
-```
+The following commands show how to exclude schemas that match a glob pattern from the inspection:
+
+```shell
 atlas schema inspect -u "mysql://localhost" --exclude "internal"
 
 atlas schema inspect -u "mysql://localhost" --exclude "schema_*"
 ```
 
-#### Exclude Tables
+### Exclude Tables
 
-```
+The following commands show how to exclude tables that match a glob pattern from the inspection:
+
+```shell
 atlas schema inspect -u "mysql://localhost" --exclude "*.prefix_*"
 
 atlas schema inspect -u "mysql://localhost" --exclude "schema.table"
 ```
 
-#### Exclude Table Resources
+### Exclude Table Resources
 
-```
+The following commands show how to exclude columns, indexes or foreign-keys that match a glob pattern from the inspection:
+
+```shell
 atlas schema inspect -u "mysql://localhost" --exclude "*.*.prefix_*"
 
 atlas schema inspect -u "mysql://localhost" --exclude "public.*.c1"
 ```
 
-### Reference
+### SQL Format
+
+By default, the output of `schema inspect` is in the Atlas DDL. However, you can use SQL to describe the desired schema
+in all commands that are supported by Atlas DDL. To output the schema in SQL format, use the `--log` flag as follows:
+
+```shell
+atlas schema inspect -u "mysql://localhost" --log "{{ sql . }}"
+```
+
+### JSON Format
+
+Atlas can output a JSON document that represents the database schema. This representation allows users to use tools
+like `jq` to analyze the schema programmatically.
+
+```shell
+atlas schema inspect -u '<url>' --log '{{ json . }}'
+```
+
+### Visualize schemas
+
+Ariga's Explore tool, available in a web browser, can generate an Entity-Relationship Diagram (ERD) for the database
+schema. Visit [gh.ariga.cloud/explore](https://gh.ariga.cloud/explore) and follow the instructions.
+
+<p style={{textAlign: "center"}}><a href="https://gh.ariga.cloud/explore/0083bc5b"><img src="https://atlasgo.io/uploads/images/atlas-erd-screenshot.jpg" alt="Schema ERD"/></a></p>
+
+## Reference
 
 [CLI Command Reference](/cli-reference#atlas-schema-inspect)
