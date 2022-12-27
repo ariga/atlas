@@ -18,6 +18,8 @@ Welcome to the Atlas Guides.
 
 [Deploying schema migrations to Kubernetes with Init Containers](deploying/init.md)
 
+[Using Atlas with Fly.io](deploying/flyio.mdx)
+
 ## Databases
 
 ### MySQL
