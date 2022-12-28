@@ -11,9 +11,22 @@ With Atlas, users do not need to plan database schema changes themselves. Instea
 of figuring out the correct SQL statements to get their database to the desired state,
 Atlas supports a kind of workflow that we call _declarative schema migration_.
 With declarative schema migrations the user provides a connection string to the target database
-and the desired schema and Atlas does all of the planning.
+and the desired schema, while Atlas does the planning.
 
 [Read more about declarative workflows](/concepts/declarative-vs-versioned)
+
+## Flags
+
+The `schema apply` command generates a migration plan and applies it to the database to bring it to the desired state.
+A desired state can be specified using a database URL, an HCL or SQL schema, or a migration directory.
+
+* `--url` (`-u` accepted as well) - the [URL](/concepts/url) of the database to be inspected.
+* `--to` - a list of [URLs](/concepts/url) to the desired state: can be a database URL, an HCL or
+  SQL schema, or a migration directory.
+* `--dev-url` - a [URL](/concepts/url) to the [_Dev-Database_](../concepts/dev.md).
+* `--schema` (optional, may be supplied multiple times) - schemas to inspect within the target database.
+* `--exclude` (optional, may be supplied multiple times) - filter out resources matching the given glob pattern.
+* `--log` (optional) - [Go template](https://pkg.go.dev/text/template) to use to format the output.
 
 ### Auto-approval
 
@@ -39,11 +52,225 @@ This means in certain situations it may appear to Atlas as if some diff exists
 between the desired and inspected schemas, whereas in reality there is none.
 
 To overcome these situations, users may use the `--dev-url` flag to provide
-Atlas with a connection string to a _Dev-Database_.
+Atlas with a connection string to a [_Dev-Database_](../concepts/dev.md).
 This database is used to normalize the schema prior to planning migrations and
 for simulating changes to ensure their applicability before execution.
 
-[Read more about Dev-Databases](../concepts/dev.md)
+## Examples
+
+### HCL schema
+
+The following example demonstrates how to use [Atlas DDL](../atlas-schema/sql-resources) (HCL) as the desired state and
+update the database schema to match it:
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+]}>
+<TabItem value="mysql">
+
+```shell
+atlas schema apply \
+  --url "mysql://root:pass@localhost:3306/example" \
+  --to "file://schema.hcl" \
+  --dev-url "docker://mysql/8/example"
+```
+
+</TabItem>
+<TabItem value="maria">
+
+```shell
+atlas schema apply \
+  --url "maria://root:pass@:3306/example" \
+  --to "file://schema.hcl" \
+  --dev-url "docker://maria/latest/example"
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```shell
+atlas schema apply \
+  --url "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable" \
+  --to "file://schema.hcl" \
+  --dev-url "docker://postgres/15"
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```shell
+atlas schema apply \
+  --url "sqlite://file.db" \
+  --to "file://schema.hcl" \
+  --dev-url "sqlite://file?mode=memory"
+```
+
+</TabItem>
+</Tabs>
+
+
+### SQL schema
+
+The following example demonstrates how to use an SQL schema file as the desired state and update the database schema to
+match it:
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+]}>
+<TabItem value="mysql">
+
+```shell
+atlas schema apply \
+  --url "mysql://root:pass@localhost:3306/example" \
+  --to "file://schema.sql" \
+  --dev-url "docker://mysql/8/example"
+```
+
+</TabItem>
+<TabItem value="maria">
+
+```shell
+atlas schema apply \
+  --url "maria://root:pass@:3306/example" \
+  --to "file://schema.sql" \
+  --dev-url "docker://maria/latest/example"
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```shell
+atlas schema apply \
+  --url "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable" \
+  --to "file://schema.sql" \
+  --dev-url "docker://postgres/15"
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```shell
+atlas schema apply \
+  --url "sqlite://file.db" \
+  --to "file://schema.sql" \
+  --dev-url "sqlite://file?mode=memory"
+```
+
+</TabItem>
+</Tabs>
+
+### Migration directory
+
+The following example demonstrates how to use the migration directory as the desired state and update the database
+schema to match it. The URL for the migration directory can contain two optional query parameters:
+* `format` - migration directory format: atlas (default), golang-migrate, goose, dbmate, flyway, liquibase.
+* `version` - until which version of migration files to read. By default, all migrations are read.
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+]}>
+<TabItem value="mysql">
+
+```shell
+atlas schema apply \
+  --url "mysql://root:pass@localhost:3306/example" \
+  --to "file://migrations" \
+  --dev-url "docker://mysql/8/example"
+```
+
+</TabItem>
+<TabItem value="maria">
+
+```shell
+atlas schema apply \
+  --url "maria://root:pass@:3306/example" \
+  --to "file://migrations" \
+  --dev-url "docker://maria/latest/example"
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```shell
+atlas schema apply \
+  --url "postgres://postgres:pass@localhost:5432/database?search_path=public&sslmode=disable" \
+  --to "file://migrations" \
+  --dev-url "docker://postgres/15"
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```shell
+atlas schema apply \
+  --url "sqlite://file.db" \
+  --to "file://migrations" \
+  --dev-url "sqlite://file?mode=memory"
+```
+
+</TabItem>
+</Tabs>
+
+### Down migrations
+
+Migrations that "roll back" or reverse changes made to the database schema are called "down migrations". These are often
+used during local development to undo the changes made by corresponding "up migrations". Atlas follows a linear
+migration history model, in which all migration files are "roll-forward". However, it is still possible to clean or
+revert schema changes made by specific migration files using the `schema clean` or `schema apply` commands. For example:
+
+1\. If a migration file(s) was already deleted, you can use the [command above](#migration-directory) to migrate the
+database state to the state defined by the migration directory. For example:
+
+```shell
+atlas schema apply \
+  --url "mysql://root:pass@localhost:3306/example" \
+  --to "file://migrations" \
+  --dev-url "docker://mysql/8/example"
+```
+
+2\. If the file is still present, the `version` parameter can be used to specify that the database should be migrated
+to the state defined in a specific version of the migration directory. For example:
+
+```shell
+atlas schema apply \
+  --url "mysql://root:pass@localhost:3306/example" \
+  --to "file://migrations?version=20220925094437" \
+  --dev-url "docker://mysql/8/example"
+```
+
+```shell title="tree ." {6}
+.
+└── migrations
+    ├── 20220925092817_initial.sql
+    ├── 20220925094021_second.sql
+    ├── 20220925094437_third.sql
+    ├── 20220925094438_fourth.sql # changes made by this file are reverted.
+    └── atlas.sum
+```
+
+3\. In order to clean the entire schema, use the `schema clean` command, and then use
+[`atlas migrate apply`](../versioned/apply) to replay the migration files. For example:
+
+```shell
+atlas schema clean -u "mysql://root:pass@:3306/example"
+atlas migrate apply -u "mysql://root:pass@:3306/example"
+```
+
 
 ### Multi-Tenant environments
 
@@ -99,6 +326,6 @@ table "users" {
 [Read more](../atlas-schema/projects.mdx#multi-environment-example) about how to define declarative workflows using
 project files in multi-tenant environments.
 
-### Reference
+## Reference
 
 [CLI Command Reference](/cli-reference#atlas-schema-apply)
