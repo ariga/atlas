@@ -474,7 +474,7 @@ func hclStateReader(ctx context.Context, config *stateReaderConfig, urls []*url.
 	case config.client != nil:
 		client = config.client
 	default:
-		return nil, errors.New("no database connection available")
+		return nil, errors.New("--dev-url cannot be empty")
 	}
 	paths := make([]string, len(urls))
 	for i, u := range urls {

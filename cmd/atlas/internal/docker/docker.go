@@ -200,10 +200,9 @@ func (c *Config) Run(ctx context.Context) (*Container, error) {
 		return nil, fmt.Errorf("getting open port: %w", err)
 	}
 	// Make sure the image is up-to-date.
-	cmd := exec.CommandContext(ctx, "docker", "pull", c.Image) //nolint:gosec
-	cmd.Stdout = c.Out
-	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("pulling image: %w", err)
+	out, err := exec.CommandContext(ctx, "docker", "pull", c.Image).CombinedOutput() //nolint:gosec
+	if err != nil {
+		return nil, fmt.Errorf("pulling image: %w: %q", err, out)
 	}
 	// Run the container.
 	args := []string{"docker", "run", "--rm", "--detach"}
@@ -211,15 +210,15 @@ func (c *Config) Run(ctx context.Context) (*Container, error) {
 		args = append(args, "-e", e)
 	}
 	args = append(args, "-p", fmt.Sprintf("%s:%s", p, c.Port), c.Image)
-	cmd = exec.CommandContext(ctx, args[0], args[1:]...) //nolint:gosec
-	out := &bytes.Buffer{}
-	cmd.Stdout = io.MultiWriter(c.Out, out)
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...) //nolint:gosec
+	buf := &bytes.Buffer{}
+	cmd.Stdout = io.MultiWriter(c.Out, buf)
 	if err := cmd.Run(); err != nil {
 		return nil, err
 	}
 	return &Container{
 		cfg:        *c,
-		ID:         strings.TrimSpace(out.String()),
+		ID:         strings.TrimSpace(buf.String()),
 		Passphrase: pass,
 		Port:       p,
 		out:        c.Out,
