@@ -1,31 +1,85 @@
 ---
 id: diff
 slug: /declarative/diff
-title: Declarative schema migrations
+title: Comparing Schemas
 ---
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
 It is sometimes useful to be able to calculate the diff between two
-databases. For instance, as you are developing you may want to calculate
+schemas. For instance, as you are developing you may want to calculate
 how to move from an existing database to some other state that you are
 interested in. Alternatively, you may be diagnosing some issue and want
 to verify there is no difference between a local copy of a schema and a
-remote one. 
+remote one.
 
-To accommodate these types of use-cases, Atlas supports the `schema diff`
-command. This command connects to two given databases, inspects
-them, calculates the difference in their schemas, and prints a plan of
-SQL statements to migrate the "from" database to the schema of the "to" database.
+To accommodate these types of use-cases, Atlas offers the `schema diff` that accepts two schema states: `--from` and
+`--to`, calculates the differences between them, and generates a plan of SQL statements that can be used
+to migrate the "from" schema to the state defined by the "to" schema. A state can be specified using a database URL,
+an HCL or SQL schema, or a migration directory.
 
-### Flags
-* `--from` (required) - the [URL](/concepts/url) of the database to calculate the 
- diff from.
-* `--to` (required) - the [URL](/concepts/url) of the database to calculate the
-  diff to.
+## Flags
+* `--from` - a list of [URLs](/concepts/url) to the current state: can be a database URL, an HCL or
+SQL schema, or a migration directory.
+* `--to` - a list of [URLs](/concepts/url) to the desired state: can be a database URL, an HCL or
+SQL schema, or a migration directory.
+* `--dev-url` - a [URL](/concepts/url) to the [_Dev-Database_](../concepts/dev.md).
+* `--schema` (optional, may be supplied multiple times) - schemas to inspect within the target database.
+* `--exclude` (optional, may be supplied multiple times) - filter out resources matching the given glob pattern.
 
-### Examples
+## Examples
+
+### Compare databases
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+]}>
+<TabItem value="mysql">
+
+```shell
+atlas schema diff \
+  --from "mysql://user:pass@localhost:3306" \
+  --to "mysql://user:pass@remote:3306"
+```
+
+</TabItem>
+<TabItem value="maria">
+
+```shell
+atlas schema diff \
+  --from "maria://user:pass@localhost:3306" \
+  --to "maria://user:pass@remote:3306"
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```shell
+atlas schema diff \
+  --from "postgres://postgres:pass@localhost:5432/database?sslmode=disable" \
+  --to "postgres://postgres:pass@remote:5432/database"
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```shell
+atlas schema diff \
+  --from "sqlite://file1.db" \
+  --to "sqlite://file2.db"
+```
+
+</TabItem>
+</Tabs>
+
+
+### Compare database schemas
 
 <Tabs
 defaultValue="mysql"
@@ -36,61 +90,344 @@ values={[
 ]}>
 <TabItem value="mysql">
 
-Diff to a remote database:
-```
-atlas schema diff --from "mysql://user:pass@localhost:3306" --to "mysql://user:pass@remote:3306"
-```
+Compare two MySQL [schemas](https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_schema)/[databases](https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_database)
+named `example`:
 
-Diff to a remote schema
-```
-atlas schema diff --from "mysql://user:pass@localhost:3306/schema" --to "mysql://user:pass@remote:3306/schema"
-```
-
-Diff to another schema in the same database
-```
-atlas schema diff --from "mysql://user:pass@localhost:3306/schema" --to "mysql://user:pass@localhost:3306/other"
+```shell
+atlas schema diff \
+  --from "mysql://user:pass@localhost:3306/example" \
+  --to "mysql://user:pass@remote:3306/example"
 ```
 
 </TabItem>
 <TabItem value="maria">
 
-Diff to a remote database:
-```
-atlas schema diff --from "maria://user:pass@localhost:3306" --to "maria://user:pass@remote:3306"
-```
+Compare two MariaDB [schemas](https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_schema)/[databases](https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_database)
+named `example`:
 
-Diff to a remote schema
-```
-atlas schema diff --from "maria://user:pass@localhost:3306/schema" --to "maria://user:pass@remote:3306/schema"
-```
-
-Diff to another schema in the same database
-```
-atlas schema diff --from "maria://user:pass@localhost:3306/schema" --to "maria://user:pass@localhost:3306/other"
+```shell
+atlas schema diff \
+  --from "maria://user:pass@localhost:3306/example" \
+  --to "maria://user:pass@remote:3306/example"
 ```
 
 </TabItem>
 <TabItem value="postgres">
 
-Diff to a remote database:
-```
-atlas schema diff --from "postgres://localhost:5432/database" --to "postgres://remote:5432/database"
+Compare two PostgreSQL [schemas](https://www.postgresql.org/docs/current/ddl-schemas.html) named `public` under the
+`example` database:
+
+```shell
+atlas schema diff \
+  --from "postgres://postgres:pass@localhost:5432/example?search_path=public&sslmode=disable" \
+  --to "postgres://postgres:pass@remote:5432/example?search_path=public"
 ```
 
-Diff to a remote schema:
-```
-atlas schema diff --from "postgres://localhost:5432/database?search_path=schema" --to "postgres://remote:5432/database?search_path=schema"
+</TabItem>
+</Tabs>
+
+### Compare HCL schemas
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+]}>
+<TabItem value="mysql">
+
+```shell
+atlas schema diff \
+  --from "file://schema1.hcl" \
+  --to "file://schema2.hcl" \
+  --dev-url "docker://mysql"
 ```
 
-Diff to another schema in the same database
+</TabItem>
+<TabItem value="maria">
+
+```shell
+atlas schema diff \
+  --from "file://schema1.hcl" \
+  --to "file://schema2.hcl" \
+  --dev-url "docker://maria"
 ```
-atlas schema diff --from "postgres://localhost:5432/database?search_path=schema" --to "postgres://localhost:5432/database?search_path=other"
+
+</TabItem>
+<TabItem value="postgres">
+
+```shell
+atlas schema diff \
+  --from "file://schema1.hcl" \
+  --to "file://schema2.hcl" \
+  --dev-url "docker://postgres"
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```shell
+atlas schema diff \
+  --from "file://schema1.hcl" \
+  --to "file://schema2.hcl" \
+  --dev-url "sqlite://file?mode=memory"
+```
+
+</TabItem>
+</Tabs>
+
+### Compare SQL schemas
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+]}>
+<TabItem value="mysql">
+
+```shell
+atlas schema diff \
+  --from "file://schema1.sql" \
+  --to "file://schema2.sql" \
+  --dev-url "docker://mysql/8/test"
+```
+
+If the DDL statements only include qualified tables (e.g., `schema`.`table`), you can omit the database name from the
+`--dev-url`:
+
+```shell {4}
+atlas schema diff \
+  --from "file://schema1.sql" \
+  --to "file://schema2.sql" \
+  --dev-url "docker://mysql"
+```
+
+</TabItem>
+<TabItem value="maria">
+
+```shell
+atlas schema diff \
+  --from "file://schema1.sql" \
+  --to "file://schema2.sql" \
+  --dev-url "docker://maria/latest/test"
+```
+
+If the DDL statements only include qualified tables (e.g., `schema`.`table`), you can omit the database name from the
+`--dev-url`:
+
+```shell {4}
+atlas schema diff \
+  --from "file://schema1.sql" \
+  --to "file://schema2.sql" \
+  --dev-url "docker://maria"
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```shell
+atlas schema diff \
+  --from "file://schema1.sql" \
+  --to "file://schema2.sql" \
+  --dev-url "docker://postgres"
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```shell
+atlas schema diff \
+  --from "file://schema1.sql" \
+  --to "file://schema2.sql" \
+  --dev-url "sqlite://file?mode=memory"
 ```
 
 </TabItem>
 </Tabs>
 
 
-### Reference
+### Compare migration directories
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+]}>
+<TabItem value="mysql">
+
+```shell
+atlas schema diff \
+  --from "file://migrations1" \
+  --to "file://migrations2" \
+  --dev-url "docker://mysql/8/test"
+```
+
+If the DDL statements only include qualified tables (e.g., `schema`.`table`), you can omit the database name from the
+`--dev-url`:
+
+```shell {4}
+atlas schema diff \
+  --from "file://migrations1" \
+  --to "file://migrations2" \
+  --dev-url "docker://mysql"
+```
+
+</TabItem>
+<TabItem value="maria">
+
+```shell
+atlas schema diff \
+  --from "file://migrations1" \
+  --to "file://migrations2" \
+  --dev-url "docker://maria/latest/test"
+```
+
+If the DDL statements only include qualified tables (e.g., `schema`.`table`), you can omit the database name from the
+`--dev-url`:
+
+```shell {4}
+atlas schema diff \
+  --from "file://migrations1" \
+  --to "file://migrations2" \
+  --dev-url "docker://maria"
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```shell
+atlas schema diff \
+  --from "file://migrations1" \
+  --to "file://migrations2" \
+  --dev-url "docker://postgres"
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```shell
+atlas schema diff \
+  --from "file://migrations1" \
+  --to "file://migrations2" \
+  --dev-url "sqlite://file?mode=memory"
+```
+
+</TabItem>
+</Tabs>
+
+### Compare SQL to HCL
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+]}>
+<TabItem value="mysql">
+
+```shell
+atlas schema diff \
+  --from "file://schema.hcl" \
+  --to "file://schema.sql" \
+  --dev-url "docker://mysql/8/test"
+```
+
+</TabItem>
+<TabItem value="maria">
+
+```shell
+atlas schema diff \
+  --from "file://schema.hcl" \
+  --to "file://schema.sql" \
+  --dev-url "docker://maria/latest/test"
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```shell
+atlas schema diff \
+  --from "file://schema.hcl" \
+  --to "file://schema.sql" \
+  --dev-url "docker://postgres"
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```shell
+atlas schema diff \
+  --from "file://schema.hcl" \
+  --to "file://schema.sql" \
+  --dev-url "sqlite://file?mode=memory"
+```
+
+</TabItem>
+</Tabs>
+
+
+### Compare a migration directory to a database
+
+<Tabs
+defaultValue="mysql"
+values={[
+{label: 'MySQL', value: 'mysql'},
+{label: 'MariaDB', value: 'maria'},
+{label: 'PostgreSQL', value: 'postgres'},
+{label: 'SQLite', value: 'sqlite'},
+]}>
+<TabItem value="mysql">
+
+```shell
+atlas schema diff \
+  --from "file://migrations" \
+  --to "mysql://root:pass@:3306/example" \
+  --dev-url "docker://mysql/8/example"
+```
+
+</TabItem>
+<TabItem value="maria">
+
+```shell
+atlas schema diff \
+  --from "file://migrations" \
+  --to "maria://root:pass@:3306/example" \
+  --dev-url "docker://maria/latest/example"
+```
+
+</TabItem>
+<TabItem value="postgres">
+
+```shell
+atlas schema diff \
+  --from "file://migrations" \
+  --to "postgres://postgres:pass@localhost:5435/test?sslmode=disable" \
+  --dev-url "docker://postgres"
+```
+
+</TabItem>
+<TabItem value="sqlite">
+
+```shell
+atlas schema diff \
+  --from "file://migrations" \
+  --to "file://schema.sql" \
+  --dev-url "sqlite://file?mode=memory"
+```
+
+</TabItem>
+</Tabs>
+
+## Reference
 
 [CLI Command Reference](/cli-reference#atlas-schema-diff)
