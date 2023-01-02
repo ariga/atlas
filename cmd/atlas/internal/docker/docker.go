@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -102,12 +103,16 @@ func FromURL(u *url.URL) (*Config, error) {
 	}
 }
 
+// Atlas DockerHub user contains the MySQL
+// and MariaDB images with faster boot times.
+const hubUser = "arigaio"
+
 // MySQL returns a new Config for a MySQL image.
 func MySQL(version string, opts ...ConfigOption) (*Config, error) {
 	return NewConfig(
 		append(
 			[]ConfigOption{
-				Image("mysql:" + version),
+				Image(hubUser, "mysql:"+version),
 				Port("3306"),
 				Env("MYSQL_ROOT_PASSWORD=" + pass),
 			},
@@ -118,7 +123,7 @@ func MySQL(version string, opts ...ConfigOption) (*Config, error) {
 
 // MariaDB returns a new Config for a MariaDB image.
 func MariaDB(version string, opts ...ConfigOption) (*Config, error) {
-	return MySQL(version, append([]ConfigOption{Image("mariadb:" + version)}, opts...)...)
+	return MySQL(version, append([]ConfigOption{Image(hubUser, "mariadb:"+version)}, opts...)...)
 }
 
 // PostgreSQL returns a new Config for a PostgreSQL image.
@@ -139,10 +144,14 @@ func PostgreSQL(version string, opts ...ConfigOption) (*Config, error) {
 // Image sets the docker image to use. For example:
 //
 //	Image("mysql")
+//	Image("arigaio", "mysql")
 //	Image("postgres:13")
-func Image(i string) ConfigOption {
+func Image(parts ...string) ConfigOption {
 	return func(c *Config) error {
-		c.Image = strings.TrimSuffix(i, ":")
+		if len(parts) == 0 || len(parts) > 2 {
+			return errors.New("image path must be in the format of 'image' or 'user/image'")
+		}
+		c.Image = strings.TrimSuffix(path.Join(parts...), ":")
 		return nil
 	}
 }
@@ -227,7 +236,7 @@ func (c *Config) Run(ctx context.Context) (*Container, error) {
 
 // Close stops and removes this container.
 func (c *Container) Close() error {
-	return exec.Command("docker", "stop", c.ID).Run() //nolint:gosec
+	return exec.Command("docker", "kill", c.ID).Run() //nolint:gosec
 }
 
 // Wait waits for this container to be ready.
@@ -275,7 +284,7 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 
 // URL returns a URL to connect to the Container.
 func (c *Container) URL() (*url.URL, error) {
-	switch img := strings.SplitN(c.cfg.Image, ":", 2)[0]; img {
+	switch img := path.Base(strings.SplitN(c.cfg.Image, ":", 2)[0]); img {
 	case "postgres":
 		return url.Parse(fmt.Sprintf("postgres://postgres:%s@localhost:%s/%s?sslmode=disable", c.Passphrase, c.Port, c.cfg.Database))
 	case "mysql", "mariadb":

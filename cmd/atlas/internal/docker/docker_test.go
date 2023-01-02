@@ -24,7 +24,7 @@ func TestDockerConfig(t *testing.T) {
 	cfg, err := MySQL("latest", Out(io.Discard))
 	require.NoError(t, err)
 	require.Equal(t, &Config{
-		Image: "mysql:latest",
+		Image: "arigaio/mysql:latest",
 		Env:   []string{"MYSQL_ROOT_PASSWORD=pass"},
 		Port:  "3306",
 		Out:   io.Discard,
@@ -34,7 +34,7 @@ func TestDockerConfig(t *testing.T) {
 	cfg, err = MariaDB("latest", Out(io.Discard))
 	require.NoError(t, err)
 	require.Equal(t, &Config{
-		Image: "mariadb:latest",
+		Image: "arigaio/mariadb:latest",
 		Env:   []string{"MYSQL_ROOT_PASSWORD=pass"},
 		Port:  "3306",
 		Out:   io.Discard,
@@ -58,7 +58,7 @@ func TestFromURL(t *testing.T) {
 	cfg, err := FromURL(u)
 	require.NoError(t, err)
 	require.Equal(t, &Config{
-		Image: "mysql",
+		Image: "arigaio/mysql",
 		Env:   []string{"MYSQL_ROOT_PASSWORD=pass"},
 		Port:  "3306",
 		Out:   io.Discard,
@@ -69,7 +69,7 @@ func TestFromURL(t *testing.T) {
 	cfg, err = FromURL(u)
 	require.NoError(t, err)
 	require.Equal(t, &Config{
-		Image: "mysql:8",
+		Image: "arigaio/mysql:8",
 		Env:   []string{"MYSQL_ROOT_PASSWORD=pass"},
 		Port:  "3306",
 		Out:   io.Discard,
@@ -80,10 +80,22 @@ func TestFromURL(t *testing.T) {
 	cfg, err = FromURL(u)
 	require.NoError(t, err)
 	require.Equal(t, &Config{
-		Image:    "mysql:latest",
+		Image:    "arigaio/mysql:latest",
 		Database: "test",
 		Env:      []string{"MYSQL_ROOT_PASSWORD=pass", "MYSQL_DATABASE=test"},
 		Port:     "3306",
+		Out:      io.Discard,
+	}, cfg)
+
+	u, err = url.Parse("docker://postgres/13")
+	require.NoError(t, err)
+	cfg, err = FromURL(u)
+	require.NoError(t, err)
+	require.Equal(t, &Config{
+		Image:    "postgres:13",
+		Database: "postgres",
+		Env:      []string{"POSTGRES_PASSWORD=pass"},
+		Port:     "5432",
 		Out:      io.Discard,
 	}, cfg)
 }
