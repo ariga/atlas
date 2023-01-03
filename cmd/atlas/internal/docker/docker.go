@@ -85,12 +85,12 @@ func FromURL(u *url.URL) (*Config, error) {
 	switch u.Host {
 	case "mysql":
 		if len(parts) > 1 {
-			opts = append(opts, Env("MYSQL_DATABASE="+parts[1]))
+			opts = append(opts, Env("MYSQL_DATABASE="+parts[1]), setup(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", parts[1])))
 		}
 		return MySQL(tag, opts...)
 	case "maria", "mariadb":
 		if len(parts) > 1 {
-			opts = append(opts, Env("MYSQL_DATABASE="+parts[1]))
+			opts = append(opts, Env("MYSQL_DATABASE="+parts[1]), setup(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", parts[1])))
 		}
 		return MariaDB(tag, opts...)
 	case "postgres":
@@ -197,6 +197,17 @@ func Out(w io.Writer) ConfigOption {
 	}
 }
 
+// setup adds statements to execute once the service is ready. For example:
+//
+//	setup("CREATE DATABASE IF NOT EXISTS test")
+//	setup("DROP SCHEMA IF EXISTS public CASCADE")
+func setup(s ...string) ConfigOption {
+	return func(c *Config) error {
+		c.setup = s
+		return nil
+	}
+}
+
 // Run pulls and starts a new docker container from the Config.
 func (c *Config) Run(ctx context.Context) (*Container, error) {
 	// Make sure the configuration is not missing critical values.
@@ -257,6 +268,8 @@ func (c *Container) Wait(ctx context.Context, timeout time.Duration) error {
 	for {
 		select {
 		case <-time.After(100 * time.Millisecond):
+			// Ping against the root connection.
+			u.Path = "/"
 			client, err := sqlclient.Open(ctx, u.String())
 			if err != nil {
 				continue
