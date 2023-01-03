@@ -85,6 +85,7 @@ func TestFromURL(t *testing.T) {
 		Env:      []string{"MYSQL_ROOT_PASSWORD=pass", "MYSQL_DATABASE=test"},
 		Port:     "3306",
 		Out:      io.Discard,
+		setup:    []string{"CREATE DATABASE IF NOT EXISTS `test`"},
 	}, cfg)
 
 	u, err = url.Parse("docker://postgres/13")
