@@ -27,6 +27,7 @@ func TestPlanChanges(t *testing.T) {
 	}{
 		{
 			changes: []schema.Change{
+				&schema.AddSchema{S: schema.New("public")},
 				&schema.AddSchema{S: schema.New("test"), Extra: []schema.Clause{&schema.IfNotExists{}}},
 				&schema.DropSchema{S: schema.New("test"), Extra: []schema.Clause{&schema.IfExists{}}},
 				&schema.DropSchema{S: schema.New("test"), Extra: []schema.Clause{}},
@@ -35,6 +36,10 @@ func TestPlanChanges(t *testing.T) {
 				Reversible:    false,
 				Transactional: true,
 				Changes: []*migrate.Change{
+					{
+						Cmd:     `CREATE SCHEMA IF NOT EXISTS "public"`,
+						Reverse: `DROP SCHEMA "public" CASCADE`,
+					},
 					{
 						Cmd:     `CREATE SCHEMA IF NOT EXISTS "test"`,
 						Reverse: `DROP SCHEMA "test" CASCADE`,

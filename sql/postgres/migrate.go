@@ -102,7 +102,10 @@ func (s *state) topLevel(changes []schema.Change) []schema.Change {
 		switch c := c.(type) {
 		case *schema.AddSchema:
 			b := s.Build("CREATE SCHEMA")
-			if sqlx.Has(c.Extra, &schema.IfNotExists{}) {
+			// Add the 'IF NOT EXISTS' clause if it is explicitly specified, or if the schema name is 'public'.
+			// That is because the 'public' schema is automatically created by PostgreSQL in every new database,
+			// and running the command with this clause will fail in case the schema already exists.
+			if sqlx.Has(c.Extra, &schema.IfNotExists{}) || c.S.Name == "public" {
 				b.P("IF NOT EXISTS")
 			}
 			b.Ident(c.S.Name)
@@ -132,7 +135,7 @@ func (s *state) topLevel(changes []schema.Change) []schema.Change {
 
 // addTable builds and executes the query for creating a table in a schema.
 func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
-	// Create enum types before using them in the `CREATE TABLE` statement.
+	// Create enum types before using them in the 'CREATE TABLE' statement.
 	if err := s.mayAddEnums(ctx, add.T, add.T.Columns...); err != nil {
 		return err
 	}
