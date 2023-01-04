@@ -14,6 +14,11 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
+// DefaultPlan provides basic planning capabilities for SQLite dialects.
+// Note, it is recommended to call Open, create a new Driver and use its
+// migrate.PlanApplier when a database connection is available.
+var DefaultPlan migrate.PlanApplier = &planApply{conn: conn{ExecQuerier: sqlx.NoRows}}
+
 // A planApply provides migration capabilities for schema elements.
 type planApply struct{ conn }
 
@@ -474,7 +479,7 @@ func (s *state) alterTable(modify *schema.ModifyTable) error {
 func (s *state) tableSeq(ctx context.Context, add *schema.AddTable) error {
 	var inc AutoIncrement
 	switch pk := add.T.PrimaryKey; {
-	// Sequence was set on the table.
+	// Sequence was set on table attributes.
 	case sqlx.Has(add.T.Attrs, &inc) && inc.Seq > 0:
 	// Sequence was set on table primary-key (a single column PK).
 	case pk != nil && len(pk.Parts) == 1 && pk.Parts[0].C != nil && sqlx.Has(pk.Parts[0].C.Attrs, &inc) && inc.Seq > 0:
