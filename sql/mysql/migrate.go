@@ -16,10 +16,13 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
-// DefaultPlan provides basic planning capabilities for MySQL dialects.
-// Note, it is recommended to call Open, create a new Driver and use its
-// migrate.PlanApplier when a database connection is available.
-var DefaultPlan migrate.PlanApplier = &planApply{conn: conn{ExecQuerier: sqlx.NoRows, V: "8.0.31"}}
+var (
+	noConn = conn{ExecQuerier: sqlx.NoRows, V: "8.0.31"}
+	// DefaultPlan provides basic planning capabilities for MySQL dialects.
+	// Note, it is recommended to call Open, create a new Driver and use its
+	// migrate.PlanApplier when a database connection is available.
+	DefaultPlan migrate.PlanApplier = &planApply{conn: noConn}
+)
 
 // A planApply provides migration capabilities for schema elements.
 type planApply struct{ conn }

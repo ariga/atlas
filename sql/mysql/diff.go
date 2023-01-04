@@ -19,7 +19,7 @@ import (
 // DefaultDiff provides basic diffing capabilities for MySQL dialects.
 // Note, it is recommended to call Open, create a new Driver and use its
 // Differ when a database connection is available.
-var DefaultDiff schema.Differ = &sqlx.Diff{DiffDriver: &diff{}}
+var DefaultDiff schema.Differ = &sqlx.Diff{DiffDriver: &diff{conn: noConn}}
 
 // A diff provides a MySQL implementation for sqlx.DiffDriver.
 type diff struct {
