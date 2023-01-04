@@ -56,6 +56,23 @@ func ApplyChanges(ctx context.Context, changes []schema.Change, p execPlanner, o
 	return nil
 }
 
+// noRows implements the schema.ExecQuerier for migrate.Driver's without connections.
+// This can be useful to always return no rows for queries, and block any execution.
+type noRows struct{}
+
+// QueryContext implements the sqlx.ExecQuerier interface.
+func (*noRows) QueryContext(context.Context, string, ...interface{}) (*sql.Rows, error) {
+	return nil, sql.ErrNoRows
+}
+
+// ExecContext implements the sqlx.ExecQuerier interface.
+func (*noRows) ExecContext(context.Context, string, ...interface{}) (sql.Result, error) {
+	return nil, errors.New("cannot execute statements without a database connection. use Open to create a new Driver")
+}
+
+// NoRows to be used by differs and planners without a connection.
+var NoRows schema.ExecQuerier = (*noRows)(nil)
+
 // SetReversible sets the Reversible field to
 // true if all planned changes are reversible.
 func SetReversible(p *migrate.Plan) error {
