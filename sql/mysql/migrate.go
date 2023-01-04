@@ -16,6 +16,11 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
+// DefaultPlan provides basic planning capabilities for MySQL dialects.
+// Note, it is recommended to call Open, create a new Driver and use its
+// migrate.PlanApplier when a database connection is available.
+var DefaultPlan migrate.PlanApplier = &planApply{conn: conn{ExecQuerier: sqlx.NoRows, V: "8.0.31"}}
+
 // A planApply provides migration capabilities for schema elements.
 type planApply struct{ conn }
 
@@ -105,11 +110,11 @@ func (s *state) topLevel(changes []schema.Change) ([]schema.Change, error) {
 				b.P("IF NOT EXISTS")
 			}
 			b.Ident(c.S.Name)
-			// Schema was created with CHARSET and it is not the default database character set.
+			// Schema was created with CHARSET, and it is not the default database character set.
 			if a := (schema.Charset{}); sqlx.Has(c.S.Attrs, &a) && a.V != "" && a.V != s.charset {
 				b.P("CHARSET", a.V)
 			}
-			// Schema was created with COLLATE and it is not the default database collation.
+			// Schema was created with COLLATE, and it is not the default database collation.
 			if a := (schema.Collation{}); sqlx.Has(c.S.Attrs, &a) && a.V != "" && a.V != s.collate {
 				b.P("COLLATE", a.V)
 			}
