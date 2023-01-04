@@ -16,6 +16,11 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
+// DefaultPlan provides basic planning capabilities for PostgreSQL dialects.
+// Note, it is recommended to call Open, create a new Driver and use its
+// migrate.PlanApplier when a database connection is available.
+var DefaultPlan migrate.PlanApplier = &planApply{conn: conn{ExecQuerier: sqlx.NoRows}}
+
 // A planApply provides migration capabilities for schema elements.
 type planApply struct{ conn }
 

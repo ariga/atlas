@@ -1233,3 +1233,17 @@ func TestPlanChanges(t *testing.T) {
 		})
 	}
 }
+
+func TestDefaultPlan(t *testing.T) {
+	changes, err := DefaultPlan.PlanChanges(context.Background(), "plan", []schema.Change{
+		&schema.AddTable{T: schema.NewTable("t1").SetSchema(schema.New("s1")).AddColumns(schema.NewIntColumn("a", "int"))},
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, len(changes.Changes))
+	require.Equal(t, `CREATE TABLE "s1"."t1" ("a" integer NOT NULL)`, changes.Changes[0].Cmd)
+
+	err = DefaultPlan.ApplyChanges(context.Background(), []schema.Change{
+		&schema.AddTable{T: schema.NewTable("t1").AddColumns(schema.NewIntColumn("a", "int"))},
+	})
+	require.EqualError(t, err, `create "t1" table: cannot execute statements without a database connection. use Open to create a new Driver`)
+}
