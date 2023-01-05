@@ -19,16 +19,20 @@ database schema.
 2. In the sign up screen, enter your work email and choose a password.
 3. Next, you will receive an email to verify your account. From your email, [Ariga Cloud](https://ariga.cloud/)
 will open in a new tab, and you will need to sign in to access your account.
-4. Once signed in, you will be prompted to create an organization. After creating the organization, you will be able
+4. Once signed in, you will have to confirm the service agreement in order to move on with the login process
+5. After terms and conditions aprroval, you will be prompted to create an organization. After creating the organization, you will be able
 to invite team members to join. Choose a meaningful name for the organization, as it will also be your subdomain.
-For example, "Acme Corp" will be available at "acme-corp.ariga.cloud".
+For example, "Acme Corp" will be available at "acme-corp.ariga.cloud".  
 
-:::note
-Currently, the system only allows users to sign up for **one** organization. If you wish to create multiple
-organizations under the same user, you can create a [task-specific email address](https://support.google.com/a/users/answer/9308648?hl=en)
-(for Google users only). Create multiple emails that all link back to your regular address by adding a plus sign and
-any word before the @ sign in your address.
-:::
+
+### Choosing organization
+Ariga Cloud allows you to be a part of multiple organizations.
+After loging in (first login not included) you will see all the organizations you have access to, choose the organization you would to log in to.
+If you would like to create a new organization, click 'create a new organization'.  
+While loged in to one organiztion, you would be able to switch to another organization by clicking on your avatar on the top right corner and choose the organization you would like to switch to.
+
+
+
 
 ### Connecting to the Atlas GitHub action
 At first you will notice that your projects and CI runs pages are empty. In order to connect the organization
