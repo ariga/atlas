@@ -709,7 +709,7 @@ const (
 	// Query to list database tables.
 	tablesQuery = "SELECT `name`, `sql` FROM sqlite_master WHERE `type` = 'table' AND `name` NOT LIKE 'sqlite_%'"
 	// Query to list table information.
-	columnsQuery = "SELECT `name`, `type`, (not `notnull`) AS `nullable`, `dflt_value`, (`pk` <> 0) AS `pk`, `hidden` FROM pragma_table_xinfo('%s') ORDER BY `pk`, `cid`"
+	columnsQuery = "SELECT `name`, `type`, (not `notnull`) AS `nullable`, `dflt_value`, (`pk` <> 0) AS `pk`, `hidden` FROM pragma_table_xinfo('%s') ORDER BY `cid`"
 	// Query to list table indexes.
 	indexesQuery = "SELECT `il`.`name`, `il`.`unique`, `il`.`origin`, `il`.`partial`, `m`.`sql` FROM pragma_index_list('%s') AS il JOIN sqlite_master AS m ON il.name = m.name"
 	// Query to list index columns.
