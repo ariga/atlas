@@ -220,7 +220,7 @@ possible_keys: NULL
 1 row in set, 1 warning (0.00 sec)
 ```
 
-:::INFO
+:::info
 A filesort operation uses temporary disk files as necessary if the result set is too large to fit in memory. To learn more about how filesort is used to satisfy the ORDER BY clause in MySQL,  click [here](https://dev.mysql.com/doc/refman/8.0/en/order-by-optimization.html#order-by-filesort).
 :::
 
@@ -340,7 +340,7 @@ Save and apply the schema changes on the database by using the apply command:
 atlas schema apply -u "mysql://root:password@localhost:3306/scorecard" -f schema.hcl --dev-url docker://mysql/8/scorecard
 ```
 
-:::Note
+:::info
 If you get `Error: pulling image: exit status 1` error, ensure that Docker Desktop is up and running.
 :::
 
@@ -411,4 +411,5 @@ In this guide, we demonstrated how using functional indexes with an appropriate 
 
 # Need More Help?​​
 [Join the Ariga Discord Server](https://discord.com/invite/zZ6sWVg6NT) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling.
+
 [Sign up](https://www.getrevue.co/profile/ariga) to our newsletter to stay up to date about [Atlas](https://atlasgo.io/), our OSS database schema management tool, and our cloud platform [Ariga Cloud](https://ariga.cloud/).
