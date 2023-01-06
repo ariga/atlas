@@ -169,6 +169,12 @@ atlas schema apply \
 </TabItem>
 </Tabs>
 
+:::info The role of the [Dev Database](/concepts/dev-database)
+Atlas loads the **desired state** by executing the SQL files onto the provided [dev database](/concepts/dev-database),
+compares it against the database **current state** by inspecting its schema and writes a migration plan for moving
+from the current state to the desired state.
+:::
+
 ### Migration directory
 
 The following example demonstrates how to use the migration directory as the desired state and update the database
