@@ -797,7 +797,7 @@ func (s *state) enumExists(ctx context.Context, ns *schema.Schema, e *schema.Enu
 	return rows.Next(), rows.Err()
 }
 
-// mayDropEnum drops dangling enum types form the schema. An optional
+// mayDropEnum drops dangling enum types from the schema. An optional
 // "dropped" list can be provided to skip while searching for usage.
 func (s *state) mayDropEnum(cmd *changeGroup, ns *schema.Schema, e *schema.EnumType, dropped ...*schema.Table) error {
 	name := s.enumIdent(ns, e)
