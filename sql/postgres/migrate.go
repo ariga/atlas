@@ -200,7 +200,21 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 
 // dropTable builds and executes the query for dropping a table from a schema.
 func (s *state) dropTable(ctx context.Context, drop *schema.DropTable) error {
-	rs := &state{conn: s.conn, PlanOptions: s.PlanOptions}
+	cmd := &changeGroup{}
+	for _, e := range s.enumTypes(drop.T) {
+		if err := s.mayDropEnum(cmd, drop.T.Schema, e, drop.T); err != nil {
+			return err
+		}
+	}
+	rs := &state{
+		conn:        s.conn,
+		PlanOptions: s.PlanOptions,
+		altered:     s.altered,
+		// Enums that were dropped above, were
+		// also created in the reverse commands.
+		created: s.dropped,
+		dropped: s.created,
+	}
 	if err := rs.addTable(ctx, &schema.AddTable{T: drop.T}); err != nil {
 		return fmt.Errorf("calculate reverse for drop table %q: %w", drop.T.Name, err)
 	}
@@ -209,7 +223,7 @@ func (s *state) dropTable(ctx context.Context, drop *schema.DropTable) error {
 		b.P("IF EXISTS")
 	}
 	b.Table(drop.T)
-	s.append(&migrate.Change{
+	cmd.main = &migrate.Change{
 		Cmd:     b.String(),
 		Source:  drop,
 		Comment: fmt.Sprintf("drop %q table", drop.T.Name),
@@ -225,7 +239,8 @@ func (s *state) dropTable(ctx context.Context, drop *schema.DropTable) error {
 			}
 			return cmd
 		}(),
-	})
+	}
+	cmd.append(s)
 	return nil
 }
 
@@ -367,7 +382,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 		reverse    []schema.Change
 		reversible = true
 	)
-	build := func(alter *alterChange, changes []schema.Change) (string, error) {
+	build := func(alter *changeGroup, changes []schema.Change) (string, error) {
 		b := s.Build("ALTER TABLE").Table(t)
 		err := b.MapCommaErr(changes, func(i int, b *sqlx.Builder) error {
 			switch change := changes[i].(type) {
@@ -458,7 +473,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 		}
 		return b.String(), nil
 	}
-	cmd := &alterChange{}
+	cmd := &changeGroup{}
 	stmt, err := build(cmd, changes)
 	if err != nil {
 		return fmt.Errorf("alter table %q: %v", t.Name, err)
@@ -475,7 +490,7 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 		// Changes should be reverted in
 		// a reversed order they were created.
 		sqlx.ReverseChanges(reverse)
-		if cmd.main.Reverse, err = build(&alterChange{}, reverse); err != nil {
+		if cmd.main.Reverse, err = build(&changeGroup{}, reverse); err != nil {
 			return fmt.Errorf("reverse alter table %q: %v", t.Name, err)
 		}
 	}
@@ -483,20 +498,20 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 	return nil
 }
 
-// alterChange describes an alter table migrate.Change where its main command
+// changeGroup describes an alter table migrate.Change where its main command
 // can be supported by additional statements before and after it is executed.
-type alterChange struct {
+type changeGroup struct {
 	main          *migrate.Change
 	before, after []*migrate.Change
 }
 
-func (a *alterChange) append(s *state) {
+func (a *changeGroup) append(s *state) {
 	s.append(a.before...)
 	s.append(a.main)
 	s.append(a.after...)
 }
 
-func (s *state) alterColumn(b *sqlx.Builder, alter *alterChange, t *schema.Table, c *schema.ModifyColumn) error {
+func (s *state) alterColumn(b *sqlx.Builder, alter *changeGroup, t *schema.Table, c *schema.ModifyColumn) error {
 	for k := c.Change; !k.Is(schema.NoChange); {
 		b.P("ALTER COLUMN").Ident(c.To.Name)
 		switch {
@@ -552,7 +567,7 @@ func (s *state) alterColumn(b *sqlx.Builder, alter *alterChange, t *schema.Table
 
 // alterType appends the clause(s) to alter the column type and assuming the
 // "ALTER COLUMN <Name>" was called before by the alterColumn function.
-func (s *state) alterType(b *sqlx.Builder, alter *alterChange, t *schema.Table, c *schema.ModifyColumn) error {
+func (s *state) alterType(b *sqlx.Builder, alter *changeGroup, t *schema.Table, c *schema.ModifyColumn) error {
 	// Commands for creating and dropping serial sequences.
 	createDropSeq := func(st *SerialType) (string, string, string) {
 		seq := fmt.Sprintf(`%s%q`, s.schemaPrefix(t.Schema), st.sequence(t, c.To))
@@ -782,8 +797,9 @@ func (s *state) enumExists(ctx context.Context, ns *schema.Schema, e *schema.Enu
 	return rows.Next(), rows.Err()
 }
 
-// mayDropEnum drops dangling enum types form the schema.
-func (s *state) mayDropEnum(alter *alterChange, ns *schema.Schema, e *schema.EnumType) error {
+// mayDropEnum drops dangling enum types form the schema. An optional
+// "dropped" list can be provided to skip while searching for usage.
+func (s *state) mayDropEnum(cmd *changeGroup, ns *schema.Schema, e *schema.EnumType, dropped ...*schema.Table) error {
 	name := s.enumIdent(ns, e)
 	if _, ok := s.dropped[name]; ok {
 		return nil
@@ -795,6 +811,10 @@ func (s *state) mayDropEnum(alter *alterChange, ns *schema.Schema, e *schema.Enu
 	}
 	for i := range schemas {
 		for _, t := range schemas[i].Tables {
+			// Skip dropped tables.
+			if containsT(dropped, t) {
+				continue
+			}
 			for _, c := range t.Columns {
 				e1, ok := hasEnumType(c)
 				// Although we search in siblings schemas, use the
@@ -807,7 +827,7 @@ func (s *state) mayDropEnum(alter *alterChange, ns *schema.Schema, e *schema.Enu
 	}
 	s.dropped[name] = e
 	create, drop := s.createDropEnum(ns, e)
-	alter.after = append(alter.after, &migrate.Change{
+	cmd.after = append(cmd.after, &migrate.Change{
 		Cmd:     drop,
 		Reverse: create,
 		Comment: fmt.Sprintf("drop enum type %q", e.T),
@@ -1205,6 +1225,21 @@ func (s *state) enumSchema(ns *schema.Schema, e *schema.EnumType) (es string) {
 	return
 }
 
+// enumType returns all the enum types used by the given table.
+func (s *state) enumTypes(t *schema.Table) []*schema.EnumType {
+	var (
+		es   []*schema.EnumType
+		seen = make(map[string]bool)
+	)
+	for _, c := range t.Columns {
+		if e, ok := hasEnumType(c); ok && !seen[s.enumIdent(t.Schema, e)] {
+			seen[s.enumIdent(t.Schema, e)] = true
+			es = append(es, e)
+		}
+	}
+	return es
+}
+
 // schemaPrefix returns the schema prefix based on the planner config.
 func (s *state) schemaPrefix(ns *schema.Schema) string {
 	switch {
@@ -1242,4 +1277,13 @@ func hasEnumType(c *schema.Column) (*schema.EnumType, bool) {
 		}
 	}
 	return nil, false
+}
+
+func containsT(ts []*schema.Table, t *schema.Table) bool {
+	for _, t1 := range ts {
+		if t1.Schema.Name == t.Schema.Name && t1.Name == t.Name {
+			return true
+		}
+	}
+	return false
 }
