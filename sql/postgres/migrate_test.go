@@ -670,6 +670,35 @@ func TestPlanChanges(t *testing.T) {
 		},
 		{
 			changes: []schema.Change{
+				&schema.DropTable{
+					T: schema.NewTable("users").
+						SetSchema(schema.New("public")).
+						AddColumns(
+							schema.NewEnumColumn("state", schema.EnumName("state"), schema.EnumValues("on", "off")),
+							schema.NewEnumColumn("status", schema.EnumName("status"), schema.EnumValues("on", "off")),
+						),
+				},
+			},
+			mock: func(m mock) {
+				m.ExpectQuery(sqltest.Escape("SELECT * FROM pg_type t JOIN pg_namespace n on t.typnamespace = n.oid WHERE t.typname = $1 AND t.typtype = 'e' AND n.nspname = $2 ")).
+					WithArgs("state", "public").
+					WillReturnRows(sqlmock.NewRows([]string{"name"}))
+				m.ExpectQuery(sqltest.Escape("SELECT * FROM pg_type t JOIN pg_namespace n on t.typnamespace = n.oid WHERE t.typname = $1 AND t.typtype = 'e' AND n.nspname = $2 ")).
+					WithArgs("status", "public").
+					WillReturnRows(sqlmock.NewRows([]string{"name"}))
+			},
+			wantPlan: &migrate.Plan{
+				Reversible:    true,
+				Transactional: true,
+				Changes: []*migrate.Change{
+					{Cmd: `DROP TABLE "public"."users"`, Reverse: `CREATE TABLE "public"."users" ("state" "public"."state" NOT NULL, "status" "public"."status" NOT NULL)`},
+					{Cmd: `DROP TYPE "public"."state"`, Reverse: `CREATE TYPE "public"."state" AS ENUM ('on', 'off')`},
+					{Cmd: `DROP TYPE "public"."status"`, Reverse: `CREATE TYPE "public"."status" AS ENUM ('on', 'off')`},
+				},
+			},
+		},
+		{
+			changes: []schema.Change{
 				func() schema.Change {
 					users := schema.NewTable("users").
 						SetSchema(schema.New("public")).
