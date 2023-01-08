@@ -57,7 +57,16 @@ func TestRegisterOpen(t *testing.T) {
 	require.Equal(t, "schema", c.URL.Schema)
 
 	c1, err = sqlclient.Open(context.Background(), "postgres://:3306")
-	require.EqualError(t, err, `sql/sqlclient: no opener was registered with name "postgres"`)
+	require.EqualError(t, err, `sql/sqlclient: unknown driver "postgres". See: https://atlasgo.io/url`)
+}
+
+func TestOpen_Errors(t *testing.T) {
+	c, err := sqlclient.Open(context.Background(), "missing")
+	require.EqualError(t, err, `sql/sqlclient: missing driver. See: https://atlasgo.io/url`)
+	require.Nil(t, c)
+	c, err = sqlclient.Open(context.Background(), "unknown://")
+	require.EqualError(t, err, `sql/sqlclient: unknown driver "unknown". See: https://atlasgo.io/url`)
+	require.Nil(t, c)
 }
 
 func TestClient_AddClosers(t *testing.T) {

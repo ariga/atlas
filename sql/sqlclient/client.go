@@ -199,9 +199,12 @@ func OpenURL(ctx context.Context, u *url.URL, opts ...OpenOption) (*Client, erro
 			return nil, err
 		}
 	}
+	if u.Scheme == "" {
+		return nil, errors.New("sql/sqlclient: missing driver. See: https://atlasgo.io/url")
+	}
 	v, ok := drivers.Load(u.Scheme)
 	if !ok {
-		return nil, fmt.Errorf("sql/sqlclient: no opener was registered with name %q", u.Scheme)
+		return nil, fmt.Errorf("sql/sqlclient: unknown driver %q. See: https://atlasgo.io/url", u.Scheme)
 	}
 	drv := v.(*driver)
 	// If there is a schema given and the driver allows to change the schema for the url, do it.

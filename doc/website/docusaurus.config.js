@@ -194,6 +194,10 @@ module.exports = {
             to: '/guides/ddl',
             from: '/knowledge/ddl',
           },
+          {
+            to: '/concepts/url',
+            from: '/url',
+          },
         ],
       },
     ],
