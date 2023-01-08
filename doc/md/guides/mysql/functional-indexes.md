@@ -224,7 +224,7 @@ possible_keys: NULL
 A filesort operation uses temporary disk files as necessary if the result set is too large to fit in memory. To learn more about how filesort is used to satisfy the ORDER BY clause in MySQL,  click [here](https://dev.mysql.com/doc/refman/8.0/en/order-by-optimization.html#order-by-filesort).
 :::
 
-This is where having knowledge about functional indexes becomes essential. Now, let's try to optimize the query by creating a functional index with the expression “((science + mathematics)/2)” from our query, with the following command:
+This is where having knowledge about functional indexes becomes essential. Now, let's try to optimize the query by creating a functional index with the expression `((science + mathematics)/2)` from our query, with the following command:
 
 ```sql
 CREATE INDEX
