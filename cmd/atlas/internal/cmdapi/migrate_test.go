@@ -792,6 +792,89 @@ func TestMigrate_StatusJSON(t *testing.T) {
 	require.Equal(t, `"sqlite3"`, s)
 }
 
+func TestMigrate_Set(t *testing.T) {
+	u := fmt.Sprintf("sqlite://file:%s?_fk=1", filepath.Join(t.TempDir(), "test.db"))
+	_, err := runCmd(
+		migrateApplyCmd(),
+		"--dir", "file://testdata/sqlite",
+		"--url", u,
+	)
+	require.NoError(t, err)
+
+	s, err := runCmd(
+		migrateSetCmd(),
+		"--dir", "file://testdata/sqlite",
+		"-u", u,
+		"20220318104614",
+	)
+	require.NoError(t, err)
+	require.Equal(t, `Current version is 20220318104614 (1 removed):
+
+  - 20220318104615 (second)
+
+`, s)
+	s, err = runCmd(
+		migrateSetCmd(),
+		"--dir", "file://testdata/sqlite",
+		"-u", u,
+		"20220318104615",
+	)
+	require.NoError(t, err)
+	require.Equal(t, `Current version is 20220318104615 (1 set):
+
+  + 20220318104615 (second)
+
+`, s)
+
+	s, err = runCmd(
+		migrateSetCmd(),
+		"--dir", "file://testdata/baseline1",
+		"-u", u,
+	)
+	require.NoError(t, err)
+	require.Equal(t, `Current version is 1 (1 set, 2 removed):
+
+  + 1 (baseline)
+  - 20220318104614 (initial)
+  - 20220318104615 (second)
+
+`, s)
+
+	s, err = runCmd(
+		migrateSetCmd(),
+		"--dir", filepath.Join("file://", t.TempDir()), // empty dir.
+		"-u", u,
+	)
+	require.NoError(t, err)
+	require.Equal(t, `All revisions deleted (1 in total):
+
+  - 1 (baseline)
+
+`, s)
+
+	// Empty database.
+	u = fmt.Sprintf("sqlite://file:%s?_fk=1", filepath.Join(t.TempDir(), "test.db"))
+	_, err = runCmd(
+		migrateSetCmd(),
+		"--dir", "file://testdata/sqlite",
+		"-u", u,
+	)
+	require.EqualError(t, err, "accepts 1 arg(s), received 0")
+
+	s, err = runCmd(
+		migrateSetCmd(),
+		"--dir", "file://testdata/sqlite",
+		"-u", u,
+		"20220318104614",
+	)
+	require.NoError(t, err)
+	require.Equal(t, `Current version is 20220318104614 (1 set):
+
+  + 20220318104614 (initial)
+
+`, s)
+}
+
 func TestMigrate_New(t *testing.T) {
 	var (
 		p = t.TempDir()

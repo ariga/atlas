@@ -13,9 +13,8 @@ import (
 	"testing"
 	"text/template"
 
-	"ariga.io/atlas/sql/migrate"
-
 	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
+	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
 	"ariga.io/atlas/sql/sqlclient"
 	_ "ariga.io/atlas/sql/sqlite"
