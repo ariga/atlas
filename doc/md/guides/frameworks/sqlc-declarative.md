@@ -26,7 +26,7 @@ schema and queries, to ensure sqlc knows what types and queries it needs to gene
 As your application’s schema evolves, drift between the desired schema and database can cause many issues with sqlc,
 since the most common time you will detect the errors is during the query execution.
 
-In this guide, we will show how sqlc users can utilize Atlas’s declarative schema migrations workflow to ensure their
+In this guide, we will show how sqlc users can utilize Atlas’s declarative schema migration workflow to ensure their
 database schemas are always in sync with their desired state.
 
 ## Desired state
@@ -63,7 +63,7 @@ While in this example we are using Postgres, this is not a requirement by sqlc o
 database as long the `schema.sql` is compatible.
 :::
 
-The first thing we should have to do is to initialize the database schema, this can be accomplished with a simple
+The first thing we do is to initialize the database schema, this can be accomplished with a simple
 command:
 
 ```shell
@@ -92,11 +92,11 @@ Atlas CLI will ask for approval during the command execution, if you want to ski
 flag `--auto-approve`.
 :::
 
-Let's break down this command, first we are telling Atlas to connect to the database using the `url` flag, then compare
+Let's break this command down: first we are telling Atlas to connect to the database using the `url` flag, then compare
 to the desired state defined by the `to` flag and apply all the changes required to ensure we get to the desired state.
 
-There is one more flag used on the command, `dev-url`, Atlas uses a temporary database to check, simulate and validate
-the generated queries, for more information check [this link](https://atlasgo.io/concepts/dev-database), Atlas has
+There is one more flag used on the command: `dev-url`. Atlas uses a temporary database to check, simulate and validate
+the generated queries. For more information check [this link](https://atlasgo.io/concepts/dev-database). Atlas has
 support for running database containers, and that's what we are using in this example.
 
 After running the command above and confirming the changes, your database should be in sync with the `schema.sql` file.
@@ -104,7 +104,7 @@ After running the command above and confirming the changes, your database should
 ## Evolving the schema
 
 As your application evolves, it is very common to have the database schema evolve as well. Suppose that to support a new
-feature in your application, you need to add a new `age` column, with Atlas the process can be as simple as updating
+feature in your application, you need to add a new `age` column. With Atlas the process can be as simple as updating
 the `schema.sql` to the desired schema and running `schema apply` again.
 
 ```sql title="schema.sql" {5-6}
@@ -136,7 +136,7 @@ Use the arrow keys to navigate: ↓ ↑ → ←
     Abort
 ```
 
-That’s it, after new interactions of changes to the schema, you only have to apply the schema changes again and Atlas
+That’s it! After new interactions of changes to the schema, you only have to apply the schema changes again and Atlas
 will handle the rest.
 
 ## Complete workflow
@@ -152,4 +152,4 @@ With the declarative strategy, one can visualize the complete workflow of using 
 
 In this guide we saw how Atlas can be used with sqlc in a declarative way, making the schema management process a
 breeze. If you don’t like the approach of handling the migration in a declarative way, Atlas has support for versioned
-migration as well.
+migrations as well.
