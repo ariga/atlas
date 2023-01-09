@@ -6,7 +6,7 @@ slug: /guides/mysql/functional-indexes
 
 ### What are functional key parts?​
 
-In contrast to a “normal” index which indexes column values, functional key parts can index expression values. Hence, functional key parts enable indexing values which are not stored directly in the table itself. MySQL 8.0.13 and higher has added support for functional key parts.
+In contrast to a "normal" index which indexes column values, functional key parts can index expression values. Hence, functional key parts enable indexing values which are not stored directly in the table itself. MySQL 8.0.13 and higher have added support for functional key parts.
 
 ### When are functional indexes helpful?
 
@@ -37,7 +37,7 @@ Expressions must be enclosed within parentheses in order to create a functional 
 
 ### Example​
 
-Let’s create a table containing students lists and the marks they received in each subject with the following command:
+Let’s create a table containing a list of students and the marks they received in each subject with the following command:
 
 ```sql
 CREATE TABLE `scorecard` (
@@ -76,7 +76,7 @@ SELECT * FROM scorecard
 | 1000000 | James Strong     |      47 |          78 |       36 |             67 |   73 |
 ```
 
-We do not have any indexes other than the primary index on the `id` column. Now, suppose we want information about the top ten students who scored best average in math and science combined. Let's query that data with the following command:
+We do not have any indexes other than the primary index on the `id` column. Now, suppose we want information about the top ten students who scored the best average in math and science combined. Let's query that data with the following command:
 
 ```sql
 SELECT
@@ -237,7 +237,7 @@ ON
 ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '/2)' at line 4
 ```
 
-Oops, that didn’t work! As we mentioned in the [Syntax](link_to_syntax_hashtag) section above, Expressions must be enclosed within parentheses in order to create a functional index. Let’s try this again with the correct syntax:
+Oops, that didn’t work! As we mentioned in the [syntax](link_to_syntax_hashtag) section above, expressions must be enclosed within parentheses in order to create a functional index. Let’s try this again with the correct syntax:
 
 ```sql
 CREATE INDEX
@@ -270,10 +270,10 @@ LIMIT 10;
 |
 ```
 
-The cost has reduced down to 0.01! Index scan has used the index “functional_idx” in order to execute the query. This is a significant improvement in performance compared to the scenarios above with an index on a column (unused) or no index at all (both of which cost 100000+ units).
+The cost has reduced down to 0.01! The index scan has used the index "functional_idx" in order to execute the query. This is a significant improvement in performance compared to the scenarios above with an index on a column (unused) or no index at all (both of which cost 100000+ units).
 
-### Limitations:
-1. Functional indexes can not be defined as primary keys.
+### Limitations
+1. Functional indexes cannot be defined as primary keys.
 2. Any conditions, functions or expressions in the query other than the ones defined in the functional index will not make use of the functional index. Thus, one needs to create a functional index with the exact conditions, functions or expressions which are used by the query.
 
 ## Managing Functional Indexes is easy with Atlas​
@@ -283,7 +283,7 @@ Atlas is an open-source project which allows us to manage our database using a s
 If you are just getting started, install the latest version of Atlas using the guide to [setting up Atlas](https://atlasgo.io/cli/getting-started/setting-up).
 :::
 
-We will first use the atlas schema inspect command to get an [HCL](https://atlasgo.io/guides/ddl#hcl) representation of the table we created earlier (without any indexes other than primary index on id column) by using the Atlas CLI:
+We will first use the `atlas schema inspect` command to get an [HCL](https://atlasgo.io/guides/ddl#hcl) representation of the table we created earlier (without any indexes other than primary index on id column) by using the Atlas CLI:
 
 ```console
 atlas schema inspect -u "mysql://root:password@localhost:3306/scorecard" > schema.hcl
