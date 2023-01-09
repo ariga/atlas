@@ -237,7 +237,7 @@ ON
 ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '/2)' at line 4
 ```
 
-Oops, that didn’t work! As we mentioned in the [syntax](https://atlasgo.io/guides/mysql/functional-indexes#syntax) section above, expressions must be enclosed within parentheses in order to create a functional index. Let’s try this again with the correct syntax:
+Oops, that didn’t work! As we mentioned in the [syntax](#syntax) section above, expressions must be enclosed within parentheses in order to create a functional index. Let’s try this again with the correct syntax:
 
 ```sql
 CREATE INDEX
