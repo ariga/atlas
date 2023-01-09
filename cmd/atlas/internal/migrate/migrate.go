@@ -106,6 +106,15 @@ func (r *EntRevisions) ReadRevisions(ctx context.Context) ([]*migrate.Revision, 
 	return ret, nil
 }
 
+// CurrentRevision returns the current (latest) revision in the revisions table.
+func (r *EntRevisions) CurrentRevision(ctx context.Context) (*migrate.Revision, error) {
+	rev, err := r.ec.Revision.Query().Order(ent.Desc(revision.FieldID)).First(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return rev.AtlasRevision(), nil
+}
+
 // WriteRevision writes a revision to the revisions table.
 func (r *EntRevisions) WriteRevision(ctx context.Context, rev *migrate.Revision) error {
 	return r.ec.Revision.Create().
