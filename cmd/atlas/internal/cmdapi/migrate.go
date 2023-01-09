@@ -24,6 +24,7 @@ import (
 	"ariga.io/atlas/cmd/atlas/internal/cmdlog"
 	"ariga.io/atlas/cmd/atlas/internal/lint"
 	cmdmigrate "ariga.io/atlas/cmd/atlas/internal/migrate"
+	"ariga.io/atlas/cmd/atlas/internal/migrate/ent"
 	"ariga.io/atlas/cmd/atlas/internal/migrate/ent/revision"
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/schema"
@@ -735,14 +736,13 @@ func migrateSetCmd() *cobra.Command {
 	var (
 		flags migrateSetFlags
 		cmd   = &cobra.Command{
-			Use:   "set [flags] <version>",
+			Use:   "set [flags] [version]",
 			Short: "Set the current version of the migration history table.",
 			Long: `'atlas migrate set' edits the revision table to consider all migrations up to and including the given version
 to be applied. This command is usually used after manually making changes to the managed database.`,
 			Example: `  atlas migrate set 3 --url mysql://user:pass@localhost:3306/
-  atlas migrate set 4 --env local
+  atlas migrate set --env local
   atlas migrate set 1.2.4 --url mysql://user:pass@localhost:3306/my_db --revision-schema my_revisions`,
-			Args: cobra.ExactArgs(1),
 			PreRunE: func(cmd *cobra.Command, _ []string) error {
 				if err := migrateFlagsFromEnv(cmd); err != nil {
 					return err
@@ -765,29 +765,24 @@ to be applied. This command is usually used after manually making changes to the
 	return cmd
 }
 
-func migrateSetRun(cmd *cobra.Command, args []string, flags migrateSetFlags) error {
+func migrateSetRun(cmd *cobra.Command, args []string, flags migrateSetFlags) (rerr error) {
+	ctx := cmd.Context()
 	dir, err := dir(flags.dirURL, false)
 	if err != nil {
 		return err
 	}
-	avail, err := dir.Files()
+	files, err := dir.Files()
 	if err != nil {
 		return err
 	}
-	// Check if the target version does exist in the migration directory.
-	if idx := migrate.FilesLastIndex(avail, func(f migrate.File) bool {
-		return f.Version() == args[0]
-	}); idx == -1 {
-		return fmt.Errorf("migration with version %q not found", args[0])
-	}
-	client, err := sqlclient.Open(cmd.Context(), flags.url)
+	client, err := sqlclient.Open(ctx, flags.url)
 	if err != nil {
 		return err
 	}
 	defer client.Close()
 	// Acquire a lock.
 	if l, ok := client.Driver.(schema.Locker); ok {
-		unlock, err := l.Lock(cmd.Context(), applyLockValue, 0)
+		unlock, err := l.Lock(ctx, applyLockValue, 0)
 		if err != nil {
 			return fmt.Errorf("acquiring database lock: %w", err)
 		}
@@ -798,104 +793,132 @@ func migrateSetRun(cmd *cobra.Command, args []string, flags migrateSetFlags) err
 		return err
 	}
 	// Ensure revision table exists.
-	rrw, err := entRevisions(cmd.Context(), client, flags.revisionSchema)
+	rrw, err := entRevisions(ctx, client, flags.revisionSchema)
 	if err != nil {
 		return err
 	}
-	if err := rrw.Migrate(cmd.Context()); err != nil {
+	if err := rrw.Migrate(ctx); err != nil {
 		return err
 	}
 	// Wrap manipulation in a transaction.
-	tx, err := client.Tx(cmd.Context(), nil)
+	tx, err := client.Tx(ctx, nil)
 	if err != nil {
 		return err
 	}
-	rrw, err = entRevisions(cmd.Context(), tx.Client, flags.revisionSchema)
+	defer func() {
+		if rerr == nil {
+			rerr = tx.Commit()
+		} else if err2 := tx.Rollback(); err2 != nil {
+			rerr = fmt.Errorf("%v: %w", err2, err)
+		}
+	}()
+	rrw, err = entRevisions(ctx, tx.Client, flags.revisionSchema)
 	if err != nil {
 		return err
 	}
-	revs, err := rrw.ReadRevisions(cmd.Context())
+	revs, err := rrw.ReadRevisions(ctx)
 	if err != nil {
 		return err
 	}
-	if err := func() error {
-		for _, r := range revs {
-			// Check all existing revisions and ensure they precede the given version. If we encounter a partially
-			// applied revision, or one with errors, mark them "fixed".
-			switch {
-			// remove revision to keep linear history
-			case r.Version > args[0]:
-				if err := rrw.DeleteRevision(cmd.Context(), r.Version); err != nil {
-					return err
-				}
-			// keep, but if with error mark "fixed"
-			case r.Version == args[0] && (r.Error != "" || r.Total != r.Applied):
-				r.Type = migrate.RevisionTypeExecute | migrate.RevisionTypeResolved
-				if err := rrw.WriteRevision(cmd.Context(), r); err != nil {
-					return err
-				}
+	var version string
+	switch n := len(args); {
+	// Prevent the case where 'migrate set' is called without a version on
+	// a clean database. i.e., we allow only removing or syncing revisions.
+	case n == 0 && len(revs) > 0:
+		// Calling set without a version and an empty
+		// migration directory purges the revision table.
+		if len(files) > 0 {
+			version = files[len(files)-1].Version()
+		}
+	case n == 1:
+		// Check if the target version does exist in the migration directory.
+		if idx := migrate.FilesLastIndex(files, func(f migrate.File) bool {
+			return f.Version() == args[0]
+		}); idx == -1 {
+			return fmt.Errorf("migration with version %q not found", args[0])
+		}
+		version = args[0]
+	default:
+		return fmt.Errorf("accepts 1 arg(s), received %d", n)
+	}
+	log := &cmdlog.MigrateSet{}
+	for _, r := range revs {
+		// Check all existing revisions and ensure they precede the given version. If we encounter a partially
+		// applied revision, or one with errors, mark them "fixed".
+		switch {
+		// remove revision to keep linear history
+		case r.Version > version:
+			log.Removed(r)
+			if err := rrw.DeleteRevision(ctx, r.Version); err != nil {
+				return err
+			}
+		// keep, but if with error mark "fixed"
+		case r.Version == version && (r.Error != "" || r.Total != r.Applied):
+			log.Set(r)
+			r.Type = migrate.RevisionTypeExecute | migrate.RevisionTypeResolved
+			if err := rrw.WriteRevision(ctx, r); err != nil {
+				return err
 			}
 		}
-		revs, err = rrw.ReadRevisions(cmd.Context())
-		if err != nil {
-			return err
+	}
+	revs, err = rrw.ReadRevisions(ctx)
+	if err != nil {
+		return err
+	}
+	// If the target version succeeds the last revision, mark
+	// migrations applied, until we reach the target version.
+	var pending []migrate.File
+	switch {
+	case len(revs) == 0:
+		// Take every file until we reach target version.
+		for _, f := range files {
+			if f.Version() > version {
+				break
+			}
+			pending = append(pending, f)
 		}
-		// If the target version succeeds the last revision, mark
-		// migrations applied, until we reach the target version.
-		var pending []migrate.File
-		switch {
-		case len(revs) == 0:
-			// Take every file until we reach target version.
-			for _, f := range avail {
-				if f.Version() > args[0] {
-					break
-				}
+	case version > revs[len(revs)-1].Version:
+	loop:
+		// Take every file succeeding the last revision until we reach target version.
+		for _, f := range files {
+			switch {
+			case f.Version() <= revs[len(revs)-1].Version:
+				// Migration precedes last revision.
+			case f.Version() > version:
+				// Migration succeeds target revision.
+				break loop
+			default: // between last revision and target
 				pending = append(pending, f)
 			}
-		case args[0] > revs[len(revs)-1].Version:
-		loop:
-			// Take every file succeeding the last revision until we reach target version.
-			for _, f := range avail {
-				switch {
-				case f.Version() <= revs[len(revs)-1].Version:
-					// Migration precedes last revision.
-				case f.Version() > args[0]:
-					// Migration succeeds target revision.
-					break loop
-				default: // between last revision and target
-					pending = append(pending, f)
-				}
-			}
 		}
-		// Mark every pending file as applied.
-		sum, err := dir.Checksum()
+	}
+	// Mark every pending file as applied.
+	sum, err := dir.Checksum()
+	if err != nil {
+		return err
+	}
+	for _, f := range pending {
+		h, err := sum.SumByName(f.Name())
 		if err != nil {
 			return err
 		}
-		for _, f := range pending {
-			h, err := sum.SumByName(f.Name())
-			if err != nil {
-				return err
-			}
-			if err := rrw.WriteRevision(cmd.Context(), &migrate.Revision{
-				Version:         f.Version(),
-				Description:     f.Desc(),
-				Type:            migrate.RevisionTypeResolved,
-				ExecutedAt:      time.Now(),
-				Hash:            h,
-				OperatorVersion: operatorVersion(),
-			}); err != nil {
-				return err
-			}
+		rev := &migrate.Revision{
+			Version:         f.Version(),
+			Description:     f.Desc(),
+			Type:            migrate.RevisionTypeResolved,
+			ExecutedAt:      time.Now(),
+			Hash:            h,
+			OperatorVersion: operatorVersion(),
 		}
-		return nil
-	}(); err != nil {
-		if err2 := tx.Rollback(); err2 != nil {
-			err = fmt.Errorf("%v: %w", err2, err)
+		log.Set(rev)
+		if err := rrw.WriteRevision(ctx, rev); err != nil {
+			return err
 		}
+	}
+	if log.Current, err = rrw.CurrentRevision(ctx); err != nil && !ent.IsNotFound(err) {
 		return err
 	}
-	return tx.Commit()
+	return cmdlog.MigrateSetTemplate.Execute(cmd.OutOrStdout(), log)
 }
 
 type migrateStatusFlags struct {

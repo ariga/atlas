@@ -1,14 +1,14 @@
-! atlas migrate set
-stderr 'Error: accepts 1 arg\(s\), received 0'
-
-! atlas migrate set foo bar
-stderr 'Error: accepts 1 arg\(s\), received 2'
-
 ! atlas migrate set 0
 stderr 'Error: checksum file not found'
 stdout 'You have a checksum error in your migration directory.'
 
 atlas migrate hash
+
+! atlas migrate set --url URL
+stderr 'Error: accepts 1 arg\(s\), received 0'
+
+! atlas migrate set --url URL foo bar
+stderr 'Error: accepts 1 arg\(s\), received 2'
 
 # Works on fresh database.
 atlas migrate set 1 --url URL

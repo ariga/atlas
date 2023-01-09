@@ -246,7 +246,7 @@ Set the current version of the migration history table.
 
 #### Usage
 ```
-atlas migrate set [flags] <version>
+atlas migrate set [flags] [version]
 ```
 
 #### Details
@@ -257,7 +257,7 @@ to be applied. This command is usually used after manually making changes to the
 
 ```
   atlas migrate set 3 --url mysql://user:pass@localhost:3306/
-  atlas migrate set 4 --env local
+  atlas migrate set --env local
   atlas migrate set 1.2.4 --url mysql://user:pass@localhost:3306/my_db --revision-schema my_revisions
 ```
 #### Flags
