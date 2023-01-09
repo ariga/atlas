@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"text/template"
 	"time"
@@ -196,6 +197,85 @@ func table(report *MigrateStatus) (string, error) {
 	}
 	tbl.Render()
 	return buf.String(), nil
+}
+
+// MigrateSetTemplate holds the default template of the 'migrate set' command.
+var MigrateSetTemplate = template.Must(template.New("set").
+	Funcs(ColorTemplateFuncs).Parse(`
+{{- if and (not .Current) .Revisions -}}
+All revisions deleted ({{ len .Revisions }} in total):
+{{ else if and .Current .Revisions -}}
+Current version is {{ cyan .Current.Version }} ({{ .Summary }}):
+{{ end }}
+{{- if .Revisions }}
+{{ range .ByVersion }}
+  {{- $text := .ColoredVersion }}{{ with .Description }}{{ $text = printf "%s (%s)" $text . }}{{ end }}
+  {{- printf "  %s\n" $text }}
+{{- end }}
+{{ end -}}
+`))
+
+type (
+	// MigrateSet contains a summary of the migrate set command.
+	MigrateSet struct {
+		// Revisions that were added, removed or updated.
+		Revisions []RevisionOp `json:"Revisions,omitempty"`
+		// Current version in the revisions table.
+		Current *migrate.Revision `json:"Latest,omitempty"`
+	}
+	// RevisionOp represents an operation done on a revision.
+	RevisionOp struct {
+		*migrate.Revision
+		Op string `json:"Op,omitempty"`
+	}
+)
+
+// ByVersion returns all revisions sorted by version.
+func (r *MigrateSet) ByVersion() []RevisionOp {
+	sort.Slice(r.Revisions, func(i, j int) bool {
+		return r.Revisions[i].Version < r.Revisions[j].Version
+	})
+	return r.Revisions
+}
+
+// Set records revision that was added.
+func (r *MigrateSet) Set(rev *migrate.Revision) {
+	r.Revisions = append(r.Revisions, RevisionOp{Revision: rev, Op: "set"})
+}
+
+// Removed records revision that was added.
+func (r *MigrateSet) Removed(rev *migrate.Revision) {
+	r.Revisions = append(r.Revisions, RevisionOp{Revision: rev, Op: "remove"})
+}
+
+// Summary returns a summary of the set operation.
+func (r *MigrateSet) Summary() string {
+	var s, d int
+	for i := range r.Revisions {
+		switch r.Revisions[i].Op {
+		case "set":
+			s++
+		default:
+			d++
+		}
+	}
+	var sum []string
+	if s > 0 {
+		sum = append(sum, fmt.Sprintf("%d set", s))
+	}
+	if d > 0 {
+		sum = append(sum, fmt.Sprintf("%d removed", d))
+	}
+	return strings.Join(sum, ", ")
+}
+
+// ColoredVersion returns the version of the revision with a color.
+func (r *RevisionOp) ColoredVersion() string {
+	c := color.HiGreenString("+")
+	if r.Op != "set" {
+		c = color.HiRedString("-")
+	}
+	return c + " " + r.Version
 }
 
 var (
