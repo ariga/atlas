@@ -237,7 +237,7 @@ ON
 ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '/2)' at line 4
 ```
 
-Oops, that didn’t work! As we mentioned in the [syntax](link_to_syntax_hashtag) section above, expressions must be enclosed within parentheses in order to create a functional index. Let’s try this again with the correct syntax:
+Oops, that didn’t work! As we mentioned in the [syntax](https://atlasgo.io/guides/mysql/functional-indexes#syntax) section above, expressions must be enclosed within parentheses in order to create a functional index. Let’s try this again with the correct syntax:
 
 ```sql
 CREATE INDEX
@@ -345,12 +345,7 @@ If you get `Error: pulling image: exit status 1` error, ensure that Docker Deskt
 :::
 
 Atlas generates the necessary SQL statements to add the new index to the database schema.
-
-:::info
-Migration failures can leave the database in a broken state. Some databases, like MySQL, do not support transactional migrations due to [implicit COMMIT](https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html). However, this can be avoided using the `--dev-url` option. To know more about the dev database in Atlas, click [here](https://atlasgo.io/concepts/dev-database).
-:::
-
-Press Enter while the Apply option is highlighted to apply the changes:
+Press `Enter` key while the Apply option is highlighted to apply the changes:
 
 ```console
 -- Planned Changes:
