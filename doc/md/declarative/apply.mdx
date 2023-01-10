@@ -232,52 +232,6 @@ atlas schema apply \
 </TabItem>
 </Tabs>
 
-### Down migrations
-
-Migrations that "roll back" or reverse changes made to the database schema are called "down migrations". These are often
-used during local development to undo the changes made by corresponding "up migrations". Atlas follows a linear
-migration history model, in which all migration files are "roll-forward". However, it is still possible to clean or
-revert schema changes made by specific migration files using the `schema clean` or `schema apply` commands. For example:
-
-1\. If a migration file(s) was already deleted, you can use the [command above](#migration-directory) to migrate the
-database state to the state defined by the migration directory. For example:
-
-```shell
-atlas schema apply \
-  --url "mysql://root:pass@localhost:3306/example" \
-  --to "file://migrations" \
-  --dev-url "docker://mysql/8/example"
-```
-
-2\. If the file is still present, the `version` parameter can be used to specify that the database should be migrated
-to the state defined in a specific version of the migration directory. For example:
-
-```shell
-atlas schema apply \
-  --url "mysql://root:pass@localhost:3306/example" \
-  --to "file://migrations?version=20220925094437" \
-  --dev-url "docker://mysql/8/example"
-```
-
-```shell title="tree ." {6}
-.
-└── migrations
-    ├── 20220925092817_initial.sql
-    ├── 20220925094021_second.sql
-    ├── 20220925094437_third.sql
-    ├── 20220925094438_fourth.sql # changes made by this file are reverted.
-    └── atlas.sum
-```
-
-3\. In order to clean the entire schema, use the `schema clean` command, and then use
-[`atlas migrate apply`](../versioned/apply) to replay the migration files. For example:
-
-```shell
-atlas schema clean -u "mysql://root:pass@:3306/example"
-atlas migrate apply -u "mysql://root:pass@:3306/example"
-```
-
-
 ### Multi-Tenant environments
 
 The Atlas configuration language provides built-in support for executing declarative workflows in multi-tenant
