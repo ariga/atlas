@@ -26,6 +26,8 @@ Welcome to the Atlas Guides.
 
 [Descending Indexes](mysql/descending-indexes.md)
 
+[Functional Indexes](mysql/functional-indexes.md)
+
 [Generated Columns](mysql/generated-columns.md)
 
 [Managing MySQL schemas on RDS with Terraform](mysql/terraform.md)
