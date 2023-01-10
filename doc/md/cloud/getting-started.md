@@ -28,7 +28,7 @@ For example, "Acme Corp" will be available at "acme-corp.ariga.cloud".
 Ariga Cloud allows you to be a part of multiple organizations.
 After loging in (first login not included) you will see all the organizations you have access to, choose the organization you would to log in to.
 If you would like to create a new organization, click 'create a new organization'.  
-While loged in to one organiztion, you would be able to switch to another organization by clicking on your avatar on the top right corner and choose the organization you would like to switch to.
+While logged in to one organization, you would be able to switch to another by clicking on your avatar on the top right corner and choose the organization you would like to switch to.
 
 
 
