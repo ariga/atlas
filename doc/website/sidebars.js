@@ -240,13 +240,18 @@ module.exports = {
         },
         {
             type: 'category',
-            label: 'ORMs',
+            label: 'Frameworks',
             collapsed: false,
             items: [
                 {
                     type: 'doc',
                     id:'guides/orms/gorm',
                     label: 'GORM'
+                },
+                {
+                    type: 'doc',
+                    id:'guides/frameworks/sqlc-declarative',
+                    label: 'Declarative migrations for sqlc'
                 }
             ]
         },
