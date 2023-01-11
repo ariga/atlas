@@ -45,14 +45,41 @@ If you followed the sqlc tutorial, you may end up with a `schema.sql` file that 
 ```sql title="schema.sql"
 CREATE TABLE authors
 (
-    id   BIGSERIAL PRIMARY KEY,
-    name text NOT NULL,
-    bio  text
+  id   BIGSERIAL PRIMARY KEY,
+  name text NOT NULL,
+  bio  text
 );
 ```
 
-For the purpose of this guide, we will assume that our application is backed by a PostgreSQL database running in a local
-Docker container. You can start such a container by running:
+And a `query.sql` file that looks like this:
+
+```sql title="query.sql"
+-- name: GetAuthor :one
+SELECT *
+FROM authors
+WHERE id = $1
+LIMIT 1;
+
+-- name: ListAuthors :many
+SELECT *
+FROM authors
+ORDER BY name;
+
+-- name: CreateAuthor :one
+INSERT INTO authors (name, bio)
+VALUES ($1, $2)
+RETURNING *;
+
+-- name: DeleteAuthor :exec
+DELETE
+FROM authors
+WHERE id = $1;
+```
+
+You may already have executed the `sqlc generate` command, if not, make sure to execute it.
+
+The next step is migrating the database, for the purpose of this guide, we will assume that our application is backed by
+a PostgreSQL database running in a local Docker container. You can start such a container by running:
 
 ```shell
 docker run --rm -d --name atlas-sqlc -p 5432:5432 -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=sqlc postgres
@@ -105,17 +132,65 @@ After running the command above and confirming the changes, your database should
 
 As your application evolves, it is very common to have the database schema evolve as well. Suppose that to support a new
 feature in your application, you need to add a new `age` column. With Atlas, the process can be as simple as updating
-the `schema.sql` to the desired schema and running `schema apply` again.
+the `schema.sql` to the desired schema, updating the `query.sql` file, executing the `sqlc generate` comamnd
+and running `schema apply` again.
+
+First, let's update our `schema.sql` file, adding the new column.
 
 ```sql title="schema.sql" {5-6}
 CREATE TABLE authors
 (
-    id   BIGSERIAL PRIMARY KEY,
-    name text NOT NULL,
-    bio  text,
-    age  integer
+  id   BIGSERIAL PRIMARY KEY,
+  name text NOT NULL,
+  bio  text,
+  age  integer
 );
 ```
+
+Let's add a new `GetAuthorsByAge` query and update our `CreateAuthor` query.
+
+```sql title="query.sql" {7-11,19-20}
+-- name: GetAuthor :one
+SELECT *
+FROM authors
+WHERE id = $1
+LIMIT 1;
+
+-- name: GetAuthorsByAge :many
+SELECT *
+FROM authors
+WHERE age = $1
+ORDER BY age;
+
+-- name: ListAuthors :many
+SELECT *
+FROM authors
+ORDER BY name;
+
+-- name: CreateAuthor :one
+INSERT INTO authors (name, bio, age)
+VALUES ($1, $2, $3)
+RETURNING *;
+
+-- name: DeleteAuthor :exec
+DELETE
+FROM authors
+WHERE id = $1;
+```
+
+After changes to the `schema.sql` or `query.sql` file, we must run the sqlc generate command again:
+
+```shell
+sqlc generate
+```
+
+:::note
+It's important to run `sqlc generate` even for changes that don't change the `query.sql` file, since sqlc
+will replace the `*` with explicit column names, to ensure the query never returns unexpected data.
+:::
+
+As the last step, we run the `atlas schema apply` command to ensure the database (whether production or development) is
+in sync with the desired state.
 
 ```shell
 atlas schema apply \
@@ -144,7 +219,7 @@ will handle the rest.
 With the declarative strategy, one can visualize the complete workflow of using Atlas with sqlc as follows:
 
 - Update the schema (`schema.sql`)
-    - Optionally update the queries (`query.sql`)
+  - Optionally update the queries (`query.sql`)
 - Run sqlc to generate the updated code
 - Run Atlas during the development and migration process, referencing the `schema.sql` as the desired state.
 
