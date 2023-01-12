@@ -1,0 +1,36 @@
+only mysql8
+
+execsql 'CREATE USER IF NOT EXISTS "a8m"@"%" IDENTIFIED BY "&pass?"'
+execsql 'GRANT ALL PRIVILEGES ON *.* TO "a8m"@"%" WITH GRANT OPTION'
+
+atlas schema inspect --env local > got.txt
+cmp got.txt want.txt
+
+! atlas schema inspect --env failed
+stderr 'invalid port ":&pass" after host'
+
+execsql 'DROP USER "a8m"@"%"'
+
+-- atlas.hcl --
+variable "pass" {
+  type    = string
+  default = "&pass?"
+}
+
+locals {
+  escaped_pass = urlescape(var.pass)
+}
+
+env "local" {
+    url = "mysql://a8m:${local.escaped_pass}@localhost:3308/script_cli_project_url_escape"
+}
+
+env "failed" {
+    url = "mysql://a8m:${var.pass}@localhost:3308/script_cli_project_url_escape"
+}
+
+-- want.txt --
+schema "script_cli_project_url_escape" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_0900_ai_ci"
+}

@@ -6,6 +6,7 @@ package schemahcl
 
 import (
 	"fmt"
+	"net/url"
 	"testing"
 
 	"github.com/zclconf/go-cty/cty"
@@ -89,6 +90,20 @@ func TestURLQuerySetFunc(t *testing.T) {
 			}
 			if !got.RawEquals(test.Want) {
 				t.Errorf("wrong result\ngot:  %#v\nwant: %#v", got, test.Want)
+			}
+		})
+	}
+}
+
+func TestURLEscapeFunc(t *testing.T) {
+	for _, tt := range []string{"foo", "foo?", "foo&"} {
+		t.Run(tt, func(t *testing.T) {
+			got, err := urlEscape.Call([]cty.Value{cty.StringVal(tt)})
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if want := url.QueryEscape(tt); got.AsString() != want {
+				t.Errorf("wrong result\ngot:  %#v\nwant: %#v", got, want)
 			}
 		})
 	}
