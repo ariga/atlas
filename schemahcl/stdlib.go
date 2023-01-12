@@ -156,6 +156,7 @@ func stdFuncs() map[string]function.Function {
 		"trimsuffix":      stdlib.TrimSuffixFunc,
 		"try":             tryfunc.TryFunc,
 		"upper":           stdlib.UpperFunc,
+		"urlescape":       urlEscape,
 		"urlqueryset":     urlQuerySetFunc,
 		"urlsetpath":      urlSetPathFunc,
 		"values":          stdlib.ValuesFunc,
@@ -286,5 +287,19 @@ var urlSetPathFunc = function.New(&function.Spec{
 		}
 		u.Path = args[1].AsString()
 		return cty.StringVal(u.String()), nil
+	},
+})
+
+var urlEscape = function.New(&function.Spec{
+	Params: []function.Parameter{
+		{
+			Name: "string",
+			Type: cty.String,
+		},
+	},
+	Type: function.StaticReturnType(cty.String),
+	Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+		u := url.QueryEscape(args[0].AsString())
+		return cty.StringVal(u), nil
 	},
 })
