@@ -53,7 +53,12 @@ module.exports = {
           href: 'https://twitter.com/ariga_io',
           className: 'header-twitter-link',
           position: 'right',
+        },{
+          href: 'https://atlasnewsletter.substack.com/',
+          className: 'header-newsletter-link',
+          position: 'right',
         },
+        
         {
           to: 'getting-started',
           label: 'Docs',
@@ -91,7 +96,8 @@ module.exports = {
           "items": [
             {"label": "GitHub", "to": "https://github.com/ariga/atlas"},
             {"label": "Discord", "to": "https://discord.gg/zZ6sWVg6NT"},
-            {"label": "Twitter", "to": "https://twitter.com/ariga_io"}
+            {"label": "Twitter", "to": "https://twitter.com/ariga_io"},
+            {"label": "Newsletter", "to": "https://atlasnewsletter.substack.com/"}
           ]
         },
         {
