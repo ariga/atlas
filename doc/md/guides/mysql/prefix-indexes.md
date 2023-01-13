@@ -21,16 +21,16 @@ Here is how you can create a prefix index:
 
 ```sql
 CREATE INDEX 
-  index_name 
+    index_name 
 ON 
-  table_name(column_name(length));
+    table_name(column_name(length));
 ```
 
 Here is how you can define a prefix index in a table definition:
 
 ```sql
 CREATE TABLE 
-  table_name(column_name BLOB, index_name(column_name(length)));
+    table_name(column_name BLOB, index_name(column_name(length)));
 ```
 
 Remember that the `length` is interpreted as the number of characters in non-binary string types such as `CHAR`, `VARCHAR` and `TEXT`. For binary string types such as `BINARY`, `VARBINARY` and `BLOB`, the `length` is interpreted as the number of bytes in the string.
@@ -45,16 +45,16 @@ Let's see this in action by creating a table with the following command:
 
 ```sql
 CREATE TABLE `fbi_suspects` (
-  `id` mediumint(8) unsigned NOT NULL auto_increment,
-  `sender` varchar(255),
-  `receiver` varchar(255),
-  `sender_address` varchar(255),
-  `email` varchar(255),
-  `cryptic_message` TEXT,
-  `suspicious` BOOLEAN,
-  `sent_date` varchar(255),
-  PRIMARY KEY (`id`)
-) AUTO_INCREMENT=1;
+    `id` mediumint(8) unsigned NOT NULL auto_increment,
+    `sender` varchar(255),
+    `receiver` varchar(255),
+    `sender_address` varchar(255),
+    `email` varchar(255),
+    `cryptic_message` TEXT,
+    `suspicious` BOOLEAN,
+    `sent_date` varchar(255),
+    PRIMARY KEY (`id`)
+);
 ```
 
 Here is how a portion of the table might look like after inserting values:
@@ -255,11 +255,11 @@ The storage space used by the index is as following:
 
 ```sql
 SELECT 
-stat_value
+    stat_value
 FROM 
-mysql.innodb_index_stats 
+    mysql.innodb_index_stats 
 WHERE 
-index_name = 'email_idx' AND stat_name= 'size';
+    index_name = 'email_idx' AND stat_name= 'size';
 ```
 
 ```console title="Output"
@@ -279,15 +279,16 @@ For example, if the `innodb_page_size` system variable is set to 16 KB and the `
 For our example, keeping `innodb_page_size` as 16KB in mind, our index uses ~32MB disk space. Now, we can further improve the query performance as well as reduce the storage used by the index by using a prefix index on the email column. Let’s create a prefix index with the following command:
 
 ```sql
-ALTER TABLE fbi_suspects DROP INDEX email_idx;
-CREATE INDEX 
-    email_prefix_idx 
-ON 
-    fbi_suspects(email(5));
+ALTER TABLE 
+    fbi_suspects 
+DROP INDEX 
+    email_idx,
+ADD INDEX 
+    email_prefix_idx (email(5));
 ```
 
 ```console title="Output"
-Query OK, 0 rows affected (1.50 sec)
+Query OK, 0 rows affected (1.59 sec)
 Records: 0  Duplicates: 0  Warnings: 0
 ```
 
@@ -307,11 +308,11 @@ And the storage space used by the index is as follows:
 
 ```sql
 SELECT 
-stat_value
+    stat_value
 FROM 
-mysql.innodb_index_stats 
+    mysql.innodb_index_stats 
 WHERE 
-index_name = 'email_prefix_idx' AND stat_name= 'size';
+    index_name = 'email_prefix_idx' AND stat_name= 'size';
 ```
 
 ```console title="Output"
@@ -424,20 +425,25 @@ Use the arrow keys to navigate: ↓ ↑ → ←
     Abort
 ```
 
-To verify that our new index was created, open the database command line tool from the previous step and run:
+To verify that our new index was created, run the following command:
 
-```sql
-SHOW INDEXES FROM scorecard;
+```console title="Terminal"
+atlas schema inspect -u "mysql://root:password@localhost:3306/fbi_suspects" | grep -A5 index
 ```
 
 ```console title="Output"
-+--------------+------------+---------------------+--------------+-----------------+-----------+-------------+----------+--------+------+------------+---------+---------------+---------+------------+
-| Table        | Non_unique | Key_name            | Seq_in_index | Column_name     | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment | Visible | Expression |
-+--------------+------------+---------------------+--------------+-----------------+-----------+-------------+----------+--------+------+------------+---------+---------------+---------+------------+
-| fbi_suspects |          0 | PRIMARY             |            1 | id              | A         |      961795 |     NULL |   NULL |      | BTREE      |         |               | YES     | NULL       |
-| fbi_suspects |          1 | cryptic_message_idx |            1 | cryptic_message | A         |      107207 |       30 |   NULL | YES  | BTREE      |         |               | YES     | NULL       |
-| fbi_suspects |          1 | email_prefix_idx    |            1 | email           | A         |      923723 |        5 |   NULL | YES  | BTREE      |         |               | YES     | NULL       |
-+--------------+------------+---------------------+--------------+-----------------+-----------+-------------+----------+--------+------+------------+---------+---------------+---------+------------+
+  index "cryptic_message_idx" {
+    on {
+      column = column.cryptic_message
+      prefix = 30
+    }
+  }
+  index "email_prefix_idx" {
+    on {
+      column = column.email
+      prefix = 5
+    }
+  }
 ```
 
 Amazing! Our new indexes `cryptic_message_idx` and `email_prefix_idx` are now created!
