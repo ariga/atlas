@@ -44,13 +44,13 @@ Also, while indexing `BLOB` and `TEXT` types, you *must* specify the length
 Let's see this in action by creating a table with the following command:
 
 ```sql
-CREATE TABLE `fbi_suspects` (
+CREATE TABLE `comm_database` (
     `id` mediumint(8) unsigned NOT NULL auto_increment,
     `sender` varchar(255),
     `receiver` varchar(255),
     `sender_address` varchar(255),
     `email` varchar(255),
-    `cryptic_message` TEXT,
+    `message` TEXT,
     `suspicious` BOOLEAN,
     `sent_date` varchar(255),
     PRIMARY KEY (`id`)
@@ -61,21 +61,21 @@ Here is how a portion of the table might look like after inserting values:
 
 ```console title="Output"
 +----+------------------+-----------------+-------------------------------+---------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------+------------+-------------------------+
-| id | sender           | receiver        | sender_address                | email                     | cryptic_message                                                                                                                                       | suspicious | sent_date               |
+| id | sender           | receiver        | sender_address                | email                     | message                                                                                                                                               | suspicious | sent_date               |
 +----+------------------+-----------------+-------------------------------+---------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------+------------+-------------------------+
-|  1 | Abel Warren      | Latoya Spencer  | 575 North Rocky Fabien Avenue | xufh.vuho@example.com     | Almighty maybe. Religious doesnt work at all. John doesnt work at all. Bat creates plan to destroy. Almighty is very suppressed.                      |          0 | 2008-09-24 04:57:35.552 |
-|  2 | Erick Valentine  | Casey Leonard   | 243 West Green Nobel Parkway  | kmku.dmfn@example.com     | Coder is walking. Executor bombs. Anne works fast towards goal. Reporter is shopping. Religious creates plan to destroy.                              |          0 | 2008-08-21 11:24:52.16  |
-|  3 | Janice Payne     | Lakeisha Montes | 36 North Rocky Nobel St.      | kevr7@example.com         | Bat says hi from ISIS. Nice is not making any sense. Bat recruites for ISIS. Bat recruites for ISIS. Giver works fast towards goal.                   |          0 | 2008-09-30 23:12:21.056 |
-|  4 | Gretchen Mason   | Colleen Proctor | 241 North Green Second Way    | bymd1@example.com         | Hacker recruites for ISIS. Ramesh works fast towards goal. Anne is not making any sense. Ram creates plan to destroy. Coder is very suppressed.       |          1 | 2008-01-04 07:04:50.56  |
-|  5 | Lawanda Noble    | Alice Velazquez | 255 West White Hague Avenue   | xfvh.icqt@example.com     | Forgiver doesnt work at all. Anne works fast towards goal. Almighty is new to the world. Hacker says hi from ISIS. Hacker bombs.                      |          0 | 2008-05-07 06:03:08.736 |
-|  6 | Robbie Baird     | Bernard Wilkins | 508 South Rocky Milton Blvd.  | monlt963@example.com      | Reporter is not making any sense. Bat might be in trouble. Nice works fast towards goal. Tony creates plan to destroy. Executor might be in trouble.  |          0 | 2008-06-28 07:58:27.904 |
-|  7 | Carla Compton    | Howard Randall  | 448 South Rocky Fabien Street | ffnjia@example.com        | Joyious recruites for ISIS. Forgiver works fast towards goal. Super maybe. Nice says hi from ISIS. Coder news.                                        |          0 | 2008-11-24 04:10:54.912 |
-|  8 | Heath Stafford   | Hector Dickson  | 266 South Rocky New Road      | xlxnq6@example.com        | Spider bought new car. Nice have new hour. Joyious has free time. Spider bombs. Ramesh creates plan to destroy.                                       |          0 | 2008-09-28 13:23:49.44  |
-|  9 | Kendra Stevenson | Vernon Rodgers  | 451 East White Milton Blvd.   | hnguyso.qcbat@example.com | Hacker doesnt work at all. Hacker is having fun. Executor is very suppressed. Tony says hi from ISIS. Hacker have new hour.                           |          1 | 2008-09-15 23:07:41.504 |
-| 10 | Brandie Chase    | Mike Finley     | 188 North Rocky Old Way       | xhqx@example.com          | Forgiver works fast towards goal. Anne bought new car. Super recruites for ISIS. Tony bombs. Spider new time.                                         |          0 | 2008-07-27 01:54:37.248 |
+|  1 | Abel Warren      | Latoya Spencer  | 575 North Rocky Fabien Avenue | xufh.vuho@example.com     | Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed nec dapibu                                                                               |          0 | 2008-09-24 04:57:35.552 |
+|  2 | Erick Valentine  | Casey Leonard   | 243 West Green Nobel Parkway  | kmku.dmfn@example.com     | cus. Maecenas vitae odio sagittis lectus auctor varius. In ultricies facilisis sem, vel scelerisque nulla gravida vitae. Quisque volutpat com         |          0 | 2008-08-21 11:24:52.16  |
+|  3 | Janice Payne     | Lakeisha Montes | 36 North Rocky Nobel St.      | kevr7@example.com         | Pellentesque porttitor dolor rhoncus ex tempus pulvinar. Aenean mattis malesuada tincidunt.                                                           |          0 | 2008-09-30 23:12:21.056 |
+|  4 | Gretchen Mason   | Colleen Proctor | 241 North Green Second Way    | bymd1@example.com         | In hac habitasse platea dictumst. Nam gravida sem vitae hendrerit mattis. Maecenas vestibulum ante sed interdum accumsan.                             |          1 | 2008-01-04 07:04:50.56  |
+|  5 | Lawanda Noble    | Alice Velazquez | 255 West White Hague Avenue   | xfvh.icqt@example.com     | lentesque sed dictum diam, non sodales ligula. Etiam lacinia augue et mattis sodales. Cr                                                              |          0 | 2008-05-07 06:03:08.736 |
+|  6 | Robbie Baird     | Bernard Wilkins | 508 South Rocky Milton Blvd.  | monlt963@example.com      | mollis dui. Morbi neque mauris, convallis id enim eget, efficitur tincidunt nisi. Vestibulum congue nisi vel egestas condimentu                       |          0 | 2008-06-28 07:58:27.904 |
+|  7 | Carla Compton    | Howard Randall  | 448 South Rocky Fabien Street | ffnjia@example.com        | aretra mauris elementum, efficitur nibh. In urna risus, scelerisque ut fringilla quis, suscipit nec dolor. Proin leo l                                |          0 | 2008-11-24 04:10:54.912 |
+|  8 | Heath Stafford   | Hector Dickson  | 266 South Rocky New Road      | xlxnq6@example.com        | a vehicula tellus tempor. Suspendisse potenti. In                                                                                                     |          0 | 2008-09-28 13:23:49.44  |
+|  9 | Kendra Stevenson | Vernon Rodgers  | 451 East White Milton Blvd.   | hnguyso.qcbat@example.com | arcu. Integer fringilla vulputate lectus, et faucibus mauris fermentum et. Quisque malesuada justo quam, vehicu                                       |          1 | 2008-09-15 23:07:41.504 |
+| 10 | Brandie Chase    | Mike Finley     | 188 North Rocky Old Way       | xhqx@example.com          | mi. Donec non vehicula tortor. Nunc ut semper nibh, in accumsan metus. Cras eu pellentesque lacus, sit amet                                           |          0 | 2008-07-27 01:54:37.248 |
 ```
 
-We do not have any indexes other than the primary index on the `id` column. Now, suppose we want information about senders and receivers of a cryptic message with a particular beginning. Let's query that data with the following command:
+We do not have any indexes other than the primary index on the `id` column. Now, suppose we want information about senders and receivers of a message with a particular beginning. Let's query that data with the following command:
 
 ```sql
 SELECT
@@ -84,9 +84,9 @@ SELECT
     receiver,
     email
 FROM
-    fbi_suspects
+    comm_database
 WHERE
-    cryptic_message LIKE 'Coder bombs. Hacker maybe%';
+    message LIKE 'Lorem ipsum dolor sit ame%';
 ```
 
 ```console title="Output"
@@ -130,26 +130,26 @@ SHOW STATUS LIKE 'Last_query_cost';
 
 Notice that the query cost 108430.088807 units.
 
-Now, suppose we want to optimize this query but we do not know about prefix indexes yet. In this case, we will make an index on column `cryptic_message` with the following command:
+Now, suppose we want to optimize this query but we do not know about prefix indexes yet. In this case, we will make an index on column `message` with the following command:
 
 ```sql
 CREATE INDEX 
-    cryptic_message_idx 
+    message_idx 
 ON 
-    fbi_suspects(cryptic_message);
+    comm_database(message);
 ```
 
 ```console title="Output"
-ERROR 1170 (42000): BLOB/TEXT column 'cryptic_message' used in key specification without a key length
+ERROR 1170 (42000): BLOB/TEXT column 'message' used in key specification without a key length
 ```
 
 That didn’t work! As mentioned in the [Syntax](#syntax) section above and the error message, you must specify length when indexing `BLOB` and `TEXT` type columns. Let’s specify the length and try to check the performance for the same query again:
 
 ```sql
 CREATE INDEX 
-    cryptic_message_idx 
+    message_idx 
 ON 
-    fbi_suspects(cryptic_message(30));
+    comm_database(message(30));
 ```
 
 ```console title="Output"
@@ -164,9 +164,9 @@ SELECT
     receiver,
     email
 FROM
-    fbi_suspects
+    comm_database
 WHERE
-    cryptic_message LIKE 'Coder bombs. Hacker maybe%';
+    message LIKE 'Lorem ipsum dolor sit ame%';
 .
 .
 .
@@ -188,7 +188,7 @@ Additionally, we can also confirm by using `EXPLAIN` with the query that the ind
 +----+-------------+--------------+------------+-------+---------------------+---------------------+---------+------+------+----------+-------------+
 | id | select_type | table        | partitions | type  | possible_keys       | key                 | key_len | ref  | rows | filtered | Extra       |
 +----+-------------+--------------+------------+-------+---------------------+---------------------+---------+------+------+----------+-------------+
-|  1 | SIMPLE      | fbi_suspects | NULL       | range | cryptic_message_idx | cryptic_message_idx | 123     | NULL |   16 |   100.00 | Using where |
+|  1 | SIMPLE      | comm_database| NULL       | range | message_idx         | message_idx         | 123     | NULL |   16 |   100.00 | Using where |
 +----+-------------+--------------+------------+-------+---------------------+---------------------+---------+------+------+----------+-------------+
 ```
 
@@ -206,7 +206,7 @@ SELECT
     sender,
     sender_address
 FROM
-    fbi_suspects
+    comm_database
 WHERE
     email = 'dsec4@example.com';
 ```
@@ -233,7 +233,7 @@ To optimize this query, usually we would create the following index:
 CREATE INDEX 
     email_idx 
 ON 
-    fbi_suspects(email);
+    comm_database(email);
 ```
 
 ```console title="Output"
@@ -280,7 +280,7 @@ For our example, keeping `innodb_page_size` as 16KB in mind, our index uses ~32M
 
 ```sql
 ALTER TABLE 
-    fbi_suspects 
+    comm_database 
 DROP INDEX 
     email_idx,
 ADD INDEX 
@@ -336,12 +336,12 @@ If you are just getting started, install the latest version of Atlas using the g
 We will first use the `atlas schema inspect` command to get an [HCL](https://atlasgo.io/guides/ddl#hcl) representation of the table we created earlier (without any indexes) by using the Atlas CLI:
 
 ```console title="Terminal"
-atlas schema inspect -u "mysql://root:@localhost:3306/fbi_suspects" > schema.hcl
+atlas schema inspect -u "mysql://root:@localhost:3306/comm_database" > schema.hcl
 ```
 
 ```hcl title="schema.hcl"
-table "fbi_suspects" {
-  schema = schema.fbi_suspects
+table "comm_database" {
+  schema = schema.comm_database
   column "id" {
     null           = false
     type           = mediumint
@@ -364,7 +364,7 @@ table "fbi_suspects" {
     null = true
     type = varchar(255)
   }
-  column "cryptic_message" {
+  column "message" {
     null = true
     type = text
   }
@@ -380,7 +380,7 @@ table "fbi_suspects" {
     columns = [column.id]
   }
 }
-schema "fbi_suspects" {
+schema "comm_database" {
   charset = "utf8mb4"
   collate = "utf8mb4_0900_ai_ci"
 }
@@ -389,9 +389,9 @@ schema "fbi_suspects" {
 Now, lets add the two following index definitions to the file:
 
 ```hcl
-  index "cryptic_message_idx" {
+  index "message_idx" {
     on {
-      column = column.cryptic_message
+      column = column.message
       prefix = 30
     }
   }
@@ -406,7 +406,7 @@ Now, lets add the two following index definitions to the file:
 Save the file and apply the schema changes on the database by using the following command:
 
 ```console title="Terminal"
-atlas schema apply -u "mysql://root:password@localhost:3306/fbi_suspects" -f schema.hcl --dev-url docker://mysql/8/fbi_suspects
+atlas schema apply -u "mysql://root:password@localhost:3306/comm_database" -f schema.hcl --dev-url docker://mysql/8/comm_database
 ```
 
 :::info
@@ -417,8 +417,8 @@ Atlas generates the necessary SQL statements to add the new index to the databas
 
 ```console
 -- Planned Changes:
--- Modify "fbi_suspects" table
-ALTER TABLE `fbi_suspects`.`fbi_suspects` ADD INDEX `cryptic_message_idx` (`cryptic_message` (30)), ADD INDEX `email_prefix_idx` (`email` (5))
+-- Modify "comm_database" table
+ALTER TABLE `comm_database`.`comm_database` ADD INDEX `message_idx` (`message` (30)), ADD INDEX `email_prefix_idx` (`email` (5))
 Use the arrow keys to navigate: ↓ ↑ → ← 
 ? Are you sure?: 
   ▸ Apply
@@ -428,13 +428,13 @@ Use the arrow keys to navigate: ↓ ↑ → ←
 To verify that our new index was created, run the following command:
 
 ```console title="Terminal"
-atlas schema inspect -u "mysql://root:password@localhost:3306/fbi_suspects" | grep -A5 index
+atlas schema inspect -u "mysql://root:password@localhost:3306/comm_database" | grep -A5 index
 ```
 
 ```console title="Output"
-  index "cryptic_message_idx" {
+  index "message_idx" {
     on {
-      column = column.cryptic_message
+      column = column.message
       prefix = 30
     }
   }
@@ -446,7 +446,7 @@ atlas schema inspect -u "mysql://root:password@localhost:3306/fbi_suspects" | gr
   }
 ```
 
-Amazing! Our new indexes `cryptic_message_idx` and `email_prefix_idx` are now created!
+Amazing! Our new indexes `message_idx` and `email_prefix_idx` are now created!
 
 ### Wrapping up​
 
