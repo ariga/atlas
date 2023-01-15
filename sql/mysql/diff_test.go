@@ -38,18 +38,6 @@ func TestDiff_TableDiff(t *testing.T) {
 			to:   &schema.Table{Name: "users", Columns: []*schema.Column{{Name: "enum", Default: &schema.RawExpr{X: `"A"`}, Type: &schema.ColumnType{Type: &schema.EnumType{Values: []string{"A"}}}}}},
 		},
 		{
-			name: "change primary key",
-			from: func() *schema.Table {
-				t := &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Columns: []*schema.Column{{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}}}}
-				t.PrimaryKey = &schema.Index{
-					Parts: []*schema.IndexPart{{C: t.Columns[0]}},
-				}
-				return t
-			}(),
-			to:      &schema.Table{Name: "users"},
-			wantErr: true,
-		},
-		{
 			name: "modify counter",
 			from: &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Attrs: []schema.Attr{&AutoIncrement{V: 1}}},
 			to:   &schema.Table{Name: "users", Attrs: []schema.Attr{&AutoIncrement{V: 100}}},
@@ -423,6 +411,65 @@ func TestDiff_TableDiff(t *testing.T) {
 					&schema.ModifyIndex{From: from.Indexes[2], To: to.Indexes[2], Change: schema.ChangeParts},
 					&schema.ModifyIndex{From: from.Indexes[3], To: to.Indexes[3], Change: schema.ChangeParts},
 					&schema.AddIndex{I: to.Indexes[1]},
+				},
+			}
+		}(),
+		func() testcase {
+			from := schema.NewTable("t1").
+				SetSchema(schema.New("test")).
+				AddColumns(schema.NewIntColumn("id", "int"))
+			to := schema.NewTable("t1").
+				SetSchema(schema.New("test")).
+				AddColumns(schema.NewIntColumn("id", "int"))
+			to.SetPrimaryKey(schema.NewPrimaryKey(to.Columns...))
+			return testcase{
+				name: "add primary-key",
+				from: from,
+				to:   to,
+				wantChanges: []schema.Change{
+					&schema.AddPrimaryKey{P: to.PrimaryKey},
+				},
+			}
+		}(),
+		func() testcase {
+			from := schema.NewTable("t1").
+				SetSchema(schema.New("test")).
+				AddColumns(schema.NewIntColumn("id", "int"))
+			from.SetPrimaryKey(schema.NewPrimaryKey(from.Columns...))
+			to := schema.NewTable("t1").
+				SetSchema(schema.New("test")).
+				AddColumns(schema.NewIntColumn("id", "int"))
+			return testcase{
+				name: "drop primary-key",
+				from: from,
+				to:   to,
+				wantChanges: []schema.Change{
+					&schema.DropPrimaryKey{P: from.PrimaryKey},
+				},
+			}
+		}(),
+		func() testcase {
+			from := schema.NewTable("t1").
+				SetSchema(schema.New("test")).
+				AddColumns(schema.NewStringColumn("id", "varchar(255)"))
+			from.SetPrimaryKey(schema.NewPrimaryKey(from.Columns...))
+			to := schema.NewTable("t1").
+				SetSchema(schema.New("test")).
+				AddColumns(schema.NewStringColumn("id", "varchar(255)"))
+			to.SetPrimaryKey(
+				schema.NewPrimaryKey(from.Columns...).
+					AddAttrs(&IndexType{T: IndexTypeHash}),
+			)
+			return testcase{
+				name: "modify primary-key",
+				from: from,
+				to:   to,
+				wantChanges: []schema.Change{
+					&schema.ModifyPrimaryKey{
+						From:   from.PrimaryKey,
+						To:     to.PrimaryKey,
+						Change: schema.ChangeAttr,
+					},
 				},
 			}
 		}(),

@@ -835,7 +835,7 @@ type (
 		T string // BTREE, HASH, FULLTEXT, SPATIAL, RTREE
 	}
 
-	// BitType represents a bit type.
+	// BitType represents the type bit.
 	BitType struct {
 		schema.Type
 		T    string

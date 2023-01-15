@@ -156,10 +156,6 @@ func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
 	if from.Name != to.Name {
 		return nil, fmt.Errorf("mismatched table names: %q != %q", from.Name, to.Name)
 	}
-	// PK modification is not supported.
-	if pk1, pk2 := from.PrimaryKey, to.PrimaryKey; (pk1 != nil) != (pk2 != nil) || (pk1 != nil) && d.pkChange(pk1, pk2) != schema.NoChange {
-		return nil, fmt.Errorf("changing %q table primary key is not supported", to.Name)
-	}
 
 	// Drop or modify attributes (collations, checks, etc).
 	change, err := d.TableAttrDiff(from, to)
@@ -194,7 +190,8 @@ func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
 		}
 	}
 
-	// Index changes.
+	// Primary-key and index changes.
+	changes = append(changes, d.pkDiff(from, to)...)
 	changes = append(changes, d.indexDiff(from, to)...)
 
 	// Drop or modify foreign-keys.
@@ -219,6 +216,28 @@ func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
 		}
 	}
 	return changes, nil
+}
+
+// pkDiff returns the schema changes (if any) for migrating table
+// primary-key from current state to the desired state.
+func (d *Diff) pkDiff(from, to *schema.Table) (changes []schema.Change) {
+	switch pk1, pk2 := from.PrimaryKey, to.PrimaryKey; {
+	case pk1 == nil && pk2 != nil:
+		changes = append(changes, &schema.AddPrimaryKey{P: pk2})
+	case pk1 != nil && pk2 == nil:
+		changes = append(changes, &schema.DropPrimaryKey{P: pk1})
+	case pk1 != nil && pk2 != nil:
+		change := d.indexChange(pk1, pk2)
+		change &= ^schema.ChangeUnique
+		if change != schema.NoChange {
+			changes = append(changes, &schema.ModifyPrimaryKey{
+				From:   pk1,
+				To:     pk2,
+				Change: change,
+			})
+		}
+	}
+	return
 }
 
 // indexDiff returns the schema changes (if any) for migrating table
@@ -263,12 +282,6 @@ func (d *Diff) indexDiff(from, to *schema.Table) []schema.Change {
 		}
 	}
 	return changes
-}
-
-// pkChange returns the schema changes (if any) for migrating one primary key to the other.
-func (d *Diff) pkChange(from, to *schema.Index) schema.ChangeKind {
-	change := d.indexChange(from, to)
-	return change & ^schema.ChangeUnique
 }
 
 // indexChange returns the schema changes (if any) for migrating one index to the other.
