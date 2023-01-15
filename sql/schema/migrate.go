@@ -128,6 +128,22 @@ type (
 		From, To *Index
 	}
 
+	// AddPrimaryKey describes a primary-key creation change.
+	AddPrimaryKey struct {
+		P *Index
+	}
+
+	// DropPrimaryKey describes a primary-key removal change.
+	DropPrimaryKey struct {
+		P *Index
+	}
+
+	// ModifyPrimaryKey describes a primary-key modification.
+	ModifyPrimaryKey struct {
+		From, To *Index
+		Change   ChangeKind
+	}
+
 	// AddForeignKey describes a foreign-key creation change.
 	AddForeignKey struct {
 		F *ForeignKey
@@ -382,6 +398,9 @@ func (*AddIndex) change()         {}
 func (*DropIndex) change()        {}
 func (*ModifyIndex) change()      {}
 func (*RenameIndex) change()      {}
+func (*AddPrimaryKey) change()    {}
+func (*DropPrimaryKey) change()   {}
+func (*ModifyPrimaryKey) change() {}
 func (*AddCheck) change()         {}
 func (*DropCheck) change()        {}
 func (*ModifyCheck) change()      {}

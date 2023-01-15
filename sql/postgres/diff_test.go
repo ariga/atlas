@@ -28,18 +28,6 @@ func TestDiff_TableDiff(t *testing.T) {
 			to:   &schema.Table{Name: "users"},
 		},
 		{
-			name: "change primary key columns",
-			from: func() *schema.Table {
-				t := &schema.Table{Name: "users", Schema: &schema.Schema{Name: "public"}, Columns: []*schema.Column{{Name: "id", Type: &schema.ColumnType{Raw: "int", Type: &schema.IntegerType{T: "int"}}}}}
-				t.PrimaryKey = &schema.Index{
-					Parts: []*schema.IndexPart{{C: t.Columns[0]}},
-				}
-				return t
-			}(),
-			to:      &schema.Table{Name: "users"},
-			wantErr: true,
-		},
-		{
 			name: "change identity attributes",
 			from: func() *schema.Table {
 				t := &schema.Table{
@@ -409,6 +397,31 @@ func TestDiff_TableDiff(t *testing.T) {
 				to:   to,
 				wantChanges: []schema.Change{
 					&schema.ModifyIndex{From: from.Indexes[2], To: to.Indexes[2], Change: schema.ChangeParts},
+				},
+			}
+		}(),
+		func() testcase {
+			from := schema.NewTable("t1").
+				SetSchema(schema.New("test")).
+				AddColumns(schema.NewStringColumn("id", "varchar"), schema.NewBoolColumn("active", "bool"))
+			from.SetPrimaryKey(schema.NewPrimaryKey(from.Columns...))
+			to := schema.NewTable("t1").
+				SetSchema(schema.New("test")).
+				AddColumns(schema.NewStringColumn("id", "varchar"), schema.NewBoolColumn("active", "bool"))
+			to.SetPrimaryKey(
+				schema.NewPrimaryKey(from.Columns...).
+					AddAttrs(&IndexPredicate{P: "active"}),
+			)
+			return testcase{
+				name: "modify primary-key",
+				from: from,
+				to:   to,
+				wantChanges: []schema.Change{
+					&schema.ModifyPrimaryKey{
+						From:   from.PrimaryKey,
+						To:     to.PrimaryKey,
+						Change: schema.ChangeAttr,
+					},
 				},
 			}
 		}(),
