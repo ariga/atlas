@@ -583,6 +583,73 @@ table "users" {
 	require.EqualValues(t, exp, &s)
 }
 
+func TestMarshalSpec_PrimaryKeyType(t *testing.T) {
+	s := schema.New("test").
+		AddTables(
+			schema.NewTable("users").
+				AddColumns(
+					schema.NewStringColumn("id", "varchar(255)"),
+				),
+		)
+	s.Tables[0].SetPrimaryKey(
+		schema.NewPrimaryKey(s.Tables[0].Columns...).
+			AddAttrs(&IndexType{T: IndexTypeHash}),
+	)
+	buf, err := MarshalHCL(s)
+	require.NoError(t, err)
+	exp := `table "users" {
+  schema = schema.test
+  column "id" {
+    null = false
+    type = sql("varchar(255)")
+  }
+  primary_key {
+    columns = [column.id]
+    type    = HASH
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, exp, string(buf))
+}
+
+func TestUnmarshalSpec_PrimaryKeyType(t *testing.T) {
+	var s schema.Schema
+	err := EvalHCLBytes([]byte(`table "users" {
+  schema = schema.test
+  column "id" {
+    null = false
+    type = sql("varchar(255)")
+  }
+  primary_key {
+    columns = [column.id]
+    type    = HASH
+  }
+}
+schema "test" {
+}`), &s, nil)
+	require.NoError(t, err)
+	exp := schema.New("test").
+		AddTables(
+			schema.NewTable("users").
+				AddColumns(&schema.Column{
+					Name: "id",
+					Type: &schema.ColumnType{
+						Type: &schema.StringType{
+							T:    "varchar",
+							Size: 255,
+						},
+					},
+				}),
+		)
+	exp.Tables[0].SetPrimaryKey(&schema.Index{
+		Parts: []*schema.IndexPart{{C: exp.Tables[0].Columns[0]}},
+		Attrs: []schema.Attr{&IndexType{T: IndexTypeHash}},
+	})
+	require.EqualValues(t, exp, &s)
+}
+
 func TestMarshalSpec_IndexParts(t *testing.T) {
 	c := schema.NewStringColumn("name", "text")
 	c2 := schema.NewStringColumn("Full Name", "text")
