@@ -1,0 +1,99 @@
+only mysql8
+
+# Create table.
+apply 1.hcl
+cmpshow users 1.sql
+
+# Add a primary-key.
+apply 2.hcl
+cmpshow users 2.sql
+
+# Modify the primary-key column and type.
+apply 3.hcl
+cmpshow users 3.sql
+
+# Drop the primary-key.
+apply 1.hcl
+cmpshow users 1.sql
+
+-- 1.hcl --
+schema "$db" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_general_ci"
+}
+
+table "users" {
+  schema = schema.$db
+  column "id" {
+    null = false
+    type = varchar(128)
+  }
+  column "oid" {
+    null = false
+    type = varchar(128)
+  }
+}
+
+-- 1.sql --
+CREATE TABLE `users` (
+  `id` varchar(128) COLLATE utf8mb4_general_ci NOT NULL,
+  `oid` varchar(128) COLLATE utf8mb4_general_ci NOT NULL
+)
+
+-- 2.hcl --
+schema "$db" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_general_ci"
+}
+
+table "users" {
+  schema = schema.$db
+  column "id" {
+    null = false
+    type = varchar(128)
+  }
+  column "oid" {
+    null = false
+    type = varchar(128)
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+
+-- 2.sql --
+CREATE TABLE `users` (
+  `id` varchar(128) COLLATE utf8mb4_general_ci NOT NULL,
+  `oid` varchar(128) COLLATE utf8mb4_general_ci NOT NULL,
+  PRIMARY KEY (`id`)
+)
+
+
+-- 3.hcl --
+schema "$db" {
+  charset = "utf8mb4"
+  collate = "utf8mb4_general_ci"
+}
+
+table "users" {
+  schema = schema.$db
+  column "id" {
+    null = false
+    type = varchar(128)
+  }
+  column "oid" {
+    null = false
+    type = varchar(128)
+  }
+  primary_key {
+    columns = [column.oid]
+    type    = HASH
+  }
+}
+
+-- 3.sql --
+CREATE TABLE `users` (
+  `id` varchar(128) COLLATE utf8mb4_general_ci NOT NULL,
+  `oid` varchar(128) COLLATE utf8mb4_general_ci NOT NULL,
+  PRIMARY KEY (`oid`)
+)

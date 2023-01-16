@@ -264,6 +264,109 @@ func TestPlanChanges(t *testing.T) {
 				},
 			},
 		},
+		// Drop a primary key.
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := schema.NewTable("users").
+						SetSchema(schema.New("test")).
+						AddColumns(
+							schema.NewIntColumn("id", "bigint"),
+						)
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.DropPrimaryKey{
+								P: schema.NewPrimaryKey(users.Columns...),
+							},
+						},
+					}
+				}(),
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `users` DROP PRIMARY KEY",
+						Reverse: "ALTER TABLE `users` ADD PRIMARY KEY (`id`)",
+					},
+				},
+			},
+			options: []migrate.PlanOption{
+				func(o *migrate.PlanOptions) { o.SchemaQualifier = new(string) },
+			},
+		},
+		// Add a primary key.
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := schema.NewTable("users").
+						SetSchema(schema.New("test")).
+						AddColumns(
+							schema.NewIntColumn("id", "bigint"),
+						)
+					users.SetPrimaryKey(schema.NewPrimaryKey(users.Columns...))
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.AddPrimaryKey{
+								P: users.PrimaryKey,
+							},
+						},
+					}
+				}(),
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `dev`.`users` ADD PRIMARY KEY (`id`)",
+						Reverse: "ALTER TABLE `dev`.`users` DROP PRIMARY KEY",
+					},
+				},
+			},
+			options: []migrate.PlanOption{
+				func(o *migrate.PlanOptions) {
+					dev := "dev"
+					o.SchemaQualifier = &dev
+				},
+			},
+		},
+		// Modify a primary key.
+		{
+			changes: []schema.Change{
+				func() schema.Change {
+					users := schema.NewTable("users").
+						AddColumns(
+							schema.NewStringColumn("id", "varchar(255)"),
+						)
+					users.SetPrimaryKey(schema.NewPrimaryKey(users.Columns...))
+					return &schema.ModifyTable{
+						T: users,
+						Changes: []schema.Change{
+							&schema.ModifyPrimaryKey{
+								From: schema.NewPrimaryKey(users.Columns...).
+									AddAttrs(&IndexType{T: IndexTypeHash}),
+								To: users.PrimaryKey,
+							},
+						},
+					}
+				}(),
+			},
+			wantPlan: &migrate.Plan{
+				Reversible: true,
+				Changes: []*migrate.Change{
+					{
+						Cmd:     "ALTER TABLE `users` DROP PRIMARY KEY",
+						Reverse: "ALTER TABLE `users` ADD PRIMARY KEY USING HASH (`id`)",
+					},
+					{
+						Cmd:     "ALTER TABLE `users` ADD PRIMARY KEY (`id`)",
+						Reverse: "ALTER TABLE `users` DROP PRIMARY KEY",
+					},
+				},
+			},
+		},
 		{
 			changes: []schema.Change{
 				func() schema.Change {

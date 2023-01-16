@@ -232,7 +232,7 @@ func (s *state) addTable(add *schema.AddTable) error {
 		})
 		if pk := add.T.PrimaryKey; pk != nil {
 			b.Comma().P("PRIMARY KEY")
-			indexParts(b, pk.Parts)
+			indexTypeParts(b, pk)
 		}
 		if len(add.T.Indexes) > 0 {
 			b.Comma()
@@ -325,6 +325,14 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 			changes[1] = append(changes[1], &schema.AddIndex{
 				I: change.To,
 			})
+		// Primary-key modification requires rebuilding the index.
+		case *schema.ModifyPrimaryKey:
+			changes[0] = append(changes[0], &schema.DropPrimaryKey{
+				P: change.From,
+			})
+			changes[1] = append(changes[1], &schema.AddPrimaryKey{
+				P: change.To,
+			})
 		case *schema.DropAttr:
 			return fmt.Errorf("unsupported change type: %v", change.A)
 		default:
@@ -394,6 +402,13 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			case *schema.DropIndex:
 				b.P("DROP INDEX").Ident(change.I.Name)
 				reverse = append(reverse, &schema.AddIndex{I: change.I})
+			case *schema.AddPrimaryKey:
+				b.P("ADD PRIMARY KEY")
+				indexTypeParts(b, change.P)
+				reverse = append(reverse, &schema.DropPrimaryKey{P: change.P})
+			case *schema.DropPrimaryKey:
+				b.P("DROP PRIMARY KEY")
+				reverse = append(reverse, &schema.AddPrimaryKey{P: change.P})
 			case *schema.AddForeignKey:
 				b.P("ADD")
 				if err := s.fks(b, change.F); err != nil {
@@ -555,41 +570,37 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 }
 
 func index(b *sqlx.Builder, idx *schema.Index) {
-	var t IndexType
-	if sqlx.Has(idx.Attrs, &t) {
-		t.T = strings.ToUpper(t.T)
-	}
-	switch {
+	switch t := indexType(idx.Attrs); {
 	case idx.Unique:
 		b.P("UNIQUE")
 	case t.T == IndexTypeFullText || t.T == IndexTypeSpatial:
 		b.P(t.T)
 	}
 	b.P("INDEX").Ident(idx.Name)
-	// Skip BTREE as it is the default type.
-	if t.T == IndexTypeHash {
-		b.P("USING", t.T)
-	}
-	indexParts(b, idx.Parts)
+	indexTypeParts(b, idx)
 	if c := (schema.Comment{}); sqlx.Has(idx.Attrs, &c) {
 		b.P("COMMENT", quote(c.Text))
 	}
 }
 
-func indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {
+func indexTypeParts(b *sqlx.Builder, idx *schema.Index) {
+	// Skip BTREE as it is the default type.
+	if t := indexType(idx.Attrs); t.T == IndexTypeHash {
+		b.P("USING", t.T)
+	}
 	b.Wrap(func(b *sqlx.Builder) {
-		b.MapComma(parts, func(i int, b *sqlx.Builder) {
-			switch part := parts[i]; {
+		b.MapComma(idx.Parts, func(i int, b *sqlx.Builder) {
+			switch part := idx.Parts[i]; {
 			case part.C != nil:
 				b.Ident(part.C.Name)
 			case part.X != nil:
 				b.WriteString(sqlx.MayWrap(part.X.(*schema.RawExpr).X))
 			}
-			if s := (&SubPart{}); sqlx.Has(parts[i].Attrs, s) {
+			if s := (&SubPart{}); sqlx.Has(idx.Parts[i].Attrs, s) {
 				b.WriteString(fmt.Sprintf("(%d)", s.Len))
 			}
 			// Ignore default collation (i.e. "ASC")
-			if parts[i].Desc {
+			if idx.Parts[i].Desc {
 				b.P("DESC")
 			}
 		})
