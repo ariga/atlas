@@ -325,14 +325,6 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 			changes[1] = append(changes[1], &schema.AddIndex{
 				I: change.To,
 			})
-		// Primary-key modification requires rebuilding the index.
-		case *schema.ModifyPrimaryKey:
-			changes[0] = append(changes[0], &schema.DropPrimaryKey{
-				P: change.From,
-			})
-			changes[1] = append(changes[1], &schema.AddPrimaryKey{
-				P: change.To,
-			})
 		case *schema.DropAttr:
 			return fmt.Errorf("unsupported change type: %v", change.A)
 		default:
@@ -409,6 +401,10 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 			case *schema.DropPrimaryKey:
 				b.P("DROP PRIMARY KEY")
 				reverse = append(reverse, &schema.AddPrimaryKey{P: change.P})
+			case *schema.ModifyPrimaryKey:
+				b.P("DROP PRIMARY KEY, ADD PRIMARY KEY")
+				indexTypeParts(b, change.To)
+				reverse = append(reverse, &schema.ModifyPrimaryKey{From: change.To, To: change.From, Change: change.Change})
 			case *schema.AddForeignKey:
 				b.P("ADD")
 				if err := s.fks(b, change.F); err != nil {
