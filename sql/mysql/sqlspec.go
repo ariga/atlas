@@ -80,6 +80,7 @@ var (
 	hclState = schemahcl.New(
 		schemahcl.WithTypes(TypeRegistry.Specs()),
 		schemahcl.WithScopedEnums("table.index.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial),
+		schemahcl.WithScopedEnums("table.primary_key.type", IndexTypeBTree, IndexTypeHash, IndexTypeFullText, IndexTypeSpatial),
 		schemahcl.WithScopedEnums("table.column.as.type", stored, persistent, virtual),
 		schemahcl.WithScopedEnums("table.foreign_key.on_update", specutil.ReferenceVars...),
 		schemahcl.WithScopedEnums("table.foreign_key.on_delete", specutil.ReferenceVars...),
@@ -100,7 +101,7 @@ var (
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the convertSchema function.
 func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, error) {
-	t, err := specutil.Table(spec, parent, convertColumn, specutil.PrimaryKey, convertIndex, convertCheck)
+	t, err := specutil.Table(spec, parent, convertColumn, convertPK, convertIndex, convertCheck)
 	if err != nil {
 		return nil, err
 	}
@@ -119,20 +120,39 @@ func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, er
 	return t, err
 }
 
+// convertPK converts a sqlspec.PrimaryKey into a schema.Index.
+func convertPK(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, error) {
+	idx, err := specutil.PrimaryKey(spec, parent)
+	if err != nil {
+		return nil, err
+	}
+	if err := convertIndexType(idx, spec); err != nil {
+		return nil, err
+	}
+	return idx, nil
+}
+
 // convertIndex converts a sqlspec.Index into a schema.Index.
 func convertIndex(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, error) {
 	idx, err := specutil.Index(spec, parent, convertPart)
 	if err != nil {
 		return nil, err
 	}
+	if err := convertIndexType(idx, spec); err != nil {
+		return nil, err
+	}
+	return idx, nil
+}
+
+func convertIndexType(idx *schema.Index, spec specutil.Attrer) error {
 	if attr, ok := spec.Attr("type"); ok {
 		t, err := attr.String()
 		if err != nil {
-			return nil, err
+			return err
 		}
 		idx.AddAttrs(&IndexType{T: t})
 	}
-	return idx, nil
+	return nil
 }
 
 func convertPart(spec *sqlspec.IndexPart, part *schema.IndexPart) error {
@@ -221,7 +241,7 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 	ts, err := specutil.FromTable(
 		t,
 		columnSpec,
-		specutil.FromPrimaryKey,
+		pkSpec,
 		indexSpec,
 		specutil.FromForeignKey,
 		checkSpec,
@@ -238,16 +258,30 @@ func tableSpec(t *schema.Table) (*sqlspec.Table, error) {
 	return ts, nil
 }
 
+func pkSpec(idx *schema.Index) (*sqlspec.PrimaryKey, error) {
+	spec, err := specutil.FromPrimaryKey(idx)
+	if err != nil {
+		return nil, err
+	}
+	spec.Extra.Attrs = indexTypeSpec(idx, spec.Extra.Attrs)
+	return spec, nil
+}
+
 func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 	spec, err := specutil.FromIndex(idx, partAttr)
 	if err != nil {
 		return nil, err
 	}
+	spec.Extra.Attrs = indexTypeSpec(idx, spec.Extra.Attrs)
+	return spec, nil
+}
+
+func indexTypeSpec(idx *schema.Index, attrs []*schemahcl.Attr) []*schemahcl.Attr {
 	// Avoid printing the index type if it is the default.
 	if i := (IndexType{}); sqlx.Has(idx.Attrs, &i) && i.T != IndexTypeBTree {
-		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("type", strings.ToUpper(i.T)))
+		attrs = append(attrs, specutil.VarAttr("type", strings.ToUpper(i.T)))
 	}
-	return spec, nil
+	return attrs
 }
 
 func partAttr(_ *schema.Index, part *schema.IndexPart, spec *sqlspec.IndexPart) error {
