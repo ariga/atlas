@@ -357,12 +357,8 @@ func TestPlanChanges(t *testing.T) {
 				Reversible: true,
 				Changes: []*migrate.Change{
 					{
-						Cmd:     "ALTER TABLE `users` DROP PRIMARY KEY",
-						Reverse: "ALTER TABLE `users` ADD PRIMARY KEY USING HASH (`id`)",
-					},
-					{
-						Cmd:     "ALTER TABLE `users` ADD PRIMARY KEY (`id`)",
-						Reverse: "ALTER TABLE `users` DROP PRIMARY KEY",
+						Cmd:     "ALTER TABLE `users` DROP PRIMARY KEY, ADD PRIMARY KEY (`id`)",
+						Reverse: "ALTER TABLE `users` DROP PRIMARY KEY, ADD PRIMARY KEY USING HASH (`id`)",
 					},
 				},
 			},
