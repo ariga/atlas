@@ -17,32 +17,23 @@ changes are stored as SQL files and replayed on the database as needed. This ens
 database is known and approved beforehand and gives engineers ultimate control on exactly what code is going to be run
 in production.
 
-In this guide we will see how we can use sqlc with Atlas, using both strategies, the declarative and versioned.
+In this guide we will see how we can use sqlc with Atlas, using the versioned migrations workflow.
 
 :::note
-It's important that you have read our previous sqlc guide, we have explained a few concepts and in this guide we will
-expand on them.
+If you haven't already done so, it's helpful if have read the previous [sqlc guide](link) where we have explained a some concepts that we will expand on in this guide.
 :::
 
 ## Versioned migrations
 
 [Versioned migrations](https://atlasgo.io/concepts/declarative-vs-versioned#versioned-migrations) is a migration
-strategy where we store each command to be executed on the database as different files, with a versioning schema on it,
-and replay these files as needed. Many schema management tools support this strategy of migration and Atlas has support
-for it as well.
+workflow where whenever we want to change the database schema, we create a _migration file_, which is an SQL file containing SQL statements to upgrade the schema from the current version to the next. Many schema management tools, such as Flyway and Liquibase, support this strategy and Atlas supports
+it as well.
 
-The way Atlas works is by creating a `migrations` folder and storing different SQL files with the commands on them.
-Atlas also stores one additional file used
-for [integrity checking](https://atlasgo.io/concepts/migration-directory-integrity).
 
-You can use this migration strategy to handle sqlc migrations without problems, you can even point [sqlc schema
-configuration](https://docs.sqlc.dev/en/latest/reference/config.html#sql) to the migration directory, and depending on
-the migration directory format you use, things should just work.
+Atlas's versioned migrations workflow works very well wit sqlc. In fact, in most cases, you can simply point [sqlc schema
+configuration](https://docs.sqlc.dev/en/latest/reference/config.html#sql) to the migration directory, and things should just work.
 
-While this is possible, there are downsides to it, first this can be error-prone, since the process of generating the
-SQL commands still has to be done manually. Keeping the computed state from all the SQL files can be quite easy for
-Atlas or sqlc, but this is not true for us humans, where having a single SQL file with the schema defined on it would be
-a lot easier.
+In most cases, teams using versioned migrations author the migration files manually. While this is a common approach, there are obvious downsides to it. Writing migrations by hand can be both error-prone and time-consuming for developers.
 
 ## Migration Authoring
 
@@ -52,6 +43,8 @@ state in HCL or SQL but use Atlas to compute the required changes, storing them 
 
 This strategy brings the best of both worlds, we can have a single source of truth (our desired state) and have all the
 authored SQL files that will be used to reach the desired state.
+
+To learn more about this approach and see it in action, watch this [YouTube video](https://www.youtube.com/watch?v=L-UlkXtp3OY)
 
 Now that we have a bit of understanding of all the concepts, let's see how we can use Atlas with SQL with
 versioned migrations.
