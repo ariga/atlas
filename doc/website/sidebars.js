@@ -257,6 +257,11 @@ module.exports = {
                     type: 'doc',
                     id:'guides/frameworks/sqlc-declarative',
                     label: 'Declarative migrations for sqlc'
+                },
+                {
+                    type: 'doc',
+                    id:'guides/frameworks/sqlc-versioned',
+                    label: 'Versioned migrations for sqlc'
                 }
             ]
         },
