@@ -147,7 +147,7 @@ var (
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the convertSchema function.
 func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, error) {
-	t, err := specutil.Table(spec, parent, convertColumn, specutil.PrimaryKey, convertIndex, specutil.Check)
+	t, err := specutil.Table(spec, parent, convertColumn, convertPK, convertIndex, specutil.Check)
 	if err != nil {
 		return nil, err
 	}
@@ -306,6 +306,18 @@ func fixDefaultQuotes(spec *sqlspec.Column) error {
 	return nil
 }
 
+// convertPK converts a sqlspec.PrimaryKey into a schema.Index.
+func convertPK(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, error) {
+	idx, err := specutil.PrimaryKey(spec, parent)
+	if err != nil {
+		return nil, err
+	}
+	if err := convertIndexPK(spec, parent, idx); err != nil {
+		return nil, err
+	}
+	return idx, nil
+}
+
 // convertIndex converts a sqlspec.Index into a schema.Index.
 func convertIndex(spec *sqlspec.Index, t *schema.Table) (*schema.Index, error) {
 	idx, err := specutil.Index(spec, t, convertPart)
@@ -326,30 +338,38 @@ func convertIndex(spec *sqlspec.Index, t *schema.Table) (*schema.Index, error) {
 		}
 		idx.Attrs = append(idx.Attrs, &IndexPredicate{P: p})
 	}
+	if err := convertIndexPK(spec, t, idx); err != nil {
+		return nil, err
+	}
+	return idx, nil
+}
+
+// convertIndexPK converts the index parameters shared between primary and secondary indexes.
+func convertIndexPK(spec specutil.Attrer, t *schema.Table, idx *schema.Index) error {
 	if attr, ok := spec.Attr("page_per_range"); ok {
 		p, err := attr.Int64()
 		if err != nil {
-			return nil, err
+			return err
 		}
 		idx.Attrs = append(idx.Attrs, &IndexStorageParams{PagesPerRange: p})
 	}
 	if attr, ok := spec.Attr("include"); ok {
 		refs, err := attr.Refs()
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if len(refs) == 0 {
-			return nil, fmt.Errorf("unexpected empty INCLUDE in index %q definition", spec.Name)
+			return fmt.Errorf("unexpected empty INCLUDE in index %q definition", idx.Name)
 		}
 		include := make([]*schema.Column, len(refs))
 		for i, r := range refs {
 			if include[i], err = specutil.ColumnByRef(t, r); err != nil {
-				return nil, err
+				return err
 			}
 		}
 		idx.Attrs = append(idx.Attrs, &IndexInclude{Columns: include})
 	}
-	return idx, nil
+	return nil
 }
 
 func convertPart(spec *sqlspec.IndexPart, part *schema.IndexPart) error {
@@ -521,7 +541,7 @@ func tableSpec(table *schema.Table) (*sqlspec.Table, error) {
 	spec, err := specutil.FromTable(
 		table,
 		columnSpec,
-		specutil.FromPrimaryKey,
+		pkSpec,
 		indexSpec,
 		specutil.FromForeignKey,
 		specutil.FromCheck,
@@ -535,6 +555,15 @@ func tableSpec(table *schema.Table) (*sqlspec.Table, error) {
 	return spec, nil
 }
 
+func pkSpec(idx *schema.Index) (*sqlspec.PrimaryKey, error) {
+	spec, err := specutil.FromPrimaryKey(idx)
+	if err != nil {
+		return nil, err
+	}
+	spec.Extra.Attrs = indexPKSpec(idx, spec.Extra.Attrs)
+	return spec, nil
+}
+
 func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 	spec, err := specutil.FromIndex(idx, partAttr)
 	if err != nil {
@@ -544,20 +573,25 @@ func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
 	if i := (IndexType{}); sqlx.Has(idx.Attrs, &i) && strings.ToUpper(i.T) != IndexTypeBTree {
 		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("type", strings.ToUpper(i.T)))
 	}
+	if i := (IndexPredicate{}); sqlx.Has(idx.Attrs, &i) && i.P != "" {
+		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("where", strconv.Quote(i.P)))
+	}
+	spec.Extra.Attrs = indexPKSpec(idx, spec.Extra.Attrs)
+	return spec, nil
+}
+
+func indexPKSpec(idx *schema.Index, attrs []*schemahcl.Attr) []*schemahcl.Attr {
 	if i := (IndexInclude{}); sqlx.Has(idx.Attrs, &i) && len(i.Columns) > 0 {
 		refs := make([]*schemahcl.Ref, 0, len(i.Columns))
 		for _, c := range i.Columns {
 			refs = append(refs, specutil.ColumnRef(c.Name))
 		}
-		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.RefsAttr("include", refs...))
-	}
-	if i := (IndexPredicate{}); sqlx.Has(idx.Attrs, &i) && i.P != "" {
-		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("where", strconv.Quote(i.P)))
+		attrs = append(attrs, schemahcl.RefsAttr("include", refs...))
 	}
 	if p, ok := indexStorageParams(idx.Attrs); ok {
-		spec.Extra.Attrs = append(spec.Extra.Attrs, schemahcl.Int64Attr("page_per_range", p.PagesPerRange))
+		attrs = append(attrs, schemahcl.Int64Attr("page_per_range", p.PagesPerRange))
 	}
-	return spec, nil
+	return attrs
 }
 
 func partAttr(idx *schema.Index, part *schema.IndexPart, spec *sqlspec.IndexPart) error {

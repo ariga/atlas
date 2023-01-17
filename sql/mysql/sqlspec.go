@@ -126,7 +126,7 @@ func convertPK(spec *sqlspec.PrimaryKey, parent *schema.Table) (*schema.Index, e
 	if err != nil {
 		return nil, err
 	}
-	if err := convertIndexType(idx, spec); err != nil {
+	if err := convertIndexType(spec, idx); err != nil {
 		return nil, err
 	}
 	return idx, nil
@@ -138,13 +138,13 @@ func convertIndex(spec *sqlspec.Index, parent *schema.Table) (*schema.Index, err
 	if err != nil {
 		return nil, err
 	}
-	if err := convertIndexType(idx, spec); err != nil {
+	if err := convertIndexType(spec, idx); err != nil {
 		return nil, err
 	}
 	return idx, nil
 }
 
-func convertIndexType(idx *schema.Index, spec specutil.Attrer) error {
+func convertIndexType(spec specutil.Attrer, idx *schema.Index) error {
 	if attr, ok := spec.Attr("type"); ok {
 		t, err := attr.String()
 		if err != nil {
