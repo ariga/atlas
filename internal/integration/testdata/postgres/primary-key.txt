@@ -1,0 +1,97 @@
+only postgres15
+
+# Create table.
+apply 1.hcl
+cmpshow users 1.sql
+
+# Add a primary-key.
+apply 2.hcl
+cmpshow users 2.sql
+
+# Modify the primary-key column and type.
+apply 3.hcl
+cmpshow users 3.sql
+
+# Drop the primary-key.
+apply 1.hcl
+cmpshow users 1.sql
+
+-- 1.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "id" {
+    null = false
+    type = int
+  }
+  column "c" {
+    null = true
+    type = int
+  }
+}
+
+-- 1.sql --
+         Table "script_primary_key.users"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ id     | integer |           | not null |
+ c      | integer |           |          |
+
+-- 2.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "id" {
+    null = false
+    type = int
+  }
+  column "c" {
+    null = true
+    type = int
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+
+-- 2.sql --
+         Table "script_primary_key.users"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ id     | integer |           | not null |
+ c      | integer |           |          |
+Indexes:
+    "users_pkey" PRIMARY KEY, btree (id)
+
+
+-- 3.hcl --
+schema "$db" {}
+
+table "users" {
+  schema = schema.$db
+  column "id" {
+    null = false
+    type = int
+  }
+  column "c" {
+    null = true
+    type = int
+  }
+  primary_key {
+    columns = [column.id]
+    include = [column.c]
+  }
+}
+
+-- 3.sql --
+         Table "script_primary_key.users"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ id     | integer |           | not null |
+ c      | integer |           |          |
+Indexes:
+    "users_pkey" PRIMARY KEY, btree (id) INCLUDE (c)
+
+
