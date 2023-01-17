@@ -8,7 +8,7 @@ cmpshow users 1.sql
 apply 2.hcl
 cmpshow users 2.sql
 
-# Modify the primary-key column and type.
+# Modify the primary-key include columns.
 apply 3.hcl
 cmpshow users 3.sql
 

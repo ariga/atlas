@@ -886,7 +886,6 @@ func TestMarshalSpec_IndexInclude(t *testing.T) {
 		},
 	}
 	s.Tables[0].Schema = s
-	s.Tables[0].Schema = s
 	s.Tables[0].Indexes = []*schema.Index{
 		{
 			Name:  "index",
@@ -920,6 +919,78 @@ schema "test" {
 }
 `
 	require.EqualValues(t, expected, string(buf))
+}
+
+func TestMarshalSpec_PrimaryKey(t *testing.T) {
+	s := schema.New("test").
+		AddTables(
+			schema.NewTable("users").
+				AddColumns(
+					schema.NewIntColumn("c", "int"),
+					schema.NewIntColumn("d", "int"),
+				),
+		)
+	s.Tables[0].SetPrimaryKey(
+		schema.NewPrimaryKey(s.Tables[0].Columns[:1]...).
+			AddAttrs(&IndexInclude{Columns: s.Tables[0].Columns[1:]}),
+	)
+	buf, err := MarshalSpec(s, hclState)
+	require.NoError(t, err)
+	const expected = `table "users" {
+  schema = schema.test
+  column "c" {
+    null = false
+    type = int
+  }
+  column "d" {
+    null = false
+    type = int
+  }
+  primary_key {
+    columns = [column.c]
+    include = [column.d]
+  }
+}
+schema "test" {
+}
+`
+	require.EqualValues(t, expected, string(buf))
+}
+
+func TestUnmarshalSpec_PrimaryKey(t *testing.T) {
+	f := `
+schema "s" {}
+table "t" {
+	schema = schema.s
+	column "c" {
+		type = int
+	}
+	column "d" {
+		type = int
+	}
+	primary_key {
+		columns = [
+			column.c,
+		]
+		include = [
+			column.d,
+		]
+	}
+}
+`
+	var s schema.Schema
+	err := EvalHCLBytes([]byte(f), &s, nil)
+	require.NoError(t, err)
+	require.Len(t, s.Tables, 1)
+	require.Len(t, s.Tables[0].Columns, 2)
+	pk := s.Tables[0].PrimaryKey
+	require.NotNil(t, pk)
+	require.Len(t, pk.Parts, 1)
+	require.Len(t, pk.Attrs, 1)
+	var include IndexInclude
+	require.True(t, sqlx.Has(pk.Attrs, &include))
+	require.Len(t, include.Columns, 1)
+	require.Equal(t, "d", include.Columns[0].Name)
 }
 
 func TestMarshalSpec_GeneratedColumn(t *testing.T) {
