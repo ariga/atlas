@@ -160,7 +160,7 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 		})
 		if pk := add.T.PrimaryKey; pk != nil {
 			b.Comma().P("PRIMARY KEY")
-			if err := s.indexParts(b, pk); err != nil {
+			if err := s.index(b, pk); err != nil {
 				errs = append(errs, err.Error())
 			}
 		}
@@ -421,15 +421,31 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 					}
 				}
 			case *schema.AddIndex:
+				// Skip reversing this operation as it is the inverse of
+				// the operation above and should not be used besides this.
 				b.P("ADD CONSTRAINT").Ident(change.I.Name).P("UNIQUE")
 				if err := s.indexParts(b, change.I); err != nil {
 					return err
 				}
-				// Skip reversing this operation as it is the inverse of
-				// the operation below and should not be used besides this.
 			case *schema.DropIndex:
 				b.P("DROP CONSTRAINT").Ident(change.I.Name)
 				reverse = append(reverse, &schema.AddIndex{I: change.I})
+			case *schema.AddPrimaryKey:
+				b.P("ADD PRIMARY KEY")
+				if err := s.index(b, change.P); err != nil {
+					return err
+				}
+				reverse = append(reverse, &schema.DropPrimaryKey{P: change.P})
+			case *schema.DropPrimaryKey:
+				b.P("DROP CONSTRAINT").Ident(pkName(t, change.P))
+				reverse = append(reverse, &schema.AddPrimaryKey{P: change.P})
+			case *schema.ModifyPrimaryKey:
+				b.P("DROP CONSTRAINT").Ident(pkName(t, change.From))
+				b.P(", ADD PRIMARY KEY")
+				if err := s.index(b, change.To); err != nil {
+					return err
+				}
+				reverse = append(reverse, &schema.ModifyPrimaryKey{From: change.To, To: change.From, Change: change.Change})
 			case *schema.AddForeignKey:
 				b.P("ADD")
 				s.fks(b, change.F)
@@ -1286,4 +1302,13 @@ func containsT(ts []*schema.Table, t *schema.Table) bool {
 		}
 	}
 	return false
+}
+
+func pkName(t *schema.Table, pk *schema.Index) string {
+	if pk.Name != "" {
+		return pk.Name
+	}
+	// The default naming for primary-key constraints is <Table>_pkey.
+	// See: the ChooseIndexName function in PostgreSQL for more reference.
+	return t.Name + "_pkey"
 }
