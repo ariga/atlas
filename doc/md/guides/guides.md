@@ -28,6 +28,8 @@ Welcome to the Atlas Guides.
 
 [Functional Indexes](mysql/functional-indexes.md)
 
+[Prefix Indexes](mysql/prefix-indexes.md)
+
 [Generated Columns](mysql/generated-columns.md)
 
 [Managing MySQL schemas on RDS with Terraform](mysql/terraform.md)

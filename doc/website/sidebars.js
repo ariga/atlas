@@ -149,12 +149,17 @@ module.exports = {
                     type: 'doc',
                     id: 'guides/mysql/descending-indexes',
                     label: 'Descending Indexes'
-                  },
-                  {
+                },
+                {
                     type: 'doc',
                     id: 'guides/mysql/functional-indexes',
                     label: 'Functional Indexes'
-                  },
+                },
+                {
+                    type: 'doc',
+                    id: 'guides/mysql/prefix-indexes',
+                    label: 'Prefix Indexes'
+                },
                 {
                   type: 'doc',
                   id: 'guides/mysql/generated-columns',
