@@ -4,7 +4,7 @@ title: Versioned migrations for sqlc
 slug: /guides/frameworks/sqlc-versioned
 ---
 
-In our [previous sqlc guide](/guides/frameworks/sqlc-declarative) we saw how we can use Atlas to handle the schema
+In our [previous sqlc guide](/guides/frameworks/sqlc-declarative), we saw how we can use Atlas to handle the schema
 management process using the [declarative workflow](/concepts/declarative-vs-versioned#declarative-migrations). This
 works great in many situations, but some teams prefer the imperative approach where schema changes are explicitly
 checked in to source control and verified during code review
@@ -16,14 +16,14 @@ SQL files
 and replayed on the database as needed. This ensures that the code to be executed on the database is known and approved
 beforehand and gives engineers ultimate control on exactly what code is going to be run in production.
 
-In this guide we will see how we can use sqlc with Atlas, using the versioned migration's workflow.
+In this guide we will see how we can use sqlc with Atlas, using the versioned migrations workflow.
 
 :::note
-If you haven't already done so, it's helpful if you have read the
+If you haven't already done so, it will be helpful to have read the
 previous [sqlc guide](/guides/frameworks/sqlc-declarative) where we have explained some concepts that we will expand
 on in this guide. You should also check
 the [sqlc getting started with PostgreSQL](https://docs.sqlc.dev/en/latest/tutorials/getting-started-postgresql.html)
-guide since this guide continues where the sqlc guide left off.
+guide since this guide continues where it left off.
 :::
 
 ## Versioned migrations
@@ -33,7 +33,7 @@ we want to change the database schema, we create a _migration file_, which is an
 upgrade the schema from the current version to the next. Many schema management tools, such as Flyway and Liquibase,
 support this strategy and Atlas supports it as well.
 
-Atlas's versioned migrations workflow works very well wit sqlc. In fact, in most cases, you can simply
+Atlas's versioned migrations workflow works very well with sqlc. In fact, in most cases, you can simply
 point [sqlc schema configuration](https://docs.sqlc.dev/en/latest/reference/config.html#sql) to the migration directory,
 and things should just work.
 
@@ -47,16 +47,16 @@ the versioned one. With this approach, which is
 called "[versioned migration authoring](/versioned/diff)", we still define our desired state in HCL or
 SQL but use Atlas to compute the required changes, storing them in the migration directory as SQL files.
 
-This strategy brings the best of both worlds, we can have a single source of truth (our desired state) and have all the
+This strategy brings the best of both worlds, where we can have a single source of truth (our desired state) and have all the
 authored SQL files that will be used to reach the desired state. To learn more about this approach and see it in action,
 watch this [video](https://www.youtube.com/watch?v=L-UlkXtp3OY).
 
-Now that we have a bit of understanding of all the concepts, let's see how we can use Atlas with sqlc, using
+Now that we have a bit of an understanding of all the concepts, let's see how we can use Atlas with sqlc, using
 the `schema.sql` as our desired state and combine versioned migrations with migration authoring.
 
 ## Creating the initial migration directory
 
-The first thing we should do is create the initial migration directory, if you are following
+The first thing we should do is create the initial migration directory. If you are following
 the [sqlc getting started with PostgreSQL](https://docs.sqlc.dev/en/latest/tutorials/getting-started-postgresql.html)
 your `schema.sql` and `query.sql` should look like this:
 
@@ -102,7 +102,7 @@ atlas migrate diff initial_schema \
   --dev-url "docker://postgres?search_path=public"
 ```
 
-A new `migrations` directory should be created with two files on it.
+A new `migrations` directory should be created with two files in it.
 
 ```text
 .
@@ -121,21 +121,21 @@ CREATE TABLE "authors" ("id" bigserial NOT NULL, "name" text NOT NULL, "bio" tex
 Like in the last guide, we need a temporary database to check, simulate and validate the
 generated queries. This database is provided using the `dev-url` flag. Atlas has support for running database
 containers, which is what we are using in this example. Fore more information about dev
-database, [read about it here](/concepts/dev-database).
+databases, [read about them here](/concepts/dev-database).
 :::
 
-From the sqlc side, we don't have to do anything since have not changed our `schema.sql` or `query.sql` file.
+From the sqlc side, we don't have to do anything since we have not changed our `schema.sql` or `query.sql` file.
 
 ## Migrating the database
 
 In this guide, we are using a Postgres
-database running in a local Docker container, you can start such a container by running:
+database running in a local Docker container. You can start such a container by running:
 
 ```shell
 docker run --rm -d --name atlas-sqlc -p 5432:5432 -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=sqlc postgres
 ```
 
-Now that we have our base migration directory and target database, we can migrate our schema based on it, to do so we
+Now that we have our base migration directory and target database, we can migrate our schema based on it. To do so, we
 have to use a command very similar to the one used on the previous guide.
 
 ```shell
@@ -143,7 +143,7 @@ atlas migrate apply --url "postgres://postgres:pass@localhost:5432/sqlc?sslmode=
 ```
 
 The command `migrate apply` connects to the given database [URL](/concepts/url) provided in the `url` flag, checks the
-current state of the database and applies any pending migration.
+current state of the database and applies any pending migrations.
 
 After running the `migrate apply` command, you should be able to see an output similar to this:
 
@@ -207,7 +207,7 @@ WHERE id = $1;
 ```
 
 When working with sqlc, after every change to the `schema.sql` or `query.sql` file, we should execute the sqlc generate
-command again, even in the cases where the changes seens to not cause problems, like adding a new column, this is a
+command again. Even in the cases where the changes seem to not cause problems, like adding a new column, this is a
 requirement from sqlc, since it replaces the `*` with explicit column names.
 
 ```shell
@@ -215,7 +215,7 @@ sqlc generate
 ```
 
 :::note
-sqlc only shows messages when encountering an error, if the generator process occurred successful, no output should be
+sqlc only shows messages when encountering an error, if the generator process was successful, no output should be
 shown.
 :::
 
@@ -229,8 +229,8 @@ atlas migrate diff add_age_field \
   --dev-url "docker://postgres?search_path=public"
 ```
 
-If you look at the migration directory, a new SQL file should be created with the commands required for adding a new
-column called `age`.
+If you look at the migration directory, a new SQL file should be created with the statements required for adding a new
+`age` column.
 
 ```text {3}
 .
