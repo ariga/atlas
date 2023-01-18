@@ -7,7 +7,7 @@ title: Deploying to ECS/Fargate
 to AWS. ECS is a managed service that allows you to run containers on a cluster of EC2
 instances, or on AWS Fargate, a serverless compute engine for containers.
 
-In this guide, we demonstrate how to deploy schema migrations to ECS/Fargate using
+In this guide, we will demonstrate how to deploy schema migrations to ECS/Fargate using
 Atlas.  As deploying to ECS/Fargate is a vast topic that is beyond the scope of this
 guide, we will focus on the migration part only.
 
@@ -48,7 +48,7 @@ The CLI responds with the details about the created secret, which we will use la
 }
 ```
 
-To make sure that the ECS task has access to the secrets, we will need to create add to the
+To make sure that the ECS task has access to the secrets, we will need to add to the
 task's IAM role a policy that allows it to access the secrets. This will look something
 similar to:
 
@@ -163,12 +163,12 @@ To achieve this, your task definition should look something similar to:
 ```
 Notice a few points of interest in the above task definition:
 1. We define two containers: one for running Atlas migrations, named "atlas" and one for running the application, "app".
-  For the sake of the example, our application container is just running the latest version of `nginx`, but in a realistic
+For the sake of the example, our application container is only running the latest version of `nginx`, but in a realistic
   scenario it will contain your application code.
 2. The `app` container has a `dependsOn` clause that makes it depend on the `atlas` container. This means that ECS will
   only start the `app` container once the `atlas` container exits successfully.
 3. The `atlas` container is not marked as `essential`. This is required for containers that aren't expected to keep 
    running through the task's lifecycle, ideal for use cases like running a setup script before the application starts.
-4. The atlas container is configured to run the `migrate apply` command. This will run all pending migrations and then exit.
+4. The `atlas` container is configured to run the `migrate apply` command. This will run all pending migrations and then exit.
    We provide this command with the `--env deploy` flag to make sure that it uses the `deploy` environment defined 
    in our project file.
