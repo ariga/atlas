@@ -3,7 +3,7 @@ id: aws-ecs-fargate
 slug: /guides/deploying/aws-ecs-fargate
 title: Deploying to ECS/Fargate
 ---
-AWS Elastic Container Service (ECS) is a popular way to deploy containerized applications
+[AWS Elastic Container Service (ECS)](https://aws.amazon.com/ecs/) is a popular way to deploy containerized applications
 to AWS. ECS is a managed service that allows you to run containers on a cluster of EC2
 instances, or on AWS Fargate, a serverless compute engine for containers.
 
