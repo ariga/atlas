@@ -113,6 +113,11 @@ module.exports = {
                 },
                 {
                     type: 'doc',
+                    id: 'guides/deploying/aws-ecs-fargate',
+                    label: 'AWS ECS (Fargate)'
+                },
+                {
+                    type: 'doc',
                     id: 'guides/deploying/helm',
                     label: 'Kubernetes (Helm)'
                 },

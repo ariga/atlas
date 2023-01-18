@@ -14,6 +14,8 @@ Welcome to the Atlas Guides.
 
 [Creating container images for migrations](deploying/image.md)
 
+[Deploying to AWS ECS (Fargate)](deploying/ecs-fargate.md)
+
 [Deploying schema migrations to Kubernetes with Helm](deploying/helm.md)
 
 [Deploying schema migrations to Kubernetes with Init Containers](deploying/init.md)
