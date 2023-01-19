@@ -162,6 +162,12 @@ func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
 
 // tableDiff implements the table diffing but skips the table name check.
 func (d *Diff) tableDiff(from, to *schema.Table) ([]schema.Change, error) {
+	// tableDiff can be called with non-identical
+	// names without affecting the diff process.
+	if name := from.Name; name != to.Name {
+		from.Name = to.Name
+		defer func() { from.Name = name }()
+	}
 	// Normalizing tables before starting the diff process.
 	if n, ok := d.DiffDriver.(Normalizer); ok {
 		if err := n.Normalize(from, to); err != nil {
