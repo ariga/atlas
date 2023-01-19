@@ -66,6 +66,12 @@ type (
 	Normalizer interface {
 		Normalize(from, to *schema.Table) error
 	}
+
+	// TableFinder wraps the FindTable method, providing more
+	// control to the DiffDriver on how tables are matched.
+	TableFinder interface {
+		FindTable(*schema.Schema, string) (*schema.Table, error)
+	}
 )
 
 // RealmDiff implements the schema.Differ for Realm objects and returns a list of changes
@@ -115,26 +121,31 @@ func (d *Diff) SchemaDiff(from, to *schema.Schema) ([]schema.Change, error) {
 
 	// Drop or modify tables.
 	for _, t1 := range from.Tables {
-		t2, ok := to.Table(t1.Name)
-		if !ok {
+		switch t2, err := d.findTable(to, t1.Name); {
+		case schema.IsNotExistError(err):
 			changes = append(changes, &schema.DropTable{T: t1})
-			continue
-		}
-		change, err := d.TableDiff(t1, t2)
-		if err != nil {
+		case err != nil:
 			return nil, err
-		}
-		if len(change) > 0 {
-			changes = append(changes, &schema.ModifyTable{
-				T:       t2,
-				Changes: change,
-			})
+		default:
+			change, err := d.tableDiff(t1, t2)
+			if err != nil {
+				return nil, err
+			}
+			if len(change) > 0 {
+				changes = append(changes, &schema.ModifyTable{
+					T:       t2,
+					Changes: change,
+				})
+			}
 		}
 	}
 	// Add tables.
 	for _, t1 := range to.Tables {
-		if _, ok := from.Table(t1.Name); !ok {
+		switch _, err := d.findTable(from, t1.Name); {
+		case schema.IsNotExistError(err):
 			changes = append(changes, &schema.AddTable{T: t1})
+		case err != nil:
+			return nil, err
 		}
 	}
 	return changes, nil
@@ -146,6 +157,11 @@ func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
 	if from.Name != to.Name {
 		return nil, fmt.Errorf("mismatched table names: %q != %q", from.Name, to.Name)
 	}
+	return d.tableDiff(from, to)
+}
+
+// tableDiff implements the table diffing but skips the table name check.
+func (d *Diff) tableDiff(from, to *schema.Table) ([]schema.Change, error) {
 	// Normalizing tables before starting the diff process.
 	if n, ok := d.DiffDriver.(Normalizer); ok {
 		if err := n.Normalize(from, to); err != nil {
@@ -153,10 +169,6 @@ func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
 		}
 	}
 	var changes []schema.Change
-	if from.Name != to.Name {
-		return nil, fmt.Errorf("mismatched table names: %q != %q", from.Name, to.Name)
-	}
-
 	// Drop or modify attributes (collations, checks, etc).
 	change, err := d.TableAttrDiff(from, to)
 	if err != nil {
@@ -370,6 +382,17 @@ func (d *Diff) similarUnnamedIndex(t *schema.Table, idx1 *schema.Index) (*schema
 		}
 	}
 	return nil, false
+}
+
+func (d *Diff) findTable(s *schema.Schema, name string) (*schema.Table, error) {
+	if f, ok := d.DiffDriver.(TableFinder); ok {
+		return f.FindTable(s, name)
+	}
+	t, ok := s.Table(name)
+	if !ok {
+		return nil, &schema.NotExistError{Err: fmt.Errorf("table %q was not found", name)}
+	}
+	return t, nil
 }
 
 // CommentChange reports if the element comment was changed.

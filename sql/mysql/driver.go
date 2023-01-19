@@ -35,6 +35,7 @@ type (
 		mysqlversion.V
 		collate string
 		charset string
+		lcnames int
 	}
 )
 
@@ -58,7 +59,7 @@ func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	if err != nil {
 		return nil, fmt.Errorf("mysql: query system variables: %w", err)
 	}
-	if err := sqlx.ScanOne(rows, &c.V, &c.collate, &c.charset); err != nil {
+	if err := sqlx.ScanOne(rows, &c.V, &c.collate, &c.charset, &c.lcnames); err != nil {
 		return nil, fmt.Errorf("mysql: scan system variables: %w", err)
 	}
 	if c.TiDB() {

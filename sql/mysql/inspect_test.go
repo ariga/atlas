@@ -1035,13 +1035,26 @@ type mock struct {
 }
 
 func (m mock) version(version string) {
+
 	m.ExpectQuery(sqltest.Escape(variablesQuery)).
 		WillReturnRows(sqltest.Rows(`
-+-----------------+--------------------+------------------------+
-| @@version       | @@collation_server | @@character_set_server |
-+-----------------+--------------------+------------------------+
-| ` + version + ` | utf8_general_ci    | utf8                   |
-+-----------------+--------------------+------------------------+
++-----------------+--------------------+------------------------+--------------------------+ 
+| @@version       | @@collation_server | @@character_set_server | @@lower_case_table_names | 
++-----------------+--------------------+------------------------+--------------------------+ 
+| ` + version + ` | utf8_general_ci    | utf8                   | 0                        | 
++-----------------+--------------------+------------------------+--------------------------+ 
+`))
+}
+
+func (m mock) lcmode(version, mode string) {
+
+	m.ExpectQuery(sqltest.Escape(variablesQuery)).
+		WillReturnRows(sqltest.Rows(`
++-----------------+--------------------+------------------------+--------------------------+ 
+| @@version       | @@collation_server | @@character_set_server | @@lower_case_table_names | 
++-----------------+--------------------+------------------------+--------------------------+ 
+| ` + version + ` | utf8_general_ci    | utf8                   | ` + mode + `             |
++-----------------+--------------------+------------------------+--------------------------+ 
 `))
 }
 
