@@ -604,6 +604,54 @@ func TestDiff_SchemaDiff(t *testing.T) {
 	}, changes)
 }
 
+func TestDiff_LowerCaseMode(t *testing.T) {
+	db, m, err := sqlmock.New()
+	require.NoError(t, err)
+	mock{m}.lcmode("8.0.19", "1")
+	drv, err := Open(db)
+	require.NoError(t, err)
+	changes, err := drv.SchemaDiff(
+		schema.New("public").AddTables(schema.NewTable("t"), schema.NewTable("S")),
+		schema.New("public").AddTables(schema.NewTable("T"), schema.NewTable("s")),
+	)
+	require.NoError(t, err)
+	require.Nil(t, changes)
+
+	changes, err = drv.SchemaDiff(
+		schema.New("public").AddTables(schema.NewTable("t")),
+		schema.New("public").AddTables(schema.NewTable("T"), schema.NewTable("t")),
+	)
+	require.EqualError(t, err, `2 matches found for table "t"`)
+	require.Nil(t, changes)
+
+	changes, err = drv.SchemaDiff(
+		schema.New("public").AddTables(schema.NewTable("t")),
+		schema.New("public").AddTables(schema.NewTable("s"), schema.NewTable("S")),
+	)
+	require.NoError(t, err)
+	require.Len(t, changes, 3)
+
+	mock{m}.lcmode("8.0.19", "2")
+	drv, err = Open(db)
+	require.NoError(t, err)
+	changes, err = drv.SchemaDiff(
+		schema.New("public").AddTables(schema.NewTable("t"), schema.NewTable("S")),
+		schema.New("public").AddTables(schema.NewTable("T"), schema.NewTable("s")),
+	)
+	require.NoError(t, err)
+	require.Nil(t, changes)
+
+	mock{m}.lcmode("8.0.19", "3")
+	drv, err = Open(db)
+	require.NoError(t, err)
+	changes, err = drv.SchemaDiff(
+		schema.New("public").AddTables(schema.NewTable("t"), schema.NewTable("S")),
+		schema.New("public").AddTables(schema.NewTable("T"), schema.NewTable("s")),
+	)
+	require.EqualError(t, err, `unsupported 'lower_case_table_names' mode: 3`)
+	require.Nil(t, changes)
+}
+
 func TestDiff_RealmDiff(t *testing.T) {
 	db, m, err := sqlmock.New()
 	require.NoError(t, err)

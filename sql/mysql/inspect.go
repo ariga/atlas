@@ -676,7 +676,7 @@ func nArgs(n int) string { return strings.Repeat("?, ", n-1) + "?" }
 
 const (
 	// Query to list system variables.
-	variablesQuery = "SELECT @@version, @@collation_server, @@character_set_server"
+	variablesQuery = "SELECT @@version, @@collation_server, @@character_set_server, @@lower_case_table_names"
 
 	// Query to list database schemas.
 	schemasQuery = "SELECT `SCHEMA_NAME`, `DEFAULT_CHARACTER_SET_NAME`, `DEFAULT_COLLATION_NAME` from `INFORMATION_SCHEMA`.`SCHEMATA` WHERE `SCHEMA_NAME` NOT IN ('information_schema','innodb','mysql','performance_schema','sys') ORDER BY `SCHEMA_NAME`"
