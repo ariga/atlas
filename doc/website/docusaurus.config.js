@@ -97,7 +97,8 @@ module.exports = {
             {"label": "GitHub", "to": "https://github.com/ariga/atlas"},
             {"label": "Discord", "to": "https://discord.gg/zZ6sWVg6NT"},
             {"label": "Twitter", "to": "https://twitter.com/ariga_io"},
-            {"label": "Newsletter", "to": "https://atlasnewsletter.substack.com/"}
+            {"label": "Newsletter", "to": "https://atlasnewsletter.substack.com/"},
+            {"label": "YouTube", "to": "https://youtube.com/@ariga_io"}
           ]
         },
         {
