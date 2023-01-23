@@ -32,6 +32,8 @@ Welcome to the Atlas Guides.
 
 [Prefix Indexes](mysql/prefix-indexes.md)
 
+[CHECK Constraint](mysql/check-constraint.md)
+
 [Generated Columns](mysql/generated-columns.md)
 
 [Managing MySQL schemas on RDS with Terraform](mysql/terraform.md)
