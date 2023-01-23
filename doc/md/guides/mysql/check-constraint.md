@@ -12,20 +12,20 @@ It works by checking the values of certain columns in the table against certain 
 
 This can be a very helpful tool for preventing bad data from being inserted into your database, and it can save you a lot of time and hassle later on. In this article, we will show you how to use a `CHECK` constraint in MySQL.
 
-### What is the CHECK constraint in MySQL?
+### What is the `CHECK` constraint in MySQL?
 
-MySQL 8.0.16 introduces the CHECK constraint, which you can use to protect the data in your tables. A CHECK constraint is an integrity constraint used to limit the value range for a column. It ensures that the inserted or updated value in a column must follow certain criteria.
+MySQL 8.0.16 introduces the `CHECK` constraint, which you can use to protect the data in your tables. A `CHECK` constraint is an integrity constraint used to limit the value range for a column. It ensures that the inserted or updated value in a column must follow certain criteria.
 
-### When do we need CHECK constraints?
+### When do we need `CHECK` constraints?
 
-The following are some examples of when you can use CHECK constraints:
+The following are some examples of when you can use `CHECK` constraints:
 
 - A column must be greater than or equal to a specified value.
 - A date field must be in the format of MM/DD/YYYY.
 - An employee’s joining date must not precede their DOB.
 - The value of an employee’s salary must be a positive integer.
 
-The CHECK constraint is commonly used along with the NOT NULL constraint for ensuring that a column contains only valid data and doesn’t contain any NULL values. This is particularly important when defining columns that will be referenced by foreign key constraints.
+The `CHECK` constraint is commonly used along with the NOT NULL constraint for ensuring that a column contains only valid data and doesn’t contain any NULL values. This is particularly important when defining columns that will be referenced by foreign key constraints.
 
 ## Syntax
 
@@ -33,25 +33,25 @@ The CHECK constraint is commonly used along with the NOT NULL constraint for ens
 CHECK (column_name value_list)
 ```
 
-The value_list is a list of values that the column_name can have. You can have multiple value_list(s) in a single CHECK constraint.
+The `value_list` is a list of values that the column_name can have. You can have multiple `value_list`(s) in a single `CHECK` constraint.
 
-If you want to specify multiple value_list(s), you need to use the OR keyword between each value_list. For example:
+If you want to specify multiple `value_list`(s), you need to use the OR keyword between each `value_list`. For example:
 
 ```sql
 CHECK (column_name value_list OR value_list)
 ```
 
-You can use the AND keyword between each value_list to make the CHECK constraint more restrictive. For example:
+You can use the AND keyword between each `value_list` to make the `CHECK` constraint more restrictive. For example:
 
 ```sql
 CHECK (column_name value_list AND value_list)
 ```
 
-The condition for a value_list can be any valid MySQL expression. If the condition is not met, the insert or update operation will fail.
+The condition for a `value_list` can be any valid MySQL expression. If the condition is not met, the insert or update operation will fail.
 
-## Adding and removing the CHECK constraint in MySQL
+## Adding and removing the `CHECK` constraint in MySQL
 
-#### To add a CHECK constraint to a table in MySQL, use the ALTER TABLE statement:
+#### To add a `CHECK` constraint to a table in MySQL, use the ALTER TABLE statement:
 
 ```sql title="Syntax"
 ADD CONSTRAINT constraint_name CHECK (column_name condition);
@@ -70,7 +70,7 @@ INSERT INTO example (id, value) VALUES (1, -1);
 -- This will trigger an "ERROR 3819 (HY000): Check constraint 'positive_value' is violated." error
 ```
 
-#### To remove a CHECK constraint from a table in MySQL, use the ALTER TABLE statement:
+#### To remove a `CHECK` constraint from a table in MySQL, use the ALTER TABLE statement:
 
 
 
@@ -95,7 +95,7 @@ INSERT INTO example (id, value) VALUES (1, -1);
 -- This will trigger an "ERROR 3819 (HY000): Check constraint 'example_chk_1' is violated." error
 ```
 
-#### You can also use the `MODIFY COLUMN` statement to add a CHECK constraint to a column in MySQL. The syntax is as follows:
+#### You can also use the `MODIFY COLUMN` statement to add a `CHECK` constraint to a column in MySQL. The syntax is as follows:
 
 ```sql title="Syntax"
 ALTER TABLE table_name
@@ -115,7 +115,7 @@ INSERT INTO example (id, value) VALUES (1, -1);
 -- This will trigger an "ERROR 3819 (HY000): Check constraint 'example_chk_1' is violated." error
 ```
 
-#### If you want to add a CHECK constraint to multiple columns, you can use the following syntax:
+#### If you want to add a `CHECK` constraint to multiple columns, you can use the following syntax:
 
 ```sql title="Syntax"
 ALTER TABLE table_name
@@ -138,7 +138,7 @@ INSERT INTO example (id, value1, value2, value3) VALUES (1, -1, 1, 1);
 -- This will trigger an "ERROR 3819 (HY000): Check constraint 'multi_condition' is violated." error
 ```
 
-#### To remove a CHECK constraint from multiple columns, you can use the following syntax:
+#### To remove a `CHECK` constraint from multiple columns, you can use the following syntax:
 
 ```sql title="Syntax"
 ALTER TABLE table_name
@@ -159,15 +159,15 @@ INSERT INTO example (id, value) VALUES (1, -1);
 -- This will not trigger an error
 ```
 
-### Benefits and drawbacks of using a CHECK constraint
-Using a CHECK constraint comes with several benefits. A CHECK constraint can enforce the data to be valid according to the check condition, protecting from poor data quality. This means that any values that do not comply with the check condition fail the insertion or modification processes, thus making it easier to troubleshoot any eventual issues. It is worth noting that this comes at a certain cost in terms of performance, as MySQL needs to validate each value before applying it to the database.
+### Benefits and drawbacks of using a `CHECK` constraint
+Using a `CHECK` constraint comes with several benefits. A `CHECK` constraint can enforce the data to be valid according to the `CHECK` condition, protecting from poor data quality. This means that any values that do not comply with the `CHECK` condition fail the insertion or modification processes, thus making it easier to troubleshoot any eventual issues. It is worth noting that this comes at a certain cost in terms of performance, as MySQL needs to validate each value before applying it to the database.
 
-### Common mistakes to avoid when using the CHECK constraint
+### Common mistakes to avoid when using the `CHECK` constraint
 
-When using the CHECK constraint in MySQL, it's important to be aware of a few common mistakes. 
+When using the `CHECK` constraint in MySQL, it's important to be aware of a few common mistakes. 
 
-1. Be aware of the impact of CHECK constraints on data manipulation: CHECK constraints can impact the way you manipulate data in the database. For example, you may need to modify multiple rows in order to satisfy a CHECK constraint, or you may need to temporarily disable a CHECK constraint in order to perform certain operations.
-2. Older MySQL versions (8.0.15 and below) ignore CHECK constraints. Thus, one needs to keep in mind that the constraint is neither created nor evaluated even if it has been defined in a table definition while using older versions of MySQL. For example:
+1. Be aware of the impact of `CHECK` constraints on data manipulation: `CHECK` constraints can impact the way you manipulate data in the database. For example, you may need to modify multiple rows in order to satisfy a `CHECK` constraint, or you may need to temporarily disable a `CHECK` constraint in order to perform certain operations.
+2. Older MySQL versions (8.0.15 and below) ignore `CHECK` constraints. Thus, one needs to keep in mind that the constraint is neither created nor evaluated even if it has been defined in a table definition while using older versions of MySQL. For example:
 
 ```sql
 CREATE TABLE example (
@@ -180,7 +180,7 @@ INSERT INTO example (id, value) VALUES (1, -1);
 -- This will not trigger an error, even though the CHECK constraint specifies that value must be greater than 0
 ```
 
-## Managing CHECK constraint is easy with Atlas​
+## Managing `CHECK` constraint is easy with Atlas​
 
 Atlas is an open-source project which allows us to manage our database using a simple and easy-to-understand declarative syntax (similar to Terraform).
 
@@ -201,7 +201,7 @@ schema "check_constraint" {
 ```
 
 There are no tables in our schema yet, so let’s create tables by adding the following table definitions to the schema.
-To create a CHECK constraint that ensures a column contains only positive integers, you can use the following syntax:
+To create a `CHECK` constraint that ensures a column contains only positive integers, you can use the following syntax:
 
 ```hcl title="schema.hcl"
 table "users" {
@@ -220,7 +220,7 @@ table "users" {
 }
 ```
 
-To create a CHECK constraint that ensures a column contains only values within a certain range, you can use the following syntax:
+To create a `CHECK` constraint that ensures a column contains only values within a certain range, you can use the following syntax:
 
 ```hcl title="schema.hcl"
 table "blog_posts" {
@@ -239,7 +239,7 @@ table "blog_posts" {
 }
 ```
 
-To create a CHECK constraint that ensures a column contains a value that matches a specific pattern, you can use the following syntax:
+To create a `CHECK` constraint that ensures a column contains a value that matches a specific pattern, you can use the following syntax:
 
 ```hcl title="schema.hcl"
 table "friends" {
@@ -309,10 +309,10 @@ SHOW CREATE TABLE users;
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci |
 ```
 
-Amazing! Our tables with CHECK constraints were created!
+Amazing! Our tables with `CHECK` constraints were created!
 
 ### Wrapping up​
-In this guide, we have demonstrated how to configure our columns to accept and store only desired sets of values using the CHECK constraint.
+In this guide, we have demonstrated how to configure our columns to accept and store only desired sets of values using the `CHECK` constraint.
 
 ## Need More Help?​
 
