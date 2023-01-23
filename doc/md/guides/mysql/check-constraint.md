@@ -33,7 +33,7 @@ The `CHECK` constraint is commonly used along with the NOT NULL constraint for e
 CHECK (column_name value_list)
 ```
 
-The `value_list` is a list of values that the column_name can have. You can have multiple `value_list`(s) in a single `CHECK` constraint.
+The `value_list` is a list of values that the `column_name` can have. You can have multiple `value_list`(s) in a single `CHECK` constraint.
 
 If you want to specify multiple `value_list`(s), you need to use the OR keyword between each `value_list`. For example:
 
@@ -51,7 +51,7 @@ The condition for a `value_list` can be any valid MySQL expression. If the condi
 
 ## Adding and removing the `CHECK` constraint in MySQL
 
-#### To add a `CHECK` constraint to a table in MySQL, use the ALTER TABLE statement:
+#### To add a `CHECK` constraint to a table in MySQL, use the `ALTER TABLE` statement:
 
 ```sql title="Syntax"
 ADD CONSTRAINT constraint_name CHECK (column_name condition);
