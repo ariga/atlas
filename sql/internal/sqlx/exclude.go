@@ -140,9 +140,11 @@ func excludeT(t *schema.Table, pattern string) (err error) {
 		}
 		return filepath.Match(pattern, fk.Symbol)
 	})
-
 	t.Attrs, err = filter(t.Attrs, func(c schema.Attr) (bool, error) {
-		t := c.(*schema.Check)
+		c, ok := c.(*schema.Check)
+		if !ok {
+			return false, nil
+		}
 		match, err := filepath.Match(pattern, t.Name)
 		if !match || err != nil {
 			return false, err
