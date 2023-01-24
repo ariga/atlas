@@ -1,7 +1,7 @@
 ---
 id: inspect
 slug: /declarative/inspect
-title: Inspecting existing schemas with Atlas 
+title: Inspecting existing schemas with Atlas
 ---
 
 import Tabs from '@theme/Tabs';
@@ -22,7 +22,7 @@ language that they can use as the starting point for working with this database.
 When using `schema inspect` to inspect an existing database, users may supply multiple
 parameters:
 * `--url` (`-u` accepted as well) - the [URL](/concepts/url) of database to be inspected.
-* `--schema` (optional, may be supplied multiple times) - schemas to inspect within 
+* `--schema` (optional, may be supplied multiple times) - schemas to inspect within
  the target database.
 * `--exclude` (optional) - filter out resources matching the given glob pattern.
 * `--log` (optional) - [Go template](https://pkg.go.dev/text/template) to use to format the output.
@@ -210,9 +210,9 @@ atlas schema inspect -u '<url>' --log '{{ json . }}'
 ### Visualize schemas
 
 Ariga's Explore tool, available in a web browser, can generate an Entity-Relationship Diagram (ERD) for the database
-schema. Visit [gh.ariga.cloud/explore](https://gh.ariga.cloud/explore) and follow the instructions.
+schema. Visit [gh.atlasgo.cloud/explore](https://gh.atlasgo.cloud/explore) and follow the instructions.
 
-<p style={{textAlign: "center"}}><a href="https://gh.ariga.cloud/explore/0083bc5b"><img src="https://atlasgo.io/uploads/images/atlas-erd-screenshot.jpg" alt="Schema ERD"/></a></p>
+<p style={{textAlign: "center"}}><a href="https://gh.atlasgo.cloud/explore/0083bc5b"><img src="https://atlasgo.io/uploads/images/atlas-erd-screenshot.jpg" alt="Schema ERD"/></a></p>
 
 ## Reference
 

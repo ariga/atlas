@@ -9,7 +9,7 @@ import TabItem from '@theme/TabItem';
 import CodeBlock from '@theme/CodeBlock';
 
 
-Atlas has a [Cloud platform](https://ariga.cloud/signup) that offers an [Explore feature](https://gh.ariga.cloud/explore)
+Atlas has a [Cloud platform](https://atlasgo.cloud/signup) that offers an [Explore feature](https://gh.atlasgo.cloud/explore)
 without having to sign up. The Explore feature allows you to generate an Entity Relationship Diagram (ERD) from your
 database by either manually typing in your schema, or importing from an existing database.
 
@@ -94,7 +94,7 @@ mysql://root:pass@4.tcp.ngrok.io:16496/db_name
 Make sure to remove the 'tcp://' from the URL and write in your local username and password to access the database.
 :::
 
-Open the [Explore feature](https://gh.ariga.cloud/explore) and click on `import`.
+Open the [Explore feature](https://gh.atlasgo.cloud/explore) and click on `import`.
 
 ![Explore Page](https://atlasgo.io/uploads/images/explore_page.png)
 

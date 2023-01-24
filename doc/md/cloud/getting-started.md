@@ -1,13 +1,13 @@
 ---
 id: getting-started
-title: Getting Started with Ariga Cloud
+title: Getting Started with Atlas Cloud
 sidebar_label: Getting Started
 ---
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import Discord from '../../website/src/assets/icons/discord-white.svg'
 
-[Ariga Cloud](https://ariga.cloud) is an online platform that allows developers to view their Atlas projects and track
+[Atlas Cloud](https://atlasgo.cloud) is an online platform that allows developers to view their Atlas projects and track
 their [Atlas GitHub Action](/integrations/github-actions) CI runs. The cloud platform gives full visibility into your
 Atlas schema, by displaying an entity relation diagram (ERD) that shows the schema changes, as well as the entire
 database schema.
@@ -15,20 +15,20 @@ database schema.
 ### Signing Up
 
 ![Login](https://release.ariga.io/images/assets/login1.png)
-1. To get started with [Ariga Cloud](https://ariga.cloud/), create an account by clicking 'sign up' on the homepage.
+1. To get started with [Atlas Cloud](https://atlasgo.cloud/), create an account by clicking 'sign up' on the homepage.
 2. In the sign up screen, enter your work email and choose a password.
-3. Next, you will receive an email to verify your account. From your email, [Ariga Cloud](https://ariga.cloud/)
+3. Next, you will receive an email to verify your account. From your email, [Atlas Cloud](https://atlasgo.cloud/)
 will open in a new tab, and you will need to sign in to access your account.
 4. Once signed in, you will be asked to confirm the service agreement in order to continue with the login process.
 5. Next, you will be prompted to create an organization. After creating the organization, you will be able
 to invite team members to join. Choose a meaningful name for the organization, as it will also be your subdomain.
-For example, "Acme Corp" will be available at "acme-corp.ariga.cloud".  
+For example, "Acme Corp" will be available at "acme-corp.atlasgo.cloud".
 
 ### Choosing an organization
 ![Choosing organization](https://atlasgo.io/uploads/images/choose-org1.png)
-Ariga Cloud allows you to be a part of multiple organizations.
+Atlas Cloud allows you to be a part of multiple organizations.
 After logging in (not including the first login), you will see all the organizations you have access to. Choose the organization you would to log in to.
-If you would like to create a new organization, click 'create a new organization'.  
+If you would like to create a new organization, click 'create a new organization'.
 While logged in to one organization, you would be able to switch to another by clicking on your avatar on the top right corner and choose the organization you would like to switch to.
 
 ![Switching organization](https://atlasgo.io/uploads/images/choose-org2.png)
@@ -211,7 +211,7 @@ jobs:
 </Tabs>
 
 6. After merging the workflow to your mainline branch, the workflow will be triggered.
-7. Refresh Ariga Cloud and your project will appear!
+7. Refresh Atlas Cloud and your project will appear!
 
 ![Setup Projects](https://release.ariga.io/images/assets/setup-projects.png)
 
@@ -276,7 +276,7 @@ lint {
 
 ### Inviting Members
 Under 'Settings' > 'Members', you can invite team members to your organization.
-These members will receive an email with a link to Ariga Cloud, and will be required to sign up with the same email
+These members will receive an email with a link to Atlas Cloud, and will be required to sign up with the same email
 in order to access the organization.
 
 ### Regenerating Tokens

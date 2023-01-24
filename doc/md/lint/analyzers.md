@@ -18,9 +18,9 @@ safety of migration scripts.
 
 ## Analyzers
 
-Below are the `Analyzer` implementations currently supported by Atlas. 
+Below are the `Analyzer` implementations currently supported by Atlas.
 
-### Destructive Changes 
+### Destructive Changes
 
 Destructive changes are changes to a database schema that result in loss of data. For instance,
 consider a statement such as:
@@ -30,7 +30,7 @@ ALTER TABLE `users` DROP COLUMN `email_address`;
 This statement is considered destructive because whatever data is stored in the `email_address` column
 will be deleted from disk, with no way to recover it. There are definitely situations where this type
 of change is desired, but they are relatively rare. Using the `destructive` ([GoDoc](https://pkg.go.dev/ariga.io/atlas@master/sql/sqlcheck/destructive))
-Analyzer, teams can detect this type of change and design workflows that prevent it from happening accidentally. 
+Analyzer, teams can detect this type of change and design workflows that prevent it from happening accidentally.
 
 Running migration linting locally on in CI fails with exit code 1 in case destructive changes are detected. However,
 users can disable this by configuring the `destructive` analyzer in the [`atlas.hcl`](../atlas-schema/projects#configure-migration-linting)
@@ -44,7 +44,7 @@ lint {
 }
 ```
 
-### Data-dependent Changes 
+### Data-dependent Changes
 
 Data-dependent changes are changes to a database schema that _may_ succeed or fail, depending on the
 data that is stored in the database. For instance, consider a statement such as:
@@ -52,7 +52,7 @@ data that is stored in the database. For instance, consider a statement such as:
 ```sql
 ALTER TABLE `example`.`orders` ADD UNIQUE INDEX `idx_name` (`name`);
 ```
-This statement is considered data-dependent because if the `orders` table 
+This statement is considered data-dependent because if the `orders` table
 contains duplicate values on the name column we will not be able to add a uniqueness
 constraint. Consider we added two records with the name `atlas` to the table:
 ```
@@ -75,7 +75,7 @@ This type of change is tricky because a developer trying to simulate it locally
 might succeed in performing it only to be surprised that their migration script
 fails in production, breaking a deployment sequence or causing other unexpected
 behavior. Using the `data_depend` ([GoDoc](https://pkg.go.dev/ariga.io/atlas@master/sql/sqlcheck/datadepend))
-Analyzer, teams can detect this risk early and account for it in pre-deployment checks to a database. 
+Analyzer, teams can detect this risk early and account for it in pre-deployment checks to a database.
 
 By default, data-dependent changes are reported but not cause migration linting to fail. Users can change this by
 configuring the `data_depend` analyzer in the [`atlas.hcl`](../atlas-schema/projects#configure-migration-linting) file:
@@ -109,8 +109,8 @@ The following schema change checks are provided by Atlas:
 | [MY101](#MY101)                    | Adding a non-nullable column without a `DEFAULT` value to an existing table |
 | [MY102](#MY102)                    | Adding a column with an inline `REFERENCES` clause has no actual effect     |
 | **LT**                             | SQLite specific checks                                                      |
-| [LT101](#LT101)                    | Modifying a nullable column to non-nullable without a `DEFAULT` value       |  
-| **AR**                             | Ariga cloud checks                                                          |
+| [LT101](#LT101)                    | Modifying a nullable column to non-nullable without a `DEFAULT` value       |
+| **AR**                             | Atlas cloud checks                                                          |
 | [AR101](#AR101)                    | Creating table with non-optimal data alignment                              |
 
 #### DS101 {#DS101}
@@ -245,7 +245,7 @@ PRAGMA foreign_keys = on;
 
 #### AR101 {#AR101}
 
-Creating a table with optimal data alignment may help minimize the amount of required disk space. 
+Creating a table with optimal data alignment may help minimize the amount of required disk space.
 For example consider the next Postgres table on a 64-bit system:
 
 ```postgresql
@@ -253,7 +253,7 @@ CREATE TABLE accounts (
     id bigint PRIMARY KEY,
     premium boolean,
     balance integer,
-    age     smallint                  
+    age     smallint
 );
 ```
 Each tuple in the table takes 24 bytes of successive memory without the header.
@@ -268,6 +268,6 @@ CREATE TABLE accounts (
     id bigint PRIMARY KEY,
     balance integer,
     age smallint,
-    premium boolean             
+    premium boolean
 );
 ```

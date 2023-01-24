@@ -8,7 +8,7 @@ slug: /guides/mysql/descending-indexes
 In general, indexes with ascending or descending order help increase the performance of queries with the “ORDER BY” clause. Descending indexes are indexes where key values are stored in descending order.
 
 #### When are descending indexes helpful?
-In versions prior to MySQL 8.0, scanning an index in reverse order had a very high cost, which resulted in reduced performance for certain queries. 
+In versions prior to MySQL 8.0, scanning an index in reverse order had a very high cost, which resulted in reduced performance for certain queries.
 Since the release of MySQL version 8.0, users can now create descending indexes, which can be scanned in forward order, thus increasing efficiency of scanning for certain queries with the ORDER BY clause.
 
 ### Syntax
@@ -24,9 +24,9 @@ CREATE TABLE t (
 ```
 Or, you can add a descending index to an existing table with the following syntax:
 ```sql
-CREATE INDEX 
-    index_name_idx 
-ON 
+CREATE INDEX
+    index_name_idx
+ON
     table_name(column_name DESC);
 ```
 :::info
@@ -203,7 +203,7 @@ SHOW STATUS LIKE 'Last_query_cost';
 ```
 (Note: The results will vary, ​​depending on the data that is stored in the database)
 
-Amazing! Now our query cost only 52.01 units, compared to 108034.65 units earlier when the descending index was not used. 
+Amazing! Now our query cost only 52.01 units, compared to 108034.65 units earlier when the descending index was not used.
 
 Let's check how MySQL resolves the query in this case:
 
@@ -314,8 +314,8 @@ Atlas generates the necessary SQL statements to add the new descending index to 
 -- Planned Changes:
 -- Modify "telecom_data" table
 ALTER TABLE `telecom_data`.`telecom_data` ADD INDEX `fastscan_idx` (`megabytes_used` DESC)
-Use the arrow keys to navigate: ↓ ↑ → ← 
-? Are you sure?: 
+Use the arrow keys to navigate: ↓ ↑ → ←
+? Are you sure?:
   ▸ Apply
     Abort
 ```
@@ -345,8 +345,8 @@ show index from telecom_data\G
        Packed: NULL
          Null: YES
    Index_type: BTREE
-      Comment: 
-Index_comment: 
+      Comment:
+Index_comment:
       Visible: YES
    Expression: NULL
 2 rows in set (0.00 sec)
@@ -359,6 +359,6 @@ In this guide, we demonstrated how to create and use descending indexes in MySQL
 
 ## Need More Help?​
 
-[Join the Ariga Discord Server](https://discord.com/invite/zZ6sWVg6NT) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling. 
+[Join the Ariga Discord Server](https://discord.com/invite/zZ6sWVg6NT) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling.
 
-[Sign up](https://atlasnewsletter.substack.com/) to our newsletter to stay up to date about [Atlas](https://atlasgo.io), our OSS database schema management tool, and our cloud platform [Ariga Cloud](https://ariga.cloud).
+[Sign up](https://atlasnewsletter.substack.com/) to our newsletter to stay up to date about [Atlas](https://atlasgo.io), our OSS database schema management tool, and our cloud platform [Atlas Cloud](https://atlasgo.cloud).

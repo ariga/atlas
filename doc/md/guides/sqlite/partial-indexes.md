@@ -24,11 +24,11 @@ Partial indexes come into the picture to filter unsearched values and give you, 
 #### Basic SQLite syntax for using Partial Indexes
 
 ```sql
-CREATE INDEX 
+CREATE INDEX
     index_name
-ON 
+ON
     table_name(column_list)
-WHERE 
+WHERE
     expression;
 ```
 
@@ -80,9 +80,9 @@ You can also beautify tables in SQLite like shown above, by using the command `.
 In the following example, suppose we want a list of doctors from India that have taken the vaccine. If we want to use a non-partial index, we can create it on the "vaccinated" column with the following command:
 
 ```sql
-CREATE INDEX 
-    vaccinated_idx 
-ON 
+CREATE INDEX
+    vaccinated_idx
+ON
     vaccination_data(vaccinated);
 ```
 
@@ -115,20 +115,20 @@ DROP INDEX vaccinated_idx;
 In the following command, we will create an index with a `WHERE` clause that precisely describes the list of doctors from India that have taken the vaccine.
 
 ```sql
-CREATE INDEX 
+CREATE INDEX
     vaccinated_idx
-ON 
+ON
     vaccination_data(vaccinated)
-WHERE 
+WHERE
     vaccinated = 'Yes' AND country = 'India' AND title = 'Dr';
 ```
 Let’s verify if the index we created is being used in the query with a `WHERE` clause by running the following command:
 
 ```sql
-EXPLAIN QUERY PLAN 
+EXPLAIN QUERY PLAN
 SELECT
         *
-FROM    
+FROM
         vaccination_data
 WHERE
         vaccinated = 'Yes' AND country = 'India' AND title = 'Dr';
@@ -255,6 +255,6 @@ In this section, we learned about SQLite partial indexes and how we can easily c
 
 ## Need More Help?​
 
-[Join the Ariga Discord Server](https://discord.com/invite/zZ6sWVg6NT) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling. 
+[Join the Ariga Discord Server](https://discord.com/invite/zZ6sWVg6NT) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling.
 
-[Sign up](https://atlasnewsletter.substack.com/) to our newsletter to stay up to date about [Atlas](https://atlasgo.io), our OSS database schema management tool, and our cloud platform [Ariga Cloud](https://Ariga.cloud).
+[Sign up](https://atlasnewsletter.substack.com/) to our newsletter to stay up to date about [Atlas](https://atlasgo.io), our OSS database schema management tool, and our cloud platform [Atlas Cloud](https://atlasgo.cloud).

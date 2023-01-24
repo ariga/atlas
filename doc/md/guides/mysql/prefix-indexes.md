@@ -9,7 +9,7 @@ slug: /guides/mysql/prefix-indexes
 With MySQL, users may create secondary indexes for string columns which use the first N characters of the values stored in the column, instead of using the entire value. If used correctly, prefix indexes improve performance and reduce costs, all while minimizing the amount of storage space they take up on the disk.
 When do we need them?
 
-Let’s assume you have a lengthy column. If you have many records in an indexed table, the number of records the index needs to track also grows. If the index grows in size, the disk space needed to store the index itself increases as well. In many tables, lengthy records are not accessed with uniform search queries. One might prefer to use the `LIKE` operator to fetch content from a lengthy column, instead of writing the full value itself in the query. 
+Let’s assume you have a lengthy column. If you have many records in an indexed table, the number of records the index needs to track also grows. If the index grows in size, the disk space needed to store the index itself increases as well. In many tables, lengthy records are not accessed with uniform search queries. One might prefer to use the `LIKE` operator to fetch content from a lengthy column, instead of writing the full value itself in the query.
 
 Some data types (such as `BLOB` and `TEXT`) are not allowed to be indexed (unless the prefix value is specified). Also, The maximum length of the indexed value is 767 bytes. If the indexed value exceeds this length, it will be truncated.
 
@@ -20,16 +20,16 @@ In such cases, the prefix index can become useful to filter unsearched parts of 
 Here is how you can create a prefix index:
 
 ```sql
-CREATE INDEX 
-    index_name 
-ON 
+CREATE INDEX
+    index_name
+ON
     table_name(column_name(length));
 ```
 
 Here is how you can define a prefix index in a table definition:
 
 ```sql
-CREATE TABLE 
+CREATE TABLE
     table_name(column_name BLOB, index_name(column_name(length)));
 ```
 
@@ -133,9 +133,9 @@ Notice that the query cost 108430.088807 units.
 Now, suppose we want to optimize this query but we do not know about prefix indexes yet. In this case, we will make an index on column `message` with the following command:
 
 ```sql
-CREATE INDEX 
-    message_idx 
-ON 
+CREATE INDEX
+    message_idx
+ON
     comm_database(message);
 ```
 
@@ -146,9 +146,9 @@ ERROR 1170 (42000): BLOB/TEXT column 'message' used in key specification without
 That didn’t work! As mentioned in the [Syntax](#syntax) section above and the error message, you must specify length when indexing `BLOB` and `TEXT` type columns. Let’s specify the length and try to check the performance for the same query again:
 
 ```sql
-CREATE INDEX 
-    message_idx 
-ON 
+CREATE INDEX
+    message_idx
+ON
     comm_database(message(30));
 ```
 
@@ -230,9 +230,9 @@ WHERE
 To optimize this query, usually we would create the following index:
 
 ```sql
-CREATE INDEX 
-    email_idx 
-ON 
+CREATE INDEX
+    email_idx
+ON
     comm_database(email);
 ```
 
@@ -254,11 +254,11 @@ The cost for the query after creating this index is as follows:
 The storage space used by the index is as following:
 
 ```sql
-SELECT 
+SELECT
     stat_value
-FROM 
-    mysql.innodb_index_stats 
-WHERE 
+FROM
+    mysql.innodb_index_stats
+WHERE
     index_name = 'email_idx' AND stat_name= 'size';
 ```
 
@@ -271,7 +271,7 @@ WHERE
 ```
 
 :::info
-The `innodb_page_size` variable specifies the size of the pages used by the InnoDB storage engine, and the `stat_value` column contains statistics about the index, such as the number of pages used by the index. When `stat_name` is 'size', the `stat_value` column contains the size of the index in terms of number of pages. 
+The `innodb_page_size` variable specifies the size of the pages used by the InnoDB storage engine, and the `stat_value` column contains statistics about the index, such as the number of pages used by the index. When `stat_name` is 'size', the `stat_value` column contains the size of the index in terms of number of pages.
 
 For example, if the `innodb_page_size` system variable is set to 16 KB and the `stat_value` column contains the value 10, this means that the index uses 10 pages, or 160KB of disk space.
 :::
@@ -279,11 +279,11 @@ For example, if the `innodb_page_size` system variable is set to 16 KB and the `
 For our example, keeping `innodb_page_size` as 16KB in mind, our index uses ~32MB disk space. Now, we can further improve the query performance as well as reduce the storage used by the index by using a prefix index on the email column. Let’s create a prefix index with the following command:
 
 ```sql
-ALTER TABLE 
-    comm_database 
-DROP INDEX 
+ALTER TABLE
+    comm_database
+DROP INDEX
     email_idx,
-ADD INDEX 
+ADD INDEX
     email_prefix_idx (email(5));
 ```
 
@@ -307,11 +307,11 @@ Our cost has reduced by 5% by using the prefix index.
 And the storage space used by the index is as follows:
 
 ```sql
-SELECT 
+SELECT
     stat_value
-FROM 
-    mysql.innodb_index_stats 
-WHERE 
+FROM
+    mysql.innodb_index_stats
+WHERE
     index_name = 'email_prefix_idx' AND stat_name= 'size';
 ```
 
@@ -413,14 +413,14 @@ atlas schema apply -u "mysql://root:password@localhost:3306/comm_database" -f sc
 If you get `Error: pulling image: exit status 1` error, ensure that Docker Desktop is up and running.
 :::
 
-Atlas generates the necessary SQL statements to add the new index to the database schema. 
+Atlas generates the necessary SQL statements to add the new index to the database schema.
 
 ```console
 -- Planned Changes:
 -- Modify "comm_database" table
 ALTER TABLE `comm_database`.`comm_database` ADD INDEX `message_idx` (`message` (30)), ADD INDEX `email_prefix_idx` (`email` (5))
-Use the arrow keys to navigate: ↓ ↑ → ← 
-? Are you sure?: 
+Use the arrow keys to navigate: ↓ ↑ → ←
+? Are you sure?:
   ▸ Apply
     Abort
 ```
@@ -454,4 +454,4 @@ In this guide, we have demonstrated that creating a prefix index is inevitable w
 
 ## Need More Help?​​
 [Join](https://discord.com/invite/zZ6sWVg6NT) the Ariga Discord Server for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling.
-[Sign up](https://www.getrevue.co/profile/ariga) to our newsletter to stay up to date about [Atlas](https://atlasgo.io/), our OSS database schema management tool, and our cloud platform [Ariga Cloud](https://ariga.cloud/).
+[Sign up](https://www.getrevue.co/profile/ariga) to our newsletter to stay up to date about [Atlas](https://atlasgo.io/), our OSS database schema management tool, and our cloud platform [Atlas Cloud](https://atlasgo.cloud/).
