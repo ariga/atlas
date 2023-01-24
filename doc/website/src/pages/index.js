@@ -40,7 +40,6 @@ function SocialLinks() {
             <TwitterIcon />
         </a>
     </div>
-    
 }
 
 function Header() {
