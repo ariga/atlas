@@ -25,36 +25,37 @@ The following are some examples of when you can use `CHECK` constraints:
 - An employee’s joining date must not precede their DOB.
 - The value of an employee’s salary must be a positive integer.
 
-The `CHECK` constraint is commonly used along with the NOT NULL constraint for ensuring that a column contains only valid data and doesn’t contain any NULL values. This is particularly important when defining columns that will be referenced by foreign key constraints.
+The `CHECK` constraint is commonly used along with the NOT NULL constraint for ensuring that a column contains only valid data and doesn’t contain any NULL values.
 
 ## Syntax
 
 ```sql
-CHECK (column_name value_list)
+CHECK (expression)
 ```
 
-The `value_list` is a list of values that the `column_name` can have. You can have multiple `value_list`(s) in a single `CHECK` constraint.
+The expression defines list of values that the column can have. You can have multiple expressions in a single `CHECK` constraint.
 
-If you want to specify multiple `value_list`(s), you need to use the OR keyword between each `value_list`. For example:
+If you want to specify multiple expressions, you need to use the OR keyword between each expression. For example:
 
 ```sql
-CHECK (column_name value_list OR value_list)
+CHECK (expression_1 OR expression_2)
 ```
 
-You can use the AND keyword between each `value_list` to make the `CHECK` constraint more restrictive. For example:
+You can use the AND keyword between each expression to make the `CHECK` constraint more restrictive. For example:
 
 ```sql
-CHECK (column_name value_list AND value_list)
+CHECK (expression_1 AND expression_2)
 ```
 
-The condition for a `value_list` can be any valid MySQL expression. If the condition is not met, the insert or update operation will fail.
+The condition for an expression can be any valid MySQL expression. If the condition is not met, the insert or update operation will fail.
 
 ## Adding and removing the `CHECK` constraint in MySQL
 
 #### To add a `CHECK` constraint to a table in MySQL, use the `ALTER TABLE` statement:
 
 ```sql title="Syntax"
-ADD CONSTRAINT constraint_name CHECK (column_name condition);
+ALTER TABLE table_name
+ADD CONSTRAINT constraint_name CHECK (expression);
 ```
 
 ```sql title="Example"
@@ -68,31 +69,6 @@ ADD CONSTRAINT positive_value CHECK (value > 0);
 
 INSERT INTO example (id, value) VALUES (1, -1);  
 -- This will trigger an "ERROR 3819 (HY000): Check constraint 'positive_value' is violated." error
-```
-
-#### To remove a `CHECK` constraint from a table in MySQL, use the ALTER TABLE statement:
-
-
-
-```sql title="Syntax"
-ALTER TABLE table_name
-DROP CONSTRAINT constraint_name;
-```
-```sql title="Example"
-CREATE TABLE example (
-  id INT PRIMARY KEY,
-  value INT,
-  CHECK (value > 0)
-);
-
-ALTER TABLE example
-DROP CONSTRAINT value;
-
-INSERT INTO example (id, value) VALUES (1, 2);  
--- This will not trigger an error
-
-INSERT INTO example (id, value) VALUES (1, -1);  
--- This will trigger an "ERROR 3819 (HY000): Check constraint 'example_chk_1' is violated." error
 ```
 
 #### You can also use the `MODIFY COLUMN` statement to add a `CHECK` constraint to a column in MySQL. The syntax is as follows:
@@ -115,12 +91,12 @@ INSERT INTO example (id, value) VALUES (1, -1);
 -- This will trigger an "ERROR 3819 (HY000): Check constraint 'example_chk_1' is violated." error
 ```
 
-#### If you want to add a `CHECK` constraint to multiple columns, you can use the following syntax:
+#### If you want to add a `CHECK` constraint to multiple columns, you can use syntax similar to this:
 
 ```sql title="Syntax"
 ALTER TABLE table_name
 ADD CONSTRAINT constraint_name
-CHECK ((column_name1 condition1) AND (column_name2 condition2) AND (column_name3 condition3));
+CHECK ((c1_expression) AND (c2_expression) AND (c3_expression));
 ```
 
 ```sql title="Example"
@@ -138,7 +114,7 @@ INSERT INTO example (id, value1, value2, value3) VALUES (1, -1, 1, 1);
 -- This will trigger an "ERROR 3819 (HY000): Check constraint 'multi_condition' is violated." error
 ```
 
-#### To remove a `CHECK` constraint from multiple columns, you can use the following syntax:
+#### To remove a `CHECK` constraint, you can use the following statements:
 
 ```sql title="Syntax"
 ALTER TABLE table_name
@@ -169,7 +145,7 @@ When using the `CHECK` constraint in MySQL, it's important to be aware of a few 
 1. Be aware of the impact of `CHECK` constraints on data manipulation: `CHECK` constraints can impact the way you manipulate data in the database. For example, you may need to modify multiple rows in order to satisfy a `CHECK` constraint, or you may need to temporarily disable a `CHECK` constraint in order to perform certain operations.
 2. Older MySQL versions (8.0.15 and below) ignore `CHECK` constraints. Thus, one needs to keep in mind that the constraint is neither created nor evaluated even if it has been defined in a table definition while using older versions of MySQL. For example:
 
-```sql
+```sql title="MySQL 5.7"
 CREATE TABLE example (
   id INT PRIMARY KEY,
   value INT,
@@ -180,7 +156,7 @@ INSERT INTO example (id, value) VALUES (1, -1);
 -- This will not trigger an error, even though the CHECK constraint specifies that value must be greater than 0
 ```
 
-## Managing `CHECK` constraint is easy with Atlas​
+## Managing `CHECK` constraints is easy with Atlas​
 
 Atlas is an open-source project which allows us to manage our database using a simple and easy-to-understand declarative syntax (similar to Terraform).
 
@@ -318,4 +294,4 @@ In this guide, we have demonstrated how to configure our columns to accept and s
 
 [Join the Ariga Discord Server](https://discord.com/invite/zZ6sWVg6NT) for early access to features and the ability to provide exclusive feedback that improves your Database Management Tooling. 
 
-[Sign up](https://atlasnewsletter.substack.com/) to our newsletter to stay up to date about [Atlas](https://atlasgo.io), our OSS database schema management tool, and our cloud platform [Ariga Cloud](https://ariga.cloud).
+[Sign up](https://atlasnewsletter.substack.com/) to our newsletter to stay up to date about [Atlas](https://atlasgo.io), our OSS database schema management tool, and our cloud platform [Atlas Cloud](https://atlasgo.cloud).
